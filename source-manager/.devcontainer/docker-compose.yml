@@ -1,0 +1,48 @@
+services:
+
+  app:
+    build: 
+      context: .
+      dockerfile: Dockerfile
+      args:
+        VARIANT: 1.25-bookworm
+    volumes:
+      - ../..:/workspaces:cached
+    command: sleep infinity
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      - APP_DEBUG=true
+      - SERVER_HOST=0.0.0.0
+      - SERVER_PORT=8050
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres
+      - DB_NAME=gosources
+      - DB_SSLMODE=disable
+      # Set GOMODCACHE to user-writable location to avoid permission issues
+      - GOMODCACHE=/home/vscode/go/pkg/mod
+      - GOPATH=/home/vscode/go
+
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=gosources
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ../migrations:/migrations:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:

@@ -1,0 +1,22 @@
+uuid: 078f9684-8d32-40a1-8905-aabf7407d49d
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.storage.node.field_og_description
+    - node.type.article
+  module:
+    - text
+id: node.article.field_og_description
+field_name: field_og_description
+entity_type: node
+bundle: article
+label: 'OG Description'
+description: ''
+required: false
+translatable: true
+default_value: {  }
+default_value_callback: ''
+settings:
+  allowed_formats: {  }
+field_type: text_long

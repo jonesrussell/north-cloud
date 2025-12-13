@@ -1,0 +1,247 @@
+services:
+  # ============================================
+  # Infrastructure Services
+  # ============================================
+  
+  # PostgreSQL for source-manager
+  postgres-source-manager:
+    image: postgres:16-alpine
+    container_name: north-cloud-postgres-source-manager
+    environment:
+      POSTGRES_USER: ${POSTGRES_SOURCE_MANAGER_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_SOURCE_MANAGER_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_SOURCE_MANAGER_DB:-gosources}
+    ports:
+      - "${POSTGRES_SOURCE_MANAGER_PORT:-5432}:5432"
+    volumes:
+      - postgres_source_manager_data:/var/lib/postgresql/data
+      - ./source-manager/migrations:/migrations:ro
+      - ./infrastructure/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_SOURCE_MANAGER_USER:-postgres}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - north-cloud-network
+
+  # PostgreSQL for crawler
+  postgres-crawler:
+    image: postgres:16-alpine
+    container_name: north-cloud-postgres-crawler
+    environment:
+      POSTGRES_USER: ${POSTGRES_CRAWLER_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_CRAWLER_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_CRAWLER_DB:-gocrawl}
+    ports:
+      - "${POSTGRES_CRAWLER_PORT:-5433}:5432"
+    volumes:
+      - postgres_crawler_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_CRAWLER_USER:-postgres}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - north-cloud-network
+
+  # PostgreSQL for streetcode (Drupal)
+  postgres-streetcode:
+    image: postgres:16-alpine
+    container_name: north-cloud-postgres-streetcode
+    environment:
+      POSTGRES_USER: ${POSTGRES_STREETCODE_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_STREETCODE_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_STREETCODE_DB:-streetcode}
+    ports:
+      - "${POSTGRES_STREETCODE_PORT:-5434}:5432"
+    volumes:
+      - postgres_streetcode_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_STREETCODE_USER:-postgres}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - north-cloud-network
+
+  # Elasticsearch for publisher
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.0
+    container_name: north-cloud-elasticsearch
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=${ELASTICSEARCH_SECURITY_ENABLED:-false}
+      - "ES_JAVA_OPTS=-Xms${ELASTICSEARCH_MIN_HEAP:-512m} -Xmx${ELASTICSEARCH_MAX_HEAP:-512m}"
+      - bootstrap.memory_lock=true
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    ports:
+      - "${ELASTICSEARCH_PORT:-9200}:9200"
+      - "${ELASTICSEARCH_TRANSPORT_PORT:-9300}:9300"
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data
+      - ./infrastructure/elasticsearch/elasticsearch.yml:/usr/share/elasticsearch/config/elasticsearch.yml:ro
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9200/_cluster/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    networks:
+      - north-cloud-network
+
+  # Redis for publisher queue and deduplication
+  redis:
+    image: redis:7-alpine
+    container_name: north-cloud-redis
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-}
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - north-cloud-network
+
+  # ============================================
+  # Application Services
+  # ============================================
+
+  # Crawler service
+  crawler:
+    build:
+      context: ./crawler
+      dockerfile: Dockerfile
+    container_name: north-cloud-crawler
+    depends_on:
+      postgres-crawler:
+        condition: service_healthy
+    environment:
+      - DB_HOST=postgres-crawler
+      - DB_PORT=5432
+      - DB_USER=${POSTGRES_CRAWLER_USER:-postgres}
+      - DB_PASSWORD=${POSTGRES_CRAWLER_PASSWORD:-postgres}
+      - DB_NAME=${POSTGRES_CRAWLER_DB:-gocrawl}
+      - DB_SSLMODE=disable
+      - APP_DEBUG=${APP_DEBUG:-false}
+    volumes:
+      - ./crawler:/app
+    networks:
+      - north-cloud-network
+    restart: unless-stopped
+
+  # Source Manager service (Go + Vue)
+  source-manager:
+    build:
+      context: ./source-manager
+      dockerfile: Dockerfile
+    container_name: north-cloud-source-manager
+    ports:
+      - "${SOURCE_MANAGER_PORT:-8050}:8050"
+    depends_on:
+      postgres-source-manager:
+        condition: service_healthy
+    environment:
+      - APP_DEBUG=${APP_DEBUG:-false}
+      - SERVER_HOST=${SOURCE_MANAGER_HOST:-0.0.0.0}
+      - SERVER_PORT=${SOURCE_MANAGER_PORT:-8050}
+      - DB_HOST=postgres-source-manager
+      - DB_PORT=5432
+      - DB_USER=${POSTGRES_SOURCE_MANAGER_USER:-postgres}
+      - DB_PASSWORD=${POSTGRES_SOURCE_MANAGER_PASSWORD:-postgres}
+      - DB_NAME=${POSTGRES_SOURCE_MANAGER_DB:-gosources}
+      - DB_SSLMODE=disable
+    volumes:
+      - ./source-manager/migrations:/migrations:ro
+    networks:
+      - north-cloud-network
+    restart: unless-stopped
+
+  # Publisher service
+  publisher:
+    build:
+      context: ./publisher
+      dockerfile: Dockerfile
+    container_name: north-cloud-publisher
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      streetcode:
+        condition: service_healthy
+    environment:
+      - ES_URL=http://elasticsearch:9200
+      - REDIS_URL=redis:6379
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-}
+      - DRUPAL_URL=http://streetcode:80
+      - DRUPAL_TOKEN=${DRUPAL_TOKEN:-}
+      - APP_DEBUG=${APP_DEBUG:-false}
+    volumes:
+      - ./publisher/config.yml:/app/config.yml:ro
+    networks:
+      - north-cloud-network
+    restart: unless-stopped
+
+  # Streetcode (Drupal 11)
+  streetcode:
+    build:
+      context: ./streetcode
+      dockerfile: Dockerfile
+    container_name: north-cloud-streetcode
+    ports:
+      - "${STREETCODE_PORT:-8080}:80"
+    depends_on:
+      postgres-streetcode:
+        condition: service_healthy
+    environment:
+      - POSTGRES_HOST=postgres-streetcode
+      - POSTGRES_PORT=5432
+      - POSTGRES_USER=${POSTGRES_STREETCODE_USER:-postgres}
+      - POSTGRES_PASSWORD=${POSTGRES_STREETCODE_PASSWORD:-postgres}
+      - POSTGRES_DB=${POSTGRES_STREETCODE_DB:-streetcode}
+    volumes:
+      - streetcode_data:/var/www/html
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    networks:
+      - north-cloud-network
+    restart: unless-stopped
+
+  # Nginx reverse proxy (optional)
+  nginx:
+    image: nginx:alpine
+    container_name: north-cloud-nginx
+    ports:
+      - "${NGINX_HTTP_PORT:-80}:80"
+      - "${NGINX_HTTPS_PORT:-443}:443"
+    volumes:
+      - ./infrastructure/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - source-manager
+      - streetcode
+    networks:
+      - north-cloud-network
+    restart: unless-stopped
+
+volumes:
+  postgres_source_manager_data:
+  postgres_crawler_data:
+  postgres_streetcode_data:
+  elasticsearch_data:
+  redis_data:
+  streetcode_data:
+
+networks:
+  north-cloud-network:
+    driver: bridge
+

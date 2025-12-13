@@ -1,0 +1,119 @@
+---
+description: REST API conventions, handlers, and HTTP patterns.
+alwaysApply: false
+---
+
+# REST API Standards
+
+## API Design
+
+### URL Structure
+
+- Base path: `/api/v1`
+- Resources: `/api/v1/sources`, `/api/v1/cities`
+- Resource IDs: `/api/v1/sources/:id`
+- Use lowercase, hyphenated paths for multi-word resources
+
+### HTTP Methods
+
+- `GET` - Retrieve resources (list or single)
+- `POST` - Create new resources
+- `PUT` - Update entire resource (idempotent)
+- `DELETE` - Delete resource
+
+### Status Codes
+
+- `200 OK` - Successful GET, PUT requests
+- `201 Created` - Successful POST (resource created)
+- `204 No Content` - Successful DELETE
+- `400 Bad Request` - Invalid request body/parameters
+- `404 Not Found` - Resource not found
+- `500 Internal Server Error` - Server errors
+
+### Request/Response Format
+
+- Content-Type: `application/json`
+- Accept: `application/json`
+- Use JSON tags for field naming (snake_case in JSON)
+- Always return JSON, even for errors
+
+## Handler Patterns
+
+### Handler Structure
+
+```go
+func (h *SourceHandler) Create(c *gin.Context) {
+    // 1. Bind and validate request
+    var source models.Source
+    if err := c.ShouldBindJSON(&source); err != nil {
+        c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+        return
+    }
+    
+    // 2. Call repository with context
+    if err := h.repo.Create(c.Request.Context(), &source); err != nil {
+        h.logger.Error("Failed to create", logger.Error(err))
+        c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create"})
+        return
+    }
+    
+    // 3. Log success
+    h.logger.Info("Created", logger.String("source_id", source.ID))
+    
+    // 4. Return response
+    c.JSON(http.StatusCreated, source)
+}
+```
+
+### Error Handling
+
+- Log errors before returning to client
+- Don't expose internal error details to client
+- Use generic error messages: "Failed to create source"
+- Log detailed errors with structured fields
+
+### Context Usage
+
+- Always use `c.Request.Context()` for database operations
+- Context enables request cancellation and timeouts
+- Context flows through: Handler → Repository → Database
+
+### Validation
+
+- Validate required fields in handlers
+- Return `400 Bad Request` for validation errors
+- Include error details in response for debugging
+
+## Middleware
+
+- Logging middleware: Log all HTTP requests with duration
+- Recovery middleware: Catch panics and return 500
+- CORS middleware: Add if needed for cross-origin requests
+
+## Response Format
+
+### Success Responses
+
+```json
+// Single resource
+{
+  "id": "uuid",
+  "name": "Source Name",
+  ...
+}
+
+// List response
+{
+  "sources": [...],
+  "count": 10
+}
+```
+
+### Error Responses
+
+```json
+{
+  "error": "Error message",
+  "details": "Optional details for debugging"
+}
+```

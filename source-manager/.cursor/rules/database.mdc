@@ -1,0 +1,71 @@
+---
+description: PostgreSQL database patterns, migrations, and query conventions.
+alwaysApply: false
+---
+
+# Database Standards
+
+## PostgreSQL Patterns
+
+### Connection Management
+
+- Use connection pooling via `sql.DB` with appropriate settings:
+  - `SetMaxOpenConns()` - Maximum open connections
+  - `SetMaxIdleConns()` - Maximum idle connections
+  - `SetConnMaxLifetime()` - Connection lifetime
+- Always test connection with `PingContext()` on startup
+- Close database connection properly on shutdown
+
+### Context Usage
+
+- **Always** use context-aware methods:
+  - `ExecContext(ctx, query, args...)`
+  - `QueryContext(ctx, query, args...)`
+  - `QueryRowContext(ctx, query, args...)`
+- Never use non-context methods (`Exec`, `Query`, `QueryRow`)
+- Context enables cancellation, timeouts, and request tracing
+
+### Query Patterns
+
+1. **Parameterized Queries**: Always use parameterized queries to prevent SQL injection
+   ```go
+   // Good
+   query := "SELECT * FROM sources WHERE id = $1"
+   row := db.QueryRowContext(ctx, query, id)
+   
+   // Bad - SQL injection risk
+   query := fmt.Sprintf("SELECT * FROM sources WHERE id = '%s'", id)
+   ```
+
+2. **NULL Handling**: Use appropriate null types
+   - `sql.NullString` for nullable strings
+   - `sql.NullInt64` for nullable integers
+   - Check `.Valid` before using `.String` or `.Int64`
+
+3. **JSONB Fields**: Store complex structures as JSONB
+   - Marshal to JSON before inserting: `json.Marshal(data)`
+   - Unmarshal after querying: `json.Unmarshal(bytes, &struct)`
+   - Use `[]byte` to receive JSONB data from database
+
+### Migrations
+
+- Store migrations in `migrations/` directory
+- Naming: `001_descriptive_name.sql`, `002_next_migration.sql`
+- Each migration should be idempotent (use `CREATE TABLE IF NOT EXISTS`)
+- Include indexes, triggers, and functions in migrations
+- Run migrations using: `task docker:migrate` or `task migrate`
+
+### Schema Patterns
+
+- Use UUIDs for primary keys (VARCHAR(36))
+- Use TIMESTAMP with DEFAULT CURRENT_TIMESTAMP for created_at/updated_at
+- Use triggers to automatically update `updated_at` timestamp
+- Create indexes on frequently queried columns
+- Use JSONB for flexible schema (selectors, time arrays)
+
+### Error Handling
+
+- Check for `sql.ErrNoRows` when expecting a single row
+- Always close `*sql.Rows` with defer
+- Check `rows.Err()` after iterating rows
+- Wrap database errors with context

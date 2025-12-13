@@ -1,0 +1,19 @@
+uuid: 4399d51d-dc7e-42f6-9006-bd23a273500d
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.storage.node.field_keywords
+    - node.type.article
+id: node.article.field_keywords
+field_name: field_keywords
+entity_type: node
+bundle: article
+label: Keywords
+description: ''
+required: false
+translatable: true
+default_value: {  }
+default_value_callback: ''
+settings: {  }
+field_type: string_long

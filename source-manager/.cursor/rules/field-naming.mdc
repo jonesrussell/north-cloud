@@ -1,0 +1,61 @@
+---
+description: Ensuring log fields use snake_case naming and referencing standard field names used throughout the codebase.
+alwaysApply: false
+---
+
+# Log Field Naming Convention
+
+## Standard: snake_case
+
+All log fields MUST use `snake_case` naming. This ensures consistency and makes logs easier to query/parse.
+
+## Common Fields
+
+Use these standard field names throughout the codebase:
+
+- `source_id` - Source identifier (UUID)
+- `source_name` - Source name
+- `city_name` - City name mapping
+- `group_id` - Drupal group UUID
+- `error` - Error details (when using Error() helper)
+- `duration` - Operation duration
+- `request_duration` - HTTP request duration
+- `status_code` - HTTP status code
+- `method` - HTTP method (GET, POST, etc.)
+- `path` - HTTP request path
+- `client_ip` - Client IP address
+- `service` - Service name (always "gosources")
+- `version` - Application version
+- `config_path` - Configuration file path
+- `db_host` - Database host
+- `db_port` - Database port
+- `dbname` - Database name
+- `query_duration` - Database query duration
+
+## Field Type Helpers
+
+Use appropriate field helpers from `internal/logger`:
+- `logger.String()` - String values
+- `logger.Int()` - Integer values
+- `logger.Duration()` - time.Duration values
+- `logger.Error()` - Error values (uses "error" key)
+- `logger.Bool()` - Boolean values
+- `logger.Time()` - time.Time values
+
+## Examples
+
+```go
+// Good - snake_case fields
+logger.Info("Source created",
+    logger.String("source_id", id),
+    logger.String("source_name", name),
+    logger.Duration("duration", duration),
+)
+
+// Bad - camelCase or inconsistent naming
+logger.Info("Source created",
+    logger.String("sourceId", id),  // Wrong!
+    logger.String("SourceName", name),      // Wrong!
+    logger.Duration("Duration", duration),  // Wrong!
+)
+```

@@ -1,0 +1,33 @@
+services:
+
+  app:
+    build: 
+      context: .
+      dockerfile: Dockerfile
+      args:
+        VARIANT: 1.25-bookworm
+    volumes:
+      - ../..:/workspaces:cached
+    command: sleep infinity
+    depends_on:
+      - redis
+    environment:
+      - REDIS_URL=redis:6379
+    extra_hosts:
+      # Map ddev hostname to host machine for access from container
+      - "streetcode.ddev.site:host-gateway"
+
+  redis:
+    image: redis:8.4-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  redis_data:

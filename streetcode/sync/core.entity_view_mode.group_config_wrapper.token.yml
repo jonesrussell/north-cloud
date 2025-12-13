@@ -1,0 +1,11 @@
+uuid: 7e4936d5-1c59-49fe-a2ce-1fad69a98367
+langcode: en
+status: true
+dependencies:
+  module:
+    - group
+id: group_config_wrapper.token
+label: Token
+description: ''
+targetEntityType: group_config_wrapper
+cache: true

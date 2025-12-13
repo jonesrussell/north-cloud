@@ -1,0 +1,43 @@
+# Cluster configuration
+cluster.name: north-cloud-cluster
+node.name: ${HOSTNAME}
+
+# Network settings
+network.host: 0.0.0.0
+http.port: 9200
+transport.port: 9300
+
+# Discovery settings for single-node setup
+discovery.type: single-node
+
+# Security settings (disabled for development)
+xpack.security.enabled: false
+xpack.security.enrollment.enabled: false
+
+# Monitoring (optional - can be enabled for production)
+xpack.monitoring.collection.enabled: false
+
+# Path settings
+path.data: /usr/share/elasticsearch/data
+path.logs: /usr/share/elasticsearch/logs
+
+# Memory settings (override via ES_JAVA_OPTS environment variable)
+# bootstrap.memory_lock: true
+
+# Thread pool settings
+thread_pool.write.size: 1
+thread_pool.write.queue_size: 200
+
+# Index settings
+action.auto_create_index: true
+
+# Logging
+logger.level: INFO
+logger.org.elasticsearch.discovery: DEBUG
+
+# Cross-cluster settings (disabled for single-node)
+cluster.routing.allocation.disk.threshold_enabled: true
+
+# Snapshot and restore (optional)
+path.repo: ["/usr/share/elasticsearch/backup"]
+

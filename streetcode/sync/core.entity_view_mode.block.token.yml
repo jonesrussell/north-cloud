@@ -1,0 +1,11 @@
+uuid: b664397e-adba-4312-96d8-6629e91c6090
+langcode: en
+status: true
+dependencies:
+  module:
+    - block
+id: block.token
+label: Token
+description: ''
+targetEntityType: block
+cache: true

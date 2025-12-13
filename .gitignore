@@ -1,0 +1,136 @@
+# =================================================================
+# SECURITY - NEVER COMMIT THESE FILES
+# =================================================================
+
+# Environment Variables
+.env
+.env.*
+!.env.example
+.devcontainer/.env
+!.devcontainer/.env.example
+
+# Secrets and Keys
+secrets/
+*.pem
+*.key
+*.crt
+*.ca
+*.p12
+*.pfx
+*.secret
+
+# =================================================================
+# DOCKER AND CONTAINERS
+# =================================================================
+
+# Docker Compose override (personal dev settings)
+docker-compose.override.yml
+
+# Docker volumes (if stored locally)
+.docker-data/
+docker-data/
+
+# =================================================================
+# IDE AND EDITORS
+# =================================================================
+
+# VS Code
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+!.vscode/*.code-snippets
+*.code-workspace
+
+# JetBrains IDEs
+.idea/
+*.iml
+*.iws
+*.ipr
+
+# Vim
+*.swp
+*.swo
+*~
+
+# Emacs
+.\#*
+
+# =================================================================
+# OPERATING SYSTEMS
+# =================================================================
+
+# macOS
+.DS_Store
+.AppleDouble
+._*
+
+# Windows
+Thumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Linux
+.directory
+
+# =================================================================
+# LOGS AND TEMPORARY FILES
+# =================================================================
+
+# Log Files
+*.log
+logs/
+log/
+
+# Temporary Files
+tmp/
+temp/
+*.tmp
+
+# Backups
+backups/
+**/backups/
+*.bak
+*.backup
+
+# =================================================================
+# PROJECT SPECIFIC
+# =================================================================
+
+# Node.js dependencies (should be managed by npm/yarn/pnpm)
+node_modules/
+**/node_modules/
+
+# Database dumps
+*.sql
+*.dump
+
+# Generated documentation
+docs/_build/
+site/
+
+# Drupal-specific ignores (managed by Composer, not git)
+streetcode/vendor/
+streetcode/web/core
+streetcode/web/vendor/
+streetcode/web/modules/contrib/
+streetcode/web/libraries/
+
+# Drupal configuration files (may contain sensitive information)
+streetcode/web/sites/*/settings*.php
+streetcode/web/sites/*/services*.yml
+
+# Drupal user-generated content
+streetcode/web/sites/*/files
+streetcode/web/sites/*/private
+streetcode/web/sites/simpletest
+
+# Nested git repositories (shouldn't exist in monorepo)
+# Keep these commented as a reminder, but nested repos shouldn't be tracked
+# Service directories should not have their own .git directories
+# crawler/.git
+# publisher/.git
+# source-manager/.git
+# streetcode/.git
+

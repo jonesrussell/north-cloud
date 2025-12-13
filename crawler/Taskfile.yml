@@ -1,0 +1,96 @@
+version: '3'
+
+output:
+  group:
+    error_only: false
+  colorize: true
+  prefix:
+    info: "🔍"
+    success: "✅"
+    warning: "⚠️"
+    error: "❌"
+
+includes:
+  index: ./tasks/index.yml
+  sources: ./tasks/sources.yml
+  test: ./tasks/test.yml
+
+tasks:
+  default:
+    desc: "Show help and list common tasks"
+    cmds:
+      - task: build
+  api:
+    desc: "Run the HTTP API server"
+    cmds:
+      - go run main.go httpd
+    ignore_error: true
+    interactive: true
+
+  build:
+    desc: "Build the web crawler executable"
+    cmds:
+      - mkdir -p bin
+      - go build -o bin/gocrawl main.go
+
+  crawl:
+    desc: "Run the web crawler for a single source defined in sources.yml"
+    cmds:
+      - echo '' > app.log
+      - go run main.go index delete --source {{.CLI_ARGS | trim}} --force || true
+      - go run main.go crawl {{.CLI_ARGS | trim}}
+      - go run main.go index list
+    interactive: true
+
+  deadcode:
+    desc: "Find unreachable functions in the codebase"
+    cmds:
+      - deadcode -test -generated ./...
+    ignore_error: true
+
+  help:
+    desc: "Show available commands"
+    cmds:
+      - go run main.go --help
+
+  # index:* tasks moved to includes.index
+
+  job:
+    desc: "Run the job scheduler for automated crawling based on sources.yml schedules"
+    cmds:
+      - go run main.go job
+    ignore_error: true
+    interactive: true
+
+  lint:
+    desc: "Lint the Go code"
+    cmds:
+      - go fmt ./...
+      - go vet ./...
+      - golangci-lint run ./...
+
+  search:
+    desc: "Search crawled content"
+    cmds:
+      - go run main.go search -q "{{.CLI_ARGS}}" -i elliotlake_elliotlaketoday_articles
+    ignore_error: true
+    interactive: true
+
+  # sources:list moved to includes.sources
+
+  # test:* tasks moved to includes.test
+
+  generate:
+    desc: Generate code (mocks, etc.)
+    cmds:
+      - ./scripts/generate_mocks.sh
+
+  clean:
+    desc: Clean build artifacts
+    cmds:
+      - rm -rf bin/
+      - rm -rf testutils/mocks/
+
+  # sources:add moved to includes.sources
+
+  # sources:remove moved to includes.sources

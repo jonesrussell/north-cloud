@@ -1,0 +1,60 @@
+---
+alwaysApply: true
+---
+
+# Logging Standards
+
+## Structured Logging with Zap
+
+This project uses structured logging via the `internal/logger` package, which wraps `go.uber.org/zap`.
+
+### Key Principles
+
+1. **Always use structured logging** - Never use `log.Printf`, `log.Println`, or `fmt.Printf` for application logs
+2. **Use appropriate log levels**:
+   - `Debug`: Detailed troubleshooting info (SQL queries, request details, processing steps)
+   - `Info`: Important business events (service start/stop, sources created/updated, HTTP requests)
+   - `Warn`: Non-critical issues (failed operations that can be retried, validation warnings)
+   - `Error`: Failures requiring attention (API errors, database connection failures, processing errors)
+
+3. **Field naming convention**: Always use `snake_case` for field names
+   - Common fields: `source_id`, `source_name`, `city_name`, `error`, `duration`, `request_duration`, `status_code`, `method`, `path`, `client_ip`
+   - Never use camelCase for log fields
+
+4. **No string concatenation in messages**: Put details in structured fields
+   ```go
+   // Good
+   logger.Info("Source created",
+       logger.String("source_id", id),
+       logger.String("source_name", name),
+   )
+   
+   // Bad
+   logger.Info(fmt.Sprintf("Source %s with ID %s created", name, id))
+   ```
+
+5. **Add context with With()**: Use logger.With() to add request/service context
+   ```go
+   requestLogger := logger.With(
+       logger.String("request_id", "abc-123"),
+       logger.String("service", "gosources"),
+   )
+   ```
+
+6. **Include duration fields** for performance monitoring:
+   ```go
+   start := time.Now()
+   // ... do work ...
+   logger.Info("Operation completed",
+       logger.Duration("duration", time.Since(start)),
+   )
+   ```
+
+7. **Always call Sync()** before exit (use defer in main)
+
+### Logger Initialization
+
+- Logger is created in `main.go` based on `config.Debug` flag
+- Debug mode: Pretty, colorized, human-readable output
+- Production mode: JSON format, optimized for performance
+- Logger is passed to all services/components that need logging

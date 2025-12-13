@@ -1,0 +1,63 @@
+# Application debug mode
+# When true: uses development logger (human-readable, colorized output)
+# When false: uses production logger (JSON format, optimized for performance)
+# Can be overridden with APP_DEBUG environment variable
+debug: false
+
+elasticsearch:
+  url: "http://localhost:9200"
+  username: ""  # Optional
+  password: ""  # Optional
+
+drupal:
+  url: "https://your-drupal-site.com"
+  username: ""  # Optional: Username for REST API Authentication
+  token: "your-oauth-token-here"
+  auth_method: ""  # Optional: AUTH-METHOD header value (application ID from miniOrange REST API Authentication)
+  skip_tls_verify: false  # Set to true in development to skip certificate verification (e.g., for ddev)
+
+redis:
+  url: "localhost:6379"
+  password: ""  # Optional
+  db: 0
+
+service:
+  check_interval: "5m"  # How often to check for new articles
+  rate_limit_rps: 10    # Requests per second to Drupal
+  lookback_hours: 24    # How many hours back to search
+  crime_keywords:
+    - "police"
+    - "arrest"
+    - "charged"
+    - "court"
+    - "murder"
+    - "assault"
+    - "robbery"
+    - "theft"
+    - "crime"
+    - "criminal"
+    - "suspect"
+    - "victim"
+    - "investigation"
+    - "warrant"
+    - "sentence"
+  content_type: "node--article"  # Drupal content type
+  group_type: "group--crime_news"  # Drupal group type
+
+# Sources service configuration (optional)
+# When enabled, cities are fetched from the sources service API instead of the cities list below
+sources:
+  url: "http://localhost:8080"  # Sources service API URL
+  timeout: "5s"                 # Request timeout
+  enabled: false                # Set to true to fetch cities from sources service
+
+# Cities configuration (used when sources.enabled is false)
+# If sources.enabled is true, cities are fetched from the sources service instead
+cities:
+  - name: "sudbury_com"
+    index: "sudbury_com_articles"  # Optional, defaults to {name}_articles
+    group_id: "550e8400-e29b-41d4-a716-446655440000"  # Drupal group UUID (required - must be a UUID, not numeric ID)
+  # Add more cities as needed
+  # - name: "toronto_com"
+  #   index: "toronto_com_articles"
+  #   group_id: "uuid-of-toronto-group"

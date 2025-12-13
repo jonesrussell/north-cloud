@@ -1,0 +1,19 @@
+uuid: d9f71955-c461-4777-9f8c-62d1f8641df1
+langcode: en
+status: true
+dependencies:
+  module:
+    - rest_api_authentication
+    - serialization
+    - user
+id: entity.user
+plugin_id: 'entity:user'
+granularity: resource
+configuration:
+  methods:
+    - GET
+    - POST
+  formats:
+    - json
+  authentication:
+    - rest_api_authentication

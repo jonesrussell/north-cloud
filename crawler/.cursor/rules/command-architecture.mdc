@@ -1,0 +1,445 @@
+# Command Architecture and Dependency Injection Patterns
+
+## Overview
+This document describes the command architecture and dependency injection patterns used in the GoCrawl CLI application. The codebase uses explicit dependency passing via `CommandDeps` struct, avoiding FX and context.Value patterns.
+
+## Command Registration Pattern
+
+### Standard Pattern: Command() Function
+All commands MUST use the `Command()` function pattern for registration.
+
+**Pattern:**
+```go
+// Command returns the command for use in the root command
+func Command() *cobra.Command {
+    cmd := &cobra.Command{
+        Use:   "command-name",
+        Short: "Short description",
+        Long:  "Long description",
+        RunE: func(cmd *cobra.Command, args []string) error {
+            // Implementation
+        },
+    }
+    // Add subcommands if needed
+    cmd.AddCommand(subCommand1(), subCommand2())
+    return cmd
+}
+```
+
+**Registration in root.go:**
+```go
+rootCmd.AddCommand(crawl.Command())
+rootCmd.AddCommand(index.Command())
+rootCmd.AddCommand(search.Command())
+rootCmd.AddCommand(httpd.Command())
+```
+
+### Why This Pattern?
+- Consistent command registration across all commands
+- No reliance on FX or context.Value
+- Explicit and easy to understand
+- Commands are registered at init time
+
+## Dependency Injection Pattern
+
+### CommandDeps Factory Pattern
+Commands MUST use `common.NewCommandDeps()` factory to get dependencies, NOT context.Value.
+
+**Pattern:**
+```go
+// In RunE function
+deps, err := common.NewCommandDeps()
+if err != nil {
+    return fmt.Errorf("failed to get dependencies: %w", err)
+}
+
+// Use deps.Logger and deps.Config directly
+deps.Logger.Info("Starting command")
+```
+
+**DO NOT:**
+- Use `context.Value(common.CommandContextKey)` - this is deprecated
+- Use `cmdcommon.GetDependencies(cmd.Context())` - this is deprecated
+- Access dependencies through context.Value
+
+### Storage Client Creation
+Commands that need storage MUST use the shared `common.CreateStorageClient()` function.
+
+**Pattern:**
+```go
+// Create storage using common function
+storageClient, err := common.CreateStorageClient(deps.Config, deps.Logger)
+if err != nil {
+    return fmt.Errorf("failed to create storage client: %w", err)
+}
+
+storageResult, err := storage.NewStorage(storage.StorageParams{
+    Config: deps.Config,
+    Logger: deps.Logger,
+    Client: storageClient,
+})
+if err != nil {
+    return fmt.Errorf("failed to create storage: %w", err)
+}
+```
+
+**DO NOT:**
+- Create duplicate `createStorageClientFor*` functions
+- Use different patterns for storage client creation
+- Access storage through context
+
+## Dependency Construction Pattern
+
+### Direct Construction in Commands
+Commands MUST construct their dependencies directly in `RunE` functions.
+
+**Complete Pattern:**
+```go
+RunE: func(cmd *cobra.Command, args []string) error {
+    // 1. Get dependencies using factory
+    deps, err := common.NewCommandDeps()
+    if err != nil {
+        return fmt.Errorf("failed to get dependencies: %w", err)
+    }
+
+    // 2. Create storage client (if needed)
+    storageClient, err := common.CreateStorageClient(deps.Config, deps.Logger)
+    if err != nil {
+        return fmt.Errorf("failed to create storage client: %w", err)
+    }
+
+    // 3. Create storage (if needed)
+    storageResult, err := storage.NewStorage(storage.StorageParams{
+        Config: deps.Config,
+        Logger: deps.Logger,
+        Client: storageClient,
+    })
+    if err != nil {
+        return fmt.Errorf("failed to create storage: %w", err)
+    }
+
+    // 4. Create additional dependencies (services, managers, etc.)
+    // ...
+
+    // 5. Execute command logic
+    return executeCommand(cmd.Context(), deps, storageResult, ...)
+}
+```
+
+## Constants
+
+### Using Constants
+All shared constants are defined in `internal/constants/constants.go`:
+
+**Index Names:**
+- `constants.DefaultArticleIndex` - default index name for articles ("articles")
+- `constants.DefaultPageIndex` - default index name for pages ("pages")
+- `constants.DefaultContentIndex` - default index name for content ("content")
+
+**Timeouts:**
+- `constants.DefaultCrawlerTimeout` - maximum time to wait for crawler (30 minutes)
+- `constants.DefaultShutdownTimeout` - maximum time for graceful shutdown (30 seconds)
+
+**Capacities:**
+- `constants.DefaultIndicesCapacity` - initial capacity for index slices (2)
+
+**Pattern:**
+```go
+import "github.com/jonesrussell/gocrawl/internal/constants"
+
+// Use constants instead of magic strings/numbers
+articleIndexName := constants.DefaultArticleIndex
+processorFactory := crawler.NewProcessorFactory(log, storage, constants.DefaultContentIndex)
+shutdownCtx, cancel := context.WithTimeout(ctx, constants.DefaultShutdownTimeout)
+```
+
+**DO NOT:**
+- Use magic strings like `"articles"`, `"pages"`, `"content"` directly
+- Use magic numbers for timeouts or capacities
+- Hardcode index names
+- Import `cmd/common` for constants (use `internal/constants` instead)
+
+## Atomic Operations
+
+### Using atomic.Int32
+For atomic counters, use `atomic.Int32` directly, NOT `*int32`.
+
+**Pattern:**
+```go
+type Service struct {
+    activeJobs atomic.Int32 // Use atomic.Int32 directly
+}
+
+func NewService() *Service {
+    return &Service{
+        // activeJobs is zero-initialized (no need to set it)
+    }
+}
+
+func (s *Service) Status() {
+    count := s.activeJobs.Load() // Use .Load() method
+    // ...
+}
+
+func (s *Service) Start() {
+    s.activeJobs.Add(1)        // Use .Add() method
+    defer s.activeJobs.Add(-1) // Use .Add(-1) for decrement
+}
+```
+
+**DO NOT:**
+- Use `*int32` with `atomic.AddInt32()` and `atomic.LoadInt32()`
+- Manually allocate `new(int32)` for atomic operations
+- Mix atomic operations with pointer dereferencing
+
+## Error Handling Pattern
+
+### Command-Level Error Handling
+Commands MUST handle errors at the boundary and return them:
+
+```go
+RunE: func(cmd *cobra.Command, args []string) error {
+    // Get dependencies
+    deps, err := common.NewCommandDeps()
+    if err != nil {
+        return fmt.Errorf("failed to get dependencies: %w", err)
+    }
+
+    // Construct dependencies
+    // ... if error occurs, return it ...
+
+    // Execute command logic
+    // ... if error occurs, log and return it ...
+}
+```
+
+### Error Wrapping
+Always wrap errors with context:
+- Use `fmt.Errorf("operation failed: %w", err)` for wrapping
+- Include operation context in error messages
+- Log errors at the command boundary before returning
+
+## Graceful Shutdown Pattern
+
+### Long-Running Commands
+Commands that run indefinitely MUST implement graceful shutdown:
+
+```go
+// Wait for interrupt signal
+<-cmd.Context().Done()
+
+// Graceful shutdown with timeout
+shutdownCtx, cancel := context.WithTimeout(context.Background(), common.DefaultShutdownTimeout)
+defer cancel()
+
+// Cleanup operations
+if err := service.Shutdown(shutdownCtx); err != nil {
+    deps.Logger.Error("Failed to shutdown", "error", err)
+    return fmt.Errorf("failed to shutdown: %w", err)
+}
+```
+
+### Service Start() Pattern
+Service `Start()` methods that run long-running operations MUST return immediately and run asynchronously in goroutines. This allows the calling code to proceed with graceful shutdown handling.
+
+**Pattern for Service Start() Methods:**
+```go
+// Start begins the service and returns immediately
+func (s *Service) Start(ctx context.Context) error {
+    s.logger.Info("Starting service")
+    
+    // Start long-running operations in a goroutine
+    go func() {
+        // Long-running loop or operation
+        for {
+            select {
+            case <-ctx.Done():
+                s.logger.Info("Context cancelled, stopping service")
+                return
+            case <-s.done:
+                s.logger.Info("Done signal received, stopping service")
+                return
+            case t := <-ticker.C:
+                // Do periodic work
+                if err := s.doWork(ctx, t); err != nil {
+                    s.logger.Error("Work failed", "error", err)
+                }
+            }
+        }
+    }()
+    
+    return nil // Return immediately
+}
+```
+
+**Pattern for Command RunE Functions:**
+```go
+// Start the service (returns immediately)
+if err := service.Start(cmd.Context()); err != nil {
+    return fmt.Errorf("failed to start service: %w", err)
+}
+
+// Wait for either completion or interrupt signal using select
+select {
+case <-done:
+    // Service completed
+    deps.Logger.Info("Service completed")
+case <-cmd.Context().Done():
+    // Interrupt signal received - graceful shutdown
+    deps.Logger.Info("Shutdown signal received")
+}
+
+// Graceful shutdown
+shutdownCtx, cancel := context.WithTimeout(context.Background(), constants.DefaultShutdownTimeout)
+defer cancel()
+
+if err := service.Stop(shutdownCtx); err != nil {
+    return fmt.Errorf("failed to stop service: %w", err)
+}
+```
+
+**DO NOT:**
+- Block in `Start()` methods with infinite loops
+- Return from `Start()` only after context cancellation
+- Wait for completion directly in `Start()` without using goroutines
+
+**DO:**
+- Launch long-running operations in goroutines within `Start()`
+- Return immediately from `Start()` after starting the goroutine
+- Use `select` statements in command functions to wait for either completion or cancellation
+- Reference `cmd/crawl/job.go` and `cmd/scheduler/job.go` for correct patterns
+
+## Configuration Defaults
+
+### Elasticsearch Configuration
+- Default address: `http://127.0.0.1:9200` (for local development)
+- DO NOT use `localhost` as it may resolve to IPv6 `[::1]`
+- Use service names in container environments (e.g., `http://elasticsearch:9200`)
+
+### Config File Loading
+- Config file is optional
+- Defaults are set in `cmd/root.go` setDefaults()
+- Environment variables override config file values
+- Config file values override defaults
+
+## Code Organization
+
+### File Structure
+Each command package should have:
+- `{command}.go` - Command definition with `Command()` function
+- Helper functions for command execution (if needed)
+- Service/manager types in separate files if complex
+
+### Naming Conventions
+- Command functions: `Command()` returns `*cobra.Command`
+- Run functions: `run{Command}Cmd()` for command execution
+- Service constructors: `New{Service}()` for service creation
+- Constants: Use `common` package constants
+
+## Parameter Naming
+
+### Avoiding Import Shadowing
+When a parameter name conflicts with an imported package, use a shortened name:
+
+**Pattern:**
+```go
+// BAD: shadows storage package
+func NewService(storage types.Interface) *Service
+
+// GOOD: use shortened name
+func NewService(stor types.Interface) *Service
+```
+
+**Common patterns:**
+- `storage` → `stor`
+- `config` → `cfg` (already common)
+- `logger` → `log` (already common)
+- `job` (when importing `internal/job`) → `jobObj` or `j`
+
+**Example with job package:**
+```go
+import "github.com/jonesrussell/gocrawl/internal/job"
+
+// BAD: shadows job package
+func UpdateJob(ctx context.Context, job *content.Job) error
+
+// GOOD: use different name
+func UpdateJob(ctx context.Context, jobObj *content.Job) error
+```
+
+## Anti-Patterns to Avoid
+
+### DO NOT:
+1. Use `context.Value()` for dependency injection - use `CommandDeps` directly
+2. Use `cmdcommon.GetDependencies(cmd.Context())` - use `common.NewCommandDeps()` instead
+3. Create duplicate `createStorageClientFor*` functions - use `common.CreateStorageClient()`
+4. Use FX modules - FX has been removed from the codebase
+5. Use `*int32` for atomic operations - use `atomic.Int32` directly
+6. Use magic strings/numbers - use constants from `internal/constants/constants.go`
+7. Use `localhost` in Elasticsearch addresses - use `127.0.0.1` or service name
+8. Shadow imported package names with parameters
+9. Create FX apps in command RunE functions
+10. Use PersistentPreRunE for dependency injection
+11. Import `cmd/common` for constants - use `internal/constants` instead
+
+### DO:
+1. Use `Command()` function pattern for all commands
+2. Use `common.NewCommandDeps()` factory to get dependencies
+3. Use `common.CreateStorageClient()` for storage client creation
+4. Construct dependencies directly in `RunE` functions
+5. Use constants from `internal/constants/constants.go`
+6. Use `atomic.Int32` for atomic counters
+7. Implement graceful shutdown for long-running commands
+8. Use shortened parameter names to avoid import shadowing
+9. Wrap errors with context using `fmt.Errorf`
+10. Follow the established patterns consistently
+11. Import `internal/constants` for all shared constants
+
+## Migration Notes
+
+### Deprecated Patterns
+The following patterns are deprecated and should NOT be used in new code:
+
+1. **Context.Value Pattern:**
+   ```go
+   // DEPRECATED
+   log, cfg, err := cmdcommon.GetDependencies(cmd.Context())
+   
+   // USE INSTEAD
+   deps, err := common.NewCommandDeps()
+   ```
+
+2. **Duplicate Storage Client Functions:**
+   ```go
+   // DEPRECATED
+   func createStorageClientForCommand(...)
+   
+   // USE INSTEAD
+   storageClient, err := common.CreateStorageClient(deps.Config, deps.Logger)
+   ```
+
+3. **FX Modules for Commands:**
+   ```go
+   // DEPRECATED - no longer exists
+   var Module = fx.Module("command", ...)
+   
+   // USE INSTEAD
+   func Command() *cobra.Command { ... }
+   ```
+
+4. **Atomic with Pointers:**
+   ```go
+   // DEPRECATED
+   activeJobs := new(int32)
+   atomic.AddInt32(activeJobs, 1)
+   
+   // USE INSTEAD
+   activeJobs atomic.Int32
+   activeJobs.Add(1)
+   ```
+
+description:
+globs:
+  - "cmd/**/*.go"
+alwaysApply: true
+---

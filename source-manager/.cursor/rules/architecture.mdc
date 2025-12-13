@@ -1,0 +1,62 @@
+---
+alwaysApply: true
+---
+
+# Architecture Patterns
+
+## Service Structure
+
+The gosources API service follows these patterns:
+
+1. **Dependency Injection**: Services receive dependencies (logger, database) via constructors
+   - `database.New(cfg, logger)` - receives config and logger
+   - `repository.NewSourceRepository(db, logger)` - receives database connection and logger
+   - `handlers.NewSourceHandler(repo, logger)` - receives repository and logger
+
+2. **Interface-based design**: 
+   - `logger.Logger` interface for logging (mockable for tests)
+   - All components accept logger interface, not concrete types
+
+3. **Context propagation**: 
+   - All database operations accept `context.Context` as first parameter
+   - Use context for cancellation and timeouts
+   - Always use `*Context` methods: `ExecContext`, `QueryContext`, `QueryRowContext`
+
+4. **Configuration**: 
+   - YAML config file with environment variable overrides
+   - Config loaded early in `main()` to determine debug mode
+   - Debug mode controls logger format (pretty vs JSON)
+
+5. **Repository Pattern**:
+   - Database access abstracted through repository layer
+   - Repository methods accept context for cancellation
+   - Repository handles all SQL operations and JSON marshaling/unmarshaling
+
+## Component Responsibilities
+
+- **main.go**: Application entry point, logger initialization, HTTP server setup, graceful shutdown
+- **internal/api**: Router setup, middleware, route definitions
+- **internal/handlers**: HTTP request handlers, request/response marshaling, error handling
+- **internal/repository**: Database operations, SQL queries, data mapping
+- **internal/database**: Database connection management, connection pooling
+- **internal/models**: Data structures, JSON tags, database tags
+- **internal/config**: Configuration loading, validation, environment variable overrides
+- **internal/logger**: Structured logging abstraction over zap
+
+## Data Flow
+
+1. HTTP request received by router
+2. Request routed to appropriate handler
+3. Handler validates request and extracts parameters
+4. Handler calls repository method with context
+5. Repository executes SQL query with context
+6. Repository maps database results to models
+7. Handler returns JSON response
+
+## Database Operations
+
+- Always use context-aware database methods
+- Use prepared statements implicitly via parameterized queries
+- Handle JSONB fields with proper marshaling/unmarshaling
+- Use transactions for multi-step operations when needed
+- Properly handle NULL values using `sql.NullString`, `sql.NullInt64`, etc.

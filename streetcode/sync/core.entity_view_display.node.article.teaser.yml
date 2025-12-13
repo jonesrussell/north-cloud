@@ -1,0 +1,52 @@
+uuid: f3836a9a-6613-4660-b013-c7b6bc929fc1
+langcode: en
+status: true
+dependencies:
+  config:
+    - core.entity_view_mode.node.teaser
+    - field.field.node.article.field_author
+    - field.field.node.article.field_byline_name
+    - field.field.node.article.field_canonical_url
+    - field.field.node.article.field_category
+    - field.field.node.article.field_description
+    - field.field.node.article.field_external_id
+    - field.field.node.article.field_group
+    - field.field.node.article.field_intro
+    - field.field.node.article.field_keywords
+    - field.field.node.article.field_og_description
+    - field.field.node.article.field_og_image
+    - field.field.node.article.field_og_title
+    - field.field.node.article.field_og_url
+    - field.field.node.article.field_published_date
+    - field.field.node.article.field_section
+    - field.field.node.article.field_word_count
+    - node.type.article
+  module:
+    - user
+id: node.article.teaser
+targetEntityType: node
+bundle: article
+mode: teaser
+content:
+  links:
+    settings: {  }
+    third_party_settings: {  }
+    weight: 100
+    region: content
+hidden:
+  field_author: true
+  field_byline_name: true
+  field_canonical_url: true
+  field_category: true
+  field_description: true
+  field_external_id: true
+  field_group: true
+  field_intro: true
+  field_keywords: true
+  field_og_description: true
+  field_og_image: true
+  field_og_title: true
+  field_og_url: true
+  field_published_date: true
+  field_section: true
+  field_word_count: true

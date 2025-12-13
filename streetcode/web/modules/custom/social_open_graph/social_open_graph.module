@@ -1,0 +1,132 @@
+<?php
+
+/**
+ * @file
+ * The Social Open Graph module.
+ */
+
+use Drupal\Core\File\FileExists;
+use Drupal\embed\Entity\EmbedButton;
+use Drupal\file\Entity\File;
+
+/**
+ * Implements hook_theme().
+ */
+function social_open_graph_theme($existing, $type, $theme, $path) {
+  return [
+    'open_graph' => [
+      'variables' => [
+        'url' => NULL,
+        'image' => NULL,
+        'providerName' => NULL,
+        'title' => NULL,
+        'description' => NULL,
+      ],
+    ],
+  ];
+}
+
+/**
+ * Function that creates an embed button with a custom icon.
+ */
+function _social_open_graph_create_media_button(): void {
+  // Get the module handler service.
+  $module_handler = \Drupal::service('module_handler');
+
+  // Create a File entity for the icon.
+  $path = $module_handler->getModule('social_open_graph')->getPath();
+  $image_path = $path . DIRECTORY_SEPARATOR . 'assets' . DIRECTORY_SEPARATOR . 'icons' . DIRECTORY_SEPARATOR . 'kiwi.svg';
+  $uri = \Drupal::service('file_system')->copy($image_path, 'public://kiwi.svg', FileExists::Replace);
+
+  $media = File::create([
+    'langcode' => 'en',
+    'uid' => 1,
+    'status' => 1,
+    'uri' => $uri,
+  ]);
+  $media->save();
+
+  // Create an embed icon.
+  $button = EmbedButton::create([
+    'id' => 'social_open_graph',
+    'label' => t('Open Graph URL'),
+    'langcode' => 'en',
+    'status' => TRUE,
+    'icon_uuid' => $media->uuid(),
+    'type_id' => 'url',
+    'type_settings' => [],
+  ]);
+  $button->save();
+}
+
+/**
+ * Implements hook_module_preuninstall().
+ *
+ * Remove our filters from all filter formats BEFORE validation runs.
+ * This is necessary because filters are added via config overrides, and during
+ * uninstall validation, the overrides are still active.
+ */
+function social_open_graph_module_preuninstall($module) {
+  if ($module === 'social_open_graph') {
+    // Remove our filter plugins from filter format configs.
+    // We need to do this explicitly because config overrides are still active
+    // during the validation phase.
+    $filter_ids = [
+      'social_open_graph_url_embed',
+      'social_open_graph_convert_url',
+    ];
+
+    /** @var \Drupal\filter\FilterFormatStorageInterface $storage */
+    $storage = \Drupal::entityTypeManager()->getStorage('filter_format');
+    $filter_formats = $storage->loadMultiple();
+
+    // Get config storage to modify stored config directly (bypassing overrides).
+    $config_storage = \Drupal::service('config.storage');
+
+    foreach ($filter_formats as $format) {
+      $modified = FALSE;
+      $format_id = $format->id();
+      $config_name = 'filter.format.' . $format_id;
+
+      // Remove from the entity.
+      $filters = $format->get('filters');
+      foreach ($filter_ids as $filter_id) {
+        if (isset($filters[$filter_id])) {
+          $format->removeFilter($filter_id);
+          $modified = TRUE;
+        }
+      }
+
+      // Also modify the stored config directly to ensure it's removed from storage.
+      if ($modified) {
+        $stored_config = $config_storage->read($config_name);
+        if ($stored_config && isset($stored_config['filters'])) {
+          foreach ($filter_ids as $filter_id) {
+            if (isset($stored_config['filters'][$filter_id])) {
+              unset($stored_config['filters'][$filter_id]);
+            }
+          }
+
+          // Clean up filter_html allowed tags.
+          if (isset($stored_config['filters']['filter_html']['settings']['allowed_html'])) {
+            $allowed_html = $stored_config['filters']['filter_html']['settings']['allowed_html'];
+            $allowed_html = preg_replace('/\s*<drupal-url\s+data-\*>/', '', $allowed_html);
+            $stored_config['filters']['filter_html']['settings']['allowed_html'] = trim($allowed_html);
+          }
+
+          // Write the modified config back to storage.
+          $config_storage->write($config_name, $stored_config);
+        }
+
+        // Save the entity (this also persists to storage).
+        $format->save();
+      }
+    }
+
+    // Clear all caches to ensure validators see the cleaned config.
+    \Drupal::service('cache.config')->deleteAll();
+    \Drupal::service('cache.discovery')->deleteAll();
+    \Drupal::service('cache.bootstrap')->deleteAll();
+    drupal_static_reset();
+  }
+}

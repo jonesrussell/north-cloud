@@ -1,0 +1,19 @@
+uuid: 4cd8d55e-6250-4d0b-8923-d0967248e6aa
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.storage.node.field_byline_name
+    - node.type.article
+id: node.article.field_byline_name
+field_name: field_byline_name
+entity_type: node
+bundle: article
+label: 'Byline Name'
+description: ''
+required: false
+translatable: true
+default_value: {  }
+default_value_callback: ''
+settings: {  }
+field_type: string
