@@ -28,8 +28,8 @@ services:
       # Mount source code for hot reloading
       - ./crawler:/app
       - /app/vendor  # Exclude vendor from mount to use container's vendor
-      # Cache Go modules in a named volume for faster builds
-      - go_modules_cache:/go/pkg/mod
+      # Go module cache is in /home/appuser/go-mod-cache (set via GOMODCACHE env)
+      # No volume mount needed - cache will be in container filesystem
     working_dir: /app
     # Download dependencies from mounted go.mod/go.sum, then build and run
     # Use -mod=mod to ignore vendor directory if present
@@ -77,8 +77,8 @@ services:
       - ./source-manager/migrations:/migrations:ro
       # Mount frontend for hot reloading (if using dev server)
       - ./source-manager/frontend:/app/frontend
-      # Cache Go modules in a named volume for faster builds
-      - go_modules_cache:/go/pkg/mod
+      # Go module cache is in /home/appuser/go-mod-cache (set via GOMODCACHE env)
+      # No volume mount needed - cache will be in container filesystem
     working_dir: /app
     # Download dependencies from mounted go.mod/go.sum, then build and run
     # Use -mod=mod to ignore vendor directory if present
@@ -119,8 +119,8 @@ services:
       - ./publisher:/app
       - /app/vendor  # Exclude vendor directory
       - ./publisher/config.yml:/app/config.yml:ro
-      # Cache Go modules in a named volume for faster builds
-      - go_modules_cache:/go/pkg/mod
+      # Go module cache is in /home/appuser/go-mod-cache (set via GOMODCACHE env)
+      # No volume mount needed - cache will be in container filesystem
     working_dir: /app
     # Download dependencies from mounted go.mod/go.sum, then build and run
     # Use -mod=mod to ignore vendor directory if present
