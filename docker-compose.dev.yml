@@ -32,8 +32,9 @@ services:
       - go_modules_cache:/go/pkg/mod
     working_dir: /app
     # Download dependencies from mounted go.mod/go.sum, then build and run
+    # Use -mod=mod to ignore vendor directory if present
     # This ensures dependency changes in source are picked up
-    command: ["sh", "-c", "go mod download && go build -o /tmp/gocrawl ./main.go && /tmp/gocrawl --help"]
+    command: ["sh", "-c", "go mod download && go build -mod=mod -o /tmp/gocrawl ./main.go && /tmp/gocrawl --help"]
     networks:
       - north-cloud-network
     restart: unless-stopped
@@ -80,7 +81,8 @@ services:
       - go_modules_cache:/go/pkg/mod
     working_dir: /app
     # Download dependencies from mounted go.mod/go.sum, then build and run
-    command: ["sh", "-c", "go mod download && go build -o /tmp/gosources ./main.go && /tmp/gosources -config config.yml"]
+    # Use -mod=mod to ignore vendor directory if present
+    command: ["sh", "-c", "go mod download && go build -mod=mod -o /tmp/gosources ./main.go && /tmp/gosources -config config.yml"]
     networks:
       - north-cloud-network
     restart: unless-stopped
@@ -121,8 +123,9 @@ services:
       - go_modules_cache:/go/pkg/mod
     working_dir: /app
     # Download dependencies from mounted go.mod/go.sum, then build and run
+    # Use -mod=mod to ignore vendor directory if present
     # This ensures dependency changes in source are picked up
-    command: ["sh", "-c", "go mod download && go build -o /tmp/integration ./main.go && /tmp/integration -config config.yml"]
+    command: ["sh", "-c", "go mod download && go build -mod=mod -o /tmp/integration ./main.go && /tmp/integration -config config.yml"]
     networks:
       - north-cloud-network
     restart: unless-stopped

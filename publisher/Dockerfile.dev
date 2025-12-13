@@ -23,6 +23,9 @@ RUN go mod download
 # Set ownership for app directory (will be overridden by volume mount, but good practice)
 RUN chown -R appuser:appuser /app
 
+# Set PATH to include Go binaries (needed for non-root user)
+ENV PATH=$PATH:/usr/local/go/bin:/go/bin
+
 # Switch to non-root user
 USER appuser
 
@@ -30,4 +33,5 @@ EXPOSE 8080
 
 # Default command: build and run from mounted source
 # The source code will be available via volume mount
-CMD ["sh", "-c", "go build -o /tmp/integration ./main.go && /tmp/integration -config config.yml"]
+# Use -mod=mod to ignore vendor directory if present
+CMD ["sh", "-c", "go build -mod=mod -o /tmp/integration ./main.go && /tmp/integration -config config.yml"]

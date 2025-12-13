@@ -23,10 +23,14 @@ RUN go mod download
 # Set ownership for app directory (will be overridden by volume mount, but good practice)
 RUN chown -R appuser:appuser /app
 
+# Set PATH to include Go binaries (needed for non-root user)
+ENV PATH=$PATH:/usr/local/go/bin:/go/bin
+
 # Switch to non-root user
 USER appuser
 
 # Default command: build and run from mounted source
 # The source code will be available via volume mount
+# Use -mod=mod to ignore vendor directory if present
 # Can be overridden in docker-compose to use air for hot reloading
-CMD ["sh", "-c", "go build -o /tmp/gocrawl ./main.go && /tmp/gocrawl"]
+CMD ["sh", "-c", "go build -mod=mod -o /tmp/gocrawl ./main.go && /tmp/gocrawl"]
