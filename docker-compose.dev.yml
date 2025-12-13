@@ -156,10 +156,14 @@ services:
       - DRUPAL_ENVIRONMENT=development
     volumes:
       # Mount entire Drupal directory for development
-      # Dependencies (vendor, core) are in the image, but source code is mounted
+      # All files owned by host user, no copying/chowning in image
       - ./streetcode:/var/www/html
       - streetcode_data:/var/www/html/web/sites/default/files
-      # Exclude vendor and core from mount to use container's versions
+      # Mount config files from host (owned by host user)
+      - ./streetcode/php.ini:/usr/local/etc/php/conf.d/drupal.ini:ro
+      - ./streetcode/www.conf:/usr/local/etc/php-fpm.d/www.conf:ro
+      - ./streetcode/nginx.conf:/etc/nginx/sites-available/default:ro
+      # Exclude vendor and core from mount to use container's versions (if installed in image)
       - /var/www/html/vendor
       - /var/www/html/web/vendor
       - /var/www/html/web/core

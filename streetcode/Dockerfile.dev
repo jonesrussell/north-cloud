@@ -24,36 +24,28 @@ COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 # Set working directory
 WORKDIR /var/www/html
 
-# Copy composer files and install dependencies
-# In development, we install dev dependencies too for debugging
-COPY composer.json composer.lock ./
-RUN composer install --optimize-autoloader --no-interaction
+# Setup Nginx default site (config will be mounted, but we need the symlink)
+RUN rm -f /etc/nginx/sites-enabled/default && \
+    mkdir -p /etc/nginx/sites-available && \
+    touch /etc/nginx/sites-available/default && \
+    ln -s /etc/nginx/sites-available/default /etc/nginx/sites-enabled/default
 
-# Copy PHP configuration
-COPY php.ini /usr/local/etc/php/conf.d/drupal.ini
+# Create startup script inline (since we can't copy it)
+RUN echo '#!/bin/bash\n\
+set -e\n\
+\n\
+# Start PHP-FPM in background\n\
+php-fpm -D\n\
+\n\
+# Start Nginx in foreground\n\
+exec nginx -g "daemon off;"' > /usr/local/bin/start.sh && \
+    chmod +x /usr/local/bin/start.sh
 
-# Copy PHP-FPM pool configuration
-COPY www.conf /usr/local/etc/php-fpm.d/www.conf
-
-# Copy Nginx configuration
-COPY nginx.conf /etc/nginx/sites-available/default
-RUN rm -f /etc/nginx/sites-enabled/default \
-    && ln -s /etc/nginx/sites-available/default /etc/nginx/sites-enabled/default
-
-# Note: Source code is NOT copied here - it will be mounted as a volume
-# This allows for live code editing in development
-# Only copy essential config files that won't be mounted
-
-# Copy startup script
-COPY start.sh /usr/local/bin/start.sh
-RUN chmod +x /usr/local/bin/start.sh
-
-# Set permissions for web directory
-# Note: PHP-FPM and Nginx run as www-data (UID 33), which is standard
-RUN mkdir -p /var/www/html/web/sites/default/files && \
-    chown -R www-data:www-data /var/www/html/web && \
-    chmod -R 755 /var/www/html/web && \
-    chmod -R 775 /var/www/html/web/sites/default/files || true
+# Note: No files are copied here - everything will be mounted as volumes:
+# - composer.json/composer.lock (dependencies installed at runtime or via volume)
+# - php.ini, www.conf, nginx.conf, start.sh (can be mounted or use defaults)
+# - All source code will be mounted from host filesystem
+# - Files will be owned by host user, not container user
 
 # Expose port 80
 EXPOSE 80
