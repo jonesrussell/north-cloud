@@ -1,4 +1,4 @@
-FROM golang:1.24-alpine
+FROM golang:1.25-alpine
 
 WORKDIR /app
 
@@ -6,7 +6,8 @@ WORKDIR /app
 RUN apk add --no-cache git curl wget
 
 # Install air for hot reloading (optional)
-RUN go install github.com/cosmtrek/air@latest
+# For Go 1.25+, use go install
+RUN go install github.com/air-verse/air@latest
 
 # Create non-root user for development
 RUN addgroup -g 1000 appuser && \
