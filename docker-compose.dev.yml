@@ -160,19 +160,15 @@ services:
     volumes:
       # Mount entire Drupal directory for development
       # All files owned by host user, no copying/chowning in image
+      # Vendor directories are also mounted so they persist across rebuilds
       - ./streetcode:/var/www/html
       - streetcode_data:/var/www/html/web/sites/default/files
       # Mount config files from host (owned by host user)
       - ./streetcode/php.ini:/usr/local/etc/php/conf.d/drupal.ini:ro
       - ./streetcode/www.conf:/usr/local/etc/php-fpm.d/www.conf:ro
       - ./streetcode/nginx.conf:/etc/nginx/sites-available/default:ro
-      # Exclude vendor and core from mount to use container's versions (if installed in image)
-      - /var/www/html/vendor
-      - /var/www/html/web/vendor
-      - /var/www/html/web/core
-      - /var/www/html/web/modules/contrib
-      - /var/www/html/web/themes/contrib
-      - /var/www/html/web/libraries
+      # Note: vendor, core, contrib modules/themes, and libraries are all mounted
+      # from host filesystem so they persist across container rebuilds
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:80"]
       interval: 30s
