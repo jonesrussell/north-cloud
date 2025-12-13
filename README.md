@@ -15,7 +15,9 @@ The project consists of multiple independent services that work together:
 
 ```
 project-root/
-├── docker-compose.yml          # Main orchestration file
+├── docker-compose.base.yml     # Base configuration (infrastructure services)
+├── docker-compose.dev.yml      # Development overrides
+├── docker-compose.prod.yml     # Production overrides
 ├── .env                        # Environment variables (not committed)
 ├── .env.example               # Environment variables template
 ├── .gitignore
@@ -81,8 +83,39 @@ cp .env.example .env
 
 ### 3. Start all services
 
+#### Development Mode (Recommended for local development)
+
 ```bash
-docker-compose up -d
+# Start in development mode with hot reloading
+docker-compose -f docker-compose.base.yml -f docker-compose.dev.yml up -d
+```
+
+**Development mode features:**
+- Source code mounted as volumes for hot reloading
+- Debug mode enabled (`APP_DEBUG=true`)
+- All ports exposed for local access
+- Development-friendly container names
+
+#### Production Mode
+
+```bash
+# Start in production mode
+docker-compose -f docker-compose.base.yml -f docker-compose.prod.yml up -d
+```
+
+**Production mode features:**
+- Code baked into images (no volume mounts)
+- Debug mode disabled (`APP_DEBUG=false`)
+- Resource limits configured
+- Security hardening enabled
+- SSL/TLS ready
+
+#### Quick Start (Uses base + dev by default)
+
+For convenience, you can create an alias or use the base + dev combination:
+
+```bash
+docker-compose -f docker-compose.base.yml -f docker-compose.dev.yml up -d
 ```
 
 This will start all services:
@@ -104,6 +137,59 @@ This will start all services:
 
 ## Development
 
+### Development vs Production
+
+The project uses separate Docker Compose configurations for different environments:
+
+- **`docker-compose.base.yml`**: Shared infrastructure services (databases, Redis, Elasticsearch)
+- **`docker-compose.dev.yml`**: Development overrides (hot reloading, debug mode, volume mounts)
+- **`docker-compose.prod.yml`**: Production overrides (optimized builds, security, resource limits)
+
+### Development Mode
+
+Development mode includes:
+- **Hot Reloading**: Source code mounted as volumes for live code changes
+- **Debug Mode**: `APP_DEBUG=true` for detailed error messages
+- **Exposed Ports**: All service ports accessible locally
+- **Development Tools**: Access to debugging ports and development utilities
+
+```bash
+# Start development environment
+docker-compose -f docker-compose.base.yml -f docker-compose.dev.yml up -d
+
+# View logs
+docker-compose -f docker-compose.base.yml -f docker-compose.dev.yml logs -f
+
+# Stop development environment
+docker-compose -f docker-compose.base.yml -f docker-compose.dev.yml down
+```
+
+### Production Mode
+
+Production mode includes:
+- **Optimized Builds**: Code baked into images, no volume mounts
+- **Security**: Debug disabled, SSL/TLS ready, secure defaults
+- **Resource Limits**: CPU and memory limits configured
+- **High Availability**: `restart: always` policy
+
+```bash
+# Build production images
+docker-compose -f docker-compose.base.yml -f docker-compose.prod.yml build
+
+# Start production environment
+docker-compose -f docker-compose.base.yml -f docker-compose.prod.yml up -d
+
+# Stop production environment
+docker-compose -f docker-compose.base.yml -f docker-compose.prod.yml down
+```
+
+**⚠️ Important for Production:**
+- Set all required environment variables in `.env` (no defaults)
+- Configure SSL certificates for Nginx
+- Enable Elasticsearch security (`ELASTICSEARCH_SECURITY_ENABLED=true`)
+- Set strong Redis password (`REDIS_PASSWORD`)
+- Use SSL for database connections (`DB_SSLMODE=require`)
+
 ### Service Isolation
 
 Each service has its own:
@@ -113,25 +199,14 @@ Each service has its own:
 
 ### Working on Individual Services
 
-You can run services independently:
+You can run specific services using the compose files:
 
 ```bash
-# Run only source-manager with its database
-cd source-manager
-docker-compose up -d
+# Run only infrastructure (databases, Redis, Elasticsearch)
+docker-compose -f docker-compose.base.yml up -d postgres-source-manager
 
-# Run only publisher
-cd publisher
-docker-compose up -d
-```
-
-### Hot Reloading
-
-For development with hot reloading:
-
-```bash
-# Run services in development mode
-docker-compose -f docker-compose.yml -f docker-compose.dev.yml up
+# Run a specific service in development mode
+docker-compose -f docker-compose.base.yml -f docker-compose.dev.yml up -d source-manager
 ```
 
 ## Environment Variables
@@ -170,32 +245,41 @@ docker exec -it north-cloud-postgres-streetcode psql -U postgres -d streetcode
 ## Stopping Services
 
 ```bash
-# Stop all services
-docker-compose down
+# Stop all services (development)
+docker-compose -f docker-compose.base.yml -f docker-compose.dev.yml down
+
+# Stop all services (production)
+docker-compose -f docker-compose.base.yml -f docker-compose.prod.yml down
 
 # Stop and remove volumes (⚠️ deletes data)
-docker-compose down -v
+docker-compose -f docker-compose.base.yml -f docker-compose.dev.yml down -v
 ```
 
 ## Building Images
 
 ```bash
-# Build all images
-docker-compose build
+# Build all images for development
+docker-compose -f docker-compose.base.yml -f docker-compose.dev.yml build
+
+# Build all images for production
+docker-compose -f docker-compose.base.yml -f docker-compose.prod.yml build
 
 # Build specific service
-docker-compose build source-manager
+docker-compose -f docker-compose.base.yml -f docker-compose.dev.yml build source-manager
 ```
 
 ## Logs
 
 ```bash
-# View all logs
-docker-compose logs -f
+# View all logs (development)
+docker-compose -f docker-compose.base.yml -f docker-compose.dev.yml logs -f
+
+# View all logs (production)
+docker-compose -f docker-compose.base.yml -f docker-compose.prod.yml logs -f
 
 # View specific service logs
-docker-compose logs -f source-manager
-docker-compose logs -f publisher
+docker-compose -f docker-compose.base.yml -f docker-compose.dev.yml logs -f source-manager
+docker-compose -f docker-compose.base.yml -f docker-compose.dev.yml logs -f publisher
 ```
 
 ## Troubleshooting

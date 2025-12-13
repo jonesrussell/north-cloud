@@ -1,0 +1,58 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Documentation
+README.md
+*.md
+docs/
+
+# IDE
+.idea
+.vscode
+.cursor
+*.swp
+*.swo
+
+# Docker
+Dockerfile*
+docker-compose.yml
+.dockerignore
+
+# Dev container
+.devcontainer
+.ddev/
+
+# Drupal files (managed by Composer)
+web/core/
+web/vendor/
+web/modules/contrib/
+web/themes/contrib/
+web/libraries/
+vendor/
+
+# Drupal configuration (may contain sensitive info)
+web/sites/*/settings*.php
+web/sites/*/services*.yml
+
+# Drupal user-generated content
+web/sites/*/files/
+web/sites/*/private/
+web/sites/simpletest/
+
+# Config files (will be mounted or provided)
+php.ini
+nginx.conf
+www.conf
+start.sh
+
+# Composer
+composer.lock
+
+# Misc
+.DS_Store
+*.log
+.editorconfig
+rector.php
+recipes/

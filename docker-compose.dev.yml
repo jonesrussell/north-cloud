@@ -1,0 +1,205 @@
+# Development Docker Compose Configuration
+# Usage: docker-compose -f docker-compose.base.yml -f docker-compose.dev.yml up
+
+services:
+  # ============================================
+  # Application Services - Development
+  # ============================================
+
+  # Crawler service - Development
+  crawler:
+    build:
+      context: ./crawler
+      dockerfile: Dockerfile.dev
+    container_name: north-cloud-crawler-dev
+    depends_on:
+      postgres-crawler:
+        condition: service_healthy
+    environment:
+      - DB_HOST=postgres-crawler
+      - DB_PORT=5432
+      - DB_USER=${POSTGRES_CRAWLER_USER:-postgres}
+      - DB_PASSWORD=${POSTGRES_CRAWLER_PASSWORD:-postgres}
+      - DB_NAME=${POSTGRES_CRAWLER_DB:-gocrawl}
+      - DB_SSLMODE=disable
+      - APP_DEBUG=true
+      - APP_ENV=development
+    volumes:
+      # Mount source code for hot reloading
+      - ./crawler:/app
+      - /app/vendor  # Exclude vendor from mount to use container's vendor
+      # Cache Go modules in a named volume for faster builds
+      - go_modules_cache:/go/pkg/mod
+    working_dir: /app
+    # Download dependencies from mounted go.mod/go.sum, then build and run
+    # This ensures dependency changes in source are picked up
+    command: ["sh", "-c", "go mod download && go build -o /tmp/gocrawl ./main.go && /tmp/gocrawl --help"]
+    networks:
+      - north-cloud-network
+    restart: unless-stopped
+    # Development resource limits (generous but prevent runaway processes)
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+    # Expose additional ports for debugging if needed
+    # ports:
+    #   - "2345:2345"  # Delve debugger port
+
+  # Source Manager service - Development
+  source-manager:
+    build:
+      context: ./source-manager
+      dockerfile: Dockerfile.dev
+    container_name: north-cloud-source-manager-dev
+    ports:
+      - "${SOURCE_MANAGER_PORT:-8050}:8050"
+    depends_on:
+      postgres-source-manager:
+        condition: service_healthy
+    environment:
+      - APP_DEBUG=true
+      - APP_ENV=development
+      - SERVER_HOST=${SOURCE_MANAGER_HOST:-0.0.0.0}
+      - SERVER_PORT=${SOURCE_MANAGER_PORT:-8050}
+      - DB_HOST=postgres-source-manager
+      - DB_PORT=5432
+      - DB_USER=${POSTGRES_SOURCE_MANAGER_USER:-postgres}
+      - DB_PASSWORD=${POSTGRES_SOURCE_MANAGER_PASSWORD:-postgres}
+      - DB_NAME=${POSTGRES_SOURCE_MANAGER_DB:-gosources}
+      - DB_SSLMODE=disable
+    volumes:
+      # Mount source code for development
+      - ./source-manager:/app
+      - /app/vendor  # Exclude vendor directory
+      - ./source-manager/migrations:/migrations:ro
+      # Mount frontend for hot reloading (if using dev server)
+      - ./source-manager/frontend:/app/frontend
+      # Cache Go modules in a named volume for faster builds
+      - go_modules_cache:/go/pkg/mod
+    working_dir: /app
+    # Download dependencies from mounted go.mod/go.sum, then build and run
+    command: ["sh", "-c", "go mod download && go build -o /tmp/gosources ./main.go && /tmp/gosources -config config.yml"]
+    networks:
+      - north-cloud-network
+    restart: unless-stopped
+    # Development resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+
+  # Publisher service - Development
+  publisher:
+    build:
+      context: ./publisher
+      dockerfile: Dockerfile.dev
+    container_name: north-cloud-publisher-dev
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      streetcode:
+        condition: service_healthy
+    environment:
+      - ES_URL=http://elasticsearch:9200
+      - REDIS_URL=redis:6379
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-}
+      - DRUPAL_URL=http://streetcode:80
+      - DRUPAL_TOKEN=${DRUPAL_TOKEN:-}
+      - APP_DEBUG=true
+      - APP_ENV=development
+    volumes:
+      # Mount source code for development (will build from source on start)
+      - ./publisher:/app
+      - /app/vendor  # Exclude vendor directory
+      - ./publisher/config.yml:/app/config.yml:ro
+      # Cache Go modules in a named volume for faster builds
+      - go_modules_cache:/go/pkg/mod
+    working_dir: /app
+    # Download dependencies from mounted go.mod/go.sum, then build and run
+    # This ensures dependency changes in source are picked up
+    command: ["sh", "-c", "go mod download && go build -o /tmp/integration ./main.go && /tmp/integration -config config.yml"]
+    networks:
+      - north-cloud-network
+    restart: unless-stopped
+    # Development resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+
+  # Streetcode (Drupal 11) - Development
+  streetcode:
+    build:
+      context: ./streetcode
+      dockerfile: Dockerfile.dev
+    container_name: north-cloud-streetcode-dev
+    ports:
+      - "${STREETCODE_PORT:-8080}:80"
+    depends_on:
+      postgres-streetcode:
+        condition: service_healthy
+    environment:
+      - POSTGRES_HOST=postgres-streetcode
+      - POSTGRES_PORT=5432
+      - POSTGRES_USER=${POSTGRES_STREETCODE_USER:-postgres}
+      - POSTGRES_PASSWORD=${POSTGRES_STREETCODE_PASSWORD:-postgres}
+      - POSTGRES_DB=${POSTGRES_STREETCODE_DB:-streetcode}
+      - DRUPAL_ENVIRONMENT=development
+    volumes:
+      # Mount entire Drupal directory for development
+      # Dependencies (vendor, core) are in the image, but source code is mounted
+      - ./streetcode:/var/www/html
+      - streetcode_data:/var/www/html/web/sites/default/files
+      # Exclude vendor and core from mount to use container's versions
+      - /var/www/html/vendor
+      - /var/www/html/web/vendor
+      - /var/www/html/web/core
+      - /var/www/html/web/modules/contrib
+      - /var/www/html/web/themes/contrib
+      - /var/www/html/web/libraries
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    networks:
+      - north-cloud-network
+    restart: unless-stopped
+    # Development resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+
+  # Nginx reverse proxy - Development
+  nginx:
+    image: nginx:alpine
+    container_name: north-cloud-nginx-dev
+    ports:
+      - "${NGINX_HTTP_PORT:-80}:80"
+      - "${NGINX_HTTPS_PORT:-443}:443"
+    volumes:
+      - ./infrastructure/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - source-manager
+      - streetcode
+    networks:
+      - north-cloud-network
+    restart: unless-stopped
+    # Development resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512M
+
+volumes:
+  # Cache for Go modules to speed up builds when dependencies change
+  go_modules_cache:

@@ -1,0 +1,52 @@
+# Git
+.git
+.gitignore
+
+# Documentation
+README.md
+*.md
+
+# IDE
+.idea
+.vscode
+.cursor
+*.swp
+*.swo
+
+# Build artifacts
+gocrawl
+bin/
+*.exe
+*.test
+
+# Config (will be mounted or provided)
+config.yaml
+config.yml
+.env
+.env.*
+
+# Docker
+Dockerfile*
+docker-compose.yml
+.dockerignore
+
+# Dev container
+.devcontainer
+
+# Test files
+*_test.go
+testdata/
+tests/
+testutils/
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+.travis.yml
+
+# Misc
+.DS_Store
+*.log
+qodana.yaml
+Taskfile.yml
+tasks/

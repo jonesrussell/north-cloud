@@ -1,0 +1,54 @@
+# Git
+.git
+.gitignore
+
+# Documentation
+README.md
+*.md
+DEVELOPMENT.md
+
+# IDE
+.idea
+.vscode
+.cursor
+*.swp
+*.swo
+
+# Build artifacts
+gosources
+bin/
+*.exe
+*.test
+
+# Config (will be mounted or provided)
+config.yml
+config.yml.example
+.env
+.env.*
+
+# Docker
+Dockerfile*
+docker-compose.yml
+.dockerignore
+
+# Dev container
+.devcontainer
+
+# Test files
+*_test.go
+
+# Frontend (if building separately)
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+
+# Air config
+.air.toml
+
+# CI/CD
+.github/
+
+# Misc
+.DS_Store
+*.log
+Taskfile.yml

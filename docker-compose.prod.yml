@@ -1,0 +1,216 @@
+# Production Docker Compose Configuration
+# Usage: docker-compose -f docker-compose.base.yml -f docker-compose.prod.yml up -d
+
+services:
+  # ============================================
+  # Application Services - Production
+  # ============================================
+
+  # Crawler service - Production
+  crawler:
+    build:
+      context: ./crawler
+      dockerfile: Dockerfile
+      # Use production build target if multi-stage
+      args:
+        - BUILD_ENV=production
+    container_name: north-cloud-crawler
+    depends_on:
+      postgres-crawler:
+        condition: service_healthy
+    environment:
+      - DB_HOST=postgres-crawler
+      - DB_PORT=5432
+      - DB_USER=${POSTGRES_CRAWLER_USER}
+      - DB_PASSWORD=${POSTGRES_CRAWLER_PASSWORD}
+      - DB_NAME=${POSTGRES_CRAWLER_DB:-gocrawl}
+      - DB_SSLMODE=require
+      - APP_DEBUG=false
+      - APP_ENV=production
+    # No volume mounts - code is baked into image
+    working_dir: /app
+    command: ["./bin/gocrawl"]
+    networks:
+      - north-cloud-network
+    restart: always
+    # Production: no exposed ports unless needed for health checks
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
+  # Source Manager service - Production
+  source-manager:
+    build:
+      context: ./source-manager
+      dockerfile: Dockerfile
+      args:
+        - BUILD_ENV=production
+    container_name: north-cloud-source-manager
+    ports:
+      - "${SOURCE_MANAGER_PORT:-8050}:8050"
+    depends_on:
+      postgres-source-manager:
+        condition: service_healthy
+    environment:
+      - APP_DEBUG=false
+      - APP_ENV=production
+      - SERVER_HOST=${SOURCE_MANAGER_HOST:-0.0.0.0}
+      - SERVER_PORT=${SOURCE_MANAGER_PORT:-8050}
+      - DB_HOST=postgres-source-manager
+      - DB_PORT=5432
+      - DB_USER=${POSTGRES_SOURCE_MANAGER_USER}
+      - DB_PASSWORD=${POSTGRES_SOURCE_MANAGER_PASSWORD}
+      - DB_NAME=${POSTGRES_SOURCE_MANAGER_DB:-gosources}
+      - DB_SSLMODE=require
+    volumes:
+      # Only mount migrations, not source code
+      - ./source-manager/migrations:/migrations:ro
+    networks:
+      - north-cloud-network
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
+  # Publisher service - Production
+  publisher:
+    build:
+      context: ./publisher
+      dockerfile: Dockerfile
+      args:
+        - BUILD_ENV=production
+    container_name: north-cloud-publisher
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      streetcode:
+        condition: service_healthy
+    environment:
+      - ES_URL=http://elasticsearch:9200
+      - REDIS_URL=redis:6379
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+      - DRUPAL_URL=http://streetcode:80
+      - DRUPAL_TOKEN=${DRUPAL_TOKEN}
+      - APP_DEBUG=false
+      - APP_ENV=production
+    volumes:
+      # Only mount config, not source code
+      - ./publisher/config.yml:/app/config.yml:ro
+    networks:
+      - north-cloud-network
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
+  # Streetcode (Drupal 11) - Production
+  streetcode:
+    build:
+      context: ./streetcode
+      dockerfile: Dockerfile
+      args:
+        - BUILD_ENV=production
+    container_name: north-cloud-streetcode
+    ports:
+      - "${STREETCODE_PORT:-8080}:80"
+    depends_on:
+      postgres-streetcode:
+        condition: service_healthy
+    environment:
+      - POSTGRES_HOST=postgres-streetcode
+      - POSTGRES_PORT=5432
+      - POSTGRES_USER=${POSTGRES_STREETCODE_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_STREETCODE_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_STREETCODE_DB:-streetcode}
+      - DRUPAL_ENVIRONMENT=production
+    volumes:
+      # Only mount files directory, not source code
+      - streetcode_data:/var/www/html/web/sites/default/files
+      # Mount settings if needed (but keep it read-only)
+      # - ./streetcode/web/sites/default/settings.php:/var/www/html/web/sites/default/settings.php:ro
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    networks:
+      - north-cloud-network
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: '4'
+          memory: 4G
+        reservations:
+          cpus: '1'
+          memory: 1G
+
+  # Nginx reverse proxy - Production
+  nginx:
+    image: nginx:alpine
+    container_name: north-cloud-nginx
+    ports:
+      - "${NGINX_HTTP_PORT:-80}:80"
+      - "${NGINX_HTTPS_PORT:-443}:443"
+    volumes:
+      - ./infrastructure/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      # Add SSL certificates in production
+      # - ./infrastructure/nginx/ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - source-manager
+      - streetcode
+    networks:
+      - north-cloud-network
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 128M
+
+  # Production: Enable Elasticsearch security
+  elasticsearch:
+    environment:
+      - xpack.security.enabled=${ELASTICSEARCH_SECURITY_ENABLED:-true}
+      - "ES_JAVA_OPTS=-Xms${ELASTICSEARCH_MIN_HEAP:-1g} -Xmx${ELASTICSEARCH_MAX_HEAP:-2g}"
+    deploy:
+      resources:
+        limits:
+          cpus: '4'
+          memory: 4G
+        reservations:
+          cpus: '2'
+          memory: 2G
+
+  # Production: Require Redis password
+  redis:
+    environment:
+      - REDIS_PASSWORD=${REDIS_PASSWORD}  # Must be set in production
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1G
+        reservations:
+          cpus: '0.25'
+          memory: 256M

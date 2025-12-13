@@ -24,11 +24,10 @@ COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 # Set working directory
 WORKDIR /var/www/html
 
-# Copy composer files
+# Copy composer files and install dependencies
+# In development, we install dev dependencies too for debugging
 COPY composer.json composer.lock ./
-
-# Install PHP dependencies
-RUN composer install --no-dev --optimize-autoloader --no-interaction
+RUN composer install --optimize-autoloader --no-interaction
 
 # Copy PHP configuration
 COPY php.ini /usr/local/etc/php/conf.d/drupal.ini
@@ -41,22 +40,23 @@ COPY nginx.conf /etc/nginx/sites-available/default
 RUN rm -f /etc/nginx/sites-enabled/default \
     && ln -s /etc/nginx/sites-available/default /etc/nginx/sites-enabled/default
 
-# Copy the rest of the application
-COPY . .
-
-# Set permissions for web directory
-# Note: PHP-FPM and Nginx run as www-data (UID 33), which is standard
-# This is acceptable as they're system users with limited privileges
-RUN chown -R www-data:www-data /var/www/html/web \
-    && chmod -R 755 /var/www/html/web \
-    && chmod -R 775 /var/www/html/web/sites/default/files || true
-
-# Expose port 80
-EXPOSE 80
+# Note: Source code is NOT copied here - it will be mounted as a volume
+# This allows for live code editing in development
+# Only copy essential config files that won't be mounted
 
 # Copy startup script
 COPY start.sh /usr/local/bin/start.sh
 RUN chmod +x /usr/local/bin/start.sh
+
+# Set permissions for web directory
+# Note: PHP-FPM and Nginx run as www-data (UID 33), which is standard
+RUN mkdir -p /var/www/html/web/sites/default/files && \
+    chown -R www-data:www-data /var/www/html/web && \
+    chmod -R 755 /var/www/html/web && \
+    chmod -R 775 /var/www/html/web/sites/default/files || true
+
+# Expose port 80
+EXPOSE 80
 
 # Health check (curl is already installed above)
 HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
@@ -64,4 +64,3 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
 
 # Start both PHP-FPM and Nginx
 CMD ["/usr/local/bin/start.sh"]
-

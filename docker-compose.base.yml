@@ -1,0 +1,138 @@
+services:
+  # ============================================
+  # Infrastructure Services
+  # ============================================
+  
+  # PostgreSQL for source-manager
+  postgres-source-manager:
+    image: postgres:16-alpine
+    container_name: north-cloud-postgres-source-manager
+    environment:
+      POSTGRES_USER: ${POSTGRES_SOURCE_MANAGER_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_SOURCE_MANAGER_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_SOURCE_MANAGER_DB:-gosources}
+    ports:
+      - "${POSTGRES_SOURCE_MANAGER_PORT:-5432}:5432"
+    volumes:
+      - postgres_source_manager_data:/var/lib/postgresql/data
+      - ./source-manager/migrations:/migrations:ro
+      - ./infrastructure/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_SOURCE_MANAGER_USER:-postgres}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - north-cloud-network
+
+  # PostgreSQL for crawler
+  postgres-crawler:
+    image: postgres:16-alpine
+    container_name: north-cloud-postgres-crawler
+    environment:
+      POSTGRES_USER: ${POSTGRES_CRAWLER_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_CRAWLER_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_CRAWLER_DB:-gocrawl}
+    ports:
+      - "${POSTGRES_CRAWLER_PORT:-5433}:5432"
+    volumes:
+      - postgres_crawler_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_CRAWLER_USER:-postgres}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - north-cloud-network
+
+  # PostgreSQL for streetcode (Drupal)
+  postgres-streetcode:
+    image: postgres:16-alpine
+    container_name: north-cloud-postgres-streetcode
+    environment:
+      POSTGRES_USER: ${POSTGRES_STREETCODE_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_STREETCODE_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_STREETCODE_DB:-streetcode}
+    ports:
+      - "${POSTGRES_STREETCODE_PORT:-5434}:5432"
+    volumes:
+      - postgres_streetcode_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_STREETCODE_USER:-postgres}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - north-cloud-network
+
+  # Elasticsearch for publisher
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.0
+    container_name: north-cloud-elasticsearch
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=${ELASTICSEARCH_SECURITY_ENABLED:-false}
+      - "ES_JAVA_OPTS=-Xms${ELASTICSEARCH_MIN_HEAP:-512m} -Xmx${ELASTICSEARCH_MAX_HEAP:-512m}"
+      - bootstrap.memory_lock=true
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    ports:
+      - "${ELASTICSEARCH_PORT:-9200}:9200"
+      - "${ELASTICSEARCH_TRANSPORT_PORT:-9300}:9300"
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data
+      - ./infrastructure/elasticsearch/elasticsearch.yml:/usr/share/elasticsearch/config/elasticsearch.yml:ro
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9200/_cluster/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    networks:
+      - north-cloud-network
+
+  # Redis for publisher queue and deduplication
+  redis:
+    image: redis:7-alpine
+    container_name: north-cloud-redis
+    command: >
+      sh -c "
+      if [ -n \"$$REDIS_PASSWORD\" ]; then
+        redis-server --appendonly yes --requirepass \"$$REDIS_PASSWORD\"
+      else
+        redis-server --appendonly yes
+      fi
+      "
+    environment:
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-}
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: >
+        sh -c "
+        if [ -n \"$$REDIS_PASSWORD\" ]; then
+          redis-cli -a \"$$REDIS_PASSWORD\" ping
+        else
+          redis-cli ping
+        fi
+        "
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - north-cloud-network
+
+volumes:
+  postgres_source_manager_data:
+  postgres_crawler_data:
+  postgres_streetcode_data:
+  elasticsearch_data:
+  redis_data:
+  streetcode_data:
+
+networks:
+  north-cloud-network:
+    driver: bridge
