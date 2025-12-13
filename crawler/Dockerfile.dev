@@ -31,8 +31,8 @@ ENV GOMODCACHE=/home/appuser/go-mod-cache
 # Switch to non-root user
 USER appuser
 
-# Default command: build and run from mounted source
+# Default command: run from mounted source
 # The source code will be available via volume mount
 # Use -mod=mod to ignore vendor directory if present
 # Can be overridden in docker-compose to use air for hot reloading
-CMD ["sh", "-c", "go build -mod=mod -o /tmp/gocrawl ./main.go && /tmp/gocrawl"]
+CMD ["sh", "-c", "go run -mod=mod ./main.go"]

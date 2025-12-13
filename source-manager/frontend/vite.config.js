@@ -6,14 +6,15 @@ import tailwindcss from '@tailwindcss/vite'
 export default defineConfig({
   plugins: [vue(), tailwindcss()],
   server: {
+    host: '0.0.0.0', // Allow access from outside container
     port: 3000,
     proxy: {
       '/api': {
-        target: 'http://192.168.136.97:8050',
+        target: 'http://localhost:8050',
         changeOrigin: true,
       },
       '/health': {
-        target: 'http://192.168.136.97:8050',
+        target: 'http://localhost:8050',
         changeOrigin: true,
       }
     }

@@ -3,7 +3,8 @@ FROM golang:1.25-alpine
 WORKDIR /app
 
 # Install build dependencies and tools
-RUN apk add --no-cache git curl wget
+# Include Node.js and npm for frontend development
+RUN apk add --no-cache git curl wget nodejs npm
 
 # Install air for hot reloading (optional)
 # For Go 1.25+, use go install
@@ -31,10 +32,11 @@ ENV GOMODCACHE=/home/appuser/go-mod-cache
 # Switch to non-root user
 USER appuser
 
-EXPOSE 8050
+EXPOSE 8050 3000
 
-# Default command: build and run from mounted source
+# Default command: run both backend and frontend from mounted source
 # The source code will be available via volume mount
 # Use -mod=mod to ignore vendor directory if present
 # Can be overridden in docker-compose to use air for hot reloading
-CMD ["sh", "-c", "go build -mod=mod -o /tmp/gosources ./main.go && /tmp/gosources -config config.yml"]
+# Start frontend in background, then start backend in foreground
+CMD ["sh", "-c", "cd /app/frontend && npm install && npm run dev & cd /app && go run -mod=mod ./main.go -config config.yml"]

@@ -33,7 +33,7 @@ USER appuser
 
 EXPOSE 8080
 
-# Default command: build and run from mounted source
+# Default command: run from mounted source
 # The source code will be available via volume mount
 # Use -mod=mod to ignore vendor directory if present
-CMD ["sh", "-c", "go build -mod=mod -o /tmp/integration ./main.go && /tmp/integration -config config.yml"]
+CMD ["sh", "-c", "go run -mod=mod ./main.go -config config.yml"]

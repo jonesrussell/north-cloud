@@ -31,10 +31,10 @@ services:
       # Go module cache is in /home/appuser/go-mod-cache (set via GOMODCACHE env)
       # No volume mount needed - cache will be in container filesystem
     working_dir: /app
-    # Download dependencies from mounted go.mod/go.sum, then build and run
+    # Download dependencies from mounted go.mod/go.sum, then run
     # Use -mod=mod to ignore vendor directory if present
     # This ensures dependency changes in source are picked up
-    command: ["sh", "-c", "go mod download && go build -mod=mod -o /tmp/gocrawl ./main.go && /tmp/gocrawl --help"]
+    command: ["sh", "-c", "go mod download && go run -mod=mod ./main.go --help"]
     networks:
       - north-cloud-network
     restart: unless-stopped
@@ -56,6 +56,7 @@ services:
     container_name: north-cloud-source-manager-dev
     ports:
       - "${SOURCE_MANAGER_PORT:-8050}:8050"
+      - "${FRONTEND_PORT:-3000}:3000"
     depends_on:
       postgres-source-manager:
         condition: service_healthy
@@ -74,15 +75,17 @@ services:
       # Mount source code for development
       - ./source-manager:/app
       - /app/vendor  # Exclude vendor directory
+      - /app/frontend/node_modules  # Exclude frontend node_modules (installed in container)
       - ./source-manager/migrations:/migrations:ro
       # Mount frontend for hot reloading (if using dev server)
       - ./source-manager/frontend:/app/frontend
       # Go module cache is in /home/appuser/go-mod-cache (set via GOMODCACHE env)
       # No volume mount needed - cache will be in container filesystem
     working_dir: /app
-    # Download dependencies from mounted go.mod/go.sum, then build and run
+    # Download dependencies, then start both frontend and backend
     # Use -mod=mod to ignore vendor directory if present
-    command: ["sh", "-c", "go mod download && go build -mod=mod -o /tmp/gosources ./main.go && /tmp/gosources -config config.yml"]
+    # Frontend runs on port 3000, backend on port 8050
+    command: ["sh", "-c", "cd /app/frontend && npm install && npm run dev & cd /app && go mod download && go run -mod=mod ./main.go -config config.yml"]
     networks:
       - north-cloud-network
     restart: unless-stopped
@@ -122,10 +125,10 @@ services:
       # Go module cache is in /home/appuser/go-mod-cache (set via GOMODCACHE env)
       # No volume mount needed - cache will be in container filesystem
     working_dir: /app
-    # Download dependencies from mounted go.mod/go.sum, then build and run
+    # Download dependencies from mounted go.mod/go.sum, then run
     # Use -mod=mod to ignore vendor directory if present
     # This ensures dependency changes in source are picked up
-    command: ["sh", "-c", "go mod download && go build -mod=mod -o /tmp/integration ./main.go && /tmp/integration -config config.yml"]
+    command: ["sh", "-c", "go mod download && go run -mod=mod ./main.go -config config.yml"]
     networks:
       - north-cloud-network
     restart: unless-stopped
