@@ -1,0 +1,941 @@
+# CLAUDE.md - AI Assistant Guide for North Cloud
+
+This document provides a comprehensive guide for AI assistants working with the North Cloud codebase. It explains the multi-service architecture, conventions, and development workflows to help AI assistants make informed decisions when modifying or extending the system.
+
+## Table of Contents
+
+1. [Project Overview](#project-overview)
+2. [Architecture & Services](#architecture--services)
+3. [Directory Structure](#directory-structure)
+4. [Key Conventions](#key-conventions)
+5. [Development Workflow](#development-workflow)
+6. [Docker Environment](#docker-environment)
+7. [Common Tasks](#common-tasks)
+8. [Important Guidelines for AI Assistants](#important-guidelines-for-ai-assistants)
+
+---
+
+## Project Overview
+
+**North Cloud** is a microservices-based content management and publishing platform built with Go and Drupal. It crawls news content, manages sources, filters articles, and publishes them to a Drupal CMS.
+
+### Purpose
+- Crawl news websites for articles
+- Manage content sources via web interface
+- Filter and categorize articles (e.g., crime news)
+- Publish filtered content to Drupal 11 CMS
+- Provide a scalable, distributed architecture
+
+### Tech Stack
+- **Languages**: Go 1.24+, PHP 8.2+, JavaScript (Vue.js)
+- **Frameworks**: Gin (Go), Drupal 11 (PHP), Vue.js 3
+- **Infrastructure**: Docker, PostgreSQL, Redis, Elasticsearch, Nginx
+- **Build Tools**: Task (taskfile.dev), Composer, npm/Vite
+
+### Key Features
+- Multi-service microservices architecture
+- Independent service databases (PostgreSQL)
+- Shared infrastructure (Redis, Elasticsearch)
+- Docker-based development and production environments
+- Hot-reloading for development
+- REST APIs for service communication
+- Drupal JSON:API integration
+
+---
+
+## Architecture & Services
+
+### System Overview
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                      North Cloud Platform                    │
+├─────────────────────────────────────────────────────────────┤
+│                                                               │
+│  ┌──────────────┐     ┌──────────────┐     ┌─────────────┐ │
+│  │   Crawler    │────▶│    Source    │────▶│  Publisher  │ │
+│  │   (gocrawl)  │     │   Manager    │     │  (gopost)   │ │
+│  │              │     │  (Go + Vue)  │     │             │ │
+│  └──────┬───────┘     └──────────────┘     └──────┬──────┘ │
+│         │                                           │        │
+│         ▼                                           ▼        │
+│  ┌─────────────────────────────────────────────────────┐   │
+│  │           Elasticsearch (Article Storage)           │   │
+│  └─────────────────────────────────────────────────────┘   │
+│                           │                                  │
+│                           ▼                                  │
+│                  ┌──────────────┐                           │
+│                  │  Streetcode  │                           │
+│                  │  (Drupal 11) │                           │
+│                  └──────────────┘                           │
+│                                                               │
+│  Infrastructure:                                             │
+│  ┌─────────────┐  ┌─────────────┐  ┌──────────────────┐   │
+│  │ PostgreSQL  │  │    Redis    │  │      Nginx       │   │
+│  │  (3 DBs)    │  │   (Cache)   │  │  (Reverse Proxy) │   │
+│  └─────────────┘  └─────────────┘  └──────────────────┘   │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Service Descriptions
+
+#### 1. **crawler** (gocrawl)
+- **Location**: `/crawler`
+- **Language**: Go 1.24+
+- **Purpose**: Web crawler for scraping news articles
+- **Database**: `postgres-crawler` (gocrawl database)
+- **Key Features**:
+  - Configurable crawling rules
+  - Article extraction and parsing
+  - Storage in Elasticsearch
+  - Source management integration
+- **Documentation**: See `/crawler/README.md`
+
+#### 2. **source-manager**
+- **Location**: `/source-manager`
+- **Language**: Go 1.24+ (Backend), Vue.js 3 (Frontend)
+- **Purpose**: Manage content sources and crawling configurations
+- **Database**: `postgres-source-manager` (gosources database)
+- **Ports**: 8050 (API)
+- **Key Features**:
+  - REST API for source management
+  - Vue.js web interface
+  - Source CRUD operations
+  - Crawling schedule configuration
+- **Documentation**: See `/source-manager/README.md`, `/source-manager/DEVELOPMENT.md`
+
+#### 3. **publisher** (gopost)
+- **Location**: `/publisher`
+- **Language**: Go 1.25+
+- **Purpose**: Filter and publish articles from Elasticsearch to Drupal
+- **Dependencies**: Elasticsearch, Redis, Drupal
+- **Key Features**:
+  - Crime article filtering
+  - Drupal JSON:API integration
+  - Redis-based deduplication
+  - Multi-city support
+  - Rate limiting
+- **Documentation**: See `/publisher/CLAUDE.md`, `/publisher/README.md`
+
+#### 4. **streetcode** (Drupal 11)
+- **Location**: `/streetcode`
+- **Language**: PHP 8.2+
+- **Purpose**: Content management and public website
+- **Database**: `postgres-streetcode` (streetcode database)
+- **Ports**: 8080 (Web interface)
+- **Key Features**:
+  - Drupal 11 CMS
+  - JSON:API for content ingestion
+  - Group-based content organization
+  - Custom content types (articles, crime news)
+- **Documentation**: See `/streetcode/docs/`
+
+### Infrastructure Services
+
+#### PostgreSQL Databases
+- **postgres-source-manager**: Source manager database (gosources)
+- **postgres-crawler**: Crawler database (gocrawl)
+- **postgres-streetcode**: Drupal database (streetcode)
+- Each service has its own isolated database
+
+#### Elasticsearch
+- **Purpose**: Article storage and search
+- **Port**: 9200
+- **Indexes**: One per city (e.g., `city_name_com_articles`)
+
+#### Redis
+- **Purpose**: Deduplication, caching, queue management
+- **Port**: 6379
+- **Usage**: Publisher service for tracking posted articles
+
+#### Nginx
+- **Purpose**: Reverse proxy and load balancer
+- **Port**: 80
+- **Configuration**: `/infrastructure/nginx/`
+
+---
+
+## Directory Structure
+
+```
+north-cloud/
+├── docker-compose.base.yml       # Base infrastructure services
+├── docker-compose.dev.yml        # Development overrides
+├── docker-compose.prod.yml       # Production overrides
+├── .env.example                  # Environment variables template
+├── .env                          # Environment variables (not committed)
+├── README.md                     # User documentation
+├── DOCKER.md                     # Docker documentation
+├── CLAUDE.md                     # This file (AI assistant guide)
+│
+├── crawler/                      # Web crawler service
+│   ├── Dockerfile
+│   ├── go.mod
+│   ├── main.go
+│   ├── cmd/
+│   ├── internal/
+│   ├── pkg/
+│   ├── tests/
+│   └── README.md
+│
+├── source-manager/               # Source management service
+│   ├── Dockerfile
+│   ├── go.mod
+│   ├── main.go
+│   ├── internal/
+│   ├── frontend/                 # Vue.js application
+│   │   ├── src/
+│   │   ├── package.json
+│   │   └── vite.config.js
+│   ├── migrations/
+│   ├── README.md
+│   └── DEVELOPMENT.md
+│
+├── publisher/                    # Article publishing service
+│   ├── Dockerfile
+│   ├── go.mod
+│   ├── main.go
+│   ├── internal/
+│   ├── cmd/
+│   ├── README.md
+│   └── CLAUDE.md                # Publisher-specific AI guide
+│
+├── streetcode/                   # Drupal 11 CMS
+│   ├── Dockerfile
+│   ├── composer.json
+│   ├── web/
+│   ├── config/
+│   └── docs/                    # Drupal documentation
+│       ├── API_SECURITY_GUIDE.md
+│       ├── PAYLOAD_TO_DRUPAL_MAPPING.md
+│       └── ARTICLE_FIELDS_GUIDE.md
+│
+└── infrastructure/               # Shared infrastructure configs
+    ├── nginx/
+    ├── elasticsearch/
+    └── postgres/
+```
+
+---
+
+## Key Conventions
+
+### 1. Code Style
+
+#### Go Services (crawler, source-manager, publisher)
+- **Standards**: Follow standard Go formatting (`gofmt`, `goimports`)
+- **Go Version**: 1.24+ (crawler, source-manager), 1.25+ (publisher)
+- **Error Handling**: Always wrap errors with context using `fmt.Errorf("context: %w", err)`
+- **Logging**: Use structured logging (zap for publisher, configure per service)
+- **Testing**: Unit tests with 80%+ coverage target
+- **Linting**: Use `golangci-lint` with service-specific configurations
+
+#### PHP Service (streetcode/Drupal)
+- **Standards**: Follow Drupal coding standards
+- **PHP Version**: 8.2+
+- **Composer**: Use for dependency management
+- **Configuration**: Export config to `/config` directory
+- **Custom Modules**: Place in `/web/modules/custom`
+
+#### Frontend (source-manager/frontend)
+- **Framework**: Vue.js 3 with Composition API
+- **Build Tool**: Vite
+- **Styling**: Component-scoped CSS or Tailwind
+- **State Management**: Pinia (if needed)
+
+### 2. Environment Variables
+
+#### Naming Convention
+- Uppercase with underscores (e.g., `DRUPAL_TOKEN`)
+- Service-specific prefixes (e.g., `SOURCE_MANAGER_PORT`)
+- Common variables:
+  - `APP_DEBUG`: Enable debug mode (true/false)
+  - `*_PORT`: Service ports
+  - `POSTGRES_*_USER`: Database users
+  - `POSTGRES_*_PASSWORD`: Database passwords
+  - `DRUPAL_TOKEN`: Drupal API authentication
+
+#### Configuration Priority
+1. Environment variables (highest priority)
+2. `.env` file
+3. Service config files (config.yml, etc.)
+4. Hardcoded defaults (lowest priority)
+
+### 3. Docker Configuration
+
+#### File Naming
+- `docker-compose.base.yml`: Shared infrastructure
+- `docker-compose.dev.yml`: Development overrides
+- `docker-compose.prod.yml`: Production overrides
+- Service Dockerfiles: `{service}/Dockerfile`
+
+#### Container Naming
+- Format: `north-cloud-{service-name}`
+- Examples: `north-cloud-crawler`, `north-cloud-source-manager`
+
+#### Volume Mounts (Development)
+- Source code mounted for hot-reloading
+- Database volumes for persistence
+- Configuration files mounted as needed
+
+### 4. Database Conventions
+
+#### Naming
+- Database names: `gosources`, `gocrawl`, `streetcode`
+- Container names: `postgres-{service}`
+- Port exposure: 5432 (internal), mapped externally if needed
+
+#### Migrations
+- Go services: Use golang-migrate or custom migration system
+- Drupal: Use config export/import
+- Place migrations in service-specific directories
+
+### 5. API Conventions
+
+#### REST APIs (Go services)
+- **Framework**: Gin (recommended)
+- **Format**: JSON
+- **Versioning**: `/api/v1/` prefix
+- **Authentication**: Token-based or Basic Auth
+- **Error Responses**: Consistent JSON format
+
+#### Drupal JSON:API
+- **Endpoint**: `/jsonapi`
+- **Content Type**: `application/vnd.api+json`
+- **Authentication**: Multiple methods supported (API-KEY, Basic, miniOrange)
+- **Format**: Follow JSON:API specification
+- See `/publisher/CLAUDE.md` for detailed JSON:API conventions
+
+### 6. Logging Conventions
+
+#### Log Levels
+- **Debug**: Detailed troubleshooting (queries, payloads)
+- **Info**: Important business events (service start, operations completed)
+- **Warn**: Non-critical issues (deprecations, fallbacks)
+- **Error**: Failures requiring attention (API errors, connection failures)
+
+#### Field Naming
+- **Always use snake_case** for structured log fields
+- Common fields:
+  - `service`: Service name
+  - `method`: Function/method name
+  - `duration`: Operation duration
+  - `error`: Error message
+  - `status_code`: HTTP status
+
+#### Debug Mode
+- Development: `APP_DEBUG=true` (human-readable logs)
+- Production: `APP_DEBUG=false` (JSON logs)
+
+---
+
+## Development Workflow
+
+### 1. Initial Setup
+
+```bash
+# Clone repository
+git clone <repository-url>
+cd north-cloud
+
+# Copy environment template
+cp .env.example .env
+
+# Edit environment variables
+nano .env
+
+# Start development environment
+docker-compose -f docker-compose.base.yml -f docker-compose.dev.yml up -d
+```
+
+### 2. Development Mode
+
+#### Starting Services
+
+```bash
+# Start all services (development)
+docker-compose -f docker-compose.base.yml -f docker-compose.dev.yml up -d
+
+# Start specific service
+docker-compose -f docker-compose.base.yml -f docker-compose.dev.yml up -d source-manager
+
+# Start only infrastructure
+docker-compose -f docker-compose.base.yml up -d
+```
+
+#### Viewing Logs
+
+```bash
+# All services
+docker-compose -f docker-compose.base.yml -f docker-compose.dev.yml logs -f
+
+# Specific service
+docker-compose -f docker-compose.base.yml -f docker-compose.dev.yml logs -f publisher
+
+# Tail last 100 lines
+docker-compose -f docker-compose.base.yml -f docker-compose.dev.yml logs --tail=100 -f
+```
+
+#### Stopping Services
+
+```bash
+# Stop all services
+docker-compose -f docker-compose.base.yml -f docker-compose.dev.yml down
+
+# Stop and remove volumes (⚠️ deletes data)
+docker-compose -f docker-compose.base.yml -f docker-compose.dev.yml down -v
+```
+
+### 3. Working on Individual Services
+
+#### Crawler
+```bash
+cd crawler
+
+# Run locally (requires Go 1.24+)
+go run main.go
+
+# Run tests
+go test ./...
+
+# Build
+go build -o bin/crawler main.go
+```
+
+#### Source Manager
+```bash
+cd source-manager
+
+# Backend (API)
+go run main.go
+
+# Frontend (separate terminal)
+cd frontend
+npm install
+npm run dev
+
+# Run tests
+go test ./...
+cd frontend && npm test
+```
+
+#### Publisher
+```bash
+cd publisher
+
+# Run locally
+task run
+
+# Run tests
+task test
+
+# Run with coverage
+task test:coverage
+
+# Lint
+task lint
+
+# See publisher/CLAUDE.md for detailed commands
+```
+
+#### Streetcode (Drupal)
+```bash
+# Access container
+docker exec -it north-cloud-streetcode bash
+
+# Drupal commands (inside container)
+drush cr                    # Clear cache
+drush cex                   # Export configuration
+drush cim                   # Import configuration
+drush updb                  # Update database
+```
+
+### 4. Database Access
+
+```bash
+# Source manager database
+docker exec -it north-cloud-postgres-source-manager psql -U postgres -d gosources
+
+# Crawler database
+docker exec -it north-cloud-postgres-crawler psql -U postgres -d gocrawl
+
+# Streetcode database
+docker exec -it north-cloud-postgres-streetcode psql -U postgres -d streetcode
+```
+
+### 5. Building Images
+
+```bash
+# Build all services (development)
+docker-compose -f docker-compose.base.yml -f docker-compose.dev.yml build
+
+# Build specific service
+docker-compose -f docker-compose.base.yml -f docker-compose.dev.yml build publisher
+
+# Build for production
+docker-compose -f docker-compose.base.yml -f docker-compose.prod.yml build
+```
+
+---
+
+## Docker Environment
+
+### Development vs Production
+
+#### Development Mode (`docker-compose.dev.yml`)
+- **Purpose**: Local development with hot-reloading
+- **Features**:
+  - Source code mounted as volumes
+  - `APP_DEBUG=true` for detailed logs
+  - All ports exposed for local access
+  - Development dependencies included
+  - Fast iteration cycles
+- **Usage**:
+  ```bash
+  docker-compose -f docker-compose.base.yml -f docker-compose.dev.yml up -d
+  ```
+
+#### Production Mode (`docker-compose.prod.yml`)
+- **Purpose**: Production deployment
+- **Features**:
+  - Code baked into images (no volume mounts)
+  - `APP_DEBUG=false` for optimized logging
+  - Resource limits configured
+  - Security hardening enabled
+  - `restart: always` policy
+  - SSL/TLS ready
+- **Usage**:
+  ```bash
+  docker-compose -f docker-compose.base.yml -f docker-compose.prod.yml up -d
+  ```
+
+### Service Ports (Development)
+
+| Service | Internal Port | External Port | Description |
+|---------|---------------|---------------|-------------|
+| source-manager | 8050 | 8050 | Source Manager API |
+| streetcode | 80 | 8080 | Drupal web interface |
+| nginx | 80 | 80 | Reverse proxy |
+| elasticsearch | 9200 | 9200 | Elasticsearch API |
+| redis | 6379 | 6379 | Redis cache |
+| postgres-* | 5432 | - | PostgreSQL (internal only) |
+
+### Docker Compose Commands
+
+```bash
+# Use shorter alias for development
+alias dc-dev='docker-compose -f docker-compose.base.yml -f docker-compose.dev.yml'
+alias dc-prod='docker-compose -f docker-compose.base.yml -f docker-compose.prod.yml'
+
+# Then use:
+dc-dev up -d
+dc-dev logs -f
+dc-dev down
+```
+
+---
+
+## Common Tasks
+
+### Adding a New Service
+
+1. **Create Service Directory**:
+   ```bash
+   mkdir new-service
+   cd new-service
+   ```
+
+2. **Create Dockerfile**:
+   ```dockerfile
+   FROM golang:1.24-alpine AS builder
+   WORKDIR /app
+   COPY . .
+   RUN go build -o bin/app main.go
+
+   FROM alpine:latest
+   COPY --from=builder /app/bin/app /app
+   CMD ["/app"]
+   ```
+
+3. **Add to docker-compose.base.yml**:
+   ```yaml
+   new-service:
+     build: ./new-service
+     depends_on:
+       - postgres-new-service
+     environment:
+       - DATABASE_URL=${NEW_SERVICE_DB_URL}
+   ```
+
+4. **Add Database** (if needed):
+   ```yaml
+   postgres-new-service:
+     image: postgres:16-alpine
+     environment:
+       POSTGRES_DB: new_service
+       POSTGRES_USER: ${POSTGRES_NEW_SERVICE_USER}
+       POSTGRES_PASSWORD: ${POSTGRES_NEW_SERVICE_PASSWORD}
+   ```
+
+5. **Update .env.example**:
+   ```bash
+   # New Service
+   NEW_SERVICE_PORT=8060
+   POSTGRES_NEW_SERVICE_USER=postgres
+   POSTGRES_NEW_SERVICE_PASSWORD=changeme
+   ```
+
+### Updating a Service
+
+1. **Make Code Changes**: Edit files in service directory
+2. **Test Locally** (if applicable): `go test ./...` or service-specific tests
+3. **Rebuild Container**:
+   ```bash
+   docker-compose -f docker-compose.base.yml -f docker-compose.dev.yml build service-name
+   ```
+4. **Restart Service**:
+   ```bash
+   docker-compose -f docker-compose.base.yml -f docker-compose.dev.yml up -d service-name
+   ```
+5. **Check Logs**:
+   ```bash
+   docker-compose -f docker-compose.base.yml -f docker-compose.dev.yml logs -f service-name
+   ```
+
+### Running Database Migrations
+
+#### Go Services
+```bash
+# Inside service directory
+go run cmd/migrate/main.go up
+
+# Or via Docker
+docker exec -it north-cloud-service-name /app/migrate up
+```
+
+#### Drupal
+```bash
+docker exec -it north-cloud-streetcode drush updb
+docker exec -it north-cloud-streetcode drush cex
+```
+
+### Debugging Issues
+
+#### Service Won't Start
+1. Check logs: `docker-compose -f docker-compose.base.yml -f docker-compose.dev.yml logs service-name`
+2. Check environment variables: `docker-compose -f docker-compose.base.yml -f docker-compose.dev.yml config`
+3. Verify dependencies: Check `depends_on` and ensure dependent services are healthy
+4. Check port conflicts: `netstat -tulpn | grep PORT`
+
+#### Database Connection Issues
+1. Verify database is running: `docker ps | grep postgres`
+2. Check connection string: Review `.env` file
+3. Test connection: `docker exec -it north-cloud-postgres-service psql -U user -d database`
+4. Check health: `docker inspect north-cloud-postgres-service`
+
+#### Cannot Access Service
+1. Verify port mapping: `docker ps | grep service-name`
+2. Check firewall: `sudo ufw status`
+3. Verify service is listening: `docker exec -it north-cloud-service-name netstat -tulpn`
+4. Check nginx configuration (if using reverse proxy)
+
+### Cleaning Up
+
+```bash
+# Stop all services
+docker-compose -f docker-compose.base.yml -f docker-compose.dev.yml down
+
+# Remove volumes (⚠️ deletes all data)
+docker-compose -f docker-compose.base.yml -f docker-compose.dev.yml down -v
+
+# Remove images
+docker-compose -f docker-compose.base.yml -f docker-compose.dev.yml down --rmi all
+
+# Clean up Docker system
+docker system prune -a --volumes
+```
+
+---
+
+## Important Guidelines for AI Assistants
+
+### When Working with This Codebase
+
+#### 1. Understand Service Boundaries
+- **Each service is independent**: Don't make cross-service changes without understanding dependencies
+- **Check service-specific documentation**: Look for README.md or CLAUDE.md in each service directory
+- **Respect API contracts**: Don't break existing APIs without migration plans
+- **Database isolation**: Each service has its own database; avoid cross-database queries
+
+#### 2. Before Making Changes
+
+**Always Read First**:
+1. Read the service's README.md or CLAUDE.md
+2. Read the specific files you'll modify
+3. Understand existing patterns and conventions
+4. Check for related tests
+
+**Check Dependencies**:
+1. Review `depends_on` in docker-compose files
+2. Check API integrations between services
+3. Verify database schema dependencies
+4. Review environment variable requirements
+
+**Plan Multi-Service Changes**:
+1. Identify all affected services
+2. Determine change order (dependencies first)
+3. Plan backward compatibility
+4. Consider migration paths
+
+#### 3. Service-Specific Guidelines
+
+**For Crawler**:
+- Follow crawler-specific patterns
+- Test crawling logic thoroughly
+- Validate Elasticsearch indexing
+- Check source manager integration
+
+**For Source Manager**:
+- Backend: Follow Go REST API conventions
+- Frontend: Use Vue 3 Composition API
+- Test API endpoints
+- Validate database migrations
+
+**For Publisher**:
+- **IMPORTANT**: Read `/publisher/CLAUDE.md` for detailed guidelines
+- Follow structured logging conventions (snake_case fields)
+- Test Drupal JSON:API integration
+- Verify Redis deduplication
+- Respect rate limits
+
+**For Streetcode (Drupal)**:
+- Follow Drupal coding standards
+- Export configuration changes: `drush cex`
+- Test JSON:API endpoints
+- Validate content types and fields
+- Check permissions and access control
+
+#### 4. Docker and Environment
+
+**Development**:
+- Always use `docker-compose.base.yml` + `docker-compose.dev.yml`
+- Mount source code for hot-reloading
+- Set `APP_DEBUG=true`
+- Expose ports for testing
+
+**Production** (if deploying):
+- Use `docker-compose.base.yml` + `docker-compose.prod.yml`
+- Build images with code baked in
+- Set `APP_DEBUG=false`
+- Configure resource limits
+- Enable SSL/TLS
+- Set strong passwords
+
+**Environment Variables**:
+- Always update `.env.example` when adding new variables
+- Use sensible defaults where possible
+- Document required vs optional variables
+- Never commit secrets to `.env`
+
+#### 5. Testing Requirements
+
+**Before Committing**:
+1. Run service-specific tests: `go test ./...` or `npm test`
+2. Rebuild affected Docker images
+3. Test service in Docker environment
+4. Check logs for errors
+5. Verify integration with dependent services
+
+**Integration Testing**:
+1. Start all required services
+2. Test API endpoints
+3. Verify database operations
+4. Check Elasticsearch indexing (if applicable)
+5. Validate Drupal posting (if applicable)
+
+#### 6. Git Workflow
+
+**Branch Naming**:
+- Must start with `claude/`
+- Must end with session ID
+- Format: `claude/{description}-{session-id}`
+- Example: `claude/create-claude-md-01YMXWZpqv3utVH69jyNnLaE`
+
+**Committing Changes**:
+1. Clear, descriptive commit messages
+2. Explain "why" not just "what"
+3. Reference related issues or tasks
+4. Group related changes
+5. Commit often, push when complete
+
+**Pushing**:
+- Always use: `git push -u origin {branch-name}`
+- Retry on network failures (up to 4 times, exponential backoff: 2s, 4s, 8s, 16s)
+- Never force push to main/master
+
+#### 7. Documentation Updates
+
+**When Making Changes, Update**:
+1. This CLAUDE.md for architectural changes
+2. README.md for user-facing changes
+3. Service-specific CLAUDE.md or README.md
+4. Docker documentation (DOCKER.md)
+5. API documentation
+6. Code comments for complex logic
+7. `.env.example` for new environment variables
+
+**Documentation Standards**:
+- Use clear, concise language
+- Include code examples
+- Document gotchas and common issues
+- Keep table of contents updated
+- Use proper markdown formatting
+
+#### 8. Common Pitfalls to Avoid
+
+**Multi-Service Changes**:
+- Don't modify multiple services without testing each
+- Maintain backward compatibility during transitions
+- Use feature flags for gradual rollouts
+- Document service dependencies
+
+**Database Changes**:
+- Create migrations, don't modify schema directly
+- Test migrations both up and down
+- Backup data before destructive changes
+- Coordinate schema changes with code changes
+
+**Docker Issues**:
+- Don't mix dev and prod configurations
+- Always specify both base and environment-specific compose files
+- Clean up volumes when schema changes
+- Check for port conflicts
+
+**Environment Variables**:
+- Don't hardcode values that should be configurable
+- Provide defaults for optional settings
+- Validate required variables on startup
+- Document all variables
+
+**Authentication and Security**:
+- Never commit credentials
+- Use environment variables for secrets
+- Validate authentication in all services
+- Follow security best practices (see service docs)
+
+### 9. Service Communication Patterns
+
+**REST APIs**:
+- Use consistent error responses
+- Include request IDs for tracing
+- Implement timeouts
+- Handle partial failures gracefully
+
+**Elasticsearch**:
+- Use appropriate index names (per city)
+- Validate documents before indexing
+- Handle search errors gracefully
+- Use bulk operations where possible
+
+**Redis**:
+- Use consistent key naming (`service:type:id`)
+- Set appropriate TTLs
+- Handle cache misses
+- Don't rely on cache for critical data
+
+**Databases**:
+- Use connection pooling
+- Implement retries with backoff
+- Handle deadlocks and conflicts
+- Use transactions for multi-step operations
+
+### 10. Performance Considerations
+
+**Go Services**:
+- Use appropriate timeouts
+- Implement rate limiting
+- Pool connections (HTTP, DB, Redis)
+- Use context for cancellation
+- Profile before optimizing
+
+**Drupal**:
+- Use caching appropriately
+- Optimize database queries
+- Use JSON:API filtering
+- Consider pagination for large datasets
+
+**Docker**:
+- Set appropriate resource limits
+- Use multi-stage builds for smaller images
+- Minimize layers
+- Use .dockerignore
+
+---
+
+## Additional Resources
+
+### External Documentation
+- [Docker Compose](https://docs.docker.com/compose/)
+- [Go Documentation](https://go.dev/doc/)
+- [Drupal JSON:API](https://www.drupal.org/docs/core-modules-and-themes/core-modules/jsonapi-module)
+- [Elasticsearch Documentation](https://www.elastic.co/guide/index.html)
+- [Vue.js Documentation](https://vuejs.org/)
+
+### Internal Documentation
+- `/README.md`: User-facing overview
+- `/DOCKER.md`: Docker setup and configuration
+- `/publisher/CLAUDE.md`: Publisher service AI guide
+- `/source-manager/README.md`: Source manager documentation
+- `/source-manager/DEVELOPMENT.md`: Source manager development guide
+- `/streetcode/docs/`: Drupal-specific documentation
+
+### Service Documentation by Feature
+
+**Content Crawling**:
+- `/crawler/README.md`
+- `/source-manager/README.md`
+
+**Content Publishing**:
+- `/publisher/CLAUDE.md`
+- `/publisher/README.md`
+- `/streetcode/docs/API_SECURITY_GUIDE.md`
+- `/streetcode/docs/PAYLOAD_TO_DRUPAL_MAPPING.md`
+
+**Development Setup**:
+- `/DOCKER.md`
+- `/source-manager/DEVELOPMENT.md`
+
+---
+
+## Questions or Clarifications?
+
+When encountering scenarios not covered in this guide:
+
+1. **Check service-specific documentation**: Each service may have its own CLAUDE.md or README.md
+2. **Review existing code patterns**: Look at similar functionality in the same service
+3. **Examine test files**: Tests often show usage examples
+4. **Check git history**: `git log -p path/to/file` for context on changes
+5. **Look for comments**: Code comments often explain "why" not just "what"
+6. **Ask for clarification**: When assumptions are needed, ask the user
+
+**Remember**:
+- Consistency with existing codebase is critical
+- Each service may have different conventions
+- Read before modifying
+- Test thoroughly across service boundaries
+- Document your changes
+
+---
+
+## Version History
+
+- **Initial Version** (2025-12-13): Created comprehensive AI assistant guide
+  - Multi-service architecture overview
+  - Docker environment documentation
+  - Service-specific guidelines
+  - Cross-service integration patterns
+  - Git workflow and conventions
+
+---
+
+*This document is maintained for AI assistants working with the North Cloud codebase. Keep it updated as the architecture evolves.*
