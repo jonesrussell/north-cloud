@@ -51,8 +51,8 @@ services:
     working_dir: /app
     # Download dependencies, then start both frontend and backend
     # Use -mod=mod to ignore vendor directory if present
-    # Frontend runs on port 3000, backend on port 8060
-    command: ["sh", "-c", "cd /app/frontend && npm install && npm run dev & cd /app && go mod download && go run -mod=mod ./main.go"]
+    # Frontend runs on port 3000, backend on port 8060 (httpd server)
+    command: ["sh", "-c", "cd /app/frontend && npm install && npm run dev & cd /app && go mod download && go run -mod=mod ./main.go httpd"]
     networks:
       - north-cloud-network
     restart: unless-stopped
