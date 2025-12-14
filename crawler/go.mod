@@ -2,8 +2,6 @@ module github.com/jonesrussell/gocrawl
 
 go 1.25.0
 
-toolchain go1.25.0
-
 require (
 	github.com/PuerkitoBio/goquery v1.11.0
 	github.com/elastic/go-elasticsearch/v8 v8.19.0
