@@ -78,7 +78,7 @@ func main() {
 	sourceRepo := repository.NewSourceRepository(db.DB(), appLogger)
 
 	// Initialize router
-	router := api.NewRouter(sourceRepo, appLogger)
+	router := api.NewRouter(sourceRepo, cfg, appLogger)
 
 	// Create HTTP server
 	srv := &http.Server{

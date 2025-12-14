@@ -24,6 +24,8 @@ services:
       - DB_SSLMODE=disable
       - APP_DEBUG=true
       - APP_ENV=development
+      # Construct sources API URL from SOURCE_MANAGER_API_URL if CRAWLER_SOURCES_API_URL is not set
+      - CRAWLER_SOURCES_API_URL=${CRAWLER_SOURCES_API_URL:-${SOURCE_MANAGER_API_URL:-http://source-manager:8050}/api/v1/sources}
     volumes:
       # Mount source code for hot reloading
       - ./crawler:/app
@@ -73,6 +75,10 @@ services:
       - DB_PASSWORD=${POSTGRES_SOURCE_MANAGER_PASSWORD:-postgres}
       - DB_NAME=${POSTGRES_SOURCE_MANAGER_DB:-gosources}
       - DB_SSLMODE=disable
+      # External API URL for other services to access source-manager
+      - SOURCE_MANAGER_API_URL=${SOURCE_MANAGER_API_URL:-http://localhost:8050}
+      # Frontend API URL (passed to Vite via VITE_API_URL)
+      - VITE_API_URL=${SOURCE_MANAGER_API_URL:-http://localhost:8050}
       # Use /tmp for caches to avoid permission issues with host user
       - GOMODCACHE=/tmp/go-mod-cache
       - GOCACHE=/tmp/go-build-cache

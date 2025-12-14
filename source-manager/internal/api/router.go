@@ -2,10 +2,13 @@ package api
 
 import (
 	"net/http"
+	"os"
+	"strings"
 	"time"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	"github.com/jonesrussell/gosources/internal/config"
 	"github.com/jonesrussell/gosources/internal/handlers"
 	"github.com/jonesrussell/gosources/internal/logger"
 	"github.com/jonesrussell/gosources/internal/repository"
@@ -15,12 +18,42 @@ const (
 	corsMaxAgeHours = 12
 )
 
-func NewRouter(db *repository.SourceRepository, log logger.Logger) *gin.Engine {
+// getCORSOrigins returns the list of allowed CORS origins from environment or config
+func getCORSOrigins() []string {
+	// Check environment variable first (comma-separated list)
+	if corsOrigins := os.Getenv("CORS_ORIGINS"); corsOrigins != "" {
+		origins := strings.Split(corsOrigins, ",")
+		// Trim whitespace from each origin
+		for i, origin := range origins {
+			origins[i] = strings.TrimSpace(origin)
+		}
+		return origins
+	}
+
+	// Default origins
+	origins := []string{"http://localhost:3000"}
+
+	// If SOURCE_MANAGER_API_URL is set, extract host and add frontend origin
+	if apiURL := os.Getenv("SOURCE_MANAGER_API_URL"); apiURL != "" {
+		// Extract host from URL (e.g., http://localhost:8050 -> http://localhost:3000)
+		if strings.HasPrefix(apiURL, "http://") || strings.HasPrefix(apiURL, "https://") {
+			parts := strings.Split(strings.TrimPrefix(strings.TrimPrefix(apiURL, "http://"), "https://"), ":")
+			if len(parts) > 0 {
+				host := parts[0]
+				origins = append(origins, "http://"+host+":3000")
+			}
+		}
+	}
+
+	return origins
+}
+
+func NewRouter(db *repository.SourceRepository, cfg *config.Config, log logger.Logger) *gin.Engine {
 	router := gin.New()
 
 	// CORS middleware - must be first
 	router.Use(cors.New(cors.Config{
-		AllowOrigins: []string{"http://localhost:3000", "http://192.168.136.97:3000"},
+		AllowOrigins: getCORSOrigins(),
 		AllowMethods: []string{"GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"},
 		AllowHeaders: []string{
 			"Origin", "Content-Type", "Content-Length", "Accept-Encoding",

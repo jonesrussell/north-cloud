@@ -5,7 +5,7 @@
 debug: false
 
 server:
-  host: "0.0.0.0"
+  host: "0.0.0.0"  # Use 0.0.0.0 to bind to all interfaces, or set SERVER_HOST env var
   port: 8050
   read_timeout: "30s"
   write_timeout: "30s"

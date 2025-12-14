@@ -10,11 +10,11 @@ export default defineConfig({
     port: 3000,
     proxy: {
       '/api': {
-        target: 'http://localhost:8050',
+        target: 'http://localhost:8050', // Backend runs on same container
         changeOrigin: true,
       },
       '/health': {
-        target: 'http://localhost:8050',
+        target: 'http://localhost:8050', // Backend runs on same container
         changeOrigin: true,
       }
     }

@@ -22,8 +22,9 @@ services:
       - "8050:8050"
     environment:
       APP_DEBUG: "true"
-      SERVER_HOST: "192.168.136.97"
+      SERVER_HOST: ${SOURCE_MANAGER_HOST:-0.0.0.0}
       SERVER_PORT: "8050"
+      SOURCE_MANAGER_API_URL: ${SOURCE_MANAGER_API_URL:-http://localhost:8050}
       DB_HOST: "postgres"
       DB_PORT: "5432"
       DB_USER: "postgres"
