@@ -19,6 +19,11 @@ RUN addgroup -g 1000 appuser && \
 RUN mkdir -p /home/appuser/go-mod-cache && \
     chown -R appuser:appuser /home/appuser
 
+# Create frontend node_modules directory with correct permissions
+# This directory will be excluded from volume mount via docker-compose
+RUN mkdir -p /app/frontend/node_modules && \
+    chown -R appuser:appuser /app
+
 # Set PATH to include Go binaries (needed for non-root user)
 ENV PATH=$PATH:/usr/local/go/bin:/go/bin
 
