@@ -89,6 +89,29 @@
         <h2 class="text-xl font-bold mb-4">Create Crawl Job</h2>
 
         <form @submit.prevent="createJob">
+          <!-- Source Selection -->
+          <div class="mb-4">
+            <label for="source" class="block text-sm font-medium text-gray-700 mb-2">
+              Source <span class="text-red-500">*</span>
+            </label>
+            <select
+              id="source"
+              v-model="newJob.source_id"
+              required
+              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              :class="{ 'border-red-500': sourceError }"
+              @change="onSourceChange"
+            >
+              <option value="">Select a source...</option>
+              <option v-for="source in sources" :key="source.id" :value="source.id">
+                {{ source.name }}
+              </option>
+            </select>
+            <p v-if="sourceError" class="mt-1 text-sm text-red-600">{{ sourceError }}</p>
+            <p v-if="loadingSources" class="mt-1 text-xs text-gray-500">Loading sources...</p>
+            <p v-else-if="sourcesError" class="mt-1 text-xs text-red-500">{{ sourcesError }}</p>
+          </div>
+
           <!-- URL Input -->
           <div class="mb-4">
             <label for="url" class="block text-sm font-medium text-gray-700 mb-2">
@@ -106,19 +129,32 @@
             <p v-if="urlError" class="mt-1 text-sm text-red-600">{{ urlError }}</p>
           </div>
 
-          <!-- Source Name Input (Optional) -->
+          <!-- Schedule Time -->
           <div class="mb-4">
-            <label for="source" class="block text-sm font-medium text-gray-700 mb-2">
-              Source Name (Optional)
+            <label for="schedule_time" class="block text-sm font-medium text-gray-700 mb-2">
+              Schedule Time (Optional)
             </label>
             <input
-              id="source"
-              v-model="newJob.source"
+              id="schedule_time"
+              v-model="newJob.schedule_time"
               type="text"
-              placeholder="Enter source name or leave empty"
+              placeholder="0 */6 * * * (cron format)"
               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
-            <p class="mt-1 text-xs text-gray-500">If left empty, the domain will be used</p>
+            <p class="mt-1 text-xs text-gray-500">Use cron format (e.g., "0 */6 * * *" for every 6 hours)</p>
+          </div>
+
+          <!-- Schedule Enabled -->
+          <div class="mb-4 flex items-center">
+            <input
+              id="schedule_enabled"
+              v-model="newJob.schedule_enabled"
+              type="checkbox"
+              class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+            />
+            <label for="schedule_enabled" class="ml-2 block text-sm text-gray-700">
+              Enable scheduled crawling
+            </label>
           </div>
 
           <!-- Error Message -->
@@ -156,8 +192,8 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
-import { crawlerApi } from '../api/client'
+import { ref, onMounted, watch } from 'vue'
+import { crawlerApi, sourceManagerApi } from '../api/client'
 
 const loading = ref(true)
 const error = ref(null)
@@ -167,12 +203,34 @@ const creating = ref(false)
 const createError = ref(null)
 const createSuccess = ref(false)
 const urlError = ref(null)
+const sourceError = ref(null)
+
+// Sources data
+const sources = ref([])
+const loadingSources = ref(false)
+const sourcesError = ref(null)
+const selectedSource = ref(null)
 
 // New job form data
 const newJob = ref({
+  source_id: '',
   url: '',
-  source: ''
+  schedule_time: '',
+  schedule_enabled: false
 })
+
+const loadSources = async () => {
+  try {
+    loadingSources.value = true
+    sourcesError.value = null
+    sources.value = await sourceManagerApi.listSources()
+  } catch (err) {
+    sourcesError.value = 'Unable to load sources from source manager'
+    console.error('Error loading sources:', err)
+  } finally {
+    loadingSources.value = false
+  }
+}
 
 const loadJobs = async () => {
   try {
@@ -184,6 +242,16 @@ const loadJobs = async () => {
     console.error('Error loading jobs:', err)
   } finally {
     loading.value = false
+  }
+}
+
+const onSourceChange = () => {
+  // Find the selected source
+  selectedSource.value = sources.value.find(s => s.id === newJob.value.source_id)
+
+  // Auto-fill URL if source has a URL and current URL is empty
+  if (selectedSource.value && selectedSource.value.url && !newJob.value.url) {
+    newJob.value.url = selectedSource.value.url
   }
 }
 
@@ -204,6 +272,13 @@ const createJob = async () => {
   createError.value = null
   createSuccess.value = false
   urlError.value = null
+  sourceError.value = null
+
+  // Validate source selection
+  if (!newJob.value.source_id) {
+    sourceError.value = 'Please select a source'
+    return
+  }
 
   // Validate URL
   const validationError = validateUrl(newJob.value.url)
@@ -217,12 +292,11 @@ const createJob = async () => {
 
     // Prepare job data
     const jobData = {
-      url: newJob.value.url.trim()
-    }
-
-    // Add source if provided
-    if (newJob.value.source && newJob.value.source.trim()) {
-      jobData.source = newJob.value.source.trim()
+      source_id: newJob.value.source_id,
+      source_name: selectedSource.value?.name || '',
+      url: newJob.value.url.trim(),
+      schedule_time: newJob.value.schedule_time.trim(),
+      schedule_enabled: newJob.value.schedule_enabled
     }
 
     // Create the job
@@ -233,9 +307,12 @@ const createJob = async () => {
 
     // Reset form
     newJob.value = {
+      source_id: '',
       url: '',
-      source: ''
+      schedule_time: '',
+      schedule_enabled: false
     }
+    selectedSource.value = null
 
     // Reload jobs list
     await loadJobs()
@@ -257,11 +334,22 @@ const closeCreateModal = () => {
   createError.value = null
   createSuccess.value = false
   urlError.value = null
+  sourceError.value = null
   newJob.value = {
+    source_id: '',
     url: '',
-    source: ''
+    schedule_time: '',
+    schedule_enabled: false
   }
+  selectedSource.value = null
 }
+
+// Load sources when modal opens
+watch(showCreateModal, (newValue) => {
+  if (newValue && sources.value.length === 0) {
+    loadSources()
+  }
+})
 
 const deleteJob = async (id) => {
   if (!confirm('Are you sure you want to delete this job?')) return
@@ -281,5 +369,6 @@ const formatDate = (dateString) => {
 
 onMounted(() => {
   loadJobs()
+  loadSources()
 })
 </script>

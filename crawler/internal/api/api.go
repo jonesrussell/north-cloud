@@ -41,6 +41,7 @@ func SetupRouter(
 	log logger.Interface,
 	searchManager SearchManager,
 	cfg config.Interface,
+	jobsHandler *JobsHandler,
 ) (*gin.Engine, middleware.SecurityMiddlewareInterface) {
 	// Disable Gin's default logging
 	gin.SetMode(gin.ReleaseMode)
@@ -75,38 +76,27 @@ func SetupRouter(
 	})
 
 	// Jobs endpoints for dashboard
-	v1.GET("/jobs", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{
-			"jobs": []gin.H{},
+	if jobsHandler != nil {
+		v1.GET("/jobs", jobsHandler.ListJobs)
+		v1.POST("/jobs", jobsHandler.CreateJob)
+		v1.GET("/jobs/:id", jobsHandler.GetJob)
+		v1.PUT("/jobs/:id", jobsHandler.UpdateJob)
+		v1.DELETE("/jobs/:id", jobsHandler.DeleteJob)
+	} else {
+		// Fallback to placeholder endpoints if no handler provided
+		v1.GET("/jobs", func(c *gin.Context) {
+			c.JSON(http.StatusOK, gin.H{
+				"jobs": []gin.H{},
+			})
 		})
-	})
-
-	v1.POST("/jobs", func(c *gin.Context) {
-		var job map[string]any
-		if err := c.ShouldBindJSON(&job); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
-			return
-		}
-		c.JSON(http.StatusCreated, gin.H{
-			"id":      "job-1",
-			"status":  "pending",
-			"message": "Job created successfully",
+		v1.POST("/jobs", func(c *gin.Context) {
+			c.JSON(http.StatusCreated, gin.H{
+				"id":      "job-1",
+				"status":  "pending",
+				"message": "Job created successfully",
+			})
 		})
-	})
-
-	v1.GET("/jobs/:id", func(c *gin.Context) {
-		id := c.Param("id")
-		c.JSON(http.StatusOK, gin.H{
-			"id":     id,
-			"status": "pending",
-		})
-	})
-
-	v1.DELETE("/jobs/:id", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{
-			"message": "Job deleted successfully",
-		})
-	})
+	}
 
 	// Articles endpoint for dashboard
 	v1.GET("/articles", func(c *gin.Context) {
@@ -229,8 +219,9 @@ func StartHTTPServer(
 	log logger.Interface,
 	searchManager SearchManager,
 	cfg config.Interface,
+	jobsHandler *JobsHandler,
 ) (*http.Server, middleware.SecurityMiddlewareInterface, error) {
-	router, security := SetupRouter(log, searchManager, cfg)
+	router, security := SetupRouter(log, searchManager, cfg, jobsHandler)
 
 	srv := &http.Server{
 		Addr:              cfg.GetServerConfig().Address,

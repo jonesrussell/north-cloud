@@ -1,8 +1,10 @@
 import axios from 'axios'
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8060'
+const SOURCE_MANAGER_API_URL = import.meta.env.VITE_SOURCE_MANAGER_API_URL || 'http://localhost:8050'
 
 console.log('[API Client] Initializing with base URL:', API_BASE_URL)
+console.log('[API Client] Source Manager API URL:', SOURCE_MANAGER_API_URL)
 
 const client = axios.create({
   baseURL: API_BASE_URL,
@@ -75,6 +77,21 @@ export const crawlerApi = {
 
   // Articles (placeholder - adjust based on actual API)
   listArticles: (params) => client.get('/api/v1/articles', { params }).then(res => res.data.articles || []),
+}
+
+// Source Manager API client
+const sourceManagerClient = axios.create({
+  baseURL: SOURCE_MANAGER_API_URL,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+  timeout: 10000,
+})
+
+export const sourceManagerApi = {
+  // Sources endpoints
+  listSources: () => sourceManagerClient.get('/api/v1/sources').then(res => res.data.sources || []),
+  getSource: (id) => sourceManagerClient.get(`/api/v1/sources/${id}`).then(res => res.data),
 }
 
 export default client
