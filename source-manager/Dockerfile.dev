@@ -10,27 +10,26 @@ RUN apk add --no-cache git curl wget nodejs npm
 # For Go 1.25+, use go install
 RUN go install github.com/air-verse/air@latest
 
-# Create non-root user for development
-# Note: Files will be mounted from host, so no chown needed
+# Create non-root user for development (used as fallback)
 RUN addgroup -g 1000 appuser && \
     adduser -D -u 1000 -G appuser appuser
 
-# Create a writable Go module cache directory for non-root user
-RUN mkdir -p /home/appuser/go-mod-cache && \
-    chown -R appuser:appuser /home/appuser
+# Create cache directories in /tmp
+# /tmp typically has 1777 (sticky bit) which is appropriate for shared temp space
+RUN mkdir -p /tmp/go-mod-cache \
+             /tmp/go-build-cache \
+             /tmp/npm-cache && \
+    chmod 1777 /tmp/go-mod-cache \
+                /tmp/go-build-cache \
+                /tmp/npm-cache
 
-# Set PATH to include Go binaries (needed for non-root user)
+# Set PATH to include Go binaries
 ENV PATH=$PATH:/usr/local/go/bin:/go/bin
 
-# Set GOMODCACHE to a writable location for non-root user
-ENV GOMODCACHE=/home/appuser/go-mod-cache
-
-# Note: No files are copied here - everything will be mounted as volumes
-# Dependencies will be downloaded at runtime from mounted go.mod/go.sum
-# Source code will be mounted from host filesystem
-
-# Switch to non-root user
-USER appuser
+# Note: Container runs as host user via docker-compose user directive
+# This eliminates permission issues with mounted volumes
+# Cache directories in /tmp are writable by any user
+# /app is mounted from host and owned by host user
 
 EXPOSE 8050 3000
 

@@ -54,6 +54,8 @@ services:
       context: ./source-manager
       dockerfile: Dockerfile.dev
     container_name: north-cloud-source-manager-dev
+    # Run as host user to avoid permission issues with mounted volumes
+    user: "${UID:-1000}:${GID:-1000}"
     ports:
       - "${SOURCE_MANAGER_PORT:-8050}:8050"
       - "${FRONTEND_PORT:-3000}:3000"
@@ -71,16 +73,20 @@ services:
       - DB_PASSWORD=${POSTGRES_SOURCE_MANAGER_PASSWORD:-postgres}
       - DB_NAME=${POSTGRES_SOURCE_MANAGER_DB:-gosources}
       - DB_SSLMODE=disable
+      # Use /tmp for caches to avoid permission issues with host user
+      - GOMODCACHE=/tmp/go-mod-cache
+      - GOCACHE=/tmp/go-build-cache
+      - npm_config_cache=/tmp/npm-cache
     volumes:
       # Mount source code for development
       - ./source-manager:/app
       - /app/vendor  # Exclude vendor directory
-      - /app/frontend/node_modules  # Exclude frontend node_modules (installed in container)
       - ./source-manager/migrations:/migrations:ro
-      # Mount frontend for hot reloading (if using dev server)
-      - ./source-manager/frontend:/app/frontend
-      # Go module cache is in /home/appuser/go-mod-cache (set via GOMODCACHE env)
-      # No volume mount needed - cache will be in container filesystem
+      # Mount cache volumes to persist downloads across restarts
+      - source_manager_go_mod_cache:/tmp/go-mod-cache
+      - source_manager_go_build_cache:/tmp/go-build-cache
+      - source_manager_npm_cache:/tmp/npm-cache
+      - source_manager_node_modules:/app/frontend/node_modules
     working_dir: /app
     # Download dependencies, then start both frontend and backend
     # Use -mod=mod to ignore vendor directory if present
@@ -209,3 +215,8 @@ services:
 volumes:
   # Cache for Go modules to speed up builds when dependencies change
   go_modules_cache:
+  # Source manager cache volumes
+  source_manager_go_mod_cache:
+  source_manager_go_build_cache:
+  source_manager_npm_cache:
+  source_manager_node_modules:
