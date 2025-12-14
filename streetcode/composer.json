@@ -29,7 +29,7 @@
         "drupal/openapi": "^2.2",
         "drupal/openapi_jsonapi": "^3.0",
         "drupal/openapi_ui": "^1.0@RC",
-        "drupal/openapi_ui_swagger": "^1.1",
+        "drupal/openapi_ui_swagger": "^1.2",
         "drupal/pathauto": "^1.13",
         "drupal/rest_api_authentication": "^2.0",
         "drupal/restui": "^1.22",
