@@ -12,6 +12,11 @@ services:
       context: ./crawler
       dockerfile: Dockerfile.dev
     container_name: north-cloud-crawler-dev
+    # Run as host user to avoid permission issues with mounted volumes
+    user: "${UID:-1000}:${GID:-1000}"
+    ports:
+      - "${CRAWLER_PORT:-8060}:8060"
+      - "${CRAWLER_FRONTEND_PORT:-3001}:3000"
     depends_on:
       postgres-crawler:
         condition: service_healthy
@@ -24,19 +29,30 @@ services:
       - DB_SSLMODE=disable
       - APP_DEBUG=true
       - APP_ENV=development
+      - SERVER_HOST=${CRAWLER_HOST:-0.0.0.0}
+      - SERVER_PORT=${CRAWLER_PORT:-8060}
       # Construct sources API URL from SOURCE_MANAGER_API_URL if CRAWLER_SOURCES_API_URL is not set
       - CRAWLER_SOURCES_API_URL=${CRAWLER_SOURCES_API_URL:-${SOURCE_MANAGER_API_URL:-http://source-manager:8050}/api/v1/sources}
+      # Frontend API URL (passed to Vite via VITE_API_URL)
+      - VITE_API_URL=${CRAWLER_API_URL:-http://localhost:8060}
+      # Use /tmp for caches to avoid permission issues with host user
+      - GOMODCACHE=/tmp/go-mod-cache
+      - GOCACHE=/tmp/go-build-cache
+      - npm_config_cache=/tmp/npm-cache
     volumes:
-      # Mount source code for hot reloading
+      # Mount source code for development
       - ./crawler:/app
-      - /app/vendor  # Exclude vendor from mount to use container's vendor
-      # Go module cache is in /home/appuser/go-mod-cache (set via GOMODCACHE env)
-      # No volume mount needed - cache will be in container filesystem
+      - /app/vendor  # Exclude vendor directory
+      # Mount cache volumes to persist downloads across restarts
+      - crawler_go_mod_cache:/tmp/go-mod-cache
+      - crawler_go_build_cache:/tmp/go-build-cache
+      - crawler_npm_cache:/tmp/npm-cache
+      - crawler_node_modules:/app/frontend/node_modules
     working_dir: /app
-    # Download dependencies from mounted go.mod/go.sum, then run
+    # Download dependencies, then start both frontend and backend
     # Use -mod=mod to ignore vendor directory if present
-    # This ensures dependency changes in source are picked up
-    command: ["sh", "-c", "go mod download && go run -mod=mod ./main.go --help"]
+    # Frontend runs on port 3000, backend on port 8060
+    command: ["sh", "-c", "cd /app/frontend && npm install && npm run dev & cd /app && go mod download && go run -mod=mod ./main.go"]
     networks:
       - north-cloud-network
     restart: unless-stopped
@@ -46,9 +62,6 @@ services:
         limits:
           cpus: '2'
           memory: 2G
-    # Expose additional ports for debugging if needed
-    # ports:
-    #   - "2345:2345"  # Delve debugger port
 
   # Source Manager service - Development
   source-manager:
@@ -221,6 +234,11 @@ services:
 volumes:
   # Cache for Go modules to speed up builds when dependencies change
   go_modules_cache:
+  # Crawler cache volumes
+  crawler_go_mod_cache:
+  crawler_go_build_cache:
+  crawler_npm_cache:
+  crawler_node_modules:
   # Source manager cache volumes
   source_manager_go_mod_cache:
   source_manager_go_build_cache:
