@@ -54,6 +54,8 @@ services:
       context: ./source-manager
       dockerfile: Dockerfile.dev
     container_name: north-cloud-source-manager-dev
+    # Run as host user to avoid permission issues with mounted volumes
+    user: "${UID:-1000}:${GID:-1000}"
     ports:
       - "${SOURCE_MANAGER_PORT:-8050}:8050"
       - "${FRONTEND_PORT:-3000}:3000"
@@ -77,8 +79,6 @@ services:
       - /app/vendor  # Exclude vendor directory
       - /app/frontend/node_modules  # Exclude frontend node_modules (installed in container)
       - ./source-manager/migrations:/migrations:ro
-      # Mount frontend for hot reloading (if using dev server)
-      - ./source-manager/frontend:/app/frontend
       # Go module cache is in /home/appuser/go-mod-cache (set via GOMODCACHE env)
       # No volume mount needed - cache will be in container filesystem
     working_dir: /app
