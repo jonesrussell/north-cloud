@@ -81,7 +81,7 @@ This document provides a comprehensive guide for AI assistants working with the 
 
 #### 1. **crawler** (gocrawl)
 - **Location**: `/crawler`
-- **Language**: Go 1.24+ (Backend), Vue.js 3 (Frontend)
+- **Language**: Go 1.25+ (Backend), Vue.js 3 (Frontend)
 - **Purpose**: Web crawler for scraping news articles
 - **Database**: `postgres-crawler` (gocrawl database)
 - **Ports**: 8060 (API), 3001 (Frontend - development)
