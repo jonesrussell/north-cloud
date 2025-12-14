@@ -81,15 +81,17 @@ This document provides a comprehensive guide for AI assistants working with the 
 
 #### 1. **crawler** (gocrawl)
 - **Location**: `/crawler`
-- **Language**: Go 1.24+
+- **Language**: Go 1.25+ (Backend), Vue.js 3 (Frontend)
 - **Purpose**: Web crawler for scraping news articles
 - **Database**: `postgres-crawler` (gocrawl database)
+- **Ports**: 8060 (API), 3001 (Frontend - development)
 - **Key Features**:
   - Configurable crawling rules
   - Article extraction and parsing
   - Storage in Elasticsearch
   - Source management integration
-- **Documentation**: See `/crawler/README.md`
+  - Vue.js dashboard interface for monitoring
+- **Documentation**: See `/crawler/README.md`, `/crawler/frontend/README.md`
 
 #### 2. **source-manager**
 - **Location**: `/source-manager`
@@ -392,11 +394,17 @@ docker-compose -f docker-compose.base.yml -f docker-compose.dev.yml down -v
 ```bash
 cd crawler
 
-# Run locally (requires Go 1.24+)
+# Backend (API)
 go run main.go
+
+# Frontend (separate terminal)
+cd frontend
+npm install
+npm run dev
 
 # Run tests
 go test ./...
+cd frontend && npm test
 
 # Build
 go build -o bin/crawler main.go
@@ -513,7 +521,10 @@ docker-compose -f docker-compose.base.yml -f docker-compose.prod.yml build
 
 | Service | Internal Port | External Port | Description |
 |---------|---------------|---------------|-------------|
+| crawler | 8060 | 8060 | Crawler API |
+| crawler-frontend | 3000 | 3001 | Crawler Dashboard UI |
 | source-manager | 8050 | 8050 | Source Manager API |
+| source-manager-frontend | 3000 | 3000 | Source Manager UI |
 | streetcode | 80 | 8080 | Drupal web interface |
 | nginx | 80 | 80 | Reverse proxy |
 | elasticsearch | 9200 | 9200 | Elasticsearch API |

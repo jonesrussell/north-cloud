@@ -3,36 +3,39 @@ FROM golang:1.25-alpine
 WORKDIR /app
 
 # Install build dependencies and tools
-RUN apk add --no-cache git curl wget
+# Include Node.js and npm for frontend development
+RUN apk add --no-cache git curl wget nodejs npm
 
 # Install air for hot reloading (optional)
 # For Go 1.25+, use go install
 RUN go install github.com/air-verse/air@latest
 
-# Create non-root user for development
-# Note: Files will be mounted from host, so no chown needed
+# Create non-root user for development (used as fallback)
 RUN addgroup -g 1000 appuser && \
     adduser -D -u 1000 -G appuser appuser
 
-# Create a writable Go module cache directory for non-root user
-RUN mkdir -p /home/appuser/go-mod-cache && \
-    chown -R appuser:appuser /home/appuser
+# Create cache directories in /tmp
+# /tmp typically has 1777 (sticky bit) which is appropriate for shared temp space
+RUN mkdir -p /tmp/go-mod-cache \
+             /tmp/go-build-cache \
+             /tmp/npm-cache && \
+    chmod 1777 /tmp/go-mod-cache \
+                /tmp/go-build-cache \
+                /tmp/npm-cache
 
-# Set PATH to include Go binaries (needed for non-root user)
+# Set PATH to include Go binaries
 ENV PATH=$PATH:/usr/local/go/bin:/go/bin
 
-# Set GOMODCACHE to a writable location for non-root user
-ENV GOMODCACHE=/home/appuser/go-mod-cache
+# Note: Container runs as host user via docker-compose user directive
+# This eliminates permission issues with mounted volumes
+# Cache directories in /tmp are writable by any user
+# /app is mounted from host and owned by host user
 
-# Note: No files are copied here - everything will be mounted as volumes
-# Dependencies will be downloaded at runtime from mounted go.mod/go.sum
-# Source code will be mounted from host filesystem
+EXPOSE 8060 3000
 
-# Switch to non-root user
-USER appuser
-
-# Default command: run from mounted source
+# Default command: run both backend and frontend from mounted source
 # The source code will be available via volume mount
 # Use -mod=mod to ignore vendor directory if present
 # Can be overridden in docker-compose to use air for hot reloading
-CMD ["sh", "-c", "go run -mod=mod ./main.go"]
+# Start frontend in background, then start backend in foreground
+CMD ["sh", "-c", "cd /app/frontend && npm install && npm run dev & cd /app && go run -mod=mod ./main.go"]

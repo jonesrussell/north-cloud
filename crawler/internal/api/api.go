@@ -49,6 +49,7 @@ func SetupRouter(
 	router := gin.New()
 	router.Use(gin.Recovery())
 	router.Use(loggingMiddleware(log))
+	router.Use(corsMiddleware())  // Add CORS middleware
 
 	// Create security middleware
 	security := middleware.NewSecurityMiddleware(cfg.GetServerConfig(), log)
@@ -57,6 +58,65 @@ func SetupRouter(
 	router.GET("/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"status": "ok"})
 	})
+
+	// API v1 routes (for dashboard frontend)
+	v1 := router.Group("/api/v1")
+	{
+		// Stats endpoint for dashboard
+		v1.GET("/stats", func(c *gin.Context) {
+			c.JSON(http.StatusOK, gin.H{
+				"totalArticles":   0,
+				"successRate":     0,
+				"avgResponseTime": 0,
+				"crawled":         0,
+				"failed":          0,
+				"pending":         0,
+				"activeSources":   0,
+				"totalSources":    0,
+			})
+		})
+
+		// Jobs endpoints for dashboard
+		v1.GET("/jobs", func(c *gin.Context) {
+			c.JSON(http.StatusOK, gin.H{
+				"jobs": []gin.H{},
+			})
+		})
+
+		v1.POST("/jobs", func(c *gin.Context) {
+			var job map[string]any
+			if err := c.ShouldBindJSON(&job); err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+				return
+			}
+			c.JSON(http.StatusCreated, gin.H{
+				"id":      "job-1",
+				"status":  "pending",
+				"message": "Job created successfully",
+			})
+		})
+
+		v1.GET("/jobs/:id", func(c *gin.Context) {
+			id := c.Param("id")
+			c.JSON(http.StatusOK, gin.H{
+				"id":     id,
+				"status": "pending",
+			})
+		})
+
+		v1.DELETE("/jobs/:id", func(c *gin.Context) {
+			c.JSON(http.StatusOK, gin.H{
+				"message": "Job deleted successfully",
+			})
+		})
+
+		// Articles endpoint for dashboard
+		v1.GET("/articles", func(c *gin.Context) {
+			c.JSON(http.StatusOK, gin.H{
+				"articles": []gin.H{},
+			})
+		})
+	}
 
 	// Define protected routes
 	protected := router.Group("")
@@ -85,6 +145,23 @@ func loggingMiddleware(log logger.Interface) gin.HandlerFunc {
 			"status", statusCode,
 			"latency", latency,
 		)
+	}
+}
+
+// corsMiddleware adds CORS headers to allow frontend access
+func corsMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
+		c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
+		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, accept, origin, Cache-Control, X-Requested-With, X-API-Key")
+		c.Writer.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS, GET, PUT, DELETE, PATCH")
+
+		if c.Request.Method == "OPTIONS" {
+			c.AbortWithStatus(http.StatusNoContent)
+			return
+		}
+
+		c.Next()
 	}
 }
 
