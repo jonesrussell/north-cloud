@@ -5,19 +5,22 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/jonesrussell/gosources/internal/logger"
+	"github.com/jonesrussell/gosources/internal/metadata"
 	"github.com/jonesrussell/gosources/internal/models"
 	"github.com/jonesrussell/gosources/internal/repository"
 )
 
 type SourceHandler struct {
-	repo   *repository.SourceRepository
-	logger logger.Logger
+	repo      *repository.SourceRepository
+	logger    logger.Logger
+	extractor *metadata.Extractor
 }
 
 func NewSourceHandler(repo *repository.SourceRepository, log logger.Logger) *SourceHandler {
 	return &SourceHandler{
-		repo:   repo,
-		logger: log,
+		repo:      repo,
+		logger:    log,
+		extractor: metadata.NewExtractor(log),
 	}
 }
 
@@ -152,4 +155,40 @@ func (h *SourceHandler) GetCities(c *gin.Context) {
 		"cities": cities,
 		"count":  len(cities),
 	})
+}
+
+// FetchMetadata extracts metadata from a URL for form prefilling
+func (h *SourceHandler) FetchMetadata(c *gin.Context) {
+	var request struct {
+		URL string `json:"url" binding:"required"`
+	}
+
+	if err := c.ShouldBindJSON(&request); err != nil {
+		h.logger.Debug("Invalid request body",
+			logger.String("error", err.Error()),
+		)
+		c.JSON(http.StatusBadRequest, gin.H{"error": "URL is required", "details": err.Error()})
+		return
+	}
+
+	h.logger.Info("Fetching metadata",
+		logger.String("url", request.URL),
+	)
+
+	metadata, err := h.extractor.Extract(c.Request.Context(), request.URL)
+	if err != nil {
+		h.logger.Error("Failed to extract metadata",
+			logger.String("url", request.URL),
+			logger.Error(err),
+		)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to extract metadata", "details": err.Error()})
+		return
+	}
+
+	h.logger.Info("Metadata extracted successfully",
+		logger.String("url", request.URL),
+		logger.String("name", metadata.Name),
+	)
+
+	c.JSON(http.StatusOK, metadata)
 }

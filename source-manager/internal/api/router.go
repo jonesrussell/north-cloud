@@ -81,6 +81,7 @@ func NewRouter(db *repository.SourceRepository, cfg *config.Config, log logger.L
 	// Sources endpoints
 	sources := v1.Group("/sources")
 	sources.POST("", sourceHandler.Create)
+	sources.POST("/fetch-metadata", sourceHandler.FetchMetadata)
 	sources.GET("", sourceHandler.List)
 	sources.GET("/:id", sourceHandler.GetByID)
 	sources.PUT("/:id", sourceHandler.Update)
