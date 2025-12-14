@@ -15,7 +15,7 @@ services:
     # Run as host user to avoid permission issues with mounted volumes
     user: "${UID:-1000}:${GID:-1000}"
     ports:
-      - "${CRAWLER_PORT:-8060}:8060"
+      - "${CRAWLER_PORT:-8060}:8080"  # Map host 8060 to container 8080
       - "${CRAWLER_FRONTEND_PORT:-3001}:3000"
     depends_on:
       postgres-crawler:
