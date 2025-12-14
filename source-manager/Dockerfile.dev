@@ -17,8 +17,11 @@ RUN addgroup -g 1000 appuser && \
 
 # Create writable directories with broad permissions for development
 # These support running container as any user via docker-compose user directive
-RUN mkdir -p /app/frontend/node_modules /tmp/go-mod-cache && \
-    chmod -R 777 /app /tmp/go-mod-cache
+RUN mkdir -p /app/frontend/node_modules \
+             /tmp/go-mod-cache \
+             /tmp/go-build-cache \
+             /tmp/npm-cache && \
+    chmod -R 777 /app /tmp
 
 # Set PATH to include Go binaries (needed for non-root user)
 ENV PATH=$PATH:/usr/local/go/bin:/go/bin
