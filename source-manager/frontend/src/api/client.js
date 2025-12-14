@@ -15,6 +15,7 @@ export const sourcesApi = {
   create: (data) => client.post('/api/v1/sources', data).then(res => res.data),
   update: (id, data) => client.put(`/api/v1/sources/${id}`, data).then(res => res.data),
   delete: (id) => client.delete(`/api/v1/sources/${id}`),
+  fetchMetadata: (url) => client.post('/api/v1/sources/fetch-metadata', { url }).then(res => res.data),
 }
 
 export const citiesApi = {

@@ -33,17 +33,36 @@
             />
           </div>
 
-          <div>
+          <div class="sm:col-span-2">
             <label for="url" class="block text-sm font-medium text-gray-700">
               URL <span class="text-red-500">*</span>
             </label>
-            <input
-              id="url"
-              v-model="form.url"
-              type="url"
-              required
-              class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
-            />
+            <div class="mt-1 flex gap-2">
+              <input
+                id="url"
+                v-model="form.url"
+                type="url"
+                required
+                class="flex-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                placeholder="https://example.com"
+              />
+              <button
+                v-if="!isEdit"
+                type="button"
+                @click="fetchMetadata"
+                :disabled="!form.url || fetchingMetadata"
+                class="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <span v-if="fetchingMetadata">Fetching...</span>
+                <span v-else>Prefill</span>
+              </button>
+            </div>
+            <p v-if="metadataFetched" class="mt-1 text-xs text-green-600">
+              Form prefilled from URL metadata
+            </p>
+            <p v-else class="mt-1 text-xs text-gray-500">
+              Enter a URL and click "Prefill" to auto-fill form fields
+            </p>
           </div>
 
           <div>
@@ -616,6 +635,8 @@ const form = ref({
 const loading = ref(false)
 const submitting = ref(false)
 const error = ref(null)
+const fetchingMetadata = ref(false)
+const metadataFetched = ref(false)
 
 // Collapsible sections state
 const showArticleSelectors = ref(false)
@@ -642,6 +663,74 @@ watch(pageExcludeInput, (val) => {
   if (!form.value.selectors.page) form.value.selectors.page = {}
   form.value.selectors.page.exclude = val ? val.split(',').map(s => s.trim()).filter(Boolean) : []
 })
+
+const fetchMetadata = async () => {
+  if (!form.value.url) return
+
+  fetchingMetadata.value = true
+  error.value = null
+  metadataFetched.value = false
+
+  try {
+    const metadata = await sourcesApi.fetchMetadata(form.value.url)
+
+    // Prefill form with metadata
+    if (metadata.name) form.value.name = metadata.name
+    if (metadata.article_index) form.value.article_index = metadata.article_index
+    if (metadata.page_index) form.value.page_index = metadata.page_index
+
+    // Merge selectors (only update if metadata has values)
+    if (metadata.selectors) {
+      if (metadata.selectors.article) {
+        form.value.selectors.article = {
+          ...form.value.selectors.article,
+          ...metadata.selectors.article,
+        }
+      }
+      if (metadata.selectors.list) {
+        form.value.selectors.list = {
+          ...form.value.selectors.list,
+          ...metadata.selectors.list,
+        }
+      }
+      if (metadata.selectors.page) {
+        form.value.selectors.page = {
+          ...form.value.selectors.page,
+          ...metadata.selectors.page,
+        }
+      }
+
+      // Populate exclude fields if present
+      if (metadata.selectors.article?.exclude) {
+        articleExcludeInput.value = metadata.selectors.article.exclude.join(', ')
+      }
+      if (metadata.selectors.list?.exclude_from_list) {
+        listExcludeInput.value = metadata.selectors.list.exclude_from_list.join(', ')
+      }
+      if (metadata.selectors.page?.exclude) {
+        pageExcludeInput.value = metadata.selectors.page.exclude.join(', ')
+      }
+    }
+
+    metadataFetched.value = true
+
+    // Auto-expand selectors sections to show prefilled data
+    if (metadata.selectors?.article && Object.keys(metadata.selectors.article).length > 0) {
+      showArticleSelectors.value = true
+    }
+    if (metadata.selectors?.list && Object.keys(metadata.selectors.list).length > 0) {
+      showListSelectors.value = true
+    }
+    if (metadata.selectors?.page && Object.keys(metadata.selectors.page).length > 0) {
+      showPageSelectors.value = true
+    }
+  } catch (err) {
+    error.value = err.response?.data?.error || err.response?.data?.details || err.message || 'Failed to fetch metadata'
+    metadataFetched.value = false
+  } finally {
+    fetchingMetadata.value = false
+  }
+}
 
 const loadSource = async () => {
   if (!isEdit.value) return
