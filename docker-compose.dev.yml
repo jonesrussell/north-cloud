@@ -73,14 +73,16 @@ services:
       - DB_PASSWORD=${POSTGRES_SOURCE_MANAGER_PASSWORD:-postgres}
       - DB_NAME=${POSTGRES_SOURCE_MANAGER_DB:-gosources}
       - DB_SSLMODE=disable
+      # Use /tmp for Go module cache to avoid permission issues with host user
+      - GOMODCACHE=/tmp/go-mod-cache
     volumes:
       # Mount source code for development
       - ./source-manager:/app
       - /app/vendor  # Exclude vendor directory
       - /app/frontend/node_modules  # Exclude frontend node_modules (installed in container)
       - ./source-manager/migrations:/migrations:ro
-      # Go module cache is in /home/appuser/go-mod-cache (set via GOMODCACHE env)
-      # No volume mount needed - cache will be in container filesystem
+      # Mount Go module cache volume to persist downloads across restarts
+      - source_manager_go_cache:/tmp/go-mod-cache
     working_dir: /app
     # Download dependencies, then start both frontend and backend
     # Use -mod=mod to ignore vendor directory if present
@@ -213,3 +215,4 @@ services:
 volumes:
   # Cache for Go modules to speed up builds when dependencies change
   go_modules_cache:
+  source_manager_go_cache:

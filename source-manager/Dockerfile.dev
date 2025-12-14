@@ -15,27 +15,17 @@ RUN go install github.com/air-verse/air@latest
 RUN addgroup -g 1000 appuser && \
     adduser -D -u 1000 -G appuser appuser
 
-# Create a writable Go module cache directory for non-root user
-RUN mkdir -p /home/appuser/go-mod-cache && \
-    chown -R appuser:appuser /home/appuser
-
-# Create frontend node_modules directory with correct permissions
-# This directory will be excluded from volume mount via docker-compose
-RUN mkdir -p /app/frontend/node_modules && \
-    chown -R appuser:appuser /app
+# Create writable directories with broad permissions for development
+# These support running container as any user via docker-compose user directive
+RUN mkdir -p /app/frontend/node_modules /tmp/go-mod-cache && \
+    chmod -R 777 /app /tmp/go-mod-cache
 
 # Set PATH to include Go binaries (needed for non-root user)
 ENV PATH=$PATH:/usr/local/go/bin:/go/bin
 
-# Set GOMODCACHE to a writable location for non-root user
-ENV GOMODCACHE=/home/appuser/go-mod-cache
-
-# Note: No files are copied here - everything will be mounted as volumes
-# Dependencies will be downloaded at runtime from mounted go.mod/go.sum
-# Source code will be mounted from host filesystem
-
-# Switch to non-root user
-USER appuser
+# Note: GOMODCACHE is set via docker-compose environment variable
+# Note: USER directive is overridden by docker-compose user directive
+# This allows running as host user to avoid permission issues with mounted volumes
 
 EXPOSE 8050 3000
 
