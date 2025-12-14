@@ -58,9 +58,9 @@ type CityConfig struct {
 }
 
 type SourcesConfig struct {
-	URL     string        `yaml:"url"`      // Sources service API URL (e.g., "http://localhost:8080")
-	Timeout time.Duration `yaml:"timeout"`  // Request timeout (default: 5s)
-	Enabled bool          `yaml:"enabled"`  // Enable fetching cities from sources service
+	URL     string        `yaml:"url"`     // Sources service API URL (e.g., "http://localhost:8080")
+	Timeout time.Duration `yaml:"timeout"` // Request timeout (default: 5s)
+	Enabled bool          `yaml:"enabled"` // Enable fetching cities from sources service
 }
 
 // Validate checks if the configuration is valid and returns an error if not.
@@ -188,7 +188,9 @@ func Load(path string) (*Config, error) {
 
 // LoadWithSources loads configuration and optionally fetches cities from sources service.
 // If sources service is enabled and cities are fetched successfully, they override the config file cities.
-func LoadWithSources(path string, sourcesClient interface{ GetCities(context.Context) ([]CityConfig, error) }) (*Config, error) {
+func LoadWithSources(path string, sourcesClient interface {
+	GetCities(context.Context) ([]CityConfig, error)
+}) (*Config, error) {
 	cfg, err := Load(path)
 	if err != nil {
 		return nil, err

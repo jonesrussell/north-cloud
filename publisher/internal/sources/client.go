@@ -100,4 +100,3 @@ func (c *Client) GetCities(ctx context.Context) ([]config.CityConfig, error) {
 
 	return cities, nil
 }
-
