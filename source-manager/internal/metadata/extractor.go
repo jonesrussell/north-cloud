@@ -15,11 +15,11 @@ import (
 
 // MetadataResponse represents suggested values from URL extraction
 type MetadataResponse struct {
-	Name         string                    `json:"name"`
-	URL          string                    `json:"url"`
-	ArticleIndex string                    `json:"article_index"`
-	PageIndex    string                    `json:"page_index"`
-	Selectors    models.SelectorConfig     `json:"selectors"`
+	Name         string                `json:"name"`
+	URL          string                `json:"url"`
+	ArticleIndex string                `json:"article_index"`
+	PageIndex    string                `json:"page_index"`
+	Selectors    models.SelectorConfig `json:"selectors"`
 }
 
 // Extractor handles metadata extraction from URLs
