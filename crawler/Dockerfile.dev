@@ -6,9 +6,8 @@ WORKDIR /app
 # Include Node.js and npm for frontend development
 RUN apk add --no-cache git curl wget nodejs npm
 
-# Install air for hot reloading (optional)
-# For Go 1.24+, use go install
-RUN go install github.com/air-verse/air@latest
+# Note: air for hot reloading is not installed due to Go 1.25+ requirement
+# The container uses `go run` with mounted volumes for live reloading
 
 # Create non-root user for development (used as fallback)
 RUN addgroup -g 1000 appuser && \
