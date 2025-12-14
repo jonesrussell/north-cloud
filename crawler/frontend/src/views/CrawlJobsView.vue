@@ -83,19 +83,73 @@
       </table>
     </div>
 
-    <!-- Create Job Modal (placeholder) -->
+    <!-- Create Job Modal -->
     <div v-if="showCreateModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div class="bg-white rounded-lg p-6 max-w-md w-full">
         <h2 class="text-xl font-bold mb-4">Create Crawl Job</h2>
-        <p class="text-gray-600 mb-4">Job creation form will be implemented based on crawler API requirements.</p>
-        <div class="flex justify-end space-x-2">
-          <button
-            @click="showCreateModal = false"
-            class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
-          >
-            Cancel
-          </button>
-        </div>
+
+        <form @submit.prevent="createJob">
+          <!-- URL Input -->
+          <div class="mb-4">
+            <label for="url" class="block text-sm font-medium text-gray-700 mb-2">
+              URL to Crawl <span class="text-red-500">*</span>
+            </label>
+            <input
+              id="url"
+              v-model="newJob.url"
+              type="url"
+              required
+              placeholder="https://example.com"
+              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              :class="{ 'border-red-500': urlError }"
+            />
+            <p v-if="urlError" class="mt-1 text-sm text-red-600">{{ urlError }}</p>
+          </div>
+
+          <!-- Source Name Input (Optional) -->
+          <div class="mb-4">
+            <label for="source" class="block text-sm font-medium text-gray-700 mb-2">
+              Source Name (Optional)
+            </label>
+            <input
+              id="source"
+              v-model="newJob.source"
+              type="text"
+              placeholder="Enter source name or leave empty"
+              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <p class="mt-1 text-xs text-gray-500">If left empty, the domain will be used</p>
+          </div>
+
+          <!-- Error Message -->
+          <div v-if="createError" class="mb-4 bg-red-50 border border-red-200 rounded-lg p-3 text-red-700 text-sm">
+            {{ createError }}
+          </div>
+
+          <!-- Success Message -->
+          <div v-if="createSuccess" class="mb-4 bg-green-50 border border-green-200 rounded-lg p-3 text-green-700 text-sm">
+            Job created successfully!
+          </div>
+
+          <!-- Form Actions -->
+          <div class="flex justify-end space-x-2">
+            <button
+              type="button"
+              @click="closeCreateModal"
+              class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+              :disabled="creating"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              :disabled="creating"
+            >
+              {{ creating ? 'Creating...' : 'Create Job' }}
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   </div>
@@ -109,6 +163,16 @@ const loading = ref(true)
 const error = ref(null)
 const jobs = ref([])
 const showCreateModal = ref(false)
+const creating = ref(false)
+const createError = ref(null)
+const createSuccess = ref(false)
+const urlError = ref(null)
+
+// New job form data
+const newJob = ref({
+  url: '',
+  source: ''
+})
 
 const loadJobs = async () => {
   try {
@@ -120,6 +184,82 @@ const loadJobs = async () => {
     console.error('Error loading jobs:', err)
   } finally {
     loading.value = false
+  }
+}
+
+const validateUrl = (url) => {
+  try {
+    const parsedUrl = new URL(url)
+    if (!['http:', 'https:'].includes(parsedUrl.protocol)) {
+      return 'URL must use HTTP or HTTPS protocol'
+    }
+    return null
+  } catch (err) {
+    return 'Please enter a valid URL'
+  }
+}
+
+const createJob = async () => {
+  // Reset messages
+  createError.value = null
+  createSuccess.value = false
+  urlError.value = null
+
+  // Validate URL
+  const validationError = validateUrl(newJob.value.url)
+  if (validationError) {
+    urlError.value = validationError
+    return
+  }
+
+  try {
+    creating.value = true
+
+    // Prepare job data
+    const jobData = {
+      url: newJob.value.url.trim()
+    }
+
+    // Add source if provided
+    if (newJob.value.source && newJob.value.source.trim()) {
+      jobData.source = newJob.value.source.trim()
+    }
+
+    // Create the job
+    const result = await crawlerApi.createJob(jobData)
+
+    // Show success message
+    createSuccess.value = true
+
+    // Reset form
+    newJob.value = {
+      url: '',
+      source: ''
+    }
+
+    // Reload jobs list
+    await loadJobs()
+
+    // Close modal after a short delay
+    setTimeout(() => {
+      closeCreateModal()
+    }, 1500)
+  } catch (err) {
+    createError.value = err.response?.data?.error || 'Failed to create job. Please try again.'
+    console.error('Error creating job:', err)
+  } finally {
+    creating.value = false
+  }
+}
+
+const closeCreateModal = () => {
+  showCreateModal.value = false
+  createError.value = null
+  createSuccess.value = false
+  urlError.value = null
+  newJob.value = {
+    url: '',
+    source: ''
   }
 }
 
