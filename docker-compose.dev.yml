@@ -47,7 +47,8 @@ services:
       - crawler_go_mod_cache:/tmp/go-mod-cache
       - crawler_go_build_cache:/tmp/go-build-cache
       - crawler_npm_cache:/tmp/npm-cache
-      - crawler_node_modules:/app/frontend/node_modules
+      # Note: node_modules not mounted separately to avoid permission issues
+      # npm install will create it in the mounted source with correct permissions
     working_dir: /app
     # Download dependencies, then start both frontend and backend
     # Use -mod=mod to ignore vendor directory if present
@@ -238,7 +239,6 @@ volumes:
   crawler_go_mod_cache:
   crawler_go_build_cache:
   crawler_npm_cache:
-  crawler_node_modules:
   # Source manager cache volumes
   source_manager_go_mod_cache:
   source_manager_go_build_cache:
