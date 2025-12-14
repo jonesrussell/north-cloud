@@ -134,3 +134,5 @@ streetcode/web/sites/simpletest
 # source-manager/.git
 # streetcode/.git
 
+crawler/frontend/.vite/deps/_metadata.json
+crawler/frontend/.vite/deps/package.json
