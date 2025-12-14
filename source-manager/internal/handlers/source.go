@@ -175,7 +175,7 @@ func (h *SourceHandler) FetchMetadata(c *gin.Context) {
 		logger.String("url", request.URL),
 	)
 
-	metadata, err := h.extractor.Extract(c.Request.Context(), request.URL)
+	metadataResp, err := h.extractor.Extract(c.Request.Context(), request.URL)
 	if err != nil {
 		h.logger.Error("Failed to extract metadata",
 			logger.String("url", request.URL),
@@ -187,8 +187,8 @@ func (h *SourceHandler) FetchMetadata(c *gin.Context) {
 
 	h.logger.Info("Metadata extracted successfully",
 		logger.String("url", request.URL),
-		logger.String("name", metadata.Name),
+		logger.String("name", metadataResp.Name),
 	)
 
-	c.JSON(http.StatusOK, metadata)
+	c.JSON(http.StatusOK, metadataResp)
 }

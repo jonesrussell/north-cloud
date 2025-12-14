@@ -13,6 +13,11 @@ import (
 	"github.com/jonesrussell/gosources/internal/models"
 )
 
+const (
+	// defaultHTTPTimeout is the default timeout for HTTP requests
+	defaultHTTPTimeout = 30 * time.Second
+)
+
 // MetadataResponse represents suggested values from URL extraction
 type MetadataResponse struct {
 	Name         string                `json:"name"`
@@ -33,7 +38,7 @@ func NewExtractor(log logger.Logger) *Extractor {
 	return &Extractor{
 		logger: log,
 		client: &http.Client{
-			Timeout: 30 * time.Second,
+			Timeout: defaultHTTPTimeout,
 		},
 	}
 }
@@ -51,7 +56,7 @@ func (e *Extractor) Extract(ctx context.Context, sourceURL string) (*MetadataRes
 	}
 
 	// Fetch the page
-	req, err := http.NewRequestWithContext(ctx, "GET", sourceURL, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, sourceURL, http.NoBody)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
@@ -213,35 +218,67 @@ func (e *Extractor) extractStructuredData(doc *goquery.Document, selectors *mode
 		}
 	})
 
-	// Look for common article structures
-	if doc.Find("article").Length() > 0 {
-		selectors.Article.Container = "article"
+	// Extract article selectors
+	e.extractArticleSelectors(doc, selectors)
 
-		// Common title selectors
-		if doc.Find("article h1").Length() > 0 {
-			selectors.Article.Title = "article h1"
-		} else if doc.Find("article .article-title").Length() > 0 {
-			selectors.Article.Title = "article .article-title"
-		}
+	// Extract list selectors
+	e.extractListSelectors(doc, selectors)
+}
 
-		// Common body selectors
-		if doc.Find("article .article-body").Length() > 0 {
-			selectors.Article.Body = "article .article-body"
-		} else if doc.Find("article .content").Length() > 0 {
-			selectors.Article.Body = "article .content"
-		}
-
-		// Common image selectors
-		if doc.Find("article img").Length() > 0 {
-			selectors.Article.Image = "article img"
-		}
+// extractArticleSelectors extracts article-related selectors from the document
+func (e *Extractor) extractArticleSelectors(doc *goquery.Document, selectors *models.SelectorConfig) {
+	articleSelection := doc.Find("article")
+	if articleSelection.Length() == 0 {
+		return
 	}
 
-	// Look for common list structures
+	selectors.Article.Container = "article"
+
+	// Common title selectors
+	e.extractArticleTitle(doc, selectors)
+
+	// Common body selectors
+	e.extractArticleBody(doc, selectors)
+
+	// Common image selectors
+	if doc.Find("article img").Length() > 0 {
+		selectors.Article.Image = "article img"
+	}
+}
+
+// extractArticleTitle extracts title selector from article
+func (e *Extractor) extractArticleTitle(doc *goquery.Document, selectors *models.SelectorConfig) {
+	if doc.Find("article h1").Length() > 0 {
+		selectors.Article.Title = "article h1"
+		return
+	}
+
+	if doc.Find("article .article-title").Length() > 0 {
+		selectors.Article.Title = "article .article-title"
+	}
+}
+
+// extractArticleBody extracts body selector from article
+func (e *Extractor) extractArticleBody(doc *goquery.Document, selectors *models.SelectorConfig) {
+	if doc.Find("article .article-body").Length() > 0 {
+		selectors.Article.Body = "article .article-body"
+		return
+	}
+
+	if doc.Find("article .content").Length() > 0 {
+		selectors.Article.Body = "article .content"
+	}
+}
+
+// extractListSelectors extracts list-related selectors from the document
+func (e *Extractor) extractListSelectors(doc *goquery.Document, selectors *models.SelectorConfig) {
 	if doc.Find(".article-list").Length() > 0 {
 		selectors.List.Container = ".article-list"
 		selectors.List.ArticleList = ".article-list article"
-	} else if doc.Find(".news-list").Length() > 0 {
+		return
+	}
+
+	if doc.Find(".news-list").Length() > 0 {
 		selectors.List.Container = ".news-list"
 		selectors.List.ArticleList = ".news-list article"
 	}
