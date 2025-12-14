@@ -84,12 +84,26 @@ const stats = ref({
 
 const loadHealth = async () => {
   try {
+    console.log('[Dashboard] Loading health...')
     loading.value = true
     error.value = null
     health.value = await crawlerApi.getHealth()
+    console.log('[Dashboard] Health loaded successfully:', health.value)
   } catch (err) {
-    error.value = 'Unable to fetch health status'
-    console.error('Error loading health:', err)
+    const errorDetails = {
+      message: err.message,
+      code: err.code,
+      response: err.response?.status,
+      data: err.response?.data,
+    }
+    console.error('[Dashboard] Error loading health:', err, errorDetails)
+    error.value = `Unable to fetch health status: ${err.message} (${err.code || 'unknown'})`
+
+    // Show detailed error in console for debugging
+    if (err.code === 'ERR_NETWORK') {
+      console.error('[Dashboard] Network error - backend may not be running on port 8060')
+      console.error('[Dashboard] Check: 1) Is crawler container running? 2) Is it listening on :8060? 3) Is port mapped correctly?')
+    }
   } finally {
     loading.value = false
   }
@@ -97,10 +111,13 @@ const loadHealth = async () => {
 
 const loadStats = async () => {
   try {
+    console.log('[Dashboard] Loading stats...')
     const data = await crawlerApi.getStats()
     stats.value = data
+    console.log('[Dashboard] Stats loaded successfully:', stats.value)
   } catch (err) {
-    console.error('Error loading stats:', err)
+    console.error('[Dashboard] Error loading stats:', err)
+    console.error('[Dashboard] Stats endpoint may not be implemented yet - using default values')
     // Keep default values if API not available
   }
 }
