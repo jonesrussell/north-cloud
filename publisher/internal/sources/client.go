@@ -41,7 +41,7 @@ func (c *Client) GetCities(ctx context.Context) ([]config.CityConfig, error) {
 	defer cancel()
 
 	url := fmt.Sprintf("%s/api/v1/cities", c.url)
-	req, err := http.NewRequestWithContext(reqCtx, http.MethodGet, url, nil)
+	req, err := http.NewRequestWithContext(reqCtx, http.MethodGet, url, http.NoBody)
 	if err != nil {
 		return nil, fmt.Errorf("create request: %w", err)
 	}
@@ -74,7 +74,7 @@ func (c *Client) GetCities(ctx context.Context) ([]config.CityConfig, error) {
 	}
 
 	var citiesResp CitiesResponse
-	if err := json.NewDecoder(resp.Body).Decode(&citiesResp); err != nil {
+	if err = json.NewDecoder(resp.Body).Decode(&citiesResp); err != nil {
 		c.logger.Error("Failed to decode cities response",
 			logger.String("url", url),
 			logger.Duration("duration", duration),
