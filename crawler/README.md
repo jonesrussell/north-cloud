@@ -12,9 +12,10 @@ A web crawler and search engine built with Go. It crawls websites, extracts cont
 
 ## Prerequisites
 
-- Go 1.24 or later
+- Go 1.25 or later
+- Node.js 18+ and npm (for frontend dashboard)
 - Elasticsearch 8.x
-- Docker (optional)
+- Docker (optional, recommended for development)
 
 ## Quick Start
 
@@ -29,10 +30,10 @@ cd gocrawl
 go mod download
 ```
 
-3. Configure Elasticsearch:
+3. Create configuration file:
 ```bash
-cp .env.example .env
-# Edit .env with your Elasticsearch settings
+cp config.example.yaml config.yaml
+# Edit config.yaml with your settings (server port, Elasticsearch URL, etc.)
 ```
 
 4. Build and run:
