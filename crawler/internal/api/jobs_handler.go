@@ -1,6 +1,7 @@
 package api
 
 import (
+	"fmt"
 	"net/http"
 	"strconv"
 
@@ -17,12 +18,25 @@ const (
 
 // JobsHandler handles job-related HTTP requests.
 type JobsHandler struct {
-	repo *database.JobRepository
+	repo      *database.JobRepository
+	scheduler SchedulerInterface
+}
+
+// SchedulerInterface defines the interface for scheduling jobs.
+// This allows the handler to trigger job reloads when jobs are created or updated.
+type SchedulerInterface interface {
+	ReloadJob(jobID string) error
 }
 
 // NewJobsHandler creates a new jobs handler.
 func NewJobsHandler(repo *database.JobRepository) *JobsHandler {
 	return &JobsHandler{repo: repo}
+}
+
+// SetScheduler sets the scheduler for the jobs handler.
+// This allows the handler to trigger immediate job reloads.
+func (h *JobsHandler) SetScheduler(scheduler SchedulerInterface) {
+	h.scheduler = scheduler
 }
 
 // ListJobs handles GET /api/v1/jobs
@@ -118,6 +132,34 @@ func (h *JobsHandler) CreateJob(c *gin.Context) {
 		return
 	}
 
+	// If job is scheduled, immediately reload it into the scheduler
+	if job.ScheduleEnabled && job.ScheduleTime != nil && *job.ScheduleTime != "" {
+		if h.scheduler != nil {
+			if err := h.scheduler.ReloadJob(job.ID); err != nil {
+				// Return error to client so they know scheduling failed
+				c.JSON(http.StatusCreated, gin.H{
+					"job":     job,
+					"warning": fmt.Sprintf("Job created but scheduling failed: %v", err),
+				})
+				return
+			}
+		} else {
+			// Scheduler not available - this shouldn't happen in normal operation
+			c.JSON(http.StatusCreated, gin.H{
+				"job":     job,
+				"warning": "Job created but scheduler not available - job will be picked up on next reload",
+			})
+			return
+		}
+	} else if job.ScheduleTime != nil && *job.ScheduleTime != "" && !job.ScheduleEnabled {
+		// Schedule time provided but schedule not enabled - warn user
+		c.JSON(http.StatusCreated, gin.H{
+			"job":     job,
+			"warning": "Schedule time provided but 'Enable scheduled crawling' is not checked - job will not run automatically. Enable the schedule checkbox to activate.",
+		})
+		return
+	}
+
 	c.JSON(http.StatusCreated, job)
 }
 
@@ -170,6 +212,13 @@ func (h *JobsHandler) UpdateJob(c *gin.Context) {
 			"error": "Failed to update job: " + err.Error(),
 		})
 		return
+	}
+
+	// Reload job in scheduler if schedule settings changed
+	if h.scheduler != nil {
+		if err := h.scheduler.ReloadJob(job.ID); err != nil {
+			// Log error but don't fail the request - scheduler will pick it up on next reload
+		}
 	}
 
 	c.JSON(http.StatusOK, job)

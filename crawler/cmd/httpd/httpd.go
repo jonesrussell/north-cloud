@@ -77,6 +77,8 @@ You can send POST requests to /search with a JSON body containing the search par
 					deps.Logger.Error("Failed to start database scheduler", "error", err)
 				} else {
 					deps.Logger.Info("Database scheduler started successfully")
+					// Connect scheduler to jobs handler so it can trigger immediate reloads
+					jobsHandler.SetScheduler(dbScheduler)
 				}
 			}
 		}

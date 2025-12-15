@@ -23,27 +23,33 @@ const (
 
 // DBScheduler implements a database-backed job scheduler.
 type DBScheduler struct {
-	logger         logger.Interface
-	repo           *database.JobRepository
-	crawler        crawler.Interface
-	cron           *cron.Cron
-	activeJobs     map[string]context.CancelFunc
-	activeJobsMu   sync.RWMutex
-	scheduledJobs  map[string]cron.EntryID
+	logger          logger.Interface
+	repo            *database.JobRepository
+	crawler         crawler.Interface
+	cron            *cron.Cron
+	cronParser      cron.Parser
+	activeJobs      map[string]context.CancelFunc
+	activeJobsMu    sync.RWMutex
+	scheduledJobs   map[string]cron.EntryID
 	scheduledJobsMu sync.RWMutex
-	ctx            context.Context
-	cancel         context.CancelFunc
-	wg             sync.WaitGroup
+	ctx             context.Context
+	cancel          context.CancelFunc
+	wg              sync.WaitGroup
 }
 
 // NewDBScheduler creates a new database-backed scheduler.
 func NewDBScheduler(log logger.Interface, repo *database.JobRepository, crawlerInstance crawler.Interface) *DBScheduler {
 	ctx, cancel := context.WithCancel(context.Background())
+	// Use standard 5-field cron parser (minute hour day month weekday)
+	// This is the default, but we're being explicit
+	cronParser := cron.NewParser(cron.Minute | cron.Hour | cron.Dom | cron.Month | cron.Dow)
+	c := cron.New(cron.WithParser(cronParser), cron.WithChain(cron.Recover(cron.DefaultLogger)))
 	return &DBScheduler{
 		logger:        log,
 		repo:          repo,
 		crawler:       crawlerInstance,
-		cron:          cron.New(),
+		cron:          c,
+		cronParser:    cronParser,
 		activeJobs:    make(map[string]context.CancelFunc),
 		scheduledJobs: make(map[string]cron.EntryID),
 		ctx:           ctx,
@@ -57,11 +63,18 @@ func (s *DBScheduler) Start(ctx context.Context) error {
 
 	// Start cron scheduler
 	s.cron.Start()
+	s.logger.Info("Cron scheduler started")
 
 	// Load initial jobs
 	if err := s.reloadJobs(); err != nil {
 		s.logger.Error("Failed to load initial jobs", "error", err)
 	}
+
+	// Log number of scheduled jobs
+	s.scheduledJobsMu.RLock()
+	scheduledCount := len(s.scheduledJobs)
+	s.scheduledJobsMu.RUnlock()
+	s.logger.Info("Scheduled jobs loaded", "count", scheduledCount)
 
 	// Process any immediate jobs that are already pending
 	s.processPendingImmediateJobs()
@@ -135,6 +148,58 @@ func (s *DBScheduler) reloadJobs() error {
 	return nil
 }
 
+// ReloadJob reloads a single job by ID and adds it to the scheduler if it's scheduled.
+// This is useful when a job is created or updated and needs to be immediately scheduled.
+func (s *DBScheduler) ReloadJob(jobID string) error {
+	// Get the job from database
+	job, err := s.repo.GetByID(s.ctx, jobID)
+	if err != nil {
+		return fmt.Errorf("failed to get job: %w", err)
+	}
+
+	s.logger.Debug("Reloading job",
+		"job_id", jobID,
+		"schedule_enabled", job.ScheduleEnabled,
+		"schedule_time", func() string {
+			if job.ScheduleTime != nil {
+				return *job.ScheduleTime
+			}
+			return "nil"
+		}(),
+		"status", job.Status)
+
+	// Remove existing scheduled job if it exists
+	s.scheduledJobsMu.Lock()
+	if entryID, exists := s.scheduledJobs[jobID]; exists {
+		s.logger.Debug("Removing existing scheduled job", "job_id", jobID, "entry_id", entryID)
+		s.cron.Remove(entryID)
+		delete(s.scheduledJobs, jobID)
+	}
+	s.scheduledJobsMu.Unlock()
+
+	// Add the job to scheduler if it's scheduled
+	if job.ScheduleEnabled && job.ScheduleTime != nil && *job.ScheduleTime != "" {
+		if err := s.scheduleJob(job); err != nil {
+			s.logger.Error("Failed to schedule job during reload",
+				"job_id", jobID,
+				"schedule", *job.ScheduleTime,
+				"error", err)
+			return fmt.Errorf("failed to schedule job: %w", err)
+		}
+		s.logger.Info("Job reloaded and scheduled successfully",
+			"job_id", jobID,
+			"schedule", *job.ScheduleTime,
+			"status", job.Status)
+	} else {
+		s.logger.Debug("Job is not scheduled, skipping scheduler registration",
+			"job_id", jobID,
+			"schedule_enabled", job.ScheduleEnabled,
+			"has_schedule_time", job.ScheduleTime != nil && *job.ScheduleTime != "")
+	}
+
+	return nil
+}
+
 // scheduleJob schedules a job using cron.
 func (s *DBScheduler) scheduleJob(job *domain.Job) error {
 	if job.ScheduleTime == nil || *job.ScheduleTime == "" {
@@ -142,20 +207,87 @@ func (s *DBScheduler) scheduleJob(job *domain.Job) error {
 	}
 
 	scheduleTime := *job.ScheduleTime
-	s.logger.Info("Scheduling job", "job_id", job.ID, "schedule", scheduleTime)
+	now := time.Now()
+	s.logger.Info("Scheduling job",
+		"job_id", job.ID,
+		"schedule", scheduleTime,
+		"schedule_enabled", job.ScheduleEnabled,
+		"current_time", now.Format("15:04:05"))
 
-	// Parse cron expression
+	// Parse the cron schedule to get next run time for logging
+	// Use the same parser that the cron instance uses
+	schedule, err := s.cronParser.Parse(scheduleTime)
+	if err != nil {
+		s.logger.Error("Failed to parse cron expression for validation",
+			"job_id", job.ID,
+			"schedule", scheduleTime,
+			"error", err)
+		return fmt.Errorf("failed to parse cron expression: %w", err)
+	}
+
+	nextRun := schedule.Next(now)
+	timeUntilNext := time.Until(nextRun)
+	willRunToday := nextRun.Day() == now.Day() && nextRun.Month() == now.Month() && nextRun.Year() == now.Year()
+
+	s.logger.Info("Cron schedule parsed successfully",
+		"job_id", job.ID,
+		"schedule", scheduleTime,
+		"next_run", nextRun.Format("2006-01-02 15:04:05"),
+		"next_run_relative", timeUntilNext.String(),
+		"will_run_today", willRunToday)
+
+	// Parse cron expression - robfig/cron uses standard 5-field format by default
+	// Format: minute hour day month weekday
+	// Capture job.ID in a local variable to avoid closure issues
+	jobID := job.ID
 	entryID, err := s.cron.AddFunc(scheduleTime, func() {
-		s.executeJob(job.ID)
+		triggerTime := time.Now()
+		s.logger.Info("Cron triggered for job",
+			"job_id", jobID,
+			"schedule", scheduleTime,
+			"triggered_at", triggerTime.Format("2006-01-02 15:04:05"))
+		s.executeJob(jobID)
 	})
 
 	if err != nil {
+		s.logger.Error("Failed to add cron job to scheduler",
+			"job_id", job.ID,
+			"schedule", scheduleTime,
+			"error", err)
 		return fmt.Errorf("failed to add cron job: %w", err)
 	}
 
 	s.scheduledJobsMu.Lock()
 	s.scheduledJobs[job.ID] = entryID
 	s.scheduledJobsMu.Unlock()
+
+	// Log successful scheduling with next run info
+	s.logger.Info("Job successfully scheduled",
+		"job_id", job.ID,
+		"schedule", scheduleTime,
+		"entry_id", entryID,
+		"next_run", nextRun.Format("2006-01-02 15:04:05"),
+		"time_until_next", timeUntilNext.String())
+
+	// If the next run is very soon (within 2 minutes) and today,
+	// the cron library should handle it, but we log it for visibility
+	if willRunToday && timeUntilNext > 0 && timeUntilNext < 2*time.Minute {
+		s.logger.Info("Job scheduled to run very soon",
+			"job_id", job.ID,
+			"next_run", nextRun.Format("15:04:05"),
+			"time_until", timeUntilNext.String())
+	}
+
+	// Check if the next run time is in the past (shouldn't happen, but handle it)
+	if timeUntilNext < 0 {
+		s.logger.Warn("Job next run time is in the past - cron may have calculated incorrectly",
+			"job_id", job.ID,
+			"next_run", nextRun.Format("2006-01-02 15:04:05"),
+			"current_time", now.Format("2006-01-02 15:04:05"),
+			"time_diff", timeUntilNext.String())
+		// The cron library should still schedule it for the next occurrence,
+		// but we log a warning
+	}
 
 	return nil
 }
