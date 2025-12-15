@@ -74,3 +74,7 @@ Creates the `jobs` table for storing crawler jobs with the following fields:
 The migration also creates:
 - Indexes on `source_id`, `status`, and `created_at` for better query performance
 - A trigger to automatically update the `updated_at` timestamp
+
+==========
+
+cd /home/jones/dev/north-cloud/crawler && docker run --rm --network north-cloud_north-cloud-network -v "$(pwd)/migrations:/migrations" migrate/migrate -path /migrations -database "postgresql://postgres:postgres@postgres-crawler:5432/gocrawl?sslmode=disable" up 2>&1
