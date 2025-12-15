@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 
+	infracontext "github.com/north-cloud/infrastructure/context"
 	cmdcommon "github.com/jonesrussell/gocrawl/cmd/common"
 	"github.com/jonesrussell/gocrawl/internal/api"
 	"github.com/jonesrussell/gocrawl/internal/constants"
@@ -106,7 +107,7 @@ You can send POST requests to /search with a JSON body containing the search par
 		case <-cmd.Context().Done():
 			// Graceful shutdown with timeout
 			deps.Logger.Info("Shutdown signal received")
-			shutdownCtx, cancel := context.WithTimeout(context.Background(), constants.DefaultShutdownTimeout)
+			shutdownCtx, cancel := infracontext.WithTimeout(constants.DefaultShutdownTimeout)
 			defer cancel()
 
 			// Stop scheduler first

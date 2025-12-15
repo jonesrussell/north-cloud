@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 
+	infracontext "github.com/north-cloud/infrastructure/context"
 	cmdcommon "github.com/jonesrussell/gocrawl/cmd/common"
 	"github.com/jonesrussell/gocrawl/internal/config"
 	"github.com/jonesrussell/gocrawl/internal/constants"
@@ -81,7 +82,7 @@ func (c *Crawler) Start(ctx context.Context) error {
 	case <-ctx.Done():
 		// Interrupt signal received - graceful shutdown
 		c.logger.Info("Shutdown signal received")
-		shutdownCtx, cancel := context.WithTimeout(context.Background(), constants.DefaultShutdownTimeout)
+		shutdownCtx, cancel := infracontext.WithTimeout(constants.DefaultShutdownTimeout)
 		defer cancel()
 
 		// Stop the job service

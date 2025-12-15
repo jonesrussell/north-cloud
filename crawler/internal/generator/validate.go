@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/PuerkitoBio/goquery"
+	infrahttp "github.com/north-cloud/infrastructure/http"
 	configtypes "github.com/jonesrussell/gocrawl/internal/config/types"
 )
 
@@ -292,9 +293,9 @@ func FetchDocumentForValidation(url string) (*goquery.Document, error) {
 // fetchDocumentForValidation fetches a document for validation.
 func fetchDocumentForValidation(url string) (*goquery.Document, error) {
 	const requestTimeout = 30 * time.Second
-	client := &http.Client{
+	client := infrahttp.NewClient(&infrahttp.ClientConfig{
 		Timeout: requestTimeout,
-	}
+	})
 
 	ctx := context.Background()
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, http.NoBody)

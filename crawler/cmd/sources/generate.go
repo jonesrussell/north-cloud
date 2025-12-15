@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/PuerkitoBio/goquery"
+	infrahttp "github.com/north-cloud/infrastructure/http"
 	"github.com/jonesrussell/gocrawl/internal/generator"
 	"github.com/spf13/cobra"
 )
@@ -198,9 +199,9 @@ func printSuccessMessage() {
 func fetchDocument(url string) (*goquery.Document, error) {
 	ctx := context.Background()
 	const httpTimeout = 30 * time.Second
-	client := &http.Client{
+	client := infrahttp.NewClient(&infrahttp.ClientConfig{
 		Timeout: httpTimeout,
-	}
+	})
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, http.NoBody)
 	if err != nil {

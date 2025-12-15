@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	infracontext "github.com/north-cloud/infrastructure/context"
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq" // PostgreSQL driver
 )
@@ -49,7 +50,7 @@ func NewPostgresConnection(cfg Config) (*sqlx.DB, error) {
 	db.SetConnMaxLifetime(DefaultConnMaxLifetime)
 
 	// Verify connection
-	ctx, cancel := context.WithTimeout(context.Background(), DefaultPingTimeout)
+	ctx, cancel := infracontext.WithPingTimeout()
 	defer cancel()
 
 	if pingErr := db.PingContext(ctx); pingErr != nil {
