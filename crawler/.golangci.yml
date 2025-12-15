@@ -133,6 +133,10 @@ linters:
       min-complexity: 20
     gochecksumtype:
       default-signifies-exhaustive: false
+    gomoddirectives:
+      replace-allow-local: true
+      replace-allow-list:
+        - github.com/north-cloud/infrastructure
     gocritic:
       settings:
         captLocal:
