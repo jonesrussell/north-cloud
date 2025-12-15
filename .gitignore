@@ -103,7 +103,7 @@ node_modules/
 **/node_modules/
 
 # Database dumps
-*.sql
+*.sql.gz
 *.dump
 
 # Generated documentation

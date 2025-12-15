@@ -11,6 +11,7 @@ import (
 	"github.com/jonesrussell/gocrawl/internal/config/app"
 	"github.com/jonesrussell/gocrawl/internal/config/commands"
 	"github.com/jonesrussell/gocrawl/internal/config/crawler"
+	dbconfig "github.com/jonesrussell/gocrawl/internal/config/database"
 	"github.com/jonesrussell/gocrawl/internal/config/elasticsearch"
 	"github.com/jonesrussell/gocrawl/internal/config/logging"
 	"github.com/jonesrussell/gocrawl/internal/config/server"
@@ -30,6 +31,8 @@ type Interface interface {
 	GetCrawlerConfig() *crawler.Config
 	// GetElasticsearchConfig returns the Elasticsearch configuration.
 	GetElasticsearchConfig() *elasticsearch.Config
+	// GetDatabaseConfig returns the database configuration.
+	GetDatabaseConfig() *dbconfig.Config
 	// GetCommand returns the current command.
 	GetCommand() string
 	// GetConfigFile returns the path to the configuration file.
@@ -71,6 +74,8 @@ type Config struct {
 	App *app.Config `yaml:"app"`
 	// Elasticsearch holds Elasticsearch configuration
 	Elasticsearch *elasticsearch.Config `yaml:"elasticsearch"`
+	// Database holds database configuration
+	Database *dbconfig.Config `yaml:"database"`
 	// Command is the current command being executed
 	Command string `yaml:"command"`
 	// logger is the application logger
@@ -179,6 +184,7 @@ func LoadConfig() (*Config, error) {
 		Server:        server.NewConfig(),
 		Elasticsearch: elasticsearch.LoadFromViper(viper.GetViper()),
 		Crawler:       crawler.LoadFromViper(viper.GetViper()),
+		Database:      dbconfig.LoadFromViper(viper.GetViper()),
 		App: &app.Config{
 			Name:        viper.GetString("app.name"),
 			Version:     viper.GetString("app.version"),
@@ -261,6 +267,15 @@ func (c *Config) GetCrawlerConfig() *crawler.Config {
 // GetElasticsearchConfig returns the Elasticsearch configuration.
 func (c *Config) GetElasticsearchConfig() *elasticsearch.Config {
 	return c.Elasticsearch
+}
+
+// GetDatabaseConfig returns the database configuration.
+func (c *Config) GetDatabaseConfig() *dbconfig.Config {
+	if c.Database == nil {
+		// Return default config if not initialized
+		return dbconfig.LoadFromViper(viper.GetViper())
+	}
+	return c.Database
 }
 
 // GetCommand returns the current command.

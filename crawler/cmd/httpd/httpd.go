@@ -10,6 +10,7 @@ import (
 	cmdcommon "github.com/jonesrussell/gocrawl/cmd/common"
 	"github.com/jonesrussell/gocrawl/internal/api"
 	"github.com/jonesrussell/gocrawl/internal/constants"
+	"github.com/jonesrussell/gocrawl/internal/database"
 	"github.com/jonesrussell/gocrawl/internal/storage"
 	"github.com/spf13/cobra"
 )
@@ -36,8 +37,31 @@ You can send POST requests to /search with a JSON body containing the search par
 		// Create search manager
 		searchManager := storage.NewSearchManager(storageResult.Storage, deps.Logger)
 
+		// Initialize database connection
+		dbConfig := database.Config{
+			Host:     deps.Config.GetDatabaseConfig().Host,
+			Port:     deps.Config.GetDatabaseConfig().Port,
+			User:     deps.Config.GetDatabaseConfig().User,
+			Password: deps.Config.GetDatabaseConfig().Password,
+			DBName:   deps.Config.GetDatabaseConfig().DBName,
+			SSLMode:  deps.Config.GetDatabaseConfig().SSLMode,
+		}
+
+		db, err := database.NewPostgresConnection(dbConfig)
+		if err != nil {
+			deps.Logger.Warn("Failed to connect to database, jobs API will use fallback", "error", err)
+		}
+
+		// Create jobs handler if database is available
+		var jobsHandler *api.JobsHandler
+		if db != nil {
+			defer db.Close()
+			jobRepo := database.NewJobRepository(db)
+			jobsHandler = api.NewJobsHandler(jobRepo)
+		}
+
 		// Create HTTP server
-		srv, _, err := api.StartHTTPServer(deps.Logger, searchManager, deps.Config)
+		srv, _, err := api.StartHTTPServer(deps.Logger, searchManager, deps.Config, jobsHandler)
 		if err != nil {
 			return fmt.Errorf("failed to start HTTP server: %w", err)
 		}
