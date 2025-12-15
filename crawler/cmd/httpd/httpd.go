@@ -42,7 +42,7 @@ You can send POST requests to /search with a JSON body containing the search par
 			Host:     deps.Config.GetDatabaseConfig().Host,
 			Port:     deps.Config.GetDatabaseConfig().Port,
 			User:     deps.Config.GetDatabaseConfig().User,
-			Password:deps.Config.GetDatabaseConfig().Password,
+			Password: deps.Config.GetDatabaseConfig().Password,
 			DBName:   deps.Config.GetDatabaseConfig().DBName,
 			SSLMode:  deps.Config.GetDatabaseConfig().SSLMode,
 		}
