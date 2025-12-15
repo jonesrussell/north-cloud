@@ -3,7 +3,6 @@ package drupal
 import (
 	"bytes"
 	"context"
-	"crypto/tls"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -15,6 +14,7 @@ import (
 	"time"
 
 	"github.com/gopost/integration/internal/logger"
+	infrahttp "github.com/north-cloud/infrastructure/http"
 )
 
 type Client struct {
@@ -107,17 +107,9 @@ func NewClient(baseURL, username, token, authMethod string, skipTLSVerify bool, 
 		return nil, errors.New("drupal token is required")
 	}
 
-	client := &http.Client{
-		Timeout: 30 * time.Second,
-	}
-
-	// Skip TLS verification in development mode
+	// Use shared HTTP client factory
+	client := infrahttp.NewClientWithTLS(30*time.Second, skipTLSVerify)
 	if skipTLSVerify {
-		client.Transport = &http.Transport{
-			TLSClientConfig: &tls.Config{
-				InsecureSkipVerify: true,
-			},
-		}
 		log.Warn("TLS certificate verification is disabled",
 			logger.String("base_url", baseURL),
 			logger.String("component", "drupal_client"),

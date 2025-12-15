@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	infracontext "github.com/north-cloud/infrastructure/context"
 	"gopkg.in/yaml.v3"
 )
 
@@ -198,7 +199,7 @@ func LoadWithSources(path string, sourcesClient interface {
 
 	// If sources service is enabled, try to fetch cities
 	if cfg.Sources.Enabled && sourcesClient != nil {
-		ctx, cancel := context.WithTimeout(context.Background(), cfg.Sources.Timeout)
+		ctx, cancel := infracontext.WithTimeout(cfg.Sources.Timeout)
 		defer cancel()
 
 		cities, err := sourcesClient.GetCities(ctx)

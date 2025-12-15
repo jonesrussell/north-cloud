@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"time"
 
+	infrahttp "github.com/north-cloud/infrastructure/http"
 	"github.com/gopost/integration/internal/config"
 	"github.com/gopost/integration/internal/logger"
 )
@@ -46,9 +47,9 @@ func (c *Client) GetCities(ctx context.Context) ([]config.CityConfig, error) {
 		return nil, fmt.Errorf("create request: %w", err)
 	}
 
-	client := &http.Client{
+	client := infrahttp.NewClient(&infrahttp.ClientConfig{
 		Timeout: c.timeout,
-	}
+	})
 
 	start := time.Now()
 	resp, err := client.Do(req)

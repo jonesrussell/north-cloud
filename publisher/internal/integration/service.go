@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/elastic/go-elasticsearch/v8"
+	infracontext "github.com/north-cloud/infrastructure/context"
 	"github.com/gopost/integration/internal/config"
 	"github.com/gopost/integration/internal/dedup"
 	"github.com/gopost/integration/internal/drupal"
@@ -74,7 +75,7 @@ func NewService(cfg *config.Config, log logger.Logger) (*Service, error) {
 	})
 
 	// Test Redis connection
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := infracontext.WithPingTimeout()
 	defer cancel()
 	if err := redisClient.Ping(ctx).Err(); err != nil {
 		return nil, fmt.Errorf("redis connection: %w", err)

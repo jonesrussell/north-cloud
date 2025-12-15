@@ -4,11 +4,14 @@ go 1.25
 
 require (
 	github.com/elastic/go-elasticsearch/v8 v8.19.1
+	github.com/north-cloud/infrastructure v0.0.0
 	github.com/redis/go-redis/v9 v9.17.2
 	go.uber.org/zap v1.27.1
 	golang.org/x/time v0.14.0
 	gopkg.in/yaml.v3 v3.0.1
 )
+
+replace github.com/north-cloud/infrastructure => ../infrastructure
 
 require (
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
