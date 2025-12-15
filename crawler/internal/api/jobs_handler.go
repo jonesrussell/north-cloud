@@ -95,11 +95,19 @@ func (h *JobsHandler) CreateJob(c *gin.Context) {
 	job := &domain.Job{
 		ID:              uuid.New().String(),
 		SourceID:        req.SourceID,
-		SourceName:      req.SourceName,
 		URL:             req.URL,
-		ScheduleTime:    req.ScheduleTime,
 		ScheduleEnabled: req.ScheduleEnabled,
 		Status:          "pending",
+	}
+
+	// Set nullable string fields as pointers
+	if req.SourceName != "" {
+		sourceName := req.SourceName
+		job.SourceName = &sourceName
+	}
+	if req.ScheduleTime != "" {
+		scheduleTime := req.ScheduleTime
+		job.ScheduleTime = &scheduleTime
 	}
 
 	// Save to database
@@ -139,13 +147,15 @@ func (h *JobsHandler) UpdateJob(c *gin.Context) {
 		job.SourceID = req.SourceID
 	}
 	if req.SourceName != "" {
-		job.SourceName = req.SourceName
+		sourceName := req.SourceName
+		job.SourceName = &sourceName
 	}
 	if req.URL != "" {
 		job.URL = req.URL
 	}
 	if req.ScheduleTime != "" {
-		job.ScheduleTime = req.ScheduleTime
+		scheduleTime := req.ScheduleTime
+		job.ScheduleTime = &scheduleTime
 	}
 	if req.ScheduleEnabled != nil {
 		job.ScheduleEnabled = *req.ScheduleEnabled
