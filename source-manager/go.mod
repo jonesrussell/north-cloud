@@ -8,9 +8,12 @@ require (
 	github.com/gin-gonic/gin v1.11.0
 	github.com/google/uuid v1.6.0
 	github.com/lib/pq v1.10.9
+	github.com/north-cloud/infrastructure v0.0.0
 	go.uber.org/zap v1.27.1
 	gopkg.in/yaml.v3 v3.0.1
 )
+
+replace github.com/north-cloud/infrastructure => ../infrastructure
 
 require (
 	github.com/andybalholm/cascadia v1.3.3 // indirect

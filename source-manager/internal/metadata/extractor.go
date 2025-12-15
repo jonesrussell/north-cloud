@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/PuerkitoBio/goquery"
+	infrahttp "github.com/north-cloud/infrastructure/http"
 	"github.com/jonesrussell/gosources/internal/logger"
 	"github.com/jonesrussell/gosources/internal/models"
 )
@@ -37,9 +38,9 @@ type Extractor struct {
 func NewExtractor(log logger.Logger) *Extractor {
 	return &Extractor{
 		logger: log,
-		client: &http.Client{
+		client: infrahttp.NewClient(&infrahttp.ClientConfig{
 			Timeout: defaultHTTPTimeout,
-		},
+		}),
 	}
 }
 

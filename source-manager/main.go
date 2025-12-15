@@ -10,6 +10,7 @@ import (
 	"syscall"
 	"time"
 
+	infracontext "github.com/north-cloud/infrastructure/context"
 	"github.com/jonesrussell/gosources/internal/api"
 	"github.com/jonesrussell/gosources/internal/config"
 	"github.com/jonesrussell/gosources/internal/database"
@@ -111,7 +112,7 @@ func main() {
 	appLogger.Info("Shutting down server")
 
 	// Graceful shutdown
-	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(defaultShutdownTimeout)*time.Second)
+	ctx, cancel := infracontext.WithShutdownTimeout()
 	defer cancel()
 
 	if shutdownErr := srv.Shutdown(ctx); shutdownErr != nil {
