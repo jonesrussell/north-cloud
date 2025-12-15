@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net/url"
 	"strings"
 
 	"github.com/gocolly/colly/v2"
@@ -15,6 +16,7 @@ import (
 	"github.com/jonesrussell/gocrawl/internal/content/contenttype"
 	"github.com/jonesrussell/gocrawl/internal/logger"
 	"github.com/jonesrussell/gocrawl/internal/sources"
+	sourcestypes "github.com/jonesrussell/gocrawl/internal/sources/types"
 )
 
 // HTMLProcessor processes HTML content and delegates to appropriate content processors.
@@ -111,6 +113,48 @@ func (p *HTMLProcessor) ProcessContent(ctx context.Context, ct contenttype.Type,
 	return proc.Process(ctx, contentData)
 }
 
+// findSourceByURL attempts to find a source configuration by matching the URL domain.
+// This is a helper method that finds sources by URL when the source name lookup fails.
+func (p *HTMLProcessor) findSourceByURL(pageURL string) *types.Source {
+	if p.sources == nil {
+		return nil
+	}
+
+	parsedURL, err := url.Parse(pageURL)
+	if err != nil {
+		return nil
+	}
+
+	hostname := parsedURL.Hostname()
+	if hostname == "" {
+		return nil
+	}
+
+	// Get all sources and try to match by domain
+	sourceConfigs, err := p.sources.GetSources()
+	if err != nil {
+		return nil
+	}
+
+	for i := range sourceConfigs {
+		source := &sourceConfigs[i]
+		// Check if domain matches any allowed domain
+		for _, allowedDomain := range source.AllowedDomains {
+			if allowedDomain == hostname || allowedDomain == "*."+hostname {
+				return sourcestypes.ConvertToConfigSource(source)
+			}
+		}
+		// Also check source URL
+		if sourceParsedURL, parseErr := url.Parse(source.URL); parseErr == nil {
+			if sourceParsedURL.Hostname() == hostname {
+				return sourcestypes.ConvertToConfigSource(source)
+			}
+		}
+	}
+
+	return nil
+}
+
 // DetectContentType detects the content type of the given HTML element using selector-based detection.
 func (p *HTMLProcessor) DetectContentType(e *colly.HTMLElement, source *types.Source) contenttype.Type {
 	// e.DOM is a goquery.Selection, and since OnHTML("html") is used,
@@ -124,10 +168,22 @@ func (p *HTMLProcessor) DetectContentType(e *colly.HTMLElement, source *types.So
 	}
 
 	// Strategy 2: Use article selectors to detect content
-	// If the page matches article selectors and has substantial content, it's an article
+	// If source is nil or doesn't have article selectors, try to find it by URL
 	if source == nil || source.Selectors.Article.Body == "" {
-		p.logger.Debug("No source or article body selector defined, defaulting to page")
-		return contenttype.Page
+		// Try to find source by URL from the HTML element
+		if source == nil && e.Request != nil && e.Request.URL != nil {
+			sourceURL := e.Request.URL.String()
+			source = p.findSourceByURL(sourceURL)
+			if source != nil {
+				p.logger.Debug("Found source by URL for content type detection", "url", sourceURL)
+			}
+		}
+
+		// If still no source or no article body selector, default to page
+		if source == nil || source.Selectors.Article.Body == "" {
+			p.logger.Debug("No source or article body selector defined, defaulting to page")
+			return contenttype.Page
+		}
 	}
 
 	// Get article body using the source's body selector
