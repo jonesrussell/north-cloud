@@ -16,7 +16,7 @@ import (
 	"github.com/jonesrussell/gocrawl/internal/crawler/events"
 	"github.com/jonesrussell/gocrawl/internal/database"
 	"github.com/jonesrussell/gocrawl/internal/job"
-	"github.com/jonesrussell/gocrawl/internal/sources/loader"
+	"github.com/jonesrussell/gocrawl/internal/sources"
 	"github.com/jonesrussell/gocrawl/internal/storage"
 	"github.com/spf13/cobra"
 )
@@ -67,7 +67,7 @@ You can send POST requests to /search with a JSON body containing the search par
 			jobsHandler = api.NewJobsHandler(jobRepo)
 
 			// Create crawler for job execution
-			crawlerInstance, err := createCrawlerForJobs(deps, storageResult)
+			crawlerInstance, err := createCrawlerForJobs(&deps, storageResult)
 			if err != nil {
 				deps.Logger.Warn("Failed to create crawler for jobs, scheduler disabled", "error", err)
 			} else {
@@ -140,8 +140,11 @@ func createCrawlerForJobs(deps *cmdcommon.CommandDeps, storageResult *cmdcommon.
 	// Get crawler config
 	crawlerCfg := deps.Config.GetCrawlerConfig()
 
-	// Create source manager using API loader
-	sourceManager := loader.NewAPILoader(deps.Logger, deps.Config)
+	// Create source manager using LoadSources (which uses API loader internally)
+	sourceManager, err := sources.LoadSources(deps.Config, deps.Logger)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load sources: %w", err)
+	}
 
 	// Create article and page services
 	articleService := articles.NewContentService(deps.Logger, storageResult.Storage, constants.DefaultContentIndex)

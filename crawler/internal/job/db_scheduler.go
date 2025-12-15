@@ -63,6 +63,9 @@ func (s *DBScheduler) Start(ctx context.Context) error {
 		s.logger.Error("Failed to load initial jobs", "error", err)
 	}
 
+	// Process any immediate jobs that are already pending
+	s.processPendingImmediateJobs()
+
 	// Start immediate job processor
 	s.wg.Add(1)
 	go s.processImmediateJobs()
@@ -157,10 +160,32 @@ func (s *DBScheduler) scheduleJob(job *domain.Job) error {
 	return nil
 }
 
+// processPendingImmediateJobs processes any immediate jobs that are already pending.
+func (s *DBScheduler) processPendingImmediateJobs() {
+	jobs, err := s.repo.List(s.ctx, "pending", 100, 0)
+	if err != nil {
+		s.logger.Error("Failed to list pending jobs on startup", "error", err)
+		return
+	}
+
+	immediateCount := 0
+	for _, job := range jobs {
+		if !job.ScheduleEnabled {
+			immediateCount++
+			s.logger.Info("Processing pending immediate job on startup", "job_id", job.ID, "url", job.URL)
+			s.executeJob(job.ID)
+		}
+	}
+	if immediateCount > 0 {
+		s.logger.Info("Processed immediate jobs on startup", "count", immediateCount)
+	}
+}
+
 // processImmediateJobs checks for and executes immediate jobs (schedule_enabled: false).
 func (s *DBScheduler) processImmediateJobs() {
 	defer s.wg.Done()
 
+	s.logger.Info("Starting immediate job processor", "check_interval", checkInterval)
 	ticker := time.NewTicker(checkInterval)
 	defer ticker.Stop()
 
@@ -177,11 +202,17 @@ func (s *DBScheduler) processImmediateJobs() {
 				continue
 			}
 
+			s.logger.Debug("Checking for immediate jobs", "pending_count", len(jobs))
+			immediateCount := 0
 			for _, job := range jobs {
 				if !job.ScheduleEnabled {
-					s.logger.Info("Found immediate job", "job_id", job.ID)
+					immediateCount++
+					s.logger.Info("Found immediate job", "job_id", job.ID, "url", job.URL)
 					s.executeJob(job.ID)
 				}
+			}
+			if immediateCount > 0 {
+				s.logger.Info("Processing immediate jobs", "count", immediateCount)
 			}
 		}
 	}
@@ -252,10 +283,18 @@ func (s *DBScheduler) executeJob(jobID string) {
 			s.activeJobsMu.Unlock()
 		}()
 
-		s.logger.Info("Executing job", "job_id", jobID, "url", job.URL)
+		// Validate source name is present
+		if job.SourceName == nil || *job.SourceName == "" {
+			s.logger.Error("Job missing source name", "job_id", jobID)
+			s.updateJobStatus(jobID, "failed", fmt.Errorf("job missing required source_name"))
+			return
+		}
 
-		// Execute crawler
-		if err := s.crawler.Start(jobCtx, job.URL); err != nil {
+		sourceName := *job.SourceName
+		s.logger.Info("Executing job", "job_id", jobID, "source_name", sourceName, "url", job.URL)
+
+		// Execute crawler - Start expects a source name, not a URL
+		if err := s.crawler.Start(jobCtx, sourceName); err != nil {
 			s.logger.Error("Failed to start crawler", "job_id", jobID, "error", err)
 			s.updateJobStatus(jobID, "failed", err)
 			return

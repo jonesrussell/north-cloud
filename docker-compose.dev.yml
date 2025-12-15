@@ -31,8 +31,9 @@ services:
       - APP_ENV=development
       - SERVER_HOST=${CRAWLER_HOST:-0.0.0.0}
       - SERVER_PORT=${CRAWLER_PORT:-8060}
-      # Construct sources API URL from SOURCE_MANAGER_API_URL if CRAWLER_SOURCES_API_URL is not set
-      - CRAWLER_SOURCES_API_URL=${CRAWLER_SOURCES_API_URL:-${SOURCE_MANAGER_API_URL:-http://source-manager:8050}/api/v1/sources}
+      # Use Docker service name for internal communication (source-manager:8050)
+      # SOURCE_MANAGER_API_URL is for external access from host, not for container-to-container
+      - CRAWLER_SOURCES_API_URL=${CRAWLER_SOURCES_API_URL:-http://source-manager:8050/api/v1/sources}
       # Frontend API URL (passed to Vite via VITE_API_URL)
       - VITE_API_URL=${CRAWLER_API_URL:-http://localhost:8060}
       # Use /tmp for caches to avoid permission issues with host user
