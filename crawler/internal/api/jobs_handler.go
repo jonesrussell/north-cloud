@@ -134,16 +134,7 @@ func (h *JobsHandler) CreateJob(c *gin.Context) {
 
 	// If job is scheduled, immediately reload it into the scheduler
 	if job.ScheduleEnabled && job.ScheduleTime != nil && *job.ScheduleTime != "" {
-		if h.scheduler != nil {
-			if err := h.scheduler.ReloadJob(job.ID); err != nil {
-				// Return error to client so they know scheduling failed
-				c.JSON(http.StatusCreated, gin.H{
-					"job":     job,
-					"warning": fmt.Sprintf("Job created but scheduling failed: %v", err),
-				})
-				return
-			}
-		} else {
+		if h.scheduler == nil {
 			// Scheduler not available - this shouldn't happen in normal operation
 			c.JSON(http.StatusCreated, gin.H{
 				"job":     job,
@@ -151,11 +142,25 @@ func (h *JobsHandler) CreateJob(c *gin.Context) {
 			})
 			return
 		}
-	} else if job.ScheduleTime != nil && *job.ScheduleTime != "" && !job.ScheduleEnabled {
-		// Schedule time provided but schedule not enabled - warn user
+		if err := h.scheduler.ReloadJob(job.ID); err != nil {
+			// Return error to client so they know scheduling failed
+			c.JSON(http.StatusCreated, gin.H{
+				"job":     job,
+				"warning": fmt.Sprintf("Job created but scheduling failed: %v", err),
+			})
+			return
+		}
+		c.JSON(http.StatusCreated, job)
+		return
+	}
+
+	// Schedule time provided but schedule not enabled - warn user
+	if job.ScheduleTime != nil && *job.ScheduleTime != "" && !job.ScheduleEnabled {
+		warningMsg := "Schedule time provided but 'Enable scheduled crawling' is not checked - " +
+			"job will not run automatically. Enable the schedule checkbox to activate."
 		c.JSON(http.StatusCreated, gin.H{
 			"job":     job,
-			"warning": "Schedule time provided but 'Enable scheduled crawling' is not checked - job will not run automatically. Enable the schedule checkbox to activate.",
+			"warning": warningMsg,
 		})
 		return
 	}
@@ -207,17 +212,18 @@ func (h *JobsHandler) UpdateJob(c *gin.Context) {
 	}
 
 	// Save changes
-	if err := h.repo.Update(c.Request.Context(), job); err != nil {
+	if updateErr := h.repo.Update(c.Request.Context(), job); updateErr != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Failed to update job: " + err.Error(),
+			"error": "Failed to update job: " + updateErr.Error(),
 		})
 		return
 	}
 
 	// Reload job in scheduler if schedule settings changed
 	if h.scheduler != nil {
-		if err := h.scheduler.ReloadJob(job.ID); err != nil {
+		if reloadErr := h.scheduler.ReloadJob(job.ID); reloadErr != nil {
 			// Log error but don't fail the request - scheduler will pick it up on next reload
+			_ = reloadErr // Error is intentionally ignored
 		}
 	}
 

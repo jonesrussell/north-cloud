@@ -67,14 +67,14 @@ You can send POST requests to /search with a JSON body containing the search par
 			jobsHandler = api.NewJobsHandler(jobRepo)
 
 			// Create crawler for job execution
-			crawlerInstance, err := createCrawlerForJobs(&deps, storageResult)
-			if err != nil {
-				deps.Logger.Warn("Failed to create crawler for jobs, scheduler disabled", "error", err)
+			crawlerInstance, crawlerErr := createCrawlerForJobs(&deps, storageResult)
+			if crawlerErr != nil {
+				deps.Logger.Warn("Failed to create crawler for jobs, scheduler disabled", "error", crawlerErr)
 			} else {
 				// Create and start database scheduler
 				dbScheduler = job.NewDBScheduler(deps.Logger, jobRepo, crawlerInstance)
-				if err := dbScheduler.Start(cmd.Context()); err != nil {
-					deps.Logger.Error("Failed to start database scheduler", "error", err)
+				if startErr := dbScheduler.Start(cmd.Context()); startErr != nil {
+					deps.Logger.Error("Failed to start database scheduler", "error", startErr)
 				} else {
 					deps.Logger.Info("Database scheduler started successfully")
 					// Connect scheduler to jobs handler so it can trigger immediate reloads
@@ -112,8 +112,8 @@ You can send POST requests to /search with a JSON body containing the search par
 			// Stop scheduler first
 			if dbScheduler != nil {
 				deps.Logger.Info("Stopping database scheduler")
-				if err := dbScheduler.Stop(); err != nil {
-					deps.Logger.Error("Failed to stop scheduler", "error", err)
+				if stopErr := dbScheduler.Stop(); stopErr != nil {
+					deps.Logger.Error("Failed to stop scheduler", "error", stopErr)
 				}
 			}
 
@@ -135,7 +135,10 @@ func Command() *cobra.Command {
 }
 
 // createCrawlerForJobs creates a crawler instance for job execution
-func createCrawlerForJobs(deps *cmdcommon.CommandDeps, storageResult *cmdcommon.StorageResult) (crawler.Interface, error) {
+func createCrawlerForJobs(
+	deps *cmdcommon.CommandDeps,
+	storageResult *cmdcommon.StorageResult,
+) (crawler.Interface, error) {
 	// Create event bus
 	bus := events.NewEventBus(deps.Logger)
 

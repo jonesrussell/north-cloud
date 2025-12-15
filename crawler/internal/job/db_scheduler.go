@@ -3,6 +3,7 @@ package job
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 	"time"
@@ -19,6 +20,10 @@ const (
 	checkInterval = 10 * time.Second
 	// reloadInterval is how often to reload job schedules
 	reloadInterval = 5 * time.Minute
+	// maxJobsListLimit is the maximum number of jobs to list when reloading
+	maxJobsListLimit = 1000
+	// pendingJobsListLimit is the limit for listing pending jobs
+	pendingJobsListLimit = 100
 )
 
 // DBScheduler implements a database-backed job scheduler.
@@ -38,7 +43,11 @@ type DBScheduler struct {
 }
 
 // NewDBScheduler creates a new database-backed scheduler.
-func NewDBScheduler(log logger.Interface, repo *database.JobRepository, crawlerInstance crawler.Interface) *DBScheduler {
+func NewDBScheduler(
+	log logger.Interface,
+	repo *database.JobRepository,
+	crawlerInstance crawler.Interface,
+) *DBScheduler {
 	ctx, cancel := context.WithCancel(context.Background())
 	// Use standard 5-field cron parser (minute hour day month weekday)
 	// This is the default, but we're being explicit
@@ -121,7 +130,7 @@ func (s *DBScheduler) reloadJobs() error {
 	s.logger.Info("Reloading jobs from database")
 
 	// Get all jobs
-	jobs, err := s.repo.List(s.ctx, "", 1000, 0)
+	jobs, err := s.repo.List(s.ctx, "", maxJobsListLimit, 0)
 	if err != nil {
 		return fmt.Errorf("failed to list jobs: %w", err)
 	}
@@ -139,8 +148,8 @@ func (s *DBScheduler) reloadJobs() error {
 	// Add scheduled jobs
 	for _, job := range jobs {
 		if job.ScheduleEnabled && job.ScheduleTime != nil && *job.ScheduleTime != "" {
-			if err := s.scheduleJob(job); err != nil {
-				s.logger.Error("Failed to schedule job", "job_id", job.ID, "error", err)
+			if scheduleErr := s.scheduleJob(job); scheduleErr != nil {
+				s.logger.Error("Failed to schedule job", "job_id", job.ID, "error", scheduleErr)
 			}
 		}
 	}
@@ -179,12 +188,12 @@ func (s *DBScheduler) ReloadJob(jobID string) error {
 
 	// Add the job to scheduler if it's scheduled
 	if job.ScheduleEnabled && job.ScheduleTime != nil && *job.ScheduleTime != "" {
-		if err := s.scheduleJob(job); err != nil {
+		if scheduleErr := s.scheduleJob(job); scheduleErr != nil {
 			s.logger.Error("Failed to schedule job during reload",
 				"job_id", jobID,
 				"schedule", *job.ScheduleTime,
-				"error", err)
-			return fmt.Errorf("failed to schedule job: %w", err)
+				"error", scheduleErr)
+			return fmt.Errorf("failed to schedule job: %w", scheduleErr)
 		}
 		s.logger.Info("Job reloaded and scheduled successfully",
 			"job_id", jobID,
@@ -203,7 +212,7 @@ func (s *DBScheduler) ReloadJob(jobID string) error {
 // scheduleJob schedules a job using cron.
 func (s *DBScheduler) scheduleJob(job *domain.Job) error {
 	if job.ScheduleTime == nil || *job.ScheduleTime == "" {
-		return fmt.Errorf("job has no schedule time")
+		return errors.New("job has no schedule time")
 	}
 
 	scheduleTime := *job.ScheduleTime
@@ -294,7 +303,7 @@ func (s *DBScheduler) scheduleJob(job *domain.Job) error {
 
 // processPendingImmediateJobs processes any immediate jobs that are already pending.
 func (s *DBScheduler) processPendingImmediateJobs() {
-	jobs, err := s.repo.List(s.ctx, "pending", 100, 0)
+	jobs, err := s.repo.List(s.ctx, "pending", pendingJobsListLimit, 0)
 	if err != nil {
 		s.logger.Error("Failed to list pending jobs on startup", "error", err)
 		return
@@ -328,7 +337,7 @@ func (s *DBScheduler) processImmediateJobs() {
 			return
 		case <-ticker.C:
 			// Get pending jobs with schedule_enabled: false
-			jobs, err := s.repo.List(s.ctx, "pending", 100, 0)
+			jobs, err := s.repo.List(s.ctx, "pending", pendingJobsListLimit, 0)
 			if err != nil {
 				s.logger.Error("Failed to list pending jobs", "error", err)
 				continue
@@ -393,8 +402,8 @@ func (s *DBScheduler) executeJob(jobID string) {
 	job.Status = "processing"
 	job.StartedAt = &now
 
-	if err := s.repo.Update(s.ctx, job); err != nil {
-		s.logger.Error("Failed to update job status", "job_id", jobID, "error", err)
+	if updateErr := s.repo.Update(s.ctx, job); updateErr != nil {
+		s.logger.Error("Failed to update job status", "job_id", jobID, "error", updateErr)
 		return
 	}
 
@@ -418,7 +427,7 @@ func (s *DBScheduler) executeJob(jobID string) {
 		// Validate source name is present
 		if job.SourceName == nil || *job.SourceName == "" {
 			s.logger.Error("Job missing source name", "job_id", jobID)
-			s.updateJobStatus(jobID, "failed", fmt.Errorf("job missing required source_name"))
+			s.updateJobStatus(jobID, "failed", errors.New("job missing required source_name"))
 			return
 		}
 
@@ -426,16 +435,16 @@ func (s *DBScheduler) executeJob(jobID string) {
 		s.logger.Info("Executing job", "job_id", jobID, "source_name", sourceName, "url", job.URL)
 
 		// Execute crawler - Start expects a source name, not a URL
-		if err := s.crawler.Start(jobCtx, sourceName); err != nil {
-			s.logger.Error("Failed to start crawler", "job_id", jobID, "error", err)
-			s.updateJobStatus(jobID, "failed", err)
+		if startErr := s.crawler.Start(jobCtx, sourceName); startErr != nil {
+			s.logger.Error("Failed to start crawler", "job_id", jobID, "error", startErr)
+			s.updateJobStatus(jobID, "failed", startErr)
 			return
 		}
 
 		// Wait for crawler to complete
-		if err := s.crawler.Wait(); err != nil {
-			s.logger.Error("Crawler failed", "job_id", jobID, "error", err)
-			s.updateJobStatus(jobID, "failed", err)
+		if waitErr := s.crawler.Wait(); waitErr != nil {
+			s.logger.Error("Crawler failed", "job_id", jobID, "error", waitErr)
+			s.updateJobStatus(jobID, "failed", waitErr)
 			return
 		}
 
