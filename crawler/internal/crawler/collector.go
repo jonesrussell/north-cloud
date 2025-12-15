@@ -14,7 +14,6 @@ import (
 	"github.com/jonesrussell/gocrawl/internal/common/transport"
 	configtypes "github.com/jonesrussell/gocrawl/internal/config/types"
 	"github.com/jonesrussell/gocrawl/internal/constants"
-	"github.com/jonesrussell/gocrawl/internal/logger"
 )
 
 // CollectorConfig holds configuration for the collector.

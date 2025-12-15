@@ -2,7 +2,6 @@
 package httpd
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"net/http"

@@ -2,7 +2,6 @@
 package crawler
 
 import (
-	"context"
 	"fmt"
 
 	colly "github.com/gocolly/colly/v2"

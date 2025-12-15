@@ -5,16 +5,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	colly "github.com/gocolly/colly/v2"
 	"github.com/jonesrussell/gocrawl/internal/config/crawler"
 	configtypes "github.com/jonesrussell/gocrawl/internal/config/types"
-	"github.com/jonesrussell/gocrawl/internal/constants"
 	"github.com/jonesrussell/gocrawl/internal/content"
-	"github.com/jonesrussell/gocrawl/internal/content/contenttype"
 	"github.com/jonesrussell/gocrawl/internal/crawler/events"
 	"github.com/jonesrussell/gocrawl/internal/domain"
 	"github.com/jonesrussell/gocrawl/internal/logger"
@@ -137,8 +135,6 @@ type Interface interface {
 }
 
 const (
-	// RandomDelayDivisor is used to calculate random delay from rate limit
-	RandomDelayDivisor = 2
 	// collectorTimeoutDuration is the timeout for waiting for collector to finish after cancellation
 	collectorTimeoutDuration = 2 * time.Second
 	// collectorCompletionTimeout is the timeout for waiting for collector to finish in normal case
