@@ -369,6 +369,10 @@ func (c *Crawler) Start(ctx context.Context, sourceName string) error {
 		"debug_enabled", c.cfg.Debug,
 	)
 
+	// Create a new done channel for this execution to support concurrent jobs
+	c.done = make(chan struct{})
+	c.doneOnce = sync.Once{}
+
 	// Initialize abort channel
 	c.abortChan = make(chan struct{})
 	var abortChanOnce sync.Once
@@ -550,13 +554,11 @@ func (c *Crawler) Stop(ctx context.Context) error {
 }
 
 // Wait waits for the crawler to complete.
-// Since Start() already waits for the collector to finish, this method
-// just ensures the done channel is closed to signal completion.
+// Since Start() already waits for the collector to finish and closes the done channel,
+// this method just waits for the done channel to be closed (which happens in Start()).
 func (c *Crawler) Wait() error {
-	// Close the done channel to signal completion (safe to call multiple times)
-	c.doneOnce.Do(func() {
-		close(c.done)
-	})
+	// Wait for the done channel to be closed (Start() handles closing it)
+	<-c.done
 	return nil
 }
 
