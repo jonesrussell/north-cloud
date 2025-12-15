@@ -30,8 +30,11 @@ func getCORSOrigins() []string {
 		return origins
 	}
 
-	// Default origins
-	origins := []string{"http://localhost:3000"}
+	// Default origins - include both source-manager and crawler frontends
+	origins := []string{
+		"http://localhost:3000", // Source manager frontend
+		"http://localhost:3001", // Crawler frontend
+	}
 
 	// If SOURCE_MANAGER_API_URL is set, extract host and add frontend origin
 	if apiURL := os.Getenv("SOURCE_MANAGER_API_URL"); apiURL != "" {
@@ -41,6 +44,7 @@ func getCORSOrigins() []string {
 			if len(parts) > 0 {
 				host := parts[0]
 				origins = append(origins, "http://"+host+":3000")
+				origins = append(origins, "http://"+host+":3001")
 			}
 		}
 	}
@@ -58,7 +62,7 @@ func NewRouter(db *repository.SourceRepository, cfg *config.Config, log logger.L
 		AllowHeaders: []string{
 			"Origin", "Content-Type", "Content-Length", "Accept-Encoding",
 			"X-CSRF-Token", "Authorization", "accept", "origin",
-			"Cache-Control", "X-Requested-With",
+			"Cache-Control", "X-Requested-With", "X-API-Key",
 		},
 		ExposeHeaders:    []string{"Content-Length"},
 		AllowCredentials: true,
