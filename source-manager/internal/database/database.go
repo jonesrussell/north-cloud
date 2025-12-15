@@ -4,10 +4,10 @@ import (
 	"database/sql"
 	"fmt"
 
-	infracontext "github.com/north-cloud/infrastructure/context"
 	"github.com/jonesrussell/gosources/internal/config"
 	"github.com/jonesrussell/gosources/internal/logger"
 	_ "github.com/lib/pq" //nolint:blankimports // PostgreSQL driver
+	infracontext "github.com/north-cloud/infrastructure/context"
 )
 
 const (

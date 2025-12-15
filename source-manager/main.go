@@ -1,26 +1,23 @@
 package main
 
 import (
-	"context"
 	"flag"
 	"fmt"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 
-	infracontext "github.com/north-cloud/infrastructure/context"
 	"github.com/jonesrussell/gosources/internal/api"
 	"github.com/jonesrussell/gosources/internal/config"
 	"github.com/jonesrussell/gosources/internal/database"
 	"github.com/jonesrussell/gosources/internal/logger"
 	"github.com/jonesrussell/gosources/internal/repository"
+	infracontext "github.com/north-cloud/infrastructure/context"
 )
 
 var (
-	version                = "dev"
-	defaultShutdownTimeout = 10
+	version = "dev"
 )
 
 func main() {

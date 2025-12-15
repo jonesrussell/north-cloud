@@ -9,9 +9,9 @@ import (
 	"time"
 
 	"github.com/PuerkitoBio/goquery"
-	infrahttp "github.com/north-cloud/infrastructure/http"
 	"github.com/jonesrussell/gosources/internal/logger"
 	"github.com/jonesrussell/gosources/internal/models"
+	infrahttp "github.com/north-cloud/infrastructure/http"
 )
 
 const (
