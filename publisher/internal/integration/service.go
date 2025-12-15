@@ -66,13 +66,13 @@ func NewService(cfg *config.Config, log logger.Logger) (*Service, error) {
 
 	esClient, err := elasticsearch.NewClient(esCfg)
 	if err != nil {
-		return nil, fmt.Errorf("%w: %v", ErrElasticsearchQuery, err)
+		return nil, fmt.Errorf("%w: %w", ErrElasticsearchQuery, err)
 	}
 
 	// Initialize Drupal client
 	drupalClient, err := drupal.NewClient(cfg.Drupal.URL, cfg.Drupal.Username, cfg.Drupal.Token, cfg.Drupal.AuthMethod, cfg.Drupal.SkipTLSVerify, log)
 	if err != nil {
-		return nil, fmt.Errorf("%w: %v", ErrDrupalPostFailed, err)
+		return nil, fmt.Errorf("%w: %w", ErrDrupalPostFailed, err)
 	}
 
 	// Initialize Redis for deduplication
@@ -224,7 +224,7 @@ func (s *Service) FindCrimeArticles(ctx context.Context, cityCfg config.CityConf
 			logger.Duration("query_duration", queryDuration),
 			logger.Error(err),
 		)
-		return nil, fmt.Errorf("%w: %v", ErrElasticsearchQuery, err)
+		return nil, fmt.Errorf("%w: %w", ErrElasticsearchQuery, err)
 	}
 	defer res.Body.Close()
 
