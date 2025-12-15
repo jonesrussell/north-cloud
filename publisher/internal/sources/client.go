@@ -7,9 +7,9 @@ import (
 	"net/http"
 	"time"
 
-	infrahttp "github.com/north-cloud/infrastructure/http"
 	"github.com/gopost/integration/internal/config"
 	"github.com/gopost/integration/internal/logger"
+	infrahttp "github.com/north-cloud/infrastructure/http"
 )
 
 type Client struct {

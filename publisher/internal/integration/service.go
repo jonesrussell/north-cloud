@@ -10,11 +10,11 @@ import (
 	"time"
 
 	"github.com/elastic/go-elasticsearch/v8"
-	infracontext "github.com/north-cloud/infrastructure/context"
 	"github.com/gopost/integration/internal/config"
 	"github.com/gopost/integration/internal/dedup"
 	"github.com/gopost/integration/internal/drupal"
 	"github.com/gopost/integration/internal/logger"
+	infracontext "github.com/north-cloud/infrastructure/context"
 	"github.com/redis/go-redis/v9"
 	"golang.org/x/time/rate"
 )

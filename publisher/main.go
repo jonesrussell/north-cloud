@@ -9,11 +9,11 @@ import (
 	"syscall"
 	"time"
 
-	infracontext "github.com/north-cloud/infrastructure/context"
 	"github.com/gopost/integration/internal/config"
 	"github.com/gopost/integration/internal/integration"
 	"github.com/gopost/integration/internal/logger"
 	"github.com/gopost/integration/internal/sources"
+	infracontext "github.com/north-cloud/infrastructure/context"
 )
 
 var (

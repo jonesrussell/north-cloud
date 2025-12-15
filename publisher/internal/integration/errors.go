@@ -22,4 +22,3 @@ var (
 	// ErrInvalidCityConfig is returned when city configuration is invalid
 	ErrInvalidCityConfig = errors.New("invalid city configuration")
 )
-

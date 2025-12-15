@@ -49,4 +49,3 @@ type SearchResult struct {
 	Total int
 	Hits  []Article
 }
-
