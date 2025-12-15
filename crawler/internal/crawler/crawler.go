@@ -791,20 +791,63 @@ func (c *Crawler) SetCollector(collector *colly.Collector) {
 // getSourceConfig gets the source configuration for the current source
 func (c *Crawler) getSourceConfig() *configtypes.Source {
 	sourceName := c.state.CurrentSource()
-	if sourceName == "" || c.sources == nil {
+
+	c.logger.Debug("Getting source configuration",
+		"source_name", sourceName,
+		"sources_manager_nil", c.sources == nil)
+
+	if sourceName == "" {
+		c.logger.Debug("Source name is empty, cannot get source configuration")
 		return nil
 	}
+
+	if c.sources == nil {
+		c.logger.Debug("Sources manager is nil, cannot get source configuration",
+			"source_name", sourceName)
+		return nil
+	}
+
 	sourceConfig := c.sources.FindByName(sourceName)
 	if sourceConfig == nil {
+		c.logger.Debug("Source not found by name",
+			"source_name", sourceName,
+			"search_method", "FindByName")
 		return nil
 	}
+
+	c.logger.Debug("Source found by name",
+		"source_name", sourceName,
+		"source_id", sourceConfig.ID,
+		"source_url", sourceConfig.URL,
+		"has_article_body_selector", func() bool {
+			config := sourcestypes.ConvertToConfigSource(sourceConfig)
+			return config != nil && config.Selectors.Article.Body != ""
+		}())
+
 	// Convert to configtypes.Source
 	return sourcestypes.ConvertToConfigSource(sourceConfig)
 }
 
 // selectProcessor selects the appropriate processor for the given HTML element
 func (c *Crawler) selectProcessor(e *colly.HTMLElement) content.Processor {
+	// Get URL for logging
+	pageURL := ""
+	if e.Request != nil && e.Request.URL != nil {
+		pageURL = e.Request.URL.String()
+	}
+
 	source := c.getSourceConfig()
+
+	c.logger.Debug("Selecting processor for HTML element",
+		"url", pageURL,
+		"source_found_by_name", source != nil,
+		"current_source_name", c.state.CurrentSource(),
+		"source_name", func() string {
+			if source != nil {
+				return source.Name
+			}
+			return "nil"
+		}())
 
 	// If source not found by name, try to find it by URL
 	if source == nil && e.Request != nil && e.Request.URL != nil {
@@ -812,23 +855,46 @@ func (c *Crawler) selectProcessor(e *colly.HTMLElement) content.Processor {
 		// Use HTMLProcessor's findSourceByURL method via DetectContentType fallback
 		// The DetectContentType method will handle finding source by URL if source is nil
 		c.logger.Debug("Source not found by name, will try URL-based lookup in DetectContentType",
-			"url", sourceURL)
+			"url", sourceURL,
+			"current_source_name", c.state.CurrentSource())
 	}
 
 	contentType := c.htmlProcessor.DetectContentType(e, source)
 
+	c.logger.Debug("Content type detected",
+		"content_type", contentType,
+		"url", pageURL,
+		"source_name", func() string {
+			if source != nil {
+				return source.Name
+			}
+			return "nil"
+		}())
+
 	// Try to get a processor for the specific content type
 	processor := c.getProcessorForType(contentType)
 	if processor != nil {
+		c.logger.Debug("Processor found for content type",
+			"content_type", contentType,
+			"processor_type", fmt.Sprintf("%T", processor),
+			"url", pageURL)
 		return processor
 	}
 
 	// Fallback: Try additional processors
 	for _, p := range c.processors {
 		if p.CanProcess(contentType) {
+			c.logger.Debug("Fallback processor found",
+				"content_type", contentType,
+				"processor_type", fmt.Sprintf("%T", p),
+				"url", pageURL)
 			return p
 		}
 	}
+
+	c.logger.Debug("No processor found for content type",
+		"content_type", contentType,
+		"url", pageURL)
 
 	return nil
 }
