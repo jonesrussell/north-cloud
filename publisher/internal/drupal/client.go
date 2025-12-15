@@ -17,6 +17,12 @@ import (
 	infrahttp "github.com/north-cloud/infrastructure/http"
 )
 
+// HTTP status code constants
+const (
+	// HTTPBadRequestStatus is the HTTP status code for bad requests (400)
+	HTTPBadRequestStatus = 400
+)
+
 type Client struct {
 	baseURL    string
 	username   string
@@ -182,6 +188,134 @@ func (c *Client) getCSRFToken(ctx context.Context) (string, error) {
 	return csrfToken, nil
 }
 
+// buildArticlePayload builds the Drupal JSON:API payload from an ArticleRequest
+func (c *Client) buildArticlePayload(req ArticleRequest) ([]byte, error) {
+	drupalArticle := DrupalArticle{}
+	c.mapArticleFields(req, &drupalArticle)
+
+	// field_group is optional - only include if GroupID is provided
+	// Drupal JSON:API expects relationship format with type and id (UUID)
+	if req.GroupID != "" && req.GroupType != "" {
+		groupItem := GroupReference{
+			Type: req.GroupType,
+			ID:   req.GroupID, // Use UUID, not numeric ID
+		}
+
+		// Note: Drupal should handle UUID to numeric ID mapping automatically.
+		// If meta.drupal_internal__target_id is needed, it should be fetched
+		// dynamically by querying the group endpoint with the UUID.
+
+		drupalArticle.Data.Relationships.FieldGroup = &struct {
+			Data []GroupReference `json:"data"`
+		}{
+			Data: []GroupReference{groupItem},
+		}
+	}
+
+	payload, err := json.Marshal(drupalArticle)
+	if err != nil {
+		return nil, fmt.Errorf("marshal payload: %w", err)
+	}
+
+	return payload, nil
+}
+
+// buildEndpointURL constructs the JSON:API endpoint URL for the given content type
+func (c *Client) buildEndpointURL(contentType string) string {
+	endpoint := fmt.Sprintf("%s/jsonapi/node/article", c.baseURL)
+	if contentType != "node--article" {
+		// Extract content type from "node--article" format
+		ct := contentType
+		if len(ct) > 5 && ct[:5] == "node--" {
+			ct = ct[5:]
+		}
+		endpoint = fmt.Sprintf("%s/jsonapi/node/%s", c.baseURL, ct)
+	}
+	return endpoint
+}
+
+// createHTTPRequest creates an HTTP POST request for posting an article to Drupal
+func (c *Client) createHTTPRequest(ctx context.Context, endpoint string, payload []byte) (*http.Request, error) {
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, bytes.NewBuffer(payload))
+	if err != nil {
+		return nil, fmt.Errorf("create request: %w", err)
+	}
+
+	httpReq.Header.Set("Content-Type", "application/vnd.api+json")
+	httpReq.Header.Set("Accept", "application/vnd.api+json")
+	c.setAuthHeaders(httpReq)
+
+	// Fetch and include CSRF token for POST requests
+	csrfToken, csrfErr := c.getCSRFToken(ctx)
+	if csrfErr != nil {
+		c.logger.Warn("Failed to fetch CSRF token, proceeding without it",
+			logger.String("endpoint", endpoint),
+			logger.Error(csrfErr),
+		)
+	} else {
+		httpReq.Header.Set("X-CSRF-Token", csrfToken)
+		c.logger.Debug("Included CSRF token in request",
+			logger.String("endpoint", endpoint),
+		)
+	}
+
+	return httpReq, nil
+}
+
+// parseDrupalErrorResponse parses an error response from Drupal API
+func (c *Client) parseDrupalErrorResponse(resp *http.Response, req ArticleRequest, requestDuration time.Duration) error {
+	// Read the full response body for debugging
+	bodyBytes, _ := io.ReadAll(resp.Body)
+	bodyStr := string(bodyBytes)
+
+	var drupalResp DrupalResponse
+	decodeErr := json.NewDecoder(bytes.NewReader(bodyBytes)).Decode(&drupalResp)
+
+	methodLogger := c.logger.With(
+		logger.String("method", "PostArticle"),
+	)
+
+	if decodeErr == nil && len(drupalResp.Errors) > 0 {
+		// Log all validation errors, not just the first one
+		errorDetails := make([]string, len(drupalResp.Errors))
+		for i, err := range drupalResp.Errors {
+			errorDetails[i] = fmt.Sprintf("%s: %s", err.Title, err.Detail)
+		}
+		allErrors := strings.Join(errorDetails, "; ")
+
+		errorDetail := drupalResp.Errors[0]
+		methodLogger.Error("Drupal API validation error",
+			logger.String("endpoint", c.buildEndpointURL(req.ContentType)),
+			logger.String("article_title", req.Title),
+			logger.String("group_type", req.GroupType),
+			logger.String("group_id", req.GroupID),
+			logger.Int("status_code", resp.StatusCode),
+			logger.String("status", resp.Status),
+			logger.Int("error_count", len(drupalResp.Errors)),
+			logger.String("all_errors", allErrors),
+			logger.String("error_status", errorDetail.Status),
+			logger.String("error_title", errorDetail.Title),
+			logger.String("error_detail", errorDetail.Detail),
+			logger.String("response_body", bodyStr),
+			logger.Duration("request_duration", requestDuration),
+		)
+		return fmt.Errorf("drupal API error (%d): %s - %s",
+			resp.StatusCode,
+			errorDetail.Title,
+			allErrors)
+	}
+
+	methodLogger.Error("Drupal API error",
+		logger.String("endpoint", c.buildEndpointURL(req.ContentType)),
+		logger.String("article_title", req.Title),
+		logger.Int("status_code", resp.StatusCode),
+		logger.String("status", resp.Status),
+		logger.Duration("request_duration", requestDuration),
+		logger.Error(decodeErr),
+	)
+	return fmt.Errorf("drupal API error: %d %s", resp.StatusCode, resp.Status)
+}
+
 // mapArticleFields maps ArticleRequest fields to DrupalArticle attributes
 func (c *Client) mapArticleFields(req ArticleRequest, drupalArticle *DrupalArticle) {
 	drupalArticle.Data.Type = req.ContentType
@@ -256,39 +390,15 @@ func (c *Client) PostArticle(ctx context.Context, req ArticleRequest) error {
 		logger.String("method", "PostArticle"),
 	)
 
-	drupalArticle := DrupalArticle{}
-	c.mapArticleFields(req, &drupalArticle)
-
-	// field_group is optional - only include if GroupID is provided
-	// Drupal JSON:API expects relationship format with type and id (UUID)
-	if req.GroupID != "" && req.GroupType != "" {
-		groupItem := GroupReference{
-			Type: req.GroupType,
-			ID:   req.GroupID, // Use UUID, not numeric ID
-		}
-
-		// Include meta.drupal_internal__target_id if we know it
-		// For UUID e3d024a6-5f6f-4be8-8f3d-75639075959c, the numeric ID is 1
-		// TODO: Fetch group by UUID to get the numeric ID dynamically
-		if req.GroupID == "e3d024a6-5f6f-4be8-8f3d-75639075959c" {
-			groupItem.Meta.DrupalInternalTargetID = 1
-		}
-
-		drupalArticle.Data.Relationships.FieldGroup = &struct {
-			Data []GroupReference `json:"data"`
-		}{
-			Data: []GroupReference{groupItem},
-		}
-	}
-
-	payload, err := json.Marshal(drupalArticle)
+	// Build the payload
+	payload, err := c.buildArticlePayload(req)
 	if err != nil {
-		methodLogger.Error("Failed to marshal article payload",
+		methodLogger.Error("Failed to build article payload",
 			logger.String("title", req.Title),
 			logger.String("content_type", req.ContentType),
 			logger.Error(err),
 		)
-		return fmt.Errorf("marshal payload: %w", err)
+		return fmt.Errorf("build payload: %w", err)
 	}
 
 	// Debug: Log the payload to verify group relationship
@@ -299,15 +409,7 @@ func (c *Client) PostArticle(ctx context.Context, req ArticleRequest) error {
 	)
 
 	// Construct endpoint URL
-	endpoint := fmt.Sprintf("%s/jsonapi/node/article", c.baseURL)
-	if req.ContentType != "node--article" {
-		// Extract content type from "node--article" format
-		contentType := req.ContentType
-		if len(contentType) > 5 && contentType[:5] == "node--" {
-			contentType = contentType[5:]
-		}
-		endpoint = fmt.Sprintf("%s/jsonapi/node/%s", c.baseURL, contentType)
-	}
+	endpoint := c.buildEndpointURL(req.ContentType)
 
 	methodLogger.Debug("Posting article to Drupal",
 		logger.String("endpoint", endpoint),
@@ -319,34 +421,18 @@ func (c *Client) PostArticle(ctx context.Context, req ArticleRequest) error {
 		logger.Int("payload_size", len(payload)),
 	)
 
-	httpReq, httpErr := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, bytes.NewBuffer(payload))
-	if httpErr != nil {
+	// Create HTTP request
+	httpReq, err := c.createHTTPRequest(ctx, endpoint, payload)
+	if err != nil {
 		methodLogger.Error("Failed to create HTTP request",
 			logger.String("endpoint", endpoint),
 			logger.String("title", req.Title),
-			logger.Error(httpErr),
+			logger.Error(err),
 		)
-		return fmt.Errorf("create request: %w", httpErr)
+		return fmt.Errorf("create request: %w", err)
 	}
 
-	httpReq.Header.Set("Content-Type", "application/vnd.api+json")
-	httpReq.Header.Set("Accept", "application/vnd.api+json")
-	c.setAuthHeaders(httpReq)
-
-	// Fetch and include CSRF token for POST requests
-	csrfToken, csrfErr := c.getCSRFToken(ctx)
-	if csrfErr != nil {
-		methodLogger.Warn("Failed to fetch CSRF token, proceeding without it",
-			logger.String("endpoint", endpoint),
-			logger.Error(csrfErr),
-		)
-	} else {
-		httpReq.Header.Set("X-CSRF-Token", csrfToken)
-		methodLogger.Debug("Included CSRF token in request",
-			logger.String("endpoint", endpoint),
-		)
-	}
-
+	// Execute HTTP request
 	requestStartTime := time.Now()
 	resp, err := c.client.Do(httpReq)
 	requestDuration := time.Since(requestStartTime)
@@ -362,58 +448,14 @@ func (c *Client) PostArticle(ctx context.Context, req ArticleRequest) error {
 	}
 	defer resp.Body.Close()
 
-	const badRequestStatusCode = 400
-	if resp.StatusCode >= badRequestStatusCode {
-		// Read the full response body for debugging
-		bodyBytes, _ := io.ReadAll(resp.Body)
-		bodyStr := string(bodyBytes)
-
-		var drupalResp DrupalResponse
-		decodeErr := json.NewDecoder(bytes.NewReader(bodyBytes)).Decode(&drupalResp)
-
-		if decodeErr == nil && len(drupalResp.Errors) > 0 {
-			// Log all validation errors, not just the first one
-			errorDetails := make([]string, len(drupalResp.Errors))
-			for i, err := range drupalResp.Errors {
-				errorDetails[i] = fmt.Sprintf("%s: %s", err.Title, err.Detail)
-			}
-			allErrors := strings.Join(errorDetails, "; ")
-
-			errorDetail := drupalResp.Errors[0]
-			methodLogger.Error("Drupal API validation error",
-				logger.String("endpoint", endpoint),
-				logger.String("article_title", req.Title),
-				logger.String("group_type", req.GroupType),
-				logger.String("group_id", req.GroupID),
-				logger.Int("status_code", resp.StatusCode),
-				logger.String("status", resp.Status),
-				logger.Int("error_count", len(drupalResp.Errors)),
-				logger.String("all_errors", allErrors),
-				logger.String("error_status", errorDetail.Status),
-				logger.String("error_title", errorDetail.Title),
-				logger.String("error_detail", errorDetail.Detail),
-				logger.String("response_body", bodyStr),
-				logger.Duration("request_duration", requestDuration),
-			)
-			return fmt.Errorf("drupal API error (%d): %s - %s",
-				resp.StatusCode,
-				errorDetail.Title,
-				allErrors)
-		}
-
-		methodLogger.Error("Drupal API error",
-			logger.String("endpoint", endpoint),
-			logger.String("article_title", req.Title),
-			logger.Int("status_code", resp.StatusCode),
-			logger.String("status", resp.Status),
-			logger.Duration("request_duration", requestDuration),
-			logger.Error(decodeErr),
-		)
-		return fmt.Errorf("drupal API error: %d %s", resp.StatusCode, resp.Status)
+	// Handle error responses
+	if resp.StatusCode >= HTTPBadRequestStatus {
+		return c.parseDrupalErrorResponse(resp, req, requestDuration)
 	}
 
+	// Parse successful response
 	var drupalResp DrupalResponse
-	if decodeErr := json.NewDecoder(resp.Body).Decode(&drupalResp); decodeErr != nil {
+	if err := json.NewDecoder(resp.Body).Decode(&drupalResp); err != nil {
 		totalDuration := time.Since(startTime)
 		methodLogger.Error("Failed to decode Drupal response",
 			logger.String("endpoint", endpoint),
@@ -421,9 +463,9 @@ func (c *Client) PostArticle(ctx context.Context, req ArticleRequest) error {
 			logger.Int("status_code", resp.StatusCode),
 			logger.Duration("request_duration", requestDuration),
 			logger.Duration("total_duration", totalDuration),
-			logger.Error(decodeErr),
+			logger.Error(err),
 		)
-		return fmt.Errorf("decode response: %w", decodeErr)
+		return fmt.Errorf("decode response: %w", err)
 	}
 
 	totalDuration := time.Since(startTime)
@@ -462,8 +504,7 @@ func (c *Client) doJSONAPIRequest(ctx context.Context, endpoint string) (map[str
 		return nil, fmt.Errorf("read response: %w", readErr)
 	}
 
-	const badRequestStatusCode = 400
-	if resp.StatusCode >= badRequestStatusCode {
+	if resp.StatusCode >= HTTPBadRequestStatus {
 		return nil, fmt.Errorf("HTTP %d: %s", resp.StatusCode, string(bodyBytes))
 	}
 

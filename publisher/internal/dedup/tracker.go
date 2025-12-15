@@ -130,7 +130,7 @@ func (t *Tracker) FlushAll(ctx context.Context) error {
 	for {
 		var keys []string
 		var err error
-		const scanBatchSize = 100
+		const scanBatchSize = 100 // TODO: Move to constant or config
 		keys, cursor, err = t.client.Scan(ctx, cursor, pattern, scanBatchSize).Result()
 		if err != nil {
 			t.logger.Error("Redis error scanning for keys",
