@@ -3,6 +3,7 @@ package database
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 
 	"github.com/jmoiron/sqlx"
@@ -58,7 +59,7 @@ func (r *JobRepository) GetByID(ctx context.Context, id string) (*domain.Job, er
 
 	err := r.db.GetContext(ctx, &job, query, id)
 	if err != nil {
-		if err == sql.ErrNoRows {
+		if errors.Is(err, sql.ErrNoRows) {
 			return nil, fmt.Errorf("job not found: %s", id)
 		}
 		return nil, fmt.Errorf("failed to get job: %w", err)
@@ -71,7 +72,7 @@ func (r *JobRepository) GetByID(ctx context.Context, id string) (*domain.Job, er
 func (r *JobRepository) List(ctx context.Context, status string, limit, offset int) ([]*domain.Job, error) {
 	var jobs []*domain.Job
 	var query string
-	var args []interface{}
+	var args []any
 
 	if status != "" {
 		query = `
@@ -82,7 +83,7 @@ func (r *JobRepository) List(ctx context.Context, status string, limit, offset i
 			ORDER BY created_at DESC
 			LIMIT $2 OFFSET $3
 		`
-		args = []interface{}{status, limit, offset}
+		args = []any{status, limit, offset}
 	} else {
 		query = `
 			SELECT id, source_id, source_name, url, schedule_time, schedule_enabled, status,
@@ -91,7 +92,7 @@ func (r *JobRepository) List(ctx context.Context, status string, limit, offset i
 			ORDER BY created_at DESC
 			LIMIT $1 OFFSET $2
 		`
-		args = []interface{}{limit, offset}
+		args = []any{limit, offset}
 	}
 
 	err := r.db.SelectContext(ctx, &jobs, query, args...)
@@ -172,14 +173,14 @@ func (r *JobRepository) Delete(ctx context.Context, id string) error {
 func (r *JobRepository) Count(ctx context.Context, status string) (int, error) {
 	var count int
 	var query string
-	var args []interface{}
+	var args []any
 
 	if status != "" {
 		query = `SELECT COUNT(*) FROM jobs WHERE status = $1`
-		args = []interface{}{status}
+		args = []any{status}
 	} else {
 		query = `SELECT COUNT(*) FROM jobs`
-		args = []interface{}{}
+		args = []any{}
 	}
 
 	err := r.db.GetContext(ctx, &count, query, args...)

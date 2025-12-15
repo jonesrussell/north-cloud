@@ -151,6 +151,10 @@ const (
 	collectorCompletionTimeout = 5 * time.Minute
 	// cleanupTimeoutDuration is the timeout for waiting for cleanup goroutine to finish
 	cleanupTimeoutDuration = 5 * time.Second
+	// nilString is the string representation of nil
+	nilString = "nil"
+	// timeoutWarningInterval is the interval for logging timeout warnings
+	timeoutWarningInterval = 30 * time.Second
 )
 
 // Crawler implements the Processor interface for web crawling.
@@ -380,6 +384,52 @@ func (c *Crawler) Start(ctx context.Context, sourceName string) error {
 	var abortChanOnce sync.Once
 
 	// Start cleanup goroutine
+	cleanupDone := c.startCleanupGoroutine(ctx)
+
+	// Ensure abortChan is closed on exit
+	defer func() {
+		abortChanOnce.Do(func() {
+			close(c.abortChan)
+		})
+	}()
+
+	// Validate and setup
+	source, err := c.validateAndSetup(ctx, sourceName)
+	if err != nil {
+		return err
+	}
+
+	// Visit the source URL
+	if visitErr := c.collector.Visit(source.URL); visitErr != nil {
+		return fmt.Errorf("failed to visit source URL: %w", visitErr)
+	}
+
+	// Wait for collector to complete
+	if waitErr := c.waitForCollector(ctx, sourceName, &abortChanOnce); waitErr != nil {
+		return waitErr
+	}
+
+	// Signal cleanup goroutine to stop
+	abortChanOnce.Do(func() {
+		close(c.abortChan)
+	})
+
+	// Wait for cleanup goroutine to finish
+	c.waitForCleanup(ctx, cleanupDone)
+
+	// Stop the crawler state
+	c.state.Stop()
+
+	// Signal completion by closing the done channel
+	c.doneOnce.Do(func() {
+		close(c.done)
+	})
+
+	return nil
+}
+
+// startCleanupGoroutine starts a goroutine for periodic cleanup.
+func (c *Crawler) startCleanupGoroutine(ctx context.Context) chan struct{} {
 	cleanupDone := make(chan struct{})
 	go func() {
 		ticker := time.NewTicker(c.cfg.CleanupInterval)
@@ -397,24 +447,20 @@ func (c *Crawler) Start(ctx context.Context, sourceName string) error {
 			}
 		}
 	}()
+	return cleanupDone
+}
 
-	// Ensure abortChan is closed on exit
-	defer func() {
-		abortChanOnce.Do(func() {
-			close(c.abortChan)
-		})
-	}()
-
+// validateAndSetup validates the source and sets up the collector.
+func (c *Crawler) validateAndSetup(ctx context.Context, sourceName string) (*configtypes.Source, error) {
 	// Validate source
 	source, err := c.sources.ValidateSource(ctx, sourceName, c.indexManager)
 	if err != nil {
-		return fmt.Errorf("failed to validate source: %w", err)
+		return nil, fmt.Errorf("failed to validate source: %w", err)
 	}
 
 	// Set up collector
-	err = c.setupCollector(source)
-	if err != nil {
-		return fmt.Errorf("failed to setup collector: %w", err)
+	if setupErr := c.setupCollector(source); setupErr != nil {
+		return nil, fmt.Errorf("failed to setup collector: %w", setupErr)
 	}
 
 	// Set up callbacks
@@ -423,138 +469,160 @@ func (c *Crawler) Start(ctx context.Context, sourceName string) error {
 	// Start the crawler state
 	c.state.Start(ctx, sourceName)
 
-	// Visit the source URL
-	if visitErr := c.collector.Visit(source.URL); visitErr != nil {
-		return fmt.Errorf("failed to visit source URL: %w", visitErr)
-	}
-
-	// Log collector state before waiting
 	c.logger.Debug("Starting to wait for collector to complete",
 		"source", sourceName,
 		"url", source.URL)
 
-	// Wait for the crawler to finish, but respect context cancellation
-	// Run Wait() in a goroutine so we can check for context cancellation
+	return source, nil
+}
+
+// waitForCollector waits for the collector to complete, handling timeouts and cancellations.
+func (c *Crawler) waitForCollector(ctx context.Context, sourceName string, abortChanOnce *sync.Once) error {
 	waitDone := make(chan struct{})
 	waitStartTime := time.Now()
-	timeoutWarningSent := &atomic.Bool{}
 
-	go func() {
-		c.logger.Debug("Calling collector.Wait()")
-		c.collector.Wait()
-		waitDuration := time.Since(waitStartTime)
-		c.logger.Debug("Collector.Wait() completed",
-			"duration", waitDuration,
-			"source", sourceName)
-		close(waitDone)
-	}()
+	// Start collector wait goroutine
+	go c.runCollectorWait(waitDone, sourceName, waitStartTime)
 
-	// Start a goroutine to log timeout warnings if collector takes too long
-	timeoutTicker := time.NewTicker(30 * time.Second)
+	// Start timeout warning goroutine
+	timeoutTicker := time.NewTicker(timeoutWarningInterval)
 	defer timeoutTicker.Stop()
-	go func() {
-		for {
-			select {
-			case <-waitDone:
-				return
-			case <-ctx.Done():
-				return
-			case <-timeoutTicker.C:
-				waitDuration := time.Since(waitStartTime)
-				if waitDuration > collectorCompletionTimeout/2 && !timeoutWarningSent.Load() {
-					timeoutWarningSent.Store(true)
-					c.logger.Warn("Collector is taking longer than expected",
-						"duration", waitDuration,
-						"source", sourceName,
-						"warning", "If this continues, collector may be hanging")
-				}
+	go c.logTimeoutWarnings(ctx, waitDone, waitStartTime, sourceName, timeoutTicker)
+
+	// Wait for completion, cancellation, or timeout
+	return c.handleCollectorCompletion(ctx, waitDone, waitStartTime, sourceName, abortChanOnce)
+}
+
+// runCollectorWait runs the collector wait in a goroutine.
+func (c *Crawler) runCollectorWait(waitDone chan struct{}, sourceName string, waitStartTime time.Time) {
+	c.logger.Debug("Calling collector.Wait()")
+	c.collector.Wait()
+	waitDuration := time.Since(waitStartTime)
+	c.logger.Debug("Collector.Wait() completed",
+		"duration", waitDuration,
+		"source", sourceName)
+	close(waitDone)
+}
+
+// logTimeoutWarnings logs warnings if the collector takes too long.
+func (c *Crawler) logTimeoutWarnings(
+	ctx context.Context,
+	waitDone chan struct{},
+	waitStartTime time.Time,
+	sourceName string,
+	ticker *time.Ticker,
+) {
+	timeoutWarningSent := &atomic.Bool{}
+	for {
+		select {
+		case <-waitDone:
+			return
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			waitDuration := time.Since(waitStartTime)
+			if waitDuration > collectorCompletionTimeout/2 && !timeoutWarningSent.Load() {
+				timeoutWarningSent.Store(true)
+				c.logger.Warn("Collector is taking longer than expected",
+					"duration", waitDuration,
+					"source", sourceName,
+					"warning", "If this continues, collector may be hanging")
 			}
 		}
-	}()
+	}
+}
 
-	// Wait for either completion or context cancellation
+// handleCollectorCompletion handles the completion, cancellation, or timeout of the collector.
+func (c *Crawler) handleCollectorCompletion(
+	ctx context.Context,
+	waitDone chan struct{},
+	waitStartTime time.Time,
+	sourceName string,
+	abortChanOnce *sync.Once,
+) error {
 	select {
 	case <-waitDone:
-		// Collector finished normally
 		waitDuration := time.Since(waitStartTime)
 		c.logger.Info("Collector finished normally",
 			"duration", waitDuration,
 			"source", sourceName)
+		return nil
 	case <-ctx.Done():
-		// Context was cancelled - abort all pending requests
-		c.logger.Info("Context cancelled, aborting collector",
-			"source", sourceName)
-		// Signal abort to stop new requests (safe to call multiple times)
-		abortChanOnce.Do(func() {
-			close(c.abortChan)
-		})
-		// Wait a bit for in-flight requests to abort, then return
-		select {
-		case <-waitDone:
-			// Collector finished after abort
-			waitDuration := time.Since(waitStartTime)
-			c.logger.Info("Collector finished after abort",
-				"duration", waitDuration,
-				"source", sourceName)
-		case <-time.After(collectorTimeoutDuration):
-			// Timeout waiting for collector to finish
-			waitDuration := time.Since(waitStartTime)
-			c.logger.Warn("Collector did not finish within timeout after cancellation",
-				"timeout", collectorTimeoutDuration,
-				"duration", waitDuration,
-				"source", sourceName)
-		}
-		return ctx.Err()
+		return c.handleContextCancellation(ctx, waitDone, waitStartTime, sourceName, abortChanOnce)
 	case <-time.After(collectorCompletionTimeout):
-		// Timeout in normal case - collector may be hanging
-		waitDuration := time.Since(waitStartTime)
-		c.logger.Error("Collector did not finish within completion timeout, forcing completion",
-			"timeout", collectorCompletionTimeout,
-			"duration", waitDuration,
-			"source", sourceName,
-			"error", "Collector appears to be hanging - proceeding with cleanup")
-		// Signal abort to stop any pending requests
-		abortChanOnce.Do(func() {
-			close(c.abortChan)
-		})
-		// Wait a short time for abort to take effect, then proceed
-		select {
-		case <-waitDone:
-			c.logger.Info("Collector finished after timeout abort",
-				"duration", time.Since(waitStartTime),
-				"source", sourceName)
-		case <-time.After(collectorTimeoutDuration):
-			c.logger.Warn("Collector did not respond to abort, proceeding anyway",
-				"source", sourceName)
-		}
+		return c.handleCollectorTimeout(waitDone, waitStartTime, sourceName, abortChanOnce)
 	}
+}
 
-	// Signal cleanup goroutine to stop by closing abortChan
-	// This will cause the cleanup goroutine to exit (safe to call multiple times)
+// handleContextCancellation handles context cancellation.
+func (c *Crawler) handleContextCancellation(
+	ctx context.Context,
+	waitDone chan struct{},
+	waitStartTime time.Time,
+	sourceName string,
+	abortChanOnce *sync.Once,
+) error {
+	c.logger.Info("Context cancelled, aborting collector", "source", sourceName)
 	abortChanOnce.Do(func() {
 		close(c.abortChan)
 	})
 
-	// Wait for cleanup goroutine to finish
+	select {
+	case <-waitDone:
+		waitDuration := time.Since(waitStartTime)
+		c.logger.Info("Collector finished after abort",
+			"duration", waitDuration,
+			"source", sourceName)
+	case <-time.After(collectorTimeoutDuration):
+		waitDuration := time.Since(waitStartTime)
+		c.logger.Warn("Collector did not finish within timeout after cancellation",
+			"timeout", collectorTimeoutDuration,
+			"duration", waitDuration,
+			"source", sourceName)
+	}
+	return ctx.Err()
+}
+
+// handleCollectorTimeout handles collector timeout.
+func (c *Crawler) handleCollectorTimeout(
+	waitDone chan struct{},
+	waitStartTime time.Time,
+	sourceName string,
+	abortChanOnce *sync.Once,
+) error {
+	waitDuration := time.Since(waitStartTime)
+	c.logger.Error("Collector did not finish within completion timeout, forcing completion",
+		"timeout", collectorCompletionTimeout,
+		"duration", waitDuration,
+		"source", sourceName,
+		"error", "Collector appears to be hanging - proceeding with cleanup")
+
+	abortChanOnce.Do(func() {
+		close(c.abortChan)
+	})
+
+	select {
+	case <-waitDone:
+		c.logger.Info("Collector finished after timeout abort",
+			"duration", time.Since(waitStartTime),
+			"source", sourceName)
+	case <-time.After(collectorTimeoutDuration):
+		c.logger.Warn("Collector did not respond to abort, proceeding anyway",
+			"source", sourceName)
+	}
+	return nil
+}
+
+// waitForCleanup waits for the cleanup goroutine to finish.
+func (c *Crawler) waitForCleanup(ctx context.Context, cleanupDone chan struct{}) {
 	select {
 	case <-cleanupDone:
 		c.logger.Debug("Cleanup goroutine finished")
 	case <-ctx.Done():
-		return ctx.Err()
+		// Context cancelled, but we'll continue with cleanup
 	case <-time.After(cleanupTimeoutDuration):
-		// Timeout after 5 seconds - cleanup goroutine should have finished by now
 		c.logger.Warn("Cleanup goroutine did not finish within timeout")
 	}
-
-	// Stop the crawler state
-	c.state.Stop()
-
-	// Signal completion by closing the done channel
-	c.doneOnce.Do(func() {
-		close(c.done)
-	})
-
-	return nil
 }
 
 // cleanupResources performs periodic cleanup of crawler resources
@@ -845,7 +913,7 @@ func (c *Crawler) selectProcessor(e *colly.HTMLElement) content.Processor {
 			if source != nil {
 				return source.Name
 			}
-			return "nil"
+			return nilString
 		}())
 
 	// If source not found by name, try to find it by URL
@@ -867,7 +935,7 @@ func (c *Crawler) selectProcessor(e *colly.HTMLElement) content.Processor {
 			if source != nil {
 				return source.Name
 			}
-			return "nil"
+			return nilString
 		}())
 
 	// Try to get a processor for the specific content type

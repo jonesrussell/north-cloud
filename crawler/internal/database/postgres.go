@@ -10,6 +10,17 @@ import (
 	_ "github.com/lib/pq" // PostgreSQL driver
 )
 
+const (
+	// DefaultMaxOpenConns is the default maximum number of open connections
+	DefaultMaxOpenConns = 25
+	// DefaultMaxIdleConns is the default maximum number of idle connections
+	DefaultMaxIdleConns = 5
+	// DefaultConnMaxLifetime is the default maximum connection lifetime
+	DefaultConnMaxLifetime = 5 * time.Minute
+	// DefaultPingTimeout is the default timeout for ping operations
+	DefaultPingTimeout = 5 * time.Second
+)
+
 // Config holds database configuration.
 type Config struct {
 	Host     string
@@ -33,16 +44,16 @@ func NewPostgresConnection(cfg Config) (*sqlx.DB, error) {
 	}
 
 	// Set connection pool settings
-	db.SetMaxOpenConns(25)
-	db.SetMaxIdleConns(5)
-	db.SetConnMaxLifetime(5 * time.Minute)
+	db.SetMaxOpenConns(DefaultMaxOpenConns)
+	db.SetMaxIdleConns(DefaultMaxIdleConns)
+	db.SetConnMaxLifetime(DefaultConnMaxLifetime)
 
 	// Verify connection
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), DefaultPingTimeout)
 	defer cancel()
 
-	if err := db.PingContext(ctx); err != nil {
-		return nil, fmt.Errorf("failed to ping database: %w", err)
+	if pingErr := db.PingContext(ctx); pingErr != nil {
+		return nil, fmt.Errorf("failed to ping database: %w", pingErr)
 	}
 
 	return db, nil

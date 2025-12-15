@@ -150,46 +150,81 @@ func (p *HTMLProcessor) findSourceByURL(pageURL string) *types.Source {
 
 	for i := range sourceConfigs {
 		source := &sourceConfigs[i]
-		p.logger.Debug("Checking source",
-			"source_name", source.Name,
-			"allowed_domains", source.AllowedDomains,
-			"source_url", source.URL)
-
-		// Check if domain matches any allowed domain
-		for _, allowedDomain := range source.AllowedDomains {
-			exactMatch := allowedDomain == hostname
-			wildcardMatch := allowedDomain == "*."+hostname
-
-			if exactMatch || wildcardMatch {
-				p.logger.Debug("Domain match found",
-					"source_name", source.Name,
-					"matched_domain", allowedDomain,
-					"hostname", hostname,
-					"match_type", func() string {
-						if exactMatch {
-							return "exact"
-						}
-						return "wildcard"
-					}())
-				return sourcestypes.ConvertToConfigSource(source)
-			}
+		if matched := p.matchSourceByDomain(source, hostname); matched != nil {
+			return matched
 		}
-
-		// Also check source URL
-		if sourceParsedURL, parseErr := url.Parse(source.URL); parseErr == nil {
-			sourceHostname := sourceParsedURL.Hostname()
-			if sourceHostname == hostname {
-				p.logger.Debug("Source URL hostname match found",
-					"source_name", source.Name,
-					"source_hostname", sourceHostname,
-					"target_hostname", hostname)
-				return sourcestypes.ConvertToConfigSource(source)
-			}
+		if matched := p.matchSourceByURL(source, hostname); matched != nil {
+			return matched
 		}
 	}
 
 	p.logger.Debug("No source found matching URL", "hostname", hostname, "checked_sources", len(sourceConfigs))
 	return nil
+}
+
+// matchSourceByDomain checks if a source matches by allowed domains.
+func (p *HTMLProcessor) matchSourceByDomain(source *sourcestypes.SourceConfig, hostname string) *types.Source {
+	p.logger.Debug("Checking source",
+		"source_name", source.Name,
+		"allowed_domains", source.AllowedDomains,
+		"source_url", source.URL)
+
+	for _, allowedDomain := range source.AllowedDomains {
+		exactMatch := allowedDomain == hostname
+		wildcardMatch := allowedDomain == "*."+hostname
+
+		if exactMatch || wildcardMatch {
+			matchType := "wildcard"
+			if exactMatch {
+				matchType = "exact"
+			}
+			p.logger.Debug("Domain match found",
+				"source_name", source.Name,
+				"matched_domain", allowedDomain,
+				"hostname", hostname,
+				"match_type", matchType)
+			return sourcestypes.ConvertToConfigSource(source)
+		}
+	}
+	return nil
+}
+
+// matchSourceByURL checks if a source matches by source URL hostname.
+func (p *HTMLProcessor) matchSourceByURL(source *sourcestypes.SourceConfig, hostname string) *types.Source {
+	sourceParsedURL, parseErr := url.Parse(source.URL)
+	if parseErr != nil {
+		return nil
+	}
+
+	sourceHostname := sourceParsedURL.Hostname()
+	if sourceHostname == hostname {
+		p.logger.Debug("Source URL hostname match found",
+			"source_name", source.Name,
+			"source_hostname", sourceHostname,
+			"target_hostname", hostname)
+		return sourcestypes.ConvertToConfigSource(source)
+	}
+	return nil
+}
+
+// tryFindSourceByURL attempts to find a source by URL from the HTML element.
+func (p *HTMLProcessor) tryFindSourceByURL(e *colly.HTMLElement) *types.Source {
+	if e.Request == nil || e.Request.URL == nil {
+		return nil
+	}
+
+	sourceURL := e.Request.URL.String()
+	source := p.findSourceByURL(sourceURL)
+	if source != nil {
+		p.logger.Debug("Found source by URL for content type detection",
+			"url", sourceURL,
+			"source_name", source.Name,
+			"has_article_body_selector", source.Selectors.Article.Body != "",
+			"article_body_selector", source.Selectors.Article.Body)
+	} else {
+		p.logger.Debug("No source found by URL lookup", "url", sourceURL)
+	}
+	return source
 }
 
 // DetectContentType detects the content type of the given HTML element using selector-based detection.
@@ -210,7 +245,7 @@ func (p *HTMLProcessor) DetectContentType(e *colly.HTMLElement, source *types.So
 			if source != nil {
 				return source.Name
 			}
-			return "nil"
+			return nilString
 		}())
 
 	// Strategy 1: Check Open Graph type metadata
@@ -221,50 +256,26 @@ func (p *HTMLProcessor) DetectContentType(e *colly.HTMLElement, source *types.So
 	}
 
 	// Strategy 2: Use article selectors to detect content
-	// If source is nil or doesn't have article selectors, try to find it by URL
-	if source == nil || source.Selectors.Article.Body == "" {
-		// Log the initial state
-		if source == nil {
-			p.logger.Debug("Source is nil, attempting URL-based lookup", "url", pageURL)
-		} else {
-			p.logger.Debug("Source provided but article body selector is empty",
-				"source_name", source.Name,
-				"article_body_selector", source.Selectors.Article.Body,
-				"url", pageURL)
-		}
-
-		// Try to find source by URL from the HTML element
-		if source == nil && e.Request != nil && e.Request.URL != nil {
-			sourceURL := e.Request.URL.String()
-			source = p.findSourceByURL(sourceURL)
-			if source != nil {
-				p.logger.Debug("Found source by URL for content type detection",
-					"url", sourceURL,
-					"source_name", source.Name,
-					"has_article_body_selector", source.Selectors.Article.Body != "",
-					"article_body_selector", source.Selectors.Article.Body)
-			} else {
-				p.logger.Debug("No source found by URL lookup", "url", sourceURL)
-			}
-		}
-
-		// If still no source or no article body selector, default to page
+	// If source is nil, try to find it by URL
+	if source == nil {
+		source = p.tryFindSourceByURL(e)
 		if source == nil {
 			p.logger.Debug("Defaulting to page: source is nil after lookup attempts",
 				"url", pageURL,
 				"reason", "source_nil")
 			return contenttype.Page
 		}
+	}
 
-		if source.Selectors.Article.Body == "" {
-			p.logger.Debug("Defaulting to page: article body selector is empty",
-				"url", pageURL,
-				"source_name", source.Name,
-				"reason", "empty_article_body_selector",
-				"has_list_container_selector", source.Selectors.List.Container != "",
-				"has_article_title_selector", source.Selectors.Article.Title != "")
-			return contenttype.Page
-		}
+	// Check if source has article body selector
+	if source.Selectors.Article.Body == "" {
+		p.logger.Debug("Defaulting to page: article body selector is empty",
+			"url", pageURL,
+			"source_name", source.Name,
+			"reason", "empty_article_body_selector",
+			"has_list_container_selector", source.Selectors.List.Container != "",
+			"has_article_title_selector", source.Selectors.Article.Title != "")
+		return contenttype.Page
 	}
 
 	// Log source configuration that will be used

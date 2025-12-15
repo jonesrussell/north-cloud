@@ -26,62 +26,26 @@ type Config struct {
 	SSLMode  string `yaml:"sslmode" env:"DB_SSLMODE"`
 }
 
+// getConfigValue retrieves a configuration value from environment or Viper, with a default fallback.
+func getConfigValue(envKey, viperKey, defaultValue string, v *viper.Viper) string {
+	if val := os.Getenv(envKey); val != "" {
+		return val
+	}
+	if val := v.GetString(viperKey); val != "" {
+		return val
+	}
+	return defaultValue
+}
+
 // LoadFromViper loads database configuration from Viper and environment variables.
 // Environment variables take precedence over Viper configuration.
 func LoadFromViper(v *viper.Viper) *Config {
-	cfg := &Config{}
-
-	// Load from environment variables first (highest priority)
-	if host := os.Getenv("DB_HOST"); host != "" {
-		cfg.Host = host
-	} else {
-		cfg.Host = v.GetString("database.host")
+	return &Config{
+		Host:     getConfigValue("DB_HOST", "database.host", DefaultHost, v),
+		Port:     getConfigValue("DB_PORT", "database.port", DefaultPort, v),
+		User:     getConfigValue("DB_USER", "database.user", DefaultUser, v),
+		Password: getConfigValue("DB_PASSWORD", "database.password", "", v),
+		DBName:   getConfigValue("DB_NAME", "database.dbname", DefaultDBName, v),
+		SSLMode:  getConfigValue("DB_SSLMODE", "database.sslmode", DefaultSSLMode, v),
 	}
-	if cfg.Host == "" {
-		cfg.Host = DefaultHost
-	}
-
-	if port := os.Getenv("DB_PORT"); port != "" {
-		cfg.Port = port
-	} else {
-		cfg.Port = v.GetString("database.port")
-	}
-	if cfg.Port == "" {
-		cfg.Port = DefaultPort
-	}
-
-	if user := os.Getenv("DB_USER"); user != "" {
-		cfg.User = user
-	} else {
-		cfg.User = v.GetString("database.user")
-	}
-	if cfg.User == "" {
-		cfg.User = DefaultUser
-	}
-
-	if password := os.Getenv("DB_PASSWORD"); password != "" {
-		cfg.Password = password
-	} else {
-		cfg.Password = v.GetString("database.password")
-	}
-
-	if dbName := os.Getenv("DB_NAME"); dbName != "" {
-		cfg.DBName = dbName
-	} else {
-		cfg.DBName = v.GetString("database.dbname")
-	}
-	if cfg.DBName == "" {
-		cfg.DBName = DefaultDBName
-	}
-
-	if sslMode := os.Getenv("DB_SSLMODE"); sslMode != "" {
-		cfg.SSLMode = sslMode
-	} else {
-		cfg.SSLMode = v.GetString("database.sslmode")
-	}
-	if cfg.SSLMode == "" {
-		cfg.SSLMode = DefaultSSLMode
-	}
-
-	return cfg
 }
