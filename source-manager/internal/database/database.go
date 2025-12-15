@@ -10,10 +10,6 @@ import (
 	infracontext "github.com/north-cloud/infrastructure/context"
 )
 
-const (
-	defaultPingTimeout = 5
-)
-
 type DB struct {
 	db     *sql.DB
 	logger logger.Logger
