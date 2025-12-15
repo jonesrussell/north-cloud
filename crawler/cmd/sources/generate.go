@@ -12,8 +12,8 @@ import (
 	"time"
 
 	"github.com/PuerkitoBio/goquery"
-	infrahttp "github.com/north-cloud/infrastructure/http"
 	"github.com/jonesrussell/gocrawl/internal/generator"
+	infrahttp "github.com/north-cloud/infrastructure/http"
 	"github.com/spf13/cobra"
 )
 

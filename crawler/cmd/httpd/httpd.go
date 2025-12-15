@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"net/http"
 
-	infracontext "github.com/north-cloud/infrastructure/context"
 	cmdcommon "github.com/jonesrussell/gocrawl/cmd/common"
 	"github.com/jonesrussell/gocrawl/internal/api"
 	"github.com/jonesrussell/gocrawl/internal/constants"
@@ -19,6 +18,7 @@ import (
 	"github.com/jonesrussell/gocrawl/internal/job"
 	"github.com/jonesrussell/gocrawl/internal/sources"
 	"github.com/jonesrussell/gocrawl/internal/storage"
+	infracontext "github.com/north-cloud/infrastructure/context"
 	"github.com/spf13/cobra"
 )
 

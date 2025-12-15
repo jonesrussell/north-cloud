@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 
-	infracontext "github.com/north-cloud/infrastructure/context"
 	cmdcommon "github.com/jonesrussell/gocrawl/cmd/common"
 	"github.com/jonesrussell/gocrawl/internal/config"
 	"github.com/jonesrussell/gocrawl/internal/constants"
@@ -16,6 +15,7 @@ import (
 	"github.com/jonesrussell/gocrawl/internal/crawler/events"
 	"github.com/jonesrussell/gocrawl/internal/logger"
 	"github.com/jonesrussell/gocrawl/internal/sources"
+	infracontext "github.com/north-cloud/infrastructure/context"
 	"github.com/spf13/cobra"
 )
 

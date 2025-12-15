@@ -6,9 +6,9 @@ import (
 	"fmt"
 
 	colly "github.com/gocolly/colly/v2"
+	configtypes "github.com/jonesrussell/gocrawl/internal/config/types"
 	"github.com/jonesrussell/gocrawl/internal/content"
 	"github.com/jonesrussell/gocrawl/internal/content/contenttype"
-	configtypes "github.com/jonesrussell/gocrawl/internal/config/types"
 	sourcestypes "github.com/jonesrussell/gocrawl/internal/sources/types"
 )
 
@@ -212,4 +212,3 @@ func (c *Crawler) GetProcessor(contentType contenttype.Type) (content.Processor,
 
 	return nil, fmt.Errorf("no processor found for content type: %s", contentType)
 }
-

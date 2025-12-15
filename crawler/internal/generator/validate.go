@@ -11,8 +11,8 @@ import (
 	"time"
 
 	"github.com/PuerkitoBio/goquery"
-	infrahttp "github.com/north-cloud/infrastructure/http"
 	configtypes "github.com/jonesrussell/gocrawl/internal/config/types"
+	infrahttp "github.com/north-cloud/infrastructure/http"
 )
 
 // ValidationResult holds the results of validating selectors against articles.

@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"time"
 
-	infracontext "github.com/north-cloud/infrastructure/context"
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq" // PostgreSQL driver
+	infracontext "github.com/north-cloud/infrastructure/context"
 )
 
 const (
