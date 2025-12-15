@@ -152,7 +152,6 @@ func (p *HTMLProcessor) findSourceByURL(pageURL string) *types.Source {
 		source := &sourceConfigs[i]
 		p.logger.Debug("Checking source",
 			"source_name", source.Name,
-			"source_id", source.ID,
 			"allowed_domains", source.AllowedDomains,
 			"source_url", source.URL)
 
@@ -262,9 +261,8 @@ func (p *HTMLProcessor) DetectContentType(e *colly.HTMLElement, source *types.So
 				"url", pageURL,
 				"source_name", source.Name,
 				"reason", "empty_article_body_selector",
-				"has_article_list_selector", source.Selectors.Article.List != "",
-				"has_article_title_selector", source.Selectors.Article.Title != "",
-				"has_pagination_selector", source.Selectors.Pagination != "")
+				"has_list_container_selector", source.Selectors.List.Container != "",
+				"has_article_title_selector", source.Selectors.Article.Title != "")
 			return contenttype.Page
 		}
 	}
@@ -274,7 +272,7 @@ func (p *HTMLProcessor) DetectContentType(e *colly.HTMLElement, source *types.So
 		"source_name", source.Name,
 		"article_body_selector", source.Selectors.Article.Body,
 		"article_title_selector", source.Selectors.Article.Title,
-		"article_list_selector", source.Selectors.Article.List,
+		"list_container_selector", source.Selectors.List.Container,
 		"url", pageURL)
 
 	// Get article body using the source's body selector

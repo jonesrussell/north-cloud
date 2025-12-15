@@ -817,7 +817,6 @@ func (c *Crawler) getSourceConfig() *configtypes.Source {
 
 	c.logger.Debug("Source found by name",
 		"source_name", sourceName,
-		"source_id", sourceConfig.ID,
 		"source_url", sourceConfig.URL,
 		"has_article_body_selector", func() bool {
 			config := sourcestypes.ConvertToConfigSource(sourceConfig)
