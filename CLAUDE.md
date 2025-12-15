@@ -91,7 +91,11 @@ This document provides a comprehensive guide for AI assistants working with the 
   - Storage in Elasticsearch
   - Source management integration
   - Vue.js dashboard interface for monitoring
-- **Documentation**: See `/crawler/README.md`, `/crawler/frontend/README.md`
+  - **Database-backed job scheduler** for dynamic crawling
+  - REST API for job management (create, update, delete, list)
+  - Support for immediate and scheduled (cron) jobs
+  - Job status tracking (pending → processing → completed/failed)
+- **Documentation**: See `/crawler/README.md`, `/crawler/frontend/README.md`, `/crawler/docs/DATABASE_SCHEDULER.md`
 
 #### 2. **source-manager**
 - **Location**: `/source-manager`
@@ -175,8 +179,21 @@ north-cloud/
 │   ├── go.mod
 │   ├── main.go
 │   ├── cmd/
+│   │   ├── httpd/               # HTTP API server with job scheduler
+│   │   ├── crawl/               # Manual crawl command
+│   │   └── scheduler/           # Legacy scheduler (deprecated)
 │   ├── internal/
-│   ├── pkg/
+│   │   ├── job/                 # Job scheduler implementation
+│   │   │   └── db_scheduler.go  # Database-backed scheduler
+│   │   ├── database/            # Database layer (PostgreSQL)
+│   │   ├── domain/              # Domain models (Job, Item)
+│   │   └── api/                 # REST API handlers
+│   ├── frontend/                # Vue.js dashboard
+│   │   └── src/
+│   │       └── views/
+│   │           └── CrawlJobsView.vue  # Job management UI
+│   ├── docs/
+│   │   └── DATABASE_SCHEDULER.md  # Scheduler documentation
 │   ├── tests/
 │   └── README.md
 │
@@ -394,8 +411,11 @@ docker-compose -f docker-compose.base.yml -f docker-compose.dev.yml down -v
 ```bash
 cd crawler
 
-# Backend (API)
-go run main.go
+# Start HTTP server with job scheduler (recommended)
+go run main.go httpd
+
+# Manual crawl (one-time)
+go run main.go crawl <source-name>
 
 # Frontend (separate terminal)
 cd frontend
@@ -409,6 +429,12 @@ cd frontend && npm test
 # Build
 go build -o bin/crawler main.go
 ```
+
+**Job Scheduler Notes**:
+- The `httpd` command automatically starts the database-backed job scheduler
+- Jobs can be managed via REST API at `http://localhost:8060/api/v1/jobs`
+- The scheduler processes both immediate and scheduled (cron) jobs
+- See `/crawler/docs/DATABASE_SCHEDULER.md` for detailed usage
 
 #### Source Manager
 ```bash
@@ -613,6 +639,78 @@ dc-dev down
    docker-compose -f docker-compose.base.yml -f docker-compose.dev.yml logs -f service-name
    ```
 
+### Managing Crawler Jobs
+
+The crawler service includes a database-backed job scheduler for dynamic crawling. Jobs can be managed via REST API or the Vue.js frontend.
+
+#### Creating Jobs via API
+
+**Immediate Job (Run Once, Now)**:
+```bash
+curl -X POST http://localhost:8060/api/v1/jobs \
+  -H "Content-Type: application/json" \
+  -d '{
+    "source_id": "news-site",
+    "source_name": "example.com",
+    "url": "https://example.com",
+    "schedule_enabled": false
+  }'
+```
+
+**Scheduled Job (Cron)**:
+```bash
+curl -X POST http://localhost:8060/api/v1/jobs \
+  -H "Content-Type: application/json" \
+  -d '{
+    "source_id": "news-site",
+    "source_name": "example.com",
+    "url": "https://example.com",
+    "schedule_time": "0 */6 * * *",
+    "schedule_enabled": true
+  }'
+```
+
+#### Listing Jobs
+```bash
+# All jobs
+curl http://localhost:8060/api/v1/jobs
+
+# Filter by status
+curl http://localhost:8060/api/v1/jobs?status=pending
+curl http://localhost:8060/api/v1/jobs?status=completed
+curl http://localhost:8060/api/v1/jobs?status=processing
+curl http://localhost:8060/api/v1/jobs?status=failed
+```
+
+#### Updating Jobs
+```bash
+curl -X PUT http://localhost:8060/api/v1/jobs/{job-id} \
+  -H "Content-Type: application/json" \
+  -d '{
+    "schedule_time": "0 * * * *",
+    "schedule_enabled": true
+  }'
+```
+
+#### Deleting Jobs
+```bash
+curl -X DELETE http://localhost:8060/api/v1/jobs/{job-id}
+```
+
+#### Common Cron Expressions
+- `0 * * * *` - Every hour
+- `*/30 * * * *` - Every 30 minutes
+- `0 0 * * *` - Daily at midnight
+- `0 9,17 * * 1-5` - 9 AM and 5 PM on weekdays
+- `0 */6 * * *` - Every 6 hours
+
+**Important Notes**:
+- Jobs require `source_name` field to match an existing source configuration
+- Immediate jobs (`schedule_enabled: false`) execute within 10 seconds
+- Scheduled jobs reload every 5 minutes or immediately after creation/update
+- Job status transitions: `pending` → `processing` → `completed`/`failed`
+- See `/crawler/docs/DATABASE_SCHEDULER.md` for comprehensive documentation
+
 ### Running Database Migrations
 
 #### Go Services
@@ -705,6 +803,13 @@ docker system prune -a --volumes
 - Test crawling logic thoroughly
 - Validate Elasticsearch indexing
 - Check source manager integration
+- **Job Scheduler**:
+  - Use database-backed scheduler (httpd command) for dynamic job management
+  - Jobs require `source_name` field to match existing source
+  - Support both immediate (`schedule_enabled: false`) and cron-scheduled jobs
+  - Job status tracked: `pending` → `processing` → `completed`/`failed`
+  - Scheduler automatically reloads jobs every 5 minutes
+  - See `/crawler/docs/DATABASE_SCHEDULER.md` for implementation details
 
 **For Source Manager**:
 - Backend: Follow Go REST API conventions
@@ -905,6 +1010,16 @@ docker system prune -a --volumes
 **Content Crawling**:
 - `/crawler/README.md`
 - `/source-manager/README.md`
+- `/crawler/docs/DATABASE_SCHEDULER.md` - Database-backed job scheduler
+
+**Job Scheduling & Management**:
+- `/crawler/docs/DATABASE_SCHEDULER.md` - Comprehensive scheduler guide
+  - Architecture and implementation details
+  - API usage examples (create, update, delete, list jobs)
+  - Cron expression syntax and examples
+  - Job status tracking and lifecycle
+  - Immediate vs scheduled jobs
+  - Troubleshooting and best practices
 
 **Content Publishing**:
 - `/publisher/CLAUDE.md`
@@ -939,6 +1054,16 @@ When encountering scenarios not covered in this guide:
 ---
 
 ## Version History
+
+- **Database Scheduler Update** (2025-12-15): Added database-backed job scheduler documentation
+  - Comprehensive job scheduler guide (`/crawler/docs/DATABASE_SCHEDULER.md`)
+  - Database-backed scheduler implementation (`internal/job/db_scheduler.go`)
+  - REST API for job management (create, update, delete, list)
+  - Support for immediate and cron-scheduled jobs
+  - Job status tracking and lifecycle management
+  - Vue.js frontend integration for job management
+  - Scheduler auto-starts with httpd command
+  - Updated crawler service documentation with scheduler features
 
 - **Initial Version** (2025-12-13): Created comprehensive AI assistant guide
   - Multi-service architecture overview

@@ -145,8 +145,10 @@ type Interface interface {
 const (
 	// RandomDelayDivisor is used to calculate random delay from rate limit
 	RandomDelayDivisor = 2
-	// collectorTimeoutDuration is the timeout for waiting for collector to finish
+	// collectorTimeoutDuration is the timeout for waiting for collector to finish after cancellation
 	collectorTimeoutDuration = 2 * time.Second
+	// collectorCompletionTimeout is the timeout for waiting for collector to finish in normal case
+	collectorCompletionTimeout = 5 * time.Minute
 	// cleanupTimeoutDuration is the timeout for waiting for cleanup goroutine to finish
 	cleanupTimeoutDuration = 5 * time.Second
 )
@@ -369,6 +371,10 @@ func (c *Crawler) Start(ctx context.Context, sourceName string) error {
 		"debug_enabled", c.cfg.Debug,
 	)
 
+	// Create a new done channel for this execution to support concurrent jobs
+	c.done = make(chan struct{})
+	c.doneOnce = sync.Once{}
+
 	// Initialize abort channel
 	c.abortChan = make(chan struct{})
 	var abortChanOnce sync.Once
@@ -422,22 +428,62 @@ func (c *Crawler) Start(ctx context.Context, sourceName string) error {
 		return fmt.Errorf("failed to visit source URL: %w", visitErr)
 	}
 
+	// Log collector state before waiting
+	c.logger.Debug("Starting to wait for collector to complete",
+		"source", sourceName,
+		"url", source.URL)
+
 	// Wait for the crawler to finish, but respect context cancellation
 	// Run Wait() in a goroutine so we can check for context cancellation
 	waitDone := make(chan struct{})
+	waitStartTime := time.Now()
+	timeoutWarningSent := &atomic.Bool{}
+
 	go func() {
+		c.logger.Debug("Calling collector.Wait()")
 		c.collector.Wait()
+		waitDuration := time.Since(waitStartTime)
+		c.logger.Debug("Collector.Wait() completed",
+			"duration", waitDuration,
+			"source", sourceName)
 		close(waitDone)
+	}()
+
+	// Start a goroutine to log timeout warnings if collector takes too long
+	timeoutTicker := time.NewTicker(30 * time.Second)
+	defer timeoutTicker.Stop()
+	go func() {
+		for {
+			select {
+			case <-waitDone:
+				return
+			case <-ctx.Done():
+				return
+			case <-timeoutTicker.C:
+				waitDuration := time.Since(waitStartTime)
+				if waitDuration > collectorCompletionTimeout/2 && !timeoutWarningSent.Load() {
+					timeoutWarningSent.Store(true)
+					c.logger.Warn("Collector is taking longer than expected",
+						"duration", waitDuration,
+						"source", sourceName,
+						"warning", "If this continues, collector may be hanging")
+				}
+			}
+		}
 	}()
 
 	// Wait for either completion or context cancellation
 	select {
 	case <-waitDone:
 		// Collector finished normally
-		c.logger.Debug("Collector finished normally")
+		waitDuration := time.Since(waitStartTime)
+		c.logger.Info("Collector finished normally",
+			"duration", waitDuration,
+			"source", sourceName)
 	case <-ctx.Done():
 		// Context was cancelled - abort all pending requests
-		c.logger.Info("Context cancelled, aborting collector")
+		c.logger.Info("Context cancelled, aborting collector",
+			"source", sourceName)
 		// Signal abort to stop new requests (safe to call multiple times)
 		abortChanOnce.Do(func() {
 			close(c.abortChan)
@@ -446,11 +492,41 @@ func (c *Crawler) Start(ctx context.Context, sourceName string) error {
 		select {
 		case <-waitDone:
 			// Collector finished after abort
+			waitDuration := time.Since(waitStartTime)
+			c.logger.Info("Collector finished after abort",
+				"duration", waitDuration,
+				"source", sourceName)
 		case <-time.After(collectorTimeoutDuration):
 			// Timeout waiting for collector to finish
-			c.logger.Warn("Collector did not finish within timeout after cancellation")
+			waitDuration := time.Since(waitStartTime)
+			c.logger.Warn("Collector did not finish within timeout after cancellation",
+				"timeout", collectorTimeoutDuration,
+				"duration", waitDuration,
+				"source", sourceName)
 		}
 		return ctx.Err()
+	case <-time.After(collectorCompletionTimeout):
+		// Timeout in normal case - collector may be hanging
+		waitDuration := time.Since(waitStartTime)
+		c.logger.Error("Collector did not finish within completion timeout, forcing completion",
+			"timeout", collectorCompletionTimeout,
+			"duration", waitDuration,
+			"source", sourceName,
+			"error", "Collector appears to be hanging - proceeding with cleanup")
+		// Signal abort to stop any pending requests
+		abortChanOnce.Do(func() {
+			close(c.abortChan)
+		})
+		// Wait a short time for abort to take effect, then proceed
+		select {
+		case <-waitDone:
+			c.logger.Info("Collector finished after timeout abort",
+				"duration", time.Since(waitStartTime),
+				"source", sourceName)
+		case <-time.After(collectorTimeoutDuration):
+			c.logger.Warn("Collector did not respond to abort, proceeding anyway",
+				"source", sourceName)
+		}
 	}
 
 	// Signal cleanup goroutine to stop by closing abortChan
@@ -550,13 +626,11 @@ func (c *Crawler) Stop(ctx context.Context) error {
 }
 
 // Wait waits for the crawler to complete.
-// Since Start() already waits for the collector to finish, this method
-// just ensures the done channel is closed to signal completion.
+// Since Start() already waits for the collector to finish and closes the done channel,
+// this method just waits for the done channel to be closed (which happens in Start()).
 func (c *Crawler) Wait() error {
-	// Close the done channel to signal completion (safe to call multiple times)
-	c.doneOnce.Do(func() {
-		close(c.done)
-	})
+	// Wait for the done channel to be closed (Start() handles closing it)
+	<-c.done
 	return nil
 }
 
@@ -717,34 +791,109 @@ func (c *Crawler) SetCollector(collector *colly.Collector) {
 // getSourceConfig gets the source configuration for the current source
 func (c *Crawler) getSourceConfig() *configtypes.Source {
 	sourceName := c.state.CurrentSource()
-	if sourceName == "" || c.sources == nil {
+
+	c.logger.Debug("Getting source configuration",
+		"source_name", sourceName,
+		"sources_manager_nil", c.sources == nil)
+
+	if sourceName == "" {
+		c.logger.Debug("Source name is empty, cannot get source configuration")
 		return nil
 	}
+
+	if c.sources == nil {
+		c.logger.Debug("Sources manager is nil, cannot get source configuration",
+			"source_name", sourceName)
+		return nil
+	}
+
 	sourceConfig := c.sources.FindByName(sourceName)
 	if sourceConfig == nil {
+		c.logger.Debug("Source not found by name",
+			"source_name", sourceName,
+			"search_method", "FindByName")
 		return nil
 	}
+
+	c.logger.Debug("Source found by name",
+		"source_name", sourceName,
+		"source_url", sourceConfig.URL,
+		"has_article_body_selector", func() bool {
+			config := sourcestypes.ConvertToConfigSource(sourceConfig)
+			return config != nil && config.Selectors.Article.Body != ""
+		}())
+
 	// Convert to configtypes.Source
 	return sourcestypes.ConvertToConfigSource(sourceConfig)
 }
 
 // selectProcessor selects the appropriate processor for the given HTML element
 func (c *Crawler) selectProcessor(e *colly.HTMLElement) content.Processor {
+	// Get URL for logging
+	pageURL := ""
+	if e.Request != nil && e.Request.URL != nil {
+		pageURL = e.Request.URL.String()
+	}
+
 	source := c.getSourceConfig()
+
+	c.logger.Debug("Selecting processor for HTML element",
+		"url", pageURL,
+		"source_found_by_name", source != nil,
+		"current_source_name", c.state.CurrentSource(),
+		"source_name", func() string {
+			if source != nil {
+				return source.Name
+			}
+			return "nil"
+		}())
+
+	// If source not found by name, try to find it by URL
+	if source == nil && e.Request != nil && e.Request.URL != nil {
+		sourceURL := e.Request.URL.String()
+		// Use HTMLProcessor's findSourceByURL method via DetectContentType fallback
+		// The DetectContentType method will handle finding source by URL if source is nil
+		c.logger.Debug("Source not found by name, will try URL-based lookup in DetectContentType",
+			"url", sourceURL,
+			"current_source_name", c.state.CurrentSource())
+	}
+
 	contentType := c.htmlProcessor.DetectContentType(e, source)
+
+	c.logger.Debug("Content type detected",
+		"content_type", contentType,
+		"url", pageURL,
+		"source_name", func() string {
+			if source != nil {
+				return source.Name
+			}
+			return "nil"
+		}())
 
 	// Try to get a processor for the specific content type
 	processor := c.getProcessorForType(contentType)
 	if processor != nil {
+		c.logger.Debug("Processor found for content type",
+			"content_type", contentType,
+			"processor_type", fmt.Sprintf("%T", processor),
+			"url", pageURL)
 		return processor
 	}
 
 	// Fallback: Try additional processors
 	for _, p := range c.processors {
 		if p.CanProcess(contentType) {
+			c.logger.Debug("Fallback processor found",
+				"content_type", contentType,
+				"processor_type", fmt.Sprintf("%T", p),
+				"url", pageURL)
 			return p
 		}
 	}
+
+	c.logger.Debug("No processor found for content type",
+		"content_type", contentType,
+		"url", pageURL)
 
 	return nil
 }

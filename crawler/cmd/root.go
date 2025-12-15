@@ -169,6 +169,10 @@ func bindAppEnvVars() error {
 	if err := viper.BindEnv("logger.encoding", "LOG_FORMAT"); err != nil {
 		return fmt.Errorf("failed to bind LOG_FORMAT: %w", err)
 	}
+	// Bind crawler sources API URL
+	if err := viper.BindEnv("crawler.sources_api_url", "CRAWLER_SOURCES_API_URL"); err != nil {
+		return fmt.Errorf("failed to bind CRAWLER_SOURCES_API_URL: %w", err)
+	}
 	return nil
 }
 

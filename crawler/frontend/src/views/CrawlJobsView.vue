@@ -42,6 +42,9 @@
               Created
             </th>
             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              Next Run
+            </th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
               Actions
             </th>
           </tr>
@@ -69,6 +72,9 @@
             </td>
             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
               {{ formatDate(job.created_at) }}
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+              {{ formatNextRun(job) }}
             </td>
             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
               <button
@@ -365,6 +371,158 @@ const deleteJob = async (id) => {
 const formatDate = (dateString) => {
   if (!dateString) return 'N/A'
   return new Date(dateString).toLocaleString()
+}
+
+const formatNextRun = (job) => {
+  // If schedule is not enabled, show "N/A" or "Immediate"
+  if (!job.schedule_enabled || !job.schedule_time) {
+    return job.status === 'pending' ? 'Pending' : 'N/A'
+  }
+
+  try {
+    // Calculate next run time from cron expression
+    const nextRun = calculateNextRunTime(job.schedule_time)
+    if (nextRun) {
+      return nextRun.toLocaleString()
+    }
+    return 'Invalid schedule'
+  } catch (err) {
+    console.error('Error calculating next run time:', err)
+    return 'Invalid schedule'
+  }
+}
+
+const calculateNextRunTime = (cronExpression) => {
+  if (!cronExpression) return null
+
+  // Parse cron expression: minute hour day month weekday
+  // Example: "0 */6 * * *" = every 6 hours at minute 0
+  const parts = cronExpression.trim().split(/\s+/)
+  if (parts.length !== 5) {
+    return null
+  }
+
+  const [minute, hour, day, month, weekday] = parts
+  const now = new Date()
+  let nextRun = new Date(now)
+
+  // Reset seconds and milliseconds
+  nextRun.setSeconds(0)
+  nextRun.setMilliseconds(0)
+
+  // Handle minute - most common case is a fixed minute like "0"
+  let targetMinute = 0
+  if (minute !== '*') {
+    if (minute.startsWith('*/')) {
+      // Step value like */15 - find next 15-minute interval
+      const step = parseInt(minute.substring(2), 10)
+      if (!isNaN(step) && step > 0) {
+        const currentMinute = now.getMinutes()
+        targetMinute = Math.ceil((currentMinute + 1) / step) * step
+        if (targetMinute >= 60) {
+          targetMinute = 0
+          nextRun.setHours(nextRun.getHours() + 1)
+        }
+      }
+    } else {
+      const minuteValue = parseInt(minute, 10)
+      if (!isNaN(minuteValue) && minuteValue >= 0 && minuteValue < 60) {
+        targetMinute = minuteValue
+      }
+    }
+  }
+  nextRun.setMinutes(targetMinute)
+
+  // Handle hour - most common case is step value like "*/6"
+  let targetHour = now.getHours()
+  if (hour !== '*') {
+    if (hour.startsWith('*/')) {
+      // Step value like */6 - every 6 hours
+      const step = parseInt(hour.substring(2), 10)
+      if (!isNaN(step) && step > 0) {
+        const currentHour = now.getHours()
+        // Calculate next hour that matches the step
+        let nextHour = Math.ceil((currentHour + 1) / step) * step
+        if (nextHour >= 24) {
+          nextHour = 0
+          nextRun.setDate(nextRun.getDate() + 1)
+        }
+        targetHour = nextHour
+        // If we moved to next day, reset minute to target
+        if (nextHour === 0 && nextRun.getDate() > now.getDate()) {
+          nextRun.setMinutes(targetMinute)
+        }
+      }
+    } else {
+      const hourValue = parseInt(hour, 10)
+      if (!isNaN(hourValue) && hourValue >= 0 && hourValue < 24) {
+        targetHour = hourValue
+      }
+    }
+  }
+  nextRun.setHours(targetHour)
+
+  // If the calculated time is in the past, move to next interval
+  if (nextRun <= now) {
+    if (hour.startsWith('*/')) {
+      // For step values, add the step interval
+      const step = parseInt(hour.substring(2), 10)
+      if (!isNaN(step) && step > 0) {
+        nextRun.setHours(nextRun.getHours() + step)
+        // If we overflow 24 hours, move to next day
+        if (nextRun.getHours() < targetHour) {
+          nextRun.setDate(nextRun.getDate() + 1)
+        }
+      }
+    } else {
+      // For fixed hours, move to next day
+      nextRun.setDate(nextRun.getDate() + 1)
+    }
+  }
+
+  // Handle day of month (if specified and not *)
+  if (day !== '*') {
+    const dayValue = parseInt(day, 10)
+    if (!isNaN(dayValue) && dayValue >= 1 && dayValue <= 31) {
+      nextRun.setDate(dayValue)
+      if (nextRun <= now) {
+        nextRun.setMonth(nextRun.getMonth() + 1)
+      }
+    }
+  }
+
+  // Handle month (if specified and not *)
+  if (month !== '*') {
+    const monthValue = parseInt(month, 10)
+    if (!isNaN(monthValue) && monthValue >= 1 && monthValue <= 12) {
+      nextRun.setMonth(monthValue - 1) // JavaScript months are 0-indexed
+      if (nextRun <= now) {
+        nextRun.setFullYear(nextRun.getFullYear() + 1)
+      }
+    }
+  }
+
+  // Handle weekday (if specified and not *)
+  // Note: Cron uses 0-6 where 0=Sunday, but we'll keep it simple
+  if (weekday !== '*') {
+    const weekdayValue = parseInt(weekday, 10)
+    if (!isNaN(weekdayValue) && weekdayValue >= 0 && weekdayValue <= 6) {
+      const currentWeekday = nextRun.getDay()
+      let daysToAdd = weekdayValue - currentWeekday
+      if (daysToAdd <= 0) {
+        daysToAdd += 7 // Move to next week
+      }
+      nextRun.setDate(nextRun.getDate() + daysToAdd)
+    }
+  }
+
+  // Final check: ensure we're in the future
+  if (nextRun <= now) {
+    // Fallback: add 1 hour
+    nextRun.setHours(nextRun.getHours() + 1)
+  }
+
+  return nextRun
 }
 
 onMounted(() => {
