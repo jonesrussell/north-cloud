@@ -75,52 +75,7 @@ func (s *ContentService) Process(e *colly.HTMLElement) error {
 
 	// Get source configuration and determine index name
 	// Use local variable to avoid data race when Process() is called concurrently
-	indexName := s.indexName
-	var selectors configtypes.ArticleSelectors
-	if s.sources != nil {
-		// Try to find source by matching URL domain
-		sourceConfig := s.findSourceByURL(sourceURL)
-		if sourceConfig != nil {
-			// Convert types.ArticleSelectors to configtypes.ArticleSelectors
-			selectors = configtypes.ArticleSelectors{
-				Container:     sourceConfig.Selectors.Article.Container,
-				Title:         sourceConfig.Selectors.Article.Title,
-				Body:          sourceConfig.Selectors.Article.Body,
-				Intro:         sourceConfig.Selectors.Article.Intro,
-				Link:          sourceConfig.Selectors.Article.Link,
-				Image:         sourceConfig.Selectors.Article.Image,
-				Byline:        sourceConfig.Selectors.Article.Byline,
-				PublishedTime: sourceConfig.Selectors.Article.PublishedTime,
-				TimeAgo:       sourceConfig.Selectors.Article.TimeAgo,
-				JSONLD:        sourceConfig.Selectors.Article.JSONLD,
-				Section:       sourceConfig.Selectors.Article.Section,
-				Keywords:      sourceConfig.Selectors.Article.Keywords,
-				Description:   sourceConfig.Selectors.Article.Description,
-				OGTitle:       sourceConfig.Selectors.Article.OGTitle,
-				OGDescription: sourceConfig.Selectors.Article.OGDescription,
-				OGImage:       sourceConfig.Selectors.Article.OGImage,
-				OGType:        sourceConfig.Selectors.Article.OGType,
-				OGSiteName:    sourceConfig.Selectors.Article.OGSiteName,
-				OgURL:         sourceConfig.Selectors.Article.OgURL,
-				Canonical:     sourceConfig.Selectors.Article.Canonical,
-				WordCount:     sourceConfig.Selectors.Article.WordCount,
-				PublishDate:   sourceConfig.Selectors.Article.PublishDate,
-				Category:      sourceConfig.Selectors.Article.Category,
-				Tags:          sourceConfig.Selectors.Article.Tags,
-				Author:        sourceConfig.Selectors.Article.Author,
-				BylineName:    sourceConfig.Selectors.Article.BylineName,
-				ArticleID:     sourceConfig.Selectors.Article.ArticleID,
-				Exclude:       sourceConfig.Selectors.Article.Exclude,
-			}
-			// Use source's article index if available (local variable, no race condition)
-			if sourceConfig.ArticleIndex != "" {
-				indexName = sourceConfig.ArticleIndex
-			}
-		} else {
-			s.logger.Debug("Source not found for URL, using default selectors",
-				"url", sourceURL)
-		}
-	}
+	indexName, selectors := s.getSourceConfigAndIndex(sourceURL)
 
 	// Extract article data using Colly methods
 	articleData := extractArticle(e, selectors, sourceURL)
@@ -172,7 +127,137 @@ func (s *ContentService) Process(e *colly.HTMLElement) error {
 	}
 
 	// Process the article using the service interface with the determined index name
+	s.logger.Debug("Processing article with index",
+		"index_name", indexName,
+		"article_id", article.ID,
+		"url", article.Source)
 	return s.ProcessArticleWithIndex(context.Background(), article, indexName)
+}
+
+// getSourceConfigAndIndex gets the source configuration and determines the index name.
+func (s *ContentService) getSourceConfigAndIndex(sourceURL string) (string, configtypes.ArticleSelectors) {
+	indexName := s.indexName
+	var selectors configtypes.ArticleSelectors
+
+	if s.sources == nil {
+		s.logger.Debug("No sources manager available, using default index",
+			"default_index", indexName,
+			"url", sourceURL)
+		return indexName, selectors.Default()
+	}
+
+	sourceConfig := s.findSourceByURL(sourceURL)
+	if sourceConfig == nil {
+		s.logger.Debug("Source not found for URL, using default selectors and index",
+			"url", sourceURL,
+			"default_index", indexName)
+		return indexName, selectors.Default()
+	}
+
+	s.logger.Debug("Source found by URL, using source-specific index",
+		"url", sourceURL,
+		"source_name", sourceConfig.Name,
+		"article_index", sourceConfig.ArticleIndex,
+		"default_index", indexName)
+
+	selectors = s.convertSourceSelectors(sourceConfig)
+	selectors = s.mergeSelectorsWithDefaults(selectors)
+
+	if sourceConfig.ArticleIndex != "" {
+		indexName = sourceConfig.ArticleIndex
+		s.logger.Debug("Using source-specific article index",
+			"index_name", indexName,
+			"source_name", sourceConfig.Name,
+			"url", sourceURL)
+	} else {
+		s.logger.Debug("Source found but ArticleIndex is empty, using default index",
+			"default_index", indexName,
+			"source_name", sourceConfig.Name,
+			"url", sourceURL)
+	}
+
+	return indexName, selectors
+}
+
+// convertSourceSelectors converts source selectors to configtypes.ArticleSelectors.
+func (s *ContentService) convertSourceSelectors(sourceConfig *sources.Config) configtypes.ArticleSelectors {
+	return configtypes.ArticleSelectors{
+		Container:     sourceConfig.Selectors.Article.Container,
+		Title:         sourceConfig.Selectors.Article.Title,
+		Body:          sourceConfig.Selectors.Article.Body,
+		Intro:         sourceConfig.Selectors.Article.Intro,
+		Link:          sourceConfig.Selectors.Article.Link,
+		Image:         sourceConfig.Selectors.Article.Image,
+		Byline:        sourceConfig.Selectors.Article.Byline,
+		PublishedTime: sourceConfig.Selectors.Article.PublishedTime,
+		TimeAgo:       sourceConfig.Selectors.Article.TimeAgo,
+		JSONLD:        sourceConfig.Selectors.Article.JSONLD,
+		Section:       sourceConfig.Selectors.Article.Section,
+		Keywords:      sourceConfig.Selectors.Article.Keywords,
+		Description:   sourceConfig.Selectors.Article.Description,
+		OGTitle:       sourceConfig.Selectors.Article.OGTitle,
+		OGDescription: sourceConfig.Selectors.Article.OGDescription,
+		OGImage:       sourceConfig.Selectors.Article.OGImage,
+		OGType:        sourceConfig.Selectors.Article.OGType,
+		OGSiteName:    sourceConfig.Selectors.Article.OGSiteName,
+		OgURL:         sourceConfig.Selectors.Article.OgURL,
+		Canonical:     sourceConfig.Selectors.Article.Canonical,
+		WordCount:     sourceConfig.Selectors.Article.WordCount,
+		PublishDate:   sourceConfig.Selectors.Article.PublishDate,
+		Category:      sourceConfig.Selectors.Article.Category,
+		Tags:          sourceConfig.Selectors.Article.Tags,
+		Author:        sourceConfig.Selectors.Article.Author,
+		BylineName:    sourceConfig.Selectors.Article.BylineName,
+		ArticleID:     sourceConfig.Selectors.Article.ArticleID,
+		Exclude:       sourceConfig.Selectors.Article.Exclude,
+	}
+}
+
+// mergeSelectorsWithDefaults merges selectors with default values for empty fields.
+func (s *ContentService) mergeSelectorsWithDefaults(
+	selectors configtypes.ArticleSelectors,
+) configtypes.ArticleSelectors {
+	defaults := selectors.Default()
+	if selectors.Container == "" {
+		selectors.Container = defaults.Container
+	}
+	if selectors.Body == "" {
+		selectors.Body = defaults.Body
+	}
+	if selectors.Title == "" {
+		selectors.Title = defaults.Title
+	}
+	if selectors.Intro == "" {
+		selectors.Intro = defaults.Intro
+	}
+	if selectors.Byline == "" {
+		selectors.Byline = defaults.Byline
+	}
+	if selectors.PublishedTime == "" {
+		selectors.PublishedTime = defaults.PublishedTime
+	}
+	if selectors.JSONLD == "" {
+		selectors.JSONLD = defaults.JSONLD
+	}
+	if selectors.Description == "" {
+		selectors.Description = defaults.Description
+	}
+	if selectors.Keywords == "" {
+		selectors.Keywords = defaults.Keywords
+	}
+	if selectors.OGTitle == "" {
+		selectors.OGTitle = defaults.OGTitle
+	}
+	if selectors.OGDescription == "" {
+		selectors.OGDescription = defaults.OGDescription
+	}
+	if selectors.OGImage == "" {
+		selectors.OGImage = defaults.OGImage
+	}
+	if selectors.Canonical == "" {
+		selectors.Canonical = defaults.Canonical
+	}
+	return selectors
 }
 
 // findSourceByURL attempts to find a source configuration by matching the URL domain.

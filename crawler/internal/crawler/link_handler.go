@@ -2,7 +2,6 @@
 package crawler
 
 import (
-	"errors"
 	"net/url"
 	"strings"
 	"time"
@@ -29,63 +28,62 @@ func (h *LinkHandler) HandleLink(e *colly.HTMLElement) {
 		return
 	}
 
-	// Skip anchor links and javascript
-	if strings.HasPrefix(link, "#") || strings.HasPrefix(link, "javascript:") {
+	if h.shouldSkipLink(link) {
 		return
 	}
 
-	// Skip mailto and tel links
-	if strings.HasPrefix(link, "mailto:") || strings.HasPrefix(link, "tel:") {
-		return
-	}
-
-	// Make absolute URL if relative
 	absLink := e.Request.AbsoluteURL(link)
 	if absLink == "" {
-		h.crawler.logger.Debug("Failed to make absolute URL",
-			"url", link)
+		h.crawler.logger.Debug("Failed to make absolute URL", "url", link)
 		return
 	}
 
-	// Validate URL if configured
-	if h.crawler.cfg.ValidateURLs {
-		if _, err := url.Parse(absLink); err != nil {
-			h.crawler.logger.Debug("Invalid URL",
-				"url", absLink,
-				"error", err)
-			return
+	if err := h.validateURL(absLink); err != nil {
+		h.crawler.logger.Debug("Invalid URL", "url", absLink, "error", err)
+		return
+	}
+
+	h.visitWithRetries(e, absLink)
+}
+
+// shouldSkipLink determines if a link should be skipped based on its scheme or prefix.
+func (h *LinkHandler) shouldSkipLink(link string) bool {
+	skipPrefixes := []string{"#", "javascript:", "mailto:", "tel:"}
+
+	for _, prefix := range skipPrefixes {
+		if strings.HasPrefix(link, prefix) {
+			return true
 		}
 	}
 
-	// Try to visit the URL with retries
+	return false
+}
+
+// validateURL validates a URL if validation is enabled in configuration.
+func (h *LinkHandler) validateURL(absLink string) error {
+	if !h.crawler.cfg.ValidateURLs {
+		return nil
+	}
+
+	if _, err := url.Parse(absLink); err != nil {
+		return ErrInvalidURL
+	}
+
+	return nil
+}
+
+// visitWithRetries attempts to visit a URL with configured retry logic.
+func (h *LinkHandler) visitWithRetries(e *colly.HTMLElement, absLink string) {
 	var lastErr error
-	for i := range h.crawler.cfg.MaxRetries {
+
+	for attempt := range h.crawler.cfg.MaxRetries {
 		err := e.Request.Visit(absLink)
 		if err == nil {
-			h.crawler.logger.Debug("Successfully visited link",
-				"url", absLink)
+			h.crawler.logger.Debug("Successfully visited link", "url", absLink)
 			return
 		}
 
-		// Check if error is non-retryable by checking both error type and message
-		// Colly may return errors with different message formats
-		errMsg := err.Error()
-		isNonRetryable := errors.Is(err, ErrAlreadyVisited) ||
-			errors.Is(err, ErrMaxDepth) ||
-			errors.Is(err, ErrMissingURL) ||
-			errors.Is(err, ErrForbiddenDomain) ||
-			strings.Contains(errMsg, "forbidden domain") ||
-			strings.Contains(errMsg, "Forbidden domain") ||
-			strings.Contains(errMsg, "max depth") ||
-			strings.Contains(errMsg, "Max depth") ||
-			strings.Contains(errMsg, "already visited") ||
-			strings.Contains(errMsg, "Already visited")
-
-		if isNonRetryable {
-			// These are expected conditions, log at debug level
-			h.crawler.logger.Debug("Skipping non-retryable link",
-				"url", absLink,
-				"error", errMsg)
+		if h.isNonRetryableError(err) {
 			return
 		}
 
@@ -93,16 +91,38 @@ func (h *LinkHandler) HandleLink(e *colly.HTMLElement) {
 		h.crawler.logger.Debug("Failed to visit link, retrying",
 			"url", absLink,
 			"error", err,
-			"attempt", i+1,
+			"attempt", attempt+1,
 			"max_retries", h.crawler.cfg.MaxRetries)
 
-		// Wait before retrying
 		time.Sleep(h.crawler.cfg.RetryDelay)
 	}
 
-	// If we get here, all retries failed
 	h.crawler.logger.Error("Failed to visit link after retries",
 		"url", absLink,
 		"error", lastErr,
 		"max_retries", h.crawler.cfg.MaxRetries)
+}
+
+// isNonRetryableError checks if an error should not trigger a retry.
+func (h *LinkHandler) isNonRetryableError(err error) bool {
+	if err == nil {
+		return false
+	}
+
+	errMsg := strings.ToLower(err.Error())
+	nonRetryablePatterns := []string{
+		"forbidden domain",
+		"max depth",
+		"maximum depth",
+		"already visited",
+		"missing url",
+	}
+
+	for _, pattern := range nonRetryablePatterns {
+		if strings.Contains(errMsg, pattern) {
+			return true
+		}
+	}
+
+	return false
 }

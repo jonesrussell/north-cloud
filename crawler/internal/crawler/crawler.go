@@ -321,10 +321,11 @@ func (c *Crawler) logTimeoutWarnings(
 			waitDuration := time.Since(waitStartTime)
 			if waitDuration > collectorCompletionTimeout/2 && !timeoutWarningSent.Load() {
 				timeoutWarningSent.Store(true)
-				c.logger.Warn("Collector is taking longer than expected",
+				c.logger.Warn("Collector is still processing requests",
 					"duration", waitDuration,
 					"source", sourceName,
-					"warning", "If this continues, collector may be hanging")
+					"processed_count", c.state.GetProcessedCount(),
+					"note", "Wait() will return when all async requests complete. This is normal for sites with many links.")
 			}
 		}
 	}

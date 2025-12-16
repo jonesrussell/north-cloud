@@ -23,7 +23,6 @@ require (
 	github.com/testcontainers/testcontainers-go/modules/elasticsearch v0.40.0
 	go.uber.org/mock v0.6.0
 	go.uber.org/zap v1.27.1
-	gopkg.in/yaml.v3 v3.0.1
 )
 
 replace github.com/north-cloud/infrastructure => ../infrastructure
@@ -133,4 +132,5 @@ require (
 	google.golang.org/appengine v1.6.8 // indirect
 	google.golang.org/grpc v1.75.1 // indirect
 	google.golang.org/protobuf v1.36.10 // indirect
+	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

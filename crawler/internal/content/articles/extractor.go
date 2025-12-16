@@ -14,6 +14,19 @@ import (
 	configtypes "github.com/jonesrussell/gocrawl/internal/config/types"
 )
 
+const (
+	// minBodyLengthForFallback is the minimum body length required for fallback extraction
+	minBodyLengthForFallback = 100
+	// minParagraphLength is the minimum length for a paragraph to be included
+	minParagraphLength = 20
+	// minParagraphLengthStrict is a stricter minimum for last-resort extraction
+	minParagraphLengthStrict = 30
+	// minParagraphCount is the minimum number of paragraphs required for last-resort extraction
+	minParagraphCount = 3
+	// minFallbackBodyLength is the minimum body length for fallback selector extraction
+	minFallbackBodyLength = 50
+)
+
 // extractText extracts text from the first element matching the selector.
 // Returns empty string if not found (Colly returns empty string safely).
 // Uses DOM.Find() to search anywhere in the element, not just direct children.
@@ -261,9 +274,153 @@ func extractBodyContent(data *ArticleData, e *colly.HTMLElement, selectors confi
 
 	// Additional fallbacks for body if still empty
 	if data.Body == "" {
-		// Try common article content containers
-		data.Body = extractTextFromContainer(e, "article, main, .article-content, .article-body", selectors.Exclude)
+		// Try common article content containers with more aggressive selectors
+		fallbackSelectors := []string{
+			"article",
+			"main",
+			".article-content",
+			".article-body",
+			".content",
+			".post-content",
+			".entry-content",
+			"[role='article']",
+			"article > div",
+			"article > section",
+			".article > div",
+			".story-body",
+			".article-body > div",
+			".story-content",
+			".article-text",
+			".article-main",
+			"#article-content",
+			"#main-content",
+			".main-content",
+		}
+		for _, fallbackSelector := range fallbackSelectors {
+			data.Body = extractTextFromContainer(e, fallbackSelector, selectors.Exclude)
+			if data.Body != "" && len(strings.TrimSpace(data.Body)) > minFallbackBodyLength {
+				break
+			}
+		}
 	}
+
+	// Last resort: try to extract from the entire document body if still empty
+	// This should rarely be needed, but helps with edge cases
+	if data.Body == "" {
+		// Try multiple strategies to find article content
+		strategies := []string{
+			"article, main, [role='article'], .content, .post-content",
+			"article p",
+			"main p",
+			".content p",
+			"article > *",
+			"main > *",
+		}
+		for _, strategy := range strategies {
+			bodyText := e.DOM.Find(strategy).Text()
+			cleaned := strings.TrimSpace(bodyText)
+			if len(cleaned) > minBodyLengthForFallback {
+				data.Body = cleaned
+				break
+			}
+		}
+	}
+
+	// Final fallback: try to extract paragraphs from common article locations
+	// This is more aggressive and might include navigation, but better than nothing
+	if data.Body == "" {
+		data.Body = extractFromParagraphs(
+			e,
+			"article p, main p, .content p, .article-content p, .post-content p",
+			minParagraphLength,
+			0,
+		)
+	}
+
+	// Absolute last resort: extract all paragraphs from body, excluding common non-content areas
+	if data.Body == "" {
+		data.Body = extractFromBodyParagraphs(e, minParagraphLengthStrict, minParagraphCount)
+	}
+}
+
+// extractFromParagraphs extracts body content from paragraphs matching the selector.
+func extractFromParagraphs(e *colly.HTMLElement, selector string, minParagraphLen, minCount int) string {
+	paragraphs := e.DOM.Find(selector)
+	if paragraphs.Length() == 0 {
+		return ""
+	}
+
+	var textParts []string
+	paragraphs.Each(func(i int, s *goquery.Selection) {
+		text := strings.TrimSpace(s.Text())
+		if len(text) > minParagraphLen {
+			textParts = append(textParts, text)
+		}
+	})
+
+	if len(textParts) == 0 {
+		return ""
+	}
+
+	if minCount > 0 && len(textParts) < minCount {
+		return ""
+	}
+
+	combined := strings.Join(textParts, "\n\n")
+	if len(combined) > minBodyLengthForFallback {
+		return combined
+	}
+
+	return ""
+}
+
+// extractFromBodyParagraphs extracts paragraphs from the body element, excluding non-content areas.
+func extractFromBodyParagraphs(e *colly.HTMLElement, minParagraphLen, minCount int) string {
+	body := e.DOM.Find("body")
+	if body.Length() == 0 {
+		return ""
+	}
+
+	// Remove common non-content elements
+	body.Find("header, footer, nav, aside, .header, .footer, .navigation, .sidebar, .menu, script, style").Remove()
+
+	// Get all paragraphs
+	paragraphs := body.Find("p")
+	if paragraphs.Length() < minCount {
+		return ""
+	}
+
+	var textParts []string
+	paragraphs.Each(func(i int, s *goquery.Selection) {
+		text := strings.TrimSpace(s.Text())
+		// Filter out very short paragraphs and common navigation text
+		if len(text) > minParagraphLen && !isNavigationText(text) {
+			textParts = append(textParts, text)
+		}
+	})
+
+	if len(textParts) < minCount {
+		return ""
+	}
+
+	combined := strings.Join(textParts, "\n\n")
+	if len(combined) > minBodyLengthForFallback {
+		return combined
+	}
+
+	return ""
+}
+
+// isNavigationText checks if text appears to be navigation text.
+func isNavigationText(text string) bool {
+	lowerText := strings.ToLower(text)
+	navPrefixes := []string{"home", "about", "contact"}
+	for _, prefix := range navPrefixes {
+		if strings.HasPrefix(lowerText, prefix) {
+			return true
+		}
+	}
+	return false
 }
 
 // extractMetadata extracts author, byline, and published date.

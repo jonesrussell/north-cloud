@@ -69,6 +69,7 @@ func (l *APILoader) LoadSources() ([]Config, error) {
 }
 
 // convertAPISourceToConfig converts an apiclient.APISource to a loader.Config.
+// Note: AllowedDomains will be set during conversion to sources.Config in convertLoaderConfig.
 func convertAPISourceToConfig(apiSource *apiclient.APISource) (Config, error) {
 	if apiSource == nil {
 		return Config{}, errors.New("apiSource cannot be nil")

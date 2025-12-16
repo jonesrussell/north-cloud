@@ -29,6 +29,9 @@ var (
 	// ErrInvalidURL is returned when the URL is invalid.
 	ErrInvalidURL = errors.New("invalid URL")
 
+	// ErrEmptyLink is returned when the link is empty.
+	ErrEmptyLink = errors.New("empty link")
+
 	// ErrContentProcessingFailed is returned when content processing fails.
 	ErrContentProcessingFailed = errors.New("content processing failed")
 
