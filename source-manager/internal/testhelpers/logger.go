@@ -64,4 +64,3 @@ func (l *testLogger) With(fields ...logger.Field) logger.Logger {
 func (l *testLogger) Sync() error {
 	return l.logger.Sync()
 }
-

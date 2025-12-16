@@ -4,7 +4,6 @@ import (
 	"database/sql/driver"
 	"encoding/json"
 	"testing"
-	"time"
 )
 
 func TestStringArray_Value(t *testing.T) {
@@ -132,23 +131,15 @@ func TestStringArray_Scan(t *testing.T) {
 
 func TestSource_Validation(t *testing.T) {
 	validSource := Source{
-		ID:           "test-id",
-		Name:         "Test Source",
-		URL:          "https://example.com",
-		ArticleIndex: "articles",
-		PageIndex:    "pages",
-		RateLimit:    "1s",
-		MaxDepth:     2,
-		Time:         StringArray{"09:00", "17:00"},
+		ID:   "test-id",
+		Name: "Test Source",
+		URL:  "https://example.com",
 		Selectors: SelectorConfig{
 			Article: ArticleSelectors{
 				Title: "h1",
 				Body:  ".content",
 			},
 		},
-		Enabled:   true,
-		CreatedAt: time.Now(),
-		UpdatedAt: time.Now(),
 	}
 
 	// Test that valid source has all required fields
@@ -163,8 +154,349 @@ func TestSource_Validation(t *testing.T) {
 	}
 }
 
+func TestArticleSelectors_MergeWithDefaults(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    ArticleSelectors
+		expected ArticleSelectors
+	}{
+		{
+			name:  "empty selectors get all defaults",
+			input: ArticleSelectors{},
+			expected: ArticleSelectors{
+				Container:     "article",
+				Title:         "h1",
+				Body:          "article > div",
+				Intro:         "p.lead",
+				Byline:        ".byline",
+				PublishedTime: "time[datetime]",
+				TimeAgo:       "time.ago",
+				JSONLD:        "script[type='application/ld+json']",
+				Description:   "meta[name='description']",
+				Section:       ".section",
+				Keywords:      "meta[name='keywords']",
+				OGTitle:       "meta[property='og:title']",
+				OGDescription: "meta[property='og:description']",
+				OGImage:       "meta[property='og:image']",
+				OGURL:         "meta[property='og:url']",
+				OGSiteName:    "meta[property='og:site_name']",
+				Canonical:     "link[rel='canonical']",
+				Category:      ".category",
+				Author:        ".author",
+			},
+		},
+		{
+			name: "partial selectors merge with defaults",
+			input: ArticleSelectors{
+				Title: "custom-title",
+				Body:  "custom-body",
+			},
+			expected: ArticleSelectors{
+				Container:     "article",
+				Title:         "custom-title",
+				Body:          "custom-body",
+				Intro:         "p.lead",
+				Byline:        ".byline",
+				PublishedTime: "time[datetime]",
+				TimeAgo:       "time.ago",
+				JSONLD:        "script[type='application/ld+json']",
+				Description:   "meta[name='description']",
+				Section:       ".section",
+				Keywords:      "meta[name='keywords']",
+				OGTitle:       "meta[property='og:title']",
+				OGDescription: "meta[property='og:description']",
+				OGImage:       "meta[property='og:image']",
+				OGURL:         "meta[property='og:url']",
+				OGSiteName:    "meta[property='og:site_name']",
+				Canonical:     "link[rel='canonical']",
+				Category:      ".category",
+				Author:        ".author",
+			},
+		},
+		{
+			name: "all fields set don't get overridden",
+			input: ArticleSelectors{
+				Container:     "custom-container",
+				Title:         "custom-title",
+				Body:          "custom-body",
+				Intro:         "custom-intro",
+				Byline:        "custom-byline",
+				PublishedTime: "custom-time",
+				TimeAgo:       "custom-ago",
+				JSONLD:        "custom-jsonld",
+				Description:   "custom-desc",
+				Section:       "custom-section",
+				Keywords:      "custom-keywords",
+				OGTitle:       "custom-og-title",
+				OGDescription: "custom-og-desc",
+				OGImage:       "custom-og-image",
+				OGURL:         "custom-og-url",
+				OGSiteName:    "custom-og-site",
+				Canonical:     "custom-canonical",
+				Category:      "custom-category",
+				Author:        "custom-author",
+			},
+			expected: ArticleSelectors{
+				Container:     "custom-container",
+				Title:         "custom-title",
+				Body:          "custom-body",
+				Intro:         "custom-intro",
+				Byline:        "custom-byline",
+				PublishedTime: "custom-time",
+				TimeAgo:       "custom-ago",
+				JSONLD:        "custom-jsonld",
+				Description:   "custom-desc",
+				Section:       "custom-section",
+				Keywords:      "custom-keywords",
+				OGTitle:       "custom-og-title",
+				OGDescription: "custom-og-desc",
+				OGImage:       "custom-og-image",
+				OGURL:         "custom-og-url",
+				OGSiteName:    "custom-og-site",
+				Canonical:     "custom-canonical",
+				Category:      "custom-category",
+				Author:        "custom-author",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := tt.input.MergeWithDefaults()
+			if got.Container != tt.expected.Container ||
+				got.Title != tt.expected.Title ||
+				got.Body != tt.expected.Body ||
+				got.Intro != tt.expected.Intro ||
+				got.Link != tt.expected.Link ||
+				got.Image != tt.expected.Image ||
+				got.Byline != tt.expected.Byline ||
+				got.PublishedTime != tt.expected.PublishedTime ||
+				got.TimeAgo != tt.expected.TimeAgo ||
+				got.Section != tt.expected.Section ||
+				got.Category != tt.expected.Category ||
+				got.ArticleID != tt.expected.ArticleID ||
+				got.JSONLD != tt.expected.JSONLD ||
+				got.Keywords != tt.expected.Keywords ||
+				got.Description != tt.expected.Description ||
+				got.OGTitle != tt.expected.OGTitle ||
+				got.OGDescription != tt.expected.OGDescription ||
+				got.OGImage != tt.expected.OGImage ||
+				got.OGURL != tt.expected.OGURL ||
+				got.OGType != tt.expected.OGType ||
+				got.OGSiteName != tt.expected.OGSiteName ||
+				got.Canonical != tt.expected.Canonical ||
+				got.Author != tt.expected.Author {
+				t.Errorf("ArticleSelectors.MergeWithDefaults() = %+v, want %+v", got, tt.expected)
+			}
+			// Compare Exclude slice separately
+			if len(got.Exclude) != len(tt.expected.Exclude) {
+				t.Errorf("ArticleSelectors.MergeWithDefaults() Exclude length = %d, want %d", len(got.Exclude), len(tt.expected.Exclude))
+			} else {
+				for i := range got.Exclude {
+					if got.Exclude[i] != tt.expected.Exclude[i] {
+						t.Errorf("ArticleSelectors.MergeWithDefaults() Exclude[%d] = %s, want %s", i, got.Exclude[i], tt.expected.Exclude[i])
+					}
+				}
+			}
+		})
+	}
+}
+
+func TestListSelectors_MergeWithDefaults(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    ListSelectors
+		expected ListSelectors
+	}{
+		{
+			name:  "empty selectors get all defaults",
+			input: ListSelectors{},
+			expected: ListSelectors{
+				Container:    ".article-list, .articles, main",
+				ArticleCards: ".article-card, article, .post",
+				ArticleList:  ".article-list > li, .articles > article",
+			},
+		},
+		{
+			name: "partial selectors merge with defaults",
+			input: ListSelectors{
+				Container: "custom-container",
+			},
+			expected: ListSelectors{
+				Container:    "custom-container",
+				ArticleCards: ".article-card, article, .post",
+				ArticleList:  ".article-list > li, .articles > article",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := tt.input.MergeWithDefaults()
+			if got.Container != tt.expected.Container ||
+				got.ArticleCards != tt.expected.ArticleCards ||
+				got.ArticleList != tt.expected.ArticleList {
+				t.Errorf("ListSelectors.MergeWithDefaults() = %+v, want %+v", got, tt.expected)
+			}
+			// Compare ExcludeFromList slice separately
+			if len(got.ExcludeFromList) != len(tt.expected.ExcludeFromList) {
+				t.Errorf("ListSelectors.MergeWithDefaults() ExcludeFromList length = %d, want %d", len(got.ExcludeFromList), len(tt.expected.ExcludeFromList))
+			} else {
+				for i := range got.ExcludeFromList {
+					if got.ExcludeFromList[i] != tt.expected.ExcludeFromList[i] {
+						t.Errorf("ListSelectors.MergeWithDefaults() ExcludeFromList[%d] = %s, want %s", i, got.ExcludeFromList[i], tt.expected.ExcludeFromList[i])
+					}
+				}
+			}
+		})
+	}
+}
+
+func TestPageSelectors_MergeWithDefaults(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    PageSelectors
+		expected PageSelectors
+	}{
+		{
+			name:  "empty selectors get all defaults",
+			input: PageSelectors{},
+			expected: PageSelectors{
+				Container:     "main, article, body",
+				Title:         "h1, title",
+				Content:       "main, article, .content",
+				Description:   "meta[name='description']",
+				Keywords:      "meta[name='keywords']",
+				OGTitle:       "meta[property='og:title']",
+				OGDescription: "meta[property='og:description']",
+				OGImage:       "meta[property='og:image']",
+				OGURL:         "meta[property='og:url']",
+				Canonical:     "link[rel='canonical']",
+				Exclude: []string{
+					"script, style, noscript",
+					".ad, .advertisement, [class*='ad']",
+					".header, .footer, nav",
+					"button, form",
+					".sidebar, .comments",
+				},
+			},
+		},
+		{
+			name: "partial selectors merge with defaults",
+			input: PageSelectors{
+				Title: "custom-title",
+			},
+			expected: PageSelectors{
+				Container:     "main, article, body",
+				Title:         "custom-title",
+				Content:       "main, article, .content",
+				Description:   "meta[name='description']",
+				Keywords:      "meta[name='keywords']",
+				OGTitle:       "meta[property='og:title']",
+				OGDescription: "meta[property='og:description']",
+				OGImage:       "meta[property='og:image']",
+				OGURL:         "meta[property='og:url']",
+				Canonical:     "link[rel='canonical']",
+				Exclude: []string{
+					"script, style, noscript",
+					".ad, .advertisement, [class*='ad']",
+					".header, .footer, nav",
+					"button, form",
+					".sidebar, .comments",
+				},
+			},
+		},
+		{
+			name: "custom exclude doesn't get overridden",
+			input: PageSelectors{
+				Exclude: []string{"custom-exclude"},
+			},
+			expected: PageSelectors{
+				Container:     "main, article, body",
+				Title:         "h1, title",
+				Content:       "main, article, .content",
+				Description:   "meta[name='description']",
+				Keywords:      "meta[name='keywords']",
+				OGTitle:       "meta[property='og:title']",
+				OGDescription: "meta[property='og:description']",
+				OGImage:       "meta[property='og:image']",
+				OGURL:         "meta[property='og:url']",
+				Canonical:     "link[rel='canonical']",
+				Exclude:       []string{"custom-exclude"},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := tt.input.MergeWithDefaults()
+			if got.Container != tt.expected.Container ||
+				got.Title != tt.expected.Title ||
+				got.Content != tt.expected.Content ||
+				got.Description != tt.expected.Description ||
+				got.Keywords != tt.expected.Keywords ||
+				got.OGTitle != tt.expected.OGTitle ||
+				got.OGDescription != tt.expected.OGDescription ||
+				got.OGImage != tt.expected.OGImage ||
+				got.OGURL != tt.expected.OGURL ||
+				got.Canonical != tt.expected.Canonical {
+				t.Errorf("PageSelectors.MergeWithDefaults() = %+v, want %+v", got, tt.expected)
+			}
+			// Compare Exclude separately since it's a slice
+			if len(got.Exclude) != len(tt.expected.Exclude) {
+				t.Errorf("PageSelectors.MergeWithDefaults() Exclude length = %d, want %d", len(got.Exclude), len(tt.expected.Exclude))
+			} else {
+				for i := range got.Exclude {
+					if got.Exclude[i] != tt.expected.Exclude[i] {
+						t.Errorf("PageSelectors.MergeWithDefaults() Exclude[%d] = %s, want %s", i, got.Exclude[i], tt.expected.Exclude[i])
+					}
+				}
+			}
+		})
+	}
+}
+
+func TestSelectorConfig_MergeWithDefaults(t *testing.T) {
+	input := SelectorConfig{
+		Article: ArticleSelectors{
+			Title: "custom-title",
+		},
+		List: ListSelectors{
+			Container: "custom-list-container",
+		},
+		Page: PageSelectors{
+			Title: "custom-page-title",
+		},
+	}
+
+	got := input.MergeWithDefaults()
+
+	// Check that article selectors were merged
+	if got.Article.Title != "custom-title" {
+		t.Errorf("SelectorConfig.MergeWithDefaults() Article.Title = %s, want custom-title", got.Article.Title)
+	}
+	if got.Article.Container == "" {
+		t.Error("SelectorConfig.MergeWithDefaults() Article.Container should have default value")
+	}
+
+	// Check that list selectors were merged
+	if got.List.Container != "custom-list-container" {
+		t.Errorf("SelectorConfig.MergeWithDefaults() List.Container = %s, want custom-list-container", got.List.Container)
+	}
+	if got.List.ArticleCards == "" {
+		t.Error("SelectorConfig.MergeWithDefaults() List.ArticleCards should have default value")
+	}
+
+	// Check that page selectors were merged
+	if got.Page.Title != "custom-page-title" {
+		t.Errorf("SelectorConfig.MergeWithDefaults() Page.Title = %s, want custom-page-title", got.Page.Title)
+	}
+	if got.Page.Container == "" {
+		t.Error("SelectorConfig.MergeWithDefaults() Page.Container should have default value")
+	}
+}
+
 // Helper function to convert StringArray to pointer
 func stringPtr(s StringArray) *StringArray {
 	return &s
 }
-

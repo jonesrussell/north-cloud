@@ -331,4 +331,3 @@ func TestParseBool(t *testing.T) {
 		})
 	}
 }
-

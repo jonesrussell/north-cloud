@@ -83,6 +83,201 @@ type PageSelectors struct {
 	Exclude       []string `json:"exclude,omitempty"`
 }
 
+// Default returns default article selectors.
+func (s *ArticleSelectors) Default() ArticleSelectors {
+	return ArticleSelectors{
+		Container:     "article",
+		Title:         "h1",
+		Body:          "article > div",
+		Intro:         "p.lead",
+		Byline:        ".byline",
+		PublishedTime: "time[datetime]",
+		TimeAgo:       "time.ago",
+		JSONLD:        "script[type='application/ld+json']",
+		Description:   "meta[name='description']",
+		Section:       ".section",
+		Keywords:      "meta[name='keywords']",
+		OGTitle:       "meta[property='og:title']",
+		OGDescription: "meta[property='og:description']",
+		OGImage:       "meta[property='og:image']",
+		OGURL:         "meta[property='og:url']",
+		OGSiteName:    "meta[property='og:site_name']",
+		Canonical:     "link[rel='canonical']",
+		Category:      ".category",
+		Author:        ".author",
+	}
+}
+
+// MergeWithDefaults merges the current selectors with default values.
+// Fields that are empty in the current selectors will be filled with defaults.
+func (s *ArticleSelectors) MergeWithDefaults() ArticleSelectors {
+	defaults := s.Default()
+	result := *s
+
+	if result.Container == "" {
+		result.Container = defaults.Container
+	}
+	if result.Title == "" {
+		result.Title = defaults.Title
+	}
+	if result.Body == "" {
+		result.Body = defaults.Body
+	}
+	if result.Intro == "" {
+		result.Intro = defaults.Intro
+	}
+	if result.Byline == "" {
+		result.Byline = defaults.Byline
+	}
+	if result.PublishedTime == "" {
+		result.PublishedTime = defaults.PublishedTime
+	}
+	if result.TimeAgo == "" {
+		result.TimeAgo = defaults.TimeAgo
+	}
+	if result.JSONLD == "" {
+		result.JSONLD = defaults.JSONLD
+	}
+	if result.Description == "" {
+		result.Description = defaults.Description
+	}
+	if result.Section == "" {
+		result.Section = defaults.Section
+	}
+	if result.Keywords == "" {
+		result.Keywords = defaults.Keywords
+	}
+	if result.OGTitle == "" {
+		result.OGTitle = defaults.OGTitle
+	}
+	if result.OGDescription == "" {
+		result.OGDescription = defaults.OGDescription
+	}
+	if result.OGImage == "" {
+		result.OGImage = defaults.OGImage
+	}
+	if result.OGURL == "" {
+		result.OGURL = defaults.OGURL
+	}
+	if result.OGSiteName == "" {
+		result.OGSiteName = defaults.OGSiteName
+	}
+	if result.Canonical == "" {
+		result.Canonical = defaults.Canonical
+	}
+	if result.Category == "" {
+		result.Category = defaults.Category
+	}
+	if result.Author == "" {
+		result.Author = defaults.Author
+	}
+
+	return result
+}
+
+// Default returns default list selectors.
+func (s *ListSelectors) Default() ListSelectors {
+	return ListSelectors{
+		Container:    ".article-list, .articles, main",
+		ArticleCards: ".article-card, article, .post",
+		ArticleList:  ".article-list > li, .articles > article",
+	}
+}
+
+// MergeWithDefaults merges the current selectors with default values.
+// Fields that are empty in the current selectors will be filled with defaults.
+func (s *ListSelectors) MergeWithDefaults() ListSelectors {
+	defaults := s.Default()
+	result := *s
+
+	if result.Container == "" {
+		result.Container = defaults.Container
+	}
+	if result.ArticleCards == "" {
+		result.ArticleCards = defaults.ArticleCards
+	}
+	if result.ArticleList == "" {
+		result.ArticleList = defaults.ArticleList
+	}
+
+	return result
+}
+
+// Default returns default page selectors.
+func (s *PageSelectors) Default() PageSelectors {
+	return PageSelectors{
+		Container:     "main, article, body",
+		Title:         "h1, title",
+		Content:       "main, article, .content",
+		Description:   "meta[name='description']",
+		Keywords:      "meta[name='keywords']",
+		OGTitle:       "meta[property='og:title']",
+		OGDescription: "meta[property='og:description']",
+		OGImage:       "meta[property='og:image']",
+		OGURL:         "meta[property='og:url']",
+		Canonical:     "link[rel='canonical']",
+		Exclude: []string{
+			"script, style, noscript",
+			".ad, .advertisement, [class*='ad']",
+			".header, .footer, nav",
+			"button, form",
+			".sidebar, .comments",
+		},
+	}
+}
+
+// MergeWithDefaults merges the current selectors with default values.
+// Fields that are empty in the current selectors will be filled with defaults.
+func (s *PageSelectors) MergeWithDefaults() PageSelectors {
+	defaults := s.Default()
+	result := *s
+
+	if result.Container == "" {
+		result.Container = defaults.Container
+	}
+	if result.Title == "" {
+		result.Title = defaults.Title
+	}
+	if result.Content == "" {
+		result.Content = defaults.Content
+	}
+	if result.Description == "" {
+		result.Description = defaults.Description
+	}
+	if result.Keywords == "" {
+		result.Keywords = defaults.Keywords
+	}
+	if result.OGTitle == "" {
+		result.OGTitle = defaults.OGTitle
+	}
+	if result.OGDescription == "" {
+		result.OGDescription = defaults.OGDescription
+	}
+	if result.OGImage == "" {
+		result.OGImage = defaults.OGImage
+	}
+	if result.OGURL == "" {
+		result.OGURL = defaults.OGURL
+	}
+	if result.Canonical == "" {
+		result.Canonical = defaults.Canonical
+	}
+	if len(result.Exclude) == 0 {
+		result.Exclude = defaults.Exclude
+	}
+
+	return result
+}
+
+// MergeWithDefaults merges the selector config with default values.
+func (s *SelectorConfig) MergeWithDefaults() SelectorConfig {
+	return SelectorConfig{
+		Article: s.Article.MergeWithDefaults(),
+		List:    s.List.MergeWithDefaults(),
+		Page:    s.Page.MergeWithDefaults(),
+	}
+}
+
 // StringArray is a custom type for PostgreSQL string arrays
 type StringArray []string
 

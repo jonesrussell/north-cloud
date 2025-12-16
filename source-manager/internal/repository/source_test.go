@@ -406,4 +406,3 @@ func TestSourceRepository_GetCities(t *testing.T) {
 func stringPtr(s string) *string {
 	return &s
 }
-

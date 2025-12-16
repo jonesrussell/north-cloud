@@ -123,6 +123,9 @@ func (r *SourceRepository) GetByID(ctx context.Context, id string) (*models.Sour
 		source.GroupID = &groupID.String
 	}
 
+	// Merge selectors with defaults
+	source.Selectors = source.Selectors.MergeWithDefaults()
+
 	return &source, nil
 }
 
@@ -180,6 +183,9 @@ func (r *SourceRepository) List(ctx context.Context) ([]models.Source, error) {
 		if groupID.Valid {
 			source.GroupID = &groupID.String
 		}
+
+		// Merge selectors with defaults
+		source.Selectors = source.Selectors.MergeWithDefaults()
 
 		sources = append(sources, source)
 	}

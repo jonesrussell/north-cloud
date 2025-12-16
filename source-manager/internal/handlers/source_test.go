@@ -398,4 +398,3 @@ func TestSourceHandler_GetCities(t *testing.T) {
 		})
 	}
 }
-
