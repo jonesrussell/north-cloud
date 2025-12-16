@@ -44,6 +44,8 @@ services:
       # Mount source code for development
       - ./crawler:/app
       - /app/vendor  # Exclude vendor directory
+      # Mount infrastructure module (required for go.mod replace directive)
+      - ./infrastructure:/infrastructure
       # Mount cache volumes to persist downloads across restarts
       - crawler_go_mod_cache:/tmp/go-mod-cache
       - crawler_go_build_cache:/tmp/go-build-cache
@@ -103,6 +105,8 @@ services:
       - ./source-manager:/app
       - /app/vendor  # Exclude vendor directory
       - ./source-manager/migrations:/migrations:ro
+      # Mount infrastructure module (required for go.mod replace directive)
+      - ./infrastructure:/infrastructure
       # Mount cache volumes to persist downloads across restarts
       - source_manager_go_mod_cache:/tmp/go-mod-cache
       - source_manager_go_build_cache:/tmp/go-build-cache
@@ -149,6 +153,8 @@ services:
       - ./publisher:/app
       - /app/vendor  # Exclude vendor directory
       - ./publisher/config.yml:/app/config.yml:ro
+      # Mount infrastructure module (required for go.mod replace directive)
+      - ./infrastructure:/infrastructure
       # Go module cache is in /home/appuser/go-mod-cache (set via GOMODCACHE env)
       # No volume mount needed - cache will be in container filesystem
     working_dir: /app

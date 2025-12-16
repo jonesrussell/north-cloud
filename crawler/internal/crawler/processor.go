@@ -4,7 +4,6 @@ package crawler
 import (
 	"context"
 	"fmt"
-	"io"
 
 	"github.com/jonesrussell/gocrawl/internal/content"
 	"github.com/jonesrussell/gocrawl/internal/content/contenttype"
@@ -24,30 +23,6 @@ const (
 	// ContentTypeContent represents general content.
 	ContentTypeContent ContentType = "content"
 )
-
-// processorMap maps content types to their processors.
-type processorMap map[ContentType]Processor
-
-// NewProcessorMap creates a new processor map.
-func NewProcessorMap() processorMap {
-	return make(processorMap)
-}
-
-// Add adds a processor for a specific content type.
-func (m processorMap) Add(contentType ContentType, processor Processor) {
-	m[contentType] = processor
-}
-
-// Get returns the processor for a specific content type.
-func (m processorMap) Get(contentType ContentType) Processor {
-	return m[contentType]
-}
-
-// Has returns true if a processor exists for the content type.
-func (m processorMap) Has(contentType ContentType) bool {
-	_, exists := m[contentType]
-	return exists
-}
 
 // Processor Management Methods
 // ----------------------------
@@ -99,21 +74,6 @@ func (p *processorWrapper) CanProcess(ct contenttype.Type) bool {
 // Process implements content.ContentProcessor
 func (p *processorWrapper) Process(ctx context.Context, contentData any) error {
 	return p.processor.Process(ctx, contentData)
-}
-
-// ParseHTML implements content.HTMLProcessor
-func (p *processorWrapper) ParseHTML(r io.Reader) error {
-	return p.processor.ParseHTML(r)
-}
-
-// ExtractLinks implements content.HTMLProcessor
-func (p *processorWrapper) ExtractLinks() ([]string, error) {
-	return p.processor.ExtractLinks()
-}
-
-// ExtractContent implements content.HTMLProcessor
-func (p *processorWrapper) ExtractContent() (string, error) {
-	return p.processor.ExtractContent()
 }
 
 // RegisterProcessor implements content.ProcessorRegistry

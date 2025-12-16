@@ -25,21 +25,6 @@ type Interface interface {
 
 	// ProcessArticle processes an article and returns any errors
 	ProcessArticle(ctx context.Context, article *domain.Article) error
-
-	// Get retrieves an article by its ID
-	Get(ctx context.Context, id string) (*domain.Article, error)
-
-	// List retrieves a list of articles based on the provided query
-	List(ctx context.Context, query map[string]any) ([]*domain.Article, error)
-
-	// Delete removes an article by its ID
-	Delete(ctx context.Context, id string) error
-
-	// Update updates an existing article
-	Update(ctx context.Context, article *domain.Article) error
-
-	// Create creates a new article
-	Create(ctx context.Context, article *domain.Article) error
 }
 
 // Ensure ContentService implements Interface
@@ -301,35 +286,5 @@ func (s *ContentService) ProcessArticleWithIndex(ctx context.Context, article *d
 		"publishedDate", article.PublishedDate.Format(time.RFC3339),
 		"category", article.Category)
 
-	return nil
-}
-
-// Get implements the ServiceInterface.
-func (s *ContentService) Get(ctx context.Context, id string) (*domain.Article, error) {
-	// Implementation
-	return nil, errors.New("not implemented")
-}
-
-// List returns a list of articles matching the query
-func (s *ContentService) List(ctx context.Context, query map[string]any) ([]*domain.Article, error) {
-	// TODO: Implement article listing
-	return nil, errors.New("not implemented")
-}
-
-// Delete implements the ServiceInterface.
-func (s *ContentService) Delete(ctx context.Context, id string) error {
-	// Implementation
-	return nil
-}
-
-// Update implements the ServiceInterface.
-func (s *ContentService) Update(ctx context.Context, article *domain.Article) error {
-	// Implementation
-	return nil
-}
-
-// Create implements the ServiceInterface.
-func (s *ContentService) Create(ctx context.Context, article *domain.Article) error {
-	// Implementation
 	return nil
 }

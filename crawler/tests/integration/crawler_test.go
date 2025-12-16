@@ -39,7 +39,7 @@ func TestIntegration_ElasticsearchStorage(t *testing.T) {
 	}
 
 	// Create logger
-	testLogger := logger.NewNoOpLogger()
+	testLogger := logger.NewNoOp()
 
 	// Create Elasticsearch client
 	clientResult, err := storage.NewClient(storage.ClientParams{

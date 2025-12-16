@@ -5,7 +5,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io"
 	"net/url"
 	"strings"
 
@@ -35,30 +34,6 @@ func NewHTMLProcessor(log logger.Interface, sourcesManager sources.Interface) *H
 		unknownTypes: make(map[contenttype.Type]int),
 		sources:      sourcesManager,
 	}
-}
-
-// Process processes an HTML element.
-// Note: This method is part of the content.Processor interface but content type
-// detection is handled by the crawler via detectContentType, not through this method.
-func (p *HTMLProcessor) Process(ctx context.Context, contentData any) error {
-	// This method is not used in the current implementation.
-	// Content type detection happens in crawler.selectProcessor via detectContentType.
-	return errors.New("not implemented")
-}
-
-// ParseHTML parses HTML content.
-func (p *HTMLProcessor) ParseHTML(r io.Reader) error {
-	return errors.New("not implemented")
-}
-
-// ExtractLinks extracts links from the content.
-func (p *HTMLProcessor) ExtractLinks() ([]string, error) {
-	return nil, errors.New("not implemented")
-}
-
-// ExtractContent extracts the main content.
-func (p *HTMLProcessor) ExtractContent() (string, error) {
-	return "", errors.New("not implemented")
 }
 
 // CanProcess returns whether the processor can handle the given content type.

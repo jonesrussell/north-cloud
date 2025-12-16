@@ -4,7 +4,6 @@ package content
 import (
 	"context"
 	"fmt"
-	"io"
 
 	"github.com/gocolly/colly/v2"
 	"github.com/jonesrussell/gocrawl/internal/content/contenttype"
@@ -22,20 +21,6 @@ type ContentProcessor interface {
 	Process(ctx context.Context, content any) error
 }
 
-// HTMLProcessor defines the interface for processing HTML content.
-type HTMLProcessor interface {
-	ContentProcessor
-
-	// ParseHTML parses HTML content from a reader.
-	ParseHTML(r io.Reader) error
-
-	// ExtractLinks extracts links from the parsed HTML.
-	ExtractLinks() ([]string, error)
-
-	// ExtractContent extracts the main content from the parsed HTML.
-	ExtractContent() (string, error)
-}
-
 // ProcessorRegistry manages content processors.
 type ProcessorRegistry interface {
 	// RegisterProcessor registers a new content processor.
@@ -50,7 +35,7 @@ type ProcessorRegistry interface {
 
 // Processor defines the interface for content processors.
 type Processor interface {
-	HTMLProcessor
+	ContentProcessor
 	ProcessorRegistry
 
 	// Start initializes the processor.
@@ -128,62 +113,4 @@ type ProcessorConfig struct {
 // ProcessorFactory creates processors based on configuration.
 type ProcessorFactory interface {
 	CreateProcessor(config ProcessorConfig) (ContentProcessor, error)
-}
-
-// NoopProcessor implements Processor with no-op implementations.
-type NoopProcessor struct{}
-
-// ContentType implements ContentProcessor.ContentType.
-func (p *NoopProcessor) ContentType() contenttype.Type {
-	return contenttype.Page
-}
-
-// CanProcess implements ContentProcessor.CanProcess.
-func (p *NoopProcessor) CanProcess(content contenttype.Type) bool {
-	return true
-}
-
-// Process implements ContentProcessor.Process.
-func (p *NoopProcessor) Process(ctx context.Context, content any) error {
-	return nil
-}
-
-// ParseHTML implements HTMLProcessor.ParseHTML.
-func (p *NoopProcessor) ParseHTML(r io.Reader) error {
-	return nil
-}
-
-// ExtractLinks implements HTMLProcessor.ExtractLinks.
-func (p *NoopProcessor) ExtractLinks() ([]string, error) {
-	return nil, nil
-}
-
-// ExtractContent implements HTMLProcessor.ExtractContent.
-func (p *NoopProcessor) ExtractContent() (string, error) {
-	return "", nil
-}
-
-// RegisterProcessor implements ProcessorRegistry.RegisterProcessor.
-func (p *NoopProcessor) RegisterProcessor(processor ContentProcessor) {
-	// No-op
-}
-
-// GetProcessor implements ProcessorRegistry.GetProcessor.
-func (p *NoopProcessor) GetProcessor(contentType contenttype.Type) (ContentProcessor, error) {
-	return p, nil
-}
-
-// ProcessContent implements ProcessorRegistry.ProcessContent.
-func (p *NoopProcessor) ProcessContent(ctx context.Context, contentType contenttype.Type, content any) error {
-	return nil
-}
-
-// Start implements Processor.Start.
-func (p *NoopProcessor) Start(ctx context.Context) error {
-	return nil
-}
-
-// Stop implements Processor.Stop.
-func (p *NoopProcessor) Stop(ctx context.Context) error {
-	return nil
 }
