@@ -102,6 +102,7 @@ services:
       - REDIS_URL=redis:6379
       - REDIS_PASSWORD=${REDIS_PASSWORD}
       - DRUPAL_URL=http://streetcode:80
+      - DRUPAL_USERNAME=${DRUPAL_USERNAME}
       - DRUPAL_TOKEN=${DRUPAL_TOKEN}
       - APP_DEBUG=false
       - APP_ENV=production

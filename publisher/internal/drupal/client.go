@@ -138,10 +138,13 @@ func (c *Client) setAuthHeaders(req *http.Request) {
 	// REST API Authentication module expects API-KEY header with base64(username:api-key)
 	// Also include Authorization header with Basic format as miniOrange requires it
 	var apiKeyValue string
+	var authFormat string
 	if c.username != "" {
-		apiKeyValue = base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("%s:%s", c.username, c.token)))
+		authFormat = fmt.Sprintf("%s:%s", c.username, c.token)
+		apiKeyValue = base64.StdEncoding.EncodeToString([]byte(authFormat))
 	} else {
 		// Fallback: if no username, just use token (base64 encoded)
+		authFormat = c.token
 		apiKeyValue = base64.StdEncoding.EncodeToString([]byte(c.token))
 	}
 
@@ -152,6 +155,14 @@ func (c *Client) setAuthHeaders(req *http.Request) {
 	if c.authMethod != "" {
 		req.Header.Set("AUTH-METHOD", c.authMethod)
 	}
+
+	// Debug logging for authentication
+	c.logger.Debug("Setting authentication headers",
+		logger.String("username", c.username),
+		logger.String("auth_format", authFormat),
+		logger.String("api_key_header", apiKeyValue),
+		logger.String("auth_method", c.authMethod),
+	)
 }
 
 // getCSRFToken fetches a CSRF token from Drupal's session/token endpoint
@@ -310,10 +321,11 @@ func (c *Client) parseDrupalErrorResponse(resp *http.Response, req ArticleReques
 		logger.String("article_title", req.Title),
 		logger.Int("status_code", resp.StatusCode),
 		logger.String("status", resp.Status),
+		logger.String("response_body", bodyStr),
 		logger.Duration("request_duration", requestDuration),
 		logger.Error(decodeErr),
 	)
-	return fmt.Errorf("drupal API error: %d %s", resp.StatusCode, resp.Status)
+	return fmt.Errorf("drupal API error: %d %s - %s", resp.StatusCode, resp.Status, bodyStr)
 }
 
 // mapArticleFields maps ArticleRequest fields to DrupalArticle attributes
