@@ -21,11 +21,6 @@ type ContentProcessor interface {
 	Process(ctx context.Context, content any) error
 }
 
-// HTMLProcessor defines the interface for processing HTML content.
-type HTMLProcessor interface {
-	ContentProcessor
-}
-
 // ProcessorRegistry manages content processors.
 type ProcessorRegistry interface {
 	// RegisterProcessor registers a new content processor.
@@ -40,7 +35,7 @@ type ProcessorRegistry interface {
 
 // Processor defines the interface for content processors.
 type Processor interface {
-	HTMLProcessor
+	ContentProcessor
 	ProcessorRegistry
 
 	// Start initializes the processor.
