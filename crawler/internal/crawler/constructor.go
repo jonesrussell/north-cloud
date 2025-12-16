@@ -82,7 +82,8 @@ func createCollector(cfg *crawler.Config, log logger.Interface) (*colly.Collecto
 		colly.ParseHTTPErrorResponse(),
 		colly.IgnoreRobotsTxt(),
 		colly.UserAgent(cfg.UserAgent),
-		colly.AllowURLRevisit(),
+		// Note: Not using AllowURLRevisit() to prevent excessive request queuing.
+		// Each URL will only be crawled once, which significantly reduces Wait() time.
 	)
 
 	// Configure rate limiting

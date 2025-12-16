@@ -66,7 +66,8 @@ func (c *Crawler) setupCollector(source *configtypes.Source) error {
 		colly.ParseHTTPErrorResponse(),
 		colly.IgnoreRobotsTxt(),
 		colly.UserAgent(c.cfg.UserAgent),
-		colly.AllowURLRevisit(),
+		// Note: Not using AllowURLRevisit() to prevent excessive request queuing.
+		// Each URL will only be crawled once, which significantly reduces Wait() time.
 	}
 
 	// Only set allowed domains if they are configured
@@ -210,21 +211,23 @@ func (c *Crawler) setupCallbacks(ctx context.Context) {
 
 	// Set up link following
 	c.collector.OnHTML("a[href]", func(e *colly.HTMLElement) {
-		c.linkHandler.HandleLink(e)
-	})
-
-	// Set up scraped callback to handle abort
-	c.collector.OnScraped(func(r *colly.Response) {
+		// Check if we should stop processing before following links
 		select {
 		case <-ctx.Done():
-			r.Request.Abort()
 			return
 		case <-c.abortChan:
-			r.Request.Abort()
 			return
 		default:
-			// Continue processing
+			c.linkHandler.HandleLink(e)
 		}
+	})
+
+	// Set up scraped callback for logging/metrics
+	c.collector.OnScraped(func(r *colly.Response) {
+		// Note: OnScraped fires AFTER the request completes, so we can't abort here.
+		// This callback is only for post-processing (logging, metrics, etc.)
+		c.logger.Debug("Finished processing page",
+			"url", r.Request.URL.String())
 	})
 }
 
