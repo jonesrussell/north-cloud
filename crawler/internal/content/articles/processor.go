@@ -5,7 +5,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io"
 
 	"github.com/gocolly/colly/v2"
 	"github.com/jonesrussell/gocrawl/internal/content"
@@ -82,21 +81,6 @@ func (p *ArticleProcessor) ContentType() contenttype.Type {
 // CanProcess implements the common.Processor interface.
 func (p *ArticleProcessor) CanProcess(ct contenttype.Type) bool {
 	return ct == contenttype.Article
-}
-
-// ParseHTML implements the common.Processor interface.
-func (p *ArticleProcessor) ParseHTML(r io.Reader) error {
-	return errors.New("not implemented")
-}
-
-// ExtractLinks implements the common.Processor interface.
-func (p *ArticleProcessor) ExtractLinks() ([]string, error) {
-	return nil, errors.New("not implemented")
-}
-
-// ExtractContent implements the common.Processor interface.
-func (p *ArticleProcessor) ExtractContent() (string, error) {
-	return "", errors.New("not implemented")
 }
 
 // ValidateJob implements the common.Processor interface.
@@ -178,18 +162,6 @@ func (p *ArticleProcessor) ProcessContent(ctx context.Context, ct contenttype.Ty
 		return err
 	}
 	return proc.Process(ctx, contentData)
-}
-
-// Get retrieves an article by its ID
-func (p *ArticleProcessor) Get(ctx context.Context, id string) (*domain.Article, error) {
-	// TODO: Implement article retrieval
-	return nil, errors.New("not implemented")
-}
-
-// GetByURL retrieves an article by its URL
-func (p *ArticleProcessor) GetByURL(ctx context.Context, url string) (string, error) {
-	// TODO: Implement article retrieval by URL
-	return "", errors.New("not implemented")
 }
 
 // Validate validates a job

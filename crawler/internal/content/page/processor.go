@@ -5,7 +5,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io"
 	"time"
 
 	"github.com/gocolly/colly/v2"
@@ -115,21 +114,6 @@ func (p *PageProcessor) GetProcessor(contentType contenttype.Type) (content.Cont
 		}
 	}
 	return nil, fmt.Errorf("unsupported content type: %s", contentType)
-}
-
-// ParseHTML parses HTML content.
-func (p *PageProcessor) ParseHTML(r io.Reader) error {
-	return errors.New("not implemented")
-}
-
-// ExtractLinks extracts links from the content.
-func (p *PageProcessor) ExtractLinks() ([]string, error) {
-	return nil, errors.New("not implemented")
-}
-
-// ExtractContent extracts the main content.
-func (p *PageProcessor) ExtractContent() (string, error) {
-	return "", errors.New("not implemented")
 }
 
 // RegisterProcessor registers a new processor.

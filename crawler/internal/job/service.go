@@ -74,24 +74,6 @@ func (s *BaseService) Status(ctx context.Context) (content.JobStatus, error) {
 	return state, nil
 }
 
-// GetItems returns the items for a job.
-func (s *BaseService) GetItems(ctx context.Context, jobID string) ([]*content.Item, error) {
-	s.logger.Info("Getting items for job", "jobID", jobID)
-	return nil, errors.New("not implemented")
-}
-
-// UpdateItem updates an item.
-func (s *BaseService) UpdateItem(ctx context.Context, item *content.Item) error {
-	s.logger.Info("Updating item", "itemID", item.ID)
-	return errors.New("not implemented")
-}
-
-// UpdateJob updates a job.
-func (s *BaseService) UpdateJob(ctx context.Context, job *content.Job) error {
-	s.logger.Info("Updating job", "jobID", job.ID)
-	return errors.New("not implemented")
-}
-
 // ValidateJob validates a job.
 func (s *BaseService) ValidateJob(job *content.Job) error {
 	if s.validator == nil {

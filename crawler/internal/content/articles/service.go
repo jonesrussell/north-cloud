@@ -303,33 +303,3 @@ func (s *ContentService) ProcessArticleWithIndex(ctx context.Context, article *d
 
 	return nil
 }
-
-// Get implements the ServiceInterface.
-func (s *ContentService) Get(ctx context.Context, id string) (*domain.Article, error) {
-	// Implementation
-	return nil, errors.New("not implemented")
-}
-
-// List returns a list of articles matching the query
-func (s *ContentService) List(ctx context.Context, query map[string]any) ([]*domain.Article, error) {
-	// TODO: Implement article listing
-	return nil, errors.New("not implemented")
-}
-
-// Delete implements the ServiceInterface.
-func (s *ContentService) Delete(ctx context.Context, id string) error {
-	// Implementation
-	return nil
-}
-
-// Update implements the ServiceInterface.
-func (s *ContentService) Update(ctx context.Context, article *domain.Article) error {
-	// Implementation
-	return nil
-}
-
-// Create implements the ServiceInterface.
-func (s *ContentService) Create(ctx context.Context, article *domain.Article) error {
-	// Implementation
-	return nil
-}
