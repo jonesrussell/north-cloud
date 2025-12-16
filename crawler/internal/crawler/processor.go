@@ -24,30 +24,6 @@ const (
 	ContentTypeContent ContentType = "content"
 )
 
-// processorMap maps content types to their processors.
-type processorMap map[ContentType]Processor
-
-// NewProcessorMap creates a new processor map.
-func NewProcessorMap() processorMap {
-	return make(processorMap)
-}
-
-// Add adds a processor for a specific content type.
-func (m processorMap) Add(contentType ContentType, processor Processor) {
-	m[contentType] = processor
-}
-
-// Get returns the processor for a specific content type.
-func (m processorMap) Get(contentType ContentType) Processor {
-	return m[contentType]
-}
-
-// Has returns true if a processor exists for the content type.
-func (m processorMap) Has(contentType ContentType) bool {
-	_, exists := m[contentType]
-	return exists
-}
-
 // Processor Management Methods
 // ----------------------------
 
