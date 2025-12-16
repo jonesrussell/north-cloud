@@ -151,9 +151,9 @@ func createCrawlerForJobs(
 		return nil, fmt.Errorf("failed to load sources: %w", err)
 	}
 
-	// Create article and page services
-	articleService := articles.NewContentService(deps.Logger, storageResult.Storage, constants.DefaultContentIndex)
-	pageService := page.NewContentService(deps.Logger, storageResult.Storage, constants.DefaultContentIndex)
+	// Create article and page services with sources manager
+	articleService := articles.NewContentServiceWithSources(deps.Logger, storageResult.Storage, constants.DefaultContentIndex, sourceManager)
+	pageService := page.NewContentServiceWithSources(deps.Logger, storageResult.Storage, constants.DefaultContentIndex, sourceManager)
 
 	// Create crawler
 	crawlerResult, err := crawler.NewCrawlerWithParams(crawler.CrawlerParams{
