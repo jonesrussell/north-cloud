@@ -84,9 +84,9 @@ func (h *LinkHandler) visitWithRetries(e *colly.HTMLElement, absLink string) {
 		}
 
 		if h.isNonRetryableError(err) {
-			h.crawler.logger.Debug("Skipping non-retryable link",
-				"url", absLink,
-				"error", err.Error())
+			// h.crawler.logger.Debug("Skipping non-retryable link",
+			// 	"url", absLink,
+			// 	"error", err.Error())
 			return
 		}
 
