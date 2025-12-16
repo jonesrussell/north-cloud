@@ -81,6 +81,11 @@ func (s *ContentService) Process(e *colly.HTMLElement) error {
 		// Try to find source by matching URL domain
 		sourceConfig := s.findSourceByURL(sourceURL)
 		if sourceConfig != nil {
+			s.logger.Debug("Source found by URL, using source-specific index",
+				"url", sourceURL,
+				"source_name", sourceConfig.Name,
+				"article_index", sourceConfig.ArticleIndex,
+				"default_index", indexName)
 			// Convert types.ArticleSelectors to configtypes.ArticleSelectors
 			selectors = configtypes.ArticleSelectors{
 				Container:     sourceConfig.Selectors.Article.Container,
@@ -157,15 +162,28 @@ func (s *ContentService) Process(e *colly.HTMLElement) error {
 			// Use source's article index if available (local variable, no race condition)
 			if sourceConfig.ArticleIndex != "" {
 				indexName = sourceConfig.ArticleIndex
+				s.logger.Debug("Using source-specific article index",
+					"index_name", indexName,
+					"source_name", sourceConfig.Name,
+					"url", sourceURL)
+			} else {
+				s.logger.Debug("Source found but ArticleIndex is empty, using default index",
+					"default_index", indexName,
+					"source_name", sourceConfig.Name,
+					"url", sourceURL)
 			}
 		} else {
-			s.logger.Debug("Source not found for URL, using default selectors",
-				"url", sourceURL)
+			s.logger.Debug("Source not found for URL, using default selectors and index",
+				"url", sourceURL,
+				"default_index", indexName)
 			// Use defaults when source not found
 			selectors = selectors.Default()
 		}
 	} else {
 		// No sources manager, use defaults
+		s.logger.Debug("No sources manager available, using default index",
+			"default_index", indexName,
+			"url", sourceURL)
 		selectors = selectors.Default()
 	}
 
@@ -219,6 +237,10 @@ func (s *ContentService) Process(e *colly.HTMLElement) error {
 	}
 
 	// Process the article using the service interface with the determined index name
+	s.logger.Debug("Processing article with index",
+		"index_name", indexName,
+		"article_id", article.ID,
+		"url", article.Source)
 	return s.ProcessArticleWithIndex(context.Background(), article, indexName)
 }
 

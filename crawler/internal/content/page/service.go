@@ -100,14 +100,40 @@ func (s *ContentService) Process(e *colly.HTMLElement) error {
 	if s.sources != nil {
 		sourceConfig := s.findSourceByURL(sourceURL)
 		if sourceConfig != nil {
+			s.logger.Debug("Source found by URL, using source-specific index",
+				"url", sourceURL,
+				"source_name", sourceConfig.Name,
+				"page_index", sourceConfig.PageIndex,
+				"default_index", indexName)
 			// Use source's page index if available (local variable, no race condition)
 			// Prefer PageIndex, fallback to Index for backward compatibility
 			if sourceConfig.PageIndex != "" {
 				indexName = sourceConfig.PageIndex
+				s.logger.Debug("Using source-specific page index",
+					"index_name", indexName,
+					"source_name", sourceConfig.Name,
+					"url", sourceURL)
 			} else if sourceConfig.Index != "" {
 				indexName = sourceConfig.Index
+				s.logger.Debug("Using source index (backward compatibility)",
+					"index_name", indexName,
+					"source_name", sourceConfig.Name,
+					"url", sourceURL)
+			} else {
+				s.logger.Debug("Source found but PageIndex is empty, using default index",
+					"default_index", indexName,
+					"source_name", sourceConfig.Name,
+					"url", sourceURL)
 			}
+		} else {
+			s.logger.Debug("Source not found for URL, using default index",
+				"url", sourceURL,
+				"default_index", indexName)
 		}
+	} else {
+		s.logger.Debug("No sources manager available, using default index",
+			"default_index", indexName,
+			"url", sourceURL)
 	}
 
 	// Extract page data using Colly methods with selectors
@@ -131,6 +157,10 @@ func (s *ContentService) Process(e *colly.HTMLElement) error {
 	}
 
 	// Index the page to Elasticsearch
+	s.logger.Debug("Processing page with index",
+		"index_name", indexName,
+		"page_id", page.ID,
+		"url", page.URL)
 	if err := s.storage.IndexDocument(context.Background(), indexName, page.ID, page); err != nil {
 		s.logger.Error("Failed to index page",
 			"error", err,
