@@ -1,4 +1,4 @@
-package handlers
+package handlers_test
 
 import (
 	"bytes"
@@ -12,6 +12,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/jonesrussell/gosources/internal/handlers"
 	"github.com/jonesrussell/gosources/internal/models"
 	"github.com/jonesrussell/gosources/internal/repository"
 	"github.com/jonesrussell/gosources/internal/testhelpers"
@@ -78,7 +79,7 @@ func (m *MockSourceRepository) GetCities(ctx context.Context) ([]models.City, er
 	return args.Get(0).([]models.City), args.Error(1)
 }
 
-func setupRouter(handler *SourceHandler) *gin.Engine {
+func setupRouter(handler *handlers.SourceHandler) *gin.Engine {
 	gin.SetMode(gin.TestMode)
 	router := gin.New()
 	router.POST("/sources", handler.Create)
@@ -96,7 +97,7 @@ func TestSourceHandler_Create(t *testing.T) {
 	t.Skip("Skipping handler tests until handlers use repository interfaces")
 	tests := []struct {
 		name           string
-		requestBody    interface{}
+		requestBody    any
 		mockSetup      func(*MockSourceRepository)
 		expectedStatus int
 		validateResp   func(*testing.T, *httptest.ResponseRecorder)
@@ -169,7 +170,7 @@ func TestSourceHandler_Create(t *testing.T) {
 			// For now, create a dummy repository (tests may require actual DB)
 			db, _ := sql.Open("postgres", "host=localhost port=5432 user=postgres password=postgres dbname=gosources_test sslmode=disable")
 			repo := repository.NewSourceRepository(db, logger)
-			handler := NewSourceHandler(repo, logger)
+			handler := handlers.NewSourceHandler(repo, logger)
 
 			router := setupRouter(handler)
 
@@ -240,11 +241,11 @@ func TestSourceHandler_GetByID(t *testing.T) {
 			// TODO: Handler needs interface injection for proper mocking
 			db, _ := sql.Open("postgres", "host=localhost port=5432 user=postgres password=postgres dbname=gosources_test sslmode=disable")
 			repo := repository.NewSourceRepository(db, logger)
-			handler := NewSourceHandler(repo, logger)
+			handler := handlers.NewSourceHandler(repo, logger)
 
 			router := setupRouter(handler)
 
-			req := httptest.NewRequest(http.MethodGet, "/sources/"+tt.id, nil)
+			req := httptest.NewRequest(http.MethodGet, "/sources/"+tt.id, http.NoBody)
 			w := httptest.NewRecorder()
 
 			router.ServeHTTP(w, req)
@@ -318,18 +319,18 @@ func TestSourceHandler_List(t *testing.T) {
 			// TODO: Handler needs interface injection for proper mocking
 			db, _ := sql.Open("postgres", "host=localhost port=5432 user=postgres password=postgres dbname=gosources_test sslmode=disable")
 			repo := repository.NewSourceRepository(db, logger)
-			handler := NewSourceHandler(repo, logger)
+			handler := handlers.NewSourceHandler(repo, logger)
 
 			router := setupRouter(handler)
 
-			req := httptest.NewRequest(http.MethodGet, "/sources", nil)
+			req := httptest.NewRequest(http.MethodGet, "/sources", http.NoBody)
 			w := httptest.NewRecorder()
 
 			router.ServeHTTP(w, req)
 
 			assert.Equal(t, tt.expectedStatus, w.Code)
 			if tt.expectedStatus == http.StatusOK {
-				var response map[string]interface{}
+				var response map[string]any
 				err := json.Unmarshal(w.Body.Bytes(), &response)
 				require.NoError(t, err)
 				assert.Contains(t, response, "sources")
@@ -377,18 +378,18 @@ func TestSourceHandler_GetCities(t *testing.T) {
 			// TODO: Handler needs interface injection for proper mocking
 			db, _ := sql.Open("postgres", "host=localhost port=5432 user=postgres password=postgres dbname=gosources_test sslmode=disable")
 			repo := repository.NewSourceRepository(db, logger)
-			handler := NewSourceHandler(repo, logger)
+			handler := handlers.NewSourceHandler(repo, logger)
 
 			router := setupRouter(handler)
 
-			req := httptest.NewRequest(http.MethodGet, "/cities", nil)
+			req := httptest.NewRequest(http.MethodGet, "/cities", http.NoBody)
 			w := httptest.NewRecorder()
 
 			router.ServeHTTP(w, req)
 
 			assert.Equal(t, tt.expectedStatus, w.Code)
 			if tt.expectedStatus == http.StatusOK {
-				var response map[string]interface{}
+				var response map[string]any
 				err := json.Unmarshal(w.Body.Bytes(), &response)
 				require.NoError(t, err)
 				assert.Contains(t, response, "cities")

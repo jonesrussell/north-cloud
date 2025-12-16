@@ -1,15 +1,17 @@
-package models
+package models_test
 
 import (
 	"database/sql/driver"
 	"encoding/json"
 	"testing"
+
+	"github.com/jonesrussell/gosources/internal/models"
 )
 
 func TestStringArray_Value(t *testing.T) {
 	tests := []struct {
 		name    string
-		array   *StringArray
+		array   *models.StringArray
 		wantErr bool
 		want    driver.Value
 	}{
@@ -20,17 +22,17 @@ func TestStringArray_Value(t *testing.T) {
 		},
 		{
 			name:    "empty array returns error",
-			array:   &StringArray{},
+			array:   &models.StringArray{},
 			wantErr: true,
 		},
 		{
 			name:  "valid array returns JSON",
-			array: stringPtr(StringArray{"value1", "value2"}),
+			array: stringPtr(models.StringArray{"value1", "value2"}),
 			want:  []byte(`["value1","value2"]`),
 		},
 		{
 			name:  "single value array",
-			array: stringPtr(StringArray{"single"}),
+			array: stringPtr(models.StringArray{"single"}),
 			want:  []byte(`["single"]`),
 		},
 	}
@@ -42,32 +44,39 @@ func TestStringArray_Value(t *testing.T) {
 				t.Errorf("StringArray.Value() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			if !tt.wantErr {
-				gotBytes, ok := got.([]byte)
-				if !ok {
-					t.Errorf("StringArray.Value() = %T, want []byte", got)
-					return
-				}
-				var gotArray StringArray
-				if err := json.Unmarshal(gotBytes, &gotArray); err != nil {
-					t.Errorf("StringArray.Value() returned invalid JSON: %v", err)
-					return
-				}
-				var wantArray StringArray
-				if err := json.Unmarshal(tt.want.([]byte), &wantArray); err != nil {
-					t.Errorf("Test setup error: invalid want JSON: %v", err)
-					return
-				}
-				if len(gotArray) != len(wantArray) {
-					t.Errorf("StringArray.Value() length = %d, want %d", len(gotArray), len(wantArray))
-				}
-				for i := range gotArray {
-					if gotArray[i] != wantArray[i] {
-						t.Errorf("StringArray.Value() [%d] = %v, want %v", i, gotArray[i], wantArray[i])
-					}
-				}
+			if tt.wantErr {
+				return
 			}
+			validateValueResult(t, got, tt.want)
 		})
+	}
+}
+
+func validateValueResult(t *testing.T, got driver.Value, want driver.Value) {
+	t.Helper()
+	gotBytes, ok := got.([]byte)
+	if !ok {
+		t.Errorf("StringArray.Value() = %T, want []byte", got)
+		return
+	}
+	var gotArray models.StringArray
+	if unmarshalErr := json.Unmarshal(gotBytes, &gotArray); unmarshalErr != nil {
+		t.Errorf("StringArray.Value() returned invalid JSON: %v", unmarshalErr)
+		return
+	}
+	var wantArray models.StringArray
+	if unmarshalErr := json.Unmarshal(want.([]byte), &wantArray); unmarshalErr != nil {
+		t.Errorf("Test setup error: invalid want JSON: %v", unmarshalErr)
+		return
+	}
+	if len(gotArray) != len(wantArray) {
+		t.Errorf("StringArray.Value() length = %d, want %d", len(gotArray), len(wantArray))
+		return
+	}
+	for i := range gotArray {
+		if gotArray[i] != wantArray[i] {
+			t.Errorf("StringArray.Value() [%d] = %v, want %v", i, gotArray[i], wantArray[i])
+		}
 	}
 }
 
@@ -75,7 +84,7 @@ func TestStringArray_Scan(t *testing.T) {
 	tests := []struct {
 		name    string
 		value   any
-		want    StringArray
+		want    models.StringArray
 		wantErr bool
 	}{
 		{
@@ -92,37 +101,38 @@ func TestStringArray_Scan(t *testing.T) {
 		{
 			name:  "valid JSON bytes",
 			value: []byte(`["value1","value2"]`),
-			want:  StringArray{"value1", "value2"},
+			want:  models.StringArray{"value1", "value2"},
 		},
 		{
 			name:  "empty JSON array",
 			value: []byte(`[]`),
-			want:  StringArray{},
+			want:  models.StringArray{},
 		},
 		{
 			name:  "single value array",
 			value: []byte(`["single"]`),
-			want:  StringArray{"single"},
+			want:  models.StringArray{"single"},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			var a StringArray
+			var a models.StringArray
 			err := a.Scan(tt.value)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("StringArray.Scan() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			if !tt.wantErr {
-				if len(a) != len(tt.want) {
-					t.Errorf("StringArray.Scan() length = %d, want %d", len(a), len(tt.want))
-					return
-				}
-				for i := range a {
-					if a[i] != tt.want[i] {
-						t.Errorf("StringArray.Scan() [%d] = %v, want %v", i, a[i], tt.want[i])
-					}
+			if tt.wantErr {
+				return
+			}
+			if len(a) != len(tt.want) {
+				t.Errorf("StringArray.Scan() length = %d, want %d", len(a), len(tt.want))
+				return
+			}
+			for i := range a {
+				if a[i] != tt.want[i] {
+					t.Errorf("StringArray.Scan() [%d] = %v, want %v", i, a[i], tt.want[i])
 				}
 			}
 		})
@@ -130,12 +140,12 @@ func TestStringArray_Scan(t *testing.T) {
 }
 
 func TestSource_Validation(t *testing.T) {
-	validSource := Source{
+	validSource := models.Source{
 		ID:   "test-id",
 		Name: "Test Source",
 		URL:  "https://example.com",
-		Selectors: SelectorConfig{
-			Article: ArticleSelectors{
+		Selectors: models.SelectorConfig{
+			Article: models.ArticleSelectors{
 				Title: "h1",
 				Body:  ".content",
 			},
@@ -157,13 +167,13 @@ func TestSource_Validation(t *testing.T) {
 func TestArticleSelectors_MergeWithDefaults(t *testing.T) {
 	tests := []struct {
 		name     string
-		input    ArticleSelectors
-		expected ArticleSelectors
+		input    models.ArticleSelectors
+		expected models.ArticleSelectors
 	}{
 		{
 			name:  "empty selectors get all defaults",
-			input: ArticleSelectors{},
-			expected: ArticleSelectors{
+			input: models.ArticleSelectors{},
+			expected: models.ArticleSelectors{
 				Container:     "article",
 				Title:         "h1",
 				Body:          "article > div",
@@ -187,11 +197,11 @@ func TestArticleSelectors_MergeWithDefaults(t *testing.T) {
 		},
 		{
 			name: "partial selectors merge with defaults",
-			input: ArticleSelectors{
+			input: models.ArticleSelectors{
 				Title: "custom-title",
 				Body:  "custom-body",
 			},
-			expected: ArticleSelectors{
+			expected: models.ArticleSelectors{
 				Container:     "article",
 				Title:         "custom-title",
 				Body:          "custom-body",
@@ -215,7 +225,7 @@ func TestArticleSelectors_MergeWithDefaults(t *testing.T) {
 		},
 		{
 			name: "all fields set don't get overridden",
-			input: ArticleSelectors{
+			input: models.ArticleSelectors{
 				Container:     "custom-container",
 				Title:         "custom-title",
 				Body:          "custom-body",
@@ -236,7 +246,7 @@ func TestArticleSelectors_MergeWithDefaults(t *testing.T) {
 				Category:      "custom-category",
 				Author:        "custom-author",
 			},
-			expected: ArticleSelectors{
+			expected: models.ArticleSelectors{
 				Container:     "custom-container",
 				Title:         "custom-title",
 				Body:          "custom-body",
@@ -305,13 +315,13 @@ func TestArticleSelectors_MergeWithDefaults(t *testing.T) {
 func TestListSelectors_MergeWithDefaults(t *testing.T) {
 	tests := []struct {
 		name     string
-		input    ListSelectors
-		expected ListSelectors
+		input    models.ListSelectors
+		expected models.ListSelectors
 	}{
 		{
 			name:  "empty selectors get all defaults",
-			input: ListSelectors{},
-			expected: ListSelectors{
+			input: models.ListSelectors{},
+			expected: models.ListSelectors{
 				Container:    ".article-list, .articles, main",
 				ArticleCards: ".article-card, article, .post",
 				ArticleList:  ".article-list > li, .articles > article",
@@ -319,10 +329,10 @@ func TestListSelectors_MergeWithDefaults(t *testing.T) {
 		},
 		{
 			name: "partial selectors merge with defaults",
-			input: ListSelectors{
+			input: models.ListSelectors{
 				Container: "custom-container",
 			},
-			expected: ListSelectors{
+			expected: models.ListSelectors{
 				Container:    "custom-container",
 				ArticleCards: ".article-card, article, .post",
 				ArticleList:  ".article-list > li, .articles > article",
@@ -355,13 +365,13 @@ func TestListSelectors_MergeWithDefaults(t *testing.T) {
 func TestPageSelectors_MergeWithDefaults(t *testing.T) {
 	tests := []struct {
 		name     string
-		input    PageSelectors
-		expected PageSelectors
+		input    models.PageSelectors
+		expected models.PageSelectors
 	}{
 		{
 			name:  "empty selectors get all defaults",
-			input: PageSelectors{},
-			expected: PageSelectors{
+			input: models.PageSelectors{},
+			expected: models.PageSelectors{
 				Container:     "main, article, body",
 				Title:         "h1, title",
 				Content:       "main, article, .content",
@@ -383,10 +393,10 @@ func TestPageSelectors_MergeWithDefaults(t *testing.T) {
 		},
 		{
 			name: "partial selectors merge with defaults",
-			input: PageSelectors{
+			input: models.PageSelectors{
 				Title: "custom-title",
 			},
-			expected: PageSelectors{
+			expected: models.PageSelectors{
 				Container:     "main, article, body",
 				Title:         "custom-title",
 				Content:       "main, article, .content",
@@ -408,10 +418,10 @@ func TestPageSelectors_MergeWithDefaults(t *testing.T) {
 		},
 		{
 			name: "custom exclude doesn't get overridden",
-			input: PageSelectors{
+			input: models.PageSelectors{
 				Exclude: []string{"custom-exclude"},
 			},
-			expected: PageSelectors{
+			expected: models.PageSelectors{
 				Container:     "main, article, body",
 				Title:         "h1, title",
 				Content:       "main, article, .content",
@@ -457,14 +467,14 @@ func TestPageSelectors_MergeWithDefaults(t *testing.T) {
 }
 
 func TestSelectorConfig_MergeWithDefaults(t *testing.T) {
-	input := SelectorConfig{
-		Article: ArticleSelectors{
+	input := models.SelectorConfig{
+		Article: models.ArticleSelectors{
 			Title: "custom-title",
 		},
-		List: ListSelectors{
+		List: models.ListSelectors{
 			Container: "custom-list-container",
 		},
-		Page: PageSelectors{
+		Page: models.PageSelectors{
 			Title: "custom-page-title",
 		},
 	}
@@ -497,6 +507,6 @@ func TestSelectorConfig_MergeWithDefaults(t *testing.T) {
 }
 
 // Helper function to convert StringArray to pointer
-func stringPtr(s StringArray) *StringArray {
+func stringPtr(s models.StringArray) *models.StringArray {
 	return &s
 }

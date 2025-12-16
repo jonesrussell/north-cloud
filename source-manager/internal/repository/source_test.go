@@ -1,4 +1,4 @@
-package repository
+package repository_test
 
 import (
 	"context"
@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/jonesrussell/gosources/internal/models"
+	"github.com/jonesrussell/gosources/internal/repository"
 	"github.com/jonesrussell/gosources/internal/testhelpers"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -15,7 +16,7 @@ import (
 // setupTestDB creates a test database for integration tests
 // This requires a local PostgreSQL instance or can be adapted for testcontainers
 // Set GOSOURCES_TEST_DB environment variable to customize connection
-func setupTestDB(t *testing.T) (*sql.DB, func()) {
+func setupTestDB(t *testing.T) (db *sql.DB, cleanup func()) {
 	// Skip if running in short mode (unit tests only)
 	if testing.Short() {
 		t.Skip("Skipping integration test in short mode")
@@ -24,29 +25,30 @@ func setupTestDB(t *testing.T) (*sql.DB, func()) {
 	// Try to connect to a test database
 	// In CI/CD or with testcontainers, this would be set up differently
 	connStr := "host=localhost port=5432 user=postgres password=postgres dbname=gosources_test sslmode=disable"
-	db, err := sql.Open("postgres", connStr)
+	var err error
+	db, err = sql.Open("postgres", connStr)
 	if err != nil {
 		t.Skipf("Skipping test: could not connect to test database: %v", err)
 	}
 
-	ctx := context.Background()
-	if err := db.PingContext(ctx); err != nil {
+	testCtx := context.Background()
+	if pingErr := db.PingContext(testCtx); pingErr != nil {
 		db.Close()
-		t.Skipf("Skipping test: could not ping test database: %v", err)
+		t.Skipf("Skipping test: could not ping test database: %v", pingErr)
 	}
 
 	// Run migrations
 	logger := testhelpers.NewTestLogger()
-	if err := testhelpers.RunMigrations(ctx, db, logger); err != nil {
+	if migrateErr := testhelpers.RunMigrations(testCtx, db, logger); migrateErr != nil {
 		db.Close()
-		t.Skipf("Skipping test: could not run migrations: %v", err)
+		t.Skipf("Skipping test: could not run migrations: %v", migrateErr)
 	}
 
 	// Clean up function
-	cleanup := func() {
+	cleanup = func() {
 		// Clean up test data
-		ctx := context.Background()
-		_, _ = db.ExecContext(ctx, "TRUNCATE TABLE sources CASCADE")
+		cleanupCtx := context.Background()
+		_, _ = db.ExecContext(cleanupCtx, "TRUNCATE TABLE sources CASCADE")
 		db.Close()
 	}
 
@@ -58,7 +60,7 @@ func TestSourceRepository_Create(t *testing.T) {
 	defer cleanup()
 
 	logger := testhelpers.NewTestLogger()
-	repo := NewSourceRepository(db, logger)
+	repo := repository.NewSourceRepository(db, logger)
 	ctx := context.Background()
 
 	tests := []struct {
@@ -131,7 +133,7 @@ func TestSourceRepository_GetByID(t *testing.T) {
 	defer cleanup()
 
 	logger := testhelpers.NewTestLogger()
-	repo := NewSourceRepository(db, logger)
+	repo := repository.NewSourceRepository(db, logger)
 	ctx := context.Background()
 
 	// Create a test source
@@ -173,9 +175,9 @@ func TestSourceRepository_GetByID(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			source, err := repo.GetByID(ctx, tt.id)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("SourceRepository.GetByID() error = %v, wantErr %v", err, tt.wantErr)
+			source, getErr := repo.GetByID(ctx, tt.id)
+			if (getErr != nil) != tt.wantErr {
+				t.Errorf("SourceRepository.GetByID() error = %v, wantErr %v", getErr, tt.wantErr)
 				return
 			}
 			if !tt.wantErr {
@@ -193,7 +195,7 @@ func TestSourceRepository_List(t *testing.T) {
 	defer cleanup()
 
 	logger := testhelpers.NewTestLogger()
-	repo := NewSourceRepository(db, logger)
+	repo := repository.NewSourceRepository(db, logger)
 	ctx := context.Background()
 
 	// Create multiple test sources
@@ -248,7 +250,7 @@ func TestSourceRepository_Update(t *testing.T) {
 	defer cleanup()
 
 	logger := testhelpers.NewTestLogger()
-	repo := NewSourceRepository(db, logger)
+	repo := repository.NewSourceRepository(db, logger)
 	ctx := context.Background()
 
 	// Create a test source
@@ -293,7 +295,7 @@ func TestSourceRepository_Delete(t *testing.T) {
 	defer cleanup()
 
 	logger := testhelpers.NewTestLogger()
-	repo := NewSourceRepository(db, logger)
+	repo := repository.NewSourceRepository(db, logger)
 	ctx := context.Background()
 
 	// Create a test source
@@ -320,7 +322,7 @@ func TestSourceRepository_Delete(t *testing.T) {
 
 	// Verify deletion
 	_, err = repo.GetByID(ctx, testSource.ID)
-	assert.Error(t, err, "GetByID() should error for deleted source")
+	require.Error(t, err, "GetByID() should error for deleted source")
 
 	// Try to delete non-existent source
 	err = repo.Delete(ctx, "non-existent-id")
@@ -332,7 +334,7 @@ func TestSourceRepository_GetCities(t *testing.T) {
 	defer cleanup()
 
 	logger := testhelpers.NewTestLogger()
-	repo := NewSourceRepository(db, logger)
+	repo := repository.NewSourceRepository(db, logger)
 	ctx := context.Background()
 
 	// Create enabled sources with city names

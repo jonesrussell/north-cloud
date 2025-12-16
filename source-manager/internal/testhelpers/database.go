@@ -28,8 +28,8 @@ func RunMigrations(ctx context.Context, db *sql.DB, log logger.Logger) error {
 		return fmt.Errorf("read migration file: %w", err)
 	}
 
-	if _, err := db.ExecContext(ctx, string(sqlBytes)); err != nil {
-		return fmt.Errorf("execute migration: %w", err)
+	if _, execErr := db.ExecContext(ctx, string(sqlBytes)); execErr != nil {
+		return fmt.Errorf("execute migration: %w", execErr)
 	}
 
 	if log != nil {
