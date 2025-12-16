@@ -227,31 +227,13 @@ func TestConfig_Validate(t *testing.T) {
 }
 
 func TestOverrideFromEnv(t *testing.T) {
-	// Save original env values
-	originalDBHost := os.Getenv("DB_HOST")
-	originalDBPort := os.Getenv("DB_PORT")
-	originalDBUser := os.Getenv("DB_USER")
-	originalServerHost := os.Getenv("SERVER_HOST")
-	originalServerPort := os.Getenv("SERVER_PORT")
-	originalAppDebug := os.Getenv("APP_DEBUG")
-
-	// Clean up after test
-	defer func() {
-		os.Setenv("DB_HOST", originalDBHost)
-		os.Setenv("DB_PORT", originalDBPort)
-		os.Setenv("DB_USER", originalDBUser)
-		os.Setenv("SERVER_HOST", originalServerHost)
-		os.Setenv("SERVER_PORT", originalServerPort)
-		os.Setenv("APP_DEBUG", originalAppDebug)
-	}()
-
-	// Set test environment variables
-	os.Setenv("DB_HOST", "env-host")
-	os.Setenv("DB_PORT", "5433")
-	os.Setenv("DB_USER", "env-user")
-	os.Setenv("SERVER_HOST", "env-server")
-	os.Setenv("SERVER_PORT", "9000")
-	os.Setenv("APP_DEBUG", "true")
+	// Set test environment variables (t.Setenv automatically cleans up after test)
+	t.Setenv("DB_HOST", "env-host")
+	t.Setenv("DB_PORT", "5433")
+	t.Setenv("DB_USER", "env-user")
+	t.Setenv("SERVER_HOST", "env-server")
+	t.Setenv("SERVER_PORT", "9000")
+	t.Setenv("APP_DEBUG", "true")
 
 	tmpDir := t.TempDir()
 	configPath := filepath.Join(tmpDir, "config.yml")

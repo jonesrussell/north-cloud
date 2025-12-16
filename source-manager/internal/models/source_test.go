@@ -52,7 +52,7 @@ func TestStringArray_Value(t *testing.T) {
 	}
 }
 
-func validateValueResult(t *testing.T, got driver.Value, want driver.Value) {
+func validateValueResult(t *testing.T, got, want driver.Value) {
 	t.Helper()
 	gotBytes, ok := got.([]byte)
 	if !ok {
