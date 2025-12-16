@@ -152,8 +152,18 @@ func createCrawlerForJobs(
 	}
 
 	// Create article and page services with sources manager
-	articleService := articles.NewContentServiceWithSources(deps.Logger, storageResult.Storage, constants.DefaultContentIndex, sourceManager)
-	pageService := page.NewContentServiceWithSources(deps.Logger, storageResult.Storage, constants.DefaultContentIndex, sourceManager)
+	articleService := articles.NewContentServiceWithSources(
+		deps.Logger,
+		storageResult.Storage,
+		constants.DefaultContentIndex,
+		sourceManager,
+	)
+	pageService := page.NewContentServiceWithSources(
+		deps.Logger,
+		storageResult.Storage,
+		constants.DefaultContentIndex,
+		sourceManager,
+	)
 
 	// Create crawler
 	crawlerResult, err := crawler.NewCrawlerWithParams(crawler.CrawlerParams{

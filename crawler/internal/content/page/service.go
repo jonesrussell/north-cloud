@@ -95,46 +95,8 @@ func (s *ContentService) Process(e *colly.HTMLElement) error {
 
 	// Get source configuration and determine index name
 	// Use local variable to avoid data race when Process() is called concurrently
-	indexName := s.indexName
+	indexName := s.getPageIndexName(sourceURL)
 	selectors := GetSelectorsForURL(s.sourceManager, sourceURL)
-	if s.sources != nil {
-		sourceConfig := s.findSourceByURL(sourceURL)
-		if sourceConfig != nil {
-			s.logger.Debug("Source found by URL, using source-specific index",
-				"url", sourceURL,
-				"source_name", sourceConfig.Name,
-				"page_index", sourceConfig.PageIndex,
-				"default_index", indexName)
-			// Use source's page index if available (local variable, no race condition)
-			// Prefer PageIndex, fallback to Index for backward compatibility
-			if sourceConfig.PageIndex != "" {
-				indexName = sourceConfig.PageIndex
-				s.logger.Debug("Using source-specific page index",
-					"index_name", indexName,
-					"source_name", sourceConfig.Name,
-					"url", sourceURL)
-			} else if sourceConfig.Index != "" {
-				indexName = sourceConfig.Index
-				s.logger.Debug("Using source index (backward compatibility)",
-					"index_name", indexName,
-					"source_name", sourceConfig.Name,
-					"url", sourceURL)
-			} else {
-				s.logger.Debug("Source found but PageIndex is empty, using default index",
-					"default_index", indexName,
-					"source_name", sourceConfig.Name,
-					"url", sourceURL)
-			}
-		} else {
-			s.logger.Debug("Source not found for URL, using default index",
-				"url", sourceURL,
-				"default_index", indexName)
-		}
-	} else {
-		s.logger.Debug("No sources manager available, using default index",
-			"default_index", indexName,
-			"url", sourceURL)
-	}
 
 	// Extract page data using Colly methods with selectors
 	pageData := extractPage(e, selectors, sourceURL)
@@ -177,6 +139,54 @@ func (s *ContentService) Process(e *colly.HTMLElement) error {
 		"title", page.Title)
 
 	return nil
+}
+
+// getPageIndexName determines the index name for a page based on source configuration.
+func (s *ContentService) getPageIndexName(sourceURL string) string {
+	indexName := s.indexName
+
+	if s.sources == nil {
+		s.logger.Debug("No sources manager available, using default index",
+			"default_index", indexName,
+			"url", sourceURL)
+		return indexName
+	}
+
+	sourceConfig := s.findSourceByURL(sourceURL)
+	if sourceConfig == nil {
+		s.logger.Debug("Source not found for URL, using default index",
+			"url", sourceURL,
+			"default_index", indexName)
+		return indexName
+	}
+
+	s.logger.Debug("Source found by URL, using source-specific index",
+		"url", sourceURL,
+		"source_name", sourceConfig.Name,
+		"page_index", sourceConfig.PageIndex,
+		"default_index", indexName)
+
+	// Prefer PageIndex, fallback to Index for backward compatibility
+	if sourceConfig.PageIndex != "" {
+		indexName = sourceConfig.PageIndex
+		s.logger.Debug("Using source-specific page index",
+			"index_name", indexName,
+			"source_name", sourceConfig.Name,
+			"url", sourceURL)
+	} else if sourceConfig.Index != "" {
+		indexName = sourceConfig.Index
+		s.logger.Debug("Using source index (backward compatibility)",
+			"index_name", indexName,
+			"source_name", sourceConfig.Name,
+			"url", sourceURL)
+	} else {
+		s.logger.Debug("Source found but PageIndex is empty, using default index",
+			"default_index", indexName,
+			"source_name", sourceConfig.Name,
+			"url", sourceURL)
+	}
+
+	return indexName
 }
 
 // findSourceByURL attempts to find a source configuration by matching the URL domain.

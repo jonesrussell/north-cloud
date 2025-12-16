@@ -76,7 +76,7 @@ func (h *LinkHandler) validateURL(absLink string) error {
 func (h *LinkHandler) visitWithRetries(e *colly.HTMLElement, absLink string) {
 	var lastErr error
 
-	for attempt := 0; attempt < h.crawler.cfg.MaxRetries; attempt++ {
+	for attempt := range h.crawler.cfg.MaxRetries {
 		err := e.Request.Visit(absLink)
 		if err == nil {
 			h.crawler.logger.Debug("Successfully visited link", "url", absLink)
@@ -84,9 +84,6 @@ func (h *LinkHandler) visitWithRetries(e *colly.HTMLElement, absLink string) {
 		}
 
 		if h.isNonRetryableError(err) {
-			// h.crawler.logger.Debug("Skipping non-retryable link",
-			// 	"url", absLink,
-			// 	"error", err.Error())
 			return
 		}
 
