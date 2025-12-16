@@ -43,8 +43,7 @@ func getCORSOrigins() []string {
 			parts := strings.Split(strings.TrimPrefix(strings.TrimPrefix(apiURL, "http://"), "https://"), ":")
 			if len(parts) > 0 {
 				host := parts[0]
-				origins = append(origins, "http://"+host+":3000")
-				origins = append(origins, "http://"+host+":3001")
+				origins = append(origins, "http://"+host+":3000", "http://"+host+":3001")
 			}
 		}
 	}

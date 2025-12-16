@@ -11,6 +11,8 @@ import (
 	"net/http"
 	"net/url"
 	"time"
+
+	infrahttp "github.com/north-cloud/infrastructure/http"
 )
 
 const (
@@ -54,9 +56,9 @@ func WithTimeout(timeout time.Duration) Option {
 func NewClient(opts ...Option) *Client {
 	client := &Client{
 		baseURL: DefaultBaseURL,
-		httpClient: &http.Client{
+		httpClient: infrahttp.NewClient(&infrahttp.ClientConfig{
 			Timeout: DefaultTimeout,
-		},
+		}),
 	}
 
 	for _, opt := range opts {

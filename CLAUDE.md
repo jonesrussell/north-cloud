@@ -27,7 +27,7 @@ This document provides a comprehensive guide for AI assistants working with the 
 - Provide a scalable, distributed architecture
 
 ### Tech Stack
-- **Languages**: Go 1.24+, PHP 8.2+, JavaScript (Vue.js)
+- **Languages**: Go 1.24+ (crawler, source-manager), Go 1.25+ (publisher), PHP 8.2+, JavaScript (Vue.js)
 - **Frameworks**: Gin (Go), Drupal 11 (PHP), Vue.js 3
 - **Infrastructure**: Docker, PostgreSQL, Redis, Elasticsearch, Nginx
 - **Build Tools**: Task (taskfile.dev), Composer, npm/Vite
@@ -248,6 +248,23 @@ north-cloud/
 - **Logging**: Use structured logging (zap for publisher, configure per service)
 - **Testing**: Unit tests with 80%+ coverage target
 - **Linting**: Use `golangci-lint` with service-specific configurations
+
+#### Go 1.25 Features
+The codebase leverages Go 1.25 improvements:
+
+- **Container-Aware GOMAXPROCS**: Go 1.25 automatically adjusts `GOMAXPROCS` based on container CPU quotas. This means:
+  - No manual `GOMAXPROCS` configuration needed in Docker containers
+  - Automatic CPU utilization optimization
+  - Better resource utilization in containerized environments
+  - Works seamlessly with Docker CPU limits and Kubernetes resource requests
+
+- **Built-in CSRF Protection**: The `net/http` package now includes Cross-Site Request Forgery (CSRF) protection:
+  - Available for HTTP servers using the standard library
+  - Can be enabled for additional security in web services
+  - Consider evaluating for services exposing web interfaces
+  - See [Go 1.25 release notes](https://go.dev/doc/go1.25) for implementation details
+
+**Note**: These features are automatic and require no code changes. The container-aware GOMAXPROCS is particularly beneficial for microservices running in Docker/Kubernetes environments.
 
 #### PHP Service (streetcode/Drupal)
 - **Standards**: Follow Drupal coding standards

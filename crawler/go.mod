@@ -14,6 +14,7 @@ require (
 	github.com/lib/pq v1.10.9
 	github.com/mattn/go-isatty v0.0.20
 	github.com/mitchellh/mapstructure v1.5.0
+	github.com/north-cloud/infrastructure v0.0.0
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/viper v1.21.0
@@ -24,6 +25,8 @@ require (
 	go.uber.org/zap v1.27.1
 	gopkg.in/yaml.v3 v3.0.1
 )
+
+replace github.com/north-cloud/infrastructure => ../infrastructure
 
 require (
 	dario.cat/mergo v1.0.2 // indirect

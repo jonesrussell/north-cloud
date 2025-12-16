@@ -1,25 +1,23 @@
 package main
 
 import (
-	"context"
 	"flag"
 	"fmt"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 
 	"github.com/jonesrussell/gosources/internal/api"
 	"github.com/jonesrussell/gosources/internal/config"
 	"github.com/jonesrussell/gosources/internal/database"
 	"github.com/jonesrussell/gosources/internal/logger"
 	"github.com/jonesrussell/gosources/internal/repository"
+	infracontext "github.com/north-cloud/infrastructure/context"
 )
 
 var (
-	version                = "dev"
-	defaultShutdownTimeout = 10
+	version = "dev"
 )
 
 func main() {
@@ -111,7 +109,7 @@ func main() {
 	appLogger.Info("Shutting down server")
 
 	// Graceful shutdown
-	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(defaultShutdownTimeout)*time.Second)
+	ctx, cancel := infracontext.WithShutdownTimeout()
 	defer cancel()
 
 	if shutdownErr := srv.Shutdown(ctx); shutdownErr != nil {

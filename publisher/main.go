@@ -13,6 +13,7 @@ import (
 	"github.com/gopost/integration/internal/integration"
 	"github.com/gopost/integration/internal/logger"
 	"github.com/gopost/integration/internal/sources"
+	infracontext "github.com/north-cloud/infrastructure/context"
 )
 
 var (
@@ -37,7 +38,7 @@ func initializeLogger(cfg *config.Config) (logger.Logger, error) {
 
 func handleFlushCache(service *integration.Service, appLogger logger.Logger) {
 	const flushCacheTimeout = 30 * time.Second
-	ctx, cancel := context.WithTimeout(context.Background(), flushCacheTimeout)
+	ctx, cancel := infracontext.WithTimeout(flushCacheTimeout)
 	defer cancel()
 
 	if err := service.FlushCache(ctx); err != nil {

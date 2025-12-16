@@ -12,6 +12,7 @@ import (
 
 	"github.com/PuerkitoBio/goquery"
 	configtypes "github.com/jonesrussell/gocrawl/internal/config/types"
+	infrahttp "github.com/north-cloud/infrastructure/http"
 )
 
 // ValidationResult holds the results of validating selectors against articles.
@@ -292,9 +293,9 @@ func FetchDocumentForValidation(url string) (*goquery.Document, error) {
 // fetchDocumentForValidation fetches a document for validation.
 func fetchDocumentForValidation(url string) (*goquery.Document, error) {
 	const requestTimeout = 30 * time.Second
-	client := &http.Client{
+	client := infrahttp.NewClient(&infrahttp.ClientConfig{
 		Timeout: requestTimeout,
-	}
+	})
 
 	ctx := context.Background()
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, http.NoBody)

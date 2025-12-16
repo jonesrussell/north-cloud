@@ -14,6 +14,7 @@ import (
 	"github.com/gopost/integration/internal/dedup"
 	"github.com/gopost/integration/internal/drupal"
 	"github.com/gopost/integration/internal/logger"
+	infracontext "github.com/north-cloud/infrastructure/context"
 	"github.com/redis/go-redis/v9"
 	"golang.org/x/time/rate"
 )
@@ -34,10 +35,18 @@ const (
 	redisTimeout      = 5 * time.Second
 )
 
+// Query and processing constants
+const (
+	// DefaultESQuerySize is the default number of results to fetch from Elasticsearch
+	DefaultESQuerySize = 100
+	// DefaultScanBatchSize is the batch size for Redis SCAN operations
+	DefaultScanBatchSize = 100
+)
+
 type Service struct {
-	esClient    *elasticsearch.Client
-	drupal      *drupal.Client
-	dedup       *dedup.Tracker
+	esClient    *elasticsearch.Client // TODO: Replace with ElasticsearchClient interface
+	drupal      DrupalClient
+	dedup       DedupTracker
 	limiter     *rate.Limiter
 	config      *config.Config
 	logger      logger.Logger
@@ -57,13 +66,13 @@ func NewService(cfg *config.Config, log logger.Logger) (*Service, error) {
 
 	esClient, err := elasticsearch.NewClient(esCfg)
 	if err != nil {
-		return nil, fmt.Errorf("elasticsearch client: %w", err)
+		return nil, fmt.Errorf("%w: %w", ErrElasticsearchQuery, err)
 	}
 
 	// Initialize Drupal client
 	drupalClient, err := drupal.NewClient(cfg.Drupal.URL, cfg.Drupal.Username, cfg.Drupal.Token, cfg.Drupal.AuthMethod, cfg.Drupal.SkipTLSVerify, log)
 	if err != nil {
-		return nil, fmt.Errorf("drupal client: %w", err)
+		return nil, fmt.Errorf("%w: %w", ErrDrupalPostFailed, err)
 	}
 
 	// Initialize Redis for deduplication
@@ -74,7 +83,7 @@ func NewService(cfg *config.Config, log logger.Logger) (*Service, error) {
 	})
 
 	// Test Redis connection
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := infracontext.WithPingTimeout()
 	defer cancel()
 	if err := redisClient.Ping(ctx).Err(); err != nil {
 		return nil, fmt.Errorf("redis connection: %w", err)
@@ -166,7 +175,7 @@ func (s *Service) FindCrimeArticles(ctx context.Context, cityCfg config.CityConf
 				"must": mustClauses,
 			},
 		},
-		"size": 100,
+		"size": DefaultESQuerySize,
 		"sort": []map[string]any{
 			{
 				ESFieldPublishedDate: map[string]any{
@@ -215,7 +224,7 @@ func (s *Service) FindCrimeArticles(ctx context.Context, cityCfg config.CityConf
 			logger.Duration("query_duration", queryDuration),
 			logger.Error(err),
 		)
-		return nil, fmt.Errorf("search error: %w", err)
+		return nil, fmt.Errorf("%w: %w", ErrElasticsearchQuery, err)
 	}
 	defer res.Body.Close()
 
@@ -344,6 +353,38 @@ func (s *Service) FindCrimeArticles(ctx context.Context, cityCfg config.CityConf
 	return articles, nil
 }
 
+// deriveOGFields derives Open Graph fields from canonical fields if not present.
+// After crawler refactor: OG fields are only stored in ES if they differ from canonical values.
+// If present in ES, use them; otherwise derive from canonical fields.
+func deriveOGFields(article Article) (ogTitle, ogDescription, ogURL string) {
+	ogTitle = article.OGTitle
+	if ogTitle == "" {
+		ogTitle = article.Title
+	}
+
+	ogDescription = article.OGDescription
+	if ogDescription == "" {
+		// Prefer description, fallback to intro
+		if article.Description != "" {
+			ogDescription = article.Description
+		} else {
+			ogDescription = article.Intro
+		}
+	}
+
+	ogURL = article.OGURL
+	if ogURL == "" {
+		// Prefer canonical_url, fallback to source
+		if article.URL != "" {
+			ogURL = article.URL
+		} else {
+			ogURL = article.Source
+		}
+	}
+
+	return ogTitle, ogDescription, ogURL
+}
+
 func (s *Service) isCrimeRelated(article Article) bool {
 	content := strings.ToLower(article.Title + " " + article.Content)
 	for _, keyword := range s.config.Service.CrimeKeywords {
@@ -436,31 +477,8 @@ func (s *Service) ProcessCity(ctx context.Context, cityCfg config.CityConfig) er
 		// Post to Drupal (with timeout)
 		postCtx, postCancel := context.WithTimeout(ctx, drupalPostTimeout)
 		postStartTime := time.Now()
-		// Derive OG fields from canonical fields if not present (DRY principle)
-		// After crawler refactor: OG fields are only stored in ES if they differ from canonical values.
-		// If present in ES, use them; otherwise derive from canonical fields.
-		ogTitle := article.OGTitle
-		if ogTitle == "" {
-			ogTitle = article.Title
-		}
-		ogDescription := article.OGDescription
-		if ogDescription == "" {
-			// Prefer description, fallback to intro
-			if article.Description != "" {
-				ogDescription = article.Description
-			} else {
-				ogDescription = article.Intro
-			}
-		}
-		ogURL := article.OGURL
-		if ogURL == "" {
-			// Prefer canonical_url, fallback to source
-			if article.URL != "" {
-				ogURL = article.URL
-			} else {
-				ogURL = article.Source
-			}
-		}
+		// Derive OG fields from canonical fields if not present
+		ogTitle, ogDescription, ogURL := deriveOGFields(*article)
 
 		postErr := s.drupal.PostArticle(postCtx, drupal.ArticleRequest{
 			Title:         article.Title,

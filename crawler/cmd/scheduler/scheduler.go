@@ -2,7 +2,6 @@
 package scheduler
 
 import (
-	"context"
 	"errors"
 	"fmt"
 
@@ -15,6 +14,7 @@ import (
 	"github.com/jonesrussell/gocrawl/internal/crawler/events"
 	"github.com/jonesrussell/gocrawl/internal/logger"
 	"github.com/jonesrussell/gocrawl/internal/sources"
+	infracontext "github.com/north-cloud/infrastructure/context"
 	"github.com/spf13/cobra"
 )
 
@@ -97,7 +97,7 @@ func runScheduler(cmd *cobra.Command, _ []string) error {
 	}
 
 	// Graceful shutdown with timeout
-	shutdownCtx, cancel := context.WithTimeout(context.Background(), constants.DefaultShutdownTimeout)
+	shutdownCtx, cancel := infracontext.WithTimeout(constants.DefaultShutdownTimeout)
 	defer cancel()
 
 	// Stop the scheduler service

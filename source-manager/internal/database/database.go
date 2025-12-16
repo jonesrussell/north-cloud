@@ -1,18 +1,13 @@
 package database
 
 import (
-	"context"
 	"database/sql"
 	"fmt"
-	"time"
 
 	"github.com/jonesrussell/gosources/internal/config"
 	"github.com/jonesrussell/gosources/internal/logger"
 	_ "github.com/lib/pq" //nolint:blankimports // PostgreSQL driver
-)
-
-const (
-	defaultPingTimeout = 5
+	infracontext "github.com/north-cloud/infrastructure/context"
 )
 
 type DB struct {
@@ -41,7 +36,7 @@ func New(cfg *config.Config, log logger.Logger) (*DB, error) {
 	db.SetConnMaxLifetime(cfg.Database.ConnMaxLifetime)
 
 	// Test connection
-	ctx, cancel := context.WithTimeout(context.Background(), defaultPingTimeout*time.Second)
+	ctx, cancel := infracontext.WithPingTimeout()
 	defer cancel()
 
 	if pingErr := db.PingContext(ctx); pingErr != nil {
