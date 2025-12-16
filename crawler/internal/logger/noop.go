@@ -7,11 +7,6 @@ import (
 // NoOpLogger is a logger that does nothing.
 type NoOpLogger struct{}
 
-// NewNoOpLogger creates a new no-op logger.
-func NewNoOpLogger() Interface {
-	return &NoOpLogger{}
-}
-
 // NewNoOp creates a new no-op logger instance.
 func NewNoOp() Interface {
 	return &NoOpLogger{}
