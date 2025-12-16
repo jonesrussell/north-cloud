@@ -2,7 +2,6 @@
 package crawler
 
 import (
-	"errors"
 	"net/url"
 	"strings"
 	"time"
@@ -69,25 +68,25 @@ func (h *LinkHandler) HandleLink(e *colly.HTMLElement) {
 
 		// Check if error is non-retryable by checking both error type and message
 		// Colly may return errors with different message formats
-		errMsg := err.Error()
-		isNonRetryable := errors.Is(err, ErrAlreadyVisited) ||
-			errors.Is(err, ErrMaxDepth) ||
-			errors.Is(err, ErrMissingURL) ||
-			errors.Is(err, ErrForbiddenDomain) ||
-			strings.Contains(errMsg, "forbidden domain") ||
-			strings.Contains(errMsg, "Forbidden domain") ||
-			strings.Contains(errMsg, "max depth") ||
-			strings.Contains(errMsg, "Max depth") ||
-			strings.Contains(errMsg, "already visited") ||
-			strings.Contains(errMsg, "Already visited")
+		// errMsg := err.Error()
+		// isNonRetryable := errors.Is(err, ErrAlreadyVisited) ||
+		// 	errors.Is(err, ErrMaxDepth) ||
+		// 	errors.Is(err, ErrMissingURL) ||
+		// 	errors.Is(err, ErrForbiddenDomain) ||
+		// 	strings.Contains(errMsg, "forbidden domain") ||
+		// 	strings.Contains(errMsg, "Forbidden domain") ||
+		// 	strings.Contains(errMsg, "max depth") ||
+		// 	strings.Contains(errMsg, "Max depth") ||
+		// 	strings.Contains(errMsg, "already visited") ||
+		// 	strings.Contains(errMsg, "Already visited")
 
-		if isNonRetryable {
-			// These are expected conditions, log at debug level
-			h.crawler.logger.Debug("Skipping non-retryable link",
-				"url", absLink,
-				"error", errMsg)
-			return
-		}
+		// if isNonRetryable {
+		// 	// These are expected conditions, log at debug level
+		// 	h.crawler.logger.Debug("Skipping non-retryable link",
+		// 		"url", absLink,
+		// 		"error", errMsg)
+		// 	return
+		// }
 
 		lastErr = err
 		h.crawler.logger.Debug("Failed to visit link, retrying",
