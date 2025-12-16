@@ -4,7 +4,6 @@ package crawler
 import (
 	"context"
 	"fmt"
-	"io"
 
 	"github.com/jonesrussell/gocrawl/internal/content"
 	"github.com/jonesrussell/gocrawl/internal/content/contenttype"
@@ -99,21 +98,6 @@ func (p *processorWrapper) CanProcess(ct contenttype.Type) bool {
 // Process implements content.ContentProcessor
 func (p *processorWrapper) Process(ctx context.Context, contentData any) error {
 	return p.processor.Process(ctx, contentData)
-}
-
-// ParseHTML implements content.HTMLProcessor
-func (p *processorWrapper) ParseHTML(r io.Reader) error {
-	return p.processor.ParseHTML(r)
-}
-
-// ExtractLinks implements content.HTMLProcessor
-func (p *processorWrapper) ExtractLinks() ([]string, error) {
-	return p.processor.ExtractLinks()
-}
-
-// ExtractContent implements content.HTMLProcessor
-func (p *processorWrapper) ExtractContent() (string, error) {
-	return p.processor.ExtractContent()
 }
 
 // RegisterProcessor implements content.ProcessorRegistry

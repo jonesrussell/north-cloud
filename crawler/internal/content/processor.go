@@ -4,7 +4,6 @@ package content
 import (
 	"context"
 	"fmt"
-	"io"
 
 	"github.com/gocolly/colly/v2"
 	"github.com/jonesrussell/gocrawl/internal/content/contenttype"
@@ -25,15 +24,6 @@ type ContentProcessor interface {
 // HTMLProcessor defines the interface for processing HTML content.
 type HTMLProcessor interface {
 	ContentProcessor
-
-	// ParseHTML parses HTML content from a reader.
-	ParseHTML(r io.Reader) error
-
-	// ExtractLinks extracts links from the parsed HTML.
-	ExtractLinks() ([]string, error)
-
-	// ExtractContent extracts the main content from the parsed HTML.
-	ExtractContent() (string, error)
 }
 
 // ProcessorRegistry manages content processors.
