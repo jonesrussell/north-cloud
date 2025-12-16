@@ -97,16 +97,6 @@ type ContentProcessor interface {
 	ContentType() string
 }
 
-// ArticleStorage handles data persistence.
-type ArticleStorage interface {
-	// SaveArticle saves an article.
-	SaveArticle(ctx context.Context, article *domain.Article) error
-	// GetArticle retrieves an article.
-	GetArticle(ctx context.Context, id string) (*domain.Article, error)
-	// ListArticles lists articles matching the query.
-	ListArticles(ctx context.Context, query string) ([]*domain.Article, error)
-}
-
 // Interface defines the complete crawler interface.
 type Interface interface {
 	// Embed the core crawler interface
