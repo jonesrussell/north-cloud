@@ -8,7 +8,7 @@ rest_api_authentication_customer_api_key: ''
 rest_api_authentication_status: ''
 enable_authentication: 1
 authentication_method: 1
-api_token: cOOHDlafx8Ek24hPS4rpe3DPJn3iw9PH6zEBsfj1sUn0ZQM2POdZSSNU7DHReGuc
+api_token: i59zbdmgEAIe30tlqYrlOa4a80bX6utMQnCH0WqvthruEXSNeDqmPOZNTWzfUjHc
 rest_api_authentication_support_request_flag: APIAuthTab
 application_name: GoPost
 applications:
