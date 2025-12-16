@@ -261,8 +261,109 @@ func extractBodyContent(data *ArticleData, e *colly.HTMLElement, selectors confi
 
 	// Additional fallbacks for body if still empty
 	if data.Body == "" {
-		// Try common article content containers
-		data.Body = extractTextFromContainer(e, "article, main, .article-content, .article-body", selectors.Exclude)
+		// Try common article content containers with more aggressive selectors
+		fallbackSelectors := []string{
+			"article",
+			"main",
+			".article-content",
+			".article-body",
+			".content",
+			".post-content",
+			".entry-content",
+			"[role='article']",
+			"article > div",
+			"article > section",
+			".article > div",
+			".story-body",
+			".article-body > div",
+			".story-content",
+			".article-text",
+			".article-main",
+			"#article-content",
+			"#main-content",
+			".main-content",
+		}
+		for _, fallbackSelector := range fallbackSelectors {
+			data.Body = extractTextFromContainer(e, fallbackSelector, selectors.Exclude)
+			if data.Body != "" && len(strings.TrimSpace(data.Body)) > 50 {
+				break
+			}
+		}
+	}
+
+	// Last resort: try to extract from the entire document body if still empty
+	// This should rarely be needed, but helps with edge cases
+	if data.Body == "" {
+		// Try multiple strategies to find article content
+		strategies := []string{
+			"article, main, [role='article'], .content, .post-content",
+			"article p",
+			"main p",
+			".content p",
+			"article > *",
+			"main > *",
+		}
+		for _, strategy := range strategies {
+			bodyText := e.DOM.Find(strategy).Text()
+			cleaned := strings.TrimSpace(bodyText)
+			// Require at least 100 characters to avoid false positives
+			if len(cleaned) > 100 {
+				data.Body = cleaned
+				break
+			}
+		}
+	}
+
+	// Final fallback: try to extract paragraphs from common article locations
+	// This is more aggressive and might include navigation, but better than nothing
+	if data.Body == "" {
+		// Look for paragraphs in article-like containers
+		paragraphs := e.DOM.Find("article p, main p, .content p, .article-content p, .post-content p")
+		if paragraphs.Length() > 0 {
+			var textParts []string
+			paragraphs.Each(func(i int, s *goquery.Selection) {
+				text := strings.TrimSpace(s.Text())
+				if len(text) > 20 { // Only include substantial paragraphs
+					textParts = append(textParts, text)
+				}
+			})
+			if len(textParts) > 0 {
+				combined := strings.Join(textParts, "\n\n")
+				if len(combined) > 100 {
+					data.Body = combined
+				}
+			}
+		}
+	}
+
+	// Absolute last resort: extract all paragraphs from body, excluding common non-content areas
+	if data.Body == "" {
+		// Find all paragraphs, but exclude common non-content areas
+		body := e.DOM.Find("body")
+		if body.Length() > 0 {
+			// Remove common non-content elements
+			body.Find("header, footer, nav, aside, .header, .footer, .navigation, .sidebar, .menu, script, style").Remove()
+			// Get all paragraphs
+			paragraphs := body.Find("p")
+			if paragraphs.Length() > 3 { // Require at least 3 paragraphs to avoid false positives
+				var textParts []string
+				paragraphs.Each(func(i int, s *goquery.Selection) {
+					text := strings.TrimSpace(s.Text())
+					// Filter out very short paragraphs and common navigation text
+					if len(text) > 30 && !strings.HasPrefix(strings.ToLower(text), "home") &&
+						!strings.HasPrefix(strings.ToLower(text), "about") &&
+						!strings.HasPrefix(strings.ToLower(text), "contact") {
+						textParts = append(textParts, text)
+					}
+				})
+				if len(textParts) >= 3 {
+					combined := strings.Join(textParts, "\n\n")
+					if len(combined) > 100 {
+						data.Body = combined
+					}
+				}
+			}
+		}
 	}
 }
 

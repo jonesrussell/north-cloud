@@ -112,6 +112,48 @@ func (s *ContentService) Process(e *colly.HTMLElement) error {
 				ArticleID:     sourceConfig.Selectors.Article.ArticleID,
 				Exclude:       sourceConfig.Selectors.Article.Exclude,
 			}
+			// Merge with defaults to ensure all fields are populated (safety measure)
+			// This ensures that even if source-manager didn't merge defaults, we have them here
+			defaults := selectors.Default()
+			if selectors.Container == "" {
+				selectors.Container = defaults.Container
+			}
+			if selectors.Body == "" {
+				selectors.Body = defaults.Body
+			}
+			if selectors.Title == "" {
+				selectors.Title = defaults.Title
+			}
+			if selectors.Intro == "" {
+				selectors.Intro = defaults.Intro
+			}
+			if selectors.Byline == "" {
+				selectors.Byline = defaults.Byline
+			}
+			if selectors.PublishedTime == "" {
+				selectors.PublishedTime = defaults.PublishedTime
+			}
+			if selectors.JSONLD == "" {
+				selectors.JSONLD = defaults.JSONLD
+			}
+			if selectors.Description == "" {
+				selectors.Description = defaults.Description
+			}
+			if selectors.Keywords == "" {
+				selectors.Keywords = defaults.Keywords
+			}
+			if selectors.OGTitle == "" {
+				selectors.OGTitle = defaults.OGTitle
+			}
+			if selectors.OGDescription == "" {
+				selectors.OGDescription = defaults.OGDescription
+			}
+			if selectors.OGImage == "" {
+				selectors.OGImage = defaults.OGImage
+			}
+			if selectors.Canonical == "" {
+				selectors.Canonical = defaults.Canonical
+			}
 			// Use source's article index if available (local variable, no race condition)
 			if sourceConfig.ArticleIndex != "" {
 				indexName = sourceConfig.ArticleIndex
@@ -119,7 +161,12 @@ func (s *ContentService) Process(e *colly.HTMLElement) error {
 		} else {
 			s.logger.Debug("Source not found for URL, using default selectors",
 				"url", sourceURL)
+			// Use defaults when source not found
+			selectors = selectors.Default()
 		}
+	} else {
+		// No sources manager, use defaults
+		selectors = selectors.Default()
 	}
 
 	// Extract article data using Colly methods
