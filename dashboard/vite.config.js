@@ -2,6 +2,10 @@ import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import tailwindcss from '@tailwindcss/vite'
 
+// API targets - use Docker service names when running in container
+const CRAWLER_API_URL = process.env.CRAWLER_API_URL || 'http://localhost:8060'
+const SOURCES_API_URL = process.env.SOURCES_API_URL || 'http://localhost:8050'
+
 export default defineConfig({
   plugins: [
     vue(),
@@ -12,19 +16,19 @@ export default defineConfig({
     proxy: {
       // Crawler API proxy
       '/api/crawler': {
-        target: 'http://localhost:8060',
+        target: CRAWLER_API_URL,
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api\/crawler/, '/api/v1'),
       },
       // Source Manager API proxy
       '/api/sources': {
-        target: 'http://localhost:8050',
+        target: SOURCES_API_URL,
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api\/sources/, '/api/v1'),
       },
       // Crawler health endpoint
       '/api/health/crawler': {
-        target: 'http://localhost:8060',
+        target: CRAWLER_API_URL,
         changeOrigin: true,
         rewrite: () => '/health',
       },

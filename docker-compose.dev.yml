@@ -16,7 +16,6 @@ services:
     user: "${UID:-1000}:${GID:-1000}"
     ports:
       - "${CRAWLER_PORT:-8060}:8080"  # Map host 8060 to container 8080
-      - "${CRAWLER_FRONTEND_PORT:-3001}:3000"
     depends_on:
       postgres-crawler:
         condition: service_healthy
@@ -34,12 +33,9 @@ services:
       # Use Docker service name for internal communication (source-manager:8050)
       # SOURCE_MANAGER_API_URL is for external access from host, not for container-to-container
       - CRAWLER_SOURCES_API_URL=${CRAWLER_SOURCES_API_URL:-http://source-manager:8050/api/v1/sources}
-      # Frontend API URL (passed to Vite via VITE_API_URL)
-      - VITE_API_URL=${CRAWLER_API_URL:-http://localhost:8060}
       # Use /tmp for caches to avoid permission issues with host user
       - GOMODCACHE=/tmp/go-mod-cache
       - GOCACHE=/tmp/go-build-cache
-      - npm_config_cache=/tmp/npm-cache
     volumes:
       # Mount source code for development
       - ./crawler:/app
@@ -49,14 +45,10 @@ services:
       # Mount cache volumes to persist downloads across restarts
       - crawler_go_mod_cache:/tmp/go-mod-cache
       - crawler_go_build_cache:/tmp/go-build-cache
-      - crawler_npm_cache:/tmp/npm-cache
-      # Note: node_modules not mounted separately to avoid permission issues
-      # npm install will create it in the mounted source with correct permissions
     working_dir: /app
-    # Download dependencies, then start both frontend and backend
+    # Download dependencies then start backend
     # Use -mod=mod to ignore vendor directory if present
-    # Frontend runs on port 3000, backend on port 8060 (httpd server)
-    command: ["sh", "-c", "cd /app/frontend && npm install && npm run dev & cd /app && go mod download && go run -mod=mod ./main.go httpd --config config.yaml"]
+    command: ["sh", "-c", "go mod download && go run -mod=mod ./main.go httpd --config config.yaml"]
     networks:
       - north-cloud-network
     restart: unless-stopped
@@ -77,7 +69,6 @@ services:
     user: "${UID:-1000}:${GID:-1000}"
     ports:
       - "${SOURCE_MANAGER_PORT:-8050}:8050"
-      - "${FRONTEND_PORT:-3000}:3000"
     depends_on:
       postgres-source-manager:
         condition: service_healthy
@@ -94,12 +85,9 @@ services:
       - DB_SSLMODE=disable
       # External API URL for other services to access source-manager
       - SOURCE_MANAGER_API_URL=${SOURCE_MANAGER_API_URL:-http://localhost:8050}
-      # Frontend API URL (passed to Vite via VITE_API_URL)
-      - VITE_API_URL=${SOURCE_MANAGER_API_URL:-http://localhost:8050}
       # Use /tmp for caches to avoid permission issues with host user
       - GOMODCACHE=/tmp/go-mod-cache
       - GOCACHE=/tmp/go-build-cache
-      - npm_config_cache=/tmp/npm-cache
     volumes:
       # Mount source code for development
       - ./source-manager:/app
@@ -110,13 +98,10 @@ services:
       # Mount cache volumes to persist downloads across restarts
       - source_manager_go_mod_cache:/tmp/go-mod-cache
       - source_manager_go_build_cache:/tmp/go-build-cache
-      - source_manager_npm_cache:/tmp/npm-cache
-      - source_manager_node_modules:/app/frontend/node_modules
     working_dir: /app
-    # Download dependencies, then start both frontend and backend
+    # Download dependencies then start backend
     # Use -mod=mod to ignore vendor directory if present
-    # Frontend runs on port 3000, backend on port 8050
-    command: ["sh", "-c", "cd /app/frontend && npm install && npm run dev & cd /app && go mod download && go run -mod=mod ./main.go -config config.yml"]
+    command: ["sh", "-c", "go mod download && go run -mod=mod ./main.go -config config.yml"]
     networks:
       - north-cloud-network
     restart: unless-stopped
@@ -230,14 +215,23 @@ services:
     build:
       context: ./dashboard
       dockerfile: Dockerfile.dev
+      args:
+        UID: ${UID:-1000}
+        GID: ${GID:-1000}
     container_name: north-cloud-dashboard-dev
     # Run as host user to avoid permission issues with mounted volumes
     user: "${UID:-1000}:${GID:-1000}"
+    depends_on:
+      - crawler
+      - source-manager
     ports:
       - "${DASHBOARD_PORT:-3002}:3002"
     environment:
       - NODE_ENV=development
       - npm_config_cache=/tmp/npm-cache
+      # API URLs using Docker service names (internal network)
+      - CRAWLER_API_URL=http://crawler:8080
+      - SOURCES_API_URL=http://source-manager:8050
     volumes:
       - ./dashboard:/app
       - dashboard_node_modules:/app/node_modules
@@ -282,12 +276,9 @@ volumes:
   # Crawler cache volumes
   crawler_go_mod_cache:
   crawler_go_build_cache:
-  crawler_npm_cache:
   # Source manager cache volumes
   source_manager_go_mod_cache:
   source_manager_go_build_cache:
-  source_manager_npm_cache:
-  source_manager_node_modules:
   # Dashboard cache volumes
   dashboard_npm_cache:
   dashboard_node_modules:
