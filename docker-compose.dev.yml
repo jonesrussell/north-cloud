@@ -192,6 +192,8 @@ services:
       - POSTGRES_PASSWORD=${POSTGRES_STREETCODE_PASSWORD:-postgres}
       - POSTGRES_DB=${POSTGRES_STREETCODE_DB:-streetcode}
       - DRUPAL_ENVIRONMENT=development
+      # Use /tmp for npm cache to avoid permission issues with host user
+      - npm_config_cache=/tmp/npm-cache
     volumes:
       # Mount entire Drupal directory for development
       # All files owned by host user, no copying/chowning in image
@@ -202,8 +204,12 @@ services:
       - ./streetcode/php.ini:/usr/local/etc/php/conf.d/drupal.ini:ro
       - ./streetcode/www.conf:/usr/local/etc/php-fpm.d/www.conf:ro
       - ./streetcode/nginx.conf:/etc/nginx/sites-available/default:ro
+      # Mount npm cache volume to persist downloads across restarts
+      - streetcode_npm_cache:/tmp/npm-cache
       # Note: vendor, core, contrib modules/themes, and libraries are all mounted
       # from host filesystem so they persist across container rebuilds
+      # Note: node_modules not mounted separately to avoid permission issues
+      # npm install will create it in the mounted source with correct permissions
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:80"]
       interval: 30s
@@ -253,3 +259,5 @@ volumes:
   source_manager_go_build_cache:
   source_manager_npm_cache:
   source_manager_node_modules:
+  # Streetcode cache volumes
+  streetcode_npm_cache:

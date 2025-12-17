@@ -17,8 +17,14 @@ RUN apt-get update && apt-get install -y \
     zip \
     unzip \
     libpq-dev \
+    postgresql-client \
     && docker-php-ext-configure gd --with-jpeg --with-webp --with-avif \
     && docker-php-ext-install pdo pdo_pgsql mbstring exif pcntl bcmath gd zip opcache \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# Install Node.js 20.x and npm
+RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+    && apt-get install -y nodejs \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Install Composer
@@ -46,6 +52,14 @@ RUN rm -f /etc/nginx/sites-enabled/default \
 
 # Copy the rest of the application
 COPY . .
+
+# Build Tailwind CSS for the theme
+RUN if [ -f "/var/www/html/web/themes/custom/streetcode_ui/package.json" ]; then \
+    cd /var/www/html/web/themes/custom/streetcode_ui && \
+    npm ci && \
+    npm run build && \
+    rm -rf node_modules; \
+    fi
 
 # Set permissions for web directory
 # Note: PHP-FPM and Nginx run as www-data (UID 33), which is standard
