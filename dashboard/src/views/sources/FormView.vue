@@ -152,7 +152,8 @@
         <!-- Article Selectors -->
         <CollapsibleSection
           title="Article Selectors"
-          v-model:open="showArticleSelectors"
+          :open="showArticleSelectors"
+          @update:open="showArticleSelectors = $event"
         >
           <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <SelectorInput v-model="form.selectors.article.container" label="Container" placeholder="article, .article-container" />
@@ -192,7 +193,8 @@
         <!-- List Selectors -->
         <CollapsibleSection
           title="List Selectors"
-          v-model:open="showListSelectors"
+          :open="showListSelectors"
+          @update:open="showListSelectors = $event"
         >
           <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <SelectorInput v-model="form.selectors.list.container" label="Container" placeholder=".article-list, .news-list" />
@@ -212,7 +214,8 @@
         <!-- Page Selectors -->
         <CollapsibleSection
           title="Page Selectors"
-          v-model:open="showPageSelectors"
+          :open="showPageSelectors"
+          @update:open="showPageSelectors = $event"
         >
           <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <SelectorInput v-model="form.selectors.page.container" label="Container" placeholder="main, .main-content" />
