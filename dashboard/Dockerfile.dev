@@ -6,15 +6,33 @@ WORKDIR /app
 # Install dependencies for hot reload
 RUN apk add --no-cache git
 
+# Create non-root user for development (used as fallback)
+RUN addgroup -g 1000 appuser && \
+    adduser -D -u 1000 -G appuser appuser
+
+# Create cache directories in /tmp with appropriate permissions
+# /tmp typically has 1777 (sticky bit) which is appropriate for shared temp space
+RUN mkdir -p /tmp/npm-cache && \
+    chmod 1777 /tmp/npm-cache
+
+# Create node_modules directory with proper permissions
+# This ensures the directory exists and is writable before volume mount
+RUN mkdir -p /app/node_modules && \
+    chown -R 1000:1000 /app
+
 # Copy package files (for reference, actual install happens in container)
-COPY package*.json ./
+COPY --chown=1000:1000 package*.json ./
 
 # Copy source code (will be overridden by volume mount in dev)
-COPY . .
+COPY --chown=1000:1000 . .
 
 # Expose port
 EXPOSE 3002
 
-# Note: npm install is run in docker-compose command to ensure correct permissions
-# Start development server
-CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]
+# Note: Container runs as host user via docker-compose user directive
+# This eliminates permission issues with mounted volumes
+# Cache directories in /tmp are writable by any user
+# /app is mounted from host and owned by host user
+
+# Start development server (npm install runs in docker-compose command)
+CMD ["sh", "-c", "npm install && npm run dev -- --host 0.0.0.0"]
