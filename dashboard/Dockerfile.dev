@@ -6,11 +6,8 @@ WORKDIR /app
 # Install dependencies for hot reload
 RUN apk add --no-cache git
 
-# Copy package files
+# Copy package files (for reference, actual install happens in container)
 COPY package*.json ./
-
-# Install dependencies
-RUN npm install
 
 # Copy source code (will be overridden by volume mount in dev)
 COPY . .
@@ -18,5 +15,6 @@ COPY . .
 # Expose port
 EXPOSE 3002
 
+# Note: npm install is run in docker-compose command to ensure correct permissions
 # Start development server
 CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]
