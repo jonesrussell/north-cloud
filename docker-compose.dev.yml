@@ -225,6 +225,33 @@ services:
           cpus: '2'
           memory: 2G
 
+  # Unified Dashboard - Development
+  dashboard:
+    build:
+      context: ./dashboard
+      dockerfile: Dockerfile.dev
+    container_name: north-cloud-dashboard-dev
+    user: "${UID:-1000}:${GID:-1000}"
+    ports:
+      - "${DASHBOARD_PORT:-3002}:3002"
+    environment:
+      - NODE_ENV=development
+      - npm_config_cache=/tmp/npm-cache
+    volumes:
+      - ./dashboard:/app
+      - /app/node_modules
+      - dashboard_npm_cache:/tmp/npm-cache
+    working_dir: /app
+    command: ["sh", "-c", "npm install && npm run dev -- --host 0.0.0.0"]
+    networks:
+      - north-cloud-network
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512M
+
   # Nginx reverse proxy - Development
   nginx:
     image: nginx:alpine
@@ -237,6 +264,7 @@ services:
     depends_on:
       - source-manager
       - streetcode
+      - dashboard
     networks:
       - north-cloud-network
     restart: unless-stopped
@@ -259,5 +287,7 @@ volumes:
   source_manager_go_build_cache:
   source_manager_npm_cache:
   source_manager_node_modules:
+  # Dashboard cache volumes
+  dashboard_npm_cache:
   # Streetcode cache volumes
   streetcode_npm_cache:
