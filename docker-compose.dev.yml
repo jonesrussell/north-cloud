@@ -230,6 +230,9 @@ services:
     build:
       context: ./dashboard
       dockerfile: Dockerfile.dev
+      args:
+        UID: ${UID:-1000}
+        GID: ${GID:-1000}
     container_name: north-cloud-dashboard-dev
     # Run as host user to avoid permission issues with mounted volumes
     user: "${UID:-1000}:${GID:-1000}"
