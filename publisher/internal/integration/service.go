@@ -77,7 +77,14 @@ func NewService(cfg *config.Config, deps ServiceDeps) (*Service, error) {
 	}
 
 	// Initialize Drupal client
-	drupalClient, err := drupal.NewClient(cfg.Drupal.URL, cfg.Drupal.Username, cfg.Drupal.Token, cfg.Drupal.AuthMethod, cfg.Drupal.SkipTLSVerify, deps.Logger)
+	drupalClient, err := drupal.NewClient(
+		cfg.Drupal.URL,
+		cfg.Drupal.Username,
+		cfg.Drupal.Token,
+		cfg.Drupal.AuthMethod,
+		cfg.Drupal.SkipTLSVerify,
+		deps.Logger,
+	)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", ErrDrupalPostFailed, err)
 	}

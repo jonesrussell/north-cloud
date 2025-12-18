@@ -46,7 +46,7 @@ func main() {
 		ctx, cancel := infracontext.WithTimeout(flushCacheTimeout)
 		defer cancel()
 
-		if err := application.FlushCache(ctx); err != nil {
+		if flushErr := application.FlushCache(ctx); flushErr != nil {
 			application.Logger().Error("Failed to flush cache")
 			os.Exit(1)
 		}
@@ -56,7 +56,7 @@ func main() {
 	}
 
 	// Run the application
-	if err := application.Run(context.Background()); err != nil {
+	if runErr := application.Run(context.Background()); runErr != nil {
 		application.Logger().Error("Application error")
 		os.Exit(1)
 	}

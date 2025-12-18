@@ -70,9 +70,9 @@ func New(opts Options) (*App, error) {
 	// Test Redis connection
 	ctx, cancel := infracontext.WithPingTimeout()
 	defer cancel()
-	if err := redisClient.Ping(ctx).Err(); err != nil {
+	if pingErr := redisClient.Ping(ctx).Err(); pingErr != nil {
 		_ = appLogger.Sync()
-		return nil, fmt.Errorf("connect to Redis: %w", err)
+		return nil, fmt.Errorf("connect to Redis: %w", pingErr)
 	}
 
 	// Get city names for metrics tracker
@@ -198,7 +198,7 @@ func (a *App) waitForShutdown(workerCancel context.CancelFunc, serverErr, worker
 		a.logger.Info("Shutting down gracefully",
 			logger.String("signal", sig.String()),
 		)
-		shutdownErr = a.shutdown(workerCancel, workerErr, true)
+		a.shutdown(workerCancel, workerErr, true)
 
 	case err := <-serverErr:
 		a.logger.Error("Server error", logger.Error(err))
@@ -219,15 +219,13 @@ func (a *App) waitForShutdown(workerCancel context.CancelFunc, serverErr, worker
 }
 
 // shutdown performs graceful shutdown of all components
-func (a *App) shutdown(workerCancel context.CancelFunc, workerErr chan error, waitForWorker bool) error {
+func (a *App) shutdown(workerCancel context.CancelFunc, workerErr chan error, waitForWorker bool) {
 	workerCancel()
 	a.shutdownHTTPServer()
 
 	if waitForWorker {
 		a.waitForWorker(workerErr)
 	}
-
-	return nil
 }
 
 // shutdownHTTPServer gracefully shuts down the HTTP server
