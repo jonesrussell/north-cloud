@@ -100,8 +100,6 @@ func (t *Tracker) IncrementErrors(ctx context.Context, city string) error {
 
 // convertArticleToRecentArticle converts various article types to RecentArticle
 func convertArticleToRecentArticle(article any) (RecentArticle, error) {
-	var recentArticle RecentArticle
-
 	switch v := article.(type) {
 	case RecentArticle:
 		return v, nil
