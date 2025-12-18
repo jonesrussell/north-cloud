@@ -57,6 +57,39 @@
           </div>
         </div>
 
+        <!-- Publisher Section -->
+        <div class="mt-6">
+          <h3 class="px-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">
+            Publisher
+          </h3>
+          <div class="mt-2 space-y-1">
+            <router-link
+              to="/publisher/stats"
+              class="group flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors"
+              :class="[
+                isActive('/publisher/stats')
+                  ? 'bg-gray-800 text-white'
+                  : 'text-gray-300 hover:bg-gray-800 hover:text-white'
+              ]"
+            >
+              <ChartBarIcon class="mr-3 h-5 w-5 flex-shrink-0" />
+              Statistics
+            </router-link>
+            <router-link
+              to="/publisher/articles"
+              class="group flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors"
+              :class="[
+                isActive('/publisher/articles')
+                  ? 'bg-gray-800 text-white'
+                  : 'text-gray-300 hover:bg-gray-800 hover:text-white'
+              ]"
+            >
+              <NewspaperIcon class="mr-3 h-5 w-5 flex-shrink-0" />
+              Recent Articles
+            </router-link>
+          </div>
+        </div>
+
         <!-- Sources Section -->
         <div class="mt-6">
           <h3 class="px-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">
@@ -138,8 +171,9 @@ import {
   ChartBarIcon,
   DocumentTextIcon,
   MapPinIcon,
+  NewspaperIcon,
 } from '@heroicons/vue/24/outline'
-import { crawlerApi } from './api/client'
+import { crawlerApi, publisherApi } from './api/client'
 
 const route = useRoute()
 const healthStatus = ref('healthy')
@@ -159,8 +193,17 @@ const isActiveExact = (path) => {
 // Check system health on mount
 onMounted(async () => {
   try {
-    await crawlerApi.getHealth()
-    healthStatus.value = 'healthy'
+    // Check both crawler and publisher health
+    const [crawlerHealth, publisherHealth] = await Promise.allSettled([
+      crawlerApi.getHealth(),
+      publisherApi.getHealth(),
+    ])
+    // Consider healthy if at least one service is healthy
+    if (crawlerHealth.status === 'fulfilled' || publisherHealth.status === 'fulfilled') {
+      healthStatus.value = 'healthy'
+    } else {
+      healthStatus.value = 'unhealthy'
+    }
   } catch {
     healthStatus.value = 'unhealthy'
   }

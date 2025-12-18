@@ -405,6 +405,94 @@ The service uses consistent field naming (snake_case) across all logs:
    )
    ```
 
+## API
+
+The service exposes an HTTP API for dashboard access. The API runs alongside the background worker on the port configured in `server.address` (default: `:8070`).
+
+### Endpoints
+
+#### `GET /health`
+
+Returns service health status.
+
+**Response**:
+```json
+{
+  "status": "ok",
+  "service": "publisher",
+  "version": "dev"
+}
+```
+
+#### `GET /api/v1/stats`
+
+Returns aggregated statistics from Redis.
+
+**Response**:
+```json
+{
+  "total_posted": 150,
+  "total_skipped": 45,
+  "total_errors": 3,
+  "cities": [
+    {
+      "name": "sudbury_com",
+      "posted": 75,
+      "skipped": 20,
+      "errors": 1
+    }
+  ],
+  "last_sync": "2025-01-15T10:30:00Z"
+}
+```
+
+#### `GET /api/v1/articles/recent?limit=50`
+
+Returns recently posted articles.
+
+**Query Parameters**:
+- `limit` (optional, default: 50, max: 100) - Number of articles to return
+
+**Response**:
+```json
+{
+  "articles": [
+    {
+      "id": "article-123",
+      "title": "Police arrest suspect",
+      "url": "https://example.com/article",
+      "city": "sudbury_com",
+      "posted_at": "2025-01-15T10:30:00Z"
+    }
+  ],
+  "count": 50
+}
+```
+
+### Configuration
+
+The API server can be configured in `config.yml`:
+
+```yaml
+server:
+  address: ":8070"        # Server address
+  read_timeout: "10s"     # Read timeout
+  write_timeout: "30s"     # Write timeout
+```
+
+The server address can also be set via the `PUBLISHER_PORT` environment variable (e.g., `PUBLISHER_PORT=8070`).
+
+### Metrics Tracking
+
+Statistics are tracked in Redis with the following key structure:
+- `metrics:posted:{city}` - Counter for posted articles per city (30-day TTL)
+- `metrics:skipped:{city}` - Counter for skipped articles per city (30-day TTL)
+- `metrics:errors:{city}` - Counter for errors per city (30-day TTL)
+- `metrics:recent:articles` - List of recent articles (max 100, 7-day TTL)
+- `metrics:last_sync` - Last sync timestamp
+
+Metrics persist across service restarts and are automatically cleaned up after their TTL expires.
+
 ## Monitoring
 
 The service logs:
@@ -414,9 +502,14 @@ The service logs:
 - Errors during processing
 - Performance metrics (durations for all operations)
 
+The API provides real-time access to:
+- Aggregated statistics (total posted, skipped, errors)
+- Per-city statistics
+- Recent posted articles
+- Last sync timestamp
+
 For production, consider adding:
 - Prometheus metrics
-- Health check endpoint
 - Alerting on errors
 - Log aggregation (ELK, Loki, etc.)
 
@@ -445,7 +538,7 @@ For production, consider adding:
 
 - [ ] ML-based crime classification (using OpenAI API or local model)
 - [ ] Webhook notifications for posted articles
-- [ ] Health check HTTP endpoint
+- [x] Health check HTTP endpoint
 - [ ] Prometheus metrics
 - [ ] Support for multiple content types
 - [ ] Retry logic with exponential backoff

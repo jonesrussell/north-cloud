@@ -12,8 +12,18 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+const (
+	// DefaultReadTimeoutSeconds is the default read timeout in seconds
+	DefaultReadTimeoutSeconds = 10
+	// DefaultWriteTimeoutSeconds is the default write timeout in seconds
+	DefaultWriteTimeoutSeconds = 30
+	// DefaultShutdownTimeoutSeconds is the default shutdown timeout in seconds
+	DefaultShutdownTimeoutSeconds = 30
+)
+
 type Config struct {
 	Debug         bool                `yaml:"debug"` // Application debug mode (controls log level and format)
+	Server        ServerConfig        `yaml:"server"`
 	Elasticsearch ElasticsearchConfig `yaml:"elasticsearch"`
 	Drupal        DrupalConfig        `yaml:"drupal"`
 	Redis         RedisConfig         `yaml:"redis"`
@@ -64,6 +74,26 @@ type SourcesConfig struct {
 	Enabled bool          `yaml:"enabled"` // Enable fetching cities from sources service
 }
 
+type ServerConfig struct {
+	Address      string        `yaml:"address"`       // e.g., ":8070"
+	ReadTimeout  time.Duration `yaml:"read_timeout"`  // Default: 10s
+	WriteTimeout time.Duration `yaml:"write_timeout"` // Default: 30s
+}
+
+// Validate checks if the server configuration is valid and sets defaults.
+func (c *ServerConfig) Validate() error {
+	if c.Address == "" {
+		c.Address = ":8070" // Default port
+	}
+	if c.ReadTimeout <= 0 {
+		c.ReadTimeout = DefaultReadTimeoutSeconds * time.Second
+	}
+	if c.WriteTimeout <= 0 {
+		c.WriteTimeout = DefaultWriteTimeoutSeconds * time.Second
+	}
+	return nil
+}
+
 // Validate checks if the configuration is valid and returns an error if not.
 func (c *Config) Validate() error {
 	if c.Elasticsearch.URL == "" {
@@ -103,18 +133,17 @@ func (c *Config) Validate() error {
 	return nil
 }
 
-func Load(path string) (*Config, error) {
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return nil, fmt.Errorf("read config file: %w", err)
+// setDefaults sets default values for configuration fields
+func setDefaults(cfg *Config) {
+	if cfg.Server.Address == "" {
+		cfg.Server.Address = ":8070"
 	}
-
-	var cfg Config
-	if err := yaml.Unmarshal(data, &cfg); err != nil {
-		return nil, fmt.Errorf("parse config: %w", err)
+	if cfg.Server.ReadTimeout == 0 {
+		cfg.Server.ReadTimeout = DefaultReadTimeoutSeconds * time.Second
 	}
-
-	// Set defaults
+	if cfg.Server.WriteTimeout == 0 {
+		cfg.Server.WriteTimeout = DefaultWriteTimeoutSeconds * time.Second
+	}
 	if cfg.Service.CheckInterval == 0 {
 		cfg.Service.CheckInterval = 5 * time.Minute
 	}
@@ -148,8 +177,10 @@ func Load(path string) (*Config, error) {
 	if cfg.Sources.Timeout == 0 {
 		cfg.Sources.Timeout = 5 * time.Second
 	}
+}
 
-	// Override with environment variables if present
+// overrideWithEnvVars overrides configuration with environment variables
+func overrideWithEnvVars(cfg *Config) {
 	if esURL := os.Getenv("ES_URL"); esURL != "" {
 		cfg.Elasticsearch.URL = esURL
 	}
@@ -177,6 +208,34 @@ func Load(path string) (*Config, error) {
 	// Parse APP_DEBUG environment variable
 	if appDebug := os.Getenv("APP_DEBUG"); appDebug != "" {
 		cfg.Debug = parseBool(appDebug)
+	}
+}
+
+func Load(path string) (*Config, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, fmt.Errorf("read config file: %w", err)
+	}
+
+	var cfg Config
+	if err := yaml.Unmarshal(data, &cfg); err != nil {
+		return nil, fmt.Errorf("parse config: %w", err)
+	}
+
+	// Set defaults
+	setDefaults(&cfg)
+
+	// Override with environment variables if present
+	overrideWithEnvVars(&cfg)
+
+	// Set server defaults
+	if err := cfg.Server.Validate(); err != nil {
+		return nil, fmt.Errorf("server config validation: %w", err)
+	}
+
+	// Override server config with environment variable if present
+	if publisherPort := os.Getenv("PUBLISHER_PORT"); publisherPort != "" {
+		cfg.Server.Address = ":" + publisherPort
 	}
 
 	// Validate configuration

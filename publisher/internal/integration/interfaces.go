@@ -44,6 +44,20 @@ type ArticleProcessor interface {
 	ProcessArticle(ctx context.Context, article Article, cityCfg config.CityConfig) error
 }
 
+// MetricsTracker defines the interface for tracking metrics.
+type MetricsTracker interface {
+	// IncrementPosted increments the posted articles counter for a city
+	IncrementPosted(ctx context.Context, city string) error
+	// IncrementSkipped increments the skipped articles counter for a city
+	IncrementSkipped(ctx context.Context, city string) error
+	// IncrementErrors increments the error counter for a city
+	IncrementErrors(ctx context.Context, city string) error
+	// AddRecentArticle adds an article to the recent articles list
+	AddRecentArticle(ctx context.Context, article any) error
+	// UpdateLastSync updates the last sync timestamp
+	UpdateLastSync(ctx context.Context) error
+}
+
 // SearchResult represents the result of an Elasticsearch search
 type SearchResult struct {
 	Total int

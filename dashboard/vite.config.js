@@ -5,6 +5,7 @@ import tailwindcss from '@tailwindcss/vite'
 // API targets - use Docker service names when running in container
 const CRAWLER_API_URL = process.env.CRAWLER_API_URL || 'http://localhost:8060'
 const SOURCES_API_URL = process.env.SOURCES_API_URL || 'http://localhost:8050'
+const PUBLISHER_API_URL = process.env.PUBLISHER_API_URL || 'http://localhost:8070'
 
 export default defineConfig({
   plugins: [
@@ -29,6 +30,18 @@ export default defineConfig({
       // Crawler health endpoint
       '/api/health/crawler': {
         target: CRAWLER_API_URL,
+        changeOrigin: true,
+        rewrite: () => '/health',
+      },
+      // Publisher API proxy
+      '/api/publisher': {
+        target: PUBLISHER_API_URL,
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/publisher/, '/api/v1'),
+      },
+      // Publisher health endpoint
+      '/api/health/publisher': {
+        target: PUBLISHER_API_URL,
         changeOrigin: true,
         rewrite: () => '/health',
       },

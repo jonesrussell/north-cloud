@@ -7,6 +7,10 @@ import DashboardView from '../views/DashboardView.vue'
 import CrawlerJobsView from '../views/crawler/JobsView.vue'
 import CrawlerStatsView from '../views/crawler/StatsView.vue'
 
+// Publisher views
+import PublisherStatsView from '../views/publisher/StatsView.vue'
+import PublisherRecentArticlesView from '../views/publisher/RecentArticlesView.vue'
+
 // Sources views
 import SourcesListView from '../views/sources/ListView.vue'
 import SourcesFormView from '../views/sources/FormView.vue'
@@ -39,6 +43,20 @@ const routes = [
     name: 'crawler-stats',
     component: CrawlerStatsView,
     meta: { title: 'Crawler Statistics', section: 'crawler' },
+  },
+
+  // Publisher routes
+  {
+    path: '/publisher/stats',
+    name: 'publisher-stats',
+    component: PublisherStatsView,
+    meta: { title: 'Publisher Statistics', section: 'publisher' },
+  },
+  {
+    path: '/publisher/articles',
+    name: 'publisher-articles',
+    component: PublisherRecentArticlesView,
+    meta: { title: 'Recent Articles', section: 'publisher' },
   },
 
   // Sources routes
