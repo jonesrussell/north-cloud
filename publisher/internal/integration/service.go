@@ -14,7 +14,6 @@ import (
 	"github.com/gopost/integration/internal/dedup"
 	"github.com/gopost/integration/internal/drupal"
 	"github.com/gopost/integration/internal/logger"
-	infracontext "github.com/north-cloud/infrastructure/context"
 	"github.com/redis/go-redis/v9"
 	"golang.org/x/time/rate"
 )
@@ -55,7 +54,14 @@ type Service struct {
 	mu          sync.RWMutex
 }
 
-func NewService(cfg *config.Config, metrics MetricsTracker, log logger.Logger) (*Service, error) {
+// ServiceDeps contains dependencies for creating a Service
+type ServiceDeps struct {
+	RedisClient redis.UniversalClient
+	Metrics     MetricsTracker
+	Logger      logger.Logger
+}
+
+func NewService(cfg *config.Config, deps ServiceDeps) (*Service, error) {
 	// Initialize Elasticsearch client
 	esCfg := elasticsearch.Config{
 		Addresses: []string{cfg.Elasticsearch.URL},
@@ -71,26 +77,13 @@ func NewService(cfg *config.Config, metrics MetricsTracker, log logger.Logger) (
 	}
 
 	// Initialize Drupal client
-	drupalClient, err := drupal.NewClient(cfg.Drupal.URL, cfg.Drupal.Username, cfg.Drupal.Token, cfg.Drupal.AuthMethod, cfg.Drupal.SkipTLSVerify, log)
+	drupalClient, err := drupal.NewClient(cfg.Drupal.URL, cfg.Drupal.Username, cfg.Drupal.Token, cfg.Drupal.AuthMethod, cfg.Drupal.SkipTLSVerify, deps.Logger)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", ErrDrupalPostFailed, err)
 	}
 
-	// Initialize Redis for deduplication
-	redisClient := redis.NewClient(&redis.Options{
-		Addr:     cfg.Redis.URL,
-		Password: cfg.Redis.Password,
-		DB:       cfg.Redis.DB,
-	})
-
-	// Test Redis connection
-	ctx, cancel := infracontext.WithPingTimeout()
-	defer cancel()
-	if err := redisClient.Ping(ctx).Err(); err != nil {
-		return nil, fmt.Errorf("redis connection: %w", err)
-	}
-
-	dedupTracker := dedup.NewTracker(redisClient, cfg.Service.DedupTTL, log)
+	// Create dedup tracker using shared Redis client
+	dedupTracker := dedup.NewTracker(deps.RedisClient, cfg.Service.DedupTTL, deps.Logger)
 
 	// Initialize rate limiter
 	limiter := rate.NewLimiter(rate.Limit(cfg.Service.RateLimitRPS), cfg.Service.RateLimitRPS)
@@ -103,10 +96,10 @@ func NewService(cfg *config.Config, metrics MetricsTracker, log logger.Logger) (
 		esClient:    esClient,
 		drupal:      drupalClient,
 		dedup:       dedupTracker,
-		metrics:     metrics,
+		metrics:     deps.Metrics,
 		limiter:     limiter,
 		config:      cfg,
-		logger:      log,
+		logger:      deps.Logger,
 		lastCheckTS: lastCheckTS,
 	}, nil
 }

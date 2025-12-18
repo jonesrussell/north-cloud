@@ -10,12 +10,12 @@ import (
 )
 
 type Tracker struct {
-	client *redis.Client
+	client redis.UniversalClient
 	ttl    time.Duration
 	logger logger.Logger
 }
 
-func NewTracker(client *redis.Client, ttl time.Duration, log logger.Logger) *Tracker {
+func NewTracker(client redis.UniversalClient, ttl time.Duration, log logger.Logger) *Tracker {
 	return &Tracker{
 		client: client,
 		ttl:    ttl,
