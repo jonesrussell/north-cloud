@@ -20,6 +20,14 @@ const sourcesClient = axios.create({
   },
 })
 
+const publisherClient = axios.create({
+  baseURL: '/api/publisher',
+  timeout: 10000,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+})
+
 // Request/response interceptors for debugging
 const addInterceptors = (client, serviceName) => {
   if (DEBUG) {
@@ -49,6 +57,7 @@ const addInterceptors = (client, serviceName) => {
 
 addInterceptors(crawlerClient, 'Crawler')
 addInterceptors(sourcesClient, 'Sources')
+addInterceptors(publisherClient, 'Publisher')
 
 // Crawler API
 export const crawlerApi = {
@@ -91,7 +100,24 @@ export const sourcesApi = {
   },
 }
 
+// Publisher API
+export const publisherApi = {
+  // Health check
+  getHealth: () => axios.get('/api/health/publisher'),
+
+  // Stats
+  stats: {
+    get: () => publisherClient.get('/stats'),
+  },
+
+  // Recent articles
+  articles: {
+    recent: (params) => publisherClient.get('/articles/recent', { params }),
+  },
+}
+
 export default {
   crawler: crawlerApi,
   sources: sourcesApi,
+  publisher: publisherApi,
 }

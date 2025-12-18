@@ -118,6 +118,8 @@ services:
       context: ./publisher
       dockerfile: Dockerfile.dev
     container_name: north-cloud-publisher-dev
+    ports:
+      - "${PUBLISHER_PORT:-8070}:8070"
     depends_on:
       elasticsearch:
         condition: service_healthy
@@ -135,6 +137,7 @@ services:
       - DRUPAL_AUTH_METHOD=${DRUPAL_AUTH_METHOD:-}
       - APP_DEBUG=true
       - APP_ENV=development
+      - PUBLISHER_PORT=${PUBLISHER_PORT:-8070}
     volumes:
       # Mount source code for development (will build from source on start)
       - ./publisher:/app

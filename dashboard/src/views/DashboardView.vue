@@ -25,10 +25,10 @@
           color="green"
         />
         <StatCard
-          label="Articles Crawled"
-          :value="stats.articlesCrawled"
-          :icon="NewspaperIcon"
-          color="gray"
+          label="Articles Posted"
+          :value="publisherStats.totalPosted"
+          :icon="CheckCircleIcon"
+          color="green"
         />
         <StatCard
           label="Success Rate"
@@ -40,7 +40,7 @@
       </div>
 
       <!-- Quick Actions & Status -->
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <!-- Crawler Status -->
         <div class="bg-white shadow rounded-lg">
           <div class="px-6 py-4 border-b border-gray-200">
@@ -107,6 +107,40 @@
                 class="text-sm font-medium text-blue-600 hover:text-blue-500"
               >
                 Manage jobs &rarr;
+              </router-link>
+            </div>
+          </div>
+        </div>
+
+        <!-- Publisher Status -->
+        <div class="bg-white shadow rounded-lg">
+          <div class="px-6 py-4 border-b border-gray-200">
+            <h2 class="text-lg font-medium text-gray-900">Publisher Status</h2>
+          </div>
+          <div class="p-6">
+            <div v-if="publisherHealth" class="space-y-4">
+              <div class="flex items-center justify-between">
+                <span class="text-sm text-gray-600">Service Status</span>
+                <StatusBadge :status="publisherHealth.status === 'ok' ? 'active' : 'error'" />
+              </div>
+              <div class="flex items-center justify-between">
+                <span class="text-sm text-gray-600">Version</span>
+                <span class="text-sm font-medium text-gray-900">{{ publisherHealth.version || 'N/A' }}</span>
+              </div>
+              <div class="flex items-center justify-between">
+                <span class="text-sm text-gray-600">Articles Posted</span>
+                <span class="text-sm font-medium text-gray-900">{{ publisherStats.totalPosted }}</span>
+              </div>
+            </div>
+            <div v-else class="text-sm text-gray-500">
+              Unable to fetch publisher status
+            </div>
+            <div class="mt-4 pt-4 border-t border-gray-200">
+              <router-link
+                to="/publisher/stats"
+                class="text-sm font-medium text-blue-600 hover:text-blue-500"
+              >
+                View statistics &rarr;
               </router-link>
             </div>
           </div>
@@ -195,15 +229,21 @@ import {
   PlusIcon,
   ChartBarIcon,
 } from '@heroicons/vue/24/outline'
-import { crawlerApi, sourcesApi } from '../api/client'
+import { crawlerApi, sourcesApi, publisherApi } from '../api/client'
 import { LoadingSpinner, ErrorAlert, StatCard, StatusBadge } from '../components/common'
 
 const loading = ref(true)
 const error = ref(null)
 
 const crawlerHealth = ref(null)
+const publisherHealth = ref(null)
 const recentJobs = ref([])
 const sources = ref([])
+const publisherStats = ref({
+  totalPosted: 0,
+  totalSkipped: 0,
+  totalErrors: 0,
+})
 const stats = ref({
   activeJobs: 0,
   totalSources: 0,
@@ -228,15 +268,32 @@ const loadDashboard = async () => {
 
   try {
     // Load data in parallel
-    const [healthRes, jobsRes, sourcesRes] = await Promise.allSettled([
+    const [healthRes, publisherHealthRes, jobsRes, sourcesRes, publisherStatsRes] = await Promise.allSettled([
       crawlerApi.getHealth(),
+      publisherApi.getHealth(),
       crawlerApi.jobs.list(),
       sourcesApi.list(),
+      publisherApi.stats.get(),
     ])
 
     // Process health
     if (healthRes.status === 'fulfilled') {
       crawlerHealth.value = healthRes.value.data
+    }
+
+    // Process publisher health
+    if (publisherHealthRes.status === 'fulfilled') {
+      publisherHealth.value = publisherHealthRes.value.data
+    }
+
+    // Process publisher stats
+    if (publisherStatsRes.status === 'fulfilled' && publisherStatsRes.value.data) {
+      const data = publisherStatsRes.value.data
+      publisherStats.value = {
+        totalPosted: data.total_posted || 0,
+        totalSkipped: data.total_skipped || 0,
+        totalErrors: data.total_errors || 0,
+      }
     }
 
     // Process jobs
