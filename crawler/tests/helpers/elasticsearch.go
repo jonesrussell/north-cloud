@@ -37,10 +37,10 @@ type ElasticsearchContainer struct {
 func StartElasticsearch(ctx context.Context) (*ElasticsearchContainer, error) {
 	// Create Elasticsearch container with default configuration
 	// For testing, disable security to allow HTTP access without SSL
-	// Note: Elasticsearch 8.x enables security by default, so we disable it for testing
+	// Note: Elasticsearch 8.x+ enables security by default, so we disable it for testing
 	esContainer, err := elasticsearch.Run(
 		ctx,
-		"docker.elastic.co/elasticsearch/elasticsearch:8.11.0",
+		"docker.elastic.co/elasticsearch/elasticsearch:9.2.2",
 		elasticsearch.WithPassword("changeme"),
 		testcontainers.WithEnv(map[string]string{
 			"xpack.security.enabled":               "false",
