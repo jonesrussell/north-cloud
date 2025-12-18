@@ -117,7 +117,12 @@ services:
     build:
       context: ./publisher
       dockerfile: Dockerfile.dev
+      args:
+        UID: ${UID:-1000}
+        GID: ${GID:-1000}
     container_name: north-cloud-publisher-dev
+    # Run as host user to avoid permission issues with mounted volumes
+    user: "${UID:-1000}:${GID:-1000}"
     ports:
       - "${PUBLISHER_PORT:-8070}:8070"
     depends_on:
@@ -138,15 +143,19 @@ services:
       - APP_DEBUG=true
       - APP_ENV=development
       - PUBLISHER_PORT=${PUBLISHER_PORT:-8070}
+      # Use /tmp for caches to avoid permission issues with host user
+      - GOMODCACHE=/tmp/go-mod-cache
+      - GOCACHE=/tmp/go-build-cache
     volumes:
-      # Mount source code for development (will build from source on start)
+      # Mount source code for development
       - ./publisher:/app
       - /app/vendor  # Exclude vendor directory
       - ./publisher/config.yml:/app/config.yml:ro
       # Mount infrastructure module (required for go.mod replace directive)
       - ./infrastructure:/infrastructure
-      # Go module cache is in /home/appuser/go-mod-cache (set via GOMODCACHE env)
-      # No volume mount needed - cache will be in container filesystem
+      # Mount cache volumes to persist downloads across restarts
+      - publisher_go_mod_cache:/tmp/go-mod-cache
+      - publisher_go_build_cache:/tmp/go-build-cache
     working_dir: /app
     # Download dependencies from mounted go.mod/go.sum, then run
     # Use -mod=mod to ignore vendor directory if present
@@ -282,6 +291,9 @@ volumes:
   # Source manager cache volumes
   source_manager_go_mod_cache:
   source_manager_go_build_cache:
+  # Publisher cache volumes
+  publisher_go_mod_cache:
+  publisher_go_build_cache:
   # Dashboard cache volumes
   dashboard_npm_cache:
   dashboard_node_modules:
