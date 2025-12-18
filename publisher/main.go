@@ -126,6 +126,84 @@ func initializeServices(cfg *config.Config, appLogger logger.Logger) (*integrati
 	return service, metricsTracker, nil
 }
 
+// handleShutdown handles graceful shutdown of the HTTP server and worker
+func handleShutdown(
+	srv *http.Server,
+	workerCancel context.CancelFunc,
+	serverErr chan error,
+	workerErr chan error,
+	appLogger logger.Logger,
+) {
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
+
+	select {
+	case sig := <-sigChan:
+		appLogger.Info("Shutting down gracefully",
+			logger.String("signal", sig.String()),
+		)
+		shutdownServers(srv, workerCancel, workerErr, true, appLogger)
+	case serverErrVal := <-serverErr:
+		appLogger.Error("Server error",
+			logger.Error(serverErrVal),
+		)
+		// Server already errored, just cancel worker and wait
+		workerCancel()
+		waitForWorkerFinish(workerErr, appLogger)
+	case workerErrVal := <-workerErr:
+		if workerErrVal != nil && !errors.Is(workerErrVal, context.Canceled) {
+			appLogger.Error("Worker error",
+				logger.Error(workerErrVal),
+			)
+		}
+		// Worker errored, shutdown server and don't wait for worker again
+		shutdownServers(srv, workerCancel, workerErr, false, appLogger)
+	}
+
+	appLogger.Info("Service stopped")
+}
+
+// shutdownServers shuts down the HTTP server and optionally waits for the worker to finish
+func shutdownServers(
+	srv *http.Server,
+	workerCancel context.CancelFunc,
+	workerErr chan error,
+	waitForWorker bool,
+	appLogger logger.Logger,
+) {
+	workerCancel()
+
+	// Shutdown HTTP server with timeout
+	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), DefaultShutdownTimeoutSeconds*time.Second)
+	defer shutdownCancel()
+
+	if shutdownErr := srv.Shutdown(shutdownCtx); shutdownErr != nil {
+		appLogger.Error("Server shutdown error",
+			logger.Error(shutdownErr),
+		)
+	} else {
+		appLogger.Info("HTTP server stopped")
+	}
+
+	// Wait for worker to finish if needed
+	if waitForWorker {
+		waitForWorkerFinish(workerErr, appLogger)
+	}
+}
+
+// waitForWorkerFinish waits for the worker to finish and logs the result
+func waitForWorkerFinish(workerErr chan error, appLogger logger.Logger) {
+	workerErrVal := <-workerErr
+
+	if workerErrVal != nil && !errors.Is(workerErrVal, context.Canceled) {
+		appLogger.Error("Worker error",
+			logger.Error(workerErrVal),
+		)
+	} else {
+		appLogger.Info("Worker stopped")
+	}
+}
+
 // startServers starts the HTTP server and worker
 func startServers(
 	cfg *config.Config,
@@ -134,13 +212,13 @@ func startServers(
 	appLogger logger.Logger,
 	version string,
 	configPath string,
-) (*http.Server, context.CancelFunc, chan error, chan error) {
+) (srv *http.Server, workerCancel context.CancelFunc, serverErr, workerErr chan error) {
 	// Create stats service and API router
 	statsService := api.NewStatsService(metricsTracker, appLogger)
 	router := api.NewRouter(statsService, appLogger, version)
 
 	// Create HTTP server
-	srv := &http.Server{
+	srv = &http.Server{
 		Addr:         cfg.Server.Address,
 		Handler:      router,
 		ReadTimeout:  cfg.Server.ReadTimeout,
@@ -148,7 +226,7 @@ func startServers(
 	}
 
 	// Start HTTP server in goroutine
-	serverErr := make(chan error, 1)
+	serverErr = make(chan error, 1)
 	go func() {
 		appLogger.Info("Starting HTTP server",
 			logger.String("address", cfg.Server.Address),
@@ -159,9 +237,10 @@ func startServers(
 	}()
 
 	// Start worker in goroutine
-	workerCtx, workerCancel := context.WithCancel(context.Background())
+	var workerCtx context.Context
+	workerCtx, workerCancel = context.WithCancel(context.Background())
 
-	workerErr := make(chan error, 1)
+	workerErr = make(chan error, 1)
 	go func() {
 		appLogger.Info("Starting integration service",
 			logger.String("config_path", configPath),
@@ -242,64 +321,5 @@ func main() {
 	defer workerCancel()
 
 	// Handle graceful shutdown
-	sigChan := make(chan os.Signal, 1)
-	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
-
-	select {
-	case sig := <-sigChan:
-		appLogger.Info("Shutting down gracefully",
-			logger.String("signal", sig.String()),
-		)
-		workerCancel()
-
-		// Shutdown HTTP server with timeout
-		shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), DefaultShutdownTimeoutSeconds*time.Second)
-		defer shutdownCancel()
-
-		if shutdownErr := srv.Shutdown(shutdownCtx); shutdownErr != nil {
-			appLogger.Error("Server shutdown error",
-				logger.Error(shutdownErr),
-			)
-		} else {
-			appLogger.Info("HTTP server stopped")
-		}
-
-		// Wait for worker to finish
-		if workerErrVal := <-workerErr; workerErrVal != nil && !errors.Is(workerErrVal, context.Canceled) {
-			appLogger.Error("Worker error",
-				logger.Error(workerErrVal),
-			)
-		} else {
-			appLogger.Info("Worker stopped")
-		}
-	case serverErrVal := <-serverErr:
-		appLogger.Error("Server error",
-			logger.Error(serverErrVal),
-		)
-		workerCancel()
-		if workerErrVal := <-workerErr; workerErrVal != nil && !errors.Is(workerErrVal, context.Canceled) {
-			appLogger.Error("Worker error",
-				logger.Error(workerErrVal),
-			)
-		}
-	case workerErrVal := <-workerErr:
-		if workerErrVal != nil && !errors.Is(workerErrVal, context.Canceled) {
-			appLogger.Error("Worker error",
-				logger.Error(workerErrVal),
-			)
-		}
-		workerCancel()
-
-		// Shutdown HTTP server
-		shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), DefaultShutdownTimeoutSeconds*time.Second)
-		defer shutdownCancel()
-
-		if shutdownErr := srv.Shutdown(shutdownCtx); shutdownErr != nil {
-			appLogger.Error("Server shutdown error",
-				logger.Error(shutdownErr),
-			)
-		}
-	}
-
-	appLogger.Info("Service stopped")
+	handleShutdown(srv, workerCancel, serverErr, workerErr, appLogger)
 }
