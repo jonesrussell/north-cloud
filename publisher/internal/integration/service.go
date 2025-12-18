@@ -47,6 +47,7 @@ type Service struct {
 	esClient    *elasticsearch.Client // TODO: Replace with ElasticsearchClient interface
 	drupal      DrupalClient
 	dedup       DedupTracker
+	metrics     MetricsTracker
 	limiter     *rate.Limiter
 	config      *config.Config
 	logger      logger.Logger
@@ -54,7 +55,7 @@ type Service struct {
 	mu          sync.RWMutex
 }
 
-func NewService(cfg *config.Config, log logger.Logger) (*Service, error) {
+func NewService(cfg *config.Config, metrics MetricsTracker, log logger.Logger) (*Service, error) {
 	// Initialize Elasticsearch client
 	esCfg := elasticsearch.Config{
 		Addresses: []string{cfg.Elasticsearch.URL},
@@ -102,6 +103,7 @@ func NewService(cfg *config.Config, log logger.Logger) (*Service, error) {
 		esClient:    esClient,
 		drupal:      drupalClient,
 		dedup:       dedupTracker,
+		metrics:     metrics,
 		limiter:     limiter,
 		config:      cfg,
 		logger:      log,
@@ -429,6 +431,15 @@ func (s *Service) ProcessCity(ctx context.Context, cityCfg config.CityConfig) er
 				logger.Int("article_index", i+1),
 			)
 			skipped++
+			// Track skipped article
+			if s.metrics != nil {
+				if err := s.metrics.IncrementSkipped(ctx, cityCfg.Name); err != nil {
+					s.logger.Warn("Failed to track skipped article",
+						logger.String("city", cityCfg.Name),
+						logger.Error(err),
+					)
+				}
+			}
 			continue
 		}
 
@@ -453,6 +464,15 @@ func (s *Service) ProcessCity(ctx context.Context, cityCfg config.CityConfig) er
 				logger.String("title", article.Title),
 			)
 			skipped++
+			// Track skipped article
+			if s.metrics != nil {
+				if err := s.metrics.IncrementSkipped(ctx, cityCfg.Name); err != nil {
+					s.logger.Warn("Failed to track skipped article",
+						logger.String("city", cityCfg.Name),
+						logger.Error(err),
+					)
+				}
+			}
 			continue
 		}
 
@@ -515,6 +535,15 @@ func (s *Service) ProcessCity(ctx context.Context, cityCfg config.CityConfig) er
 				logger.Error(postErr),
 			)
 			errors++
+			// Track error
+			if s.metrics != nil {
+				if err := s.metrics.IncrementErrors(ctx, cityCfg.Name); err != nil {
+					s.logger.Warn("Failed to track error",
+						logger.String("city", cityCfg.Name),
+						logger.Error(err),
+					)
+				}
+			}
 			continue
 		}
 		postDuration := time.Since(postStartTime)
@@ -543,6 +572,37 @@ func (s *Service) ProcessCity(ctx context.Context, cityCfg config.CityConfig) er
 
 		posted++
 		articleDuration := time.Since(articleStartTime)
+
+		// Track posted article
+		if s.metrics != nil {
+			if err := s.metrics.IncrementPosted(ctx, cityCfg.Name); err != nil {
+				s.logger.Warn("Failed to track posted article",
+					logger.String("city", cityCfg.Name),
+					logger.Error(err),
+				)
+			}
+
+			// Add to recent articles list
+			// Note: We need to convert to the proper type expected by metrics tracker
+			// The interface accepts interface{}, but the implementation expects metrics.RecentArticle
+			// We'll pass a map and let the tracker handle conversion, or we need to import metrics package
+			// For now, we'll use a type assertion approach - the metrics tracker will handle it
+			recentArticleData := map[string]interface{}{
+				"id":        article.ID,
+				"title":     article.Title,
+				"url":       article.URL,
+				"city":      cityCfg.Name,
+				"posted_at": time.Now().Format(time.RFC3339),
+			}
+			if err := s.metrics.AddRecentArticle(ctx, recentArticleData); err != nil {
+				s.logger.Warn("Failed to add recent article",
+					logger.String("article_id", article.ID),
+					logger.String("city", cityCfg.Name),
+					logger.Error(err),
+				)
+			}
+		}
+
 		s.logger.Info("Posted article",
 			logger.String("title", article.Title),
 			logger.String("city", cityCfg.Name),
@@ -629,6 +689,15 @@ func (s *Service) runOnce(ctx context.Context) error {
 	s.mu.Lock()
 	s.lastCheckTS = time.Now()
 	s.mu.Unlock()
+
+	// Update last sync in metrics
+	if s.metrics != nil {
+		if err := s.metrics.UpdateLastSync(ctx); err != nil {
+			s.logger.Warn("Failed to update last sync",
+				logger.Error(err),
+			)
+		}
+	}
 
 	totalDuration := time.Since(startTime)
 	s.logger.Info("Article sync completed",

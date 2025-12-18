@@ -14,6 +14,7 @@ import (
 
 type Config struct {
 	Debug         bool                `yaml:"debug"` // Application debug mode (controls log level and format)
+	Server        ServerConfig        `yaml:"server"`
 	Elasticsearch ElasticsearchConfig `yaml:"elasticsearch"`
 	Drupal        DrupalConfig        `yaml:"drupal"`
 	Redis         RedisConfig         `yaml:"redis"`
@@ -62,6 +63,26 @@ type SourcesConfig struct {
 	URL     string        `yaml:"url"`     // Sources service API URL (e.g., "http://localhost:8080")
 	Timeout time.Duration `yaml:"timeout"` // Request timeout (default: 5s)
 	Enabled bool          `yaml:"enabled"` // Enable fetching cities from sources service
+}
+
+type ServerConfig struct {
+	Address      string        `yaml:"address"`       // e.g., ":8070"
+	ReadTimeout  time.Duration `yaml:"read_timeout"`  // Default: 10s
+	WriteTimeout time.Duration `yaml:"write_timeout"` // Default: 30s
+}
+
+// Validate checks if the server configuration is valid and sets defaults.
+func (c *ServerConfig) Validate() error {
+	if c.Address == "" {
+		c.Address = ":8070" // Default port
+	}
+	if c.ReadTimeout <= 0 {
+		c.ReadTimeout = 10 * time.Second
+	}
+	if c.WriteTimeout <= 0 {
+		c.WriteTimeout = 30 * time.Second
+	}
+	return nil
 }
 
 // Validate checks if the configuration is valid and returns an error if not.
@@ -115,6 +136,15 @@ func Load(path string) (*Config, error) {
 	}
 
 	// Set defaults
+	if cfg.Server.Address == "" {
+		cfg.Server.Address = ":8070"
+	}
+	if cfg.Server.ReadTimeout == 0 {
+		cfg.Server.ReadTimeout = 10 * time.Second
+	}
+	if cfg.Server.WriteTimeout == 0 {
+		cfg.Server.WriteTimeout = 30 * time.Second
+	}
 	if cfg.Service.CheckInterval == 0 {
 		cfg.Service.CheckInterval = 5 * time.Minute
 	}
@@ -177,6 +207,16 @@ func Load(path string) (*Config, error) {
 	// Parse APP_DEBUG environment variable
 	if appDebug := os.Getenv("APP_DEBUG"); appDebug != "" {
 		cfg.Debug = parseBool(appDebug)
+	}
+
+	// Set server defaults
+	if err := cfg.Server.Validate(); err != nil {
+		return nil, fmt.Errorf("server config validation: %w", err)
+	}
+
+	// Override server config with environment variable if present
+	if publisherPort := os.Getenv("PUBLISHER_PORT"); publisherPort != "" {
+		cfg.Server.Address = ":" + publisherPort
 	}
 
 	// Validate configuration

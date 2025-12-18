@@ -4,16 +4,20 @@ import (
 	"context"
 	"errors"
 	"flag"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 
+	"github.com/gopost/integration/internal/api"
 	"github.com/gopost/integration/internal/config"
 	"github.com/gopost/integration/internal/integration"
 	"github.com/gopost/integration/internal/logger"
+	"github.com/gopost/integration/internal/metrics"
 	"github.com/gopost/integration/internal/sources"
 	infracontext "github.com/north-cloud/infrastructure/context"
+	"github.com/redis/go-redis/v9"
 )
 
 var (
@@ -111,8 +115,35 @@ func main() {
 		}
 	}()
 
-	// Create integration service with logger
-	service, err := integration.NewService(cfg, appLogger)
+	// Initialize Redis for metrics (shared with dedup, but using different key prefixes)
+	redisClient := redis.NewClient(&redis.Options{
+		Addr:     cfg.Redis.URL,
+		Password: cfg.Redis.Password,
+		DB:       cfg.Redis.DB,
+	})
+
+	// Test Redis connection
+	ctx, cancel := infracontext.WithPingTimeout()
+	defer cancel()
+	if err := redisClient.Ping(ctx).Err(); err != nil {
+		appLogger.Error("Failed to connect to Redis",
+			logger.Error(err),
+		)
+		_ = appLogger.Sync()
+		os.Exit(1)
+	}
+
+	// Get city names for metrics tracker
+	cityNames := make([]string, 0, len(cfg.Cities))
+	for _, city := range cfg.Cities {
+		cityNames = append(cityNames, city.Name)
+	}
+
+	// Create metrics tracker
+	metricsTracker := metrics.NewTracker(redisClient, cityNames, appLogger)
+
+	// Create integration service with metrics tracker
+	service, err := integration.NewService(cfg, metricsTracker, appLogger)
 	if err != nil {
 		appLogger.Error("Failed to create integration service",
 			logger.Error(err),
@@ -127,32 +158,100 @@ func main() {
 		return
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	// Create stats service and API router
+	statsService := api.NewStatsService(metricsTracker, appLogger)
+	router := api.NewRouter(statsService, appLogger, version)
+
+	// Create HTTP server
+	srv := &http.Server{
+		Addr:         cfg.Server.Address,
+		Handler:      router,
+		ReadTimeout:  cfg.Server.ReadTimeout,
+		WriteTimeout: cfg.Server.WriteTimeout,
+	}
+
+	// Start HTTP server in goroutine
+	serverErr := make(chan error, 1)
+	go func() {
+		appLogger.Info("Starting HTTP server",
+			logger.String("address", cfg.Server.Address),
+		)
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			serverErr <- err
+		}
+	}()
+
+	// Start worker in goroutine
+	workerCtx, workerCancel := context.WithCancel(context.Background())
+	defer workerCancel()
+
+	workerErr := make(chan error, 1)
+	go func() {
+		appLogger.Info("Starting integration service",
+			logger.String("config_path", configPath),
+			logger.Bool("debug", cfg.Debug),
+		)
+		workerErr <- service.Run(workerCtx)
+	}()
 
 	// Handle graceful shutdown
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
 
-	go func() {
-		sig := <-sigChan
-		appLogger.Info("Shutting down",
+	select {
+	case sig := <-sigChan:
+		appLogger.Info("Shutting down gracefully",
 			logger.String("signal", sig.String()),
 		)
-		cancel()
-	}()
+		workerCancel()
 
-	appLogger.Info("Starting integration service",
-		logger.String("config_path", configPath),
-		logger.Bool("debug", cfg.Debug),
-	)
+		// Shutdown HTTP server with timeout
+		shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer shutdownCancel()
 
-	if runErr := service.Run(ctx); runErr != nil && !errors.Is(runErr, context.Canceled) {
-		appLogger.Error("Service error",
-			logger.Error(runErr),
+		if err := srv.Shutdown(shutdownCtx); err != nil {
+			appLogger.Error("Server shutdown error",
+				logger.Error(err),
+			)
+		} else {
+			appLogger.Info("HTTP server stopped")
+		}
+
+		// Wait for worker to finish
+		if err := <-workerErr; err != nil && !errors.Is(err, context.Canceled) {
+			appLogger.Error("Worker error",
+				logger.Error(err),
+			)
+		} else {
+			appLogger.Info("Worker stopped")
+		}
+	case err := <-serverErr:
+		appLogger.Error("Server error",
+			logger.Error(err),
 		)
-		_ = appLogger.Sync()
-		os.Exit(1)
+		workerCancel()
+		if err := <-workerErr; err != nil && !errors.Is(err, context.Canceled) {
+			appLogger.Error("Worker error",
+				logger.Error(err),
+			)
+		}
+	case err := <-workerErr:
+		if err != nil && !errors.Is(err, context.Canceled) {
+			appLogger.Error("Worker error",
+				logger.Error(err),
+			)
+		}
+		workerCancel()
+
+		// Shutdown HTTP server
+		shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer shutdownCancel()
+
+		if err := srv.Shutdown(shutdownCtx); err != nil {
+			appLogger.Error("Server shutdown error",
+				logger.Error(err),
+			)
+		}
 	}
 
 	appLogger.Info("Service stopped")

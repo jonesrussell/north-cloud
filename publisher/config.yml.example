@@ -4,6 +4,12 @@
 # Can be overridden with APP_DEBUG environment variable
 debug: false
 
+# HTTP server configuration for dashboard API
+server:
+  address: ":8070"        # Server address (can be overridden with PUBLISHER_PORT env var)
+  read_timeout: "10s"     # Read timeout
+  write_timeout: "30s"     # Write timeout
+
 elasticsearch:
   url: "http://localhost:9200"
   username: ""  # Optional
