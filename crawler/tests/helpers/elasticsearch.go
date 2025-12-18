@@ -36,10 +36,18 @@ type ElasticsearchContainer struct {
 // It returns a container instance that should be stopped with Stop().
 func StartElasticsearch(ctx context.Context) (*ElasticsearchContainer, error) {
 	// Create Elasticsearch container with default configuration
+	// For testing, disable security to allow HTTP access without SSL
+	// Note: Elasticsearch 8.x+ enables security by default, so we disable it for testing
 	esContainer, err := elasticsearch.Run(
 		ctx,
-		"docker.elastic.co/elasticsearch/elasticsearch:8.11.0",
+		"docker.elastic.co/elasticsearch/elasticsearch:9.2.2",
 		elasticsearch.WithPassword("changeme"),
+		testcontainers.WithEnv(map[string]string{
+			"xpack.security.enabled":               "false",
+			"xpack.security.http.ssl.enabled":      "false",
+			"xpack.security.transport.ssl.enabled": "false",
+			"discovery.type":                       "single-node",
+		}),
 		testcontainers.WithWaitStrategy(
 			wait.ForHTTP("/").WithPort("9200/tcp").WithStartupTimeout(DefaultElasticsearchStartupTimeout),
 		),
@@ -99,11 +107,13 @@ func waitForElasticsearch(ctx context.Context, address string) error {
 		Timeout: DefaultHTTPClientTimeout,
 	}
 
-	// Create request with basic auth for Elasticsearch 8.x
+	// Create request - if security is disabled, basic auth is not needed
+	// but setting it won't hurt if security is enabled
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, fmt.Sprintf("%s/_cluster/health", address), http.NoBody)
 	if err != nil {
 		return fmt.Errorf("failed to create request: %w", err)
 	}
+	// Set basic auth (will be ignored if security is disabled)
 	req.SetBasicAuth("elastic", "changeme")
 
 	for i := range DefaultMaxRetries {

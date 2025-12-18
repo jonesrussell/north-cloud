@@ -30,6 +30,8 @@ func (h *Handlers) GetStats(c *gin.Context) {
 	if err != nil {
 		h.logger.Error("Failed to get stats",
 			logger.Error(err),
+			logger.String("path", c.Request.URL.Path),
+			logger.String("method", c.Request.Method),
 		)
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": "Failed to retrieve statistics",
@@ -51,6 +53,9 @@ func (h *Handlers) GetRecentArticles(c *gin.Context) {
 	if err != nil {
 		h.logger.Error("Failed to get recent articles",
 			logger.Error(err),
+			logger.String("path", c.Request.URL.Path),
+			logger.String("method", c.Request.Method),
+			logger.Int("limit", limit),
 		)
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": "Failed to retrieve recent articles",

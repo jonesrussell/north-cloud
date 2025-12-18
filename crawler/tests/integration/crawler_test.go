@@ -60,7 +60,8 @@ func TestIntegration_ElasticsearchStorage(t *testing.T) {
 
 	// Create test index
 	indexName := "test_integration_index"
-	err = storageClient.CreateIndex(ctx, indexName, nil)
+	// Pass empty map instead of nil - Elasticsearch requires valid JSON body
+	err = storageClient.CreateIndex(ctx, indexName, map[string]any{})
 	require.NoError(t, err, "failed to create index")
 
 	// Wait for index to be ready

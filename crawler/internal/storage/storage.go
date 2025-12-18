@@ -10,6 +10,7 @@ import (
 	"time"
 
 	es "github.com/elastic/go-elasticsearch/v8"
+	"github.com/elastic/go-elasticsearch/v8/esapi"
 	"github.com/jonesrussell/gocrawl/internal/config"
 	"github.com/jonesrussell/gocrawl/internal/domain"
 	"github.com/jonesrussell/gocrawl/internal/logger"
@@ -423,17 +424,30 @@ func (s *Storage) CreateIndex(
 	ctx, cancel := s.createContextWithTimeout(ctx, DefaultIndexTimeout)
 	defer cancel()
 
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(mapping); err != nil {
-		s.logger.Error("Failed to create index", "index", index, "error", err)
-		return fmt.Errorf("error encoding mapping: %w", err)
-	}
+	// Only add body if mapping is not empty
+	// Elasticsearch allows creating an index without a body
+	var res *esapi.Response
+	var err error
 
-	res, err := s.client.Indices.Create(
-		index,
-		s.client.Indices.Create.WithContext(ctx),
-		s.client.Indices.Create.WithBody(&buf),
-	)
+	if len(mapping) > 0 {
+		// Create index with mapping
+		var buf bytes.Buffer
+		if encodeErr := json.NewEncoder(&buf).Encode(mapping); encodeErr != nil {
+			s.logger.Error("Failed to create index", "index", index, "error", encodeErr)
+			return fmt.Errorf("error encoding mapping: %w", encodeErr)
+		}
+		res, err = s.client.Indices.Create(
+			index,
+			s.client.Indices.Create.WithContext(ctx),
+			s.client.Indices.Create.WithBody(&buf),
+		)
+	} else {
+		// Create index without body (uses default settings)
+		res, err = s.client.Indices.Create(
+			index,
+			s.client.Indices.Create.WithContext(ctx),
+		)
+	}
 	if err != nil {
 		s.logger.Error("Failed to create index", "index", index, "error", err)
 		return fmt.Errorf("failed to create index: %w", err)
