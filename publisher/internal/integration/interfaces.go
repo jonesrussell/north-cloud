@@ -53,7 +53,7 @@ type MetricsTracker interface {
 	// IncrementErrors increments the error counter for a city
 	IncrementErrors(ctx context.Context, city string) error
 	// AddRecentArticle adds an article to the recent articles list
-	AddRecentArticle(ctx context.Context, article interface{}) error
+	AddRecentArticle(ctx context.Context, article any) error
 	// UpdateLastSync updates the last sync timestamp
 	UpdateLastSync(ctx context.Context) error
 }

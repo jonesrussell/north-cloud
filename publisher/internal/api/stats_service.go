@@ -7,6 +7,8 @@ import (
 	"github.com/gopost/integration/internal/metrics"
 )
 
+const defaultLimit = 50
+
 // StatsService provides business logic for statistics operations
 type StatsService struct {
 	tracker MetricsTracker
@@ -35,10 +37,10 @@ func (s *StatsService) GetStats(ctx context.Context) (*metrics.Stats, error) {
 // GetRecentArticles returns recent posted articles with limit validation
 func (s *StatsService) GetRecentArticles(ctx context.Context, limit int) ([]metrics.RecentArticle, error) {
 	if limit <= 0 {
-		limit = 50
+		limit = defaultLimit
 	}
-	if limit > 100 {
-		limit = 100
+	if limit > metrics.MaxRecentArticles {
+		limit = metrics.MaxRecentArticles
 	}
 	return s.tracker.GetRecentArticles(ctx, limit)
 }

@@ -14,8 +14,8 @@ type MetricsTracker interface {
 	// IncrementErrors increments the error counter for a city
 	IncrementErrors(ctx context.Context, city string) error
 	// AddRecentArticle adds an article to the recent articles list
-	// Accepts interface{} to allow flexibility (can be RecentArticle or map[string]interface{})
-	AddRecentArticle(ctx context.Context, article interface{}) error
+	// Accepts any to allow flexibility (can be RecentArticle or map[string]any)
+	AddRecentArticle(ctx context.Context, article any) error
 	// GetStats returns aggregated statistics
 	GetStats(ctx context.Context) (*Stats, error)
 	// GetRecentArticles returns recent posted articles

@@ -3,6 +3,7 @@ package metrics
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
@@ -31,7 +32,7 @@ func NewTracker(client redis.UniversalClient, cities []string, log logger.Logger
 // IncrementPosted increments the posted articles counter for a city
 func (t *Tracker) IncrementPosted(ctx context.Context, city string) error {
 	key := t.keys.Posted(city)
-	ttl := MetricsTTLDays * 24 * time.Hour
+	ttl := MetricsTTLDays * HoursPerDay * time.Hour
 
 	// Use pipeline for atomic operation with TTL
 	pipe := t.client.Pipeline()
@@ -54,7 +55,7 @@ func (t *Tracker) IncrementPosted(ctx context.Context, city string) error {
 // IncrementSkipped increments the skipped articles counter for a city
 func (t *Tracker) IncrementSkipped(ctx context.Context, city string) error {
 	key := t.keys.Skipped(city)
-	ttl := MetricsTTLDays * 24 * time.Hour
+	ttl := MetricsTTLDays * HoursPerDay * time.Hour
 
 	// Use pipeline for atomic operation with TTL
 	pipe := t.client.Pipeline()
@@ -77,7 +78,7 @@ func (t *Tracker) IncrementSkipped(ctx context.Context, city string) error {
 // IncrementErrors increments the error counter for a city
 func (t *Tracker) IncrementErrors(ctx context.Context, city string) error {
 	key := t.keys.Errors(city)
-	ttl := MetricsTTLDays * 24 * time.Hour
+	ttl := MetricsTTLDays * HoursPerDay * time.Hour
 
 	// Use pipeline for atomic operation with TTL
 	pipe := t.client.Pipeline()
@@ -97,46 +98,69 @@ func (t *Tracker) IncrementErrors(ctx context.Context, city string) error {
 	return nil
 }
 
-// AddRecentArticle adds an article to the recent articles list
-func (t *Tracker) AddRecentArticle(ctx context.Context, article interface{}) error {
-	// Convert interface{} to RecentArticle
+// convertArticleToRecentArticle converts various article types to RecentArticle
+func convertArticleToRecentArticle(article any) (RecentArticle, error) {
 	var recentArticle RecentArticle
 
 	switch v := article.(type) {
 	case RecentArticle:
-		recentArticle = v
-	case map[string]interface{}:
-		// Handle map conversion
-		if id, ok := v["id"].(string); ok {
-			recentArticle.ID = id
-		}
-		if title, ok := v["title"].(string); ok {
-			recentArticle.Title = title
-		}
-		if url, ok := v["url"].(string); ok {
-			recentArticle.URL = url
-		}
-		if city, ok := v["city"].(string); ok {
-			recentArticle.City = city
-		}
-		if postedAtStr, ok := v["posted_at"].(string); ok {
-			if postedAt, err := time.Parse(time.RFC3339, postedAtStr); err == nil {
-				recentArticle.PostedAt = postedAt
-			} else {
-				recentArticle.PostedAt = time.Now()
-			}
+		return v, nil
+	case map[string]any:
+		return convertMapToRecentArticle(v), nil
+	default:
+		return convertViaJSON(article)
+	}
+}
+
+// convertMapToRecentArticle converts a map to RecentArticle
+func convertMapToRecentArticle(v map[string]any) RecentArticle {
+	var recentArticle RecentArticle
+
+	if id, ok := v["id"].(string); ok {
+		recentArticle.ID = id
+	}
+	if title, ok := v["title"].(string); ok {
+		recentArticle.Title = title
+	}
+	if url, ok := v["url"].(string); ok {
+		recentArticle.URL = url
+	}
+	if city, ok := v["city"].(string); ok {
+		recentArticle.City = city
+	}
+	if postedAtStr, ok := v["posted_at"].(string); ok {
+		if postedAt, err := time.Parse(time.RFC3339, postedAtStr); err == nil {
+			recentArticle.PostedAt = postedAt
 		} else {
 			recentArticle.PostedAt = time.Now()
 		}
-	default:
-		// Try JSON marshal/unmarshal as fallback
-		data, err := json.Marshal(article)
-		if err != nil {
-			return fmt.Errorf("marshal article: %w", err)
-		}
-		if err := json.Unmarshal(data, &recentArticle); err != nil {
-			return fmt.Errorf("unmarshal article: %w", err)
-		}
+	} else {
+		recentArticle.PostedAt = time.Now()
+	}
+
+	return recentArticle
+}
+
+// convertViaJSON converts article via JSON marshal/unmarshal
+func convertViaJSON(article any) (RecentArticle, error) {
+	var recentArticle RecentArticle
+
+	data, err := json.Marshal(article)
+	if err != nil {
+		return recentArticle, fmt.Errorf("marshal article: %w", err)
+	}
+	if unmarshalErr := json.Unmarshal(data, &recentArticle); unmarshalErr != nil {
+		return recentArticle, fmt.Errorf("unmarshal article: %w", unmarshalErr)
+	}
+
+	return recentArticle, nil
+}
+
+// AddRecentArticle adds an article to the recent articles list
+func (t *Tracker) AddRecentArticle(ctx context.Context, article any) error {
+	recentArticle, err := convertArticleToRecentArticle(article)
+	if err != nil {
+		return err
 	}
 
 	// Serialize article to JSON
@@ -146,7 +170,7 @@ func (t *Tracker) AddRecentArticle(ctx context.Context, article interface{}) err
 	}
 
 	key := KeyRecentArticles
-	ttl := RecentArticlesTTLDays * 24 * time.Hour
+	ttl := RecentArticlesTTLDays * HoursPerDay * time.Hour
 
 	// Use pipeline for atomic operations: LPUSH, LTRIM, EXPIRE
 	pipe := t.client.Pipeline()
@@ -186,9 +210,9 @@ func (t *Tracker) GetStats(ctx context.Context) (*Stats, error) {
 	lastSyncCmd := pipe.Get(ctx, KeyLastSync)
 
 	// Execute pipeline atomically
-	_, err := pipe.Exec(ctx)
-	if err != nil && err != redis.Nil {
-		return nil, fmt.Errorf("execute pipeline: %w", err)
+	_, execErr := pipe.Exec(ctx)
+	if execErr != nil && !errors.Is(execErr, redis.Nil) {
+		return nil, fmt.Errorf("execute pipeline: %w", execErr)
 	}
 
 	// Build stats from results
@@ -202,19 +226,19 @@ func (t *Tracker) GetStats(ctx context.Context) (*Stats, error) {
 		cityStats := CityStats{Name: city}
 
 		// Get posted count (default to 0 if key doesn't exist)
-		if postedVal, err := postedCmds[city].Int64(); err == nil {
+		if postedVal, postedErr := postedCmds[city].Int64(); postedErr == nil {
 			cityStats.Posted = postedVal
 			totalPosted += postedVal
 		}
 
 		// Get skipped count (default to 0 if key doesn't exist)
-		if skippedVal, err := skippedCmds[city].Int64(); err == nil {
+		if skippedVal, skippedErr := skippedCmds[city].Int64(); skippedErr == nil {
 			cityStats.Skipped = skippedVal
 			totalSkipped += skippedVal
 		}
 
 		// Get error count (default to 0 if key doesn't exist)
-		if errorVal, err := errorCmds[city].Int64(); err == nil {
+		if errorVal, errorErr := errorCmds[city].Int64(); errorErr == nil {
 			cityStats.Errors = errorVal
 			totalErrors += errorVal
 		}
@@ -227,8 +251,8 @@ func (t *Tracker) GetStats(ctx context.Context) (*Stats, error) {
 	stats.TotalErrors = totalErrors
 
 	// Get last sync timestamp
-	if lastSyncStr, err := lastSyncCmd.Result(); err == nil && lastSyncStr != "" {
-		if lastSync, err := time.Parse(time.RFC3339, lastSyncStr); err == nil {
+	if lastSyncStr, syncErr := lastSyncCmd.Result(); syncErr == nil && lastSyncStr != "" {
+		if lastSync, parseErr := time.Parse(time.RFC3339, lastSyncStr); parseErr == nil {
 			stats.LastSync = lastSync
 		}
 	}
@@ -255,7 +279,7 @@ func (t *Tracker) GetRecentArticles(ctx context.Context, limit int) ([]RecentArt
 	// Get articles from list (0 to limit-1)
 	results, err := t.client.LRange(ctx, key, 0, int64(limit-1)).Result()
 	if err != nil {
-		if err == redis.Nil {
+		if errors.Is(err, redis.Nil) {
 			return []RecentArticle{}, nil
 		}
 		return nil, fmt.Errorf("get recent articles: %w", err)
@@ -264,9 +288,9 @@ func (t *Tracker) GetRecentArticles(ctx context.Context, limit int) ([]RecentArt
 	articles := make([]RecentArticle, 0, len(results))
 	for _, result := range results {
 		var article RecentArticle
-		if err := json.Unmarshal([]byte(result), &article); err != nil {
+		if unmarshalErr := json.Unmarshal([]byte(result), &article); unmarshalErr != nil {
 			t.logger.Warn("Failed to unmarshal recent article",
-				logger.Error(err),
+				logger.Error(unmarshalErr),
 			)
 			continue
 		}

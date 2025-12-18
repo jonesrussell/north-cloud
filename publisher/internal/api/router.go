@@ -22,10 +22,8 @@ func NewRouter(statsService *StatsService, log logger.Logger, version string) *g
 
 	// API v1 routes
 	v1 := router.Group("/api/v1")
-	{
-		v1.GET("/stats", handlers.GetStats)
-		v1.GET("/articles/recent", handlers.GetRecentArticles)
-	}
+	v1.GET("/stats", handlers.GetStats)
+	v1.GET("/articles/recent", handlers.GetRecentArticles)
 
 	return router
 }

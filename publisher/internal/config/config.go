@@ -12,6 +12,15 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+const (
+	// DefaultReadTimeoutSeconds is the default read timeout in seconds
+	DefaultReadTimeoutSeconds = 10
+	// DefaultWriteTimeoutSeconds is the default write timeout in seconds
+	DefaultWriteTimeoutSeconds = 30
+	// DefaultShutdownTimeoutSeconds is the default shutdown timeout in seconds
+	DefaultShutdownTimeoutSeconds = 30
+)
+
 type Config struct {
 	Debug         bool                `yaml:"debug"` // Application debug mode (controls log level and format)
 	Server        ServerConfig        `yaml:"server"`
@@ -77,10 +86,10 @@ func (c *ServerConfig) Validate() error {
 		c.Address = ":8070" // Default port
 	}
 	if c.ReadTimeout <= 0 {
-		c.ReadTimeout = 10 * time.Second
+		c.ReadTimeout = DefaultReadTimeoutSeconds * time.Second
 	}
 	if c.WriteTimeout <= 0 {
-		c.WriteTimeout = 30 * time.Second
+		c.WriteTimeout = DefaultWriteTimeoutSeconds * time.Second
 	}
 	return nil
 }
@@ -124,26 +133,16 @@ func (c *Config) Validate() error {
 	return nil
 }
 
-func Load(path string) (*Config, error) {
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return nil, fmt.Errorf("read config file: %w", err)
-	}
-
-	var cfg Config
-	if err := yaml.Unmarshal(data, &cfg); err != nil {
-		return nil, fmt.Errorf("parse config: %w", err)
-	}
-
-	// Set defaults
+// setDefaults sets default values for configuration fields
+func setDefaults(cfg *Config) {
 	if cfg.Server.Address == "" {
 		cfg.Server.Address = ":8070"
 	}
 	if cfg.Server.ReadTimeout == 0 {
-		cfg.Server.ReadTimeout = 10 * time.Second
+		cfg.Server.ReadTimeout = DefaultReadTimeoutSeconds * time.Second
 	}
 	if cfg.Server.WriteTimeout == 0 {
-		cfg.Server.WriteTimeout = 30 * time.Second
+		cfg.Server.WriteTimeout = DefaultWriteTimeoutSeconds * time.Second
 	}
 	if cfg.Service.CheckInterval == 0 {
 		cfg.Service.CheckInterval = 5 * time.Minute
@@ -178,8 +177,10 @@ func Load(path string) (*Config, error) {
 	if cfg.Sources.Timeout == 0 {
 		cfg.Sources.Timeout = 5 * time.Second
 	}
+}
 
-	// Override with environment variables if present
+// overrideWithEnvVars overrides configuration with environment variables
+func overrideWithEnvVars(cfg *Config) {
 	if esURL := os.Getenv("ES_URL"); esURL != "" {
 		cfg.Elasticsearch.URL = esURL
 	}
@@ -208,6 +209,24 @@ func Load(path string) (*Config, error) {
 	if appDebug := os.Getenv("APP_DEBUG"); appDebug != "" {
 		cfg.Debug = parseBool(appDebug)
 	}
+}
+
+func Load(path string) (*Config, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, fmt.Errorf("read config file: %w", err)
+	}
+
+	var cfg Config
+	if err := yaml.Unmarshal(data, &cfg); err != nil {
+		return nil, fmt.Errorf("parse config: %w", err)
+	}
+
+	// Set defaults
+	setDefaults(&cfg)
+
+	// Override with environment variables if present
+	overrideWithEnvVars(&cfg)
 
 	// Set server defaults
 	if err := cfg.Server.Validate(); err != nil {

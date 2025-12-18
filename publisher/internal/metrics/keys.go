@@ -21,6 +21,8 @@ const (
 	MetricsTTLDays = 30
 	// RecentArticlesTTLDays is the TTL in days for recent articles list
 	RecentArticlesTTLDays = 7
+	// HoursPerDay is the number of hours in a day
+	HoursPerDay = 24
 )
 
 // RedisKeys provides methods to build Redis keys consistently

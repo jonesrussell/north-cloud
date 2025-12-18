@@ -587,7 +587,7 @@ func (s *Service) ProcessCity(ctx context.Context, cityCfg config.CityConfig) er
 			// The interface accepts interface{}, but the implementation expects metrics.RecentArticle
 			// We'll pass a map and let the tracker handle conversion, or we need to import metrics package
 			// For now, we'll use a type assertion approach - the metrics tracker will handle it
-			recentArticleData := map[string]interface{}{
+			recentArticleData := map[string]any{
 				"id":        article.ID,
 				"title":     article.Title,
 				"url":       article.URL,
