@@ -1,6 +1,6 @@
 module github.com/jonesrussell/gocrawl
 
-go 1.25.0
+go 1.25
 
 require (
 	github.com/PuerkitoBio/goquery v1.11.0
