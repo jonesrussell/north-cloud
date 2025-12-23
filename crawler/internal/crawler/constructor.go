@@ -187,21 +187,21 @@ func NewCrawlerWithParams(p CrawlerParams) (*CrawlerResult, error) {
 
 	// Create crawler
 	c := &Crawler{
-		logger:           p.Logger,
-		collector:        collector,
-		bus:              p.Bus,
-		indexManager:     p.IndexManager,
-		sources:          p.Sources,
+		logger:              p.Logger,
+		collector:           collector,
+		bus:                 p.Bus,
+		indexManager:        p.IndexManager,
+		sources:             p.Sources,
 		articleProcessor:    articleProcessor,
 		pageProcessor:       pageProcessor,
 		rawContentProcessor: rawContentProcessor,
 		state:               NewState(p.Logger),
 		done:                make(chan struct{}),
 		articleChannel:      articleChannel,
-		processors:           []content.Processor{rawContentProcessor},
-		htmlProcessor:    NewHTMLProcessor(p.Logger, p.Sources),
-		cfg:              p.Config,
-		abortChan:        make(chan struct{}),
+		processors:          []content.Processor{rawContentProcessor},
+		htmlProcessor:       NewHTMLProcessor(p.Logger, p.Sources),
+		cfg:                 p.Config,
+		abortChan:           make(chan struct{}),
 	}
 
 	c.linkHandler = NewLinkHandler(c)

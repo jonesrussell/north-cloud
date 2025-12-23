@@ -139,25 +139,25 @@ const (
 
 // Crawler implements the Processor interface for web crawling.
 type Crawler struct {
-	logger           logger.Interface
-	collector        *colly.Collector
-	bus              *events.EventBus
-	indexManager     storagetypes.IndexManager
-	sources          sources.Interface
+	logger              logger.Interface
+	collector           *colly.Collector
+	bus                 *events.EventBus
+	indexManager        storagetypes.IndexManager
+	sources             sources.Interface
 	articleProcessor    content.Processor
 	pageProcessor       content.Processor
 	rawContentProcessor content.Processor
-	state            *State
-	done             chan struct{}
-	doneOnce         sync.Once // Ensures done channel is only closed once
-	wg               sync.WaitGroup
-	articleChannel   chan *domain.Article
-	processors       []content.Processor
-	linkHandler      *LinkHandler
-	htmlProcessor    *HTMLProcessor
-	cfg              *crawler.Config
-	abortChan        chan struct{} // Channel to signal abort
-	maxDepthOverride int32         // Override for source's max_depth (0 means use source default), accessed atomically
+	state               *State
+	done                chan struct{}
+	doneOnce            sync.Once // Ensures done channel is only closed once
+	wg                  sync.WaitGroup
+	articleChannel      chan *domain.Article
+	processors          []content.Processor
+	linkHandler         *LinkHandler
+	htmlProcessor       *HTMLProcessor
+	cfg                 *crawler.Config
+	abortChan           chan struct{} // Channel to signal abort
+	maxDepthOverride    int32         // Override for source's max_depth (0 means use source default), accessed atomically
 }
 
 var _ Interface = (*Crawler)(nil)

@@ -166,7 +166,7 @@ func extractSourceNameFromURL(urlStr string) string {
 	// Example: https://example.com/article -> example_com
 	urlStr = strings.TrimPrefix(urlStr, "http://")
 	urlStr = strings.TrimPrefix(urlStr, "https://")
-	
+
 	parts := strings.Split(urlStr, "/")
 	if len(parts) > 0 {
 		domain := parts[0]
@@ -174,7 +174,7 @@ func extractSourceNameFromURL(urlStr string) string {
 		domain = strings.ToLower(domain)
 		return domain
 	}
-	
+
 	return "unknown_source"
 }
 
@@ -270,4 +270,3 @@ func calculateWordCount(text string) int {
 	words := strings.Fields(text)
 	return len(words)
 }
-

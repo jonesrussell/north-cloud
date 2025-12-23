@@ -138,4 +138,3 @@ func (p *RawContentProcessor) Validate(job *content.Job) error {
 	}
 	return nil
 }
-
