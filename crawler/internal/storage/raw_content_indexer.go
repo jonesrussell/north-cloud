@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/jonesrussell/gocrawl/internal/domain"
@@ -38,8 +39,9 @@ type RawContent struct {
 
 // RawContentIndexer handles indexing of raw content for the classifier
 type RawContentIndexer struct {
-	storage types.Interface
-	logger  logger.Interface
+	storage        types.Interface
+	logger         logger.Interface
+	ensuredIndexes sync.Map // Cache of indexes that have been ensured (map[string]bool)
 }
 
 // NewRawContentIndexer creates a new raw content indexer
@@ -176,9 +178,15 @@ func (r *RawContentIndexer) getRawContentIndexName(sourceName string) string {
 	return fmt.Sprintf("%s_raw_content", normalized)
 }
 
-// EnsureRawContentIndex ensures the raw_content index exists with proper mappings
+// EnsureRawContentIndex ensures the raw_content index exists with proper mappings.
+// Uses a cache to avoid redundant checks and log messages for indexes that have already been ensured.
 func (r *RawContentIndexer) EnsureRawContentIndex(ctx context.Context, sourceName string) error {
 	indexName := r.getRawContentIndexName(sourceName)
+
+	// Check cache first - if we've already ensured this index, skip the check
+	if _, alreadyEnsured := r.ensuredIndexes.Load(indexName); alreadyEnsured {
+		return nil
+	}
 
 	// Define raw content index mapping
 	mapping := map[string]any{
@@ -215,7 +223,7 @@ func (r *RawContentIndexer) EnsureRawContentIndex(ctx context.Context, sourceNam
 		return fmt.Errorf("failed to marshal index mapping: %w", err)
 	}
 
-	r.logger.Info("Creating raw_content index",
+	r.logger.Info("Ensuring raw_content index",
 		"index", indexName,
 		"source_name", sourceName,
 	)
@@ -227,9 +235,8 @@ func (r *RawContentIndexer) EnsureRawContentIndex(ctx context.Context, sourceNam
 		return fmt.Errorf("failed to ensure raw_content index: %w", err)
 	}
 
-	r.logger.Info("Created raw_content index",
-		"index", indexName,
-	)
+	// Cache that this index has been ensured
+	r.ensuredIndexes.Store(indexName, true)
 
 	return nil
 }
