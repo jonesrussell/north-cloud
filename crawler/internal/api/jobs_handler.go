@@ -7,8 +7,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
-	"github.com/jonesrussell/gocrawl/internal/database"
-	"github.com/jonesrussell/gocrawl/internal/domain"
+	"github.com/jonesrussell/north-cloud/crawler/internal/database"
+	"github.com/jonesrussell/north-cloud/crawler/internal/domain"
 )
 
 const (

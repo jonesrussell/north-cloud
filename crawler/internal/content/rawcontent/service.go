@@ -11,11 +11,11 @@ import (
 	"time"
 
 	"github.com/gocolly/colly/v2"
-	"github.com/jonesrussell/gocrawl/internal/domain"
-	"github.com/jonesrussell/gocrawl/internal/logger"
-	"github.com/jonesrussell/gocrawl/internal/sources"
-	storagepkg "github.com/jonesrussell/gocrawl/internal/storage"
-	"github.com/jonesrussell/gocrawl/internal/storage/types"
+	"github.com/jonesrussell/north-cloud/crawler/internal/domain"
+	"github.com/jonesrussell/north-cloud/crawler/internal/logger"
+	"github.com/jonesrussell/north-cloud/crawler/internal/sources"
+	storagepkg "github.com/jonesrussell/north-cloud/crawler/internal/storage"
+	"github.com/jonesrussell/north-cloud/crawler/internal/storage/types"
 )
 
 // Interface defines the interface for processing raw content.

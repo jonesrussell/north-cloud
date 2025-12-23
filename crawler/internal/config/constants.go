@@ -4,7 +4,7 @@ package config
 import (
 	"time"
 
-	"github.com/jonesrussell/gocrawl/internal/config/elasticsearch"
+	"github.com/jonesrussell/north-cloud/crawler/internal/config/elasticsearch"
 )
 
 // ValidLogLevels defines the valid logging levels

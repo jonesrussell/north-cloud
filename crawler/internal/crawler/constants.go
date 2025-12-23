@@ -1,7 +1,7 @@
 package crawler
 
 import (
-	"github.com/jonesrussell/gocrawl/internal/constants"
+	"github.com/jonesrussell/north-cloud/crawler/internal/constants"
 )
 
 // Re-export crawler constants from constants package for backward compatibility

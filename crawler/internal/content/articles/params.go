@@ -2,10 +2,10 @@
 package articles
 
 import (
-	"github.com/jonesrussell/gocrawl/internal/content"
-	"github.com/jonesrussell/gocrawl/internal/logger"
-	"github.com/jonesrussell/gocrawl/internal/processor"
-	"github.com/jonesrussell/gocrawl/internal/storage/types"
+	"github.com/jonesrussell/north-cloud/crawler/internal/content"
+	"github.com/jonesrussell/north-cloud/crawler/internal/logger"
+	"github.com/jonesrussell/north-cloud/crawler/internal/processor"
+	"github.com/jonesrussell/north-cloud/crawler/internal/storage/types"
 )
 
 // ContentServiceParams contains dependencies for creating the article service

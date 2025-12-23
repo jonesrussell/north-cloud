@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/jonesrussell/gocrawl/internal/crawler"
-	"github.com/jonesrussell/gocrawl/internal/logger"
+	"github.com/jonesrussell/north-cloud/crawler/internal/crawler"
+	"github.com/jonesrussell/north-cloud/crawler/internal/logger"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

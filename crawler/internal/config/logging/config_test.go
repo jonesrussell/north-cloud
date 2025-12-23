@@ -3,7 +3,7 @@ package logging_test
 import (
 	"testing"
 
-	"github.com/jonesrussell/gocrawl/internal/config/logging"
+	"github.com/jonesrussell/north-cloud/crawler/internal/config/logging"
 	"github.com/stretchr/testify/require"
 )
 

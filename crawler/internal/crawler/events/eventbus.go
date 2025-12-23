@@ -4,8 +4,8 @@ import (
 	"context"
 	"sync"
 
-	"github.com/jonesrussell/gocrawl/internal/domain"
-	"github.com/jonesrussell/gocrawl/internal/logger"
+	"github.com/jonesrussell/north-cloud/crawler/internal/domain"
+	"github.com/jonesrussell/north-cloud/crawler/internal/logger"
 )
 
 // EventBus implements the crawler.EventBus interface for managing event distribution.

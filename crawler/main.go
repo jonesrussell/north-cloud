@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/jonesrussell/gocrawl/cmd/httpd"
+	"github.com/jonesrussell/north-cloud/crawler/cmd/httpd"
 )
 
 func main() {

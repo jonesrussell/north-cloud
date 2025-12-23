@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/jonesrussell/gocrawl/internal/logger"
+	"github.com/jonesrussell/north-cloud/crawler/internal/logger"
 )
 
 // State implements the CrawlerState and CrawlerMetrics interfaces.

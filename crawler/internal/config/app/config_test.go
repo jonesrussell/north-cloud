@@ -3,7 +3,7 @@ package app_test
 import (
 	"testing"
 
-	"github.com/jonesrussell/gocrawl/internal/config/app"
+	"github.com/jonesrussell/north-cloud/crawler/internal/config/app"
 	"github.com/stretchr/testify/require"
 )
 

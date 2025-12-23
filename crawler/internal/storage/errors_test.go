@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/jonesrussell/gocrawl/internal/storage"
+	"github.com/jonesrussell/north-cloud/crawler/internal/storage"
 	"github.com/stretchr/testify/require"
 )
 

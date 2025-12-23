@@ -5,9 +5,9 @@ import (
 	"strings"
 
 	"github.com/joho/godotenv"
-	"github.com/jonesrussell/gocrawl/internal/config"
-	"github.com/jonesrussell/gocrawl/internal/config/crawler"
-	"github.com/jonesrussell/gocrawl/internal/logger"
+	"github.com/jonesrussell/north-cloud/crawler/internal/config"
+	"github.com/jonesrussell/north-cloud/crawler/internal/config/crawler"
+	"github.com/jonesrussell/north-cloud/crawler/internal/logger"
 	"github.com/spf13/viper"
 )
 

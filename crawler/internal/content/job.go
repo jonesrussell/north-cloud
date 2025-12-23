@@ -5,7 +5,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/jonesrussell/gocrawl/internal/domain"
+	"github.com/jonesrussell/north-cloud/crawler/internal/domain"
 )
 
 // JobStatus represents the status of a job.

@@ -5,8 +5,8 @@ import (
 	"errors"
 
 	colly "github.com/gocolly/colly/v2"
-	"github.com/jonesrussell/gocrawl/internal/content"
-	"github.com/jonesrussell/gocrawl/internal/content/contenttype"
+	"github.com/jonesrussell/north-cloud/crawler/internal/content"
+	"github.com/jonesrussell/north-cloud/crawler/internal/content/contenttype"
 )
 
 // ProcessHTML processes the HTML content as raw content for classification.

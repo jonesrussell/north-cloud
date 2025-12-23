@@ -93,9 +93,9 @@ linters:
             - '!internal/config/*'
             - '!internal/common/*'
           deny:
-            - pkg: github.com/jonesrussell/gocrawl/internal/storage/types.Interface
+            - pkg: github.com/jonesrussell/north-cloud/crawler/internal/storage/types.Interface
               desc: Use common.Storage type alias instead of storage.Interface directly
-            - pkg: github.com/jonesrussell/gocrawl/internal/sources.Interface
+            - pkg: github.com/jonesrussell/north-cloud/crawler/internal/sources.Interface
     errcheck:
       check-type-assertions: true
     exhaustive:

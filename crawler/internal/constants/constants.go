@@ -5,7 +5,7 @@ package constants
 import (
 	"time"
 
-	"github.com/jonesrussell/gocrawl/internal/config/elasticsearch"
+	"github.com/jonesrussell/north-cloud/crawler/internal/config/elasticsearch"
 )
 
 // HTTP/Server Constants

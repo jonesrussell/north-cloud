@@ -3,8 +3,8 @@ package events
 import (
 	"context"
 
-	"github.com/jonesrussell/gocrawl/internal/domain"
-	"github.com/jonesrussell/gocrawl/internal/logger"
+	"github.com/jonesrussell/north-cloud/crawler/internal/domain"
+	"github.com/jonesrussell/north-cloud/crawler/internal/logger"
 )
 
 // DefaultHandler provides a basic implementation of EventHandler that logs events.

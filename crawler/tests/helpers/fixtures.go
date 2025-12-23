@@ -4,9 +4,9 @@ package helpers
 import (
 	"time"
 
-	configtypes "github.com/jonesrussell/gocrawl/internal/config/types"
-	"github.com/jonesrussell/gocrawl/internal/domain"
-	sourcestypes "github.com/jonesrussell/gocrawl/internal/sources/types"
+	configtypes "github.com/jonesrussell/north-cloud/crawler/internal/config/types"
+	"github.com/jonesrussell/north-cloud/crawler/internal/domain"
+	sourcestypes "github.com/jonesrussell/north-cloud/crawler/internal/sources/types"
 )
 
 const (

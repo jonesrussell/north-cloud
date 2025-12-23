@@ -8,14 +8,14 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/jonesrussell/gocrawl/internal/config/app"
-	"github.com/jonesrussell/gocrawl/internal/config/commands"
-	"github.com/jonesrussell/gocrawl/internal/config/crawler"
-	dbconfig "github.com/jonesrussell/gocrawl/internal/config/database"
-	"github.com/jonesrussell/gocrawl/internal/config/elasticsearch"
-	"github.com/jonesrussell/gocrawl/internal/config/logging"
-	"github.com/jonesrussell/gocrawl/internal/config/server"
-	"github.com/jonesrussell/gocrawl/internal/logger"
+	"github.com/jonesrussell/north-cloud/crawler/internal/config/app"
+	"github.com/jonesrussell/north-cloud/crawler/internal/config/commands"
+	"github.com/jonesrussell/north-cloud/crawler/internal/config/crawler"
+	dbconfig "github.com/jonesrussell/north-cloud/crawler/internal/config/database"
+	"github.com/jonesrussell/north-cloud/crawler/internal/config/elasticsearch"
+	"github.com/jonesrussell/north-cloud/crawler/internal/config/logging"
+	"github.com/jonesrussell/north-cloud/crawler/internal/config/server"
+	"github.com/jonesrussell/north-cloud/crawler/internal/logger"
 	"github.com/spf13/viper"
 )
 

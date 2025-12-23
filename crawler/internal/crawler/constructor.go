@@ -8,17 +8,17 @@ import (
 	"time"
 
 	"github.com/gocolly/colly/v2"
-	"github.com/jonesrussell/gocrawl/internal/common/transport"
-	"github.com/jonesrussell/gocrawl/internal/config/crawler"
-	"github.com/jonesrussell/gocrawl/internal/content"
-	"github.com/jonesrussell/gocrawl/internal/content/articles"
-	"github.com/jonesrussell/gocrawl/internal/content/page"
-	"github.com/jonesrussell/gocrawl/internal/content/rawcontent"
-	"github.com/jonesrussell/gocrawl/internal/crawler/events"
-	"github.com/jonesrussell/gocrawl/internal/domain"
-	"github.com/jonesrussell/gocrawl/internal/logger"
-	"github.com/jonesrussell/gocrawl/internal/sources"
-	"github.com/jonesrussell/gocrawl/internal/storage/types"
+	"github.com/jonesrussell/north-cloud/crawler/internal/common/transport"
+	"github.com/jonesrussell/north-cloud/crawler/internal/config/crawler"
+	"github.com/jonesrussell/north-cloud/crawler/internal/content"
+	"github.com/jonesrussell/north-cloud/crawler/internal/content/articles"
+	"github.com/jonesrussell/north-cloud/crawler/internal/content/page"
+	"github.com/jonesrussell/north-cloud/crawler/internal/content/rawcontent"
+	"github.com/jonesrussell/north-cloud/crawler/internal/crawler/events"
+	"github.com/jonesrussell/north-cloud/crawler/internal/domain"
+	"github.com/jonesrussell/north-cloud/crawler/internal/logger"
+	"github.com/jonesrussell/north-cloud/crawler/internal/sources"
+	"github.com/jonesrussell/north-cloud/crawler/internal/storage/types"
 )
 
 const (

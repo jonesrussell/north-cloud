@@ -1,6 +1,6 @@
 package transport
 
-import "github.com/jonesrussell/gocrawl/internal/constants"
+import "github.com/jonesrussell/north-cloud/crawler/internal/constants"
 
 // Re-export transport constants from constants package for backward compatibility
 const (

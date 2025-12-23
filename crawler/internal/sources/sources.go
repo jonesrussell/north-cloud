@@ -10,13 +10,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/jonesrussell/gocrawl/internal/config"
+	"github.com/jonesrussell/north-cloud/crawler/internal/config"
 
-	configtypes "github.com/jonesrussell/gocrawl/internal/config/types"
-	"github.com/jonesrussell/gocrawl/internal/logger"
-	"github.com/jonesrussell/gocrawl/internal/sources/loader"
-	"github.com/jonesrussell/gocrawl/internal/sources/types"
-	storagetypes "github.com/jonesrussell/gocrawl/internal/storage/types"
+	configtypes "github.com/jonesrussell/north-cloud/crawler/internal/config/types"
+	"github.com/jonesrussell/north-cloud/crawler/internal/logger"
+	"github.com/jonesrussell/north-cloud/crawler/internal/sources/loader"
+	"github.com/jonesrussell/north-cloud/crawler/internal/sources/types"
+	storagetypes "github.com/jonesrussell/north-cloud/crawler/internal/storage/types"
 )
 
 // Interface defines the read-only interface for accessing sources.

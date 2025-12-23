@@ -21,7 +21,7 @@ A web crawler and search engine built with Go. It crawls websites, extracts cont
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/jonesrussell/gocrawl.git
+git clone https://github.com/jonesrussell/north-cloud/crawler.git
 cd gocrawl
 ```
 

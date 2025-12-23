@@ -1,4 +1,4 @@
-module github.com/jonesrussell/gocrawl
+module github.com/jonesrussell/north-cloud/crawler
 
 go 1.25
 

@@ -4,8 +4,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/jonesrussell/gocrawl/internal/constants"
-	"github.com/jonesrussell/gocrawl/internal/metrics"
+	"github.com/jonesrussell/north-cloud/crawler/internal/constants"
+	"github.com/jonesrussell/north-cloud/crawler/internal/metrics"
 	"github.com/stretchr/testify/assert"
 )
 

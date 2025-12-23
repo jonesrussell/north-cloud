@@ -4,7 +4,7 @@ package job
 import (
 	"context"
 
-	"github.com/jonesrussell/gocrawl/internal/content"
+	"github.com/jonesrussell/north-cloud/crawler/internal/content"
 )
 
 // Service defines the interface for job operations.
