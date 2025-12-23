@@ -55,3 +55,44 @@ tasks:
     cmds:
       - task lint
 
+  docker:dev:up:
+    desc: "Start development environment"
+    cmds:
+      - docker compose -f docker-compose.base.yml -f docker-compose.dev.yml up -d
+
+  docker:dev:down:
+    desc: "Stop development environment"
+    cmds:
+      - docker compose -f docker-compose.base.yml -f docker-compose.dev.yml down
+
+  docker:dev:logs:
+    desc: "View development environment logs"
+    cmds:
+      - docker compose -f docker-compose.base.yml -f docker-compose.dev.yml logs -f
+
+  docker:dev:restart:
+    desc: "Restart development environment"
+    cmds:
+      - task: docker:dev:down
+      - task: docker:dev:up
+
+  docker:prod:up:
+    desc: "Start production environment"
+    cmds:
+      - docker compose -f docker-compose.base.yml -f docker-compose.prod.yml up -d
+
+  docker:prod:down:
+    desc: "Stop production environment"
+    cmds:
+      - docker compose -f docker-compose.base.yml -f docker-compose.prod.yml down
+
+  docker:prod:logs:
+    desc: "View production environment logs"
+    cmds:
+      - docker compose -f docker-compose.base.yml -f docker-compose.prod.yml logs -f
+
+  docker:prod:restart:
+    desc: "Restart production environment"
+    cmds:
+      - task: docker:prod:down
+      - task: docker:prod:up
