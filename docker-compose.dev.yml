@@ -272,8 +272,6 @@ services:
       # Mount source code for development
       - ./index-manager:/app
       - /app/vendor  # Exclude vendor directory
-      # Mount config if it exists
-      - ./index-manager/config.yml:/app/config.yml:ro
       # Mount infrastructure module (if needed in future)
       - ./infrastructure:/infrastructure
     tmpfs:
