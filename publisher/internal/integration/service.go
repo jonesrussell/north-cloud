@@ -143,21 +143,21 @@ func (s *Service) FindCrimeArticles(ctx context.Context, cityCfg config.CityConf
 
 	// If using classified content, filter by classification instead of keywords
 	if s.config.Service.UseClassifiedContent {
-		// Filter by is_crime_related flag
-		mustClauses = append(mustClauses, map[string]any{
-			"term": map[string]any{
-				"is_crime_related": true,
-			},
-		})
-
-		// Filter by minimum quality score
-		mustClauses = append(mustClauses, map[string]any{
-			"range": map[string]any{
-				"quality_score": map[string]any{
-					"gte": s.config.Service.MinQualityScore,
+		// Filter by is_crime_related flag and minimum quality score
+		mustClauses = append(mustClauses,
+			map[string]any{
+				"term": map[string]any{
+					"is_crime_related": true,
 				},
 			},
-		})
+			map[string]any{
+				"range": map[string]any{
+					"quality_score": map[string]any{
+						"gte": s.config.Service.MinQualityScore,
+					},
+				},
+			},
+		)
 	} else {
 		// Legacy: use keyword matching
 		mustClauses = append(mustClauses, map[string]any{
