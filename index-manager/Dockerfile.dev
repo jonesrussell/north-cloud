@@ -1,0 +1,21 @@
+# Development Dockerfile for Index Manager Service
+FROM golang:1.25-alpine
+
+WORKDIR /app
+
+# Install development tools
+RUN apk add --no-cache git ca-certificates
+
+# Copy go mod files
+COPY go.mod go.sum ./
+RUN go mod download
+
+# Copy source code
+COPY . .
+
+# Expose port
+EXPOSE 8090
+
+# Run with hot-reload (requires air or similar)
+CMD ["go", "run", "cmd/httpd/main.go"]
+
