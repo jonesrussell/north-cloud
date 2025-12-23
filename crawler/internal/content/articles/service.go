@@ -32,11 +32,18 @@ var _ Interface = (*ContentService)(nil)
 
 // ContentService implements both Interface and ServiceInterface for article processing.
 type ContentService struct {
-	logger    logger.Interface
-	storage   types.Interface
-	indexName string
-	sources   sources.Interface
-	validator *ArticleValidator
+	logger     logger.Interface
+	storage    types.Interface
+	indexName  string
+	sources    sources.Interface
+	validator  *ArticleValidator
+	rawIndexer RawContentIndexer // NEW: For raw content indexing
+}
+
+// RawContentIndexer defines the interface for indexing raw content
+type RawContentIndexer interface {
+	IndexArticle(ctx context.Context, article *domain.Article, sourceName string) error
+	EnsureRawContentIndex(ctx context.Context, sourceName string) error
 }
 
 // NewContentService creates a new article service.
@@ -62,6 +69,24 @@ func NewContentServiceWithSources(
 		indexName: indexName,
 		sources:   sourcesManager,
 		validator: NewArticleValidator(log),
+	}
+}
+
+// NewContentServiceWithRawIndexer creates a new article service with raw content indexing.
+func NewContentServiceWithRawIndexer(
+	log logger.Interface,
+	storage types.Interface,
+	indexName string,
+	sourcesManager sources.Interface,
+	rawIndexer RawContentIndexer,
+) *ContentService {
+	return &ContentService{
+		logger:     log,
+		storage:    storage,
+		indexName:  indexName,
+		sources:    sourcesManager,
+		validator:  NewArticleValidator(log),
+		rawIndexer: rawIndexer,
 	}
 }
 
@@ -352,24 +377,51 @@ func (s *ContentService) ProcessArticleWithIndex(ctx context.Context, article *d
 	// Prepare article for indexing: clean empty fields, normalize arrays, prevent duplication
 	article.PrepareForIndexing()
 
-	// Index the article to Elasticsearch
-	if err := s.storage.IndexDocument(ctx, indexName, article.ID, article); err != nil {
-		s.logger.Error("Failed to index article",
-			"error", err,
+	// Index as raw content for classification (REPLACES article indexing)
+	if s.rawIndexer != nil {
+		sourceName := s.extractSourceName(article.Source)
+
+		if err := s.rawIndexer.IndexArticle(ctx, article, sourceName); err != nil {
+			s.logger.Error("Failed to index raw content",
+				"error", err,
+				"articleID", article.ID,
+				"url", article.Source,
+				"source_name", sourceName)
+			return fmt.Errorf("failed to index raw content: %w", err)
+		}
+
+		s.logger.Info("Raw content indexed for classification",
 			"articleID", article.ID,
 			"url", article.Source,
-			"index", indexName)
-		return fmt.Errorf("failed to index article: %w", err)
+			"source_name", sourceName,
+			"classification_status", "pending",
+			"title", article.Title,
+			"wordCount", article.WordCount,
+			"publishedDate", article.PublishedDate.Format(time.RFC3339),
+			"category", article.Category)
+	} else {
+		s.logger.Warn("RawContentIndexer not configured, skipping indexing",
+			"articleID", article.ID,
+			"url", article.Source)
+		return errors.New("raw content indexer not configured")
 	}
 
-	s.logger.Info("Article indexed successfully",
-		"articleID", article.ID,
-		"url", article.Source,
-		"index", indexName,
-		"title", article.Title,
-		"wordCount", article.WordCount,
-		"publishedDate", article.PublishedDate.Format(time.RFC3339),
-		"category", article.Category)
-
 	return nil
+}
+
+// extractSourceName extracts the source name (hostname) from a URL for index naming
+// Example: "https://example.com/article" → "example.com"
+func (s *ContentService) extractSourceName(sourceURL string) string {
+	parsed, err := url.Parse(sourceURL)
+	if err != nil {
+		s.logger.Warn("Failed to parse source URL",
+			"url", sourceURL,
+			"error", err)
+		return "unknown"
+	}
+	hostname := parsed.Hostname()
+	if hostname == "" {
+		return "unknown"
+	}
+	return hostname
 }

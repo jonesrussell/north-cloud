@@ -151,12 +151,33 @@ func createCrawlerForJobs(
 		return nil, fmt.Errorf("failed to load sources: %w", err)
 	}
 
-	// Create article and page services with sources manager
-	articleService := articles.NewContentServiceWithSources(
+	// Create raw content indexer for classifier integration
+	rawIndexer := storage.NewRawContentIndexer(storageResult.Storage, deps.Logger)
+
+	// Ensure raw content indexes exist for all sources
+	allSources, err := sourceManager.GetSources()
+	if err != nil {
+		deps.Logger.Warn("Failed to get sources for raw content index creation", "error", err)
+	} else {
+		ctx, cancel := infracontext.WithTimeout(constants.DefaultShutdownTimeout)
+		defer cancel()
+		for _, source := range allSources {
+			if indexErr := rawIndexer.EnsureRawContentIndex(ctx, source.Name); indexErr != nil {
+				deps.Logger.Warn("Failed to ensure raw content index",
+					"source", source.Name,
+					"error", indexErr)
+				// Continue with other sources - not fatal
+			}
+		}
+	}
+
+	// Create article service with raw content indexer
+	articleService := articles.NewContentServiceWithRawIndexer(
 		deps.Logger,
 		storageResult.Storage,
 		constants.DefaultContentIndex,
 		sourceManager,
+		rawIndexer,
 	)
 	pageService := page.NewContentServiceWithSources(
 		deps.Logger,

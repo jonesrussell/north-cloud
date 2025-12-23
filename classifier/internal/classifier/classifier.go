@@ -194,5 +194,8 @@ func (c *Classifier) BuildClassifiedContent(raw *domain.RawContent, result *doma
 		ClassificationMethod: result.ClassificationMethod,
 		ModelVersion:         result.ModelVersion,
 		Confidence:           result.Confidence,
+		// Publisher compatibility aliases
+		Body:   raw.RawText, // Alias for RawText
+		Source: raw.URL,     // Alias for URL
 	}
 }

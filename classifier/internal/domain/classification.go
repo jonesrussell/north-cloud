@@ -55,6 +55,11 @@ type ClassifiedContent struct {
 	ClassificationMethod string  `json:"classification_method"`
 	ModelVersion         string  `json:"model_version,omitempty"`
 	Confidence           float64 `json:"confidence"`
+
+	// Publisher compatibility aliases
+	// These duplicate RawContent fields for backward compatibility with publisher
+	Body   string `json:"body"`   // Alias for RawText (publisher expects "body")
+	Source string `json:"source"` // Alias for URL (publisher expects "source")
 }
 
 // ContentType constants
