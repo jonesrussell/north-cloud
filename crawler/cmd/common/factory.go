@@ -14,11 +14,8 @@ import (
 // InitConfig initializes Viper configuration from environment variables and config files.
 // This replaces the cobra-based config initialization.
 func InitConfig() error {
-	// Load .env file first
-	if err := godotenv.Load(); err != nil {
-		// .env file not found, that's ok - we'll use environment variables
-		// Don't print warning in production
-	}
+	// Load .env file first (ignore error if file doesn't exist)
+	_ = godotenv.Load()
 
 	// Enable automatic environment variable reading
 	viper.AutomaticEnv()
@@ -33,11 +30,8 @@ func InitConfig() error {
 	viper.AddConfigPath(".")
 	viper.AddConfigPath("./config")
 
-	// Read config file (optional)
-	if err := viper.ReadInConfig(); err != nil {
-		// Config file not found, that's ok - we'll use defaults and environment variables
-		// Don't print warning in production
-	}
+	// Read config file (optional, ignore error if file doesn't exist)
+	_ = viper.ReadInConfig()
 
 	// Bind environment variables
 	if err := bindAppEnvVars(); err != nil {
