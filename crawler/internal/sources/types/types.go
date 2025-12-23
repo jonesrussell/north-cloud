@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/jonesrussell/gocrawl/internal/config/types"
+	"github.com/jonesrussell/north-cloud/crawler/internal/config/types"
 )
 
 // Source defines the interface for data sources.

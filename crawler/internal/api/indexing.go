@@ -4,7 +4,7 @@ package api
 import (
 	"context"
 
-	"github.com/jonesrussell/gocrawl/internal/storage/types"
+	"github.com/jonesrussell/north-cloud/crawler/internal/storage/types"
 )
 
 // IndexManager is an alias for types.IndexManager

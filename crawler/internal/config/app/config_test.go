@@ -3,7 +3,7 @@ package app_test
 import (
 	"testing"
 
-	"github.com/jonesrussell/gocrawl/internal/config/app"
+	"github.com/jonesrussell/north-cloud/crawler/internal/config/app"
 	"github.com/stretchr/testify/require"
 )
 
@@ -87,7 +87,7 @@ func TestNew(t *testing.T) {
 			opts: nil,
 			expected: &app.Config{
 				Environment: "development",
-				Name:        "gocrawl",
+				Name:        "crawler",
 				Version:     "0.1.0",
 				Debug:       false,
 			},

@@ -125,7 +125,7 @@ Raw content indexes follow the pattern: `{source}_raw_content`
 
 ```go
 import (
-    "github.com/jonesrussell/gocrawl/internal/storage"
+    "github.com/jonesrussell/north-cloud/crawler/internal/storage"
 )
 
 // Create indexer

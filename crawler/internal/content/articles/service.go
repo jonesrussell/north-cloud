@@ -9,11 +9,11 @@ import (
 	"time"
 
 	"github.com/gocolly/colly/v2"
-	configtypes "github.com/jonesrussell/gocrawl/internal/config/types"
-	"github.com/jonesrussell/gocrawl/internal/domain"
-	"github.com/jonesrussell/gocrawl/internal/logger"
-	"github.com/jonesrussell/gocrawl/internal/sources"
-	"github.com/jonesrussell/gocrawl/internal/storage/types"
+	configtypes "github.com/jonesrussell/north-cloud/crawler/internal/config/types"
+	"github.com/jonesrussell/north-cloud/crawler/internal/domain"
+	"github.com/jonesrussell/north-cloud/crawler/internal/logger"
+	"github.com/jonesrussell/north-cloud/crawler/internal/sources"
+	"github.com/jonesrussell/north-cloud/crawler/internal/storage/types"
 )
 
 // Interface defines the interface for processing articles.

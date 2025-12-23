@@ -3,7 +3,7 @@ package storage
 import (
 	"net/http"
 
-	"github.com/jonesrussell/gocrawl/internal/config"
+	"github.com/jonesrussell/north-cloud/crawler/internal/config"
 )
 
 // Options holds configuration options for ElasticsearchStorage

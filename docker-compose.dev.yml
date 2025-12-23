@@ -24,7 +24,7 @@ services:
       - DB_PORT=5432
       - DB_USER=${POSTGRES_CRAWLER_USER:-postgres}
       - DB_PASSWORD=${POSTGRES_CRAWLER_PASSWORD:-postgres}
-      - DB_NAME=${POSTGRES_CRAWLER_DB:-gocrawl}
+      - DB_NAME=${POSTGRES_CRAWLER_DB:-crawler}
       - DB_SSLMODE=disable
       - APP_DEBUG=true
       - APP_ENV=development
@@ -48,7 +48,7 @@ services:
     working_dir: /app
     # Download dependencies then start backend
     # Use -mod=mod to ignore vendor directory if present
-    command: ["sh", "-c", "go mod download && go run -mod=mod ./main.go httpd --config config.yaml"]
+    command: ["sh", "-c", "go mod download && go run -mod=mod ./main.go"]
     networks:
       - north-cloud-network
     restart: unless-stopped

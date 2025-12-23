@@ -10,15 +10,15 @@ import (
 	"time"
 
 	colly "github.com/gocolly/colly/v2"
-	"github.com/jonesrussell/gocrawl/internal/config/crawler"
-	configtypes "github.com/jonesrussell/gocrawl/internal/config/types"
-	"github.com/jonesrussell/gocrawl/internal/content"
-	"github.com/jonesrussell/gocrawl/internal/crawler/events"
-	"github.com/jonesrussell/gocrawl/internal/domain"
-	"github.com/jonesrussell/gocrawl/internal/logger"
-	"github.com/jonesrussell/gocrawl/internal/metrics"
-	"github.com/jonesrussell/gocrawl/internal/sources"
-	storagetypes "github.com/jonesrussell/gocrawl/internal/storage/types"
+	"github.com/jonesrussell/north-cloud/crawler/internal/config/crawler"
+	configtypes "github.com/jonesrussell/north-cloud/crawler/internal/config/types"
+	"github.com/jonesrussell/north-cloud/crawler/internal/content"
+	"github.com/jonesrussell/north-cloud/crawler/internal/crawler/events"
+	"github.com/jonesrussell/north-cloud/crawler/internal/domain"
+	"github.com/jonesrussell/north-cloud/crawler/internal/logger"
+	"github.com/jonesrussell/north-cloud/crawler/internal/metrics"
+	"github.com/jonesrussell/north-cloud/crawler/internal/sources"
+	storagetypes "github.com/jonesrussell/north-cloud/crawler/internal/storage/types"
 )
 
 // Core Interfaces

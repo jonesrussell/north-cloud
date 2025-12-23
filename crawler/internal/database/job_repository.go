@@ -7,7 +7,7 @@ import (
 	"fmt"
 
 	"github.com/jmoiron/sqlx"
-	"github.com/jonesrussell/gocrawl/internal/domain"
+	"github.com/jonesrussell/north-cloud/crawler/internal/domain"
 )
 
 // JobRepository handles database operations for jobs.

@@ -6,12 +6,12 @@ import (
 	"errors"
 	"sync/atomic"
 
-	"github.com/jonesrussell/gocrawl/internal/content"
-	"github.com/jonesrussell/gocrawl/internal/crawler"
-	"github.com/jonesrussell/gocrawl/internal/logger"
-	"github.com/jonesrussell/gocrawl/internal/metrics"
-	"github.com/jonesrussell/gocrawl/internal/sources"
-	"github.com/jonesrussell/gocrawl/internal/storage/types"
+	"github.com/jonesrussell/north-cloud/crawler/internal/content"
+	"github.com/jonesrussell/north-cloud/crawler/internal/crawler"
+	"github.com/jonesrussell/north-cloud/crawler/internal/logger"
+	"github.com/jonesrussell/north-cloud/crawler/internal/metrics"
+	"github.com/jonesrussell/north-cloud/crawler/internal/sources"
+	"github.com/jonesrussell/north-cloud/crawler/internal/storage/types"
 )
 
 // BaseService provides base job service functionality.

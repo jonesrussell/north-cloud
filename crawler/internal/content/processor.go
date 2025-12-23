@@ -6,7 +6,7 @@ import (
 	"fmt"
 
 	"github.com/gocolly/colly/v2"
-	"github.com/jonesrussell/gocrawl/internal/content/contenttype"
+	"github.com/jonesrussell/north-cloud/crawler/internal/content/contenttype"
 )
 
 // ContentProcessor defines the interface for processing different types of content.

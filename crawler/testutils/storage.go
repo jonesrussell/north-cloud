@@ -5,8 +5,8 @@ import (
 	"context"
 	"errors"
 
-	"github.com/jonesrussell/gocrawl/internal/logger"
-	"github.com/jonesrussell/gocrawl/internal/storage/types"
+	"github.com/jonesrussell/north-cloud/crawler/internal/logger"
+	"github.com/jonesrussell/north-cloud/crawler/internal/storage/types"
 	"github.com/stretchr/testify/mock"
 )
 

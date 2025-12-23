@@ -3,7 +3,7 @@ package events
 import (
 	"context"
 
-	"github.com/jonesrussell/gocrawl/internal/domain"
+	"github.com/jonesrussell/north-cloud/crawler/internal/domain"
 )
 
 // EventHandler defines the interface for handling events from the EventBus.

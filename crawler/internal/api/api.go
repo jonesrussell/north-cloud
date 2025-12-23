@@ -7,9 +7,9 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/jonesrussell/gocrawl/internal/api/middleware"
-	"github.com/jonesrussell/gocrawl/internal/config"
-	"github.com/jonesrussell/gocrawl/internal/logger"
+	"github.com/jonesrussell/north-cloud/crawler/internal/api/middleware"
+	"github.com/jonesrussell/north-cloud/crawler/internal/config"
+	"github.com/jonesrussell/north-cloud/crawler/internal/logger"
 )
 
 // SearchManager defines the interface for search operations.

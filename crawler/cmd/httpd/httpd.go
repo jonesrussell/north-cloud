@@ -1,138 +1,203 @@
-// Package httpd implements the HTTP server command for the search API.
+// Package httpd implements the HTTP server for the crawler service.
 package httpd
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
+	"os"
+	"os/signal"
+	"syscall"
 
-	cmdcommon "github.com/jonesrussell/gocrawl/cmd/common"
-	"github.com/jonesrussell/gocrawl/internal/api"
-	"github.com/jonesrussell/gocrawl/internal/constants"
-	"github.com/jonesrussell/gocrawl/internal/content/articles"
-	"github.com/jonesrussell/gocrawl/internal/content/page"
-	"github.com/jonesrussell/gocrawl/internal/crawler"
-	"github.com/jonesrussell/gocrawl/internal/crawler/events"
-	"github.com/jonesrussell/gocrawl/internal/database"
-	"github.com/jonesrussell/gocrawl/internal/job"
-	"github.com/jonesrussell/gocrawl/internal/sources"
-	"github.com/jonesrussell/gocrawl/internal/storage"
+	"github.com/jmoiron/sqlx"
+	cmdcommon "github.com/jonesrussell/north-cloud/crawler/cmd/common"
+	"github.com/jonesrussell/north-cloud/crawler/internal/api"
+	"github.com/jonesrussell/north-cloud/crawler/internal/constants"
+	"github.com/jonesrussell/north-cloud/crawler/internal/content/articles"
+	"github.com/jonesrussell/north-cloud/crawler/internal/content/page"
+	"github.com/jonesrussell/north-cloud/crawler/internal/crawler"
+	"github.com/jonesrussell/north-cloud/crawler/internal/crawler/events"
+	"github.com/jonesrussell/north-cloud/crawler/internal/database"
+	"github.com/jonesrussell/north-cloud/crawler/internal/job"
+	"github.com/jonesrussell/north-cloud/crawler/internal/logger"
+	"github.com/jonesrussell/north-cloud/crawler/internal/sources"
+	"github.com/jonesrussell/north-cloud/crawler/internal/storage"
 	infracontext "github.com/north-cloud/infrastructure/context"
-	"github.com/spf13/cobra"
 )
 
-// Cmd represents the HTTP server command
-var Cmd = &cobra.Command{
-	Use:   "httpd",
-	Short: "Start the HTTP server for search",
-	Long: `This command starts an HTTP server that listens for search requests.
-You can send POST requests to /search with a JSON body containing the search parameters.`,
-	RunE: func(cmd *cobra.Command, _ []string) error {
-		// Get dependencies
-		deps, err := cmdcommon.NewCommandDeps()
-		if err != nil {
-			return fmt.Errorf("failed to initialize dependencies: %w", err)
-		}
+// Start starts the HTTP server and runs until interrupted.
+// It handles graceful shutdown on SIGINT or SIGTERM signals.
+func Start() error {
+	// Get dependencies
+	deps, err := cmdcommon.NewCommandDeps()
+	if err != nil {
+		return fmt.Errorf("failed to initialize dependencies: %w", err)
+	}
 
-		// Create storage using common function
-		storageResult, err := cmdcommon.CreateStorage(deps.Config, deps.Logger)
-		if err != nil {
-			return fmt.Errorf("failed to create storage: %w", err)
-		}
+	// Create storage using common function
+	storageResult, err := cmdcommon.CreateStorage(deps.Config, deps.Logger)
+	if err != nil {
+		return fmt.Errorf("failed to create storage: %w", err)
+	}
 
-		// Create search manager
-		searchManager := storage.NewSearchManager(storageResult.Storage, deps.Logger)
+	// Create search manager
+	searchManager := storage.NewSearchManager(storageResult.Storage, deps.Logger)
 
-		// Initialize database connection
-		dbConfig := database.Config{
-			Host:     deps.Config.GetDatabaseConfig().Host,
-			Port:     deps.Config.GetDatabaseConfig().Port,
-			User:     deps.Config.GetDatabaseConfig().User,
-			Password: deps.Config.GetDatabaseConfig().Password,
-			DBName:   deps.Config.GetDatabaseConfig().DBName,
-			SSLMode:  deps.Config.GetDatabaseConfig().SSLMode,
-		}
+	// Initialize jobs handler and scheduler
+	jobsHandler, dbScheduler, db := setupJobsAndScheduler(&deps, storageResult)
+	if db != nil {
+		defer db.Close()
+	}
 
-		db, err := database.NewPostgresConnection(dbConfig)
-		if err != nil {
-			deps.Logger.Warn("Failed to connect to database, jobs API will use fallback", "error", err)
-		}
+	// Create and start HTTP server
+	srv, errChan, err := startHTTPServer(&deps, searchManager, jobsHandler)
+	if err != nil {
+		return err
+	}
 
-		// Create jobs handler and scheduler if database is available
-		var jobsHandler *api.JobsHandler
-		var dbScheduler *job.DBScheduler
-		if db != nil {
-			defer db.Close()
-			jobRepo := database.NewJobRepository(db)
-			jobsHandler = api.NewJobsHandler(jobRepo)
-
-			// Create crawler for job execution
-			crawlerInstance, crawlerErr := createCrawlerForJobs(&deps, storageResult)
-			if crawlerErr != nil {
-				deps.Logger.Warn("Failed to create crawler for jobs, scheduler disabled", "error", crawlerErr)
-			} else {
-				// Create and start database scheduler
-				dbScheduler = job.NewDBScheduler(deps.Logger, jobRepo, crawlerInstance)
-				if startErr := dbScheduler.Start(cmd.Context()); startErr != nil {
-					deps.Logger.Error("Failed to start database scheduler", "error", startErr)
-				} else {
-					deps.Logger.Info("Database scheduler started successfully")
-					// Connect scheduler to jobs handler so it can trigger immediate reloads
-					jobsHandler.SetScheduler(dbScheduler)
-				}
-			}
-		}
-
-		// Create HTTP server
-		srv, _, err := api.StartHTTPServer(deps.Logger, searchManager, deps.Config, jobsHandler)
-		if err != nil {
-			return fmt.Errorf("failed to start HTTP server: %w", err)
-		}
-
-		// Start server in goroutine
-		deps.Logger.Info("Starting HTTP server", "addr", deps.Config.GetServerConfig().Address)
-		errChan := make(chan error, 1)
-		go func() {
-			if serveErr := srv.ListenAndServe(); serveErr != nil && !errors.Is(serveErr, http.ErrServerClosed) {
-				errChan <- serveErr
-			}
-		}()
-
-		// Wait for interrupt signal or error
-		select {
-		case serverErr := <-errChan:
-			deps.Logger.Error("Server error", "error", serverErr)
-			return fmt.Errorf("server error: %w", serverErr)
-		case <-cmd.Context().Done():
-			// Graceful shutdown with timeout
-			deps.Logger.Info("Shutdown signal received")
-			shutdownCtx, cancel := infracontext.WithTimeout(constants.DefaultShutdownTimeout)
-			defer cancel()
-
-			// Stop scheduler first
-			if dbScheduler != nil {
-				deps.Logger.Info("Stopping database scheduler")
-				if stopErr := dbScheduler.Stop(); stopErr != nil {
-					deps.Logger.Error("Failed to stop scheduler", "error", stopErr)
-				}
-			}
-
-			deps.Logger.Info("Stopping HTTP server")
-			if shutdownErr := srv.Shutdown(shutdownCtx); shutdownErr != nil {
-				deps.Logger.Error("Failed to stop server", "error", shutdownErr)
-				return fmt.Errorf("failed to stop server: %w", shutdownErr)
-			}
-
-			deps.Logger.Info("Server stopped successfully")
-			return nil
-		}
-	},
+	// Run server until interrupted
+	return runServerUntilInterrupt(deps.Logger, srv, dbScheduler, errChan)
 }
 
-// Command returns the httpd command for use in the root command
-func Command() *cobra.Command {
-	return Cmd
+// setupJobsAndScheduler initializes the jobs handler and scheduler if database is available.
+// Returns jobsHandler, dbScheduler, and db connection (if available).
+func setupJobsAndScheduler(
+	deps *cmdcommon.CommandDeps,
+	storageResult *cmdcommon.StorageResult,
+) (*api.JobsHandler, *job.DBScheduler, *sqlx.DB) {
+	// Initialize database connection
+	dbConfig := database.Config{
+		Host:     deps.Config.GetDatabaseConfig().Host,
+		Port:     deps.Config.GetDatabaseConfig().Port,
+		User:     deps.Config.GetDatabaseConfig().User,
+		Password: deps.Config.GetDatabaseConfig().Password,
+		DBName:   deps.Config.GetDatabaseConfig().DBName,
+		SSLMode:  deps.Config.GetDatabaseConfig().SSLMode,
+	}
+
+	db, err := database.NewPostgresConnection(dbConfig)
+	if err != nil {
+		deps.Logger.Warn("Failed to connect to database, jobs API will use fallback", "error", err)
+		return nil, nil, nil
+	}
+
+	// Create jobs handler
+	jobRepo := database.NewJobRepository(db)
+	jobsHandler := api.NewJobsHandler(jobRepo)
+
+	// Create and start scheduler
+	dbScheduler := createAndStartScheduler(deps, storageResult, jobRepo)
+	if dbScheduler != nil {
+		jobsHandler.SetScheduler(dbScheduler)
+	}
+
+	return jobsHandler, dbScheduler, db
+}
+
+// createAndStartScheduler creates and starts the database scheduler.
+// Returns nil if scheduler cannot be created or started.
+func createAndStartScheduler(
+	deps *cmdcommon.CommandDeps,
+	storageResult *cmdcommon.StorageResult,
+	jobRepo *database.JobRepository,
+) *job.DBScheduler {
+	// Create crawler for job execution
+	crawlerInstance, err := createCrawlerForJobs(deps, storageResult)
+	if err != nil {
+		deps.Logger.Warn("Failed to create crawler for jobs, scheduler disabled", "error", err)
+		return nil
+	}
+
+	// Create context for scheduler
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	// Create and start database scheduler
+	dbScheduler := job.NewDBScheduler(deps.Logger, jobRepo, crawlerInstance)
+	if startErr := dbScheduler.Start(ctx); startErr != nil {
+		deps.Logger.Error("Failed to start database scheduler", "error", startErr)
+		return nil
+	}
+
+	deps.Logger.Info("Database scheduler started successfully")
+	return dbScheduler
+}
+
+// startHTTPServer creates and starts the HTTP server.
+// Returns the server and an error channel for server errors.
+func startHTTPServer(
+	deps *cmdcommon.CommandDeps,
+	searchManager api.SearchManager,
+	jobsHandler *api.JobsHandler,
+) (*http.Server, chan error, error) {
+	srv, _, err := api.StartHTTPServer(deps.Logger, searchManager, deps.Config, jobsHandler)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to start HTTP server: %w", err)
+	}
+
+	// Start server in goroutine
+	deps.Logger.Info("Starting HTTP server", "addr", deps.Config.GetServerConfig().Address)
+	errChan := make(chan error, 1)
+	go func() {
+		if serveErr := srv.ListenAndServe(); serveErr != nil && !errors.Is(serveErr, http.ErrServerClosed) {
+			errChan <- serveErr
+		}
+	}()
+
+	return srv, errChan, nil
+}
+
+// runServerUntilInterrupt runs the server until interrupted by signal or error.
+func runServerUntilInterrupt(
+	log logger.Interface,
+	srv *http.Server,
+	dbScheduler *job.DBScheduler,
+	errChan chan error,
+) error {
+	// Set up signal handling for graceful shutdown
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
+
+	// Wait for interrupt signal or error
+	select {
+	case serverErr := <-errChan:
+		log.Error("Server error", "error", serverErr)
+		return fmt.Errorf("server error: %w", serverErr)
+	case sig := <-sigChan:
+		return shutdownServer(log, srv, dbScheduler, sig)
+	}
+}
+
+// shutdownServer performs graceful shutdown of the server and scheduler.
+func shutdownServer(
+	log logger.Interface,
+	srv *http.Server,
+	dbScheduler *job.DBScheduler,
+	sig os.Signal,
+) error {
+	log.Info("Shutdown signal received", "signal", sig.String())
+	shutdownCtx, cancel := infracontext.WithTimeout(constants.DefaultShutdownTimeout)
+	defer cancel()
+
+	// Stop scheduler first
+	if dbScheduler != nil {
+		log.Info("Stopping database scheduler")
+		if err := dbScheduler.Stop(); err != nil {
+			log.Error("Failed to stop scheduler", "error", err)
+		}
+	}
+
+	// Stop HTTP server
+	log.Info("Stopping HTTP server")
+	if err := srv.Shutdown(shutdownCtx); err != nil {
+		log.Error("Failed to stop server", "error", err)
+		return fmt.Errorf("failed to stop server: %w", err)
+	}
+
+	log.Info("Server stopped successfully")
+	return nil
 }
 
 // createCrawlerForJobs creates a crawler instance for job execution

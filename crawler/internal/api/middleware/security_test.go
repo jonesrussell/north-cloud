@@ -9,9 +9,9 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/jonesrussell/gocrawl/internal/api/middleware"
-	"github.com/jonesrussell/gocrawl/internal/config/server"
-	loggerMock "github.com/jonesrussell/gocrawl/testutils/mocks/logger"
+	"github.com/jonesrussell/north-cloud/crawler/internal/api/middleware"
+	"github.com/jonesrussell/north-cloud/crawler/internal/config/server"
+	loggerMock "github.com/jonesrussell/north-cloud/crawler/testutils/mocks/logger"
 	"go.uber.org/mock/gomock"
 )
 

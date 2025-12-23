@@ -8,9 +8,9 @@ import (
 	"testing"
 
 	es "github.com/elastic/go-elasticsearch/v8"
-	"github.com/jonesrussell/gocrawl/internal/storage"
-	"github.com/jonesrussell/gocrawl/internal/storage/types"
-	loggermocks "github.com/jonesrussell/gocrawl/testutils/mocks/logger"
+	"github.com/jonesrussell/north-cloud/crawler/internal/storage"
+	"github.com/jonesrussell/north-cloud/crawler/internal/storage/types"
+	loggermocks "github.com/jonesrussell/north-cloud/crawler/testutils/mocks/logger"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"

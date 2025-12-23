@@ -17,7 +17,7 @@ const (
 	DefaultMaxDepth    = 5
 	DefaultRateLimit   = 1 * time.Second
 	DefaultParallelism = 5
-	DefaultUserAgent   = "gocrawl/1.0"
+	DefaultUserAgent   = "crawler/1.0"
 	DefaultTimeout     = 30 * time.Second
 	DefaultMaxBodySize = 10 * 1024 * 1024 // 10MB
 	DefaultRandomDelay = 500 * time.Millisecond

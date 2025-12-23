@@ -23,7 +23,7 @@ const (
 // Default configuration values
 const (
 	DefaultAddresses     = "http://127.0.0.1:9200"
-	DefaultIndexName     = "gocrawl"
+	DefaultIndexName     = "crawler"
 	DefaultRetryEnabled  = true
 	DefaultInitialWait   = 1 * time.Second
 	DefaultMaxWait       = 5 * time.Second

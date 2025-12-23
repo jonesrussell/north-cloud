@@ -6,8 +6,8 @@ import (
 	"net/url"
 	"strings"
 
-	configtypes "github.com/jonesrussell/gocrawl/internal/config/types"
-	sourcestypes "github.com/jonesrussell/gocrawl/internal/sources/types"
+	configtypes "github.com/jonesrussell/north-cloud/crawler/internal/config/types"
+	sourcestypes "github.com/jonesrussell/north-cloud/crawler/internal/sources/types"
 )
 
 // ConvertSourceConfig converts a sourcestypes.SourceConfig to a configtypes.Source.

@@ -6,7 +6,7 @@ A microservices-based content management and publishing platform built with Go a
 
 The project consists of multiple independent services that work together:
 
-- **crawler**: Web crawler service (gocrawl) for scraping content
+- **crawler**: Web crawler service (crawler) for scraping content
 - **source-manager**: Go API with Vue.js frontend for managing content sources
 - **publisher**: Service that publishes content from Elasticsearch to Drupal
 - **streetcode**: Drupal 11 CMS for content presentation and management
@@ -23,7 +23,7 @@ project-root/
 ├── .gitignore
 ├── README.md
 │
-├── crawler/                    # gocrawl service
+├── crawler/                    # crawler service
 │   ├── Dockerfile
 │   ├── go.mod
 │   ├── main.go
@@ -226,7 +226,7 @@ Key environment variables (see `.env.example` for full list):
 
 Each service has its own database:
 - `gosources`: Source manager database
-- `gocrawl`: Crawler database
+- `crawler`: Crawler database
 - `streetcode`: Drupal database
 
 Access databases:
@@ -236,7 +236,7 @@ Access databases:
 docker exec -it north-cloud-postgres-source-manager psql -U postgres -d gosources
 
 # Crawler database
-docker exec -it north-cloud-postgres-crawler psql -U postgres -d gocrawl
+docker exec -it north-cloud-postgres-crawler psql -U postgres -d crawler
 
 # Streetcode database
 docker exec -it north-cloud-postgres-streetcode psql -U postgres -d streetcode

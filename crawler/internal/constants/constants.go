@@ -5,7 +5,7 @@ package constants
 import (
 	"time"
 
-	"github.com/jonesrussell/gocrawl/internal/config/elasticsearch"
+	"github.com/jonesrussell/north-cloud/crawler/internal/config/elasticsearch"
 )
 
 // HTTP/Server Constants
@@ -136,7 +136,7 @@ const (
 	DefaultESAddress = "http://localhost:9200"
 
 	// DefaultESIndex is the default Elasticsearch index name
-	DefaultESIndex = "gocrawl"
+	DefaultESIndex = "crawler"
 
 	// DefaultStorageMaxSize is the default maximum storage size (1 GB)
 	DefaultStorageMaxSize = 1024 * 1024 * 1024
@@ -236,7 +236,7 @@ const (
 	DefaultEnvironment = "development"
 
 	// DefaultAppName is the default application name
-	DefaultAppName = "gocrawl"
+	DefaultAppName = "crawler"
 
 	// DefaultAppVersion is the default application version
 	DefaultAppVersion = "1.0.0"

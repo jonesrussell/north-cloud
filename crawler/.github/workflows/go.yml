@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       # App Configuration
-      APP_NAME: gocrawl-test
+      APP_NAME: crawler-test
       APP_ENV: test
       APP_DEBUG: true
       
@@ -24,7 +24,7 @@ jobs:
       
       # Elasticsearch Configuration
       ELASTICSEARCH_HOSTS: http://localhost:9200
-      ELASTICSEARCH_INDEX_PREFIX: test-gocrawl
+      ELASTICSEARCH_INDEX_PREFIX: test-crawler
       ELASTICSEARCH_MAX_RETRIES: 3
       ELASTICSEARCH_RETRY_INITIAL_WAIT: 1s
       ELASTICSEARCH_RETRY_MAX_WAIT: 30s

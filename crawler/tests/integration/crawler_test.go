@@ -7,11 +7,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/jonesrussell/gocrawl/internal/config"
-	"github.com/jonesrussell/gocrawl/internal/config/elasticsearch"
-	"github.com/jonesrussell/gocrawl/internal/logger"
-	"github.com/jonesrussell/gocrawl/internal/storage"
-	"github.com/jonesrussell/gocrawl/tests/helpers"
+	"github.com/jonesrussell/north-cloud/crawler/internal/config"
+	"github.com/jonesrussell/north-cloud/crawler/internal/config/elasticsearch"
+	"github.com/jonesrussell/north-cloud/crawler/internal/logger"
+	"github.com/jonesrussell/north-cloud/crawler/internal/storage"
+	"github.com/jonesrussell/north-cloud/crawler/tests/helpers"
 	"github.com/stretchr/testify/require"
 )
 

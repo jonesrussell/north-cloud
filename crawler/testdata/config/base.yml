@@ -1,6 +1,6 @@
 app:
   environment: test
-  name: gocrawl-test
+  name: crawler-test
   version: 0.0.1
   debug: false
 

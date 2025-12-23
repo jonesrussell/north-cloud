@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/gocolly/colly/v2"
-	configtypes "github.com/jonesrussell/gocrawl/internal/config/types"
+	configtypes "github.com/jonesrussell/north-cloud/crawler/internal/config/types"
 )
 
 var (

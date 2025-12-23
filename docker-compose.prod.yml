@@ -23,13 +23,13 @@ services:
       - DB_PORT=5432
       - DB_USER=${POSTGRES_CRAWLER_USER}
       - DB_PASSWORD=${POSTGRES_CRAWLER_PASSWORD}
-      - DB_NAME=${POSTGRES_CRAWLER_DB:-gocrawl}
+      - DB_NAME=${POSTGRES_CRAWLER_DB:-crawler}
       - DB_SSLMODE=require
       - APP_DEBUG=false
       - APP_ENV=production
     # No volume mounts - code is baked into image
     working_dir: /app
-    command: ["./bin/gocrawl"]
+    command: ["./bin/crawler"]
     networks:
       - north-cloud-network
     restart: always

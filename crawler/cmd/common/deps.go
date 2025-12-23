@@ -2,8 +2,8 @@
 package common
 
 import (
-	"github.com/jonesrussell/gocrawl/internal/config"
-	"github.com/jonesrussell/gocrawl/internal/logger"
+	"github.com/jonesrussell/north-cloud/crawler/internal/config"
+	"github.com/jonesrussell/north-cloud/crawler/internal/logger"
 )
 
 // CommandDeps holds common dependencies for all commands.

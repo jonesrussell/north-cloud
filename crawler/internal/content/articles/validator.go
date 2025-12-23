@@ -8,8 +8,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/jonesrussell/gocrawl/internal/domain"
-	"github.com/jonesrussell/gocrawl/internal/logger"
+	"github.com/jonesrussell/north-cloud/crawler/internal/domain"
+	"github.com/jonesrussell/north-cloud/crawler/internal/logger"
 )
 
 // ValidationResult represents the result of article validation

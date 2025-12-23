@@ -7,7 +7,7 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/jonesrussell/gocrawl/internal/sources/types"
+	"github.com/jonesrussell/north-cloud/crawler/internal/sources/types"
 )
 
 // ConvertAPISourceToConfig converts an APISource to a types.SourceConfig.

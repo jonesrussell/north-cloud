@@ -4,7 +4,7 @@ package config
 import (
 	"time"
 
-	"github.com/jonesrussell/gocrawl/internal/config/elasticsearch"
+	"github.com/jonesrussell/north-cloud/crawler/internal/config/elasticsearch"
 )
 
 // ValidLogLevels defines the valid logging levels
@@ -123,10 +123,10 @@ const (
 	DefaultESAddress = "http://localhost:9200"
 
 	// DefaultESIndex is the default Elasticsearch index name
-	DefaultESIndex = "gocrawl"
+	DefaultESIndex = "crawler"
 
 	// DefaultAppName is the default application name
-	DefaultAppName = "gocrawl"
+	DefaultAppName = "crawler"
 
 	// DefaultAppVersion is the default application version
 	DefaultAppVersion = "1.0.0"

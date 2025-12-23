@@ -11,9 +11,9 @@ import (
 	"time"
 
 	colly "github.com/gocolly/colly/v2"
-	"github.com/jonesrussell/gocrawl/internal/common/transport"
-	configtypes "github.com/jonesrussell/gocrawl/internal/config/types"
-	"github.com/jonesrussell/gocrawl/internal/constants"
+	"github.com/jonesrussell/north-cloud/crawler/internal/common/transport"
+	configtypes "github.com/jonesrussell/north-cloud/crawler/internal/config/types"
+	"github.com/jonesrussell/north-cloud/crawler/internal/constants"
 )
 
 // CollectorConfig holds configuration for the collector.

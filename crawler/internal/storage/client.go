@@ -8,9 +8,9 @@ import (
 	"net/http"
 
 	es "github.com/elastic/go-elasticsearch/v8"
-	"github.com/jonesrussell/gocrawl/internal/config"
-	"github.com/jonesrussell/gocrawl/internal/config/elasticsearch"
-	"github.com/jonesrussell/gocrawl/internal/logger"
+	"github.com/jonesrussell/north-cloud/crawler/internal/config"
+	"github.com/jonesrussell/north-cloud/crawler/internal/config/elasticsearch"
+	"github.com/jonesrussell/north-cloud/crawler/internal/logger"
 )
 
 // ClientParams contains dependencies for creating the Elasticsearch client

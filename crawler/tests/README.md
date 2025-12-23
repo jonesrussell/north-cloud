@@ -56,7 +56,7 @@ task test:cover
 The `helpers` package provides `StartElasticsearch()` to manage test Elasticsearch instances:
 
 ```go
-import "github.com/jonesrussell/gocrawl/tests/helpers"
+import "github.com/jonesrussell/north-cloud/crawler/tests/helpers"
 
 ctx := context.Background()
 es, err := helpers.StartElasticsearch(ctx)
@@ -150,7 +150,7 @@ import (
     "testing"
     
     "github.com/stretchr/testify/suite"
-    "github.com/jonesrussell/gocrawl/tests/helpers"
+    "github.com/jonesrussell/north-cloud/crawler/tests/helpers"
 )
 
 type EndToEndSuite struct {

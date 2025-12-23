@@ -5,7 +5,7 @@ import (
 	"crypto/tls"
 	"fmt"
 
-	"github.com/jonesrussell/gocrawl/internal/config/crawler"
+	"github.com/jonesrussell/north-cloud/crawler/internal/config/crawler"
 )
 
 // NewTLSConfig creates a new TLS configuration from the given crawler config.

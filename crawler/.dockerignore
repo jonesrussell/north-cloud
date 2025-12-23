@@ -14,7 +14,7 @@ README.md
 *.swo
 
 # Build artifacts
-gocrawl
+crawler
 bin/
 *.exe
 *.test

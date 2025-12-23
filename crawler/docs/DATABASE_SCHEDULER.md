@@ -123,10 +123,10 @@ const (
 
 ### Starting the Scheduler
 
-The scheduler starts automatically with the `httpd` command:
+The scheduler starts automatically when the service starts:
 
 ```bash
-./gocrawl httpd
+./crawler
 ```
 
 Logs will show:
@@ -345,7 +345,7 @@ SCHEDULER_JOB_TIMEOUT=30m
 ## Support
 
 For issues or questions:
-1. Check logs: `/var/log/gocrawl/` or container logs
+1. Check logs: `/var/log/crawler/` or container logs
 2. Review this documentation
 3. Check database: Query `jobs` table for job status
 4. File GitHub issue: Include logs and job details

@@ -4,13 +4,13 @@ package crawler
 import (
 	"errors"
 
-	"github.com/jonesrussell/gocrawl/internal/content"
-	"github.com/jonesrussell/gocrawl/internal/content/articles"
-	"github.com/jonesrussell/gocrawl/internal/content/contenttype"
-	"github.com/jonesrussell/gocrawl/internal/content/page"
-	"github.com/jonesrussell/gocrawl/internal/domain"
-	"github.com/jonesrussell/gocrawl/internal/logger"
-	"github.com/jonesrussell/gocrawl/internal/storage/types"
+	"github.com/jonesrussell/north-cloud/crawler/internal/content"
+	"github.com/jonesrussell/north-cloud/crawler/internal/content/articles"
+	"github.com/jonesrussell/north-cloud/crawler/internal/content/contenttype"
+	"github.com/jonesrussell/north-cloud/crawler/internal/content/page"
+	"github.com/jonesrussell/north-cloud/crawler/internal/domain"
+	"github.com/jonesrussell/north-cloud/crawler/internal/logger"
+	"github.com/jonesrussell/north-cloud/crawler/internal/storage/types"
 )
 
 // ProcessorFactory creates content processors for different content types.

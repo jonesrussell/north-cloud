@@ -9,9 +9,9 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/jonesrussell/gocrawl/internal/config/server"
-	"github.com/jonesrussell/gocrawl/internal/logger"
-	"github.com/jonesrussell/gocrawl/internal/metrics"
+	"github.com/jonesrussell/north-cloud/crawler/internal/config/server"
+	"github.com/jonesrussell/north-cloud/crawler/internal/logger"
+	"github.com/jonesrussell/north-cloud/crawler/internal/metrics"
 )
 
 // SecurityMiddlewareInterface defines the interface for security middleware.

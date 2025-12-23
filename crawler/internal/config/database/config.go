@@ -12,7 +12,7 @@ const (
 	DefaultHost    = "localhost"
 	DefaultPort    = "5432"
 	DefaultUser    = "postgres"
-	DefaultDBName  = "gocrawl"
+	DefaultDBName  = "crawler"
 	DefaultSSLMode = "disable"
 )
 

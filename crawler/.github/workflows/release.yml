@@ -41,7 +41,7 @@ jobs:
       - name: Run GoReleaser
         # GoReleaser builds cross-platform binaries and creates GitHub releases
         # If .goreleaser.yml exists, it will be used; otherwise defaults are applied
-        # The binary name will be based on the module name (gocrawl)
+        # The binary name will be based on the module name (crawler)
         uses: goreleaser/goreleaser-action@v6
         with:
           distribution: goreleaser

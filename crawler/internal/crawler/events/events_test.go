@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/jonesrussell/gocrawl/internal/crawler/events"
+	"github.com/jonesrussell/north-cloud/crawler/internal/crawler/events"
 	"github.com/stretchr/testify/require"
 )
 
