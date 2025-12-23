@@ -48,7 +48,7 @@ services:
     working_dir: /app
     # Download dependencies then start backend
     # Use -mod=mod to ignore vendor directory if present
-    command: ["sh", "-c", "go mod download && go run -mod=mod ./main.go httpd --config config.yaml"]
+    command: ["sh", "-c", "go mod download && go run -mod=mod ./main.go"]
     networks:
       - north-cloud-network
     restart: unless-stopped

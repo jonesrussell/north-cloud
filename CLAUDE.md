@@ -538,11 +538,8 @@ docker-compose -f docker-compose.base.yml -f docker-compose.dev.yml down -v
 ```bash
 cd crawler
 
-# Start HTTP server with job scheduler (recommended)
-go run main.go httpd
-
-# Manual crawl (one-time)
-go run main.go crawl <source-name>
+# Start HTTP server with job scheduler
+go run main.go
 
 # Frontend (separate terminal)
 cd frontend
@@ -554,11 +551,11 @@ go test ./...
 cd frontend && npm test
 
 # Build
-go build -o bin/crawler main.go
+go build -o bin/gocrawl main.go
 ```
 
 **Job Scheduler Notes**:
-- The `httpd` command automatically starts the database-backed job scheduler
+- The service automatically starts the database-backed job scheduler on startup
 - Jobs can be managed via REST API at `http://localhost:8060/api/v1/jobs`
 - The scheduler processes both immediate and scheduled (cron) jobs
 - See `/crawler/docs/DATABASE_SCHEDULER.md` for detailed usage
