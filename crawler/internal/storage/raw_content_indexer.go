@@ -3,6 +3,7 @@ package storage
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -41,17 +42,17 @@ type RawContentIndexer struct {
 }
 
 // NewRawContentIndexer creates a new raw content indexer
-func NewRawContentIndexer(storage types.Interface, logger logger.Interface) *RawContentIndexer {
+func NewRawContentIndexer(storage types.Interface, log logger.Interface) *RawContentIndexer {
 	return &RawContentIndexer{
 		storage: storage,
-		logger:  logger,
+		logger:  log,
 	}
 }
 
 // IndexArticle indexes an article as raw content for classification
 func (r *RawContentIndexer) IndexArticle(ctx context.Context, article *domain.Article, sourceName string) error {
 	if article == nil {
-		return fmt.Errorf("article is nil")
+		return errors.New("article is nil")
 	}
 
 	// Convert article to raw content
@@ -143,15 +144,15 @@ func (r *RawContentIndexer) EnsureRawContentIndex(ctx context.Context, sourceNam
 	indexName := r.getRawContentIndexName(sourceName)
 
 	// Define raw content index mapping
-	mapping := map[string]interface{}{
-		"mappings": map[string]interface{}{
-			"properties": map[string]interface{}{
+	mapping := map[string]any{
+		"mappings": map[string]any{
+			"properties": map[string]any{
 				"id":                    map[string]string{"type": "keyword"},
 				"url":                   map[string]string{"type": "keyword"},
 				"source_name":           map[string]string{"type": "keyword"},
 				"title":                 map[string]string{"type": "text"},
 				"raw_text":              map[string]string{"type": "text"},
-				"raw_html":              map[string]interface{}{"type": "text", "index": "false"}, // Store but don't index
+				"raw_html":              map[string]any{"type": "text", "index": "false"}, // Store but don't index
 				"meta_description":      map[string]string{"type": "text"},
 				"meta_keywords":         map[string]string{"type": "text"},
 				"og_type":               map[string]string{"type": "keyword"},
@@ -165,7 +166,7 @@ func (r *RawContentIndexer) EnsureRawContentIndex(ctx context.Context, sourceNam
 				"word_count":            map[string]string{"type": "integer"},
 			},
 		},
-		"settings": map[string]interface{}{
+		"settings": map[string]any{
 			"number_of_shards":   1,
 			"number_of_replicas": 1,
 		},

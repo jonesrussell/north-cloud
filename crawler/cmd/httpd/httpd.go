@@ -161,10 +161,10 @@ func createCrawlerForJobs(
 	} else {
 		ctx, cancel := infracontext.WithTimeout(constants.DefaultShutdownTimeout)
 		defer cancel()
-		for _, source := range allSources {
-			if indexErr := rawIndexer.EnsureRawContentIndex(ctx, source.Name); indexErr != nil {
+		for i := range allSources {
+			if indexErr := rawIndexer.EnsureRawContentIndex(ctx, allSources[i].Name); indexErr != nil {
 				deps.Logger.Warn("Failed to ensure raw content index",
-					"source", source.Name,
+					"source", allSources[i].Name,
 					"error", indexErr)
 				// Continue with other sources - not fatal
 			}
