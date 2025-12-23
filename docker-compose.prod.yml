@@ -204,6 +204,32 @@ services:
           cpus: '0.5'
           memory: 512M
 
+  # Unified Dashboard - Production
+  dashboard:
+    build:
+      context: ./dashboard
+      dockerfile: Dockerfile
+      args:
+        - BUILD_ENV=production
+    container_name: north-cloud-dashboard
+    ports:
+      - "${DASHBOARD_PORT:-3002}:80"
+    depends_on:
+      - crawler
+      - source-manager
+      - publisher
+    networks:
+      - north-cloud-network
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 128M
+
   # Nginx reverse proxy - Production
   nginx:
     image: nginx:alpine
@@ -218,6 +244,7 @@ services:
     depends_on:
       - source-manager
       - streetcode
+      - dashboard
     networks:
       - north-cloud-network
     restart: always

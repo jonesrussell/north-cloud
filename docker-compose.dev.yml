@@ -218,9 +218,10 @@ services:
       - ./classifier/config.yml:/app/config.yml:ro
       # Mount infrastructure module (if needed in future)
       - ./infrastructure:/infrastructure
-      # Mount cache volumes to persist downloads across restarts
-      - classifier_go_mod_cache:/tmp/go-mod-cache
-      - classifier_go_build_cache:/tmp/go-build-cache
+    tmpfs:
+      # Use tmpfs for cache directories to avoid permission issues with named volumes
+      - /tmp/go-mod-cache
+      - /tmp/go-build-cache
     working_dir: /app
     # Download dependencies from mounted go.mod/go.sum, then run
     # Use -mod=mod to ignore vendor directory if present
@@ -275,12 +276,15 @@ services:
       - ./index-manager/config.yml:/app/config.yml:ro
       # Mount infrastructure module (if needed in future)
       - ./infrastructure:/infrastructure
-      # Mount cache volumes to persist downloads across restarts
-      - index_manager_go_mod_cache:/tmp/go-mod-cache
-      - index_manager_go_build_cache:/tmp/go-build-cache
+    tmpfs:
+      # Use tmpfs for cache directories to avoid permission issues with named volumes
+      - /tmp/go-mod-cache
+      - /tmp/go-build-cache
     working_dir: /app
     # Download dependencies from mounted go.mod/go.sum, then run
     # Use -mod=mod to ignore vendor directory if present
+    # Note: If you get permission errors on cache volumes, remove them:
+    # docker volume rm index_manager_go_mod_cache index_manager_go_build_cache
     command: ["sh", "-c", "go mod download && go run -mod=mod ./cmd/httpd/main.go"]
     networks:
       - north-cloud-network
@@ -417,12 +421,7 @@ volumes:
   # Publisher cache volumes
   publisher_go_mod_cache:
   publisher_go_build_cache:
-  # Classifier cache volumes
-  classifier_go_mod_cache:
-  classifier_go_build_cache:
-  # Index Manager cache volumes
-  index_manager_go_mod_cache:
-  index_manager_go_build_cache:
+  # Classifier and Index Manager use tmpfs for cache (defined in service tmpfs section)
   # Dashboard cache volumes
   dashboard_npm_cache:
   dashboard_node_modules:
