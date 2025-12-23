@@ -6,11 +6,9 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
-	"strings"
 
 	"github.com/gocolly/colly/v2"
 	"github.com/jonesrussell/gocrawl/internal/config/types"
-	"github.com/jonesrussell/gocrawl/internal/constants"
 	"github.com/jonesrussell/gocrawl/internal/content"
 	"github.com/jonesrussell/gocrawl/internal/content/contenttype"
 	"github.com/jonesrussell/gocrawl/internal/logger"
@@ -183,6 +181,7 @@ func (p *HTMLProcessor) matchSourceByURL(source *sourcestypes.SourceConfig, host
 }
 
 // tryFindSourceByURL attempts to find a source by URL from the HTML element.
+// This is used for source lookup to determine index naming, not for content type detection.
 func (p *HTMLProcessor) tryFindSourceByURL(e *colly.HTMLElement) *types.Source {
 	if e.Request == nil || e.Request.URL == nil {
 		return nil
@@ -191,7 +190,7 @@ func (p *HTMLProcessor) tryFindSourceByURL(e *colly.HTMLElement) *types.Source {
 	sourceURL := e.Request.URL.String()
 	source := p.findSourceByURL(sourceURL)
 	if source != nil {
-		p.logger.Debug("Found source by URL for content type detection",
+		p.logger.Debug("Found source by URL",
 			"url", sourceURL,
 			"source_name", source.Name,
 			"has_article_body_selector", source.Selectors.Article.Body != "",
@@ -200,122 +199,6 @@ func (p *HTMLProcessor) tryFindSourceByURL(e *colly.HTMLElement) *types.Source {
 		p.logger.Debug("No source found by URL lookup", "url", sourceURL)
 	}
 	return source
-}
-
-// DetectContentType detects the content type of the given HTML element using selector-based detection.
-func (p *HTMLProcessor) DetectContentType(e *colly.HTMLElement, source *types.Source) contenttype.Type {
-	// e.DOM is a goquery.Selection, and since OnHTML("html") is used,
-	// e.DOM represents the html element, so Find() searches the entire document
-
-	// Get URL for logging
-	pageURL := ""
-	if e.Request != nil && e.Request.URL != nil {
-		pageURL = e.Request.URL.String()
-	}
-
-	p.logger.Debug("Starting content type detection",
-		"url", pageURL,
-		"source_provided", source != nil,
-		"source_name", func() string {
-			if source != nil {
-				return source.Name
-			}
-			return nilString
-		}())
-
-	// Strategy 1: Check Open Graph type metadata
-	ogType := e.DOM.Find("meta[property='og:type']").AttrOr("content", "")
-	if ogType == "article" {
-		p.logger.Debug("Detected article via og:type metadata", "url", pageURL)
-		return contenttype.Article
-	}
-
-	// Strategy 2: Use article selectors to detect content
-	// If source is nil, try to find it by URL
-	if source == nil {
-		source = p.tryFindSourceByURL(e)
-		if source == nil {
-			p.logger.Debug("Defaulting to page: source is nil after lookup attempts",
-				"url", pageURL,
-				"reason", "source_nil")
-			return contenttype.Page
-		}
-	}
-
-	// Check if source has article body selector
-	if source.Selectors.Article.Body == "" {
-		p.logger.Debug("Defaulting to page: article body selector is empty",
-			"url", pageURL,
-			"source_name", source.Name,
-			"reason", "empty_article_body_selector",
-			"has_list_container_selector", source.Selectors.List.Container != "",
-			"has_article_title_selector", source.Selectors.Article.Title != "")
-		return contenttype.Page
-	}
-
-	// Log source configuration that will be used
-	p.logger.Debug("Using source configuration for content type detection",
-		"source_name", source.Name,
-		"article_body_selector", source.Selectors.Article.Body,
-		"article_title_selector", source.Selectors.Article.Title,
-		"list_container_selector", source.Selectors.List.Container,
-		"url", pageURL)
-
-	// Get article body using the source's body selector
-	bodySelector := source.Selectors.Article.Body
-	articleBody := e.DOM.Find(bodySelector)
-	if articleBody.Length() == 0 {
-		p.logger.Debug("No article body found with selector",
-			"selector", bodySelector,
-			"source_name", source.Name,
-			"url", pageURL,
-			"reason", "selector_no_match")
-		return contenttype.Page
-	}
-
-	// Verify it has substantial content (articles typically have >200 chars)
-	bodyText := strings.TrimSpace(articleBody.Text())
-	if len(bodyText) < constants.MinArticleBodyLength {
-		p.logger.Debug("Body content too short, treating as page",
-			"length", len(bodyText),
-			"min_required", constants.MinArticleBodyLength,
-			"source_name", source.Name,
-			"url", pageURL,
-			"reason", "body_too_short")
-		return contenttype.Page
-	}
-
-	// Strategy 3: Verify title exists (articles should have titles)
-	titleSelector := source.Selectors.Article.Title
-	if titleSelector != "" {
-		articleTitle := e.DOM.Find(titleSelector)
-		if articleTitle.Length() == 0 {
-			p.logger.Debug("No article title found, treating as page",
-				"title_selector", titleSelector,
-				"source_name", source.Name,
-				"url", pageURL,
-				"reason", "title_selector_no_match")
-			return contenttype.Page
-		}
-
-		titleText := strings.TrimSpace(articleTitle.Text())
-		if titleText == "" {
-			p.logger.Debug("Empty article title, treating as page",
-				"title_selector", titleSelector,
-				"source_name", source.Name,
-				"url", pageURL,
-				"reason", "empty_title")
-			return contenttype.Page
-		}
-	}
-
-	// If we got here, it has body + title with substantial content
-	p.logger.Debug("Detected article via selectors",
-		"body_length", len(bodyText),
-		"source_name", source.Name,
-		"url", pageURL,
-		"detection_method", "selector_based")
-	return contenttype.Article
 }
 
 // GetUnknownTypes returns a map of content types that have no registered processor.

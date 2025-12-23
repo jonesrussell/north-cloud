@@ -144,8 +144,9 @@ type Crawler struct {
 	bus              *events.EventBus
 	indexManager     storagetypes.IndexManager
 	sources          sources.Interface
-	articleProcessor content.Processor
-	pageProcessor    content.Processor
+	articleProcessor    content.Processor
+	pageProcessor       content.Processor
+	rawContentProcessor content.Processor
 	state            *State
 	done             chan struct{}
 	doneOnce         sync.Once // Ensures done channel is only closed once
