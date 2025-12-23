@@ -130,7 +130,7 @@ func (r *RawContentIndexer) convertArticleToRawContent(article *domain.Article, 
 var (
 	// invalidIndexNameChars matches all characters that are invalid in Elasticsearch index names.
 	// Invalid characters: space, ", *, ,, /, <, >, ?, \, |
-	invalidIndexNameChars = regexp.MustCompile(`[\s"*,\\/<>?\\|]`)
+	invalidIndexNameChars = regexp.MustCompile(`[\s"*,/<>?\\|]`)
 	// consecutiveUnderscores matches two or more consecutive underscores.
 	consecutiveUnderscores = regexp.MustCompile(`_{2,}`)
 )
