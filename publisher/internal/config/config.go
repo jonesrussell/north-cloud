@@ -59,7 +59,7 @@ type ServiceConfig struct {
 	CrimeKeywords        []string      `yaml:"crime_keywords"`
 	ContentType          string        `yaml:"content_type"`
 	GroupType            string        `yaml:"group_type"`
-	DedupTTL             time.Duration `yaml:"dedup_ttl"`             // Default: 8760h (1 year)
+	DedupTTL             time.Duration `yaml:"dedup_ttl"`              // Default: 8760h (1 year)
 	UseClassifiedContent bool          `yaml:"use_classified_content"` // Use classified_content indexes instead of articles
 	MinQualityScore      int           `yaml:"min_quality_score"`      // Minimum quality score for classified content (0-100)
 	IndexSuffix          string        `yaml:"index_suffix"`           // Index suffix (_articles or _classified_content)
