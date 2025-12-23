@@ -55,6 +55,55 @@ tasks:
     cmds:
       - task lint
 
+  test:
+    desc: "Run tests for all microservices sequentially"
+    cmds:
+      - task: test:classifier
+      - task: test:crawler
+      - task: test:index-manager
+      - task: test:publisher
+      - task: test:source-manager
+
+  test:parallel:
+    desc: "Run tests for all microservices in parallel"
+    cmds:
+      - task: test:classifier
+      - task: test:crawler
+      - task: test:index-manager
+      - task: test:publisher
+      - task: test:source-manager
+    run: parallel
+
+  test:classifier:
+    desc: "Run tests for classifier service"
+    dir: classifier
+    cmds:
+      - task test
+
+  test:crawler:
+    desc: "Run tests for crawler service"
+    dir: crawler
+    cmds:
+      - task test
+
+  test:index-manager:
+    desc: "Run tests for index-manager service"
+    dir: index-manager
+    cmds:
+      - task test
+
+  test:publisher:
+    desc: "Run tests for publisher service"
+    dir: publisher
+    cmds:
+      - task test
+
+  test:source-manager:
+    desc: "Run tests for source-manager service"
+    dir: source-manager
+    cmds:
+      - task test
+
   docker:dev:up:
     desc: "Start development environment"
     cmds:
