@@ -1,0 +1,57 @@
+version: '3'
+
+tasks:
+  default:
+    desc: "Show available tasks"
+    cmds:
+      - task --list
+
+  lint:
+    desc: "Run linters for all microservices sequentially"
+    cmds:
+      - task: lint:classifier
+      - task: lint:crawler
+      - task: lint:index-manager
+      - task: lint:publisher
+      - task: lint:source-manager
+
+  lint:parallel:
+    desc: "Run linters for all microservices in parallel"
+    cmds:
+      - task: lint:classifier
+      - task: lint:crawler
+      - task: lint:index-manager
+      - task: lint:publisher
+      - task: lint:source-manager
+    run: parallel
+
+  lint:classifier:
+    desc: "Run linter for classifier service"
+    dir: classifier
+    cmds:
+      - task lint
+
+  lint:crawler:
+    desc: "Run linter for crawler service"
+    dir: crawler
+    cmds:
+      - task lint
+
+  lint:index-manager:
+    desc: "Run linter for index-manager service"
+    dir: index-manager
+    cmds:
+      - task lint
+
+  lint:publisher:
+    desc: "Run linter for publisher service"
+    dir: publisher
+    cmds:
+      - task lint
+
+  lint:source-manager:
+    desc: "Run linter for source-manager service"
+    dir: source-manager
+    cmds:
+      - task lint
+
