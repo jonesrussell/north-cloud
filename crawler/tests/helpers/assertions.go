@@ -59,7 +59,8 @@ func AssertDocumentCount(
 	assert.Equal(t, expectedCount, count, "index %s should have %d documents, got %d", index, expectedCount, count)
 }
 
-// WaitForIndexReady waits for an index to be ready (green status).
+// WaitForIndexReady waits for an index to be ready (green or yellow status).
+// Yellow is acceptable for single-node clusters where replicas cannot be allocated.
 func WaitForIndexReady(
 	t require.TestingT,
 	storage types.Interface,
@@ -68,14 +69,33 @@ func WaitForIndexReady(
 	timeout time.Duration,
 ) {
 	deadline := time.Now().Add(timeout)
+	var lastErr error
+	var lastHealth string
 	for time.Now().Before(deadline) {
 		health, err := storage.GetIndexHealth(ctx, index)
-		if err == nil && health == "green" {
-			return
+		if err == nil {
+			// Accept both "green" and "yellow" as ready states
+			// Yellow is normal for single-node clusters (primary allocated, no replicas)
+			if health == "green" || health == "yellow" {
+				return
+			}
+			lastHealth = health
+		} else {
+			lastErr = err
 		}
 		time.Sleep(DefaultHealthCheckInterval)
 	}
-	require.Fail(t, fmt.Sprintf("index %s did not become ready within %v", index, timeout))
+
+	// Provide more detailed error message
+	if lastErr != nil {
+		require.Fail(t, fmt.Sprintf(
+			"index %s did not become ready within %v: last error: %v",
+			index, timeout, lastErr))
+	} else {
+		require.Fail(t, fmt.Sprintf(
+			"index %s did not become ready within %v: last health status was %q (expected green or yellow)",
+			index, timeout, lastHealth))
+	}
 }
 
 // AssertSearchResults checks that a search returns the expected number of results.
