@@ -12,7 +12,6 @@ output:
 
 includes:
   sources: ./tasks/sources.yml
-  test: ./tasks/test.yml
 
 tasks:
   default:
@@ -64,6 +63,33 @@ tasks:
       - go vet ./...
       - golangci-lint run
 
+  test:
+    desc: "Run all tests"
+    cmds:
+      - go test -v ./...
+
+  test:unit:
+    desc: "Run unit tests"
+    cmds:
+      - go test -v ./internal/...
+
+  test:integration:
+    desc: "Run integration tests"
+    cmds:
+      - go test -v ./tests/integration/...
+
+  test:features:
+    desc: "Run feature tests"
+    cmds:
+      - go test -v ./tests/features/...
+
+  test:coverage:
+    desc: "Run tests with coverage"
+    cmds:
+      - go test -coverprofile=coverage.out ./...
+      - go tool cover -html=coverage.out -o coverage.html
+      - 'echo "Coverage report generated: coverage.html"'
+
   search:
     desc: "Search crawled content"
     cmds:
@@ -72,8 +98,6 @@ tasks:
     interactive: true
 
   # sources:list moved to includes.sources
-
-  # test:* tasks moved to includes.test
 
   generate:
     desc: Generate code (mocks, etc.)

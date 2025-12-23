@@ -2,42 +2,28 @@ version: '3'
 
 tasks:
   test:
-    desc: "Run all tests (unit, integration, and feature tests)"
+    desc: "Run all tests"
     cmds:
-      - task: all
+      - go test -v ./...
 
-  unit:
-    desc: "Run unit tests only (excludes integration and feature tests)"
+  test:unit:
+    desc: "Run unit tests"
     cmds:
-      - mkdir -p coverage
-      - go test -short -race -coverprofile=coverage/unit.out ./...
+      - go test -v ./internal/...
 
-  integration:
+  test:integration:
     desc: "Run integration tests"
     cmds:
-      - go test -run Integration -v ./tests/integration/...
-    ignore_error: true
+      - go test -v ./tests/integration/...
 
-  features:
+  test:features:
     desc: "Run feature tests"
     cmds:
       - go test -v ./tests/features/...
-    ignore_error: true
 
-  all:
-    desc: "Run all tests (unit, integration, and feature tests)"
-    cmds:
-      - task: unit
-      - task: integration
-      - task: features
-
-  cover:
+  test:coverage:
     desc: "Run tests with coverage"
     cmds:
-      - mkdir -p coverage
-      - go test -coverprofile=coverage/coverage.out ./...
-      - go tool cover -html=coverage/coverage.out -o coverage/coverage.html
-      - go tool cover -func=coverage/coverage.out
-    generates:
-      - coverage/coverage.out
-      - coverage/coverage.html
+      - go test -coverprofile=coverage.out ./...
+      - go tool cover -html=coverage.out -o coverage.html
+      - 'echo "Coverage report generated: coverage.html"'
