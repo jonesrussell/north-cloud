@@ -48,34 +48,71 @@ This document provides a comprehensive guide for AI assistants working with the 
 ### System Overview
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                      North Cloud Platform                    │
-├─────────────────────────────────────────────────────────────┤
-│                                                               │
-│  ┌──────────────┐     ┌──────────────┐     ┌─────────────┐ │
-│  │   Crawler    │────▶│    Source    │────▶│  Publisher  │ │
-│  │   (gocrawl)  │     │   Manager    │     │  (gopost)   │ │
-│  │              │     │  (Go + Vue)  │     │             │ │
-│  └──────┬───────┘     └──────────────┘     └──────┬──────┘ │
-│         │                                           │        │
-│         ▼                                           ▼        │
-│  ┌─────────────────────────────────────────────────────┐   │
-│  │           Elasticsearch (Article Storage)           │   │
-│  └─────────────────────────────────────────────────────┘   │
-│                           │                                  │
-│                           ▼                                  │
-│                  ┌──────────────┐                           │
-│                  │  Streetcode  │                           │
-│                  │  (Drupal 11) │                           │
-│                  └──────────────┘                           │
-│                                                               │
-│  Infrastructure:                                             │
-│  ┌─────────────┐  ┌─────────────┐  ┌──────────────────┐   │
-│  │ PostgreSQL  │  │    Redis    │  │      Nginx       │   │
-│  │  (3 DBs)    │  │   (Cache)   │  │  (Reverse Proxy) │   │
-│  └─────────────┘  └─────────────┘  └──────────────────┘   │
-└─────────────────────────────────────────────────────────────┘
+┌────────────────────────────────────────────────────────────────────────┐
+│                         North Cloud Platform                            │
+├────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│  ┌──────────┐         ┌──────────────┐        ┌──────────────┐        │
+│  │ Crawler  │────────▶│    Source    │        │  Classifier  │        │
+│  │(gocrawl) │         │   Manager    │        │  (Go 1.25)   │        │
+│  │          │         │  (Go + Vue)  │        │              │        │
+│  └────┬─────┘         └──────────────┘        └──────▲───────┘        │
+│       │                                                │                │
+│       │ raw_content                                    │                │
+│       │ (pending)                                      │ classified     │
+│       ▼                                                │ _content       │
+│  ┌─────────────────────────────────────────────────────┼──────────┐   │
+│  │              Elasticsearch (Content Pipeline)       │          │   │
+│  │  ┌────────────────┐  ┌──────────────┐  ┌──────────▼────────┐ │   │
+│  │  │ {source}_raw   │─▶│  Classifier  │─▶│ {source}_classified│ │   │
+│  │  │ _content       │  │   Service    │  │ _content          │ │   │
+│  │  │ (pending)      │  │              │  │ (crime filtered)  │ │   │
+│  │  └────────────────┘  └──────────────┘  └──────────┬────────┘ │   │
+│  └─────────────────────────────────────────────────────┼──────────┘   │
+│                                                         │               │
+│                                                         ▼               │
+│                                              ┌──────────────┐          │
+│                                              │  Publisher   │          │
+│                                              │  (gopost)    │          │
+│                                              └──────┬───────┘          │
+│                                                     │                   │
+│                                                     ▼                   │
+│                                            ┌──────────────┐            │
+│                                            │  Streetcode  │            │
+│                                            │ (Drupal 11)  │            │
+│                                            └──────────────┘            │
+│                                                                          │
+│  Infrastructure:                                                        │
+│  ┌─────────────┐  ┌─────────────┐  ┌──────────────────┐               │
+│  │ PostgreSQL  │  │    Redis    │  │      Nginx       │               │
+│  │  (3 DBs)    │  │   (Cache)   │  │  (Reverse Proxy) │               │
+│  └─────────────┘  └─────────────┘  └──────────────────┘               │
+└────────────────────────────────────────────────────────────────────────┘
 ```
+
+### Content Processing Pipeline
+
+The platform uses a **three-stage content pipeline** for intelligent article processing:
+
+1. **Raw Content Indexing** (Crawler → Elasticsearch)
+   - Crawler extracts articles and stores minimally-processed content
+   - Indexed to `{source}_raw_content` with `classification_status=pending`
+   - Preserves original HTML, text, metadata, and Open Graph tags
+
+2. **Classification** (Classifier → Elasticsearch)
+   - Classifier service processes raw content for:
+     - **Content type detection** (article, page, video, etc.)
+     - **Quality scoring** (0-100 based on completeness, metadata, etc.)
+     - **Topic classification** (crime detection, category tagging)
+     - **Source reputation** scoring
+   - Enriched content indexed to `{source}_classified_content`
+   - Includes all original fields plus classification metadata
+
+3. **Publishing** (Publisher → Drupal)
+   - Publisher queries classified_content indexes
+   - Filters by `is_crime_related=true` and `quality_score >= threshold`
+   - Posts high-quality, crime-related articles to Drupal via JSON:API
+   - Redis deduplication prevents duplicate posts
 
 ### Service Descriptions
 
@@ -88,13 +125,18 @@ This document provides a comprehensive guide for AI assistants working with the 
 - **Key Features**:
   - Configurable crawling rules
   - Article extraction and parsing
-  - Storage in Elasticsearch
+  - **Raw content indexing** to `{source}_raw_content` Elasticsearch indexes
+  - Minimal processing: preserves HTML, text, metadata for downstream classification
   - Source management integration
   - Vue.js dashboard interface for monitoring
   - **Database-backed job scheduler** for dynamic crawling
   - REST API for job management (create, update, delete, list)
   - Support for immediate and scheduled (cron) jobs
   - Job status tracking (pending → processing → completed/failed)
+- **Indexing Strategy**:
+  - One index per source: `{source_name}_raw_content` (e.g., `example_com_raw_content`)
+  - Documents marked with `classification_status=pending` for classifier pickup
+  - Extracts: title, raw_text, raw_html, OG tags, metadata, published_date
 - **Documentation**: See `/crawler/README.md`, `/crawler/frontend/README.md`, `/crawler/docs/DATABASE_SCHEDULER.md`
 
 #### 2. **source-manager**
@@ -110,20 +152,58 @@ This document provides a comprehensive guide for AI assistants working with the 
   - Crawling schedule configuration
 - **Documentation**: See `/source-manager/README.md`, `/source-manager/DEVELOPMENT.md`
 
-#### 3. **publisher** (gopost)
+#### 3. **classifier**
+- **Location**: `/classifier`
+- **Language**: Go 1.25+
+- **Purpose**: Classify and enrich raw content with metadata and quality scores
+- **Dependencies**: Elasticsearch (reads raw_content, writes classified_content)
+- **Ports**: 8070 (HTTP API)
+- **Key Features**:
+  - **Content type classification**: Identifies articles, pages, videos, jobs, etc.
+  - **Quality scoring**: 0-100 score based on completeness, metadata, word count
+  - **Topic classification**: Crime detection, category tagging with confidence scores
+  - **Source reputation**: Tracks and scores source quality over time
+  - **REST API**: `/api/v1/classify` for on-demand classification
+  - HTTP server for real-time classification requests
+  - Batch processing support for bulk classification
+- **Processing Pipeline**:
+  1. Polls `{source}_raw_content` indexes for `classification_status=pending`
+  2. Applies classification algorithms (content type, quality, topics, reputation)
+  3. Indexes enriched content to `{source}_classified_content`
+  4. Updates `classification_status=classified` on success
+- **Output Fields**:
+  - All original RawContent fields (title, raw_text, url, metadata)
+  - `content_type`, `quality_score`, `is_crime_related`, `topics`
+  - `source_reputation`, `source_category`, `confidence`
+  - **Alias fields for publisher**: `body` (alias for raw_text), `source` (alias for url)
+- **Documentation**: See `/classifier/README.md`, `/classifier/CLAUDE.md`
+
+#### 4. **publisher** (gopost)
 - **Location**: `/publisher`
 - **Language**: Go 1.25+
 - **Purpose**: Filter and publish articles from Elasticsearch to Drupal
 - **Dependencies**: Elasticsearch, Redis, Drupal
 - **Key Features**:
-  - Crime article filtering
+  - **Dual-mode operation**: Legacy keyword-based OR classifier-based filtering
+  - **Classification-aware filtering** (when enabled):
+    - Queries `{source}_classified_content` indexes
+    - Filters by `is_crime_related=true` flag
+    - Quality threshold filtering (`quality_score >= min_quality_score`)
+    - Trusts classifier determinations for accuracy
+  - **Legacy mode** (when disabled):
+    - Queries `{source}_articles` indexes
+    - Keyword-based crime detection
   - Drupal JSON:API integration
   - Redis-based deduplication
   - Multi-city support
   - Rate limiting
+- **Configuration**:
+  - `use_classified_content: true/false` - Enable classifier-based filtering
+  - `min_quality_score: 50` - Minimum quality threshold (0-100)
+  - `index_suffix: "_classified_content"` - Index naming pattern
 - **Documentation**: See `/publisher/CLAUDE.md`, `/publisher/README.md`
 
-#### 4. **streetcode** (Drupal 11)
+#### 5. **streetcode** (Drupal 11)
 - **Location**: `/streetcode`
 - **Language**: PHP 8.2+
 - **Purpose**: Content management and public website
@@ -145,9 +225,16 @@ This document provides a comprehensive guide for AI assistants working with the 
 - Each service has its own isolated database
 
 #### Elasticsearch
-- **Purpose**: Article storage and search
+- **Purpose**: Content pipeline storage and search
 - **Port**: 9200
-- **Indexes**: One per city (e.g., `city_name_com_articles`)
+- **Index Patterns**:
+  - **Raw content**: `{source}_raw_content` (e.g., `example_com_raw_content`)
+    - Minimally-processed crawled content with `classification_status=pending`
+  - **Classified content**: `{source}_classified_content` (e.g., `example_com_classified_content`)
+    - Enriched content with quality scores, topics, crime detection
+  - **Legacy articles** (deprecated): `{source}_articles`
+    - Old article format, being phased out in favor of classified_content
+- **Content Flow**: raw_content (pending) → Classifier → classified_content → Publisher → Drupal
 
 #### Redis
 - **Purpose**: Deduplication, caching, queue management
@@ -210,6 +297,29 @@ north-cloud/
 │   ├── README.md
 │   └── DEVELOPMENT.md
 │
+├── classifier/                   # Content classification service
+│   ├── Dockerfile
+│   ├── go.mod
+│   ├── main.go
+│   ├── cmd/
+│   │   ├── httpd/               # HTTP API server
+│   │   └── processor/           # Batch processor
+│   ├── internal/
+│   │   ├── classifier/          # Classification algorithms
+│   │   │   ├── classifier.go
+│   │   │   ├── content_type.go
+│   │   │   ├── quality.go
+│   │   │   ├── topics.go
+│   │   │   └── reputation.go
+│   │   ├── domain/              # Domain models
+│   │   │   ├── raw_content.go
+│   │   │   └── classification.go
+│   │   ├── storage/             # Elasticsearch integration
+│   │   └── api/                 # REST API handlers
+│   ├── tests/
+│   ├── README.md
+│   └── CLAUDE.md                # Classifier-specific AI guide
+│
 ├── publisher/                    # Article publishing service
 │   ├── Dockerfile
 │   ├── go.mod
@@ -241,9 +351,9 @@ north-cloud/
 
 ### 1. Code Style
 
-#### Go Services (crawler, source-manager, publisher)
+#### Go Services (crawler, source-manager, classifier, publisher)
 - **Standards**: Follow standard Go formatting (`gofmt`, `goimports`)
-- **Go Version**: 1.24+ (crawler, source-manager), 1.25+ (publisher)
+- **Go Version**: 1.24+ (crawler, source-manager), 1.25+ (classifier, publisher)
 - **Error Handling**: Always wrap errors with context using `fmt.Errorf("context: %w", err)`
 - **Logging**: Use structured logging (zap for publisher, configure per service)
 - **Testing**: Unit tests with 80%+ coverage target
@@ -470,6 +580,36 @@ go test ./...
 cd frontend && npm test
 ```
 
+#### Classifier
+```bash
+cd classifier
+
+# Run HTTP server (REST API)
+go run main.go httpd
+
+# Run batch processor (polls raw_content indexes)
+go run main.go processor
+
+# Run tests
+go test ./...
+
+# Run with coverage
+go test -cover ./...
+
+# Lint
+golangci-lint run
+
+# Build
+go build -o bin/classifier main.go
+```
+
+**Classification Notes**:
+- The `httpd` command starts the REST API server on port 8070
+- The `processor` command runs continuous batch classification
+- Processes raw_content with `classification_status=pending`
+- Outputs to classified_content indexes
+- See `/classifier/README.md` for API usage examples
+
 #### Publisher
 ```bash
 cd publisher
@@ -568,7 +708,9 @@ docker-compose -f docker-compose.base.yml -f docker-compose.prod.yml build
 | crawler-frontend | 3000 | 3001 | Crawler Dashboard UI |
 | source-manager | 8050 | 8050 | Source Manager API |
 | source-manager-frontend | 3000 | 3000 | Source Manager UI |
-| streetcode | 80 | 8080 | Drupal web interface |
+| classifier | 8070 | 8070 | Classifier HTTP API |
+| publisher | 8080 | 8080 | Publisher API (if enabled) |
+| streetcode | 80 | 8090 | Drupal web interface |
 | nginx | 80 | 80 | Reverse proxy |
 | elasticsearch | 9200 | 9200 | Elasticsearch API |
 | redis | 6379 | 6379 | Redis cache |
@@ -834,8 +976,35 @@ docker system prune -a --volumes
 - Test API endpoints
 - Validate database migrations
 
+**For Classifier**:
+- **IMPORTANT**: Read `/classifier/CLAUDE.md` for detailed guidelines
+- Processes raw_content → classified_content pipeline
+- **Index Requirements**:
+  - Input: `{source}_raw_content` with `classification_status=pending`
+  - Output: `{source}_classified_content` with enriched fields
+- **Classification Components**:
+  - Content type: Use OG tags, selectors, heuristics
+  - Quality: Score 0-100 based on completeness, metadata, word count
+  - Topics: Crime detection via keywords, patterns, ML models
+  - Reputation: Track source quality over time
+- **Publisher Compatibility**:
+  - Must populate `Body` and `Source` alias fields
+  - Ensures `is_crime_related` flag is accurate
+  - Quality scores must be consistent (0-100 scale)
+- Test classification accuracy with known articles
+- Validate Elasticsearch indexing for both input and output
+
 **For Publisher**:
 - **IMPORTANT**: Read `/publisher/CLAUDE.md` for detailed guidelines
+- **Dual-mode operation**: Legacy keyword-based OR classifier-based
+- **When using classified_content** (`use_classified_content: true`):
+  - Query `{source}_classified_content` indexes
+  - Filter by `is_crime_related=true` and `quality_score >= threshold`
+  - Trust classifier's determinations (don't re-check keywords)
+  - Use configured `index_suffix` for index naming
+- **Legacy mode** (`use_classified_content: false`):
+  - Query `{source}_articles` indexes
+  - Use keyword-based crime detection
 - Follow structured logging conventions (snake_case fields)
 - Test Drupal JSON:API integration
 - Verify Redis deduplication
@@ -1038,6 +1207,14 @@ docker system prune -a --volumes
   - Immediate vs scheduled jobs
   - Troubleshooting and best practices
 
+**Content Classification**:
+- `/classifier/README.md`
+- `/classifier/CLAUDE.md` - Classifier-specific AI guide
+  - Classification algorithms and strategies
+  - Quality scoring methodology
+  - Topic detection and crime classification
+  - Publisher compatibility requirements
+
 **Content Publishing**:
 - `/publisher/CLAUDE.md`
 - `/publisher/README.md`
@@ -1071,6 +1248,28 @@ When encountering scenarios not covered in this guide:
 ---
 
 ## Version History
+
+- **Raw Content Pipeline Implementation** (2025-12-23): Replaced article indexing with raw_content pipeline
+  - **Classifier service integration**: New microservice for content classification
+  - **Three-stage pipeline**: Crawler → raw_content → Classifier → classified_content → Publisher
+  - **Crawler updates**:
+    - Raw content indexing to `{source}_raw_content` indexes
+    - Minimal processing, preserves HTML/text/metadata for classifier
+    - `classification_status=pending` marking for classifier pickup
+  - **Classifier service** (new):
+    - Content type detection (article, page, video, job, etc.)
+    - Quality scoring (0-100) based on completeness and metadata
+    - Topic classification with crime detection
+    - Source reputation tracking
+    - Publisher compatibility alias fields (`Body`, `Source`)
+  - **Publisher enhancements**:
+    - Dual-mode operation: classifier-based OR legacy keyword-based
+    - Configuration: `use_classified_content`, `min_quality_score`, `index_suffix`
+    - Classification-aware filtering (`is_crime_related=true`, quality threshold)
+    - Trusts classifier determinations for improved accuracy
+  - **Updated system architecture diagram** with content pipeline visualization
+  - **Updated Elasticsearch index patterns** documentation
+  - **Migration strategy**: Phased rollout with feature flags and rollback support
 
 - **Database Scheduler Update** (2025-12-15): Added database-backed job scheduler documentation
   - Comprehensive job scheduler guide (`/crawler/docs/DATABASE_SCHEDULER.md`)

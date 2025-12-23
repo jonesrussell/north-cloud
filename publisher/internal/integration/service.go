@@ -128,21 +128,46 @@ type Article struct {
 	Category      string    `json:"category,omitempty"`
 	Section       string    `json:"section,omitempty"`
 	Keywords      []string  `json:"keywords,omitempty"`
+	// Classification fields (from classified_content)
+	QualityScore   int      `json:"quality_score,omitempty"`
+	IsCrimeRelated bool     `json:"is_crime_related,omitempty"`
+	Topics         []string `json:"topics,omitempty"`
+	ContentType    string   `json:"content_type,omitempty"`
 }
 
 func (s *Service) FindCrimeArticles(ctx context.Context, cityCfg config.CityConfig) ([]Article, error) {
 	startTime := time.Now()
 
 	// Build Elasticsearch query
-	mustClauses := []map[string]any{
-		{
+	mustClauses := []map[string]any{}
+
+	// If using classified content, filter by classification instead of keywords
+	if s.config.Service.UseClassifiedContent {
+		// Filter by is_crime_related flag
+		mustClauses = append(mustClauses, map[string]any{
+			"term": map[string]any{
+				"is_crime_related": true,
+			},
+		})
+
+		// Filter by minimum quality score
+		mustClauses = append(mustClauses, map[string]any{
+			"range": map[string]any{
+				"quality_score": map[string]any{
+					"gte": s.config.Service.MinQualityScore,
+				},
+			},
+		})
+	} else {
+		// Legacy: use keyword matching
+		mustClauses = append(mustClauses, map[string]any{
 			"multi_match": map[string]any{
 				"query":    strings.Join(s.config.Service.CrimeKeywords, " "),
 				"fields":   []string{ESFieldTitle + "^2", ESFieldBody},
 				"type":     "best_fields",
 				"operator": "or",
 			},
-		},
+		})
 	}
 
 	// Add date filter only if lookback_hours is positive
@@ -195,7 +220,8 @@ func (s *Service) FindCrimeArticles(ctx context.Context, cityCfg config.CityConf
 	// Execute search
 	index := cityCfg.Index
 	if index == "" {
-		index = fmt.Sprintf("%s_articles", cityCfg.Name)
+		// Use configured index suffix (_articles or _classified_content)
+		index = fmt.Sprintf("%s%s", cityCfg.Name, s.config.Service.IndexSuffix)
 	}
 
 	// Log the query for debugging
@@ -388,6 +414,12 @@ func deriveOGFields(article Article) (ogTitle, ogDescription, ogURL string) {
 }
 
 func (s *Service) isCrimeRelated(article Article) bool {
+	// If using classified content, trust the classifier's determination
+	if s.config.Service.UseClassifiedContent {
+		return article.IsCrimeRelated
+	}
+
+	// Legacy: use keyword matching for articles from _articles index
 	content := strings.ToLower(article.Title + " " + article.Content)
 	for _, keyword := range s.config.Service.CrimeKeywords {
 		if strings.Contains(content, strings.ToLower(keyword)) {

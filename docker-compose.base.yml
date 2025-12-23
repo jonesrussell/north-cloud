@@ -65,6 +65,27 @@ services:
     networks:
       - north-cloud-network
 
+  # PostgreSQL for classifier
+  postgres-classifier:
+    image: postgres:16-alpine
+    container_name: north-cloud-postgres-classifier
+    environment:
+      POSTGRES_USER: ${POSTGRES_CLASSIFIER_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_CLASSIFIER_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_CLASSIFIER_DB:-classifier}
+    ports:
+      - "${POSTGRES_CLASSIFIER_PORT:-5435}:5432"
+    volumes:
+      - postgres_classifier_data:/var/lib/postgresql/data
+      - ./classifier/migrations:/migrations:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_CLASSIFIER_USER:-postgres}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - north-cloud-network
+
   # Elasticsearch for publisher
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:9.2.2
@@ -154,6 +175,7 @@ volumes:
   postgres_source_manager_data:
   postgres_crawler_data:
   postgres_streetcode_data:
+  postgres_classifier_data:
   elasticsearch_data:
   redis_data:
   streetcode_data:

@@ -1,0 +1,111 @@
+# Classifier Service Configuration
+# Copy this file to config.yml and adjust values for your environment
+
+service:
+  name: "classifier"
+  version: "1.0.0"
+  port: 8070
+  debug: true
+
+  # Processing configuration
+  enabled: true
+  concurrency: 10
+  batch_size: 100
+  poll_interval: "30s"
+
+  # Quality thresholds
+  min_quality_score: 50
+  min_word_count: 100
+  min_article_word_count: 200
+
+  # Rate limiting
+  es_rate_limit_rps: 100
+  db_rate_limit_rps: 50
+
+database:
+  host: "postgres-classifier"
+  port: 5432
+  user: "postgres"
+  password: "postgres"
+  database: "classifier"
+  sslmode: "disable"
+  max_connections: 25
+  max_idle_connections: 5
+  connection_max_lifetime: "1h"
+
+elasticsearch:
+  url: "http://elasticsearch:9200"
+  username: ""
+  password: ""
+  max_retries: 3
+  timeout: "30s"
+
+  # Index naming
+  raw_content_suffix: "_raw_content"
+  classified_content_suffix: "_classified_content"
+
+redis:
+  url: "redis:6379"
+  password: ""
+  database: 0
+  max_retries: 3
+  timeout: "5s"
+
+  # Pub/sub channels
+  channel_new_content: "crawler:new_content"
+  channel_classified: "classifier:classified"
+
+  # Cache TTL
+  classification_cache_ttl: "24h"
+
+logging:
+  level: "info" # debug, info, warn, error
+  format: "json" # json or console
+  output: "stdout"
+
+classification:
+  # Content type detection
+  content_type:
+    enabled: true
+    confidence_threshold: 0.5
+
+  # Quality scoring
+  quality:
+    enabled: true
+    word_count_weight: 0.25
+    metadata_weight: 0.25
+    richness_weight: 0.25
+    readability_weight: 0.25
+
+  # Topic classification
+  topic:
+    enabled: true
+    confidence_threshold: 0.3
+    max_topics: 5
+
+  # Source reputation
+  source_reputation:
+    enabled: true
+    default_score: 50
+    update_on_each_classification: true
+
+# ML integration (future)
+ml:
+  enabled: false
+  ab_test:
+    enabled: false
+    traffic_split: 0.1 # 10% to ML
+    fallback_to_rule: true
+  model_endpoint: ""
+  timeout: "1s"
+
+# Event-driven processing (optional)
+events:
+  enabled: false
+  subscribe_to_crawler: true
+
+# Metrics
+metrics:
+  enabled: true
+  port: 9090
+  path: "/metrics"

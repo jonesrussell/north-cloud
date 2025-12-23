@@ -53,13 +53,16 @@ type RedisConfig struct {
 }
 
 type ServiceConfig struct {
-	CheckInterval time.Duration `yaml:"check_interval"`
-	RateLimitRPS  int           `yaml:"rate_limit_rps"`
-	LookbackHours int           `yaml:"lookback_hours"`
-	CrimeKeywords []string      `yaml:"crime_keywords"`
-	ContentType   string        `yaml:"content_type"`
-	GroupType     string        `yaml:"group_type"`
-	DedupTTL      time.Duration `yaml:"dedup_ttl"` // Default: 8760h (1 year)
+	CheckInterval        time.Duration `yaml:"check_interval"`
+	RateLimitRPS         int           `yaml:"rate_limit_rps"`
+	LookbackHours        int           `yaml:"lookback_hours"`
+	CrimeKeywords        []string      `yaml:"crime_keywords"`
+	ContentType          string        `yaml:"content_type"`
+	GroupType            string        `yaml:"group_type"`
+	DedupTTL             time.Duration `yaml:"dedup_ttl"`             // Default: 8760h (1 year)
+	UseClassifiedContent bool          `yaml:"use_classified_content"` // Use classified_content indexes instead of articles
+	MinQualityScore      int           `yaml:"min_quality_score"`      // Minimum quality score for classified content (0-100)
+	IndexSuffix          string        `yaml:"index_suffix"`           // Index suffix (_articles or _classified_content)
 }
 
 type CityConfig struct {
@@ -176,6 +179,17 @@ func setDefaults(cfg *Config) {
 	}
 	if cfg.Sources.Timeout == 0 {
 		cfg.Sources.Timeout = 5 * time.Second
+	}
+	// Classified content defaults
+	if cfg.Service.MinQualityScore == 0 {
+		cfg.Service.MinQualityScore = 50 // Default minimum quality score
+	}
+	if cfg.Service.IndexSuffix == "" {
+		if cfg.Service.UseClassifiedContent {
+			cfg.Service.IndexSuffix = "_classified_content"
+		} else {
+			cfg.Service.IndexSuffix = "_articles"
+		}
 	}
 }
 

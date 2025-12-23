@@ -1,0 +1,23 @@
+# Development Dockerfile for Classifier Service
+# Uses hot-reload for development
+
+FROM golang:1.25-alpine
+
+WORKDIR /app
+
+# Install dependencies
+RUN apk add --no-cache git bash
+
+# Install air for hot-reload (optional but recommended for development)
+RUN go install github.com/air-verse/air@latest
+
+# Copy go mod files
+COPY go.mod go.sum* ./
+RUN go mod download
+
+# Development mode: source is mounted as volume, no build step needed
+
+EXPOSE 8070
+
+# Default command - can be overridden in docker-compose
+CMD ["go", "run", "main.go"]
