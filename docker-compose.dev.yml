@@ -171,6 +171,70 @@ services:
           cpus: '2'
           memory: 4G
 
+  # Classifier service - Development
+  classifier:
+    build:
+      context: ./classifier
+      dockerfile: Dockerfile.dev
+      args:
+        UID: ${UID:-1000}
+        GID: ${GID:-1000}
+    container_name: north-cloud-classifier-dev
+    # Run as host user to avoid permission issues with mounted volumes
+    user: "${UID:-1000}:${GID:-1000}"
+    ports:
+      - "${CLASSIFIER_PORT:-8071}:8070"
+    depends_on:
+      postgres-classifier:
+        condition: service_healthy
+      elasticsearch:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      - DB_HOST=postgres-classifier
+      - DB_PORT=5432
+      - DB_USER=${POSTGRES_CLASSIFIER_USER:-postgres}
+      - DB_PASSWORD=${POSTGRES_CLASSIFIER_PASSWORD:-postgres}
+      - DB_NAME=${POSTGRES_CLASSIFIER_DB:-classifier}
+      - DB_SSLMODE=disable
+      - ES_URL=http://elasticsearch:9200
+      - REDIS_URL=redis:6379
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-}
+      - APP_DEBUG=true
+      - APP_ENV=development
+      - CLASSIFIER_PORT=8070
+      - CLASSIFIER_ENABLED=${CLASSIFIER_ENABLED:-true}
+      - CLASSIFIER_CONCURRENCY=${CLASSIFIER_CONCURRENCY:-10}
+      - CLASSIFIER_BATCH_SIZE=${CLASSIFIER_BATCH_SIZE:-100}
+      # Use /tmp for caches to avoid permission issues with host user
+      - GOMODCACHE=/tmp/go-mod-cache
+      - GOCACHE=/tmp/go-build-cache
+    volumes:
+      # Mount source code for development
+      - ./classifier:/app
+      - /app/vendor  # Exclude vendor directory
+      # Mount config if it exists
+      - ./classifier/config.yml:/app/config.yml:ro
+      # Mount infrastructure module (if needed in future)
+      - ./infrastructure:/infrastructure
+      # Mount cache volumes to persist downloads across restarts
+      - classifier_go_mod_cache:/tmp/go-mod-cache
+      - classifier_go_build_cache:/tmp/go-build-cache
+    working_dir: /app
+    # Download dependencies from mounted go.mod/go.sum, then run
+    # Use -mod=mod to ignore vendor directory if present
+    command: ["sh", "-c", "go mod download && go run -mod=mod ./main.go"]
+    networks:
+      - north-cloud-network
+    restart: unless-stopped
+    # Development resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+
   # Streetcode (Drupal 11) - Development
   streetcode:
     build:
@@ -296,6 +360,9 @@ volumes:
   # Publisher cache volumes
   publisher_go_mod_cache:
   publisher_go_build_cache:
+  # Classifier cache volumes
+  classifier_go_mod_cache:
+  classifier_go_build_cache:
   # Dashboard cache volumes
   dashboard_npm_cache:
   dashboard_node_modules:
