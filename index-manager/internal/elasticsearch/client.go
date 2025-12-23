@@ -67,7 +67,9 @@ func NewClient(cfg *Config) (*Client, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to ping Elasticsearch: %w", err)
 	}
-	defer res.Body.Close()
+	defer func() {
+		_ = res.Body.Close()
+	}()
 
 	if res.IsError() {
 		return nil, fmt.Errorf("error pinging Elasticsearch: %s", res.String())
@@ -121,7 +123,9 @@ func (c *Client) CreateIndex(ctx context.Context, indexName string, mapping inte
 	if err != nil {
 		return fmt.Errorf("failed to create index: %w", err)
 	}
-	defer res.Body.Close()
+	defer func() {
+		_ = res.Body.Close()
+	}()
 
 	if res.IsError() {
 		body, _ := io.ReadAll(res.Body)
@@ -150,7 +154,9 @@ func (c *Client) DeleteIndex(ctx context.Context, indexName string) error {
 	if err != nil {
 		return fmt.Errorf("failed to delete index: %w", err)
 	}
-	defer res.Body.Close()
+	defer func() {
+		_ = res.Body.Close()
+	}()
 
 	if res.IsError() {
 		body, _ := io.ReadAll(res.Body)
@@ -166,7 +172,9 @@ func (c *Client) IndexExists(ctx context.Context, indexName string) (bool, error
 	if err != nil {
 		return false, fmt.Errorf("failed to check index existence: %w", err)
 	}
-	defer res.Body.Close()
+	defer func() {
+		_ = res.Body.Close()
+	}()
 
 	if res.StatusCode == http.StatusNotFound {
 		return false, nil
@@ -193,7 +201,9 @@ func (c *Client) ListIndices(ctx context.Context, pattern string) ([]string, err
 	if err != nil {
 		return nil, fmt.Errorf("failed to list indices: %w", err)
 	}
-	defer res.Body.Close()
+	defer func() {
+		_ = res.Body.Close()
+	}()
 
 	if res.IsError() {
 		body, _ := io.ReadAll(res.Body)
@@ -227,7 +237,9 @@ func (c *Client) GetIndexInfo(ctx context.Context, indexName string) (*IndexInfo
 	if err != nil {
 		return nil, fmt.Errorf("failed to get index stats: %w", err)
 	}
-	defer statsRes.Body.Close()
+	defer func() {
+		_ = statsRes.Body.Close()
+	}()
 
 	if statsRes.IsError() {
 		body, _ := io.ReadAll(statsRes.Body)
@@ -247,7 +259,9 @@ func (c *Client) GetIndexInfo(ctx context.Context, indexName string) (*IndexInfo
 	if err != nil {
 		return nil, fmt.Errorf("failed to get index health: %w", err)
 	}
-	defer healthRes.Body.Close()
+	defer func() {
+		_ = healthRes.Body.Close()
+	}()
 
 	var healthData map[string]interface{}
 	if err := json.NewDecoder(healthRes.Body).Decode(&healthData); err != nil {
@@ -262,7 +276,9 @@ func (c *Client) GetIndexInfo(ctx context.Context, indexName string) (*IndexInfo
 	if err != nil {
 		return nil, fmt.Errorf("failed to get index info: %w", err)
 	}
-	defer infoRes.Body.Close()
+	defer func() {
+		_ = infoRes.Body.Close()
+	}()
 
 	if infoRes.IsError() {
 		body, _ := io.ReadAll(infoRes.Body)
@@ -339,7 +355,9 @@ func (c *Client) GetIndexHealth(ctx context.Context, indexName string) (string, 
 	if err != nil {
 		return "", fmt.Errorf("failed to get index health: %w", err)
 	}
-	defer res.Body.Close()
+	defer func() {
+		_ = res.Body.Close()
+	}()
 
 	if res.IsError() {
 		body, _ := io.ReadAll(res.Body)
@@ -367,7 +385,9 @@ func (c *Client) GetIndexMapping(ctx context.Context, indexName string) (map[str
 	if err != nil {
 		return nil, fmt.Errorf("failed to get index mapping: %w", err)
 	}
-	defer res.Body.Close()
+	defer func() {
+		_ = res.Body.Close()
+	}()
 
 	if res.IsError() {
 		body, _ := io.ReadAll(res.Body)
@@ -405,7 +425,9 @@ func (c *Client) UpdateIndexMapping(ctx context.Context, indexName string, mappi
 	if err != nil {
 		return fmt.Errorf("failed to update index mapping: %w", err)
 	}
-	defer res.Body.Close()
+	defer func() {
+		_ = res.Body.Close()
+	}()
 
 	if res.IsError() {
 		body, _ := io.ReadAll(res.Body)
@@ -421,7 +443,9 @@ func (c *Client) GetClusterHealth(ctx context.Context) (map[string]interface{}, 
 	if err != nil {
 		return nil, fmt.Errorf("failed to get cluster health: %w", err)
 	}
-	defer res.Body.Close()
+	defer func() {
+		_ = res.Body.Close()
+	}()
 
 	if res.IsError() {
 		body, _ := io.ReadAll(res.Body)

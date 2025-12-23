@@ -182,7 +182,9 @@ func (c *Connection) ListIndexMetadataBySource(ctx context.Context, sourceName s
 	if err != nil {
 		return nil, fmt.Errorf("failed to list index metadata: %w", err)
 	}
-	defer rows.Close()
+	defer func() {
+		_ = rows.Close()
+	}()
 
 	var metadataList []*IndexMetadata
 	for rows.Next() {
@@ -225,7 +227,9 @@ func (c *Connection) ListIndexMetadataByType(ctx context.Context, indexType stri
 	if err != nil {
 		return nil, fmt.Errorf("failed to list index metadata: %w", err)
 	}
-	defer rows.Close()
+	defer func() {
+		_ = rows.Close()
+	}()
 
 	var metadataList []*IndexMetadata
 	for rows.Next() {

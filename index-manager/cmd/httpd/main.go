@@ -129,7 +129,11 @@ func main() {
 		logger.Error("Failed to connect to database", "error", err)
 		os.Exit(1)
 	}
-	defer db.Close()
+	defer func() {
+		if err := db.Close(); err != nil {
+			logger.Error("Failed to close database connection", "error", err)
+		}
+	}()
 	logger.Info("Database connection established")
 
 	// Initialize index service
