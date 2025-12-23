@@ -43,8 +43,10 @@ tasks:
       - 'echo "Coverage report generated: coverage.html"'
 
   lint:
-    desc: "Run linters"
+    desc: "Lint the Go code"
     cmds:
+      - go fmt ./...
+      - go vet ./...
       - golangci-lint run
 
   fmt:
