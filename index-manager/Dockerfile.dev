@@ -1,0 +1,34 @@
+# Development Dockerfile for Index Manager Service
+FROM golang:1.25-alpine
+
+WORKDIR /app
+
+# Install development tools
+RUN apk add --no-cache git ca-certificates
+
+# Create cache directories in /tmp
+# /tmp typically has 1777 (sticky bit) which is appropriate for shared temp space
+# These directories will be mounted as volumes in docker-compose
+RUN mkdir -p /tmp/go-mod-cache \
+             /tmp/go-build-cache && \
+    chmod 1777 /tmp/go-mod-cache \
+               /tmp/go-build-cache
+
+# Copy go mod files (for reference, actual install happens in container)
+COPY go.mod go.sum* ./
+
+# Copy source code (will be overridden by volume mount in dev)
+COPY . .
+
+# Expose port
+EXPOSE 8090
+
+# Note: Container runs as host user via docker-compose user directive
+# This eliminates permission issues with mounted volumes
+# Cache directories in /tmp are writable by any user
+# /app is mounted from host and owned by host user
+# If cache volumes have permission issues, remove them: docker volume rm index_manager_go_mod_cache index_manager_go_build_cache
+
+# Default command - can be overridden in docker-compose
+CMD ["sh", "-c", "go mod download && go run -mod=mod ./cmd/httpd/main.go"]
+

@@ -27,10 +27,10 @@ type Logger interface {
 
 // ProcessResult holds the result of processing a single item
 type ProcessResult struct {
-	Raw                *domain.RawContent
+	Raw                  *domain.RawContent
 	ClassificationResult *domain.ClassificationResult
-	ClassifiedContent  *domain.ClassifiedContent
-	Error              error
+	ClassifiedContent    *domain.ClassifiedContent
+	Error                error
 }
 
 // NewBatchProcessor creates a new batch processor

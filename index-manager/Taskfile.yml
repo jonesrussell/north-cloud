@@ -1,0 +1,100 @@
+version: '3'
+
+vars:
+  BINARY_NAME: index-manager
+  MAIN_PATH: ./cmd/httpd/main.go
+
+tasks:
+  default:
+    desc: "Show available tasks"
+    cmds:
+      - task --list
+
+  build:
+    desc: "Build the index-manager binary"
+    cmds:
+      - go build -o bin/{{.BINARY_NAME}} {{.MAIN_PATH}}
+
+  run:
+    desc: "Run the index-manager service"
+    cmds:
+      - go run {{.MAIN_PATH}}
+
+  test:
+    desc: "Run all tests"
+    cmds:
+      - go test -v ./...
+
+  test:unit:
+    desc: "Run unit tests"
+    cmds:
+      - go test -v ./internal/...
+
+  test:integration:
+    desc: "Run integration tests"
+    cmds:
+      - go test -v ./tests/integration/...
+
+  test:coverage:
+    desc: "Run tests with coverage"
+    cmds:
+      - go test -coverprofile=coverage.out ./...
+      - go tool cover -html=coverage.out -o coverage.html
+      - 'echo "Coverage report generated: coverage.html"'
+
+  lint:
+    desc: "Lint the Go code"
+    cmds:
+      - go fmt ./...
+      - go vet ./...
+      - golangci-lint run
+
+  fmt:
+    desc: "Format code"
+    cmds:
+      - go fmt ./...
+      - goimports -w .
+
+  tidy:
+    desc: "Tidy go.mod and go.sum"
+    cmds:
+      - go mod tidy
+
+  clean:
+    desc: "Clean build artifacts"
+    cmds:
+      - rm -rf bin/
+      - rm -f coverage.out coverage.html
+
+  docker:build:
+    desc: "Build Docker image"
+    cmds:
+      - docker build -t north-cloud-index-manager:latest .
+
+  docker:build:dev:
+    desc: "Build development Docker image"
+    cmds:
+      - docker build -f Dockerfile.dev -t north-cloud-index-manager:dev .
+
+  migrate:up:
+    desc: "Run database migrations"
+    cmds:
+      - psql -h localhost -p 5436 -U postgres -d index_manager -f migrations/001_create_index_metadata.sql
+
+  db:shell:
+    desc: "Open PostgreSQL shell"
+    cmds:
+      - psql -h localhost -p 5436 -U postgres -d index_manager
+
+  dev:
+    desc: "Run in development mode with hot-reload (requires air)"
+    cmds:
+      - air
+
+  install:tools:
+    desc: "Install development tools"
+    cmds:
+      - go install github.com/air-verse/air@latest
+      - go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+      - go install golang.org/x/tools/cmd/goimports@latest
+

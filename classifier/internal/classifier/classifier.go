@@ -20,10 +20,10 @@ type Classifier struct {
 
 // Config holds configuration for the classifier
 type Config struct {
-	Version              string
-	MinQualityScore      int
-	UpdateSourceRep      bool
-	QualityConfig        QualityConfig
+	Version                string
+	MinQualityScore        int
+	UpdateSourceRep        bool
+	QualityConfig          QualityConfig
 	SourceReputationConfig SourceReputationConfig
 }
 

@@ -12,11 +12,11 @@ import (
 
 // Handler handles HTTP requests for the classifier API
 type Handler struct {
-	classifier         *classifier.Classifier
-	batchProcessor     *processor.BatchProcessor
-	sourceRepScorer    *classifier.SourceReputationScorer
-	topicClassifier    *classifier.TopicClassifier
-	logger             Logger
+	classifier      *classifier.Classifier
+	batchProcessor  *processor.BatchProcessor
+	sourceRepScorer *classifier.SourceReputationScorer
+	topicClassifier *classifier.TopicClassifier
+	logger          Logger
 }
 
 // Logger defines the logging interface
@@ -317,11 +317,11 @@ func (h *Handler) GetSource(c *gin.Context) {
 	// TODO: Get full source details from database
 	// For now, return just the scoring result
 	c.JSON(http.StatusOK, gin.H{
-		"source_name":       sourceName,
-		"reputation_score":  result.Score,
-		"category":          result.Category,
-		"rank":              result.Rank,
-		"note":              "Full source details will be retrieved from database",
+		"source_name":      sourceName,
+		"reputation_score": result.Score,
+		"category":         result.Category,
+		"rank":             result.Rank,
+		"note":             "Full source details will be retrieved from database",
 	})
 }
 

@@ -14,12 +14,12 @@ type QualityScorer struct {
 
 // QualityConfig defines weights for different quality factors
 type QualityConfig struct {
-	WordCountWeight    float64 // Default: 0.25
-	MetadataWeight     float64 // Default: 0.25
-	RichnessWeight     float64 // Default: 0.25
-	ReadabilityWeight  float64 // Default: 0.25
-	MinWordCount       int     // Minimum word count threshold
-	OptimalWordCount   int     // Optimal word count for max score
+	WordCountWeight   float64 // Default: 0.25
+	MetadataWeight    float64 // Default: 0.25
+	RichnessWeight    float64 // Default: 0.25
+	ReadabilityWeight float64 // Default: 0.25
+	MinWordCount      int     // Minimum word count threshold
+	OptimalWordCount  int     // Optimal word count for max score
 }
 
 // QualityResult represents the quality scoring result

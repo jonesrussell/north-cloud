@@ -13,6 +13,7 @@ import (
 	"github.com/jonesrussell/gocrawl/internal/content"
 	"github.com/jonesrussell/gocrawl/internal/content/articles"
 	"github.com/jonesrussell/gocrawl/internal/content/page"
+	"github.com/jonesrussell/gocrawl/internal/content/rawcontent"
 	"github.com/jonesrussell/gocrawl/internal/crawler/events"
 	"github.com/jonesrussell/gocrawl/internal/domain"
 	"github.com/jonesrussell/gocrawl/internal/logger"
@@ -142,11 +143,11 @@ func createCollector(cfg *crawler.Config, log logger.Interface) (*colly.Collecto
 func NewCrawlerWithParams(p CrawlerParams) (*CrawlerResult, error) {
 	validator := createJobValidator()
 
-	// Create channels
+	// Create channels (kept for backward compatibility, but not actively used)
 	articleChannel := make(chan *domain.Article, ArticleChannelBufferSize)
 	pageChannel := make(chan *domain.Page, DefaultChannelBufferSize)
 
-	// Create processors
+	// Create processors (kept for backward compatibility)
 	articleProcessor := articles.NewProcessor(
 		p.Logger,
 		p.ArticleService,
@@ -167,6 +168,17 @@ func NewCrawlerWithParams(p CrawlerParams) (*CrawlerResult, error) {
 		pageChannel,
 	)
 
+	// Create raw content service and processor (primary processor for all content)
+	rawContentService := rawcontent.NewRawContentService(
+		p.Logger,
+		p.Storage,
+		p.Sources,
+	)
+	rawContentProcessor := rawcontent.NewProcessor(
+		p.Logger,
+		rawContentService,
+	)
+
 	// Create collector
 	collector, err := createCollector(p.Config, p.Logger)
 	if err != nil {
@@ -175,20 +187,21 @@ func NewCrawlerWithParams(p CrawlerParams) (*CrawlerResult, error) {
 
 	// Create crawler
 	c := &Crawler{
-		logger:           p.Logger,
-		collector:        collector,
-		bus:              p.Bus,
-		indexManager:     p.IndexManager,
-		sources:          p.Sources,
-		articleProcessor: articleProcessor,
-		pageProcessor:    pageProcessor,
-		state:            NewState(p.Logger),
-		done:             make(chan struct{}),
-		articleChannel:   articleChannel,
-		processors:       []content.Processor{articleProcessor, pageProcessor},
-		htmlProcessor:    NewHTMLProcessor(p.Logger, p.Sources),
-		cfg:              p.Config,
-		abortChan:        make(chan struct{}),
+		logger:              p.Logger,
+		collector:           collector,
+		bus:                 p.Bus,
+		indexManager:        p.IndexManager,
+		sources:             p.Sources,
+		articleProcessor:    articleProcessor,
+		pageProcessor:       pageProcessor,
+		rawContentProcessor: rawContentProcessor,
+		state:               NewState(p.Logger),
+		done:                make(chan struct{}),
+		articleChannel:      articleChannel,
+		processors:          []content.Processor{rawContentProcessor},
+		htmlProcessor:       NewHTMLProcessor(p.Logger, p.Sources),
+		cfg:                 p.Config,
+		abortChan:           make(chan struct{}),
 	}
 
 	c.linkHandler = NewLinkHandler(c)

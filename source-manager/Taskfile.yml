@@ -32,10 +32,19 @@ tasks:
       - go run {{.MAIN_PATH}} -config {{.CONFIG_FILE}}
 
   test:
-    desc: Run all tests
-    deps: [deps]
+    desc: "Run all tests"
     cmds:
       - go test -v ./...
+
+  test:unit:
+    desc: "Run unit tests"
+    cmds:
+      - go test -v ./internal/...
+
+  test:integration:
+    desc: "Run integration tests"
+    cmds:
+      - go test -v ./tests/integration/...
 
   test:coverage:
     desc: Run tests with coverage report
@@ -76,10 +85,10 @@ tasks:
       - go vet ./...
 
   lint:
-    desc: Run golangci-lint (if installed)
+    desc: "Lint the Go code"
     cmds:
-      - task: fmt
-      - task: vet
+      - go fmt ./...
+      - go vet ./...
       - golangci-lint run
 
   check:

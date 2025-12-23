@@ -1,0 +1,47 @@
+# Index Manager Service Configuration
+# Copy this file to config.yml and adjust values for your environment
+
+service:
+  name: "index-manager"
+  version: "1.0.0"
+  port: 8090
+  debug: true
+
+database:
+  host: "postgres-index-manager"
+  port: 5432
+  user: "postgres"
+  password: "postgres"
+  database: "index_manager"
+  sslmode: "disable"
+  max_connections: 25
+  max_idle_connections: 5
+  connection_max_lifetime: "1h"
+
+elasticsearch:
+  url: "http://elasticsearch:9200"
+  username: ""
+  password: ""
+  max_retries: 3
+  timeout: "30s"
+
+# Index type configurations
+index_types:
+  raw_content:
+    suffix: "_raw_content"
+    auto_create: true
+  classified_content:
+    suffix: "_classified_content"
+    auto_create: true
+  article:
+    suffix: "_articles"
+    auto_create: false  # Legacy, deprecated
+  page:
+    suffix: "_pages"
+    auto_create: false  # Legacy, deprecated
+
+logging:
+  level: "info" # debug, info, warn, error
+  format: "json" # json or console
+  output: "stdout"
+

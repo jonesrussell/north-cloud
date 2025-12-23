@@ -11,9 +11,7 @@ output:
     error: "❌"
 
 includes:
-  index: ./tasks/index.yml
   sources: ./tasks/sources.yml
-  test: ./tasks/test.yml
 
 tasks:
   default:
@@ -37,9 +35,7 @@ tasks:
     desc: "Run the web crawler for a single source defined in sources.yml"
     cmds:
       - echo '' > app.log
-      - go run main.go index delete --source {{.CLI_ARGS | trim}} --force || true
       - go run main.go crawl {{.CLI_ARGS | trim}}
-      - go run main.go index list
     interactive: true
 
   deadcode:
@@ -53,8 +49,6 @@ tasks:
     cmds:
       - go run main.go --help
 
-  # index:* tasks moved to includes.index
-
   job:
     desc: "Run the job scheduler for automated crawling based on sources.yml schedules"
     cmds:
@@ -67,7 +61,34 @@ tasks:
     cmds:
       - go fmt ./...
       - go vet ./...
-      - golangci-lint run ./...
+      - golangci-lint run
+
+  test:
+    desc: "Run all tests"
+    cmds:
+      - go test -v ./...
+
+  test:unit:
+    desc: "Run unit tests"
+    cmds:
+      - go test -v ./internal/...
+
+  test:integration:
+    desc: "Run integration tests"
+    cmds:
+      - go test -v ./tests/integration/...
+
+  test:features:
+    desc: "Run feature tests"
+    cmds:
+      - go test -v ./tests/features/...
+
+  test:coverage:
+    desc: "Run tests with coverage"
+    cmds:
+      - go test -coverprofile=coverage.out ./...
+      - go tool cover -html=coverage.out -o coverage.html
+      - 'echo "Coverage report generated: coverage.html"'
 
   search:
     desc: "Search crawled content"
@@ -77,8 +98,6 @@ tasks:
     interactive: true
 
   # sources:list moved to includes.sources
-
-  # test:* tasks moved to includes.test
 
   generate:
     desc: Generate code (mocks, etc.)
