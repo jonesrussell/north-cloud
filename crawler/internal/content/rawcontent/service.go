@@ -169,10 +169,10 @@ func extractSourceNameFromURL(urlStr string) string {
 
 	parts := strings.Split(urlStr, "/")
 	if len(parts) > 0 {
-		domain := parts[0]
-		domain = strings.ReplaceAll(domain, ".", "_")
-		domain = strings.ToLower(domain)
-		return domain
+		domainName := parts[0]
+		domainName = strings.ReplaceAll(domainName, ".", "_")
+		domainName = strings.ToLower(domainName)
+		return domainName
 	}
 
 	return "unknown_source"

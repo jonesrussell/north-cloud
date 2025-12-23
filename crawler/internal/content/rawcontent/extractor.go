@@ -36,7 +36,11 @@ type RawContentData struct {
 
 // ExtractRawContent extracts raw content from any HTML element without type assumptions.
 // Uses available selectors if provided, but falls back to generic extraction strategies.
-func ExtractRawContent(e *colly.HTMLElement, sourceURL string, titleSelector, bodySelector, containerSelector string, excludeSelectors []string) *RawContentData {
+func ExtractRawContent(
+	e *colly.HTMLElement,
+	sourceURL, titleSelector, bodySelector, containerSelector string,
+	excludeSelectors []string,
+) *RawContentData {
 	data := &RawContentData{
 		URL:       sourceURL,
 		CreatedAt: time.Now(),
@@ -92,40 +96,21 @@ func extractTitle(e *colly.HTMLElement, selector string) string {
 	return ""
 }
 
+const (
+	minHTMLContentLength = 50
+	minParagraphLength   = 20
+)
+
 // extractRawHTML extracts the raw HTML content from the page
 func extractRawHTML(e *colly.HTMLElement, containerSelector, bodySelector string, excludeSelectors []string) string {
 	// Try container selector first
-	if containerSelector != "" {
-		container := e.DOM.Find(containerSelector).First()
-		if container.Length() > 0 {
-			// Apply excludes
-			for _, exclude := range excludeSelectors {
-				if exclude != "" {
-					container.Find(exclude).Remove()
-				}
-			}
-			html, _ := container.Html()
-			if html != "" {
-				return html
-			}
-		}
+	if html := tryExtractHTMLFromSelector(e, containerSelector, excludeSelectors); html != "" {
+		return html
 	}
 
 	// Try body selector
-	if bodySelector != "" {
-		body := e.DOM.Find(bodySelector).First()
-		if body.Length() > 0 {
-			// Apply excludes
-			for _, exclude := range excludeSelectors {
-				if exclude != "" {
-					body.Find(exclude).Remove()
-				}
-			}
-			html, _ := body.Html()
-			if html != "" {
-				return html
-			}
-		}
+	if html := tryExtractHTMLFromSelector(e, bodySelector, excludeSelectors); html != "" {
+		return html
 	}
 
 	// Fallback: try common content containers
@@ -140,35 +125,64 @@ func extractRawHTML(e *colly.HTMLElement, containerSelector, bodySelector string
 	}
 
 	for _, sel := range fallbackSelectors {
-		container := e.DOM.Find(sel).First()
-		if container.Length() > 0 {
-			// Apply excludes
-			for _, exclude := range excludeSelectors {
-				if exclude != "" {
-					container.Find(exclude).Remove()
-				}
-			}
-			html, _ := container.Html()
-			if html != "" && len(strings.TrimSpace(html)) > 50 {
+		if html := tryExtractHTMLFromSelector(e, sel, excludeSelectors); html != "" {
+			if len(strings.TrimSpace(html)) > minHTMLContentLength {
 				return html
 			}
 		}
 	}
 
 	// Last resort: get body HTML (excluding common non-content areas)
-	body := e.DOM.Find("body")
-	if body.Length() > 0 {
-		// Remove common non-content elements
-		body.Find("header, footer, nav, aside, .header, .footer, .navigation, .sidebar, .menu, script, style").Remove()
-		html, _ := body.Html()
-		return html
+	return extractBodyHTML(e)
+}
+
+// tryExtractHTMLFromSelector attempts to extract HTML from a selector
+func tryExtractHTMLFromSelector(e *colly.HTMLElement, selector string, excludeSelectors []string) string {
+	if selector == "" {
+		return ""
 	}
 
-	return ""
+	container := e.DOM.Find(selector).First()
+	if container.Length() == 0 {
+		return ""
+	}
+
+	// Apply excludes
+	applyExcludes(container, excludeSelectors)
+
+	html, _ := container.Html()
+	return html
+}
+
+// applyExcludes applies exclude selectors to a container
+func applyExcludes(container *goquery.Selection, excludeSelectors []string) {
+	for _, exclude := range excludeSelectors {
+		if exclude != "" {
+			container.Find(exclude).Remove()
+		}
+	}
+}
+
+// extractBodyHTML extracts HTML from body element, removing non-content areas
+func extractBodyHTML(e *colly.HTMLElement) string {
+	body := e.DOM.Find("body")
+	if body.Length() == 0 {
+		return ""
+	}
+
+	// Remove common non-content elements
+	body.Find("header, footer, nav, aside, .header, .footer, .navigation, .sidebar, .menu, script, style").Remove()
+	html, _ := body.Html()
+	return html
 }
 
 // extractRawText extracts plain text from the page
-func extractRawText(e *colly.HTMLElement, containerSelector, bodySelector string, excludeSelectors []string, rawHTML string) string {
+func extractRawText(
+	e *colly.HTMLElement,
+	containerSelector, bodySelector string,
+	excludeSelectors []string,
+	rawHTML string,
+) string {
 	// If we have raw HTML, extract text from it
 	if rawHTML != "" {
 		doc, err := goquery.NewDocumentFromReader(strings.NewReader(rawHTML))
@@ -245,9 +259,9 @@ func extractFromBodyParagraphs(e *colly.HTMLElement, excludeSelectors []string) 
 
 	var textParts []string
 	paragraphs.Each(func(i int, s *goquery.Selection) {
-		text := strings.TrimSpace(s.Text())
-		if len(text) > 20 {
-			textParts = append(textParts, text)
+		paraText := strings.TrimSpace(s.Text())
+		if len(paraText) > minParagraphLength {
+			textParts = append(textParts, paraText)
 		}
 	})
 
@@ -296,15 +310,15 @@ func extractText(e *colly.HTMLElement, selector string) string {
 		if sel == "" {
 			continue
 		}
-		text := e.ChildText(sel)
-		if text != "" {
-			return strings.TrimSpace(text)
+		childText := e.ChildText(sel)
+		if childText != "" {
+			return strings.TrimSpace(childText)
 		}
 		element := e.DOM.Find(sel).First()
 		if element.Length() > 0 {
-			text := element.Text()
-			if text != "" {
-				return strings.TrimSpace(text)
+			elementText := element.Text()
+			if elementText != "" {
+				return strings.TrimSpace(elementText)
 			}
 		}
 	}

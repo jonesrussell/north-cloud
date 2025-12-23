@@ -131,8 +131,6 @@ const (
 	collectorCompletionTimeout = 5 * time.Minute
 	// cleanupTimeoutDuration is the timeout for waiting for cleanup goroutine to finish
 	cleanupTimeoutDuration = 5 * time.Second
-	// nilString is the string representation of nil
-	nilString = "nil"
 	// timeoutWarningInterval is the interval for logging timeout warnings
 	timeoutWarningInterval = 30 * time.Second
 )

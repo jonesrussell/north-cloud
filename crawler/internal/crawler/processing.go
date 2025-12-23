@@ -2,13 +2,11 @@
 package crawler
 
 import (
-	"fmt"
+	"errors"
 
 	colly "github.com/gocolly/colly/v2"
-	configtypes "github.com/jonesrussell/gocrawl/internal/config/types"
 	"github.com/jonesrussell/gocrawl/internal/content"
 	"github.com/jonesrussell/gocrawl/internal/content/contenttype"
-	sourcestypes "github.com/jonesrussell/gocrawl/internal/sources/types"
 )
 
 // ProcessHTML processes the HTML content as raw content for classification.
@@ -57,68 +55,13 @@ func (c *Crawler) ProcessHTML(e *colly.HTMLElement) {
 	c.state.IncrementProcessed()
 }
 
-// getSourceConfig gets the source configuration for the current source
-func (c *Crawler) getSourceConfig() *configtypes.Source {
-	sourceName := c.state.CurrentSource()
-
-	c.logger.Debug("Getting source configuration",
-		"source_name", sourceName,
-		"sources_manager_nil", c.sources == nil)
-
-	if sourceName == "" {
-		c.logger.Debug("Source name is empty, cannot get source configuration")
-		return nil
-	}
-
-	if c.sources == nil {
-		c.logger.Debug("Sources manager is nil, cannot get source configuration",
-			"source_name", sourceName)
-		return nil
-	}
-
-	sourceConfig := c.sources.FindByName(sourceName)
-	if sourceConfig == nil {
-		c.logger.Debug("Source not found by name",
-			"source_name", sourceName,
-			"search_method", "FindByName")
-		return nil
-	}
-
-	c.logger.Debug("Source found by name",
-		"source_name", sourceName,
-		"source_url", sourceConfig.URL,
-		"has_article_body_selector", func() bool {
-			config := sourcestypes.ConvertToConfigSource(sourceConfig)
-			return config != nil && config.Selectors.Article.Body != ""
-		}())
-
-	// Convert to configtypes.Source
-	return sourcestypes.ConvertToConfigSource(sourceConfig)
-}
-
-// selectProcessor selects the processor for raw content extraction.
-// All content is processed as raw content without type detection.
-func (c *Crawler) selectProcessor(e *colly.HTMLElement) content.Processor {
-	// Always use raw content processor for raw content extraction
-	// The classifier will handle content type classification
-	return c.rawContentProcessor
-}
-
-// getProcessorForType returns a processor for the given content type
-// All content types are processed as raw content - the classifier handles type detection
-func (c *Crawler) getProcessorForType(contentType contenttype.Type) content.Processor {
-	// Always use raw content processor for all content types
-	// The classifier will handle content type classification
-	return c.rawContentProcessor
-}
-
 // GetProcessor returns a processor for the given content type.
 // All content types are processed as raw content - the classifier handles type detection
 func (c *Crawler) GetProcessor(contentType contenttype.Type) (content.Processor, error) {
 	// Always use raw content processor for all content types
 	// The classifier will handle content type classification
 	if c.rawContentProcessor == nil {
-		return nil, fmt.Errorf("raw content processor not initialized")
+		return nil, errors.New("raw content processor not initialized")
 	}
 	return c.rawContentProcessor, nil
 }
