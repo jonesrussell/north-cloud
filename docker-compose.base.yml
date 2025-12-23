@@ -32,7 +32,7 @@ services:
     environment:
       POSTGRES_USER: ${POSTGRES_CRAWLER_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_CRAWLER_PASSWORD:-postgres}
-      POSTGRES_DB: ${POSTGRES_CRAWLER_DB:-gocrawl}
+      POSTGRES_DB: ${POSTGRES_CRAWLER_DB:-crawler}
     ports:
       - "${POSTGRES_CRAWLER_PORT:-5433}:5432"
     volumes:

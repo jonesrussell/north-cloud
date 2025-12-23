@@ -13,7 +13,7 @@ RUN go mod download
 COPY . .
 
 # Build the application
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o gocrawl ./main.go
+RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o crawler ./main.go
 
 # Final stage
 FROM alpine:latest
@@ -26,7 +26,7 @@ RUN apk --no-cache add ca-certificates tzdata && \
 WORKDIR /app
 
 # Copy binary from builder
-COPY --from=builder /build/gocrawl .
+COPY --from=builder /build/crawler .
 
 # Copy config file (if exists)
 COPY --from=builder /build/config.yaml* ./
@@ -38,6 +38,6 @@ RUN chown -R appuser:appuser /app
 USER appuser
 
 # Default command - can be overridden in docker-compose
-# When volume is mounted, it will use bin/gocrawl if available
-CMD ["./gocrawl"]
+# When volume is mounted, it will use bin/crawler if available
+CMD ["./crawler"]
 

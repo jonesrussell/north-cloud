@@ -123,10 +123,10 @@ const (
 	DefaultESAddress = "http://localhost:9200"
 
 	// DefaultESIndex is the default Elasticsearch index name
-	DefaultESIndex = "gocrawl"
+	DefaultESIndex = "crawler"
 
 	// DefaultAppName is the default application name
-	DefaultAppName = "gocrawl"
+	DefaultAppName = "crawler"
 
 	// DefaultAppVersion is the default application version
 	DefaultAppVersion = "1.0.0"

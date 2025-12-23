@@ -67,7 +67,7 @@ docker-compose -f docker-compose.base.yml down
 docker exec -it north-cloud-postgres-source-manager psql -U postgres -d gosources
 
 # Crawler database
-docker exec -it north-cloud-postgres-crawler psql -U postgres -d gocrawl
+docker exec -it north-cloud-postgres-crawler psql -U postgres -d crawler
 
 # Streetcode database
 docker exec -it north-cloud-postgres-streetcode psql -U postgres -d streetcode

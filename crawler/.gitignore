@@ -39,7 +39,7 @@ secrets/
 bin/
 build/
 dist/
-gocrawl
+crawler
 *.exe
 *.exe~
 *.dll

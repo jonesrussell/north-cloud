@@ -87,7 +87,7 @@ func TestNew(t *testing.T) {
 			opts: nil,
 			expected: &app.Config{
 				Environment: "development",
-				Name:        "gocrawl",
+				Name:        "crawler",
 				Version:     "0.1.0",
 				Debug:       false,
 			},

@@ -54,7 +54,7 @@ This document provides a comprehensive guide for AI assistants working with the 
 │                                                                          │
 │  ┌──────────┐         ┌──────────────┐        ┌──────────────┐        │
 │  │ Crawler  │────────▶│    Source    │        │  Classifier  │        │
-│  │(gocrawl) │         │   Manager    │        │  (Go 1.25)   │        │
+│  │(crawler) │         │   Manager    │        │  (Go 1.25)   │        │
 │  │          │         │  (Go + Vue)  │        │              │        │
 │  └────┬─────┘         └──────────────┘        └──────▲───────┘        │
 │       │                                                │                │
@@ -116,11 +116,11 @@ The platform uses a **three-stage content pipeline** for intelligent article pro
 
 ### Service Descriptions
 
-#### 1. **crawler** (gocrawl)
+#### 1. **crawler** (crawler)
 - **Location**: `/crawler`
 - **Language**: Go 1.25+ (Backend), Vue.js 3 (Frontend)
 - **Purpose**: Web crawler for scraping news articles
-- **Database**: `postgres-crawler` (gocrawl database)
+- **Database**: `postgres-crawler` (crawler database)
 - **Ports**: 8060 (API), 3001 (Frontend - development)
 - **Key Features**:
   - Configurable crawling rules
@@ -220,7 +220,7 @@ The platform uses a **three-stage content pipeline** for intelligent article pro
 
 #### PostgreSQL Databases
 - **postgres-source-manager**: Source manager database (gosources)
-- **postgres-crawler**: Crawler database (gocrawl)
+- **postgres-crawler**: Crawler database (crawler)
 - **postgres-streetcode**: Drupal database (streetcode)
 - Each service has its own isolated database
 
@@ -427,7 +427,7 @@ The codebase leverages Go 1.25 improvements:
 ### 4. Database Conventions
 
 #### Naming
-- Database names: `gosources`, `gocrawl`, `streetcode`
+- Database names: `gosources`, `crawler`, `streetcode`
 - Container names: `postgres-{service}`
 - Port exposure: 5432 (internal), mapped externally if needed
 
@@ -551,7 +551,7 @@ go test ./...
 cd frontend && npm test
 
 # Build
-go build -o bin/gocrawl main.go
+go build -o bin/crawler main.go
 ```
 
 **Job Scheduler Notes**:
@@ -645,7 +645,7 @@ drush updb                  # Update database
 docker exec -it north-cloud-postgres-source-manager psql -U postgres -d gosources
 
 # Crawler database
-docker exec -it north-cloud-postgres-crawler psql -U postgres -d gocrawl
+docker exec -it north-cloud-postgres-crawler psql -U postgres -d crawler
 
 # Streetcode database
 docker exec -it north-cloud-postgres-streetcode psql -U postgres -d streetcode

@@ -22,7 +22,7 @@ Connect to the database and run the migration files:
 
 ```bash
 # Connect to database
-docker exec -it north-cloud-postgres-crawler psql -U postgres -d gocrawl
+docker exec -it north-cloud-postgres-crawler psql -U postgres -d crawler
 
 # Run migration
 \i /migrations/001_create_jobs_table.up.sql
@@ -43,7 +43,7 @@ sudo mv migrate /usr/local/bin/
 2. Run migrations:
 ```bash
 # Set database URL
-export DATABASE_URL="postgresql://postgres:postgres@localhost:5433/gocrawl?sslmode=disable"
+export DATABASE_URL="postgresql://postgres:postgres@localhost:5433/crawler?sslmode=disable"
 
 # Run all pending migrations
 migrate -path ./migrations -database "$DATABASE_URL" up
@@ -77,4 +77,4 @@ The migration also creates:
 
 ==========
 
-cd /home/jones/dev/north-cloud/crawler && docker run --rm --network north-cloud_north-cloud-network -v "$(pwd)/migrations:/migrations" migrate/migrate -path /migrations -database "postgresql://postgres:postgres@postgres-crawler:5432/gocrawl?sslmode=disable" up 2>&1
+cd /home/jones/dev/north-cloud/crawler && docker run --rm --network north-cloud_north-cloud-network -v "$(pwd)/migrations:/migrations" migrate/migrate -path /migrations -database "postgresql://postgres:postgres@postgres-crawler:5432/crawler?sslmode=disable" up 2>&1

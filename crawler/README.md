@@ -22,7 +22,7 @@ A web crawler and search engine built with Go. It crawls websites, extracts cont
 1. Clone the repository:
 ```bash
 git clone https://github.com/jonesrussell/north-cloud/crawler.git
-cd gocrawl
+cd crawler
 ```
 
 2. Install dependencies:
@@ -38,8 +38,8 @@ cp config.example.yaml config.yaml
 
 4. Build and run:
 ```bash
-go build -o bin/gocrawl
-./bin/gocrawl
+go build -o bin/crawler
+./bin/crawler
 ```
 
 The service starts an HTTP server that provides:

@@ -190,7 +190,7 @@ func LoadConfig() (*Config, error) {
 
 	// Set default app values if not set
 	if cfg.App.Name == "" {
-		cfg.App.Name = "gocrawl"
+		cfg.App.Name = "crawler"
 	}
 	if cfg.App.Version == "" {
 		cfg.App.Version = "1.0.0"

@@ -45,7 +45,7 @@ func (c *Config) Validate() error {
 func New(opts ...Option) *Config {
 	cfg := &Config{
 		Environment: "development",
-		Name:        "gocrawl",
+		Name:        "crawler",
 		Version:     "0.1.0",
 		Debug:       false,
 	}
@@ -91,7 +91,7 @@ func WithDebug(debug bool) Option {
 // NewConfig creates a new Config instance with default values.
 func NewConfig() *Config {
 	return &Config{
-		Name:        "gocrawl",
+		Name:        "crawler",
 		Version:     "1.0.0",
 		Environment: "development",
 		Debug:       false,

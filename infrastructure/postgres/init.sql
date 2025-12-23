@@ -40,7 +40,7 @@ END $$;
 -- 1. source-manager: Creates 'gosources' database
 --    - Run migrations from ./source-manager/migrations/
 -- 
--- 2. crawler: Creates 'gocrawl' database  
+-- 2. crawler: Creates 'crawler' database  
 --    - Run migrations via crawler's migration system
 -- 
 -- 3. streetcode: Creates 'streetcode' database

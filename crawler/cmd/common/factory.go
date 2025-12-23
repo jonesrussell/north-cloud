@@ -52,7 +52,7 @@ func InitConfig() error {
 func setDefaults() {
 	// App defaults - production safe
 	viper.SetDefault("app", map[string]any{
-		"name":        "gocrawl",
+		"name":        "crawler",
 		"version":     "1.0.0",
 		"environment": "production",
 		"debug":       false,
@@ -97,7 +97,7 @@ func setDefaults() {
 		},
 		"bulk_size":      config.DefaultBulkSize,
 		"flush_interval": "1s",
-		"index_prefix":   "gocrawl",
+		"index_prefix":   "crawler",
 		"discover_nodes": false,
 	})
 

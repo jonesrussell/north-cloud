@@ -24,7 +24,7 @@ services:
       - DB_PORT=5432
       - DB_USER=${POSTGRES_CRAWLER_USER:-postgres}
       - DB_PASSWORD=${POSTGRES_CRAWLER_PASSWORD:-postgres}
-      - DB_NAME=${POSTGRES_CRAWLER_DB:-gocrawl}
+      - DB_NAME=${POSTGRES_CRAWLER_DB:-crawler}
       - DB_SSLMODE=disable
       - APP_DEBUG=true
       - APP_ENV=development
