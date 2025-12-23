@@ -14,7 +14,6 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/jonesrussell/gocrawl/cmd/crawl"
 	"github.com/jonesrussell/gocrawl/cmd/httpd"
-	"github.com/jonesrussell/gocrawl/cmd/index"
 	cmdscheduler "github.com/jonesrussell/gocrawl/cmd/scheduler"
 	"github.com/jonesrussell/gocrawl/cmd/search"
 	cmdsources "github.com/jonesrussell/gocrawl/cmd/sources"
@@ -79,7 +78,6 @@ func init() {
 
 	// Add subcommands
 	rootCmd.AddCommand(crawl.Command())
-	rootCmd.AddCommand(index.Command())
 	rootCmd.AddCommand(cmdsources.NewSourcesCommand())
 	rootCmd.AddCommand(search.Command())
 	rootCmd.AddCommand(httpd.Command())

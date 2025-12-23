@@ -125,11 +125,6 @@ func (c *Config) validateSearchConfig() error {
 // Validate validates the configuration based on the current command.
 func (c *Config) Validate() error {
 	switch c.Command {
-	case commands.IndicesList, commands.IndicesDelete, commands.IndicesCreate:
-		if err := c.Elasticsearch.Validate(); err != nil {
-			return fmt.Errorf("elasticsearch: %w", err)
-		}
-
 	case commands.Crawl:
 		if err := c.validateCrawlConfig(); err != nil {
 			return err

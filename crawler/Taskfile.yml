@@ -11,7 +11,6 @@ output:
     error: "❌"
 
 includes:
-  index: ./tasks/index.yml
   sources: ./tasks/sources.yml
   test: ./tasks/test.yml
 
@@ -37,9 +36,7 @@ tasks:
     desc: "Run the web crawler for a single source defined in sources.yml"
     cmds:
       - echo '' > app.log
-      - go run main.go index delete --source {{.CLI_ARGS | trim}} --force || true
       - go run main.go crawl {{.CLI_ARGS | trim}}
-      - go run main.go index list
     interactive: true
 
   deadcode:
@@ -52,8 +49,6 @@ tasks:
     desc: "Show available commands"
     cmds:
       - go run main.go --help
-
-  # index:* tasks moved to includes.index
 
   job:
     desc: "Run the job scheduler for automated crawling based on sources.yml schedules"
