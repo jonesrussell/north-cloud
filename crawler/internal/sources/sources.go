@@ -19,17 +19,11 @@ import (
 	storagetypes "github.com/jonesrussell/gocrawl/internal/storage/types"
 )
 
-// Interface defines the interface for managing sources.
+// Interface defines the read-only interface for accessing sources.
 type Interface interface {
 	// ListSources retrieves all sources.
 	ListSources(ctx context.Context) ([]*Config, error)
-	// AddSource adds a new source.
-	AddSource(ctx context.Context, source *Config) error
-	// UpdateSource updates an existing source.
-	UpdateSource(ctx context.Context, source *Config) error
-	// DeleteSource deletes a source by name.
-	DeleteSource(ctx context.Context, name string) error
-	// ValidateSource validates a source configuration and ensures required indices exist.
+	// ValidateSource validates a source configuration and returns the validated source.
 	ValidateSource(
 		ctx context.Context,
 		sourceName string,
@@ -387,61 +381,9 @@ func (s *Sources) ListSources(ctx context.Context) ([]*Config, error) {
 	return result, nil
 }
 
-// AddSource adds a new source.
-func (s *Sources) AddSource(ctx context.Context, source *Config) error {
-	// Validate the source configuration
-	if source == nil {
-		return ErrInvalidSource
-	}
-
-	// Check if source already exists
-	if s.FindByName(source.Name) != nil {
-		return ErrSourceExists
-	}
-
-	s.sources = append(s.sources, *source)
-	s.metrics.SourceCount = int64(len(s.sources))
-	s.metrics.LastUpdated = time.Now()
-	return nil
-}
-
-// UpdateSource updates an existing source.
-func (s *Sources) UpdateSource(ctx context.Context, source *Config) error {
-	// Validate the source configuration
-	if source == nil {
-		return ErrInvalidSource
-	}
-
-	// Check if source exists
-	if s.FindByName(source.Name) == nil {
-		return ErrSourceNotFound
-	}
-
-	for i := range s.sources {
-		if s.sources[i].Name == source.Name {
-			s.sources[i] = *source
-			s.metrics.LastUpdated = time.Now()
-			return nil
-		}
-	}
-	return ErrSourceNotFound
-}
-
-// DeleteSource deletes a source by name.
-func (s *Sources) DeleteSource(ctx context.Context, name string) error {
-	for i := range s.sources {
-		if s.sources[i].Name == name {
-			s.sources = append(s.sources[:i], s.sources[i+1:]...)
-			s.metrics.SourceCount = int64(len(s.sources))
-			s.metrics.LastUpdated = time.Now()
-			return nil
-		}
-	}
-	return fmt.Errorf("source not found: %s", name)
-}
-
 // ValidateSource validates a source configuration and returns the validated source.
 // It checks if the source exists and is properly configured.
+// Note: Index creation is now handled by the raw content pipeline, not here.
 func (s *Sources) ValidateSource(
 	ctx context.Context,
 	sourceName string,
@@ -488,24 +430,9 @@ func (s *Sources) ValidateSource(
 	// Convert to configtypes.Source
 	source := types.ConvertToConfigSource(selectedSource)
 
-	// Ensure article index exists if specified
-	if selectedSource.ArticleIndex != "" {
-		if indexErr := indexManager.EnsureArticleIndex(ctx, selectedSource.ArticleIndex); indexErr != nil {
-			return nil, fmt.Errorf("failed to ensure article index exists: %w", indexErr)
-		}
-	}
-
-	// Ensure page index exists if specified
-	// Use PageIndex if available, fallback to Index for backward compatibility
-	pageIndexName := selectedSource.PageIndex
-	if pageIndexName == "" {
-		pageIndexName = selectedSource.Index
-	}
-	if pageIndexName != "" {
-		if pageErr := indexManager.EnsurePageIndex(ctx, pageIndexName); pageErr != nil {
-			return nil, fmt.Errorf("failed to ensure page index exists: %w", pageErr)
-		}
-	}
+	// Note: Legacy article and page index creation has been removed.
+	// The system now uses the raw content pipeline which creates {source}_raw_content indexes.
+	// The indexManager parameter is kept for interface compatibility but is no longer used here.
 
 	return source, nil
 }
