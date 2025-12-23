@@ -42,22 +42,19 @@ go build -o bin/gocrawl
 ./bin/gocrawl
 ```
 
-## Basic Usage
+The service starts an HTTP server that provides:
+- REST API for job management (`/api/v1/jobs`)
+- Search API for querying content
+- Automatic job scheduling for crawling
 
-List available sources:
-```bash
-./bin/gocrawl sources list
-```
+## Configuration
 
-Start crawling a source:
-```bash
-./bin/gocrawl crawl <source-name>
-```
+Configuration can be provided via:
+- Environment variables (prefixed with `APP_`, `LOG_`, `ELASTICSEARCH_`, etc.)
+- Config file (`config.yaml` in current directory or `./config/`)
+- `.env` file in the current directory
 
-Search content:
-```bash
-./bin/gocrawl search "your search query"
-```
+See `config.example.yaml` for available configuration options.
 
 ## Development
 

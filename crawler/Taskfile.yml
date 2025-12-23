@@ -10,8 +10,6 @@ output:
     warning: "⚠️"
     error: "❌"
 
-includes:
-  sources: ./tasks/sources.yml
 
 tasks:
   default:
@@ -21,7 +19,7 @@ tasks:
   api:
     desc: "Run the HTTP API server"
     cmds:
-      - go run main.go httpd
+      - go run main.go
     ignore_error: true
     interactive: true
 
@@ -31,12 +29,6 @@ tasks:
       - mkdir -p bin
       - go build -o bin/gocrawl main.go
 
-  crawl:
-    desc: "Run the web crawler for a single source defined in sources.yml"
-    cmds:
-      - echo '' > app.log
-      - go run main.go crawl {{.CLI_ARGS | trim}}
-    interactive: true
 
   deadcode:
     desc: "Find unreachable functions in the codebase"
@@ -44,17 +36,7 @@ tasks:
       - deadcode -test -generated ./...
     ignore_error: true
 
-  help:
-    desc: "Show available commands"
-    cmds:
-      - go run main.go --help
 
-  job:
-    desc: "Run the job scheduler for automated crawling based on sources.yml schedules"
-    cmds:
-      - go run main.go job
-    ignore_error: true
-    interactive: true
 
   lint:
     desc: "Lint the Go code"
@@ -90,14 +72,6 @@ tasks:
       - go tool cover -html=coverage.out -o coverage.html
       - 'echo "Coverage report generated: coverage.html"'
 
-  search:
-    desc: "Search crawled content"
-    cmds:
-      - go run main.go search -q "{{.CLI_ARGS}}" -i elliotlake_elliotlaketoday_articles
-    ignore_error: true
-    interactive: true
-
-  # sources:list moved to includes.sources
 
   generate:
     desc: Generate code (mocks, etc.)
@@ -110,6 +84,3 @@ tasks:
       - rm -rf bin/
       - rm -rf testutils/mocks/
 
-  # sources:add moved to includes.sources
-
-  # sources:remove moved to includes.sources

@@ -123,10 +123,10 @@ const (
 
 ### Starting the Scheduler
 
-The scheduler starts automatically with the `httpd` command:
+The scheduler starts automatically when the service starts:
 
 ```bash
-./gocrawl httpd
+./gocrawl
 ```
 
 Logs will show:
