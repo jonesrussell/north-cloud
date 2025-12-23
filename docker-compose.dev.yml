@@ -235,6 +235,63 @@ services:
           cpus: '2'
           memory: 2G
 
+  # Index Manager service - Development
+  index-manager:
+    build:
+      context: ./index-manager
+      dockerfile: Dockerfile.dev
+      args:
+        UID: ${UID:-1000}
+        GID: ${GID:-1000}
+    container_name: north-cloud-index-manager-dev
+    # Run as host user to avoid permission issues with mounted volumes
+    user: "${UID:-1000}:${GID:-1000}"
+    ports:
+      - "${INDEX_MANAGER_PORT:-8090}:8090"
+    depends_on:
+      postgres-index-manager:
+        condition: service_healthy
+      elasticsearch:
+        condition: service_healthy
+    environment:
+      - INDEX_MANAGER_PORT=8090
+      - POSTGRES_INDEX_MANAGER_HOST=postgres-index-manager
+      - POSTGRES_INDEX_MANAGER_PORT=5432
+      - POSTGRES_INDEX_MANAGER_USER=${POSTGRES_INDEX_MANAGER_USER:-postgres}
+      - POSTGRES_INDEX_MANAGER_PASSWORD=${POSTGRES_INDEX_MANAGER_PASSWORD:-postgres}
+      - POSTGRES_INDEX_MANAGER_DB=${POSTGRES_INDEX_MANAGER_DB:-index_manager}
+      - ELASTICSEARCH_URL=http://elasticsearch:9200
+      - CONFIG_PATH=/app/config.yml
+      - APP_DEBUG=true
+      - APP_ENV=development
+      # Use /tmp for caches to avoid permission issues with host user
+      - GOMODCACHE=/tmp/go-mod-cache
+      - GOCACHE=/tmp/go-build-cache
+    volumes:
+      # Mount source code for development
+      - ./index-manager:/app
+      - /app/vendor  # Exclude vendor directory
+      # Mount config if it exists
+      - ./index-manager/config.yml:/app/config.yml:ro
+      # Mount infrastructure module (if needed in future)
+      - ./infrastructure:/infrastructure
+      # Mount cache volumes to persist downloads across restarts
+      - index_manager_go_mod_cache:/tmp/go-mod-cache
+      - index_manager_go_build_cache:/tmp/go-build-cache
+    working_dir: /app
+    # Download dependencies from mounted go.mod/go.sum, then run
+    # Use -mod=mod to ignore vendor directory if present
+    command: ["sh", "-c", "go mod download && go run -mod=mod ./cmd/httpd/main.go"]
+    networks:
+      - north-cloud-network
+    restart: unless-stopped
+    # Development resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+
   # Streetcode (Drupal 11) - Development
   streetcode:
     build:
@@ -363,6 +420,9 @@ volumes:
   # Classifier cache volumes
   classifier_go_mod_cache:
   classifier_go_build_cache:
+  # Index Manager cache volumes
+  index_manager_go_mod_cache:
+  index_manager_go_build_cache:
   # Dashboard cache volumes
   dashboard_npm_cache:
   dashboard_node_modules:

@@ -163,6 +163,47 @@ services:
           cpus: '1'
           memory: 1G
 
+  # Index Manager service - Production
+  index-manager:
+    build:
+      context: ./index-manager
+      dockerfile: Dockerfile
+      args:
+        - BUILD_ENV=production
+    container_name: north-cloud-index-manager
+    ports:
+      - "${INDEX_MANAGER_PORT:-8090}:8090"
+    depends_on:
+      postgres-index-manager:
+        condition: service_healthy
+      elasticsearch:
+        condition: service_healthy
+    environment:
+      - INDEX_MANAGER_PORT=8090
+      - POSTGRES_INDEX_MANAGER_HOST=postgres-index-manager
+      - POSTGRES_INDEX_MANAGER_PORT=5432
+      - POSTGRES_INDEX_MANAGER_USER=${POSTGRES_INDEX_MANAGER_USER}
+      - POSTGRES_INDEX_MANAGER_PASSWORD=${POSTGRES_INDEX_MANAGER_PASSWORD}
+      - POSTGRES_INDEX_MANAGER_DB=${POSTGRES_INDEX_MANAGER_DB:-index_manager}
+      - ELASTICSEARCH_URL=http://elasticsearch:9200
+      - CONFIG_PATH=/root/config.yml
+      - APP_DEBUG=false
+      - APP_ENV=production
+    volumes:
+      # Only mount config, not source code
+      - ./index-manager/config.yml:/root/config.yml:ro
+    networks:
+      - north-cloud-network
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
   # Nginx reverse proxy - Production
   nginx:
     image: nginx:alpine

@@ -86,6 +86,27 @@ services:
     networks:
       - north-cloud-network
 
+  # PostgreSQL for index-manager
+  postgres-index-manager:
+    image: postgres:16-alpine
+    container_name: north-cloud-postgres-index-manager
+    environment:
+      POSTGRES_USER: ${POSTGRES_INDEX_MANAGER_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_INDEX_MANAGER_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_INDEX_MANAGER_DB:-index_manager}
+    ports:
+      - "${POSTGRES_INDEX_MANAGER_PORT:-5436}:5432"
+    volumes:
+      - postgres_index_manager_data:/var/lib/postgresql/data
+      - ./index-manager/migrations:/migrations:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_INDEX_MANAGER_USER:-postgres}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - north-cloud-network
+
   # Elasticsearch for publisher
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:9.2.2
@@ -176,6 +197,7 @@ volumes:
   postgres_crawler_data:
   postgres_streetcode_data:
   postgres_classifier_data:
+  postgres_index_manager_data:
   elasticsearch_data:
   redis_data:
   streetcode_data:
