@@ -84,7 +84,7 @@ func TestQualityScorer_Score_MediumQuality(t *testing.T) {
 		ID:              "medium-quality",
 		Title:           "Decent Article",
 		RawText:         string(make([]byte, 800)),
-		WordCount:       400,                       // Medium word count
+		WordCount:       400, // Medium word count
 		MetaDescription: "A brief description",
 		OGImage:         "https://example.com/image.jpg",
 	}

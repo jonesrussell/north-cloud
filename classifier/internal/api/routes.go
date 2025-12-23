@@ -16,8 +16,8 @@ func SetupRoutes(router *gin.Engine, handler *Handler) {
 		// Classification endpoints
 		classify := v1.Group("/classify")
 		{
-			classify.POST("", handler.Classify)              // POST /api/v1/classify
-			classify.POST("/batch", handler.ClassifyBatch)   // POST /api/v1/classify/batch
+			classify.POST("", handler.Classify)                           // POST /api/v1/classify
+			classify.POST("/batch", handler.ClassifyBatch)                // POST /api/v1/classify/batch
 			classify.GET("/:content_id", handler.GetClassificationResult) // GET /api/v1/classify/:content_id
 		}
 
@@ -33,17 +33,17 @@ func SetupRoutes(router *gin.Engine, handler *Handler) {
 		// Source reputation endpoints
 		sources := v1.Group("/sources")
 		{
-			sources.GET("", handler.ListSources)                 // GET /api/v1/sources
-			sources.GET("/:name", handler.GetSource)             // GET /api/v1/sources/:name
-			sources.PUT("/:name", handler.UpdateSource)          // PUT /api/v1/sources/:name
-			sources.GET("/:name/stats", handler.GetSourceStats)  // GET /api/v1/sources/:name/stats
+			sources.GET("", handler.ListSources)                // GET /api/v1/sources
+			sources.GET("/:name", handler.GetSource)            // GET /api/v1/sources/:name
+			sources.PUT("/:name", handler.UpdateSource)         // PUT /api/v1/sources/:name
+			sources.GET("/:name/stats", handler.GetSourceStats) // GET /api/v1/sources/:name/stats
 		}
 
 		// Statistics endpoints
 		stats := v1.Group("/stats")
 		{
-			stats.GET("", handler.GetStats)                    // GET /api/v1/stats
-			stats.GET("/topics", handler.GetTopicStats)        // GET /api/v1/stats/topics
+			stats.GET("", handler.GetStats)                      // GET /api/v1/stats
+			stats.GET("/topics", handler.GetTopicStats)          // GET /api/v1/stats/topics
 			stats.GET("/sources", handler.GetSourceDistribution) // GET /api/v1/stats/sources
 		}
 	}

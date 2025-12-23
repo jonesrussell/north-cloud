@@ -234,7 +234,7 @@ func TestSourceReputationScorer_DetermineRank(t *testing.T) {
 		totalArticles int
 		expectedRank  string
 	}{
-		{"new high score", 85, 5, "moderate"},       // Not enough articles for trusted
+		{"new high score", 85, 5, "moderate"},         // Not enough articles for trusted
 		{"established high score", 85, 20, "trusted"}, // Enough articles for trusted
 		{"moderate score", 60, 15, "moderate"},
 		{"low score", 40, 10, "low"},

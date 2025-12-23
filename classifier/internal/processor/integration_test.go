@@ -135,12 +135,12 @@ func createTestClassifier(logger *mockLogger) *classifier.Classifier {
 
 // mockESClient implements ElasticsearchClient for integration testing
 type mockESClient struct {
-	rawContent         []*domain.RawContent
-	classifiedContent  []*domain.ClassifiedContent
-	statusUpdates      map[string]string
-	queryError         error
-	bulkIndexError     error
-	updateStatusError  error
+	rawContent        []*domain.RawContent
+	classifiedContent []*domain.ClassifiedContent
+	statusUpdates     map[string]string
+	queryError        error
+	bulkIndexError    error
+	updateStatusError error
 }
 
 func newMockESClient() *mockESClient {
@@ -427,8 +427,8 @@ func TestIntegration_RateLimitedProcessing(t *testing.T) {
 	batchProcessor := NewBatchProcessor(testClassifier, 2, logger)
 
 	// Create rate-limited processor with low RPS for testing
-	esRPS := 10  // 10 requests per second for ES
-	dbRPS := 10  // 10 requests per second for DB
+	esRPS := 10 // 10 requests per second for ES
+	dbRPS := 10 // 10 requests per second for DB
 	rateLimitedProc := NewRateLimitedProcessor(batchProcessor, esRPS, dbRPS, logger)
 
 	// Process with rate limiting

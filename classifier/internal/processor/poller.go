@@ -234,21 +234,21 @@ func (p *Poller) saveHistory(ctx context.Context, results []*ProcessResult) erro
 		}
 
 		history := &domain.ClassificationHistory{
-			ContentID:            result.Raw.ID,
-			ContentURL:           result.Raw.URL,
-			SourceName:           result.Raw.SourceName,
-			ContentType:          result.ClassificationResult.ContentType,
-			ContentSubtype:       result.ClassificationResult.ContentSubtype,
-			QualityScore:         result.ClassificationResult.QualityScore,
-			Topics:               result.ClassificationResult.Topics,
-			IsCrimeRelated:       result.ClassificationResult.IsCrimeRelated,
+			ContentID:             result.Raw.ID,
+			ContentURL:            result.Raw.URL,
+			SourceName:            result.Raw.SourceName,
+			ContentType:           result.ClassificationResult.ContentType,
+			ContentSubtype:        result.ClassificationResult.ContentSubtype,
+			QualityScore:          result.ClassificationResult.QualityScore,
+			Topics:                result.ClassificationResult.Topics,
+			IsCrimeRelated:        result.ClassificationResult.IsCrimeRelated,
 			SourceReputationScore: result.ClassificationResult.SourceReputation,
-			ClassifierVersion:    result.ClassificationResult.ClassifierVersion,
-			ClassificationMethod: result.ClassificationResult.ClassificationMethod,
-			ModelVersion:         result.ClassificationResult.ModelVersion,
-			Confidence:           result.ClassificationResult.Confidence,
-			ProcessingTimeMs:     int(result.ClassificationResult.ProcessingTimeMs),
-			ClassifiedAt:         result.ClassificationResult.ClassifiedAt,
+			ClassifierVersion:     result.ClassificationResult.ClassifierVersion,
+			ClassificationMethod:  result.ClassificationResult.ClassificationMethod,
+			ModelVersion:          result.ClassificationResult.ModelVersion,
+			Confidence:            result.ClassificationResult.Confidence,
+			ProcessingTimeMs:      int(result.ClassificationResult.ProcessingTimeMs),
+			ClassifiedAt:          result.ClassificationResult.ClassifiedAt,
 		}
 
 		histories = append(histories, history)

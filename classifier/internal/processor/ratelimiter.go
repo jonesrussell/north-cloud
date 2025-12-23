@@ -63,10 +63,10 @@ func (r *RateLimiter) SetBurst(burst int) {
 
 // RateLimitedProcessor wraps a batch processor with rate limiting
 type RateLimitedProcessor struct {
-	processor   *BatchProcessor
-	esLimiter   *RateLimiter
-	dbLimiter   *RateLimiter
-	logger      Logger
+	processor *BatchProcessor
+	esLimiter *RateLimiter
+	dbLimiter *RateLimiter
+	logger    Logger
 }
 
 // NewRateLimitedProcessor creates a processor with rate limiting
