@@ -129,10 +129,13 @@ func (s *RawContentService) getSourceConfig(sourceURL string) (string, SourceSel
 		return sourceName, selectors
 	}
 
-	sourceName = sourceConfig.Name
-	s.logger.Debug("Source found by URL, using source-specific selectors",
+	// Use hostname from the URL being crawled, not the source's Name field
+	// This ensures index names are based on URLs (e.g., "www.sudbury.com") rather than human-readable names
+	sourceName = extractSourceNameFromURL(sourceURL)
+	s.logger.Debug("Source found by URL, using URL-based source name for indexing",
 		"url", sourceURL,
-		"source_name", sourceName)
+		"source_name", sourceName,
+		"source_config_name", sourceConfig.Name)
 
 	// Extract selectors from source config (if available)
 	// We'll use article selectors as a guide, but won't enforce article-specific logic

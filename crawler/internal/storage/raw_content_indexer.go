@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"regexp"
 	"strings"
 	"time"
 
@@ -126,16 +127,52 @@ func (r *RawContentIndexer) convertArticleToRawContent(article *domain.Article, 
 	return rawContent
 }
 
+var (
+	// invalidIndexNameChars matches all characters that are invalid in Elasticsearch index names.
+	// Invalid characters: space, ", *, ,, /, <, >, ?, \, |
+	invalidIndexNameChars = regexp.MustCompile(`[\s"*,\\/<>?\\|]`)
+	// consecutiveUnderscores matches two or more consecutive underscores.
+	consecutiveUnderscores = regexp.MustCompile(`_{2,}`)
+)
+
+// sanitizeIndexName sanitizes a source name for use in Elasticsearch index names.
+// Elasticsearch index names cannot contain: space, ", *, ,, /, <, >, ?, \, |
+// This function replaces invalid characters with underscores, normalizes dots/dashes,
+// removes leading/trailing underscores, and collapses consecutive underscores.
+func sanitizeIndexName(sourceName string) string {
+	if sourceName == "" {
+		return "unknown"
+	}
+
+	// Convert to lowercase first
+	normalized := strings.ToLower(sourceName)
+
+	// Replace invalid Elasticsearch index name characters with underscores in one pass
+	normalized = invalidIndexNameChars.ReplaceAllString(normalized, "_")
+
+	// Replace dots and dashes with underscores (existing behavior)
+	normalized = strings.ReplaceAll(normalized, ".", "_")
+	normalized = strings.ReplaceAll(normalized, "-", "_")
+
+	// Collapse consecutive underscores into a single underscore
+	normalized = consecutiveUnderscores.ReplaceAllString(normalized, "_")
+
+	// Remove leading and trailing underscores
+	normalized = strings.Trim(normalized, "_")
+
+	// Handle edge case: if all characters were invalid, return fallback
+	if normalized == "" {
+		return "unknown"
+	}
+
+	return normalized
+}
+
 // getRawContentIndexName returns the index name for raw content
 // Format: {source}_raw_content
 // Example: example_com_raw_content
 func (r *RawContentIndexer) getRawContentIndexName(sourceName string) string {
-	// Normalize source name for index naming
-	// Replace dots with underscores, remove protocol, etc.
-	normalized := strings.ReplaceAll(sourceName, ".", "_")
-	normalized = strings.ReplaceAll(normalized, "-", "_")
-	normalized = strings.ToLower(normalized)
-
+	normalized := sanitizeIndexName(sourceName)
 	return fmt.Sprintf("%s_raw_content", normalized)
 }
 

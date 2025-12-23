@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"net/url"
 
 	cmdcommon "github.com/jonesrussell/gocrawl/cmd/common"
 	"github.com/jonesrussell/gocrawl/internal/api"
@@ -162,9 +163,18 @@ func createCrawlerForJobs(
 		ctx, cancel := infracontext.WithTimeout(constants.DefaultShutdownTimeout)
 		defer cancel()
 		for i := range allSources {
-			if indexErr := rawIndexer.EnsureRawContentIndex(ctx, allSources[i].Name); indexErr != nil {
+			// Extract hostname from source URL for index naming (e.g., "www.sudbury.com")
+			// instead of using the source's Name field (e.g., "sudbury _ local news")
+			sourceHostname := extractHostnameFromURL(allSources[i].URL)
+			if sourceHostname == "" {
+				// Fallback to source name if URL parsing fails
+				sourceHostname = allSources[i].Name
+			}
+			if indexErr := rawIndexer.EnsureRawContentIndex(ctx, sourceHostname); indexErr != nil {
 				deps.Logger.Warn("Failed to ensure raw content index",
 					"source", allSources[i].Name,
+					"source_url", allSources[i].URL,
+					"hostname", sourceHostname,
 					"error", indexErr)
 				// Continue with other sources - not fatal
 			}
@@ -203,4 +213,21 @@ func createCrawlerForJobs(
 	}
 
 	return crawlerResult.Crawler, nil
+}
+
+// extractHostnameFromURL extracts the hostname from a URL for use in index naming.
+// Example: "https://www.sudbury.com/article" → "www.sudbury.com"
+func extractHostnameFromURL(urlStr string) string {
+	if urlStr == "" {
+		return ""
+	}
+	parsed, err := url.Parse(urlStr)
+	if err != nil {
+		return ""
+	}
+	hostname := parsed.Hostname()
+	if hostname == "" {
+		return ""
+	}
+	return hostname
 }
