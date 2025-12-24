@@ -194,8 +194,8 @@ func TestSourceHandler_GetByID(t *testing.T) {
 		Name:      "Test Source",
 		URL:       "https://example.com",
 		RateLimit: "1s",
-		MaxDepth:     2,
-		Time:         models.StringArray{"09:00"},
+		MaxDepth:  2,
+		Time:      models.StringArray{"09:00"},
 		Selectors: models.SelectorConfig{
 			Article: models.ArticleSelectors{Title: "h1"},
 		},
@@ -258,8 +258,8 @@ func TestSourceHandler_List(t *testing.T) {
 			Name:      "Source 1",
 			URL:       "https://source1.com",
 			RateLimit: "1s",
-			MaxDepth:     2,
-			Time:         models.StringArray{"09:00"},
+			MaxDepth:  2,
+			Time:      models.StringArray{"09:00"},
 			Selectors: models.SelectorConfig{
 				Article: models.ArticleSelectors{Title: "h1"},
 			},
@@ -270,8 +270,8 @@ func TestSourceHandler_List(t *testing.T) {
 			Name:      "Source 2",
 			URL:       "https://source2.com",
 			RateLimit: "1s",
-			MaxDepth:     2,
-			Time:         models.StringArray{"10:00"},
+			MaxDepth:  2,
+			Time:      models.StringArray{"10:00"},
 			Selectors: models.SelectorConfig{
 				Article: models.ArticleSelectors{Title: "h1"},
 			},

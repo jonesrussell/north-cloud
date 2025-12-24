@@ -270,11 +270,8 @@ func LoadSources(cfg config.Interface, log logger.Interface) (*Sources, error) {
 		return nil, errors.New("no sources found")
 	}
 
-	// Store API URL for dynamic reloading
-	apiURL := ""
-	if crawlerCfg != nil {
-		apiURL = crawlerCfg.SourcesAPIURL
-	}
+	// Store API URL for dynamic reloading (crawlerCfg is guaranteed to be non-nil here)
+	apiURL := crawlerCfg.SourcesAPIURL
 
 	return &Sources{
 		sources: sources,
@@ -404,7 +401,7 @@ func (s *Sources) ValidateSource(
 	indexManager storagetypes.IndexManager,
 ) (*configtypes.Source, error) {
 	// Try validation with current sources
-	source, err := s.validateSourceInternal(ctx, sourceName, indexManager)
+	source, err := s.validateSourceInternal(sourceName)
 	if err == nil {
 		return source, nil
 	}
@@ -428,7 +425,7 @@ func (s *Sources) ValidateSource(
 		}
 
 		// Retry validation with reloaded sources
-		return s.validateSourceInternal(ctx, sourceName, indexManager)
+		return s.validateSourceInternal(sourceName)
 	}
 
 	return nil, err
@@ -436,9 +433,7 @@ func (s *Sources) ValidateSource(
 
 // validateSourceInternal performs the actual source validation logic.
 func (s *Sources) validateSourceInternal(
-	ctx context.Context,
 	sourceName string,
-	indexManager storagetypes.IndexManager,
 ) (*configtypes.Source, error) {
 	// Get all sources (with read lock)
 	s.mu.RLock()

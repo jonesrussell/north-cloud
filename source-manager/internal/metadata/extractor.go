@@ -280,4 +280,3 @@ func (e *Extractor) extractListSelectors(doc *goquery.Document, selectors *model
 		selectors.List.ArticleList = ".news-list article"
 	}
 }
-

@@ -74,8 +74,8 @@ func TestSourceRepository_Create(t *testing.T) {
 				Name:      "Test Source",
 				URL:       "https://example.com",
 				RateLimit: "1s",
-				MaxDepth:     2,
-				Time:         models.StringArray{"09:00", "17:00"},
+				MaxDepth:  2,
+				Time:      models.StringArray{"09:00", "17:00"},
 				Selectors: models.SelectorConfig{
 					Article: models.ArticleSelectors{
 						Title: "h1",
@@ -92,8 +92,8 @@ func TestSourceRepository_Create(t *testing.T) {
 				Name:      "City Source",
 				URL:       "https://city.com",
 				RateLimit: "2s",
-				MaxDepth:     3,
-				Time:         models.StringArray{"08:00"},
+				MaxDepth:  3,
+				Time:      models.StringArray{"08:00"},
 				Selectors: models.SelectorConfig{
 					Article: models.ArticleSelectors{
 						Title: "article h1",
@@ -135,8 +135,8 @@ func TestSourceRepository_GetByID(t *testing.T) {
 		Name:      "Get Test Source",
 		URL:       "https://gettest.com",
 		RateLimit: "1s",
-		MaxDepth:     2,
-		Time:         models.StringArray{"10:00"},
+		MaxDepth:  2,
+		Time:      models.StringArray{"10:00"},
 		Selectors: models.SelectorConfig{
 			Article: models.ArticleSelectors{
 				Title: "h1",
@@ -196,8 +196,8 @@ func TestSourceRepository_List(t *testing.T) {
 			Name:      "Source A",
 			URL:       "https://sourcea.com",
 			RateLimit: "1s",
-			MaxDepth:     2,
-			Time:         models.StringArray{"09:00"},
+			MaxDepth:  2,
+			Time:      models.StringArray{"09:00"},
 			Selectors: models.SelectorConfig{
 				Article: models.ArticleSelectors{Title: "h1"},
 			},
@@ -207,8 +207,8 @@ func TestSourceRepository_List(t *testing.T) {
 			Name:      "Source B",
 			URL:       "https://sourceb.com",
 			RateLimit: "1s",
-			MaxDepth:     2,
-			Time:         models.StringArray{"10:00"},
+			MaxDepth:  2,
+			Time:      models.StringArray{"10:00"},
 			Selectors: models.SelectorConfig{
 				Article: models.ArticleSelectors{Title: "h1"},
 			},
@@ -246,8 +246,8 @@ func TestSourceRepository_Update(t *testing.T) {
 		Name:      "Update Test Source",
 		URL:       "https://updatetest.com",
 		RateLimit: "1s",
-		MaxDepth:     2,
-		Time:         models.StringArray{"09:00"},
+		MaxDepth:  2,
+		Time:      models.StringArray{"09:00"},
 		Selectors: models.SelectorConfig{
 			Article: models.ArticleSelectors{Title: "h1"},
 		},
@@ -289,8 +289,8 @@ func TestSourceRepository_Delete(t *testing.T) {
 		Name:      "Delete Test Source",
 		URL:       "https://deletetest.com",
 		RateLimit: "1s",
-		MaxDepth:     2,
-		Time:         models.StringArray{"09:00"},
+		MaxDepth:  2,
+		Time:      models.StringArray{"09:00"},
 		Selectors: models.SelectorConfig{
 			Article: models.ArticleSelectors{Title: "h1"},
 		},
@@ -327,8 +327,8 @@ func TestSourceRepository_GetCities(t *testing.T) {
 			Name:      "City A Source",
 			URL:       "https://citya.com",
 			RateLimit: "1s",
-			MaxDepth:     2,
-			Time:         models.StringArray{"09:00"},
+			MaxDepth:  2,
+			Time:      models.StringArray{"09:00"},
 			Selectors: models.SelectorConfig{
 				Article: models.ArticleSelectors{Title: "h1"},
 			},
@@ -338,8 +338,8 @@ func TestSourceRepository_GetCities(t *testing.T) {
 			Name:      "City B Source",
 			URL:       "https://cityb.com",
 			RateLimit: "1s",
-			MaxDepth:     2,
-			Time:         models.StringArray{"10:00"},
+			MaxDepth:  2,
+			Time:      models.StringArray{"10:00"},
 			Selectors: models.SelectorConfig{
 				Article: models.ArticleSelectors{Title: "h1"},
 			},
@@ -349,8 +349,8 @@ func TestSourceRepository_GetCities(t *testing.T) {
 			Name:      "Disabled Source",
 			URL:       "https://disabled.com",
 			RateLimit: "1s",
-			MaxDepth:     2,
-			Time:         models.StringArray{"11:00"},
+			MaxDepth:  2,
+			Time:      models.StringArray{"11:00"},
 			Selectors: models.SelectorConfig{
 				Article: models.ArticleSelectors{Title: "h1"},
 			},
