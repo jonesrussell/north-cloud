@@ -96,16 +96,16 @@ export const crawlerApi = {
 // Sources API
 export const sourcesApi = {
   // Sources CRUD
-  list: () => sourcesClient.get('/sources'),
-  get: (id) => sourcesClient.get(`/sources/${id}`),
-  create: (data) => sourcesClient.post('/sources', data),
-  update: (id, data) => sourcesClient.put(`/sources/${id}`, data),
-  delete: (id) => sourcesClient.delete(`/sources/${id}`),
+  list: () => sourcesClient.get(''),
+  get: (id) => sourcesClient.get(`/${id}`),
+  create: (data) => sourcesClient.post('', data),
+  update: (id, data) => sourcesClient.put(`/${id}`, data),
+  delete: (id) => sourcesClient.delete(`/${id}`),
   fetchMetadata: (url) => sourcesClient.post('/fetch-metadata', { url }),
 
-  // Cities
+  // Cities (endpoint is at /api/v1/cities, not under /api/v1/sources)
   cities: {
-    list: () => sourcesClient.get('/cities'),
+    list: () => axios.get('/api/cities'),
   },
 }
 

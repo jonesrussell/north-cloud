@@ -28,6 +28,12 @@ export default defineConfig({
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api\/sources/, '/api/v1/sources'),
       },
+      // Source Manager cities endpoint (separate from sources)
+      '/api/cities': {
+        target: SOURCES_API_URL,
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/cities/, '/api/v1/cities'),
+      },
       // Crawler health endpoint
       '/api/health/crawler': {
         target: CRAWLER_API_URL,
