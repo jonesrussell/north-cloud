@@ -198,15 +198,17 @@ services:
       - POSTGRES_PASSWORD=${POSTGRES_CLASSIFIER_PASSWORD:-postgres}
       - POSTGRES_DB=${POSTGRES_CLASSIFIER_DB:-classifier}
       - POSTGRES_SSLMODE=disable
-      - ES_URL=http://elasticsearch:9200
+      - ELASTICSEARCH_URL=http://elasticsearch:9200
+      - ES_URL=http://elasticsearch:9200  # Legacy, kept for compatibility
       - REDIS_URL=redis:6379
       - REDIS_PASSWORD=${REDIS_PASSWORD:-}
       - APP_DEBUG=true
       - APP_ENV=development
       - CLASSIFIER_PORT=8070
       - CLASSIFIER_ENABLED=${CLASSIFIER_ENABLED:-true}
-      - CLASSIFIER_CONCURRENCY=${CLASSIFIER_CONCURRENCY:-10}
-      - CLASSIFIER_BATCH_SIZE=${CLASSIFIER_BATCH_SIZE:-100}
+      - POLLING_INTERVAL=${CLASSIFIER_POLLING_INTERVAL:-30s}
+      - BATCH_SIZE=${CLASSIFIER_BATCH_SIZE:-100}
+      - CONCURRENT_WORKERS=${CLASSIFIER_CONCURRENCY:-5}
       # Use /tmp for caches to avoid permission issues with host user
       - GOMODCACHE=/tmp/go-mod-cache
       - GOCACHE=/tmp/go-build-cache

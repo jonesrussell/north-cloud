@@ -2,8 +2,10 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"os"
 
+	"github.com/jonesrussell/north-cloud/classifier/cmd/processor"
 	"github.com/jonesrussell/north-cloud/classifier/internal/server"
 )
 
@@ -21,10 +23,11 @@ func main() {
 		// Run HTTP server
 		server.StartHTTPServer()
 	case "processor", "worker":
-		// TODO: Implement processor command
-		fmt.Printf("Classifier Service v%s\n", version)
-		fmt.Println("Processor command not yet implemented")
-		os.Exit(1)
+		// Run background processor
+		fmt.Printf("Classifier Service v%s - Processor Mode\n", version)
+		if err := processor.Start(); err != nil {
+			log.Fatalf("Processor failed: %v", err)
+		}
 	case "version":
 		fmt.Printf("Classifier Service v%s\n", version)
 		os.Exit(0)
@@ -33,7 +36,7 @@ func main() {
 		fmt.Println("\nUsage: classifier [command]")
 		fmt.Println("\nCommands:")
 		fmt.Println("  httpd      Start HTTP API server (default)")
-		fmt.Println("  processor  Start background processor (not implemented)")
+		fmt.Println("  processor  Start background processor")
 		fmt.Println("  version    Show version")
 		fmt.Println("  help       Show this help message")
 		os.Exit(0)
