@@ -43,9 +43,9 @@ type ClassifiedContent struct {
 	ContentSubtype   string                 `json:"content_subtype,omitempty"`
 	QualityScore     int                    `json:"quality_score"`
 	QualityFactors   map[string]interface{} `json:"quality_factors"`
-	Topics           []string           `json:"topics"`
-	TopicScores      map[string]float64 `json:"topic_scores"`
-	SourceReputation int                `json:"source_reputation"`
+	Topics           []string               `json:"topics"`
+	TopicScores      map[string]float64     `json:"topic_scores"`
+	SourceReputation int                    `json:"source_reputation"`
 	SourceCategory   string                 `json:"source_category"`
 
 	// Classification metadata
