@@ -6,10 +6,19 @@
     />
 
     <!-- Loading State -->
-    <LoadingSpinner v-if="loading" size="lg" text="Loading statistics..." :full-page="true" />
+    <LoadingSpinner
+      v-if="loading"
+      size="lg"
+      text="Loading statistics..."
+      :full-page="true"
+    />
 
     <!-- Error State -->
-    <ErrorAlert v-else-if="error" :message="error" class="mb-6" />
+    <ErrorAlert
+      v-else-if="error"
+      :message="error"
+      class="mb-6"
+    />
 
     <!-- Stats Content -->
     <div v-else>
@@ -55,25 +64,27 @@
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
         <!-- Articles by Status -->
         <div class="bg-white shadow rounded-lg p-6">
-          <h2 class="text-lg font-medium text-gray-900 mb-4">Articles by Status</h2>
+          <h2 class="text-lg font-medium text-gray-900 mb-4">
+            Articles by Status
+          </h2>
           <div class="space-y-4">
             <div class="flex items-center justify-between">
               <div class="flex items-center">
-                <span class="h-3 w-3 rounded-full bg-green-500 mr-3"></span>
+                <span class="h-3 w-3 rounded-full bg-green-500 mr-3" />
                 <span class="text-sm text-gray-600">Crawled</span>
               </div>
               <span class="text-sm font-semibold text-green-600">{{ stats.crawled }}</span>
             </div>
             <div class="flex items-center justify-between">
               <div class="flex items-center">
-                <span class="h-3 w-3 rounded-full bg-red-500 mr-3"></span>
+                <span class="h-3 w-3 rounded-full bg-red-500 mr-3" />
                 <span class="text-sm text-gray-600">Failed</span>
               </div>
               <span class="text-sm font-semibold text-red-600">{{ stats.failed }}</span>
             </div>
             <div class="flex items-center justify-between">
               <div class="flex items-center">
-                <span class="h-3 w-3 rounded-full bg-yellow-500 mr-3"></span>
+                <span class="h-3 w-3 rounded-full bg-yellow-500 mr-3" />
                 <span class="text-sm text-gray-600">Pending</span>
               </div>
               <span class="text-sm font-semibold text-yellow-600">{{ stats.pending }}</span>
@@ -86,22 +97,24 @@
               <div
                 class="h-full bg-green-500"
                 :style="{ width: `${getPercentage('crawled')}%` }"
-              ></div>
+              />
               <div
                 class="h-full bg-red-500"
                 :style="{ width: `${getPercentage('failed')}%` }"
-              ></div>
+              />
               <div
                 class="h-full bg-yellow-500"
                 :style="{ width: `${getPercentage('pending')}%` }"
-              ></div>
+              />
             </div>
           </div>
         </div>
 
         <!-- Sources Overview -->
         <div class="bg-white shadow rounded-lg p-6">
-          <h2 class="text-lg font-medium text-gray-900 mb-4">Sources Overview</h2>
+          <h2 class="text-lg font-medium text-gray-900 mb-4">
+            Sources Overview
+          </h2>
           <div class="space-y-4">
             <div class="flex items-center justify-between">
               <div class="flex items-center">
@@ -132,12 +145,18 @@
 
       <!-- Chart Placeholder -->
       <div class="bg-white shadow rounded-lg p-6">
-        <h2 class="text-lg font-medium text-gray-900 mb-4">Activity Over Time</h2>
+        <h2 class="text-lg font-medium text-gray-900 mb-4">
+          Activity Over Time
+        </h2>
         <div class="h-64 flex items-center justify-center border-2 border-dashed border-gray-300 rounded-lg bg-gray-50">
           <div class="text-center">
             <ChartBarIcon class="mx-auto h-12 w-12 text-gray-400" />
-            <p class="mt-2 text-sm font-medium text-gray-500">Chart Visualization</p>
-            <p class="mt-1 text-xs text-gray-400">Can be implemented with Chart.js or similar</p>
+            <p class="mt-2 text-sm font-medium text-gray-500">
+              Chart Visualization
+            </p>
+            <p class="mt-1 text-xs text-gray-400">
+              Can be implemented with Chart.js or similar
+            </p>
           </div>
         </div>
       </div>

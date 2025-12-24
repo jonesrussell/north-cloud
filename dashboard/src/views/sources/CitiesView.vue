@@ -6,16 +6,33 @@
     />
 
     <!-- Loading State -->
-    <LoadingSpinner v-if="loading" size="lg" text="Loading cities..." :full-page="true" />
+    <LoadingSpinner
+      v-if="loading"
+      size="lg"
+      text="Loading cities..."
+      :full-page="true"
+    />
 
     <!-- Error State -->
-    <ErrorAlert v-else-if="error" title="Error loading cities" :message="error" class="mb-6" />
+    <ErrorAlert
+      v-else-if="error"
+      title="Error loading cities"
+      :message="error"
+      class="mb-6"
+    />
 
     <!-- Empty State -->
-    <div v-else-if="cities.length === 0" class="text-center py-12 bg-white rounded-lg border border-gray-200">
+    <div
+      v-else-if="cities.length === 0"
+      class="text-center py-12 bg-white rounded-lg border border-gray-200"
+    >
       <MapPinIcon class="mx-auto h-12 w-12 text-gray-400" />
-      <h3 class="mt-2 text-sm font-medium text-gray-900">No cities</h3>
-      <p class="mt-1 text-sm text-gray-500">No enabled sources with city mappings found.</p>
+      <h3 class="mt-2 text-sm font-medium text-gray-900">
+        No cities
+      </h3>
+      <p class="mt-1 text-sm text-gray-500">
+        No enabled sources with city mappings found.
+      </p>
       <div class="mt-6">
         <router-link
           to="/sources/new"
@@ -27,14 +44,23 @@
     </div>
 
     <!-- Cities List -->
-    <div v-else class="bg-white shadow overflow-hidden sm:rounded-md">
+    <div
+      v-else
+      class="bg-white shadow overflow-hidden sm:rounded-md"
+    >
       <ul class="divide-y divide-gray-200">
-        <li v-for="city in cities" :key="city.name" class="px-6 py-4 hover:bg-gray-50">
+        <li
+          v-for="city in cities"
+          :key="city.name"
+          class="px-6 py-4 hover:bg-gray-50"
+        >
           <div class="flex items-center justify-between">
             <div class="flex-1 min-w-0">
               <div class="flex items-center">
                 <MapPinIcon class="h-5 w-5 text-gray-400 mr-2" />
-                <p class="text-sm font-medium text-gray-900">{{ city.name }}</p>
+                <p class="text-sm font-medium text-gray-900">
+                  {{ city.name }}
+                </p>
               </div>
               <div class="mt-2 flex items-center text-sm text-gray-500">
                 <span class="flex items-center">
@@ -53,7 +79,9 @@
       <div class="flex">
         <InformationCircleIcon class="h-5 w-5 text-blue-400 mt-0.5" />
         <div class="ml-3">
-          <h3 class="text-sm font-medium text-blue-800">About Cities</h3>
+          <h3 class="text-sm font-medium text-blue-800">
+            About Cities
+          </h3>
           <p class="mt-1 text-sm text-blue-700">
             Cities are derived from enabled sources. Each enabled source represents a city.
             To add a new city, create or edit a source and enable it.

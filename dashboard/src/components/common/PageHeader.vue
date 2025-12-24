@@ -2,7 +2,10 @@
   <div class="mb-6">
     <div class="flex items-center justify-between">
       <div>
-        <div v-if="backLink" class="mb-2">
+        <div
+          v-if="backLink"
+          class="mb-2"
+        >
           <router-link
             :to="backLink"
             class="inline-flex items-center text-sm text-gray-500 hover:text-gray-700"
@@ -11,11 +14,18 @@
             {{ backText }}
           </router-link>
         </div>
-        <h1 class="text-2xl font-bold text-gray-900">{{ title }}</h1>
-        <p v-if="subtitle" class="mt-1 text-sm text-gray-600">{{ subtitle }}</p>
+        <h1 class="text-2xl font-bold text-gray-900">
+          {{ title }}
+        </h1>
+        <p
+          v-if="subtitle"
+          class="mt-1 text-sm text-gray-600"
+        >
+          {{ subtitle }}
+        </p>
       </div>
       <div v-if="$slots.actions">
-        <slot name="actions"></slot>
+        <slot name="actions" />
       </div>
     </div>
   </div>

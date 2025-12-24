@@ -6,24 +6,35 @@
     />
 
     <!-- Loading State -->
-    <LoadingSpinner v-if="loading" size="lg" text="Loading articles..." :full-page="true" />
+    <LoadingSpinner
+      v-if="loading"
+      size="lg"
+      text="Loading articles..."
+      :full-page="true"
+    />
 
     <!-- Error State -->
-    <ErrorAlert v-else-if="error" :message="error" class="mb-6" />
+    <ErrorAlert
+      v-else-if="error"
+      :message="error"
+      class="mb-6"
+    />
 
     <!-- Articles Content -->
     <div v-else>
       <!-- Articles List -->
       <div class="bg-white shadow rounded-lg overflow-hidden">
         <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
-          <h2 class="text-lg font-medium text-gray-900">Recent Articles</h2>
+          <h2 class="text-lg font-medium text-gray-900">
+            Recent Articles
+          </h2>
           <div class="flex items-center space-x-4">
             <label class="text-sm text-gray-600">
               Limit:
               <select
                 v-model="limit"
-                @change="loadArticles"
                 class="ml-2 border border-gray-300 rounded-md px-2 py-1 text-sm"
+                @change="loadArticles"
               >
                 <option :value="10">10</option>
                 <option :value="25">25</option>
@@ -34,12 +45,18 @@
           </div>
         </div>
 
-        <div v-if="articles.length === 0" class="text-center py-12 text-gray-500">
+        <div
+          v-if="articles.length === 0"
+          class="text-center py-12 text-gray-500"
+        >
           <NewspaperIcon class="mx-auto h-12 w-12 text-gray-400 mb-4" />
           <p>No articles published yet</p>
         </div>
 
-        <ul v-else class="divide-y divide-gray-200">
+        <ul
+          v-else
+          class="divide-y divide-gray-200"
+        >
           <li
             v-for="article in articles"
             :key="article.id"
@@ -66,7 +83,10 @@
                     {{ formatDate(article.posted_at) }}
                   </span>
                 </div>
-                <div v-if="article.url" class="mt-2">
+                <div
+                  v-if="article.url"
+                  class="mt-2"
+                >
                   <a
                     :href="article.url"
                     target="_blank"
@@ -81,7 +101,10 @@
           </li>
         </ul>
 
-        <div v-if="articles.length > 0" class="px-6 py-4 border-t border-gray-200 bg-gray-50">
+        <div
+          v-if="articles.length > 0"
+          class="px-6 py-4 border-t border-gray-200 bg-gray-50"
+        >
           <p class="text-sm text-gray-600">
             Showing {{ articles.length }} {{ articles.length === 1 ? 'article' : 'articles' }}
           </p>

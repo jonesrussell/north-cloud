@@ -12,10 +12,17 @@
             class="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full sm:mx-0 sm:h-10 sm:w-10"
             :class="iconBgClass"
           >
-            <component :is="iconComponent" class="h-6 w-6" :class="iconClass" aria-hidden="true" />
+            <component
+              :is="iconComponent"
+              class="h-6 w-6"
+              :class="iconClass"
+              aria-hidden="true"
+            />
           </div>
           <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left flex-1">
-            <h3 class="text-lg leading-6 font-medium text-gray-900">{{ title }}</h3>
+            <h3 class="text-lg leading-6 font-medium text-gray-900">
+              {{ title }}
+            </h3>
             <div class="mt-2">
               <p class="text-sm text-gray-500">
                 <slot>{{ message }}</slot>
@@ -32,10 +39,29 @@
           :disabled="loading"
           @click="$emit('confirm')"
         >
-          <span v-if="loading" class="mr-2">
-            <svg class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          <span
+            v-if="loading"
+            class="mr-2"
+          >
+            <svg
+              class="animate-spin h-4 w-4"
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+            >
+              <circle
+                class="opacity-25"
+                cx="12"
+                cy="12"
+                r="10"
+                stroke="currentColor"
+                stroke-width="4"
+              />
+              <path
+                class="opacity-75"
+                fill="currentColor"
+                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+              />
             </svg>
           </span>
           {{ confirmText }}

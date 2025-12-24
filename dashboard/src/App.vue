@@ -182,14 +182,16 @@
       <!-- Top bar -->
       <header class="sticky top-0 z-40 bg-white border-b border-gray-200">
         <div class="flex h-16 items-center justify-between px-6">
-          <h1 class="text-lg font-semibold text-gray-900">{{ pageTitle }}</h1>
+          <h1 class="text-lg font-semibold text-gray-900">
+            {{ pageTitle }}
+          </h1>
           <div class="flex items-center space-x-4">
             <!-- Health indicator -->
             <div class="flex items-center text-sm">
               <span
                 class="h-2 w-2 rounded-full mr-2"
                 :class="healthStatus === 'healthy' ? 'bg-green-500' : 'bg-red-500'"
-              ></span>
+              />
               <span class="text-gray-600">
                 {{ healthStatus === 'healthy' ? 'System Healthy' : 'System Issues' }}
               </span>

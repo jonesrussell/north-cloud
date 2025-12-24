@@ -2,20 +2,37 @@
   <div class="rounded-md bg-red-50 p-4">
     <div class="flex">
       <div class="flex-shrink-0">
-        <ExclamationCircleIcon class="h-5 w-5 text-red-400" aria-hidden="true" />
+        <ExclamationCircleIcon
+          class="h-5 w-5 text-red-400"
+          aria-hidden="true"
+        />
       </div>
       <div class="ml-3">
-        <h3 v-if="title" class="text-sm font-medium text-red-800">{{ title }}</h3>
-        <div class="text-sm text-red-700" :class="{ 'mt-2': title }">
+        <h3
+          v-if="title"
+          class="text-sm font-medium text-red-800"
+        >
+          {{ title }}
+        </h3>
+        <div
+          class="text-sm text-red-700"
+          :class="{ 'mt-2': title }"
+        >
           <slot>{{ message }}</slot>
         </div>
-        <div v-if="$slots.actions" class="mt-4">
+        <div
+          v-if="$slots.actions"
+          class="mt-4"
+        >
           <div class="-mx-2 -my-1.5 flex">
-            <slot name="actions"></slot>
+            <slot name="actions" />
           </div>
         </div>
       </div>
-      <div v-if="dismissible" class="ml-auto pl-3">
+      <div
+        v-if="dismissible"
+        class="ml-auto pl-3"
+      >
         <div class="-mx-1.5 -my-1.5">
           <button
             type="button"
@@ -23,7 +40,10 @@
             @click="$emit('dismiss')"
           >
             <span class="sr-only">Dismiss</span>
-            <XMarkIcon class="h-5 w-5" aria-hidden="true" />
+            <XMarkIcon
+              class="h-5 w-5"
+              aria-hidden="true"
+            />
           </button>
         </div>
       </div>

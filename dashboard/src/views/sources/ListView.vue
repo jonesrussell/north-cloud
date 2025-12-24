@@ -1,6 +1,9 @@
 <template>
   <div>
-    <PageHeader title="Sources" subtitle="Manage content sources for crawling">
+    <PageHeader
+      title="Sources"
+      subtitle="Manage content sources for crawling"
+    >
       <template #actions>
         <router-link
           to="/sources/new"
@@ -13,16 +16,33 @@
     </PageHeader>
 
     <!-- Loading State -->
-    <LoadingSpinner v-if="loading" size="lg" text="Loading sources..." :full-page="true" />
+    <LoadingSpinner
+      v-if="loading"
+      size="lg"
+      text="Loading sources..."
+      :full-page="true"
+    />
 
     <!-- Error State -->
-    <ErrorAlert v-else-if="error" title="Error loading sources" :message="error" class="mb-6" />
+    <ErrorAlert
+      v-else-if="error"
+      title="Error loading sources"
+      :message="error"
+      class="mb-6"
+    />
 
     <!-- Empty State -->
-    <div v-else-if="sources.length === 0" class="text-center py-12 bg-white rounded-lg border border-gray-200">
+    <div
+      v-else-if="sources.length === 0"
+      class="text-center py-12 bg-white rounded-lg border border-gray-200"
+    >
       <DocumentTextIcon class="mx-auto h-12 w-12 text-gray-400" />
-      <h3 class="mt-2 text-sm font-medium text-gray-900">No sources</h3>
-      <p class="mt-1 text-sm text-gray-500">Get started by creating a new source.</p>
+      <h3 class="mt-2 text-sm font-medium text-gray-900">
+        No sources
+      </h3>
+      <p class="mt-1 text-sm text-gray-500">
+        Get started by creating a new source.
+      </p>
       <div class="mt-6">
         <router-link
           to="/sources/new"
@@ -35,13 +55,22 @@
     </div>
 
     <!-- Sources List -->
-    <div v-else class="bg-white shadow overflow-hidden sm:rounded-md">
+    <div
+      v-else
+      class="bg-white shadow overflow-hidden sm:rounded-md"
+    >
       <ul class="divide-y divide-gray-200">
-        <li v-for="source in sources" :key="source.id" class="px-6 py-4 hover:bg-gray-50">
+        <li
+          v-for="source in sources"
+          :key="source.id"
+          class="px-6 py-4 hover:bg-gray-50"
+        >
           <div class="flex items-center justify-between">
             <div class="flex-1 min-w-0">
               <div class="flex items-center">
-                <p class="text-sm font-medium text-gray-900 truncate">{{ source.name }}</p>
+                <p class="text-sm font-medium text-gray-900 truncate">
+                  {{ source.name }}
+                </p>
                 <StatusBadge
                   :status="source.enabled ? 'enabled' : 'disabled'"
                   class="ml-2"
@@ -60,8 +89,8 @@
                 Edit
               </router-link>
               <button
-                @click="confirmDelete(source)"
                 class="inline-flex items-center px-3 py-1.5 border border-red-300 shadow-sm text-xs font-medium rounded text-red-700 bg-white hover:bg-red-50"
+                @click="confirmDelete(source)"
               >
                 <TrashIcon class="h-4 w-4 mr-1" />
                 Delete

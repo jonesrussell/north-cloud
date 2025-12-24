@@ -6,8 +6,8 @@
     >
       <template #actions>
         <button
-          @click="showCreateModal = true"
           class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+          @click="showCreateModal = true"
         >
           <PlusIcon class="h-5 w-5 mr-2" />
           New Rule
@@ -16,10 +16,19 @@
     </PageHeader>
 
     <!-- Loading State -->
-    <LoadingSpinner v-if="loading" size="lg" text="Loading rules..." :full-page="true" />
+    <LoadingSpinner
+      v-if="loading"
+      size="lg"
+      text="Loading rules..."
+      :full-page="true"
+    />
 
     <!-- Error State -->
-    <ErrorAlert v-else-if="error" :message="error" class="mb-6" />
+    <ErrorAlert
+      v-else-if="error"
+      :message="error"
+      class="mb-6"
+    />
 
     <!-- Rules Content -->
     <div v-else>
@@ -50,11 +59,18 @@
           </thead>
           <tbody class="bg-white divide-y divide-gray-200">
             <tr v-if="rules.length === 0">
-              <td colspan="6" class="px-6 py-8 text-center text-sm text-gray-500">
+              <td
+                colspan="6"
+                class="px-6 py-8 text-center text-sm text-gray-500"
+              >
                 No rules found. Create your first rule to get started.
               </td>
             </tr>
-            <tr v-for="rule in rules" :key="rule.id" class="hover:bg-gray-50">
+            <tr
+              v-for="rule in rules"
+              :key="rule.id"
+              class="hover:bg-gray-50"
+            >
               <td class="px-6 py-4 whitespace-nowrap">
                 <span class="text-sm font-medium text-gray-900 capitalize">{{ rule.topic }}</span>
               </td>
@@ -62,19 +78,27 @@
                 <div class="text-sm text-gray-500">
                   <span v-if="rule.keywords && rule.keywords.length > 0">
                     {{ rule.keywords.slice(0, 3).join(', ') }}
-                    <span v-if="rule.keywords.length > 3" class="text-gray-400">
+                    <span
+                      v-if="rule.keywords.length > 3"
+                      class="text-gray-400"
+                    >
                       +{{ rule.keywords.length - 3 }} more
                     </span>
                   </span>
-                  <span v-else class="text-gray-400">None</span>
+                  <span
+                    v-else
+                    class="text-gray-400"
+                  >None</span>
                 </div>
               </td>
               <td class="px-6 py-4 whitespace-nowrap">
                 <span class="text-sm text-gray-500">{{ rule.pattern || 'N/A' }}</span>
               </td>
               <td class="px-6 py-4 whitespace-nowrap">
-                <span class="px-2 py-1 text-xs font-semibold rounded"
-                  :class="getPriorityClass(rule.priority)">
+                <span
+                  class="px-2 py-1 text-xs font-semibold rounded"
+                  :class="getPriorityClass(rule.priority)"
+                >
                   {{ rule.priority || 'normal' }}
                 </span>
               </td>
@@ -83,14 +107,14 @@
               </td>
               <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                 <button
-                  @click="editRule(rule)"
                   class="text-blue-600 hover:text-blue-900 mr-4"
+                  @click="editRule(rule)"
                 >
                   Edit
                 </button>
                 <button
-                  @click="deleteRule(rule)"
                   class="text-red-600 hover:text-red-900"
+                  @click="deleteRule(rule)"
                 >
                   Delete
                 </button>
@@ -111,7 +135,10 @@
         <h3 class="text-lg font-medium text-gray-900 mb-4">
           {{ editingRule ? 'Edit Rule' : 'Create New Rule' }}
         </h3>
-        <form @submit.prevent="saveRule" class="space-y-4">
+        <form
+          class="space-y-4"
+          @submit.prevent="saveRule"
+        >
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Topic</label>
             <input
@@ -120,7 +147,7 @@
               required
               class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
               placeholder="e.g., crime, sports, politics"
-            />
+            >
           </div>
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Keywords (comma-separated)</label>
@@ -129,7 +156,7 @@
               type="text"
               class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
               placeholder="murder, robbery, assault"
-            />
+            >
           </div>
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Pattern (regex)</label>
@@ -138,7 +165,7 @@
               type="text"
               class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
               placeholder="Optional regex pattern"
-            />
+            >
           </div>
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Priority</label>
@@ -146,9 +173,15 @@
               v-model="ruleForm.priority"
               class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
             >
-              <option value="high">High</option>
-              <option value="normal">Normal</option>
-              <option value="low">Low</option>
+              <option value="high">
+                High
+              </option>
+              <option value="normal">
+                Normal
+              </option>
+              <option value="low">
+                Low
+              </option>
             </select>
           </div>
           <div class="flex items-center">
@@ -156,14 +189,14 @@
               v-model="ruleForm.enabled"
               type="checkbox"
               class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-            />
+            >
             <label class="ml-2 block text-sm text-gray-900">Enabled</label>
           </div>
           <div class="flex justify-end space-x-3 pt-4">
             <button
               type="button"
-              @click="closeModal"
               class="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
+              @click="closeModal"
             >
               Cancel
             </button>

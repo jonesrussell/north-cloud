@@ -2,7 +2,10 @@
   <div class="bg-white overflow-hidden shadow rounded-lg">
     <div class="p-5">
       <div class="flex items-center">
-        <div v-if="icon" class="flex-shrink-0">
+        <div
+          v-if="icon"
+          class="flex-shrink-0"
+        >
           <component
             :is="icon"
             class="h-6 w-6"
@@ -12,15 +15,23 @@
         </div>
         <div :class="{ 'ml-5': icon, 'w-full': !icon }">
           <dl>
-            <dt class="text-sm font-medium text-gray-500 truncate">{{ label }}</dt>
-            <dd class="mt-1 text-3xl font-semibold" :class="valueColorClass">
+            <dt class="text-sm font-medium text-gray-500 truncate">
+              {{ label }}
+            </dt>
+            <dd
+              class="mt-1 text-3xl font-semibold"
+              :class="valueColorClass"
+            >
               {{ formattedValue }}
             </dd>
           </dl>
         </div>
       </div>
-      <div v-if="$slots.footer" class="mt-4 pt-4 border-t border-gray-200">
-        <slot name="footer"></slot>
+      <div
+        v-if="$slots.footer"
+        class="mt-4 pt-4 border-t border-gray-200"
+      >
+        <slot name="footer" />
       </div>
     </div>
   </div>
