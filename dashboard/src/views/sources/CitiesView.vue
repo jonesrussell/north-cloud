@@ -36,14 +36,10 @@
                 <MapPinIcon class="h-5 w-5 text-gray-400 mr-2" />
                 <p class="text-sm font-medium text-gray-900">{{ city.name }}</p>
               </div>
-              <div class="mt-2 flex items-center text-sm text-gray-500 space-x-4">
+              <div class="mt-2 flex items-center text-sm text-gray-500">
                 <span class="flex items-center">
                   <span class="text-gray-400 mr-1">Index:</span>
                   <code class="text-xs bg-gray-100 px-1.5 py-0.5 rounded font-mono">{{ city.index }}</code>
-                </span>
-                <span v-if="city.group_id" class="flex items-center">
-                  <span class="text-gray-400 mr-1">Group ID:</span>
-                  <code class="text-xs bg-gray-100 px-1.5 py-0.5 rounded font-mono">{{ city.group_id }}</code>
                 </span>
               </div>
             </div>
@@ -59,8 +55,8 @@
         <div class="ml-3">
           <h3 class="text-sm font-medium text-blue-800">About Cities</h3>
           <p class="mt-1 text-sm text-blue-700">
-            Cities are derived from enabled sources that have city mappings configured.
-            To add a new city, create or edit a source and set the city name and group ID.
+            Cities are derived from enabled sources. Each enabled source represents a city.
+            To add a new city, create or edit a source and enable it.
           </p>
         </div>
       </div>

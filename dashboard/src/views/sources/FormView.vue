@@ -83,32 +83,6 @@
               class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
             />
           </div>
-
-          <div>
-            <label for="city_name" class="block text-sm font-medium text-gray-700">
-              City Name
-            </label>
-            <input
-              id="city_name"
-              v-model="form.city_name"
-              type="text"
-              placeholder="sudbury_com"
-              class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
-            />
-          </div>
-
-          <div>
-            <label for="group_id" class="block text-sm font-medium text-gray-700">
-              Group ID (Drupal UUID)
-            </label>
-            <input
-              id="group_id"
-              v-model="form.group_id"
-              type="text"
-              placeholder="550e8400-e29b-41d4-a716-446655440000"
-              class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
-            />
-          </div>
         </div>
 
         <!-- Enabled Toggle -->
@@ -307,8 +281,6 @@ const form = ref({
     list: {},
     page: {},
   },
-  city_name: null,
-  group_id: null,
   enabled: true,
 })
 
@@ -415,8 +387,6 @@ const loadSource = async () => {
 
     form.value = {
       ...source,
-      city_name: source.city_name || null,
-      group_id: source.group_id || null,
     }
 
     if (source.selectors.article?.exclude) {
@@ -443,8 +413,6 @@ const handleSubmit = async () => {
   try {
     const data = {
       ...form.value,
-      city_name: form.value.city_name || null,
-      group_id: form.value.group_id || null,
     }
 
     if (isEdit.value) {

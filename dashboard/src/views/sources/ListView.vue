@@ -49,9 +49,6 @@
               </div>
               <div class="mt-1 flex items-center text-sm text-gray-500">
                 <span class="truncate">{{ source.url }}</span>
-                <span v-if="source.city_name" class="ml-2 text-xs text-gray-400">
-                  &bull; City: {{ source.city_name }}
-                </span>
               </div>
             </div>
             <div class="ml-4 flex-shrink-0 flex space-x-2">
