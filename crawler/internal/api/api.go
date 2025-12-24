@@ -11,12 +11,8 @@ import (
 	"github.com/jonesrussell/north-cloud/crawler/internal/logger"
 )
 
-// Constants
 const (
 	readHeaderTimeout = 10 * time.Second // Timeout for reading headers
-	DefaultMaxResults = 10
-	DefaultTimeout    = 30 * time.Second
-	DefaultRetries    = 3
 )
 
 // SetupRouter creates and configures the Gin router with all routes
