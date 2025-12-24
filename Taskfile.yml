@@ -37,6 +37,12 @@ tasks:
     cmds:
       - task lint
 
+  lint:dashboard:
+    desc: "Run linter for dashboard service"
+    dir: dashboard
+    cmds:
+      - npm run lint
+
   lint:index-manager:
     desc: "Run linter for index-manager service"
     dir: index-manager
