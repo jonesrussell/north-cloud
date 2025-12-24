@@ -15,7 +15,6 @@ import (
 	"github.com/jonesrussell/north-cloud/crawler/internal/config/elasticsearch"
 	"github.com/jonesrussell/north-cloud/crawler/internal/config/logging"
 	"github.com/jonesrussell/north-cloud/crawler/internal/config/server"
-	"github.com/jonesrussell/north-cloud/crawler/internal/logger"
 	"github.com/spf13/viper"
 )
 
@@ -41,20 +40,12 @@ type Interface interface {
 	Validate() error
 }
 
-// Default configuration values
+// Server defaults
 const (
-	// DefaultMaxLogSize is the default maximum size of a log file in MB
-	DefaultMaxLogSize = 100
-	// DefaultMaxLogBackups is the default number of log file backups to keep
-	DefaultMaxLogBackups = 3
-	// DefaultMaxLogAge is the default maximum age of a log file in days
-	DefaultMaxLogAge = 30
-
-	// Server defaults
-	DefaultServerAddress      = ":8080"
-	DefaultServerReadTimeout  = 30 * time.Second
-	DefaultServerWriteTimeout = 30 * time.Second
-	DefaultServerIdleTimeout  = 60 * time.Second
+	defaultServerAddress      = ":8080"
+	defaultServerReadTimeout  = 30 * time.Second
+	defaultServerWriteTimeout = 30 * time.Second
+	defaultServerIdleTimeout  = 60 * time.Second
 )
 
 // Ensure Config implements Interface
@@ -78,15 +69,6 @@ type Config struct {
 	Database *dbconfig.Config `yaml:"database"`
 	// Command is the current command being executed
 	Command string `yaml:"command"`
-	// logger is the application logger
-	logger logger.Interface
-}
-
-// NewConfig creates a new config instance.
-func NewConfig(log logger.Interface) *Config {
-	return &Config{
-		logger: log,
-	}
 }
 
 // validateCrawlConfig validates the configuration for the crawl command
@@ -151,25 +133,6 @@ func (c *Config) Validate() error {
 
 // LoadConfig loads the configuration from Viper
 func LoadConfig() (*Config, error) {
-	// Create a temporary logger for config loading
-	// Use the logger level from Viper if available, otherwise default to info
-	logLevel := logger.InfoLevel
-	if viper.IsSet("logger.level") {
-		logLevel = logger.Level(viper.GetString("logger.level"))
-	} else if viper.GetBool("app.debug") {
-		logLevel = logger.DebugLevel
-	}
-
-	tempLogger, err := logger.New(&logger.Config{
-		Level:       logLevel,
-		Development: viper.GetBool("logger.development") || viper.GetBool("app.debug"),
-		Encoding:    "console",
-	})
-	if err != nil {
-		return nil, fmt.Errorf("failed to create temporary logger: %w", err)
-	}
-
-	// Create config with defaults
 	cfg := &Config{
 		Environment: viper.GetString("environment"),
 		Logger: &logging.Config{
@@ -202,29 +165,26 @@ func LoadConfig() (*Config, error) {
 	// Set server config from Viper with defaults
 	cfg.Server.Address = viper.GetString("server.address")
 	if cfg.Server.Address == "" {
-		cfg.Server.Address = DefaultServerAddress
+		cfg.Server.Address = defaultServerAddress
 	}
 
 	cfg.Server.ReadTimeout = viper.GetDuration("server.readTimeout")
 	if cfg.Server.ReadTimeout == 0 {
-		cfg.Server.ReadTimeout = DefaultServerReadTimeout
+		cfg.Server.ReadTimeout = defaultServerReadTimeout
 	}
 
 	cfg.Server.WriteTimeout = viper.GetDuration("server.writeTimeout")
 	if cfg.Server.WriteTimeout == 0 {
-		cfg.Server.WriteTimeout = DefaultServerWriteTimeout
+		cfg.Server.WriteTimeout = defaultServerWriteTimeout
 	}
 
 	cfg.Server.IdleTimeout = viper.GetDuration("server.idleTimeout")
 	if cfg.Server.IdleTimeout == 0 {
-		cfg.Server.IdleTimeout = DefaultServerIdleTimeout
+		cfg.Server.IdleTimeout = defaultServerIdleTimeout
 	}
 
 	cfg.Server.SecurityEnabled = viper.GetBool("server.security.enabled")
 	cfg.Server.APIKey = viper.GetString("server.security.apiKey")
-
-	// Set the logger
-	cfg.logger = tempLogger
 
 	// Validate the configuration
 	if validateErr := cfg.Validate(); validateErr != nil {
@@ -232,11 +192,6 @@ func LoadConfig() (*Config, error) {
 	}
 
 	return cfg, nil
-}
-
-// LoadElasticsearchConfig loads Elasticsearch configuration from Viper
-func LoadElasticsearchConfig() *elasticsearch.Config {
-	return elasticsearch.LoadFromViper(viper.GetViper())
 }
 
 // GetAppConfig returns the application configuration.
