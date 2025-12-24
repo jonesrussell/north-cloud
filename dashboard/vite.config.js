@@ -26,7 +26,7 @@ export default defineConfig({
       '/api/sources': {
         target: SOURCES_API_URL,
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api\/sources/, '/api/v1'),
+        rewrite: (path) => path.replace(/^\/api\/sources/, '/api/v1/sources'),
       },
       // Crawler health endpoint
       '/api/health/crawler': {

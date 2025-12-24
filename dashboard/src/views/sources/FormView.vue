@@ -14,19 +14,6 @@
       <div class="space-y-6">
         <!-- Basic Fields -->
         <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
-          <div>
-            <label for="name" class="block text-sm font-medium text-gray-700">
-              Name <span class="text-red-500">*</span>
-            </label>
-            <input
-              id="name"
-              v-model="form.name"
-              type="text"
-              required
-              class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
-            />
-          </div>
-
           <div class="sm:col-span-2">
             <label for="url" class="block text-sm font-medium text-gray-700">
               URL <span class="text-red-500">*</span>
@@ -56,6 +43,19 @@
             <p v-else class="mt-1 text-xs text-gray-500">
               Enter a URL and click "Prefill" to auto-fill form fields
             </p>
+          </div>
+
+          <div>
+            <label for="name" class="block text-sm font-medium text-gray-700">
+              Name <span class="text-red-500">*</span>
+            </label>
+            <input
+              id="name"
+              v-model="form.name"
+              type="text"
+              required
+              class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+            />
           </div>
 
           <div>

@@ -101,7 +101,7 @@ export const sourcesApi = {
   create: (data) => sourcesClient.post('/sources', data),
   update: (id, data) => sourcesClient.put(`/sources/${id}`, data),
   delete: (id) => sourcesClient.delete(`/sources/${id}`),
-  fetchMetadata: (url) => sourcesClient.post('/sources/fetch-metadata', { url }),
+  fetchMetadata: (url) => sourcesClient.post('/fetch-metadata', { url }),
 
   // Cities
   cities: {
