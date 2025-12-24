@@ -60,7 +60,7 @@ func (s *ElasticsearchStorage) QueryRawContent(ctx context.Context, status strin
 	}
 	defer func() {
 		if closeErr := res.Body.Close(); closeErr != nil {
-			// Log error but don't fail - body close errors are usually non-critical
+			_ = closeErr // Body close errors are usually non-critical
 		}
 	}()
 
@@ -126,7 +126,7 @@ func (s *ElasticsearchStorage) IndexClassifiedContent(ctx context.Context, conte
 	}
 	defer func() {
 		if closeErr := res.Body.Close(); closeErr != nil {
-			// Log error but don't fail - body close errors are usually non-critical
+			_ = closeErr // Body close errors are usually non-critical
 		}
 	}()
 
@@ -242,7 +242,11 @@ func (s *ElasticsearchStorage) BulkIndexClassifiedContent(ctx context.Context, c
 	if err != nil {
 		return fmt.Errorf("bulk request failed: %w", err)
 	}
-	defer res.Body.Close()
+	defer func() {
+		if closeErr := res.Body.Close(); closeErr != nil {
+			_ = closeErr // Body close errors are usually non-critical
+		}
+	}()
 
 	if res.IsError() {
 		return fmt.Errorf("bulk indexing error: %s", res.String())
@@ -260,7 +264,11 @@ func (s *ElasticsearchStorage) ListRawContentIndices(ctx context.Context) ([]str
 	if err != nil {
 		return nil, fmt.Errorf("failed to list indices: %w", err)
 	}
-	defer res.Body.Close()
+	defer func() {
+		if closeErr := res.Body.Close(); closeErr != nil {
+			_ = closeErr // Body close errors are usually non-critical
+		}
+	}()
 
 	if res.IsError() {
 		return nil, fmt.Errorf("error listing indices: %s", res.String())
@@ -285,7 +293,11 @@ func (s *ElasticsearchStorage) TestConnection(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("failed to connect to Elasticsearch: %w", err)
 	}
-	defer res.Body.Close()
+	defer func() {
+		if closeErr := res.Body.Close(); closeErr != nil {
+			_ = closeErr // Body close errors are usually non-critical
+		}
+	}()
 
 	if res.IsError() {
 		return fmt.Errorf("error response from Elasticsearch: %s", res.String())
