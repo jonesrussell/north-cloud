@@ -180,15 +180,6 @@ func (h *Handler) GetClassificationResult(c *gin.Context) {
 func (h *Handler) ListRules(c *gin.Context) {
 	h.logger.Debug("Listing classification rules")
 
-	// Check if rules repository is available
-	if h.rulesRepo == nil {
-		c.JSON(http.StatusNotImplemented, gin.H{
-			"error": "Rules repository not available",
-			"note":  "This endpoint requires a database connection",
-		})
-		return
-	}
-
 	// List all topic rules
 	rules, err := h.rulesRepo.List(c.Request.Context(), domain.RuleTypeTopic, nil)
 	if err != nil {
@@ -213,15 +204,6 @@ func (h *Handler) ListRules(c *gin.Context) {
 
 // CreateRule handles POST /api/v1/rules
 func (h *Handler) CreateRule(c *gin.Context) {
-	// Check if rules repository is available
-	if h.rulesRepo == nil {
-		c.JSON(http.StatusNotImplemented, gin.H{
-			"error": "Rules repository not available",
-			"note":  "This endpoint requires a database connection",
-		})
-		return
-	}
-
 	var req CreateRuleRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		h.logger.Warn("Invalid create rule request", "error", err)
@@ -259,15 +241,6 @@ func (h *Handler) CreateRule(c *gin.Context) {
 
 // UpdateRule handles PUT /api/v1/rules/:id
 func (h *Handler) UpdateRule(c *gin.Context) {
-	// Check if rules repository is available
-	if h.rulesRepo == nil {
-		c.JSON(http.StatusNotImplemented, gin.H{
-			"error": "Rules repository not available",
-			"note":  "This endpoint requires a database connection",
-		})
-		return
-	}
-
 	ruleIDStr := c.Param("id")
 	if ruleIDStr == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "rule_id is required"})
@@ -321,15 +294,6 @@ func (h *Handler) UpdateRule(c *gin.Context) {
 
 // DeleteRule handles DELETE /api/v1/rules/:id
 func (h *Handler) DeleteRule(c *gin.Context) {
-	// Check if rules repository is available
-	if h.rulesRepo == nil {
-		c.JSON(http.StatusNotImplemented, gin.H{
-			"error": "Rules repository not available",
-			"note":  "This endpoint requires a database connection",
-		})
-		return
-	}
-
 	ruleIDStr := c.Param("id")
 	if ruleIDStr == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "rule_id is required"})
@@ -361,15 +325,6 @@ func (h *Handler) DeleteRule(c *gin.Context) {
 
 // ListSources handles GET /api/v1/sources
 func (h *Handler) ListSources(c *gin.Context) {
-	// Check if source reputation repository is available
-	if h.sourceReputationRepo == nil {
-		c.JSON(http.StatusNotImplemented, gin.H{
-			"error": "Source reputation repository not available",
-			"note":  "This endpoint requires a database connection",
-		})
-		return
-	}
-
 	// Get pagination parameters
 	page := 1
 	pageSize := 50
@@ -414,15 +369,6 @@ func (h *Handler) ListSources(c *gin.Context) {
 
 // GetSource handles GET /api/v1/sources/:name
 func (h *Handler) GetSource(c *gin.Context) {
-	// Check if source reputation repository is available
-	if h.sourceReputationRepo == nil {
-		c.JSON(http.StatusNotImplemented, gin.H{
-			"error": "Source reputation repository not available",
-			"note":  "This endpoint requires a database connection",
-		})
-		return
-	}
-
 	sourceName := c.Param("name")
 	if sourceName == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "source_name is required"})
@@ -446,15 +392,6 @@ func (h *Handler) GetSource(c *gin.Context) {
 
 // UpdateSource handles PUT /api/v1/sources/:name
 func (h *Handler) UpdateSource(c *gin.Context) {
-	// Check if source reputation repository is available
-	if h.sourceReputationRepo == nil {
-		c.JSON(http.StatusNotImplemented, gin.H{
-			"error": "Source reputation repository not available",
-			"note":  "This endpoint requires a database connection",
-		})
-		return
-	}
-
 	sourceName := c.Param("name")
 	if sourceName == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "source_name is required"})
@@ -495,15 +432,6 @@ func (h *Handler) UpdateSource(c *gin.Context) {
 
 // GetSourceStats handles GET /api/v1/sources/:name/stats
 func (h *Handler) GetSourceStats(c *gin.Context) {
-	// Check if source reputation repository is available
-	if h.sourceReputationRepo == nil {
-		c.JSON(http.StatusNotImplemented, gin.H{
-			"error": "Source reputation repository not available",
-			"note":  "This endpoint requires a database connection",
-		})
-		return
-	}
-
 	sourceName := c.Param("name")
 	if sourceName == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "source_name is required"})
@@ -527,15 +455,6 @@ func (h *Handler) GetSourceStats(c *gin.Context) {
 
 // GetStats handles GET /api/v1/stats
 func (h *Handler) GetStats(c *gin.Context) {
-	// Check if classification history repository is available
-	if h.classificationHistoryRepo == nil {
-		c.JSON(http.StatusNotImplemented, gin.H{
-			"error": "Classification history repository not available",
-			"note":  "This endpoint requires a database connection",
-		})
-		return
-	}
-
 	h.logger.Debug("Getting overall classification stats")
 
 	stats, err := h.classificationHistoryRepo.GetStats(c.Request.Context())
