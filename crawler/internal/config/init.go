@@ -61,6 +61,9 @@ func bindEnvironmentVariables() error {
 	if err := bindElasticsearchEnvVars(); err != nil {
 		return fmt.Errorf("failed to bind elasticsearch env vars: %w", err)
 	}
+	if err := bindMinIOEnvVars(); err != nil {
+		return fmt.Errorf("failed to bind minio env vars: %w", err)
+	}
 	return nil
 }
 
@@ -196,6 +199,32 @@ func bindElasticsearchEnvVars() error {
 	}
 	if err := viper.BindEnv("elasticsearch.retry.max_wait", "ELASTICSEARCH_RETRY_MAX_WAIT"); err != nil {
 		return fmt.Errorf("failed to bind Elasticsearch retry max wait: %w", err)
+	}
+	return nil
+}
+
+// bindMinIOEnvVars binds MinIO environment variables to config keys.
+func bindMinIOEnvVars() error {
+	if err := viper.BindEnv("minio.enabled", "CRAWLER_MINIO_ENABLED"); err != nil {
+		return fmt.Errorf("failed to bind CRAWLER_MINIO_ENABLED: %w", err)
+	}
+	if err := viper.BindEnv("minio.endpoint", "CRAWLER_MINIO_ENDPOINT"); err != nil {
+		return fmt.Errorf("failed to bind CRAWLER_MINIO_ENDPOINT: %w", err)
+	}
+	if err := viper.BindEnv("minio.access_key", "CRAWLER_MINIO_ACCESS_KEY"); err != nil {
+		return fmt.Errorf("failed to bind CRAWLER_MINIO_ACCESS_KEY: %w", err)
+	}
+	if err := viper.BindEnv("minio.secret_key", "CRAWLER_MINIO_SECRET_KEY"); err != nil {
+		return fmt.Errorf("failed to bind CRAWLER_MINIO_SECRET_KEY: %w", err)
+	}
+	if err := viper.BindEnv("minio.use_ssl", "CRAWLER_MINIO_USE_SSL"); err != nil {
+		return fmt.Errorf("failed to bind CRAWLER_MINIO_USE_SSL: %w", err)
+	}
+	if err := viper.BindEnv("minio.bucket", "CRAWLER_MINIO_BUCKET"); err != nil {
+		return fmt.Errorf("failed to bind CRAWLER_MINIO_BUCKET: %w", err)
+	}
+	if err := viper.BindEnv("minio.metadata_bucket", "CRAWLER_MINIO_METADATA_BUCKET"); err != nil {
+		return fmt.Errorf("failed to bind CRAWLER_MINIO_METADATA_BUCKET: %w", err)
 	}
 	return nil
 }

@@ -8,6 +8,8 @@ import (
 	"time"
 
 	"github.com/gocolly/colly/v2"
+	"github.com/jonesrussell/north-cloud/crawler/internal/archive"
+	"github.com/jonesrussell/north-cloud/crawler/internal/config"
 	"github.com/jonesrussell/north-cloud/crawler/internal/config/crawler"
 	"github.com/jonesrussell/north-cloud/crawler/internal/content"
 	"github.com/jonesrussell/north-cloud/crawler/internal/content/rawcontent"
@@ -40,6 +42,7 @@ type CrawlerParams struct {
 	Sources      sources.Interface
 	Config       *crawler.Config
 	Storage      types.Interface
+	FullConfig   config.Interface // Full config for accessing MinIO settings
 }
 
 // CrawlerResult holds the crawler instance
@@ -134,6 +137,22 @@ func NewCrawlerWithParams(p CrawlerParams) (*CrawlerResult, error) {
 	lifecycle := NewLifecycleManager()
 	signals := NewSignalCoordinator(p.Config, p.Logger)
 
+	// Initialize HTML archiver if MinIO is configured
+	var archiver Archiver
+	if p.FullConfig != nil {
+		minioConfig := p.FullConfig.GetMinIOConfig()
+		if minioConfig != nil && minioConfig.Enabled {
+			arch, archErr := archive.NewArchiver(minioConfig, p.Logger)
+			if archErr != nil {
+				p.Logger.Warn("Failed to initialize MinIO archiver, continuing without archiving",
+					"error", archErr)
+			} else {
+				archiver = arch
+				p.Logger.Info("MinIO archiver initialized successfully")
+			}
+		}
+	}
+
 	// Create crawler
 	c := &Crawler{
 		logger:              p.Logger,
@@ -148,6 +167,7 @@ func NewCrawlerWithParams(p CrawlerParams) (*CrawlerResult, error) {
 		cfg:                 p.Config,
 		lifecycle:           lifecycle,
 		signals:             signals,
+		archiver:            archiver,
 	}
 
 	c.linkHandler = NewLinkHandler(c)
