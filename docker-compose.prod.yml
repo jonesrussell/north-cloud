@@ -218,6 +218,12 @@ services:
       - crawler
       - source-manager
       - publisher
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:80/ || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
     networks:
       - north-cloud-network
     restart: always
@@ -242,9 +248,10 @@ services:
       # Add SSL certificates in production
       # - ./infrastructure/nginx/ssl:/etc/nginx/ssl:ro
     depends_on:
-      - source-manager
-      - streetcode
-      - dashboard
+      dashboard:
+        condition: service_healthy
+      streetcode:
+        condition: service_healthy
     networks:
       - north-cloud-network
     restart: always
