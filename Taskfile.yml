@@ -145,3 +145,28 @@ tasks:
     cmds:
       - task: docker:prod:down
       - task: docker:prod:up
+
+  migrate:up:
+    desc: "Run database migrations for all microservices sequentially"
+    cmds:
+      - task: migrate:classifier
+      - task: migrate:source-manager
+      - task: migrate:index-manager
+
+  migrate:classifier:
+    desc: "Run database migrations for classifier service"
+    dir: classifier
+    cmds:
+      - task migrate:up
+
+  migrate:source-manager:
+    desc: "Run database migrations for source-manager service"
+    dir: source-manager
+    cmds:
+      - task migrate
+
+  migrate:index-manager:
+    desc: "Run database migrations for index-manager service"
+    dir: index-manager
+    cmds:
+      - task migrate:up

@@ -1,5 +1,7 @@
 version: '3'
 
+dotenv: ['../.env']
+
 vars:
   BINARY_NAME: classifier
   MAIN_PATH: ./main.go
@@ -91,6 +93,7 @@ tasks:
       - psql -h {{.POSTGRES_HOST}} -p {{.POSTGRES_PORT}} -U {{.POSTGRES_USER}} -d {{.POSTGRES_DB}} -f migrations/003_create_classification_history.sql
       - psql -h {{.POSTGRES_HOST}} -p {{.POSTGRES_PORT}} -U {{.POSTGRES_USER}} -d {{.POSTGRES_DB}} -f migrations/004_create_ml_models.sql
       - psql -h {{.POSTGRES_HOST}} -p {{.POSTGRES_PORT}} -U {{.POSTGRES_USER}} -d {{.POSTGRES_DB}} -f migrations/005_add_comprehensive_categories.sql
+      - psql -h {{.POSTGRES_HOST}} -p {{.POSTGRES_PORT}} -U {{.POSTGRES_USER}} -d {{.POSTGRES_DB}} -f migrations/006_remove_is_crime_related.sql
 
   db:shell:
     desc: "Open PostgreSQL shell"
