@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sync/atomic"
 	"time"
 
 	colly "github.com/gocolly/colly/v2"
@@ -183,13 +184,38 @@ func (c *Crawler) Start(ctx context.Context, sourceName string) error {
 		return err
 	}
 
+	// Create channel to signal when initial page is fully processed (OnScraped fired)
+	// This ensures all OnHTML callbacks have queued their links before Wait() starts
+	initialPageReady := make(chan struct{})
+	initialPageURL := source.URL
+	initialPageScraped := &atomic.Bool{}
+
+	// Set up OnScraped callback to signal when initial page is done
+	// This must be set up before Visit() is called
+	// Note: This is in addition to the OnScraped callback in setupCallbacks
+	c.collector.OnScraped(func(r *colly.Response) {
+		// Check if this is the initial page (only signal once)
+		if !initialPageScraped.Load() {
+			requestURL := r.Request.URL.String()
+			// Compare URLs (handle potential trailing slash differences)
+			if requestURL == initialPageURL || requestURL+"/" == initialPageURL || requestURL == initialPageURL+"/" {
+				if initialPageScraped.CompareAndSwap(false, true) {
+					close(initialPageReady)
+					c.logger.Debug("Initial page scraped, all links should be queued",
+						"url", initialPageURL)
+				}
+			}
+		}
+	})
+
 	// Visit the source URL
 	if visitErr := c.collector.Visit(source.URL); visitErr != nil {
 		return fmt.Errorf("failed to visit source URL: %w", visitErr)
 	}
 
 	// Wait for collector to complete using monitor
-	if waitErr := c.monitor.WaitForCompletion(ctx, sourceName); waitErr != nil {
+	// Pass initialPageReady channel to ensure Wait() starts after initial page is processed
+	if waitErr := c.monitor.WaitForCompletion(ctx, sourceName, initialPageReady); waitErr != nil {
 		return waitErr
 	}
 

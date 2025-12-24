@@ -14,6 +14,13 @@ import (
 func (c *Crawler) ProcessHTML(e *colly.HTMLElement) {
 	// Check if context is cancelled before processing
 	ctx := c.state.Context()
+	// If context is nil, crawler has been stopped/reset - abort this request
+	if ctx == nil {
+		if e != nil && e.Request != nil {
+			e.Request.Abort()
+		}
+		return
+	}
 	select {
 	case <-ctx.Done():
 		// Context cancelled, abort this request
