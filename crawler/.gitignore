@@ -39,7 +39,6 @@ secrets/
 bin/
 build/
 dist/
-crawler
 *.exe
 *.exe~
 *.dll

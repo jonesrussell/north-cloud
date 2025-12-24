@@ -191,54 +191,7 @@ func (c *Crawler) setupCallbacks(ctx context.Context) {
 	})
 
 	// Set up error handling
-	c.collector.OnError(func(r *colly.Response, visitErr error) {
-		errMsg := visitErr.Error()
-
-		// Check if this is an expected/non-critical error (log at debug)
-		isExpectedError := errors.Is(visitErr, ErrAlreadyVisited) ||
-			errors.Is(visitErr, ErrMaxDepth) ||
-			errors.Is(visitErr, ErrForbiddenDomain) ||
-			strings.Contains(errMsg, "forbidden domain") ||
-			strings.Contains(errMsg, "Forbidden domain") ||
-			strings.Contains(errMsg, "max depth") ||
-			strings.Contains(errMsg, "Max depth") ||
-			strings.Contains(errMsg, "already visited") ||
-			strings.Contains(errMsg, "Already visited") ||
-			strings.Contains(errMsg, "Not following redirect")
-
-		if isExpectedError {
-			// These are expected conditions, log at debug level
-			c.logger.Debug("Expected error while crawling",
-				"url", r.Request.URL.String(),
-				"status", r.StatusCode,
-				"error", errMsg)
-			return
-		}
-
-		// Check if this is a timeout (log at warn level - common but still an issue)
-		isTimeout := strings.Contains(errMsg, "timeout") ||
-			strings.Contains(errMsg, "Timeout") ||
-			strings.Contains(errMsg, "deadline exceeded") ||
-			strings.Contains(errMsg, "context deadline exceeded")
-
-		if isTimeout {
-			// Timeouts are common when crawling, log at warn level
-			c.logger.Warn("Timeout while crawling",
-				"url", r.Request.URL.String(),
-				"status", r.StatusCode,
-				"error", errMsg)
-			c.IncrementError()
-			return
-		}
-
-		// Log actual errors
-		c.logger.Error("Error while crawling",
-			"url", r.Request.URL.String(),
-			"status", r.StatusCode,
-			"error", visitErr)
-
-		c.IncrementError()
-	})
+	c.collector.OnError(c.handleCrawlError)
 
 	// Set up link following
 	c.collector.OnHTML("a[href]", func(e *colly.HTMLElement) {
@@ -260,6 +213,56 @@ func (c *Crawler) setupCallbacks(ctx context.Context) {
 		c.logger.Debug("Finished processing page",
 			"url", r.Request.URL.String())
 	})
+}
+
+// handleCrawlError handles crawl errors with appropriate logging levels.
+func (c *Crawler) handleCrawlError(r *colly.Response, visitErr error) {
+	errMsg := visitErr.Error()
+
+	// Check if this is an expected/non-critical error (log at debug)
+	isExpectedError := errors.Is(visitErr, ErrAlreadyVisited) ||
+		errors.Is(visitErr, ErrMaxDepth) ||
+		errors.Is(visitErr, ErrForbiddenDomain) ||
+		strings.Contains(errMsg, "forbidden domain") ||
+		strings.Contains(errMsg, "Forbidden domain") ||
+		strings.Contains(errMsg, "max depth") ||
+		strings.Contains(errMsg, "Max depth") ||
+		strings.Contains(errMsg, "already visited") ||
+		strings.Contains(errMsg, "Already visited") ||
+		strings.Contains(errMsg, "Not following redirect")
+
+	if isExpectedError {
+		// These are expected conditions, log at debug level
+		c.logger.Debug("Expected error while crawling",
+			"url", r.Request.URL.String(),
+			"status", r.StatusCode,
+			"error", errMsg)
+		return
+	}
+
+	// Check if this is a timeout (log at warn level - common but still an issue)
+	isTimeout := strings.Contains(errMsg, "timeout") ||
+		strings.Contains(errMsg, "Timeout") ||
+		strings.Contains(errMsg, "deadline exceeded") ||
+		strings.Contains(errMsg, "context deadline exceeded")
+
+	if isTimeout {
+		// Timeouts are common when crawling, log at warn level
+		c.logger.Warn("Timeout while crawling",
+			"url", r.Request.URL.String(),
+			"status", r.StatusCode,
+			"error", errMsg)
+		c.IncrementError()
+		return
+	}
+
+	// Log actual errors
+	c.logger.Error("Error while crawling",
+		"url", r.Request.URL.String(),
+		"status", r.StatusCode,
+		"error", visitErr)
+
+	c.IncrementError()
 }
 
 // Collector Management Methods

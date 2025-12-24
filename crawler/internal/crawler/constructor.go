@@ -142,10 +142,10 @@ func NewCrawlerWithParams(p CrawlerParams) (*CrawlerResult, error) {
 	if p.FullConfig != nil {
 		minioConfig := p.FullConfig.GetMinIOConfig()
 		if minioConfig != nil && minioConfig.Enabled {
-			arch, err := archive.NewArchiver(minioConfig, p.Logger)
-			if err != nil {
+			arch, archErr := archive.NewArchiver(minioConfig, p.Logger)
+			if archErr != nil {
 				p.Logger.Warn("Failed to initialize MinIO archiver, continuing without archiving",
-					"error", err)
+					"error", archErr)
 			} else {
 				archiver = arch
 				p.Logger.Info("MinIO archiver initialized successfully")
