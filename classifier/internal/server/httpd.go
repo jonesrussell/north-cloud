@@ -74,7 +74,9 @@ func StartHTTPServer() {
 		logger.Error("Failed to connect to database", "error", err)
 		os.Exit(1)
 	}
-	defer db.Close()
+	defer func() {
+		_ = db.Close()
+	}()
 
 	logger.Info("Database connected successfully")
 

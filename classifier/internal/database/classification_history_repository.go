@@ -163,7 +163,9 @@ func (r *ClassificationHistoryRepository) GetStats(ctx context.Context) (*Classi
 	if err != nil {
 		return nil, fmt.Errorf("failed to get content type distribution: %w", err)
 	}
-	defer rows.Close()
+	defer func() {
+		_ = rows.Close()
+	}()
 
 	for rows.Next() {
 		var contentType string

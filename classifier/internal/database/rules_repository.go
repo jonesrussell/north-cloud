@@ -106,7 +106,7 @@ func (r *RulesRepository) List(ctx context.Context, ruleType string, enabled *bo
 	if enabled != nil {
 		whereClauses = append(whereClauses, fmt.Sprintf("enabled = $%d", argIndex))
 		args = append(args, *enabled)
-		argIndex++
+		argIndex++ //nolint:ineffassign // Incremented for consistency and potential future filters
 	}
 
 	if len(whereClauses) > 0 {
@@ -125,7 +125,9 @@ func (r *RulesRepository) List(ctx context.Context, ruleType string, enabled *bo
 	if err != nil {
 		return nil, fmt.Errorf("failed to list rules: %w", err)
 	}
-	defer rows.Close()
+	defer func() {
+		_ = rows.Close()
+	}()
 
 	for rows.Next() {
 		var rule domain.ClassificationRule
