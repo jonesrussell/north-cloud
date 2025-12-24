@@ -150,7 +150,7 @@ type Crawler struct {
 	linkHandler         *LinkHandler
 	htmlProcessor       *HTMLProcessor
 	cfg                 *crawler.Config
-	maxDepthOverride    int32 // Override for source's max_depth (0 means use source default), accessed atomically
+	maxDepthOverride    int32    // Override for source's max_depth (0 means use source default), accessed atomically
 	archiver            Archiver // HTML archiver for MinIO storage
 
 	// Extracted components for better separation of concerns
