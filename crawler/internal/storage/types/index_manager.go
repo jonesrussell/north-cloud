@@ -15,8 +15,4 @@ type IndexManager interface {
 	GetMapping(ctx context.Context, name string) (map[string]any, error)
 	// UpdateMapping updates the mapping for an index.
 	UpdateMapping(ctx context.Context, name string, mapping map[string]any) error
-	// EnsureArticleIndex ensures that an article index exists with the appropriate mapping.
-	EnsureArticleIndex(ctx context.Context, name string) error
-	// EnsurePageIndex ensures that a page index exists with the appropriate mapping.
-	EnsurePageIndex(ctx context.Context, name string) error
 }

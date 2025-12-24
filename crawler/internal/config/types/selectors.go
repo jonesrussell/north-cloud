@@ -103,34 +103,6 @@ func (s *ArticleSelectors) Validate() error {
 	return nil
 }
 
-// Default returns default article selectors.
-func (s *ArticleSelectors) Default() ArticleSelectors {
-	return ArticleSelectors{
-		Container:     "article",
-		Title:         "h1",
-		Body:          "article > div",
-		Intro:         "p.lead",
-		Byline:        ".byline",
-		PublishedTime: "time[datetime]",
-		TimeAgo:       "time.ago",
-		JSONLD:        "script[type='application/ld+json']",
-		Description:   "meta[name='description']",
-		Section:       ".section",
-		Keywords:      "meta[name='keywords']",
-		OGTitle:       "meta[property='og:title']",
-		OGDescription: "meta[property='og:description']",
-		OGImage:       "meta[property='og:image']",
-		OgURL:         "meta[property='og:url']",
-		Canonical:     "link[rel='canonical']",
-		WordCount:     ".word-count",
-		PublishDate:   "time[pubdate]",
-		Category:      ".category",
-		Tags:          ".tags",
-		Author:        ".author",
-		BylineName:    ".byline-name",
-	}
-}
-
 // PageSelectors defines the CSS selectors for page content.
 type PageSelectors struct {
 	// Container is the selector for the page container
@@ -155,30 +127,6 @@ type PageSelectors struct {
 	Canonical string `yaml:"canonical"`
 	// Exclude are selectors for elements to exclude from content extraction
 	Exclude []string `yaml:"exclude"`
-}
-
-// Default returns default page selectors.
-func (s *PageSelectors) Default() PageSelectors {
-	return PageSelectors{
-		Container:     "main, article, body",
-		Title:         "h1, title",
-		Content:       "main, article, .content",
-		Description:   "meta[name='description']",
-		Keywords:      "meta[name='keywords']",
-		OGTitle:       "meta[property='og:title']",
-		OGDescription: "meta[property='og:description']",
-		OGImage:       "meta[property='og:image']",
-		OgURL:         "meta[property='og:url']",
-		Canonical:     "link[rel='canonical']",
-		Exclude: []string{
-			// Default exclude patterns for clean content extraction
-			"script, style, noscript",
-			".ad, .advertisement, [class*='ad']",
-			".header, .footer, nav",
-			"button, form",
-			".sidebar, .comments",
-		},
-	}
 }
 
 // Validate validates the page selectors (optional validation).

@@ -9,14 +9,16 @@ import (
 	"net/url"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
+	"time"
 
+	es "github.com/elastic/go-elasticsearch/v8"
 	"github.com/jmoiron/sqlx"
-	cmdcommon "github.com/jonesrussell/north-cloud/crawler/cmd/common"
 	"github.com/jonesrussell/north-cloud/crawler/internal/api"
-	"github.com/jonesrussell/north-cloud/crawler/internal/constants"
-	"github.com/jonesrussell/north-cloud/crawler/internal/content/articles"
-	"github.com/jonesrussell/north-cloud/crawler/internal/content/page"
+	"github.com/jonesrussell/north-cloud/crawler/internal/config"
+	crawlerconfigtypes "github.com/jonesrussell/north-cloud/crawler/internal/config/crawler"
+	dbconfig "github.com/jonesrussell/north-cloud/crawler/internal/config/database"
 	"github.com/jonesrussell/north-cloud/crawler/internal/crawler"
 	"github.com/jonesrussell/north-cloud/crawler/internal/crawler/events"
 	"github.com/jonesrussell/north-cloud/crawler/internal/database"
@@ -24,58 +26,309 @@ import (
 	"github.com/jonesrussell/north-cloud/crawler/internal/logger"
 	"github.com/jonesrussell/north-cloud/crawler/internal/sources"
 	"github.com/jonesrussell/north-cloud/crawler/internal/storage"
+	"github.com/jonesrussell/north-cloud/crawler/internal/storage/types"
 	infracontext "github.com/north-cloud/infrastructure/context"
+	"github.com/spf13/viper"
 )
+
+// === Types ===
+
+// CommandDeps holds common dependencies for the HTTP server.
+type CommandDeps struct {
+	Logger logger.Interface
+	Config config.Interface
+}
+
+// StorageResult holds both storage interface and index manager.
+type StorageResult struct {
+	Storage      types.Interface
+	IndexManager types.IndexManager
+}
+
+// === Constants ===
+
+const (
+	signalChannelBufferSize = 1
+	errorChannelBufferSize  = 1
+	defaultShutdownTimeout  = 30 * time.Second
+)
+
+// === Errors ===
+
+var (
+	// errLoggerRequired is returned when CommandDeps.Logger is nil
+	errLoggerRequired = errors.New("logger is required")
+	// errConfigRequired is returned when CommandDeps.Config is nil
+	errConfigRequired = errors.New("config is required")
+)
+
+// === Main Entry Point ===
 
 // Start starts the HTTP server and runs until interrupted.
 // It handles graceful shutdown on SIGINT or SIGTERM signals.
 func Start() error {
-	// Get dependencies
-	deps, err := cmdcommon.NewCommandDeps()
+	// Phase 1: Initialize Viper configuration
+	if err := config.InitializeViper(); err != nil {
+		return fmt.Errorf("failed to initialize config: %w", err)
+	}
+
+	// Phase 2: Initialize dependencies
+	deps, err := newCommandDeps()
 	if err != nil {
 		return fmt.Errorf("failed to initialize dependencies: %w", err)
 	}
 
-	// Create storage using common function
-	storageResult, err := cmdcommon.CreateStorage(deps.Config, deps.Logger)
+	// Phase 3: Setup storage
+	storageResult, err := createStorage(deps.Config, deps.Logger)
 	if err != nil {
 		return fmt.Errorf("failed to create storage: %w", err)
 	}
 
-	// Create search manager
-	searchManager := storage.NewSearchManager(storageResult.Storage, deps.Logger)
-
-	// Initialize jobs handler and scheduler
-	jobsHandler, dbScheduler, db := setupJobsAndScheduler(&deps, storageResult)
+	// Phase 4: Setup jobs handler and scheduler
+	jobsHandler, dbScheduler, db := setupJobsAndScheduler(deps, storageResult)
 	if db != nil {
 		defer db.Close()
 	}
 
-	// Create and start HTTP server
-	srv, errChan, err := startHTTPServer(&deps, searchManager, jobsHandler)
+	// Phase 5: Start HTTP server
+	server, errChan, err := startHTTPServer(deps, jobsHandler)
 	if err != nil {
 		return err
 	}
 
-	// Run server until interrupted
-	return runServerUntilInterrupt(deps.Logger, srv, dbScheduler, errChan)
+	// Phase 6: Run server until interrupted
+	return runServerUntilInterrupt(deps.Logger, server, dbScheduler, errChan)
 }
+
+// === Dependency Setup ===
+
+// newCommandDeps creates CommandDeps by loading config and creating logger.
+func newCommandDeps() (*CommandDeps, error) {
+	// Load config
+	cfg, err := loadConfig()
+	if err != nil {
+		return nil, fmt.Errorf("load config: %w", err)
+	}
+
+	// Create logger
+	log, err := createLogger()
+	if err != nil {
+		return nil, fmt.Errorf("create logger: %w", err)
+	}
+
+	deps := &CommandDeps{
+		Logger: log,
+		Config: cfg,
+	}
+
+	if validateErr := deps.validate(); validateErr != nil {
+		return nil, fmt.Errorf("validate deps: %w", validateErr)
+	}
+
+	return deps, nil
+}
+
+// loadConfig loads configuration from the config package.
+func loadConfig() (config.Interface, error) {
+	return config.LoadConfig()
+}
+
+// createLogger creates a logger instance from Viper configuration.
+func createLogger() (logger.Interface, error) {
+	logLevel := normalizeLogLevel(viper.GetString("logger.level"))
+	logCfg := &logger.Config{
+		Level:       logger.Level(logLevel),
+		Development: viper.GetBool("logger.development"),
+		Encoding:    viper.GetString("logger.encoding"),
+		OutputPaths: viper.GetStringSlice("logger.output_paths"),
+		EnableColor: viper.GetBool("logger.enable_color"),
+	}
+	return logger.New(logCfg)
+}
+
+// normalizeLogLevel normalizes log level string.
+func normalizeLogLevel(level string) string {
+	if level == "" {
+		return "info"
+	}
+	return strings.ToLower(level)
+}
+
+// validate ensures all required dependencies are present.
+func (d *CommandDeps) validate() error {
+	if d.Logger == nil {
+		return errLoggerRequired
+	}
+	if d.Config == nil {
+		return errConfigRequired
+	}
+	return nil
+}
+
+// === Storage Setup ===
+
+// createStorageClient creates an Elasticsearch client with the given config and logger.
+func createStorageClient(cfg config.Interface, log logger.Interface) (*es.Client, error) {
+	clientResult, err := storage.NewClient(storage.ClientParams{
+		Config: cfg,
+		Logger: log,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("create storage client: %w", err)
+	}
+	return clientResult.Client, nil
+}
+
+// createStorage creates both storage client and storage instance in one call.
+func createStorage(cfg config.Interface, log logger.Interface) (*StorageResult, error) {
+	// Create storage client
+	client, err := createStorageClient(cfg, log)
+	if err != nil {
+		return nil, fmt.Errorf("create storage client: %w", err)
+	}
+
+	// Create storage
+	storageResult, err := storage.NewStorage(storage.StorageParams{
+		Config: cfg,
+		Logger: log,
+		Client: client,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("create storage: %w", err)
+	}
+
+	return &StorageResult{
+		Storage:      storageResult.Storage,
+		IndexManager: storageResult.IndexManager,
+	}, nil
+}
+
+// === Crawler Setup ===
+
+// createCrawlerForJobs creates a crawler instance for job execution.
+func createCrawlerForJobs(
+	deps *CommandDeps,
+	storageResult *StorageResult,
+) (crawler.Interface, error) {
+	// Create event bus
+	bus := events.NewEventBus(deps.Logger)
+
+	// Get crawler config
+	crawlerCfg := deps.Config.GetCrawlerConfig()
+
+	// Load source manager
+	sourceManager, err := loadSourceManager(deps)
+	if err != nil {
+		return nil, err
+	}
+
+	// Ensure raw content indexes (non-fatal if it fails)
+	if indexErr := ensureRawContentIndexes(deps, storageResult, sourceManager); indexErr != nil {
+		deps.Logger.Warn("Failed to ensure raw content indexes", "error", indexErr)
+		// Continue - not fatal
+	}
+
+	// Create crawler
+	return createCrawler(deps, bus, crawlerCfg, storageResult, sourceManager)
+}
+
+// loadSourceManager loads sources using the API loader.
+func loadSourceManager(deps *CommandDeps) (sources.Interface, error) {
+	sourceManager, err := sources.LoadSources(deps.Config, deps.Logger)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load sources: %w", err)
+	}
+	return sourceManager, nil
+}
+
+// ensureRawContentIndexes ensures raw content indexes exist for all sources.
+func ensureRawContentIndexes(
+	deps *CommandDeps,
+	storageResult *StorageResult,
+	sourceManager sources.Interface,
+) error {
+	rawIndexer := storage.NewRawContentIndexer(storageResult.Storage, deps.Logger)
+	allSources, err := sourceManager.GetSources()
+	if err != nil {
+		return fmt.Errorf("failed to get sources: %w", err)
+	}
+
+	ctx, cancel := createTimeoutContext(defaultShutdownTimeout)
+	defer cancel()
+
+	for i := range allSources {
+		// Extract hostname from source URL for index naming
+		sourceHostname := extractHostnameFromURL(allSources[i].URL)
+		if sourceHostname == "" {
+			// Fallback to source name if URL parsing fails
+			sourceHostname = allSources[i].Name
+		}
+		if indexErr := rawIndexer.EnsureRawContentIndex(ctx, sourceHostname); indexErr != nil {
+			deps.Logger.Warn("Failed to ensure raw content index",
+				"source", allSources[i].Name,
+				"source_url", allSources[i].URL,
+				"hostname", sourceHostname,
+				"error", indexErr)
+			// Continue with other sources - not fatal
+		}
+	}
+	return nil
+}
+
+// createCrawler creates a crawler instance with the given parameters.
+func createCrawler(
+	deps *CommandDeps,
+	bus *events.EventBus,
+	crawlerCfg *crawlerconfigtypes.Config,
+	storageResult *StorageResult,
+	sourceManager sources.Interface,
+) (crawler.Interface, error) {
+	crawlerResult, err := crawler.NewCrawlerWithParams(crawler.CrawlerParams{
+		Logger:       deps.Logger,
+		Bus:          bus,
+		IndexManager: storageResult.IndexManager,
+		Sources:      sourceManager,
+		Config:       crawlerCfg,
+		Storage:      storageResult.Storage,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to create crawler: %w", err)
+	}
+	return crawlerResult.Crawler, nil
+}
+
+// extractHostnameFromURL extracts the hostname from a URL for use in index naming.
+// Example: "https://www.sudbury.com/article" → "www.sudbury.com"
+func extractHostnameFromURL(urlStr string) string {
+	if urlStr == "" {
+		return ""
+	}
+	parsed, err := url.Parse(urlStr)
+	if err != nil {
+		return ""
+	}
+	hostname := parsed.Hostname()
+	if hostname == "" {
+		return ""
+	}
+	return hostname
+}
+
+// createTimeoutContext creates a context with timeout.
+func createTimeoutContext(timeout time.Duration) (context.Context, context.CancelFunc) {
+	return infracontext.WithTimeout(timeout)
+}
+
+// === Database & Scheduler Setup ===
 
 // setupJobsAndScheduler initializes the jobs handler and scheduler if database is available.
 // Returns jobsHandler, dbScheduler, and db connection (if available).
 func setupJobsAndScheduler(
-	deps *cmdcommon.CommandDeps,
-	storageResult *cmdcommon.StorageResult,
+	deps *CommandDeps,
+	storageResult *StorageResult,
 ) (*api.JobsHandler, *job.DBScheduler, *sqlx.DB) {
-	// Initialize database connection
-	dbConfig := database.Config{
-		Host:     deps.Config.GetDatabaseConfig().Host,
-		Port:     deps.Config.GetDatabaseConfig().Port,
-		User:     deps.Config.GetDatabaseConfig().User,
-		Password: deps.Config.GetDatabaseConfig().Password,
-		DBName:   deps.Config.GetDatabaseConfig().DBName,
-		SSLMode:  deps.Config.GetDatabaseConfig().SSLMode,
-	}
+	// Convert config to database config (DRY improvement)
+	dbConfig := databaseConfigFromInterface(deps.Config.GetDatabaseConfig())
 
 	db, err := database.NewPostgresConnection(dbConfig)
 	if err != nil {
@@ -96,11 +349,25 @@ func setupJobsAndScheduler(
 	return jobsHandler, dbScheduler, db
 }
 
+// databaseConfigFromInterface converts config database config to database.Config.
+// This eliminates the DRY violation of repeated field mapping.
+func databaseConfigFromInterface(cfg *dbconfig.Config) database.Config {
+	return database.Config{
+		Host:     cfg.Host,
+		Port:     cfg.Port,
+		User:     cfg.User,
+		Password: cfg.Password,
+		DBName:   cfg.DBName,
+		SSLMode:  cfg.SSLMode,
+	}
+}
+
 // createAndStartScheduler creates and starts the database scheduler.
 // Returns nil if scheduler cannot be created or started.
+// Note: The scheduler manages its own context lifecycle internally.
 func createAndStartScheduler(
-	deps *cmdcommon.CommandDeps,
-	storageResult *cmdcommon.StorageResult,
+	deps *CommandDeps,
+	storageResult *StorageResult,
 	jobRepo *database.JobRepository,
 ) *job.DBScheduler {
 	// Create crawler for job execution
@@ -110,13 +377,11 @@ func createAndStartScheduler(
 		return nil
 	}
 
-	// Create context for scheduler
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
 	// Create and start database scheduler
+	// The scheduler manages its own context internally, so we pass a background context
+	// which the scheduler will use to derive its own context.
 	dbScheduler := job.NewDBScheduler(deps.Logger, jobRepo, crawlerInstance)
-	if startErr := dbScheduler.Start(ctx); startErr != nil {
+	if startErr := dbScheduler.Start(context.Background()); startErr != nil {
 		deps.Logger.Error("Failed to start database scheduler", "error", startErr)
 		return nil
 	}
@@ -125,39 +390,40 @@ func createAndStartScheduler(
 	return dbScheduler
 }
 
+// === Server Setup ===
+
 // startHTTPServer creates and starts the HTTP server.
 // Returns the server and an error channel for server errors.
 func startHTTPServer(
-	deps *cmdcommon.CommandDeps,
-	searchManager api.SearchManager,
+	deps *CommandDeps,
 	jobsHandler *api.JobsHandler,
 ) (*http.Server, chan error, error) {
-	srv, _, err := api.StartHTTPServer(deps.Logger, searchManager, deps.Config, jobsHandler)
+	server, _, err := api.StartHTTPServer(deps.Logger, deps.Config, jobsHandler)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to start HTTP server: %w", err)
 	}
 
 	// Start server in goroutine
 	deps.Logger.Info("Starting HTTP server", "addr", deps.Config.GetServerConfig().Address)
-	errChan := make(chan error, 1)
+	errChan := make(chan error, errorChannelBufferSize)
 	go func() {
-		if serveErr := srv.ListenAndServe(); serveErr != nil && !errors.Is(serveErr, http.ErrServerClosed) {
+		if serveErr := server.ListenAndServe(); serveErr != nil && !errors.Is(serveErr, http.ErrServerClosed) {
 			errChan <- serveErr
 		}
 	}()
 
-	return srv, errChan, nil
+	return server, errChan, nil
 }
 
 // runServerUntilInterrupt runs the server until interrupted by signal or error.
 func runServerUntilInterrupt(
 	log logger.Interface,
-	srv *http.Server,
+	server *http.Server,
 	dbScheduler *job.DBScheduler,
 	errChan chan error,
 ) error {
 	// Set up signal handling for graceful shutdown
-	sigChan := make(chan os.Signal, 1)
+	sigChan := make(chan os.Signal, signalChannelBufferSize)
 	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
 
 	// Wait for interrupt signal or error
@@ -166,19 +432,19 @@ func runServerUntilInterrupt(
 		log.Error("Server error", "error", serverErr)
 		return fmt.Errorf("server error: %w", serverErr)
 	case sig := <-sigChan:
-		return shutdownServer(log, srv, dbScheduler, sig)
+		return shutdownServer(log, server, dbScheduler, sig)
 	}
 }
 
 // shutdownServer performs graceful shutdown of the server and scheduler.
 func shutdownServer(
 	log logger.Interface,
-	srv *http.Server,
+	server *http.Server,
 	dbScheduler *job.DBScheduler,
 	sig os.Signal,
 ) error {
 	log.Info("Shutdown signal received", "signal", sig.String())
-	shutdownCtx, cancel := infracontext.WithTimeout(constants.DefaultShutdownTimeout)
+	shutdownCtx, cancel := infracontext.WithTimeout(defaultShutdownTimeout)
 	defer cancel()
 
 	// Stop scheduler first
@@ -191,108 +457,11 @@ func shutdownServer(
 
 	// Stop HTTP server
 	log.Info("Stopping HTTP server")
-	if err := srv.Shutdown(shutdownCtx); err != nil {
+	if err := server.Shutdown(shutdownCtx); err != nil {
 		log.Error("Failed to stop server", "error", err)
 		return fmt.Errorf("failed to stop server: %w", err)
 	}
 
 	log.Info("Server stopped successfully")
 	return nil
-}
-
-// createCrawlerForJobs creates a crawler instance for job execution
-func createCrawlerForJobs(
-	deps *cmdcommon.CommandDeps,
-	storageResult *cmdcommon.StorageResult,
-) (crawler.Interface, error) {
-	// Create event bus
-	bus := events.NewEventBus(deps.Logger)
-
-	// Get crawler config
-	crawlerCfg := deps.Config.GetCrawlerConfig()
-
-	// Create source manager using LoadSources (which uses API loader internally)
-	sourceManager, err := sources.LoadSources(deps.Config, deps.Logger)
-	if err != nil {
-		return nil, fmt.Errorf("failed to load sources: %w", err)
-	}
-
-	// Create raw content indexer for classifier integration
-	rawIndexer := storage.NewRawContentIndexer(storageResult.Storage, deps.Logger)
-
-	// Ensure raw content indexes exist for all sources
-	allSources, err := sourceManager.GetSources()
-	if err != nil {
-		deps.Logger.Warn("Failed to get sources for raw content index creation", "error", err)
-	} else {
-		ctx, cancel := infracontext.WithTimeout(constants.DefaultShutdownTimeout)
-		defer cancel()
-		for i := range allSources {
-			// Extract hostname from source URL for index naming (e.g., "www.sudbury.com")
-			// instead of using the source's Name field (e.g., "sudbury _ local news")
-			sourceHostname := extractHostnameFromURL(allSources[i].URL)
-			if sourceHostname == "" {
-				// Fallback to source name if URL parsing fails
-				sourceHostname = allSources[i].Name
-			}
-			if indexErr := rawIndexer.EnsureRawContentIndex(ctx, sourceHostname); indexErr != nil {
-				deps.Logger.Warn("Failed to ensure raw content index",
-					"source", allSources[i].Name,
-					"source_url", allSources[i].URL,
-					"hostname", sourceHostname,
-					"error", indexErr)
-				// Continue with other sources - not fatal
-			}
-		}
-	}
-
-	// Create article service with raw content indexer
-	articleService := articles.NewContentServiceWithRawIndexer(
-		deps.Logger,
-		storageResult.Storage,
-		constants.DefaultContentIndex,
-		sourceManager,
-		rawIndexer,
-	)
-	pageService := page.NewContentServiceWithSources(
-		deps.Logger,
-		storageResult.Storage,
-		constants.DefaultContentIndex,
-		sourceManager,
-	)
-
-	// Create crawler
-	crawlerResult, err := crawler.NewCrawlerWithParams(crawler.CrawlerParams{
-		Logger:         deps.Logger,
-		Bus:            bus,
-		IndexManager:   storageResult.IndexManager,
-		Sources:        sourceManager,
-		Config:         crawlerCfg,
-		ArticleService: articleService,
-		PageService:    pageService,
-		Storage:        storageResult.Storage,
-	})
-
-	if err != nil {
-		return nil, fmt.Errorf("failed to create crawler: %w", err)
-	}
-
-	return crawlerResult.Crawler, nil
-}
-
-// extractHostnameFromURL extracts the hostname from a URL for use in index naming.
-// Example: "https://www.sudbury.com/article" → "www.sudbury.com"
-func extractHostnameFromURL(urlStr string) string {
-	if urlStr == "" {
-		return ""
-	}
-	parsed, err := url.Parse(urlStr)
-	if err != nil {
-		return ""
-	}
-	hostname := parsed.Hostname()
-	if hostname == "" {
-		return ""
-	}
-	return hostname
 }

@@ -10,7 +10,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/jonesrussell/north-cloud/crawler/internal/domain"
 	"github.com/jonesrussell/north-cloud/crawler/internal/logger"
 	"github.com/jonesrussell/north-cloud/crawler/internal/storage/types"
 )
@@ -52,22 +51,19 @@ func NewRawContentIndexer(storage types.Interface, log logger.Interface) *RawCon
 	}
 }
 
-// IndexArticle indexes an article as raw content for classification
-func (r *RawContentIndexer) IndexArticle(ctx context.Context, article *domain.Article, sourceName string) error {
-	if article == nil {
-		return errors.New("article is nil")
+// IndexRawContent indexes raw content for classification
+func (r *RawContentIndexer) IndexRawContent(ctx context.Context, rawContent *RawContent) error {
+	if rawContent == nil {
+		return errors.New("raw content is nil")
 	}
 
-	// Convert article to raw content
-	rawContent := r.convertArticleToRawContent(article, sourceName)
-
 	// Index to raw_content index
-	indexName := r.getRawContentIndexName(sourceName)
+	indexName := r.getRawContentIndexName(rawContent.SourceName)
 
 	r.logger.Debug("Indexing raw content for classification",
 		"index", indexName,
-		"article_id", article.ID,
-		"source_name", sourceName,
+		"content_id", rawContent.ID,
+		"source_name", rawContent.SourceName,
 		"word_count", rawContent.WordCount,
 	)
 
@@ -76,57 +72,18 @@ func (r *RawContentIndexer) IndexArticle(ctx context.Context, article *domain.Ar
 		r.logger.Error("Failed to index raw content",
 			"error", err,
 			"index", indexName,
-			"article_id", article.ID,
+			"content_id", rawContent.ID,
 		)
 		return fmt.Errorf("failed to index raw content: %w", err)
 	}
 
 	r.logger.Info("Indexed raw content for classification",
 		"index", indexName,
-		"article_id", article.ID,
+		"content_id", rawContent.ID,
 		"classification_status", rawContent.ClassificationStatus,
 	)
 
 	return nil
-}
-
-// convertArticleToRawContent converts a crawler Article to RawContent for classification
-func (r *RawContentIndexer) convertArticleToRawContent(article *domain.Article, sourceName string) *RawContent {
-	// Combine keywords from meta tags
-	var metaKeywords string
-	if len(article.Keywords) > 0 {
-		metaKeywords = strings.Join(article.Keywords, ", ")
-	}
-
-	// Determine OG type (article vs page)
-	ogType := "article" // Default to article for news content
-
-	// Use published date if available
-	var publishedDate *time.Time
-	if !article.PublishedDate.IsZero() {
-		publishedDate = &article.PublishedDate
-	}
-
-	rawContent := &RawContent{
-		ID:                   article.ID,
-		URL:                  article.Source,
-		SourceName:           sourceName,
-		Title:                article.Title,
-		RawText:              article.Body,
-		MetaDescription:      article.Description,
-		MetaKeywords:         metaKeywords,
-		OGType:               ogType,
-		OGTitle:              article.OgTitle,
-		OGDescription:        article.OgDescription,
-		OGImage:              article.OgImage,
-		Author:               article.Author,
-		PublishedDate:        publishedDate,
-		ClassificationStatus: "pending",
-		CrawledAt:            time.Now(),
-		WordCount:            article.WordCount,
-	}
-
-	return rawContent
 }
 
 var (
@@ -239,19 +196,4 @@ func (r *RawContentIndexer) EnsureRawContentIndex(ctx context.Context, sourceNam
 	r.ensuredIndexes.Store(indexName, true)
 
 	return nil
-}
-
-// GetPendingCount returns the count of pending items in raw_content index
-func (r *RawContentIndexer) GetPendingCount(ctx context.Context, sourceName string) (int, error) {
-	indexName := r.getRawContentIndexName(sourceName)
-
-	// Execute search to get count
-	// Note: This requires extending the storage interface or using search manager
-	// For now, return 0 as placeholder
-	r.logger.Debug("Getting pending count",
-		"index", indexName,
-		"note", "Count query not fully implemented - placeholder returns 0",
-	)
-
-	return 0, nil
 }

@@ -2,6 +2,7 @@ package crawler
 
 import (
 	"context"
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"math"
@@ -11,9 +12,20 @@ import (
 	"time"
 
 	colly "github.com/gocolly/colly/v2"
-	"github.com/jonesrussell/north-cloud/crawler/internal/common/transport"
 	configtypes "github.com/jonesrussell/north-cloud/crawler/internal/config/types"
-	"github.com/jonesrussell/north-cloud/crawler/internal/constants"
+)
+
+// Collector defaults
+const (
+	defaultRateLimit             = 2 * time.Second
+	defaultMaxDepth              = 3
+	defaultMaxConcurrency        = 2
+	defaultParallelism           = 2
+	defaultMaxIdleConns          = 100
+	defaultMaxIdleConnsPerHost   = 10
+	defaultIdleConnTimeout       = 90 * time.Second
+	defaultResponseHeaderTimeout = 30 * time.Second
+	defaultExpectContinueTimeout = 1 * time.Second
 )
 
 // CollectorConfig holds configuration for the collector.
@@ -26,9 +38,9 @@ type CollectorConfig struct {
 // NewCollectorConfig creates a new collector configuration.
 func NewCollectorConfig() *CollectorConfig {
 	return &CollectorConfig{
-		RateLimit:      constants.DefaultRateLimit,
-		MaxDepth:       constants.DefaultMaxDepth,
-		MaxConcurrency: constants.DefaultMaxConcurrency,
+		RateLimit:      defaultRateLimit,
+		MaxDepth:       defaultMaxDepth,
+		MaxConcurrency: defaultMaxConcurrency,
 	}
 }
 
@@ -82,35 +94,34 @@ func (c *Crawler) setupCollector(source *configtypes.Source) error {
 	if err != nil {
 		c.logger.Error("Failed to parse rate limit, using default",
 			"rate_limit", source.RateLimit,
-			"default", constants.DefaultRateLimit,
+			"default", defaultRateLimit,
 			"error", err)
-		rateLimit = constants.DefaultRateLimit
+		rateLimit = defaultRateLimit
 	}
 
 	err = c.collector.Limit(&colly.LimitRule{
 		DomainGlob:  "*",
 		Delay:       rateLimit,
 		RandomDelay: rateLimit / RandomDelayDivisor,
-		Parallelism: constants.DefaultParallelism,
+		Parallelism: defaultParallelism,
 	})
 	if err != nil {
 		return fmt.Errorf("failed to set rate limit: %w", err)
 	}
 
-	// Configure transport with more reasonable settings
-	tlsConfig, err := transport.NewTLSConfig(c.cfg)
-	if err != nil {
-		return fmt.Errorf("failed to create TLS configuration: %w", err)
-	}
-
+	// Configure transport with TLS settings from config
 	c.collector.WithTransport(&http.Transport{
-		TLSClientConfig:       tlsConfig,
+		TLSClientConfig: &tls.Config{
+			InsecureSkipVerify: c.cfg.TLS.InsecureSkipVerify, //nolint:gosec // Configurable for development/testing
+			MinVersion:         c.cfg.TLS.MinVersion,
+			MaxVersion:         c.cfg.TLS.MaxVersion,
+		},
 		DisableKeepAlives:     false,
-		MaxIdleConns:          constants.DefaultMaxIdleConns,
-		MaxIdleConnsPerHost:   constants.DefaultMaxIdleConnsPerHost,
-		IdleConnTimeout:       constants.DefaultIdleConnTimeout,
-		ResponseHeaderTimeout: constants.DefaultResponseHeaderTimeout,
-		ExpectContinueTimeout: constants.DefaultExpectContinueTimeout,
+		MaxIdleConns:          defaultMaxIdleConns,
+		MaxIdleConnsPerHost:   defaultMaxIdleConnsPerHost,
+		IdleConnTimeout:       defaultIdleConnTimeout,
+		ResponseHeaderTimeout: defaultResponseHeaderTimeout,
+		ExpectContinueTimeout: defaultExpectContinueTimeout,
 	})
 
 	if c.cfg.TLS.InsecureSkipVerify {
@@ -124,7 +135,7 @@ func (c *Crawler) setupCollector(source *configtypes.Source) error {
 		"max_depth", maxDepth,
 		"allowed_domains", source.AllowedDomains,
 		"rate_limit", rateLimit,
-		"parallelism", constants.DefaultParallelism)
+		"parallelism", defaultParallelism)
 
 	return nil
 }
@@ -145,7 +156,7 @@ func (c *Crawler) setupCallbacks(ctx context.Context) {
 		case <-ctx.Done():
 			r.Abort()
 			return
-		case <-c.abortChan:
+		case <-c.signals.AbortChannel():
 			r.Abort()
 			return
 		default:
@@ -215,7 +226,7 @@ func (c *Crawler) setupCallbacks(ctx context.Context) {
 		select {
 		case <-ctx.Done():
 			return
-		case <-c.abortChan:
+		case <-c.signals.AbortChannel():
 			return
 		default:
 			c.linkHandler.HandleLink(e)

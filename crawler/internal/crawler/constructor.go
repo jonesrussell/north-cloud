@@ -2,28 +2,22 @@
 package crawler
 
 import (
-	"errors"
+	"crypto/tls"
 	"fmt"
 	"net/http"
 	"time"
 
 	"github.com/gocolly/colly/v2"
-	"github.com/jonesrussell/north-cloud/crawler/internal/common/transport"
 	"github.com/jonesrussell/north-cloud/crawler/internal/config/crawler"
 	"github.com/jonesrussell/north-cloud/crawler/internal/content"
-	"github.com/jonesrussell/north-cloud/crawler/internal/content/articles"
-	"github.com/jonesrussell/north-cloud/crawler/internal/content/page"
 	"github.com/jonesrussell/north-cloud/crawler/internal/content/rawcontent"
 	"github.com/jonesrussell/north-cloud/crawler/internal/crawler/events"
-	"github.com/jonesrussell/north-cloud/crawler/internal/domain"
 	"github.com/jonesrussell/north-cloud/crawler/internal/logger"
 	"github.com/jonesrussell/north-cloud/crawler/internal/sources"
 	"github.com/jonesrussell/north-cloud/crawler/internal/storage/types"
 )
 
 const (
-	// ArticleChannelBufferSize is the buffer size for the article channel.
-	ArticleChannelBufferSize = 100
 	// DefaultChannelBufferSize is the default buffer size for processor channels.
 	DefaultChannelBufferSize = 100
 	// DefaultMaxIdleConns is the default maximum number of idle connections.
@@ -40,38 +34,17 @@ const (
 
 // CrawlerParams holds parameters for creating a crawler instance
 type CrawlerParams struct {
-	Logger         logger.Interface
-	Bus            *events.EventBus
-	IndexManager   types.IndexManager
-	Sources        sources.Interface
-	Config         *crawler.Config
-	ArticleService articles.Interface
-	PageService    page.Interface
-	Storage        types.Interface
+	Logger       logger.Interface
+	Bus          *events.EventBus
+	IndexManager types.IndexManager
+	Sources      sources.Interface
+	Config       *crawler.Config
+	Storage      types.Interface
 }
 
-// CrawlerResult holds the crawler instance and its channels
+// CrawlerResult holds the crawler instance
 type CrawlerResult struct {
-	Crawler        Interface
-	ArticleChannel chan *domain.Article
-	PageChannel    chan *domain.Page
-}
-
-// createJobValidator creates a simple job validator
-func createJobValidator() content.JobValidator {
-	return &struct {
-		content.JobValidator
-	}{
-		JobValidator: content.JobValidatorFunc(func(job *content.Job) error {
-			if job == nil {
-				return errors.New("job cannot be nil")
-			}
-			if job.URL == "" {
-				return errors.New("job URL cannot be empty")
-			}
-			return nil
-		}),
-	}
+	Crawler Interface
 }
 
 // createCollector creates and configures a new colly collector
@@ -97,14 +70,13 @@ func createCollector(cfg *crawler.Config, log logger.Interface) (*colly.Collecto
 		return nil, fmt.Errorf("failed to set rate limit: %w", err)
 	}
 
-	// Configure transport
-	tlsConfig, err := transport.NewTLSConfig(cfg)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create TLS configuration: %w", err)
-	}
-
+	// Configure transport with TLS settings from config
 	collector.WithTransport(&http.Transport{
-		TLSClientConfig:       tlsConfig,
+		TLSClientConfig: &tls.Config{
+			InsecureSkipVerify: cfg.TLS.InsecureSkipVerify, //nolint:gosec // Configurable for development/testing
+			MinVersion:         cfg.TLS.MinVersion,
+			MaxVersion:         cfg.TLS.MaxVersion,
+		},
 		DisableKeepAlives:     false,
 		MaxIdleConns:          DefaultMaxIdleConns,
 		MaxIdleConnsPerHost:   DefaultMaxIdleConnsPerHost,
@@ -141,33 +113,6 @@ func createCollector(cfg *crawler.Config, log logger.Interface) (*colly.Collecto
 // NewCrawlerWithParams creates a new crawler instance with all its components.
 // This is the non-FX version that replaces ProvideCrawler.
 func NewCrawlerWithParams(p CrawlerParams) (*CrawlerResult, error) {
-	validator := createJobValidator()
-
-	// Create channels (kept for backward compatibility, but not actively used)
-	articleChannel := make(chan *domain.Article, ArticleChannelBufferSize)
-	pageChannel := make(chan *domain.Page, DefaultChannelBufferSize)
-
-	// Create processors (kept for backward compatibility)
-	articleProcessor := articles.NewProcessor(
-		p.Logger,
-		p.ArticleService,
-		validator,
-		p.Storage,
-		"articles",
-		articleChannel,
-		nil,
-		nil,
-	)
-
-	pageProcessor := page.NewPageProcessor(
-		p.Logger,
-		p.PageService,
-		validator,
-		p.Storage,
-		"pages",
-		pageChannel,
-	)
-
 	// Create raw content service and processor (primary processor for all content)
 	rawContentService := rawcontent.NewRawContentService(
 		p.Logger,
@@ -185,6 +130,10 @@ func NewCrawlerWithParams(p CrawlerParams) (*CrawlerResult, error) {
 		return nil, err
 	}
 
+	// Create lifecycle and signal coordinators
+	lifecycle := NewLifecycleManager()
+	signals := NewSignalCoordinator(p.Config, p.Logger)
+
 	// Create crawler
 	c := &Crawler{
 		logger:              p.Logger,
@@ -192,23 +141,18 @@ func NewCrawlerWithParams(p CrawlerParams) (*CrawlerResult, error) {
 		bus:                 p.Bus,
 		indexManager:        p.IndexManager,
 		sources:             p.Sources,
-		articleProcessor:    articleProcessor,
-		pageProcessor:       pageProcessor,
 		rawContentProcessor: rawContentProcessor,
 		state:               NewState(p.Logger),
-		done:                make(chan struct{}),
-		articleChannel:      articleChannel,
 		processors:          []content.Processor{rawContentProcessor},
 		htmlProcessor:       NewHTMLProcessor(p.Logger, p.Sources),
 		cfg:                 p.Config,
-		abortChan:           make(chan struct{}),
+		lifecycle:           lifecycle,
+		signals:             signals,
 	}
 
 	c.linkHandler = NewLinkHandler(c)
 
 	return &CrawlerResult{
-		Crawler:        c,
-		ArticleChannel: articleChannel,
-		PageChannel:    pageChannel,
+		Crawler: c,
 	}, nil
 }

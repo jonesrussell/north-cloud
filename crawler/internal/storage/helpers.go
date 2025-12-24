@@ -1,0 +1,102 @@
+package storage
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"reflect"
+	"time"
+
+	"github.com/elastic/go-elasticsearch/v8/esapi"
+)
+
+// Helper function to create a context with timeout
+func (s *Storage) createContextWithTimeout(
+	ctx context.Context,
+	timeout time.Duration,
+) (context.Context, context.CancelFunc) {
+	return context.WithTimeout(ctx, timeout)
+}
+
+// closeResponse safely closes an Elasticsearch response body and logs any errors
+// For operations that don't have a docID (like searches), pass empty string
+func (s *Storage) closeResponse(res *esapi.Response, operation, index, docID string) {
+	if closeErr := res.Body.Close(); closeErr != nil {
+		fields := []any{
+			"error", closeErr,
+			"operation", operation,
+		}
+		if index != "" {
+			fields = append(fields, "index", index)
+		}
+		if docID != "" {
+			fields = append(fields, "doc_id", docID)
+		}
+		s.logger.Error("Failed to close response body", fields...)
+	}
+}
+
+// logOperationError logs storage operation errors with context
+func (s *Storage) logOperationError(operation, index, docID string, err error) {
+	s.logger.Error("Storage operation failed",
+		"operation", operation,
+		"index", index,
+		"doc_id", docID,
+		"error", err)
+}
+
+// getURLFromDocument extracts the URL from a document using reflection
+// Supports documents with URL, Source, or url fields
+func getURLFromDocument(doc any) string {
+	if doc == nil {
+		return ""
+	}
+
+	v := reflect.ValueOf(doc)
+	// Handle pointers
+	if v.Kind() == reflect.Ptr {
+		if v.IsNil() {
+			return ""
+		}
+		v = v.Elem()
+	}
+
+	// Try common URL field names
+	urlFields := []string{"URL", "Source", "url", "source"}
+	for _, fieldName := range urlFields {
+		field := v.FieldByName(fieldName)
+		if field.IsValid() && field.Kind() == reflect.String {
+			url := field.String()
+			if url != "" {
+				return url
+			}
+		}
+	}
+
+	return ""
+}
+
+// TestConnection tests the connection to the storage backend
+func (s *Storage) TestConnection(ctx context.Context) error {
+	if s.client == nil {
+		return errors.New("elasticsearch client is nil")
+	}
+
+	res, err := s.client.Ping(s.client.Ping.WithContext(ctx))
+	if err != nil {
+		return fmt.Errorf("error pinging storage: %w", err)
+	}
+	defer s.closeResponse(res, "TestConnection", "", "")
+
+	if res.IsError() {
+		return fmt.Errorf("error pinging storage: %s", res.String())
+	}
+
+	return nil
+}
+
+// Close closes any resources held by the search manager.
+func (s *Storage) Close() error {
+	// No resources to close in this implementation
+	return nil
+}

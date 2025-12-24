@@ -3,7 +3,6 @@ package events
 import (
 	"context"
 
-	"github.com/jonesrussell/north-cloud/crawler/internal/domain"
 	"github.com/jonesrussell/north-cloud/crawler/internal/logger"
 )
 
@@ -17,17 +16,6 @@ func NewDefaultHandler(log logger.Interface) EventHandler {
 	return &DefaultHandler{
 		logger: log,
 	}
-}
-
-// HandleArticle logs article events.
-func (h *DefaultHandler) HandleArticle(ctx context.Context, article *domain.Article) error {
-	h.logger.Info("Article processed",
-		"id", article.ID,
-		"title", article.Title,
-		"url", article.Source,
-		"component", "crawler",
-	)
-	return nil
 }
 
 // HandleError logs error events.

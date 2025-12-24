@@ -12,6 +12,9 @@ import (
 	"github.com/jonesrussell/north-cloud/crawler/internal/sources"
 )
 
+// defaultProcessorsCapacity is the pre-allocated capacity for processor slice
+const defaultProcessorsCapacity = 2
+
 // HTMLProcessor processes HTML content and delegates to appropriate content processors.
 type HTMLProcessor struct {
 	logger       logger.Interface
@@ -24,7 +27,7 @@ type HTMLProcessor struct {
 func NewHTMLProcessor(log logger.Interface, sourcesManager sources.Interface) *HTMLProcessor {
 	return &HTMLProcessor{
 		logger:       log,
-		processors:   make([]content.Processor, 0, DefaultProcessorsCapacity), // Pre-allocate for article and page processors
+		processors:   make([]content.Processor, 0, defaultProcessorsCapacity), // Pre-allocate for article and page processors
 		unknownTypes: make(map[contenttype.Type]int),
 		sources:      sourcesManager,
 	}
