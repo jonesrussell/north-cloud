@@ -11,7 +11,6 @@ import (
 	"github.com/jonesrussell/north-cloud/crawler/internal/common/transport"
 	"github.com/jonesrussell/north-cloud/crawler/internal/config/crawler"
 	"github.com/jonesrussell/north-cloud/crawler/internal/content"
-	"github.com/jonesrussell/north-cloud/crawler/internal/content/articles"
 	"github.com/jonesrussell/north-cloud/crawler/internal/content/page"
 	"github.com/jonesrussell/north-cloud/crawler/internal/content/rawcontent"
 	"github.com/jonesrussell/north-cloud/crawler/internal/crawler/events"
@@ -22,8 +21,6 @@ import (
 )
 
 const (
-	// ArticleChannelBufferSize is the buffer size for the article channel.
-	ArticleChannelBufferSize = 100
 	// DefaultChannelBufferSize is the default buffer size for processor channels.
 	DefaultChannelBufferSize = 100
 	// DefaultMaxIdleConns is the default maximum number of idle connections.
@@ -40,21 +37,19 @@ const (
 
 // CrawlerParams holds parameters for creating a crawler instance
 type CrawlerParams struct {
-	Logger         logger.Interface
-	Bus            *events.EventBus
-	IndexManager   types.IndexManager
-	Sources        sources.Interface
-	Config         *crawler.Config
-	ArticleService articles.Interface
-	PageService    page.Interface
-	Storage        types.Interface
+	Logger       logger.Interface
+	Bus          *events.EventBus
+	IndexManager types.IndexManager
+	Sources      sources.Interface
+	Config       *crawler.Config
+	PageService  page.Interface
+	Storage      types.Interface
 }
 
 // CrawlerResult holds the crawler instance and its channels
 type CrawlerResult struct {
-	Crawler        Interface
-	ArticleChannel chan *domain.Article
-	PageChannel    chan *domain.Page
+	Crawler     Interface
+	PageChannel chan *domain.Page
 }
 
 // createJobValidator creates a simple job validator
@@ -144,20 +139,7 @@ func NewCrawlerWithParams(p CrawlerParams) (*CrawlerResult, error) {
 	validator := createJobValidator()
 
 	// Create channels (kept for backward compatibility, but not actively used)
-	articleChannel := make(chan *domain.Article, ArticleChannelBufferSize)
 	pageChannel := make(chan *domain.Page, DefaultChannelBufferSize)
-
-	// Create processors (kept for backward compatibility)
-	articleProcessor := articles.NewProcessor(
-		p.Logger,
-		p.ArticleService,
-		validator,
-		p.Storage,
-		"articles",
-		articleChannel,
-		nil,
-		nil,
-	)
 
 	pageProcessor := page.NewPageProcessor(
 		p.Logger,
@@ -192,12 +174,10 @@ func NewCrawlerWithParams(p CrawlerParams) (*CrawlerResult, error) {
 		bus:                 p.Bus,
 		indexManager:        p.IndexManager,
 		sources:             p.Sources,
-		articleProcessor:    articleProcessor,
 		pageProcessor:       pageProcessor,
 		rawContentProcessor: rawContentProcessor,
 		state:               NewState(p.Logger),
 		done:                make(chan struct{}),
-		articleChannel:      articleChannel,
 		processors:          []content.Processor{rawContentProcessor},
 		htmlProcessor:       NewHTMLProcessor(p.Logger, p.Sources),
 		cfg:                 p.Config,
@@ -207,8 +187,7 @@ func NewCrawlerWithParams(p CrawlerParams) (*CrawlerResult, error) {
 	c.linkHandler = NewLinkHandler(c)
 
 	return &CrawlerResult{
-		Crawler:        c,
-		ArticleChannel: articleChannel,
-		PageChannel:    pageChannel,
+		Crawler:     c,
+		PageChannel: pageChannel,
 	}, nil
 }

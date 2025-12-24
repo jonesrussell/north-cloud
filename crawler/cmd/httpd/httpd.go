@@ -15,7 +15,6 @@ import (
 	cmdcommon "github.com/jonesrussell/north-cloud/crawler/cmd/common"
 	"github.com/jonesrussell/north-cloud/crawler/internal/api"
 	"github.com/jonesrussell/north-cloud/crawler/internal/constants"
-	"github.com/jonesrussell/north-cloud/crawler/internal/content/articles"
 	"github.com/jonesrussell/north-cloud/crawler/internal/content/page"
 	"github.com/jonesrussell/north-cloud/crawler/internal/crawler"
 	"github.com/jonesrussell/north-cloud/crawler/internal/crawler/events"
@@ -246,14 +245,6 @@ func createCrawlerForJobs(
 		}
 	}
 
-	// Create article service with raw content indexer
-	articleService := articles.NewContentServiceWithRawIndexer(
-		deps.Logger,
-		storageResult.Storage,
-		constants.DefaultContentIndex,
-		sourceManager,
-		rawIndexer,
-	)
 	pageService := page.NewContentServiceWithSources(
 		deps.Logger,
 		storageResult.Storage,
@@ -263,14 +254,13 @@ func createCrawlerForJobs(
 
 	// Create crawler
 	crawlerResult, err := crawler.NewCrawlerWithParams(crawler.CrawlerParams{
-		Logger:         deps.Logger,
-		Bus:            bus,
-		IndexManager:   storageResult.IndexManager,
-		Sources:        sourceManager,
-		Config:         crawlerCfg,
-		ArticleService: articleService,
-		PageService:    pageService,
-		Storage:        storageResult.Storage,
+		Logger:       deps.Logger,
+		Bus:          bus,
+		IndexManager: storageResult.IndexManager,
+		Sources:      sourceManager,
+		Config:       crawlerCfg,
+		PageService:  pageService,
+		Storage:      storageResult.Storage,
 	})
 
 	if err != nil {

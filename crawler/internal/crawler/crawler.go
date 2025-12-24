@@ -14,7 +14,6 @@ import (
 	configtypes "github.com/jonesrussell/north-cloud/crawler/internal/config/types"
 	"github.com/jonesrussell/north-cloud/crawler/internal/content"
 	"github.com/jonesrussell/north-cloud/crawler/internal/crawler/events"
-	"github.com/jonesrussell/north-cloud/crawler/internal/domain"
 	"github.com/jonesrussell/north-cloud/crawler/internal/logger"
 	"github.com/jonesrussell/north-cloud/crawler/internal/metrics"
 	"github.com/jonesrussell/north-cloud/crawler/internal/sources"
@@ -118,8 +117,6 @@ type Interface interface {
 	GetSource() sources.Interface
 	// GetProcessors returns the processors
 	GetProcessors() []content.Processor
-	// GetArticleChannel returns the article channel
-	GetArticleChannel() chan *domain.Article
 	// Done returns a channel that's closed when the crawler is done
 	Done() <-chan struct{}
 }
@@ -142,14 +139,12 @@ type Crawler struct {
 	bus                 *events.EventBus
 	indexManager        storagetypes.IndexManager
 	sources             sources.Interface
-	articleProcessor    content.Processor
 	pageProcessor       content.Processor
 	rawContentProcessor content.Processor
 	state               *State
 	done                chan struct{}
 	doneOnce            sync.Once // Ensures done channel is only closed once
 	wg                  sync.WaitGroup
-	articleChannel      chan *domain.Article
 	processors          []content.Processor
 	linkHandler         *LinkHandler
 	htmlProcessor       *HTMLProcessor
@@ -427,12 +422,6 @@ func (c *Crawler) waitForCleanup(ctx context.Context, cleanupDone chan struct{})
 func (c *Crawler) cleanupResources() {
 	c.logger.Debug("Cleaning up crawler resources")
 
-	// Clean up article channel
-	select {
-	case <-c.articleChannel: // Try to read one item
-	default: // Channel is empty
-	}
-
 	// Clean up processors
 	for _, p := range c.processors {
 		if cleaner, ok := p.(interface{ Cleanup() }); ok {
@@ -607,10 +596,6 @@ func (c *Crawler) GetSource() sources.Interface {
 	return c.sources
 }
 
-// GetArticleChannel returns the article channel.
-func (c *Crawler) GetArticleChannel() chan *domain.Article {
-	return c.articleChannel
-}
 
 // GetIndexManager returns the index manager.
 func (c *Crawler) GetIndexManager() storagetypes.IndexManager {

@@ -32,10 +32,6 @@ func (c *Crawler) AddProcessor(processor content.Processor) {
 	c.processors = append(c.processors, processor)
 }
 
-// SetArticleProcessor sets the article processor.
-func (c *Crawler) SetArticleProcessor(processor content.Processor) {
-	c.articleProcessor = processor
-}
 
 // SetPageProcessor sets the page processor.
 func (c *Crawler) SetPageProcessor(processor content.Processor) {

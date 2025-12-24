@@ -5,7 +5,6 @@ import (
 	"errors"
 
 	"github.com/jonesrussell/north-cloud/crawler/internal/content"
-	"github.com/jonesrussell/north-cloud/crawler/internal/content/articles"
 	"github.com/jonesrussell/north-cloud/crawler/internal/content/contenttype"
 	"github.com/jonesrussell/north-cloud/crawler/internal/content/page"
 	"github.com/jonesrussell/north-cloud/crawler/internal/domain"
@@ -52,10 +51,10 @@ func (f *DefaultProcessorFactory) CreateProcessor(contentType contenttype.Type) 
 	var processor content.Processor
 
 	switch contentType {
-	case contenttype.Article:
-		processor = f.createArticleProcessor()
 	case contenttype.Page:
 		processor = f.createPageProcessor()
+	case contenttype.Article:
+		return nil, errors.New("article processing not implemented - use rawcontent processor instead")
 	case contenttype.Video:
 		return nil, errors.New("video processing not implemented")
 	case contenttype.Image:
@@ -72,38 +71,6 @@ func (f *DefaultProcessorFactory) CreateProcessor(contentType contenttype.Type) 
 	f.processors[contentType] = processor
 
 	return processor, nil
-}
-
-// createArticleProcessor creates a new article processor
-func (f *DefaultProcessorFactory) createArticleProcessor() content.Processor {
-	// Create a simple job validator
-	validator := &struct {
-		content.JobValidator
-	}{
-		JobValidator: content.JobValidatorFunc(func(job *content.Job) error {
-			if job == nil {
-				return errors.New("job cannot be nil")
-			}
-			if job.URL == "" {
-				return errors.New("job URL cannot be empty")
-			}
-			return nil
-		}),
-	}
-
-	// Create article service
-	articleService := articles.NewContentService(f.logger, f.storage, f.indexName)
-
-	return articles.NewProcessor(
-		f.logger,
-		articleService,
-		validator,
-		f.storage,
-		"articles",
-		make(chan *domain.Article, ArticleChannelBufferSize),
-		nil,
-		nil,
-	)
 }
 
 // createPageProcessor creates a new page processor
