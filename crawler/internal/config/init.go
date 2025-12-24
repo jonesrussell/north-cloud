@@ -1,4 +1,4 @@
-package httpd
+package config
 
 import (
 	"fmt"
@@ -10,8 +10,9 @@ import (
 	"github.com/spf13/viper"
 )
 
-// initConfig initializes Viper configuration from environment variables and config files.
-func initConfig() error {
+// InitializeViper initializes Viper configuration from environment variables and config files.
+// This must be called before LoadConfig() to ensure Viper is properly configured.
+func InitializeViper() error {
 	loadEnvFile()
 	setupViper()
 	setDefaults()
@@ -70,7 +71,7 @@ func setDefaults() {
 	viper.SetDefault("logger", map[string]any{
 		"level":        "info",
 		"development":  false,
-		"encoding":     "json",
+		"encoding":      "json",
 		"output_paths": []string{"stdout"},
 		"enable_color": false,
 		"caller":       false,
@@ -215,3 +216,4 @@ func setupDevelopmentLogging() {
 		}
 	}
 }
+
