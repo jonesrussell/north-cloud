@@ -16,8 +16,6 @@ type Source struct {
 	MaxDepth     int            `json:"max_depth" db:"max_depth"`
 	Time         StringArray    `json:"time" db:"time"`
 	Selectors    SelectorConfig `json:"selectors" db:"selectors"`
-	CityName     *string        `json:"city_name,omitempty" db:"city_name"` // Optional mapping to gopost city
-	GroupID      *string        `json:"group_id,omitempty" db:"group_id"`   // Optional Drupal group UUID
 	Enabled      bool           `json:"enabled" db:"enabled"`
 	CreatedAt    time.Time      `json:"created_at" db:"created_at"`
 	UpdatedAt    time.Time      `json:"updated_at" db:"updated_at"`
@@ -307,7 +305,6 @@ func (a *StringArray) Scan(value any) error {
 
 // City represents a city configuration for gopost
 type City struct {
-	Name    string `json:"name"`
-	Index   string `json:"index"`
-	GroupID string `json:"group_id,omitempty"`
+	Name  string `json:"name"`
+	Index string `json:"index"`
 }

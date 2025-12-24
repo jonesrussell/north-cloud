@@ -96,8 +96,6 @@ docker exec -i postgres psql -U postgres -d gosources < migrations/001_create_so
       "title": "h1"
     }
   },
-  "city_name": "sudbury_com",
-  "group_id": "550e8400-e29b-41d4-a716-446655440000",
   "enabled": true
 }
 ```

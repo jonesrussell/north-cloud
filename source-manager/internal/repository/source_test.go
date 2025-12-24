@@ -99,9 +99,7 @@ func TestSourceRepository_Create(t *testing.T) {
 						Title: "article h1",
 					},
 				},
-				CityName: stringPtr("TestCity"),
-				GroupID:  stringPtr("group-uuid-123"),
-				Enabled:  true,
+				Enabled: true,
 			},
 			wantErr: false,
 		},
@@ -334,9 +332,7 @@ func TestSourceRepository_GetCities(t *testing.T) {
 			Selectors: models.SelectorConfig{
 				Article: models.ArticleSelectors{Title: "h1"},
 			},
-			CityName: stringPtr("CityA"),
-			GroupID:  stringPtr("group-a"),
-			Enabled:  true,
+			Enabled: true,
 		},
 		{
 			Name:      "City B Source",
@@ -347,8 +343,7 @@ func TestSourceRepository_GetCities(t *testing.T) {
 			Selectors: models.SelectorConfig{
 				Article: models.ArticleSelectors{Title: "h1"},
 			},
-			CityName: stringPtr("CityB"),
-			Enabled:  true,
+			Enabled: true,
 		},
 		{
 			Name:      "Disabled Source",
@@ -359,8 +354,7 @@ func TestSourceRepository_GetCities(t *testing.T) {
 			Selectors: models.SelectorConfig{
 				Article: models.ArticleSelectors{Title: "h1"},
 			},
-			CityName: stringPtr("DisabledCity"),
-			Enabled:  false, // Disabled
+			Enabled: false, // Disabled
 		},
 	}
 
@@ -379,9 +373,9 @@ func TestSourceRepository_GetCities(t *testing.T) {
 		cityNames[city.Name] = true
 		assert.NotEmpty(t, city.Index, "City index should not be empty")
 	}
-	assert.True(t, cityNames["CityA"], "CityA should be in results")
-	assert.True(t, cityNames["CityB"], "CityB should be in results")
-	assert.False(t, cityNames["DisabledCity"], "DisabledCity should not be in results")
+	assert.True(t, cityNames["City A Source"], "City A Source should be in results")
+	assert.True(t, cityNames["City B Source"], "City B Source should be in results")
+	assert.False(t, cityNames["Disabled Source"], "Disabled Source should not be in results")
 }
 
 // Helper function

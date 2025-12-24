@@ -334,7 +334,7 @@ func TestSourceHandler_List(t *testing.T) {
 func TestSourceHandler_GetCities(t *testing.T) {
 	t.Skip("Skipping handler tests until handlers use repository interfaces")
 	testCities := []models.City{
-		{Name: "CityA", Index: "city_a_articles", GroupID: "group-a"},
+		{Name: "CityA", Index: "city_a_articles"},
 		{Name: "CityB", Index: "city_b_articles"},
 	}
 

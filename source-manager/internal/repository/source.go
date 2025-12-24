@@ -45,8 +45,8 @@ func (r *SourceRepository) Create(ctx context.Context, source *models.Source) er
 	query := `
 		INSERT INTO sources (
 			id, name, url, rate_limit, max_depth,
-			time, selectors, city_name, group_id, enabled, created_at, updated_at
-		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+			time, selectors, enabled, created_at, updated_at
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 	`
 
 	_, err = r.db.ExecContext(ctx,
@@ -58,8 +58,6 @@ func (r *SourceRepository) Create(ctx context.Context, source *models.Source) er
 		source.MaxDepth,
 		timeJSON,
 		selectorsJSON,
-		source.CityName,
-		source.GroupID,
 		source.Enabled,
 		source.CreatedAt,
 		source.UpdatedAt,
@@ -75,11 +73,10 @@ func (r *SourceRepository) Create(ctx context.Context, source *models.Source) er
 func (r *SourceRepository) GetByID(ctx context.Context, id string) (*models.Source, error) {
 	var source models.Source
 	var selectorsJSON, timeJSON []byte
-	var cityName, groupID sql.NullString
 
 	query := `
 		SELECT id, name, url, rate_limit, max_depth,
-		       time, selectors, city_name, group_id, enabled, created_at, updated_at
+		       time, selectors, enabled, created_at, updated_at
 		FROM sources
 		WHERE id = $1
 	`
@@ -92,8 +89,6 @@ func (r *SourceRepository) GetByID(ctx context.Context, id string) (*models.Sour
 		&source.MaxDepth,
 		&timeJSON,
 		&selectorsJSON,
-		&cityName,
-		&groupID,
 		&source.Enabled,
 		&source.CreatedAt,
 		&source.UpdatedAt,
@@ -114,13 +109,6 @@ func (r *SourceRepository) GetByID(ctx context.Context, id string) (*models.Sour
 		return nil, fmt.Errorf("unmarshal time: %w", unmarshalErr)
 	}
 
-	if cityName.Valid {
-		source.CityName = &cityName.String
-	}
-	if groupID.Valid {
-		source.GroupID = &groupID.String
-	}
-
 	// Merge selectors with defaults
 	source.Selectors = source.Selectors.MergeWithDefaults()
 
@@ -130,7 +118,7 @@ func (r *SourceRepository) GetByID(ctx context.Context, id string) (*models.Sour
 func (r *SourceRepository) List(ctx context.Context) ([]models.Source, error) {
 	query := `
 		SELECT id, name, url, rate_limit, max_depth,
-		       time, selectors, city_name, group_id, enabled, created_at, updated_at
+		       time, selectors, enabled, created_at, updated_at
 		FROM sources
 		ORDER BY name
 	`
@@ -145,7 +133,6 @@ func (r *SourceRepository) List(ctx context.Context) ([]models.Source, error) {
 	for rows.Next() {
 		var source models.Source
 		var selectorsJSON, timeJSON []byte
-		var cityName, groupID sql.NullString
 
 		scanErr := rows.Scan(
 			&source.ID,
@@ -155,8 +142,6 @@ func (r *SourceRepository) List(ctx context.Context) ([]models.Source, error) {
 			&source.MaxDepth,
 			&timeJSON,
 			&selectorsJSON,
-			&cityName,
-			&groupID,
 			&source.Enabled,
 			&source.CreatedAt,
 			&source.UpdatedAt,
@@ -171,13 +156,6 @@ func (r *SourceRepository) List(ctx context.Context) ([]models.Source, error) {
 
 		if unmarshalErr := json.Unmarshal(timeJSON, &source.Time); unmarshalErr != nil {
 			return nil, fmt.Errorf("unmarshal time: %w", unmarshalErr)
-		}
-
-		if cityName.Valid {
-			source.CityName = &cityName.String
-		}
-		if groupID.Valid {
-			source.GroupID = &groupID.String
 		}
 
 		// Merge selectors with defaults
@@ -209,7 +187,7 @@ func (r *SourceRepository) Update(ctx context.Context, source *models.Source) er
 	query := `
 		UPDATE sources
 		SET name = $2, url = $3, rate_limit = $4, max_depth = $5, time = $6, selectors = $7,
-		    city_name = $8, group_id = $9, enabled = $10, updated_at = $11
+		    enabled = $8, updated_at = $9
 		WHERE id = $1
 	`
 
@@ -222,8 +200,6 @@ func (r *SourceRepository) Update(ctx context.Context, source *models.Source) er
 		source.MaxDepth,
 		timeJSON,
 		selectorsJSON,
-		source.CityName,
-		source.GroupID,
 		source.Enabled,
 		source.UpdatedAt,
 	)
@@ -266,13 +242,10 @@ func (r *SourceRepository) Delete(ctx context.Context, id string) error {
 
 func (r *SourceRepository) GetCities(ctx context.Context) ([]models.City, error) {
 	query := `
-		SELECT 
-			COALESCE(city_name, name) as city_name,
-			name as source_name,
-			COALESCE(group_id, '') as group_id
+		SELECT name as source_name
 		FROM sources
-		WHERE enabled = true AND city_name IS NOT NULL
-		ORDER BY city_name
+		WHERE enabled = true
+		ORDER BY name
 	`
 
 	rows, err := r.db.QueryContext(ctx, query)
@@ -285,19 +258,16 @@ func (r *SourceRepository) GetCities(ctx context.Context) ([]models.City, error)
 	for rows.Next() {
 		var city models.City
 		var sourceName string
-		var groupID sql.NullString
 
-		scanErr := rows.Scan(&city.Name, &sourceName, &groupID)
+		scanErr := rows.Scan(&sourceName)
 		if scanErr != nil {
 			return nil, fmt.Errorf("scan city: %w", scanErr)
 		}
 
+		// Use source name as city name
+		city.Name = sourceName
 		// Derive index name from source name
 		city.Index = deriveClassifiedContentIndex(sourceName)
-
-		if groupID.Valid && groupID.String != "" {
-			city.GroupID = groupID.String
-		}
 
 		cities = append(cities, city)
 	}
