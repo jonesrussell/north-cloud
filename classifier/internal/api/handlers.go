@@ -360,30 +360,31 @@ func (h *Handler) GetSourceStats(c *gin.Context) {
 // GetStats handles GET /api/v1/stats
 func (h *Handler) GetStats(c *gin.Context) {
 	// TODO: Implement overall statistics
-	// For now, return not implemented
-	c.JSON(http.StatusNotImplemented, gin.H{
-		"error": "Overall statistics not yet implemented",
-		"note":  "This endpoint will aggregate classification_history data",
+	// For now, return empty stats with 200 status to avoid proxy errors
+	c.JSON(http.StatusOK, gin.H{
+		"total_classified":     0,
+		"avg_quality_score":    0,
+		"crime_related":        0,
+		"avg_processing_time_ms": 0,
+		"content_types":        gin.H{},
 	})
 }
 
 // GetTopicStats handles GET /api/v1/stats/topics
 func (h *Handler) GetTopicStats(c *gin.Context) {
 	// TODO: Implement topic distribution statistics
-	// For now, return not implemented
-	c.JSON(http.StatusNotImplemented, gin.H{
-		"error": "Topic statistics not yet implemented",
-		"note":  "This endpoint will aggregate topic distribution from classification_history",
+	// For now, return empty topics with 200 status to avoid proxy errors
+	c.JSON(http.StatusOK, gin.H{
+		"topics": []gin.H{},
 	})
 }
 
 // GetSourceDistribution handles GET /api/v1/stats/sources
 func (h *Handler) GetSourceDistribution(c *gin.Context) {
 	// TODO: Implement source reputation distribution
-	// For now, return not implemented
-	c.JSON(http.StatusNotImplemented, gin.H{
-		"error": "Source distribution not yet implemented",
-		"note":  "This endpoint will aggregate source_reputation data",
+	// For now, return empty sources with 200 status to avoid proxy errors
+	c.JSON(http.StatusOK, gin.H{
+		"sources": []gin.H{},
 	})
 }
 
