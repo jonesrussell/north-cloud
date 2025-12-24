@@ -5,8 +5,8 @@ import (
 	"strings"
 
 	"github.com/joho/godotenv"
-	"github.com/jonesrussell/north-cloud/crawler/internal/config"
-	crawlerconfig "github.com/jonesrussell/north-cloud/crawler/internal/config/crawler"
+	"github.com/jonesrussell/north-cloud/crawler/internal/config/crawler"
+	"github.com/jonesrussell/north-cloud/crawler/internal/constants"
 	"github.com/spf13/viper"
 )
 
@@ -75,9 +75,9 @@ func setDefaults() {
 		"enable_color": false,
 		"caller":       false,
 		"stacktrace":   false,
-		"max_size":     config.DefaultMaxLogSize,
-		"max_backups":  config.DefaultMaxLogBackups,
-		"max_age":      config.DefaultMaxLogAge,
+		"max_size":     constants.DefaultMaxLogSize,
+		"max_backups":  constants.DefaultMaxLogBackups,
+		"max_age":      constants.DefaultMaxLogAge,
 		"compress":     true,
 	})
 
@@ -101,9 +101,9 @@ func setDefaults() {
 			"enabled":      true,
 			"initial_wait": "1s",
 			"max_wait":     "30s",
-			"max_retries":  crawlerconfig.DefaultMaxRetries,
+			"max_retries":  crawler.DefaultMaxRetries,
 		},
-		"bulk_size":      config.DefaultBulkSize,
+		"bulk_size":      constants.DefaultBulkSize,
 		"flush_interval": "1s",
 		"index_prefix":   "crawler",
 		"discover_nodes": false,
@@ -111,10 +111,10 @@ func setDefaults() {
 
 	// Crawler defaults - production safe
 	viper.SetDefault("crawler", map[string]any{
-		"max_depth":          crawlerconfig.DefaultMaxDepth,
-		"max_concurrency":    crawlerconfig.DefaultParallelism,
+		"max_depth":          crawler.DefaultMaxDepth,
+		"max_concurrency":    crawler.DefaultParallelism,
 		"request_timeout":    "30s",
-		"user_agent":         crawlerconfig.DefaultUserAgent,
+		"user_agent":         crawler.DefaultUserAgent,
 		"respect_robots_txt": true,
 		"delay":              "1s",
 		"random_delay":       "0s",
@@ -126,16 +126,16 @@ func setDefaults() {
 			"output":  "stdout",
 		},
 		"rate_limit":  "2s",
-		"parallelism": crawlerconfig.DefaultParallelism,
+		"parallelism": crawler.DefaultParallelism,
 		"tls": map[string]any{
 			"insecure_skip_verify": false,
 		},
 		"retry_delay":      "5s",
-		"max_retries":      crawlerconfig.DefaultMaxRetries,
+		"max_retries":      crawler.DefaultMaxRetries,
 		"follow_redirects": true,
-		"max_redirects":    crawlerconfig.DefaultMaxRedirects,
+		"max_redirects":    crawler.DefaultMaxRedirects,
 		"validate_urls":    true,
-		"cleanup_interval": crawlerconfig.DefaultCleanupInterval.String(),
+		"cleanup_interval": crawler.DefaultCleanupInterval.String(),
 	})
 }
 

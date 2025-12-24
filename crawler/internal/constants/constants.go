@@ -34,6 +34,9 @@ const (
 	// DefaultHTTPPort is the default HTTP server port
 	DefaultHTTPPort = 8080
 
+	// DefaultServerPort is the default server port (alias for DefaultHTTPPort)
+	DefaultServerPort = 8080
+
 	// DefaultHTTPHost is the default HTTP server host
 	DefaultHTTPHost = "localhost"
 
