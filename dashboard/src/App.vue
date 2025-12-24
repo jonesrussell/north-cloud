@@ -31,18 +31,6 @@
           </h3>
           <div class="mt-2 space-y-1">
             <router-link
-              to="/crawler/jobs"
-              class="group flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors"
-              :class="[
-                isActive('/crawler/jobs')
-                  ? 'bg-gray-800 text-white'
-                  : 'text-gray-300 hover:bg-gray-800 hover:text-white'
-              ]"
-            >
-              <BriefcaseIcon class="mr-3 h-5 w-5 flex-shrink-0" />
-              Jobs
-            </router-link>
-            <router-link
               to="/crawler/stats"
               class="group flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors"
               :class="[
@@ -53,6 +41,18 @@
             >
               <ChartBarIcon class="mr-3 h-5 w-5 flex-shrink-0" />
               Statistics
+            </router-link>
+            <router-link
+              to="/crawler/jobs"
+              class="group flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors"
+              :class="[
+                isActive('/crawler/jobs')
+                  ? 'bg-gray-800 text-white'
+                  : 'text-gray-300 hover:bg-gray-800 hover:text-white'
+              ]"
+            >
+              <BriefcaseIcon class="mr-3 h-5 w-5 flex-shrink-0" />
+              Jobs
             </router-link>
           </div>
         </div>
