@@ -7,21 +7,15 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/jonesrussell/north-cloud/crawler/internal/config/app"
 	"github.com/jonesrussell/north-cloud/crawler/internal/config/crawler"
 	dbconfig "github.com/jonesrussell/north-cloud/crawler/internal/config/database"
 	"github.com/jonesrussell/north-cloud/crawler/internal/config/elasticsearch"
-	"github.com/jonesrussell/north-cloud/crawler/internal/config/logging"
 	"github.com/jonesrussell/north-cloud/crawler/internal/config/server"
 	"github.com/spf13/viper"
 )
 
 // Interface defines the interface for configuration management.
 type Interface interface {
-	// GetAppConfig returns the application configuration.
-	GetAppConfig() *app.Config
-	// GetLogConfig returns the logging configuration.
-	GetLogConfig() *logging.Config
 	// GetServerConfig returns the server configuration.
 	GetServerConfig() *server.Config
 	// GetCrawlerConfig returns the crawler configuration.
@@ -49,16 +43,10 @@ var _ Interface = (*Config)(nil)
 
 // Config represents the application configuration.
 type Config struct {
-	// Environment is the application environment (development, staging, production)
-	Environment string `yaml:"environment"`
-	// Logger holds logging-specific configuration
-	Logger *logging.Config `yaml:"logger"`
 	// Server holds server-specific configuration
 	Server *server.Config `yaml:"server"`
 	// Crawler holds crawler-specific configuration
 	Crawler *crawler.Config `yaml:"crawler"`
-	// App holds application-specific configuration
-	App *app.Config `yaml:"app"`
 	// Elasticsearch holds Elasticsearch configuration
 	Elasticsearch *elasticsearch.Config `yaml:"elasticsearch"`
 	// Database holds database configuration
@@ -84,32 +72,10 @@ func (c *Config) Validate() error {
 // LoadConfig loads the configuration from Viper
 func LoadConfig() (*Config, error) {
 	cfg := &Config{
-		Environment: viper.GetString("environment"),
-		Logger: &logging.Config{
-			Level:    viper.GetString("logger.level"),
-			Encoding: viper.GetString("logger.encoding"),
-		},
 		Server:        server.NewConfig(),
 		Elasticsearch: elasticsearch.LoadFromViper(viper.GetViper()),
 		Crawler:       crawler.LoadFromViper(viper.GetViper()),
 		Database:      dbconfig.LoadFromViper(viper.GetViper()),
-		App: &app.Config{
-			Name:        viper.GetString("app.name"),
-			Version:     viper.GetString("app.version"),
-			Environment: viper.GetString("app.environment"),
-			Debug:       viper.GetBool("app.debug"),
-		},
-	}
-
-	// Set default app values if not set
-	if cfg.App.Name == "" {
-		cfg.App.Name = "crawler"
-	}
-	if cfg.App.Version == "" {
-		cfg.App.Version = "1.0.0"
-	}
-	if cfg.App.Environment == "" {
-		cfg.App.Environment = "development"
 	}
 
 	// Set server config from Viper with defaults
@@ -142,16 +108,6 @@ func LoadConfig() (*Config, error) {
 	}
 
 	return cfg, nil
-}
-
-// GetAppConfig returns the application configuration.
-func (c *Config) GetAppConfig() *app.Config {
-	return c.App
-}
-
-// GetLogConfig returns the logging configuration.
-func (c *Config) GetLogConfig() *logging.Config {
-	return c.Logger
 }
 
 // GetServerConfig returns the server configuration.
