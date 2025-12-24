@@ -146,7 +146,6 @@ type Crawler struct {
 	// Extracted components for better separation of concerns
 	lifecycle *LifecycleManager
 	signals   *SignalCoordinator
-	monitor   *CollectorMonitor
 }
 
 var _ Interface = (*Crawler)(nil)

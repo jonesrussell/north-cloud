@@ -153,9 +153,6 @@ func NewCrawlerWithParams(p CrawlerParams) (*CrawlerResult, error) {
 
 	c.linkHandler = NewLinkHandler(c)
 
-	// Create collector monitor after crawler is initialized
-	c.monitor = NewCollectorMonitor(collector, p.Logger, c.state, signals)
-
 	return &CrawlerResult{
 		Crawler: c,
 	}, nil
