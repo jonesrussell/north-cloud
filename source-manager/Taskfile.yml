@@ -112,6 +112,7 @@ tasks:
           exit 1
         fi
       - psql -h {{.DB_HOST}} -p {{.DB_PORT}} -U {{.DB_USER}} -d {{.DB_NAME}} -f migrations/001_create_sources_table.sql
+      - psql -h {{.DB_HOST}} -p {{.DB_PORT}} -U {{.DB_USER}} -d {{.DB_NAME}} -f migrations/002_remove_index_fields.sql
 
   migrate:check:
     desc: Check if migrations have been applied

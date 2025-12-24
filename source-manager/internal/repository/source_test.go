@@ -71,11 +71,9 @@ func TestSourceRepository_Create(t *testing.T) {
 		{
 			name: "create valid source",
 			source: &models.Source{
-				Name:         "Test Source",
-				URL:          "https://example.com",
-				ArticleIndex: "articles",
-				PageIndex:    "pages",
-				RateLimit:    "1s",
+				Name:      "Test Source",
+				URL:       "https://example.com",
+				RateLimit: "1s",
 				MaxDepth:     2,
 				Time:         models.StringArray{"09:00", "17:00"},
 				Selectors: models.SelectorConfig{
@@ -91,11 +89,9 @@ func TestSourceRepository_Create(t *testing.T) {
 		{
 			name: "create source with city mapping",
 			source: &models.Source{
-				Name:         "City Source",
-				URL:          "https://city.com",
-				ArticleIndex: "city_articles",
-				PageIndex:    "city_pages",
-				RateLimit:    "2s",
+				Name:      "City Source",
+				URL:       "https://city.com",
+				RateLimit: "2s",
 				MaxDepth:     3,
 				Time:         models.StringArray{"08:00"},
 				Selectors: models.SelectorConfig{
@@ -138,11 +134,9 @@ func TestSourceRepository_GetByID(t *testing.T) {
 
 	// Create a test source
 	testSource := &models.Source{
-		Name:         "Get Test Source",
-		URL:          "https://gettest.com",
-		ArticleIndex: "articles",
-		PageIndex:    "pages",
-		RateLimit:    "1s",
+		Name:      "Get Test Source",
+		URL:       "https://gettest.com",
+		RateLimit: "1s",
 		MaxDepth:     2,
 		Time:         models.StringArray{"10:00"},
 		Selectors: models.SelectorConfig{
@@ -201,11 +195,9 @@ func TestSourceRepository_List(t *testing.T) {
 	// Create multiple test sources
 	sources := []*models.Source{
 		{
-			Name:         "Source A",
-			URL:          "https://sourcea.com",
-			ArticleIndex: "articles",
-			PageIndex:    "pages",
-			RateLimit:    "1s",
+			Name:      "Source A",
+			URL:       "https://sourcea.com",
+			RateLimit: "1s",
 			MaxDepth:     2,
 			Time:         models.StringArray{"09:00"},
 			Selectors: models.SelectorConfig{
@@ -214,11 +206,9 @@ func TestSourceRepository_List(t *testing.T) {
 			Enabled: true,
 		},
 		{
-			Name:         "Source B",
-			URL:          "https://sourceb.com",
-			ArticleIndex: "articles",
-			PageIndex:    "pages",
-			RateLimit:    "1s",
+			Name:      "Source B",
+			URL:       "https://sourceb.com",
+			RateLimit: "1s",
 			MaxDepth:     2,
 			Time:         models.StringArray{"10:00"},
 			Selectors: models.SelectorConfig{
@@ -255,11 +245,9 @@ func TestSourceRepository_Update(t *testing.T) {
 
 	// Create a test source
 	testSource := &models.Source{
-		Name:         "Update Test Source",
-		URL:          "https://updatetest.com",
-		ArticleIndex: "articles",
-		PageIndex:    "pages",
-		RateLimit:    "1s",
+		Name:      "Update Test Source",
+		URL:       "https://updatetest.com",
+		RateLimit: "1s",
 		MaxDepth:     2,
 		Time:         models.StringArray{"09:00"},
 		Selectors: models.SelectorConfig{
@@ -300,11 +288,9 @@ func TestSourceRepository_Delete(t *testing.T) {
 
 	// Create a test source
 	testSource := &models.Source{
-		Name:         "Delete Test Source",
-		URL:          "https://deletetest.com",
-		ArticleIndex: "articles",
-		PageIndex:    "pages",
-		RateLimit:    "1s",
+		Name:      "Delete Test Source",
+		URL:       "https://deletetest.com",
+		RateLimit: "1s",
 		MaxDepth:     2,
 		Time:         models.StringArray{"09:00"},
 		Selectors: models.SelectorConfig{
@@ -340,11 +326,9 @@ func TestSourceRepository_GetCities(t *testing.T) {
 	// Create enabled sources with city names
 	citySources := []*models.Source{
 		{
-			Name:         "City A Source",
-			URL:          "https://citya.com",
-			ArticleIndex: "city_a_articles",
-			PageIndex:    "city_a_pages",
-			RateLimit:    "1s",
+			Name:      "City A Source",
+			URL:       "https://citya.com",
+			RateLimit: "1s",
 			MaxDepth:     2,
 			Time:         models.StringArray{"09:00"},
 			Selectors: models.SelectorConfig{
@@ -355,11 +339,9 @@ func TestSourceRepository_GetCities(t *testing.T) {
 			Enabled:  true,
 		},
 		{
-			Name:         "City B Source",
-			URL:          "https://cityb.com",
-			ArticleIndex: "city_b_articles",
-			PageIndex:    "city_b_pages",
-			RateLimit:    "1s",
+			Name:      "City B Source",
+			URL:       "https://cityb.com",
+			RateLimit: "1s",
 			MaxDepth:     2,
 			Time:         models.StringArray{"10:00"},
 			Selectors: models.SelectorConfig{
@@ -369,11 +351,9 @@ func TestSourceRepository_GetCities(t *testing.T) {
 			Enabled:  true,
 		},
 		{
-			Name:         "Disabled Source",
-			URL:          "https://disabled.com",
-			ArticleIndex: "disabled_articles",
-			PageIndex:    "disabled_pages",
-			RateLimit:    "1s",
+			Name:      "Disabled Source",
+			URL:       "https://disabled.com",
+			RateLimit: "1s",
 			MaxDepth:     2,
 			Time:         models.StringArray{"11:00"},
 			Selectors: models.SelectorConfig{

@@ -12,8 +12,6 @@ type Source struct {
 	ID           string         `json:"id" db:"id"`
 	Name         string         `json:"name" db:"name"`
 	URL          string         `json:"url" db:"url"`
-	ArticleIndex string         `json:"article_index" db:"article_index"`
-	PageIndex    string         `json:"page_index" db:"page_index"`
 	RateLimit    string         `json:"rate_limit" db:"rate_limit"`
 	MaxDepth     int            `json:"max_depth" db:"max_depth"`
 	Time         StringArray    `json:"time" db:"time"`

@@ -105,13 +105,11 @@ func TestSourceHandler_Create(t *testing.T) {
 		{
 			name: "create valid source",
 			requestBody: models.Source{
-				Name:         "Test Source",
-				URL:          "https://example.com",
-				ArticleIndex: "articles",
-				PageIndex:    "pages",
-				RateLimit:    "1s",
-				MaxDepth:     2,
-				Time:         models.StringArray{"09:00"},
+				Name:      "Test Source",
+				URL:       "https://example.com",
+				RateLimit: "1s",
+				MaxDepth:  2,
+				Time:      models.StringArray{"09:00"},
 				Selectors: models.SelectorConfig{
 					Article: models.ArticleSelectors{Title: "h1"},
 				},
@@ -142,13 +140,11 @@ func TestSourceHandler_Create(t *testing.T) {
 		{
 			name: "repository error",
 			requestBody: models.Source{
-				Name:         "Test Source",
-				URL:          "https://example.com",
-				ArticleIndex: "articles",
-				PageIndex:    "pages",
-				RateLimit:    "1s",
-				MaxDepth:     2,
-				Time:         models.StringArray{"09:00"},
+				Name:      "Test Source",
+				URL:       "https://example.com",
+				RateLimit: "1s",
+				MaxDepth:  2,
+				Time:      models.StringArray{"09:00"},
 				Selectors: models.SelectorConfig{
 					Article: models.ArticleSelectors{Title: "h1"},
 				},
@@ -194,12 +190,10 @@ func TestSourceHandler_GetByID(t *testing.T) {
 	t.Skip("Skipping handler tests until handlers use repository interfaces")
 	testID := uuid.New().String()
 	testSource := &models.Source{
-		ID:           testID,
-		Name:         "Test Source",
-		URL:          "https://example.com",
-		ArticleIndex: "articles",
-		PageIndex:    "pages",
-		RateLimit:    "1s",
+		ID:        testID,
+		Name:      "Test Source",
+		URL:       "https://example.com",
+		RateLimit: "1s",
 		MaxDepth:     2,
 		Time:         models.StringArray{"09:00"},
 		Selectors: models.SelectorConfig{
@@ -260,12 +254,10 @@ func TestSourceHandler_List(t *testing.T) {
 	t.Skip("Skipping handler tests until handlers use repository interfaces")
 	testSources := []models.Source{
 		{
-			ID:           uuid.New().String(),
-			Name:         "Source 1",
-			URL:          "https://source1.com",
-			ArticleIndex: "articles",
-			PageIndex:    "pages",
-			RateLimit:    "1s",
+			ID:        uuid.New().String(),
+			Name:      "Source 1",
+			URL:       "https://source1.com",
+			RateLimit: "1s",
 			MaxDepth:     2,
 			Time:         models.StringArray{"09:00"},
 			Selectors: models.SelectorConfig{
@@ -274,12 +266,10 @@ func TestSourceHandler_List(t *testing.T) {
 			Enabled: true,
 		},
 		{
-			ID:           uuid.New().String(),
-			Name:         "Source 2",
-			URL:          "https://source2.com",
-			ArticleIndex: "articles",
-			PageIndex:    "pages",
-			RateLimit:    "1s",
+			ID:        uuid.New().String(),
+			Name:      "Source 2",
+			URL:       "https://source2.com",
+			RateLimit: "1s",
 			MaxDepth:     2,
 			Time:         models.StringArray{"10:00"},
 			Selectors: models.SelectorConfig{
