@@ -342,7 +342,13 @@ func TestTopicClassifier_UpdateRules(t *testing.T) {
 		},
 	}
 
-	classifier.UpdateRules(newRules)
+	// Convert to pointers as UpdateRules expects []*domain.ClassificationRule
+	rulePointers := make([]*domain.ClassificationRule, len(newRules))
+	for i := range newRules {
+		rulePointers[i] = &newRules[i]
+	}
+
+	classifier.UpdateRules(rulePointers)
 
 	updatedRules := classifier.GetRules()
 

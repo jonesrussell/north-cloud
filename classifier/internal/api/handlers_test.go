@@ -119,7 +119,9 @@ func setupTestHandler() *Handler {
 	sourceRepScorer := classifier.NewSourceReputationScorer(logger, sourceRepDB)
 	topicClassifier := classifier.NewTopicClassifier(logger, rules)
 
-	return NewHandler(classifierInstance, batchProcessor, sourceRepScorer, topicClassifier, logger)
+	// For tests, pass nil for repositories as they're not used in most test cases
+	// If a test needs them, it should create mock repositories
+	return NewHandler(classifierInstance, batchProcessor, sourceRepScorer, topicClassifier, nil, nil, nil, logger)
 }
 
 // setupRouter creates a test router with routes
@@ -388,13 +390,10 @@ func TestCreateRule_NotImplemented(t *testing.T) {
 	router := setupRouter(handler)
 
 	reqBody := CreateRuleRequest{
-		RuleName:      "test_rule",
-		RuleType:      domain.RuleTypeTopic,
-		TopicName:     "test",
-		Keywords:      []string{"test"},
-		MinConfidence: 0.5,
-		Enabled:       true,
-		Priority:      1,
+		Topic:    "test",
+		Keywords: []string{"test"},
+		Enabled:  true,
+		Priority: "normal",
 	}
 
 	body, _ := json.Marshal(reqBody)
