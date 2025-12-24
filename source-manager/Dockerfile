@@ -2,10 +2,15 @@ FROM golang:1.25-alpine AS builder
 
 WORKDIR /build
 
-COPY go.mod go.sum ./
+# Copy infrastructure module first (required for go.mod replace directive)
+COPY infrastructure/ ./infrastructure/
+
+# Copy go mod files from source-manager
+COPY source-manager/go.mod source-manager/go.sum ./
 RUN go mod download
 
-COPY . .
+# Copy source-manager source code
+COPY source-manager/ .
 RUN go build -o gosources main.go
 
 FROM alpine:latest

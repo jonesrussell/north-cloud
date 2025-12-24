@@ -9,8 +9,8 @@ services:
   # Crawler service - Production
   crawler:
     build:
-      context: ./crawler
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: ./crawler/Dockerfile
       # Use production build target if multi-stage
       args:
         - BUILD_ENV=production
@@ -46,8 +46,8 @@ services:
   # Source Manager service - Production
   source-manager:
     build:
-      context: ./source-manager
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: ./source-manager/Dockerfile
       args:
         - BUILD_ENV=production
     container_name: north-cloud-source-manager
@@ -85,8 +85,8 @@ services:
   # Publisher service - Production
   publisher:
     build:
-      context: ./publisher
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: ./publisher/Dockerfile
       args:
         - BUILD_ENV=production
     container_name: north-cloud-publisher

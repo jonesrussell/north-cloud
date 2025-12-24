@@ -5,12 +5,15 @@ WORKDIR /build
 # Install build dependencies
 RUN apk add --no-cache git
 
-# Copy go mod files
-COPY go.mod go.sum ./
+# Copy infrastructure module first (required for go.mod replace directive)
+COPY infrastructure/ ./infrastructure/
+
+# Copy go mod files from publisher
+COPY publisher/go.mod publisher/go.sum ./
 RUN go mod download
 
-# Copy source code
-COPY . .
+# Copy publisher source code
+COPY publisher/ .
 
 # Build the application
 RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o integration ./main.go

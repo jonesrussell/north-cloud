@@ -5,12 +5,15 @@ WORKDIR /build
 # Install build dependencies
 RUN apk add --no-cache git
 
-# Copy go mod files
-COPY go.mod go.sum ./
+# Copy infrastructure module first (required for go.mod replace directive)
+COPY infrastructure/ ./infrastructure/
+
+# Copy go mod files from crawler
+COPY crawler/go.mod crawler/go.sum ./
 RUN go mod download
 
-# Copy source code
-COPY . .
+# Copy crawler source code
+COPY crawler/ .
 
 # Build the application
 RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o crawler ./main.go
