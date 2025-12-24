@@ -144,8 +144,3 @@ func extractDomain(url string) string {
 	}
 	return "example.com"
 }
-
-// generateID generates a simple test ID.
-func generateID() string {
-	return time.Now().Format("20060102150405") + "-test"
-}
