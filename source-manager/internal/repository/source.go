@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"regexp"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -42,9 +44,9 @@ func (r *SourceRepository) Create(ctx context.Context, source *models.Source) er
 
 	query := `
 		INSERT INTO sources (
-			id, name, url, article_index, page_index, rate_limit, max_depth,
-			time, selectors, city_name, group_id, enabled, created_at, updated_at
-		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+			id, name, url, rate_limit, max_depth,
+			time, selectors, enabled, created_at, updated_at
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 	`
 
 	_, err = r.db.ExecContext(ctx,
@@ -52,14 +54,10 @@ func (r *SourceRepository) Create(ctx context.Context, source *models.Source) er
 		source.ID,
 		source.Name,
 		source.URL,
-		source.ArticleIndex,
-		source.PageIndex,
 		source.RateLimit,
 		source.MaxDepth,
 		timeJSON,
 		selectorsJSON,
-		source.CityName,
-		source.GroupID,
 		source.Enabled,
 		source.CreatedAt,
 		source.UpdatedAt,
@@ -75,11 +73,10 @@ func (r *SourceRepository) Create(ctx context.Context, source *models.Source) er
 func (r *SourceRepository) GetByID(ctx context.Context, id string) (*models.Source, error) {
 	var source models.Source
 	var selectorsJSON, timeJSON []byte
-	var cityName, groupID sql.NullString
 
 	query := `
-		SELECT id, name, url, article_index, page_index, rate_limit, max_depth,
-		       time, selectors, city_name, group_id, enabled, created_at, updated_at
+		SELECT id, name, url, rate_limit, max_depth,
+		       time, selectors, enabled, created_at, updated_at
 		FROM sources
 		WHERE id = $1
 	`
@@ -88,14 +85,10 @@ func (r *SourceRepository) GetByID(ctx context.Context, id string) (*models.Sour
 		&source.ID,
 		&source.Name,
 		&source.URL,
-		&source.ArticleIndex,
-		&source.PageIndex,
 		&source.RateLimit,
 		&source.MaxDepth,
 		&timeJSON,
 		&selectorsJSON,
-		&cityName,
-		&groupID,
 		&source.Enabled,
 		&source.CreatedAt,
 		&source.UpdatedAt,
@@ -116,13 +109,6 @@ func (r *SourceRepository) GetByID(ctx context.Context, id string) (*models.Sour
 		return nil, fmt.Errorf("unmarshal time: %w", unmarshalErr)
 	}
 
-	if cityName.Valid {
-		source.CityName = &cityName.String
-	}
-	if groupID.Valid {
-		source.GroupID = &groupID.String
-	}
-
 	// Merge selectors with defaults
 	source.Selectors = source.Selectors.MergeWithDefaults()
 
@@ -131,8 +117,8 @@ func (r *SourceRepository) GetByID(ctx context.Context, id string) (*models.Sour
 
 func (r *SourceRepository) List(ctx context.Context) ([]models.Source, error) {
 	query := `
-		SELECT id, name, url, article_index, page_index, rate_limit, max_depth,
-		       time, selectors, city_name, group_id, enabled, created_at, updated_at
+		SELECT id, name, url, rate_limit, max_depth,
+		       time, selectors, enabled, created_at, updated_at
 		FROM sources
 		ORDER BY name
 	`
@@ -147,20 +133,15 @@ func (r *SourceRepository) List(ctx context.Context) ([]models.Source, error) {
 	for rows.Next() {
 		var source models.Source
 		var selectorsJSON, timeJSON []byte
-		var cityName, groupID sql.NullString
 
 		scanErr := rows.Scan(
 			&source.ID,
 			&source.Name,
 			&source.URL,
-			&source.ArticleIndex,
-			&source.PageIndex,
 			&source.RateLimit,
 			&source.MaxDepth,
 			&timeJSON,
 			&selectorsJSON,
-			&cityName,
-			&groupID,
 			&source.Enabled,
 			&source.CreatedAt,
 			&source.UpdatedAt,
@@ -175,13 +156,6 @@ func (r *SourceRepository) List(ctx context.Context) ([]models.Source, error) {
 
 		if unmarshalErr := json.Unmarshal(timeJSON, &source.Time); unmarshalErr != nil {
 			return nil, fmt.Errorf("unmarshal time: %w", unmarshalErr)
-		}
-
-		if cityName.Valid {
-			source.CityName = &cityName.String
-		}
-		if groupID.Valid {
-			source.GroupID = &groupID.String
 		}
 
 		// Merge selectors with defaults
@@ -212,9 +186,8 @@ func (r *SourceRepository) Update(ctx context.Context, source *models.Source) er
 
 	query := `
 		UPDATE sources
-		SET name = $2, url = $3, article_index = $4, page_index = $5,
-		    rate_limit = $6, max_depth = $7, time = $8, selectors = $9,
-		    city_name = $10, group_id = $11, enabled = $12, updated_at = $13
+		SET name = $2, url = $3, rate_limit = $4, max_depth = $5, time = $6, selectors = $7,
+		    enabled = $8, updated_at = $9
 		WHERE id = $1
 	`
 
@@ -223,14 +196,10 @@ func (r *SourceRepository) Update(ctx context.Context, source *models.Source) er
 		source.ID,
 		source.Name,
 		source.URL,
-		source.ArticleIndex,
-		source.PageIndex,
 		source.RateLimit,
 		source.MaxDepth,
 		timeJSON,
 		selectorsJSON,
-		source.CityName,
-		source.GroupID,
 		source.Enabled,
 		source.UpdatedAt,
 	)
@@ -273,13 +242,10 @@ func (r *SourceRepository) Delete(ctx context.Context, id string) error {
 
 func (r *SourceRepository) GetCities(ctx context.Context) ([]models.City, error) {
 	query := `
-		SELECT 
-			COALESCE(city_name, name) as city_name,
-			article_index,
-			COALESCE(group_id, '') as group_id
+		SELECT name as source_name
 		FROM sources
-		WHERE enabled = true AND city_name IS NOT NULL
-		ORDER BY city_name
+		WHERE enabled = true
+		ORDER BY name
 	`
 
 	rows, err := r.db.QueryContext(ctx, query)
@@ -291,16 +257,17 @@ func (r *SourceRepository) GetCities(ctx context.Context) ([]models.City, error)
 	var cities []models.City
 	for rows.Next() {
 		var city models.City
-		var groupID sql.NullString
+		var sourceName string
 
-		scanErr := rows.Scan(&city.Name, &city.Index, &groupID)
+		scanErr := rows.Scan(&sourceName)
 		if scanErr != nil {
 			return nil, fmt.Errorf("scan city: %w", scanErr)
 		}
 
-		if groupID.Valid && groupID.String != "" {
-			city.GroupID = groupID.String
-		}
+		// Use source name as city name
+		city.Name = sourceName
+		// Derive index name from source name
+		city.Index = deriveClassifiedContentIndex(sourceName)
 
 		cities = append(cities, city)
 	}
@@ -310,4 +277,57 @@ func (r *SourceRepository) GetCities(ctx context.Context) ([]models.City, error)
 	}
 
 	return cities, nil
+}
+
+var (
+	// invalidIndexNameChars matches all characters that are invalid in Elasticsearch index names.
+	// Invalid characters: space, ", *, ,, /, <, >, ?, \, |
+	invalidIndexNameChars = regexp.MustCompile(`[\s"*,/<>?\\|]`)
+	// consecutiveUnderscores matches two or more consecutive underscores.
+	consecutiveUnderscores = regexp.MustCompile(`_{2,}`)
+)
+
+// deriveClassifiedContentIndex derives an Elasticsearch index name for classified content
+// from a source name. Format: {normalized_source_name}_classified_content
+func deriveClassifiedContentIndex(sourceName string) string {
+	if sourceName == "" {
+		return "unknown_classified_content"
+	}
+
+	// Normalize source name for Elasticsearch index
+	normalized := sanitizeIndexName(sourceName)
+	return fmt.Sprintf("%s_classified_content", normalized)
+}
+
+// sanitizeIndexName sanitizes a source name for use in Elasticsearch index names.
+// Elasticsearch index names cannot contain: space, ", *, ,, /, <, >, ?, \, |
+// This function replaces invalid characters with underscores, normalizes dots/dashes,
+// removes leading/trailing underscores, and collapses consecutive underscores.
+func sanitizeIndexName(sourceName string) string {
+	if sourceName == "" {
+		return "unknown"
+	}
+
+	// Convert to lowercase first
+	normalized := strings.ToLower(sourceName)
+
+	// Replace invalid Elasticsearch index name characters with underscores in one pass
+	normalized = invalidIndexNameChars.ReplaceAllString(normalized, "_")
+
+	// Replace dots and dashes with underscores (existing behavior)
+	normalized = strings.ReplaceAll(normalized, ".", "_")
+	normalized = strings.ReplaceAll(normalized, "-", "_")
+
+	// Collapse consecutive underscores into a single underscore
+	normalized = consecutiveUnderscores.ReplaceAllString(normalized, "_")
+
+	// Remove leading and trailing underscores
+	normalized = strings.Trim(normalized, "_")
+
+	// Handle edge case: if all characters were invalid, return fallback
+	if normalized == "" {
+		return "unknown"
+	}
+
+	return normalized
 }

@@ -3,7 +3,11 @@
     class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
     :class="badgeClass"
   >
-    <span v-if="showDot" class="mr-1.5 h-2 w-2 rounded-full" :class="dotClass"></span>
+    <span
+      v-if="showDot"
+      class="mr-1.5 h-2 w-2 rounded-full"
+      :class="dotClass"
+    />
     {{ label }}
   </span>
 </template>

@@ -1,15 +1,18 @@
 version: '3'
 
+dotenv: ['../.env']
+
 vars:
   BINARY_NAME: gosources
   MAIN_PATH: ./main.go
   BUILD_DIR: ./bin
   DOCKER_IMAGE: gosources
   CONFIG_FILE: config.yml
-  DB_HOST: localhost
-  DB_PORT: 5432
-  DB_USER: postgres
-  DB_NAME: gosources
+  DB_HOST: '{{.POSTGRES_SOURCE_MANAGER_HOST | default .DB_HOST | default "localhost"}}'
+  DB_PORT: '{{.POSTGRES_SOURCE_MANAGER_PORT | default .DB_PORT | default "5432"}}'
+  DB_USER: '{{.POSTGRES_SOURCE_MANAGER_USER | default .DB_USER | default "postgres"}}'
+  DB_PASSWORD: '{{.POSTGRES_SOURCE_MANAGER_PASSWORD | default .DB_PASSWORD | default ""}}'
+  DB_NAME: '{{.POSTGRES_SOURCE_MANAGER_DB | default .DB_NAME | default "gosources"}}'
 
 tasks:
   default:
@@ -100,25 +103,28 @@ tasks:
 
   migrate:
     desc: Run database migrations
+    env:
+      PGPASSWORD: '{{.DB_PASSWORD}}'
     cmds:
       - |
-        if [ -z "$DB_PASSWORD" ]; then
-          echo "DB_PASSWORD environment variable not set"
+        if [ -z "{{.DB_PASSWORD}}" ]; then
+          echo "DB_PASSWORD or POSTGRES_SOURCE_MANAGER_PASSWORD environment variable not set"
           exit 1
         fi
-      - |
-        PGPASSWORD={{.DB_PASSWORD}} psql -h {{.DB_HOST}} -p {{.DB_PORT}} -U {{.DB_USER}} -d {{.DB_NAME}} -f migrations/001_create_sources_table.sql
+      - psql -h {{.DB_HOST}} -p {{.DB_PORT}} -U {{.DB_USER}} -d {{.DB_NAME}} -f migrations/001_create_sources_table.sql
+      - psql -h {{.DB_HOST}} -p {{.DB_PORT}} -U {{.DB_USER}} -d {{.DB_NAME}} -f migrations/002_remove_index_fields.sql
 
   migrate:check:
     desc: Check if migrations have been applied
+    env:
+      PGPASSWORD: '{{.DB_PASSWORD}}'
     cmds:
       - |
-        if [ -z "$DB_PASSWORD" ]; then
-          echo "DB_PASSWORD environment variable not set"
+        if [ -z "{{.DB_PASSWORD}}" ]; then
+          echo "DB_PASSWORD or POSTGRES_SOURCE_MANAGER_PASSWORD environment variable not set"
           exit 1
         fi
-      - |
-        PGPASSWORD={{.DB_PASSWORD}} psql -h {{.DB_HOST}} -p {{.DB_PORT}} -U {{.DB_USER}} -d {{.DB_NAME}} -c "\d sources" || echo "Table 'sources' does not exist. Run 'task migrate' to create it."
+      - psql -h {{.DB_HOST}} -p {{.DB_PORT}} -U {{.DB_USER}} -d {{.DB_NAME}} -c "\d sources" || echo "Table 'sources' does not exist. Run 'task migrate' to create it."
 
   docker:build:
     desc: Build Docker image

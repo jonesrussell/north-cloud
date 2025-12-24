@@ -6,10 +6,19 @@
     />
 
     <!-- Loading State -->
-    <LoadingSpinner v-if="loading" size="lg" text="Loading statistics..." :full-page="true" />
+    <LoadingSpinner
+      v-if="loading"
+      size="lg"
+      text="Loading statistics..."
+      :full-page="true"
+    />
 
     <!-- Error State -->
-    <ErrorAlert v-else-if="error" :message="error" class="mb-6" />
+    <ErrorAlert
+      v-else-if="error"
+      :message="error"
+      class="mb-6"
+    />
 
     <!-- Stats Content -->
     <div v-else>
@@ -64,8 +73,13 @@
 
       <!-- Topic Distribution -->
       <div class="bg-white shadow rounded-lg p-6 mb-8">
-        <h2 class="text-lg font-medium text-gray-900 mb-4">Topic Distribution</h2>
-        <div v-if="topicStats && topicStats.length > 0" class="space-y-3">
+        <h2 class="text-lg font-medium text-gray-900 mb-4">
+          Topic Distribution
+        </h2>
+        <div
+          v-if="topicStats && topicStats.length > 0"
+          class="space-y-3"
+        >
           <div
             v-for="topic in topicStats"
             :key="topic.topic"
@@ -80,7 +94,7 @@
                 <div
                   class="bg-blue-500 h-2 rounded-full"
                   :style="{ width: `${getTopicPercentage(topic.count)}%` }"
-                ></div>
+                />
               </div>
               <span class="text-sm font-semibold text-gray-900 w-12 text-right">
                 {{ getTopicPercentage(topic.count) }}%
@@ -88,22 +102,32 @@
             </div>
           </div>
         </div>
-        <div v-else class="text-center py-8 text-gray-500">
+        <div
+          v-else
+          class="text-center py-8 text-gray-500"
+        >
           <p>No topic statistics available</p>
         </div>
       </div>
 
       <!-- Source Reputation Distribution -->
       <div class="bg-white shadow rounded-lg p-6 mb-8">
-        <h2 class="text-lg font-medium text-gray-900 mb-4">Source Reputation Distribution</h2>
-        <div v-if="sourceStats && sourceStats.length > 0" class="space-y-4">
+        <h2 class="text-lg font-medium text-gray-900 mb-4">
+          Source Reputation Distribution
+        </h2>
+        <div
+          v-if="sourceStats && sourceStats.length > 0"
+          class="space-y-4"
+        >
           <div
             v-for="source in sourceStats"
             :key="source.name"
             class="border-b border-gray-200 pb-4 last:border-b-0 last:pb-0"
           >
             <div class="flex items-center justify-between mb-2">
-              <h3 class="text-sm font-semibold text-gray-900">{{ source.name }}</h3>
+              <h3 class="text-sm font-semibold text-gray-900">
+                {{ source.name }}
+              </h3>
               <span
                 class="px-2 py-1 text-xs font-semibold rounded"
                 :class="getReputationClass(source.reputation)"
@@ -117,21 +141,29 @@
                   class="h-2 rounded-full"
                   :class="getReputationColorClass(source.reputation)"
                   :style="{ width: `${source.reputation}%` }"
-                ></div>
+                />
               </div>
               <span class="text-xs text-gray-500">{{ source.category || 'Unknown' }}</span>
             </div>
           </div>
         </div>
-        <div v-else class="text-center py-8 text-gray-500">
+        <div
+          v-else
+          class="text-center py-8 text-gray-500"
+        >
           <p>No source reputation statistics available</p>
         </div>
       </div>
 
       <!-- Content Type Breakdown -->
       <div class="bg-white shadow rounded-lg p-6">
-        <h2 class="text-lg font-medium text-gray-900 mb-4">Content Type Breakdown</h2>
-        <div v-if="contentTypeStats && Object.keys(contentTypeStats).length > 0" class="space-y-3">
+        <h2 class="text-lg font-medium text-gray-900 mb-4">
+          Content Type Breakdown
+        </h2>
+        <div
+          v-if="contentTypeStats && Object.keys(contentTypeStats).length > 0"
+          class="space-y-3"
+        >
           <div
             v-for="(count, type) in contentTypeStats"
             :key="type"
@@ -144,7 +176,7 @@
                 <div
                   class="bg-green-500 h-2 rounded-full"
                   :style="{ width: `${getContentTypePercentage(count)}%` }"
-                ></div>
+                />
               </div>
               <span class="text-sm font-semibold text-gray-900 w-12 text-right">
                 {{ getContentTypePercentage(count) }}%
@@ -152,7 +184,10 @@
             </div>
           </div>
         </div>
-        <div v-else class="text-center py-8 text-gray-500">
+        <div
+          v-else
+          class="text-center py-8 text-gray-500"
+        >
           <p>No content type statistics available</p>
         </div>
       </div>

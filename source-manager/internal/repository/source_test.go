@@ -71,13 +71,11 @@ func TestSourceRepository_Create(t *testing.T) {
 		{
 			name: "create valid source",
 			source: &models.Source{
-				Name:         "Test Source",
-				URL:          "https://example.com",
-				ArticleIndex: "articles",
-				PageIndex:    "pages",
-				RateLimit:    "1s",
-				MaxDepth:     2,
-				Time:         models.StringArray{"09:00", "17:00"},
+				Name:      "Test Source",
+				URL:       "https://example.com",
+				RateLimit: "1s",
+				MaxDepth:  2,
+				Time:      models.StringArray{"09:00", "17:00"},
 				Selectors: models.SelectorConfig{
 					Article: models.ArticleSelectors{
 						Title: "h1",
@@ -91,21 +89,17 @@ func TestSourceRepository_Create(t *testing.T) {
 		{
 			name: "create source with city mapping",
 			source: &models.Source{
-				Name:         "City Source",
-				URL:          "https://city.com",
-				ArticleIndex: "city_articles",
-				PageIndex:    "city_pages",
-				RateLimit:    "2s",
-				MaxDepth:     3,
-				Time:         models.StringArray{"08:00"},
+				Name:      "City Source",
+				URL:       "https://city.com",
+				RateLimit: "2s",
+				MaxDepth:  3,
+				Time:      models.StringArray{"08:00"},
 				Selectors: models.SelectorConfig{
 					Article: models.ArticleSelectors{
 						Title: "article h1",
 					},
 				},
-				CityName: stringPtr("TestCity"),
-				GroupID:  stringPtr("group-uuid-123"),
-				Enabled:  true,
+				Enabled: true,
 			},
 			wantErr: false,
 		},
@@ -138,13 +132,11 @@ func TestSourceRepository_GetByID(t *testing.T) {
 
 	// Create a test source
 	testSource := &models.Source{
-		Name:         "Get Test Source",
-		URL:          "https://gettest.com",
-		ArticleIndex: "articles",
-		PageIndex:    "pages",
-		RateLimit:    "1s",
-		MaxDepth:     2,
-		Time:         models.StringArray{"10:00"},
+		Name:      "Get Test Source",
+		URL:       "https://gettest.com",
+		RateLimit: "1s",
+		MaxDepth:  2,
+		Time:      models.StringArray{"10:00"},
 		Selectors: models.SelectorConfig{
 			Article: models.ArticleSelectors{
 				Title: "h1",
@@ -201,26 +193,22 @@ func TestSourceRepository_List(t *testing.T) {
 	// Create multiple test sources
 	sources := []*models.Source{
 		{
-			Name:         "Source A",
-			URL:          "https://sourcea.com",
-			ArticleIndex: "articles",
-			PageIndex:    "pages",
-			RateLimit:    "1s",
-			MaxDepth:     2,
-			Time:         models.StringArray{"09:00"},
+			Name:      "Source A",
+			URL:       "https://sourcea.com",
+			RateLimit: "1s",
+			MaxDepth:  2,
+			Time:      models.StringArray{"09:00"},
 			Selectors: models.SelectorConfig{
 				Article: models.ArticleSelectors{Title: "h1"},
 			},
 			Enabled: true,
 		},
 		{
-			Name:         "Source B",
-			URL:          "https://sourceb.com",
-			ArticleIndex: "articles",
-			PageIndex:    "pages",
-			RateLimit:    "1s",
-			MaxDepth:     2,
-			Time:         models.StringArray{"10:00"},
+			Name:      "Source B",
+			URL:       "https://sourceb.com",
+			RateLimit: "1s",
+			MaxDepth:  2,
+			Time:      models.StringArray{"10:00"},
 			Selectors: models.SelectorConfig{
 				Article: models.ArticleSelectors{Title: "h1"},
 			},
@@ -255,13 +243,11 @@ func TestSourceRepository_Update(t *testing.T) {
 
 	// Create a test source
 	testSource := &models.Source{
-		Name:         "Update Test Source",
-		URL:          "https://updatetest.com",
-		ArticleIndex: "articles",
-		PageIndex:    "pages",
-		RateLimit:    "1s",
-		MaxDepth:     2,
-		Time:         models.StringArray{"09:00"},
+		Name:      "Update Test Source",
+		URL:       "https://updatetest.com",
+		RateLimit: "1s",
+		MaxDepth:  2,
+		Time:      models.StringArray{"09:00"},
 		Selectors: models.SelectorConfig{
 			Article: models.ArticleSelectors{Title: "h1"},
 		},
@@ -300,13 +286,11 @@ func TestSourceRepository_Delete(t *testing.T) {
 
 	// Create a test source
 	testSource := &models.Source{
-		Name:         "Delete Test Source",
-		URL:          "https://deletetest.com",
-		ArticleIndex: "articles",
-		PageIndex:    "pages",
-		RateLimit:    "1s",
-		MaxDepth:     2,
-		Time:         models.StringArray{"09:00"},
+		Name:      "Delete Test Source",
+		URL:       "https://deletetest.com",
+		RateLimit: "1s",
+		MaxDepth:  2,
+		Time:      models.StringArray{"09:00"},
 		Selectors: models.SelectorConfig{
 			Article: models.ArticleSelectors{Title: "h1"},
 		},
@@ -340,47 +324,37 @@ func TestSourceRepository_GetCities(t *testing.T) {
 	// Create enabled sources with city names
 	citySources := []*models.Source{
 		{
-			Name:         "City A Source",
-			URL:          "https://citya.com",
-			ArticleIndex: "city_a_articles",
-			PageIndex:    "city_a_pages",
-			RateLimit:    "1s",
-			MaxDepth:     2,
-			Time:         models.StringArray{"09:00"},
+			Name:      "City A Source",
+			URL:       "https://citya.com",
+			RateLimit: "1s",
+			MaxDepth:  2,
+			Time:      models.StringArray{"09:00"},
 			Selectors: models.SelectorConfig{
 				Article: models.ArticleSelectors{Title: "h1"},
 			},
-			CityName: stringPtr("CityA"),
-			GroupID:  stringPtr("group-a"),
-			Enabled:  true,
+			Enabled: true,
 		},
 		{
-			Name:         "City B Source",
-			URL:          "https://cityb.com",
-			ArticleIndex: "city_b_articles",
-			PageIndex:    "city_b_pages",
-			RateLimit:    "1s",
-			MaxDepth:     2,
-			Time:         models.StringArray{"10:00"},
+			Name:      "City B Source",
+			URL:       "https://cityb.com",
+			RateLimit: "1s",
+			MaxDepth:  2,
+			Time:      models.StringArray{"10:00"},
 			Selectors: models.SelectorConfig{
 				Article: models.ArticleSelectors{Title: "h1"},
 			},
-			CityName: stringPtr("CityB"),
-			Enabled:  true,
+			Enabled: true,
 		},
 		{
-			Name:         "Disabled Source",
-			URL:          "https://disabled.com",
-			ArticleIndex: "disabled_articles",
-			PageIndex:    "disabled_pages",
-			RateLimit:    "1s",
-			MaxDepth:     2,
-			Time:         models.StringArray{"11:00"},
+			Name:      "Disabled Source",
+			URL:       "https://disabled.com",
+			RateLimit: "1s",
+			MaxDepth:  2,
+			Time:      models.StringArray{"11:00"},
 			Selectors: models.SelectorConfig{
 				Article: models.ArticleSelectors{Title: "h1"},
 			},
-			CityName: stringPtr("DisabledCity"),
-			Enabled:  false, // Disabled
+			Enabled: false, // Disabled
 		},
 	}
 
@@ -399,12 +373,7 @@ func TestSourceRepository_GetCities(t *testing.T) {
 		cityNames[city.Name] = true
 		assert.NotEmpty(t, city.Index, "City index should not be empty")
 	}
-	assert.True(t, cityNames["CityA"], "CityA should be in results")
-	assert.True(t, cityNames["CityB"], "CityB should be in results")
-	assert.False(t, cityNames["DisabledCity"], "DisabledCity should not be in results")
-}
-
-// Helper function
-func stringPtr(s string) *string {
-	return &s
+	assert.True(t, cityNames["City A Source"], "City A Source should be in results")
+	assert.True(t, cityNames["City B Source"], "City B Source should be in results")
+	assert.False(t, cityNames["Disabled Source"], "Disabled Source should not be in results")
 }

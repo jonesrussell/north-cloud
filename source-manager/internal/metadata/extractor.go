@@ -21,11 +21,9 @@ const (
 
 // MetadataResponse represents suggested values from URL extraction
 type MetadataResponse struct {
-	Name         string                `json:"name"`
-	URL          string                `json:"url"`
-	ArticleIndex string                `json:"article_index"`
-	PageIndex    string                `json:"page_index"`
-	Selectors    models.SelectorConfig `json:"selectors"`
+	Name      string                `json:"name"`
+	URL       string                `json:"url"`
+	Selectors models.SelectorConfig `json:"selectors"`
 }
 
 // Extractor handles metadata extraction from URLs
@@ -83,9 +81,7 @@ func (e *Extractor) Extract(ctx context.Context, sourceURL string) (*MetadataRes
 
 	// Extract metadata
 	metadata := &MetadataResponse{
-		URL:          sourceURL,
-		ArticleIndex: e.generateArticleIndex(parsedURL),
-		PageIndex:    e.generatePageIndex(parsedURL),
+		URL: sourceURL,
 		Selectors: models.SelectorConfig{
 			Article: models.ArticleSelectors{},
 			List:    models.ListSelectors{},
@@ -283,30 +279,4 @@ func (e *Extractor) extractListSelectors(doc *goquery.Document, selectors *model
 		selectors.List.Container = ".news-list"
 		selectors.List.ArticleList = ".news-list article"
 	}
-}
-
-// generateArticleIndex generates an Elasticsearch index name for articles
-func (e *Extractor) generateArticleIndex(parsedURL *url.URL) string {
-	// Convert domain to index name (e.g., example.com -> example_com_articles)
-	domain := strings.ReplaceAll(parsedURL.Host, ".", "_")
-	domain = strings.ReplaceAll(domain, "-", "_")
-	domain = strings.ToLower(domain)
-
-	// Remove www prefix if present
-	domain = strings.TrimPrefix(domain, "www_")
-
-	return fmt.Sprintf("%s_articles", domain)
-}
-
-// generatePageIndex generates an Elasticsearch index name for pages
-func (e *Extractor) generatePageIndex(parsedURL *url.URL) string {
-	// Convert domain to index name (e.g., example.com -> example_com_pages)
-	domain := strings.ReplaceAll(parsedURL.Host, ".", "_")
-	domain = strings.ReplaceAll(domain, "-", "_")
-	domain = strings.ToLower(domain)
-
-	// Remove www prefix if present
-	domain = strings.TrimPrefix(domain, "www_")
-
-	return fmt.Sprintf("%s_pages", domain)
 }

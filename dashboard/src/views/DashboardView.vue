@@ -1,12 +1,22 @@
 <template>
   <div>
     <!-- Loading State -->
-    <div v-if="loading" class="flex items-center justify-center min-h-64">
-      <LoadingSpinner size="lg" text="Loading dashboard..." />
+    <div
+      v-if="loading"
+      class="flex items-center justify-center min-h-64"
+    >
+      <LoadingSpinner
+        size="lg"
+        text="Loading dashboard..."
+      />
     </div>
 
     <!-- Error State -->
-    <ErrorAlert v-else-if="error" :message="error" class="mb-6" />
+    <ErrorAlert
+      v-else-if="error"
+      :message="error"
+      class="mb-6"
+    />
 
     <!-- Dashboard Content -->
     <div v-else>
@@ -43,10 +53,15 @@
         <!-- Crawler Status -->
         <div class="bg-white shadow rounded-lg">
           <div class="px-6 py-4 border-b border-gray-200">
-            <h2 class="text-lg font-medium text-gray-900">Crawler Status</h2>
+            <h2 class="text-lg font-medium text-gray-900">
+              Crawler Status
+            </h2>
           </div>
           <div class="p-6">
-            <div v-if="crawlerHealth" class="space-y-4">
+            <div
+              v-if="crawlerHealth"
+              class="space-y-4"
+            >
               <div class="flex items-center justify-between">
                 <span class="text-sm text-gray-600">Service Status</span>
                 <StatusBadge :status="crawlerHealth.status === 'healthy' ? 'active' : 'error'" />
@@ -60,7 +75,10 @@
                 <span class="text-sm font-medium text-gray-900">{{ crawlerHealth.uptime || 'N/A' }}</span>
               </div>
             </div>
-            <div v-else class="text-sm text-gray-500">
+            <div
+              v-else
+              class="text-sm text-gray-500"
+            >
               Unable to fetch crawler status
             </div>
             <div class="mt-4 pt-4 border-t border-gray-200">
@@ -77,10 +95,15 @@
         <!-- Recent Jobs -->
         <div class="bg-white shadow rounded-lg">
           <div class="px-6 py-4 border-b border-gray-200">
-            <h2 class="text-lg font-medium text-gray-900">Recent Jobs</h2>
+            <h2 class="text-lg font-medium text-gray-900">
+              Recent Jobs
+            </h2>
           </div>
           <div class="p-6">
-            <div v-if="recentJobs.length > 0" class="space-y-3">
+            <div
+              v-if="recentJobs.length > 0"
+              class="space-y-3"
+            >
               <div
                 v-for="job in recentJobs"
                 :key="job.id"
@@ -94,10 +117,16 @@
                     {{ formatDate(job.created_at) }}
                   </p>
                 </div>
-                <StatusBadge :status="job.status" :show-dot="true" />
+                <StatusBadge
+                  :status="job.status"
+                  :show-dot="true"
+                />
               </div>
             </div>
-            <div v-else class="text-sm text-gray-500 text-center py-4">
+            <div
+              v-else
+              class="text-sm text-gray-500 text-center py-4"
+            >
               No recent jobs
             </div>
             <div class="mt-4 pt-4 border-t border-gray-200">
@@ -114,10 +143,15 @@
         <!-- Publisher Status -->
         <div class="bg-white shadow rounded-lg">
           <div class="px-6 py-4 border-b border-gray-200">
-            <h2 class="text-lg font-medium text-gray-900">Publisher Status</h2>
+            <h2 class="text-lg font-medium text-gray-900">
+              Publisher Status
+            </h2>
           </div>
           <div class="p-6">
-            <div v-if="publisherHealth" class="space-y-4">
+            <div
+              v-if="publisherHealth"
+              class="space-y-4"
+            >
               <div class="flex items-center justify-between">
                 <span class="text-sm text-gray-600">Service Status</span>
                 <StatusBadge :status="publisherHealth.status === 'ok' ? 'active' : 'error'" />
@@ -131,7 +165,10 @@
                 <span class="text-sm font-medium text-gray-900">{{ publisherStats.totalPosted }}</span>
               </div>
             </div>
-            <div v-else class="text-sm text-gray-500">
+            <div
+              v-else
+              class="text-sm text-gray-500"
+            >
               Unable to fetch publisher status
             </div>
             <div class="mt-4 pt-4 border-t border-gray-200">
@@ -148,10 +185,15 @@
         <!-- Classifier Status -->
         <div class="bg-white shadow rounded-lg">
           <div class="px-6 py-4 border-b border-gray-200">
-            <h2 class="text-lg font-medium text-gray-900">Classifier Status</h2>
+            <h2 class="text-lg font-medium text-gray-900">
+              Classifier Status
+            </h2>
           </div>
           <div class="p-6">
-            <div v-if="classifierHealth" class="space-y-4">
+            <div
+              v-if="classifierHealth"
+              class="space-y-4"
+            >
               <div class="flex items-center justify-between">
                 <span class="text-sm text-gray-600">Service Status</span>
                 <StatusBadge :status="classifierHealth.status === 'healthy' ? 'active' : 'error'" />
@@ -165,7 +207,10 @@
                 <span class="text-sm font-medium text-gray-900">{{ classifierStats.avgQualityScore }}/100</span>
               </div>
             </div>
-            <div v-else class="text-sm text-gray-500">
+            <div
+              v-else
+              class="text-sm text-gray-500"
+            >
               Unable to fetch classifier status
             </div>
             <div class="mt-4 pt-4 border-t border-gray-200">
@@ -182,7 +227,9 @@
         <!-- Quick Actions -->
         <div class="bg-white shadow rounded-lg">
           <div class="px-6 py-4 border-b border-gray-200">
-            <h2 class="text-lg font-medium text-gray-900">Quick Actions</h2>
+            <h2 class="text-lg font-medium text-gray-900">
+              Quick Actions
+            </h2>
           </div>
           <div class="p-6">
             <div class="space-y-3">
@@ -220,7 +267,6 @@ import { ref, onMounted } from 'vue'
 import {
   BriefcaseIcon,
   DocumentTextIcon,
-  NewspaperIcon,
   CheckCircleIcon,
   PlusIcon,
   ChartBarIcon,

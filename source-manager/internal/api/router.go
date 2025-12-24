@@ -30,10 +30,11 @@ func getCORSOrigins() []string {
 		return origins
 	}
 
-	// Default origins - include both source-manager and crawler frontends
+	// Default origins - include source-manager, crawler, and unified dashboard frontends
 	origins := []string{
 		"http://localhost:3000", // Source manager frontend
 		"http://localhost:3001", // Crawler frontend
+		"http://localhost:3002", // Unified dashboard frontend
 	}
 
 	// If SOURCE_MANAGER_API_URL is set, extract host and add frontend origin
@@ -43,7 +44,7 @@ func getCORSOrigins() []string {
 			parts := strings.Split(strings.TrimPrefix(strings.TrimPrefix(apiURL, "http://"), "https://"), ":")
 			if len(parts) > 0 {
 				host := parts[0]
-				origins = append(origins, "http://"+host+":3000", "http://"+host+":3001")
+				origins = append(origins, "http://"+host+":3000", "http://"+host+":3001", "http://"+host+":3002")
 			}
 		}
 	}

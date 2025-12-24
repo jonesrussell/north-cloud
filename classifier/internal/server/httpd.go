@@ -5,11 +5,13 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"strconv"
 	"syscall"
 	"time"
 
 	"github.com/jonesrussell/north-cloud/classifier/internal/api"
 	"github.com/jonesrussell/north-cloud/classifier/internal/classifier"
+	"github.com/jonesrussell/north-cloud/classifier/internal/database"
 	"github.com/jonesrussell/north-cloud/classifier/internal/domain"
 	"github.com/jonesrussell/north-cloud/classifier/internal/processor"
 )
@@ -41,54 +43,6 @@ func (l *Logger) Error(msg string, keysAndValues ...interface{}) {
 	fmt.Printf("[ERROR] %s %v\n", msg, keysAndValues)
 }
 
-// mockSourceReputationDB is a temporary in-memory implementation
-// TODO: Replace with actual PostgreSQL implementation
-type mockSourceReputationDB struct {
-	sources map[string]*domain.SourceReputation
-}
-
-func newMockSourceReputationDB() *mockSourceReputationDB {
-	return &mockSourceReputationDB{
-		sources: make(map[string]*domain.SourceReputation),
-	}
-}
-
-func (m *mockSourceReputationDB) GetSource(ctx context.Context, sourceName string) (*domain.SourceReputation, error) {
-	source, ok := m.sources[sourceName]
-	if !ok {
-		return nil, fmt.Errorf("source not found")
-	}
-	return source, nil
-}
-
-func (m *mockSourceReputationDB) CreateSource(ctx context.Context, source *domain.SourceReputation) error {
-	m.sources[source.SourceName] = source
-	return nil
-}
-
-func (m *mockSourceReputationDB) UpdateSource(ctx context.Context, source *domain.SourceReputation) error {
-	m.sources[source.SourceName] = source
-	return nil
-}
-
-func (m *mockSourceReputationDB) GetOrCreateSource(ctx context.Context, sourceName string) (*domain.SourceReputation, error) {
-	source, ok := m.sources[sourceName]
-	if !ok {
-		source = &domain.SourceReputation{
-			SourceName:          sourceName,
-			Category:            domain.SourceCategoryUnknown,
-			ReputationScore:     50,
-			TotalArticles:       0,
-			AverageQualityScore: 0,
-			SpamCount:           0,
-			CreatedAt:           time.Now(),
-			UpdatedAt:           time.Now(),
-		}
-		m.sources[sourceName] = source
-	}
-	return source, nil
-}
-
 // StartHTTPServer starts the HTTP server for the classifier service
 func StartHTTPServer() {
 	// Get configuration from environment
@@ -98,54 +52,56 @@ func StartHTTPServer() {
 	logger := NewLogger(debug)
 	logger.Info("Starting classifier HTTP server", "port", port, "debug", debug)
 
-	// Create classification rules
-	// TODO: Load from database
-	rules := []domain.ClassificationRule{
-		{
-			ID:            1,
-			RuleName:      "crime_detection",
-			RuleType:      domain.RuleTypeTopic,
-			TopicName:     "crime",
-			Keywords:      []string{"police", "arrest", "charged", "suspect", "incident", "crime", "criminal", "investigation", "officer"},
-			MinConfidence: 0.3,
-			Enabled:       true,
-			Priority:      1,
-		},
-		{
-			ID:            2,
-			RuleName:      "sports_detection",
-			RuleType:      domain.RuleTypeTopic,
-			TopicName:     "sports",
-			Keywords:      []string{"team", "championship", "game", "match", "sports", "player", "won", "score", "tournament"},
-			MinConfidence: 0.3,
-			Enabled:       true,
-			Priority:      1,
-		},
-		{
-			ID:            3,
-			RuleName:      "politics_detection",
-			RuleType:      domain.RuleTypeTopic,
-			TopicName:     "politics",
-			Keywords:      []string{"government", "election", "politician", "parliament", "minister", "vote", "policy", "legislation"},
-			MinConfidence: 0.3,
-			Enabled:       true,
-			Priority:      1,
-		},
-		{
-			ID:            4,
-			RuleName:      "local_news_detection",
-			RuleType:      domain.RuleTypeTopic,
-			TopicName:     "local_news",
-			Keywords:      []string{"community", "local", "neighbourhood", "mayor", "council", "resident", "downtown"},
-			MinConfidence: 0.3,
-			Enabled:       true,
-			Priority:      1,
-		},
+	// Database configuration
+	dbConfig := database.Config{
+		Host:     getEnv("POSTGRES_HOST", "localhost"),
+		Port:     getEnv("POSTGRES_PORT", "5432"),
+		User:     getEnv("POSTGRES_USER", "postgres"),
+		Password: getEnv("POSTGRES_PASSWORD", ""),
+		DBName:   getEnv("POSTGRES_DB", "classifier"),
+		SSLMode:  getEnv("POSTGRES_SSLMODE", "disable"),
 	}
 
-	// Create source reputation DB
-	// TODO: Replace with actual PostgreSQL implementation
-	sourceRepDB := newMockSourceReputationDB()
+	logger.Info("Connecting to PostgreSQL database",
+		"host", dbConfig.Host,
+		"port", dbConfig.Port,
+		"database", dbConfig.DBName,
+	)
+
+	// Connect to database
+	db, err := database.NewPostgresConnection(dbConfig)
+	if err != nil {
+		logger.Error("Failed to connect to database", "error", err)
+		os.Exit(1)
+	}
+	defer func() {
+		_ = db.Close()
+	}()
+
+	logger.Info("Database connected successfully")
+
+	// Create repositories
+	rulesRepo := database.NewRulesRepository(db)
+	sourceRepRepo := database.NewSourceReputationRepository(db)
+	classificationHistoryRepo := database.NewClassificationHistoryRepository(db)
+
+	logger.Info("Repositories initialized")
+
+	// Load classification rules from database
+	ctx := context.Background()
+	enabledOnly := true
+	rules, err := rulesRepo.List(ctx, domain.RuleTypeTopic, &enabledOnly)
+	if err != nil {
+		logger.Error("Failed to load rules from database", "error", err)
+		os.Exit(1)
+	}
+	logger.Info("Rules loaded from database", "count", len(rules))
+
+	// Convert []*ClassificationRule to []ClassificationRule for classifier
+	ruleValues := make([]domain.ClassificationRule, len(rules))
+	for i, rule := range rules {
+		ruleValues[i] = *rule
+	}
 
 	// Create classifier config
 	config := classifier.Config{
@@ -170,7 +126,7 @@ func StartHTTPServer() {
 	}
 
 	// Create classifier
-	classifierInstance := classifier.NewClassifier(logger, rules, sourceRepDB, config)
+	classifierInstance := classifier.NewClassifier(logger, ruleValues, sourceRepRepo, config)
 	logger.Info("Classifier initialized", "version", config.Version, "rules_count", len(rules))
 
 	// Create batch processor
@@ -179,11 +135,20 @@ func StartHTTPServer() {
 	logger.Info("Batch processor initialized", "concurrency", concurrency)
 
 	// Get individual classifiers for API handlers
-	sourceRepScorer := classifier.NewSourceReputationScorer(logger, sourceRepDB)
-	topicClassifier := classifier.NewTopicClassifier(logger, rules)
+	sourceRepScorer := classifier.NewSourceReputationScorer(logger, sourceRepRepo)
+	topicClassifier := classifier.NewTopicClassifier(logger, ruleValues)
 
-	// Create API handler
-	handler := api.NewHandler(classifierInstance, batchProcessor, sourceRepScorer, topicClassifier, logger)
+	// Create API handler with repositories
+	handler := api.NewHandler(
+		classifierInstance,
+		batchProcessor,
+		sourceRepScorer,
+		topicClassifier,
+		rulesRepo,
+		sourceRepRepo,
+		classificationHistoryRepo,
+		logger,
+	)
 
 	// Create HTTP server
 	serverConfig := api.ServerConfig{
@@ -224,11 +189,166 @@ func StartHTTPServer() {
 	}
 }
 
+// StartHTTPServerWithStop starts the HTTP server and returns a stop function
+// This allows the server to run concurrently with other services
+func StartHTTPServerWithStop() (func(), error) {
+	// Get configuration from environment
+	debug := os.Getenv("APP_DEBUG") == "true"
+	port := getEnvInt("CLASSIFIER_PORT", 8070)
+
+	logger := NewLogger(debug)
+	logger.Info("Starting classifier HTTP server", "port", port, "debug", debug)
+
+	// Database configuration
+	dbConfig := database.Config{
+		Host:     getEnv("POSTGRES_HOST", "localhost"),
+		Port:     getEnv("POSTGRES_PORT", "5432"),
+		User:     getEnv("POSTGRES_USER", "postgres"),
+		Password: getEnv("POSTGRES_PASSWORD", ""),
+		DBName:   getEnv("POSTGRES_DB", "classifier"),
+		SSLMode:  getEnv("POSTGRES_SSLMODE", "disable"),
+	}
+
+	logger.Info("Connecting to PostgreSQL database",
+		"host", dbConfig.Host,
+		"port", dbConfig.Port,
+		"database", dbConfig.DBName,
+	)
+
+	// Connect to database
+	db, err := database.NewPostgresConnection(dbConfig)
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to database: %w", err)
+	}
+
+	logger.Info("Database connected successfully")
+
+	// Create repositories
+	rulesRepo := database.NewRulesRepository(db)
+	sourceRepRepo := database.NewSourceReputationRepository(db)
+	classificationHistoryRepo := database.NewClassificationHistoryRepository(db)
+
+	logger.Info("Repositories initialized")
+
+	// Load classification rules from database
+	ctx := context.Background()
+	enabledOnly := true
+	rules, err := rulesRepo.List(ctx, domain.RuleTypeTopic, &enabledOnly)
+	if err != nil {
+		_ = db.Close()
+		return nil, fmt.Errorf("failed to load rules from database: %w", err)
+	}
+	logger.Info("Rules loaded from database", "count", len(rules))
+
+	// Convert []*ClassificationRule to []ClassificationRule for classifier
+	ruleValues := make([]domain.ClassificationRule, len(rules))
+	for i, rule := range rules {
+		ruleValues[i] = *rule
+	}
+
+	// Create classifier config
+	config := classifier.Config{
+		Version:         "1.0.0",
+		MinQualityScore: 50,
+		UpdateSourceRep: true,
+		QualityConfig: classifier.QualityConfig{
+			WordCountWeight:   0.25,
+			MetadataWeight:    0.25,
+			RichnessWeight:    0.25,
+			ReadabilityWeight: 0.25,
+			MinWordCount:      100,
+			OptimalWordCount:  1000,
+		},
+		SourceReputationConfig: classifier.SourceReputationConfig{
+			DefaultScore:               50,
+			UpdateOnEachClassification: true,
+			SpamThreshold:              30,
+			MinArticlesForTrust:        10,
+			ReputationDecayRate:        0.1,
+		},
+	}
+
+	// Create classifier
+	classifierInstance := classifier.NewClassifier(logger, ruleValues, sourceRepRepo, config)
+	logger.Info("Classifier initialized", "version", config.Version, "rules_count", len(rules))
+
+	// Create batch processor
+	concurrency := getEnvInt("CLASSIFIER_CONCURRENCY", 10)
+	batchProcessor := processor.NewBatchProcessor(classifierInstance, concurrency, logger)
+	logger.Info("Batch processor initialized", "concurrency", concurrency)
+
+	// Get individual classifiers for API handlers
+	sourceRepScorer := classifier.NewSourceReputationScorer(logger, sourceRepRepo)
+	topicClassifier := classifier.NewTopicClassifier(logger, ruleValues)
+
+	// Create API handler with repositories
+	handler := api.NewHandler(
+		classifierInstance,
+		batchProcessor,
+		sourceRepScorer,
+		topicClassifier,
+		rulesRepo,
+		sourceRepRepo,
+		classificationHistoryRepo,
+		logger,
+	)
+
+	// Create HTTP server
+	serverConfig := api.ServerConfig{
+		Port:         port,
+		ReadTimeout:  30 * time.Second,
+		WriteTimeout: 30 * time.Second,
+		Debug:        debug,
+	}
+	server := api.NewServer(handler, serverConfig, logger)
+
+	// Start server in goroutine
+	serverErrors := make(chan error, 1)
+	go func() {
+		if err := server.Start(); err != nil {
+			serverErrors <- err
+		}
+	}()
+
+	// Monitor server errors in background
+	go func() {
+		if err := <-serverErrors; err != nil {
+			logger.Error("Server error", "error", err)
+		}
+	}()
+
+	// Return stop function
+	stopFunc := func() {
+		logger.Info("Stopping HTTP server...")
+
+		// Graceful shutdown with 30 second timeout
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+
+		if err := server.Shutdown(shutdownCtx); err != nil {
+			logger.Error("Graceful shutdown failed", "error", err)
+		} else {
+			logger.Info("HTTP server stopped gracefully")
+		}
+
+		_ = db.Close()
+	}
+
+	return stopFunc, nil
+}
+
+// getEnv retrieves a string from environment variable with a default fallback
+func getEnv(key, defaultValue string) string {
+	if value := os.Getenv(key); value != "" {
+		return value
+	}
+	return defaultValue
+}
+
 // getEnvInt retrieves an integer from environment variable with a default fallback
 func getEnvInt(key string, defaultValue int) int {
 	if value := os.Getenv(key); value != "" {
-		var intValue int
-		if _, err := fmt.Sscanf(value, "%d", &intValue); err == nil {
+		if intValue, err := strconv.Atoi(value); err == nil {
 			return intValue
 		}
 	}

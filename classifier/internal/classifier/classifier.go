@@ -104,7 +104,6 @@ func (c *Classifier) Classify(ctx context.Context, raw *domain.RawContent) (*dom
 		QualityFactors:       qualityResult.Factors,
 		Topics:               topicResult.Topics,
 		TopicScores:          topicResult.TopicScores,
-		IsCrimeRelated:       topicResult.IsCrimeRelated,
 		SourceReputation:     sourceRepResult.Score,
 		SourceCategory:       sourceRepResult.Category,
 		ClassifierVersion:    c.version,
@@ -119,7 +118,6 @@ func (c *Classifier) Classify(ctx context.Context, raw *domain.RawContent) (*dom
 		"content_id", raw.ID,
 		"content_type", result.ContentType,
 		"quality_score", result.QualityScore,
-		"is_crime_related", result.IsCrimeRelated,
 		"topics", result.Topics,
 		"processing_time_ms", result.ProcessingTimeMs,
 	)
@@ -150,7 +148,12 @@ func (c *Classifier) ClassifyBatch(ctx context.Context, rawItems []*domain.RawCo
 
 // UpdateRules updates the topic classification rules
 func (c *Classifier) UpdateRules(rules []domain.ClassificationRule) {
-	c.topic.UpdateRules(rules)
+	// Convert []ClassificationRule to []*ClassificationRule
+	rulePointers := make([]*domain.ClassificationRule, len(rules))
+	for i := range rules {
+		rulePointers[i] = &rules[i]
+	}
+	c.topic.UpdateRules(rulePointers)
 }
 
 // GetRules returns the current classification rules
@@ -187,7 +190,6 @@ func (c *Classifier) BuildClassifiedContent(raw *domain.RawContent, result *doma
 		QualityFactors:       result.QualityFactors,
 		Topics:               result.Topics,
 		TopicScores:          result.TopicScores,
-		IsCrimeRelated:       result.IsCrimeRelated,
 		SourceReputation:     result.SourceReputation,
 		SourceCategory:       result.SourceCategory,
 		ClassifierVersion:    result.ClassifierVersion,

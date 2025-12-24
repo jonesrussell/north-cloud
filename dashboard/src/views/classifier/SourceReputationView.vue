@@ -6,10 +6,19 @@
     />
 
     <!-- Loading State -->
-    <LoadingSpinner v-if="loading" size="lg" text="Loading source reputation..." :full-page="true" />
+    <LoadingSpinner
+      v-if="loading"
+      size="lg"
+      text="Loading source reputation..."
+      :full-page="true"
+    />
 
     <!-- Error State -->
-    <ErrorAlert v-else-if="error" :message="error" class="mb-6" />
+    <ErrorAlert
+      v-else-if="error"
+      :message="error"
+      class="mb-6"
+    />
 
     <!-- Sources Content -->
     <div v-else>
@@ -47,7 +56,9 @@
       <!-- Sources Table -->
       <div class="bg-white shadow rounded-lg overflow-hidden">
         <div class="px-6 py-4 border-b border-gray-200">
-          <h2 class="text-lg font-medium text-gray-900">Source Reputation Scores</h2>
+          <h2 class="text-lg font-medium text-gray-900">
+            Source Reputation Scores
+          </h2>
         </div>
         <table class="min-w-full divide-y divide-gray-200">
           <thead class="bg-gray-50">
@@ -74,22 +85,32 @@
           </thead>
           <tbody class="bg-white divide-y divide-gray-200">
             <tr v-if="sources.length === 0">
-              <td colspan="6" class="px-6 py-8 text-center text-sm text-gray-500">
+              <td
+                colspan="6"
+                class="px-6 py-8 text-center text-sm text-gray-500"
+              >
                 No sources found.
               </td>
             </tr>
-            <tr v-for="source in sortedSources" :key="source.name" class="hover:bg-gray-50">
+            <tr
+              v-for="source in sortedSources"
+              :key="source.name"
+              class="hover:bg-gray-50"
+            >
               <td class="px-6 py-4 whitespace-nowrap">
                 <span class="text-sm font-medium text-gray-900">{{ source.name }}</span>
               </td>
               <td class="px-6 py-4 whitespace-nowrap">
                 <div class="flex items-center">
-                  <div class="flex-1 bg-gray-200 rounded-full h-2 mr-3" style="width: 100px">
+                  <div
+                    class="flex-1 bg-gray-200 rounded-full h-2 mr-3"
+                    style="width: 100px"
+                  >
                     <div
                       class="h-2 rounded-full"
                       :class="getReputationColorClass(source.reputation)"
                       :style="{ width: `${source.reputation}%` }"
-                    ></div>
+                    />
                   </div>
                   <span
                     class="text-sm font-semibold"
@@ -110,8 +131,8 @@
               </td>
               <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                 <button
-                  @click="viewSourceDetails(source)"
                   class="text-blue-600 hover:text-blue-900"
+                  @click="viewSourceDetails(source)"
                 >
                   View Details
                 </button>
@@ -130,10 +151,12 @@
     >
       <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
         <div class="flex items-center justify-between mb-4">
-          <h3 class="text-lg font-medium text-gray-900">{{ selectedSource.name }}</h3>
+          <h3 class="text-lg font-medium text-gray-900">
+            {{ selectedSource.name }}
+          </h3>
           <button
-            @click="selectedSource = null"
             class="text-gray-400 hover:text-gray-500"
+            @click="selectedSource = null"
           >
             <XMarkIcon class="h-6 w-6" />
           </button>
@@ -147,7 +170,7 @@
                   class="h-3 rounded-full"
                   :class="getReputationColorClass(selectedSource.reputation)"
                   :style="{ width: `${selectedSource.reputation}%` }"
-                ></div>
+                />
               </div>
               <span class="text-lg font-semibold">{{ selectedSource.reputation }}/100</span>
             </div>

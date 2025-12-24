@@ -32,5 +32,8 @@ EXPOSE 8070
 # /app is mounted from host and owned by host user
 # If cache volumes have permission issues, remove them: docker volume rm classifier_go_mod_cache classifier_go_build_cache
 
-# Default command - can be overridden in docker-compose
+# Default command - starts both HTTP server and processor concurrently
+# Can be overridden in docker-compose to run only one service:
+#   - ["go", "run", "main.go", "httpd"]     # HTTP server only
+#   - ["go", "run", "main.go", "processor"] # Processor only
 CMD ["go", "run", "main.go"]

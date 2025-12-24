@@ -11,8 +11,11 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/jonesrussell/north-cloud/classifier/internal/classifier"
+	"github.com/jonesrussell/north-cloud/classifier/internal/database"
 	"github.com/jonesrussell/north-cloud/classifier/internal/domain"
 	"github.com/jonesrussell/north-cloud/classifier/internal/processor"
+	"github.com/jmoiron/sqlx"
+	_ "github.com/mattn/go-sqlite3"
 )
 
 // mockLogger implements Logger for testing
@@ -70,6 +73,38 @@ func (m *mockSourceReputationDB) GetOrCreateSource(ctx context.Context, sourceNa
 	return source, nil
 }
 
+// setupTestSourceReputationRepository creates an in-memory SQLite repository for testing
+func setupTestSourceReputationRepository() (*database.SourceReputationRepository, error) {
+	// Create in-memory SQLite database
+	db, err := sqlx.Connect("sqlite3", ":memory:")
+	if err != nil {
+		return nil, err
+	}
+
+	// Create source_reputation table
+	createTableSQL := `
+		CREATE TABLE IF NOT EXISTS source_reputation (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			source_name TEXT UNIQUE NOT NULL,
+			source_url TEXT,
+			category TEXT NOT NULL DEFAULT 'unknown',
+			reputation_score INTEGER NOT NULL DEFAULT 50,
+			total_articles INTEGER NOT NULL DEFAULT 0,
+			average_quality_score REAL NOT NULL DEFAULT 0.0,
+			spam_count INTEGER NOT NULL DEFAULT 0,
+			last_classified_at TIMESTAMP,
+			created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+		)
+	`
+	_, err = db.Exec(createTableSQL)
+	if err != nil {
+		return nil, err
+	}
+
+	return database.NewSourceReputationRepository(db), nil
+}
+
 // setupTestHandler creates a test handler with all dependencies
 func setupTestHandler() *Handler {
 	logger := &mockLogger{}
@@ -119,7 +154,17 @@ func setupTestHandler() *Handler {
 	sourceRepScorer := classifier.NewSourceReputationScorer(logger, sourceRepDB)
 	topicClassifier := classifier.NewTopicClassifier(logger, rules)
 
-	return NewHandler(classifierInstance, batchProcessor, sourceRepScorer, topicClassifier, logger)
+	// Create test repository for API handlers (in-memory SQLite)
+	sourceRepRepo, err := setupTestSourceReputationRepository()
+	if err != nil {
+		// If SQLite is not available, return handler with nil (some tests may not need it)
+		// This allows tests that don't use sourceRepo to still pass
+		sourceRepRepo = nil
+	}
+
+	// For tests, pass nil for rulesRepo and classificationHistoryRepo as they're not used in most test cases
+	// If a test needs them, it should create mock repositories
+	return NewHandler(classifierInstance, batchProcessor, sourceRepScorer, topicClassifier, nil, sourceRepRepo, nil, logger)
 }
 
 // setupRouter creates a test router with routes
@@ -217,8 +262,16 @@ func TestClassify_Success(t *testing.T) {
 		t.Errorf("expected content_type article, got %s", response.Result.ContentType)
 	}
 
-	if !response.Result.IsCrimeRelated {
-		t.Error("expected crime-related to be true")
+	// Verify crime is in topics array
+	hasCrime := false
+	for _, topic := range response.Result.Topics {
+		if topic == "crime" {
+			hasCrime = true
+			break
+		}
+	}
+	if !hasCrime {
+		t.Error("expected crime to be in topics array")
 	}
 }
 
@@ -332,13 +385,13 @@ func TestGetSource(t *testing.T) {
 		t.Fatalf("failed to unmarshal response: %v", err)
 	}
 
-	if response["source_name"] != "example.com" {
-		t.Errorf("expected source_name example.com, got %v", response["source_name"])
+	if response["name"] != "example.com" {
+		t.Errorf("expected name example.com, got %v", response["name"])
 	}
 
 	// New source should have default score of 50
-	if response["reputation_score"] != float64(50) {
-		t.Errorf("expected reputation_score 50, got %v", response["reputation_score"])
+	if response["reputation"] != float64(50) {
+		t.Errorf("expected reputation 50, got %v", response["reputation"])
 	}
 }
 
@@ -370,66 +423,3 @@ func TestGetClassificationResult_NotImplemented(t *testing.T) {
 	}
 }
 
-func TestListRules_NotImplemented(t *testing.T) {
-	handler := setupTestHandler()
-	router := setupRouter(handler)
-
-	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("GET", "/api/v1/rules", nil)
-	router.ServeHTTP(w, req)
-
-	if w.Code != http.StatusNotImplemented {
-		t.Errorf("expected status 501, got %d", w.Code)
-	}
-}
-
-func TestCreateRule_NotImplemented(t *testing.T) {
-	handler := setupTestHandler()
-	router := setupRouter(handler)
-
-	reqBody := CreateRuleRequest{
-		RuleName:      "test_rule",
-		RuleType:      domain.RuleTypeTopic,
-		TopicName:     "test",
-		Keywords:      []string{"test"},
-		MinConfidence: 0.5,
-		Enabled:       true,
-		Priority:      1,
-	}
-
-	body, _ := json.Marshal(reqBody)
-	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("POST", "/api/v1/rules", bytes.NewBuffer(body))
-	req.Header.Set("Content-Type", "application/json")
-	router.ServeHTTP(w, req)
-
-	if w.Code != http.StatusNotImplemented {
-		t.Errorf("expected status 501, got %d", w.Code)
-	}
-}
-
-func TestListSources_NotImplemented(t *testing.T) {
-	handler := setupTestHandler()
-	router := setupRouter(handler)
-
-	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("GET", "/api/v1/sources", nil)
-	router.ServeHTTP(w, req)
-
-	if w.Code != http.StatusNotImplemented {
-		t.Errorf("expected status 501, got %d", w.Code)
-	}
-}
-
-func TestGetStats_NotImplemented(t *testing.T) {
-	handler := setupTestHandler()
-	router := setupRouter(handler)
-
-	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("GET", "/api/v1/stats", nil)
-	router.ServeHTTP(w, req)
-
-	if w.Code != http.StatusNotImplemented {
-		t.Errorf("expected status 501, got %d", w.Code)
-	}
-}

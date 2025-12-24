@@ -1,10 +1,16 @@
 <template>
-  <div class="flex items-center justify-center" :class="containerClass">
+  <div
+    class="flex items-center justify-center"
+    :class="containerClass"
+  >
     <div
       class="inline-block animate-spin rounded-full border-b-2 border-blue-600"
       :class="sizeClass"
-    ></div>
-    <span v-if="text" class="ml-3 text-gray-600">{{ text }}</span>
+    />
+    <span
+      v-if="text"
+      class="ml-3 text-gray-600"
+    >{{ text }}</span>
   </div>
 </template>
 

@@ -38,4 +38,8 @@ COPY --from=builder /app/config.yml.example ./config.yml
 
 EXPOSE 8070
 
+# Default command - starts both HTTP server and processor concurrently
+# Can be overridden to run only one service:
+#   - ["./classifier", "httpd"]     # HTTP server only
+#   - ["./classifier", "processor"] # Processor only
 CMD ["./classifier"]

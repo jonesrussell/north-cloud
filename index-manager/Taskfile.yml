@@ -1,5 +1,7 @@
 version: '3'
 
+dotenv: ['../.env']
+
 vars:
   BINARY_NAME: index-manager
   MAIN_PATH: ./cmd/httpd/main.go
@@ -78,13 +80,17 @@ tasks:
 
   migrate:up:
     desc: "Run database migrations"
+    env:
+      PGPASSWORD: '{{.POSTGRES_INDEX_MANAGER_PASSWORD | default ""}}'
     cmds:
-      - psql -h localhost -p 5436 -U postgres -d index_manager -f migrations/001_create_index_metadata.sql
+      - psql -h {{.POSTGRES_INDEX_MANAGER_HOST | default "localhost"}} -p {{.POSTGRES_INDEX_MANAGER_PORT | default "5436"}} -U {{.POSTGRES_INDEX_MANAGER_USER | default "postgres"}} -d {{.POSTGRES_INDEX_MANAGER_DB | default "index_manager"}} -f migrations/001_create_index_metadata.sql
 
   db:shell:
     desc: "Open PostgreSQL shell"
+    env:
+      PGPASSWORD: '{{.POSTGRES_INDEX_MANAGER_PASSWORD | default ""}}'
     cmds:
-      - psql -h localhost -p 5436 -U postgres -d index_manager
+      - psql -h {{.POSTGRES_INDEX_MANAGER_HOST | default "localhost"}} -p {{.POSTGRES_INDEX_MANAGER_PORT | default "5436"}} -U {{.POSTGRES_INDEX_MANAGER_USER | default "postgres"}} -d {{.POSTGRES_INDEX_MANAGER_DB | default "index_manager"}}
 
   dev:
     desc: "Run in development mode with hot-reload (requires air)"

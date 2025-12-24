@@ -1,10 +1,13 @@
 <template>
   <div>
-    <PageHeader title="Crawl Jobs" subtitle="Manage and monitor crawl jobs">
+    <PageHeader
+      title="Crawl Jobs"
+      subtitle="Manage and monitor crawl jobs"
+    >
       <template #actions>
         <button
-          @click="showCreateModal = true"
           class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors flex items-center"
+          @click="showCreateModal = true"
         >
           <PlusIcon class="h-5 w-5 mr-2" />
           Create Job
@@ -13,20 +16,36 @@
     </PageHeader>
 
     <!-- Loading State -->
-    <LoadingSpinner v-if="loading" size="lg" text="Loading jobs..." :full-page="true" />
+    <LoadingSpinner
+      v-if="loading"
+      size="lg"
+      text="Loading jobs..."
+      :full-page="true"
+    />
 
     <!-- Error State -->
-    <ErrorAlert v-else-if="error" :message="error" class="mb-6" />
+    <ErrorAlert
+      v-else-if="error"
+      :message="error"
+      class="mb-6"
+    />
 
     <!-- Empty State -->
-    <div v-else-if="jobs.length === 0" class="bg-white shadow rounded-lg p-8 text-center">
+    <div
+      v-else-if="jobs.length === 0"
+      class="bg-white shadow rounded-lg p-8 text-center"
+    >
       <BriefcaseIcon class="mx-auto h-12 w-12 text-gray-400" />
-      <h3 class="mt-2 text-sm font-medium text-gray-900">No crawl jobs</h3>
-      <p class="mt-1 text-sm text-gray-500">Get started by creating your first crawl job.</p>
+      <h3 class="mt-2 text-sm font-medium text-gray-900">
+        No crawl jobs
+      </h3>
+      <p class="mt-1 text-sm text-gray-500">
+        Get started by creating your first crawl job.
+      </p>
       <div class="mt-6">
         <button
-          @click="showCreateModal = true"
           class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
+          @click="showCreateModal = true"
         >
           <PlusIcon class="-ml-1 mr-2 h-5 w-5" />
           Create Job
@@ -35,7 +54,10 @@
     </div>
 
     <!-- Jobs Table -->
-    <div v-else class="bg-white shadow rounded-lg overflow-hidden">
+    <div
+      v-else
+      class="bg-white shadow rounded-lg overflow-hidden"
+    >
       <table class="min-w-full divide-y divide-gray-200">
         <thead class="bg-gray-50">
           <tr>
@@ -60,7 +82,11 @@
           </tr>
         </thead>
         <tbody class="bg-white divide-y divide-gray-200">
-          <tr v-for="job in jobs" :key="job.id" class="hover:bg-gray-50">
+          <tr
+            v-for="job in jobs"
+            :key="job.id"
+            class="hover:bg-gray-50"
+          >
             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
               {{ truncateId(job.id) }}
             </td>
@@ -78,8 +104,8 @@
             </td>
             <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
               <button
-                @click="confirmDelete(job)"
                 class="text-red-600 hover:text-red-900"
+                @click="confirmDelete(job)"
               >
                 Delete
               </button>
@@ -90,16 +116,27 @@
     </div>
 
     <!-- Create Job Modal -->
-    <div v-if="showCreateModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div
+      v-if="showCreateModal"
+      class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+    >
       <div class="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
         <div class="px-6 py-4 border-b border-gray-200">
-          <h2 class="text-lg font-medium text-gray-900">Create Crawl Job</h2>
+          <h2 class="text-lg font-medium text-gray-900">
+            Create Crawl Job
+          </h2>
         </div>
 
-        <form @submit.prevent="createJob" class="p-6">
+        <form
+          class="p-6"
+          @submit.prevent="createJob"
+        >
           <!-- Source Selection -->
           <div class="mb-4">
-            <label for="source" class="block text-sm font-medium text-gray-700 mb-2">
+            <label
+              for="source"
+              class="block text-sm font-medium text-gray-700 mb-2"
+            >
               Source <span class="text-red-500">*</span>
             </label>
             <select
@@ -110,36 +147,67 @@
               :class="{ 'border-red-500': sourceError }"
               @change="onSourceChange"
             >
-              <option value="">Select a source...</option>
-              <option v-for="source in sources" :key="source.id" :value="source.id">
+              <option value="">
+                Select a source...
+              </option>
+              <option
+                v-for="source in sources"
+                :key="source.id"
+                :value="source.id"
+              >
                 {{ source.name }}
               </option>
             </select>
-            <p v-if="sourceError" class="mt-1 text-sm text-red-600">{{ sourceError }}</p>
-            <p v-if="loadingSources" class="mt-1 text-xs text-gray-500">Loading sources...</p>
-            <p v-else-if="sourcesError" class="mt-1 text-xs text-red-500">{{ sourcesError }}</p>
+            <p
+              v-if="sourceError"
+              class="mt-1 text-sm text-red-600"
+            >
+              {{ sourceError }}
+            </p>
+            <p
+              v-if="loadingSources"
+              class="mt-1 text-xs text-gray-500"
+            >
+              Loading sources...
+            </p>
+            <p
+              v-else-if="sourcesError"
+              class="mt-1 text-xs text-red-500"
+            >
+              {{ sourcesError }}
+            </p>
           </div>
 
-          <!-- URL Input -->
+          <!-- URL Display (Read-only) -->
           <div class="mb-4">
-            <label for="url" class="block text-sm font-medium text-gray-700 mb-2">
+            <label
+              for="url"
+              class="block text-sm font-medium text-gray-700 mb-2"
+            >
               URL to Crawl <span class="text-red-500">*</span>
             </label>
             <input
               id="url"
-              v-model="newJob.url"
+              :value="newJob.url || (selectedSource?.url || '')"
               type="url"
-              required
-              placeholder="https://example.com"
-              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              :class="{ 'border-red-500': urlError }"
-            />
-            <p v-if="urlError" class="mt-1 text-sm text-red-600">{{ urlError }}</p>
+              disabled
+              placeholder="Select a source to see URL"
+              class="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-700 cursor-not-allowed"
+            >
+            <p
+              v-if="!selectedSource"
+              class="mt-1 text-xs text-gray-500"
+            >
+              URL will be populated automatically when you select a source
+            </p>
           </div>
 
           <!-- Schedule Time -->
           <div class="mb-4">
-            <label for="schedule_time" class="block text-sm font-medium text-gray-700 mb-2">
+            <label
+              for="schedule_time"
+              class="block text-sm font-medium text-gray-700 mb-2"
+            >
               Schedule (Cron Expression)
             </label>
             <input
@@ -148,7 +216,7 @@
               type="text"
               placeholder="0 */6 * * *"
               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
+            >
             <p class="mt-1 text-xs text-gray-500">
               Examples: "0 */6 * * *" (every 6 hours), "0 0 * * *" (daily at midnight)
             </p>
@@ -161,17 +229,27 @@
               v-model="newJob.schedule_enabled"
               type="checkbox"
               class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-            />
-            <label for="schedule_enabled" class="ml-2 block text-sm text-gray-700">
+            >
+            <label
+              for="schedule_enabled"
+              class="ml-2 block text-sm text-gray-700"
+            >
               Enable scheduled crawling
             </label>
           </div>
 
           <!-- Error Message -->
-          <ErrorAlert v-if="createError" :message="createError" class="mb-4" />
+          <ErrorAlert
+            v-if="createError"
+            :message="createError"
+            class="mb-4"
+          />
 
           <!-- Success Message -->
-          <div v-if="createSuccess" class="mb-4 bg-green-50 border border-green-200 rounded-lg p-3 text-green-700 text-sm">
+          <div
+            v-if="createSuccess"
+            class="mb-4 bg-green-50 border border-green-200 rounded-lg p-3 text-green-700 text-sm"
+          >
             Job created successfully!
           </div>
 
@@ -179,9 +257,9 @@
           <div class="flex justify-end space-x-3 pt-4 border-t border-gray-200">
             <button
               type="button"
-              @click="closeCreateModal"
               class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
               :disabled="creating"
+              @click="closeCreateModal"
             >
               Cancel
             </button>
@@ -280,8 +358,10 @@ const loadJobs = async () => {
 
 const onSourceChange = () => {
   selectedSource.value = sources.value.find((s) => s.id === newJob.value.source_id)
-  if (selectedSource.value && selectedSource.value.url && !newJob.value.url) {
+  if (selectedSource.value && selectedSource.value.url) {
     newJob.value.url = selectedSource.value.url
+  } else {
+    newJob.value.url = ''
   }
 }
 
@@ -305,6 +385,12 @@ const createJob = async () => {
 
   if (!newJob.value.source_id) {
     sourceError.value = 'Please select a source'
+    return
+  }
+
+  // URL is auto-populated from source, but validate it exists
+  if (!newJob.value.url || !selectedSource.value?.url) {
+    urlError.value = 'Source URL is missing. Please select a valid source.'
     return
   }
 

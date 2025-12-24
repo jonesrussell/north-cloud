@@ -42,8 +42,16 @@ func TestTopicClassifier_Classify_Crime(t *testing.T) {
 		t.Errorf("expected crime topic, got %s", result.Topics[0])
 	}
 
-	if !result.IsCrimeRelated {
-		t.Error("expected IsCrimeRelated to be true")
+	// Verify crime is in topics array
+	hasCrime := false
+	for _, topic := range result.Topics {
+		if topic == "crime" {
+			hasCrime = true
+			break
+		}
+	}
+	if !hasCrime {
+		t.Error("expected crime to be in topics array")
 	}
 
 	if result.HighestTopic != "crime" {
@@ -156,8 +164,12 @@ func TestTopicClassifier_Classify_NoMatch(t *testing.T) {
 		t.Errorf("expected no topics, got %d", len(result.Topics))
 	}
 
-	if result.IsCrimeRelated {
-		t.Error("expected IsCrimeRelated to be false")
+	// Verify crime is not in topics array
+	for _, topic := range result.Topics {
+		if topic == "crime" {
+			t.Error("expected crime NOT to be in topics array")
+			break
+		}
 	}
 
 	if result.HighestTopic != "" {
@@ -342,7 +354,13 @@ func TestTopicClassifier_UpdateRules(t *testing.T) {
 		},
 	}
 
-	classifier.UpdateRules(newRules)
+	// Convert to pointers as UpdateRules expects []*domain.ClassificationRule
+	rulePointers := make([]*domain.ClassificationRule, len(newRules))
+	for i := range newRules {
+		rulePointers[i] = &newRules[i]
+	}
+
+	classifier.UpdateRules(rulePointers)
 
 	updatedRules := classifier.GetRules()
 

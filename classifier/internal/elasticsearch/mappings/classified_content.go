@@ -63,9 +63,8 @@ type ClassifiedContentProperties struct {
 	QualityFactors Field `json:"quality_factors"` // object type
 
 	// Topic classification
-	Topics         Field `json:"topics"`       // keyword array
-	TopicScores    Field `json:"topic_scores"` // object type
-	IsCrimeRelated Field `json:"is_crime_related"`
+	Topics      Field `json:"topics"`       // keyword array
+	TopicScores Field `json:"topic_scores"` // object type
 
 	// Source reputation
 	SourceReputation Field `json:"source_reputation"`
@@ -175,9 +174,6 @@ func NewClassifiedContentMapping() *ClassifiedContentMapping {
 				},
 				TopicScores: Field{
 					Type: "object", // Map of topic -> score
-				},
-				IsCrimeRelated: Field{
-					Type: "boolean",
 				},
 				SourceReputation: Field{
 					Type: "integer",

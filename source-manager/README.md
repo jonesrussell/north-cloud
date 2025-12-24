@@ -77,8 +77,6 @@ docker exec -i postgres psql -U postgres -d gosources < migrations/001_create_so
 {
   "name": "Mid-North Monitor",
   "url": "https://www.midnorthmonitor.com/category/news/local-news/",
-  "article_index": "midnorthmonitor_articles",
-  "page_index": "midnorthmonitor_pages",
   "rate_limit": "1s",
   "max_depth": 2,
   "time": ["11:45", "23:45"],
@@ -98,11 +96,11 @@ docker exec -i postgres psql -U postgres -d gosources < migrations/001_create_so
       "title": "h1"
     }
   },
-  "city_name": "sudbury_com",
-  "group_id": "550e8400-e29b-41d4-a716-446655440000",
   "enabled": true
 }
 ```
+
+**Note**: Elasticsearch index names (e.g., `{source_name}_raw_content`, `{source_name}_classified_content`) are derived dynamically from source names, not stored in the database.
 
 ## Running
 

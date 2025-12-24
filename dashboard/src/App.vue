@@ -31,18 +31,6 @@
           </h3>
           <div class="mt-2 space-y-1">
             <router-link
-              to="/crawler/jobs"
-              class="group flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors"
-              :class="[
-                isActive('/crawler/jobs')
-                  ? 'bg-gray-800 text-white'
-                  : 'text-gray-300 hover:bg-gray-800 hover:text-white'
-              ]"
-            >
-              <BriefcaseIcon class="mr-3 h-5 w-5 flex-shrink-0" />
-              Jobs
-            </router-link>
-            <router-link
               to="/crawler/stats"
               class="group flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors"
               :class="[
@@ -53,6 +41,18 @@
             >
               <ChartBarIcon class="mr-3 h-5 w-5 flex-shrink-0" />
               Statistics
+            </router-link>
+            <router-link
+              to="/crawler/jobs"
+              class="group flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors"
+              :class="[
+                isActive('/crawler/jobs')
+                  ? 'bg-gray-800 text-white'
+                  : 'text-gray-300 hover:bg-gray-800 hover:text-white'
+              ]"
+            >
+              <BriefcaseIcon class="mr-3 h-5 w-5 flex-shrink-0" />
+              Jobs
             </router-link>
           </div>
         </div>
@@ -182,14 +182,16 @@
       <!-- Top bar -->
       <header class="sticky top-0 z-40 bg-white border-b border-gray-200">
         <div class="flex h-16 items-center justify-between px-6">
-          <h1 class="text-lg font-semibold text-gray-900">{{ pageTitle }}</h1>
+          <h1 class="text-lg font-semibold text-gray-900">
+            {{ pageTitle }}
+          </h1>
           <div class="flex items-center space-x-4">
             <!-- Health indicator -->
             <div class="flex items-center text-sm">
               <span
                 class="h-2 w-2 rounded-full mr-2"
                 :class="healthStatus === 'healthy' ? 'bg-green-500' : 'bg-red-500'"
-              ></span>
+              />
               <span class="text-gray-600">
                 {{ healthStatus === 'healthy' ? 'System Healthy' : 'System Issues' }}
               </span>

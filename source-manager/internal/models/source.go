@@ -9,20 +9,16 @@ import (
 
 // Source represents a content source configuration
 type Source struct {
-	ID           string         `json:"id" db:"id"`
-	Name         string         `json:"name" db:"name"`
-	URL          string         `json:"url" db:"url"`
-	ArticleIndex string         `json:"article_index" db:"article_index"`
-	PageIndex    string         `json:"page_index" db:"page_index"`
-	RateLimit    string         `json:"rate_limit" db:"rate_limit"`
-	MaxDepth     int            `json:"max_depth" db:"max_depth"`
-	Time         StringArray    `json:"time" db:"time"`
-	Selectors    SelectorConfig `json:"selectors" db:"selectors"`
-	CityName     *string        `json:"city_name,omitempty" db:"city_name"` // Optional mapping to gopost city
-	GroupID      *string        `json:"group_id,omitempty" db:"group_id"`   // Optional Drupal group UUID
-	Enabled      bool           `json:"enabled" db:"enabled"`
-	CreatedAt    time.Time      `json:"created_at" db:"created_at"`
-	UpdatedAt    time.Time      `json:"updated_at" db:"updated_at"`
+	ID        string         `json:"id" db:"id"`
+	Name      string         `json:"name" db:"name"`
+	URL       string         `json:"url" db:"url"`
+	RateLimit string         `json:"rate_limit" db:"rate_limit"`
+	MaxDepth  int            `json:"max_depth" db:"max_depth"`
+	Time      StringArray    `json:"time" db:"time"`
+	Selectors SelectorConfig `json:"selectors" db:"selectors"`
+	Enabled   bool           `json:"enabled" db:"enabled"`
+	CreatedAt time.Time      `json:"created_at" db:"created_at"`
+	UpdatedAt time.Time      `json:"updated_at" db:"updated_at"`
 }
 
 // SelectorConfig represents CSS selector configuration
@@ -309,7 +305,6 @@ func (a *StringArray) Scan(value any) error {
 
 // City represents a city configuration for gopost
 type City struct {
-	Name    string `json:"name"`
-	Index   string `json:"index"`
-	GroupID string `json:"group_id,omitempty"`
+	Name  string `json:"name"`
+	Index string `json:"index"`
 }

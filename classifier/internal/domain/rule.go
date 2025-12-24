@@ -48,7 +48,6 @@ type ClassificationHistory struct {
 	ContentSubtype        string    `json:"content_subtype,omitempty" db:"content_subtype"`
 	QualityScore          int       `json:"quality_score,omitempty" db:"quality_score"`
 	Topics                []string  `json:"topics,omitempty" db:"topics"`
-	IsCrimeRelated        bool      `json:"is_crime_related" db:"is_crime_related"`
 	SourceReputationScore int       `json:"source_reputation_score,omitempty" db:"source_reputation_score"`
 	ClassifierVersion     string    `json:"classifier_version" db:"classifier_version"`
 	ClassificationMethod  string    `json:"classification_method" db:"classification_method"`
