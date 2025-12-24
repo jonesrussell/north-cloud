@@ -2,7 +2,6 @@ import { ref, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { sourcesApi } from '../api/client'
 import { 
-  stringToArray, 
   arrayToString, 
   extractErrorMessage, 
   normalizeSelectors, 
