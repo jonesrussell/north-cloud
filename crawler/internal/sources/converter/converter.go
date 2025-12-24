@@ -19,7 +19,7 @@ import (
 // The function supports conversion between types with matching field names,
 // which is perfect for our use case where we're converting between
 // configtypes, loader types, and internal types that have identical fields.
-func Convert(src any, dst any) error {
+func Convert(src, dst any) error {
 	decoder, err := mapstructure.NewDecoder(&mapstructure.DecoderConfig{
 		TagName: "json", // Use JSON tags for field matching
 		Result:  dst,

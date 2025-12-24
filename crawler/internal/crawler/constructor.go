@@ -2,7 +2,6 @@
 package crawler
 
 import (
-	"errors"
 	"fmt"
 	"net/http"
 	"time"
@@ -46,23 +45,6 @@ type CrawlerParams struct {
 // CrawlerResult holds the crawler instance
 type CrawlerResult struct {
 	Crawler Interface
-}
-
-// createJobValidator creates a simple job validator
-func createJobValidator() content.JobValidator {
-	return &struct {
-		content.JobValidator
-	}{
-		JobValidator: content.JobValidatorFunc(func(job *content.Job) error {
-			if job == nil {
-				return errors.New("job cannot be nil")
-			}
-			if job.URL == "" {
-				return errors.New("job URL cannot be empty")
-			}
-			return nil
-		}),
-	}
 }
 
 // createCollector creates and configures a new colly collector
