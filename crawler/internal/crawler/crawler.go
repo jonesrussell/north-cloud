@@ -3,14 +3,10 @@ package crawler
 
 import (
 	"context"
-	"errors"
-	"fmt"
-	"sync/atomic"
 	"time"
 
 	colly "github.com/gocolly/colly/v2"
 	"github.com/jonesrussell/north-cloud/crawler/internal/config/crawler"
-	configtypes "github.com/jonesrussell/north-cloud/crawler/internal/config/types"
 	"github.com/jonesrussell/north-cloud/crawler/internal/content"
 	"github.com/jonesrussell/north-cloud/crawler/internal/crawler/events"
 	"github.com/jonesrussell/north-cloud/crawler/internal/logger"
@@ -157,195 +153,22 @@ var _ Interface = (*Crawler)(nil)
 var _ CrawlerInterface = (*Crawler)(nil)
 var _ CrawlerMetrics = (*Crawler)(nil)
 
-// Core Crawler Methods
-// -------------------
+// Getter Methods
+// -------------
 
-// Start begins the crawling process for a given source.
-// Refactored to use component-based architecture for better separation of concerns.
-func (c *Crawler) Start(ctx context.Context, sourceName string) error {
-	c.logger.Debug("Starting crawler",
-		"source", sourceName,
-		"debug_enabled", c.cfg.Debug,
-	)
-
-	// Reset components for new execution (supports concurrent jobs)
-	c.lifecycle.Reset()
-	c.signals.Reset()
-
-	// Start cleanup goroutine
-	c.signals.StartCleanupGoroutine(ctx, c.cleanupResources)
-
-	// Ensure abort signal is sent on exit
-	defer c.signals.SignalAbort()
-
-	// Validate and setup
-	source, err := c.validateAndSetup(ctx, sourceName)
-	if err != nil {
-		return err
-	}
-
-	// Create channel to signal when initial page is fully processed (OnScraped fired)
-	// This ensures all OnHTML callbacks have queued their links before Wait() starts
-	initialPageReady := make(chan struct{})
-	initialPageURL := source.URL
-	initialPageScraped := &atomic.Bool{}
-
-	// Set up OnScraped callback to signal when initial page is done
-	// This must be set up before Visit() is called
-	// Note: This is in addition to the OnScraped callback in setupCallbacks
-	c.collector.OnScraped(func(r *colly.Response) {
-		// Check if this is the initial page (only signal once)
-		if !initialPageScraped.Load() {
-			requestURL := r.Request.URL.String()
-			// Compare URLs (handle potential trailing slash differences)
-			if requestURL == initialPageURL || requestURL+"/" == initialPageURL || requestURL == initialPageURL+"/" {
-				if initialPageScraped.CompareAndSwap(false, true) {
-					close(initialPageReady)
-					c.logger.Debug("Initial page scraped, all links should be queued",
-						"url", initialPageURL)
-				}
-			}
-		}
-	})
-
-	// Visit the source URL
-	if visitErr := c.collector.Visit(source.URL); visitErr != nil {
-		return fmt.Errorf("failed to visit source URL: %w", visitErr)
-	}
-
-	// Wait for collector to complete using monitor
-	// Pass initialPageReady channel to ensure Wait() starts after initial page is processed
-	if waitErr := c.monitor.WaitForCompletion(ctx, sourceName, initialPageReady); waitErr != nil {
-		return waitErr
-	}
-
-	// Wait for cleanup to finish
-	c.signals.WaitForCleanup(ctx, cleanupTimeoutDuration)
-
-	// Stop the crawler state
-	c.state.Stop()
-
-	// Signal completion
-	c.lifecycle.SignalDone()
-
-	return nil
+// GetLogger returns the logger.
+func (c *Crawler) GetLogger() logger.Interface {
+	return c.logger
 }
 
-// validateAndSetup validates the source and sets up the collector.
-func (c *Crawler) validateAndSetup(ctx context.Context, sourceName string) (*configtypes.Source, error) {
-	// Validate source
-	source, err := c.sources.ValidateSource(ctx, sourceName, c.indexManager)
-	if err != nil {
-		return nil, fmt.Errorf("failed to validate source: %w", err)
-	}
-
-	// Set up collector
-	if setupErr := c.setupCollector(source); setupErr != nil {
-		return nil, fmt.Errorf("failed to setup collector: %w", setupErr)
-	}
-
-	// Set up callbacks
-	c.setupCallbacks(ctx)
-
-	// Start the crawler state
-	c.state.Start(ctx, sourceName)
-
-	c.logger.Debug("Starting to wait for collector to complete",
-		"source", sourceName,
-		"url", source.URL)
-
-	return source, nil
+// GetSource returns the source.
+func (c *Crawler) GetSource() sources.Interface {
+	return c.sources
 }
 
-// cleanupResources performs periodic cleanup of crawler resources
-func (c *Crawler) cleanupResources() {
-	c.logger.Debug("Cleaning up crawler resources")
-
-	// Clean up processors
-	for _, p := range c.processors {
-		if cleaner, ok := p.(interface{ Cleanup() }); ok {
-			cleaner.Cleanup()
-		}
-	}
-
-	// Clean up state
-	c.state.Reset()
-
-	c.logger.Debug("Finished cleaning up crawler resources")
-}
-
-// Stop stops the crawler.
-func (c *Crawler) Stop(ctx context.Context) error {
-	c.logger.Debug("Stopping crawler")
-	if !c.state.IsRunning() {
-		c.logger.Debug("Crawler already stopped")
-		return nil
-	}
-
-	// Cancel the context
-	c.state.Cancel()
-
-	// Signal abort to all goroutines
-	c.signals.SignalAbort()
-
-	// Wait for the collector to finish
-	c.collector.Wait()
-
-	// Wait for either the wait group to finish or the context to be done
-	waitDone := c.lifecycle.WaitWithChannel()
-	select {
-	case <-waitDone:
-		c.state.Stop()
-		c.cleanupResources() // Final cleanup
-		c.logger.Debug("Crawler stopped successfully")
-		return nil
-	case <-ctx.Done():
-		if errors.Is(ctx.Err(), context.DeadlineExceeded) {
-			c.logger.Warn("Crawler shutdown timed out",
-				"timeout", ctx.Err())
-		} else {
-			c.logger.Warn("Crawler shutdown cancelled",
-				"error", ctx.Err())
-		}
-		return ctx.Err()
-	}
-}
-
-// Wait waits for the crawler to complete.
-// Since Start() already waits for the collector to finish and closes the done channel,
-// this method just waits for the done channel to be closed (which happens in Start()).
-func (c *Crawler) Wait() error {
-	// Wait for the done channel to be closed (Start() handles closing it via lifecycle)
-	<-c.lifecycle.Done()
-	return nil
-}
-
-// Done returns a channel that's closed when the crawler is done.
-func (c *Crawler) Done() <-chan struct{} {
-	return c.lifecycle.Done()
-}
-
-// IsRunning returns whether the crawler is running.
-func (c *Crawler) IsRunning() bool {
-	return c.state.IsRunning()
-}
-
-// Context returns the crawler's context.
-func (c *Crawler) Context() context.Context {
-	return c.state.Context()
-}
-
-// Cancel cancels the crawler's context.
-func (c *Crawler) Cancel() {
-	c.state.Cancel()
-}
-
-// State Management
-// ---------------
-
-// CurrentSource returns the current source being crawled.
-func (c *Crawler) CurrentSource() string {
-	return c.state.CurrentSource()
+// GetIndexManager returns the index manager.
+func (c *Crawler) GetIndexManager() storagetypes.IndexManager {
+	return c.indexManager
 }
 
 // Metrics Management
@@ -404,30 +227,4 @@ func (c *Crawler) Update(startTime time.Time, processed, errorCount int64) {
 // Reset resets all metrics to zero.
 func (c *Crawler) Reset() {
 	c.state.Reset()
-}
-
-// Event Management
-// ---------------
-
-// Subscribe subscribes to crawler events.
-func (c *Crawler) Subscribe(handler events.EventHandler) {
-	c.bus.Subscribe(handler)
-}
-
-// Getter Methods
-// -------------
-
-// GetLogger returns the logger.
-func (c *Crawler) GetLogger() logger.Interface {
-	return c.logger
-}
-
-// GetSource returns the source.
-func (c *Crawler) GetSource() sources.Interface {
-	return c.sources
-}
-
-// GetIndexManager returns the index manager.
-func (c *Crawler) GetIndexManager() storagetypes.IndexManager {
-	return c.indexManager
 }

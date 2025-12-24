@@ -5,7 +5,6 @@ import (
 	"time"
 
 	configtypes "github.com/jonesrussell/north-cloud/crawler/internal/config/types"
-	"github.com/jonesrussell/north-cloud/crawler/internal/domain"
 	sourcestypes "github.com/jonesrussell/north-cloud/crawler/internal/sources/types"
 )
 
@@ -18,12 +17,6 @@ const (
 
 // SourceOption is a function that modifies a source configuration.
 type SourceOption func(*sourcestypes.SourceConfig)
-
-// ArticleOption is a function that modifies an article.
-type ArticleOption func(*domain.Article)
-
-// PageOption is a function that modifies a page.
-type PageOption func(*domain.Page)
 
 // TestSource creates a test source configuration.
 func TestSource(name, url string, opts ...SourceOption) *sourcestypes.SourceConfig {
@@ -92,94 +85,6 @@ func WithRateLimit(limit time.Duration) SourceOption {
 func WithIndexName(index string) SourceOption {
 	return func(s *sourcestypes.SourceConfig) {
 		s.Index = index
-	}
-}
-
-// TestArticle creates a test article.
-func TestArticle(title, content string, opts ...ArticleOption) *domain.Article {
-	now := time.Now()
-	article := &domain.Article{
-		ID:            generateID(),
-		Title:         title,
-		Body:          content,
-		Author:        "Test Author",
-		PublishedDate: now.Add(-24 * time.Hour),
-		Source:        "https://example.com/article",
-		Tags:          []string{"test", "article"},
-		Intro:         "Test article introduction",
-		Description:   "Test article description",
-		WordCount:     len(content),
-		CreatedAt:     now,
-		UpdatedAt:     now,
-	}
-
-	for _, opt := range opts {
-		opt(article)
-	}
-
-	return article
-}
-
-// WithArticleID sets the ID for a test article.
-func WithArticleID(id string) ArticleOption {
-	return func(a *domain.Article) {
-		a.ID = id
-	}
-}
-
-// WithArticleSource sets the source URL for a test article.
-func WithArticleSource(source string) ArticleOption {
-	return func(a *domain.Article) {
-		a.Source = source
-	}
-}
-
-// WithArticleAuthor sets the author for a test article.
-func WithArticleAuthor(author string) ArticleOption {
-	return func(a *domain.Article) {
-		a.Author = author
-	}
-}
-
-// WithPublishedDate sets the published date for a test article.
-func WithPublishedDate(date time.Time) ArticleOption {
-	return func(a *domain.Article) {
-		a.PublishedDate = date
-	}
-}
-
-// TestPage creates a test page.
-func TestPage(url, title, content string, opts ...PageOption) *domain.Page {
-	now := time.Now()
-	page := &domain.Page{
-		ID:          generateID(),
-		URL:         url,
-		Title:       title,
-		Content:     content,
-		Description: "Test page description",
-		Keywords:    []string{"test", "page"},
-		CreatedAt:   now,
-		UpdatedAt:   now,
-	}
-
-	for _, opt := range opts {
-		opt(page)
-	}
-
-	return page
-}
-
-// WithPageID sets the ID for a test page.
-func WithPageID(id string) PageOption {
-	return func(p *domain.Page) {
-		p.ID = id
-	}
-}
-
-// WithPageDescription sets the description for a test page.
-func WithPageDescription(desc string) PageOption {
-	return func(p *domain.Page) {
-		p.Description = desc
 	}
 }
 

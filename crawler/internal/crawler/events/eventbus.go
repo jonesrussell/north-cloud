@@ -4,7 +4,6 @@ import (
 	"context"
 	"sync"
 
-	"github.com/jonesrussell/north-cloud/crawler/internal/domain"
 	"github.com/jonesrussell/north-cloud/crawler/internal/logger"
 )
 
@@ -28,32 +27,6 @@ func (b *EventBus) Subscribe(handler EventHandler) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	b.handlers = append(b.handlers, handler)
-}
-
-// PublishArticle publishes an article event to all handlers.
-// Thread-safe: uses read lock and copies handlers slice.
-func (b *EventBus) PublishArticle(ctx context.Context, article *domain.Article) error {
-	if err := ctx.Err(); err != nil {
-		return err
-	}
-
-	// Get a snapshot of handlers under read lock
-	b.mu.RLock()
-	handlers := make([]EventHandler, len(b.handlers))
-	copy(handlers, b.handlers)
-	b.mu.RUnlock()
-
-	// Dispatch to handlers without holding lock
-	for _, handler := range handlers {
-		if err := handler.HandleArticle(ctx, article); err != nil {
-			b.logger.Error("failed to handle article event",
-				"error", err,
-				"articleID", article.ID,
-				"url", article.Source,
-			)
-		}
-	}
-	return nil
 }
 
 // PublishError publishes an error event to all handlers.
@@ -131,15 +104,6 @@ func (b *EventBus) PublishStop(ctx context.Context) error {
 		}
 	}
 	return nil
-}
-
-// HandleError handles an error that occurred during event processing.
-func (b *EventBus) HandleError(err error, article *domain.Article) {
-	b.logger.Error("Error processing article",
-		"error", err,
-		"articleID", article.ID,
-		"url", article.Source,
-	)
 }
 
 // HandleHandlerError handles an error that occurred in an event handler.

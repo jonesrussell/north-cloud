@@ -5,10 +5,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"reflect"
 	"time"
 
 	"github.com/elastic/go-elasticsearch/v8/esapi"
-	"github.com/jonesrussell/north-cloud/crawler/internal/domain"
 )
 
 // Helper function to create a context with timeout
@@ -46,18 +46,35 @@ func (s *Storage) logOperationError(operation, index, docID string, err error) {
 		"error", err)
 }
 
-// getURLFromDocument extracts the URL from a document
+// getURLFromDocument extracts the URL from a document using reflection
+// Supports documents with URL, Source, or url fields
 func getURLFromDocument(doc any) string {
-	switch v := doc.(type) {
-	case *domain.Article:
-		return v.Source
-	case *domain.Content:
-		return v.URL
-	case *domain.Page:
-		return v.URL
-	default:
+	if doc == nil {
 		return ""
 	}
+
+	v := reflect.ValueOf(doc)
+	// Handle pointers
+	if v.Kind() == reflect.Ptr {
+		if v.IsNil() {
+			return ""
+		}
+		v = v.Elem()
+	}
+
+	// Try common URL field names
+	urlFields := []string{"URL", "Source", "url", "source"}
+	for _, fieldName := range urlFields {
+		field := v.FieldByName(fieldName)
+		if field.IsValid() && field.Kind() == reflect.String {
+			url := field.String()
+			if url != "" {
+				return url
+			}
+		}
+	}
+
+	return ""
 }
 
 // marshalJSON marshals the given value to JSON and returns an error if it fails

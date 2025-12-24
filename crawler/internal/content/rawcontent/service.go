@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/gocolly/colly/v2"
-	"github.com/jonesrussell/north-cloud/crawler/internal/domain"
 	"github.com/jonesrussell/north-cloud/crawler/internal/logger"
 	"github.com/jonesrussell/north-cloud/crawler/internal/sources"
 	storagepkg "github.com/jonesrussell/north-cloud/crawler/internal/storage"
@@ -81,12 +80,11 @@ func (s *RawContentService) Process(e *colly.HTMLElement) error {
 			"source_name", sourceName)
 	}
 
-	// Convert to domain.Article format for indexing (temporary compatibility)
-	// The rawIndexer expects domain.Article but we'll populate it with raw content
-	article := s.convertRawDataToArticle(rawData)
+	// Convert RawContentData to RawContent for indexing
+	rawContent := s.convertToRawContent(rawData, sourceName)
 
 	// Index to raw_content (no validation - classifier will handle that)
-	err := s.rawIndexer.IndexArticle(ctx, article, sourceName)
+	err := s.rawIndexer.IndexRawContent(ctx, rawContent)
 	if err != nil {
 		s.logger.Error("Failed to index raw content",
 			"error", err,
@@ -99,7 +97,7 @@ func (s *RawContentService) Process(e *colly.HTMLElement) error {
 		"url", sourceURL,
 		"source_name", sourceName,
 		"title", rawData.Title,
-		"word_count", article.WordCount)
+		"word_count", rawContent.WordCount)
 
 	return nil
 }
@@ -222,47 +220,36 @@ func (s *RawContentService) findSourceByURL(pageURL string) *sources.Config {
 	return nil
 }
 
-// convertRawDataToArticle converts RawContentData to domain.Article for indexing compatibility
-func (s *RawContentService) convertRawDataToArticle(rawData *RawContentData) *domain.Article {
+// convertToRawContent converts RawContentData to storage.RawContent for indexing
+func (s *RawContentService) convertToRawContent(rawData *RawContentData, sourceName string) *storagepkg.RawContent {
 	// Calculate word count
 	wordCount := calculateWordCount(rawData.RawText)
 
-	// Convert keywords from string to slice
-	var keywords []string
-	if rawData.MetaKeywords != "" {
-		keywords = strings.Split(rawData.MetaKeywords, ",")
-		for i := range keywords {
-			keywords[i] = strings.TrimSpace(keywords[i])
-		}
+	// Determine OG type (default to article for news content)
+	ogType := rawData.OGType
+	if ogType == "" {
+		ogType = "article"
 	}
 
-	article := &domain.Article{
-		ID:            rawData.ID,
-		Title:         rawData.Title,
-		Body:          rawData.RawText,
-		Intro:         rawData.MetaDescription,
-		Author:        rawData.Author,
-		PublishedDate: time.Time{},
-		Source:        rawData.URL,
-		Tags:          []string{},
-		Keywords:      keywords,
-		Description:   rawData.MetaDescription,
-		OgTitle:       rawData.OGTitle,
-		OgDescription: rawData.OGDescription,
-		OgImage:       rawData.OGImage,
-		OgURL:         rawData.OGURL,
-		CanonicalURL:  rawData.CanonicalURL,
-		WordCount:     wordCount,
-		CreatedAt:     rawData.CreatedAt,
-		UpdatedAt:     rawData.UpdatedAt,
+	return &storagepkg.RawContent{
+		ID:                   rawData.ID,
+		URL:                  rawData.URL,
+		SourceName:           sourceName,
+		Title:                rawData.Title,
+		RawText:              rawData.RawText,
+		RawHTML:              rawData.RawHTML,
+		MetaDescription:      rawData.MetaDescription,
+		MetaKeywords:         rawData.MetaKeywords,
+		OGType:               ogType,
+		OGTitle:              rawData.OGTitle,
+		OGDescription:        rawData.OGDescription,
+		OGImage:              rawData.OGImage,
+		Author:               rawData.Author,
+		PublishedDate:        rawData.PublishedDate,
+		ClassificationStatus: "pending",
+		CrawledAt:            time.Now(),
+		WordCount:            wordCount,
 	}
-
-	// Set published date if available
-	if rawData.PublishedDate != nil {
-		article.PublishedDate = *rawData.PublishedDate
-	}
-
-	return article
 }
 
 // calculateWordCount calculates word count from text

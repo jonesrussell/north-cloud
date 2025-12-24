@@ -13,7 +13,6 @@ import (
 	context "context"
 	reflect "reflect"
 
-	domain "github.com/jonesrussell/north-cloud/crawler/internal/domain"
 	gomock "go.uber.org/mock/gomock"
 )
 
@@ -39,20 +38,6 @@ func NewMockEventHandler(ctrl *gomock.Controller) *MockEventHandler {
 // EXPECT returns an object that allows the caller to indicate expected use.
 func (m *MockEventHandler) EXPECT() *MockEventHandlerMockRecorder {
 	return m.recorder
-}
-
-// HandleArticle mocks base method.
-func (m *MockEventHandler) HandleArticle(ctx context.Context, article *domain.Article) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "HandleArticle", ctx, article)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// HandleArticle indicates an expected call of HandleArticle.
-func (mr *MockEventHandlerMockRecorder) HandleArticle(ctx, article any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "HandleArticle", reflect.TypeOf((*MockEventHandler)(nil).HandleArticle), ctx, article)
 }
 
 // HandleError mocks base method.
