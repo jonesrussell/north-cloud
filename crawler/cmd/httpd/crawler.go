@@ -33,8 +33,8 @@ func createCrawlerForJobs(
 	}
 
 	// Ensure raw content indexes (non-fatal if it fails)
-	if err := ensureRawContentIndexes(deps, storageResult, sourceManager); err != nil {
-		deps.Logger.Warn("Failed to ensure raw content indexes", "error", err)
+	if indexErr := ensureRawContentIndexes(deps, storageResult, sourceManager); indexErr != nil {
+		deps.Logger.Warn("Failed to ensure raw content indexes", "error", indexErr)
 		// Continue - not fatal
 	}
 
