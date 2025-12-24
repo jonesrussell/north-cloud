@@ -95,8 +95,24 @@ func applyEnvOverrides(cfg *Config) {
 		}
 	}
 
+	// Database configuration overrides
 	if host := os.Getenv("POSTGRES_INDEX_MANAGER_HOST"); host != "" {
 		cfg.Database.Host = host
+	}
+	if port := os.Getenv("POSTGRES_INDEX_MANAGER_PORT"); port != "" {
+		var p int
+		if _, err := fmt.Sscanf(port, "%d", &p); err == nil {
+			cfg.Database.Port = p
+		}
+	}
+	if user := os.Getenv("POSTGRES_INDEX_MANAGER_USER"); user != "" {
+		cfg.Database.User = user
+	}
+	if password := os.Getenv("POSTGRES_INDEX_MANAGER_PASSWORD"); password != "" {
+		cfg.Database.Password = password
+	}
+	if db := os.Getenv("POSTGRES_INDEX_MANAGER_DB"); db != "" {
+		cfg.Database.Database = db
 	}
 
 	if url := os.Getenv("ELASTICSEARCH_URL"); url != "" {
