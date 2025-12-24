@@ -24,7 +24,7 @@ services:
       - DB_USER=${POSTGRES_CRAWLER_USER}
       - DB_PASSWORD=${POSTGRES_CRAWLER_PASSWORD}
       - DB_NAME=${POSTGRES_CRAWLER_DB:-crawler}
-      - DB_SSLMODE=require
+      - DB_SSLMODE=disable
       - APP_DEBUG=false
       - APP_ENV=production
     # No volume mounts - code is baked into image
@@ -64,7 +64,7 @@ services:
       - DB_USER=${POSTGRES_SOURCE_MANAGER_USER}
       - DB_PASSWORD=${POSTGRES_SOURCE_MANAGER_PASSWORD}
       - DB_NAME=${POSTGRES_SOURCE_MANAGER_DB:-gosources}
-      - DB_SSLMODE=require
+      - DB_SSLMODE=disable
     volumes:
       # Only mount migrations, not source code
       - ./source-manager/migrations:/migrations:ro
