@@ -150,7 +150,12 @@ func (c *Classifier) ClassifyBatch(ctx context.Context, rawItems []*domain.RawCo
 
 // UpdateRules updates the topic classification rules
 func (c *Classifier) UpdateRules(rules []domain.ClassificationRule) {
-	c.topic.UpdateRules(rules)
+	// Convert []ClassificationRule to []*ClassificationRule
+	rulePointers := make([]*domain.ClassificationRule, len(rules))
+	for i := range rules {
+		rulePointers[i] = &rules[i]
+	}
+	c.topic.UpdateRules(rulePointers)
 }
 
 // GetRules returns the current classification rules

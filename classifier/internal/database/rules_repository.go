@@ -7,8 +7,8 @@ import (
 	"fmt"
 
 	"github.com/jmoiron/sqlx"
-	"github.com/lib/pq"
 	"github.com/jonesrussell/north-cloud/classifier/internal/domain"
+	"github.com/lib/pq"
 )
 
 // RulesRepository handles database operations for classification rules.

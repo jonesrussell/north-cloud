@@ -178,29 +178,6 @@ func (h *Handler) GetClassificationResult(c *gin.Context) {
 	})
 }
 
-// RuleResponse represents a classification rule response
-type RuleResponse struct {
-	ID            int      `json:"id"`
-	RuleName      string   `json:"rule_name"`
-	RuleType      string   `json:"rule_type"`
-	TopicName     string   `json:"topic_name,omitempty"`
-	Keywords      []string `json:"keywords,omitempty"`
-	MinConfidence float64  `json:"min_confidence"`
-	Enabled       bool     `json:"enabled"`
-	Priority      int      `json:"priority"`
-}
-
-// CreateRuleRequest represents a request to create a rule
-type CreateRuleRequest struct {
-	RuleName      string   `json:"rule_name" binding:"required"`
-	RuleType      string   `json:"rule_type" binding:"required"`
-	TopicName     string   `json:"topic_name"`
-	Keywords      []string `json:"keywords"`
-	MinConfidence float64  `json:"min_confidence"`
-	Enabled       bool     `json:"enabled"`
-	Priority      int      `json:"priority"`
-}
-
 // ListRules handles GET /api/v1/rules
 func (h *Handler) ListRules(c *gin.Context) {
 	h.logger.Debug("Listing classification rules")
@@ -346,17 +323,6 @@ func (h *Handler) DeleteRule(c *gin.Context) {
 	h.logger.Info("Rule deleted successfully", "id", ruleID)
 
 	c.JSON(http.StatusOK, gin.H{"message": "Rule deleted successfully"})
-}
-
-// SourceReputationResponse represents a source reputation response
-type SourceReputationResponse struct {
-	SourceName          string  `json:"source_name"`
-	Category            string  `json:"category"`
-	ReputationScore     int     `json:"reputation_score"`
-	TotalArticles       int     `json:"total_articles"`
-	AverageQualityScore float64 `json:"average_quality_score"`
-	SpamCount           int     `json:"spam_count"`
-	Rank                string  `json:"rank"`
 }
 
 // ListSources handles GET /api/v1/sources

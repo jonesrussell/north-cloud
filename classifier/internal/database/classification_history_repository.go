@@ -7,8 +7,8 @@ import (
 	"fmt"
 
 	"github.com/jmoiron/sqlx"
-	"github.com/lib/pq"
 	"github.com/jonesrussell/north-cloud/classifier/internal/domain"
+	"github.com/lib/pq"
 )
 
 // ClassificationHistoryRepository handles database operations for classification history.
@@ -23,11 +23,11 @@ func NewClassificationHistoryRepository(db *sqlx.DB) *ClassificationHistoryRepos
 
 // ClassificationStats represents overall classification statistics.
 type ClassificationStats struct {
-	TotalClassified     int             `json:"total_classified"`
-	AvgQualityScore     float64         `json:"avg_quality_score"`
-	CrimeRelated        int             `json:"crime_related"`
-	AvgProcessingTimeMs float64         `json:"avg_processing_time_ms"`
-	ContentTypes        map[string]int  `json:"content_types"`
+	TotalClassified     int            `json:"total_classified"`
+	AvgQualityScore     float64        `json:"avg_quality_score"`
+	CrimeRelated        int            `json:"crime_related"`
+	AvgProcessingTimeMs float64        `json:"avg_processing_time_ms"`
+	ContentTypes        map[string]int `json:"content_types"`
 }
 
 // TopicStat represents statistics for a single topic.

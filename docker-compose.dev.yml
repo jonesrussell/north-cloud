@@ -192,12 +192,12 @@ services:
       redis:
         condition: service_healthy
     environment:
-      - DB_HOST=postgres-classifier
-      - DB_PORT=5432
-      - DB_USER=${POSTGRES_CLASSIFIER_USER:-postgres}
-      - DB_PASSWORD=${POSTGRES_CLASSIFIER_PASSWORD:-postgres}
-      - DB_NAME=${POSTGRES_CLASSIFIER_DB:-classifier}
-      - DB_SSLMODE=disable
+      - POSTGRES_HOST=postgres-classifier
+      - POSTGRES_PORT=5432
+      - POSTGRES_USER=${POSTGRES_CLASSIFIER_USER:-postgres}
+      - POSTGRES_PASSWORD=${POSTGRES_CLASSIFIER_PASSWORD:-postgres}
+      - POSTGRES_DB=${POSTGRES_CLASSIFIER_DB:-classifier}
+      - POSTGRES_SSLMODE=disable
       - ES_URL=http://elasticsearch:9200
       - REDIS_URL=redis:6379
       - REDIS_PASSWORD=${REDIS_PASSWORD:-}

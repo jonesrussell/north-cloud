@@ -145,8 +145,13 @@ func (t *TopicClassifier) ClassifyBatch(ctx context.Context, rawItems []*domain.
 }
 
 // UpdateRules updates the classification rules used by the classifier
-func (t *TopicClassifier) UpdateRules(rules []domain.ClassificationRule) {
-	t.rules = rules
+func (t *TopicClassifier) UpdateRules(rules []*domain.ClassificationRule) {
+	// Convert []*ClassificationRule to []ClassificationRule
+	ruleValues := make([]domain.ClassificationRule, len(rules))
+	for i, rule := range rules {
+		ruleValues[i] = *rule
+	}
+	t.rules = ruleValues
 	t.logger.Info("Topic classification rules updated", "count", len(rules))
 }
 

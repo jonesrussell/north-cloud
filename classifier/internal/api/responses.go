@@ -9,10 +9,10 @@ import (
 // RuleResponse represents a classification rule response for the dashboard.
 type RuleResponse struct {
 	ID       int      `json:"id"`
-	Topic    string   `json:"topic"`          // Maps from topic_name
+	Topic    string   `json:"topic"` // Maps from topic_name
 	Keywords []string `json:"keywords"`
 	Pattern  *string  `json:"pattern,omitempty"` // Optional regex pattern
-	Priority string   `json:"priority"`       // "high", "normal", "low"
+	Priority string   `json:"priority"`          // "high", "normal", "low"
 	Enabled  bool     `json:"enabled"`
 }
 
@@ -27,7 +27,7 @@ type CreateRuleRequest struct {
 	Topic    string   `json:"topic" binding:"required"`
 	Keywords []string `json:"keywords" binding:"required"`
 	Pattern  *string  `json:"pattern"`
-	Priority string   `json:"priority"`       // "high", "normal", "low"
+	Priority string   `json:"priority"` // "high", "normal", "low"
 	Enabled  bool     `json:"enabled"`
 }
 
@@ -42,12 +42,12 @@ type UpdateRuleRequest struct {
 
 // SourceReputationResponse represents a source reputation response for the dashboard.
 type SourceReputationResponse struct {
-	Name            string     `json:"name"`              // source_name
-	Reputation      int        `json:"reputation"`        // reputation_score
+	Name            string     `json:"name"`       // source_name
+	Reputation      int        `json:"reputation"` // reputation_score
 	Category        string     `json:"category"`
-	TotalClassified int        `json:"total_classified"`  // total_articles
-	AvgQuality      float64    `json:"avg_quality"`       // average_quality_score
-	LastUpdated     *time.Time `json:"last_updated"`      // last_classified_at
+	TotalClassified int        `json:"total_classified"` // total_articles
+	AvgQuality      float64    `json:"avg_quality"`      // average_quality_score
+	LastUpdated     *time.Time `json:"last_updated"`     // last_classified_at
 }
 
 // SourcesListResponse represents a paginated list of sources.
