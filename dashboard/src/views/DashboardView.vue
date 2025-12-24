@@ -31,16 +31,15 @@
           color="green"
         />
         <StatCard
-          label="Success Rate"
-          :value="stats.successRate"
+          label="Classified Content"
+          :value="classifierStats.totalClassified"
           :icon="CheckCircleIcon"
-          color="green"
-          format="percent"
+          color="purple"
         />
       </div>
 
       <!-- Quick Actions & Status -->
-      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
         <!-- Crawler Status -->
         <div class="bg-white shadow rounded-lg">
           <div class="px-6 py-4 border-b border-gray-200">
@@ -146,38 +145,35 @@
           </div>
         </div>
 
-        <!-- Sources Overview -->
+        <!-- Classifier Status -->
         <div class="bg-white shadow rounded-lg">
           <div class="px-6 py-4 border-b border-gray-200">
-            <h2 class="text-lg font-medium text-gray-900">Sources Overview</h2>
+            <h2 class="text-lg font-medium text-gray-900">Classifier Status</h2>
           </div>
           <div class="p-6">
-            <div v-if="sources.length > 0" class="space-y-3">
-              <div
-                v-for="source in sources.slice(0, 5)"
-                :key="source.id"
-                class="flex items-center justify-between py-2"
-              >
-                <div class="flex-1 min-w-0">
-                  <p class="text-sm font-medium text-gray-900 truncate">
-                    {{ source.name }}
-                  </p>
-                  <p class="text-xs text-gray-500 truncate">
-                    {{ source.url }}
-                  </p>
-                </div>
-                <StatusBadge :status="source.enabled ? 'enabled' : 'disabled'" :show-dot="true" />
+            <div v-if="classifierHealth" class="space-y-4">
+              <div class="flex items-center justify-between">
+                <span class="text-sm text-gray-600">Service Status</span>
+                <StatusBadge :status="classifierHealth.status === 'healthy' ? 'active' : 'error'" />
+              </div>
+              <div class="flex items-center justify-between">
+                <span class="text-sm text-gray-600">Total Classified</span>
+                <span class="text-sm font-medium text-gray-900">{{ classifierStats.totalClassified }}</span>
+              </div>
+              <div class="flex items-center justify-between">
+                <span class="text-sm text-gray-600">Avg Quality</span>
+                <span class="text-sm font-medium text-gray-900">{{ classifierStats.avgQualityScore }}/100</span>
               </div>
             </div>
-            <div v-else class="text-sm text-gray-500 text-center py-4">
-              No sources configured
+            <div v-else class="text-sm text-gray-500">
+              Unable to fetch classifier status
             </div>
             <div class="mt-4 pt-4 border-t border-gray-200">
               <router-link
-                to="/sources"
+                to="/classifier/stats"
                 class="text-sm font-medium text-blue-600 hover:text-blue-500"
               >
-                Manage sources &rarr;
+                View statistics &rarr;
               </router-link>
             </div>
           </div>
@@ -229,7 +225,7 @@ import {
   PlusIcon,
   ChartBarIcon,
 } from '@heroicons/vue/24/outline'
-import { crawlerApi, sourcesApi, publisherApi } from '../api/client'
+import { crawlerApi, sourcesApi, publisherApi, classifierApi } from '../api/client'
 import { LoadingSpinner, ErrorAlert, StatCard, StatusBadge } from '../components/common'
 
 const loading = ref(true)
@@ -237,12 +233,18 @@ const error = ref(null)
 
 const crawlerHealth = ref(null)
 const publisherHealth = ref(null)
+const classifierHealth = ref(null)
 const recentJobs = ref([])
 const sources = ref([])
 const publisherStats = ref({
   totalPosted: 0,
   totalSkipped: 0,
   totalErrors: 0,
+})
+const classifierStats = ref({
+  totalClassified: 0,
+  avgQualityScore: 0,
+  crimeRelated: 0,
 })
 const stats = ref({
   activeJobs: 0,
@@ -268,12 +270,14 @@ const loadDashboard = async () => {
 
   try {
     // Load data in parallel
-    const [healthRes, publisherHealthRes, jobsRes, sourcesRes, publisherStatsRes] = await Promise.allSettled([
+    const [healthRes, publisherHealthRes, classifierHealthRes, jobsRes, sourcesRes, publisherStatsRes, classifierStatsRes] = await Promise.allSettled([
       crawlerApi.getHealth(),
       publisherApi.getHealth(),
+      classifierApi.getHealth(),
       crawlerApi.jobs.list(),
       sourcesApi.list(),
       publisherApi.stats.get(),
+      classifierApi.stats.get(),
     ])
 
     // Process health
@@ -284,6 +288,11 @@ const loadDashboard = async () => {
     // Process publisher health
     if (publisherHealthRes.status === 'fulfilled') {
       publisherHealth.value = publisherHealthRes.value.data
+    }
+
+    // Process classifier health
+    if (classifierHealthRes.status === 'fulfilled') {
+      classifierHealth.value = classifierHealthRes.value.data
     }
 
     // Process publisher stats
@@ -313,6 +322,16 @@ const loadDashboard = async () => {
     if (sourcesRes.status === 'fulfilled') {
       sources.value = sourcesRes.value.data?.sources || sourcesRes.value.data || []
       stats.value.totalSources = sources.value.length
+    }
+
+    // Process classifier stats
+    if (classifierStatsRes.status === 'fulfilled' && classifierStatsRes.value.data) {
+      const data = classifierStatsRes.value.data
+      classifierStats.value = {
+        totalClassified: data.total_classified || 0,
+        avgQualityScore: Math.round(data.avg_quality_score || 0),
+        crimeRelated: data.crime_related || 0,
+      }
     }
 
     // Try to get stats

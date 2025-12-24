@@ -16,6 +16,11 @@ import SourcesListView from '../views/sources/ListView.vue'
 import SourcesFormView from '../views/sources/FormView.vue'
 import CitiesView from '../views/sources/CitiesView.vue'
 
+// Classifier views
+import ClassifierStatsView from '../views/classifier/StatsView.vue'
+import ClassifierRulesView from '../views/classifier/RulesView.vue'
+import ClassifierSourceReputationView from '../views/classifier/SourceReputationView.vue'
+
 const routes = [
   // Root redirect
   {
@@ -84,6 +89,26 @@ const routes = [
     name: 'cities',
     component: CitiesView,
     meta: { title: 'Cities', section: 'sources' },
+  },
+
+  // Classifier routes
+  {
+    path: '/classifier/stats',
+    name: 'classifier-stats',
+    component: ClassifierStatsView,
+    meta: { title: 'Classifier Statistics', section: 'classifier' },
+  },
+  {
+    path: '/classifier/rules',
+    name: 'classifier-rules',
+    component: ClassifierRulesView,
+    meta: { title: 'Classification Rules', section: 'classifier' },
+  },
+  {
+    path: '/classifier/sources',
+    name: 'classifier-sources',
+    component: ClassifierSourceReputationView,
+    meta: { title: 'Source Reputation', section: 'classifier' },
   },
 ]
 

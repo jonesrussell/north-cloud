@@ -6,6 +6,7 @@ import tailwindcss from '@tailwindcss/vite'
 const CRAWLER_API_URL = process.env.CRAWLER_API_URL || 'http://localhost:8060'
 const SOURCES_API_URL = process.env.SOURCES_API_URL || 'http://localhost:8050'
 const PUBLISHER_API_URL = process.env.PUBLISHER_API_URL || 'http://localhost:8070'
+const CLASSIFIER_API_URL = process.env.CLASSIFIER_API_URL || 'http://localhost:8071'
 
 export default defineConfig({
   plugins: [
@@ -42,6 +43,18 @@ export default defineConfig({
       // Publisher health endpoint
       '/api/health/publisher': {
         target: PUBLISHER_API_URL,
+        changeOrigin: true,
+        rewrite: () => '/health',
+      },
+      // Classifier API proxy
+      '/api/classifier': {
+        target: CLASSIFIER_API_URL,
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/classifier/, '/api/v1'),
+      },
+      // Classifier health endpoint
+      '/api/health/classifier': {
+        target: CLASSIFIER_API_URL,
         changeOrigin: true,
         rewrite: () => '/health',
       },

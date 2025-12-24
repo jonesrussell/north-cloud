@@ -45,18 +45,21 @@ const props = defineProps({
   color: {
     type: String,
     default: 'gray',
-    validator: (value) => ['gray', 'blue', 'green', 'red', 'yellow'].includes(value),
+    validator: (value) => ['gray', 'blue', 'green', 'red', 'yellow', 'purple'].includes(value),
   },
   format: {
     type: String,
     default: 'number',
-    validator: (value) => ['number', 'percent', 'text'].includes(value),
+    validator: (value) => ['number', 'percent', 'text', 'ms'].includes(value),
   },
 })
 
 const formattedValue = computed(() => {
   if (props.format === 'percent') {
     return `${props.value}%`
+  }
+  if (props.format === 'ms') {
+    return `${props.value}ms`
   }
   if (props.format === 'number' && typeof props.value === 'number') {
     return props.value.toLocaleString()
@@ -71,8 +74,9 @@ const iconColorClass = computed(() => {
     green: 'text-green-500',
     red: 'text-red-500',
     yellow: 'text-yellow-500',
+    purple: 'text-purple-500',
   }
-  return colors[props.color]
+  return colors[props.color] || colors.gray
 })
 
 const valueColorClass = computed(() => {
@@ -82,7 +86,8 @@ const valueColorClass = computed(() => {
     green: 'text-green-600',
     red: 'text-red-600',
     yellow: 'text-yellow-600',
+    purple: 'text-purple-600',
   }
-  return colors[props.color]
+  return colors[props.color] || colors.gray
 })
 </script>

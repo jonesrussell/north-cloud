@@ -28,6 +28,14 @@ const publisherClient = axios.create({
   },
 })
 
+const classifierClient = axios.create({
+  baseURL: '/api/classifier',
+  timeout: 10000,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+})
+
 // Request/response interceptors for debugging
 const addInterceptors = (client, serviceName) => {
   if (DEBUG) {
@@ -58,6 +66,7 @@ const addInterceptors = (client, serviceName) => {
 addInterceptors(crawlerClient, 'Crawler')
 addInterceptors(sourcesClient, 'Sources')
 addInterceptors(publisherClient, 'Publisher')
+addInterceptors(classifierClient, 'Classifier')
 
 // Crawler API
 export const crawlerApi = {
@@ -116,8 +125,46 @@ export const publisherApi = {
   },
 }
 
+// Classifier API
+export const classifierApi = {
+  // Health check
+  getHealth: () => axios.get('/api/health/classifier'),
+
+  // Classification
+  classify: {
+    single: (data) => classifierClient.post('/classify', data),
+    batch: (data) => classifierClient.post('/classify/batch', data),
+    get: (contentId) => classifierClient.get(`/classify/${contentId}`),
+  },
+
+  // Rules
+  rules: {
+    list: () => classifierClient.get('/rules'),
+    get: (id) => classifierClient.get(`/rules/${id}`),
+    create: (data) => classifierClient.post('/rules', data),
+    update: (id, data) => classifierClient.put(`/rules/${id}`, data),
+    delete: (id) => classifierClient.delete(`/rules/${id}`),
+  },
+
+  // Sources
+  sources: {
+    list: () => classifierClient.get('/sources'),
+    get: (name) => classifierClient.get(`/sources/${name}`),
+    update: (name, data) => classifierClient.put(`/sources/${name}`, data),
+    stats: (name) => classifierClient.get(`/sources/${name}/stats`),
+  },
+
+  // Statistics
+  stats: {
+    get: () => classifierClient.get('/stats'),
+    topics: () => classifierClient.get('/stats/topics'),
+    sources: () => classifierClient.get('/stats/sources'),
+  },
+}
+
 export default {
   crawler: crawlerApi,
   sources: sourcesApi,
   publisher: publisherApi,
+  classifier: classifierApi,
 }

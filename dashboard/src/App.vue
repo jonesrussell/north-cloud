@@ -90,6 +90,51 @@
           </div>
         </div>
 
+        <!-- Classifier Section -->
+        <div class="mt-6">
+          <h3 class="px-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">
+            Classifier
+          </h3>
+          <div class="mt-2 space-y-1">
+            <router-link
+              to="/classifier/stats"
+              class="group flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors"
+              :class="[
+                isActive('/classifier/stats')
+                  ? 'bg-gray-800 text-white'
+                  : 'text-gray-300 hover:bg-gray-800 hover:text-white'
+              ]"
+            >
+              <ChartBarIcon class="mr-3 h-5 w-5 flex-shrink-0" />
+              Statistics
+            </router-link>
+            <router-link
+              to="/classifier/rules"
+              class="group flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors"
+              :class="[
+                isActive('/classifier/rules')
+                  ? 'bg-gray-800 text-white'
+                  : 'text-gray-300 hover:bg-gray-800 hover:text-white'
+              ]"
+            >
+              <DocumentTextIcon class="mr-3 h-5 w-5 flex-shrink-0" />
+              Rules
+            </router-link>
+            <router-link
+              to="/classifier/sources"
+              class="group flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors"
+              :class="[
+                isActive('/classifier/sources')
+                  ? 'bg-gray-800 text-white'
+                  : 'text-gray-300 hover:bg-gray-800 hover:text-white'
+              ]"
+            >
+              <StarIcon class="mr-3 h-5 w-5 flex-shrink-0" />
+              Source Reputation
+            </router-link>
+          </div>
+        </div>
+
         <!-- Sources Section -->
         <div class="mt-6">
           <h3 class="px-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">
@@ -172,8 +217,9 @@ import {
   DocumentTextIcon,
   MapPinIcon,
   NewspaperIcon,
+  StarIcon,
 } from '@heroicons/vue/24/outline'
-import { crawlerApi, publisherApi } from './api/client'
+import { crawlerApi, publisherApi, classifierApi } from './api/client'
 
 const route = useRoute()
 const healthStatus = ref('healthy')
@@ -193,13 +239,18 @@ const isActiveExact = (path) => {
 // Check system health on mount
 onMounted(async () => {
   try {
-    // Check both crawler and publisher health
-    const [crawlerHealth, publisherHealth] = await Promise.allSettled([
+    // Check all services health
+    const [crawlerHealth, publisherHealth, classifierHealth] = await Promise.allSettled([
       crawlerApi.getHealth(),
       publisherApi.getHealth(),
+      classifierApi.getHealth(),
     ])
     // Consider healthy if at least one service is healthy
-    if (crawlerHealth.status === 'fulfilled' || publisherHealth.status === 'fulfilled') {
+    if (
+      crawlerHealth.status === 'fulfilled' ||
+      publisherHealth.status === 'fulfilled' ||
+      classifierHealth.status === 'fulfilled'
+    ) {
       healthStatus.value = 'healthy'
     } else {
       healthStatus.value = 'unhealthy'
