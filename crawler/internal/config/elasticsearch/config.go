@@ -145,7 +145,8 @@ func (c *Config) validateRequiredFields() error {
 	}
 
 	// Allow either API key or username/password authentication
-	// Skip auth requirement for localhost/development connections (http://localhost, http://127.0.0.1, http://elasticsearch)
+	// Skip auth requirement for localhost/development connections
+	// (http://localhost, http://127.0.0.1, http://elasticsearch)
 	if c.APIKey == "" && (c.Username == "" || c.Password == "") {
 		// Check if any address is a localhost/development address without auth
 		hasLocalDevAddress := false

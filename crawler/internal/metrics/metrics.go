@@ -2,7 +2,6 @@
 package metrics
 
 import (
-	"sync"
 	"time"
 )
 
@@ -26,8 +25,6 @@ type Metrics struct {
 	FailedRequests int64
 	// RateLimitedRequests is the number of rate-limited requests.
 	RateLimitedRequests int64
-	// mu protects concurrent access to metrics.
-	mu sync.Mutex
 }
 
 // NewMetrics creates a new Metrics instance with default values.
