@@ -70,4 +70,3 @@ func (f *DefaultProcessorFactory) CreateProcessor(contentType contenttype.Type) 
 
 	return processor, nil
 }
-

@@ -32,7 +32,6 @@ func (c *Crawler) AddProcessor(processor content.Processor) {
 	c.processors = append(c.processors, processor)
 }
 
-
 // GetProcessors returns the processors.
 func (c *Crawler) GetProcessors() []content.Processor {
 	processors := make([]content.Processor, 0, len(c.processors))

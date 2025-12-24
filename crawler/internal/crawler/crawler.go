@@ -147,9 +147,9 @@ type Crawler struct {
 	maxDepthOverride    int32 // Override for source's max_depth (0 means use source default), accessed atomically
 
 	// Extracted components for better separation of concerns
-	lifecycle    *LifecycleManager
-	signals      *SignalCoordinator
-	monitor      *CollectorMonitor
+	lifecycle *LifecycleManager
+	signals   *SignalCoordinator
+	monitor   *CollectorMonitor
 }
 
 var _ Interface = (*Crawler)(nil)
@@ -400,7 +400,6 @@ func (c *Crawler) GetLogger() logger.Interface {
 func (c *Crawler) GetSource() sources.Interface {
 	return c.sources
 }
-
 
 // GetIndexManager returns the index manager.
 func (c *Crawler) GetIndexManager() storagetypes.IndexManager {
