@@ -56,7 +56,7 @@ COPY . .
 # Build Tailwind CSS for the theme
 RUN if [ -f "/var/www/html/web/themes/custom/streetcode_ui/package.json" ]; then \
     cd /var/www/html/web/themes/custom/streetcode_ui && \
-    npm ci && \
+    npm install && \
     npm run build && \
     rm -rf node_modules; \
     fi
