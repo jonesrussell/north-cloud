@@ -377,8 +377,3 @@ func TestSourceRepository_GetCities(t *testing.T) {
 	assert.True(t, cityNames["City B Source"], "City B Source should be in results")
 	assert.False(t, cityNames["Disabled Source"], "Disabled Source should not be in results")
 }
-
-// Helper function
-func stringPtr(s string) *string {
-	return &s
-}
