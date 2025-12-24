@@ -197,18 +197,3 @@ func (r *RawContentIndexer) EnsureRawContentIndex(ctx context.Context, sourceNam
 
 	return nil
 }
-
-// GetPendingCount returns the count of pending items in raw_content index
-func (r *RawContentIndexer) GetPendingCount(ctx context.Context, sourceName string) (int, error) {
-	indexName := r.getRawContentIndexName(sourceName)
-
-	// Execute search to get count
-	// Note: This requires extending the storage interface or using search manager
-	// For now, return 0 as placeholder
-	r.logger.Debug("Getting pending count",
-		"index", indexName,
-		"note", "Count query not fully implemented - placeholder returns 0",
-	)
-
-	return 0, nil
-}
