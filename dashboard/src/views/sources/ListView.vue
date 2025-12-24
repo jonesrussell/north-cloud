@@ -53,9 +53,6 @@
                   &bull; City: {{ source.city_name }}
                 </span>
               </div>
-              <div class="mt-1 text-xs text-gray-500">
-                Index: {{ source.article_index }}
-              </div>
             </div>
             <div class="ml-4 flex-shrink-0 flex space-x-2">
               <router-link

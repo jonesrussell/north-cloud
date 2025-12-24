@@ -59,32 +59,6 @@
           </div>
 
           <div>
-            <label for="article_index" class="block text-sm font-medium text-gray-700">
-              Article Index <span class="text-red-500">*</span>
-            </label>
-            <input
-              id="article_index"
-              v-model="form.article_index"
-              type="text"
-              required
-              class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
-            />
-          </div>
-
-          <div>
-            <label for="page_index" class="block text-sm font-medium text-gray-700">
-              Page Index <span class="text-red-500">*</span>
-            </label>
-            <input
-              id="page_index"
-              v-model="form.page_index"
-              type="text"
-              required
-              class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
-            />
-          </div>
-
-          <div>
             <label for="rate_limit" class="block text-sm font-medium text-gray-700">
               Rate Limit
             </label>
@@ -325,8 +299,6 @@ const isEdit = computed(() => !!route.params.id)
 const form = ref({
   name: '',
   url: '',
-  article_index: '',
-  page_index: '',
   rate_limit: '1s',
   max_depth: 2,
   time: [],
@@ -382,8 +354,6 @@ const fetchMetadata = async () => {
     const metadata = response.data
 
     if (metadata.name) form.value.name = metadata.name
-    if (metadata.article_index) form.value.article_index = metadata.article_index
-    if (metadata.page_index) form.value.page_index = metadata.page_index
 
     if (metadata.selectors) {
       if (metadata.selectors.article) {
