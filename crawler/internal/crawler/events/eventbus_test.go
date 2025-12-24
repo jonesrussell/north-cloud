@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	"github.com/jonesrussell/north-cloud/crawler/internal/crawler/events"
-	"github.com/jonesrussell/north-cloud/crawler/internal/domain"
 	crawlerMock "github.com/jonesrussell/north-cloud/crawler/testutils/mocks/crawler"
 	loggerMock "github.com/jonesrussell/north-cloud/crawler/testutils/mocks/logger"
 	"github.com/stretchr/testify/assert"
@@ -42,19 +41,11 @@ func TestEventBus(t *testing.T) {
 		testBus := events.NewEventBus(testMockLog)
 		handler := crawlerMock.NewMockEventHandler(testCtrl)
 
-		var receivedArticle *domain.Article
-		handler.EXPECT().HandleArticle(gomock.Any(), gomock.Any()).
-			Do(func(_ context.Context, article *domain.Article) {
-				receivedArticle = article
-			}).
-			Return(nil).
-			Times(1)
+		handler.EXPECT().HandleError(gomock.Any(), gomock.Any()).Return(nil).Times(1)
 
 		testBus.Subscribe(handler)
-		article := &domain.Article{Title: "Test Article"}
-		err := testBus.PublishArticle(context.Background(), article)
-		require.NoError(t, err)
-		assert.Equal(t, article, receivedArticle)
+		testErr := errors.New("test error")
+		testBus.PublishError(context.Background(), testErr)
 	})
 
 	t.Run("PublishError", func(t *testing.T) {
@@ -136,7 +127,6 @@ func TestEventBus_ConcurrentSubscribe(t *testing.T) {
 	for i := range 100 {
 		handlers[i] = crawlerMock.NewMockEventHandler(ctrl)
 		handlers[i].EXPECT().HandleError(gomock.Any(), gomock.Any()).AnyTimes()
-		handlers[i].EXPECT().HandleArticle(gomock.Any(), gomock.Any()).AnyTimes()
 		handlers[i].EXPECT().HandleStart(gomock.Any()).AnyTimes()
 		handlers[i].EXPECT().HandleStop(gomock.Any()).AnyTimes()
 	}
@@ -199,7 +189,6 @@ func TestEventBus_ConcurrentSubscribeAndPublish(t *testing.T) {
 	for i := range 100 {
 		handlers[i] = crawlerMock.NewMockEventHandler(ctrl)
 		handlers[i].EXPECT().HandleError(gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
-		handlers[i].EXPECT().HandleArticle(gomock.Any(), gomock.Any()).AnyTimes()
 		handlers[i].EXPECT().HandleStart(gomock.Any()).AnyTimes()
 		handlers[i].EXPECT().HandleStop(gomock.Any()).AnyTimes()
 	}
