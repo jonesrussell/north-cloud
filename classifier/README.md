@@ -65,6 +65,7 @@ psql -h localhost -p 5435 -U postgres -d classifier -f migrations/001_create_rul
 psql -h localhost -p 5435 -U postgres -d classifier -f migrations/002_create_source_reputation.sql
 psql -h localhost -p 5435 -U postgres -d classifier -f migrations/003_create_classification_history.sql
 psql -h localhost -p 5435 -U postgres -d classifier -f migrations/004_create_ml_models.sql
+psql -h localhost -p 5435 -U postgres -d classifier -f migrations/005_add_comprehensive_categories.sql
 
 # Run the service
 go run main.go
@@ -117,7 +118,76 @@ Migrations are located in `migrations/` and should be run in order:
 002_create_source_reputation.sql
 003_create_classification_history.sql
 004_create_ml_models.sql
+005_add_comprehensive_categories.sql
 ```
+
+## Classification Rules & Priority System
+
+### Understanding Priority
+
+**Priority** determines the evaluation order of classification rules when processing content:
+
+- **Higher priority rules are evaluated first** (stored as integers 0-100, displayed as "high"/"normal"/"low" in the UI)
+- This ensures more specific or critical rules (like "crime") are checked before general ones
+- Helps manage conflicts when content matches multiple rules
+- Current priority mapping:
+  - **High (10)**: Critical/time-sensitive categories (crime, breaking_news, health_emergency)
+  - **Normal (5)**: Common news categories (business, technology, health, entertainment, etc.)
+  - **Low (1-3)**: Niche categories (pets, gaming, shopping, etc.)
+
+The system orders rules by `priority DESC` when loading them from the database, so high-priority rules get the first chance to match content. This is important for accurate classification, especially when content could match multiple categories.
+
+### Comprehensive Category Taxonomy
+
+The classifier uses a comprehensive Microsoft/Bing-style taxonomy with 25+ topic categories:
+
+**High Priority Categories**:
+- `crime` - Criminal activity, law enforcement, legal proceedings
+- `breaking_news` - Urgent, developing stories, news alerts
+- `health_emergency` - Pandemics, outbreaks, public health crises
+
+**Normal Priority Categories**:
+- `business` - Companies, markets, economy, trade, finance
+- `technology` - Software, hardware, AI, innovation, digital
+- `health` - Medical, healthcare, wellness, fitness
+- `entertainment` - Movies, TV, music, celebrities, arts
+- `science` - Research, discoveries, experiments, studies
+- `education` - Schools, universities, learning, academic
+- `weather` - Forecasts, storms, climate, meteorology
+- `travel` - Tourism, destinations, hotels, flights
+- `food` - Restaurants, recipes, cooking, cuisine
+- `lifestyle` - Fashion, culture, trends, personal
+- `automotive` - Cars, vehicles, driving, traffic
+- `real_estate` - Property, housing, mortgages, real estate
+- `finance` - Banking, investments, credit, loans
+- `environment` - Climate, pollution, sustainability, nature
+- `arts` - Art, galleries, museums, creative works
+
+**Low Priority Categories**:
+- `sports` - Games, teams, tournaments, athletics
+- `politics` - Elections, government, policy, legislation
+- `local_news` - Community, neighborhood, municipal news
+- `pets` - Animals, veterinary, pet care
+- `gaming` - Video games, esports, consoles
+- `shopping` - Retail, stores, purchases, deals
+- `home_garden` - Home improvement, gardening, landscaping
+- `recreation` - Hobbies, leisure activities, outdoor fun
+
+### Managing Rules
+
+Classification rules can be managed via:
+- **Dashboard UI**: `http://localhost:3002/classifier/rules` - Visual interface for creating, editing, and deleting rules
+- **REST API**: See API Endpoints section below
+- **Database**: Direct SQL access to `classification_rules` table
+
+Each rule includes:
+- **Topic name**: The category identifier (e.g., "crime", "technology")
+- **Keywords**: Array of keywords used for matching (content is matched against title + text)
+- **Min confidence**: Minimum score (0.0-1.0) required for classification
+- **Priority**: Evaluation order (higher = evaluated first)
+- **Enabled**: Whether the rule is active
+
+Rules are automatically loaded from the database when the classifier service starts.
 
 ## API Endpoints
 

@@ -83,6 +83,7 @@ tasks:
       - psql -h localhost -p 5435 -U postgres -d classifier -f migrations/002_create_source_reputation.sql
       - psql -h localhost -p 5435 -U postgres -d classifier -f migrations/003_create_classification_history.sql
       - psql -h localhost -p 5435 -U postgres -d classifier -f migrations/004_create_ml_models.sql
+      - psql -h localhost -p 5435 -U postgres -d classifier -f migrations/005_add_comprehensive_categories.sql
 
   db:shell:
     desc: "Open PostgreSQL shell"
