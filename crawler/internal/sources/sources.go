@@ -15,6 +15,7 @@ import (
 
 	configtypes "github.com/jonesrussell/north-cloud/crawler/internal/config/types"
 	"github.com/jonesrussell/north-cloud/crawler/internal/logger"
+	"github.com/jonesrussell/north-cloud/crawler/internal/sources/converter"
 	"github.com/jonesrussell/north-cloud/crawler/internal/sources/loader"
 	"github.com/jonesrussell/north-cloud/crawler/internal/sources/types"
 	storagetypes "github.com/jonesrussell/north-cloud/crawler/internal/storage/types"
@@ -83,131 +84,37 @@ type Sources struct {
 var _ Interface = (*Sources)(nil)
 
 // convertArticleSelectors converts article selectors from various types to types.ArticleSelectors.
+// Uses generic converter to eliminate manual field copying.
 func convertArticleSelectors(s any) types.ArticleSelectors {
-	switch v := s.(type) {
-	case configtypes.ArticleSelectors:
-		return types.ArticleSelectors{
-			Container:     v.Container,
-			Title:         v.Title,
-			Body:          v.Body,
-			Intro:         v.Intro,
-			Link:          v.Link,
-			Image:         v.Image,
-			Byline:        v.Byline,
-			PublishedTime: v.PublishedTime,
-			TimeAgo:       v.TimeAgo,
-			JSONLD:        v.JSONLD,
-			Section:       v.Section,
-			Keywords:      v.Keywords,
-			Description:   v.Description,
-			OGTitle:       v.OGTitle,
-			OGDescription: v.OGDescription,
-			OGImage:       v.OGImage,
-			OGType:        v.OGType,
-			OGSiteName:    v.OGSiteName,
-			OgURL:         v.OgURL,
-			Canonical:     v.Canonical,
-			WordCount:     v.WordCount,
-			PublishDate:   v.PublishDate,
-			Category:      v.Category,
-			Tags:          v.Tags,
-			Author:        v.Author,
-			BylineName:    v.BylineName,
-			ArticleID:     v.ArticleID,
-			Exclude:       v.Exclude,
-		}
-	case loader.ArticleSelectors:
-		return types.ArticleSelectors{
-			Container:     v.Container,
-			Title:         v.Title,
-			Body:          v.Body,
-			Intro:         v.Intro,
-			Link:          v.Link,
-			Image:         v.Image,
-			Byline:        v.Byline,
-			PublishedTime: v.PublishedTime,
-			TimeAgo:       v.TimeAgo,
-			JSONLD:        v.JSONLD,
-			Section:       v.Section,
-			Keywords:      v.Keywords,
-			Description:   v.Description,
-			OGTitle:       v.OGTitle,
-			OGDescription: v.OGDescription,
-			OGImage:       v.OGImage,
-			OGType:        v.OGType,
-			OGSiteName:    v.OGSiteName,
-			OgURL:         v.OgURL,
-			Canonical:     v.Canonical,
-			WordCount:     v.WordCount,
-			PublishDate:   v.PublishDate,
-			Category:      v.Category,
-			Tags:          v.Tags,
-			Author:        v.Author,
-			BylineName:    v.BylineName,
-			ArticleID:     v.ArticleID,
-			Exclude:       v.Exclude,
-		}
-	default:
+	result, err := converter.ConvertValue[types.ArticleSelectors](s)
+	if err != nil {
+		// Return empty struct on conversion error
+		// This maintains backward compatibility with the original implementation
 		return types.ArticleSelectors{}
 	}
+	return result
 }
 
 // convertListSelectors converts list selectors from various types to types.ListSelectors.
+// Uses generic converter to eliminate manual field copying.
 func convertListSelectors(s any) types.ListSelectors {
-	switch v := s.(type) {
-	case configtypes.ListSelectors:
-		return types.ListSelectors{
-			Container:       v.Container,
-			ArticleCards:    v.ArticleCards,
-			ArticleList:     v.ArticleList,
-			ExcludeFromList: v.ExcludeFromList,
-		}
-	case loader.ListSelectors:
-		return types.ListSelectors{
-			Container:       v.Container,
-			ArticleCards:    v.ArticleCards,
-			ArticleList:     v.ArticleList,
-			ExcludeFromList: v.ExcludeFromList,
-		}
-	default:
+	result, err := converter.ConvertValue[types.ListSelectors](s)
+	if err != nil {
+		// Return empty struct on conversion error
 		return types.ListSelectors{}
 	}
+	return result
 }
 
 // convertPageSelectors converts page selectors from various types to types.PageSelectors.
+// Uses generic converter to eliminate manual field copying.
 func convertPageSelectors(s any) types.PageSelectors {
-	switch v := s.(type) {
-	case configtypes.PageSelectors:
-		return types.PageSelectors{
-			Container:     v.Container,
-			Title:         v.Title,
-			Content:       v.Content,
-			Description:   v.Description,
-			Keywords:      v.Keywords,
-			OGTitle:       v.OGTitle,
-			OGDescription: v.OGDescription,
-			OGImage:       v.OGImage,
-			OgURL:         v.OgURL,
-			Canonical:     v.Canonical,
-			Exclude:       v.Exclude,
-		}
-	case loader.PageSelectors:
-		return types.PageSelectors{
-			Container:     v.Container,
-			Title:         v.Title,
-			Content:       v.Content,
-			Description:   v.Description,
-			Keywords:      v.Keywords,
-			OGTitle:       v.OGTitle,
-			OGDescription: v.OGDescription,
-			OGImage:       v.OGImage,
-			OgURL:         v.OgURL,
-			Canonical:     v.Canonical,
-			Exclude:       v.Exclude,
-		}
-	default:
+	result, err := converter.ConvertValue[types.PageSelectors](s)
+	if err != nil {
+		// Return empty struct on conversion error
 		return types.PageSelectors{}
 	}
+	return result
 }
 
 // createSelectorConfig creates a new SelectorConfig from the given selectors.

@@ -145,7 +145,7 @@ func (c *Crawler) setupCallbacks(ctx context.Context) {
 		case <-ctx.Done():
 			r.Abort()
 			return
-		case <-c.abortChan:
+		case <-c.signals.AbortChannel():
 			r.Abort()
 			return
 		default:
@@ -215,7 +215,7 @@ func (c *Crawler) setupCallbacks(ctx context.Context) {
 		select {
 		case <-ctx.Done():
 			return
-		case <-c.abortChan:
+		case <-c.signals.AbortChannel():
 			return
 		default:
 			c.linkHandler.HandleLink(e)

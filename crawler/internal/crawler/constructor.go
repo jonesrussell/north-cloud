@@ -149,6 +149,10 @@ func NewCrawlerWithParams(p CrawlerParams) (*CrawlerResult, error) {
 		return nil, err
 	}
 
+	// Create lifecycle and signal coordinators
+	lifecycle := NewLifecycleManager()
+	signals := NewSignalCoordinator(p.Config, p.Logger)
+
 	// Create crawler
 	c := &Crawler{
 		logger:              p.Logger,
@@ -158,14 +162,17 @@ func NewCrawlerWithParams(p CrawlerParams) (*CrawlerResult, error) {
 		sources:             p.Sources,
 		rawContentProcessor: rawContentProcessor,
 		state:               NewState(p.Logger),
-		done:                make(chan struct{}),
 		processors:          []content.Processor{rawContentProcessor},
 		htmlProcessor:       NewHTMLProcessor(p.Logger, p.Sources),
 		cfg:                 p.Config,
-		abortChan:           make(chan struct{}),
+		lifecycle:           lifecycle,
+		signals:             signals,
 	}
 
 	c.linkHandler = NewLinkHandler(c)
+
+	// Create collector monitor after crawler is initialized
+	c.monitor = NewCollectorMonitor(collector, p.Logger, c.state, signals)
 
 	return &CrawlerResult{
 		Crawler: c,

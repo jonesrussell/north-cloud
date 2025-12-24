@@ -77,6 +77,33 @@ func (s *Storage) createContextWithTimeout(
 	return context.WithTimeout(ctx, timeout)
 }
 
+// closeResponse safely closes an Elasticsearch response body and logs any errors
+// For operations that don't have a docID (like searches), pass empty string
+func (s *Storage) closeResponse(res *esapi.Response, operation, index, docID string) {
+	if closeErr := res.Body.Close(); closeErr != nil {
+		fields := []any{
+			"error", closeErr,
+			"operation", operation,
+		}
+		if index != "" {
+			fields = append(fields, "index", index)
+		}
+		if docID != "" {
+			fields = append(fields, "doc_id", docID)
+		}
+		s.logger.Error("Failed to close response body", fields...)
+	}
+}
+
+// logOperationError logs storage operation errors with context
+func (s *Storage) logOperationError(operation, index, docID string, err error) {
+	s.logger.Error("Storage operation failed",
+		"operation", operation,
+		"index", index,
+		"doc_id", docID,
+		"error", err)
+}
+
 // GetIndexManager returns the index manager for this storage
 func (s *Storage) GetIndexManager() types.IndexManager {
 	return s.indexManager
@@ -93,10 +120,7 @@ func (s *Storage) IndexDocument(ctx context.Context, index, id string, document 
 
 	body, err := json.Marshal(document)
 	if err != nil {
-		s.logger.Error("Failed to marshal document for indexing",
-			"error", err,
-			"index", index,
-			"docID", id)
+		s.logOperationError("IndexDocument", index, id, err)
 		return fmt.Errorf("failed to marshal document for indexing: %w", err)
 	}
 
@@ -108,20 +132,10 @@ func (s *Storage) IndexDocument(ctx context.Context, index, id string, document 
 		s.client.Index.WithRefresh("true"),
 	)
 	if err != nil {
-		s.logger.Error("Failed to index document",
-			"error", err,
-			"index", index,
-			"docID", id)
+		s.logOperationError("IndexDocument", index, id, err)
 		return fmt.Errorf("failed to index document: %w", err)
 	}
-	defer func() {
-		if closeErr := res.Body.Close(); closeErr != nil {
-			s.logger.Error("Failed to close response body",
-				"error", closeErr,
-				"index", index,
-				"docID", id)
-		}
-	}()
+	defer s.closeResponse(res, "IndexDocument", index, id)
 
 	if res.IsError() {
 		s.logger.Error("Elasticsearch returned error response",
@@ -161,19 +175,17 @@ func (s *Storage) GetDocument(ctx context.Context, index, id string, document an
 		s.client.Get.WithContext(ctx),
 	)
 	if err != nil {
+		s.logOperationError("GetDocument", index, id, err)
 		return fmt.Errorf("error getting document: %w", err)
 	}
-	defer func() {
-		if closeErr := res.Body.Close(); closeErr != nil {
-			s.logger.Error("Error closing response body", "error", closeErr)
-		}
-	}()
+	defer s.closeResponse(res, "GetDocument", index, id)
 
 	if res.IsError() {
 		return fmt.Errorf("error getting document: %s", res.String())
 	}
 
 	if decodeErr := json.NewDecoder(res.Body).Decode(document); decodeErr != nil {
+		s.logOperationError("GetDocument", index, id, decodeErr)
 		return fmt.Errorf("error decoding document: %w", decodeErr)
 	}
 
@@ -191,17 +203,13 @@ func (s *Storage) DeleteDocument(ctx context.Context, index, docID string) error
 		s.client.Delete.WithContext(ctx),
 	)
 	if err != nil {
-		s.logger.Error("Failed to delete document", "error", err)
+		s.logOperationError("DeleteDocument", index, docID, err)
 		return fmt.Errorf("error deleting document: %w", err)
 	}
-	defer func() {
-		if closeErr := res.Body.Close(); closeErr != nil {
-			s.logger.Error("Error closing response body", "error", closeErr)
-		}
-	}()
+	defer s.closeResponse(res, "DeleteDocument", index, docID)
 
 	if res.IsError() {
-		s.logger.Error("Failed to delete document", "error", res.String())
+		s.logger.Error("Failed to delete document", "error", res.String(), "index", index, "doc_id", docID)
 		return fmt.Errorf("error deleting document: %s", res.String())
 	}
 
@@ -241,7 +249,7 @@ func (s *Storage) SearchDocuments(ctx context.Context, index string, query map[s
 	if err != nil {
 		return fmt.Errorf("error executing search: %w", err)
 	}
-	defer res.Body.Close()
+	defer s.closeResponse(res, "SearchDocuments", index, "")
 
 	if res.IsError() {
 		return fmt.Errorf("search error: %s", res.String())
@@ -286,7 +294,7 @@ func (s *Storage) Search(ctx context.Context, index string, query any) ([]any, e
 	if err != nil {
 		return nil, fmt.Errorf("error executing search: %w", err)
 	}
-	defer res.Body.Close()
+	defer s.closeResponse(res, "Search", index, "")
 
 	if res.IsError() {
 		return nil, fmt.Errorf("search error: %s", res.String())
@@ -342,7 +350,7 @@ func (s *Storage) Count(ctx context.Context, index string, query any) (int64, er
 	if err != nil {
 		return 0, fmt.Errorf("error executing count: %w", err)
 	}
-	defer res.Body.Close()
+	defer s.closeResponse(res, "Count", index, "")
 
 	if res.IsError() {
 		return 0, fmt.Errorf("count error: %s", res.String())
@@ -396,7 +404,7 @@ func (s *Storage) Aggregate(ctx context.Context, index string, aggs any) (any, e
 	if err != nil {
 		return nil, fmt.Errorf("error executing aggregation: %w", err)
 	}
-	defer res.Body.Close()
+	defer s.closeResponse(res, "Aggregate", index, "")
 
 	if res.IsError() {
 		return nil, fmt.Errorf("aggregation error: %s", res.String())
@@ -449,14 +457,10 @@ func (s *Storage) CreateIndex(
 		)
 	}
 	if err != nil {
-		s.logger.Error("Failed to create index", "index", index, "error", err)
+		s.logOperationError("CreateIndex", index, "", err)
 		return fmt.Errorf("failed to create index: %w", err)
 	}
-	defer func() {
-		if closeErr := res.Body.Close(); closeErr != nil {
-			s.logger.Error("Error closing response body", "error", closeErr)
-		}
-	}()
+	defer s.closeResponse(res, "CreateIndex", index, "")
 
 	if res.IsError() {
 		s.logger.Error("Failed to create index", "index", index, "error", res.String())
@@ -478,17 +482,13 @@ func (s *Storage) DeleteIndex(ctx context.Context, index string) error {
 		s.client.Indices.Delete.WithContext(ctx),
 	)
 	if err != nil {
-		s.logger.Error("Failed to delete index", "error", err)
+		s.logOperationError("DeleteIndex", index, "", err)
 		return fmt.Errorf("error deleting index: %w", err)
 	}
-	defer func() {
-		if closeErr := res.Body.Close(); closeErr != nil {
-			s.logger.Error("Error closing response body", "error", closeErr)
-		}
-	}()
+	defer s.closeResponse(res, "DeleteIndex", index, "")
 
 	if res.IsError() {
-		s.logger.Error("Failed to delete index", "error", res.String())
+		s.logger.Error("Failed to delete index", "error", res.String(), "index", index)
 		return fmt.Errorf("error deleting index: %s", res.String())
 	}
 
@@ -505,11 +505,7 @@ func (s *Storage) IndexExists(ctx context.Context, indexName string) (bool, erro
 	if err != nil {
 		return false, fmt.Errorf("failed to check index existence: %w", err)
 	}
-	defer func() {
-		if closeErr := res.Body.Close(); closeErr != nil {
-			s.logger.Error("Error closing response body", "error", closeErr)
-		}
-	}()
+	defer s.closeResponse(res, "IndexExists", indexName, "")
 
 	return res.StatusCode == http.StatusOK, nil
 }
@@ -694,7 +690,7 @@ func (s *Storage) TestConnection(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("error pinging storage: %w", err)
 	}
-	defer res.Body.Close()
+	defer s.closeResponse(res, "TestConnection", "", "")
 
 	if res.IsError() {
 		return fmt.Errorf("error pinging storage: %s", res.String())

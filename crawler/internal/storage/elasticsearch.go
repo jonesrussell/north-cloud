@@ -41,9 +41,14 @@ func (s *ElasticsearchStorage) GetIndexManager() types.IndexManager {
 
 // IndexDocument indexes a document
 func (s *ElasticsearchStorage) IndexDocument(ctx context.Context, index, id string, document any) error {
+	body, err := marshalJSON(document)
+	if err != nil {
+		return fmt.Errorf("failed to marshal document: %w", err)
+	}
+
 	res, err := s.client.Index(
 		index,
-		bytes.NewReader(mustJSON(document)),
+		bytes.NewReader(body),
 		s.client.Index.WithContext(ctx),
 		s.client.Index.WithDocumentID(id),
 	)
@@ -119,7 +124,11 @@ func (s *ElasticsearchStorage) SearchDocuments(
 	query map[string]any,
 	result any,
 ) error {
-	queryBytes := mustJSON(query)
+	queryBytes, err := marshalJSON(query)
+	if err != nil {
+		return fmt.Errorf("failed to marshal query: %w", err)
+	}
+
 	res, err := s.client.Search(
 		s.client.Search.WithContext(ctx),
 		s.client.Search.WithIndex(index),
@@ -172,10 +181,15 @@ func (s *ElasticsearchStorage) Search(ctx context.Context, index string, query a
 
 // Count returns the number of documents matching a query
 func (s *ElasticsearchStorage) Count(ctx context.Context, index string, query any) (int64, error) {
+	queryBytes, err := marshalJSON(query)
+	if err != nil {
+		return 0, fmt.Errorf("failed to marshal query: %w", err)
+	}
+
 	res, err := s.client.Count(
 		s.client.Count.WithContext(ctx),
 		s.client.Count.WithIndex(index),
-		s.client.Count.WithBody(bytes.NewReader(mustJSON(query))),
+		s.client.Count.WithBody(bytes.NewReader(queryBytes)),
 	)
 	if err != nil {
 		return 0, fmt.Errorf("failed to count documents: %w", err)
@@ -201,13 +215,18 @@ func (s *ElasticsearchStorage) Count(ctx context.Context, index string, query an
 
 // Aggregate performs an aggregation query
 func (s *ElasticsearchStorage) Aggregate(ctx context.Context, index string, aggs any) (any, error) {
+	queryBytes, err := marshalJSON(map[string]any{
+		"aggs": aggs,
+		"size": 0,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal aggregation query: %w", err)
+	}
+
 	res, err := s.client.Search(
 		s.client.Search.WithContext(ctx),
 		s.client.Search.WithIndex(index),
-		s.client.Search.WithBody(bytes.NewReader(mustJSON(map[string]any{
-			"aggs": aggs,
-			"size": 0,
-		}))),
+		s.client.Search.WithBody(bytes.NewReader(queryBytes)),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to aggregate: %w", err)
@@ -233,10 +252,15 @@ func (s *ElasticsearchStorage) Aggregate(ctx context.Context, index string, aggs
 
 // CreateIndex creates an index
 func (s *ElasticsearchStorage) CreateIndex(ctx context.Context, index string, mapping map[string]any) error {
+	mappingBytes, err := marshalJSON(mapping)
+	if err != nil {
+		return fmt.Errorf("failed to marshal mapping: %w", err)
+	}
+
 	res, err := s.client.Indices.Create(
 		index,
 		s.client.Indices.Create.WithContext(ctx),
-		s.client.Indices.Create.WithBody(bytes.NewReader(mustJSON(mapping))),
+		s.client.Indices.Create.WithBody(bytes.NewReader(mappingBytes)),
 	)
 	if err != nil {
 		return fmt.Errorf("failed to create index: %w", err)
@@ -346,9 +370,14 @@ func (s *ElasticsearchStorage) GetMapping(ctx context.Context, index string) (ma
 
 // UpdateMapping updates the mapping for an index
 func (s *ElasticsearchStorage) UpdateMapping(ctx context.Context, index string, mapping map[string]any) error {
+	mappingBytes, err := marshalJSON(mapping)
+	if err != nil {
+		return fmt.Errorf("failed to marshal mapping: %w", err)
+	}
+
 	res, err := s.client.Indices.PutMapping(
 		[]string{index},
-		bytes.NewReader(mustJSON(mapping)),
+		bytes.NewReader(mappingBytes),
 		s.client.Indices.PutMapping.WithContext(ctx),
 	)
 	if err != nil {
@@ -440,14 +469,8 @@ func (s *ElasticsearchStorage) Close() error {
 	return nil
 }
 
-// mustJSON marshals a value to JSON, panicking on error
-func mustJSON(v any) []byte {
-	data, err := json.Marshal(v)
-	if err != nil {
-		panic(fmt.Sprintf("failed to marshal to JSON: %v", err))
-	}
-	return data
-}
+// Note: marshalJSON is defined in storage.go and shared across the package
+// It replaced the old mustJSON function that used to panic
 
 // EnsureArticleIndex ensures the article index exists with the correct mapping
 func (s *ElasticsearchStorage) EnsureArticleIndex(ctx context.Context, name string) error {
