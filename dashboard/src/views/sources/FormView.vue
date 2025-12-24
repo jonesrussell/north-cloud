@@ -385,241 +385,46 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch, defineComponent, h } from 'vue'
-import { useRouter, useRoute } from 'vue-router'
-import { ChevronDownIcon } from '@heroicons/vue/24/outline'
-import { sourcesApi } from '../../api/client'
-import { PageHeader, LoadingSpinner, ErrorAlert } from '../../components/common'
+import { watch, onMounted } from 'vue'
+import { PageHeader, LoadingSpinner, ErrorAlert, SelectorInput, CollapsibleSection } from '../../components/common'
+import { useSourceForm } from '../../composables/useSourceForm'
+import { stringToArray } from '../../utils/formHelpers'
 
-// Inline components for cleaner code
-const SelectorInput = defineComponent({
-  props: {
-    modelValue: {
-      type: String,
-      default: '',
-    },
-    label: {
-      type: String,
-      default: '',
-    },
-    placeholder: {
-      type: String,
-      default: '',
-    },
-    hint: {
-      type: String,
-      default: '',
-    },
-  },
-  emits: ['update:modelValue'],
-  setup(props, { emit }) {
-    return () => h('div', [
-      h('label', { class: 'block text-sm font-medium text-gray-700' }, props.label),
-      h('input', {
-        type: 'text',
-        value: props.modelValue,
-        placeholder: props.placeholder,
-        class: 'mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm',
-        onInput: (e) => emit('update:modelValue', e.target.value),
-      }),
-      props.hint && h('p', { class: 'mt-1 text-xs text-gray-500' }, props.hint),
-    ])
-  },
-})
+// Use composable for form logic
+const {
+  form,
+  isEdit,
+  loading,
+  submitting,
+  error,
+  fetchingMetadata,
+  metadataFetched,
+  articleExcludeInput,
+  listExcludeInput,
+  pageExcludeInput,
+  showArticleSelectors,
+  showListSelectors,
+  showPageSelectors,
+  fetchMetadata,
+  loadSource,
+  handleSubmit,
+} = useSourceForm()
 
-const CollapsibleSection = defineComponent({
-  props: {
-    title: {
-      type: String,
-      default: '',
-    },
-    open: {
-      type: Boolean,
-      default: false,
-    },
-  },
-  emits: ['update:open'],
-  setup(props, { emit, slots }) {
-    return () => h('div', { class: 'border-t border-gray-200 pt-6' }, [
-      h('button', {
-        type: 'button',
-        class: 'flex w-full items-center justify-between text-left',
-        onClick: () => emit('update:open', !props.open),
-      }, [
-        h('h3', { class: 'text-lg font-medium text-gray-900' }, props.title),
-        h(ChevronDownIcon, {
-          class: ['h-5 w-5 text-gray-500 transition-transform', props.open ? 'rotate-180' : ''],
-        }),
-      ]),
-      props.open && h('div', { class: 'mt-4' }, slots.default?.()),
-    ])
-  },
-})
-
-const router = useRouter()
-const route = useRoute()
-
-const isEdit = computed(() => !!route.params.id)
-
-const form = ref({
-  name: '',
-  url: '',
-  rate_limit: '1s',
-  max_depth: 2,
-  time: [],
-  selectors: {
-    article: {},
-    list: {},
-    page: {},
-  },
-  enabled: true,
-})
-
-const loading = ref(false)
-const submitting = ref(false)
-const error = ref(null)
-const fetchingMetadata = ref(false)
-const metadataFetched = ref(false)
-
-const showArticleSelectors = ref(false)
-const showListSelectors = ref(false)
-const showPageSelectors = ref(false)
-
-const articleExcludeInput = ref('')
-const listExcludeInput = ref('')
-const pageExcludeInput = ref('')
-
-// Watch exclude inputs
+// Watch exclude inputs and sync with form selectors
 watch(articleExcludeInput, (val) => {
   if (!form.value.selectors.article) form.value.selectors.article = {}
-  form.value.selectors.article.exclude = val ? val.split(',').map(s => s.trim()).filter(Boolean) : []
+  form.value.selectors.article.exclude = stringToArray(val)
 })
 
 watch(listExcludeInput, (val) => {
   if (!form.value.selectors.list) form.value.selectors.list = {}
-  form.value.selectors.list.exclude_from_list = val ? val.split(',').map(s => s.trim()).filter(Boolean) : []
+  form.value.selectors.list.exclude_from_list = stringToArray(val)
 })
 
 watch(pageExcludeInput, (val) => {
   if (!form.value.selectors.page) form.value.selectors.page = {}
-  form.value.selectors.page.exclude = val ? val.split(',').map(s => s.trim()).filter(Boolean) : []
+  form.value.selectors.page.exclude = stringToArray(val)
 })
-
-const fetchMetadata = async () => {
-  if (!form.value.url) return
-
-  fetchingMetadata.value = true
-  error.value = null
-  metadataFetched.value = false
-
-  try {
-    const response = await sourcesApi.fetchMetadata(form.value.url)
-    const metadata = response.data
-
-    if (metadata.name) form.value.name = metadata.name
-
-    if (metadata.selectors) {
-      if (metadata.selectors.article) {
-        form.value.selectors.article = { ...form.value.selectors.article, ...metadata.selectors.article }
-      }
-      if (metadata.selectors.list) {
-        form.value.selectors.list = { ...form.value.selectors.list, ...metadata.selectors.list }
-      }
-      if (metadata.selectors.page) {
-        form.value.selectors.page = { ...form.value.selectors.page, ...metadata.selectors.page }
-      }
-
-      if (metadata.selectors.article?.exclude) {
-        articleExcludeInput.value = metadata.selectors.article.exclude.join(', ')
-      }
-      if (metadata.selectors.list?.exclude_from_list) {
-        listExcludeInput.value = metadata.selectors.list.exclude_from_list.join(', ')
-      }
-      if (metadata.selectors.page?.exclude) {
-        pageExcludeInput.value = metadata.selectors.page.exclude.join(', ')
-      }
-    }
-
-    metadataFetched.value = true
-
-    if (metadata.selectors?.article && Object.keys(metadata.selectors.article).length > 0) {
-      showArticleSelectors.value = true
-    }
-    if (metadata.selectors?.list && Object.keys(metadata.selectors.list).length > 0) {
-      showListSelectors.value = true
-    }
-    if (metadata.selectors?.page && Object.keys(metadata.selectors.page).length > 0) {
-      showPageSelectors.value = true
-    }
-  } catch (err) {
-    error.value = err.response?.data?.error || err.response?.data?.details || err.message || 'Failed to fetch metadata'
-    metadataFetched.value = false
-    console.error('[FormView] Error fetching metadata:', err)
-  } finally {
-    fetchingMetadata.value = false
-  }
-}
-
-const loadSource = async () => {
-  if (!isEdit.value) return
-
-  loading.value = true
-  error.value = null
-  try {
-    const response = await sourcesApi.get(route.params.id)
-    const source = response.data
-
-    if (!source.selectors) {
-      source.selectors = { article: {}, list: {}, page: {} }
-    }
-    if (!source.selectors.article) source.selectors.article = {}
-    if (!source.selectors.list) source.selectors.list = {}
-    if (!source.selectors.page) source.selectors.page = {}
-
-    form.value = {
-      ...source,
-    }
-
-    if (source.selectors.article?.exclude) {
-      articleExcludeInput.value = source.selectors.article.exclude.join(', ')
-    }
-    if (source.selectors.list?.exclude_from_list) {
-      listExcludeInput.value = source.selectors.list.exclude_from_list.join(', ')
-    }
-    if (source.selectors.page?.exclude) {
-      pageExcludeInput.value = source.selectors.page.exclude.join(', ')
-    }
-  } catch (err) {
-    error.value = err.response?.data?.error || err.message || 'Failed to load source'
-    console.error('[FormView] Error loading source:', err)
-  } finally {
-    loading.value = false
-  }
-}
-
-const handleSubmit = async () => {
-  submitting.value = true
-  error.value = null
-
-  try {
-    const data = {
-      ...form.value,
-    }
-
-    if (isEdit.value) {
-      await sourcesApi.update(route.params.id, data)
-    } else {
-      await sourcesApi.create(data)
-    }
-
-    router.push('/sources')
-  } catch (err) {
-    error.value = err.response?.data?.error || err.response?.data?.details || err.message || 'Failed to save source'
-    console.error('[FormView] Error saving source:', err)
-  } finally {
-    submitting.value = false
-  }
-}
 
 onMounted(() => {
   loadSource()
