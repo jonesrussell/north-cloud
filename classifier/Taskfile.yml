@@ -3,6 +3,11 @@ version: '3'
 vars:
   BINARY_NAME: classifier
   MAIN_PATH: ./main.go
+  POSTGRES_HOST: '{{.POSTGRES_CLASSIFIER_HOST | default "localhost"}}'
+  POSTGRES_PORT: '{{.POSTGRES_CLASSIFIER_PORT | default "5435"}}'
+  POSTGRES_USER: '{{.POSTGRES_CLASSIFIER_USER | default "postgres"}}'
+  POSTGRES_PASSWORD: '{{.POSTGRES_CLASSIFIER_PASSWORD | default ""}}'
+  POSTGRES_DB: '{{.POSTGRES_CLASSIFIER_DB | default "classifier"}}'
 
 tasks:
   default:
@@ -78,17 +83,21 @@ tasks:
 
   migrate:up:
     desc: "Run database migrations"
+    env:
+      PGPASSWORD: '{{.POSTGRES_PASSWORD}}'
     cmds:
-      - psql -h localhost -p 5435 -U postgres -d classifier -f migrations/001_create_rules.sql
-      - psql -h localhost -p 5435 -U postgres -d classifier -f migrations/002_create_source_reputation.sql
-      - psql -h localhost -p 5435 -U postgres -d classifier -f migrations/003_create_classification_history.sql
-      - psql -h localhost -p 5435 -U postgres -d classifier -f migrations/004_create_ml_models.sql
-      - psql -h localhost -p 5435 -U postgres -d classifier -f migrations/005_add_comprehensive_categories.sql
+      - psql -h {{.POSTGRES_HOST}} -p {{.POSTGRES_PORT}} -U {{.POSTGRES_USER}} -d {{.POSTGRES_DB}} -f migrations/001_create_rules.sql
+      - psql -h {{.POSTGRES_HOST}} -p {{.POSTGRES_PORT}} -U {{.POSTGRES_USER}} -d {{.POSTGRES_DB}} -f migrations/002_create_source_reputation.sql
+      - psql -h {{.POSTGRES_HOST}} -p {{.POSTGRES_PORT}} -U {{.POSTGRES_USER}} -d {{.POSTGRES_DB}} -f migrations/003_create_classification_history.sql
+      - psql -h {{.POSTGRES_HOST}} -p {{.POSTGRES_PORT}} -U {{.POSTGRES_USER}} -d {{.POSTGRES_DB}} -f migrations/004_create_ml_models.sql
+      - psql -h {{.POSTGRES_HOST}} -p {{.POSTGRES_PORT}} -U {{.POSTGRES_USER}} -d {{.POSTGRES_DB}} -f migrations/005_add_comprehensive_categories.sql
 
   db:shell:
     desc: "Open PostgreSQL shell"
+    env:
+      PGPASSWORD: '{{.POSTGRES_PASSWORD}}'
     cmds:
-      - psql -h localhost -p 5435 -U postgres -d classifier
+      - psql -h {{.POSTGRES_HOST}} -p {{.POSTGRES_PORT}} -U {{.POSTGRES_USER}} -d {{.POSTGRES_DB}}
 
   dev:
     desc: "Run in development mode with hot-reload (requires air)"
