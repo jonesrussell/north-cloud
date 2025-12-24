@@ -156,7 +156,7 @@ func (c *Config) validateRequiredFields() error {
 				break
 			}
 		}
-		
+
 		// Require auth only if not using localhost/development addresses
 		if !hasLocalDevAddress {
 			return &ConfigError{
