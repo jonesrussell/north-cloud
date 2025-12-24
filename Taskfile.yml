@@ -112,7 +112,7 @@ tasks:
   docker:dev:down:
     desc: "Stop development environment"
     cmds:
-      - docker compose -f docker-compose.base.yml -f docker-compose.dev.yml down
+      - docker compose -f docker-compose.base.yml -f docker-compose.dev.yml down {{.CLI_ARGS}}
 
   docker:dev:logs:
     desc: "View development environment logs"
