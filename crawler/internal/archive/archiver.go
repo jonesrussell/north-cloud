@@ -7,7 +7,9 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -26,10 +28,15 @@ type Archiver struct {
 	uploadWorker *UploadWorker
 }
 
+const (
+	// defaultUploadQueueSize is the default size for the async upload queue.
+	defaultUploadQueueSize = 100
+)
+
 // NewArchiver creates a new HTML archiver.
 func NewArchiver(cfg *minio.Config, log logger.Interface) (*Archiver, error) {
 	if cfg == nil {
-		return nil, fmt.Errorf("minio config is nil")
+		return nil, errors.New("minio config is nil")
 	}
 
 	archiver := &Archiver{
@@ -60,10 +67,10 @@ func NewArchiver(cfg *minio.Config, log logger.Interface) (*Archiver, error) {
 
 	// Start async upload worker if enabled
 	if cfg.UploadAsync {
-		archiver.uploadChan = make(chan *UploadTask, 100)
+		archiver.uploadChan = make(chan *UploadTask, defaultUploadQueueSize)
 		archiver.uploadWorker = NewUploadWorker(archiver, log)
 		archiver.uploadWorker.Start()
-		log.Info("Started async MinIO upload worker", "queue_size", 100)
+		log.Info("Started async MinIO upload worker", "queue_size", defaultUploadQueueSize)
 	}
 
 	log.Info("MinIO archiver initialized",
@@ -81,7 +88,7 @@ func (a *Archiver) Archive(ctx context.Context, task *UploadTask) error {
 	}
 
 	if task == nil {
-		return fmt.Errorf("upload task is nil")
+		return errors.New("upload task is nil")
 	}
 
 	// Async mode: send to worker queue
@@ -92,7 +99,7 @@ func (a *Archiver) Archive(ctx context.Context, task *UploadTask) error {
 		default:
 			a.logger.Warn("Upload queue full, dropping task", "url", task.URL)
 			if !a.config.FailSilently {
-				return fmt.Errorf("upload queue full")
+				return errors.New("upload queue full")
 			}
 			return nil
 		}
@@ -124,7 +131,7 @@ func (a *Archiver) uploadHTML(ctx context.Context, task *UploadTask) error {
 				"url":         task.URL,
 				"source":      task.SourceName,
 				"crawled-at":  task.Timestamp.Format(time.RFC3339),
-				"status-code": fmt.Sprintf("%d", task.StatusCode),
+				"status-code": strconv.Itoa(task.StatusCode),
 			},
 		},
 	)
@@ -138,9 +145,9 @@ func (a *Archiver) uploadHTML(ctx context.Context, task *UploadTask) error {
 		"url", task.URL)
 
 	// Upload metadata file
-	if err := a.uploadMetadata(ctx, metadata); err != nil {
+	if err2 := a.uploadMetadata(ctx, metadata); err2 != nil {
 		a.logger.Warn("Failed to upload metadata, continuing",
-			"error", err,
+			"error", err2,
 			"url", task.URL)
 		// Don't fail the whole operation if metadata upload fails
 	}

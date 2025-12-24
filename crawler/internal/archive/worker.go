@@ -2,6 +2,7 @@
 package archive
 
 import (
+	"math"
 	"sync"
 	"time"
 
@@ -58,7 +59,15 @@ func (w *UploadWorker) processTask(task *UploadTask) {
 
 	for attempt := 0; attempt <= w.archiver.config.MaxRetries; attempt++ {
 		if attempt > 0 {
-			backoff := time.Duration(1<<uint(attempt-1)) * time.Second
+			// Calculate backoff with overflow protection
+			// Limit shift to prevent integer overflow
+			shift := attempt - 1
+			if shift > maxBackoffShift {
+				shift = maxBackoffShift
+			}
+			// Use math.Pow to calculate exponential backoff safely
+			backoffSeconds := int64(math.Pow(backoffBase, float64(shift)))
+			backoff := time.Duration(backoffSeconds) * time.Second
 			w.logger.Debug("Retrying upload",
 				"attempt", attempt,
 				"backoff", backoff,
@@ -92,9 +101,18 @@ func (w *UploadWorker) processTask(task *UploadTask) {
 	}
 }
 
+const (
+	// queueDrainTimeout is the timeout for draining the upload queue.
+	queueDrainTimeout = 10 * time.Second
+	// maxBackoffShift is the maximum bit shift for exponential backoff to prevent overflow.
+	maxBackoffShift = 30
+	// backoffBase is the base for exponential backoff calculation.
+	backoffBase = 2.0
+)
+
 // drainQueue drains the upload queue with a timeout.
 func (w *UploadWorker) drainQueue() {
-	deadline := time.Now().Add(10 * time.Second)
+	deadline := time.Now().Add(queueDrainTimeout)
 	drained := 0
 
 	for {

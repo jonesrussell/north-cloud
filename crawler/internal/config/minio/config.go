@@ -36,6 +36,13 @@ type Config struct {
 	FailSilently bool `yaml:"fail_silently"`
 }
 
+const (
+	// defaultUploadTimeout is the default timeout for upload operations.
+	defaultUploadTimeout = 30 * time.Second
+	// defaultMaxRetries is the default maximum number of retry attempts.
+	defaultMaxRetries = 3
+)
+
 // NewConfig returns a new MinIO configuration with default values.
 func NewConfig() *Config {
 	return &Config{
@@ -45,8 +52,8 @@ func NewConfig() *Config {
 		Bucket:         "html-archives",
 		MetadataBucket: "crawler-metadata",
 		UploadAsync:    true,
-		UploadTimeout:  30 * time.Second,
-		MaxRetries:     3,
+		UploadTimeout:  defaultUploadTimeout,
+		MaxRetries:     defaultMaxRetries,
 		Compression:    false,
 		FailSilently:   true,
 	}
