@@ -84,22 +84,19 @@ func Start() error {
 		return fmt.Errorf("failed to create storage: %w", err)
 	}
 
-	// Phase 4: Create search manager
-	searchManager := storage.NewSearchManager(storageResult.Storage, deps.Logger)
-
-	// Phase 5: Setup jobs handler and scheduler
+	// Phase 4: Setup jobs handler and scheduler
 	jobsHandler, dbScheduler, db := setupJobsAndScheduler(deps, storageResult)
 	if db != nil {
 		defer db.Close()
 	}
 
-	// Phase 6: Start HTTP server
-	server, errChan, err := startHTTPServer(deps, searchManager, jobsHandler)
+	// Phase 5: Start HTTP server
+	server, errChan, err := startHTTPServer(deps, jobsHandler)
 	if err != nil {
 		return err
 	}
 
-	// Phase 7: Run server until interrupted
+	// Phase 6: Run server until interrupted
 	return runServerUntilInterrupt(deps.Logger, server, dbScheduler, errChan)
 }
 
@@ -399,10 +396,9 @@ func createAndStartScheduler(
 // Returns the server and an error channel for server errors.
 func startHTTPServer(
 	deps *CommandDeps,
-	searchManager api.SearchManager,
 	jobsHandler *api.JobsHandler,
 ) (*http.Server, chan error, error) {
-	server, _, err := api.StartHTTPServer(deps.Logger, searchManager, deps.Config, jobsHandler)
+	server, _, err := api.StartHTTPServer(deps.Logger, deps.Config, jobsHandler)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to start HTTP server: %w", err)
 	}

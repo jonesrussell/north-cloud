@@ -1,8 +1,7 @@
-// Package api implements the HTTP API for the search service.
+// Package api implements the HTTP API for the crawler service.
 package api
 
 import (
-	"context"
 	"net/http"
 	"time"
 
@@ -12,34 +11,17 @@ import (
 	"github.com/jonesrussell/north-cloud/crawler/internal/logger"
 )
 
-// SearchManager defines the interface for search operations.
-type SearchManager interface {
-	// Search performs a search query.
-	Search(ctx context.Context, index string, query map[string]any) ([]any, error)
-
-	// Count returns the number of documents matching a query.
-	Count(ctx context.Context, index string, query map[string]any) (int64, error)
-
-	// Aggregate performs an aggregation query.
-	Aggregate(ctx context.Context, index string, aggs map[string]any) (map[string]any, error)
-
-	// Close closes any resources held by the search manager.
-	Close() error
-}
-
 // Constants
 const (
 	readHeaderTimeout = 10 * time.Second // Timeout for reading headers
 	DefaultMaxResults = 10
 	DefaultTimeout    = 30 * time.Second
 	DefaultRetries    = 3
-	defaultSearchSize = 10
 )
 
 // SetupRouter creates and configures the Gin router with all routes
 func SetupRouter(
 	log logger.Interface,
-	searchManager SearchManager,
 	cfg config.Interface,
 	jobsHandler *JobsHandler,
 ) (*gin.Engine, middleware.SecurityMiddlewareInterface) {
@@ -105,11 +87,6 @@ func SetupRouter(
 		})
 	})
 
-	// Define protected routes
-	protected := router.Group("")
-	protected.Use(security.Middleware())
-	protected.POST("/search", handleSearch(searchManager))
-
 	return router, security
 }
 
@@ -154,74 +131,13 @@ func corsMiddleware() gin.HandlerFunc {
 	}
 }
 
-// handleSearch creates a handler for search requests
-func handleSearch(searchManager SearchManager) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		var req SearchRequest
-		if err := c.ShouldBindJSON(&req); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"error": "Invalid request payload",
-			})
-			return
-		}
-
-		if req.Query == "" {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"error": "Query cannot be empty",
-			})
-			return
-		}
-
-		// Set default size if not provided
-		if req.Size == 0 {
-			req.Size = defaultSearchSize
-		}
-
-		// Create search query
-		query := map[string]any{
-			"query": map[string]any{
-				"match": map[string]any{
-					"content": req.Query,
-				},
-			},
-			"size": req.Size,
-		}
-
-		// Perform search
-		results, err := searchManager.Search(c.Request.Context(), req.Index, query)
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{
-				"error": "Search failed",
-			})
-			return
-		}
-
-		// Get total count
-		total, err := searchManager.Count(c.Request.Context(), req.Index, query)
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{
-				"error": "Failed to get total count",
-			})
-			return
-		}
-
-		// Return response
-		response := SearchResponse{
-			Results: results,
-			Total:   int(total),
-		}
-		c.JSON(http.StatusOK, response)
-	}
-}
-
 // StartHTTPServer starts the HTTP server with the given configuration
 func StartHTTPServer(
 	log logger.Interface,
-	searchManager SearchManager,
 	cfg config.Interface,
 	jobsHandler *JobsHandler,
 ) (*http.Server, middleware.SecurityMiddlewareInterface, error) {
-	router, security := SetupRouter(log, searchManager, cfg, jobsHandler)
+	router, security := SetupRouter(log, cfg, jobsHandler)
 
 	srv := &http.Server{
 		Addr:              cfg.GetServerConfig().Address,

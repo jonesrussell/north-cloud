@@ -15,12 +15,6 @@ type Interface interface {
 	IndexDocument(ctx context.Context, index string, id string, document any) error
 	GetDocument(ctx context.Context, index string, id string, document any) error
 	DeleteDocument(ctx context.Context, index string, id string) error
-	SearchDocuments(ctx context.Context, index string, query map[string]any, result any) error
-
-	// Search operations
-	Search(ctx context.Context, index string, query any) ([]any, error)
-	Count(ctx context.Context, index string, query any) (int64, error)
-	Aggregate(ctx context.Context, index string, aggs any) (any, error)
 
 	// Index operations
 	CreateIndex(ctx context.Context, index string, mapping map[string]any) error

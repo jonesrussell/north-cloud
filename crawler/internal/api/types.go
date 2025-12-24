@@ -1,18 +1,5 @@
-// Package api implements the HTTP API for the search service.
+// Package api implements the HTTP API for the crawler service.
 package api
-
-// SearchRequest represents the structure of the search request
-type SearchRequest struct {
-	Query string `json:"query"`
-	Index string `json:"index"`
-	Size  int    `json:"size"`
-}
-
-// SearchResponse represents the structure of the search response
-type SearchResponse struct {
-	Results []any `json:"results"`
-	Total   int   `json:"total"`
-}
 
 // APIError represents an error response from the API.
 type APIError struct {

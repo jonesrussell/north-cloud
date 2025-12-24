@@ -98,20 +98,6 @@ func WaitForIndexReady(
 	}
 }
 
-// AssertSearchResults checks that a search returns the expected number of results.
-func AssertSearchResults(
-	t require.TestingT,
-	storage types.Interface,
-	ctx context.Context,
-	index string,
-	query map[string]any,
-	minResults int,
-) {
-	results, err := storage.Search(ctx, index, query)
-	require.NoError(t, err, "failed to search index %s", index)
-	assert.GreaterOrEqual(t, len(results), minResults, "search should return at least %d results", minResults)
-}
-
 // RetryAssertion retries an assertion function until it succeeds or timeout is reached.
 func RetryAssertion(t require.TestingT, timeout, interval time.Duration, fn func() error) {
 	deadline := time.Now().Add(timeout)
