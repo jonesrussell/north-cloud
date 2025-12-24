@@ -90,7 +90,11 @@ func Start() error {
 	if err != nil {
 		return fmt.Errorf("failed to connect to database: %w", err)
 	}
-	defer db.Close()
+	defer func() {
+		if closeErr := db.Close(); closeErr != nil {
+			log.Printf("Error closing database connection: %v", closeErr)
+		}
+	}()
 	log.Println("Connected to PostgreSQL")
 
 	// Create repositories

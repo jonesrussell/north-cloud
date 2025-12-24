@@ -58,7 +58,11 @@ func (s *ElasticsearchStorage) QueryRawContent(ctx context.Context, status strin
 	if err != nil {
 		return nil, fmt.Errorf("failed to search: %w", err)
 	}
-	defer res.Body.Close()
+	defer func() {
+		if closeErr := res.Body.Close(); closeErr != nil {
+			// Log error but don't fail - body close errors are usually non-critical
+		}
+	}()
 
 	if res.IsError() {
 		return nil, fmt.Errorf("error searching: %s", res.String())
@@ -120,7 +124,11 @@ func (s *ElasticsearchStorage) IndexClassifiedContent(ctx context.Context, conte
 	if err != nil {
 		return fmt.Errorf("failed to index document: %w", err)
 	}
-	defer res.Body.Close()
+	defer func() {
+		if closeErr := res.Body.Close(); closeErr != nil {
+			// Log error but don't fail - body close errors are usually non-critical
+		}
+	}()
 
 	if res.IsError() {
 		return fmt.Errorf("error indexing document: %s", res.String())
@@ -167,7 +175,11 @@ func (s *ElasticsearchStorage) UpdateRawContentStatus(ctx context.Context, conte
 			lastErr = err
 			continue
 		}
-		defer res.Body.Close()
+		defer func() {
+			if closeErr := res.Body.Close(); closeErr != nil {
+				// Log error but don't fail - body close errors are usually non-critical
+			}
+		}()
 
 		if !res.IsError() {
 			// Successfully updated
