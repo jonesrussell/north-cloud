@@ -8,6 +8,9 @@ import (
 	"time"
 )
 
+// APIKeyParts is the number of parts in an API key (id:key)
+const APIKeyParts = 2
+
 // Config represents server-specific configuration settings.
 type Config struct {
 	// ReadTimeout is the maximum duration for reading the entire request
@@ -33,7 +36,7 @@ func (c *Config) Validate() error {
 
 		// Validate API key format (expected format: "id:key")
 		parts := strings.Split(c.APIKey, ":")
-		if len(parts) != 2 {
+		if len(parts) != APIKeyParts {
 			return fmt.Errorf("invalid API key format: expected 'id:key' but got %q", c.APIKey)
 		}
 
