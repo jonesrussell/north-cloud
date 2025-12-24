@@ -15,7 +15,6 @@ import (
 	cmdcommon "github.com/jonesrussell/north-cloud/crawler/cmd/common"
 	"github.com/jonesrussell/north-cloud/crawler/internal/api"
 	"github.com/jonesrussell/north-cloud/crawler/internal/constants"
-	"github.com/jonesrussell/north-cloud/crawler/internal/content/page"
 	"github.com/jonesrussell/north-cloud/crawler/internal/crawler"
 	"github.com/jonesrussell/north-cloud/crawler/internal/crawler/events"
 	"github.com/jonesrussell/north-cloud/crawler/internal/database"
@@ -245,13 +244,6 @@ func createCrawlerForJobs(
 		}
 	}
 
-	pageService := page.NewContentServiceWithSources(
-		deps.Logger,
-		storageResult.Storage,
-		constants.DefaultContentIndex,
-		sourceManager,
-	)
-
 	// Create crawler
 	crawlerResult, err := crawler.NewCrawlerWithParams(crawler.CrawlerParams{
 		Logger:       deps.Logger,
@@ -259,7 +251,6 @@ func createCrawlerForJobs(
 		IndexManager: storageResult.IndexManager,
 		Sources:      sourceManager,
 		Config:       crawlerCfg,
-		PageService:  pageService,
 		Storage:      storageResult.Storage,
 	})
 

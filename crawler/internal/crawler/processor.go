@@ -33,11 +33,6 @@ func (c *Crawler) AddProcessor(processor content.Processor) {
 }
 
 
-// SetPageProcessor sets the page processor.
-func (c *Crawler) SetPageProcessor(processor content.Processor) {
-	c.pageProcessor = processor
-}
-
 // GetProcessors returns the processors.
 func (c *Crawler) GetProcessors() []content.Processor {
 	processors := make([]content.Processor, 0, len(c.processors))

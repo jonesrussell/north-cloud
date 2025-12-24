@@ -11,10 +11,8 @@ import (
 	"github.com/jonesrussell/north-cloud/crawler/internal/common/transport"
 	"github.com/jonesrussell/north-cloud/crawler/internal/config/crawler"
 	"github.com/jonesrussell/north-cloud/crawler/internal/content"
-	"github.com/jonesrussell/north-cloud/crawler/internal/content/page"
 	"github.com/jonesrussell/north-cloud/crawler/internal/content/rawcontent"
 	"github.com/jonesrussell/north-cloud/crawler/internal/crawler/events"
-	"github.com/jonesrussell/north-cloud/crawler/internal/domain"
 	"github.com/jonesrussell/north-cloud/crawler/internal/logger"
 	"github.com/jonesrussell/north-cloud/crawler/internal/sources"
 	"github.com/jonesrussell/north-cloud/crawler/internal/storage/types"
@@ -42,14 +40,12 @@ type CrawlerParams struct {
 	IndexManager types.IndexManager
 	Sources      sources.Interface
 	Config       *crawler.Config
-	PageService  page.Interface
 	Storage      types.Interface
 }
 
-// CrawlerResult holds the crawler instance and its channels
+// CrawlerResult holds the crawler instance
 type CrawlerResult struct {
-	Crawler     Interface
-	PageChannel chan *domain.Page
+	Crawler Interface
 }
 
 // createJobValidator creates a simple job validator
@@ -136,20 +132,6 @@ func createCollector(cfg *crawler.Config, log logger.Interface) (*colly.Collecto
 // NewCrawlerWithParams creates a new crawler instance with all its components.
 // This is the non-FX version that replaces ProvideCrawler.
 func NewCrawlerWithParams(p CrawlerParams) (*CrawlerResult, error) {
-	validator := createJobValidator()
-
-	// Create channels (kept for backward compatibility, but not actively used)
-	pageChannel := make(chan *domain.Page, DefaultChannelBufferSize)
-
-	pageProcessor := page.NewPageProcessor(
-		p.Logger,
-		p.PageService,
-		validator,
-		p.Storage,
-		"pages",
-		pageChannel,
-	)
-
 	// Create raw content service and processor (primary processor for all content)
 	rawContentService := rawcontent.NewRawContentService(
 		p.Logger,
@@ -174,7 +156,6 @@ func NewCrawlerWithParams(p CrawlerParams) (*CrawlerResult, error) {
 		bus:                 p.Bus,
 		indexManager:        p.IndexManager,
 		sources:             p.Sources,
-		pageProcessor:       pageProcessor,
 		rawContentProcessor: rawContentProcessor,
 		state:               NewState(p.Logger),
 		done:                make(chan struct{}),
@@ -187,7 +168,6 @@ func NewCrawlerWithParams(p CrawlerParams) (*CrawlerResult, error) {
 	c.linkHandler = NewLinkHandler(c)
 
 	return &CrawlerResult{
-		Crawler:     c,
-		PageChannel: pageChannel,
+		Crawler: c,
 	}, nil
 }

@@ -139,7 +139,6 @@ type Crawler struct {
 	bus                 *events.EventBus
 	indexManager        storagetypes.IndexManager
 	sources             sources.Interface
-	pageProcessor       content.Processor
 	rawContentProcessor content.Processor
 	state               *State
 	done                chan struct{}
