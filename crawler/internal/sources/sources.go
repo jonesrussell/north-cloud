@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net/url"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/jonesrussell/north-cloud/crawler/internal/config"
@@ -74,6 +75,8 @@ type Sources struct {
 	sources []Config
 	logger  logger.Interface
 	metrics *types.SourcesMetrics
+	apiURL  string       // Store API URL for reloading sources
+	mu      sync.RWMutex // Mutex for thread-safe source updates
 }
 
 // Ensure Sources implements Interface
@@ -267,10 +270,17 @@ func LoadSources(cfg config.Interface, log logger.Interface) (*Sources, error) {
 		return nil, errors.New("no sources found")
 	}
 
+	// Store API URL for dynamic reloading
+	apiURL := ""
+	if crawlerCfg != nil {
+		apiURL = crawlerCfg.SourcesAPIURL
+	}
+
 	return &Sources{
 		sources: sources,
 		logger:  log,
 		metrics: types.NewSourcesMetrics(),
+		apiURL:  apiURL,
 	}, nil
 }
 
@@ -374,6 +384,9 @@ func convertLoaderConfig(cfg loader.Config) Config {
 
 // ListSources retrieves all sources.
 func (s *Sources) ListSources(ctx context.Context) ([]*Config, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
 	result := make([]*Config, 0, len(s.sources))
 	for i := range s.sources {
 		result = append(result, &s.sources[i])
@@ -383,17 +396,55 @@ func (s *Sources) ListSources(ctx context.Context) ([]*Config, error) {
 
 // ValidateSource validates a source configuration and returns the validated source.
 // It checks if the source exists and is properly configured.
+// If the source is not found, it attempts to reload sources from the API and retries once.
 // Note: Index creation is now handled by the raw content pipeline, not here.
 func (s *Sources) ValidateSource(
 	ctx context.Context,
 	sourceName string,
 	indexManager storagetypes.IndexManager,
 ) (*configtypes.Source, error) {
-	// Get all sources
-	sourceConfigs, err := s.GetSources()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get sources: %w", err)
+	// Try validation with current sources
+	source, err := s.validateSourceInternal(ctx, sourceName, indexManager)
+	if err == nil {
+		return source, nil
 	}
+
+	// If source not found and we have an API URL, try reloading sources and retry
+	if s.apiURL != "" && strings.Contains(err.Error(), "source not found") {
+		if s.logger != nil {
+			s.logger.Debug("Source not found, reloading sources from API",
+				"source_name", sourceName,
+				"api_url", s.apiURL)
+		}
+
+		// Reload sources from API
+		if reloadErr := s.reloadSources(); reloadErr != nil {
+			if s.logger != nil {
+				s.logger.Warn("Failed to reload sources from API",
+					"error", reloadErr)
+			}
+			// Return original error if reload fails
+			return nil, err
+		}
+
+		// Retry validation with reloaded sources
+		return s.validateSourceInternal(ctx, sourceName, indexManager)
+	}
+
+	return nil, err
+}
+
+// validateSourceInternal performs the actual source validation logic.
+func (s *Sources) validateSourceInternal(
+	ctx context.Context,
+	sourceName string,
+	indexManager storagetypes.IndexManager,
+) (*configtypes.Source, error) {
+	// Get all sources (with read lock)
+	s.mu.RLock()
+	sourceConfigs := make([]Config, len(s.sources))
+	copy(sourceConfigs, s.sources)
+	s.mu.RUnlock()
 
 	// If no sources are configured, return an error
 	if len(sourceConfigs) == 0 {
@@ -437,6 +488,31 @@ func (s *Sources) ValidateSource(
 	return source, nil
 }
 
+// reloadSources reloads sources from the API and updates the cached sources.
+func (s *Sources) reloadSources() error {
+	if s.apiURL == "" {
+		return errors.New("API URL not configured")
+	}
+
+	// Load sources from API
+	newSources, err := loadSourcesFromAPI(s.apiURL, s.logger)
+	if err != nil {
+		return fmt.Errorf("failed to reload sources from API: %w", err)
+	}
+
+	// Update cached sources (with write lock)
+	s.mu.Lock()
+	s.sources = newSources
+	s.mu.Unlock()
+
+	if s.logger != nil {
+		s.logger.Info("Sources reloaded from API",
+			"count", len(newSources))
+	}
+
+	return nil
+}
+
 // GetMetrics returns the current metrics.
 func (s *Sources) GetMetrics() types.SourcesMetrics {
 	return *s.metrics
@@ -444,11 +520,19 @@ func (s *Sources) GetMetrics() types.SourcesMetrics {
 
 // GetSources returns all sources.
 func (s *Sources) GetSources() ([]Config, error) {
-	return s.sources, nil
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	sources := make([]Config, len(s.sources))
+	copy(sources, s.sources)
+	return sources, nil
 }
 
 // FindByName finds a source by name.
 func (s *Sources) FindByName(name string) *Config {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
 	for i := range s.sources {
 		if s.sources[i].Name == name {
 			return &s.sources[i]
