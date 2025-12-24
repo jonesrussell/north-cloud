@@ -6,6 +6,7 @@ import (
 	"time"
 
 	colly "github.com/gocolly/colly/v2"
+	"github.com/jonesrussell/north-cloud/crawler/internal/archive"
 	"github.com/jonesrussell/north-cloud/crawler/internal/config/crawler"
 	"github.com/jonesrussell/north-cloud/crawler/internal/content"
 	"github.com/jonesrussell/north-cloud/crawler/internal/crawler/events"
@@ -91,6 +92,16 @@ type ContentProcessor interface {
 	ContentType() string
 }
 
+// Archiver handles HTML archiving to object storage.
+type Archiver interface {
+	// Archive archives HTML to storage
+	Archive(ctx context.Context, task *archive.UploadTask) error
+	// HealthCheck verifies archiver connectivity
+	HealthCheck(ctx context.Context) error
+	// Close gracefully shuts down the archiver
+	Close() error
+}
+
 // Interface defines the complete crawler interface.
 type Interface interface {
 	// Embed the core crawler interface
@@ -140,6 +151,7 @@ type Crawler struct {
 	htmlProcessor       *HTMLProcessor
 	cfg                 *crawler.Config
 	maxDepthOverride    int32 // Override for source's max_depth (0 means use source default), accessed atomically
+	archiver            Archiver // HTML archiver for MinIO storage
 
 	// Extracted components for better separation of concerns
 	lifecycle *LifecycleManager

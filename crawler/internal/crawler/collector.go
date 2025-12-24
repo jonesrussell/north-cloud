@@ -12,6 +12,7 @@ import (
 	"time"
 
 	colly "github.com/gocolly/colly/v2"
+	"github.com/jonesrussell/north-cloud/crawler/internal/archive"
 	configtypes "github.com/jonesrussell/north-cloud/crawler/internal/config/types"
 )
 
@@ -148,6 +149,25 @@ func (c *Crawler) setupCallbacks(ctx context.Context) {
 			"url", r.Request.URL.String(),
 			"status", r.StatusCode,
 			"headers", r.Headers)
+
+		// Archive HTML to MinIO if archiver is enabled
+		if c.archiver != nil {
+			task := &archive.UploadTask{
+				HTML:       r.Body,
+				URL:        r.Request.URL.String(),
+				SourceName: c.state.CurrentSource(),
+				StatusCode: r.StatusCode,
+				Headers:    convertHeaders(r.Headers),
+				Timestamp:  time.Now(),
+				Ctx:        ctx,
+			}
+
+			if err := c.archiver.Archive(ctx, task); err != nil {
+				c.logger.Warn("Failed to archive HTML",
+					"url", r.Request.URL.String(),
+					"error", err)
+			}
+		}
 	})
 
 	// Set up request callback
@@ -305,6 +325,20 @@ func (c *Crawler) SetRateLimit(duration time.Duration) error {
 // SetCollector sets the collector for the crawler.
 func (c *Crawler) SetCollector(collector *colly.Collector) {
 	c.collector = collector
+}
+
+// convertHeaders converts Colly response headers to a map[string]string.
+func convertHeaders(headers *http.Header) map[string]string {
+	result := make(map[string]string)
+	if headers == nil {
+		return result
+	}
+	for key, values := range *headers {
+		if len(values) > 0 {
+			result[key] = values[0]
+		}
+	}
+	return result
 }
 
 const (

@@ -10,6 +10,7 @@ import (
 	"github.com/jonesrussell/north-cloud/crawler/internal/config/crawler"
 	dbconfig "github.com/jonesrussell/north-cloud/crawler/internal/config/database"
 	"github.com/jonesrussell/north-cloud/crawler/internal/config/elasticsearch"
+	"github.com/jonesrussell/north-cloud/crawler/internal/config/minio"
 	"github.com/jonesrussell/north-cloud/crawler/internal/config/server"
 	"github.com/spf13/viper"
 )
@@ -24,6 +25,8 @@ type Interface interface {
 	GetElasticsearchConfig() *elasticsearch.Config
 	// GetDatabaseConfig returns the database configuration.
 	GetDatabaseConfig() *dbconfig.Config
+	// GetMinIOConfig returns the MinIO configuration.
+	GetMinIOConfig() *minio.Config
 	// GetConfigFile returns the path to the configuration file.
 	GetConfigFile() string
 	// Validate validates the configuration based on the current command.
@@ -51,6 +54,8 @@ type Config struct {
 	Elasticsearch *elasticsearch.Config `yaml:"elasticsearch"`
 	// Database holds database configuration
 	Database *dbconfig.Config `yaml:"database"`
+	// MinIO holds MinIO configuration for HTML archiving
+	MinIO *minio.Config `yaml:"minio"`
 }
 
 // validateHTTPDConfig validates the configuration for the httpd command
@@ -76,6 +81,7 @@ func LoadConfig() (*Config, error) {
 		Elasticsearch: elasticsearch.LoadFromViper(viper.GetViper()),
 		Crawler:       crawler.LoadFromViper(viper.GetViper()),
 		Database:      dbconfig.LoadFromViper(viper.GetViper()),
+		MinIO:         minio.LoadFromViper(viper.GetViper()),
 	}
 
 	// Set server config from Viper with defaults
@@ -107,6 +113,13 @@ func LoadConfig() (*Config, error) {
 		return nil, fmt.Errorf("invalid config: %w", validateErr)
 	}
 
+	// Validate MinIO configuration
+	if cfg.MinIO != nil {
+		if err := cfg.MinIO.Validate(); err != nil {
+			return nil, fmt.Errorf("minio: %w", err)
+		}
+	}
+
 	return cfg, nil
 }
 
@@ -132,6 +145,15 @@ func (c *Config) GetDatabaseConfig() *dbconfig.Config {
 		return dbconfig.LoadFromViper(viper.GetViper())
 	}
 	return c.Database
+}
+
+// GetMinIOConfig returns the MinIO configuration.
+func (c *Config) GetMinIOConfig() *minio.Config {
+	if c.MinIO == nil {
+		// Return default config if not initialized
+		return minio.LoadFromViper(viper.GetViper())
+	}
+	return c.MinIO
 }
 
 // GetConfigFile returns the path to the configuration file.
