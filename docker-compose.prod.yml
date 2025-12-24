@@ -18,6 +18,8 @@ services:
     depends_on:
       postgres-crawler:
         condition: service_healthy
+      elasticsearch:
+        condition: service_healthy
     environment:
       - DB_HOST=postgres-crawler
       - DB_PORT=5432
@@ -25,6 +27,7 @@ services:
       - DB_PASSWORD=${POSTGRES_CRAWLER_PASSWORD}
       - DB_NAME=${POSTGRES_CRAWLER_DB:-crawler}
       - DB_SSLMODE=disable
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
       - APP_DEBUG=false
       - APP_ENV=production
     # No volume mounts - code is baked into image
