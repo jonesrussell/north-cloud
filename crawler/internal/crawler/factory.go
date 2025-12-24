@@ -46,8 +46,6 @@ func (f *DefaultProcessorFactory) CreateProcessor(contentType contenttype.Type) 
 	}
 
 	// Create a new processor based on the content type
-	var processor content.Processor
-
 	switch contentType {
 	case contenttype.Article:
 		return nil, errors.New("article processing not implemented - use rawcontent processor instead")
@@ -64,9 +62,4 @@ func (f *DefaultProcessorFactory) CreateProcessor(contentType contenttype.Type) 
 	default:
 		return nil, errors.New("unsupported content type")
 	}
-
-	// Cache the processor for future use
-	f.processors[contentType] = processor
-
-	return processor, nil
 }
