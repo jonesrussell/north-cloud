@@ -1,14 +1,17 @@
 FROM golang:1.25-alpine AS builder
 
-WORKDIR /build
-
 # Install build dependencies
 RUN apk add --no-cache git
 
-# Copy infrastructure module first (required for go.mod replace directive)
+# Copy infrastructure module to parent directory (required for go.mod replace directive)
+# The replace directive uses ../infrastructure, so we need infrastructure at /build/infrastructure
+WORKDIR /build
 COPY infrastructure/ ./infrastructure/
 
-# Copy go mod files from publisher
+# Now work in publisher subdirectory to match the replace directive path
+WORKDIR /build/publisher
+
+# Copy go mod files
 COPY publisher/go.mod publisher/go.sum ./
 RUN go mod download
 
@@ -29,10 +32,10 @@ RUN apk --no-cache add ca-certificates tzdata && \
 WORKDIR /app
 
 # Copy binary from builder
-COPY --from=builder /build/integration .
+COPY --from=builder /build/publisher/integration .
 
 # Copy config file (if exists)
-COPY --from=builder /build/config.yml* ./
+COPY --from=builder /build/publisher/config.yml* ./
 
 # Change ownership to non-root user
 RUN chown -R appuser:appuser /app
