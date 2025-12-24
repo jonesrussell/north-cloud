@@ -152,4 +152,3 @@ func convertLoaderConfig(cfg loader.Config) Config {
 		Rules:          configtypes.Rules{},
 	}
 }
-

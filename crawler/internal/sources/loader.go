@@ -94,4 +94,3 @@ func (s *Sources) reloadSources() error {
 
 	return nil
 }
-

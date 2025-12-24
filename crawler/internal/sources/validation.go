@@ -102,4 +102,3 @@ func (s *Sources) validateSourceInternal(
 
 	return source, nil
 }
-
