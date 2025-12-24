@@ -107,7 +107,7 @@ tasks:
   docker:dev:up:
     desc: "Start development environment"
     cmds:
-      - docker compose -f docker-compose.base.yml -f docker-compose.dev.yml up -d
+      - docker compose -f docker-compose.base.yml -f docker-compose.dev.yml up -d {{.CLI_ARGS}}
 
   docker:dev:down:
     desc: "Stop development environment"
