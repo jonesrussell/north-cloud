@@ -19,6 +19,8 @@ services:
     depends_on:
       postgres-crawler:
         condition: service_healthy
+      minio:
+        condition: service_healthy
     environment:
       - DB_HOST=postgres-crawler
       - DB_PORT=5432
@@ -33,6 +35,14 @@ services:
       # Use Docker service name for internal communication (source-manager:8050)
       # SOURCE_MANAGER_API_URL is for external access from host, not for container-to-container
       - CRAWLER_SOURCES_API_URL=${CRAWLER_SOURCES_API_URL:-http://source-manager:8050/api/v1/sources}
+      # MinIO HTML archiving configuration
+      - CRAWLER_MINIO_ENABLED=${CRAWLER_MINIO_ENABLED:-true}
+      - CRAWLER_MINIO_ENDPOINT=${CRAWLER_MINIO_ENDPOINT:-minio:9000}
+      - CRAWLER_MINIO_ACCESS_KEY=${CRAWLER_MINIO_ACCESS_KEY:-minioadmin}
+      - CRAWLER_MINIO_SECRET_KEY=${CRAWLER_MINIO_SECRET_KEY:-changeme123}
+      - CRAWLER_MINIO_BUCKET=${CRAWLER_MINIO_BUCKET:-html-archives}
+      - CRAWLER_MINIO_METADATA_BUCKET=${CRAWLER_MINIO_METADATA_BUCKET:-crawler-metadata}
+      - CRAWLER_MINIO_USE_SSL=${CRAWLER_MINIO_USE_SSL:-false}
       # Use /tmp for caches to avoid permission issues with host user
       - GOMODCACHE=/tmp/go-mod-cache
       - GOCACHE=/tmp/go-build-cache

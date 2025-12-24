@@ -290,6 +290,7 @@ func createCrawler(
 		Sources:      sourceManager,
 		Config:       crawlerCfg,
 		Storage:      storageResult.Storage,
+		FullConfig:   deps.Config,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to create crawler: %w", err)
