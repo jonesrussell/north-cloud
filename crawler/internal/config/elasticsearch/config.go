@@ -145,10 +145,24 @@ func (c *Config) validateRequiredFields() error {
 	}
 
 	// Allow either API key or username/password authentication
+	// Skip auth requirement for localhost/development connections (http://localhost, http://127.0.0.1, http://elasticsearch)
 	if c.APIKey == "" && (c.Username == "" || c.Password == "") {
-		return &ConfigError{
-			Code:    ErrCodeMissingAPIKey,
-			Message: "either API key or username/password is required",
+		// Check if any address is a localhost/development address without auth
+		hasLocalDevAddress := false
+		for _, addr := range c.Addresses {
+			if addr == "http://localhost:9200" || addr == "http://127.0.0.1:9200" ||
+				addr == "http://elasticsearch:9200" || addr == "http://elasticsearch" {
+				hasLocalDevAddress = true
+				break
+			}
+		}
+		
+		// Require auth only if not using localhost/development addresses
+		if !hasLocalDevAddress {
+			return &ConfigError{
+				Code:    ErrCodeMissingAPIKey,
+				Message: "either API key or username/password is required",
+			}
 		}
 	}
 
@@ -355,12 +369,26 @@ func LoadFromViper(v *viper.Viper) *Config {
 		indexName = DefaultIndexName
 	}
 
+	// Get flush interval with default
+	flushInterval := v.GetDuration("elasticsearch.flush_interval")
+	if flushInterval == 0 {
+		flushInterval = DefaultFlushInterval
+	}
+
+	// Get bulk size with default
+	bulkSize := v.GetInt("elasticsearch.bulk_size")
+	if bulkSize == 0 {
+		bulkSize = DefaultBulkSize
+	}
+
 	cfg := &Config{
-		Addresses: addresses,
-		IndexName: indexName,
-		Username:  v.GetString("elasticsearch.username"),
-		Password:  v.GetString("elasticsearch.password"),
-		APIKey:    v.GetString("elasticsearch.api_key"),
+		Addresses:     addresses,
+		IndexName:     indexName,
+		Username:      v.GetString("elasticsearch.username"),
+		Password:      v.GetString("elasticsearch.password"),
+		APIKey:        v.GetString("elasticsearch.api_key"),
+		FlushInterval: flushInterval,
+		BulkSize:      bulkSize,
 		TLS: &TLSConfig{
 			Enabled:            v.GetBool("elasticsearch.tls.enabled"),
 			InsecureSkipVerify: v.GetBool("elasticsearch.tls.insecure_skip_verify"),
