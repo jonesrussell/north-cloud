@@ -219,8 +219,16 @@ func TestClassify_Success(t *testing.T) {
 		t.Errorf("expected content_type article, got %s", response.Result.ContentType)
 	}
 
-	if !response.Result.IsCrimeRelated {
-		t.Error("expected crime-related to be true")
+	// Verify crime is in topics array
+	hasCrime := false
+	for _, topic := range response.Result.Topics {
+		if topic == "crime" {
+			hasCrime = true
+			break
+		}
+	}
+	if !hasCrime {
+		t.Error("expected crime to be in topics array")
 	}
 }
 

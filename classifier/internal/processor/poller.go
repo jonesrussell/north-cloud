@@ -241,7 +241,6 @@ func (p *Poller) saveHistory(ctx context.Context, results []*ProcessResult) erro
 			ContentSubtype:        result.ClassificationResult.ContentSubtype,
 			QualityScore:          result.ClassificationResult.QualityScore,
 			Topics:                result.ClassificationResult.Topics,
-			IsCrimeRelated:        result.ClassificationResult.IsCrimeRelated,
 			SourceReputationScore: result.ClassificationResult.SourceReputation,
 			ClassifierVersion:     result.ClassificationResult.ClassifierVersion,
 			ClassificationMethod:  result.ClassificationResult.ClassificationMethod,

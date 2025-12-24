@@ -129,10 +129,9 @@ type Article struct {
 	Section       string    `json:"section,omitempty"`
 	Keywords      []string  `json:"keywords,omitempty"`
 	// Classification fields (from classified_content)
-	QualityScore   int      `json:"quality_score,omitempty"`
-	IsCrimeRelated bool     `json:"is_crime_related,omitempty"`
-	Topics         []string `json:"topics,omitempty"`
-	ContentType    string   `json:"content_type,omitempty"`
+	QualityScore int      `json:"quality_score,omitempty"`
+	Topics       []string `json:"topics,omitempty"`
+	ContentType  string   `json:"content_type,omitempty"`
 }
 
 func (s *Service) FindCrimeArticles(ctx context.Context, cityCfg config.CityConfig) ([]Article, error) {
@@ -143,11 +142,11 @@ func (s *Service) FindCrimeArticles(ctx context.Context, cityCfg config.CityConf
 
 	// If using classified content, filter by classification instead of keywords
 	if s.config.Service.UseClassifiedContent {
-		// Filter by is_crime_related flag and minimum quality score
+		// Filter by topics array (check if "crime" is in topics) and minimum quality score
 		mustClauses = append(mustClauses,
 			map[string]any{
-				"term": map[string]any{
-					"is_crime_related": true,
+				"terms": map[string]any{
+					"topics": []string{"crime"},
 				},
 			},
 			map[string]any{
@@ -414,9 +413,14 @@ func deriveOGFields(article Article) (ogTitle, ogDescription, ogURL string) {
 }
 
 func (s *Service) isCrimeRelated(article Article) bool {
-	// If using classified content, trust the classifier's determination
+	// If using classified content, check if "crime" is in the topics array
 	if s.config.Service.UseClassifiedContent {
-		return article.IsCrimeRelated
+		for _, topic := range article.Topics {
+			if topic == "crime" {
+				return true
+			}
+		}
+		return false
 	}
 
 	// Legacy: use keyword matching for articles from _articles index

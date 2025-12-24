@@ -275,8 +275,16 @@ func TestIntegration_EndToEndClassificationFlow(t *testing.T) {
 	if crimeArticle.ContentType != domain.ContentTypeArticle {
 		t.Errorf("expected content_type article, got %s", crimeArticle.ContentType)
 	}
-	if !crimeArticle.IsCrimeRelated {
-		t.Error("expected crime article to be flagged as crime-related")
+	// Verify crime is in topics array
+	hasCrime := false
+	for _, topic := range crimeArticle.Topics {
+		if topic == "crime" {
+			hasCrime = true
+			break
+		}
+	}
+	if !hasCrime {
+		t.Error("expected crime article to have 'crime' in topics array")
 	}
 	if crimeArticle.QualityScore < 50 {
 		t.Errorf("expected quality score >= 50, got %d", crimeArticle.QualityScore)
@@ -284,8 +292,12 @@ func TestIntegration_EndToEndClassificationFlow(t *testing.T) {
 
 	// Verify second article (sports content)
 	sportsArticle := esClient.classifiedContent[1]
-	if sportsArticle.IsCrimeRelated {
-		t.Error("expected sports article NOT to be flagged as crime-related")
+	// Verify crime is NOT in topics array
+	for _, topic := range sportsArticle.Topics {
+		if topic == "crime" {
+			t.Error("expected sports article NOT to have 'crime' in topics array")
+			break
+		}
 	}
 
 	// Verify status updates

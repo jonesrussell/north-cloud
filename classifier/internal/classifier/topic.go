@@ -15,10 +15,9 @@ type TopicClassifier struct {
 
 // TopicResult represents the result of topic classification
 type TopicResult struct {
-	Topics         []string           `json:"topics"`           // List of matched topics
-	TopicScores    map[string]float64 `json:"topic_scores"`     // Score for each topic (0.0-1.0)
-	IsCrimeRelated bool               `json:"is_crime_related"` // Convenience flag for crime content
-	HighestTopic   string             `json:"highest_topic"`    // Topic with highest score
+	Topics       []string           `json:"topics"`        // List of matched topics
+	TopicScores  map[string]float64 `json:"topic_scores"`  // Score for each topic (0.0-1.0)
+	HighestTopic string             `json:"highest_topic"` // Topic with highest score
 }
 
 // NewTopicClassifier creates a new topic classifier with the given rules
@@ -64,11 +63,6 @@ func (t *TopicClassifier) Classify(ctx context.Context, raw *domain.RawContent) 
 		}
 	}
 
-	// Check if crime-related
-	if crimeScore, ok := result.TopicScores["crime"]; ok && crimeScore >= 0.5 {
-		result.IsCrimeRelated = true
-	}
-
 	// Determine highest scoring topic
 	if len(result.TopicScores) > 0 {
 		result.HighestTopic = t.findHighestScoringTopic(result.TopicScores)
@@ -77,7 +71,6 @@ func (t *TopicClassifier) Classify(ctx context.Context, raw *domain.RawContent) 
 	t.logger.Debug("Topic classification complete",
 		"content_id", raw.ID,
 		"topics", result.Topics,
-		"is_crime_related", result.IsCrimeRelated,
 		"highest_topic", result.HighestTopic,
 	)
 

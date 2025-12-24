@@ -49,11 +49,11 @@ func (r *ClassificationHistoryRepository) Create(ctx context.Context, history *d
 	query := `
 		INSERT INTO classification_history (
 			content_id, content_url, source_name, content_type, content_subtype,
-			quality_score, topics, is_crime_related, source_reputation_score,
+			quality_score, topics, source_reputation_score,
 			classifier_version, classification_method, model_version, confidence,
 			processing_time_ms
 		)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
 		RETURNING id, classified_at
 	`
 
@@ -67,7 +67,6 @@ func (r *ClassificationHistoryRepository) Create(ctx context.Context, history *d
 		history.ContentSubtype,
 		history.QualityScore,
 		pq.Array(history.Topics),
-		history.IsCrimeRelated,
 		history.SourceReputationScore,
 		history.ClassifierVersion,
 		history.ClassificationMethod,
@@ -88,7 +87,7 @@ func (r *ClassificationHistoryRepository) GetByContentID(ctx context.Context, co
 	var history domain.ClassificationHistory
 	query := `
 		SELECT id, content_id, content_url, source_name, content_type, content_subtype,
-		       quality_score, topics, is_crime_related, source_reputation_score,
+		       quality_score, topics, source_reputation_score,
 		       classifier_version, classification_method, model_version, confidence,
 		       processing_time_ms, classified_at
 		FROM classification_history
@@ -106,7 +105,6 @@ func (r *ClassificationHistoryRepository) GetByContentID(ctx context.Context, co
 		&history.ContentSubtype,
 		&history.QualityScore,
 		pq.Array(&history.Topics),
-		&history.IsCrimeRelated,
 		&history.SourceReputationScore,
 		&history.ClassifierVersion,
 		&history.ClassificationMethod,
@@ -131,11 +129,12 @@ func (r *ClassificationHistoryRepository) GetStats(ctx context.Context) (*Classi
 	var stats ClassificationStats
 
 	// Get overall stats
+	// Crime-related count is calculated from topics array (checking if "crime" is in topics)
 	query := `
 		SELECT
 			COUNT(*) as total_classified,
 			COALESCE(AVG(quality_score), 0) as avg_quality_score,
-			SUM(CASE WHEN is_crime_related THEN 1 ELSE 0 END) as crime_related,
+			SUM(CASE WHEN 'crime' = ANY(topics) THEN 1 ELSE 0 END) as crime_related,
 			COALESCE(AVG(processing_time_ms), 0) as avg_processing_time_ms
 		FROM classification_history
 	`

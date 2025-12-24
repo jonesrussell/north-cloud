@@ -193,9 +193,18 @@ func (s *ElasticsearchStorage) BulkIndexClassifiedContent(ctx context.Context, c
 	}
 
 	var buf bytes.Buffer
+	now := time.Now()
 	for _, content := range contents {
 		// Determine the classified index name from the source
 		classifiedIndex := content.SourceName + "_classified_content"
+
+		// Ensure publisher compatibility aliases are set
+		content.Body = content.RawText
+		content.Source = content.URL
+
+		// Update classification status (same as IndexClassifiedContent)
+		content.ClassificationStatus = domain.StatusClassified
+		content.ClassifiedAt = &now
 
 		// Create bulk index action
 		meta := map[string]interface{}{
