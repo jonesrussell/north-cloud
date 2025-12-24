@@ -177,7 +177,7 @@ func (s *ElasticsearchStorage) UpdateRawContentStatus(ctx context.Context, conte
 		}
 		defer func() {
 			if closeErr := res.Body.Close(); closeErr != nil {
-				// Log error but don't fail - body close errors are usually non-critical
+				_ = closeErr // Body close errors are usually non-critical
 			}
 		}()
 
