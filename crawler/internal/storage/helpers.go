@@ -2,7 +2,6 @@ package storage
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"reflect"
@@ -75,15 +74,6 @@ func getURLFromDocument(doc any) string {
 	}
 
 	return ""
-}
-
-// marshalJSON marshals the given value to JSON and returns an error if it fails
-func marshalJSON(v any) ([]byte, error) {
-	data, err := json.Marshal(v)
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal JSON: %w", err)
-	}
-	return data, nil
 }
 
 // TestConnection tests the connection to the storage backend

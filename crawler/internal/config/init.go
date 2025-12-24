@@ -6,8 +6,15 @@ import (
 
 	"github.com/joho/godotenv"
 	"github.com/jonesrussell/north-cloud/crawler/internal/config/crawler"
-	"github.com/jonesrussell/north-cloud/crawler/internal/constants"
+	"github.com/jonesrussell/north-cloud/crawler/internal/config/elasticsearch"
 	"github.com/spf13/viper"
+)
+
+// Log rotation defaults
+const (
+	defaultLogMaxSize    = 100 // MB before rotation
+	defaultLogMaxBackups = 3   // old log files to retain
+	defaultLogMaxAge     = 30  // days to retain old files
 )
 
 // InitializeViper initializes Viper configuration from environment variables and config files.
@@ -71,14 +78,14 @@ func setDefaults() {
 	viper.SetDefault("logger", map[string]any{
 		"level":        "info",
 		"development":  false,
-		"encoding":      "json",
+		"encoding":     "json",
 		"output_paths": []string{"stdout"},
 		"enable_color": false,
 		"caller":       false,
 		"stacktrace":   false,
-		"max_size":     constants.DefaultMaxLogSize,
-		"max_backups":  constants.DefaultMaxLogBackups,
-		"max_age":      constants.DefaultMaxLogAge,
+		"max_size":     defaultLogMaxSize,    // MB before rotation
+		"max_backups":  defaultLogMaxBackups, // old log files to retain
+		"max_age":      defaultLogMaxAge,     // days to retain old files
 		"compress":     true,
 	})
 
@@ -104,7 +111,7 @@ func setDefaults() {
 			"max_wait":     "30s",
 			"max_retries":  crawler.DefaultMaxRetries,
 		},
-		"bulk_size":      constants.DefaultBulkSize,
+		"bulk_size":      elasticsearch.DefaultBulkSize,
 		"flush_interval": "1s",
 		"index_prefix":   "crawler",
 		"discover_nodes": false,
@@ -216,4 +223,3 @@ func setupDevelopmentLogging() {
 		}
 	}
 }
-

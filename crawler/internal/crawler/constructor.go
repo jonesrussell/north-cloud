@@ -2,12 +2,12 @@
 package crawler
 
 import (
+	"crypto/tls"
 	"fmt"
 	"net/http"
 	"time"
 
 	"github.com/gocolly/colly/v2"
-	"github.com/jonesrussell/north-cloud/crawler/internal/common/transport"
 	"github.com/jonesrussell/north-cloud/crawler/internal/config/crawler"
 	"github.com/jonesrussell/north-cloud/crawler/internal/content"
 	"github.com/jonesrussell/north-cloud/crawler/internal/content/rawcontent"
@@ -70,14 +70,13 @@ func createCollector(cfg *crawler.Config, log logger.Interface) (*colly.Collecto
 		return nil, fmt.Errorf("failed to set rate limit: %w", err)
 	}
 
-	// Configure transport
-	tlsConfig, err := transport.NewTLSConfig(cfg)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create TLS configuration: %w", err)
-	}
-
+	// Configure transport with TLS settings from config
 	collector.WithTransport(&http.Transport{
-		TLSClientConfig:       tlsConfig,
+		TLSClientConfig: &tls.Config{
+			InsecureSkipVerify: cfg.TLS.InsecureSkipVerify, //nolint:gosec // Configurable for development/testing
+			MinVersion:         cfg.TLS.MinVersion,
+			MaxVersion:         cfg.TLS.MaxVersion,
+		},
 		DisableKeepAlives:     false,
 		MaxIdleConns:          DefaultMaxIdleConns,
 		MaxIdleConnsPerHost:   DefaultMaxIdleConnsPerHost,

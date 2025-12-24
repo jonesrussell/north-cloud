@@ -15,10 +15,10 @@ import (
 
 	es "github.com/elastic/go-elasticsearch/v8"
 	"github.com/jmoiron/sqlx"
+	"github.com/jonesrussell/north-cloud/crawler/internal/api"
 	"github.com/jonesrussell/north-cloud/crawler/internal/config"
 	crawlerconfigtypes "github.com/jonesrussell/north-cloud/crawler/internal/config/crawler"
 	dbconfig "github.com/jonesrussell/north-cloud/crawler/internal/config/database"
-	"github.com/jonesrussell/north-cloud/crawler/internal/constants"
 	"github.com/jonesrussell/north-cloud/crawler/internal/crawler"
 	"github.com/jonesrussell/north-cloud/crawler/internal/crawler/events"
 	"github.com/jonesrussell/north-cloud/crawler/internal/database"
@@ -27,7 +27,6 @@ import (
 	"github.com/jonesrussell/north-cloud/crawler/internal/sources"
 	"github.com/jonesrussell/north-cloud/crawler/internal/storage"
 	"github.com/jonesrussell/north-cloud/crawler/internal/storage/types"
-	"github.com/jonesrussell/north-cloud/crawler/internal/api"
 	infracontext "github.com/north-cloud/infrastructure/context"
 	"github.com/spf13/viper"
 )
@@ -51,6 +50,7 @@ type StorageResult struct {
 const (
 	signalChannelBufferSize = 1
 	errorChannelBufferSize  = 1
+	defaultShutdownTimeout  = 30 * time.Second
 )
 
 // === Errors ===
@@ -253,7 +253,7 @@ func ensureRawContentIndexes(
 		return fmt.Errorf("failed to get sources: %w", err)
 	}
 
-	ctx, cancel := createTimeoutContext(constants.DefaultShutdownTimeout)
+	ctx, cancel := createTimeoutContext(defaultShutdownTimeout)
 	defer cancel()
 
 	for i := range allSources {
@@ -444,7 +444,7 @@ func shutdownServer(
 	sig os.Signal,
 ) error {
 	log.Info("Shutdown signal received", "signal", sig.String())
-	shutdownCtx, cancel := infracontext.WithTimeout(constants.DefaultShutdownTimeout)
+	shutdownCtx, cancel := infracontext.WithTimeout(defaultShutdownTimeout)
 	defer cancel()
 
 	// Stop scheduler first
