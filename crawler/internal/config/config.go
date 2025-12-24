@@ -4,12 +4,10 @@
 package config
 
 import (
-	"errors"
 	"fmt"
 	"time"
 
 	"github.com/jonesrussell/north-cloud/crawler/internal/config/app"
-	"github.com/jonesrussell/north-cloud/crawler/internal/config/commands"
 	"github.com/jonesrussell/north-cloud/crawler/internal/config/crawler"
 	dbconfig "github.com/jonesrussell/north-cloud/crawler/internal/config/database"
 	"github.com/jonesrussell/north-cloud/crawler/internal/config/elasticsearch"
@@ -32,8 +30,6 @@ type Interface interface {
 	GetElasticsearchConfig() *elasticsearch.Config
 	// GetDatabaseConfig returns the database configuration.
 	GetDatabaseConfig() *dbconfig.Config
-	// GetCommand returns the current command.
-	GetCommand() string
 	// GetConfigFile returns the path to the configuration file.
 	GetConfigFile() string
 	// Validate validates the configuration based on the current command.
@@ -67,22 +63,6 @@ type Config struct {
 	Elasticsearch *elasticsearch.Config `yaml:"elasticsearch"`
 	// Database holds database configuration
 	Database *dbconfig.Config `yaml:"database"`
-	// Command is the current command being executed
-	Command string `yaml:"command"`
-}
-
-// validateCrawlConfig validates the configuration for the crawl command
-func (c *Config) validateCrawlConfig() error {
-	if err := c.Elasticsearch.Validate(); err != nil {
-		return fmt.Errorf("elasticsearch: %w", err)
-	}
-	if c.Crawler == nil {
-		return errors.New("crawler configuration is required")
-	}
-	if err := c.Crawler.Validate(); err != nil {
-		return fmt.Errorf("crawler: %w", err)
-	}
-	return nil
 }
 
 // validateHTTPDConfig validates the configuration for the httpd command
@@ -96,39 +76,9 @@ func (c *Config) validateHTTPDConfig() error {
 	return nil
 }
 
-// validateSearchConfig validates the configuration for the search command
-func (c *Config) validateSearchConfig() error {
-	if err := c.Elasticsearch.Validate(); err != nil {
-		return fmt.Errorf("elasticsearch: %w", err)
-	}
-	return nil
-}
-
-// Validate validates the configuration based on the current command.
+// Validate validates the configuration.
 func (c *Config) Validate() error {
-	switch c.Command {
-	case commands.Crawl:
-		if err := c.validateCrawlConfig(); err != nil {
-			return err
-		}
-
-	case commands.HTTPD:
-		if err := c.validateHTTPDConfig(); err != nil {
-			return err
-		}
-
-	case commands.Search:
-		if err := c.validateSearchConfig(); err != nil {
-			return err
-		}
-
-	case commands.Sources:
-		if err := c.Elasticsearch.Validate(); err != nil {
-			return fmt.Errorf("elasticsearch: %w", err)
-		}
-	}
-
-	return nil
+	return c.validateHTTPDConfig()
 }
 
 // LoadConfig loads the configuration from Viper
@@ -226,11 +176,6 @@ func (c *Config) GetDatabaseConfig() *dbconfig.Config {
 		return dbconfig.LoadFromViper(viper.GetViper())
 	}
 	return c.Database
-}
-
-// GetCommand returns the current command.
-func (c *Config) GetCommand() string {
-	return c.Command
 }
 
 // GetConfigFile returns the path to the configuration file.
