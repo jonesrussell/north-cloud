@@ -28,8 +28,8 @@ RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -ldflags="-w -s" -o 
 # Final stage
 FROM alpine:latest
 
-# Install ca-certificates for HTTPS
-RUN apk --no-cache add ca-certificates
+# Install ca-certificates for HTTPS and postgresql-client for migrations
+RUN apk --no-cache add ca-certificates postgresql-client
 
 WORKDIR /root/
 
@@ -42,10 +42,11 @@ COPY --from=builder /build/classifier/migrations ./migrations
 # Copy config template
 COPY --from=builder /build/classifier/config.yml.example ./config.yml
 
+# Copy startup script
+COPY --from=builder /build/classifier/start.sh ./start.sh
+RUN chmod +x ./start.sh
+
 EXPOSE 8070
 
-# Default command - starts both HTTP server and processor concurrently
-# Can be overridden to run only one service:
-#   - ["./classifier", "httpd"]     # HTTP server only
-#   - ["./classifier", "processor"] # Processor only
-CMD ["./classifier"]
+# Default command - runs migrations then starts the service
+CMD ["/root/start.sh"]
