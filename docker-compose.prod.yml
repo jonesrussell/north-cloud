@@ -265,7 +265,7 @@ services:
       - source-manager
       - publisher
     healthcheck:
-      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:80/ || exit 1"]
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://127.0.0.1:80/ || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -291,8 +291,9 @@ services:
       - "${NGINX_HTTPS_PORT:-443}:443"
     volumes:
       - ./infrastructure/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-      # Add SSL certificates in production
-      # - ./infrastructure/nginx/ssl:/etc/nginx/ssl:ro
+      # Let's Encrypt certificates (shared with certbot)
+      - certbot_etc:/etc/letsencrypt:ro
+      - certbot_www:/var/www/certbot
     depends_on:
       dashboard:
         condition: service_healthy
@@ -315,6 +316,30 @@ services:
         reservations:
           cpus: '0.25'
           memory: 128M
+
+  # Certbot for Let's Encrypt SSL certificates
+  certbot:
+    image: certbot/certbot
+    container_name: north-cloud-certbot
+    volumes:
+      - certbot_etc:/etc/letsencrypt
+      - certbot_www:/var/www/certbot
+    networks:
+      - north-cloud-network
+    # Certbot automatically renews certificates twice daily
+    # For initial certificate acquisition, run:
+    # docker compose -f docker-compose.base.yml -f docker-compose.prod.yml run --rm certbot certonly --webroot -w /var/www/certbot -d ${DOMAIN_NAME} --email ${LETSENCRYPT_EMAIL} --agree-tos --non-interactive
+    # Then restart nginx: docker compose -f docker-compose.base.yml -f docker-compose.prod.yml restart nginx
+    entrypoint: "/bin/sh -c 'trap exit 0 INT TERM; while :; do if [ -d /etc/letsencrypt/live ]; then certbot renew --quiet; fi; sleep 12h & wait $${!}; done;'"
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+        reservations:
+          cpus: '0.1'
+          memory: 64M
 
   # Production: Enable Elasticsearch security
   elasticsearch:
@@ -342,3 +367,10 @@ services:
         reservations:
           cpus: '0.25'
           memory: 256M
+
+volumes:
+  # Certbot volumes for Let's Encrypt certificates
+  certbot_etc:
+    driver: local
+  certbot_www:
+    driver: local
