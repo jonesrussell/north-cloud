@@ -297,6 +297,12 @@ services:
         condition: service_healthy
       streetcode:
         condition: service_healthy
+      classifier:
+        condition: service_started
+      crawler:
+        condition: service_started
+      publisher:
+        condition: service_started
     networks:
       - north-cloud-network
     restart: always
