@@ -68,9 +68,8 @@ elasticsearch:
     max_retries: 3      # Maximum number of retry attempts
 
 # Logging configuration
-log:
+logger:
   level: info          # Log level: debug, info, warn, error, fatal, panic
-  debug: true          # Enable debug logging for development
 
 # Crawler configuration
 crawler:

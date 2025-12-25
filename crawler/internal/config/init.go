@@ -229,26 +229,25 @@ func bindMinIOEnvVars() error {
 	return nil
 }
 
-// setupDevelopmentLogging configures development logging settings based on environment.
+// setupDevelopmentLogging configures logging settings based on environment variables.
+// It separates concerns: debug level (controlled by APP_DEBUG) vs development formatting (controlled by APP_ENV).
 func setupDevelopmentLogging() {
 	debugFlag := viper.GetBool("app.debug")
 	isDev := viper.GetString("app.environment") == "development"
 
-	// Only set debug level if explicitly requested via APP_DEBUG
+	// Always set debug level when APP_DEBUG=true, regardless of environment (production, staging, development)
+	// This allows enabling debug logs in production for troubleshooting
 	if debugFlag {
 		viper.Set("logger.level", "debug")
 	}
 
-	// Set development mode features (formatting, colors, etc.) if in development environment
+	// Set development mode features (formatting, colors, console encoding, etc.) only in development environment
+	// These formatting options are separate from log level - you can have debug logs with production formatting
 	if isDev {
 		viper.Set("logger.development", true)
 		viper.Set("logger.enable_color", true)
 		viper.Set("logger.caller", true)
 		viper.Set("logger.stacktrace", true)
 		viper.Set("logger.encoding", "console")
-		// Only set debug level if explicitly requested
-		if debugFlag {
-			viper.Set("logger.level", "debug")
-		}
 	}
 }

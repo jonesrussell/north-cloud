@@ -29,7 +29,6 @@ services:
       - DB_SSLMODE=disable
       - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
       - CRAWLER_SOURCES_API_URL=http://source-manager:8050/api/v1/sources
-      - APP_DEBUG=false
       - APP_ENV=production
     # No volume mounts - code is baked into image
     networks:
