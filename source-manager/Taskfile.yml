@@ -113,6 +113,7 @@ tasks:
         fi
       - psql -h {{.DB_HOST}} -p {{.DB_PORT}} -U {{.DB_USER}} -d {{.DB_NAME}} -f migrations/001_create_sources_table.sql
       - psql -h {{.DB_HOST}} -p {{.DB_PORT}} -U {{.DB_USER}} -d {{.DB_NAME}} -f migrations/002_remove_index_fields.sql
+      - psql -h {{.DB_HOST}} -p {{.DB_PORT}} -U {{.DB_USER}} -d {{.DB_NAME}} -f migrations/003_remove_city_name_and_group_id.sql
 
   migrate:check:
     desc: Check if migrations have been applied
