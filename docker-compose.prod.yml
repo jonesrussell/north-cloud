@@ -328,9 +328,9 @@ services:
       - north-cloud-network
     # Certbot automatically renews certificates twice daily
     # For initial certificate acquisition, run:
-    # docker compose -f docker-compose.base.yml -f docker-compose.prod.yml run --rm certbot certonly --webroot -w /var/www/certbot -d ${DOMAIN_NAME} --email ${LETSENCRYPT_EMAIL} --agree-tos --non-interactive
-    # Then restart nginx: docker compose -f docker-compose.base.yml -f docker-compose.prod.yml restart nginx
-    entrypoint: "/bin/sh -c 'trap exit 0 INT TERM; while :; do if [ -d /etc/letsencrypt/live ]; then certbot renew --quiet; fi; sleep 12h & wait $${!}; done;'"
+    # docker run --rm --network north-cloud_north-cloud-network -v north-cloud_certbot_etc:/etc/letsencrypt -v north-cloud_certbot_www:/var/www/certbot certbot/certbot certonly --webroot -w /var/www/certbot -d northcloud.biz --email jonesrussell42@gmail.com --agree-tos --non-interactive
+    # After renewal, reload nginx: docker exec north-cloud-nginx nginx -s reload
+    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do if [ -d /etc/letsencrypt/live ]; then echo \"[$(date)] Running certificate renewal check...\"; certbot renew && echo \"[$(date)] Renewal check completed. If renewed, reload nginx with: docker exec north-cloud-nginx nginx -s reload\"; fi; sleep 12h & wait $${!}; done;'"
     restart: always
     deploy:
       resources:
