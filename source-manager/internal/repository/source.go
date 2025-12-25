@@ -129,7 +129,7 @@ func (r *SourceRepository) List(ctx context.Context) ([]models.Source, error) {
 	}
 	defer rows.Close()
 
-	var sources []models.Source
+	sources := make([]models.Source, 0)
 	for rows.Next() {
 		var source models.Source
 		var selectorsJSON, timeJSON []byte
@@ -254,7 +254,7 @@ func (r *SourceRepository) GetCities(ctx context.Context) ([]models.City, error)
 	}
 	defer rows.Close()
 
-	var cities []models.City
+	cities := make([]models.City, 0)
 	for rows.Next() {
 		var city models.City
 		var sourceName string

@@ -242,9 +242,27 @@ The platform uses a **three-stage content pipeline** for intelligent article pro
 - **Usage**: Publisher service for tracking posted articles
 
 #### Nginx
-- **Purpose**: Reverse proxy and load balancer
-- **Port**: 80
+- **Purpose**: Reverse proxy and load balancer with SSL/TLS termination
+- **Ports**: 80 (HTTP), 443 (HTTPS)
 - **Configuration**: `/infrastructure/nginx/`
+- **SSL/TLS**: Let's Encrypt certificates with automatic renewal
+- **Features**:
+  - HTTP to HTTPS redirect (301 Permanent)
+  - Modern TLS protocols (TLSv1.2, TLSv1.3)
+  - Security headers (HSTS, X-Frame-Options, etc.)
+  - HTTP/2 support
+  - ACME challenge endpoint for certificate validation
+
+#### SSL/TLS Certificate Management
+- **Certificate Authority**: Let's Encrypt
+- **Domain**: northcloud.biz
+- **Validation Method**: HTTP-01 (webroot)
+- **Renewal**: Automatic (certbot service checks every 12 hours)
+- **Certificate Validity**: 90 days
+- **Storage**: Docker volumes (`certbot_etc`, `certbot_www`)
+- **Documentation**: `/infrastructure/certbot/README.md`
+- **Monitoring**: Certificate expiry check script available
+- **Manual Renewal**: Use scripts in `/infrastructure/certbot/scripts/`
 
 ---
 
@@ -341,8 +359,16 @@ north-cloud/
 │
 └── infrastructure/               # Shared infrastructure configs
     ├── nginx/
+    │   └── nginx.conf           # Main nginx configuration with SSL/TLS
     ├── elasticsearch/
-    └── postgres/
+    ├── postgres/
+    └── certbot/                 # SSL/TLS certificate management
+        ├── README.md            # Comprehensive SSL documentation
+        ├── QUICK_REFERENCE.md   # Quick command reference
+        └── scripts/
+            ├── check-cert-expiry.sh      # Monitor certificate expiration
+            ├── renew-and-reload.sh       # Manual renewal with nginx reload
+            └── reload-nginx.sh           # Simple nginx reload script
 ```
 
 ---
@@ -904,6 +930,58 @@ docker exec -it north-cloud-streetcode drush cex
 3. Verify service is listening: `docker exec -it north-cloud-service-name netstat -tulpn`
 4. Check nginx configuration (if using reverse proxy)
 
+### Managing SSL/TLS Certificates
+
+#### Certificate Status Check
+```bash
+# Quick expiry check
+bash infrastructure/certbot/scripts/check-cert-expiry.sh
+
+# View detailed certificate information
+docker run --rm -v north-cloud_certbot_etc:/etc/letsencrypt \
+  certbot/certbot certificates
+```
+
+#### Manual Certificate Renewal
+```bash
+# Recommended: Renew and reload nginx automatically
+bash infrastructure/certbot/scripts/renew-and-reload.sh
+
+# Alternative: Manual steps
+docker run --rm --network north-cloud_north-cloud-network \
+  -v north-cloud_certbot_etc:/etc/letsencrypt \
+  -v north-cloud_certbot_www:/var/www/certbot \
+  certbot/certbot renew
+
+# Then reload nginx
+docker exec north-cloud-nginx nginx -s reload
+```
+
+#### Test Certificate Renewal
+```bash
+# Dry-run to test renewal without actually renewing
+docker run --rm --network north-cloud_north-cloud-network \
+  -v north-cloud_certbot_etc:/etc/letsencrypt \
+  -v north-cloud_certbot_www:/var/www/certbot \
+  certbot/certbot renew --dry-run
+```
+
+#### View Certbot Logs
+```bash
+# View renewal service logs
+docker logs north-cloud-certbot
+
+# Check certbot service status
+docker ps | grep certbot
+```
+
+**Important Notes**:
+- Certbot service automatically checks for renewal every 12 hours
+- Certificates renew when 30 days or less until expiration
+- After automatic renewal, manually reload nginx: `docker exec north-cloud-nginx nginx -s reload`
+- Email alerts sent to jonesrussell42@gmail.com at 20 days before expiry
+- See `/infrastructure/certbot/README.md` for comprehensive documentation
+
 ### Cleaning Up
 
 ```bash
@@ -1183,6 +1261,8 @@ docker system prune -a --volumes
 ### Internal Documentation
 - `/README.md`: User-facing overview
 - `/DOCKER.md`: Docker setup and configuration
+- `/infrastructure/certbot/README.md`: SSL/TLS certificate management guide
+- `/infrastructure/certbot/QUICK_REFERENCE.md`: SSL quick reference
 - `/publisher/CLAUDE.md`: Publisher service AI guide
 - `/source-manager/README.md`: Source manager documentation
 - `/source-manager/DEVELOPMENT.md`: Source manager development guide
@@ -1218,6 +1298,16 @@ docker system prune -a --volumes
 - `/streetcode/docs/API_SECURITY_GUIDE.md`
 - `/streetcode/docs/PAYLOAD_TO_DRUPAL_MAPPING.md`
 
+**SSL/TLS & Security**:
+- `/infrastructure/certbot/README.md` - Comprehensive SSL certificate management guide
+  - Initial certificate setup
+  - Automatic renewal configuration
+  - Manual operations and troubleshooting
+  - Certificate monitoring and alerts
+  - Security best practices
+- `/infrastructure/certbot/QUICK_REFERENCE.md` - Quick command reference
+- `/infrastructure/nginx/nginx.conf` - Nginx SSL/TLS configuration
+
 **Development Setup**:
 - `/DOCKER.md`
 - `/source-manager/DEVELOPMENT.md`
@@ -1245,6 +1335,31 @@ When encountering scenarios not covered in this guide:
 ---
 
 ## Version History
+
+- **SSL/TLS Implementation** (2025-12-25): Production SSL/TLS setup for northcloud.biz
+  - **Let's Encrypt integration**: Automated certificate management with certbot
+  - **Nginx SSL/TLS configuration**:
+    - HTTPS on port 443 with HTTP/2 support
+    - HTTP to HTTPS redirect (301 Permanent)
+    - Modern TLS protocols (TLSv1.2, TLSv1.3)
+    - Security headers (HSTS, X-Frame-Options, X-Content-Type-Options, X-XSS-Protection)
+    - ACME challenge endpoint for certificate validation
+  - **Certbot service**:
+    - Automatic renewal checks every 12 hours
+    - Certificates renew 30 days before expiration
+    - Email alerts at 20 days before expiry
+    - Docker volume-based certificate storage
+  - **Certificate management tools**:
+    - Certificate expiry monitoring script (`check-cert-expiry.sh`)
+    - Automated renewal with nginx reload (`renew-and-reload.sh`)
+    - Comprehensive documentation (`/infrastructure/certbot/README.md`)
+    - Quick reference guide (`/infrastructure/certbot/QUICK_REFERENCE.md`)
+  - **Production deployment**:
+    - Certificate obtained for northcloud.biz
+    - Valid until March 25, 2026 (90 days)
+    - HTTP-01 (webroot) validation method
+    - Shared Docker volumes for nginx/certbot integration
+  - **Documentation updates**: SSL/TLS section added to CLAUDE.md and infrastructure docs
 
 - **Raw Content Pipeline Implementation** (2025-12-23): Replaced article indexing with raw_content pipeline
   - **Classifier service integration**: New microservice for content classification
