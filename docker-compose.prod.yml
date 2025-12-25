@@ -164,6 +164,50 @@ services:
           cpus: '1'
           memory: 1G
 
+  # Classifier service - Production
+  classifier:
+    build:
+      context: .
+      dockerfile: ./classifier/Dockerfile
+      args:
+        - BUILD_ENV=production
+    container_name: north-cloud-classifier
+    depends_on:
+      postgres-classifier:
+        condition: service_healthy
+      elasticsearch:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      - POSTGRES_HOST=postgres-classifier
+      - POSTGRES_PORT=5432
+      - POSTGRES_USER=${POSTGRES_CLASSIFIER_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_CLASSIFIER_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_CLASSIFIER_DB:-classifier}
+      - POSTGRES_SSLMODE=disable
+      - ELASTICSEARCH_URL=http://elasticsearch:9200
+      - ES_URL=http://elasticsearch:9200
+      - REDIS_URL=redis:6379
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+      - APP_DEBUG=false
+      - APP_ENV=production
+      - CLASSIFIER_PORT=8070
+    volumes:
+      # Only mount config, not source code
+      - ./classifier/config.yml:/root/config.yml:ro
+    networks:
+      - north-cloud-network
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
   # Index Manager service - Production
   index-manager:
     build:

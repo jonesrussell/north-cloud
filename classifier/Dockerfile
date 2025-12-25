@@ -4,20 +4,26 @@
 # Build stage
 FROM golang:1.25-alpine AS builder
 
-WORKDIR /app
-
 # Install build dependencies
 RUN apk add --no-cache git ca-certificates
 
+# Copy infrastructure module to parent directory (required for go.mod replace directive)
+# The replace directive uses ../infrastructure, so we need infrastructure at /build/infrastructure
+WORKDIR /build
+COPY infrastructure/ ./infrastructure/
+
+# Now work in classifier subdirectory to match the replace directive path
+WORKDIR /build/classifier
+
 # Copy go mod files
-COPY go.mod go.sum ./
+COPY classifier/go.mod classifier/go.sum ./
 RUN go mod download
 
-# Copy source code
-COPY . .
+# Copy classifier source code
+COPY classifier/ .
 
 # Build binary
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -ldflags="-w -s" -o /classifier main.go
+RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -ldflags="-w -s" -o classifier main.go
 
 # Final stage
 FROM alpine:latest
@@ -28,13 +34,13 @@ RUN apk --no-cache add ca-certificates
 WORKDIR /root/
 
 # Copy binary from builder
-COPY --from=builder /classifier .
+COPY --from=builder /build/classifier/classifier .
 
 # Copy migrations
-COPY --from=builder /app/migrations ./migrations
+COPY --from=builder /build/classifier/migrations ./migrations
 
 # Copy config template
-COPY --from=builder /app/config.yml.example ./config.yml
+COPY --from=builder /build/classifier/config.yml.example ./config.yml
 
 EXPOSE 8070
 
