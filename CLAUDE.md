@@ -216,6 +216,35 @@ The platform uses a **three-stage content pipeline** for intelligent article pro
   - Custom content types (articles, crime news)
 - **Documentation**: See `/streetcode/docs/`
 
+#### 6. **search-service**
+- **Location**: `/search`
+- **Language**: Go 1.25
+- **Purpose**: Full-text search across all classified content
+- **Dependencies**: Elasticsearch
+- **Ports**: 8090 (internal), 8092 (development), accessible via nginx at `/api/search`
+- **Key Features**:
+  - Google-like full-text search with relevance ranking
+  - Advanced filtering (topics, content type, quality, dates)
+  - Faceted search with aggregations
+  - Search highlighting and snippets
+  - Pagination and multi-field sorting
+  - Query across all `*_classified_content` indexes
+- **API Endpoints**:
+  - `POST /api/v1/search` - Execute search with filters
+  - `GET /api/v1/search` - Simple search via query params
+  - `GET /api/v1/health` - Health check
+- **Search Features**:
+  - Multi-match across title, body (raw_text), OG tags, metadata
+  - Field boosting: title (3x), OG title (2x), body (1x)
+  - Fuzzy matching with typo tolerance
+  - Recency and quality score boosting
+  - Configurable pagination (max 100 per page)
+- **Configuration**:
+  - `max_page_size: 100` - Maximum results per page
+  - `default_page_size: 20` - Default page size
+  - `search_timeout: 5s` - Elasticsearch query timeout
+- **Documentation**: See [/search/README.md](search/README.md)
+
 ### Infrastructure Services
 
 #### PostgreSQL Databases

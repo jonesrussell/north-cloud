@@ -304,6 +304,56 @@ services:
           cpus: '2'
           memory: 4G
 
+  # Search Service - Development
+  search-service:
+    build:
+      context: ./search
+      dockerfile: Dockerfile.dev
+      args:
+        UID: ${UID:-1000}
+        GID: ${GID:-1000}
+    container_name: north-cloud-search-dev
+    # Run as host user to avoid permission issues with mounted volumes
+    user: "${UID:-1000}:${GID:-1000}"
+    ports:
+      - "${SEARCH_PORT:-8092}:8090"
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    environment:
+      - SEARCH_PORT=8090
+      - SEARCH_DEBUG=true
+      - ELASTICSEARCH_URL=http://elasticsearch:9200
+      - APP_DEBUG=true
+      - APP_ENV=development
+      - LOG_LEVEL=debug
+      - LOG_FORMAT=console
+      # Use /tmp for caches to avoid permission issues with host user
+      - GOMODCACHE=/tmp/go-mod-cache
+      - GOCACHE=/tmp/go-build-cache
+    volumes:
+      # Mount source code for development
+      - ./search:/app
+      - /app/vendor  # Exclude vendor directory
+      # Mount infrastructure module (required for go.mod replace directive)
+      - ./infrastructure:/infrastructure
+      # Mount cache volumes to persist downloads across restarts
+      - search_go_mod_cache:/tmp/go-mod-cache
+      - search_go_build_cache:/tmp/go-build-cache
+    working_dir: /app
+    # Download dependencies from mounted go.mod/go.sum, then run
+    # Use -mod=mod to ignore vendor directory if present
+    command: ["sh", "-c", "go mod download && go run -mod=mod ./cmd/httpd/main.go"]
+    networks:
+      - north-cloud-network
+    restart: unless-stopped
+    # Development resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+
   # Streetcode (Drupal 11) - Development
   streetcode:
     build:
@@ -466,6 +516,9 @@ volumes:
   # Index Manager cache volumes
   index_manager_go_mod_cache:
   index_manager_go_build_cache:
+  # Search Service cache volumes
+  search_go_mod_cache:
+  search_go_build_cache:
   # Dashboard cache volumes
   dashboard_npm_cache:
   dashboard_node_modules:
