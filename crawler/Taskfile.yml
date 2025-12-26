@@ -29,6 +29,10 @@ tasks:
       - mkdir -p bin
       - go build -o bin/crawler main.go
 
+  run:
+    desc: "Run the crawler service"
+    cmds:
+      - go run main.go
 
   deadcode:
     desc: "Find unreachable functions in the codebase"
@@ -78,9 +82,43 @@ tasks:
     cmds:
       - ./scripts/generate_mocks.sh
 
+  fmt:
+    desc: "Format code"
+    cmds:
+      - go fmt ./...
+      - goimports -w . || true
+
+  tidy:
+    desc: "Tidy go.mod and go.sum"
+    cmds:
+      - go mod tidy
+
   clean:
     desc: Clean build artifacts
     cmds:
       - rm -rf bin/
       - rm -rf testutils/mocks/
+      - rm -f coverage.out coverage.html
+
+  dev:
+    desc: "Run in development mode with hot-reload (requires air)"
+    cmds:
+      - air
+
+  install:tools:
+    desc: "Install development tools"
+    cmds:
+      - go install github.com/air-verse/air@latest || true
+      - go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest || true
+      - go install golang.org/x/tools/cmd/goimports@latest || true
+
+  docker:build:
+    desc: "Build Docker image"
+    cmds:
+      - docker build -t north-cloud-crawler:latest .
+
+  docker:build:dev:
+    desc: "Build development Docker image"
+    cmds:
+      - docker build -f Dockerfile.dev -t north-cloud-crawler:dev .
 

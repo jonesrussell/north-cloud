@@ -11,8 +11,10 @@ tasks:
     cmds:
       - task: lint:classifier
       - task: lint:crawler
+      - task: lint:dashboard
       - task: lint:index-manager
       - task: lint:publisher
+      - task: lint:search
       - task: lint:source-manager
 
   lint:parallel:
@@ -20,8 +22,10 @@ tasks:
     cmds:
       - task: lint:classifier
       - task: lint:crawler
+      - task: lint:dashboard
       - task: lint:index-manager
       - task: lint:publisher
+      - task: lint:search
       - task: lint:source-manager
     run: parallel
 
@@ -41,7 +45,7 @@ tasks:
     desc: "Run linter for dashboard service"
     dir: dashboard
     cmds:
-      - npm run lint
+      - task lint
 
   lint:index-manager:
     desc: "Run linter for index-manager service"
@@ -52,6 +56,12 @@ tasks:
   lint:publisher:
     desc: "Run linter for publisher service"
     dir: publisher
+    cmds:
+      - task lint
+
+  lint:search:
+    desc: "Run linter for search service"
+    dir: search
     cmds:
       - task lint
 
@@ -66,8 +76,10 @@ tasks:
     cmds:
       - task: test:classifier
       - task: test:crawler
+      - task: test:dashboard
       - task: test:index-manager
       - task: test:publisher
+      - task: test:search
       - task: test:source-manager
 
   test:parallel:
@@ -75,8 +87,10 @@ tasks:
     cmds:
       - task: test:classifier
       - task: test:crawler
+      - task: test:dashboard
       - task: test:index-manager
       - task: test:publisher
+      - task: test:search
       - task: test:source-manager
     run: parallel
 
@@ -92,6 +106,12 @@ tasks:
     cmds:
       - task test
 
+  test:dashboard:
+    desc: "Run tests for dashboard service"
+    dir: dashboard
+    cmds:
+      - task test
+
   test:index-manager:
     desc: "Run tests for index-manager service"
     dir: index-manager
@@ -101,6 +121,12 @@ tasks:
   test:publisher:
     desc: "Run tests for publisher service"
     dir: publisher
+    cmds:
+      - task test
+
+  test:search:
+    desc: "Run tests for search service"
+    dir: search
     cmds:
       - task test
 

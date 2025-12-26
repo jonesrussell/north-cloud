@@ -1,0 +1,56 @@
+service:
+  name: "search"
+  version: "1.0.0"
+  port: 8090
+  debug: true
+
+  # Search configuration
+  max_page_size: 100
+  default_page_size: 20
+  max_query_length: 500
+  search_timeout: "5s"
+
+elasticsearch:
+  url: "http://elasticsearch:9200"
+  username: ""
+  password: ""
+  max_retries: 3
+  timeout: "30s"
+
+  # Index patterns
+  classified_content_pattern: "*_classified_content"
+
+  # Search defaults - field boosting
+  default_boost:
+    title: 3.0
+    og_title: 2.0
+    raw_text: 1.0
+    og_description: 1.5
+    meta_description: 1.5
+
+  # Highlighting configuration
+  highlight_enabled: true
+  highlight_fragment_size: 150
+  highlight_max_fragments: 3
+
+# Faceted search configuration
+facets:
+  enabled: true
+  max_topics: 20
+  max_sources: 50
+  max_content_types: 10
+
+# Logging
+logging:
+  level: "info"  # debug, info, warn, error
+  format: "json"  # json or console
+  output: "stdout"
+
+# CORS configuration
+cors:
+  enabled: true
+  allowed_origins: ["*"]  # Restrict in production
+  allowed_methods: ["GET", "POST", "OPTIONS"]
+  allowed_headers: ["Content-Type", "Accept", "Authorization"]
+  allow_credentials: true
+  max_age: 43200  # 12 hours

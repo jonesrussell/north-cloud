@@ -3,7 +3,9 @@
     <div class="text-center">
       <!-- 404 Icon/Number -->
       <div class="mb-6">
-        <h1 class="text-9xl font-bold text-gray-300">404</h1>
+        <h1 class="text-9xl font-bold text-gray-300">
+          404
+        </h1>
       </div>
 
       <!-- Error Message -->
@@ -24,8 +26,8 @@
           Go to Dashboard
         </router-link>
         <button
-          @click="$router.go(-1)"
           class="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+          @click="$router.go(-1)"
         >
           <ArrowLeftIcon class="mr-2 h-5 w-5" />
           Go Back

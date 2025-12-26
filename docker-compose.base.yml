@@ -192,6 +192,39 @@ services:
     networks:
       - north-cloud-network
 
+  # ============================================
+  # Application Services
+  # ============================================
+
+  # Search Service
+  search-service:
+    build:
+      context: .
+      dockerfile: ./search/Dockerfile
+    container_name: north-cloud-search
+    environment:
+      - APP_DEBUG=${APP_DEBUG:-true}
+      - SEARCH_PORT=${SEARCH_PORT:-8090}
+      - SEARCH_DEBUG=${SEARCH_DEBUG:-true}
+      - ELASTICSEARCH_URL=${ELASTICSEARCH_URL:-http://elasticsearch:9200}
+      - ELASTICSEARCH_USERNAME=${ELASTICSEARCH_USERNAME:-}
+      - ELASTICSEARCH_PASSWORD=${ELASTICSEARCH_PASSWORD:-}
+      - LOG_LEVEL=${SEARCH_LOG_LEVEL:-info}
+      - LOG_FORMAT=${SEARCH_LOG_FORMAT:-json}
+      - CORS_ORIGINS=${CORS_ORIGINS:-*}
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8090/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    networks:
+      - north-cloud-network
+    restart: unless-stopped
+
 volumes:
   postgres_source_manager_data:
   postgres_crawler_data:
