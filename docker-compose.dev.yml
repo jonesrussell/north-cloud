@@ -355,6 +355,34 @@ services:
           cpus: '2'
           memory: 2G
 
+  # Kibana for Elasticsearch management and visualization - Development only
+  kibana:
+    image: docker.elastic.co/kibana/kibana:9.2.2
+    container_name: north-cloud-kibana-dev
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+      - ELASTICSEARCH_USERNAME=${ELASTICSEARCH_USERNAME:-}
+      - ELASTICSEARCH_PASSWORD=${ELASTICSEARCH_PASSWORD:-}
+      - xpack.security.enabled=${ELASTICSEARCH_SECURITY_ENABLED:-false}
+      - SERVER_NAME=kibana
+      - SERVER_HOST=0.0.0.0
+      - SERVER_BASEPATH=/kibana
+      - SERVER_REWRITEBASEPATH=false
+      - SERVER_PUBLICBASEURL=http://localhost/kibana
+    ports:
+      - "${KIBANA_PORT:-5601}:5601"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:5601/api/status || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    networks:
+      - north-cloud-network
+    restart: unless-stopped
+
   # Unified Dashboard - Development
   dashboard:
     build:
@@ -409,6 +437,7 @@ services:
       - source-manager
       - streetcode
       - dashboard
+      - kibana
     networks:
       - north-cloud-network
     restart: unless-stopped
