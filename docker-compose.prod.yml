@@ -52,8 +52,6 @@ services:
       args:
         - BUILD_ENV=production
     container_name: north-cloud-source-manager
-    ports:
-      - "${SOURCE_MANAGER_PORT:-8050}:8050"
     depends_on:
       postgres-source-manager:
         condition: service_healthy
@@ -130,8 +128,6 @@ services:
       args:
         - BUILD_ENV=production
     container_name: north-cloud-streetcode
-    ports:
-      - "${STREETCODE_PORT:-8080}:80"
     depends_on:
       postgres-streetcode:
         condition: service_healthy
@@ -216,8 +212,6 @@ services:
       args:
         - BUILD_ENV=production
     container_name: north-cloud-index-manager
-    ports:
-      - "${INDEX_MANAGER_PORT:-8090}:8090"
     depends_on:
       postgres-index-manager:
         condition: service_healthy
@@ -257,8 +251,6 @@ services:
       args:
         - BUILD_ENV=production
     container_name: north-cloud-dashboard
-    ports:
-      - "${DASHBOARD_PORT:-3002}:80"
     depends_on:
       - crawler
       - source-manager

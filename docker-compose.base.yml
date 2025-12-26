@@ -11,8 +11,6 @@ services:
       POSTGRES_USER: ${POSTGRES_SOURCE_MANAGER_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_SOURCE_MANAGER_PASSWORD:-postgres}
       POSTGRES_DB: ${POSTGRES_SOURCE_MANAGER_DB:-gosources}
-    ports:
-      - "${POSTGRES_SOURCE_MANAGER_PORT:-5432}:5432"
     volumes:
       - postgres_source_manager_data:/var/lib/postgresql/data
       - ./source-manager/migrations:/migrations:ro
@@ -33,8 +31,6 @@ services:
       POSTGRES_USER: ${POSTGRES_CRAWLER_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_CRAWLER_PASSWORD:-postgres}
       POSTGRES_DB: ${POSTGRES_CRAWLER_DB:-crawler}
-    ports:
-      - "${POSTGRES_CRAWLER_PORT:-5433}:5432"
     volumes:
       - postgres_crawler_data:/var/lib/postgresql/data
     healthcheck:
@@ -53,8 +49,6 @@ services:
       POSTGRES_USER: ${POSTGRES_STREETCODE_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_STREETCODE_PASSWORD:-postgres}
       POSTGRES_DB: ${POSTGRES_STREETCODE_DB:-streetcode}
-    ports:
-      - "${POSTGRES_STREETCODE_PORT:-5434}:5432"
     volumes:
       - postgres_streetcode_data:/var/lib/postgresql/data
     healthcheck:
@@ -73,8 +67,6 @@ services:
       POSTGRES_USER: ${POSTGRES_CLASSIFIER_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_CLASSIFIER_PASSWORD:-postgres}
       POSTGRES_DB: ${POSTGRES_CLASSIFIER_DB:-classifier}
-    ports:
-      - "${POSTGRES_CLASSIFIER_PORT:-5435}:5432"
     volumes:
       - postgres_classifier_data:/var/lib/postgresql/data
       - ./classifier/migrations:/migrations:ro
@@ -94,8 +86,6 @@ services:
       POSTGRES_USER: ${POSTGRES_INDEX_MANAGER_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_INDEX_MANAGER_PASSWORD:-postgres}
       POSTGRES_DB: ${POSTGRES_INDEX_MANAGER_DB:-index_manager}
-    ports:
-      - "${POSTGRES_INDEX_MANAGER_PORT:-5436}:5432"
     volumes:
       - postgres_index_manager_data:/var/lib/postgresql/data
       - ./index-manager/migrations:/migrations:ro
@@ -120,9 +110,6 @@ services:
       memlock:
         soft: -1
         hard: -1
-    ports:
-      - "${ELASTICSEARCH_PORT:-9200}:9200"
-      - "${ELASTICSEARCH_TRANSPORT_PORT:-9300}:9300"
     volumes:
       - elasticsearch_data:/usr/share/elasticsearch/data
       - ./infrastructure/elasticsearch/elasticsearch.yml:/usr/share/elasticsearch/config/elasticsearch.yml:ro
@@ -151,8 +138,6 @@ services:
       - SERVER_BASEPATH=/kibana
       - SERVER_REWRITEBASEPATH=false
       - SERVER_PUBLICBASEURL=https://northcloud.biz/kibana
-    ports:
-      - "${KIBANA_PORT:-5601}:5601"
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:5601/api/status || exit 1"]
       interval: 30s
@@ -176,8 +161,6 @@ services:
       "
     environment:
       - REDIS_PASSWORD=${REDIS_PASSWORD:-}
-    ports:
-      - "${REDIS_PORT:-6379}:6379"
     volumes:
       - redis_data:/data
     healthcheck:
@@ -204,9 +187,6 @@ services:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-changeme123}
       MINIO_BROWSER: ${MINIO_BROWSER:-on}
-    ports:
-      - "${MINIO_API_PORT:-9000}:9000"
-      - "${MINIO_CONSOLE_PORT:-9001}:9001"
     volumes:
       - minio_data:/data
     healthcheck:
