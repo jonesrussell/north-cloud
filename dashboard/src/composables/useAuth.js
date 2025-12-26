@@ -67,7 +67,7 @@ export function useAuth() {
     }
   }
 
-  const validate = async () => {
+  const validate = async (skipLogout = false) => {
     if (!token.value) {
       return false
     }
@@ -85,17 +85,36 @@ export function useAuth() {
         return true
       }
 
-      // Token invalid, clear state
-      logout()
+      // Token invalid, clear state (unless skipLogout is true)
+      if (!skipLogout) {
+        // Clear tokens but don't redirect (router guard will handle redirect)
+        token.value = null
+        refreshToken.value = null
+        user.value = null
+        localStorage.removeItem('auth_token')
+        localStorage.removeItem('auth_refresh_token')
+        localStorage.removeItem('auth_user')
+      }
       return false
     } catch (error) {
       // Token invalid or expired, try refresh
       if (refreshToken.value) {
-        return await refresh()
+        const refreshed = await refresh()
+        if (refreshed) {
+          return true
+        }
       }
 
-      // No refresh token, logout
-      logout()
+      // No refresh token or refresh failed, clear state
+      if (!skipLogout) {
+        // Clear tokens but don't redirect (router guard will handle redirect)
+        token.value = null
+        refreshToken.value = null
+        user.value = null
+        localStorage.removeItem('auth_token')
+        localStorage.removeItem('auth_refresh_token')
+        localStorage.removeItem('auth_user')
+      }
       return false
     }
   }

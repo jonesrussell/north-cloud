@@ -142,7 +142,8 @@ const router = createRouter({
 // Auth guard - protect all routes except public ones
 router.beforeEach(async (to, from, next) => {
   const { useAuth } = await import('../composables/useAuth')
-  const { isAuthenticated, validate } = useAuth()
+  const auth = useAuth()
+  const { isAuthenticated, validate, token, refreshToken, user } = auth
 
   // Check if route is public
   if (to.meta.public) {
@@ -156,21 +157,12 @@ router.beforeEach(async (to, from, next) => {
   }
 
   // Protected route - check authentication
-  if (!isAuthenticated.value) {
-    // Try to validate token (in case it's stored but not loaded)
-    const isValid = await validate()
-    if (!isValid) {
-      next({
-        path: '/login',
-        query: { redirect: to.fullPath },
-      })
-      return
-    }
-  }
-
-  // Validate token on each navigation
-  const isValid = await validate()
-  if (!isValid) {
+  // First check if we have a token at all
+  const hasToken = !!token.value || !!localStorage.getItem('auth_token')
+  
+  if (!hasToken || !isAuthenticated.value) {
+    // No token, redirect to login immediately
+    console.log('[Router Guard] No token found, redirecting to login')
     next({
       path: '/login',
       query: { redirect: to.fullPath },
@@ -178,6 +170,44 @@ router.beforeEach(async (to, from, next) => {
     return
   }
 
+  // We have a token, validate it
+  try {
+    // Pass skipLogout=true to prevent validate() from calling logout() which redirects
+    // The router guard will handle the redirect
+    const isValid = await validate(true)
+    if (!isValid) {
+      // Token invalid or expired, clear state and redirect to login
+      token.value = null
+      refreshToken.value = null
+      user.value = null
+      localStorage.removeItem('auth_token')
+      localStorage.removeItem('auth_refresh_token')
+      localStorage.removeItem('auth_user')
+      
+      next({
+        path: '/login',
+        query: { redirect: to.fullPath },
+      })
+      return
+    }
+  } catch (error) {
+    // Validation failed (network error, etc.), clear state and redirect to login
+    console.error('Auth validation error:', error)
+    token.value = null
+    refreshToken.value = null
+    user.value = null
+    localStorage.removeItem('auth_token')
+    localStorage.removeItem('auth_refresh_token')
+    localStorage.removeItem('auth_user')
+    
+    next({
+      path: '/login',
+      query: { redirect: to.fullPath },
+    })
+    return
+  }
+
+  // Authentication valid, allow navigation
   next()
 })
 
