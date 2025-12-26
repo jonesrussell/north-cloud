@@ -60,7 +60,9 @@ func (s *SearchService) Search(ctx context.Context, req *domain.SearchRequest) (
 		s.logger.Error("Search execution failed", "error", err, "query", req.Query)
 		return nil, err
 	}
-	defer res.Body.Close()
+	defer func() {
+		_ = res.Body.Close()
+	}()
 
 	// Parse response
 	response, err := s.parseSearchResponse(res.Body, req)
@@ -110,7 +112,7 @@ func (s *SearchService) executeSearch(ctx context.Context, query map[string]inte
 
 	if res.IsError() {
 		body, _ := io.ReadAll(res.Body)
-		res.Body.Close()
+		_ = res.Body.Close()
 		return nil, fmt.Errorf("elasticsearch returned error [%d]: %s", res.StatusCode, string(body))
 	}
 
