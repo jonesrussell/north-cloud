@@ -1,0 +1,128 @@
+version: '3'
+
+dotenv: ['../.env']
+
+vars:
+  BINARY_NAME: auth
+  MAIN_PATH: ./main.go
+
+tasks:
+  default:
+    desc: "Show available tasks"
+    cmds:
+      - task --list
+
+  build:
+    desc: "Build the auth binary"
+    cmds:
+      - go build -o bin/{{.BINARY_NAME}} {{.MAIN_PATH}}
+
+  run:
+    desc: "Run the auth service"
+    cmds:
+      - go run {{.MAIN_PATH}}
+
+  test:
+    desc: "Run all tests"
+    cmds:
+      - go test -v ./...
+
+  test:coverage:
+    desc: "Run tests with coverage"
+    cmds:
+      - go test -coverprofile=coverage.out ./...
+      - go tool cover -html=coverage.out -o coverage.html
+      - 'echo "Coverage report generated: coverage.html"'
+
+  lint:
+    desc: "Lint the Go code"
+    cmds:
+      - go fmt ./...
+      - go vet ./...
+      - golangci-lint run
+
+  fmt:
+    desc: "Format code"
+    cmds:
+      - go fmt ./...
+      - goimports -w .
+
+  tidy:
+    desc: "Tidy go.mod and go.sum"
+    cmds:
+      - go mod tidy
+
+  clean:
+    desc: "Clean build artifacts"
+    cmds:
+      - rm -rf bin/
+      - rm -f coverage.out coverage.html
+
+  migrate:up:
+    desc: "Run database migrations up"
+    env:
+      PGPASSWORD: '{{.POSTGRES_AUTH_PASSWORD | default ""}}'
+    cmds:
+      - |
+        go run {{.MAIN_PATH}} migrate up \
+          -config config.yml
+
+  migrate:down:
+    desc: "Rollback last migration"
+    env:
+      PGPASSWORD: '{{.POSTGRES_AUTH_PASSWORD | default ""}}'
+    cmds:
+      - |
+        go run {{.MAIN_PATH}} migrate down \
+          -config config.yml
+
+  migrate:version:
+    desc: "Check current migration version"
+    env:
+      PGPASSWORD: '{{.POSTGRES_AUTH_PASSWORD | default ""}}'
+    cmds:
+      - |
+        go run {{.MAIN_PATH}} migrate version \
+          -config config.yml
+
+  migrate:create:
+    desc: "Create new migration files"
+    cmds:
+      - |
+        if [ -z "{{.CLI_ARGS}}" ]; then
+          echo "Error: migration name is required"
+          echo "Usage: task migrate:create migration_name"
+          exit 1
+        fi
+      - |
+        MIGRATION_NAME="{{.CLI_ARGS}}"
+        TIMESTAMP=$$(date +%s)
+        VERSION=$$(ls migrations/*.up.sql 2>/dev/null | wc -l | xargs printf "%06d")
+        VERSION=$$((VERSION + 1))
+        VERSION_PADDED=$$(printf "%06d" $$VERSION)
+        UP_FILE="migrations/$${VERSION_PADDED}_$${MIGRATION_NAME}.up.sql"
+        DOWN_FILE="migrations/$${VERSION_PADDED}_$${MIGRATION_NAME}.down.sql"
+        echo "-- Migration: $${MIGRATION_NAME}" > "$$UP_FILE"
+        echo "-- Rollback: $${MIGRATION_NAME}" > "$$DOWN_FILE"
+        echo "Created migration files:"
+        echo "  - $$UP_FILE"
+        echo "  - $$DOWN_FILE"
+
+  db:shell:
+    desc: "Open PostgreSQL shell"
+    env:
+      PGPASSWORD: '{{.POSTGRES_AUTH_PASSWORD | default ""}}'
+    cmds:
+      - psql -h {{.POSTGRES_AUTH_HOST | default "localhost"}} -p {{.POSTGRES_AUTH_PORT | default "5432"}} -U {{.POSTGRES_AUTH_USER | default "postgres"}} -d {{.POSTGRES_AUTH_DB | default "auth"}}
+
+  seed:
+    desc: "Create admin user"
+    env:
+      PGPASSWORD: '{{.POSTGRES_AUTH_PASSWORD | default ""}}'
+    cmds:
+      - |
+        go run {{.MAIN_PATH}} seed \
+          -config config.yml \
+          -username admin \
+          -password {{.AUTH_ADMIN_PASSWORD | default "changeme"}}
+

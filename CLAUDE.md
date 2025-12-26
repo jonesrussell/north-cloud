@@ -216,12 +216,45 @@ The platform uses a **three-stage content pipeline** for intelligent article pro
   - Custom content types (articles, crime news)
 - **Documentation**: See `/streetcode/docs/`
 
+#### 6. **auth**
+- **Location**: `/auth`
+- **Language**: Go 1.25+
+- **Purpose**: Authentication and user management for dashboard
+- **Database**: `postgres-auth` (auth database)
+- **Ports**: 8040 (API)
+- **Key Features**:
+  - JWT token generation and validation
+  - User authentication (login/logout)
+  - Password hashing with bcrypt
+  - Token refresh mechanism
+  - Database-backed user management
+  - **Migration management** with golang-migrate
+  - Automatic migration on startup (optional)
+- **Commands**:
+  - `auth migrate up` - Run all pending migrations
+  - `auth migrate down` - Rollback last migration
+  - `auth migrate version` - Show current migration version
+  - `auth migrate force` - Force migration version (for fixing dirty state)
+  - `auth seed` - Create admin user
+- **API Endpoints**:
+  - `POST /api/v1/auth/login` - Login (username/password → JWT)
+  - `POST /api/v1/auth/logout` - Logout
+  - `GET /api/v1/auth/validate` - Validate current token
+  - `POST /api/v1/auth/refresh` - Refresh expired token
+- **Migration Management**:
+  - Uses golang-migrate for versioned migrations
+  - Migration files: `migrations/000001_*.up.sql` and `migrations/000001_*.down.sql`
+  - Automatic migration tracking via `schema_migrations` table
+  - Supports rollback and force operations
+- **Documentation**: See `/auth/README.md`, `/auth/migrations/README.md`
+
 ### Infrastructure Services
 
 #### PostgreSQL Databases
 - **postgres-source-manager**: Source manager database (gosources)
 - **postgres-crawler**: Crawler database (crawler)
 - **postgres-streetcode**: Drupal database (streetcode)
+- **postgres-auth**: Auth service database (auth)
 - Each service has its own isolated database
 
 #### Elasticsearch
@@ -337,6 +370,28 @@ north-cloud/
 │   ├── tests/
 │   ├── README.md
 │   └── CLAUDE.md                # Classifier-specific AI guide
+│
+├── auth/                         # Authentication service
+│   ├── Dockerfile
+│   ├── go.mod
+│   ├── main.go
+│   ├── config.yml
+│   ├── Taskfile.yml
+│   ├── internal/
+│   │   ├── api/                 # REST API handlers
+│   │   ├── config/               # Configuration
+│   │   ├── database/             # Database layer and migrations
+│   │   │   └── migrate.go        # Migration runner
+│   │   ├── handlers/             # HTTP handlers
+│   │   ├── logger/               # Structured logging
+│   │   ├── middleware/           # JWT middleware
+│   │   ├── models/               # Domain models (User)
+│   │   └── repository/           # Data access layer
+│   ├── migrations/               # Database migrations
+│   │   ├── README.md
+│   │   ├── 000001_create_users_table.up.sql
+│   │   └── 000001_create_users_table.down.sql
+│   └── README.md
 │
 ├── publisher/                    # Article publishing service
 │   ├── Dockerfile
@@ -896,6 +951,20 @@ curl -X DELETE http://localhost:8060/api/v1/jobs/{job-id}
 ### Running Database Migrations
 
 #### Go Services
+
+**Auth Service (golang-migrate)**:
+```bash
+# Using service binary
+docker exec -it north-cloud-auth /app/auth migrate up
+
+# Using Taskfile
+cd auth && task migrate:up
+
+# From root
+task migrate:auth
+```
+
+**Other Go Services**:
 ```bash
 # Inside service directory
 go run cmd/migrate/main.go up
@@ -1091,6 +1160,29 @@ docker system prune -a --volumes
 - Test JSON:API endpoints
 - Validate content types and fields
 - Check permissions and access control
+
+**For Auth**:
+- **Migration Management**: Uses golang-migrate for versioned migrations
+  - Migration files follow pattern: `000001_*.up.sql` and `000001_*.down.sql`
+  - Run migrations via `auth migrate up` command or Taskfile
+  - Automatic migration on startup with `-auto-migrate` flag or `AUTO_MIGRATE=true`
+  - Migration tracking via `schema_migrations` table (auto-created)
+- **User Management**:
+  - Create admin user via `auth seed` command
+  - Passwords hashed with bcrypt (cost factor 10)
+  - Username and email must be unique
+- **JWT Tokens**:
+  - Access tokens expire after 24 hours (configurable)
+  - Refresh tokens expire after 7 days (configurable)
+  - Token validation via middleware on protected routes
+- **Database**:
+  - Isolated PostgreSQL database (`postgres-auth`)
+  - Run migrations before creating users
+  - See `/auth/migrations/README.md` for migration details
+- **Testing**:
+  - Test authentication flows (login, logout, refresh)
+  - Test token validation and expiration
+  - Test migration up/down operations
 
 #### 4. Docker and Environment
 

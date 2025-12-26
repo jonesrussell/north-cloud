@@ -155,6 +155,7 @@ tasks:
   migrate:up:
     desc: "Run database migrations for all microservices sequentially"
     cmds:
+      - task: migrate:auth
       - task: migrate:classifier
       - task: migrate:source-manager
       - task: migrate:index-manager
@@ -174,5 +175,11 @@ tasks:
   migrate:index-manager:
     desc: "Run database migrations for index-manager service"
     dir: index-manager
+    cmds:
+      - task migrate:up
+
+  migrate:auth:
+    desc: "Run database migrations for auth service"
+    dir: auth
     cmds:
       - task migrate:up
