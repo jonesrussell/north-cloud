@@ -16,14 +16,14 @@ type SearchRequest struct {
 
 // Filters holds search filter criteria
 type Filters struct {
-	Topics           []string   `json:"topics,omitempty"`
-	ContentType      string     `json:"content_type,omitempty"`
-	MinQualityScore  int        `json:"min_quality_score,omitempty"`
-	MaxQualityScore  int        `json:"max_quality_score,omitempty"`
-	IsCrimeRelated   *bool      `json:"is_crime_related,omitempty"`
-	SourceNames      []string   `json:"source_names,omitempty"`
-	FromDate         *time.Time `json:"from_date,omitempty"`
-	ToDate           *time.Time `json:"to_date,omitempty"`
+	Topics          []string   `json:"topics,omitempty"`
+	ContentType     string     `json:"content_type,omitempty"`
+	MinQualityScore int        `json:"min_quality_score,omitempty"`
+	MaxQualityScore int        `json:"max_quality_score,omitempty"`
+	IsCrimeRelated  *bool      `json:"is_crime_related,omitempty"`
+	SourceNames     []string   `json:"source_names,omitempty"`
+	FromDate        *time.Time `json:"from_date,omitempty"`
+	ToDate          *time.Time `json:"to_date,omitempty"`
 }
 
 // Pagination holds pagination parameters
@@ -47,31 +47,31 @@ type Options struct {
 
 // SearchResponse represents a search result response
 type SearchResponse struct {
-	Query       string          `json:"query"`
-	TotalHits   int64           `json:"total_hits"`
-	TotalPages  int             `json:"total_pages"`
-	CurrentPage int             `json:"current_page"`
-	PageSize    int             `json:"page_size"`
-	TookMs      int64           `json:"took_ms"`
-	Hits        []*SearchHit    `json:"hits"`
-	Facets      *Facets         `json:"facets,omitempty"`
+	Query       string       `json:"query"`
+	TotalHits   int64        `json:"total_hits"`
+	TotalPages  int          `json:"total_pages"`
+	CurrentPage int          `json:"current_page"`
+	PageSize    int          `json:"page_size"`
+	TookMs      int64        `json:"took_ms"`
+	Hits        []*SearchHit `json:"hits"`
+	Facets      *Facets      `json:"facets,omitempty"`
 }
 
 // SearchHit represents a single search result
 type SearchHit struct {
-	ID            string                 `json:"id"`
-	Title         string                 `json:"title"`
-	URL           string                 `json:"url"`
-	SourceName    string                 `json:"source_name"`
-	PublishedDate *time.Time             `json:"published_date,omitempty"`
-	CrawledAt     *time.Time             `json:"crawled_at,omitempty"`
-	QualityScore  int                    `json:"quality_score"`
-	ContentType   string                 `json:"content_type"`
-	Topics        []string               `json:"topics,omitempty"`
-	IsCrimeRelated bool                  `json:"is_crime_related"`
-	Score         float64                `json:"score"` // Relevance score
-	Highlight     map[string][]string    `json:"highlight,omitempty"`
-	Snippet       string                 `json:"snippet,omitempty"`
+	ID             string              `json:"id"`
+	Title          string              `json:"title"`
+	URL            string              `json:"url"`
+	SourceName     string              `json:"source_name"`
+	PublishedDate  *time.Time          `json:"published_date,omitempty"`
+	CrawledAt      *time.Time          `json:"crawled_at,omitempty"`
+	QualityScore   int                 `json:"quality_score"`
+	ContentType    string              `json:"content_type"`
+	Topics         []string            `json:"topics,omitempty"`
+	IsCrimeRelated bool                `json:"is_crime_related"`
+	Score          float64             `json:"score"` // Relevance score
+	Highlight      map[string][]string `json:"highlight,omitempty"`
+	Snippet        string              `json:"snippet,omitempty"`
 }
 
 // Facets holds faceted search aggregations
@@ -175,8 +175,8 @@ func (req *SearchRequest) Validate(maxPageSize, defaultPageSize, maxQueryLength 
 
 // HealthStatus represents the health status of the service
 type HealthStatus struct {
-	Status       string                 `json:"status"`
-	Timestamp    time.Time              `json:"timestamp"`
-	Version      string                 `json:"version"`
-	Dependencies map[string]string      `json:"dependencies"`
+	Status       string            `json:"status"`
+	Timestamp    time.Time         `json:"timestamp"`
+	Version      string            `json:"version"`
+	Dependencies map[string]string `json:"dependencies"`
 }

@@ -21,45 +21,45 @@ type Config struct {
 
 // ServiceConfig holds service-level configuration
 type ServiceConfig struct {
-	Name             string        `yaml:"name"`
-	Version          string        `yaml:"version"`
-	Port             int           `yaml:"port"`
-	Debug            bool          `yaml:"debug"`
-	MaxPageSize      int           `yaml:"max_page_size"`
-	DefaultPageSize  int           `yaml:"default_page_size"`
-	MaxQueryLength   int           `yaml:"max_query_length"`
-	SearchTimeout    time.Duration `yaml:"search_timeout"`
+	Name            string        `yaml:"name"`
+	Version         string        `yaml:"version"`
+	Port            int           `yaml:"port"`
+	Debug           bool          `yaml:"debug"`
+	MaxPageSize     int           `yaml:"max_page_size"`
+	DefaultPageSize int           `yaml:"default_page_size"`
+	MaxQueryLength  int           `yaml:"max_query_length"`
+	SearchTimeout   time.Duration `yaml:"search_timeout"`
 }
 
 // ElasticsearchConfig holds Elasticsearch connection and search configuration
 type ElasticsearchConfig struct {
-	URL                       string                `yaml:"url"`
-	Username                  string                `yaml:"username"`
-	Password                  string                `yaml:"password"`
-	MaxRetries                int                   `yaml:"max_retries"`
-	Timeout                   time.Duration         `yaml:"timeout"`
-	ClassifiedContentPattern  string                `yaml:"classified_content_pattern"`
-	DefaultBoost              BoostConfig           `yaml:"default_boost"`
-	HighlightEnabled          bool                  `yaml:"highlight_enabled"`
-	HighlightFragmentSize     int                   `yaml:"highlight_fragment_size"`
-	HighlightMaxFragments     int                   `yaml:"highlight_max_fragments"`
+	URL                      string        `yaml:"url"`
+	Username                 string        `yaml:"username"`
+	Password                 string        `yaml:"password"`
+	MaxRetries               int           `yaml:"max_retries"`
+	Timeout                  time.Duration `yaml:"timeout"`
+	ClassifiedContentPattern string        `yaml:"classified_content_pattern"`
+	DefaultBoost             BoostConfig   `yaml:"default_boost"`
+	HighlightEnabled         bool          `yaml:"highlight_enabled"`
+	HighlightFragmentSize    int           `yaml:"highlight_fragment_size"`
+	HighlightMaxFragments    int           `yaml:"highlight_max_fragments"`
 }
 
 // BoostConfig holds field boosting values
 type BoostConfig struct {
-	Title          float64 `yaml:"title"`
-	OGTitle        float64 `yaml:"og_title"`
-	RawText        float64 `yaml:"raw_text"`
-	OGDescription  float64 `yaml:"og_description"`
+	Title           float64 `yaml:"title"`
+	OGTitle         float64 `yaml:"og_title"`
+	RawText         float64 `yaml:"raw_text"`
+	OGDescription   float64 `yaml:"og_description"`
 	MetaDescription float64 `yaml:"meta_description"`
 }
 
 // FacetsConfig holds faceted search configuration
 type FacetsConfig struct {
-	Enabled          bool `yaml:"enabled"`
-	MaxTopics        int  `yaml:"max_topics"`
-	MaxSources       int  `yaml:"max_sources"`
-	MaxContentTypes  int  `yaml:"max_content_types"`
+	Enabled         bool `yaml:"enabled"`
+	MaxTopics       int  `yaml:"max_topics"`
+	MaxSources      int  `yaml:"max_sources"`
+	MaxContentTypes int  `yaml:"max_content_types"`
 }
 
 // LoggingConfig holds logging configuration
