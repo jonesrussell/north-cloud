@@ -474,6 +474,38 @@ services:
           cpus: '1'
           memory: 512M
 
+  # Search Frontend - Development
+  search-frontend:
+    build:
+      context: ./search-frontend
+      dockerfile: Dockerfile.dev
+      args:
+        UID: ${UID:-1000}
+        GID: ${GID:-1000}
+    container_name: north-cloud-search-frontend-dev
+    user: "${UID:-1000}:${GID:-1000}"
+    ports:
+      - "${SEARCH_FRONTEND_PORT:-3003}:3003"
+    environment:
+      - NODE_ENV=development
+      - npm_config_cache=/tmp/npm-cache
+      # API URL for search service (internal Docker network)
+      - SEARCH_API_URL=http://search-service:8090
+    volumes:
+      - ./search-frontend:/app
+      - search_frontend_node_modules:/app/node_modules
+      - search_frontend_npm_cache:/tmp/npm-cache
+    working_dir: /app
+    command: ["sh", "-c", "npm install && npm run dev -- --host 0.0.0.0"]
+    networks:
+      - north-cloud-network
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512M
+
   # Nginx reverse proxy - Development
   nginx:
     image: nginx:alpine
@@ -522,5 +554,8 @@ volumes:
   # Dashboard cache volumes
   dashboard_npm_cache:
   dashboard_node_modules:
+  # Search Frontend cache volumes
+  search_frontend_npm_cache:
+  search_frontend_node_modules:
   # Streetcode cache volumes
   streetcode_npm_cache:

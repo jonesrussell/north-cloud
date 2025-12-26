@@ -225,6 +225,16 @@ services:
       - north-cloud-network
     restart: unless-stopped
 
+  # Search Frontend (Production)
+  search-frontend:
+    build:
+      context: ./search-frontend
+      dockerfile: Dockerfile
+    container_name: north-cloud-search-frontend
+    restart: unless-stopped
+    networks:
+      - north-cloud-network
+
 volumes:
   postgres_source_manager_data:
   postgres_crawler_data:
