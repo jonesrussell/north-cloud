@@ -10,15 +10,11 @@ WORKDIR /app
 # Install git for development tools
 RUN apk add --no-cache git
 
-# Create non-root user
-RUN addgroup -g ${GID} appuser && \
-    adduser -D -u ${UID} -G appuser appuser
-
 # Create cache directories
 RUN mkdir -p /tmp/npm-cache && \
     chmod 1777 /tmp/npm-cache
 
-# Create node_modules directory
+# Create node_modules directory and set permissions
 RUN mkdir -p /app/node_modules && \
     chown -R ${UID}:${GID} /app
 
