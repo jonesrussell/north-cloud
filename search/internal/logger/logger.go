@@ -86,7 +86,11 @@ func (l *Logger) logJSON(level, msg string, keysAndValues ...interface{}) {
 		return
 	}
 
-	fmt.Fprintln(os.Stdout, string(jsonBytes))
+	if _, err := fmt.Fprintln(os.Stdout, string(jsonBytes)); err != nil {
+		// Logging to stdout failed, but we can't log this error
+		// as it would cause infinite recursion. Silently ignore.
+		_ = err
+	}
 }
 
 // logConsole logs in console format

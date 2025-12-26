@@ -67,7 +67,9 @@ func (c *Client) Ping(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	defer res.Body.Close()
+	defer func() {
+		_ = res.Body.Close()
+	}()
 
 	if res.IsError() {
 		body, _ := io.ReadAll(res.Body)
@@ -93,7 +95,9 @@ func (c *Client) Search(ctx context.Context, indexPattern string, query map[stri
 	}
 
 	if res.IsError() {
-		defer res.Body.Close()
+		defer func() {
+			_ = res.Body.Close()
+		}()
 		body, _ := io.ReadAll(res.Body)
 		return nil, fmt.Errorf("search returned error [%d]: %s", res.StatusCode, string(body))
 	}
@@ -112,7 +116,9 @@ func (c *Client) ListIndices(ctx context.Context, pattern string) ([]string, err
 	if err != nil {
 		return nil, fmt.Errorf("failed to list indices: %w", err)
 	}
-	defer res.Body.Close()
+	defer func() {
+		_ = res.Body.Close()
+	}()
 
 	if res.IsError() {
 		body, _ := io.ReadAll(res.Body)
@@ -135,7 +141,9 @@ func (c *Client) HealthCheck(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("health check failed: %w", err)
 	}
-	defer res.Body.Close()
+	defer func() {
+		_ = res.Body.Close()
+	}()
 
 	if res.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(res.Body)
