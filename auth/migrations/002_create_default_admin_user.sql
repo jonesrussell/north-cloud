@@ -1,0 +1,22 @@
+-- This migration creates a default admin user
+-- Password should be set via environment variable AUTH_ADMIN_PASSWORD
+-- If not set, default password is 'admin' (should be changed immediately)
+-- 
+-- To use this migration, you need to hash the password first using bcrypt
+-- Example: Use a Go script or online bcrypt generator
+-- 
+-- For development, you can manually insert:
+-- INSERT INTO users (id, username, email, password_hash, created_at, updated_at)
+-- VALUES (
+--     gen_random_uuid(),
+--     'admin',
+--     'admin@northcloud.biz',
+--     '$2a$10$...', -- bcrypt hash of password
+--     NOW(),
+--     NOW()
+-- );
+
+-- Note: This is a placeholder migration. The actual admin user creation
+-- should be done via a seed script or manually after deployment.
+-- See auth/cmd/seed/main.go for a seed command.
+

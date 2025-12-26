@@ -186,6 +186,19 @@
             {{ pageTitle }}
           </h1>
           <div class="flex items-center space-x-4">
+            <!-- User info and logout -->
+            <div v-if="user" class="flex items-center space-x-3">
+              <div class="text-sm text-gray-600">
+                <span class="font-medium">{{ user.username }}</span>
+              </div>
+              <button
+                @click="handleLogout"
+                class="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              >
+                <ArrowRightOnRectangleIcon class="h-4 w-4 mr-2" />
+                Logout
+              </button>
+            </div>
             <!-- Health indicator -->
             <div class="flex items-center text-sm">
               <span
@@ -220,11 +233,18 @@ import {
   MapPinIcon,
   NewspaperIcon,
   StarIcon,
+  ArrowRightOnRectangleIcon,
 } from '@heroicons/vue/24/outline'
 import { crawlerApi, publisherApi, classifierApi } from './api/client'
+import { useAuth } from './composables/useAuth'
 
 const route = useRoute()
 const healthStatus = ref('healthy')
+const { user, logout } = useAuth()
+
+const handleLogout = async () => {
+  await logout()
+}
 
 const pageTitle = computed(() => {
   return route.meta?.title || 'Dashboard'

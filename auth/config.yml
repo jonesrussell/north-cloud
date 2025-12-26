@@ -1,0 +1,24 @@
+debug: false
+
+server:
+  host: "0.0.0.0"
+  port: 8040
+  read_timeout: 30s
+  write_timeout: 30s
+
+database:
+  host: "postgres-auth"
+  port: 5432
+  user: "postgres"
+  password: "changeme"
+  dbname: "auth"
+  sslmode: "disable"
+  max_open_conns: 25
+  max_idle_conns: 5
+  conn_max_lifetime: 5m
+
+jwt:
+  secret: "change-this-secret-in-production"
+  expiry: 24h
+  refresh_expiry: 168h  # 7 days
+

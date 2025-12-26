@@ -1,0 +1,110 @@
+package api
+
+import (
+	"net/http"
+	"os"
+	"strings"
+	"time"
+
+	"github.com/gin-contrib/cors"
+	"github.com/gin-gonic/gin"
+	"github.com/jonesrussell/auth/internal/config"
+	"github.com/jonesrussell/auth/internal/handlers"
+	"github.com/jonesrussell/auth/internal/logger"
+	"github.com/jonesrussell/auth/internal/middleware"
+	"github.com/jonesrussell/auth/internal/repository"
+)
+
+const (
+	corsMaxAgeHours = 12
+)
+
+// getCORSOrigins returns the list of allowed CORS origins from environment or config
+func getCORSOrigins() []string {
+	// Check environment variable first (comma-separated list)
+	if corsOrigins := os.Getenv("CORS_ORIGINS"); corsOrigins != "" {
+		origins := strings.Split(corsOrigins, ",")
+		// Trim whitespace from each origin
+		for i, origin := range origins {
+			origins[i] = strings.TrimSpace(origin)
+		}
+		return origins
+	}
+
+	// Default origins - include dashboard frontend
+	origins := []string{
+		"http://localhost:3002", // Unified dashboard frontend
+	}
+
+	// If AUTH_SERVICE_API_URL is set, extract host and add frontend origin
+	if apiURL := os.Getenv("AUTH_SERVICE_API_URL"); apiURL != "" {
+		// Extract host from URL (e.g., http://localhost:8040 -> http://localhost:3002)
+		if strings.HasPrefix(apiURL, "http://") || strings.HasPrefix(apiURL, "https://") {
+			parts := strings.Split(strings.TrimPrefix(strings.TrimPrefix(apiURL, "http://"), "https://"), ":")
+			if len(parts) > 0 {
+				host := parts[0]
+				origins = append(origins, "http://"+host+":3002")
+			}
+		}
+	}
+
+	return origins
+}
+
+func NewRouter(userRepo *repository.UserRepository, jwtMiddleware *middleware.JWTMiddleware, cfg *config.Config, log logger.Logger) *gin.Engine {
+	router := gin.New()
+
+	// CORS middleware - must be first
+	router.Use(cors.New(cors.Config{
+		AllowOrigins:     getCORSOrigins(),
+		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Content-Length", "Accept-Encoding", "X-CSRF-Token", "Authorization", "accept", "origin", "Cache-Control", "X-Requested-With", "X-API-Key"},
+		ExposeHeaders:     []string{"Content-Length"},
+		AllowCredentials: true,
+		MaxAge:           corsMaxAgeHours * time.Hour,
+	}))
+
+	// Middleware
+	router.Use(ginLogger(log))
+	router.Use(gin.Recovery())
+
+	// Health check
+	router.GET("/health", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{"status": "ok"})
+	})
+
+	// API v1
+	v1 := router.Group("/api/v1")
+	authHandler := handlers.NewAuthHandler(userRepo, jwtMiddleware, cfg, log)
+
+	// Auth endpoints
+	auth := v1.Group("/auth")
+	auth.POST("/login", authHandler.Login)
+	auth.POST("/logout", authHandler.Logout)
+	auth.GET("/validate", authHandler.Validate)
+	auth.POST("/refresh", authHandler.Refresh)
+
+	return router
+}
+
+func ginLogger(log logger.Logger) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		start := time.Now()
+		path := c.Request.URL.Path
+		method := c.Request.Method
+
+		c.Next()
+
+		duration := time.Since(start)
+		statusCode := c.Writer.Status()
+
+		log.Info("HTTP request",
+			logger.String("method", method),
+			logger.String("path", path),
+			logger.Int("status_code", statusCode),
+			logger.String("client_ip", c.ClientIP()),
+			logger.Duration("duration", duration),
+		)
+	}
+}
+

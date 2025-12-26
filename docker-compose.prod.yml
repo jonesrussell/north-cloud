@@ -243,6 +243,46 @@ services:
           cpus: '0.5'
           memory: 512M
 
+  # Auth service - Production
+  auth:
+    build:
+      context: .
+      dockerfile: ./auth/Dockerfile
+      args:
+        - BUILD_ENV=production
+    container_name: north-cloud-auth
+    depends_on:
+      postgres-auth:
+        condition: service_healthy
+    environment:
+      - APP_DEBUG=false
+      - APP_ENV=production
+      - SERVER_HOST=${AUTH_SERVICE_HOST:-0.0.0.0}
+      - SERVER_PORT=${AUTH_SERVICE_PORT:-8040}
+      - POSTGRES_AUTH_HOST=postgres-auth
+      - POSTGRES_AUTH_PORT=5432
+      - POSTGRES_AUTH_USER=${POSTGRES_AUTH_USER}
+      - POSTGRES_AUTH_PASSWORD=${POSTGRES_AUTH_PASSWORD}
+      - POSTGRES_AUTH_DB=${POSTGRES_AUTH_DB:-auth}
+      - POSTGRES_AUTH_SSLMODE=disable
+      - AUTH_JWT_SECRET=${AUTH_JWT_SECRET}
+      - AUTH_JWT_EXPIRY=${AUTH_JWT_EXPIRY:-24h}
+      - AUTH_JWT_REFRESH_EXPIRY=${AUTH_JWT_REFRESH_EXPIRY:-168h}
+    volumes:
+      # Only mount migrations, not source code
+      - ./auth/migrations:/migrations:ro
+    networks:
+      - north-cloud-network
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 128M
+
   # Unified Dashboard - Production
   dashboard:
     build:
@@ -255,6 +295,7 @@ services:
       - crawler
       - source-manager
       - publisher
+      - auth
     healthcheck:
       test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://127.0.0.1:80/ || exit 1"]
       interval: 30s

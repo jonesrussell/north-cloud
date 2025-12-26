@@ -304,6 +304,59 @@ services:
           cpus: '2'
           memory: 4G
 
+  # Auth service - Development
+  auth:
+    build:
+      context: ./auth
+      dockerfile: Dockerfile.dev
+    container_name: north-cloud-auth-dev
+    # Run as host user to avoid permission issues with mounted volumes
+    user: "${UID:-1000}:${GID:-1000}"
+    ports:
+      - "${AUTH_SERVICE_PORT:-8040}:8040"
+    depends_on:
+      postgres-auth:
+        condition: service_healthy
+    environment:
+      - APP_DEBUG=true
+      - APP_ENV=development
+      - SERVER_HOST=${AUTH_SERVICE_HOST:-0.0.0.0}
+      - SERVER_PORT=${AUTH_SERVICE_PORT:-8040}
+      - POSTGRES_AUTH_HOST=postgres-auth
+      - POSTGRES_AUTH_PORT=5432
+      - POSTGRES_AUTH_USER=${POSTGRES_AUTH_USER:-postgres}
+      - POSTGRES_AUTH_PASSWORD=${POSTGRES_AUTH_PASSWORD:-postgres}
+      - POSTGRES_AUTH_DB=${POSTGRES_AUTH_DB:-auth}
+      - POSTGRES_AUTH_SSLMODE=disable
+      - AUTH_JWT_SECRET=${AUTH_JWT_SECRET:-change-this-secret-in-production}
+      - AUTH_JWT_EXPIRY=${AUTH_JWT_EXPIRY:-24h}
+      - AUTH_JWT_REFRESH_EXPIRY=${AUTH_JWT_REFRESH_EXPIRY:-168h}
+      # Use /tmp for caches to avoid permission issues with host user
+      - GOMODCACHE=/tmp/go-mod-cache
+      - GOCACHE=/tmp/go-build-cache
+    volumes:
+      # Mount source code for development
+      - ./auth:/app
+      - /app/vendor  # Exclude vendor directory
+      # Mount infrastructure module (required for go.mod replace directive)
+      - ./infrastructure:/infrastructure
+      # Mount cache volumes to persist downloads across restarts
+      - auth_go_mod_cache:/tmp/go-mod-cache
+      - auth_go_build_cache:/tmp/go-build-cache
+    working_dir: /app
+    # Download dependencies then start backend
+    # Use -mod=mod to ignore vendor directory if present
+    command: ["sh", "-c", "go mod download && go run -mod=mod ./main.go"]
+    networks:
+      - north-cloud-network
+    restart: unless-stopped
+    # Development resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512M
+
   # Streetcode (Drupal 11) - Development
   streetcode:
     build:
@@ -399,6 +452,7 @@ services:
       - source-manager
       - publisher
       - classifier
+      - auth
     ports:
       - "${DASHBOARD_PORT:-3002}:3002"
     environment:
@@ -409,6 +463,7 @@ services:
       - SOURCES_API_URL=http://source-manager:8050
       - PUBLISHER_API_URL=http://publisher:8070
       - CLASSIFIER_API_URL=http://classifier:8070
+      - AUTH_API_URL=http://auth:8040
     volumes:
       - ./dashboard:/app
       - dashboard_node_modules:/app/node_modules
@@ -466,6 +521,9 @@ volumes:
   # Index Manager cache volumes
   index_manager_go_mod_cache:
   index_manager_go_build_cache:
+  # Auth cache volumes
+  auth_go_mod_cache:
+  auth_go_build_cache:
   # Dashboard cache volumes
   dashboard_npm_cache:
   dashboard_node_modules:

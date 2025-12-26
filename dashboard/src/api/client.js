@@ -1,7 +1,97 @@
 import axios from 'axios'
+import { useAuth } from '../composables/useAuth'
 
 // Debug mode - logs all requests and responses
 const DEBUG = import.meta.env.DEV
+
+// Helper to get auth token
+const getAuthToken = () => {
+  const { getToken } = useAuth()
+  return getToken()
+}
+
+// Helper to refresh token on 401
+let isRefreshing = false
+let failedQueue = []
+
+const processQueue = (error, token = null) => {
+  failedQueue.forEach((prom) => {
+    if (error) {
+      prom.reject(error)
+    } else {
+      prom.resolve(token)
+    }
+  })
+  failedQueue = []
+}
+
+// Add auth interceptor to axios clients
+const addAuthInterceptor = (client) => {
+  // Request interceptor - add auth token
+  client.interceptors.request.use(
+    (config) => {
+      const token = getAuthToken()
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`
+      }
+      return config
+    },
+    (error) => {
+      return Promise.reject(error)
+    }
+  )
+
+  // Response interceptor - handle 401 and refresh token
+  client.interceptors.response.use(
+    (response) => response,
+    async (error) => {
+      const originalRequest = error.config
+
+      // If error is 401 and we haven't tried to refresh yet
+      if (error.response?.status === 401 && !originalRequest._retry) {
+        if (isRefreshing) {
+          // If already refreshing, queue this request
+          return new Promise((resolve, reject) => {
+            failedQueue.push({ resolve, reject })
+          })
+            .then((token) => {
+              originalRequest.headers.Authorization = `Bearer ${token}`
+              return client(originalRequest)
+            })
+            .catch((err) => {
+              return Promise.reject(err)
+            })
+        }
+
+        originalRequest._retry = true
+        isRefreshing = true
+
+        try {
+          const { refresh } = useAuth()
+          const refreshed = await refresh()
+
+          if (refreshed) {
+            const token = getAuthToken()
+            processQueue(null, token)
+            originalRequest.headers.Authorization = `Bearer ${token}`
+            return client(originalRequest)
+          } else {
+            processQueue(new Error('Token refresh failed'), null)
+            // Redirect to login will be handled by router guard
+            return Promise.reject(error)
+          }
+        } catch (refreshError) {
+          processQueue(refreshError, null)
+          return Promise.reject(refreshError)
+        } finally {
+          isRefreshing = false
+        }
+      }
+
+      return Promise.reject(error)
+    }
+  )
+}
 
 // Create axios instances for each service
 const crawlerClient = axios.create({
@@ -63,6 +153,13 @@ const addInterceptors = (client, serviceName) => {
   }
 }
 
+// Add auth interceptors to all clients
+addAuthInterceptor(crawlerClient)
+addAuthInterceptor(sourcesClient)
+addAuthInterceptor(publisherClient)
+addAuthInterceptor(classifierClient)
+
+// Add debug interceptors
 addInterceptors(crawlerClient, 'Crawler')
 addInterceptors(sourcesClient, 'Sources')
 addInterceptors(publisherClient, 'Publisher')

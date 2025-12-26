@@ -1,0 +1,38 @@
+FROM golang:1.25-alpine
+
+WORKDIR /app
+
+# Install build dependencies and tools
+RUN apk add --no-cache git curl wget
+
+# Install air for hot reloading (optional)
+# For Go 1.25+, use go install
+RUN go install github.com/air-verse/air@latest
+
+# Create non-root user for development (used as fallback)
+RUN addgroup -g 1000 appuser && \
+    adduser -D -u 1000 -G appuser appuser
+
+# Create cache directories in /tmp
+# /tmp typically has 1777 (sticky bit) which is appropriate for shared temp space
+RUN mkdir -p /tmp/go-mod-cache \
+             /tmp/go-build-cache && \
+    chmod 1777 /tmp/go-mod-cache \
+                /tmp/go-build-cache
+
+# Set PATH to include Go binaries
+ENV PATH=$PATH:/usr/local/go/bin:/go/bin
+
+# Note: Container runs as host user via docker-compose user directive
+# This eliminates permission issues with mounted volumes
+# Cache directories in /tmp are writable by any user
+# /app is mounted from host and owned by host user
+
+EXPOSE 8040
+
+# Default command: run from mounted source
+# The source code will be available via volume mount
+# Use -mod=mod to ignore vendor directory if present
+# Can be overridden in docker-compose to use air for hot reloading
+CMD ["sh", "-c", "go run -mod=mod ./main.go -config config.yml"]
+

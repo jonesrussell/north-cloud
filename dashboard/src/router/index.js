@@ -24,11 +24,22 @@ import ClassifierSourceReputationView from '../views/classifier/SourceReputation
 // 404 view
 import NotFoundView from '../views/NotFoundView.vue'
 
+// Login view
+import LoginView from '../views/LoginView.vue'
+
 const routes = [
   // Root redirect
   {
     path: '/',
     redirect: '/dashboard',
+  },
+
+  // Login route (public)
+  {
+    path: '/login',
+    name: 'login',
+    component: LoginView,
+    meta: { title: 'Login', public: true },
   },
 
   // Dashboard (Overview)
@@ -126,6 +137,48 @@ const routes = [
 const router = createRouter({
   history: createWebHistory(),
   routes,
+})
+
+// Auth guard - protect all routes except public ones
+router.beforeEach(async (to, from, next) => {
+  const { useAuth } = await import('../composables/useAuth')
+  const { isAuthenticated, validate } = useAuth()
+
+  // Check if route is public
+  if (to.meta.public) {
+    // If already authenticated and trying to access login, redirect to dashboard
+    if (to.path === '/login' && isAuthenticated.value) {
+      next('/dashboard')
+      return
+    }
+    next()
+    return
+  }
+
+  // Protected route - check authentication
+  if (!isAuthenticated.value) {
+    // Try to validate token (in case it's stored but not loaded)
+    const isValid = await validate()
+    if (!isValid) {
+      next({
+        path: '/login',
+        query: { redirect: to.fullPath },
+      })
+      return
+    }
+  }
+
+  // Validate token on each navigation
+  const isValid = await validate()
+  if (!isValid) {
+    next({
+      path: '/login',
+      query: { redirect: to.fullPath },
+    })
+    return
+  }
+
+  next()
 })
 
 // Update document title on navigation
