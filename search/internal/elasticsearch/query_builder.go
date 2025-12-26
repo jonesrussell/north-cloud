@@ -1,6 +1,8 @@
 package elasticsearch
 
 import (
+	"fmt"
+
 	"github.com/jonesrussell/north-cloud/search/internal/config"
 	"github.com/jonesrussell/north-cloud/search/internal/domain"
 )
@@ -305,6 +307,3 @@ func (qb *QueryBuilder) buildAggregations() map[string]interface{} {
 func floatToString(f float64) string {
 	return fmt.Sprintf("%.1f", f)
 }
-
-// Helper to import fmt
-import "fmt"

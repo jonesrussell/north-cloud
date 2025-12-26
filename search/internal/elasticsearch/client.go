@@ -9,6 +9,7 @@ import (
 	"time"
 
 	es "github.com/elastic/go-elasticsearch/v8"
+	"github.com/elastic/go-elasticsearch/v8/esapi"
 	"github.com/jonesrussell/north-cloud/search/internal/config"
 )
 
@@ -77,7 +78,7 @@ func (c *Client) Ping(ctx context.Context) error {
 }
 
 // Search executes a search query
-func (c *Client) Search(ctx context.Context, indexPattern string, query map[string]interface{}) (*es.Response, error) {
+func (c *Client) Search(ctx context.Context, indexPattern string, query map[string]interface{}) (*esapi.Response, error) {
 	// Execute search
 	res, err := c.esClient.Search(
 		c.esClient.Search.WithContext(ctx),

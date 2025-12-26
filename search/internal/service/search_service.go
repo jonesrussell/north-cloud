@@ -9,6 +9,7 @@ import (
 	"math"
 	"time"
 
+	"github.com/elastic/go-elasticsearch/v8/esapi"
 	"github.com/jonesrussell/north-cloud/search/internal/config"
 	"github.com/jonesrussell/north-cloud/search/internal/domain"
 	"github.com/jonesrussell/north-cloud/search/internal/elasticsearch"
@@ -81,7 +82,7 @@ func (s *SearchService) Search(ctx context.Context, req *domain.SearchRequest) (
 }
 
 // executeSearch performs the Elasticsearch search request
-func (s *SearchService) executeSearch(ctx context.Context, query map[string]interface{}) (*io.ReadCloser, error) {
+func (s *SearchService) executeSearch(ctx context.Context, query map[string]interface{}) (*esapi.Response, error) {
 	// Marshal query to JSON
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(query); err != nil {
@@ -113,7 +114,18 @@ func (s *SearchService) executeSearch(ctx context.Context, query map[string]inte
 		return nil, fmt.Errorf("elasticsearch returned error [%d]: %s", res.StatusCode, string(body))
 	}
 
-	return &res.Body, nil
+	return res, nil
+}
+
+// aggregationBucket represents a single bucket in an aggregation
+type aggregationBucket struct {
+	Key      interface{} `json:"key"`
+	DocCount int64       `json:"doc_count"`
+}
+
+// aggregation represents an aggregation with buckets
+type aggregation struct {
+	Buckets []aggregationBucket `json:"buckets"`
 }
 
 // parseSearchResponse parses the Elasticsearch response
@@ -125,18 +137,13 @@ func (s *SearchService) parseSearchResponse(body io.Reader, req *domain.SearchRe
 				Value int64 `json:"value"`
 			} `json:"total"`
 			Hits []struct {
-				ID        string                 `json:"_id"`
-				Score     float64                `json:"_score"`
+				ID        string                   `json:"_id"`
+				Score     float64                  `json:"_score"`
 				Source    domain.ClassifiedContent `json:"_source"`
-				Highlight map[string][]string    `json:"highlight,omitempty"`
+				Highlight map[string][]string      `json:"highlight,omitempty"`
 			} `json:"hits"`
 		} `json:"hits"`
-		Aggregations map[string]struct {
-			Buckets []struct {
-				Key      interface{} `json:"key"`
-				DocCount int64       `json:"doc_count"`
-			} `json:"buckets"`
-		} `json:"aggregations,omitempty"`
+		Aggregations map[string]aggregation `json:"aggregations,omitempty"`
 	}
 
 	if err := json.NewDecoder(body).Decode(&esResponse); err != nil {
@@ -175,12 +182,7 @@ func (s *SearchService) parseSearchResponse(body io.Reader, req *domain.SearchRe
 }
 
 // parseFacets parses aggregations into facets
-func (s *SearchService) parseFacets(aggs map[string]struct {
-	Buckets []struct {
-		Key      interface{} `json:"key"`
-		DocCount int64       `json:"doc_count"`
-	}
-}) *domain.Facets {
+func (s *SearchService) parseFacets(aggs map[string]aggregation) *domain.Facets {
 	facets := &domain.Facets{}
 
 	// Topics facet
