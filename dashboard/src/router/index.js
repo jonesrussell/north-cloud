@@ -21,6 +21,9 @@ import ClassifierStatsView from '../views/classifier/StatsView.vue'
 import ClassifierRulesView from '../views/classifier/RulesView.vue'
 import ClassifierSourceReputationView from '../views/classifier/SourceReputationView.vue'
 
+// 404 view
+import NotFoundView from '../views/NotFoundView.vue'
+
 const routes = [
   // Root redirect
   {
@@ -109,6 +112,14 @@ const routes = [
     name: 'classifier-sources',
     component: ClassifierSourceReputationView,
     meta: { title: 'Source Reputation', section: 'classifier' },
+  },
+
+  // 404 catch-all route - must be last
+  {
+    path: '/:pathMatch(.*)*',
+    name: 'not-found',
+    component: NotFoundView,
+    meta: { title: 'Page Not Found' },
   },
 ]
 
