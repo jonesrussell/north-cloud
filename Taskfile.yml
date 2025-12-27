@@ -16,6 +16,7 @@ tasks:
       - task: lint:index-manager
       - task: lint:publisher
       - task: lint:search
+      - task: lint:search-frontend
       - task: lint:source-manager
 
   lint:parallel:
@@ -28,6 +29,7 @@ tasks:
       - task: lint:index-manager
       - task: lint:publisher
       - task: lint:search
+      - task: lint:search-frontend
       - task: lint:source-manager
     run: parallel
 
@@ -79,6 +81,12 @@ tasks:
     cmds:
       - task lint
 
+  lint:search-frontend:
+    desc: "Run linter for search-frontend service"
+    dir: search-frontend
+    cmds:
+      - task lint
+
   test:
     desc: "Run tests for all microservices sequentially"
     cmds:
@@ -89,6 +97,7 @@ tasks:
       - task: test:index-manager
       - task: test:publisher
       - task: test:search
+      - task: test:search-frontend
       - task: test:source-manager
 
   test:parallel:
@@ -101,6 +110,7 @@ tasks:
       - task: test:index-manager
       - task: test:publisher
       - task: test:search
+      - task: test:search-frontend
       - task: test:source-manager
     run: parallel
 
@@ -149,6 +159,12 @@ tasks:
   test:auth:
     desc: "Run tests for auth service"
     dir: auth
+    cmds:
+      - task test
+
+  test:search-frontend:
+    desc: "Run tests for search-frontend service"
+    dir: search-frontend
     cmds:
       - task test
 
