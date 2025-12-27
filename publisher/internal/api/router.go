@@ -5,6 +5,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/gopost/integration/internal/logger"
+	infrajwt "github.com/north-cloud/infrastructure/jwt"
 )
 
 // NewRouter creates a new Gin router with all routes and middleware
@@ -33,8 +34,12 @@ func NewRouter(statsService *StatsService, log logger.Logger, version string) *g
 	// Health check
 	router.GET("/health", handlers.Health)
 
-	// API v1 routes
+	// API v1 routes - protected with JWT
 	v1 := router.Group("/api/v1")
+	// Add JWT middleware if JWT secret is configured
+	if jwtSecret := os.Getenv("AUTH_JWT_SECRET"); jwtSecret != "" {
+		v1.Use(infrajwt.Middleware(jwtSecret))
+	}
 	v1.GET("/stats", handlers.GetStats)
 	v1.GET("/articles/recent", handlers.GetRecentArticles)
 
