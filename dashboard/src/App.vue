@@ -1,5 +1,7 @@
 <template>
   <div class="min-h-screen bg-gray-100">
+    <!-- Show sidebar only when authenticated (not on login page) -->
+    <template v-if="isAuthenticated">
     <!-- Sidebar -->
     <div class="fixed inset-y-0 left-0 z-50 w-64 bg-gray-900">
       <!-- Logo -->
@@ -196,6 +198,13 @@
                 {{ healthStatus === 'healthy' ? 'System Healthy' : 'System Issues' }}
               </span>
             </div>
+            <!-- Logout button -->
+            <button
+              @click="handleLogout"
+              class="rounded-md bg-gray-200 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              Logout
+            </button>
           </div>
         </div>
       </header>
@@ -205,6 +214,12 @@
         <router-view />
       </main>
     </div>
+    </template>
+    
+    <!-- Show full-width router-view for login page -->
+    <template v-else>
+      <router-view />
+    </template>
   </div>
 </template>
 
@@ -222,8 +237,10 @@ import {
   StarIcon,
 } from '@heroicons/vue/24/outline'
 import { crawlerApi, publisherApi, classifierApi } from './api/client'
+import { useAuth } from './composables/useAuth'
 
 const route = useRoute()
+const { isAuthenticated, logout } = useAuth()
 const healthStatus = ref('healthy')
 
 const pageTitle = computed(() => {
@@ -238,8 +255,17 @@ const isActiveExact = (path) => {
   return route.path === path
 }
 
-// Check system health on mount
+// Handle logout
+const handleLogout = () => {
+  logout()
+}
+
+// Check system health on mount (only when authenticated)
 onMounted(async () => {
+  if (!isAuthenticated.value) {
+    return
+  }
+  
   try {
     // Check all services health
     const [crawlerHealth, publisherHealth, classifierHealth] = await Promise.allSettled([
