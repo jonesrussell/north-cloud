@@ -4,11 +4,8 @@
       <!-- Hero Section -->
       <div class="text-center mb-12">
         <h1 class="text-5xl font-bold text-gray-900 mb-4">
-          Search North Cloud
+          North Cloud
         </h1>
-        <p class="text-xl text-gray-600">
-          Discover crime news and articles from trusted sources
-        </p>
       </div>
 
       <!-- Search Bar -->

@@ -10,22 +10,6 @@
               North Cloud
             </div>
           </router-link>
-
-          <!-- Navigation -->
-          <nav class="flex items-center space-x-6">
-            <router-link
-              to="/advanced"
-              class="text-gray-600 hover:text-gray-900 text-sm font-medium transition-colors"
-            >
-              Advanced Search
-            </router-link>
-            <a
-              href="/dashboard"
-              class="text-gray-600 hover:text-gray-900 text-sm font-medium transition-colors"
-            >
-              Admin Dashboard
-            </a>
-          </nav>
         </div>
       </div>
     </header>

@@ -4,7 +4,6 @@
       <input
         v-model="localQuery"
         type="text"
-        placeholder="Search for news articles..."
         class="w-full px-4 py-3 pl-12 pr-12 text-lg border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
         @keydown.enter="handleSearch"
       />
