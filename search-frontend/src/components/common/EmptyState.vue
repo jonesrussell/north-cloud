@@ -23,15 +23,14 @@
   </div>
 </template>
 
-<script setup>
-defineProps({
-  title: {
-    type: String,
-    default: 'No results found',
-  },
-  message: {
-    type: String,
-    default: 'Try adjusting your search or filters',
-  },
+<script setup lang="ts">
+interface Props {
+  title?: string
+  message?: string
+}
+
+withDefaults(defineProps<Props>(), {
+  title: 'No results found',
+  message: 'Try adjusting your search or filters',
 })
 </script>

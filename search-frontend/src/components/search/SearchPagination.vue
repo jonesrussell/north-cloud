@@ -76,40 +76,34 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { computed } from 'vue'
 
-const props = defineProps({
-  currentPage: {
-    type: Number,
-    required: true,
-  },
-  totalPages: {
-    type: Number,
-    required: true,
-  },
-  totalHits: {
-    type: Number,
-    required: true,
-  },
-  pageSize: {
-    type: Number,
-    default: 20,
-  },
+interface Props {
+  currentPage: number
+  totalPages: number
+  totalHits: number
+  pageSize?: number
+}
+
+const props = withDefaults(defineProps<Props>(), {
+  pageSize: 20,
 })
 
-const emit = defineEmits(['page-change'])
+const emit = defineEmits<{
+  'page-change': [page: number]
+}>()
 
-const startResult = computed(() => {
+const startResult = computed((): number => {
   return (props.currentPage - 1) * props.pageSize + 1
 })
 
-const endResult = computed(() => {
+const endResult = computed((): number => {
   return Math.min(props.currentPage * props.pageSize, props.totalHits)
 })
 
-const visiblePages = computed(() => {
-  const pages = []
+const visiblePages = computed((): number[] => {
+  const pages: number[] = []
   const maxVisible = 5
   let start = Math.max(1, props.currentPage - Math.floor(maxVisible / 2))
   let end = Math.min(props.totalPages, start + maxVisible - 1)
@@ -125,17 +119,17 @@ const visiblePages = computed(() => {
   return pages
 })
 
-const goToPage = (page) => {
+const goToPage = (page: number): void => {
   emit('page-change', page)
 }
 
-const goToPrevious = () => {
+const goToPrevious = (): void => {
   if (props.currentPage > 1) {
     emit('page-change', props.currentPage - 1)
   }
 }
 
-const goToNext = () => {
+const goToNext = (): void => {
   if (props.currentPage < props.totalPages) {
     emit('page-change', props.currentPage + 1)
   }

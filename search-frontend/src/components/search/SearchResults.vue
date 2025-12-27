@@ -8,13 +8,13 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import SearchResultItem from './SearchResultItem.vue'
+import type { SearchResult } from '@/types/search'
 
-defineProps({
-  results: {
-    type: Array,
-    required: true,
-  },
-})
+interface Props {
+  results: SearchResult[]
+}
+
+defineProps<Props>()
 </script>

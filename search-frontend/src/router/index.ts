@@ -1,4 +1,4 @@
-import { createRouter, createWebHistory } from 'vue-router'
+import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
 
 // Views
 import HomeView from '../views/HomeView.vue'
@@ -6,7 +6,7 @@ import ResultsView from '../views/ResultsView.vue'
 import AdvancedSearchView from '../views/AdvancedSearchView.vue'
 import NotFoundView from '../views/NotFoundView.vue'
 
-const routes = [
+const routes: RouteRecordRaw[] = [
   {
     path: '/',
     name: 'home',
@@ -53,3 +53,4 @@ router.afterEach((to) => {
 })
 
 export default router
+

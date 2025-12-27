@@ -1,11 +1,18 @@
 /**
- * Parse Elasticsearch highlight snippets and extract text
- * @param {Object} highlight - ES highlight object
- * @param {String} field - Field name (e.g., 'title', 'body')
- * @param {Number} maxLength - Maximum length for snippet
- * @returns {String} - HTML string with highlights
+ * Elasticsearch highlight object structure
  */
-export function parseHighlight(highlight, field, maxLength = 200) {
+export interface ElasticsearchHighlight {
+  [field: string]: string[]
+}
+
+/**
+ * Parse Elasticsearch highlight snippets and extract text
+ */
+export function parseHighlight(
+  highlight: ElasticsearchHighlight | undefined,
+  field: string,
+  maxLength = 200
+): string {
   if (!highlight || !highlight[field]) return ''
 
   // ES returns array of highlighted snippets
@@ -30,10 +37,8 @@ export function parseHighlight(highlight, field, maxLength = 200) {
 /**
  * Sanitize HTML to prevent XSS attacks
  * Only allows <em> tags from Elasticsearch highlights
- * @param {String} html - HTML string
- * @returns {String} - Sanitized HTML
  */
-export function sanitizeHighlight(html) {
+export function sanitizeHighlight(html: string): string {
   if (!html) return ''
 
   // Create temporary div to parse HTML
@@ -48,8 +53,10 @@ export function sanitizeHighlight(html) {
     const element = allElements[i]
     if (!allowedTags.includes(element.tagName.toLowerCase())) {
       // Replace tag with its text content
-      const textNode = document.createTextNode(element.textContent)
-      element.parentNode.replaceChild(textNode, element)
+      const textNode = document.createTextNode(element.textContent || '')
+      if (element.parentNode) {
+        element.parentNode.replaceChild(textNode, element)
+      }
     }
   }
 
@@ -58,10 +65,8 @@ export function sanitizeHighlight(html) {
 
 /**
  * Extract plain text from highlight (strip all HTML)
- * @param {String} html - HTML string
- * @returns {String} - Plain text
  */
-export function stripHighlightTags(html) {
+export function stripHighlightTags(html: string): string {
   if (!html) return ''
 
   const div = document.createElement('div')
@@ -71,11 +76,8 @@ export function stripHighlightTags(html) {
 
 /**
  * Truncate text at word boundary
- * @param {String} text - Text to truncate
- * @param {Number} maxLength - Maximum length
- * @returns {String} - Truncated text
  */
-export function truncateText(text, maxLength = 200) {
+export function truncateText(text: string, maxLength = 200): string {
   if (!text || text.length <= maxLength) return text
 
   let truncated = text.substring(0, maxLength)
@@ -94,3 +96,4 @@ export default {
   stripHighlightTags,
   truncateText,
 }
+

@@ -1,6 +1,7 @@
-import { ref, computed } from 'vue'
+import { ref, computed, type Ref, type ComputedRef } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import searchApi from '@/api/search'
+import type { SearchResult, SearchFilters, Facet, SearchResponse } from '@/types/search'
 
 /**
  * Search state management composable
@@ -11,17 +12,17 @@ export function useSearch() {
   const route = useRoute()
 
   // Core search state
-  const query = ref('')
-  const results = ref([])
-  const facets = ref(null)
-  const totalHits = ref(0)
-  const currentPage = ref(1)
-  const pageSize = ref(20)
-  const loading = ref(false)
-  const error = ref(null)
+  const query: Ref<string> = ref('')
+  const results: Ref<SearchResult[]> = ref([])
+  const facets: Ref<Facet | null> = ref(null)
+  const totalHits: Ref<number> = ref(0)
+  const currentPage: Ref<number> = ref(1)
+  const pageSize: Ref<number> = ref(20)
+  const loading: Ref<boolean> = ref(false)
+  const error: Ref<string | null> = ref(null)
 
   // Filter state
-  const filters = ref({
+  const filters: Ref<SearchFilters> = ref({
     topics: [],
     content_type: null,
     min_quality_score: 0,
@@ -31,19 +32,19 @@ export function useSearch() {
   })
 
   // Sorting state
-  const sortBy = ref('relevance')
-  const sortOrder = ref('desc')
+  const sortBy: Ref<string> = ref('relevance')
+  const sortOrder: Ref<'asc' | 'desc'> = ref('desc')
 
   // Computed properties
-  const totalPages = computed(() => Math.ceil(totalHits.value / pageSize.value))
-  const hasResults = computed(() => results.value.length > 0)
-  const hasError = computed(() => error.value !== null)
-  const isEmpty = computed(() => !loading.value && !hasResults.value && query.value !== '')
+  const totalPages: ComputedRef<number> = computed(() => Math.ceil(totalHits.value / pageSize.value))
+  const hasResults: ComputedRef<boolean> = computed(() => results.value.length > 0)
+  const hasError: ComputedRef<boolean> = computed(() => error.value !== null)
+  const isEmpty: ComputedRef<boolean> = computed(() => !loading.value && !hasResults.value && query.value !== '')
 
   /**
    * Execute search with current state
    */
-  const search = async () => {
+  const search = async (): Promise<void> => {
     if (!query.value.trim()) {
       results.value = []
       return
@@ -58,12 +59,12 @@ export function useSearch() {
         filters: {
           ...filters.value,
           // Remove empty filters
-          topics: filters.value.topics.length > 0 ? filters.value.topics : undefined,
+          topics: filters.value.topics && filters.value.topics.length > 0 ? filters.value.topics : undefined,
           content_type: filters.value.content_type || undefined,
-          min_quality_score: filters.value.min_quality_score > 0 ? filters.value.min_quality_score : undefined,
+          min_quality_score: filters.value.min_quality_score && filters.value.min_quality_score > 0 ? filters.value.min_quality_score : undefined,
           from_date: filters.value.from_date || undefined,
           to_date: filters.value.to_date || undefined,
-          source_names: filters.value.source_names.length > 0 ? filters.value.source_names : undefined,
+          source_names: filters.value.source_names && filters.value.source_names.length > 0 ? filters.value.source_names : undefined,
         },
         pagination: {
           page: currentPage.value,
@@ -88,7 +89,14 @@ export function useSearch() {
       updateUrl()
     } catch (err) {
       console.error('Search error:', err)
-      error.value = err.response?.data?.error || err.message || 'Search failed. Please try again.'
+      if (err && typeof err === 'object' && 'response' in err) {
+        const axiosError = err as { response?: { data?: { error?: string } }; message?: string }
+        error.value = axiosError.response?.data?.error || axiosError.message || 'Search failed. Please try again.'
+      } else if (err instanceof Error) {
+        error.value = err.message || 'Search failed. Please try again.'
+      } else {
+        error.value = 'Search failed. Please try again.'
+      }
       results.value = []
       facets.value = null
       totalHits.value = 0
@@ -100,52 +108,52 @@ export function useSearch() {
   /**
    * Parse URL parameters and update state
    */
-  const syncFromUrl = () => {
-    query.value = route.query.q || ''
-    currentPage.value = parseInt(route.query.page) || 1
-    sortBy.value = route.query.sort || 'relevance'
-    sortOrder.value = route.query.order || 'desc'
+  const syncFromUrl = (): void => {
+    query.value = (route.query.q as string) || ''
+    currentPage.value = parseInt(route.query.page as string) || 1
+    sortBy.value = (route.query.sort as string) || 'relevance'
+    sortOrder.value = (route.query.order as 'asc' | 'desc') || 'desc'
 
     // Parse filters from URL
     if (route.query.topics) {
       filters.value.topics = typeof route.query.topics === 'string'
         ? route.query.topics.split(',')
-        : route.query.topics
+        : (route.query.topics as string[])
     }
     if (route.query.content_type) {
-      filters.value.content_type = route.query.content_type
+      filters.value.content_type = route.query.content_type as string
     }
     if (route.query.min_quality_score) {
-      filters.value.min_quality_score = parseInt(route.query.min_quality_score) || 0
+      filters.value.min_quality_score = parseInt(route.query.min_quality_score as string) || 0
     }
     if (route.query.from_date) {
-      filters.value.from_date = route.query.from_date
+      filters.value.from_date = route.query.from_date as string
     }
     if (route.query.to_date) {
-      filters.value.to_date = route.query.to_date
+      filters.value.to_date = route.query.to_date as string
     }
     if (route.query.sources) {
       filters.value.source_names = typeof route.query.sources === 'string'
         ? route.query.sources.split(',')
-        : route.query.sources
+        : (route.query.sources as string[])
     }
   }
 
   /**
    * Update URL with current search state
    */
-  const updateUrl = () => {
-    const query_params = {
+  const updateUrl = (): void => {
+    const query_params: Record<string, string | number | undefined> = {
       q: query.value || undefined,
       page: currentPage.value > 1 ? currentPage.value : undefined,
       sort: sortBy.value !== 'relevance' ? sortBy.value : undefined,
       order: sortOrder.value !== 'desc' ? sortOrder.value : undefined,
-      topics: filters.value.topics.length > 0 ? filters.value.topics.join(',') : undefined,
+      topics: filters.value.topics && filters.value.topics.length > 0 ? filters.value.topics.join(',') : undefined,
       content_type: filters.value.content_type || undefined,
-      min_quality_score: filters.value.min_quality_score > 0 ? filters.value.min_quality_score : undefined,
+      min_quality_score: filters.value.min_quality_score && filters.value.min_quality_score > 0 ? filters.value.min_quality_score : undefined,
       from_date: filters.value.from_date || undefined,
       to_date: filters.value.to_date || undefined,
-      sources: filters.value.source_names.length > 0 ? filters.value.source_names.join(',') : undefined,
+      sources: filters.value.source_names && filters.value.source_names.length > 0 ? filters.value.source_names.join(',') : undefined,
     }
 
     // Remove undefined values
@@ -159,7 +167,7 @@ export function useSearch() {
   /**
    * Reset all filters
    */
-  const clearFilters = () => {
+  const clearFilters = (): void => {
     filters.value = {
       topics: [],
       content_type: null,
@@ -174,7 +182,7 @@ export function useSearch() {
   /**
    * Change page
    */
-  const changePage = (page) => {
+  const changePage = (page: number): void => {
     currentPage.value = page
     search()
     // Scroll to top
@@ -184,7 +192,7 @@ export function useSearch() {
   /**
    * Apply filters and search
    */
-  const applyFilters = () => {
+  const applyFilters = (): void => {
     currentPage.value = 1 // Reset to first page when filters change
     search()
   }
@@ -220,3 +228,4 @@ export function useSearch() {
 }
 
 export default useSearch
+

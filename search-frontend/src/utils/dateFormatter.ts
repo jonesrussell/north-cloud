@@ -1,31 +1,27 @@
 /**
  * Format date string to readable format
- * @param {String} dateString - ISO date string
- * @returns {String} - Formatted date
  */
-export function formatDate(dateString) {
+export function formatDate(dateString: string | undefined | null): string {
   if (!dateString) return ''
 
   const date = new Date(dateString)
   if (isNaN(date.getTime())) return dateString
 
-  const options = { year: 'numeric', month: 'short', day: 'numeric' }
+  const options: Intl.DateTimeFormatOptions = { year: 'numeric', month: 'short', day: 'numeric' }
   return date.toLocaleDateString('en-US', options)
 }
 
 /**
  * Format date to relative time (e.g., "2 hours ago")
- * @param {String} dateString - ISO date string
- * @returns {String} - Relative time string
  */
-export function formatRelativeTime(dateString) {
+export function formatRelativeTime(dateString: string | undefined | null): string {
   if (!dateString) return ''
 
   const date = new Date(dateString)
   if (isNaN(date.getTime())) return dateString
 
   const now = new Date()
-  const diffMs = now - date
+  const diffMs = now.getTime() - date.getTime()
   const diffMins = Math.floor(diffMs / 60000)
   const diffHours = Math.floor(diffMs / 3600000)
   const diffDays = Math.floor(diffMs / 86400000)
@@ -40,19 +36,16 @@ export function formatRelativeTime(dateString) {
 
 /**
  * Get current date in YYYY-MM-DD format
- * @returns {String} - Date string
  */
-export function getTodayString() {
+export function getTodayString(): string {
   const today = new Date()
   return today.toISOString().split('T')[0]
 }
 
 /**
  * Get date N days ago in YYYY-MM-DD format
- * @param {Number} days - Number of days
- * @returns {String} - Date string
  */
-export function getDaysAgoString(days) {
+export function getDaysAgoString(days: number): string {
   const date = new Date()
   date.setDate(date.getDate() - days)
   return date.toISOString().split('T')[0]
@@ -64,3 +57,4 @@ export default {
   getTodayString,
   getDaysAgoString,
 }
+

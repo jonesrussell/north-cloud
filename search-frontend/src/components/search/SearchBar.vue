@@ -25,35 +25,39 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref, watch } from 'vue'
 
-const props = defineProps({
-  modelValue: {
-    type: String,
-    default: '',
-  },
+interface Props {
+  modelValue?: string
+}
+
+const props = withDefaults(defineProps<Props>(), {
+  modelValue: '',
 })
 
-const emit = defineEmits(['update:modelValue', 'search'])
+const emit = defineEmits<{
+  'update:modelValue': [value: string]
+  'search': [query: string]
+}>()
 
 const localQuery = ref(props.modelValue)
 
-watch(() => props.modelValue, (newValue) => {
+watch(() => props.modelValue, (newValue: string) => {
   localQuery.value = newValue
 })
 
-watch(localQuery, (newValue) => {
+watch(localQuery, (newValue: string) => {
   emit('update:modelValue', newValue)
 })
 
-const handleSearch = () => {
+const handleSearch = (): void => {
   if (localQuery.value.trim()) {
     emit('search', localQuery.value.trim())
   }
 }
 
-const clearSearch = () => {
+const clearSearch = (): void => {
   localQuery.value = ''
   emit('update:modelValue', '')
 }

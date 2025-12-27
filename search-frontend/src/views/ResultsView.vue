@@ -49,7 +49,7 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useSearch } from '@/composables/useSearch'
@@ -79,7 +79,7 @@ const {
 } = useSearch()
 
 // Handle search from search bar
-const handleSearch = (searchQuery) => {
+const handleSearch = (searchQuery: string): void => {
   query.value = searchQuery
   currentPage.value = 1
   search()
