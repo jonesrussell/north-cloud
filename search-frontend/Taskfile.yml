@@ -1,0 +1,38 @@
+version: '3'
+
+tasks:
+  default:
+    desc: "Show available tasks"
+    cmds:
+      - task --list
+
+  lint:
+    desc: "Lint the code"
+    cmds:
+      - npm run lint || echo "No lint script found"
+
+  test:
+    desc: "Run tests (no tests configured)"
+    cmds:
+      - echo "No tests configured for search-frontend"
+
+  build:
+    desc: "Build for production"
+    cmds:
+      - npm run build
+
+  clean:
+    desc: "Remove build artifacts"
+    cmds:
+      - rm -rf dist/
+
+  dev:
+    desc: "Run development server"
+    cmds:
+      - npm run dev
+
+  preview:
+    desc: "Preview production build"
+    cmds:
+      - npm run preview
+

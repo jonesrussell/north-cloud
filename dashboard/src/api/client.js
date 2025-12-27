@@ -3,6 +3,20 @@ import axios from 'axios'
 // Debug mode - logs all requests and responses
 const DEBUG = import.meta.env.DEV
 
+// Helper function to get token from localStorage
+const getToken = () => {
+  return localStorage.getItem('dashboard_token')
+}
+
+// Helper function to handle 401 errors (redirect to login)
+const handleUnauthorized = () => {
+  localStorage.removeItem('dashboard_token')
+  // Only redirect if we're in a browser environment
+  if (typeof window !== 'undefined') {
+    window.location.href = '/dashboard/login'
+  }
+}
+
 // Create axios instances for each service
 const crawlerClient = axios.create({
   baseURL: '/api/crawler',
@@ -35,6 +49,40 @@ const classifierClient = axios.create({
     'Content-Type': 'application/json',
   },
 })
+
+// Add auth interceptor to all clients
+const addAuthInterceptor = (client) => {
+  // Request interceptor: Add token to headers
+  client.interceptors.request.use(
+    (config) => {
+      const token = getToken()
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`
+      }
+      return config
+    },
+    (error) => {
+      return Promise.reject(error)
+    }
+  )
+
+  // Response interceptor: Handle 401 errors
+  client.interceptors.response.use(
+    (response) => response,
+    (error) => {
+      if (error.response?.status === 401) {
+        handleUnauthorized()
+      }
+      return Promise.reject(error)
+    }
+  )
+}
+
+// Add auth interceptors to all clients
+addAuthInterceptor(crawlerClient)
+addAuthInterceptor(sourcesClient)
+addAuthInterceptor(publisherClient)
+addAuthInterceptor(classifierClient)
 
 // Request/response interceptors for debugging
 const addInterceptors = (client, serviceName) => {

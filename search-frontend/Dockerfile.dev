@@ -1,0 +1,31 @@
+# Development Dockerfile for Search Frontend
+FROM node:22-alpine
+
+# Build arguments for user/group IDs
+ARG UID=1000
+ARG GID=1000
+
+WORKDIR /app
+
+# Install git for development tools
+RUN apk add --no-cache git
+
+# Create cache directories
+RUN mkdir -p /tmp/npm-cache && \
+    chmod 1777 /tmp/npm-cache
+
+# Create node_modules directory and set permissions
+RUN mkdir -p /app/node_modules && \
+    chown -R ${UID}:${GID} /app
+
+# Copy package files
+COPY --chown=${UID}:${GID} package*.json ./
+
+# Copy source code
+COPY --chown=${UID}:${GID} . .
+
+# Expose port
+EXPOSE 3003
+
+# Start development server
+CMD ["sh", "-c", "npm install && npm run dev -- --host 0.0.0.0"]

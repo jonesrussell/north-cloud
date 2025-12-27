@@ -245,6 +245,38 @@ The platform uses a **three-stage content pipeline** for intelligent article pro
   - `search_timeout: 5s` - Elasticsearch query timeout
 - **Documentation**: See [/search/README.md](search/README.md)
 
+#### 7. **auth**
+- **Location**: `/auth`
+- **Language**: Go 1.25+
+- **Purpose**: Authentication service for dashboard and API access
+- **Ports**: 8040
+- **Key Features**:
+  - Username/password authentication
+  - JWT token generation and validation
+  - Token-based API protection
+  - Simple credential management via environment variables
+  - REST API for login
+- **API Endpoints**:
+  - `POST /api/v1/auth/login` - Authenticate and receive JWT token
+  - `GET /health` - Health check (public)
+- **Authentication Flow**:
+  1. User submits username/password to `/api/v1/auth/login`
+  2. Service validates credentials against environment variables
+  3. On success, returns JWT token with 24h expiration
+  4. Frontend stores token in localStorage
+  5. All API requests include token in `Authorization: Bearer <token>` header
+  6. Backend services validate token using shared JWT secret
+- **Configuration**:
+  - `AUTH_USERNAME` - Dashboard username (required)
+  - `AUTH_PASSWORD` - Dashboard password (required)
+  - `AUTH_JWT_SECRET` - Secret key for JWT signing/validation (required in production)
+  - `AUTH_PORT` - Service port (default: 8040)
+- **Security**:
+  - Tokens expire after 24 hours
+  - HS256 algorithm for token signing
+  - Shared secret across all services for token validation
+  - Health endpoints remain public (no authentication required)
+
 ### Infrastructure Services
 
 #### PostgreSQL Databases
@@ -386,7 +418,39 @@ north-cloud/
 │       ├── PAYLOAD_TO_DRUPAL_MAPPING.md
 │       └── ARTICLE_FIELDS_GUIDE.md
 │
+├── auth/                         # Authentication service
+│   ├── Dockerfile
+│   ├── go.mod
+│   ├── main.go
+│   ├── internal/
+│   │   ├── api/                 # HTTP API handlers
+│   │   │   ├── auth_handler.go  # Login endpoint handler
+│   │   │   └── server.go        # HTTP server setup
+│   │   ├── auth/                # JWT token management
+│   │   │   └── jwt.go           # Token generation and validation
+│   │   └── config/              # Configuration management
+│   │       └── config.go        # Environment variable loading
+│   └── Dockerfile.dev           # Development Dockerfile
+│
+├── dashboard/                    # Unified dashboard frontend
+│   ├── Dockerfile
+│   ├── Dockerfile.dev
+│   ├── src/
+│   │   ├── views/
+│   │   │   └── LoginView.vue    # Login page component
+│   │   ├── composables/
+│   │   │   └── useAuth.js       # Authentication state management
+│   │   ├── api/
+│   │   │   ├── auth.js          # Auth API client
+│   │   │   └── client.js        # API clients with JWT interceptors
+│   │   ├── router/
+│   │   │   └── index.js         # Router with auth guards
+│   │   └── App.vue              # Main app component with auth-aware layout
+│   └── package.json
+│
 └── infrastructure/               # Shared infrastructure configs
+    ├── jwt/                     # Shared JWT authentication middleware
+    │   └── middleware.go        # JWT validation middleware for Gin
     ├── nginx/
     │   └── nginx.conf           # Main nginx configuration with SSL/TLS
     ├── elasticsearch/
@@ -455,6 +519,9 @@ The codebase leverages Go 1.25 improvements:
   - `POSTGRES_*_USER`: Database users
   - `POSTGRES_*_PASSWORD`: Database passwords
   - `DRUPAL_TOKEN`: Drupal API authentication
+  - `AUTH_USERNAME`: Dashboard username (required)
+  - `AUTH_PASSWORD`: Dashboard password (required)
+  - `AUTH_JWT_SECRET`: Shared JWT secret for token signing/validation (required in production)
 
 #### Configuration Priority
 1. Environment variables (highest priority)
@@ -497,8 +564,14 @@ The codebase leverages Go 1.25 improvements:
 - **Framework**: Gin (recommended)
 - **Format**: JSON
 - **Versioning**: `/api/v1/` prefix
-- **Authentication**: Token-based or Basic Auth
+- **Authentication**: JWT token-based authentication
+  - Token obtained via `POST /api/auth/api/v1/auth/login`
+  - Include in `Authorization: Bearer <token>` header
+  - All `/api/v1/*` routes protected (except `/health` endpoints)
+  - Shared JWT secret (`AUTH_JWT_SECRET`) across all services
+  - Tokens expire after 24 hours
 - **Error Responses**: Consistent JSON format
+- **Middleware**: Use `infrastructure/jwt` package for JWT validation
 
 #### Drupal JSON:API
 - **Endpoint**: `/jsonapi`
@@ -762,8 +835,10 @@ docker-compose -f docker-compose.base.yml -f docker-compose.prod.yml build
 | source-manager-frontend | 3000 | 3000 | Source Manager UI |
 | classifier | 8070 | 8070 | Classifier HTTP API |
 | publisher | 8080 | 8080 | Publisher API (if enabled) |
+| auth | 8040 | 8040 | Authentication service |
 | streetcode | 80 | 8090 | Drupal web interface |
 | nginx | 80 | 80 | Reverse proxy |
+| dashboard | 3002 | 3002 | Unified dashboard frontend |
 | elasticsearch | 9200 | 9200 | Elasticsearch API |
 | redis | 6379 | 6379 | Redis cache |
 | postgres-* | 5432 | - | PostgreSQL (internal only) |
@@ -1114,6 +1189,23 @@ docker system prune -a --volumes
 - Verify Redis deduplication
 - Respect rate limits
 
+**For Auth Service**:
+- Simple username/password authentication via environment variables
+- JWT token generation with 24h expiration
+- No database required (credentials in environment)
+- Shared JWT secret must match across all services
+- Health endpoint remains public
+- For production, generate strong JWT secret: `openssl rand -hex 32`
+
+**For Dashboard Frontend**:
+- Vue.js 3 with Composition API
+- Authentication state managed via `useAuth` composable
+- Route guards redirect unauthenticated users to `/login`
+- JWT tokens stored in localStorage
+- API clients automatically inject tokens in Authorization header
+- Handles 401 responses by redirecting to login and clearing token
+- Login page styled with Tailwind CSS
+
 **For Streetcode (Drupal)**:
 - Follow Drupal coding standards
 - Export configuration changes: `drush cex`
@@ -1226,7 +1318,12 @@ docker system prune -a --volumes
 **Authentication and Security**:
 - Never commit credentials
 - Use environment variables for secrets
-- Validate authentication in all services
+- **JWT Authentication**: All dashboard API routes require JWT tokens
+  - Token obtained from `/api/auth/api/v1/auth/login` endpoint
+  - Shared `AUTH_JWT_SECRET` environment variable across all services
+  - Tokens expire after 24 hours
+  - Health endpoints remain public (no authentication)
+- Validate authentication in all services using `infrastructure/jwt` middleware
 - Follow security best practices (see service docs)
 
 ### 9. Service Communication Patterns
@@ -1341,6 +1438,12 @@ docker system prune -a --volumes
 - `/DOCKER.md`
 - `/source-manager/DEVELOPMENT.md`
 
+**Authentication & Security**:
+- `/auth/` - Authentication service implementation
+- `/infrastructure/jwt/` - Shared JWT middleware for backend services
+- `/dashboard/src/composables/useAuth.js` - Frontend authentication state management
+- `/dashboard/src/views/LoginView.vue` - Login page component
+
 ---
 
 ## Questions or Clarifications?
@@ -1364,6 +1467,17 @@ When encountering scenarios not covered in this guide:
 ---
 
 ## Version History
+
+- **Dashboard Authentication Implementation** (2025-12-27): JWT-based authentication for dashboard and APIs
+  - **Auth service**: New Go service (`/auth`) for username/password authentication and JWT token generation
+  - **Frontend authentication**: Login page (`LoginView.vue`), route guards, token storage (localStorage), and API interceptors
+  - **Backend API protection**: JWT middleware (`infrastructure/jwt`) added to all backend services
+  - **Protected routes**: All `/api/v1/*` routes require valid JWT tokens (health endpoints remain public)
+  - **Nginx integration**: Added `/api/auth` location block for auth service routing
+  - **Environment configuration**: `AUTH_USERNAME`, `AUTH_PASSWORD`, `AUTH_JWT_SECRET` variables
+  - **Token security**: 24-hour expiration, HS256 signing algorithm, shared secret validation
+  - **Works in dev and prod**: Environment-aware configuration with development-friendly defaults
+  - **Documentation**: Updated CLAUDE.md with auth service details and authentication flow
 
 - **SSL/TLS Implementation** (2025-12-25): Production SSL/TLS setup for northcloud.biz
   - **Let's Encrypt integration**: Automated certificate management with certbot

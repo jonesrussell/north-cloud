@@ -110,6 +110,10 @@ node_modules/
 docs/_build/
 site/
 
+# Vendor directories
+vendor/
+**/vendor/
+
 # Drupal-specific ignores (managed by Composer, not git)
 streetcode/vendor/
 streetcode/web/core

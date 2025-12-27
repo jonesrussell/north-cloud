@@ -12,6 +12,7 @@ import (
 	"github.com/jonesrussell/gosources/internal/handlers"
 	"github.com/jonesrussell/gosources/internal/logger"
 	"github.com/jonesrussell/gosources/internal/repository"
+	infrajwt "github.com/north-cloud/infrastructure/jwt"
 )
 
 const (
@@ -78,8 +79,12 @@ func NewRouter(db *repository.SourceRepository, cfg *config.Config, log logger.L
 		c.JSON(http.StatusOK, gin.H{"status": "ok"})
 	})
 
-	// API v1
+	// API v1 - protected with JWT
 	v1 := router.Group("/api/v1")
+	// Add JWT middleware if JWT secret is configured
+	if jwtSecret := os.Getenv("AUTH_JWT_SECRET"); jwtSecret != "" {
+		v1.Use(infrajwt.Middleware(jwtSecret))
+	}
 	sourceHandler := handlers.NewSourceHandler(db, log)
 
 	// Sources endpoints

@@ -24,19 +24,24 @@ import ClassifierSourceReputationView from '../views/classifier/SourceReputation
 // 404 view
 import NotFoundView from '../views/NotFoundView.vue'
 
+// Login view
+import LoginView from '../views/LoginView.vue'
+
 const routes = [
-  // Root redirect
+  // Login route (public)
   {
-    path: '/',
-    redirect: '/dashboard',
+    path: '/login',
+    name: 'login',
+    component: LoginView,
+    meta: { title: 'Login', requiresAuth: false },
   },
 
-  // Dashboard (Overview)
+  // Dashboard (Overview) - this is the root route for the app
   {
-    path: '/dashboard',
+    path: '/',
     name: 'dashboard',
     component: DashboardView,
-    meta: { title: 'Dashboard' },
+    meta: { title: 'Dashboard', requiresAuth: true },
   },
 
   // Crawler routes
@@ -44,13 +49,13 @@ const routes = [
     path: '/crawler/jobs',
     name: 'crawler-jobs',
     component: CrawlerJobsView,
-    meta: { title: 'Crawl Jobs', section: 'crawler' },
+    meta: { title: 'Crawl Jobs', section: 'crawler', requiresAuth: true },
   },
   {
     path: '/crawler/stats',
     name: 'crawler-stats',
     component: CrawlerStatsView,
-    meta: { title: 'Crawler Statistics', section: 'crawler' },
+    meta: { title: 'Crawler Statistics', section: 'crawler', requiresAuth: true },
   },
 
   // Publisher routes
@@ -58,13 +63,13 @@ const routes = [
     path: '/publisher/stats',
     name: 'publisher-stats',
     component: PublisherStatsView,
-    meta: { title: 'Publisher Statistics', section: 'publisher' },
+    meta: { title: 'Publisher Statistics', section: 'publisher', requiresAuth: true },
   },
   {
     path: '/publisher/articles',
     name: 'publisher-articles',
     component: PublisherRecentArticlesView,
-    meta: { title: 'Recent Articles', section: 'publisher' },
+    meta: { title: 'Recent Articles', section: 'publisher', requiresAuth: true },
   },
 
   // Sources routes
@@ -72,26 +77,26 @@ const routes = [
     path: '/sources',
     name: 'sources',
     component: SourcesListView,
-    meta: { title: 'Sources', section: 'sources' },
+    meta: { title: 'Sources', section: 'sources', requiresAuth: true },
   },
   {
     path: '/sources/new',
     name: 'source-new',
     component: SourcesFormView,
-    meta: { title: 'New Source', section: 'sources' },
+    meta: { title: 'New Source', section: 'sources', requiresAuth: true },
   },
   {
     path: '/sources/:id/edit',
     name: 'source-edit',
     component: SourcesFormView,
     props: true,
-    meta: { title: 'Edit Source', section: 'sources' },
+    meta: { title: 'Edit Source', section: 'sources', requiresAuth: true },
   },
   {
     path: '/sources/cities',
     name: 'cities',
     component: CitiesView,
-    meta: { title: 'Cities', section: 'sources' },
+    meta: { title: 'Cities', section: 'sources', requiresAuth: true },
   },
 
   // Classifier routes
@@ -99,19 +104,19 @@ const routes = [
     path: '/classifier/stats',
     name: 'classifier-stats',
     component: ClassifierStatsView,
-    meta: { title: 'Classifier Statistics', section: 'classifier' },
+    meta: { title: 'Classifier Statistics', section: 'classifier', requiresAuth: true },
   },
   {
     path: '/classifier/rules',
     name: 'classifier-rules',
     component: ClassifierRulesView,
-    meta: { title: 'Classification Rules', section: 'classifier' },
+    meta: { title: 'Classification Rules', section: 'classifier', requiresAuth: true },
   },
   {
     path: '/classifier/sources',
     name: 'classifier-sources',
     component: ClassifierSourceReputationView,
-    meta: { title: 'Source Reputation', section: 'classifier' },
+    meta: { title: 'Source Reputation', section: 'classifier', requiresAuth: true },
   },
 
   // 404 catch-all route - must be last
@@ -124,8 +129,33 @@ const routes = [
 ]
 
 const router = createRouter({
-  history: createWebHistory(),
+  history: createWebHistory('/dashboard/'),
   routes,
+})
+
+// Route guard for authentication
+router.beforeEach((to, from, next) => {
+  // Check if route requires authentication
+  const requiresAuth = to.meta.requiresAuth !== false // Default to true unless explicitly false
+  
+  if (requiresAuth) {
+    // Check if user is authenticated
+    const token = localStorage.getItem('dashboard_token')
+    if (!token) {
+      // Redirect to login
+      next({ name: 'login', query: { redirect: to.fullPath } })
+      return
+    }
+  } else if (to.name === 'login') {
+    // If already authenticated, redirect to dashboard
+    const token = localStorage.getItem('dashboard_token')
+    if (token) {
+      next({ name: 'dashboard' })
+      return
+    }
+  }
+  
+  next()
 })
 
 // Update document title on navigation

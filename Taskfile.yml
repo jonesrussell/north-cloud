@@ -9,23 +9,27 @@ tasks:
   lint:
     desc: "Run linters for all microservices sequentially"
     cmds:
+      - task: lint:auth
       - task: lint:classifier
       - task: lint:crawler
       - task: lint:dashboard
       - task: lint:index-manager
       - task: lint:publisher
       - task: lint:search
+      - task: lint:search-frontend
       - task: lint:source-manager
 
   lint:parallel:
     desc: "Run linters for all microservices in parallel"
     cmds:
+      - task: lint:auth
       - task: lint:classifier
       - task: lint:crawler
       - task: lint:dashboard
       - task: lint:index-manager
       - task: lint:publisher
       - task: lint:search
+      - task: lint:search-frontend
       - task: lint:source-manager
     run: parallel
 
@@ -71,26 +75,42 @@ tasks:
     cmds:
       - task lint
 
+  lint:auth:
+    desc: "Run linter for auth service"
+    dir: auth
+    cmds:
+      - task lint
+
+  lint:search-frontend:
+    desc: "Run linter for search-frontend service"
+    dir: search-frontend
+    cmds:
+      - task lint
+
   test:
     desc: "Run tests for all microservices sequentially"
     cmds:
+      - task: test:auth
       - task: test:classifier
       - task: test:crawler
       - task: test:dashboard
       - task: test:index-manager
       - task: test:publisher
       - task: test:search
+      - task: test:search-frontend
       - task: test:source-manager
 
   test:parallel:
     desc: "Run tests for all microservices in parallel"
     cmds:
+      - task: test:auth
       - task: test:classifier
       - task: test:crawler
       - task: test:dashboard
       - task: test:index-manager
       - task: test:publisher
       - task: test:search
+      - task: test:search-frontend
       - task: test:source-manager
     run: parallel
 
@@ -133,6 +153,18 @@ tasks:
   test:source-manager:
     desc: "Run tests for source-manager service"
     dir: source-manager
+    cmds:
+      - task test
+
+  test:auth:
+    desc: "Run tests for auth service"
+    dir: auth
+    cmds:
+      - task test
+
+  test:search-frontend:
+    desc: "Run tests for search-frontend service"
+    dir: search-frontend
     cmds:
       - task test
 
