@@ -238,8 +238,8 @@ services:
   # Auth Service
   auth:
     build:
-      context: .
-      dockerfile: ./auth/Dockerfile
+      context: ./auth
+      dockerfile: Dockerfile
     container_name: north-cloud-auth
     environment:
       - AUTH_USERNAME=${AUTH_USERNAME:-admin}

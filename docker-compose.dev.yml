@@ -509,8 +509,8 @@ services:
   # Auth Service - Development
   auth:
     build:
-      context: .
-      dockerfile: ./auth/Dockerfile.dev
+      context: ./auth
+      dockerfile: Dockerfile.dev
       args:
         UID: ${UID:-1000}
         GID: ${GID:-1000}
@@ -526,7 +526,6 @@ services:
       - APP_DEBUG=${APP_DEBUG:-true}
     volumes:
       - ./auth:/app
-      - ./infrastructure:/infrastructure
       - auth_go_modules:/go/pkg/mod
     working_dir: /app
     command: ["sh", "-c", "go mod download && go run main.go"]
