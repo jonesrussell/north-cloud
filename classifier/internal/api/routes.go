@@ -1,7 +1,10 @@
 package api
 
 import (
+	"os"
+
 	"github.com/gin-gonic/gin"
+	infrajwt "github.com/north-cloud/infrastructure/jwt"
 )
 
 // SetupRoutes configures all API routes
@@ -10,8 +13,12 @@ func SetupRoutes(router *gin.Engine, handler *Handler) {
 	router.GET("/health", handler.HealthCheck)
 	router.GET("/ready", handler.ReadyCheck)
 
-	// API v1 routes
+	// API v1 routes - protected with JWT
 	v1 := router.Group("/api/v1")
+	// Add JWT middleware if JWT secret is configured
+	if jwtSecret := os.Getenv("AUTH_JWT_SECRET"); jwtSecret != "" {
+		v1.Use(infrajwt.Middleware(jwtSecret))
+	}
 	{
 		// Classification endpoints
 		classify := v1.Group("/classify")
