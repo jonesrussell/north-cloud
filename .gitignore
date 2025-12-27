@@ -102,6 +102,8 @@ backups/
 node_modules/
 **/node_modules/
 
+**/.vite/
+
 # Database dumps
 *.sql.gz
 *.dump
