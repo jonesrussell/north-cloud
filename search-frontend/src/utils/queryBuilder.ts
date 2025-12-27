@@ -1,4 +1,4 @@
-import type { SearchRequest, SearchFilters } from '@/types/search'
+import type { SearchRequest } from '@/types/search'
 
 /**
  * Form data interface for search forms

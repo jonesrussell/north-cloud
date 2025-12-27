@@ -1,7 +1,7 @@
 import { ref, computed, type Ref, type ComputedRef } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import searchApi from '@/api/search'
-import type { SearchResult, SearchFilters, Facet, SearchResponse } from '@/types/search'
+import type { SearchResult, SearchFilters, Facet } from '@/types/search'
 
 /**
  * Search state management composable
@@ -158,7 +158,7 @@ export function useSearch() {
 
     // Remove undefined values
     const cleanQuery = Object.fromEntries(
-      Object.entries(query_params).filter(([_, v]) => v !== undefined)
+      Object.entries(query_params).filter(([, v]) => v !== undefined)
     )
 
     router.push({ path: '/search', query: cleanQuery })

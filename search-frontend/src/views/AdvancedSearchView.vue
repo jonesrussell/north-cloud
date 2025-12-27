@@ -96,7 +96,7 @@ const handleSubmit = (): void => {
 
   // Remove undefined values
   const cleanQuery = Object.fromEntries(
-    Object.entries(queryParams).filter(([_, v]) => v !== undefined)
+    Object.entries(queryParams).filter(([, v]) => v !== undefined)
   )
 
   router.push({ path: '/search', query: cleanQuery })
