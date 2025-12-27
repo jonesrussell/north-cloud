@@ -3,12 +3,14 @@ package api
 
 import (
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/jonesrussell/north-cloud/crawler/internal/api/middleware"
 	"github.com/jonesrussell/north-cloud/crawler/internal/config"
 	"github.com/jonesrussell/north-cloud/crawler/internal/logger"
+	infrajwt "github.com/north-cloud/infrastructure/jwt"
 )
 
 const (
@@ -37,8 +39,12 @@ func SetupRouter(
 		c.JSON(http.StatusOK, gin.H{"status": "ok"})
 	})
 
-	// API v1 routes (for dashboard frontend)
+	// API v1 routes (for dashboard frontend) - protected with JWT
 	v1 := router.Group("/api/v1")
+	// Add JWT middleware if JWT secret is configured
+	if jwtSecret := os.Getenv("AUTH_JWT_SECRET"); jwtSecret != "" {
+		v1.Use(infrajwt.Middleware(jwtSecret))
+	}
 	// Stats endpoint for dashboard
 	v1.GET("/stats", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
