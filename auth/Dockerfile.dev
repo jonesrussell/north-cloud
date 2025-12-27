@@ -1,0 +1,19 @@
+FROM golang:1.25-alpine
+
+WORKDIR /app
+
+# Install development tools
+RUN apk add --no-cache git make
+
+# Copy go mod files
+COPY go.mod go.sum* ./
+RUN go mod download
+
+# Copy source code (mounted as volume in docker-compose)
+# This allows hot-reloading during development
+
+EXPOSE 8040
+
+# Run with hot-reload using air (if installed) or direct go run
+CMD ["go", "run", "main.go"]
+
