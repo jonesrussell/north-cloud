@@ -30,6 +30,7 @@ services:
       - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
       - CRAWLER_SOURCES_API_URL=http://source-manager:8050/api/v1/sources
       - APP_ENV=production
+      - AUTH_JWT_SECRET=${AUTH_JWT_SECRET}
     # No volume mounts - code is baked into image
     networks:
       - north-cloud-network
@@ -105,6 +106,7 @@ services:
       - DRUPAL_TOKEN=${DRUPAL_TOKEN}
       - APP_DEBUG=false
       - APP_ENV=production
+      - AUTH_JWT_SECRET=${AUTH_JWT_SECRET}
     volumes:
       # Only mount config, not source code
       - ./publisher/config.yml:/app/config.yml:ro

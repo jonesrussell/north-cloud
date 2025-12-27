@@ -43,6 +43,8 @@ services:
       - CRAWLER_MINIO_BUCKET=${CRAWLER_MINIO_BUCKET:-html-archives}
       - CRAWLER_MINIO_METADATA_BUCKET=${CRAWLER_MINIO_METADATA_BUCKET:-crawler-metadata}
       - CRAWLER_MINIO_USE_SSL=${CRAWLER_MINIO_USE_SSL:-false}
+      # Auth JWT secret for API authentication
+      - AUTH_JWT_SECRET=${AUTH_JWT_SECRET:-}
       # Use /tmp for caches to avoid permission issues with host user
       - GOMODCACHE=/tmp/go-mod-cache
       - GOCACHE=/tmp/go-build-cache
@@ -95,6 +97,8 @@ services:
       - DB_SSLMODE=disable
       # External API URL for other services to access source-manager
       - SOURCE_MANAGER_API_URL=${SOURCE_MANAGER_API_URL:-http://localhost:8050}
+      # Auth JWT secret for API authentication
+      - AUTH_JWT_SECRET=${AUTH_JWT_SECRET:-}
       # Use /tmp for caches to avoid permission issues with host user
       - GOMODCACHE=/tmp/go-mod-cache
       - GOCACHE=/tmp/go-build-cache
@@ -153,6 +157,8 @@ services:
       - APP_DEBUG=true
       - APP_ENV=development
       - PUBLISHER_PORT=${PUBLISHER_PORT:-8070}
+      # Auth JWT secret for API authentication
+      - AUTH_JWT_SECRET=${AUTH_JWT_SECRET:-}
       # Use /tmp for caches to avoid permission issues with host user
       - GOMODCACHE=/tmp/go-mod-cache
       - GOCACHE=/tmp/go-build-cache
@@ -219,6 +225,8 @@ services:
       - POLLING_INTERVAL=${CLASSIFIER_POLLING_INTERVAL:-30s}
       - BATCH_SIZE=${CLASSIFIER_BATCH_SIZE:-100}
       - CONCURRENT_WORKERS=${CLASSIFIER_CONCURRENCY:-5}
+      # Auth JWT secret for API authentication
+      - AUTH_JWT_SECRET=${AUTH_JWT_SECRET:-}
       # Use /tmp for caches to avoid permission issues with host user
       - GOMODCACHE=/tmp/go-mod-cache
       - GOCACHE=/tmp/go-build-cache
@@ -497,6 +505,34 @@ services:
     networks:
       - north-cloud-network
     restart: unless-stopped
+
+  # Auth Service - Development
+  auth:
+    build:
+      context: .
+      dockerfile: ./auth/Dockerfile.dev
+      args:
+        UID: ${UID:-1000}
+        GID: ${GID:-1000}
+    container_name: north-cloud-auth-dev
+    user: "${UID:-1000}:${GID:-1000}"
+    ports:
+      - "${AUTH_PORT:-8040}:8040"
+    environment:
+      - AUTH_USERNAME=${AUTH_USERNAME:-admin}
+      - AUTH_PASSWORD=${AUTH_PASSWORD:-admin}
+      - AUTH_JWT_SECRET=${AUTH_JWT_SECRET:-}
+      - AUTH_PORT=8040
+      - APP_DEBUG=${APP_DEBUG:-true}
+    volumes:
+      - ./auth:/app
+      - ./infrastructure:/infrastructure
+      - auth_go_modules:/go/pkg/mod
+    working_dir: /app
+    command: ["sh", "-c", "go mod download && go run main.go"]
+    networks:
+      - north-cloud-network
+    restart: unless-stopped
     deploy:
       resources:
         limits:
@@ -553,5 +589,7 @@ volumes:
   # Search Frontend cache volumes
   search_frontend_npm_cache:
   search_frontend_node_modules:
+  # Auth service cache volumes
+  auth_go_modules:
   # Streetcode cache volumes
   streetcode_npm_cache:
