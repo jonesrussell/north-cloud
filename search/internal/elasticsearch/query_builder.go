@@ -113,20 +113,20 @@ func (qb *QueryBuilder) buildMultiMatchQuery(query string) map[string]interface{
 func (qb *QueryBuilder) buildFilters(filters *domain.Filters) []interface{} {
 	var result []interface{}
 
-	// Topics filter
+	// Topics filter - use .keyword subfield for text fields
 	if len(filters.Topics) > 0 {
 		result = append(result, map[string]interface{}{
 			"terms": map[string]interface{}{
-				"topics": filters.Topics,
+				"topics.keyword": filters.Topics,
 			},
 		})
 	}
 
-	// Content type filter
+	// Content type filter - use .keyword subfield for text fields
 	if filters.ContentType != "" {
 		result = append(result, map[string]interface{}{
 			"term": map[string]interface{}{
-				"content_type": filters.ContentType,
+				"content_type.keyword": filters.ContentType,
 			},
 		})
 	}
@@ -152,16 +152,16 @@ func (qb *QueryBuilder) buildFilters(filters *domain.Filters) []interface{} {
 		})
 	}
 
-	// Source names filter
+	// Source names filter - use .keyword subfield for text fields
 	if len(filters.SourceNames) > 0 {
 		result = append(result, map[string]interface{}{
 			"terms": map[string]interface{}{
-				"source_name": filters.SourceNames,
+				"source_name.keyword": filters.SourceNames,
 			},
 		})
 	}
 
-	// Date range filter
+	// Date range filter - use crawled_at since published_date may not exist in all documents
 	if filters.FromDate != nil || filters.ToDate != nil {
 		dateRange := map[string]interface{}{}
 		if filters.FromDate != nil {
@@ -170,9 +170,10 @@ func (qb *QueryBuilder) buildFilters(filters *domain.Filters) []interface{} {
 		if filters.ToDate != nil {
 			dateRange["lte"] = filters.ToDate.Format("2006-01-02T15:04:05Z07:00")
 		}
+		// Use crawled_at as it's more reliable (always exists)
 		result = append(result, map[string]interface{}{
 			"range": map[string]interface{}{
-				"published_date": dateRange,
+				"crawled_at": dateRange,
 			},
 		})
 	}
@@ -182,30 +183,34 @@ func (qb *QueryBuilder) buildFilters(filters *domain.Filters) []interface{} {
 
 // buildBoosts adds score boosting for recency and quality
 func (qb *QueryBuilder) buildBoosts() []interface{} {
-	return []interface{}{
-		// Boost recent content (recency decay)
-		map[string]interface{}{
-			"function_score": map[string]interface{}{
-				"gauss": map[string]interface{}{
-					"published_date": map[string]interface{}{
-						"origin": "now",
-						"scale":  "30d",
-						"decay":  0.5,
-					},
+	var boosts []interface{}
+
+	// Boost recent content using crawled_at (more reliable than published_date)
+	// Use crawled_at since published_date may not exist in all documents
+	boosts = append(boosts, map[string]interface{}{
+		"function_score": map[string]interface{}{
+			"gauss": map[string]interface{}{
+				"crawled_at": map[string]interface{}{
+					"origin": "now",
+					"scale":  "30d",
+					"decay":  0.5,
 				},
 			},
 		},
-		// Boost high-quality content
-		map[string]interface{}{
-			"function_score": map[string]interface{}{
-				"field_value_factor": map[string]interface{}{
-					"field":    "quality_score",
-					"factor":   0.01,
-					"modifier": "log1p",
-				},
+	})
+
+	// Boost high-quality content
+	boosts = append(boosts, map[string]interface{}{
+		"function_score": map[string]interface{}{
+			"field_value_factor": map[string]interface{}{
+				"field":    "quality_score",
+				"factor":   0.01,
+				"modifier": "log1p",
 			},
 		},
-	}
+	})
+
+	return boosts
 }
 
 // buildSort constructs sort criteria
@@ -220,8 +225,10 @@ func (qb *QueryBuilder) buildSort(req *domain.SearchRequest) []interface{} {
 			},
 		})
 	case "published_date":
+		// Use crawled_at instead since published_date may not exist in all documents
+		// This is more reliable for sorting
 		sortCriteria = append(sortCriteria, map[string]interface{}{
-			"published_date": map[string]interface{}{
+			"crawled_at": map[string]interface{}{
 				"order": req.Sort.Order,
 			},
 		})
@@ -235,6 +242,13 @@ func (qb *QueryBuilder) buildSort(req *domain.SearchRequest) []interface{} {
 		sortCriteria = append(sortCriteria, map[string]interface{}{
 			"crawled_at": map[string]interface{}{
 				"order": req.Sort.Order,
+			},
+		})
+	default:
+		// Default to relevance if field is unknown
+		sortCriteria = append(sortCriteria, map[string]interface{}{
+			"_score": map[string]interface{}{
+				"order": "desc",
 			},
 		})
 	}
@@ -273,19 +287,21 @@ func (qb *QueryBuilder) buildAggregations() map[string]interface{} {
 	return map[string]interface{}{
 		"topics": map[string]interface{}{
 			"terms": map[string]interface{}{
-				"field": "topics",
+				"field": "topics.keyword",
 				"size":  20,
 			},
 		},
+		// Use .keyword subfield for fields that may be dynamically mapped as text
+		// Elasticsearch automatically creates .keyword for text fields
 		"content_types": map[string]interface{}{
 			"terms": map[string]interface{}{
-				"field": "content_type",
+				"field": "content_type.keyword",
 				"size":  10,
 			},
 		},
 		"sources": map[string]interface{}{
 			"terms": map[string]interface{}{
-				"field": "source_name",
+				"field": "source_name.keyword",
 				"size":  50,
 			},
 		},
