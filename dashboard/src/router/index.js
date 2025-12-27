@@ -25,15 +25,9 @@ import ClassifierSourceReputationView from '../views/classifier/SourceReputation
 import NotFoundView from '../views/NotFoundView.vue'
 
 const routes = [
-  // Root redirect
+  // Dashboard (Overview) - this is the root route for the app
   {
     path: '/',
-    redirect: '/dashboard',
-  },
-
-  // Dashboard (Overview)
-  {
-    path: '/dashboard',
     name: 'dashboard',
     component: DashboardView,
     meta: { title: 'Dashboard' },
@@ -124,7 +118,7 @@ const routes = [
 ]
 
 const router = createRouter({
-  history: createWebHistory(),
+  history: createWebHistory('/dashboard/'),
   routes,
 })
 

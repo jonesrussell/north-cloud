@@ -12,10 +12,10 @@
       <nav class="mt-6 px-3">
         <!-- Dashboard -->
         <router-link
-          to="/dashboard"
+          to="/"
           class="group flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors"
           :class="[
-            isActive('/dashboard')
+            isActiveExact('/')
               ? 'bg-gray-800 text-white'
               : 'text-gray-300 hover:bg-gray-800 hover:text-white'
           ]"

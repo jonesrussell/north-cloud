@@ -9,6 +9,7 @@ const PUBLISHER_API_URL = process.env.PUBLISHER_API_URL || 'http://localhost:807
 const CLASSIFIER_API_URL = process.env.CLASSIFIER_API_URL || 'http://localhost:8071'
 
 export default defineConfig({
+  base: '/dashboard/',
   plugins: [
     vue(),
     tailwindcss(),
