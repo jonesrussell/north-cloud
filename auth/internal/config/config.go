@@ -71,4 +71,3 @@ func (c *Config) GetJWTConfig() *JWTConfig {
 		Expiration: 24 * time.Hour, // 24 hours
 	}
 }
-

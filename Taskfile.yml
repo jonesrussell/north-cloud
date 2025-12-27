@@ -9,6 +9,7 @@ tasks:
   lint:
     desc: "Run linters for all microservices sequentially"
     cmds:
+      - task: lint:auth
       - task: lint:classifier
       - task: lint:crawler
       - task: lint:dashboard
@@ -20,6 +21,7 @@ tasks:
   lint:parallel:
     desc: "Run linters for all microservices in parallel"
     cmds:
+      - task: lint:auth
       - task: lint:classifier
       - task: lint:crawler
       - task: lint:dashboard
@@ -71,9 +73,16 @@ tasks:
     cmds:
       - task lint
 
+  lint:auth:
+    desc: "Run linter for auth service"
+    dir: auth
+    cmds:
+      - task lint
+
   test:
     desc: "Run tests for all microservices sequentially"
     cmds:
+      - task: test:auth
       - task: test:classifier
       - task: test:crawler
       - task: test:dashboard
@@ -85,6 +94,7 @@ tasks:
   test:parallel:
     desc: "Run tests for all microservices in parallel"
     cmds:
+      - task: test:auth
       - task: test:classifier
       - task: test:crawler
       - task: test:dashboard
@@ -133,6 +143,12 @@ tasks:
   test:source-manager:
     desc: "Run tests for source-manager service"
     dir: source-manager
+    cmds:
+      - task test
+
+  test:auth:
+    desc: "Run tests for auth service"
+    dir: auth
     cmds:
       - task test
 
