@@ -63,3 +63,4 @@ COMMENT ON COLUMN classification_rules.topic_name IS 'Topic name for topic rules
 COMMENT ON COLUMN classification_rules.keywords IS 'Array of keywords to match against content';
 COMMENT ON COLUMN classification_rules.min_confidence IS 'Minimum confidence score (0.0-1.0) required for classification';
 COMMENT ON COLUMN classification_rules.priority IS 'Higher priority rules are evaluated first';
+

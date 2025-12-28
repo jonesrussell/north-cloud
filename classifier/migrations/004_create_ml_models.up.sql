@@ -55,3 +55,4 @@ COMMENT ON COLUMN ml_models.model_path IS 'Path to serialized model file (filesy
 COMMENT ON COLUMN ml_models.is_active IS 'Whether this model is currently active for predictions';
 COMMENT ON COLUMN ml_models.enabled IS 'Whether this model is enabled (can be activated)';
 COMMENT ON INDEX idx_ml_models_active_per_type IS 'Ensures only one active model per type';
+

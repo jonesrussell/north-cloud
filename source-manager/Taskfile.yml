@@ -107,8 +107,8 @@ tasks:
       - task: vet
       - task: lint
 
-  migrate:
-    desc: Run database migrations
+  migrate:up:
+    desc: Run database migrations up
     env:
       PGPASSWORD: '{{.DB_PASSWORD}}'
     cmds:
@@ -117,9 +117,37 @@ tasks:
           echo "DB_PASSWORD or POSTGRES_SOURCE_MANAGER_PASSWORD environment variable not set"
           exit 1
         fi
-      - psql -h {{.DB_HOST}} -p {{.DB_PORT}} -U {{.DB_USER}} -d {{.DB_NAME}} -f migrations/001_create_sources_table.sql
-      - psql -h {{.DB_HOST}} -p {{.DB_PORT}} -U {{.DB_USER}} -d {{.DB_NAME}} -f migrations/002_remove_index_fields.sql
-      - psql -h {{.DB_HOST}} -p {{.DB_PORT}} -U {{.DB_USER}} -d {{.DB_NAME}} -f migrations/003_remove_city_name_and_group_id.sql
+      - |
+        DATABASE_URL="postgres://{{.DB_USER}}:{{.DB_PASSWORD}}@{{.DB_HOST}}:{{.DB_PORT}}/{{.DB_NAME}}?sslmode=disable"
+        migrate -path ./migrations -database "$DATABASE_URL" up
+
+  migrate:down:
+    desc: Rollback last migration
+    env:
+      PGPASSWORD: '{{.DB_PASSWORD}}'
+    cmds:
+      - |
+        if [ -z "{{.DB_PASSWORD}}" ]; then
+          echo "DB_PASSWORD or POSTGRES_SOURCE_MANAGER_PASSWORD environment variable not set"
+          exit 1
+        fi
+      - |
+        DATABASE_URL="postgres://{{.DB_USER}}:{{.DB_PASSWORD}}@{{.DB_HOST}}:{{.DB_PORT}}/{{.DB_NAME}}?sslmode=disable"
+        migrate -path ./migrations -database "$DATABASE_URL" down 1
+
+  migrate:version:
+    desc: Show current migration version
+    env:
+      PGPASSWORD: '{{.DB_PASSWORD}}'
+    cmds:
+      - |
+        if [ -z "{{.DB_PASSWORD}}" ]; then
+          echo "DB_PASSWORD or POSTGRES_SOURCE_MANAGER_PASSWORD environment variable not set"
+          exit 1
+        fi
+      - |
+        DATABASE_URL="postgres://{{.DB_USER}}:{{.DB_PASSWORD}}@{{.DB_HOST}}:{{.DB_PORT}}/{{.DB_NAME}}?sslmode=disable"
+        migrate -path ./migrations -database "$DATABASE_URL" version
 
   migrate:check:
     desc: Check if migrations have been applied
@@ -131,7 +159,14 @@ tasks:
           echo "DB_PASSWORD or POSTGRES_SOURCE_MANAGER_PASSWORD environment variable not set"
           exit 1
         fi
-      - psql -h {{.DB_HOST}} -p {{.DB_PORT}} -U {{.DB_USER}} -d {{.DB_NAME}} -c "\d sources" || echo "Table 'sources' does not exist. Run 'task migrate' to create it."
+      - |
+        DATABASE_URL="postgres://{{.DB_USER}}:{{.DB_PASSWORD}}@{{.DB_HOST}}:{{.DB_PORT}}/{{.DB_NAME}}?sslmode=disable"
+        migrate -path ./migrations -database "$DATABASE_URL" version || echo "No migrations applied yet. Run 'task migrate:up' to apply migrations."
+
+  migrate:
+    desc: Alias for migrate:up
+    cmds:
+      - task: migrate:up
 
   docker:build:
     desc: Build Docker image
@@ -175,6 +210,7 @@ tasks:
       - go install github.com/air-verse/air@latest || true
       - go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest || true
       - go install golang.org/x/tools/cmd/goimports@latest || true
+      - go install github.com/golang-migrate/migrate/v4/cmd/migrate@latest || true
 
   air:install:
     desc: Install air for hot reloading

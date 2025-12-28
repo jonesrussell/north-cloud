@@ -52,3 +52,4 @@ COMMENT ON COLUMN classification_history.classification_method IS 'Method used: 
 COMMENT ON COLUMN classification_history.confidence IS 'Overall classification confidence (0.0-1.0)';
 COMMENT ON COLUMN classification_history.processing_time_ms IS 'Time taken to classify in milliseconds';
 COMMENT ON INDEX idx_history_training_data IS 'Optimized for extracting ML training data (high-confidence, recent)';
+

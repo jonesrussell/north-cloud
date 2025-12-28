@@ -172,3 +172,4 @@ ON CONFLICT (rule_name) DO NOTHING;
 
 -- Comments
 COMMENT ON TABLE classification_rules IS 'Rules for classifying content by type and topic - now includes comprehensive Microsoft/Bing-style taxonomy';
+

@@ -83,3 +83,4 @@ CREATE TRIGGER update_channels_updated_at BEFORE UPDATE ON channels
 
 CREATE TRIGGER update_routes_updated_at BEFORE UPDATE ON routes
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
