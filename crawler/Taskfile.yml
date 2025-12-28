@@ -131,8 +131,21 @@ tasks:
         DB_USER="{{.POSTGRES_CRAWLER_USER | default "postgres"}}"
         DB_PASSWORD="{{.POSTGRES_CRAWLER_PASSWORD}}"
         DB_NAME="{{.POSTGRES_CRAWLER_DB | default "crawler"}}"
-        DATABASE_URL="postgres://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_NAME}?sslmode=disable"
-        migrate -path ./migrations -database "$DATABASE_URL" up
+        
+        # Use Docker to run migration if connecting to containerized database
+        if [ "$DB_HOST" = "localhost" ] && docker ps --format '{{.Names}}' | grep -q 'north-cloud-postgres-crawler'; then
+          echo "Running migration via Docker (connecting to postgres-crawler container)..."
+          docker run --rm --network north-cloud_north-cloud-network \
+            -v "$(pwd)/migrations:/migrations" \
+            migrate/migrate:latest \
+            -path /migrations \
+            -database "postgres://${DB_USER}:${DB_PASSWORD}@postgres-crawler:5432/${DB_NAME}?sslmode=disable" \
+            up
+        else
+          echo "Running migration via local connection..."
+          DATABASE_URL="postgres://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_NAME}?sslmode=disable"
+          migrate -path ./migrations -database "$DATABASE_URL" up
+        fi
 
   migrate:down:
     desc: "Rollback last migration"
