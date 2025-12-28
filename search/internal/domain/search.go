@@ -119,6 +119,10 @@ func (req *SearchRequest) Validate(maxPageSize, defaultPageSize, maxQueryLength 
 			MaxQualityScore: 100,
 		}
 	} else {
+		// Set default MaxQualityScore if not specified (0 means unset)
+		if req.Filters.MaxQualityScore == 0 {
+			req.Filters.MaxQualityScore = 100
+		}
 		// Validate quality score range
 		if req.Filters.MinQualityScore < 0 || req.Filters.MinQualityScore > 100 {
 			return fmt.Errorf("min_quality_score must be between 0 and 100")

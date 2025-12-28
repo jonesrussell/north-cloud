@@ -145,15 +145,24 @@ func (qb *QueryBuilder) buildFilters(filters *domain.Filters) []interface{} {
 	}
 
 	// Quality score range filter
+	// Only add filter if there's an actual constraint (min > 0 or max < 100)
+	// If both are at defaults (min=0, max=100), don't add the filter
 	if filters.MinQualityScore > 0 || filters.MaxQualityScore < 100 {
-		result = append(result, map[string]interface{}{
-			"range": map[string]interface{}{
-				"quality_score": map[string]interface{}{
-					"gte": filters.MinQualityScore,
-					"lte": filters.MaxQualityScore,
+		qualityRange := make(map[string]interface{})
+		if filters.MinQualityScore > 0 {
+			qualityRange["gte"] = filters.MinQualityScore
+		}
+		if filters.MaxQualityScore < 100 {
+			qualityRange["lte"] = filters.MaxQualityScore
+		}
+		// Only add filter if we have at least one constraint
+		if len(qualityRange) > 0 {
+			result = append(result, map[string]interface{}{
+				"range": map[string]interface{}{
+					"quality_score": qualityRange,
 				},
-			},
-		})
+			})
+		}
 	}
 
 	// Crime-related filter
