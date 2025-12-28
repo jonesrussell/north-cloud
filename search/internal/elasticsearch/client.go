@@ -154,7 +154,7 @@ func (c *Client) HealthCheck(ctx context.Context) error {
 }
 
 // buildRequestBody creates an io.Reader from the query map
-func (c *Client) buildRequestBody(query map[string]interface{}) io.Reader {
+func (c *Client) buildRequestBody(_ map[string]interface{}) io.Reader {
 	// This would typically use json.Marshal, but for simplicity we'll use strings.NewReader
 	// The actual implementation is in the QueryBuilder
 	return nil // Placeholder - actual implementation in search service
