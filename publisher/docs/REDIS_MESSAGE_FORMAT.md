@@ -251,42 +251,107 @@ subscriber.on('message', (channel, message) => {
 console.log('Listening for crime articles...');
 ```
 
-### PHP/Drupal Example
+### PHP/Laravel 12 Example
 
 ```php
 <?php
 
-use Predis\Client;
+namespace App\Console\Commands;
 
-// Connect to Redis
-$redis = new Client([
-    'scheme' => 'tcp',
-    'host'   => 'localhost',
-    'port'   => 6379,
-]);
+use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Redis;
+use Illuminate\Support\Facades\DB;
 
-// Subscribe to channel
-$pubsub = $redis->pubSubLoop();
-$pubsub->subscribe('articles:crime');
+class RedisSubscribeArticles extends Command
+{
+    protected $signature = 'redis:subscribe-articles';
+    protected $description = 'Subscribe to Redis pub/sub channels for articles';
 
-foreach ($pubsub as $message) {
-    if ($message->kind === 'message') {
-        $article = json_decode($message->payload, true);
+    public function handle()
+    {
+        $this->info('Subscribing to articles:crime channel...');
 
-        // Check deduplication
-        if (article_exists($article['id'])) {
-            continue;
-        }
+        Redis::subscribe(['articles:crime'], function ($message) {
+            try {
+                // Parse JSON message
+                $article = json_decode($message, true);
 
-        // Apply additional filters
-        if ($article['quality_score'] < 70) {
-            continue;
-        }
+                if (json_last_error() !== JSON_ERROR_NONE) {
+                    $this->error('Invalid JSON: ' . json_last_error_msg());
+                    return;
+                }
 
-        // Create Drupal node
-        create_drupal_article($article);
+                // Check deduplication
+                if ($this->articleExists($article['id'])) {
+                    $this->info("Skipping duplicate article: {$article['id']}");
+                    return;
+                }
+
+                // Apply additional filters
+                if (isset($article['quality_score']) && $article['quality_score'] < 70) {
+                    $this->info("Skipping low quality article: {$article['id']}");
+                    return;
+                }
+
+                // Process article
+                $this->processArticle($article);
+
+            } catch (\Exception $e) {
+                $this->error('Error processing message: ' . $e->getMessage());
+                \Log::error('Redis subscription error', [
+                    'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString(),
+                ]);
+            }
+        });
+    }
+
+    protected function articleExists(string $articleId): bool
+    {
+        return DB::table('articles')
+            ->where('external_id', $articleId)
+            ->exists();
+    }
+
+    protected function processArticle(array $article): void
+    {
+        DB::table('articles')->insert([
+            'external_id' => $article['id'],
+            'title' => $article['title'],
+            'body' => $article['body'] ?? $article['raw_text'] ?? null,
+            'canonical_url' => $article['canonical_url'],
+            'source' => $article['source'],
+            'published_date' => $article['published_date'],
+            'quality_score' => $article['quality_score'] ?? null,
+            'topics' => json_encode($article['topics'] ?? []),
+            'is_crime_related' => $article['is_crime_related'] ?? false,
+            'publisher_route_id' => $article['publisher']['route_id'] ?? null,
+            'publisher_channel' => $article['publisher']['channel'] ?? null,
+            'published_at' => $article['publisher']['published_at'] ?? now(),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $this->info("Processed article: {$article['title']}");
     }
 }
+```
+
+**Running the Laravel consumer:**
+
+```bash
+php artisan redis:subscribe-articles
+```
+
+**Using Laravel Queue (Alternative approach):**
+
+For production use, consider using Laravel queues for better reliability:
+
+```php
+// In your Artisan command or Event Listener
+Redis::subscribe(['articles:crime'], function ($message) {
+    ProcessArticleJob::dispatch(json_decode($message, true));
+});
 ```
 
 ## Message Size

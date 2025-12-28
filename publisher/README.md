@@ -1,92 +1,96 @@
-# GoPost Integration Service
+# Publisher Service
 
-A Go service that bridges Elasticsearch (where crawled articles are stored) and Drupal 11 (via JSON:API), specifically designed for filtering and posting crime-related news articles.
+A Go service that publishes classified articles from Elasticsearch to Redis pub/sub channels, enabling decoupled consumption by external services like Laravel, Node.js, Python applications, and more.
 
 ## Architecture
 
 ```
 ┌─────────────────┐
-│  Go Crawler     │
+│  Classifier     │
 │  (existing)     │
 └────────┬────────┘
          │
          ▼
 ┌─────────────────┐      ┌──────────────────┐
-│ Elasticsearch   │◄─────┤ Go Integration   │
-│  Indexes        │      │   Service        │
-└─────────────────┘      │  (this service)  │
-                         │                  │
+│ Elasticsearch   │◄─────┤   Publisher      │
+│ Classified      │      │   Service        │
+│ Content Indexes │      │  (this service)  │
+└─────────────────┘      │                  │
                          │ - Query ES       │
-                         │ - Filter crime   │
-                         │ - POST to Drupal │
+                         │ - Filter by      │
+                         │   quality/topics │
+                         │ - Publish to     │
+                         │   Redis pub/sub  │
                          └────────┬─────────┘
                                   │
                                   ▼
                          ┌─────────────────┐
-                         │  Drupal 11      │
-                         │  JSON:API       │
-                         └─────────────────┘
+                         │  Redis Pub/Sub  │
+                         │  Channels:      │
+                         │  - articles:crime│
+                         │  - articles:news │
+                         └────────┬─────────┘
+                                  │
+              ┌───────────────────┼───────────────────┐
+              │                   │                   │
+              ▼                   ▼                   ▼
+    ┌──────────────┐    ┌──────────────┐    ┌──────────────┐
+    │   Laravel    │    │   Node.js    │    │   Python     │
+    │   Consumer   │    │   Consumer   │    │   Consumer   │
+    └──────────────┘    └──────────────┘    └──────────────┘
 ```
 
 ## Features
 
-- **Elasticsearch Integration**: Queries ES for new articles based on crime keywords
-- **Crime Article Filtering**: Uses keyword matching to identify crime-related content
-- **Drupal JSON:API**: Posts filtered articles to Drupal via JSON:API
-- **Deduplication**: Uses Redis to track already-posted articles
-- **Rate Limiting**: Prevents overwhelming Drupal with requests
-- **Multi-City Support**: Configure multiple cities with their own ES indexes and Drupal groups
+- **Database-Backed Routing**: PostgreSQL stores sources, channels, and routes configuration
+- **Dynamic Configuration**: No service restart needed to add/modify routes
+- **Quality Filtering**: Routes support minimum quality score thresholds (0-100)
+- **Topic-Based Channels**: Publish to topic-specific Redis channels (e.g., `articles:crime`, `articles:news`)
+- **Redis Pub/Sub Publishing**: Standard JSON message format compatible with Laravel 12, Node.js, Python, and more
+- **Deduplication**: Database-backed publish history prevents duplicate publications
+- **Web UI**: Vue.js dashboard for managing sources, channels, and routes
+- **REST API**: Full CRUD API for programmatic configuration
+- **Publisher Statistics**: Real-time publishing metrics and history
 - **Graceful Shutdown**: Handles SIGTERM/SIGINT for clean shutdowns
 
 ## Prerequisites
 
 - Go 1.25 or later
 - Task (taskfile.dev) - for running build tasks
-- Elasticsearch 8.x
+- Elasticsearch 8.x (with classified content indexes)
 - Redis 6.x or later
-- Drupal 11 with JSON:API enabled
-- Drupal OAuth2 token for API authentication
+- PostgreSQL 16+ (for publisher database)
 
 ## Quick Start
 
 ### 1. Configuration
 
-Copy the example config file:
+The publisher uses environment variables for configuration. Create a `.env` file or set them in your environment:
 
 ```bash
-cp config.yml.example config.yml
+# Database
+POSTGRES_PUBLISHER_HOST=localhost
+POSTGRES_PUBLISHER_PORT=5432
+POSTGRES_PUBLISHER_USER=postgres
+POSTGRES_PUBLISHER_PASSWORD=your-password
+POSTGRES_PUBLISHER_DB=publisher
+
+# Elasticsearch
+ELASTICSEARCH_URL=http://localhost:9200
+
+# Redis
+REDIS_ADDR=localhost:6379
+REDIS_PASSWORD=  # Optional
+
+# API Server
+PUBLISHER_PORT=8070
+
+# Router Service
+PUBLISHER_ROUTER_CHECK_INTERVAL=5m
+PUBLISHER_ROUTER_BATCH_SIZE=100
 ```
 
-Edit `config.yml` with your settings:
-
-```yaml
-elasticsearch:
-  url: "http://localhost:9200"
-
-drupal:
-  url: "https://your-drupal-site.com"
-  token: "your-oauth-token"
-
-redis:
-  url: "localhost:6379"
-
-cities:
-  - name: "sudbury_com"
-    index: "sudbury_com_articles"
-    group_id: "uuid-of-sudbury-group"
-```
-
-### 2. Environment Variables (Optional)
-
-You can override config values with environment variables:
-
-- `ES_URL` - Elasticsearch URL
-- `DRUPAL_URL` - Drupal site URL
-- `DRUPAL_TOKEN` - Drupal OAuth token
-- `REDIS_URL` - Redis connection string
-- `APP_DEBUG` - Enable debug mode (`true`, `1`, `yes` for debug, anything else for production)
-
-### 3. Install Task (if not already installed)
+### 2. Install Task (if not already installed)
 
 ```bash
 # macOS
@@ -99,100 +103,164 @@ sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b ~/.local/bin
 go install github.com/go-task/task/v3/cmd/task@latest
 ```
 
-### 4. Run Locally
+### 3. Run Locally
 
 ```bash
 # Install dependencies
 task deps
 
-# Run the service
-task run
+# Run API server
+publisher api
 
-# Or build and run manually
-task build
-./bin/integration -config config.yml
+# Run router service (in separate terminal)
+publisher router
+
+# Or use task commands
+task run:api
+task run:router
 ```
 
 ### 4. Run with Docker Compose
 
 ```bash
-# Set environment variables
-export DRUPAL_URL=https://your-drupal-site.com
-export DRUPAL_TOKEN=your-token
-
-# Start all services
-docker-compose up -d
+# Start all services (uses docker-compose.base.yml)
+docker compose -f docker-compose.base.yml -f docker-compose.dev.yml up -d
 
 # View logs
-docker-compose logs -f integration
+docker compose -f docker-compose.base.yml -f docker-compose.dev.yml logs -f publisher-api
+docker compose -f docker-compose.base.yml -f docker-compose.dev.yml logs -f publisher-router
 ```
 
-## Drupal Setup
+## Service Components
 
-### 1. Enable JSON:API
+The publisher service consists of two components:
 
-```bash
-drush en jsonapi -y
-```
+### 1. API Server (`publisher api`)
 
-### 2. Create OAuth2 Token
+REST API for managing sources, channels, and routes:
 
-1. Install the OAuth2 module: `drush en oauth2 -y`
-2. Create a client in Drupal admin
-3. Generate a token for API access
-4. Use this token in the `config.yml` file
+- `GET /health` - Health check
+- `GET /api/v1/sources` - List sources
+- `POST /api/v1/sources` - Create source
+- `PUT /api/v1/sources/:id` - Update source
+- `DELETE /api/v1/sources/:id` - Delete source
+- `GET /api/v1/channels` - List channels
+- `POST /api/v1/channels` - Create channel
+- `PUT /api/v1/channels/:id` - Update channel
+- `DELETE /api/v1/channels/:id` - Delete channel
+- `GET /api/v1/routes` - List routes (with joined source/channel names)
+- `POST /api/v1/routes` - Create route
+- `PUT /api/v1/routes/:id` - Update route
+- `DELETE /api/v1/routes/:id` - Delete route
+- `GET /api/v1/stats/overview` - Publishing statistics
+- `GET /api/v1/publish-history` - Paginated publish history
 
-### 3. Content Type Structure
+### 2. Router Service (`publisher router`)
 
-The service expects a Drupal content type with:
-- `title` field
-- `body` field (or similar)
-- `field_url` field (URL field)
-- `field_group` field (entity reference to group)
+Background worker that:
+- Polls enabled routes at configured intervals
+- Queries Elasticsearch classified_content indexes
+- Filters articles by quality score and topics
+- Publishes matching articles to Redis pub/sub channels
+- Records publish history in database
 
-### 4. Group Configuration
+## Configuration
 
-Create groups in Drupal (e.g., "Sudbury, Ontario, Canada - Crime News") and note their UUIDs. Use these UUIDs in the `cities` configuration.
+### Environment Variables
 
-## Configuration Reference
+#### Database Configuration
+- `POSTGRES_PUBLISHER_HOST` - PostgreSQL host (default: `localhost`)
+- `POSTGRES_PUBLISHER_PORT` - PostgreSQL port (default: `5432`)
+- `POSTGRES_PUBLISHER_USER` - PostgreSQL user (default: `postgres`)
+- `POSTGRES_PUBLISHER_PASSWORD` - PostgreSQL password (required)
+- `POSTGRES_PUBLISHER_DB` - PostgreSQL database (default: `publisher`)
 
-### Application Settings
+#### Elasticsearch Configuration
+- `ELASTICSEARCH_URL` - Elasticsearch URL (default: `http://localhost:9200`)
 
-- `debug`: Enable debug mode (default: `false`)
-  - `true`: Development logger (human-readable, colorized)
-  - `false`: Production logger (JSON format, optimized)
-  - Can be overridden with `APP_DEBUG` environment variable
+#### Redis Configuration
+- `REDIS_ADDR` - Redis address (default: `localhost:6379`)
+- `REDIS_PASSWORD` - Redis password (optional)
 
-### Service Settings
+#### API Server Configuration
+- `PUBLISHER_PORT` - HTTP port (default: `8070`)
+- `AUTH_JWT_SECRET` - JWT secret for authentication (optional)
+- `GIN_MODE` - Gin mode: `debug` or `release` (default: `debug`)
 
-- `check_interval`: How often to check for new articles (e.g., "5m", "1h")
-- `rate_limit_rps`: Maximum requests per second to Drupal
-- `lookback_hours`: How many hours back to search in Elasticsearch (0 = no date filter)
-- `crime_keywords`: List of keywords to identify crime articles
-- `content_type`: Drupal content type (default: "node--article")
-- `group_type`: Drupal group type (default: "group--crime_news")
+#### Router Service Configuration
+- `PUBLISHER_ROUTER_CHECK_INTERVAL` - How often to check routes (default: `5m`)
+- `PUBLISHER_ROUTER_BATCH_SIZE` - Articles per route per check (default: `100`)
 
-### City Configuration
+#### Application Configuration
+- `APP_DEBUG` - Enable debug mode (`true`, `1`, `yes` for debug)
 
-Each city requires:
-- `name`: City identifier (used for logging)
-- `index`: Elasticsearch index name (optional, defaults to `{name}_articles`)
-- `group_id`: Drupal group UUID where articles should be posted
+## Database Schema
 
-## Elasticsearch Article Schema
+The publisher uses four main tables:
 
-The service expects articles in Elasticsearch with the following structure:
+### `sources`
+Elasticsearch index patterns to monitor:
+- `index_pattern` - Pattern like `example_com_classified_content`
 
+### `channels`
+Redis pub/sub channels:
+- `name` - Channel name like `articles:crime`
+- `description` - Optional description
+
+### `routes`
+Many-to-many source→channel mappings with filters:
+- `source_id` - Reference to source
+- `channel_id` - Reference to channel
+- `min_quality_score` - Minimum quality threshold (0-100)
+- `topics` - JSON array of required topics
+- `enabled` - Whether route is active
+
+### `publish_history`
+Audit trail of all published articles:
+- `article_id` - Elasticsearch document ID
+- `channel_name` - Redis channel name
+- `route_id` - Route that triggered publication
+- `quality_score` - Article quality score
+- `published_at` - Publication timestamp
+
+## Redis Message Format
+
+Articles are published as JSON messages to Redis pub/sub channels. See [REDIS_MESSAGE_FORMAT.md](./docs/REDIS_MESSAGE_FORMAT.md) for complete format specification.
+
+**Example message:**
 ```json
 {
-  "id": "article-123",
-  "title": "Police arrest suspect in downtown area",
-  "content": "Full article content...",
-  "url": "https://example.com/article",
-  "published_at": "2024-01-15T10:30:00Z",
-  "source": "example.com"
+  "publisher": {
+    "route_id": "a1b2c3d4-e5f6-4789-a0b1-c2d3e4f5g6h7",
+    "published_at": "2025-12-28T15:30:45Z",
+    "channel": "articles:crime"
+  },
+  "id": "es-doc-id-12345",
+  "title": "Local Police Investigate Break-In",
+  "body": "Full article text...",
+  "canonical_url": "https://example.com/article",
+  "quality_score": 85,
+  "topics": ["crime", "local"],
+  "is_crime_related": true,
+  ...
 }
 ```
+
+## Consumer Integration
+
+The publisher publishes to Redis pub/sub channels. Consumers subscribe to channels and process articles according to their business logic.
+
+**Laravel 12 Example:**
+```php
+use Illuminate\Support\Facades\Redis;
+
+Redis::subscribe(['articles:crime'], function ($message) {
+    $article = json_decode($message, true);
+    // Process article...
+});
+```
+
+See [CONSUMER_GUIDE.md](./docs/CONSUMER_GUIDE.md) for complete integration examples for Laravel 12, Node.js, Python, and more.
 
 ## Development
 
@@ -205,17 +273,17 @@ task
 # Build the service
 task build
 
-# Run the service
-task run
+# Run API server
+task run:api
+
+# Run router service
+task run:router
 
 # Run tests
 task test
 
 # Run tests with coverage
 task test:coverage
-
-# Run tests with race detector
-task test:race
 
 # Format code
 task fmt
@@ -228,19 +296,13 @@ task clean
 
 # Download and tidy dependencies
 task deps
-
-# Docker commands
-task docker:build
-task docker:up
-task docker:down
-task docker:logs
 ```
 
 ### Building
 
 ```bash
 task build
-# Binary will be in ./bin/integration
+# Binary will be in ./bin/publisher
 ```
 
 ### Testing
@@ -251,299 +313,76 @@ task test
 
 # Run with coverage (generates coverage.html)
 task test:coverage
-
-# Run with race detector
-task test:race
 ```
 
 ## Logging
 
-The service uses structured logging powered by [zap](https://github.com/uber-go/zap) for high-performance, structured logging.
+The service uses structured logging with two modes:
 
-### Log Format
-
-The log format depends on the `debug` configuration setting:
-
-**Development Mode (`debug: true`):**
-- Human-readable, colorized output with pretty formatting
-- Color-coded log levels (DEBUG=magenta, INFO=blue, WARN=yellow, ERROR=red)
-- Stack traces for warnings and errors (not for debug/info to reduce noise)
-- Clean ISO8601 timestamp format
-- Short caller format (file:line) for easy debugging
+**Development Mode (`APP_DEBUG=true`):**
+- Human-readable, colorized output
+- Stack traces for errors
 - Pretty-printed structured fields
-- Example output:
-  ```
-  2025-12-09T19:30:00.000Z	INFO	service.go:123	Starting article sync	{"service": "gopost", "version": "1.0.0"}
-  ```
 
-**Production Mode (`debug: false`):**
+**Production Mode (`APP_DEBUG=false`):**
 - JSON-formatted output
-- Optimized for performance
-- Stack traces only for errors and above
-- Example: `{"level":"info","ts":1702143000.0,"caller":"service.go:123","msg":"Starting article sync","service":"gopost","version":"1.0.0"}`
-
-### Configuration
-
-Enable debug mode in `config.yml`:
-
-```yaml
-# Application debug mode
-# When true: uses development logger (human-readable, colorized output)
-# When false: uses production logger (JSON format, optimized for performance)
-# Can be overridden with APP_DEBUG environment variable
-debug: true
-```
-
-Or via environment variable:
-
-```bash
-export APP_DEBUG=true
-```
-
-The `APP_DEBUG` environment variable accepts:
-- `true`, `1`, `yes` (case-insensitive) → enables debug mode
-- Any other value → disables debug mode (production)
-
-### Log Levels
-
-The service uses the following log levels:
-
-- **Debug**: Detailed information for troubleshooting (queries, processing steps, cache operations)
-- **Info**: General informational messages (service start/stop, articles found/posted, sync completion)
-- **Warn**: Non-critical issues (failed to mark article as posted, TLS verification disabled)
-- **Error**: Failures requiring attention (API errors, connection failures, processing errors)
-
-### Common Log Fields
-
-The service uses consistent field naming (snake_case) across all logs:
-
-- `article_id` - Unique identifier for an article
-- `city` - City name being processed
-- `index_name` - Elasticsearch index name
-- `error` - Error details (when using Error() field helper)
-- `duration` - Operation duration (time.Duration)
-- `query_duration` - Elasticsearch query execution time
-- `post_duration` - Time to post article to Drupal
-- `request_duration` - HTTP request duration
-- `status_code` - HTTP response status code
-- `service` - Service name (always "gopost")
-- `version` - Application version
-
-### Example Log Entries
-
-**Info level - Article posted:**
-```json
-{
-  "level": "info",
-  "msg": "Posted article",
-  "title": "Police arrest suspect",
-  "city": "sudbury_com",
-  "article_id": "abc123",
-  "url": "https://example.com/article",
-  "post_duration": "150ms",
-  "article_processing_duration": "200ms"
-}
-```
-
-**Debug level - Cache check:**
-```json
-{
-  "level": "debug",
-  "msg": "Checking if article was posted",
-  "article_id": "abc123",
-  "redis_key": "posted:article:abc123"
-}
-```
-
-**Error level - API failure:**
-```json
-{
-  "level": "error",
-  "msg": "Drupal API error",
-  "endpoint": "https://drupal.site/jsonapi/node/article",
-  "article_title": "Police arrest suspect",
-  "status_code": 400,
-  "error_detail": "Field group_id is required",
-  "request_duration": "120ms"
-}
-```
-
-### Logging Best Practices
-
-1. **Use structured fields** instead of string concatenation:
-   ```go
-   // Good
-   logger.Info("Article posted",
-       logger.String("article_id", id),
-       logger.String("title", title),
-   )
-   
-   // Avoid
-   logger.Info(fmt.Sprintf("Article %s titled '%s' posted", id, title))
-   ```
-
-2. **Use appropriate log levels**:
-   - Debug: Detailed troubleshooting info
-   - Info: Important business events
-   - Warn: Non-critical issues
-   - Error: Failures requiring attention
-
-3. **Include context** using the `With()` method:
-   ```go
-   requestLogger := logger.With(
-       logger.String("request_id", "abc-123"),
-       logger.String("user_id", "user-456"),
-   )
-   ```
-
-4. **Add duration fields** for performance monitoring:
-   ```go
-   start := time.Now()
-   // ... do work ...
-   logger.Info("Operation completed",
-       logger.Duration("duration", time.Since(start)),
-   )
-   ```
-
-## API
-
-The service exposes an HTTP API for dashboard access. The API runs alongside the background worker on the port configured in `server.address` (default: `:8070`).
-
-### Endpoints
-
-#### `GET /health`
-
-Returns service health status.
-
-**Response**:
-```json
-{
-  "status": "ok",
-  "service": "publisher",
-  "version": "dev"
-}
-```
-
-#### `GET /api/v1/stats`
-
-Returns aggregated statistics from Redis.
-
-**Response**:
-```json
-{
-  "total_posted": 150,
-  "total_skipped": 45,
-  "total_errors": 3,
-  "cities": [
-    {
-      "name": "sudbury_com",
-      "posted": 75,
-      "skipped": 20,
-      "errors": 1
-    }
-  ],
-  "last_sync": "2025-01-15T10:30:00Z"
-}
-```
-
-#### `GET /api/v1/articles/recent?limit=50`
-
-Returns recently posted articles.
-
-**Query Parameters**:
-- `limit` (optional, default: 50, max: 100) - Number of articles to return
-
-**Response**:
-```json
-{
-  "articles": [
-    {
-      "id": "article-123",
-      "title": "Police arrest suspect",
-      "url": "https://example.com/article",
-      "city": "sudbury_com",
-      "posted_at": "2025-01-15T10:30:00Z"
-    }
-  ],
-  "count": 50
-}
-```
-
-### Configuration
-
-The API server can be configured in `config.yml`:
-
-```yaml
-server:
-  address: ":8070"        # Server address
-  read_timeout: "10s"     # Read timeout
-  write_timeout: "30s"     # Write timeout
-```
-
-The server address can also be set via the `PUBLISHER_PORT` environment variable (e.g., `PUBLISHER_PORT=8070`).
-
-### Metrics Tracking
-
-Statistics are tracked in Redis with the following key structure:
-- `metrics:posted:{city}` - Counter for posted articles per city (30-day TTL)
-- `metrics:skipped:{city}` - Counter for skipped articles per city (30-day TTL)
-- `metrics:errors:{city}` - Counter for errors per city (30-day TTL)
-- `metrics:recent:articles` - List of recent articles (max 100, 7-day TTL)
-- `metrics:last_sync` - Last sync timestamp
-
-Metrics persist across service restarts and are automatically cleaned up after their TTL expires.
+- Optimized for log aggregation
+- Stack traces only for errors
 
 ## Monitoring
 
-The service logs:
-- Articles found per city
-- Articles posted successfully
-- Articles skipped (duplicates or non-crime)
-- Errors during processing
-- Performance metrics (durations for all operations)
-
 The API provides real-time access to:
-- Aggregated statistics (total posted, skipped, errors)
-- Per-city statistics
-- Recent posted articles
-- Last sync timestamp
-
-For production, consider adding:
-- Prometheus metrics
-- Alerting on errors
-- Log aggregation (ELK, Loki, etc.)
+- Publishing statistics (total published, skipped, errors)
+- Per-route statistics
+- Publish history with pagination
+- Health check endpoint
 
 ## Troubleshooting
 
-### Elasticsearch Connection Issues
+### No Articles Published
 
-- Verify ES is running: `curl http://localhost:9200`
-- Check credentials in config
-- Ensure network connectivity
+1. **Check routes are enabled:**
+   ```bash
+   curl http://localhost:8070/api/v1/routes
+   ```
 
-### Drupal API Errors
+2. **Verify Elasticsearch indexes exist:**
+   ```bash
+   curl http://localhost:9200/_cat/indices?v | grep classified_content
+   ```
 
-- Verify JSON:API is enabled
-- Check OAuth token is valid
-- Verify content type and group UUIDs exist
-- Check Drupal logs for detailed errors
+3. **Check router service logs:**
+   ```bash
+   docker logs north-cloud-publisher-router
+   ```
 
-### Redis Connection Issues
+4. **Verify Redis connectivity:**
+   ```bash
+   redis-cli PING
+   ```
 
-- Verify Redis is running: `redis-cli ping`
-- Check connection string format
-- Ensure Redis is accessible from the service
+### Messages Not Received in Consumer
+
+1. **Check Redis channel:**
+   ```bash
+   redis-cli SUBSCRIBE articles:crime
+   ```
+
+2. **Verify channel name matches:**
+   - Route channel name must match consumer subscription
+
+3. **Check publish history:**
+   ```bash
+   curl http://localhost:8070/api/v1/publish-history?limit=10
+   ```
 
 ## Future Enhancements
 
-- [ ] ML-based crime classification (using OpenAI API or local model)
-- [ ] Webhook notifications for posted articles
-- [x] Health check HTTP endpoint
-- [ ] Prometheus metrics
-- [ ] Support for multiple content types
-- [ ] Retry logic with exponential backoff
-- [ ] Article content enrichment
-- [ ] Scheduled posting (delay between posts)
+- [ ] Webhook notifications for published articles
+- [ ] Prometheus metrics export
+- [ ] Support for Redis Streams (alternative to pub/sub)
+- [ ] Article content enrichment hooks
+- [ ] Scheduled publishing (delay between posts)
 
 ## License
 

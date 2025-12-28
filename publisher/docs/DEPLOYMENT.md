@@ -511,9 +511,10 @@ git checkout <previous-commit> docker-compose.prod.yml
 docker-compose -f docker-compose.base.yml -f docker-compose.prod.yml up -d publisher
 ```
 
-**Step 4**: Verify old system working
-- Check Drupal posting logs
-- Verify articles are posted to Drupal
+**Step 4**: Verify system working
+- Check router service logs
+- Verify articles are published to Redis channels
+- Monitor consumer services receiving messages
 
 **Rollback Window**: Recommended 1 hour decision window after cutover
 

@@ -78,8 +78,12 @@ pip install redis
 npm install redis
 ```
 
-**PHP**:
+**PHP/Laravel**:
 ```bash
+# Laravel 12 uses Redis facade (included by default)
+# No additional package needed for basic pub/sub
+
+# If using Predis directly (standalone PHP):
 composer require predis/predis
 ```
 
@@ -379,124 +383,194 @@ async function main() {
 main().catch(console.error);
 ```
 
-### Example 3: Drupal Integration
+### Example 3: Laravel 12 Integration
 
 ```php
 <?php
 
-namespace Drupal\custom_consumer\Service;
+namespace App\Console\Commands;
 
-use Predis\Client;
-use Drupal\node\Entity\Node;
-use Psr\Log\LoggerInterface;
+use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Redis;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
-/**
- * Article consumer service.
- */
-class ArticleConsumer {
+class ConsumeArticles extends Command
+{
+    protected $signature = 'articles:consume {--channel=articles:crime}';
+    protected $description = 'Subscribe to Redis pub/sub and consume articles';
 
-  /**
-   * The Redis client.
-   */
-  protected $redis;
+    protected $processedCount = 0;
+    protected $skippedCount = 0;
+    protected $errorCount = 0;
 
-  /**
-   * The logger.
-   */
-  protected $logger;
+    public function handle()
+    {
+        $channel = $this->option('channel');
+        $this->info("Subscribing to channel: {$channel}");
 
-  /**
-   * Constructor.
-   */
-  public function __construct(LoggerInterface $logger) {
-    $this->logger = $logger;
-    $this->redis = new Client([
-      'scheme' => 'tcp',
-      'host'   => 'redis',
-      'port'   => 6379,
-    ]);
-  }
-
-  /**
-   * Check if article exists.
-   */
-  protected function articleExists($articleId) {
-    $query = \Drupal::entityQuery('node')
-      ->condition('type', 'article')
-      ->condition('field_article_id', $articleId)
-      ->count();
-    return $query->execute() > 0;
-  }
-
-  /**
-   * Create Drupal node from article.
-   */
-  protected function createArticle($article) {
-    try {
-      $node = Node::create([
-        'type' => 'article',
-        'title' => $article['title'],
-        'field_article_id' => $article['id'],
-        'body' => [
-          'value' => $article['body'],
-          'format' => 'full_html',
-        ],
-        'field_canonical_url' => $article['canonical_url'],
-        'field_published_date' => $article['published_date'],
-        'field_quality_score' => $article['quality_score'],
-        'field_topics' => json_encode($article['topics'] ?? []),
-        'status' => 1,
-      ]);
-      $node->save();
-
-      $this->logger->info('Saved article: @id', ['@id' => $article['id']]);
-    } catch (\Exception $e) {
-      $this->logger->error('Failed to save article: @error', ['@error' => $e->getMessage()]);
+        Redis::subscribe([$channel], function ($message) {
+            $this->processMessage($message);
+        });
     }
-  }
 
-  /**
-   * Process article message.
-   */
-  protected function processMessage($message) {
-    try {
-      $article = json_decode($message, TRUE);
+    protected function processMessage(string $message): void
+    {
+        try {
+            $article = json_decode($message, true);
 
-      // Deduplication
-      if ($this->articleExists($article['id'])) {
-        $this->logger->debug('Skipping duplicate: @id', ['@id' => $article['id']]);
-        return;
-      }
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                $this->error('Invalid JSON: ' . json_last_error_msg());
+                $this->errorCount++;
+                Log::error('Invalid JSON message', [
+                    'error' => json_last_error_msg(),
+                    'message_preview' => substr($message, 0, 100),
+                ]);
+                return;
+            }
 
-      // Additional filtering
-      if ($article['quality_score'] < 70) {
-        $this->logger->debug('Skipping low quality: @id', ['@id' => $article['id']]);
-        return;
-      }
+            // Deduplication
+            if ($this->articleExists($article['id'])) {
+                $this->skippedCount++;
+                if ($this->getOutput()->isVerbose()) {
+                    $this->line("Skipping duplicate: {$article['id']}");
+                }
+                return;
+            }
 
-      // Create Drupal node
-      $this->createArticle($article);
+            // Additional filtering
+            if (isset($article['quality_score']) && $article['quality_score'] < 70) {
+                $this->skippedCount++;
+                if ($this->getOutput()->isVerbose()) {
+                    $this->line("Skipping low quality: {$article['id']} (score: {$article['quality_score']})");
+                }
+                return;
+            }
 
-    } catch (\Exception $e) {
-      $this->logger->error('Error processing message: @error', ['@error' => $e->getMessage()]);
+            // Save article
+            $this->saveArticle($article);
+            $this->processedCount++;
+
+            if ($this->getOutput()->isVerbose()) {
+                $this->info("Processed: {$article['title']}");
+            }
+
+        } catch (\Exception $e) {
+            $this->errorCount++;
+            $this->error("Error processing message: {$e->getMessage()}");
+            Log::error('Article processing error', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+        }
     }
-  }
 
-  /**
-   * Start consuming messages.
-   */
-  public function consume() {
-    $pubsub = $this->redis->pubSubLoop();
-    $pubsub->subscribe('articles:crime');
-
-    $this->logger->info('Consumer started. Listening for messages...');
-
-    foreach ($pubsub as $message) {
-      if ($message->kind === 'message') {
-        $this->processMessage($message->payload);
-      }
+    protected function articleExists(string $articleId): bool
+    {
+        return DB::table('articles')
+            ->where('external_id', $articleId)
+            ->exists();
     }
-  }
+
+    protected function saveArticle(array $article): void
+    {
+        DB::table('articles')->insert([
+            'external_id' => $article['id'],
+            'title' => $article['title'],
+            'body' => $article['body'] ?? $article['raw_text'] ?? null,
+            'canonical_url' => $article['canonical_url'],
+            'source' => $article['source'],
+            'published_date' => $article['published_date'],
+            'quality_score' => $article['quality_score'] ?? null,
+            'topics' => json_encode($article['topics'] ?? []),
+            'is_crime_related' => $article['is_crime_related'] ?? false,
+            'content_type' => $article['content_type'] ?? null,
+            'publisher_route_id' => $article['publisher']['route_id'] ?? null,
+            'publisher_channel' => $article['publisher']['channel'] ?? null,
+            'publisher_published_at' => $article['publisher']['published_at'] ?? now(),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        Log::info('Article saved', [
+            'article_id' => $article['id'],
+            'title' => $article['title'],
+        ]);
+    }
+
+    public function __destruct()
+    {
+        $this->info("\nSummary:");
+        $this->info("Processed: {$this->processedCount}");
+        $this->info("Skipped: {$this->skippedCount}");
+        $this->info("Errors: {$this->errorCount}");
+    }
+}
+```
+
+**Database Migration:**
+
+```php
+// database/migrations/xxxx_create_articles_table.php
+Schema::create('articles', function (Blueprint $table) {
+    $table->id();
+    $table->string('external_id')->unique();
+    $table->string('title');
+    $table->text('body')->nullable();
+    $table->string('canonical_url');
+    $table->string('source');
+    $table->timestamp('published_date');
+    $table->integer('quality_score')->nullable();
+    $table->json('topics')->nullable();
+    $table->boolean('is_crime_related')->default(false);
+    $table->string('content_type')->nullable();
+    $table->uuid('publisher_route_id')->nullable();
+    $table->string('publisher_channel')->nullable();
+    $table->timestamp('publisher_published_at')->nullable();
+    $table->timestamps();
+
+    $table->index('external_id');
+    $table->index('published_date');
+    $table->index('quality_score');
+});
+```
+
+**Running the consumer:**
+
+```bash
+# Basic usage
+php artisan articles:consume
+
+# Custom channel
+php artisan articles:consume --channel=articles:news
+
+# Verbose output
+php artisan articles:consume -v
+
+# Run as daemon (use supervisor or systemd)
+php artisan articles:consume > /dev/null 2>&1 &
+```
+
+**Using Laravel Queue (Recommended for Production):**
+
+```php
+// In your Artisan command or Service Provider
+Redis::subscribe(['articles:crime'], function ($message) {
+    ProcessArticleJob::dispatch(json_decode($message, true));
+});
+
+// In app/Jobs/ProcessArticleJob.php
+class ProcessArticleJob implements ShouldQueue
+{
+    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+
+    public function __construct(public array $article) {}
+
+    public function handle(): void
+    {
+        // Process article with retry logic
+        // Laravel queue handles retries automatically
+    }
 }
 ```
 
