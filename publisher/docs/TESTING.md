@@ -174,10 +174,10 @@ curl http://localhost:8070/api/v1/publish-history \
 
 ```bash
 # Build images
-docker-compose -f docker-compose.base.yml -f docker-compose.dev.yml build publisher-api publisher-router publisher-frontend
+docker-compose -f docker-compose.base.yml -f docker-compose.dev.yml build publisher-api publisher-router
 
 # Start services
-docker-compose -f docker-compose.base.yml -f docker-compose.dev.yml up -d publisher-api publisher-router publisher-frontend
+docker-compose -f docker-compose.base.yml -f docker-compose.dev.yml up -d publisher-api publisher-router
 
 # Check logs
 docker-compose -f docker-compose.base.yml -f docker-compose.dev.yml logs -f publisher-api
@@ -197,10 +197,10 @@ docker exec north-cloud-nginx-dev curl http://publisher-api:8070/health
 ### 3. Test Frontend
 
 ```bash
-# Access frontend
-open http://localhost:3003
+# Access frontend via unified dashboard
+open http://localhost:3002/dashboard/publisher
 
-# Should see Publisher Dashboard with login page
+# Should see Publisher Dashboard with login page (if not authenticated)
 ```
 
 ### 4. Test Router Processing
@@ -499,14 +499,14 @@ docker exec north-cloud-publisher-router-dev redis-cli -h redis PING
 ### Frontend Not Loading
 
 ```bash
-# Check frontend logs
-docker logs north-cloud-publisher-frontend-dev
+# Check dashboard logs
+docker logs north-cloud-dashboard-dev
 
 # Check nginx routing
-curl -I http://localhost/publisher
+curl -I http://localhost/dashboard/publisher
 
 # Common issues:
-# - Frontend container not started
+# - Dashboard container not started
 # - Nginx misconfigured
 # - API proxy not working
 ```
@@ -536,11 +536,11 @@ echo "3️⃣ Running performance tests..."
 ab -n 100 -c 10 http://localhost:8070/health > /dev/null
 echo "✓ Performance tests passed"
 
-# Frontend tests
+# Frontend tests (run from dashboard directory)
 echo "4️⃣ Running frontend tests..."
-cd frontend
+cd ../dashboard
 npm test
-cd ..
+cd ../publisher
 
 echo "✅ All tests passed!"
 ```

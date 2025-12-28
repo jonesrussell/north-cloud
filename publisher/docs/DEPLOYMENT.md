@@ -110,10 +110,10 @@ docker exec -it north-cloud-postgres-publisher psql -U postgres -d publisher
 
 ```bash
 # Build all publisher services
-docker-compose -f docker-compose.base.yml -f docker-compose.dev.yml build publisher-api publisher-router publisher-frontend
+docker-compose -f docker-compose.base.yml -f docker-compose.dev.yml build publisher-api publisher-router
 
 # Start services
-docker-compose -f docker-compose.base.yml -f docker-compose.dev.yml up -d publisher-api publisher-router publisher-frontend
+docker-compose -f docker-compose.base.yml -f docker-compose.dev.yml up -d publisher-api publisher-router
 
 # Check logs
 docker-compose -f docker-compose.base.yml -f docker-compose.dev.yml logs -f publisher-api
@@ -128,20 +128,19 @@ curl http://localhost:8070/health
 
 # Expected: {"status":"healthy","service":"publisher","version":"1.0.0"}
 
-# Frontend (if nginx not started yet)
-curl http://localhost:3003
-
-# Expected: Vue.js app HTML
+# Frontend is served via unified dashboard
+# Access at http://localhost/dashboard/publisher (via nginx)
+# Or directly at http://localhost:3002/dashboard/publisher (development)
 ```
 
 ### 5. Access Frontend Dashboard
 
 ```bash
-# Option 1: Direct access (development)
-open http://localhost:3003
+# Access via unified dashboard (development)
+open http://localhost:3002/dashboard/publisher
 
-# Option 2: Via nginx (if running)
-open http://localhost/publisher
+# Via nginx (production)
+open http://localhost/dashboard/publisher
 ```
 
 ---
@@ -162,7 +161,7 @@ open http://localhost/publisher
 
 ```bash
 # Build production images (no source mounts, optimized)
-docker-compose -f docker-compose.base.yml -f docker-compose.prod.yml build publisher-api publisher-router publisher-frontend
+docker-compose -f docker-compose.base.yml -f docker-compose.prod.yml build publisher-api publisher-router
 
 # Verify images created
 docker images | grep publisher
@@ -233,7 +232,7 @@ curl -X POST http://localhost:8070/api/v1/channels \
 
 ```bash
 # Start publisher services
-docker-compose -f docker-compose.base.yml -f docker-compose.prod.yml up -d publisher-api publisher-router publisher-frontend
+docker-compose -f docker-compose.base.yml -f docker-compose.prod.yml up -d publisher-api publisher-router
 
 # Verify startup
 docker-compose -f docker-compose.base.yml -f docker-compose.prod.yml ps
@@ -261,8 +260,8 @@ docker exec north-cloud-nginx nginx -t
 # Health check via nginx
 curl https://northcloud.biz/api/health/publisher
 
-# Frontend access
-open https://northcloud.biz/publisher
+# Frontend access (via unified dashboard)
+open https://northcloud.biz/dashboard/publisher
 
 # API access (with JWT)
 curl https://northcloud.biz/api/publisher/v1/sources \
@@ -372,27 +371,29 @@ redis-cli SUBSCRIBE articles:crime
 
 ### Frontend Service
 
+The publisher frontend is part of the unified dashboard service. Access it via:
+
 **Development**:
 ```bash
-# Access Vite dev server
-curl http://localhost:3003
+# Access via dashboard dev server
+curl http://localhost:3002/dashboard/publisher
 
 # Expected: HTML with <div id="app">
 ```
 
 **Production**:
 ```bash
-# Access nginx-served frontend
-curl http://localhost/publisher
+# Access nginx-served dashboard
+curl http://localhost/dashboard/publisher
 
 # Via domain
-curl https://northcloud.biz/publisher
+curl https://northcloud.biz/dashboard/publisher
 ```
 
 **Browser Verification**:
-1. Open `http://localhost/publisher` (or `https://northcloud.biz/publisher`)
-2. Login page should appear
-3. After login, see Dashboard with stats
+1. Open `http://localhost/dashboard/publisher` (or `https://northcloud.biz/dashboard/publisher`)
+2. Login page should appear (if not authenticated)
+3. After login, see Publisher Dashboard with stats
 4. Navigate to Sources, Channels, Routes pages
 5. Verify CRUD operations work
 
@@ -460,7 +461,7 @@ If database data is corrupted or migration fails:
 
 **Step 1**: Stop all publisher services
 ```bash
-docker stop north-cloud-publisher-api-dev north-cloud-publisher-router-dev north-cloud-publisher-frontend-dev
+docker stop north-cloud-publisher-api-dev north-cloud-publisher-router-dev
 ```
 
 **Step 2**: Backup current database
@@ -497,7 +498,7 @@ If the new publisher architecture fails entirely:
 
 **Step 1**: Stop new publisher services
 ```bash
-docker stop north-cloud-publisher-api-dev north-cloud-publisher-router-dev north-cloud-publisher-frontend-dev
+docker stop north-cloud-publisher-api-dev north-cloud-publisher-router-dev
 ```
 
 **Step 2**: Revert to previous docker-compose configuration
@@ -793,21 +794,21 @@ docker logs -f north-cloud-publisher-router-dev
 
 **Diagnosis**:
 ```bash
-# Check frontend logs (development)
-docker logs north-cloud-publisher-frontend-dev
+# Check dashboard logs (development)
+docker logs north-cloud-dashboard-dev
 
 # Check nginx logs (production)
 docker logs north-cloud-nginx
 ```
 
 **Solutions**:
-1. **Development**: Verify Vite dev server running
+1. **Development**: Verify dashboard service running
    ```bash
    # Check container status
-   docker ps | grep publisher-frontend-dev
+   docker ps | grep dashboard-dev
 
-   # Check port 3003
-   curl http://localhost:3003
+   # Check dashboard port
+   curl http://localhost:3002/dashboard/publisher
    ```
 
 2. **Production**: Verify nginx routing
@@ -815,8 +816,8 @@ docker logs north-cloud-nginx
    # Test nginx config
    docker exec north-cloud-nginx nginx -t
 
-   # Check upstream mapping
-   docker exec north-cloud-nginx cat /etc/nginx/nginx.conf | grep publisher_frontend
+   # Check dashboard routing
+   docker exec north-cloud-nginx cat /etc/nginx/nginx.conf | grep dashboard
    ```
 
 3. **API proxy issues**:

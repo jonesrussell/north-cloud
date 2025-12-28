@@ -217,11 +217,10 @@ The platform uses a **three-stage content pipeline** for intelligent article pro
 - **Purpose**: Database-backed routing hub that filters articles and publishes to Redis pub/sub channels
 - **Database**: `postgres-publisher` (publisher database)
 - **Dependencies**: Elasticsearch (classified_content indexes), Redis (pub/sub), PostgreSQL
-- **Ports**: 8070 (API), 3003 (Frontend - development)
-- **Architecture**: Three-component system
+- **Ports**: 8070 (API)
+- **Architecture**: Two-component system
   1. **API Server** (`/app/publisher api`):
      - REST API for managing sources, channels, and routes
-     - Vue.js dashboard for configuration (port 3003 dev, served via nginx in prod)
      - JWT authentication integration
      - Publishing statistics and history
   2. **Router Service** (`/app/publisher router`):
@@ -230,11 +229,11 @@ The platform uses a **three-stage content pipeline** for intelligent article pro
      - Filters by quality_score and topics
      - Publishes to Redis pub/sub channels
      - Records publish history in database
-  3. **Frontend Dashboard**:
+  3. **Frontend Dashboard** (part of unified dashboard):
      - Vue.js 3 interface for managing publisher configuration
      - CRUD operations for sources, channels, routes
      - Real-time statistics and publish history
-     - Accessible at `/publisher` via nginx
+     - Accessible at `/dashboard/publisher` via nginx
 - **Key Features**:
   - **Database-backed configuration**: PostgreSQL stores sources, channels, routes, publish_history
   - **Dynamic routing**: Many-to-many routes (sources → channels) with configurable filters
@@ -1569,10 +1568,11 @@ When encountering scenarios not covered in this guide:
     - Database-backed deduplication via publish_history table
     - Many-to-many routes (multiple sources → multiple channels)
   - **Docker Integration**:
-    - Three separate containers: `publisher-api`, `publisher-router`, `publisher-frontend`
+    - Two separate containers: `publisher-api` and `publisher-router`
+    - Frontend is part of unified `dashboard` service
     - Single binary with multi-command CLI (`api` and `router` commands)
     - Production and development Docker configurations
-    - Nginx routing for `/publisher` frontend and `/api/publisher` API
+    - Nginx routing for `/dashboard/publisher` frontend and `/api/publisher` API
   - **Documentation**:
     - `/publisher/docs/REDIS_MESSAGE_FORMAT.md` - Complete message specification
     - `/publisher/docs/CONSUMER_GUIDE.md` - Integration examples (Python, Node.js, PHP/Drupal)
