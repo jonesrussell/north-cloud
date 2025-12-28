@@ -95,15 +95,10 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-      streetcode:
-        condition: service_healthy
     environment:
       - ES_URL=http://elasticsearch:9200
       - REDIS_URL=redis:6379
       - REDIS_PASSWORD=${REDIS_PASSWORD}
-      - DRUPAL_URL=http://streetcode:80
-      - DRUPAL_USERNAME=${DRUPAL_USERNAME}
-      - DRUPAL_TOKEN=${DRUPAL_TOKEN}
       - APP_DEBUG=false
       - APP_ENV=production
       - AUTH_JWT_SECRET=${AUTH_JWT_SECRET}
@@ -121,46 +116,6 @@ services:
         reservations:
           cpus: '0.5'
           memory: 512M
-
-  # Streetcode (Drupal 11) - Production
-  streetcode:
-    build:
-      context: ./streetcode
-      dockerfile: Dockerfile
-      args:
-        - BUILD_ENV=production
-    container_name: north-cloud-streetcode
-    depends_on:
-      postgres-streetcode:
-        condition: service_healthy
-    environment:
-      - POSTGRES_HOST=postgres-streetcode
-      - POSTGRES_PORT=5432
-      - POSTGRES_USER=${POSTGRES_STREETCODE_USER}
-      - POSTGRES_PASSWORD=${POSTGRES_STREETCODE_PASSWORD}
-      - POSTGRES_DB=${POSTGRES_STREETCODE_DB:-streetcode}
-      - DRUPAL_ENVIRONMENT=production
-    volumes:
-      # Only mount files directory, not source code
-      - streetcode_data:/var/www/html/web/sites/default/files
-      # Mount settings if needed (but keep it read-only)
-      # - ./streetcode/web/sites/default/settings.php:/var/www/html/web/sites/default/settings.php:ro
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:80"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-    networks:
-      - north-cloud-network
-    restart: always
-    deploy:
-      resources:
-        limits:
-          cpus: '4'
-          memory: 4G
-        reservations:
-          cpus: '1'
-          memory: 1G
 
   # Classifier service - Production
   classifier:
@@ -289,8 +244,6 @@ services:
       - certbot_www:/var/www/certbot
     depends_on:
       dashboard:
-        condition: service_healthy
-      streetcode:
         condition: service_healthy
       classifier:
         condition: service_started

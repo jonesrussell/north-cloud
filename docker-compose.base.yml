@@ -41,24 +41,6 @@ services:
     networks:
       - north-cloud-network
 
-  # PostgreSQL for streetcode (Drupal)
-  postgres-streetcode:
-    image: postgres:16-alpine
-    container_name: north-cloud-postgres-streetcode
-    environment:
-      POSTGRES_USER: ${POSTGRES_STREETCODE_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_STREETCODE_PASSWORD:-postgres}
-      POSTGRES_DB: ${POSTGRES_STREETCODE_DB:-streetcode}
-    volumes:
-      - postgres_streetcode_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_STREETCODE_USER:-postgres}"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-    networks:
-      - north-cloud-network
-
   # PostgreSQL for classifier
   postgres-classifier:
     image: postgres:16-alpine
@@ -260,13 +242,11 @@ services:
 volumes:
   postgres_source_manager_data:
   postgres_crawler_data:
-  postgres_streetcode_data:
   postgres_classifier_data:
   postgres_index_manager_data:
   elasticsearch_data:
   redis_data:
   minio_data:
-  streetcode_data:
 
 networks:
   north-cloud-network:

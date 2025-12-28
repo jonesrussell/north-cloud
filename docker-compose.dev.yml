@@ -144,16 +144,10 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-      streetcode:
-        condition: service_healthy
     environment:
       - ES_URL=http://elasticsearch:9200
       - REDIS_URL=redis:6379
       - REDIS_PASSWORD=${REDIS_PASSWORD:-}
-      - DRUPAL_URL=http://streetcode:80
-      - DRUPAL_USERNAME=${DRUPAL_USERNAME:-}
-      - DRUPAL_TOKEN=${DRUPAL_TOKEN:-}
-      - DRUPAL_AUTH_METHOD=${DRUPAL_AUTH_METHOD:-}
       - APP_DEBUG=true
       - APP_ENV=development
       - PUBLISHER_PORT=${PUBLISHER_PORT:-8070}
@@ -362,57 +356,6 @@ services:
           cpus: '2'
           memory: 2G
 
-  # Streetcode (Drupal 11) - Development
-  streetcode:
-    build:
-      context: ./streetcode
-      dockerfile: Dockerfile.dev
-    container_name: north-cloud-streetcode-dev
-    ports:
-      - "${STREETCODE_PORT:-8080}:80"
-    depends_on:
-      postgres-streetcode:
-        condition: service_healthy
-    environment:
-      - POSTGRES_HOST=postgres-streetcode
-      - POSTGRES_PORT=5432
-      - POSTGRES_USER=${POSTGRES_STREETCODE_USER:-postgres}
-      - POSTGRES_PASSWORD=${POSTGRES_STREETCODE_PASSWORD:-postgres}
-      - POSTGRES_DB=${POSTGRES_STREETCODE_DB:-streetcode}
-      - DRUPAL_ENVIRONMENT=development
-      # Use /tmp for npm cache to avoid permission issues with host user
-      - npm_config_cache=/tmp/npm-cache
-    volumes:
-      # Mount entire Drupal directory for development
-      # All files owned by host user, no copying/chowning in image
-      # Vendor directories are also mounted so they persist across rebuilds
-      - ./streetcode:/var/www/html
-      - streetcode_data:/var/www/html/web/sites/default/files
-      # Mount config files from host (owned by host user)
-      - ./streetcode/php.ini:/usr/local/etc/php/conf.d/drupal.ini:ro
-      - ./streetcode/www.conf:/usr/local/etc/php-fpm.d/www.conf:ro
-      - ./streetcode/nginx.conf:/etc/nginx/sites-available/default:ro
-      # Mount npm cache volume to persist downloads across restarts
-      - streetcode_npm_cache:/tmp/npm-cache
-      # Note: vendor, core, contrib modules/themes, and libraries are all mounted
-      # from host filesystem so they persist across container rebuilds
-      # Note: node_modules not mounted separately to avoid permission issues
-      # npm install will create it in the mounted source with correct permissions
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:80"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-    networks:
-      - north-cloud-network
-    restart: unless-stopped
-    # Development resource limits
-    deploy:
-      resources:
-        limits:
-          cpus: '2'
-          memory: 2G
-
   # Kibana for Elasticsearch management and visualization - Development only
   kibana:
     image: docker.elastic.co/kibana/kibana:9.2.2
@@ -550,7 +493,6 @@ services:
       - ./infrastructure/nginx/nginx.dev.conf:/etc/nginx/nginx.conf:ro
     depends_on:
       - source-manager
-      - streetcode
       - dashboard
       - kibana
     networks:
@@ -592,5 +534,3 @@ volumes:
   search_frontend_node_modules:
   # Auth service cache volumes
   auth_go_modules:
-  # Streetcode cache volumes
-  streetcode_npm_cache:
