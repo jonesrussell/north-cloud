@@ -187,7 +187,7 @@ func (r *Repository) GetPublishStats(ctx context.Context, startDate, endDate *ti
 	if endDate != nil {
 		query += fmt.Sprintf(" AND published_at <= $%d", argPos)
 		args = append(args, *endDate)
-		argPos++
+		// argPos not needed after this - query is complete
 	}
 
 	query += " GROUP BY channel_name ORDER BY count DESC"

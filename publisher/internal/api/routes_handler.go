@@ -148,7 +148,7 @@ func (r *Router) updateRoute(c *gin.Context) {
 			return
 		}
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error": err.Error(),
+			"error": validateErr.Error(),
 		})
 		return
 	}

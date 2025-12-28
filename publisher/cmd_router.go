@@ -62,12 +62,14 @@ func runRouter() {
 	}
 	esClient, esErr := elasticsearch.NewClient(esCfg)
 	if esErr != nil {
+		// Note: log.Fatalf exits, so defer won't run - this is intentional for fatal errors
 		log.Fatalf("Failed to create Elasticsearch client: %v", esErr)
 	}
 
 	// Test Elasticsearch connection
 	info, infoErr := esClient.Info()
 	if infoErr != nil {
+		// Note: log.Fatalf exits, so defer won't run - this is intentional for fatal errors
 		log.Fatalf("Failed to connect to Elasticsearch: %v", infoErr)
 	}
 	defer info.Body.Close()

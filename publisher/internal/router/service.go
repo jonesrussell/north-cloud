@@ -92,9 +92,9 @@ func (s *Service) processRoutes(ctx context.Context) error {
 
 	// Process each route
 	for i := range routes {
-		if err := s.processRoute(ctx, &routes[i]); err != nil {
+		if routeErr := s.processRoute(ctx, &routes[i]); routeErr != nil {
 			log.Printf("Error processing route %s (%s -> %s): %v",
-				routes[i].ID, routes[i].SourceName, routes[i].ChannelName, err)
+				routes[i].ID, routes[i].SourceName, routes[i].ChannelName, routeErr)
 			// Continue processing other routes even if one fails
 			continue
 		}
