@@ -11,7 +11,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/jonesrussell/north-cloud/publisher/internal/api"
 	"github.com/jonesrussell/north-cloud/publisher/internal/config"
 	"github.com/jonesrussell/north-cloud/publisher/internal/integration"
 	"github.com/jonesrussell/north-cloud/publisher/internal/logger"
