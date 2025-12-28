@@ -117,6 +117,7 @@ tasks:
 
   migrate:up:
     desc: "Run database migrations up"
+    silent: true
     env:
       PGPASSWORD: '{{.POSTGRES_CRAWLER_PASSWORD | default ""}}'
     cmds:
@@ -149,6 +150,7 @@ tasks:
 
   migrate:down:
     desc: "Rollback last migration"
+    silent: true
     env:
       PGPASSWORD: '{{.POSTGRES_CRAWLER_PASSWORD | default ""}}'
     cmds:
@@ -168,6 +170,7 @@ tasks:
 
   migrate:version:
     desc: "Show current migration version"
+    silent: true
     env:
       PGPASSWORD: '{{.POSTGRES_CRAWLER_PASSWORD | default ""}}'
     cmds:
@@ -187,6 +190,7 @@ tasks:
 
   migrate:check:
     desc: "Check if migrations have been applied"
+    silent: true
     env:
       PGPASSWORD: '{{.POSTGRES_CRAWLER_PASSWORD | default ""}}'
     cmds:
