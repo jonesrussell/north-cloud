@@ -12,10 +12,21 @@
 
         <!-- Navigation -->
         <nav class="mt-6 px-3">
+          <!-- Search -->
+          <a
+            :href="searchUrl"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="group flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors text-gray-300 hover:bg-gray-800 hover:text-white"
+          >
+            <MagnifyingGlassIcon class="mr-3 h-5 w-5 flex-shrink-0" />
+            Search
+          </a>
+
           <!-- Dashboard -->
           <router-link
             to="/"
-            class="group flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors"
+            class="group flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors mt-1"
             :class="[
               isActiveExact('/')
                 ? 'bg-gray-800 text-white'
@@ -235,6 +246,7 @@ import {
   MapPinIcon,
   NewspaperIcon,
   StarIcon,
+  MagnifyingGlassIcon,
 } from '@heroicons/vue/24/outline'
 import { crawlerApi, publisherApi, classifierApi } from './api/client'
 import { useAuth } from './composables/useAuth'
@@ -245,6 +257,11 @@ const healthStatus = ref('healthy')
 
 const pageTitle = computed(() => {
   return route.meta?.title || 'Dashboard'
+})
+
+// Search URL: use localhost:3003 in development, / in production
+const searchUrl = computed(() => {
+  return import.meta.env.DEV ? 'http://localhost:3003/' : '/'
 })
 
 const isActive = (path) => {
