@@ -1,6 +1,7 @@
 import js from '@eslint/js';
 import vue from 'eslint-plugin-vue';
 import globals from 'globals';
+import tseslint from 'typescript-eslint';
 
 export default [
   // Ignore patterns
@@ -21,11 +22,13 @@ export default [
   },
   // Base JavaScript config
   js.configs.recommended,
+  // TypeScript configs
+  ...tseslint.configs.recommended,
   // Vue plugin config
   ...vue.configs['flat/recommended'],
-  // Custom rules
+  // Custom rules for JavaScript/TypeScript
   {
-    files: ['**/*.{js,mjs,cjs,jsx,vue}'],
+    files: ['**/*.{js,mjs,cjs,jsx,ts,tsx,vue}'],
     languageOptions: {
       globals: {
         ...globals.browser,
@@ -36,6 +39,8 @@ export default [
     },
     rules: {
       // Add custom rules here if needed
+      '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
+      '@typescript-eslint/no-explicit-any': 'warn',
     },
   },
 ];

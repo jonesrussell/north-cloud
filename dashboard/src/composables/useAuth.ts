@@ -5,9 +5,9 @@ import { authApi } from '../api/auth'
 const TOKEN_KEY = 'dashboard_token'
 
 // Reactive state
-const token = ref(localStorage.getItem(TOKEN_KEY) || null)
+const token = ref<string | null>(localStorage.getItem(TOKEN_KEY) || null)
 const loading = ref(false)
-const error = ref(null)
+const error = ref<string | null>(null)
 
 export function useAuth() {
   const router = useRouter()
@@ -17,13 +17,13 @@ export function useAuth() {
   /**
    * Login with username and password
    */
-  const login = async (username, password) => {
+  const login = async (username: string, password: string): Promise<{ success: boolean; error?: string }> => {
     loading.value = true
     error.value = null
 
     try {
       const response = await authApi.login(username, password)
-      const { token: newToken } = response.data
+      const { token: newToken } = response.data as { token?: string }
 
       if (newToken) {
         token.value = newToken
@@ -33,11 +33,12 @@ export function useAuth() {
         error.value = 'No token received from server'
         return { success: false, error: error.value }
       }
-    } catch (err) {
-      if (err.response?.status === 401) {
+    } catch (err: unknown) {
+      const axiosError = err as { response?: { status?: number; data?: { error?: string } }; message?: string }
+      if (axiosError.response?.status === 401) {
         error.value = 'Invalid username or password'
       } else {
-        error.value = err.response?.data?.error || err.message || 'Login failed'
+        error.value = axiosError.response?.data?.error || axiosError.message || 'Login failed'
       }
       return { success: false, error: error.value }
     } finally {
@@ -48,7 +49,7 @@ export function useAuth() {
   /**
    * Logout and clear token
    */
-  const logout = () => {
+  const logout = (): void => {
     token.value = null
     localStorage.removeItem(TOKEN_KEY)
     router.push('/login')
@@ -57,14 +58,14 @@ export function useAuth() {
   /**
    * Get current token
    */
-  const getToken = () => {
+  const getToken = (): string | null => {
     return token.value
   }
 
   /**
    * Check if user is authenticated
    */
-  const checkAuth = () => {
+  const checkAuth = (): boolean => {
     const storedToken = localStorage.getItem(TOKEN_KEY)
     if (storedToken) {
       token.value = storedToken

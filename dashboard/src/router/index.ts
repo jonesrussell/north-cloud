@@ -1,4 +1,4 @@
-import { createRouter, createWebHistory } from 'vue-router'
+import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
 
 // Views
 import DashboardView from '../views/DashboardView.vue'
@@ -10,6 +10,10 @@ import CrawlerStatsView from '../views/crawler/StatsView.vue'
 // Publisher views
 import PublisherStatsView from '../views/publisher/StatsView.vue'
 import PublisherRecentArticlesView from '../views/publisher/RecentArticlesView.vue'
+import PublisherDashboardView from '../views/publisher/PublisherDashboardView.vue'
+import PublisherSourcesView from '../views/publisher/SourcesView.vue'
+import PublisherChannelsView from '../views/publisher/ChannelsView.vue'
+import PublisherRoutesView from '../views/publisher/RoutesView.vue'
 
 // Sources views
 import SourcesListView from '../views/sources/ListView.vue'
@@ -27,7 +31,16 @@ import NotFoundView from '../views/NotFoundView.vue'
 // Login view
 import LoginView from '../views/LoginView.vue'
 
-const routes = [
+// Extend RouteMeta to include our custom properties
+declare module 'vue-router' {
+  interface RouteMeta {
+    title?: string
+    section?: string
+    requiresAuth?: boolean
+  }
+}
+
+const routes: RouteRecordRaw[] = [
   // Login route (public)
   {
     path: '/login',
@@ -59,6 +72,30 @@ const routes = [
   },
 
   // Publisher routes
+  {
+    path: '/publisher',
+    name: 'publisher-dashboard',
+    component: PublisherDashboardView,
+    meta: { title: 'Publisher Dashboard', section: 'publisher', requiresAuth: true },
+  },
+  {
+    path: '/publisher/sources',
+    name: 'publisher-sources',
+    component: PublisherSourcesView,
+    meta: { title: 'Publisher Sources', section: 'publisher', requiresAuth: true },
+  },
+  {
+    path: '/publisher/channels',
+    name: 'publisher-channels',
+    component: PublisherChannelsView,
+    meta: { title: 'Publisher Channels', section: 'publisher', requiresAuth: true },
+  },
+  {
+    path: '/publisher/routes',
+    name: 'publisher-routes',
+    component: PublisherRoutesView,
+    meta: { title: 'Publisher Routes', section: 'publisher', requiresAuth: true },
+  },
   {
     path: '/publisher/stats',
     name: 'publisher-stats',
@@ -166,3 +203,4 @@ router.afterEach((to) => {
 })
 
 export default router
+

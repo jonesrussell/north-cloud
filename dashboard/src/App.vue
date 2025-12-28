@@ -77,6 +77,54 @@
             </h3>
             <div class="mt-2 space-y-1">
               <router-link
+                to="/publisher"
+                class="group flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors"
+                :class="[
+                  isActiveExact('/publisher')
+                    ? 'bg-gray-800 text-white'
+                    : 'text-gray-300 hover:bg-gray-800 hover:text-white'
+                ]"
+              >
+                <HomeIcon class="mr-3 h-5 w-5 flex-shrink-0" />
+                Dashboard
+              </router-link>
+              <router-link
+                to="/publisher/sources"
+                class="group flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors"
+                :class="[
+                  isActive('/publisher/sources')
+                    ? 'bg-gray-800 text-white'
+                    : 'text-gray-300 hover:bg-gray-800 hover:text-white'
+                ]"
+              >
+                <DocumentTextIcon class="mr-3 h-5 w-5 flex-shrink-0" />
+                Sources
+              </router-link>
+              <router-link
+                to="/publisher/channels"
+                class="group flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors"
+                :class="[
+                  isActive('/publisher/channels')
+                    ? 'bg-gray-800 text-white'
+                    : 'text-gray-300 hover:bg-gray-800 hover:text-white'
+                ]"
+              >
+                <DocumentTextIcon class="mr-3 h-5 w-5 flex-shrink-0" />
+                Channels
+              </router-link>
+              <router-link
+                to="/publisher/routes"
+                class="group flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors"
+                :class="[
+                  isActive('/publisher/routes')
+                    ? 'bg-gray-800 text-white'
+                    : 'text-gray-300 hover:bg-gray-800 hover:text-white'
+                ]"
+              >
+                <DocumentTextIcon class="mr-3 h-5 w-5 flex-shrink-0" />
+                Routes
+              </router-link>
+              <router-link
                 to="/publisher/stats"
                 class="group flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors"
                 :class="[
