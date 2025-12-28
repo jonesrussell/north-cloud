@@ -10,6 +10,8 @@ import (
 )
 
 // parseUUID parses a UUID from a gin.Context parameter
+//
+//nolint:unparam // paramName is kept for API consistency, even though it's always "id"
 func parseUUID(c *gin.Context, paramName, entityType string) (uuid.UUID, bool) {
 	idParam := c.Param(paramName)
 	id, err := uuid.Parse(idParam)

@@ -16,6 +16,9 @@ import (
 
 const (
 	whereEnabledTrue = " WHERE enabled = true"
+	// updateQueryExtraArgs is the number of additional arguments added to update queries
+	// (updated_at timestamp and id for WHERE clause)
+	updateQueryExtraArgs = 2
 )
 
 // Repository provides database operations for all entities
@@ -374,13 +377,13 @@ func joinStrings(strs []string, sep string) string {
 
 // buildUpdateQuery builds a dynamic UPDATE query with the given fields
 // Returns the query string and args slice, or error if no fields to update
-func buildUpdateQuery(table string, id uuid.UUID, updates map[string]any, returningFields string) (string, []any, error) {
+func buildUpdateQuery(table string, id uuid.UUID, updates map[string]any, returningFields string) (query string, args []any, err error) {
 	if len(updates) == 0 {
 		return "", nil, models.ErrNoFieldsToUpdate
 	}
 
 	updateFields := make([]string, 0, len(updates)+1)
-	args := make([]any, 0, len(updates)+2)
+	args = make([]any, 0, len(updates)+updateQueryExtraArgs)
 	argPos := 1
 
 	// Add update fields
@@ -398,7 +401,7 @@ func buildUpdateQuery(table string, id uuid.UUID, updates map[string]any, return
 	// Add ID for WHERE clause
 	args = append(args, id)
 
-	query := fmt.Sprintf(`
+	query = fmt.Sprintf(`
 		UPDATE %s
 		SET %s
 		WHERE id = $%d
