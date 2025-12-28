@@ -82,29 +82,70 @@ services:
           cpus: '0.5'
           memory: 512M
 
-  # Publisher service - Production
-  publisher:
+  # Publisher API - Production
+  publisher-api:
     build:
       context: .
       dockerfile: ./publisher/Dockerfile
       args:
         - BUILD_ENV=production
-    container_name: north-cloud-publisher
+    container_name: north-cloud-publisher-api
+    command: ["/app/publisher", "api"]
     depends_on:
+      postgres-publisher:
+        condition: service_healthy
+    environment:
+      - POSTGRES_PUBLISHER_HOST=postgres-publisher
+      - POSTGRES_PUBLISHER_PORT=5432
+      - POSTGRES_PUBLISHER_USER=${POSTGRES_PUBLISHER_USER}
+      - POSTGRES_PUBLISHER_PASSWORD=${POSTGRES_PUBLISHER_PASSWORD}
+      - POSTGRES_PUBLISHER_DB=${POSTGRES_PUBLISHER_DB:-publisher}
+      - POSTGRES_PUBLISHER_SSLMODE=disable
+      - PUBLISHER_PORT=8070
+      - AUTH_JWT_SECRET=${AUTH_JWT_SECRET}
+      - GIN_MODE=release
+      - APP_DEBUG=false
+    networks:
+      - north-cloud-network
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 256M
+
+  # Publisher Router - Production
+  publisher-router:
+    build:
+      context: .
+      dockerfile: ./publisher/Dockerfile
+      args:
+        - BUILD_ENV=production
+    container_name: north-cloud-publisher-router
+    command: ["/app/publisher", "router"]
+    depends_on:
+      postgres-publisher:
+        condition: service_healthy
       elasticsearch:
         condition: service_healthy
       redis:
         condition: service_healthy
     environment:
-      - ES_URL=http://elasticsearch:9200
-      - REDIS_URL=redis:6379
+      - POSTGRES_PUBLISHER_HOST=postgres-publisher
+      - POSTGRES_PUBLISHER_PORT=5432
+      - POSTGRES_PUBLISHER_USER=${POSTGRES_PUBLISHER_USER}
+      - POSTGRES_PUBLISHER_PASSWORD=${POSTGRES_PUBLISHER_PASSWORD}
+      - POSTGRES_PUBLISHER_DB=${POSTGRES_PUBLISHER_DB:-publisher}
+      - POSTGRES_PUBLISHER_SSLMODE=disable
+      - ELASTICSEARCH_URL=http://elasticsearch:9200
+      - REDIS_ADDR=redis:6379
       - REDIS_PASSWORD=${REDIS_PASSWORD}
+      - PUBLISHER_ROUTER_CHECK_INTERVAL=${PUBLISHER_ROUTER_CHECK_INTERVAL:-5m}
+      - PUBLISHER_ROUTER_BATCH_SIZE=${PUBLISHER_ROUTER_BATCH_SIZE:-100}
       - APP_DEBUG=false
-      - APP_ENV=production
-      - AUTH_JWT_SECRET=${AUTH_JWT_SECRET}
-    volumes:
-      # Only mount config, not source code
-      - ./publisher/config.yml:/app/config.yml:ro
     networks:
       - north-cloud-network
     restart: always
@@ -116,6 +157,24 @@ services:
         reservations:
           cpus: '0.5'
           memory: 512M
+
+  # Publisher Frontend - Production
+  publisher-frontend:
+    build:
+      context: ./publisher/frontend
+      dockerfile: Dockerfile
+    container_name: north-cloud-publisher-frontend
+    networks:
+      - north-cloud-network
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512M
+        reservations:
+          cpus: '0.1'
+          memory: 64M
 
   # Classifier service - Production
   classifier:
@@ -249,7 +308,9 @@ services:
         condition: service_started
       crawler:
         condition: service_started
-      publisher:
+      publisher-api:
+        condition: service_started
+      publisher-frontend:
         condition: service_started
     networks:
       - north-cloud-network

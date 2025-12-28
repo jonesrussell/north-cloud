@@ -79,6 +79,25 @@ services:
     networks:
       - north-cloud-network
 
+  # PostgreSQL for publisher
+  postgres-publisher:
+    image: postgres:16-alpine
+    container_name: north-cloud-postgres-publisher
+    environment:
+      POSTGRES_USER: ${POSTGRES_PUBLISHER_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PUBLISHER_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_PUBLISHER_DB:-publisher}
+    volumes:
+      - postgres_publisher_data:/var/lib/postgresql/data
+      - ./publisher/internal/database/migrations:/migrations:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_PUBLISHER_USER:-postgres}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - north-cloud-network
+
   # Elasticsearch for publisher
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:9.2.2
@@ -246,6 +265,7 @@ volumes:
   postgres_crawler_data:
   postgres_classifier_data:
   postgres_index_manager_data:
+  postgres_publisher_data:
   elasticsearch_data:
   redis_data:
   minio_data:
