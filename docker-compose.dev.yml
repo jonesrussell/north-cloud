@@ -541,27 +541,6 @@ services:
       - north-cloud-network
     restart: unless-stopped
 
-  # Publisher Frontend - Development
-  publisher-frontend:
-    build:
-      context: ./publisher/frontend
-      dockerfile: Dockerfile.dev
-    container_name: north-cloud-publisher-frontend-dev
-    ports:
-      - "3003:3003"
-    environment:
-      - NODE_ENV=development
-      - npm_config_cache=/tmp/npm-cache
-    volumes:
-      - ./publisher/frontend:/app
-      - publisher_frontend_node_modules:/app/node_modules
-      - publisher_frontend_npm_cache:/tmp/npm-cache
-    working_dir: /app
-    command: ["sh", "-c", "npm install && npm run dev -- --host 0.0.0.0"]
-    networks:
-      - north-cloud-network
-    restart: unless-stopped
-
   # Nginx reverse proxy - Development
   nginx:
     image: nginx:alpine
@@ -574,7 +553,6 @@ services:
       - source-manager
       - dashboard
       - publisher-api
-      - publisher-frontend
       - kibana
     networks:
       - north-cloud-network
@@ -613,8 +591,5 @@ volumes:
   # Search Frontend cache volumes
   search_frontend_npm_cache:
   search_frontend_node_modules:
-  # Publisher Frontend cache volumes
-  publisher_frontend_npm_cache:
-  publisher_frontend_node_modules:
   # Auth service cache volumes
   auth_go_modules:

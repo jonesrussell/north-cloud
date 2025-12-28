@@ -158,24 +158,6 @@ services:
           cpus: '0.5'
           memory: 512M
 
-  # Publisher Frontend - Production
-  publisher-frontend:
-    build:
-      context: ./publisher/frontend
-      dockerfile: Dockerfile
-    container_name: north-cloud-publisher-frontend
-    networks:
-      - north-cloud-network
-    restart: always
-    deploy:
-      resources:
-        limits:
-          cpus: '1'
-          memory: 512M
-        reservations:
-          cpus: '0.1'
-          memory: 64M
-
   # Classifier service - Production
   classifier:
     build:
