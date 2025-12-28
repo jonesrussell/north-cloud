@@ -13,15 +13,11 @@ import (
 	"github.com/jonesrussell/north-cloud/publisher/internal/router"
 )
 
-const (
-	defaultBatchSize = 100
-)
-
 func runRouter() {
 	log.Println("Starting Publisher Router Service...")
 
 	// Load configuration
-	cfg := LoadConfig()
+	cfg := LoadRouterConfig()
 
 	// Initialize database connection
 	db, dbErr := database.NewPostgresConnection(cfg.Database)
