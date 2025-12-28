@@ -14,7 +14,6 @@ import (
 
 const (
 	defaultMinQualityScore = 50
-	whereEnabledTrue       = " WHERE enabled = true"
 )
 
 // ====================
