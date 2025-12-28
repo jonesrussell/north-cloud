@@ -1,3 +1,5 @@
 export { default as AppSidebar } from './AppSidebar.vue'
 export { default as NavigationSection } from './NavigationSection.vue'
 export { default as Breadcrumbs } from './Breadcrumbs.vue'
+export { default as CommandPalette } from './CommandPalette.vue'
+export { default as RecentPages } from './RecentPages.vue'

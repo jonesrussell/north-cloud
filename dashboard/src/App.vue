@@ -1,5 +1,8 @@
 <template>
   <div class="min-h-screen bg-gray-100">
+    <!-- Command Palette (Cmd+K) -->
+    <CommandPalette />
+
     <!-- Show sidebar only when authenticated (not on login page) -->
     <template v-if="isAuthenticated">
       <!-- Sidebar -->
@@ -14,6 +17,9 @@
               {{ pageTitle }}
             </h1>
             <div class="flex items-center space-x-4">
+              <!-- Recent Pages -->
+              <RecentPages />
+
               <!-- Health indicator -->
               <div class="flex items-center text-sm">
                 <span
@@ -57,7 +63,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
-import { AppSidebar, Breadcrumbs } from './components/navigation'
+import { AppSidebar, Breadcrumbs, CommandPalette, RecentPages } from './components/navigation'
 import { crawlerApi, publisherApi, classifierApi } from './api/client'
 import { useAuth } from './composables/useAuth'
 
