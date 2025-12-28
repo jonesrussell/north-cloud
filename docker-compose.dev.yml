@@ -539,7 +539,8 @@ services:
     working_dir: /app
     # Download dependencies then start router service
     # Use -mod=mod to ignore vendor directory if present
-    command: ["sh", "-c", "go mod download && go run -mod=mod ./main.go router"]
+    # Use . to compile entire package (not just main.go)
+    command: ["sh", "-c", "go mod download && go run -mod=mod . router"]
     networks:
       - north-cloud-network
     restart: unless-stopped
