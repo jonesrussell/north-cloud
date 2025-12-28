@@ -56,4 +56,3 @@ func corsMiddleware() gin.HandlerFunc {
 		MaxAge:           corsMaxAgeHours * time.Hour,
 	})
 }
-

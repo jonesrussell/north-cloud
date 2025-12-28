@@ -105,18 +105,18 @@ func (r *Repository) ListPublishHistory(ctx context.Context, filter *models.Publ
 		argPos++
 	}
 
-		if filter.StartDate != nil {
-			query += fmt.Sprintf(" AND published_at >= $%d", argPos)
-			args = append(args, *filter.StartDate)
-			argPos++
-		}
+	if filter.StartDate != nil {
+		query += fmt.Sprintf(" AND published_at >= $%d", argPos)
+		args = append(args, *filter.StartDate)
+		argPos++
+	}
 
-		if filter.EndDate != nil {
-			query += fmt.Sprintf(" AND published_at <= $%d", argPos)
-			args = append(args, *filter.EndDate)
-			argPos++
-		}
-		// argPos is used in the LIMIT/OFFSET clause below
+	if filter.EndDate != nil {
+		query += fmt.Sprintf(" AND published_at <= $%d", argPos)
+		args = append(args, *filter.EndDate)
+		argPos++
+	}
+	// argPos is used in the LIMIT/OFFSET clause below
 
 	// Order and pagination
 	query += " ORDER BY published_at DESC"
