@@ -31,8 +31,9 @@ type Config struct {
 
 // NewService creates a new router service
 func NewService(repo *database.Repository, esClient *elasticsearch.Client, redisClient *redis.Client, cfg Config) *Service {
+	const defaultCheckInterval = 5 * time.Minute
 	if cfg.CheckInterval == 0 {
-		cfg.CheckInterval = 5 * time.Minute
+		cfg.CheckInterval = defaultCheckInterval
 	}
 	if cfg.BatchSize == 0 {
 		cfg.BatchSize = 100
@@ -90,10 +91,10 @@ func (s *Service) processRoutes(ctx context.Context) error {
 	log.Printf("Processing %d enabled routes", len(routes))
 
 	// Process each route
-	for _, route := range routes {
-		if err := s.processRoute(ctx, &route); err != nil {
+	for i := range routes {
+		if err := s.processRoute(ctx, &routes[i]); err != nil {
 			log.Printf("Error processing route %s (%s -> %s): %v",
-				route.ID, route.SourceName, route.ChannelName, err)
+				routes[i].ID, routes[i].SourceName, routes[i].ChannelName, err)
 			// Continue processing other routes even if one fails
 			continue
 		}
@@ -125,11 +126,11 @@ func (s *Service) processRoute(ctx context.Context, route *models.RouteWithDetai
 	skippedCount := 0
 
 	// Process each article
-	for _, article := range articles {
+	for i := range articles {
 		// Check if already published to this channel
-		published, err := s.repo.CheckArticlePublished(ctx, article.ID, route.ChannelName)
-		if err != nil {
-			log.Printf("Error checking if article %s is published: %v", article.ID, err)
+		published, checkErr := s.repo.CheckArticlePublished(ctx, articles[i].ID, route.ChannelName)
+		if checkErr != nil {
+			log.Printf("Error checking if article %s is published: %v", articles[i].ID, checkErr)
 			continue
 		}
 
@@ -139,24 +140,24 @@ func (s *Service) processRoute(ctx context.Context, route *models.RouteWithDetai
 		}
 
 		// Publish article to Redis channel
-		if err := s.publishArticle(ctx, route, &article); err != nil {
-			log.Printf("Error publishing article %s: %v", article.ID, err)
+		if publishErr := s.publishArticle(ctx, route, &articles[i]); publishErr != nil {
+			log.Printf("Error publishing article %s: %v", articles[i].ID, publishErr)
 			continue
 		}
 
 		// Record in publish history
 		historyReq := &models.PublishHistoryCreateRequest{
 			RouteID:      route.ID,
-			ArticleID:    article.ID,
-			ArticleTitle: article.Title,
-			ArticleURL:   article.URL,
+			ArticleID:    articles[i].ID,
+			ArticleTitle: articles[i].Title,
+			ArticleURL:   articles[i].URL,
 			ChannelName:  route.ChannelName,
-			QualityScore: article.QualityScore,
-			Topics:       article.Topics,
+			QualityScore: articles[i].QualityScore,
+			Topics:       articles[i].Topics,
 		}
 
-		if _, err := s.repo.CreatePublishHistory(ctx, historyReq); err != nil {
-			log.Printf("Error recording publish history for article %s: %v", article.ID, err)
+		if _, historyErr := s.repo.CreatePublishHistory(ctx, historyReq); historyErr != nil {
+			log.Printf("Error recording publish history for article %s: %v", articles[i].ID, historyErr)
 			// Continue even if history recording fails
 		}
 
@@ -239,16 +240,16 @@ func (s *Service) fetchArticles(ctx context.Context, route *models.RouteWithDeta
 		} `json:"hits"`
 	}
 
-	if err := json.NewDecoder(res.Body).Decode(&esResponse); err != nil {
-		return nil, fmt.Errorf("failed to decode response: %w", err)
+	if decodeErr := json.NewDecoder(res.Body).Decode(&esResponse); decodeErr != nil {
+		return nil, fmt.Errorf("failed to decode response: %w", decodeErr)
 	}
 
 	// Convert to articles
 	articles := make([]Article, 0, len(esResponse.Hits.Hits))
 	for _, hit := range esResponse.Hits.Hits {
 		var article Article
-		if err := json.Unmarshal(hit.Source, &article); err != nil {
-			log.Printf("Error unmarshaling article %s: %v", hit.ID, err)
+		if unmarshalErr := json.Unmarshal(hit.Source, &article); unmarshalErr != nil {
+			log.Printf("Error unmarshaling article %s: %v", hit.ID, unmarshalErr)
 			continue
 		}
 		article.ID = hit.ID
@@ -259,13 +260,13 @@ func (s *Service) fetchArticles(ctx context.Context, route *models.RouteWithDeta
 }
 
 // buildESQuery builds an Elasticsearch query for a route
-func (s *Service) buildESQuery(route *models.RouteWithDetails) map[string]interface{} {
-	mustClauses := []map[string]interface{}{}
+func (s *Service) buildESQuery(route *models.RouteWithDetails) map[string]any {
+	mustClauses := []map[string]any{}
 
 	// Filter by quality score
-	mustClauses = append(mustClauses, map[string]interface{}{
-		"range": map[string]interface{}{
-			"quality_score": map[string]interface{}{
+	mustClauses = append(mustClauses, map[string]any{
+		"range": map[string]any{
+			"quality_score": map[string]any{
 				"gte": route.MinQualityScore,
 			},
 		},
@@ -273,22 +274,22 @@ func (s *Service) buildESQuery(route *models.RouteWithDetails) map[string]interf
 
 	// Filter by topics if specified
 	if len(route.Topics) > 0 {
-		mustClauses = append(mustClauses, map[string]interface{}{
-			"terms": map[string]interface{}{
+		mustClauses = append(mustClauses, map[string]any{
+			"terms": map[string]any{
 				"topics": route.Topics,
 			},
 		})
 	}
 
-	query := map[string]interface{}{
-		"query": map[string]interface{}{
-			"bool": map[string]interface{}{
+	query := map[string]any{
+		"query": map[string]any{
+			"bool": map[string]any{
 				"must": mustClauses,
 			},
 		},
-		"sort": []map[string]interface{}{
+		"sort": []map[string]any{
 			{
-				"published_date": map[string]interface{}{
+				"published_date": map[string]any{
 					"order": "desc",
 				},
 			},
@@ -301,8 +302,8 @@ func (s *Service) buildESQuery(route *models.RouteWithDetails) map[string]interf
 // publishArticle publishes an article to a Redis channel
 func (s *Service) publishArticle(ctx context.Context, route *models.RouteWithDetails, article *Article) error {
 	// Build message payload
-	payload := map[string]interface{}{
-		"publisher": map[string]interface{}{
+	payload := map[string]any{
+		"publisher": map[string]any{
 			"route_id":     route.ID,
 			"published_at": time.Now().Format(time.RFC3339),
 			"channel":      route.ChannelName,
@@ -341,8 +342,8 @@ func (s *Service) publishArticle(ctx context.Context, route *models.RouteWithDet
 	}
 
 	// Publish to Redis channel
-	if err := s.redisClient.Publish(ctx, route.ChannelName, messageJSON).Err(); err != nil {
-		return fmt.Errorf("failed to publish to Redis: %w", err)
+	if publishErr := s.redisClient.Publish(ctx, route.ChannelName, messageJSON).Err(); publishErr != nil {
+		return fmt.Errorf("failed to publish to Redis: %w", publishErr)
 	}
 
 	log.Printf("Published article %s to channel %s", article.ID, route.ChannelName)

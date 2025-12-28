@@ -2,16 +2,24 @@ package main
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
 	"syscall"
 	"time"
 
 	"github.com/jonesrussell/north-cloud/publisher/internal/api"
 	"github.com/jonesrussell/north-cloud/publisher/internal/database"
+)
+
+const (
+	defaultReadTimeout  = 10 * time.Second
+	defaultWriteTimeout = 30 * time.Second
+	defaultIdleTimeout  = 60 * time.Second
+	shutdownTimeout     = 30 * time.Second
 )
 
 func runAPIServer() {
@@ -28,9 +36,9 @@ func runAPIServer() {
 	}
 
 	// Initialize database connection
-	db, err := database.NewPostgresConnection(dbConfig)
-	if err != nil {
-		log.Fatalf("Failed to connect to database: %v", err)
+	db, dbErr := database.NewPostgresConnection(dbConfig)
+	if dbErr != nil {
+		log.Fatalf("Failed to connect to database: %v", dbErr)
 	}
 	defer db.Close()
 
@@ -50,16 +58,17 @@ func runAPIServer() {
 	server := &http.Server{
 		Addr:         ":" + port,
 		Handler:      ginEngine,
-		ReadTimeout:  10 * time.Second,
-		WriteTimeout: 30 * time.Second,
-		IdleTimeout:  60 * time.Second,
+		ReadTimeout:  defaultReadTimeout,
+		WriteTimeout: defaultWriteTimeout,
+		IdleTimeout:  defaultIdleTimeout,
 	}
 
 	// Start server in goroutine
 	go func() {
 		log.Printf("API server listening on port %s", port)
-		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Fatalf("Failed to start server: %v", err)
+		serveErr := server.ListenAndServe()
+		if serveErr != nil && !errors.Is(serveErr, http.ErrServerClosed) {
+			log.Fatalf("Failed to start server: %v", serveErr)
 		}
 	}()
 
@@ -71,11 +80,11 @@ func runAPIServer() {
 	log.Println("Shutting down server...")
 
 	// Graceful shutdown with timeout
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
+	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), shutdownTimeout)
+	defer shutdownCancel()
 
-	if err := server.Shutdown(ctx); err != nil {
-		log.Printf("Server forced to shutdown: %v", err)
+	if shutdownErr := server.Shutdown(shutdownCtx); shutdownErr != nil {
+		log.Printf("Server forced to shutdown: %v", shutdownErr)
 	}
 
 	log.Println("Server stopped")
@@ -92,8 +101,8 @@ func getEnv(key, defaultValue string) string {
 // getEnvInt gets an integer environment variable with a default value
 func getEnvInt(key string, defaultValue int) int {
 	if value := os.Getenv(key); value != "" {
-		var intValue int
-		if _, err := fmt.Sscanf(value, "%d", &intValue); err == nil {
+		intValue, parseErr := strconv.Atoi(value)
+		if parseErr == nil {
 			return intValue
 		}
 	}

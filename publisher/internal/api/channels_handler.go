@@ -14,8 +14,9 @@ import (
 func (r *Router) listChannels(c *gin.Context) {
 	ctx := c.Request.Context()
 
+	const queryTrue = "true"
 	// Parse query parameters
-	enabledOnly := c.Query("enabled_only") == "true"
+	enabledOnly := c.Query("enabled_only") == queryTrue
 
 	channels, err := r.repo.ListChannels(ctx, enabledOnly)
 	if err != nil {
@@ -116,24 +117,24 @@ func (r *Router) updateChannel(c *gin.Context) {
 	}
 
 	var req models.ChannelUpdateRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
+	if bindErr := c.ShouldBindJSON(&req); bindErr != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error":   "Invalid request payload",
-			"details": err.Error(),
+			"details": bindErr.Error(),
 		})
 		return
 	}
 
 	// Validate request
-	if err := req.Validate(); err != nil {
-		if errors.Is(err, models.ErrNoFieldsToUpdate) {
+	if validateErr := req.Validate(); validateErr != nil {
+		if errors.Is(validateErr, models.ErrNoFieldsToUpdate) {
 			c.JSON(http.StatusBadRequest, gin.H{
 				"error": "At least one field must be provided for update",
 			})
 			return
 		}
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error": err.Error(),
+			"error": validateErr.Error(),
 		})
 		return
 	}

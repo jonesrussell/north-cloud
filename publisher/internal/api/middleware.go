@@ -57,24 +57,3 @@ func corsMiddleware() gin.HandlerFunc {
 	})
 }
 
-// loggingMiddleware creates a middleware that logs HTTP requests
-func loggingMiddleware(log logger.Logger) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		start := time.Now()
-		path := c.Request.URL.Path
-		method := c.Request.Method
-
-		c.Next()
-
-		duration := time.Since(start)
-		statusCode := c.Writer.Status()
-
-		log.Info("HTTP request",
-			logger.String("method", method),
-			logger.String("path", path),
-			logger.Int("status_code", statusCode),
-			logger.String("client_ip", c.ClientIP()),
-			logger.Duration("duration", duration),
-		)
-	}
-}

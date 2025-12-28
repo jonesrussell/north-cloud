@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"log"
 	"net/http"
 	"os"
@@ -11,6 +12,13 @@ import (
 
 	"github.com/jonesrussell/north-cloud/publisher/internal/api"
 	"github.com/jonesrussell/north-cloud/publisher/internal/database"
+)
+
+const (
+	defaultReadTimeout  = 10 * time.Second
+	defaultWriteTimeout = 30 * time.Second
+	defaultIdleTimeout  = 60 * time.Second
+	shutdownTimeout     = 30 * time.Second
 )
 
 func main() {
@@ -45,16 +53,17 @@ func main() {
 	server := &http.Server{
 		Addr:         ":" + port,
 		Handler:      ginEngine,
-		ReadTimeout:  10 * time.Second,
-		WriteTimeout: 30 * time.Second,
-		IdleTimeout:  60 * time.Second,
+		ReadTimeout:  defaultReadTimeout,
+		WriteTimeout: defaultWriteTimeout,
+		IdleTimeout:  defaultIdleTimeout,
 	}
 
 	// Start server in goroutine
 	go func() {
 		log.Printf("Starting publisher API server on port %s...", port)
-		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Fatalf("Failed to start server: %v", err)
+		serveErr := server.ListenAndServe()
+		if serveErr != nil && !errors.Is(serveErr, http.ErrServerClosed) {
+			log.Fatalf("Failed to start server: %v", serveErr)
 		}
 	}()
 
@@ -68,12 +77,12 @@ func main() {
 
 	log.Println("Shutting down server...")
 
-	// Graceful shutdown with 30 second timeout
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
+	// Graceful shutdown with timeout
+	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), shutdownTimeout)
+	defer shutdownCancel()
 
-	if err := server.Shutdown(ctx); err != nil {
-		log.Printf("Server forced to shutdown: %v", err)
+	if shutdownErr := server.Shutdown(shutdownCtx); shutdownErr != nil {
+		log.Printf("Server forced to shutdown: %v", shutdownErr)
 	}
 
 	log.Println("Server exited")

@@ -2,10 +2,12 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"os"
 	"os/signal"
+	"strconv"
 	"syscall"
 	"time"
 
@@ -13,6 +15,12 @@ import (
 	"github.com/jonesrussell/north-cloud/publisher/internal/database"
 	"github.com/jonesrussell/north-cloud/publisher/internal/router"
 	"github.com/redis/go-redis/v9"
+)
+
+const (
+	defaultBatchSize     = 100
+	shutdownTimeout      = 30 * time.Second
+	gracefulShutdownWait = 5 * time.Second
 )
 
 func main() {
@@ -33,17 +41,17 @@ func main() {
 	redisPassword := getEnv("REDIS_PASSWORD", "")
 
 	checkIntervalStr := getEnv("PUBLISHER_ROUTER_CHECK_INTERVAL", "5m")
-	checkInterval, err := time.ParseDuration(checkIntervalStr)
-	if err != nil {
-		log.Fatalf("Invalid check interval: %v", err)
+	checkInterval, parseErr := time.ParseDuration(checkIntervalStr)
+	if parseErr != nil {
+		log.Fatalf("Invalid check interval: %v", parseErr)
 	}
 
-	batchSize := getEnvInt("PUBLISHER_ROUTER_BATCH_SIZE", 100)
+	batchSize := getEnvInt("PUBLISHER_ROUTER_BATCH_SIZE", defaultBatchSize)
 
 	// Initialize database connection
-	db, err := database.NewPostgresConnection(dbConfig)
-	if err != nil {
-		log.Fatalf("Failed to connect to database: %v", err)
+	db, dbErr := database.NewPostgresConnection(dbConfig)
+	if dbErr != nil {
+		log.Fatalf("Failed to connect to database: %v", dbErr)
 	}
 	defer db.Close()
 
@@ -56,15 +64,15 @@ func main() {
 	esCfg := elasticsearch.Config{
 		Addresses: []string{esURL},
 	}
-	esClient, err := elasticsearch.NewClient(esCfg)
-	if err != nil {
-		log.Fatalf("Failed to create Elasticsearch client: %v", err)
+	esClient, esErr := elasticsearch.NewClient(esCfg)
+	if esErr != nil {
+		log.Fatalf("Failed to create Elasticsearch client: %v", esErr)
 	}
 
 	// Test Elasticsearch connection
-	info, err := esClient.Info()
-	if err != nil {
-		log.Fatalf("Failed to connect to Elasticsearch: %v", err)
+	info, infoErr := esClient.Info()
+	if infoErr != nil {
+		log.Fatalf("Failed to connect to Elasticsearch: %v", infoErr)
 	}
 	defer info.Body.Close()
 	log.Println("Elasticsearch connection established")
@@ -77,9 +85,9 @@ func main() {
 	})
 
 	// Test Redis connection
-	ctx := context.Background()
-	if err := redisClient.Ping(ctx).Err(); err != nil {
-		log.Fatalf("Failed to connect to Redis: %v", err)
+	pingCtx := context.Background()
+	if pingErr := redisClient.Ping(pingCtx).Err(); pingErr != nil {
+		log.Fatalf("Failed to connect to Redis: %v", pingErr)
 	}
 	defer redisClient.Close()
 	log.Println("Redis connection established")
@@ -92,7 +100,7 @@ func main() {
 	routerService := router.NewService(repo, esClient, redisClient, routerConfig)
 
 	// Setup graceful shutdown
-	ctx, cancel := context.WithCancel(context.Background())
+	serviceCtx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	// Handle OS signals
@@ -102,8 +110,9 @@ func main() {
 	// Start router service in goroutine
 	errChan := make(chan error, 1)
 	go func() {
-		if err := routerService.Start(ctx); err != nil && err != context.Canceled {
-			errChan <- err
+		startErr := routerService.Start(serviceCtx)
+		if startErr != nil && !errors.Is(startErr, context.Canceled) {
+			errChan <- startErr
 		}
 	}()
 
@@ -114,19 +123,19 @@ func main() {
 	case <-sigChan:
 		log.Println("Received shutdown signal")
 		cancel()
-	case err := <-errChan:
-		log.Printf("Router service error: %v", err)
+	case serviceErr := <-errChan:
+		log.Printf("Router service error: %v", serviceErr)
 		cancel()
 	}
 
 	// Wait for graceful shutdown with timeout
-	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 30*time.Second)
+	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), shutdownTimeout)
 	defer shutdownCancel()
 
 	// Give the service time to finish current operations
 	done := make(chan struct{})
 	go func() {
-		time.Sleep(5 * time.Second)
+		time.Sleep(gracefulShutdownWait)
 		close(done)
 	}()
 
@@ -149,8 +158,8 @@ func getEnv(key, defaultValue string) string {
 // getEnvInt gets an integer environment variable with a default value
 func getEnvInt(key string, defaultValue int) int {
 	if value := os.Getenv(key); value != "" {
-		var intValue int
-		if _, err := fmt.Sscanf(value, "%d", &intValue); err == nil {
+		intValue, parseErr := strconv.Atoi(value)
+		if parseErr == nil {
 			return intValue
 		}
 	}

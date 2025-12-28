@@ -77,8 +77,9 @@ func (r *Repository) ListPublishHistory(ctx context.Context, filter *models.Publ
 	if filter.Limit == 0 {
 		filter.Limit = 100
 	}
-	if filter.Limit > 1000 {
-		filter.Limit = 1000
+	const maxLimit = 1000
+	if filter.Limit > maxLimit {
+		filter.Limit = maxLimit
 	}
 
 	// Build query dynamically
@@ -88,7 +89,7 @@ func (r *Repository) ListPublishHistory(ctx context.Context, filter *models.Publ
 		WHERE 1=1
 	`
 
-	args := []interface{}{}
+	args := []any{}
 	argPos := 1
 
 	// Apply filters
@@ -104,17 +105,18 @@ func (r *Repository) ListPublishHistory(ctx context.Context, filter *models.Publ
 		argPos++
 	}
 
-	if filter.StartDate != nil {
-		query += fmt.Sprintf(" AND published_at >= $%d", argPos)
-		args = append(args, *filter.StartDate)
-		argPos++
-	}
+		if filter.StartDate != nil {
+			query += fmt.Sprintf(" AND published_at >= $%d", argPos)
+			args = append(args, *filter.StartDate)
+			argPos++
+		}
 
-	if filter.EndDate != nil {
-		query += fmt.Sprintf(" AND published_at <= $%d", argPos)
-		args = append(args, *filter.EndDate)
-		argPos++
-	}
+		if filter.EndDate != nil {
+			query += fmt.Sprintf(" AND published_at <= $%d", argPos)
+			args = append(args, *filter.EndDate)
+			argPos++
+		}
+		// argPos is used in the LIMIT/OFFSET clause below
 
 	// Order and pagination
 	query += " ORDER BY published_at DESC"
@@ -173,7 +175,7 @@ func (r *Repository) GetPublishStats(ctx context.Context, startDate, endDate *ti
 		WHERE 1=1
 	`
 
-	args := []interface{}{}
+	args := []any{}
 	argPos := 1
 
 	if startDate != nil {
@@ -200,14 +202,14 @@ func (r *Repository) GetPublishStats(ctx context.Context, startDate, endDate *ti
 	for rows.Next() {
 		var channelName string
 		var count int
-		if err := rows.Scan(&channelName, &count); err != nil {
-			return nil, fmt.Errorf("failed to scan row: %w", err)
+		if scanErr := rows.Scan(&channelName, &count); scanErr != nil {
+			return nil, fmt.Errorf("failed to scan row: %w", scanErr)
 		}
 		stats[channelName] = count
 	}
 
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("row iteration error: %w", err)
+	if rowsErr := rows.Err(); rowsErr != nil {
+		return nil, fmt.Errorf("row iteration error: %w", rowsErr)
 	}
 
 	return stats, nil
@@ -217,7 +219,7 @@ func (r *Repository) GetPublishStats(ctx context.Context, startDate, endDate *ti
 func (r *Repository) GetPublishCountByChannel(ctx context.Context, channelName string, since *time.Time) (int, error) {
 	var count int
 	query := `SELECT COUNT(*) FROM publish_history WHERE channel_name = $1`
-	args := []interface{}{channelName}
+	args := []any{channelName}
 
 	if since != nil {
 		query += " AND published_at >= $2"

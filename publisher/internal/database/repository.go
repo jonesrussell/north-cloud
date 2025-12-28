@@ -5,12 +5,17 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 	"github.com/jonesrussell/north-cloud/publisher/internal/models"
 	"github.com/lib/pq"
+)
+
+const (
+	whereEnabledTrue = " WHERE enabled = true"
 )
 
 // Repository provides database operations for all entities
@@ -54,7 +59,8 @@ func (r *Repository) CreateSource(ctx context.Context, req *models.SourceCreateR
 	).StructScan(source)
 
 	if err != nil {
-		if pqErr, ok := err.(*pq.Error); ok && pqErr.Code == "23505" { // unique_violation
+		var pqErr *pq.Error
+		if errors.As(err, &pqErr) && pqErr.Code == "23505" { // unique_violation
 			return nil, models.ErrAlreadyExists
 		}
 		return nil, fmt.Errorf("failed to create source: %w", err)
@@ -112,7 +118,7 @@ func (r *Repository) ListSources(ctx context.Context, enabledOnly bool) ([]model
 	`
 
 	if enabledOnly {
-		query += " WHERE enabled = true"
+		query += whereEnabledTrue
 	}
 
 	query += " ORDER BY name ASC"
@@ -129,7 +135,7 @@ func (r *Repository) ListSources(ctx context.Context, enabledOnly bool) ([]model
 func (r *Repository) UpdateSource(ctx context.Context, id uuid.UUID, req *models.SourceUpdateRequest) (*models.Source, error) {
 	// Build dynamic update query
 	updateFields := []string{}
-	args := []interface{}{}
+	args := []any{}
 	argPos := 1
 
 	if req.Name != nil {
@@ -175,7 +181,8 @@ func (r *Repository) UpdateSource(ctx context.Context, id uuid.UUID, req *models
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, models.ErrNotFound
 		}
-		if pqErr, ok := err.(*pq.Error); ok && pqErr.Code == "23505" {
+		var pqErr *pq.Error
+		if errors.As(err, &pqErr) && pqErr.Code == "23505" {
 			return nil, models.ErrAlreadyExists
 		}
 		return nil, fmt.Errorf("failed to update source: %w", err)
@@ -235,7 +242,8 @@ func (r *Repository) CreateChannel(ctx context.Context, req *models.ChannelCreat
 	).StructScan(channel)
 
 	if err != nil {
-		if pqErr, ok := err.(*pq.Error); ok && pqErr.Code == "23505" {
+		var pqErr *pq.Error
+		if errors.As(err, &pqErr) && pqErr.Code == "23505" {
 			return nil, models.ErrAlreadyExists
 		}
 		return nil, fmt.Errorf("failed to create channel: %w", err)
@@ -293,7 +301,7 @@ func (r *Repository) ListChannels(ctx context.Context, enabledOnly bool) ([]mode
 	`
 
 	if enabledOnly {
-		query += " WHERE enabled = true"
+		query += whereEnabledTrue
 	}
 
 	query += " ORDER BY name ASC"
@@ -309,7 +317,7 @@ func (r *Repository) ListChannels(ctx context.Context, enabledOnly bool) ([]mode
 // UpdateChannel updates a channel
 func (r *Repository) UpdateChannel(ctx context.Context, id uuid.UUID, req *models.ChannelUpdateRequest) (*models.Channel, error) {
 	updateFields := []string{}
-	args := []interface{}{}
+	args := []any{}
 	argPos := 1
 
 	if req.Name != nil {
@@ -353,7 +361,8 @@ func (r *Repository) UpdateChannel(ctx context.Context, id uuid.UUID, req *model
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, models.ErrNotFound
 		}
-		if pqErr, ok := err.(*pq.Error); ok && pqErr.Code == "23505" {
+		var pqErr *pq.Error
+		if errors.As(err, &pqErr) && pqErr.Code == "23505" {
 			return nil, models.ErrAlreadyExists
 		}
 		return nil, fmt.Errorf("failed to update channel: %w", err)
@@ -387,9 +396,11 @@ func joinStrings(strs []string, sep string) string {
 	if len(strs) == 0 {
 		return ""
 	}
-	result := strs[0]
+	var result strings.Builder
+	result.WriteString(strs[0])
 	for i := 1; i < len(strs); i++ {
-		result += sep + strs[i]
+		result.WriteString(sep)
+		result.WriteString(strs[i])
 	}
-	return result
+	return result.String()
 }

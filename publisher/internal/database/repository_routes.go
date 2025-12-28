@@ -12,6 +12,11 @@ import (
 	"github.com/lib/pq"
 )
 
+const (
+	defaultMinQualityScore = 50
+	whereEnabledTrue       = " WHERE enabled = true"
+)
+
 // ====================
 // Routes
 // ====================
@@ -22,7 +27,7 @@ func (r *Repository) CreateRoute(ctx context.Context, req *models.RouteCreateReq
 		ID:              uuid.New(),
 		SourceID:        req.SourceID,
 		ChannelID:       req.ChannelID,
-		MinQualityScore: 50, // Default
+		MinQualityScore: defaultMinQualityScore, // Default
 		Topics:          pq.StringArray(req.Topics),
 		Enabled:         true,
 		CreatedAt:       time.Now(),
@@ -49,12 +54,13 @@ func (r *Repository) CreateRoute(ctx context.Context, req *models.RouteCreateReq
 	).StructScan(route)
 
 	if err != nil {
-		if pqErr, ok := err.(*pq.Error); ok {
+		var pqErr *pq.Error
+		if errors.As(err, &pqErr) {
 			switch pqErr.Code {
 			case "23505": // unique_violation
 				return nil, models.ErrDuplicateRoute
 			case "23503": // foreign_key_violation
-				return nil, fmt.Errorf("source or channel not found")
+				return nil, errors.New("source or channel not found")
 			}
 		}
 		return nil, fmt.Errorf("failed to create route: %w", err)
@@ -119,7 +125,7 @@ func (r *Repository) ListRoutes(ctx context.Context, enabledOnly bool) ([]models
 	`
 
 	if enabledOnly {
-		query += " WHERE enabled = true"
+		query += whereEnabledTrue
 	}
 
 	query += " ORDER BY created_at DESC"
@@ -164,7 +170,7 @@ func (r *Repository) ListRoutesWithDetails(ctx context.Context, enabledOnly bool
 // UpdateRoute updates a route
 func (r *Repository) UpdateRoute(ctx context.Context, id uuid.UUID, req *models.RouteUpdateRequest) (*models.Route, error) {
 	updateFields := []string{}
-	args := []interface{}{}
+	args := []any{}
 	argPos := 1
 
 	if req.MinQualityScore != nil {

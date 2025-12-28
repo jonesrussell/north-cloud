@@ -46,59 +46,51 @@ func (r *Router) SetupRoutes() *gin.Engine {
 		v1.Use(infrajwt.Middleware(jwtSecret))
 	}
 
-	{
-		// Sources
-		sources := v1.Group("/sources")
-		{
-			sources.GET("", r.listSources)
-			sources.POST("", r.createSource)
-			sources.GET("/:id", r.getSource)
-			sources.PUT("/:id", r.updateSource)
-			sources.DELETE("/:id", r.deleteSource)
-		}
+	// Sources
+	sources := v1.Group("/sources")
+	sources.GET("", r.listSources)
+	sources.POST("", r.createSource)
+	sources.GET("/:id", r.getSource)
+	sources.PUT("/:id", r.updateSource)
+	sources.DELETE("/:id", r.deleteSource)
 
-		// Channels
-		channels := v1.Group("/channels")
-		{
-			channels.GET("", r.listChannels)
-			channels.POST("", r.createChannel)
-			channels.GET("/:id", r.getChannel)
-			channels.PUT("/:id", r.updateChannel)
-			channels.DELETE("/:id", r.deleteChannel)
-		}
+	// Channels
+	channels := v1.Group("/channels")
+	channels.GET("", r.listChannels)
+	channels.POST("", r.createChannel)
+	channels.GET("/:id", r.getChannel)
+	channels.PUT("/:id", r.updateChannel)
+	channels.DELETE("/:id", r.deleteChannel)
 
-		// Routes
-		routes := v1.Group("/routes")
-		{
-			routes.GET("", r.listRoutes)
-			routes.POST("", r.createRoute)
-			routes.GET("/:id", r.getRoute)
-			routes.PUT("/:id", r.updateRoute)
-			routes.DELETE("/:id", r.deleteRoute)
-		}
+	// Routes
+	routes := v1.Group("/routes")
+	routes.GET("", r.listRoutes)
+	routes.POST("", r.createRoute)
+	routes.GET("/:id", r.getRoute)
+	routes.PUT("/:id", r.updateRoute)
+	routes.DELETE("/:id", r.deleteRoute)
 
-		// Publish History
-		history := v1.Group("/publish-history")
-		{
-			history.GET("", r.listPublishHistory)
-			history.GET("/:article_id", r.getPublishHistoryByArticle)
-		}
+	// Publish History
+	history := v1.Group("/publish-history")
+	history.GET("", r.listPublishHistory)
+	history.GET("/:article_id", r.getPublishHistoryByArticle)
 
-		// Stats
-		stats := v1.Group("/stats")
-		{
-			stats.GET("/overview", r.getStatsOverview)
-			stats.GET("/channels", r.getChannelStats)
-			stats.GET("/routes", r.getRouteStats)
-		}
-	}
+	// Stats
+	stats := v1.Group("/stats")
+	stats.GET("/overview", r.getStatsOverview)
+	stats.GET("/channels", r.getChannelStats)
+	stats.GET("/routes", r.getRouteStats)
 
 	return router
 }
 
+const (
+	httpStatusOK = 200
+)
+
 // healthCheck returns the service health status
 func (r *Router) healthCheck(c *gin.Context) {
-	c.JSON(200, gin.H{
+	c.JSON(httpStatusOK, gin.H{
 		"status":  "healthy",
 		"service": "publisher",
 		"version": "1.0.0",

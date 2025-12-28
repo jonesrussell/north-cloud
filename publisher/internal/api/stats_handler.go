@@ -101,17 +101,17 @@ func (r *Router) getChannelStats(c *gin.Context) {
 
 	// Get publish count for each channel
 	channelStats := make([]gin.H, 0, len(channels))
-	for _, channel := range channels {
-		count, err := r.repo.GetPublishCountByChannel(ctx, channel.Name, since)
-		if err != nil {
+	for i := range channels {
+		count, countErr := r.repo.GetPublishCountByChannel(ctx, channels[i].Name, since)
+		if countErr != nil {
 			// Log error but continue
 			count = 0
 		}
 
 		channelStats = append(channelStats, gin.H{
-			"channel_id":          channel.ID,
-			"channel_name":        channel.Name,
-			"channel_description": channel.Description,
+			"channel_id":          channels[i].ID,
+			"channel_name":        channels[i].Name,
+			"channel_description": channels[i].Description,
 			"article_count":       count,
 		})
 	}
@@ -139,15 +139,15 @@ func (r *Router) getRouteStats(c *gin.Context) {
 
 	// For now, return route info (can be enhanced with per-route publish counts)
 	routeStats := make([]gin.H, 0, len(routes))
-	for _, route := range routes {
+	for i := range routes {
 		routeStats = append(routeStats, gin.H{
-			"route_id":          route.ID,
-			"source_name":       route.SourceName,
-			"source_index":      route.SourceIndexPattern,
-			"channel_name":      route.ChannelName,
-			"min_quality_score": route.MinQualityScore,
-			"topics":            route.Topics,
-			"enabled":           route.Enabled,
+			"route_id":          routes[i].ID,
+			"source_name":       routes[i].SourceName,
+			"source_index":      routes[i].SourceIndexPattern,
+			"channel_name":      routes[i].ChannelName,
+			"min_quality_score": routes[i].MinQualityScore,
+			"topics":            routes[i].Topics,
+			"enabled":           routes[i].Enabled,
 		})
 	}
 
