@@ -416,10 +416,14 @@ services:
       - AUTH_JWT_SECRET=${AUTH_JWT_SECRET:-}
       - AUTH_PORT=8040
       - APP_DEBUG=${APP_DEBUG:-true}
-      - GOCACHE=/tmp/go-build
+      # Use /tmp for caches to avoid permission issues with host user
+      - GOMODCACHE=/tmp/go-mod-cache
+      - GOCACHE=/tmp/go-build-cache
     volumes:
       - ./auth:/app
-      - auth_go_modules:/go/pkg/mod
+      # Mount cache volumes to persist downloads across restarts
+      - auth_go_mod_cache:/tmp/go-mod-cache
+      - auth_go_build_cache:/tmp/go-build-cache
     working_dir: /app
     command: ["sh", "-c", "go mod download && go run main.go"]
     networks:
@@ -592,4 +596,5 @@ volumes:
   search_frontend_npm_cache:
   search_frontend_node_modules:
   # Auth service cache volumes
-  auth_go_modules:
+  auth_go_mod_cache:
+  auth_go_build_cache:
