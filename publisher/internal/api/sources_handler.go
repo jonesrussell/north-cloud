@@ -9,6 +9,7 @@ import (
 
 // listSources returns all sources
 // GET /api/v1/sources?enabled_only=true
+//nolint:dupl // Similar structure to channels_handler.go
 func (r *Router) listSources(c *gin.Context) {
 	ctx := c.Request.Context()
 
@@ -32,6 +33,7 @@ func (r *Router) listSources(c *gin.Context) {
 
 // createSource creates a new source
 // POST /api/v1/sources
+//nolint:dupl // Similar structure to channels_handler.go
 func (r *Router) createSource(c *gin.Context) {
 	ctx := c.Request.Context()
 
@@ -63,6 +65,7 @@ func (r *Router) createSource(c *gin.Context) {
 
 // getSource retrieves a source by ID
 // GET /api/v1/sources/:id
+//nolint:dupl // Similar structure to channels_handler.go
 func (r *Router) getSource(c *gin.Context) {
 	ctx := c.Request.Context()
 
@@ -82,6 +85,7 @@ func (r *Router) getSource(c *gin.Context) {
 
 // updateSource updates a source
 // PUT /api/v1/sources/:id
+//nolint:dupl // Similar structure to channels_handler.go
 func (r *Router) updateSource(c *gin.Context) {
 	ctx := c.Request.Context()
 
@@ -116,6 +120,7 @@ func (r *Router) updateSource(c *gin.Context) {
 
 // deleteSource deletes a source
 // DELETE /api/v1/sources/:id
+//nolint:dupl // Similar structure to channels_handler.go
 func (r *Router) deleteSource(c *gin.Context) {
 	ctx := c.Request.Context()
 

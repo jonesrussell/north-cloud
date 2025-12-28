@@ -132,6 +132,7 @@ func (r *Repository) ListSources(ctx context.Context, enabledOnly bool) ([]model
 }
 
 // UpdateSource updates a source
+//nolint:dupl // Similar structure to UpdateChannel
 func (r *Repository) UpdateSource(ctx context.Context, id uuid.UUID, req *models.SourceUpdateRequest) (*models.Source, error) {
 	updates := make(map[string]any)
 
@@ -295,6 +296,7 @@ func (r *Repository) ListChannels(ctx context.Context, enabledOnly bool) ([]mode
 }
 
 // UpdateChannel updates a channel
+//nolint:dupl // Similar structure to UpdateSource
 func (r *Repository) UpdateChannel(ctx context.Context, id uuid.UUID, req *models.ChannelUpdateRequest) (*models.Channel, error) {
 	updates := make(map[string]any)
 
