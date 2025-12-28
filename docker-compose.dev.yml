@@ -475,9 +475,14 @@ services:
       - publisher_go_mod_cache:/tmp/go-mod-cache
       - publisher_go_build_cache:/tmp/go-build-cache
     working_dir: /app
-    # Download dependencies then start API server
+    # Download dependencies, build binary, then start API server
     # Use -mod=mod to ignore vendor directory if present
-    command: ["sh", "-c", "go mod download && go run -mod=mod ./main.go api"]
+    # Reset PATH to avoid Windows path issues (parentheses in paths cause shell errors)
+    # Build the binary first to ensure all files are compiled together
+    command:
+      - sh
+      - -c
+      - export PATH=/usr/local/go/bin:/go/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin && go mod download && go build -mod=mod -o /tmp/publisher . && /tmp/publisher api
     networks:
       - north-cloud-network
     restart: unless-stopped
