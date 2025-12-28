@@ -343,7 +343,7 @@ services:
     depends_on:
       - crawler
       - source-manager
-      - publisher
+      - publisher-api
       - classifier
     ports:
       - "${DASHBOARD_PORT:-3002}:3002"
@@ -353,7 +353,7 @@ services:
       # API URLs using Docker service names (internal network)
       - CRAWLER_API_URL=http://crawler:8080
       - SOURCES_API_URL=http://source-manager:8050
-      - PUBLISHER_API_URL=http://publisher:8070
+      - PUBLISHER_API_URL=http://publisher-api:8070
       - CLASSIFIER_API_URL=http://classifier:8070
       - AUTH_API_URL=http://auth:8040
     volumes:
