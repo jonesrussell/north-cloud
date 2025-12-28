@@ -5,6 +5,9 @@ WORKDIR /app
 # Install development tools
 RUN apk add --no-cache git make
 
+# Create writable cache directory for Go build cache
+RUN mkdir -p /tmp/go-build && chmod 777 /tmp/go-build
+
 # Copy go mod files
 COPY go.mod go.sum* ./
 RUN go mod download
@@ -13,6 +16,9 @@ RUN go mod download
 # This allows hot-reloading during development
 
 EXPOSE 8040
+
+# Set GOCACHE to writable location
+ENV GOCACHE=/tmp/go-build
 
 # Run with hot-reload using air (if installed) or direct go run
 CMD ["go", "run", "main.go"]

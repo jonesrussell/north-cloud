@@ -524,6 +524,7 @@ services:
       - AUTH_JWT_SECRET=${AUTH_JWT_SECRET:-}
       - AUTH_PORT=8040
       - APP_DEBUG=${APP_DEBUG:-true}
+      - GOCACHE=/tmp/go-build
     volumes:
       - ./auth:/app
       - auth_go_modules:/go/pkg/mod
