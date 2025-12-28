@@ -7,7 +7,6 @@ import (
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
-	"github.com/jonesrussell/north-cloud/publisher/internal/logger"
 )
 
 const (
