@@ -1,5 +1,7 @@
 version: '3'
 
+dotenv: ['../.env']
+
 vars:
   BINARY_NAME: integration
   MAIN_PATH: ./main.go

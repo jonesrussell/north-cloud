@@ -1,5 +1,7 @@
 version: '3'
 
+dotenv: ['../.env']
+
 output:
   group:
     error_only: false
