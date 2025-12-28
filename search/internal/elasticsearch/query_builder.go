@@ -47,7 +47,7 @@ func (qb *QueryBuilder) Build(req *domain.SearchRequest) map[string]interface{} 
 			"id", "title", "url", "source_name",
 			"published_date", "crawled_at",
 			"quality_score", "content_type", "topics",
-			"is_crime_related",
+			"is_crime_related", "body", "raw_text",
 		}
 	}
 
@@ -97,6 +97,7 @@ func (qb *QueryBuilder) buildMultiMatchQuery(query string) map[string]interface{
 			"fields": []string{
 				"title^" + floatToString(boost.Title),
 				"og_title^" + floatToString(boost.OGTitle),
+				"body^" + floatToString(boost.RawText),
 				"raw_text^" + floatToString(boost.RawText),
 				"og_description^" + floatToString(boost.OGDescription),
 				"meta_description^" + floatToString(boost.MetaDescription),
@@ -271,6 +272,10 @@ func (qb *QueryBuilder) buildHighlight() map[string]interface{} {
 		"fields": map[string]interface{}{
 			"title": map[string]interface{}{
 				"number_of_fragments": 1,
+			},
+			"body": map[string]interface{}{
+				"fragment_size":       qb.config.HighlightFragmentSize,
+				"number_of_fragments": qb.config.HighlightMaxFragments,
 			},
 			"raw_text": map[string]interface{}{
 				"fragment_size":       qb.config.HighlightFragmentSize,
