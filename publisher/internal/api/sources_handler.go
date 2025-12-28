@@ -1,11 +1,9 @@
 package api
 
 import (
-	"errors"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 	"github.com/jonesrussell/north-cloud/publisher/internal/models"
 )
 
@@ -76,26 +74,14 @@ func (r *Router) createSource(c *gin.Context) {
 func (r *Router) getSource(c *gin.Context) {
 	ctx := c.Request.Context()
 
-	idParam := c.Param("id")
-	id, err := uuid.Parse(idParam)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Invalid source ID format",
-		})
+	id, ok := parseUUID(c, "id", "source")
+	if !ok {
 		return
 	}
 
 	source, err := r.repo.GetSourceByID(ctx, id)
 	if err != nil {
-		if errors.Is(err, models.ErrNotFound) {
-			c.JSON(http.StatusNotFound, gin.H{
-				"error": "Source not found",
-			})
-			return
-		}
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Failed to get source",
-		})
+		handleRepositoryError(c, err, "source", "get")
 		return
 	}
 
@@ -107,12 +93,8 @@ func (r *Router) getSource(c *gin.Context) {
 func (r *Router) updateSource(c *gin.Context) {
 	ctx := c.Request.Context()
 
-	idParam := c.Param("id")
-	id, err := uuid.Parse(idParam)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Invalid source ID format",
-		})
+	id, ok := parseUUID(c, "id", "source")
+	if !ok {
 		return
 	}
 
@@ -127,35 +109,13 @@ func (r *Router) updateSource(c *gin.Context) {
 
 	// Validate request
 	if validateErr := req.Validate(); validateErr != nil {
-		if errors.Is(validateErr, models.ErrNoFieldsToUpdate) {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"error": "At least one field must be provided for update",
-			})
-			return
-		}
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": validateErr.Error(),
-		})
+		handleValidationError(c, validateErr)
 		return
 	}
 
 	source, err := r.repo.UpdateSource(ctx, id, &req)
 	if err != nil {
-		if errors.Is(err, models.ErrNotFound) {
-			c.JSON(http.StatusNotFound, gin.H{
-				"error": "Source not found",
-			})
-			return
-		}
-		if errors.Is(err, models.ErrAlreadyExists) {
-			c.JSON(http.StatusConflict, gin.H{
-				"error": "Source with this name already exists",
-			})
-			return
-		}
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Failed to update source",
-		})
+		handleRepositoryError(c, err, "source", "update")
 		return
 	}
 
@@ -167,26 +127,14 @@ func (r *Router) updateSource(c *gin.Context) {
 func (r *Router) deleteSource(c *gin.Context) {
 	ctx := c.Request.Context()
 
-	idParam := c.Param("id")
-	id, err := uuid.Parse(idParam)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Invalid source ID format",
-		})
+	id, ok := parseUUID(c, "id", "source")
+	if !ok {
 		return
 	}
 
-	err = r.repo.DeleteSource(ctx, id)
+	err := r.repo.DeleteSource(ctx, id)
 	if err != nil {
-		if errors.Is(err, models.ErrNotFound) {
-			c.JSON(http.StatusNotFound, gin.H{
-				"error": "Source not found",
-			})
-			return
-		}
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Failed to delete source",
-		})
+		handleRepositoryError(c, err, "source", "delete")
 		return
 	}
 

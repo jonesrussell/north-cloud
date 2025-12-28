@@ -133,50 +133,30 @@ func (r *Repository) ListSources(ctx context.Context, enabledOnly bool) ([]model
 
 // UpdateSource updates a source
 func (r *Repository) UpdateSource(ctx context.Context, id uuid.UUID, req *models.SourceUpdateRequest) (*models.Source, error) {
-	// Build dynamic update query
-	updateFields := []string{}
-	args := []any{}
-	argPos := 1
+	updates := make(map[string]any)
 
 	if req.Name != nil {
-		updateFields = append(updateFields, fmt.Sprintf("name = $%d", argPos))
-		args = append(args, *req.Name)
-		argPos++
+		updates["name"] = *req.Name
 	}
-
 	if req.IndexPattern != nil {
-		updateFields = append(updateFields, fmt.Sprintf("index_pattern = $%d", argPos))
-		args = append(args, *req.IndexPattern)
-		argPos++
+		updates["index_pattern"] = *req.IndexPattern
 	}
-
 	if req.Enabled != nil {
-		updateFields = append(updateFields, fmt.Sprintf("enabled = $%d", argPos))
-		args = append(args, *req.Enabled)
-		argPos++
+		updates["enabled"] = *req.Enabled
 	}
 
-	if len(updateFields) == 0 {
-		return nil, models.ErrNoFieldsToUpdate
+	query, args, err := buildUpdateQuery(
+		"sources",
+		id,
+		updates,
+		"id, name, index_pattern, enabled, created_at, updated_at",
+	)
+	if err != nil {
+		return nil, err
 	}
-
-	// Add updated_at
-	updateFields = append(updateFields, fmt.Sprintf("updated_at = $%d", argPos))
-	args = append(args, time.Now())
-	argPos++
-
-	// Add ID for WHERE clause
-	args = append(args, id)
-
-	query := fmt.Sprintf(`
-		UPDATE sources
-		SET %s
-		WHERE id = $%d
-		RETURNING id, name, index_pattern, enabled, created_at, updated_at
-	`, joinStrings(updateFields, ", "), argPos)
 
 	source := &models.Source{}
-	err := r.db.QueryRowxContext(ctx, query, args...).StructScan(source)
+	err = r.db.QueryRowxContext(ctx, query, args...).StructScan(source)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, models.ErrNotFound
@@ -316,47 +296,30 @@ func (r *Repository) ListChannels(ctx context.Context, enabledOnly bool) ([]mode
 
 // UpdateChannel updates a channel
 func (r *Repository) UpdateChannel(ctx context.Context, id uuid.UUID, req *models.ChannelUpdateRequest) (*models.Channel, error) {
-	updateFields := []string{}
-	args := []any{}
-	argPos := 1
+	updates := make(map[string]any)
 
 	if req.Name != nil {
-		updateFields = append(updateFields, fmt.Sprintf("name = $%d", argPos))
-		args = append(args, *req.Name)
-		argPos++
+		updates["name"] = *req.Name
 	}
-
 	if req.Description != nil {
-		updateFields = append(updateFields, fmt.Sprintf("description = $%d", argPos))
-		args = append(args, *req.Description)
-		argPos++
+		updates["description"] = *req.Description
 	}
-
 	if req.Enabled != nil {
-		updateFields = append(updateFields, fmt.Sprintf("enabled = $%d", argPos))
-		args = append(args, *req.Enabled)
-		argPos++
+		updates["enabled"] = *req.Enabled
 	}
 
-	if len(updateFields) == 0 {
-		return nil, models.ErrNoFieldsToUpdate
+	query, args, err := buildUpdateQuery(
+		"channels",
+		id,
+		updates,
+		"id, name, description, enabled, created_at, updated_at",
+	)
+	if err != nil {
+		return nil, err
 	}
-
-	updateFields = append(updateFields, fmt.Sprintf("updated_at = $%d", argPos))
-	args = append(args, time.Now())
-	argPos++
-
-	args = append(args, id)
-
-	query := fmt.Sprintf(`
-		UPDATE channels
-		SET %s
-		WHERE id = $%d
-		RETURNING id, name, description, enabled, created_at, updated_at
-	`, joinStrings(updateFields, ", "), argPos)
 
 	channel := &models.Channel{}
-	err := r.db.QueryRowxContext(ctx, query, args...).StructScan(channel)
+	err = r.db.QueryRowxContext(ctx, query, args...).StructScan(channel)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, models.ErrNotFound
@@ -403,4 +366,40 @@ func joinStrings(strs []string, sep string) string {
 		result.WriteString(strs[i])
 	}
 	return result.String()
+}
+
+// buildUpdateQuery builds a dynamic UPDATE query with the given fields
+// Returns the query string and args slice, or error if no fields to update
+func buildUpdateQuery(table string, id uuid.UUID, updates map[string]any, returningFields string) (string, []any, error) {
+	if len(updates) == 0 {
+		return "", nil, models.ErrNoFieldsToUpdate
+	}
+
+	updateFields := make([]string, 0, len(updates)+1)
+	args := make([]any, 0, len(updates)+2)
+	argPos := 1
+
+	// Add update fields
+	for field, value := range updates {
+		updateFields = append(updateFields, fmt.Sprintf("%s = $%d", field, argPos))
+		args = append(args, value)
+		argPos++
+	}
+
+	// Add updated_at
+	updateFields = append(updateFields, fmt.Sprintf("updated_at = $%d", argPos))
+	args = append(args, time.Now())
+	argPos++
+
+	// Add ID for WHERE clause
+	args = append(args, id)
+
+	query := fmt.Sprintf(`
+		UPDATE %s
+		SET %s
+		WHERE id = $%d
+		RETURNING %s
+	`, table, joinStrings(updateFields, ", "), argPos, returningFields)
+
+	return query, args, nil
 }

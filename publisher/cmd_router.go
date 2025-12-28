@@ -9,10 +9,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/elastic/go-elasticsearch/v8"
 	"github.com/jonesrussell/north-cloud/publisher/internal/database"
 	"github.com/jonesrussell/north-cloud/publisher/internal/router"
-	"github.com/redis/go-redis/v9"
 )
 
 const (
@@ -22,78 +20,31 @@ const (
 func runRouter() {
 	log.Println("Starting Publisher Router Service...")
 
-	// Load configuration from environment
-	dbConfig := database.Config{
-		Host:     getEnv("POSTGRES_PUBLISHER_HOST", "localhost"),
-		Port:     getEnv("POSTGRES_PUBLISHER_PORT", "5432"),
-		User:     getEnv("POSTGRES_PUBLISHER_USER", "postgres"),
-		Password: getEnv("POSTGRES_PUBLISHER_PASSWORD", ""),
-		DBName:   getEnv("POSTGRES_PUBLISHER_DB", "publisher"),
-		SSLMode:  getEnv("POSTGRES_PUBLISHER_SSLMODE", "disable"),
-	}
-
-	esURL := getEnv("ELASTICSEARCH_URL", "http://localhost:9200")
-	redisAddr := getEnv("REDIS_ADDR", "localhost:6379")
-	redisPassword := getEnv("REDIS_PASSWORD", "")
-
-	checkIntervalStr := getEnv("PUBLISHER_ROUTER_CHECK_INTERVAL", "5m")
-	checkInterval, parseErr := time.ParseDuration(checkIntervalStr)
-	if parseErr != nil {
-		log.Fatalf("Invalid check interval: %v", parseErr)
-	}
-
-	batchSize := getEnvInt("PUBLISHER_ROUTER_BATCH_SIZE", defaultBatchSize)
+	// Load configuration
+	cfg := LoadConfig()
 
 	// Initialize database connection
-	db, dbErr := database.NewPostgresConnection(dbConfig)
+	db, dbErr := database.NewPostgresConnection(cfg.Database)
 	if dbErr != nil {
 		log.Fatalf("Failed to connect to database: %v", dbErr)
 	}
 	defer db.Close()
-
 	log.Println("Database connection established")
 
 	// Initialize repository
 	repo := database.NewRepository(db)
 
 	// Initialize Elasticsearch client
-	esCfg := elasticsearch.Config{
-		Addresses: []string{esURL},
-	}
-	esClient, esErr := elasticsearch.NewClient(esCfg)
-	if esErr != nil {
-		// Note: log.Fatalf exits, so defer won't run - this is intentional for fatal errors
-		log.Fatalf("Failed to create Elasticsearch client: %v", esErr)
-	}
-
-	// Test Elasticsearch connection
-	info, infoErr := esClient.Info()
-	if infoErr != nil {
-		// Note: log.Fatalf exits, so defer won't run - this is intentional for fatal errors
-		log.Fatalf("Failed to connect to Elasticsearch: %v", infoErr)
-	}
-	defer info.Body.Close()
-	log.Println("Elasticsearch connection established")
+	esClient := initElasticsearchClient(cfg.ESURL)
 
 	// Initialize Redis client
-	redisClient := redis.NewClient(&redis.Options{
-		Addr:     redisAddr,
-		Password: redisPassword,
-		DB:       0,
-	})
-
-	// Test Redis connection
-	pingCtx := context.Background()
-	if pingErr := redisClient.Ping(pingCtx).Err(); pingErr != nil {
-		log.Fatalf("Failed to connect to Redis: %v", pingErr)
-	}
+	redisClient := initRedisClient(cfg.RedisAddr, cfg.RedisPassword)
 	defer redisClient.Close()
-	log.Println("Redis connection established")
 
 	// Initialize router service
 	routerConfig := router.Config{
-		CheckInterval: checkInterval,
-		BatchSize:     batchSize,
+		CheckInterval: cfg.CheckInterval,
+		BatchSize:     cfg.BatchSize,
 	}
 	routerService := router.NewService(repo, esClient, redisClient, routerConfig)
 
@@ -114,7 +65,7 @@ func runRouter() {
 		}
 	}()
 
-	log.Printf("Router service started (check interval: %s, batch size: %d)", checkInterval, batchSize)
+	log.Printf("Router service started (check interval: %s, batch size: %d)", cfg.CheckInterval, cfg.BatchSize)
 
 	// Wait for shutdown signal or error
 	select {

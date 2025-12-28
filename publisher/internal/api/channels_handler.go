@@ -1,11 +1,9 @@
 package api
 
 import (
-	"errors"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 	"github.com/jonesrussell/north-cloud/publisher/internal/models"
 )
 
@@ -76,26 +74,14 @@ func (r *Router) createChannel(c *gin.Context) {
 func (r *Router) getChannel(c *gin.Context) {
 	ctx := c.Request.Context()
 
-	idParam := c.Param("id")
-	id, err := uuid.Parse(idParam)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Invalid channel ID format",
-		})
+	id, ok := parseUUID(c, "id", "channel")
+	if !ok {
 		return
 	}
 
 	channel, err := r.repo.GetChannelByID(ctx, id)
 	if err != nil {
-		if errors.Is(err, models.ErrNotFound) {
-			c.JSON(http.StatusNotFound, gin.H{
-				"error": "Channel not found",
-			})
-			return
-		}
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Failed to get channel",
-		})
+		handleRepositoryError(c, err, "channel", "get")
 		return
 	}
 
@@ -107,12 +93,8 @@ func (r *Router) getChannel(c *gin.Context) {
 func (r *Router) updateChannel(c *gin.Context) {
 	ctx := c.Request.Context()
 
-	idParam := c.Param("id")
-	id, err := uuid.Parse(idParam)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Invalid channel ID format",
-		})
+	id, ok := parseUUID(c, "id", "channel")
+	if !ok {
 		return
 	}
 
@@ -127,35 +109,13 @@ func (r *Router) updateChannel(c *gin.Context) {
 
 	// Validate request
 	if validateErr := req.Validate(); validateErr != nil {
-		if errors.Is(validateErr, models.ErrNoFieldsToUpdate) {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"error": "At least one field must be provided for update",
-			})
-			return
-		}
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": validateErr.Error(),
-		})
+		handleValidationError(c, validateErr)
 		return
 	}
 
 	channel, err := r.repo.UpdateChannel(ctx, id, &req)
 	if err != nil {
-		if errors.Is(err, models.ErrNotFound) {
-			c.JSON(http.StatusNotFound, gin.H{
-				"error": "Channel not found",
-			})
-			return
-		}
-		if errors.Is(err, models.ErrAlreadyExists) {
-			c.JSON(http.StatusConflict, gin.H{
-				"error": "Channel with this name already exists",
-			})
-			return
-		}
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Failed to update channel",
-		})
+		handleRepositoryError(c, err, "channel", "update")
 		return
 	}
 
@@ -167,26 +127,14 @@ func (r *Router) updateChannel(c *gin.Context) {
 func (r *Router) deleteChannel(c *gin.Context) {
 	ctx := c.Request.Context()
 
-	idParam := c.Param("id")
-	id, err := uuid.Parse(idParam)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Invalid channel ID format",
-		})
+	id, ok := parseUUID(c, "id", "channel")
+	if !ok {
 		return
 	}
 
-	err = r.repo.DeleteChannel(ctx, id)
+	err := r.repo.DeleteChannel(ctx, id)
 	if err != nil {
-		if errors.Is(err, models.ErrNotFound) {
-			c.JSON(http.StatusNotFound, gin.H{
-				"error": "Channel not found",
-			})
-			return
-		}
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Failed to delete channel",
-		})
+		handleRepositoryError(c, err, "channel", "delete")
 		return
 	}
 
