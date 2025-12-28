@@ -9,6 +9,7 @@ import (
 
 // listChannels returns all channels
 // GET /api/v1/channels?enabled_only=true
+//
 //nolint:dupl // Similar structure to sources_handler.go
 func (r *Router) listChannels(c *gin.Context) {
 	ctx := c.Request.Context()
@@ -33,6 +34,7 @@ func (r *Router) listChannels(c *gin.Context) {
 
 // createChannel creates a new channel
 // POST /api/v1/channels
+//
 //nolint:dupl // Similar structure to sources_handler.go
 func (r *Router) createChannel(c *gin.Context) {
 	ctx := c.Request.Context()
@@ -65,6 +67,7 @@ func (r *Router) createChannel(c *gin.Context) {
 
 // getChannel retrieves a channel by ID
 // GET /api/v1/channels/:id
+//
 //nolint:dupl // Similar structure to sources_handler.go
 func (r *Router) getChannel(c *gin.Context) {
 	ctx := c.Request.Context()
@@ -85,6 +88,7 @@ func (r *Router) getChannel(c *gin.Context) {
 
 // updateChannel updates a channel
 // PUT /api/v1/channels/:id
+//
 //nolint:dupl // Similar structure to sources_handler.go
 func (r *Router) updateChannel(c *gin.Context) {
 	ctx := c.Request.Context()
@@ -120,6 +124,7 @@ func (r *Router) updateChannel(c *gin.Context) {
 
 // deleteChannel deletes a channel
 // DELETE /api/v1/channels/:id
+//
 //nolint:dupl // Similar structure to sources_handler.go
 func (r *Router) deleteChannel(c *gin.Context) {
 	ctx := c.Request.Context()
