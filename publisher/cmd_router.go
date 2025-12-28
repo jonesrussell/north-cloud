@@ -16,9 +16,7 @@ import (
 )
 
 const (
-	defaultBatchSize     = 100
-	shutdownTimeout      = 30 * time.Second
-	gracefulShutdownWait = 5 * time.Second
+	defaultBatchSize = 100
 )
 
 func runRouter() {
@@ -127,6 +125,8 @@ func runRouter() {
 	}
 
 	// Wait for graceful shutdown with timeout
+	const shutdownTimeout = 30 * time.Second
+	const gracefulShutdownWait = 5 * time.Second
 	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), shutdownTimeout)
 	defer shutdownCancel()
 
