@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/elastic/go-elasticsearch/v8"
-	"github.com/google/uuid"
 	"github.com/jonesrussell/north-cloud/publisher/internal/database"
 	"github.com/jonesrussell/north-cloud/publisher/internal/models"
 	"github.com/redis/go-redis/v9"
@@ -218,7 +217,7 @@ func (s *Service) fetchArticles(ctx context.Context, route *models.RouteWithDeta
 	res, err := s.esClient.Search(
 		s.esClient.Search.WithContext(ctx),
 		s.esClient.Search.WithIndex(route.SourceIndexPattern),
-		s.esClient.Search.WithBody(json.NewDecoder(bytes.NewReader(queryJSON))),
+		s.esClient.Search.WithBody(bytes.NewReader(queryJSON)),
 		s.esClient.Search.WithSize(s.batchSize),
 	)
 	if err != nil {

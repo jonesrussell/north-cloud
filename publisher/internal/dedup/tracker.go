@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/gopost/integration/internal/logger"
+	"github.com/jonesrussell/north-cloud/publisher/internal/logger"
 	"github.com/redis/go-redis/v9"
 )
 

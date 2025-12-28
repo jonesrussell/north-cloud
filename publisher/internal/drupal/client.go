@@ -13,7 +13,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gopost/integration/internal/logger"
+	"github.com/jonesrussell/north-cloud/publisher/internal/logger"
 	infrahttp "github.com/north-cloud/infrastructure/http"
 )
 

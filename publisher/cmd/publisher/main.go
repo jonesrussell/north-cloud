@@ -8,7 +8,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/gopost/integration/internal/app"
+	"github.com/jonesrussell/north-cloud/publisher/internal/app"
 	infracontext "github.com/north-cloud/infrastructure/context"
 )
 

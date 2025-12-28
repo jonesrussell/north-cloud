@@ -5,7 +5,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/jonesrussell/north-cloud/publisher/internal/database"
-	infrajwt "github.com/jonesrussell/north-cloud/infrastructure/jwt"
+	infrajwt "github.com/north-cloud/infrastructure/jwt"
 )
 
 // Router holds the API dependencies
@@ -33,7 +33,7 @@ func (r *Router) SetupRoutes() *gin.Engine {
 
 	// Global middleware
 	router.Use(gin.Recovery())
-	router.Use(corsMiddleware())
+	router.Use(corsMiddleware()) // Defined in middleware.go
 
 	// Health check (public, no auth)
 	router.GET("/health", r.healthCheck)
@@ -103,21 +103,4 @@ func (r *Router) healthCheck(c *gin.Context) {
 		"service": "publisher",
 		"version": "1.0.0",
 	})
-}
-
-// corsMiddleware handles CORS
-func corsMiddleware() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
-		c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
-		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, accept, origin, Cache-Control, X-Requested-With")
-		c.Writer.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS, GET, PUT, DELETE")
-
-		if c.Request.Method == "OPTIONS" {
-			c.AbortWithStatus(204)
-			return
-		}
-
-		c.Next()
-	}
 }

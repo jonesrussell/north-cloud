@@ -11,12 +11,12 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/gopost/integration/internal/api"
-	"github.com/gopost/integration/internal/config"
-	"github.com/gopost/integration/internal/integration"
-	"github.com/gopost/integration/internal/logger"
-	"github.com/gopost/integration/internal/metrics"
-	"github.com/gopost/integration/internal/sources"
+	"github.com/jonesrussell/north-cloud/publisher/internal/api"
+	"github.com/jonesrussell/north-cloud/publisher/internal/config"
+	"github.com/jonesrussell/north-cloud/publisher/internal/integration"
+	"github.com/jonesrussell/north-cloud/publisher/internal/logger"
+	"github.com/jonesrussell/north-cloud/publisher/internal/metrics"
+	"github.com/jonesrussell/north-cloud/publisher/internal/sources"
 	infracontext "github.com/north-cloud/infrastructure/context"
 	"github.com/redis/go-redis/v9"
 )

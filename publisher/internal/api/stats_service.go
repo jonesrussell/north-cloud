@@ -4,8 +4,8 @@ import (
 	"context"
 	"errors"
 
-	"github.com/gopost/integration/internal/logger"
-	"github.com/gopost/integration/internal/metrics"
+	"github.com/jonesrussell/north-cloud/publisher/internal/logger"
+	"github.com/jonesrussell/north-cloud/publisher/internal/metrics"
 )
 
 const defaultLimit = 50

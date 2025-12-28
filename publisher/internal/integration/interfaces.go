@@ -3,8 +3,8 @@ package integration
 import (
 	"context"
 
-	"github.com/gopost/integration/internal/config"
-	"github.com/gopost/integration/internal/drupal"
+	"github.com/jonesrussell/north-cloud/publisher/internal/config"
+	"github.com/jonesrussell/north-cloud/publisher/internal/drupal"
 )
 
 // ElasticsearchClient defines the interface for Elasticsearch operations.

@@ -4,7 +4,7 @@ import (
 	"errors"
 	"time"
 
-	"github.com/gopost/integration/internal/logger"
+	"github.com/jonesrussell/north-cloud/publisher/internal/logger"
 )
 
 func ExampleNewLogger() {

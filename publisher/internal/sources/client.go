@@ -7,8 +7,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/gopost/integration/internal/config"
-	"github.com/gopost/integration/internal/logger"
+	"github.com/jonesrussell/north-cloud/publisher/internal/config"
+	"github.com/jonesrussell/north-cloud/publisher/internal/logger"
 	infrahttp "github.com/north-cloud/infrastructure/http"
 )
 

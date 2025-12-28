@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/gopost/integration/internal/config"
-	"github.com/gopost/integration/internal/drupal"
-	"github.com/gopost/integration/internal/logger"
+	"github.com/jonesrussell/north-cloud/publisher/internal/config"
+	"github.com/jonesrussell/north-cloud/publisher/internal/drupal"
+	"github.com/jonesrussell/north-cloud/publisher/internal/logger"
 )
 
 func main() {

@@ -24,7 +24,7 @@ func runRouter() {
 		Port:     getEnv("POSTGRES_PUBLISHER_PORT", "5432"),
 		User:     getEnv("POSTGRES_PUBLISHER_USER", "postgres"),
 		Password: getEnv("POSTGRES_PUBLISHER_PASSWORD", ""),
-		Database: getEnv("POSTGRES_PUBLISHER_DB", "publisher"),
+		DBName:   getEnv("POSTGRES_PUBLISHER_DB", "publisher"),
 		SSLMode:  getEnv("POSTGRES_PUBLISHER_SSLMODE", "disable"),
 	}
 
@@ -136,4 +136,23 @@ func runRouter() {
 	case <-shutdownCtx.Done():
 		log.Println("Shutdown timeout exceeded, forcing exit")
 	}
+}
+
+// getEnv gets an environment variable with a default value
+func getEnv(key, defaultValue string) string {
+	if value := os.Getenv(key); value != "" {
+		return value
+	}
+	return defaultValue
+}
+
+// getEnvInt gets an integer environment variable with a default value
+func getEnvInt(key string, defaultValue int) int {
+	if value := os.Getenv(key); value != "" {
+		var intValue int
+		if _, err := fmt.Sscanf(value, "%d", &intValue); err == nil {
+			return intValue
+		}
+	}
+	return defaultValue
 }
