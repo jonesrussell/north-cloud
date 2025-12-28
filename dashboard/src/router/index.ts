@@ -37,6 +37,11 @@ declare module 'vue-router' {
     title?: string
     section?: string
     requiresAuth?: boolean
+    breadcrumbs?: Array<{
+      label: string
+      path: string
+      icon?: any
+    }>
   }
 }
 
