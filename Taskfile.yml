@@ -31,7 +31,6 @@ tasks:
       - task: lint:search
       - task: lint:search-frontend
       - task: lint:source-manager
-    run: parallel
 
   lint:classifier:
     desc: "Run linter for classifier service"
@@ -112,7 +111,6 @@ tasks:
       - task: test:search
       - task: test:search-frontend
       - task: test:source-manager
-    run: parallel
 
   test:classifier:
     desc: "Run tests for classifier service"
@@ -317,3 +315,12 @@ tasks:
     dir: publisher
     cmds:
       - task migrate:version
+
+  config:init:
+    desc: "Copy all config.yml.example files to config.yml"
+    cmds:
+      - cp source-manager/config.yml.example source-manager/config.yml
+      - cp classifier/config.yml.example classifier/config.yml
+      - cp index-manager/config.yml.example index-manager/config.yml
+      - cp publisher/config.yml.example publisher/config.yml
+      - cp search/config.yml.example search/config.yml
