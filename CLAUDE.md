@@ -48,46 +48,76 @@ This document provides a comprehensive guide for AI assistants working with the 
 ### System Overview
 
 ```
-┌────────────────────────────────────────────────────────────────────────┐
-│                         North Cloud Platform                            │
-├────────────────────────────────────────────────────────────────────────┤
-│                                                                          │
-│  ┌──────────┐         ┌──────────────┐        ┌──────────────┐        │
-│  │ Crawler  │────────▶│    Source    │        │  Classifier  │        │
-│  │(crawler) │         │   Manager    │        │  (Go 1.25)   │        │
-│  │          │         │  (Go + Vue)  │        │              │        │
-│  └────┬─────┘         └──────────────┘        └──────▲───────┘        │
-│       │                                                │                │
-│       │ raw_content                                    │                │
-│       │ (pending)                                      │ classified     │
-│       ▼                                                │ _content       │
-│  ┌─────────────────────────────────────────────────────┼──────────┐   │
-│  │              Elasticsearch (Content Pipeline)       │          │   │
-│  │  ┌────────────────┐  ┌──────────────┐  ┌──────────▼────────┐ │   │
-│  │  │ {source}_raw   │─▶│  Classifier  │─▶│ {source}_classified│ │   │
-│  │  │ _content       │  │   Service    │  │ _content          │ │   │
-│  │  │ (pending)      │  │              │  │ (crime filtered)  │ │   │
-│  │  └────────────────┘  └──────────────┘  └──────────┬────────┘ │   │
-│  └─────────────────────────────────────────────────────┼──────────┘   │
-│                                                         │               │
-│                                                         ▼               │
-│                                              ┌──────────────┐          │
-│                                              │  Publisher   │          │
-│                                              │  (gopost)    │          │
-│                                              └──────┬───────┘          │
-│                                                     │                   │
-│                                                     ▼                   │
-│                                            ┌──────────────┐            │
-│                                            │  Streetcode  │            │
-│                                            │ (Drupal 11)  │            │
-│                                            └──────────────┘            │
-│                                                                          │
-│  Infrastructure:                                                        │
-│  ┌─────────────┐  ┌─────────────┐  ┌──────────────────┐               │
-│  │ PostgreSQL  │  │    Redis    │  │      Nginx       │               │
-│  │  (3 DBs)    │  │   (Cache)   │  │  (Reverse Proxy) │               │
-│  └─────────────┘  └─────────────┘  └──────────────────┘               │
-└────────────────────────────────────────────────────────────────────────┘
+┌───────────────────────────────────────────────────────────────────────────┐
+│                         North Cloud Platform                               │
+├───────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  ┌──────────┐         ┌──────────────┐        ┌──────────────┐           │
+│  │ Crawler  │────────▶│    Source    │        │  Classifier  │           │
+│  │(crawler) │         │   Manager    │        │  (Go 1.25)   │           │
+│  │          │         │  (Go + Vue)  │        │              │           │
+│  └────┬─────┘         └──────────────┘        └──────▲───────┘           │
+│       │                                                │                   │
+│       │ raw_content                                    │                   │
+│       │ (pending)                                      │ classified        │
+│       ▼                                                │ _content          │
+│  ┌─────────────────────────────────────────────────────┼──────────┐      │
+│  │              Elasticsearch (Content Pipeline)       │          │      │
+│  │  ┌────────────────┐  ┌──────────────┐  ┌──────────▼────────┐ │      │
+│  │  │ {source}_raw   │─▶│  Classifier  │─▶│ {source}_classified│ │      │
+│  │  │ _content       │  │   Service    │  │ _content          │ │      │
+│  │  │ (pending)      │  │              │  │ (crime filtered)  │ │      │
+│  │  └────────────────┘  └──────────────┘  └──────────┬────────┘ │      │
+│  └─────────────────────────────────────────────────────┼──────────┘      │
+│                                                         │                  │
+│                                                         ▼                  │
+│              ┌───────────────────────────────────────────────────┐       │
+│              │          Publisher Service (Hub)                   │       │
+│              │  ┌──────────────┐  ┌──────────────┐  ┌─────────┐ │       │
+│              │  │ PostgreSQL   │  │  API Server  │  │  Vue.js │ │       │
+│              │  │  Database    │◄─┤  (REST API)  │◄─┤Dashboard│ │       │
+│              │  │              │  │              │  │         │ │       │
+│              │  │ - Routes     │  │ - Sources    │  │ - CRUD  │ │       │
+│              │  │ - Sources    │  │ - Channels   │  │ - Stats │ │       │
+│              │  │ - Channels   │  │ - Routes     │  │         │ │       │
+│              │  │ - History    │  │ - Stats      │  │         │ │       │
+│              │  └──────▲───────┘  └──────────────┘  └─────────┘ │       │
+│              │         │                                          │       │
+│              │         │          ┌──────────────┐               │       │
+│              │         └──────────┤Router Service│               │       │
+│              │                    │(Background)  │               │       │
+│              │                    └──────┬───────┘               │       │
+│              └───────────────────────────┼───────────────────────┘       │
+│                                          │                                │
+│                                          │ Publishes to Redis            │
+│                                          ▼                                │
+│                              ┌────────────────────┐                      │
+│                              │  Redis Pub/Sub     │                      │
+│                              │  Channels:         │                      │
+│                              │  - articles:crime  │                      │
+│                              │  - articles:news   │                      │
+│                              │  - articles:local  │                      │
+│                              └─────────┬──────────┘                      │
+│                                        │                                  │
+│              ┌─────────────────────────┴──────────────────┐             │
+│              │                                             │             │
+│              ▼                                             ▼             │
+│    ┌──────────────────┐                         ┌──────────────────┐   │
+│    │ External Service │                         │ External Service │   │
+│    │  (Drupal Site)   │                         │  (Laravel Site)  │   │
+│    │                  │                         │                  │   │
+│    │ - Subscribes to  │                         │ - Subscribes to  │   │
+│    │   articles:crime │                         │   articles:news  │   │
+│    │ - Own dedup      │                         │ - Own filters    │   │
+│    │ - Own storage    │                         │ - Own storage    │   │
+│    └──────────────────┘                         └──────────────────┘   │
+│                                                                           │
+│  Infrastructure:                                                         │
+│  ┌─────────────┐  ┌─────────────┐  ┌──────────────────┐                │
+│  │ PostgreSQL  │  │    Redis    │  │      Nginx       │                │
+│  │  (4 DBs)    │  │  (Pub/Sub)  │  │  (Reverse Proxy) │                │
+│  └─────────────┘  └─────────────┘  └──────────────────┘                │
+└───────────────────────────────────────────────────────────────────────────┘
 ```
 
 ### Content Processing Pipeline
@@ -108,11 +138,14 @@ The platform uses a **three-stage content pipeline** for intelligent article pro
    - Enriched content indexed to `{source}_classified_content`
    - Includes all original fields plus classification metadata
 
-3. **Publishing** (Publisher → Drupal)
-   - Publisher queries classified_content indexes
-   - Filters by `is_crime_related=true` and `quality_score >= threshold`
-   - Posts high-quality, crime-related articles to Drupal via JSON:API
-   - Redis deduplication prevents duplicate posts
+3. **Publishing** (Publisher → Redis → Consumers)
+   - **Publisher Router** queries classified_content indexes based on active routes
+   - Filters by `is_crime_related`, `quality_score >= threshold`, and `topics`
+   - Publishes full article payload to topic-based Redis pub/sub channels
+   - Records publish history in PostgreSQL (prevents re-publishing)
+   - **External Consumers** (Drupal, Laravel, etc.) subscribe to Redis channels
+   - Consumers handle own filtering, deduplication, and storage
+   - Complete decoupling: publisher doesn't manage destinations
 
 ### Service Descriptions
 
@@ -178,30 +211,71 @@ The platform uses a **three-stage content pipeline** for intelligent article pro
   - **Alias fields for publisher**: `body` (alias for raw_text), `source` (alias for url)
 - **Documentation**: See `/classifier/README.md`, `/classifier/CLAUDE.md`
 
-#### 4. **publisher** (gopost)
+#### 4. **publisher**
 - **Location**: `/publisher`
 - **Language**: Go 1.25+
-- **Purpose**: Filter and publish articles from Elasticsearch to Drupal
-- **Dependencies**: Elasticsearch, Redis, Drupal
+- **Purpose**: Database-backed routing hub that filters articles and publishes to Redis pub/sub channels
+- **Database**: `postgres-publisher` (publisher database)
+- **Dependencies**: Elasticsearch (classified_content indexes), Redis (pub/sub), PostgreSQL
+- **Ports**: 8070 (API), 3003 (Frontend - development)
+- **Architecture**: Three-component system
+  1. **API Server** (`/app/publisher api`):
+     - REST API for managing sources, channels, and routes
+     - Vue.js dashboard for configuration (port 3003 dev, served via nginx in prod)
+     - JWT authentication integration
+     - Publishing statistics and history
+  2. **Router Service** (`/app/publisher router`):
+     - Background worker that processes routes
+     - Queries Elasticsearch classified_content indexes
+     - Filters by quality_score and topics
+     - Publishes to Redis pub/sub channels
+     - Records publish history in database
+  3. **Frontend Dashboard**:
+     - Vue.js 3 interface for managing publisher configuration
+     - CRUD operations for sources, channels, routes
+     - Real-time statistics and publish history
+     - Accessible at `/publisher` via nginx
 - **Key Features**:
-  - **Dual-mode operation**: Legacy keyword-based OR classifier-based filtering
-  - **Classification-aware filtering** (when enabled):
-    - Queries `{source}_classified_content` indexes
-    - Filters by `is_crime_related=true` flag
-    - Quality threshold filtering (`quality_score >= min_quality_score`)
-    - Trusts classifier determinations for accuracy
-  - **Legacy mode** (when disabled):
-    - Queries `{source}_articles` indexes
-    - Keyword-based crime detection
-  - Drupal JSON:API integration
-  - Redis-based deduplication
-  - Multi-city support
-  - Rate limiting
+  - **Database-backed configuration**: PostgreSQL stores sources, channels, routes, publish_history
+  - **Dynamic routing**: Many-to-many routes (sources → channels) with configurable filters
+  - **Topic-based channels**: Redis channels like `articles:crime`, `articles:news`
+  - **Complete decoupling**: No destination-specific logic; consumers subscribe independently
+  - **Quality filtering**: Routes specify min_quality_score (0-100) and topics
+  - **Publish history**: Persistent audit trail of all published articles
+  - **Deduplication**: Database-backed (publish_history table prevents re-publishing)
+  - **Web UI**: Full CRUD interface for sources, channels, routes
+- **Database Schema**:
+  - `sources`: Elasticsearch index patterns to monitor (e.g., `example_com_classified_content`)
+  - `channels`: Redis pub/sub channels (e.g., `articles:crime`)
+  - `routes`: Many-to-many mapping with filters (source_id, channel_id, min_quality_score, topics)
+  - `publish_history`: Audit trail (article_id, channel_name, quality_score, published_at)
+- **API Endpoints**:
+  - `/api/v1/sources` - CRUD for sources
+  - `/api/v1/channels` - CRUD for channels
+  - `/api/v1/routes` - CRUD for routes (with joined source/channel names)
+  - `/api/v1/stats/overview` - Publishing statistics
+  - `/api/v1/publish-history` - Paginated publish history
+  - `/health` - Health check
+- **Redis Message Format**: Full Elasticsearch article payload with publisher metadata
+  - All classified_content fields (title, body, canonical_url, quality_score, topics, etc.)
+  - Publisher metadata (route_id, published_at, channel)
+  - See `/publisher/docs/REDIS_MESSAGE_FORMAT.md` for details
+- **Consumer Integration**: External services (Drupal, Laravel, etc.) subscribe to Redis channels
+  - Consumers handle own filtering, deduplication, storage
+  - No publisher dependency required
+  - See `/publisher/docs/CONSUMER_GUIDE.md` for implementation examples
 - **Configuration**:
-  - `use_classified_content: true/false` - Enable classifier-based filtering
-  - `min_quality_score: 50` - Minimum quality threshold (0-100)
-  - `index_suffix: "_classified_content"` - Index naming pattern
-- **Documentation**: See `/publisher/CLAUDE.md`, `/publisher/README.md`
+  - `POSTGRES_PUBLISHER_*`: Database connection
+  - `PUBLISHER_PORT`: API server port (default: 8070)
+  - `PUBLISHER_ROUTER_CHECK_INTERVAL`: Polling interval (default: 5m)
+  - `PUBLISHER_ROUTER_BATCH_SIZE`: Articles per route per check (default: 100)
+- **Documentation**:
+  - `/publisher/README.md` - User guide
+  - `/publisher/CLAUDE.md` - Technical architecture
+  - `/publisher/docs/REDIS_MESSAGE_FORMAT.md` - Message specification
+  - `/publisher/docs/CONSUMER_GUIDE.md` - Integration guide
+  - `/publisher/docs/TESTING.md` - Testing procedures
+  - `/publisher/docs/DEPLOYMENT.md` - Deployment guide
 
 #### 5. **streetcode** (Drupal 11)
 - **Location**: `/streetcode`
@@ -282,6 +356,7 @@ The platform uses a **three-stage content pipeline** for intelligent article pro
 #### PostgreSQL Databases
 - **postgres-source-manager**: Source manager database (gosources)
 - **postgres-crawler**: Crawler database (crawler)
+- **postgres-publisher**: Publisher database (publisher) - stores sources, channels, routes, publish_history
 - **postgres-streetcode**: Drupal database (streetcode)
 - Each service has its own isolated database
 
@@ -295,12 +370,16 @@ The platform uses a **three-stage content pipeline** for intelligent article pro
     - Enriched content with quality scores, topics, crime detection
   - **Legacy articles** (deprecated): `{source}_articles`
     - Old article format, being phased out in favor of classified_content
-- **Content Flow**: raw_content (pending) → Classifier → classified_content → Publisher → Drupal
+- **Content Flow**: raw_content (pending) → Classifier → classified_content → Publisher → Redis pub/sub → External consumers
 
 #### Redis
-- **Purpose**: Deduplication, caching, queue management
+- **Purpose**: Pub/sub messaging, deduplication (historical), caching
 - **Port**: 6379
-- **Usage**: Publisher service for tracking posted articles
+- **Usage**:
+  - **Pub/Sub Channels**: Publisher publishes articles to topic-based channels (e.g., `articles:crime`, `articles:news`)
+  - **Channel Pattern**: `articles:{topic}` - external services subscribe to relevant channels
+  - **Message Format**: Full Elasticsearch article payload with publisher metadata (see `/publisher/docs/REDIS_MESSAGE_FORMAT.md`)
+  - **Consumers**: External services (Drupal, Laravel, etc.) subscribe and handle own storage/deduplication
 
 #### Nginx
 - **Purpose**: Reverse proxy and load balancer with SSL/TLS termination
@@ -1467,6 +1546,41 @@ When encountering scenarios not covered in this guide:
 ---
 
 ## Version History
+
+- **Publisher Modernization: Database-Backed Redis Pub/Sub Architecture** (2025-12-28): Complete transformation of publisher service
+  - **Architecture Change**: From YAML-configured direct-posting to database-backed Redis pub/sub routing hub
+  - **Database Integration**: New PostgreSQL database (`postgres-publisher`) with four tables:
+    - `sources`: Elasticsearch index patterns to monitor
+    - `channels`: Topic-based Redis pub/sub channels (e.g., `articles:crime`, `articles:news`)
+    - `routes`: Many-to-many source→channel mappings with quality/topic filters
+    - `publish_history`: Persistent audit trail of all published articles
+  - **Three-Component Architecture**:
+    - **API Server** (`/app/publisher api`): REST API for managing sources, channels, routes; publishing statistics
+    - **Router Service** (`/app/publisher router`): Background worker that queries Elasticsearch, filters articles, publishes to Redis
+    - **Frontend Dashboard**: Vue.js 3 interface for CRUD operations, real-time stats, publish history
+  - **Complete Decoupling**: Publisher no longer manages destinations/consumers
+    - Publishes full article payloads to topic-based Redis channels
+    - External services (Drupal, Laravel, etc.) subscribe independently
+    - Consumers handle own filtering, deduplication, and storage
+  - **Key Features**:
+    - Dynamic routing configuration (no service restart needed)
+    - Web UI for non-technical users to manage publisher
+    - Quality score filtering (0-100) and topic-based routing
+    - Database-backed deduplication via publish_history table
+    - Many-to-many routes (multiple sources → multiple channels)
+  - **Docker Integration**:
+    - Three separate containers: `publisher-api`, `publisher-router`, `publisher-frontend`
+    - Single binary with multi-command CLI (`api` and `router` commands)
+    - Production and development Docker configurations
+    - Nginx routing for `/publisher` frontend and `/api/publisher` API
+  - **Documentation**:
+    - `/publisher/docs/REDIS_MESSAGE_FORMAT.md` - Complete message specification
+    - `/publisher/docs/CONSUMER_GUIDE.md` - Integration examples (Python, Node.js, PHP/Drupal)
+    - `/publisher/docs/TESTING.md` - Comprehensive testing procedures with integration test script
+    - `/publisher/docs/DEPLOYMENT.md` - Step-by-step deployment guide with rollback procedures
+    - Updated `/publisher/README.md` and `/publisher/CLAUDE.md`
+  - **System Diagram Updates**: Revised architecture diagram showing Redis pub/sub flow and external consumers
+  - **Migration Strategy**: Big-bang cutover with rollback plan; YAML config deprecated in favor of database
 
 - **Dashboard Authentication Implementation** (2025-12-27): JWT-based authentication for dashboard and APIs
   - **Auth service**: New Go service (`/auth`) for username/password authentication and JWT token generation
