@@ -94,8 +94,26 @@ tasks:
           exit 1
         fi
       - |
-        DATABASE_URL="postgres://{{.POSTGRES_USER}}:{{.POSTGRES_PASSWORD}}@{{.POSTGRES_HOST}}:{{.POSTGRES_PORT}}/{{.POSTGRES_DB}}?sslmode=disable"
-        migrate -path ./migrations -database "$DATABASE_URL" up
+        DB_HOST="{{.POSTGRES_HOST}}"
+        DB_PORT="{{.POSTGRES_PORT}}"
+        DB_USER="{{.POSTGRES_USER}}"
+        DB_PASSWORD="{{.POSTGRES_PASSWORD}}"
+        DB_NAME="{{.POSTGRES_DB}}"
+        
+        # Use Docker to run migration if connecting to containerized database
+        if [ "$DB_HOST" = "localhost" ] && docker ps --format '{{.Names}}' | grep -q 'north-cloud-postgres-classifier'; then
+          echo "Running migration via Docker (connecting to postgres-classifier container)..."
+          docker run --rm --network north-cloud_north-cloud-network \
+            -v "$(pwd)/migrations:/migrations" \
+            migrate/migrate:latest \
+            -path /migrations \
+            -database "postgres://${DB_USER}:${DB_PASSWORD}@postgres-classifier:5432/${DB_NAME}?sslmode=disable" \
+            up
+        else
+          echo "Running migration via local connection..."
+          DATABASE_URL="postgres://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_NAME}?sslmode=disable"
+          migrate -path ./migrations -database "$DATABASE_URL" up
+        fi
 
   migrate:down:
     desc: "Rollback last migration"
@@ -108,8 +126,26 @@ tasks:
           exit 1
         fi
       - |
-        DATABASE_URL="postgres://{{.POSTGRES_USER}}:{{.POSTGRES_PASSWORD}}@{{.POSTGRES_HOST}}:{{.POSTGRES_PORT}}/{{.POSTGRES_DB}}?sslmode=disable"
-        migrate -path ./migrations -database "$DATABASE_URL" down 1
+        DB_HOST="{{.POSTGRES_HOST}}"
+        DB_PORT="{{.POSTGRES_PORT}}"
+        DB_USER="{{.POSTGRES_USER}}"
+        DB_PASSWORD="{{.POSTGRES_PASSWORD}}"
+        DB_NAME="{{.POSTGRES_DB}}"
+        
+        # Use Docker to run migration if connecting to containerized database
+        if [ "$DB_HOST" = "localhost" ] && docker ps --format '{{.Names}}' | grep -q 'north-cloud-postgres-classifier'; then
+          echo "Running migration via Docker (connecting to postgres-classifier container)..."
+          docker run --rm --network north-cloud_north-cloud-network \
+            -v "$(pwd)/migrations:/migrations" \
+            migrate/migrate:latest \
+            -path /migrations \
+            -database "postgres://${DB_USER}:${DB_PASSWORD}@postgres-classifier:5432/${DB_NAME}?sslmode=disable" \
+            down 1
+        else
+          echo "Running migration via local connection..."
+          DATABASE_URL="postgres://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_NAME}?sslmode=disable"
+          migrate -path ./migrations -database "$DATABASE_URL" down 1
+        fi
 
   migrate:version:
     desc: "Show current migration version"
@@ -136,8 +172,24 @@ tasks:
           exit 1
         fi
       - |
-        DATABASE_URL="postgres://{{.POSTGRES_USER}}:{{.POSTGRES_PASSWORD}}@{{.POSTGRES_HOST}}:{{.POSTGRES_PORT}}/{{.POSTGRES_DB}}?sslmode=disable"
-        migrate -path ./migrations -database "$DATABASE_URL" version || echo "No migrations applied yet. Run 'task migrate:up' to apply migrations."
+        DB_HOST="{{.POSTGRES_HOST}}"
+        DB_PORT="{{.POSTGRES_PORT}}"
+        DB_USER="{{.POSTGRES_USER}}"
+        DB_PASSWORD="{{.POSTGRES_PASSWORD}}"
+        DB_NAME="{{.POSTGRES_DB}}"
+        
+        # Use Docker to run migration if connecting to containerized database
+        if [ "$DB_HOST" = "localhost" ] && docker ps --format '{{.Names}}' | grep -q 'north-cloud-postgres-classifier'; then
+          docker run --rm --network north-cloud_north-cloud-network \
+            -v "$(pwd)/migrations:/migrations" \
+            migrate/migrate:latest \
+            -path /migrations \
+            -database "postgres://${DB_USER}:${DB_PASSWORD}@postgres-classifier:5432/${DB_NAME}?sslmode=disable" \
+            version || echo "No migrations applied yet. Run 'task migrate:up' to apply migrations."
+        else
+          DATABASE_URL="postgres://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_NAME}?sslmode=disable"
+          migrate -path ./migrations -database "$DATABASE_URL" version || echo "No migrations applied yet. Run 'task migrate:up' to apply migrations."
+        fi
 
   db:shell:
     desc: "Open PostgreSQL shell"
