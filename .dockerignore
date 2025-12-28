@@ -1,0 +1,97 @@
+# Node.js - exclude from all service directories
+**/node_modules/
+node_modules/
+**/package-lock.json
+**/yarn.lock
+**/pnpm-lock.yaml
+
+# Go - exclude vendor and build artifacts
+**/vendor/
+vendor/
+**/*.exe
+**/*.test
+**/bin/
+**/dist/
+
+# Git - exclude from build context
+.git/
+.gitignore
+**/.git/
+
+# Docker files - not needed in build context
+docker-compose*.yml
+**/Dockerfile*
+**/.dockerignore
+**/docker-compose*.yml
+
+# Documentation - not needed in builds
+*.md
+**/*.md
+docs/
+**/docs/
+README.md
+**/README.md
+
+# IDE files
+.idea/
+.vscode/
+.cursor/
+*.swp
+*.swo
+**/.idea/
+**/.vscode/
+**/.cursor/
+
+# Build artifacts and logs
+*.log
+*.tmp
+.DS_Store
+**/*.log
+**/*.tmp
+**/.DS_Store
+
+# Test files - not needed in production builds
+**/*_test.go
+**/testdata/
+**/tests/
+**/testutils/
+**/*.test
+
+# CI/CD files
+.github/
+.gitlab-ci.yml
+.travis.yml
+**/.github/
+
+# Environment files
+.env
+.env.*
+**/.env
+**/.env.*
+
+# Task runner files
+Taskfile.yml
+tasks/
+**/Taskfile.yml
+**/tasks/
+
+# Cache directories
+**/.cache/
+**/cache/
+**/tmp/
+
+# Frontend build artifacts (keep source, exclude built files)
+**/dist/
+**/build/
+**/.next/
+**/.nuxt/
+**/.output/
+
+# Go build cache
+**/.go-build/
+**/go-build/
+
+# Coverage reports
+**/coverage/
+**/*.out
+
