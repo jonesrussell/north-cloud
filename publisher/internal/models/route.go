@@ -22,7 +22,7 @@ type Route struct {
 // RouteWithDetails represents a route with joined source and channel details
 type RouteWithDetails struct {
 	Route
-	SourceName        string `json:"source_name" db:"source_name"`
+	SourceName         string `json:"source_name" db:"source_name"`
 	SourceIndexPattern string `json:"source_index_pattern" db:"source_index_pattern"`
 	ChannelName        string `json:"channel_name" db:"channel_name"`
 	ChannelDescription string `json:"channel_description" db:"channel_description"`

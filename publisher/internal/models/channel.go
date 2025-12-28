@@ -9,8 +9,8 @@ import (
 // Channel represents a Redis pub/sub channel for routing articles by topic
 type Channel struct {
 	ID          uuid.UUID `json:"id" db:"id"`
-	Name        string    `json:"name" db:"name"`                   // e.g., "articles:crime", "articles:news"
-	Description string    `json:"description" db:"description"`     // Human-readable description
+	Name        string    `json:"name" db:"name"`               // e.g., "articles:crime", "articles:news"
+	Description string    `json:"description" db:"description"` // Human-readable description
 	Enabled     bool      `json:"enabled" db:"enabled"`
 	CreatedAt   time.Time `json:"created_at" db:"created_at"`
 	UpdatedAt   time.Time `json:"updated_at" db:"updated_at"`

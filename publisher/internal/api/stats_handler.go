@@ -58,11 +58,11 @@ func (r *Router) getStatsOverview(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"period":            period,
-		"total_articles":    total,
-		"by_channel":        stats,
-		"channel_count":     len(stats),
-		"generated_at":      now,
+		"period":         period,
+		"total_articles": total,
+		"by_channel":     stats,
+		"channel_count":  len(stats),
+		"generated_at":   now,
 	})
 }
 
@@ -141,13 +141,13 @@ func (r *Router) getRouteStats(c *gin.Context) {
 	routeStats := make([]gin.H, 0, len(routes))
 	for _, route := range routes {
 		routeStats = append(routeStats, gin.H{
-			"route_id":            route.ID,
-			"source_name":         route.SourceName,
-			"source_index":        route.SourceIndexPattern,
-			"channel_name":        route.ChannelName,
-			"min_quality_score":   route.MinQualityScore,
-			"topics":              route.Topics,
-			"enabled":             route.Enabled,
+			"route_id":          route.ID,
+			"source_name":       route.SourceName,
+			"source_index":      route.SourceIndexPattern,
+			"channel_name":      route.ChannelName,
+			"min_quality_score": route.MinQualityScore,
+			"topics":            route.Topics,
+			"enabled":           route.Enabled,
 		})
 	}
 

@@ -173,20 +173,20 @@ func (s *Service) processRoute(ctx context.Context, route *models.RouteWithDetai
 type Article struct {
 	ID            string    `json:"id"`
 	Title         string    `json:"title"`
-	Body          string    `json:"body"`           // Alias for raw_text
+	Body          string    `json:"body"` // Alias for raw_text
 	RawText       string    `json:"raw_text"`
 	RawHTML       string    `json:"raw_html"`
 	URL           string    `json:"canonical_url"`
-	Source        string    `json:"source"`         // Original article URL
+	Source        string    `json:"source"` // Original article URL
 	PublishedDate time.Time `json:"published_date"`
 
 	// Classification metadata
-	QualityScore      int      `json:"quality_score"`
-	Topics            []string `json:"topics"`
-	ContentType       string   `json:"content_type"`
-	IsCrimeRelated    bool     `json:"is_crime_related"`
-	SourceReputation  int      `json:"source_reputation"`
-	Confidence        float64  `json:"confidence"`
+	QualityScore     int      `json:"quality_score"`
+	Topics           []string `json:"topics"`
+	ContentType      string   `json:"content_type"`
+	IsCrimeRelated   bool     `json:"is_crime_related"`
+	SourceReputation int      `json:"source_reputation"`
+	Confidence       float64  `json:"confidence"`
 
 	// Open Graph metadata
 	OGTitle       string `json:"og_title"`
@@ -308,30 +308,30 @@ func (s *Service) publishArticle(ctx context.Context, route *models.RouteWithDet
 			"channel":      route.ChannelName,
 		},
 		// Article fields
-		"id":                 article.ID,
-		"title":              article.Title,
-		"body":               article.Body,
-		"raw_text":           article.RawText,
-		"raw_html":           article.RawHTML,
-		"canonical_url":      article.URL,
-		"source":             article.Source,
-		"published_date":     article.PublishedDate.Format(time.RFC3339),
-		"quality_score":      article.QualityScore,
-		"topics":             article.Topics,
-		"content_type":       article.ContentType,
-		"is_crime_related":   article.IsCrimeRelated,
-		"source_reputation":  article.SourceReputation,
-		"confidence":         article.Confidence,
-		"og_title":           article.OGTitle,
-		"og_description":     article.OGDescription,
-		"og_image":           article.OGImage,
-		"og_url":             article.OGURL,
-		"intro":              article.Intro,
-		"description":        article.Description,
-		"word_count":         article.WordCount,
-		"category":           article.Category,
-		"section":            article.Section,
-		"keywords":           article.Keywords,
+		"id":                article.ID,
+		"title":             article.Title,
+		"body":              article.Body,
+		"raw_text":          article.RawText,
+		"raw_html":          article.RawHTML,
+		"canonical_url":     article.URL,
+		"source":            article.Source,
+		"published_date":    article.PublishedDate.Format(time.RFC3339),
+		"quality_score":     article.QualityScore,
+		"topics":            article.Topics,
+		"content_type":      article.ContentType,
+		"is_crime_related":  article.IsCrimeRelated,
+		"source_reputation": article.SourceReputation,
+		"confidence":        article.Confidence,
+		"og_title":          article.OGTitle,
+		"og_description":    article.OGDescription,
+		"og_image":          article.OGImage,
+		"og_url":            article.OGURL,
+		"intro":             article.Intro,
+		"description":       article.Description,
+		"word_count":        article.WordCount,
+		"category":          article.Category,
+		"section":           article.Section,
+		"keywords":          article.Keywords,
 	}
 
 	// Marshal to JSON

@@ -39,7 +39,7 @@ func (r *Router) createSource(c *gin.Context) {
 	var req models.SourceCreateRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Invalid request payload",
+			"error":   "Invalid request payload",
 			"details": err.Error(),
 		})
 		return
@@ -118,7 +118,7 @@ func (r *Router) updateSource(c *gin.Context) {
 	var req models.SourceUpdateRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Invalid request payload",
+			"error":   "Invalid request payload",
 			"details": err.Error(),
 		})
 		return

@@ -11,7 +11,7 @@ import (
 type PublishHistory struct {
 	ID           uuid.UUID      `json:"id" db:"id"`
 	RouteID      *uuid.UUID     `json:"route_id,omitempty" db:"route_id"` // Nullable if route is deleted
-	ArticleID    string         `json:"article_id" db:"article_id"`        // Elasticsearch document ID
+	ArticleID    string         `json:"article_id" db:"article_id"`       // Elasticsearch document ID
 	ArticleTitle string         `json:"article_title" db:"article_title"`
 	ArticleURL   string         `json:"article_url" db:"article_url"`
 	ChannelName  string         `json:"channel_name" db:"channel_name"` // Denormalized for faster querying
