@@ -349,9 +349,9 @@ services:
       - search_go_mod_cache:/tmp/go-mod-cache
       - search_go_build_cache:/tmp/go-build-cache
     working_dir: /app
-    # Download dependencies from mounted go.mod/go.sum, then run
+    # Download dependencies from mounted go.mod/go.sum, then run with air for hot-reload
     # Use -mod=mod to ignore vendor directory if present
-    command: ["sh", "-c", "go mod download && go run -mod=mod ./cmd/httpd/main.go"]
+    command: ["sh", "-c", "go mod download && air -c .air.toml"]
     networks:
       - north-cloud-network
     restart: unless-stopped

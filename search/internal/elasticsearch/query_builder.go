@@ -2,6 +2,7 @@ package elasticsearch
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/jonesrussell/north-cloud/search/internal/config"
 	"github.com/jonesrussell/north-cloud/search/internal/domain"
@@ -91,22 +92,33 @@ func (qb *QueryBuilder) buildBoolQuery(req *domain.SearchRequest) map[string]int
 func (qb *QueryBuilder) buildMultiMatchQuery(query string) map[string]interface{} {
 	boost := qb.config.DefaultBoost
 
-	return map[string]interface{}{
-		"multi_match": map[string]interface{}{
-			"query": query,
-			"fields": []string{
-				"title^" + floatToString(boost.Title),
-				"og_title^" + floatToString(boost.OGTitle),
-				"body^" + floatToString(boost.RawText),
-				"raw_text^" + floatToString(boost.RawText),
-				"og_description^" + floatToString(boost.OGDescription),
-				"meta_description^" + floatToString(boost.MetaDescription),
-			},
-			"type":                 "best_fields",
-			"operator":             "or",
-			"fuzziness":            "AUTO",
-			"minimum_should_match": "75%",
+	// Count words in query to adjust minimum_should_match
+	words := len(strings.Fields(query))
+
+	// For single-word queries, don't use minimum_should_match
+	// For multi-word queries, use a more lenient setting
+	multiMatch := map[string]interface{}{
+		"query": query,
+		"fields": []string{
+			"title^" + floatToString(boost.Title),
+			"og_title^" + floatToString(boost.OGTitle),
+			"body^" + floatToString(boost.RawText),
+			"raw_text^" + floatToString(boost.RawText),
+			"og_description^" + floatToString(boost.OGDescription),
+			"meta_description^" + floatToString(boost.MetaDescription),
 		},
+		"type":      "best_fields",
+		"operator":  "or",
+		"fuzziness": "AUTO",
+	}
+
+	// Only add minimum_should_match for multi-word queries
+	if words > 1 {
+		multiMatch["minimum_should_match"] = "75%"
+	}
+
+	return map[string]interface{}{
+		"multi_match": multiMatch,
 	}
 }
 
