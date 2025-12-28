@@ -270,6 +270,12 @@ tasks:
     cmds:
       - task migrate:version
 
+  migrate:force:source-manager:
+    desc: "Force source-manager database to a specific migration version (use to fix dirty state)"
+    dir: source-manager
+    cmds:
+      - task migrate:force
+
   migrate:classifier:
     desc: "Run database migrations for classifier service"
     dir: classifier
@@ -287,6 +293,12 @@ tasks:
     dir: classifier
     cmds:
       - task migrate:version
+
+  migrate:force:classifier:
+    desc: "Force classifier database to a specific migration version (use to fix dirty state)"
+    dir: classifier
+    cmds:
+      - task migrate:force
 
   migrate:publisher:
     desc: "Run database migrations for publisher service"

@@ -32,18 +32,19 @@ CREATE TABLE IF NOT EXISTS ml_models (
 );
 
 -- Create indexes
-CREATE INDEX idx_models_name_version ON ml_models(model_name, model_version);
-CREATE INDEX idx_models_type ON ml_models(model_type);
-CREATE INDEX idx_models_active ON ml_models(is_active);
-CREATE INDEX idx_models_enabled ON ml_models(enabled);
-CREATE INDEX idx_models_accuracy ON ml_models(accuracy DESC);
+CREATE INDEX IF NOT EXISTS idx_models_name_version ON ml_models(model_name, model_version);
+CREATE INDEX IF NOT EXISTS idx_models_type ON ml_models(model_type);
+CREATE INDEX IF NOT EXISTS idx_models_active ON ml_models(is_active);
+CREATE INDEX IF NOT EXISTS idx_models_enabled ON ml_models(enabled);
+CREATE INDEX IF NOT EXISTS idx_models_accuracy ON ml_models(accuracy DESC);
 
 -- Create trigger to update updated_at
 CREATE TRIGGER update_ml_models_updated_at BEFORE UPDATE ON ml_models
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- Create constraint to ensure only one active model per type
-CREATE UNIQUE INDEX idx_ml_models_active_per_type ON ml_models(model_type)
+-- Note: Partial unique indexes don't support IF NOT EXISTS, but this is unlikely to conflict
+CREATE UNIQUE INDEX IF NOT EXISTS idx_ml_models_active_per_type ON ml_models(model_type)
     WHERE is_active = TRUE;
 
 -- Comments

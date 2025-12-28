@@ -33,16 +33,17 @@ CREATE TABLE IF NOT EXISTS classification_history (
 );
 
 -- Create indexes
-CREATE INDEX idx_history_content_id ON classification_history(content_id);
-CREATE INDEX idx_history_source ON classification_history(source_name);
-CREATE INDEX idx_history_classified_at ON classification_history(classified_at DESC);
-CREATE INDEX idx_history_content_type ON classification_history(content_type);
-CREATE INDEX idx_history_is_crime ON classification_history(is_crime_related);
-CREATE INDEX idx_history_method ON classification_history(classification_method);
-CREATE INDEX idx_history_confidence ON classification_history(confidence DESC);
+CREATE INDEX IF NOT EXISTS idx_history_content_id ON classification_history(content_id);
+CREATE INDEX IF NOT EXISTS idx_history_source ON classification_history(source_name);
+CREATE INDEX IF NOT EXISTS idx_history_classified_at ON classification_history(classified_at DESC);
+CREATE INDEX IF NOT EXISTS idx_history_content_type ON classification_history(content_type);
+CREATE INDEX IF NOT EXISTS idx_history_is_crime ON classification_history(is_crime_related);
+CREATE INDEX IF NOT EXISTS idx_history_method ON classification_history(classification_method);
+CREATE INDEX IF NOT EXISTS idx_history_confidence ON classification_history(confidence DESC);
 
 -- Create index for ML training data queries (high-confidence classifications from last 6 months)
-CREATE INDEX idx_history_training_data ON classification_history(classified_at DESC, confidence DESC)
+-- Note: Partial indexes don't support IF NOT EXISTS, but this is unlikely to conflict
+CREATE INDEX IF NOT EXISTS idx_history_training_data ON classification_history(classified_at DESC, confidence DESC)
     WHERE confidence > 0.7;
 
 -- Comments

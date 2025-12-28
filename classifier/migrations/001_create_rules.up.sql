@@ -18,10 +18,10 @@ CREATE TABLE IF NOT EXISTS classification_rules (
 );
 
 -- Create indexes
-CREATE INDEX idx_rules_type ON classification_rules(rule_type);
-CREATE INDEX idx_rules_topic ON classification_rules(topic_name);
-CREATE INDEX idx_rules_enabled ON classification_rules(enabled);
-CREATE INDEX idx_rules_priority ON classification_rules(priority DESC);
+CREATE INDEX IF NOT EXISTS idx_rules_type ON classification_rules(rule_type);
+CREATE INDEX IF NOT EXISTS idx_rules_topic ON classification_rules(topic_name);
+CREATE INDEX IF NOT EXISTS idx_rules_enabled ON classification_rules(enabled);
+CREATE INDEX IF NOT EXISTS idx_rules_priority ON classification_rules(priority DESC);
 
 -- Create trigger to update updated_at
 CREATE OR REPLACE FUNCTION update_updated_at_column()

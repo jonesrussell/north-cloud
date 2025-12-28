@@ -19,10 +19,10 @@ CREATE TABLE IF NOT EXISTS source_reputation (
 );
 
 -- Create indexes
-CREATE INDEX idx_source_name ON source_reputation(source_name);
-CREATE INDEX idx_source_category ON source_reputation(category);
-CREATE INDEX idx_source_reputation ON source_reputation(reputation_score DESC);
-CREATE INDEX idx_source_last_classified ON source_reputation(last_classified_at DESC);
+CREATE INDEX IF NOT EXISTS idx_source_name ON source_reputation(source_name);
+CREATE INDEX IF NOT EXISTS idx_source_category ON source_reputation(category);
+CREATE INDEX IF NOT EXISTS idx_source_reputation ON source_reputation(reputation_score DESC);
+CREATE INDEX IF NOT EXISTS idx_source_last_classified ON source_reputation(last_classified_at DESC);
 
 -- Create trigger to update updated_at
 CREATE TRIGGER update_source_reputation_updated_at BEFORE UPDATE ON source_reputation
