@@ -292,8 +292,6 @@ services:
         condition: service_started
       publisher-api:
         condition: service_started
-      publisher-frontend:
-        condition: service_started
     networks:
       - north-cloud-network
     restart: always
