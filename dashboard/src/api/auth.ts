@@ -1,7 +1,6 @@
 import axios, { type AxiosInstance } from 'axios'
 
 const authClient: AxiosInstance = axios.create({
-  baseURL: '/api/auth',
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
@@ -16,7 +15,7 @@ export const authApi = {
    * @returns Promise with token
    */
   login: (username: string, password: string) => {
-    // The proxy rewrites /api/auth to the auth service, so we just need /api/v1/auth/login
+    // Call the auth service endpoint directly - nginx routes /api/v1/auth to auth service
     return authClient.post('/api/v1/auth/login', {
       username,
       password,
