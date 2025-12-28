@@ -44,6 +44,7 @@ func (qb *QueryBuilder) Build(req *domain.SearchRequest) map[string]interface{} 
 		query["_source"] = req.Options.SourceFields
 	} else {
 		// Default fields to return
+		// Note: published_date may not exist in all documents, but Elasticsearch handles missing fields gracefully
 		query["_source"] = []string{
 			"id", "title", "url", "source_name",
 			"published_date", "crawled_at",
@@ -135,7 +136,10 @@ func (qb *QueryBuilder) buildFilters(filters *domain.Filters) []interface{} {
 		})
 	}
 
-	// Content type filter - use .keyword subfield for text fields
+	// Content type filter - use .keyword subfield
+	// Note: Some indexes have content_type as text (with .keyword), others as keyword (direct)
+	// Using .keyword works for text fields, but will fail for pure keyword fields
+	// For now, using .keyword since existing indexes appear to be text
 	if filters.ContentType != "" {
 		result = append(result, map[string]interface{}{
 			"term": map[string]interface{}{
@@ -317,8 +321,9 @@ func (qb *QueryBuilder) buildAggregations() map[string]interface{} {
 				"size":  20,
 			},
 		},
-		// Use .keyword subfield for fields that may be dynamically mapped as text
-		// Elasticsearch automatically creates .keyword for text fields
+		// content_type aggregation - use .keyword subfield
+		// Note: Some indexes have content_type as text (with .keyword), others as keyword (direct)
+		// Using .keyword works for text fields (which is what existing indexes have)
 		"content_types": map[string]interface{}{
 			"terms": map[string]interface{}{
 				"field": "content_type.keyword",
