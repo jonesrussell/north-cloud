@@ -24,7 +24,7 @@ func main() {
 		Port:     getEnv("POSTGRES_PUBLISHER_PORT", "5432"),
 		User:     getEnv("POSTGRES_PUBLISHER_USER", "postgres"),
 		Password: getEnv("POSTGRES_PUBLISHER_PASSWORD", ""),
-		Database: getEnv("POSTGRES_PUBLISHER_DB", "publisher"),
+		DBName:   getEnv("POSTGRES_PUBLISHER_DB", "publisher"),
 		SSLMode:  getEnv("POSTGRES_PUBLISHER_SSLMODE", "disable"),
 	}
 

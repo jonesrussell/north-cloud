@@ -144,31 +144,11 @@ func loadConfigAndLogger(configPath string) (*config.Config, logger.Logger, erro
 
 // Run starts the application and blocks until shutdown
 func (a *App) Run(ctx context.Context) error {
-	// Create stats service and API router
-	statsService := api.NewStatsService(a.metricsTracker, a.logger)
-	router := api.NewRouter(statsService, a.logger, a.version)
-
-	// Create HTTP server
-	a.httpServer = &http.Server{
-		Addr:         a.config.Server.Address,
-		Handler:      router,
-		ReadTimeout:  a.config.Server.ReadTimeout,
-		WriteTimeout: a.config.Server.WriteTimeout,
-	}
+	// Note: HTTP server is now handled by separate 'api' command
+	// This app only runs the integration service worker
 
 	// Channels for tracking goroutine errors
-	serverErr := make(chan error, 1)
 	workerErr := make(chan error, 1)
-
-	// Start HTTP server
-	go func() {
-		a.logger.Info("Starting HTTP server",
-			logger.String("address", a.config.Server.Address),
-		)
-		if err := a.httpServer.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			serverErr <- err
-		}
-	}()
 
 	// Start worker with cancellable context
 	workerCtx, workerCancel := context.WithCancel(ctx)
@@ -183,7 +163,7 @@ func (a *App) Run(ctx context.Context) error {
 	}()
 
 	// Wait for shutdown signal or error
-	return a.waitForShutdown(workerCancel, serverErr, workerErr)
+	return a.waitForShutdown(workerCancel, nil, workerErr)
 }
 
 // waitForShutdown handles graceful shutdown
@@ -201,10 +181,12 @@ func (a *App) waitForShutdown(workerCancel context.CancelFunc, serverErr, worker
 		a.shutdown(workerCancel, workerErr, true)
 
 	case err := <-serverErr:
-		a.logger.Error("Server error", logger.Error(err))
-		workerCancel()
-		a.waitForWorker(workerErr)
-		shutdownErr = err
+		if serverErr != nil {
+			a.logger.Error("Server error", logger.Error(err))
+			workerCancel()
+			a.waitForWorker(workerErr)
+			shutdownErr = err
+		}
 
 	case err := <-workerErr:
 		if err != nil && !errors.Is(err, context.Canceled) {
