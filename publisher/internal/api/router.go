@@ -4,44 +4,120 @@ import (
 	"os"
 
 	"github.com/gin-gonic/gin"
-	"github.com/gopost/integration/internal/logger"
-	infrajwt "github.com/north-cloud/infrastructure/jwt"
+	"github.com/jonesrussell/north-cloud/publisher/internal/database"
+	infrajwt "github.com/jonesrussell/north-cloud/infrastructure/jwt"
 )
 
-// NewRouter creates a new Gin router with all routes and middleware
-func NewRouter(statsService *StatsService, log logger.Logger, version string) *gin.Engine {
+// Router holds the API dependencies
+type Router struct {
+	repo *database.Repository
+}
+
+// NewRouter creates a new API router
+func NewRouter(repo *database.Repository) *Router {
+	return &Router{repo: repo}
+}
+
+// SetupRoutes configures all API routes with middleware
+func (r *Router) SetupRoutes() *gin.Engine {
 	// Set Gin mode based on environment
-	// Check GIN_MODE first (explicit), then APP_DEBUG (implicit)
 	if ginMode := os.Getenv("GIN_MODE"); ginMode == "release" {
 		gin.SetMode(gin.ReleaseMode)
 	} else if appDebug := os.Getenv("APP_DEBUG"); appDebug == "false" {
 		gin.SetMode(gin.ReleaseMode)
 	} else {
-		// Default to debug mode for development
 		gin.SetMode(gin.DebugMode)
 	}
 
 	router := gin.New()
 
-	// Middleware
+	// Global middleware
 	router.Use(gin.Recovery())
 	router.Use(corsMiddleware())
-	router.Use(loggingMiddleware(log))
 
-	// Create handlers
-	handlers := NewHandlers(statsService, log, version)
-
-	// Health check
-	router.GET("/health", handlers.Health)
+	// Health check (public, no auth)
+	router.GET("/health", r.healthCheck)
 
 	// API v1 routes - protected with JWT
 	v1 := router.Group("/api/v1")
+
 	// Add JWT middleware if JWT secret is configured
 	if jwtSecret := os.Getenv("AUTH_JWT_SECRET"); jwtSecret != "" {
 		v1.Use(infrajwt.Middleware(jwtSecret))
 	}
-	v1.GET("/stats", handlers.GetStats)
-	v1.GET("/articles/recent", handlers.GetRecentArticles)
+
+	{
+		// Sources
+		sources := v1.Group("/sources")
+		{
+			sources.GET("", r.listSources)
+			sources.POST("", r.createSource)
+			sources.GET("/:id", r.getSource)
+			sources.PUT("/:id", r.updateSource)
+			sources.DELETE("/:id", r.deleteSource)
+		}
+
+		// Channels
+		channels := v1.Group("/channels")
+		{
+			channels.GET("", r.listChannels)
+			channels.POST("", r.createChannel)
+			channels.GET("/:id", r.getChannel)
+			channels.PUT("/:id", r.updateChannel)
+			channels.DELETE("/:id", r.deleteChannel)
+		}
+
+		// Routes
+		routes := v1.Group("/routes")
+		{
+			routes.GET("", r.listRoutes)
+			routes.POST("", r.createRoute)
+			routes.GET("/:id", r.getRoute)
+			routes.PUT("/:id", r.updateRoute)
+			routes.DELETE("/:id", r.deleteRoute)
+		}
+
+		// Publish History
+		history := v1.Group("/publish-history")
+		{
+			history.GET("", r.listPublishHistory)
+			history.GET("/:article_id", r.getPublishHistoryByArticle)
+		}
+
+		// Stats
+		stats := v1.Group("/stats")
+		{
+			stats.GET("/overview", r.getStatsOverview)
+			stats.GET("/channels", r.getChannelStats)
+			stats.GET("/routes", r.getRouteStats)
+		}
+	}
 
 	return router
+}
+
+// healthCheck returns the service health status
+func (r *Router) healthCheck(c *gin.Context) {
+	c.JSON(200, gin.H{
+		"status":  "healthy",
+		"service": "publisher",
+		"version": "1.0.0",
+	})
+}
+
+// corsMiddleware handles CORS
+func corsMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
+		c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
+		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, accept, origin, Cache-Control, X-Requested-With")
+		c.Writer.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS, GET, PUT, DELETE")
+
+		if c.Request.Method == "OPTIONS" {
+			c.AbortWithStatus(204)
+			return
+		}
+
+		c.Next()
+	}
 }
