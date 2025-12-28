@@ -25,6 +25,9 @@ import ClassifierStatsView from '../views/classifier/StatsView.vue'
 import ClassifierRulesView from '../views/classifier/RulesView.vue'
 import ClassifierSourceReputationView from '../views/classifier/SourceReputationView.vue'
 
+// Analytics view (consolidated stats)
+import AnalyticsView from '../views/AnalyticsView.vue'
+
 // 404 view
 import NotFoundView from '../views/NotFoundView.vue'
 
@@ -37,6 +40,11 @@ declare module 'vue-router' {
     title?: string
     section?: string
     requiresAuth?: boolean
+    breadcrumbs?: Array<{
+      label: string
+      path: string
+      icon?: any
+    }>
   }
 }
 
@@ -57,6 +65,14 @@ const routes: RouteRecordRaw[] = [
     meta: { title: 'Dashboard', requiresAuth: true },
   },
 
+  // Analytics (Consolidated Statistics)
+  {
+    path: '/analytics',
+    name: 'analytics',
+    component: AnalyticsView,
+    meta: { title: 'System Analytics', section: 'analytics', requiresAuth: true },
+  },
+
   // Crawler routes
   {
     path: '/crawler/jobs',
@@ -64,11 +80,10 @@ const routes: RouteRecordRaw[] = [
     component: CrawlerJobsView,
     meta: { title: 'Crawl Jobs', section: 'crawler', requiresAuth: true },
   },
+  // Redirect old crawler stats to analytics
   {
     path: '/crawler/stats',
-    name: 'crawler-stats',
-    component: CrawlerStatsView,
-    meta: { title: 'Crawler Statistics', section: 'crawler', requiresAuth: true },
+    redirect: '/analytics?tab=crawler',
   },
 
   // Publisher routes
@@ -96,11 +111,10 @@ const routes: RouteRecordRaw[] = [
     component: PublisherRoutesView,
     meta: { title: 'Publisher Routes', section: 'publisher', requiresAuth: true },
   },
+  // Redirect old publisher stats to analytics
   {
     path: '/publisher/stats',
-    name: 'publisher-stats',
-    component: PublisherStatsView,
-    meta: { title: 'Publisher Statistics', section: 'publisher', requiresAuth: true },
+    redirect: '/analytics?tab=publisher',
   },
   {
     path: '/publisher/articles',
@@ -137,11 +151,10 @@ const routes: RouteRecordRaw[] = [
   },
 
   // Classifier routes
+  // Redirect old classifier stats to analytics
   {
     path: '/classifier/stats',
-    name: 'classifier-stats',
-    component: ClassifierStatsView,
-    meta: { title: 'Classifier Statistics', section: 'classifier', requiresAuth: true },
+    redirect: '/analytics?tab=classifier',
   },
   {
     path: '/classifier/rules',
@@ -195,11 +208,23 @@ router.beforeEach((to, from, next) => {
   next()
 })
 
-// Update document title on navigation
+// Update document title and track recent pages on navigation
 router.afterEach((to) => {
+  // Update document title
   document.title = to.meta.title
     ? `${to.meta.title} - North Cloud`
     : 'North Cloud Dashboard'
+
+  // Track recent page (dynamically import to avoid circular dependency)
+  if (to.path !== '/login' && to.meta.title) {
+    import('@/composables/useRecentPages').then(({ useRecentPages }) => {
+      const { addRecentPage } = useRecentPages()
+      addRecentPage({
+        path: to.path,
+        title: to.meta.title as string,
+      })
+    })
+  }
 })
 
 export default router

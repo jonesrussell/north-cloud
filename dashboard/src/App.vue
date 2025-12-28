@@ -1,242 +1,12 @@
 <template>
   <div class="min-h-screen bg-gray-100">
+    <!-- Command Palette (Cmd+K) -->
+    <CommandPalette />
+
     <!-- Show sidebar only when authenticated (not on login page) -->
     <template v-if="isAuthenticated">
       <!-- Sidebar -->
-      <div class="fixed inset-y-0 left-0 z-50 w-64 bg-gray-900">
-        <!-- Logo -->
-        <div class="flex h-16 items-center justify-center border-b border-gray-800">
-          <CloudIcon class="h-8 w-8 text-blue-500" />
-          <span class="ml-2 text-xl font-bold text-white">North Cloud</span>
-        </div>
-
-        <!-- Navigation -->
-        <nav class="mt-6 px-3">
-          <!-- Search -->
-          <a
-            :href="searchUrl"
-            target="_blank"
-            rel="noopener noreferrer"
-            class="group flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors text-gray-300 hover:bg-gray-800 hover:text-white"
-          >
-            <MagnifyingGlassIcon class="mr-3 h-5 w-5 flex-shrink-0" />
-            Search
-          </a>
-
-          <!-- Dashboard -->
-          <router-link
-            to="/"
-            class="group flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors mt-1"
-            :class="[
-              isActiveExact('/')
-                ? 'bg-gray-800 text-white'
-                : 'text-gray-300 hover:bg-gray-800 hover:text-white'
-            ]"
-          >
-            <HomeIcon class="mr-3 h-5 w-5 flex-shrink-0" />
-            Dashboard
-          </router-link>
-
-          <!-- Crawler Section -->
-          <div class="mt-6">
-            <h3 class="px-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">
-              Crawler
-            </h3>
-            <div class="mt-2 space-y-1">
-              <router-link
-                to="/crawler/stats"
-                class="group flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors"
-                :class="[
-                  isActive('/crawler/stats')
-                    ? 'bg-gray-800 text-white'
-                    : 'text-gray-300 hover:bg-gray-800 hover:text-white'
-                ]"
-              >
-                <ChartBarIcon class="mr-3 h-5 w-5 flex-shrink-0" />
-                Statistics
-              </router-link>
-              <router-link
-                to="/crawler/jobs"
-                class="group flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors"
-                :class="[
-                  isActive('/crawler/jobs')
-                    ? 'bg-gray-800 text-white'
-                    : 'text-gray-300 hover:bg-gray-800 hover:text-white'
-                ]"
-              >
-                <BriefcaseIcon class="mr-3 h-5 w-5 flex-shrink-0" />
-                Jobs
-              </router-link>
-            </div>
-          </div>
-
-          <!-- Publisher Section -->
-          <div class="mt-6">
-            <h3 class="px-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">
-              Publisher
-            </h3>
-            <div class="mt-2 space-y-1">
-              <router-link
-                to="/publisher"
-                class="group flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors"
-                :class="[
-                  isActiveExact('/publisher')
-                    ? 'bg-gray-800 text-white'
-                    : 'text-gray-300 hover:bg-gray-800 hover:text-white'
-                ]"
-              >
-                <HomeIcon class="mr-3 h-5 w-5 flex-shrink-0" />
-                Dashboard
-              </router-link>
-              <router-link
-                to="/publisher/sources"
-                class="group flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors"
-                :class="[
-                  isActive('/publisher/sources')
-                    ? 'bg-gray-800 text-white'
-                    : 'text-gray-300 hover:bg-gray-800 hover:text-white'
-                ]"
-              >
-                <DocumentTextIcon class="mr-3 h-5 w-5 flex-shrink-0" />
-                Sources
-              </router-link>
-              <router-link
-                to="/publisher/channels"
-                class="group flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors"
-                :class="[
-                  isActive('/publisher/channels')
-                    ? 'bg-gray-800 text-white'
-                    : 'text-gray-300 hover:bg-gray-800 hover:text-white'
-                ]"
-              >
-                <DocumentTextIcon class="mr-3 h-5 w-5 flex-shrink-0" />
-                Channels
-              </router-link>
-              <router-link
-                to="/publisher/routes"
-                class="group flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors"
-                :class="[
-                  isActive('/publisher/routes')
-                    ? 'bg-gray-800 text-white'
-                    : 'text-gray-300 hover:bg-gray-800 hover:text-white'
-                ]"
-              >
-                <DocumentTextIcon class="mr-3 h-5 w-5 flex-shrink-0" />
-                Routes
-              </router-link>
-              <router-link
-                to="/publisher/stats"
-                class="group flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors"
-                :class="[
-                  isActive('/publisher/stats')
-                    ? 'bg-gray-800 text-white'
-                    : 'text-gray-300 hover:bg-gray-800 hover:text-white'
-                ]"
-              >
-                <ChartBarIcon class="mr-3 h-5 w-5 flex-shrink-0" />
-                Statistics
-              </router-link>
-              <router-link
-                to="/publisher/articles"
-                class="group flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors"
-                :class="[
-                  isActive('/publisher/articles')
-                    ? 'bg-gray-800 text-white'
-                    : 'text-gray-300 hover:bg-gray-800 hover:text-white'
-                ]"
-              >
-                <NewspaperIcon class="mr-3 h-5 w-5 flex-shrink-0" />
-                Recent Articles
-              </router-link>
-            </div>
-          </div>
-
-          <!-- Classifier Section -->
-          <div class="mt-6">
-            <h3 class="px-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">
-              Classifier
-            </h3>
-            <div class="mt-2 space-y-1">
-              <router-link
-                to="/classifier/stats"
-                class="group flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors"
-                :class="[
-                  isActive('/classifier/stats')
-                    ? 'bg-gray-800 text-white'
-                    : 'text-gray-300 hover:bg-gray-800 hover:text-white'
-                ]"
-              >
-                <ChartBarIcon class="mr-3 h-5 w-5 flex-shrink-0" />
-                Statistics
-              </router-link>
-              <router-link
-                to="/classifier/rules"
-                class="group flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors"
-                :class="[
-                  isActive('/classifier/rules')
-                    ? 'bg-gray-800 text-white'
-                    : 'text-gray-300 hover:bg-gray-800 hover:text-white'
-                ]"
-              >
-                <DocumentTextIcon class="mr-3 h-5 w-5 flex-shrink-0" />
-                Rules
-              </router-link>
-              <router-link
-                to="/classifier/sources"
-                class="group flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors"
-                :class="[
-                  isActive('/classifier/sources')
-                    ? 'bg-gray-800 text-white'
-                    : 'text-gray-300 hover:bg-gray-800 hover:text-white'
-                ]"
-              >
-                <StarIcon class="mr-3 h-5 w-5 flex-shrink-0" />
-                Source Reputation
-              </router-link>
-            </div>
-          </div>
-
-          <!-- Sources Section -->
-          <div class="mt-6">
-            <h3 class="px-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">
-              Sources
-            </h3>
-            <div class="mt-2 space-y-1">
-              <router-link
-                to="/sources"
-                class="group flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors"
-                :class="[
-                  isActiveExact('/sources')
-                    ? 'bg-gray-800 text-white'
-                    : 'text-gray-300 hover:bg-gray-800 hover:text-white'
-                ]"
-              >
-                <DocumentTextIcon class="mr-3 h-5 w-5 flex-shrink-0" />
-                Manage Sources
-              </router-link>
-              <router-link
-                to="/sources/cities"
-                class="group flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors"
-                :class="[
-                  isActive('/sources/cities')
-                    ? 'bg-gray-800 text-white'
-                    : 'text-gray-300 hover:bg-gray-800 hover:text-white'
-                ]"
-              >
-                <MapPinIcon class="mr-3 h-5 w-5 flex-shrink-0" />
-                Cities
-              </router-link>
-            </div>
-          </div>
-        </nav>
-
-        <!-- Footer -->
-        <div class="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-800">
-          <div class="flex items-center text-xs text-gray-500">
-            <span>North Cloud Platform</span>
-          </div>
-        </div>
-      </div>
+      <AppSidebar />
 
       <!-- Main Content -->
       <div class="pl-64">
@@ -247,6 +17,9 @@
               {{ pageTitle }}
             </h1>
             <div class="flex items-center space-x-4">
+              <!-- Recent Pages -->
+              <RecentPages />
+
               <!-- Health indicator -->
               <div class="flex items-center text-sm">
                 <span
@@ -268,6 +41,11 @@
           </div>
         </header>
 
+        <!-- Breadcrumbs -->
+        <div class="bg-white px-6 py-3 border-b border-gray-200">
+          <Breadcrumbs />
+        </div>
+
         <!-- Page content -->
         <main class="p-6">
           <router-view />
@@ -285,17 +63,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
-import {
-  CloudIcon,
-  HomeIcon,
-  BriefcaseIcon,
-  ChartBarIcon,
-  DocumentTextIcon,
-  MapPinIcon,
-  NewspaperIcon,
-  StarIcon,
-  MagnifyingGlassIcon,
-} from '@heroicons/vue/24/outline'
+import { AppSidebar, Breadcrumbs, CommandPalette, RecentPages } from './components/navigation'
 import { crawlerApi, publisherApi, classifierApi } from './api/client'
 import { useAuth } from './composables/useAuth'
 
@@ -307,19 +75,6 @@ const pageTitle = computed(() => {
   return route.meta?.title || 'Dashboard'
 })
 
-// Search URL: use localhost:3003 in development, / in production
-const searchUrl = computed(() => {
-  return import.meta.env.DEV ? 'http://localhost:3003/' : '/'
-})
-
-const isActive = (path) => {
-  return route.path.startsWith(path)
-}
-
-const isActiveExact = (path) => {
-  return route.path === path
-}
-
 // Handle logout
 const handleLogout = () => {
   logout()
@@ -330,7 +85,7 @@ onMounted(async () => {
   if (!isAuthenticated.value) {
     return
   }
-  
+
   try {
     // Check all services health
     const [crawlerHealth, publisherHealth, classifierHealth] = await Promise.allSettled([
@@ -353,10 +108,3 @@ onMounted(async () => {
   }
 })
 </script>
-
-<style scoped>
-/* Smooth transitions for navigation */
-nav a {
-  transition: background-color 0.15s ease-in-out, color 0.15s ease-in-out;
-}
-</style>
