@@ -216,6 +216,8 @@ services:
     restart: unless-stopped
     networks:
       - north-cloud-network
+    depends_on:
+      - search-service
 
   # Auth Service
   auth:
