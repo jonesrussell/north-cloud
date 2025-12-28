@@ -1,5 +1,7 @@
 version: '3'
 
+dotenv: ['../.env']
+
 output:
   group:
     error_only: false
@@ -111,6 +113,139 @@ tasks:
       - go install github.com/air-verse/air@latest || true
       - go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest || true
       - go install golang.org/x/tools/cmd/goimports@latest || true
+      - go install github.com/golang-migrate/migrate/v4/cmd/migrate@latest || true
+
+  migrate:up:
+    desc: "Run database migrations up"
+    silent: true
+    env:
+      PGPASSWORD: '{{.POSTGRES_CRAWLER_PASSWORD | default ""}}'
+    cmds:
+      - |
+        if [ -z "{{.POSTGRES_CRAWLER_PASSWORD}}" ]; then
+          echo "POSTGRES_CRAWLER_PASSWORD environment variable not set"
+          exit 1
+        fi
+      - |
+        DB_HOST="{{.POSTGRES_CRAWLER_HOST | default "localhost"}}"
+        DB_PORT="{{.POSTGRES_CRAWLER_PORT | default "5432"}}"
+        DB_USER="{{.POSTGRES_CRAWLER_USER | default "postgres"}}"
+        DB_PASSWORD="{{.POSTGRES_CRAWLER_PASSWORD}}"
+        DB_NAME="{{.POSTGRES_CRAWLER_DB | default "crawler"}}"
+        
+        # Use Docker to run migration if connecting to containerized database
+        if [ "$DB_HOST" = "localhost" ] && docker ps --format '{{.Names}}' | grep -q 'north-cloud-postgres-crawler'; then
+          echo "Running migration via Docker (connecting to postgres-crawler container)..."
+          # Task changes to Taskfile directory, so $(pwd) is the crawler directory
+          docker run --rm --network north-cloud_north-cloud-network \
+            -v "$(pwd)/migrations:/migrations:ro" \
+            migrate/migrate:latest \
+            -path /migrations \
+            -database "postgres://${DB_USER}:${DB_PASSWORD}@postgres-crawler:5432/${DB_NAME}?sslmode=disable" \
+            up
+        else
+          echo "Running migration via local connection..."
+          DATABASE_URL="postgres://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_NAME}?sslmode=disable"
+          migrate -path ./migrations -database "$DATABASE_URL" up
+        fi
+
+  migrate:down:
+    desc: "Rollback last migration"
+    silent: true
+    env:
+      PGPASSWORD: '{{.POSTGRES_CRAWLER_PASSWORD | default ""}}'
+    cmds:
+      - |
+        if [ -z "{{.POSTGRES_CRAWLER_PASSWORD}}" ]; then
+          echo "POSTGRES_CRAWLER_PASSWORD environment variable not set"
+          exit 1
+        fi
+      - |
+        DB_HOST="{{.POSTGRES_CRAWLER_HOST | default "localhost"}}"
+        DB_PORT="{{.POSTGRES_CRAWLER_PORT | default "5432"}}"
+        DB_USER="{{.POSTGRES_CRAWLER_USER | default "postgres"}}"
+        DB_PASSWORD="{{.POSTGRES_CRAWLER_PASSWORD}}"
+        DB_NAME="{{.POSTGRES_CRAWLER_DB | default "crawler"}}"
+        
+        # Use Docker to run migration if connecting to containerized database
+        if [ "$DB_HOST" = "localhost" ] && docker ps --format '{{.Names}}' | grep -q 'north-cloud-postgres-crawler'; then
+          echo "Running migration rollback via Docker (connecting to postgres-crawler container)..."
+          # Task changes to Taskfile directory, so $(pwd) is the crawler directory
+          docker run --rm --network north-cloud_north-cloud-network \
+            -v "$(pwd)/migrations:/migrations:ro" \
+            migrate/migrate:latest \
+            -path /migrations \
+            -database "postgres://${DB_USER}:${DB_PASSWORD}@postgres-crawler:5432/${DB_NAME}?sslmode=disable" \
+            down 1
+        else
+          echo "Running migration rollback via local connection..."
+          DATABASE_URL="postgres://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_NAME}?sslmode=disable"
+          migrate -path ./migrations -database "$DATABASE_URL" down 1
+        fi
+
+  migrate:version:
+    desc: "Show current migration version"
+    silent: true
+    env:
+      PGPASSWORD: '{{.POSTGRES_CRAWLER_PASSWORD | default ""}}'
+    cmds:
+      - |
+        if [ -z "{{.POSTGRES_CRAWLER_PASSWORD}}" ]; then
+          echo "POSTGRES_CRAWLER_PASSWORD environment variable not set"
+          exit 1
+        fi
+      - |
+        DB_HOST="{{.POSTGRES_CRAWLER_HOST | default "localhost"}}"
+        DB_PORT="{{.POSTGRES_CRAWLER_PORT | default "5432"}}"
+        DB_USER="{{.POSTGRES_CRAWLER_USER | default "postgres"}}"
+        DB_PASSWORD="{{.POSTGRES_CRAWLER_PASSWORD}}"
+        DB_NAME="{{.POSTGRES_CRAWLER_DB | default "crawler"}}"
+        
+        # Use Docker to run migration if connecting to containerized database
+        if [ "$DB_HOST" = "localhost" ] && docker ps --format '{{.Names}}' | grep -q 'north-cloud-postgres-crawler'; then
+          # Task changes to Taskfile directory, so $(pwd) is the crawler directory
+          docker run --rm --network north-cloud_north-cloud-network \
+            -v "$(pwd)/migrations:/migrations:ro" \
+            migrate/migrate:latest \
+            -path /migrations \
+            -database "postgres://${DB_USER}:${DB_PASSWORD}@postgres-crawler:5432/${DB_NAME}?sslmode=disable" \
+            version
+        else
+          DATABASE_URL="postgres://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_NAME}?sslmode=disable"
+          migrate -path ./migrations -database "$DATABASE_URL" version
+        fi
+
+  migrate:check:
+    desc: "Check if migrations have been applied"
+    silent: true
+    env:
+      PGPASSWORD: '{{.POSTGRES_CRAWLER_PASSWORD | default ""}}'
+    cmds:
+      - |
+        if [ -z "{{.POSTGRES_CRAWLER_PASSWORD}}" ]; then
+          echo "POSTGRES_CRAWLER_PASSWORD environment variable not set"
+          exit 1
+        fi
+      - |
+        DB_HOST="{{.POSTGRES_CRAWLER_HOST | default "localhost"}}"
+        DB_PORT="{{.POSTGRES_CRAWLER_PORT | default "5432"}}"
+        DB_USER="{{.POSTGRES_CRAWLER_USER | default "postgres"}}"
+        DB_PASSWORD="{{.POSTGRES_CRAWLER_PASSWORD}}"
+        DB_NAME="{{.POSTGRES_CRAWLER_DB | default "crawler"}}"
+        
+        # Use Docker to run migration if connecting to containerized database
+        if [ "$DB_HOST" = "localhost" ] && docker ps --format '{{.Names}}' | grep -q 'north-cloud-postgres-crawler'; then
+          # Task changes to Taskfile directory, so $(pwd) is the crawler directory
+          docker run --rm --network north-cloud_north-cloud-network \
+            -v "$(pwd)/migrations:/migrations:ro" \
+            migrate/migrate:latest \
+            -path /migrations \
+            -database "postgres://${DB_USER}:${DB_PASSWORD}@postgres-crawler:5432/${DB_NAME}?sslmode=disable" \
+            version || echo "No migrations applied yet. Run 'task migrate:up' to apply migrations."
+        else
+          DATABASE_URL="postgres://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_NAME}?sslmode=disable"
+          migrate -path ./migrations -database "$DATABASE_URL" version || echo "No migrations applied yet. Run 'task migrate:up' to apply migrations."
+        fi
 
   docker:build:
     desc: "Build Docker image"

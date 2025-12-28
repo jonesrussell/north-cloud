@@ -84,16 +84,116 @@ tasks:
       - docker build -f Dockerfile.dev -t north-cloud-classifier:dev .
 
   migrate:up:
-    desc: "Run database migrations"
+    desc: "Run database migrations up"
+    silent: true
     env:
       PGPASSWORD: '{{.POSTGRES_PASSWORD}}'
     cmds:
-      - psql -h {{.POSTGRES_HOST}} -p {{.POSTGRES_PORT}} -U {{.POSTGRES_USER}} -d {{.POSTGRES_DB}} -f migrations/001_create_rules.sql
-      - psql -h {{.POSTGRES_HOST}} -p {{.POSTGRES_PORT}} -U {{.POSTGRES_USER}} -d {{.POSTGRES_DB}} -f migrations/002_create_source_reputation.sql
-      - psql -h {{.POSTGRES_HOST}} -p {{.POSTGRES_PORT}} -U {{.POSTGRES_USER}} -d {{.POSTGRES_DB}} -f migrations/003_create_classification_history.sql
-      - psql -h {{.POSTGRES_HOST}} -p {{.POSTGRES_PORT}} -U {{.POSTGRES_USER}} -d {{.POSTGRES_DB}} -f migrations/004_create_ml_models.sql
-      - psql -h {{.POSTGRES_HOST}} -p {{.POSTGRES_PORT}} -U {{.POSTGRES_USER}} -d {{.POSTGRES_DB}} -f migrations/005_add_comprehensive_categories.sql
-      - psql -h {{.POSTGRES_HOST}} -p {{.POSTGRES_PORT}} -U {{.POSTGRES_USER}} -d {{.POSTGRES_DB}} -f migrations/006_remove_is_crime_related.sql
+      - |
+        if [ -z "{{.POSTGRES_PASSWORD}}" ]; then
+          echo "POSTGRES_CLASSIFIER_PASSWORD environment variable not set"
+          exit 1
+        fi
+      - |
+        DB_HOST="{{.POSTGRES_HOST}}"
+        DB_PORT="{{.POSTGRES_PORT}}"
+        DB_USER="{{.POSTGRES_USER}}"
+        DB_PASSWORD="{{.POSTGRES_PASSWORD}}"
+        DB_NAME="{{.POSTGRES_DB}}"
+        
+        # Use Docker to run migration if connecting to containerized database
+        if [ "$DB_HOST" = "localhost" ] && docker ps --format '{{.Names}}' | grep -q 'north-cloud-postgres-classifier'; then
+          echo "Running migration via Docker (connecting to postgres-classifier container)..."
+          docker run --rm --network north-cloud_north-cloud-network \
+            -v "$(pwd)/migrations:/migrations" \
+            migrate/migrate:latest \
+            -path /migrations \
+            -database "postgres://${DB_USER}:${DB_PASSWORD}@postgres-classifier:5432/${DB_NAME}?sslmode=disable" \
+            up
+        else
+          echo "Running migration via local connection..."
+          DATABASE_URL="postgres://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_NAME}?sslmode=disable"
+          migrate -path ./migrations -database "$DATABASE_URL" up
+        fi
+
+  migrate:down:
+    desc: "Rollback last migration"
+    silent: true
+    env:
+      PGPASSWORD: '{{.POSTGRES_PASSWORD}}'
+    cmds:
+      - |
+        if [ -z "{{.POSTGRES_PASSWORD}}" ]; then
+          echo "POSTGRES_CLASSIFIER_PASSWORD environment variable not set"
+          exit 1
+        fi
+      - |
+        DB_HOST="{{.POSTGRES_HOST}}"
+        DB_PORT="{{.POSTGRES_PORT}}"
+        DB_USER="{{.POSTGRES_USER}}"
+        DB_PASSWORD="{{.POSTGRES_PASSWORD}}"
+        DB_NAME="{{.POSTGRES_DB}}"
+        
+        # Use Docker to run migration if connecting to containerized database
+        if [ "$DB_HOST" = "localhost" ] && docker ps --format '{{.Names}}' | grep -q 'north-cloud-postgres-classifier'; then
+          echo "Running migration via Docker (connecting to postgres-classifier container)..."
+          docker run --rm --network north-cloud_north-cloud-network \
+            -v "$(pwd)/migrations:/migrations" \
+            migrate/migrate:latest \
+            -path /migrations \
+            -database "postgres://${DB_USER}:${DB_PASSWORD}@postgres-classifier:5432/${DB_NAME}?sslmode=disable" \
+            down 1
+        else
+          echo "Running migration via local connection..."
+          DATABASE_URL="postgres://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_NAME}?sslmode=disable"
+          migrate -path ./migrations -database "$DATABASE_URL" down 1
+        fi
+
+  migrate:version:
+    desc: "Show current migration version"
+    silent: true
+    env:
+      PGPASSWORD: '{{.POSTGRES_PASSWORD}}'
+    cmds:
+      - |
+        if [ -z "{{.POSTGRES_PASSWORD}}" ]; then
+          echo "POSTGRES_CLASSIFIER_PASSWORD environment variable not set"
+          exit 1
+        fi
+      - |
+        DATABASE_URL="postgres://{{.POSTGRES_USER}}:{{.POSTGRES_PASSWORD}}@{{.POSTGRES_HOST}}:{{.POSTGRES_PORT}}/{{.POSTGRES_DB}}?sslmode=disable"
+        migrate -path ./migrations -database "$DATABASE_URL" version
+
+  migrate:check:
+    desc: "Check if migrations have been applied"
+    silent: true
+    env:
+      PGPASSWORD: '{{.POSTGRES_PASSWORD}}'
+    cmds:
+      - |
+        if [ -z "{{.POSTGRES_PASSWORD}}" ]; then
+          echo "POSTGRES_CLASSIFIER_PASSWORD environment variable not set"
+          exit 1
+        fi
+      - |
+        DB_HOST="{{.POSTGRES_HOST}}"
+        DB_PORT="{{.POSTGRES_PORT}}"
+        DB_USER="{{.POSTGRES_USER}}"
+        DB_PASSWORD="{{.POSTGRES_PASSWORD}}"
+        DB_NAME="{{.POSTGRES_DB}}"
+        
+        # Use Docker to run migration if connecting to containerized database
+        if [ "$DB_HOST" = "localhost" ] && docker ps --format '{{.Names}}' | grep -q 'north-cloud-postgres-classifier'; then
+          docker run --rm --network north-cloud_north-cloud-network \
+            -v "$(pwd)/migrations:/migrations" \
+            migrate/migrate:latest \
+            -path /migrations \
+            -database "postgres://${DB_USER}:${DB_PASSWORD}@postgres-classifier:5432/${DB_NAME}?sslmode=disable" \
+            version || echo "No migrations applied yet. Run 'task migrate:up' to apply migrations."
+        else
+          DATABASE_URL="postgres://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_NAME}?sslmode=disable"
+          migrate -path ./migrations -database "$DATABASE_URL" version || echo "No migrations applied yet. Run 'task migrate:up' to apply migrations."
+        fi
 
   db:shell:
     desc: "Open PostgreSQL shell"
@@ -110,6 +210,7 @@ tasks:
   install:tools:
     desc: "Install development tools"
     cmds:
-      - go install github.com/air-verse/air@latest
-      - go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
-      - go install golang.org/x/tools/cmd/goimports@latest
+      - go install github.com/air-verse/air@latest || true
+      - go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest || true
+      - go install golang.org/x/tools/cmd/goimports@latest || true
+      - go install github.com/golang-migrate/migrate/v4/cmd/migrate@latest || true

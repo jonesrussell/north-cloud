@@ -37,3 +37,4 @@ COMMENT ON COLUMN source_reputation.total_articles IS 'Total number of articles 
 COMMENT ON COLUMN source_reputation.average_quality_score IS 'Average quality score of articles from this source';
 COMMENT ON COLUMN source_reputation.spam_count IS 'Number of spam/low-quality articles detected';
 COMMENT ON COLUMN source_reputation.last_classified_at IS 'Timestamp of most recent classification';
+

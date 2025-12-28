@@ -1,5 +1,7 @@
 version: '3'
 
+dotenv: ['../.env']
+
 vars:
   BINARY_NAME: integration
   MAIN_PATH: ./main.go
@@ -154,6 +156,121 @@ tasks:
       - go install github.com/air-verse/air@latest || true
       - go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest || true
       - go install golang.org/x/tools/cmd/goimports@latest || true
+      - go install github.com/golang-migrate/migrate/v4/cmd/migrate@latest || true
+
+  migrate:up:
+    desc: "Run database migrations up"
+    silent: true
+    env:
+      PGPASSWORD: '{{.POSTGRES_PUBLISHER_PASSWORD | default ""}}'
+    cmds:
+      - |
+        if [ -z "{{.POSTGRES_PUBLISHER_PASSWORD}}" ]; then
+          echo "POSTGRES_PUBLISHER_PASSWORD environment variable not set"
+          exit 1
+        fi
+      - |
+        DB_HOST="{{.POSTGRES_PUBLISHER_HOST | default "localhost"}}"
+        DB_PORT="{{.POSTGRES_PUBLISHER_PORT | default "5432"}}"
+        DB_USER="{{.POSTGRES_PUBLISHER_USER | default "postgres"}}"
+        DB_PASSWORD="{{.POSTGRES_PUBLISHER_PASSWORD}}"
+        DB_NAME="{{.POSTGRES_PUBLISHER_DB | default "publisher"}}"
+        # Use Docker to run migration if connecting to containerized database
+        if [ "$DB_HOST" = "localhost" ] && docker ps --format '{{.Names}}' | grep -q 'north-cloud-postgres-publisher'; then
+          echo "Running migration via Docker (connecting to postgres-publisher container)..."
+          docker run --rm --network north-cloud_north-cloud-network \
+            -v "$(pwd)/internal/database/migrations:/migrations" \
+            migrate/migrate:latest \
+            -path /migrations \
+            -database "postgres://${DB_USER}:${DB_PASSWORD}@postgres-publisher:5432/${DB_NAME}?sslmode=disable" \
+            up
+        else
+          echo "Running migration via local connection..."
+          DATABASE_URL="postgres://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_NAME}?sslmode=disable"
+          migrate -path ./internal/database/migrations -database "$DATABASE_URL" up
+        fi
+
+  migrate:down:
+    desc: "Rollback last migration"
+    silent: true
+    env:
+      PGPASSWORD: '{{.POSTGRES_PUBLISHER_PASSWORD | default ""}}'
+    cmds:
+      - |
+        if [ -z "{{.POSTGRES_PUBLISHER_PASSWORD}}" ]; then
+          echo "POSTGRES_PUBLISHER_PASSWORD environment variable not set"
+          exit 1
+        fi
+      - |
+        DB_HOST="{{.POSTGRES_PUBLISHER_HOST | default "localhost"}}"
+        DB_PORT="{{.POSTGRES_PUBLISHER_PORT | default "5432"}}"
+        DB_USER="{{.POSTGRES_PUBLISHER_USER | default "postgres"}}"
+        DB_PASSWORD="{{.POSTGRES_PUBLISHER_PASSWORD}}"
+        DB_NAME="{{.POSTGRES_PUBLISHER_DB | default "publisher"}}"
+        # Use Docker to run migration if connecting to containerized database
+        if [ "$DB_HOST" = "localhost" ] && docker ps --format '{{.Names}}' | grep -q 'north-cloud-postgres-publisher'; then
+          echo "Running migration via Docker (connecting to postgres-publisher container)..."
+          docker run --rm --network north-cloud_north-cloud-network \
+            -v "$(pwd)/internal/database/migrations:/migrations" \
+            migrate/migrate:latest \
+            -path /migrations \
+            -database "postgres://${DB_USER}:${DB_PASSWORD}@postgres-publisher:5432/${DB_NAME}?sslmode=disable" \
+            down 1
+        else
+          echo "Running migration via local connection..."
+          DATABASE_URL="postgres://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_NAME}?sslmode=disable"
+          migrate -path ./internal/database/migrations -database "$DATABASE_URL" down 1
+        fi
+
+  migrate:version:
+    desc: "Show current migration version"
+    silent: true
+    env:
+      PGPASSWORD: '{{.POSTGRES_PUBLISHER_PASSWORD | default ""}}'
+    cmds:
+      - |
+        if [ -z "{{.POSTGRES_PUBLISHER_PASSWORD}}" ]; then
+          echo "POSTGRES_PUBLISHER_PASSWORD environment variable not set"
+          exit 1
+        fi
+      - |
+        DB_HOST="{{.POSTGRES_PUBLISHER_HOST | default "localhost"}}"
+        DB_PORT="{{.POSTGRES_PUBLISHER_PORT | default "5432"}}"
+        DB_USER="{{.POSTGRES_PUBLISHER_USER | default "postgres"}}"
+        DB_PASSWORD="{{.POSTGRES_PUBLISHER_PASSWORD}}"
+        DB_NAME="{{.POSTGRES_PUBLISHER_DB | default "publisher"}}"
+        DATABASE_URL="postgres://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_NAME}?sslmode=disable"
+        migrate -path ./internal/database/migrations -database "$DATABASE_URL" version
+
+  migrate:check:
+    desc: "Check if migrations have been applied"
+    silent: true
+    env:
+      PGPASSWORD: '{{.POSTGRES_PUBLISHER_PASSWORD | default ""}}'
+    cmds:
+      - |
+        if [ -z "{{.POSTGRES_PUBLISHER_PASSWORD}}" ]; then
+          echo "POSTGRES_PUBLISHER_PASSWORD environment variable not set"
+          exit 1
+        fi
+      - |
+        DB_HOST="{{.POSTGRES_PUBLISHER_HOST | default "localhost"}}"
+        DB_PORT="{{.POSTGRES_PUBLISHER_PORT | default "5432"}}"
+        DB_USER="{{.POSTGRES_PUBLISHER_USER | default "postgres"}}"
+        DB_PASSWORD="{{.POSTGRES_PUBLISHER_PASSWORD}}"
+        DB_NAME="{{.POSTGRES_PUBLISHER_DB | default "publisher"}}"
+        # Use Docker to run migration if connecting to containerized database
+        if [ "$DB_HOST" = "localhost" ] && docker ps --format '{{.Names}}' | grep -q 'north-cloud-postgres-publisher'; then
+          docker run --rm --network north-cloud_north-cloud-network \
+            -v "$(pwd)/internal/database/migrations:/migrations" \
+            migrate/migrate:latest \
+            -path /migrations \
+            -database "postgres://${DB_USER}:${DB_PASSWORD}@postgres-publisher:5432/${DB_NAME}?sslmode=disable" \
+            version || echo "No migrations applied yet. Run 'task migrate:up' to apply migrations."
+        else
+          DATABASE_URL="postgres://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_NAME}?sslmode=disable"
+          migrate -path ./internal/database/migrations -database "$DATABASE_URL" version || echo "No migrations applied yet. Run 'task migrate:up' to apply migrations."
+        fi
 
   install:
     desc: Install the binary to $GOPATH/bin

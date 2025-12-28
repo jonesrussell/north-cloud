@@ -126,60 +126,8 @@ services:
           cpus: '2'
           memory: 2G
 
-  # Publisher service - Development
-  publisher:
-    build:
-      context: ./publisher
-      dockerfile: Dockerfile.dev
-      args:
-        UID: ${UID:-1000}
-        GID: ${GID:-1000}
-    container_name: north-cloud-publisher-dev
-    # Run as host user to avoid permission issues with mounted volumes
-    user: "${UID:-1000}:${GID:-1000}"
-    ports:
-      - "${PUBLISHER_PORT:-8070}:8070"
-    depends_on:
-      elasticsearch:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    environment:
-      - ES_URL=http://elasticsearch:9200
-      - REDIS_URL=redis:6379
-      - REDIS_PASSWORD=${REDIS_PASSWORD:-}
-      - APP_DEBUG=true
-      - APP_ENV=development
-      - PUBLISHER_PORT=${PUBLISHER_PORT:-8070}
-      # Auth JWT secret for API authentication
-      - AUTH_JWT_SECRET=${AUTH_JWT_SECRET:-}
-      # Use /tmp for caches to avoid permission issues with host user
-      - GOMODCACHE=/tmp/go-mod-cache
-      - GOCACHE=/tmp/go-build-cache
-    volumes:
-      # Mount source code for development
-      - ./publisher:/app
-      - /app/vendor  # Exclude vendor directory
-      - ./publisher/config.yml:/app/config.yml:ro
-      # Mount infrastructure module (required for go.mod replace directive)
-      - ./infrastructure:/infrastructure
-      # Mount cache volumes to persist downloads across restarts
-      - publisher_go_mod_cache:/tmp/go-mod-cache
-      - publisher_go_build_cache:/tmp/go-build-cache
-    working_dir: /app
-    # Download dependencies from mounted go.mod/go.sum, then run
-    # Use -mod=mod to ignore vendor directory if present
-    # This ensures dependency changes in source are picked up
-    command: ["sh", "-c", "go mod download && go run -mod=mod ./main.go -config config.yml"]
-    networks:
-      - north-cloud-network
-    restart: unless-stopped
-    # Development resource limits
-    deploy:
-      resources:
-        limits:
-          cpus: '2'
-          memory: 4G
+  # Publisher service has been split into publisher-api and publisher-router
+  # Old publisher service removed - use publisher-api and publisher-router instead
 
   # Classifier service - Development
   classifier:
@@ -395,7 +343,7 @@ services:
     depends_on:
       - crawler
       - source-manager
-      - publisher
+      - publisher-api
       - classifier
     ports:
       - "${DASHBOARD_PORT:-3002}:3002"
@@ -405,7 +353,7 @@ services:
       # API URLs using Docker service names (internal network)
       - CRAWLER_API_URL=http://crawler:8080
       - SOURCES_API_URL=http://source-manager:8050
-      - PUBLISHER_API_URL=http://publisher:8070
+      - PUBLISHER_API_URL=http://publisher-api:8070
       - CLASSIFIER_API_URL=http://classifier:8070
       - AUTH_API_URL=http://auth:8040
     volumes:

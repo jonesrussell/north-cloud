@@ -27,6 +27,8 @@ services:
   postgres-crawler:
     image: postgres:16-alpine
     container_name: north-cloud-postgres-crawler
+    ports:
+      - "${POSTGRES_CRAWLER_PORT:-5433}:5432"
     environment:
       POSTGRES_USER: ${POSTGRES_CRAWLER_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_CRAWLER_PASSWORD:-postgres}

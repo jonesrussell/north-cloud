@@ -213,9 +213,62 @@ tasks:
   migrate:up:
     desc: "Run database migrations for all microservices sequentially"
     cmds:
-      - task: migrate:classifier
+      - task: migrate:crawler
       - task: migrate:source-manager
-      - task: migrate:index-manager
+      - task: migrate:classifier
+      - task: migrate:publisher
+
+  migrate:down:
+    desc: "Rollback last migration for all microservices sequentially"
+    cmds:
+      - task: migrate:down:crawler
+      - task: migrate:down:source-manager
+      - task: migrate:down:classifier
+      - task: migrate:down:publisher
+
+  migrate:version:
+    desc: "Show migration version for all microservices"
+    cmds:
+      - task: migrate:version:crawler
+      - task: migrate:version:source-manager
+      - task: migrate:version:classifier
+      - task: migrate:version:publisher
+
+  migrate:crawler:
+    desc: "Run database migrations for crawler service"
+    dir: crawler
+    cmds:
+      - task migrate:up
+
+  migrate:down:crawler:
+    desc: "Rollback last migration for crawler service"
+    dir: crawler
+    cmds:
+      - task migrate:down
+
+  migrate:version:crawler:
+    desc: "Show migration version for crawler service"
+    dir: crawler
+    cmds:
+      - task migrate:version
+
+  migrate:source-manager:
+    desc: "Run database migrations for source-manager service"
+    dir: source-manager
+    cmds:
+      - task migrate:up
+
+  migrate:down:source-manager:
+    desc: "Rollback last migration for source-manager service"
+    dir: source-manager
+    cmds:
+      - task migrate:down
+
+  migrate:version:source-manager:
+    desc: "Show migration version for source-manager service"
+    dir: source-manager
+    cmds:
+      - task migrate:version
 
   migrate:classifier:
     desc: "Run database migrations for classifier service"
@@ -223,14 +276,32 @@ tasks:
     cmds:
       - task migrate:up
 
-  migrate:source-manager:
-    desc: "Run database migrations for source-manager service"
-    dir: source-manager
+  migrate:down:classifier:
+    desc: "Rollback last migration for classifier service"
+    dir: classifier
     cmds:
-      - task migrate
+      - task migrate:down
 
-  migrate:index-manager:
-    desc: "Run database migrations for index-manager service"
-    dir: index-manager
+  migrate:version:classifier:
+    desc: "Show migration version for classifier service"
+    dir: classifier
+    cmds:
+      - task migrate:version
+
+  migrate:publisher:
+    desc: "Run database migrations for publisher service"
+    dir: publisher
     cmds:
       - task migrate:up
+
+  migrate:down:publisher:
+    desc: "Rollback last migration for publisher service"
+    dir: publisher
+    cmds:
+      - task migrate:down
+
+  migrate:version:publisher:
+    desc: "Show migration version for publisher service"
+    dir: publisher
+    cmds:
+      - task migrate:version

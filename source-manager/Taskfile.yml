@@ -107,8 +107,9 @@ tasks:
       - task: vet
       - task: lint
 
-  migrate:
-    desc: Run database migrations
+  migrate:up:
+    desc: Run database migrations up
+    silent: true
     env:
       PGPASSWORD: '{{.DB_PASSWORD}}'
     cmds:
@@ -117,12 +118,95 @@ tasks:
           echo "DB_PASSWORD or POSTGRES_SOURCE_MANAGER_PASSWORD environment variable not set"
           exit 1
         fi
-      - psql -h {{.DB_HOST}} -p {{.DB_PORT}} -U {{.DB_USER}} -d {{.DB_NAME}} -f migrations/001_create_sources_table.sql
-      - psql -h {{.DB_HOST}} -p {{.DB_PORT}} -U {{.DB_USER}} -d {{.DB_NAME}} -f migrations/002_remove_index_fields.sql
-      - psql -h {{.DB_HOST}} -p {{.DB_PORT}} -U {{.DB_USER}} -d {{.DB_NAME}} -f migrations/003_remove_city_name_and_group_id.sql
+      - |
+        DB_HOST="{{.DB_HOST}}"
+        DB_PORT="{{.DB_PORT}}"
+        DB_USER="{{.DB_USER}}"
+        DB_PASSWORD="{{.DB_PASSWORD}}"
+        DB_NAME="{{.DB_NAME}}"
+        
+        # Use Docker to run migration if connecting to containerized database
+        if [ "$DB_HOST" = "localhost" ] && docker ps --format '{{.Names}}' | grep -q 'north-cloud-postgres-source-manager'; then
+          echo "Running migration via Docker (connecting to postgres-source-manager container)..."
+          docker run --rm --network north-cloud_north-cloud-network \
+            -v "$(pwd)/migrations:/migrations" \
+            migrate/migrate:latest \
+            -path /migrations \
+            -database "postgres://${DB_USER}:${DB_PASSWORD}@postgres-source-manager:5432/${DB_NAME}?sslmode=disable" \
+            up
+        else
+          echo "Running migration via local connection..."
+          DATABASE_URL="postgres://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_NAME}?sslmode=disable"
+          migrate -path ./migrations -database "$DATABASE_URL" up
+        fi
+
+  migrate:down:
+    desc: Rollback last migration
+    silent: true
+    env:
+      PGPASSWORD: '{{.DB_PASSWORD}}'
+    cmds:
+      - |
+        if [ -z "{{.DB_PASSWORD}}" ]; then
+          echo "DB_PASSWORD or POSTGRES_SOURCE_MANAGER_PASSWORD environment variable not set"
+          exit 1
+        fi
+      - |
+        DB_HOST="{{.DB_HOST}}"
+        DB_PORT="{{.DB_PORT}}"
+        DB_USER="{{.DB_USER}}"
+        DB_PASSWORD="{{.DB_PASSWORD}}"
+        DB_NAME="{{.DB_NAME}}"
+        
+        # Use Docker to run migration if connecting to containerized database
+        if [ "$DB_HOST" = "localhost" ] && docker ps --format '{{.Names}}' | grep -q 'north-cloud-postgres-source-manager'; then
+          echo "Running migration via Docker (connecting to postgres-source-manager container)..."
+          docker run --rm --network north-cloud_north-cloud-network \
+            -v "$(pwd)/migrations:/migrations" \
+            migrate/migrate:latest \
+            -path /migrations \
+            -database "postgres://${DB_USER}:${DB_PASSWORD}@postgres-source-manager:5432/${DB_NAME}?sslmode=disable" \
+            down 1
+        else
+          echo "Running migration via local connection..."
+          DATABASE_URL="postgres://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_NAME}?sslmode=disable"
+          migrate -path ./migrations -database "$DATABASE_URL" down 1
+        fi
+
+  migrate:version:
+    desc: Show current migration version
+    silent: true
+    env:
+      PGPASSWORD: '{{.DB_PASSWORD}}'
+    cmds:
+      - |
+        if [ -z "{{.DB_PASSWORD}}" ]; then
+          echo "DB_PASSWORD or POSTGRES_SOURCE_MANAGER_PASSWORD environment variable not set"
+          exit 1
+        fi
+      - |
+        DB_HOST="{{.DB_HOST}}"
+        DB_PORT="{{.DB_PORT}}"
+        DB_USER="{{.DB_USER}}"
+        DB_PASSWORD="{{.DB_PASSWORD}}"
+        DB_NAME="{{.DB_NAME}}"
+        
+        # Use Docker to run migration if connecting to containerized database
+        if [ "$DB_HOST" = "localhost" ] && docker ps --format '{{.Names}}' | grep -q 'north-cloud-postgres-source-manager'; then
+          docker run --rm --network north-cloud_north-cloud-network \
+            -v "$(pwd)/migrations:/migrations" \
+            migrate/migrate:latest \
+            -path /migrations \
+            -database "postgres://${DB_USER}:${DB_PASSWORD}@postgres-source-manager:5432/${DB_NAME}?sslmode=disable" \
+            version
+        else
+          DATABASE_URL="postgres://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_NAME}?sslmode=disable"
+          migrate -path ./migrations -database "$DATABASE_URL" version
+        fi
 
   migrate:check:
     desc: Check if migrations have been applied
+    silent: true
     env:
       PGPASSWORD: '{{.DB_PASSWORD}}'
     cmds:
@@ -131,7 +215,30 @@ tasks:
           echo "DB_PASSWORD or POSTGRES_SOURCE_MANAGER_PASSWORD environment variable not set"
           exit 1
         fi
-      - psql -h {{.DB_HOST}} -p {{.DB_PORT}} -U {{.DB_USER}} -d {{.DB_NAME}} -c "\d sources" || echo "Table 'sources' does not exist. Run 'task migrate' to create it."
+      - |
+        DB_HOST="{{.DB_HOST}}"
+        DB_PORT="{{.DB_PORT}}"
+        DB_USER="{{.DB_USER}}"
+        DB_PASSWORD="{{.DB_PASSWORD}}"
+        DB_NAME="{{.DB_NAME}}"
+        
+        # Use Docker to run migration if connecting to containerized database
+        if [ "$DB_HOST" = "localhost" ] && docker ps --format '{{.Names}}' | grep -q 'north-cloud-postgres-source-manager'; then
+          docker run --rm --network north-cloud_north-cloud-network \
+            -v "$(pwd)/migrations:/migrations" \
+            migrate/migrate:latest \
+            -path /migrations \
+            -database "postgres://${DB_USER}:${DB_PASSWORD}@postgres-source-manager:5432/${DB_NAME}?sslmode=disable" \
+            version || echo "No migrations applied yet. Run 'task migrate:up' to apply migrations."
+        else
+          DATABASE_URL="postgres://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_NAME}?sslmode=disable"
+          migrate -path ./migrations -database "$DATABASE_URL" version || echo "No migrations applied yet. Run 'task migrate:up' to apply migrations."
+        fi
+
+  migrate:
+    desc: Alias for migrate:up
+    cmds:
+      - task: migrate:up
 
   docker:build:
     desc: Build Docker image
@@ -175,6 +282,7 @@ tasks:
       - go install github.com/air-verse/air@latest || true
       - go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest || true
       - go install golang.org/x/tools/cmd/goimports@latest || true
+      - go install github.com/golang-migrate/migrate/v4/cmd/migrate@latest || true
 
   air:install:
     desc: Install air for hot reloading

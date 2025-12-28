@@ -18,7 +18,8 @@ RUN go mod download
 COPY publisher/ .
 
 # Build the application (single binary with api and router commands)
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o publisher .
+# Use -mod=mod to ignore vendor directory (vendor may be out of sync)
+RUN CGO_ENABLED=0 GOOS=linux go build -mod=mod -a -installsuffix cgo -o publisher .
 
 # Final stage
 FROM alpine:latest
