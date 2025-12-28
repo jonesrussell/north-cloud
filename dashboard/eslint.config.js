@@ -26,9 +26,9 @@ export default [
   ...tseslint.configs.recommended,
   // Vue plugin config
   ...vue.configs['flat/recommended'],
-  // Custom rules for JavaScript/TypeScript
+  // Custom rules for JavaScript/TypeScript files
   {
-    files: ['**/*.{js,mjs,cjs,jsx,ts,tsx,vue}'],
+    files: ['**/*.{js,mjs,cjs,jsx,ts,tsx}'],
     languageOptions: {
       globals: {
         ...globals.browser,
@@ -38,7 +38,25 @@ export default [
       sourceType: 'module',
     },
     rules: {
-      // Add custom rules here if needed
+      '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
+      '@typescript-eslint/no-explicit-any': 'warn',
+    },
+  },
+  // Custom rules for Vue files with TypeScript
+  {
+    files: ['**/*.vue'],
+    languageOptions: {
+      parserOptions: {
+        parser: tseslint.parser,
+        ecmaVersion: 2022,
+        sourceType: 'module',
+      },
+      globals: {
+        ...globals.browser,
+        ...globals.node,
+      },
+    },
+    rules: {
       '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
       '@typescript-eslint/no-explicit-any': 'warn',
     },

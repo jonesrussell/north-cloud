@@ -10,10 +10,10 @@
         <div>
           <label class="flex items-center text-sm text-gray-700">
             <input
-              type="checkbox"
               v-model="enabledOnly"
-              @change="loadRoutes"
+              type="checkbox"
               class="mr-2 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+              @change="loadRoutes"
             >
             Show enabled only
           </label>
@@ -185,7 +185,9 @@
                 required
                 class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
               >
-                <option value="">Select a source...</option>
+                <option value="">
+                  Select a source...
+                </option>
                 <option
                   v-for="source in sources"
                   :key="source.id"
@@ -205,7 +207,9 @@
                 required
                 class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
               >
-                <option value="">Select a channel...</option>
+                <option value="">
+                  Select a channel...
+                </option>
                 <option
                   v-for="channel in channels"
                   :key="channel.id"
@@ -221,8 +225,8 @@
                 Minimum Quality Score
               </label>
               <input
-                type="number"
                 v-model.number="formData.min_quality_score"
+                type="number"
                 min="0"
                 max="100"
                 class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
@@ -237,8 +241,8 @@
                 Topics
               </label>
               <input
-                type="text"
                 v-model="topicsInput"
+                type="text"
                 placeholder="e.g., crime, news, local"
                 class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
               >
@@ -250,8 +254,8 @@
             <div class="mb-4">
               <label class="flex items-center">
                 <input
-                  type="checkbox"
                   v-model="formData.enabled"
+                  type="checkbox"
                   class="mr-2 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                 >
                 <span class="text-sm text-gray-700">Enabled</span>

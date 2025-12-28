@@ -10,10 +10,10 @@
         <div>
           <label class="flex items-center text-sm text-gray-700">
             <input
-              type="checkbox"
               v-model="enabledOnly"
-              @change="loadChannels"
+              type="checkbox"
               class="mr-2 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+              @change="loadChannels"
             >
             Show enabled only
           </label>
@@ -158,8 +158,8 @@
                 Name *
               </label>
               <input
-                type="text"
                 v-model="formData.name"
+                type="text"
                 placeholder="e.g., articles:crime"
                 required
                 class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
@@ -184,8 +184,8 @@
             <div class="mb-4">
               <label class="flex items-center">
                 <input
-                  type="checkbox"
                   v-model="formData.enabled"
+                  type="checkbox"
                   class="mr-2 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                 >
                 <span class="text-sm text-gray-700">Enabled</span>
