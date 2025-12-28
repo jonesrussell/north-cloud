@@ -464,6 +464,7 @@ services:
       - SOURCES_API_URL=http://source-manager:8050
       - PUBLISHER_API_URL=http://publisher:8070
       - CLASSIFIER_API_URL=http://classifier:8070
+      - AUTH_API_URL=http://auth:8040
     volumes:
       - ./dashboard:/app
       - dashboard_node_modules:/app/node_modules
@@ -536,8 +537,8 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '1'
-          memory: 512M
+          cpus: '2'
+          memory: 1G
 
   # Nginx reverse proxy - Development
   nginx:
