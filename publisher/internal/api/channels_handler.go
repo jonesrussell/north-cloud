@@ -54,15 +54,7 @@ func (r *Router) createChannel(c *gin.Context) {
 
 	channel, err := r.repo.CreateChannel(ctx, &req)
 	if err != nil {
-		if errors.Is(err, models.ErrAlreadyExists) {
-			c.JSON(http.StatusConflict, gin.H{
-				"error": "Channel with this name already exists",
-			})
-			return
-		}
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Failed to create channel",
-		})
+		handleRepositoryError(c, err, "channel", "create")
 		return
 	}
 

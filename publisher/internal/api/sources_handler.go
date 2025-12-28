@@ -54,15 +54,7 @@ func (r *Router) createSource(c *gin.Context) {
 
 	source, err := r.repo.CreateSource(ctx, &req)
 	if err != nil {
-		if errors.Is(err, models.ErrAlreadyExists) {
-			c.JSON(http.StatusConflict, gin.H{
-				"error": "Source with this name already exists",
-			})
-			return
-		}
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Failed to create source",
-		})
+		handleRepositoryError(c, err, "source", "create")
 		return
 	}
 
