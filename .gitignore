@@ -143,3 +143,4 @@ streetcode/web/sites/simpletest
 crawler/frontend/.vite/deps/_metadata.json
 crawler/frontend/.vite/deps/package.json
 *.tar.gz
+search/config.yml
