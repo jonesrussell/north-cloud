@@ -69,20 +69,26 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 
+interface FormData {
+  query: string
+  topics: string[]
+  min_quality_score: number
+}
+
 const router = useRouter()
 
-const formData = ref({
+const formData = ref<FormData>({
   query: '',
   topics: [],
   min_quality_score: 0,
 })
 
-const handleSubmit = () => {
-  const queryParams = {
+const handleSubmit = (): void => {
+  const queryParams: Record<string, string | number | undefined> = {
     q: formData.value.query || undefined,
     topics: formData.value.topics.length > 0 ? formData.value.topics.join(',') : undefined,
     min_quality_score: formData.value.min_quality_score > 0 ? formData.value.min_quality_score : undefined,
@@ -90,7 +96,7 @@ const handleSubmit = () => {
 
   // Remove undefined values
   const cleanQuery = Object.fromEntries(
-    Object.entries(queryParams).filter(([_, v]) => v !== undefined)
+    Object.entries(queryParams).filter(([, v]) => v !== undefined)
   )
 
   router.push({ path: '/search', query: cleanQuery })

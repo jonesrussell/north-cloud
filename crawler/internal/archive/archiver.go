@@ -9,9 +9,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
+	"unicode"
 
 	"github.com/jonesrussell/north-cloud/crawler/internal/config/minio"
 	"github.com/jonesrussell/north-cloud/crawler/internal/logger"
@@ -232,14 +234,58 @@ func hashURL(url string) string {
 	return hex.EncodeToString(h[:])[:8]
 }
 
-// sanitizeSourceName sanitizes the source name for use in object keys.
+var (
+	// invalidObjectNameChars matches characters that are problematic in MinIO/S3 object names.
+	// MinIO/S3 allows most characters, but these can cause issues: control chars, \, ?, *, |, <, >, :, "
+	invalidObjectNameChars = regexp.MustCompile(`[\\?*|<>:"\x00-\x1F]`)
+	// consecutiveUnderscores matches two or more consecutive underscores.
+	consecutiveUnderscores = regexp.MustCompile(`_{2,}`)
+)
+
+// sanitizeSourceName sanitizes the source name for use in MinIO object keys.
+// MinIO/S3 object names should avoid control characters and certain special characters.
+// This function:
+// 1. Converts to lowercase
+// 2. Replaces problematic characters with underscores
+// 3. Replaces dots and spaces with underscores (for consistency)
+// 4. Collapses consecutive underscores
+// 5. Removes leading/trailing underscores
 func sanitizeSourceName(sourceName string) string {
-	// Replace invalid characters with underscores
-	sanitized := strings.ReplaceAll(sourceName, ".", "_")
-	sanitized = strings.ReplaceAll(sanitized, "/", "_")
-	sanitized = strings.ReplaceAll(sanitized, " ", "_")
-	sanitized = strings.ToLower(sanitized)
-	return sanitized
+	if sourceName == "" {
+		return "unknown"
+	}
+
+	// Convert to lowercase first
+	normalized := strings.ToLower(sourceName)
+
+	// Replace problematic characters with underscores
+	normalized = invalidObjectNameChars.ReplaceAllString(normalized, "_")
+
+	// Replace dots, spaces, and slashes with underscores (for consistency in object keys)
+	normalized = strings.ReplaceAll(normalized, ".", "_")
+	normalized = strings.ReplaceAll(normalized, " ", "_")
+	normalized = strings.ReplaceAll(normalized, "/", "_")
+
+	// Remove any remaining control characters (safety check)
+	normalized = strings.Map(func(r rune) rune {
+		if unicode.IsControl(r) {
+			return '_'
+		}
+		return r
+	}, normalized)
+
+	// Collapse consecutive underscores into a single underscore
+	normalized = consecutiveUnderscores.ReplaceAllString(normalized, "_")
+
+	// Remove leading and trailing underscores
+	normalized = strings.Trim(normalized, "_")
+
+	// Handle edge case: if all characters were invalid, return fallback
+	if normalized == "" {
+		return "unknown"
+	}
+
+	return normalized
 }
 
 // HealthCheck verifies MinIO connectivity.

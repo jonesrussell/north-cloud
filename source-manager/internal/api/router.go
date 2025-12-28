@@ -79,25 +79,30 @@ func NewRouter(db *repository.SourceRepository, cfg *config.Config, log logger.L
 		c.JSON(http.StatusOK, gin.H{"status": "ok"})
 	})
 
-	// API v1 - protected with JWT
+	sourceHandler := handlers.NewSourceHandler(db, log)
+
+	// Public API endpoints (no JWT required) - for internal service-to-service communication
+	// These are registered directly on the router, not in a group with JWT middleware
+	publicAPI := router.Group("/api/v1")
+	// GET /api/v1/sources - allow crawler to list sources without auth
+	publicAPI.GET("/sources", sourceHandler.List)
+	// GET /api/v1/cities - allow publisher to get cities without auth
+	publicAPI.GET("/cities", sourceHandler.GetCities)
+
+	// Protected API endpoints (JWT required) - for dashboard and authenticated users
 	v1 := router.Group("/api/v1")
 	// Add JWT middleware if JWT secret is configured
 	if jwtSecret := os.Getenv("AUTH_JWT_SECRET"); jwtSecret != "" {
 		v1.Use(infrajwt.Middleware(jwtSecret))
 	}
-	sourceHandler := handlers.NewSourceHandler(db, log)
 
-	// Sources endpoints
+	// Sources endpoints (protected - requires JWT)
 	sources := v1.Group("/sources")
 	sources.POST("", sourceHandler.Create)
 	sources.POST("/fetch-metadata", sourceHandler.FetchMetadata)
-	sources.GET("", sourceHandler.List)
 	sources.GET("/:id", sourceHandler.GetByID)
 	sources.PUT("/:id", sourceHandler.Update)
 	sources.DELETE("/:id", sourceHandler.Delete)
-
-	// Cities endpoint for gopost integration
-	v1.GET("/cities", sourceHandler.GetCities)
 
 	return router
 }

@@ -26,7 +26,7 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import SearchBar from '@/components/search/SearchBar.vue'
@@ -34,7 +34,7 @@ import SearchBar from '@/components/search/SearchBar.vue'
 const router = useRouter()
 const query = ref('')
 
-const handleSearch = (searchQuery) => {
+const handleSearch = (searchQuery: string): void => {
   if (searchQuery.trim()) {
     router.push({
       path: '/search',

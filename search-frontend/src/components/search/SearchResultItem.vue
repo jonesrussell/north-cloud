@@ -43,26 +43,26 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { computed } from 'vue'
 import { formatDate } from '@/utils/dateFormatter'
 import { parseHighlight, sanitizeHighlight } from '@/utils/highlightHelper'
+import type { SearchResult } from '@/types/search'
 
-const props = defineProps({
-  result: {
-    type: Object,
-    required: true,
-  },
-})
+interface Props {
+  result: SearchResult
+}
 
-const highlightedTitle = computed(() => {
-  if (props.result.highlight && props.result.highlight.title) {
+const props = defineProps<Props>()
+
+const highlightedTitle = computed((): string | null => {
+  if (props.result.highlight && props.result.highlight.title && props.result.highlight.title.length > 0) {
     return sanitizeHighlight(props.result.highlight.title[0])
   }
   return null
 })
 
-const snippet = computed(() => {
+const snippet = computed((): string | null => {
   if (props.result.highlight) {
     const bodyHighlight = parseHighlight(props.result.highlight, 'body', 200) || parseHighlight(props.result.highlight, 'raw_text', 200)
     return bodyHighlight ? sanitizeHighlight(bodyHighlight) : null
@@ -70,12 +70,12 @@ const snippet = computed(() => {
   return null
 })
 
-const truncatedText = computed(() => {
+const truncatedText = computed((): string => {
   const text = props.result.body || props.result.raw_text || ''
   return text.length > 200 ? text.substring(0, 200) + '...' : text
 })
 
-const displayUrl = computed(() => {
+const displayUrl = computed((): string => {
   try {
     const url = new URL(props.result.url)
     return url.hostname + url.pathname
@@ -84,11 +84,11 @@ const displayUrl = computed(() => {
   }
 })
 
-const formattedDate = computed(() => {
+const formattedDate = computed((): string => {
   return formatDate(props.result.published_date)
 })
 
-const qualityBadgeClass = computed(() => {
+const qualityBadgeClass = computed((): string => {
   const score = props.result.quality_score || 0
   if (score >= 80) return 'bg-green-100 text-green-800'
   if (score >= 60) return 'bg-yellow-100 text-yellow-800'

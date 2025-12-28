@@ -13,6 +13,6 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 // 404 Not Found page
 </script>

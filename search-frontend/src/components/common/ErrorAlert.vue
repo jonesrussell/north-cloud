@@ -16,15 +16,13 @@
   </div>
 </template>
 
-<script setup>
-defineProps({
-  title: {
-    type: String,
-    default: 'Error',
-  },
-  message: {
-    type: String,
-    required: true,
-  },
+<script setup lang="ts">
+interface Props {
+  title?: string
+  message: string
+}
+
+withDefaults(defineProps<Props>(), {
+  title: 'Error',
 })
 </script>

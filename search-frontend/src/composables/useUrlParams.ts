@@ -3,36 +3,39 @@ import { useRouter, useRoute } from 'vue-router'
 
 /**
  * Sync state with URL query parameters
- * @param {Object} state - Reactive state object
- * @param {Array} keys - Keys to sync with URL
- * @returns {Object} - Helper functions
+ * @param state - Reactive state object
+ * @param keys - Keys to sync with URL
+ * @returns Helper functions
  */
-export function useUrlParams(state, keys = []) {
+export function useUrlParams<T extends Record<string, unknown>>(
+  state: T,
+  keys: (keyof T)[] = []
+) {
   const router = useRouter()
   const route = useRoute()
 
   /**
    * Parse URL params to state
    */
-  const syncFromUrl = () => {
+  const syncFromUrl = (): void => {
     keys.forEach((key) => {
-      const value = route.query[key]
+      const value = route.query[key as string]
       if (value !== undefined) {
         // Handle arrays (e.g., topics=crime,news)
         if (Array.isArray(state[key])) {
-          state[key] = typeof value === 'string' ? value.split(',') : value
+          state[key] = (typeof value === 'string' ? value.split(',') : value) as T[keyof T]
         }
         // Handle numbers
         else if (typeof state[key] === 'number') {
-          state[key] = parseInt(value) || state[key]
+          state[key] = (parseInt(value as string) || state[key]) as T[keyof T]
         }
         // Handle booleans
         else if (typeof state[key] === 'boolean') {
-          state[key] = value === 'true'
+          state[key] = (value === 'true') as T[keyof T]
         }
         // Handle strings
         else {
-          state[key] = value
+          state[key] = value as T[keyof T]
         }
       }
     })
@@ -41,13 +44,13 @@ export function useUrlParams(state, keys = []) {
   /**
    * Update URL with current state
    */
-  const updateUrl = () => {
-    const query = {}
+  const updateUrl = (): void => {
+    const query: Record<string, string | number | boolean> = {}
     keys.forEach((key) => {
       const value = state[key]
       if (value !== undefined && value !== null && value !== '' && (!Array.isArray(value) || value.length > 0)) {
         // Arrays to comma-separated strings
-        query[key] = Array.isArray(value) ? value.join(',') : value
+        query[key as string] = Array.isArray(value) ? value.join(',') : value as string | number | boolean
       }
     })
     router.push({ query })
@@ -56,7 +59,7 @@ export function useUrlParams(state, keys = []) {
   /**
    * Watch state changes and update URL
    */
-  const watchState = () => {
+  const watchState = (): void => {
     keys.forEach((key) => {
       watch(() => state[key], () => {
         updateUrl()
@@ -72,3 +75,4 @@ export function useUrlParams(state, keys = []) {
 }
 
 export default useUrlParams
+

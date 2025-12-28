@@ -16,6 +16,7 @@ export const authApi = {
    * @returns {Promise} - Axios response with token
    */
   login: (username, password) => {
+    // The proxy rewrites /api/auth to the auth service, so we just need /api/v1/auth/login
     return authClient.post('/api/v1/auth/login', {
       username,
       password,

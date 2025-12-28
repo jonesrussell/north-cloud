@@ -2,6 +2,7 @@ package elasticsearch
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/jonesrussell/north-cloud/search/internal/config"
 	"github.com/jonesrussell/north-cloud/search/internal/domain"
@@ -47,7 +48,7 @@ func (qb *QueryBuilder) Build(req *domain.SearchRequest) map[string]interface{} 
 			"id", "title", "url", "source_name",
 			"published_date", "crawled_at",
 			"quality_score", "content_type", "topics",
-			"is_crime_related",
+			"is_crime_related", "body", "raw_text",
 		}
 	}
 
@@ -91,21 +92,33 @@ func (qb *QueryBuilder) buildBoolQuery(req *domain.SearchRequest) map[string]int
 func (qb *QueryBuilder) buildMultiMatchQuery(query string) map[string]interface{} {
 	boost := qb.config.DefaultBoost
 
-	return map[string]interface{}{
-		"multi_match": map[string]interface{}{
-			"query": query,
-			"fields": []string{
-				"title^" + floatToString(boost.Title),
-				"og_title^" + floatToString(boost.OGTitle),
-				"raw_text^" + floatToString(boost.RawText),
-				"og_description^" + floatToString(boost.OGDescription),
-				"meta_description^" + floatToString(boost.MetaDescription),
-			},
-			"type":                 "best_fields",
-			"operator":             "or",
-			"fuzziness":            "AUTO",
-			"minimum_should_match": "75%",
+	// Count words in query to adjust minimum_should_match
+	words := len(strings.Fields(query))
+
+	// For single-word queries, don't use minimum_should_match
+	// For multi-word queries, use a more lenient setting
+	multiMatch := map[string]interface{}{
+		"query": query,
+		"fields": []string{
+			"title^" + floatToString(boost.Title),
+			"og_title^" + floatToString(boost.OGTitle),
+			"body^" + floatToString(boost.RawText),
+			"raw_text^" + floatToString(boost.RawText),
+			"og_description^" + floatToString(boost.OGDescription),
+			"meta_description^" + floatToString(boost.MetaDescription),
 		},
+		"type":      "best_fields",
+		"operator":  "or",
+		"fuzziness": "AUTO",
+	}
+
+	// Only add minimum_should_match for multi-word queries
+	if words > 1 {
+		multiMatch["minimum_should_match"] = "75%"
+	}
+
+	return map[string]interface{}{
+		"multi_match": multiMatch,
 	}
 }
 
@@ -132,15 +145,24 @@ func (qb *QueryBuilder) buildFilters(filters *domain.Filters) []interface{} {
 	}
 
 	// Quality score range filter
+	// Only add filter if there's an actual constraint (min > 0 or max < 100)
+	// If both are at defaults (min=0, max=100), don't add the filter
 	if filters.MinQualityScore > 0 || filters.MaxQualityScore < 100 {
-		result = append(result, map[string]interface{}{
-			"range": map[string]interface{}{
-				"quality_score": map[string]interface{}{
-					"gte": filters.MinQualityScore,
-					"lte": filters.MaxQualityScore,
+		qualityRange := make(map[string]interface{})
+		if filters.MinQualityScore > 0 {
+			qualityRange["gte"] = filters.MinQualityScore
+		}
+		if filters.MaxQualityScore < 100 {
+			qualityRange["lte"] = filters.MaxQualityScore
+		}
+		// Only add filter if we have at least one constraint
+		if len(qualityRange) > 0 {
+			result = append(result, map[string]interface{}{
+				"range": map[string]interface{}{
+					"quality_score": qualityRange,
 				},
-			},
-		})
+			})
+		}
 	}
 
 	// Crime-related filter
@@ -271,6 +293,10 @@ func (qb *QueryBuilder) buildHighlight() map[string]interface{} {
 		"fields": map[string]interface{}{
 			"title": map[string]interface{}{
 				"number_of_fragments": 1,
+			},
+			"body": map[string]interface{}{
+				"fragment_size":       qb.config.HighlightFragmentSize,
+				"number_of_fragments": qb.config.HighlightMaxFragments,
 			},
 			"raw_text": map[string]interface{}{
 				"fragment_size":       qb.config.HighlightFragmentSize,
