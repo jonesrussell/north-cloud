@@ -93,10 +93,10 @@ func (r *Router) SetupRoutes() *gin.Engine {
 }
 
 const (
-	httpStatusOK        = 200
-	healthStatusHealthy = "healthy"
+	httpStatusOK         = 200
+	healthStatusHealthy  = "healthy"
 	healthStatusDegraded = "degraded"
-	healthCheckTimeout  = 2 * time.Second
+	healthCheckTimeout   = 2 * time.Second
 )
 
 // healthCheck returns the service health status
