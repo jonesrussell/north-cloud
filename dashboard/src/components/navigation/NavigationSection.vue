@@ -68,7 +68,7 @@
 import { useRoute } from 'vue-router'
 import type { NavigationSection, NavigationItem } from '@/config/navigation'
 
-const props = defineProps<{
+defineProps<{
   section: NavigationSection
 }>()
 

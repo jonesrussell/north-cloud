@@ -43,7 +43,7 @@
 
         <!-- Breadcrumbs -->
         <div class="bg-white px-6 py-3 border-b border-gray-200">
-          <Breadcrumbs />
+          <BreadcrumbsNav />
         </div>
 
         <!-- Page content -->
@@ -63,7 +63,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
-import { AppSidebar, Breadcrumbs, CommandPalette, RecentPages } from './components/navigation'
+import { AppSidebar, BreadcrumbsNav, CommandPalette, RecentPages } from './components/navigation'
 import { crawlerApi, publisherApi, classifierApi } from './api/client'
 import { useAuth } from './composables/useAuth'
 
