@@ -1,7 +1,6 @@
 package api
 
 import (
-	"fmt"
 	"net/http"
 	"strconv"
 
@@ -148,9 +147,9 @@ func (h *QueuedLinksHandler) CreateJobFromLink(c *gin.Context) {
 
 	// Parse request body
 	var req CreateJobFromLinkRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
+	if bindErr := c.ShouldBindJSON(&req); bindErr != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Invalid request: " + err.Error(),
+			"error": "Invalid request: " + bindErr.Error(),
 		})
 		return
 	}
@@ -184,9 +183,9 @@ func (h *QueuedLinksHandler) CreateJobFromLink(c *gin.Context) {
 	}
 
 	// Save to database
-	if err := h.jobRepo.Create(c.Request.Context(), job); err != nil {
+	if createErr := h.jobRepo.Create(c.Request.Context(), job); createErr != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Failed to create job: " + err.Error(),
+			"error": "Failed to create job: " + createErr.Error(),
 		})
 		return
 	}
@@ -197,18 +196,7 @@ func (h *QueuedLinksHandler) CreateJobFromLink(c *gin.Context) {
 		_ = updateErr
 	}
 
-	// If job is scheduled, immediately reload it into the scheduler
-	if job.ScheduleEnabled && job.ScheduleTime != nil && *job.ScheduleTime != "" {
-		if h.scheduler != nil {
-			if reloadErr := h.scheduler.ReloadJob(job.ID); reloadErr != nil {
-				c.JSON(http.StatusCreated, gin.H{
-					"job":     job,
-					"warning": fmt.Sprintf("Job created but scheduling failed: %v", reloadErr),
-				})
-				return
-			}
-		}
-	}
+	// Note: IntervalScheduler polls database automatically, no manual reload needed
 
 	c.JSON(http.StatusCreated, job)
 }

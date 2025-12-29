@@ -22,8 +22,8 @@ import (
 	"github.com/jonesrussell/north-cloud/crawler/internal/crawler"
 	"github.com/jonesrussell/north-cloud/crawler/internal/crawler/events"
 	"github.com/jonesrussell/north-cloud/crawler/internal/database"
-	"github.com/jonesrussell/north-cloud/crawler/internal/job"
 	"github.com/jonesrussell/north-cloud/crawler/internal/logger"
+	"github.com/jonesrussell/north-cloud/crawler/internal/scheduler"
 	"github.com/jonesrussell/north-cloud/crawler/internal/sources"
 	"github.com/jonesrussell/north-cloud/crawler/internal/storage"
 	"github.com/jonesrussell/north-cloud/crawler/internal/storage/types"
@@ -326,11 +326,11 @@ func createTimeoutContext(timeout time.Duration) (context.Context, context.Cance
 // === Database & Scheduler Setup ===
 
 // setupJobsAndScheduler initializes the jobs handler and scheduler if database is available.
-// Returns jobsHandler, queuedLinksHandler, dbScheduler, and db connection (if available).
+// Returns jobsHandler, queuedLinksHandler, intervalScheduler, and db connection (if available).
 func setupJobsAndScheduler(
 	deps *CommandDeps,
 	storageResult *StorageResult,
-) (*api.JobsHandler, *api.QueuedLinksHandler, *job.DBScheduler, *sqlx.DB) {
+) (*api.JobsHandler, *api.QueuedLinksHandler, *scheduler.IntervalScheduler, *sqlx.DB) {
 	// Convert config to database config (DRY improvement)
 	dbConfig := databaseConfigFromInterface(deps.Config.GetDatabaseConfig())
 
@@ -340,22 +340,25 @@ func setupJobsAndScheduler(
 		return nil, nil, nil, nil
 	}
 
-	// Create jobs handler
+	// Create repositories
 	jobRepo := database.NewJobRepository(db)
-	jobsHandler := api.NewJobsHandler(jobRepo)
+	executionRepo := database.NewExecutionRepository(db)
+
+	// Create jobs handler with both repositories
+	jobsHandler := api.NewJobsHandler(jobRepo, executionRepo)
 
 	// Create queued links handler
 	queuedLinkRepo := database.NewQueuedLinkRepository(db)
 	queuedLinksHandler := api.NewQueuedLinksHandler(queuedLinkRepo, jobRepo)
 
 	// Create and start scheduler
-	dbScheduler := createAndStartScheduler(deps, storageResult, jobRepo, db)
-	if dbScheduler != nil {
-		jobsHandler.SetScheduler(dbScheduler)
-		queuedLinksHandler.SetScheduler(dbScheduler)
+	intervalScheduler := createAndStartScheduler(deps, storageResult, jobRepo, executionRepo, db)
+	if intervalScheduler != nil {
+		jobsHandler.SetScheduler(intervalScheduler)
+		queuedLinksHandler.SetScheduler(intervalScheduler)
 	}
 
-	return jobsHandler, queuedLinksHandler, dbScheduler, db
+	return jobsHandler, queuedLinksHandler, intervalScheduler, db
 }
 
 // databaseConfigFromInterface converts config database config to database.Config.
@@ -371,15 +374,16 @@ func databaseConfigFromInterface(cfg *dbconfig.Config) database.Config {
 	}
 }
 
-// createAndStartScheduler creates and starts the database scheduler.
+// createAndStartScheduler creates and starts the interval-based scheduler.
 // Returns nil if scheduler cannot be created or started.
 // Note: The scheduler manages its own context lifecycle internally.
 func createAndStartScheduler(
 	deps *CommandDeps,
 	storageResult *StorageResult,
 	jobRepo *database.JobRepository,
+	executionRepo *database.ExecutionRepository,
 	db *sqlx.DB,
-) *job.DBScheduler {
+) *scheduler.IntervalScheduler {
 	// Create crawler for job execution
 	crawlerInstance, err := createCrawlerForJobs(deps, storageResult, db)
 	if err != nil {
@@ -387,17 +391,22 @@ func createAndStartScheduler(
 		return nil
 	}
 
-	// Create and start database scheduler
-	// The scheduler manages its own context internally, so we pass a background context
-	// which the scheduler will use to derive its own context.
-	dbScheduler := job.NewDBScheduler(deps.Logger, jobRepo, crawlerInstance)
-	if startErr := dbScheduler.Start(context.Background()); startErr != nil {
-		deps.Logger.Error("Failed to start database scheduler", "error", startErr)
+	// Create interval scheduler with default options
+	intervalScheduler := scheduler.NewIntervalScheduler(
+		deps.Logger,
+		jobRepo,
+		executionRepo,
+		crawlerInstance,
+	)
+
+	// Start the scheduler
+	if startErr := intervalScheduler.Start(context.Background()); startErr != nil {
+		deps.Logger.Error("Failed to start interval scheduler", "error", startErr)
 		return nil
 	}
 
-	deps.Logger.Info("Database scheduler started successfully")
-	return dbScheduler
+	deps.Logger.Info("Interval scheduler started successfully")
+	return intervalScheduler
 }
 
 // === Server Setup ===
@@ -430,7 +439,7 @@ func startHTTPServer(
 func runServerUntilInterrupt(
 	log logger.Interface,
 	server *http.Server,
-	dbScheduler *job.DBScheduler,
+	intervalScheduler *scheduler.IntervalScheduler,
 	errChan chan error,
 ) error {
 	// Set up signal handling for graceful shutdown
@@ -443,7 +452,7 @@ func runServerUntilInterrupt(
 		log.Error("Server error", "error", serverErr)
 		return fmt.Errorf("server error: %w", serverErr)
 	case sig := <-sigChan:
-		return shutdownServer(log, server, dbScheduler, sig)
+		return shutdownServer(log, server, intervalScheduler, sig)
 	}
 }
 
@@ -451,7 +460,7 @@ func runServerUntilInterrupt(
 func shutdownServer(
 	log logger.Interface,
 	server *http.Server,
-	dbScheduler *job.DBScheduler,
+	intervalScheduler *scheduler.IntervalScheduler,
 	sig os.Signal,
 ) error {
 	log.Info("Shutdown signal received", "signal", sig.String())
@@ -459,9 +468,9 @@ func shutdownServer(
 	defer cancel()
 
 	// Stop scheduler first
-	if dbScheduler != nil {
-		log.Info("Stopping database scheduler")
-		if err := dbScheduler.Stop(); err != nil {
+	if intervalScheduler != nil {
+		log.Info("Stopping interval scheduler")
+		if err := intervalScheduler.Stop(); err != nil {
 			log.Error("Failed to stop scheduler", "error", err)
 		}
 	}

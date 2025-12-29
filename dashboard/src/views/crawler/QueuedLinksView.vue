@@ -221,7 +221,10 @@
               >
                 {{ truncateUrl(link.parent_url) }}
               </span>
-              <span v-else class="text-gray-400">—</span>
+              <span
+                v-else
+                class="text-gray-400"
+              >—</span>
             </td>
             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
               {{ link.depth }}

@@ -1,6 +1,13 @@
 <template>
-  <nav v-if="breadcrumbs.length > 0" aria-label="Breadcrumb" class="flex items-center space-x-2 text-sm">
-    <template v-for="(crumb, index) in displayBreadcrumbs" :key="crumb.path">
+  <nav
+    v-if="breadcrumbs.length > 0"
+    aria-label="Breadcrumb"
+    class="flex items-center space-x-2 text-sm"
+  >
+    <template
+      v-for="(crumb, index) in displayBreadcrumbs"
+      :key="crumb.path"
+    >
       <!-- Chevron separator -->
       <ChevronRightIcon
         v-if="index > 0"
@@ -89,7 +96,7 @@ const breadcrumbs = computed<Breadcrumb[]>(() => {
 
   // Build breadcrumbs from path segments
   let currentPath = ''
-  pathSegments.forEach((segment, index) => {
+  pathSegments.forEach((segment) => {
     currentPath += `/${segment}`
 
     // Skip numeric segments (likely IDs like /sources/123/edit)

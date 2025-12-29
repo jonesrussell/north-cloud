@@ -5,11 +5,9 @@ import DashboardView from '../views/DashboardView.vue'
 
 // Crawler views
 import CrawlerJobsView from '../views/crawler/JobsView.vue'
-import CrawlerStatsView from '../views/crawler/StatsView.vue'
 import QueuedLinksView from '../views/crawler/QueuedLinksView.vue'
 
 // Publisher views
-import PublisherStatsView from '../views/publisher/StatsView.vue'
 import PublisherRecentArticlesView from '../views/publisher/RecentArticlesView.vue'
 import PublisherDashboardView from '../views/publisher/PublisherDashboardView.vue'
 import PublisherSourcesView from '../views/publisher/SourcesView.vue'
@@ -22,7 +20,6 @@ import SourcesFormView from '../views/sources/FormView.vue'
 import CitiesView from '../views/sources/CitiesView.vue'
 
 // Classifier views
-import ClassifierStatsView from '../views/classifier/StatsView.vue'
 import ClassifierRulesView from '../views/classifier/RulesView.vue'
 import ClassifierSourceReputationView from '../views/classifier/SourceReputationView.vue'
 
@@ -44,7 +41,7 @@ declare module 'vue-router' {
     breadcrumbs?: Array<{
       label: string
       path: string
-      icon?: any
+      icon?: import('vue').Component
     }>
   }
 }
