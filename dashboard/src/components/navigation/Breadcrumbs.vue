@@ -1,6 +1,13 @@
 <template>
-  <nav v-if="breadcrumbs.length > 0" aria-label="Breadcrumb" class="flex items-center space-x-2 text-sm">
-    <template v-for="(crumb, index) in displayBreadcrumbs" :key="crumb.path">
+  <nav
+    v-if="breadcrumbs.length > 0"
+    aria-label="Breadcrumb"
+    class="flex items-center space-x-2 text-sm"
+  >
+    <template
+      v-for="(crumb, index) in displayBreadcrumbs"
+      :key="crumb.path"
+    >
       <!-- Chevron separator -->
       <ChevronRightIcon
         v-if="index > 0"

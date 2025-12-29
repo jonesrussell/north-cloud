@@ -7,7 +7,10 @@
     </div>
 
     <!-- Navigation -->
-    <nav class="mt-6 px-3 overflow-y-auto" style="max-height: calc(100vh - 8rem);">
+    <nav
+      class="mt-6 px-3 overflow-y-auto"
+      style="max-height: calc(100vh - 8rem);"
+    >
       <!-- Render navigation sections from config -->
       <NavigationSection
         v-for="section in sections"

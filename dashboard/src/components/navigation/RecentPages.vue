@@ -1,5 +1,8 @@
 <template>
-  <Menu as="div" class="relative inline-block text-left">
+  <Menu
+    as="div"
+    class="relative inline-block text-left"
+  >
     <MenuButton
       class="inline-flex items-center rounded-md px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
     >
@@ -23,11 +26,13 @@
           <!-- Header -->
           <div class="px-4 py-2 border-b border-gray-200">
             <div class="flex items-center justify-between">
-              <h3 class="text-sm font-semibold text-gray-900">Recent Pages</h3>
+              <h3 class="text-sm font-semibold text-gray-900">
+                Recent Pages
+              </h3>
               <button
                 v-if="recentPages.length > 0"
-                @click="handleClear"
                 class="text-xs text-gray-500 hover:text-gray-700"
+                @click="handleClear"
               >
                 Clear all
               </button>
@@ -35,18 +40,21 @@
           </div>
 
           <!-- Recent pages list -->
-          <div v-if="recentPages.length > 0" class="max-h-96 overflow-y-auto">
+          <div
+            v-if="recentPages.length > 0"
+            class="max-h-96 overflow-y-auto"
+          >
             <MenuItem
               v-for="page in recentPages"
               :key="page.path"
               v-slot="{ active }"
             >
               <div
-                @click="navigateToRecentPage(page.path)"
                 :class="[
                   active ? 'bg-gray-100' : '',
                   'group flex items-center px-4 py-3 text-sm cursor-pointer hover:bg-gray-50',
                 ]"
+                @click="navigateToRecentPage(page.path)"
               >
                 <!-- Icon -->
                 <component
@@ -71,8 +79,8 @@
 
                 <!-- Remove button (on hover) -->
                 <button
-                  @click.stop="removeRecentPage(page.path)"
                   class="ml-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                  @click.stop="removeRecentPage(page.path)"
                 >
                   <XMarkIcon class="h-4 w-4 text-gray-400 hover:text-gray-600" />
                 </button>

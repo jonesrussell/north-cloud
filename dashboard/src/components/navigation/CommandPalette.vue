@@ -1,7 +1,15 @@
 <template>
   <!-- Modal backdrop -->
-  <TransitionRoot :show="isOpen" as="template" @after-leave="searchQuery = ''">
-    <Dialog as="div" class="relative z-50" @close="close">
+  <TransitionRoot
+    :show="isOpen"
+    as="template"
+    @after-leave="searchQuery = ''"
+  >
+    <Dialog
+      as="div"
+      class="relative z-50"
+      @close="close"
+    >
       <!-- Backdrop -->
       <TransitionChild
         as="template"
@@ -30,7 +38,7 @@
             class="mx-auto max-w-2xl transform divide-y divide-gray-100 overflow-hidden rounded-xl bg-white shadow-2xl ring-1 ring-black ring-opacity-5 transition-all"
           >
             <!-- Combobox for search -->
-            <Combobox @update:modelValue="handleSelect">
+            <Combobox @update:model-value="handleSelect">
               <!-- Search input -->
               <div class="relative">
                 <MagnifyingGlassIcon
@@ -40,8 +48,8 @@
                 <ComboboxInput
                   class="h-12 w-full border-0 bg-transparent pl-11 pr-4 text-gray-900 placeholder:text-gray-400 focus:ring-0 sm:text-sm"
                   placeholder="Search pages... (Cmd+K)"
-                  @change="searchQuery = $event.target.value"
                   :value="searchQuery"
+                  @change="searchQuery = $event.target.value"
                 />
                 <kbd
                   class="pointer-events-none absolute right-4 top-3 hidden sm:block px-2 py-1 text-xs font-semibold text-gray-500 bg-gray-100 rounded border border-gray-200"
@@ -59,8 +67,8 @@
                 <ComboboxOption
                   v-for="item in searchResults"
                   :key="item.path"
-                  :value="item.path"
                   v-slot="{ active }"
+                  :value="item.path"
                 >
                   <div
                     :class="[
@@ -117,7 +125,9 @@
                   class="mx-auto h-6 w-6 text-gray-400"
                   aria-hidden="true"
                 />
-                <p class="mt-4 font-semibold text-gray-900">No results found</p>
+                <p class="mt-4 font-semibold text-gray-900">
+                  No results found
+                </p>
                 <p class="mt-2 text-gray-500">
                   No pages found for "{{ searchQuery }}". Try a different search.
                 </p>

@@ -9,17 +9,20 @@
     <!-- Tab Navigation -->
     <div class="mt-6">
       <div class="border-b border-gray-200">
-        <nav class="-mb-px flex space-x-8" aria-label="Tabs">
+        <nav
+          class="-mb-px flex space-x-8"
+          aria-label="Tabs"
+        >
           <button
             v-for="tab in tabs"
             :key="tab.id"
-            @click="activeTab = tab.id"
             :class="[
               activeTab === tab.id
                 ? 'border-blue-500 text-blue-600'
                 : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700',
               'group inline-flex items-center border-b-2 py-4 px-1 text-sm font-medium transition-colors',
             ]"
+            @click="activeTab = tab.id"
           >
             <component
               :is="tab.icon"
@@ -36,17 +39,26 @@
       <!-- Tab Panels -->
       <div class="mt-6">
         <!-- Crawler Stats -->
-        <div v-show="activeTab === 'crawler'" class="animate-fade-in">
+        <div
+          v-show="activeTab === 'crawler'"
+          class="animate-fade-in"
+        >
           <CrawlerStatsView />
         </div>
 
         <!-- Classifier Stats -->
-        <div v-show="activeTab === 'classifier'" class="animate-fade-in">
+        <div
+          v-show="activeTab === 'classifier'"
+          class="animate-fade-in"
+        >
           <ClassifierStatsView />
         </div>
 
         <!-- Publisher Stats -->
-        <div v-show="activeTab === 'publisher'" class="animate-fade-in">
+        <div
+          v-show="activeTab === 'publisher'"
+          class="animate-fade-in"
+        >
           <PublisherStatsView />
         </div>
       </div>

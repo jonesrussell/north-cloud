@@ -3,7 +3,10 @@
     <!-- Section Header with Tooltip -->
     <div class="group relative px-3">
       <h3 class="text-xs font-semibold text-gray-400 uppercase tracking-wider flex items-center">
-        <component :is="section.icon" class="h-4 w-4 mr-2" />
+        <component
+          :is="section.icon"
+          class="h-4 w-4 mr-2"
+        />
         {{ section.label }}
       </h3>
       <!-- Tooltip -->
@@ -12,13 +15,16 @@
         class="absolute left-full ml-2 top-0 z-50 hidden group-hover:block w-64 px-3 py-2 text-sm text-white bg-gray-800 rounded-md shadow-lg border border-gray-700"
       >
         {{ section.description }}
-        <div class="absolute left-0 top-1/2 -translate-x-1 -translate-y-1/2 w-2 h-2 bg-gray-800 border-l border-b border-gray-700 rotate-45"></div>
+        <div class="absolute left-0 top-1/2 -translate-x-1 -translate-y-1/2 w-2 h-2 bg-gray-800 border-l border-b border-gray-700 rotate-45" />
       </div>
     </div>
 
     <!-- Navigation Items -->
     <div class="mt-2 space-y-1">
-      <template v-for="item in section.items" :key="item.path">
+      <template
+        v-for="item in section.items"
+        :key="item.path"
+      >
         <!-- External Link -->
         <a
           v-if="item.external"
@@ -28,7 +34,10 @@
           :title="item.description"
           class="group flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors text-gray-300 hover:bg-gray-800 hover:text-white"
         >
-          <component :is="item.icon" class="mr-3 h-5 w-5 flex-shrink-0" />
+          <component
+            :is="item.icon"
+            class="mr-3 h-5 w-5 flex-shrink-0"
+          />
           {{ item.label }}
         </a>
 
@@ -44,7 +53,10 @@
               : 'text-gray-300 hover:bg-gray-800 hover:text-white'
           ]"
         >
-          <component :is="item.icon" class="mr-3 h-5 w-5 flex-shrink-0" />
+          <component
+            :is="item.icon"
+            class="mr-3 h-5 w-5 flex-shrink-0"
+          />
           {{ item.label }}
         </router-link>
       </template>
