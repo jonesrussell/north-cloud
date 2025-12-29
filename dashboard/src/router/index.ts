@@ -6,6 +6,7 @@ import DashboardView from '../views/DashboardView.vue'
 // Crawler views
 import CrawlerJobsView from '../views/crawler/JobsView.vue'
 import CrawlerStatsView from '../views/crawler/StatsView.vue'
+import QueuedLinksView from '../views/crawler/QueuedLinksView.vue'
 
 // Publisher views
 import PublisherStatsView from '../views/publisher/StatsView.vue'
@@ -79,6 +80,12 @@ const routes: RouteRecordRaw[] = [
     name: 'crawler-jobs',
     component: CrawlerJobsView,
     meta: { title: 'Crawl Jobs', section: 'crawler', requiresAuth: true },
+  },
+  {
+    path: '/crawler/queued-links',
+    name: 'crawler-queued-links',
+    component: QueuedLinksView,
+    meta: { title: 'Queued Links', section: 'crawler', requiresAuth: true },
   },
   // Redirect old crawler stats to analytics
   {

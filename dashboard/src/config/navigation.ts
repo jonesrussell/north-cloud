@@ -11,6 +11,7 @@ import {
   NewspaperIcon,
   StarIcon,
   MapPinIcon,
+  LinkIcon,
 } from '@heroicons/vue/24/outline'
 
 export interface NavigationItem {
@@ -76,6 +77,12 @@ export const navigationSections: NavigationSection[] = [
         path: '/crawler/jobs',
         icon: BriefcaseIcon,
         description: 'Manage crawl jobs and schedules',
+      },
+      {
+        label: 'Queued Links',
+        path: '/crawler/queued-links',
+        icon: LinkIcon,
+        description: 'View and manage discovered links',
       },
     ],
   },

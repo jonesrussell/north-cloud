@@ -386,6 +386,7 @@
 
 <script setup>
 import { watch, onMounted } from 'vue'
+import { useRoute } from 'vue-router'
 import { PageHeader, LoadingSpinner, ErrorAlert, SelectorInput, CollapsibleSection } from '../../components/common'
 import { useSourceForm } from '../../composables/useSourceForm'
 import { stringToArray } from '../../utils/formHelpers'
@@ -426,7 +427,18 @@ watch(pageExcludeInput, (val) => {
   form.value.selectors.page.exclude = stringToArray(val)
 })
 
+const route = useRoute()
+
 onMounted(() => {
   loadSource()
+  
+  // Prefill URL from query parameter (e.g., when coming from queued links)
+  const urlParam = route.query.url
+  if (urlParam && typeof urlParam === 'string' && !isEdit.value) {
+    form.value.url = decodeURIComponent(urlParam)
+    // Optionally auto-fetch metadata if URL is provided
+    // Uncomment the line below if you want automatic metadata fetching
+    // fetchMetadata()
+  }
 })
 </script>
