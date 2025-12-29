@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"os"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/jonesrussell/north-cloud/publisher/internal/database"
@@ -103,9 +104,12 @@ func (r *Router) healthCheck(c *gin.Context) {
 		"version": "1.0.0",
 	}
 
-	// Check database connection
+	// Check database connection with timeout
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 2*time.Second)
+	defer cancel()
+
 	dbConnected := true
-	if err := r.repo.Ping(c.Request.Context()); err != nil {
+	if err := r.repo.Ping(ctx); err != nil {
 		dbConnected = false
 		health["status"] = "degraded"
 	}
@@ -115,7 +119,7 @@ func (r *Router) healthCheck(c *gin.Context) {
 
 	// Check Redis connection (if client is available)
 	if r.redisClient != nil {
-		redisConnected, redisErr := checkRedisConnection(c.Request.Context(), r.redisClient)
+		redisConnected, redisErr := checkRedisConnection(ctx, r.redisClient)
 		redisHealth := gin.H{
 			"connected": redisConnected,
 		}

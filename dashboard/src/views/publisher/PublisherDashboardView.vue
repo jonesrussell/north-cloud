@@ -105,7 +105,7 @@
           <StatCard
             label="Articles Published (Selected Period)"
             :value="stats.total_articles || 0"
-            color="indigo"
+            color="purple"
           />
           <StatCard
             label="Active Channels"
