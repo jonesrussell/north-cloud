@@ -67,6 +67,8 @@ type Config struct {
 	ValidateURLs bool `yaml:"validate_urls"`
 	// CleanupInterval is the interval for cleaning up resources
 	CleanupInterval time.Duration `yaml:"cleanup_interval"`
+	// SaveDiscoveredLinks indicates whether to save discovered links to database for later processing
+	SaveDiscoveredLinks bool `mapstructure:"save_discovered_links" yaml:"save_discovered_links"`
 }
 
 // Validate validates the crawler configuration.
@@ -112,9 +114,10 @@ func New(opts ...Option) *Config {
 		MaxRetries:      DefaultMaxRetries,
 		RetryDelay:      DefaultRetryDelay,
 		FollowRedirects: true,
-		MaxRedirects:    DefaultMaxRedirects,
-		ValidateURLs:    true,
-		CleanupInterval: DefaultCleanupInterval,
+		MaxRedirects:         DefaultMaxRedirects,
+		ValidateURLs:         true,
+		CleanupInterval:     DefaultCleanupInterval,
+		SaveDiscoveredLinks:  false,
 	}
 
 	for _, opt := range opts {
@@ -290,6 +293,7 @@ func LoadFromViper(v *viper.Viper) *Config {
 	cfg.FollowRedirects = v.GetBool("crawler.follow_redirects")
 	cfg.MaxRedirects = v.GetInt("crawler.max_redirects")
 	cfg.ValidateURLs = v.GetBool("crawler.validate_urls")
+	cfg.SaveDiscoveredLinks = v.GetBool("crawler.save_discovered_links")
 	// Only set CleanupInterval if it's actually set and non-zero in Viper
 	// This prevents overwriting the default with 0 when defaults haven't been loaded yet
 	if cleanupInterval := v.GetDuration("crawler.cleanup_interval"); cleanupInterval > 0 {

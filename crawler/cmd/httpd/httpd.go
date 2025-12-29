@@ -85,13 +85,13 @@ func Start() error {
 	}
 
 	// Phase 4: Setup jobs handler and scheduler
-	jobsHandler, dbScheduler, db := setupJobsAndScheduler(deps, storageResult)
+	jobsHandler, queuedLinksHandler, dbScheduler, db := setupJobsAndScheduler(deps, storageResult)
 	if db != nil {
 		defer db.Close()
 	}
 
 	// Phase 5: Start HTTP server
-	server, errChan, err := startHTTPServer(deps, jobsHandler)
+	server, errChan, err := startHTTPServer(deps, jobsHandler, queuedLinksHandler)
 	if err != nil {
 		return err
 	}
@@ -209,6 +209,7 @@ func createStorage(cfg config.Interface, log logger.Interface) (*StorageResult, 
 func createCrawlerForJobs(
 	deps *CommandDeps,
 	storageResult *StorageResult,
+	db *sqlx.DB,
 ) (crawler.Interface, error) {
 	// Create event bus
 	bus := events.NewEventBus(deps.Logger)
@@ -229,7 +230,7 @@ func createCrawlerForJobs(
 	}
 
 	// Create crawler
-	return createCrawler(deps, bus, crawlerCfg, storageResult, sourceManager)
+	return createCrawler(deps, bus, crawlerCfg, storageResult, sourceManager, db)
 }
 
 // loadSourceManager loads sources using the API loader.
@@ -282,6 +283,7 @@ func createCrawler(
 	crawlerCfg *crawlerconfigtypes.Config,
 	storageResult *StorageResult,
 	sourceManager sources.Interface,
+	db *sqlx.DB,
 ) (crawler.Interface, error) {
 	crawlerResult, err := crawler.NewCrawlerWithParams(crawler.CrawlerParams{
 		Logger:       deps.Logger,
@@ -291,6 +293,7 @@ func createCrawler(
 		Config:       crawlerCfg,
 		Storage:      storageResult.Storage,
 		FullConfig:   deps.Config,
+		DB:           db,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to create crawler: %w", err)
@@ -323,31 +326,36 @@ func createTimeoutContext(timeout time.Duration) (context.Context, context.Cance
 // === Database & Scheduler Setup ===
 
 // setupJobsAndScheduler initializes the jobs handler and scheduler if database is available.
-// Returns jobsHandler, dbScheduler, and db connection (if available).
+// Returns jobsHandler, queuedLinksHandler, dbScheduler, and db connection (if available).
 func setupJobsAndScheduler(
 	deps *CommandDeps,
 	storageResult *StorageResult,
-) (*api.JobsHandler, *job.DBScheduler, *sqlx.DB) {
+) (*api.JobsHandler, *api.QueuedLinksHandler, *job.DBScheduler, *sqlx.DB) {
 	// Convert config to database config (DRY improvement)
 	dbConfig := databaseConfigFromInterface(deps.Config.GetDatabaseConfig())
 
 	db, err := database.NewPostgresConnection(dbConfig)
 	if err != nil {
 		deps.Logger.Warn("Failed to connect to database, jobs API will use fallback", "error", err)
-		return nil, nil, nil
+		return nil, nil, nil, nil
 	}
 
 	// Create jobs handler
 	jobRepo := database.NewJobRepository(db)
 	jobsHandler := api.NewJobsHandler(jobRepo)
 
+	// Create queued links handler
+	queuedLinkRepo := database.NewQueuedLinkRepository(db)
+	queuedLinksHandler := api.NewQueuedLinksHandler(queuedLinkRepo, jobRepo)
+
 	// Create and start scheduler
-	dbScheduler := createAndStartScheduler(deps, storageResult, jobRepo)
+	dbScheduler := createAndStartScheduler(deps, storageResult, jobRepo, db)
 	if dbScheduler != nil {
 		jobsHandler.SetScheduler(dbScheduler)
+		queuedLinksHandler.SetScheduler(dbScheduler)
 	}
 
-	return jobsHandler, dbScheduler, db
+	return jobsHandler, queuedLinksHandler, dbScheduler, db
 }
 
 // databaseConfigFromInterface converts config database config to database.Config.
@@ -370,9 +378,10 @@ func createAndStartScheduler(
 	deps *CommandDeps,
 	storageResult *StorageResult,
 	jobRepo *database.JobRepository,
+	db *sqlx.DB,
 ) *job.DBScheduler {
 	// Create crawler for job execution
-	crawlerInstance, err := createCrawlerForJobs(deps, storageResult)
+	crawlerInstance, err := createCrawlerForJobs(deps, storageResult, db)
 	if err != nil {
 		deps.Logger.Warn("Failed to create crawler for jobs, scheduler disabled", "error", err)
 		return nil
@@ -398,8 +407,9 @@ func createAndStartScheduler(
 func startHTTPServer(
 	deps *CommandDeps,
 	jobsHandler *api.JobsHandler,
+	queuedLinksHandler *api.QueuedLinksHandler,
 ) (*http.Server, chan error, error) {
-	server, _, err := api.StartHTTPServer(deps.Logger, deps.Config, jobsHandler)
+	server, _, err := api.StartHTTPServer(deps.Logger, deps.Config, jobsHandler, queuedLinksHandler)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to start HTTP server: %w", err)
 	}

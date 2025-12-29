@@ -22,6 +22,7 @@ func SetupRouter(
 	log logger.Interface,
 	cfg config.Interface,
 	jobsHandler *JobsHandler,
+	queuedLinksHandler *QueuedLinksHandler,
 ) (*gin.Engine, middleware.SecurityMiddlewareInterface) {
 	// Disable Gin's default logging
 	gin.SetMode(gin.ReleaseMode)
@@ -89,6 +90,14 @@ func SetupRouter(
 		})
 	})
 
+	// Queued links endpoints for dashboard
+	if queuedLinksHandler != nil {
+		v1.GET("/queued-links", queuedLinksHandler.ListQueuedLinks)
+		v1.GET("/queued-links/:id", queuedLinksHandler.GetQueuedLink)
+		v1.DELETE("/queued-links/:id", queuedLinksHandler.DeleteQueuedLink)
+		v1.POST("/queued-links/:id/create-job", queuedLinksHandler.CreateJobFromLink)
+	}
+
 	return router, security
 }
 
@@ -138,8 +147,9 @@ func StartHTTPServer(
 	log logger.Interface,
 	cfg config.Interface,
 	jobsHandler *JobsHandler,
+	queuedLinksHandler *QueuedLinksHandler,
 ) (*http.Server, middleware.SecurityMiddlewareInterface, error) {
-	router, security := SetupRouter(log, cfg, jobsHandler)
+	router, security := SetupRouter(log, cfg, jobsHandler, queuedLinksHandler)
 
 	srv := &http.Server{
 		Addr:              cfg.GetServerConfig().Address,

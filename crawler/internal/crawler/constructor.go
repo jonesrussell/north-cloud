@@ -8,12 +8,14 @@ import (
 	"time"
 
 	"github.com/gocolly/colly/v2"
+	"github.com/jmoiron/sqlx"
 	"github.com/jonesrussell/north-cloud/crawler/internal/archive"
 	"github.com/jonesrussell/north-cloud/crawler/internal/config"
 	"github.com/jonesrussell/north-cloud/crawler/internal/config/crawler"
 	"github.com/jonesrussell/north-cloud/crawler/internal/content"
 	"github.com/jonesrussell/north-cloud/crawler/internal/content/rawcontent"
 	"github.com/jonesrussell/north-cloud/crawler/internal/crawler/events"
+	"github.com/jonesrussell/north-cloud/crawler/internal/database"
 	"github.com/jonesrussell/north-cloud/crawler/internal/logger"
 	"github.com/jonesrussell/north-cloud/crawler/internal/sources"
 	"github.com/jonesrussell/north-cloud/crawler/internal/storage/types"
@@ -43,6 +45,7 @@ type CrawlerParams struct {
 	Config       *crawler.Config
 	Storage      types.Interface
 	FullConfig   config.Interface // Full config for accessing MinIO settings
+	DB           interface{}      // Database connection (optional, for queued links)
 }
 
 // CrawlerResult holds the crawler instance
@@ -170,7 +173,17 @@ func NewCrawlerWithParams(p CrawlerParams) (*CrawlerResult, error) {
 		archiver:            archiver,
 	}
 
-	c.linkHandler = NewLinkHandler(c)
+	// Create queued link repository if DB is available
+	var linkRepo *database.QueuedLinkRepository
+	if p.DB != nil {
+		// Type assert to *sqlx.DB
+		if db, ok := p.DB.(*sqlx.DB); ok {
+			linkRepo = database.NewQueuedLinkRepository(db)
+		}
+	}
+
+	// Create link handler with repository and save links flag
+	c.linkHandler = NewLinkHandler(c, linkRepo, p.Config.SaveDiscoveredLinks)
 
 	return &CrawlerResult{
 		Crawler: c,

@@ -2,22 +2,30 @@
 package crawler
 
 import (
+	"context"
+	"fmt"
 	"net/url"
 	"strings"
 	"time"
 
 	"github.com/gocolly/colly/v2"
+	"github.com/jonesrussell/north-cloud/crawler/internal/database"
+	"github.com/jonesrussell/north-cloud/crawler/internal/domain"
 )
 
 // LinkHandler handles link processing for the crawler.
 type LinkHandler struct {
-	crawler *Crawler
+	crawler  *Crawler
+	linkRepo *database.QueuedLinkRepository
+	saveLinks bool
 }
 
 // NewLinkHandler creates a new link handler.
-func NewLinkHandler(c *Crawler) *LinkHandler {
+func NewLinkHandler(c *Crawler, linkRepo *database.QueuedLinkRepository, saveLinks bool) *LinkHandler {
 	return &LinkHandler{
-		crawler: c,
+		crawler:   c,
+		linkRepo:  linkRepo,
+		saveLinks: saveLinks,
 	}
 }
 
@@ -43,7 +51,22 @@ func (h *LinkHandler) HandleLink(e *colly.HTMLElement) {
 		return
 	}
 
-	h.visitWithRetries(e, absLink)
+	// Save link to database instead of immediately visiting if enabled
+	if h.saveLinks && h.linkRepo != nil {
+		parentURL := e.Request.URL.String()
+		if err := h.saveLinkToQueue(e.Request.Context(), absLink, parentURL, e.Request.Depth); err != nil {
+			h.crawler.logger.Warn("Failed to save link to queue, falling back to immediate visit",
+				"url", absLink,
+				"error", err)
+			// Fallback to immediate visit if save fails
+			h.visitWithRetries(e, absLink)
+		} else {
+			h.crawler.logger.Debug("Saved link to queue", "url", absLink)
+		}
+	} else {
+		// Original behavior: visit immediately
+		h.visitWithRetries(e, absLink)
+	}
 }
 
 // shouldSkipLink determines if a link should be skipped based on its scheme or prefix.
@@ -125,4 +148,27 @@ func (h *LinkHandler) isNonRetryableError(err error) bool {
 	}
 
 	return false
+}
+
+// saveLinkToQueue saves a discovered link to the database for later processing.
+func (h *LinkHandler) saveLinkToQueue(ctx context.Context, url, parentURL string, depth int) error {
+	sourceName := h.crawler.state.CurrentSource()
+	if sourceName == "" {
+		return fmt.Errorf("no current source")
+	}
+
+	// Use source name as source ID (can be enhanced later to get actual ID from sources service)
+	sourceID := sourceName
+
+	queuedLink := &domain.QueuedLink{
+		SourceID:   sourceID,
+		SourceName: sourceName,
+		URL:        url,
+		ParentURL:  &parentURL,
+		Depth:      depth + 1, // Increment depth (colly's depth is 0-indexed from start URL)
+		Status:     "pending",
+		Priority:   0, // Can be configured based on URL patterns in the future
+	}
+
+	return h.linkRepo.CreateOrUpdate(ctx, queuedLink)
 }
