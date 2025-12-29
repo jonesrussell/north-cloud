@@ -62,11 +62,26 @@ func SetupRouter(
 
 	// Jobs endpoints for dashboard
 	if jobsHandler != nil {
+		// Basic CRUD
 		v1.GET("/jobs", jobsHandler.ListJobs)
 		v1.POST("/jobs", jobsHandler.CreateJob)
 		v1.GET("/jobs/:id", jobsHandler.GetJob)
 		v1.PUT("/jobs/:id", jobsHandler.UpdateJob)
 		v1.DELETE("/jobs/:id", jobsHandler.DeleteJob)
+
+		// Job control operations (new)
+		v1.POST("/jobs/:id/pause", jobsHandler.PauseJob)
+		v1.POST("/jobs/:id/resume", jobsHandler.ResumeJob)
+		v1.POST("/jobs/:id/cancel", jobsHandler.CancelJob)
+		v1.POST("/jobs/:id/retry", jobsHandler.RetryJob)
+
+		// Job execution history (new)
+		v1.GET("/jobs/:id/executions", jobsHandler.GetJobExecutions)
+		v1.GET("/jobs/:id/stats", jobsHandler.GetJobStats)
+		v1.GET("/executions/:id", jobsHandler.GetExecution)
+
+		// Scheduler metrics (new)
+		v1.GET("/scheduler/metrics", jobsHandler.GetSchedulerMetrics)
 	} else {
 		// Fallback to placeholder endpoints if no handler provided
 		v1.GET("/jobs", func(c *gin.Context) {
