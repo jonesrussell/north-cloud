@@ -28,8 +28,8 @@ type JobExecution struct {
 	StackTrace   *string `json:"stack_trace,omitempty" db:"stack_trace"`
 
 	// Resource tracking
-	CPUTimeMs     *int64 `json:"cpu_time_ms,omitempty" db:"cpu_time_ms"`
-	MemoryPeakMB  *int   `json:"memory_peak_mb,omitempty" db:"memory_peak_mb"`
+	CPUTimeMs    *int64 `json:"cpu_time_ms,omitempty" db:"cpu_time_ms"`
+	MemoryPeakMB *int   `json:"memory_peak_mb,omitempty" db:"memory_peak_mb"`
 
 	// Retry tracking
 	RetryAttempt int `json:"retry_attempt" db:"retry_attempt"` // 0 = first try, 1+ = retry
@@ -51,12 +51,12 @@ type JobStats struct {
 
 // AggregateStats represents system-wide scheduler statistics.
 type AggregateStats struct {
-	TotalExecutions   int64   `json:"total_executions"`
-	AvgDurationMs     float64 `json:"average_duration_ms"`
-	SuccessRate       float64 `json:"success_rate"` // 0.0 to 1.0
-	FailureRate       float64 `json:"failure_rate"` // 0.0 to 1.0
-	ActiveJobs        int64   `json:"active_jobs"`
-	ScheduledJobs     int64   `json:"scheduled_jobs"`
-	CompletedToday    int64   `json:"completed_today"`
-	FailedToday       int64   `json:"failed_today"`
+	TotalExecutions int64   `json:"total_executions"`
+	AvgDurationMs   float64 `json:"average_duration_ms"`
+	SuccessRate     float64 `json:"success_rate"` // 0.0 to 1.0
+	FailureRate     float64 `json:"failure_rate"` // 0.0 to 1.0
+	ActiveJobs      int64   `json:"active_jobs"`
+	ScheduledJobs   int64   `json:"scheduled_jobs"`
+	CompletedToday  int64   `json:"completed_today"`
+	FailedToday     int64   `json:"failed_today"`
 }
