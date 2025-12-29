@@ -342,12 +342,15 @@ const loadDashboard = async () => {
     }
 
     // Process publisher stats
+    // Note: /stats/overview returns different format, adapt the response
     if (publisherStatsRes.status === 'fulfilled' && publisherStatsRes.value.data) {
       const data = publisherStatsRes.value.data
+      // /stats/overview returns: { total_articles, by_channel, period, channel_count, generated_at }
+      // Adapt to expected format: { total_posted, total_skipped, total_errors }
       publisherStats.value = {
-        totalPosted: data.total_posted || 0,
-        totalSkipped: data.total_skipped || 0,
-        totalErrors: data.total_errors || 0,
+        totalPosted: data.total_articles || 0,
+        totalSkipped: 0, // Not available in overview endpoint
+        totalErrors: 0, // Not available in overview endpoint
       }
     }
 

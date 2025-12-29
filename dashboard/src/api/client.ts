@@ -182,7 +182,8 @@ export const publisherApi = {
 
   // Stats
   stats: {
-    get: () => publisherClient.get('/stats'),
+    // Note: /stats endpoint doesn't exist, using /stats/overview instead
+    get: () => publisherClient.get('/stats/overview?period=all'),
     overview: (period: StatsPeriod = 'today'): Promise<AxiosResponse<StatsOverviewResponse>> =>
       publisherClient.get(`/stats/overview?period=${period}`),
     channels: (since?: string) => publisherClient.get(`/stats/channels${since ? `?since=${since}` : ''}`),

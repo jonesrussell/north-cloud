@@ -222,15 +222,18 @@ const loadStats = async () => {
     loading.value = true
     error.value = null
 
-    const statsRes = await publisherApi.stats.get()
+    // Use overview endpoint since /stats doesn't exist
+    const statsRes = await publisherApi.stats.overview('all')
 
     if (statsRes.data) {
+      // Adapt overview response format to expected format
+      // Overview returns: { total_articles, by_channel, period, channel_count, generated_at }
       stats.value = {
-        totalPosted: statsRes.data.total_posted || 0,
-        totalSkipped: statsRes.data.total_skipped || 0,
-        totalErrors: statsRes.data.total_errors || 0,
-        cities: statsRes.data.cities || [],
-        lastSync: statsRes.data.last_sync || null,
+        totalPosted: statsRes.data.total_articles || 0,
+        totalSkipped: 0, // Not available in overview endpoint
+        totalErrors: 0, // Not available in overview endpoint
+        cities: [], // Not available in overview endpoint
+        lastSync: statsRes.data.generated_at || null,
       }
     }
   } catch (err) {

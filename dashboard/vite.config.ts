@@ -106,7 +106,13 @@ export default defineConfig({
         changeOrigin: true,
         rewrite: () => '/health',
       },
-      // Auth API proxy
+      // Auth API proxy - /api/v1/auth route (matches nginx production config)
+      '/api/v1/auth': {
+        target: AUTH_API_URL,
+        changeOrigin: true,
+        rewrite: (path) => path, // Pass path as-is since auth service expects /api/v1/auth/login
+      },
+      // Auth API proxy - legacy /api/auth path (strips prefix like nginx)
       '/api/auth': {
         target: AUTH_API_URL,
         changeOrigin: true,

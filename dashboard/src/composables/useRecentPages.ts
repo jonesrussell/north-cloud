@@ -44,8 +44,9 @@ function saveRecentPages(): void {
 
 /**
  * Add a page to recent pages
+ * Exported as standalone function to avoid requiring Vue setup context
  */
-function addRecentPage(page: Omit<RecentPage, 'timestamp'>): void {
+export function addRecentPage(page: Omit<RecentPage, 'timestamp'>): void {
   // Don't add login page or empty paths
   if (!page.path || page.path === '/login') {
     return
@@ -137,7 +138,7 @@ export function useRecentPages() {
 
   return {
     recentPages: recentPagesWithTime,
-    addRecentPage,
+    addRecentPage, // Also available as exported function
     clearRecentPages,
     removeRecentPage,
     navigateToRecentPage,

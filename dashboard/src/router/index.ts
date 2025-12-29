@@ -217,8 +217,7 @@ router.afterEach((to) => {
 
   // Track recent page (dynamically import to avoid circular dependency)
   if (to.path !== '/login' && to.meta.title) {
-    import('@/composables/useRecentPages').then(({ useRecentPages }) => {
-      const { addRecentPage } = useRecentPages()
+    import('@/composables/useRecentPages').then(({ addRecentPage }) => {
       addRecentPage({
         path: to.path,
         title: to.meta.title as string,
