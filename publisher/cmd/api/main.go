@@ -12,6 +12,8 @@ import (
 
 	"github.com/jonesrussell/north-cloud/publisher/internal/api"
 	"github.com/jonesrussell/north-cloud/publisher/internal/database"
+	redisclient "github.com/jonesrussell/north-cloud/publisher/internal/redis"
+	"github.com/redis/go-redis/v9"
 )
 
 const (
@@ -44,8 +46,27 @@ func main() {
 	// Create repository
 	repo := database.NewRepository(db)
 
+	// Initialize Redis client (optional - for health checks)
+	var redisClient *redis.Client
+	redisAddr := getEnv("REDIS_ADDR", "")
+	if redisAddr == "" {
+		// Fallback to REDIS_HOST:REDIS_PORT if REDIS_ADDR not set
+		redisHost := getEnv("REDIS_HOST", "localhost")
+		redisPort := getEnv("REDIS_PORT", "6379")
+		redisAddr = redisHost + ":" + redisPort
+	}
+	redisPassword := getEnv("REDIS_PASSWORD", "")
+	if redisAddr != "" {
+		var redisErr error
+		redisClient, redisErr = redisclient.NewClient(redisAddr, redisPassword)
+		if redisErr != nil {
+			log.Printf("Warning: Failed to connect to Redis (health checks will show disconnected): %v", redisErr)
+			// Continue without Redis - health check will show disconnected status
+		}
+	}
+
 	// Create router
-	router := api.NewRouter(repo)
+	router := api.NewRouter(repo, redisClient)
 	ginEngine := router.SetupRoutes()
 
 	// Configure HTTP server

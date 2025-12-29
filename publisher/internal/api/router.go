@@ -1,21 +1,27 @@
 package api
 
 import (
+	"context"
 	"os"
 
 	"github.com/gin-gonic/gin"
 	"github.com/jonesrussell/north-cloud/publisher/internal/database"
 	infrajwt "github.com/north-cloud/infrastructure/jwt"
+	"github.com/redis/go-redis/v9"
 )
 
 // Router holds the API dependencies
 type Router struct {
-	repo *database.Repository
+	repo        *database.Repository
+	redisClient *redis.Client
 }
 
 // NewRouter creates a new API router
-func NewRouter(repo *database.Repository) *Router {
-	return &Router{repo: repo}
+func NewRouter(repo *database.Repository, redisClient *redis.Client) *Router {
+	return &Router{
+		repo:        repo,
+		redisClient: redisClient,
+	}
 }
 
 // SetupRoutes configures all API routes with middleware
@@ -79,6 +85,7 @@ func (r *Router) SetupRoutes() *gin.Engine {
 	stats := v1.Group("/stats")
 	stats.GET("/overview", r.getStatsOverview)
 	stats.GET("/channels", r.getChannelStats)
+	stats.GET("/channels/active", r.getActiveChannels)
 	stats.GET("/routes", r.getRouteStats)
 
 	return router
@@ -90,9 +97,56 @@ const (
 
 // healthCheck returns the service health status
 func (r *Router) healthCheck(c *gin.Context) {
-	c.JSON(httpStatusOK, gin.H{
+	health := gin.H{
 		"status":  "healthy",
 		"service": "publisher",
 		"version": "1.0.0",
-	})
+	}
+
+	// Check database connection
+	dbConnected := true
+	if err := r.repo.Ping(c.Request.Context()); err != nil {
+		dbConnected = false
+		health["status"] = "degraded"
+	}
+	health["database"] = gin.H{
+		"connected": dbConnected,
+	}
+
+	// Check Redis connection (if client is available)
+	if r.redisClient != nil {
+		redisConnected, redisErr := checkRedisConnection(c.Request.Context(), r.redisClient)
+		redisHealth := gin.H{
+			"connected": redisConnected,
+		}
+		if redisErr != nil {
+			redisHealth["error"] = redisErr.Error()
+			if health["status"] == "healthy" {
+				health["status"] = "degraded"
+			}
+		}
+		health["redis"] = redisHealth
+	} else {
+		health["redis"] = gin.H{
+			"connected": false,
+			"error":     "Redis client not initialized",
+		}
+		if health["status"] == "healthy" {
+			health["status"] = "degraded"
+		}
+	}
+
+	c.JSON(httpStatusOK, health)
+}
+
+// checkRedisConnection tests Redis connectivity
+func checkRedisConnection(ctx context.Context, client *redis.Client) (bool, error) {
+	if client == nil {
+		return false, nil
+	}
+	err := client.Ping(ctx).Err()
+	if err != nil {
+		return false, err
+	}
+	return true, nil
 }
