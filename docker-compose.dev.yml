@@ -462,6 +462,8 @@ services:
       - POSTGRES_PUBLISHER_SSLMODE=disable
       - PUBLISHER_PORT=8070
       - AUTH_JWT_SECRET=${AUTH_JWT_SECRET:-}
+      - REDIS_ADDR=${REDIS_ADDR:-redis:6379}
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-}
       - GIN_MODE=debug
       - APP_DEBUG=true
       # Use /tmp for caches to avoid permission issues with host user
