@@ -3,7 +3,7 @@ package crawler
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"net/url"
 	"strings"
 	"time"
@@ -52,35 +52,21 @@ func (h *LinkHandler) HandleLink(e *colly.HTMLElement) {
 	}
 
 	// Save link to database instead of immediately visiting if enabled
-	if h.saveLinks && h.linkRepo != nil {
-		// Get context from crawler state (same pattern as ProcessHTML)
-		ctx := h.crawler.state.Context()
-		if ctx == nil {
-			// Context is nil, crawler has been stopped/reset - abort
-			h.crawler.logger.Debug("Cannot save link - crawler context is nil", "url", absLink)
-			return
+	if h.shouldSaveLink() {
+		if h.trySaveLink(absLink, e) {
+			return // Link saved successfully
 		}
-
-		parentURL := e.Request.URL.String()
-		if err := h.saveLinkToQueue(ctx, absLink, parentURL, e.Request.Depth); err != nil {
-			h.crawler.logger.Warn("Failed to save link to queue, falling back to immediate visit",
-				"url", absLink,
-				"error", err)
-			// Fallback to immediate visit if save fails
-			h.visitWithRetries(e, absLink)
-		} else {
-			h.crawler.logger.Debug("Saved link to queue", "url", absLink, "depth", e.Request.Depth)
-		}
-	} else {
-		// Log why we're not saving (for debugging)
-		if !h.saveLinks {
-			h.crawler.logger.Debug("Link saving disabled, visiting immediately", "url", absLink)
-		} else if h.linkRepo == nil {
-			h.crawler.logger.Debug("Link repository not available, visiting immediately", "url", absLink)
-		}
-		// Original behavior: visit immediately
-		h.visitWithRetries(e, absLink)
+		// Fallback to immediate visit if save fails
 	}
+
+	// Log why we're not saving (for debugging)
+	if !h.saveLinks {
+		h.crawler.logger.Debug("Link saving disabled, visiting immediately", "url", absLink)
+	} else if h.linkRepo == nil {
+		h.crawler.logger.Debug("Link repository not available, visiting immediately", "url", absLink)
+	}
+	// Original behavior: visit immediately
+	h.visitWithRetries(e, absLink)
 }
 
 // shouldSkipLink determines if a link should be skipped based on its scheme or prefix.
@@ -164,11 +150,39 @@ func (h *LinkHandler) isNonRetryableError(err error) bool {
 	return false
 }
 
+// shouldSaveLink checks if link saving is enabled and repository is available.
+func (h *LinkHandler) shouldSaveLink() bool {
+	return h.saveLinks && h.linkRepo != nil
+}
+
+// trySaveLink attempts to save a link to the queue.
+// Returns true if link was saved successfully, false otherwise.
+func (h *LinkHandler) trySaveLink(absLink string, e *colly.HTMLElement) bool {
+	// Get context from crawler state (same pattern as ProcessHTML)
+	ctx := h.crawler.state.Context()
+	if ctx == nil {
+		// Context is nil, crawler has been stopped/reset - abort
+		h.crawler.logger.Debug("Cannot save link - crawler context is nil", "url", absLink)
+		return false
+	}
+
+	parentURL := e.Request.URL.String()
+	if err := h.saveLinkToQueue(ctx, absLink, parentURL, e.Request.Depth); err != nil {
+		h.crawler.logger.Warn("Failed to save link to queue, falling back to immediate visit",
+			"url", absLink,
+			"error", err)
+		return false
+	}
+
+	h.crawler.logger.Debug("Saved link to queue", "url", absLink, "depth", e.Request.Depth)
+	return true
+}
+
 // saveLinkToQueue saves a discovered link to the database for later processing.
-func (h *LinkHandler) saveLinkToQueue(ctx context.Context, url, parentURL string, depth int) error {
+func (h *LinkHandler) saveLinkToQueue(ctx context.Context, linkURL, parentURL string, depth int) error {
 	sourceName := h.crawler.state.CurrentSource()
 	if sourceName == "" {
-		return fmt.Errorf("no current source")
+		return errors.New("no current source")
 	}
 
 	// Use source name as source ID (can be enhanced later to get actual ID from sources service)
@@ -177,7 +191,7 @@ func (h *LinkHandler) saveLinkToQueue(ctx context.Context, url, parentURL string
 	queuedLink := &domain.QueuedLink{
 		SourceID:   sourceID,
 		SourceName: sourceName,
-		URL:        url,
+		URL:        linkURL,
 		ParentURL:  &parentURL,
 		Depth:      depth + 1, // Increment depth (colly's depth is 0-indexed from start URL)
 		Status:     "pending",

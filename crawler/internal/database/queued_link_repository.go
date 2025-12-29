@@ -13,6 +13,10 @@ import (
 	"github.com/jonesrussell/north-cloud/crawler/internal/domain"
 )
 
+const (
+	defaultSortByPriority = "priority"
+)
+
 // QueuedLinkRepository handles database operations for queued links.
 type QueuedLinkRepository struct {
 	db *sqlx.DB
@@ -126,10 +130,10 @@ func (r *QueuedLinkRepository) List(ctx context.Context, filters ListFilters) ([
 	// Build ORDER BY clause
 	sortBy := filters.SortBy
 	if sortBy == "" {
-		sortBy = "priority"
+		sortBy = defaultSortByPriority
 	}
-	if sortBy != "priority" && sortBy != "queued_at" && sortBy != "discovered_at" {
-		sortBy = "priority"
+	if sortBy != defaultSortByPriority && sortBy != "queued_at" && sortBy != "discovered_at" {
+		sortBy = defaultSortByPriority
 	}
 
 	sortOrder := strings.ToUpper(filters.SortOrder)
@@ -200,7 +204,7 @@ func (r *QueuedLinkRepository) Count(ctx context.Context, filters ListFilters) (
 	if filters.Search != "" {
 		whereClauses = append(whereClauses, fmt.Sprintf("url ILIKE $%d", argIndex))
 		args = append(args, "%"+filters.Search+"%")
-		argIndex++
+		// argIndex not used after this in Count function
 	}
 
 	whereClause := ""
@@ -240,7 +244,11 @@ func (r *QueuedLinkRepository) GetByID(ctx context.Context, id string) (*domain.
 }
 
 // GetPendingBySource retrieves pending links for a source, ordered by priority and queued_at.
-func (r *QueuedLinkRepository) GetPendingBySource(ctx context.Context, sourceID string, limit int) ([]*domain.QueuedLink, error) {
+func (r *QueuedLinkRepository) GetPendingBySource(
+	ctx context.Context,
+	sourceID string,
+	limit int,
+) ([]*domain.QueuedLink, error) {
 	var links []*domain.QueuedLink
 
 	if limit <= 0 {

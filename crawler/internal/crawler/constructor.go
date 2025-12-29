@@ -45,7 +45,7 @@ type CrawlerParams struct {
 	Config       *crawler.Config
 	Storage      types.Interface
 	FullConfig   config.Interface // Full config for accessing MinIO settings
-	DB           interface{}      // Database connection (optional, for queued links)
+	DB           any              // Database connection (optional, for queued links)
 }
 
 // CrawlerResult holds the crawler instance
@@ -174,24 +174,7 @@ func NewCrawlerWithParams(p CrawlerParams) (*CrawlerResult, error) {
 	}
 
 	// Create queued link repository if DB is available
-	var linkRepo *database.QueuedLinkRepository
-	if p.DB != nil {
-		// Type assert to *sqlx.DB
-		if db, ok := p.DB.(*sqlx.DB); ok {
-			linkRepo = database.NewQueuedLinkRepository(db)
-			if p.Config.SaveDiscoveredLinks {
-				p.Logger.Info("Queued link saving enabled - discovered links will be saved to database")
-			} else {
-				p.Logger.Debug("Queued link saving disabled - set CRAWLER_SAVE_DISCOVERED_LINKS=true to enable")
-			}
-		} else {
-			p.Logger.Warn("Database connection type assertion failed - queued link saving will be disabled")
-		}
-	} else {
-		if p.Config.SaveDiscoveredLinks {
-			p.Logger.Warn("SaveDiscoveredLinks is enabled but no database connection available - queued link saving will be disabled")
-		}
-	}
+	linkRepo := createQueuedLinkRepository(p)
 
 	// Create link handler with repository and save links flag
 	c.linkHandler = NewLinkHandler(c, linkRepo, p.Config.SaveDiscoveredLinks)
@@ -199,4 +182,32 @@ func NewCrawlerWithParams(p CrawlerParams) (*CrawlerResult, error) {
 	return &CrawlerResult{
 		Crawler: c,
 	}, nil
+}
+
+// createQueuedLinkRepository creates a queued link repository if DB is available.
+func createQueuedLinkRepository(p CrawlerParams) *database.QueuedLinkRepository {
+	if p.DB == nil {
+		if p.Config.SaveDiscoveredLinks {
+			p.Logger.Warn(
+				"SaveDiscoveredLinks is enabled but no database connection available - " +
+					"queued link saving will be disabled")
+		}
+		return nil
+	}
+
+	// Type assert to *sqlx.DB
+	db, ok := p.DB.(*sqlx.DB)
+	if !ok {
+		p.Logger.Warn("Database connection type assertion failed - queued link saving will be disabled")
+		return nil
+	}
+
+	linkRepo := database.NewQueuedLinkRepository(db)
+	if p.Config.SaveDiscoveredLinks {
+		p.Logger.Info("Queued link saving enabled - discovered links will be saved to database")
+	} else {
+		p.Logger.Debug("Queued link saving disabled - set CRAWLER_SAVE_DISCOVERED_LINKS=true to enable")
+	}
+
+	return linkRepo
 }

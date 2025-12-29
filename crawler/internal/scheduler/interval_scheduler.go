@@ -3,6 +3,7 @@ package scheduler
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math"
 	"sync"
@@ -13,6 +14,14 @@ import (
 	"github.com/jonesrussell/north-cloud/crawler/internal/database"
 	"github.com/jonesrussell/north-cloud/crawler/internal/domain"
 	"github.com/jonesrussell/north-cloud/crawler/internal/logger"
+)
+
+const (
+	defaultCheckInterval   = 10 * time.Second
+	defaultLockDuration    = 5 * time.Minute
+	defaultMetricsInterval = 30 * time.Second
+	hoursPerDay            = 24
+	exponentialBackoffBase = 2
 )
 
 // JobExecution represents an active job execution with its context.
@@ -68,9 +77,9 @@ func NewIntervalScheduler(
 		ctx:                    ctx,
 		cancel:                 cancel,
 		activeJobs:             make(map[string]*JobExecution),
-		checkInterval:          10 * time.Second,
-		lockDuration:           5 * time.Minute,
-		metricsInterval:        30 * time.Second,
+		checkInterval:          defaultCheckInterval,
+		lockDuration:           defaultLockDuration,
+		metricsInterval:        defaultMetricsInterval,
 		staleLockCheckInterval: 1 * time.Minute,
 		metrics:                &SchedulerMetrics{},
 	}
@@ -286,7 +295,7 @@ func (s *IntervalScheduler) runJob(jobExec *JobExecution) {
 
 	// Validate source name
 	if job.SourceName == nil || *job.SourceName == "" {
-		s.handleJobFailure(jobExec, fmt.Errorf("job missing required source_name"), nil)
+		s.handleJobFailure(jobExec, errors.New("job missing required source_name"), nil)
 		return
 	}
 
@@ -426,7 +435,7 @@ func (s *IntervalScheduler) calculateNextRun(job *domain.Job) time.Time {
 	case "hours":
 		duration = time.Duration(*job.IntervalMinutes) * time.Hour
 	case "days":
-		duration = time.Duration(*job.IntervalMinutes) * 24 * time.Hour
+		duration = time.Duration(*job.IntervalMinutes) * hoursPerDay * time.Hour
 	default:
 		duration = time.Duration(*job.IntervalMinutes) * time.Minute
 	}
@@ -439,7 +448,7 @@ func (s *IntervalScheduler) calculateBackoff(job *domain.Job) time.Duration {
 	baseBackoff := time.Duration(job.RetryBackoffSeconds) * time.Second
 
 	// Exponential backoff: base * 2^(attempt-1)
-	multiplier := math.Pow(2, float64(job.CurrentRetryCount-1))
+	multiplier := math.Pow(exponentialBackoffBase, float64(job.CurrentRetryCount-1))
 	backoff := time.Duration(float64(baseBackoff) * multiplier)
 
 	// Cap at 1 hour

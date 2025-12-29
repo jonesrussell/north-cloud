@@ -1,13 +1,15 @@
-package scheduler
+package scheduler_test
 
 import (
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/jonesrussell/north-cloud/crawler/internal/scheduler"
 )
 
 func TestSchedulerMetrics_IncrementCounters(t *testing.T) {
-	m := &SchedulerMetrics{}
+	m := &scheduler.SchedulerMetrics{}
 
 	// Test all increment methods
 	m.IncrementScheduled()
@@ -39,7 +41,7 @@ func TestSchedulerMetrics_IncrementCounters(t *testing.T) {
 }
 
 func TestSchedulerMetrics_DecrementRunning(t *testing.T) {
-	m := &SchedulerMetrics{}
+	m := &scheduler.SchedulerMetrics{}
 
 	m.IncrementRunning()
 	m.IncrementRunning()
@@ -57,7 +59,7 @@ func TestSchedulerMetrics_DecrementRunning(t *testing.T) {
 }
 
 func TestSchedulerMetrics_UpdateAggregateMetrics(t *testing.T) {
-	m := &SchedulerMetrics{}
+	m := &scheduler.SchedulerMetrics{}
 
 	avgDuration := 1500.5
 	successRate := 0.85
@@ -76,7 +78,7 @@ func TestSchedulerMetrics_UpdateAggregateMetrics(t *testing.T) {
 }
 
 func TestSchedulerMetrics_UpdateLastCheck(t *testing.T) {
-	m := &SchedulerMetrics{}
+	m := &scheduler.SchedulerMetrics{}
 
 	if !m.LastCheckAt.IsZero() {
 		t.Error("LastCheckAt should be zero initially")
@@ -90,7 +92,7 @@ func TestSchedulerMetrics_UpdateLastCheck(t *testing.T) {
 }
 
 func TestSchedulerMetrics_AddStaleLocksCleared(t *testing.T) {
-	m := &SchedulerMetrics{}
+	m := &scheduler.SchedulerMetrics{}
 
 	m.AddStaleLocksCleared(5)
 	if m.StaleLocksCleared != 5 {
@@ -104,7 +106,7 @@ func TestSchedulerMetrics_AddStaleLocksCleared(t *testing.T) {
 }
 
 func TestSchedulerMetrics_Snapshot(t *testing.T) {
-	m := &SchedulerMetrics{}
+	m := &scheduler.SchedulerMetrics{}
 
 	// Set some values
 	m.IncrementScheduled()
@@ -152,7 +154,7 @@ func TestSchedulerMetrics_Snapshot(t *testing.T) {
 
 // TestSchedulerMetrics_Concurrency tests thread safety
 func TestSchedulerMetrics_Concurrency(t *testing.T) {
-	m := &SchedulerMetrics{}
+	m := &scheduler.SchedulerMetrics{}
 	var wg sync.WaitGroup
 
 	// Number of concurrent goroutines
@@ -160,11 +162,11 @@ func TestSchedulerMetrics_Concurrency(t *testing.T) {
 	incrementsPerGoroutine := 100
 
 	// Test concurrent increments
-	for i := 0; i < numGoroutines; i++ {
+	for range numGoroutines {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			for j := 0; j < incrementsPerGoroutine; j++ {
+			for range incrementsPerGoroutine {
 				m.IncrementScheduled()
 				m.IncrementRunning()
 				m.DecrementRunning()
@@ -209,16 +211,16 @@ func TestSchedulerMetrics_Concurrency(t *testing.T) {
 
 // TestSchedulerMetrics_ConcurrentSnapshots tests concurrent read/write operations
 func TestSchedulerMetrics_ConcurrentSnapshots(t *testing.T) {
-	m := &SchedulerMetrics{}
+	m := &scheduler.SchedulerMetrics{}
 	var wg sync.WaitGroup
 
 	// Writers
 	numWriters := 10
-	for i := 0; i < numWriters; i++ {
+	for range numWriters {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			for j := 0; j < 100; j++ {
+			for j := range 100 {
 				m.IncrementScheduled()
 				m.UpdateAggregateMetrics(float64(j), 0.5)
 				time.Sleep(time.Microsecond)
@@ -228,11 +230,11 @@ func TestSchedulerMetrics_ConcurrentSnapshots(t *testing.T) {
 
 	// Readers
 	numReaders := 10
-	for i := 0; i < numReaders; i++ {
+	for range numReaders {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			for j := 0; j < 100; j++ {
+			for range 100 {
 				_ = m.Snapshot()
 				time.Sleep(time.Microsecond)
 			}

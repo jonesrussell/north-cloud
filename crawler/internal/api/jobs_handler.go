@@ -31,7 +31,10 @@ type SchedulerInterface interface {
 }
 
 // NewJobsHandler creates a new jobs handler.
-func NewJobsHandler(repo database.JobRepositoryInterface, executionRepo database.ExecutionRepositoryInterface) *JobsHandler {
+func NewJobsHandler(
+	repo database.JobRepositoryInterface,
+	executionRepo database.ExecutionRepositoryInterface,
+) *JobsHandler {
 	return &JobsHandler{
 		repo:          repo,
 		executionRepo: executionRepo,

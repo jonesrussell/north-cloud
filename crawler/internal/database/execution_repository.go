@@ -149,7 +149,11 @@ func (r *ExecutionRepository) Delete(ctx context.Context, id string) error {
 }
 
 // ListByJobID retrieves all executions for a specific job with pagination.
-func (r *ExecutionRepository) ListByJobID(ctx context.Context, jobID string, limit, offset int) ([]*domain.JobExecution, error) {
+func (r *ExecutionRepository) ListByJobID(
+	ctx context.Context,
+	jobID string,
+	limit, offset int,
+) ([]*domain.JobExecution, error) {
 	var executions []*domain.JobExecution
 	query := `
 		SELECT id, job_id, execution_number, status,

@@ -22,7 +22,7 @@ type CreateJobRequest struct {
 	ScheduleTime string `json:"schedule_time"`
 
 	// Metadata (new)
-	Metadata map[string]interface{} `json:"metadata"`
+	Metadata map[string]any `json:"metadata"`
 }
 
 // UpdateJobRequest represents a job update request.
@@ -47,7 +47,7 @@ type UpdateJobRequest struct {
 	Status string `json:"status"`
 
 	// Metadata (new)
-	Metadata map[string]interface{} `json:"metadata"`
+	Metadata map[string]any `json:"metadata"`
 }
 
 // JobStatsResponse represents aggregate statistics for a job.
@@ -82,8 +82,8 @@ type SchedulerMetricsResponse struct {
 
 // ExecutionsListResponse represents a paginated list of executions.
 type ExecutionsListResponse struct {
-	Executions interface{} `json:"executions"` // []*domain.JobExecution
-	Total      int         `json:"total"`
-	Limit      int         `json:"limit"`
-	Offset     int         `json:"offset"`
+	Executions any `json:"executions"` // []*domain.JobExecution
+	Total      int `json:"total"`
+	Limit      int `json:"limit"`
+	Offset     int `json:"offset"`
 }

@@ -280,7 +280,13 @@ func (r *JobRepository) GetJobsReadyToRun(ctx context.Context) ([]*domain.Job, e
 // AcquireLock attempts to acquire a distributed lock for a job.
 // Uses atomic compare-and-swap to prevent race conditions.
 // Returns true if lock was acquired, false if already locked by another instance.
-func (r *JobRepository) AcquireLock(ctx context.Context, jobID string, token uuid.UUID, now time.Time, duration time.Duration) (bool, error) {
+func (r *JobRepository) AcquireLock(
+	ctx context.Context,
+	jobID string,
+	token uuid.UUID,
+	now time.Time,
+	duration time.Duration,
+) (bool, error) {
 	query := `
 		UPDATE jobs
 		SET lock_token = $1,
