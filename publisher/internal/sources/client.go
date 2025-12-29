@@ -93,9 +93,8 @@ func (c *Client) GetCities(ctx context.Context) ([]config.CityConfig, error) {
 	cities := make([]config.CityConfig, 0, len(citiesResp.Cities))
 	for _, city := range citiesResp.Cities {
 		cities = append(cities, config.CityConfig{
-			Name:    city.Name,
-			Index:   city.Index,
-			GroupID: city.GroupID,
+			Name:  city.Name,
+			Index: city.Index,
 		})
 	}
 
