@@ -1,7 +1,6 @@
 package api
 
 import (
-	"fmt"
 	"net/http"
 	"strconv"
 
@@ -197,18 +196,7 @@ func (h *QueuedLinksHandler) CreateJobFromLink(c *gin.Context) {
 		_ = updateErr
 	}
 
-	// If job is scheduled, immediately reload it into the scheduler
-	if job.ScheduleEnabled && job.ScheduleTime != nil && *job.ScheduleTime != "" {
-		if h.scheduler != nil {
-			if reloadErr := h.scheduler.ReloadJob(job.ID); reloadErr != nil {
-				c.JSON(http.StatusCreated, gin.H{
-					"job":     job,
-					"warning": fmt.Sprintf("Job created but scheduling failed: %v", reloadErr),
-				})
-				return
-			}
-		}
-	}
+	// Note: IntervalScheduler polls database automatically, no manual reload needed
 
 	c.JSON(http.StatusCreated, job)
 }

@@ -272,7 +272,6 @@ func (s *IntervalScheduler) runJob(jobExec *JobExecution) {
 	}()
 
 	job := jobExec.Job
-	execution := jobExec.Execution
 
 	s.logger.Info("Executing job",
 		"job_id", job.ID,
