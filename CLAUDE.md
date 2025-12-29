@@ -162,15 +162,30 @@ The platform uses a **three-stage content pipeline** for intelligent article pro
   - Minimal processing: preserves HTML, text, metadata for downstream classification
   - Source management integration
   - Vue.js dashboard interface for monitoring
-  - **Database-backed job scheduler** for dynamic crawling
-  - REST API for job management (create, update, delete, list)
-  - Support for immediate and scheduled (cron) jobs
-  - Job status tracking (pending → processing → completed/failed)
+  - **Interval-based job scheduler** for dynamic crawling (NEW - Dec 2025)
+  - REST API for job management with 8 new endpoints (pause/resume/cancel/retry)
+  - Support for immediate and interval-based scheduling (every N minutes/hours/days)
+  - Job status tracking with 7 states (pending → scheduled → running → completed/failed/paused/cancelled)
+  - Execution history tracking in `job_executions` table
+  - Distributed locking for multi-instance deployment
+  - Exponential backoff retry with configurable max retries
+  - Real-time scheduler metrics and job statistics
+- **Scheduler Architecture**:
+  - **IntervalScheduler**: Modern replacement for cron-based scheduler
+  - Polls database every 10 seconds for jobs ready to run
+  - Atomic lock acquisition using PostgreSQL CAS operations
+  - Stale lock cleanup every 1 minute (5-minute timeout)
+  - Thread-safe metrics collection every 30 seconds
+  - Graceful shutdown with context cancellation
 - **Indexing Strategy**:
   - One index per source: `{source_name}_raw_content` (e.g., `example_com_raw_content`)
   - Documents marked with `classification_status=pending` for classifier pickup
   - Extracts: title, raw_text, raw_html, OG tags, metadata, published_date
-- **Documentation**: See `/crawler/README.md`, `/crawler/frontend/README.md`, `/crawler/docs/DATABASE_SCHEDULER.md`
+- **Documentation**:
+  - `/crawler/README.md` - General crawler documentation
+  - `/crawler/frontend/README.md` - Frontend documentation
+  - `/crawler/docs/INTERVAL_SCHEDULER.md` - **NEW** Interval-based scheduler guide (recommended)
+  - `/crawler/docs/DATABASE_SCHEDULER.md` - Legacy cron-based scheduler (deprecated)
 
 #### 2. **source-manager**
 - **Location**: `/source-manager`
@@ -423,23 +438,39 @@ north-cloud/
 │   ├── go.mod
 │   ├── main.go
 │   ├── cmd/
-│   │   ├── httpd/               # HTTP API server with job scheduler
+│   │   ├── httpd/               # HTTP API server with interval scheduler
 │   │   ├── crawl/               # Manual crawl command
 │   │   └── scheduler/           # Legacy scheduler (deprecated)
 │   ├── internal/
-│   │   ├── job/                 # Job scheduler implementation
-│   │   │   └── db_scheduler.go  # Database-backed scheduler
+│   │   ├── scheduler/           # Interval-based scheduler (NEW)
+│   │   │   ├── interval_scheduler.go  # Main scheduler implementation
+│   │   │   ├── state_machine.go       # Job state validation
+│   │   │   ├── metrics.go             # Thread-safe metrics
+│   │   │   └── options.go             # Functional options pattern
 │   │   ├── database/            # Database layer (PostgreSQL)
-│   │   ├── domain/              # Domain models (Job, Item)
+│   │   │   ├── job_repository.go        # Job CRUD + locking
+│   │   │   ├── execution_repository.go  # Execution history CRUD
+│   │   │   └── interfaces.go            # Repository interfaces
+│   │   ├── domain/              # Domain models
+│   │   │   ├── job.go           # Job model (13 new fields)
+│   │   │   └── execution.go     # JobExecution model (NEW)
 │   │   └── api/                 # REST API handlers
+│   │       └── jobs_handler.go  # Job control endpoints (8 new)
+│   ├── migrations/
+│   │   ├── 003_refactor_to_interval_scheduler.up.sql    # Migration (NEW)
+│   │   └── 003_refactor_to_interval_scheduler.down.sql  # Rollback (NEW)
 │   ├── frontend/                # Vue.js dashboard
 │   │   └── src/
 │   │       └── views/
 │   │           └── CrawlJobsView.vue  # Job management UI
+│   ├── scripts/
+│   │   └── test-migration.sh    # Migration test script (NEW)
 │   ├── docs/
-│   │   └── DATABASE_SCHEDULER.md  # Scheduler documentation
+│   │   ├── INTERVAL_SCHEDULER.md  # Interval scheduler guide (NEW)
+│   │   └── DATABASE_SCHEDULER.md  # Legacy cron scheduler (deprecated)
 │   ├── tests/
 │   └── README.md
+│   └── SCHEDULER_REFACTOR_SUMMARY.md  # Implementation summary (NEW)
 │
 ├── source-manager/               # Source management service
 │   ├── Dockerfile
@@ -1219,13 +1250,22 @@ docker system prune -a --volumes
 - Test crawling logic thoroughly
 - Validate Elasticsearch indexing
 - Check source manager integration
-- **Job Scheduler**:
-  - Use database-backed scheduler (httpd command) for dynamic job management
+- **Interval-Based Job Scheduler** (NEW - December 2025):
+  - **IMPORTANT**: Read `/crawler/docs/INTERVAL_SCHEDULER.md` for comprehensive guide
+  - Use **interval-based scheduling**: `{"interval_minutes": 30, "interval_type": "minutes"}` instead of cron
+  - **7 job states**: pending, scheduled, running, paused, completed, failed, cancelled
+  - **State validation**: Use state machine to validate transitions before updates
+  - **Job control**: Support pause, resume, cancel, manual retry operations
+  - **Execution history**: Track every job run in `job_executions` table
+  - **Distributed locking**: Use PostgreSQL CAS locks for multi-instance safety
+  - **Exponential backoff**: `base × 2^(attempt-1)` capped at 1 hour
+  - **Metrics**: Real-time job counts, success rates, average duration
   - Jobs require `source_name` field to match existing source
-  - Support both immediate (`schedule_enabled: false`) and cron-scheduled jobs
-  - Job status tracked: `pending` → `processing` → `completed`/`failed`
-  - Scheduler automatically reloads jobs every 5 minutes
-  - See `/crawler/docs/DATABASE_SCHEDULER.md` for implementation details
+  - Scheduler polls database every 10 seconds (automatic, no manual reload needed)
+  - **8 new API endpoints**: `/pause`, `/resume`, `/cancel`, `/retry`, `/executions`, `/stats`, `/scheduler/metrics`
+  - **Migration**: Run migration 003 to upgrade from cron-based scheduler
+  - See `/crawler/docs/INTERVAL_SCHEDULER.md` for complete documentation
+  - **Legacy**: `/crawler/docs/DATABASE_SCHEDULER.md` (cron-based scheduler, deprecated)
 
 **For Source Manager**:
 - Backend: Follow Go REST API conventions
@@ -1477,16 +1517,29 @@ docker system prune -a --volumes
 **Content Crawling**:
 - `/crawler/README.md`
 - `/source-manager/README.md`
-- `/crawler/docs/DATABASE_SCHEDULER.md` - Database-backed job scheduler
 
-**Job Scheduling & Management**:
-- `/crawler/docs/DATABASE_SCHEDULER.md` - Comprehensive scheduler guide
-  - Architecture and implementation details
-  - API usage examples (create, update, delete, list jobs)
-  - Cron expression syntax and examples
-  - Job status tracking and lifecycle
-  - Immediate vs scheduled jobs
-  - Troubleshooting and best practices
+**Job Scheduling & Management** (NEW - December 2025):
+- **`/crawler/docs/INTERVAL_SCHEDULER.md`** - **Interval-based scheduler guide (RECOMMENDED)**
+  - Modern interval-based scheduling (every N minutes/hours/days)
+  - Complete API reference for 8 new endpoints
+  - Job lifecycle with 7 states and state machine validation
+  - Execution history tracking and analytics
+  - Distributed locking for multi-instance deployment
+  - Exponential backoff retry with configurable max retries
+  - Real-time metrics and job statistics
+  - Migration guide from cron-based scheduler
+  - Troubleshooting, best practices, and security
+  - Performance optimization and monitoring
+- `/crawler/SCHEDULER_REFACTOR_SUMMARY.md` - Implementation summary (December 2025)
+  - Complete refactor overview (~3,500 lines of code)
+  - File-by-file changes and statistics
+  - Key technical decisions and trade-offs
+  - Testing checklist and deployment plan
+  - Next steps and future enhancements
+- `/crawler/docs/DATABASE_SCHEDULER.md` - **Legacy cron-based scheduler (DEPRECATED)**
+  - Original cron expression-based scheduler
+  - Maintained for reference and rollback only
+  - Use INTERVAL_SCHEDULER.md for new implementations
 
 **Content Classification**:
 - `/classifier/README.md`
@@ -1545,6 +1598,42 @@ When encountering scenarios not covered in this guide:
 ---
 
 ## Version History
+
+- **Crawler Scheduler Refactor: Interval-Based Job Scheduling** (2025-12-29): Complete modernization of job scheduler
+  - **Architecture Change**: From cron-based to interval-based scheduling for improved user experience
+  - **Database Schema**: Migration 003 adds `job_executions` table and 13 new columns to `jobs` table
+    - New fields: `interval_minutes`, `interval_type`, `next_run_at`, `is_paused`, `max_retries`, `retry_backoff_seconds`, `current_retry_count`, `lock_token`, `lock_acquired_at`, `paused_at`, `cancelled_at`, `metadata`
+    - `job_executions` table: Complete execution history with 17 columns (duration, items crawled/indexed, resource usage, error details)
+  - **IntervalScheduler**: Modern replacement for DBScheduler (617 lines)
+    - Polls database every 10 seconds for jobs ready to run
+    - Distributed locking using PostgreSQL atomic CAS operations
+    - Stale lock cleanup every 1 minute (5-minute timeout)
+    - Thread-safe metrics collection every 30 seconds
+    - Graceful shutdown with context cancellation
+  - **7 Job States**: pending, scheduled, running, paused, completed, failed, cancelled
+    - State machine validation prevents invalid transitions
+    - Helper functions: `CanPause`, `CanResume`, `CanCancel`, `CanRetry`
+  - **8 New API Endpoints**:
+    - Job control: `POST /jobs/:id/pause|resume|cancel|retry`
+    - History: `GET /jobs/:id/executions`, `GET /executions/:id`
+    - Statistics: `GET /jobs/:id/stats`, `GET /scheduler/metrics`
+  - **Key Features**:
+    - Interval-based scheduling: `{"interval_minutes": 30, "interval_type": "minutes"}`
+    - Execution history tracking with 100 executions OR 30 days retention
+    - Exponential backoff retry: `base × 2^(attempt-1)` capped at 1 hour
+    - Real-time metrics: job counts, success rates, average duration
+    - Multi-instance safe with atomic distributed locking
+  - **Code Changes**: ~3,500 lines of code
+    - 15 files created (migrations, scheduler core, tests, documentation)
+    - 10 files modified (domain models, repositories, API handlers, main integration)
+    - 75+ unit tests (state machine, metrics, concurrency)
+    - Migration test script for schema validation
+  - **Documentation**:
+    - `/crawler/docs/INTERVAL_SCHEDULER.md` - Complete 600+ line user guide
+    - `/crawler/SCHEDULER_REFACTOR_SUMMARY.md` - Implementation summary
+    - Migration guide from cron-based scheduler with rollback procedures
+  - **Backward Compatibility**: Legacy `schedule_time` (cron) field maintained for rollback safety
+  - **Testing**: All shadowing errors fixed, 75+ tests pass, builds successfully
 
 - **Publisher Modernization: Database-Backed Redis Pub/Sub Architecture** (2025-12-28): Complete transformation of publisher service
   - **Architecture Change**: From YAML-configured direct-posting to database-backed Redis pub/sub routing hub
