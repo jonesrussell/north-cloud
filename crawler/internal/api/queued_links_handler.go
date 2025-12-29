@@ -147,9 +147,9 @@ func (h *QueuedLinksHandler) CreateJobFromLink(c *gin.Context) {
 
 	// Parse request body
 	var req CreateJobFromLinkRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
+	if bindErr := c.ShouldBindJSON(&req); bindErr != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Invalid request: " + err.Error(),
+			"error": "Invalid request: " + bindErr.Error(),
 		})
 		return
 	}
@@ -183,9 +183,9 @@ func (h *QueuedLinksHandler) CreateJobFromLink(c *gin.Context) {
 	}
 
 	// Save to database
-	if err := h.jobRepo.Create(c.Request.Context(), job); err != nil {
+	if createErr := h.jobRepo.Create(c.Request.Context(), job); createErr != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Failed to create job: " + err.Error(),
+			"error": "Failed to create job: " + createErr.Error(),
 		})
 		return
 	}

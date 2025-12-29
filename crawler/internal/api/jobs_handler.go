@@ -322,18 +322,18 @@ func (h *JobsHandler) CancelJob(c *gin.Context) {
 
 	// If job is currently running, cancel via scheduler
 	if job.Status == "running" && h.scheduler != nil {
-		if err := h.scheduler.CancelJob(id); err != nil {
+		if cancelErr := h.scheduler.CancelJob(id); cancelErr != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{
-				"error": "Failed to cancel running job: " + err.Error(),
+				"error": "Failed to cancel running job: " + cancelErr.Error(),
 			})
 			return
 		}
 	}
 
 	// Update job status in database
-	if err := h.repo.CancelJob(c.Request.Context(), id); err != nil {
+	if updateErr := h.repo.CancelJob(c.Request.Context(), id); updateErr != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error": err.Error(),
+			"error": updateErr.Error(),
 		})
 		return
 	}
@@ -377,9 +377,9 @@ func (h *JobsHandler) RetryJob(c *gin.Context) {
 	job.ErrorMessage = nil
 	job.CompletedAt = nil
 
-	if err := h.repo.Update(c.Request.Context(), job); err != nil {
+	if updateErr := h.repo.Update(c.Request.Context(), job); updateErr != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Failed to retry job: " + err.Error(),
+			"error": "Failed to retry job: " + updateErr.Error(),
 		})
 		return
 	}

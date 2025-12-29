@@ -160,9 +160,9 @@ func (s *IntervalScheduler) checkAndExecuteJobs() {
 
 	for _, job := range jobs {
 		// Try to acquire lock
-		acquired, err := s.acquireJobLock(job)
-		if err != nil {
-			s.logger.Error("Failed to acquire lock", "job_id", job.ID, "error", err)
+		acquired, lockErr := s.acquireJobLock(job)
+		if lockErr != nil {
+			s.logger.Error("Failed to acquire lock", "job_id", job.ID, "error", lockErr)
 			continue
 		}
 
