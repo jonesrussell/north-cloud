@@ -125,7 +125,7 @@ func (r *Router) healthCheck(c *gin.Context) {
 	health["redis"] = redisHealth
 
 	// Update status if Redis is not connected
-	if !redisHealth["connected"].(bool) {
+	if connected, ok := redisHealth["connected"].(bool); ok && !connected {
 		if health["status"] == healthStatusHealthy {
 			health["status"] = healthStatusDegraded
 		}
