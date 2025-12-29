@@ -202,23 +202,44 @@
             </p>
           </div>
 
-          <!-- Schedule Time -->
-          <div class="mb-4">
+          <!-- Interval Scheduling -->
+          <div
+            v-if="newJob.schedule_enabled"
+            class="mb-4"
+          >
             <label
-              for="schedule_time"
+              for="interval_minutes"
               class="block text-sm font-medium text-gray-700 mb-2"
             >
-              Schedule (Cron Expression)
+              Interval
             </label>
-            <input
-              id="schedule_time"
-              v-model="newJob.schedule_time"
-              type="text"
-              placeholder="0 */6 * * *"
-              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
+            <div class="flex gap-3">
+              <input
+                id="interval_minutes"
+                v-model.number="newJob.interval_minutes"
+                type="number"
+                min="1"
+                placeholder="30"
+                class="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+              <select
+                id="interval_type"
+                v-model="newJob.interval_type"
+                class="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="minutes">
+                  Minutes
+                </option>
+                <option value="hours">
+                  Hours
+                </option>
+                <option value="days">
+                  Days
+                </option>
+              </select>
+            </div>
             <p class="mt-1 text-xs text-gray-500">
-              Examples: "0 */6 * * *" (every 6 hours), "0 0 * * *" (daily at midnight)
+              Examples: 30 minutes (every 30 minutes), 6 hours (every 6 hours), 1 day (daily)
             </p>
           </div>
 
@@ -324,7 +345,8 @@ const selectedSource = ref(null)
 const newJob = ref({
   source_id: '',
   url: '',
-  schedule_time: '',
+  interval_minutes: 30,
+  interval_type: 'minutes',
   schedule_enabled: false,
 })
 
@@ -407,8 +429,13 @@ const createJob = async () => {
       source_id: newJob.value.source_id,
       source_name: selectedSource.value?.name || '',
       url: newJob.value.url.trim(),
-      schedule_time: newJob.value.schedule_time.trim(),
       schedule_enabled: newJob.value.schedule_enabled,
+    }
+
+    // Add interval fields only if schedule is enabled
+    if (newJob.value.schedule_enabled) {
+      jobData.interval_minutes = newJob.value.interval_minutes
+      jobData.interval_type = newJob.value.interval_type
     }
 
     await crawlerApi.jobs.create(jobData)
@@ -417,7 +444,8 @@ const createJob = async () => {
     newJob.value = {
       source_id: '',
       url: '',
-      schedule_time: '',
+      interval_minutes: 30,
+      interval_type: 'minutes',
       schedule_enabled: false,
     }
     selectedSource.value = null
@@ -489,92 +517,23 @@ const formatDate = (dateString) => {
 }
 
 const formatNextRun = (job) => {
-  if (!job.schedule_enabled || !job.schedule_time) {
+  // For immediate jobs (schedule_enabled: false), show status
+  if (!job.schedule_enabled) {
     return job.status === 'pending' ? 'Pending' : 'N/A'
   }
 
-  try {
-    const nextRun = calculateNextRunTime(job.schedule_time)
-    if (nextRun) {
-      return nextRun.toLocaleString()
-    }
-    return 'Invalid schedule'
-  } catch (err) {
-    console.error('[JobsView] Error calculating next run time:', err)
-    return 'Invalid schedule'
-  }
-}
-
-const calculateNextRunTime = (cronExpression) => {
-  if (!cronExpression) return null
-
-  const parts = cronExpression.trim().split(/\s+/)
-  if (parts.length !== 5) {
-    return null
-  }
-
-  const [minute, hour] = parts
-  const now = new Date()
-  let nextRun = new Date(now)
-
-  nextRun.setSeconds(0)
-  nextRun.setMilliseconds(0)
-
-  let targetMinute = 0
-  if (minute !== '*') {
-    if (minute.startsWith('*/')) {
-      const step = parseInt(minute.substring(2), 10)
-      if (!isNaN(step) && step > 0) {
-        const currentMinute = now.getMinutes()
-        targetMinute = Math.ceil((currentMinute + 1) / step) * step
-        if (targetMinute >= 60) {
-          targetMinute = 0
-          nextRun.setHours(nextRun.getHours() + 1)
-        }
-      }
-    } else {
-      const minuteValue = parseInt(minute, 10)
-      if (!isNaN(minuteValue) && minuteValue >= 0 && minuteValue < 60) {
-        targetMinute = minuteValue
-      }
-    }
-  }
-  nextRun.setMinutes(targetMinute)
-
-  let targetHour = now.getHours()
-  if (hour !== '*') {
-    if (hour.startsWith('*/')) {
-      const step = parseInt(hour.substring(2), 10)
-      if (!isNaN(step) && step > 0) {
-        const currentHour = now.getHours()
-        let nextHour = Math.ceil((currentHour + 1) / step) * step
-        if (nextHour >= 24) {
-          nextHour = 0
-          nextRun.setDate(nextRun.getDate() + 1)
-        }
-        targetHour = nextHour
-      }
-    } else {
-      const hourValue = parseInt(hour, 10)
-      if (!isNaN(hourValue) && hourValue >= 0 && hourValue < 24) {
-        targetHour = hourValue
-      }
-    }
-  }
-  nextRun.setHours(targetHour)
-
-  if (nextRun <= now) {
-    if (hour.startsWith('*/')) {
-      const step = parseInt(hour.substring(2), 10)
-      if (!isNaN(step) && step > 0) {
-        nextRun.setHours(nextRun.getHours() + step)
-      }
-    } else {
-      nextRun.setDate(nextRun.getDate() + 1)
+  // For scheduled jobs, use next_run_at from the API
+  if (job.next_run_at) {
+    try {
+      return new Date(job.next_run_at).toLocaleString()
+    } catch (err) {
+      console.error('[JobsView] Error parsing next_run_at:', err)
+      return 'Invalid date'
     }
   }
 
-  return nextRun
+  // Fallback: show status if next_run_at is not available
+  return job.status === 'pending' ? 'Pending' : 'N/A'
 }
 
 onMounted(() => {

@@ -370,22 +370,44 @@
             >
           </div>
 
-          <div class="mb-4">
+          <!-- Interval Scheduling -->
+          <div
+            v-if="newJob.schedule_enabled"
+            class="mb-4"
+          >
             <label
-              for="job-schedule-time"
+              for="job-interval-minutes"
               class="block text-sm font-medium text-gray-700 mb-2"
             >
-              Schedule (Cron Expression)
+              Interval
             </label>
-            <input
-              id="job-schedule-time"
-              v-model="newJob.schedule_time"
-              type="text"
-              placeholder="0 */6 * * *"
-              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
+            <div class="flex gap-3">
+              <input
+                id="job-interval-minutes"
+                v-model.number="newJob.interval_minutes"
+                type="number"
+                min="1"
+                placeholder="30"
+                class="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+              <select
+                id="job-interval-type"
+                v-model="newJob.interval_type"
+                class="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="minutes">
+                  Minutes
+                </option>
+                <option value="hours">
+                  Hours
+                </option>
+                <option value="days">
+                  Days
+                </option>
+              </select>
+            </div>
             <p class="mt-1 text-xs text-gray-500">
-              Examples: "0 */6 * * *" (every 6 hours), "0 0 * * *" (daily at midnight)
+              Examples: 30 minutes (every 30 minutes), 6 hours (every 6 hours), 1 day (daily)
             </p>
           </div>
 
@@ -484,7 +506,8 @@ const filters = ref({
 
 const newJob = ref({
   source_name: '',
-  schedule_time: '',
+  interval_minutes: 30,
+  interval_type: 'minutes',
   schedule_enabled: false,
 })
 
@@ -537,7 +560,8 @@ const createJobFromLink = (link) => {
   selectedLink.value = link
   newJob.value = {
     source_name: link.source_name,
-    schedule_time: '',
+    interval_minutes: 30,
+    interval_type: 'minutes',
     schedule_enabled: false,
   }
   showCreateJobModal.value = true
@@ -553,8 +577,14 @@ const submitCreateJob = async () => {
     const jobData = {
       source_id: selectedLink.value.source_id,
       source_name: newJob.value.source_name || selectedLink.value.source_name,
-      schedule_time: newJob.value.schedule_time.trim(),
+      url: selectedLink.value.url,
       schedule_enabled: newJob.value.schedule_enabled,
+    }
+
+    // Add interval fields only if schedule is enabled
+    if (newJob.value.schedule_enabled) {
+      jobData.interval_minutes = newJob.value.interval_minutes
+      jobData.interval_type = newJob.value.interval_type
     }
 
     await crawlerApi.queuedLinks.createJob(selectedLink.value.id, jobData)
@@ -574,7 +604,8 @@ const closeCreateJobModal = () => {
   selectedLink.value = null
   newJob.value = {
     source_name: '',
-    schedule_time: '',
+    interval_minutes: 30,
+    interval_type: 'minutes',
     schedule_enabled: false,
   }
 }
