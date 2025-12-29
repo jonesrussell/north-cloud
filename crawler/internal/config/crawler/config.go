@@ -293,7 +293,14 @@ func LoadFromViper(v *viper.Viper) *Config {
 	cfg.FollowRedirects = v.GetBool("crawler.follow_redirects")
 	cfg.MaxRedirects = v.GetInt("crawler.max_redirects")
 	cfg.ValidateURLs = v.GetBool("crawler.validate_urls")
-	cfg.SaveDiscoveredLinks = v.GetBool("crawler.save_discovered_links")
+	// Get save_discovered_links - check both the config key and direct env var
+	if v.IsSet("crawler.save_discovered_links") {
+		cfg.SaveDiscoveredLinks = v.GetBool("crawler.save_discovered_links")
+	} else if v.IsSet("CRAWLER_SAVE_DISCOVERED_LINKS") {
+		cfg.SaveDiscoveredLinks = v.GetBool("CRAWLER_SAVE_DISCOVERED_LINKS")
+	} else {
+		cfg.SaveDiscoveredLinks = false
+	}
 	// Only set CleanupInterval if it's actually set and non-zero in Viper
 	// This prevents overwriting the default with 0 when defaults haven't been loaded yet
 	if cleanupInterval := v.GetDuration("crawler.cleanup_interval"); cleanupInterval > 0 {

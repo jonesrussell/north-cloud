@@ -53,17 +53,31 @@ func (h *LinkHandler) HandleLink(e *colly.HTMLElement) {
 
 	// Save link to database instead of immediately visiting if enabled
 	if h.saveLinks && h.linkRepo != nil {
+		// Get context from crawler state (same pattern as ProcessHTML)
+		ctx := h.crawler.state.Context()
+		if ctx == nil {
+			// Context is nil, crawler has been stopped/reset - abort
+			h.crawler.logger.Debug("Cannot save link - crawler context is nil", "url", absLink)
+			return
+		}
+
 		parentURL := e.Request.URL.String()
-		if err := h.saveLinkToQueue(e.Request.Context(), absLink, parentURL, e.Request.Depth); err != nil {
+		if err := h.saveLinkToQueue(ctx, absLink, parentURL, e.Request.Depth); err != nil {
 			h.crawler.logger.Warn("Failed to save link to queue, falling back to immediate visit",
 				"url", absLink,
 				"error", err)
 			// Fallback to immediate visit if save fails
 			h.visitWithRetries(e, absLink)
 		} else {
-			h.crawler.logger.Debug("Saved link to queue", "url", absLink)
+			h.crawler.logger.Debug("Saved link to queue", "url", absLink, "depth", e.Request.Depth)
 		}
 	} else {
+		// Log why we're not saving (for debugging)
+		if !h.saveLinks {
+			h.crawler.logger.Debug("Link saving disabled, visiting immediately", "url", absLink)
+		} else if h.linkRepo == nil {
+			h.crawler.logger.Debug("Link repository not available, visiting immediately", "url", absLink)
+		}
 		// Original behavior: visit immediately
 		h.visitWithRetries(e, absLink)
 	}

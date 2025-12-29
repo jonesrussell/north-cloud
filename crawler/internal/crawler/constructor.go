@@ -179,6 +179,17 @@ func NewCrawlerWithParams(p CrawlerParams) (*CrawlerResult, error) {
 		// Type assert to *sqlx.DB
 		if db, ok := p.DB.(*sqlx.DB); ok {
 			linkRepo = database.NewQueuedLinkRepository(db)
+			if p.Config.SaveDiscoveredLinks {
+				p.Logger.Info("Queued link saving enabled - discovered links will be saved to database")
+			} else {
+				p.Logger.Debug("Queued link saving disabled - set CRAWLER_SAVE_DISCOVERED_LINKS=true to enable")
+			}
+		} else {
+			p.Logger.Warn("Database connection type assertion failed - queued link saving will be disabled")
+		}
+	} else {
+		if p.Config.SaveDiscoveredLinks {
+			p.Logger.Warn("SaveDiscoveredLinks is enabled but no database connection available - queued link saving will be disabled")
 		}
 	}
 

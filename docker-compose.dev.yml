@@ -43,6 +43,8 @@ services:
       - CRAWLER_MINIO_BUCKET=${CRAWLER_MINIO_BUCKET:-html-archives}
       - CRAWLER_MINIO_METADATA_BUCKET=${CRAWLER_MINIO_METADATA_BUCKET:-crawler-metadata}
       - CRAWLER_MINIO_USE_SSL=${CRAWLER_MINIO_USE_SSL:-false}
+      # Queued links configuration
+      - CRAWLER_SAVE_DISCOVERED_LINKS=${CRAWLER_SAVE_DISCOVERED_LINKS:-true}
       # Auth JWT secret for API authentication
       - AUTH_JWT_SECRET=${AUTH_JWT_SECRET:-}
       # Use /tmp for caches to avoid permission issues with host user

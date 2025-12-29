@@ -29,6 +29,7 @@ services:
       - DB_SSLMODE=disable
       - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
       - CRAWLER_SOURCES_API_URL=http://source-manager:8050/api/v1/sources
+      - CRAWLER_SAVE_DISCOVERED_LINKS=${CRAWLER_SAVE_DISCOVERED_LINKS:-false}
       - APP_ENV=production
       - AUTH_JWT_SECRET=${AUTH_JWT_SECRET}
     # No volume mounts - code is baked into image
