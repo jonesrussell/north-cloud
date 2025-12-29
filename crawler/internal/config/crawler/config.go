@@ -111,13 +111,13 @@ func New(opts ...Option) *Config {
 			MaxVersion:               0, // Use highest supported version
 			PreferServerCipherSuites: true,
 		},
-		MaxRetries:      DefaultMaxRetries,
-		RetryDelay:      DefaultRetryDelay,
-		FollowRedirects: true,
-		MaxRedirects:         DefaultMaxRedirects,
-		ValidateURLs:         true,
+		MaxRetries:          DefaultMaxRetries,
+		RetryDelay:          DefaultRetryDelay,
+		FollowRedirects:     true,
+		MaxRedirects:        DefaultMaxRedirects,
+		ValidateURLs:        true,
 		CleanupInterval:     DefaultCleanupInterval,
-		SaveDiscoveredLinks:  false,
+		SaveDiscoveredLinks: false,
 	}
 
 	for _, opt := range opts {

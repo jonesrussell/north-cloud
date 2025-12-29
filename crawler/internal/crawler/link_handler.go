@@ -15,8 +15,8 @@ import (
 
 // LinkHandler handles link processing for the crawler.
 type LinkHandler struct {
-	crawler  *Crawler
-	linkRepo *database.QueuedLinkRepository
+	crawler   *Crawler
+	linkRepo  *database.QueuedLinkRepository
 	saveLinks bool
 }
 

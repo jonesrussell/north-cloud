@@ -322,4 +322,3 @@ func (r *QueuedLinkRepository) CountPendingBySource(ctx context.Context, sourceI
 
 	return count, nil
 }
-

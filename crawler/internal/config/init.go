@@ -141,12 +141,12 @@ func setDefaults() {
 		"tls": map[string]any{
 			"insecure_skip_verify": false,
 		},
-		"retry_delay":      "5s",
-		"max_retries":      crawler.DefaultMaxRetries,
+		"retry_delay":           "5s",
+		"max_retries":           crawler.DefaultMaxRetries,
 		"follow_redirects":      true,
 		"max_redirects":         crawler.DefaultMaxRedirects,
 		"validate_urls":         true,
-		"cleanup_interval":     crawler.DefaultCleanupInterval.String(),
+		"cleanup_interval":      crawler.DefaultCleanupInterval.String(),
 		"save_discovered_links": false, // Opt-in feature, disabled by default
 	})
 }

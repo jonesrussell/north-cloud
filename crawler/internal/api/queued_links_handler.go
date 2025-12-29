@@ -212,4 +212,3 @@ func (h *QueuedLinksHandler) CreateJobFromLink(c *gin.Context) {
 
 	c.JSON(http.StatusCreated, job)
 }
-
