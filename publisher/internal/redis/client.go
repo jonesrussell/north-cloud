@@ -2,11 +2,16 @@ package redis
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"time"
 
 	"github.com/redis/go-redis/v9"
+)
+
+const (
+	connectionTimeout = 2 * time.Second
 )
 
 // NewClient creates a new Redis client with connection testing
@@ -18,7 +23,7 @@ func NewClient(addr, password string) (*redis.Client, error) {
 	})
 
 	// Test Redis connection with timeout
-	pingCtx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	pingCtx, cancel := context.WithTimeout(context.Background(), connectionTimeout)
 	defer cancel()
 
 	if pingErr := redisClient.Ping(pingCtx).Err(); pingErr != nil {
@@ -32,10 +37,10 @@ func NewClient(addr, password string) (*redis.Client, error) {
 // CheckConnection tests if Redis is reachable
 func CheckConnection(client *redis.Client) (bool, error) {
 	if client == nil {
-		return false, fmt.Errorf("redis client is nil")
+		return false, errors.New("redis client is nil")
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), connectionTimeout)
 	defer cancel()
 
 	err := client.Ping(ctx).Err()

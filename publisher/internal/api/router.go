@@ -93,54 +93,65 @@ func (r *Router) SetupRoutes() *gin.Engine {
 }
 
 const (
-	httpStatusOK = 200
+	httpStatusOK        = 200
+	healthStatusHealthy = "healthy"
+	healthStatusDegraded = "degraded"
+	healthCheckTimeout  = 2 * time.Second
 )
 
 // healthCheck returns the service health status
 func (r *Router) healthCheck(c *gin.Context) {
 	health := gin.H{
-		"status":  "healthy",
+		"status":  healthStatusHealthy,
 		"service": "publisher",
 		"version": "1.0.0",
 	}
 
 	// Check database connection with timeout
-	ctx, cancel := context.WithTimeout(c.Request.Context(), 2*time.Second)
+	ctx, cancel := context.WithTimeout(c.Request.Context(), healthCheckTimeout)
 	defer cancel()
 
 	dbConnected := true
 	if err := r.repo.Ping(ctx); err != nil {
 		dbConnected = false
-		health["status"] = "degraded"
+		health["status"] = healthStatusDegraded
 	}
 	health["database"] = gin.H{
 		"connected": dbConnected,
 	}
 
-	// Check Redis connection (if client is available)
-	if r.redisClient != nil {
-		redisConnected, redisErr := checkRedisConnection(ctx, r.redisClient)
-		redisHealth := gin.H{
-			"connected": redisConnected,
-		}
-		if redisErr != nil {
-			redisHealth["error"] = redisErr.Error()
-			if health["status"] == "healthy" {
-				health["status"] = "degraded"
-			}
-		}
-		health["redis"] = redisHealth
-	} else {
-		health["redis"] = gin.H{
-			"connected": false,
-			"error":     "Redis client not initialized",
-		}
-		if health["status"] == "healthy" {
-			health["status"] = "degraded"
+	// Check Redis connection
+	redisHealth := r.checkRedisHealth(ctx)
+	health["redis"] = redisHealth
+
+	// Update status if Redis is not connected
+	if !redisHealth["connected"].(bool) {
+		if health["status"] == healthStatusHealthy {
+			health["status"] = healthStatusDegraded
 		}
 	}
 
 	c.JSON(httpStatusOK, health)
+}
+
+// checkRedisHealth checks Redis connection and returns health info
+func (r *Router) checkRedisHealth(ctx context.Context) gin.H {
+	if r.redisClient == nil {
+		return gin.H{
+			"connected": false,
+			"error":     "Redis client not initialized",
+		}
+	}
+
+	redisConnected, redisErr := checkRedisConnection(ctx, r.redisClient)
+	redisHealth := gin.H{
+		"connected": redisConnected,
+	}
+	if redisErr != nil {
+		redisHealth["error"] = redisErr.Error()
+	}
+
+	return redisHealth
 }
 
 // checkRedisConnection tests Redis connectivity
