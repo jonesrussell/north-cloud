@@ -1,5 +1,5 @@
 # Development Dockerfile for North Cloud Dashboard
-FROM node:22-alpine
+FROM node:25-alpine
 
 # Build arguments for user/group IDs (passed from docker-compose)
 ARG UID=1000
