@@ -22,7 +22,10 @@
         class="mb-4"
       />
 
-      <div v-else class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div
+        v-else
+        class="grid grid-cols-1 md:grid-cols-2 gap-4"
+      >
         <div class="flex items-center space-x-3">
           <div
             class="flex-shrink-0 w-3 h-3 rounded-full"

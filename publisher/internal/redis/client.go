@@ -45,4 +45,3 @@ func CheckConnection(client *redis.Client) (bool, error) {
 
 	return true, nil
 }
-
