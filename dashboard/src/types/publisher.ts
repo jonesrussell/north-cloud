@@ -133,3 +133,31 @@ export interface StatsOverviewResponse {
 
 export type StatsPeriod = 'today' | 'week' | 'month' | 'all'
 
+export interface HealthStatus {
+  status: 'healthy' | 'degraded' | 'unhealthy'
+  service: string
+  version: string
+  redis?: {
+    connected: boolean
+    error?: string
+  }
+  database?: {
+    connected: boolean
+  }
+}
+
+export interface ActiveChannel {
+  name: string
+  description?: string
+  enabled: boolean
+  has_published: boolean
+  total_published: number
+  last_published_at?: string
+}
+
+export interface ActiveChannelsResponse {
+  channels: ActiveChannel[]
+  count: number
+  note: string
+}
+

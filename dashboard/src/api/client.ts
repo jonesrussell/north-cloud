@@ -16,6 +16,8 @@ import type {
   PublishHistoryListResponse,
   StatsOverviewResponse,
   StatsPeriod,
+  HealthStatus,
+  ActiveChannelsResponse,
 } from '../types/publisher'
 
 // Debug mode - logs all requests and responses
@@ -186,7 +188,8 @@ export const sourcesApi = {
 // Publisher API
 export const publisherApi = {
   // Health check
-  getHealth: () => axios.get('/api/health/publisher'),
+  getHealth: (): Promise<AxiosResponse<HealthStatus>> => publisherClient.get('/health'),
+  health: (): Promise<AxiosResponse<HealthStatus>> => publisherClient.get('/health'),
 
   // Stats
   stats: {
@@ -195,6 +198,8 @@ export const publisherApi = {
     overview: (period: StatsPeriod = 'today'): Promise<AxiosResponse<StatsOverviewResponse>> =>
       publisherClient.get(`/stats/overview?period=${period}`),
     channels: (since?: string) => publisherClient.get(`/stats/channels${since ? `?since=${since}` : ''}`),
+    activeChannels: (): Promise<AxiosResponse<ActiveChannelsResponse>> =>
+      publisherClient.get('/stats/channels/active'),
     routes: () => publisherClient.get('/stats/routes'),
   },
 
