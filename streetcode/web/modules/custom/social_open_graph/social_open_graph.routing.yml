@@ -1,7 +1,0 @@
-social_open_graph.generate:
-  path: '/api/social-open-graph/generate'
-  defaults:
-    _controller: '\Drupal\social_open_graph\Controller\SocialOpenGraphController::generateEmbed'
-    _title: 'Generate open graph embed'
-  requirements:
-    _permission: 'generate social open graph content'
