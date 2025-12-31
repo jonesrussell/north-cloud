@@ -48,7 +48,7 @@ const crawlerClient: AxiosInstance = axios.create({
 
 const sourcesClient: AxiosInstance = axios.create({
   baseURL: '/api/sources',
-  timeout: 10000,
+  timeout: 30000, // Increased to 30s to handle slow database operations
   headers: {
     'Content-Type': 'application/json',
   },
