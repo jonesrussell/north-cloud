@@ -27,14 +27,9 @@ func getCORSOrigins() []string {
 
 	// Default origins - include dashboard frontend
 	origins := []string{
-		"http://localhost:3000", // Dashboard frontend
+		"http://localhost:3000", // Legacy dashboard frontend
 		"http://localhost:3001", // Crawler frontend
-	}
-
-	// If PUBLISHER_PORT is set, extract host and add frontend origin
-	if apiURL := os.Getenv("PUBLISHER_PORT"); apiURL != "" {
-		// For localhost, add common frontend ports
-		origins = append(origins, "http://localhost:3000", "http://localhost:3001")
+		"http://localhost:3002", // Unified dashboard frontend
 	}
 
 	return origins

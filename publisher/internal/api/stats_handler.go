@@ -331,3 +331,22 @@ func (r *Router) getRecentArticles(c *gin.Context) {
 		"count":    len(articles),
 	})
 }
+
+// clearAllPublishHistory deletes all publish history entries
+// DELETE /api/v1/publish-history
+func (r *Router) clearAllPublishHistory(c *gin.Context) {
+	ctx := c.Request.Context()
+
+	count, err := r.repo.DeleteAllPublishHistory(ctx)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "Failed to clear publish history",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Publish history cleared successfully",
+		"deleted": count,
+	})
+}

@@ -81,6 +81,7 @@ func (r *Router) SetupRoutes() *gin.Engine {
 	history := v1.Group("/publish-history")
 	history.GET("", r.listPublishHistory)
 	history.GET("/:article_id", r.getPublishHistoryByArticle)
+	history.DELETE("", r.clearAllPublishHistory)
 
 	// Stats
 	stats := v1.Group("/stats")
