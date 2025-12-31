@@ -32,6 +32,12 @@ func (r *ExecutionRepository) Create(ctx context.Context, execution *domain.JobE
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 	`
 
+	// Convert Metadata to pointer for driver.Valuer interface
+	var metadataPtr *domain.JSONBMap
+	if execution.Metadata != nil {
+		metadataPtr = &execution.Metadata
+	}
+
 	_, err := r.db.ExecContext(
 		ctx,
 		query,
@@ -43,7 +49,7 @@ func (r *ExecutionRepository) Create(ctx context.Context, execution *domain.JobE
 		execution.ItemsCrawled,
 		execution.ItemsIndexed,
 		execution.RetryAttempt,
-		execution.Metadata,
+		metadataPtr,
 	)
 
 	if err != nil {
@@ -95,6 +101,12 @@ func (r *ExecutionRepository) Update(ctx context.Context, execution *domain.JobE
 		WHERE id = $11
 	`
 
+	// Convert Metadata to pointer for driver.Valuer interface
+	var metadataPtr *domain.JSONBMap
+	if execution.Metadata != nil {
+		metadataPtr = &execution.Metadata
+	}
+
 	result, err := r.db.ExecContext(
 		ctx,
 		query,
@@ -107,7 +119,7 @@ func (r *ExecutionRepository) Update(ctx context.Context, execution *domain.JobE
 		execution.StackTrace,
 		execution.CPUTimeMs,
 		execution.MemoryPeakMB,
-		execution.Metadata,
+		metadataPtr,
 		execution.ID,
 	)
 

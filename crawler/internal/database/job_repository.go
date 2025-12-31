@@ -36,6 +36,12 @@ func (r *JobRepository) Create(ctx context.Context, job *domain.Job) error {
 		RETURNING created_at, updated_at, next_run_at
 	`
 
+	// Convert Metadata to pointer for driver.Valuer interface
+	var metadataPtr *domain.JSONBMap
+	if job.Metadata != nil {
+		metadataPtr = &job.Metadata
+	}
+
 	err := r.db.QueryRowContext(
 		ctx,
 		query,
@@ -51,7 +57,7 @@ func (r *JobRepository) Create(ctx context.Context, job *domain.Job) error {
 		job.MaxRetries,
 		job.RetryBackoffSeconds,
 		job.Status,
-		job.Metadata,
+		metadataPtr,
 	).Scan(&job.CreatedAt, &job.UpdatedAt, &job.NextRunAt)
 
 	if err != nil {
@@ -155,6 +161,12 @@ func (r *JobRepository) Update(ctx context.Context, job *domain.Job) error {
 		WHERE id = $22
 	`
 
+	// Convert Metadata to pointer for driver.Valuer interface
+	var metadataPtr *domain.JSONBMap
+	if job.Metadata != nil {
+		metadataPtr = &job.Metadata
+	}
+
 	result, err := r.db.ExecContext(
 		ctx,
 		query,
@@ -178,7 +190,7 @@ func (r *JobRepository) Update(ctx context.Context, job *domain.Job) error {
 		job.PausedAt,
 		job.CancelledAt,
 		job.ErrorMessage,
-		job.Metadata,
+		metadataPtr,
 		job.ID,
 	)
 
