@@ -63,12 +63,28 @@ export default defineConfig({
         target: CRAWLER_API_URL,
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api\/crawler/, '/api/v1'),
+        configure: (proxy, _options) => {
+          proxy.on('proxyReq', (proxyReq, req, _res) => {
+            // Forward Authorization header if present
+            if (req.headers.authorization) {
+              proxyReq.setHeader('Authorization', req.headers.authorization)
+            }
+          })
+        },
       },
       // Source Manager API proxy
       '/api/sources': {
         target: SOURCES_API_URL,
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api\/sources/, '/api/v1/sources'),
+        configure: (proxy, _options) => {
+          proxy.on('proxyReq', (proxyReq, req, _res) => {
+            // Forward Authorization header if present
+            if (req.headers.authorization) {
+              proxyReq.setHeader('Authorization', req.headers.authorization)
+            }
+          })
+        },
       },
       // Source Manager cities endpoint (separate from sources)
       '/api/cities': {
@@ -93,6 +109,15 @@ export default defineConfig({
         target: PUBLISHER_API_URL,
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api\/publisher/, '/api/v1'),
+        configure: (proxy, _options) => {
+          proxy.on('proxyReq', (proxyReq, req) => {
+            // Explicitly forward Authorization header
+            const authHeader = req.headers.authorization
+            if (authHeader) {
+              proxyReq.setHeader('Authorization', authHeader)
+            }
+          })
+        },
       },
       // Publisher health endpoint (alternative path)
       '/api/health/publisher': {
@@ -105,6 +130,14 @@ export default defineConfig({
         target: CLASSIFIER_API_URL,
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api\/classifier/, '/api/v1'),
+        configure: (proxy, _options) => {
+          proxy.on('proxyReq', (proxyReq, req, _res) => {
+            // Forward Authorization header if present
+            if (req.headers.authorization) {
+              proxyReq.setHeader('Authorization', req.headers.authorization)
+            }
+          })
+        },
       },
       // Classifier health endpoint
       '/api/health/classifier': {
