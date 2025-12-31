@@ -82,13 +82,19 @@ export default defineConfig({
         changeOrigin: true,
         rewrite: () => '/health',
       },
+      // Publisher health endpoint (must come before general /api/publisher route)
+      '/api/publisher/health': {
+        target: PUBLISHER_API_URL,
+        changeOrigin: true,
+        rewrite: () => '/health',
+      },
       // Publisher API proxy
       '/api/publisher': {
         target: PUBLISHER_API_URL,
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api\/publisher/, '/api/v1'),
       },
-      // Publisher health endpoint
+      // Publisher health endpoint (alternative path)
       '/api/health/publisher': {
         target: PUBLISHER_API_URL,
         changeOrigin: true,

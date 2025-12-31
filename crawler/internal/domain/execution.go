@@ -35,7 +35,7 @@ type JobExecution struct {
 	RetryAttempt int `json:"retry_attempt" db:"retry_attempt"` // 0 = first try, 1+ = retry
 
 	// Metadata
-	Metadata map[string]any `json:"metadata,omitempty" db:"metadata"`
+	Metadata JSONBMap `json:"metadata,omitempty" db:"metadata"`
 }
 
 // JobStats represents aggregate statistics for a job.

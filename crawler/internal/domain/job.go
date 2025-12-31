@@ -44,8 +44,8 @@ type Job struct {
 	CancelledAt *time.Time `json:"cancelled_at,omitempty" db:"cancelled_at"`
 
 	// Metadata
-	ErrorMessage *string        `json:"error_message,omitempty" db:"error_message"`
-	Metadata     map[string]any `json:"metadata,omitempty" db:"metadata"`
+	ErrorMessage *string  `json:"error_message,omitempty" db:"error_message"`
+	Metadata     JSONBMap `json:"metadata,omitempty" db:"metadata"`
 }
 
 // Item represents a crawled item from a job.
