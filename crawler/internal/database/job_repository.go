@@ -254,7 +254,9 @@ func (r *JobRepository) Count(ctx context.Context, status string) (int, error) {
 }
 
 // GetJobsReadyToRun retrieves all jobs that are ready to be executed.
-// Returns jobs where next_run_at is in the past and not paused.
+// Returns jobs where:
+//   - next_run_at is in the past (for scheduled jobs), OR
+//   - schedule_enabled = false and status = 'pending' (for immediate jobs)
 func (r *JobRepository) GetJobsReadyToRun(ctx context.Context) ([]*domain.Job, error) {
 	var jobs []*domain.Job
 	query := `
@@ -268,12 +270,22 @@ func (r *JobRepository) GetJobsReadyToRun(ctx context.Context) ([]*domain.Job, e
 		       paused_at, cancelled_at,
 		       error_message, metadata
 		FROM jobs
-		WHERE next_run_at IS NOT NULL
-		  AND next_run_at <= NOW()
-		  AND is_paused = false
+		WHERE is_paused = false
 		  AND status IN ('pending', 'scheduled')
 		  AND lock_token IS NULL
-		ORDER BY next_run_at ASC
+		  AND (
+		      -- Scheduled jobs: next_run_at is in the past
+		      (next_run_at IS NOT NULL AND next_run_at <= NOW())
+		      OR
+		      -- Immediate jobs: no schedule, ready to run immediately
+		      (schedule_enabled = false AND next_run_at IS NULL AND status = 'pending')
+		  )
+		ORDER BY 
+		  CASE 
+		    WHEN schedule_enabled = false THEN 0  -- Immediate jobs first
+		    ELSE 1
+		  END,
+		  next_run_at ASC NULLS LAST
 		LIMIT 100
 	`
 
