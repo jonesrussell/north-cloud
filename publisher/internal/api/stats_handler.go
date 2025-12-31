@@ -2,6 +2,7 @@ package api
 
 import (
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -272,5 +273,61 @@ func (r *Router) getPublishHistoryByArticle(c *gin.Context) {
 		"article_id": articleID,
 		"history":    history,
 		"count":      len(history),
+	})
+}
+
+// getRecentArticles returns recent published articles
+// GET /api/v1/articles/recent?limit=50
+func (r *Router) getRecentArticles(c *gin.Context) {
+	ctx := c.Request.Context()
+
+	// Parse limit parameter
+	limitStr := c.DefaultQuery("limit", "50")
+	limit, err := strconv.Atoi(limitStr)
+	if err != nil || limit <= 0 {
+		limit = 50
+	}
+	const maxLimit = 100
+	if limit > maxLimit {
+		limit = maxLimit
+	}
+
+	// Use publish history to get recent articles
+	filter := &models.PublishHistoryFilter{
+		Limit:  limit,
+		Offset: 0,
+	}
+
+	history, err := r.repo.ListPublishHistory(ctx, filter)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "Failed to get recent articles",
+		})
+		return
+	}
+
+	// Transform publish_history to match frontend expectations
+	articles := make([]gin.H, 0, len(history))
+	for i := range history {
+		articles = append(articles, gin.H{
+			"id":        history[i].ID,
+			"title":     history[i].ArticleTitle,
+			"url":       history[i].ArticleURL,
+			"city":      "", // Publish history doesn't have city - could extract from channel if needed
+			"posted_at": history[i].PublishedAt,
+			// Include additional fields for compatibility
+			"article_id":    history[i].ArticleID,
+			"article_title": history[i].ArticleTitle,
+			"article_url":   history[i].ArticleURL,
+			"channel_name":  history[i].ChannelName,
+			"published_at":  history[i].PublishedAt,
+			"quality_score": history[i].QualityScore,
+			"topics":        history[i].Topics,
+		})
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"articles": articles,
+		"count":    len(articles),
 	})
 }

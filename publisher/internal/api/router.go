@@ -89,6 +89,10 @@ func (r *Router) SetupRoutes() *gin.Engine {
 	stats.GET("/channels/active", r.getActiveChannels)
 	stats.GET("/routes", r.getRouteStats)
 
+	// Articles
+	articles := v1.Group("/articles")
+	articles.GET("/recent", r.getRecentArticles)
+
 	return router
 }
 
