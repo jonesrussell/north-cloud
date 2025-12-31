@@ -288,3 +288,17 @@ func (r *Repository) GetChannelStats(ctx context.Context) (map[string]struct {
 
 	return stats, nil
 }
+
+// DeleteAllPublishHistory deletes all publish history entries
+func (r *Repository) DeleteAllPublishHistory(ctx context.Context) (int64, error) {
+	query := `DELETE FROM publish_history`
+	result, err := r.db.ExecContext(ctx, query)
+	if err != nil {
+		return 0, fmt.Errorf("failed to delete all publish history: %w", err)
+	}
+	count, err := result.RowsAffected()
+	if err != nil {
+		return 0, fmt.Errorf("failed to get rows affected: %w", err)
+	}
+	return count, nil
+}

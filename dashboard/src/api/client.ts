@@ -260,6 +260,8 @@ export const publisherApi = {
     },
     getByArticle: (articleId: string): Promise<AxiosResponse<{ history: PublishHistoryItem[] }>> =>
       publisherClient.get(`/publish-history/${articleId}`),
+    clearAll: (): Promise<AxiosResponse<{ message: string; deleted: number }>> =>
+      publisherClient.delete('/publish-history'),
   },
 }
 

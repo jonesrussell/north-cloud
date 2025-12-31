@@ -110,11 +110,15 @@ export default defineConfig({
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api\/publisher/, '/api/v1'),
         configure: (proxy, _options) => {
-          proxy.on('proxyReq', (proxyReq, req) => {
-            // Explicitly forward Authorization header
-            const authHeader = req.headers.authorization
+          proxy.on('proxyReq', (proxyReq, req, _res) => {
+            // Explicitly forward Authorization header (case-insensitive)
+            const authHeader = req.headers.authorization || req.headers.Authorization
             if (authHeader) {
               proxyReq.setHeader('Authorization', authHeader)
+            }
+            // Also ensure other important headers are forwarded
+            if (req.headers['content-type']) {
+              proxyReq.setHeader('Content-Type', req.headers['content-type'])
             }
           })
         },
