@@ -67,7 +67,7 @@ services:
       - north-cloud-network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:8080/health"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -128,7 +128,7 @@ services:
       - north-cloud-network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8050/health"]
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:8050/health"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -318,7 +318,7 @@ services:
       - north-cloud-network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8090/health"]
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:8090/health"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -527,7 +527,7 @@ services:
       - north-cloud-network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8070/health"]
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:8070/health"]
       interval: 30s
       timeout: 10s
       retries: 3

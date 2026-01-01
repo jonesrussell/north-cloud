@@ -31,6 +31,36 @@ The dashboard was experiencing frequent timeouts and requiring container restart
 
 ## Implemented Solutions
 
+### Critical Fix: Health Check Command (URGENT) ✅
+
+**Problem Discovered**: Several services using `wget --spider` for health checks were failing despite being fully operational.
+
+**Root Cause**: Go services return JSON responses (`application/json`) from `/health` endpoints. The `wget --spider` command only checks HTTP headers and fails on certain JSON responses, causing false "unhealthy" status.
+
+**Services Affected**:
+- ✅ crawler (returns `{"status":"ok"}`)
+- ✅ source-manager (returns `{"status":"ok"}`)
+- ✅ publisher-api (returns complex JSON with database/redis status)
+- ✅ search-service (returns JSON with elasticsearch dependency status)
+
+**Solution**: Changed health check command from `wget --spider` to `wget -q -O /dev/null`:
+
+```yaml
+# OLD (fails on JSON responses):
+test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8070/health"]
+
+# NEW (works reliably with JSON):
+test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:8070/health"]
+```
+
+**Explanation**:
+- `-q` = quiet mode (no output)
+- `-O /dev/null` = discard response body (we only need HTTP status code)
+- Actually downloads and validates the response (not just headers)
+- Returns exit code 0 on HTTP 200, non-zero on errors
+
+**Impact**: All 4 services now pass health checks correctly and show `(healthy)` status.
+
 ### Phase 1: Critical Reliability Fixes ✅
 
 #### 1.1 Added Dashboard Health Check
