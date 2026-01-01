@@ -12,6 +12,7 @@ import {
   StarIcon,
   MapPinIcon,
   LinkIcon,
+  ServerStackIcon,
 } from '@heroicons/vue/24/outline'
 
 export interface NavigationItem {
@@ -170,11 +171,27 @@ export const navigationSections: NavigationSection[] = [
     ],
   },
   {
+    id: 'indexes',
+    label: 'Indexes',
+    icon: ServerStackIcon,
+    description: 'Elasticsearch index management and monitoring',
+    order: 6,
+    items: [
+      {
+        label: 'Manage Indexes',
+        path: '/indexes',
+        icon: ServerStackIcon,
+        description: 'View and manage Elasticsearch indexes',
+        exact: true,
+      },
+    ],
+  },
+  {
     id: 'analytics',
     label: 'Analytics',
     icon: ChartBarIcon,
     description: 'Consolidated statistics and metrics across all services',
-    order: 6,
+    order: 7,
     items: [
       {
         label: 'System Analytics',

@@ -20,6 +20,16 @@ import type {
   ActiveChannelsResponse,
   RecentArticlesResponse,
 } from '../types/publisher'
+import type {
+  Index,
+  CreateIndexRequest,
+  CreateSourceIndexesRequest,
+  ListIndexesResponse,
+  GetIndexResponse,
+  IndexHealthResponse,
+  CreateSourceIndexesResponse,
+  IndexStats,
+} from '../types/indexManager'
 
 // Debug mode - logs all requests and responses
 const DEBUG = import.meta.env.DEV
@@ -71,6 +81,14 @@ const classifierClient: AxiosInstance = axios.create({
   },
 })
 
+const indexManagerClient: AxiosInstance = axios.create({
+  baseURL: '/api/index-manager',
+  timeout: 10000,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+})
+
 // Add auth interceptor to all clients
 const addAuthInterceptor = (client: AxiosInstance): void => {
   // Request interceptor: Add token to headers
@@ -104,6 +122,7 @@ addAuthInterceptor(crawlerClient)
 addAuthInterceptor(sourcesClient)
 addAuthInterceptor(publisherClient)
 addAuthInterceptor(classifierClient)
+addAuthInterceptor(indexManagerClient)
 
 // Request/response interceptors for debugging
 const addInterceptors = (client: AxiosInstance, serviceName: string): void => {
@@ -136,6 +155,7 @@ addInterceptors(crawlerClient, 'Crawler')
 addInterceptors(sourcesClient, 'Sources')
 addInterceptors(publisherClient, 'Publisher')
 addInterceptors(classifierClient, 'Classifier')
+addInterceptors(indexManagerClient, 'IndexManager')
 
 // Crawler API
 export const crawlerApi = {
@@ -315,10 +335,49 @@ export const classifierApi = {
   },
 }
 
+// Index Manager API
+export const indexManagerApi = {
+  // Health check
+  getHealth: (): Promise<AxiosResponse<HealthStatus>> => indexManagerClient.get('/health'),
+
+  // Index operations
+  indexes: {
+    list: (params?: { type?: string; source?: string }): Promise<AxiosResponse<ListIndexesResponse>> =>
+      indexManagerClient.get('/api/v1/indexes', { params }),
+    get: (indexName: string): Promise<AxiosResponse<GetIndexResponse>> =>
+      indexManagerClient.get(`/api/v1/indexes/${indexName}`),
+    create: (data: CreateIndexRequest): Promise<AxiosResponse<{ index: Index }>> =>
+      indexManagerClient.post('/api/v1/indexes', data),
+    delete: (indexName: string): Promise<AxiosResponse<void>> =>
+      indexManagerClient.delete(`/api/v1/indexes/${indexName}`),
+    getHealth: (indexName: string): Promise<AxiosResponse<IndexHealthResponse>> =>
+      indexManagerClient.get(`/api/v1/indexes/${indexName}/health`),
+  },
+
+  // Source operations
+  sources: {
+    createIndexes: (
+      sourceName: string,
+      data?: CreateSourceIndexesRequest
+    ): Promise<AxiosResponse<CreateSourceIndexesResponse>> =>
+      indexManagerClient.post(`/api/v1/sources/${sourceName}/indexes`, data),
+    listIndexes: (sourceName: string): Promise<AxiosResponse<ListIndexesResponse>> =>
+      indexManagerClient.get(`/api/v1/sources/${sourceName}/indexes`),
+    deleteIndexes: (sourceName: string): Promise<AxiosResponse<void>> =>
+      indexManagerClient.delete(`/api/v1/sources/${sourceName}/indexes`),
+  },
+
+  // Stats
+  stats: {
+    get: (): Promise<AxiosResponse<IndexStats>> => indexManagerClient.get('/api/v1/stats'),
+  },
+}
+
 export default {
   crawler: crawlerApi,
   sources: sourcesApi,
   publisher: publisherApi,
   classifier: classifierApi,
+  indexManager: indexManagerApi,
 }
 

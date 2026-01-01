@@ -45,6 +45,11 @@ const statusConfig = {
   enabled: { bg: 'bg-green-100', text: 'text-green-800', dot: 'bg-green-400', label: 'Enabled' },
   disabled: { bg: 'bg-gray-100', text: 'text-gray-800', dot: 'bg-gray-400', label: 'Disabled' },
 
+  // Elasticsearch health statuses
+  green: { bg: 'bg-green-100', text: 'text-green-800', dot: 'bg-green-400', label: 'Green' },
+  yellow: { bg: 'bg-yellow-100', text: 'text-yellow-800', dot: 'bg-yellow-400', label: 'Yellow' },
+  red: { bg: 'bg-red-100', text: 'text-red-800', dot: 'bg-red-400', label: 'Red' },
+
   // Generic statuses
   active: { bg: 'bg-green-100', text: 'text-green-800', dot: 'bg-green-400', label: 'Active' },
   inactive: { bg: 'bg-gray-100', text: 'text-gray-800', dot: 'bg-gray-400', label: 'Inactive' },

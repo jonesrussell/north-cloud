@@ -20,6 +20,9 @@ import SourcesListView from '../views/sources/ListView.vue'
 import SourcesFormView from '../views/sources/FormView.vue'
 import CitiesView from '../views/sources/CitiesView.vue'
 
+// Indexes views
+import IndexesView from '../views/indexes/IndexesView.vue'
+
 // Classifier views
 import ClassifierRulesView from '../views/classifier/RulesView.vue'
 import ClassifierSourceReputationView from '../views/classifier/SourceReputationView.vue'
@@ -160,6 +163,14 @@ const routes: RouteRecordRaw[] = [
     name: 'cities',
     component: CitiesView,
     meta: { title: 'Cities', section: 'sources', requiresAuth: true },
+  },
+
+  // Indexes routes
+  {
+    path: '/indexes',
+    name: 'indexes',
+    component: IndexesView,
+    meta: { title: 'Elasticsearch Indexes', section: 'indexes', requiresAuth: true },
   },
 
   // Classifier routes
