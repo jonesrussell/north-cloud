@@ -66,6 +66,12 @@ services:
     networks:
       - north-cloud-network
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
     # Development resource limits (generous but prevent runaway processes)
     deploy:
       resources:
@@ -121,6 +127,12 @@ services:
     networks:
       - north-cloud-network
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:8050/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
     # Development resource limits
     deploy:
       resources:
@@ -192,6 +204,12 @@ services:
     networks:
       - north-cloud-network
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8070/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 25s
     # Development resource limits
     deploy:
       resources:
@@ -299,6 +317,12 @@ services:
     networks:
       - north-cloud-network
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:8090/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
     # Development resource limits
     deploy:
       resources:
@@ -343,10 +367,16 @@ services:
     # Run as host user to avoid permission issues with mounted volumes
     user: "${UID:-1000}:${GID:-1000}"
     depends_on:
-      - crawler
-      - source-manager
-      - publisher-api
-      - classifier
+      crawler:
+        condition: service_healthy
+      source-manager:
+        condition: service_healthy
+      publisher-api:
+        condition: service_healthy
+      classifier:
+        condition: service_healthy
+      auth:
+        condition: service_healthy
     ports:
       - "${DASHBOARD_PORT:-3002}:3002"
     environment:
@@ -367,11 +397,17 @@ services:
     networks:
       - north-cloud-network
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3002"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
     deploy:
       resources:
         limits:
-          cpus: '1'
-          memory: 512M
+          cpus: '1.5'
+          memory: 1G
 
   # Search Frontend - Development
   search-frontend:
@@ -462,6 +498,8 @@ services:
       - POSTGRES_PUBLISHER_SSLMODE=disable
       - PUBLISHER_PORT=8070
       - AUTH_JWT_SECRET=${AUTH_JWT_SECRET:-}
+      - REDIS_ADDR=${REDIS_ADDR:-redis:6379}
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-}
       - GIN_MODE=debug
       - APP_DEBUG=true
       # Use /tmp for caches to avoid permission issues with host user
@@ -488,6 +526,12 @@ services:
     networks:
       - north-cloud-network
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:8070/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 25s
     # Development resource limits
     deploy:
       resources:
@@ -569,6 +613,12 @@ services:
     networks:
       - north-cloud-network
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
     # Development resource limits
     deploy:
       resources:

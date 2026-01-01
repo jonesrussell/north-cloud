@@ -2,6 +2,7 @@ package api
 
 import (
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -157,6 +158,60 @@ func (r *Router) getRouteStats(c *gin.Context) {
 	})
 }
 
+// getActiveChannels returns channels with their publish activity
+// GET /api/v1/stats/channels/active
+func (r *Router) getActiveChannels(c *gin.Context) {
+	ctx := c.Request.Context()
+
+	// Get all channels
+	channels, err := r.repo.ListChannels(ctx, false)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "Failed to list channels",
+		})
+		return
+	}
+
+	// Get channel stats (publish counts and last published dates)
+	channelStats, statsErr := r.repo.GetChannelStats(ctx)
+	if statsErr != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "Failed to get channel stats",
+		})
+		return
+	}
+
+	// Build response
+	activeChannels := make([]gin.H, 0, len(channels))
+	for i := range channels {
+		stats, hasStats := channelStats[channels[i].Name]
+
+		channelInfo := gin.H{
+			"name":          channels[i].Name,
+			"description":   channels[i].Description,
+			"enabled":       channels[i].Enabled,
+			"has_published": hasStats,
+		}
+
+		if hasStats {
+			channelInfo["total_published"] = stats.TotalPublished
+			if stats.LastPublished != nil {
+				channelInfo["last_published_at"] = stats.LastPublished.Format(time.RFC3339)
+			}
+		} else {
+			channelInfo["total_published"] = 0
+		}
+
+		activeChannels = append(activeChannels, channelInfo)
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"channels": activeChannels,
+		"count":    len(activeChannels),
+		"note":     "Redis pub/sub doesn't track active subscribers. This shows channels that have received published articles.",
+	})
+}
+
 // listPublishHistory returns publish history with optional filters
 // GET /api/v1/publish-history?channel_name=articles:crime&limit=100&offset=0
 func (r *Router) listPublishHistory(c *gin.Context) {
@@ -218,5 +273,80 @@ func (r *Router) getPublishHistoryByArticle(c *gin.Context) {
 		"article_id": articleID,
 		"history":    history,
 		"count":      len(history),
+	})
+}
+
+// getRecentArticles returns recent published articles
+// GET /api/v1/articles/recent?limit=50
+func (r *Router) getRecentArticles(c *gin.Context) {
+	ctx := c.Request.Context()
+
+	// Parse limit parameter
+	limitStr := c.DefaultQuery("limit", "50")
+	limit, err := strconv.Atoi(limitStr)
+	if err != nil || limit <= 0 {
+		limit = 50
+	}
+	const maxLimit = 100
+	if limit > maxLimit {
+		limit = maxLimit
+	}
+
+	// Use publish history to get recent articles
+	filter := &models.PublishHistoryFilter{
+		Limit:  limit,
+		Offset: 0,
+	}
+
+	history, err := r.repo.ListPublishHistory(ctx, filter)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "Failed to get recent articles",
+		})
+		return
+	}
+
+	// Transform publish_history to match frontend expectations
+	articles := make([]gin.H, 0, len(history))
+	for i := range history {
+		articles = append(articles, gin.H{
+			"id":        history[i].ID,
+			"title":     history[i].ArticleTitle,
+			"url":       history[i].ArticleURL,
+			"city":      "", // Publish history doesn't have city - could extract from channel if needed
+			"posted_at": history[i].PublishedAt,
+			// Include additional fields for compatibility
+			"article_id":    history[i].ArticleID,
+			"article_title": history[i].ArticleTitle,
+			"article_url":   history[i].ArticleURL,
+			"channel_name":  history[i].ChannelName,
+			"published_at":  history[i].PublishedAt,
+			"quality_score": history[i].QualityScore,
+			"topics":        history[i].Topics,
+		})
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"articles": articles,
+		"count":    len(articles),
+	})
+}
+
+// clearAllPublishHistory deletes all publish history entries
+// DELETE /api/v1/publish-history
+func (r *Router) clearAllPublishHistory(c *gin.Context) {
+	ctx := c.Request.Context()
+
+	count, err := r.repo.DeleteAllPublishHistory(ctx)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "Failed to clear publish history",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Publish history cleared successfully",
+		"deleted": count,
 	})
 }

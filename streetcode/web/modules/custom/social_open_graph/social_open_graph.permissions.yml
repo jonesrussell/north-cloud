@@ -1,7 +1,0 @@
-administer social open graph settings:
-  title: 'Change the site-wide open graph consent settings'
-  description: 'Access to the Open Graph consent settings form'
-
-generate social open graph content:
-  title: 'Generating open graph content '
-  description: 'Access to endpoint which return open graph content on click of consent button'

@@ -62,60 +62,125 @@ export default defineConfig({
       '/api/crawler': {
         target: CRAWLER_API_URL,
         changeOrigin: true,
+        timeout: 30000, // 30 seconds
+        proxyTimeout: 30000,
         rewrite: (path) => path.replace(/^\/api\/crawler/, '/api/v1'),
+        configure: (proxy, _options) => {
+          proxy.on('proxyReq', (proxyReq, req, _res) => {
+            // Forward Authorization header if present
+            if (req.headers.authorization) {
+              proxyReq.setHeader('Authorization', req.headers.authorization)
+            }
+          })
+        },
       },
       // Source Manager API proxy
       '/api/sources': {
         target: SOURCES_API_URL,
         changeOrigin: true,
+        timeout: 30000, // 30 seconds
+        proxyTimeout: 30000,
         rewrite: (path) => path.replace(/^\/api\/sources/, '/api/v1/sources'),
+        configure: (proxy, _options) => {
+          proxy.on('proxyReq', (proxyReq, req, _res) => {
+            // Forward Authorization header if present
+            if (req.headers.authorization) {
+              proxyReq.setHeader('Authorization', req.headers.authorization)
+            }
+          })
+        },
       },
       // Source Manager cities endpoint (separate from sources)
       '/api/cities': {
         target: SOURCES_API_URL,
         changeOrigin: true,
+        timeout: 30000, // 30 seconds
+        proxyTimeout: 30000,
         rewrite: (path) => path.replace(/^\/api\/cities/, '/api/v1/cities'),
       },
       // Crawler health endpoint
       '/api/health/crawler': {
         target: CRAWLER_API_URL,
         changeOrigin: true,
+        timeout: 10000, // Health checks should be fast
+        proxyTimeout: 10000,
+        rewrite: () => '/health',
+      },
+      // Publisher health endpoint (must come before general /api/publisher route)
+      '/api/publisher/health': {
+        target: PUBLISHER_API_URL,
+        changeOrigin: true,
+        timeout: 10000, // Health checks should be fast
+        proxyTimeout: 10000,
         rewrite: () => '/health',
       },
       // Publisher API proxy
       '/api/publisher': {
         target: PUBLISHER_API_URL,
         changeOrigin: true,
+        timeout: 30000, // 30 seconds
+        proxyTimeout: 30000,
         rewrite: (path) => path.replace(/^\/api\/publisher/, '/api/v1'),
+        configure: (proxy, _options) => {
+          proxy.on('proxyReq', (proxyReq, req, _res) => {
+            // Explicitly forward Authorization header (case-insensitive)
+            const authHeader = req.headers.authorization || req.headers.Authorization
+            if (authHeader) {
+              proxyReq.setHeader('Authorization', authHeader)
+            }
+            // Also ensure other important headers are forwarded
+            if (req.headers['content-type']) {
+              proxyReq.setHeader('Content-Type', req.headers['content-type'])
+            }
+          })
+        },
       },
-      // Publisher health endpoint
+      // Publisher health endpoint (alternative path)
       '/api/health/publisher': {
         target: PUBLISHER_API_URL,
         changeOrigin: true,
+        timeout: 10000, // Health checks should be fast
+        proxyTimeout: 10000,
         rewrite: () => '/health',
       },
       // Classifier API proxy
       '/api/classifier': {
         target: CLASSIFIER_API_URL,
         changeOrigin: true,
+        timeout: 30000, // 30 seconds
+        proxyTimeout: 30000,
         rewrite: (path) => path.replace(/^\/api\/classifier/, '/api/v1'),
+        configure: (proxy, _options) => {
+          proxy.on('proxyReq', (proxyReq, req, _res) => {
+            // Forward Authorization header if present
+            if (req.headers.authorization) {
+              proxyReq.setHeader('Authorization', req.headers.authorization)
+            }
+          })
+        },
       },
       // Classifier health endpoint
       '/api/health/classifier': {
         target: CLASSIFIER_API_URL,
         changeOrigin: true,
+        timeout: 10000, // Health checks should be fast
+        proxyTimeout: 10000,
         rewrite: () => '/health',
       },
       // Auth API proxy - /api/v1/auth route (matches nginx production config)
       '/api/v1/auth': {
         target: AUTH_API_URL,
         changeOrigin: true,
+        timeout: 15000, // Auth should be fast
+        proxyTimeout: 15000,
         rewrite: (path) => path, // Pass path as-is since auth service expects /api/v1/auth/login
       },
       // Auth API proxy - legacy /api/auth path (strips prefix like nginx)
       '/api/auth': {
         target: AUTH_API_URL,
         changeOrigin: true,
+        timeout: 15000, // Auth should be fast
+        proxyTimeout: 15000,
         rewrite: (path) => path.replace(/^\/api\/auth/, ''),
       },
     },

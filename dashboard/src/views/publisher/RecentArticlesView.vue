@@ -42,6 +42,14 @@
                 <option :value="100">100</option>
               </select>
             </label>
+            <button
+              type="button"
+              :disabled="clearing || articles.length === 0"
+              class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:bg-gray-400 disabled:cursor-not-allowed"
+              @click="clearAllHistory"
+            >
+              {{ clearing ? 'Clearing...' : 'Clear All' }}
+            </button>
           </div>
         </div>
 
@@ -123,13 +131,15 @@ import {
 } from '@heroicons/vue/24/outline'
 import { publisherApi } from '../../api/client'
 import { PageHeader, LoadingSpinner, ErrorAlert, StatusBadge } from '../../components/common'
+import type { RecentArticle } from '../../types/publisher'
 
 const loading = ref(true)
-const error = ref(null)
-const articles = ref([])
+const error = ref<string | null>(null)
+const articles = ref<RecentArticle[]>([])
 const limit = ref(50)
+const clearing = ref(false)
 
-const formatDate = (dateString) => {
+const formatDate = (dateString: string | undefined): string => {
   if (!dateString) return 'N/A'
   try {
     const date = new Date(dateString)
@@ -163,6 +173,27 @@ const loadArticles = async () => {
     articles.value = []
   } finally {
     loading.value = false
+  }
+}
+
+const clearAllHistory = async () => {
+  if (!confirm('Are you sure you want to clear all publish history? This action cannot be undone.')) {
+    return
+  }
+
+  try {
+    clearing.value = true
+    error.value = null
+
+    await publisherApi.history.clearAll()
+
+    // Reload articles after clearing
+    await loadArticles()
+  } catch (err) {
+    error.value = 'Failed to clear publish history'
+    console.error('[RecentArticlesView] Error clearing history:', err)
+  } finally {
+    clearing.value = false
   }
 }
 

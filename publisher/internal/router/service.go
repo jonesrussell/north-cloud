@@ -281,19 +281,23 @@ func (s *Service) buildESQuery(route *models.RouteWithDetails) map[string]any {
 		})
 	}
 
+	// Build sort clause - use crawled_at as primary since it's always present
+	// Some indexes may not have published_date in their mapping
+	sortClause := []map[string]any{
+		{
+			"crawled_at": map[string]any{
+				"order": "desc",
+			},
+		},
+	}
+
 	query := map[string]any{
 		"query": map[string]any{
 			"bool": map[string]any{
 				"must": mustClauses,
 			},
 		},
-		"sort": []map[string]any{
-			{
-				"published_date": map[string]any{
-					"order": "desc",
-				},
-			},
-		},
+		"sort": sortClause,
 	}
 
 	return query

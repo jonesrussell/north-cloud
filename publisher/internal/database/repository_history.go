@@ -233,3 +233,72 @@ func (r *Repository) GetPublishCountByChannel(ctx context.Context, channelName s
 
 	return count, nil
 }
+
+// GetChannelStats retrieves statistics for all channels including last published date and total count
+func (r *Repository) GetChannelStats(ctx context.Context) (map[string]struct {
+	TotalPublished int
+	LastPublished  *time.Time
+}, error) {
+	query := `
+		SELECT 
+			channel_name,
+			COUNT(*) as total_published,
+			MAX(published_at) as last_published
+		FROM publish_history
+		GROUP BY channel_name
+	`
+
+	rows, err := r.db.QueryContext(ctx, query)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get channel stats: %w", err)
+	}
+	defer rows.Close()
+
+	stats := make(map[string]struct {
+		TotalPublished int
+		LastPublished  *time.Time
+	})
+
+	for rows.Next() {
+		var channelName string
+		var totalPublished int
+		var lastPublished sql.NullTime
+
+		if scanErr := rows.Scan(&channelName, &totalPublished, &lastPublished); scanErr != nil {
+			return nil, fmt.Errorf("failed to scan row: %w", scanErr)
+		}
+
+		var lastPub *time.Time
+		if lastPublished.Valid {
+			lastPub = &lastPublished.Time
+		}
+
+		stats[channelName] = struct {
+			TotalPublished int
+			LastPublished  *time.Time
+		}{
+			TotalPublished: totalPublished,
+			LastPublished:  lastPub,
+		}
+	}
+
+	if rowsErr := rows.Err(); rowsErr != nil {
+		return nil, fmt.Errorf("row iteration error: %w", rowsErr)
+	}
+
+	return stats, nil
+}
+
+// DeleteAllPublishHistory deletes all publish history entries
+func (r *Repository) DeleteAllPublishHistory(ctx context.Context) (int64, error) {
+	query := `DELETE FROM publish_history`
+	result, err := r.db.ExecContext(ctx, query)
+	if err != nil {
+		return 0, fmt.Errorf("failed to delete all publish history: %w", err)
+	}
+	count, err := result.RowsAffected()
+	if err != nil {
+		return 0, fmt.Errorf("failed to get rows affected: %w", err)
+	}
+	return count, nil
+}

@@ -5,6 +5,58 @@
       subtitle="Overview of publishing activity and system status"
     />
 
+    <!-- Connection Status -->
+    <div class="bg-white shadow rounded-lg p-6 mb-6">
+      <h2 class="text-lg font-medium text-gray-900 mb-4">
+        Connection Status
+      </h2>
+
+      <LoadingSpinner
+        v-if="loadingHealth"
+        text="Checking connections..."
+      />
+
+      <ErrorAlert
+        v-else-if="healthError"
+        :message="healthError"
+        class="mb-4"
+      />
+
+      <div
+        v-else
+        class="grid grid-cols-1 md:grid-cols-2 gap-4"
+      >
+        <div class="flex items-center space-x-3">
+          <div
+            class="flex-shrink-0 w-3 h-3 rounded-full"
+            :class="health?.database?.connected ? 'bg-green-500' : 'bg-red-500'"
+          />
+          <div>
+            <p class="text-sm font-medium text-gray-900">
+              Database
+            </p>
+            <p class="text-xs text-gray-500">
+              {{ health?.database?.connected ? 'Connected' : 'Disconnected' }}
+            </p>
+          </div>
+        </div>
+        <div class="flex items-center space-x-3">
+          <div
+            class="flex-shrink-0 w-3 h-3 rounded-full"
+            :class="health?.redis?.connected ? 'bg-green-500' : 'bg-red-500'"
+          />
+          <div>
+            <p class="text-sm font-medium text-gray-900">
+              Redis
+            </p>
+            <p class="text-xs text-gray-500">
+              {{ health?.redis?.connected ? 'Connected' : health?.redis?.error || 'Disconnected' }}
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Stats Overview -->
     <div class="bg-white shadow rounded-lg p-6 mb-6">
       <h2 class="text-lg font-medium text-gray-900 mb-4">
@@ -47,11 +99,16 @@
       />
 
       <div v-else>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
           <StatCard
-            label="Total Articles Published"
-            :value="stats.total_articles || 0"
+            label="Total Articles Published (All Time)"
+            :value="totalPublishedAllTime"
             color="blue"
+          />
+          <StatCard
+            label="Articles Published (Selected Period)"
+            :value="stats.total_articles || 0"
+            color="purple"
           />
           <StatCard
             label="Active Channels"
@@ -207,6 +264,96 @@
       </div>
     </div>
 
+    <!-- Active Channels -->
+    <div class="bg-white shadow rounded-lg p-6 mb-6">
+      <h2 class="text-lg font-medium text-gray-900 mb-4">
+        Active Channels
+      </h2>
+
+      <div class="mb-3 p-3 bg-blue-50 border border-blue-200 rounded-md">
+        <p class="text-sm text-blue-800">
+          <strong>Note:</strong> Redis pub/sub doesn't track active subscribers. This shows channels that have received published articles.
+        </p>
+      </div>
+
+      <LoadingSpinner
+        v-if="loadingActiveChannels"
+        text="Loading active channels..."
+      />
+
+      <ErrorAlert
+        v-else-if="activeChannelsError"
+        :message="activeChannelsError"
+        class="mb-4"
+      />
+
+      <div v-else>
+        <div
+          v-if="activeChannels.length === 0"
+          class="text-center py-12 text-gray-500"
+        >
+          No channels with publish activity found.
+        </div>
+
+        <div
+          v-else
+          class="overflow-x-auto"
+        >
+          <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-50">
+              <tr>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Channel
+                </th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Status
+                </th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Total Published
+                </th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Last Published
+                </th>
+              </tr>
+            </thead>
+            <tbody class="bg-white divide-y divide-gray-200">
+              <tr
+                v-for="channel in activeChannels"
+                :key="channel.name"
+                class="hover:bg-gray-50"
+              >
+                <td class="px-6 py-4 whitespace-nowrap">
+                  <div>
+                    <code class="text-sm font-medium text-gray-900">{{ channel.name }}</code>
+                    <p
+                      v-if="channel.description"
+                      class="text-xs text-gray-500 mt-1"
+                    >
+                      {{ channel.description }}
+                    </p>
+                  </div>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                  <span
+                    class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
+                    :class="channel.enabled ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'"
+                  >
+                    {{ channel.enabled ? 'Enabled' : 'Disabled' }}
+                  </span>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  {{ channel.total_published }}
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  {{ channel.last_published_at ? formatDate(channel.last_published_at) : 'Never' }}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
     <!-- System Info -->
     <div class="bg-white shadow rounded-lg p-6">
       <h2 class="text-lg font-medium text-gray-900 mb-4">
@@ -263,7 +410,13 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { publisherApi } from '../../api/client'
-import type { StatsOverviewResponse, PublishHistoryItem, StatsPeriod } from '../../types/publisher'
+import type {
+  StatsOverviewResponse,
+  PublishHistoryItem,
+  StatsPeriod,
+  HealthStatus,
+  ActiveChannel,
+} from '../../types/publisher'
 import { PageHeader, LoadingSpinner, ErrorAlert, StatCard } from '../../components/common'
 
 const selectedPeriod = ref<StatsPeriod>('today')
@@ -274,12 +427,21 @@ const stats = ref<StatsOverviewResponse>({
 })
 const loadingStats = ref(false)
 const statsError = ref<string | null>(null)
+const totalPublishedAllTime = ref(0)
 
 const history = ref<PublishHistoryItem[]>([])
 const loadingHistory = ref(false)
 const historyError = ref<string | null>(null)
 const historyOffset = ref(0)
 const loadingMore = ref(false)
+
+const health = ref<HealthStatus | null>(null)
+const loadingHealth = ref(false)
+const healthError = ref<string | null>(null)
+
+const activeChannels = ref<ActiveChannel[]>([])
+const loadingActiveChannels = ref(false)
+const activeChannelsError = ref<string | null>(null)
 
 const systemInfo = ref({
   sources_count: 0,
@@ -293,11 +455,51 @@ const loadStats = async (): Promise<void> => {
   try {
     const response = await publisherApi.stats.overview(selectedPeriod.value)
     stats.value = response.data
+
+    // Also load all-time stats for total published count
+    if (selectedPeriod.value !== 'all') {
+      try {
+        const allTimeResponse = await publisherApi.stats.overview('all')
+        totalPublishedAllTime.value = allTimeResponse.data.total_articles || 0
+      } catch {
+        // Ignore errors for all-time stats
+      }
+    } else {
+      totalPublishedAllTime.value = response.data.total_articles || 0
+    }
   } catch (err) {
     const axiosError = err as { response?: { data?: { error?: string } } }
     statsError.value = axiosError.response?.data?.error || 'Failed to load statistics'
   } finally {
     loadingStats.value = false
+  }
+}
+
+const loadHealth = async (): Promise<void> => {
+  loadingHealth.value = true
+  healthError.value = null
+  try {
+    const response = await publisherApi.health()
+    health.value = response.data
+  } catch (err) {
+    const axiosError = err as { response?: { data?: { error?: string } } }
+    healthError.value = axiosError.response?.data?.error || 'Failed to load health status'
+  } finally {
+    loadingHealth.value = false
+  }
+}
+
+const loadActiveChannels = async (): Promise<void> => {
+  loadingActiveChannels.value = true
+  activeChannelsError.value = null
+  try {
+    const response = await publisherApi.stats.activeChannels()
+    activeChannels.value = response.data.channels || []
+  } catch (err) {
+    const axiosError = err as { response?: { data?: { error?: string } } }
+    activeChannelsError.value = axiosError.response?.data?.error || 'Failed to load active channels'
+  } finally {
+    loadingActiveChannels.value = false
   }
 }
 
@@ -363,6 +565,8 @@ onMounted(() => {
   loadStats()
   loadHistory()
   loadSystemInfo()
+  loadHealth()
+  loadActiveChannels()
 })
 </script>
 

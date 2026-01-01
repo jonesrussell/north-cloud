@@ -133,3 +133,53 @@ export interface StatsOverviewResponse {
 
 export type StatsPeriod = 'today' | 'week' | 'month' | 'all'
 
+export interface HealthStatus {
+  status: 'healthy' | 'degraded' | 'unhealthy'
+  service: string
+  version: string
+  redis?: {
+    connected: boolean
+    error?: string
+  }
+  database?: {
+    connected: boolean
+  }
+}
+
+export interface ActiveChannel {
+  name: string
+  description?: string
+  enabled: boolean
+  has_published: boolean
+  total_published: number
+  last_published_at?: string
+}
+
+export interface ActiveChannelsResponse {
+  channels: ActiveChannel[]
+  count: number
+  note: string
+}
+
+// Article types for recent articles view
+export interface RecentArticle {
+  id: string | number
+  title: string
+  url: string
+  city: string
+  posted_at: string
+  // Additional fields from backend
+  article_id?: string
+  article_title?: string
+  article_url?: string
+  channel_name?: string
+  published_at?: string
+  quality_score?: number
+  topics?: string[] | null
+}
+
+export interface RecentArticlesResponse {
+  articles: RecentArticle[]
+  count: number
+}
+

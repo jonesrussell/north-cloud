@@ -16,6 +16,9 @@ import type {
   PublishHistoryListResponse,
   StatsOverviewResponse,
   StatsPeriod,
+  HealthStatus,
+  ActiveChannelsResponse,
+  RecentArticlesResponse,
 } from '../types/publisher'
 
 // Debug mode - logs all requests and responses
@@ -46,7 +49,7 @@ const crawlerClient: AxiosInstance = axios.create({
 
 const sourcesClient: AxiosInstance = axios.create({
   baseURL: '/api/sources',
-  timeout: 10000,
+  timeout: 30000, // Increased to 30s to handle slow database operations
   headers: {
     'Content-Type': 'application/json',
   },
@@ -186,7 +189,8 @@ export const sourcesApi = {
 // Publisher API
 export const publisherApi = {
   // Health check
-  getHealth: () => axios.get('/api/health/publisher'),
+  getHealth: (): Promise<AxiosResponse<HealthStatus>> => publisherClient.get('/health'),
+  health: (): Promise<AxiosResponse<HealthStatus>> => publisherClient.get('/health'),
 
   // Stats
   stats: {
@@ -195,12 +199,15 @@ export const publisherApi = {
     overview: (period: StatsPeriod = 'today'): Promise<AxiosResponse<StatsOverviewResponse>> =>
       publisherClient.get(`/stats/overview?period=${period}`),
     channels: (since?: string) => publisherClient.get(`/stats/channels${since ? `?since=${since}` : ''}`),
+    activeChannels: (): Promise<AxiosResponse<ActiveChannelsResponse>> =>
+      publisherClient.get('/stats/channels/active'),
     routes: () => publisherClient.get('/stats/routes'),
   },
 
   // Recent articles
   articles: {
-    recent: (params?: Record<string, unknown>) => publisherClient.get('/articles/recent', { params }),
+    recent: (params?: { limit?: number }): Promise<AxiosResponse<RecentArticlesResponse>> =>
+      publisherClient.get('/articles/recent', { params }),
   },
 
   // Sources CRUD
@@ -255,6 +262,8 @@ export const publisherApi = {
     },
     getByArticle: (articleId: string): Promise<AxiosResponse<{ history: PublishHistoryItem[] }>> =>
       publisherClient.get(`/publish-history/${articleId}`),
+    clearAll: (): Promise<AxiosResponse<{ message: string; deleted: number }>> =>
+      publisherClient.delete('/publish-history'),
   },
 }
 
