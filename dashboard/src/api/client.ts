@@ -18,6 +18,7 @@ import type {
   StatsPeriod,
   HealthStatus,
   ActiveChannelsResponse,
+  RecentArticlesResponse,
 } from '../types/publisher'
 
 // Debug mode - logs all requests and responses
@@ -205,7 +206,8 @@ export const publisherApi = {
 
   // Recent articles
   articles: {
-    recent: (params?: Record<string, unknown>) => publisherClient.get('/articles/recent', { params }),
+    recent: (params?: { limit?: number }): Promise<AxiosResponse<RecentArticlesResponse>> =>
+      publisherClient.get('/articles/recent', { params }),
   },
 
   // Sources CRUD
