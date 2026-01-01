@@ -149,6 +149,17 @@ export const crawlerApi = {
     create: (data: unknown) => crawlerClient.post('/jobs', data),
     update: (id: string | number, data: unknown) => crawlerClient.put(`/jobs/${id}`, data),
     delete: (id: string | number) => crawlerClient.delete(`/jobs/${id}`),
+    executions: (id: string | number, params?: { limit?: number; offset?: number }) =>
+      crawlerClient.get(`/jobs/${id}/executions`, { params }),
+    stats: (id: string | number) => crawlerClient.get(`/jobs/${id}/stats`),
+    pause: (id: string | number) => crawlerClient.post(`/jobs/${id}/pause`),
+    resume: (id: string | number) => crawlerClient.post(`/jobs/${id}/resume`),
+    cancel: (id: string | number) => crawlerClient.post(`/jobs/${id}/cancel`),
+    retry: (id: string | number) => crawlerClient.post(`/jobs/${id}/retry`),
+  },
+  // Executions
+  executions: {
+    get: (id: string | number) => crawlerClient.get(`/executions/${id}`),
   },
 
   // Queued Links

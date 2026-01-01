@@ -23,7 +23,7 @@ This document provides a comprehensive guide for AI assistants working with the 
 - Crawl news websites for articles
 - Manage content sources via web interface
 - Filter and categorize articles (e.g., crime news)
-- Publish filtered content to Drupal 11 CMS
+- Publish filtered content to PubSub
 - Provide a scalable, distributed architecture
 
 ### Tech Stack

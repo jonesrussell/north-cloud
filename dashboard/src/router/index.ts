@@ -5,6 +5,7 @@ import DashboardView from '../views/DashboardView.vue'
 
 // Crawler views
 import CrawlerJobsView from '../views/crawler/JobsView.vue'
+import CrawlerJobDetailView from '../views/crawler/JobDetailView.vue'
 import QueuedLinksView from '../views/crawler/QueuedLinksView.vue'
 
 // Publisher views
@@ -77,6 +78,13 @@ const routes: RouteRecordRaw[] = [
     name: 'crawler-jobs',
     component: CrawlerJobsView,
     meta: { title: 'Crawl Jobs', section: 'crawler', requiresAuth: true },
+  },
+  {
+    path: '/crawler/jobs/:id',
+    name: 'crawler-job-detail',
+    component: CrawlerJobDetailView,
+    props: true,
+    meta: { title: 'Job Details', section: 'crawler', requiresAuth: true },
   },
   {
     path: '/crawler/queued-links',

@@ -2,7 +2,7 @@
   <div>
     <PageHeader
       title="Recent Published Articles"
-      subtitle="Recently posted articles to Drupal"
+      subtitle="Recently posted articles to PubSub"
     />
 
     <!-- Loading State -->

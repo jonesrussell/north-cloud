@@ -33,9 +33,13 @@ const props = defineProps({
 const statusConfig = {
   // Job statuses
   pending: { bg: 'bg-yellow-100', text: 'text-yellow-800', dot: 'bg-yellow-400', label: 'Pending' },
+  scheduled: { bg: 'bg-blue-100', text: 'text-blue-800', dot: 'bg-blue-400', label: 'Scheduled' },
+  running: { bg: 'bg-blue-100', text: 'text-blue-800', dot: 'bg-blue-400', label: 'Running' },
   processing: { bg: 'bg-blue-100', text: 'text-blue-800', dot: 'bg-blue-400', label: 'Processing' },
   completed: { bg: 'bg-green-100', text: 'text-green-800', dot: 'bg-green-400', label: 'Completed' },
   failed: { bg: 'bg-red-100', text: 'text-red-800', dot: 'bg-red-400', label: 'Failed' },
+  paused: { bg: 'bg-yellow-100', text: 'text-yellow-800', dot: 'bg-yellow-400', label: 'Paused' },
+  cancelled: { bg: 'bg-gray-100', text: 'text-gray-800', dot: 'bg-gray-400', label: 'Cancelled' },
 
   // Source statuses
   enabled: { bg: 'bg-green-100', text: 'text-green-800', dot: 'bg-green-400', label: 'Enabled' },

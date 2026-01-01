@@ -111,6 +111,29 @@ func SetupRouter(
 		v1.GET("/queued-links/:id", queuedLinksHandler.GetQueuedLink)
 		v1.DELETE("/queued-links/:id", queuedLinksHandler.DeleteQueuedLink)
 		v1.POST("/queued-links/:id/create-job", queuedLinksHandler.CreateJobFromLink)
+	} else {
+		// Fallback to placeholder endpoints if no handler provided
+		v1.GET("/queued-links", func(c *gin.Context) {
+			c.JSON(http.StatusOK, gin.H{
+				"links": []gin.H{},
+				"total": 0,
+			})
+		})
+		v1.GET("/queued-links/:id", func(c *gin.Context) {
+			c.JSON(http.StatusNotFound, gin.H{
+				"error": "Queued links handler not available",
+			})
+		})
+		v1.DELETE("/queued-links/:id", func(c *gin.Context) {
+			c.JSON(http.StatusServiceUnavailable, gin.H{
+				"error": "Queued links handler not available",
+			})
+		})
+		v1.POST("/queued-links/:id/create-job", func(c *gin.Context) {
+			c.JSON(http.StatusServiceUnavailable, gin.H{
+				"error": "Queued links handler not available",
+			})
+		})
 	}
 
 	return router, security

@@ -85,10 +85,16 @@
           <tr
             v-for="job in jobs"
             :key="job.id"
-            class="hover:bg-gray-50"
+            class="hover:bg-gray-50 cursor-pointer"
+            @click="navigateToJob(job.id)"
           >
-            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-              {{ truncateId(job.id) }}
+            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+              <button
+                class="text-blue-600 hover:text-blue-800 hover:underline"
+                @click.stop="navigateToJob(job.id)"
+              >
+                {{ truncateId(job.id) }}
+              </button>
             </td>
             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
               {{ job.source_name || 'N/A' }}
@@ -105,7 +111,7 @@
             <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
               <button
                 class="text-red-600 hover:text-red-900"
-                @click="confirmDelete(job)"
+                @click.stop="confirmDelete(job)"
               >
                 Delete
               </button>
@@ -312,6 +318,7 @@
 
 <script setup>
 import { ref, onMounted, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import { PlusIcon, BriefcaseIcon } from '@heroicons/vue/24/outline'
 import { crawlerApi, sourcesApi } from '../../api/client'
 import {
@@ -321,6 +328,8 @@ import {
   StatusBadge,
   ConfirmModal,
 } from '../../components/common'
+
+const router = useRouter()
 
 const loading = ref(true)
 const error = ref(null)
@@ -534,6 +543,17 @@ const formatNextRun = (job) => {
 
   // Fallback: show status if next_run_at is not available
   return job.status === 'pending' ? 'Pending' : 'N/A'
+}
+
+const navigateToJob = (jobId) => {
+  if (!jobId) {
+    console.error('[JobsView] navigateToJob called with invalid jobId:', jobId)
+    return
+  }
+  console.log('[JobsView] Navigating to job:', jobId)
+  router.push(`/crawler/jobs/${jobId}`).catch((err) => {
+    console.error('[JobsView] Navigation error:', err)
+  })
 }
 
 onMounted(() => {
