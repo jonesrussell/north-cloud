@@ -1,7 +1,6 @@
 <template>
   <div>
     <PageHeader
-      title="Publisher Dashboard"
       subtitle="Overview of publishing activity and system status"
     />
 

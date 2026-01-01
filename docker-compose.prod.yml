@@ -104,6 +104,8 @@ services:
       - POSTGRES_PUBLISHER_SSLMODE=disable
       - PUBLISHER_PORT=8070
       - AUTH_JWT_SECRET=${AUTH_JWT_SECRET}
+      - REDIS_ADDR=redis:6379
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
       - GIN_MODE=release
       - APP_DEBUG=false
     networks:

@@ -202,22 +202,43 @@
               <label class="block text-sm font-medium text-gray-700 mb-1">
                 Channel *
               </label>
+              <ErrorAlert
+                v-if="channelsError"
+                :message="channelsError"
+                class="mb-2"
+              />
               <select
                 v-model="formData.channel_id"
                 required
-                class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                :disabled="channelsLoading"
+                class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
               >
                 <option value="">
-                  Select a channel...
+                  {{ channelsLoading ? 'Loading channels...' : 'Select a channel...' }}
                 </option>
                 <option
                   v-for="channel in channels"
                   :key="channel.id"
                   :value="channel.id"
                 >
-                  {{ channel.name }}
+                  {{ channel.name }}{{ !channel.enabled ? ' (disabled)' : '' }}
                 </option>
               </select>
+              <div
+                v-if="!channelsLoading && channels.length === 0"
+                class="mt-2 p-3 bg-yellow-50 border border-yellow-200 rounded-md text-sm text-yellow-800"
+              >
+                <p class="mb-2">
+                  No channels available. Create one in the Channels page.
+                </p>
+                <router-link
+                  to="/publisher/channels"
+                  class="text-blue-600 hover:text-blue-800 underline font-medium"
+                  @click="closeModal"
+                >
+                  Go to Channels →
+                </router-link>
+              </div>
             </div>
 
             <div class="mb-4">
@@ -297,6 +318,8 @@ const channels = ref<Channel[]>([])
 const loading = ref(false)
 const error = ref<string | null>(null)
 const enabledOnly = ref(false)
+const channelsError = ref<string | null>(null)
+const channelsLoading = ref(false)
 
 const showModal = ref(false)
 const isEditing = ref(false)
@@ -336,11 +359,17 @@ const loadSources = async (): Promise<void> => {
 }
 
 const loadChannels = async (): Promise<void> => {
+  channelsLoading.value = true
+  channelsError.value = null
   try {
-    const response = await publisherApi.channels.list(true) // Only enabled channels
+    const response = await publisherApi.channels.list(false) // Load all channels (enabled and disabled)
     channels.value = response.data.channels || []
   } catch (err) {
+    const axiosError = err as { response?: { data?: { error?: string } } }
+    channelsError.value = axiosError.response?.data?.error || 'Failed to load channels'
     console.error('Failed to load channels:', err)
+  } finally {
+    channelsLoading.value = false
   }
 }
 

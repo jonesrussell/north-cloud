@@ -14,7 +14,10 @@
             {{ backText }}
           </router-link>
         </div>
-        <h1 class="text-2xl font-bold text-gray-900">
+        <h1
+          v-if="title"
+          class="text-2xl font-bold text-gray-900"
+        >
           {{ title }}
         </h1>
         <p
@@ -37,7 +40,8 @@ import { ArrowLeftIcon } from '@heroicons/vue/24/outline'
 defineProps({
   title: {
     type: String,
-    required: true,
+    required: false,
+    default: '',
   },
   subtitle: {
     type: String,

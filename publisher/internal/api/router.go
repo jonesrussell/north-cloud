@@ -86,8 +86,8 @@ func (r *Router) SetupRoutes() *gin.Engine {
 	// Stats
 	stats := v1.Group("/stats")
 	stats.GET("/overview", r.getStatsOverview)
+	stats.GET("/channels/active", r.getActiveChannels) // More specific route first
 	stats.GET("/channels", r.getChannelStats)
-	stats.GET("/channels/active", r.getActiveChannels)
 	stats.GET("/routes", r.getRouteStats)
 
 	// Articles
