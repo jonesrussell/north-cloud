@@ -161,3 +161,25 @@ export interface ActiveChannelsResponse {
   note: string
 }
 
+// Article types for recent articles view
+export interface RecentArticle {
+  id: string | number
+  title: string
+  url: string
+  city: string
+  posted_at: string
+  // Additional fields from backend
+  article_id?: string
+  article_title?: string
+  article_url?: string
+  channel_name?: string
+  published_at?: string
+  quality_score?: number
+  topics?: string[] | null
+}
+
+export interface RecentArticlesResponse {
+  articles: RecentArticle[]
+  count: number
+}
+
