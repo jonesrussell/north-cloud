@@ -156,7 +156,6 @@ services:
       retries: 5
     networks:
       - north-cloud-network
-      - shared-redis-net
 
   # MinIO Object Storage for HTML archiving
   minio:
@@ -278,5 +277,3 @@ volumes:
 networks:
   north-cloud-network:
     driver: bridge
-  shared-redis-net:
-    external: true
