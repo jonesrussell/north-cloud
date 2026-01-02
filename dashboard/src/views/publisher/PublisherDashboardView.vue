@@ -4,6 +4,26 @@
       subtitle="Overview of publishing activity and system status"
     />
 
+    <!-- Setup Wizard CTA -->
+    <div class="bg-gradient-to-r from-blue-500 to-blue-600 shadow rounded-lg p-6 mb-6 text-white">
+      <div class="flex items-center justify-between">
+        <div>
+          <h2 class="text-xl font-bold mb-2">
+            Quick Setup
+          </h2>
+          <p class="text-blue-100">
+            Set up a new publishing route in just 3 easy steps. Connect a source to a channel with guided configuration.
+          </p>
+        </div>
+        <button
+          class="px-6 py-3 bg-white text-blue-600 font-semibold rounded-lg hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-blue-600 transition-colors whitespace-nowrap"
+          @click="openSetupWizard"
+        >
+          🚀 Set Up Publishing
+        </button>
+      </div>
+    </div>
+
     <!-- Connection Status -->
     <div class="bg-white shadow rounded-lg p-6 mb-6">
       <h2 class="text-lg font-medium text-gray-900 mb-4">
@@ -403,6 +423,13 @@
         </div>
       </div>
     </div>
+
+    <!-- Setup Wizard Modal -->
+    <PublisherSetupWizard
+      ref="setupWizardRef"
+      @close="onWizardClose"
+      @success="onWizardSuccess"
+    />
   </div>
 </template>
 
@@ -417,6 +444,7 @@ import type {
   ActiveChannel,
 } from '../../types/publisher'
 import { PageHeader, LoadingSpinner, ErrorAlert, StatCard } from '../../components/common'
+import PublisherSetupWizard from '../../components/PublisherSetupWizard.vue'
 
 const selectedPeriod = ref<StatsPeriod>('today')
 const stats = ref<StatsOverviewResponse>({
@@ -558,6 +586,24 @@ const truncateUrl = (url: string): string => {
     return url.substring(0, 57) + '...'
   }
   return url
+}
+
+// Setup Wizard
+const setupWizardRef = ref<InstanceType<typeof PublisherSetupWizard> | null>(null)
+
+const openSetupWizard = (): void => {
+  setupWizardRef.value?.open()
+}
+
+const onWizardClose = (): void => {
+  // Wizard closed, nothing special to do
+}
+
+const onWizardSuccess = (): void => {
+  // Wizard succeeded, reload stats and system info
+  loadStats()
+  loadSystemInfo()
+  loadHistory(0)
 }
 
 onMounted(() => {
