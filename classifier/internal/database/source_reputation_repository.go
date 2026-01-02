@@ -128,9 +128,9 @@ func (r *SourceReputationRepository) GetOrCreateSource(ctx context.Context, sour
 	err = r.CreateSource(ctx, newSource)
 	if err != nil {
 		// Handle potential race condition where another goroutine created it
-		source, getErr := r.GetSource(ctx, sourceName)
+		existingSource, getErr := r.GetSource(ctx, sourceName)
 		if getErr == nil {
-			return source, nil
+			return existingSource, nil
 		}
 		return nil, fmt.Errorf("failed to create or get source: %w", err)
 	}

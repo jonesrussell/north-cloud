@@ -156,12 +156,12 @@ func (p *Poller) processPending(ctx context.Context) error {
 	}
 
 	// Index results
-	if err := p.indexResults(ctx, results); err != nil {
+	if err = p.indexResults(ctx, results); err != nil {
 		return fmt.Errorf("failed to index results: %w", err)
 	}
 
 	// Save to classification history
-	if err := p.saveHistory(ctx, results); err != nil {
+	if err = p.saveHistory(ctx, results); err != nil {
 		p.logger.Warn("Failed to save classification history", "error", err)
 		// Don't fail the whole operation if history save fails
 	}

@@ -171,17 +171,17 @@ func StartHTTPServer() {
 	signal.Notify(shutdown, os.Interrupt, syscall.SIGTERM)
 
 	select {
-	case err := <-serverErrors:
-		logger.Error("Server error", "error", err)
+	case serverErr := <-serverErrors:
+		logger.Error("Server error", "error", serverErr)
 		os.Exit(1)
 	case sig := <-shutdown:
 		logger.Info("Shutdown signal received", "signal", sig)
 
 		// Graceful shutdown with 30 second timeout
-		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer cancel()
 
-		if err := server.Shutdown(ctx); err != nil {
+		if err = server.Shutdown(shutdownCtx); err != nil {
 			logger.Error("Graceful shutdown failed", "error", err)
 			os.Exit(1)
 		}
@@ -306,15 +306,15 @@ func StartHTTPServerWithStop() (func(), error) {
 	// Start server in goroutine
 	serverErrors := make(chan error, 1)
 	go func() {
-		if err := server.Start(); err != nil {
+		if err = server.Start(); err != nil {
 			serverErrors <- err
 		}
 	}()
 
 	// Monitor server errors in background
 	go func() {
-		if err := <-serverErrors; err != nil {
-			logger.Error("Server error", "error", err)
+		if serverErr := <-serverErrors; serverErr != nil {
+			logger.Error("Server error", "error", serverErr)
 		}
 	}()
 
@@ -326,7 +326,7 @@ func StartHTTPServerWithStop() (func(), error) {
 		shutdownCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer cancel()
 
-		if err := server.Shutdown(shutdownCtx); err != nil {
+		if err = server.Shutdown(shutdownCtx); err != nil {
 			logger.Error("Graceful shutdown failed", "error", err)
 		} else {
 			logger.Info("HTTP server stopped gracefully")

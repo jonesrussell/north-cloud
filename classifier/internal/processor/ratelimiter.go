@@ -101,7 +101,7 @@ func (r *RateLimitedProcessor) ProcessWithRateLimit(
 	}
 
 	// Wait for DB rate limit (we'll be writing to DB)
-	if err := r.dbLimiter.Wait(ctx); err != nil {
+	if err = r.dbLimiter.Wait(ctx); err != nil {
 		r.logger.Warn("DB rate limit wait failed, continuing anyway", "error", err)
 		// Don't fail the operation, just log the warning
 	}

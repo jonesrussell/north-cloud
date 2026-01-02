@@ -78,7 +78,7 @@ func (s *ElasticsearchStorage) QueryRawContent(ctx context.Context, status strin
 		} `json:"hits"`
 	}
 
-	if err := json.NewDecoder(res.Body).Decode(&searchResult); err != nil {
+	if err = json.NewDecoder(res.Body).Decode(&searchResult); err != nil {
 		return nil, fmt.Errorf("error decoding response: %w", err)
 	}
 
@@ -166,14 +166,14 @@ func (s *ElasticsearchStorage) UpdateRawContentStatus(ctx context.Context, conte
 
 	var lastErr error
 	for _, index := range indices {
-		res, err := s.client.Update(
+		res, updateErr := s.client.Update(
 			index,
 			contentID,
 			bytes.NewReader(updateBytes),
 			s.client.Update.WithContext(ctx),
 		)
-		if err != nil {
-			lastErr = err
+		if updateErr != nil {
+			lastErr = updateErr
 			continue
 		}
 		defer func() {
@@ -276,7 +276,7 @@ func (s *ElasticsearchStorage) ListRawContentIndices(ctx context.Context) ([]str
 	}
 
 	var indices map[string]interface{}
-	if err := json.NewDecoder(res.Body).Decode(&indices); err != nil {
+	if err = json.NewDecoder(res.Body).Decode(&indices); err != nil {
 		return nil, fmt.Errorf("error decoding response: %w", err)
 	}
 

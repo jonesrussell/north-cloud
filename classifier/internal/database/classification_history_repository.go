@@ -169,7 +169,7 @@ func (r *ClassificationHistoryRepository) GetStats(ctx context.Context) (*Classi
 	for rows.Next() {
 		var contentType string
 		var count int
-		if err := rows.Scan(&contentType, &count); err != nil {
+		if err = rows.Scan(&contentType, &count); err != nil {
 			return nil, fmt.Errorf("failed to scan content type: %w", err)
 		}
 		stats.ContentTypes[contentType] = count
