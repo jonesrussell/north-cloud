@@ -10,6 +10,14 @@ import (
 	"github.com/jonesrussell/gosources/internal/repository"
 )
 
+const (
+	// Test crawl simulation constants
+	defaultTestArticlesFound = 10
+	defaultTestSuccessRate   = 90
+	highTestQualityScore     = 85
+	mediumTestQualityScore   = 72
+)
+
 type SourceHandler struct {
 	repo      *repository.SourceRepository
 	logger    logger.Logger
@@ -197,8 +205,8 @@ func (h *SourceHandler) FetchMetadata(c *gin.Context) {
 // This allows users to preview what articles will be extracted before creating a source
 func (h *SourceHandler) TestCrawl(c *gin.Context) {
 	var request struct {
-		URL       string                 `json:"url" binding:"required"`
-		Selectors map[string]interface{} `json:"selectors"`
+		URL       string         `json:"url" binding:"required"`
+		Selectors map[string]any `json:"selectors"`
 	}
 
 	if err := c.ShouldBindJSON(&request); err != nil {
@@ -216,8 +224,8 @@ func (h *SourceHandler) TestCrawl(c *gin.Context) {
 	// For now, return a simulated response
 	// In a full implementation, this would actually crawl the URL and extract articles
 	response := gin.H{
-		"articles_found": 10,
-		"success_rate":   90,
+		"articles_found": defaultTestArticlesFound,
+		"success_rate":   defaultTestSuccessRate,
 		"warnings": []string{
 			"No author selector matched on 2 articles",
 		},
@@ -228,7 +236,7 @@ func (h *SourceHandler) TestCrawl(c *gin.Context) {
 				"url":            request.URL + "/article-1",
 				"published_date": "2026-01-02T10:00:00Z",
 				"author":         "John Doe",
-				"quality_score":  85,
+				"quality_score":  highTestQualityScore,
 			},
 			{
 				"title":          "Sample Article 2",
@@ -236,14 +244,14 @@ func (h *SourceHandler) TestCrawl(c *gin.Context) {
 				"url":            request.URL + "/article-2",
 				"published_date": "2026-01-02T09:30:00Z",
 				"author":         "",
-				"quality_score":  72,
+				"quality_score":  mediumTestQualityScore,
 			},
 		},
 	}
 
 	h.logger.Info("Test crawl completed",
 		logger.String("url", request.URL),
-		logger.Int("articles_found", 10),
+		logger.Int("articles_found", defaultTestArticlesFound),
 	)
 
 	c.JSON(http.StatusOK, response)
