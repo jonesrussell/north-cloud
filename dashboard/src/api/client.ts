@@ -285,10 +285,21 @@ export const publisherApi = {
 
   // Publish History
   history: {
-    list: (params?: { limit?: number; offset?: number }): Promise<AxiosResponse<PublishHistoryListResponse>> => {
+    list: (params?: {
+      limit?: number
+      offset?: number
+      channel_name?: string
+      article_id?: string
+      start_date?: string
+      end_date?: string
+    }): Promise<AxiosResponse<PublishHistoryListResponse>> => {
       const query = new URLSearchParams()
       if (params?.limit) query.append('limit', params.limit.toString())
       if (params?.offset) query.append('offset', params.offset.toString())
+      if (params?.channel_name) query.append('channel_name', params.channel_name)
+      if (params?.article_id) query.append('article_id', params.article_id)
+      if (params?.start_date) query.append('start_date', params.start_date)
+      if (params?.end_date) query.append('end_date', params.end_date)
       return publisherClient.get(`/publish-history${query.toString() ? `?${query.toString()}` : ''}`)
     },
     getByArticle: (articleId: string): Promise<AxiosResponse<{ history: PublishHistoryItem[] }>> =>

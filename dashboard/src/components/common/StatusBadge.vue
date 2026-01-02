@@ -56,6 +56,7 @@ const statusConfig = {
   error: { bg: 'bg-red-100', text: 'text-red-800', dot: 'bg-red-400', label: 'Error' },
   warning: { bg: 'bg-yellow-100', text: 'text-yellow-800', dot: 'bg-yellow-400', label: 'Warning' },
   info: { bg: 'bg-blue-100', text: 'text-blue-800', dot: 'bg-blue-400', label: 'Info' },
+  published: { bg: 'bg-green-100', text: 'text-green-800', dot: 'bg-green-400', label: 'Published' },
 
   // Default
   default: { bg: 'bg-gray-100', text: 'text-gray-800', dot: 'bg-gray-400', label: 'Unknown' },

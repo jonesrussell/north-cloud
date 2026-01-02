@@ -38,6 +38,7 @@ export interface PublishHistoryItem {
   article_title: string
   article_url: string
   channel_name: string
+  source_name?: string
   quality_score: number
   topics: string[] | null
   published_at: string
@@ -120,6 +121,7 @@ export interface RoutesListResponse {
 
 export interface PublishHistoryListResponse {
   history: PublishHistoryItem[]
+  count?: number
   total?: number
   limit?: number
   offset?: number
