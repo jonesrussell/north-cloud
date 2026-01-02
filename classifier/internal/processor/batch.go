@@ -27,10 +27,10 @@ type Logger interface {
 
 // ProcessResult holds the result of processing a single item
 type ProcessResult struct {
-	Raw                  *domain.RawContent
-	ClassificationResult *domain.ClassificationResult
-	ClassifiedContent    *domain.ClassifiedContent
-	Error                error
+	Raw                  *domain.RawContent           `json:"raw"`
+	ClassificationResult *domain.ClassificationResult `json:"classification_result"`
+	ClassifiedContent    *domain.ClassifiedContent    `json:"classified_content"`
+	Error                error                        `json:"error,omitempty"`
 }
 
 // NewBatchProcessor creates a new batch processor

@@ -10,11 +10,29 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/jmoiron/sqlx"
 	"github.com/jonesrussell/north-cloud/classifier/internal/api"
 	"github.com/jonesrussell/north-cloud/classifier/internal/classifier"
 	"github.com/jonesrussell/north-cloud/classifier/internal/database"
 	"github.com/jonesrussell/north-cloud/classifier/internal/domain"
 	"github.com/jonesrussell/north-cloud/classifier/internal/processor"
+)
+
+const (
+	// Server configuration constants
+	defaultClassifierPort = 8070
+	defaultHTTPTimeout    = 30 * time.Second
+	defaultConcurrency    = 10
+	// Classifier configuration constants
+	defaultMinQualityScore50    = 50
+	defaultQualityWeight025     = 0.25
+	defaultMinWordCount100      = 100
+	defaultOptimalWordCount1000 = 1000
+	// Source reputation constants
+	defaultReputationScore50     = 50
+	defaultSpamThreshold         = 30
+	minArticlesForTrust          = 10
+	defaultReputationDecayRate01 = 0.1
 )
 
 // Logger is a simple logger implementation
@@ -44,16 +62,21 @@ func (l *Logger) Error(msg string, keysAndValues ...interface{}) {
 	log.Printf("[ERROR] %s %v\n", msg, keysAndValues)
 }
 
-// StartHTTPServer starts the HTTP server for the classifier service
-func StartHTTPServer() {
-	// Get configuration from environment
-	debug := os.Getenv("APP_DEBUG") == "true"
-	port := getEnvInt("CLASSIFIER_PORT", 8070)
+// serverComponents holds all components needed for the HTTP server
+type serverComponents struct {
+	db                        *sqlx.DB
+	rulesRepo                 *database.RulesRepository
+	sourceRepRepo             *database.SourceReputationRepository
+	classificationHistoryRepo *database.ClassificationHistoryRepository
+	classifierInstance        *classifier.Classifier
+	batchProcessor            *processor.BatchProcessor
+	sourceRepScorer           *classifier.SourceReputationScorer
+	topicClassifier           *classifier.TopicClassifier
+	handler                   *api.Handler
+}
 
-	logger := NewLogger(debug)
-	logger.Info("Starting classifier HTTP server", "port", port, "debug", debug)
-
-	// Database configuration
+// setupDatabaseAndRepos creates database connection and repositories
+func setupDatabaseAndRepos(logger *Logger) (*serverComponents, error) {
 	dbConfig := database.Config{
 		Host:     getEnv("POSTGRES_HOST", "localhost"),
 		Port:     getEnv("POSTGRES_PORT", "5432"),
@@ -69,96 +92,114 @@ func StartHTTPServer() {
 		"database", dbConfig.DBName,
 	)
 
-	// Connect to database
 	db, err := database.NewPostgresConnection(dbConfig)
 	if err != nil {
-		logger.Error("Failed to connect to database", "error", err)
-		os.Exit(1)
+		return nil, fmt.Errorf("failed to connect to database: %w", err)
 	}
-	defer func() {
-		_ = db.Close()
-	}()
 
 	logger.Info("Database connected successfully")
 
-	// Create repositories
 	rulesRepo := database.NewRulesRepository(db)
 	sourceRepRepo := database.NewSourceReputationRepository(db)
 	classificationHistoryRepo := database.NewClassificationHistoryRepository(db)
 
 	logger.Info("Repositories initialized")
 
-	// Load classification rules from database
-	ctx := context.Background()
+	return &serverComponents{
+		db:                        db,
+		rulesRepo:                 rulesRepo,
+		sourceRepRepo:             sourceRepRepo,
+		classificationHistoryRepo: classificationHistoryRepo,
+	}, nil
+}
+
+// loadRulesAndCreateClassifier loads rules and creates classifier components
+func loadRulesAndCreateClassifier(ctx context.Context, comps *serverComponents, logger *Logger) error {
 	enabledOnly := true
-	rules, err := rulesRepo.List(ctx, domain.RuleTypeTopic, &enabledOnly)
+	rules, err := comps.rulesRepo.List(ctx, domain.RuleTypeTopic, &enabledOnly)
 	if err != nil {
-		logger.Error("Failed to load rules from database", "error", err)
-		os.Exit(1)
+		return fmt.Errorf("failed to load rules from database: %w", err)
 	}
 	logger.Info("Rules loaded from database", "count", len(rules))
 
-	// Convert []*ClassificationRule to []ClassificationRule for classifier
 	ruleValues := make([]domain.ClassificationRule, len(rules))
 	for i, rule := range rules {
 		ruleValues[i] = *rule
 	}
 
-	// Create classifier config
 	config := classifier.Config{
 		Version:         "1.0.0",
-		MinQualityScore: 50,
+		MinQualityScore: defaultMinQualityScore50,
 		UpdateSourceRep: true,
 		QualityConfig: classifier.QualityConfig{
-			WordCountWeight:   0.25,
-			MetadataWeight:    0.25,
-			RichnessWeight:    0.25,
-			ReadabilityWeight: 0.25,
-			MinWordCount:      100,
-			OptimalWordCount:  1000,
+			WordCountWeight:   defaultQualityWeight025,
+			MetadataWeight:    defaultQualityWeight025,
+			RichnessWeight:    defaultQualityWeight025,
+			ReadabilityWeight: defaultQualityWeight025,
+			MinWordCount:      defaultMinWordCount100,
+			OptimalWordCount:  defaultOptimalWordCount1000,
 		},
 		SourceReputationConfig: classifier.SourceReputationConfig{
-			DefaultScore:               50,
+			DefaultScore:               defaultReputationScore50,
 			UpdateOnEachClassification: true,
-			SpamThreshold:              30,
-			MinArticlesForTrust:        10,
-			ReputationDecayRate:        0.1,
+			SpamThreshold:              defaultSpamThreshold,
+			MinArticlesForTrust:        minArticlesForTrust,
+			ReputationDecayRate:        defaultReputationDecayRate01,
 		},
 	}
 
-	// Create classifier
-	classifierInstance := classifier.NewClassifier(logger, ruleValues, sourceRepRepo, config)
+	comps.classifierInstance = classifier.NewClassifier(logger, ruleValues, comps.sourceRepRepo, config)
 	logger.Info("Classifier initialized", "version", config.Version, "rules_count", len(rules))
 
-	// Create batch processor
-	concurrency := getEnvInt("CLASSIFIER_CONCURRENCY", 10)
-	batchProcessor := processor.NewBatchProcessor(classifierInstance, concurrency, logger)
+	concurrency := getEnvInt("CLASSIFIER_CONCURRENCY", defaultConcurrency)
+	comps.batchProcessor = processor.NewBatchProcessor(comps.classifierInstance, concurrency, logger)
 	logger.Info("Batch processor initialized", "concurrency", concurrency)
 
-	// Get individual classifiers for API handlers
-	sourceRepScorer := classifier.NewSourceReputationScorer(logger, sourceRepRepo)
-	topicClassifier := classifier.NewTopicClassifier(logger, ruleValues)
+	comps.sourceRepScorer = classifier.NewSourceReputationScorer(logger, comps.sourceRepRepo)
+	comps.topicClassifier = classifier.NewTopicClassifier(logger, ruleValues)
 
-	// Create API handler with repositories
-	handler := api.NewHandler(
-		classifierInstance,
-		batchProcessor,
-		sourceRepScorer,
-		topicClassifier,
-		rulesRepo,
-		sourceRepRepo,
-		classificationHistoryRepo,
+	comps.handler = api.NewHandler(
+		comps.classifierInstance,
+		comps.batchProcessor,
+		comps.sourceRepScorer,
+		comps.topicClassifier,
+		comps.rulesRepo,
+		comps.sourceRepRepo,
+		comps.classificationHistoryRepo,
 		logger,
 	)
 
-	// Create HTTP server
+	return nil
+}
+
+// StartHTTPServer starts the HTTP server for the classifier service
+func StartHTTPServer() {
+	debug := os.Getenv("APP_DEBUG") == "true"
+	port := getEnvInt("CLASSIFIER_PORT", defaultClassifierPort)
+
+	logger := NewLogger(debug)
+	logger.Info("Starting classifier HTTP server", "port", port, "debug", debug)
+
+	comps, err := setupDatabaseAndRepos(logger)
+	if err != nil {
+		logger.Error("Failed to setup database", "error", err)
+		os.Exit(1)
+	}
+
+	ctx := context.Background()
+	if err = loadRulesAndCreateClassifier(ctx, comps, logger); err != nil {
+		logger.Error("Failed to load rules and create classifier", "error", err)
+		_ = comps.db.Close()
+		os.Exit(1)
+	}
+
 	serverConfig := api.ServerConfig{
 		Port:         port,
-		ReadTimeout:  30 * time.Second,
-		WriteTimeout: 30 * time.Second,
+		ReadTimeout:  defaultHTTPTimeout,
+		WriteTimeout: defaultHTTPTimeout,
 		Debug:        debug,
 	}
-	server := api.NewServer(handler, serverConfig, logger)
+	server := api.NewServer(comps.handler, serverConfig, logger)
 
 	// Start server in goroutine
 	serverErrors := make(chan error, 1)
@@ -173,135 +214,54 @@ func StartHTTPServer() {
 	select {
 	case serverErr := <-serverErrors:
 		logger.Error("Server error", "error", serverErr)
+		_ = comps.db.Close() // Explicit cleanup before exit
 		os.Exit(1)
 	case sig := <-shutdown:
 		logger.Info("Shutdown signal received", "signal", sig)
 
 		// Graceful shutdown with 30 second timeout
-		shutdownCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-		defer cancel()
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), defaultHTTPTimeout)
 
 		if err = server.Shutdown(shutdownCtx); err != nil {
+			cancel() // Explicit cancel before exit
 			logger.Error("Graceful shutdown failed", "error", err)
+			_ = comps.db.Close() // Explicit cleanup before exit
 			os.Exit(1)
 		}
+		cancel() // Cancel context after successful shutdown
 
 		logger.Info("Server stopped gracefully")
+		_ = comps.db.Close() // Cleanup on normal shutdown
 	}
 }
 
 // StartHTTPServerWithStop starts the HTTP server and returns a stop function
 // This allows the server to run concurrently with other services
 func StartHTTPServerWithStop() (func(), error) {
-	// Get configuration from environment
 	debug := os.Getenv("APP_DEBUG") == "true"
-	port := getEnvInt("CLASSIFIER_PORT", 8070)
+	port := getEnvInt("CLASSIFIER_PORT", defaultClassifierPort)
 
 	logger := NewLogger(debug)
 	logger.Info("Starting classifier HTTP server", "port", port, "debug", debug)
 
-	// Database configuration
-	dbConfig := database.Config{
-		Host:     getEnv("POSTGRES_HOST", "localhost"),
-		Port:     getEnv("POSTGRES_PORT", "5432"),
-		User:     getEnv("POSTGRES_USER", "postgres"),
-		Password: getEnv("POSTGRES_PASSWORD", ""),
-		DBName:   getEnv("POSTGRES_DB", "classifier"),
-		SSLMode:  getEnv("POSTGRES_SSLMODE", "disable"),
-	}
-
-	logger.Info("Connecting to PostgreSQL database",
-		"host", dbConfig.Host,
-		"port", dbConfig.Port,
-		"database", dbConfig.DBName,
-	)
-
-	// Connect to database
-	db, err := database.NewPostgresConnection(dbConfig)
+	comps, err := setupDatabaseAndRepos(logger)
 	if err != nil {
-		return nil, fmt.Errorf("failed to connect to database: %w", err)
+		return nil, fmt.Errorf("failed to setup database: %w", err)
 	}
 
-	logger.Info("Database connected successfully")
-
-	// Create repositories
-	rulesRepo := database.NewRulesRepository(db)
-	sourceRepRepo := database.NewSourceReputationRepository(db)
-	classificationHistoryRepo := database.NewClassificationHistoryRepository(db)
-
-	logger.Info("Repositories initialized")
-
-	// Load classification rules from database
 	ctx := context.Background()
-	enabledOnly := true
-	rules, err := rulesRepo.List(ctx, domain.RuleTypeTopic, &enabledOnly)
-	if err != nil {
-		_ = db.Close()
-		return nil, fmt.Errorf("failed to load rules from database: %w", err)
-	}
-	logger.Info("Rules loaded from database", "count", len(rules))
-
-	// Convert []*ClassificationRule to []ClassificationRule for classifier
-	ruleValues := make([]domain.ClassificationRule, len(rules))
-	for i, rule := range rules {
-		ruleValues[i] = *rule
+	if err = loadRulesAndCreateClassifier(ctx, comps, logger); err != nil {
+		_ = comps.db.Close()
+		return nil, fmt.Errorf("failed to load rules and create classifier: %w", err)
 	}
 
-	// Create classifier config
-	config := classifier.Config{
-		Version:         "1.0.0",
-		MinQualityScore: 50,
-		UpdateSourceRep: true,
-		QualityConfig: classifier.QualityConfig{
-			WordCountWeight:   0.25,
-			MetadataWeight:    0.25,
-			RichnessWeight:    0.25,
-			ReadabilityWeight: 0.25,
-			MinWordCount:      100,
-			OptimalWordCount:  1000,
-		},
-		SourceReputationConfig: classifier.SourceReputationConfig{
-			DefaultScore:               50,
-			UpdateOnEachClassification: true,
-			SpamThreshold:              30,
-			MinArticlesForTrust:        10,
-			ReputationDecayRate:        0.1,
-		},
-	}
-
-	// Create classifier
-	classifierInstance := classifier.NewClassifier(logger, ruleValues, sourceRepRepo, config)
-	logger.Info("Classifier initialized", "version", config.Version, "rules_count", len(rules))
-
-	// Create batch processor
-	concurrency := getEnvInt("CLASSIFIER_CONCURRENCY", 10)
-	batchProcessor := processor.NewBatchProcessor(classifierInstance, concurrency, logger)
-	logger.Info("Batch processor initialized", "concurrency", concurrency)
-
-	// Get individual classifiers for API handlers
-	sourceRepScorer := classifier.NewSourceReputationScorer(logger, sourceRepRepo)
-	topicClassifier := classifier.NewTopicClassifier(logger, ruleValues)
-
-	// Create API handler with repositories
-	handler := api.NewHandler(
-		classifierInstance,
-		batchProcessor,
-		sourceRepScorer,
-		topicClassifier,
-		rulesRepo,
-		sourceRepRepo,
-		classificationHistoryRepo,
-		logger,
-	)
-
-	// Create HTTP server
 	serverConfig := api.ServerConfig{
 		Port:         port,
-		ReadTimeout:  30 * time.Second,
-		WriteTimeout: 30 * time.Second,
+		ReadTimeout:  defaultHTTPTimeout,
+		WriteTimeout: defaultHTTPTimeout,
 		Debug:        debug,
 	}
-	server := api.NewServer(handler, serverConfig, logger)
+	server := api.NewServer(comps.handler, serverConfig, logger)
 
 	// Start server in goroutine
 	serverErrors := make(chan error, 1)
@@ -323,16 +283,17 @@ func StartHTTPServerWithStop() (func(), error) {
 		logger.Info("Stopping HTTP server...")
 
 		// Graceful shutdown with 30 second timeout
-		shutdownCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-		defer cancel()
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), defaultHTTPTimeout)
 
 		if err = server.Shutdown(shutdownCtx); err != nil {
+			cancel() // Explicit cancel before cleanup
 			logger.Error("Graceful shutdown failed", "error", err)
 		} else {
+			cancel() // Cancel context after successful shutdown
 			logger.Info("HTTP server stopped gracefully")
 		}
 
-		_ = db.Close()
+		_ = comps.db.Close()
 	}
 
 	return stopFunc, nil

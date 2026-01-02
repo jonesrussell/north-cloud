@@ -176,18 +176,21 @@ func (s *ElasticsearchStorage) UpdateRawContentStatus(ctx context.Context, conte
 			lastErr = updateErr
 			continue
 		}
-		defer func() {
-			if closeErr := res.Body.Close(); closeErr != nil {
-				_ = closeErr // Body close errors are usually non-critical
-			}
-		}()
 
+		// Check if update was successful before processing response
 		if !res.IsError() {
-			// Successfully updated
+			// Successfully updated - close response and return
+			if res.Body != nil {
+				_ = res.Body.Close()
+			}
 			return nil
 		}
+
 		// If we get a 404, the document wasn't in this index - that's expected
-		// Continue to next index
+		// Continue to next index after closing response
+		if res.Body != nil {
+			_ = res.Body.Close()
+		}
 		lastErr = fmt.Errorf("error updating document: %s", res.String())
 	}
 

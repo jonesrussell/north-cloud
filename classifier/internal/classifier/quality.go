@@ -20,6 +20,10 @@ const (
 	readabilityScore200     = 20 // 80% of max (20/25)
 	readabilityScore100     = 15 // 60% of max
 	readabilityScoreDefault = 10 // 40% of max
+	// Default quality config constants
+	defaultQualityWeight025     = 0.25
+	defaultMinWordCount100      = 100
+	defaultOptimalWordCount1000 = 1000
 )
 
 // QualityScorer evaluates content quality on a 0-100 scale
@@ -49,12 +53,12 @@ func NewQualityScorer(logger Logger) *QualityScorer {
 	return &QualityScorer{
 		logger: logger,
 		config: QualityConfig{
-			WordCountWeight:   0.25,
-			MetadataWeight:    0.25,
-			RichnessWeight:    0.25,
-			ReadabilityWeight: 0.25,
-			MinWordCount:      100,
-			OptimalWordCount:  1000,
+			WordCountWeight:   defaultQualityWeight025,
+			MetadataWeight:    defaultQualityWeight025,
+			RichnessWeight:    defaultQualityWeight025,
+			ReadabilityWeight: defaultQualityWeight025,
+			MinWordCount:      defaultMinWordCount100,
+			OptimalWordCount:  defaultOptimalWordCount1000,
 		},
 	}
 }

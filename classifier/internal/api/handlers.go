@@ -13,6 +13,11 @@ import (
 	"github.com/jonesrussell/north-cloud/classifier/internal/processor"
 )
 
+const (
+	// Default confidence threshold for classification rules
+	defaultMinConfidence = 0.3
+)
+
 // Handler handles HTTP requests for the classifier API
 type Handler struct {
 	classifier                *classifier.Classifier
@@ -219,7 +224,7 @@ func (h *Handler) CreateRule(c *gin.Context) {
 		RuleType:      domain.RuleTypeTopic,
 		TopicName:     req.Topic,
 		Keywords:      req.Keywords,
-		MinConfidence: 0.3, // Default confidence threshold (TODO: move to constant)
+		MinConfidence: defaultMinConfidence,
 		Enabled:       req.Enabled,
 		Priority:      priorityStringToInt(req.Priority),
 	}

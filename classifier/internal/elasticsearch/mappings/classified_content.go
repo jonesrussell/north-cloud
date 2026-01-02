@@ -77,123 +77,90 @@ type ClassifiedContentProperties struct {
 	Confidence           Field `json:"confidence"`
 }
 
+// createRawContentProperties creates properties for raw content fields
+func createRawContentProperties() ClassifiedContentProperties {
+	indexFalse := false
+	dateFormat := "strict_date_optional_time||epoch_millis"
+
+	return ClassifiedContentProperties{
+		// ===== Raw Content Fields =====
+		ID:                   Field{Type: "keyword"},
+		URL:                  Field{Type: "keyword"},
+		SourceName:           Field{Type: "keyword"},
+		Title:                Field{Type: "text", Analyzer: "standard"},
+		RawHTML:              Field{Type: "text", Index: &indexFalse}, // Store but don't index
+		RawText:              Field{Type: "text", Analyzer: "standard"},
+		OGType:               Field{Type: "keyword"},
+		OGTitle:              Field{Type: "text", Analyzer: "standard"},
+		OGDescription:        Field{Type: "text", Analyzer: "standard"},
+		OGImage:              Field{Type: "keyword"},
+		OGURL:                Field{Type: "keyword"},
+		MetaDescription:      Field{Type: "text", Analyzer: "standard"},
+		MetaKeywords:         Field{Type: "keyword"},
+		CanonicalURL:         Field{Type: "keyword"},
+		CrawledAt:            Field{Type: "date", Format: dateFormat},
+		PublishedDate:        Field{Type: "date", Format: dateFormat},
+		ClassificationStatus: Field{Type: "keyword"},
+		ClassifiedAt:         Field{Type: "date", Format: dateFormat},
+		WordCount:            Field{Type: "integer"},
+	}
+}
+
+// createClassificationProperties creates properties for classification result fields
+func createClassificationProperties() ClassifiedContentProperties {
+	return ClassifiedContentProperties{
+		// ===== Classification Results =====
+		ContentType:          Field{Type: "keyword"},
+		ContentSubtype:       Field{Type: "keyword"},
+		QualityScore:         Field{Type: "integer"},
+		QualityFactors:       Field{Type: "object"},  // Nested object with dynamic keys
+		Topics:               Field{Type: "keyword"}, // Array of keywords
+		TopicScores:          Field{Type: "object"},  // Map of topic -> score
+		SourceReputation:     Field{Type: "integer"},
+		SourceCategory:       Field{Type: "keyword"},
+		ClassifierVersion:    Field{Type: "keyword"},
+		ClassificationMethod: Field{Type: "keyword"},
+		ModelVersion:         Field{Type: "keyword"},
+		Confidence:           Field{Type: "float"},
+	}
+}
+
+// mergeProperties merges two ClassifiedContentProperties structs
+func mergeProperties(raw, classified ClassifiedContentProperties) ClassifiedContentProperties {
+	return ClassifiedContentProperties{
+		// Raw content fields
+		ID: raw.ID, URL: raw.URL, SourceName: raw.SourceName,
+		Title: raw.Title, RawHTML: raw.RawHTML, RawText: raw.RawText,
+		OGType: raw.OGType, OGTitle: raw.OGTitle, OGDescription: raw.OGDescription,
+		OGImage: raw.OGImage, OGURL: raw.OGURL,
+		MetaDescription: raw.MetaDescription, MetaKeywords: raw.MetaKeywords,
+		CanonicalURL: raw.CanonicalURL,
+		CrawledAt:    raw.CrawledAt, PublishedDate: raw.PublishedDate,
+		ClassificationStatus: raw.ClassificationStatus, ClassifiedAt: raw.ClassifiedAt,
+		WordCount: raw.WordCount,
+		// Classification fields
+		ContentType: classified.ContentType, ContentSubtype: classified.ContentSubtype,
+		QualityScore: classified.QualityScore, QualityFactors: classified.QualityFactors,
+		Topics: classified.Topics, TopicScores: classified.TopicScores,
+		SourceReputation: classified.SourceReputation, SourceCategory: classified.SourceCategory,
+		ClassifierVersion:    classified.ClassifierVersion,
+		ClassificationMethod: classified.ClassificationMethod,
+		ModelVersion:         classified.ModelVersion, Confidence: classified.Confidence,
+	}
+}
+
 // NewClassifiedContentMapping creates a new classified content mapping with default settings
 func NewClassifiedContentMapping() *ClassifiedContentMapping {
-	// For raw_html, we want to store but not index it (too large, not searchable)
-	indexFalse := false
+	rawProps := createRawContentProperties()
+	classifiedProps := createClassificationProperties()
+	properties := mergeProperties(rawProps, classifiedProps)
 
 	return &ClassifiedContentMapping{
 		Settings: ClassifiedContentSettings{
 			BaseSettings: DefaultSettings(),
 		},
 		Mappings: ClassifiedContentMappings{
-			Properties: ClassifiedContentProperties{
-				// ===== Raw Content Fields =====
-				ID: Field{
-					Type: "keyword",
-				},
-				URL: Field{
-					Type: "keyword",
-				},
-				SourceName: Field{
-					Type: "keyword",
-				},
-				Title: Field{
-					Type:     "text",
-					Analyzer: "standard",
-				},
-				RawHTML: Field{
-					Type:  "text",
-					Index: &indexFalse, // Store but don't index
-				},
-				RawText: Field{
-					Type:     "text",
-					Analyzer: "standard",
-				},
-				OGType: Field{
-					Type: "keyword",
-				},
-				OGTitle: Field{
-					Type:     "text",
-					Analyzer: "standard",
-				},
-				OGDescription: Field{
-					Type:     "text",
-					Analyzer: "standard",
-				},
-				OGImage: Field{
-					Type: "keyword",
-				},
-				OGURL: Field{
-					Type: "keyword",
-				},
-				MetaDescription: Field{
-					Type:     "text",
-					Analyzer: "standard",
-				},
-				MetaKeywords: Field{
-					Type: "keyword",
-				},
-				CanonicalURL: Field{
-					Type: "keyword",
-				},
-				CrawledAt: Field{
-					Type:   "date",
-					Format: "strict_date_optional_time||epoch_millis",
-				},
-				PublishedDate: Field{
-					Type:   "date",
-					Format: "strict_date_optional_time||epoch_millis",
-				},
-				ClassificationStatus: Field{
-					Type: "keyword",
-				},
-				ClassifiedAt: Field{
-					Type:   "date",
-					Format: "strict_date_optional_time||epoch_millis",
-				},
-				WordCount: Field{
-					Type: "integer",
-				},
-
-				// ===== Classification Results =====
-				ContentType: Field{
-					Type: "keyword",
-				},
-				ContentSubtype: Field{
-					Type: "keyword",
-				},
-				QualityScore: Field{
-					Type: "integer",
-				},
-				QualityFactors: Field{
-					Type: "object", // Nested object with dynamic keys
-				},
-				Topics: Field{
-					Type: "keyword", // Array of keywords
-				},
-				TopicScores: Field{
-					Type: "object", // Map of topic -> score
-				},
-				SourceReputation: Field{
-					Type: "integer",
-				},
-				SourceCategory: Field{
-					Type: "keyword",
-				},
-				ClassifierVersion: Field{
-					Type: "keyword",
-				},
-				ClassificationMethod: Field{
-					Type: "keyword",
-				},
-				ModelVersion: Field{
-					Type: "keyword",
-				},
-				Confidence: Field{
-					Type: "float",
-				},
-			},
+			Properties: properties,
 		},
 	}
 }

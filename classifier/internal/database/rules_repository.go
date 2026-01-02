@@ -107,7 +107,8 @@ func (r *RulesRepository) List(ctx context.Context, ruleType string, enabled *bo
 	if enabled != nil {
 		whereClauses = append(whereClauses, fmt.Sprintf("enabled = $%d", argIndex))
 		args = append(args, *enabled)
-		argIndex++ //nolint:ineffassign // Incremented for consistency and potential future filters
+		// argIndex intentionally not incremented - this is the last filter
+		// If more filters are added in the future, they should increment argIndex
 	}
 
 	if len(whereClauses) > 0 {

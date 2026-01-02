@@ -7,6 +7,12 @@ import (
 	"github.com/jonesrussell/north-cloud/classifier/internal/domain"
 )
 
+const (
+	// Content type confidence constants
+	articleConfidence = 0.75
+	pageConfidence    = 0.6
+)
+
 // ContentTypeClassifier determines the type of content (article, page, video, image, job)
 type ContentTypeClassifier struct {
 	logger Logger
@@ -92,7 +98,7 @@ func (c *ContentTypeClassifier) Classify(ctx context.Context, raw *domain.RawCon
 		)
 		return &ContentTypeResult{
 			Type:       domain.ContentTypeArticle,
-			Confidence: 0.75, // TODO: move to constant
+			Confidence: articleConfidence,
 			Method:     "heuristic",
 			Reason:     "Content has article characteristics (sufficient length, metadata)",
 		}, nil
@@ -106,7 +112,7 @@ func (c *ContentTypeClassifier) Classify(ctx context.Context, raw *domain.RawCon
 	)
 	return &ContentTypeResult{
 		Type:       domain.ContentTypePage,
-		Confidence: 0.6, // TODO: move to constant
+		Confidence: pageConfidence,
 		Method:     "default",
 		Reason:     "Content does not meet article criteria",
 	}, nil

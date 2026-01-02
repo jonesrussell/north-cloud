@@ -9,6 +9,11 @@ import (
 	"github.com/jonesrussell/north-cloud/classifier/internal/domain"
 )
 
+const (
+	// Default poll interval
+	defaultPollIntervalSeconds = 30
+)
+
 // ElasticsearchClient defines the interface for ES operations
 type ElasticsearchClient interface {
 	// QueryRawContent queries for raw content with pending classification status
@@ -64,7 +69,7 @@ func NewPoller(
 		config.BatchSize = 100
 	}
 	if config.PollInterval <= 0 {
-		config.PollInterval = 30 * time.Second
+		config.PollInterval = defaultPollIntervalSeconds * time.Second
 	}
 
 	return &Poller{

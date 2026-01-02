@@ -1,3 +1,4 @@
+//nolint:testpackage // Testing internal classifier requires same package access
 package classifier
 
 import (

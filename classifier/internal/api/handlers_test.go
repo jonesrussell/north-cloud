@@ -1,9 +1,11 @@
+//nolint:testpackage // Testing internal API handlers requires same package access
 package api
 
 import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -37,10 +39,12 @@ func newMockSourceReputationDB() *mockSourceReputationDB {
 	}
 }
 
+var errSourceNotFound = errors.New("source not found")
+
 func (m *mockSourceReputationDB) GetSource(ctx context.Context, sourceName string) (*domain.SourceReputation, error) {
 	source, ok := m.sources[sourceName]
 	if !ok {
-		return nil, nil
+		return nil, errSourceNotFound
 	}
 	return source, nil
 }
