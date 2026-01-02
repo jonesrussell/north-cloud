@@ -6,7 +6,7 @@ export interface ValidationRule {
   maxLength?: number
   pattern?: RegExp
   url?: boolean
-  custom?: (value: any) => string | null
+  custom?: (value: unknown) => string | null
 }
 
 export interface ValidationResult {
@@ -15,7 +15,7 @@ export interface ValidationResult {
 }
 
 export interface FieldValidation {
-  value: any
+  value: unknown
   error: string | null
   touched: boolean
   validating: boolean
@@ -25,7 +25,7 @@ export interface FieldValidation {
 export function useFormValidation() {
   const fields = ref<Record<string, FieldValidation>>({})
 
-  function registerField(name: string, initialValue: any = '') {
+  function registerField(name: string, initialValue: unknown = '') {
     fields.value[name] = {
       value: initialValue,
       error: null,
@@ -88,7 +88,7 @@ export function useFormValidation() {
     return { isValid: true, error: null }
   }
 
-  function setFieldValue(name: string, value: any) {
+  function setFieldValue(name: string, value: unknown) {
     if (fields.value[name]) {
       fields.value[name].value = value
       fields.value[name].touched = true

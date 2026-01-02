@@ -233,7 +233,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { publisherApi } from '../../api/client'
-import type { Channel, CreateChannelRequest, UpdateChannelRequest } from '../../types/publisher'
+import type { Channel, CreateChannelRequest, UpdateChannelRequest, PreviewArticle } from '../../types/publisher'
 import { PageHeader, LoadingSpinner, ErrorAlert, StatusBadge, TestResultsModal } from '../../components/common'
 
 const channels = ref<Channel[]>([])
@@ -351,7 +351,7 @@ const testPublish = async (channel: Channel): Promise<void> => {
       warnings: response.data.routes_count === 0
         ? ['No enabled routes found for this channel']
         : [],
-      sample_articles: (response.data.sample_articles || []).map((article: any) => ({
+      sample_articles: (response.data.sample_articles || []).map((article: PreviewArticle) => ({
         title: article.title,
         url: article.url,
         published_date: article.published_date,

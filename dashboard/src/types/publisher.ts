@@ -185,3 +185,23 @@ export interface RecentArticlesResponse {
   count: number
 }
 
+// Article types for preview and testing
+export interface PreviewArticle {
+  title: string
+  quality_score: number
+  topics: string[]
+  published_date: string
+  url?: string
+  source?: string
+  route_id?: string
+}
+
+export interface TestCrawlArticle {
+  title?: string
+  body?: string
+  url?: string
+  published_date?: string
+  author?: string
+  quality_score?: number
+}
+
