@@ -5,13 +5,21 @@
       subtitle="Manage content sources for crawling"
     >
       <template #actions>
-        <router-link
-          to="/sources/new"
-          class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700"
-        >
-          <PlusIcon class="h-5 w-5 mr-2" />
-          Add Source
-        </router-link>
+        <div class="flex gap-2">
+          <button
+            class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            @click="openQuickCreate"
+          >
+            <PlusIcon class="h-5 w-5 mr-2" />
+            Quick Add
+          </button>
+          <router-link
+            to="/sources/new"
+            class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            Advanced Form
+          </router-link>
+        </div>
       </template>
     </PageHeader>
 
@@ -43,13 +51,19 @@
       <p class="mt-1 text-sm text-gray-500">
         Get started by creating a new source.
       </p>
-      <div class="mt-6">
-        <router-link
-          to="/sources/new"
+      <div class="mt-6 flex justify-center gap-3">
+        <button
           class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
+          @click="openQuickCreate"
         >
           <PlusIcon class="h-5 w-5 mr-2" />
-          Add Source
+          Quick Add
+        </button>
+        <router-link
+          to="/sources/new"
+          class="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
+        >
+          Advanced Form
         </router-link>
       </div>
     </div>
@@ -112,6 +126,12 @@
       @confirm="handleDelete"
       @cancel="sourceToDelete = null"
     />
+
+    <!-- Quick Create Modal -->
+    <SourceQuickCreateModal
+      ref="quickCreateModalRef"
+      @created="onSourceCreated"
+    />
   </div>
 </template>
 
@@ -126,12 +146,14 @@ import {
   StatusBadge,
   ConfirmModal,
 } from '../../components/common'
+import SourceQuickCreateModal from '../../components/SourceQuickCreateModal.vue'
 
 const sources = ref([])
 const loading = ref(true)
 const error = ref(null)
 const sourceToDelete = ref(null)
 const deleting = ref(false)
+const quickCreateModalRef = ref(null)
 
 const loadSources = async () => {
   loading.value = true
@@ -166,6 +188,14 @@ const handleDelete = async () => {
   } finally {
     deleting.value = false
   }
+}
+
+const openQuickCreate = () => {
+  quickCreateModalRef.value?.open()
+}
+
+const onSourceCreated = () => {
+  loadSources()
 }
 
 onMounted(() => {

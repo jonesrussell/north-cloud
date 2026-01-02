@@ -6,4 +6,6 @@ export { default as StatusBadge } from './StatusBadge.vue'
 export { default as ConfirmModal } from './ConfirmModal.vue'
 export { default as CollapsibleSection } from './CollapsibleSection.vue'
 export { default as SelectorInput } from './SelectorInput.vue'
+export { default as HealthIndicator } from './HealthIndicator.vue'
+export { default as SetupStatusCard } from './SetupStatusCard.vue'
 
