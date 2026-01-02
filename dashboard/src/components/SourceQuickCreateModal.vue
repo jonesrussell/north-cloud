@@ -323,9 +323,17 @@
                 Cancel
               </button>
               <button
+                type="button"
+                class="px-4 py-2 border border-blue-600 text-blue-600 rounded-md text-sm font-medium bg-white hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+                :disabled="!form.url || testingCrawl || saving"
+                @click="testCrawl"
+              >
+                {{ testingCrawl ? 'Testing...' : 'Test Crawl' }}
+              </button>
+              <button
                 type="submit"
                 class="px-6 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 disabled:opacity-50"
-                :disabled="saving"
+                :disabled="saving || testingCrawl"
               >
                 {{ saving ? 'Creating...' : 'Create Source' }}
               </button>
@@ -397,8 +405,9 @@
               </button>
 
               <button
-                class="w-full px-4 py-3 border-2 border-blue-600 text-blue-600 rounded-md hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-500 text-left flex items-center"
-                @click="testCrawl"
+                class="w-full px-4 py-3 border-2 border-blue-600 text-blue-600 rounded-md hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-500 text-left flex items-center disabled:opacity-50"
+                :disabled="testingCrawl"
+                @click="testCrawlFromPostSave"
               >
                 <svg
                   class="w-5 h-5 mr-3"
@@ -414,7 +423,7 @@
                   />
                 </svg>
                 <div>
-                  <div class="font-medium">Test Crawl Now</div>
+                  <div class="font-medium">{{ testingCrawl ? 'Testing...' : 'Test Crawl Now' }}</div>
                   <div class="text-xs text-blue-600">
                     Run a one-time test crawl
                   </div>
@@ -432,6 +441,15 @@
         </div>
       </div>
     </div>
+
+    <!-- Test Results Modal -->
+    <TestResultsModal
+      ref="testResultsModal"
+      title="Test Crawl Results"
+      subtitle="Review the crawl test results before creating the source"
+      loading-message="Testing crawl configuration..."
+      @close="testResultsModal?.close()"
+    />
   </div>
 </template>
 
@@ -440,7 +458,7 @@ import { ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { CheckCircleIcon } from '@heroicons/vue/24/solid'
 import { sourcesApi } from '../api/client'
-import { ErrorAlert } from './common'
+import { ErrorAlert, TestResultsModal } from './common'
 import {
   checkUrlReachability,
   generateSourceNameFromUrl,
@@ -462,6 +480,8 @@ const prefilling = ref(false)
 const prefilled = ref(false)
 const showPostSaveActions = ref(false)
 const createdSource = ref<any>(null)
+const testResultsModal = ref<InstanceType<typeof TestResultsModal> | null>(null)
+const testingCrawl = ref(false)
 
 // URL validation state
 const urlValidation = ref({
@@ -589,10 +609,75 @@ const createJob = (): void => {
   })
 }
 
-const testCrawl = (): void => {
-  showPostSaveActions.value = false
-  router.push(`/sources/${createdSource.value?.id}/edit`)
-  // Could trigger test crawl here
+const testCrawl = async (): Promise<void> => {
+  if (!form.value.url) {
+    error.value = 'Please enter a URL first'
+    return
+  }
+
+  testingCrawl.value = true
+  error.value = null
+
+  try {
+    // Open modal and show loading
+    testResultsModal.value?.open()
+    testResultsModal.value?.setLoading(true, 'Testing crawl configuration...')
+
+    // Call test crawl API
+    const response = await sourcesApi.testCrawl({
+      url: form.value.url,
+      selectors: mode.value === 'advanced' ? {
+        // Include advanced selectors if in advanced mode
+        article_selector: form.value.article_selector,
+        title_selector: form.value.title_selector,
+        body_selector: form.value.body_selector,
+        // Add other selectors as needed
+      } : undefined,
+    })
+
+    // Show results
+    testResultsModal.value?.setLoading(false)
+    testResultsModal.value?.open(response.data)
+  } catch (err: unknown) {
+    testingCrawl.value = false
+    const axiosError = err as { response?: { data?: { error?: string } } }
+    error.value = axiosError.response?.data?.error || 'Failed to test crawl'
+    testResultsModal.value?.setLoading(false)
+  } finally {
+    testingCrawl.value = false
+  }
+}
+
+const testCrawlFromPostSave = async (): Promise<void> => {
+  if (!createdSource.value?.url) {
+    error.value = 'Source URL not available'
+    return
+  }
+
+  testingCrawl.value = true
+  error.value = null
+
+  try {
+    // Open modal and show loading
+    testResultsModal.value?.open()
+    testResultsModal.value?.setLoading(true, 'Testing crawl configuration...')
+
+    // Call test crawl API with the created source's URL
+    const response = await sourcesApi.testCrawl({
+      url: createdSource.value.url,
+    })
+
+    // Show results
+    testResultsModal.value?.setLoading(false)
+    testResultsModal.value?.open(response.data)
+  } catch (err: unknown) {
+    testingCrawl.value = false
+    const axiosError = err as { response?: { data?: { error?: string } } }
+    error.value = axiosError.response?.data?.error || 'Failed to test crawl'
+    testResultsModal.value?.setLoading(false)
+  } finally {
+    testingCrawl.value = false
+  }
 }
 
 const closePostSave = (): void => {

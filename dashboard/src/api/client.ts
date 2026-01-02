@@ -210,6 +210,8 @@ export const sourcesApi = {
   update: (id: string | number, data: unknown) => sourcesClient.put(`/${id}`, data),
   delete: (id: string | number) => sourcesClient.delete(`/${id}`),
   fetchMetadata: (url: string) => sourcesClient.post('/fetch-metadata', { url }),
+  testCrawl: (data: { url: string; selectors?: Record<string, unknown> }) =>
+    sourcesClient.post('/test-crawl', data),
 
   // Cities (endpoint is at /api/v1/cities, not under /api/v1/sources)
   cities: {
@@ -267,6 +269,29 @@ export const publisherApi = {
       publisherClient.put(`/channels/${id}`, data),
     delete: (id: number): Promise<AxiosResponse<void>> =>
       publisherClient.delete(`/channels/${id}`),
+    testPublish: (id: number): Promise<AxiosResponse<{
+      channel_name: string
+      channel_id: string
+      routes_count: number
+      estimated_count: number
+      route_stats: Array<{
+        route_id: string
+        source_name: string
+        min_quality_score: number
+        topics: string[]
+        estimated_count: number
+      }>
+      sample_articles: Array<{
+        title: string
+        quality_score: number
+        topics: string[]
+        published_date: string
+        url: string
+        source: string
+        route_id: string
+      }>
+      message: string
+    }>> => publisherClient.get(`/channels/${id}/test-publish`),
   },
 
   // Routes CRUD
@@ -281,6 +306,31 @@ export const publisherApi = {
       publisherClient.put(`/routes/${id}`, data),
     delete: (id: number): Promise<AxiosResponse<void>> =>
       publisherClient.delete(`/routes/${id}`),
+    preview: (params: {
+      source_id?: string
+      min_quality_score?: string
+      topics?: string
+    }): Promise<AxiosResponse<{
+      estimated_count: number
+      filters: {
+        source_id?: string
+        min_quality_score: string
+        topics?: string
+      }
+      sample_articles: Array<{
+        title: string
+        quality_score: number
+        topics: string[]
+        published_date: string
+        url: string
+      }>
+    }>> => {
+      const query = new URLSearchParams()
+      if (params.source_id) query.append('source_id', params.source_id)
+      if (params.min_quality_score) query.append('min_quality_score', params.min_quality_score)
+      if (params.topics) query.append('topics', params.topics)
+      return publisherClient.get(`/routes/preview${query.toString() ? `?${query.toString()}` : ''}`)
+    },
   },
 
   // Publish History

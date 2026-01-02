@@ -354,13 +354,23 @@
                 </p>
               </div>
 
-              <!-- Live Preview (Placeholder - will be enhanced with backend endpoint) -->
-              <div class="p-4 bg-green-50 border border-green-200 rounded-md">
-                <h4 class="text-sm font-medium text-green-900 mb-2">
-                  Ready to Activate
-                </h4>
-                <p class="text-sm text-green-800">
-                  Once activated, articles matching your filters will be published to <code class="font-mono">{{ getChannelDisplayName() }}</code> every 5 minutes.
+              <!-- Live Preview -->
+              <RoutePreviewPanel
+                v-if="route.source_id && route.channel_id"
+                ref="routePreviewPanel"
+                :source-id="route.source_id.toString()"
+                :min-quality-score="route.min_quality_score"
+                :topics="topicsInput ? topicsInput.split(',').map(t => t.trim()).filter(t => t.length > 0) : []"
+                :auto-refresh="false"
+                class="mt-4"
+                @refresh="handlePreviewRefresh"
+              />
+              <div
+                v-else
+                class="p-4 bg-gray-50 border border-gray-200 rounded-md"
+              >
+                <p class="text-sm text-gray-600">
+                  Preview will appear once source and channel are selected.
                 </p>
               </div>
             </div>
@@ -443,10 +453,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { publisherApi } from '../api/client'
 import type { Source, Channel, CreateSourceRequest, CreateChannelRequest, CreateRouteRequest } from '../types/publisher'
-import { ErrorAlert } from './common'
+import { ErrorAlert, RoutePreviewPanel } from './common'
 
 const props = defineProps<{
   open?: boolean
@@ -497,6 +507,7 @@ const route = ref<CreateRouteRequest>({
   enabled: true,
 })
 const topicsInput = ref('')
+const routePreviewPanel = ref<{ refresh: () => void; setLoading: (loading: boolean) => void; setResults: (count: number, articles: any[]) => void; setError: (error: string) => void } | null>(null)
 
 // Load existing sources and channels
 const loadExistingSources = async (): Promise<void> => {
@@ -564,6 +575,8 @@ const nextStep = async (): Promise<void> => {
       try {
         const response = await publisherApi.sources.create(newSource.value)
         createdSourceId.value = response.data.id
+        // Set route source_id for preview
+        route.value.source_id = response.data.id
         currentStep.value++
       } catch (err: unknown) {
         const axiosError = err as { response?: { data?: { error?: string } } }
@@ -573,6 +586,8 @@ const nextStep = async (): Promise<void> => {
       }
     } else {
       createdSourceId.value = selectedSourceId.value
+      // Set route source_id for preview
+      route.value.source_id = selectedSourceId.value
       currentStep.value++
     }
   } else if (currentStep.value === 1) {
@@ -583,6 +598,8 @@ const nextStep = async (): Promise<void> => {
       try {
         const response = await publisherApi.channels.create(newChannel.value)
         createdChannelId.value = response.data.id
+        // Set route channel_id for preview
+        route.value.channel_id = response.data.id
         currentStep.value++
       } catch (err: unknown) {
         const axiosError = err as { response?: { data?: { error?: string } } }
@@ -592,6 +609,8 @@ const nextStep = async (): Promise<void> => {
       }
     } else {
       createdChannelId.value = selectedChannelId.value
+      // Set route channel_id for preview
+      route.value.channel_id = selectedChannelId.value
       currentStep.value++
     }
   } else if (currentStep.value === 2) {
@@ -692,6 +711,52 @@ defineExpose({
     loadExistingChannels()
   },
 })
+
+// Handle preview refresh
+const handlePreviewRefresh = async (filters: { sourceId?: string; minQualityScore: number; topics: string[] }): Promise<void> => {
+  if (!filters.sourceId) {
+    routePreviewPanel.value?.setError('Source ID is required')
+    return
+  }
+
+  routePreviewPanel.value?.setLoading(true)
+
+  try {
+    const response = await publisherApi.routes.preview({
+      source_id: filters.sourceId,
+      min_quality_score: filters.minQualityScore.toString(),
+      topics: filters.topics.join(','),
+    })
+
+    const articles = (response.data.sample_articles || []).map((article: any) => ({
+      title: article.title,
+      quality_score: article.quality_score,
+      topics: article.topics || [],
+      published_date: article.published_date,
+    }))
+
+    routePreviewPanel.value?.setResults(response.data.estimated_count || 0, articles)
+  } catch (err: unknown) {
+    const axiosError = err as { response?: { data?: { error?: string } } }
+    routePreviewPanel.value?.setError(
+      axiosError.response?.data?.error || 'Failed to load preview'
+    )
+  }
+}
+
+// Watch for route changes and refresh preview
+watch(
+  () => [route.value.source_id, route.value.min_quality_score, topicsInput.value],
+  () => {
+    if (route.value.source_id && route.value.channel_id && routePreviewPanel.value) {
+      // Small delay to avoid too many API calls
+      setTimeout(() => {
+        routePreviewPanel.value?.refresh()
+      }, 500)
+    }
+  },
+  { deep: true }
+)
 
 onMounted(() => {
   if (isOpen.value) {

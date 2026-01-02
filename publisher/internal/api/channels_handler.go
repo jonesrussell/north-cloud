@@ -135,3 +135,133 @@ func (r *Router) deleteChannel(c *gin.Context) {
 		"message": "Channel deleted successfully",
 	})
 }
+
+// testPublish simulates publishing to a channel and returns preview of articles that would be published
+// GET /api/v1/channels/:id/test-publish
+func (r *Router) testPublish(c *gin.Context) {
+	ctx := c.Request.Context()
+
+	channelID, ok := parseUUID(c, "id", "channel")
+	if !ok {
+		return
+	}
+
+	// Get channel details
+	channel, err := r.repo.GetChannelByID(ctx, channelID)
+	if err != nil {
+		handleRepositoryError(c, err, "channel", "get")
+		return
+	}
+
+	// Get all enabled routes for this channel
+	routes, err := r.repo.GetRoutesByChannelID(ctx, channelID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "Failed to get routes for channel",
+		})
+		return
+	}
+
+	if len(routes) == 0 {
+		c.JSON(http.StatusOK, gin.H{
+			"channel_name":    channel.Name,
+			"routes_count":    0,
+			"estimated_count": 0,
+			"message":         "No enabled routes found for this channel",
+			"sample_articles": []gin.H{},
+		})
+		return
+	}
+
+	// Aggregate statistics across all routes
+	totalEstimated := 0
+	sampleArticles := []gin.H{}
+	routeStats := []gin.H{}
+
+	for _, route := range routes {
+		// For each route, simulate article count (in real implementation, would query Elasticsearch)
+		// Using similar logic to previewRoute
+		routeCount := 50 + (len(route.Topics) * 25) // Simulated: more topics = more articles
+		if route.MinQualityScore > 70 {
+			routeCount = routeCount / 2 // Higher quality threshold = fewer articles
+		}
+		totalEstimated += routeCount
+
+		// Add route statistics
+		routeStats = append(routeStats, gin.H{
+			"route_id":          route.ID,
+			"source_name":       route.SourceName,
+			"min_quality_score": route.MinQualityScore,
+			"topics":            route.Topics,
+			"estimated_count":   routeCount,
+		})
+
+		// Add sample articles for this route (limit to 3 per route to avoid overwhelming response)
+		for i := 0; i < 3 && i < routeCount; i++ {
+			sampleArticles = append(sampleArticles, gin.H{
+				"title":          generateSampleTitle(route.Topics),
+				"quality_score":  70 + (i * 8), // Varying quality scores
+				"topics":         route.Topics,
+				"published_date": "2026-01-02T14:30:00Z",
+				"url":            "https://example.com/article-" + route.ID.String() + "-" + string(rune(i)),
+				"source":         route.SourceName,
+				"route_id":       route.ID,
+			})
+		}
+	}
+
+	// Limit total sample articles to 10
+	if len(sampleArticles) > 10 {
+		sampleArticles = sampleArticles[:10]
+	}
+
+	response := gin.H{
+		"channel_name":    channel.Name,
+		"channel_id":      channelID,
+		"routes_count":    len(routes),
+		"estimated_count": totalEstimated,
+		"route_stats":     routeStats,
+		"sample_articles": sampleArticles,
+		"message":         "Test publish simulation completed",
+	}
+
+	c.JSON(http.StatusOK, response)
+}
+
+// generateSampleTitle generates a sample article title based on topics
+func generateSampleTitle(topics []string) string {
+	if len(topics) == 0 {
+		return "Sample Article Title"
+	}
+
+	// Use first topic to generate title
+	topic := topics[0]
+	titles := map[string][]string{
+		"crime": {
+			"Crime Report: Downtown Incident",
+			"Breaking: Major Arrest Made",
+			"Local Police Update",
+		},
+		"local": {
+			"Local Community News Update",
+			"City Council Meeting Summary",
+			"Neighborhood Events This Week",
+		},
+		"news": {
+			"Breaking News: Important Update",
+			"Today's Top Stories",
+			"News Brief: Latest Developments",
+		},
+		"breaking": {
+			"Breaking: Urgent Update",
+			"Alert: Breaking News",
+			"Urgent: Breaking Story",
+		},
+	}
+
+	if topicTitles, ok := titles[topic]; ok {
+		return topicTitles[0] // Use first title for consistency
+	}
+
+	return "Sample " + topic + " Article"
+}

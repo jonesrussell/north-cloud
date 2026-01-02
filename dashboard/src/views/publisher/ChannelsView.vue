@@ -83,6 +83,12 @@
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                   <button
+                    class="text-green-600 hover:text-green-900 mr-4"
+                    @click="testPublish(channel)"
+                  >
+                    Test Publish
+                  </button>
+                  <button
                     class="text-blue-600 hover:text-blue-900 mr-4"
                     @click="openEditModal(channel)"
                   >
@@ -212,6 +218,15 @@
         </div>
       </div>
     </div>
+
+    <!-- Test Results Modal -->
+    <TestResultsModal
+      ref="testResultsModal"
+      title="Test Publish Results"
+      subtitle="Preview articles that would be published to this channel"
+      loading-message="Testing publish configuration..."
+      @close="testResultsModal?.close()"
+    />
   </div>
 </template>
 
@@ -219,7 +234,7 @@
 import { ref, onMounted } from 'vue'
 import { publisherApi } from '../../api/client'
 import type { Channel, CreateChannelRequest, UpdateChannelRequest } from '../../types/publisher'
-import { PageHeader, LoadingSpinner, ErrorAlert, StatusBadge } from '../../components/common'
+import { PageHeader, LoadingSpinner, ErrorAlert, StatusBadge, TestResultsModal } from '../../components/common'
 
 const channels = ref<Channel[]>([])
 const loading = ref(false)
@@ -236,6 +251,8 @@ const formData = ref<CreateChannelRequest>({
   enabled: true,
 })
 const currentChannel = ref<Channel | null>(null)
+const testResultsModal = ref<InstanceType<typeof TestResultsModal> | null>(null)
+const testingPublish = ref(false)
 
 const loadChannels = async (): Promise<void> => {
   loading.value = true
@@ -312,6 +329,48 @@ const deleteChannel = async (channel: Channel): Promise<void> => {
   } catch (err) {
     const axiosError = err as { response?: { data?: { error?: string } } }
     error.value = axiosError.response?.data?.error || 'Failed to delete channel'
+  }
+}
+
+const testPublish = async (channel: Channel): Promise<void> => {
+  testingPublish.value = true
+  error.value = null
+
+  try {
+    // Open modal and show loading
+    testResultsModal.value?.open()
+    testResultsModal.value?.setLoading(true, 'Testing publish configuration...')
+
+    // Call test publish API
+    const response = await publisherApi.channels.testPublish(channel.id)
+
+    // Transform response to match TestResultsModal format
+    const testResults = {
+      articles_found: response.data.estimated_count || 0,
+      success_rate: response.data.routes_count > 0 ? 100 : 0,
+      warnings: response.data.routes_count === 0
+        ? ['No enabled routes found for this channel']
+        : [],
+      sample_articles: (response.data.sample_articles || []).map((article: any) => ({
+        title: article.title,
+        url: article.url,
+        published_date: article.published_date,
+        quality_score: article.quality_score,
+        topics: article.topics,
+        source: article.source,
+      })),
+    }
+
+    // Show results
+    testResultsModal.value?.setLoading(false)
+    testResultsModal.value?.open(testResults)
+  } catch (err: unknown) {
+    testingPublish.value = false
+    const axiosError = err as { response?: { data?: { error?: string } } }
+    error.value = axiosError.response?.data?.error || 'Failed to test publish'
+    testResultsModal.value?.setLoading(false)
+  } finally {
+    testingPublish.value = false
   }
 }
 
