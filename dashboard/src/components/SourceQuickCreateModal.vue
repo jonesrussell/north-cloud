@@ -67,24 +67,51 @@
                 Website URL *
               </label>
               <div class="flex gap-2">
-                <input
-                  v-model="form.url"
-                  type="url"
-                  required
-                  placeholder="https://example.com"
-                  class="flex-1 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                  @blur="onUrlBlur"
-                >
+                <div class="flex-1">
+                  <input
+                    v-model="form.url"
+                    type="url"
+                    required
+                    placeholder="https://example.com"
+                    :class="[
+                      'w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500',
+                      urlValidation.error ? 'border-red-300' : 'border-gray-300'
+                    ]"
+                    @blur="validateUrl"
+                  >
+                  <p
+                    v-if="urlValidation.error"
+                    class="mt-1 text-xs text-red-600"
+                  >
+                    {{ urlValidation.error }}
+                  </p>
+                  <p
+                    v-else-if="urlValidation.checking"
+                    class="mt-1 text-xs text-blue-600"
+                  >
+                    Checking reachability...
+                  </p>
+                  <p
+                    v-else-if="urlValidation.reachable"
+                    class="mt-1 text-xs text-green-600 flex items-center"
+                  >
+                    <CheckCircleIcon class="w-3 h-3 mr-1" />
+                    URL is reachable
+                  </p>
+                </div>
                 <button
                   type="button"
                   class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
-                  :disabled="!form.url || prefilling"
+                  :disabled="!form.url || prefilling || !!urlValidation.error"
                   @click="prefillFromUrl"
                 >
                   {{ prefilling ? 'Auto-detecting...' : 'Auto-fill' }}
                 </button>
               </div>
-              <p class="mt-1 text-xs text-gray-500">
+              <p
+                v-if="!urlValidation.error && !urlValidation.checking && !urlValidation.reachable"
+                class="mt-1 text-xs text-gray-500"
+              >
                 Enter URL and click Auto-fill to detect selectors automatically
               </p>
               <p
@@ -411,8 +438,14 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import { CheckCircleIcon } from '@heroicons/vue/24/solid'
 import { sourcesApi } from '../api/client'
 import { ErrorAlert } from './common'
+import {
+  checkUrlReachability,
+  generateSourceNameFromUrl,
+  detectCategory
+} from '../composables/useFormValidation'
 
 const emit = defineEmits<{
   (e: 'close'): void
@@ -430,27 +463,76 @@ const prefilled = ref(false)
 const showPostSaveActions = ref(false)
 const createdSource = ref<any>(null)
 
+// URL validation state
+const urlValidation = ref({
+  checking: false,
+  reachable: false,
+  error: null as string | null,
+})
+
 const form = ref({
   url: '',
   name: '',
   category: '',
   rate_limit: '1s',
   max_depth: 3,
-  user_agent: '',
+  user_agent: 'Mozilla/5.0 (compatible; NorthCloud/1.0; +https://northcloud.biz)',
   enabled: true,
 })
 
-// Auto-generate name from URL
-const onUrlBlur = (): void => {
-  if (form.value.url && !form.value.name) {
-    try {
-      const url = new URL(form.value.url)
-      // Convert hostname to snake_case: example.com -> example_com
-      form.value.name = url.hostname.replace(/\./g, '_').replace(/-/g, '_')
-    } catch {
-      // Invalid URL, ignore
+// Validate URL and check reachability
+const validateUrl = async (): Promise<void> => {
+  const url = form.value.url.trim()
+
+  if (!url) {
+    urlValidation.value = { checking: false, reachable: false, error: null }
+    return
+  }
+
+  // Validate URL format
+  try {
+    new URL(url)
+  } catch {
+    urlValidation.value = {
+      checking: false,
+      reachable: false,
+      error: 'Invalid URL format',
+    }
+    return
+  }
+
+  // Auto-generate name and detect category
+  if (!form.value.name) {
+    form.value.name = generateSourceNameFromUrl(url)
+  }
+
+  if (!form.value.category) {
+    form.value.category = detectCategory(url)
+  }
+
+  // Check reachability
+  urlValidation.value.checking = true
+  urlValidation.value.error = null
+
+  try {
+    const isReachable = await checkUrlReachability(url, 3000)
+    urlValidation.value = {
+      checking: false,
+      reachable: isReachable,
+      error: isReachable ? null : 'URL may not be reachable (check firewall/CORS)',
+    }
+  } catch {
+    urlValidation.value = {
+      checking: false,
+      reachable: false,
+      error: 'Could not verify URL reachability',
     }
   }
+}
+
+// Auto-generate name from URL (legacy function, kept for backwards compat)
+const onUrlBlur = (): void => {
+  validateUrl()
 }
 
 // Prefill from URL (simulated - would call backend)
@@ -536,12 +618,13 @@ const resetForm = (): void => {
     category: '',
     rate_limit: '1s',
     max_depth: 3,
-    user_agent: '',
+    user_agent: 'Mozilla/5.0 (compatible; NorthCloud/1.0; +https://northcloud.biz)',
     enabled: true,
   }
   mode.value = 'basic'
   error.value = null
   prefilled.value = false
+  urlValidation.value = { checking: false, reachable: false, error: null }
 }
 
 // Reset error when mode changes
