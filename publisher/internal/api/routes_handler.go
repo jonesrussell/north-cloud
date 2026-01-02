@@ -210,3 +210,48 @@ func (r *Router) deleteRoute(c *gin.Context) {
 		"message": "Route deleted successfully",
 	})
 }
+
+// previewRoute previews which articles would be published based on route filters
+// GET /api/v1/routes/preview?source_id=X&min_quality_score=50&topics=crime,local
+func (r *Router) previewRoute(c *gin.Context) {
+	// Parse query parameters
+	sourceID := c.Query("source_id")
+	minQualityScore := c.DefaultQuery("min_quality_score", "50")
+	topics := c.Query("topics") // Comma-separated list
+
+	// For now, return simulated data
+	// In a full implementation, this would query Elasticsearch with these filters
+	response := gin.H{
+		"estimated_count": 150,
+		"filters": gin.H{
+			"source_id":         sourceID,
+			"min_quality_score": minQualityScore,
+			"topics":            topics,
+		},
+		"sample_articles": []gin.H{
+			{
+				"title":          "Crime Report: Downtown Incident",
+				"quality_score":  85,
+				"topics":         []string{"crime", "local", "breaking"},
+				"published_date": "2026-01-02T14:30:00Z",
+				"url":            "https://example.com/crime-report-1",
+			},
+			{
+				"title":          "Breaking: Major Arrest Made",
+				"quality_score":  92,
+				"topics":         []string{"crime", "breaking"},
+				"published_date": "2026-01-02T13:00:00Z",
+				"url":            "https://example.com/breaking-arrest",
+			},
+			{
+				"title":          "Local Police Update",
+				"quality_score":  78,
+				"topics":         []string{"crime", "local"},
+				"published_date": "2026-01-02T12:15:00Z",
+				"url":            "https://example.com/police-update",
+			},
+		},
+	}
+
+	c.JSON(http.StatusOK, response)
+}

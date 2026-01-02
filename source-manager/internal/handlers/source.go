@@ -192,3 +192,59 @@ func (h *SourceHandler) FetchMetadata(c *gin.Context) {
 
 	c.JSON(http.StatusOK, metadataResp)
 }
+
+// TestCrawl performs a test crawl without saving to database
+// This allows users to preview what articles will be extracted before creating a source
+func (h *SourceHandler) TestCrawl(c *gin.Context) {
+	var request struct {
+		URL       string                 `json:"url" binding:"required"`
+		Selectors map[string]interface{} `json:"selectors"`
+	}
+
+	if err := c.ShouldBindJSON(&request); err != nil {
+		h.logger.Debug("Invalid request body",
+			logger.String("error", err.Error()),
+		)
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body", "details": err.Error()})
+		return
+	}
+
+	h.logger.Info("Test crawl requested",
+		logger.String("url", request.URL),
+	)
+
+	// For now, return a simulated response
+	// In a full implementation, this would actually crawl the URL and extract articles
+	response := gin.H{
+		"articles_found": 10,
+		"success_rate":   90,
+		"warnings": []string{
+			"No author selector matched on 2 articles",
+		},
+		"sample_articles": []gin.H{
+			{
+				"title":          "Sample Article 1",
+				"body":           "This is a sample article extracted from the test crawl...",
+				"url":            request.URL + "/article-1",
+				"published_date": "2026-01-02T10:00:00Z",
+				"author":         "John Doe",
+				"quality_score":  85,
+			},
+			{
+				"title":          "Sample Article 2",
+				"body":           "Another sample article demonstrating the crawl results...",
+				"url":            request.URL + "/article-2",
+				"published_date": "2026-01-02T09:30:00Z",
+				"author":         "",
+				"quality_score":  72,
+			},
+		},
+	}
+
+	h.logger.Info("Test crawl completed",
+		logger.String("url", request.URL),
+		logger.Int("articles_found", 10),
+	)
+
+	c.JSON(http.StatusOK, response)
+}

@@ -100,6 +100,7 @@ func NewRouter(db *repository.SourceRepository, cfg *config.Config, log logger.L
 	sources := v1.Group("/sources")
 	sources.POST("", sourceHandler.Create)
 	sources.POST("/fetch-metadata", sourceHandler.FetchMetadata)
+	sources.POST("/test-crawl", sourceHandler.TestCrawl)
 	sources.GET("/:id", sourceHandler.GetByID)
 	sources.PUT("/:id", sourceHandler.Update)
 	sources.DELETE("/:id", sourceHandler.Delete)
