@@ -4,6 +4,35 @@
       subtitle="Overview of publishing activity and system status"
     />
 
+    <!-- Setup Wizard CTA -->
+    <div class="bg-gradient-to-r from-blue-500 to-blue-600 shadow rounded-lg p-6 mb-6 text-white">
+      <div class="flex items-center justify-between">
+        <div>
+          <h2 class="text-xl font-bold mb-2">
+            Quick Setup
+          </h2>
+          <p class="text-blue-100">
+            Set up a new publishing route in just 3 easy steps. Connect a source to a channel with guided configuration.
+          </p>
+        </div>
+        <button
+          class="px-6 py-3 bg-white text-blue-600 font-semibold rounded-lg hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-blue-600 transition-colors whitespace-nowrap"
+          @click="openSetupWizard"
+        >
+          🚀 Set Up Publishing
+        </button>
+      </div>
+    </div>
+
+    <!-- Setup Status -->
+    <SetupStatusCard
+      title="Publishing Setup Status"
+      :steps="setupSteps"
+      :completion-percentage="setupCompletion"
+      :actions="setupActions"
+      class="mb-6"
+    />
+
     <!-- Connection Status -->
     <div class="bg-white shadow rounded-lg p-6 mb-6">
       <h2 class="text-lg font-medium text-gray-900 mb-4">
@@ -403,11 +432,19 @@
         </div>
       </div>
     </div>
+
+    <!-- Setup Wizard Modal -->
+    <PublisherSetupWizard
+      ref="setupWizardRef"
+      @close="onWizardClose"
+      @success="onWizardSuccess"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { publisherApi } from '../../api/client'
 import type {
   StatsOverviewResponse,
@@ -416,7 +453,10 @@ import type {
   HealthStatus,
   ActiveChannel,
 } from '../../types/publisher'
-import { PageHeader, LoadingSpinner, ErrorAlert, StatCard } from '../../components/common'
+import { PageHeader, LoadingSpinner, ErrorAlert, StatCard, SetupStatusCard } from '../../components/common'
+import PublisherSetupWizard from '../../components/PublisherSetupWizard.vue'
+
+const router = useRouter()
 
 const selectedPeriod = ref<StatsPeriod>('today')
 const stats = ref<StatsOverviewResponse>({
@@ -558,6 +598,139 @@ const truncateUrl = (url: string): string => {
     return url.substring(0, 57) + '...'
   }
   return url
+}
+
+// Setup Status
+const setupSteps = computed(() => {
+  const steps = []
+
+  // Sources configured
+  const sourcesCount = systemInfo.value.sources_count
+  if (sourcesCount > 0) {
+    steps.push({
+      label: `${sourcesCount} Source${sourcesCount > 1 ? 's' : ''} configured`,
+      description: 'Elasticsearch indexes to monitor',
+      status: 'healthy' as const,
+    })
+  } else {
+    steps.push({
+      label: 'No sources configured',
+      description: 'Add at least one Elasticsearch source',
+      status: 'error' as const,
+      action: {
+        label: 'Add Source',
+        handler: () => router.push('/publisher/sources'),
+      },
+    })
+  }
+
+  // Channels active
+  const channelsCount = systemInfo.value.channels_count
+  if (channelsCount > 0) {
+    steps.push({
+      label: `${channelsCount} Channel${channelsCount > 1 ? 's' : ''} active`,
+      description: 'Redis pub/sub channels',
+      status: 'healthy' as const,
+    })
+  } else {
+    steps.push({
+      label: 'No channels configured',
+      description: 'Add at least one Redis channel',
+      status: 'error' as const,
+      action: {
+        label: 'Add Channel',
+        handler: () => router.push('/publisher/channels'),
+      },
+    })
+  }
+
+  // Routes configured
+  const routesCount = systemInfo.value.routes_count
+  if (routesCount > 0) {
+    // Check if routes are actually publishing
+    const hasRecentPublish = history.value.length > 0
+    if (hasRecentPublish) {
+      steps.push({
+        label: `${routesCount} Route${routesCount > 1 ? 's' : ''} active and publishing`,
+        description: 'Articles are being published successfully',
+        status: 'healthy' as const,
+      })
+    } else {
+      steps.push({
+        label: `${routesCount} Route${routesCount > 1 ? 's' : ''} configured`,
+        description: 'Routes exist but no recent publishes',
+        status: 'warning' as const,
+        warning: 'No articles published yet. Check route filters or wait for next router cycle (~5 min)',
+      })
+    }
+  } else {
+    if (sourcesCount > 0 && channelsCount > 0) {
+      steps.push({
+        label: 'No routes configured',
+        description: 'Connect sources to channels',
+        status: 'error' as const,
+        action: {
+          label: 'Create Route',
+          handler: () => openSetupWizard(),
+        },
+      })
+    } else {
+      steps.push({
+        label: 'Routes pending',
+        description: 'Waiting for sources and channels',
+        status: 'pending' as const,
+      })
+    }
+  }
+
+  return steps
+})
+
+const setupCompletion = computed(() => {
+  const sources = systemInfo.value.sources_count > 0 ? 33 : 0
+  const channels = systemInfo.value.channels_count > 0 ? 33 : 0
+  const routes = systemInfo.value.routes_count > 0 ? 34 : 0
+  return sources + channels + routes
+})
+
+const setupActions = computed(() => {
+  const actions = []
+
+  // If not fully set up, offer wizard
+  if (setupCompletion.value < 100) {
+    actions.push({
+      label: 'Open Setup Wizard',
+      primary: true,
+      handler: openSetupWizard,
+    })
+  }
+
+  // Always offer link to routes
+  actions.push({
+    label: 'View All Routes',
+    primary: setupCompletion.value === 100,
+    handler: () => router.push('/publisher/routes'),
+  })
+
+  return actions
+})
+
+// Setup Wizard
+const setupWizardRef = ref<InstanceType<typeof PublisherSetupWizard> | null>(null)
+
+const openSetupWizard = (): void => {
+  setupWizardRef.value?.open()
+}
+
+const onWizardClose = (): void => {
+  // Wizard closed, nothing special to do
+}
+
+const onWizardSuccess = (): void => {
+  // Wizard succeeded, reload stats and system info
+  loadStats()
+  loadSystemInfo()
+  loadHistory(0)
 }
 
 onMounted(() => {

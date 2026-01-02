@@ -15,7 +15,7 @@ type PublishHistory struct {
 	ArticleTitle string         `json:"article_title" db:"article_title"`
 	ArticleURL   string         `json:"article_url" db:"article_url"`
 	ChannelName  string         `json:"channel_name" db:"channel_name"` // Denormalized for faster querying
-	SourceName   string         `json:"source_name" db:"source_name"` // Joined from sources table, defaults to "Unknown" if route deleted
+	SourceName   string         `json:"source_name" db:"source_name"`   // Joined from sources table, defaults to "Unknown" if route deleted
 	PublishedAt  time.Time      `json:"published_at" db:"published_at"`
 	QualityScore int            `json:"quality_score" db:"quality_score"`
 	Topics       pq.StringArray `json:"topics" db:"topics"`

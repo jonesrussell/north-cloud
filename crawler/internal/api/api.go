@@ -16,6 +16,9 @@ import (
 
 const (
 	readHeaderTimeout = 10 * time.Second // Timeout for reading headers
+	hoursPerDay       = 24               // Hours in a day
+	minutesPerHour    = 60               // Minutes in an hour
+	secondsPerMinute  = 60               // Seconds in a minute
 )
 
 // SetupRouter creates and configures the Gin router with all routes
@@ -41,6 +44,22 @@ func SetupRouter(
 	version := "1.0.0" // Default version, can be overridden by config
 
 	// Define public routes
+	setupPublicRoutes(router, startTime, version)
+
+	// API v1 routes (for dashboard frontend) - protected with JWT
+	v1 := setupV1Routes(router)
+
+	// Setup job routes
+	setupJobRoutes(v1, jobsHandler)
+
+	// Setup queued links routes
+	setupQueuedLinksRoutes(v1, queuedLinksHandler)
+
+	return router, security
+}
+
+// setupPublicRoutes configures public routes (no authentication required)
+func setupPublicRoutes(router *gin.Engine, startTime time.Time, version string) {
 	router.GET("/health", func(c *gin.Context) {
 		uptime := time.Since(startTime)
 		c.JSON(http.StatusOK, gin.H{
@@ -49,13 +68,16 @@ func SetupRouter(
 			"uptime":  formatUptime(uptime),
 		})
 	})
+}
 
-	// API v1 routes (for dashboard frontend) - protected with JWT
+// setupV1Routes configures API v1 routes with JWT middleware
+func setupV1Routes(router *gin.Engine) *gin.RouterGroup {
 	v1 := router.Group("/api/v1")
 	// Add JWT middleware if JWT secret is configured
 	if jwtSecret := os.Getenv("AUTH_JWT_SECRET"); jwtSecret != "" {
 		v1.Use(infrajwt.Middleware(jwtSecret))
 	}
+
 	// Stats endpoint for dashboard
 	v1.GET("/stats", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
@@ -70,7 +92,18 @@ func SetupRouter(
 		})
 	})
 
-	// Jobs endpoints for dashboard
+	// Articles endpoint for dashboard
+	v1.GET("/articles", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{
+			"articles": []gin.H{},
+		})
+	})
+
+	return v1
+}
+
+// setupJobRoutes configures job-related endpoints
+func setupJobRoutes(v1 *gin.RouterGroup, jobsHandler *JobsHandler) {
 	if jobsHandler != nil {
 		// Basic CRUD
 		v1.GET("/jobs", jobsHandler.ListJobs)
@@ -107,15 +140,10 @@ func SetupRouter(
 			})
 		})
 	}
+}
 
-	// Articles endpoint for dashboard
-	v1.GET("/articles", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{
-			"articles": []gin.H{},
-		})
-	})
-
-	// Queued links endpoints for dashboard
+// setupQueuedLinksRoutes configures queued links endpoints
+func setupQueuedLinksRoutes(v1 *gin.RouterGroup, queuedLinksHandler *QueuedLinksHandler) {
 	if queuedLinksHandler != nil {
 		v1.GET("/queued-links", queuedLinksHandler.ListQueuedLinks)
 		v1.GET("/queued-links/:id", queuedLinksHandler.GetQueuedLink)
@@ -145,8 +173,6 @@ func SetupRouter(
 			})
 		})
 	}
-
-	return router, security
 }
 
 // loggingMiddleware creates a middleware that logs HTTP requests
@@ -173,10 +199,10 @@ func loggingMiddleware(log logger.Interface) gin.HandlerFunc {
 
 // formatUptime formats a duration as a human-readable uptime string
 func formatUptime(d time.Duration) string {
-	days := int(d.Hours()) / 24
-	hours := int(d.Hours()) % 24
-	minutes := int(d.Minutes()) % 60
-	seconds := int(d.Seconds()) % 60
+	days := int(d.Hours()) / hoursPerDay
+	hours := int(d.Hours()) % hoursPerDay
+	minutes := int(d.Minutes()) % minutesPerHour
+	seconds := int(d.Seconds()) % secondsPerMinute
 
 	if days > 0 {
 		return fmt.Sprintf("%dd %dh %dm", days, hours, minutes)

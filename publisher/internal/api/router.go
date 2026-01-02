@@ -65,6 +65,7 @@ func (r *Router) SetupRoutes() *gin.Engine {
 	channels := v1.Group("/channels")
 	channels.GET("", r.listChannels)
 	channels.POST("", r.createChannel)
+	channels.GET("/:id/test-publish", r.testPublish) // More specific route before :id
 	channels.GET("/:id", r.getChannel)
 	channels.PUT("/:id", r.updateChannel)
 	channels.DELETE("/:id", r.deleteChannel)
@@ -72,6 +73,7 @@ func (r *Router) SetupRoutes() *gin.Engine {
 	// Routes
 	routes := v1.Group("/routes")
 	routes.GET("", r.listRoutes)
+	routes.GET("/preview", r.previewRoute) // More specific route before :id
 	routes.POST("", r.createRoute)
 	routes.GET("/:id", r.getRoute)
 	routes.PUT("/:id", r.updateRoute)

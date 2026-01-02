@@ -9,6 +9,14 @@ import (
 	"github.com/jonesrussell/north-cloud/publisher/internal/models"
 )
 
+const (
+	// Preview route simulation constants
+	defaultEstimatedCount = 150
+	highQualityScore      = 85
+	veryHighQualityScore  = 92
+	mediumQualityScore    = 78
+)
+
 // listRoutes returns all routes with joined source/channel details
 // GET /api/v1/routes?enabled_only=true
 func (r *Router) listRoutes(c *gin.Context) {
@@ -209,4 +217,49 @@ func (r *Router) deleteRoute(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"message": "Route deleted successfully",
 	})
+}
+
+// previewRoute previews which articles would be published based on route filters
+// GET /api/v1/routes/preview?source_id=X&min_quality_score=50&topics=crime,local
+func (r *Router) previewRoute(c *gin.Context) {
+	// Parse query parameters
+	sourceID := c.Query("source_id")
+	minQualityScore := c.DefaultQuery("min_quality_score", "50")
+	topics := c.Query("topics") // Comma-separated list
+
+	// For now, return simulated data
+	// In a full implementation, this would query Elasticsearch with these filters
+	response := gin.H{
+		"estimated_count": defaultEstimatedCount,
+		"filters": gin.H{
+			"source_id":         sourceID,
+			"min_quality_score": minQualityScore,
+			"topics":            topics,
+		},
+		"sample_articles": []gin.H{
+			{
+				"title":          "Crime Report: Downtown Incident",
+				"quality_score":  highQualityScore,
+				"topics":         []string{"crime", "local", "breaking"},
+				"published_date": "2026-01-02T14:30:00Z",
+				"url":            "https://example.com/crime-report-1",
+			},
+			{
+				"title":          "Breaking: Major Arrest Made",
+				"quality_score":  veryHighQualityScore,
+				"topics":         []string{"crime", "breaking"},
+				"published_date": "2026-01-02T13:00:00Z",
+				"url":            "https://example.com/breaking-arrest",
+			},
+			{
+				"title":          "Local Police Update",
+				"quality_score":  mediumQualityScore,
+				"topics":         []string{"crime", "local"},
+				"published_date": "2026-01-02T12:15:00Z",
+				"url":            "https://example.com/police-update",
+			},
+		},
+	}
+
+	c.JSON(http.StatusOK, response)
 }

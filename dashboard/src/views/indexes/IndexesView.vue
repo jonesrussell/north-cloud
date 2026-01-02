@@ -240,6 +240,7 @@
 import { ref, onMounted } from 'vue'
 import { indexManagerApi } from '../../api/client'
 import type { Index, IndexStats } from '../../types/indexManager'
+import type { ApiError } from '../../types/common'
 import PageHeader from '../../components/common/PageHeader.vue'
 import LoadingSpinner from '../../components/common/LoadingSpinner.vue'
 import ErrorAlert from '../../components/common/ErrorAlert.vue'
@@ -271,8 +272,9 @@ const loadIndexes = async (): Promise<void> => {
 
     const response = await indexManagerApi.indexes.list(params)
     indexes.value = response.data.indices || []
-  } catch (err: any) {
-    error.value = err.response?.data?.error || 'Failed to load indexes'
+  } catch (err: unknown) {
+    const axiosError = err as ApiError
+    error.value = axiosError.response?.data?.error || 'Failed to load indexes'
   } finally {
     loading.value = false
   }
@@ -282,8 +284,9 @@ const loadStats = async (): Promise<void> => {
   try {
     const response = await indexManagerApi.stats.get()
     stats.value = response.data
-  } catch (err: any) {
-    console.error('Failed to load stats:', err)
+  } catch (err: unknown) {
+    const axiosError = err as ApiError
+    console.error('Failed to load stats:', axiosError)
   }
 }
 
@@ -316,8 +319,9 @@ const handleDeleteIndex = async (): Promise<void> => {
     await indexManagerApi.indexes.delete(indexToDelete.value.name)
     await Promise.all([loadIndexes(), loadStats()])
     indexToDelete.value = null
-  } catch (err: any) {
-    error.value = err.response?.data?.error || 'Failed to delete index'
+  } catch (err: unknown) {
+    const axiosError = err as ApiError
+    error.value = axiosError.response?.data?.error || 'Failed to delete index'
     indexToDelete.value = null
   } finally {
     deleting.value = false

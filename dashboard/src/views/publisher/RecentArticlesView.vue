@@ -155,10 +155,18 @@
               class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               @change="loadArticles"
             >
-              <option :value="25">25</option>
-              <option :value="50">50</option>
-              <option :value="100">100</option>
-              <option :value="200">200</option>
+              <option :value="25">
+                25
+              </option>
+              <option :value="50">
+                50
+              </option>
+              <option :value="100">
+                100
+              </option>
+              <option :value="200">
+                200
+              </option>
             </select>
           </div>
         </div>
@@ -385,18 +393,20 @@ const onDateRangeChange = () => {
       filters.value.start_date = formatDate(today)
       filters.value.end_date = formatDate(today)
       break
-    case 'week':
+    case 'week': {
       const weekAgo = new Date(today)
       weekAgo.setDate(today.getDate() - 7)
       filters.value.start_date = formatDate(weekAgo)
       filters.value.end_date = formatDate(today)
       break
-    case 'month':
+    }
+    case 'month': {
       const monthAgo = new Date(today)
       monthAgo.setDate(today.getDate() - 30)
       filters.value.start_date = formatDate(monthAgo)
       filters.value.end_date = formatDate(today)
       break
+    }
     case 'custom':
       // Keep existing dates or clear them
       if (!filters.value.start_date) filters.value.start_date = ''
