@@ -7,6 +7,14 @@
       <template #actions>
         <div class="flex gap-2">
           <button
+            v-if="sources.length > 0"
+            class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            @click="exportSources"
+          >
+            <ArrowDownTrayIcon class="h-5 w-5 mr-2" />
+            Export
+          </button>
+          <button
             class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
             @click="openQuickCreate"
           >
@@ -73,47 +81,94 @@
       v-else
       class="bg-white shadow overflow-hidden sm:rounded-md"
     >
-      <ul class="divide-y divide-gray-200">
-        <li
-          v-for="source in sources"
-          :key="source.id"
-          class="px-6 py-4 hover:bg-gray-50"
-        >
-          <div class="flex items-center justify-between">
-            <div class="flex-1 min-w-0">
-              <div class="flex items-center">
-                <p class="text-sm font-medium text-gray-900 truncate">
-                  {{ source.name }}
-                </p>
-                <StatusBadge
-                  :status="source.enabled ? 'enabled' : 'disabled'"
-                  class="ml-2"
-                />
+      <table class="min-w-full divide-y divide-gray-200">
+        <thead class="bg-gray-50">
+          <tr>
+            <th class="px-6 py-3 text-left">
+              <input
+                type="checkbox"
+                :checked="bulkOps.selectAll.value"
+                :indeterminate="bulkOps.hasSelection.value && !bulkOps.selectAll.value"
+                class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                @change="bulkOps.toggleSelectAll(sources)"
+              >
+            </th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              Name
+            </th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              URL
+            </th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              Status
+            </th>
+            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+              Actions
+            </th>
+          </tr>
+        </thead>
+        <tbody class="bg-white divide-y divide-gray-200">
+          <tr
+            v-for="source in sources"
+            :key="source.id"
+            :class="bulkOps.isSelected(source.id) ? 'bg-blue-50' : 'hover:bg-gray-50'"
+          >
+            <td class="px-6 py-4 whitespace-nowrap">
+              <input
+                type="checkbox"
+                :checked="bulkOps.isSelected(source.id)"
+                class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                @change="bulkOps.toggleItem(source.id)"
+              >
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap">
+              <div class="text-sm font-medium text-gray-900">
+                {{ source.name }}
               </div>
-              <div class="mt-1 flex items-center text-sm text-gray-500">
-                <span class="truncate">{{ source.url }}</span>
+            </td>
+            <td class="px-6 py-4">
+              <div class="text-sm text-gray-500 truncate max-w-md">
+                {{ source.url }}
               </div>
-            </div>
-            <div class="ml-4 flex-shrink-0 flex space-x-2">
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap">
+              <StatusBadge :status="source.enabled ? 'enabled' : 'disabled'" />
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
+              <button
+                class="inline-flex items-center px-2 py-1 border border-gray-300 shadow-sm text-xs font-medium rounded text-gray-700 bg-white hover:bg-gray-50"
+                @click="cloneSource(source)"
+                title="Clone source"
+              >
+                <DocumentDuplicateIcon class="h-4 w-4" />
+              </button>
               <router-link
                 :to="`/sources/${source.id}/edit`"
-                class="inline-flex items-center px-3 py-1.5 border border-gray-300 shadow-sm text-xs font-medium rounded text-gray-700 bg-white hover:bg-gray-50"
+                class="inline-flex items-center px-2 py-1 border border-gray-300 shadow-sm text-xs font-medium rounded text-gray-700 bg-white hover:bg-gray-50"
+                title="Edit source"
               >
-                <PencilIcon class="h-4 w-4 mr-1" />
-                Edit
+                <PencilIcon class="h-4 w-4" />
               </router-link>
               <button
-                class="inline-flex items-center px-3 py-1.5 border border-red-300 shadow-sm text-xs font-medium rounded text-red-700 bg-white hover:bg-red-50"
+                class="inline-flex items-center px-2 py-1 border border-red-300 shadow-sm text-xs font-medium rounded text-red-700 bg-white hover:bg-red-50"
                 @click="confirmDelete(source)"
+                title="Delete source"
               >
-                <TrashIcon class="h-4 w-4 mr-1" />
-                Delete
+                <TrashIcon class="h-4 w-4" />
               </button>
-            </div>
-          </div>
-        </li>
-      </ul>
+            </td>
+          </tr>
+        </tbody>
+      </table>
     </div>
+
+    <!-- Bulk Actions Toolbar -->
+    <BulkActionsToolbar
+      :selected-count="bulkOps.selectedCount.value"
+      :selected-ids="bulkOps.selectedIds.value"
+      :available-actions="bulkActions"
+      @cancel="bulkOps.clearSelection()"
+    />
 
     <!-- Delete Confirmation Modal -->
     <ConfirmModal
@@ -136,8 +191,19 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
-import { PlusIcon, PencilIcon, TrashIcon, DocumentTextIcon } from '@heroicons/vue/24/outline'
+import { ref, onMounted, computed } from 'vue'
+import { useRouter } from 'vue-router'
+import {
+  PlusIcon,
+  PencilIcon,
+  TrashIcon,
+  DocumentTextIcon,
+  ArrowDownTrayIcon,
+  DocumentDuplicateIcon,
+  CheckIcon,
+  XMarkIcon
+} from '@heroicons/vue/24/outline'
+import { PowerIcon } from '@heroicons/vue/24/solid'
 import { sourcesApi } from '../../api/client'
 import {
   PageHeader,
@@ -146,14 +212,28 @@ import {
   StatusBadge,
   ConfirmModal,
 } from '../../components/common'
+import BulkActionsToolbar from '../../components/common/BulkActionsToolbar.vue'
 import SourceQuickCreateModal from '../../components/SourceQuickCreateModal.vue'
+import { useBulkOperations } from '../../composables/useBulkOperations'
 
+const router = useRouter()
 const sources = ref([])
 const loading = ref(true)
 const error = ref(null)
 const sourceToDelete = ref(null)
 const deleting = ref(false)
 const quickCreateModalRef = ref(null)
+
+// Bulk operations
+const bulkOps = useBulkOperations({
+  onSuccess: (action, count) => {
+    console.log(`[ListView] Bulk ${action} completed for ${count} items`)
+  },
+  onError: (action, err) => {
+    error.value = `Bulk ${action} failed: ${err.message}`
+    console.error(`[ListView] Bulk ${action} error:`, err)
+  }
+})
 
 const loadSources = async () => {
   loading.value = true
@@ -197,6 +277,125 @@ const openQuickCreate = () => {
 const onSourceCreated = () => {
   loadSources()
 }
+
+// Clone source
+const cloneSource = async (source) => {
+  try {
+    // Create a copy with "(Copy)" appended to name
+    const clonedSource = {
+      ...source,
+      id: undefined, // Remove ID so it creates new
+      name: `${source.name} (Copy)`,
+      created_at: undefined,
+      updated_at: undefined,
+    }
+
+    await sourcesApi.create(clonedSource)
+    await loadSources()
+  } catch (err) {
+    error.value = err.response?.data?.error || err.message || 'Failed to clone source'
+    console.error('[ListView] Error cloning source:', err)
+  }
+}
+
+// Export sources to JSON
+const exportSources = () => {
+  const dataStr = JSON.stringify({ sources: sources.value }, null, 2)
+  const dataBlob = new Blob([dataStr], { type: 'application/json' })
+  const url = URL.createObjectURL(dataBlob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = `sources-export-${new Date().toISOString().split('T')[0]}.json`
+  link.click()
+  URL.revokeObjectURL(url)
+}
+
+// Bulk enable sources
+const bulkEnable = async (ids) => {
+  await bulkOps.performBulkAction('enable', async (selectedIds) => {
+    // Update each source to enabled=true
+    await Promise.all(
+      selectedIds.map(id => {
+        const source = sources.value.find(s => s.id === id)
+        if (!source) return Promise.resolve()
+        return sourcesApi.update(id, { ...source, enabled: true })
+      })
+    )
+    await loadSources()
+  })
+}
+
+// Bulk disable sources
+const bulkDisable = async (ids) => {
+  await bulkOps.performBulkAction('disable', async (selectedIds) => {
+    // Update each source to enabled=false
+    await Promise.all(
+      selectedIds.map(id => {
+        const source = sources.value.find(s => s.id === id)
+        if (!source) return Promise.resolve()
+        return sourcesApi.update(id, { ...source, enabled: false })
+      })
+    )
+    await loadSources()
+  })
+}
+
+// Bulk delete sources
+const bulkDelete = async (ids) => {
+  if (!confirm(`Are you sure you want to delete ${ids.length} source(s)? This action cannot be undone.`)) {
+    return
+  }
+
+  await bulkOps.performBulkAction('delete', async (selectedIds) => {
+    await Promise.all(selectedIds.map(id => sourcesApi.delete(id)))
+    await loadSources()
+  })
+}
+
+// Bulk export selected sources
+const bulkExport = async (ids) => {
+  const selectedSources = sources.value.filter(s => ids.includes(s.id))
+  const dataStr = JSON.stringify({ sources: selectedSources }, null, 2)
+  const dataBlob = new Blob([dataStr], { type: 'application/json' })
+  const url = URL.createObjectURL(dataBlob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = `sources-export-selected-${new Date().toISOString().split('T')[0]}.json`
+  link.click()
+  URL.revokeObjectURL(url)
+}
+
+// Define bulk actions
+const bulkActions = computed(() => [
+  {
+    id: 'enable',
+    label: 'Enable',
+    variant: 'success',
+    icon: CheckIcon,
+    handler: bulkEnable
+  },
+  {
+    id: 'disable',
+    label: 'Disable',
+    variant: 'default',
+    icon: XMarkIcon,
+    handler: bulkDisable
+  },
+  {
+    id: 'export',
+    label: 'Export Selected',
+    variant: 'default',
+    icon: ArrowDownTrayIcon,
+    handler: bulkExport
+  },
+  {
+    id: 'delete',
+    label: 'Delete',
+    variant: 'danger',
+    icon: TrashIcon,
+    handler: bulkDelete
+  }
+])
 
 onMounted(() => {
   loadSources()
