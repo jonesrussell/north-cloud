@@ -68,9 +68,10 @@ export default defineConfig({
         rewrite: (path) => path.replace(/^\/api\/crawler/, '/api/v1'),
         configure: (proxy, _options) => {
           proxy.on('proxyReq', (proxyReq, req, _res) => {
-            // Forward Authorization header if present
-            if (req.headers.authorization) {
-              proxyReq.setHeader('Authorization', req.headers.authorization)
+            // Explicitly forward Authorization header (case-insensitive)
+            const authHeader = req.headers.authorization || req.headers.Authorization
+            if (authHeader) {
+              proxyReq.setHeader('Authorization', authHeader)
             }
           })
         },
@@ -153,9 +154,10 @@ export default defineConfig({
         rewrite: (path) => path.replace(/^\/api\/classifier/, '/api/v1'),
         configure: (proxy, _options) => {
           proxy.on('proxyReq', (proxyReq, req, _res) => {
-            // Forward Authorization header if present
-            if (req.headers.authorization) {
-              proxyReq.setHeader('Authorization', req.headers.authorization)
+            // Explicitly forward Authorization header (case-insensitive)
+            const authHeader = req.headers.authorization || req.headers.Authorization
+            if (authHeader) {
+              proxyReq.setHeader('Authorization', authHeader)
             }
           })
         },

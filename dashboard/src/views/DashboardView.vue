@@ -154,7 +154,7 @@
             >
               <div class="flex items-center justify-between">
                 <span class="text-sm text-gray-600">Service Status</span>
-                <StatusBadge :status="publisherHealth.status === 'ok' ? 'active' : 'error'" />
+                <StatusBadge :status="publisherHealth.status === 'healthy' ? 'active' : 'error'" />
               </div>
               <div class="flex items-center justify-between">
                 <span class="text-sm text-gray-600">Version</span>

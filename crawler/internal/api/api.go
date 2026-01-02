@@ -2,6 +2,7 @@
 package api
 
 import (
+	"fmt"
 	"net/http"
 	"os"
 	"time"
@@ -35,9 +36,18 @@ func SetupRouter(
 	// Create security middleware
 	security := middleware.NewSecurityMiddleware(cfg.GetServerConfig(), log)
 
+	// Track server start time for uptime calculation
+	startTime := time.Now()
+	version := "1.0.0" // Default version, can be overridden by config
+
 	// Define public routes
 	router.GET("/health", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{"status": "ok"})
+		uptime := time.Since(startTime)
+		c.JSON(http.StatusOK, gin.H{
+			"status":  "healthy",
+			"version": version,
+			"uptime":  formatUptime(uptime),
+		})
 	})
 
 	// API v1 routes (for dashboard frontend) - protected with JWT
@@ -159,6 +169,23 @@ func loggingMiddleware(log logger.Interface) gin.HandlerFunc {
 			"latency", latency,
 		)
 	}
+}
+
+// formatUptime formats a duration as a human-readable uptime string
+func formatUptime(d time.Duration) string {
+	days := int(d.Hours()) / 24
+	hours := int(d.Hours()) % 24
+	minutes := int(d.Minutes()) % 60
+	seconds := int(d.Seconds()) % 60
+
+	if days > 0 {
+		return fmt.Sprintf("%dd %dh %dm", days, hours, minutes)
+	} else if hours > 0 {
+		return fmt.Sprintf("%dh %dm", hours, minutes)
+	} else if minutes > 0 {
+		return fmt.Sprintf("%dm %ds", minutes, seconds)
+	}
+	return fmt.Sprintf("%ds", seconds)
 }
 
 // corsMiddleware adds CORS headers to allow frontend access
