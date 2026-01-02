@@ -397,7 +397,9 @@
                   />
                 </svg>
                 <div>
-                  <div class="font-medium">Create Crawl Job</div>
+                  <div class="font-medium">
+                    Create Crawl Job
+                  </div>
                   <div class="text-xs text-blue-100">
                     Schedule automatic crawling
                   </div>
@@ -423,7 +425,9 @@
                   />
                 </svg>
                 <div>
-                  <div class="font-medium">{{ testingCrawl ? 'Testing...' : 'Test Crawl Now' }}</div>
+                  <div class="font-medium">
+                    {{ testingCrawl ? 'Testing...' : 'Test Crawl Now' }}
+                  </div>
                   <div class="text-xs text-blue-600">
                     Run a one-time test crawl
                   </div>

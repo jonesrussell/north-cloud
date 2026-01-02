@@ -22,18 +22,18 @@
             action.variant === 'primary'
               ? 'bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-500'
               : action.variant === 'danger'
-              ? 'bg-red-600 text-white hover:bg-red-700 focus:ring-red-500'
-              : action.variant === 'success'
-              ? 'bg-green-600 text-white hover:bg-green-700 focus:ring-green-500'
-              : 'bg-gray-100 text-gray-700 hover:bg-gray-200 focus:ring-gray-500',
+                ? 'bg-red-600 text-white hover:bg-red-700 focus:ring-red-500'
+                : action.variant === 'success'
+                  ? 'bg-green-600 text-white hover:bg-green-700 focus:ring-green-500'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200 focus:ring-gray-500',
             action.disabled && 'opacity-50 cursor-not-allowed'
           ]"
           :disabled="action.disabled || loading"
           @click="handleAction(action)"
         >
           <component
-            v-if="action.icon"
             :is="action.icon"
+            v-if="action.icon"
             class="w-4 h-4 mr-2"
           />
           {{ loading === action.id ? 'Processing...' : action.label }}

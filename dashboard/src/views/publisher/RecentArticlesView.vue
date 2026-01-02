@@ -155,10 +155,18 @@
               class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               @change="loadArticles"
             >
-              <option :value="25">25</option>
-              <option :value="50">50</option>
-              <option :value="100">100</option>
-              <option :value="200">200</option>
+              <option :value="25">
+                25
+              </option>
+              <option :value="50">
+                50
+              </option>
+              <option :value="100">
+                100
+              </option>
+              <option :value="200">
+                200
+              </option>
             </select>
           </div>
         </div>

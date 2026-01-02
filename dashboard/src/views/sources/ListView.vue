@@ -137,8 +137,8 @@
             <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
               <button
                 class="inline-flex items-center px-2 py-1 border border-gray-300 shadow-sm text-xs font-medium rounded text-gray-700 bg-white hover:bg-gray-50"
-                @click="cloneSource(source)"
                 title="Clone source"
+                @click="cloneSource(source)"
               >
                 <DocumentDuplicateIcon class="h-4 w-4" />
               </button>
@@ -151,8 +151,8 @@
               </router-link>
               <button
                 class="inline-flex items-center px-2 py-1 border border-red-300 shadow-sm text-xs font-medium rounded text-red-700 bg-white hover:bg-red-50"
-                @click="confirmDelete(source)"
                 title="Delete source"
+                @click="confirmDelete(source)"
               >
                 <TrashIcon class="h-4 w-4" />
               </button>
