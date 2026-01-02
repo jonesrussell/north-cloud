@@ -11,6 +11,7 @@ const PUBLISHER_API_URL = process.env.PUBLISHER_API_URL || 'http://localhost:807
 const CLASSIFIER_API_URL = process.env.CLASSIFIER_API_URL || 'http://localhost:8071'
 // Auth service: use Docker service name when in container, localhost when running locally
 const AUTH_API_URL = process.env.AUTH_API_URL || 'http://localhost:8040'
+const INDEX_MANAGER_API_URL = process.env.INDEX_MANAGER_API_URL || 'http://localhost:8090'
 
 export default defineConfig({
   base: '/dashboard/',
@@ -182,6 +183,22 @@ export default defineConfig({
         timeout: 15000, // Auth should be fast
         proxyTimeout: 15000,
         rewrite: (path) => path.replace(/^\/api\/auth/, ''),
+      },
+      // Index Manager API proxy
+      '/api/index-manager': {
+        target: INDEX_MANAGER_API_URL,
+        changeOrigin: true,
+        timeout: 30000, // 30 seconds
+        proxyTimeout: 30000,
+        rewrite: (path) => path.replace(/^\/api\/index-manager/, ''),
+        configure: (proxy, _options) => {
+          proxy.on('proxyReq', (proxyReq, req, _res) => {
+            // Forward Authorization header if present
+            if (req.headers.authorization) {
+              proxyReq.setHeader('Authorization', req.headers.authorization)
+            }
+          })
+        },
       },
     },
   },

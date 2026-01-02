@@ -377,6 +377,8 @@ services:
         condition: service_healthy
       auth:
         condition: service_healthy
+      index-manager:
+        condition: service_started
     ports:
       - "${DASHBOARD_PORT:-3002}:3002"
     environment:
@@ -388,6 +390,7 @@ services:
       - PUBLISHER_API_URL=http://publisher-api:8070
       - CLASSIFIER_API_URL=http://classifier:8070
       - AUTH_API_URL=http://auth:8040
+      - INDEX_MANAGER_API_URL=http://index-manager:8090
     volumes:
       - ./dashboard:/app
       - dashboard_node_modules:/app/node_modules
