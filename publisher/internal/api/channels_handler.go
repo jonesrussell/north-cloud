@@ -1,4 +1,3 @@
-//nolint:dupl // Similar structure to sources_handler.go
 package api
 
 import (
@@ -6,6 +5,18 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/jonesrussell/north-cloud/publisher/internal/models"
+)
+
+const (
+	// Test publish simulation constants
+	defaultRouteArticleCount    = 50
+	topicsMultiplier            = 25
+	highQualityThreshold        = 70
+	qualityScoreReductionFactor = 2
+	baseQualityScore            = 70
+	qualityScoreIncrement       = 8
+	maxSampleArticlesPerRoute   = 3
+	maxTotalSampleArticles      = 10
 )
 
 // listChannels returns all channels
@@ -178,12 +189,13 @@ func (r *Router) testPublish(c *gin.Context) {
 	sampleArticles := []gin.H{}
 	routeStats := []gin.H{}
 
-	for _, route := range routes {
+	for i := range routes {
+		route := &routes[i]
 		// For each route, simulate article count (in real implementation, would query Elasticsearch)
 		// Using similar logic to previewRoute
-		routeCount := 50 + (len(route.Topics) * 25) // Simulated: more topics = more articles
-		if route.MinQualityScore > 70 {
-			routeCount = routeCount / 2 // Higher quality threshold = fewer articles
+		routeCount := defaultRouteArticleCount + (len(route.Topics) * topicsMultiplier) // Simulated: more topics = more articles
+		if route.MinQualityScore > highQualityThreshold {
+			routeCount /= qualityScoreReductionFactor // Higher quality threshold = fewer articles
 		}
 		totalEstimated += routeCount
 
@@ -196,23 +208,27 @@ func (r *Router) testPublish(c *gin.Context) {
 			"estimated_count":   routeCount,
 		})
 
-		// Add sample articles for this route (limit to 3 per route to avoid overwhelming response)
-		for i := 0; i < 3 && i < routeCount; i++ {
+		// Add sample articles for this route (limit to maxSampleArticlesPerRoute per route to avoid overwhelming response)
+		articlesToAdd := maxSampleArticlesPerRoute
+		if routeCount < maxSampleArticlesPerRoute {
+			articlesToAdd = routeCount
+		}
+		for j := range articlesToAdd {
 			sampleArticles = append(sampleArticles, gin.H{
 				"title":          generateSampleTitle(route.Topics),
-				"quality_score":  70 + (i * 8), // Varying quality scores
+				"quality_score":  baseQualityScore + (j * qualityScoreIncrement), // Varying quality scores
 				"topics":         route.Topics,
 				"published_date": "2026-01-02T14:30:00Z",
-				"url":            "https://example.com/article-" + route.ID.String() + "-" + string(rune(i)),
+				"url":            "https://example.com/article-" + route.ID.String() + "-" + string(rune(j)),
 				"source":         route.SourceName,
 				"route_id":       route.ID,
 			})
 		}
 	}
 
-	// Limit total sample articles to 10
-	if len(sampleArticles) > 10 {
-		sampleArticles = sampleArticles[:10]
+	// Limit total sample articles to maxTotalSampleArticles
+	if len(sampleArticles) > maxTotalSampleArticles {
+		sampleArticles = sampleArticles[:maxTotalSampleArticles]
 	}
 
 	response := gin.H{

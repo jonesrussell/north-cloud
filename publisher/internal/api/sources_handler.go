@@ -1,4 +1,3 @@
-//nolint:dupl // Similar structure to channels_handler.go
 package api
 
 import (

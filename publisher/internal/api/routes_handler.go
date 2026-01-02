@@ -9,6 +9,14 @@ import (
 	"github.com/jonesrussell/north-cloud/publisher/internal/models"
 )
 
+const (
+	// Preview route simulation constants
+	defaultEstimatedCount = 150
+	highQualityScore      = 85
+	veryHighQualityScore  = 92
+	mediumQualityScore    = 78
+)
+
 // listRoutes returns all routes with joined source/channel details
 // GET /api/v1/routes?enabled_only=true
 func (r *Router) listRoutes(c *gin.Context) {
@@ -222,7 +230,7 @@ func (r *Router) previewRoute(c *gin.Context) {
 	// For now, return simulated data
 	// In a full implementation, this would query Elasticsearch with these filters
 	response := gin.H{
-		"estimated_count": 150,
+		"estimated_count": defaultEstimatedCount,
 		"filters": gin.H{
 			"source_id":         sourceID,
 			"min_quality_score": minQualityScore,
@@ -231,21 +239,21 @@ func (r *Router) previewRoute(c *gin.Context) {
 		"sample_articles": []gin.H{
 			{
 				"title":          "Crime Report: Downtown Incident",
-				"quality_score":  85,
+				"quality_score":  highQualityScore,
 				"topics":         []string{"crime", "local", "breaking"},
 				"published_date": "2026-01-02T14:30:00Z",
 				"url":            "https://example.com/crime-report-1",
 			},
 			{
 				"title":          "Breaking: Major Arrest Made",
-				"quality_score":  92,
+				"quality_score":  veryHighQualityScore,
 				"topics":         []string{"crime", "breaking"},
 				"published_date": "2026-01-02T13:00:00Z",
 				"url":            "https://example.com/breaking-arrest",
 			},
 			{
 				"title":          "Local Police Update",
-				"quality_score":  78,
+				"quality_score":  mediumQualityScore,
 				"topics":         []string{"crime", "local"},
 				"published_date": "2026-01-02T12:15:00Z",
 				"url":            "https://example.com/police-update",
