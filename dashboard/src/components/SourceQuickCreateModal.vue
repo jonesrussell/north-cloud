@@ -463,6 +463,7 @@ import { useRouter } from 'vue-router'
 import { CheckCircleIcon } from '@heroicons/vue/24/solid'
 import { sourcesApi } from '../api/client'
 import { ErrorAlert, TestResultsModal } from './common'
+import type { Source } from '../types/publisher'
 import {
   checkUrlReachability,
   generateSourceNameFromUrl,
@@ -471,7 +472,7 @@ import {
 
 const emit = defineEmits<{
   (e: 'close'): void
-  (e: 'created', source: any): void
+  (e: 'created', source: Source): void
 }>()
 
 const router = useRouter()
@@ -483,7 +484,7 @@ const error = ref<string | null>(null)
 const prefilling = ref(false)
 const prefilled = ref(false)
 const showPostSaveActions = ref(false)
-const createdSource = ref<any>(null)
+const createdSource = ref<Source | null>(null)
 const testResultsModal = ref<InstanceType<typeof TestResultsModal> | null>(null)
 const testingCrawl = ref(false)
 

@@ -112,6 +112,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { XMarkIcon } from '@heroicons/vue/24/outline'
+import type { ApiError } from '../../types/common'
 import { indexManagerApi } from '../../api/client'
 import type { Index, IndexHealthResponse } from '../../types/indexManager'
 import LoadingSpinner from '../common/LoadingSpinner.vue'
@@ -134,8 +135,9 @@ const loadHealth = async (): Promise<void> => {
   try {
     const response = await indexManagerApi.indexes.getHealth(props.index.name)
     health.value = response.data
-  } catch (err: any) {
-    error.value = err.response?.data?.error || 'Failed to load health data'
+  } catch (err: unknown) {
+    const axiosError = err as ApiError
+    error.value = axiosError.response?.data?.error || 'Failed to load health data'
   } finally {
     loading.value = false
   }

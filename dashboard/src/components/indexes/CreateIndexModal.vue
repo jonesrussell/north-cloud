@@ -209,6 +209,7 @@ import { XMarkIcon } from '@heroicons/vue/24/outline'
 import { indexManagerApi } from '../../api/client'
 import type { CreateIndexRequest, IndexType } from '../../types/indexManager'
 import { INDEX_TYPE_OPTIONS } from '../../types/indexManager'
+import type { ApiError } from '../../types/common'
 import ErrorAlert from '../common/ErrorAlert.vue'
 
 const emit = defineEmits(['close', 'created'])
@@ -237,8 +238,9 @@ const createSingleIndex = async (): Promise<void> => {
   try {
     await indexManagerApi.indexes.create(singleForm.value)
     emit('created')
-  } catch (err: any) {
-    error.value = err.response?.data?.error || 'Failed to create index'
+  } catch (err: unknown) {
+    const axiosError = err as ApiError
+    error.value = axiosError.response?.data?.error || 'Failed to create index'
   } finally {
     creating.value = false
   }
@@ -257,8 +259,9 @@ const createSourceIndexes = async (): Promise<void> => {
       payload
     )
     emit('created')
-  } catch (err: any) {
-    error.value = err.response?.data?.error || 'Failed to create indexes'
+  } catch (err: unknown) {
+    const axiosError = err as ApiError
+    error.value = axiosError.response?.data?.error || 'Failed to create indexes'
   } finally {
     creating.value = false
   }

@@ -455,7 +455,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { publisherApi } from '../api/client'
-import type { Source, Channel, CreateSourceRequest, CreateChannelRequest, CreateRouteRequest } from '../types/publisher'
+import type { Source, Channel, CreateSourceRequest, CreateChannelRequest, CreateRouteRequest, PreviewArticle } from '../types/publisher'
 import { ErrorAlert, RoutePreviewPanel } from './common'
 
 const props = defineProps<{
@@ -507,7 +507,7 @@ const route = ref<CreateRouteRequest>({
   enabled: true,
 })
 const topicsInput = ref('')
-const routePreviewPanel = ref<{ refresh: () => void; setLoading: (loading: boolean) => void; setResults: (count: number, articles: any[]) => void; setError: (error: string) => void } | null>(null)
+const routePreviewPanel = ref<{ refresh: () => void; setLoading: (loading: boolean) => void; setResults: (count: number, articles: PreviewArticle[]) => void; setError: (error: string) => void } | null>(null)
 
 // Load existing sources and channels
 const loadExistingSources = async (): Promise<void> => {
@@ -728,7 +728,7 @@ const handlePreviewRefresh = async (filters: { sourceId?: string; minQualityScor
       topics: filters.topics.join(','),
     })
 
-    const articles = (response.data.sample_articles || []).map((article: any) => ({
+    const articles = (response.data.sample_articles || []).map((article: PreviewArticle) => ({
       title: article.title,
       quality_score: article.quality_score,
       topics: article.topics || [],
