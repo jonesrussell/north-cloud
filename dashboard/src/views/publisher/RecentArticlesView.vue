@@ -393,18 +393,20 @@ const onDateRangeChange = () => {
       filters.value.start_date = formatDate(today)
       filters.value.end_date = formatDate(today)
       break
-    case 'week':
+    case 'week': {
       const weekAgo = new Date(today)
       weekAgo.setDate(today.getDate() - 7)
       filters.value.start_date = formatDate(weekAgo)
       filters.value.end_date = formatDate(today)
       break
-    case 'month':
+    }
+    case 'month': {
       const monthAgo = new Date(today)
       monthAgo.setDate(today.getDate() - 30)
       filters.value.start_date = formatDate(monthAgo)
       filters.value.end_date = formatDate(today)
       break
+    }
     case 'custom':
       // Keep existing dates or clear them
       if (!filters.value.start_date) filters.value.start_date = ''

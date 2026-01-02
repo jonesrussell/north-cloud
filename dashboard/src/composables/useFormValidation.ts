@@ -1,4 +1,4 @@
-import { ref, computed, watch } from 'vue'
+import { ref, computed } from 'vue'
 
 export interface ValidationRule {
   required?: boolean
@@ -164,7 +164,7 @@ export async function checkUrlReachability(url: string, timeout = 5000): Promise
     const controller = new AbortController()
     const timeoutId = setTimeout(() => controller.abort(), timeout)
 
-    const response = await fetch(url, {
+    await fetch(url, {
       method: 'HEAD',
       mode: 'no-cors', // Allow cross-origin requests
       signal: controller.signal,
@@ -233,7 +233,7 @@ export function parseNextRunTime(cronExpression: string): string | null {
       return null
     }
 
-    const [minute, hour, dayOfMonth, month, dayOfWeek] = parts
+    const [minute, hour] = parts
 
     // Handle common patterns
     if (minute === '0' && hour === '0') {

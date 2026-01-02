@@ -203,7 +203,6 @@ import {
   CheckIcon,
   XMarkIcon
 } from '@heroicons/vue/24/outline'
-import { PowerIcon } from '@heroicons/vue/24/solid'
 import { sourcesApi } from '../../api/client'
 import {
   PageHeader,
@@ -216,7 +215,6 @@ import BulkActionsToolbar from '../../components/common/BulkActionsToolbar.vue'
 import SourceQuickCreateModal from '../../components/SourceQuickCreateModal.vue'
 import { useBulkOperations } from '../../composables/useBulkOperations'
 
-const router = useRouter()
 const sources = ref([])
 const loading = ref(true)
 const error = ref(null)
@@ -311,7 +309,7 @@ const exportSources = () => {
 }
 
 // Bulk enable sources
-const bulkEnable = async (ids) => {
+const bulkEnable = async (_ids) => {
   await bulkOps.performBulkAction('enable', async (selectedIds) => {
     // Update each source to enabled=true
     await Promise.all(
@@ -326,7 +324,7 @@ const bulkEnable = async (ids) => {
 }
 
 // Bulk disable sources
-const bulkDisable = async (ids) => {
+const bulkDisable = async (_ids) => {
   await bulkOps.performBulkAction('disable', async (selectedIds) => {
     // Update each source to enabled=false
     await Promise.all(
