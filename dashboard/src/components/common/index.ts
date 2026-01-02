@@ -9,4 +9,6 @@ export { default as SelectorInput } from './SelectorInput.vue'
 export { default as HealthIndicator } from './HealthIndicator.vue'
 export { default as SetupStatusCard } from './SetupStatusCard.vue'
 export { default as BulkActionsToolbar } from './BulkActionsToolbar.vue'
+export { default as TestResultsModal } from './TestResultsModal.vue'
+export { default as RoutePreviewPanel } from './RoutePreviewPanel.vue'
 
