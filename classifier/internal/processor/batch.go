@@ -34,13 +34,13 @@ type ProcessResult struct {
 }
 
 // NewBatchProcessor creates a new batch processor
-func NewBatchProcessor(classifier *classifier.Classifier, concurrency int, logger Logger) *BatchProcessor {
+func NewBatchProcessor(classifierInstance *classifier.Classifier, concurrency int, logger Logger) *BatchProcessor {
 	if concurrency <= 0 {
 		concurrency = 10 // Default concurrency
 	}
 
 	return &BatchProcessor{
-		classifier:  classifier,
+		classifier:  classifierInstance,
 		concurrency: concurrency,
 		logger:      logger,
 	}

@@ -16,7 +16,7 @@ type RateLimiter struct {
 // NewRateLimiter creates a new rate limiter
 // rps: requests per second
 // burst: maximum burst size
-func NewRateLimiter(rps int, burst int, logger Logger) *RateLimiter {
+func NewRateLimiter(rps, burst int, logger Logger) *RateLimiter {
 	if rps <= 0 {
 		rps = 100 // Default 100 requests per second
 	}

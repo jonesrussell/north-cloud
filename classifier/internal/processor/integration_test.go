@@ -170,7 +170,7 @@ func (m *mockESClient) IndexClassifiedContent(ctx context.Context, content *doma
 	return nil
 }
 
-func (m *mockESClient) UpdateRawContentStatus(ctx context.Context, contentID string, status string, classifiedAt time.Time) error {
+func (m *mockESClient) UpdateRawContentStatus(ctx context.Context, contentID, status string, classifiedAt time.Time) error {
 	if m.updateStatusError != nil {
 		return m.updateStatusError
 	}

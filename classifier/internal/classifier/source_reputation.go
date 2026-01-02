@@ -142,7 +142,7 @@ func (s *SourceReputationScorer) UpdateAfterClassification(
 	sourceRecord.ReputationScore = s.calculateReputationScore(sourceRecord)
 
 	// Save updated record
-	if err := s.db.UpdateSource(ctx, sourceRecord); err != nil {
+	if err = s.db.UpdateSource(ctx, sourceRecord); err != nil {
 		return fmt.Errorf("failed to update source: %w", err)
 	}
 

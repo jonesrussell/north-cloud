@@ -83,7 +83,8 @@ func (s *ElasticsearchStorage) QueryRawContent(ctx context.Context, status strin
 	}
 
 	contents := make([]*domain.RawContent, 0, len(searchResult.Hits.Hits))
-	for _, hit := range searchResult.Hits.Hits {
+	for i := range searchResult.Hits.Hits {
+		hit := &searchResult.Hits.Hits[i]
 		content := hit.Source
 		// Preserve the Elasticsearch document ID if not already set
 		if content.ID == "" {
@@ -139,7 +140,7 @@ func (s *ElasticsearchStorage) IndexClassifiedContent(ctx context.Context, conte
 
 // UpdateRawContentStatus updates the classification_status field in raw_content
 // This matches the ElasticsearchClient interface expected by the Poller
-func (s *ElasticsearchStorage) UpdateRawContentStatus(ctx context.Context, contentID string, status string, classifiedAt time.Time) error {
+func (s *ElasticsearchStorage) UpdateRawContentStatus(ctx context.Context, contentID, status string, classifiedAt time.Time) error {
 	// We need to find which index this document is in
 	// For now, we'll update across all *_raw_content indices
 	// In production, you might want to track index per content ID

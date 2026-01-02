@@ -400,7 +400,7 @@ func TestGetSource_MissingName(t *testing.T) {
 	router := setupRouter(handler)
 
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest(http.MethodGet, "/api/v1/sources/", nil)
+	req, _ := http.NewRequest(http.MethodGet, "/api/v1/sources/", http.NoBody)
 	router.ServeHTTP(w, req)
 
 	// Gin redirects /sources/ to /sources (301) which then returns 501 (not implemented)

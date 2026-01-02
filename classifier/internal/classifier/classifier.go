@@ -88,7 +88,7 @@ func (c *Classifier) Classify(ctx context.Context, raw *domain.RawContent) (*dom
 
 	// Update source reputation if enabled
 	isSpam := qualityResult.TotalScore < spamThresholdScore // Spam threshold
-	if err := c.sourceReputation.UpdateAfterClassification(ctx, raw.SourceName, qualityResult.TotalScore, isSpam); err != nil {
+	if err = c.sourceReputation.UpdateAfterClassification(ctx, raw.SourceName, qualityResult.TotalScore, isSpam); err != nil {
 		c.logger.Warn("Failed to update source reputation",
 			"source_name", raw.SourceName,
 			"error", err,
