@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"fmt"
+	"log"
 	"os"
 	"os/signal"
 	"strconv"
@@ -27,20 +28,20 @@ func NewLogger(debug bool) *Logger {
 
 func (l *Logger) Debug(msg string, keysAndValues ...interface{}) {
 	if l.debug {
-		fmt.Printf("[DEBUG] %s %v\n", msg, keysAndValues)
+		log.Printf("[DEBUG] %s %v\n", msg, keysAndValues)
 	}
 }
 
 func (l *Logger) Info(msg string, keysAndValues ...interface{}) {
-	fmt.Printf("[INFO] %s %v\n", msg, keysAndValues)
+	log.Printf("[INFO] %s %v\n", msg, keysAndValues)
 }
 
 func (l *Logger) Warn(msg string, keysAndValues ...interface{}) {
-	fmt.Printf("[WARN] %s %v\n", msg, keysAndValues)
+	log.Printf("[WARN] %s %v\n", msg, keysAndValues)
 }
 
 func (l *Logger) Error(msg string, keysAndValues ...interface{}) {
-	fmt.Printf("[ERROR] %s %v\n", msg, keysAndValues)
+	log.Printf("[ERROR] %s %v\n", msg, keysAndValues)
 }
 
 // StartHTTPServer starts the HTTP server for the classifier service

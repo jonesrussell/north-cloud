@@ -534,7 +534,7 @@ func TestIntegration_BatchProcessingConcurrency(t *testing.T) {
 	// Create 20 test items
 	publishedDate := time.Now()
 	rawItems := make([]*domain.RawContent, 20)
-	for i := 0; i < 20; i++ {
+	for i := range 20 {
 		rawItems[i] = &domain.RawContent{
 			ID:                   "test-" + string(rune('A'+i)),
 			URL:                  "https://example.com/article",

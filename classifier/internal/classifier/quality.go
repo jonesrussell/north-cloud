@@ -6,6 +6,22 @@ import (
 	"github.com/jonesrussell/north-cloud/classifier/internal/domain"
 )
 
+const (
+	// Quality scoring constants
+	maxQualityScore         = 100
+	maxComponentScore       = 25
+	wordCountThreshold300   = 300
+	wordCountThreshold500   = 500
+	wordCountThreshold200   = 200
+	wordCountThreshold100   = 100
+	wordCountScore10        = 10
+	wordCountScore15        = 15
+	wordCountScore20        = 20
+	readabilityScore200     = 20 // 80% of max (20/25)
+	readabilityScore100     = 15 // 60% of max
+	readabilityScoreDefault = 10 // 40% of max
+)
+
 // QualityScorer evaluates content quality on a 0-100 scale
 type QualityScorer struct {
 	logger Logger
@@ -60,7 +76,7 @@ func (q *QualityScorer) Score(ctx context.Context, raw *domain.RawContent) (*Qua
 	factors["word_count"] = map[string]interface{}{
 		"value": raw.WordCount,
 		"score": wordCountScore,
-		"max":   25,
+		"max":   maxComponentScore,
 	}
 
 	// 2. Metadata completeness (0-25 points)
@@ -77,22 +93,30 @@ func (q *QualityScorer) Score(ctx context.Context, raw *domain.RawContent) (*Qua
 	readabilityScore := q.calculateReadabilityScore(raw)
 	factors["readability"] = map[string]interface{}{
 		"score":  readabilityScore,
-		"max":    25,
+		"max":    maxComponentScore,
 		"method": "default",
 	}
 
 	// Calculate total score (each component is 0-25, sum to 0-100)
+	metadataScoreInt, ok := metadataScore["score"].(int)
+	if !ok {
+		metadataScoreInt = 0
+	}
+	richnessScoreInt, ok := richnessScore["score"].(int)
+	if !ok {
+		richnessScoreInt = 0
+	}
 	totalScore := wordCountScore +
-		metadataScore["score"].(int) +
-		richnessScore["score"].(int) +
+		metadataScoreInt +
+		richnessScoreInt +
 		readabilityScore
 
 	// Ensure score is within 0-100 range
 	if totalScore < 0 {
 		totalScore = 0
 	}
-	if totalScore > 100 {
-		totalScore = 100
+	if totalScore > maxQualityScore {
+		totalScore = maxQualityScore
 	}
 
 	q.logger.Debug("Quality score calculated",
@@ -119,16 +143,16 @@ func (q *QualityScorer) calculateWordCountScore(wordCount int) int {
 	if wordCount < q.config.MinWordCount {
 		return 0
 	}
-	if wordCount < 300 {
-		return 10
+	if wordCount < wordCountThreshold300 {
+		return wordCountScore10
 	}
-	if wordCount < 500 {
-		return 15
+	if wordCount < wordCountThreshold500 {
+		return wordCountScore15
 	}
 	if wordCount < q.config.OptimalWordCount {
-		return 20
+		return wordCountScore20
 	}
-	return 25
+	return maxComponentScore
 }
 
 // calculateMetadataScore scores based on metadata completeness (0-25 points)
@@ -168,7 +192,7 @@ func (q *QualityScorer) calculateMetadataScore(raw *domain.RawContent) map[strin
 
 	return map[string]interface{}{
 		"score":   score,
-		"max":     25,
+		"max":     maxComponentScore,
 		"details": details,
 	}
 }
@@ -204,7 +228,7 @@ func (q *QualityScorer) calculateRichnessScore(raw *domain.RawContent) map[strin
 
 	return map[string]interface{}{
 		"score":   score,
-		"max":     25,
+		"max":     maxComponentScore,
 		"details": details,
 	}
 }
@@ -221,13 +245,13 @@ func (q *QualityScorer) calculateReadabilityScore(raw *domain.RawContent) int {
 	// - Flesch-Kincaid reading ease score
 
 	// For now, give a decent score if we have substantial content
-	if raw.WordCount >= 200 {
-		return 20 // 80% of max (20/25)
+	if raw.WordCount >= wordCountThreshold200 {
+		return readabilityScore200 // 80% of max (20/25)
 	}
-	if raw.WordCount >= 100 {
-		return 15 // 60% of max
+	if raw.WordCount >= wordCountThreshold100 {
+		return readabilityScore100 // 60% of max
 	}
-	return 10 // 40% of max
+	return readabilityScoreDefault // 40% of max
 }
 
 // ScoreBatch scores multiple content items efficiently

@@ -17,6 +17,16 @@ import (
 	"github.com/jonesrussell/north-cloud/classifier/internal/storage"
 )
 
+const (
+	// Processor configuration constants
+	defaultMinQualityScore      = 30
+	defaultPollInterval         = 30 * time.Second
+	defaultQualityWeight        = 0.25
+	defaultMinWordCount         = 100
+	defaultOptimalWordCount800  = 800
+	defaultOptimalWordCount1000 = 1000
+)
+
 // Config holds processor configuration
 type Config struct {
 	ElasticsearchURL  string
@@ -72,7 +82,7 @@ func Start() error {
 	// Test Elasticsearch connection
 	esStorage := storage.NewElasticsearchStorage(esClient)
 	ctx := context.Background()
-	if err := esStorage.TestConnection(ctx); err != nil {
+	if err = esStorage.TestConnection(ctx); err != nil {
 		return fmt.Errorf("failed to connect to Elasticsearch: %w", err)
 	}
 	log.Println("Connected to Elasticsearch")
@@ -122,15 +132,15 @@ func Start() error {
 	// Create classifier with proper config
 	classifierConfig := classifier.Config{
 		Version:         "1.0.0",
-		MinQualityScore: 30,
+		MinQualityScore: defaultMinQualityScore,
 		UpdateSourceRep: true,
 		QualityConfig: classifier.QualityConfig{
-			WordCountWeight:   0.25,
-			MetadataWeight:    0.25,
-			RichnessWeight:    0.25,
-			ReadabilityWeight: 0.25,
-			MinWordCount:      100,
-			OptimalWordCount:  800,
+			WordCountWeight:   defaultQualityWeight,
+			MetadataWeight:    defaultQualityWeight,
+			RichnessWeight:    defaultQualityWeight,
+			ReadabilityWeight: defaultQualityWeight,
+			MinWordCount:      defaultMinWordCount,
+			OptimalWordCount:  defaultOptimalWordCount800,
 		},
 		SourceReputationConfig: classifier.SourceReputationConfig{
 			DefaultScore:               70,
@@ -160,7 +170,7 @@ func Start() error {
 	)
 
 	// Start poller
-	if err := poller.Start(ctx); err != nil {
+	if err = poller.Start(ctx); err != nil {
 		return fmt.Errorf("failed to start poller: %w", err)
 	}
 
@@ -203,7 +213,7 @@ func StartWithStop() (func(), error) {
 	// Test Elasticsearch connection
 	esStorage := storage.NewElasticsearchStorage(esClient)
 	ctx := context.Background()
-	if err := esStorage.TestConnection(ctx); err != nil {
+	if err = esStorage.TestConnection(ctx); err != nil {
 		return nil, fmt.Errorf("failed to connect to Elasticsearch: %w", err)
 	}
 	log.Println("Connected to Elasticsearch")
@@ -248,15 +258,15 @@ func StartWithStop() (func(), error) {
 	// Create classifier with proper config
 	classifierConfig := classifier.Config{
 		Version:         "1.0.0",
-		MinQualityScore: 30,
+		MinQualityScore: defaultMinQualityScore,
 		UpdateSourceRep: true,
 		QualityConfig: classifier.QualityConfig{
-			WordCountWeight:   0.25,
-			MetadataWeight:    0.25,
-			RichnessWeight:    0.25,
-			ReadabilityWeight: 0.25,
-			MinWordCount:      100,
-			OptimalWordCount:  800,
+			WordCountWeight:   defaultQualityWeight,
+			MetadataWeight:    defaultQualityWeight,
+			RichnessWeight:    defaultQualityWeight,
+			ReadabilityWeight: defaultQualityWeight,
+			MinWordCount:      defaultMinWordCount,
+			OptimalWordCount:  defaultOptimalWordCount800,
 		},
 		SourceReputationConfig: classifier.SourceReputationConfig{
 			DefaultScore:               70,
@@ -286,7 +296,7 @@ func StartWithStop() (func(), error) {
 	)
 
 	// Start poller
-	if err := poller.Start(ctx); err != nil {
+	if err = poller.Start(ctx); err != nil {
 		return nil, fmt.Errorf("failed to start poller: %w", err)
 	}
 
@@ -314,7 +324,7 @@ func parseDuration(s string) time.Duration {
 	d, err := time.ParseDuration(s)
 	if err != nil {
 		log.Printf("Warning: Invalid duration %q, using 30s", s)
-		return 30 * time.Second
+		return defaultPollInterval
 	}
 	return d
 }

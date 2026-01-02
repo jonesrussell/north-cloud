@@ -219,7 +219,7 @@ func (h *Handler) CreateRule(c *gin.Context) {
 		RuleType:      domain.RuleTypeTopic,
 		TopicName:     req.Topic,
 		Keywords:      req.Keywords,
-		MinConfidence: 0.3, // Default confidence threshold
+		MinConfidence: 0.3, // Default confidence threshold (TODO: move to constant)
 		Enabled:       req.Enabled,
 		Priority:      priorityStringToInt(req.Priority),
 	}

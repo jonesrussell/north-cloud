@@ -2,12 +2,20 @@ package api
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/jonesrussell/north-cloud/auth/internal/auth"
 	"github.com/jonesrussell/north-cloud/auth/internal/config"
+)
+
+const (
+	// HTTP server timeout constants
+	readTimeoutSeconds  = 10
+	writeTimeoutSeconds = 30
+	idleTimeoutSeconds  = 120
 )
 
 // Server represents the HTTP server
@@ -44,17 +52,17 @@ func NewServer(cfg *config.Config) (*Server, error) {
 
 	// Auth routes
 	v1 := router.Group("/api/v1")
-	auth := v1.Group("/auth")
-	auth.POST("/login", authHandler.Login)
+	authGroup := v1.Group("/auth")
+	authGroup.POST("/login", authHandler.Login)
 
 	// Create HTTP server
 	addr := fmt.Sprintf(":%s", cfg.Port)
 	server := &http.Server{
 		Addr:         addr,
 		Handler:      router,
-		ReadTimeout:  10 * time.Second,
-		WriteTimeout: 30 * time.Second,
-		IdleTimeout:  120 * time.Second,
+		ReadTimeout:  readTimeoutSeconds * time.Second,
+		WriteTimeout: writeTimeoutSeconds * time.Second,
+		IdleTimeout:  idleTimeoutSeconds * time.Second,
 	}
 
 	return &Server{
@@ -68,7 +76,7 @@ func NewServer(cfg *config.Config) (*Server, error) {
 // Start starts the HTTP server
 func (s *Server) Start() error {
 	if s.config.Debug {
-		fmt.Printf("Starting auth service on port %s\n", s.config.Port)
+		log.Printf("Starting auth service on port %s\n", s.config.Port)
 	}
 	return s.server.ListenAndServe()
 }
@@ -103,6 +111,6 @@ func loggingMiddleware() gin.HandlerFunc {
 		duration := time.Since(start)
 		statusCode := c.Writer.Status()
 
-		fmt.Printf("[%s] %s %s %d %v\n", method, path, c.ClientIP(), statusCode, duration)
+		log.Printf("[%s] %s %s %d %v\n", method, path, c.ClientIP(), statusCode, duration)
 	}
 }

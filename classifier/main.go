@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"os"
 	"os/signal"
@@ -29,33 +28,33 @@ func main() {
 		server.StartHTTPServer()
 	case "processor", "worker":
 		// Run background processor only
-		fmt.Printf("Classifier Service v%s - Processor Mode\n", version)
+		log.Printf("Classifier Service v%s - Processor Mode\n", version)
 		if err := processor.Start(); err != nil {
 			log.Fatalf("Processor failed: %v", err)
 		}
 	case "version":
-		fmt.Printf("Classifier Service v%s\n", version)
+		log.Printf("Classifier Service v%s\n", version)
 		os.Exit(0)
 	case "help", "-h", "--help":
-		fmt.Printf("Classifier Service v%s\n", version)
-		fmt.Println("\nUsage: classifier [command]")
-		fmt.Println("\nCommands:")
-		fmt.Println("  both       Start both HTTP API server and processor (default)")
-		fmt.Println("  httpd      Start HTTP API server only")
-		fmt.Println("  processor  Start background processor only")
-		fmt.Println("  version    Show version")
-		fmt.Println("  help       Show this help message")
+		log.Printf("Classifier Service v%s\n", version)
+		log.Println("\nUsage: classifier [command]")
+		log.Println("\nCommands:")
+		log.Println("  both       Start both HTTP API server and processor (default)")
+		log.Println("  httpd      Start HTTP API server only")
+		log.Println("  processor  Start background processor only")
+		log.Println("  version    Show version")
+		log.Println("  help       Show this help message")
 		os.Exit(0)
 	default:
-		fmt.Printf("Unknown command: %s\n", command)
-		fmt.Println("Run 'classifier help' for usage information")
+		log.Printf("Unknown command: %s\n", command)
+		log.Println("Run 'classifier help' for usage information")
 		os.Exit(1)
 	}
 }
 
 // startBoth starts both the HTTP server and processor concurrently
 func startBoth() {
-	fmt.Printf("Classifier Service v%s - Starting HTTP Server and Processor\n", version)
+	log.Printf("Classifier Service v%s - Starting HTTP Server and Processor\n", version)
 
 	// Start HTTP server
 	httpStop, err := server.StartHTTPServerWithStop()

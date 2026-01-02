@@ -40,7 +40,8 @@ func (t *TopicClassifier) Classify(ctx context.Context, raw *domain.RawContent) 
 	text = strings.ToLower(text)
 
 	// Apply each topic rule
-	for _, rule := range t.rules {
+	for i := range t.rules {
+		rule := t.rules[i]
 		// Skip if rule is not enabled or not a topic rule
 		if !rule.Enabled || rule.RuleType != domain.RuleTypeTopic {
 			continue
@@ -158,7 +159,8 @@ func (t *TopicClassifier) GetTopicStats() map[string]int {
 	// TODO: Implement stats tracking
 	// This would track counts of each topic classified
 	stats := make(map[string]int)
-	for _, rule := range t.rules {
+	for i := range t.rules {
+		rule := t.rules[i]
 		if rule.RuleType == domain.RuleTypeTopic {
 			stats[rule.TopicName] = 0
 		}

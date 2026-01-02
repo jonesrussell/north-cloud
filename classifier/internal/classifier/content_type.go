@@ -92,7 +92,7 @@ func (c *ContentTypeClassifier) Classify(ctx context.Context, raw *domain.RawCon
 		)
 		return &ContentTypeResult{
 			Type:       domain.ContentTypeArticle,
-			Confidence: 0.75,
+			Confidence: 0.75, // TODO: move to constant
 			Method:     "heuristic",
 			Reason:     "Content has article characteristics (sufficient length, metadata)",
 		}, nil
@@ -106,7 +106,7 @@ func (c *ContentTypeClassifier) Classify(ctx context.Context, raw *domain.RawCon
 	)
 	return &ContentTypeResult{
 		Type:       domain.ContentTypePage,
-		Confidence: 0.6,
+		Confidence: 0.6, // TODO: move to constant
 		Method:     "default",
 		Reason:     "Content does not meet article criteria",
 	}, nil

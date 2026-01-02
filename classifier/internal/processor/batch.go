@@ -65,7 +65,7 @@ func (b *BatchProcessor) Process(ctx context.Context, rawItems []*domain.RawCont
 
 	// Start worker pool
 	var wg sync.WaitGroup
-	for i := 0; i < b.concurrency; i++ {
+	for i := range b.concurrency {
 		wg.Add(1)
 		go b.worker(ctx, i, jobs, results, &wg)
 	}

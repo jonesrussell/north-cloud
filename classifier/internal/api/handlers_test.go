@@ -180,7 +180,7 @@ func TestHealthCheck(t *testing.T) {
 	router := setupRouter(handler)
 
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("GET", "/health", nil)
+	req, _ := http.NewRequest(http.MethodGet, "/health", http.NoBody)
 	router.ServeHTTP(w, req)
 
 	if w.Code != http.StatusOK {
@@ -202,7 +202,7 @@ func TestReadyCheck(t *testing.T) {
 	router := setupRouter(handler)
 
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("GET", "/ready", nil)
+	req, _ := http.NewRequest(http.MethodGet, "/ready", http.NoBody)
 	router.ServeHTTP(w, req)
 
 	if w.Code != http.StatusOK {
@@ -241,7 +241,7 @@ func TestClassify_Success(t *testing.T) {
 
 	body, _ := json.Marshal(reqBody)
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("POST", "/api/v1/classify", bytes.NewBuffer(body))
+	req, _ := http.NewRequest(http.MethodPost, "/api/v1/classify", bytes.NewBuffer(body))
 	req.Header.Set("Content-Type", "application/json")
 	router.ServeHTTP(w, req)
 
@@ -280,7 +280,7 @@ func TestClassify_InvalidRequest(t *testing.T) {
 	router := setupRouter(handler)
 
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("POST", "/api/v1/classify", bytes.NewBuffer([]byte("{}")))
+	req, _ := http.NewRequest(http.MethodPost, "/api/v1/classify", bytes.NewBufferString("{}"))
 	req.Header.Set("Content-Type", "application/json")
 	router.ServeHTTP(w, req)
 
@@ -323,7 +323,7 @@ func TestClassifyBatch_Success(t *testing.T) {
 
 	body, _ := json.Marshal(reqBody)
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("POST", "/api/v1/classify/batch", bytes.NewBuffer(body))
+	req, _ := http.NewRequest(http.MethodPost, "/api/v1/classify/batch", bytes.NewBuffer(body))
 	req.Header.Set("Content-Type", "application/json")
 	router.ServeHTTP(w, req)
 
@@ -359,7 +359,7 @@ func TestClassifyBatch_EmptyRequest(t *testing.T) {
 
 	body, _ := json.Marshal(reqBody)
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("POST", "/api/v1/classify/batch", bytes.NewBuffer(body))
+	req, _ := http.NewRequest(http.MethodPost, "/api/v1/classify/batch", bytes.NewBuffer(body))
 	req.Header.Set("Content-Type", "application/json")
 	router.ServeHTTP(w, req)
 
@@ -373,7 +373,7 @@ func TestGetSource(t *testing.T) {
 	router := setupRouter(handler)
 
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("GET", "/api/v1/sources/example.com", nil)
+	req, _ := http.NewRequest(http.MethodGet, "/api/v1/sources/example.com", http.NoBody)
 	router.ServeHTTP(w, req)
 
 	if w.Code != http.StatusOK {
@@ -400,7 +400,7 @@ func TestGetSource_MissingName(t *testing.T) {
 	router := setupRouter(handler)
 
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("GET", "/api/v1/sources/", nil)
+	req, _ := http.NewRequest(http.MethodGet, "/api/v1/sources/", nil)
 	router.ServeHTTP(w, req)
 
 	// Gin redirects /sources/ to /sources (301) which then returns 501 (not implemented)
@@ -415,7 +415,7 @@ func TestGetClassificationResult_NotImplemented(t *testing.T) {
 	router := setupRouter(handler)
 
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("GET", "/api/v1/classify/test-123", nil)
+	req, _ := http.NewRequest(http.MethodGet, "/api/v1/classify/test-123", http.NoBody)
 	router.ServeHTTP(w, req)
 
 	if w.Code != http.StatusNotImplemented {

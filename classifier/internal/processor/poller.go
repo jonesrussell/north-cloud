@@ -2,6 +2,7 @@ package processor
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -80,7 +81,7 @@ func NewPoller(
 // Start starts the poller
 func (p *Poller) Start(ctx context.Context) error {
 	if p.running {
-		return fmt.Errorf("poller is already running")
+		return errors.New("poller is already running")
 	}
 
 	p.running = true

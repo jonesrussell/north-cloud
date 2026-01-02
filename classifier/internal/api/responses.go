@@ -6,6 +6,15 @@ import (
 	"github.com/jonesrussell/north-cloud/classifier/internal/domain"
 )
 
+const (
+	// Priority constants for dashboard to database conversion
+	priorityHigh            = 10
+	priorityNormal          = 5
+	priorityLow             = 1
+	priorityHighThreshold   = 8
+	priorityNormalThreshold = 4
+)
+
 // RuleResponse represents a classification rule response for the dashboard.
 type RuleResponse struct {
 	ID       int      `json:"id"`
@@ -69,13 +78,13 @@ type UpdateSourceRequest struct {
 func priorityStringToInt(priority string) int {
 	switch priority {
 	case "high":
-		return 10
+		return priorityHigh
 	case "normal":
-		return 5
+		return priorityNormal
 	case "low":
-		return 1
+		return priorityLow
 	default:
-		return 5 // Default to normal
+		return priorityNormal // Default to normal
 	}
 }
 
@@ -83,10 +92,10 @@ func priorityStringToInt(priority string) int {
 // Database uses: 0-100 (higher = more important)
 // Dashboard uses: "high", "normal", "low"
 func priorityIntToString(priority int) string {
-	if priority >= 8 {
+	if priority >= priorityHighThreshold {
 		return "high"
 	}
-	if priority >= 4 {
+	if priority >= priorityNormalThreshold {
 		return "normal"
 	}
 	return "low"
