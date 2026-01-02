@@ -548,10 +548,15 @@ north-cloud/
 │   │   ├── views/
 │   │   │   └── LoginView.vue    # Login page component
 │   │   ├── composables/
-│   │   │   └── useAuth.js       # Authentication state management
+│   │   │   ├── useAuth.js       # Authentication state management
+│   │   │   └── useFormValidation.ts  # Form validation with TypeScript types
 │   │   ├── api/
 │   │   │   ├── auth.js          # Auth API client
-│   │   │   └── client.js        # API clients with JWT interceptors
+│   │   │   └── client.ts       # API clients with JWT interceptors (TypeScript)
+│   │   ├── types/
+│   │   │   ├── publisher.ts     # Publisher API types (Source, Channel, Route, PreviewArticle, etc.)
+│   │   │   ├── indexManager.ts # Index manager types
+│   │   │   └── common.ts       # Shared types (ApiError, etc.)
 │   │   ├── router/
 │   │   │   └── index.js         # Router with auth guards
 │   │   └── App.vue              # Main app component with auth-aware layout
@@ -586,6 +591,12 @@ north-cloud/
 - **Logging**: Use structured logging (zap for publisher, configure per service)
 - **Testing**: Unit tests with 80%+ coverage target
 - **Linting**: Use `golangci-lint` with service-specific configurations
+- **Type Safety**: 
+  - Use `any` instead of `interface{}` (Go 1.18+)
+  - Avoid magic numbers: define constants for numeric literals
+  - Use integer range syntax (`for i := range n`) when possible (Go 1.22+)
+  - Avoid copying large structs in loops: use pointers or indexing (`for i := range items { item := &items[i] }`)
+  - Use compound assignment operators (`/=`, `*=`, etc.) instead of `x = x / y`
 
 #### Go 1.25 Features
 The codebase leverages Go 1.25 improvements:
@@ -611,11 +622,17 @@ The codebase leverages Go 1.25 improvements:
 - **Configuration**: Export config to `/config` directory
 - **Custom Modules**: Place in `/web/modules/custom`
 
-#### Frontend (source-manager/frontend)
+#### Frontend (dashboard, source-manager/frontend)
 - **Framework**: Vue.js 3 with Composition API
 - **Build Tool**: Vite
 - **Styling**: Component-scoped CSS or Tailwind
 - **State Management**: Pinia (if needed)
+- **TypeScript**: Use strict typing, avoid `any` types
+  - Prefer `unknown` for generic values (form fields, error handling)
+  - Use specific interfaces for known types (`Source`, `Channel`, `Route`, etc.)
+  - Define shared types in `/dashboard/src/types/` directory
+  - Common types: `PreviewArticle`, `TestCrawlArticle`, `ApiError` (see `/dashboard/src/types/`)
+  - Error handling: Use `ApiError` interface with type assertions (`err as ApiError`)
 
 ### 2. Environment Variables
 
@@ -1272,6 +1289,9 @@ docker system prune -a --volumes
 - Frontend: Use Vue 3 Composition API
 - Test API endpoints
 - Validate database migrations
+- **Test Crawl Endpoint**: `POST /api/v1/sources/test-crawl` for previewing extraction without saving
+  - Returns simulated response with articles found, success rate, warnings, and sample articles
+  - Use constants for magic numbers in test responses
 
 **For Classifier**:
 - **IMPORTANT**: Read `/classifier/CLAUDE.md` for detailed guidelines
@@ -1297,6 +1317,11 @@ docker system prune -a --volumes
 - **When using classified_content** (`use_classified_content: true`):
   - Query `{source}_classified_content` indexes
   - Filter by `is_crime_related=true` and `quality_score >= threshold`
+- **Test/Preview Endpoints**:
+  - `GET /api/v1/routes/preview` - Preview articles matching route filters
+  - `GET /api/v1/channels/:id/test-publish` - Simulate publishing to a channel
+  - Use constants for magic numbers in simulation responses
+  - Avoid copying large structs in loops (use pointers or indexing)
   - Trust classifier's determinations (don't re-check keywords)
   - Use configured `index_suffix` for index naming
 - **Legacy mode** (`use_classified_content: false`):
@@ -1316,13 +1341,19 @@ docker system prune -a --volumes
 - For production, generate strong JWT secret: `openssl rand -hex 32`
 
 **For Dashboard Frontend**:
-- Vue.js 3 with Composition API
+- Vue.js 3 with Composition API and TypeScript
 - Authentication state managed via `useAuth` composable
 - Route guards redirect unauthenticated users to `/login`
 - JWT tokens stored in localStorage
 - API clients automatically inject tokens in Authorization header
 - Handles 401 responses by redirecting to login and clearing token
 - Login page styled with Tailwind CSS
+- **Type Safety**:
+  - All components use proper TypeScript types (no `any` types)
+  - Shared types defined in `/dashboard/src/types/` directory
+  - Use `unknown` for generic values (form fields, error handling)
+  - Use `ApiError` interface for error handling with type assertions
+  - Type definitions: `PreviewArticle`, `TestCrawlArticle`, `Source`, `Channel`, `Route`, etc.
 
 **For Streetcode (Drupal)**:
 - Follow Drupal coding standards
@@ -1598,6 +1629,26 @@ When encountering scenarios not covered in this guide:
 ---
 
 ## Version History
+
+- **Type Safety and Code Quality Improvements** (2025-12-29): Enhanced type safety and linting compliance
+  - **TypeScript Type Safety**:
+    - Replaced all 15 `any` types with proper TypeScript types across dashboard
+    - Created shared type definitions: `PreviewArticle`, `TestCrawlArticle`, `ApiError`
+    - Used `unknown` for generic form validation and error handling (safer than `any`)
+    - All components now use specific interfaces (`Source`, `Channel`, `Route`, etc.)
+    - Type definitions located in `/dashboard/src/types/` directory
+  - **Go Linting Improvements**:
+    - Replaced magic numbers with named constants in all services
+    - Fixed range value copy issues (use pointers/indexing instead of copying)
+    - Replaced `interface{}` with `any` (Go 1.18+)
+    - Used compound assignment operators (`/=`, `*=`, etc.)
+    - Applied Go 1.22+ integer range syntax where applicable
+    - Removed unused nolint directives
+  - **Services Updated**:
+    - Crawler: Function length refactoring, magic number constants
+    - Publisher: Test/preview endpoint constants, range loop optimizations
+    - Source Manager: Test crawl endpoint constants, `interface{}` → `any`
+  - **Documentation**: Updated CLAUDE.md with TypeScript and Go type safety best practices
 
 - **Crawler Scheduler Refactor: Interval-Based Job Scheduling** (2025-12-29): Complete modernization of job scheduler
   - **Architecture Change**: From cron-based to interval-based scheduling for improved user experience
