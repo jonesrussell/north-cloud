@@ -67,7 +67,7 @@ func BenchmarkQualityScoring(b *testing.B) {
 			"section": "news",
 		},
 		ClassificationStatus: "pending",
-		DiscoveredAt:        time.Now().UTC(),
+		DiscoveredAt:         time.Now().UTC(),
 	}
 
 	b.ReportAllocs()
@@ -167,11 +167,11 @@ func BenchmarkTopicClassification(b *testing.B) {
 	}
 
 	topicKeywords := map[string][]string{
-		"crime":      {"police", "arrest", "robbery", "crime", "suspect"},
-		"sports":     {"team", "game", "championship", "win", "player"},
-		"business":   {"startup", "funding", "company", "market", "investment"},
-		"politics":   {"council", "government", "vote", "election", "policy"},
-		"health":     {"health", "medical", "doctor", "disease", "treatment"},
+		"crime":    {"police", "arrest", "robbery", "crime", "suspect"},
+		"sports":   {"team", "game", "championship", "win", "player"},
+		"business": {"startup", "funding", "company", "market", "investment"},
+		"politics": {"council", "government", "vote", "election", "policy"},
+		"health":   {"health", "medical", "doctor", "disease", "treatment"},
 	}
 
 	b.ReportAllocs()
@@ -221,7 +221,7 @@ func BenchmarkFullClassification(b *testing.B) {
 			"section": "crime",
 		},
 		ClassificationStatus: "pending",
-		DiscoveredAt:        time.Now().UTC(),
+		DiscoveredAt:         time.Now().UTC(),
 	}
 
 	b.ReportAllocs()
