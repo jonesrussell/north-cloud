@@ -21,7 +21,7 @@ COPY crawler/ .
 RUN CGO_ENABLED=0 go build \
     -ldflags="-w -s" \
     -trimpath \
-    -o crawler \
+    -o /build/crawler/crawler-bin \
     main.go
 
 # Runtime stage
@@ -34,7 +34,7 @@ RUN apk --no-cache add ca-certificates tzdata && \
 WORKDIR /app
 
 # Copy binary
-COPY --from=builder /build/crawler/crawler .
+COPY --from=builder /build/crawler/crawler-bin ./crawler
 
 # Copy config
 COPY --from=builder /build/crawler/config.example.yaml ./config.yaml

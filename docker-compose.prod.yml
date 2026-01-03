@@ -5,16 +5,7 @@
 x-prod-defaults: &prod-defaults
   networks:
     - north-cloud-network
-  deploy:
-    restart_policy:
-      condition: any
-    resources:
-      limits:
-        cpus: "2"
-        memory: 2G
-      reservations:
-        cpus: "0.5"
-        memory: 512M
+  restart: always
 
 # ============================================================
 # Application Services - Production
@@ -27,20 +18,15 @@ services:
   # ------------------------------------------------------------
   crawler:
     <<: *prod-defaults
+    build:
+      context: .
+      dockerfile: ./crawler/Dockerfile
+      args:
+        BUILD_ENV: production
     image: northcloud/crawler:latest
     depends_on:
       - postgres-crawler
       - elasticsearch
-    deploy:
-      restart_policy:
-        condition: any
-      resources:
-        limits:
-          cpus: "1"
-          memory: 1G
-        reservations:
-          cpus: "0.25"
-          memory: 256M
     environment:
       DB_HOST: postgres-crawler
       DB_PORT: 5432
@@ -61,6 +47,11 @@ services:
   # ------------------------------------------------------------
   source-manager:
     <<: *prod-defaults
+    build:
+      context: .
+      dockerfile: ./source-manager/Dockerfile
+      args:
+        BUILD_ENV: production
     image: northcloud/source-manager:latest
     depends_on:
       - postgres-source-manager
@@ -83,6 +74,11 @@ services:
   # ------------------------------------------------------------
   publisher-api:
     <<: *prod-defaults
+    build:
+      context: .
+      dockerfile: ./publisher/Dockerfile
+      args:
+        BUILD_ENV: production
     image: northcloud/publisher:latest
     command: ["/app/publisher", "api"]
     depends_on:
@@ -100,20 +96,17 @@ services:
       REDIS_PASSWORD: "${REDIS_PASSWORD}"
       GIN_MODE: release
       APP_DEBUG: "false"
-    deploy:
-      resources:
-        limits:
-          cpus: "2"
-          memory: 1G
-        reservations:
-          cpus: "0.5"
-          memory: 256M
 
   # ------------------------------------------------------------
   # Publisher Router (Prod)
   # ------------------------------------------------------------
   publisher-router:
     <<: *prod-defaults
+    build:
+      context: .
+      dockerfile: ./publisher/Dockerfile
+      args:
+        BUILD_ENV: production
     image: northcloud/publisher:latest
     command: ["/app/publisher", "router"]
     depends_on:
@@ -139,6 +132,11 @@ services:
   # ------------------------------------------------------------
   classifier:
     <<: *prod-defaults
+    build:
+      context: .
+      dockerfile: ./classifier/Dockerfile
+      args:
+        BUILD_ENV: production
     image: northcloud/classifier:latest
     depends_on:
       - postgres-classifier
@@ -166,8 +164,10 @@ services:
   # ------------------------------------------------------------
   index-manager:
     <<: *prod-defaults
+    build:
+      context: ./index-manager
+      dockerfile: Dockerfile
     image: northcloud/index-manager:latest
-
     depends_on:
       - postgres-index-manager
       - elasticsearch
@@ -190,6 +190,11 @@ services:
   # ------------------------------------------------------------
   dashboard:
     <<: *prod-defaults
+    build:
+      context: ./dashboard
+      dockerfile: Dockerfile
+      args:
+        BUILD_ENV: production
     image: northcloud/dashboard:latest
     depends_on:
       - crawler
@@ -201,14 +206,6 @@ services:
       timeout: 10s
       retries: 3
       start_period: 10s
-    deploy:
-      resources:
-        limits:
-          cpus: "1"
-          memory: 512M
-        reservations:
-          cpus: "0.25"
-          memory: 128M
 
   # ------------------------------------------------------------
   # Nginx Reverse Proxy (Prod)
@@ -251,16 +248,7 @@ services:
         sleep 12h & wait $$$${!};
       done;
       '
-    deploy:
-      restart_policy:
-        condition: any
-      resources:
-        limits:
-          cpus: "0.5"
-          memory: 256M
-        reservations:
-          cpus: "0.1"
-          memory: 64M
+    restart: always
 
   # ============================================================
   # Elasticsearch (Prod Overrides)
@@ -269,14 +257,6 @@ services:
     environment:
       xpack.security.enabled: "${ELASTICSEARCH_SECURITY_ENABLED:-false}"
       ES_JAVA_OPTS: "-Xms${ELASTICSEARCH_MIN_HEAP:-256m} -Xmx${ELASTICSEARCH_MAX_HEAP:-512m}"
-    deploy:
-      resources:
-        limits:
-          cpus: "1"
-          memory: 1.5G
-        reservations:
-          cpus: "0.5"
-          memory: 512M
 
   # ============================================================
   # Redis (Prod Overrides)
@@ -284,14 +264,6 @@ services:
   redis:
     environment:
       REDIS_PASSWORD: "${REDIS_PASSWORD}"
-    deploy:
-      resources:
-        limits:
-          cpus: "1"
-          memory: 1G
-        reservations:
-          cpus: "0.25"
-          memory: 256M
 
 # ============================================================
 # Production Volumes

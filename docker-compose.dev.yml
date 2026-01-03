@@ -178,20 +178,13 @@ x-node-dev-defaults: &node-dev-defaults
   volumes:
     - /app/node_modules
   working_dir: /app
-  deploy:
-    resources:
-      limits:
-        cpus: "1.5"
-        memory: 1G
 
 x-node-dev-environment: &node-dev-environment
   NODE_ENV: development
   npm_config_cache: /tmp/npm-cache
 
 x-service-defaults: &service-defaults
-  deploy:
-    restart_policy:
-      condition: unless-stopped
+  restart: unless-stopped
   networks:
     - north-cloud-network
 
@@ -229,11 +222,6 @@ x-service-defaults: &service-defaults
       - index_manager_go_build_cache:/tmp/go-build-cache
       - ./infrastructure:/infrastructure
     command: ["sh", "-c", "go mod download && go run -mod=mod ./cmd/httpd/main.go"]
-    deploy:
-      resources:
-        limits:
-          cpus: "2"
-          memory: 4G
 
   # ------------------------------------------------------------
   # Search Service (Dev)
@@ -272,11 +260,6 @@ x-service-defaults: &service-defaults
       timeout: 10s
       retries: 3
       start_period: 20s
-    deploy:
-      resources:
-        limits:
-          cpus: "2"
-          memory: 2G
 
   # ------------------------------------------------------------
   # Kibana (Dev)
@@ -448,11 +431,6 @@ x-service-defaults: &service-defaults
       timeout: 10s
       retries: 3
       start_period: 25s
-    deploy:
-      resources:
-        limits:
-          cpus: "2"
-          memory: 1G
 
   # ------------------------------------------------------------
   # Publisher Router (Dev)
@@ -494,23 +472,12 @@ x-service-defaults: &service-defaults
       - publisher_go_build_cache:/tmp/go-build-cache
       - ./infrastructure:/infrastructure
     command: ["sh", "-c", "go mod download && go run -mod=mod . router"]
-    deploy:
-      resources:
-        limits:
-          cpus: "2"
-          memory: 2G
 
   # ------------------------------------------------------------
   # Nginx Reverse Proxy (Dev)
   # ------------------------------------------------------------
   nginx:
-    deploy:
-      restart_policy:
-        condition: unless-stopped
-      resources:
-        limits:
-          cpus: "1"
-          memory: 512M
+    restart: unless-stopped
     networks:
       - north-cloud-network
     image: nginx:alpine
