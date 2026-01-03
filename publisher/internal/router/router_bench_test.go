@@ -1,4 +1,4 @@
-package router
+package router_test
 
 import (
 	"encoding/json"
@@ -8,18 +8,18 @@ import (
 
 // Article represents a classified article for benchmarking
 type Article struct {
-	SourceID       string                 `json:"source_id"`
-	URL            string                 `json:"url"`
-	CanonicalURL   string                 `json:"canonical_url"`
-	Title          string                 `json:"title"`
-	Body           string                 `json:"body"`
-	PublishedDate  time.Time              `json:"published_date"`
-	QualityScore   int                    `json:"quality_score"`
-	IsCrimeRelated bool                   `json:"is_crime_related"`
-	Topics         []string               `json:"topics"`
-	ContentType    string                 `json:"content_type"`
-	Metadata       map[string]interface{} `json:"metadata"`
-	ClassifiedAt   time.Time              `json:"classified_at"`
+	SourceID       string         `json:"source_id"`
+	URL            string         `json:"url"`
+	CanonicalURL   string         `json:"canonical_url"`
+	Title          string         `json:"title"`
+	Body           string         `json:"body"`
+	PublishedDate  time.Time      `json:"published_date"`
+	QualityScore   int            `json:"quality_score"`
+	IsCrimeRelated bool           `json:"is_crime_related"`
+	Topics         []string       `json:"topics"`
+	ContentType    string         `json:"content_type"`
+	Metadata       map[string]any `json:"metadata"`
+	ClassifiedAt   time.Time      `json:"classified_at"`
 }
 
 // Route represents a routing rule for benchmarking
@@ -33,10 +33,12 @@ type Route struct {
 }
 
 // BenchmarkArticleFiltering benchmarks route filtering logic
+//
+//nolint:gocognit // Benchmark function complexity is acceptable
 func BenchmarkArticleFiltering(b *testing.B) {
 	// Create 100 test articles with varying quality scores and topics
 	articles := make([]Article, 100)
-	for i := 0; i < 100; i++ {
+	for i := range 100 {
 		topics := []string{"news"}
 		isCrime := i%3 == 0
 		if isCrime {
@@ -64,14 +66,19 @@ func BenchmarkArticleFiltering(b *testing.B) {
 		Topics:          []string{"crime"},
 		IsActive:        true,
 	}
+	_ = route.ID
+	_ = route.SourceID
+	_ = route.ChannelID
+	_ = route.IsActive
 
 	b.ReportAllocs()
 	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		filtered := make([]Article, 0, 10)
 
-		for _, article := range articles {
+		for i := range articles {
+			article := &articles[i]
 			// Check quality score threshold
 			if article.QualityScore < route.MinQualityScore {
 				continue
@@ -92,7 +99,7 @@ func BenchmarkArticleFiltering(b *testing.B) {
 			}
 
 			if matchesTopic {
-				filtered = append(filtered, article)
+				filtered = append(filtered, *article)
 			}
 		}
 
@@ -107,13 +114,13 @@ func BenchmarkRedisMessageSerialization(b *testing.B) {
 		URL:            "https://example.com/article-123",
 		CanonicalURL:   "https://example.com/article-123",
 		Title:          "Breaking News: Major Event Downtown",
-		Body:           "Full article content with multiple paragraphs of text describing the event in detail. This includes quotes from witnesses and official statements.",
+		Body:           "Full article content with multiple paragraphs of text describing the event in detail. This includes quotes from witnesses and official statements.", //nolint:lll // Test data
 		PublishedDate:  time.Now().UTC(),
 		QualityScore:   85,
 		IsCrimeRelated: true,
 		Topics:         []string{"crime", "news", "local"},
 		ContentType:    "article",
-		Metadata: map[string]interface{}{
+		Metadata: map[string]any{
 			"author":  "Jane Reporter",
 			"section": "crime",
 		},
@@ -121,9 +128,9 @@ func BenchmarkRedisMessageSerialization(b *testing.B) {
 	}
 
 	// Publisher metadata
-	message := map[string]interface{}{
+	message := map[string]any{
 		"article": article,
-		"metadata": map[string]interface{}{
+		"metadata": map[string]any{
 			"route_id":     1,
 			"channel":      "articles:crime",
 			"published_at": time.Now().UTC(),
@@ -133,7 +140,7 @@ func BenchmarkRedisMessageSerialization(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		_, err := json.Marshal(message)
 		if err != nil {
 			b.Fatal(err)
@@ -142,10 +149,12 @@ func BenchmarkRedisMessageSerialization(b *testing.B) {
 }
 
 // BenchmarkRouteProcessing benchmarks complete route processing pipeline
+//
+//nolint:gocognit // Benchmark function complexity is acceptable
 func BenchmarkRouteProcessing(b *testing.B) {
 	// 50 articles to process
 	articles := make([]Article, 50)
-	for i := 0; i < 50; i++ {
+	for i := range 50 {
 		articles[i] = Article{
 			SourceID:       "example_com",
 			URL:            "https://example.com/article",
@@ -168,14 +177,15 @@ func BenchmarkRouteProcessing(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		for _, route := range routes {
 			if !route.IsActive {
 				continue
 			}
 
 			// Filter articles for this route
-			for _, article := range articles {
+			for i := range articles {
+				article := &articles[i]
 				if article.QualityScore < route.MinQualityScore {
 					continue
 				}
@@ -195,9 +205,9 @@ func BenchmarkRouteProcessing(b *testing.B) {
 
 				if matchesTopic {
 					// Prepare message
-					message := map[string]interface{}{
+					message := map[string]any{
 						"article": article,
-						"metadata": map[string]interface{}{
+						"metadata": map[string]any{
 							"route_id": route.ID,
 							"channel":  "articles:" + route.Topics[0],
 						},
@@ -219,7 +229,7 @@ func BenchmarkTopicMatching(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		matches := false
 		for _, routeTopic := range routeTopics {
 			for _, articleTopic := range articleTopics {
@@ -240,7 +250,7 @@ func BenchmarkTopicMatching(b *testing.B) {
 func BenchmarkPublishHistoryCheck(b *testing.B) {
 	// Simulated publish history (article IDs already published)
 	publishedArticles := make(map[string]bool, 1000)
-	for i := 0; i < 1000; i++ {
+	for i := range 1000 {
 		publishedArticles["https://example.com/article/"+string(rune(i))] = true
 	}
 
@@ -254,7 +264,7 @@ func BenchmarkPublishHistoryCheck(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		for _, url := range testURLs {
 			_ = publishedArticles[url] // Check if already published
 		}
@@ -267,7 +277,7 @@ func BenchmarkBatchProcessing(b *testing.B) {
 
 	// Create 1000 articles
 	articles := make([]Article, 1000)
-	for i := 0; i < 1000; i++ {
+	for i := range 1000 {
 		articles[i] = Article{
 			URL:            "https://example.com/article",
 			QualityScore:   70,
@@ -279,7 +289,7 @@ func BenchmarkBatchProcessing(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		// Process in batches
 		for start := 0; start < len(articles); start += batchSize {
 			end := start + batchSize
