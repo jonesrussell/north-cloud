@@ -1,4 +1,4 @@
-package service
+package service_test
 
 import (
 	"encoding/json"
@@ -20,16 +20,16 @@ type SearchRequest struct {
 
 // SearchResult represents a search result document
 type SearchResult struct {
-	SourceID      string                 `json:"source_id"`
-	URL           string                 `json:"url"`
-	Title         string                 `json:"title"`
-	Body          string                 `json:"body"`
-	QualityScore  int                    `json:"quality_score"`
-	Topics        []string               `json:"topics"`
-	ContentType   string                 `json:"content_type"`
-	PublishedDate time.Time              `json:"published_date"`
-	Highlight     map[string][]string    `json:"highlight"`
-	Metadata      map[string]interface{} `json:"metadata"`
+	SourceID      string              `json:"source_id"`
+	URL           string              `json:"url"`
+	Title         string              `json:"title"`
+	Body          string              `json:"body"`
+	QualityScore  int                 `json:"quality_score"`
+	Topics        []string            `json:"topics"`
+	ContentType   string              `json:"content_type"`
+	PublishedDate time.Time           `json:"published_date"`
+	Highlight     map[string][]string `json:"highlight"`
+	Metadata      map[string]any      `json:"metadata"`
 }
 
 // BenchmarkFullTextSearch benchmarks multi-field search query construction
@@ -40,18 +40,19 @@ func BenchmarkFullTextSearch(b *testing.B) {
 		PageSize: 20,
 		SortBy:   "_score",
 	}
+	_ = searchReq.SortBy
 
 	b.ReportAllocs()
 	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		// Build multi-match query
-		query := map[string]interface{}{
-			"query": map[string]interface{}{
-				"bool": map[string]interface{}{
-					"must": []interface{}{
-						map[string]interface{}{
-							"multi_match": map[string]interface{}{
+		query := map[string]any{
+			"query": map[string]any{
+				"bool": map[string]any{
+					"must": []any{
+						map[string]any{
+							"multi_match": map[string]any{
 								"query":     searchReq.Query,
 								"fields":    []string{"title^3", "og_tags.og:title^2", "body"},
 								"type":      "best_fields",
@@ -61,10 +62,10 @@ func BenchmarkFullTextSearch(b *testing.B) {
 					},
 				},
 			},
-			"highlight": map[string]interface{}{
-				"fields": map[string]interface{}{
-					"title": map[string]interface{}{},
-					"body":  map[string]interface{}{},
+			"highlight": map[string]any{
+				"fields": map[string]any{
+					"title": map[string]any{},
+					"body":  map[string]any{},
 				},
 			},
 			"from": (searchReq.Page - 1) * searchReq.PageSize,
@@ -92,33 +93,33 @@ func BenchmarkFacetedSearch(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		// Build complex filtered query with aggregations
-		query := map[string]interface{}{
-			"query": map[string]interface{}{
-				"bool": map[string]interface{}{
-					"must": []interface{}{
-						map[string]interface{}{
-							"multi_match": map[string]interface{}{
+		query := map[string]any{
+			"query": map[string]any{
+				"bool": map[string]any{
+					"must": []any{
+						map[string]any{
+							"multi_match": map[string]any{
 								"query":  searchReq.Query,
 								"fields": []string{"title^3", "body"},
 							},
 						},
 					},
-					"filter": []interface{}{
-						map[string]interface{}{
-							"terms": map[string]interface{}{
+					"filter": []any{
+						map[string]any{
+							"terms": map[string]any{
 								"topics": searchReq.Topics,
 							},
 						},
-						map[string]interface{}{
-							"term": map[string]interface{}{
+						map[string]any{
+							"term": map[string]any{
 								"content_type": searchReq.ContentType,
 							},
 						},
-						map[string]interface{}{
-							"range": map[string]interface{}{
-								"quality_score": map[string]interface{}{
+						map[string]any{
+							"range": map[string]any{
+								"quality_score": map[string]any{
 									"gte": searchReq.MinQuality,
 								},
 							},
@@ -126,21 +127,21 @@ func BenchmarkFacetedSearch(b *testing.B) {
 					},
 				},
 			},
-			"aggs": map[string]interface{}{
-				"by_topic": map[string]interface{}{
-					"terms": map[string]interface{}{
+			"aggs": map[string]any{
+				"by_topic": map[string]any{
+					"terms": map[string]any{
 						"field": "topics",
 						"size":  10,
 					},
 				},
-				"by_content_type": map[string]interface{}{
-					"terms": map[string]interface{}{
+				"by_content_type": map[string]any{
+					"terms": map[string]any{
 						"field": "content_type",
 						"size":  5,
 					},
 				},
-				"avg_quality": map[string]interface{}{
-					"avg": map[string]interface{}{
+				"avg_quality": map[string]any{
+					"avg": map[string]any{
 						"field": "quality_score",
 					},
 				},
@@ -159,7 +160,7 @@ func BenchmarkFacetedSearch(b *testing.B) {
 // BenchmarkSearchHighlighting benchmarks search result highlighting
 func BenchmarkSearchHighlighting(b *testing.B) {
 	results := make([]SearchResult, 20)
-	for i := 0; i < 20; i++ {
+	for i := range 20 {
 		results[i] = SearchResult{
 			URL:   "https://example.com/article",
 			Title: "Breaking News: Major Crime Event Downtown",
@@ -178,9 +179,10 @@ func BenchmarkSearchHighlighting(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		// Process highlighting for all results
-		for _, result := range results {
+		for i := range results {
+			result := &results[i]
 			// Extract highlighted title
 			if titleHighlights, ok := result.Highlight["title"]; ok && len(titleHighlights) > 0 {
 				_ = titleHighlights[0]
@@ -209,9 +211,9 @@ func BenchmarkResultSorting(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		for _, sortOpt := range sortOptions {
-			sort := []map[string]interface{}{
+			sort := []map[string]any{
 				{
 					sortOpt.field: map[string]string{
 						"order": sortOpt.order,
@@ -243,7 +245,7 @@ func BenchmarkPagination(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		for _, tc := range testCases {
 			// Calculate pagination
 			from := (tc.page - 1) * tc.pageSize
@@ -275,11 +277,11 @@ func BenchmarkDateRangeFilter(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		for _, r := range ranges {
-			filter := map[string]interface{}{
-				"range": map[string]interface{}{
-					"published_date": map[string]interface{}{
+			filter := map[string]any{
+				"range": map[string]any{
+					"published_date": map[string]any{
 						"gte": r.from.Format(time.RFC3339),
 						"lte": r.to.Format(time.RFC3339),
 					},
@@ -307,7 +309,7 @@ func BenchmarkQueryParsing(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		for _, query := range queries {
 			// Simple query parsing simulation
 			terms := []string{}

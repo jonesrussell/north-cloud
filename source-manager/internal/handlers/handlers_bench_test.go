@@ -1,4 +1,4 @@
-package handlers
+package handlers_test
 
 import (
 	"encoding/json"
@@ -8,15 +8,15 @@ import (
 
 // Source represents a content source for benchmarking
 type Source struct {
-	ID          string                 `json:"id"`
-	Name        string                 `json:"name"`
-	URL         string                 `json:"url"`
-	Enabled     bool                   `json:"enabled"`
-	Selectors   map[string]string      `json:"selectors"`
-	Metadata    map[string]interface{} `json:"metadata"`
-	CreatedAt   time.Time              `json:"created_at"`
-	UpdatedAt   time.Time              `json:"updated_at"`
-	LastCrawled *time.Time             `json:"last_crawled,omitempty"`
+	ID          string            `json:"id"`
+	Name        string            `json:"name"`
+	URL         string            `json:"url"`
+	Enabled     bool              `json:"enabled"`
+	Selectors   map[string]string `json:"selectors"`
+	Metadata    map[string]any    `json:"metadata"`
+	CreatedAt   time.Time         `json:"created_at"`
+	UpdatedAt   time.Time         `json:"updated_at"`
+	LastCrawled *time.Time        `json:"last_crawled,omitempty"`
 }
 
 // BenchmarkSourceCRUD benchmarks source CRUD operations
@@ -33,7 +33,7 @@ func BenchmarkSourceCRUD(b *testing.B) {
 			"content":        ".content",
 			"published_date": "time",
 		},
-		Metadata: map[string]interface{}{
+		Metadata: map[string]any{
 			"category": "news",
 			"region":   "local",
 		},
@@ -44,7 +44,7 @@ func BenchmarkSourceCRUD(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		// Simulate create
 		_, err := json.Marshal(source)
 		if err != nil {
@@ -89,10 +89,10 @@ func BenchmarkSourceValidation(b *testing.B) {
 			},
 		},
 		{
-			ID:      "invalid_no_selectors",
-			Name:    "Another Invalid",
-			URL:     "https://example.com",
-			Enabled: true,
+			ID:        "invalid_no_selectors",
+			Name:      "Another Invalid",
+			URL:       "https://example.com",
+			Enabled:   true,
 			Selectors: map[string]string{},
 		},
 	}
@@ -100,8 +100,9 @@ func BenchmarkSourceValidation(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
-		for _, source := range sources {
+	for range b.N {
+		for i := range sources {
+			source := &sources[i]
 			// Validate URL
 			isValid := source.URL != "" && (len(source.URL) > 8)
 
@@ -133,6 +134,8 @@ func BenchmarkTestCrawl(b *testing.B) {
 			"author":         ".author-name",
 		},
 	}
+	_ = source.ID
+	_ = source.URL
 
 	// Simulated HTML for test crawl
 	html := `<html><body>
@@ -147,7 +150,7 @@ func BenchmarkTestCrawl(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		// Simulate selector testing
 		results := make(map[string]int)
 
@@ -158,10 +161,10 @@ func BenchmarkTestCrawl(b *testing.B) {
 		}
 
 		// Build test response
-		response := map[string]interface{}{
-			"success":      true,
-			"articles":     results,
-			"total_found":  len(results),
+		response := map[string]any{
+			"success":     true,
+			"articles":    results,
+			"total_found": len(results),
 		}
 
 		_, err := json.Marshal(response)
@@ -186,7 +189,7 @@ func BenchmarkSelectorMatching(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		// Simulate selector validation and matching
 		validSelectors := 0
 
@@ -207,23 +210,25 @@ func BenchmarkMetadataExtraction(b *testing.B) {
 		ID:   "example_com",
 		Name: "Example News",
 		URL:  "https://example.com",
-		Metadata: map[string]interface{}{
-			"category":       "news",
-			"region":         "north-america",
-			"language":       "en",
-			"update_freq":    "hourly",
-			"priority":       "high",
-			"verified":       true,
-			"contact_email":  "news@example.com",
+		Metadata: map[string]any{
+			"category":      "news",
+			"region":        "north-america",
+			"language":      "en",
+			"update_freq":   "hourly",
+			"priority":      "high",
+			"verified":      true,
+			"contact_email": "news@example.com",
 		},
 	}
+	_ = source.Name
+	_ = source.URL
 
 	b.ReportAllocs()
 	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		// Extract and process metadata
-		metadata := make(map[string]interface{})
+		metadata := make(map[string]any)
 
 		// Copy all metadata
 		for key, value := range source.Metadata {
@@ -246,7 +251,7 @@ func BenchmarkMetadataExtraction(b *testing.B) {
 func BenchmarkSourceListing(b *testing.B) {
 	// Create 100 test sources
 	sources := make([]Source, 100)
-	for i := 0; i < 100; i++ {
+	for i := range 100 {
 		sources[i] = Source{
 			ID:      "source_" + string(rune(i)),
 			Name:    "Source Name",
@@ -262,12 +267,13 @@ func BenchmarkSourceListing(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		// Filter enabled sources
 		enabled := make([]Source, 0, 50)
-		for _, source := range sources {
+		for i := range sources {
+			source := &sources[i]
 			if source.Enabled {
-				enabled = append(enabled, source)
+				enabled = append(enabled, *source)
 			}
 		}
 
@@ -288,7 +294,7 @@ func BenchmarkURLParsing(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		for _, url := range urls {
 			// Validate URL format (simplified)
 			isValid := len(url) > 8 &&
