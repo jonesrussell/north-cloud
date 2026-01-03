@@ -10,8 +10,8 @@ import (
 	"time"
 )
 
-// Claims represents JWT token claims for benchmarking
-type Claims struct {
+// BenchmarkClaims represents JWT token claims for benchmarking
+type BenchmarkClaims struct {
 	Username  string `json:"username"`
 	ExpiresAt int64  `json:"exp"`
 	IssuedAt  int64  `json:"iat"`
@@ -37,7 +37,7 @@ func BenchmarkJWTGeneration(b *testing.B) {
 		headerB64 := base64.RawURLEncoding.EncodeToString(headerJSON)
 
 		// Create JWT payload
-		payload := Claims{
+		payload := BenchmarkClaims{
 			Username:  username,
 			ExpiresAt: now + 86400, // 24 hours
 			IssuedAt:  now,
@@ -67,7 +67,7 @@ func BenchmarkJWTValidation(b *testing.B) {
 	headerJSON, _ := json.Marshal(header)
 	headerB64 := base64.RawURLEncoding.EncodeToString(headerJSON)
 
-	payload := Claims{
+	payload := BenchmarkClaims{
 		Username:  "testuser",
 		ExpiresAt: now + 86400,
 		IssuedAt:  now,
@@ -106,7 +106,7 @@ func BenchmarkJWTValidation(b *testing.B) {
 				b.Fatal(err)
 			}
 
-			var claims Claims
+			var claims BenchmarkClaims
 			err = json.Unmarshal(payloadBytes, &claims)
 			if err != nil {
 				b.Fatal(err)
@@ -218,7 +218,7 @@ func BenchmarkBase64Decoding(b *testing.B) {
 
 // BenchmarkJSONMarshalClaims benchmarks JSON marshaling of JWT claims
 func BenchmarkJSONMarshalClaims(b *testing.B) {
-	claims := Claims{
+	claims := BenchmarkClaims{
 		Username:  "testuser",
 		ExpiresAt: time.Now().Add(24 * time.Hour).Unix(),
 		IssuedAt:  time.Now().Unix(),
@@ -243,7 +243,7 @@ func BenchmarkJSONUnmarshalClaims(b *testing.B) {
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
-		var claims Claims
+		var claims BenchmarkClaims
 		err := json.Unmarshal(claimsJSON, &claims)
 		if err != nil {
 			b.Fatal(err)
