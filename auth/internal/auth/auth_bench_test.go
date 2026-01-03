@@ -1,4 +1,4 @@
-package auth
+package auth_test
 
 import (
 	"crypto/hmac"
@@ -25,7 +25,7 @@ func BenchmarkJWTGeneration(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		now := time.Now().Unix()
 
 		// Create JWT header
@@ -84,7 +84,7 @@ func BenchmarkJWTValidation(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		// Split token
 		parts := strings.Split(token, ".")
 		if len(parts) != 3 {
@@ -92,10 +92,10 @@ func BenchmarkJWTValidation(b *testing.B) {
 		}
 
 		// Verify signature
-		message := parts[0] + "." + parts[1]
-		h := hmac.New(sha256.New, secret)
-		h.Write([]byte(message))
-		expectedSig := base64.RawURLEncoding.EncodeToString(h.Sum(nil))
+		verifyMessage := parts[0] + "." + parts[1]
+		verifyH := hmac.New(sha256.New, secret)
+		verifyH.Write([]byte(verifyMessage))
+		expectedSig := base64.RawURLEncoding.EncodeToString(verifyH.Sum(nil))
 
 		isValid := hmac.Equal([]byte(expectedSig), []byte(parts[2]))
 
@@ -134,7 +134,7 @@ func BenchmarkPasswordValidation(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		for _, tc := range testPasswords {
 			// Simple constant-time comparison simulation
 			isValid := tc.password == tc.expected
@@ -161,7 +161,7 @@ func BenchmarkTokenExpiration(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		currentTime := time.Now().Unix()
 
 		for _, token := range tokens {
@@ -179,7 +179,7 @@ func BenchmarkHMACSignature(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		h := hmac.New(sha256.New, secret)
 		h.Write(message)
 		signature := h.Sum(nil)
@@ -194,7 +194,7 @@ func BenchmarkBase64Encoding(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		encoded := base64.RawURLEncoding.EncodeToString(data)
 		_ = encoded
 	}
@@ -207,7 +207,7 @@ func BenchmarkBase64Decoding(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		decoded, err := base64.RawURLEncoding.DecodeString(encoded)
 		if err != nil {
 			b.Fatal(err)
@@ -227,7 +227,7 @@ func BenchmarkJSONMarshalClaims(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		_, err := json.Marshal(claims)
 		if err != nil {
 			b.Fatal(err)
@@ -242,7 +242,7 @@ func BenchmarkJSONUnmarshalClaims(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		var claims BenchmarkClaims
 		err := json.Unmarshal(claimsJSON, &claims)
 		if err != nil {
@@ -259,7 +259,7 @@ func BenchmarkTokenParsing(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		parts := strings.Split(token, ".")
 		if len(parts) != 3 {
 			b.Fatal("invalid token")
