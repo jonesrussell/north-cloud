@@ -187,6 +187,28 @@ services:
       - ./index-manager/config.yml:/root/config.yml:ro
 
   # ------------------------------------------------------------
+  # Search Service (Prod)
+  # ------------------------------------------------------------
+  search-service:
+    <<: *prod-defaults
+    build:
+      context: .
+      dockerfile: ./search/Dockerfile
+    image: northcloud/search-service:latest
+    depends_on:
+      - elasticsearch
+    environment:
+      APP_DEBUG: "false"
+      SEARCH_PORT: 8090
+      SEARCH_DEBUG: "false"
+      ELASTICSEARCH_URL: http://elasticsearch:9200
+      ELASTICSEARCH_USERNAME: "${ELASTICSEARCH_USERNAME:-}"
+      ELASTICSEARCH_PASSWORD: "${ELASTICSEARCH_PASSWORD:-}"
+      LOG_LEVEL: "${SEARCH_LOG_LEVEL:-info}"
+      LOG_FORMAT: "${SEARCH_LOG_FORMAT:-json}"
+      CORS_ORIGINS: "${CORS_ORIGINS:-*}"
+
+  # ------------------------------------------------------------
   # Dashboard (Prod)
   # ------------------------------------------------------------
   dashboard:

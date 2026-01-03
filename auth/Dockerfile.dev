@@ -16,8 +16,11 @@ RUN addgroup -g ${GID} appuser && \
 RUN mkdir -p /tmp/go-mod-cache /tmp/go-build-cache && \
     chmod 1777 /tmp/go-mod-cache /tmp/go-build-cache
 
+# Copy infrastructure for replace directive (source will be bind-mounted)
+COPY infrastructure ../infrastructure
+
 # Copy go.mod files for initial dependency download
-COPY go.mod go.sum ./
+COPY auth/go.mod auth/go.sum ./
 RUN go mod download
 
 # Expose port

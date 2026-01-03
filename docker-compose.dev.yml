@@ -20,6 +20,24 @@ x-go-dev-environment: &go-dev-environment
   ENABLE_PROFILING: "${ENABLE_PROFILING:-true}"
   AUTH_JWT_SECRET: "${AUTH_JWT_SECRET:-}"
 
+x-node-dev-defaults: &node-dev-defaults
+  user: "${UID:-1000}:${GID:-1000}"
+  networks:
+    - north-cloud-network
+  restart: unless-stopped
+  volumes:
+    - /app/node_modules
+  working_dir: /app
+
+x-node-dev-environment: &node-dev-environment
+  NODE_ENV: development
+  npm_config_cache: /tmp/npm-cache
+
+x-service-defaults: &service-defaults
+  restart: unless-stopped
+  networks:
+    - north-cloud-network
+
 # ============================================================
 # Development Services
 # ============================================================
@@ -81,8 +99,8 @@ services:
   source-manager:
     <<: *go-dev-defaults
     build:
-      context: ./source-manager
-      dockerfile: Dockerfile.dev
+      context: .
+      dockerfile: ./source-manager/Dockerfile.dev
     ports:
       - "${SOURCE_MANAGER_PORT:-8050}:8050"
       - "${SOURCE_MANAGER_PPROF_PORT:-6061}:6060"
@@ -103,6 +121,7 @@ services:
       PPROF_PORT: 6060
     volumes:
       - ./source-manager:/app
+      - ./infrastructure:/infrastructure:ro
       - ./source-manager/migrations:/migrations:ro
       - source_manager_go_mod_cache:/tmp/go-mod-cache
       - source_manager_go_build_cache:/tmp/go-build-cache
@@ -156,6 +175,7 @@ services:
     volumes:
       - ./classifier:/app
       - ./classifier/config.yml:/app/config.yml:ro
+      - ./infrastructure:/infrastructure
       - classifier_go_mod_cache:/tmp/go-mod-cache
       - classifier_go_build_cache:/tmp/go-build-cache
     command: ["sh", "-c", "go mod download && go run -mod=mod ./main.go"]
@@ -165,28 +185,6 @@ services:
       timeout: 10s
       retries: 3
       start_period: 25s
-
-# ============================================================
-# Additional Dev Anchors
-# ============================================================
-
-x-node-dev-defaults: &node-dev-defaults
-  user: "${UID:-1000}:${GID:-1000}"
-  networks:
-    - north-cloud-network
-  restart: unless-stopped
-  volumes:
-    - /app/node_modules
-  working_dir: /app
-
-x-node-dev-environment: &node-dev-environment
-  NODE_ENV: development
-  npm_config_cache: /tmp/npm-cache
-
-x-service-defaults: &service-defaults
-  restart: unless-stopped
-  networks:
-    - north-cloud-network
 
   # ------------------------------------------------------------
   # Index Manager (Dev)
@@ -361,8 +359,8 @@ x-service-defaults: &service-defaults
   auth:
     <<: *go-dev-defaults
     build:
-      context: ./auth
-      dockerfile: Dockerfile.dev
+      context: .
+      dockerfile: ./auth/Dockerfile.dev
       args:
         UID: "${UID:-1000}"
         GID: "${GID:-1000}"
@@ -378,6 +376,7 @@ x-service-defaults: &service-defaults
       PPROF_PORT: 6060
     volumes:
       - ./auth:/app
+      - ./infrastructure:/infrastructure:ro
       - auth_go_mod_cache:/tmp/go-mod-cache
       - auth_go_build_cache:/tmp/go-build-cache
     command: ["sh", "-c", "go mod download && go run main.go"]
