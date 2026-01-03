@@ -1,5 +1,8 @@
 FROM golang:1.25-alpine
 
+ARG UID=1000
+ARG GID=1000
+
 WORKDIR /app
 
 # Install dev tools
