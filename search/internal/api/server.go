@@ -45,11 +45,15 @@ func NewServer(handler *Handler, cfg *config.Config, log *logger.Logger) *Server
 	SetupRoutes(router, handler)
 
 	// Create HTTP server
+	const (
+		readTimeoutSeconds  = 30
+		writeTimeoutSeconds = 60
+	)
 	server := &http.Server{
 		Addr:         fmt.Sprintf(":%d", cfg.Service.Port),
 		Handler:      router,
-		ReadTimeout:  30 * time.Second,
-		WriteTimeout: 60 * time.Second,
+		ReadTimeout:  readTimeoutSeconds * time.Second,
+		WriteTimeout: writeTimeoutSeconds * time.Second,
 	}
 
 	return &Server{

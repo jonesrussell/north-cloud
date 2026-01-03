@@ -51,8 +51,8 @@ func main() {
 
 	// Start server in goroutine
 	go func() {
-		if err := server.Start(); err != nil {
-			log.Fatal("Failed to start HTTP server", "error", err)
+		if startErr := server.Start(); startErr != nil {
+			log.Fatal("Failed to start HTTP server", "error", startErr)
 		}
 	}()
 
@@ -69,12 +69,15 @@ func main() {
 	log.Info("Shutdown signal received, gracefully shutting down...")
 
 	// Create shutdown context with timeout
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
+	const shutdownTimeoutSeconds = 10
+	ctx, cancel := context.WithTimeout(context.Background(), shutdownTimeoutSeconds*time.Second)
 
 	// Shutdown HTTP server
-	if err := server.Shutdown(ctx); err != nil {
-		log.Error("Server forced to shutdown", "error", err)
+	shutdownErr := server.Shutdown(ctx)
+	cancel() // Always cancel context
+
+	if shutdownErr != nil {
+		log.Error("Server forced to shutdown", "error", shutdownErr)
 		os.Exit(1)
 	}
 

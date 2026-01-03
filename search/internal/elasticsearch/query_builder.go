@@ -8,6 +8,19 @@ import (
 	"github.com/jonesrussell/north-cloud/search/internal/domain"
 )
 
+const (
+	maxQualityScoreValue = 100
+	recencyDecayFactor   = 0.5
+	qualityBoostFactor   = 0.01
+	topicsAggSize        = 20
+	contentTypesAggSize  = 10
+	sourcesAggSize       = 50
+	qualityRangeLow      = 40
+	qualityRangeMid      = 60
+	qualityRangeHigh     = 80
+	qualityRangeMax      = 101
+)
+
 // QueryBuilder builds Elasticsearch queries from search requests
 type QueryBuilder struct {
 	config *config.ElasticsearchConfig
@@ -151,12 +164,12 @@ func (qb *QueryBuilder) buildFilters(filters *domain.Filters) []interface{} {
 	// Quality score range filter
 	// Only add filter if there's an actual constraint (min > 0 or max < 100)
 	// If both are at defaults (min=0, max=100), don't add the filter
-	if filters.MinQualityScore > 0 || filters.MaxQualityScore < 100 {
+	if filters.MinQualityScore > 0 || filters.MaxQualityScore < maxQualityScoreValue {
 		qualityRange := make(map[string]interface{})
 		if filters.MinQualityScore > 0 {
 			qualityRange["gte"] = filters.MinQualityScore
 		}
-		if filters.MaxQualityScore < 100 {
+		if filters.MaxQualityScore < maxQualityScoreValue {
 			qualityRange["lte"] = filters.MaxQualityScore
 		}
 		// Only add filter if we have at least one constraint
@@ -209,34 +222,31 @@ func (qb *QueryBuilder) buildFilters(filters *domain.Filters) []interface{} {
 
 // buildBoosts adds score boosting for recency and quality
 func (qb *QueryBuilder) buildBoosts() []interface{} {
-	var boosts []interface{}
-
 	// Boost recent content using crawled_at (more reliable than published_date)
 	// Use crawled_at since published_date may not exist in all documents
-	boosts = append(boosts, map[string]interface{}{
-		"function_score": map[string]interface{}{
-			"gauss": map[string]interface{}{
-				"crawled_at": map[string]interface{}{
-					"origin": "now",
-					"scale":  "30d",
-					"decay":  0.5,
+	// Boost high-quality content
+	return []interface{}{
+		map[string]interface{}{
+			"function_score": map[string]interface{}{
+				"gauss": map[string]interface{}{
+					"crawled_at": map[string]interface{}{
+						"origin": "now",
+						"scale":  "30d",
+						"decay":  recencyDecayFactor,
+					},
 				},
 			},
 		},
-	})
-
-	// Boost high-quality content
-	boosts = append(boosts, map[string]interface{}{
-		"function_score": map[string]interface{}{
-			"field_value_factor": map[string]interface{}{
-				"field":    "quality_score",
-				"factor":   0.01,
-				"modifier": "log1p",
+		map[string]interface{}{
+			"function_score": map[string]interface{}{
+				"field_value_factor": map[string]interface{}{
+					"field":    "quality_score",
+					"factor":   qualityBoostFactor,
+					"modifier": "log1p",
+				},
 			},
 		},
-	})
-
-	return boosts
+	}
 }
 
 // buildSort constructs sort criteria
@@ -318,7 +328,7 @@ func (qb *QueryBuilder) buildAggregations() map[string]interface{} {
 		"topics": map[string]interface{}{
 			"terms": map[string]interface{}{
 				"field": "topics.keyword",
-				"size":  20,
+				"size":  topicsAggSize,
 			},
 		},
 		// content_type aggregation - use .keyword subfield
@@ -327,23 +337,23 @@ func (qb *QueryBuilder) buildAggregations() map[string]interface{} {
 		"content_types": map[string]interface{}{
 			"terms": map[string]interface{}{
 				"field": "content_type.keyword",
-				"size":  10,
+				"size":  contentTypesAggSize,
 			},
 		},
 		"sources": map[string]interface{}{
 			"terms": map[string]interface{}{
 				"field": "source_name.keyword",
-				"size":  50,
+				"size":  sourcesAggSize,
 			},
 		},
 		"quality_ranges": map[string]interface{}{
 			"range": map[string]interface{}{
 				"field": "quality_score",
 				"ranges": []map[string]interface{}{
-					{"key": "0-39", "from": 0, "to": 40},
-					{"key": "40-59", "from": 40, "to": 60},
-					{"key": "60-79", "from": 60, "to": 80},
-					{"key": "80-100", "from": 80, "to": 101},
+					{"key": "0-39", "from": 0, "to": qualityRangeLow},
+					{"key": "40-59", "from": qualityRangeLow, "to": qualityRangeMid},
+					{"key": "60-79", "from": qualityRangeMid, "to": qualityRangeHigh},
+					{"key": "80-100", "from": qualityRangeHigh, "to": qualityRangeMax},
 				},
 			},
 		},

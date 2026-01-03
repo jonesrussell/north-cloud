@@ -96,16 +96,16 @@ func Load() (*Config, error) {
 
 	// Parse YAML
 	var cfg Config
-	if err := yaml.Unmarshal(data, &cfg); err != nil {
-		return nil, fmt.Errorf("failed to parse config: %w", err)
+	if unmarshalErr := yaml.Unmarshal(data, &cfg); unmarshalErr != nil {
+		return nil, fmt.Errorf("failed to parse config: %w", unmarshalErr)
 	}
 
 	// Override with environment variables
 	applyEnvironmentOverrides(&cfg)
 
 	// Validate configuration
-	if err := cfg.Validate(); err != nil {
-		return nil, fmt.Errorf("invalid configuration: %w", err)
+	if validateErr := cfg.Validate(); validateErr != nil {
+		return nil, fmt.Errorf("invalid configuration: %w", validateErr)
 	}
 
 	return &cfg, nil

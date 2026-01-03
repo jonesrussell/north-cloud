@@ -12,6 +12,8 @@ import (
 	"github.com/jonesrussell/north-cloud/search/internal/service"
 )
 
+const trueString = "true"
+
 // Handler holds HTTP request handlers
 type Handler struct {
 	searchService *service.SearchService
@@ -19,10 +21,10 @@ type Handler struct {
 }
 
 // NewHandler creates a new handler instance
-func NewHandler(searchService *service.SearchService, logger *logger.Logger) *Handler {
+func NewHandler(searchService *service.SearchService, log *logger.Logger) *Handler {
 	return &Handler{
 		searchService: searchService,
-		logger:        logger,
+		logger:        log,
 	}
 }
 
@@ -71,78 +73,100 @@ func (h *Handler) Search(c *gin.Context) {
 
 // parseQueryParams parses search parameters from query string (GET requests)
 func (h *Handler) parseQueryParams(c *gin.Context) domain.SearchRequest {
-	req := domain.SearchRequest{
+	return domain.SearchRequest{
 		Query:      c.Query("q"),
-		Filters:    &domain.Filters{},
-		Pagination: &domain.Pagination{},
-		Sort:       &domain.Sort{},
-		Options:    &domain.Options{},
+		Filters:    parseFilters(c),
+		Pagination: parsePagination(c),
+		Sort:       parseSort(c),
+		Options:    parseOptions(c),
 	}
+}
 
-	// Parse filters
+// parseFilters parses filter parameters from query string
+func parseFilters(c *gin.Context) *domain.Filters {
+	filters := &domain.Filters{}
+
 	if topics := c.Query("topics"); topics != "" {
-		req.Filters.Topics = strings.Split(topics, ",")
+		filters.Topics = strings.Split(topics, ",")
 	}
 	if contentType := c.Query("content_type"); contentType != "" {
-		req.Filters.ContentType = contentType
+		filters.ContentType = contentType
 	}
 	if minQuality := c.Query("min_quality"); minQuality != "" {
 		if mq, err := strconv.Atoi(minQuality); err == nil {
-			req.Filters.MinQualityScore = mq
+			filters.MinQualityScore = mq
 		}
 	}
 	if maxQuality := c.Query("max_quality"); maxQuality != "" {
 		if mq, err := strconv.Atoi(maxQuality); err == nil {
-			req.Filters.MaxQualityScore = mq
+			filters.MaxQualityScore = mq
 		}
 	}
 	if isCrime := c.Query("is_crime_related"); isCrime != "" {
-		val := isCrime == "true"
-		req.Filters.IsCrimeRelated = &val
+		val := isCrime == trueString
+		filters.IsCrimeRelated = &val
 	}
 	if sources := c.Query("sources"); sources != "" {
-		req.Filters.SourceNames = strings.Split(sources, ",")
+		filters.SourceNames = strings.Split(sources, ",")
 	}
 	if fromDate := c.Query("from_date"); fromDate != "" {
 		if fd, err := time.Parse("2006-01-02", fromDate); err == nil {
-			req.Filters.FromDate = &fd
+			filters.FromDate = &fd
 		}
 	}
 	if toDate := c.Query("to_date"); toDate != "" {
 		if td, err := time.Parse("2006-01-02", toDate); err == nil {
-			req.Filters.ToDate = &td
+			filters.ToDate = &td
 		}
 	}
 
-	// Parse pagination
+	return filters
+}
+
+// parsePagination parses pagination parameters from query string
+func parsePagination(c *gin.Context) *domain.Pagination {
+	pagination := &domain.Pagination{}
+
 	if page := c.Query("page"); page != "" {
 		if p, err := strconv.Atoi(page); err == nil {
-			req.Pagination.Page = p
+			pagination.Page = p
 		}
 	}
 	if size := c.Query("size"); size != "" {
 		if s, err := strconv.Atoi(size); err == nil {
-			req.Pagination.Size = s
+			pagination.Size = s
 		}
 	}
 
-	// Parse sort
+	return pagination
+}
+
+// parseSort parses sort parameters from query string
+func parseSort(c *gin.Context) *domain.Sort {
+	sort := &domain.Sort{}
+
 	if sortField := c.Query("sort"); sortField != "" {
-		req.Sort.Field = sortField
+		sort.Field = sortField
 	}
 	if order := c.Query("order"); order != "" {
-		req.Sort.Order = order
+		sort.Order = order
 	}
 
-	// Parse options
+	return sort
+}
+
+// parseOptions parses options parameters from query string
+func parseOptions(c *gin.Context) *domain.Options {
+	options := &domain.Options{}
+
 	if highlights := c.Query("highlights"); highlights != "" {
-		req.Options.IncludeHighlights = highlights == "true"
+		options.IncludeHighlights = highlights == trueString
 	}
 	if facets := c.Query("facets"); facets != "" {
-		req.Options.IncludeFacets = facets == "true"
+		options.IncludeFacets = facets == trueString
 	}
 
-	return req
+	return options
 }
 
 // HealthCheck handles health check requests

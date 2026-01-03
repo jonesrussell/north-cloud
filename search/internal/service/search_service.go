@@ -165,7 +165,8 @@ func (s *SearchService) parseSearchResponse(body io.Reader, req *domain.SearchRe
 	response.TotalPages = int(math.Ceil(float64(response.TotalHits) / float64(response.PageSize)))
 
 	// Convert hits
-	for _, hit := range esResponse.Hits.Hits {
+	for i := range esResponse.Hits.Hits {
+		hit := &esResponse.Hits.Hits[i]
 		// Set ID if not present in source
 		if hit.Source.ID == "" {
 			hit.Source.ID = hit.ID

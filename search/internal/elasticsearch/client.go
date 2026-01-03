@@ -51,11 +51,12 @@ func NewClient(cfg *config.ElasticsearchConfig) (*Client, error) {
 	}
 
 	// Verify connection
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	const pingTimeoutSeconds = 5
+	ctx, cancel := context.WithTimeout(context.Background(), pingTimeoutSeconds*time.Second)
 	defer cancel()
 
-	if err := client.Ping(ctx); err != nil {
-		return nil, fmt.Errorf("failed to ping elasticsearch: %w", err)
+	if pingErr := client.Ping(ctx); pingErr != nil {
+		return nil, fmt.Errorf("failed to ping elasticsearch: %w", pingErr)
 	}
 
 	return client, nil

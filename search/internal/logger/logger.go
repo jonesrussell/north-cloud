@@ -86,43 +86,50 @@ func (l *Logger) logJSON(level, msg string, keysAndValues ...interface{}) {
 		return
 	}
 
-	if _, err := fmt.Fprintln(os.Stdout, string(jsonBytes)); err != nil {
+	if _, writeErr := fmt.Fprintln(os.Stdout, string(jsonBytes)); writeErr != nil {
 		// Logging to stdout failed, but we can't log this error
 		// as it would cause infinite recursion. Silently ignore.
-		_ = err
+		_ = writeErr
 	}
 }
 
 // logConsole logs in console format
 func (l *Logger) logConsole(level, msg string, keysAndValues ...interface{}) {
 	timestamp := time.Now().Format("2006-01-02 15:04:05")
-	fmt.Printf("[%s] %s %s", level, timestamp, msg)
+	fmt.Fprintf(os.Stdout, "[%s] %s %s", level, timestamp, msg)
 
 	// Add key-value pairs
 	if len(keysAndValues) > 0 {
-		fmt.Print(" ")
+		fmt.Fprint(os.Stdout, " ")
 		for i := 0; i < len(keysAndValues); i += 2 {
 			if i+1 < len(keysAndValues) {
-				fmt.Printf("%v=%v ", keysAndValues[i], keysAndValues[i+1])
+				fmt.Fprintf(os.Stdout, "%v=%v ", keysAndValues[i], keysAndValues[i+1])
 			}
 		}
 	}
 
-	fmt.Println()
+	fmt.Fprintln(os.Stdout)
 }
+
+const (
+	logLevelDebug = 0
+	logLevelInfo  = 1
+	logLevelWarn  = 2
+	logLevelError = 3
+)
 
 // shouldLog determines if a message should be logged based on level
 func (l *Logger) shouldLog(messageLevel string) bool {
 	levels := map[string]int{
-		"debug": 0,
-		"info":  1,
-		"warn":  2,
-		"error": 3,
+		"debug": logLevelDebug,
+		"info":  logLevelInfo,
+		"warn":  logLevelWarn,
+		"error": logLevelError,
 	}
 
 	configLevel, ok := levels[l.config.Level]
 	if !ok {
-		configLevel = 1 // Default to info
+		configLevel = logLevelInfo // Default to info
 	}
 
 	msgLevel, ok := levels[messageLevel]

@@ -6,6 +6,8 @@ import (
 	"time"
 )
 
+const maxQualityScore = 100
+
 // SearchRequest represents a search query request
 type SearchRequest struct {
 	Query      string      `json:"query"`
@@ -97,85 +99,124 @@ func (req *SearchRequest) Validate(maxPageSize, defaultPageSize, maxQueryLength 
 	}
 
 	// Set defaults and validate pagination
+	if err := validatePagination(req, maxPageSize, defaultPageSize); err != nil {
+		return err
+	}
+
+	// Set default filters and validate
+	if err := initializeAndValidateFilters(req); err != nil {
+		return err
+	}
+
+	// Set default sort and validate
+	validateSort(req)
+
+	// Set default options
+	initializeOptions(req)
+
+	return nil
+}
+
+// validatePagination validates and sets defaults for pagination
+func validatePagination(req *SearchRequest, maxPageSize, defaultPageSize int) error {
 	if req.Pagination == nil {
 		req.Pagination = &Pagination{
 			Page: 1,
 			Size: defaultPageSize,
 		}
-	} else {
-		if req.Pagination.Page < 1 {
-			req.Pagination.Page = 1
-		}
-		if req.Pagination.Size < 1 {
-			req.Pagination.Size = defaultPageSize
-		}
-		if req.Pagination.Size > maxPageSize {
-			return fmt.Errorf("page size exceeds maximum of %d", maxPageSize)
-		}
+		return nil
 	}
 
-	// Set default filters
+	if req.Pagination.Page < 1 {
+		req.Pagination.Page = 1
+	}
+	if req.Pagination.Size < 1 {
+		req.Pagination.Size = defaultPageSize
+	}
+	if req.Pagination.Size > maxPageSize {
+		return fmt.Errorf("page size exceeds maximum of %d", maxPageSize)
+	}
+
+	return nil
+}
+
+// initializeAndValidateFilters initializes filters with defaults and validates them
+func initializeAndValidateFilters(req *SearchRequest) error {
 	if req.Filters == nil {
 		req.Filters = &Filters{
-			MaxQualityScore: 100,
+			MaxQualityScore: maxQualityScore,
 		}
-	} else {
-		// Set default MaxQualityScore if not specified (0 means unset)
-		if req.Filters.MaxQualityScore == 0 {
-			req.Filters.MaxQualityScore = 100
-		}
-		// Validate quality score range
-		if req.Filters.MinQualityScore < 0 || req.Filters.MinQualityScore > 100 {
-			return errors.New("min_quality_score must be between 0 and 100")
-		}
-		if req.Filters.MaxQualityScore < 0 || req.Filters.MaxQualityScore > 100 {
-			req.Filters.MaxQualityScore = 100
-		}
-		if req.Filters.MinQualityScore > req.Filters.MaxQualityScore {
-			return errors.New("min_quality_score cannot exceed max_quality_score")
-		}
+		return nil
+	}
 
-		// Validate date range
-		if req.Filters.FromDate != nil && req.Filters.ToDate != nil {
-			if req.Filters.FromDate.After(*req.Filters.ToDate) {
-				return errors.New("from_date cannot be after to_date")
-			}
+	// Set default MaxQualityScore if not specified (0 means unset)
+	if req.Filters.MaxQualityScore == 0 {
+		req.Filters.MaxQualityScore = maxQualityScore
+	}
+
+	// Validate filter values
+	return validateFilterValues(req.Filters)
+}
+
+// validateFilterValues validates filter ranges and constraints
+func validateFilterValues(filters *Filters) error {
+	// Validate quality score range
+	if filters.MinQualityScore < 0 || filters.MinQualityScore > maxQualityScore {
+		return fmt.Errorf("min_quality_score must be between 0 and %d", maxQualityScore)
+	}
+	if filters.MaxQualityScore < 0 || filters.MaxQualityScore > maxQualityScore {
+		filters.MaxQualityScore = maxQualityScore
+	}
+	if filters.MinQualityScore > filters.MaxQualityScore {
+		return errors.New("min_quality_score cannot exceed max_quality_score")
+	}
+
+	// Validate date range
+	if filters.FromDate != nil && filters.ToDate != nil {
+		if filters.FromDate.After(*filters.ToDate) {
+			return errors.New("from_date cannot be after to_date")
 		}
 	}
 
-	// Set default sort
+	return nil
+}
+
+// validateSort validates and sets defaults for sort
+func validateSort(req *SearchRequest) {
 	if req.Sort == nil {
 		req.Sort = &Sort{
 			Field: "relevance",
 			Order: "desc",
 		}
-	} else {
-		// Validate sort field
-		validFields := map[string]bool{
-			"relevance":      true,
-			"published_date": true,
-			"quality_score":  true,
-			"crawled_at":     true,
-		}
-		if !validFields[req.Sort.Field] {
-			return fmt.Errorf("invalid sort field: %s", req.Sort.Field)
-		}
-
-		// Validate sort order
-		if req.Sort.Order != "asc" && req.Sort.Order != "desc" {
-			req.Sort.Order = "desc"
-		}
+		return
 	}
 
-	// Set default options
+	// Validate sort field
+	validFields := map[string]bool{
+		"relevance":      true,
+		"published_date": true,
+		"quality_score":  true,
+		"crawled_at":     true,
+	}
+	if !validFields[req.Sort.Field] {
+		// Reset to default if invalid
+		req.Sort.Field = "relevance"
+	}
+
+	// Validate sort order
+	if req.Sort.Order != "asc" && req.Sort.Order != "desc" {
+		req.Sort.Order = "desc"
+	}
+}
+
+// initializeOptions sets default options
+func initializeOptions(req *SearchRequest) {
 	if req.Options == nil {
 		req.Options = &Options{
 			IncludeHighlights: true,
 			IncludeFacets:     true,
 		}
 	}
-
-	return nil
 }
 
 // HealthStatus represents the health status of the service

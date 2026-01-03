@@ -10,6 +10,12 @@ import (
 	"github.com/jonesrussell/north-cloud/search/internal/logger"
 )
 
+const (
+	httpStatusForbidden           = 403
+	httpStatusNoContent           = 204
+	httpStatusInternalServerError = 500
+)
+
 // LoggerMiddleware logs HTTP requests
 func LoggerMiddleware(log *logger.Logger) gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -49,7 +55,7 @@ func CORSMiddleware(cfg *config.CORSConfig) gin.HandlerFunc {
 
 		// Check if origin is allowed
 		if !isOriginAllowed(origin, cfg.AllowedOrigins) {
-			c.AbortWithStatus(403)
+			c.AbortWithStatus(httpStatusForbidden)
 			return
 		}
 
@@ -61,7 +67,7 @@ func CORSMiddleware(cfg *config.CORSConfig) gin.HandlerFunc {
 
 		// Handle preflight requests
 		if c.Request.Method == http.MethodOptions {
-			c.AbortWithStatus(204)
+			c.AbortWithStatus(httpStatusNoContent)
 			return
 		}
 
@@ -80,7 +86,7 @@ func RecoveryMiddleware(log *logger.Logger) gin.HandlerFunc {
 					"method", c.Request.Method,
 				)
 
-				c.JSON(500, ErrorResponse{
+				c.JSON(httpStatusInternalServerError, ErrorResponse{
 					Error:     "Internal server error",
 					Code:      "INTERNAL_ERROR",
 					Timestamp: time.Now(),
