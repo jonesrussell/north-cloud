@@ -5,8 +5,9 @@
 x-prod-defaults: &prod-defaults
   networks:
     - north-cloud-network
-  restart: always
   deploy:
+    restart_policy:
+      condition: always
     resources:
       limits:
         cpus: "2"
@@ -26,6 +27,7 @@ services:
   # ------------------------------------------------------------
   crawler:
     <<: *prod-defaults
+    image: northcloud/crawler:latest
     build:
       context: .
       dockerfile: ./crawler/Dockerfile
@@ -52,6 +54,7 @@ services:
   # ------------------------------------------------------------
   source-manager:
     <<: *prod-defaults
+    image: northcloud/source-manager:latest
     build:
       context: .
       dockerfile: ./source-manager/Dockerfile
@@ -78,6 +81,7 @@ services:
   # ------------------------------------------------------------
   publisher-api:
     <<: *prod-defaults
+    image: northcloud/publisher:latest
     build:
       context: .
       dockerfile: ./publisher/Dockerfile
@@ -113,6 +117,7 @@ services:
   # ------------------------------------------------------------
   publisher-router:
     <<: *prod-defaults
+    image: northcloud/publisher:latest
     build:
       context: .
       dockerfile: ./publisher/Dockerfile
@@ -142,6 +147,7 @@ services:
   # ------------------------------------------------------------
   classifier:
     <<: *prod-defaults
+    image: northcloud/classifier:latest
     build:
       context: .
       dockerfile: ./classifier/Dockerfile
@@ -200,6 +206,7 @@ services:
   # ------------------------------------------------------------
   dashboard:
     <<: *prod-defaults
+    image: northcloud/dashboard:latest
     build:
       context: ./dashboard
       dockerfile: Dockerfile
@@ -265,8 +272,9 @@ services:
         sleep 12h & wait $$$${!};
       done;
       '
-    restart: always
     deploy:
+      restart_policy:
+        condition: always
       resources:
         limits:
           cpus: "0.5"
