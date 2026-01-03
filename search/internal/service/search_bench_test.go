@@ -52,9 +52,9 @@ func BenchmarkFullTextSearch(b *testing.B) {
 					"must": []interface{}{
 						map[string]interface{}{
 							"multi_match": map[string]interface{}{
-								"query":  searchReq.Query,
-								"fields": []string{"title^3", "og_tags.og:title^2", "body"},
-								"type":   "best_fields",
+								"query":     searchReq.Query,
+								"fields":    []string{"title^3", "og_tags.og:title^2", "body"},
+								"type":      "best_fields",
 								"fuzziness": "AUTO",
 							},
 						},
@@ -166,7 +166,7 @@ func BenchmarkSearchHighlighting(b *testing.B) {
 			Body:  "Police responded to a major crime incident in the downtown area last night. Multiple suspects were arrested following an investigation. The crime scene was secured and evidence was collected.",
 			Highlight: map[string][]string{
 				"title": {"Breaking News: Major <em>Crime</em> Event Downtown"},
-				"body":  {
+				"body": {
 					"Police responded to a major <em>crime</em> incident",
 					"Multiple suspects were arrested following an investigation",
 					"The <em>crime</em> scene was secured",
@@ -266,10 +266,10 @@ func BenchmarkDateRangeFilter(b *testing.B) {
 		from time.Time
 		to   time.Time
 	}{
-		{now.AddDate(0, 0, -7), now},    // Last 7 days
-		{now.AddDate(0, -1, 0), now},    // Last month
-		{now.AddDate(0, 0, -30), now},   // Last 30 days
-		{now.AddDate(-1, 0, 0), now},    // Last year
+		{now.AddDate(0, 0, -7), now},  // Last 7 days
+		{now.AddDate(0, -1, 0), now},  // Last month
+		{now.AddDate(0, 0, -30), now}, // Last 30 days
+		{now.AddDate(-1, 0, 0), now},  // Last year
 	}
 
 	b.ReportAllocs()
