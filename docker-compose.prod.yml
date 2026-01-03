@@ -261,68 +261,68 @@ services:
       publisher-api:
         condition: service_started
 
-# ============================================================
-# Certbot (Prod)
-# ============================================================
-certbot:
-  image: certbot/certbot
-  networks:
-    - north-cloud-network
-  volumes:
-    - certbot_etc:/etc/letsencrypt
-    - certbot_www:/var/www/certbot
-  entrypoint: >
-    /bin/sh -c '
-    trap exit TERM;
-    while :; do
-      if [ -d /etc/letsencrypt/live ]; then
-        echo "[$(date)] Running certificate renewal check...";
-        certbot renew &&
-        echo "[$(date)] Renewal check completed. If renewed, reload nginx with: docker exec north-cloud-nginx nginx -s reload";
-      fi;
-      sleep 12h & wait $${!};
-    done;
-    '
-  restart: always
-  deploy:
-    resources:
-      limits:
-        cpus: "0.5"
-        memory: 256M
-      reservations:
-        cpus: "0.1"
-        memory: 64M
+  # ============================================================
+  # Certbot (Prod)
+  # ============================================================
+  certbot:
+    image: certbot/certbot
+    networks:
+      - north-cloud-network
+    volumes:
+      - certbot_etc:/etc/letsencrypt
+      - certbot_www:/var/www/certbot
+    entrypoint: >
+      /bin/sh -c '
+      trap exit TERM;
+      while :; do
+        if [ -d /etc/letsencrypt/live ]; then
+          echo "[$(date)] Running certificate renewal check...";
+          certbot renew &&
+          echo "[$(date)] Renewal check completed. If renewed, reload nginx with: docker exec north-cloud-nginx nginx -s reload";
+        fi;
+        sleep 12h & wait $${!};
+      done;
+      '
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 256M
+        reservations:
+          cpus: "0.1"
+          memory: 64M
 
-# ============================================================
-# Elasticsearch (Prod Overrides)
-# ============================================================
-elasticsearch:
-  environment:
-    xpack.security.enabled: "${ELASTICSEARCH_SECURITY_ENABLED:-true}"
-    ES_JAVA_OPTS: "-Xms${ELASTICSEARCH_MIN_HEAP:-1g} -Xmx${ELASTICSEARCH_MAX_HEAP:-2g}"
-  deploy:
-    resources:
-      limits:
-        cpus: "4"
-        memory: 4G
-      reservations:
-        cpus: "2"
-        memory: 2G
+  # ============================================================
+  # Elasticsearch (Prod Overrides)
+  # ============================================================
+  elasticsearch:
+    environment:
+      xpack.security.enabled: "${ELASTICSEARCH_SECURITY_ENABLED:-true}"
+      ES_JAVA_OPTS: "-Xms${ELASTICSEARCH_MIN_HEAP:-1g} -Xmx${ELASTICSEARCH_MAX_HEAP:-2g}"
+    deploy:
+      resources:
+        limits:
+          cpus: "4"
+          memory: 4G
+        reservations:
+          cpus: "2"
+          memory: 2G
 
-# ============================================================
-# Redis (Prod Overrides)
-# ============================================================
-redis:
-  environment:
-    REDIS_PASSWORD: "${REDIS_PASSWORD}"
-  deploy:
-    resources:
-      limits:
-        cpus: "1"
-        memory: 1G
-      reservations:
-        cpus: "0.25"
-        memory: 256M
+  # ============================================================
+  # Redis (Prod Overrides)
+  # ============================================================
+  redis:
+    environment:
+      REDIS_PASSWORD: "${REDIS_PASSWORD}"
+    deploy:
+      resources:
+        limits:
+          cpus: "1"
+          memory: 1G
+        reservations:
+          cpus: "0.25"
+          memory: 256M
 
 # ============================================================
 # Production Volumes
