@@ -1,6 +1,7 @@
 package config
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"strconv"
@@ -164,7 +165,7 @@ func (c *Config) Validate() error {
 		return fmt.Errorf("invalid port: %d", c.Service.Port)
 	}
 	if c.Service.MaxPageSize < 1 {
-		return fmt.Errorf("max_page_size must be greater than 0")
+		return errors.New("max_page_size must be greater than 0")
 	}
 	if c.Service.DefaultPageSize < 1 || c.Service.DefaultPageSize > c.Service.MaxPageSize {
 		return fmt.Errorf("default_page_size must be between 1 and %d", c.Service.MaxPageSize)
@@ -172,10 +173,10 @@ func (c *Config) Validate() error {
 
 	// Elasticsearch validation
 	if c.Elasticsearch.URL == "" {
-		return fmt.Errorf("elasticsearch url is required")
+		return errors.New("elasticsearch url is required")
 	}
 	if c.Elasticsearch.ClassifiedContentPattern == "" {
-		return fmt.Errorf("classified_content_pattern is required")
+		return errors.New("classified_content_pattern is required")
 	}
 
 	// Logging validation

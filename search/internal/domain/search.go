@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"errors"
 	"fmt"
 	"time"
 )
@@ -125,19 +126,19 @@ func (req *SearchRequest) Validate(maxPageSize, defaultPageSize, maxQueryLength 
 		}
 		// Validate quality score range
 		if req.Filters.MinQualityScore < 0 || req.Filters.MinQualityScore > 100 {
-			return fmt.Errorf("min_quality_score must be between 0 and 100")
+			return errors.New("min_quality_score must be between 0 and 100")
 		}
 		if req.Filters.MaxQualityScore < 0 || req.Filters.MaxQualityScore > 100 {
 			req.Filters.MaxQualityScore = 100
 		}
 		if req.Filters.MinQualityScore > req.Filters.MaxQualityScore {
-			return fmt.Errorf("min_quality_score cannot exceed max_quality_score")
+			return errors.New("min_quality_score cannot exceed max_quality_score")
 		}
 
 		// Validate date range
 		if req.Filters.FromDate != nil && req.Filters.ToDate != nil {
 			if req.Filters.FromDate.After(*req.Filters.ToDate) {
-				return fmt.Errorf("from_date cannot be after to_date")
+				return errors.New("from_date cannot be after to_date")
 			}
 		}
 	}

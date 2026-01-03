@@ -1,6 +1,8 @@
 package api
 
 import (
+	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -58,7 +60,7 @@ func CORSMiddleware(cfg *config.CORSConfig) gin.HandlerFunc {
 		c.Writer.Header().Set("Access-Control-Max-Age", intToString(cfg.MaxAge))
 
 		// Handle preflight requests
-		if c.Request.Method == "OPTIONS" {
+		if c.Request.Method == http.MethodOptions {
 			c.AbortWithStatus(204)
 			return
 		}
@@ -114,11 +116,13 @@ func intToString(i int) string {
 
 func joinStrings(strs []string, sep string) string {
 	result := ""
+	var resultSb117 strings.Builder
 	for i, str := range strs {
 		if i > 0 {
-			result += sep
+			resultSb117.WriteString(sep)
 		}
-		result += str
+		resultSb117.WriteString(str)
 	}
+	result += resultSb117.String()
 	return result
 }
