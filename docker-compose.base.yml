@@ -6,7 +6,7 @@ x-postgres-defaults: &postgres-defaults
   image: postgres:16-alpine
   deploy:
     restart_policy:
-      condition: unless-stopped
+      condition: any
   healthcheck:
     test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
     interval: 5s
@@ -18,7 +18,7 @@ x-postgres-defaults: &postgres-defaults
 x-service-defaults: &service-defaults
   deploy:
     restart_policy:
-      condition: unless-stopped
+      condition: any
   networks:
     - north-cloud-network
 
@@ -186,9 +186,6 @@ services:
   search-service:
     <<: *service-defaults
     image: northcloud/search-service:latest
-    build:
-      context: .
-      dockerfile: ./search/Dockerfile
     environment:
       APP_DEBUG: ${APP_DEBUG:-true}
       SEARCH_PORT: ${SEARCH_PORT:-8090}
@@ -211,18 +208,12 @@ services:
   search-frontend:
     <<: *service-defaults
     image: northcloud/search-frontend:latest
-    build:
-      context: ./search-frontend
-      dockerfile: Dockerfile
     depends_on:
       - search-service
 
   auth:
     <<: *service-defaults
     image: northcloud/auth:latest
-    build:
-      context: .
-      dockerfile: ./auth/Dockerfile
     environment:
       AUTH_USERNAME: ${AUTH_USERNAME:-admin}
       AUTH_PASSWORD: ${AUTH_PASSWORD:-admin}
@@ -252,4 +243,5 @@ volumes:
 
 networks:
   north-cloud-network:
-    driver: bridge
+    driver: overlay
+    attachable: true

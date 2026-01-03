@@ -7,7 +7,7 @@ x-prod-defaults: &prod-defaults
     - north-cloud-network
   deploy:
     restart_policy:
-      condition: always
+      condition: any
     resources:
       limits:
         cpus: "2"
@@ -28,11 +28,6 @@ services:
   crawler:
     <<: *prod-defaults
     image: northcloud/crawler:latest
-    build:
-      context: .
-      dockerfile: ./crawler/Dockerfile
-      args:
-        BUILD_ENV: production
     depends_on:
       - postgres-crawler
       - elasticsearch
@@ -55,11 +50,6 @@ services:
   source-manager:
     <<: *prod-defaults
     image: northcloud/source-manager:latest
-    build:
-      context: .
-      dockerfile: ./source-manager/Dockerfile
-      args:
-        BUILD_ENV: production
     depends_on:
       - postgres-source-manager
     environment:
@@ -82,11 +72,6 @@ services:
   publisher-api:
     <<: *prod-defaults
     image: northcloud/publisher:latest
-    build:
-      context: .
-      dockerfile: ./publisher/Dockerfile
-      args:
-        BUILD_ENV: production
     command: ["/app/publisher", "api"]
     depends_on:
       - postgres-publisher
@@ -118,11 +103,6 @@ services:
   publisher-router:
     <<: *prod-defaults
     image: northcloud/publisher:latest
-    build:
-      context: .
-      dockerfile: ./publisher/Dockerfile
-      args:
-        BUILD_ENV: production
     command: ["/app/publisher", "router"]
     depends_on:
       - postgres-publisher
@@ -148,11 +128,6 @@ services:
   classifier:
     <<: *prod-defaults
     image: northcloud/classifier:latest
-    build:
-      context: .
-      dockerfile: ./classifier/Dockerfile
-      args:
-        BUILD_ENV: production
     depends_on:
       - postgres-classifier
       - elasticsearch
@@ -179,11 +154,8 @@ services:
   # ------------------------------------------------------------
   index-manager:
     <<: *prod-defaults
-    build:
-      context: ./index-manager
-      dockerfile: Dockerfile
-      args:
-        BUILD_ENV: production
+    image: northcloud/index-manager:latest
+
     depends_on:
       - postgres-index-manager
       - elasticsearch
@@ -207,11 +179,6 @@ services:
   dashboard:
     <<: *prod-defaults
     image: northcloud/dashboard:latest
-    build:
-      context: ./dashboard
-      dockerfile: Dockerfile
-      args:
-        BUILD_ENV: production
     depends_on:
       - crawler
       - source-manager
@@ -274,7 +241,7 @@ services:
       '
     deploy:
       restart_policy:
-        condition: always
+        condition: any
       resources:
         limits:
           cpus: "0.5"
