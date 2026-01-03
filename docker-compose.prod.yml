@@ -138,6 +138,7 @@ services:
       args:
         BUILD_ENV: production
     image: northcloud/classifier:latest
+    command: ["./classifier", "httpd"]
     depends_on:
       - postgres-classifier
       - elasticsearch
