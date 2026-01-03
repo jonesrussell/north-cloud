@@ -74,9 +74,12 @@ func NewRouter(db *repository.SourceRepository, cfg *config.Config, log logger.L
 	router.Use(ginLogger(log))
 	router.Use(gin.Recovery())
 
-	// Health check
+	// Health check - support both GET and HEAD for Docker healthchecks
 	router.GET("/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"status": "ok"})
+	})
+	router.HEAD("/health", func(c *gin.Context) {
+		c.Status(http.StatusOK)
 	})
 
 	sourceHandler := handlers.NewSourceHandler(db, log)
