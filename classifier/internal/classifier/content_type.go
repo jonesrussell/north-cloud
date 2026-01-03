@@ -11,6 +11,8 @@ const (
 	// Content type confidence constants
 	articleConfidence = 0.75
 	pageConfidence    = 0.6
+	// String literal for article type matching
+	articleTypeString = "article"
 )
 
 // ContentTypeClassifier determines the type of content (article, page, video, image, job)
@@ -41,7 +43,7 @@ func (c *ContentTypeClassifier) Classify(ctx context.Context, raw *domain.RawCon
 		ogType := strings.ToLower(strings.TrimSpace(raw.OGType))
 
 		// Check for article indicators
-		if ogType == "article" || ogType == "news" || strings.Contains(ogType, "article") {
+		if ogType == articleTypeString || ogType == "news" || strings.Contains(ogType, articleTypeString) {
 			c.logger.Debug("Content type detected via OG metadata",
 				"content_id", raw.ID,
 				"og_type", ogType,

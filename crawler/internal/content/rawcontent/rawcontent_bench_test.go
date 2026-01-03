@@ -179,12 +179,12 @@ func createTestRawContent() *RawContent {
 			"og:image":       "https://example.com/image.jpg",
 		},
 		Metadata: map[string]interface{}{
-			"author":      "Test Author",
-			"section":     "news",
-			"word_count":  150,
+			"author":     "Test Author",
+			"section":    "news",
+			"word_count": 150,
 		},
 		ClassificationStatus: "pending",
-		DiscoveredAt:        time.Now().UTC(),
+		DiscoveredAt:         time.Now().UTC(),
 	}
 }
 

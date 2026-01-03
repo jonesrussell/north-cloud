@@ -1,4 +1,4 @@
-package classifier
+package classifier_test
 
 import (
 	"strings"
@@ -29,7 +29,7 @@ func BenchmarkCrimeDetection(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		for _, text := range testCases {
 			lowerText := strings.ToLower(text)
 			isCrime := false
@@ -47,33 +47,35 @@ func BenchmarkCrimeDetection(b *testing.B) {
 }
 
 // BenchmarkQualityScoring benchmarks quality score calculation
+//
+//nolint:gocognit // Benchmark function complexity is acceptable
 func BenchmarkQualityScoring(b *testing.B) {
+	publishedDate := time.Now().UTC()
 	rawContent := &domain.RawContent{
-		SourceID:      "example_com",
-		URL:           "https://example.com/article",
-		CanonicalURL:  "https://example.com/article",
-		Title:         "Breaking News: Major Event Unfolds Downtown",
-		RawText:       strings.Repeat("This is article content with meaningful text. ", 50), // ~400 words
-		RawHTML:       "<html><body><article><h1>Title</h1><p>Content</p></article></body></html>",
-		PublishedDate: time.Now().UTC(),
-		OGTags: map[string]string{
-			"og:title":       "Breaking News Article",
-			"og:description": "Detailed coverage of today's event",
-			"og:image":       "https://example.com/image.jpg",
-			"og:type":        "article",
-		},
-		Metadata: map[string]interface{}{
-			"author":  "Jane Reporter",
-			"section": "news",
-		},
+		SourceName:           "example_com",
+		URL:                  "https://example.com/article",
+		CanonicalURL:         "https://example.com/article",
+		Title:                "Breaking News: Major Event Unfolds Downtown",
+		RawText:              strings.Repeat("This is article content with meaningful text. ", 50), // ~400 words
+		RawHTML:              "<html><body><article><h1>Title</h1><p>Content</p></article></body></html>",
+		PublishedDate:        &publishedDate,
+		OGTitle:              "Breaking News Article",
+		OGDescription:        "Detailed coverage of today's event",
+		OGImage:              "https://example.com/image.jpg",
+		OGType:               "article",
 		ClassificationStatus: "pending",
-		DiscoveredAt:         time.Now().UTC(),
+		CrawledAt:            time.Now().UTC(),
 	}
+	_ = rawContent.SourceName
+	_ = rawContent.URL
+	_ = rawContent.RawHTML
+	_ = rawContent.ClassificationStatus
+	_ = rawContent.CrawledAt
 
 	b.ReportAllocs()
 	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		score := 0
 
 		// Title present (20 points)
@@ -90,12 +92,25 @@ func BenchmarkQualityScoring(b *testing.B) {
 		}
 
 		// Published date (10 points)
-		if !rawContent.PublishedDate.IsZero() {
+		if rawContent.PublishedDate != nil && !rawContent.PublishedDate.IsZero() {
 			score += 10
 		}
 
 		// OG tags present (20 points)
-		if len(rawContent.OGTags) >= 3 {
+		ogTagCount := 0
+		if rawContent.OGTitle != "" {
+			ogTagCount++
+		}
+		if rawContent.OGDescription != "" {
+			ogTagCount++
+		}
+		if rawContent.OGImage != "" {
+			ogTagCount++
+		}
+		if rawContent.OGType != "" {
+			ogTagCount++
+		}
+		if ogTagCount >= 3 {
 			score += 20
 		}
 
@@ -104,8 +119,8 @@ func BenchmarkQualityScoring(b *testing.B) {
 			score += 10
 		}
 
-		// Metadata present (10 points)
-		if len(rawContent.Metadata) > 0 {
+		// Canonical URL and meta description (10 points)
+		if rawContent.CanonicalURL != "" || rawContent.MetaDescription != "" {
 			score += 10
 		}
 
@@ -130,7 +145,7 @@ func BenchmarkContentTypeDetection(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		for _, tc := range testContent {
 			contentType := "article" // default
 
@@ -177,7 +192,7 @@ func BenchmarkTopicClassification(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		for _, article := range articles {
 			lowerArticle := strings.ToLower(article)
 			topics := make([]string, 0, 2)
@@ -202,36 +217,38 @@ func BenchmarkTopicClassification(b *testing.B) {
 
 // BenchmarkFullClassification benchmarks the complete classification pipeline
 func BenchmarkFullClassification(b *testing.B) {
+	publishedDate := time.Now().UTC()
 	rawContent := &domain.RawContent{
-		SourceID:      "example_com",
-		URL:           "https://example.com/news/crime-report",
-		CanonicalURL:  "https://example.com/news/crime-report",
-		Title:         "Police Arrest Suspect in Downtown Robbery Investigation",
-		RawText:       "Police arrested a suspect early this morning in connection with a series of robberies that occurred downtown over the past month. The investigation led authorities to identify and apprehend the individual after reviewing security footage and witness statements.",
-		RawHTML:       "<html><body><article><h1>Police Arrest Suspect</h1><p>Content here...</p></article></body></html>",
-		PublishedDate: time.Now().UTC(),
-		OGTags: map[string]string{
-			"og:title":       "Police Arrest Suspect in Robbery",
-			"og:description": "Authorities make arrest after month-long investigation",
-			"og:image":       "https://example.com/images/news.jpg",
-			"og:type":        "article",
-		},
-		Metadata: map[string]interface{}{
-			"author":  "Crime Reporter",
-			"section": "crime",
-		},
+		SourceName:           "example_com",
+		URL:                  "https://example.com/news/crime-report",
+		CanonicalURL:         "https://example.com/news/crime-report",
+		Title:                "Police Arrest Suspect in Downtown Robbery Investigation",
+		RawText:              "Police arrested a suspect early this morning in connection with a series of robberies that occurred downtown over the past month. The investigation led authorities to identify and apprehend the individual after reviewing security footage and witness statements.",
+		RawHTML:              "<html><body><article><h1>Police Arrest Suspect</h1><p>Content here...</p></article></body></html>",
+		PublishedDate:        &publishedDate,
+		OGTitle:              "Police Arrest Suspect in Robbery",
+		OGDescription:        "Authorities make arrest after month-long investigation",
+		OGImage:              "https://example.com/images/news.jpg",
+		OGType:               "article",
 		ClassificationStatus: "pending",
-		DiscoveredAt:         time.Now().UTC(),
+		CrawledAt:            time.Now().UTC(),
 	}
+	_ = rawContent.SourceName
+	_ = rawContent.URL
+	_ = rawContent.CanonicalURL
+	_ = rawContent.RawHTML
+	_ = rawContent.PublishedDate
+	_ = rawContent.ClassificationStatus
+	_ = rawContent.CrawledAt
 
 	b.ReportAllocs()
 	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		// Step 1: Content type detection
 		contentType := "article"
-		if ogType, ok := rawContent.OGTags["og:type"]; ok {
-			contentType = ogType
+		if rawContent.OGType != "" {
+			contentType = rawContent.OGType
 		}
 
 		// Step 2: Quality scoring
@@ -243,7 +260,20 @@ func BenchmarkFullClassification(b *testing.B) {
 		if wordCount >= 100 {
 			qualityScore += 30
 		}
-		if len(rawContent.OGTags) >= 3 {
+		ogTagCount := 0
+		if rawContent.OGTitle != "" {
+			ogTagCount++
+		}
+		if rawContent.OGDescription != "" {
+			ogTagCount++
+		}
+		if rawContent.OGImage != "" {
+			ogTagCount++
+		}
+		if rawContent.OGType != "" {
+			ogTagCount++
+		}
+		if ogTagCount >= 3 {
 			qualityScore += 20
 		}
 		qualityScore += 30 // Other factors
@@ -284,7 +314,7 @@ func BenchmarkSourceReputationCalculation(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		// Calculate average quality score
 		sum := 0
 		for _, score := range qualityScores {
