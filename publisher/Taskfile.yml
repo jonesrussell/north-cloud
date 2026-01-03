@@ -64,6 +64,33 @@ tasks:
     cmds:
       - go test -race ./...
 
+  bench:
+    desc: "Run benchmarks"
+    cmds:
+      - go test -bench=. -benchmem ./...
+
+  bench:baseline:
+    desc: "Capture performance baseline"
+    cmds:
+      - mkdir -p benchmarks
+      - go test -bench=. -benchmem -benchtime=30s -count=5 ./... | tee benchmarks/baseline-{{now | date "2006-01-02"}}.txt
+      - 'echo "Baseline captured: benchmarks/baseline-{{now | date "2006-01-02"}}.txt"'
+
+  bench:compare:
+    desc: "Compare current performance to baseline (requires benchstat)"
+    cmds:
+      - go test -bench=. -benchmem -benchtime=30s -count=5 ./... > benchmarks/current.txt
+      - benchstat benchmarks/baseline-*.txt benchmarks/current.txt
+
+  bench:profile:
+    desc: "Run benchmarks with CPU and memory profiling"
+    cmds:
+      - mkdir -p profiles
+      - go test -bench=. -cpuprofile=profiles/cpu.prof -memprofile=profiles/mem.prof ./...
+      - 'echo "Profiles saved to profiles/ directory"'
+      - 'echo "View CPU profile: go tool pprof -http=:8081 profiles/cpu.prof"'
+      - 'echo "View memory profile: go tool pprof -http=:8081 profiles/mem.prof"'
+
   clean:
     desc: Clean build artifacts and temporary files
     cmds:

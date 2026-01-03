@@ -1,12 +1,35 @@
+# ============================================================
+# YAML Anchors (DRY patterns)
+# ============================================================
+
+x-postgres-defaults: &postgres-defaults
+  image: postgres:16-alpine
+  restart: unless-stopped
+  healthcheck:
+    test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
+    interval: 5s
+    timeout: 5s
+    retries: 5
+  networks:
+    - north-cloud-network
+
+x-service-defaults: &service-defaults
+  restart: unless-stopped
+  networks:
+    - north-cloud-network
+
+# ============================================================
+# Services
+# ============================================================
+
 services:
-  # ============================================
-  # Infrastructure Services
-  # ============================================
-  
-  # PostgreSQL for source-manager
+
+  # ------------------------------------------------------------
+  # PostgreSQL Instances
+  # ------------------------------------------------------------
+
   postgres-source-manager:
-    image: postgres:16-alpine
-    container_name: north-cloud-postgres-source-manager
+    <<: *postgres-defaults
     environment:
       POSTGRES_USER: ${POSTGRES_SOURCE_MANAGER_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_SOURCE_MANAGER_PASSWORD:-postgres}
@@ -15,18 +38,9 @@ services:
       - postgres_source_manager_data:/var/lib/postgresql/data
       - ./source-manager/migrations:/migrations:ro
       - ./infrastructure/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_SOURCE_MANAGER_USER:-postgres}"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-    networks:
-      - north-cloud-network
 
-  # PostgreSQL for crawler
   postgres-crawler:
-    image: postgres:16-alpine
-    container_name: north-cloud-postgres-crawler
+    <<: *postgres-defaults
     ports:
       - "${POSTGRES_CRAWLER_PORT:-5433}:5432"
     environment:
@@ -35,18 +49,9 @@ services:
       POSTGRES_DB: ${POSTGRES_CRAWLER_DB:-crawler}
     volumes:
       - postgres_crawler_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_CRAWLER_USER:-postgres}"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-    networks:
-      - north-cloud-network
 
-  # PostgreSQL for classifier
   postgres-classifier:
-    image: postgres:16-alpine
-    container_name: north-cloud-postgres-classifier
+    <<: *postgres-defaults
     environment:
       POSTGRES_USER: ${POSTGRES_CLASSIFIER_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_CLASSIFIER_PASSWORD:-postgres}
@@ -54,18 +59,9 @@ services:
     volumes:
       - postgres_classifier_data:/var/lib/postgresql/data
       - ./classifier/migrations:/migrations:ro
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_CLASSIFIER_USER:-postgres}"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-    networks:
-      - north-cloud-network
 
-  # PostgreSQL for index-manager
   postgres-index-manager:
-    image: postgres:16-alpine
-    container_name: north-cloud-postgres-index-manager
+    <<: *postgres-defaults
     environment:
       POSTGRES_USER: ${POSTGRES_INDEX_MANAGER_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_INDEX_MANAGER_PASSWORD:-postgres}
@@ -73,18 +69,9 @@ services:
     volumes:
       - postgres_index_manager_data:/var/lib/postgresql/data
       - ./index-manager/migrations:/migrations:ro
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_INDEX_MANAGER_USER:-postgres}"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-    networks:
-      - north-cloud-network
 
-  # PostgreSQL for publisher
   postgres-publisher:
-    image: postgres:16-alpine
-    container_name: north-cloud-postgres-publisher
+    <<: *postgres-defaults
     environment:
       POSTGRES_USER: ${POSTGRES_PUBLISHER_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PUBLISHER_PASSWORD:-postgres}
@@ -92,23 +79,19 @@ services:
     volumes:
       - postgres_publisher_data:/var/lib/postgresql/data
       - ./publisher/internal/database/migrations:/migrations:ro
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_PUBLISHER_USER:-postgres}"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-    networks:
-      - north-cloud-network
 
-  # Elasticsearch for publisher
+  # ------------------------------------------------------------
+  # Elasticsearch
+  # ------------------------------------------------------------
+
   elasticsearch:
+    <<: *service-defaults
     image: docker.elastic.co/elasticsearch/elasticsearch:9.2.2
-    container_name: north-cloud-elasticsearch
     environment:
-      - discovery.type=single-node
-      - xpack.security.enabled=${ELASTICSEARCH_SECURITY_ENABLED:-false}
-      - "ES_JAVA_OPTS=-Xms${ELASTICSEARCH_MIN_HEAP:-512m} -Xmx${ELASTICSEARCH_MAX_HEAP:-512m}"
-      - bootstrap.memory_lock=true
+      discovery.type: single-node
+      xpack.security.enabled: ${ELASTICSEARCH_SECURITY_ENABLED:-false}
+      ES_JAVA_OPTS: "-Xms${ELASTICSEARCH_MIN_HEAP:-512m} -Xmx${ELASTICSEARCH_MAX_HEAP:-512m}"
+      bootstrap.memory_lock: "true"
     ulimits:
       memlock:
         soft: -1
@@ -121,13 +104,14 @@ services:
       interval: 30s
       timeout: 10s
       retries: 5
-    networks:
-      - north-cloud-network
 
-  # Redis for publisher queue and deduplication
+  # ------------------------------------------------------------
+  # Redis
+  # ------------------------------------------------------------
+
   redis:
+    <<: *service-defaults
     image: redis:7-alpine
-    container_name: north-cloud-redis
     ports:
       - "${REDIS_PORT:-6379}:6379"
     command: >
@@ -139,7 +123,7 @@ services:
       fi
       "
     environment:
-      - REDIS_PASSWORD=${REDIS_PASSWORD:-}
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
     volumes:
       - redis_data:/data
     healthcheck:
@@ -154,13 +138,14 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-    networks:
-      - north-cloud-network
 
-  # MinIO Object Storage for HTML archiving
+  # ------------------------------------------------------------
+  # MinIO + Init
+  # ------------------------------------------------------------
+
   minio:
+    <<: *service-defaults
     image: quay.io/minio/minio:latest
-    container_name: north-cloud-minio
     command: server /data --console-address ":9001"
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
@@ -173,14 +158,10 @@ services:
       interval: 30s
       timeout: 10s
       retries: 5
-    networks:
-      - north-cloud-network
-    restart: unless-stopped
 
-  # MinIO initialization container for bucket creation and lifecycle management
   minio-init:
+    <<: *service-defaults
     image: quay.io/minio/mc:latest
-    container_name: north-cloud-minio-init
     depends_on:
       minio:
         condition: service_healthy
@@ -194,29 +175,26 @@ services:
       echo 'MinIO buckets initialized successfully';
       exit 0;
       "
-    networks:
-      - north-cloud-network
 
-  # ============================================
+  # ------------------------------------------------------------
   # Application Services
-  # ============================================
+  # ------------------------------------------------------------
 
-  # Search Service
   search-service:
+    <<: *service-defaults
     build:
       context: .
       dockerfile: ./search/Dockerfile
-    container_name: north-cloud-search
     environment:
-      - APP_DEBUG=${APP_DEBUG:-true}
-      - SEARCH_PORT=${SEARCH_PORT:-8090}
-      - SEARCH_DEBUG=${SEARCH_DEBUG:-true}
-      - ELASTICSEARCH_URL=${ELASTICSEARCH_URL:-http://elasticsearch:9200}
-      - ELASTICSEARCH_USERNAME=${ELASTICSEARCH_USERNAME:-}
-      - ELASTICSEARCH_PASSWORD=${ELASTICSEARCH_PASSWORD:-}
-      - LOG_LEVEL=${SEARCH_LOG_LEVEL:-info}
-      - LOG_FORMAT=${SEARCH_LOG_FORMAT:-json}
-      - CORS_ORIGINS=${CORS_ORIGINS:-*}
+      APP_DEBUG: ${APP_DEBUG:-true}
+      SEARCH_PORT: ${SEARCH_PORT:-8090}
+      SEARCH_DEBUG: ${SEARCH_DEBUG:-true}
+      ELASTICSEARCH_URL: ${ELASTICSEARCH_URL:-http://elasticsearch:9200}
+      ELASTICSEARCH_USERNAME: ${ELASTICSEARCH_USERNAME:-}
+      ELASTICSEARCH_PASSWORD: ${ELASTICSEARCH_PASSWORD:-}
+      LOG_LEVEL: ${SEARCH_LOG_LEVEL:-info}
+      LOG_FORMAT: ${SEARCH_LOG_FORMAT:-json}
+      CORS_ORIGINS: ${CORS_ORIGINS:-*}
     depends_on:
       elasticsearch:
         condition: service_healthy
@@ -226,43 +204,36 @@ services:
       timeout: 5s
       retries: 3
       start_period: 10s
-    networks:
-      - north-cloud-network
-    restart: unless-stopped
 
-  # Search Frontend (Production)
   search-frontend:
+    <<: *service-defaults
     build:
       context: ./search-frontend
       dockerfile: Dockerfile
-    container_name: north-cloud-search-frontend
-    restart: unless-stopped
-    networks:
-      - north-cloud-network
     depends_on:
       - search-service
 
-  # Auth Service
   auth:
+    <<: *service-defaults
     build:
       context: ./auth
       dockerfile: Dockerfile
-    container_name: north-cloud-auth
     environment:
-      - AUTH_USERNAME=${AUTH_USERNAME:-admin}
-      - AUTH_PASSWORD=${AUTH_PASSWORD:-admin}
-      - AUTH_JWT_SECRET=${AUTH_JWT_SECRET:-}
-      - AUTH_PORT=${AUTH_PORT:-8040}
-      - APP_DEBUG=${APP_DEBUG:-false}
+      AUTH_USERNAME: ${AUTH_USERNAME:-admin}
+      AUTH_PASSWORD: ${AUTH_PASSWORD:-admin}
+      AUTH_JWT_SECRET: ${AUTH_JWT_SECRET:-}
+      AUTH_PORT: ${AUTH_PORT:-8040}
+      APP_DEBUG: ${APP_DEBUG:-false}
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8040/health"]
       interval: 30s
       timeout: 5s
       retries: 3
       start_period: 10s
-    networks:
-      - north-cloud-network
-    restart: unless-stopped
+
+# ============================================================
+# Volumes & Networks
+# ============================================================
 
 volumes:
   postgres_source_manager_data:
