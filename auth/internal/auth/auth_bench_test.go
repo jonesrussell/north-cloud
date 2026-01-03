@@ -151,11 +151,11 @@ func BenchmarkTokenExpiration(b *testing.B) {
 		expiresAt int64
 		isExpired bool
 	}{
-		{now + 3600, false},     // Expires in 1 hour
-		{now - 3600, true},      // Expired 1 hour ago
-		{now + 86400, false},    // Expires in 24 hours
-		{now - 1, true},         // Just expired
-		{now + 1, false},        // Expires in 1 second
+		{now + 3600, false},  // Expires in 1 hour
+		{now - 3600, true},   // Expired 1 hour ago
+		{now + 86400, false}, // Expires in 24 hours
+		{now - 1, true},      // Just expired
+		{now + 1, false},     // Expires in 1 second
 	}
 
 	b.ReportAllocs()
