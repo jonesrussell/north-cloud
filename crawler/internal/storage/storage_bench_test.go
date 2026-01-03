@@ -1,7 +1,6 @@
-package storage
+package storage_test
 
 import (
-	"context"
 	"encoding/json"
 	"testing"
 	"time"
@@ -10,7 +9,7 @@ import (
 // BenchmarkJSONMarshaling benchmarks JSON marshaling of raw content for Elasticsearch
 func BenchmarkJSONMarshaling(b *testing.B) {
 	// Create realistic raw content document
-	document := map[string]interface{}{
+	document := map[string]any{
 		"source_id":      "example_com",
 		"url":            "https://example.com/article-12345",
 		"canonical_url":  "https://example.com/article-12345",
@@ -24,7 +23,7 @@ func BenchmarkJSONMarshaling(b *testing.B) {
 			"og:image":       "https://example.com/images/article.jpg",
 			"og:type":        "article",
 		},
-		"metadata": map[string]interface{}{
+		"metadata": map[string]any{
 			"author":     "Jane Reporter",
 			"section":    "news",
 			"word_count": 250,
@@ -36,7 +35,7 @@ func BenchmarkJSONMarshaling(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		_, err := json.Marshal(document)
 		if err != nil {
 			b.Fatal(err)
@@ -46,10 +45,10 @@ func BenchmarkJSONMarshaling(b *testing.B) {
 
 // BenchmarkIndexDocumentPreparation benchmarks preparing documents for bulk indexing
 func BenchmarkIndexDocumentPreparation(b *testing.B) {
-	documents := make([]map[string]interface{}, 100)
+	documents := make([]map[string]any, 100)
 
-	for i := 0; i < 100; i++ {
-		documents[i] = map[string]interface{}{
+	for i := range 100 {
+		documents[i] = map[string]any{
 			"source_id":             "example_com",
 			"url":                   "https://example.com/article",
 			"title":                 "Article Title",
@@ -61,23 +60,21 @@ func BenchmarkIndexDocumentPreparation(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		// Simulate bulk indexing preparation
-		bulkBody := make([]map[string]interface{}, 0, len(documents)*2)
+		bulkBody := make([]map[string]any, 0, len(documents)*2)
 
 		for _, doc := range documents {
 			// Add index metadata
-			metadata := map[string]interface{}{
-				"index": map[string]interface{}{
+			metadata := map[string]any{
+				"index": map[string]any{
 					"_index": "example_com_raw_content",
 					"_id":    doc["url"],
 				},
 			}
-			bulkBody = append(bulkBody, metadata)
-
-			// Add document
-			bulkBody = append(bulkBody, doc)
+			bulkBody = append(bulkBody, metadata, doc)
 		}
+		_ = bulkBody
 	}
 }
 
@@ -93,7 +90,7 @@ func BenchmarkIndexNameGeneration(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		for _, sourceID := range sourceIDs {
 			// Simulate index name generation logic
 			indexName := generateIndexName(sourceID, "raw_content")
@@ -107,21 +104,21 @@ func BenchmarkQueryBuilding(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		// Build query for pending classification
-		query := map[string]interface{}{
-			"query": map[string]interface{}{
-				"bool": map[string]interface{}{
-					"must": []map[string]interface{}{
+		query := map[string]any{
+			"query": map[string]any{
+				"bool": map[string]any{
+					"must": []map[string]any{
 						{
-							"term": map[string]interface{}{
+							"term": map[string]any{
 								"classification_status": "pending",
 							},
 						},
 					},
 				},
 			},
-			"sort": []map[string]interface{}{
+			"sort": []map[string]any{
 				{
 					"discovered_at": map[string]string{
 						"order": "asc",
@@ -150,7 +147,7 @@ func BenchmarkURLNormalization(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		for _, url := range urls {
 			// Simulate URL normalization
 			normalized := normalizeURL(url)

@@ -1,11 +1,11 @@
-package scheduler
+package scheduler_test
 
 import (
-	"context"
 	"testing"
 	"time"
 
 	"github.com/jonesrussell/north-cloud/crawler/internal/domain"
+	"github.com/jonesrussell/north-cloud/crawler/internal/scheduler"
 )
 
 // BenchmarkJobScheduling benchmarks the interval scheduler job processing
@@ -14,14 +14,16 @@ func BenchmarkJobScheduling(b *testing.B) {
 	jobs := make([]*domain.Job, 100)
 	now := time.Now()
 
-	for i := 0; i < 100; i++ {
+	for i := range 100 {
+		sourceName := "example.com"
+		intervalMinutes := 30
 		jobs[i] = &domain.Job{
-			ID:              int64(i + 1),
+			ID:              "job-" + string(rune(i+1)),
 			SourceID:        "test-source",
-			SourceName:      "example.com",
+			SourceName:      &sourceName,
 			URL:             "https://example.com",
-			Status:          domain.JobStatusPending,
-			IntervalMinutes: 30,
+			Status:          string(scheduler.StatePending),
+			IntervalMinutes: &intervalMinutes,
 			IntervalType:    "minutes",
 			NextRunAt:       &now,
 			CreatedAt:       now,
@@ -32,31 +34,38 @@ func BenchmarkJobScheduling(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		// Simulate job filtering logic
 		readyJobs := make([]*domain.Job, 0, 10)
 		for _, job := range jobs {
-			if job.NextRunAt != nil && job.NextRunAt.Before(time.Now()) && job.Status == domain.JobStatusPending {
+			if job.NextRunAt != nil && job.NextRunAt.Before(time.Now()) && job.Status == string(scheduler.StatePending) {
 				readyJobs = append(readyJobs, job)
 			}
 		}
+		_ = readyJobs
 	}
 }
 
 // BenchmarkLockAcquisition benchmarks distributed lock acquisition logic
 func BenchmarkLockAcquisition(b *testing.B) {
+	sourceName := "example.com"
 	job := &domain.Job{
-		ID:         1,
+		ID:         "job-1",
 		SourceID:   "test-source",
-		SourceName: "example.com",
+		SourceName: &sourceName,
 		URL:        "https://example.com",
-		Status:     domain.JobStatusPending,
+		Status:     string(scheduler.StatePending),
 	}
+	_ = job.ID
+	_ = job.SourceID
+	_ = job.SourceName
+	_ = job.URL
+	_ = job.Status
 
 	b.ReportAllocs()
 	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		// Simulate lock token generation
 		lockToken := generateLockToken()
 
@@ -83,7 +92,7 @@ func BenchmarkNextRunCalculation(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		for _, tc := range testCases {
 			var duration time.Duration
 
@@ -111,7 +120,7 @@ func BenchmarkExponentialBackoff(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		// Simulate exponential backoff for up to 5 retries
 		for attempt := 1; attempt <= 5; attempt++ {
 			// Calculate: base × 2^(attempt-1)
@@ -129,41 +138,39 @@ func BenchmarkExponentialBackoff(b *testing.B) {
 
 // BenchmarkJobStatusTransition benchmarks state machine validation
 func BenchmarkJobStatusTransition(b *testing.B) {
-	stateMachine := NewStateMachine()
-
 	testCases := []struct {
-		from domain.JobStatus
-		to   domain.JobStatus
+		from scheduler.JobState
+		to   scheduler.JobState
 	}{
-		{domain.JobStatusPending, domain.JobStatusScheduled},
-		{domain.JobStatusScheduled, domain.JobStatusRunning},
-		{domain.JobStatusRunning, domain.JobStatusCompleted},
-		{domain.JobStatusRunning, domain.JobStatusFailed},
-		{domain.JobStatusRunning, domain.JobStatusPaused},
+		{scheduler.StatePending, scheduler.StateScheduled},
+		{scheduler.StateScheduled, scheduler.StateRunning},
+		{scheduler.StateRunning, scheduler.StateCompleted},
+		{scheduler.StateRunning, scheduler.StateFailed},
+		{scheduler.StateRunning, scheduler.StatePaused},
 	}
 
 	b.ReportAllocs()
 	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		for _, tc := range testCases {
-			_ = stateMachine.CanTransition(tc.from, tc.to)
+			_ = scheduler.ValidateStateTransition(tc.from, tc.to)
 		}
 	}
 }
 
 // BenchmarkMetricsCollection benchmarks thread-safe metrics updates
 func BenchmarkMetricsCollection(b *testing.B) {
-	metrics := NewMetrics()
+	metrics := &scheduler.SchedulerMetrics{}
 
 	b.ReportAllocs()
 	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		// Simulate concurrent metrics updates
-		metrics.IncrementJobsProcessed()
-		metrics.IncrementJobsSucceeded()
-		metrics.RecordJobDuration(100 * time.Millisecond)
+		metrics.IncrementScheduled()
+		metrics.IncrementCompleted()
+		metrics.UpdateAggregateMetrics(100.0, 0.95)
 	}
 }
 
@@ -174,22 +181,37 @@ func BenchmarkJobExecutionHistory(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for i := range b.N {
+		durationMs := int64(120000) // 120 seconds in milliseconds
+		cpuTimeMs := int64(500)
+		memoryPeakMB := 10
 		execution := &domain.JobExecution{
-			JobID:               1,
-			ExecutionNumber:     int64(i + 1),
-			Status:              "completed",
-			StartTime:           now,
-			EndTime:             &now,
-			DurationSeconds:     120,
-			ItemsCrawled:        50,
-			ItemsIndexed:        50,
-			ErrorMessage:        nil,
-			MemoryUsedBytes:     1024 * 1024 * 10, // 10MB
-			CPUTimeMilliseconds: 500,
+			ID:              "exec-" + string(rune(i+1)),
+			JobID:           "job-1",
+			ExecutionNumber: i + 1,
+			Status:          "completed",
+			StartedAt:       now,
+			CompletedAt:     &now,
+			DurationMs:      &durationMs,
+			ItemsCrawled:    50,
+			ItemsIndexed:    50,
+			ErrorMessage:    nil,
+			CPUTimeMs:       &cpuTimeMs,
+			MemoryPeakMB:    &memoryPeakMB,
 		}
 
-		_ = execution
+		_ = execution.ID
+		_ = execution.JobID
+		_ = execution.ExecutionNumber
+		_ = execution.Status
+		_ = execution.StartedAt
+		_ = execution.CompletedAt
+		_ = execution.DurationMs
+		_ = execution.ItemsCrawled
+		_ = execution.ItemsIndexed
+		_ = execution.ErrorMessage
+		_ = execution.CPUTimeMs
+		_ = execution.MemoryPeakMB
 	}
 }
 

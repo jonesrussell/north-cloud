@@ -160,6 +160,8 @@ linters:
           strict: true
     inamedparam:
       skip-single-param: true
+    lll:
+      line-length: 150
     mnd:
       ignored-functions:
         - args.Error

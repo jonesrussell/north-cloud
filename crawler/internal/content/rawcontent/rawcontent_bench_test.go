@@ -1,12 +1,13 @@
-package rawcontent
+package rawcontent_test
 
 import (
-	"context"
 	"testing"
 	"time"
 
-	"github.com/PuerkitoBio/goquery"
 	"strings"
+
+	"github.com/PuerkitoBio/goquery"
+	"github.com/jonesrussell/north-cloud/crawler/internal/storage"
 )
 
 // BenchmarkExtractRawContent benchmarks HTML parsing and raw content extraction
@@ -45,7 +46,7 @@ func BenchmarkExtractRawContent(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		// Extract title
 		_ = doc.Find("title").First().Text()
 
@@ -79,7 +80,7 @@ func BenchmarkParseHTML(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		_, err := goquery.NewDocumentFromReader(strings.NewReader(html))
 		if err != nil {
 			b.Fatal(err)
@@ -113,7 +114,7 @@ func BenchmarkExtractMetadata(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		metadata := make(map[string]string)
 
 		// Extract all OG tags
@@ -157,7 +158,7 @@ func BenchmarkTextExtraction(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		// Extract and clean text
 		text := doc.Find("article").Text()
 		_ = strings.TrimSpace(text)
@@ -165,26 +166,23 @@ func BenchmarkTextExtraction(b *testing.B) {
 }
 
 // Helper function to create test raw content (for other benchmarks)
-func createTestRawContent() *RawContent {
-	return &RawContent{
-		SourceID:      "test-source",
-		URL:           "https://example.com/article",
-		Title:         "Test Article Title",
-		RawText:       "This is the raw text content of the article with multiple sentences. It contains enough text to be realistic for benchmarking purposes.",
-		RawHTML:       "<html><body><p>Test content</p></body></html>",
-		PublishedDate: time.Now().UTC(),
-		OGTags: map[string]string{
-			"og:title":       "OG Title",
-			"og:description": "OG Description",
-			"og:image":       "https://example.com/image.jpg",
-		},
-		Metadata: map[string]interface{}{
-			"author":     "Test Author",
-			"section":    "news",
-			"word_count": 150,
-		},
+func createTestRawContent() *storage.RawContent {
+	publishedDate := time.Now().UTC()
+	return &storage.RawContent{
+		ID:                   "test-article-1",
+		URL:                  "https://example.com/article",
+		SourceName:           "test-source",
+		Title:                "Test Article Title",
+		RawText:              "This is the raw text content of the article with multiple sentences. It contains enough text to be realistic for benchmarking purposes.",
+		RawHTML:              "<html><body><p>Test content</p></body></html>",
+		PublishedDate:        &publishedDate,
+		OGTitle:              "OG Title",
+		OGDescription:        "OG Description",
+		OGImage:              "https://example.com/image.jpg",
+		OGType:               "article",
 		ClassificationStatus: "pending",
-		DiscoveredAt:         time.Now().UTC(),
+		CrawledAt:            time.Now().UTC(),
+		WordCount:            150,
 	}
 }
 
@@ -195,13 +193,13 @@ func BenchmarkRawContentValidation(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		// Simulate validation checks
 		_ = rc.URL != ""
 		_ = rc.Title != ""
 		_ = rc.RawText != ""
-		_ = len(rc.RawText) > 0
-		_ = rc.SourceID != ""
+		_ = rc.RawText != ""
+		_ = rc.SourceName != ""
 		_ = rc.ClassificationStatus != ""
 	}
 }
