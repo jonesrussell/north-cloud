@@ -2,10 +2,16 @@ package processor
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
 	"github.com/jonesrussell/north-cloud/classifier/internal/domain"
+)
+
+const (
+	// Default poll interval
+	defaultPollIntervalSeconds = 30
 )
 
 // ElasticsearchClient defines the interface for ES operations
@@ -63,7 +69,7 @@ func NewPoller(
 		config.BatchSize = 100
 	}
 	if config.PollInterval <= 0 {
-		config.PollInterval = 30 * time.Second
+		config.PollInterval = defaultPollIntervalSeconds * time.Second
 	}
 
 	return &Poller{
@@ -80,7 +86,7 @@ func NewPoller(
 // Start starts the poller
 func (p *Poller) Start(ctx context.Context) error {
 	if p.running {
-		return fmt.Errorf("poller is already running")
+		return errors.New("poller is already running")
 	}
 
 	p.running = true
@@ -155,12 +161,12 @@ func (p *Poller) processPending(ctx context.Context) error {
 	}
 
 	// Index results
-	if err := p.indexResults(ctx, results); err != nil {
+	if err = p.indexResults(ctx, results); err != nil {
 		return fmt.Errorf("failed to index results: %w", err)
 	}
 
 	// Save to classification history
-	if err := p.saveHistory(ctx, results); err != nil {
+	if err = p.saveHistory(ctx, results); err != nil {
 		p.logger.Warn("Failed to save classification history", "error", err)
 		// Don't fail the whole operation if history save fails
 	}

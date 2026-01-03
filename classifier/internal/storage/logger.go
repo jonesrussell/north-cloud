@@ -3,6 +3,7 @@ package storage
 import (
 	"fmt"
 	"log"
+	"strings"
 )
 
 // SimpleLogger implements the processor.Logger interface using standard log package
@@ -40,11 +41,11 @@ func formatKeyValues(keysAndValues ...interface{}) string {
 		return ""
 	}
 
-	result := ""
+	var builder strings.Builder
 	for i := 0; i < len(keysAndValues); i += 2 {
 		if i+1 < len(keysAndValues) {
-			result += fmt.Sprintf("%v=%v ", keysAndValues[i], keysAndValues[i+1])
+			builder.WriteString(fmt.Sprintf("%v=%v ", keysAndValues[i], keysAndValues[i+1]))
 		}
 	}
-	return result
+	return builder.String()
 }

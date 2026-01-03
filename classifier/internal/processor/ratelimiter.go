@@ -16,7 +16,7 @@ type RateLimiter struct {
 // NewRateLimiter creates a new rate limiter
 // rps: requests per second
 // burst: maximum burst size
-func NewRateLimiter(rps int, burst int, logger Logger) *RateLimiter {
+func NewRateLimiter(rps, burst int, logger Logger) *RateLimiter {
 	if rps <= 0 {
 		rps = 100 // Default 100 requests per second
 	}
@@ -101,7 +101,7 @@ func (r *RateLimitedProcessor) ProcessWithRateLimit(
 	}
 
 	// Wait for DB rate limit (we'll be writing to DB)
-	if err := r.dbLimiter.Wait(ctx); err != nil {
+	if err = r.dbLimiter.Wait(ctx); err != nil {
 		r.logger.Warn("DB rate limit wait failed, continuing anyway", "error", err)
 		// Don't fail the operation, just log the warning
 	}

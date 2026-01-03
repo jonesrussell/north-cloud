@@ -10,6 +10,11 @@ import (
 	"github.com/jonesrussell/north-cloud/classifier/internal/domain"
 )
 
+const (
+	// Default reputation score (matches classifier.defaultReputationScore)
+	defaultReputationScore = 50
+)
+
 // SourceReputationRepository handles database operations for source reputation.
 type SourceReputationRepository struct {
 	db *sqlx.DB
@@ -119,7 +124,7 @@ func (r *SourceReputationRepository) GetOrCreateSource(ctx context.Context, sour
 	newSource := &domain.SourceReputation{
 		SourceName:          sourceName,
 		Category:            "unknown",
-		ReputationScore:     50, // Default neutral score
+		ReputationScore:     defaultReputationScore, // Default neutral score (matches classifier.defaultReputationScore)
 		TotalArticles:       0,
 		AverageQualityScore: 0.0,
 		SpamCount:           0,
@@ -128,9 +133,9 @@ func (r *SourceReputationRepository) GetOrCreateSource(ctx context.Context, sour
 	err = r.CreateSource(ctx, newSource)
 	if err != nil {
 		// Handle potential race condition where another goroutine created it
-		source, getErr := r.GetSource(ctx, sourceName)
+		existingSource, getErr := r.GetSource(ctx, sourceName)
 		if getErr == nil {
-			return source, nil
+			return existingSource, nil
 		}
 		return nil, fmt.Errorf("failed to create or get source: %w", err)
 	}

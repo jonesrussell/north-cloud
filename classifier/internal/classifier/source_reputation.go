@@ -7,6 +7,18 @@ import (
 	"github.com/jonesrussell/north-cloud/classifier/internal/domain"
 )
 
+const (
+	// Source reputation constants
+	defaultReputationScore      = 50
+	defaultSpamThreshold        = 30
+	minArticlesForTrust         = 10
+	reputationDecayRate         = 0.1
+	maxReputationScore          = 100
+	reputationBoostMultiplier   = 1.1
+	reputationHighThreshold     = 50
+	reputationModerateThreshold = 30
+)
+
 // SourceReputationScorer evaluates and tracks source trustworthiness
 type SourceReputationScorer struct {
 	logger Logger
@@ -44,11 +56,11 @@ func NewSourceReputationScorer(logger Logger, db SourceReputationDB) *SourceRepu
 		logger: logger,
 		db:     db,
 		config: SourceReputationConfig{
-			DefaultScore:               50,
+			DefaultScore:               defaultReputationScore,
 			UpdateOnEachClassification: true,
-			SpamThreshold:              30,
-			MinArticlesForTrust:        10,
-			ReputationDecayRate:        0.1,
+			SpamThreshold:              defaultSpamThreshold,
+			MinArticlesForTrust:        minArticlesForTrust,
+			ReputationDecayRate:        reputationDecayRate,
 		},
 	}
 }
@@ -130,7 +142,7 @@ func (s *SourceReputationScorer) UpdateAfterClassification(
 	sourceRecord.ReputationScore = s.calculateReputationScore(sourceRecord)
 
 	// Save updated record
-	if err := s.db.UpdateSource(ctx, sourceRecord); err != nil {
+	if err = s.db.UpdateSource(ctx, sourceRecord); err != nil {
 		return fmt.Errorf("failed to update source: %w", err)
 	}
 
@@ -157,14 +169,14 @@ func (s *SourceReputationScorer) calculateReputationScore(source *domain.SourceR
 	// Apply spam penalty
 	if source.TotalArticles > 0 {
 		spamRatio := float64(source.SpamCount) / float64(source.TotalArticles)
-		score = score * (1.0 - spamRatio*s.config.ReputationDecayRate)
+		score *= (1.0 - spamRatio*s.config.ReputationDecayRate)
 	}
 
 	// Boost score for established sources with good track record
 	if source.TotalArticles >= s.config.MinArticlesForTrust {
 		trustSpamRatio := float64(source.SpamCount) / float64(source.TotalArticles)
 		if source.AverageQualityScore >= 70 && trustSpamRatio < 0.05 {
-			score = score * 1.1 // 10% boost for trusted sources
+			score *= reputationBoostMultiplier // 10% boost for trusted sources
 		}
 	}
 
@@ -172,8 +184,8 @@ func (s *SourceReputationScorer) calculateReputationScore(source *domain.SourceR
 	if score < 0 {
 		score = 0
 	}
-	if score > 100 {
-		score = 100
+	if score > maxReputationScore {
+		score = maxReputationScore
 	}
 
 	return int(score)
@@ -196,16 +208,16 @@ func (s *SourceReputationScorer) categorizeSource(source *domain.SourceReputatio
 }
 
 // determineRank determines the rank based on score and article count
-func (s *SourceReputationScorer) determineRank(score int, totalArticles int) string {
+func (s *SourceReputationScorer) determineRank(score, totalArticles int) string {
 	// Need minimum articles to be considered established
 	isEstablished := totalArticles >= s.config.MinArticlesForTrust
 
 	switch {
 	case score >= 75 && isEstablished:
 		return "trusted"
-	case score >= 50:
+	case score >= reputationHighThreshold:
 		return "moderate"
-	case score >= 30:
+	case score >= reputationModerateThreshold:
 		return "low"
 	default:
 		return "spam"

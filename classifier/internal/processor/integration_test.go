@@ -1,3 +1,4 @@
+//nolint:testpackage // Testing internal processor requires same package access
 package processor
 
 import (
@@ -170,7 +171,7 @@ func (m *mockESClient) IndexClassifiedContent(ctx context.Context, content *doma
 	return nil
 }
 
-func (m *mockESClient) UpdateRawContentStatus(ctx context.Context, contentID string, status string, classifiedAt time.Time) error {
+func (m *mockESClient) UpdateRawContentStatus(ctx context.Context, contentID, status string, classifiedAt time.Time) error {
 	if m.updateStatusError != nil {
 		return m.updateStatusError
 	}
@@ -211,13 +212,12 @@ func (m *mockDBClient) SaveClassificationHistoryBatch(ctx context.Context, histo
 	return nil
 }
 
-// TestIntegration_EndToEndClassificationFlow tests the complete pipeline
-func TestIntegration_EndToEndClassificationFlow(t *testing.T) {
+// setupTestEnvironment creates test mocks and content
+func setupTestEnvironment() (*mockESClient, *mockDBClient, *mockLogger) {
 	logger := &mockLogger{}
 	esClient := newMockESClient()
 	dbClient := newMockDBClient()
 
-	// Create test raw content
 	publishedDate := time.Now().Add(-24 * time.Hour)
 	esClient.rawContent = []*domain.RawContent{
 		{
@@ -246,36 +246,14 @@ func TestIntegration_EndToEndClassificationFlow(t *testing.T) {
 		},
 	}
 
-	// Create batch processor with classifier
-	testClassifier := createTestClassifier(logger)
-	batchProcessor := NewBatchProcessor(testClassifier, 2, logger)
+	return esClient, dbClient, logger
+}
 
-	// Create poller
-	pollerConfig := PollerConfig{
-		BatchSize:    10,
-		PollInterval: 30 * time.Second,
-	}
-	poller := NewPoller(esClient, dbClient, batchProcessor, logger, pollerConfig)
-
-	// Process pending content
-	ctx := context.Background()
-	err := poller.processPending(ctx)
-
-	if err != nil {
-		t.Fatalf("processPending failed: %v", err)
-	}
-
-	// Verify classified content was indexed
-	if len(esClient.classifiedContent) != 2 {
-		t.Errorf("expected 2 classified items, got %d", len(esClient.classifiedContent))
-	}
-
-	// Verify first article (crime content)
-	crimeArticle := esClient.classifiedContent[0]
+// verifyCrimeArticle verifies crime article classification results
+func verifyCrimeArticle(t *testing.T, crimeArticle *domain.ClassifiedContent) {
 	if crimeArticle.ContentType != domain.ContentTypeArticle {
 		t.Errorf("expected content_type article, got %s", crimeArticle.ContentType)
 	}
-	// Verify crime is in topics array
 	hasCrime := false
 	for _, topic := range crimeArticle.Topics {
 		if topic == "crime" {
@@ -289,26 +267,54 @@ func TestIntegration_EndToEndClassificationFlow(t *testing.T) {
 	if crimeArticle.QualityScore < 50 {
 		t.Errorf("expected quality score >= 50, got %d", crimeArticle.QualityScore)
 	}
+}
 
-	// Verify second article (sports content)
-	sportsArticle := esClient.classifiedContent[1]
-	// Verify crime is NOT in topics array
+// verifySportsArticle verifies sports article classification results
+func verifySportsArticle(t *testing.T, sportsArticle *domain.ClassifiedContent) {
 	for _, topic := range sportsArticle.Topics {
 		if topic == "crime" {
 			t.Error("expected sports article NOT to have 'crime' in topics array")
 			break
 		}
 	}
+}
 
-	// Verify status updates
+// verifyStatusUpdates verifies that status updates were applied
+func verifyStatusUpdates(t *testing.T, esClient *mockESClient) {
 	if status, ok := esClient.statusUpdates["test-1"]; !ok || status != domain.StatusClassified {
 		t.Errorf("expected test-1 status to be classified, got %s", status)
 	}
 	if status, ok := esClient.statusUpdates["test-2"]; !ok || status != domain.StatusClassified {
 		t.Errorf("expected test-2 status to be classified, got %s", status)
 	}
+}
 
-	// Verify classification history was saved
+// TestIntegration_EndToEndClassificationFlow tests the complete pipeline
+func TestIntegration_EndToEndClassificationFlow(t *testing.T) {
+	esClient, dbClient, logger := setupTestEnvironment()
+
+	testClassifier := createTestClassifier(logger)
+	batchProcessor := NewBatchProcessor(testClassifier, 2, logger)
+
+	pollerConfig := PollerConfig{
+		BatchSize:    10,
+		PollInterval: 30 * time.Second,
+	}
+	poller := NewPoller(esClient, dbClient, batchProcessor, logger, pollerConfig)
+
+	ctx := context.Background()
+	if err := poller.processPending(ctx); err != nil {
+		t.Fatalf("processPending failed: %v", err)
+	}
+
+	if len(esClient.classifiedContent) != 2 {
+		t.Errorf("expected 2 classified items, got %d", len(esClient.classifiedContent))
+	}
+
+	verifyCrimeArticle(t, esClient.classifiedContent[0])
+	verifySportsArticle(t, esClient.classifiedContent[1])
+	verifyStatusUpdates(t, esClient)
+
 	if len(dbClient.histories) != 2 {
 		t.Errorf("expected 2 history entries, got %d", len(dbClient.histories))
 	}
@@ -534,7 +540,7 @@ func TestIntegration_BatchProcessingConcurrency(t *testing.T) {
 	// Create 20 test items
 	publishedDate := time.Now()
 	rawItems := make([]*domain.RawContent, 20)
-	for i := 0; i < 20; i++ {
+	for i := range 20 {
 		rawItems[i] = &domain.RawContent{
 			ID:                   "test-" + string(rune('A'+i)),
 			URL:                  "https://example.com/article",

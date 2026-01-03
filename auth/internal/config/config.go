@@ -5,6 +5,11 @@ import (
 	"time"
 )
 
+const (
+	// JWT token expiration time
+	jwtExpirationHours = 24
+)
+
 // Config holds the application configuration
 type Config struct {
 	Username  string
@@ -68,6 +73,6 @@ type JWTConfig struct {
 func (c *Config) GetJWTConfig() *JWTConfig {
 	return &JWTConfig{
 		Secret:     c.JWTSecret,
-		Expiration: 24 * time.Hour, // 24 hours
+		Expiration: jwtExpirationHours * time.Hour,
 	}
 }

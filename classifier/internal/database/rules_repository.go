@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/jonesrussell/north-cloud/classifier/internal/domain"
@@ -106,17 +107,20 @@ func (r *RulesRepository) List(ctx context.Context, ruleType string, enabled *bo
 	if enabled != nil {
 		whereClauses = append(whereClauses, fmt.Sprintf("enabled = $%d", argIndex))
 		args = append(args, *enabled)
-		argIndex++ //nolint:ineffassign // Incremented for consistency and potential future filters
+		// argIndex intentionally not incremented - this is the last filter
+		// If more filters are added in the future, they should increment argIndex
 	}
 
 	if len(whereClauses) > 0 {
 		query += " WHERE "
+		var builder strings.Builder
 		for i, clause := range whereClauses {
 			if i > 0 {
-				query += " AND "
+				builder.WriteString(" AND ")
 			}
-			query += clause
+			builder.WriteString(clause)
 		}
+		query += builder.String()
 	}
 
 	query += " ORDER BY priority DESC, created_at ASC"
@@ -131,7 +135,7 @@ func (r *RulesRepository) List(ctx context.Context, ruleType string, enabled *bo
 
 	for rows.Next() {
 		var rule domain.ClassificationRule
-		err := rows.Scan(
+		if err = rows.Scan(
 			&rule.ID,
 			&rule.RuleName,
 			&rule.RuleType,
@@ -142,8 +146,7 @@ func (r *RulesRepository) List(ctx context.Context, ruleType string, enabled *bo
 			&rule.Priority,
 			&rule.CreatedAt,
 			&rule.UpdatedAt,
-		)
-		if err != nil {
+		); err != nil {
 			return nil, fmt.Errorf("failed to scan rule: %w", err)
 		}
 		rules = append(rules, &rule)

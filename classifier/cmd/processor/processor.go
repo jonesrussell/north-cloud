@@ -10,11 +10,27 @@ import (
 	"time"
 
 	es "github.com/elastic/go-elasticsearch/v8"
+	"github.com/jmoiron/sqlx"
 	"github.com/jonesrussell/north-cloud/classifier/internal/classifier"
 	"github.com/jonesrussell/north-cloud/classifier/internal/database"
 	"github.com/jonesrussell/north-cloud/classifier/internal/domain"
 	"github.com/jonesrussell/north-cloud/classifier/internal/processor"
 	"github.com/jonesrussell/north-cloud/classifier/internal/storage"
+)
+
+const (
+	// Processor configuration constants
+	defaultMinQualityScore      = 30
+	defaultPollInterval         = 30 * time.Second
+	defaultQualityWeight        = 0.25
+	defaultMinWordCount         = 100
+	defaultOptimalWordCount800  = 800
+	defaultOptimalWordCount1000 = 1000
+	// Source reputation constants
+	defaultReputationScore70     = 70
+	defaultReputationDecayRate95 = 0.95
+	defaultSpamThreshold         = 30
+	minArticlesForTrust          = 10
 )
 
 // Config holds processor configuration
@@ -47,37 +63,27 @@ func LoadConfig() *Config {
 	}
 }
 
-// Start starts the processor
-func Start() error {
-	cfg := LoadConfig()
-
-	log.Println("Starting Classifier Processor")
-	log.Printf("Elasticsearch URL: %s", cfg.ElasticsearchURL)
-	log.Printf("Polling Interval: %s", cfg.PollingInterval)
-	log.Printf("Batch Size: %d", cfg.BatchSize)
-	log.Printf("Concurrent Workers: %d", cfg.ConcurrentWorkers)
-
-	// Create logger
-	logger := storage.NewSimpleLogger("[Processor] ")
-
-	// Create Elasticsearch client
+// setupElasticsearch creates and tests Elasticsearch connection
+func setupElasticsearch(cfg *Config) (*storage.ElasticsearchStorage, error) {
 	esCfg := es.Config{
 		Addresses: []string{cfg.ElasticsearchURL},
 	}
 	esClient, err := es.NewClient(esCfg)
 	if err != nil {
-		return fmt.Errorf("failed to create Elasticsearch client: %w", err)
+		return nil, fmt.Errorf("failed to create Elasticsearch client: %w", err)
 	}
 
-	// Test Elasticsearch connection
 	esStorage := storage.NewElasticsearchStorage(esClient)
 	ctx := context.Background()
-	if err := esStorage.TestConnection(ctx); err != nil {
-		return fmt.Errorf("failed to connect to Elasticsearch: %w", err)
+	if err = esStorage.TestConnection(ctx); err != nil {
+		return nil, fmt.Errorf("failed to connect to Elasticsearch: %w", err)
 	}
 	log.Println("Connected to Elasticsearch")
+	return esStorage, nil
+}
 
-	// Create PostgreSQL connection
+// setupDatabase creates PostgreSQL connection and repositories
+func setupDatabase(cfg *Config) (*sqlx.DB, *database.RulesRepository, *database.SourceReputationRepository, *database.ClassificationHistoryRepository, error) {
 	dbConfig := database.Config{
 		Host:     cfg.PostgresHost,
 		Port:     cfg.PostgresPort,
@@ -88,65 +94,98 @@ func Start() error {
 	}
 	db, err := database.NewPostgresConnection(dbConfig)
 	if err != nil {
-		return fmt.Errorf("failed to connect to database: %w", err)
+		return nil, nil, nil, nil, fmt.Errorf("failed to connect to database: %w", err)
+	}
+	log.Println("Connected to PostgreSQL")
+
+	rulesRepo := database.NewRulesRepository(db)
+	sourceRepRepo := database.NewSourceReputationRepository(db)
+	classificationHistoryRepo := database.NewClassificationHistoryRepository(db)
+
+	return db, rulesRepo, sourceRepRepo, classificationHistoryRepo, nil
+}
+
+// loadRules loads classification rules from database
+func loadRules(ctx context.Context, rulesRepo *database.RulesRepository) ([]domain.ClassificationRule, error) {
+	enabledOnly := true
+	rules, err := rulesRepo.List(ctx, domain.RuleTypeTopic, &enabledOnly)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load rules from database: %w", err)
+	}
+	log.Printf("Loaded %d classification rules from database", len(rules))
+
+	ruleValues := make([]domain.ClassificationRule, len(rules))
+	for i, rule := range rules {
+		ruleValues[i] = *rule
+	}
+	return ruleValues, nil
+}
+
+// createClassifierConfig creates classifier configuration
+func createClassifierConfig() classifier.Config {
+	return classifier.Config{
+		Version:         "1.0.0",
+		MinQualityScore: defaultMinQualityScore,
+		UpdateSourceRep: true,
+		QualityConfig: classifier.QualityConfig{
+			WordCountWeight:   defaultQualityWeight,
+			MetadataWeight:    defaultQualityWeight,
+			RichnessWeight:    defaultQualityWeight,
+			ReadabilityWeight: defaultQualityWeight,
+			MinWordCount:      defaultMinWordCount,
+			OptimalWordCount:  defaultOptimalWordCount800,
+		},
+		SourceReputationConfig: classifier.SourceReputationConfig{
+			DefaultScore:               defaultReputationScore70,
+			UpdateOnEachClassification: true,
+			SpamThreshold:              defaultSpamThreshold,
+			MinArticlesForTrust:        minArticlesForTrust,
+			ReputationDecayRate:        defaultReputationDecayRate95,
+		},
+	}
+}
+
+// Start starts the processor
+func Start() error {
+	cfg := LoadConfig()
+
+	log.Println("Starting Classifier Processor")
+	log.Printf("Elasticsearch URL: %s", cfg.ElasticsearchURL)
+	log.Printf("Polling Interval: %s", cfg.PollingInterval)
+	log.Printf("Batch Size: %d", cfg.BatchSize)
+	log.Printf("Concurrent Workers: %d", cfg.ConcurrentWorkers)
+
+	logger := storage.NewSimpleLogger("[Processor] ")
+
+	esStorage, err := setupElasticsearch(cfg)
+	if err != nil {
+		return err
+	}
+
+	db, rulesRepo, sourceRepRepo, classificationHistoryRepo, err := setupDatabase(cfg)
+	if err != nil {
+		return err
 	}
 	defer func() {
 		if closeErr := db.Close(); closeErr != nil {
 			log.Printf("Error closing database connection: %v", closeErr)
 		}
 	}()
-	log.Println("Connected to PostgreSQL")
 
-	// Create repositories
-	rulesRepo := database.NewRulesRepository(db)
-	sourceRepRepo := database.NewSourceReputationRepository(db)
-	classificationHistoryRepo := database.NewClassificationHistoryRepository(db)
-
-	// Create database adapter for poller
 	dbAdapter := storage.NewDatabaseAdapter(classificationHistoryRepo)
 
-	// Load classification rules from database
-	enabledOnly := true
-	rules, err := rulesRepo.List(ctx, domain.RuleTypeTopic, &enabledOnly)
+	ctx := context.Background()
+	ruleValues, err := loadRules(ctx, rulesRepo)
 	if err != nil {
-		return fmt.Errorf("failed to load rules from database: %w", err)
-	}
-	log.Printf("Loaded %d classification rules from database", len(rules))
-
-	// Convert rules to value slice for classifier
-	ruleValues := make([]domain.ClassificationRule, len(rules))
-	for i, rule := range rules {
-		ruleValues[i] = *rule
+		return err
 	}
 
-	// Create classifier with proper config
-	classifierConfig := classifier.Config{
-		Version:         "1.0.0",
-		MinQualityScore: 30,
-		UpdateSourceRep: true,
-		QualityConfig: classifier.QualityConfig{
-			WordCountWeight:   0.25,
-			MetadataWeight:    0.25,
-			RichnessWeight:    0.25,
-			ReadabilityWeight: 0.25,
-			MinWordCount:      100,
-			OptimalWordCount:  800,
-		},
-		SourceReputationConfig: classifier.SourceReputationConfig{
-			DefaultScore:               70,
-			UpdateOnEachClassification: true,
-			SpamThreshold:              30,
-			MinArticlesForTrust:        10,
-			ReputationDecayRate:        0.95,
-		},
-	}
+	classifierConfig := createClassifierConfig()
 	clf := classifier.NewClassifier(logger, ruleValues, sourceRepRepo, classifierConfig)
 	log.Println("Classifier initialized")
 
-	// Create batch processor
 	batchProcessor := processor.NewBatchProcessor(clf, cfg.ConcurrentWorkers, logger)
 
-	// Create poller
 	pollerConfig := processor.PollerConfig{
 		BatchSize:    cfg.BatchSize,
 		PollInterval: cfg.PollingInterval,
@@ -159,8 +198,7 @@ func Start() error {
 		pollerConfig,
 	)
 
-	// Start poller
-	if err := poller.Start(ctx); err != nil {
+	if err = poller.Start(ctx); err != nil {
 		return fmt.Errorf("failed to start poller: %w", err)
 	}
 
@@ -188,91 +226,33 @@ func StartWithStop() (func(), error) {
 	log.Printf("Batch Size: %d", cfg.BatchSize)
 	log.Printf("Concurrent Workers: %d", cfg.ConcurrentWorkers)
 
-	// Create logger
 	logger := storage.NewSimpleLogger("[Processor] ")
 
-	// Create Elasticsearch client
-	esCfg := es.Config{
-		Addresses: []string{cfg.ElasticsearchURL},
-	}
-	esClient, err := es.NewClient(esCfg)
+	esStorage, err := setupElasticsearch(cfg)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create Elasticsearch client: %w", err)
+		return nil, err
 	}
 
-	// Test Elasticsearch connection
-	esStorage := storage.NewElasticsearchStorage(esClient)
-	ctx := context.Background()
-	if err := esStorage.TestConnection(ctx); err != nil {
-		return nil, fmt.Errorf("failed to connect to Elasticsearch: %w", err)
-	}
-	log.Println("Connected to Elasticsearch")
-
-	// Create PostgreSQL connection
-	dbConfig := database.Config{
-		Host:     cfg.PostgresHost,
-		Port:     cfg.PostgresPort,
-		User:     cfg.PostgresUser,
-		Password: cfg.PostgresPassword,
-		DBName:   cfg.PostgresDB,
-		SSLMode:  cfg.PostgresSSLMode,
-	}
-	db, err := database.NewPostgresConnection(dbConfig)
+	db, rulesRepo, sourceRepRepo, classificationHistoryRepo, err := setupDatabase(cfg)
 	if err != nil {
-		return nil, fmt.Errorf("failed to connect to database: %w", err)
+		return nil, err
 	}
-	log.Println("Connected to PostgreSQL")
 
-	// Create repositories
-	rulesRepo := database.NewRulesRepository(db)
-	sourceRepRepo := database.NewSourceReputationRepository(db)
-	classificationHistoryRepo := database.NewClassificationHistoryRepository(db)
-
-	// Create database adapter for poller
 	dbAdapter := storage.NewDatabaseAdapter(classificationHistoryRepo)
 
-	// Load classification rules from database
-	enabledOnly := true
-	rules, err := rulesRepo.List(ctx, domain.RuleTypeTopic, &enabledOnly)
+	ctx := context.Background()
+	ruleValues, err := loadRules(ctx, rulesRepo)
 	if err != nil {
-		return nil, fmt.Errorf("failed to load rules from database: %w", err)
-	}
-	log.Printf("Loaded %d classification rules from database", len(rules))
-
-	// Convert rules to value slice for classifier
-	ruleValues := make([]domain.ClassificationRule, len(rules))
-	for i, rule := range rules {
-		ruleValues[i] = *rule
+		_ = db.Close()
+		return nil, err
 	}
 
-	// Create classifier with proper config
-	classifierConfig := classifier.Config{
-		Version:         "1.0.0",
-		MinQualityScore: 30,
-		UpdateSourceRep: true,
-		QualityConfig: classifier.QualityConfig{
-			WordCountWeight:   0.25,
-			MetadataWeight:    0.25,
-			RichnessWeight:    0.25,
-			ReadabilityWeight: 0.25,
-			MinWordCount:      100,
-			OptimalWordCount:  800,
-		},
-		SourceReputationConfig: classifier.SourceReputationConfig{
-			DefaultScore:               70,
-			UpdateOnEachClassification: true,
-			SpamThreshold:              30,
-			MinArticlesForTrust:        10,
-			ReputationDecayRate:        0.95,
-		},
-	}
+	classifierConfig := createClassifierConfig()
 	clf := classifier.NewClassifier(logger, ruleValues, sourceRepRepo, classifierConfig)
 	log.Println("Classifier initialized")
 
-	// Create batch processor
 	batchProcessor := processor.NewBatchProcessor(clf, cfg.ConcurrentWorkers, logger)
 
-	// Create poller
 	pollerConfig := processor.PollerConfig{
 		BatchSize:    cfg.BatchSize,
 		PollInterval: cfg.PollingInterval,
@@ -285,8 +265,8 @@ func StartWithStop() (func(), error) {
 		pollerConfig,
 	)
 
-	// Start poller
-	if err := poller.Start(ctx); err != nil {
+	if err = poller.Start(ctx); err != nil {
+		_ = db.Close()
 		return nil, fmt.Errorf("failed to start poller: %w", err)
 	}
 
@@ -314,7 +294,7 @@ func parseDuration(s string) time.Duration {
 	d, err := time.ParseDuration(s)
 	if err != nil {
 		log.Printf("Warning: Invalid duration %q, using 30s", s)
-		return 30 * time.Second
+		return defaultPollInterval
 	}
 	return d
 }

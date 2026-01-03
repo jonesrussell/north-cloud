@@ -8,6 +8,14 @@ import (
 	"github.com/jonesrussell/north-cloud/classifier/internal/domain"
 )
 
+const (
+	// Classification constants
+	spamThresholdScore     = 30
+	confidenceDivisor      = 3.0
+	qualityScoreNormalizer = 100.0
+	lowConfidenceThreshold = 0.3
+)
+
 // Classifier orchestrates all classification strategies
 type Classifier struct {
 	contentType      *ContentTypeClassifier
@@ -79,8 +87,8 @@ func (c *Classifier) Classify(ctx context.Context, raw *domain.RawContent) (*dom
 	}
 
 	// Update source reputation if enabled
-	isSpam := qualityResult.TotalScore < 30 // Spam threshold
-	if err := c.sourceReputation.UpdateAfterClassification(ctx, raw.SourceName, qualityResult.TotalScore, isSpam); err != nil {
+	isSpam := qualityResult.TotalScore < spamThresholdScore // Spam threshold
+	if err = c.sourceReputation.UpdateAfterClassification(ctx, raw.SourceName, qualityResult.TotalScore, isSpam); err != nil {
 		c.logger.Warn("Failed to update source reputation",
 			"source_name", raw.SourceName,
 			"error", err,
@@ -90,8 +98,8 @@ func (c *Classifier) Classify(ctx context.Context, raw *domain.RawContent) (*dom
 
 	// Calculate overall confidence (average of all confidences)
 	overallConfidence := (contentTypeResult.Confidence +
-		float64(qualityResult.TotalScore)/100.0 +
-		c.calculateTopicConfidence(topicResult)) / 3.0
+		float64(qualityResult.TotalScore)/qualityScoreNormalizer +
+		c.calculateTopicConfidence(topicResult)) / confidenceDivisor
 
 	// Build classification result
 	result := &domain.ClassificationResult{
@@ -162,11 +170,11 @@ func (c *Classifier) GetRules() []domain.ClassificationRule {
 }
 
 // calculateTopicConfidence calculates overall topic confidence
-// If no topics matched, confidence is low (0.3)
+// If no topics matched, confidence is low
 // If topics matched, use the highest topic score
 func (c *Classifier) calculateTopicConfidence(result *TopicResult) float64 {
 	if len(result.TopicScores) == 0 {
-		return 0.3 // Low confidence when no topics match
+		return lowConfidenceThreshold // Low confidence when no topics match
 	}
 
 	// Find highest topic score

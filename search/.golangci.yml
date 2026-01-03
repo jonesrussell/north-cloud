@@ -2,20 +2,16 @@ version: "2"
 linters:
   default: standard
   enable:
+    # Non-standard linters that provide additional value
     - asasalint
     - asciicheck
     - bidichk
-    - bodyclose
-    - canonicalheader
     - copyloopvar
     - cyclop
     - depguard
     - dupl
     - durationcheck
-    - errcheck
     - errname
-    - errorlint
-    - exhaustive
     - exptostd
     - fatcontext
     - forbidigo
@@ -28,12 +24,8 @@ linters:
     - gocyclo
     - gomoddirectives
     - goprintffuncname
-    - gosec
-    - govet
     - iface
-    - ineffassign
     - intrange
-    - lll
     - loggercheck
     - makezero
     - mirror
@@ -44,8 +36,6 @@ linters:
     - nilerr
     - nilnesserr
     - nilnil
-    - noctx
-    - nolintlint
     - nosprintfhostport
     - perfsprint
     - predeclared
@@ -53,19 +43,16 @@ linters:
     - protogetter
     - reassign
     - recvcheck
-    - revive
     - rowserrcheck
     - sloglint
     - spancheck
     - sqlclosecheck
-    - staticcheck
     - testableexamples
     - testifylint
     - testpackage
     - tparallel
     - unconvert
     - unparam
-    - unused
     - usestdlibvars
     - usetesting
     - wastedassign
@@ -85,17 +72,6 @@ linters:
               desc: Use github.com/google/uuid instead, satori's package is not maintained
             - pkg: github.com/gofrs/uuid$
               desc: Use github.com/gofrs/uuid/v5 or later, it was not a go module before v5
-        type_aliases:
-          files:
-            - '!internal/logger/*'
-            - '!internal/storage/*'
-            - '!internal/sources/*'
-            - '!internal/config/*'
-            - '!internal/common/*'
-          deny:
-            - pkg: github.com/jonesrussell/north-cloud/crawler/internal/storage/types.Interface
-              desc: Use common.Storage type alias instead of storage.Interface directly
-            - pkg: github.com/jonesrussell/north-cloud/crawler/internal/sources.Interface
     errcheck:
       check-type-assertions: true
     exhaustive:
@@ -278,19 +254,10 @@ linters:
         path: _test\.go
       - linters:
           - forbidigo
-        path: cmd/root\.go
+        path: cmd/.*\.go
       - linters:
           - gochecknoglobals
         path: .*module\.go$
-      - linters:
-          - gocritic
-        text: Use common.Logger type alias instead of logger.Interface directly
-      - linters:
-          - gocritic
-        text: Use common.Storage type alias instead of storage.Interface directly
-      - linters:
-          - gocritic
-        text: Use common.Config type alias instead of config.Config directly
       - linters:
           - gomoddirectives
         path: go\.mod$

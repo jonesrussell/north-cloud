@@ -27,20 +27,20 @@ type Logger interface {
 
 // ProcessResult holds the result of processing a single item
 type ProcessResult struct {
-	Raw                  *domain.RawContent
-	ClassificationResult *domain.ClassificationResult
-	ClassifiedContent    *domain.ClassifiedContent
-	Error                error
+	Raw                  *domain.RawContent           `json:"raw"`
+	ClassificationResult *domain.ClassificationResult `json:"classification_result"`
+	ClassifiedContent    *domain.ClassifiedContent    `json:"classified_content"`
+	Error                error                        `json:"error,omitempty"`
 }
 
 // NewBatchProcessor creates a new batch processor
-func NewBatchProcessor(classifier *classifier.Classifier, concurrency int, logger Logger) *BatchProcessor {
+func NewBatchProcessor(classifierInstance *classifier.Classifier, concurrency int, logger Logger) *BatchProcessor {
 	if concurrency <= 0 {
 		concurrency = 10 // Default concurrency
 	}
 
 	return &BatchProcessor{
-		classifier:  classifier,
+		classifier:  classifierInstance,
 		concurrency: concurrency,
 		logger:      logger,
 	}
@@ -65,7 +65,7 @@ func (b *BatchProcessor) Process(ctx context.Context, rawItems []*domain.RawCont
 
 	// Start worker pool
 	var wg sync.WaitGroup
-	for i := 0; i < b.concurrency; i++ {
+	for i := range b.concurrency {
 		wg.Add(1)
 		go b.worker(ctx, i, jobs, results, &wg)
 	}

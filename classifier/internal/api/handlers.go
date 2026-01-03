@@ -13,6 +13,11 @@ import (
 	"github.com/jonesrussell/north-cloud/classifier/internal/processor"
 )
 
+const (
+	// Default confidence threshold for classification rules
+	defaultMinConfidence = 0.3
+)
+
 // Handler handles HTTP requests for the classifier API
 type Handler struct {
 	classifier                *classifier.Classifier
@@ -219,7 +224,7 @@ func (h *Handler) CreateRule(c *gin.Context) {
 		RuleType:      domain.RuleTypeTopic,
 		TopicName:     req.Topic,
 		Keywords:      req.Keywords,
-		MinConfidence: 0.3, // Default confidence threshold
+		MinConfidence: defaultMinConfidence,
 		Enabled:       req.Enabled,
 		Priority:      priorityStringToInt(req.Priority),
 	}
@@ -254,7 +259,7 @@ func (h *Handler) UpdateRule(c *gin.Context) {
 	}
 
 	var req CreateRuleRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
+	if err = c.ShouldBindJSON(&req); err != nil {
 		h.logger.Warn("Invalid update rule request", "error", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -278,7 +283,7 @@ func (h *Handler) UpdateRule(c *gin.Context) {
 	rule.RuleName = fmt.Sprintf("%s_detection", req.Topic)
 
 	// Update in database
-	if err := h.rulesRepo.Update(c.Request.Context(), rule); err != nil {
+	if err = h.rulesRepo.Update(c.Request.Context(), rule); err != nil {
 		h.logger.Error("Failed to update rule", "id", ruleID, "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update rule"})
 		return
@@ -309,7 +314,7 @@ func (h *Handler) DeleteRule(c *gin.Context) {
 	h.logger.Info("Deleting classification rule", "id", ruleID)
 
 	// Delete from database
-	if err := h.rulesRepo.Delete(c.Request.Context(), ruleID); err != nil {
+	if err = h.rulesRepo.Delete(c.Request.Context(), ruleID); err != nil {
 		h.logger.Error("Failed to delete rule", "id", ruleID, "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete rule"})
 		return
@@ -419,7 +424,7 @@ func (h *Handler) UpdateSource(c *gin.Context) {
 	source.Category = req.Category
 
 	// Update in database
-	if err := h.sourceReputationRepo.UpdateSource(c.Request.Context(), source); err != nil {
+	if err = h.sourceReputationRepo.UpdateSource(c.Request.Context(), source); err != nil {
 		h.logger.Error("Failed to update source", "source_name", sourceName, "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update source"})
 		return

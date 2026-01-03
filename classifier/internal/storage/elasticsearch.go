@@ -78,12 +78,13 @@ func (s *ElasticsearchStorage) QueryRawContent(ctx context.Context, status strin
 		} `json:"hits"`
 	}
 
-	if err := json.NewDecoder(res.Body).Decode(&searchResult); err != nil {
+	if err = json.NewDecoder(res.Body).Decode(&searchResult); err != nil {
 		return nil, fmt.Errorf("error decoding response: %w", err)
 	}
 
 	contents := make([]*domain.RawContent, 0, len(searchResult.Hits.Hits))
-	for _, hit := range searchResult.Hits.Hits {
+	for i := range searchResult.Hits.Hits {
+		hit := &searchResult.Hits.Hits[i]
 		content := hit.Source
 		// Preserve the Elasticsearch document ID if not already set
 		if content.ID == "" {
@@ -139,7 +140,7 @@ func (s *ElasticsearchStorage) IndexClassifiedContent(ctx context.Context, conte
 
 // UpdateRawContentStatus updates the classification_status field in raw_content
 // This matches the ElasticsearchClient interface expected by the Poller
-func (s *ElasticsearchStorage) UpdateRawContentStatus(ctx context.Context, contentID string, status string, classifiedAt time.Time) error {
+func (s *ElasticsearchStorage) UpdateRawContentStatus(ctx context.Context, contentID, status string, classifiedAt time.Time) error {
 	// We need to find which index this document is in
 	// For now, we'll update across all *_raw_content indices
 	// In production, you might want to track index per content ID
@@ -165,28 +166,31 @@ func (s *ElasticsearchStorage) UpdateRawContentStatus(ctx context.Context, conte
 
 	var lastErr error
 	for _, index := range indices {
-		res, err := s.client.Update(
+		res, updateErr := s.client.Update(
 			index,
 			contentID,
 			bytes.NewReader(updateBytes),
 			s.client.Update.WithContext(ctx),
 		)
-		if err != nil {
-			lastErr = err
+		if updateErr != nil {
+			lastErr = updateErr
 			continue
 		}
-		defer func() {
-			if closeErr := res.Body.Close(); closeErr != nil {
-				_ = closeErr // Body close errors are usually non-critical
-			}
-		}()
 
+		// Check if update was successful before processing response
 		if !res.IsError() {
-			// Successfully updated
+			// Successfully updated - close response and return
+			if res.Body != nil {
+				_ = res.Body.Close()
+			}
 			return nil
 		}
+
 		// If we get a 404, the document wasn't in this index - that's expected
-		// Continue to next index
+		// Continue to next index after closing response
+		if res.Body != nil {
+			_ = res.Body.Close()
+		}
 		lastErr = fmt.Errorf("error updating document: %s", res.String())
 	}
 
@@ -275,7 +279,7 @@ func (s *ElasticsearchStorage) ListRawContentIndices(ctx context.Context) ([]str
 	}
 
 	var indices map[string]interface{}
-	if err := json.NewDecoder(res.Body).Decode(&indices); err != nil {
+	if err = json.NewDecoder(res.Body).Decode(&indices); err != nil {
 		return nil, fmt.Errorf("error decoding response: %w", err)
 	}
 
