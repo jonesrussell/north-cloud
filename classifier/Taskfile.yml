@@ -114,82 +114,142 @@ tasks:
     desc: "Run database migrations up"
     silent: true
     env:
-      PGPASSWORD: '{{.POSTGRES_PASSWORD}}'
+      PGPASSWORD: '{{.POSTGRES_PASSWORD | default "postgres"}}'
     cmds:
       - |
-        if [ -z "{{.POSTGRES_PASSWORD}}" ]; then
-          echo "POSTGRES_CLASSIFIER_PASSWORD environment variable not set"
-          exit 1
-        fi
-      - |
-        DB_HOST="{{.POSTGRES_HOST}}"
-        DB_PORT="{{.POSTGRES_PORT}}"
-        DB_USER="{{.POSTGRES_USER}}"
-        DB_PASSWORD="{{.POSTGRES_PASSWORD}}"
-        DB_NAME="{{.POSTGRES_DB}}"
+        DB_HOST="{{.POSTGRES_HOST | default "localhost"}}"
+        DB_PORT="{{.POSTGRES_PORT | default "5432"}}"
+        DB_USER="{{.POSTGRES_USER | default "postgres"}}"
+        DB_PASSWORD="{{.POSTGRES_PASSWORD | default "postgres"}}"
+        DB_NAME="{{.POSTGRES_DB | default "classifier"}}"
         
-        # Use Docker to run migration if connecting to containerized database
-        if [ "$DB_HOST" = "localhost" ] && docker ps --format '{{.Names}}' | grep -q 'north-cloud-postgres-classifier'; then
-          echo "Running migration via Docker (connecting to postgres-classifier container)..."
-          docker run --rm --network north-cloud_north-cloud-network \
-            -v "$(pwd)/migrations:/migrations" \
+        # Detect Docker Swarm mode
+        if docker service ls --format '{{.Name}}' 2>/dev/null | grep -q 'northcloud_postgres-classifier'; then
+          echo "Running migration via Docker Swarm (connecting to northcloud_postgres-classifier service)..."
+          NETWORK="northcloud_north-cloud-network"
+          docker run --rm --network "$NETWORK" \
+            -v "$(pwd)/migrations:/migrations:ro" \
+            migrate/migrate:latest \
+            -path /migrations \
+            -database "postgres://${DB_USER}:${DB_PASSWORD}@northcloud_postgres-classifier:5432/${DB_NAME}?sslmode=disable" \
+            up
+        # Check for Docker Compose mode
+        elif docker ps --format '{{.Names}}' | grep -q 'north-cloud-postgres-classifier\|postgres-classifier'; then
+          echo "Running migration via Docker Compose (connecting to postgres-classifier container)..."
+          NETWORK=$(docker network ls --filter name=north-cloud --format '{{.Name}}' | grep network | head -1)
+          if [ -z "$NETWORK" ]; then
+            NETWORK="north-cloud_north-cloud-network"
+          fi
+          docker run --rm --network "$NETWORK" \
+            -v "$(pwd)/migrations:/migrations:ro" \
             migrate/migrate:latest \
             -path /migrations \
             -database "postgres://${DB_USER}:${DB_PASSWORD}@postgres-classifier:5432/${DB_NAME}?sslmode=disable" \
             up
+        # Fallback: use localhost with exposed port
         else
-          echo "Running migration via local connection..."
-          DATABASE_URL="postgres://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_NAME}?sslmode=disable"
-          migrate -path ./migrations -database "$DATABASE_URL" up
+          echo "Running migration via localhost connection (port ${DB_PORT})..."
+          docker run --rm \
+            -v "$(pwd)/migrations:/migrations:ro" \
+            --network host \
+            migrate/migrate:latest \
+            -path /migrations \
+            -database "postgres://${DB_USER}:${DB_PASSWORD}@localhost:${DB_PORT}/${DB_NAME}?sslmode=disable" \
+            up
         fi
 
   migrate:down:
     desc: "Rollback last migration"
     silent: true
     env:
-      PGPASSWORD: '{{.POSTGRES_PASSWORD}}'
+      PGPASSWORD: '{{.POSTGRES_PASSWORD | default "postgres"}}'
     cmds:
       - |
-        if [ -z "{{.POSTGRES_PASSWORD}}" ]; then
-          echo "POSTGRES_CLASSIFIER_PASSWORD environment variable not set"
-          exit 1
-        fi
-      - |
-        DB_HOST="{{.POSTGRES_HOST}}"
-        DB_PORT="{{.POSTGRES_PORT}}"
-        DB_USER="{{.POSTGRES_USER}}"
-        DB_PASSWORD="{{.POSTGRES_PASSWORD}}"
-        DB_NAME="{{.POSTGRES_DB}}"
+        DB_HOST="{{.POSTGRES_HOST | default "localhost"}}"
+        DB_PORT="{{.POSTGRES_PORT | default "5432"}}"
+        DB_USER="{{.POSTGRES_USER | default "postgres"}}"
+        DB_PASSWORD="{{.POSTGRES_PASSWORD | default "postgres"}}"
+        DB_NAME="{{.POSTGRES_DB | default "classifier"}}"
         
-        # Use Docker to run migration if connecting to containerized database
-        if [ "$DB_HOST" = "localhost" ] && docker ps --format '{{.Names}}' | grep -q 'north-cloud-postgres-classifier'; then
-          echo "Running migration via Docker (connecting to postgres-classifier container)..."
-          docker run --rm --network north-cloud_north-cloud-network \
-            -v "$(pwd)/migrations:/migrations" \
+        # Detect Docker Swarm mode
+        if docker service ls --format '{{.Name}}' 2>/dev/null | grep -q 'northcloud_postgres-classifier'; then
+          echo "Rolling back migration via Docker Swarm..."
+          NETWORK="northcloud_north-cloud-network"
+          docker run --rm --network "$NETWORK" \
+            -v "$(pwd)/migrations:/migrations:ro" \
+            migrate/migrate:latest \
+            -path /migrations \
+            -database "postgres://${DB_USER}:${DB_PASSWORD}@northcloud_postgres-classifier:5432/${DB_NAME}?sslmode=disable" \
+            down 1
+        # Check for Docker Compose mode
+        elif docker ps --format '{{.Names}}' | grep -q 'north-cloud-postgres-classifier\|postgres-classifier'; then
+          echo "Rolling back migration via Docker Compose..."
+          NETWORK=$(docker network ls --filter name=north-cloud --format '{{.Name}}' | grep network | head -1)
+          if [ -z "$NETWORK" ]; then
+            NETWORK="north-cloud_north-cloud-network"
+          fi
+          docker run --rm --network "$NETWORK" \
+            -v "$(pwd)/migrations:/migrations:ro" \
             migrate/migrate:latest \
             -path /migrations \
             -database "postgres://${DB_USER}:${DB_PASSWORD}@postgres-classifier:5432/${DB_NAME}?sslmode=disable" \
             down 1
+        # Fallback: use localhost with exposed port
         else
-          echo "Running migration via local connection..."
-          DATABASE_URL="postgres://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_NAME}?sslmode=disable"
-          migrate -path ./migrations -database "$DATABASE_URL" down 1
+          echo "Rolling back migration via localhost connection..."
+          docker run --rm \
+            -v "$(pwd)/migrations:/migrations:ro" \
+            --network host \
+            migrate/migrate:latest \
+            -path /migrations \
+            -database "postgres://${DB_USER}:${DB_PASSWORD}@localhost:${DB_PORT}/${DB_NAME}?sslmode=disable" \
+            down 1
         fi
 
   migrate:version:
     desc: "Show current migration version"
     silent: true
     env:
-      PGPASSWORD: '{{.POSTGRES_PASSWORD}}'
+      PGPASSWORD: '{{.POSTGRES_PASSWORD | default "postgres"}}'
     cmds:
       - |
-        if [ -z "{{.POSTGRES_PASSWORD}}" ]; then
-          echo "POSTGRES_CLASSIFIER_PASSWORD environment variable not set"
-          exit 1
+        DB_HOST="{{.POSTGRES_HOST | default "localhost"}}"
+        DB_PORT="{{.POSTGRES_PORT | default "5432"}}"
+        DB_USER="{{.POSTGRES_USER | default "postgres"}}"
+        DB_PASSWORD="{{.POSTGRES_PASSWORD | default "postgres"}}"
+        DB_NAME="{{.POSTGRES_DB | default "classifier"}}"
+        
+        # Detect Docker Swarm mode
+        if docker service ls --format '{{.Name}}' 2>/dev/null | grep -q 'northcloud_postgres-classifier'; then
+          NETWORK="northcloud_north-cloud-network"
+          docker run --rm --network "$NETWORK" \
+            -v "$(pwd)/migrations:/migrations:ro" \
+            migrate/migrate:latest \
+            -path /migrations \
+            -database "postgres://${DB_USER}:${DB_PASSWORD}@northcloud_postgres-classifier:5432/${DB_NAME}?sslmode=disable" \
+            version
+        # Check for Docker Compose mode
+        elif docker ps --format '{{.Names}}' | grep -q 'north-cloud-postgres-classifier\|postgres-classifier'; then
+          NETWORK=$(docker network ls --filter name=north-cloud --format '{{.Name}}' | grep network | head -1)
+          if [ -z "$NETWORK" ]; then
+            NETWORK="north-cloud_north-cloud-network"
+          fi
+          docker run --rm --network "$NETWORK" \
+            -v "$(pwd)/migrations:/migrations:ro" \
+            migrate/migrate:latest \
+            -path /migrations \
+            -database "postgres://${DB_USER}:${DB_PASSWORD}@postgres-classifier:5432/${DB_NAME}?sslmode=disable" \
+            version
+        # Fallback: use localhost with exposed port
+        else
+          docker run --rm \
+            -v "$(pwd)/migrations:/migrations:ro" \
+            --network host \
+            migrate/migrate:latest \
+            -path /migrations \
+            -database "postgres://${DB_USER}:${DB_PASSWORD}@localhost:${DB_PORT}/${DB_NAME}?sslmode=disable" \
+            version
         fi
-      - |
-        DATABASE_URL="postgres://{{.POSTGRES_USER}}:{{.POSTGRES_PASSWORD}}@{{.POSTGRES_HOST}}:{{.POSTGRES_PORT}}/{{.POSTGRES_DB}}?sslmode=disable"
-        migrate -path ./migrations -database "$DATABASE_URL" version
 
   migrate:check:
     desc: "Check if migrations have been applied"

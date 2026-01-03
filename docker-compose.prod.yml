@@ -43,6 +43,8 @@ services:
       CRAWLER_SAVE_DISCOVERED_LINKS: "${CRAWLER_SAVE_DISCOVERED_LINKS:-false}"
       APP_ENV: production
       AUTH_JWT_SECRET: "${AUTH_JWT_SECRET}"
+      SERVER_SECURITY_ENABLED: "false"
+      SERVER_PORT: "8080"
 
   # ------------------------------------------------------------
   # Source Manager (Prod)
@@ -78,8 +80,8 @@ services:
     environment:
       POSTGRES_PUBLISHER_HOST: postgres-publisher
       POSTGRES_PUBLISHER_PORT: 5432
-      POSTGRES_PUBLISHER_USER: "${POSTGRES_PUBLISHER_USER}"
-      POSTGRES_PUBLISHER_PASSWORD: "${POSTGRES_PUBLISHER_PASSWORD}"
+      POSTGRES_PUBLISHER_USER: "${POSTGRES_PUBLISHER_USER:-postgres}"
+      POSTGRES_PUBLISHER_PASSWORD: "${POSTGRES_PUBLISHER_PASSWORD:-postgres}"
       POSTGRES_PUBLISHER_DB: "${POSTGRES_PUBLISHER_DB:-publisher}"
       POSTGRES_PUBLISHER_SSLMODE: disable
       PUBLISHER_PORT: 8070
@@ -111,8 +113,8 @@ services:
     environment:
       POSTGRES_PUBLISHER_HOST: postgres-publisher
       POSTGRES_PUBLISHER_PORT: 5432
-      POSTGRES_PUBLISHER_USER: "${POSTGRES_PUBLISHER_USER}"
-      POSTGRES_PUBLISHER_PASSWORD: "${POSTGRES_PUBLISHER_PASSWORD}"
+      POSTGRES_PUBLISHER_USER: "${POSTGRES_PUBLISHER_USER:-postgres}"
+      POSTGRES_PUBLISHER_PASSWORD: "${POSTGRES_PUBLISHER_PASSWORD:-postgres}"
       POSTGRES_PUBLISHER_DB: "${POSTGRES_PUBLISHER_DB:-publisher}"
       POSTGRES_PUBLISHER_SSLMODE: disable
       ELASTICSEARCH_URL: http://elasticsearch:9200
@@ -135,8 +137,8 @@ services:
     environment:
       POSTGRES_HOST: postgres-classifier
       POSTGRES_PORT: 5432
-      POSTGRES_USER: "${POSTGRES_CLASSIFIER_USER}"
-      POSTGRES_PASSWORD: "${POSTGRES_CLASSIFIER_PASSWORD}"
+      POSTGRES_USER: "${POSTGRES_CLASSIFIER_USER:-postgres}"
+      POSTGRES_PASSWORD: "${POSTGRES_CLASSIFIER_PASSWORD:-postgres}"
       POSTGRES_DB: "${POSTGRES_CLASSIFIER_DB:-classifier}"
       POSTGRES_SSLMODE: disable
       ELASTICSEARCH_URL: http://elasticsearch:9200
@@ -256,15 +258,15 @@ services:
   elasticsearch:
     environment:
       xpack.security.enabled: "${ELASTICSEARCH_SECURITY_ENABLED:-true}"
-      ES_JAVA_OPTS: "-Xms${ELASTICSEARCH_MIN_HEAP:-1g} -Xmx${ELASTICSEARCH_MAX_HEAP:-2g}"
+      ES_JAVA_OPTS: "-Xms${ELASTICSEARCH_MIN_HEAP:-256m} -Xmx${ELASTICSEARCH_MAX_HEAP:-512m}"
     deploy:
       resources:
         limits:
-          cpus: "4"
-          memory: 4G
+          cpus: "1"
+          memory: 1.5G
         reservations:
-          cpus: "2"
-          memory: 2G
+          cpus: "0.5"
+          memory: 512M
 
   # ============================================================
   # Redis (Prod Overrides)
