@@ -31,6 +31,16 @@ services:
     depends_on:
       - postgres-crawler
       - elasticsearch
+    deploy:
+      restart_policy:
+        condition: any
+      resources:
+        limits:
+          cpus: "1"
+          memory: 1G
+        reservations:
+          cpus: "0.25"
+          memory: 256M
     environment:
       DB_HOST: postgres-crawler
       DB_PORT: 5432
@@ -257,7 +267,7 @@ services:
   # ============================================================
   elasticsearch:
     environment:
-      xpack.security.enabled: "${ELASTICSEARCH_SECURITY_ENABLED:-true}"
+      xpack.security.enabled: "${ELASTICSEARCH_SECURITY_ENABLED:-false}"
       ES_JAVA_OPTS: "-Xms${ELASTICSEARCH_MIN_HEAP:-256m} -Xmx${ELASTICSEARCH_MAX_HEAP:-512m}"
     deploy:
       resources:
