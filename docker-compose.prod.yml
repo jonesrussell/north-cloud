@@ -1,133 +1,129 @@
-# Production Docker Compose Configuration
-# Usage: docker-compose -f docker-compose.base.yml -f docker-compose.prod.yml up -d
+version: "3.9"
+
+# ============================================================
+# Production Defaults (DRY)
+# ============================================================
+
+x-prod-defaults: &prod-defaults
+  networks:
+    - north-cloud-network
+  restart: always
+  deploy:
+    resources:
+      limits:
+        cpus: "2"
+        memory: 2G
+      reservations:
+        cpus: "0.5"
+        memory: 512M
+
+# ============================================================
+# Application Services - Production
+# ============================================================
 
 services:
-  # ============================================
-  # Application Services - Production
-  # ============================================
 
-  # Crawler service - Production
+  # ------------------------------------------------------------
+  # Crawler (Prod)
+  # ------------------------------------------------------------
   crawler:
+    <<: *prod-defaults
     build:
       context: .
       dockerfile: ./crawler/Dockerfile
-      # Use production build target if multi-stage
       args:
-        - BUILD_ENV=production
-    container_name: north-cloud-crawler
+        BUILD_ENV: production
     depends_on:
       postgres-crawler:
         condition: service_healthy
       elasticsearch:
         condition: service_healthy
     environment:
-      - DB_HOST=postgres-crawler
-      - DB_PORT=5432
-      - DB_USER=${POSTGRES_CRAWLER_USER}
-      - DB_PASSWORD=${POSTGRES_CRAWLER_PASSWORD}
-      - DB_NAME=${POSTGRES_CRAWLER_DB:-crawler}
-      - DB_SSLMODE=disable
-      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
-      - CRAWLER_SOURCES_API_URL=http://source-manager:8050/api/v1/sources
-      - CRAWLER_SAVE_DISCOVERED_LINKS=${CRAWLER_SAVE_DISCOVERED_LINKS:-false}
-      - APP_ENV=production
-      - AUTH_JWT_SECRET=${AUTH_JWT_SECRET}
-    # No volume mounts - code is baked into image
-    networks:
-      - north-cloud-network
-    restart: always
-    # Production: no exposed ports unless needed for health checks
-    deploy:
-      resources:
-        limits:
-          cpus: '2'
-          memory: 2G
-        reservations:
-          cpus: '0.5'
-          memory: 512M
+      DB_HOST: postgres-crawler
+      DB_PORT: 5432
+      DB_USER: "${POSTGRES_CRAWLER_USER}"
+      DB_PASSWORD: "${POSTGRES_CRAWLER_PASSWORD}"
+      DB_NAME: "${POSTGRES_CRAWLER_DB:-crawler}"
+      DB_SSLMODE: disable
+      ELASTICSEARCH_HOSTS: http://elasticsearch:9200
+      CRAWLER_SOURCES_API_URL: http://source-manager:8050/api/v1/sources
+      CRAWLER_SAVE_DISCOVERED_LINKS: "${CRAWLER_SAVE_DISCOVERED_LINKS:-false}"
+      APP_ENV: production
+      AUTH_JWT_SECRET: "${AUTH_JWT_SECRET}"
 
-  # Source Manager service - Production
+  # ------------------------------------------------------------
+  # Source Manager (Prod)
+  # ------------------------------------------------------------
   source-manager:
+    <<: *prod-defaults
     build:
       context: .
       dockerfile: ./source-manager/Dockerfile
       args:
-        - BUILD_ENV=production
-    container_name: north-cloud-source-manager
+        BUILD_ENV: production
     depends_on:
       postgres-source-manager:
         condition: service_healthy
     environment:
-      - APP_DEBUG=false
-      - APP_ENV=production
-      - SERVER_HOST=${SOURCE_MANAGER_HOST:-0.0.0.0}
-      - SERVER_PORT=${SOURCE_MANAGER_PORT:-8050}
-      - DB_HOST=postgres-source-manager
-      - DB_PORT=5432
-      - DB_USER=${POSTGRES_SOURCE_MANAGER_USER}
-      - DB_PASSWORD=${POSTGRES_SOURCE_MANAGER_PASSWORD}
-      - DB_NAME=${POSTGRES_SOURCE_MANAGER_DB:-gosources}
-      - DB_SSLMODE=disable
+      APP_DEBUG: "false"
+      APP_ENV: production
+      SERVER_HOST: "${SOURCE_MANAGER_HOST:-0.0.0.0}"
+      SERVER_PORT: "${SOURCE_MANAGER_PORT:-8050}"
+      DB_HOST: postgres-source-manager
+      DB_PORT: 5432
+      DB_USER: "${POSTGRES_SOURCE_MANAGER_USER}"
+      DB_PASSWORD: "${POSTGRES_SOURCE_MANAGER_PASSWORD}"
+      DB_NAME: "${POSTGRES_SOURCE_MANAGER_DB:-gosources}"
+      DB_SSLMODE: disable
     volumes:
-      # Only mount migrations, not source code
       - ./source-manager/migrations:/migrations:ro
-    networks:
-      - north-cloud-network
-    restart: always
-    deploy:
-      resources:
-        limits:
-          cpus: '2'
-          memory: 2G
-        reservations:
-          cpus: '0.5'
-          memory: 512M
 
-  # Publisher API - Production
+  # ------------------------------------------------------------
+  # Publisher API (Prod)
+  # ------------------------------------------------------------
   publisher-api:
+    <<: *prod-defaults
     build:
       context: .
       dockerfile: ./publisher/Dockerfile
       args:
-        - BUILD_ENV=production
-    container_name: north-cloud-publisher-api
+        BUILD_ENV: production
     command: ["/app/publisher", "api"]
     depends_on:
       postgres-publisher:
         condition: service_healthy
     environment:
-      - POSTGRES_PUBLISHER_HOST=postgres-publisher
-      - POSTGRES_PUBLISHER_PORT=5432
-      - POSTGRES_PUBLISHER_USER=${POSTGRES_PUBLISHER_USER}
-      - POSTGRES_PUBLISHER_PASSWORD=${POSTGRES_PUBLISHER_PASSWORD}
-      - POSTGRES_PUBLISHER_DB=${POSTGRES_PUBLISHER_DB:-publisher}
-      - POSTGRES_PUBLISHER_SSLMODE=disable
-      - PUBLISHER_PORT=8070
-      - AUTH_JWT_SECRET=${AUTH_JWT_SECRET}
-      - REDIS_ADDR=redis:6379
-      - REDIS_PASSWORD=${REDIS_PASSWORD}
-      - GIN_MODE=release
-      - APP_DEBUG=false
-    networks:
-      - north-cloud-network
-    restart: always
+      POSTGRES_PUBLISHER_HOST: postgres-publisher
+      POSTGRES_PUBLISHER_PORT: 5432
+      POSTGRES_PUBLISHER_USER: "${POSTGRES_PUBLISHER_USER}"
+      POSTGRES_PUBLISHER_PASSWORD: "${POSTGRES_PUBLISHER_PASSWORD}"
+      POSTGRES_PUBLISHER_DB: "${POSTGRES_PUBLISHER_DB:-publisher}"
+      POSTGRES_PUBLISHER_SSLMODE: disable
+      PUBLISHER_PORT: 8070
+      AUTH_JWT_SECRET: "${AUTH_JWT_SECRET}"
+      REDIS_ADDR: redis:6379
+      REDIS_PASSWORD: "${REDIS_PASSWORD}"
+      GIN_MODE: release
+      APP_DEBUG: "false"
     deploy:
       resources:
         limits:
-          cpus: '2'
+          cpus: "2"
           memory: 1G
         reservations:
-          cpus: '0.5'
+          cpus: "0.5"
           memory: 256M
 
-  # Publisher Router - Production
+  # ------------------------------------------------------------
+  # Publisher Router (Prod)
+  # ------------------------------------------------------------
   publisher-router:
+    <<: *prod-defaults
     build:
       context: .
       dockerfile: ./publisher/Dockerfile
       args:
-        - BUILD_ENV=production
-    container_name: north-cloud-publisher-router
+        BUILD_ENV: production
     command: ["/app/publisher", "router"]
     depends_on:
       postgres-publisher:
@@ -137,38 +133,29 @@ services:
       redis:
         condition: service_healthy
     environment:
-      - POSTGRES_PUBLISHER_HOST=postgres-publisher
-      - POSTGRES_PUBLISHER_PORT=5432
-      - POSTGRES_PUBLISHER_USER=${POSTGRES_PUBLISHER_USER}
-      - POSTGRES_PUBLISHER_PASSWORD=${POSTGRES_PUBLISHER_PASSWORD}
-      - POSTGRES_PUBLISHER_DB=${POSTGRES_PUBLISHER_DB:-publisher}
-      - POSTGRES_PUBLISHER_SSLMODE=disable
-      - ELASTICSEARCH_URL=http://elasticsearch:9200
-      - REDIS_ADDR=redis:6379
-      - REDIS_PASSWORD=${REDIS_PASSWORD}
-      - PUBLISHER_ROUTER_CHECK_INTERVAL=${PUBLISHER_ROUTER_CHECK_INTERVAL:-5m}
-      - PUBLISHER_ROUTER_BATCH_SIZE=${PUBLISHER_ROUTER_BATCH_SIZE:-100}
-      - APP_DEBUG=false
-    networks:
-      - north-cloud-network
-    restart: always
-    deploy:
-      resources:
-        limits:
-          cpus: '2'
-          memory: 2G
-        reservations:
-          cpus: '0.5'
-          memory: 512M
+      POSTGRES_PUBLISHER_HOST: postgres-publisher
+      POSTGRES_PUBLISHER_PORT: 5432
+      POSTGRES_PUBLISHER_USER: "${POSTGRES_PUBLISHER_USER}"
+      POSTGRES_PUBLISHER_PASSWORD: "${POSTGRES_PUBLISHER_PASSWORD}"
+      POSTGRES_PUBLISHER_DB: "${POSTGRES_PUBLISHER_DB:-publisher}"
+      POSTGRES_PUBLISHER_SSLMODE: disable
+      ELASTICSEARCH_URL: http://elasticsearch:9200
+      REDIS_ADDR: redis:6379
+      REDIS_PASSWORD: "${REDIS_PASSWORD}"
+      PUBLISHER_ROUTER_CHECK_INTERVAL: "${PUBLISHER_ROUTER_CHECK_INTERVAL:-5m}"
+      PUBLISHER_ROUTER_BATCH_SIZE: "${PUBLISHER_ROUTER_BATCH_SIZE:-100}"
+      APP_DEBUG: "false"
 
-  # Classifier service - Production
+  # ------------------------------------------------------------
+  # Classifier (Prod)
+  # ------------------------------------------------------------
   classifier:
+    <<: *prod-defaults
     build:
       context: .
       dockerfile: ./classifier/Dockerfile
       args:
-        - BUILD_ENV=production
-    container_name: north-cloud-classifier
+        BUILD_ENV: production
     depends_on:
       postgres-classifier:
         condition: service_healthy
@@ -177,81 +164,61 @@ services:
       redis:
         condition: service_healthy
     environment:
-      - POSTGRES_HOST=postgres-classifier
-      - POSTGRES_PORT=5432
-      - POSTGRES_USER=${POSTGRES_CLASSIFIER_USER}
-      - POSTGRES_PASSWORD=${POSTGRES_CLASSIFIER_PASSWORD}
-      - POSTGRES_DB=${POSTGRES_CLASSIFIER_DB:-classifier}
-      - POSTGRES_SSLMODE=disable
-      - ELASTICSEARCH_URL=http://elasticsearch:9200
-      - ES_URL=http://elasticsearch:9200
-      - REDIS_URL=redis:6379
-      - REDIS_PASSWORD=${REDIS_PASSWORD}
-      - APP_DEBUG=false
-      - APP_ENV=production
-      - CLASSIFIER_PORT=8070
+      POSTGRES_HOST: postgres-classifier
+      POSTGRES_PORT: 5432
+      POSTGRES_USER: "${POSTGRES_CLASSIFIER_USER}"
+      POSTGRES_PASSWORD: "${POSTGRES_CLASSIFIER_PASSWORD}"
+      POSTGRES_DB: "${POSTGRES_CLASSIFIER_DB:-classifier}"
+      POSTGRES_SSLMODE: disable
+      ELASTICSEARCH_URL: http://elasticsearch:9200
+      ES_URL: http://elasticsearch:9200
+      REDIS_URL: redis:6379
+      REDIS_PASSWORD: "${REDIS_PASSWORD}"
+      APP_DEBUG: "false"
+      APP_ENV: production
+      CLASSIFIER_PORT: 8070
     volumes:
-      # Only mount config, not source code
       - ./classifier/config.yml:/root/config.yml:ro
-    networks:
-      - north-cloud-network
-    restart: always
-    deploy:
-      resources:
-        limits:
-          cpus: '2'
-          memory: 2G
-        reservations:
-          cpus: '0.5'
-          memory: 512M
 
-  # Index Manager service - Production
+  # ------------------------------------------------------------
+  # Index Manager (Prod)
+  # ------------------------------------------------------------
   index-manager:
+    <<: *prod-defaults
     build:
       context: ./index-manager
       dockerfile: Dockerfile
       args:
-        - BUILD_ENV=production
-    container_name: north-cloud-index-manager
+        BUILD_ENV: production
     depends_on:
       postgres-index-manager:
         condition: service_healthy
       elasticsearch:
         condition: service_healthy
     environment:
-      - INDEX_MANAGER_PORT=8090
-      - POSTGRES_INDEX_MANAGER_HOST=postgres-index-manager
-      - POSTGRES_INDEX_MANAGER_PORT=5432
-      - POSTGRES_INDEX_MANAGER_USER=${POSTGRES_INDEX_MANAGER_USER}
-      - POSTGRES_INDEX_MANAGER_PASSWORD=${POSTGRES_INDEX_MANAGER_PASSWORD}
-      - POSTGRES_INDEX_MANAGER_DB=${POSTGRES_INDEX_MANAGER_DB:-index_manager}
-      - ELASTICSEARCH_URL=http://elasticsearch:9200
-      - CONFIG_PATH=/root/config.yml
-      - APP_DEBUG=false
-      - APP_ENV=production
+      INDEX_MANAGER_PORT: 8090
+      POSTGRES_INDEX_MANAGER_HOST: postgres-index-manager
+      POSTGRES_INDEX_MANAGER_PORT: 5432
+      POSTGRES_INDEX_MANAGER_USER: "${POSTGRES_INDEX_MANAGER_USER}"
+      POSTGRES_INDEX_MANAGER_PASSWORD: "${POSTGRES_INDEX_MANAGER_PASSWORD}"
+      POSTGRES_INDEX_MANAGER_DB: "${POSTGRES_INDEX_MANAGER_DB:-index_manager}"
+      ELASTICSEARCH_URL: http://elasticsearch:9200
+      CONFIG_PATH: /root/config.yml
+      APP_DEBUG: "false"
+      APP_ENV: production
     volumes:
-      # Only mount config, not source code
       - ./index-manager/config.yml:/root/config.yml:ro
-    networks:
-      - north-cloud-network
-    restart: always
-    deploy:
-      resources:
-        limits:
-          cpus: '2'
-          memory: 2G
-        reservations:
-          cpus: '0.5'
-          memory: 512M
 
-  # Unified Dashboard - Production
+  # ------------------------------------------------------------
+  # Dashboard (Prod)
+  # ------------------------------------------------------------
   dashboard:
+    <<: *prod-defaults
     build:
       context: ./dashboard
       dockerfile: Dockerfile
       args:
-        - BUILD_ENV=production
-    container_name: north-cloud-dashboard
+        BUILD_ENV: production
     depends_on:
       - crawler
       - source-manager
@@ -262,28 +229,26 @@ services:
       timeout: 10s
       retries: 3
       start_period: 10s
-    networks:
-      - north-cloud-network
-    restart: always
     deploy:
       resources:
         limits:
-          cpus: '1'
+          cpus: "1"
           memory: 512M
         reservations:
-          cpus: '0.25'
+          cpus: "0.25"
           memory: 128M
 
-  # Nginx reverse proxy - Production
+  # ------------------------------------------------------------
+  # Nginx Reverse Proxy (Prod)
+  # ------------------------------------------------------------
   nginx:
+    <<: *prod-defaults
     image: nginx:alpine
-    container_name: north-cloud-nginx
     ports:
       - "${NGINX_HTTP_PORT:-80}:80"
       - "${NGINX_HTTPS_PORT:-443}:443"
     volumes:
       - ./infrastructure/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-      # Let's Encrypt certificates (shared with certbot)
       - certbot_etc:/etc/letsencrypt:ro
       - certbot_www:/var/www/certbot
     depends_on:
@@ -295,71 +260,74 @@ services:
         condition: service_started
       publisher-api:
         condition: service_started
-    networks:
-      - north-cloud-network
-    restart: always
-    deploy:
-      resources:
-        limits:
-          cpus: '1'
-          memory: 512M
-        reservations:
-          cpus: '0.25'
-          memory: 128M
 
-  # Certbot for Let's Encrypt SSL certificates
-  certbot:
-    image: certbot/certbot
-    container_name: north-cloud-certbot
-    volumes:
-      - certbot_etc:/etc/letsencrypt
-      - certbot_www:/var/www/certbot
-    networks:
-      - north-cloud-network
-    # Certbot automatically renews certificates twice daily
-    # For initial certificate acquisition, run:
-    # docker run --rm --network north-cloud_north-cloud-network -v north-cloud_certbot_etc:/etc/letsencrypt -v north-cloud_certbot_www:/var/www/certbot certbot/certbot certonly --webroot -w /var/www/certbot -d northcloud.biz --email jonesrussell42@gmail.com --agree-tos --non-interactive
-    # After renewal, reload nginx: docker exec north-cloud-nginx nginx -s reload
-    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do if [ -d /etc/letsencrypt/live ]; then echo \"[$(date)] Running certificate renewal check...\"; certbot renew && echo \"[$(date)] Renewal check completed. If renewed, reload nginx with: docker exec north-cloud-nginx nginx -s reload\"; fi; sleep 12h & wait $${!}; done;'"
-    restart: always
-    deploy:
-      resources:
-        limits:
-          cpus: '0.5'
-          memory: 256M
-        reservations:
-          cpus: '0.1'
-          memory: 64M
+# ============================================================
+# Certbot (Prod)
+# ============================================================
+certbot:
+  image: certbot/certbot
+  networks:
+    - north-cloud-network
+  volumes:
+    - certbot_etc:/etc/letsencrypt
+    - certbot_www:/var/www/certbot
+  entrypoint: >
+    /bin/sh -c '
+    trap exit TERM;
+    while :; do
+      if [ -d /etc/letsencrypt/live ]; then
+        echo "[$(date)] Running certificate renewal check...";
+        certbot renew &&
+        echo "[$(date)] Renewal check completed. If renewed, reload nginx with: docker exec north-cloud-nginx nginx -s reload";
+      fi;
+      sleep 12h & wait $${!};
+    done;
+    '
+  restart: always
+  deploy:
+    resources:
+      limits:
+        cpus: "0.5"
+        memory: 256M
+      reservations:
+        cpus: "0.1"
+        memory: 64M
 
-  # Production: Enable Elasticsearch security
-  elasticsearch:
-    environment:
-      - xpack.security.enabled=${ELASTICSEARCH_SECURITY_ENABLED:-true}
-      - "ES_JAVA_OPTS=-Xms${ELASTICSEARCH_MIN_HEAP:-1g} -Xmx${ELASTICSEARCH_MAX_HEAP:-2g}"
-    deploy:
-      resources:
-        limits:
-          cpus: '4'
-          memory: 4G
-        reservations:
-          cpus: '2'
-          memory: 2G
+# ============================================================
+# Elasticsearch (Prod Overrides)
+# ============================================================
+elasticsearch:
+  environment:
+    xpack.security.enabled: "${ELASTICSEARCH_SECURITY_ENABLED:-true}"
+    ES_JAVA_OPTS: "-Xms${ELASTICSEARCH_MIN_HEAP:-1g} -Xmx${ELASTICSEARCH_MAX_HEAP:-2g}"
+  deploy:
+    resources:
+      limits:
+        cpus: "4"
+        memory: 4G
+      reservations:
+        cpus: "2"
+        memory: 2G
 
-  # Production: Require Redis password
-  redis:
-    environment:
-      - REDIS_PASSWORD=${REDIS_PASSWORD}  # Must be set in production
-    deploy:
-      resources:
-        limits:
-          cpus: '1'
-          memory: 1G
-        reservations:
-          cpus: '0.25'
-          memory: 256M
+# ============================================================
+# Redis (Prod Overrides)
+# ============================================================
+redis:
+  environment:
+    REDIS_PASSWORD: "${REDIS_PASSWORD}"
+  deploy:
+    resources:
+      limits:
+        cpus: "1"
+        memory: 1G
+      reservations:
+        cpus: "0.25"
+        memory: 256M
 
+# ============================================================
+# Production Volumes
+# ============================================================
 volumes:
-  # Certbot volumes for Let's Encrypt certificates
   certbot_etc:
     driver: local
   certbot_www:
