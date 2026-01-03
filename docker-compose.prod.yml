@@ -34,10 +34,8 @@ services:
       args:
         BUILD_ENV: production
     depends_on:
-      postgres-crawler:
-        condition: service_healthy
-      elasticsearch:
-        condition: service_healthy
+      - postgres-crawler
+      - elasticsearch
     environment:
       DB_HOST: postgres-crawler
       DB_PORT: 5432
@@ -62,8 +60,7 @@ services:
       args:
         BUILD_ENV: production
     depends_on:
-      postgres-source-manager:
-        condition: service_healthy
+      - postgres-source-manager
     environment:
       APP_DEBUG: "false"
       APP_ENV: production
@@ -90,8 +87,7 @@ services:
         BUILD_ENV: production
     command: ["/app/publisher", "api"]
     depends_on:
-      postgres-publisher:
-        condition: service_healthy
+      - postgres-publisher
     environment:
       POSTGRES_PUBLISHER_HOST: postgres-publisher
       POSTGRES_PUBLISHER_PORT: 5432
@@ -126,12 +122,9 @@ services:
         BUILD_ENV: production
     command: ["/app/publisher", "router"]
     depends_on:
-      postgres-publisher:
-        condition: service_healthy
-      elasticsearch:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
+      - postgres-publisher
+      - elasticsearch
+      - redis
     environment:
       POSTGRES_PUBLISHER_HOST: postgres-publisher
       POSTGRES_PUBLISHER_PORT: 5432
@@ -157,12 +150,9 @@ services:
       args:
         BUILD_ENV: production
     depends_on:
-      postgres-classifier:
-        condition: service_healthy
-      elasticsearch:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
+      - postgres-classifier
+      - elasticsearch
+      - redis
     environment:
       POSTGRES_HOST: postgres-classifier
       POSTGRES_PORT: 5432
@@ -191,10 +181,8 @@ services:
       args:
         BUILD_ENV: production
     depends_on:
-      postgres-index-manager:
-        condition: service_healthy
-      elasticsearch:
-        condition: service_healthy
+      - postgres-index-manager
+      - elasticsearch
     environment:
       INDEX_MANAGER_PORT: 8090
       POSTGRES_INDEX_MANAGER_HOST: postgres-index-manager
@@ -252,14 +240,10 @@ services:
       - certbot_etc:/etc/letsencrypt:ro
       - certbot_www:/var/www/certbot
     depends_on:
-      dashboard:
-        condition: service_healthy
-      classifier:
-        condition: service_started
-      crawler:
-        condition: service_started
-      publisher-api:
-        condition: service_started
+      - dashboard
+      - classifier
+      - crawler
+      - publisher-api
 
   # ============================================================
   # Certbot (Prod)
