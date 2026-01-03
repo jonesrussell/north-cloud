@@ -1,13 +1,18 @@
 FROM golang:1.25-alpine AS builder
 
-WORKDIR /app
+# Prepare workspace for replace ../infrastructure
+WORKDIR /build
+COPY infrastructure ./infrastructure
 
-# Copy go mod files
-COPY go.mod go.sum ./
+# Move into auth module
+WORKDIR /build/auth
+
+# Copy go mod files first for caching
+COPY auth/go.mod auth/go.sum ./
 RUN go mod download
 
 # Copy source
-COPY . .
+COPY auth/ .
 
 # Build static binary
 RUN CGO_ENABLED=0 go build \

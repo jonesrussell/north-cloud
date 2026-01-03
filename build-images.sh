@@ -9,7 +9,7 @@ echo "Building Docker images for North Cloud stack..."
 # Build images with the same names used in docker-compose files
 docker build -t northcloud/search-service:latest -f ./search/Dockerfile .
 docker build -t northcloud/search-frontend:latest -f ./search-frontend/Dockerfile ./search-frontend
-docker build -t northcloud/auth:latest -f ./auth/Dockerfile ./auth
+docker build -t northcloud/auth:latest -f ./auth/Dockerfile .
 docker build -t northcloud/crawler:latest --build-arg BUILD_ENV=production -f ./crawler/Dockerfile .
 docker build -t northcloud/source-manager:latest --build-arg BUILD_ENV=production -f ./source-manager/Dockerfile .
 docker build -t northcloud/publisher:latest --build-arg BUILD_ENV=production -f ./publisher/Dockerfile .
