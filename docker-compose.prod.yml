@@ -258,11 +258,11 @@ services:
       trap exit TERM;
       while :; do
         if [ -d /etc/letsencrypt/live ]; then
-          echo "[$(date)] Running certificate renewal check...";
+          echo "[$$(date)] Running certificate renewal check...";
           certbot renew &&
-          echo "[$(date)] Renewal check completed. If renewed, reload nginx with: docker exec north-cloud-nginx nginx -s reload";
+          echo "[$$(date)] Renewal check completed. If renewed, reload nginx with: docker exec north-cloud-nginx nginx -s reload";
         fi;
-        sleep 12h & wait $${!};
+        sleep 12h & wait $$$${!};
       done;
       '
     restart: always
