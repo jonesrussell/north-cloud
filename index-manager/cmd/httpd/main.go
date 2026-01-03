@@ -130,8 +130,8 @@ func main() {
 		os.Exit(1)
 	}
 	defer func() {
-		if err := db.Close(); err != nil {
-			logger.Error("Failed to close database connection", "error", err)
+		if closeErr := db.Close(); closeErr != nil {
+			logger.Error("Failed to close database connection", "error", closeErr)
 		}
 	}()
 	logger.Info("Database connection established")
@@ -143,10 +143,11 @@ func main() {
 	handler := api.NewHandler(indexService, logger)
 
 	// Initialize HTTP server
+	const httpTimeoutSeconds = 15
 	serverConfig := api.ServerConfig{
 		Port:         cfg.Service.Port,
-		ReadTimeout:  15 * time.Second,
-		WriteTimeout: 15 * time.Second,
+		ReadTimeout:  httpTimeoutSeconds * time.Second,
+		WriteTimeout: httpTimeoutSeconds * time.Second,
 		Debug:        cfg.Service.Debug,
 	}
 
@@ -155,8 +156,8 @@ func main() {
 	// Start server in goroutine
 	serverErr := make(chan error, 1)
 	go func() {
-		if err := server.Start(); err != nil {
-			serverErr <- err
+		if startErr := server.Start(); startErr != nil {
+			serverErr <- startErr
 		}
 	}()
 
@@ -167,18 +168,19 @@ func main() {
 	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
 
 	select {
-	case err := <-serverErr:
-		logger.Error("Server error", "error", err)
+	case serverError := <-serverErr:
+		logger.Error("Server error", "error", serverError)
 	case sig := <-sigChan:
 		logger.Info("Received signal", "signal", sig)
 	}
 
 	// Graceful shutdown
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	const shutdownTimeoutSeconds = 10
+	ctx, cancel := context.WithTimeout(context.Background(), shutdownTimeoutSeconds*time.Second)
 	defer cancel()
 
-	if err := server.Shutdown(ctx); err != nil {
-		logger.Error("Server shutdown error", "error", err)
+	if shutdownErr := server.Shutdown(ctx); shutdownErr != nil {
+		logger.Error("Server shutdown error", "error", shutdownErr)
 	}
 
 	logger.Info("Index Manager Service stopped")

@@ -44,8 +44,8 @@ func NewConnection(cfg *Config) (*Connection, error) {
 	db.SetConnMaxLifetime(cfg.ConnMaxLifetime)
 
 	// Test connection
-	if err := db.Ping(); err != nil {
-		return nil, fmt.Errorf("failed to ping database: %w", err)
+	if pingErr := db.Ping(); pingErr != nil {
+		return nil, fmt.Errorf("failed to ping database: %w", pingErr)
 	}
 
 	return &Connection{DB: db}, nil

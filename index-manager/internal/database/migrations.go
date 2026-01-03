@@ -3,9 +3,13 @@ package database
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"time"
 )
+
+// ErrIndexMetadataNotFound is returned when index metadata is not found
+var ErrIndexMetadataNotFound = errors.New("index metadata not found")
 
 // MigrationHistory represents a migration history record
 type MigrationHistory struct {
@@ -75,7 +79,7 @@ func (c *Connection) RecordMigration(ctx context.Context, mh *MigrationHistory) 
 }
 
 // UpdateMigrationStatus updates the status of a migration
-func (c *Connection) UpdateMigrationStatus(ctx context.Context, id int, status string, errorMsg string) error {
+func (c *Connection) UpdateMigrationStatus(ctx context.Context, id int, status, errorMsg string) error {
 	query := `
 		UPDATE migration_history 
 		SET status = $1, error_message = $2, completed_at = $3
@@ -118,7 +122,7 @@ func (c *Connection) GetIndexMetadata(ctx context.Context, indexName string) (*I
 	)
 
 	if err == sql.ErrNoRows {
-		return nil, nil
+		return nil, ErrIndexMetadataNotFound
 	}
 	if err != nil {
 		return nil, fmt.Errorf("failed to get index metadata: %w", err)
@@ -169,6 +173,40 @@ func (c *Connection) SaveIndexMetadata(ctx context.Context, metadata *IndexMetad
 	return nil
 }
 
+// scanIndexMetadataRows scans rows into IndexMetadata slice
+func scanIndexMetadataRows(rows *sql.Rows) ([]*IndexMetadata, error) {
+	var metadataList []*IndexMetadata
+	for rows.Next() {
+		metadata := &IndexMetadata{}
+		var sourceName sql.NullString
+
+		if scanErr := rows.Scan(
+			&metadata.ID,
+			&metadata.IndexName,
+			&metadata.IndexType,
+			&sourceName,
+			&metadata.MappingVersion,
+			&metadata.CreatedAt,
+			&metadata.UpdatedAt,
+			&metadata.Status,
+		); scanErr != nil {
+			return nil, fmt.Errorf("failed to scan index metadata: %w", scanErr)
+		}
+
+		if sourceName.Valid {
+			metadata.SourceName = sourceName
+		}
+
+		metadataList = append(metadataList, metadata)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("failed to iterate rows: %w", err)
+	}
+
+	return metadataList, nil
+}
+
 // ListIndexMetadataBySource lists all index metadata for a source
 func (c *Connection) ListIndexMetadataBySource(ctx context.Context, sourceName string) ([]*IndexMetadata, error) {
 	query := `
@@ -186,32 +224,7 @@ func (c *Connection) ListIndexMetadataBySource(ctx context.Context, sourceName s
 		_ = rows.Close()
 	}()
 
-	var metadataList []*IndexMetadata
-	for rows.Next() {
-		metadata := &IndexMetadata{}
-		var sourceName sql.NullString
-
-		if err := rows.Scan(
-			&metadata.ID,
-			&metadata.IndexName,
-			&metadata.IndexType,
-			&sourceName,
-			&metadata.MappingVersion,
-			&metadata.CreatedAt,
-			&metadata.UpdatedAt,
-			&metadata.Status,
-		); err != nil {
-			return nil, fmt.Errorf("failed to scan index metadata: %w", err)
-		}
-
-		if sourceName.Valid {
-			metadata.SourceName = sourceName
-		}
-
-		metadataList = append(metadataList, metadata)
-	}
-
-	return metadataList, nil
+	return scanIndexMetadataRows(rows)
 }
 
 // ListIndexMetadataByType lists all index metadata for an index type
@@ -231,32 +244,7 @@ func (c *Connection) ListIndexMetadataByType(ctx context.Context, indexType stri
 		_ = rows.Close()
 	}()
 
-	var metadataList []*IndexMetadata
-	for rows.Next() {
-		metadata := &IndexMetadata{}
-		var sourceName sql.NullString
-
-		if err := rows.Scan(
-			&metadata.ID,
-			&metadata.IndexName,
-			&metadata.IndexType,
-			&sourceName,
-			&metadata.MappingVersion,
-			&metadata.CreatedAt,
-			&metadata.UpdatedAt,
-			&metadata.Status,
-		); err != nil {
-			return nil, fmt.Errorf("failed to scan index metadata: %w", err)
-		}
-
-		if sourceName.Valid {
-			metadata.SourceName = sourceName
-		}
-
-		metadataList = append(metadataList, metadata)
-	}
-
-	return metadataList, nil
+	return scanIndexMetadataRows(rows)
 }
 
 // DeleteIndexMetadata marks an index as deleted

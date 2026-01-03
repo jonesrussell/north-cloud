@@ -26,8 +26,8 @@ func ToMap(mapping interface{}) (map[string]interface{}, error) {
 	}
 
 	var result map[string]interface{}
-	if err := json.Unmarshal(data, &result); err != nil {
-		return nil, err
+	if unmarshalErr := json.Unmarshal(data, &result); unmarshalErr != nil {
+		return nil, unmarshalErr
 	}
 
 	return result, nil

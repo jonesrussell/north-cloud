@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -12,6 +13,8 @@ import (
 
 	es "github.com/elastic/go-elasticsearch/v8"
 )
+
+const unknownStatus = "unknown"
 
 // Client wraps the Elasticsearch client with index management operations
 type Client struct {
@@ -111,9 +114,9 @@ func (c *Client) CreateIndex(ctx context.Context, indexName string, mapping inte
 	// Convert mapping to JSON
 	var mappingReader io.Reader
 	if mapping != nil {
-		mappingBytes, err := json.Marshal(mapping)
-		if err != nil {
-			return fmt.Errorf("failed to marshal mapping: %w", err)
+		mappingBytes, marshalErr := json.Marshal(mapping)
+		if marshalErr != nil {
+			return fmt.Errorf("failed to marshal mapping: %w", marshalErr)
 		}
 		mappingReader = strings.NewReader(string(mappingBytes))
 	}
@@ -211,8 +214,8 @@ func (c *Client) ListIndices(ctx context.Context, pattern string) ([]string, err
 	}
 
 	var results []map[string]interface{}
-	if err := json.NewDecoder(res.Body).Decode(&results); err != nil {
-		return nil, fmt.Errorf("failed to decode response: %w", err)
+	if decodeErr := json.NewDecoder(res.Body).Decode(&results); decodeErr != nil {
+		return nil, fmt.Errorf("failed to decode response: %w", decodeErr)
 	}
 
 	for _, result := range results {
@@ -225,6 +228,55 @@ func (c *Client) ListIndices(ctx context.Context, pattern string) ([]string, err
 	}
 
 	return indices, nil
+}
+
+// extractDocumentCount extracts document count from stats data
+func extractDocumentCount(statsData map[string]interface{}, indexName string) int64 {
+	indices, ok1 := statsData["indices"].(map[string]interface{})
+	if !ok1 {
+		return 0
+	}
+
+	indexStats, ok2 := indices[indexName].(map[string]interface{})
+	if !ok2 {
+		return 0
+	}
+
+	total, ok3 := indexStats["total"].(map[string]interface{})
+	if !ok3 {
+		return 0
+	}
+
+	docs, ok4 := total["docs"].(map[string]interface{})
+	if !ok4 {
+		return 0
+	}
+
+	count, ok5 := docs["count"].(float64)
+	if !ok5 {
+		return 0
+	}
+
+	return int64(count)
+}
+
+// extractHealthStatus extracts health and status from health data
+func extractHealthStatus(healthData map[string]interface{}, indexName string) (health, status string) {
+	health = unknownStatus
+	if h, ok1 := healthData["status"].(string); ok1 {
+		health = h
+	}
+
+	status = unknownStatus
+	if indices, ok1 := healthData["indices"].(map[string]interface{}); ok1 {
+		if indexHealth, ok2 := indices[indexName].(map[string]interface{}); ok2 {
+			if s, ok3 := indexHealth["status"].(string); ok3 {
+				status = s
+			}
+		}
+	}
+
+	return health, status
 }
 
 // GetIndexInfo gets detailed information about an index
@@ -247,34 +299,34 @@ func (c *Client) GetIndexInfo(ctx context.Context, indexName string) (*IndexInfo
 	}
 
 	var statsData map[string]interface{}
-	if err := json.NewDecoder(statsRes.Body).Decode(&statsData); err != nil {
-		return nil, fmt.Errorf("failed to decode stats: %w", err)
+	if statsDecodeErr := json.NewDecoder(statsRes.Body).Decode(&statsData); statsDecodeErr != nil {
+		return nil, fmt.Errorf("failed to decode stats: %w", statsDecodeErr)
 	}
 
 	// Get index health
-	healthRes, err := c.esClient.Cluster.Health(
+	healthRes, healthErr := c.esClient.Cluster.Health(
 		c.esClient.Cluster.Health.WithIndex(indexName),
 		c.esClient.Cluster.Health.WithContext(ctx),
 	)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get index health: %w", err)
+	if healthErr != nil {
+		return nil, fmt.Errorf("failed to get index health: %w", healthErr)
 	}
 	defer func() {
 		_ = healthRes.Body.Close()
 	}()
 
 	var healthData map[string]interface{}
-	if err := json.NewDecoder(healthRes.Body).Decode(&healthData); err != nil {
-		return nil, fmt.Errorf("failed to decode health: %w", err)
+	if healthDecodeErr := json.NewDecoder(healthRes.Body).Decode(&healthData); healthDecodeErr != nil {
+		return nil, fmt.Errorf("failed to decode health: %w", healthDecodeErr)
 	}
 
 	// Get index settings and mappings
-	infoRes, err := c.esClient.Indices.Get(
+	infoRes, infoErr := c.esClient.Indices.Get(
 		[]string{indexName},
 		c.esClient.Indices.Get.WithContext(ctx),
 	)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get index info: %w", err)
+	if infoErr != nil {
+		return nil, fmt.Errorf("failed to get index info: %w", infoErr)
 	}
 	defer func() {
 		_ = infoRes.Body.Close()
@@ -286,44 +338,20 @@ func (c *Client) GetIndexInfo(ctx context.Context, indexName string) (*IndexInfo
 	}
 
 	var infoData map[string]interface{}
-	if err := json.NewDecoder(infoRes.Body).Decode(&infoData); err != nil {
-		return nil, fmt.Errorf("failed to decode info: %w", err)
+	if infoDecodeErr := json.NewDecoder(infoRes.Body).Decode(&infoData); infoDecodeErr != nil {
+		return nil, fmt.Errorf("failed to decode info: %w", infoDecodeErr)
 	}
 
 	indexData, ok := infoData[indexName].(map[string]interface{})
 	if !ok {
-		return nil, fmt.Errorf("invalid index data format")
+		return nil, errors.New("invalid index data format")
 	}
 
 	// Extract document count
-	var docCount int64
-	if indices, ok := statsData["indices"].(map[string]interface{}); ok {
-		if indexStats, ok := indices[indexName].(map[string]interface{}); ok {
-			if total, ok := indexStats["total"].(map[string]interface{}); ok {
-				if docs, ok := total["docs"].(map[string]interface{}); ok {
-					if count, ok := docs["count"].(float64); ok {
-						docCount = int64(count)
-					}
-				}
-			}
-		}
-	}
+	docCount := extractDocumentCount(statsData, indexName)
 
-	// Extract health
-	health := "unknown"
-	if h, ok := healthData["status"].(string); ok {
-		health = h
-	}
-
-	// Extract status
-	status := "unknown"
-	if indices, ok := healthData["indices"].(map[string]interface{}); ok {
-		if indexHealth, ok := indices[indexName].(map[string]interface{}); ok {
-			if s, ok := indexHealth["status"].(string); ok {
-				status = s
-			}
-		}
-	}
+	// Extract health and status
+	health, status := extractHealthStatus(healthData, indexName)
 
 	info := &IndexInfo{
 		Name:          indexName,
@@ -334,12 +362,12 @@ func (c *Client) GetIndexInfo(ctx context.Context, indexName string) (*IndexInfo
 	}
 
 	// Extract settings
-	if settings, ok := indexData["settings"].(map[string]interface{}); ok {
+	if settings, ok1 := indexData["settings"].(map[string]interface{}); ok1 {
 		info.Settings = settings
 	}
 
 	// Extract mappings
-	if mappings, ok := indexData["mappings"].(map[string]interface{}); ok {
+	if mappings, ok1 := indexData["mappings"].(map[string]interface{}); ok1 {
 		info.Mappings = mappings
 	}
 
@@ -365,15 +393,15 @@ func (c *Client) GetIndexHealth(ctx context.Context, indexName string) (string, 
 	}
 
 	var healthData map[string]interface{}
-	if err := json.NewDecoder(res.Body).Decode(&healthData); err != nil {
-		return "", fmt.Errorf("failed to decode health: %w", err)
+	if decodeErr := json.NewDecoder(res.Body).Decode(&healthData); decodeErr != nil {
+		return "", fmt.Errorf("failed to decode health: %w", decodeErr)
 	}
 
 	if status, ok := healthData["status"].(string); ok {
 		return status, nil
 	}
 
-	return "unknown", nil
+	return unknownStatus, nil
 }
 
 // GetIndexMapping gets the mapping for an index
@@ -395,12 +423,12 @@ func (c *Client) GetIndexMapping(ctx context.Context, indexName string) (map[str
 	}
 
 	var mappingData map[string]interface{}
-	if err := json.NewDecoder(res.Body).Decode(&mappingData); err != nil {
-		return nil, fmt.Errorf("failed to decode mapping: %w", err)
+	if decodeErr := json.NewDecoder(res.Body).Decode(&mappingData); decodeErr != nil {
+		return nil, fmt.Errorf("failed to decode mapping: %w", decodeErr)
 	}
 
-	if indexData, ok := mappingData[indexName].(map[string]interface{}); ok {
-		if mappings, ok := indexData["mappings"].(map[string]interface{}); ok {
+	if indexData, ok1 := mappingData[indexName].(map[string]interface{}); ok1 {
+		if mappings, ok2 := indexData["mappings"].(map[string]interface{}); ok2 {
 			return mappings, nil
 		}
 	}
@@ -453,8 +481,8 @@ func (c *Client) GetClusterHealth(ctx context.Context) (map[string]interface{}, 
 	}
 
 	var healthData map[string]interface{}
-	if err := json.NewDecoder(res.Body).Decode(&healthData); err != nil {
-		return nil, fmt.Errorf("failed to decode cluster health: %w", err)
+	if decodeErr := json.NewDecoder(res.Body).Decode(&healthData); decodeErr != nil {
+		return nil, fmt.Errorf("failed to decode cluster health: %w", decodeErr)
 	}
 
 	return healthData, nil

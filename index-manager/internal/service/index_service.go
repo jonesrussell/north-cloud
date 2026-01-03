@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -80,7 +81,7 @@ func (s *IndexService) CreateIndex(ctx context.Context, req *domain.CreateIndexR
 	indexName := req.IndexName
 	if indexName == "" {
 		if req.SourceName == "" {
-			return nil, fmt.Errorf("source_name is required when index_name is not provided")
+			return nil, errors.New("source_name is required when index_name is not provided")
 		}
 		indexName = GenerateIndexName(req.SourceName, req.IndexType)
 	}
@@ -109,16 +110,16 @@ func (s *IndexService) CreateIndex(ctx context.Context, req *domain.CreateIndexR
 	}
 	if exists {
 		// Return existing index info
-		info, err := s.esClient.GetIndexInfo(ctx, indexName)
-		if err != nil {
-			return nil, fmt.Errorf("failed to get existing index info: %w", err)
+		info, infoErr := s.esClient.GetIndexInfo(ctx, indexName)
+		if infoErr != nil {
+			return nil, fmt.Errorf("failed to get existing index info: %w", infoErr)
 		}
 		return s.indexInfoToDomain(info, req.IndexType, req.SourceName), nil
 	}
 
 	// Create index in Elasticsearch
-	if err := s.esClient.CreateIndex(ctx, indexName, mapping); err != nil {
-		return nil, fmt.Errorf("failed to create index in Elasticsearch: %w", err)
+	if createErr := s.esClient.CreateIndex(ctx, indexName, mapping); createErr != nil {
+		return nil, fmt.Errorf("failed to create index in Elasticsearch: %w", createErr)
 	}
 
 	// Record migration
@@ -130,13 +131,13 @@ func (s *IndexService) CreateIndex(ctx context.Context, req *domain.CreateIndexR
 		CreatedAt:     time.Now(),
 		CompletedAt:   sql.NullTime{},
 	}
-	if err := s.db.RecordMigration(ctx, migration); err != nil {
-		s.logger.Warn("Failed to record migration", "error", err)
+	if recordErr := s.db.RecordMigration(ctx, migration); recordErr != nil {
+		s.logger.Warn("Failed to record migration", "error", recordErr)
 	}
 
 	// Update migration status
-	if err := s.db.UpdateMigrationStatus(ctx, migration.ID, "completed", ""); err != nil {
-		s.logger.Warn("Failed to update migration status", "error", err)
+	if updateErr := s.db.UpdateMigrationStatus(ctx, migration.ID, "completed", ""); updateErr != nil {
+		s.logger.Warn("Failed to update migration status", "error", updateErr)
 	}
 
 	// Save metadata
@@ -147,8 +148,8 @@ func (s *IndexService) CreateIndex(ctx context.Context, req *domain.CreateIndexR
 		MappingVersion: "1.0.0",
 		Status:         "active",
 	}
-	if err := s.db.SaveIndexMetadata(ctx, metadata); err != nil {
-		s.logger.Warn("Failed to save index metadata", "error", err)
+	if saveErr := s.db.SaveIndexMetadata(ctx, metadata); saveErr != nil {
+		s.logger.Warn("Failed to save index metadata", "error", saveErr)
 	}
 
 	// Get index info
@@ -174,8 +175,8 @@ func (s *IndexService) DeleteIndex(ctx context.Context, indexName string) error 
 	}
 
 	// Delete from Elasticsearch
-	if err := s.esClient.DeleteIndex(ctx, indexName); err != nil {
-		return fmt.Errorf("failed to delete index from Elasticsearch: %w", err)
+	if deleteErr := s.esClient.DeleteIndex(ctx, indexName); deleteErr != nil {
+		return fmt.Errorf("failed to delete index from Elasticsearch: %w", deleteErr)
 	}
 
 	// Record migration
@@ -185,18 +186,18 @@ func (s *IndexService) DeleteIndex(ctx context.Context, indexName string) error 
 		Status:        "pending",
 		CreatedAt:     time.Now(),
 	}
-	if err := s.db.RecordMigration(ctx, migration); err != nil {
-		s.logger.Warn("Failed to record migration", "error", err)
+	if recordErr := s.db.RecordMigration(ctx, migration); recordErr != nil {
+		s.logger.Warn("Failed to record migration", "error", recordErr)
 	}
 
 	// Update migration status
-	if err := s.db.UpdateMigrationStatus(ctx, migration.ID, "completed", ""); err != nil {
-		s.logger.Warn("Failed to update migration status", "error", err)
+	if updateErr := s.db.UpdateMigrationStatus(ctx, migration.ID, "completed", ""); updateErr != nil {
+		s.logger.Warn("Failed to update migration status", "error", updateErr)
 	}
 
 	// Update metadata
-	if err := s.db.DeleteIndexMetadata(ctx, indexName); err != nil {
-		s.logger.Warn("Failed to update index metadata", "error", err)
+	if deleteMetaErr := s.db.DeleteIndexMetadata(ctx, indexName); deleteMetaErr != nil {
+		s.logger.Warn("Failed to update index metadata", "error", deleteMetaErr)
 	}
 
 	s.logger.Info("Index deleted successfully", "index_name", indexName)
@@ -205,7 +206,7 @@ func (s *IndexService) DeleteIndex(ctx context.Context, indexName string) error 
 }
 
 // ListIndices lists all indices with optional filtering
-func (s *IndexService) ListIndices(ctx context.Context, indexType string, sourceName string) ([]*domain.Index, error) {
+func (s *IndexService) ListIndices(ctx context.Context, indexType, sourceName string) ([]*domain.Index, error) {
 	var indices []string
 	var err error
 
@@ -229,27 +230,27 @@ func (s *IndexService) ListIndices(ctx context.Context, indexType string, source
 
 	var result []*domain.Index
 	for _, indexName := range indices {
-		info, err := s.esClient.GetIndexInfo(ctx, indexName)
-		if err != nil {
-			s.logger.Warn("Failed to get index info", "index_name", indexName, "error", err)
+		info, infoErr := s.esClient.GetIndexInfo(ctx, indexName)
+		if infoErr != nil {
+			s.logger.Warn("Failed to get index info", "index_name", indexName, "error", infoErr)
 			continue
 		}
 
 		// Get metadata
 		metadata, _ := s.db.GetIndexMetadata(ctx, indexName)
 		var indexType domain.IndexType
-		var sourceName string
+		var inferredSourceName string
 		if metadata != nil {
 			indexType = domain.IndexType(metadata.IndexType)
 			if metadata.SourceName.Valid {
-				sourceName = metadata.SourceName.String
+				inferredSourceName = metadata.SourceName.String
 			}
 		} else {
 			// Try to infer from index name
-			indexType, sourceName = s.inferIndexTypeAndSource(indexName)
+			indexType, inferredSourceName = s.inferIndexTypeAndSource(indexName)
 		}
 
-		result = append(result, s.indexInfoToDomain(info, indexType, sourceName))
+		result = append(result, s.indexInfoToDomain(info, indexType, inferredSourceName))
 	}
 
 	return result, nil
@@ -313,8 +314,8 @@ func (s *IndexService) DeleteIndexesForSource(ctx context.Context, sourceName st
 	}
 
 	for _, indexName := range indices {
-		if err := s.DeleteIndex(ctx, indexName); err != nil {
-			s.logger.Warn("Failed to delete index", "index_name", indexName, "error", err)
+		if deleteErr := s.DeleteIndex(ctx, indexName); deleteErr != nil {
+			s.logger.Warn("Failed to delete index", "index_name", indexName, "error", deleteErr)
 			// Continue with other indexes
 		}
 	}
@@ -342,8 +343,8 @@ func (s *IndexService) GetStats(ctx context.Context) (*domain.IndexStats, error)
 
 	var totalDocs int64
 	for _, indexName := range indices {
-		info, err := s.esClient.GetIndexInfo(ctx, indexName)
-		if err != nil {
+		info, infoErr := s.esClient.GetIndexInfo(ctx, indexName)
+		if infoErr != nil {
 			continue
 		}
 
@@ -383,16 +384,16 @@ func isValidIndexType(indexType domain.IndexType) bool {
 	}
 }
 
-func (s *IndexService) inferIndexTypeAndSource(indexName string) (domain.IndexType, string) {
+func (s *IndexService) inferIndexTypeAndSource(indexName string) (indexType domain.IndexType, sourceName string) {
 	// Try to infer from index name pattern: {source}_{type}
+	const minIndexNameParts = 2
 	parts := strings.Split(indexName, "_")
-	if len(parts) < 2 {
+	if len(parts) < minIndexNameParts {
 		return "", ""
 	}
 
 	// Last part should be the type
 	lastPart := parts[len(parts)-1]
-	var indexType domain.IndexType
 	switch lastPart {
 	case "raw", "content":
 		if strings.Contains(indexName, "raw_content") {
@@ -409,7 +410,7 @@ func (s *IndexService) inferIndexTypeAndSource(indexName string) (domain.IndexTy
 	// Source name is everything before the type suffix
 	if indexType != "" {
 		suffix := getIndexSuffix(indexType)
-		sourceName := strings.TrimSuffix(indexName, suffix)
+		sourceName = strings.TrimSuffix(indexName, suffix)
 		return indexType, sourceName
 	}
 
