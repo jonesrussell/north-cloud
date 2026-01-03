@@ -36,8 +36,8 @@ WORKDIR /app
 # Copy binary
 COPY --from=builder /build/crawler/crawler .
 
-# Copy config if present
-COPY --from=builder /build/crawler/config.yaml ./
+# Copy config
+COPY --from=builder /build/crawler/config.example.yaml ./config.yaml
 
 # Switch to non-root user
 USER appuser
