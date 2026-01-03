@@ -1,170 +1,137 @@
-# Development Docker Compose Configuration
-# Usage: docker-compose -f docker-compose.base.yml -f docker-compose.dev.yml up
+# ============================================================
+# YAML Anchors for Dev Services
+# ============================================================
+
+x-go-dev-defaults: &go-dev-defaults
+  user: "${UID:-1000}:${GID:-1000}"
+  networks:
+    - north-cloud-network
+  restart: unless-stopped
+  environment:
+    GOMODCACHE: /tmp/go-mod-cache
+    GOCACHE: /tmp/go-build-cache
+    APP_DEBUG: "true"
+    APP_ENV: development
+    ENABLE_PROFILING: "${ENABLE_PROFILING:-true}"
+    AUTH_JWT_SECRET: "${AUTH_JWT_SECRET:-}"
+  volumes:
+    - /app/vendor
+    - ./infrastructure:/infrastructure
+  working_dir: /app
+  deploy:
+    resources:
+      limits:
+        cpus: "2"
+        memory: 2G
+
+# ============================================================
+# Development Services
+# ============================================================
 
 services:
-  # ============================================
-  # Application Services - Development
-  # ============================================
 
-  # Crawler service - Development
+  # ------------------------------------------------------------
+  # Crawler (Dev)
+  # ------------------------------------------------------------
   crawler:
+    <<: *go-dev-defaults
     build:
       context: ./crawler
       dockerfile: Dockerfile.dev
-    container_name: north-cloud-crawler-dev
-    # Run as host user to avoid permission issues with mounted volumes
-    user: "${UID:-1000}:${GID:-1000}"
     ports:
-      - "${CRAWLER_PORT:-8060}:8080"  # Map host 8060 to container 8080
-      - "${CRAWLER_PPROF_PORT:-6060}:6060"  # pprof profiling
+      - "${CRAWLER_PORT:-8060}:8080"
+      - "${CRAWLER_PPROF_PORT:-6060}:6060"
     depends_on:
       postgres-crawler:
         condition: service_healthy
       minio:
         condition: service_healthy
     environment:
-      - DB_HOST=postgres-crawler
-      - DB_PORT=5432
-      - DB_USER=${POSTGRES_CRAWLER_USER:-postgres}
-      - DB_PASSWORD=${POSTGRES_CRAWLER_PASSWORD:-postgres}
-      - DB_NAME=${POSTGRES_CRAWLER_DB:-crawler}
-      - DB_SSLMODE=disable
-      - APP_DEBUG=true
-      - APP_ENV=development
-      - SERVER_HOST=${CRAWLER_HOST:-0.0.0.0}
-      - SERVER_PORT=${CRAWLER_PORT:-8060}
-      # Use Docker service name for internal communication (source-manager:8050)
-      # SOURCE_MANAGER_API_URL is for external access from host, not for container-to-container
-      - CRAWLER_SOURCES_API_URL=${CRAWLER_SOURCES_API_URL:-http://source-manager:8050/api/v1/sources}
-      # MinIO HTML archiving configuration
-      - CRAWLER_MINIO_ENABLED=${CRAWLER_MINIO_ENABLED:-true}
-      - CRAWLER_MINIO_ENDPOINT=${CRAWLER_MINIO_ENDPOINT:-minio:9000}
-      - CRAWLER_MINIO_ACCESS_KEY=${CRAWLER_MINIO_ACCESS_KEY:-minioadmin}
-      - CRAWLER_MINIO_SECRET_KEY=${CRAWLER_MINIO_SECRET_KEY:-changeme123}
-      - CRAWLER_MINIO_BUCKET=${CRAWLER_MINIO_BUCKET:-html-archives}
-      - CRAWLER_MINIO_METADATA_BUCKET=${CRAWLER_MINIO_METADATA_BUCKET:-crawler-metadata}
-      - CRAWLER_MINIO_USE_SSL=${CRAWLER_MINIO_USE_SSL:-false}
-      # Queued links configuration
-      - CRAWLER_SAVE_DISCOVERED_LINKS=${CRAWLER_SAVE_DISCOVERED_LINKS:-true}
-      # Auth JWT secret for API authentication
-      - AUTH_JWT_SECRET=${AUTH_JWT_SECRET:-}
-      # Profiling configuration
-      - ENABLE_PROFILING=${ENABLE_PROFILING:-true}
-      - PPROF_PORT=6060
-      # Use /tmp for caches to avoid permission issues with host user
-      - GOMODCACHE=/tmp/go-mod-cache
-      - GOCACHE=/tmp/go-build-cache
+      <<: *go-dev-defaults.environment
+      DB_HOST: postgres-crawler
+      DB_PORT: 5432
+      DB_USER: "${POSTGRES_CRAWLER_USER:-postgres}"
+      DB_PASSWORD: "${POSTGRES_CRAWLER_PASSWORD:-postgres}"
+      DB_NAME: "${POSTGRES_CRAWLER_DB:-crawler}"
+      DB_SSLMODE: disable
+      SERVER_HOST: "${CRAWLER_HOST:-0.0.0.0}"
+      SERVER_PORT: "${CRAWLER_PORT:-8060}"
+      CRAWLER_SOURCES_API_URL: "${CRAWLER_SOURCES_API_URL:-http://source-manager:8050/api/v1/sources}"
+      CRAWLER_MINIO_ENABLED: "${CRAWLER_MINIO_ENABLED:-true}"
+      CRAWLER_MINIO_ENDPOINT: "${CRAWLER_MINIO_ENDPOINT:-minio:9000}"
+      CRAWLER_MINIO_ACCESS_KEY: "${CRAWLER_MINIO_ACCESS_KEY:-minioadmin}"
+      CRAWLER_MINIO_SECRET_KEY: "${CRAWLER_MINIO_SECRET_KEY:-changeme123}"
+      CRAWLER_MINIO_BUCKET: "${CRAWLER_MINIO_BUCKET:-html-archives}"
+      CRAWLER_MINIO_METADATA_BUCKET: "${CRAWLER_MINIO_METADATA_BUCKET:-crawler-metadata}"
+      CRAWLER_MINIO_USE_SSL: "${CRAWLER_MINIO_USE_SSL:-false}"
+      CRAWLER_SAVE_DISCOVERED_LINKS: "${CRAWLER_SAVE_DISCOVERED_LINKS:-true}"
+      PPROF_PORT: 6060
     volumes:
-      # Mount source code for development
       - ./crawler:/app
-      - /app/vendor  # Exclude vendor directory
-      # Mount infrastructure module (required for go.mod replace directive)
-      - ./infrastructure:/infrastructure
-      # Mount cache volumes to persist downloads across restarts
       - crawler_go_mod_cache:/tmp/go-mod-cache
       - crawler_go_build_cache:/tmp/go-build-cache
-    working_dir: /app
-    # Download dependencies then start backend
-    # Use -mod=mod to ignore vendor directory if present
+      - ./infrastructure:/infrastructure
     command: ["sh", "-c", "go mod download && go run -mod=mod ./main.go"]
-    networks:
-      - north-cloud-network
-    restart: unless-stopped
     healthcheck:
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:8080/health"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 20s
-    # Development resource limits (generous but prevent runaway processes)
-    deploy:
-      resources:
-        limits:
-          cpus: '2'
-          memory: 2G
 
-  # Source Manager service - Development
+  # ------------------------------------------------------------
+  # Source Manager (Dev)
+  # ------------------------------------------------------------
   source-manager:
+    <<: *go-dev-defaults
     build:
       context: ./source-manager
       dockerfile: Dockerfile.dev
-    container_name: north-cloud-source-manager-dev
-    # Run as host user to avoid permission issues with mounted volumes
-    user: "${UID:-1000}:${GID:-1000}"
     ports:
       - "${SOURCE_MANAGER_PORT:-8050}:8050"
-      - "${SOURCE_MANAGER_PPROF_PORT:-6061}:6060"  # pprof profiling
+      - "${SOURCE_MANAGER_PPROF_PORT:-6061}:6060"
     depends_on:
       postgres-source-manager:
         condition: service_healthy
     environment:
-      - APP_DEBUG=true
-      - APP_ENV=development
-      - SERVER_HOST=${SOURCE_MANAGER_HOST:-0.0.0.0}
-      - SERVER_PORT=${SOURCE_MANAGER_PORT:-8050}
-      - DB_HOST=postgres-source-manager
-      - DB_PORT=5432
-      - DB_USER=${POSTGRES_SOURCE_MANAGER_USER:-postgres}
-      - DB_PASSWORD=${POSTGRES_SOURCE_MANAGER_PASSWORD:-postgres}
-      - DB_NAME=${POSTGRES_SOURCE_MANAGER_DB:-gosources}
-      - DB_SSLMODE=disable
-      # External API URL for other services to access source-manager
-      - SOURCE_MANAGER_API_URL=${SOURCE_MANAGER_API_URL:-http://localhost:8050}
-      # Auth JWT secret for API authentication
-      - AUTH_JWT_SECRET=${AUTH_JWT_SECRET:-}
-      # Profiling configuration
-      - ENABLE_PROFILING=${ENABLE_PROFILING:-true}
-      - PPROF_PORT=6060
-      # Use /tmp for caches to avoid permission issues with host user
-      - GOMODCACHE=/tmp/go-mod-cache
-      - GOCACHE=/tmp/go-build-cache
+      <<: *go-dev-defaults.environment
+      SERVER_HOST: "${SOURCE_MANAGER_HOST:-0.0.0.0}"
+      SERVER_PORT: "${SOURCE_MANAGER_PORT:-8050}"
+      DB_HOST: postgres-source-manager
+      DB_PORT: 5432
+      DB_USER: "${POSTGRES_SOURCE_MANAGER_USER:-postgres}"
+      DB_PASSWORD: "${POSTGRES_SOURCE_MANAGER_PASSWORD:-postgres}"
+      DB_NAME: "${POSTGRES_SOURCE_MANAGER_DB:-gosources}"
+      DB_SSLMODE: disable
+      SOURCE_MANAGER_API_URL: "${SOURCE_MANAGER_API_URL:-http://localhost:8050}"
+      PPROF_PORT: 6060
     volumes:
-      # Mount source code for development
       - ./source-manager:/app
-      - /app/vendor  # Exclude vendor directory
       - ./source-manager/migrations:/migrations:ro
-      # Mount infrastructure module (required for go.mod replace directive)
-      - ./infrastructure:/infrastructure
-      # Mount cache volumes to persist downloads across restarts
       - source_manager_go_mod_cache:/tmp/go-mod-cache
       - source_manager_go_build_cache:/tmp/go-build-cache
-    working_dir: /app
-    # Download dependencies then start backend
-    # Use -mod=mod to ignore vendor directory if present
     command: ["sh", "-c", "go mod download && go run -mod=mod ./main.go -config config.yml"]
-    networks:
-      - north-cloud-network
-    restart: unless-stopped
     healthcheck:
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:8050/health"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 20s
-    # Development resource limits
-    deploy:
-      resources:
-        limits:
-          cpus: '2'
-          memory: 2G
 
-  # Publisher service has been split into publisher-api and publisher-router
-  # Old publisher service removed - use publisher-api and publisher-router instead
-
-  # Classifier service - Development
+  # ------------------------------------------------------------
+  # Classifier (Dev)
+  # ------------------------------------------------------------
   classifier:
+    <<: *go-dev-defaults
     build:
       context: ./classifier
       dockerfile: Dockerfile.dev
       args:
-        UID: ${UID:-1000}
-        GID: ${GID:-1000}
-    container_name: north-cloud-classifier-dev
-    # Run as host user to avoid permission issues with mounted volumes
-    user: "${UID:-1000}:${GID:-1000}"
+        UID: "${UID:-1000}"
+        GID: "${GID:-1000}"
     ports:
       - "${CLASSIFIER_PORT:-8071}:8070"
-      - "${CLASSIFIER_PPROF_PORT:-6062}:6060"  # pprof profiling
+      - "${CLASSIFIER_PPROF_PORT:-6062}:6060"
     depends_on:
       postgres-classifier:
         condition: service_healthy
@@ -173,73 +140,68 @@ services:
       redis:
         condition: service_healthy
     environment:
-      - POSTGRES_HOST=postgres-classifier
-      - POSTGRES_PORT=5432
-      - POSTGRES_USER=${POSTGRES_CLASSIFIER_USER:-postgres}
-      - POSTGRES_PASSWORD=${POSTGRES_CLASSIFIER_PASSWORD:-postgres}
-      - POSTGRES_DB=${POSTGRES_CLASSIFIER_DB:-classifier}
-      - POSTGRES_SSLMODE=disable
-      - ELASTICSEARCH_URL=http://elasticsearch:9200
-      - ES_URL=http://elasticsearch:9200  # Legacy, kept for compatibility
-      - REDIS_URL=redis:6379
-      - REDIS_PASSWORD=${REDIS_PASSWORD:-}
-      - APP_DEBUG=true
-      - APP_ENV=development
-      - CLASSIFIER_PORT=8070
-      - CLASSIFIER_ENABLED=${CLASSIFIER_ENABLED:-true}
-      - POLLING_INTERVAL=${CLASSIFIER_POLLING_INTERVAL:-30s}
-      - BATCH_SIZE=${CLASSIFIER_BATCH_SIZE:-100}
-      - CONCURRENT_WORKERS=${CLASSIFIER_CONCURRENCY:-5}
-      # Auth JWT secret for API authentication
-      - AUTH_JWT_SECRET=${AUTH_JWT_SECRET:-}
-      # Profiling configuration
-      - ENABLE_PROFILING=${ENABLE_PROFILING:-true}
-      - PPROF_PORT=6060
-      # Use /tmp for caches to avoid permission issues with host user
-      - GOMODCACHE=/tmp/go-mod-cache
-      - GOCACHE=/tmp/go-build-cache
+      <<: *go-dev-defaults.environment
+      POSTGRES_HOST: postgres-classifier
+      POSTGRES_PORT: 5432
+      POSTGRES_USER: "${POSTGRES_CLASSIFIER_USER:-postgres}"
+      POSTGRES_PASSWORD: "${POSTGRES_CLASSIFIER_PASSWORD:-postgres}"
+      POSTGRES_DB: "${POSTGRES_CLASSIFIER_DB:-classifier}"
+      POSTGRES_SSLMODE: disable
+      ELASTICSEARCH_URL: http://elasticsearch:9200
+      ES_URL: http://elasticsearch:9200
+      REDIS_URL: redis:6379
+      REDIS_PASSWORD: "${REDIS_PASSWORD:-}"
+      CLASSIFIER_PORT: 8070
+      CLASSIFIER_ENABLED: "${CLASSIFIER_ENABLED:-true}"
+      POLLING_INTERVAL: "${CLASSIFIER_POLLING_INTERVAL:-30s}"
+      BATCH_SIZE: "${CLASSIFIER_BATCH_SIZE:-100}"
+      CONCURRENT_WORKERS: "${CLASSIFIER_CONCURRENCY:-5}"
+      PPROF_PORT: 6060
     volumes:
-      # Mount source code for development
       - ./classifier:/app
-      - /app/vendor  # Exclude vendor directory
-      # Mount config if it exists
       - ./classifier/config.yml:/app/config.yml:ro
-      # Mount infrastructure module (if needed in future)
-      - ./infrastructure:/infrastructure
-      # Mount cache volumes to persist downloads across restarts
       - classifier_go_mod_cache:/tmp/go-mod-cache
       - classifier_go_build_cache:/tmp/go-build-cache
-    working_dir: /app
-    # Download dependencies from mounted go.mod/go.sum, then run
-    # Use -mod=mod to ignore vendor directory if present
     command: ["sh", "-c", "go mod download && go run -mod=mod ./main.go"]
-    networks:
-      - north-cloud-network
-    restart: unless-stopped
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8070/health"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 25s
-    # Development resource limits
-    deploy:
-      resources:
-        limits:
-          cpus: '2'
-          memory: 2G
 
-  # Index Manager service - Development
+# ============================================================
+# Additional Dev Anchors
+# ============================================================
+
+x-node-dev-defaults: &node-dev-defaults
+  user: "${UID:-1000}:${GID:-1000}"
+  networks:
+    - north-cloud-network
+  restart: unless-stopped
+  environment:
+    NODE_ENV: development
+    npm_config_cache: /tmp/npm-cache
+  volumes:
+    - /app/node_modules
+  working_dir: /app
+  deploy:
+    resources:
+      limits:
+        cpus: "1.5"
+        memory: 1G
+
+  # ------------------------------------------------------------
+  # Index Manager (Dev)
+  # ------------------------------------------------------------
   index-manager:
+    <<: *go-dev-defaults
     build:
       context: ./index-manager
       dockerfile: Dockerfile.dev
       args:
-        UID: ${UID:-1000}
-        GID: ${GID:-1000}
-    container_name: north-cloud-index-manager-dev
-    # Run as host user to avoid permission issues with mounted volumes
-    user: "${UID:-1000}:${GID:-1000}"
+        UID: "${UID:-1000}"
+        GID: "${GID:-1000}"
     ports:
       - "${INDEX_MANAGER_PORT:-8090}:8090"
     depends_on:
@@ -248,118 +210,85 @@ services:
       elasticsearch:
         condition: service_healthy
     environment:
-      - INDEX_MANAGER_PORT=8090
-      - POSTGRES_INDEX_MANAGER_HOST=postgres-index-manager
-      - POSTGRES_INDEX_MANAGER_PORT=5432
-      - POSTGRES_INDEX_MANAGER_USER=${POSTGRES_INDEX_MANAGER_USER:-postgres}
-      - POSTGRES_INDEX_MANAGER_PASSWORD=${POSTGRES_INDEX_MANAGER_PASSWORD:-postgres}
-      - POSTGRES_INDEX_MANAGER_DB=${POSTGRES_INDEX_MANAGER_DB:-index_manager}
-      - ELASTICSEARCH_URL=http://elasticsearch:9200
-      - CONFIG_PATH=/app/config.yml
-      - APP_DEBUG=true
-      - APP_ENV=development
-      # Use /tmp for caches to avoid permission issues with host user
-      - GOMODCACHE=/tmp/go-mod-cache
-      - GOCACHE=/tmp/go-build-cache
+      <<: *go-dev-defaults.environment
+      INDEX_MANAGER_PORT: 8090
+      POSTGRES_INDEX_MANAGER_HOST: postgres-index-manager
+      POSTGRES_INDEX_MANAGER_PORT: 5432
+      POSTGRES_INDEX_MANAGER_USER: "${POSTGRES_INDEX_MANAGER_USER:-postgres}"
+      POSTGRES_INDEX_MANAGER_PASSWORD: "${POSTGRES_INDEX_MANAGER_PASSWORD:-postgres}"
+      POSTGRES_INDEX_MANAGER_DB: "${POSTGRES_INDEX_MANAGER_DB:-index_manager}"
+      ELASTICSEARCH_URL: http://elasticsearch:9200
+      CONFIG_PATH: /app/config.yml
     volumes:
-      # Mount source code for development
       - ./index-manager:/app
-      - /app/vendor  # Exclude vendor directory
-      # Mount infrastructure module (if needed in future)
-      - ./infrastructure:/infrastructure
-      # Mount cache volumes to persist downloads across restarts
       - index_manager_go_mod_cache:/tmp/go-mod-cache
       - index_manager_go_build_cache:/tmp/go-build-cache
-    working_dir: /app
-    # Download dependencies from mounted go.mod/go.sum, then run
-    # Use -mod=mod to ignore vendor directory if present
-    # Note: If you get permission errors on cache volumes, remove them:
-    # docker volume rm index_manager_go_mod_cache index_manager_go_build_cache
+      - ./infrastructure:/infrastructure
     command: ["sh", "-c", "go mod download && go run -mod=mod ./cmd/httpd/main.go"]
-    networks:
-      - north-cloud-network
-    restart: unless-stopped
-    # Development resource limits (increased memory for Elasticsearch client compilation)
     deploy:
       resources:
         limits:
-          cpus: '2'
+          cpus: "2"
           memory: 4G
 
-  # Search Service - Development
+  # ------------------------------------------------------------
+  # Search Service (Dev)
+  # ------------------------------------------------------------
   search-service:
+    <<: *go-dev-defaults
     build:
       context: ./search
       dockerfile: Dockerfile.dev
       args:
-        UID: ${UID:-1000}
-        GID: ${GID:-1000}
-    container_name: north-cloud-search-dev
-    # Run as host user to avoid permission issues with mounted volumes
-    user: "${UID:-1000}:${GID:-1000}"
+        UID: "${UID:-1000}"
+        GID: "${GID:-1000}"
     ports:
       - "${SEARCH_PORT:-8092}:8090"
-      - "${SEARCH_PPROF_PORT:-6066}:6060"  # pprof profiling
+      - "${SEARCH_PPROF_PORT:-6066}:6060"
     depends_on:
       elasticsearch:
         condition: service_healthy
     environment:
-      - SEARCH_PORT=8090
-      - SEARCH_DEBUG=true
-      - ELASTICSEARCH_URL=http://elasticsearch:9200
-      - APP_DEBUG=true
-      - APP_ENV=development
-      - LOG_LEVEL=debug
-      - LOG_FORMAT=console
-      # Profiling configuration
-      - ENABLE_PROFILING=${ENABLE_PROFILING:-true}
-      - PPROF_PORT=6060
-      # Use /tmp for caches to avoid permission issues with host user
-      - GOMODCACHE=/tmp/go-mod-cache
-      - GOCACHE=/tmp/go-build-cache
+      <<: *go-dev-defaults.environment
+      SEARCH_PORT: 8090
+      SEARCH_DEBUG: "true"
+      ELASTICSEARCH_URL: http://elasticsearch:9200
+      LOG_LEVEL: debug
+      LOG_FORMAT: console
+      PPROF_PORT: 6060
     volumes:
-      # Mount source code for development
       - ./search:/app
-      - /app/vendor  # Exclude vendor directory
-      # Mount infrastructure module (required for go.mod replace directive)
-      - ./infrastructure:/infrastructure
-      # Mount cache volumes to persist downloads across restarts
       - search_go_mod_cache:/tmp/go-mod-cache
       - search_go_build_cache:/tmp/go-build-cache
-    working_dir: /app
-    # Download dependencies from mounted go.mod/go.sum, then run with air for hot-reload
-    # Use -mod=mod to ignore vendor directory if present
+      - ./infrastructure:/infrastructure
     command: ["sh", "-c", "go mod download && air -c .air.toml"]
-    networks:
-      - north-cloud-network
-    restart: unless-stopped
     healthcheck:
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:8090/health"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 20s
-    # Development resource limits
     deploy:
       resources:
         limits:
-          cpus: '2'
+          cpus: "2"
           memory: 2G
 
-  # Kibana for Elasticsearch management and visualization - Development only
+  # ------------------------------------------------------------
+  # Kibana (Dev)
+  # ------------------------------------------------------------
   kibana:
     image: docker.elastic.co/kibana/kibana:9.2.2
-    container_name: north-cloud-kibana-dev
     depends_on:
       elasticsearch:
         condition: service_healthy
     environment:
-      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
-      - ELASTICSEARCH_USERNAME=${ELASTICSEARCH_USERNAME:-}
-      - ELASTICSEARCH_PASSWORD=${ELASTICSEARCH_PASSWORD:-}
-      - xpack.security.enabled=${ELASTICSEARCH_SECURITY_ENABLED:-false}
-      - SERVER_NAME=kibana
-      - SERVER_HOST=0.0.0.0
+      ELASTICSEARCH_HOSTS: http://elasticsearch:9200
+      ELASTICSEARCH_USERNAME: "${ELASTICSEARCH_USERNAME:-}"
+      ELASTICSEARCH_PASSWORD: "${ELASTICSEARCH_PASSWORD:-}"
+      xpack.security.enabled: "${ELASTICSEARCH_SECURITY_ENABLED:-false}"
+      SERVER_NAME: kibana
+      SERVER_HOST: 0.0.0.0
     ports:
       - "${KIBANA_PORT:-5601}:5601"
     healthcheck:
@@ -371,17 +300,17 @@ services:
       - north-cloud-network
     restart: unless-stopped
 
-  # Unified Dashboard - Development
+  # ------------------------------------------------------------
+  # Dashboard (Dev)
+  # ------------------------------------------------------------
   dashboard:
+    <<: *node-dev-defaults
     build:
       context: ./dashboard
       dockerfile: Dockerfile.dev
       args:
-        UID: ${UID:-1000}
-        GID: ${GID:-1000}
-    container_name: north-cloud-dashboard-dev
-    # Run as host user to avoid permission issues with mounted volumes
-    user: "${UID:-1000}:${GID:-1000}"
+        UID: "${UID:-1000}"
+        GID: "${GID:-1000}"
     depends_on:
       crawler:
         condition: service_healthy
@@ -398,293 +327,222 @@ services:
     ports:
       - "${DASHBOARD_PORT:-3002}:3002"
     environment:
-      - NODE_ENV=development
-      - npm_config_cache=/tmp/npm-cache
-      # API URLs using Docker service names (internal network)
-      - CRAWLER_API_URL=http://crawler:8080
-      - SOURCES_API_URL=http://source-manager:8050
-      - PUBLISHER_API_URL=http://publisher-api:8070
-      - CLASSIFIER_API_URL=http://classifier:8070
-      - AUTH_API_URL=http://auth:8040
-      - INDEX_MANAGER_API_URL=http://index-manager:8090
+      <<: *node-dev-defaults.environment
+      CRAWLER_API_URL: http://crawler:8080
+      SOURCES_API_URL: http://source-manager:8050
+      PUBLISHER_API_URL: http://publisher-api:8070
+      CLASSIFIER_API_URL: http://classifier:8070
+      AUTH_API_URL: http://auth:8040
+      INDEX_MANAGER_API_URL: http://index-manager:8090
     volumes:
       - ./dashboard:/app
       - dashboard_node_modules:/app/node_modules
       - dashboard_npm_cache:/tmp/npm-cache
-    working_dir: /app
     command: ["sh", "-c", "npm install && npm run dev -- --host 0.0.0.0"]
-    networks:
-      - north-cloud-network
-    restart: unless-stopped
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3002"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 30s
-    deploy:
-      resources:
-        limits:
-          cpus: '1.5'
-          memory: 1G
 
-  # Search Frontend - Development
+  # ------------------------------------------------------------
+  # Search Frontend (Dev)
+  # ------------------------------------------------------------
   search-frontend:
+    <<: *node-dev-defaults
     build:
       context: ./search-frontend
       dockerfile: Dockerfile.dev
       args:
-        UID: ${UID:-1000}
-        GID: ${GID:-1000}
-    container_name: north-cloud-search-frontend-dev
-    user: "${UID:-1000}:${GID:-1000}"
+        UID: "${UID:-1000}"
+        GID: "${GID:-1000}"
     ports:
       - "${SEARCH_FRONTEND_PORT:-3003}:3003"
     environment:
-      - NODE_ENV=development
-      - npm_config_cache=/tmp/npm-cache
-      # API URL for search service (internal Docker network)
-      - SEARCH_API_URL=http://search-service:8090
+      <<: *node-dev-defaults.environment
+      SEARCH_API_URL: http://search-service:8090
     volumes:
       - ./search-frontend:/app
       - search_frontend_node_modules:/app/node_modules
       - search_frontend_npm_cache:/tmp/npm-cache
-    working_dir: /app
     command: ["sh", "-c", "npm install && npm run dev -- --host 0.0.0.0"]
-    networks:
-      - north-cloud-network
-    restart: unless-stopped
 
-  # Auth Service - Development
+  # ------------------------------------------------------------
+  # Auth (Dev)
+  # ------------------------------------------------------------
   auth:
+    <<: *go-dev-defaults
     build:
       context: ./auth
       dockerfile: Dockerfile.dev
       args:
-        UID: ${UID:-1000}
-        GID: ${GID:-1000}
-    container_name: north-cloud-auth-dev
-    user: "${UID:-1000}:${GID:-1000}"
+        UID: "${UID:-1000}"
+        GID: "${GID:-1000}"
     ports:
       - "${AUTH_PORT:-8040}:8040"
-      - "${AUTH_PPROF_PORT:-6065}:6060"  # pprof profiling
+      - "${AUTH_PPROF_PORT:-6065}:6060"
     environment:
-      - AUTH_USERNAME=${AUTH_USERNAME:-admin}
-      - AUTH_PASSWORD=${AUTH_PASSWORD:-admin}
-      - AUTH_JWT_SECRET=${AUTH_JWT_SECRET:-}
-      - AUTH_PORT=8040
-      - APP_DEBUG=${APP_DEBUG:-true}
-      # Profiling configuration
-      - ENABLE_PROFILING=${ENABLE_PROFILING:-true}
-      - PPROF_PORT=6060
-      # Use /tmp for caches to avoid permission issues with host user
-      - GOMODCACHE=/tmp/go-mod-cache
-      - GOCACHE=/tmp/go-build-cache
+      <<: *go-dev-defaults.environment
+      AUTH_USERNAME: "${AUTH_USERNAME:-admin}"
+      AUTH_PASSWORD: "${AUTH_PASSWORD:-admin}"
+      AUTH_JWT_SECRET: "${AUTH_JWT_SECRET:-}"
+      AUTH_PORT: 8040
+      PPROF_PORT: 6060
     volumes:
       - ./auth:/app
-      # Mount cache volumes to persist downloads across restarts
       - auth_go_mod_cache:/tmp/go-mod-cache
       - auth_go_build_cache:/tmp/go-build-cache
-    working_dir: /app
     command: ["sh", "-c", "go mod download && go run main.go"]
-    networks:
-      - north-cloud-network
-    restart: unless-stopped
-    deploy:
-      resources:
-        limits:
-          cpus: '2'
-          memory: 1G
 
-  # Publisher API - Development
-  publisher-api:
-    build:
-      context: ./publisher
-      dockerfile: Dockerfile.dev
-      args:
-        UID: ${UID:-1000}
-        GID: ${GID:-1000}
-    container_name: north-cloud-publisher-api-dev
-    # Run as host user to avoid permission issues with mounted volumes
-    user: "${UID:-1000}:${GID:-1000}"
-    ports:
-      - "${PUBLISHER_PORT:-8070}:8070"
-      - "${PUBLISHER_API_PPROF_PORT:-6063}:6060"  # pprof profiling
-    depends_on:
-      postgres-publisher:
-        condition: service_healthy
-    environment:
-      - POSTGRES_PUBLISHER_HOST=postgres-publisher
-      - POSTGRES_PUBLISHER_PORT=5432
-      - POSTGRES_PUBLISHER_USER=${POSTGRES_PUBLISHER_USER:-postgres}
-      - POSTGRES_PUBLISHER_PASSWORD=${POSTGRES_PUBLISHER_PASSWORD:-postgres}
-      - POSTGRES_PUBLISHER_DB=${POSTGRES_PUBLISHER_DB:-publisher}
-      - POSTGRES_PUBLISHER_SSLMODE=disable
-      - PUBLISHER_PORT=8070
-      - AUTH_JWT_SECRET=${AUTH_JWT_SECRET:-}
-      - REDIS_ADDR=${REDIS_ADDR:-redis:6379}
-      - REDIS_PASSWORD=${REDIS_PASSWORD:-}
-      - GIN_MODE=debug
-      - APP_DEBUG=true
-      # Profiling configuration
-      - ENABLE_PROFILING=${ENABLE_PROFILING:-true}
-      - PPROF_PORT=6060
-      # Use /tmp for caches to avoid permission issues with host user
-      - GOMODCACHE=/tmp/go-mod-cache
-      - GOCACHE=/tmp/go-build-cache
-    volumes:
-      # Mount source code for development
-      - ./publisher:/app
-      - /app/vendor  # Exclude vendor directory
-      # Mount infrastructure module (required for go.mod replace directive)
-      - ./infrastructure:/infrastructure
-      # Mount cache volumes to persist downloads across restarts
-      - publisher_go_mod_cache:/tmp/go-mod-cache
-      - publisher_go_build_cache:/tmp/go-build-cache
-    working_dir: /app
-    # Download dependencies, build binary, then start API server
-    # Use -mod=mod to ignore vendor directory if present
-    # Reset PATH to avoid Windows path issues (parentheses in paths cause shell errors)
-    # Build the binary first to ensure all files are compiled together
-    command:
-      - sh
-      - -c
-      - export PATH=/usr/local/go/bin:/go/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin && go mod download && go build -mod=mod -o /tmp/publisher . && /tmp/publisher api
-    networks:
-      - north-cloud-network
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:8070/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 25s
-    # Development resource limits
-    deploy:
-      resources:
-        limits:
-          cpus: '2'
-          memory: 1G
+# ============================================================
+# Publisher API (Dev)
+# ============================================================
+publisher-api:
+  <<: *go-dev-defaults
+  build:
+    context: ./publisher
+    dockerfile: Dockerfile.dev
+    args:
+      UID: "${UID:-1000}"
+      GID: "${GID:-1000}"
+  ports:
+    - "${PUBLISHER_PORT:-8070}:8070"
+    - "${PUBLISHER_API_PPROF_PORT:-6063}:6060"
+  depends_on:
+    postgres-publisher:
+      condition: service_healthy
+  environment:
+    <<: *go-dev-defaults.environment
+    POSTGRES_PUBLISHER_HOST: postgres-publisher
+    POSTGRES_PUBLISHER_PORT: 5432
+    POSTGRES_PUBLISHER_USER: "${POSTGRES_PUBLISHER_USER:-postgres}"
+    POSTGRES_PUBLISHER_PASSWORD: "${POSTGRES_PUBLISHER_PASSWORD:-postgres}"
+    POSTGRES_PUBLISHER_DB: "${POSTGRES_PUBLISHER_DB:-publisher}"
+    POSTGRES_PUBLISHER_SSLMODE: disable
+    PUBLISHER_PORT: 8070
+    REDIS_ADDR: "${REDIS_ADDR:-redis:6379}"
+    REDIS_PASSWORD: "${REDIS_PASSWORD:-}"
+    GIN_MODE: debug
+    PPROF_PORT: 6060
+  volumes:
+    - ./publisher:/app
+    - publisher_go_mod_cache:/tmp/go-mod-cache
+    - publisher_go_build_cache:/tmp/go-build-cache
+    - ./infrastructure:/infrastructure
+  command:
+    - sh
+    - -c
+    - >
+      export PATH=/usr/local/go/bin:/go/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin &&
+      go mod download &&
+      go build -mod=mod -o /tmp/publisher . &&
+      /tmp/publisher api
+  healthcheck:
+    test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:8070/health"]
+    interval: 30s
+    timeout: 10s
+    retries: 3
+    start_period: 25s
+  deploy:
+    resources:
+      limits:
+        cpus: "2"
+        memory: 1G
 
-  # Publisher Router - Development
-  publisher-router:
-    build:
-      context: ./publisher
-      dockerfile: Dockerfile.dev
-      args:
-        UID: ${UID:-1000}
-        GID: ${GID:-1000}
-    container_name: north-cloud-publisher-router-dev
-    # Run as host user to avoid permission issues with mounted volumes
-    user: "${UID:-1000}:${GID:-1000}"
-    ports:
-      - "${PUBLISHER_ROUTER_PPROF_PORT:-6064}:6060"  # pprof profiling
-    depends_on:
-      postgres-publisher:
-        condition: service_healthy
-      elasticsearch:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    environment:
-      - POSTGRES_PUBLISHER_HOST=postgres-publisher
-      - POSTGRES_PUBLISHER_PORT=5432
-      - POSTGRES_PUBLISHER_USER=${POSTGRES_PUBLISHER_USER:-postgres}
-      - POSTGRES_PUBLISHER_PASSWORD=${POSTGRES_PUBLISHER_PASSWORD:-postgres}
-      - POSTGRES_PUBLISHER_DB=${POSTGRES_PUBLISHER_DB:-publisher}
-      - POSTGRES_PUBLISHER_SSLMODE=disable
-      - ELASTICSEARCH_URL=http://elasticsearch:9200
-      - REDIS_ADDR=redis:6379
-      - REDIS_PASSWORD=${REDIS_PASSWORD:-}
-      - PUBLISHER_ROUTER_CHECK_INTERVAL=${PUBLISHER_ROUTER_CHECK_INTERVAL:-5m}
-      - PUBLISHER_ROUTER_BATCH_SIZE=${PUBLISHER_ROUTER_BATCH_SIZE:-100}
-      - APP_DEBUG=true
-      # Profiling configuration
-      - ENABLE_PROFILING=${ENABLE_PROFILING:-true}
-      - PPROF_PORT=6060
-      # Use /tmp for caches to avoid permission issues with host user
-      - GOMODCACHE=/tmp/go-mod-cache
-      - GOCACHE=/tmp/go-build-cache
-    volumes:
-      # Mount source code for development
-      - ./publisher:/app
-      - /app/vendor  # Exclude vendor directory
-      # Mount infrastructure module (required for go.mod replace directive)
-      - ./infrastructure:/infrastructure
-      # Mount cache volumes to persist downloads across restarts
-      - publisher_go_mod_cache:/tmp/go-mod-cache
-      - publisher_go_build_cache:/tmp/go-build-cache
-    working_dir: /app
-    # Download dependencies then start router service
-    # Use -mod=mod to ignore vendor directory if present
-    # Use . to compile entire package (not just main.go)
-    command: ["sh", "-c", "go mod download && go run -mod=mod . router"]
-    networks:
-      - north-cloud-network
-    restart: unless-stopped
-    # Development resource limits
-    deploy:
-      resources:
-        limits:
-          cpus: '2'
-          memory: 2G
+# ============================================================
+# Publisher Router (Dev)
+# ============================================================
+publisher-router:
+  <<: *go-dev-defaults
+  build:
+    context: ./publisher
+    dockerfile: Dockerfile.dev
+    args:
+      UID: "${UID:-1000}"
+      GID: "${GID:-1000}"
+  ports:
+    - "${PUBLISHER_ROUTER_PPROF_PORT:-6064}:6060"
+  depends_on:
+    postgres-publisher:
+      condition: service_healthy
+    elasticsearch:
+      condition: service_healthy
+    redis:
+      condition: service_healthy
+  environment:
+    <<: *go-dev-defaults.environment
+    POSTGRES_PUBLISHER_HOST: postgres-publisher
+    POSTGRES_PUBLISHER_PORT: 5432
+    POSTGRES_PUBLISHER_USER: "${POSTGRES_PUBLISHER_USER:-postgres}"
+    POSTGRES_PUBLISHER_PASSWORD: "${POSTGRES_PUBLISHER_PASSWORD:-postgres}"
+    POSTGRES_PUBLISHER_DB: "${POSTGRES_PUBLISHER_DB:-publisher}"
+    POSTGRES_PUBLISHER_SSLMODE: disable
+    ELASTICSEARCH_URL: http://elasticsearch:9200
+    REDIS_ADDR: redis:6379
+    REDIS_PASSWORD: "${REDIS_PASSWORD:-}"
+    PUBLISHER_ROUTER_CHECK_INTERVAL: "${PUBLISHER_ROUTER_CHECK_INTERVAL:-5m}"
+    PUBLISHER_ROUTER_BATCH_SIZE: "${PUBLISHER_ROUTER_BATCH_SIZE:-100}"
+    PPROF_PORT: 6060
+  volumes:
+    - ./publisher:/app
+    - publisher_go_mod_cache:/tmp/go-mod-cache
+    - publisher_go_build_cache:/tmp/go-build-cache
+    - ./infrastructure:/infrastructure
+  command: ["sh", "-c", "go mod download && go run -mod=mod . router"]
+  deploy:
+    resources:
+      limits:
+        cpus: "2"
+        memory: 2G
 
-  # Nginx reverse proxy - Development
-  nginx:
-    image: nginx:alpine
-    container_name: north-cloud-nginx-dev
-    ports:
-      - "${NGINX_HTTP_PORT:-80}:80"
-    volumes:
-      - ./infrastructure/nginx/nginx.dev.conf:/etc/nginx/nginx.conf:ro
-    depends_on:
-      - source-manager
-      - dashboard
-      - publisher-api
-      - kibana
-    networks:
-      - north-cloud-network
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 10s
-    # Development resource limits
-    deploy:
-      resources:
-        limits:
-          cpus: '1'
-          memory: 512M
+# ============================================================
+# Nginx Reverse Proxy (Dev)
+# ============================================================
+nginx:
+  <<: *service-defaults
+  image: nginx:alpine
+  ports:
+    - "${NGINX_HTTP_PORT:-80}:80"
+  volumes:
+    - ./infrastructure/nginx/nginx.dev.conf:/etc/nginx/nginx.conf:ro
+  depends_on:
+    - source-manager
+    - dashboard
+    - publisher-api
+    - kibana
+  healthcheck:
+    test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost/health"]
+    interval: 30s
+    timeout: 10s
+    retries: 3
+    start_period: 10s
+  deploy:
+    resources:
+      limits:
+        cpus: "1"
+        memory: 512M
 
+# ============================================================
+# Dev Cache Volumes
+# ============================================================
 volumes:
-  # Cache for Go modules to speed up builds when dependencies change
   go_modules_cache:
-  # Crawler cache volumes
   crawler_go_mod_cache:
   crawler_go_build_cache:
-  # Source manager cache volumes
   source_manager_go_mod_cache:
   source_manager_go_build_cache:
-  # Publisher cache volumes
   publisher_go_mod_cache:
   publisher_go_build_cache:
-  # Classifier cache volumes
   classifier_go_mod_cache:
   classifier_go_build_cache:
-  # Index Manager cache volumes
   index_manager_go_mod_cache:
   index_manager_go_build_cache:
-  # Search Service cache volumes
   search_go_mod_cache:
   search_go_build_cache:
-  # Dashboard cache volumes
   dashboard_npm_cache:
   dashboard_node_modules:
-  # Search Frontend cache volumes
   search_frontend_npm_cache:
   search_frontend_node_modules:
-  # Auth service cache volumes
   auth_go_mod_cache:
   auth_go_build_cache:
