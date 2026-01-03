@@ -164,6 +164,7 @@ services:
     user: "${UID:-1000}:${GID:-1000}"
     ports:
       - "${CLASSIFIER_PORT:-8071}:8070"
+      - "${CLASSIFIER_PPROF_PORT:-6062}:6060"  # pprof profiling
     depends_on:
       postgres-classifier:
         condition: service_healthy
@@ -191,6 +192,9 @@ services:
       - CONCURRENT_WORKERS=${CLASSIFIER_CONCURRENCY:-5}
       # Auth JWT secret for API authentication
       - AUTH_JWT_SECRET=${AUTH_JWT_SECRET:-}
+      # Profiling configuration
+      - ENABLE_PROFILING=${ENABLE_PROFILING:-true}
+      - PPROF_PORT=6060
       # Use /tmp for caches to avoid permission issues with host user
       - GOMODCACHE=/tmp/go-mod-cache
       - GOCACHE=/tmp/go-build-cache
@@ -295,6 +299,7 @@ services:
     user: "${UID:-1000}:${GID:-1000}"
     ports:
       - "${SEARCH_PORT:-8092}:8090"
+      - "${SEARCH_PPROF_PORT:-6066}:6060"  # pprof profiling
     depends_on:
       elasticsearch:
         condition: service_healthy
@@ -306,6 +311,9 @@ services:
       - APP_ENV=development
       - LOG_LEVEL=debug
       - LOG_FORMAT=console
+      # Profiling configuration
+      - ENABLE_PROFILING=${ENABLE_PROFILING:-true}
+      - PPROF_PORT=6060
       # Use /tmp for caches to avoid permission issues with host user
       - GOMODCACHE=/tmp/go-mod-cache
       - GOCACHE=/tmp/go-build-cache
@@ -459,12 +467,16 @@ services:
     user: "${UID:-1000}:${GID:-1000}"
     ports:
       - "${AUTH_PORT:-8040}:8040"
+      - "${AUTH_PPROF_PORT:-6065}:6060"  # pprof profiling
     environment:
       - AUTH_USERNAME=${AUTH_USERNAME:-admin}
       - AUTH_PASSWORD=${AUTH_PASSWORD:-admin}
       - AUTH_JWT_SECRET=${AUTH_JWT_SECRET:-}
       - AUTH_PORT=8040
       - APP_DEBUG=${APP_DEBUG:-true}
+      # Profiling configuration
+      - ENABLE_PROFILING=${ENABLE_PROFILING:-true}
+      - PPROF_PORT=6060
       # Use /tmp for caches to avoid permission issues with host user
       - GOMODCACHE=/tmp/go-mod-cache
       - GOCACHE=/tmp/go-build-cache
@@ -497,6 +509,7 @@ services:
     user: "${UID:-1000}:${GID:-1000}"
     ports:
       - "${PUBLISHER_PORT:-8070}:8070"
+      - "${PUBLISHER_API_PPROF_PORT:-6063}:6060"  # pprof profiling
     depends_on:
       postgres-publisher:
         condition: service_healthy
@@ -513,6 +526,9 @@ services:
       - REDIS_PASSWORD=${REDIS_PASSWORD:-}
       - GIN_MODE=debug
       - APP_DEBUG=true
+      # Profiling configuration
+      - ENABLE_PROFILING=${ENABLE_PROFILING:-true}
+      - PPROF_PORT=6060
       # Use /tmp for caches to avoid permission issues with host user
       - GOMODCACHE=/tmp/go-mod-cache
       - GOCACHE=/tmp/go-build-cache
@@ -561,6 +577,8 @@ services:
     container_name: north-cloud-publisher-router-dev
     # Run as host user to avoid permission issues with mounted volumes
     user: "${UID:-1000}:${GID:-1000}"
+    ports:
+      - "${PUBLISHER_ROUTER_PPROF_PORT:-6064}:6060"  # pprof profiling
     depends_on:
       postgres-publisher:
         condition: service_healthy
@@ -581,6 +599,9 @@ services:
       - PUBLISHER_ROUTER_CHECK_INTERVAL=${PUBLISHER_ROUTER_CHECK_INTERVAL:-5m}
       - PUBLISHER_ROUTER_BATCH_SIZE=${PUBLISHER_ROUTER_BATCH_SIZE:-100}
       - APP_DEBUG=true
+      # Profiling configuration
+      - ENABLE_PROFILING=${ENABLE_PROFILING:-true}
+      - PPROF_PORT=6060
       # Use /tmp for caches to avoid permission issues with host user
       - GOMODCACHE=/tmp/go-mod-cache
       - GOCACHE=/tmp/go-build-cache

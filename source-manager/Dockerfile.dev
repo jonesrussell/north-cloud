@@ -31,4 +31,4 @@ ENV GOMODCACHE=/tmp/go-mod-cache
 ENV NPM_CONFIG_CACHE=/tmp/npm-cache
 
 # Default dev command: frontend + backend
-CMD ["sh", "-c", "cd /app/frontend && npm install && npm run dev & cd /app && go run -mod=mod ./main.go -config config.yml"]
+CMD ["sh", "-c", "go run -mod=mod ./main.go -config config.yml"]
