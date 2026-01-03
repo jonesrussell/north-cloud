@@ -2,20 +2,17 @@ FROM golang:1.25-alpine
 
 WORKDIR /app
 
-# Install build dependencies and tools
-# Include Node.js and npm for frontend development
-RUN apk add --no-cache git curl wget nodejs npm
+# Install dev tools
+RUN apk add --no-cache git bash
 
-# Install air for hot reloading (optional)
-# For Go 1.25+, use go install
+# Install Air for hot reload
 RUN go install github.com/air-verse/air@latest
 
-# Create non-root user for development (used as fallback)
-RUN addgroup -g 1000 appuser && \
-    adduser -D -u 1000 -G appuser appuser
+# Create non-root user (docker-compose will override UID/GID)
+RUN addgroup -g ${GID} appuser && \
+    adduser -D -u ${UID} -G appuser appuser
 
-# Create cache directories in /tmp
-# /tmp typically has 1777 (sticky bit) which is appropriate for shared temp space
+# Writable caches in /tmp
 RUN mkdir -p /tmp/go-mod-cache \
              /tmp/go-build-cache \
              /tmp/npm-cache && \
@@ -23,19 +20,14 @@ RUN mkdir -p /tmp/go-mod-cache \
                 /tmp/go-build-cache \
                 /tmp/npm-cache
 
-# Set PATH to include Go binaries
-ENV PATH=$PATH:/usr/local/go/bin:/go/bin
-
-# Note: Container runs as host user via docker-compose user directive
-# This eliminates permission issues with mounted volumes
-# Cache directories in /tmp are writable by any user
-# /app is mounted from host and owned by host user
+# Go cache locations
+ENV GOCACHE=/tmp/go-build-cache
+ENV GOMODCACHE=/tmp/go-mod-cache
+ENV NPM_CONFIG_CACHE=/tmp/npm-cache
 
 EXPOSE 8060 3000
 
-# Default command: run both backend and frontend from mounted source
-# The source code will be available via volume mount
-# Use -mod=mod to ignore vendor directory if present
-# Can be overridden in docker-compose to use air for hot reloading
-# Start frontend in background, then start backend in foreground
-CMD ["sh", "-c", "cd /app/frontend && npm install && npm run dev & cd /app && go run -mod=mod ./main.go"]
+# Default dev command:
+# - start frontend dev server
+# - start backend with go run
+CMD ["go", "run", "-mod=mod", "main.go"]

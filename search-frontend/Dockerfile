@@ -1,4 +1,4 @@
-# Multi-stage build for production search frontend
+# Build stage
 FROM node:25-alpine AS builder
 
 WORKDIR /app
@@ -6,26 +6,25 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies (use npm install since we don't have package-lock.json yet)
+# Install dependencies
 RUN npm install
 
-# Copy source code
+# Copy source
 COPY . .
 
-# Build for production
+# Build production assets
 RUN npm run build
 
-# Production stage - serve static files with nginx
+# Runtime stage
 FROM nginx:alpine
 
-# Copy built files from builder
+# Remove default nginx config to avoid conflicts
+RUN rm -rf /etc/nginx/conf.d/default.conf
+
+# Copy built assets
 COPY --from=builder /app/dist /usr/share/nginx/html
 
-# Copy nginx configuration for SPA routing
+# Copy SPA routing config
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
-# Expose port
 EXPOSE 80
-
-# Start nginx
-CMD ["nginx", "-g", "daemon off;"]

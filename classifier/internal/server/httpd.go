@@ -16,6 +16,7 @@ import (
 	"github.com/jonesrussell/north-cloud/classifier/internal/database"
 	"github.com/jonesrussell/north-cloud/classifier/internal/domain"
 	"github.com/jonesrussell/north-cloud/classifier/internal/processor"
+	"github.com/north-cloud/infrastructure/profiling"
 )
 
 const (
@@ -174,6 +175,9 @@ func loadRulesAndCreateClassifier(ctx context.Context, comps *serverComponents, 
 
 // StartHTTPServer starts the HTTP server for the classifier service
 func StartHTTPServer() {
+	// Start profiling server (if enabled)
+	profiling.StartPprofServer()
+
 	debug := os.Getenv("APP_DEBUG") == "true"
 	port := getEnvInt("CLASSIFIER_PORT", defaultClassifierPort)
 

@@ -16,6 +16,7 @@ services:
     user: "${UID:-1000}:${GID:-1000}"
     ports:
       - "${CRAWLER_PORT:-8060}:8080"  # Map host 8060 to container 8080
+      - "${CRAWLER_PPROF_PORT:-6060}:6060"  # pprof profiling
     depends_on:
       postgres-crawler:
         condition: service_healthy
@@ -47,6 +48,9 @@ services:
       - CRAWLER_SAVE_DISCOVERED_LINKS=${CRAWLER_SAVE_DISCOVERED_LINKS:-true}
       # Auth JWT secret for API authentication
       - AUTH_JWT_SECRET=${AUTH_JWT_SECRET:-}
+      # Profiling configuration
+      - ENABLE_PROFILING=${ENABLE_PROFILING:-true}
+      - PPROF_PORT=6060
       # Use /tmp for caches to avoid permission issues with host user
       - GOMODCACHE=/tmp/go-mod-cache
       - GOCACHE=/tmp/go-build-cache
@@ -89,6 +93,7 @@ services:
     user: "${UID:-1000}:${GID:-1000}"
     ports:
       - "${SOURCE_MANAGER_PORT:-8050}:8050"
+      - "${SOURCE_MANAGER_PPROF_PORT:-6061}:6060"  # pprof profiling
     depends_on:
       postgres-source-manager:
         condition: service_healthy
@@ -107,6 +112,9 @@ services:
       - SOURCE_MANAGER_API_URL=${SOURCE_MANAGER_API_URL:-http://localhost:8050}
       # Auth JWT secret for API authentication
       - AUTH_JWT_SECRET=${AUTH_JWT_SECRET:-}
+      # Profiling configuration
+      - ENABLE_PROFILING=${ENABLE_PROFILING:-true}
+      - PPROF_PORT=6060
       # Use /tmp for caches to avoid permission issues with host user
       - GOMODCACHE=/tmp/go-mod-cache
       - GOCACHE=/tmp/go-build-cache

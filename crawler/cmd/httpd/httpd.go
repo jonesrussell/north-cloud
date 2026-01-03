@@ -28,6 +28,7 @@ import (
 	"github.com/jonesrussell/north-cloud/crawler/internal/storage"
 	"github.com/jonesrussell/north-cloud/crawler/internal/storage/types"
 	infracontext "github.com/north-cloud/infrastructure/context"
+	"github.com/north-cloud/infrastructure/profiling"
 	"github.com/spf13/viper"
 )
 
@@ -67,6 +68,9 @@ var (
 // Start starts the HTTP server and runs until interrupted.
 // It handles graceful shutdown on SIGINT or SIGTERM signals.
 func Start() error {
+	// Phase 0: Start profiling server (if enabled)
+	profiling.StartPprofServer()
+
 	// Phase 1: Initialize Viper configuration
 	if err := config.InitializeViper(); err != nil {
 		return fmt.Errorf("failed to initialize config: %w", err)

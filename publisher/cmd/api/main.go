@@ -13,6 +13,7 @@ import (
 	"github.com/jonesrussell/north-cloud/publisher/internal/api"
 	"github.com/jonesrussell/north-cloud/publisher/internal/database"
 	redisclient "github.com/jonesrussell/north-cloud/publisher/internal/redis"
+	"github.com/north-cloud/infrastructure/profiling"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -24,6 +25,9 @@ const (
 )
 
 func main() {
+	// Start profiling server (if enabled)
+	profiling.StartPprofServer()
+
 	// Load database configuration from environment
 	dbConfig := database.Config{
 		Host:     getEnv("POSTGRES_PUBLISHER_HOST", "localhost"),

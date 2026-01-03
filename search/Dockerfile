@@ -1,41 +1,40 @@
-# Production Dockerfile for Search Service
-# Multi-stage build for smaller image size
-
 # Build stage
 FROM golang:1.25-alpine AS builder
 
-# Install build dependencies
-RUN apk add --no-cache git ca-certificates
+RUN apk add --no-cache ca-certificates
 
-# Copy infrastructure module to parent directory
+# Prepare workspace for replace ../infrastructure
 WORKDIR /build
-COPY infrastructure/ ./infrastructure/
+COPY infrastructure ./infrastructure
 
-# Work in search subdirectory
+# Move into search module
 WORKDIR /build/search
 
-# Copy go mod files
+# Copy go mod files first for caching
 COPY search/go.mod search/go.sum ./
 RUN go mod download
 
-# Copy search source code
+# Copy source
 COPY search/ .
 
-# Build binary
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -ldflags="-w -s" -o search cmd/httpd/main.go
+# Build static binary
+RUN CGO_ENABLED=0 go build \
+    -ldflags="-w -s" \
+    -trimpath \
+    -o search \
+    cmd/httpd/main.go
 
-# Final stage
+# Runtime stage
 FROM alpine:latest
 
-# Install ca-certificates for HTTPS
-RUN apk --no-cache add ca-certificates
+RUN apk --no-cache add ca-certificates wget
 
-WORKDIR /root/
+WORKDIR /root
 
-# Copy binary from builder
+# Copy binary
 COPY --from=builder /build/search/search .
 
-# Copy config template
+# Copy config
 COPY --from=builder /build/search/config.yml.example ./config.yml
 
 EXPOSE 8090
@@ -44,5 +43,4 @@ EXPOSE 8090
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
   CMD wget --no-verbose --tries=1 --spider http://localhost:8090/health || exit 1
 
-# Start service
 CMD ["./search"]

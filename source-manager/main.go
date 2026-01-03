@@ -14,6 +14,7 @@ import (
 	"github.com/jonesrussell/gosources/internal/logger"
 	"github.com/jonesrussell/gosources/internal/repository"
 	infracontext "github.com/north-cloud/infrastructure/context"
+	"github.com/north-cloud/infrastructure/profiling"
 )
 
 var (
@@ -21,6 +22,9 @@ var (
 )
 
 func main() {
+	// Start profiling server (if enabled)
+	profiling.StartPprofServer()
+
 	var configPath string
 	flag.StringVar(&configPath, "config", "config.yml", "Path to configuration file")
 	flag.Parse()

@@ -13,9 +13,13 @@ import (
 	"github.com/jonesrussell/north-cloud/search/internal/elasticsearch"
 	"github.com/jonesrussell/north-cloud/search/internal/logger"
 	"github.com/jonesrussell/north-cloud/search/internal/service"
+	"github.com/north-cloud/infrastructure/profiling"
 )
 
 func main() {
+	// Start profiling server (if enabled)
+	profiling.StartPprofServer()
+
 	// Load configuration
 	cfg, err := config.Load()
 	if err != nil {

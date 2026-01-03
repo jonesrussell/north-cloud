@@ -6,9 +6,13 @@ import (
 
 	"github.com/jonesrussell/north-cloud/auth/internal/api"
 	"github.com/jonesrussell/north-cloud/auth/internal/config"
+	"github.com/north-cloud/infrastructure/profiling"
 )
 
 func main() {
+	// Start profiling server (if enabled)
+	profiling.StartPprofServer()
+
 	// Load configuration
 	cfg := config.Load()
 

@@ -11,6 +11,7 @@ import (
 
 	"github.com/jonesrussell/north-cloud/publisher/internal/database"
 	"github.com/jonesrussell/north-cloud/publisher/internal/router"
+	"github.com/north-cloud/infrastructure/profiling"
 )
 
 const (
@@ -20,6 +21,9 @@ const (
 )
 
 func main() {
+	// Start profiling server (if enabled)
+	profiling.StartPprofServer()
+
 	log.Println("Starting Publisher Router Service...")
 
 	// Load configuration

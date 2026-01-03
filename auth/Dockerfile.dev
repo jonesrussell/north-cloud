@@ -1,46 +1,31 @@
 FROM golang:1.25-alpine
 
-# Build arguments for user/group IDs (passed from docker-compose)
 ARG UID=1000
 ARG GID=1000
 
 WORKDIR /app
 
-# Install development tools
-RUN apk add --no-cache git make
+# Dev tools
+RUN apk add --no-cache git
 
-# Create non-root user for development with configurable UID/GID
+# Create matching user
 RUN addgroup -g ${GID} appuser && \
     adduser -D -u ${UID} -G appuser appuser
 
-# Create cache directories in /tmp
-# /tmp typically has 1777 (sticky bit) which is appropriate for shared temp space
-RUN mkdir -p /tmp/go-mod-cache \
-             /tmp/go-build-cache && \
-    chmod 1777 /tmp/go-mod-cache \
-                /tmp/go-build-cache
+# Writable caches in /tmp
+RUN mkdir -p /tmp/go-mod-cache /tmp/go-build-cache && \
+    chmod 1777 /tmp/go-mod-cache /tmp/go-build-cache
 
-# Copy go mod files
-COPY go.mod go.sum* ./
+# Copy go.mod files for initial dependency download
+COPY go.mod go.sum ./
 RUN go mod download
 
-# Copy source code (mounted as volume in docker-compose)
-# This allows hot-reloading during development
-
+# Expose port
 EXPOSE 8040
 
-# Set PATH to include Go binaries
-ENV PATH=$PATH:/usr/local/go/bin:/go/bin
-
-# Note: Container runs as host user via docker-compose user directive
-# This eliminates permission issues with mounted volumes
-# Cache directories in /tmp are writable by any user
-# /app is mounted from host and owned by host user
-
-# Set Go cache and module cache to /tmp locations
+# Go cache locations
 ENV GOCACHE=/tmp/go-build-cache
 ENV GOMODCACHE=/tmp/go-mod-cache
 
-# Run with hot-reload using air (if installed) or direct go run
+# Run in dev mode (hot reload if using air)
 CMD ["go", "run", "main.go"]
-

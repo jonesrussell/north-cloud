@@ -1,39 +1,25 @@
-# Development Dockerfile for Classifier Service
-# Uses hot-reload for development
-
 FROM golang:1.25-alpine
 
 WORKDIR /app
 
-# Install dependencies
+# Install tools needed for development
 RUN apk add --no-cache git bash
 
-# Install air for hot-reload (optional but recommended for development)
+# Install Air for hot reload
 RUN go install github.com/air-verse/air@latest
 
-# Create cache directories in /tmp
-# /tmp typically has 1777 (sticky bit) which is appropriate for shared temp space
-# These directories will be mounted as volumes in docker-compose
-RUN mkdir -p /tmp/go-mod-cache \
-             /tmp/go-build-cache && \
-    chmod 1777 /tmp/go-mod-cache \
-               /tmp/go-build-cache
+# Writable Go caches in /tmp
+RUN mkdir -p /tmp/go-mod-cache /tmp/go-build-cache && \
+    chmod 1777 /tmp/go-mod-cache /tmp/go-build-cache
 
-# Copy go mod files (for reference, actual install happens in container)
-COPY go.mod go.sum* ./
-
-# Development mode: source is mounted as volume, no build step needed
+# Copy go.mod files (source code is mounted at runtime)
+COPY go.mod go.sum ./
 
 EXPOSE 8070
 
-# Note: Container runs as host user via docker-compose user directive
-# This eliminates permission issues with mounted volumes
-# Cache directories in /tmp are writable by any user
-# /app is mounted from host and owned by host user
-# If cache volumes have permission issues, remove them: docker volume rm classifier_go_mod_cache classifier_go_build_cache
+# Go cache locations
+ENV GOCACHE=/tmp/go-build-cache
+ENV GOMODCACHE=/tmp/go-mod-cache
 
-# Default command - starts both HTTP server and processor concurrently
-# Can be overridden in docker-compose to run only one service:
-#   - ["go", "run", "main.go", "httpd"]     # HTTP server only
-#   - ["go", "run", "main.go", "processor"] # Processor only
+# Default dev command
 CMD ["go", "run", "main.go"]
