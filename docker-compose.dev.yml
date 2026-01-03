@@ -7,22 +7,18 @@ x-go-dev-defaults: &go-dev-defaults
   networks:
     - north-cloud-network
   restart: unless-stopped
-  environment:
-    GOMODCACHE: /tmp/go-mod-cache
-    GOCACHE: /tmp/go-build-cache
-    APP_DEBUG: "true"
-    APP_ENV: development
-    ENABLE_PROFILING: "${ENABLE_PROFILING:-true}"
-    AUTH_JWT_SECRET: "${AUTH_JWT_SECRET:-}"
   volumes:
     - /app/vendor
     - ./infrastructure:/infrastructure
   working_dir: /app
-  deploy:
-    resources:
-      limits:
-        cpus: "2"
-        memory: 2G
+
+x-go-dev-environment: &go-dev-environment
+  GOMODCACHE: /tmp/go-mod-cache
+  GOCACHE: /tmp/go-build-cache
+  APP_DEBUG: "true"
+  APP_ENV: development
+  ENABLE_PROFILING: "${ENABLE_PROFILING:-true}"
+  AUTH_JWT_SECRET: "${AUTH_JWT_SECRET:-}"
 
 # ============================================================
 # Development Services
@@ -47,7 +43,7 @@ services:
       minio:
         condition: service_healthy
     environment:
-      <<: *go-dev-defaults.environment
+      <<: *go-dev-environment
       DB_HOST: postgres-crawler
       DB_PORT: 5432
       DB_USER: "${POSTGRES_CRAWLER_USER:-postgres}"
@@ -94,7 +90,7 @@ services:
       postgres-source-manager:
         condition: service_healthy
     environment:
-      <<: *go-dev-defaults.environment
+      <<: *go-dev-environment
       SERVER_HOST: "${SOURCE_MANAGER_HOST:-0.0.0.0}"
       SERVER_PORT: "${SOURCE_MANAGER_PORT:-8050}"
       DB_HOST: postgres-source-manager
@@ -140,7 +136,7 @@ services:
       redis:
         condition: service_healthy
     environment:
-      <<: *go-dev-defaults.environment
+      <<: *go-dev-environment
       POSTGRES_HOST: postgres-classifier
       POSTGRES_PORT: 5432
       POSTGRES_USER: "${POSTGRES_CLASSIFIER_USER:-postgres}"
@@ -179,9 +175,6 @@ x-node-dev-defaults: &node-dev-defaults
   networks:
     - north-cloud-network
   restart: unless-stopped
-  environment:
-    NODE_ENV: development
-    npm_config_cache: /tmp/npm-cache
   volumes:
     - /app/node_modules
   working_dir: /app
@@ -190,6 +183,17 @@ x-node-dev-defaults: &node-dev-defaults
       limits:
         cpus: "1.5"
         memory: 1G
+
+x-node-dev-environment: &node-dev-environment
+  NODE_ENV: development
+  npm_config_cache: /tmp/npm-cache
+
+x-service-defaults: &service-defaults
+  deploy:
+    restart_policy:
+      condition: unless-stopped
+  networks:
+    - north-cloud-network
 
   # ------------------------------------------------------------
   # Index Manager (Dev)
@@ -210,7 +214,7 @@ x-node-dev-defaults: &node-dev-defaults
       elasticsearch:
         condition: service_healthy
     environment:
-      <<: *go-dev-defaults.environment
+      <<: *go-dev-environment
       INDEX_MANAGER_PORT: 8090
       POSTGRES_INDEX_MANAGER_HOST: postgres-index-manager
       POSTGRES_INDEX_MANAGER_PORT: 5432
@@ -249,7 +253,7 @@ x-node-dev-defaults: &node-dev-defaults
       elasticsearch:
         condition: service_healthy
     environment:
-      <<: *go-dev-defaults.environment
+      <<: *go-dev-environment
       SEARCH_PORT: 8090
       SEARCH_DEBUG: "true"
       ELASTICSEARCH_URL: http://elasticsearch:9200
@@ -327,7 +331,7 @@ x-node-dev-defaults: &node-dev-defaults
     ports:
       - "${DASHBOARD_PORT:-3002}:3002"
     environment:
-      <<: *node-dev-defaults.environment
+      <<: *node-dev-environment
       CRAWLER_API_URL: http://crawler:8080
       SOURCES_API_URL: http://source-manager:8050
       PUBLISHER_API_URL: http://publisher-api:8070
@@ -360,7 +364,7 @@ x-node-dev-defaults: &node-dev-defaults
     ports:
       - "${SEARCH_FRONTEND_PORT:-3003}:3003"
     environment:
-      <<: *node-dev-defaults.environment
+      <<: *node-dev-environment
       SEARCH_API_URL: http://search-service:8090
     volumes:
       - ./search-frontend:/app
@@ -383,7 +387,7 @@ x-node-dev-defaults: &node-dev-defaults
       - "${AUTH_PORT:-8040}:8040"
       - "${AUTH_PPROF_PORT:-6065}:6060"
     environment:
-      <<: *go-dev-defaults.environment
+      <<: *go-dev-environment
       AUTH_USERNAME: "${AUTH_USERNAME:-admin}"
       AUTH_PASSWORD: "${AUTH_PASSWORD:-admin}"
       AUTH_JWT_SECRET: "${AUTH_JWT_SECRET:-}"
@@ -395,133 +399,136 @@ x-node-dev-defaults: &node-dev-defaults
       - auth_go_build_cache:/tmp/go-build-cache
     command: ["sh", "-c", "go mod download && go run main.go"]
 
-# ============================================================
-# Publisher API (Dev)
-# ============================================================
-publisher-api:
-  <<: *go-dev-defaults
-  build:
-    context: ./publisher
-    dockerfile: Dockerfile.dev
-    args:
-      UID: "${UID:-1000}"
-      GID: "${GID:-1000}"
-  ports:
-    - "${PUBLISHER_PORT:-8070}:8070"
-    - "${PUBLISHER_API_PPROF_PORT:-6063}:6060"
-  depends_on:
-    postgres-publisher:
-      condition: service_healthy
-  environment:
-    <<: *go-dev-defaults.environment
-    POSTGRES_PUBLISHER_HOST: postgres-publisher
-    POSTGRES_PUBLISHER_PORT: 5432
-    POSTGRES_PUBLISHER_USER: "${POSTGRES_PUBLISHER_USER:-postgres}"
-    POSTGRES_PUBLISHER_PASSWORD: "${POSTGRES_PUBLISHER_PASSWORD:-postgres}"
-    POSTGRES_PUBLISHER_DB: "${POSTGRES_PUBLISHER_DB:-publisher}"
-    POSTGRES_PUBLISHER_SSLMODE: disable
-    PUBLISHER_PORT: 8070
-    REDIS_ADDR: "${REDIS_ADDR:-redis:6379}"
-    REDIS_PASSWORD: "${REDIS_PASSWORD:-}"
-    GIN_MODE: debug
-    PPROF_PORT: 6060
-  volumes:
-    - ./publisher:/app
-    - publisher_go_mod_cache:/tmp/go-mod-cache
-    - publisher_go_build_cache:/tmp/go-build-cache
-    - ./infrastructure:/infrastructure
-  command:
-    - sh
-    - -c
-    - >
-      export PATH=/usr/local/go/bin:/go/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin &&
-      go mod download &&
-      go build -mod=mod -o /tmp/publisher . &&
-      /tmp/publisher api
-  healthcheck:
-    test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:8070/health"]
-    interval: 30s
-    timeout: 10s
-    retries: 3
-    start_period: 25s
-  deploy:
-    resources:
-      limits:
-        cpus: "2"
-        memory: 1G
+  # ------------------------------------------------------------
+  # Publisher API (Dev)
+  # ------------------------------------------------------------
+  publisher-api:
+    <<: *go-dev-defaults
+    build:
+      context: ./publisher
+      dockerfile: Dockerfile.dev
+      args:
+        UID: "${UID:-1000}"
+        GID: "${GID:-1000}"
+    ports:
+      - "${PUBLISHER_PORT:-8070}:8070"
+      - "${PUBLISHER_API_PPROF_PORT:-6063}:6060"
+    depends_on:
+      postgres-publisher:
+        condition: service_healthy
+    environment:
+      <<: *go-dev-environment
+      POSTGRES_PUBLISHER_HOST: postgres-publisher
+      POSTGRES_PUBLISHER_PORT: 5432
+      POSTGRES_PUBLISHER_USER: "${POSTGRES_PUBLISHER_USER:-postgres}"
+      POSTGRES_PUBLISHER_PASSWORD: "${POSTGRES_PUBLISHER_PASSWORD:-postgres}"
+      POSTGRES_PUBLISHER_DB: "${POSTGRES_PUBLISHER_DB:-publisher}"
+      POSTGRES_PUBLISHER_SSLMODE: disable
+      PUBLISHER_PORT: 8070
+      REDIS_ADDR: "${REDIS_ADDR:-redis:6379}"
+      REDIS_PASSWORD: "${REDIS_PASSWORD:-}"
+      GIN_MODE: debug
+      PPROF_PORT: 6060
+    volumes:
+      - ./publisher:/app
+      - publisher_go_mod_cache:/tmp/go-mod-cache
+      - publisher_go_build_cache:/tmp/go-build-cache
+      - ./infrastructure:/infrastructure
+    command:
+      - sh
+      - -c
+      - >
+        export PATH=/usr/local/go/bin:/go/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin &&
+        go mod download &&
+        go build -mod=mod -o /tmp/publisher . &&
+        /tmp/publisher api
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:8070/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 25s
+    deploy:
+      resources:
+        limits:
+          cpus: "2"
+          memory: 1G
 
-# ============================================================
-# Publisher Router (Dev)
-# ============================================================
-publisher-router:
-  <<: *go-dev-defaults
-  build:
-    context: ./publisher
-    dockerfile: Dockerfile.dev
-    args:
-      UID: "${UID:-1000}"
-      GID: "${GID:-1000}"
-  ports:
-    - "${PUBLISHER_ROUTER_PPROF_PORT:-6064}:6060"
-  depends_on:
-    postgres-publisher:
-      condition: service_healthy
-    elasticsearch:
-      condition: service_healthy
-    redis:
-      condition: service_healthy
-  environment:
-    <<: *go-dev-defaults.environment
-    POSTGRES_PUBLISHER_HOST: postgres-publisher
-    POSTGRES_PUBLISHER_PORT: 5432
-    POSTGRES_PUBLISHER_USER: "${POSTGRES_PUBLISHER_USER:-postgres}"
-    POSTGRES_PUBLISHER_PASSWORD: "${POSTGRES_PUBLISHER_PASSWORD:-postgres}"
-    POSTGRES_PUBLISHER_DB: "${POSTGRES_PUBLISHER_DB:-publisher}"
-    POSTGRES_PUBLISHER_SSLMODE: disable
-    ELASTICSEARCH_URL: http://elasticsearch:9200
-    REDIS_ADDR: redis:6379
-    REDIS_PASSWORD: "${REDIS_PASSWORD:-}"
-    PUBLISHER_ROUTER_CHECK_INTERVAL: "${PUBLISHER_ROUTER_CHECK_INTERVAL:-5m}"
-    PUBLISHER_ROUTER_BATCH_SIZE: "${PUBLISHER_ROUTER_BATCH_SIZE:-100}"
-    PPROF_PORT: 6060
-  volumes:
-    - ./publisher:/app
-    - publisher_go_mod_cache:/tmp/go-mod-cache
-    - publisher_go_build_cache:/tmp/go-build-cache
-    - ./infrastructure:/infrastructure
-  command: ["sh", "-c", "go mod download && go run -mod=mod . router"]
-  deploy:
-    resources:
-      limits:
-        cpus: "2"
-        memory: 2G
+  # ------------------------------------------------------------
+  # Publisher Router (Dev)
+  # ------------------------------------------------------------
+  publisher-router:
+    <<: *go-dev-defaults
+    build:
+      context: ./publisher
+      dockerfile: Dockerfile.dev
+      args:
+        UID: "${UID:-1000}"
+        GID: "${GID:-1000}"
+    ports:
+      - "${PUBLISHER_ROUTER_PPROF_PORT:-6064}:6060"
+    depends_on:
+      postgres-publisher:
+        condition: service_healthy
+      elasticsearch:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      <<: *go-dev-environment
+      POSTGRES_PUBLISHER_HOST: postgres-publisher
+      POSTGRES_PUBLISHER_PORT: 5432
+      POSTGRES_PUBLISHER_USER: "${POSTGRES_PUBLISHER_USER:-postgres}"
+      POSTGRES_PUBLISHER_PASSWORD: "${POSTGRES_PUBLISHER_PASSWORD:-postgres}"
+      POSTGRES_PUBLISHER_DB: "${POSTGRES_PUBLISHER_DB:-publisher}"
+      POSTGRES_PUBLISHER_SSLMODE: disable
+      ELASTICSEARCH_URL: http://elasticsearch:9200
+      REDIS_ADDR: redis:6379
+      REDIS_PASSWORD: "${REDIS_PASSWORD:-}"
+      PUBLISHER_ROUTER_CHECK_INTERVAL: "${PUBLISHER_ROUTER_CHECK_INTERVAL:-5m}"
+      PUBLISHER_ROUTER_BATCH_SIZE: "${PUBLISHER_ROUTER_BATCH_SIZE:-100}"
+      PPROF_PORT: 6060
+    volumes:
+      - ./publisher:/app
+      - publisher_go_mod_cache:/tmp/go-mod-cache
+      - publisher_go_build_cache:/tmp/go-build-cache
+      - ./infrastructure:/infrastructure
+    command: ["sh", "-c", "go mod download && go run -mod=mod . router"]
+    deploy:
+      resources:
+        limits:
+          cpus: "2"
+          memory: 2G
 
-# ============================================================
-# Nginx Reverse Proxy (Dev)
-# ============================================================
-nginx:
-  <<: *service-defaults
-  image: nginx:alpine
-  ports:
-    - "${NGINX_HTTP_PORT:-80}:80"
-  volumes:
-    - ./infrastructure/nginx/nginx.dev.conf:/etc/nginx/nginx.conf:ro
-  depends_on:
-    - source-manager
-    - dashboard
-    - publisher-api
-    - kibana
-  healthcheck:
-    test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost/health"]
-    interval: 30s
-    timeout: 10s
-    retries: 3
-    start_period: 10s
-  deploy:
-    resources:
-      limits:
-        cpus: "1"
-        memory: 512M
+  # ------------------------------------------------------------
+  # Nginx Reverse Proxy (Dev)
+  # ------------------------------------------------------------
+  nginx:
+    deploy:
+      restart_policy:
+        condition: unless-stopped
+      resources:
+        limits:
+          cpus: "1"
+          memory: 512M
+    networks:
+      - north-cloud-network
+    image: nginx:alpine
+    ports:
+      - "${NGINX_HTTP_PORT:-80}:80"
+    volumes:
+      - ./infrastructure/nginx/nginx.dev.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - source-manager
+      - dashboard
+      - publisher-api
+      - kibana
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
 
 # ============================================================
 # Dev Cache Volumes

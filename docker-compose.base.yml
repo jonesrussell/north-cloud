@@ -221,8 +221,8 @@ services:
     <<: *service-defaults
     image: northcloud/auth:latest
     build:
-      context: ./auth
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: ./auth/Dockerfile
     environment:
       AUTH_USERNAME: ${AUTH_USERNAME:-admin}
       AUTH_PASSWORD: ${AUTH_PASSWORD:-admin}
