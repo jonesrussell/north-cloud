@@ -8,18 +8,18 @@ import (
 
 // Article represents a classified article for benchmarking
 type Article struct {
-	SourceID        string                 `json:"source_id"`
-	URL             string                 `json:"url"`
-	CanonicalURL    string                 `json:"canonical_url"`
-	Title           string                 `json:"title"`
-	Body            string                 `json:"body"`
-	PublishedDate   time.Time              `json:"published_date"`
-	QualityScore    int                    `json:"quality_score"`
-	IsCrimeRelated  bool                   `json:"is_crime_related"`
-	Topics          []string               `json:"topics"`
-	ContentType     string                 `json:"content_type"`
-	Metadata        map[string]interface{} `json:"metadata"`
-	ClassifiedAt    time.Time              `json:"classified_at"`
+	SourceID       string                 `json:"source_id"`
+	URL            string                 `json:"url"`
+	CanonicalURL   string                 `json:"canonical_url"`
+	Title          string                 `json:"title"`
+	Body           string                 `json:"body"`
+	PublishedDate  time.Time              `json:"published_date"`
+	QualityScore   int                    `json:"quality_score"`
+	IsCrimeRelated bool                   `json:"is_crime_related"`
+	Topics         []string               `json:"topics"`
+	ContentType    string                 `json:"content_type"`
+	Metadata       map[string]interface{} `json:"metadata"`
+	ClassifiedAt   time.Time              `json:"classified_at"`
 }
 
 // Route represents a routing rule for benchmarking
@@ -103,16 +103,16 @@ func BenchmarkArticleFiltering(b *testing.B) {
 // BenchmarkRedisMessageSerialization benchmarks JSON serialization for Redis pub/sub
 func BenchmarkRedisMessageSerialization(b *testing.B) {
 	article := Article{
-		SourceID:      "example_com",
-		URL:           "https://example.com/article-123",
-		CanonicalURL:  "https://example.com/article-123",
-		Title:         "Breaking News: Major Event Downtown",
-		Body:          "Full article content with multiple paragraphs of text describing the event in detail. This includes quotes from witnesses and official statements.",
-		PublishedDate: time.Now().UTC(),
-		QualityScore:  85,
+		SourceID:       "example_com",
+		URL:            "https://example.com/article-123",
+		CanonicalURL:   "https://example.com/article-123",
+		Title:          "Breaking News: Major Event Downtown",
+		Body:           "Full article content with multiple paragraphs of text describing the event in detail. This includes quotes from witnesses and official statements.",
+		PublishedDate:  time.Now().UTC(),
+		QualityScore:   85,
 		IsCrimeRelated: true,
-		Topics:        []string{"crime", "news", "local"},
-		ContentType:   "article",
+		Topics:         []string{"crime", "news", "local"},
+		ContentType:    "article",
 		Metadata: map[string]interface{}{
 			"author":  "Jane Reporter",
 			"section": "crime",

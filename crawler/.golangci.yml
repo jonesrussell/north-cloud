@@ -279,6 +279,9 @@ linters:
           - wrapcheck
         path: _test\.go
       - linters:
+          - lll
+        path: .*_bench_test\.go$
+      - linters:
           - forbidigo
         path: cmd/root\.go
       - linters:
