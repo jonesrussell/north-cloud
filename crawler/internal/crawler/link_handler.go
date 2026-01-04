@@ -31,11 +31,6 @@ func NewLinkHandler(c *Crawler, linkRepo *database.QueuedLinkRepository, saveLin
 
 // HandleLink processes a single link from an HTML element.
 func (h *LinkHandler) HandleLink(e *colly.HTMLElement) {
-	link := e.Attr("href")
-	if link == "" {
-		return
-	}
-
 	if h.shouldSkipLink(link) {
 		return
 	}
@@ -71,15 +66,22 @@ func (h *LinkHandler) HandleLink(e *colly.HTMLElement) {
 
 // shouldSkipLink determines if a link should be skipped based on its scheme or prefix.
 func (h *LinkHandler) shouldSkipLink(link string) bool {
-	skipPrefixes := []string{"#", "javascript:", "mailto:", "tel:"}
-
-	for _, prefix := range skipPrefixes {
-		if strings.HasPrefix(link, prefix) {
-			return true
-		}
+	link := e.Attr("href")
+	if link == "" {
+		return
 	}
 
-	return false
+	u, err := url.Parse(link)
+	if err != nil || u.Scheme == "" {
+		return true
+	}
+
+	switch u.Scheme {
+	case "http", "https":
+		return false
+	default:
+		return true
+	}
 }
 
 // validateURL validates a URL if validation is enabled in configuration.
