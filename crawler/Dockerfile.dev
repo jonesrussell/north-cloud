@@ -32,4 +32,4 @@ ENV NPM_CONFIG_CACHE=/tmp/npm-cache
 
 EXPOSE 8060 3000
 
-CMD ["go", "run", "-mod=mod", "main.go"]
+CMD ["air", "-c", ".air.toml"]

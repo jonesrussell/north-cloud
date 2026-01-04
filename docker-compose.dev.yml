@@ -85,7 +85,7 @@ services:
       - crawler_go_mod_cache:/tmp/go-mod-cache
       - crawler_go_build_cache:/tmp/go-build-cache
       - ./infrastructure:/infrastructure
-    command: ["sh", "-c", "go mod download && go run -mod=mod ./main.go"]
+    command: ["sh", "-c", "go mod download && air -c .air.toml"]
     healthcheck:
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:8080/health"]
       interval: 30s
