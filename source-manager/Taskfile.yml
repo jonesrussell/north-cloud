@@ -165,10 +165,8 @@ tasks:
         # Check for Docker Compose mode
         elif docker ps --format '{{.Names}}' | grep -q 'north-cloud-postgres-source-manager\|postgres-source-manager'; then
           echo "Running migration via Docker Compose (connecting to postgres-source-manager container)..."
-          NETWORK=$(docker network ls --filter name=north-cloud --format '{{.Name}}' | grep network | head -1)
-          if [ -z "$NETWORK" ]; then
-            NETWORK="north-cloud_north-cloud-network"
-          fi
+          # Use known network name for Docker Compose
+          NETWORK="north-cloud_north-cloud-network"
           docker run --rm --network "$NETWORK" \
             -v "$(pwd)/migrations:/migrations:ro" \
             migrate/migrate:latest \
@@ -218,10 +216,7 @@ tasks:
         # Check for Docker Compose mode
         elif docker ps --format '{{.Names}}' | grep -q 'north-cloud-postgres-source-manager\|postgres-source-manager'; then
           echo "Rolling back migration via Docker Compose..."
-          NETWORK=$(docker network ls --filter name=north-cloud --format '{{.Name}}' | grep network | head -1)
-          if [ -z "$NETWORK" ]; then
-            NETWORK="north-cloud_north-cloud-network"
-          fi
+          NETWORK="north-cloud_north-cloud-network"
           docker run --rm --network "$NETWORK" \
             -v "$(pwd)/migrations:/migrations:ro" \
             migrate/migrate:latest \
@@ -269,10 +264,7 @@ tasks:
             version
         # Check for Docker Compose mode
         elif docker ps --format '{{.Names}}' | grep -q 'north-cloud-postgres-source-manager\|postgres-source-manager'; then
-          NETWORK=$(docker network ls --filter name=north-cloud --format '{{.Name}}' | grep network | head -1)
-          if [ -z "$NETWORK" ]; then
-            NETWORK="north-cloud_north-cloud-network"
-          fi
+          NETWORK="north-cloud_north-cloud-network"
           docker run --rm --network "$NETWORK" \
             -v "$(pwd)/migrations:/migrations:ro" \
             migrate/migrate:latest \
