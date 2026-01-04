@@ -8,6 +8,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"testing"
 	"time"
 
@@ -173,6 +174,15 @@ func setupTestHandler() *Handler {
 
 // setupRouter creates a test router with routes
 func setupRouter(handler *Handler) *gin.Engine {
+	// Unset AUTH_JWT_SECRET to disable JWT authentication in tests
+	originalSecret := os.Getenv("AUTH_JWT_SECRET")
+	os.Unsetenv("AUTH_JWT_SECRET")
+	defer func() {
+		if originalSecret != "" {
+			os.Setenv("AUTH_JWT_SECRET", originalSecret)
+		}
+	}()
+
 	gin.SetMode(gin.TestMode)
 	router := gin.New()
 	SetupRoutes(router, handler)

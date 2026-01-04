@@ -58,6 +58,10 @@ func TestConfigDebugFromEnv(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			if tt.envValue != "" {
 				t.Setenv("APP_DEBUG", tt.envValue)
+			} else {
+				// Unset the environment variable for this test
+				t.Setenv("APP_DEBUG", "")
+				os.Unsetenv("APP_DEBUG")
 			}
 
 			// Create a minimal config for testing
