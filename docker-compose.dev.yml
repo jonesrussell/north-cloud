@@ -489,11 +489,11 @@ services:
       - north-cloud-network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:4040/healthz"]
+      test: ["CMD", "wget", "-q", "-O", "-", "http://localhost:4040/ready"]
       interval: 30s
       timeout: 10s
-      retries: 3
-      start_period: 20s
+      retries: 5
+      start_period: 30s
 
   # ------------------------------------------------------------
   # Nginx Reverse Proxy (Dev)
