@@ -85,7 +85,7 @@ func Start() error {
 	}
 
 	// Phase 1: Initialize Viper configuration
-	if err := config.InitializeViper(); err != nil {
+	if err = config.InitializeViper(); err != nil {
 		return fmt.Errorf("failed to initialize config: %w", err)
 	}
 
