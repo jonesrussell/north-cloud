@@ -31,6 +31,7 @@ func NewLinkHandler(c *Crawler, linkRepo *database.DiscoveredLinkRepository, sav
 
 // HandleLink processes a single link from an HTML element.
 func (h *LinkHandler) HandleLink(e *colly.HTMLElement) {
+	link := e.Attr("href")
 	if h.shouldSkipLink(link) {
 		return
 	}
@@ -46,8 +47,8 @@ func (h *LinkHandler) HandleLink(e *colly.HTMLElement) {
 		return
 	}
 
-	// Save link to database for tracking (if enabled), but always visit immediately
-	if h.shouldSaveLink() {
+	// Save external links to database for tracking (if enabled), but always visit immediately
+	if h.shouldSaveLink() && h.isExternalLink(absLink, e) {
 		h.trySaveLink(absLink, e) // Save for tracking - errors are logged but don't block visiting
 	}
 
@@ -57,9 +58,8 @@ func (h *LinkHandler) HandleLink(e *colly.HTMLElement) {
 
 // shouldSkipLink determines if a link should be skipped based on its scheme or prefix.
 func (h *LinkHandler) shouldSkipLink(link string) bool {
-	link := e.Attr("href")
 	if link == "" {
-		return
+		return true
 	}
 
 	u, err := url.Parse(link)
@@ -146,6 +146,54 @@ func (h *LinkHandler) isNonRetryableError(err error) bool {
 // shouldSaveLink checks if link saving is enabled and repository is available.
 func (h *LinkHandler) shouldSaveLink() bool {
 	return h.saveLinks && h.linkRepo != nil
+}
+
+// isExternalLink checks if a link points to an external domain (not in the source's allowed domains).
+func (h *LinkHandler) isExternalLink(linkURL string, e *colly.HTMLElement) bool {
+	parsedLink, err := url.Parse(linkURL)
+	if err != nil {
+		return false
+	}
+
+	linkHostname := parsedLink.Hostname()
+	if linkHostname == "" {
+		return false
+	}
+
+	// Get source configuration to check allowed domains
+	sourceName := h.crawler.state.CurrentSource()
+	if sourceName == "" {
+		return false
+	}
+
+	ctx := h.crawler.state.Context()
+	if ctx == nil {
+		return false
+	}
+
+	source, err := h.crawler.sources.ValidateSource(ctx, sourceName, h.crawler.indexManager)
+	if err != nil {
+		// If we can't get source config, don't save the link
+		return false
+	}
+
+	// Check if link's domain matches any allowed domain
+	for _, allowedDomain := range source.AllowedDomains {
+		// Exact match
+		if allowedDomain == linkHostname {
+			return false // Internal link
+		}
+		// Check wildcard domains (e.g., "*.example.com" matches "www.example.com")
+		if strings.HasPrefix(allowedDomain, "*.") {
+			domainSuffix := strings.TrimPrefix(allowedDomain, "*.")
+			if strings.HasSuffix(linkHostname, "."+domainSuffix) || linkHostname == domainSuffix {
+				return false // Internal link
+			}
+		}
+	}
+
+	// Link doesn't match any allowed domain, so it's external
+	return true
 }
 
 // trySaveLink attempts to save a link to the database queue for tracking purposes.
