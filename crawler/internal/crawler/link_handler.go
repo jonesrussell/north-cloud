@@ -48,7 +48,7 @@ func (h *LinkHandler) HandleLink(e *colly.HTMLElement) {
 	}
 
 	// Save external links to database for tracking (if enabled), but always visit immediately
-	if h.shouldSaveLink() && h.isExternalLink(absLink, e) {
+	if h.shouldSaveLink() && h.isExternalLink(absLink) {
 		h.trySaveLink(absLink, e) // Save for tracking - errors are logged but don't block visiting
 	}
 
@@ -149,7 +149,7 @@ func (h *LinkHandler) shouldSaveLink() bool {
 }
 
 // isExternalLink checks if a link points to an external domain (not in the source's allowed domains).
-func (h *LinkHandler) isExternalLink(linkURL string, e *colly.HTMLElement) bool {
+func (h *LinkHandler) isExternalLink(linkURL string) bool {
 	parsedLink, err := url.Parse(linkURL)
 	if err != nil {
 		return false
