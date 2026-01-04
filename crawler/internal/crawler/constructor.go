@@ -2,12 +2,8 @@
 package crawler
 
 import (
-	"crypto/tls"
-	"fmt"
-	"net/http"
 	"time"
 
-	"github.com/gocolly/colly/v2"
 	"github.com/jmoiron/sqlx"
 	"github.com/jonesrussell/north-cloud/crawler/internal/archive"
 	"github.com/jonesrussell/north-cloud/crawler/internal/config"
@@ -53,69 +49,6 @@ type CrawlerResult struct {
 	Crawler Interface
 }
 
-// createCollector creates and configures a new colly collector
-func createCollector(cfg *crawler.Config, log logger.Interface) (*colly.Collector, error) {
-	collector := colly.NewCollector(
-		colly.MaxDepth(cfg.MaxDepth),
-		colly.Async(true),
-		colly.AllowedDomains(cfg.AllowedDomains...),
-		colly.ParseHTTPErrorResponse(),
-		colly.IgnoreRobotsTxt(),
-		colly.UserAgent(cfg.UserAgent),
-		// Note: Not using AllowURLRevisit() to prevent excessive request queuing.
-		// Each URL will only be crawled once, which significantly reduces Wait() time.
-	)
-
-	// Configure rate limiting
-	if err := collector.Limit(&colly.LimitRule{
-		DomainGlob:  "*",
-		Delay:       cfg.Delay,
-		RandomDelay: cfg.RandomDelay,
-		Parallelism: cfg.MaxConcurrency,
-	}); err != nil {
-		return nil, fmt.Errorf("failed to set rate limit: %w", err)
-	}
-
-	// Configure transport with TLS settings from config
-	collector.WithTransport(&http.Transport{
-		TLSClientConfig: &tls.Config{
-			InsecureSkipVerify: cfg.TLS.InsecureSkipVerify, //nolint:gosec // Configurable for development/testing
-			MinVersion:         cfg.TLS.MinVersion,
-			MaxVersion:         cfg.TLS.MaxVersion,
-		},
-		DisableKeepAlives:     false,
-		MaxIdleConns:          DefaultMaxIdleConns,
-		MaxIdleConnsPerHost:   DefaultMaxIdleConnsPerHost,
-		IdleConnTimeout:       DefaultIdleConnTimeout,
-		ResponseHeaderTimeout: DefaultResponseHeaderTimeout,
-		ExpectContinueTimeout: DefaultExpectContinueTimeout,
-	})
-
-	if cfg.TLS.InsecureSkipVerify {
-		log.Warn("TLS certificate verification is disabled. This is not recommended for production use.",
-			"component", "crawler",
-			"warning", "This makes HTTPS connections vulnerable to man-in-the-middle attacks")
-	}
-
-	// Set up callbacks
-	collector.OnRequest(func(r *colly.Request) {
-		log.Info("Visiting", "url", r.URL.String())
-	})
-
-	collector.OnResponse(func(r *colly.Response) {
-		log.Info("Visited", "url", r.Request.URL.String(), "status", r.StatusCode)
-	})
-
-	collector.OnError(func(r *colly.Response, err error) {
-		log.Error("Error while crawling",
-			"url", r.Request.URL.String(),
-			"status", r.StatusCode,
-			"error", err)
-	})
-
-	return collector, nil
-}
-
 // NewCrawlerWithParams creates a new crawler instance with all its components.
 // This is the non-FX version that replaces ProvideCrawler.
 func NewCrawlerWithParams(p CrawlerParams) (*CrawlerResult, error) {
@@ -129,12 +62,6 @@ func NewCrawlerWithParams(p CrawlerParams) (*CrawlerResult, error) {
 		p.Logger,
 		rawContentService,
 	)
-
-	// Create collector
-	collector, err := createCollector(p.Config, p.Logger)
-	if err != nil {
-		return nil, err
-	}
 
 	// Create lifecycle and signal coordinators
 	lifecycle := NewLifecycleManager()
@@ -159,7 +86,7 @@ func NewCrawlerWithParams(p CrawlerParams) (*CrawlerResult, error) {
 	// Create crawler
 	c := &Crawler{
 		logger:              p.Logger,
-		collector:           collector,
+		collector:           nil, // Collector will be created in setupCollector() when Start() is called
 		bus:                 p.Bus,
 		indexManager:        p.IndexManager,
 		sources:             p.Sources,

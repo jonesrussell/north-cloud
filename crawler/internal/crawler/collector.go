@@ -5,10 +5,8 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
-	"math"
 	"net/http"
 	"strings"
-	"sync/atomic"
 	"time"
 
 	colly "github.com/gocolly/colly/v2"
@@ -19,7 +17,6 @@ import (
 // Collector defaults
 const (
 	defaultRateLimit             = 2 * time.Second
-	defaultMaxDepth              = 3
 	defaultMaxConcurrency        = 2
 	defaultParallelism           = 2
 	defaultMaxIdleConns          = 100
@@ -32,7 +29,6 @@ const (
 // CollectorConfig holds configuration for the collector.
 type CollectorConfig struct {
 	RateLimit      time.Duration
-	MaxDepth       int
 	MaxConcurrency int
 }
 
@@ -40,7 +36,6 @@ type CollectorConfig struct {
 func NewCollectorConfig() *CollectorConfig {
 	return &CollectorConfig{
 		RateLimit:      defaultRateLimit,
-		MaxDepth:       defaultMaxDepth,
 		MaxConcurrency: defaultMaxConcurrency,
 	}
 }
@@ -50,9 +45,6 @@ func (c *CollectorConfig) Validate() error {
 	if c.RateLimit < 0 {
 		return errors.New("rate limit must be non-negative")
 	}
-	if c.MaxDepth < 0 {
-		return errors.New("max depth must be non-negative")
-	}
 	if c.MaxConcurrency < 1 {
 		return errors.New("max concurrency must be positive")
 	}
@@ -61,13 +53,7 @@ func (c *CollectorConfig) Validate() error {
 
 // setupCollector configures the collector with the given source settings.
 func (c *Crawler) setupCollector(source *configtypes.Source) error {
-	// Use override if set, otherwise use source's max depth
 	maxDepth := source.MaxDepth
-	override := int(atomic.LoadInt32(&c.maxDepthOverride))
-	if override > 0 {
-		maxDepth = override
-		c.logger.Info("Using max_depth override", "override", maxDepth, "source_default", source.MaxDepth)
-	}
 
 	c.logger.Debug("Setting up collector",
 		"max_depth", maxDepth,
@@ -267,37 +253,6 @@ func (c *Crawler) handleCrawlError(r *colly.Response, visitErr error) {
 
 // Collector Management Methods
 // -----------------------------
-
-// SetMaxDepth sets the maximum depth for the crawler.
-// If the collector hasn't been created yet, this sets an override that will be used
-// when the collector is created. Otherwise, it updates the existing collector.
-func (c *Crawler) SetMaxDepth(depth int) {
-	config := NewCollectorConfig()
-	config.MaxDepth = depth
-
-	if err := config.Validate(); err != nil {
-		c.logger.Error("Invalid max depth",
-			"error", err,
-			"depth", depth)
-		return
-	}
-
-	// Always store the override so it's used when setupCollector creates a new collector
-	// Bounds check to prevent integer overflow
-	maxDepth := config.MaxDepth
-	if maxDepth >= math.MinInt32 && maxDepth <= math.MaxInt32 {
-		atomic.StoreInt32(&c.maxDepthOverride, int32(maxDepth))
-	}
-
-	if c.collector == nil {
-		// Collector not created yet, override will be used when collector is created
-		c.logger.Debug("Set max_depth override (collector not yet created)", "max_depth", config.MaxDepth)
-	} else {
-		// Collector exists, update it directly
-		c.collector.MaxDepth = config.MaxDepth
-		c.logger.Debug("Updated collector max_depth", "max_depth", config.MaxDepth)
-	}
-}
 
 // SetRateLimit sets the rate limit for the crawler.
 func (c *Crawler) SetRateLimit(duration time.Duration) error {

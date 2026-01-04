@@ -109,8 +109,6 @@ type Interface interface {
 
 	// SetRateLimit sets the rate limit for the crawler
 	SetRateLimit(duration time.Duration) error
-	// SetMaxDepth sets the maximum depth for the crawler
-	SetMaxDepth(depth int)
 	// SetCollector sets the collector for the crawler
 	SetCollector(collector *colly.Collector)
 	// GetIndexManager returns the index manager
@@ -150,7 +148,6 @@ type Crawler struct {
 	linkHandler         *LinkHandler
 	htmlProcessor       *HTMLProcessor
 	cfg                 *crawler.Config
-	maxDepthOverride    int32    // Override for source's max_depth (0 means use source default), accessed atomically
 	archiver            Archiver // HTML archiver for MinIO storage
 
 	// Extracted components for better separation of concerns
