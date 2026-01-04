@@ -27,15 +27,16 @@ OUTPUT_DIR="./leak_detection"
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 LOG_FILE="${OUTPUT_DIR}/leak_check_${TIMESTAMP}.log"
 
-# Service port mapping
+# Service port mapping (application ports, not pprof ports)
+# Memory health endpoints are on the main application HTTP server
+# Note: publisher-router is a background worker without HTTP server, so it's excluded
 declare -A SERVICE_PORTS=(
-    ["crawler"]=6060
-    ["source-manager"]=6061
-    ["classifier"]=6062
-    ["publisher-api"]=6063
-    ["publisher-router"]=6064
-    ["auth"]=6065
-    ["search"]=6066
+    ["crawler"]=8060
+    ["source-manager"]=8050
+    ["classifier"]=8071
+    ["publisher-api"]=8070
+    ["auth"]=8040
+    ["search"]=8092
 )
 
 # Parse arguments

@@ -75,7 +75,8 @@ task bench           # Run benchmarks
 ### 5. Check Memory Health
 
 ```bash
-curl http://localhost:6060/health/memory
+# Crawler (port 8060)
+curl http://localhost:8060/health/memory | jq
 ```
 
 ---
@@ -319,10 +320,11 @@ ExtractRawContent   45.6kB ± 0%   42.3kB ± 0%  -7.24%
 
 ### Memory Health Endpoints
 
-All services expose `/health/memory` endpoint:
+All services expose `/health/memory` endpoint on their **application port** (not pprof port):
 
 ```bash
-curl http://localhost:6060/health/memory | jq
+# Crawler
+curl http://localhost:8060/health/memory | jq
 ```
 
 Response:
@@ -351,23 +353,38 @@ Response:
 - **gomaxprocs**: Maximum OS threads (auto-detected in containers)
 - **last_gc_pause_ms**: Last GC pause duration
 
+### Service Port Mapping
+
+Memory health endpoints are on the main application ports:
+
+| Service | Application Port | pprof Port | Memory Endpoint |
+|---------|------------------|------------|-----------------|
+| Crawler | 8060 | 6060 | http://localhost:8060/health/memory |
+| Source Manager | 8050 | 6061 | http://localhost:8050/health/memory |
+| Classifier | 8071 | 6062 | http://localhost:8071/health/memory |
+| Publisher API | 8070 | 6063 | http://localhost:8070/health/memory |
+| Auth | 8040 | 6065 | http://localhost:8040/health/memory |
+| Search | 8092 | 6066 | http://localhost:8092/health/memory |
+
+**Note**: Publisher Router is a background worker without an HTTP server, so it doesn't have a memory health endpoint.
+
 ### Monitoring All Services
 
 ```bash
 #!/bin/bash
-# Check memory across all services
+# Check memory across all services (use application ports, not pprof ports)
 
-for port in 6060 6061 6062 6063 6064 6065 6066; do
-  service=$(case $port in
-    6060) echo "Crawler" ;;
-    6061) echo "Source Manager" ;;
-    6062) echo "Classifier" ;;
-    6063) echo "Publisher API" ;;
-    6064) echo "Publisher Router" ;;
-    6065) echo "Auth" ;;
-    6066) echo "Search" ;;
-  esac)
+declare -A SERVICES=(
+  ["Crawler"]=8060
+  ["Source Manager"]=8050
+  ["Classifier"]=8071
+  ["Publisher API"]=8070
+  ["Auth"]=8040
+  ["Search"]=8092
+)
 
+for service in "${!SERVICES[@]}"; do
+  port=${SERVICES[$service]}
   echo "=== $service (port $port) ==="
   curl -s http://localhost:$port/health/memory | jq '{heap_alloc_mb, num_goroutine, num_gc}'
   echo
