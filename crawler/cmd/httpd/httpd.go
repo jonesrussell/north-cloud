@@ -240,12 +240,6 @@ func createCrawlerForJobs(
 		return nil, err
 	}
 
-	// Ensure raw content indexes (non-fatal if it fails)
-	if indexErr := ensureRawContentIndexes(deps, storageResult, sourceManager); indexErr != nil {
-		deps.Logger.Warn("Failed to ensure raw content indexes", "error", indexErr)
-		// Continue - not fatal
-	}
-
 	// Create crawler
 	return createCrawler(deps, bus, crawlerCfg, storageResult, sourceManager, db)
 }
@@ -257,40 +251,6 @@ func loadSourceManager(deps *CommandDeps) (sources.Interface, error) {
 		return nil, fmt.Errorf("failed to load sources: %w", err)
 	}
 	return sourceManager, nil
-}
-
-// ensureRawContentIndexes ensures raw content indexes exist for all sources.
-func ensureRawContentIndexes(
-	deps *CommandDeps,
-	storageResult *StorageResult,
-	sourceManager sources.Interface,
-) error {
-	rawIndexer := storage.NewRawContentIndexer(storageResult.Storage, deps.Logger)
-	allSources, err := sourceManager.GetSources()
-	if err != nil {
-		return fmt.Errorf("failed to get sources: %w", err)
-	}
-
-	ctx, cancel := createTimeoutContext(defaultShutdownTimeout)
-	defer cancel()
-
-	for i := range allSources {
-		// Extract hostname from source URL for index naming
-		sourceHostname := extractHostnameFromURL(allSources[i].URL)
-		if sourceHostname == "" {
-			// Fallback to source name if URL parsing fails
-			sourceHostname = allSources[i].Name
-		}
-		if indexErr := rawIndexer.EnsureRawContentIndex(ctx, sourceHostname); indexErr != nil {
-			deps.Logger.Warn("Failed to ensure raw content index",
-				"source", allSources[i].Name,
-				"source_url", allSources[i].URL,
-				"hostname", sourceHostname,
-				"error", indexErr)
-			// Continue with other sources - not fatal
-		}
-	}
-	return nil
 }
 
 // createCrawler creates a crawler instance with the given parameters.
