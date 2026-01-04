@@ -1123,6 +1123,252 @@ curl -X DELETE http://localhost:8060/api/v1/jobs/{job-id}
 - Job status transitions: `pending` → `processing` → `completed`/`failed`
 - See `/crawler/docs/DATABASE_SCHEDULER.md` for comprehensive documentation
 
+### Profiling and Performance Monitoring
+
+North Cloud includes comprehensive profiling and performance monitoring infrastructure for detecting memory leaks, analyzing CPU usage, and benchmarking performance across all services.
+
+#### Available Tools
+
+1. **pprof Profiling**: Go's built-in profiler for CPU, heap, goroutine, allocation, block, and mutex profiling
+2. **Benchmarks**: 44 comprehensive benchmarks across all 6 services for performance regression detection
+3. **Memory Health Endpoints**: HTTP endpoints exposing runtime memory statistics
+4. **Memory Leak Detection**: Automated tools for detecting heap and goroutine leaks
+5. **Helper Scripts**: Automation scripts for common profiling workflows
+
+#### Quick Start
+
+**Enable Profiling in Development**:
+Profiling is automatically enabled when services run. pprof endpoints are exposed on dedicated ports:
+- Crawler: 6060
+- Source Manager: 6061
+- Classifier: 6062
+- Publisher API: 6063
+- Publisher Router: 6064
+- Auth: 6065
+- Search: 6066
+
+**Capture a Heap Profile**:
+```bash
+./scripts/profile.sh crawler heap
+```
+
+**Run All Benchmarks**:
+```bash
+./scripts/run-benchmarks.sh
+```
+
+**Check for Memory Leaks**:
+```bash
+./scripts/check-memory-leaks.sh -s crawler -i 600 -c 5
+```
+
+**Monitor Memory Health**:
+```bash
+curl http://localhost:6060/health/memory
+```
+
+#### Helper Scripts
+
+Located in `/scripts/` directory:
+
+1. **profile.sh** - Automated profile capture
+   ```bash
+   # Capture heap profile
+   ./scripts/profile.sh crawler heap
+
+   # Capture 60s CPU profile
+   ./scripts/profile.sh publisher-api cpu 60
+
+   # Capture goroutine profile
+   ./scripts/profile.sh classifier goroutine
+   ```
+
+2. **compare-heap.sh** - Memory leak detection via heap comparison
+   ```bash
+   # Compare heap profiles 10 minutes apart
+   ./scripts/compare-heap.sh crawler 600
+
+   # Shows growth analysis and leak warnings
+   ```
+
+3. **run-benchmarks.sh** - Run benchmarks across all services
+   ```bash
+   # Run all benchmarks
+   ./scripts/run-benchmarks.sh
+
+   # Run specific service with memory stats
+   ./scripts/run-benchmarks.sh -s crawler -m
+
+   # Save as baseline
+   ./scripts/run-benchmarks.sh -b
+
+   # Compare against baseline
+   ./scripts/run-benchmarks.sh -c baselines/baseline_20260104.txt
+   ```
+
+4. **check-memory-leaks.sh** - Automated leak detection
+   ```bash
+   # Check all services (3 checks at 5min intervals)
+   ./scripts/check-memory-leaks.sh
+
+   # Extended check for specific service
+   ./scripts/check-memory-leaks.sh -s publisher-api -i 900 -c 10
+
+   # With log-based alerts
+   ./scripts/check-memory-leaks.sh -a
+   ```
+
+#### Profiling Workflows
+
+**Investigating Memory Leaks**:
+1. Monitor service memory health over time:
+   ```bash
+   watch -n 30 'curl -s http://localhost:6060/health/memory | jq'
+   ```
+
+2. Run automated leak detection:
+   ```bash
+   ./scripts/check-memory-leaks.sh -s crawler -i 600 -c 5 -a
+   ```
+
+3. If leak detected, compare heap profiles:
+   ```bash
+   ./scripts/compare-heap.sh crawler 600
+   ```
+
+4. Analyze with pprof:
+   ```bash
+   go tool pprof -http=:8080 profiles/crawler_heap_*.pb.gz
+   ```
+
+**Performance Regression Detection**:
+1. Establish baseline:
+   ```bash
+   ./scripts/run-benchmarks.sh -b
+   ```
+
+2. After code changes, run benchmarks:
+   ```bash
+   ./scripts/run-benchmarks.sh -c baselines/baseline_TIMESTAMP.txt
+   ```
+
+3. Use `benchstat` for statistical analysis:
+   ```bash
+   go install golang.org/x/perf/cmd/benchstat@latest
+   benchstat baseline.txt current.txt
+   ```
+
+**CPU Profiling for Optimization**:
+1. Capture CPU profile during load:
+   ```bash
+   ./scripts/profile.sh crawler cpu 60
+   ```
+
+2. Analyze with pprof:
+   ```bash
+   go tool pprof -http=:8080 profiles/crawler_cpu_*.pb.gz
+   ```
+
+3. Focus on flame graphs and top functions
+
+#### Memory Health Endpoints
+
+All services expose `GET /health/memory` with runtime statistics:
+
+```bash
+curl http://localhost:6060/health/memory | jq
+```
+
+Response:
+```json
+{
+  "timestamp": "2026-01-04T10:30:00Z",
+  "heap_alloc_mb": 12.5,
+  "heap_inuse_mb": 15.2,
+  "heap_idle_mb": 8.3,
+  "stack_inuse_mb": 1.2,
+  "num_gc": 42,
+  "num_goroutine": 127,
+  "gomaxprocs": 8,
+  "last_gc_pause_ms": 0.5
+}
+```
+
+**Service Port Mapping**:
+- Crawler: `http://localhost:6060/health/memory`
+- Source Manager: `http://localhost:6061/health/memory`
+- Classifier: `http://localhost:6062/health/memory`
+- Publisher API: `http://localhost:6063/health/memory`
+- Publisher Router: `http://localhost:6064/health/memory`
+- Auth: `http://localhost:6065/health/memory`
+- Search: `http://localhost:6066/health/memory`
+
+#### Benchmark Coverage
+
+**44 Total Benchmarks** across all services:
+
+- **Crawler** (18 benchmarks): Job processing, scheduler, indexing, extraction
+- **Source Manager** (7 benchmarks): Source CRUD, validation, URL parsing
+- **Classifier** (6 benchmarks): Classification, quality scoring, topic detection
+- **Publisher** (6 benchmarks): Filtering, formatting, JSON:API posting
+- **Auth** (10 benchmarks): JWT operations, hashing, token validation
+- **Search** (7 benchmarks): Full-text search, faceted search, pagination
+
+Run benchmarks with:
+```bash
+# All services
+./scripts/run-benchmarks.sh -m -v
+
+# Specific service
+./scripts/run-benchmarks.sh -s crawler -m -t 5s
+```
+
+#### Best Practices
+
+1. **Development Profiling**:
+   - Profile before and after significant changes
+   - Establish baselines for performance-critical code paths
+   - Use benchmarks to detect regressions early
+
+2. **Memory Leak Detection**:
+   - Run leak detection weekly in long-running environments
+   - Monitor memory health metrics in production
+   - Investigate any heap growth >50% over 10 minutes
+
+3. **Performance Optimization**:
+   - Profile first, optimize second (don't guess)
+   - Focus on the top 3-5 functions in CPU profiles
+   - Use benchmarks to verify improvements
+
+4. **Zero-Overhead Design**:
+   - Profiling infrastructure has no overhead when disabled
+   - pprof endpoints only activate when accessed
+   - Memory health checks use <1ms of CPU time
+
+#### Troubleshooting
+
+**pprof endpoints not accessible**:
+- Verify service is running: `docker ps | grep service-name`
+- Check port mapping: Service may not expose profiling port
+- In production, ensure `PPROF_ENABLED=true` in environment
+
+**Benchmarks fail**:
+- Check service dependencies (databases, Elasticsearch)
+- Verify test data exists
+- Run with `-v` flag for detailed output
+
+**Memory stats show 0 values**:
+- Service may not have started monitoring yet
+- Wait 30 seconds after service startup
+- Check logs for memory monitor initialization
+
+#### Documentation
+
+For comprehensive profiling documentation, see:
+- `/docs/PROFILING.md` - Complete profiling guide
+- Service-specific benchmark documentation in `*_bench_test.go` files
+- Infrastructure monitoring package: `/infrastructure/monitoring/`
+
 ### Running Database Migrations
 
 #### Go Services

@@ -5,6 +5,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	infrajwt "github.com/north-cloud/infrastructure/jwt"
+	"github.com/north-cloud/infrastructure/monitoring"
 )
 
 // SetupRoutes configures all API routes
@@ -12,6 +13,11 @@ func SetupRoutes(router *gin.Engine, handler *Handler) {
 	// Health and readiness checks
 	router.GET("/health", handler.HealthCheck)
 	router.GET("/ready", handler.ReadyCheck)
+
+	// Memory health endpoint
+	router.GET("/health/memory", func(c *gin.Context) {
+		monitoring.MemoryHealthHandler(c.Writer, c.Request)
+	})
 
 	// API v1 routes - protected with JWT
 	v1 := router.Group("/api/v1")

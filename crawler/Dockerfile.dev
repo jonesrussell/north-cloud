@@ -15,13 +15,15 @@ RUN go install github.com/air-verse/air@latest
 RUN addgroup -g ${GID} appuser && \
     adduser -D -u ${UID} -G appuser appuser
 
-# Writable caches in /tmp
+# Writable caches in /tmp (including sumdb for module verification)
 RUN mkdir -p /tmp/go-mod-cache \
              /tmp/go-build-cache \
-             /tmp/npm-cache && \
-    chmod 1777 /tmp/go-mod-cache \
-                /tmp/go-build-cache \
-                /tmp/npm-cache
+             /tmp/npm-cache \
+             /go/pkg/sumdb && \
+    chmod -R 1777 /tmp/go-mod-cache \
+                  /tmp/go-build-cache \
+                  /tmp/npm-cache \
+                  /go/pkg/sumdb
 
 # Go cache locations
 ENV GOCACHE=/tmp/go-build-cache
@@ -30,7 +32,4 @@ ENV NPM_CONFIG_CACHE=/tmp/npm-cache
 
 EXPOSE 8060 3000
 
-# Default dev command:
-# - start frontend dev server
-# - start backend with go run
 CMD ["go", "run", "-mod=mod", "main.go"]
