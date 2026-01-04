@@ -32,7 +32,4 @@ ENV NPM_CONFIG_CACHE=/tmp/npm-cache
 
 EXPOSE 8060 3000
 
-# Default dev command:
-# - start frontend dev server
-# - start backend with go run
 CMD ["go", "run", "-mod=mod", "main.go"]
