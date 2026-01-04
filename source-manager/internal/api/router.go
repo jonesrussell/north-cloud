@@ -13,6 +13,7 @@ import (
 	"github.com/jonesrussell/gosources/internal/logger"
 	"github.com/jonesrussell/gosources/internal/repository"
 	infrajwt "github.com/north-cloud/infrastructure/jwt"
+	"github.com/north-cloud/infrastructure/monitoring"
 )
 
 const (
@@ -77,6 +78,11 @@ func NewRouter(db *repository.SourceRepository, cfg *config.Config, log logger.L
 	// Health check - support both GET and HEAD for Docker healthchecks
 	router.GET("/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"status": "ok"})
+	})
+
+	// Memory health endpoint
+	router.GET("/health/memory", func(c *gin.Context) {
+		monitoring.MemoryHealthHandler(c.Writer, c.Request)
 	})
 	router.HEAD("/health", func(c *gin.Context) {
 		c.Status(http.StatusOK)

@@ -8,6 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/jonesrussell/north-cloud/publisher/internal/database"
 	infrajwt "github.com/north-cloud/infrastructure/jwt"
+	"github.com/north-cloud/infrastructure/monitoring"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -44,6 +45,11 @@ func (r *Router) SetupRoutes() *gin.Engine {
 
 	// Health check (public, no auth)
 	router.GET("/health", r.healthCheck)
+
+	// Memory health endpoint
+	router.GET("/health/memory", func(c *gin.Context) {
+		monitoring.MemoryHealthHandler(c.Writer, c.Request)
+	})
 
 	// API v1 routes - protected with JWT
 	v1 := router.Group("/api/v1")

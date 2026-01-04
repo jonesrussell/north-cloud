@@ -5,8 +5,8 @@ import (
 	"time"
 )
 
-// QueuedLink represents a link discovered during crawling that should be crawled later.
-type QueuedLink struct {
+// DiscoveredLink represents a link discovered during crawling for tracking/auditing purposes.
+type DiscoveredLink struct {
 	ID           string    `json:"id" db:"id"`
 	SourceID     string    `json:"source_id" db:"source_id"`
 	SourceName   string    `json:"source_name" db:"source_name"`

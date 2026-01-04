@@ -473,6 +473,29 @@ services:
     command: ["sh", "-c", "go mod download && go run -mod=mod . router"]
 
   # ------------------------------------------------------------
+  # Pyroscope (Continuous Profiling)
+  # ------------------------------------------------------------
+  pyroscope:
+    image: grafana/pyroscope:latest
+    ports:
+      - "${PYROSCOPE_PORT:-4040}:4040"
+    environment:
+      PYROSCOPE_LOG_LEVEL: "${PYROSCOPE_LOG_LEVEL:-debug}"
+      PYROSCOPE_STORAGE_PATH: /var/lib/pyroscope
+      PYROSCOPE_BADGER_LOG_LEVEL: error
+    volumes:
+      - pyroscope_data:/var/lib/pyroscope
+    networks:
+      - north-cloud-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "-", "http://localhost:4040/ready"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+  # ------------------------------------------------------------
   # Nginx Reverse Proxy (Dev)
   # ------------------------------------------------------------
   nginx:
@@ -519,3 +542,4 @@ volumes:
   search_frontend_node_modules:
   auth_go_mod_cache:
   auth_go_build_cache:
+  pyroscope_data:

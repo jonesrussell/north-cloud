@@ -16,12 +16,12 @@ import (
 // LinkHandler handles link processing for the crawler.
 type LinkHandler struct {
 	crawler   *Crawler
-	linkRepo  *database.QueuedLinkRepository
+	linkRepo  *database.DiscoveredLinkRepository
 	saveLinks bool
 }
 
 // NewLinkHandler creates a new link handler.
-func NewLinkHandler(c *Crawler, linkRepo *database.QueuedLinkRepository, saveLinks bool) *LinkHandler {
+func NewLinkHandler(c *Crawler, linkRepo *database.DiscoveredLinkRepository, saveLinks bool) *LinkHandler {
 	return &LinkHandler{
 		crawler:   c,
 		linkRepo:  linkRepo,
@@ -51,21 +51,12 @@ func (h *LinkHandler) HandleLink(e *colly.HTMLElement) {
 		return
 	}
 
-	// Save link to database instead of immediately visiting if enabled
+	// Save link to database for tracking (if enabled), but always visit immediately
 	if h.shouldSaveLink() {
-		if h.trySaveLink(absLink, e) {
-			return // Link saved successfully
-		}
-		// Fallback to immediate visit if save fails
+		h.trySaveLink(absLink, e) // Save for tracking - errors are logged but don't block visiting
 	}
 
-	// Log why we're not saving (for debugging)
-	if !h.saveLinks {
-		h.crawler.logger.Debug("Link saving disabled, visiting immediately", "url", absLink)
-	} else if h.linkRepo == nil {
-		h.crawler.logger.Debug("Link repository not available, visiting immediately", "url", absLink)
-	}
-	// Original behavior: visit immediately
+	// Always visit the link (normal crawling behavior)
 	h.visitWithRetries(e, absLink)
 }
 
@@ -155,7 +146,8 @@ func (h *LinkHandler) shouldSaveLink() bool {
 	return h.saveLinks && h.linkRepo != nil
 }
 
-// trySaveLink attempts to save a link to the queue.
+// trySaveLink attempts to save a link to the database queue for tracking purposes.
+// This does not prevent the link from being visited - it's for discovery tracking only.
 // Returns true if link was saved successfully, false otherwise.
 func (h *LinkHandler) trySaveLink(absLink string, e *colly.HTMLElement) bool {
 	// Get context from crawler state (same pattern as ProcessHTML)
@@ -168,17 +160,18 @@ func (h *LinkHandler) trySaveLink(absLink string, e *colly.HTMLElement) bool {
 
 	parentURL := e.Request.URL.String()
 	if err := h.saveLinkToQueue(ctx, absLink, parentURL, e.Request.Depth); err != nil {
-		h.crawler.logger.Warn("Failed to save link to queue, falling back to immediate visit",
+		h.crawler.logger.Warn("Failed to save discovered link, continuing with visit",
 			"url", absLink,
 			"error", err)
 		return false
 	}
 
-	h.crawler.logger.Debug("Saved link to queue", "url", absLink, "depth", e.Request.Depth)
+	h.crawler.logger.Debug("Saved discovered link", "url", absLink, "depth", e.Request.Depth)
 	return true
 }
 
-// saveLinkToQueue saves a discovered link to the database for later processing.
+// saveLinkToQueue saves a discovered link to the database for tracking and discovery purposes.
+// This allows tracking of discovered links even though they are also visited immediately.
 func (h *LinkHandler) saveLinkToQueue(ctx context.Context, linkURL, parentURL string, depth int) error {
 	sourceName := h.crawler.state.CurrentSource()
 	if sourceName == "" {
@@ -188,7 +181,7 @@ func (h *LinkHandler) saveLinkToQueue(ctx context.Context, linkURL, parentURL st
 	// Use source name as source ID (can be enhanced later to get actual ID from sources service)
 	sourceID := sourceName
 
-	queuedLink := &domain.QueuedLink{
+	discoveredLink := &domain.DiscoveredLink{
 		SourceID:   sourceID,
 		SourceName: sourceName,
 		URL:        linkURL,
@@ -198,5 +191,5 @@ func (h *LinkHandler) saveLinkToQueue(ctx context.Context, linkURL, parentURL st
 		Priority:   0, // Can be configured based on URL patterns in the future
 	}
 
-	return h.linkRepo.CreateOrUpdate(ctx, queuedLink)
+	return h.linkRepo.CreateOrUpdate(ctx, discoveredLink)
 }

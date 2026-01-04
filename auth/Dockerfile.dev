@@ -12,9 +12,13 @@ RUN apk add --no-cache git
 RUN addgroup -g ${GID} appuser && \
     adduser -D -u ${UID} -G appuser appuser
 
-# Writable caches in /tmp
-RUN mkdir -p /tmp/go-mod-cache /tmp/go-build-cache && \
-    chmod 1777 /tmp/go-mod-cache /tmp/go-build-cache
+# Writable caches in /tmp (including sumdb for module verification)
+RUN mkdir -p /tmp/go-mod-cache \
+             /tmp/go-build-cache \
+             /go/pkg/sumdb && \
+    chmod -R 1777 /tmp/go-mod-cache \
+                  /tmp/go-build-cache \
+                  /go/pkg/sumdb
 
 # Copy infrastructure for replace directive (source will be bind-mounted)
 COPY infrastructure ../infrastructure

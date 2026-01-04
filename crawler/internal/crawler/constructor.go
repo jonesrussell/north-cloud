@@ -173,8 +173,8 @@ func NewCrawlerWithParams(p CrawlerParams) (*CrawlerResult, error) {
 		archiver:            archiver,
 	}
 
-	// Create queued link repository if DB is available
-	linkRepo := createQueuedLinkRepository(p)
+	// Create discovered link repository if DB is available
+	linkRepo := createDiscoveredLinkRepository(p)
 
 	// Create link handler with repository and save links flag
 	c.linkHandler = NewLinkHandler(c, linkRepo, p.Config.SaveDiscoveredLinks)
@@ -184,13 +184,13 @@ func NewCrawlerWithParams(p CrawlerParams) (*CrawlerResult, error) {
 	}, nil
 }
 
-// createQueuedLinkRepository creates a queued link repository if DB is available.
-func createQueuedLinkRepository(p CrawlerParams) *database.QueuedLinkRepository {
+// createDiscoveredLinkRepository creates a discovered link repository if DB is available.
+func createDiscoveredLinkRepository(p CrawlerParams) *database.DiscoveredLinkRepository {
 	if p.DB == nil {
 		if p.Config.SaveDiscoveredLinks {
 			p.Logger.Warn(
 				"SaveDiscoveredLinks is enabled but no database connection available - " +
-					"queued link saving will be disabled")
+					"discovered link saving will be disabled")
 		}
 		return nil
 	}
@@ -198,15 +198,15 @@ func createQueuedLinkRepository(p CrawlerParams) *database.QueuedLinkRepository 
 	// Type assert to *sqlx.DB
 	db, ok := p.DB.(*sqlx.DB)
 	if !ok {
-		p.Logger.Warn("Database connection type assertion failed - queued link saving will be disabled")
+		p.Logger.Warn("Database connection type assertion failed - discovered link saving will be disabled")
 		return nil
 	}
 
-	linkRepo := database.NewQueuedLinkRepository(db)
+	linkRepo := database.NewDiscoveredLinkRepository(db)
 	if p.Config.SaveDiscoveredLinks {
-		p.Logger.Info("Queued link saving enabled - discovered links will be saved to database")
+		p.Logger.Info("Discovered link saving enabled - discovered links will be saved to database")
 	} else {
-		p.Logger.Debug("Queued link saving disabled - set CRAWLER_SAVE_DISCOVERED_LINKS=true to enable")
+		p.Logger.Debug("Discovered link saving disabled - set CRAWLER_SAVE_DISCOVERED_LINKS=true to enable")
 	}
 
 	return linkRepo

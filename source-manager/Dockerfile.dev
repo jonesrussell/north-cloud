@@ -12,13 +12,15 @@ RUN go install github.com/air-verse/air@latest
 RUN addgroup -g 1000 appuser && \
     adduser -D -u 1000 -G appuser appuser
 
-# Writable caches
+# Writable caches in /tmp (including sumdb for module verification)
 RUN mkdir -p /tmp/go-mod-cache \
              /tmp/go-build-cache \
-             /tmp/npm-cache && \
-    chmod 1777 /tmp/go-mod-cache \
-                /tmp/go-build-cache \
-                /tmp/npm-cache
+             /tmp/npm-cache \
+             /go/pkg/sumdb && \
+    chmod -R 1777 /tmp/go-mod-cache \
+                  /tmp/go-build-cache \
+                  /tmp/npm-cache \
+                  /go/pkg/sumdb
 
 # Copy infrastructure for replace directive (source will be bind-mounted)
 COPY infrastructure ../infrastructure
