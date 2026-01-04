@@ -66,8 +66,8 @@ func (c *Crawler) setupCollector(source *configtypes.Source) error {
 		rateLimit = defaultRateLimit
 	}
 
-	if err := c.setRateLimit(rateLimit, rateLimit/RandomDelayDivisor); err != nil {
-		return fmt.Errorf("failed to set rate limit: %w", err)
+	if setErr := c.setRateLimit(rateLimit, rateLimit/RandomDelayDivisor); setErr != nil {
+		return fmt.Errorf("failed to set rate limit: %w", setErr)
 	}
 
 	// Configure transport with TLS settings

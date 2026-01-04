@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"net/url"
 	"os"
 	"os/signal"
 	"strings"
@@ -276,28 +275,6 @@ func createCrawler(
 		return nil, fmt.Errorf("failed to create crawler: %w", err)
 	}
 	return crawlerResult.Crawler, nil
-}
-
-// extractHostnameFromURL extracts the hostname from a URL for use in index naming.
-// Example: "https://www.sudbury.com/article" → "www.sudbury.com"
-func extractHostnameFromURL(urlStr string) string {
-	if urlStr == "" {
-		return ""
-	}
-	parsed, err := url.Parse(urlStr)
-	if err != nil {
-		return ""
-	}
-	hostname := parsed.Hostname()
-	if hostname == "" {
-		return ""
-	}
-	return hostname
-}
-
-// createTimeoutContext creates a context with timeout.
-func createTimeoutContext(timeout time.Duration) (context.Context, context.CancelFunc) {
-	return infracontext.WithTimeout(timeout)
 }
 
 // === Database & Scheduler Setup ===

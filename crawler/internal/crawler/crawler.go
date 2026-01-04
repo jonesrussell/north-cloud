@@ -128,8 +128,6 @@ type Interface interface {
 const (
 	// collectorTimeoutDuration is the timeout for waiting for collector to finish after cancellation
 	collectorTimeoutDuration = 2 * time.Second
-	// cleanupTimeoutDuration is the timeout for waiting for cleanup goroutine to finish
-	cleanupTimeoutDuration = 5 * time.Second
 	// timeoutWarningInterval is the interval for logging timeout warnings
 	timeoutWarningInterval = 30 * time.Second
 )
