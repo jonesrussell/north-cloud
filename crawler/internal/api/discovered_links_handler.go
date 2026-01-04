@@ -11,32 +11,32 @@ import (
 )
 
 const (
-	defaultQueuedLinksLimit  = 50
-	defaultQueuedLinksOffset = 0
+	defaultDiscoveredLinksLimit  = 50
+	defaultDiscoveredLinksOffset = 0
 )
 
-// QueuedLinksHandler handles queued link-related HTTP requests.
-type QueuedLinksHandler struct {
-	repo      *database.QueuedLinkRepository
+// DiscoveredLinksHandler handles discovered link-related HTTP requests.
+type DiscoveredLinksHandler struct {
+	repo      *database.DiscoveredLinkRepository
 	jobRepo   *database.JobRepository
 	scheduler SchedulerInterface
 }
 
-// NewQueuedLinksHandler creates a new queued links handler.
-func NewQueuedLinksHandler(repo *database.QueuedLinkRepository, jobRepo *database.JobRepository) *QueuedLinksHandler {
-	return &QueuedLinksHandler{
+// NewDiscoveredLinksHandler creates a new discovered links handler.
+func NewDiscoveredLinksHandler(repo *database.DiscoveredLinkRepository, jobRepo *database.JobRepository) *DiscoveredLinksHandler {
+	return &DiscoveredLinksHandler{
 		repo:    repo,
 		jobRepo: jobRepo,
 	}
 }
 
-// SetScheduler sets the scheduler for the queued links handler.
-func (h *QueuedLinksHandler) SetScheduler(scheduler SchedulerInterface) {
+// SetScheduler sets the scheduler for the discovered links handler.
+func (h *DiscoveredLinksHandler) SetScheduler(scheduler SchedulerInterface) {
 	h.scheduler = scheduler
 }
 
-// ListQueuedLinks handles GET /api/v1/queued-links
-func (h *QueuedLinksHandler) ListQueuedLinks(c *gin.Context) {
+// ListDiscoveredLinks handles GET /api/v1/discovered-links
+func (h *DiscoveredLinksHandler) ListDiscoveredLinks(c *gin.Context) {
 	// Get query parameters
 	status := c.Query("status")
 	sourceID := c.Query("source_id")
@@ -44,17 +44,17 @@ func (h *QueuedLinksHandler) ListQueuedLinks(c *gin.Context) {
 	search := c.Query("search")
 	sortBy := c.DefaultQuery("sort", "priority")
 	sortOrder := c.DefaultQuery("order", "desc")
-	limitStr := c.DefaultQuery("limit", strconv.Itoa(defaultQueuedLinksLimit))
-	offsetStr := c.DefaultQuery("offset", strconv.Itoa(defaultQueuedLinksOffset))
+	limitStr := c.DefaultQuery("limit", strconv.Itoa(defaultDiscoveredLinksLimit))
+	offsetStr := c.DefaultQuery("offset", strconv.Itoa(defaultDiscoveredLinksOffset))
 
 	limit, err := strconv.Atoi(limitStr)
 	if err != nil || limit <= 0 {
-		limit = defaultQueuedLinksLimit
+		limit = defaultDiscoveredLinksLimit
 	}
 
 	offset, err := strconv.Atoi(offsetStr)
 	if err != nil || offset < 0 {
-		offset = defaultQueuedLinksOffset
+		offset = defaultDiscoveredLinksOffset
 	}
 
 	// Build filters
@@ -69,11 +69,11 @@ func (h *QueuedLinksHandler) ListQueuedLinks(c *gin.Context) {
 		Offset:     offset,
 	}
 
-	// Get queued links from database
+	// Get discovered links from database
 	links, err := h.repo.List(c.Request.Context(), filters)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Failed to retrieve queued links",
+			"error": "Failed to retrieve discovered links",
 		})
 		return
 	}
@@ -93,14 +93,14 @@ func (h *QueuedLinksHandler) ListQueuedLinks(c *gin.Context) {
 	})
 }
 
-// GetQueuedLink handles GET /api/v1/queued-links/:id
-func (h *QueuedLinksHandler) GetQueuedLink(c *gin.Context) {
+// GetDiscoveredLink handles GET /api/v1/discovered-links/:id
+func (h *DiscoveredLinksHandler) GetDiscoveredLink(c *gin.Context) {
 	id := c.Param("id")
 
 	link, err := h.repo.GetByID(c.Request.Context(), id)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{
-			"error": "Queued link not found",
+			"error": "Discovered link not found",
 		})
 		return
 	}
@@ -108,23 +108,23 @@ func (h *QueuedLinksHandler) GetQueuedLink(c *gin.Context) {
 	c.JSON(http.StatusOK, link)
 }
 
-// DeleteQueuedLink handles DELETE /api/v1/queued-links/:id
-func (h *QueuedLinksHandler) DeleteQueuedLink(c *gin.Context) {
+// DeleteDiscoveredLink handles DELETE /api/v1/discovered-links/:id
+func (h *DiscoveredLinksHandler) DeleteDiscoveredLink(c *gin.Context) {
 	id := c.Param("id")
 
 	if err := h.repo.Delete(c.Request.Context(), id); err != nil {
 		c.JSON(http.StatusNotFound, gin.H{
-			"error": "Queued link not found",
+			"error": "Discovered link not found",
 		})
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"message": "Queued link deleted successfully",
+		"message": "Discovered link deleted successfully",
 	})
 }
 
-// CreateJobFromLinkRequest represents a request to create a job from a queued link.
+// CreateJobFromLinkRequest represents a request to create a job from a discovered link.
 type CreateJobFromLinkRequest struct {
 	SourceID        string `json:"source_id"`
 	SourceName      string `json:"source_name"`
@@ -132,15 +132,15 @@ type CreateJobFromLinkRequest struct {
 	ScheduleEnabled bool   `json:"schedule_enabled"`
 }
 
-// CreateJobFromLink handles POST /api/v1/queued-links/:id/create-job
-func (h *QueuedLinksHandler) CreateJobFromLink(c *gin.Context) {
+// CreateJobFromLink handles POST /api/v1/discovered-links/:id/create-job
+func (h *DiscoveredLinksHandler) CreateJobFromLink(c *gin.Context) {
 	id := c.Param("id")
 
-	// Get queued link
+	// Get discovered link
 	link, err := h.repo.GetByID(c.Request.Context(), id)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{
-			"error": "Queued link not found",
+			"error": "Discovered link not found",
 		})
 		return
 	}
@@ -154,7 +154,7 @@ func (h *QueuedLinksHandler) CreateJobFromLink(c *gin.Context) {
 		return
 	}
 
-	// Use queued link values as defaults
+	// Use discovered link values as defaults
 	sourceID := req.SourceID
 	if sourceID == "" {
 		sourceID = link.SourceID

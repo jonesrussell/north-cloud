@@ -17,18 +17,18 @@ const (
 	defaultSortByPriority = "priority"
 )
 
-// QueuedLinkRepository handles database operations for queued links.
-type QueuedLinkRepository struct {
+// DiscoveredLinkRepository handles database operations for discovered links.
+type DiscoveredLinkRepository struct {
 	db *sqlx.DB
 }
 
-// NewQueuedLinkRepository creates a new queued link repository.
-func NewQueuedLinkRepository(db *sqlx.DB) *QueuedLinkRepository {
-	return &QueuedLinkRepository{db: db}
+// NewDiscoveredLinkRepository creates a new discovered link repository.
+func NewDiscoveredLinkRepository(db *sqlx.DB) *DiscoveredLinkRepository {
+	return &DiscoveredLinkRepository{db: db}
 }
 
-// CreateOrUpdate creates a new queued link or updates existing one if URL already exists for source.
-func (r *QueuedLinkRepository) CreateOrUpdate(ctx context.Context, link *domain.QueuedLink) error {
+// CreateOrUpdate creates a new discovered link or updates existing one if URL already exists for source.
+func (r *DiscoveredLinkRepository) CreateOrUpdate(ctx context.Context, link *domain.DiscoveredLink) error {
 	if link.ID == "" {
 		link.ID = uuid.New().String()
 	}
@@ -43,7 +43,7 @@ func (r *QueuedLinkRepository) CreateOrUpdate(ctx context.Context, link *domain.
 	}
 
 	query := `
-		INSERT INTO queued_links (id, source_id, source_name, url, parent_url, depth, 
+		INSERT INTO discovered_links (id, source_id, source_name, url, parent_url, depth, 
 		                          discovered_at, queued_at, status, priority)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 		ON CONFLICT (source_id, url) 
@@ -71,13 +71,13 @@ func (r *QueuedLinkRepository) CreateOrUpdate(ctx context.Context, link *domain.
 	).Scan(&link.CreatedAt, &link.UpdatedAt)
 
 	if err != nil {
-		return fmt.Errorf("failed to create or update queued link: %w", err)
+		return fmt.Errorf("failed to create or update discovered link: %w", err)
 	}
 
 	return nil
 }
 
-// ListFilters represents filtering options for listing queued links.
+// ListFilters represents filtering options for listing discovered links.
 type ListFilters struct {
 	Status     string
 	SourceID   string
@@ -89,9 +89,9 @@ type ListFilters struct {
 	Offset     int
 }
 
-// List retrieves queued links with optional filtering.
-func (r *QueuedLinkRepository) List(ctx context.Context, filters ListFilters) ([]*domain.QueuedLink, error) {
-	var links []*domain.QueuedLink
+// List retrieves discovered links with optional filtering.
+func (r *DiscoveredLinkRepository) List(ctx context.Context, filters ListFilters) ([]*domain.DiscoveredLink, error) {
+	var links []*domain.DiscoveredLink
 
 	// Build WHERE clause
 	whereClauses := []string{}
@@ -154,7 +154,7 @@ func (r *QueuedLinkRepository) List(ctx context.Context, filters ListFilters) ([
 	query := fmt.Sprintf(`
 		SELECT id, source_id, source_name, url, parent_url, depth, discovered_at, 
 		       queued_at, status, priority, created_at, updated_at
-		FROM queued_links
+		FROM discovered_links
 		%s
 		ORDER BY %s %s
 		LIMIT $%d OFFSET $%d
@@ -164,18 +164,18 @@ func (r *QueuedLinkRepository) List(ctx context.Context, filters ListFilters) ([
 
 	err := r.db.SelectContext(ctx, &links, query, args...)
 	if err != nil {
-		return nil, fmt.Errorf("failed to list queued links: %w", err)
+		return nil, fmt.Errorf("failed to list discovered links: %w", err)
 	}
 
 	if links == nil {
-		links = []*domain.QueuedLink{}
+		links = []*domain.DiscoveredLink{}
 	}
 
 	return links, nil
 }
 
-// Count returns the total number of queued links with optional filtering.
-func (r *QueuedLinkRepository) Count(ctx context.Context, filters ListFilters) (int, error) {
+// Count returns the total number of discovered links with optional filtering.
+func (r *DiscoveredLinkRepository) Count(ctx context.Context, filters ListFilters) (int, error) {
 	var count int
 
 	// Build WHERE clause (same as List)
@@ -212,44 +212,44 @@ func (r *QueuedLinkRepository) Count(ctx context.Context, filters ListFilters) (
 		whereClause = "WHERE " + strings.Join(whereClauses, " AND ")
 	}
 
-	query := fmt.Sprintf(`SELECT COUNT(*) FROM queued_links %s`, whereClause)
+	query := fmt.Sprintf(`SELECT COUNT(*) FROM discovered_links %s`, whereClause)
 
 	err := r.db.GetContext(ctx, &count, query, args...)
 	if err != nil {
-		return 0, fmt.Errorf("failed to count queued links: %w", err)
+		return 0, fmt.Errorf("failed to count discovered links: %w", err)
 	}
 
 	return count, nil
 }
 
-// GetByID retrieves a queued link by its ID.
-func (r *QueuedLinkRepository) GetByID(ctx context.Context, id string) (*domain.QueuedLink, error) {
-	var link domain.QueuedLink
+// GetByID retrieves a discovered link by its ID.
+func (r *DiscoveredLinkRepository) GetByID(ctx context.Context, id string) (*domain.DiscoveredLink, error) {
+	var link domain.DiscoveredLink
 	query := `
 		SELECT id, source_id, source_name, url, parent_url, depth, discovered_at, 
 		       queued_at, status, priority, created_at, updated_at
-		FROM queued_links
+		FROM discovered_links
 		WHERE id = $1
 	`
 
 	err := r.db.GetContext(ctx, &link, query, id)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, fmt.Errorf("queued link not found: %s", id)
+			return nil, fmt.Errorf("discovered link not found: %s", id)
 		}
-		return nil, fmt.Errorf("failed to get queued link: %w", err)
+		return nil, fmt.Errorf("failed to get discovered link: %w", err)
 	}
 
 	return &link, nil
 }
 
 // GetPendingBySource retrieves pending links for a source, ordered by priority and queued_at.
-func (r *QueuedLinkRepository) GetPendingBySource(
+func (r *DiscoveredLinkRepository) GetPendingBySource(
 	ctx context.Context,
 	sourceID string,
 	limit int,
-) ([]*domain.QueuedLink, error) {
-	var links []*domain.QueuedLink
+) ([]*domain.DiscoveredLink, error) {
+	var links []*domain.DiscoveredLink
 
 	if limit <= 0 {
 		limit = 50
@@ -258,7 +258,7 @@ func (r *QueuedLinkRepository) GetPendingBySource(
 	query := `
 		SELECT id, source_id, source_name, url, parent_url, depth, discovered_at, 
 		       queued_at, status, priority, created_at, updated_at
-		FROM queued_links
+		FROM discovered_links
 		WHERE source_id = $1 AND status = 'pending'
 		ORDER BY priority DESC, queued_at ASC
 		LIMIT $2
@@ -270,15 +270,15 @@ func (r *QueuedLinkRepository) GetPendingBySource(
 	}
 
 	if links == nil {
-		links = []*domain.QueuedLink{}
+		links = []*domain.DiscoveredLink{}
 	}
 
 	return links, nil
 }
 
-// UpdateStatus updates the status of a queued link.
-func (r *QueuedLinkRepository) UpdateStatus(ctx context.Context, id, status string) error {
-	query := `UPDATE queued_links SET status = $1, updated_at = NOW() WHERE id = $2`
+// UpdateStatus updates the status of a discovered link.
+func (r *DiscoveredLinkRepository) UpdateStatus(ctx context.Context, id, status string) error {
+	query := `UPDATE discovered_links SET status = $1, updated_at = NOW() WHERE id = $2`
 
 	result, err := r.db.ExecContext(ctx, query, status, id)
 	if err != nil {
@@ -291,19 +291,19 @@ func (r *QueuedLinkRepository) UpdateStatus(ctx context.Context, id, status stri
 	}
 
 	if rowsAffected == 0 {
-		return fmt.Errorf("queued link not found: %s", id)
+		return fmt.Errorf("discovered link not found: %s", id)
 	}
 
 	return nil
 }
 
-// Delete removes a queued link from the database.
-func (r *QueuedLinkRepository) Delete(ctx context.Context, id string) error {
-	query := `DELETE FROM queued_links WHERE id = $1`
+// Delete removes a discovered link from the database.
+func (r *DiscoveredLinkRepository) Delete(ctx context.Context, id string) error {
+	query := `DELETE FROM discovered_links WHERE id = $1`
 
 	result, err := r.db.ExecContext(ctx, query, id)
 	if err != nil {
-		return fmt.Errorf("failed to delete queued link: %w", err)
+		return fmt.Errorf("failed to delete discovered link: %w", err)
 	}
 
 	rowsAffected, err := result.RowsAffected()
@@ -312,16 +312,16 @@ func (r *QueuedLinkRepository) Delete(ctx context.Context, id string) error {
 	}
 
 	if rowsAffected == 0 {
-		return fmt.Errorf("queued link not found: %s", id)
+		return fmt.Errorf("discovered link not found: %s", id)
 	}
 
 	return nil
 }
 
 // CountPendingBySource returns the count of pending links for a source.
-func (r *QueuedLinkRepository) CountPendingBySource(ctx context.Context, sourceID string) (int, error) {
+func (r *DiscoveredLinkRepository) CountPendingBySource(ctx context.Context, sourceID string) (int, error) {
 	var count int
-	query := `SELECT COUNT(*) FROM queued_links WHERE source_id = $1 AND status = 'pending'`
+	query := `SELECT COUNT(*) FROM discovered_links WHERE source_id = $1 AND status = 'pending'`
 
 	err := r.db.GetContext(ctx, &count, query, sourceID)
 	if err != nil {

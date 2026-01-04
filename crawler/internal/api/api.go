@@ -27,7 +27,7 @@ func SetupRouter(
 	log logger.Interface,
 	cfg config.Interface,
 	jobsHandler *JobsHandler,
-	queuedLinksHandler *QueuedLinksHandler,
+	discoveredLinksHandler *DiscoveredLinksHandler,
 ) (*gin.Engine, middleware.SecurityMiddlewareInterface) {
 	// Disable Gin's default logging
 	gin.SetMode(gin.ReleaseMode)
@@ -53,8 +53,8 @@ func SetupRouter(
 	// Setup job routes
 	setupJobRoutes(v1, jobsHandler)
 
-	// Setup queued links routes
-	setupQueuedLinksRoutes(v1, queuedLinksHandler)
+	// Setup discovered links routes
+	setupDiscoveredLinksRoutes(v1, discoveredLinksHandler)
 
 	return router, security
 }
@@ -148,34 +148,34 @@ func setupJobRoutes(v1 *gin.RouterGroup, jobsHandler *JobsHandler) {
 	}
 }
 
-// setupQueuedLinksRoutes configures queued links endpoints
-func setupQueuedLinksRoutes(v1 *gin.RouterGroup, queuedLinksHandler *QueuedLinksHandler) {
-	if queuedLinksHandler != nil {
-		v1.GET("/queued-links", queuedLinksHandler.ListQueuedLinks)
-		v1.GET("/queued-links/:id", queuedLinksHandler.GetQueuedLink)
-		v1.DELETE("/queued-links/:id", queuedLinksHandler.DeleteQueuedLink)
-		v1.POST("/queued-links/:id/create-job", queuedLinksHandler.CreateJobFromLink)
+// setupDiscoveredLinksRoutes configures discovered links endpoints
+func setupDiscoveredLinksRoutes(v1 *gin.RouterGroup, discoveredLinksHandler *DiscoveredLinksHandler) {
+	if discoveredLinksHandler != nil {
+		v1.GET("/discovered-links", discoveredLinksHandler.ListDiscoveredLinks)
+		v1.GET("/discovered-links/:id", discoveredLinksHandler.GetDiscoveredLink)
+		v1.DELETE("/discovered-links/:id", discoveredLinksHandler.DeleteDiscoveredLink)
+		v1.POST("/discovered-links/:id/create-job", discoveredLinksHandler.CreateJobFromLink)
 	} else {
 		// Fallback to placeholder endpoints if no handler provided
-		v1.GET("/queued-links", func(c *gin.Context) {
+		v1.GET("/discovered-links", func(c *gin.Context) {
 			c.JSON(http.StatusOK, gin.H{
 				"links": []gin.H{},
 				"total": 0,
 			})
 		})
-		v1.GET("/queued-links/:id", func(c *gin.Context) {
+		v1.GET("/discovered-links/:id", func(c *gin.Context) {
 			c.JSON(http.StatusNotFound, gin.H{
-				"error": "Queued links handler not available",
+				"error": "Discovered links handler not available",
 			})
 		})
-		v1.DELETE("/queued-links/:id", func(c *gin.Context) {
+		v1.DELETE("/discovered-links/:id", func(c *gin.Context) {
 			c.JSON(http.StatusServiceUnavailable, gin.H{
-				"error": "Queued links handler not available",
+				"error": "Discovered links handler not available",
 			})
 		})
-		v1.POST("/queued-links/:id/create-job", func(c *gin.Context) {
+		v1.POST("/discovered-links/:id/create-job", func(c *gin.Context) {
 			c.JSON(http.StatusServiceUnavailable, gin.H{
-				"error": "Queued links handler not available",
+				"error": "Discovered links handler not available",
 			})
 		})
 	}
@@ -244,9 +244,9 @@ func StartHTTPServer(
 	log logger.Interface,
 	cfg config.Interface,
 	jobsHandler *JobsHandler,
-	queuedLinksHandler *QueuedLinksHandler,
+	discoveredLinksHandler *DiscoveredLinksHandler,
 ) (*http.Server, middleware.SecurityMiddlewareInterface, error) {
-	router, security := SetupRouter(log, cfg, jobsHandler, queuedLinksHandler)
+	router, security := SetupRouter(log, cfg, jobsHandler, discoveredLinksHandler)
 
 	srv := &http.Server{
 		Addr:              cfg.GetServerConfig().Address,

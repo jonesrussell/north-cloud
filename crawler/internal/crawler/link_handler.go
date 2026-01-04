@@ -16,12 +16,12 @@ import (
 // LinkHandler handles link processing for the crawler.
 type LinkHandler struct {
 	crawler   *Crawler
-	linkRepo  *database.QueuedLinkRepository
+	linkRepo  *database.DiscoveredLinkRepository
 	saveLinks bool
 }
 
 // NewLinkHandler creates a new link handler.
-func NewLinkHandler(c *Crawler, linkRepo *database.QueuedLinkRepository, saveLinks bool) *LinkHandler {
+func NewLinkHandler(c *Crawler, linkRepo *database.DiscoveredLinkRepository, saveLinks bool) *LinkHandler {
 	return &LinkHandler{
 		crawler:   c,
 		linkRepo:  linkRepo,
@@ -160,13 +160,13 @@ func (h *LinkHandler) trySaveLink(absLink string, e *colly.HTMLElement) bool {
 
 	parentURL := e.Request.URL.String()
 	if err := h.saveLinkToQueue(ctx, absLink, parentURL, e.Request.Depth); err != nil {
-		h.crawler.logger.Warn("Failed to save link to queue, falling back to immediate visit",
+		h.crawler.logger.Warn("Failed to save discovered link, continuing with visit",
 			"url", absLink,
 			"error", err)
 		return false
 	}
 
-	h.crawler.logger.Debug("Saved link to queue", "url", absLink, "depth", e.Request.Depth)
+	h.crawler.logger.Debug("Saved discovered link", "url", absLink, "depth", e.Request.Depth)
 	return true
 }
 
@@ -181,7 +181,7 @@ func (h *LinkHandler) saveLinkToQueue(ctx context.Context, linkURL, parentURL st
 	// Use source name as source ID (can be enhanced later to get actual ID from sources service)
 	sourceID := sourceName
 
-	queuedLink := &domain.QueuedLink{
+	discoveredLink := &domain.DiscoveredLink{
 		SourceID:   sourceID,
 		SourceName: sourceName,
 		URL:        linkURL,
@@ -191,5 +191,5 @@ func (h *LinkHandler) saveLinkToQueue(ctx context.Context, linkURL, parentURL st
 		Priority:   0, // Can be configured based on URL patterns in the future
 	}
 
-	return h.linkRepo.CreateOrUpdate(ctx, queuedLink)
+	return h.linkRepo.CreateOrUpdate(ctx, discoveredLink)
 }

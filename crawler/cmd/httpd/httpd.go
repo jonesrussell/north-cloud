@@ -102,13 +102,13 @@ func Start() error {
 	}
 
 	// Phase 4: Setup jobs handler and scheduler
-	jobsHandler, queuedLinksHandler, dbScheduler, db := setupJobsAndScheduler(deps, storageResult)
+	jobsHandler, discoveredLinksHandler, dbScheduler, db := setupJobsAndScheduler(deps, storageResult)
 	if db != nil {
 		defer db.Close()
 	}
 
 	// Phase 5: Start HTTP server
-	server, errChan, err := startHTTPServer(deps, jobsHandler, queuedLinksHandler)
+	server, errChan, err := startHTTPServer(deps, jobsHandler, discoveredLinksHandler)
 	if err != nil {
 		return err
 	}
@@ -343,11 +343,11 @@ func createTimeoutContext(timeout time.Duration) (context.Context, context.Cance
 // === Database & Scheduler Setup ===
 
 // setupJobsAndScheduler initializes the jobs handler and scheduler if database is available.
-// Returns jobsHandler, queuedLinksHandler, intervalScheduler, and db connection (if available).
+// Returns jobsHandler, discoveredLinksHandler, intervalScheduler, and db connection (if available).
 func setupJobsAndScheduler(
 	deps *CommandDeps,
 	storageResult *StorageResult,
-) (*api.JobsHandler, *api.QueuedLinksHandler, *scheduler.IntervalScheduler, *sqlx.DB) {
+) (*api.JobsHandler, *api.DiscoveredLinksHandler, *scheduler.IntervalScheduler, *sqlx.DB) {
 	// Convert config to database config (DRY improvement)
 	dbConfig := databaseConfigFromInterface(deps.Config.GetDatabaseConfig())
 
@@ -364,18 +364,18 @@ func setupJobsAndScheduler(
 	// Create jobs handler with both repositories
 	jobsHandler := api.NewJobsHandler(jobRepo, executionRepo)
 
-	// Create queued links handler
-	queuedLinkRepo := database.NewQueuedLinkRepository(db)
-	queuedLinksHandler := api.NewQueuedLinksHandler(queuedLinkRepo, jobRepo)
+	// Create discovered links handler
+	discoveredLinkRepo := database.NewDiscoveredLinkRepository(db)
+	discoveredLinksHandler := api.NewDiscoveredLinksHandler(discoveredLinkRepo, jobRepo)
 
 	// Create and start scheduler
 	intervalScheduler := createAndStartScheduler(deps, storageResult, jobRepo, executionRepo, db)
 	if intervalScheduler != nil {
 		jobsHandler.SetScheduler(intervalScheduler)
-		queuedLinksHandler.SetScheduler(intervalScheduler)
+		discoveredLinksHandler.SetScheduler(intervalScheduler)
 	}
 
-	return jobsHandler, queuedLinksHandler, intervalScheduler, db
+	return jobsHandler, discoveredLinksHandler, intervalScheduler, db
 }
 
 // databaseConfigFromInterface converts config database config to database.Config.
@@ -433,9 +433,9 @@ func createAndStartScheduler(
 func startHTTPServer(
 	deps *CommandDeps,
 	jobsHandler *api.JobsHandler,
-	queuedLinksHandler *api.QueuedLinksHandler,
+	discoveredLinksHandler *api.DiscoveredLinksHandler,
 ) (*http.Server, chan error, error) {
-	server, _, err := api.StartHTTPServer(deps.Logger, deps.Config, jobsHandler, queuedLinksHandler)
+	server, _, err := api.StartHTTPServer(deps.Logger, deps.Config, jobsHandler, discoveredLinksHandler)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to start HTTP server: %w", err)
 	}
