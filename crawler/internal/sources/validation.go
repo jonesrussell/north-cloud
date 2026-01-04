@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	configtypes "github.com/jonesrussell/north-cloud/crawler/internal/config/types"
+	"github.com/jonesrussell/north-cloud/crawler/internal/sources/apiclient"
 	"github.com/jonesrussell/north-cloud/crawler/internal/sources/types"
 	storagetypes "github.com/jonesrussell/north-cloud/crawler/internal/storage/types"
 )
@@ -55,6 +56,60 @@ func (s *Sources) ValidateSource(
 	}
 
 	return nil, err
+}
+
+// ValidateSourceByID validates a source configuration by ID and returns the validated source.
+// This is more efficient than ValidateSource as it can fetch a single source from the API
+// without loading all sources.
+func (s *Sources) ValidateSourceByID(
+	ctx context.Context,
+	sourceID string,
+	indexManager storagetypes.IndexManager,
+) (*configtypes.Source, error) {
+	if sourceID == "" {
+		return nil, errors.New("source ID is required")
+	}
+
+	// First, try to find the source in cached sources (if already loaded)
+	s.mu.RLock()
+	if len(s.sources) > 0 {
+		for i := range s.sources {
+			if s.sources[i].ID == sourceID {
+				sourceConfig := s.sources[i]
+				s.mu.RUnlock()
+				// Convert to configtypes.Source
+				source := types.ConvertToConfigSource(&sourceConfig)
+				return source, nil
+			}
+		}
+	}
+	s.mu.RUnlock()
+
+	// If not found in cache, fetch directly from API
+	if s.apiURL == "" {
+		return nil, errors.New("API URL not configured")
+	}
+
+	// Create API client and fetch source by ID
+	apiClient := apiclient.NewClient(apiclient.WithBaseURL(s.apiURL))
+	apiSource, err := apiClient.GetSource(ctx, sourceID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get source from API: %w", err)
+	}
+
+	// Convert API source to SourceConfig
+	sourceConfig, err := apiclient.ConvertAPISourceToConfig(apiSource)
+	if err != nil {
+		return nil, fmt.Errorf("failed to convert source: %w", err)
+	}
+
+	// Convert to configtypes.Source
+	source := types.ConvertToConfigSource(sourceConfig)
+
+	// Note: Index creation is now handled by the raw content pipeline, not here.
+	// The indexManager parameter is kept for interface compatibility but is no longer used here.
+
+	return source, nil
 }
 
 // validateSourceInternal performs the actual source validation logic.

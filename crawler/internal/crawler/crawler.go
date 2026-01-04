@@ -20,8 +20,8 @@ import (
 
 // CrawlerInterface defines the core functionality of a crawler.
 type CrawlerInterface interface {
-	// Start begins crawling from the given source.
-	Start(ctx context.Context, sourceName string) error
+	// Start begins crawling from the given source by ID.
+	Start(ctx context.Context, sourceID string) error
 	// Stop gracefully stops the crawler.
 	Stop(ctx context.Context) error
 	// Subscribe adds a handler for crawler events.

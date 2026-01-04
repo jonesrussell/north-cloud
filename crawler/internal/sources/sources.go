@@ -20,6 +20,13 @@ type Interface interface {
 		sourceName string,
 		indexManager storagetypes.IndexManager,
 	) (*configtypes.Source, error)
+	// ValidateSourceByID validates a source configuration by ID and returns the validated source.
+	// This is more efficient than ValidateSource as it can fetch a single source from the API.
+	ValidateSourceByID(
+		ctx context.Context,
+		sourceID string,
+		indexManager storagetypes.IndexManager,
+	) (*configtypes.Source, error)
 	// GetSources retrieves all source configurations.
 	GetSources() ([]Config, error)
 }

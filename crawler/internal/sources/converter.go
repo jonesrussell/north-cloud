@@ -116,6 +116,7 @@ func convertLoaderConfig(cfg loader.Config) Config {
 	if err != nil {
 		// If URL parsing fails, use the URL as is
 		return Config{
+			ID:             cfg.ID,
 			Name:           cfg.Name,
 			URL:            cfg.URL,
 			AllowedDomains: []string{cfg.URL},
@@ -138,6 +139,7 @@ func convertLoaderConfig(cfg loader.Config) Config {
 	}
 
 	return Config{
+		ID:             cfg.ID,
 		Name:           cfg.Name,
 		URL:            cfg.URL,
 		AllowedDomains: []string{domain},

@@ -4,6 +4,7 @@ package crawler
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/url"
 	"strings"
 	"time"
@@ -161,8 +162,8 @@ func (h *LinkHandler) isExternalLink(linkURL string) bool {
 	}
 
 	// Get source configuration to check allowed domains
-	sourceName := h.crawler.state.CurrentSource()
-	if sourceName == "" {
+	sourceID := h.crawler.state.CurrentSource()
+	if sourceID == "" {
 		return false
 	}
 
@@ -171,7 +172,7 @@ func (h *LinkHandler) isExternalLink(linkURL string) bool {
 		return false
 	}
 
-	source, err := h.crawler.sources.ValidateSource(ctx, sourceName, h.crawler.indexManager)
+	source, err := h.crawler.sources.ValidateSourceByID(ctx, sourceID, h.crawler.indexManager)
 	if err != nil {
 		// If we can't get source config, don't save the link
 		return false
@@ -223,17 +224,20 @@ func (h *LinkHandler) trySaveLink(absLink string, e *colly.HTMLElement) bool {
 // saveLinkToQueue saves a discovered link to the database for tracking and discovery purposes.
 // This allows tracking of discovered links even though they are also visited immediately.
 func (h *LinkHandler) saveLinkToQueue(ctx context.Context, linkURL, parentURL string, depth int) error {
-	sourceName := h.crawler.state.CurrentSource()
-	if sourceName == "" {
+	sourceID := h.crawler.state.CurrentSource()
+	if sourceID == "" {
 		return errors.New("no current source")
 	}
 
-	// Use source name as source ID (can be enhanced later to get actual ID from sources service)
-	sourceID := sourceName
+	// Get source config to get the source name
+	source, err := h.crawler.sources.ValidateSourceByID(ctx, sourceID, h.crawler.indexManager)
+	if err != nil {
+		return fmt.Errorf("failed to get source config: %w", err)
+	}
 
 	discoveredLink := &domain.DiscoveredLink{
 		SourceID:   sourceID,
-		SourceName: sourceName,
+		SourceName: source.Name,
 		URL:        linkURL,
 		ParentURL:  &parentURL,
 		Depth:      depth + 1, // Increment depth (colly's depth is 0-indexed from start URL)

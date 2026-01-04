@@ -76,6 +76,7 @@ func convertAPISourceToConfig(apiSource *apiclient.APISource) (Config, error) {
 	}
 
 	return Config{
+		ID:           apiSource.ID,
 		Name:         apiSource.Name,
 		URL:          apiSource.URL,
 		RateLimit:    apiSource.RateLimit,

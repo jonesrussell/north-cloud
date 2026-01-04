@@ -51,18 +51,17 @@ func (s *DBScheduler) executeJob(jobID string) {
 			s.activeJobsMu.Unlock()
 		}()
 
-		// Validate source name is present
-		if job.SourceName == nil || *job.SourceName == "" {
-			s.logger.Error("Job missing source name", "job_id", jobID)
-			s.updateJobStatus(jobID, "failed", errors.New("job missing required source_name"))
+		// Validate source ID is present
+		if job.SourceID == "" {
+			s.logger.Error("Job missing source ID", "job_id", jobID)
+			s.updateJobStatus(jobID, "failed", errors.New("job missing required source_id"))
 			return
 		}
 
-		sourceName := *job.SourceName
-		s.logger.Info("Executing job", "job_id", jobID, "source_name", sourceName, "url", job.URL)
+		s.logger.Info("Executing job", "job_id", jobID, "source_id", job.SourceID, "url", job.URL)
 
-		// Execute crawler - Start expects a source name, not a URL
-		if startErr := s.crawler.Start(jobCtx, sourceName); startErr != nil {
+		// Execute crawler - Start expects a source ID
+		if startErr := s.crawler.Start(jobCtx, job.SourceID); startErr != nil {
 			s.logger.Error("Failed to start crawler", "job_id", jobID, "error", startErr)
 			s.updateJobStatus(jobID, "failed", startErr)
 			return

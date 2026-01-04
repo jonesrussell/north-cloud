@@ -28,6 +28,7 @@ func NewSourcesMetrics() *SourcesMetrics {
 
 // SourceConfig represents a source configuration.
 type SourceConfig struct {
+	ID             string
 	Name           string
 	URL            string
 	AllowedDomains []string

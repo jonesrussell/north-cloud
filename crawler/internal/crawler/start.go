@@ -10,11 +10,11 @@ import (
 	configtypes "github.com/jonesrussell/north-cloud/crawler/internal/config/types"
 )
 
-// Start begins the crawling process for a given source.
+// Start begins the crawling process for a given source by ID.
 // Refactored to use component-based architecture for better separation of concerns.
-func (c *Crawler) Start(ctx context.Context, sourceName string) error {
+func (c *Crawler) Start(ctx context.Context, sourceID string) error {
 	c.logger.Debug("Starting crawler",
-		"source", sourceName,
+		"source_id", sourceID,
 		"debug_enabled", c.cfg.Debug,
 	)
 
@@ -29,7 +29,7 @@ func (c *Crawler) Start(ctx context.Context, sourceName string) error {
 	defer c.signals.SignalAbort()
 
 	// Validate and setup
-	source, err := c.validateAndSetup(ctx, sourceName)
+	source, err := c.validateAndSetup(ctx, sourceID)
 	if err != nil {
 		return err
 	}
@@ -88,15 +88,15 @@ func (c *Crawler) Start(ctx context.Context, sourceName string) error {
 	// Wait with context cancellation support
 	select {
 	case <-waitDone:
-		c.logger.Info("Collector finished", "source", sourceName)
+		c.logger.Info("Collector finished", "source_id", sourceID)
 	case <-ctx.Done():
-		c.logger.Info("Context cancelled, aborting collector", "source", sourceName)
+		c.logger.Info("Context cancelled, aborting collector", "source_id", sourceID)
 		c.signals.SignalAbort()
 		// Give collector a moment to finish after abort
 		select {
 		case <-waitDone:
 		case <-time.After(collectorTimeoutDuration):
-			c.logger.Warn("Collector did not finish after cancellation", "source", sourceName)
+			c.logger.Warn("Collector did not finish after cancellation", "source_id", sourceID)
 		}
 		return ctx.Err()
 	}
@@ -115,10 +115,10 @@ func (c *Crawler) Start(ctx context.Context, sourceName string) error {
 	return nil
 }
 
-// validateAndSetup validates the source and sets up the collector.
-func (c *Crawler) validateAndSetup(ctx context.Context, sourceName string) (*configtypes.Source, error) {
-	// Validate source
-	source, err := c.sources.ValidateSource(ctx, sourceName, c.indexManager)
+// validateAndSetup validates the source by ID and sets up the collector.
+func (c *Crawler) validateAndSetup(ctx context.Context, sourceID string) (*configtypes.Source, error) {
+	// Validate source by ID
+	source, err := c.sources.ValidateSourceByID(ctx, sourceID, c.indexManager)
 	if err != nil {
 		return nil, fmt.Errorf("failed to validate source: %w", err)
 	}
@@ -132,10 +132,10 @@ func (c *Crawler) validateAndSetup(ctx context.Context, sourceName string) (*con
 	c.setupCallbacks(ctx)
 
 	// Start the crawler state
-	c.state.Start(ctx, sourceName)
+	c.state.Start(ctx, sourceID)
 
 	c.logger.Debug("Starting to wait for collector to complete",
-		"source", sourceName,
+		"source_id", sourceID,
 		"url", source.URL)
 
 	return source, nil
