@@ -16,40 +16,20 @@ import (
 
 // Collector defaults
 const (
-	defaultRateLimit             = 2 * time.Second
-	defaultMaxConcurrency        = 2
-	defaultParallelism           = 2
+	defaultRateLimit   = 2 * time.Second
+	defaultParallelism = 2
+	// RandomDelayDivisor is used to calculate random delay from rate limit
+	RandomDelayDivisor = 2
+)
+
+// HTTP transport defaults
+const (
 	defaultMaxIdleConns          = 100
 	defaultMaxIdleConnsPerHost   = 10
 	defaultIdleConnTimeout       = 90 * time.Second
 	defaultResponseHeaderTimeout = 30 * time.Second
 	defaultExpectContinueTimeout = 1 * time.Second
 )
-
-// CollectorConfig holds configuration for the collector.
-type CollectorConfig struct {
-	RateLimit      time.Duration
-	MaxConcurrency int
-}
-
-// NewCollectorConfig creates a new collector configuration.
-func NewCollectorConfig() *CollectorConfig {
-	return &CollectorConfig{
-		RateLimit:      defaultRateLimit,
-		MaxConcurrency: defaultMaxConcurrency,
-	}
-}
-
-// Validate validates the collector configuration.
-func (c *CollectorConfig) Validate() error {
-	if c.RateLimit < 0 {
-		return errors.New("rate limit must be non-negative")
-	}
-	if c.MaxConcurrency < 1 {
-		return errors.New("max concurrency must be positive")
-	}
-	return nil
-}
 
 // setupCollector configures the collector with the given source settings.
 func (c *Crawler) setupCollector(source *configtypes.Source) error {
@@ -86,30 +66,12 @@ func (c *Crawler) setupCollector(source *configtypes.Source) error {
 		rateLimit = defaultRateLimit
 	}
 
-	err = c.collector.Limit(&colly.LimitRule{
-		DomainGlob:  "*",
-		Delay:       rateLimit,
-		RandomDelay: rateLimit / RandomDelayDivisor,
-		Parallelism: defaultParallelism,
-	})
-	if err != nil {
+	if err := c.setRateLimit(rateLimit, rateLimit/RandomDelayDivisor); err != nil {
 		return fmt.Errorf("failed to set rate limit: %w", err)
 	}
 
-	// Configure transport with TLS settings from config
-	c.collector.WithTransport(&http.Transport{
-		TLSClientConfig: &tls.Config{
-			InsecureSkipVerify: c.cfg.TLS.InsecureSkipVerify, //nolint:gosec // Configurable for development/testing
-			MinVersion:         c.cfg.TLS.MinVersion,
-			MaxVersion:         c.cfg.TLS.MaxVersion,
-		},
-		DisableKeepAlives:     false,
-		MaxIdleConns:          defaultMaxIdleConns,
-		MaxIdleConnsPerHost:   defaultMaxIdleConnsPerHost,
-		IdleConnTimeout:       defaultIdleConnTimeout,
-		ResponseHeaderTimeout: defaultResponseHeaderTimeout,
-		ExpectContinueTimeout: defaultExpectContinueTimeout,
-	})
+	// Configure transport with TLS settings
+	c.configureTransport()
 
 	if c.cfg.TLS.InsecureSkipVerify {
 		c.logger.Warn("TLS certificate verification is disabled. This is not recommended for production use.",
@@ -260,24 +222,43 @@ func (c *Crawler) SetRateLimit(duration time.Duration) error {
 		return errors.New("collector is nil")
 	}
 
-	config := NewCollectorConfig()
-	config.RateLimit = duration
-
-	if err := config.Validate(); err != nil {
-		return fmt.Errorf("invalid rate limit: %w", err)
+	if duration < 0 {
+		return errors.New("rate limit must be non-negative")
 	}
 
+	// Public API: set rate limit without random delay
+	return c.setRateLimit(duration, 0)
+}
+
+// setRateLimit sets the rate limit on the collector.
+func (c *Crawler) setRateLimit(delay, randomDelay time.Duration) error {
 	err := c.collector.Limit(&colly.LimitRule{
 		DomainGlob:  "*",
-		Delay:       config.RateLimit,
-		RandomDelay: 0,
-		Parallelism: config.MaxConcurrency,
+		Delay:       delay,
+		RandomDelay: randomDelay,
+		Parallelism: defaultParallelism,
 	})
 	if err != nil {
 		return fmt.Errorf("failed to set rate limit: %w", err)
 	}
-
 	return nil
+}
+
+// configureTransport configures the HTTP transport with TLS settings from config.
+func (c *Crawler) configureTransport() {
+	c.collector.WithTransport(&http.Transport{
+		TLSClientConfig: &tls.Config{
+			InsecureSkipVerify: c.cfg.TLS.InsecureSkipVerify, //nolint:gosec // Configurable for development/testing
+			MinVersion:         c.cfg.TLS.MinVersion,
+			MaxVersion:         c.cfg.TLS.MaxVersion,
+		},
+		DisableKeepAlives:     false,
+		MaxIdleConns:          defaultMaxIdleConns,
+		MaxIdleConnsPerHost:   defaultMaxIdleConnsPerHost,
+		IdleConnTimeout:       defaultIdleConnTimeout,
+		ResponseHeaderTimeout: defaultResponseHeaderTimeout,
+		ExpectContinueTimeout: defaultExpectContinueTimeout,
+	})
 }
 
 // SetCollector sets the collector for the crawler.
@@ -298,8 +279,3 @@ func convertHeaders(headers *http.Header) map[string]string {
 	}
 	return result
 }
-
-const (
-	// RandomDelayDivisor is used to calculate random delay from rate limit
-	RandomDelayDivisor = 2
-)
