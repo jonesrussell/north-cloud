@@ -10,13 +10,10 @@ import (
 	"github.com/jonesrussell/north-cloud/crawler/internal/sources/types"
 )
 
-// LoadSources creates a new Sources instance by loading sources from either the
-// gosources API or a YAML file specified in the crawler config. Returns an error if no sources are found.
-// The logger parameter is optional and can be nil.
-func LoadSources(cfg config.Interface, log logger.Interface) (*Sources, error) {
-	var sources []Config
-	var err error
-
+// NewSources creates a new Sources instance without loading sources immediately.
+// Sources will be loaded lazily when ValidateSource is first called.
+// This is more efficient for systems with many sources that may not all be used.
+func NewSources(cfg config.Interface, log logger.Interface) (*Sources, error) {
 	crawlerCfg := cfg.GetCrawlerConfig()
 
 	// API loader is required - no file-based fallback
@@ -24,24 +21,11 @@ func LoadSources(cfg config.Interface, log logger.Interface) (*Sources, error) {
 		return nil, errors.New("sources_api_url is required in crawler configuration. API-only mode is enabled")
 	}
 
-	if log != nil {
-		log.Info("Loading sources from API", "url", crawlerCfg.SourcesAPIURL)
-	}
-	sources, err = loadSourcesFromAPI(crawlerCfg.SourcesAPIURL, log)
-	if err != nil {
-		return nil, fmt.Errorf("failed to load sources from API: %w", err)
-	}
-
-	// If no sources found, return an error
-	if len(sources) == 0 {
-		return nil, errors.New("no sources found")
-	}
-
-	// Store API URL for dynamic reloading (crawlerCfg is guaranteed to be non-nil here)
+	// Store API URL for lazy loading (crawlerCfg is guaranteed to be non-nil here)
 	apiURL := crawlerCfg.SourcesAPIURL
 
 	return &Sources{
-		sources: sources,
+		sources: nil, // Sources will be loaded lazily on first ValidateSource call
 		logger:  log,
 		metrics: types.NewSourcesMetrics(),
 		apiURL:  apiURL,
@@ -70,6 +54,28 @@ func loadSourcesFromAPI(apiURL string, log logger.Interface) ([]Config, error) {
 	return sourceConfigs, nil
 }
 
+// ensureSourcesLoaded ensures sources are loaded. If sources are nil or empty, loads them from the API.
+// This implements lazy loading - sources are only loaded when first needed.
+// Uses sync.Once to ensure sources are only loaded once, even with concurrent calls.
+func (s *Sources) ensureSourcesLoaded() error {
+	var loadErr error
+	s.loadOnce.Do(func() {
+		// Check if sources are already loaded (double-check)
+		s.mu.RLock()
+		alreadyLoaded := len(s.sources) > 0
+		s.mu.RUnlock()
+
+		if alreadyLoaded {
+			return // Sources already loaded
+		}
+
+		// Load sources from API
+		loadErr = s.reloadSources()
+	})
+
+	return loadErr
+}
+
 // reloadSources reloads sources from the API and updates the cached sources.
 func (s *Sources) reloadSources() error {
 	if s.apiURL == "" {
@@ -82,14 +88,20 @@ func (s *Sources) reloadSources() error {
 		return fmt.Errorf("failed to reload sources from API: %w", err)
 	}
 
+	// If no sources found, return an error
+	if len(newSources) == 0 {
+		return errors.New("no sources found")
+	}
+
 	// Update cached sources (with write lock)
 	s.mu.Lock()
 	s.sources = newSources
 	s.mu.Unlock()
 
 	if s.logger != nil {
-		s.logger.Info("Sources reloaded from API",
-			"count", len(newSources))
+		s.logger.Info("Sources loaded from API",
+			"count", len(newSources),
+			"url", s.apiURL)
 	}
 
 	return nil

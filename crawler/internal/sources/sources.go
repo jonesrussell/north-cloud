@@ -35,11 +35,12 @@ type ArticleSelectors = types.ArticleSelectors
 
 // Sources manages a collection of web content sources.
 type Sources struct {
-	sources []Config
-	logger  logger.Interface
-	metrics *types.SourcesMetrics
-	apiURL  string       // Store API URL for reloading sources
-	mu      sync.RWMutex // Mutex for thread-safe source updates
+	sources  []Config
+	logger   logger.Interface
+	metrics  *types.SourcesMetrics
+	apiURL   string       // Store API URL for reloading sources
+	mu       sync.RWMutex // Mutex for thread-safe source updates
+	loadOnce sync.Once    // Ensures sources are only loaded once (lazy loading)
 }
 
 // Ensure Sources implements Interface

@@ -13,6 +13,7 @@ import (
 
 // ValidateSource validates a source configuration and returns the validated source.
 // It checks if the source exists and is properly configured.
+// If sources haven't been loaded yet, it loads them from the API first.
 // If the source is not found, it attempts to reload sources from the API and retries once.
 // Note: Index creation is now handled by the raw content pipeline, not here.
 func (s *Sources) ValidateSource(
@@ -20,6 +21,11 @@ func (s *Sources) ValidateSource(
 	sourceName string,
 	indexManager storagetypes.IndexManager,
 ) (*configtypes.Source, error) {
+	// Load sources lazily if they haven't been loaded yet
+	if err := s.ensureSourcesLoaded(); err != nil {
+		return nil, fmt.Errorf("failed to load sources: %w", err)
+	}
+
 	// Try validation with current sources
 	source, err := s.validateSourceInternal(sourceName)
 	if err == nil {

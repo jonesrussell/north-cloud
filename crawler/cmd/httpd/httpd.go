@@ -243,11 +243,12 @@ func createCrawlerForJobs(
 	return createCrawler(deps, bus, crawlerCfg, storageResult, sourceManager, db)
 }
 
-// loadSourceManager loads sources using the API loader.
+// loadSourceManager creates a sources manager with lazy loading.
+// Sources will be loaded from the API when ValidateSource is first called for a job.
 func loadSourceManager(deps *CommandDeps) (sources.Interface, error) {
-	sourceManager, err := sources.LoadSources(deps.Config, deps.Logger)
+	sourceManager, err := sources.NewSources(deps.Config, deps.Logger)
 	if err != nil {
-		return nil, fmt.Errorf("failed to load sources: %w", err)
+		return nil, fmt.Errorf("failed to create sources manager: %w", err)
 	}
 	return sourceManager, nil
 }
