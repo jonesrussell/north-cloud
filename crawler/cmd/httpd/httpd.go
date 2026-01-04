@@ -68,8 +68,21 @@ var (
 // Start starts the HTTP server and runs until interrupted.
 // It handles graceful shutdown on SIGINT or SIGTERM signals.
 func Start() error {
-	// Phase 0: Start profiling server (if enabled)
+	// Phase 0: Start profiling servers (if enabled)
 	profiling.StartPprofServer()
+
+	// Start Pyroscope continuous profiling (if enabled)
+	pyroscopeProfiler, err := profiling.StartPyroscope("crawler")
+	if err != nil {
+		return fmt.Errorf("failed to start Pyroscope profiler: %w", err)
+	}
+	if pyroscopeProfiler != nil {
+		defer func() {
+			if stopErr := pyroscopeProfiler.Stop(); stopErr != nil {
+				fmt.Fprintf(os.Stderr, "Warning: Failed to stop Pyroscope profiler: %v\n", stopErr)
+			}
+		}()
+	}
 
 	// Phase 1: Initialize Viper configuration
 	if err := config.InitializeViper(); err != nil {
