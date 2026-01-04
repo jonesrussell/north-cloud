@@ -12,6 +12,7 @@ import (
 	"github.com/jonesrussell/north-cloud/crawler/internal/config"
 	"github.com/jonesrussell/north-cloud/crawler/internal/logger"
 	infrajwt "github.com/north-cloud/infrastructure/jwt"
+	"github.com/north-cloud/infrastructure/monitoring"
 )
 
 const (
@@ -67,6 +68,11 @@ func setupPublicRoutes(router *gin.Engine, startTime time.Time, version string) 
 			"version": version,
 			"uptime":  formatUptime(uptime),
 		})
+	})
+
+	// Memory health endpoint
+	router.GET("/health/memory", func(c *gin.Context) {
+		monitoring.MemoryHealthHandler(c.Writer, c.Request)
 	})
 }
 

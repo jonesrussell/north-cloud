@@ -9,6 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/jonesrussell/north-cloud/auth/internal/auth"
 	"github.com/jonesrussell/north-cloud/auth/internal/config"
+	"github.com/north-cloud/infrastructure/monitoring"
 )
 
 const (
@@ -48,6 +49,11 @@ func NewServer(cfg *config.Config) (*Server, error) {
 	// Health check (public)
 	router.GET("/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"status": "ok"})
+	})
+
+	// Memory health endpoint
+	router.GET("/health/memory", func(c *gin.Context) {
+		monitoring.MemoryHealthHandler(c.Writer, c.Request)
 	})
 
 	// Auth routes
