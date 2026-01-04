@@ -71,8 +71,18 @@ func (sc *SignalCoordinator) StartCleanupGoroutine(
 				sc.logger.Debug("Cleanup goroutine stopping: abort signal received")
 				return
 			case <-ticker.C:
-				sc.logger.Debug("Running periodic cleanup")
-				cleanupFunc()
+				// Check for abort before running cleanup to avoid blocking
+				select {
+				case <-sc.abortChan:
+					sc.logger.Debug("Cleanup goroutine stopping: abort signal received during cleanup")
+					return
+				case <-ctx.Done():
+					sc.logger.Debug("Cleanup goroutine stopping: context cancelled during cleanup")
+					return
+				default:
+					sc.logger.Debug("Running periodic cleanup")
+					cleanupFunc()
+				}
 			}
 		}
 	}()

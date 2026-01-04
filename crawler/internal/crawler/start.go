@@ -101,8 +101,10 @@ func (c *Crawler) Start(ctx context.Context, sourceName string) error {
 		return ctx.Err()
 	}
 
-	// Wait for cleanup to finish
-	c.signals.WaitForCleanup(ctx, cleanupTimeoutDuration)
+	// Signal abort to cleanup goroutine
+	// Note: We don't wait for it to finish as it's designed to run periodically
+	// and may be executing cleanup operations. It will exit on the next iteration.
+	c.signals.SignalAbort()
 
 	// Stop the crawler state
 	c.state.Stop()
