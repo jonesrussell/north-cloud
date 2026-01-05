@@ -334,8 +334,8 @@ func extractJSONLD(e *colly.HTMLElement) map[string]any {
 
 		// Extract NewsArticle schema data
 		for _, obj := range jsonObjs {
-			objMap, ok := obj.(map[string]any)
-			if !ok {
+			objMap, isMap := obj.(map[string]any)
+			if !isMap {
 				continue
 			}
 
@@ -346,61 +346,8 @@ func extractJSONLD(e *colly.HTMLElement) map[string]any {
 				continue
 			}
 
-			// Extract NewsArticle fields
-			if headline, ok := objMap["headline"].(string); ok && headline != "" {
-				result["jsonld_headline"] = headline
-			}
-			if desc, ok := objMap["description"].(string); ok && desc != "" {
-				result["jsonld_description"] = desc
-			}
-			if wordCount, ok := objMap["wordCount"].(float64); ok {
-				result["jsonld_word_count"] = int(wordCount)
-			}
-			if section, ok := objMap["articleSection"].(string); ok && section != "" {
-				result["jsonld_article_section"] = section
-			}
-			if url, ok := objMap["url"].(string); ok && url != "" {
-				result["jsonld_url"] = url
-			}
-			if dateCreated, ok := objMap["dateCreated"].(string); ok && dateCreated != "" {
-				result["jsonld_date_created"] = dateCreated
-			}
-			if dateModified, ok := objMap["dateModified"].(string); ok && dateModified != "" {
-				result["jsonld_date_modified"] = dateModified
-			}
-			if datePublished, ok := objMap["datePublished"].(string); ok && datePublished != "" {
-				result["jsonld_date_published"] = datePublished
-			}
-			if keywords, ok := objMap["keywords"].([]any); ok && len(keywords) > 0 {
-				keywordStrs := make([]string, 0, len(keywords))
-				for _, kw := range keywords {
-					if kwStr, ok := kw.(string); ok {
-						keywordStrs = append(keywordStrs, kwStr)
-					}
-				}
-				if len(keywordStrs) > 0 {
-					result["jsonld_keywords"] = keywordStrs
-				}
-			}
-			if author, ok := objMap["author"].(string); ok && author != "" {
-				result["jsonld_author"] = author
-			} else if authorObj, ok := objMap["author"].(map[string]any); ok {
-				if authorName, ok := authorObj["name"].(string); ok && authorName != "" {
-					result["jsonld_author"] = authorName
-				}
-			}
-			if publisher, ok := objMap["publisher"].(map[string]any); ok {
-				if pubName, ok := publisher["name"].(string); ok && pubName != "" {
-					result["jsonld_publisher_name"] = pubName
-				}
-			}
-			if image, ok := objMap["image"].(map[string]any); ok {
-				if imageURL, ok := image["url"].(string); ok && imageURL != "" {
-					result["jsonld_image_url"] = imageURL
-				}
-			} else if imageStr, ok := objMap["image"].(string); ok && imageStr != "" {
-				result["jsonld_image_url"] = imageStr
-			}
+			// Extract fields from NewsArticle schema
+			extractNewsArticleFields(objMap, result)
 
 			// Store full JSON-LD object for reference
 			result["jsonld_raw"] = objMap
@@ -408,6 +355,100 @@ func extractJSONLD(e *colly.HTMLElement) map[string]any {
 	})
 
 	return result
+}
+
+// extractNewsArticleFields extracts fields from a NewsArticle JSON-LD object
+func extractNewsArticleFields(objMap, result map[string]any) {
+	extractJSONLDStringFields(objMap, result)
+	extractJSONLDNumericFields(objMap, result)
+	extractJSONLDKeywords(objMap, result)
+	extractJSONLDAuthor(objMap, result)
+	extractJSONLDPublisher(objMap, result)
+	extractJSONLDImage(objMap, result)
+}
+
+// extractJSONLDStringFields extracts string fields from JSON-LD object
+func extractJSONLDStringFields(objMap, result map[string]any) {
+	fieldMap := map[string]string{
+		"headline":       "jsonld_headline",
+		"description":    "jsonld_description",
+		"articleSection": "jsonld_article_section",
+		"url":            "jsonld_url",
+		"dateCreated":    "jsonld_date_created",
+		"dateModified":   "jsonld_date_modified",
+		"datePublished":  "jsonld_date_published",
+	}
+
+	for key, resultKey := range fieldMap {
+		if val, isString := objMap[key].(string); isString && val != "" {
+			result[resultKey] = val
+		}
+	}
+}
+
+// extractJSONLDNumericFields extracts numeric fields from JSON-LD object
+func extractJSONLDNumericFields(objMap, result map[string]any) {
+	if wordCount, isFloat := objMap["wordCount"].(float64); isFloat {
+		result["jsonld_word_count"] = int(wordCount)
+	}
+}
+
+// extractJSONLDKeywords extracts keywords array from JSON-LD object
+func extractJSONLDKeywords(objMap, result map[string]any) {
+	keywords, isArray := objMap["keywords"].([]any)
+	if !isArray || len(keywords) == 0 {
+		return
+	}
+
+	keywordStrs := make([]string, 0, len(keywords))
+	for _, kw := range keywords {
+		if kwStr, isKwString := kw.(string); isKwString {
+			keywordStrs = append(keywordStrs, kwStr)
+		}
+	}
+	if len(keywordStrs) > 0 {
+		result["jsonld_keywords"] = keywordStrs
+	}
+}
+
+// extractJSONLDAuthor extracts author field from JSON-LD object (can be string or object)
+func extractJSONLDAuthor(objMap, result map[string]any) {
+	if author, isAuthorString := objMap["author"].(string); isAuthorString && author != "" {
+		result["jsonld_author"] = author
+		return
+	}
+
+	if authorObj, isAuthorObj := objMap["author"].(map[string]any); isAuthorObj {
+		if authorName, isNameString := authorObj["name"].(string); isNameString && authorName != "" {
+			result["jsonld_author"] = authorName
+		}
+	}
+}
+
+// extractJSONLDPublisher extracts publisher field from JSON-LD object
+func extractJSONLDPublisher(objMap, result map[string]any) {
+	publisher, isPublisherObj := objMap["publisher"].(map[string]any)
+	if !isPublisherObj {
+		return
+	}
+
+	if pubName, isPubNameString := publisher["name"].(string); isPubNameString && pubName != "" {
+		result["jsonld_publisher_name"] = pubName
+	}
+}
+
+// extractJSONLDImage extracts image field from JSON-LD object (can be object or string)
+func extractJSONLDImage(objMap, result map[string]any) {
+	if image, isImageObj := objMap["image"].(map[string]any); isImageObj {
+		if imageURL, isImageURLString := image["url"].(string); isImageURLString && imageURL != "" {
+			result["jsonld_image_url"] = imageURL
+		}
+		return
+	}
+
+	if imageStr, isImageString := objMap["image"].(string); isImageString && imageStr != "" {
+		result["jsonld_image_url"] = imageStr
+	}
 }
 
 // extractArticleMeta extracts article-specific metadata
