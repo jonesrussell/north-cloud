@@ -20,9 +20,9 @@ type Response struct {
 
 // ErrorResponse represents an error response
 type ErrorResponse struct {
-	JSONRPC string       `json:"jsonrpc"`
-	ID      interface{}  `json:"id"`
-	Error   ErrorObject  `json:"error"`
+	JSONRPC string      `json:"jsonrpc"`
+	ID      interface{} `json:"id"`
+	Error   ErrorObject `json:"error"`
 }
 
 // ErrorObject represents an error in the response
