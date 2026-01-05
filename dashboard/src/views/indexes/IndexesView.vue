@@ -243,7 +243,6 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
 import { indexManagerApi } from '../../api/client'
 import type { Index, IndexStats } from '../../types/indexManager'
 import type { ApiError } from '../../types/common'
