@@ -10,8 +10,10 @@ import (
 
 const (
 	// Content type confidence constants
-	articleConfidence = 0.75
-	pageConfidence    = 0.6
+	articleConfidence          = 0.75
+	pageConfidence             = 0.6
+	urlExclusionConfidence     = 0.9
+	ogTypeValidationConfidence = 0.7
 	// String literal for article type matching
 	articleTypeString = "article"
 )
@@ -56,7 +58,7 @@ func (c *ContentTypeClassifier) Classify(ctx context.Context, raw *domain.RawCon
 		)
 		return &ContentTypeResult{
 			Type:       domain.ContentTypePage,
-			Confidence: 0.9,
+			Confidence: urlExclusionConfidence,
 			Method:     "url_exclusion",
 			Reason:     "URL pattern indicates non-article content",
 		}, nil
@@ -64,75 +66,11 @@ func (c *ContentTypeClassifier) Classify(ctx context.Context, raw *domain.RawCon
 
 	// Strategy 1: Check Open Graph metadata (with validation)
 	if raw.OGType != "" {
-		ogType := strings.ToLower(strings.TrimSpace(raw.OGType))
-
-		// Check for article indicators
-		if ogType == articleTypeString || ogType == "news" || strings.Contains(ogType, articleTypeString) {
-			// Validate OGType with additional indicators - require published date for high confidence
-			if raw.PublishedDate != nil {
-				c.logger.Debug("Content type detected via OG metadata with published date",
-					"content_id", raw.ID,
-					"og_type", ogType,
-					"result", domain.ContentTypeArticle,
-				)
-				return &ContentTypeResult{
-					Type:       domain.ContentTypeArticle,
-					Confidence: 1.0,
-					Method:     "og_metadata",
-					Reason:     "Open Graph type indicates article content with published date",
-				}, nil
-			}
-			// OGType says article but no published date - be cautious, classify as page
-			c.logger.Debug("OGType indicates article but missing published date, classifying as page",
-				"content_id", raw.ID,
-				"og_type", ogType,
-				"result", domain.ContentTypePage,
-			)
-			return &ContentTypeResult{
-				Type:       domain.ContentTypePage,
-				Confidence: 0.7,
-				Method:     "og_metadata_validation",
-				Reason:     "OGType indicates article but missing published date (validation failed)",
-			}, nil
+		result := c.classifyFromOGType(raw)
+		if result != nil {
+			return result, nil
 		}
-
-		// Don't trust "website" OGType - it's the default and not meaningful
-		if ogType == "website" {
-			c.logger.Debug("OGType is 'website' (default), ignoring and using heuristics",
-				"content_id", raw.ID,
-			)
-			// Fall through to heuristic check
-		}
-
-		// Check for video
-		if ogType == "video" || ogType == "video.other" || strings.Contains(ogType, "video") {
-			c.logger.Debug("Content type detected via OG metadata",
-				"content_id", raw.ID,
-				"og_type", ogType,
-				"result", domain.ContentTypeVideo,
-			)
-			return &ContentTypeResult{
-				Type:       domain.ContentTypeVideo,
-				Confidence: 1.0,
-				Method:     "og_metadata",
-				Reason:     "Open Graph type indicates video content",
-			}, nil
-		}
-
-		// Check for image
-		if ogType == "image" || strings.Contains(ogType, "image") {
-			c.logger.Debug("Content type detected via OG metadata",
-				"content_id", raw.ID,
-				"og_type", ogType,
-				"result", domain.ContentTypeImage,
-			)
-			return &ContentTypeResult{
-				Type:       domain.ContentTypeImage,
-				Confidence: 1.0,
-				Method:     "og_metadata",
-				Reason:     "Open Graph type indicates image content",
-			}, nil
-		}
+		// If result is nil, fall through to heuristic check
 	}
 
 	// Strategy 2: Heuristic-based detection
@@ -165,6 +103,82 @@ func (c *ContentTypeClassifier) Classify(ctx context.Context, raw *domain.RawCon
 		Method:     "default",
 		Reason:     "Content does not meet article criteria",
 	}, nil
+}
+
+// classifyFromOGType classifies content based on Open Graph type metadata
+// Returns nil if OGType should be ignored (e.g., "website") or doesn't match known types
+func (c *ContentTypeClassifier) classifyFromOGType(raw *domain.RawContent) *ContentTypeResult {
+	ogType := strings.ToLower(strings.TrimSpace(raw.OGType))
+
+	// Check for article indicators
+	if ogType == articleTypeString || ogType == "news" || strings.Contains(ogType, articleTypeString) {
+		// Validate OGType with additional indicators - require published date for high confidence
+		if raw.PublishedDate != nil {
+			c.logger.Debug("Content type detected via OG metadata with published date",
+				"content_id", raw.ID,
+				"og_type", ogType,
+				"result", domain.ContentTypeArticle,
+			)
+			return &ContentTypeResult{
+				Type:       domain.ContentTypeArticle,
+				Confidence: 1.0,
+				Method:     "og_metadata",
+				Reason:     "Open Graph type indicates article content with published date",
+			}
+		}
+		// OGType says article but no published date - be cautious, classify as page
+		c.logger.Debug("OGType indicates article but missing published date, classifying as page",
+			"content_id", raw.ID,
+			"og_type", ogType,
+			"result", domain.ContentTypePage,
+		)
+		return &ContentTypeResult{
+			Type:       domain.ContentTypePage,
+			Confidence: ogTypeValidationConfidence,
+			Method:     "og_metadata_validation",
+			Reason:     "OGType indicates article but missing published date (validation failed)",
+		}
+	}
+
+	// Don't trust "website" OGType - it's the default and not meaningful
+	if ogType == "website" {
+		c.logger.Debug("OGType is 'website' (default), ignoring and using heuristics",
+			"content_id", raw.ID,
+		)
+		return nil // Return nil to fall through to heuristic check
+	}
+
+	// Check for video
+	if ogType == "video" || ogType == "video.other" || strings.Contains(ogType, "video") {
+		c.logger.Debug("Content type detected via OG metadata",
+			"content_id", raw.ID,
+			"og_type", ogType,
+			"result", domain.ContentTypeVideo,
+		)
+		return &ContentTypeResult{
+			Type:       domain.ContentTypeVideo,
+			Confidence: 1.0,
+			Method:     "og_metadata",
+			Reason:     "Open Graph type indicates video content",
+		}
+	}
+
+	// Check for image
+	if ogType == "image" || strings.Contains(ogType, "image") {
+		c.logger.Debug("Content type detected via OG metadata",
+			"content_id", raw.ID,
+			"og_type", ogType,
+			"result", domain.ContentTypeImage,
+		)
+		return &ContentTypeResult{
+			Type:       domain.ContentTypeImage,
+			Confidence: 1.0,
+			Method:     "og_metadata",
+			Reason:     "Open Graph type indicates image content",
+		}
+	}
+
+	return nil // Unknown OGType, fall through to heuristic check
 }
 
 // isNonArticleURL checks if the URL matches patterns that indicate non-article content
@@ -236,11 +250,7 @@ func (c *ContentTypeClassifier) hasArticleCharacteristics(raw *domain.RawContent
 
 	// Require description (meta or OG) - not just OGTitle which is too common
 	hasDescription := raw.MetaDescription != "" || raw.OGDescription != ""
-	if !hasDescription {
-		return false
-	}
-
-	return true
+	return hasDescription
 }
 
 // ClassifyBatch classifies multiple content items efficiently
