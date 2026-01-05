@@ -29,6 +29,9 @@ import type {
   IndexHealthResponse,
   CreateSourceIndexesResponse,
   IndexStats,
+  Document,
+  DocumentQueryRequest,
+  DocumentQueryResponse,
 } from '../types/indexManager'
 
 // Debug mode - logs all requests and responses
@@ -431,6 +434,32 @@ export const indexManagerApi = {
   // Stats
   stats: {
     get: (): Promise<AxiosResponse<IndexStats>> => indexManagerClient.get('/api/v1/stats'),
+  },
+
+  // Document operations
+  documents: {
+    query: (
+      indexName: string,
+      params?: DocumentQueryRequest
+    ): Promise<AxiosResponse<DocumentQueryResponse>> =>
+      indexManagerClient.get(`/api/v1/indexes/${indexName}/documents`, { params }),
+    get: (indexName: string, documentId: string): Promise<AxiosResponse<Document>> =>
+      indexManagerClient.get(`/api/v1/indexes/${indexName}/documents/${documentId}`),
+    update: (
+      indexName: string,
+      documentId: string,
+      data: Document
+    ): Promise<AxiosResponse<void>> =>
+      indexManagerClient.put(`/api/v1/indexes/${indexName}/documents/${documentId}`, data),
+    delete: (indexName: string, documentId: string): Promise<AxiosResponse<void>> =>
+      indexManagerClient.delete(`/api/v1/indexes/${indexName}/documents/${documentId}`),
+    bulkDelete: (
+      indexName: string,
+      documentIds: string[]
+    ): Promise<AxiosResponse<void>> =>
+      indexManagerClient.post(`/api/v1/indexes/${indexName}/documents/bulk-delete`, {
+        document_ids: documentIds,
+      }),
   },
 }
 

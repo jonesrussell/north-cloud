@@ -22,6 +22,7 @@ import CitiesView from '../views/sources/CitiesView.vue'
 
 // Indexes views
 import IndexesView from '../views/indexes/IndexesView.vue'
+import IndexDetailView from '../views/indexes/IndexDetailView.vue'
 
 // Classifier views
 import ClassifierRulesView from '../views/classifier/RulesView.vue'
@@ -171,6 +172,13 @@ const routes: RouteRecordRaw[] = [
     name: 'indexes',
     component: IndexesView,
     meta: { title: 'Elasticsearch Indexes', section: 'indexes', requiresAuth: true },
+  },
+  {
+    path: '/indexes/:index_name',
+    name: 'index-detail',
+    component: IndexDetailView,
+    props: true,
+    meta: { title: 'Index Details', section: 'indexes', requiresAuth: true },
   },
 
   // Classifier routes
