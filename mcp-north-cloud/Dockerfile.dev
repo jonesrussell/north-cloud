@@ -1,0 +1,20 @@
+FROM golang:1.25-alpine
+
+WORKDIR /app
+
+# Install Air for hot reloading
+RUN go install github.com/air-verse/air@latest
+
+# Copy go mod files
+COPY go.mod ./
+RUN go mod download
+
+# Copy source code
+COPY . .
+
+# Make run script executable
+RUN chmod +x /app/run-mcp.sh
+
+# Use Air for hot reloading (for development/testing)
+# The run-mcp.sh script will build the binary when needed for MCP
+CMD ["air", "-c", ".air.toml"]
