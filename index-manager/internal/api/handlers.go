@@ -1,17 +1,22 @@
 package api
 
 import (
+	"fmt"
 	"net/http"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/jonesrussell/north-cloud/index-manager/internal/domain"
 	"github.com/jonesrussell/north-cloud/index-manager/internal/service"
 )
 
+const errDocumentNotFound = "document not found"
+
 // Handler handles HTTP requests for the index manager API
 type Handler struct {
-	indexService *service.IndexService
-	logger       Logger
+	indexService    *service.IndexService
+	documentService *service.DocumentService
+	logger          Logger
 }
 
 // Logger defines the logging interface
@@ -23,10 +28,11 @@ type Logger interface {
 }
 
 // NewHandler creates a new API handler
-func NewHandler(indexService *service.IndexService, logger Logger) *Handler {
+func NewHandler(indexService *service.IndexService, documentService *service.DocumentService, logger Logger) *Handler {
 	return &Handler{
-		indexService: indexService,
-		logger:       logger,
+		indexService:    indexService,
+		documentService: documentService,
+		logger:          logger,
 	}
 }
 
@@ -344,4 +350,199 @@ func (h *Handler) GetStats(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, stats)
+}
+
+// QueryDocuments handles GET /api/v1/indexes/:index_name/documents
+func (h *Handler) QueryDocuments(c *gin.Context) {
+	indexName := c.Param("index_name")
+
+	var req domain.DocumentQueryRequest
+	if bindErr := c.ShouldBindQuery(&req); bindErr != nil {
+		// Try to bind from JSON body if query params fail
+		if jsonErr := c.ShouldBindJSON(&req); jsonErr != nil {
+			h.logger.Warn("Invalid query documents request", "error", jsonErr)
+			c.JSON(http.StatusBadRequest, gin.H{"error": jsonErr.Error()})
+			return
+		}
+	}
+
+	// Parse query parameters manually if binding failed
+	if req.Query == "" {
+		req.Query = c.Query("query")
+	}
+	//nolint:nestif // Complex nested pagination parsing logic
+	if req.Pagination == nil {
+		page := 1
+		size := 20
+		if pageStr := c.Query("page"); pageStr != "" {
+			if parsedPage, parseErr := strconv.Atoi(pageStr); parseErr == nil {
+				page = parsedPage
+			}
+		}
+		if sizeStr := c.Query("size"); sizeStr != "" {
+			if parsedSize, parseErr := strconv.Atoi(sizeStr); parseErr == nil {
+				size = parsedSize
+			}
+		}
+		req.Pagination = &domain.DocumentPagination{
+			Page: page,
+			Size: size,
+		}
+	}
+	if req.Sort == nil {
+		req.Sort = &domain.DocumentSort{
+			Field: c.DefaultQuery("sort_field", "relevance"),
+			Order: c.DefaultQuery("sort_order", "desc"),
+		}
+	}
+
+	response, err := h.documentService.QueryDocuments(c.Request.Context(), indexName, &req)
+	if err != nil {
+		h.logger.Error("Failed to query documents",
+			"index_name", indexName,
+			"error", err,
+		)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, response)
+}
+
+// GetDocument handles GET /api/v1/indexes/:index_name/documents/:document_id
+func (h *Handler) GetDocument(c *gin.Context) {
+	indexName := c.Param("index_name")
+	documentID := c.Param("document_id")
+
+	h.logger.Debug("Getting document",
+		"index_name", indexName,
+		"document_id", documentID,
+	)
+
+	document, err := h.documentService.GetDocument(c.Request.Context(), indexName, documentID)
+	if err != nil {
+		h.logger.Error("Failed to get document",
+			"index_name", indexName,
+			"document_id", documentID,
+			"error", err,
+		)
+		statusCode := http.StatusInternalServerError
+		if err.Error() == errDocumentNotFound || err.Error() == fmt.Sprintf("index %s does not exist", indexName) {
+			statusCode = http.StatusNotFound
+		}
+		c.JSON(statusCode, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, document)
+}
+
+// UpdateDocument handles PUT /api/v1/indexes/:index_name/documents/:document_id
+func (h *Handler) UpdateDocument(c *gin.Context) {
+	indexName := c.Param("index_name")
+	documentID := c.Param("document_id")
+
+	var doc domain.Document
+	if err := c.ShouldBindJSON(&doc); err != nil {
+		h.logger.Warn("Invalid update document request", "error", err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Set the document ID from URL parameter
+	doc.ID = documentID
+
+	h.logger.Info("Updating document",
+		"index_name", indexName,
+		"document_id", documentID,
+	)
+
+	if err := h.documentService.UpdateDocument(c.Request.Context(), indexName, documentID, &doc); err != nil {
+		h.logger.Error("Failed to update document",
+			"index_name", indexName,
+			"document_id", documentID,
+			"error", err,
+		)
+		statusCode := http.StatusInternalServerError
+		if err.Error() == errDocumentNotFound || err.Error() == fmt.Sprintf("index %s does not exist", indexName) {
+			statusCode = http.StatusNotFound
+		}
+		c.JSON(statusCode, gin.H{"error": err.Error()})
+		return
+	}
+
+	h.logger.Info("Document updated successfully",
+		"index_name", indexName,
+		"document_id", documentID,
+	)
+
+	c.JSON(http.StatusOK, gin.H{"message": "document updated successfully"})
+}
+
+// DeleteDocument handles DELETE /api/v1/indexes/:index_name/documents/:document_id
+func (h *Handler) DeleteDocument(c *gin.Context) {
+	indexName := c.Param("index_name")
+	documentID := c.Param("document_id")
+
+	h.logger.Info("Deleting document",
+		"index_name", indexName,
+		"document_id", documentID,
+	)
+
+	if err := h.documentService.DeleteDocument(c.Request.Context(), indexName, documentID); err != nil {
+		h.logger.Error("Failed to delete document",
+			"index_name", indexName,
+			"document_id", documentID,
+			"error", err,
+		)
+		statusCode := http.StatusInternalServerError
+		if err.Error() == errDocumentNotFound || err.Error() == fmt.Sprintf("index %s does not exist", indexName) {
+			statusCode = http.StatusNotFound
+		}
+		c.JSON(statusCode, gin.H{"error": err.Error()})
+		return
+	}
+
+	h.logger.Info("Document deleted successfully",
+		"index_name", indexName,
+		"document_id", documentID,
+	)
+
+	c.JSON(http.StatusOK, gin.H{"message": "document deleted successfully"})
+}
+
+// BulkDeleteDocuments handles POST /api/v1/indexes/:index_name/documents/bulk-delete
+func (h *Handler) BulkDeleteDocuments(c *gin.Context) {
+	indexName := c.Param("index_name")
+
+	var req domain.BulkDeleteRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		h.logger.Warn("Invalid bulk delete request", "error", err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	h.logger.Info("Bulk deleting documents",
+		"index_name", indexName,
+		"count", len(req.DocumentIDs),
+	)
+
+	if err := h.documentService.BulkDeleteDocuments(c.Request.Context(), indexName, req.DocumentIDs); err != nil {
+		h.logger.Error("Failed to bulk delete documents",
+			"index_name", indexName,
+			"error", err,
+		)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	h.logger.Info("Documents bulk deleted successfully",
+		"index_name", indexName,
+		"count", len(req.DocumentIDs),
+	)
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "documents deleted successfully",
+		"count":   len(req.DocumentIDs),
+	})
 }

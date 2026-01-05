@@ -153,9 +153,14 @@
               class="hover:bg-gray-50"
             >
               <td class="px-6 py-4">
-                <code class="text-sm font-medium text-gray-900">
-                  {{ index.name }}
-                </code>
+                <router-link
+                  :to="`/indexes/${index.name}`"
+                  class="text-blue-600 hover:text-blue-900 hover:underline"
+                >
+                  <code class="text-sm font-medium">
+                    {{ index.name }}
+                  </code>
+                </router-link>
               </td>
               <td class="px-6 py-4 whitespace-nowrap">
                 <span class="text-sm text-gray-600">

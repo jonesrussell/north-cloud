@@ -74,3 +74,64 @@ export const INDEX_TYPE_OPTIONS = [
   { value: 'article', label: 'Article (Deprecated)', description: 'Legacy article format' },
   { value: 'page', label: 'Page (Deprecated)', description: 'Legacy page format' },
 ] as const
+
+// Document Types
+export interface Document {
+  id: string
+  title?: string
+  url?: string
+  source_name?: string
+  published_date?: string
+  crawled_at?: string
+  quality_score?: number
+  content_type?: string
+  topics?: string[]
+  is_crime_related?: boolean
+  body?: string
+  raw_text?: string
+  raw_html?: string
+  meta?: Record<string, unknown>
+}
+
+export interface DocumentFilters {
+  title?: string
+  url?: string
+  content_type?: string
+  min_quality_score?: number
+  max_quality_score?: number
+  topics?: string[]
+  from_date?: string
+  to_date?: string
+  from_crawled_at?: string
+  to_crawled_at?: string
+  is_crime_related?: boolean
+}
+
+export interface DocumentPagination {
+  page: number
+  size: number
+}
+
+export interface DocumentSort {
+  field: string // relevance, published_date, crawled_at, quality_score, title
+  order: string // asc, desc
+}
+
+export interface DocumentQueryRequest {
+  query?: string
+  filters?: DocumentFilters
+  pagination?: DocumentPagination
+  sort?: DocumentSort
+}
+
+export interface DocumentQueryResponse {
+  documents: Document[]
+  total_hits: number
+  total_pages: number
+  current_page: number
+  page_size: number
+}
+
+export interface BulkDeleteRequest {
+  document_ids: string[]
+}

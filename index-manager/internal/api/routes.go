@@ -19,6 +19,13 @@ func SetupRoutes(router *gin.Engine, handler *Handler) {
 	indexes.DELETE("/:index_name", handler.DeleteIndex)        // DELETE /api/v1/indexes/:index_name
 	indexes.GET("/:index_name/health", handler.GetIndexHealth) // GET /api/v1/indexes/:index_name/health
 
+	// Document management endpoints
+	indexes.GET("/:index_name/documents", handler.QueryDocuments)                   // GET /api/v1/indexes/:index_name/documents
+	indexes.GET("/:index_name/documents/:document_id", handler.GetDocument)         // GET /api/v1/indexes/:index_name/documents/:document_id
+	indexes.PUT("/:index_name/documents/:document_id", handler.UpdateDocument)      // PUT /api/v1/indexes/:index_name/documents/:document_id
+	indexes.DELETE("/:index_name/documents/:document_id", handler.DeleteDocument)   // DELETE /api/v1/indexes/:index_name/documents/:document_id
+	indexes.POST("/:index_name/documents/bulk-delete", handler.BulkDeleteDocuments) // POST /api/v1/indexes/:index_name/documents/bulk-delete
+
 	// Bulk operations
 	bulk := v1.Group("/indexes/bulk")
 	bulk.POST("/create", handler.BulkCreateIndexes)   // POST /api/v1/indexes/bulk/create

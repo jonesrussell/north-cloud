@@ -12,6 +12,7 @@ import (
 	"time"
 
 	es "github.com/elastic/go-elasticsearch/v8"
+	"github.com/elastic/go-elasticsearch/v8/esapi"
 )
 
 const unknownStatus = "unknown"
@@ -486,4 +487,178 @@ func (c *Client) GetClusterHealth(ctx context.Context) (map[string]interface{}, 
 	}
 
 	return healthData, nil
+}
+
+// SearchDocuments executes a search query on a specific index
+func (c *Client) SearchDocuments(ctx context.Context, indexName string, query map[string]interface{}) (*esapi.Response, error) {
+	queryJSON, err := json.Marshal(query)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal query: %w", err)
+	}
+
+	res, err := c.esClient.Search(
+		c.esClient.Search.WithContext(ctx),
+		c.esClient.Search.WithIndex(indexName),
+		c.esClient.Search.WithBody(strings.NewReader(string(queryJSON))),
+		c.esClient.Search.WithTrackTotalHits(true),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to execute search: %w", err)
+	}
+
+	if res.IsError() {
+		defer func() {
+			_ = res.Body.Close()
+		}()
+		body, _ := io.ReadAll(res.Body)
+		return nil, fmt.Errorf("search returned error [%d]: %s", res.StatusCode, string(body))
+	}
+
+	return res, nil
+}
+
+// GetDocument retrieves a document by ID from an index
+func (c *Client) GetDocument(ctx context.Context, indexName, documentID string) (map[string]interface{}, error) {
+	res, err := c.esClient.Get(indexName, documentID, c.esClient.Get.WithContext(ctx))
+	if err != nil {
+		return nil, fmt.Errorf("failed to get document: %w", err)
+	}
+	defer func() {
+		_ = res.Body.Close()
+	}()
+
+	if res.IsError() {
+		if res.StatusCode == http.StatusNotFound {
+			return nil, errors.New("document not found")
+		}
+		body, _ := io.ReadAll(res.Body)
+		return nil, fmt.Errorf("get document returned error [%d]: %s", res.StatusCode, string(body))
+	}
+
+	var result struct {
+		Source map[string]interface{} `json:"_source"`
+	}
+	if decodeErr := json.NewDecoder(res.Body).Decode(&result); decodeErr != nil {
+		return nil, fmt.Errorf("failed to decode response: %w", decodeErr)
+	}
+
+	return result.Source, nil
+}
+
+// UpdateDocument updates a document in an index
+func (c *Client) UpdateDocument(ctx context.Context, indexName, documentID string, doc map[string]interface{}) error {
+	updateBody := map[string]interface{}{
+		"doc": doc,
+	}
+	updateJSON, err := json.Marshal(updateBody)
+	if err != nil {
+		return fmt.Errorf("failed to marshal update body: %w", err)
+	}
+
+	res, err := c.esClient.Update(
+		indexName,
+		documentID,
+		strings.NewReader(string(updateJSON)),
+		c.esClient.Update.WithContext(ctx),
+	)
+	if err != nil {
+		return fmt.Errorf("failed to update document: %w", err)
+	}
+	defer func() {
+		_ = res.Body.Close()
+	}()
+
+	if res.IsError() {
+		if res.StatusCode == http.StatusNotFound {
+			return errors.New("document not found")
+		}
+		body, _ := io.ReadAll(res.Body)
+		return fmt.Errorf("update document returned error [%d]: %s", res.StatusCode, string(body))
+	}
+
+	return nil
+}
+
+// DeleteDocument deletes a document by ID from an index
+func (c *Client) DeleteDocument(ctx context.Context, indexName, documentID string) error {
+	res, err := c.esClient.Delete(indexName, documentID, c.esClient.Delete.WithContext(ctx))
+	if err != nil {
+		return fmt.Errorf("failed to delete document: %w", err)
+	}
+	defer func() {
+		_ = res.Body.Close()
+	}()
+
+	if res.IsError() {
+		if res.StatusCode == http.StatusNotFound {
+			return errors.New("document not found")
+		}
+		body, _ := io.ReadAll(res.Body)
+		return fmt.Errorf("delete document returned error [%d]: %s", res.StatusCode, string(body))
+	}
+
+	return nil
+}
+
+// BulkDeleteDocuments deletes multiple documents in a single request
+func (c *Client) BulkDeleteDocuments(ctx context.Context, indexName string, documentIDs []string) error {
+	if len(documentIDs) == 0 {
+		return errors.New("no document IDs provided")
+	}
+
+	var bulkBody strings.Builder
+	for _, docID := range documentIDs {
+		// Bulk API format: action and meta-data line, then optional source line
+		action := map[string]interface{}{
+			"delete": map[string]interface{}{
+				"_index": indexName,
+				"_id":    docID,
+			},
+		}
+		actionJSON, err := json.Marshal(action)
+		if err != nil {
+			return fmt.Errorf("failed to marshal bulk action: %w", err)
+		}
+		bulkBody.Write(actionJSON)
+		bulkBody.WriteString("\n")
+	}
+
+	res, err := c.esClient.Bulk(strings.NewReader(bulkBody.String()), c.esClient.Bulk.WithContext(ctx))
+	if err != nil {
+		return fmt.Errorf("failed to execute bulk delete: %w", err)
+	}
+	defer func() {
+		_ = res.Body.Close()
+	}()
+
+	if res.IsError() {
+		body, _ := io.ReadAll(res.Body)
+		return fmt.Errorf("bulk delete returned error [%d]: %s", res.StatusCode, string(body))
+	}
+
+	// Parse response to check for individual errors
+	var bulkResponse struct {
+		Items []map[string]interface{} `json:"items"`
+	}
+	if decodeErr := json.NewDecoder(res.Body).Decode(&bulkResponse); decodeErr != nil {
+		// If we can't parse, the bulk request may have succeeded partially
+		return nil
+	}
+
+	// Check for errors in individual items
+	var errorMessages []string
+	for _, item := range bulkResponse.Items {
+		if deleteItem, ok := item["delete"].(map[string]interface{}); ok {
+			if errorData, hasError := deleteItem["error"]; hasError {
+				errorJSON, _ := json.Marshal(errorData)
+				errorMessages = append(errorMessages, string(errorJSON))
+			}
+		}
+	}
+
+	if len(errorMessages) > 0 {
+		return fmt.Errorf("bulk delete had errors: %s", strings.Join(errorMessages, "; "))
+	}
+
+	return nil
 }
