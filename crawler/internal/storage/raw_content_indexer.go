@@ -22,18 +22,18 @@ type RawContent struct {
 	SourceName           string     `json:"source_name"`
 	Title                string     `json:"title"`
 	RawText              string     `json:"raw_text"`
-	RawHTML              string     `json:"raw_html,omitempty"`
-	MetaDescription      string     `json:"meta_description,omitempty"`
+	RawHTML              string     `json:"raw_html,omitempty"` // Large field, omit if empty
+	MetaDescription      string     `json:"meta_description"`   // Classifier needs this
 	MetaKeywords         string     `json:"meta_keywords,omitempty"`
-	OGType               string     `json:"og_type,omitempty"`
-	OGTitle              string     `json:"og_title,omitempty"`
-	OGDescription        string     `json:"og_description,omitempty"`
+	OGType               string     `json:"og_type"`        // CRITICAL: Classifier needs this
+	OGTitle              string     `json:"og_title"`       // Classifier needs this
+	OGDescription        string     `json:"og_description"` // Classifier needs this
 	OGImage              string     `json:"og_image,omitempty"`
 	Author               string     `json:"author,omitempty"`
-	PublishedDate        *time.Time `json:"published_date,omitempty"`
+	PublishedDate        *time.Time `json:"published_date"` // CRITICAL: Classifier needs this
 	ClassificationStatus string     `json:"classification_status"`
 	CrawledAt            time.Time  `json:"crawled_at"`
-	WordCount            int        `json:"word_count"`
+	WordCount            int        `json:"word_count"` // CRITICAL: Classifier needs this
 }
 
 // RawContentIndexer handles indexing of raw content for the classifier
