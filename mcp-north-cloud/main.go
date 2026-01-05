@@ -67,7 +67,7 @@ func main() {
 	}
 }
 
-func sendError(writer io.Writer, encoder *json.Encoder, id interface{}, code int, message string, data interface{}) {
+func sendError(_ io.Writer, encoder *json.Encoder, id any, code int, message string, data any) {
 	errorResponse := mcp.ErrorResponse{
 		JSONRPC: "2.0",
 		ID:      id,

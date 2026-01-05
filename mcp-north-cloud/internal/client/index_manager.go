@@ -1,11 +1,17 @@
 package client
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 	"time"
+)
+
+const (
+	// defaultHTTPTimeout is the default timeout for HTTP requests
+	defaultHTTPTimeout = 30 * time.Second
 )
 
 // IndexManagerClient is a client for the index-manager API
@@ -19,7 +25,7 @@ func NewIndexManagerClient(baseURL string) *IndexManagerClient {
 	return &IndexManagerClient{
 		baseURL: baseURL,
 		httpClient: &http.Client{
-			Timeout: 30 * time.Second,
+			Timeout: defaultHTTPTimeout,
 		},
 	}
 }
@@ -28,7 +34,7 @@ func NewIndexManagerClient(baseURL string) *IndexManagerClient {
 func (c *IndexManagerClient) DeleteIndex(indexName string) error {
 	url := fmt.Sprintf("%s/api/v1/indexes/%s", c.baseURL, indexName)
 
-	req, err := http.NewRequest(http.MethodDelete, url, nil)
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodDelete, url, http.NoBody)
 	if err != nil {
 		return fmt.Errorf("failed to create request: %w", err)
 	}
@@ -59,7 +65,7 @@ func (c *IndexManagerClient) DeleteIndex(indexName string) error {
 	var result struct {
 		Message string `json:"message"`
 	}
-	if err := json.Unmarshal(body, &result); err != nil {
+	if jsonErr := json.Unmarshal(body, &result); jsonErr != nil {
 		// Response might not be JSON, that's okay
 		return nil
 	}
@@ -71,7 +77,12 @@ func (c *IndexManagerClient) DeleteIndex(indexName string) error {
 func (c *IndexManagerClient) ListIndices() ([]string, error) {
 	url := fmt.Sprintf("%s/api/v1/indexes", c.baseURL)
 
-	resp, err := c.httpClient.Get(url)
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, url, http.NoBody)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	resp, err := c.httpClient.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("failed to execute request: %w", err)
 	}
@@ -92,8 +103,8 @@ func (c *IndexManagerClient) ListIndices() ([]string, error) {
 		} `json:"indices"`
 	}
 
-	if err := json.Unmarshal(body, &result); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
+	if jsonErr := json.Unmarshal(body, &result); jsonErr != nil {
+		return nil, fmt.Errorf("failed to parse response: %w", jsonErr)
 	}
 
 	indices := make([]string, len(result.Indices))

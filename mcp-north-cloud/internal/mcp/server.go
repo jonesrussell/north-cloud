@@ -67,17 +67,17 @@ func (s *Server) HandleRequest(req *Request) *Response {
 }
 
 // handleInitialize handles the initialize request
-func (s *Server) handleInitialize(req *Request, id interface{}) *Response {
-	capabilities := map[string]interface{}{
-		"tools": map[string]interface{}{},
+func (s *Server) handleInitialize(_ *Request, id any) *Response {
+	capabilities := map[string]any{
+		"tools": map[string]any{},
 	}
 
-	serverInfo := map[string]interface{}{
+	serverInfo := map[string]any{
 		"name":    "north-cloud-mcp",
 		"version": "1.0.0",
 	}
 
-	result := map[string]interface{}{
+	result := map[string]any{
 		"protocolVersion": "2024-11-05",
 		"capabilities":    capabilities,
 		"serverInfo":      serverInfo,
@@ -93,15 +93,15 @@ func (s *Server) handleInitialize(req *Request, id interface{}) *Response {
 }
 
 // handleToolsList returns the list of available tools
-func (s *Server) handleToolsList(req *Request, id interface{}) *Response {
+func (s *Server) handleToolsList(_ *Request, id any) *Response {
 	tools := []Tool{
 		{
 			Name:        "delete_index",
 			Description: "Deletes an Elasticsearch index by name. This operation is irreversible and will permanently delete the index and all its documents.",
-			InputSchema: map[string]interface{}{
+			InputSchema: map[string]any{
 				"type": "object",
-				"properties": map[string]interface{}{
-					"index_name": map[string]interface{}{
+				"properties": map[string]any{
+					"index_name": map[string]any{
 						"type":        "string",
 						"description": "The name of the Elasticsearch index to delete (e.g., 'example_com_raw_content')",
 					},
@@ -111,7 +111,7 @@ func (s *Server) handleToolsList(req *Request, id interface{}) *Response {
 		},
 	}
 
-	result := map[string]interface{}{
+	result := map[string]any{
 		"tools": tools,
 	}
 
@@ -125,7 +125,7 @@ func (s *Server) handleToolsList(req *Request, id interface{}) *Response {
 }
 
 // handleToolsCall executes a tool call
-func (s *Server) handleToolsCall(req *Request, id interface{}) *Response {
+func (s *Server) handleToolsCall(req *Request, id any) *Response {
 	var params ToolCallParams
 	if err := json.Unmarshal(req.Params, &params); err != nil {
 		return &Response{
@@ -154,7 +154,7 @@ func (s *Server) handleToolsCall(req *Request, id interface{}) *Response {
 }
 
 // handleDeleteIndex handles the delete_index tool call
-func (s *Server) handleDeleteIndex(id interface{}, arguments json.RawMessage) *Response {
+func (s *Server) handleDeleteIndex(id any, arguments json.RawMessage) *Response {
 	var args struct {
 		IndexName string `json:"index_name"`
 	}
@@ -194,8 +194,8 @@ func (s *Server) handleDeleteIndex(id interface{}, arguments json.RawMessage) *R
 		}
 	}
 
-	result := map[string]interface{}{
-		"content": []map[string]interface{}{
+	result := map[string]any{
+		"content": []map[string]any{
 			{
 				"type": "text",
 				"text": fmt.Sprintf("Successfully deleted index: %s", args.IndexName),
