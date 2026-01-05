@@ -39,7 +39,6 @@ This document provides a comprehensive guide for AI assistants working with the 
 - Docker-based development and production environments
 - Hot-reloading for development
 - REST APIs for service communication
-- Drupal JSON:API integration
 
 ---
 
