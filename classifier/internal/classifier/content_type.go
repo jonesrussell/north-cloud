@@ -126,31 +126,19 @@ func (c *ContentTypeClassifier) classifyFromOGType(raw *domain.RawContent) *Cont
 	}
 
 	// Check for article indicators
+	// Trust og_type as authoritative - if it says "article", it's an article
 	if ogType == articleTypeString || ogType == "news" || strings.Contains(ogType, articleTypeString) {
-		// CRITICAL: Require published date for OG-based article classification
-		// The crawler previously set og:type="article" as default for all pages without explicit tags
-		// We must validate this with PublishedDate to avoid misclassification
-		if raw.PublishedDate != nil {
-			c.logger.Debug("Content type detected via OG metadata with published date",
-				"content_id", raw.ID,
-				"og_type", ogType,
-				"result", domain.ContentTypeArticle,
-			)
-			return &ContentTypeResult{
-				Type:       domain.ContentTypeArticle,
-				Confidence: 1.0,
-				Method:     "og_metadata",
-				Reason:     "Open Graph type indicates article content with published date",
-			}
-		}
-		// OG says article but NO published date → likely crawler's default value or page misuse
-		// IMPORTANT: Fall through to heuristic check instead of trusting og_type
-		c.logger.Debug("OG type 'article' without published date - likely default value, falling through to heuristics",
+		c.logger.Debug("Content type detected via OG metadata",
 			"content_id", raw.ID,
 			"og_type", ogType,
-			"reason", "no_published_date",
+			"result", domain.ContentTypeArticle,
 		)
-		return nil // Fall through to URL pattern check and heuristics
+		return &ContentTypeResult{
+			Type:       domain.ContentTypeArticle,
+			Confidence: 1.0,
+			Method:     "og_metadata",
+			Reason:     "Open Graph type indicates article content",
+		}
 	}
 
 	// Don't trust "website" OGType - it's the default and not meaningful
