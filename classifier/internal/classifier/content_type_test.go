@@ -396,13 +396,14 @@ func TestContentTypeClassifier_Classify_OGTypeWithoutDate(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	// Should classify as page because missing published date
+	// Should classify as page because missing published date (falls through to default)
 	if result.Type != domain.ContentTypePage {
 		t.Errorf("expected type %s, got %s", domain.ContentTypePage, result.Type)
 	}
 
-	if result.Method != "og_metadata_validation" {
-		t.Errorf("expected method og_metadata_validation, got %s", result.Method)
+	// After our fix, this falls through to default method instead of og_metadata_validation
+	if result.Method != "default" {
+		t.Errorf("expected method default, got %s", result.Method)
 	}
 }
 
@@ -434,5 +435,122 @@ func TestContentTypeClassifier_Classify_OGTypeWebsite(t *testing.T) {
 
 	if result.Method != "heuristic" {
 		t.Errorf("expected method heuristic, got %s", result.Method)
+	}
+}
+
+// Test new matchesURLPattern helper function
+func TestMatchesURLPattern(t *testing.T) {
+	tests := []struct {
+		name    string
+		path    string
+		pattern string
+		want    bool
+	}{
+		// Test without trailing slashes
+		{
+			name:    "classifieds exact match",
+			path:    "/classifieds",
+			pattern: "/classifieds",
+			want:    true,
+		},
+		{
+			name:    "classifieds with subpath",
+			path:    "/classifieds/job-listings",
+			pattern: "/classifieds",
+			want:    true,
+		},
+		{
+			name:    "directory with subpath",
+			path:    "/directory/some-business",
+			pattern: "/directory",
+			want:    true,
+		},
+		{
+			name:    "submissions with subpath",
+			path:    "/submissions/newstip",
+			pattern: "/submissions",
+			want:    true,
+		},
+		{
+			name:    "news article should not match classifieds",
+			path:    "/local-news/article-title",
+			pattern: "/classifieds",
+			want:    false,
+		},
+		// Test with trailing slashes in pattern
+		{
+			name:    "pattern with slash matches prefix",
+			path:    "/classifieds/job-listings",
+			pattern: "/classifieds/",
+			want:    true,
+		},
+		{
+			name:    "pattern without slash matches subpath",
+			path:    "/account/settings",
+			pattern: "/account",
+			want:    true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := matchesURLPattern(tt.path, tt.pattern)
+			if got != tt.want {
+				t.Errorf("matchesURLPattern(%q, %q) = %v, want %v", tt.path, tt.pattern, got, tt.want)
+			}
+		})
+	}
+}
+
+// Test baytoday.ca specific URLs with new patterns
+func TestContentTypeClassifier_BaytodayURLs(t *testing.T) {
+	classifier := NewContentTypeClassifier(&mockLogger{})
+
+	tests := []struct {
+		name        string
+		url         string
+		expectedType string
+	}{
+		{
+			name:         "classifieds homepage (no trailing slash)",
+			url:          "https://www.baytoday.ca/classifieds",
+			expectedType: domain.ContentTypePage,
+		},
+		{
+			name:         "classifieds job listings",
+			url:          "https://www.baytoday.ca/classifieds/job-listings",
+			expectedType: domain.ContentTypePage,
+		},
+		{
+			name:         "directory page",
+			url:          "https://www.baytoday.ca/directory/health-care/wellwise",
+			expectedType: domain.ContentTypePage,
+		},
+		{
+			name:         "submissions page",
+			url:          "https://www.baytoday.ca/submissions/newstip",
+			expectedType: domain.ContentTypePage,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			raw := &domain.RawContent{
+				ID:        "test-" + tt.name,
+				URL:       tt.url,
+				Title:     "Test Page",
+				RawText:   "Some content",
+				WordCount: 250,
+			}
+
+			result, err := classifier.Classify(context.Background(), raw)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+
+			if result.Type != tt.expectedType {
+				t.Errorf("URL %s: expected type %s, got %s (method: %s)", tt.url, tt.expectedType, result.Type, result.Method)
+			}
+		})
 	}
 }

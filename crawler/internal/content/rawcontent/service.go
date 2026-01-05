@@ -225,11 +225,10 @@ func (s *RawContentService) convertToRawContent(rawData *RawContentData, sourceN
 	// Calculate word count
 	wordCount := calculateWordCount(rawData.RawText)
 
-	// Determine OG type (default to article for news content)
+	// Use OG type as-is from HTML extraction
+	// Don't default to "article" - let classifier decide based on content characteristics
 	ogType := rawData.OGType
-	if ogType == "" {
-		ogType = "article"
-	}
+	// Keep empty if not present in HTML
 
 	return &storagepkg.RawContent{
 		ID:                   rawData.ID,

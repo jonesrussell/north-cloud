@@ -19,10 +19,19 @@ const (
 )
 
 // nonArticleURLPatterns contains URL path patterns that indicate non-article content
+// Note: matchesURLPattern() handles both trailing and non-trailing slashes
 var nonArticleURLPatterns = []string{
-	"/account/", "/login", "/signin", "/signup", "/register",
-	"/classifieds/", "/classified/", "/ads/", "/advertisements/",
-	"/category/", "/categories/", "/browse/", "/listings/",
+	// Account/Auth pages
+	"/account", "/login", "/signin", "/signup", "/register",
+
+	// Classifieds
+	"/classifieds", "/classified", "/ads", "/advertisements",
+
+	// Directory and submissions
+	"/directory", "/submissions",
+
+	// Browsing/navigation pages
+	"/category", "/categories", "/browse", "/listings",
 	"/search", "/results",
 }
 
@@ -110,9 +119,17 @@ func (c *ContentTypeClassifier) Classify(ctx context.Context, raw *domain.RawCon
 func (c *ContentTypeClassifier) classifyFromOGType(raw *domain.RawContent) *ContentTypeResult {
 	ogType := strings.ToLower(strings.TrimSpace(raw.OGType))
 
+	// If og_type is empty, fall through immediately
+	// (After crawler fix, this means page had no explicit og:type tag)
+	if ogType == "" {
+		return nil
+	}
+
 	// Check for article indicators
 	if ogType == articleTypeString || ogType == "news" || strings.Contains(ogType, articleTypeString) {
-		// Validate OGType with additional indicators - require published date for high confidence
+		// CRITICAL: Require published date for OG-based article classification
+		// The crawler previously set og:type="article" as default for all pages without explicit tags
+		// We must validate this with PublishedDate to avoid misclassification
 		if raw.PublishedDate != nil {
 			c.logger.Debug("Content type detected via OG metadata with published date",
 				"content_id", raw.ID,
@@ -126,18 +143,14 @@ func (c *ContentTypeClassifier) classifyFromOGType(raw *domain.RawContent) *Cont
 				Reason:     "Open Graph type indicates article content with published date",
 			}
 		}
-		// OGType says article but no published date - be cautious, classify as page
-		c.logger.Debug("OGType indicates article but missing published date, classifying as page",
+		// OG says article but NO published date → likely crawler's default value or page misuse
+		// IMPORTANT: Fall through to heuristic check instead of trusting og_type
+		c.logger.Debug("OG type 'article' without published date - likely default value, falling through to heuristics",
 			"content_id", raw.ID,
 			"og_type", ogType,
-			"result", domain.ContentTypePage,
+			"reason", "no_published_date",
 		)
-		return &ContentTypeResult{
-			Type:       domain.ContentTypePage,
-			Confidence: ogTypeValidationConfidence,
-			Method:     "og_metadata_validation",
-			Reason:     "OGType indicates article but missing published date (validation failed)",
-		}
+		return nil // Fall through to URL pattern check and heuristics
 	}
 
 	// Don't trust "website" OGType - it's the default and not meaningful
@@ -181,6 +194,26 @@ func (c *ContentTypeClassifier) classifyFromOGType(raw *domain.RawContent) *Cont
 	return nil // Unknown OGType, fall through to heuristic check
 }
 
+// matchesURLPattern checks if URL path matches pattern (handles trailing slashes intelligently)
+func matchesURLPattern(path, pattern string) bool {
+	// Exact match
+	if path == pattern {
+		return true
+	}
+
+	// Pattern with trailing slash matches path prefix
+	// e.g., pattern="/classifieds/" matches "/classifieds/job-listings"
+	if strings.HasSuffix(pattern, "/") {
+		return strings.HasPrefix(path, pattern)
+	}
+
+	// Pattern without trailing slash matches:
+	// 1. Exact path (already checked above)
+	// 2. Path prefix with slash appended
+	// e.g., pattern="/classifieds" matches "/classifieds/job-listings"
+	return strings.HasPrefix(path, pattern+"/")
+}
+
 // isNonArticleURL checks if the URL matches patterns that indicate non-article content
 func (c *ContentTypeClassifier) isNonArticleURL(urlStr string) bool {
 	if urlStr == "" {
@@ -206,9 +239,14 @@ func (c *ContentTypeClassifier) isNonArticleURL(urlStr string) bool {
 
 	path := strings.ToLower(parsedURL.Path)
 
-	// Check path patterns
+	// Check path patterns - use new helper function
 	for _, pattern := range nonArticleURLPatterns {
-		if strings.Contains(path, pattern) {
+		if matchesURLPattern(path, pattern) {
+			c.logger.Debug("URL matched non-article pattern",
+				"url", urlStr,
+				"path", path,
+				"pattern", pattern,
+			)
 			return true
 		}
 	}
