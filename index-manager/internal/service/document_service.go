@@ -203,8 +203,8 @@ func (s *DocumentService) BulkDeleteDocuments(ctx context.Context, indexName str
 // mapToDocument converts Elasticsearch source map to domain Document
 func (s *DocumentService) mapToDocument(id string, source map[string]interface{}) *domain.Document {
 	doc := &domain.Document{
-		ID:    id,
-		Meta:  make(map[string]interface{}),
+		ID:   id,
+		Meta: make(map[string]interface{}),
 	}
 
 	// Extract common fields

@@ -22,10 +22,10 @@ type Document struct {
 
 // DocumentQueryRequest represents a request to query documents
 type DocumentQueryRequest struct {
-	Query      string                 `json:"query,omitempty"`
-	Filters    *DocumentFilters       `json:"filters,omitempty"`
-	Pagination *DocumentPagination    `json:"pagination,omitempty"`
-	Sort       *DocumentSort          `json:"sort,omitempty"`
+	Query      string              `json:"query,omitempty"`
+	Filters    *DocumentFilters    `json:"filters,omitempty"`
+	Pagination *DocumentPagination `json:"pagination,omitempty"`
+	Sort       *DocumentSort       `json:"sort,omitempty"`
 }
 
 // DocumentFilters holds filter criteria for document queries

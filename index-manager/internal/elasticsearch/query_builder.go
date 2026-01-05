@@ -166,7 +166,7 @@ func (qb *DocumentQueryBuilder) buildFilters(filters *domain.DocumentFilters) []
 		result = append(result, map[string]interface{}{
 			"wildcard": map[string]interface{}{
 				"title.keyword": map[string]interface{}{
-					"value": "*" + strings.ToLower(filters.Title) + "*",
+					"value":            "*" + strings.ToLower(filters.Title) + "*",
 					"case_insensitive": true,
 				},
 			},
@@ -178,7 +178,7 @@ func (qb *DocumentQueryBuilder) buildFilters(filters *domain.DocumentFilters) []
 		result = append(result, map[string]interface{}{
 			"wildcard": map[string]interface{}{
 				"url.keyword": map[string]interface{}{
-					"value": "*" + strings.ToLower(filters.URL) + "*",
+					"value":            "*" + strings.ToLower(filters.URL) + "*",
 					"case_insensitive": true,
 				},
 			},
