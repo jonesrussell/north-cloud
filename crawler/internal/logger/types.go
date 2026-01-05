@@ -30,15 +30,15 @@ const (
 // Config represents the logger configuration.
 type Config struct {
 	// Level is the minimum logging level.
-	Level Level `yaml:"level" json:"level"`
+	Level Level `json:"level" yaml:"level"`
 	// Development enables development mode.
-	Development bool `yaml:"development" json:"development"`
+	Development bool `json:"development" yaml:"development"`
 	// Encoding sets the logger's encoding.
-	Encoding string `yaml:"encoding" json:"encoding"`
+	Encoding string `json:"encoding" yaml:"encoding"`
 	// OutputPaths is a list of URLs or file paths to write logging output to.
-	OutputPaths []string `yaml:"outputPaths" json:"outputPaths"`
+	OutputPaths []string `json:"outputPaths" yaml:"outputPaths"`
 	// ErrorOutputPaths is a list of URLs to write internal logger errors to.
-	ErrorOutputPaths []string `yaml:"errorOutputPaths" json:"errorOutputPaths"`
+	ErrorOutputPaths []string `json:"errorOutputPaths" yaml:"errorOutputPaths"`
 	// EnableColor enables colored output in development mode.
-	EnableColor bool `yaml:"enableColor" json:"enableColor"`
+	EnableColor bool `json:"enableColor" yaml:"enableColor"`
 }

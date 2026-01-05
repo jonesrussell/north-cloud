@@ -7,12 +7,15 @@ linters:
     - bidichk
     - bodyclose
     - canonicalheader
+    - contextcheck
     - copyloopvar
     - cyclop
     - depguard
     - dupl
     - durationcheck
     - errcheck
+    - err113
+    - errchkjson
     - errname
     - errorlint
     - exhaustive
@@ -21,6 +24,7 @@ linters:
     - forbidigo
     - funlen
     - gocheckcompilerdirectives
+    - gochecknoinits
     - gochecksumtype
     - gocognit
     - goconst
@@ -48,6 +52,7 @@ linters:
     - nolintlint
     - nosprintfhostport
     - perfsprint
+    - prealloc
     - predeclared
     - promlinter
     - protogetter
@@ -59,9 +64,11 @@ linters:
     - spancheck
     - sqlclosecheck
     - staticcheck
+    - tagalign
     - testableexamples
     - testifylint
     - testpackage
+    - thelper
     - tparallel
     - unconvert
     - unparam
@@ -72,6 +79,8 @@ linters:
     - whitespace
     - misspell
   settings:
+    contextcheck:
+      disable: false
     cyclop:
       max-complexity: 30
       package-average: 10
@@ -98,6 +107,12 @@ linters:
             - pkg: github.com/jonesrussell/north-cloud/crawler/internal/sources.Interface
     errcheck:
       check-type-assertions: true
+    err113:
+      check-io: true
+      check-http: true
+    errchkjson:
+      check-error-variable-names: true
+      report-no-exported: false
     exhaustive:
       check:
         - switch
@@ -185,6 +200,10 @@ linters:
         - lll
     perfsprint:
       strconcat: false
+    prealloc:
+      simple: true
+      range-loops: true
+      for-loops: false
     reassign:
       patterns:
         - .*

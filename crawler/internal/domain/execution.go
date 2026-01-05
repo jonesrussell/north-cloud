@@ -9,33 +9,33 @@ import (
 // This tracks the history of each job run with detailed metrics.
 type JobExecution struct {
 	// Identity
-	ID              string `json:"id" db:"id"`
-	JobID           string `json:"job_id" db:"job_id"`
-	ExecutionNumber int    `json:"execution_number" db:"execution_number"` // Nth execution of this job
+	ID              string `db:"id"               json:"id"`
+	JobID           string `db:"job_id"           json:"job_id"`
+	ExecutionNumber int    `db:"execution_number" json:"execution_number"` // Nth execution of this job
 
 	// Status
-	Status string `json:"status" db:"status"` // running, completed, failed, cancelled
+	Status string `db:"status" json:"status"` // running, completed, failed, cancelled
 
 	// Timing
-	StartedAt   time.Time  `json:"started_at" db:"started_at"`
-	CompletedAt *time.Time `json:"completed_at,omitempty" db:"completed_at"`
-	DurationMs  *int64     `json:"duration_ms,omitempty" db:"duration_ms"` // Auto-calculated on completion
+	StartedAt   time.Time  `db:"started_at"   json:"started_at"`
+	CompletedAt *time.Time `db:"completed_at" json:"completed_at,omitempty"`
+	DurationMs  *int64     `db:"duration_ms"  json:"duration_ms,omitempty"` // Auto-calculated on completion
 
 	// Results
-	ItemsCrawled int     `json:"items_crawled" db:"items_crawled"`
-	ItemsIndexed int     `json:"items_indexed" db:"items_indexed"`
-	ErrorMessage *string `json:"error_message,omitempty" db:"error_message"`
-	StackTrace   *string `json:"stack_trace,omitempty" db:"stack_trace"`
+	ItemsCrawled int     `db:"items_crawled" json:"items_crawled"`
+	ItemsIndexed int     `db:"items_indexed" json:"items_indexed"`
+	ErrorMessage *string `db:"error_message" json:"error_message,omitempty"`
+	StackTrace   *string `db:"stack_trace"   json:"stack_trace,omitempty"`
 
 	// Resource tracking
-	CPUTimeMs    *int64 `json:"cpu_time_ms,omitempty" db:"cpu_time_ms"`
-	MemoryPeakMB *int   `json:"memory_peak_mb,omitempty" db:"memory_peak_mb"`
+	CPUTimeMs    *int64 `db:"cpu_time_ms"    json:"cpu_time_ms,omitempty"`
+	MemoryPeakMB *int   `db:"memory_peak_mb" json:"memory_peak_mb,omitempty"`
 
 	// Retry tracking
-	RetryAttempt int `json:"retry_attempt" db:"retry_attempt"` // 0 = first try, 1+ = retry
+	RetryAttempt int `db:"retry_attempt" json:"retry_attempt"` // 0 = first try, 1+ = retry
 
 	// Metadata
-	Metadata JSONBMap `json:"metadata,omitempty" db:"metadata"`
+	Metadata JSONBMap `db:"metadata" json:"metadata,omitempty"`
 }
 
 // JobStats represents aggregate statistics for a job.
