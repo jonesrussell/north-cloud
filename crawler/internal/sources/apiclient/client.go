@@ -21,6 +21,8 @@ const (
 	DefaultBaseURL = "http://localhost:8050/api/v1/sources"
 	// DefaultTimeout is the default timeout for API requests.
 	DefaultTimeout = 30 * time.Second
+	// ServiceTokenExpirationHours is the expiration time for service-to-service JWT tokens.
+	ServiceTokenExpirationHours = 24
 )
 
 // Client is an HTTP client for interacting with the gosources API.
@@ -186,7 +188,7 @@ func (c *Client) generateServiceToken() (string, error) {
 
 	now := time.Now()
 	claims := &jwt.RegisteredClaims{
-		ExpiresAt: jwt.NewNumericDate(now.Add(24 * time.Hour)),
+		ExpiresAt: jwt.NewNumericDate(now.Add(ServiceTokenExpirationHours * time.Hour)),
 		IssuedAt:  jwt.NewNumericDate(now),
 		NotBefore: jwt.NewNumericDate(now),
 		Subject:   "crawler-service",
