@@ -166,6 +166,173 @@ tasks:
     cmds:
       - task test
 
+  test:race:
+    desc: "Run tests with race detector for all microservices sequentially"
+    cmds:
+      - task: test:race:auth
+      - task: test:race:classifier
+      - task: test:race:crawler
+      - task: test:race:dashboard
+      - task: test:race:index-manager
+      - task: test:race:publisher
+      - task: test:race:search
+      - task: test:race:search-frontend
+      - task: test:race:source-manager
+
+  test:race:parallel:
+    desc: "Run tests with race detector for all microservices in parallel"
+    cmds:
+      - task: test:race:auth
+      - task: test:race:classifier
+      - task: test:race:crawler
+      - task: test:race:dashboard
+      - task: test:race:index-manager
+      - task: test:race:publisher
+      - task: test:race:search
+      - task: test:race:search-frontend
+      - task: test:race:source-manager
+
+  test:race:auth:
+    desc: "Run tests with race detector for auth service"
+    dir: auth
+    cmds:
+      - task test:race
+    ignore_error: true
+
+  test:race:classifier:
+    desc: "Run tests with race detector for classifier service"
+    dir: classifier
+    cmds:
+      - task test:race
+    ignore_error: true
+
+  test:race:crawler:
+    desc: "Run tests with race detector for crawler service"
+    dir: crawler
+    cmds:
+      - task test:race
+    ignore_error: true
+
+  test:race:dashboard:
+    desc: "Run tests with race detector for dashboard service"
+    dir: dashboard
+    cmds:
+      - task test:race
+    ignore_error: true
+
+  test:race:index-manager:
+    desc: "Run tests with race detector for index-manager service"
+    dir: index-manager
+    cmds:
+      - task test:race
+    ignore_error: true
+
+  test:race:publisher:
+    desc: "Run tests with race detector for publisher service"
+    dir: publisher
+    cmds:
+      - task test:race
+
+  test:race:search:
+    desc: "Run tests with race detector for search service"
+    dir: search
+    cmds:
+      - task test:race
+    ignore_error: true
+
+  test:race:search-frontend:
+    desc: "Run tests with race detector for search-frontend service"
+    dir: search-frontend
+    cmds:
+      - task test:race
+    ignore_error: true
+
+  test:race:source-manager:
+    desc: "Run tests with race detector for source-manager service"
+    dir: source-manager
+    cmds:
+      - task test:race
+
+  test:cover:
+    desc: "Run tests with coverage for all microservices sequentially"
+    cmds:
+      - task: test:cover:auth
+      - task: test:cover:classifier
+      - task: test:cover:crawler
+      - task: test:cover:dashboard
+      - task: test:cover:index-manager
+      - task: test:cover:publisher
+      - task: test:cover:search
+      - task: test:cover:search-frontend
+      - task: test:cover:source-manager
+
+  test:cover:parallel:
+    desc: "Run tests with coverage for all microservices in parallel"
+    cmds:
+      - task: test:cover:auth
+      - task: test:cover:classifier
+      - task: test:cover:crawler
+      - task: test:cover:dashboard
+      - task: test:cover:index-manager
+      - task: test:cover:publisher
+      - task: test:cover:search
+      - task: test:cover:search-frontend
+      - task: test:cover:source-manager
+
+  test:cover:auth:
+    desc: "Run tests with coverage for auth service"
+    dir: auth
+    cmds:
+      - task test:coverage
+
+  test:cover:classifier:
+    desc: "Run tests with coverage for classifier service"
+    dir: classifier
+    cmds:
+      - task test:coverage
+
+  test:cover:crawler:
+    desc: "Run tests with coverage for crawler service"
+    dir: crawler
+    cmds:
+      - task test:coverage
+
+  test:cover:dashboard:
+    desc: "Run tests with coverage for dashboard service"
+    dir: dashboard
+    cmds:
+      - task test:coverage
+
+  test:cover:index-manager:
+    desc: "Run tests with coverage for index-manager service"
+    dir: index-manager
+    cmds:
+      - task test:coverage
+
+  test:cover:publisher:
+    desc: "Run tests with coverage for publisher service"
+    dir: publisher
+    cmds:
+      - task test:coverage
+
+  test:cover:search:
+    desc: "Run tests with coverage for search service"
+    dir: search
+    cmds:
+      - task test:coverage
+
+  test:cover:search-frontend:
+    desc: "Run tests with coverage for search-frontend service"
+    dir: search-frontend
+    cmds:
+      - task test:coverage
+
+  test:cover:source-manager:
+    desc: "Run tests with coverage for source-manager service"
+    dir: source-manager
+    cmds:
+      - task test:coverage
+
   docker:dev:up:
     desc: "Start development environment"
     cmds:
