@@ -9,9 +9,32 @@ import (
 	"strings"
 	"time"
 
+	"encoding/json"
+	"strconv"
+
 	"github.com/PuerkitoBio/goquery"
 	"github.com/gocolly/colly/v2"
 )
+
+// ArticleMeta contains article-specific metadata
+type ArticleMeta struct {
+	Section     string
+	Opinion     bool
+	ContentTier string
+}
+
+// TwitterMeta contains Twitter card metadata
+type TwitterMeta struct {
+	Card string
+	Site string
+}
+
+// ExtendedOG contains extended Open Graph metadata
+type ExtendedOG struct {
+	ImageWidth  int
+	ImageHeight int
+	SiteName    string
+}
 
 // RawContentData represents extracted raw content from any HTML page
 type RawContentData struct {
@@ -27,11 +50,20 @@ type RawContentData struct {
 	OGDescription   string
 	OGImage         string
 	OGURL           string
-	CanonicalURL    string
-	Author          string
-	PublishedDate   *time.Time
-	CreatedAt       time.Time
-	UpdatedAt       time.Time
+	CanonicalURL      string
+	Author            string
+	PublishedDate     *time.Time
+	ArticleSection    string
+	ArticleOpinion    bool
+	ArticleContentTier string
+	TwitterCard       string
+	TwitterSite       string
+	OGImageWidth      int
+	OGImageHeight     int
+	OGSiteName        string
+	JSONLDData        map[string]any
+	CreatedAt         time.Time
+	UpdatedAt         time.Time
 }
 
 // ExtractRawContent extracts raw content from any HTML element without type assumptions.
@@ -272,8 +304,160 @@ func extractFromBodyParagraphs(e *colly.HTMLElement, excludeSelectors []string) 
 	return strings.Join(textParts, "\n\n")
 }
 
+// extractJSONLD extracts JSON-LD structured data from script tags
+func extractJSONLD(e *colly.HTMLElement) map[string]any {
+	result := make(map[string]any)
+
+	// Find all script tags with type="application/ld+json"
+	e.DOM.Find("script[type='application/ld+json']").Each(func(i int, s *goquery.Selection) {
+		jsonText := strings.TrimSpace(s.Text())
+		if jsonText == "" {
+			return
+		}
+
+		var jsonData any
+		if err := json.Unmarshal([]byte(jsonText), &jsonData); err != nil {
+			// Skip invalid JSON, continue processing other scripts
+			return
+		}
+
+		// Handle both single objects and arrays
+		var jsonObjs []any
+		switch v := jsonData.(type) {
+		case []any:
+			jsonObjs = v
+		case map[string]any:
+			jsonObjs = []any{v}
+		default:
+			return
+		}
+
+		// Extract NewsArticle schema data
+		for _, obj := range jsonObjs {
+			objMap, ok := obj.(map[string]any)
+			if !ok {
+				continue
+			}
+
+			// Check if this is a NewsArticle or Article type
+			typeVal, _ := objMap["@type"].(string)
+			if typeVal != "NewsArticle" && typeVal != "Article" {
+				// Store non-NewsArticle schemas in result for reference
+				continue
+			}
+
+			// Extract NewsArticle fields
+			if headline, ok := objMap["headline"].(string); ok && headline != "" {
+				result["jsonld_headline"] = headline
+			}
+			if desc, ok := objMap["description"].(string); ok && desc != "" {
+				result["jsonld_description"] = desc
+			}
+			if wordCount, ok := objMap["wordCount"].(float64); ok {
+				result["jsonld_word_count"] = int(wordCount)
+			}
+			if section, ok := objMap["articleSection"].(string); ok && section != "" {
+				result["jsonld_article_section"] = section
+			}
+			if url, ok := objMap["url"].(string); ok && url != "" {
+				result["jsonld_url"] = url
+			}
+			if dateCreated, ok := objMap["dateCreated"].(string); ok && dateCreated != "" {
+				result["jsonld_date_created"] = dateCreated
+			}
+			if dateModified, ok := objMap["dateModified"].(string); ok && dateModified != "" {
+				result["jsonld_date_modified"] = dateModified
+			}
+			if datePublished, ok := objMap["datePublished"].(string); ok && datePublished != "" {
+				result["jsonld_date_published"] = datePublished
+			}
+			if keywords, ok := objMap["keywords"].([]any); ok && len(keywords) > 0 {
+				keywordStrs := make([]string, 0, len(keywords))
+				for _, kw := range keywords {
+					if kwStr, ok := kw.(string); ok {
+						keywordStrs = append(keywordStrs, kwStr)
+					}
+				}
+				if len(keywordStrs) > 0 {
+					result["jsonld_keywords"] = keywordStrs
+				}
+			}
+			if author, ok := objMap["author"].(string); ok && author != "" {
+				result["jsonld_author"] = author
+			} else if authorObj, ok := objMap["author"].(map[string]any); ok {
+				if authorName, ok := authorObj["name"].(string); ok && authorName != "" {
+					result["jsonld_author"] = authorName
+				}
+			}
+			if publisher, ok := objMap["publisher"].(map[string]any); ok {
+				if pubName, ok := publisher["name"].(string); ok && pubName != "" {
+					result["jsonld_publisher_name"] = pubName
+				}
+			}
+			if image, ok := objMap["image"].(map[string]any); ok {
+				if imageURL, ok := image["url"].(string); ok && imageURL != "" {
+					result["jsonld_image_url"] = imageURL
+				}
+			} else if imageStr, ok := objMap["image"].(string); ok && imageStr != "" {
+				result["jsonld_image_url"] = imageStr
+			}
+
+			// Store full JSON-LD object for reference
+			result["jsonld_raw"] = objMap
+		}
+	})
+
+	return result
+}
+
+// extractArticleMeta extracts article-specific metadata
+func extractArticleMeta(e *colly.HTMLElement) ArticleMeta {
+	var meta ArticleMeta
+
+	meta.Section = extractMeta(e, "article:section")
+	meta.ContentTier = extractMeta(e, "article:content_tier")
+
+	// Parse article:opinion as boolean
+	opinionStr := extractMeta(e, "article:opinion")
+	meta.Opinion = opinionStr == "true" || opinionStr == "1"
+
+	return meta
+}
+
+// extractTwitterMeta extracts Twitter card metadata
+func extractTwitterMeta(e *colly.HTMLElement) TwitterMeta {
+	var meta TwitterMeta
+
+	meta.Card = extractMeta(e, "twitter:card")
+	meta.Site = extractMeta(e, "twitter:site")
+
+	return meta
+}
+
+// extractExtendedOG extracts extended Open Graph metadata
+func extractExtendedOG(e *colly.HTMLElement) ExtendedOG {
+	var og ExtendedOG
+
+	og.SiteName = extractMeta(e, "og:site_name")
+
+	// Parse numeric values
+	if widthStr := extractMeta(e, "og:image:width"); widthStr != "" {
+		if width, err := strconv.Atoi(widthStr); err == nil {
+			og.ImageWidth = width
+		}
+	}
+	if heightStr := extractMeta(e, "og:image:height"); heightStr != "" {
+		if height, err := strconv.Atoi(heightStr); err == nil {
+			og.ImageHeight = height
+		}
+	}
+
+	return og
+}
+
 // extractMetadata extracts Open Graph and other metadata
 func extractMetadata(data *RawContentData, e *colly.HTMLElement) {
+	// Extract basic meta tags (keep existing extraction for backward compatibility)
 	data.MetaDescription = extractMeta(e, "description")
 	data.MetaKeywords = extractMeta(e, "keywords")
 	data.OGType = extractMeta(e, "og:type")
@@ -297,6 +481,28 @@ func extractMetadata(data *RawContentData, e *colly.HTMLElement) {
 			}
 		}
 	}
+
+	// Use specialized extractors (SRP)
+	jsonLDData := extractJSONLD(e)
+	if len(jsonLDData) > 0 {
+		data.JSONLDData = jsonLDData
+	} else {
+		data.JSONLDData = make(map[string]any)
+	}
+
+	articleMeta := extractArticleMeta(e)
+	data.ArticleSection = articleMeta.Section
+	data.ArticleOpinion = articleMeta.Opinion
+	data.ArticleContentTier = articleMeta.ContentTier
+
+	twitterMeta := extractTwitterMeta(e)
+	data.TwitterCard = twitterMeta.Card
+	data.TwitterSite = twitterMeta.Site
+
+	extendedOG := extractExtendedOG(e)
+	data.OGImageWidth = extendedOG.ImageWidth
+	data.OGImageHeight = extendedOG.ImageHeight
+	data.OGSiteName = extendedOG.SiteName
 }
 
 // extractText extracts text from the first element matching the selector

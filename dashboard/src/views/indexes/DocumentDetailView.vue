@@ -91,7 +91,7 @@
               Content Type
             </dt>
             <dd class="mt-1 text-sm text-gray-900">
-              {{ document.content_type || 'N/A' }}
+              {{ document.content_type || (document.meta?.content_type as string) || (document.meta?.og_type as string) || 'N/A' }}
             </dd>
           </div>
           <div>
@@ -99,7 +99,15 @@
               Quality Score
             </dt>
             <dd class="mt-1 text-sm text-gray-900">
-              {{ document.quality_score ?? 'N/A' }}
+              {{ document.quality_score ?? (document.meta?.quality_score as number) ?? 'N/A' }}
+            </dd>
+          </div>
+          <div>
+            <dt class="text-sm font-medium text-gray-500">
+              Word Count
+            </dt>
+            <dd class="mt-1 text-sm text-gray-900">
+              {{ (document.meta?.word_count as number) ?? 'N/A' }}
             </dd>
           </div>
           <div>
@@ -107,7 +115,7 @@
               Published Date
             </dt>
             <dd class="mt-1 text-sm text-gray-900">
-              {{ formatDate(document.published_date) }}
+              {{ formatDate(document.published_date || (document.meta?.published_date as string)) }}
             </dd>
           </div>
           <div>
@@ -120,13 +128,66 @@
           </div>
           <div>
             <dt class="text-sm font-medium text-gray-500">
+              Classification Status
+            </dt>
+            <dd class="mt-1 text-sm text-gray-900">
+              {{ (document.meta?.classification_status as string) || 'N/A' }}
+            </dd>
+          </div>
+          <div>
+            <dt class="text-sm font-medium text-gray-500">
+              OG Type
+            </dt>
+            <dd class="mt-1 text-sm text-gray-900">
+              {{ (document.meta?.og_type as string) || 'N/A' }}
+            </dd>
+          </div>
+          <div
+            v-if="document.meta?.article_section"
+          >
+            <dt class="text-sm font-medium text-gray-500">
+              Article Section
+            </dt>
+            <dd class="mt-1 text-sm text-gray-900">
+              {{ document.meta.article_section as string }}
+            </dd>
+          </div>
+          <div
+            v-if="document.meta?.canonical_url"
+          >
+            <dt class="text-sm font-medium text-gray-500">
+              Canonical URL
+            </dt>
+            <dd class="mt-1 text-sm">
+              <a
+                :href="document.meta.canonical_url as string"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="text-blue-600 hover:text-blue-800 break-all"
+              >
+                {{ document.meta.canonical_url as string }}
+              </a>
+            </dd>
+          </div>
+          <div
+            v-if="document.meta?.twitter_card"
+          >
+            <dt class="text-sm font-medium text-gray-500">
+              Twitter Card
+            </dt>
+            <dd class="mt-1 text-sm text-gray-900">
+              {{ document.meta.twitter_card as string }}
+            </dd>
+          </div>
+          <div>
+            <dt class="text-sm font-medium text-gray-500">
               Crime Related
             </dt>
             <dd class="mt-1">
               <StatusBadge
-                v-if="document.is_crime_related !== undefined"
-                :status="document.is_crime_related ? 'active' : 'inactive'"
-                :custom-label="document.is_crime_related ? 'Yes' : 'No'"
+                v-if="document.is_crime_related !== undefined || document.meta?.is_crime_related !== undefined"
+                :status="(document.is_crime_related ?? (document.meta?.is_crime_related as boolean)) ? 'active' : 'inactive'"
+                :custom-label="(document.is_crime_related ?? (document.meta?.is_crime_related as boolean)) ? 'Yes' : 'No'"
               />
               <span
                 v-else
@@ -152,7 +213,98 @@
               </div>
             </dd>
           </div>
+          <div
+            v-if="document.meta?.og_title"
+          >
+            <dt class="text-sm font-medium text-gray-500">
+              OG Title
+            </dt>
+            <dd class="mt-1 text-sm text-gray-900">
+              {{ document.meta.og_title as string }}
+            </dd>
+          </div>
+          <div
+            v-if="document.meta?.meta_description"
+          >
+            <dt class="text-sm font-medium text-gray-500">
+              Meta Description
+            </dt>
+            <dd class="mt-1 text-sm text-gray-900">
+              {{ document.meta.meta_description as string }}
+            </dd>
+          </div>
+          <div
+            v-if="document.meta?.og_description"
+          >
+            <dt class="text-sm font-medium text-gray-500">
+              OG Description
+            </dt>
+            <dd class="mt-1 text-sm text-gray-900 line-clamp-2">
+              {{ document.meta.og_description as string }}
+            </dd>
+          </div>
+          <div
+            v-if="document.meta?.author || (document.meta?.json_ld_data && (document.meta.json_ld_data as Record<string, unknown>)?.jsonld_author)"
+          >
+            <dt class="text-sm font-medium text-gray-500">
+              Author
+            </dt>
+            <dd class="mt-1 text-sm text-gray-900">
+              {{ (document.meta?.author as string) || ((document.meta?.json_ld_data as Record<string, unknown>)?.jsonld_author as string) }}
+            </dd>
+          </div>
+          <div
+            v-if="document.meta?.json_ld_data && (document.meta.json_ld_data as Record<string, unknown>)?.jsonld_keywords"
+          >
+            <dt class="text-sm font-medium text-gray-500">
+              Keywords (JSON-LD)
+            </dt>
+            <dd class="mt-1">
+              <div class="flex flex-wrap gap-2">
+                <span
+                  v-for="keyword in ((document.meta.json_ld_data as Record<string, unknown>)?.jsonld_keywords as string[] || [])"
+                  :key="keyword"
+                  class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800"
+                >
+                  {{ keyword }}
+                </span>
+              </div>
+            </dd>
+          </div>
+          <div
+            v-if="document.meta?.json_ld_data && (document.meta.json_ld_data as Record<string, unknown>)?.jsonld_date_created"
+          >
+            <dt class="text-sm font-medium text-gray-500">
+              Date Created (JSON-LD)
+            </dt>
+            <dd class="mt-1 text-sm text-gray-900">
+              {{ formatDate((document.meta.json_ld_data as Record<string, unknown>)?.jsonld_date_created as string) }}
+            </dd>
+          </div>
+          <div
+            v-if="document.meta?.json_ld_data && (document.meta.json_ld_data as Record<string, unknown>)?.jsonld_date_modified"
+          >
+            <dt class="text-sm font-medium text-gray-500">
+              Date Modified (JSON-LD)
+            </dt>
+            <dd class="mt-1 text-sm text-gray-900">
+              {{ formatDate((document.meta.json_ld_data as Record<string, unknown>)?.jsonld_date_modified as string) }}
+            </dd>
+          </div>
         </dl>
+      </div>
+
+      <!-- JSON-LD Data Card -->
+      <div
+        v-if="document.meta?.json_ld_data && Object.keys(document.meta.json_ld_data as Record<string, unknown>).length > 0"
+        class="bg-white shadow rounded-lg p-6"
+      >
+        <h2 class="text-lg font-medium text-gray-900 mb-4">
+          JSON-LD Structured Data
+        </h2>
+        <div class="bg-gray-50 rounded-lg p-4 overflow-x-auto">
+          <pre class="text-sm text-gray-900 font-mono">{{ formatJSON(document.meta.json_ld_data as Record<string, unknown>) }}</pre>
+        </div>
       </div>
 
       <!-- Content Card -->
@@ -200,18 +352,6 @@
         </div>
       </div>
 
-      <!-- Additional Metadata Card -->
-      <div
-        v-if="document.meta && Object.keys(document.meta).length > 0"
-        class="bg-white shadow rounded-lg p-6"
-      >
-        <h2 class="text-lg font-medium text-gray-900 mb-4">
-          Additional Metadata
-        </h2>
-        <div class="bg-gray-50 rounded-lg p-4 overflow-x-auto">
-          <pre class="text-sm text-gray-900 font-mono">{{ formatJSON(document.meta) }}</pre>
-        </div>
-      </div>
     </div>
   </div>
 </template>

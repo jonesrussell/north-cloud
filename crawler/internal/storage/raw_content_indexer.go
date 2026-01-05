@@ -17,23 +17,27 @@ import (
 // RawContent represents minimally-processed content for classification
 // This matches the classifier's domain.RawContent structure
 type RawContent struct {
-	ID                   string     `json:"id"`
-	URL                  string     `json:"url"`
-	SourceName           string     `json:"source_name"`
-	Title                string     `json:"title"`
-	RawText              string     `json:"raw_text"`
-	RawHTML              string     `json:"raw_html,omitempty"` // Large field, omit if empty
-	MetaDescription      string     `json:"meta_description"`   // Classifier needs this
-	MetaKeywords         string     `json:"meta_keywords,omitempty"`
-	OGType               string     `json:"og_type"`        // CRITICAL: Classifier needs this
-	OGTitle              string     `json:"og_title"`       // Classifier needs this
-	OGDescription        string     `json:"og_description"` // Classifier needs this
-	OGImage              string     `json:"og_image,omitempty"`
-	Author               string     `json:"author,omitempty"`
-	PublishedDate        *time.Time `json:"published_date"` // CRITICAL: Classifier needs this
-	ClassificationStatus string     `json:"classification_status"`
-	CrawledAt            time.Time  `json:"crawled_at"`
-	WordCount            int        `json:"word_count"` // CRITICAL: Classifier needs this
+	ID                   string         `json:"id"`
+	URL                  string         `json:"url"`
+	SourceName           string         `json:"source_name"`
+	Title                string         `json:"title"`
+	RawText              string         `json:"raw_text"`
+	RawHTML              string         `json:"raw_html,omitempty"` // Large field, omit if empty
+	MetaDescription      string         `json:"meta_description"`   // Classifier needs this
+	MetaKeywords         string         `json:"meta_keywords,omitempty"`
+	OGType               string         `json:"og_type"`        // CRITICAL: Classifier needs this
+	OGTitle              string         `json:"og_title"`       // Classifier needs this
+	OGDescription        string         `json:"og_description"` // Classifier needs this
+	OGImage              string         `json:"og_image,omitempty"`
+	Author               string         `json:"author,omitempty"`
+	PublishedDate        *time.Time     `json:"published_date"` // CRITICAL: Classifier needs this
+	CanonicalURL         string         `json:"canonical_url,omitempty"`
+	ArticleSection       string         `json:"article_section,omitempty"`
+	JSONLDData           map[string]any `json:"json_ld_data,omitempty"`
+	ClassificationStatus string         `json:"classification_status"`
+	CrawledAt            time.Time      `json:"crawled_at"`
+	WordCount            int            `json:"word_count"` // CRITICAL: Classifier needs this
+	Meta                 map[string]any `json:"meta,omitempty"` // Additional metadata
 }
 
 // RawContentIndexer handles indexing of raw content for the classifier
@@ -163,9 +167,13 @@ func (r *RawContentIndexer) EnsureRawContentIndex(ctx context.Context, sourceNam
 				"og_image":              map[string]string{"type": "keyword"},
 				"author":                map[string]string{"type": "text"},
 				"published_date":        map[string]string{"type": "date"},
+				"canonical_url":         map[string]string{"type": "keyword"},
+				"article_section":       map[string]string{"type": "keyword"},
+				"json_ld_data":          map[string]string{"type": "object"},
 				"classification_status": map[string]string{"type": "keyword"},
 				"crawled_at":            map[string]string{"type": "date"},
 				"word_count":            map[string]string{"type": "integer"},
+				"meta":                  map[string]string{"type": "object"},
 			},
 		},
 		"settings": map[string]any{
