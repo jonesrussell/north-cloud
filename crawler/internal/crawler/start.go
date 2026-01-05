@@ -118,7 +118,7 @@ func (c *Crawler) Start(ctx context.Context, sourceID string) error {
 // validateAndSetup validates the source by ID and sets up the collector.
 func (c *Crawler) validateAndSetup(ctx context.Context, sourceID string) (*configtypes.Source, error) {
 	// Validate source by ID
-	source, err := c.sources.ValidateSourceByID(ctx, sourceID, c.indexManager)
+	source, err := c.sources.ValidateSourceByID(ctx, sourceID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to validate source: %w", err)
 	}

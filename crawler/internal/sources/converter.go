@@ -77,72 +77,14 @@ func createSelectorConfig(selectors any) types.SelectorConfig {
 	}
 }
 
-// convertLoaderConfig converts a loader.Config to a types.SourceConfig
-func convertLoaderConfig(cfg loader.Config) Config {
-	// Parse rate limit duration
-	var rateLimit time.Duration
-	if cfg.RateLimit != nil {
-		switch v := cfg.RateLimit.(type) {
-		case string:
-			var err error
-			rateLimit, err = time.ParseDuration(v)
-			if err != nil {
-				// If parsing fails, use a default value
-				rateLimit = time.Second
-			}
-		case int, int64, float64:
-			// Convert numeric value to duration in seconds
-			switch val := v.(type) {
-			case int:
-				rateLimit = time.Duration(val) * time.Second
-			case int64:
-				rateLimit = time.Duration(val) * time.Second
-			case float64:
-				rateLimit = time.Duration(val) * time.Second
-			default:
-				rateLimit = time.Second
-			}
-		default:
-			// Use default value for unknown types
-			rateLimit = time.Second
-		}
-	} else {
-		// Default to 1 second if not specified
-		rateLimit = time.Second
-	}
-
-	// Parse URL to get domain
-	u, err := url.Parse(cfg.URL)
-	if err != nil {
-		// If URL parsing fails, use the URL as is
-		return Config{
-			ID:             cfg.ID,
-			Name:           cfg.Name,
-			URL:            cfg.URL,
-			AllowedDomains: []string{cfg.URL},
-			StartURLs:      []string{cfg.URL},
-			RateLimit:      rateLimit,
-			MaxDepth:       cfg.MaxDepth,
-			Time:           cfg.Time,
-			Index:          cfg.Index,
-			ArticleIndex:   cfg.ArticleIndex,
-			PageIndex:      cfg.PageIndex,
-			Selectors:      createSelectorConfig(cfg.Selectors),
-			Rules:          configtypes.Rules{},
-		}
-	}
-
-	// Get the domain from the URL
-	domain := u.Hostname()
-	if domain == "" {
-		domain = cfg.URL
-	}
-
+// createConfigFromLoader creates a Config struct from a loader.Config.
+// This helper eliminates duplicate Config creation code.
+func createConfigFromLoader(cfg loader.Config, rateLimit time.Duration, allowedDomains []string) Config {
 	return Config{
 		ID:             cfg.ID,
 		Name:           cfg.Name,
 		URL:            cfg.URL,
-		AllowedDomains: []string{domain},
+		AllowedDomains: allowedDomains,
 		StartURLs:      []string{cfg.URL},
 		RateLimit:      rateLimit,
 		MaxDepth:       cfg.MaxDepth,
@@ -153,4 +95,48 @@ func convertLoaderConfig(cfg loader.Config) Config {
 		Selectors:      createSelectorConfig(cfg.Selectors),
 		Rules:          configtypes.Rules{},
 	}
+}
+
+// parseRateLimit parses the rate limit from various types (string, int, float64).
+func parseRateLimit(rateLimit any) time.Duration {
+	if rateLimit == nil {
+		return time.Second
+	}
+
+	switch v := rateLimit.(type) {
+	case string:
+		duration, err := time.ParseDuration(v)
+		if err != nil {
+			return time.Second
+		}
+		return duration
+	case int:
+		return time.Duration(v) * time.Second
+	case int64:
+		return time.Duration(v) * time.Second
+	case float64:
+		return time.Duration(v) * time.Second
+	default:
+		return time.Second
+	}
+}
+
+// convertLoaderConfig converts a loader.Config to a types.SourceConfig
+func convertLoaderConfig(cfg loader.Config) Config {
+	rateLimit := parseRateLimit(cfg.RateLimit)
+
+	// Parse URL to get domain
+	u, err := url.Parse(cfg.URL)
+	if err != nil {
+		// If URL parsing fails, use the URL as is
+		return createConfigFromLoader(cfg, rateLimit, []string{cfg.URL})
+	}
+
+	// Get the domain from the URL
+	domain := u.Hostname()
+	if domain == "" {
+		domain = cfg.URL
+	}
+
+	return createConfigFromLoader(cfg, rateLimit, []string{domain})
 }

@@ -172,7 +172,7 @@ func (h *LinkHandler) isExternalLink(linkURL string) bool {
 		return false
 	}
 
-	source, err := h.crawler.sources.ValidateSourceByID(ctx, sourceID, h.crawler.indexManager)
+	source, err := h.crawler.sources.ValidateSourceByID(ctx, sourceID)
 	if err != nil {
 		// If we can't get source config, don't save the link
 		return false
@@ -230,7 +230,7 @@ func (h *LinkHandler) saveLinkToQueue(ctx context.Context, linkURL, parentURL st
 	}
 
 	// Get source config to get the source name
-	source, err := h.crawler.sources.ValidateSourceByID(ctx, sourceID, h.crawler.indexManager)
+	source, err := h.crawler.sources.ValidateSourceByID(ctx, sourceID)
 	if err != nil {
 		return fmt.Errorf("failed to get source config: %w", err)
 	}
