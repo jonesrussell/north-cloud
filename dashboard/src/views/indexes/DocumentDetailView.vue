@@ -63,7 +63,10 @@
               >
                 {{ document.url }}
               </a>
-              <span v-else class="text-gray-500">N/A</span>
+              <span
+                v-else
+                class="text-gray-500"
+              >N/A</span>
             </dd>
           </div>
           <div>
@@ -125,7 +128,10 @@
                 :status="document.is_crime_related ? 'active' : 'inactive'"
                 :custom-label="document.is_crime_related ? 'Yes' : 'No'"
               />
-              <span v-else class="text-sm text-gray-500">N/A</span>
+              <span
+                v-else
+                class="text-sm text-gray-500"
+              >N/A</span>
             </dd>
           </div>
           <div
