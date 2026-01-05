@@ -160,8 +160,10 @@ services:
       retries: 5
 
   minio-init:
-    <<: *service-defaults
     image: quay.io/minio/mc:latest
+    restart: "no"
+    networks:
+      - north-cloud-network
     depends_on:
       - minio
     entrypoint: >
