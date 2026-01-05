@@ -2,11 +2,9 @@ package sources
 
 import (
 	"errors"
-	"fmt"
 
 	"github.com/jonesrussell/north-cloud/crawler/internal/config"
 	"github.com/jonesrussell/north-cloud/crawler/internal/logger"
-	"github.com/jonesrussell/north-cloud/crawler/internal/sources/loader"
 	"github.com/jonesrussell/north-cloud/crawler/internal/sources/types"
 )
 
@@ -29,26 +27,4 @@ func NewSources(cfg config.Interface, log logger.Interface) (*Sources, error) {
 		metrics: types.NewSourcesMetrics(),
 		apiURL:  apiURL,
 	}, nil
-}
-
-// loadSourcesFromAPI attempts to load sources from the gosources API
-func loadSourcesFromAPI(apiURL string, log logger.Interface) ([]Config, error) {
-	apiLoader := loader.NewAPILoader(apiURL, log)
-
-	configs, err := apiLoader.LoadSources()
-	if err != nil {
-		return nil, fmt.Errorf("failed to load sources from API: %w", err)
-	}
-
-	if len(configs) == 0 {
-		return nil, errors.New("no sources found from API")
-	}
-
-	// Convert loaded configs to our source type
-	sourceConfigs := make([]Config, 0, len(configs))
-	for i := range configs {
-		sourceConfigs = append(sourceConfigs, convertLoaderConfig(configs[i]))
-	}
-
-	return sourceConfigs, nil
 }

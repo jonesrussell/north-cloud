@@ -10,6 +10,7 @@ import (
 
 	configtypes "github.com/jonesrussell/north-cloud/crawler/internal/config/types"
 	"github.com/jonesrussell/north-cloud/crawler/internal/logger"
+	"github.com/jonesrussell/north-cloud/crawler/internal/sources/loader"
 	"github.com/jonesrussell/north-cloud/crawler/internal/sources/types"
 )
 
@@ -76,18 +77,25 @@ func (s *Sources) loadSourcesIfNeeded() error {
 		return nil
 	}
 
-	newSources, err := loadSourcesFromAPI(s.apiURL, s.logger)
+	apiLoader := loader.NewAPILoader(s.apiURL, s.logger)
+	configs, err := apiLoader.LoadSources()
 	if err != nil {
 		return fmt.Errorf("failed to load sources from API: %w", err)
 	}
-	if len(newSources) == 0 {
+	if len(configs) == 0 {
 		return errors.New("no sources found from API")
 	}
 
-	s.sources = newSources
+	// Convert loaded configs to our source type
+	sourceConfigs := make([]Config, 0, len(configs))
+	for i := range configs {
+		sourceConfigs = append(sourceConfigs, convertLoaderConfig(configs[i]))
+	}
+
+	s.sources = sourceConfigs
 	if s.logger != nil {
 		s.logger.Info("Sources loaded from API",
-			"count", len(newSources),
+			"count", len(sourceConfigs),
 			"url", s.apiURL)
 	}
 	return nil
