@@ -53,33 +53,51 @@ func (s *Sources) GetSources() ([]Config, error) {
 	needLoad := len(s.sources) == 0
 	s.mu.RUnlock()
 
-	if needLoad {
-		// Load sources from API (double-checked locking pattern)
-		s.mu.Lock()
-		// Check again after acquiring write lock
-		if len(s.sources) == 0 {
-			newSources, err := loadSourcesFromAPI(s.apiURL, s.logger)
-			if err != nil {
-				s.mu.Unlock()
-				return nil, fmt.Errorf("failed to load sources from API: %w", err)
-			}
-			if len(newSources) == 0 {
-				s.mu.Unlock()
-				return nil, errors.New("no sources found from API")
-			}
-			s.sources = newSources
-			if s.logger != nil {
-				s.logger.Info("Sources loaded from API",
-					"count", len(newSources),
-					"url", s.apiURL)
-			}
-		}
-		s.mu.Unlock()
+	if !needLoad {
+		return s.copySources()
 	}
 
-	// Return copy of sources (with read lock)
+	// Load sources from API (double-checked locking pattern)
+	if err := s.loadSourcesIfNeeded(); err != nil {
+		return nil, err
+	}
+
+	return s.copySources()
+}
+
+// loadSourcesIfNeeded loads sources from API if they haven't been loaded yet.
+// Uses double-checked locking pattern for thread safety.
+func (s *Sources) loadSourcesIfNeeded() error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	// Check again after acquiring write lock
+	if len(s.sources) > 0 {
+		return nil
+	}
+
+	newSources, err := loadSourcesFromAPI(s.apiURL, s.logger)
+	if err != nil {
+		return fmt.Errorf("failed to load sources from API: %w", err)
+	}
+	if len(newSources) == 0 {
+		return errors.New("no sources found from API")
+	}
+
+	s.sources = newSources
+	if s.logger != nil {
+		s.logger.Info("Sources loaded from API",
+			"count", len(newSources),
+			"url", s.apiURL)
+	}
+	return nil
+}
+
+// copySources returns a copy of the cached sources (must be called with read lock held).
+func (s *Sources) copySources() ([]Config, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
+
 	sources := make([]Config, len(s.sources))
 	copy(sources, s.sources)
 	return sources, nil
