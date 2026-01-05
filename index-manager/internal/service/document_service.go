@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math"
 	"time"
@@ -141,8 +142,8 @@ func (s *DocumentService) UpdateDocument(ctx context.Context, indexName, documen
 	updateMap := s.documentToMap(doc)
 
 	// Update document in Elasticsearch
-	if err := s.esClient.UpdateDocument(ctx, indexName, documentID, updateMap); err != nil {
-		return fmt.Errorf("failed to update document: %w", err)
+	if updateErr := s.esClient.UpdateDocument(ctx, indexName, documentID, updateMap); updateErr != nil {
+		return fmt.Errorf("failed to update document: %w", updateErr)
 	}
 
 	return nil
@@ -165,8 +166,8 @@ func (s *DocumentService) DeleteDocument(ctx context.Context, indexName, documen
 	)
 
 	// Delete document from Elasticsearch
-	if err := s.esClient.DeleteDocument(ctx, indexName, documentID); err != nil {
-		return fmt.Errorf("failed to delete document: %w", err)
+	if deleteErr := s.esClient.DeleteDocument(ctx, indexName, documentID); deleteErr != nil {
+		return fmt.Errorf("failed to delete document: %w", deleteErr)
 	}
 
 	return nil
@@ -175,7 +176,7 @@ func (s *DocumentService) DeleteDocument(ctx context.Context, indexName, documen
 // BulkDeleteDocuments deletes multiple documents from an index
 func (s *DocumentService) BulkDeleteDocuments(ctx context.Context, indexName string, documentIDs []string) error {
 	if len(documentIDs) == 0 {
-		return fmt.Errorf("no document IDs provided")
+		return errors.New("no document IDs provided")
 	}
 
 	// Verify index exists
@@ -193,14 +194,16 @@ func (s *DocumentService) BulkDeleteDocuments(ctx context.Context, indexName str
 	)
 
 	// Bulk delete documents from Elasticsearch
-	if err := s.esClient.BulkDeleteDocuments(ctx, indexName, documentIDs); err != nil {
-		return fmt.Errorf("failed to bulk delete documents: %w", err)
+	if bulkErr := s.esClient.BulkDeleteDocuments(ctx, indexName, documentIDs); bulkErr != nil {
+		return fmt.Errorf("failed to bulk delete documents: %w", bulkErr)
 	}
 
 	return nil
 }
 
 // mapToDocument converts Elasticsearch source map to domain Document
+//
+//nolint:gocognit // Complex mapping with many field extractions
 func (s *DocumentService) mapToDocument(id string, source map[string]interface{}) *domain.Document {
 	doc := &domain.Document{
 		ID:   id,
@@ -240,7 +243,7 @@ func (s *DocumentService) mapToDocument(id string, source map[string]interface{}
 	if topics, ok := source["topics"].([]interface{}); ok {
 		doc.Topics = make([]string, 0, len(topics))
 		for _, topic := range topics {
-			if topicStr, ok := topic.(string); ok {
+			if topicStr, okTopic := topic.(string); okTopic {
 				doc.Topics = append(doc.Topics, topicStr)
 			}
 		}

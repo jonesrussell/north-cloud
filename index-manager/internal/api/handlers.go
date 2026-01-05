@@ -3,11 +3,14 @@ package api
 import (
 	"fmt"
 	"net/http"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/jonesrussell/north-cloud/index-manager/internal/domain"
 	"github.com/jonesrussell/north-cloud/index-manager/internal/service"
 )
+
+const errDocumentNotFound = "document not found"
 
 // Handler handles HTTP requests for the index manager API
 type Handler struct {
@@ -354,11 +357,11 @@ func (h *Handler) QueryDocuments(c *gin.Context) {
 	indexName := c.Param("index_name")
 
 	var req domain.DocumentQueryRequest
-	if err := c.ShouldBindQuery(&req); err != nil {
+	if bindErr := c.ShouldBindQuery(&req); bindErr != nil {
 		// Try to bind from JSON body if query params fail
-		if err := c.ShouldBindJSON(&req); err != nil {
-			h.logger.Warn("Invalid query documents request", "error", err)
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		if jsonErr := c.ShouldBindJSON(&req); jsonErr != nil {
+			h.logger.Warn("Invalid query documents request", "error", jsonErr)
+			c.JSON(http.StatusBadRequest, gin.H{"error": jsonErr.Error()})
 			return
 		}
 	}
@@ -367,14 +370,19 @@ func (h *Handler) QueryDocuments(c *gin.Context) {
 	if req.Query == "" {
 		req.Query = c.Query("query")
 	}
+	//nolint:nestif // Complex nested pagination parsing logic
 	if req.Pagination == nil {
 		page := 1
 		size := 20
 		if pageStr := c.Query("page"); pageStr != "" {
-			fmt.Sscanf(pageStr, "%d", &page)
+			if parsedPage, parseErr := strconv.Atoi(pageStr); parseErr == nil {
+				page = parsedPage
+			}
 		}
 		if sizeStr := c.Query("size"); sizeStr != "" {
-			fmt.Sscanf(sizeStr, "%d", &size)
+			if parsedSize, parseErr := strconv.Atoi(sizeStr); parseErr == nil {
+				size = parsedSize
+			}
 		}
 		req.Pagination = &domain.DocumentPagination{
 			Page: page,
@@ -419,7 +427,7 @@ func (h *Handler) GetDocument(c *gin.Context) {
 			"error", err,
 		)
 		statusCode := http.StatusInternalServerError
-		if err.Error() == "document not found" || err.Error() == fmt.Sprintf("index %s does not exist", indexName) {
+		if err.Error() == errDocumentNotFound || err.Error() == fmt.Sprintf("index %s does not exist", indexName) {
 			statusCode = http.StatusNotFound
 		}
 		c.JSON(statusCode, gin.H{"error": err.Error()})
@@ -456,7 +464,7 @@ func (h *Handler) UpdateDocument(c *gin.Context) {
 			"error", err,
 		)
 		statusCode := http.StatusInternalServerError
-		if err.Error() == "document not found" || err.Error() == fmt.Sprintf("index %s does not exist", indexName) {
+		if err.Error() == errDocumentNotFound || err.Error() == fmt.Sprintf("index %s does not exist", indexName) {
 			statusCode = http.StatusNotFound
 		}
 		c.JSON(statusCode, gin.H{"error": err.Error()})
@@ -488,7 +496,7 @@ func (h *Handler) DeleteDocument(c *gin.Context) {
 			"error", err,
 		)
 		statusCode := http.StatusInternalServerError
-		if err.Error() == "document not found" || err.Error() == fmt.Sprintf("index %s does not exist", indexName) {
+		if err.Error() == errDocumentNotFound || err.Error() == fmt.Sprintf("index %s does not exist", indexName) {
 			statusCode = http.StatusNotFound
 		}
 		c.JSON(statusCode, gin.H{"error": err.Error()})

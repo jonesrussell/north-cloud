@@ -1,6 +1,7 @@
 package elasticsearch
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -43,6 +44,8 @@ func (qb *DocumentQueryBuilder) Build(req *domain.DocumentQueryRequest) (map[str
 }
 
 // validateRequest validates and sets defaults for the request
+//
+//nolint:gocognit // Complex validation logic with multiple checks
 func (qb *DocumentQueryBuilder) validateRequest(req *domain.DocumentQueryRequest) error {
 	// Set default pagination
 	if req.Pagination == nil {
@@ -88,6 +91,7 @@ func (qb *DocumentQueryBuilder) validateRequest(req *domain.DocumentQueryRequest
 	}
 
 	// Validate filters if present
+	//nolint:nestif // Complex nested validation logic
 	if req.Filters != nil {
 		if req.Filters.MinQualityScore < 0 || req.Filters.MinQualityScore > maxQualityScore {
 			return fmt.Errorf("min_quality_score must be between 0 and %d", maxQualityScore)
@@ -96,17 +100,17 @@ func (qb *DocumentQueryBuilder) validateRequest(req *domain.DocumentQueryRequest
 			req.Filters.MaxQualityScore = maxQualityScore
 		}
 		if req.Filters.MinQualityScore > req.Filters.MaxQualityScore {
-			return fmt.Errorf("min_quality_score cannot exceed max_quality_score")
+			return errors.New("min_quality_score cannot exceed max_quality_score")
 		}
 
 		if req.Filters.FromDate != nil && req.Filters.ToDate != nil {
 			if req.Filters.FromDate.After(*req.Filters.ToDate) {
-				return fmt.Errorf("from_date cannot be after to_date")
+				return errors.New("from_date cannot be after to_date")
 			}
 		}
 		if req.Filters.FromCrawledAt != nil && req.Filters.ToCrawledAt != nil {
 			if req.Filters.FromCrawledAt.After(*req.Filters.ToCrawledAt) {
-				return fmt.Errorf("from_crawled_at cannot be after to_crawled_at")
+				return errors.New("from_crawled_at cannot be after to_crawled_at")
 			}
 		}
 	}
@@ -158,6 +162,8 @@ func (qb *DocumentQueryBuilder) buildMultiMatchQuery(query string) map[string]in
 }
 
 // buildFilters constructs filter clauses
+//
+//nolint:gocognit // Complex filter building with multiple conditionals
 func (qb *DocumentQueryBuilder) buildFilters(filters *domain.DocumentFilters) []interface{} {
 	var result []interface{}
 

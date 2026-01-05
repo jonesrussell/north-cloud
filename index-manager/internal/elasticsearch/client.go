@@ -529,7 +529,7 @@ func (c *Client) GetDocument(ctx context.Context, indexName, documentID string) 
 
 	if res.IsError() {
 		if res.StatusCode == http.StatusNotFound {
-			return nil, fmt.Errorf("document not found")
+			return nil, errors.New("document not found")
 		}
 		body, _ := io.ReadAll(res.Body)
 		return nil, fmt.Errorf("get document returned error [%d]: %s", res.StatusCode, string(body))
@@ -570,7 +570,7 @@ func (c *Client) UpdateDocument(ctx context.Context, indexName, documentID strin
 
 	if res.IsError() {
 		if res.StatusCode == http.StatusNotFound {
-			return fmt.Errorf("document not found")
+			return errors.New("document not found")
 		}
 		body, _ := io.ReadAll(res.Body)
 		return fmt.Errorf("update document returned error [%d]: %s", res.StatusCode, string(body))
@@ -591,7 +591,7 @@ func (c *Client) DeleteDocument(ctx context.Context, indexName, documentID strin
 
 	if res.IsError() {
 		if res.StatusCode == http.StatusNotFound {
-			return fmt.Errorf("document not found")
+			return errors.New("document not found")
 		}
 		body, _ := io.ReadAll(res.Body)
 		return fmt.Errorf("delete document returned error [%d]: %s", res.StatusCode, string(body))
@@ -603,7 +603,7 @@ func (c *Client) DeleteDocument(ctx context.Context, indexName, documentID strin
 // BulkDeleteDocuments deletes multiple documents in a single request
 func (c *Client) BulkDeleteDocuments(ctx context.Context, indexName string, documentIDs []string) error {
 	if len(documentIDs) == 0 {
-		return fmt.Errorf("no document IDs provided")
+		return errors.New("no document IDs provided")
 	}
 
 	var bulkBody strings.Builder
@@ -619,7 +619,7 @@ func (c *Client) BulkDeleteDocuments(ctx context.Context, indexName string, docu
 		if err != nil {
 			return fmt.Errorf("failed to marshal bulk action: %w", err)
 		}
-		bulkBody.WriteString(string(actionJSON))
+		bulkBody.Write(actionJSON)
 		bulkBody.WriteString("\n")
 	}
 
@@ -646,18 +646,18 @@ func (c *Client) BulkDeleteDocuments(ctx context.Context, indexName string, docu
 	}
 
 	// Check for errors in individual items
-	var errors []string
+	var errorMessages []string
 	for _, item := range bulkResponse.Items {
 		if deleteItem, ok := item["delete"].(map[string]interface{}); ok {
 			if errorData, hasError := deleteItem["error"]; hasError {
 				errorJSON, _ := json.Marshal(errorData)
-				errors = append(errors, string(errorJSON))
+				errorMessages = append(errorMessages, string(errorJSON))
 			}
 		}
 	}
 
-	if len(errors) > 0 {
-		return fmt.Errorf("bulk delete had errors: %s", strings.Join(errors, "; "))
+	if len(errorMessages) > 0 {
+		return fmt.Errorf("bulk delete had errors: %s", strings.Join(errorMessages, "; "))
 	}
 
 	return nil
