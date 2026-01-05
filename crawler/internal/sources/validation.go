@@ -15,7 +15,11 @@ func (s *Sources) getAPIClient() (*apiclient.Client, error) {
 	if s.apiURL == "" {
 		return nil, errors.New("API URL not configured")
 	}
-	return apiclient.NewClient(apiclient.WithBaseURL(s.apiURL)), nil
+	opts := []apiclient.Option{apiclient.WithBaseURL(s.apiURL)}
+	if s.jwtSecret != "" {
+		opts = append(opts, apiclient.WithJWTSecret(s.jwtSecret))
+	}
+	return apiclient.NewClient(opts...), nil
 }
 
 // ValidateSourceByID validates a source configuration by ID and returns the validated source.
