@@ -292,7 +292,7 @@ func TestContentTypeClassifier_Classify_LoginPage(t *testing.T) {
 		URL:       "https://example.com/account/login",
 		Title:     "Login Page",
 		RawText:   "Please log in to continue.",
-		WordCount: 250, // Enough words
+		WordCount: 250,       // Enough words
 		OGType:    "article", // Site incorrectly sets OGType
 	}
 
@@ -411,12 +411,12 @@ func TestContentTypeClassifier_Classify_OGTypeWebsite(t *testing.T) {
 
 	publishedDate := time.Now()
 	raw := &domain.RawContent{
-		ID:            "test-og-website",
-		URL:           "https://example.com/article",
-		Title:         "Article Title",
-		RawText:       "Article content here.",
-		OGType:        "website", // Default OGType, should use heuristics instead
-		WordCount:     250,
+		ID:              "test-og-website",
+		URL:             "https://example.com/article",
+		Title:           "Article Title",
+		RawText:         "Article content here.",
+		OGType:          "website", // Default OGType, should use heuristics instead
+		WordCount:       250,
 		MetaDescription: "Article description",
 		PublishedDate:   &publishedDate,
 	}
