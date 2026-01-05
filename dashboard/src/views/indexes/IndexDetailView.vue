@@ -227,7 +227,7 @@
                 <span v-else>-</span>
               </td>
               <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                {{ document.content_type || '-' }}
+                {{ document.content_type || (document.meta?.content_type as string) || (document.meta?.og_type as string) || '-' }}
               </td>
               <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                 {{ document.quality_score ?? '-' }}

@@ -179,22 +179,6 @@
               {{ document.meta.twitter_card as string }}
             </dd>
           </div>
-          <div>
-            <dt class="text-sm font-medium text-gray-500">
-              Crime Related
-            </dt>
-            <dd class="mt-1">
-              <StatusBadge
-                v-if="document.is_crime_related !== undefined || document.meta?.is_crime_related !== undefined"
-                :status="(document.is_crime_related ?? (document.meta?.is_crime_related as boolean)) ? 'active' : 'inactive'"
-                :custom-label="(document.is_crime_related ?? (document.meta?.is_crime_related as boolean)) ? 'Yes' : 'No'"
-              />
-              <span
-                v-else
-                class="text-sm text-gray-500"
-              >N/A</span>
-            </dd>
-          </div>
           <div
             v-if="document.topics && document.topics.length > 0"
           >
@@ -364,7 +348,6 @@ import type { ApiError } from '../../types/common'
 import PageHeader from '../../components/common/PageHeader.vue'
 import LoadingSpinner from '../../components/common/LoadingSpinner.vue'
 import ErrorAlert from '../../components/common/ErrorAlert.vue'
-import StatusBadge from '../../components/common/StatusBadge.vue'
 
 const route = useRoute()
 const indexName = computed(() => route.params.index_name as string)
