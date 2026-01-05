@@ -12,6 +12,7 @@ import (
 	"time"
 
 	es "github.com/elastic/go-elasticsearch/v8"
+	"github.com/elastic/go-elasticsearch/v8/esapi"
 )
 
 const unknownStatus = "unknown"
@@ -489,7 +490,7 @@ func (c *Client) GetClusterHealth(ctx context.Context) (map[string]interface{}, 
 }
 
 // SearchDocuments executes a search query on a specific index
-func (c *Client) SearchDocuments(ctx context.Context, indexName string, query map[string]interface{}) (*http.Response, error) {
+func (c *Client) SearchDocuments(ctx context.Context, indexName string, query map[string]interface{}) (*esapi.Response, error) {
 	queryJSON, err := json.Marshal(query)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal query: %w", err)
