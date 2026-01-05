@@ -299,6 +299,10 @@ func (s *IntervalScheduler) runJob(jobExec *JobExecution) {
 	err := s.crawler.Start(jobExec.Context, job.SourceID)
 
 	if err != nil {
+		s.logger.Error("Crawler start failed",
+			"job_id", job.ID,
+			"source_id", job.SourceID,
+			"error", err)
 		s.handleJobFailure(jobExec, err, &startTime)
 		return
 	}
@@ -393,7 +397,8 @@ func (s *IntervalScheduler) handleJobFailure(jobExec *JobExecution, execErr erro
 			"retry_attempt", job.CurrentRetryCount,
 			"max_retries", job.MaxRetries,
 			"backoff", backoff,
-			"next_run_at", nextRun)
+			"next_run_at", nextRun,
+			"error", execErr)
 	} else {
 		// No more retries
 		job.Status = "failed"
