@@ -122,7 +122,6 @@ func setDefaults() {
 
 	// Crawler defaults - production safe
 	viper.SetDefault("crawler", map[string]any{
-		"max_depth":          crawler.DefaultMaxDepth,
 		"max_concurrency":    crawler.DefaultParallelism,
 		"request_timeout":    "30s",
 		"user_agent":         crawler.DefaultUserAgent,

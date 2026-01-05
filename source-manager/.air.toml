@@ -4,7 +4,7 @@ tmp_dir = "tmp"
 
 [build]
   args_bin = ["-config", "config.yml"]
-  bin = "./tmp/main"
+  entrypoint = "./tmp/main"
   cmd = "go build -o ./tmp/main ./main.go"
   delay = 1000
   exclude_dir = ["assets", "tmp", "vendor", "testdata", "frontend", "bin", "dist", ".git", "node_modules"]

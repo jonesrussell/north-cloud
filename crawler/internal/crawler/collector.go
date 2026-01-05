@@ -5,10 +5,8 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
-	"math"
 	"net/http"
 	"strings"
-	"sync/atomic"
 	"time"
 
 	colly "github.com/gocolly/colly/v2"
@@ -18,10 +16,14 @@ import (
 
 // Collector defaults
 const (
-	defaultRateLimit             = 2 * time.Second
-	defaultMaxDepth              = 3
-	defaultMaxConcurrency        = 2
-	defaultParallelism           = 2
+	defaultRateLimit   = 2 * time.Second
+	defaultParallelism = 2
+	// RandomDelayDivisor is used to calculate random delay from rate limit
+	RandomDelayDivisor = 2
+)
+
+// HTTP transport defaults
+const (
 	defaultMaxIdleConns          = 100
 	defaultMaxIdleConnsPerHost   = 10
 	defaultIdleConnTimeout       = 90 * time.Second
@@ -29,45 +31,9 @@ const (
 	defaultExpectContinueTimeout = 1 * time.Second
 )
 
-// CollectorConfig holds configuration for the collector.
-type CollectorConfig struct {
-	RateLimit      time.Duration
-	MaxDepth       int
-	MaxConcurrency int
-}
-
-// NewCollectorConfig creates a new collector configuration.
-func NewCollectorConfig() *CollectorConfig {
-	return &CollectorConfig{
-		RateLimit:      defaultRateLimit,
-		MaxDepth:       defaultMaxDepth,
-		MaxConcurrency: defaultMaxConcurrency,
-	}
-}
-
-// Validate validates the collector configuration.
-func (c *CollectorConfig) Validate() error {
-	if c.RateLimit < 0 {
-		return errors.New("rate limit must be non-negative")
-	}
-	if c.MaxDepth < 0 {
-		return errors.New("max depth must be non-negative")
-	}
-	if c.MaxConcurrency < 1 {
-		return errors.New("max concurrency must be positive")
-	}
-	return nil
-}
-
 // setupCollector configures the collector with the given source settings.
 func (c *Crawler) setupCollector(source *configtypes.Source) error {
-	// Use override if set, otherwise use source's max depth
 	maxDepth := source.MaxDepth
-	override := int(atomic.LoadInt32(&c.maxDepthOverride))
-	if override > 0 {
-		maxDepth = override
-		c.logger.Info("Using max_depth override", "override", maxDepth, "source_default", source.MaxDepth)
-	}
 
 	c.logger.Debug("Setting up collector",
 		"max_depth", maxDepth,
@@ -100,30 +66,12 @@ func (c *Crawler) setupCollector(source *configtypes.Source) error {
 		rateLimit = defaultRateLimit
 	}
 
-	err = c.collector.Limit(&colly.LimitRule{
-		DomainGlob:  "*",
-		Delay:       rateLimit,
-		RandomDelay: rateLimit / RandomDelayDivisor,
-		Parallelism: defaultParallelism,
-	})
-	if err != nil {
-		return fmt.Errorf("failed to set rate limit: %w", err)
+	if setErr := c.setRateLimit(rateLimit, rateLimit/RandomDelayDivisor); setErr != nil {
+		return fmt.Errorf("failed to set rate limit: %w", setErr)
 	}
 
-	// Configure transport with TLS settings from config
-	c.collector.WithTransport(&http.Transport{
-		TLSClientConfig: &tls.Config{
-			InsecureSkipVerify: c.cfg.TLS.InsecureSkipVerify, //nolint:gosec // Configurable for development/testing
-			MinVersion:         c.cfg.TLS.MinVersion,
-			MaxVersion:         c.cfg.TLS.MaxVersion,
-		},
-		DisableKeepAlives:     false,
-		MaxIdleConns:          defaultMaxIdleConns,
-		MaxIdleConnsPerHost:   defaultMaxIdleConnsPerHost,
-		IdleConnTimeout:       defaultIdleConnTimeout,
-		ResponseHeaderTimeout: defaultResponseHeaderTimeout,
-		ExpectContinueTimeout: defaultExpectContinueTimeout,
-	})
+	// Configure transport with TLS settings
+	c.configureTransport()
 
 	if c.cfg.TLS.InsecureSkipVerify {
 		c.logger.Warn("TLS certificate verification is disabled. This is not recommended for production use.",
@@ -268,61 +216,49 @@ func (c *Crawler) handleCrawlError(r *colly.Response, visitErr error) {
 // Collector Management Methods
 // -----------------------------
 
-// SetMaxDepth sets the maximum depth for the crawler.
-// If the collector hasn't been created yet, this sets an override that will be used
-// when the collector is created. Otherwise, it updates the existing collector.
-func (c *Crawler) SetMaxDepth(depth int) {
-	config := NewCollectorConfig()
-	config.MaxDepth = depth
-
-	if err := config.Validate(); err != nil {
-		c.logger.Error("Invalid max depth",
-			"error", err,
-			"depth", depth)
-		return
-	}
-
-	// Always store the override so it's used when setupCollector creates a new collector
-	// Bounds check to prevent integer overflow
-	maxDepth := config.MaxDepth
-	if maxDepth >= math.MinInt32 && maxDepth <= math.MaxInt32 {
-		atomic.StoreInt32(&c.maxDepthOverride, int32(maxDepth))
-	}
-
-	if c.collector == nil {
-		// Collector not created yet, override will be used when collector is created
-		c.logger.Debug("Set max_depth override (collector not yet created)", "max_depth", config.MaxDepth)
-	} else {
-		// Collector exists, update it directly
-		c.collector.MaxDepth = config.MaxDepth
-		c.logger.Debug("Updated collector max_depth", "max_depth", config.MaxDepth)
-	}
-}
-
 // SetRateLimit sets the rate limit for the crawler.
 func (c *Crawler) SetRateLimit(duration time.Duration) error {
 	if c.collector == nil {
 		return errors.New("collector is nil")
 	}
 
-	config := NewCollectorConfig()
-	config.RateLimit = duration
-
-	if err := config.Validate(); err != nil {
-		return fmt.Errorf("invalid rate limit: %w", err)
+	if duration < 0 {
+		return errors.New("rate limit must be non-negative")
 	}
 
+	// Public API: set rate limit without random delay
+	return c.setRateLimit(duration, 0)
+}
+
+// setRateLimit sets the rate limit on the collector.
+func (c *Crawler) setRateLimit(delay, randomDelay time.Duration) error {
 	err := c.collector.Limit(&colly.LimitRule{
 		DomainGlob:  "*",
-		Delay:       config.RateLimit,
-		RandomDelay: 0,
-		Parallelism: config.MaxConcurrency,
+		Delay:       delay,
+		RandomDelay: randomDelay,
+		Parallelism: defaultParallelism,
 	})
 	if err != nil {
 		return fmt.Errorf("failed to set rate limit: %w", err)
 	}
-
 	return nil
+}
+
+// configureTransport configures the HTTP transport with TLS settings from config.
+func (c *Crawler) configureTransport() {
+	c.collector.WithTransport(&http.Transport{
+		TLSClientConfig: &tls.Config{
+			InsecureSkipVerify: c.cfg.TLS.InsecureSkipVerify, //nolint:gosec // Configurable for development/testing
+			MinVersion:         c.cfg.TLS.MinVersion,
+			MaxVersion:         c.cfg.TLS.MaxVersion,
+		},
+		DisableKeepAlives:     false,
+		MaxIdleConns:          defaultMaxIdleConns,
+		MaxIdleConnsPerHost:   defaultMaxIdleConnsPerHost,
+		IdleConnTimeout:       defaultIdleConnTimeout,
+		ResponseHeaderTimeout: defaultResponseHeaderTimeout,
+		ExpectContinueTimeout: defaultExpectContinueTimeout,
+	})
 }
 
 // SetCollector sets the collector for the crawler.
@@ -343,8 +279,3 @@ func convertHeaders(headers *http.Header) map[string]string {
 	}
 	return result
 }
-
-const (
-	// RandomDelayDivisor is used to calculate random delay from rate limit
-	RandomDelayDivisor = 2
-)

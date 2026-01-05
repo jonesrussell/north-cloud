@@ -69,12 +69,12 @@ func (s *State) Cancel() {
 }
 
 // Start initializes the crawler state.
-func (s *State) Start(ctx context.Context, sourceName string) {
+func (s *State) Start(ctx context.Context, sourceID string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.isRunning = true
 	s.startTime = time.Now()
-	s.currentSource = sourceName
+	s.currentSource = sourceID
 	s.ctx, s.cancel = context.WithCancel(ctx)
 }
 

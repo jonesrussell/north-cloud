@@ -284,28 +284,25 @@ func (s *IntervalScheduler) runJob(jobExec *JobExecution) {
 
 	s.logger.Info("Executing job",
 		"job_id", job.ID,
-		"source_name", func() string {
-			if job.SourceName != nil {
-				return *job.SourceName
-			}
-			return ""
-		}(),
+		"source_id", job.SourceID,
 		"url", job.URL,
 		"retry_attempt", job.CurrentRetryCount)
 
-	// Validate source name
-	if job.SourceName == nil || *job.SourceName == "" {
-		s.handleJobFailure(jobExec, errors.New("job missing required source_name"), nil)
+	// Validate source ID
+	if job.SourceID == "" {
+		s.handleJobFailure(jobExec, errors.New("job missing required source_id"), nil)
 		return
 	}
 
-	sourceName := *job.SourceName
-
 	// Execute crawler
 	startTime := time.Now()
-	err := s.crawler.Start(jobExec.Context, sourceName)
+	err := s.crawler.Start(jobExec.Context, job.SourceID)
 
 	if err != nil {
+		s.logger.Error("Crawler start failed",
+			"job_id", job.ID,
+			"source_id", job.SourceID,
+			"error", err)
 		s.handleJobFailure(jobExec, err, &startTime)
 		return
 	}
@@ -400,7 +397,8 @@ func (s *IntervalScheduler) handleJobFailure(jobExec *JobExecution, execErr erro
 			"retry_attempt", job.CurrentRetryCount,
 			"max_retries", job.MaxRetries,
 			"backoff", backoff,
-			"next_run_at", nextRun)
+			"next_run_at", nextRun,
+			"error", execErr)
 	} else {
 		// No more retries
 		job.Status = "failed"

@@ -14,7 +14,6 @@ import (
 
 // Default configuration values
 const (
-	DefaultMaxDepth    = 5
 	DefaultRateLimit   = 1 * time.Second
 	DefaultParallelism = 5
 	DefaultUserAgent   = "crawler/1.0"
@@ -31,8 +30,6 @@ const (
 
 // Config represents the crawler configuration.
 type Config struct {
-	// MaxDepth is the maximum depth to crawl
-	MaxDepth int `yaml:"max_depth"`
 	// MaxConcurrency is the maximum number of concurrent requests
 	MaxConcurrency int `yaml:"max_concurrency"`
 	// RequestTimeout is the timeout for each request
@@ -73,9 +70,6 @@ type Config struct {
 
 // Validate validates the crawler configuration.
 func (c *Config) Validate() error {
-	if c.MaxDepth < 0 {
-		return errors.New("max_depth must be non-negative")
-	}
 	if c.MaxConcurrency < 1 {
 		return errors.New("max_concurrency must be positive")
 	}
@@ -94,7 +88,6 @@ func (c *Config) Validate() error {
 // New creates a new crawler configuration with the given options.
 func New(opts ...Option) *Config {
 	cfg := &Config{
-		MaxDepth:          DefaultMaxDepth,
 		MaxConcurrency:    DefaultParallelism,
 		RequestTimeout:    DefaultTimeout,
 		Delay:             DefaultRateLimit,
@@ -129,13 +122,6 @@ func New(opts ...Option) *Config {
 
 // Option is a function that configures a crawler configuration.
 type Option func(*Config)
-
-// WithMaxDepth sets the maximum depth.
-func WithMaxDepth(depth int) Option {
-	return func(c *Config) {
-		c.MaxDepth = depth
-	}
-}
 
 // WithMaxConcurrency sets the maximum concurrency.
 func WithMaxConcurrency(concurrency int) Option {
@@ -271,7 +257,6 @@ func LoadFromViper(v *viper.Viper) *Config {
 		cfg.MaxConcurrency = v.GetInt("crawler.max_concurrency")
 	}
 
-	cfg.MaxDepth = v.GetInt("crawler.max_depth")
 	cfg.RequestTimeout = v.GetDuration("crawler.request_timeout")
 	cfg.UserAgent = v.GetString("crawler.user_agent")
 	cfg.RespectRobotsTxt = v.GetBool("crawler.respect_robots_txt")

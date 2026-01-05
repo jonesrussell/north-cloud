@@ -12,6 +12,7 @@ import (
 	"net/url"
 	"time"
 
+	"github.com/golang-jwt/jwt/v5"
 	infrahttp "github.com/north-cloud/infrastructure/http"
 )
 
@@ -20,12 +21,15 @@ const (
 	DefaultBaseURL = "http://localhost:8050/api/v1/sources"
 	// DefaultTimeout is the default timeout for API requests.
 	DefaultTimeout = 30 * time.Second
+	// ServiceTokenExpirationHours is the expiration time for service-to-service JWT tokens.
+	ServiceTokenExpirationHours = 24
 )
 
 // Client is an HTTP client for interacting with the gosources API.
 type Client struct {
 	baseURL    string
 	httpClient *http.Client
+	jwtSecret  string
 }
 
 // Option is a function that configures a Client.
@@ -49,6 +53,13 @@ func WithHTTPClient(httpClient *http.Client) Option {
 func WithTimeout(timeout time.Duration) Option {
 	return func(c *Client) {
 		c.httpClient.Timeout = timeout
+	}
+}
+
+// WithJWTSecret sets the JWT secret for generating service tokens.
+func WithJWTSecret(secret string) Option {
+	return func(c *Client) {
+		c.jwtSecret = secret
 	}
 }
 
@@ -169,8 +180,35 @@ func (c *Client) DeleteSource(ctx context.Context, id string) error {
 	return nil
 }
 
+// generateServiceToken generates a JWT token for service-to-service authentication.
+func (c *Client) generateServiceToken() (string, error) {
+	if c.jwtSecret == "" {
+		return "", errors.New("JWT secret not configured")
+	}
+
+	now := time.Now()
+	claims := &jwt.RegisteredClaims{
+		ExpiresAt: jwt.NewNumericDate(now.Add(ServiceTokenExpirationHours * time.Hour)),
+		IssuedAt:  jwt.NewNumericDate(now),
+		NotBefore: jwt.NewNumericDate(now),
+		Subject:   "crawler-service",
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	return token.SignedString([]byte(c.jwtSecret))
+}
+
 // doRequest executes an HTTP request and decodes the response.
 func (c *Client) doRequest(req *http.Request, result any) error {
+	// Add JWT token if secret is configured
+	if c.jwtSecret != "" {
+		token, err := c.generateServiceToken()
+		if err != nil {
+			return fmt.Errorf("failed to generate service token: %w", err)
+		}
+		req.Header.Set("Authorization", "Bearer "+token)
+	}
+
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
 		// Provide more helpful error message for connection issues

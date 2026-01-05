@@ -22,6 +22,7 @@ var (
 
 // Config represents a source configuration loaded from a file.
 type Config struct {
+	ID           string            `mapstructure:"id"`
 	Name         string            `mapstructure:"name"`
 	URL          string            `mapstructure:"url"`
 	RateLimit    any               `mapstructure:"rate_limit"` // Can be string or number

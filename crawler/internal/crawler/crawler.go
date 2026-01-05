@@ -20,8 +20,8 @@ import (
 
 // CrawlerInterface defines the core functionality of a crawler.
 type CrawlerInterface interface {
-	// Start begins crawling from the given source.
-	Start(ctx context.Context, sourceName string) error
+	// Start begins crawling from the given source by ID.
+	Start(ctx context.Context, sourceID string) error
 	// Stop gracefully stops the crawler.
 	Stop(ctx context.Context) error
 	// Subscribe adds a handler for crawler events.
@@ -109,8 +109,6 @@ type Interface interface {
 
 	// SetRateLimit sets the rate limit for the crawler
 	SetRateLimit(duration time.Duration) error
-	// SetMaxDepth sets the maximum depth for the crawler
-	SetMaxDepth(depth int)
 	// SetCollector sets the collector for the crawler
 	SetCollector(collector *colly.Collector)
 	// GetIndexManager returns the index manager
@@ -130,8 +128,6 @@ type Interface interface {
 const (
 	// collectorTimeoutDuration is the timeout for waiting for collector to finish after cancellation
 	collectorTimeoutDuration = 2 * time.Second
-	// cleanupTimeoutDuration is the timeout for waiting for cleanup goroutine to finish
-	cleanupTimeoutDuration = 5 * time.Second
 	// timeoutWarningInterval is the interval for logging timeout warnings
 	timeoutWarningInterval = 30 * time.Second
 )
@@ -150,7 +146,6 @@ type Crawler struct {
 	linkHandler         *LinkHandler
 	htmlProcessor       *HTMLProcessor
 	cfg                 *crawler.Config
-	maxDepthOverride    int32    // Override for source's max_depth (0 means use source default), accessed atomically
 	archiver            Archiver // HTML archiver for MinIO storage
 
 	// Extracted components for better separation of concerns

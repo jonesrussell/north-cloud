@@ -74,7 +74,6 @@ logger:
 # Crawler configuration
 crawler:
   base_url: ""         # Starting URL for the crawler
-  max_depth: 2         # Maximum depth to crawl from the starting URL
   rate_limit: 2s       # Minimum time between requests to the same host
   random_delay: 5s     # Additional random delay between requests
   parallelism: 2       # Number of concurrent crawlers
