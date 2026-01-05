@@ -1062,22 +1062,21 @@ The crawler service includes a database-backed job scheduler for dynamic crawlin
 curl -X POST http://localhost:8060/api/v1/jobs \
   -H "Content-Type: application/json" \
   -d '{
-    "source_id": "news-site",
-    "source_name": "example.com",
+    "source_id": "uuid-of-source",
     "url": "https://example.com",
     "schedule_enabled": false
   }'
 ```
 
-**Scheduled Job (Cron)**:
+**Scheduled Job (Interval-based)**:
 ```bash
 curl -X POST http://localhost:8060/api/v1/jobs \
   -H "Content-Type: application/json" \
   -d '{
-    "source_id": "news-site",
-    "source_name": "example.com",
+    "source_id": "uuid-of-source",
     "url": "https://example.com",
-    "schedule_time": "0 */6 * * *",
+    "interval_minutes": 360,
+    "interval_type": "minutes",
     "schedule_enabled": true
   }'
 ```
@@ -1117,11 +1116,12 @@ curl -X DELETE http://localhost:8060/api/v1/jobs/{job-id}
 - `0 */6 * * *` - Every 6 hours
 
 **Important Notes**:
-- Jobs require `source_name` field to match an existing source configuration
+- Jobs require `source_id` field to identify the source (must match an existing source ID from source-manager)
+- The crawler uses source IDs for efficient lookups and better data integrity
 - Immediate jobs (`schedule_enabled: false`) execute within 10 seconds
-- Scheduled jobs reload every 5 minutes or immediately after creation/update
-- Job status transitions: `pending` → `processing` → `completed`/`failed`
-- See `/crawler/docs/DATABASE_SCHEDULER.md` for comprehensive documentation
+- Scheduled jobs are processed by the interval scheduler (polls every 10 seconds)
+- Job status transitions: `pending` → `scheduled` → `running` → `completed`/`failed`/`paused`/`cancelled`
+- See `/crawler/docs/INTERVAL_SCHEDULER.md` for comprehensive documentation
 
 ### Profiling and Performance Monitoring
 
@@ -1523,8 +1523,9 @@ docker system prune -a --volumes
   - **Distributed locking**: Use PostgreSQL CAS locks for multi-instance safety
   - **Exponential backoff**: `base × 2^(attempt-1)` capped at 1 hour
   - **Metrics**: Real-time job counts, success rates, average duration
-  - Jobs require `source_name` field to match existing source
+  - Jobs require `source_id` field to identify the source (uses source ID for efficient lookups)
   - Scheduler polls database every 10 seconds (automatic, no manual reload needed)
+  - Source lookup by ID is more efficient than name-based matching
   - **8 new API endpoints**: `/pause`, `/resume`, `/cancel`, `/retry`, `/executions`, `/stats`, `/scheduler/metrics`
   - **Migration**: Run migration 003 to upgrade from cron-based scheduler
   - See `/crawler/docs/INTERVAL_SCHEDULER.md` for complete documentation
@@ -2035,6 +2036,24 @@ When encountering scenarios not covered in this guide:
   - Vue.js frontend integration for job management
   - Scheduler auto-starts with httpd command
   - Updated crawler service documentation with scheduler features
+
+- **Crawler SourceID Refactor** (2026-01-04): Refactored crawler to use SourceID instead of SourceName
+  - **Source Identification**: Crawler now uses source IDs for all source lookups
+    - More stable: IDs don't change when names change
+    - More efficient: Direct ID lookup vs string matching
+    - Better data integrity: Unique identifiers reduce ambiguity
+  - **API Changes**:
+    - Jobs now require `source_id` field (must match source ID from source-manager)
+    - `ValidateSourceByID()` method added for efficient single-source lookups
+    - Can use `GetSource(id)` API for direct source fetching
+  - **Code Changes**:
+    - Added `ID` field to `SourceConfig` struct
+    - Updated conversion code to preserve IDs from API responses
+    - Updated `Crawler.Start()` to accept `sourceID` parameter
+    - Updated job runner to use `job.SourceID` instead of `job.SourceName`
+    - Updated link handler to use source IDs
+    - Maintains backward compatibility: database still stores both fields
+  - **Documentation**: Updated CLAUDE.md with source ID requirements and job creation examples
 
 - **Initial Version** (2025-12-13): Created comprehensive AI assistant guide
   - Multi-service architecture overview
