@@ -333,7 +333,65 @@ The platform uses a **three-stage content pipeline** for intelligent article pro
   - `search_timeout: 5s` - Elasticsearch query timeout
 - **Documentation**: See [/search/README.md](search/README.md)
 
-#### 7. **auth**
+#### 7. **index-manager**
+- **Location**: `/index-manager`
+- **Language**: Go 1.25+
+- **Purpose**: Centralized Elasticsearch index management and document operations
+- **Database**: `postgres-index-manager` (index_manager database)
+- **Dependencies**: Elasticsearch, PostgreSQL
+- **Ports**: 8090 (API)
+- **Key Features**:
+  - **Index Management**: Create, list, delete, and update Elasticsearch indexes
+  - **Source-Based Operations**: Manage all indexes for a specific source
+  - **Health Checks**: Monitor index health and cluster status
+  - **Document Management**: Query, retrieve, update, and delete documents within indexes
+  - **Bulk Operations**: Perform operations on multiple indexes or documents at once
+  - **Migration Tracking**: Track index mapping versions and migration history
+  - **Hot Reloading**: Air-based development with automatic rebuild on code changes
+- **Index Types Supported**:
+  - **Raw Content**: `{source}_raw_content` - Minimally-processed crawled content
+  - **Classified Content**: `{source}_classified_content` - Enriched classified content
+  - **Legacy Articles**: `{source}_articles` - Deprecated article format
+  - **Legacy Pages**: `{source}_pages` - Deprecated page format
+- **API Endpoints**:
+  - **Index Management**:
+    - `POST /api/v1/indexes` - Create an index
+    - `GET /api/v1/indexes` - List all indexes (with filtering)
+    - `GET /api/v1/indexes/{index_name}` - Get index details
+    - `DELETE /api/v1/indexes/{index_name}` - Delete an index
+    - `GET /api/v1/indexes/{index_name}/health` - Get index health status
+  - **Document Management**:
+    - `GET /api/v1/indexes/{index_name}/documents` - Query documents with filters, pagination, sorting
+    - `GET /api/v1/indexes/{index_name}/documents/{document_id}` - Get single document
+    - `PUT /api/v1/indexes/{index_name}/documents/{document_id}` - Update document
+    - `DELETE /api/v1/indexes/{index_name}/documents/{document_id}` - Delete document
+    - `POST /api/v1/indexes/{index_name}/documents/bulk-delete` - Bulk delete documents
+  - **Source-Based Operations**:
+    - `POST /api/v1/sources/{source_name}/indexes` - Create all indexes for a source
+    - `GET /api/v1/sources/{source_name}/indexes` - List indexes for a source
+    - `DELETE /api/v1/sources/{source_name}/indexes` - Delete all indexes for a source
+  - **Bulk Operations**:
+    - `POST /api/v1/indexes/bulk/create` - Create multiple indexes
+    - `DELETE /api/v1/indexes/bulk/delete` - Delete multiple indexes
+  - **Health & Status**:
+    - `GET /api/v1/health` - Service health check
+- **Document Query Features**:
+  - Full-text search across all fields
+  - Advanced filtering (content type, crime-related, quality score, dates)
+  - Pagination and sorting
+  - Field selection (`_source` filtering)
+- **Configuration**:
+  - `INDEX_MANAGER_PORT`: Service port (default: 8090)
+  - `POSTGRES_INDEX_MANAGER_*`: Database connection settings
+  - `ELASTICSEARCH_URL`: Elasticsearch connection URL
+  - `CONFIG_PATH`: Path to config.yml file
+- **Development**:
+  - Uses Air for hot reloading in development
+  - Configuration via `config.yml` (see `config.yml.example`)
+  - Database migrations in `/migrations` directory
+- **Documentation**: See [/index-manager/README.md](index-manager/README.md)
+
+#### 8. **auth**
 - **Location**: `/auth`
 - **Language**: Go 1.25+
 - **Purpose**: Authentication service for dashboard and API access
@@ -371,6 +429,7 @@ The platform uses a **three-stage content pipeline** for intelligent article pro
 - **postgres-source-manager**: Source manager database (gosources)
 - **postgres-crawler**: Crawler database (crawler)
 - **postgres-publisher**: Publisher database (publisher) - stores sources, channels, routes, publish_history
+- **postgres-index-manager**: Index manager database (index_manager) - stores index metadata and migration history
 - **postgres-streetcode**: Drupal database (streetcode)
 - Each service has its own isolated database
 
@@ -540,6 +599,36 @@ north-cloud/
 │   │   └── config/              # Configuration management
 │   │       └── config.go        # Environment variable loading
 │   └── Dockerfile.dev           # Development Dockerfile
+│
+├── index-manager/                # Elasticsearch index management service
+│   ├── Dockerfile
+│   ├── Dockerfile.dev
+│   ├── .air.toml                 # Air hot reloading configuration
+│   ├── go.mod
+│   ├── config.yml.example
+│   ├── cmd/
+│   │   └── httpd/               # HTTP API server
+│   │       └── main.go
+│   ├── internal/
+│   │   ├── api/                 # REST API handlers
+│   │   │   ├── handlers.go      # HTTP handlers
+│   │   │   ├── routes.go        # Route definitions
+│   │   │   └── server.go        # Server setup
+│   │   ├── service/             # Business logic
+│   │   │   ├── index_service.go
+│   │   │   └── document_service.go
+│   │   ├── domain/              # Domain models
+│   │   │   ├── index.go
+│   │   │   └── document.go
+│   │   ├── elasticsearch/       # Elasticsearch client
+│   │   │   ├── client.go
+│   │   │   ├── query_builder.go
+│   │   │   └── index_manager.go
+│   │   ├── database/            # Database layer
+│   │   └── config/              # Configuration
+│   ├── migrations/              # Database migrations
+│   ├── README.md
+│   └── Taskfile.yml
 │
 ├── dashboard/                    # Unified dashboard frontend
 │   ├── Dockerfile
@@ -880,6 +969,32 @@ task lint
 # See publisher/CLAUDE.md for detailed commands
 ```
 
+#### Index Manager
+```bash
+cd index-manager
+
+# Run HTTP server (with Air hot reloading in dev)
+go run ./cmd/httpd/main.go
+
+# Run tests
+go test ./...
+
+# Run with coverage
+go test -cover ./...
+
+# Lint
+task lint
+
+# Build
+go build -o bin/index-manager ./cmd/httpd/main.go
+```
+
+**Development Notes**:
+- Uses Air for hot reloading in development (configured via `.air.toml`)
+- Automatically rebuilds and restarts on code changes
+- Configuration via `config.yml` file
+- See `/index-manager/README.md` for detailed API usage
+
 #### Streetcode (Drupal)
 ```bash
 # Access container
@@ -962,6 +1077,7 @@ docker-compose -f docker-compose.base.yml -f docker-compose.prod.yml build
 | classifier | 8070 | 8070 | Classifier HTTP API |
 | publisher | 8080 | 8080 | Publisher API (if enabled) |
 | auth | 8040 | 8040 | Authentication service |
+| index-manager | 8090 | 8090 | Index Manager API |
 | streetcode | 80 | 8090 | Drupal web interface |
 | nginx | 80 | 80 | Reverse proxy |
 | dashboard | 3002 | 3002 | Unified dashboard frontend |
@@ -2036,6 +2152,15 @@ When encountering scenarios not covered in this guide:
   - Vue.js frontend integration for job management
   - Scheduler auto-starts with httpd command
   - Updated crawler service documentation with scheduler features
+
+- **Index Manager Air Setup** (2026-01-04): Added Air hot reloading for index-manager service
+  - **Hot Reloading**: Configured Air for automatic rebuild and restart on code changes
+  - **Development Workflow**: Uses `.air.toml` configuration file for build settings
+  - **Docker Integration**: Updated `Dockerfile.dev` to install Air and use Air command
+  - **Docker Compose**: Updated `docker-compose.dev.yml` to use Air instead of direct `go run`
+  - **Configuration**: Air watches `.go`, `.yaml`, `.html`, `.tpl`, `.tmpl` files
+  - **Build Output**: Compiles to `./tmp/main` for faster iteration cycles
+  - **Documentation**: Added index-manager service documentation to CLAUDE.md
 
 - **Crawler SourceID Refactor** (2026-01-04): Refactored crawler to use SourceID instead of SourceName
   - **Source Identification**: Crawler now uses source IDs for all source lookups
