@@ -2,6 +2,7 @@ package classifier
 
 import (
 	"context"
+	"net/url"
 	"strings"
 
 	"github.com/jonesrussell/north-cloud/classifier/internal/domain"
@@ -14,6 +15,14 @@ const (
 	// String literal for article type matching
 	articleTypeString = "article"
 )
+
+// nonArticleURLPatterns contains URL path patterns that indicate non-article content
+var nonArticleURLPatterns = []string{
+	"/account/", "/login", "/signin", "/signup", "/register",
+	"/classifieds/", "/classified/", "/ads/", "/advertisements/",
+	"/category/", "/categories/", "/browse/", "/listings/",
+	"/search", "/results",
+}
 
 // ContentTypeClassifier determines the type of content (article, page, video, image, job)
 type ContentTypeClassifier struct {
@@ -38,23 +47,61 @@ func NewContentTypeClassifier(logger Logger) *ContentTypeClassifier {
 // Classify determines the content type of the given raw content
 // This is ported from crawler's html_processor.go DetectContentType logic
 func (c *ContentTypeClassifier) Classify(ctx context.Context, raw *domain.RawContent) (*ContentTypeResult, error) {
-	// Strategy 1: Check Open Graph metadata (highest confidence)
+	// Strategy 0: Check URL exclusions first (non-article patterns)
+	if c.isNonArticleURL(raw.URL) {
+		c.logger.Debug("Content type excluded via URL pattern",
+			"content_id", raw.ID,
+			"url", raw.URL,
+			"result", domain.ContentTypePage,
+		)
+		return &ContentTypeResult{
+			Type:       domain.ContentTypePage,
+			Confidence: 0.9,
+			Method:     "url_exclusion",
+			Reason:     "URL pattern indicates non-article content",
+		}, nil
+	}
+
+	// Strategy 1: Check Open Graph metadata (with validation)
 	if raw.OGType != "" {
 		ogType := strings.ToLower(strings.TrimSpace(raw.OGType))
 
 		// Check for article indicators
 		if ogType == articleTypeString || ogType == "news" || strings.Contains(ogType, articleTypeString) {
-			c.logger.Debug("Content type detected via OG metadata",
+			// Validate OGType with additional indicators - require published date for high confidence
+			if raw.PublishedDate != nil {
+				c.logger.Debug("Content type detected via OG metadata with published date",
+					"content_id", raw.ID,
+					"og_type", ogType,
+					"result", domain.ContentTypeArticle,
+				)
+				return &ContentTypeResult{
+					Type:       domain.ContentTypeArticle,
+					Confidence: 1.0,
+					Method:     "og_metadata",
+					Reason:     "Open Graph type indicates article content with published date",
+				}, nil
+			}
+			// OGType says article but no published date - be cautious, classify as page
+			c.logger.Debug("OGType indicates article but missing published date, classifying as page",
 				"content_id", raw.ID,
 				"og_type", ogType,
-				"result", domain.ContentTypeArticle,
+				"result", domain.ContentTypePage,
 			)
 			return &ContentTypeResult{
-				Type:       domain.ContentTypeArticle,
-				Confidence: 1.0,
-				Method:     "og_metadata",
-				Reason:     "Open Graph type indicates article content",
+				Type:       domain.ContentTypePage,
+				Confidence: 0.7,
+				Method:     "og_metadata_validation",
+				Reason:     "OGType indicates article but missing published date (validation failed)",
 			}, nil
+		}
+
+		// Don't trust "website" OGType - it's the default and not meaningful
+		if ogType == "website" {
+			c.logger.Debug("OGType is 'website' (default), ignoring and using heuristics",
+				"content_id", raw.ID,
+			)
+			// Fall through to heuristic check
 		}
 
 		// Check for video
@@ -120,8 +167,54 @@ func (c *ContentTypeClassifier) Classify(ctx context.Context, raw *domain.RawCon
 	}, nil
 }
 
+// isNonArticleURL checks if the URL matches patterns that indicate non-article content
+func (c *ContentTypeClassifier) isNonArticleURL(urlStr string) bool {
+	if urlStr == "" {
+		return false
+	}
+
+	// Parse URL to get path
+	parsedURL, err := url.Parse(urlStr)
+	if err != nil {
+		// If parsing fails, check raw string for patterns
+		lowerURL := strings.ToLower(urlStr)
+		for _, pattern := range nonArticleURLPatterns {
+			if strings.Contains(lowerURL, pattern) {
+				return true
+			}
+		}
+		// Check for query parameters that indicate redirect/auth pages
+		if strings.Contains(lowerURL, "returnurl=") || strings.Contains(lowerURL, "redirect=") {
+			return true
+		}
+		return false
+	}
+
+	path := strings.ToLower(parsedURL.Path)
+
+	// Check path patterns
+	for _, pattern := range nonArticleURLPatterns {
+		if strings.Contains(path, pattern) {
+			return true
+		}
+	}
+
+	// Check for query parameters that indicate redirect/auth pages
+	query := strings.ToLower(parsedURL.RawQuery)
+	if strings.Contains(query, "returnurl=") || strings.Contains(query, "redirect=") {
+		return true
+	}
+
+	// Homepage is typically not an article
+	if path == "/" || path == "" {
+		return true
+	}
+
+	return false
+}
+
 // hasArticleCharacteristics checks if the content has characteristics of an article
-// Based on crawler's detection logic: word count threshold and metadata presence
+// Strengthened to require published date for heuristic-based classification
 func (c *ContentTypeClassifier) hasArticleCharacteristics(raw *domain.RawContent) bool {
 	// Minimum word count for articles (from crawler: MinArticleBodyLength = 200)
 	const minArticleWordCount = 200
@@ -136,13 +229,18 @@ func (c *ContentTypeClassifier) hasArticleCharacteristics(raw *domain.RawContent
 		return false
 	}
 
-	// Additional indicators that boost confidence
-	hasDescription := raw.MetaDescription != "" || raw.OGDescription != ""
-	hasAuthor := raw.OGTitle != "" // OG title often includes author info for news sites
-	hasPublishedDate := raw.PublishedDate != nil
+	// Require published date - strongest indicator of article content
+	if raw.PublishedDate == nil {
+		return false
+	}
 
-	// At least one additional indicator should be present
-	return hasDescription || hasAuthor || hasPublishedDate
+	// Require description (meta or OG) - not just OGTitle which is too common
+	hasDescription := raw.MetaDescription != "" || raw.OGDescription != ""
+	if !hasDescription {
+		return false
+	}
+
+	return true
 }
 
 // ClassifyBatch classifies multiple content items efficiently

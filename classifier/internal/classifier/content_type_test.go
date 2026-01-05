@@ -20,12 +20,15 @@ func (m *mockLogger) Error(msg string, keysAndValues ...interface{}) {}
 func TestContentTypeClassifier_Classify_Article_ViaOG(t *testing.T) {
 	classifier := NewContentTypeClassifier(&mockLogger{})
 
+	publishedDate := time.Now()
 	raw := &domain.RawContent{
-		ID:        "test-1",
-		Title:     "Test Article",
-		RawText:   "This is a test article with enough content to be classified as an article.",
-		OGType:    "article",
-		WordCount: 300,
+		ID:            "test-1",
+		URL:           "https://example.com/news/article",
+		Title:         "Test Article",
+		RawText:       "This is a test article with enough content to be classified as an article.",
+		OGType:        "article",
+		WordCount:     300,
+		PublishedDate: &publishedDate,
 	}
 
 	result, err := classifier.Classify(context.Background(), raw)
@@ -159,21 +162,26 @@ func TestContentTypeClassifier_Classify_Page_NoTitle(t *testing.T) {
 func TestContentTypeClassifier_ClassifyBatch(t *testing.T) {
 	classifier := NewContentTypeClassifier(&mockLogger{})
 
+	publishedDate := time.Now()
 	rawItems := []*domain.RawContent{
 		{
-			ID:        "batch-1",
-			Title:     "Article 1",
-			OGType:    "article",
-			WordCount: 300,
+			ID:            "batch-1",
+			URL:           "https://example.com/news/article",
+			Title:         "Article 1",
+			OGType:        "article",
+			WordCount:     300,
+			PublishedDate: &publishedDate,
 		},
 		{
 			ID:        "batch-2",
+			URL:       "https://example.com/video",
 			Title:     "Video 1",
 			OGType:    "video",
 			WordCount: 50,
 		},
 		{
 			ID:        "batch-3",
+			URL:       "https://example.com/page",
 			Title:     "Page 1",
 			WordCount: 50,
 		},
@@ -208,6 +216,7 @@ func TestContentTypeClassifier_ClassifyBatch(t *testing.T) {
 func TestContentTypeClassifier_HasArticleCharacteristics(t *testing.T) {
 	classifier := NewContentTypeClassifier(&mockLogger{})
 
+	publishedDate := time.Now()
 	tests := []struct {
 		name     string
 		raw      *domain.RawContent
@@ -219,6 +228,7 @@ func TestContentTypeClassifier_HasArticleCharacteristics(t *testing.T) {
 				Title:           "Great Article",
 				WordCount:       250,
 				MetaDescription: "A description",
+				PublishedDate:   &publishedDate,
 			},
 			expected: true,
 		},
@@ -228,6 +238,7 @@ func TestContentTypeClassifier_HasArticleCharacteristics(t *testing.T) {
 				Title:           "",
 				WordCount:       250,
 				MetaDescription: "A description",
+				PublishedDate:   &publishedDate,
 			},
 			expected: false,
 		},
@@ -237,15 +248,27 @@ func TestContentTypeClassifier_HasArticleCharacteristics(t *testing.T) {
 				Title:           "Short",
 				WordCount:       100,
 				MetaDescription: "A description",
+				PublishedDate:   &publishedDate,
 			},
 			expected: false,
 		},
 		{
-			name: "no additional indicators",
+			name: "missing published date",
 			raw: &domain.RawContent{
-				Title:     "Article",
-				WordCount: 250,
-				// No description, author, or date
+				Title:           "Article",
+				WordCount:       250,
+				MetaDescription: "A description",
+				// No published date
+			},
+			expected: false,
+		},
+		{
+			name: "missing description",
+			raw: &domain.RawContent{
+				Title:         "Article",
+				WordCount:     250,
+				PublishedDate: &publishedDate,
+				// No description
 			},
 			expected: false,
 		},
@@ -258,5 +281,158 @@ func TestContentTypeClassifier_HasArticleCharacteristics(t *testing.T) {
 				t.Errorf("expected %v, got %v", tt.expected, result)
 			}
 		})
+	}
+}
+
+func TestContentTypeClassifier_Classify_LoginPage(t *testing.T) {
+	classifier := NewContentTypeClassifier(&mockLogger{})
+
+	raw := &domain.RawContent{
+		ID:        "test-login",
+		URL:       "https://example.com/account/login",
+		Title:     "Login Page",
+		RawText:   "Please log in to continue.",
+		WordCount: 250, // Enough words
+		OGType:    "article", // Site incorrectly sets OGType
+	}
+
+	result, err := classifier.Classify(context.Background(), raw)
+
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if result.Type != domain.ContentTypePage {
+		t.Errorf("expected type %s, got %s", domain.ContentTypePage, result.Type)
+	}
+
+	if result.Method != "url_exclusion" {
+		t.Errorf("expected method url_exclusion, got %s", result.Method)
+	}
+}
+
+func TestContentTypeClassifier_Classify_ClassifiedsPage(t *testing.T) {
+	classifier := NewContentTypeClassifier(&mockLogger{})
+
+	raw := &domain.RawContent{
+		ID:        "test-classifieds",
+		URL:       "https://example.com/classifieds/buy-sell",
+		Title:     "Classifieds",
+		RawText:   "Browse our classified ads.",
+		WordCount: 300,
+	}
+
+	result, err := classifier.Classify(context.Background(), raw)
+
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if result.Type != domain.ContentTypePage {
+		t.Errorf("expected type %s, got %s", domain.ContentTypePage, result.Type)
+	}
+}
+
+func TestContentTypeClassifier_Classify_CategoryPage(t *testing.T) {
+	classifier := NewContentTypeClassifier(&mockLogger{})
+
+	raw := &domain.RawContent{
+		ID:        "test-category",
+		URL:       "https://example.com/category/news",
+		Title:     "News Category",
+		RawText:   "Browse news articles in this category.",
+		WordCount: 250,
+	}
+
+	result, err := classifier.Classify(context.Background(), raw)
+
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if result.Type != domain.ContentTypePage {
+		t.Errorf("expected type %s, got %s", domain.ContentTypePage, result.Type)
+	}
+}
+
+func TestContentTypeClassifier_Classify_Homepage(t *testing.T) {
+	classifier := NewContentTypeClassifier(&mockLogger{})
+
+	raw := &domain.RawContent{
+		ID:        "test-homepage",
+		URL:       "https://example.com/",
+		Title:     "Homepage",
+		RawText:   "Welcome to our website.",
+		WordCount: 300,
+		OGType:    "article", // Site incorrectly sets OGType
+	}
+
+	result, err := classifier.Classify(context.Background(), raw)
+
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if result.Type != domain.ContentTypePage {
+		t.Errorf("expected type %s, got %s", domain.ContentTypePage, result.Type)
+	}
+}
+
+func TestContentTypeClassifier_Classify_OGTypeWithoutDate(t *testing.T) {
+	classifier := NewContentTypeClassifier(&mockLogger{})
+
+	raw := &domain.RawContent{
+		ID:        "test-og-no-date",
+		URL:       "https://example.com/some-page",
+		Title:     "Some Page",
+		RawText:   "Content here.",
+		OGType:    "article", // OGType says article but no published date
+		WordCount: 300,
+	}
+
+	result, err := classifier.Classify(context.Background(), raw)
+
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// Should classify as page because missing published date
+	if result.Type != domain.ContentTypePage {
+		t.Errorf("expected type %s, got %s", domain.ContentTypePage, result.Type)
+	}
+
+	if result.Method != "og_metadata_validation" {
+		t.Errorf("expected method og_metadata_validation, got %s", result.Method)
+	}
+}
+
+func TestContentTypeClassifier_Classify_OGTypeWebsite(t *testing.T) {
+	classifier := NewContentTypeClassifier(&mockLogger{})
+
+	publishedDate := time.Now()
+	raw := &domain.RawContent{
+		ID:            "test-og-website",
+		URL:           "https://example.com/article",
+		Title:         "Article Title",
+		RawText:       "Article content here.",
+		OGType:        "website", // Default OGType, should use heuristics instead
+		WordCount:     250,
+		MetaDescription: "Article description",
+		PublishedDate:   &publishedDate,
+	}
+
+	result, err := classifier.Classify(context.Background(), raw)
+
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// Should classify as article via heuristics (has published date + description)
+	if result.Type != domain.ContentTypeArticle {
+		t.Errorf("expected type %s, got %s", domain.ContentTypeArticle, result.Type)
+	}
+
+	if result.Method != "heuristic" {
+		t.Errorf("expected method heuristic, got %s", result.Method)
 	}
 }
