@@ -139,8 +139,11 @@ func main() {
 	// Initialize index service
 	indexService := service.NewIndexService(esClient, db, logger)
 
+	// Initialize document service
+	documentService := service.NewDocumentService(esClient, logger)
+
 	// Initialize API handler
-	handler := api.NewHandler(indexService, logger)
+	handler := api.NewHandler(indexService, documentService, logger)
 
 	// Initialize HTTP server
 	const httpTimeoutSeconds = 15

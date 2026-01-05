@@ -1,0 +1,321 @@
+package service
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"math"
+	"time"
+
+	"github.com/jonesrussell/north-cloud/index-manager/internal/domain"
+	"github.com/jonesrussell/north-cloud/index-manager/internal/elasticsearch"
+)
+
+// DocumentService provides business logic for document operations
+type DocumentService struct {
+	esClient     *elasticsearch.Client
+	queryBuilder *elasticsearch.DocumentQueryBuilder
+	logger       Logger
+}
+
+// NewDocumentService creates a new document service
+func NewDocumentService(esClient *elasticsearch.Client, logger Logger) *DocumentService {
+	return &DocumentService{
+		esClient:     esClient,
+		queryBuilder: elasticsearch.NewDocumentQueryBuilder(),
+		logger:       logger,
+	}
+}
+
+// QueryDocuments queries documents from an index with filters, pagination, and sorting
+func (s *DocumentService) QueryDocuments(ctx context.Context, indexName string, req *domain.DocumentQueryRequest) (*domain.DocumentQueryResponse, error) {
+	// Verify index exists
+	exists, err := s.esClient.IndexExists(ctx, indexName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to check index existence: %w", err)
+	}
+	if !exists {
+		return nil, fmt.Errorf("index %s does not exist", indexName)
+	}
+
+	// Build Elasticsearch query
+	esQuery, err := s.queryBuilder.Build(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to build query: %w", err)
+	}
+
+	s.logger.Debug("Querying documents",
+		"index_name", indexName,
+		"query", req.Query,
+		"page", req.Pagination.Page,
+		"size", req.Pagination.Size,
+	)
+
+	// Execute search
+	res, err := s.esClient.SearchDocuments(ctx, indexName, esQuery)
+	if err != nil {
+		return nil, fmt.Errorf("failed to execute search: %w", err)
+	}
+	defer func() {
+		_ = res.Body.Close()
+	}()
+
+	// Parse response
+	var esResponse struct {
+		Hits struct {
+			Total struct {
+				Value int64 `json:"value"`
+			} `json:"total"`
+			Hits []struct {
+				ID     string                 `json:"_id"`
+				Source map[string]interface{} `json:"_source"`
+			} `json:"hits"`
+		} `json:"hits"`
+	}
+
+	if decodeErr := json.NewDecoder(res.Body).Decode(&esResponse); decodeErr != nil {
+		return nil, fmt.Errorf("failed to decode search response: %w", decodeErr)
+	}
+
+	// Convert to domain documents
+	documents := make([]*domain.Document, 0, len(esResponse.Hits.Hits))
+	for _, hit := range esResponse.Hits.Hits {
+		doc := s.mapToDocument(hit.ID, hit.Source)
+		documents = append(documents, doc)
+	}
+
+	totalHits := esResponse.Hits.Total.Value
+	totalPages := int(math.Ceil(float64(totalHits) / float64(req.Pagination.Size)))
+
+	return &domain.DocumentQueryResponse{
+		Documents:   documents,
+		TotalHits:   totalHits,
+		TotalPages:  totalPages,
+		CurrentPage: req.Pagination.Page,
+		PageSize:    req.Pagination.Size,
+	}, nil
+}
+
+// GetDocument retrieves a single document by ID
+func (s *DocumentService) GetDocument(ctx context.Context, indexName, documentID string) (*domain.Document, error) {
+	// Verify index exists
+	exists, err := s.esClient.IndexExists(ctx, indexName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to check index existence: %w", err)
+	}
+	if !exists {
+		return nil, fmt.Errorf("index %s does not exist", indexName)
+	}
+
+	s.logger.Debug("Getting document",
+		"index_name", indexName,
+		"document_id", documentID,
+	)
+
+	// Get document from Elasticsearch
+	source, err := s.esClient.GetDocument(ctx, indexName, documentID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get document: %w", err)
+	}
+
+	return s.mapToDocument(documentID, source), nil
+}
+
+// UpdateDocument updates a document in an index
+func (s *DocumentService) UpdateDocument(ctx context.Context, indexName, documentID string, doc *domain.Document) error {
+	// Verify index exists
+	exists, err := s.esClient.IndexExists(ctx, indexName)
+	if err != nil {
+		return fmt.Errorf("failed to check index existence: %w", err)
+	}
+	if !exists {
+		return fmt.Errorf("index %s does not exist", indexName)
+	}
+
+	s.logger.Info("Updating document",
+		"index_name", indexName,
+		"document_id", documentID,
+	)
+
+	// Convert document to map for update
+	updateMap := s.documentToMap(doc)
+
+	// Update document in Elasticsearch
+	if err := s.esClient.UpdateDocument(ctx, indexName, documentID, updateMap); err != nil {
+		return fmt.Errorf("failed to update document: %w", err)
+	}
+
+	return nil
+}
+
+// DeleteDocument deletes a document from an index
+func (s *DocumentService) DeleteDocument(ctx context.Context, indexName, documentID string) error {
+	// Verify index exists
+	exists, err := s.esClient.IndexExists(ctx, indexName)
+	if err != nil {
+		return fmt.Errorf("failed to check index existence: %w", err)
+	}
+	if !exists {
+		return fmt.Errorf("index %s does not exist", indexName)
+	}
+
+	s.logger.Info("Deleting document",
+		"index_name", indexName,
+		"document_id", documentID,
+	)
+
+	// Delete document from Elasticsearch
+	if err := s.esClient.DeleteDocument(ctx, indexName, documentID); err != nil {
+		return fmt.Errorf("failed to delete document: %w", err)
+	}
+
+	return nil
+}
+
+// BulkDeleteDocuments deletes multiple documents from an index
+func (s *DocumentService) BulkDeleteDocuments(ctx context.Context, indexName string, documentIDs []string) error {
+	if len(documentIDs) == 0 {
+		return fmt.Errorf("no document IDs provided")
+	}
+
+	// Verify index exists
+	exists, err := s.esClient.IndexExists(ctx, indexName)
+	if err != nil {
+		return fmt.Errorf("failed to check index existence: %w", err)
+	}
+	if !exists {
+		return fmt.Errorf("index %s does not exist", indexName)
+	}
+
+	s.logger.Info("Bulk deleting documents",
+		"index_name", indexName,
+		"count", len(documentIDs),
+	)
+
+	// Bulk delete documents from Elasticsearch
+	if err := s.esClient.BulkDeleteDocuments(ctx, indexName, documentIDs); err != nil {
+		return fmt.Errorf("failed to bulk delete documents: %w", err)
+	}
+
+	return nil
+}
+
+// mapToDocument converts Elasticsearch source map to domain Document
+func (s *DocumentService) mapToDocument(id string, source map[string]interface{}) *domain.Document {
+	doc := &domain.Document{
+		ID:    id,
+		Meta:  make(map[string]interface{}),
+	}
+
+	// Extract common fields
+	if title, ok := source["title"].(string); ok {
+		doc.Title = title
+	}
+	if url, ok := source["url"].(string); ok {
+		doc.URL = url
+	}
+	if sourceName, ok := source["source_name"].(string); ok {
+		doc.SourceName = sourceName
+	}
+	if contentType, ok := source["content_type"].(string); ok {
+		doc.ContentType = contentType
+	}
+	if qualityScore, ok := source["quality_score"].(float64); ok {
+		doc.QualityScore = int(qualityScore)
+	}
+	if isCrimeRelated, ok := source["is_crime_related"].(bool); ok {
+		doc.IsCrimeRelated = isCrimeRelated
+	}
+	if body, ok := source["body"].(string); ok {
+		doc.Body = body
+	}
+	if rawText, ok := source["raw_text"].(string); ok {
+		doc.RawText = rawText
+	}
+	if rawHTML, ok := source["raw_html"].(string); ok {
+		doc.RawHTML = rawHTML
+	}
+
+	// Extract topics array
+	if topics, ok := source["topics"].([]interface{}); ok {
+		doc.Topics = make([]string, 0, len(topics))
+		for _, topic := range topics {
+			if topicStr, ok := topic.(string); ok {
+				doc.Topics = append(doc.Topics, topicStr)
+			}
+		}
+	}
+
+	// Extract dates
+	if publishedDateStr, ok := source["published_date"].(string); ok {
+		if publishedDate, err := time.Parse(time.RFC3339, publishedDateStr); err == nil {
+			doc.PublishedDate = &publishedDate
+		}
+	}
+	if crawledAtStr, ok := source["crawled_at"].(string); ok {
+		if crawledAt, err := time.Parse(time.RFC3339, crawledAtStr); err == nil {
+			doc.CrawledAt = &crawledAt
+		}
+	}
+
+	// Store all other fields in Meta
+	for key, value := range source {
+		switch key {
+		case "title", "url", "source_name", "content_type", "quality_score",
+			"is_crime_related", "body", "raw_text", "raw_html", "topics",
+			"published_date", "crawled_at":
+			// Already extracted
+		default:
+			doc.Meta[key] = value
+		}
+	}
+
+	return doc
+}
+
+// documentToMap converts domain Document to map for Elasticsearch update
+func (s *DocumentService) documentToMap(doc *domain.Document) map[string]interface{} {
+	result := make(map[string]interface{})
+
+	if doc.Title != "" {
+		result["title"] = doc.Title
+	}
+	if doc.URL != "" {
+		result["url"] = doc.URL
+	}
+	if doc.SourceName != "" {
+		result["source_name"] = doc.SourceName
+	}
+	if doc.ContentType != "" {
+		result["content_type"] = doc.ContentType
+	}
+	if doc.QualityScore > 0 {
+		result["quality_score"] = doc.QualityScore
+	}
+	result["is_crime_related"] = doc.IsCrimeRelated
+	if doc.Body != "" {
+		result["body"] = doc.Body
+	}
+	if doc.RawText != "" {
+		result["raw_text"] = doc.RawText
+	}
+	if doc.RawHTML != "" {
+		result["raw_html"] = doc.RawHTML
+	}
+	if len(doc.Topics) > 0 {
+		result["topics"] = doc.Topics
+	}
+	if doc.PublishedDate != nil {
+		result["published_date"] = doc.PublishedDate.Format(time.RFC3339)
+	}
+	if doc.CrawledAt != nil {
+		result["crawled_at"] = doc.CrawledAt.Format(time.RFC3339)
+	}
+
+	// Merge meta fields
+	for key, value := range doc.Meta {
+		result[key] = value
+	}
+
+	return result
+}
