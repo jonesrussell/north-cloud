@@ -219,7 +219,7 @@ services:
       - index_manager_go_mod_cache:/tmp/go-mod-cache
       - index_manager_go_build_cache:/tmp/go-build-cache
       - ./infrastructure:/infrastructure
-    command: ["sh", "-c", "go mod download && go run -mod=mod ./cmd/httpd/main.go"]
+    command: ["sh", "-c", "go mod download && air -c .air.toml"]
 
   # ------------------------------------------------------------
   # Search Service (Dev)
