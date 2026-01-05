@@ -38,32 +38,32 @@ type ExtendedOG struct {
 
 // RawContentData represents extracted raw content from any HTML page
 type RawContentData struct {
-	ID              string
-	URL             string
-	Title           string
-	RawText         string
-	RawHTML         string
-	MetaDescription string
-	MetaKeywords    string
-	OGType          string
-	OGTitle         string
-	OGDescription   string
-	OGImage         string
-	OGURL           string
-	CanonicalURL      string
-	Author            string
-	PublishedDate     *time.Time
-	ArticleSection    string
-	ArticleOpinion    bool
+	ID                 string
+	URL                string
+	Title              string
+	RawText            string
+	RawHTML            string
+	MetaDescription    string
+	MetaKeywords       string
+	OGType             string
+	OGTitle            string
+	OGDescription      string
+	OGImage            string
+	OGURL              string
+	CanonicalURL       string
+	Author             string
+	PublishedDate      *time.Time
+	ArticleSection     string
+	ArticleOpinion     bool
 	ArticleContentTier string
-	TwitterCard       string
-	TwitterSite       string
-	OGImageWidth      int
-	OGImageHeight     int
-	OGSiteName        string
-	JSONLDData        map[string]any
-	CreatedAt         time.Time
-	UpdatedAt         time.Time
+	TwitterCard        string
+	TwitterSite        string
+	OGImageWidth       int
+	OGImageHeight      int
+	OGSiteName         string
+	JSONLDData         map[string]any
+	CreatedAt          time.Time
+	UpdatedAt          time.Time
 }
 
 // ExtractRawContent extracts raw content from any HTML element without type assumptions.

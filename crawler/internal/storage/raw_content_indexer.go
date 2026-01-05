@@ -36,7 +36,7 @@ type RawContent struct {
 	JSONLDData           map[string]any `json:"json_ld_data,omitempty"`
 	ClassificationStatus string         `json:"classification_status"`
 	CrawledAt            time.Time      `json:"crawled_at"`
-	WordCount            int            `json:"word_count"` // CRITICAL: Classifier needs this
+	WordCount            int            `json:"word_count"`     // CRITICAL: Classifier needs this
 	Meta                 map[string]any `json:"meta,omitempty"` // Additional metadata
 }
 

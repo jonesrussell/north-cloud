@@ -507,8 +507,8 @@ func TestContentTypeClassifier_BaytodayURLs(t *testing.T) {
 	classifier := NewContentTypeClassifier(&mockLogger{})
 
 	tests := []struct {
-		name        string
-		url         string
+		name         string
+		url          string
 		expectedType string
 	}{
 		{
