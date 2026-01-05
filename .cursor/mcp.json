@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "North Cloud": {
+      "command": "docker",
+      "args": [
+        "exec",
+        "-i",
+        "north-cloud-mcp-north-cloud-1",
+        "/app/run-mcp.sh"
+      ],
+      "env": {
+        "INDEX_MANAGER_URL": "http://index-manager:8090"
+      }
+    }
+  }
+}

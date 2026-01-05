@@ -441,8 +441,39 @@ export const indexManagerApi = {
     query: (
       indexName: string,
       params?: DocumentQueryRequest
-    ): Promise<AxiosResponse<DocumentQueryResponse>> =>
-      indexManagerClient.get(`/api/v1/indexes/${indexName}/documents`, { params }),
+    ): Promise<AxiosResponse<DocumentQueryResponse>> => {
+      // Flatten nested params for GET request (backend expects flat query params)
+      const flatParams: Record<string, unknown> = {}
+      if (params?.query) {
+        flatParams.query = params.query
+      }
+      if (params?.pagination) {
+        flatParams.page = params.pagination.page
+        flatParams.size = params.pagination.size
+      }
+      if (params?.sort) {
+        flatParams.sort_field = params.sort.field
+        flatParams.sort_order = params.sort.order
+      }
+      if (params?.filters) {
+        if (params.filters.is_crime_related !== undefined) {
+          flatParams.is_crime_related = params.filters.is_crime_related
+        }
+        if (params.filters.content_type) {
+          flatParams.content_type = params.filters.content_type
+        }
+        if (params.filters.min_quality_score) {
+          flatParams.min_quality_score = params.filters.min_quality_score
+        }
+        if (params.filters.max_quality_score) {
+          flatParams.max_quality_score = params.filters.max_quality_score
+        }
+        if (params.filters.topics && params.filters.topics.length > 0) {
+          flatParams.topics = params.filters.topics.join(',')
+        }
+      }
+      return indexManagerClient.get(`/api/v1/indexes/${indexName}/documents`, { params: flatParams })
+    },
     get: (indexName: string, documentId: string): Promise<AxiosResponse<Document>> =>
       indexManagerClient.get(`/api/v1/indexes/${indexName}/documents/${documentId}`),
     update: (

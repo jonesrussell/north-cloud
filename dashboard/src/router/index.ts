@@ -23,6 +23,7 @@ import CitiesView from '../views/sources/CitiesView.vue'
 // Indexes views
 import IndexesView from '../views/indexes/IndexesView.vue'
 import IndexDetailView from '../views/indexes/IndexDetailView.vue'
+import DocumentDetailView from '../views/indexes/DocumentDetailView.vue'
 
 // Classifier views
 import ClassifierRulesView from '../views/classifier/RulesView.vue'
@@ -179,6 +180,13 @@ const routes: RouteRecordRaw[] = [
     component: IndexDetailView,
     props: true,
     meta: { title: 'Index Details', section: 'indexes', requiresAuth: true },
+  },
+  {
+    path: '/indexes/:index_name/documents/:document_id',
+    name: 'document-detail',
+    component: DocumentDetailView,
+    props: true,
+    meta: { title: 'Document Details', section: 'indexes', requiresAuth: true },
   },
 
   // Classifier routes

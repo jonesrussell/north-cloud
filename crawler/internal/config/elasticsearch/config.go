@@ -69,15 +69,15 @@ func (e *ConfigError) Error() string {
 // Config represents Elasticsearch configuration settings.
 type Config struct {
 	// Addresses is a list of Elasticsearch node addresses
-	Addresses []string `yaml:"addresses" env:"ELASTICSEARCH_HOSTS"`
+	Addresses []string `env:"ELASTICSEARCH_HOSTS" yaml:"addresses"`
 	// APIKey is the base64 encoded API key for authentication
-	APIKey string `yaml:"api_key" env:"ELASTICSEARCH_API_KEY"`
+	APIKey string `env:"ELASTICSEARCH_API_KEY" yaml:"api_key"`
 	// Username is the username for authentication
-	Username string `yaml:"username" env:"ELASTICSEARCH_USERNAME"`
+	Username string `env:"ELASTICSEARCH_USERNAME" yaml:"username"`
 	// Password is the password for authentication (minimum 8 characters)
-	Password string `yaml:"password" env:"ELASTICSEARCH_PASSWORD"`
+	Password string `env:"ELASTICSEARCH_PASSWORD" yaml:"password"`
 	// IndexName is the name of the index
-	IndexName string `yaml:"index_name" env:"ELASTICSEARCH_INDEX_PREFIX"`
+	IndexName string `env:"ELASTICSEARCH_INDEX_PREFIX" yaml:"index_name"`
 	// Cloud contains cloud-specific configuration
 	Cloud struct {
 		ID     string `yaml:"id"`
@@ -87,17 +87,17 @@ type Config struct {
 	TLS *TLSConfig `yaml:"tls"`
 	// Retry contains retry configuration
 	Retry struct {
-		Enabled     bool          `yaml:"enabled" env:"ELASTICSEARCH_RETRY_ENABLED"`
-		InitialWait time.Duration `yaml:"initial_wait" env:"ELASTICSEARCH_RETRY_INITIAL_WAIT"`
-		MaxWait     time.Duration `yaml:"max_wait" env:"ELASTICSEARCH_RETRY_MAX_WAIT"`
-		MaxRetries  int           `yaml:"max_retries" env:"ELASTICSEARCH_MAX_RETRIES"`
+		Enabled     bool          `env:"ELASTICSEARCH_RETRY_ENABLED"      yaml:"enabled"`
+		InitialWait time.Duration `env:"ELASTICSEARCH_RETRY_INITIAL_WAIT" yaml:"initial_wait"`
+		MaxWait     time.Duration `env:"ELASTICSEARCH_RETRY_MAX_WAIT"     yaml:"max_wait"`
+		MaxRetries  int           `env:"ELASTICSEARCH_MAX_RETRIES"        yaml:"max_retries"`
 	} `yaml:"retry"`
 	// BulkSize is the number of documents to bulk index
 	BulkSize int `yaml:"bulk_size"`
 	// FlushInterval is the interval at which to flush the bulk indexer
 	FlushInterval time.Duration `yaml:"flush_interval"`
 	// DiscoverNodes enables/disables node discovery
-	DiscoverNodes bool `yaml:"discover_nodes" env:"ELASTICSEARCH_DISCOVER_NODES"`
+	DiscoverNodes bool `env:"ELASTICSEARCH_DISCOVER_NODES" yaml:"discover_nodes"`
 	// MaxSize is the maximum size of the storage in bytes
 	MaxSize int64 `yaml:"max_size"`
 	// MaxItems is the maximum number of items to store
@@ -108,11 +108,11 @@ type Config struct {
 
 // TLSConfig represents TLS configuration settings.
 type TLSConfig struct {
-	CertFile           string `yaml:"cert_file" env:"ELASTICSEARCH_TLS_CERT_FILE"`
-	KeyFile            string `yaml:"key_file" env:"ELASTICSEARCH_TLS_KEY_FILE"`
-	CAFile             string `yaml:"ca_file" env:"ELASTICSEARCH_TLS_CA_FILE"`
-	InsecureSkipVerify bool   `yaml:"insecure_skip_verify" env:"ELASTICSEARCH_TLS_INSECURE_SKIP_VERIFY"`
-	Enabled            bool   `yaml:"enabled" env:"ELASTICSEARCH_TLS_ENABLED"`
+	CertFile           string `env:"ELASTICSEARCH_TLS_CERT_FILE"            yaml:"cert_file"`
+	KeyFile            string `env:"ELASTICSEARCH_TLS_KEY_FILE"             yaml:"key_file"`
+	CAFile             string `env:"ELASTICSEARCH_TLS_CA_FILE"              yaml:"ca_file"`
+	InsecureSkipVerify bool   `env:"ELASTICSEARCH_TLS_INSECURE_SKIP_VERIFY" yaml:"insecure_skip_verify"`
+	Enabled            bool   `env:"ELASTICSEARCH_TLS_ENABLED"              yaml:"enabled"`
 }
 
 // validateTLS validates the TLS configuration
@@ -269,10 +269,10 @@ func NewConfig() *Config {
 	return &Config{
 		Addresses: []string{DefaultAddresses},
 		Retry: struct {
-			Enabled     bool          `yaml:"enabled" env:"ELASTICSEARCH_RETRY_ENABLED"`
-			InitialWait time.Duration `yaml:"initial_wait" env:"ELASTICSEARCH_RETRY_INITIAL_WAIT"`
-			MaxWait     time.Duration `yaml:"max_wait" env:"ELASTICSEARCH_RETRY_MAX_WAIT"`
-			MaxRetries  int           `yaml:"max_retries" env:"ELASTICSEARCH_MAX_RETRIES"`
+			Enabled     bool          `env:"ELASTICSEARCH_RETRY_ENABLED"      yaml:"enabled"`
+			InitialWait time.Duration `env:"ELASTICSEARCH_RETRY_INITIAL_WAIT" yaml:"initial_wait"`
+			MaxWait     time.Duration `env:"ELASTICSEARCH_RETRY_MAX_WAIT"     yaml:"max_wait"`
+			MaxRetries  int           `env:"ELASTICSEARCH_MAX_RETRIES"        yaml:"max_retries"`
 		}{
 			Enabled:     DefaultRetryEnabled,
 			InitialWait: DefaultInitialWait,

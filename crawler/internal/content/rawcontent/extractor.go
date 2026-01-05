@@ -9,29 +9,61 @@ import (
 	"strings"
 	"time"
 
+	"encoding/json"
+	"strconv"
+
 	"github.com/PuerkitoBio/goquery"
 	"github.com/gocolly/colly/v2"
 )
 
+// ArticleMeta contains article-specific metadata
+type ArticleMeta struct {
+	Section     string
+	Opinion     bool
+	ContentTier string
+}
+
+// TwitterMeta contains Twitter card metadata
+type TwitterMeta struct {
+	Card string
+	Site string
+}
+
+// ExtendedOG contains extended Open Graph metadata
+type ExtendedOG struct {
+	ImageWidth  int
+	ImageHeight int
+	SiteName    string
+}
+
 // RawContentData represents extracted raw content from any HTML page
 type RawContentData struct {
-	ID              string
-	URL             string
-	Title           string
-	RawText         string
-	RawHTML         string
-	MetaDescription string
-	MetaKeywords    string
-	OGType          string
-	OGTitle         string
-	OGDescription   string
-	OGImage         string
-	OGURL           string
-	CanonicalURL    string
-	Author          string
-	PublishedDate   *time.Time
-	CreatedAt       time.Time
-	UpdatedAt       time.Time
+	ID                 string
+	URL                string
+	Title              string
+	RawText            string
+	RawHTML            string
+	MetaDescription    string
+	MetaKeywords       string
+	OGType             string
+	OGTitle            string
+	OGDescription      string
+	OGImage            string
+	OGURL              string
+	CanonicalURL       string
+	Author             string
+	PublishedDate      *time.Time
+	ArticleSection     string
+	ArticleOpinion     bool
+	ArticleContentTier string
+	TwitterCard        string
+	TwitterSite        string
+	OGImageWidth       int
+	OGImageHeight      int
+	OGSiteName         string
+	JSONLDData         map[string]any
+	CreatedAt          time.Time
+	UpdatedAt          time.Time
 }
 
 // ExtractRawContent extracts raw content from any HTML element without type assumptions.
@@ -272,8 +304,201 @@ func extractFromBodyParagraphs(e *colly.HTMLElement, excludeSelectors []string) 
 	return strings.Join(textParts, "\n\n")
 }
 
+// extractJSONLD extracts JSON-LD structured data from script tags
+func extractJSONLD(e *colly.HTMLElement) map[string]any {
+	result := make(map[string]any)
+
+	// Find all script tags with type="application/ld+json"
+	e.DOM.Find("script[type='application/ld+json']").Each(func(i int, s *goquery.Selection) {
+		jsonText := strings.TrimSpace(s.Text())
+		if jsonText == "" {
+			return
+		}
+
+		var jsonData any
+		if err := json.Unmarshal([]byte(jsonText), &jsonData); err != nil {
+			// Skip invalid JSON, continue processing other scripts
+			return
+		}
+
+		// Handle both single objects and arrays
+		var jsonObjs []any
+		switch v := jsonData.(type) {
+		case []any:
+			jsonObjs = v
+		case map[string]any:
+			jsonObjs = []any{v}
+		default:
+			return
+		}
+
+		// Extract NewsArticle schema data
+		for _, obj := range jsonObjs {
+			objMap, isMap := obj.(map[string]any)
+			if !isMap {
+				continue
+			}
+
+			// Check if this is a NewsArticle or Article type
+			typeVal, _ := objMap["@type"].(string)
+			if typeVal != "NewsArticle" && typeVal != "Article" {
+				// Store non-NewsArticle schemas in result for reference
+				continue
+			}
+
+			// Extract fields from NewsArticle schema
+			extractNewsArticleFields(objMap, result)
+
+			// Store full JSON-LD object for reference
+			result["jsonld_raw"] = objMap
+		}
+	})
+
+	return result
+}
+
+// extractNewsArticleFields extracts fields from a NewsArticle JSON-LD object
+func extractNewsArticleFields(objMap, result map[string]any) {
+	extractJSONLDStringFields(objMap, result)
+	extractJSONLDNumericFields(objMap, result)
+	extractJSONLDKeywords(objMap, result)
+	extractJSONLDAuthor(objMap, result)
+	extractJSONLDPublisher(objMap, result)
+	extractJSONLDImage(objMap, result)
+}
+
+// extractJSONLDStringFields extracts string fields from JSON-LD object
+func extractJSONLDStringFields(objMap, result map[string]any) {
+	fieldMap := map[string]string{
+		"headline":       "jsonld_headline",
+		"description":    "jsonld_description",
+		"articleSection": "jsonld_article_section",
+		"url":            "jsonld_url",
+		"dateCreated":    "jsonld_date_created",
+		"dateModified":   "jsonld_date_modified",
+		"datePublished":  "jsonld_date_published",
+	}
+
+	for key, resultKey := range fieldMap {
+		if val, isString := objMap[key].(string); isString && val != "" {
+			result[resultKey] = val
+		}
+	}
+}
+
+// extractJSONLDNumericFields extracts numeric fields from JSON-LD object
+func extractJSONLDNumericFields(objMap, result map[string]any) {
+	if wordCount, isFloat := objMap["wordCount"].(float64); isFloat {
+		result["jsonld_word_count"] = int(wordCount)
+	}
+}
+
+// extractJSONLDKeywords extracts keywords array from JSON-LD object
+func extractJSONLDKeywords(objMap, result map[string]any) {
+	keywords, isArray := objMap["keywords"].([]any)
+	if !isArray || len(keywords) == 0 {
+		return
+	}
+
+	keywordStrs := make([]string, 0, len(keywords))
+	for _, kw := range keywords {
+		if kwStr, isKwString := kw.(string); isKwString {
+			keywordStrs = append(keywordStrs, kwStr)
+		}
+	}
+	if len(keywordStrs) > 0 {
+		result["jsonld_keywords"] = keywordStrs
+	}
+}
+
+// extractJSONLDAuthor extracts author field from JSON-LD object (can be string or object)
+func extractJSONLDAuthor(objMap, result map[string]any) {
+	if author, isAuthorString := objMap["author"].(string); isAuthorString && author != "" {
+		result["jsonld_author"] = author
+		return
+	}
+
+	if authorObj, isAuthorObj := objMap["author"].(map[string]any); isAuthorObj {
+		if authorName, isNameString := authorObj["name"].(string); isNameString && authorName != "" {
+			result["jsonld_author"] = authorName
+		}
+	}
+}
+
+// extractJSONLDPublisher extracts publisher field from JSON-LD object
+func extractJSONLDPublisher(objMap, result map[string]any) {
+	publisher, isPublisherObj := objMap["publisher"].(map[string]any)
+	if !isPublisherObj {
+		return
+	}
+
+	if pubName, isPubNameString := publisher["name"].(string); isPubNameString && pubName != "" {
+		result["jsonld_publisher_name"] = pubName
+	}
+}
+
+// extractJSONLDImage extracts image field from JSON-LD object (can be object or string)
+func extractJSONLDImage(objMap, result map[string]any) {
+	if image, isImageObj := objMap["image"].(map[string]any); isImageObj {
+		if imageURL, isImageURLString := image["url"].(string); isImageURLString && imageURL != "" {
+			result["jsonld_image_url"] = imageURL
+		}
+		return
+	}
+
+	if imageStr, isImageString := objMap["image"].(string); isImageString && imageStr != "" {
+		result["jsonld_image_url"] = imageStr
+	}
+}
+
+// extractArticleMeta extracts article-specific metadata
+func extractArticleMeta(e *colly.HTMLElement) ArticleMeta {
+	var meta ArticleMeta
+
+	meta.Section = extractMeta(e, "article:section")
+	meta.ContentTier = extractMeta(e, "article:content_tier")
+
+	// Parse article:opinion as boolean
+	opinionStr := extractMeta(e, "article:opinion")
+	meta.Opinion = opinionStr == "true" || opinionStr == "1"
+
+	return meta
+}
+
+// extractTwitterMeta extracts Twitter card metadata
+func extractTwitterMeta(e *colly.HTMLElement) TwitterMeta {
+	var meta TwitterMeta
+
+	meta.Card = extractMeta(e, "twitter:card")
+	meta.Site = extractMeta(e, "twitter:site")
+
+	return meta
+}
+
+// extractExtendedOG extracts extended Open Graph metadata
+func extractExtendedOG(e *colly.HTMLElement) ExtendedOG {
+	var og ExtendedOG
+
+	og.SiteName = extractMeta(e, "og:site_name")
+
+	// Parse numeric values
+	if widthStr := extractMeta(e, "og:image:width"); widthStr != "" {
+		if width, err := strconv.Atoi(widthStr); err == nil {
+			og.ImageWidth = width
+		}
+	}
+	if heightStr := extractMeta(e, "og:image:height"); heightStr != "" {
+		if height, err := strconv.Atoi(heightStr); err == nil {
+			og.ImageHeight = height
+		}
+	}
+
+	return og
+}
+
 // extractMetadata extracts Open Graph and other metadata
 func extractMetadata(data *RawContentData, e *colly.HTMLElement) {
+	// Extract basic meta tags (keep existing extraction for backward compatibility)
 	data.MetaDescription = extractMeta(e, "description")
 	data.MetaKeywords = extractMeta(e, "keywords")
 	data.OGType = extractMeta(e, "og:type")
@@ -297,6 +522,28 @@ func extractMetadata(data *RawContentData, e *colly.HTMLElement) {
 			}
 		}
 	}
+
+	// Use specialized extractors (SRP)
+	jsonLDData := extractJSONLD(e)
+	if len(jsonLDData) > 0 {
+		data.JSONLDData = jsonLDData
+	} else {
+		data.JSONLDData = make(map[string]any)
+	}
+
+	articleMeta := extractArticleMeta(e)
+	data.ArticleSection = articleMeta.Section
+	data.ArticleOpinion = articleMeta.Opinion
+	data.ArticleContentTier = articleMeta.ContentTier
+
+	twitterMeta := extractTwitterMeta(e)
+	data.TwitterCard = twitterMeta.Card
+	data.TwitterSite = twitterMeta.Site
+
+	extendedOG := extractExtendedOG(e)
+	data.OGImageWidth = extendedOG.ImageWidth
+	data.OGImageHeight = extendedOG.ImageHeight
+	data.OGSiteName = extendedOG.SiteName
 }
 
 // extractText extracts text from the first element matching the selector

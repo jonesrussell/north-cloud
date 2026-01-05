@@ -7,16 +7,16 @@ import (
 
 // DiscoveredLink represents a link discovered during crawling for tracking/auditing purposes.
 type DiscoveredLink struct {
-	ID           string    `json:"id" db:"id"`
-	SourceID     string    `json:"source_id" db:"source_id"`
-	SourceName   string    `json:"source_name" db:"source_name"`
-	URL          string    `json:"url" db:"url"`
-	ParentURL    *string   `json:"parent_url,omitempty" db:"parent_url"`
-	Depth        int       `json:"depth" db:"depth"`
-	DiscoveredAt time.Time `json:"discovered_at" db:"discovered_at"`
-	QueuedAt     time.Time `json:"queued_at" db:"queued_at"`
-	Status       string    `json:"status" db:"status"`
-	Priority     int       `json:"priority" db:"priority"`
-	CreatedAt    time.Time `json:"created_at" db:"created_at"`
-	UpdatedAt    time.Time `json:"updated_at" db:"updated_at"`
+	ID           string    `db:"id"            json:"id"`
+	SourceID     string    `db:"source_id"     json:"source_id"`
+	SourceName   string    `db:"source_name"   json:"source_name"`
+	URL          string    `db:"url"           json:"url"`
+	ParentURL    *string   `db:"parent_url"    json:"parent_url,omitempty"`
+	Depth        int       `db:"depth"         json:"depth"`
+	DiscoveredAt time.Time `db:"discovered_at" json:"discovered_at"`
+	QueuedAt     time.Time `db:"queued_at"     json:"queued_at"`
+	Status       string    `db:"status"        json:"status"`
+	Priority     int       `db:"priority"      json:"priority"`
+	CreatedAt    time.Time `db:"created_at"    json:"created_at"`
+	UpdatedAt    time.Time `db:"updated_at"    json:"updated_at"`
 }

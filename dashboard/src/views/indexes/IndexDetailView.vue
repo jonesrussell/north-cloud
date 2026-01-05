@@ -198,10 +198,20 @@
                 >
               </td>
               <td class="px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-500">
-                {{ document.id.substring(0, 8) }}...
+                <button
+                  class="text-blue-600 hover:text-blue-900 hover:underline cursor-pointer"
+                  @click="viewDocument(document)"
+                >
+                  {{ document.id.substring(0, 8) }}...
+                </button>
               </td>
               <td class="px-6 py-4 text-sm text-gray-900">
-                {{ document.title || '-' }}
+                <button
+                  class="text-blue-600 hover:text-blue-900 hover:underline cursor-pointer text-left"
+                  @click="viewDocument(document)"
+                >
+                  {{ document.title || '-' }}
+                </button>
               </td>
               <td class="px-6 py-4 text-sm text-gray-600 max-w-xs truncate">
                 <a
@@ -217,7 +227,7 @@
                 <span v-else>-</span>
               </td>
               <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                {{ document.content_type || '-' }}
+                {{ document.content_type || (document.meta?.content_type as string) || (document.meta?.og_type as string) || '-' }}
               </td>
               <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                 {{ document.quality_score ?? '-' }}
@@ -380,7 +390,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { TrashIcon } from '@heroicons/vue/24/outline'
 import { indexManagerApi } from '../../api/client'
 import type { Document, DocumentFilters, Index } from '../../types/indexManager'
@@ -395,6 +405,7 @@ import BulkActionsToolbar from '../../components/common/BulkActionsToolbar.vue'
 import EditEntryModal from '../../components/indexes/EditEntryModal.vue'
 
 const route = useRoute()
+const router = useRouter()
 const indexName = computed(() => route.params.index_name as string)
 
 const documents = ref<Document[]>([])
@@ -553,6 +564,10 @@ const toggleSelectAll = (): void => {
 
 const clearSelection = (): void => {
   selectedDocuments.value = []
+}
+
+const viewDocument = (document: Document): void => {
+  router.push(`/indexes/${indexName.value}/documents/${document.id}`)
 }
 
 const editDocument = (document: Document): void => {

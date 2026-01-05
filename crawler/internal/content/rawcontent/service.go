@@ -225,13 +225,36 @@ func (s *RawContentService) convertToRawContent(rawData *RawContentData, sourceN
 	// Calculate word count
 	wordCount := calculateWordCount(rawData.RawText)
 
-	// Determine OG type (default to article for news content)
+	// Use OG type as-is from HTML extraction
+	// Don't default to "article" - let classifier decide based on content characteristics
 	ogType := rawData.OGType
-	if ogType == "" {
-		ogType = "article"
+	// Keep empty if not present in HTML
+
+	// Build meta object with additional metadata
+	meta := make(map[string]any)
+	if rawData.ArticleOpinion {
+		meta["article_opinion"] = rawData.ArticleOpinion
+	}
+	if rawData.ArticleContentTier != "" {
+		meta["article_content_tier"] = rawData.ArticleContentTier
+	}
+	if rawData.TwitterCard != "" {
+		meta["twitter_card"] = rawData.TwitterCard
+	}
+	if rawData.TwitterSite != "" {
+		meta["twitter_site"] = rawData.TwitterSite
+	}
+	if rawData.OGImageWidth > 0 {
+		meta["og_image_width"] = rawData.OGImageWidth
+	}
+	if rawData.OGImageHeight > 0 {
+		meta["og_image_height"] = rawData.OGImageHeight
+	}
+	if rawData.OGSiteName != "" {
+		meta["og_site_name"] = rawData.OGSiteName
 	}
 
-	return &storagepkg.RawContent{
+	rawContent := &storagepkg.RawContent{
 		ID:                   rawData.ID,
 		URL:                  rawData.URL,
 		SourceName:           sourceName,
@@ -246,10 +269,20 @@ func (s *RawContentService) convertToRawContent(rawData *RawContentData, sourceN
 		OGImage:              rawData.OGImage,
 		Author:               rawData.Author,
 		PublishedDate:        rawData.PublishedDate,
+		CanonicalURL:         rawData.CanonicalURL,
+		ArticleSection:       rawData.ArticleSection,
+		JSONLDData:           rawData.JSONLDData,
 		ClassificationStatus: "pending",
 		CrawledAt:            time.Now(),
 		WordCount:            wordCount,
 	}
+
+	// Only add meta object if it has content
+	if len(meta) > 0 {
+		rawContent.Meta = meta
+	}
+
+	return rawContent
 }
 
 // calculateWordCount calculates word count from text

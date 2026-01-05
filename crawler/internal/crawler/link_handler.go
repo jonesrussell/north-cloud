@@ -58,16 +58,23 @@ func (h *LinkHandler) HandleLink(e *colly.HTMLElement) {
 }
 
 // shouldSkipLink determines if a link should be skipped based on its scheme or prefix.
+// Relative URLs (no scheme) are allowed because they can be made absolute by AbsoluteURL().
 func (h *LinkHandler) shouldSkipLink(link string) bool {
 	if link == "" {
 		return true
 	}
 
 	u, err := url.Parse(link)
-	if err != nil || u.Scheme == "" {
+	if err != nil {
 		return true
 	}
 
+	// Allow relative URLs (no scheme) - they will be converted to absolute URLs
+	if u.Scheme == "" {
+		return false
+	}
+
+	// Only allow http and https schemes
 	switch u.Scheme {
 	case "http", "https":
 		return false

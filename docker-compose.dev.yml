@@ -222,6 +222,31 @@ services:
     command: ["sh", "-c", "go mod download && air -c .air.toml"]
 
   # ------------------------------------------------------------
+  # MCP Index Manager (Dev)
+  # ------------------------------------------------------------
+  mcp-north-cloud:
+    <<: *go-dev-defaults
+    build:
+      context: ./mcp-north-cloud
+      dockerfile: Dockerfile.dev
+      args:
+        UID: "${UID:-1000}"
+        GID: "${GID:-1000}"
+    stdin_open: true
+    tty: true
+    depends_on:
+      index-manager:
+        condition: service_started
+    environment:
+      <<: *go-dev-environment
+      INDEX_MANAGER_URL: http://index-manager:8090
+    volumes:
+      - ./mcp-north-cloud:/app
+      - mcp_index_manager_go_mod_cache:/tmp/go-mod-cache
+      - mcp_index_manager_go_build_cache:/tmp/go-build-cache
+    command: ["sh", "-c", "go mod download && air -c .air.toml"]
+
+  # ------------------------------------------------------------
   # Search Service (Dev)
   # ------------------------------------------------------------
   search-service:
@@ -542,4 +567,6 @@ volumes:
   search_frontend_node_modules:
   auth_go_mod_cache:
   auth_go_build_cache:
+  mcp_index_manager_go_mod_cache:
+  mcp_index_manager_go_build_cache:
   pyroscope_data:

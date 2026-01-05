@@ -18,12 +18,12 @@ const (
 
 // Config represents database configuration settings.
 type Config struct {
-	Host     string `yaml:"host" env:"DB_HOST"`
-	Port     string `yaml:"port" env:"DB_PORT"`
-	User     string `yaml:"user" env:"DB_USER"`
-	Password string `yaml:"password" env:"DB_PASSWORD"`
-	DBName   string `yaml:"dbname" env:"DB_NAME"`
-	SSLMode  string `yaml:"sslmode" env:"DB_SSLMODE"`
+	Host     string `env:"DB_HOST"     yaml:"host"`
+	Port     string `env:"DB_PORT"     yaml:"port"`
+	User     string `env:"DB_USER"     yaml:"user"`
+	Password string `env:"DB_PASSWORD" yaml:"password"`
+	DBName   string `env:"DB_NAME"     yaml:"dbname"`
+	SSLMode  string `env:"DB_SSLMODE"  yaml:"sslmode"`
 }
 
 // getConfigValue retrieves a configuration value from environment or Viper, with a default fallback.
