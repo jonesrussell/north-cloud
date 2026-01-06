@@ -246,11 +246,12 @@ services:
     environment:
       <<: *go-dev-environment
       INDEX_MANAGER_URL: http://index-manager:8090
+      # Use app directory for caches to avoid permission issues with named volumes
+      GOCACHE: /app/tmp/go-build-cache
+      GOMODCACHE: /app/tmp/go-mod-cache
     volumes:
       - ./mcp-north-cloud:/app
-      - mcp_index_manager_go_mod_cache:/tmp/go-mod-cache
-      - mcp_index_manager_go_build_cache:/tmp/go-build-cache
-    command: ["sh", "-c", "go mod download && air -c .air.toml"]
+    command: ["sh", "-c", "mkdir -p /app/tmp/go-build-cache /app/tmp/go-mod-cache && go mod download && air -c .air.toml"]
 
   # ------------------------------------------------------------
   # Search Service (Dev)
