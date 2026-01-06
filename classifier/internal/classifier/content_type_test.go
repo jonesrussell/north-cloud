@@ -23,7 +23,7 @@ func TestContentTypeClassifier_Classify_Article_ViaOG(t *testing.T) {
 	publishedDate := time.Now()
 	raw := &domain.RawContent{
 		ID:            "test-1",
-		URL:           "https://example.com/news/article",
+		URL:           "https://example.com/story/article",
 		Title:         "Test Article",
 		RawText:       "This is a test article with enough content to be classified as an article.",
 		OGType:        "article",
@@ -166,7 +166,7 @@ func TestContentTypeClassifier_ClassifyBatch(t *testing.T) {
 	rawItems := []*domain.RawContent{
 		{
 			ID:            "batch-1",
-			URL:           "https://example.com/news/article",
+			URL:           "https://example.com/story/article",
 			Title:         "Article 1",
 			OGType:        "article",
 			WordCount:     300,
@@ -396,14 +396,15 @@ func TestContentTypeClassifier_Classify_OGTypeWithoutDate(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	// Should classify as page because missing published date (falls through to default)
-	if result.Type != domain.ContentTypePage {
-		t.Errorf("expected type %s, got %s", domain.ContentTypePage, result.Type)
+	// OGType is authoritative - if it says "article", we trust it regardless of other fields
+	// This is the current behavior: OGType takes precedence over heuristics
+	if result.Type != domain.ContentTypeArticle {
+		t.Errorf("expected type %s, got %s (OGType is authoritative)", domain.ContentTypeArticle, result.Type)
 	}
 
-	// After our fix, this falls through to default method instead of og_metadata_validation
-	if result.Method != "default" {
-		t.Errorf("expected method default, got %s", result.Method)
+	// Should use og_metadata method since OGType is set
+	if result.Method != "og_metadata" {
+		t.Errorf("expected method og_metadata, got %s", result.Method)
 	}
 }
 
@@ -550,6 +551,149 @@ func TestContentTypeClassifier_BaytodayURLs(t *testing.T) {
 
 			if result.Type != tt.expectedType {
 				t.Errorf("URL %s: expected type %s, got %s (method: %s)", tt.url, tt.expectedType, result.Type, result.Method)
+			}
+		})
+	}
+}
+
+// Test pagination query parameter detection
+func TestContentTypeClassifier_PaginationQueryParams(t *testing.T) {
+	classifier := NewContentTypeClassifier(&mockLogger{})
+
+	tests := []struct {
+		name         string
+		url          string
+		expectedType string
+	}{
+		{
+			name:         "pagination with page=5",
+			url:          "https://www.sudbury.com/ontario-news?page=5",
+			expectedType: domain.ContentTypePage,
+		},
+		{
+			name:         "pagination with p=2",
+			url:          "https://example.com/news?p=2",
+			expectedType: domain.ContentTypePage,
+		},
+		{
+			name:         "pagination with pagenum=3",
+			url:          "https://example.com/articles?pagenum=3",
+			expectedType: domain.ContentTypePage,
+		},
+		{
+			name:         "pagination with offset=20",
+			url:          "https://example.com/stories?offset=20",
+			expectedType: domain.ContentTypePage,
+		},
+		{
+			name:         "no pagination - regular article",
+			url:          "https://example.com/story/article-title",
+			expectedType: domain.ContentTypeArticle,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			publishedDate := time.Now()
+			raw := &domain.RawContent{
+				ID:              "test-" + tt.name,
+				URL:             tt.url,
+				Title:           "Test Content",
+				RawText:         "This is test content with enough words to potentially be an article.",
+				WordCount:       250,
+				MetaDescription: "Test description",
+				PublishedDate:   &publishedDate,
+			}
+
+			result, err := classifier.Classify(context.Background(), raw)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+
+			if result.Type != tt.expectedType {
+				t.Errorf("URL %s: expected type %s, got %s (method: %s, reason: %s)",
+					tt.url, tt.expectedType, result.Type, result.Method, result.Reason)
+			}
+		})
+	}
+}
+
+// Test listing page content detection
+func TestContentTypeClassifier_ListingPageContent(t *testing.T) {
+	classifier := NewContentTypeClassifier(&mockLogger{})
+
+	tests := []struct {
+		name         string
+		rawText      string
+		expectedType string
+	}{
+		{
+			name: "listing page with multiple read more links",
+			rawText: `Toronto police investigating after second incident of mezuzahs stolen
+			TORONTO — Toronto police are investigating after multiple mezuzahs were stolen outside Jewish homes for the second time this month.
+			Read more >
+			Future uncertain for Ontario college students as federal policy brings cuts, layoffs
+			TORONTO — The tightening of Canada's international student regime has had ripple effects across higher education.
+			Read more >
+			Toronto police probing Christmas Eve storefront collision that left one dead
+			TORONTO — Toronto police have released more information about a Christmas Eve crash into a storefront.
+			Read more >`,
+			expectedType: domain.ContentTypePage,
+		},
+		{
+			name: "listing page with multiple datelines",
+			rawText: `TORONTO — First article summary here with some content.
+			Dec 26, 2025 9:31 AM
+			OTTAWA — Second article summary here with some content.
+			Dec 26, 2025 4:00 AM
+			TORONTO — Third article summary here with some content.
+			Dec 25, 2025 11:11 AM
+			ONTARIO — Fourth article summary here with some content.
+			Dec 24, 2025 7:23 PM`,
+			expectedType: domain.ContentTypePage,
+		},
+		{
+			name: "listing page with multiple dates",
+			rawText: `Article one summary here. Dec 26, 2025 9:31 AM
+			Article two summary here. Dec 26, 2025 4:00 AM
+			Article three summary here. Dec 25, 2025 11:11 AM
+			Article four summary here. Dec 24, 2025 7:23 PM
+			Article five summary here. Dec 24, 2025 6:07 PM
+			Article six summary here. Dec 24, 2025 2:37 PM`,
+			expectedType: domain.ContentTypePage,
+		},
+		{
+			name: "regular article (not a listing page)",
+			rawText: `This is a regular news article with a single topic and narrative.
+			It has enough content to be classified as an article. The content flows
+			coherently from one paragraph to the next, discussing a single subject
+			in depth. There are no multiple article summaries or "Read more" links.
+			This is the kind of content that should be classified as an article.`,
+			expectedType: domain.ContentTypeArticle,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			publishedDate := time.Now()
+			raw := &domain.RawContent{
+				ID:              "test-" + tt.name,
+				URL:             "https://example.com/content",
+				Title:           "Test Content",
+				RawText:         tt.rawText,
+				WordCount:       300, // Enough words to potentially be an article
+				MetaDescription: "Test description",
+				PublishedDate:   &publishedDate,
+			}
+
+			result, err := classifier.Classify(context.Background(), raw)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+
+			if result.Type != tt.expectedType {
+				t.Errorf("expected type %s, got %s (method: %s, reason: %s)",
+					tt.expectedType, result.Type, result.Method, result.Reason)
 			}
 		})
 	}

@@ -1,12 +1,19 @@
 FROM golang:1.25-alpine
 
+ARG UID=1000
+ARG GID=1000
+
 WORKDIR /app
 
-# Install tools needed for development
+# Install dev tools
 RUN apk add --no-cache git bash
 
 # Install Air for hot reload
 RUN go install github.com/air-verse/air@latest
+
+# Create non-root user (docker-compose will override UID/GID)
+RUN addgroup -g ${GID} appuser && \
+    adduser -D -u ${UID} -G appuser appuser
 
 # Writable caches in /tmp (including sumdb for module verification)
 RUN mkdir -p /tmp/go-mod-cache \
@@ -25,5 +32,5 @@ EXPOSE 8070
 ENV GOCACHE=/tmp/go-build-cache
 ENV GOMODCACHE=/tmp/go-mod-cache
 
-# Default dev command
-CMD ["go", "run", "main.go"]
+# Default dev command - use Air for hot reloading
+CMD ["air", "-c", ".air.toml"]

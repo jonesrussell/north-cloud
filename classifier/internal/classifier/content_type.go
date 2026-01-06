@@ -33,6 +33,16 @@ var nonArticleURLPatterns = []string{
 	// Browsing/navigation pages
 	"/category", "/categories", "/browse", "/listings",
 	"/search", "/results",
+
+	// News/article listing pages
+	"/news", "/articles", "/stories", "/posts", "/blog",
+	"/ontario-news", "/local-news", "/breaking-news",
+}
+
+// paginationQueryParams contains query parameter names that indicate pagination
+var paginationQueryParams = []string{
+	"page", "p", "pagenum", "paged", "page_num", "page_number",
+	"offset", "start", "from",
 }
 
 // ContentTypeClassifier determines the type of content (article, page, video, image, job)
@@ -82,7 +92,23 @@ func (c *ContentTypeClassifier) Classify(ctx context.Context, raw *domain.RawCon
 		// If result is nil, fall through to heuristic check
 	}
 
-	// Strategy 2: Heuristic-based detection
+	// Strategy 2: Check for listing page content patterns (before article heuristics)
+	// Listing pages often have multiple article links or "Read more" patterns
+	if c.isListingPageContent(raw) {
+		c.logger.Debug("Content type detected as listing page via content patterns",
+			"content_id", raw.ID,
+			"url", raw.URL,
+			"result", domain.ContentTypePage,
+		)
+		return &ContentTypeResult{
+			Type:       domain.ContentTypePage,
+			Confidence: 0.85,
+			Method:     "content_pattern",
+			Reason:     "Content has listing page characteristics (multiple article links)",
+		}, nil
+	}
+
+	// Strategy 3: Heuristic-based detection
 	// Check if content has characteristics of an article
 	if c.hasArticleCharacteristics(raw) {
 		c.logger.Debug("Content type detected via heuristics",
@@ -182,6 +208,56 @@ func (c *ContentTypeClassifier) classifyFromOGType(raw *domain.RawContent) *Cont
 	return nil // Unknown OGType, fall through to heuristic check
 }
 
+// hasPaginationQuery checks if the query string contains pagination parameters
+func (c *ContentTypeClassifier) hasPaginationQuery(query string) bool {
+	if query == "" {
+		return false
+	}
+
+	// Parse query parameters
+	values, err := url.ParseQuery(query)
+	if err != nil {
+		// If parsing fails, do simple string matching
+		lowerQuery := strings.ToLower(query)
+		for _, param := range paginationQueryParams {
+			if strings.Contains(lowerQuery, param+"=") {
+				return true
+			}
+		}
+		return false
+	}
+
+	// Check if any pagination parameter exists and has a value
+	for _, param := range paginationQueryParams {
+		if values.Has(param) {
+			// Only consider it pagination if the value is numeric (not empty or non-numeric)
+			value := strings.TrimSpace(values.Get(param))
+			if value != "" && c.isNumeric(value) {
+				return true
+			}
+		}
+	}
+
+	return false
+}
+
+// isNumeric checks if a string represents a numeric value (integer)
+func (c *ContentTypeClassifier) isNumeric(s string) bool {
+	if s == "" {
+		return false
+	}
+	// Check if string contains only digits (allowing negative sign)
+	for i, r := range s {
+		if i == 0 && r == '-' {
+			continue // Allow negative sign at start
+		}
+		if r < '0' || r > '9' {
+			return false
+		}
+	}
+	return len(s) > 0 && (s[0] != '-' || len(s) > 1)
+}
+
 // matchesURLPattern checks if URL path matches pattern (handles trailing slashes intelligently)
 func matchesURLPattern(path, pattern string) bool {
 	// Exact match
@@ -245,8 +321,70 @@ func (c *ContentTypeClassifier) isNonArticleURL(urlStr string) bool {
 		return true
 	}
 
+	// Check for pagination query parameters (indicates listing/index pages)
+	if c.hasPaginationQuery(query) {
+		c.logger.Debug("URL matched pagination query parameter",
+			"url", urlStr,
+			"query", query,
+		)
+		return true
+	}
+
 	// Homepage is typically not an article
 	if path == "/" || path == "" {
+		return true
+	}
+
+	return false
+}
+
+// isListingPageContent checks if content has characteristics of a listing/index page
+// Listing pages typically have multiple article links, "Read more" patterns, or article summaries
+func (c *ContentTypeClassifier) isListingPageContent(raw *domain.RawContent) bool {
+	// Check raw text for listing page indicators
+	lowerText := strings.ToLower(raw.RawText)
+
+	// Count occurrences of "Read more" or similar patterns (strong indicator of listing pages)
+	readMorePatterns := []string{"read more", "read more >", "read more>>", "continue reading", "full story"}
+	readMoreCount := 0
+	for _, pattern := range readMorePatterns {
+		readMoreCount += strings.Count(lowerText, pattern)
+	}
+
+	// If we find 3+ "Read more" links, it's likely a listing page
+	if readMoreCount >= 3 {
+		return true
+	}
+
+	// Check for multiple article date patterns (listing pages often show multiple dates)
+	// Pattern: "Dec 26, 2025" or "January 5, 2026" appearing multiple times
+	datePatterns := []string{
+		"jan ", "feb ", "mar ", "apr ", "may ", "jun ",
+		"jul ", "aug ", "sep ", "oct ", "nov ", "dec ",
+	}
+	dateCount := 0
+	for _, pattern := range datePatterns {
+		dateCount += strings.Count(lowerText, pattern)
+	}
+
+	// If we find 5+ date mentions, it's likely a listing page with multiple articles
+	if dateCount >= 5 {
+		return true
+	}
+
+	// Check for article summary patterns (listing pages have multiple article previews)
+	// Pattern: Multiple instances of article datelines (e.g., "TORONTO —", "OTTAWA —")
+	summaryIndicators := []string{
+		"toronto —", "ottawa —", "ontario —", // News article datelines
+		"vancouver —", "montreal —", "calgary —", "edmonton —",
+	}
+	summaryCount := 0
+	for _, indicator := range summaryIndicators {
+		summaryCount += strings.Count(lowerText, indicator)
+	}
+
+	// If we have 3+ datelines, it's likely a listing page with multiple article summaries
+	if summaryCount >= 3 {
 		return true
 	}
 
