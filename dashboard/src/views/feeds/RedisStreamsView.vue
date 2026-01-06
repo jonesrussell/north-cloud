@@ -5,13 +5,14 @@ import { publisherApi } from '@/api/client'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import type { ActiveChannel } from '@/types/publisher'
 
 interface StreamStats {
   name: string
   messages_count: number
-  consumers_count: number
-  last_activity: string
-  status: 'active' | 'idle'
+  last_activity: string | null
+  status: 'active' | 'idle' | 'never'
+  enabled: boolean
 }
 
 const loading = ref(true)
@@ -21,35 +22,46 @@ const streams = ref<StreamStats[]>([])
 const loadStreams = async () => {
   try {
     loading.value = true
-    // Mock data - in production, this would come from a Redis stats API
+    error.value = null
     const response = await publisherApi.stats.activeChannels()
-    const channels = response.data?.channels || []
+    const channels: ActiveChannel[] = response.data?.channels || []
     
-    streams.value = channels.map((ch: { name: string; messages_count?: number }) => ({
-      name: `articles:${ch.name}`,
-      messages_count: ch.messages_count || Math.floor(Math.random() * 1000),
-      consumers_count: Math.floor(Math.random() * 5) + 1,
-      last_activity: new Date(Date.now() - Math.random() * 3600000).toISOString(),
-      status: Math.random() > 0.3 ? 'active' : 'idle',
+    streams.value = channels.map((ch) => ({
+      name: ch.name,
+      messages_count: ch.total_published || 0,
+      last_activity: ch.last_published_at || null,
+      status: ch.has_published ? 'active' : (ch.enabled ? 'idle' : 'never'),
+      enabled: ch.enabled,
     }))
   } catch (err) {
-    // Use mock data on error
-    streams.value = [
-      { name: 'articles:crime', messages_count: 1542, consumers_count: 3, last_activity: new Date().toISOString(), status: 'active' },
-      { name: 'articles:news', messages_count: 832, consumers_count: 2, last_activity: new Date().toISOString(), status: 'active' },
-      { name: 'articles:local', messages_count: 456, consumers_count: 1, last_activity: new Date().toISOString(), status: 'idle' },
-    ]
+    error.value = 'Failed to load channel data'
+    streams.value = []
   } finally {
     loading.value = false
   }
 }
 
-const formatDate = (date: string) => {
+const formatDate = (date: string | null) => {
+  if (!date) return 'Never'
   const d = new Date(date)
   const diff = Date.now() - d.getTime()
   if (diff < 60000) return 'just now'
   if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`
-  return d.toLocaleTimeString()
+  if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`
+  return d.toLocaleDateString()
+}
+
+const getStatusVariant = (status: string) => {
+  if (status === 'active') return 'success'
+  if (status === 'idle') return 'secondary'
+  return 'outline'
+}
+
+const getStatusLabel = (status: string, enabled: boolean) => {
+  if (!enabled) return 'disabled'
+  if (status === 'active') return 'active'
+  if (status === 'idle') return 'idle'
+  return 'never published'
 }
 
 onMounted(loadStreams)
@@ -63,7 +75,7 @@ onMounted(loadStreams)
           Redis Streams
         </h1>
         <p class="text-muted-foreground">
-          Monitor pub/sub channels and message flow
+          Redis pub/sub channels and publishing activity
         </p>
       </div>
       <Button
@@ -118,32 +130,24 @@ onMounted(loadStreams)
             <CardTitle class="text-base font-mono">
               {{ stream.name }}
             </CardTitle>
-            <Badge :variant="stream.status === 'active' ? 'success' : 'secondary'">
-              {{ stream.status }}
+            <Badge :variant="getStatusVariant(stream.status)">
+              {{ getStatusLabel(stream.status, stream.enabled) }}
             </Badge>
           </div>
         </CardHeader>
         <CardContent>
-          <dl class="grid grid-cols-2 gap-4 text-sm">
+          <dl class="text-sm">
             <div>
               <dt class="text-muted-foreground">
-                Messages
+                Total Published
               </dt>
               <dd class="text-2xl font-bold">
                 {{ stream.messages_count.toLocaleString() }}
               </dd>
             </div>
-            <div>
-              <dt class="text-muted-foreground">
-                Consumers
-              </dt>
-              <dd class="text-2xl font-bold">
-                {{ stream.consumers_count }}
-              </dd>
-            </div>
           </dl>
           <p class="mt-4 text-xs text-muted-foreground">
-            Last activity: {{ formatDate(stream.last_activity) }}
+            Last published: {{ formatDate(stream.last_activity) }}
           </p>
         </CardContent>
       </Card>
