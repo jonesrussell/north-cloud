@@ -6,11 +6,12 @@ import { indexManagerApi } from '@/api/client'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
+import type { Index } from '@/types/indexManager'
 
-interface Index {
+interface DisplayIndex {
   name: string
-  docs_count: number
-  size_bytes: number
+  document_count: number
+  size: string
   health: string
   type: string
 }
@@ -18,14 +19,24 @@ interface Index {
 const router = useRouter()
 const loading = ref(true)
 const error = ref<string | null>(null)
-const indexes = ref<Index[]>([])
+const indexes = ref<DisplayIndex[]>([])
 
 const loadIndexes = async () => {
   try {
     loading.value = true
+    error.value = null
     const response = await indexManagerApi.indexes.list()
-    indexes.value = response.data?.indexes || []
+    // Backend returns 'indices', map to display format
+    const rawIndices: Index[] = response.data?.indices || []
+    indexes.value = rawIndices.map((idx) => ({
+      name: idx.name,
+      document_count: idx.document_count || 0,
+      size: idx.size || '0 B',
+      health: idx.health || 'unknown',
+      type: idx.type || 'unknown',
+    }))
   } catch (err) {
+    console.error('Failed to load indexes:', err)
     error.value = 'Unable to load Elasticsearch indexes.'
   } finally {
     loading.value = false
@@ -39,13 +50,6 @@ const getHealthVariant = (health: string) => {
     case 'red': return 'destructive'
     default: return 'secondary'
   }
-}
-
-const formatSize = (bytes: number) => {
-  if (bytes < 1024) return `${bytes} B`
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
-  if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
-  return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} GB`
 }
 
 const viewIndex = (name: string) => router.push(`/intelligence/indexes/${name}`)
@@ -147,10 +151,10 @@ onMounted(loadIndexes)
                 {{ index.type || 'content' }}
               </td>
               <td class="px-6 py-4 text-sm text-muted-foreground">
-                {{ index.docs_count.toLocaleString() }}
+                {{ index.document_count.toLocaleString() }}
               </td>
               <td class="px-6 py-4 text-sm text-muted-foreground">
-                {{ formatSize(index.size_bytes) }}
+                {{ index.size }}
               </td>
               <td class="px-6 py-4">
                 <Badge :variant="getHealthVariant(index.health)">
