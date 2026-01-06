@@ -408,7 +408,7 @@ export const classifierApi = {
 // Index Manager API
 export const indexManagerApi = {
   // Health check
-  getHealth: (): Promise<AxiosResponse<HealthStatus>> => indexManagerClient.get('/health'),
+  getHealth: (): Promise<AxiosResponse<HealthStatus>> => indexManagerClient.get('/api/v1/health'),
 
   // Index operations
   indexes: {
