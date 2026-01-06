@@ -1,42 +1,41 @@
 import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
 
 // Views
-import DashboardView from '../views/DashboardView.vue'
-
-// Crawler views
-import CrawlerJobsView from '../views/crawler/JobsView.vue'
-import CrawlerJobDetailView from '../views/crawler/JobDetailView.vue'
-import QueuedLinksView from '../views/crawler/QueuedLinksView.vue'
-
-// Publisher views
-import PublisherRecentArticlesView from '../views/publisher/RecentArticlesView.vue'
-import PublisherDashboardView from '../views/publisher/PublisherDashboardView.vue'
-import PublisherSourcesView from '../views/publisher/SourcesView.vue'
-import PublisherChannelsView from '../views/publisher/ChannelsView.vue'
-import PublisherRoutesView from '../views/publisher/RoutesView.vue'
-
-// Sources views
-import SourcesListView from '../views/sources/ListView.vue'
-import SourcesFormView from '../views/sources/FormView.vue'
-import CitiesView from '../views/sources/CitiesView.vue'
-
-// Indexes views
-import IndexesView from '../views/indexes/IndexesView.vue'
-import IndexDetailView from '../views/indexes/IndexDetailView.vue'
-import DocumentDetailView from '../views/indexes/DocumentDetailView.vue'
-
-// Classifier views
-import ClassifierRulesView from '../views/classifier/RulesView.vue'
-import ClassifierSourceReputationView from '../views/classifier/SourceReputationView.vue'
-
-// Analytics view (consolidated stats)
-import AnalyticsView from '../views/AnalyticsView.vue'
-
-// 404 view
+import PipelineMonitorView from '../views/PipelineMonitorView.vue'
+import LoginView from '../views/LoginView.vue'
 import NotFoundView from '../views/NotFoundView.vue'
 
-// Login view
-import LoginView from '../views/LoginView.vue'
+// Content Intake views (formerly Crawler)
+import JobsView from '../views/intake/JobsView.vue'
+import JobDetailView from '../views/intake/JobDetailView.vue'
+import QueuedLinksView from '../views/intake/QueuedLinksView.vue'
+import RulesView from '../views/intake/RulesView.vue'
+
+// Source Scheduling views (formerly Sources + Classifier Sources)
+import SourcesView from '../views/scheduling/SourcesView.vue'
+import SourceFormView from '../views/scheduling/SourceFormView.vue'
+import CitiesView from '../views/scheduling/CitiesView.vue'
+import ReputationView from '../views/scheduling/ReputationView.vue'
+
+// Content Intelligence views (Classifier + Indexes)
+import ClassifierStatsView from '../views/intelligence/ClassifierStatsView.vue'
+import IndexesView from '../views/intelligence/IndexesView.vue'
+import IndexDetailView from '../views/intelligence/IndexDetailView.vue'
+import DocumentDetailView from '../views/intelligence/DocumentDetailView.vue'
+
+// Distribution Engine views (formerly Publisher)
+import RoutesView from '../views/distribution/RoutesView.vue'
+import ChannelsView from '../views/distribution/ChannelsView.vue'
+import ArticlesView from '../views/distribution/ArticlesView.vue'
+
+// External Feeds views (new)
+import RedisStreamsView from '../views/feeds/RedisStreamsView.vue'
+import DeliveryLogsView from '../views/feeds/DeliveryLogsView.vue'
+
+// System Overview views (new)
+import HealthView from '../views/system/HealthView.vue'
+import AuthView from '../views/system/AuthView.vue'
+import CacheView from '../views/system/CacheView.vue'
 
 // Extend RouteMeta to include our custom properties
 declare module 'vue-router' {
@@ -47,7 +46,6 @@ declare module 'vue-router' {
     breadcrumbs?: Array<{
       label: string
       path: string
-      icon?: import('vue').Component
     }>
   }
 }
@@ -61,152 +59,205 @@ const routes: RouteRecordRaw[] = [
     meta: { title: 'Login', requiresAuth: false },
   },
 
-  // Dashboard (Overview) - this is the root route for the app
+  // Pipeline Monitor (Dashboard) - root route
   {
     path: '/',
-    name: 'dashboard',
-    component: DashboardView,
-    meta: { title: 'Dashboard', requiresAuth: true },
+    name: 'pipeline-monitor',
+    component: PipelineMonitorView,
+    meta: { title: 'Pipeline Monitor', requiresAuth: true },
   },
 
-  // Analytics (Consolidated Statistics)
+  // ==========================================
+  // Content Intake (formerly Crawler)
+  // ==========================================
   {
-    path: '/analytics',
-    name: 'analytics',
-    component: AnalyticsView,
-    meta: { title: 'System Analytics', section: 'analytics', requiresAuth: true },
-  },
-
-  // Crawler routes
-  {
-    path: '/crawler/jobs',
-    name: 'crawler-jobs',
-    component: CrawlerJobsView,
-    meta: { title: 'Crawl Jobs', section: 'crawler', requiresAuth: true },
+    path: '/intake/jobs',
+    name: 'intake-jobs',
+    component: JobsView,
+    meta: { title: 'Crawl Jobs', section: 'intake', requiresAuth: true },
   },
   {
-    path: '/crawler/jobs/:id',
-    name: 'crawler-job-detail',
-    component: CrawlerJobDetailView,
+    path: '/intake/jobs/new',
+    name: 'intake-jobs-new',
+    component: JobDetailView,
+    props: { isNew: true },
+    meta: { title: 'New Crawl Job', section: 'intake', requiresAuth: true },
+  },
+  {
+    path: '/intake/jobs/:id',
+    name: 'intake-job-detail',
+    component: JobDetailView,
     props: true,
-    meta: { title: 'Job Details', section: 'crawler', requiresAuth: true },
+    meta: { title: 'Job Details', section: 'intake', requiresAuth: true },
   },
   {
-    path: '/crawler/queued-links',
-    name: 'crawler-queued-links',
+    path: '/intake/queued-links',
+    name: 'intake-queued-links',
     component: QueuedLinksView,
-    meta: { title: 'Queued Links', section: 'crawler', requiresAuth: true },
-  },
-  // Redirect old crawler stats to analytics
-  {
-    path: '/crawler/stats',
-    redirect: '/analytics?tab=crawler',
-  },
-
-  // Publisher routes
-  {
-    path: '/publisher',
-    name: 'publisher-dashboard',
-    component: PublisherDashboardView,
-    meta: { title: 'Publisher Dashboard', section: 'publisher', requiresAuth: true },
+    meta: { title: 'Queued Links', section: 'intake', requiresAuth: true },
   },
   {
-    path: '/publisher/sources',
-    name: 'publisher-sources',
-    component: PublisherSourcesView,
-    meta: { title: 'Publisher Sources', section: 'publisher', requiresAuth: true },
-  },
-  {
-    path: '/publisher/channels',
-    name: 'publisher-channels',
-    component: PublisherChannelsView,
-    meta: { title: 'Publisher Channels', section: 'publisher', requiresAuth: true },
-  },
-  {
-    path: '/publisher/routes',
-    name: 'publisher-routes',
-    component: PublisherRoutesView,
-    meta: { title: 'Publisher Routes', section: 'publisher', requiresAuth: true },
-  },
-  // Redirect old publisher stats to analytics
-  {
-    path: '/publisher/stats',
-    redirect: '/analytics?tab=publisher',
-  },
-  {
-    path: '/publisher/articles',
-    name: 'publisher-articles',
-    component: PublisherRecentArticlesView,
-    meta: { title: 'Recent Articles', section: 'publisher', requiresAuth: true },
+    path: '/intake/rules',
+    name: 'intake-rules',
+    component: RulesView,
+    meta: { title: 'Classification Rules', section: 'intake', requiresAuth: true },
   },
 
-  // Sources routes
+  // ==========================================
+  // Source Scheduling
+  // ==========================================
   {
-    path: '/sources',
-    name: 'sources',
-    component: SourcesListView,
-    meta: { title: 'Sources', section: 'sources', requiresAuth: true },
+    path: '/scheduling/sources',
+    name: 'scheduling-sources',
+    component: SourcesView,
+    meta: { title: 'Sources', section: 'scheduling', requiresAuth: true },
   },
   {
-    path: '/sources/new',
-    name: 'source-new',
-    component: SourcesFormView,
-    meta: { title: 'New Source', section: 'sources', requiresAuth: true },
+    path: '/scheduling/sources/new',
+    name: 'scheduling-sources-new',
+    component: SourceFormView,
+    meta: { title: 'New Source', section: 'scheduling', requiresAuth: true },
   },
   {
-    path: '/sources/:id/edit',
-    name: 'source-edit',
-    component: SourcesFormView,
+    path: '/scheduling/sources/:id/edit',
+    name: 'scheduling-sources-edit',
+    component: SourceFormView,
     props: true,
-    meta: { title: 'Edit Source', section: 'sources', requiresAuth: true },
+    meta: { title: 'Edit Source', section: 'scheduling', requiresAuth: true },
   },
   {
-    path: '/sources/cities',
-    name: 'cities',
+    path: '/scheduling/cities',
+    name: 'scheduling-cities',
     component: CitiesView,
-    meta: { title: 'Cities', section: 'sources', requiresAuth: true },
+    meta: { title: 'Cities', section: 'scheduling', requiresAuth: true },
+  },
+  {
+    path: '/scheduling/reputation',
+    name: 'scheduling-reputation',
+    component: ReputationView,
+    meta: { title: 'Source Reputation', section: 'scheduling', requiresAuth: true },
   },
 
-  // Indexes routes
+  // ==========================================
+  // Content Intelligence
+  // ==========================================
   {
-    path: '/indexes',
-    name: 'indexes',
-    component: IndexesView,
-    meta: { title: 'Elasticsearch Indexes', section: 'indexes', requiresAuth: true },
+    path: '/intelligence/stats',
+    name: 'intelligence-stats',
+    component: ClassifierStatsView,
+    meta: { title: 'Classifier Stats', section: 'intelligence', requiresAuth: true },
   },
   {
-    path: '/indexes/:index_name',
-    name: 'index-detail',
+    path: '/intelligence/indexes',
+    name: 'intelligence-indexes',
+    component: IndexesView,
+    meta: { title: 'Elasticsearch Indexes', section: 'intelligence', requiresAuth: true },
+  },
+  {
+    path: '/intelligence/indexes/:index_name',
+    name: 'intelligence-index-detail',
     component: IndexDetailView,
     props: true,
-    meta: { title: 'Index Details', section: 'indexes', requiresAuth: true },
+    meta: { title: 'Index Details', section: 'intelligence', requiresAuth: true },
   },
   {
-    path: '/indexes/:index_name/documents/:document_id',
-    name: 'document-detail',
+    path: '/intelligence/indexes/:index_name/documents/:document_id',
+    name: 'intelligence-document-detail',
     component: DocumentDetailView,
     props: true,
-    meta: { title: 'Document Details', section: 'indexes', requiresAuth: true },
+    meta: { title: 'Document Details', section: 'intelligence', requiresAuth: true },
   },
 
-  // Classifier routes
-  // Redirect old classifier stats to analytics
+  // ==========================================
+  // Distribution Engine (formerly Publisher)
+  // ==========================================
   {
-    path: '/classifier/stats',
-    redirect: '/analytics?tab=classifier',
+    path: '/distribution/routes',
+    name: 'distribution-routes',
+    component: RoutesView,
+    meta: { title: 'Routes', section: 'distribution', requiresAuth: true },
   },
   {
-    path: '/classifier/rules',
-    name: 'classifier-rules',
-    component: ClassifierRulesView,
-    meta: { title: 'Classification Rules', section: 'classifier', requiresAuth: true },
+    path: '/distribution/routes/new',
+    name: 'distribution-routes-new',
+    component: RoutesView,
+    props: { showCreateModal: true },
+    meta: { title: 'New Route', section: 'distribution', requiresAuth: true },
   },
   {
-    path: '/classifier/sources',
-    name: 'classifier-sources',
-    component: ClassifierSourceReputationView,
-    meta: { title: 'Source Reputation', section: 'classifier', requiresAuth: true },
+    path: '/distribution/channels',
+    name: 'distribution-channels',
+    component: ChannelsView,
+    meta: { title: 'Channels', section: 'distribution', requiresAuth: true },
   },
+  {
+    path: '/distribution/articles',
+    name: 'distribution-articles',
+    component: ArticlesView,
+    meta: { title: 'Recent Articles', section: 'distribution', requiresAuth: true },
+  },
+
+  // ==========================================
+  // External Feeds
+  // ==========================================
+  {
+    path: '/feeds/streams',
+    name: 'feeds-streams',
+    component: RedisStreamsView,
+    meta: { title: 'Redis Streams', section: 'feeds', requiresAuth: true },
+  },
+  {
+    path: '/feeds/logs',
+    name: 'feeds-logs',
+    component: DeliveryLogsView,
+    meta: { title: 'Delivery Logs', section: 'feeds', requiresAuth: true },
+  },
+
+  // ==========================================
+  // System Overview
+  // ==========================================
+  {
+    path: '/system/health',
+    name: 'system-health',
+    component: HealthView,
+    meta: { title: 'System Health', section: 'system', requiresAuth: true },
+  },
+  {
+    path: '/system/auth',
+    name: 'system-auth',
+    component: AuthView,
+    meta: { title: 'Authentication', section: 'system', requiresAuth: true },
+  },
+  {
+    path: '/system/cache',
+    name: 'system-cache',
+    component: CacheView,
+    meta: { title: 'Cache Status', section: 'system', requiresAuth: true },
+  },
+
+  // ==========================================
+  // Legacy Redirects (backward compatibility)
+  // ==========================================
+  { path: '/crawler/jobs', redirect: '/intake/jobs' },
+  { path: '/crawler/jobs/:id', redirect: (to) => `/intake/jobs/${to.params.id}` },
+  { path: '/crawler/queued-links', redirect: '/intake/queued-links' },
+  { path: '/crawler/stats', redirect: '/intelligence/stats' },
+  { path: '/sources', redirect: '/scheduling/sources' },
+  { path: '/sources/new', redirect: '/scheduling/sources/new' },
+  { path: '/sources/:id/edit', redirect: (to) => `/scheduling/sources/${to.params.id}/edit` },
+  { path: '/sources/cities', redirect: '/scheduling/cities' },
+  { path: '/indexes', redirect: '/intelligence/indexes' },
+  { path: '/indexes/:index_name', redirect: (to) => `/intelligence/indexes/${to.params.index_name}` },
+  { path: '/classifier/rules', redirect: '/intake/rules' },
+  { path: '/classifier/sources', redirect: '/scheduling/reputation' },
+  { path: '/classifier/stats', redirect: '/intelligence/stats' },
+  { path: '/publisher', redirect: '/distribution/routes' },
+  { path: '/publisher/sources', redirect: '/distribution/routes' },
+  { path: '/publisher/channels', redirect: '/distribution/channels' },
+  { path: '/publisher/routes', redirect: '/distribution/routes' },
+  { path: '/publisher/articles', redirect: '/distribution/articles' },
+  { path: '/publisher/stats', redirect: '/intelligence/stats' },
+  { path: '/analytics', redirect: '/intelligence/stats' },
 
   // 404 catch-all route - must be last
   {
@@ -223,10 +274,10 @@ const router = createRouter({
 })
 
 // Route guard for authentication
-router.beforeEach((to, from, next) => {
+router.beforeEach((to, _from, next) => {
   // Check if route requires authentication
   const requiresAuth = to.meta.requiresAuth !== false // Default to true unless explicitly false
-  
+
   if (requiresAuth) {
     // Check if user is authenticated
     const token = localStorage.getItem('dashboard_token')
@@ -239,31 +290,17 @@ router.beforeEach((to, from, next) => {
     // If already authenticated, redirect to dashboard
     const token = localStorage.getItem('dashboard_token')
     if (token) {
-      next({ name: 'dashboard' })
+      next({ name: 'pipeline-monitor' })
       return
     }
   }
-  
+
   next()
 })
 
-// Update document title and track recent pages on navigation
+// Update document title on navigation
 router.afterEach((to) => {
-  // Update document title
-  document.title = to.meta.title
-    ? `${to.meta.title} - North Cloud`
-    : 'North Cloud Dashboard'
-
-  // Track recent page (dynamically import to avoid circular dependency)
-  if (to.path !== '/login' && to.meta.title) {
-    import('@/composables/useRecentPages').then(({ addRecentPage }) => {
-      addRecentPage({
-        path: to.path,
-        title: to.meta.title as string,
-      })
-    })
-  }
+  document.title = to.meta.title ? `${to.meta.title} - North Cloud` : 'North Cloud Dashboard'
 })
 
 export default router
-
