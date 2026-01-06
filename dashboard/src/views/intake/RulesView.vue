@@ -6,13 +6,14 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
 
+// Match the actual API response from classifier service
 interface Rule {
-  id: string
-  name: string
-  type: string
-  pattern: string
+  id: number
+  topic: string           // Topic name (e.g., "crime", "news")
+  keywords: string[]      // Keywords for matching
+  pattern: string | null  // Optional regex pattern
+  priority: string        // "high", "normal", "low"
   enabled: boolean
-  created_at: string
 }
 
 const loading = ref(true)
@@ -22,12 +23,23 @@ const rules = ref<Rule[]>([])
 const loadRules = async () => {
   try {
     loading.value = true
+    error.value = null
     const response = await classifierApi.rules.list()
-    rules.value = response.data?.rules || response.data || []
+    rules.value = response.data?.rules || []
   } catch (err) {
+    console.error('Failed to load rules:', err)
     error.value = 'Unable to load classification rules.'
   } finally {
     loading.value = false
+  }
+}
+
+const getPriorityVariant = (priority: string) => {
+  switch (priority) {
+    case 'high': return 'destructive'
+    case 'normal': return 'secondary'
+    case 'low': return 'outline'
+    default: return 'secondary'
   }
 }
 
@@ -91,13 +103,13 @@ onMounted(loadRules)
           <thead class="border-b bg-muted/50">
             <tr>
               <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
-                Name
+                Topic
               </th>
               <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
-                Type
+                Keywords
               </th>
               <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
-                Pattern
+                Priority
               </th>
               <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
                 Status
@@ -111,13 +123,31 @@ onMounted(loadRules)
               class="hover:bg-muted/50"
             >
               <td class="px-6 py-4 text-sm font-medium">
-                {{ rule.name }}
+                {{ rule.topic }}
               </td>
               <td class="px-6 py-4 text-sm text-muted-foreground">
-                {{ rule.type }}
+                <div class="flex flex-wrap gap-1">
+                  <Badge
+                    v-for="keyword in rule.keywords?.slice(0, 5)"
+                    :key="keyword"
+                    variant="outline"
+                    class="text-xs"
+                  >
+                    {{ keyword }}
+                  </Badge>
+                  <Badge
+                    v-if="(rule.keywords?.length || 0) > 5"
+                    variant="outline"
+                    class="text-xs"
+                  >
+                    +{{ rule.keywords.length - 5 }} more
+                  </Badge>
+                </div>
               </td>
-              <td class="px-6 py-4 text-sm font-mono text-muted-foreground">
-                {{ rule.pattern }}
+              <td class="px-6 py-4">
+                <Badge :variant="getPriorityVariant(rule.priority)">
+                  {{ rule.priority }}
+                </Badge>
               </td>
               <td class="px-6 py-4">
                 <Badge :variant="rule.enabled ? 'success' : 'secondary'">
