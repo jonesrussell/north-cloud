@@ -263,21 +263,21 @@ func (s *Service) fetchArticles(ctx context.Context, route *models.RouteWithDeta
 func (s *Service) buildESQuery(route *models.RouteWithDetails) map[string]any {
 	mustClauses := []map[string]any{}
 
-	// Filter by quality score
-	mustClauses = append(mustClauses, map[string]any{
-		"range": map[string]any{
-			"quality_score": map[string]any{
-				"gte": route.MinQualityScore,
+	// Filter by quality score and content_type
+	mustClauses = append(mustClauses,
+		map[string]any{
+			"range": map[string]any{
+				"quality_score": map[string]any{
+					"gte": route.MinQualityScore,
+				},
 			},
 		},
-	})
-
-	// Filter by content_type = "article" to exclude pages, listings, etc.
-	mustClauses = append(mustClauses, map[string]any{
-		"term": map[string]any{
-			"content_type": "article",
+		map[string]any{
+			"term": map[string]any{
+				"content_type": "article",
+			},
 		},
-	})
+	)
 
 	// Filter by topics if specified
 	if len(route.Topics) > 0 {
