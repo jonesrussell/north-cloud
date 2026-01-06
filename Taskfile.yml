@@ -504,11 +504,12 @@ tasks:
   config:init:
     desc: "Copy all config.yml.example files to config.yml"
     cmds:
-      - cp source-manager/config.yml.example source-manager/config.yml
+      - cp auth/config.yml.example auth/config.yml
       - cp classifier/config.yml.example classifier/config.yml
       - cp index-manager/config.yml.example index-manager/config.yml
       - cp publisher/config.yml.example publisher/config.yml
       - cp search/config.yml.example search/config.yml
+      - cp source-manager/config.yml.example source-manager/config.yml
 
   install:tools:
     desc: "Install development tools"
