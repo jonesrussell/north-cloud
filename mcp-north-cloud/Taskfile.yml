@@ -2,6 +2,12 @@ version: '3'
 
 dotenv: ['../.env']
 
+vars:
+  BINARY_NAME: mcp-north-cloud
+  MAIN_PATH: ./main.go
+  BUILD_DIR: ./bin
+  DOCKER_IMAGE: north-cloud-mcp-north-cloud
+
 output:
   group:
     error_only: false
@@ -12,25 +18,25 @@ output:
     warning: "⚠️"
     error: "❌"
 
-
 tasks:
   default:
-    desc: "Show help and list common tasks"
+    desc: "Show available tasks"
     cmds:
-      - task: build
- 
-  deadcode:
-    desc: "Find unreachable functions in the codebase"
-    cmds:
-      - deadcode -test -generated ./...
-    ignore_error: true
+      - task --list
 
-  lint:
-    desc: "Lint the Go code"
+  build:
+    desc: "Build the mcp-north-cloud binary"
     cmds:
-      - go fmt ./...
-      - go vet ./...
-      - golangci-lint run {{.CLI_ARGS}}
+      - mkdir -p {{.BUILD_DIR}}
+      - go build -o {{.BUILD_DIR}}/{{.BINARY_NAME}} {{.MAIN_PATH}}
+    generates:
+      - "{{.BUILD_DIR}}/{{.BINARY_NAME}}"
+
+  run:
+    desc: "Run the mcp-north-cloud service locally"
+    deps: [deps]
+    cmds:
+      - go run {{.MAIN_PATH}}
 
   test:
     desc: "Run all tests"
@@ -53,11 +59,18 @@ tasks:
       - go test -v ./tests/features/...
 
   test:coverage:
-    desc: "Run tests with coverage"
+    desc: "Run tests with coverage report"
+    deps: [deps]
     cmds:
       - go test -coverprofile=coverage.out ./...
       - go tool cover -html=coverage.out -o coverage.html
       - 'echo "Coverage report generated: coverage.html"'
+
+  test:race:
+    desc: "Run tests with race detector"
+    deps: [deps]
+    cmds:
+      - go test -race ./...
 
   bench:
     desc: "Run benchmarks"
@@ -86,8 +99,22 @@ tasks:
       - 'echo "View CPU profile: go tool pprof -http=:8081 profiles/cpu.prof"'
       - 'echo "View memory profile: go tool pprof -http=:8081 profiles/mem.prof"'
 
+  clean:
+    desc: "Clean build artifacts and temporary files"
+    cmds:
+      - rm -rf {{.BUILD_DIR}}
+      - rm -f coverage.out coverage.html
+      - go clean -cache -testcache -modcache
+
+  deps:
+    desc: "Download and tidy dependencies"
+    cmds:
+      - go mod download
+      - go mod tidy
+      - go mod verify
+
   fmt:
-    desc: "Format code"
+    desc: "Format Go code"
     cmds:
       - go fmt ./...
       - goimports -w . || true
@@ -97,19 +124,69 @@ tasks:
     cmds:
       - go mod tidy
 
-  clean:
-    desc: Clean build artifacts
+  vet:
+    desc: "Run go vet"
     cmds:
-      - rm -rf bin/
-      - rm -rf testutils/mocks/
-      - rm -f coverage.out coverage.html
+      - go vet ./...
+
+  lint:
+    desc: "Lint the Go code"
+    cmds:
+      - go fmt ./...
+      - go vet ./...
+      - golangci-lint run {{.CLI_ARGS}}
+
+  check:
+    desc: "Run all code quality checks (fmt, vet, lint)"
+    cmds:
+      - task: fmt
+      - task: vet
+      - task: lint
+
+  deadcode:
+    desc: "Find unreachable functions in the codebase"
+    cmds:
+      - deadcode -test -generated ./...
+    ignore_error: true
 
   docker:build:
     desc: "Build Docker image"
     cmds:
-      - docker build -t north-cloud-mcp-north-cloud:latest .
+      - docker build -t {{.DOCKER_IMAGE}}:latest .
 
   docker:build:dev:
     desc: "Build development Docker image"
     cmds:
-      - docker build -f Dockerfile.dev -t north-cloud-mcp-north-cloud:dev .
+      - docker build -f Dockerfile.dev -t {{.DOCKER_IMAGE}}:dev .
+
+  install:
+    desc: "Install the binary to $GOPATH/bin"
+    cmds:
+      - go install {{.MAIN_PATH}}
+
+  install:tools:
+    desc: "Install development tools"
+    cmds:
+      - go install github.com/air-verse/air@latest || true
+      - go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest || true
+      - go install golang.org/x/tools/cmd/goimports@latest || true
+      - go install github.com/jondot/goweight@latest || true
+
+  dev:
+    desc: "Run in development mode with hot-reload (requires air)"
+    cmds:
+      - |
+        if command -v air > /dev/null; then
+          air
+        else
+          echo "air not installed. Install with: task install:tools"
+          task: run
+        fi
+
+  all:
+    desc: "Run build, test, and check"
+    cmds:
+      - task: deps
+      - task: check
+      - task: test
+      - task: build

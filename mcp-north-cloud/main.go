@@ -18,18 +18,51 @@ func main() {
 	reader := bufio.NewReader(os.Stdin)
 	writer := os.Stdout
 
-	// Initialize index-manager client
-	indexManagerURL := os.Getenv("INDEX_MANAGER_URL")
-	if indexManagerURL == "" {
-		indexManagerURL = "http://localhost:8090"
-	}
-
-	indexClient := client.NewIndexManagerClient(indexManagerURL)
+	// Initialize service clients
+	clients := initializeClients()
 
 	// Create MCP server
-	server := mcp.NewServer(indexClient)
+	server := mcp.NewServer(
+		clients.indexManager,
+		clients.crawler,
+		clients.sourceManager,
+		clients.publisher,
+		clients.search,
+		clients.classifier,
+	)
 
 	// Process requests
+	processRequests(reader, writer, server)
+}
+
+type serviceClients struct {
+	indexManager *client.IndexManagerClient
+	crawler      *client.CrawlerClient
+	sourceManager *client.SourceManagerClient
+	publisher    *client.PublisherClient
+	search       *client.SearchClient
+	classifier   *client.ClassifierClient
+}
+
+func initializeClients() *serviceClients {
+	getURL := func(envVar, defaultURL string) string {
+		if url := os.Getenv(envVar); url != "" {
+			return url
+		}
+		return defaultURL
+	}
+
+	return &serviceClients{
+		indexManager:  client.NewIndexManagerClient(getURL("INDEX_MANAGER_URL", "http://localhost:8090")),
+		crawler:       client.NewCrawlerClient(getURL("CRAWLER_URL", "http://localhost:8060")),
+		sourceManager: client.NewSourceManagerClient(getURL("SOURCE_MANAGER_URL", "http://localhost:8050")),
+		publisher:     client.NewPublisherClient(getURL("PUBLISHER_URL", "http://localhost:8080")),
+		search:        client.NewSearchClient(getURL("SEARCH_URL", "http://localhost:8090")),
+		classifier:    client.NewClassifierClient(getURL("CLASSIFIER_URL", "http://localhost:8070")),
+	}
+}
+
+func processRequests(reader *bufio.Reader, writer io.Writer, server *mcp.Server) {
 	// MCP protocol expects compact JSON (no indentation) for better compatibility
 	decoder := json.NewDecoder(reader)
 	encoder := json.NewEncoder(writer)

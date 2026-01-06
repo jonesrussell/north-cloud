@@ -5,6 +5,13 @@ WORKDIR /app
 # Install Air for hot reloading
 RUN go install github.com/air-verse/air@latest
 
+# Create writable Go cache directories with sticky bit
+# These will be overridden by volume mounts, but ensure they exist and are writable
+RUN mkdir -p /tmp/go-mod-cache \
+             /tmp/go-build-cache && \
+    chmod 1777 /tmp/go-mod-cache \
+                /tmp/go-build-cache
+
 # Copy go mod files
 COPY go.mod ./
 RUN go mod download
@@ -14,6 +21,10 @@ COPY . .
 
 # Make run script executable
 RUN chmod +x /app/run-mcp.sh
+
+# Go cache locations (explicitly set for clarity)
+ENV GOCACHE=/tmp/go-build-cache
+ENV GOMODCACHE=/tmp/go-mod-cache
 
 # Use Air for hot reloading (for development/testing)
 # The run-mcp.sh script will build the binary when needed for MCP
