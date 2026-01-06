@@ -76,6 +76,7 @@ const healthBadgeVariant = computed(() => {
     case 'degraded':
       return 'warning'
     case 'unhealthy':
+    default:
       return 'destructive'
   }
 })
@@ -87,6 +88,7 @@ const healthLabel = computed(() => {
     case 'degraded':
       return 'Partial Outage'
     case 'unhealthy':
+    default:
       return 'System Issues'
   }
 })

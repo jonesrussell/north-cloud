@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { computed } from 'vue'
 import { ArrowRight } from 'lucide-vue-next'
 import { cn } from '@/lib/utils'
 
@@ -14,7 +13,7 @@ interface Props {
   stages: PipelineStage[]
 }
 
-const props = defineProps<Props>()
+defineProps<Props>()
 
 const getChangeClass = (change?: number) => {
   if (!change) return 'text-muted-foreground'

@@ -5,7 +5,7 @@ import { ArrowLeft, Pause, Play, XCircle, Loader2 } from 'lucide-vue-next'
 import { crawlerApi } from '@/api/client'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 
 const route = useRoute()
 const router = useRouter()

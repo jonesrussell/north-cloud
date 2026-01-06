@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { Loader2, HeartPulse, RefreshCw, CheckCircle2, XCircle, AlertTriangle } from 'lucide-vue-next'
 import { crawlerApi, publisherApi, classifierApi, indexManagerApi } from '@/api/client'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 
 interface ServiceHealth {
   name: string
@@ -102,8 +102,6 @@ const overallHealth = computed(() => {
   if (healthy >= total / 2) return 'Partial Outage'
   return 'Major Outage'
 })
-
-import { computed } from 'vue'
 
 onMounted(() => {
   checkHealth()

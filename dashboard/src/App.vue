@@ -15,16 +15,12 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted } from 'vue'
 import { useAuth } from './composables/useAuth'
 import { useTheme } from './composables/useTheme'
 import { AppShell } from './components/layout'
 
 const { isAuthenticated } = useAuth()
-const { theme } = useTheme()
 
 // Initialize theme on app mount
-onMounted(() => {
-  // Theme is auto-initialized by useTheme
-})
+useTheme()
 </script>

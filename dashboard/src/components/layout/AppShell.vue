@@ -5,7 +5,7 @@ import { useTheme } from '@/composables/useTheme'
 import AppSidebar from './AppSidebar.vue'
 import AppHeader from './AppHeader.vue'
 
-const { isCollapsed, isMobile, sidebarWidth } = useSidebar()
+const { isMobile, sidebarWidth } = useSidebar()
 
 // Initialize theme on mount
 useTheme()
