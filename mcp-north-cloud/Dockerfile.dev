@@ -12,9 +12,8 @@ RUN mkdir -p /tmp/go-mod-cache \
     chmod 1777 /tmp/go-mod-cache \
                 /tmp/go-build-cache
 
-# Copy go mod files
+# Copy go mod files (dependencies downloaded at runtime due to replace directive)
 COPY go.mod ./
-RUN go mod download
 
 # Copy source code
 COPY . .

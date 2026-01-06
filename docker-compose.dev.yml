@@ -251,6 +251,7 @@ services:
       GOMODCACHE: /app/tmp/go-mod-cache
     volumes:
       - ./mcp-north-cloud:/app
+      - ./infrastructure:/infrastructure:ro
     command: ["sh", "-c", "mkdir -p /app/tmp/go-build-cache /app/tmp/go-mod-cache && go mod download && air -c .air.toml"]
 
   # ------------------------------------------------------------
