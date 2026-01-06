@@ -111,7 +111,7 @@ const healthLabel = computed(() => {
     <Breadcrumb class="hidden md:flex">
       <template
         v-for="(crumb, index) in breadcrumbs"
-        :key="crumb.path"
+        :key="`${index}-${crumb.path}`"
       >
         <BreadcrumbItem>
           <BreadcrumbLink
