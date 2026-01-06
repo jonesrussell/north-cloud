@@ -25,8 +25,12 @@ services:
         BUILD_ENV: production
     image: northcloud/crawler:latest
     depends_on:
-      - postgres-crawler
-      - elasticsearch
+      postgres-crawler:
+        condition: service_healthy
+      elasticsearch:
+        condition: service_healthy
+      source-manager:
+        condition: service_healthy
     environment:
       DB_HOST: postgres-crawler
       DB_PORT: 5432
@@ -41,6 +45,12 @@ services:
       AUTH_JWT_SECRET: "${AUTH_JWT_SECRET}"
       SERVER_SECURITY_ENABLED: "false"
       SERVER_PORT: "8080"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
 
   # ------------------------------------------------------------
   # Source Manager (Prod)
@@ -54,7 +64,8 @@ services:
         BUILD_ENV: production
     image: northcloud/source-manager:latest
     depends_on:
-      - postgres-source-manager
+      postgres-source-manager:
+        condition: service_healthy
     environment:
       APP_DEBUG: "false"
       APP_ENV: production
@@ -68,6 +79,12 @@ services:
       DB_SSLMODE: disable
     volumes:
       - ./source-manager/migrations:/migrations:ro
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:8050/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
 
   # ------------------------------------------------------------
   # Publisher API (Prod)
@@ -82,7 +99,8 @@ services:
     image: northcloud/publisher:latest
     command: ["/app/publisher", "api"]
     depends_on:
-      - postgres-publisher
+      postgres-publisher:
+        condition: service_healthy
     environment:
       POSTGRES_PUBLISHER_HOST: postgres-publisher
       POSTGRES_PUBLISHER_PORT: 5432
@@ -96,6 +114,12 @@ services:
       REDIS_PASSWORD: "${REDIS_PASSWORD}"
       GIN_MODE: release
       APP_DEBUG: "false"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:8070/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 25s
 
   # ------------------------------------------------------------
   # Publisher Router (Prod)
@@ -110,9 +134,12 @@ services:
     image: northcloud/publisher:latest
     command: ["/app/publisher", "router"]
     depends_on:
-      - postgres-publisher
-      - elasticsearch
-      - redis
+      postgres-publisher:
+        condition: service_healthy
+      elasticsearch:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     environment:
       POSTGRES_PUBLISHER_HOST: postgres-publisher
       POSTGRES_PUBLISHER_PORT: 5432
@@ -140,9 +167,12 @@ services:
     image: northcloud/classifier:latest
     command: ["./classifier", "httpd"]
     depends_on:
-      - postgres-classifier
-      - elasticsearch
-      - redis
+      postgres-classifier:
+        condition: service_healthy
+      elasticsearch:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     environment:
       POSTGRES_HOST: postgres-classifier
       POSTGRES_PORT: 5432
@@ -159,6 +189,12 @@ services:
       CLASSIFIER_PORT: 8070
     volumes:
       - ./classifier/config.yml:/root/config.yml:ro
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8070/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 25s
 
   # ------------------------------------------------------------
   # Index Manager (Prod)
@@ -170,8 +206,10 @@ services:
       dockerfile: Dockerfile
     image: northcloud/index-manager:latest
     depends_on:
-      - postgres-index-manager
-      - elasticsearch
+      postgres-index-manager:
+        condition: service_healthy
+      elasticsearch:
+        condition: service_healthy
     environment:
       INDEX_MANAGER_PORT: 8090
       POSTGRES_INDEX_MANAGER_HOST: postgres-index-manager
@@ -185,6 +223,12 @@ services:
       APP_ENV: production
     volumes:
       - ./index-manager/config.yml:/root/config.yml:ro
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:8090/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
 
   # ------------------------------------------------------------
   # Search Service (Prod)
@@ -196,7 +240,8 @@ services:
       dockerfile: ./search/Dockerfile
     image: northcloud/search-service:latest
     depends_on:
-      - elasticsearch
+      elasticsearch:
+        condition: service_healthy
     environment:
       APP_DEBUG: "false"
       SEARCH_PORT: 8090
@@ -207,6 +252,12 @@ services:
       LOG_LEVEL: "${SEARCH_LOG_LEVEL:-info}"
       LOG_FORMAT: "${SEARCH_LOG_FORMAT:-json}"
       CORS_ORIGINS: "${CORS_ORIGINS:-*}"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:8090/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
 
   # ------------------------------------------------------------
   # Dashboard (Prod)
@@ -220,10 +271,14 @@ services:
         BUILD_ENV: production
     image: northcloud/dashboard:latest
     depends_on:
-      - crawler
-      - source-manager
-      - publisher-api
-      - elasticsearch
+      crawler:
+        condition: service_started
+      source-manager:
+        condition: service_healthy
+      publisher-api:
+        condition: service_started
+      classifier:
+        condition: service_started
     healthcheck:
       test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://127.0.0.1:80/ || exit 1"]
       interval: 30s
@@ -245,10 +300,14 @@ services:
       - certbot_etc:/etc/letsencrypt:ro
       - certbot_www:/var/www/certbot
     depends_on:
-      - dashboard
-      - classifier
-      - crawler
-      - publisher-api
+      dashboard:
+        condition: service_healthy
+      classifier:
+        condition: service_started
+      crawler:
+        condition: service_started
+      publisher-api:
+        condition: service_started
 
   # ============================================================
   # Certbot (Prod)
