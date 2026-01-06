@@ -17,7 +17,7 @@ This document provides a comprehensive guide for AI assistants working with the 
 
 ## Project Overview
 
-**North Cloud** is a microservices-based content management and publishing platform built with Go and Drupal. It crawls news content, manages sources, filters articles, and publishes them to a Drupal CMS.
+**North Cloud** is a microservices-based content management and publishing platform built with Go and Drupal. It crawls news content, manages sources, filters articles, and publishes them to Redis Pub/Sub channels.
 
 ### Purpose
 - Crawl news websites for articles
