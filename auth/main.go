@@ -14,6 +14,10 @@ import (
 )
 
 func main() {
+	os.Exit(run())
+}
+
+func run() int {
 	// Start profiling server (if enabled)
 	profiling.StartPprofServer()
 
@@ -22,13 +26,13 @@ func main() {
 	cfg, err := config.Load(configPath)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to load config: %v\n", err)
-		os.Exit(1)
+		return 1
 	}
 
 	// Validate configuration
-	if err := cfg.Validate(); err != nil {
-		fmt.Fprintf(os.Stderr, "Configuration error: %v\n", err)
-		os.Exit(1)
+	if validationErr := cfg.Validate(); validationErr != nil {
+		fmt.Fprintf(os.Stderr, "Configuration error: %v\n", validationErr)
+		return 1
 	}
 
 	// Initialize logger
@@ -39,9 +43,9 @@ func main() {
 	})
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to create logger: %v\n", err)
-		os.Exit(1)
+		return 1
 	}
-	defer log.Sync()
+	defer func() { _ = log.Sync() }()
 
 	log.Info("Starting auth service",
 		logger.String("name", cfg.Service.Name),
@@ -50,15 +54,17 @@ func main() {
 	)
 
 	// Create server
-	srv, err := api.NewServer(cfg, log)
-	if err != nil {
-		log.Error("Failed to create server", logger.Error(err))
-		os.Exit(1)
+	srv, srvErr := api.NewServer(cfg, log)
+	if srvErr != nil {
+		log.Error("Failed to create server", logger.Error(srvErr))
+		return 1
 	}
 
 	// Run server with graceful shutdown
-	if err := server.RunWithGracefulShutdown(context.Background(), srv, log); err != nil {
-		log.Error("Server error", logger.Error(err))
-		os.Exit(1)
+	if runErr := server.RunWithGracefulShutdown(context.Background(), srv, log); runErr != nil {
+		log.Error("Server error", logger.Error(runErr))
+		return 1
 	}
+
+	return 0
 }
