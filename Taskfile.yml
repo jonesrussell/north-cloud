@@ -370,17 +370,17 @@ tasks:
   docker:prod:up:
     desc: "Start production environment"
     cmds:
-      - docker compose -f docker-compose.base.yml -f docker-compose.prod.yml up -d
+      - docker compose -f docker-compose.base.yml -f docker-compose.prod.yml up -d {{.CLI_ARGS}}
 
   docker:prod:down:
     desc: "Stop production environment"
     cmds:
-      - docker compose -f docker-compose.base.yml -f docker-compose.prod.yml down
+      - docker compose -f docker-compose.base.yml -f docker-compose.prod.yml down {{.CLI_ARGS}}
 
   docker:prod:logs:
     desc: "View production environment logs"
     cmds:
-      - docker compose -f docker-compose.base.yml -f docker-compose.prod.yml logs -f
+      - docker compose -f docker-compose.base.yml -f docker-compose.prod.yml logs -f {{.CLI_ARGS}}
 
   docker:prod:restart:
     desc: "Restart production environment"
