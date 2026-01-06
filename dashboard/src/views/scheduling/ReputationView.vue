@@ -1,16 +1,18 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { Loader2, Star, TrendingUp, TrendingDown } from 'lucide-vue-next'
+import { Loader2, Star } from 'lucide-vue-next'
 import { classifierApi } from '@/api/client'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 
+// Match the actual API response from classifier service
 interface SourceReputation {
   name: string
-  quality_score: number
-  total_articles: number
-  crime_rate: number
-  trend: 'up' | 'down' | 'stable'
+  reputation: number          // 0-100 reputation score
+  category: string            // news, blog, government, unknown
+  total_classified: number    // total articles classified
+  avg_quality: number         // average quality score
+  last_updated: string | null
 }
 
 const loading = ref(true)
@@ -20,9 +22,11 @@ const sources = ref<SourceReputation[]>([])
 const loadSources = async () => {
   try {
     loading.value = true
+    error.value = null
     const response = await classifierApi.sources.list()
-    sources.value = response.data?.sources || response.data || []
+    sources.value = response.data?.sources || []
   } catch (err) {
+    console.error('Failed to load sources:', err)
     error.value = 'Unable to load source reputation data.'
   } finally {
     loading.value = false
@@ -33,6 +37,11 @@ const getScoreVariant = (score: number) => {
   if (score >= 80) return 'success'
   if (score >= 60) return 'warning'
   return 'destructive'
+}
+
+const formatDate = (date: string | null) => {
+  if (!date) return 'Never'
+  return new Date(date).toLocaleDateString()
 }
 
 onMounted(loadSources)
@@ -92,16 +101,19 @@ onMounted(loadSources)
                 Source
               </th>
               <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
-                Quality Score
+                Category
               </th>
               <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
-                Total Articles
+                Reputation
               </th>
               <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
-                Crime Rate
+                Avg Quality
               </th>
               <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
-                Trend
+                Total Classified
+              </th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
+                Last Updated
               </th>
             </tr>
           </thead>
@@ -115,29 +127,23 @@ onMounted(loadSources)
                 {{ source.name }}
               </td>
               <td class="px-6 py-4">
-                <Badge :variant="getScoreVariant(source.quality_score)">
-                  {{ source.quality_score }}/100
+                <Badge variant="outline">
+                  {{ source.category || 'unknown' }}
+                </Badge>
+              </td>
+              <td class="px-6 py-4">
+                <Badge :variant="getScoreVariant(source.reputation)">
+                  {{ source.reputation }}/100
                 </Badge>
               </td>
               <td class="px-6 py-4 text-sm text-muted-foreground">
-                {{ source.total_articles.toLocaleString() }}
+                {{ source.avg_quality?.toFixed(1) || '0' }}
               </td>
               <td class="px-6 py-4 text-sm text-muted-foreground">
-                {{ (source.crime_rate * 100).toFixed(1) }}%
+                {{ source.total_classified?.toLocaleString() || 0 }}
               </td>
-              <td class="px-6 py-4">
-                <TrendingUp
-                  v-if="source.trend === 'up'"
-                  class="h-4 w-4 text-green-500"
-                />
-                <TrendingDown
-                  v-else-if="source.trend === 'down'"
-                  class="h-4 w-4 text-red-500"
-                />
-                <span
-                  v-else
-                  class="text-muted-foreground"
-                >—</span>
+              <td class="px-6 py-4 text-sm text-muted-foreground">
+                {{ formatDate(source.last_updated) }}
               </td>
             </tr>
           </tbody>
