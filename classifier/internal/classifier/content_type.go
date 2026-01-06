@@ -14,8 +14,13 @@ const (
 	pageConfidence             = 0.6
 	urlExclusionConfidence     = 0.9
 	ogTypeValidationConfidence = 0.7
+	listingPageConfidence      = 0.85
 	// String literal for article type matching
 	articleTypeString = "article"
+	// Listing page detection thresholds
+	minReadMoreCountForListing = 3
+	minDateCountForListing     = 5
+	minSummaryCountForListing  = 3
 )
 
 // nonArticleURLPatterns contains URL path patterns that indicate non-article content
@@ -102,7 +107,7 @@ func (c *ContentTypeClassifier) Classify(ctx context.Context, raw *domain.RawCon
 		)
 		return &ContentTypeResult{
 			Type:       domain.ContentTypePage,
-			Confidence: 0.85,
+			Confidence: listingPageConfidence,
 			Method:     "content_pattern",
 			Reason:     "Content has listing page characteristics (multiple article links)",
 		}, nil
@@ -255,7 +260,7 @@ func (c *ContentTypeClassifier) isNumeric(s string) bool {
 			return false
 		}
 	}
-	return len(s) > 0 && (s[0] != '-' || len(s) > 1)
+	return s != "" && (s[0] != '-' || len(s) > 1)
 }
 
 // matchesURLPattern checks if URL path matches pattern (handles trailing slashes intelligently)
@@ -352,7 +357,7 @@ func (c *ContentTypeClassifier) isListingPageContent(raw *domain.RawContent) boo
 	}
 
 	// If we find 3+ "Read more" links, it's likely a listing page
-	if readMoreCount >= 3 {
+	if readMoreCount >= minReadMoreCountForListing {
 		return true
 	}
 
@@ -368,7 +373,7 @@ func (c *ContentTypeClassifier) isListingPageContent(raw *domain.RawContent) boo
 	}
 
 	// If we find 5+ date mentions, it's likely a listing page with multiple articles
-	if dateCount >= 5 {
+	if dateCount >= minDateCountForListing {
 		return true
 	}
 
@@ -384,7 +389,7 @@ func (c *ContentTypeClassifier) isListingPageContent(raw *domain.RawContent) boo
 	}
 
 	// If we have 3+ datelines, it's likely a listing page with multiple article summaries
-	if summaryCount >= 3 {
+	if summaryCount >= minSummaryCountForListing {
 		return true
 	}
 
