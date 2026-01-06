@@ -7,6 +7,9 @@ import (
 	"github.com/north-cloud/infrastructure/logger"
 )
 
+// keyValuePairSize represents the number of elements in a key-value pair.
+const keyValuePairSize = 2
+
 // Logger defines the interface for structured logging in the search service.
 type Logger interface {
 	Info(msg string, keysAndValues ...interface{})
@@ -54,8 +57,8 @@ func (a *Adapter) Fatal(msg string, keysAndValues ...interface{}) {
 
 // toFields converts key-value pairs to logger.Field slice.
 func toFields(keysAndValues []interface{}) []logger.Field {
-	fields := make([]logger.Field, 0, len(keysAndValues)/2)
-	for i := 0; i < len(keysAndValues); i += 2 {
+	fields := make([]logger.Field, 0, len(keysAndValues)/keyValuePairSize)
+	for i := 0; i < len(keysAndValues); i += keyValuePairSize {
 		if i+1 >= len(keysAndValues) {
 			break
 		}

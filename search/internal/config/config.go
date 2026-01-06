@@ -7,6 +7,31 @@ import (
 	infraconfig "github.com/north-cloud/infrastructure/config"
 )
 
+// Default configuration values.
+const (
+	defaultServiceName       = "search"
+	defaultServiceVersion    = "1.0.0"
+	defaultServicePort       = 8092
+	defaultMaxPageSize       = 100
+	defaultPageSize          = 20
+	defaultMaxQueryLength    = 500
+	defaultSearchTimeoutSec  = 5
+	defaultESURL             = "http://localhost:9200"
+	defaultESMaxRetries      = 3
+	defaultESTimeoutSec      = 30
+	defaultContentPattern    = "*_classified_content"
+	defaultBoostTitle        = 3.0
+	defaultBoostOGTitle      = 2.0
+	defaultBoostRawText      = 1.0
+	defaultHighlightFragment = 150
+	defaultHighlightMax      = 3
+	defaultMaxTopics         = 20
+	defaultMaxSources        = 20
+	defaultMaxContentTypes   = 10
+	defaultLogLevel          = "info"
+	defaultLogFormat         = "json"
+)
+
 // Config holds all configuration for the search service.
 type Config struct {
 	Service       ServiceConfig       `yaml:"service"`
@@ -92,86 +117,97 @@ func Load(path string) (*Config, error) {
 
 // setDefaults applies default values to the config.
 func setDefaults(cfg *Config) {
-	// Service defaults
-	if cfg.Service.Name == "" {
-		cfg.Service.Name = "search"
-	}
-	if cfg.Service.Version == "" {
-		cfg.Service.Version = "1.0.0"
-	}
-	if cfg.Service.Port == 0 {
-		cfg.Service.Port = 8092
-	}
-	if cfg.Service.MaxPageSize == 0 {
-		cfg.Service.MaxPageSize = 100
-	}
-	if cfg.Service.DefaultPageSize == 0 {
-		cfg.Service.DefaultPageSize = 20
-	}
-	if cfg.Service.MaxQueryLength == 0 {
-		cfg.Service.MaxQueryLength = 500
-	}
-	if cfg.Service.SearchTimeout == 0 {
-		cfg.Service.SearchTimeout = 5 * time.Second
-	}
+	setServiceDefaults(&cfg.Service)
+	setElasticsearchDefaults(&cfg.Elasticsearch)
+	setFacetsDefaults(&cfg.Facets)
+	setLoggingDefaults(&cfg.Logging)
+	setCORSDefaults(&cfg.CORS)
+}
 
-	// Elasticsearch defaults
-	if cfg.Elasticsearch.URL == "" {
-		cfg.Elasticsearch.URL = "http://localhost:9200"
+func setServiceDefaults(s *ServiceConfig) {
+	if s.Name == "" {
+		s.Name = defaultServiceName
 	}
-	if cfg.Elasticsearch.MaxRetries == 0 {
-		cfg.Elasticsearch.MaxRetries = 3
+	if s.Version == "" {
+		s.Version = defaultServiceVersion
 	}
-	if cfg.Elasticsearch.Timeout == 0 {
-		cfg.Elasticsearch.Timeout = 30 * time.Second
+	if s.Port == 0 {
+		s.Port = defaultServicePort
 	}
-	if cfg.Elasticsearch.ClassifiedContentPattern == "" {
-		cfg.Elasticsearch.ClassifiedContentPattern = "*_classified_content"
+	if s.MaxPageSize == 0 {
+		s.MaxPageSize = defaultMaxPageSize
 	}
-	if cfg.Elasticsearch.DefaultBoost.Title == 0 {
-		cfg.Elasticsearch.DefaultBoost.Title = 3.0
+	if s.DefaultPageSize == 0 {
+		s.DefaultPageSize = defaultPageSize
 	}
-	if cfg.Elasticsearch.DefaultBoost.OGTitle == 0 {
-		cfg.Elasticsearch.DefaultBoost.OGTitle = 2.0
+	if s.MaxQueryLength == 0 {
+		s.MaxQueryLength = defaultMaxQueryLength
 	}
-	if cfg.Elasticsearch.DefaultBoost.RawText == 0 {
-		cfg.Elasticsearch.DefaultBoost.RawText = 1.0
+	if s.SearchTimeout == 0 {
+		s.SearchTimeout = defaultSearchTimeoutSec * time.Second
 	}
-	if cfg.Elasticsearch.HighlightFragmentSize == 0 {
-		cfg.Elasticsearch.HighlightFragmentSize = 150
-	}
-	if cfg.Elasticsearch.HighlightMaxFragments == 0 {
-		cfg.Elasticsearch.HighlightMaxFragments = 3
-	}
+}
 
-	// Facets defaults
-	if cfg.Facets.MaxTopics == 0 {
-		cfg.Facets.MaxTopics = 20
+func setElasticsearchDefaults(e *ElasticsearchConfig) {
+	if e.URL == "" {
+		e.URL = defaultESURL
 	}
-	if cfg.Facets.MaxSources == 0 {
-		cfg.Facets.MaxSources = 20
+	if e.MaxRetries == 0 {
+		e.MaxRetries = defaultESMaxRetries
 	}
-	if cfg.Facets.MaxContentTypes == 0 {
-		cfg.Facets.MaxContentTypes = 10
+	if e.Timeout == 0 {
+		e.Timeout = defaultESTimeoutSec * time.Second
 	}
+	if e.ClassifiedContentPattern == "" {
+		e.ClassifiedContentPattern = defaultContentPattern
+	}
+	if e.DefaultBoost.Title == 0 {
+		e.DefaultBoost.Title = defaultBoostTitle
+	}
+	if e.DefaultBoost.OGTitle == 0 {
+		e.DefaultBoost.OGTitle = defaultBoostOGTitle
+	}
+	if e.DefaultBoost.RawText == 0 {
+		e.DefaultBoost.RawText = defaultBoostRawText
+	}
+	if e.HighlightFragmentSize == 0 {
+		e.HighlightFragmentSize = defaultHighlightFragment
+	}
+	if e.HighlightMaxFragments == 0 {
+		e.HighlightMaxFragments = defaultHighlightMax
+	}
+}
 
-	// Logging defaults
-	if cfg.Logging.Level == "" {
-		cfg.Logging.Level = "info"
+func setFacetsDefaults(f *FacetsConfig) {
+	if f.MaxTopics == 0 {
+		f.MaxTopics = defaultMaxTopics
 	}
-	if cfg.Logging.Format == "" {
-		cfg.Logging.Format = "json"
+	if f.MaxSources == 0 {
+		f.MaxSources = defaultMaxSources
 	}
+	if f.MaxContentTypes == 0 {
+		f.MaxContentTypes = defaultMaxContentTypes
+	}
+}
 
-	// CORS defaults
-	if len(cfg.CORS.AllowedOrigins) == 0 {
-		cfg.CORS.AllowedOrigins = []string{"*"}
+func setLoggingDefaults(l *LoggingConfig) {
+	if l.Level == "" {
+		l.Level = defaultLogLevel
 	}
-	if len(cfg.CORS.AllowedMethods) == 0 {
-		cfg.CORS.AllowedMethods = []string{"GET", "POST", "OPTIONS"}
+	if l.Format == "" {
+		l.Format = defaultLogFormat
 	}
-	if len(cfg.CORS.AllowedHeaders) == 0 {
-		cfg.CORS.AllowedHeaders = []string{"Content-Type", "Authorization"}
+}
+
+func setCORSDefaults(c *CORSConfig) {
+	if len(c.AllowedOrigins) == 0 {
+		c.AllowedOrigins = []string{"*"}
+	}
+	if len(c.AllowedMethods) == 0 {
+		c.AllowedMethods = []string{"GET", "POST", "OPTIONS"}
+	}
+	if len(c.AllowedHeaders) == 0 {
+		c.AllowedHeaders = []string{"Content-Type", "Authorization"}
 	}
 }
 

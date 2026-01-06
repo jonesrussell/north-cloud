@@ -18,21 +18,28 @@ import (
 	"github.com/north-cloud/infrastructure/logger"
 )
 
-const shutdownTimeout = 10 * time.Second
+const (
+	shutdownTimeout    = 10 * time.Second
+	httpTimeoutSeconds = 15
+)
 
 func main() {
+	os.Exit(run())
+}
+
+func run() int {
 	// Load configuration
 	configPath := infraconfig.GetConfigPath("config.yml")
 	cfg, err := config.Load(configPath)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to load config: %v\n", err)
-		os.Exit(1)
+		return 1
 	}
 
 	// Validate configuration
-	if err := cfg.Validate(); err != nil {
-		fmt.Fprintf(os.Stderr, "Configuration error: %v\n", err)
-		os.Exit(1)
+	if validationErr := cfg.Validate(); validationErr != nil {
+		fmt.Fprintf(os.Stderr, "Configuration error: %v\n", validationErr)
+		return 1
 	}
 
 	// Initialize logger
@@ -43,9 +50,9 @@ func main() {
 	})
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to create logger: %v\n", err)
-		os.Exit(1)
+		return 1
 	}
-	defer log.Sync()
+	defer func() { _ = log.Sync() }()
 
 	// Create logger adapter for services
 	logAdapter := logging.NewAdapter(log)
@@ -56,6 +63,22 @@ func main() {
 		logger.Int("port", cfg.Service.Port),
 	)
 
+	// Initialize dependencies
+	esClient, db, cleanup, initErr := initDependencies(cfg, log)
+	if initErr != nil {
+		log.Error("Failed to initialize dependencies", logger.Error(initErr))
+		return 1
+	}
+	defer cleanup()
+
+	// Initialize and run server
+	server := initServer(cfg, esClient, db, logAdapter)
+	return runServer(server, log)
+}
+
+func initDependencies(cfg *config.Config, log logger.Logger) (
+	*elasticsearch.Client, *database.Connection, func(), error,
+) {
 	// Initialize Elasticsearch client
 	esConfig := &elasticsearch.Config{
 		URL:        cfg.Elasticsearch.URL,
@@ -67,8 +90,7 @@ func main() {
 
 	esClient, err := elasticsearch.NewClient(esConfig)
 	if err != nil {
-		log.Error("Failed to create Elasticsearch client", logger.Error(err))
-		os.Exit(1)
+		return nil, nil, nil, fmt.Errorf("elasticsearch client: %w", err)
 	}
 	log.Info("Elasticsearch client initialized")
 
@@ -87,16 +109,25 @@ func main() {
 
 	db, err := database.NewConnection(dbConfig)
 	if err != nil {
-		log.Error("Failed to connect to database", logger.Error(err))
-		os.Exit(1)
+		return nil, nil, nil, fmt.Errorf("database connection: %w", err)
 	}
-	defer func() {
+	log.Info("Database connection established")
+
+	cleanup := func() {
 		if closeErr := db.Close(); closeErr != nil {
 			log.Error("Failed to close database connection", logger.Error(closeErr))
 		}
-	}()
-	log.Info("Database connection established")
+	}
 
+	return esClient, db, cleanup, nil
+}
+
+func initServer(
+	cfg *config.Config,
+	esClient *elasticsearch.Client,
+	db *database.Connection,
+	logAdapter *logging.Adapter,
+) *api.Server {
 	// Initialize services
 	indexService := service.NewIndexService(esClient, db, logAdapter)
 	documentService := service.NewDocumentService(esClient, logAdapter)
@@ -105,7 +136,6 @@ func main() {
 	handler := api.NewHandler(indexService, documentService, logAdapter)
 
 	// Initialize HTTP server
-	const httpTimeoutSeconds = 15
 	serverConfig := api.ServerConfig{
 		Port:         cfg.Service.Port,
 		ReadTimeout:  httpTimeoutSeconds * time.Second,
@@ -113,8 +143,10 @@ func main() {
 		Debug:        cfg.Service.Debug,
 	}
 
-	server := api.NewServer(handler, serverConfig, logAdapter)
+	return api.NewServer(handler, serverConfig, logAdapter)
+}
 
+func runServer(server *api.Server, log logger.Logger) int {
 	// Start server in goroutine
 	serverErr := make(chan error, 1)
 	go func() {
@@ -129,8 +161,9 @@ func main() {
 
 	// Wait for signal or error
 	select {
-	case err := <-serverErr:
-		log.Error("Server error", logger.Error(err))
+	case srvErr := <-serverErr:
+		log.Error("Server error", logger.Error(srvErr))
+		return 1
 	case sig := <-sigChan:
 		log.Info("Shutdown signal received", logger.String("signal", sig.String()))
 	}
@@ -141,7 +174,9 @@ func main() {
 
 	if shutdownErr := server.Shutdown(ctx); shutdownErr != nil {
 		log.Error("Server shutdown error", logger.Error(shutdownErr))
+		return 1
 	}
 
 	log.Info("Index Manager Service stopped")
+	return 0
 }

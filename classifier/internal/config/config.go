@@ -6,6 +6,39 @@ import (
 	infraconfig "github.com/north-cloud/infrastructure/config"
 )
 
+// Default configuration values.
+const (
+	defaultServiceName        = "classifier"
+	defaultServiceVersion     = "1.0.0"
+	defaultServicePort        = 8070
+	defaultConcurrency        = 10
+	defaultBatchSize          = 100
+	defaultPollIntervalSec    = 30
+	defaultMinQualityScore    = 50
+	defaultMinWordCount       = 100
+	defaultDBHost             = "localhost"
+	defaultDBPort             = 5432
+	defaultDBUser             = "postgres"
+	defaultDBName             = "classifier"
+	defaultDBSSLMode          = "disable"
+	defaultDBMaxConns         = 25
+	defaultDBMaxIdleConns     = 5
+	defaultESURL              = "http://localhost:9200"
+	defaultESMaxRetries       = 3
+	defaultESTimeoutSec       = 30
+	defaultESRawSuffix        = "_raw_content"
+	defaultESClassifiedSuffix = "_classified_content"
+	defaultRedisURL           = "localhost:6379"
+	defaultRedisMaxRetries    = 3
+	defaultRedisTimeoutSec    = 5
+	defaultCacheTTLHours      = 24
+	defaultLogLevel           = "info"
+	defaultLogFormat          = "json"
+	defaultQualityWeight      = 0.25
+	defaultReputationScore    = 50
+	defaultMaxTopics          = 5
+)
+
 // Config holds all configuration for the classifier service.
 type Config struct {
 	Service        ServiceConfig        `yaml:"service"`
@@ -118,114 +151,127 @@ func Load(path string) (*Config, error) {
 
 // setDefaults applies default values to the config.
 func setDefaults(cfg *Config) {
-	// Service defaults
-	if cfg.Service.Name == "" {
-		cfg.Service.Name = "classifier"
-	}
-	if cfg.Service.Version == "" {
-		cfg.Service.Version = "1.0.0"
-	}
-	if cfg.Service.Port == 0 {
-		cfg.Service.Port = 8070
-	}
-	if cfg.Service.Concurrency == 0 {
-		cfg.Service.Concurrency = 10
-	}
-	if cfg.Service.BatchSize == 0 {
-		cfg.Service.BatchSize = 100
-	}
-	if cfg.Service.PollInterval == 0 {
-		cfg.Service.PollInterval = 30 * time.Second
-	}
-	if cfg.Service.MinQualityScore == 0 {
-		cfg.Service.MinQualityScore = 50
-	}
-	if cfg.Service.MinWordCount == 0 {
-		cfg.Service.MinWordCount = 100
-	}
+	setServiceDefaults(&cfg.Service)
+	setDatabaseDefaults(&cfg.Database)
+	setElasticsearchDefaults(&cfg.Elasticsearch)
+	setRedisDefaults(&cfg.Redis)
+	setLoggingDefaults(&cfg.Logging)
+	setClassificationDefaults(&cfg.Classification)
+}
 
-	// Database defaults
-	if cfg.Database.Host == "" {
-		cfg.Database.Host = "localhost"
+func setServiceDefaults(s *ServiceConfig) {
+	if s.Name == "" {
+		s.Name = defaultServiceName
 	}
-	if cfg.Database.Port == 0 {
-		cfg.Database.Port = 5432
+	if s.Version == "" {
+		s.Version = defaultServiceVersion
 	}
-	if cfg.Database.User == "" {
-		cfg.Database.User = "postgres"
+	if s.Port == 0 {
+		s.Port = defaultServicePort
 	}
-	if cfg.Database.Database == "" {
-		cfg.Database.Database = "classifier"
+	if s.Concurrency == 0 {
+		s.Concurrency = defaultConcurrency
 	}
-	if cfg.Database.SSLMode == "" {
-		cfg.Database.SSLMode = "disable"
+	if s.BatchSize == 0 {
+		s.BatchSize = defaultBatchSize
 	}
-	if cfg.Database.MaxConnections == 0 {
-		cfg.Database.MaxConnections = 25
+	if s.PollInterval == 0 {
+		s.PollInterval = defaultPollIntervalSec * time.Second
 	}
-	if cfg.Database.MaxIdleConns == 0 {
-		cfg.Database.MaxIdleConns = 5
+	if s.MinQualityScore == 0 {
+		s.MinQualityScore = defaultMinQualityScore
 	}
-	if cfg.Database.ConnMaxLifetime == 0 {
-		cfg.Database.ConnMaxLifetime = time.Hour
+	if s.MinWordCount == 0 {
+		s.MinWordCount = defaultMinWordCount
 	}
+}
 
-	// Elasticsearch defaults
-	if cfg.Elasticsearch.URL == "" {
-		cfg.Elasticsearch.URL = "http://localhost:9200"
+func setDatabaseDefaults(d *DatabaseConfig) {
+	if d.Host == "" {
+		d.Host = defaultDBHost
 	}
-	if cfg.Elasticsearch.MaxRetries == 0 {
-		cfg.Elasticsearch.MaxRetries = 3
+	if d.Port == 0 {
+		d.Port = defaultDBPort
 	}
-	if cfg.Elasticsearch.Timeout == 0 {
-		cfg.Elasticsearch.Timeout = 30 * time.Second
+	if d.User == "" {
+		d.User = defaultDBUser
 	}
-	if cfg.Elasticsearch.RawContentSuffix == "" {
-		cfg.Elasticsearch.RawContentSuffix = "_raw_content"
+	if d.Database == "" {
+		d.Database = defaultDBName
 	}
-	if cfg.Elasticsearch.ClassifiedContentSuffix == "" {
-		cfg.Elasticsearch.ClassifiedContentSuffix = "_classified_content"
+	if d.SSLMode == "" {
+		d.SSLMode = defaultDBSSLMode
 	}
+	if d.MaxConnections == 0 {
+		d.MaxConnections = defaultDBMaxConns
+	}
+	if d.MaxIdleConns == 0 {
+		d.MaxIdleConns = defaultDBMaxIdleConns
+	}
+	if d.ConnMaxLifetime == 0 {
+		d.ConnMaxLifetime = time.Hour
+	}
+}
 
-	// Redis defaults
-	if cfg.Redis.URL == "" {
-		cfg.Redis.URL = "localhost:6379"
+func setElasticsearchDefaults(e *ElasticsearchConfig) {
+	if e.URL == "" {
+		e.URL = defaultESURL
 	}
-	if cfg.Redis.MaxRetries == 0 {
-		cfg.Redis.MaxRetries = 3
+	if e.MaxRetries == 0 {
+		e.MaxRetries = defaultESMaxRetries
 	}
-	if cfg.Redis.Timeout == 0 {
-		cfg.Redis.Timeout = 5 * time.Second
+	if e.Timeout == 0 {
+		e.Timeout = defaultESTimeoutSec * time.Second
 	}
-	if cfg.Redis.ClassificationCacheTTL == 0 {
-		cfg.Redis.ClassificationCacheTTL = 24 * time.Hour
+	if e.RawContentSuffix == "" {
+		e.RawContentSuffix = defaultESRawSuffix
 	}
+	if e.ClassifiedContentSuffix == "" {
+		e.ClassifiedContentSuffix = defaultESClassifiedSuffix
+	}
+}
 
-	// Logging defaults
-	if cfg.Logging.Level == "" {
-		cfg.Logging.Level = "info"
+func setRedisDefaults(r *RedisConfig) {
+	if r.URL == "" {
+		r.URL = defaultRedisURL
 	}
-	if cfg.Logging.Format == "" {
-		cfg.Logging.Format = "json"
+	if r.MaxRetries == 0 {
+		r.MaxRetries = defaultRedisMaxRetries
 	}
+	if r.Timeout == 0 {
+		r.Timeout = defaultRedisTimeoutSec * time.Second
+	}
+	if r.ClassificationCacheTTL == 0 {
+		r.ClassificationCacheTTL = defaultCacheTTLHours * time.Hour
+	}
+}
 
-	// Classification defaults
-	if cfg.Classification.Quality.WordCountWeight == 0 {
-		cfg.Classification.Quality.WordCountWeight = 0.25
+func setLoggingDefaults(l *LoggingConfig) {
+	if l.Level == "" {
+		l.Level = defaultLogLevel
 	}
-	if cfg.Classification.Quality.MetadataWeight == 0 {
-		cfg.Classification.Quality.MetadataWeight = 0.25
+	if l.Format == "" {
+		l.Format = defaultLogFormat
 	}
-	if cfg.Classification.Quality.RichnessWeight == 0 {
-		cfg.Classification.Quality.RichnessWeight = 0.25
+}
+
+func setClassificationDefaults(c *ClassificationConfig) {
+	if c.Quality.WordCountWeight == 0 {
+		c.Quality.WordCountWeight = defaultQualityWeight
 	}
-	if cfg.Classification.Quality.ReadabilityWeight == 0 {
-		cfg.Classification.Quality.ReadabilityWeight = 0.25
+	if c.Quality.MetadataWeight == 0 {
+		c.Quality.MetadataWeight = defaultQualityWeight
 	}
-	if cfg.Classification.SourceReputation.DefaultScore == 0 {
-		cfg.Classification.SourceReputation.DefaultScore = 50
+	if c.Quality.RichnessWeight == 0 {
+		c.Quality.RichnessWeight = defaultQualityWeight
 	}
-	if cfg.Classification.Topic.MaxTopics == 0 {
-		cfg.Classification.Topic.MaxTopics = 5
+	if c.Quality.ReadabilityWeight == 0 {
+		c.Quality.ReadabilityWeight = defaultQualityWeight
+	}
+	if c.SourceReputation.DefaultScore == 0 {
+		c.SourceReputation.DefaultScore = defaultReputationScore
+	}
+	if c.Topic.MaxTopics == 0 {
+		c.Topic.MaxTopics = defaultMaxTopics
 	}
 }

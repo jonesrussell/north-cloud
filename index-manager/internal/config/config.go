@@ -6,6 +6,26 @@ import (
 	infraconfig "github.com/north-cloud/infrastructure/config"
 )
 
+// Default configuration values.
+const (
+	defaultServiceName     = "index-manager"
+	defaultServiceVersion  = "1.0.0"
+	defaultServicePort     = 8090
+	defaultDBHost          = "localhost"
+	defaultDBPort          = 5432
+	defaultDBUser          = "postgres"
+	defaultDBName          = "index_manager"
+	defaultDBSSLMode       = "disable"
+	defaultDBMaxConns      = 25
+	defaultDBMaxIdleConns  = 5
+	defaultDBConnLifetimeM = 5
+	defaultESURL           = "http://localhost:9200"
+	defaultESMaxRetries    = 3
+	defaultESTimeoutSec    = 30
+	defaultLogLevel        = "info"
+	defaultLogFormat       = "json"
+)
+
 // Config holds the application configuration.
 type Config struct {
 	Service       ServiceConfig       `yaml:"service"`
@@ -73,60 +93,69 @@ func Load(path string) (*Config, error) {
 
 // setDefaults applies default values to the config.
 func setDefaults(cfg *Config) {
-	// Service defaults
-	if cfg.Service.Name == "" {
-		cfg.Service.Name = "index-manager"
-	}
-	if cfg.Service.Version == "" {
-		cfg.Service.Version = "1.0.0"
-	}
-	if cfg.Service.Port == 0 {
-		cfg.Service.Port = 8090
-	}
+	setServiceDefaults(&cfg.Service)
+	setDatabaseDefaults(&cfg.Database)
+	setElasticsearchDefaults(&cfg.Elasticsearch)
+	setLoggingDefaults(&cfg.Logging)
+}
 
-	// Database defaults
-	if cfg.Database.Host == "" {
-		cfg.Database.Host = "localhost"
+func setServiceDefaults(s *ServiceConfig) {
+	if s.Name == "" {
+		s.Name = defaultServiceName
 	}
-	if cfg.Database.Port == 0 {
-		cfg.Database.Port = 5432
+	if s.Version == "" {
+		s.Version = defaultServiceVersion
 	}
-	if cfg.Database.User == "" {
-		cfg.Database.User = "postgres"
+	if s.Port == 0 {
+		s.Port = defaultServicePort
 	}
-	if cfg.Database.Database == "" {
-		cfg.Database.Database = "index_manager"
-	}
-	if cfg.Database.SSLMode == "" {
-		cfg.Database.SSLMode = "disable"
-	}
-	if cfg.Database.MaxConnections == 0 {
-		cfg.Database.MaxConnections = 25
-	}
-	if cfg.Database.MaxIdleConns == 0 {
-		cfg.Database.MaxIdleConns = 5
-	}
-	if cfg.Database.ConnectionMaxLifetime == 0 {
-		cfg.Database.ConnectionMaxLifetime = 5 * time.Minute
-	}
+}
 
-	// Elasticsearch defaults
-	if cfg.Elasticsearch.URL == "" {
-		cfg.Elasticsearch.URL = "http://localhost:9200"
+func setDatabaseDefaults(d *DatabaseConfig) {
+	if d.Host == "" {
+		d.Host = defaultDBHost
 	}
-	if cfg.Elasticsearch.MaxRetries == 0 {
-		cfg.Elasticsearch.MaxRetries = 3
+	if d.Port == 0 {
+		d.Port = defaultDBPort
 	}
-	if cfg.Elasticsearch.Timeout == 0 {
-		cfg.Elasticsearch.Timeout = 30 * time.Second
+	if d.User == "" {
+		d.User = defaultDBUser
 	}
+	if d.Database == "" {
+		d.Database = defaultDBName
+	}
+	if d.SSLMode == "" {
+		d.SSLMode = defaultDBSSLMode
+	}
+	if d.MaxConnections == 0 {
+		d.MaxConnections = defaultDBMaxConns
+	}
+	if d.MaxIdleConns == 0 {
+		d.MaxIdleConns = defaultDBMaxIdleConns
+	}
+	if d.ConnectionMaxLifetime == 0 {
+		d.ConnectionMaxLifetime = defaultDBConnLifetimeM * time.Minute
+	}
+}
 
-	// Logging defaults
-	if cfg.Logging.Level == "" {
-		cfg.Logging.Level = "info"
+func setElasticsearchDefaults(e *ElasticsearchConfig) {
+	if e.URL == "" {
+		e.URL = defaultESURL
 	}
-	if cfg.Logging.Format == "" {
-		cfg.Logging.Format = "json"
+	if e.MaxRetries == 0 {
+		e.MaxRetries = defaultESMaxRetries
+	}
+	if e.Timeout == 0 {
+		e.Timeout = defaultESTimeoutSec * time.Second
+	}
+}
+
+func setLoggingDefaults(l *LoggingConfig) {
+	if l.Level == "" {
+		l.Level = defaultLogLevel
+	}
+	if l.Format == "" {
+		l.Format = defaultLogFormat
 	}
 }
 

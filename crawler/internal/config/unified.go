@@ -9,6 +9,36 @@ import (
 	infraconfig "github.com/north-cloud/infrastructure/config"
 )
 
+// Default configuration values.
+const (
+	defaultServerPort         = 8060
+	defaultReadTimeoutSec     = 30
+	defaultWriteTimeoutSec    = 30
+	defaultIdleTimeoutSec     = 60
+	defaultMaxDepth           = 3
+	defaultMaxConcurrency     = 10
+	defaultRequestDelayMs     = 100
+	defaultRequestTimeoutSec  = 30
+	defaultUserAgent          = "NorthCloud-Crawler/1.0"
+	defaultRateLimit          = 1.0
+	defaultESURL              = "http://localhost:9200"
+	defaultESMaxRetries       = 3
+	defaultESTimeoutSec       = 30
+	defaultESRawContentSuffix = "_raw_content"
+	defaultDBHost             = "localhost"
+	defaultDBPort             = 5432
+	defaultDBUser             = "postgres"
+	defaultDBName             = "crawler"
+	defaultDBSSLMode          = "disable"
+	defaultDBMaxConns         = 25
+	defaultDBMaxIdleConns     = 5
+	defaultDBConnMaxLifetimeM = 5
+	defaultMinIOEndpoint      = "localhost:9000"
+	defaultMinIOBucket        = "crawler-archives"
+	defaultLogLevel           = "info"
+	defaultLogFormat          = "json"
+)
+
 // UnifiedConfig represents the crawler configuration using the unified loader.
 type UnifiedConfig struct {
 	Server        ServerConfig        `yaml:"server"`
@@ -21,14 +51,14 @@ type UnifiedConfig struct {
 
 // ServerConfig holds server-specific configuration.
 type ServerConfig struct {
-	Address         string        `yaml:"address" env:"SERVER_ADDRESS"`
-	Port            int           `yaml:"port" env:"CRAWLER_PORT"`
+	Address         string        `env:"SERVER_ADDRESS"    yaml:"address"`
+	Port            int           `env:"CRAWLER_PORT"      yaml:"port"`
 	ReadTimeout     time.Duration `yaml:"read_timeout"`
 	WriteTimeout    time.Duration `yaml:"write_timeout"`
 	IdleTimeout     time.Duration `yaml:"idle_timeout"`
 	SecurityEnabled bool          `yaml:"security_enabled"`
 	APIKey          string        `yaml:"api_key"`
-	Debug           bool          `yaml:"debug" env:"APP_DEBUG"`
+	Debug           bool          `env:"APP_DEBUG"         yaml:"debug"`
 }
 
 // CrawlerConfig holds crawler-specific configuration.
@@ -44,21 +74,21 @@ type CrawlerConfig struct {
 
 // ElasticsearchConfig holds Elasticsearch configuration.
 type ElasticsearchConfig struct {
-	URL                string        `yaml:"url" env:"ELASTICSEARCH_URL"`
-	Username           string        `yaml:"username"`
-	Password           string        `yaml:"password"`
-	MaxRetries         int           `yaml:"max_retries"`
-	Timeout            time.Duration `yaml:"timeout"`
-	RawContentSuffix   string        `yaml:"raw_content_suffix"`
+	URL              string        `env:"ELASTICSEARCH_URL"   yaml:"url"`
+	Username         string        `yaml:"username"`
+	Password         string        `yaml:"password"`
+	MaxRetries       int           `yaml:"max_retries"`
+	Timeout          time.Duration `yaml:"timeout"`
+	RawContentSuffix string        `yaml:"raw_content_suffix"`
 }
 
 // DatabaseConfig holds database configuration.
 type DatabaseConfig struct {
-	Host            string        `yaml:"host" env:"POSTGRES_CRAWLER_HOST"`
-	Port            int           `yaml:"port" env:"POSTGRES_CRAWLER_PORT"`
-	User            string        `yaml:"user" env:"POSTGRES_CRAWLER_USER"`
-	Password        string        `yaml:"password" env:"POSTGRES_CRAWLER_PASSWORD"`
-	Database        string        `yaml:"database" env:"POSTGRES_CRAWLER_DB"`
+	Host            string        `env:"POSTGRES_CRAWLER_HOST"     yaml:"host"`
+	Port            int           `env:"POSTGRES_CRAWLER_PORT"     yaml:"port"`
+	User            string        `env:"POSTGRES_CRAWLER_USER"     yaml:"user"`
+	Password        string        `env:"POSTGRES_CRAWLER_PASSWORD" yaml:"password"`
+	Database        string        `env:"POSTGRES_CRAWLER_DB"       yaml:"database"`
 	SSLMode         string        `yaml:"sslmode"`
 	MaxConnections  int           `yaml:"max_connections"`
 	MaxIdleConns    int           `yaml:"max_idle_connections"`
@@ -67,9 +97,9 @@ type DatabaseConfig struct {
 
 // MinIOConfig holds MinIO configuration for HTML archiving.
 type MinIOConfig struct {
-	Endpoint        string `yaml:"endpoint" env:"MINIO_ENDPOINT"`
-	AccessKeyID     string `yaml:"access_key_id" env:"MINIO_ACCESS_KEY"`
-	SecretAccessKey string `yaml:"secret_access_key" env:"MINIO_SECRET_KEY"`
+	Endpoint        string `env:"MINIO_ENDPOINT"   yaml:"endpoint"`
+	AccessKeyID     string `env:"MINIO_ACCESS_KEY" yaml:"access_key_id"`
+	SecretAccessKey string `env:"MINIO_SECRET_KEY" yaml:"secret_access_key"`
 	BucketName      string `yaml:"bucket_name"`
 	UseSSL          bool   `yaml:"use_ssl"`
 	Enabled         bool   `yaml:"enabled"`
@@ -77,8 +107,8 @@ type MinIOConfig struct {
 
 // LoggingConfig holds logging configuration.
 type LoggingConfig struct {
-	Level  string `yaml:"level" env:"LOG_LEVEL"`
-	Format string `yaml:"format" env:"LOG_FORMAT"`
+	Level  string `env:"LOG_LEVEL"  yaml:"level"`
+	Format string `env:"LOG_FORMAT" yaml:"format"`
 }
 
 // LoadUnified loads configuration using the infrastructure config loader.
@@ -97,97 +127,110 @@ func LoadUnified(path string) (*UnifiedConfig, error) {
 
 // setUnifiedDefaults applies default values to the config.
 func setUnifiedDefaults(cfg *UnifiedConfig) {
-	// Server defaults
-	if cfg.Server.Port == 0 {
-		cfg.Server.Port = 8060
-	}
-	if cfg.Server.Address == "" {
-		cfg.Server.Address = fmt.Sprintf(":%d", cfg.Server.Port)
-	}
-	if cfg.Server.ReadTimeout == 0 {
-		cfg.Server.ReadTimeout = 30 * time.Second
-	}
-	if cfg.Server.WriteTimeout == 0 {
-		cfg.Server.WriteTimeout = 30 * time.Second
-	}
-	if cfg.Server.IdleTimeout == 0 {
-		cfg.Server.IdleTimeout = 60 * time.Second
-	}
+	setServerDefaults(&cfg.Server)
+	setCrawlerDefaults(&cfg.Crawler)
+	setElasticsearchDefaults(&cfg.Elasticsearch)
+	setDatabaseDefaults(&cfg.Database)
+	setMinIODefaults(&cfg.MinIO)
+	setLoggingDefaults(&cfg.Logging)
+}
 
-	// Crawler defaults
-	if cfg.Crawler.MaxDepth == 0 {
-		cfg.Crawler.MaxDepth = 3
+func setServerDefaults(s *ServerConfig) {
+	if s.Port == 0 {
+		s.Port = defaultServerPort
 	}
-	if cfg.Crawler.MaxConcurrency == 0 {
-		cfg.Crawler.MaxConcurrency = 10
+	if s.Address == "" {
+		s.Address = fmt.Sprintf(":%d", s.Port)
 	}
-	if cfg.Crawler.RequestDelay == 0 {
-		cfg.Crawler.RequestDelay = 100 * time.Millisecond
+	if s.ReadTimeout == 0 {
+		s.ReadTimeout = defaultReadTimeoutSec * time.Second
 	}
-	if cfg.Crawler.RequestTimeout == 0 {
-		cfg.Crawler.RequestTimeout = 30 * time.Second
+	if s.WriteTimeout == 0 {
+		s.WriteTimeout = defaultWriteTimeoutSec * time.Second
 	}
-	if cfg.Crawler.UserAgent == "" {
-		cfg.Crawler.UserAgent = "NorthCloud-Crawler/1.0"
+	if s.IdleTimeout == 0 {
+		s.IdleTimeout = defaultIdleTimeoutSec * time.Second
 	}
-	if cfg.Crawler.RateLimit == 0 {
-		cfg.Crawler.RateLimit = 1.0
-	}
+}
 
-	// Elasticsearch defaults
-	if cfg.Elasticsearch.URL == "" {
-		cfg.Elasticsearch.URL = "http://localhost:9200"
+func setCrawlerDefaults(c *CrawlerConfig) {
+	if c.MaxDepth == 0 {
+		c.MaxDepth = defaultMaxDepth
 	}
-	if cfg.Elasticsearch.MaxRetries == 0 {
-		cfg.Elasticsearch.MaxRetries = 3
+	if c.MaxConcurrency == 0 {
+		c.MaxConcurrency = defaultMaxConcurrency
 	}
-	if cfg.Elasticsearch.Timeout == 0 {
-		cfg.Elasticsearch.Timeout = 30 * time.Second
+	if c.RequestDelay == 0 {
+		c.RequestDelay = defaultRequestDelayMs * time.Millisecond
 	}
-	if cfg.Elasticsearch.RawContentSuffix == "" {
-		cfg.Elasticsearch.RawContentSuffix = "_raw_content"
+	if c.RequestTimeout == 0 {
+		c.RequestTimeout = defaultRequestTimeoutSec * time.Second
 	}
+	if c.UserAgent == "" {
+		c.UserAgent = defaultUserAgent
+	}
+	if c.RateLimit == 0 {
+		c.RateLimit = defaultRateLimit
+	}
+}
 
-	// Database defaults
-	if cfg.Database.Host == "" {
-		cfg.Database.Host = "localhost"
+func setElasticsearchDefaults(e *ElasticsearchConfig) {
+	if e.URL == "" {
+		e.URL = defaultESURL
 	}
-	if cfg.Database.Port == 0 {
-		cfg.Database.Port = 5432
+	if e.MaxRetries == 0 {
+		e.MaxRetries = defaultESMaxRetries
 	}
-	if cfg.Database.User == "" {
-		cfg.Database.User = "postgres"
+	if e.Timeout == 0 {
+		e.Timeout = defaultESTimeoutSec * time.Second
 	}
-	if cfg.Database.Database == "" {
-		cfg.Database.Database = "crawler"
+	if e.RawContentSuffix == "" {
+		e.RawContentSuffix = defaultESRawContentSuffix
 	}
-	if cfg.Database.SSLMode == "" {
-		cfg.Database.SSLMode = "disable"
-	}
-	if cfg.Database.MaxConnections == 0 {
-		cfg.Database.MaxConnections = 25
-	}
-	if cfg.Database.MaxIdleConns == 0 {
-		cfg.Database.MaxIdleConns = 5
-	}
-	if cfg.Database.ConnMaxLifetime == 0 {
-		cfg.Database.ConnMaxLifetime = 5 * time.Minute
-	}
+}
 
-	// MinIO defaults
-	if cfg.MinIO.Endpoint == "" {
-		cfg.MinIO.Endpoint = "localhost:9000"
+func setDatabaseDefaults(d *DatabaseConfig) {
+	if d.Host == "" {
+		d.Host = defaultDBHost
 	}
-	if cfg.MinIO.BucketName == "" {
-		cfg.MinIO.BucketName = "crawler-archives"
+	if d.Port == 0 {
+		d.Port = defaultDBPort
 	}
+	if d.User == "" {
+		d.User = defaultDBUser
+	}
+	if d.Database == "" {
+		d.Database = defaultDBName
+	}
+	if d.SSLMode == "" {
+		d.SSLMode = defaultDBSSLMode
+	}
+	if d.MaxConnections == 0 {
+		d.MaxConnections = defaultDBMaxConns
+	}
+	if d.MaxIdleConns == 0 {
+		d.MaxIdleConns = defaultDBMaxIdleConns
+	}
+	if d.ConnMaxLifetime == 0 {
+		d.ConnMaxLifetime = defaultDBConnMaxLifetimeM * time.Minute
+	}
+}
 
-	// Logging defaults
-	if cfg.Logging.Level == "" {
-		cfg.Logging.Level = "info"
+func setMinIODefaults(m *MinIOConfig) {
+	if m.Endpoint == "" {
+		m.Endpoint = defaultMinIOEndpoint
 	}
-	if cfg.Logging.Format == "" {
-		cfg.Logging.Format = "json"
+	if m.BucketName == "" {
+		m.BucketName = defaultMinIOBucket
+	}
+}
+
+func setLoggingDefaults(l *LoggingConfig) {
+	if l.Level == "" {
+		l.Level = defaultLogLevel
+	}
+	if l.Format == "" {
+		l.Format = defaultLogFormat
 	}
 }
 

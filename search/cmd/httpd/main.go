@@ -21,6 +21,10 @@ import (
 const shutdownTimeout = 10 * time.Second
 
 func main() {
+	os.Exit(run())
+}
+
+func run() int {
 	// Start profiling server (if enabled)
 	profiling.StartPprofServer()
 
@@ -29,7 +33,7 @@ func main() {
 	cfg, err := config.Load(configPath)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to load configuration: %v\n", err)
-		os.Exit(1)
+		return 1
 	}
 
 	// Initialize logger
@@ -40,9 +44,9 @@ func main() {
 	})
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to create logger: %v\n", err)
-		os.Exit(1)
+		return 1
 	}
-	defer log.Sync()
+	defer func() { _ = log.Sync() }()
 
 	// Create logger adapter for services
 	logAdapter := logging.NewAdapter(log)
@@ -56,10 +60,10 @@ func main() {
 
 	// Initialize Elasticsearch client
 	log.Info("Connecting to Elasticsearch", logger.String("url", cfg.Elasticsearch.URL))
-	esClient, err := elasticsearch.NewClient(&cfg.Elasticsearch)
-	if err != nil {
-		log.Error("Failed to create Elasticsearch client", logger.Error(err))
-		os.Exit(1)
+	esClient, esErr := elasticsearch.NewClient(&cfg.Elasticsearch)
+	if esErr != nil {
+		log.Error("Failed to create Elasticsearch client", logger.Error(esErr))
+		return 1
 	}
 	log.Info("Successfully connected to Elasticsearch")
 
@@ -74,10 +78,10 @@ func main() {
 	server := api.NewServer(handler, cfg, logAdapter)
 
 	// Start server in goroutine
+	serverErr := make(chan error, 1)
 	go func() {
 		if startErr := server.Start(); startErr != nil {
-			log.Error("Failed to start HTTP server", logger.Error(startErr))
-			os.Exit(1)
+			serverErr <- startErr
 		}
 	}()
 
@@ -89,21 +93,25 @@ func main() {
 	// Wait for interrupt signal for graceful shutdown
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
-	<-quit
 
-	log.Info("Shutdown signal received, gracefully shutting down...")
+	select {
+	case srvErr := <-serverErr:
+		log.Error("Server error", logger.Error(srvErr))
+		return 1
+	case <-quit:
+		log.Info("Shutdown signal received, gracefully shutting down...")
+	}
 
 	// Create shutdown context with timeout
 	ctx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
+	defer cancel()
 
 	// Shutdown HTTP server
-	shutdownErr := server.Shutdown(ctx)
-	cancel()
-
-	if shutdownErr != nil {
+	if shutdownErr := server.Shutdown(ctx); shutdownErr != nil {
 		log.Error("Server forced to shutdown", logger.Error(shutdownErr))
-		os.Exit(1)
+		return 1
 	}
 
 	log.Info("Search service exited cleanly")
+	return 0
 }
