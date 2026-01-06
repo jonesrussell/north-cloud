@@ -220,6 +220,12 @@ services:
       - index_manager_go_build_cache:/tmp/go-build-cache
       - ./infrastructure:/infrastructure
     command: ["sh", "-c", "go mod download && air -c .air.toml"]
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:8090/api/v1/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
 
   # ------------------------------------------------------------
   # MCP Index Manager (Dev)
