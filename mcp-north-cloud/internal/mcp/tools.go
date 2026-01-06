@@ -1,12 +1,5 @@
 package mcp
 
-// Tool represents an MCP tool definition
-type Tool struct {
-	Name        string         `json:"name"`
-	Description string         `json:"description"`
-	InputSchema map[string]any `json:"inputSchema"`
-}
-
 // getAllTools returns all available MCP tools grouped by service
 func getAllTools() []Tool {
 	tools := []Tool{}
@@ -19,6 +12,7 @@ func getAllTools() []Tool {
 	return tools
 }
 
+//nolint:funlen // Tool definitions are data structures, not complex logic
 func getCrawlerTools() []Tool {
 	return []Tool{
 		{
@@ -139,6 +133,7 @@ func getCrawlerTools() []Tool {
 	}
 }
 
+//nolint:funlen // Tool definitions are data structures, not complex logic
 func getSourceManagerTools() []Tool {
 	return []Tool{
 		{
@@ -243,6 +238,7 @@ func getSourceManagerTools() []Tool {
 	}
 }
 
+//nolint:funlen // Tool definitions are data structures, not complex logic
 func getPublisherTools() []Tool {
 	return []Tool{
 		{
