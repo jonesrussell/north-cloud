@@ -1,57 +1,90 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { Loader2, Link, Trash2 } from 'lucide-vue-next'
+import { Loader2, Link, Trash2, RefreshCw } from 'lucide-vue-next'
 import { crawlerApi } from '@/api/client'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
 
-interface QueuedLink {
+// Match the actual API response from crawler service
+interface DiscoveredLink {
   id: string
-  url: string
+  source_id: string
   source_name: string
-  created_at: string
+  url: string
+  parent_url: string | null
+  depth: number
+  discovered_at: string
   status: string
+  priority: number
 }
 
 const loading = ref(true)
 const error = ref<string | null>(null)
-const links = ref<QueuedLink[]>([])
+const links = ref<DiscoveredLink[]>([])
+const total = ref(0)
 
 const loadLinks = async () => {
   try {
     loading.value = true
-    const response = await crawlerApi.queuedLinks.list()
-    links.value = response.data?.links || response.data || []
+    error.value = null
+    const response = await crawlerApi.discoveredLinks.list()
+    links.value = response.data?.links || []
+    total.value = response.data?.total || links.value.length
   } catch (err) {
-    error.value = 'Unable to load queued links.'
+    console.error('Failed to load discovered links:', err)
+    error.value = 'Unable to load discovered links.'
   } finally {
     loading.value = false
   }
 }
 
 const deleteLink = async (id: string) => {
+  if (!confirm('Delete this discovered link?')) return
   try {
-    await crawlerApi.queuedLinks.delete(id)
+    await crawlerApi.discoveredLinks.delete(id)
     links.value = links.value.filter((l) => l.id !== id)
   } catch (err) {
     console.error('Error deleting link:', err)
   }
 }
 
-const formatDate = (date: string) => date ? new Date(date).toLocaleString() : 'N/A'
+const formatDate = (date: string) => {
+  if (!date) return 'N/A'
+  return new Date(date).toLocaleString()
+}
+
+const getStatusVariant = (status: string) => {
+  switch (status) {
+    case 'pending': return 'secondary'
+    case 'processing': return 'warning'
+    case 'completed': return 'success'
+    case 'failed': return 'destructive'
+    default: return 'outline'
+  }
+}
 
 onMounted(loadLinks)
 </script>
 
 <template>
   <div class="space-y-6">
-    <div>
-      <h1 class="text-3xl font-bold tracking-tight">
-        Queued Links
-      </h1>
-      <p class="text-muted-foreground">
-        Links discovered during crawling awaiting processing
-      </p>
+    <div class="flex items-center justify-between">
+      <div>
+        <h1 class="text-3xl font-bold tracking-tight">
+          Discovered Links
+        </h1>
+        <p class="text-muted-foreground">
+          Links discovered during crawling awaiting processing
+        </p>
+      </div>
+      <Button
+        variant="outline"
+        @click="loadLinks"
+      >
+        <RefreshCw class="mr-2 h-4 w-4" />
+        Refresh
+      </Button>
     </div>
 
     <div
@@ -76,7 +109,7 @@ onMounted(loadLinks)
       <CardContent class="flex flex-col items-center justify-center py-12">
         <Link class="h-12 w-12 text-muted-foreground mb-4" />
         <h3 class="text-lg font-medium mb-2">
-          No queued links
+          No discovered links
         </h3>
         <p class="text-muted-foreground">
           Links discovered during crawling will appear here.
@@ -96,7 +129,13 @@ onMounted(loadLinks)
                 Source
               </th>
               <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
-                Created
+                Depth
+              </th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
+                Status
+              </th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
+                Discovered
               </th>
               <th class="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase">
                 Actions
@@ -122,7 +161,15 @@ onMounted(loadLinks)
                 {{ link.source_name }}
               </td>
               <td class="px-6 py-4 text-sm text-muted-foreground">
-                {{ formatDate(link.created_at) }}
+                {{ link.depth }}
+              </td>
+              <td class="px-6 py-4">
+                <Badge :variant="getStatusVariant(link.status)">
+                  {{ link.status }}
+                </Badge>
+              </td>
+              <td class="px-6 py-4 text-sm text-muted-foreground">
+                {{ formatDate(link.discovered_at) }}
               </td>
               <td class="px-6 py-4 text-right">
                 <Button

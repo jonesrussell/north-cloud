@@ -188,12 +188,12 @@ export const crawlerApi = {
     get: (id: string | number) => crawlerClient.get(`/executions/${id}`),
   },
 
-  // Queued Links
-  queuedLinks: {
-    list: (params?: Record<string, unknown>) => crawlerClient.get('/queued-links', { params }),
-    get: (id: string | number) => crawlerClient.get(`/queued-links/${id}`),
-    delete: (id: string | number) => crawlerClient.delete(`/queued-links/${id}`),
-    createJob: (id: string | number, data: unknown) => crawlerClient.post(`/queued-links/${id}/create-job`, data),
+  // Discovered Links
+  discoveredLinks: {
+    list: (params?: Record<string, unknown>) => crawlerClient.get('/discovered-links', { params }),
+    get: (id: string | number) => crawlerClient.get(`/discovered-links/${id}`),
+    delete: (id: string | number) => crawlerClient.delete(`/discovered-links/${id}`),
+    createJob: (id: string | number, data: unknown) => crawlerClient.post(`/discovered-links/${id}/create-job`, data),
   },
 
   // Stats

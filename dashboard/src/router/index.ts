@@ -8,7 +8,7 @@ import NotFoundView from '../views/NotFoundView.vue'
 // Content Intake views (formerly Crawler)
 import JobsView from '../views/intake/JobsView.vue'
 import JobDetailView from '../views/intake/JobDetailView.vue'
-import QueuedLinksView from '../views/intake/QueuedLinksView.vue'
+import QueuedLinksView from '../views/intake/DiscoveredLinksView.vue'
 import RulesView from '../views/intake/RulesView.vue'
 
 // Source Scheduling views (formerly Sources + Classifier Sources)
@@ -91,8 +91,8 @@ const routes: RouteRecordRaw[] = [
     meta: { title: 'Job Details', section: 'intake', requiresAuth: true },
   },
   {
-    path: '/intake/queued-links',
-    name: 'intake-queued-links',
+    path: '/intake/discovered-links',
+    name: 'intake-discovered-links',
     component: QueuedLinksView,
     meta: { title: 'Queued Links', section: 'intake', requiresAuth: true },
   },
@@ -240,7 +240,7 @@ const routes: RouteRecordRaw[] = [
   // ==========================================
   { path: '/crawler/jobs', redirect: '/intake/jobs' },
   { path: '/crawler/jobs/:id', redirect: (to) => `/intake/jobs/${to.params.id}` },
-  { path: '/crawler/queued-links', redirect: '/intake/queued-links' },
+  { path: '/crawler/discovered-links', redirect: '/intake/discovered-links' },
   { path: '/crawler/stats', redirect: '/intelligence/stats' },
   { path: '/sources', redirect: '/scheduling/sources' },
   { path: '/sources/new', redirect: '/scheduling/sources/new' },
