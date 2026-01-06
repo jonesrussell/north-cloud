@@ -36,12 +36,12 @@ func main() {
 }
 
 type serviceClients struct {
-	indexManager *client.IndexManagerClient
-	crawler      *client.CrawlerClient
+	indexManager  *client.IndexManagerClient
+	crawler       *client.CrawlerClient
 	sourceManager *client.SourceManagerClient
-	publisher    *client.PublisherClient
-	search       *client.SearchClient
-	classifier   *client.ClassifierClient
+	publisher     *client.PublisherClient
+	search        *client.SearchClient
+	classifier    *client.ClassifierClient
 }
 
 func initializeClients() *serviceClients {
