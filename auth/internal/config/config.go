@@ -9,14 +9,14 @@ import (
 
 // Default configuration values.
 const (
-	defaultServiceName     = "auth"
-	defaultServicePort     = 8040
-	defaultUsername        = "admin"
-	defaultPassword        = "admin"
-	defaultJWTSecret       = "change-me-in-production"
-	defaultJWTExpirationH  = 24
-	defaultLoggingLevel    = "info"
-	defaultLoggingFormat   = "json"
+	defaultServiceName    = "auth"
+	defaultServicePort    = 8040
+	defaultUsername       = "admin"
+	defaultPassword       = "admin"
+	defaultJWTSecret      = "change-me-in-production"
+	defaultJWTExpirationH = 24
+	defaultLoggingLevel   = "info"
+	defaultLoggingFormat  = "json"
 )
 
 // Config holds the application configuration.
