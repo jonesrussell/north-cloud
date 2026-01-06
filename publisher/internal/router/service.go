@@ -272,6 +272,13 @@ func (s *Service) buildESQuery(route *models.RouteWithDetails) map[string]any {
 		},
 	})
 
+	// Filter by content_type = "article" to exclude pages, listings, etc.
+	mustClauses = append(mustClauses, map[string]any{
+		"term": map[string]any{
+			"content_type": "article",
+		},
+	})
+
 	// Filter by topics if specified
 	if len(route.Topics) > 0 {
 		mustClauses = append(mustClauses, map[string]any{
