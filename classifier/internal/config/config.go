@@ -46,24 +46,24 @@ type DatabaseConfig struct {
 
 // ElasticsearchConfig holds Elasticsearch configuration.
 type ElasticsearchConfig struct {
-	URL                      string        `yaml:"url" env:"ELASTICSEARCH_URL"`
-	Username                 string        `yaml:"username"`
-	Password                 string        `yaml:"password"`
-	MaxRetries               int           `yaml:"max_retries"`
-	Timeout                  time.Duration `yaml:"timeout"`
-	RawContentSuffix         string        `yaml:"raw_content_suffix"`
-	ClassifiedContentSuffix  string        `yaml:"classified_content_suffix"`
+	URL                     string        `yaml:"url" env:"ELASTICSEARCH_URL"`
+	Username                string        `yaml:"username"`
+	Password                string        `yaml:"password"`
+	MaxRetries              int           `yaml:"max_retries"`
+	Timeout                 time.Duration `yaml:"timeout"`
+	RawContentSuffix        string        `yaml:"raw_content_suffix"`
+	ClassifiedContentSuffix string        `yaml:"classified_content_suffix"`
 }
 
 // RedisConfig holds Redis configuration.
 type RedisConfig struct {
-	URL                   string        `yaml:"url" env:"REDIS_URL"`
-	Password              string        `yaml:"password"`
-	Database              int           `yaml:"database"`
-	MaxRetries            int           `yaml:"max_retries"`
-	Timeout               time.Duration `yaml:"timeout"`
-	ChannelNewContent     string        `yaml:"channel_new_content"`
-	ChannelClassified     string        `yaml:"channel_classified"`
+	URL                    string        `yaml:"url" env:"REDIS_URL"`
+	Password               string        `yaml:"password"`
+	Database               int           `yaml:"database"`
+	MaxRetries             int           `yaml:"max_retries"`
+	Timeout                time.Duration `yaml:"timeout"`
+	ChannelNewContent      string        `yaml:"channel_new_content"`
+	ChannelClassified      string        `yaml:"channel_classified"`
 	ClassificationCacheTTL time.Duration `yaml:"classification_cache_ttl"`
 }
 
