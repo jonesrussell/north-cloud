@@ -1,0 +1,16 @@
+# MCP North Cloud Configuration
+# Copy this file to config.yml and adjust values for your environment
+
+# Service endpoints
+services:
+  index_manager_url: "http://localhost:8090"
+  crawler_url: "http://localhost:8060"
+  source_manager_url: "http://localhost:8050"
+  publisher_url: "http://localhost:8080"
+  search_url: "http://localhost:8090"
+  classifier_url: "http://localhost:8070"
+
+# Logging (logs go to stderr, stdout is for MCP protocol)
+logging:
+  level: "info"    # debug, info, warn, error
+  format: "json"   # json or console

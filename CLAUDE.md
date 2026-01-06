@@ -17,7 +17,7 @@ This document provides a comprehensive guide for AI assistants working with the 
 
 ## Project Overview
 
-**North Cloud** is a microservices-based content management and publishing platform built with Go and Drupal. It crawls news content, manages sources, filters articles, and publishes them to a Drupal CMS.
+**North Cloud** is a microservices-based content management and publishing platform built with Go and Drupal. It crawls news content, manages sources, filters articles, and publishes them to Redis Pub/Sub channels.
 
 ### Purpose
 - Crawl news websites for articles
@@ -240,6 +240,8 @@ The platform uses a **three-stage content pipeline** for intelligent article pro
   2. **Router Service** (`/app/publisher router`):
      - Background worker that processes routes
      - Queries Elasticsearch classified_content indexes
+     - Filters by `content_type: "article"` to exclude pages/listings
+     - Filters by `content_type: "article"` to exclude pages/listings
      - Filters by quality_score and topics
      - Publishes to Redis pub/sub channels
      - Records publish history in database
@@ -390,7 +392,41 @@ The platform uses a **three-stage content pipeline** for intelligent article pro
   - Database migrations in `/migrations` directory
 - **Documentation**: See [/index-manager/README.md](index-manager/README.md)
 
-#### 8. **auth**
+#### 8. **mcp-north-cloud**
+- **Location**: `/mcp-north-cloud`
+- **Language**: Go 1.25+
+- **Purpose**: Model Context Protocol (MCP) server for AI integration with North Cloud platform
+- **Dependencies**: All North Cloud services (crawler, source-manager, publisher, classifier, search, index-manager)
+- **Ports**: N/A (stdio-based communication, no HTTP server)
+- **Key Features**:
+  - **23 MCP tools** exposing North Cloud operations via JSON-RPC 2.0
+  - **Crawler tools** (7): Start/schedule crawls, manage jobs, get statistics
+  - **Source Manager tools** (5): Add/update/delete sources, test crawl selectors
+  - **Publisher tools** (6): Create routes, preview articles, get publish history
+  - **Search tools** (1): Full-text search across classified content
+  - **Classifier tools** (1): Classify articles for quality and topics
+  - **Index Manager tools** (2): List and delete Elasticsearch indexes
+  - **Hot reloading**: Air-based development with automatic rebuild
+  - **Taskfile.yml**: Comprehensive build, test, and lint tasks
+- **Architecture**:
+  - Reads from stdin, writes to stdout (MCP protocol)
+  - HTTP clients for each North Cloud service
+  - Tool handlers route requests to appropriate service clients
+  - Error handling and validation for all tool calls
+- **Configuration**:
+  - `INDEX_MANAGER_URL`: Index manager service URL (default: http://localhost:8090)
+  - `CRAWLER_URL`: Crawler service URL (default: http://localhost:8060)
+  - `SOURCE_MANAGER_URL`: Source manager service URL (default: http://localhost:8050)
+  - `PUBLISHER_URL`: Publisher service URL (default: http://localhost:8080)
+  - `SEARCH_URL`: Search service URL (default: http://localhost:8090)
+  - `CLASSIFIER_URL`: Classifier service URL (default: http://localhost:8070)
+- **Development**:
+  - Uses Air for hot reloading in development
+  - Taskfile.yml provides build, test, lint, and development tasks
+  - Docker integration with Go cache directories in `/app/tmp/`
+- **Documentation**: See [/mcp-north-cloud/README.md](mcp-north-cloud/README.md)
+
+#### 9. **auth**
 - **Location**: `/auth`
 - **Language**: Go 1.25+
 - **Purpose**: Authentication service for dashboard and API access
@@ -482,9 +518,9 @@ The platform uses a **three-stage content pipeline** for intelligent article pro
 
 ```
 north-cloud/
-├── docker-compose.base.yml       # Base infrastructure services
-├── docker-compose.dev.yml        # Development overrides
-├── docker-compose.prod.yml       # Production overrides
+├── docker compose.base.yml       # Base infrastructure services
+├── docker compose.dev.yml        # Development overrides
+├── docker compose.prod.yml       # Production overrides
 ├── .env.example                  # Environment variables template
 ├── .env                          # Environment variables (not committed)
 ├── README.md                     # User documentation
@@ -628,6 +664,31 @@ north-cloud/
 │   ├── migrations/              # Database migrations
 │   ├── README.md
 │   └── Taskfile.yml
+│
+├── mcp-north-cloud/              # MCP server for AI integration
+│   ├── Dockerfile
+│   ├── Dockerfile.dev
+│   ├── .air.toml                 # Air hot reloading configuration
+│   ├── .golangci.yml             # Linting configuration
+│   ├── go.mod
+│   ├── main.go                   # MCP server entry point
+│   ├── Taskfile.yml              # Build, test, lint tasks
+│   ├── internal/
+│   │   ├── client/               # HTTP clients for North Cloud services
+│   │   │   ├── crawler.go
+│   │   │   ├── source_manager.go
+│   │   │   ├── publisher.go
+│   │   │   ├── search.go
+│   │   │   ├── classifier.go
+│   │   │   ├── index_manager.go
+│   │   │   └── http_helper.go   # Shared HTTP helper utilities
+│   │   └── mcp/                  # MCP protocol implementation
+│   │       ├── server.go        # MCP server and routing
+│   │       ├── handlers.go       # Tool handler implementations
+│   │       ├── tools.go          # Tool definitions (23 tools)
+│   │       └── types.go          # MCP protocol types
+│   ├── README.md                 # Comprehensive MCP server documentation
+│   └── IMPLEMENTATION_SUMMARY.md # Implementation details
 │
 ├── dashboard/                    # Unified dashboard frontend
 │   ├── Dockerfile
@@ -833,7 +894,7 @@ cp .env.example .env
 nano .env
 
 # Start development environment
-docker-compose -f docker-compose.base.yml -f docker-compose.dev.yml up -d
+docker compose -f docker-compose.base.yml -f docker-compose.dev.yml up -d
 ```
 
 ### 2. Development Mode
@@ -842,36 +903,36 @@ docker-compose -f docker-compose.base.yml -f docker-compose.dev.yml up -d
 
 ```bash
 # Start all services (development)
-docker-compose -f docker-compose.base.yml -f docker-compose.dev.yml up -d
+docker compose -f docker-compose.base.yml -f docker-compose.dev.yml up -d
 
 # Start specific service
-docker-compose -f docker-compose.base.yml -f docker-compose.dev.yml up -d source-manager
+docker compose -f docker-compose.base.yml -f docker-compose.dev.yml up -d source-manager
 
 # Start only infrastructure
-docker-compose -f docker-compose.base.yml up -d
+docker compose -f docker compose.base.yml up -d
 ```
 
 #### Viewing Logs
 
 ```bash
 # All services
-docker-compose -f docker-compose.base.yml -f docker-compose.dev.yml logs -f
+docker compose -f docker-compose.base.yml -f docker-compose.dev.yml logs -f
 
 # Specific service
-docker-compose -f docker-compose.base.yml -f docker-compose.dev.yml logs -f publisher
+docker compose -f docker-compose.base.yml -f docker-compose.dev.yml logs -f publisher
 
 # Tail last 100 lines
-docker-compose -f docker-compose.base.yml -f docker-compose.dev.yml logs --tail=100 -f
+docker compose -f docker-compose.base.yml -f docker-compose.dev.yml logs --tail=100 -f
 ```
 
 #### Stopping Services
 
 ```bash
 # Stop all services
-docker-compose -f docker-compose.base.yml -f docker-compose.dev.yml down
+docker compose -f docker-compose.base.yml -f docker-compose.dev.yml down
 
 # Stop and remove volumes (⚠️ deletes data)
-docker-compose -f docker-compose.base.yml -f docker-compose.dev.yml down -v
+docker compose -f docker-compose.base.yml -f docker-compose.dev.yml down -v
 ```
 
 ### 3. Working on Individual Services
@@ -1023,13 +1084,13 @@ docker exec -it north-cloud-postgres-streetcode psql -U postgres -d streetcode
 
 ```bash
 # Build all services (development)
-docker-compose -f docker-compose.base.yml -f docker-compose.dev.yml build
+docker compose -f docker-compose.base.yml -f docker-compose.dev.yml build
 
 # Build specific service
-docker-compose -f docker-compose.base.yml -f docker-compose.dev.yml build publisher
+docker compose -f docker-compose.base.yml -f docker-compose.dev.yml build publisher
 
 # Build for production
-docker-compose -f docker-compose.base.yml -f docker-compose.prod.yml build
+docker compose -f docker-compose.base.yml -f docker-compose.prod.yml build
 ```
 
 ---
@@ -1038,7 +1099,7 @@ docker-compose -f docker-compose.base.yml -f docker-compose.prod.yml build
 
 ### Development vs Production
 
-#### Development Mode (`docker-compose.dev.yml`)
+#### Development Mode (`docker compose.dev.yml`)
 - **Purpose**: Local development with hot-reloading
 - **Features**:
   - Source code mounted as volumes
@@ -1048,10 +1109,10 @@ docker-compose -f docker-compose.base.yml -f docker-compose.prod.yml build
   - Fast iteration cycles
 - **Usage**:
   ```bash
-  docker-compose -f docker-compose.base.yml -f docker-compose.dev.yml up -d
+  docker compose -f docker-compose.base.yml -f docker-compose.dev.yml up -d
   ```
 
-#### Production Mode (`docker-compose.prod.yml`)
+#### Production Mode (`docker compose.prod.yml`)
 - **Purpose**: Production deployment
 - **Features**:
   - Code baked into images (no volume mounts)
@@ -1062,7 +1123,7 @@ docker-compose -f docker-compose.base.yml -f docker-compose.prod.yml build
   - SSL/TLS ready
 - **Usage**:
   ```bash
-  docker-compose -f docker-compose.base.yml -f docker-compose.prod.yml up -d
+  docker compose -f docker-compose.base.yml -f docker-compose.prod.yml up -d
   ```
 
 ### Service Ports (Development)
@@ -1074,9 +1135,10 @@ docker-compose -f docker-compose.base.yml -f docker-compose.prod.yml build
 | source-manager | 8050 | 8050 | Source Manager API |
 | source-manager-frontend | 3000 | 3000 | Source Manager UI |
 | classifier | 8070 | 8070 | Classifier HTTP API |
-| publisher | 8080 | 8080 | Publisher API (if enabled) |
+| publisher | 8070 | 8070 | Publisher API |
 | auth | 8040 | 8040 | Authentication service |
 | index-manager | 8090 | 8090 | Index Manager API |
+| mcp-north-cloud | N/A | N/A | MCP server (stdio-based, no HTTP) |
 | streetcode | 80 | 8090 | Drupal web interface |
 | nginx | 80 | 80 | Reverse proxy |
 | dashboard | 3002 | 3002 | Unified dashboard frontend |
@@ -1088,8 +1150,8 @@ docker-compose -f docker-compose.base.yml -f docker-compose.prod.yml build
 
 ```bash
 # Use shorter alias for development
-alias dc-dev='docker-compose -f docker-compose.base.yml -f docker-compose.dev.yml'
-alias dc-prod='docker-compose -f docker-compose.base.yml -f docker-compose.prod.yml'
+alias dc-dev='docker compose -f docker-compose.base.yml -f docker-compose.dev.yml'
+alias dc-prod='docker compose -f docker-compose.base.yml -f docker-compose.prod.yml'
 
 # Then use:
 dc-dev up -d
@@ -1155,15 +1217,15 @@ dc-dev down
 2. **Test Locally** (if applicable): `go test ./...` or service-specific tests
 3. **Rebuild Container**:
    ```bash
-   docker-compose -f docker-compose.base.yml -f docker-compose.dev.yml build service-name
+   docker compose -f docker-compose.base.yml -f docker-compose.dev.yml build service-name
    ```
 4. **Restart Service**:
    ```bash
-   docker-compose -f docker-compose.base.yml -f docker-compose.dev.yml up -d service-name
+   docker compose -f docker-compose.base.yml -f docker-compose.dev.yml up -d service-name
    ```
 5. **Check Logs**:
    ```bash
-   docker-compose -f docker-compose.base.yml -f docker-compose.dev.yml logs -f service-name
+   docker compose -f docker-compose.base.yml -f docker-compose.dev.yml logs -f service-name
    ```
 
 ### Managing Crawler Jobs
@@ -1504,8 +1566,8 @@ docker exec -it north-cloud-streetcode drush cex
 ### Debugging Issues
 
 #### Service Won't Start
-1. Check logs: `docker-compose -f docker-compose.base.yml -f docker-compose.dev.yml logs service-name`
-2. Check environment variables: `docker-compose -f docker-compose.base.yml -f docker-compose.dev.yml config`
+1. Check logs: `docker compose -f docker-compose.base.yml -f docker-compose.dev.yml logs service-name`
+2. Check environment variables: `docker compose -f docker-compose.base.yml -f docker-compose.dev.yml config`
 3. Verify dependencies: Check `depends_on` and ensure dependent services are healthy
 4. Check port conflicts: `netstat -tulpn | grep PORT`
 
@@ -1577,13 +1639,13 @@ docker ps | grep certbot
 
 ```bash
 # Stop all services
-docker-compose -f docker-compose.base.yml -f docker-compose.dev.yml down
+docker compose -f docker-compose.base.yml -f docker-compose.dev.yml down
 
 # Remove volumes (⚠️ deletes all data)
-docker-compose -f docker-compose.base.yml -f docker-compose.dev.yml down -v
+docker compose -f docker-compose.base.yml -f docker-compose.dev.yml down -v
 
 # Remove images
-docker-compose -f docker-compose.base.yml -f docker-compose.dev.yml down --rmi all
+docker compose -f docker-compose.base.yml -f docker-compose.dev.yml down --rmi all
 
 # Clean up Docker system
 docker system prune -a --volumes
@@ -1610,7 +1672,7 @@ docker system prune -a --volumes
 4. Check for related tests
 
 **Check Dependencies**:
-1. Review `depends_on` in docker-compose files
+1. Review `depends_on` in docker compose files
 2. Check API integrations between services
 3. Verify database schema dependencies
 4. Review environment variable requirements
@@ -1678,6 +1740,7 @@ docker system prune -a --volumes
 - **Dual-mode operation**: Legacy keyword-based OR classifier-based
 - **When using classified_content** (`use_classified_content: true`):
   - Query `{source}_classified_content` indexes
+  - Filter by `content_type: "article"` to exclude pages/listings
   - Filter by `is_crime_related=true` and `quality_score >= threshold`
 - **Test/Preview Endpoints**:
   - `GET /api/v1/routes/preview` - Preview articles matching route filters
@@ -1716,6 +1779,20 @@ docker system prune -a --volumes
   - Use `unknown` for generic values (form fields, error handling)
   - Use `ApiError` interface for error handling with type assertions
   - Type definitions: `PreviewArticle`, `TestCrawlArticle`, `Source`, `Channel`, `Route`, etc.
+
+**For mcp-north-cloud**:
+- **IMPORTANT**: Read `/mcp-north-cloud/README.md` for comprehensive tool documentation
+- **MCP Protocol**: stdio-based communication (reads stdin, writes stdout)
+- **Tool Definitions**: All 23 tools defined in `internal/mcp/tools.go`
+- **HTTP Clients**: Service clients in `internal/client/` directory
+- **Error Handling**: All tools return proper JSON-RPC error responses
+- **Development**:
+  - Uses Air for hot reloading (configured in `.air.toml`)
+  - Taskfile.yml provides build, test, lint tasks
+  - Go cache directories in `/app/tmp/` to avoid permission issues
+- **Testing**: Use `test-tools.sh` script to verify all tools are registered
+- **Linting**: All linter warnings resolved (dupl, funlen, gocognit, shadow, etc.)
+- **Code Quality**: Shared HTTP helper utilities in `http_helper.go` for common patterns
 
 **For Streetcode (Drupal)**:
 - Follow Drupal coding standards
@@ -1991,6 +2068,34 @@ When encountering scenarios not covered in this guide:
 ---
 
 ## Version History
+
+- **Documentation Update and Linting Fixes** (2026-01-06): Comprehensive documentation updates and code quality improvements
+  - **Documentation Updates**:
+    - Added mcp-north-cloud service documentation to CLAUDE.md
+    - Updated all docker-compose commands to use `docker compose` (user preference)
+    - Added content_type filter documentation to publisher section
+    - Updated service ports table with mcp-north-cloud
+    - Added mcp-north-cloud to directory structure
+  - **Publisher Content Type Filter** (2026-01-06):
+    - Router now filters by `content_type: "article"` to exclude pages/listings
+    - Prevents non-article content (category pages, listings) from being published
+    - Filter added to Elasticsearch query in `buildESQuery` function
+  - **mcp-north-cloud Service** (2026-01-06):
+    - Complete MCP server implementation with 23 tools
+    - HTTP clients for all North Cloud services
+    - Hot reloading with Air
+    - Comprehensive Taskfile.yml with build, test, lint tasks
+    - Fixed Docker permission issues with Go cache directories
+  - **Code Quality Improvements** (2026-01-06):
+    - Fixed all linter warnings across mcp-north-cloud service
+    - Resolved 22 shadow variable issues
+    - Replaced 11 `interface{}` with `any`
+    - Fixed staticcheck empty branch
+    - Refactored main() to reduce cognitive complexity
+    - Refactored handleToolsList() to reduce function length
+    - Added nolint comments for acceptable code duplication
+    - Fixed classifier service linting issues (magic numbers, gocritic)
+    - Fixed publisher service appendCombine issue
 
 - **Type Safety and Code Quality Improvements** (2025-12-29): Enhanced type safety and linting compliance
   - **TypeScript Type Safety**:

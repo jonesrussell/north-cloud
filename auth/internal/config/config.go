@@ -1,78 +1,125 @@
 package config
 
 import (
-	"os"
+	"strconv"
 	"time"
+
+	infraconfig "github.com/north-cloud/infrastructure/config"
 )
 
+// Default configuration values.
 const (
-	// JWT token expiration time
-	jwtExpirationHours = 24
+	defaultServiceName    = "auth"
+	defaultServicePort    = 8040
+	defaultUsername       = "admin"
+	defaultPassword       = "admin"
+	defaultJWTSecret      = "change-me-in-production"
+	defaultJWTExpirationH = 24
+	defaultLoggingLevel   = "info"
+	defaultLoggingFormat  = "json"
 )
 
-// Config holds the application configuration
+// Config holds the application configuration.
 type Config struct {
-	Username  string
-	Password  string
-	JWTSecret string
-	Port      string
-	Debug     bool
+	Service ServiceConfig `yaml:"service"`
+	Auth    AuthConfig    `yaml:"auth"`
+	Logging LoggingConfig `yaml:"logging"`
 }
 
-// Load loads configuration from environment variables
-func Load() *Config {
-	return &Config{
-		Username:  getEnv("AUTH_USERNAME", "admin"),
-		Password:  getEnv("AUTH_PASSWORD", "admin"),
-		JWTSecret: getEnv("AUTH_JWT_SECRET", "change-me-in-production"),
-		Port:      getEnv("AUTH_PORT", "8040"),
-		Debug:     getEnv("APP_DEBUG", "false") == "true",
+// ServiceConfig holds service-level configuration.
+type ServiceConfig struct {
+	Name  string `yaml:"name"`
+	Port  int    `yaml:"port" env:"AUTH_PORT"`
+	Debug bool   `yaml:"debug" env:"APP_DEBUG"`
+}
+
+// AuthConfig holds authentication configuration.
+type AuthConfig struct {
+	Username      string        `yaml:"username" env:"AUTH_USERNAME"`
+	Password      string        `yaml:"password" env:"AUTH_PASSWORD"`
+	JWTSecret     string        `yaml:"jwt_secret" env:"AUTH_JWT_SECRET"`
+	JWTExpiration time.Duration `yaml:"jwt_expiration"`
+}
+
+// LoggingConfig holds logging configuration.
+type LoggingConfig struct {
+	Level  string `yaml:"level" env:"LOG_LEVEL"`
+	Format string `yaml:"format" env:"LOG_FORMAT"`
+}
+
+// Load loads configuration from the specified path.
+func Load(path string) (*Config, error) {
+	return infraconfig.LoadWithDefaults[Config](path, setDefaults)
+}
+
+// setDefaults applies default values to the config.
+func setDefaults(cfg *Config) {
+	if cfg.Service.Name == "" {
+		cfg.Service.Name = defaultServiceName
+	}
+	if cfg.Service.Port == 0 {
+		cfg.Service.Port = defaultServicePort
+	}
+	if cfg.Auth.Username == "" {
+		cfg.Auth.Username = defaultUsername
+	}
+	if cfg.Auth.Password == "" {
+		cfg.Auth.Password = defaultPassword
+	}
+	if cfg.Auth.JWTSecret == "" {
+		cfg.Auth.JWTSecret = defaultJWTSecret
+	}
+	if cfg.Auth.JWTExpiration == 0 {
+		cfg.Auth.JWTExpiration = defaultJWTExpirationH * time.Hour
+	}
+	if cfg.Logging.Level == "" {
+		cfg.Logging.Level = defaultLoggingLevel
+	}
+	if cfg.Logging.Format == "" {
+		cfg.Logging.Format = defaultLoggingFormat
 	}
 }
 
-// Validate validates the configuration
+// Validate validates the configuration.
 func (c *Config) Validate() error {
-	if c.Username == "" {
-		return &ConfigError{Field: "AUTH_USERNAME", Message: "username is required"}
+	if c.Auth.Username == "" {
+		return &infraconfig.ValidationError{Field: "auth.username", Message: "is required"}
 	}
-	if c.Password == "" {
-		return &ConfigError{Field: "AUTH_PASSWORD", Message: "password is required"}
+	if c.Auth.Password == "" {
+		return &infraconfig.ValidationError{Field: "auth.password", Message: "is required"}
 	}
-	// Only validate JWT secret in production mode (when APP_DEBUG is false)
-	// In development, allow default for easier setup
-	if !c.Debug && (c.JWTSecret == "" || c.JWTSecret == "change-me-in-production" || c.JWTSecret == "change-me-in-production-generate-strong-secret") {
-		return &ConfigError{Field: "AUTH_JWT_SECRET", Message: "JWT secret must be set and not use default value in production"}
+	// Only validate JWT secret in production mode
+	if !c.Service.Debug && (c.Auth.JWTSecret == "" || c.Auth.JWTSecret == "change-me-in-production") {
+		return &infraconfig.ValidationError{
+			Field:   "auth.jwt_secret",
+			Message: "must be set and not use default value in production",
+		}
+	}
+	if err := infraconfig.ValidatePort("service.port", c.Service.Port); err != nil {
+		return err
 	}
 	return nil
 }
 
-// ConfigError represents a configuration error
-type ConfigError struct {
-	Field   string
-	Message string
-}
-
-func (e *ConfigError) Error() string {
-	return e.Field + ": " + e.Message
-}
-
-func getEnv(key, defaultValue string) string {
-	if value := os.Getenv(key); value != "" {
-		return value
-	}
-	return defaultValue
-}
-
-// JWTConfig holds JWT-specific configuration
+// JWTConfig returns JWT-specific configuration.
 type JWTConfig struct {
 	Secret     string
 	Expiration time.Duration
 }
 
-// GetJWTConfig returns JWT configuration
+// GetJWTConfig returns JWT configuration.
 func (c *Config) GetJWTConfig() *JWTConfig {
 	return &JWTConfig{
-		Secret:     c.JWTSecret,
-		Expiration: jwtExpirationHours * time.Hour,
+		Secret:     c.Auth.JWTSecret,
+		Expiration: c.Auth.JWTExpiration,
 	}
+}
+
+// Address returns the server address.
+func (c *Config) Address() string {
+	return ":" + formatPort(c.Service.Port)
+}
+
+func formatPort(port int) string {
+	return strconv.Itoa(port)
 }

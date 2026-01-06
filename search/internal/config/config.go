@@ -1,17 +1,38 @@
 package config
 
 import (
-	"errors"
 	"fmt"
-	"os"
-	"strconv"
-	"strings"
 	"time"
 
-	"gopkg.in/yaml.v3"
+	infraconfig "github.com/north-cloud/infrastructure/config"
 )
 
-// Config holds all configuration for the search service
+// Default configuration values.
+const (
+	defaultServiceName       = "search"
+	defaultServiceVersion    = "1.0.0"
+	defaultServicePort       = 8092
+	defaultMaxPageSize       = 100
+	defaultPageSize          = 20
+	defaultMaxQueryLength    = 500
+	defaultSearchTimeoutSec  = 5
+	defaultESURL             = "http://localhost:9200"
+	defaultESMaxRetries      = 3
+	defaultESTimeoutSec      = 30
+	defaultContentPattern    = "*_classified_content"
+	defaultBoostTitle        = 3.0
+	defaultBoostOGTitle      = 2.0
+	defaultBoostRawText      = 1.0
+	defaultHighlightFragment = 150
+	defaultHighlightMax      = 3
+	defaultMaxTopics         = 20
+	defaultMaxSources        = 20
+	defaultMaxContentTypes   = 10
+	defaultLogLevel          = "info"
+	defaultLogFormat         = "json"
+)
+
+// Config holds all configuration for the search service.
 type Config struct {
 	Service       ServiceConfig       `yaml:"service"`
 	Elasticsearch ElasticsearchConfig `yaml:"elasticsearch"`
@@ -20,23 +41,23 @@ type Config struct {
 	CORS          CORSConfig          `yaml:"cors"`
 }
 
-// ServiceConfig holds service-level configuration
+// ServiceConfig holds service-level configuration.
 type ServiceConfig struct {
 	Name            string        `yaml:"name"`
 	Version         string        `yaml:"version"`
-	Port            int           `yaml:"port"`
-	Debug           bool          `yaml:"debug"`
-	MaxPageSize     int           `yaml:"max_page_size"`
-	DefaultPageSize int           `yaml:"default_page_size"`
+	Port            int           `yaml:"port" env:"SEARCH_PORT"`
+	Debug           bool          `yaml:"debug" env:"SEARCH_DEBUG"`
+	MaxPageSize     int           `yaml:"max_page_size" env:"SEARCH_MAX_PAGE_SIZE"`
+	DefaultPageSize int           `yaml:"default_page_size" env:"SEARCH_DEFAULT_PAGE_SIZE"`
 	MaxQueryLength  int           `yaml:"max_query_length"`
 	SearchTimeout   time.Duration `yaml:"search_timeout"`
 }
 
-// ElasticsearchConfig holds Elasticsearch connection and search configuration
+// ElasticsearchConfig holds Elasticsearch connection and search configuration.
 type ElasticsearchConfig struct {
-	URL                      string        `yaml:"url"`
-	Username                 string        `yaml:"username"`
-	Password                 string        `yaml:"password"`
+	URL                      string        `yaml:"url" env:"ELASTICSEARCH_URL"`
+	Username                 string        `yaml:"username" env:"ELASTICSEARCH_USERNAME"`
+	Password                 string        `yaml:"password" env:"ELASTICSEARCH_PASSWORD"`
 	MaxRetries               int           `yaml:"max_retries"`
 	Timeout                  time.Duration `yaml:"timeout"`
 	ClassifiedContentPattern string        `yaml:"classified_content_pattern"`
@@ -46,7 +67,7 @@ type ElasticsearchConfig struct {
 	HighlightMaxFragments    int           `yaml:"highlight_max_fragments"`
 }
 
-// BoostConfig holds field boosting values
+// BoostConfig holds field boosting values.
 type BoostConfig struct {
 	Title           float64 `yaml:"title"`
 	OGTitle         float64 `yaml:"og_title"`
@@ -55,7 +76,7 @@ type BoostConfig struct {
 	MetaDescription float64 `yaml:"meta_description"`
 }
 
-// FacetsConfig holds faceted search configuration
+// FacetsConfig holds faceted search configuration.
 type FacetsConfig struct {
 	Enabled         bool `yaml:"enabled"`
 	MaxTopics       int  `yaml:"max_topics"`
@@ -63,139 +84,158 @@ type FacetsConfig struct {
 	MaxContentTypes int  `yaml:"max_content_types"`
 }
 
-// LoggingConfig holds logging configuration
+// LoggingConfig holds logging configuration.
 type LoggingConfig struct {
-	Level  string `yaml:"level"`
-	Format string `yaml:"format"`
+	Level  string `yaml:"level" env:"LOG_LEVEL"`
+	Format string `yaml:"format" env:"LOG_FORMAT"`
 	Output string `yaml:"output"`
 }
 
-// CORSConfig holds CORS configuration
+// CORSConfig holds CORS configuration.
 type CORSConfig struct {
 	Enabled          bool     `yaml:"enabled"`
-	AllowedOrigins   []string `yaml:"allowed_origins"`
+	AllowedOrigins   []string `yaml:"allowed_origins" env:"CORS_ORIGINS"`
 	AllowedMethods   []string `yaml:"allowed_methods"`
 	AllowedHeaders   []string `yaml:"allowed_headers"`
 	AllowCredentials bool     `yaml:"allow_credentials"`
 	MaxAge           int      `yaml:"max_age"`
 }
 
-// Load loads configuration from file and environment variables
-func Load() (*Config, error) {
-	configPath := getEnv("CONFIG_PATH", "config.yml")
-
-	// Read config file
-	data, err := os.ReadFile(configPath)
+// Load loads configuration from file and environment variables.
+func Load(path string) (*Config, error) {
+	cfg, err := infraconfig.LoadWithDefaults[Config](path, setDefaults)
 	if err != nil {
-		// If config file doesn't exist, use config.yml.example
-		data, err = os.ReadFile("config.yml.example")
-		if err != nil {
-			return nil, fmt.Errorf("failed to read config file: %w", err)
-		}
+		return nil, err
 	}
 
-	// Parse YAML
-	var cfg Config
-	if unmarshalErr := yaml.Unmarshal(data, &cfg); unmarshalErr != nil {
-		return nil, fmt.Errorf("failed to parse config: %w", unmarshalErr)
-	}
-
-	// Override with environment variables
-	applyEnvironmentOverrides(&cfg)
-
-	// Validate configuration
 	if validateErr := cfg.Validate(); validateErr != nil {
 		return nil, fmt.Errorf("invalid configuration: %w", validateErr)
 	}
 
-	return &cfg, nil
+	return cfg, nil
 }
 
-// applyEnvironmentOverrides applies environment variable overrides
-func applyEnvironmentOverrides(cfg *Config) {
-	// Service
-	if port := getEnv("SEARCH_PORT", ""); port != "" {
-		if p, err := strconv.Atoi(port); err == nil {
-			cfg.Service.Port = p
-		}
-	}
-	if debug := getEnv("SEARCH_DEBUG", ""); debug != "" {
-		cfg.Service.Debug = debug == "true"
-	}
-	if maxPageSize := getEnv("SEARCH_MAX_PAGE_SIZE", ""); maxPageSize != "" {
-		if m, err := strconv.Atoi(maxPageSize); err == nil {
-			cfg.Service.MaxPageSize = m
-		}
-	}
-	if defaultPageSize := getEnv("SEARCH_DEFAULT_PAGE_SIZE", ""); defaultPageSize != "" {
-		if d, err := strconv.Atoi(defaultPageSize); err == nil {
-			cfg.Service.DefaultPageSize = d
-		}
-	}
+// setDefaults applies default values to the config.
+func setDefaults(cfg *Config) {
+	setServiceDefaults(&cfg.Service)
+	setElasticsearchDefaults(&cfg.Elasticsearch)
+	setFacetsDefaults(&cfg.Facets)
+	setLoggingDefaults(&cfg.Logging)
+	setCORSDefaults(&cfg.CORS)
+}
 
-	// Elasticsearch
-	if url := getEnv("ELASTICSEARCH_URL", ""); url != "" {
-		cfg.Elasticsearch.URL = url
+func setServiceDefaults(s *ServiceConfig) {
+	if s.Name == "" {
+		s.Name = defaultServiceName
 	}
-	if username := getEnv("ELASTICSEARCH_USERNAME", ""); username != "" {
-		cfg.Elasticsearch.Username = username
+	if s.Version == "" {
+		s.Version = defaultServiceVersion
 	}
-	if password := getEnv("ELASTICSEARCH_PASSWORD", ""); password != "" {
-		cfg.Elasticsearch.Password = password
+	if s.Port == 0 {
+		s.Port = defaultServicePort
 	}
-
-	// Logging
-	if level := getEnv("LOG_LEVEL", ""); level != "" {
-		cfg.Logging.Level = level
+	if s.MaxPageSize == 0 {
+		s.MaxPageSize = defaultMaxPageSize
 	}
-	if format := getEnv("LOG_FORMAT", ""); format != "" {
-		cfg.Logging.Format = format
+	if s.DefaultPageSize == 0 {
+		s.DefaultPageSize = defaultPageSize
 	}
-
-	// CORS
-	if origins := getEnv("CORS_ORIGINS", ""); origins != "" {
-		cfg.CORS.AllowedOrigins = strings.Split(origins, ",")
+	if s.MaxQueryLength == 0 {
+		s.MaxQueryLength = defaultMaxQueryLength
+	}
+	if s.SearchTimeout == 0 {
+		s.SearchTimeout = defaultSearchTimeoutSec * time.Second
 	}
 }
 
-// Validate validates the configuration
+func setElasticsearchDefaults(e *ElasticsearchConfig) {
+	if e.URL == "" {
+		e.URL = defaultESURL
+	}
+	if e.MaxRetries == 0 {
+		e.MaxRetries = defaultESMaxRetries
+	}
+	if e.Timeout == 0 {
+		e.Timeout = defaultESTimeoutSec * time.Second
+	}
+	if e.ClassifiedContentPattern == "" {
+		e.ClassifiedContentPattern = defaultContentPattern
+	}
+	if e.DefaultBoost.Title == 0 {
+		e.DefaultBoost.Title = defaultBoostTitle
+	}
+	if e.DefaultBoost.OGTitle == 0 {
+		e.DefaultBoost.OGTitle = defaultBoostOGTitle
+	}
+	if e.DefaultBoost.RawText == 0 {
+		e.DefaultBoost.RawText = defaultBoostRawText
+	}
+	if e.HighlightFragmentSize == 0 {
+		e.HighlightFragmentSize = defaultHighlightFragment
+	}
+	if e.HighlightMaxFragments == 0 {
+		e.HighlightMaxFragments = defaultHighlightMax
+	}
+}
+
+func setFacetsDefaults(f *FacetsConfig) {
+	if f.MaxTopics == 0 {
+		f.MaxTopics = defaultMaxTopics
+	}
+	if f.MaxSources == 0 {
+		f.MaxSources = defaultMaxSources
+	}
+	if f.MaxContentTypes == 0 {
+		f.MaxContentTypes = defaultMaxContentTypes
+	}
+}
+
+func setLoggingDefaults(l *LoggingConfig) {
+	if l.Level == "" {
+		l.Level = defaultLogLevel
+	}
+	if l.Format == "" {
+		l.Format = defaultLogFormat
+	}
+}
+
+func setCORSDefaults(c *CORSConfig) {
+	if len(c.AllowedOrigins) == 0 {
+		c.AllowedOrigins = []string{"*"}
+	}
+	if len(c.AllowedMethods) == 0 {
+		c.AllowedMethods = []string{"GET", "POST", "OPTIONS"}
+	}
+	if len(c.AllowedHeaders) == 0 {
+		c.AllowedHeaders = []string{"Content-Type", "Authorization"}
+	}
+}
+
+// Validate validates the configuration.
 func (c *Config) Validate() error {
-	// Service validation
 	if c.Service.Port < 1 || c.Service.Port > 65535 {
-		return fmt.Errorf("invalid port: %d", c.Service.Port)
+		return &infraconfig.ValidationError{Field: "service.port", Message: fmt.Sprintf("invalid port: %d", c.Service.Port)}
 	}
 	if c.Service.MaxPageSize < 1 {
-		return errors.New("max_page_size must be greater than 0")
+		return &infraconfig.ValidationError{Field: "service.max_page_size", Message: "must be greater than 0"}
 	}
 	if c.Service.DefaultPageSize < 1 || c.Service.DefaultPageSize > c.Service.MaxPageSize {
-		return fmt.Errorf("default_page_size must be between 1 and %d", c.Service.MaxPageSize)
+		return &infraconfig.ValidationError{
+			Field:   "service.default_page_size",
+			Message: fmt.Sprintf("must be between 1 and %d", c.Service.MaxPageSize),
+		}
 	}
-
-	// Elasticsearch validation
 	if c.Elasticsearch.URL == "" {
-		return errors.New("elasticsearch url is required")
+		return &infraconfig.ValidationError{Field: "elasticsearch.url", Message: "is required"}
 	}
 	if c.Elasticsearch.ClassifiedContentPattern == "" {
-		return errors.New("classified_content_pattern is required")
+		return &infraconfig.ValidationError{Field: "elasticsearch.classified_content_pattern", Message: "is required"}
 	}
-
-	// Logging validation
-	validLevels := map[string]bool{"debug": true, "info": true, "warn": true, "error": true}
-	if !validLevels[c.Logging.Level] {
-		return fmt.Errorf("invalid log level: %s", c.Logging.Level)
+	if err := infraconfig.ValidateLogLevel(c.Logging.Level); err != nil {
+		return err
 	}
-	validFormats := map[string]bool{"json": true, "console": true}
-	if !validFormats[c.Logging.Format] {
-		return fmt.Errorf("invalid log format: %s", c.Logging.Format)
+	if err := infraconfig.ValidateLogFormat(c.Logging.Format); err != nil {
+		return err
 	}
-
 	return nil
-}
-
-// getEnv gets an environment variable or returns a default value
-func getEnv(key, defaultValue string) string {
-	if value := os.Getenv(key); value != "" {
-		return value
-	}
-	return defaultValue
 }

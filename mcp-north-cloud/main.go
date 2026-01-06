@@ -8,18 +8,41 @@ import (
 	"os"
 
 	"github.com/jonesrussell/north-cloud/mcp-north-cloud/internal/client"
+	"github.com/jonesrussell/north-cloud/mcp-north-cloud/internal/config"
 	"github.com/jonesrussell/north-cloud/mcp-north-cloud/internal/mcp"
+	infraconfig "github.com/north-cloud/infrastructure/config"
+	"github.com/north-cloud/infrastructure/logger"
 )
 
 func main() {
+	// Load configuration (optional - uses defaults if file doesn't exist)
+	configPath := infraconfig.GetConfigPath("config.yml")
+	cfg, err := config.Load(configPath)
+	if err != nil {
+		// Config file is optional for MCP server - use defaults
+		cfg = config.NewDefault()
+	}
+
+	// Initialize logger (writes to stderr, stdout is for MCP protocol)
+	log, err := logger.New(logger.Config{
+		Level:       cfg.Logging.Level,
+		Format:      cfg.Logging.Format,
+		OutputPaths: []string{"stderr"},
+	})
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to create logger: %v\n", err)
+		os.Exit(1)
+	}
+	defer func() { _ = log.Sync() }()
+
+	log.Info("Starting MCP server")
+
 	// Read from stdin, write to stdout
-	// IMPORTANT: Only JSON should go to stdout for MCP protocol
-	// All errors/logs should go to stderr
 	reader := bufio.NewReader(os.Stdin)
 	writer := os.Stdout
 
 	// Initialize service clients
-	clients := initializeClients()
+	clients := initializeClients(cfg, log)
 
 	// Create MCP server
 	server := mcp.NewServer(
@@ -32,7 +55,7 @@ func main() {
 	)
 
 	// Process requests
-	processRequests(reader, writer, server)
+	processRequests(reader, writer, server, log)
 }
 
 type serviceClients struct {
@@ -44,63 +67,63 @@ type serviceClients struct {
 	classifier    *client.ClassifierClient
 }
 
-func initializeClients() *serviceClients {
-	getURL := func(envVar, defaultURL string) string {
-		if url := os.Getenv(envVar); url != "" {
-			return url
-		}
-		return defaultURL
-	}
+func initializeClients(cfg *config.Config, log logger.Logger) *serviceClients {
+	log.Debug("Initializing service clients",
+		logger.String("index_manager_url", cfg.Services.IndexManagerURL),
+		logger.String("crawler_url", cfg.Services.CrawlerURL),
+		logger.String("source_manager_url", cfg.Services.SourceManagerURL),
+		logger.String("publisher_url", cfg.Services.PublisherURL),
+		logger.String("search_url", cfg.Services.SearchURL),
+		logger.String("classifier_url", cfg.Services.ClassifierURL),
+	)
 
 	return &serviceClients{
-		indexManager:  client.NewIndexManagerClient(getURL("INDEX_MANAGER_URL", "http://localhost:8090")),
-		crawler:       client.NewCrawlerClient(getURL("CRAWLER_URL", "http://localhost:8060")),
-		sourceManager: client.NewSourceManagerClient(getURL("SOURCE_MANAGER_URL", "http://localhost:8050")),
-		publisher:     client.NewPublisherClient(getURL("PUBLISHER_URL", "http://localhost:8080")),
-		search:        client.NewSearchClient(getURL("SEARCH_URL", "http://localhost:8090")),
-		classifier:    client.NewClassifierClient(getURL("CLASSIFIER_URL", "http://localhost:8070")),
+		indexManager:  client.NewIndexManagerClient(cfg.Services.IndexManagerURL),
+		crawler:       client.NewCrawlerClient(cfg.Services.CrawlerURL),
+		sourceManager: client.NewSourceManagerClient(cfg.Services.SourceManagerURL),
+		publisher:     client.NewPublisherClient(cfg.Services.PublisherURL),
+		search:        client.NewSearchClient(cfg.Services.SearchURL),
+		classifier:    client.NewClassifierClient(cfg.Services.ClassifierURL),
 	}
 }
 
-func processRequests(reader *bufio.Reader, writer io.Writer, server *mcp.Server) {
-	// MCP protocol expects compact JSON (no indentation) for better compatibility
+func processRequests(reader *bufio.Reader, writer io.Writer, server *mcp.Server, log logger.Logger) {
 	decoder := json.NewDecoder(reader)
 	encoder := json.NewEncoder(writer)
-	// Don't use SetIndent - MCP clients expect compact JSON
 
 	for {
 		var request mcp.Request
 		if err := decoder.Decode(&request); err != nil {
 			if err == io.EOF {
+				log.Info("EOF received, shutting down")
 				break
 			}
-			// For parse errors, we can't get the ID from the request, so use a default
-			// JSON-RPC requires ID to be string or number, not null
-			sendError(writer, encoder, 0, mcp.ParseError, "Failed to parse request", nil)
+			log.Error("Failed to parse request", logger.Error(err))
+			sendError(encoder, 0, mcp.ParseError, "Failed to parse request", nil)
 			continue
 		}
 
-		// Handle request
-		// JSON-RPC notifications (requests without ID) don't require responses
+		log.Debug("Received request",
+			logger.String("method", request.Method),
+			logger.Any("id", request.ID),
+		)
+
 		response := server.HandleRequest(&request)
 		if response != nil {
-			// Only send response if this was a request (has ID), not a notification
-			// Preserve the original request ID exactly as sent
 			if response.ID == nil && request.ID != nil {
 				response.ID = request.ID
 			}
-			// Don't send response if request had no ID (notification)
 			if request.ID == nil {
 				continue
 			}
 			if encodeErr := encoder.Encode(response); encodeErr != nil {
-				fmt.Fprintf(os.Stderr, "Failed to encode response: %v\n", encodeErr)
+				log.Error("Failed to encode response", logger.Error(encodeErr))
 			}
 		}
 	}
 }
 
-func sendError(_ io.Writer, encoder *json.Encoder, id any, code int, message string, data any) {
+func sendError(encoder *json.Encoder, id any, code int, message string, data any) {
 	errorResponse := mcp.ErrorResponse{
 		JSONRPC: "2.0",
 		ID:      id,

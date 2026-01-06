@@ -18,6 +18,7 @@ A Go service that publishes classified articles from Elasticsearch to Redis pub/
 └─────────────────┘      │                  │
                          │ - Query ES       │
                          │ - Filter by      │
+                         │   content_type,  │
                          │   quality/topics │
                          │ - Publish to     │
                          │   Redis pub/sub  │
@@ -160,6 +161,7 @@ REST API for managing sources, channels, and routes:
 Background worker that:
 - Polls enabled routes at configured intervals
 - Queries Elasticsearch classified_content indexes
+- Filters by `content_type: "article"` to exclude pages/listings
 - Filters articles by quality score and topics
 - Publishes matching articles to Redis pub/sub channels
 - Records publish history in database

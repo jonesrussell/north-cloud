@@ -1,14 +1,32 @@
 package config
 
 import (
-	"fmt"
-	"os"
 	"time"
 
-	"github.com/goccy/go-yaml"
+	infraconfig "github.com/north-cloud/infrastructure/config"
 )
 
-// Config holds the application configuration
+// Default configuration values.
+const (
+	defaultServiceName     = "index-manager"
+	defaultServiceVersion  = "1.0.0"
+	defaultServicePort     = 8090
+	defaultDBHost          = "localhost"
+	defaultDBPort          = 5432
+	defaultDBUser          = "postgres"
+	defaultDBName          = "index_manager"
+	defaultDBSSLMode       = "disable"
+	defaultDBMaxConns      = 25
+	defaultDBMaxIdleConns  = 5
+	defaultDBConnLifetimeM = 5
+	defaultESURL           = "http://localhost:9200"
+	defaultESMaxRetries    = 3
+	defaultESTimeoutSec    = 30
+	defaultLogLevel        = "info"
+	defaultLogFormat       = "json"
+)
+
+// Config holds the application configuration.
 type Config struct {
 	Service       ServiceConfig       `yaml:"service"`
 	Database      DatabaseConfig      `yaml:"database"`
@@ -17,37 +35,37 @@ type Config struct {
 	Logging       LoggingConfig       `yaml:"logging"`
 }
 
-// ServiceConfig holds service configuration
+// ServiceConfig holds service configuration.
 type ServiceConfig struct {
 	Name    string `yaml:"name"`
 	Version string `yaml:"version"`
-	Port    int    `yaml:"port"`
-	Debug   bool   `yaml:"debug"`
+	Port    int    `yaml:"port" env:"INDEX_MANAGER_PORT"`
+	Debug   bool   `yaml:"debug" env:"APP_DEBUG"`
 }
 
-// DatabaseConfig holds database configuration
+// DatabaseConfig holds database configuration.
 type DatabaseConfig struct {
-	Host                  string        `yaml:"host"`
-	Port                  int           `yaml:"port"`
-	User                  string        `yaml:"user"`
-	Password              string        `yaml:"password"`
-	Database              string        `yaml:"database"`
+	Host                  string        `yaml:"host" env:"POSTGRES_INDEX_MANAGER_HOST"`
+	Port                  int           `yaml:"port" env:"POSTGRES_INDEX_MANAGER_PORT"`
+	User                  string        `yaml:"user" env:"POSTGRES_INDEX_MANAGER_USER"`
+	Password              string        `yaml:"password" env:"POSTGRES_INDEX_MANAGER_PASSWORD"`
+	Database              string        `yaml:"database" env:"POSTGRES_INDEX_MANAGER_DB"`
 	SSLMode               string        `yaml:"sslmode"`
 	MaxConnections        int           `yaml:"max_connections"`
 	MaxIdleConns          int           `yaml:"max_idle_connections"`
 	ConnectionMaxLifetime time.Duration `yaml:"connection_max_lifetime"`
 }
 
-// ElasticsearchConfig holds Elasticsearch configuration
+// ElasticsearchConfig holds Elasticsearch configuration.
 type ElasticsearchConfig struct {
-	URL        string        `yaml:"url"`
+	URL        string        `yaml:"url" env:"ELASTICSEARCH_URL"`
 	Username   string        `yaml:"username"`
 	Password   string        `yaml:"password"`
 	MaxRetries int           `yaml:"max_retries"`
 	Timeout    time.Duration `yaml:"timeout"`
 }
 
-// IndexTypesConfig holds index type configurations
+// IndexTypesConfig holds index type configurations.
 type IndexTypesConfig struct {
 	RawContent        IndexTypeConfig `yaml:"raw_content"`
 	ClassifiedContent IndexTypeConfig `yaml:"classified_content"`
@@ -55,67 +73,102 @@ type IndexTypesConfig struct {
 	Page              IndexTypeConfig `yaml:"page"`
 }
 
-// IndexTypeConfig holds configuration for a specific index type
+// IndexTypeConfig holds configuration for a specific index type.
 type IndexTypeConfig struct {
 	Suffix     string `yaml:"suffix"`
 	AutoCreate bool   `yaml:"auto_create"`
 }
 
-// LoggingConfig holds logging configuration
+// LoggingConfig holds logging configuration.
 type LoggingConfig struct {
-	Level  string `yaml:"level"`
-	Format string `yaml:"format"`
+	Level  string `yaml:"level" env:"LOG_LEVEL"`
+	Format string `yaml:"format" env:"LOG_FORMAT"`
 	Output string `yaml:"output"`
 }
 
-// LoadConfig loads configuration from a YAML file
-func LoadConfig(path string) (*Config, error) {
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read config file: %w", err)
-	}
-
-	var config Config
-	if unmarshalErr := yaml.Unmarshal(data, &config); unmarshalErr != nil {
-		return nil, fmt.Errorf("failed to parse config file: %w", unmarshalErr)
-	}
-
-	// Apply environment variable overrides
-	applyEnvOverrides(&config)
-
-	return &config, nil
+// Load loads configuration from a YAML file.
+func Load(path string) (*Config, error) {
+	return infraconfig.LoadWithDefaults[Config](path, setDefaults)
 }
 
-// applyEnvOverrides applies environment variable overrides
-func applyEnvOverrides(cfg *Config) {
-	if port := os.Getenv("INDEX_MANAGER_PORT"); port != "" {
-		var p int
-		if _, err := fmt.Sscanf(port, "%d", &p); err == nil {
-			cfg.Service.Port = p
-		}
-	}
+// setDefaults applies default values to the config.
+func setDefaults(cfg *Config) {
+	setServiceDefaults(&cfg.Service)
+	setDatabaseDefaults(&cfg.Database)
+	setElasticsearchDefaults(&cfg.Elasticsearch)
+	setLoggingDefaults(&cfg.Logging)
+}
 
-	// Database configuration overrides
-	if host := os.Getenv("POSTGRES_INDEX_MANAGER_HOST"); host != "" {
-		cfg.Database.Host = host
+func setServiceDefaults(s *ServiceConfig) {
+	if s.Name == "" {
+		s.Name = defaultServiceName
 	}
-	if port := os.Getenv("POSTGRES_INDEX_MANAGER_PORT"); port != "" {
-		var p int
-		if _, err := fmt.Sscanf(port, "%d", &p); err == nil {
-			cfg.Database.Port = p
-		}
+	if s.Version == "" {
+		s.Version = defaultServiceVersion
 	}
-	if user := os.Getenv("POSTGRES_INDEX_MANAGER_USER"); user != "" {
-		cfg.Database.User = user
+	if s.Port == 0 {
+		s.Port = defaultServicePort
 	}
-	if password := os.Getenv("POSTGRES_INDEX_MANAGER_PASSWORD"); password != "" {
-		cfg.Database.Password = password
-	}
-	if db := os.Getenv("POSTGRES_INDEX_MANAGER_DB"); db != "" {
-		cfg.Database.Database = db
-	}
+}
 
-	if url := os.Getenv("ELASTICSEARCH_URL"); url != "" {
-		cfg.Elasticsearch.URL = url
+func setDatabaseDefaults(d *DatabaseConfig) {
+	if d.Host == "" {
+		d.Host = defaultDBHost
 	}
+	if d.Port == 0 {
+		d.Port = defaultDBPort
+	}
+	if d.User == "" {
+		d.User = defaultDBUser
+	}
+	if d.Database == "" {
+		d.Database = defaultDBName
+	}
+	if d.SSLMode == "" {
+		d.SSLMode = defaultDBSSLMode
+	}
+	if d.MaxConnections == 0 {
+		d.MaxConnections = defaultDBMaxConns
+	}
+	if d.MaxIdleConns == 0 {
+		d.MaxIdleConns = defaultDBMaxIdleConns
+	}
+	if d.ConnectionMaxLifetime == 0 {
+		d.ConnectionMaxLifetime = defaultDBConnLifetimeM * time.Minute
+	}
+}
+
+func setElasticsearchDefaults(e *ElasticsearchConfig) {
+	if e.URL == "" {
+		e.URL = defaultESURL
+	}
+	if e.MaxRetries == 0 {
+		e.MaxRetries = defaultESMaxRetries
+	}
+	if e.Timeout == 0 {
+		e.Timeout = defaultESTimeoutSec * time.Second
+	}
+}
+
+func setLoggingDefaults(l *LoggingConfig) {
+	if l.Level == "" {
+		l.Level = defaultLogLevel
+	}
+	if l.Format == "" {
+		l.Format = defaultLogFormat
+	}
+}
+
+// Validate validates the configuration.
+func (c *Config) Validate() error {
+	if err := infraconfig.ValidatePort("service.port", c.Service.Port); err != nil {
+		return err
+	}
+	if c.Database.Host == "" {
+		return &infraconfig.ValidationError{Field: "database.host", Message: "is required"}
+	}
+	if c.Elasticsearch.URL == "" {
+		return &infraconfig.ValidationError{Field: "elasticsearch.url", Message: "is required"}
+	}
+	return nil
 }

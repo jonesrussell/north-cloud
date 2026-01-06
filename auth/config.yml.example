@@ -1,0 +1,18 @@
+# Auth Service Configuration
+# Copy this file to config.yml and adjust values for your environment
+
+service:
+  name: "auth"
+  port: 8040
+  debug: false
+
+# Authentication credentials
+auth:
+  username: "admin"
+  password: "changeme"
+  jwt_secret: "generate-strong-secret-here"
+  jwt_expiration: "24h"
+
+logging:
+  level: "info"    # debug, info, warn, error
+  format: "json"   # json or console

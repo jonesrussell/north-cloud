@@ -12,89 +12,73 @@ import (
 	"github.com/jonesrussell/north-cloud/index-manager/internal/config"
 	"github.com/jonesrussell/north-cloud/index-manager/internal/database"
 	"github.com/jonesrussell/north-cloud/index-manager/internal/elasticsearch"
+	"github.com/jonesrussell/north-cloud/index-manager/internal/logging"
 	"github.com/jonesrussell/north-cloud/index-manager/internal/service"
+	infraconfig "github.com/north-cloud/infrastructure/config"
+	"github.com/north-cloud/infrastructure/logger"
 )
 
-// SimpleLogger is a simple logger implementation
-type SimpleLogger struct {
-	debug bool
-}
-
-func NewSimpleLogger(debug bool) *SimpleLogger {
-	return &SimpleLogger{debug: debug}
-}
-
-func (l *SimpleLogger) Info(msg string, keysAndValues ...interface{}) {
-	fmt.Printf("[INFO] %s", msg)
-	if len(keysAndValues) > 0 {
-		fmt.Print(" ")
-		for i := 0; i < len(keysAndValues); i += 2 {
-			if i+1 < len(keysAndValues) {
-				fmt.Printf("%v=%v ", keysAndValues[i], keysAndValues[i+1])
-			}
-		}
-	}
-	fmt.Println()
-}
-
-func (l *SimpleLogger) Error(msg string, keysAndValues ...interface{}) {
-	fmt.Printf("[ERROR] %s", msg)
-	if len(keysAndValues) > 0 {
-		fmt.Print(" ")
-		for i := 0; i < len(keysAndValues); i += 2 {
-			if i+1 < len(keysAndValues) {
-				fmt.Printf("%v=%v ", keysAndValues[i], keysAndValues[i+1])
-			}
-		}
-	}
-	fmt.Println()
-}
-
-func (l *SimpleLogger) Warn(msg string, keysAndValues ...interface{}) {
-	fmt.Printf("[WARN] %s", msg)
-	if len(keysAndValues) > 0 {
-		fmt.Print(" ")
-		for i := 0; i < len(keysAndValues); i += 2 {
-			if i+1 < len(keysAndValues) {
-				fmt.Printf("%v=%v ", keysAndValues[i], keysAndValues[i+1])
-			}
-		}
-	}
-	fmt.Println()
-}
-
-func (l *SimpleLogger) Debug(msg string, keysAndValues ...interface{}) {
-	if l.debug {
-		fmt.Printf("[DEBUG] %s", msg)
-		if len(keysAndValues) > 0 {
-			fmt.Print(" ")
-			for i := 0; i < len(keysAndValues); i += 2 {
-				if i+1 < len(keysAndValues) {
-					fmt.Printf("%v=%v ", keysAndValues[i], keysAndValues[i+1])
-				}
-			}
-		}
-		fmt.Println()
-	}
-}
+const (
+	shutdownTimeout    = 10 * time.Second
+	httpTimeoutSeconds = 15
+)
 
 func main() {
-	// Load configuration
-	configPath := os.Getenv("CONFIG_PATH")
-	if configPath == "" {
-		configPath = "config.yml"
-	}
+	os.Exit(run())
+}
 
-	cfg, err := config.LoadConfig(configPath)
+func run() int {
+	// Load configuration
+	configPath := infraconfig.GetConfigPath("config.yml")
+	cfg, err := config.Load(configPath)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to load config: %v\n", err)
-		os.Exit(1)
+		return 1
 	}
 
-	logger := NewSimpleLogger(cfg.Service.Debug)
+	// Validate configuration
+	if validationErr := cfg.Validate(); validationErr != nil {
+		fmt.Fprintf(os.Stderr, "Configuration error: %v\n", validationErr)
+		return 1
+	}
 
-	logger.Info("Starting Index Manager Service", "version", cfg.Service.Version)
+	// Initialize logger
+	log, err := logger.New(logger.Config{
+		Level:       cfg.Logging.Level,
+		Format:      cfg.Logging.Format,
+		Development: cfg.Service.Debug,
+	})
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to create logger: %v\n", err)
+		return 1
+	}
+	defer func() { _ = log.Sync() }()
 
+	// Create logger adapter for services
+	logAdapter := logging.NewAdapter(log)
+
+	log.Info("Starting Index Manager Service",
+		logger.String("name", cfg.Service.Name),
+		logger.String("version", cfg.Service.Version),
+		logger.Int("port", cfg.Service.Port),
+	)
+
+	// Initialize dependencies
+	esClient, db, cleanup, initErr := initDependencies(cfg, log)
+	if initErr != nil {
+		log.Error("Failed to initialize dependencies", logger.Error(initErr))
+		return 1
+	}
+	defer cleanup()
+
+	// Initialize and run server
+	server := initServer(cfg, esClient, db, logAdapter)
+	return runServer(server, log)
+}
+
+func initDependencies(cfg *config.Config, log logger.Logger) (
+	*elasticsearch.Client, *database.Connection, func(), error,
+) {
 	// Initialize Elasticsearch client
 	esConfig := &elasticsearch.Config{
 		URL:        cfg.Elasticsearch.URL,
@@ -106,10 +90,9 @@ func main() {
 
 	esClient, err := elasticsearch.NewClient(esConfig)
 	if err != nil {
-		logger.Error("Failed to create Elasticsearch client", "error", err)
-		os.Exit(1)
+		return nil, nil, nil, fmt.Errorf("elasticsearch client: %w", err)
 	}
-	logger.Info("Elasticsearch client initialized")
+	log.Info("Elasticsearch client initialized")
 
 	// Initialize database connection
 	dbConfig := &database.Config{
@@ -126,27 +109,33 @@ func main() {
 
 	db, err := database.NewConnection(dbConfig)
 	if err != nil {
-		logger.Error("Failed to connect to database", "error", err)
-		os.Exit(1)
+		return nil, nil, nil, fmt.Errorf("database connection: %w", err)
 	}
-	defer func() {
+	log.Info("Database connection established")
+
+	cleanup := func() {
 		if closeErr := db.Close(); closeErr != nil {
-			logger.Error("Failed to close database connection", "error", closeErr)
+			log.Error("Failed to close database connection", logger.Error(closeErr))
 		}
-	}()
-	logger.Info("Database connection established")
+	}
 
-	// Initialize index service
-	indexService := service.NewIndexService(esClient, db, logger)
+	return esClient, db, cleanup, nil
+}
 
-	// Initialize document service
-	documentService := service.NewDocumentService(esClient, logger)
+func initServer(
+	cfg *config.Config,
+	esClient *elasticsearch.Client,
+	db *database.Connection,
+	logAdapter *logging.Adapter,
+) *api.Server {
+	// Initialize services
+	indexService := service.NewIndexService(esClient, db, logAdapter)
+	documentService := service.NewDocumentService(esClient, logAdapter)
 
 	// Initialize API handler
-	handler := api.NewHandler(indexService, documentService, logger)
+	handler := api.NewHandler(indexService, documentService, logAdapter)
 
 	// Initialize HTTP server
-	const httpTimeoutSeconds = 15
 	serverConfig := api.ServerConfig{
 		Port:         cfg.Service.Port,
 		ReadTimeout:  httpTimeoutSeconds * time.Second,
@@ -154,8 +143,10 @@ func main() {
 		Debug:        cfg.Service.Debug,
 	}
 
-	server := api.NewServer(handler, serverConfig, logger)
+	return api.NewServer(handler, serverConfig, logAdapter)
+}
 
+func runServer(server *api.Server, log logger.Logger) int {
 	// Start server in goroutine
 	serverErr := make(chan error, 1)
 	go func() {
@@ -164,27 +155,28 @@ func main() {
 		}
 	}()
 
-	logger.Info("Index Manager Service started", "port", cfg.Service.Port)
-
-	// Wait for interrupt signal
+	// Setup signal handling
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
 
+	// Wait for signal or error
 	select {
-	case serverError := <-serverErr:
-		logger.Error("Server error", "error", serverError)
+	case srvErr := <-serverErr:
+		log.Error("Server error", logger.Error(srvErr))
+		return 1
 	case sig := <-sigChan:
-		logger.Info("Received signal", "signal", sig)
+		log.Info("Shutdown signal received", logger.String("signal", sig.String()))
 	}
 
 	// Graceful shutdown
-	const shutdownTimeoutSeconds = 10
-	ctx, cancel := context.WithTimeout(context.Background(), shutdownTimeoutSeconds*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
 	defer cancel()
 
 	if shutdownErr := server.Shutdown(ctx); shutdownErr != nil {
-		logger.Error("Server shutdown error", "error", shutdownErr)
+		log.Error("Server shutdown error", logger.Error(shutdownErr))
+		return 1
 	}
 
-	logger.Info("Index Manager Service stopped")
+	log.Info("Index Manager Service stopped")
+	return 0
 }

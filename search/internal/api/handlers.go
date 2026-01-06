@@ -8,7 +8,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/jonesrussell/north-cloud/search/internal/domain"
-	"github.com/jonesrussell/north-cloud/search/internal/logger"
+	"github.com/jonesrussell/north-cloud/search/internal/logging"
 	"github.com/jonesrussell/north-cloud/search/internal/service"
 )
 
@@ -17,11 +17,11 @@ const trueString = "true"
 // Handler holds HTTP request handlers
 type Handler struct {
 	searchService *service.SearchService
-	logger        *logger.Logger
+	logger        logging.Logger
 }
 
 // NewHandler creates a new handler instance
-func NewHandler(searchService *service.SearchService, log *logger.Logger) *Handler {
+func NewHandler(searchService *service.SearchService, log logging.Logger) *Handler {
 	return &Handler{
 		searchService: searchService,
 		logger:        log,

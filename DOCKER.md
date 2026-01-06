@@ -14,38 +14,38 @@ This project uses a multi-file Docker Compose setup for different environments.
 
 ```bash
 # Start development environment
-docker-compose -f docker-compose.base.yml -f docker-compose.dev.yml up -d
+docker compose -f docker-compose.base.yml -f docker-compose.dev.yml up -d
 
 # Stop development environment
-docker-compose -f docker-compose.base.yml -f docker-compose.dev.yml down
+docker compose -f docker-compose.base.yml -f docker-compose.dev.yml down
 
 # View logs
-docker-compose -f docker-compose.base.yml -f docker-compose.dev.yml logs -f
+docker compose -f docker-compose.base.yml -f docker-compose.dev.yml logs -f
 
 # Rebuild and restart
-docker-compose -f docker-compose.base.yml -f docker-compose.dev.yml up -d --build
+docker compose -f docker-compose.base.yml -f docker-compose.dev.yml up -d --build
 
 # Execute command in container
-docker-compose -f docker-compose.base.yml -f docker-compose.dev.yml exec streetcode bash
+docker compose -f docker-compose.base.yml -f docker-compose.dev.yml exec streetcode bash
 ```
 
 ### Production
 
 ```bash
 # Build production images
-docker-compose -f docker-compose.base.yml -f docker-compose.prod.yml build
+docker compose -f docker-compose.base.yml -f docker-compose.prod.yml build
 
 # Start production environment
-docker-compose -f docker-compose.base.yml -f docker-compose.prod.yml up -d
+docker compose -f docker-compose.base.yml -f docker-compose.prod.yml up -d
 
 # Stop production environment
-docker-compose -f docker-compose.base.yml -f docker-compose.prod.yml down
+docker compose -f docker-compose.base.yml -f docker-compose.prod.yml down
 
 # View logs
-docker-compose -f docker-compose.base.yml -f docker-compose.prod.yml logs -f
+docker compose -f docker-compose.base.yml -f docker-compose.prod.yml logs -f
 
 # Update production (rebuild and restart)
-docker-compose -f docker-compose.base.yml -f docker-compose.prod.yml up -d --build
+docker compose -f docker-compose.base.yml -f docker-compose.prod.yml up -d --build
 ```
 
 ### Infrastructure Only
@@ -90,10 +90,10 @@ docker exec -it north-cloud-streetcode-dev /var/www/html/vendor/bin/drush updb
 
 ```bash
 # List running containers
-docker-compose -f docker-compose.base.yml -f docker-compose.dev.yml ps
+docker compose -f docker-compose.base.yml -f docker-compose.dev.yml ps
 
 # Check service health
-docker-compose -f docker-compose.base.yml -f docker-compose.dev.yml ps --format json | jq '.[] | {name: .Name, status: .State, health: .Health}'
+docker compose -f docker-compose.base.yml -f docker-compose.dev.yml ps --format json | jq '.[] | {name: .Name, status: .State, health: .Health}'
 ```
 
 ## Environment Variables
@@ -130,23 +130,23 @@ STREETCODE_PORT=8081
 
 ```bash
 # Check logs
-docker-compose -f docker-compose.base.yml -f docker-compose.dev.yml logs <service-name>
+docker compose -f docker-compose.base.yml -f docker-compose.dev.yml logs <service-name>
 
 # Check container status
 docker ps -a | grep north-cloud
 
 # Restart specific service
-docker-compose -f docker-compose.base.yml -f docker-compose.dev.yml restart <service-name>
+docker compose -f docker-compose.base.yml -f docker-compose.dev.yml restart <service-name>
 ```
 
 ### Clean Slate
 
 ```bash
 # Stop and remove everything (including volumes)
-docker-compose -f docker-compose.base.yml -f docker-compose.dev.yml down -v
+docker compose -f docker-compose.base.yml -f docker-compose.dev.yml down -v
 
 # Remove all images
-docker-compose -f docker-compose.base.yml -f docker-compose.dev.yml down --rmi all
+docker compose -f docker-compose.base.yml -f docker-compose.dev.yml down --rmi all
 
 # Prune system
 docker system prune -a

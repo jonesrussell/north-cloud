@@ -7,7 +7,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/jonesrussell/north-cloud/search/internal/config"
-	"github.com/jonesrussell/north-cloud/search/internal/logger"
+	"github.com/jonesrussell/north-cloud/search/internal/logging"
 )
 
 const (
@@ -17,7 +17,7 @@ const (
 )
 
 // LoggerMiddleware logs HTTP requests
-func LoggerMiddleware(log *logger.Logger) gin.HandlerFunc {
+func LoggerMiddleware(log logging.Logger) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		start := time.Now()
 
@@ -76,7 +76,7 @@ func CORSMiddleware(cfg *config.CORSConfig) gin.HandlerFunc {
 }
 
 // RecoveryMiddleware handles panics
-func RecoveryMiddleware(log *logger.Logger) gin.HandlerFunc {
+func RecoveryMiddleware(log logging.Logger) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		defer func() {
 			if err := recover(); err != nil {

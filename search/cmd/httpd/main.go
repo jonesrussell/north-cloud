@@ -11,79 +11,107 @@ import (
 	"github.com/jonesrussell/north-cloud/search/internal/api"
 	"github.com/jonesrussell/north-cloud/search/internal/config"
 	"github.com/jonesrussell/north-cloud/search/internal/elasticsearch"
-	"github.com/jonesrussell/north-cloud/search/internal/logger"
+	"github.com/jonesrussell/north-cloud/search/internal/logging"
 	"github.com/jonesrussell/north-cloud/search/internal/service"
+	infraconfig "github.com/north-cloud/infrastructure/config"
+	"github.com/north-cloud/infrastructure/logger"
 	"github.com/north-cloud/infrastructure/profiling"
 )
 
+const shutdownTimeout = 10 * time.Second
+
 func main() {
+	os.Exit(run())
+}
+
+func run() int {
 	// Start profiling server (if enabled)
 	profiling.StartPprofServer()
 
 	// Load configuration
-	cfg, err := config.Load()
+	configPath := infraconfig.GetConfigPath("config.yml")
+	cfg, err := config.Load(configPath)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to load configuration: %v\n", err)
-		os.Exit(1)
+		return 1
 	}
 
 	// Initialize logger
-	log := logger.New(cfg.Logging)
+	log, err := logger.New(logger.Config{
+		Level:       cfg.Logging.Level,
+		Format:      cfg.Logging.Format,
+		Development: cfg.Service.Debug,
+	})
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to create logger: %v\n", err)
+		return 1
+	}
+	defer func() { _ = log.Sync() }()
+
+	// Create logger adapter for services
+	logAdapter := logging.NewAdapter(log)
+
 	log.Info("Starting search service",
-		"version", cfg.Service.Version,
-		"port", cfg.Service.Port,
-		"debug", cfg.Service.Debug,
+		logger.String("name", cfg.Service.Name),
+		logger.String("version", cfg.Service.Version),
+		logger.Int("port", cfg.Service.Port),
+		logger.Bool("debug", cfg.Service.Debug),
 	)
 
 	// Initialize Elasticsearch client
-	log.Info("Connecting to Elasticsearch", "url", cfg.Elasticsearch.URL)
-	esClient, err := elasticsearch.NewClient(&cfg.Elasticsearch)
-	if err != nil {
-		log.Fatal("Failed to create Elasticsearch client", "error", err)
+	log.Info("Connecting to Elasticsearch", logger.String("url", cfg.Elasticsearch.URL))
+	esClient, esErr := elasticsearch.NewClient(&cfg.Elasticsearch)
+	if esErr != nil {
+		log.Error("Failed to create Elasticsearch client", logger.Error(esErr))
+		return 1
 	}
 	log.Info("Successfully connected to Elasticsearch")
 
 	// Initialize search service
-	searchService := service.NewSearchService(esClient, cfg, log)
+	searchService := service.NewSearchService(esClient, cfg, logAdapter)
 	log.Info("Search service initialized")
 
 	// Initialize API handler
-	handler := api.NewHandler(searchService, log)
+	handler := api.NewHandler(searchService, logAdapter)
 
 	// Create and start HTTP server
-	server := api.NewServer(handler, cfg, log)
+	server := api.NewServer(handler, cfg, logAdapter)
 
 	// Start server in goroutine
+	serverErr := make(chan error, 1)
 	go func() {
 		if startErr := server.Start(); startErr != nil {
-			log.Fatal("Failed to start HTTP server", "error", startErr)
+			serverErr <- startErr
 		}
 	}()
 
 	log.Info("Search service started successfully",
-		"port", cfg.Service.Port,
-		"elasticsearch_pattern", cfg.Elasticsearch.ClassifiedContentPattern,
+		logger.Int("port", cfg.Service.Port),
+		logger.String("elasticsearch_pattern", cfg.Elasticsearch.ClassifiedContentPattern),
 	)
 
 	// Wait for interrupt signal for graceful shutdown
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
-	<-quit
 
-	log.Info("Shutdown signal received, gracefully shutting down...")
+	select {
+	case srvErr := <-serverErr:
+		log.Error("Server error", logger.Error(srvErr))
+		return 1
+	case <-quit:
+		log.Info("Shutdown signal received, gracefully shutting down...")
+	}
 
 	// Create shutdown context with timeout
-	const shutdownTimeoutSeconds = 10
-	ctx, cancel := context.WithTimeout(context.Background(), shutdownTimeoutSeconds*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
+	defer cancel()
 
 	// Shutdown HTTP server
-	shutdownErr := server.Shutdown(ctx)
-	cancel() // Always cancel context
-
-	if shutdownErr != nil {
-		log.Error("Server forced to shutdown", "error", shutdownErr)
-		os.Exit(1)
+	if shutdownErr := server.Shutdown(ctx); shutdownErr != nil {
+		log.Error("Server forced to shutdown", logger.Error(shutdownErr))
+		return 1
 	}
 
 	log.Info("Search service exited cleanly")
+	return 0
 }

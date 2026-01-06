@@ -8,14 +8,14 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/jonesrussell/north-cloud/search/internal/config"
-	"github.com/jonesrussell/north-cloud/search/internal/logger"
+	"github.com/jonesrussell/north-cloud/search/internal/logging"
 )
 
 // Server holds the HTTP server
 type Server struct {
 	router *gin.Engine
 	server *http.Server
-	logger *logger.Logger
+	logger logging.Logger
 }
 
 // ServerConfig holds server configuration
@@ -27,7 +27,7 @@ type ServerConfig struct {
 }
 
 // NewServer creates a new HTTP server
-func NewServer(handler *Handler, cfg *config.Config, log *logger.Logger) *Server {
+func NewServer(handler *Handler, cfg *config.Config, log logging.Logger) *Server {
 	// Set Gin mode
 	if !cfg.Service.Debug {
 		gin.SetMode(gin.ReleaseMode)
