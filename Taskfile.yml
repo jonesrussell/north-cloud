@@ -362,26 +362,36 @@ tasks:
       - task: docker:dev:down
       - task: docker:dev:up
 
+  docker:dev:build:
+    desc: "Build development Docker images"
+    cmds:
+      - docker compose -f docker-compose.base.yml -f docker-compose.dev.yml build {{.CLI_ARGS}}
+
   docker:prod:up:
     desc: "Start production environment"
     cmds:
-      - docker compose -f docker-compose.base.yml -f docker-compose.prod.yml up -d
+      - docker compose -f docker-compose.base.yml -f docker-compose.prod.yml up -d {{.CLI_ARGS}}
 
   docker:prod:down:
     desc: "Stop production environment"
     cmds:
-      - docker compose -f docker-compose.base.yml -f docker-compose.prod.yml down
+      - docker compose -f docker-compose.base.yml -f docker-compose.prod.yml down {{.CLI_ARGS}}
 
   docker:prod:logs:
     desc: "View production environment logs"
     cmds:
-      - docker compose -f docker-compose.base.yml -f docker-compose.prod.yml logs -f
+      - docker compose -f docker-compose.base.yml -f docker-compose.prod.yml logs -f {{.CLI_ARGS}}
 
   docker:prod:restart:
     desc: "Restart production environment"
     cmds:
       - task: docker:prod:down
       - task: docker:prod:up
+
+  docker:prod:build:
+    desc: "Build production Docker images"
+    cmds:
+      - docker compose -f docker-compose.base.yml -f docker-compose.prod.yml build {{.CLI_ARGS}}
 
   migrate:up:
     desc: "Run database migrations for all microservices sequentially"
@@ -494,11 +504,12 @@ tasks:
   config:init:
     desc: "Copy all config.yml.example files to config.yml"
     cmds:
-      - cp source-manager/config.yml.example source-manager/config.yml
+      - cp auth/config.yml.example auth/config.yml
       - cp classifier/config.yml.example classifier/config.yml
       - cp index-manager/config.yml.example index-manager/config.yml
       - cp publisher/config.yml.example publisher/config.yml
       - cp search/config.yml.example search/config.yml
+      - cp source-manager/config.yml.example source-manager/config.yml
 
   install:tools:
     desc: "Install development tools"

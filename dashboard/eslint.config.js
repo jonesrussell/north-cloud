@@ -61,5 +61,12 @@ export default [
       '@typescript-eslint/no-explicit-any': 'warn',
     },
   },
+  // Allow single-word component names for UI primitives (shadcn-vue style)
+  {
+    files: ['**/components/ui/**/*.vue'],
+    rules: {
+      'vue/multi-word-component-names': 'off',
+    },
+  },
 ];
 

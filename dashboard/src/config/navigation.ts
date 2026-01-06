@@ -1,233 +1,153 @@
-import type { Component } from 'vue'
 import {
-  HomeIcon,
-  ChartBarIcon,
-  BriefcaseIcon,
-  DocumentTextIcon,
-  FunnelIcon,
-  MegaphoneIcon,
-  FolderIcon,
-  MagnifyingGlassIcon,
-  NewspaperIcon,
-  StarIcon,
-  MapPinIcon,
-  LinkIcon,
-  ServerStackIcon,
-} from '@heroicons/vue/24/outline'
+  Activity,
+  Download,
+  ListTodo,
+  Link,
+  Filter,
+  Calendar,
+  Globe,
+  MapPin,
+  Star,
+  Brain,
+  BarChart3,
+  Database,
+  Share2,
+  GitBranch,
+  Radio,
+  FileText,
+  Rss,
+  ScrollText,
+  Settings,
+  HeartPulse,
+  Shield,
+  HardDrive,
+  type LucideIcon,
+} from 'lucide-vue-next'
 
-export interface NavigationItem {
-  label: string
+export interface NavItem {
+  title: string
   path: string
-  icon: Component
-  description?: string
-  exact?: boolean // Use exact path matching
-  external?: boolean // External link (opens in new tab)
+  icon: LucideIcon
 }
 
-export interface NavigationSection {
-  id: string
-  label: string
-  icon: Component
-  description: string
-  items: NavigationItem[]
-  order: number
+export interface NavSection {
+  title: string
+  icon: LucideIcon
+  path?: string
+  quickAction?: {
+    label: string
+    path: string
+  }
+  children?: NavItem[]
 }
 
-/**
- * Navigation configuration organized by content processing pipeline:
- * 1. Dashboard (Overview)
- * 2. Crawler (Content Acquisition)
- * 3. Classifier (Content Enrichment)
- * 4. Publisher (Content Distribution)
- * 5. Sources (Source Management)
- * 6. Analytics (Consolidated Statistics)
- */
-export const navigationSections: NavigationSection[] = [
+export const navigation: NavSection[] = [
   {
-    id: 'dashboard',
-    label: 'Dashboard',
-    icon: HomeIcon,
-    description: 'System overview and health status',
-    order: 1,
-    items: [
-      {
-        label: 'Dashboard',
-        path: '/',
-        icon: HomeIcon,
-        description: 'Main dashboard with system overview',
-        exact: true,
-      },
-      {
-        label: 'Search',
-        path: import.meta.env.DEV ? 'http://localhost:3003/' : '/',
-        icon: MagnifyingGlassIcon,
-        description: 'Search across all content',
-        external: true,
-      },
+    title: 'Pipeline Monitor',
+    icon: Activity,
+    path: '/',
+  },
+  {
+    title: 'Content Intake',
+    icon: Download,
+    quickAction: { label: 'New Job', path: '/intake/jobs/new' },
+    children: [
+      { title: 'Jobs', path: '/intake/jobs', icon: ListTodo },
+      { title: 'Queued Links', path: '/intake/queued-links', icon: Link },
+      { title: 'Rules', path: '/intake/rules', icon: Filter },
     ],
   },
   {
-    id: 'crawler',
-    label: 'Crawler',
-    icon: FunnelIcon,
-    description: 'Web crawler for content acquisition from news sources',
-    order: 2,
-    items: [
-      {
-        label: 'Jobs',
-        path: '/crawler/jobs',
-        icon: BriefcaseIcon,
-        description: 'Manage crawl jobs and schedules',
-      },
-      {
-        label: 'Queued Links',
-        path: '/crawler/queued-links',
-        icon: LinkIcon,
-        description: 'View and manage discovered links',
-      },
+    title: 'Source Scheduling',
+    icon: Calendar,
+    quickAction: { label: 'Add Source', path: '/scheduling/sources/new' },
+    children: [
+      { title: 'Sources', path: '/scheduling/sources', icon: Globe },
+      { title: 'Cities', path: '/scheduling/cities', icon: MapPin },
+      { title: 'Reputation', path: '/scheduling/reputation', icon: Star },
     ],
   },
   {
-    id: 'classifier',
-    label: 'Classifier',
-    icon: FunnelIcon,
-    description: 'Content classification and quality scoring engine',
-    order: 3,
-    items: [
-      {
-        label: 'Rules',
-        path: '/classifier/rules',
-        icon: DocumentTextIcon,
-        description: 'Classification rules and patterns',
-      },
-      {
-        label: 'Source Reputation',
-        path: '/classifier/sources',
-        icon: StarIcon,
-        description: 'Track and manage source quality scores',
-      },
+    title: 'Content Intelligence',
+    icon: Brain,
+    quickAction: { label: 'View Stats', path: '/intelligence/stats' },
+    children: [
+      { title: 'Classifier Stats', path: '/intelligence/stats', icon: BarChart3 },
+      { title: 'Indexes', path: '/intelligence/indexes', icon: Database },
     ],
   },
   {
-    id: 'publisher',
-    label: 'Publisher',
-    icon: MegaphoneIcon,
-    description: 'Content publishing and distribution hub',
-    order: 4,
-    items: [
-      {
-        label: 'Overview',
-        path: '/publisher',
-        icon: HomeIcon,
-        description: 'Publisher dashboard and quick stats',
-        exact: true,
-      },
-      {
-        label: 'Sources',
-        path: '/publisher/sources',
-        icon: FolderIcon,
-        description: 'Configure Elasticsearch sources to monitor',
-      },
-      {
-        label: 'Channels',
-        path: '/publisher/channels',
-        icon: MegaphoneIcon,
-        description: 'Manage Redis pub/sub channels',
-      },
-      {
-        label: 'Routes',
-        path: '/publisher/routes',
-        icon: DocumentTextIcon,
-        description: 'Define source-to-channel routing rules',
-      },
-      {
-        label: 'Recent Articles',
-        path: '/publisher/articles',
-        icon: NewspaperIcon,
-        description: 'View recently published articles',
-      },
+    title: 'Distribution Engine',
+    icon: Share2,
+    quickAction: { label: 'New Route', path: '/distribution/routes/new' },
+    children: [
+      { title: 'Routes', path: '/distribution/routes', icon: GitBranch },
+      { title: 'Channels', path: '/distribution/channels', icon: Radio },
+      { title: 'Articles', path: '/distribution/articles', icon: FileText },
     ],
   },
   {
-    id: 'sources',
-    label: 'Sources',
-    icon: FolderIcon,
-    description: 'Manage news sources and cities',
-    order: 5,
-    items: [
-      {
-        label: 'Manage Sources',
-        path: '/sources',
-        icon: FolderIcon,
-        description: 'Add, edit, and remove news sources',
-        exact: true,
-      },
-      {
-        label: 'Cities',
-        path: '/sources/cities',
-        icon: MapPinIcon,
-        description: 'Manage city configurations',
-      },
+    title: 'External Feeds',
+    icon: Rss,
+    children: [
+      { title: 'Redis Streams', path: '/feeds/streams', icon: Activity },
+      { title: 'Delivery Logs', path: '/feeds/logs', icon: ScrollText },
     ],
   },
   {
-    id: 'indexes',
-    label: 'Indexes',
-    icon: ServerStackIcon,
-    description: 'Elasticsearch index management and monitoring',
-    order: 6,
-    items: [
-      {
-        label: 'Manage Indexes',
-        path: '/indexes',
-        icon: ServerStackIcon,
-        description: 'View and manage Elasticsearch indexes',
-        exact: true,
-      },
-    ],
-  },
-  {
-    id: 'analytics',
-    label: 'Analytics',
-    icon: ChartBarIcon,
-    description: 'Consolidated statistics and metrics across all services',
-    order: 7,
-    items: [
-      {
-        label: 'System Analytics',
-        path: '/analytics',
-        icon: ChartBarIcon,
-        description: 'View statistics for Crawler, Classifier, and Publisher',
-        exact: true,
-      },
+    title: 'System Overview',
+    icon: Settings,
+    children: [
+      { title: 'Health', path: '/system/health', icon: HeartPulse },
+      { title: 'Auth', path: '/system/auth', icon: Shield },
+      { title: 'Cache', path: '/system/cache', icon: HardDrive },
     ],
   },
 ]
 
-/**
- * Get navigation sections sorted by order
- */
-export function getNavigationSections(): NavigationSection[] {
-  return [...navigationSections].sort((a, b) => a.order - b.order)
+// Helper to find the current section based on route path
+export function getCurrentSection(path: string): NavSection | undefined {
+  // Check exact matches first
+  const exactMatch = navigation.find((section) => section.path === path)
+  if (exactMatch) return exactMatch
+
+  // Check children
+  for (const section of navigation) {
+    if (section.children) {
+      const childMatch = section.children.find((child) => path.startsWith(child.path))
+      if (childMatch) return section
+    }
+  }
+
+  return undefined
 }
 
-/**
- * Get all navigation items (flattened) for search
- */
-export function getAllNavigationItems(): NavigationItem[] {
-  return navigationSections.flatMap((section) => section.items)
-}
+// Helper to get breadcrumb items for a path
+export function getBreadcrumbs(path: string): { label: string; path: string }[] {
+  const breadcrumbs: { label: string; path: string }[] = []
 
-/**
- * Find navigation item by path
- */
-export function findNavigationItemByPath(path: string): NavigationItem | undefined {
-  return getAllNavigationItems().find((item) => item.path === path)
-}
+  // Always add home
+  breadcrumbs.push({ label: 'Pipeline Monitor', path: '/' })
 
-/**
- * Get section by ID
- */
-export function getSectionById(id: string): NavigationSection | undefined {
-  return navigationSections.find((section) => section.id === id)
+  if (path === '/') return breadcrumbs
+
+  // Find section and child
+  for (const section of navigation) {
+    if (section.path === path) {
+      breadcrumbs.push({ label: section.title, path: section.path })
+      return breadcrumbs
+    }
+
+    if (section.children) {
+      for (const child of section.children) {
+        if (path === child.path || path.startsWith(child.path + '/')) {
+          breadcrumbs.push({ label: section.title, path: section.children[0].path })
+          breadcrumbs.push({ label: child.title, path: child.path })
+          return breadcrumbs
+        }
+      }
+    }
+  }
+
+  return breadcrumbs
 }
