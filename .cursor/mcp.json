@@ -9,7 +9,12 @@
         "/app/run-mcp.sh"
       ],
       "env": {
-        "INDEX_MANAGER_URL": "http://index-manager:8090"
+        "INDEX_MANAGER_URL": "http://index-manager:8090",
+        "CRAWLER_URL": "http://crawler:8060",
+        "SOURCE_MANAGER_URL": "http://source-manager:8050",
+        "PUBLISHER_URL": "http://publisher-api:8080",
+        "SEARCH_URL": "http://search:8090",
+        "CLASSIFIER_URL": "http://classifier:8070"
       }
     }
   }
