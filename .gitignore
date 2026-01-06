@@ -144,3 +144,4 @@ crawler/frontend/.vite/deps/_metadata.json
 crawler/frontend/.vite/deps/package.json
 *.tar.gz
 search/config.yml
+mcp-north-cloud/bin/mcp-north-cloud
