@@ -252,12 +252,55 @@ services:
       LOG_LEVEL: "${SEARCH_LOG_LEVEL:-info}"
       LOG_FORMAT: "${SEARCH_LOG_FORMAT:-json}"
       CORS_ORIGINS: "${CORS_ORIGINS:-*}"
+    volumes:
+      - ./search/config.yml:/root/config.yml:ro
     healthcheck:
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:8090/health"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 20s
+
+  # ------------------------------------------------------------
+  # Search Frontend (Prod)
+  # ------------------------------------------------------------
+  search-frontend:
+    <<: *prod-defaults
+    build:
+      context: ./search-frontend
+      dockerfile: Dockerfile
+    image: northcloud/search-frontend:latest
+    depends_on:
+      search-service:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      SEARCH_API_URL: http://search-service:8090
+
+  # ------------------------------------------------------------
+  # Auth (Prod)
+  # ------------------------------------------------------------
+  auth:
+    <<: *prod-defaults
+    build:
+      context: .
+      dockerfile: ./auth/Dockerfile
+    image: northcloud/auth:latest
+    environment:
+      AUTH_USERNAME: "${AUTH_USERNAME}"
+      AUTH_PASSWORD: "${AUTH_PASSWORD}"
+      AUTH_JWT_SECRET: "${AUTH_JWT_SECRET}"
+      AUTH_PORT: 8040
+      APP_DEBUG: "false"
+      APP_ENV: production
+    volumes:
+      - ./auth/config.yml:/root/config.yml:ro
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8040/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
 
   # ------------------------------------------------------------
   # Dashboard (Prod)
@@ -272,13 +315,17 @@ services:
     image: northcloud/dashboard:latest
     depends_on:
       crawler:
-        condition: service_started
+        condition: service_healthy
       source-manager:
         condition: service_healthy
       publisher-api:
-        condition: service_started
+        condition: service_healthy
       classifier:
-        condition: service_started
+        condition: service_healthy
+      auth:
+        condition: service_healthy
+      index-manager:
+        condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://127.0.0.1:80/ || exit 1"]
       interval: 30s
@@ -300,14 +347,26 @@ services:
       - certbot_etc:/etc/letsencrypt:ro
       - certbot_www:/var/www/certbot
     depends_on:
+      source-manager:
+        condition: service_healthy
       dashboard:
         condition: service_healthy
-      classifier:
-        condition: service_started
-      crawler:
-        condition: service_started
       publisher-api:
-        condition: service_started
+        condition: service_healthy
+      auth:
+        condition: service_healthy
+      crawler:
+        condition: service_healthy
+      classifier:
+        condition: service_healthy
+      search-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
 
   # ============================================================
   # Certbot (Prod)
