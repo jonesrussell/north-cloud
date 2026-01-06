@@ -45,6 +45,8 @@ type ClassificationResult struct {
 }
 
 // Classify classifies a single article
+//
+//nolint:dupl // Similar HTTP client pattern across different services is acceptable
 func (c *ClassifierClient) Classify(req ClassifyRequest) (*ClassificationResult, error) {
 	endpoint := fmt.Sprintf("%s/api/v1/classify", c.baseURL)
 

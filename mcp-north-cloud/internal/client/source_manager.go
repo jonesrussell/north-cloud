@@ -72,6 +72,8 @@ type TestCrawlResponse struct {
 }
 
 // CreateSource creates a new source
+//
+//nolint:dupl // Similar HTTP client pattern across different services is acceptable
 func (c *SourceManagerClient) CreateSource(req CreateSourceRequest) (*Source, error) {
 	endpoint := fmt.Sprintf("%s/api/v1/sources", c.baseURL)
 
@@ -117,6 +119,8 @@ func (c *SourceManagerClient) CreateSource(req CreateSourceRequest) (*Source, er
 }
 
 // ListSources lists all sources
+//
+//nolint:dupl // Similar HTTP client pattern across different services is acceptable
 func (c *SourceManagerClient) ListSources() ([]Source, error) {
 	endpoint := fmt.Sprintf("%s/api/v1/sources", c.baseURL)
 
@@ -232,6 +236,8 @@ func (c *SourceManagerClient) UpdateSource(sourceID string, req UpdateSourceRequ
 }
 
 // DeleteSource deletes a source
+//
+//nolint:dupl // Similar HTTP client pattern across different services is acceptable
 func (c *SourceManagerClient) DeleteSource(sourceID string) error {
 	endpoint := fmt.Sprintf("%s/api/v1/sources/%s", c.baseURL, sourceID)
 
@@ -265,6 +271,8 @@ func (c *SourceManagerClient) DeleteSource(sourceID string) error {
 }
 
 // TestCrawl tests crawling a source without saving
+//
+//nolint:dupl // Similar HTTP client pattern across different services is acceptable
 func (c *SourceManagerClient) TestCrawl(req TestCrawlRequest) (*TestCrawlResponse, error) {
 	endpoint := fmt.Sprintf("%s/api/v1/sources/test-crawl", c.baseURL)
 

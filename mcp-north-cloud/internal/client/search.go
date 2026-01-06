@@ -63,6 +63,8 @@ type SearchResponse struct {
 }
 
 // Search performs a full-text search
+//
+//nolint:dupl // Similar HTTP client pattern across different services is acceptable
 func (c *SearchClient) Search(req SearchRequest) (*SearchResponse, error) {
 	endpoint := fmt.Sprintf("%s/api/v1/search", c.baseURL)
 

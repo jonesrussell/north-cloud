@@ -142,6 +142,8 @@ func (c *PublisherClient) ListRoutes(sourceID, channelID string) ([]Route, error
 }
 
 // CreateRoute creates a new publishing route
+//
+//nolint:dupl // Similar HTTP client pattern across different services is acceptable
 func (c *PublisherClient) CreateRoute(req CreateRouteRequest) (*Route, error) {
 	endpoint := fmt.Sprintf("%s/api/v1/routes", c.baseURL)
 
@@ -187,6 +189,8 @@ func (c *PublisherClient) CreateRoute(req CreateRouteRequest) (*Route, error) {
 }
 
 // DeleteRoute deletes a publishing route
+//
+//nolint:dupl // Similar HTTP client pattern across different services is acceptable
 func (c *PublisherClient) DeleteRoute(routeID string) error {
 	endpoint := fmt.Sprintf("%s/api/v1/routes/%s", c.baseURL, routeID)
 
@@ -305,6 +309,8 @@ func (c *PublisherClient) GetPublishHistory(channelName string, limit, offset in
 }
 
 // GetStats gets publisher statistics
+//
+//nolint:dupl // Similar HTTP client pattern across different services is acceptable
 func (c *PublisherClient) GetStats() (*PublisherStats, error) {
 	endpoint := fmt.Sprintf("%s/api/v1/stats/overview", c.baseURL)
 
@@ -337,6 +343,8 @@ func (c *PublisherClient) GetStats() (*PublisherStats, error) {
 }
 
 // ListSources lists all publisher sources
+//
+//nolint:dupl // Similar HTTP client pattern across different services is acceptable
 func (c *PublisherClient) ListSources() ([]PublisherSource, error) {
 	endpoint := fmt.Sprintf("%s/api/v1/sources", c.baseURL)
 
@@ -369,6 +377,8 @@ func (c *PublisherClient) ListSources() ([]PublisherSource, error) {
 }
 
 // ListChannels lists all channels
+//
+//nolint:dupl // Similar HTTP client pattern across different services is acceptable
 func (c *PublisherClient) ListChannels() ([]Channel, error) {
 	endpoint := fmt.Sprintf("%s/api/v1/channels", c.baseURL)
 

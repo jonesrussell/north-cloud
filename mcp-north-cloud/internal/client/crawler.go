@@ -88,6 +88,8 @@ type CreateJobRequest struct {
 }
 
 // CreateJob creates a new crawl job
+//
+//nolint:dupl // Similar HTTP client pattern across different services is acceptable
 func (c *CrawlerClient) CreateJob(req CreateJobRequest) (*Job, error) {
 	endpoint := fmt.Sprintf("%s/api/v1/jobs", c.baseURL)
 
@@ -171,6 +173,8 @@ func (c *CrawlerClient) ListJobs(status string) ([]Job, error) {
 }
 
 // PauseJob pauses a crawl job
+//
+//nolint:dupl // Similar HTTP client pattern for job control operations is acceptable
 func (c *CrawlerClient) PauseJob(jobID string) (*Job, error) {
 	endpoint := fmt.Sprintf("%s/api/v1/jobs/%s/pause", c.baseURL, jobID)
 
@@ -211,6 +215,8 @@ func (c *CrawlerClient) PauseJob(jobID string) (*Job, error) {
 }
 
 // ResumeJob resumes a paused job
+//
+//nolint:dupl // Similar HTTP client pattern for job control operations is acceptable
 func (c *CrawlerClient) ResumeJob(jobID string) (*Job, error) {
 	endpoint := fmt.Sprintf("%s/api/v1/jobs/%s/resume", c.baseURL, jobID)
 
@@ -251,6 +257,8 @@ func (c *CrawlerClient) ResumeJob(jobID string) (*Job, error) {
 }
 
 // CancelJob cancels a job
+//
+//nolint:dupl // Similar HTTP client pattern for job control operations is acceptable
 func (c *CrawlerClient) CancelJob(jobID string) (*Job, error) {
 	endpoint := fmt.Sprintf("%s/api/v1/jobs/%s/cancel", c.baseURL, jobID)
 
@@ -323,6 +331,8 @@ func (c *CrawlerClient) GetJobStats(jobID string) (*JobStats, error) {
 }
 
 // GetSchedulerMetrics gets scheduler-wide metrics
+//
+//nolint:dupl // Similar HTTP client pattern across different services is acceptable
 func (c *CrawlerClient) GetSchedulerMetrics() (*SchedulerMetrics, error) {
 	endpoint := fmt.Sprintf("%s/api/v1/scheduler/metrics", c.baseURL)
 
