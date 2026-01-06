@@ -164,6 +164,9 @@ addInterceptors(indexManagerClient, 'IndexManager')
 export const crawlerApi = {
   // Health check
   getHealth: () => axios.get('/api/health/crawler'),
+  
+  // Stats - shortcut for stats.get()
+  getStats: () => crawlerClient.get('/stats'),
 
   // Jobs
   jobs: {
@@ -227,6 +230,9 @@ export const publisherApi = {
   // Health check
   getHealth: (): Promise<AxiosResponse<HealthStatus>> => publisherClient.get('/health'),
   health: (): Promise<AxiosResponse<HealthStatus>> => publisherClient.get('/health'),
+  
+  // Stats - shortcut for stats.overview()
+  getStats: () => publisherClient.get('/stats/overview?period=all'),
 
   // Stats
   stats: {
