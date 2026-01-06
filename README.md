@@ -13,6 +13,7 @@ The project consists of multiple independent services that work together in a co
 - **classifier**: Content classification service that processes raw content and enriches it with quality scores, topics, and metadata
 - **publisher**: Database-backed routing hub that filters classified articles and publishes to Redis pub/sub channels
 - **index-manager**: Centralized Elasticsearch index management service
+- **mcp-north-cloud**: Model Context Protocol (MCP) server for AI integration with 23 tools
 - **search-service**: Full-text search microservice across all classified content
 - **search-frontend**: Vue.js frontend for the search service
 - **auth**: JWT-based authentication service for dashboard and API access
@@ -197,10 +198,11 @@ This will start all services:
 - **MinIO** (for HTML archiving)
 - **crawler** service (port 8060)
 - **source-manager** service (port 8050)
-- **classifier** service (port 8071)
+- **classifier** service (port 8070)
 - **publisher-api** service (port 8070)
 - **publisher-router** service (background worker)
 - **index-manager** service (port 8090)
+- **mcp-north-cloud** service (stdio-based, no HTTP port)
 - **search-service** (port 8092)
 - **search-frontend** (port 3003)
 - **auth** service (port 8040)
