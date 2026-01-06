@@ -7,6 +7,18 @@ import (
 	infraconfig "github.com/north-cloud/infrastructure/config"
 )
 
+// Default configuration values.
+const (
+	defaultServiceName     = "auth"
+	defaultServicePort     = 8040
+	defaultUsername        = "admin"
+	defaultPassword        = "admin"
+	defaultJWTSecret       = "change-me-in-production"
+	defaultJWTExpirationH  = 24
+	defaultLoggingLevel    = "info"
+	defaultLoggingFormat   = "json"
+)
+
 // Config holds the application configuration.
 type Config struct {
 	Service ServiceConfig `yaml:"service"`
@@ -43,28 +55,28 @@ func Load(path string) (*Config, error) {
 // setDefaults applies default values to the config.
 func setDefaults(cfg *Config) {
 	if cfg.Service.Name == "" {
-		cfg.Service.Name = "auth"
+		cfg.Service.Name = defaultServiceName
 	}
 	if cfg.Service.Port == 0 {
-		cfg.Service.Port = 8040
+		cfg.Service.Port = defaultServicePort
 	}
 	if cfg.Auth.Username == "" {
-		cfg.Auth.Username = "admin"
+		cfg.Auth.Username = defaultUsername
 	}
 	if cfg.Auth.Password == "" {
-		cfg.Auth.Password = "admin"
+		cfg.Auth.Password = defaultPassword
 	}
 	if cfg.Auth.JWTSecret == "" {
-		cfg.Auth.JWTSecret = "change-me-in-production"
+		cfg.Auth.JWTSecret = defaultJWTSecret
 	}
 	if cfg.Auth.JWTExpiration == 0 {
-		cfg.Auth.JWTExpiration = 24 * time.Hour
+		cfg.Auth.JWTExpiration = defaultJWTExpirationH * time.Hour
 	}
 	if cfg.Logging.Level == "" {
-		cfg.Logging.Level = "info"
+		cfg.Logging.Level = defaultLoggingLevel
 	}
 	if cfg.Logging.Format == "" {
-		cfg.Logging.Format = "json"
+		cfg.Logging.Format = defaultLoggingFormat
 	}
 }
 
