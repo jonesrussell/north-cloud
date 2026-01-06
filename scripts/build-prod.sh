@@ -9,8 +9,6 @@
 #   Otherwise, all services are built sequentially
 # ============================================================
 
-set -e  # Exit on error
-
 # Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -22,7 +20,7 @@ NC='\033[0m' # No Color
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
-cd "$PROJECT_ROOT"
+cd "$PROJECT_ROOT" || exit 1
 
 # Compose files for production
 COMPOSE_FILES="-f docker-compose.base.yml -f docker-compose.prod.yml"
@@ -59,18 +57,21 @@ print_warning() {
 # Function to build a single service
 build_service() {
   local service=$1
-  local start_time=$(date +%s)
+  local start_time
+  start_time=$(date +%s)
   
   print_status "Building service: ${BLUE}$service${NC}"
   echo "----------------------------------------"
   
   if docker compose $COMPOSE_FILES build "$service" 2>&1; then
-    local end_time=$(date +%s)
+    local end_time
+    end_time=$(date +%s)
     local duration=$((end_time - start_time))
     print_success "Service $service built successfully in ${duration}s"
     return 0
   else
-    local end_time=$(date +%s)
+    local end_time
+    end_time=$(date +%s)
     local duration=$((end_time - start_time))
     print_error "Failed to build service $service after ${duration}s"
     return 1
@@ -79,7 +80,8 @@ build_service() {
 
 # Main execution
 main() {
-  local total_start_time=$(date +%s)
+  local total_start_time
+  total_start_time=$(date +%s)
   local services_to_build=("${SERVICES[@]}")
   local failed_services=()
   local success_count=0
@@ -107,9 +109,15 @@ main() {
   echo ""
   
   # Build each service
+  local service_index=0
   for service in "${services_to_build[@]}"; do
+    ((service_index++))
+    print_status "Service $service_index of ${#services_to_build[@]}: $service"
+    
     if build_service "$service"; then
       ((success_count++))
+      echo ""
+      print_status "Continuing to next service..."
       echo ""
     else
       ((fail_count++))
@@ -123,11 +131,13 @@ main() {
         print_warning "Build process stopped by user"
         break
       fi
+      echo ""
     fi
   done
   
   # Summary
-  local total_end_time=$(date +%s)
+  local total_end_time
+  total_end_time=$(date +%s)
   local total_duration=$((total_end_time - total_start_time))
   
   echo ""
