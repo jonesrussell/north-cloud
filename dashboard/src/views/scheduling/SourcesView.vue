@@ -57,8 +57,12 @@ onMounted(loadSources)
   <div class="space-y-6">
     <div class="flex items-center justify-between">
       <div>
-        <h1 class="text-3xl font-bold tracking-tight">Sources</h1>
-        <p class="text-muted-foreground">Manage content sources for crawling</p>
+        <h1 class="text-3xl font-bold tracking-tight">
+          Sources
+        </h1>
+        <p class="text-muted-foreground">
+          Manage content sources for crawling
+        </p>
       </div>
       <Button @click="router.push('/scheduling/sources/new')">
         <Plus class="mr-2 h-4 w-4" />
@@ -66,21 +70,33 @@ onMounted(loadSources)
       </Button>
     </div>
 
-    <div v-if="loading" class="flex items-center justify-center py-12">
+    <div
+      v-if="loading"
+      class="flex items-center justify-center py-12"
+    >
       <Loader2 class="h-8 w-8 animate-spin text-muted-foreground" />
     </div>
 
-    <Card v-else-if="error" class="border-destructive">
+    <Card
+      v-else-if="error"
+      class="border-destructive"
+    >
       <CardContent class="pt-6">
-        <p class="text-destructive">{{ error }}</p>
+        <p class="text-destructive">
+          {{ error }}
+        </p>
       </CardContent>
     </Card>
 
     <Card v-else-if="sources.length === 0">
       <CardContent class="flex flex-col items-center justify-center py-12">
         <Globe class="h-12 w-12 text-muted-foreground mb-4" />
-        <h3 class="text-lg font-medium mb-2">No sources configured</h3>
-        <p class="text-muted-foreground mb-4">Add your first source to start crawling content.</p>
+        <h3 class="text-lg font-medium mb-2">
+          No sources configured
+        </h3>
+        <p class="text-muted-foreground mb-4">
+          Add your first source to start crawling content.
+        </p>
         <Button @click="router.push('/scheduling/sources/new')">
           <Plus class="mr-2 h-4 w-4" />
           Add Source
@@ -93,18 +109,38 @@ onMounted(loadSources)
         <table class="w-full">
           <thead class="border-b bg-muted/50">
             <tr>
-              <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Name</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">URL</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Status</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Created</th>
-              <th class="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase">Actions</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
+                Name
+              </th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
+                URL
+              </th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
+                Status
+              </th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
+                Created
+              </th>
+              <th class="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase">
+                Actions
+              </th>
             </tr>
           </thead>
           <tbody class="divide-y">
-            <tr v-for="source in sources" :key="source.id" class="hover:bg-muted/50">
-              <td class="px-6 py-4 text-sm font-medium">{{ source.name }}</td>
+            <tr
+              v-for="source in sources"
+              :key="source.id"
+              class="hover:bg-muted/50"
+            >
+              <td class="px-6 py-4 text-sm font-medium">
+                {{ source.name }}
+              </td>
               <td class="px-6 py-4 text-sm">
-                <a :href="source.url" target="_blank" class="text-primary hover:underline truncate block max-w-xs">
+                <a
+                  :href="source.url"
+                  target="_blank"
+                  class="text-primary hover:underline truncate block max-w-xs"
+                >
                   {{ source.url }}
                 </a>
               </td>
@@ -113,10 +149,16 @@ onMounted(loadSources)
                   {{ source.enabled ? 'Active' : 'Inactive' }}
                 </Badge>
               </td>
-              <td class="px-6 py-4 text-sm text-muted-foreground">{{ formatDate(source.created_at) }}</td>
+              <td class="px-6 py-4 text-sm text-muted-foreground">
+                {{ formatDate(source.created_at) }}
+              </td>
               <td class="px-6 py-4 text-right">
                 <div class="flex justify-end gap-2">
-                  <Button variant="ghost" size="icon" @click="editSource(source.id)">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    @click="editSource(source.id)"
+                  >
                     <Pencil class="h-4 w-4" />
                   </Button>
                   <Button 
@@ -125,8 +167,14 @@ onMounted(loadSources)
                     :disabled="deleting === source.id"
                     @click="deleteSource(source.id)"
                   >
-                    <Loader2 v-if="deleting === source.id" class="h-4 w-4 animate-spin" />
-                    <Trash2 v-else class="h-4 w-4 text-destructive" />
+                    <Loader2
+                      v-if="deleting === source.id"
+                      class="h-4 w-4 animate-spin"
+                    />
+                    <Trash2
+                      v-else
+                      class="h-4 w-4 text-destructive"
+                    />
                   </Button>
                 </div>
               </td>

@@ -55,12 +55,17 @@ const handleLogin = async () => {
         <div class="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-xl bg-primary text-primary-foreground">
           <CloudCog class="h-8 w-8" />
         </div>
-        <CardTitle class="text-2xl font-bold">Welcome back</CardTitle>
+        <CardTitle class="text-2xl font-bold">
+          Welcome back
+        </CardTitle>
         <CardDescription>Sign in to North Cloud Dashboard</CardDescription>
       </CardHeader>
 
       <CardContent>
-        <form @submit.prevent="handleLogin" class="space-y-4">
+        <form
+          class="space-y-4"
+          @submit.prevent="handleLogin"
+        >
           <!-- Error message -->
           <div
             v-if="error"
@@ -70,7 +75,10 @@ const handleLogin = async () => {
           </div>
 
           <div class="space-y-2">
-            <label for="username" class="text-sm font-medium">Username</label>
+            <label
+              for="username"
+              class="text-sm font-medium"
+            >Username</label>
             <Input
               id="username"
               v-model="username"
@@ -82,7 +90,10 @@ const handleLogin = async () => {
           </div>
 
           <div class="space-y-2">
-            <label for="password" class="text-sm font-medium">Password</label>
+            <label
+              for="password"
+              class="text-sm font-medium"
+            >Password</label>
             <Input
               id="password"
               v-model="password"
@@ -93,8 +104,15 @@ const handleLogin = async () => {
             />
           </div>
 
-          <Button type="submit" class="w-full" :disabled="loading">
-            <Loader2 v-if="loading" class="mr-2 h-4 w-4 animate-spin" />
+          <Button
+            type="submit"
+            class="w-full"
+            :disabled="loading"
+          >
+            <Loader2
+              v-if="loading"
+              class="mr-2 h-4 w-4 animate-spin"
+            />
             {{ loading ? 'Signing in...' : 'Sign in' }}
           </Button>
         </form>

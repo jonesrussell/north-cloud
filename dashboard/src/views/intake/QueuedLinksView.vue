@@ -46,25 +46,41 @@ onMounted(loadLinks)
 <template>
   <div class="space-y-6">
     <div>
-      <h1 class="text-3xl font-bold tracking-tight">Queued Links</h1>
-      <p class="text-muted-foreground">Links discovered during crawling awaiting processing</p>
+      <h1 class="text-3xl font-bold tracking-tight">
+        Queued Links
+      </h1>
+      <p class="text-muted-foreground">
+        Links discovered during crawling awaiting processing
+      </p>
     </div>
 
-    <div v-if="loading" class="flex items-center justify-center py-12">
+    <div
+      v-if="loading"
+      class="flex items-center justify-center py-12"
+    >
       <Loader2 class="h-8 w-8 animate-spin text-muted-foreground" />
     </div>
 
-    <Card v-else-if="error" class="border-destructive">
+    <Card
+      v-else-if="error"
+      class="border-destructive"
+    >
       <CardContent class="pt-6">
-        <p class="text-destructive">{{ error }}</p>
+        <p class="text-destructive">
+          {{ error }}
+        </p>
       </CardContent>
     </Card>
 
     <Card v-else-if="links.length === 0">
       <CardContent class="flex flex-col items-center justify-center py-12">
         <Link class="h-12 w-12 text-muted-foreground mb-4" />
-        <h3 class="text-lg font-medium mb-2">No queued links</h3>
-        <p class="text-muted-foreground">Links discovered during crawling will appear here.</p>
+        <h3 class="text-lg font-medium mb-2">
+          No queued links
+        </h3>
+        <p class="text-muted-foreground">
+          Links discovered during crawling will appear here.
+        </p>
       </CardContent>
     </Card>
 
@@ -73,23 +89,47 @@ onMounted(loadLinks)
         <table class="w-full">
           <thead class="border-b bg-muted/50">
             <tr>
-              <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">URL</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Source</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Created</th>
-              <th class="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase">Actions</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
+                URL
+              </th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
+                Source
+              </th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
+                Created
+              </th>
+              <th class="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase">
+                Actions
+              </th>
             </tr>
           </thead>
           <tbody class="divide-y">
-            <tr v-for="link in links" :key="link.id" class="hover:bg-muted/50">
+            <tr
+              v-for="link in links"
+              :key="link.id"
+              class="hover:bg-muted/50"
+            >
               <td class="px-6 py-4 text-sm">
-                <a :href="link.url" target="_blank" class="text-primary hover:underline truncate block max-w-md">
+                <a
+                  :href="link.url"
+                  target="_blank"
+                  class="text-primary hover:underline truncate block max-w-md"
+                >
                   {{ link.url }}
                 </a>
               </td>
-              <td class="px-6 py-4 text-sm text-muted-foreground">{{ link.source_name }}</td>
-              <td class="px-6 py-4 text-sm text-muted-foreground">{{ formatDate(link.created_at) }}</td>
+              <td class="px-6 py-4 text-sm text-muted-foreground">
+                {{ link.source_name }}
+              </td>
+              <td class="px-6 py-4 text-sm text-muted-foreground">
+                {{ formatDate(link.created_at) }}
+              </td>
               <td class="px-6 py-4 text-right">
-                <Button variant="ghost" size="icon" @click="deleteLink(link.id)">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  @click="deleteLink(link.id)"
+                >
                   <Trash2 class="h-4 w-4 text-destructive" />
                 </Button>
               </td>

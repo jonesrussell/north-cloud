@@ -46,5 +46,5 @@ const handleInput = (event: Event) => {
     :disabled="disabled"
     v-bind="attrs"
     @input="handleInput"
-  />
+  >
 </template>

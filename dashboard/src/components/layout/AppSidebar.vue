@@ -56,16 +56,31 @@ const sidebarClass = computed(() =>
 
 <template>
   <!-- Desktop Sidebar -->
-  <aside v-if="!isMobile" :class="sidebarClass">
+  <aside
+    v-if="!isMobile"
+    :class="sidebarClass"
+  >
     <!-- Logo/Brand -->
     <div class="flex h-16 items-center justify-between px-4 border-b border-sidebar-border">
-      <router-link to="/" class="flex items-center gap-2">
+      <router-link
+        to="/"
+        class="flex items-center gap-2"
+      >
         <div class="h-8 w-8 rounded-lg bg-sidebar-primary flex items-center justify-center">
           <span class="text-sidebar-primary-foreground font-bold text-sm">NC</span>
         </div>
-        <span v-if="!isCollapsed" class="font-semibold text-sidebar-foreground">North Cloud</span>
+        <span
+          v-if="!isCollapsed"
+          class="font-semibold text-sidebar-foreground"
+        >North Cloud</span>
       </router-link>
-      <Button v-if="!isCollapsed" variant="ghost" size="icon" class="h-8 w-8" @click="toggle">
+      <Button
+        v-if="!isCollapsed"
+        variant="ghost"
+        size="icon"
+        class="h-8 w-8"
+        @click="toggle"
+      >
         <ChevronLeft class="h-4 w-4" />
       </Button>
     </div>
@@ -73,10 +88,17 @@ const sidebarClass = computed(() =>
     <!-- Navigation -->
     <nav class="flex-1 overflow-y-auto py-4 px-2">
       <ul class="space-y-1">
-        <li v-for="section in navigation" :key="section.title">
+        <li
+          v-for="section in navigation"
+          :key="section.title"
+        >
           <!-- Section with no children (direct link) -->
           <template v-if="section.path && !section.children">
-            <Tooltip v-if="isCollapsed" :content="section.title" side="right">
+            <Tooltip
+              v-if="isCollapsed"
+              :content="section.title"
+              side="right"
+            >
               <router-link
                 :to="section.path"
                 :class="
@@ -88,7 +110,10 @@ const sidebarClass = computed(() =>
                   )
                 "
               >
-                <component :is="section.icon" class="h-5 w-5 shrink-0" />
+                <component
+                  :is="section.icon"
+                  class="h-5 w-5 shrink-0"
+                />
                 <span v-if="!isCollapsed">{{ section.title }}</span>
               </router-link>
             </Tooltip>
@@ -104,7 +129,10 @@ const sidebarClass = computed(() =>
                 )
               "
             >
-              <component :is="section.icon" class="h-5 w-5 shrink-0" />
+              <component
+                :is="section.icon"
+                class="h-5 w-5 shrink-0"
+              />
               <span v-if="!isCollapsed">{{ section.title }}</span>
             </router-link>
           </template>
@@ -113,7 +141,10 @@ const sidebarClass = computed(() =>
           <template v-else-if="section.children">
             <!-- Collapsed view: show icon only with tooltip -->
             <template v-if="isCollapsed">
-              <Tooltip :content="section.title" side="right">
+              <Tooltip
+                :content="section.title"
+                side="right"
+              >
                 <router-link
                   :to="section.children[0].path"
                   :class="
@@ -125,7 +156,10 @@ const sidebarClass = computed(() =>
                     )
                   "
                 >
-                  <component :is="section.icon" class="h-5 w-5" />
+                  <component
+                    :is="section.icon"
+                    class="h-5 w-5"
+                  />
                 </router-link>
               </Tooltip>
             </template>
@@ -134,7 +168,6 @@ const sidebarClass = computed(() =>
             <template v-else>
               <!-- Section header -->
               <button
-                @click="toggleSection(section.title)"
                 :class="
                   cn(
                     'w-full flex items-center justify-between gap-3 rounded-lg px-3 py-2 text-sidebar-foreground transition-colors',
@@ -143,9 +176,13 @@ const sidebarClass = computed(() =>
                       : 'hover:bg-sidebar-accent/50'
                   )
                 "
+                @click="toggleSection(section.title)"
               >
                 <div class="flex items-center gap-3">
-                  <component :is="section.icon" class="h-5 w-5 shrink-0" />
+                  <component
+                    :is="section.icon"
+                    class="h-5 w-5 shrink-0"
+                  />
                   <span class="text-sm font-medium">{{ section.title }}</span>
                 </div>
                 <ChevronDown
@@ -163,7 +200,10 @@ const sidebarClass = computed(() =>
                 v-if="expandedSections.has(section.title)"
                 class="mt-1 ml-4 pl-4 border-l border-sidebar-border space-y-1"
               >
-                <li v-for="child in section.children" :key="child.path">
+                <li
+                  v-for="child in section.children"
+                  :key="child.path"
+                >
                   <router-link
                     :to="child.path"
                     :class="
@@ -175,7 +215,10 @@ const sidebarClass = computed(() =>
                       )
                     "
                   >
-                    <component :is="child.icon" class="h-4 w-4 shrink-0" />
+                    <component
+                      :is="child.icon"
+                      class="h-4 w-4 shrink-0"
+                    />
                     <span>{{ child.title }}</span>
                   </router-link>
                 </li>
@@ -199,8 +242,16 @@ const sidebarClass = computed(() =>
 
     <!-- Collapse toggle (bottom) -->
     <div class="border-t border-sidebar-border p-2">
-      <Button variant="ghost" size="sm" class="w-full justify-center" @click="toggle">
-        <ChevronRight v-if="isCollapsed" class="h-4 w-4" />
+      <Button
+        variant="ghost"
+        size="sm"
+        class="w-full justify-center"
+        @click="toggle"
+      >
+        <ChevronRight
+          v-if="isCollapsed"
+          class="h-4 w-4"
+        />
         <template v-else>
           <ChevronLeft class="h-4 w-4 mr-2" />
           <span>Collapse</span>
@@ -210,11 +261,22 @@ const sidebarClass = computed(() =>
   </aside>
 
   <!-- Mobile Sidebar (Sheet) -->
-  <Sheet v-if="isMobile" :open="isMobileOpen" @update:open="closeMobile">
-    <SheetContent side="left" class="w-64 p-0">
+  <Sheet
+    v-if="isMobile"
+    :open="isMobileOpen"
+    @update:open="closeMobile"
+  >
+    <SheetContent
+      side="left"
+      class="w-64 p-0"
+    >
       <!-- Logo/Brand -->
       <div class="flex h-16 items-center px-4 border-b border-sidebar-border">
-        <router-link to="/" class="flex items-center gap-2" @click="closeMobile">
+        <router-link
+          to="/"
+          class="flex items-center gap-2"
+          @click="closeMobile"
+        >
           <div class="h-8 w-8 rounded-lg bg-sidebar-primary flex items-center justify-center">
             <span class="text-sidebar-primary-foreground font-bold text-sm">NC</span>
           </div>
@@ -225,12 +287,14 @@ const sidebarClass = computed(() =>
       <!-- Navigation -->
       <nav class="flex-1 overflow-y-auto py-4 px-2">
         <ul class="space-y-1">
-          <li v-for="section in navigation" :key="section.title">
+          <li
+            v-for="section in navigation"
+            :key="section.title"
+          >
             <!-- Section with no children -->
             <template v-if="section.path && !section.children">
               <router-link
                 :to="section.path"
-                @click="closeMobile"
                 :class="
                   cn(
                     'flex items-center gap-3 rounded-lg px-3 py-2 text-sidebar-foreground transition-colors',
@@ -239,8 +303,12 @@ const sidebarClass = computed(() =>
                       : 'hover:bg-sidebar-accent/50'
                   )
                 "
+                @click="closeMobile"
               >
-                <component :is="section.icon" class="h-5 w-5 shrink-0" />
+                <component
+                  :is="section.icon"
+                  class="h-5 w-5 shrink-0"
+                />
                 <span>{{ section.title }}</span>
               </router-link>
             </template>
@@ -248,7 +316,6 @@ const sidebarClass = computed(() =>
             <!-- Section with children -->
             <template v-else-if="section.children">
               <button
-                @click="toggleSection(section.title)"
                 :class="
                   cn(
                     'w-full flex items-center justify-between gap-3 rounded-lg px-3 py-2 text-sidebar-foreground transition-colors',
@@ -257,9 +324,13 @@ const sidebarClass = computed(() =>
                       : 'hover:bg-sidebar-accent/50'
                   )
                 "
+                @click="toggleSection(section.title)"
               >
                 <div class="flex items-center gap-3">
-                  <component :is="section.icon" class="h-5 w-5 shrink-0" />
+                  <component
+                    :is="section.icon"
+                    class="h-5 w-5 shrink-0"
+                  />
                   <span class="text-sm font-medium">{{ section.title }}</span>
                 </div>
                 <ChevronDown
@@ -276,10 +347,12 @@ const sidebarClass = computed(() =>
                 v-if="expandedSections.has(section.title)"
                 class="mt-1 ml-4 pl-4 border-l border-sidebar-border space-y-1"
               >
-                <li v-for="child in section.children" :key="child.path">
+                <li
+                  v-for="child in section.children"
+                  :key="child.path"
+                >
                   <router-link
                     :to="child.path"
-                    @click="closeMobile"
                     :class="
                       cn(
                         'flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-sidebar-foreground transition-colors',
@@ -288,8 +361,12 @@ const sidebarClass = computed(() =>
                           : 'hover:bg-sidebar-accent/50'
                       )
                     "
+                    @click="closeMobile"
                   >
-                    <component :is="child.icon" class="h-4 w-4 shrink-0" />
+                    <component
+                      :is="child.icon"
+                      class="h-4 w-4 shrink-0"
+                    />
                     <span>{{ child.title }}</span>
                   </router-link>
                 </li>

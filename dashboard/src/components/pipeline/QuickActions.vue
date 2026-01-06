@@ -38,7 +38,9 @@ const getIcon = (icon: string) => {
 <template>
   <Card>
     <CardHeader class="pb-3">
-      <CardTitle class="text-sm font-medium">{{ title }}</CardTitle>
+      <CardTitle class="text-sm font-medium">
+        {{ title }}
+      </CardTitle>
     </CardHeader>
     <CardContent class="space-y-2">
       <router-link
@@ -51,7 +53,10 @@ const getIcon = (icon: string) => {
           :variant="action.variant || 'outline'"
           class="w-full justify-start"
         >
-          <component :is="getIcon(action.icon)" class="mr-2 h-4 w-4" />
+          <component
+            :is="getIcon(action.icon)"
+            class="mr-2 h-4 w-4"
+          />
           {{ action.label }}
         </Button>
       </router-link>

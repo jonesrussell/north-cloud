@@ -47,9 +47,18 @@ const tooltipClass = computed(() =>
 </script>
 
 <template>
-  <div class="relative inline-block" @mouseenter="show" @mouseleave="hide" @focus="show" @blur="hide">
+  <div
+    class="relative inline-block"
+    @mouseenter="show"
+    @mouseleave="hide"
+    @focus="show"
+    @blur="hide"
+  >
     <slot />
-    <div v-if="isVisible" :class="tooltipClass">
+    <div
+      v-if="isVisible"
+      :class="tooltipClass"
+    >
       {{ content }}
     </div>
   </div>

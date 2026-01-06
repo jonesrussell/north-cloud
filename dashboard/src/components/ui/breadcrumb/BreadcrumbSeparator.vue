@@ -11,7 +11,11 @@ const props = withDefaults(defineProps<Props>(), {
 </script>
 
 <template>
-  <li role="presentation" aria-hidden="true" :class="cn('[&>svg]:size-3.5', props.class)">
+  <li
+    role="presentation"
+    aria-hidden="true"
+    :class="cn('[&>svg]:size-3.5', props.class)"
+  >
     <slot>
       <svg
         xmlns="http://www.w3.org/2000/svg"

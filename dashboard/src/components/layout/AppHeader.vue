@@ -95,28 +95,46 @@ const healthLabel = computed(() => {
 <template>
   <header class="sticky top-0 z-40 flex h-16 items-center gap-4 border-b bg-background px-4 md:px-6">
     <!-- Mobile menu button -->
-    <Button v-if="isMobile" variant="ghost" size="icon" @click="openMobile">
+    <Button
+      v-if="isMobile"
+      variant="ghost"
+      size="icon"
+      @click="openMobile"
+    >
       <Menu class="h-5 w-5" />
       <span class="sr-only">Toggle menu</span>
     </Button>
 
     <!-- Breadcrumbs -->
     <Breadcrumb class="hidden md:flex">
-      <template v-for="(crumb, index) in breadcrumbs" :key="crumb.path">
+      <template
+        v-for="(crumb, index) in breadcrumbs"
+        :key="crumb.path"
+      >
         <BreadcrumbItem>
-          <BreadcrumbLink v-if="index < breadcrumbs.length - 1" :href="crumb.path">
-            <router-link :to="crumb.path" class="hover:text-foreground">
+          <BreadcrumbLink
+            v-if="index < breadcrumbs.length - 1"
+            :href="crumb.path"
+          >
+            <router-link
+              :to="crumb.path"
+              class="hover:text-foreground"
+            >
               {{ crumb.label }}
             </router-link>
           </BreadcrumbLink>
-          <BreadcrumbPage v-else>{{ crumb.label }}</BreadcrumbPage>
+          <BreadcrumbPage v-else>
+            {{ crumb.label }}
+          </BreadcrumbPage>
         </BreadcrumbItem>
         <BreadcrumbSeparator v-if="index < breadcrumbs.length - 1" />
       </template>
     </Breadcrumb>
 
     <!-- Page title (mobile) -->
-    <h1 class="md:hidden font-semibold">{{ pageTitle }}</h1>
+    <h1 class="md:hidden font-semibold">
+      {{ pageTitle }}
+    </h1>
 
     <!-- Spacer -->
     <div class="flex-1" />
@@ -124,7 +142,10 @@ const healthLabel = computed(() => {
     <!-- Right side actions -->
     <div class="flex items-center gap-2">
       <!-- Health Status -->
-      <Badge :variant="healthBadgeVariant" class="hidden sm:flex">
+      <Badge
+        :variant="healthBadgeVariant"
+        class="hidden sm:flex"
+      >
         <span
           :class="
             cn('mr-1.5 h-2 w-2 rounded-full', {
@@ -143,7 +164,10 @@ const healthLabel = computed(() => {
       <!-- User Menu -->
       <DropdownMenu>
         <DropdownMenuTrigger>
-          <Button variant="ghost" class="relative h-9 w-9 rounded-full">
+          <Button
+            variant="ghost"
+            class="relative h-9 w-9 rounded-full"
+          >
             <Avatar class="h-9 w-9">
               <AvatarFallback>
                 <User class="h-4 w-4" />
@@ -151,7 +175,10 @@ const healthLabel = computed(() => {
             </Avatar>
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" class="w-56">
+        <DropdownMenuContent
+          align="end"
+          class="w-56"
+        >
           <DropdownMenuLabel>My Account</DropdownMenuLabel>
           <DropdownMenuSeparator />
           <DropdownMenuItem @select="handleLogout">

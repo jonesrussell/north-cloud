@@ -65,30 +65,49 @@ onMounted(loadLogs)
   <div class="space-y-6">
     <div class="flex items-center justify-between">
       <div>
-        <h1 class="text-3xl font-bold tracking-tight">Delivery Logs</h1>
-        <p class="text-muted-foreground">Track article publication to channels</p>
+        <h1 class="text-3xl font-bold tracking-tight">
+          Delivery Logs
+        </h1>
+        <p class="text-muted-foreground">
+          Track article publication to channels
+        </p>
       </div>
-      <Button variant="outline" @click="loadLogs">
+      <Button
+        variant="outline"
+        @click="loadLogs"
+      >
         <RefreshCw class="mr-2 h-4 w-4" />
         Refresh
       </Button>
     </div>
 
-    <div v-if="loading" class="flex items-center justify-center py-12">
+    <div
+      v-if="loading"
+      class="flex items-center justify-center py-12"
+    >
       <Loader2 class="h-8 w-8 animate-spin text-muted-foreground" />
     </div>
 
-    <Card v-else-if="error" class="border-destructive">
+    <Card
+      v-else-if="error"
+      class="border-destructive"
+    >
       <CardContent class="pt-6">
-        <p class="text-destructive">{{ error }}</p>
+        <p class="text-destructive">
+          {{ error }}
+        </p>
       </CardContent>
     </Card>
 
     <Card v-else-if="logs.length === 0">
       <CardContent class="flex flex-col items-center justify-center py-12">
         <ScrollText class="h-12 w-12 text-muted-foreground mb-4" />
-        <h3 class="text-lg font-medium mb-2">No delivery logs</h3>
-        <p class="text-muted-foreground">Logs will appear here when articles are published.</p>
+        <h3 class="text-lg font-medium mb-2">
+          No delivery logs
+        </h3>
+        <p class="text-muted-foreground">
+          Logs will appear here when articles are published.
+        </p>
       </CardContent>
     </Card>
 
@@ -101,32 +120,59 @@ onMounted(loadLogs)
         <table class="w-full">
           <thead class="border-b bg-muted/50">
             <tr>
-              <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Status</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Article</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Channel</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Quality</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Time</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
+                Status
+              </th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
+                Article
+              </th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
+                Channel
+              </th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
+                Quality
+              </th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
+                Time
+              </th>
             </tr>
           </thead>
           <tbody class="divide-y">
-            <tr v-for="log in logs" :key="log.id" class="hover:bg-muted/50">
+            <tr
+              v-for="log in logs"
+              :key="log.id"
+              class="hover:bg-muted/50"
+            >
               <td class="px-6 py-4">
                 <div class="flex items-center gap-2">
-                  <component :is="getStatusIcon(log.status)" 
+                  <component
+                    :is="getStatusIcon(log.status)" 
                     :class="['h-4 w-4', log.status === 'delivered' ? 'text-green-500' : log.status === 'failed' ? 'text-red-500' : 'text-yellow-500']" 
                   />
-                  <Badge :variant="getStatusVariant(log.status)">{{ log.status }}</Badge>
+                  <Badge :variant="getStatusVariant(log.status)">
+                    {{ log.status }}
+                  </Badge>
                 </div>
               </td>
               <td class="px-6 py-4 text-sm">
-                <p class="truncate max-w-xs font-medium">{{ log.article_title }}</p>
-                <p class="text-xs text-muted-foreground font-mono">{{ log.article_id }}</p>
+                <p class="truncate max-w-xs font-medium">
+                  {{ log.article_title }}
+                </p>
+                <p class="text-xs text-muted-foreground font-mono">
+                  {{ log.article_id }}
+                </p>
               </td>
               <td class="px-6 py-4">
-                <Badge variant="outline">{{ log.channel_name }}</Badge>
+                <Badge variant="outline">
+                  {{ log.channel_name }}
+                </Badge>
               </td>
-              <td class="px-6 py-4 text-sm text-muted-foreground">{{ log.quality_score }}/100</td>
-              <td class="px-6 py-4 text-sm text-muted-foreground">{{ formatDate(log.published_at) }}</td>
+              <td class="px-6 py-4 text-sm text-muted-foreground">
+                {{ log.quality_score }}/100
+              </td>
+              <td class="px-6 py-4 text-sm text-muted-foreground">
+                {{ formatDate(log.published_at) }}
+              </td>
             </tr>
           </tbody>
         </table>

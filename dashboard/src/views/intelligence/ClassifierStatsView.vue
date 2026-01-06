@@ -41,17 +41,29 @@ onMounted(loadStats)
 <template>
   <div class="space-y-6">
     <div>
-      <h1 class="text-3xl font-bold tracking-tight">Classifier Statistics</h1>
-      <p class="text-muted-foreground">Content classification performance and insights</p>
+      <h1 class="text-3xl font-bold tracking-tight">
+        Classifier Statistics
+      </h1>
+      <p class="text-muted-foreground">
+        Content classification performance and insights
+      </p>
     </div>
 
-    <div v-if="loading" class="flex items-center justify-center py-12">
+    <div
+      v-if="loading"
+      class="flex items-center justify-center py-12"
+    >
       <Loader2 class="h-8 w-8 animate-spin text-muted-foreground" />
     </div>
 
-    <Card v-else-if="error" class="border-destructive">
+    <Card
+      v-else-if="error"
+      class="border-destructive"
+    >
       <CardContent class="pt-6">
-        <p class="text-destructive">{{ error }}</p>
+        <p class="text-destructive">
+          {{ error }}
+        </p>
       </CardContent>
     </Card>
 
@@ -93,11 +105,21 @@ onMounted(loadStats)
           <CardDescription>Most common topics detected in classified content</CardDescription>
         </CardHeader>
         <CardContent>
-          <div v-if="topTopics.length === 0" class="text-center py-8 text-muted-foreground">
+          <div
+            v-if="topTopics.length === 0"
+            class="text-center py-8 text-muted-foreground"
+          >
             No topics data available yet.
           </div>
-          <div v-else class="space-y-4">
-            <div v-for="topic in topTopics.slice(0, 10)" :key="topic.name" class="flex items-center">
+          <div
+            v-else
+            class="space-y-4"
+          >
+            <div
+              v-for="topic in topTopics.slice(0, 10)"
+              :key="topic.name"
+              class="flex items-center"
+            >
               <div class="flex-1">
                 <div class="flex items-center justify-between mb-1">
                   <span class="text-sm font-medium">{{ topic.name }}</span>

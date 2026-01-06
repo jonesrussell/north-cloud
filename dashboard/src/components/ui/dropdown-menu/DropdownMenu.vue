@@ -20,6 +20,10 @@ provide('dropdown-menu', {
 
 <template>
   <div class="relative inline-block text-left">
-    <slot :is-open="isOpen" :toggle="toggle" :close="close" />
+    <slot
+      :is-open="isOpen"
+      :toggle="toggle"
+      :close="close"
+    />
   </div>
 </template>

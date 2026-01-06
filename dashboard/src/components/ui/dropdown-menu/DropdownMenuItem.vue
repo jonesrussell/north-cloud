@@ -40,7 +40,10 @@ const itemClass = computed(() =>
 </script>
 
 <template>
-  <div :class="itemClass" @click="handleClick">
+  <div
+    :class="itemClass"
+    @click="handleClick"
+  >
     <slot />
   </div>
 </template>

@@ -30,7 +30,10 @@ onMounted(() => {
     <AppSidebar />
 
     <!-- Main content -->
-    <div :style="mainStyle" class="flex flex-col min-h-screen">
+    <div
+      :style="mainStyle"
+      class="flex flex-col min-h-screen"
+    >
       <!-- Header -->
       <AppHeader />
 

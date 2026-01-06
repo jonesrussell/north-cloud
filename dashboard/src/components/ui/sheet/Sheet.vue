@@ -34,5 +34,8 @@ provide('sheet', {
 </script>
 
 <template>
-  <slot :is-open="isOpen" :close="close" />
+  <slot
+    :is-open="isOpen"
+    :close="close"
+  />
 </template>

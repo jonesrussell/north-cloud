@@ -185,8 +185,12 @@ onMounted(() => {
     <!-- Header -->
     <div class="flex items-center justify-between">
       <div>
-        <h1 class="text-3xl font-bold tracking-tight">Crawl Jobs</h1>
-        <p class="text-muted-foreground">Manage and monitor content crawling jobs</p>
+        <h1 class="text-3xl font-bold tracking-tight">
+          Crawl Jobs
+        </h1>
+        <p class="text-muted-foreground">
+          Manage and monitor content crawling jobs
+        </p>
       </div>
       <Button @click="showCreateModal = true">
         <Plus class="mr-2 h-4 w-4" />
@@ -195,14 +199,22 @@ onMounted(() => {
     </div>
 
     <!-- Loading -->
-    <div v-if="loading" class="flex items-center justify-center py-12">
+    <div
+      v-if="loading"
+      class="flex items-center justify-center py-12"
+    >
       <Loader2 class="h-8 w-8 animate-spin text-muted-foreground" />
     </div>
 
     <!-- Error -->
-    <Card v-else-if="error" class="border-destructive">
+    <Card
+      v-else-if="error"
+      class="border-destructive"
+    >
       <CardContent class="pt-6">
-        <p class="text-destructive">{{ error }}</p>
+        <p class="text-destructive">
+          {{ error }}
+        </p>
       </CardContent>
     </Card>
 
@@ -210,8 +222,12 @@ onMounted(() => {
     <Card v-else-if="jobs.length === 0">
       <CardContent class="flex flex-col items-center justify-center py-12">
         <Briefcase class="h-12 w-12 text-muted-foreground mb-4" />
-        <h3 class="text-lg font-medium mb-2">No crawl jobs</h3>
-        <p class="text-muted-foreground mb-4">Get started by creating your first crawl job.</p>
+        <h3 class="text-lg font-medium mb-2">
+          No crawl jobs
+        </h3>
+        <p class="text-muted-foreground mb-4">
+          Get started by creating your first crawl job.
+        </p>
         <Button @click="showCreateModal = true">
           <Plus class="mr-2 h-4 w-4" />
           Create Job
@@ -225,12 +241,24 @@ onMounted(() => {
         <table class="w-full">
           <thead class="border-b bg-muted/50">
             <tr>
-              <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Job ID</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Source</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Status</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Created</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Next Run</th>
-              <th class="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase">Actions</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
+                Job ID
+              </th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
+                Source
+              </th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
+                Status
+              </th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
+                Created
+              </th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
+                Next Run
+              </th>
+              <th class="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase">
+                Actions
+              </th>
             </tr>
           </thead>
           <tbody class="divide-y">
@@ -241,18 +269,34 @@ onMounted(() => {
               @click="navigateToJob(job.id)"
             >
               <td class="px-6 py-4 text-sm font-medium">
-                <button class="text-primary hover:underline" @click.stop="navigateToJob(job.id)">
+                <button
+                  class="text-primary hover:underline"
+                  @click.stop="navigateToJob(job.id)"
+                >
                   {{ truncateId(job.id) }}
                 </button>
               </td>
-              <td class="px-6 py-4 text-sm text-muted-foreground">{{ job.source_name || 'N/A' }}</td>
-              <td class="px-6 py-4">
-                <Badge :variant="getStatusVariant(job.status)">{{ job.status }}</Badge>
+              <td class="px-6 py-4 text-sm text-muted-foreground">
+                {{ job.source_name || 'N/A' }}
               </td>
-              <td class="px-6 py-4 text-sm text-muted-foreground">{{ formatDate(job.created_at) }}</td>
-              <td class="px-6 py-4 text-sm text-muted-foreground">{{ formatNextRun(job) }}</td>
+              <td class="px-6 py-4">
+                <Badge :variant="getStatusVariant(job.status)">
+                  {{ job.status }}
+                </Badge>
+              </td>
+              <td class="px-6 py-4 text-sm text-muted-foreground">
+                {{ formatDate(job.created_at) }}
+              </td>
+              <td class="px-6 py-4 text-sm text-muted-foreground">
+                {{ formatNextRun(job) }}
+              </td>
               <td class="px-6 py-4 text-right">
-                <Button variant="ghost" size="sm" class="text-destructive" @click.stop="confirmDelete(job)">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  class="text-destructive"
+                  @click.stop="confirmDelete(job)"
+                >
                   Delete
                 </Button>
               </td>
@@ -263,62 +307,118 @@ onMounted(() => {
     </Card>
 
     <!-- Create Modal -->
-    <div v-if="showCreateModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+    <div
+      v-if="showCreateModal"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+    >
       <Card class="w-full max-w-md mx-4">
         <CardHeader>
           <CardTitle>Create Crawl Job</CardTitle>
           <CardDescription>Create a new job to crawl content from a source</CardDescription>
         </CardHeader>
         <CardContent>
-          <form @submit.prevent="createJob" class="space-y-4">
+          <form
+            class="space-y-4"
+            @submit.prevent="createJob"
+          >
             <div>
               <label class="block text-sm font-medium mb-2">Source</label>
               <select
                 :value="newJob.source_id"
-                @change="onSourceChange"
                 class="w-full px-3 py-2 border rounded-md bg-background"
+                @change="onSourceChange"
               >
-                <option value="">Select a source...</option>
-                <option v-for="s in sources" :key="s.id" :value="s.id">{{ s.name }}</option>
+                <option value="">
+                  Select a source...
+                </option>
+                <option
+                  v-for="s in sources"
+                  :key="s.id"
+                  :value="s.id"
+                >
+                  {{ s.name }}
+                </option>
               </select>
             </div>
 
             <div>
               <label class="block text-sm font-medium mb-2">URL</label>
-              <Input :model-value="newJob.url" disabled placeholder="Select a source" />
+              <Input
+                :model-value="newJob.url"
+                disabled
+                placeholder="Select a source"
+              />
             </div>
 
             <div class="flex items-center gap-2">
               <input
-                type="checkbox"
                 id="schedule_enabled"
                 v-model="newJob.schedule_enabled"
+                type="checkbox"
                 class="h-4 w-4"
-              />
-              <label for="schedule_enabled" class="text-sm">Enable scheduled crawling</label>
+              >
+              <label
+                for="schedule_enabled"
+                class="text-sm"
+              >Enable scheduled crawling</label>
             </div>
 
-            <div v-if="newJob.schedule_enabled" class="flex gap-3">
-              <Input v-model.number="newJob.interval_minutes" type="number" min="1" class="flex-1" />
-              <select v-model="newJob.interval_type" class="flex-1 px-3 py-2 border rounded-md bg-background">
-                <option value="minutes">Minutes</option>
-                <option value="hours">Hours</option>
-                <option value="days">Days</option>
+            <div
+              v-if="newJob.schedule_enabled"
+              class="flex gap-3"
+            >
+              <Input
+                v-model.number="newJob.interval_minutes"
+                type="number"
+                min="1"
+                class="flex-1"
+              />
+              <select
+                v-model="newJob.interval_type"
+                class="flex-1 px-3 py-2 border rounded-md bg-background"
+              >
+                <option value="minutes">
+                  Minutes
+                </option>
+                <option value="hours">
+                  Hours
+                </option>
+                <option value="days">
+                  Days
+                </option>
               </select>
             </div>
 
-            <div v-if="createError" class="p-3 text-sm text-destructive bg-destructive/10 rounded-md">
+            <div
+              v-if="createError"
+              class="p-3 text-sm text-destructive bg-destructive/10 rounded-md"
+            >
               {{ createError }}
             </div>
 
-            <div v-if="createSuccess" class="p-3 text-sm text-green-600 bg-green-50 rounded-md">
+            <div
+              v-if="createSuccess"
+              class="p-3 text-sm text-green-600 bg-green-50 rounded-md"
+            >
               Job created successfully!
             </div>
 
             <div class="flex justify-end gap-3 pt-4">
-              <Button type="button" variant="outline" @click="showCreateModal = false">Cancel</Button>
-              <Button type="submit" :disabled="creating">
-                <Loader2 v-if="creating" class="mr-2 h-4 w-4 animate-spin" />
+              <Button
+                type="button"
+                variant="outline"
+                @click="showCreateModal = false"
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                :disabled="creating"
+              >
+                <Loader2
+                  v-if="creating"
+                  class="mr-2 h-4 w-4 animate-spin"
+                />
                 {{ creating ? 'Creating...' : 'Create Job' }}
               </Button>
             </div>
@@ -328,7 +428,10 @@ onMounted(() => {
     </div>
 
     <!-- Delete Modal -->
-    <div v-if="showDeleteModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+    <div
+      v-if="showDeleteModal"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+    >
       <Card class="w-full max-w-md mx-4">
         <CardHeader>
           <CardTitle>Delete Job</CardTitle>
@@ -336,9 +439,21 @@ onMounted(() => {
         </CardHeader>
         <CardContent>
           <div class="flex justify-end gap-3">
-            <Button variant="outline" @click="showDeleteModal = false">Cancel</Button>
-            <Button variant="destructive" :disabled="deleting" @click="deleteJob">
-              <Loader2 v-if="deleting" class="mr-2 h-4 w-4 animate-spin" />
+            <Button
+              variant="outline"
+              @click="showDeleteModal = false"
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              :disabled="deleting"
+              @click="deleteJob"
+            >
+              <Loader2
+                v-if="deleting"
+                class="mr-2 h-4 w-4 animate-spin"
+              />
               Delete
             </Button>
           </div>

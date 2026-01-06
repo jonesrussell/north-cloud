@@ -59,38 +59,65 @@ onMounted(loadStreams)
   <div class="space-y-6">
     <div class="flex items-center justify-between">
       <div>
-        <h1 class="text-3xl font-bold tracking-tight">Redis Streams</h1>
-        <p class="text-muted-foreground">Monitor pub/sub channels and message flow</p>
+        <h1 class="text-3xl font-bold tracking-tight">
+          Redis Streams
+        </h1>
+        <p class="text-muted-foreground">
+          Monitor pub/sub channels and message flow
+        </p>
       </div>
-      <Button variant="outline" @click="loadStreams">
+      <Button
+        variant="outline"
+        @click="loadStreams"
+      >
         <RefreshCw class="mr-2 h-4 w-4" />
         Refresh
       </Button>
     </div>
 
-    <div v-if="loading" class="flex items-center justify-center py-12">
+    <div
+      v-if="loading"
+      class="flex items-center justify-center py-12"
+    >
       <Loader2 class="h-8 w-8 animate-spin text-muted-foreground" />
     </div>
 
-    <Card v-else-if="error" class="border-destructive">
+    <Card
+      v-else-if="error"
+      class="border-destructive"
+    >
       <CardContent class="pt-6">
-        <p class="text-destructive">{{ error }}</p>
+        <p class="text-destructive">
+          {{ error }}
+        </p>
       </CardContent>
     </Card>
 
     <Card v-else-if="streams.length === 0">
       <CardContent class="flex flex-col items-center justify-center py-12">
         <Activity class="h-12 w-12 text-muted-foreground mb-4" />
-        <h3 class="text-lg font-medium mb-2">No active streams</h3>
-        <p class="text-muted-foreground">Redis streams will appear here when channels are active.</p>
+        <h3 class="text-lg font-medium mb-2">
+          No active streams
+        </h3>
+        <p class="text-muted-foreground">
+          Redis streams will appear here when channels are active.
+        </p>
       </CardContent>
     </Card>
 
-    <div v-else class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-      <Card v-for="stream in streams" :key="stream.name">
+    <div
+      v-else
+      class="grid gap-4 md:grid-cols-2 lg:grid-cols-3"
+    >
+      <Card
+        v-for="stream in streams"
+        :key="stream.name"
+      >
         <CardHeader class="pb-2">
           <div class="flex items-center justify-between">
-            <CardTitle class="text-base font-mono">{{ stream.name }}</CardTitle>
+            <CardTitle class="text-base font-mono">
+              {{ stream.name }}
+            </CardTitle>
             <Badge :variant="stream.status === 'active' ? 'success' : 'secondary'">
               {{ stream.status }}
             </Badge>
@@ -99,12 +126,20 @@ onMounted(loadStreams)
         <CardContent>
           <dl class="grid grid-cols-2 gap-4 text-sm">
             <div>
-              <dt class="text-muted-foreground">Messages</dt>
-              <dd class="text-2xl font-bold">{{ stream.messages_count.toLocaleString() }}</dd>
+              <dt class="text-muted-foreground">
+                Messages
+              </dt>
+              <dd class="text-2xl font-bold">
+                {{ stream.messages_count.toLocaleString() }}
+              </dd>
             </div>
             <div>
-              <dt class="text-muted-foreground">Consumers</dt>
-              <dd class="text-2xl font-bold">{{ stream.consumers_count }}</dd>
+              <dt class="text-muted-foreground">
+                Consumers
+              </dt>
+              <dd class="text-2xl font-bold">
+                {{ stream.consumers_count }}
+              </dd>
             </div>
           </dl>
           <p class="mt-4 text-xs text-muted-foreground">

@@ -53,7 +53,11 @@ const buttonClass = computed(() =>
 </script>
 
 <template>
-  <button :type="type" :class="buttonClass" :disabled="disabled">
+  <button
+    :type="type"
+    :class="buttonClass"
+    :disabled="disabled"
+  >
     <slot />
   </button>
 </template>

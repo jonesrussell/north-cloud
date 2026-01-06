@@ -57,7 +57,11 @@ const contentClass = computed(() =>
     leave-from-class="transform opacity-100 scale-100"
     leave-to-class="transform opacity-0 scale-95"
   >
-    <div v-if="dropdown?.isOpen.value" :class="contentClass" data-dropdown-menu>
+    <div
+      v-if="dropdown?.isOpen.value"
+      :class="contentClass"
+      data-dropdown-menu
+    >
       <slot />
     </div>
   </Transition>

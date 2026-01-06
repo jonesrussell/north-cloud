@@ -63,7 +63,10 @@ const contentClass = computed(() =>
     <Transition name="sheet">
       <template v-if="sheet?.isOpen.value">
         <!-- Overlay -->
-        <div :class="overlayClass" @click="sheet?.close" />
+        <div
+          :class="overlayClass"
+          @click="sheet?.close"
+        />
       </template>
     </Transition>
     <Transition name="sheet-content">

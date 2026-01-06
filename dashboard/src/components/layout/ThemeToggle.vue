@@ -27,8 +27,15 @@ const themes: { value: Theme; label: string; icon: typeof Sun }[] = [
 <template>
   <DropdownMenu>
     <DropdownMenuTrigger>
-      <Button variant="ghost" size="icon" class="h-9 w-9">
-        <component :is="currentIcon" class="h-4 w-4" />
+      <Button
+        variant="ghost"
+        size="icon"
+        class="h-9 w-9"
+      >
+        <component
+          :is="currentIcon"
+          class="h-4 w-4"
+        />
         <span class="sr-only">Toggle theme</span>
       </Button>
     </DropdownMenuTrigger>
@@ -36,10 +43,13 @@ const themes: { value: Theme; label: string; icon: typeof Sun }[] = [
       <DropdownMenuItem
         v-for="t in themes"
         :key="t.value"
-        @select="setTheme(t.value)"
         :class="{ 'bg-accent': theme === t.value }"
+        @select="setTheme(t.value)"
       >
-        <component :is="t.icon" class="mr-2 h-4 w-4" />
+        <component
+          :is="t.icon"
+          class="mr-2 h-4 w-4"
+        />
         {{ t.label }}
       </DropdownMenuItem>
     </DropdownMenuContent>

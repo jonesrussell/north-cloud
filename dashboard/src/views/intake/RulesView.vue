@@ -38,8 +38,12 @@ onMounted(loadRules)
   <div class="space-y-6">
     <div class="flex items-center justify-between">
       <div>
-        <h1 class="text-3xl font-bold tracking-tight">Classification Rules</h1>
-        <p class="text-muted-foreground">Configure rules for content classification</p>
+        <h1 class="text-3xl font-bold tracking-tight">
+          Classification Rules
+        </h1>
+        <p class="text-muted-foreground">
+          Configure rules for content classification
+        </p>
       </div>
       <Button>
         <Plus class="mr-2 h-4 w-4" />
@@ -47,21 +51,33 @@ onMounted(loadRules)
       </Button>
     </div>
 
-    <div v-if="loading" class="flex items-center justify-center py-12">
+    <div
+      v-if="loading"
+      class="flex items-center justify-center py-12"
+    >
       <Loader2 class="h-8 w-8 animate-spin text-muted-foreground" />
     </div>
 
-    <Card v-else-if="error" class="border-destructive">
+    <Card
+      v-else-if="error"
+      class="border-destructive"
+    >
       <CardContent class="pt-6">
-        <p class="text-destructive">{{ error }}</p>
+        <p class="text-destructive">
+          {{ error }}
+        </p>
       </CardContent>
     </Card>
 
     <Card v-else-if="rules.length === 0">
       <CardContent class="flex flex-col items-center justify-center py-12">
         <Filter class="h-12 w-12 text-muted-foreground mb-4" />
-        <h3 class="text-lg font-medium mb-2">No classification rules</h3>
-        <p class="text-muted-foreground mb-4">Add rules to classify content automatically.</p>
+        <h3 class="text-lg font-medium mb-2">
+          No classification rules
+        </h3>
+        <p class="text-muted-foreground mb-4">
+          Add rules to classify content automatically.
+        </p>
         <Button>
           <Plus class="mr-2 h-4 w-4" />
           Add Rule
@@ -74,17 +90,35 @@ onMounted(loadRules)
         <table class="w-full">
           <thead class="border-b bg-muted/50">
             <tr>
-              <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Name</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Type</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Pattern</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Status</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
+                Name
+              </th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
+                Type
+              </th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
+                Pattern
+              </th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
+                Status
+              </th>
             </tr>
           </thead>
           <tbody class="divide-y">
-            <tr v-for="rule in rules" :key="rule.id" class="hover:bg-muted/50">
-              <td class="px-6 py-4 text-sm font-medium">{{ rule.name }}</td>
-              <td class="px-6 py-4 text-sm text-muted-foreground">{{ rule.type }}</td>
-              <td class="px-6 py-4 text-sm font-mono text-muted-foreground">{{ rule.pattern }}</td>
+            <tr
+              v-for="rule in rules"
+              :key="rule.id"
+              class="hover:bg-muted/50"
+            >
+              <td class="px-6 py-4 text-sm font-medium">
+                {{ rule.name }}
+              </td>
+              <td class="px-6 py-4 text-sm text-muted-foreground">
+                {{ rule.type }}
+              </td>
+              <td class="px-6 py-4 text-sm font-mono text-muted-foreground">
+                {{ rule.pattern }}
+              </td>
               <td class="px-6 py-4">
                 <Badge :variant="rule.enabled ? 'success' : 'secondary'">
                   {{ rule.enabled ? 'Enabled' : 'Disabled' }}

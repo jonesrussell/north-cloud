@@ -44,22 +44,38 @@ onMounted(loadDocument)
 <template>
   <div class="space-y-6">
     <div class="flex items-center gap-4">
-      <Button variant="ghost" size="icon" @click="router.push(`/intelligence/indexes/${indexName}`)">
+      <Button
+        variant="ghost"
+        size="icon"
+        @click="router.push(`/intelligence/indexes/${indexName}`)"
+      >
         <ArrowLeft class="h-5 w-5" />
       </Button>
       <div>
-        <h1 class="text-3xl font-bold tracking-tight">Document Details</h1>
-        <p class="text-muted-foreground">{{ indexName }} / {{ documentId }}</p>
+        <h1 class="text-3xl font-bold tracking-tight">
+          Document Details
+        </h1>
+        <p class="text-muted-foreground">
+          {{ indexName }} / {{ documentId }}
+        </p>
       </div>
     </div>
 
-    <div v-if="loading" class="flex items-center justify-center py-12">
+    <div
+      v-if="loading"
+      class="flex items-center justify-center py-12"
+    >
       <Loader2 class="h-8 w-8 animate-spin text-muted-foreground" />
     </div>
 
-    <Card v-else-if="error" class="border-destructive">
+    <Card
+      v-else-if="error"
+      class="border-destructive"
+    >
       <CardContent class="pt-6">
-        <p class="text-destructive">{{ error }}</p>
+        <p class="text-destructive">
+          {{ error }}
+        </p>
       </CardContent>
     </Card>
 
@@ -72,7 +88,9 @@ onMounted(loadDocument)
         <CardContent>
           <dl class="grid grid-cols-2 gap-4">
             <div v-if="(document as Record<string, unknown>).url">
-              <dt class="text-sm text-muted-foreground">URL</dt>
+              <dt class="text-sm text-muted-foreground">
+                URL
+              </dt>
               <dd class="mt-1">
                 <a 
                   :href="(document as Record<string, unknown>).url as string" 
@@ -85,15 +103,29 @@ onMounted(loadDocument)
               </dd>
             </div>
             <div v-if="(document as Record<string, unknown>).content_type">
-              <dt class="text-sm text-muted-foreground">Content Type</dt>
-              <dd class="mt-1"><Badge variant="secondary">{{ (document as Record<string, unknown>).content_type }}</Badge></dd>
+              <dt class="text-sm text-muted-foreground">
+                Content Type
+              </dt>
+              <dd class="mt-1">
+                <Badge variant="secondary">
+                  {{ (document as Record<string, unknown>).content_type }}
+                </Badge>
+              </dd>
             </div>
             <div v-if="(document as Record<string, unknown>).quality_score">
-              <dt class="text-sm text-muted-foreground">Quality Score</dt>
-              <dd class="mt-1"><Badge variant="outline">{{ (document as Record<string, unknown>).quality_score }}/100</Badge></dd>
+              <dt class="text-sm text-muted-foreground">
+                Quality Score
+              </dt>
+              <dd class="mt-1">
+                <Badge variant="outline">
+                  {{ (document as Record<string, unknown>).quality_score }}/100
+                </Badge>
+              </dd>
             </div>
             <div v-if="(document as Record<string, unknown>).is_crime_related !== undefined">
-              <dt class="text-sm text-muted-foreground">Crime Related</dt>
+              <dt class="text-sm text-muted-foreground">
+                Crime Related
+              </dt>
               <dd class="mt-1">
                 <Badge :variant="(document as Record<string, unknown>).is_crime_related ? 'destructive' : 'secondary'">
                   {{ (document as Record<string, unknown>).is_crime_related ? 'Yes' : 'No' }}
@@ -101,12 +133,20 @@ onMounted(loadDocument)
               </dd>
             </div>
             <div v-if="(document as Record<string, unknown>).published_date">
-              <dt class="text-sm text-muted-foreground">Published</dt>
-              <dd class="mt-1 text-sm">{{ formatDate((document as Record<string, unknown>).published_date as string) }}</dd>
+              <dt class="text-sm text-muted-foreground">
+                Published
+              </dt>
+              <dd class="mt-1 text-sm">
+                {{ formatDate((document as Record<string, unknown>).published_date as string) }}
+              </dd>
             </div>
             <div v-if="(document as Record<string, unknown>).created_at">
-              <dt class="text-sm text-muted-foreground">Indexed</dt>
-              <dd class="mt-1 text-sm">{{ formatDate((document as Record<string, unknown>).created_at as string) }}</dd>
+              <dt class="text-sm text-muted-foreground">
+                Indexed
+              </dt>
+              <dd class="mt-1 text-sm">
+                {{ formatDate((document as Record<string, unknown>).created_at as string) }}
+              </dd>
             </div>
           </dl>
         </CardContent>
@@ -117,9 +157,19 @@ onMounted(loadDocument)
         <CardHeader>
           <div class="flex items-center justify-between">
             <CardTitle>Raw JSON</CardTitle>
-            <Button variant="outline" size="sm" @click="copyJson">
-              <Check v-if="copied" class="mr-2 h-4 w-4" />
-              <Copy v-else class="mr-2 h-4 w-4" />
+            <Button
+              variant="outline"
+              size="sm"
+              @click="copyJson"
+            >
+              <Check
+                v-if="copied"
+                class="mr-2 h-4 w-4"
+              />
+              <Copy
+                v-else
+                class="mr-2 h-4 w-4"
+              />
               {{ copied ? 'Copied!' : 'Copy' }}
             </Button>
           </div>

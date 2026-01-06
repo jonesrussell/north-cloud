@@ -42,7 +42,10 @@ const getStatusColor = (status?: string) => {
 
 <template>
   <div class="flex items-center justify-between gap-2 overflow-x-auto pb-2">
-    <template v-for="(stage, index) in stages" :key="stage.name">
+    <template
+      v-for="(stage, index) in stages"
+      :key="stage.name"
+    >
       <!-- Stage card -->
       <div
         :class="
@@ -58,7 +61,10 @@ const getStatusColor = (status?: string) => {
         <div class="text-sm font-medium text-muted-foreground mt-1">
           {{ stage.name }}
         </div>
-        <div v-if="stage.change !== undefined" :class="cn('text-xs mt-1', getChangeClass(stage.change))">
+        <div
+          v-if="stage.change !== undefined"
+          :class="cn('text-xs mt-1', getChangeClass(stage.change))"
+        >
           {{ formatChange(stage.change) }}
         </div>
       </div>

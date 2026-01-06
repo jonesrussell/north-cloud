@@ -44,22 +44,37 @@ onMounted(loadStats)
   <div class="space-y-6">
     <div class="flex items-center justify-between">
       <div>
-        <h1 class="text-3xl font-bold tracking-tight">Cache Status</h1>
-        <p class="text-muted-foreground">Redis cache statistics and management</p>
+        <h1 class="text-3xl font-bold tracking-tight">
+          Cache Status
+        </h1>
+        <p class="text-muted-foreground">
+          Redis cache statistics and management
+        </p>
       </div>
-      <Button variant="outline" @click="loadStats">
+      <Button
+        variant="outline"
+        @click="loadStats"
+      >
         <RefreshCw class="mr-2 h-4 w-4" />
         Refresh
       </Button>
     </div>
 
-    <div v-if="loading" class="flex items-center justify-center py-12">
+    <div
+      v-if="loading"
+      class="flex items-center justify-center py-12"
+    >
       <Loader2 class="h-8 w-8 animate-spin text-muted-foreground" />
     </div>
 
-    <Card v-else-if="error" class="border-destructive">
+    <Card
+      v-else-if="error"
+      class="border-destructive"
+    >
       <CardContent class="pt-6">
-        <p class="text-destructive">{{ error }}</p>
+        <p class="text-destructive">
+          {{ error }}
+        </p>
       </CardContent>
     </Card>
 
@@ -73,8 +88,12 @@ onMounted(loadStats)
                 <HardDrive class="h-5 w-5 text-primary" />
               </div>
               <div>
-                <p class="text-sm text-muted-foreground">Memory Used</p>
-                <p class="text-2xl font-bold">{{ stats.used_memory }}</p>
+                <p class="text-sm text-muted-foreground">
+                  Memory Used
+                </p>
+                <p class="text-2xl font-bold">
+                  {{ stats.used_memory }}
+                </p>
               </div>
             </div>
           </CardContent>
@@ -87,8 +106,12 @@ onMounted(loadStats)
                 <Database class="h-5 w-5 text-primary" />
               </div>
               <div>
-                <p class="text-sm text-muted-foreground">Total Keys</p>
-                <p class="text-2xl font-bold">{{ formatNumber(stats.total_keys) }}</p>
+                <p class="text-sm text-muted-foreground">
+                  Total Keys
+                </p>
+                <p class="text-2xl font-bold">
+                  {{ formatNumber(stats.total_keys) }}
+                </p>
               </div>
             </div>
           </CardContent>
@@ -98,13 +121,27 @@ onMounted(loadStats)
           <CardContent class="pt-6">
             <div class="flex items-center gap-4">
               <div class="p-2 bg-green-500/10 rounded-lg">
-                <svg class="h-5 w-5 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                <svg
+                  class="h-5 w-5 text-green-500"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"
+                  />
                 </svg>
               </div>
               <div>
-                <p class="text-sm text-muted-foreground">Hit Rate</p>
-                <p class="text-2xl font-bold">{{ stats.hit_rate }}%</p>
+                <p class="text-sm text-muted-foreground">
+                  Hit Rate
+                </p>
+                <p class="text-2xl font-bold">
+                  {{ stats.hit_rate }}%
+                </p>
               </div>
             </div>
           </CardContent>
@@ -114,13 +151,27 @@ onMounted(loadStats)
           <CardContent class="pt-6">
             <div class="flex items-center gap-4">
               <div class="p-2 bg-primary/10 rounded-lg">
-                <svg class="h-5 w-5 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                <svg
+                  class="h-5 w-5 text-primary"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
                 </svg>
               </div>
               <div>
-                <p class="text-sm text-muted-foreground">Uptime</p>
-                <p class="text-2xl font-bold">{{ stats.uptime_days }} days</p>
+                <p class="text-sm text-muted-foreground">
+                  Uptime
+                </p>
+                <p class="text-2xl font-bold">
+                  {{ stats.uptime_days }} days
+                </p>
               </div>
             </div>
           </CardContent>
@@ -137,20 +188,34 @@ onMounted(loadStats)
           <div class="space-y-4">
             <div class="flex items-center justify-between p-4 border rounded-lg">
               <div>
-                <p class="font-medium">Clear Publish History Cache</p>
-                <p class="text-sm text-muted-foreground">Remove cached publish history data</p>
+                <p class="font-medium">
+                  Clear Publish History Cache
+                </p>
+                <p class="text-sm text-muted-foreground">
+                  Remove cached publish history data
+                </p>
               </div>
-              <Button variant="outline" size="sm">
+              <Button
+                variant="outline"
+                size="sm"
+              >
                 <Trash2 class="mr-2 h-4 w-4" />
                 Clear
               </Button>
             </div>
             <div class="flex items-center justify-between p-4 border rounded-lg">
               <div>
-                <p class="font-medium">Clear Article Cache</p>
-                <p class="text-sm text-muted-foreground">Remove cached article data</p>
+                <p class="font-medium">
+                  Clear Article Cache
+                </p>
+                <p class="text-sm text-muted-foreground">
+                  Remove cached article data
+                </p>
               </div>
-              <Button variant="outline" size="sm">
+              <Button
+                variant="outline"
+                size="sm"
+              >
                 <Trash2 class="mr-2 h-4 w-4" />
                 Clear
               </Button>

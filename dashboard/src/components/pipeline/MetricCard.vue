@@ -33,20 +33,39 @@ const trendClass = computed(() => {
     <CardContent class="p-6">
       <div class="flex items-start justify-between">
         <div class="space-y-1">
-          <p class="text-sm font-medium text-muted-foreground">{{ title }}</p>
-          <p class="text-2xl font-bold">{{ value }}</p>
-          <p v-if="subtitle" class="text-xs text-muted-foreground">{{ subtitle }}</p>
+          <p class="text-sm font-medium text-muted-foreground">
+            {{ title }}
+          </p>
+          <p class="text-2xl font-bold">
+            {{ value }}
+          </p>
+          <p
+            v-if="subtitle"
+            class="text-xs text-muted-foreground"
+          >
+            {{ subtitle }}
+          </p>
         </div>
         <div
           v-if="icon"
           class="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10"
         >
-          <component :is="icon" class="h-5 w-5 text-primary" />
+          <component
+            :is="icon"
+            class="h-5 w-5 text-primary"
+          />
         </div>
       </div>
 
-      <div v-if="change !== undefined" class="mt-4 flex items-center gap-1">
-        <component v-if="trendIcon" :is="trendIcon" :class="cn('h-4 w-4', trendClass)" />
+      <div
+        v-if="change !== undefined"
+        class="mt-4 flex items-center gap-1"
+      >
+        <component
+          :is="trendIcon"
+          v-if="trendIcon"
+          :class="cn('h-4 w-4', trendClass)"
+        />
         <span :class="cn('text-sm', trendClass)">
           {{ change > 0 ? '+' : '' }}{{ change }}%
         </span>

@@ -71,22 +71,38 @@ onMounted(() => {
 <template>
   <div class="space-y-6">
     <div class="flex items-center gap-4">
-      <Button variant="ghost" size="icon" @click="router.push('/intelligence/indexes')">
+      <Button
+        variant="ghost"
+        size="icon"
+        @click="router.push('/intelligence/indexes')"
+      >
         <ArrowLeft class="h-5 w-5" />
       </Button>
       <div>
-        <h1 class="text-3xl font-bold tracking-tight">{{ indexName }}</h1>
-        <p class="text-muted-foreground">Index details and documents</p>
+        <h1 class="text-3xl font-bold tracking-tight">
+          {{ indexName }}
+        </h1>
+        <p class="text-muted-foreground">
+          Index details and documents
+        </p>
       </div>
     </div>
 
-    <div v-if="loading" class="flex items-center justify-center py-12">
+    <div
+      v-if="loading"
+      class="flex items-center justify-center py-12"
+    >
       <Loader2 class="h-8 w-8 animate-spin text-muted-foreground" />
     </div>
 
-    <Card v-else-if="error" class="border-destructive">
+    <Card
+      v-else-if="error"
+      class="border-destructive"
+    >
       <CardContent class="pt-6">
-        <p class="text-destructive">{{ error }}</p>
+        <p class="text-destructive">
+          {{ error }}
+        </p>
       </CardContent>
     </Card>
 
@@ -99,20 +115,38 @@ onMounted(() => {
         <CardContent>
           <dl class="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div>
-              <dt class="text-sm text-muted-foreground">Documents</dt>
-              <dd class="text-2xl font-bold">{{ ((indexInfo as Record<string, unknown>)?.docs_count as number || 0).toLocaleString() }}</dd>
+              <dt class="text-sm text-muted-foreground">
+                Documents
+              </dt>
+              <dd class="text-2xl font-bold">
+                {{ ((indexInfo as Record<string, unknown>)?.docs_count as number || 0).toLocaleString() }}
+              </dd>
             </div>
             <div>
-              <dt class="text-sm text-muted-foreground">Size</dt>
-              <dd class="text-2xl font-bold">{{ (indexInfo as Record<string, unknown>)?.size || 'N/A' }}</dd>
+              <dt class="text-sm text-muted-foreground">
+                Size
+              </dt>
+              <dd class="text-2xl font-bold">
+                {{ (indexInfo as Record<string, unknown>)?.size || 'N/A' }}
+              </dd>
             </div>
             <div>
-              <dt class="text-sm text-muted-foreground">Health</dt>
-              <dd><Badge variant="success">{{ (indexInfo as Record<string, unknown>)?.health || 'unknown' }}</Badge></dd>
+              <dt class="text-sm text-muted-foreground">
+                Health
+              </dt>
+              <dd>
+                <Badge variant="success">
+                  {{ (indexInfo as Record<string, unknown>)?.health || 'unknown' }}
+                </Badge>
+              </dd>
             </div>
             <div>
-              <dt class="text-sm text-muted-foreground">Type</dt>
-              <dd class="text-lg font-medium">{{ (indexInfo as Record<string, unknown>)?.type || 'content' }}</dd>
+              <dt class="text-sm text-muted-foreground">
+                Type
+              </dt>
+              <dd class="text-lg font-medium">
+                {{ (indexInfo as Record<string, unknown>)?.type || 'content' }}
+              </dd>
             </div>
           </dl>
         </CardContent>
@@ -133,27 +167,47 @@ onMounted(() => {
                 class="w-64"
                 @keyup.enter="loadDocuments"
               />
-              <Button variant="outline" @click="loadDocuments">
+              <Button
+                variant="outline"
+                @click="loadDocuments"
+              >
                 <Search class="h-4 w-4" />
               </Button>
             </div>
           </div>
         </CardHeader>
         <CardContent class="p-0">
-          <div v-if="loadingDocs" class="flex justify-center py-8">
+          <div
+            v-if="loadingDocs"
+            class="flex justify-center py-8"
+          >
             <Loader2 class="h-6 w-6 animate-spin" />
           </div>
-          <div v-else-if="documents.length === 0" class="py-8 text-center text-muted-foreground">
+          <div
+            v-else-if="documents.length === 0"
+            class="py-8 text-center text-muted-foreground"
+          >
             <FileText class="h-12 w-12 mx-auto mb-4 text-muted-foreground/50" />
             <p>No documents found</p>
           </div>
-          <table v-else class="w-full">
+          <table
+            v-else
+            class="w-full"
+          >
             <thead class="border-b bg-muted/50">
               <tr>
-                <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Title</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Type</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Quality</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Date</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
+                  Title
+                </th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
+                  Type
+                </th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
+                  Quality
+                </th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
+                  Date
+                </th>
               </tr>
             </thead>
             <tbody class="divide-y">
@@ -168,12 +222,24 @@ onMounted(() => {
                     {{ doc.title || 'Untitled' }}
                   </button>
                 </td>
-                <td class="px-6 py-4 text-sm text-muted-foreground">{{ doc.content_type || 'article' }}</td>
-                <td class="px-6 py-4">
-                  <Badge v-if="doc.quality_score" variant="secondary">{{ doc.quality_score }}/100</Badge>
-                  <span v-else class="text-muted-foreground">—</span>
+                <td class="px-6 py-4 text-sm text-muted-foreground">
+                  {{ doc.content_type || 'article' }}
                 </td>
-                <td class="px-6 py-4 text-sm text-muted-foreground">{{ formatDate(doc.created_at || '') }}</td>
+                <td class="px-6 py-4">
+                  <Badge
+                    v-if="doc.quality_score"
+                    variant="secondary"
+                  >
+                    {{ doc.quality_score }}/100
+                  </Badge>
+                  <span
+                    v-else
+                    class="text-muted-foreground"
+                  >—</span>
+                </td>
+                <td class="px-6 py-4 text-sm text-muted-foreground">
+                  {{ formatDate(doc.created_at || '') }}
+                </td>
               </tr>
             </tbody>
           </table>

@@ -21,8 +21,12 @@ const handleLogout = () => {
 <template>
   <div class="space-y-6">
     <div>
-      <h1 class="text-3xl font-bold tracking-tight">Authentication</h1>
-      <p class="text-muted-foreground">Manage your session and security settings</p>
+      <h1 class="text-3xl font-bold tracking-tight">
+        Authentication
+      </h1>
+      <p class="text-muted-foreground">
+        Manage your session and security settings
+      </p>
     </div>
 
     <!-- Session Status -->
@@ -40,8 +44,12 @@ const handleLogout = () => {
             <div class="flex items-center gap-3">
               <User class="h-5 w-5 text-muted-foreground" />
               <div>
-                <p class="font-medium">Authenticated</p>
-                <p class="text-sm text-muted-foreground">You are logged in</p>
+                <p class="font-medium">
+                  Authenticated
+                </p>
+                <p class="text-sm text-muted-foreground">
+                  You are logged in
+                </p>
               </div>
             </div>
             <div 
@@ -56,8 +64,12 @@ const handleLogout = () => {
             <div class="flex items-center gap-3">
               <Key class="h-5 w-5 text-muted-foreground" />
               <div>
-                <p class="font-medium">JWT Token</p>
-                <p class="text-sm text-muted-foreground">{{ tokenInfo.exists ? 'Valid token stored' : 'No token found' }}</p>
+                <p class="font-medium">
+                  JWT Token
+                </p>
+                <p class="text-sm text-muted-foreground">
+                  {{ tokenInfo.exists ? 'Valid token stored' : 'No token found' }}
+                </p>
               </div>
             </div>
           </div>
@@ -66,8 +78,12 @@ const handleLogout = () => {
             <div class="flex items-center gap-3">
               <Clock class="h-5 w-5 text-muted-foreground" />
               <div>
-                <p class="font-medium">Token Expiry</p>
-                <p class="text-sm text-muted-foreground">Tokens expire after 24 hours</p>
+                <p class="font-medium">
+                  Token Expiry
+                </p>
+                <p class="text-sm text-muted-foreground">
+                  Tokens expire after 24 hours
+                </p>
               </div>
             </div>
           </div>
@@ -83,7 +99,10 @@ const handleLogout = () => {
       </CardHeader>
       <CardContent>
         <div class="flex gap-4">
-          <Button variant="destructive" @click="handleLogout">
+          <Button
+            variant="destructive"
+            @click="handleLogout"
+          >
             Sign Out
           </Button>
         </div>

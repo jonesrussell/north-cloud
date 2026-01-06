@@ -119,10 +119,17 @@ onUnmounted(() => {
   <div class="space-y-6">
     <div class="flex items-center justify-between">
       <div>
-        <h1 class="text-3xl font-bold tracking-tight">System Health</h1>
-        <p class="text-muted-foreground">Monitor the status of all platform services</p>
+        <h1 class="text-3xl font-bold tracking-tight">
+          System Health
+        </h1>
+        <p class="text-muted-foreground">
+          Monitor the status of all platform services
+        </p>
       </div>
-      <Button variant="outline" @click="checkHealth">
+      <Button
+        variant="outline"
+        @click="checkHealth"
+      >
         <RefreshCw class="mr-2 h-4 w-4" />
         Refresh
       </Button>
@@ -146,10 +153,15 @@ onUnmounted(() => {
 
     <!-- Service Cards -->
     <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-      <Card v-for="service in services" :key="service.name">
+      <Card
+        v-for="service in services"
+        :key="service.name"
+      >
         <CardHeader class="pb-2">
           <div class="flex items-center justify-between">
-            <CardTitle class="text-base">{{ service.name }}</CardTitle>
+            <CardTitle class="text-base">
+              {{ service.name }}
+            </CardTitle>
             <component 
               :is="getStatusIcon(service.status)" 
               :class="[
@@ -163,11 +175,20 @@ onUnmounted(() => {
         </CardHeader>
         <CardContent>
           <div class="flex items-center justify-between">
-            <Badge :variant="getStatusVariant(service.status)">{{ service.status }}</Badge>
+            <Badge :variant="getStatusVariant(service.status)">
+              {{ service.status }}
+            </Badge>
             <span class="text-sm text-muted-foreground">{{ formatLatency(service.latency) }}</span>
           </div>
-          <p v-if="service.details" class="mt-2 text-xs text-destructive">{{ service.details }}</p>
-          <p class="mt-2 text-xs text-muted-foreground">Last check: {{ formatDate(service.lastCheck) }}</p>
+          <p
+            v-if="service.details"
+            class="mt-2 text-xs text-destructive"
+          >
+            {{ service.details }}
+          </p>
+          <p class="mt-2 text-xs text-muted-foreground">
+            Last check: {{ formatDate(service.lastCheck) }}
+          </p>
         </CardContent>
       </Card>
     </div>

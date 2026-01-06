@@ -14,5 +14,9 @@ const props = withDefaults(defineProps<Props>(), {
 </script>
 
 <template>
-  <img :src="src" :alt="alt" :class="cn('aspect-square h-full w-full', props.class)" />
+  <img
+    :src="src"
+    :alt="alt"
+    :class="cn('aspect-square h-full w-full', props.class)"
+  >
 </template>
