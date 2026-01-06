@@ -6,7 +6,6 @@ require (
 	github.com/elastic/go-elasticsearch/v8 v8.19.1
 	github.com/gin-gonic/gin v1.11.0
 	github.com/north-cloud/infrastructure v0.0.0-00010101000000-000000000000
-	gopkg.in/yaml.v3 v3.0.1
 )
 
 require (
@@ -43,12 +42,15 @@ require (
 	go.opentelemetry.io/otel v1.39.0 // indirect
 	go.opentelemetry.io/otel/metric v1.39.0 // indirect
 	go.opentelemetry.io/otel/trace v1.39.0 // indirect
+	go.uber.org/multierr v1.10.0 // indirect
+	go.uber.org/zap v1.27.0 // indirect
 	golang.org/x/arch v0.23.0 // indirect
 	golang.org/x/crypto v0.46.0 // indirect
 	golang.org/x/net v0.48.0 // indirect
 	golang.org/x/sys v0.39.0 // indirect
 	golang.org/x/text v0.32.0 // indirect
 	google.golang.org/protobuf v1.36.11 // indirect
+	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
 replace github.com/north-cloud/infrastructure => ../infrastructure

@@ -13,7 +13,7 @@ import (
 	"github.com/jonesrussell/north-cloud/search/internal/config"
 	"github.com/jonesrussell/north-cloud/search/internal/domain"
 	"github.com/jonesrussell/north-cloud/search/internal/elasticsearch"
-	"github.com/jonesrussell/north-cloud/search/internal/logger"
+	"github.com/jonesrussell/north-cloud/search/internal/logging"
 )
 
 // SearchService orchestrates search operations
@@ -21,11 +21,11 @@ type SearchService struct {
 	esClient     *elasticsearch.Client
 	queryBuilder *elasticsearch.QueryBuilder
 	config       *config.Config
-	logger       *logger.Logger
+	logger       logging.Logger
 }
 
 // NewSearchService creates a new search service
-func NewSearchService(esClient *elasticsearch.Client, cfg *config.Config, log *logger.Logger) *SearchService {
+func NewSearchService(esClient *elasticsearch.Client, cfg *config.Config, log logging.Logger) *SearchService {
 	return &SearchService{
 		esClient:     esClient,
 		queryBuilder: elasticsearch.NewQueryBuilder(&cfg.Elasticsearch),
