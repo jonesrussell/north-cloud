@@ -5,19 +5,25 @@ import { classifierApi } from '@/api/client'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { MetricCard } from '@/components/pipeline'
 
+// Match the actual API response from classifier service
 interface ClassifierStats {
   total_classified: number
   avg_quality_score: number
-  crime_articles: number
-  topics_count: number
-  today_classified: number
-  weekly_change: number
+  crime_related: number
+  avg_processing_time_ms: number
+  content_types: Record<string, number>
+}
+
+interface TopicStat {
+  topic: string
+  count: number
+  avg_quality?: number
 }
 
 const loading = ref(true)
 const error = ref<string | null>(null)
 const stats = ref<ClassifierStats | null>(null)
-const topTopics = ref<Array<{ name: string; count: number }>>([])
+const topTopics = ref<TopicStat[]>([])
 
 const loadStats = async () => {
   try {
@@ -78,22 +84,20 @@ onMounted(loadStats)
         />
         <MetricCard
           title="Avg Quality Score"
-          :value="`${stats?.avg_quality_score || 0}/100`"
+          :value="`${(stats?.avg_quality_score || 0).toFixed(1)}/100`"
           subtitle="content quality"
           :icon="Target"
         />
         <MetricCard
-          title="Crime Articles"
-          :value="stats?.crime_articles?.toLocaleString() || '0'"
+          title="Crime Related"
+          :value="stats?.crime_related?.toLocaleString() || '0'"
           subtitle="flagged as crime"
           :icon="BarChart3"
         />
         <MetricCard
-          title="Today"
-          :value="stats?.today_classified?.toLocaleString() || '0'"
-          subtitle="classified today"
-          :change="stats?.weekly_change"
-          :trend="(stats?.weekly_change || 0) > 0 ? 'up' : 'down'"
+          title="Avg Processing"
+          :value="`${(stats?.avg_processing_time_ms || 0).toFixed(0)}ms`"
+          subtitle="per article"
           :icon="TrendingUp"
         />
       </div>
@@ -116,19 +120,19 @@ onMounted(loadStats)
             class="space-y-4"
           >
             <div
-              v-for="topic in topTopics.slice(0, 10)"
-              :key="topic.name"
+              v-for="item in topTopics.slice(0, 10)"
+              :key="item.topic"
               class="flex items-center"
             >
               <div class="flex-1">
                 <div class="flex items-center justify-between mb-1">
-                  <span class="text-sm font-medium">{{ topic.name }}</span>
-                  <span class="text-sm text-muted-foreground">{{ topic.count.toLocaleString() }}</span>
+                  <span class="text-sm font-medium">{{ item.topic }}</span>
+                  <span class="text-sm text-muted-foreground">{{ item.count.toLocaleString() }}</span>
                 </div>
                 <div class="h-2 bg-muted rounded-full overflow-hidden">
                   <div
                     class="h-full bg-primary rounded-full"
-                    :style="{ width: `${(topic.count / (topTopics[0]?.count || 1)) * 100}%` }"
+                    :style="{ width: `${(item.count / (topTopics[0]?.count || 1)) * 100}%` }"
                   />
                 </div>
               </div>
