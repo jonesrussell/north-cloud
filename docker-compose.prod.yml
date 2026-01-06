@@ -202,8 +202,8 @@ services:
   index-manager:
     <<: *prod-defaults
     build:
-      context: ./index-manager
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: ./index-manager/Dockerfile
     image: northcloud/index-manager:latest
     depends_on:
       postgres-index-manager:

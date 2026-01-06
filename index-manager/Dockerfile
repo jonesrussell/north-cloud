@@ -1,17 +1,21 @@
 # Build stage
 FROM golang:1.25-alpine AS builder
 
-WORKDIR /app
-
-# Install only what is needed
 RUN apk add --no-cache ca-certificates
 
+# Prepare workspace for replace ../infrastructure
+WORKDIR /build
+COPY infrastructure ./infrastructure
+
+# Move into index-manager module
+WORKDIR /build/index-manager
+
 # Copy go mod files first for caching
-COPY go.mod go.sum ./
+COPY index-manager/go.mod index-manager/go.sum ./
 RUN go mod download
 
 # Copy source
-COPY . .
+COPY index-manager/ .
 
 # Build static binary
 RUN CGO_ENABLED=0 go build \
@@ -31,8 +35,8 @@ WORKDIR /root
 COPY --from=builder /index-manager .
 
 # Copy migrations + config
-COPY --from=builder /app/migrations ./migrations
-COPY --from=builder /app/config.yml.example ./config.yml
+COPY --from=builder /build/index-manager/migrations ./migrations
+COPY --from=builder /build/index-manager/config.yml.example ./config.yml
 
 EXPOSE 8090
 
