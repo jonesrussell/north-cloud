@@ -62,12 +62,12 @@ services:
         condition: service_healthy
     environment:
       <<: *go-dev-environment
-      DB_HOST: postgres-crawler
-      DB_PORT: 5432
-      DB_USER: "${POSTGRES_CRAWLER_USER:-postgres}"
-      DB_PASSWORD: "${POSTGRES_CRAWLER_PASSWORD:-postgres}"
-      DB_NAME: "${POSTGRES_CRAWLER_DB:-crawler}"
-      DB_SSLMODE: disable
+      POSTGRES_CRAWLER_HOST: postgres-crawler
+      POSTGRES_CRAWLER_PORT: 5432
+      POSTGRES_CRAWLER_USER: "${POSTGRES_CRAWLER_USER:-postgres}"
+      POSTGRES_CRAWLER_PASSWORD: "${POSTGRES_CRAWLER_PASSWORD:-postgres}"
+      POSTGRES_CRAWLER_DB: "${POSTGRES_CRAWLER_DB:-crawler}"
+      POSTGRES_CRAWLER_SSLMODE: disable
       SERVER_HOST: "${CRAWLER_HOST:-0.0.0.0}"
       SERVER_PORT: "${CRAWLER_PORT:-8060}"
       CRAWLER_SOURCES_API_URL: "${CRAWLER_SOURCES_API_URL:-http://source-manager:8050/api/v1/sources}"

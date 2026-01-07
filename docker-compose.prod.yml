@@ -32,12 +32,12 @@ services:
       source-manager:
         condition: service_healthy
     environment:
-      DB_HOST: postgres-crawler
-      DB_PORT: 5432
-      DB_USER: "${POSTGRES_CRAWLER_USER}"
-      DB_PASSWORD: "${POSTGRES_CRAWLER_PASSWORD}"
-      DB_NAME: "${POSTGRES_CRAWLER_DB:-crawler}"
-      DB_SSLMODE: disable
+      POSTGRES_CRAWLER_HOST: postgres-crawler
+      POSTGRES_CRAWLER_PORT: 5432
+      POSTGRES_CRAWLER_USER: "${POSTGRES_CRAWLER_USER}"
+      POSTGRES_CRAWLER_PASSWORD: "${POSTGRES_CRAWLER_PASSWORD}"
+      POSTGRES_CRAWLER_DB: "${POSTGRES_CRAWLER_DB:-crawler}"
+      POSTGRES_CRAWLER_SSLMODE: disable
       ELASTICSEARCH_HOSTS: http://elasticsearch:9200
       CRAWLER_SOURCES_API_URL: http://source-manager:8050/api/v1/sources
       CRAWLER_SAVE_DISCOVERED_LINKS: "${CRAWLER_SAVE_DISCOVERED_LINKS:-false}"

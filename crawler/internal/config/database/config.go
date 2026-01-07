@@ -18,12 +18,12 @@ const (
 
 // Config represents database configuration settings.
 type Config struct {
-	Host     string `env:"DB_HOST"     yaml:"host"`
-	Port     string `env:"DB_PORT"     yaml:"port"`
-	User     string `env:"DB_USER"     yaml:"user"`
-	Password string `env:"DB_PASSWORD" yaml:"password"`
-	DBName   string `env:"DB_NAME"     yaml:"dbname"`
-	SSLMode  string `env:"DB_SSLMODE"  yaml:"sslmode"`
+	Host     string `env:"POSTGRES_CRAWLER_HOST"     yaml:"host"`
+	Port     string `env:"POSTGRES_CRAWLER_PORT"     yaml:"port"`
+	User     string `env:"POSTGRES_CRAWLER_USER"     yaml:"user"`
+	Password string `env:"POSTGRES_CRAWLER_PASSWORD" yaml:"password"`
+	DBName   string `env:"POSTGRES_CRAWLER_DB"       yaml:"dbname"`
+	SSLMode  string `env:"POSTGRES_CRAWLER_SSLMODE"  yaml:"sslmode"`
 }
 
 // getConfigValue retrieves a configuration value from environment or Viper, with a default fallback.
@@ -41,11 +41,11 @@ func getConfigValue(envKey, viperKey, defaultValue string, v *viper.Viper) strin
 // Environment variables take precedence over Viper configuration.
 func LoadFromViper(v *viper.Viper) *Config {
 	return &Config{
-		Host:     getConfigValue("DB_HOST", "database.host", DefaultHost, v),
-		Port:     getConfigValue("DB_PORT", "database.port", DefaultPort, v),
-		User:     getConfigValue("DB_USER", "database.user", DefaultUser, v),
-		Password: getConfigValue("DB_PASSWORD", "database.password", "", v),
-		DBName:   getConfigValue("DB_NAME", "database.dbname", DefaultDBName, v),
-		SSLMode:  getConfigValue("DB_SSLMODE", "database.sslmode", DefaultSSLMode, v),
+		Host:     getConfigValue("POSTGRES_CRAWLER_HOST", "database.host", DefaultHost, v),
+		Port:     getConfigValue("POSTGRES_CRAWLER_PORT", "database.port", DefaultPort, v),
+		User:     getConfigValue("POSTGRES_CRAWLER_USER", "database.user", DefaultUser, v),
+		Password: getConfigValue("POSTGRES_CRAWLER_PASSWORD", "database.password", "", v),
+		DBName:   getConfigValue("POSTGRES_CRAWLER_DB", "database.dbname", DefaultDBName, v),
+		SSLMode:  getConfigValue("POSTGRES_CRAWLER_SSLMODE", "database.sslmode", DefaultSSLMode, v),
 	}
 }
