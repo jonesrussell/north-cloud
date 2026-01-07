@@ -29,6 +29,12 @@ const documents = ref<Document[]>([])
 const searchQuery = ref('')
 const loadingDocs = ref(false)
 
+// Pagination state
+const currentPage = ref(1)
+const pageSize = ref(20)
+const totalHits = ref(0)
+const totalPages = ref(0)
+
 const loadIndex = async () => {
   try {
     loading.value = true
@@ -46,14 +52,46 @@ const loadDocuments = async () => {
     loadingDocs.value = true
     const response = await indexManagerApi.documents.query(indexName.value, {
       query: searchQuery.value || undefined,
-      pagination: { page: 1, size: 20 },
+      pagination: { page: currentPage.value, size: pageSize.value },
     })
     documents.value = response.data?.documents || []
+    totalHits.value = response.data?.total_hits || 0
+    totalPages.value = response.data?.total_pages || 0
   } catch (err) {
     console.error('Error loading documents:', err)
   } finally {
     loadingDocs.value = false
   }
+}
+
+const previousPage = () => {
+  if (currentPage.value > 1) {
+    currentPage.value--
+    loadDocuments()
+  }
+}
+
+const nextPage = () => {
+  if (currentPage.value < totalPages.value) {
+    currentPage.value++
+    loadDocuments()
+  }
+}
+
+const goToPage = (page: number) => {
+  currentPage.value = page
+  loadDocuments()
+}
+
+const onPageSizeChange = () => {
+  currentPage.value = 1
+  loadDocuments()
+}
+
+// Reset to page 1 when search query changes
+const handleSearch = () => {
+  currentPage.value = 1
+  loadDocuments()
 }
 
 const viewDocument = (docId: string) => {
@@ -119,7 +157,7 @@ onMounted(() => {
                 Documents
               </dt>
               <dd class="text-2xl font-bold">
-                {{ ((indexInfo as Record<string, unknown>)?.docs_count as number || 0).toLocaleString() }}
+                {{ totalHits.toLocaleString() }}
               </dd>
             </div>
             <div>
@@ -165,11 +203,11 @@ onMounted(() => {
                 v-model="searchQuery" 
                 placeholder="Search documents..." 
                 class="w-64"
-                @keyup.enter="loadDocuments"
+                @keyup.enter="handleSearch"
               />
               <Button
                 variant="outline"
-                @click="loadDocuments"
+                @click="handleSearch"
               >
                 <Search class="h-4 w-4" />
               </Button>
@@ -243,6 +281,103 @@ onMounted(() => {
               </tr>
             </tbody>
           </table>
+          
+          <!-- Pagination -->
+          <div
+            v-if="totalPages > 1"
+            class="px-6 py-4 border-t flex items-center justify-between"
+          >
+        <div class="flex-1 flex justify-between sm:hidden">
+          <Button
+            variant="outline"
+            :disabled="currentPage === 1"
+            @click="previousPage"
+          >
+            Previous
+          </Button>
+          <Button
+            variant="outline"
+            :disabled="currentPage >= totalPages"
+            @click="nextPage"
+          >
+            Next
+          </Button>
+        </div>
+        <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+          <div>
+            <p class="text-sm text-muted-foreground">
+              Showing
+              <span class="font-medium">{{ ((currentPage - 1) * pageSize) + 1 }}</span>
+              to
+              <span class="font-medium">{{ Math.min(currentPage * pageSize, totalHits) }}</span>
+              of
+              <span class="font-medium">{{ totalHits }}</span>
+              results
+            </p>
+          </div>
+          <div class="flex items-center gap-2">
+            <select
+              v-model="pageSize"
+              class="px-3 py-1.5 border border-input rounded-md text-sm bg-background"
+              @change="onPageSizeChange"
+            >
+              <option :value="10">
+                10 per page
+              </option>
+              <option :value="20">
+                20 per page
+              </option>
+              <option :value="50">
+                50 per page
+              </option>
+              <option :value="100">
+                100 per page
+              </option>
+            </select>
+            <nav
+              class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px"
+              aria-label="Pagination"
+            >
+              <Button
+                variant="outline"
+                size="sm"
+                :disabled="currentPage === 1"
+                class="rounded-r-none"
+                @click="goToPage(1)"
+              >
+                First
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                :disabled="currentPage === 1"
+                class="rounded-none border-l-0"
+                @click="previousPage"
+              >
+                Previous
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                :disabled="currentPage >= totalPages"
+                class="rounded-none border-l-0"
+                @click="nextPage"
+              >
+                Next
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                :disabled="currentPage >= totalPages"
+                class="rounded-l-none border-l-0"
+                @click="goToPage(totalPages)"
+              >
+                Last
+              </Button>
+            </nav>
+          </div>
+        </div>
+          </div>
         </CardContent>
       </Card>
     </template>
