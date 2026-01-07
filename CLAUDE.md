@@ -90,13 +90,16 @@ This document provides a comprehensive guide for AI assistants working with the 
 │                                          │                                │
 │                                          │ Publishes to Redis            │
 │                                          ▼                                │
-│                              ┌────────────────────┐                      │
-│                              │  Redis Pub/Sub     │                      │
-│                              │  Channels:         │                      │
-│                              │  - articles:crime  │                      │
-│                              │  - articles:news   │                      │
-│                              │  - articles:local  │                      │
-│                              └─────────┬──────────┘                      │
+│                              ┌────────────────────────────────┐          │
+│                              │  Redis Pub/Sub                 │          │
+│                              │  Channels:                     │          │
+│                              │  - articles:crime:violent      │          │
+│                              │  - articles:crime:property     │          │
+│                              │  - articles:crime:drug         │          │
+│                              │  - articles:crime:organized    │          │
+│                              │  - articles:news               │          │
+│                              │  - articles:local              │          │
+│                              └─────────┬──────────────────────┘          │
 │                                        │                                  │
 │              ┌─────────────────────────┴──────────────────┐             │
 │              │                                             │             │
@@ -106,7 +109,7 @@ This document provides a comprehensive guide for AI assistants working with the 
 │    │  (Drupal Site)   │                         │  (Laravel Site)  │   │
 │    │                  │                         │                  │   │
 │    │ - Subscribes to  │                         │ - Subscribes to  │   │
-│    │   articles:crime │                         │   articles:news  │   │
+│    │   crime channels │                         │   articles:news  │   │
 │    │ - Own dedup      │                         │ - Own filters    │   │
 │    │ - Own storage    │                         │ - Own storage    │   │
 │    └──────────────────┘                         └──────────────────┘   │
@@ -208,9 +211,10 @@ The platform uses a **three-stage content pipeline** for intelligent article pro
 - **Key Features**:
   - **Content type classification**: Identifies articles, pages, videos, jobs, etc.
   - **Quality scoring**: 0-100 score based on completeness, metadata, word count
-  - **Topic classification**: Crime detection, category tagging with confidence scores
+  - **Topic classification**: 25+ categories including crime sub-categories (violent_crime, property_crime, drug_crime, organized_crime, criminal_justice)
+  - **Crime sub-categories** (Migration 007): Replaces generic "crime" with specific sub-types for better routing
   - **Source reputation**: Tracks and scores source quality over time
-  - **REST API**: `/api/v1/classify` for on-demand classification
+  - **REST API**: `/api/v1/classify` for on-demand classification, `/api/v1/rules` for rule management
   - HTTP server for real-time classification requests
   - Batch processing support for bulk classification
 - **Processing Pipeline**:
@@ -253,7 +257,8 @@ The platform uses a **three-stage content pipeline** for intelligent article pro
 - **Key Features**:
   - **Database-backed configuration**: PostgreSQL stores sources, channels, routes, publish_history
   - **Dynamic routing**: Many-to-many routes (sources → channels) with configurable filters
-  - **Topic-based channels**: Redis channels like `articles:crime`, `articles:news`
+  - **Topic-based channels**: Redis channels like `articles:crime:violent`, `articles:crime:drug`, `articles:news`
+  - **Crime sub-category routing**: Supports specific crime channels (violent, property, drug, organized, justice) for granular filtering
   - **Complete decoupling**: No destination-specific logic; consumers subscribe independently
   - **Quality filtering**: Routes specify min_quality_score (0-100) and topics
   - **Publish history**: Persistent audit trail of all published articles
@@ -261,7 +266,7 @@ The platform uses a **three-stage content pipeline** for intelligent article pro
   - **Web UI**: Full CRUD interface for sources, channels, routes
 - **Database Schema**:
   - `sources`: Elasticsearch index patterns to monitor (e.g., `example_com_classified_content`)
-  - `channels`: Redis pub/sub channels (e.g., `articles:crime`)
+  - `channels`: Redis pub/sub channels (e.g., `articles:crime:violent`, `articles:crime:drug`)
   - `routes`: Many-to-many mapping with filters (source_id, channel_id, min_quality_score, topics)
   - `publish_history`: Audit trail (article_id, channel_name, quality_score, published_at)
 - **API Endpoints**:
@@ -484,8 +489,9 @@ The platform uses a **three-stage content pipeline** for intelligent article pro
 - **Purpose**: Pub/sub messaging, deduplication (historical), caching
 - **Port**: 6379
 - **Usage**:
-  - **Pub/Sub Channels**: Publisher publishes articles to topic-based channels (e.g., `articles:crime`, `articles:news`)
-  - **Channel Pattern**: `articles:{topic}` - external services subscribe to relevant channels
+  - **Pub/Sub Channels**: Publisher publishes articles to topic-based channels (e.g., `articles:crime:violent`, `articles:crime:drug`, `articles:news`)
+  - **Channel Pattern**: `articles:{topic}` or `articles:{topic}:{subtopic}` - external services subscribe to relevant channels
+  - **Crime Sub-Categories**: Specific channels for violent_crime, property_crime, drug_crime, organized_crime, criminal_justice
   - **Message Format**: Full Elasticsearch article payload with publisher metadata (see `/publisher/docs/REDIS_MESSAGE_FORMAT.md`)
   - **Consumers**: External services (Drupal, Laravel, etc.) subscribe and handle own storage/deduplication
 
@@ -2068,6 +2074,30 @@ When encountering scenarios not covered in this guide:
 ---
 
 ## Version History
+
+- **Crime Sub-Category Classification System** (2026-01-07): Replaced generic "crime" classification with specific sub-categories
+  - **Classifier Service**:
+    - Migration 007 adds 5 crime sub-category classification rules: violent_crime, property_crime, drug_crime, organized_crime, criminal_justice
+    - Disables original generic "crime" rule for explicit categorization
+    - Comprehensive keyword lists for each sub-category (30+ keywords per rule)
+    - Priority-based evaluation: violent_crime (10), property/drug/organized (9), criminal_justice (5)
+  - **Publisher Service**:
+    - New Redis pub/sub channels for crime sub-categories:
+      - `articles:crime:violent` - Gang violence, murder, assault, shootings
+      - `articles:crime:property` - Theft, burglary, auto theft, vandalism
+      - `articles:crime:drug` - Drug trafficking, possession, drug busts
+      - `articles:crime:organized` - Cartels, racketeering, money laundering
+      - `articles:crime:justice` - Court cases, arrests, trials
+    - Updated routing to support topic-specific crime filtering
+    - Backward compatible with legacy `articles:crime` channel
+  - **Frontend Impact** (streetcode-laravel):
+    - Enables granular crime category navigation
+    - Removes "Automotive" and "Local News" from crime categories
+    - Aligns frontend categories with backend classifier
+  - **Documentation Updates**:
+    - Updated `/classifier/README.md` with crime sub-category taxonomy
+    - Updated `/publisher/README.md` with new Redis channels and examples
+    - Updated `/CLAUDE.md` architecture diagram and Redis channel documentation
 
 - **Documentation Update and Linting Fixes** (2026-01-06): Comprehensive documentation updates and code quality improvements
   - **Documentation Updates**:

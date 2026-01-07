@@ -25,12 +25,15 @@ A Go service that publishes classified articles from Elasticsearch to Redis pub/
                          └────────┬─────────┘
                                   │
                                   ▼
-                         ┌─────────────────┐
-                         │  Redis Pub/Sub  │
-                         │  Channels:      │
-                         │  - articles:crime│
-                         │  - articles:news │
-                         └────────┬─────────┘
+                         ┌──────────────────────────┐
+                         │  Redis Pub/Sub           │
+                         │  Channels:               │
+                         │  - articles:crime:violent│
+                         │  - articles:crime:property│
+                         │  - articles:crime:drug   │
+                         │  - articles:crime:organized│
+                         │  - articles:news         │
+                         └────────┬─────────────────┘
                                   │
               ┌───────────────────┼───────────────────┐
               │                   │                   │
@@ -46,7 +49,7 @@ A Go service that publishes classified articles from Elasticsearch to Redis pub/
 - **Database-Backed Routing**: PostgreSQL stores sources, channels, and routes configuration
 - **Dynamic Configuration**: No service restart needed to add/modify routes
 - **Quality Filtering**: Routes support minimum quality score thresholds (0-100)
-- **Topic-Based Channels**: Publish to topic-specific Redis channels (e.g., `articles:crime`, `articles:news`)
+- **Topic-Based Channels**: Publish to topic-specific Redis channels (e.g., `articles:crime:violent`, `articles:crime:drug`, `articles:news`)
 - **Redis Pub/Sub Publishing**: Standard JSON message format compatible with Laravel 12, Node.js, Python, and more
 - **Deduplication**: Database-backed publish history prevents duplicate publications
 - **Web UI**: Vue.js dashboard for managing sources, channels, and routes
@@ -206,8 +209,15 @@ Elasticsearch index patterns to monitor:
 
 ### `channels`
 Redis pub/sub channels:
-- `name` - Channel name like `articles:crime`
+- `name` - Channel name like `articles:crime:violent`, `articles:crime:drug`, `articles:news`
 - `description` - Optional description
+
+**Crime Sub-Category Channels** (as of Migration 007):
+- `articles:crime:violent` - Violent crime (gang violence, murder, assault, shootings)
+- `articles:crime:property` - Property crime (theft, burglary, auto theft, vandalism)
+- `articles:crime:drug` - Drug crime (trafficking, possession, drug busts)
+- `articles:crime:organized` - Organized crime (cartels, racketeering, money laundering)
+- `articles:crime:justice` - Criminal justice process (court cases, arrests, trials)
 
 ### `routes`
 Many-to-many source→channel mappings with filters:
@@ -235,18 +245,19 @@ Articles are published as JSON messages to Redis pub/sub channels. See [REDIS_ME
   "publisher": {
     "route_id": "a1b2c3d4-e5f6-4789-a0b1-c2d3e4f5g6h7",
     "published_at": "2025-12-28T15:30:45Z",
-    "channel": "articles:crime"
+    "channel": "articles:crime:property"
   },
   "id": "es-doc-id-12345",
   "title": "Local Police Investigate Break-In",
   "body": "Full article text...",
   "canonical_url": "https://example.com/article",
   "quality_score": 85,
-  "topics": ["crime", "local"],
-  "is_crime_related": true,
+  "topics": ["property_crime", "local_news"],
   ...
 }
 ```
+
+**Note**: The `channel` field in the publisher metadata reflects the specific crime sub-category (e.g., `articles:crime:property`) rather than the generic `articles:crime`.
 
 ## Consumer Integration
 

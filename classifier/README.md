@@ -119,7 +119,11 @@ Migrations are located in `migrations/` and should be run in order:
 003_create_classification_history.sql
 004_create_ml_models.sql
 005_add_comprehensive_categories.sql
+006_remove_is_crime_related.sql              # Deprecated boolean field
+007_add_crime_subcategories.sql              # Crime sub-categories (violent, property, drug, organized, justice)
 ```
+
+**Note**: Migration 007 disables the generic "crime" rule and adds 5 specific crime sub-category rules. See migration file for complete keyword lists.
 
 ## Classification Rules & Priority System
 
@@ -142,9 +146,16 @@ The system orders rules by `priority DESC` when loading them from the database, 
 The classifier uses a comprehensive Microsoft/Bing-style taxonomy with 25+ topic categories:
 
 **High Priority Categories**:
-- `crime` - Criminal activity, law enforcement, legal proceedings
+- ~~`crime`~~ - **DEPRECATED** (replaced by specific crime sub-categories below)
 - `breaking_news` - Urgent, developing stories, news alerts
 - `health_emergency` - Pandemics, outbreaks, public health crises
+
+**Crime Sub-Categories** (Migration 007):
+- `violent_crime` (Priority 10) - Gang violence, murder, assault, shootings, domestic violence, kidnapping
+- `property_crime` (Priority 9) - Theft, burglary, auto theft, vandalism, arson, shoplifting
+- `drug_crime` (Priority 9) - Drug trafficking, possession, narcotics, drug busts, overdoses
+- `organized_crime` (Priority 9) - Cartels, racketeering, mafia, money laundering, human trafficking
+- `criminal_justice` (Priority 5) - Court cases, trials, convictions, arrests, legal proceedings
 
 **Normal Priority Categories**:
 - `business` - Companies, markets, economy, trade, finance
