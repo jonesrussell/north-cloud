@@ -26,21 +26,21 @@ type Config struct {
 }
 
 type ServerConfig struct {
-	Host         string        `env:"SERVER_HOST" yaml:"host"`
-	Port         int           `env:"SERVER_PORT" yaml:"port"`
+	Host         string        `env:"SERVER_HOST"            yaml:"host"`
+	Port         int           `env:"SERVER_PORT"            yaml:"port"`
 	ReadTimeout  time.Duration `yaml:"read_timeout"`
 	WriteTimeout time.Duration `yaml:"write_timeout"`
 	APIURL       string        `env:"SOURCE_MANAGER_API_URL" yaml:"api_url"`
-	CORSOrigins  []string      `env:"CORS_ORIGINS" yaml:"cors_origins"`
+	CORSOrigins  []string      `env:"CORS_ORIGINS"           yaml:"cors_origins"`
 }
 
 type DatabaseConfig struct {
-	Host            string        `env:"DB_HOST" yaml:"host"`
-	Port            int           `env:"DB_PORT" yaml:"port"`
-	User            string        `env:"DB_USER" yaml:"user"`
-	Password        string        `env:"DB_PASSWORD" yaml:"password"`
-	DBName          string        `env:"DB_NAME" yaml:"dbname"`
-	SSLMode         string        `env:"DB_SSLMODE" yaml:"sslmode"`
+	Host            string        `env:"DB_HOST"            yaml:"host"`
+	Port            int           `env:"DB_PORT"            yaml:"port"`
+	User            string        `env:"DB_USER"            yaml:"user"`
+	Password        string        `env:"DB_PASSWORD"        yaml:"password"`
+	DBName          string        `env:"DB_NAME"            yaml:"dbname"`
+	SSLMode         string        `env:"DB_SSLMODE"         yaml:"sslmode"`
 	MaxOpenConns    int           `yaml:"max_open_conns"`
 	MaxIdleConns    int           `yaml:"max_idle_conns"`
 	ConnMaxLifetime time.Duration `yaml:"conn_max_lifetime"`
