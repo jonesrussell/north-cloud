@@ -13,6 +13,8 @@ const (
 	// maxURLLength is the maximum reasonable URL length (2048 chars is common browser limit)
 	// URLs longer than this will be truncated with a warning log
 	maxURLLength = 2048
+	// urlPreviewLength is the maximum length for URL preview in log messages
+	urlPreviewLength = 100
 )
 
 const (
@@ -246,20 +248,19 @@ func (p *Poller) validateURL(url string) string {
 
 	// Truncate URL and log warning
 	truncated := url[:maxURLLength]
+
+	// Determine preview length (use shorter of URL length or preview limit)
+	previewLen := len(url)
+	if previewLen > urlPreviewLength {
+		previewLen = urlPreviewLength
+	}
+
 	p.logger.Warn("URL truncated for classification history",
 		"original_length", len(url),
 		"truncated_length", maxURLLength,
-		"url_preview", url[:min(100, len(url))],
+		"url_preview", url[:previewLen],
 	)
 	return truncated
-}
-
-// min returns the minimum of two integers
-func min(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
 }
 
 // saveHistory saves classification results to database for ML training
