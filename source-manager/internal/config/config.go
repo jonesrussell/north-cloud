@@ -3,12 +3,10 @@ package config
 import (
 	"errors"
 	"fmt"
-	"os"
-	"strconv"
 	"strings"
 	"time"
 
-	"gopkg.in/yaml.v3"
+	infraconfig "github.com/north-cloud/infrastructure/config"
 )
 
 const (
@@ -21,28 +19,35 @@ const (
 )
 
 type Config struct {
-	Debug    bool           `yaml:"debug"`
+	Debug    bool           `env:"APP_DEBUG" yaml:"debug"`
 	Server   ServerConfig   `yaml:"server"`
 	Database DatabaseConfig `yaml:"database"`
+	Auth     AuthConfig     `yaml:"auth"`
 }
 
 type ServerConfig struct {
-	Host         string        `yaml:"host"`
-	Port         int           `yaml:"port"`
+	Host         string        `env:"SERVER_HOST" yaml:"host"`
+	Port         int           `env:"SERVER_PORT" yaml:"port"`
 	ReadTimeout  time.Duration `yaml:"read_timeout"`
 	WriteTimeout time.Duration `yaml:"write_timeout"`
+	APIURL       string        `env:"SOURCE_MANAGER_API_URL" yaml:"api_url"`
+	CORSOrigins  []string      `env:"CORS_ORIGINS" yaml:"cors_origins"`
 }
 
 type DatabaseConfig struct {
-	Host            string        `yaml:"host"`
-	Port            int           `yaml:"port"`
-	User            string        `yaml:"user"`
-	Password        string        `yaml:"password"`
-	DBName          string        `yaml:"dbname"`
-	SSLMode         string        `yaml:"sslmode"`
+	Host            string        `env:"DB_HOST" yaml:"host"`
+	Port            int           `env:"DB_PORT" yaml:"port"`
+	User            string        `env:"DB_USER" yaml:"user"`
+	Password        string        `env:"DB_PASSWORD" yaml:"password"`
+	DBName          string        `env:"DB_NAME" yaml:"dbname"`
+	SSLMode         string        `env:"DB_SSLMODE" yaml:"sslmode"`
 	MaxOpenConns    int           `yaml:"max_open_conns"`
 	MaxIdleConns    int           `yaml:"max_idle_conns"`
 	ConnMaxLifetime time.Duration `yaml:"conn_max_lifetime"`
+}
+
+type AuthConfig struct {
+	JWTSecret string `env:"AUTH_JWT_SECRET" yaml:"jwt_secret"`
 }
 
 func (c *Config) Validate() error {
@@ -68,17 +73,20 @@ func (c *Config) Validate() error {
 }
 
 func Load(path string) (*Config, error) {
-	data, err := os.ReadFile(path)
+	cfg, err := infraconfig.LoadWithDefaults(path, setDefaults)
 	if err != nil {
-		return nil, fmt.Errorf("read config file: %w", err)
+		return nil, fmt.Errorf("load config: %w", err)
 	}
 
-	var cfg Config
-	if err := yaml.Unmarshal(data, &cfg); err != nil {
-		return nil, fmt.Errorf("parse config: %w", err)
+	// Validate configuration
+	if err := cfg.Validate(); err != nil {
+		return nil, fmt.Errorf("invalid config: %w", err)
 	}
 
-	// Set defaults
+	return cfg, nil
+}
+
+func setDefaults(cfg *Config) {
 	if cfg.Server.Host == "" {
 		cfg.Server.Host = "0.0.0.0"
 	}
@@ -106,49 +114,13 @@ func Load(path string) (*Config, error) {
 	if cfg.Database.ConnMaxLifetime == 0 {
 		cfg.Database.ConnMaxLifetime = defaultConnMaxLifetime * time.Minute
 	}
-
-	// Override with environment variables
-	overrideFromEnv(&cfg)
-
-	// Validate configuration
-	if err := cfg.Validate(); err != nil {
-		return nil, fmt.Errorf("invalid config: %w", err)
-	}
-
-	return &cfg, nil
-}
-
-func overrideFromEnv(cfg *Config) {
-	if dbHost := os.Getenv("DB_HOST"); dbHost != "" {
-		cfg.Database.Host = dbHost
-	}
-	if dbPort := os.Getenv("DB_PORT"); dbPort != "" {
-		if port, err := strconv.Atoi(dbPort); err == nil {
-			cfg.Database.Port = port
+	// Set default CORS origins if not provided
+	if len(cfg.Server.CORSOrigins) == 0 {
+		cfg.Server.CORSOrigins = []string{
+			"http://localhost:3000", // Source manager frontend
+			"http://localhost:3001", // Crawler frontend
+			"http://localhost:3002", // Unified dashboard frontend
 		}
-	}
-	if dbUser := os.Getenv("DB_USER"); dbUser != "" {
-		cfg.Database.User = dbUser
-	}
-	if dbPassword := os.Getenv("DB_PASSWORD"); dbPassword != "" {
-		cfg.Database.Password = dbPassword
-	}
-	if dbName := os.Getenv("DB_NAME"); dbName != "" {
-		cfg.Database.DBName = dbName
-	}
-	if dbSSLMode := os.Getenv("DB_SSLMODE"); dbSSLMode != "" {
-		cfg.Database.SSLMode = dbSSLMode
-	}
-	if serverHost := os.Getenv("SERVER_HOST"); serverHost != "" {
-		cfg.Server.Host = serverHost
-	}
-	if serverPort := os.Getenv("SERVER_PORT"); serverPort != "" {
-		if port, err := strconv.Atoi(serverPort); err == nil {
-			cfg.Server.Port = port
-		}
-	}
-	if appDebug := os.Getenv("APP_DEBUG"); appDebug != "" {
-		cfg.Debug = parseBool(appDebug)
 	}
 }
 

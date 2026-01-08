@@ -2,7 +2,6 @@ package api
 
 import (
 	"net/http"
-	"os"
 	"strings"
 	"time"
 
@@ -20,33 +19,38 @@ const (
 	corsMaxAgeHours = 12
 )
 
-// getCORSOrigins returns the list of allowed CORS origins from environment or config
-func getCORSOrigins() []string {
-	// Check environment variable first (comma-separated list)
-	if corsOrigins := os.Getenv("CORS_ORIGINS"); corsOrigins != "" {
-		origins := strings.Split(corsOrigins, ",")
-		// Trim whitespace from each origin
-		for i, origin := range origins {
-			origins[i] = strings.TrimSpace(origin)
-		}
-		return origins
-	}
+// getCORSOrigins returns the list of allowed CORS origins from config, with dynamic origins based on API URL
+func getCORSOrigins(cfg *config.Config) []string {
+	origins := make([]string, 0, len(cfg.Server.CORSOrigins))
+	// Use CORS origins from config
+	origins = append(origins, cfg.Server.CORSOrigins...)
 
-	// Default origins - include source-manager, crawler, and unified dashboard frontends
-	origins := []string{
-		"http://localhost:3000", // Source manager frontend
-		"http://localhost:3001", // Crawler frontend
-		"http://localhost:3002", // Unified dashboard frontend
-	}
-
-	// If SOURCE_MANAGER_API_URL is set, extract host and add frontend origin
-	if apiURL := os.Getenv("SOURCE_MANAGER_API_URL"); apiURL != "" {
+	// If SOURCE_MANAGER_API_URL is set, extract host and add frontend origins dynamically
+	if cfg.Server.APIURL != "" {
 		// Extract host from URL (e.g., http://localhost:8050 -> http://localhost:3000)
-		if strings.HasPrefix(apiURL, "http://") || strings.HasPrefix(apiURL, "https://") {
-			parts := strings.Split(strings.TrimPrefix(strings.TrimPrefix(apiURL, "http://"), "https://"), ":")
+		if strings.HasPrefix(cfg.Server.APIURL, "http://") || strings.HasPrefix(cfg.Server.APIURL, "https://") {
+			parts := strings.Split(strings.TrimPrefix(strings.TrimPrefix(cfg.Server.APIURL, "http://"), "https://"), ":")
 			if len(parts) > 0 {
 				host := parts[0]
-				origins = append(origins, "http://"+host+":3000", "http://"+host+":3001", "http://"+host+":3002")
+				// Add dynamic origins if not already present
+				dynamicOrigins := []string{
+					"http://" + host + ":3000",
+					"http://" + host + ":3001",
+					"http://" + host + ":3002",
+				}
+				for _, dynOrigin := range dynamicOrigins {
+					// Check if already in origins list
+					found := false
+					for _, existing := range origins {
+						if existing == dynOrigin {
+							found = true
+							break
+						}
+					}
+					if !found {
+						origins = append(origins, dynOrigin)
+					}
+				}
 			}
 		}
 	}
@@ -59,7 +63,7 @@ func NewRouter(db *repository.SourceRepository, cfg *config.Config, log logger.L
 
 	// CORS middleware - must be first
 	router.Use(cors.New(cors.Config{
-		AllowOrigins: getCORSOrigins(),
+		AllowOrigins: getCORSOrigins(cfg),
 		AllowMethods: []string{"GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"},
 		AllowHeaders: []string{
 			"Origin", "Content-Type", "Content-Length", "Accept-Encoding",
@@ -101,8 +105,8 @@ func NewRouter(db *repository.SourceRepository, cfg *config.Config, log logger.L
 	// Protected API endpoints (JWT required) - for dashboard and authenticated users
 	v1 := router.Group("/api/v1")
 	// Add JWT middleware if JWT secret is configured
-	if jwtSecret := os.Getenv("AUTH_JWT_SECRET"); jwtSecret != "" {
-		v1.Use(infrajwt.Middleware(jwtSecret))
+	if cfg.Auth.JWTSecret != "" {
+		v1.Use(infrajwt.Middleware(cfg.Auth.JWTSecret))
 	}
 
 	// Sources endpoints (protected - requires JWT)
