@@ -3,6 +3,7 @@ package classifier
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	"github.com/jonesrussell/north-cloud/classifier/internal/domain"
@@ -386,11 +387,13 @@ func TestTopicClassifier_ScoreTextAgainstRule_LongDocument(t *testing.T) {
 	}
 
 	// Create a long document (5000 words) with sparse matches
-	longText := "word "
-	for i := 0; i < 5000; i++ {
-		longText += "word "
+	var builder strings.Builder
+	builder.WriteString("word ")
+	for range 5000 {
+		builder.WriteString("word ")
 	}
-	longText += "shooting police arrest" // Only 3 matches at the end
+	builder.WriteString("shooting police arrest") // Only 3 matches at the end
+	longText := builder.String()
 
 	score := classifier.scoreTextAgainstRule(longText, rule)
 

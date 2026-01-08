@@ -49,7 +49,7 @@ func NewHandler(
 	rulesRepo *database.RulesRepository,
 	sourceReputationRepo *database.SourceReputationRepository,
 	classificationHistoryRepo *database.ClassificationHistoryRepository,
-	storage *storage.ElasticsearchStorage,
+	elasticStorage *storage.ElasticsearchStorage,
 	logger Logger,
 ) *Handler {
 	return &Handler{
@@ -60,7 +60,7 @@ func NewHandler(
 		rulesRepo:                 rulesRepo,
 		sourceReputationRepo:      sourceReputationRepo,
 		classificationHistoryRepo: classificationHistoryRepo,
-		storage:                   storage,
+		storage:                   elasticStorage,
 		logger:                    logger,
 	}
 }

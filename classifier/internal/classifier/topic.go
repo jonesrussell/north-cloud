@@ -8,6 +8,18 @@ import (
 	"github.com/jonesrussell/north-cloud/classifier/internal/domain"
 )
 
+const (
+	// tfNormalizationFactor normalizes log-TF component to prevent runaway scores
+	// log(1+10) ≈ 2.4, so dividing by 10 gives ~0.24 max for TF component
+	tfNormalizationFactor = 10.0
+
+	// tfWeight is the weight for term frequency component in score calculation
+	tfWeight = 0.5
+
+	// coverageWeight is the weight for coverage component in score calculation
+	coverageWeight = 0.5
+)
+
 // TopicClassifier classifies content by topic using rule-based keyword matching
 type TopicClassifier struct {
 	logger Logger
@@ -140,13 +152,13 @@ func (t *TopicClassifier) scoreTextAgainstRule(text string, rule domain.Classifi
 	coverage := float64(uniqueKeywordsMatched) / float64(totalKeywords)
 
 	// Normalize TF component (log(1+10) ≈ 2.4, so /10 gives ~0.24 max)
-	tfComponent := tf / 10.0
+	tfComponent := tf / tfNormalizationFactor
 	if tfComponent > 1.0 {
 		tfComponent = 1.0
 	}
 
 	// Weighted combination: TF (50%) + Coverage (50%)
-	score := (tfComponent * 0.5) + (coverage * 0.5)
+	score := (tfComponent * tfWeight) + (coverage * coverageWeight)
 
 	// Cap at 1.0
 	if score > 1.0 {

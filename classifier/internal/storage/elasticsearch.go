@@ -385,7 +385,7 @@ func (s *ElasticsearchStorage) GetClassifiedByID(ctx context.Context, contentID 
 }
 
 // GetRawContentByID retrieves raw content by document ID from specific source index
-func (s *ElasticsearchStorage) GetRawContentByID(ctx context.Context, contentID string, sourceName string) (*domain.RawContent, error) {
+func (s *ElasticsearchStorage) GetRawContentByID(ctx context.Context, contentID, sourceName string) (*domain.RawContent, error) {
 	// Build the raw_content index name from source
 	rawIndex := sourceName + "_raw_content"
 
