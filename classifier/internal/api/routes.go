@@ -28,9 +28,10 @@ func SetupRoutes(router *gin.Engine, handler *Handler) {
 
 	// Classification endpoints
 	classify := v1.Group("/classify")
-	classify.POST("", handler.Classify)                           // POST /api/v1/classify
-	classify.POST("/batch", handler.ClassifyBatch)                // POST /api/v1/classify/batch
-	classify.GET("/:content_id", handler.GetClassificationResult) // GET /api/v1/classify/:content_id
+	classify.POST("", handler.Classify)                                    // POST /api/v1/classify
+	classify.POST("/batch", handler.ClassifyBatch)                         // POST /api/v1/classify/batch
+	classify.POST("/reclassify/:content_id", handler.ReclassifyDocument)   // POST /api/v1/classify/reclassify/:content_id
+	classify.GET("/:content_id", handler.GetClassificationResult)         // GET /api/v1/classify/:content_id
 
 	// Rules management endpoints
 	rules := v1.Group("/rules")

@@ -169,7 +169,7 @@ func setupTestHandler() *Handler {
 
 	// For tests, pass nil for rulesRepo and classificationHistoryRepo as they're not used in most test cases
 	// If a test needs them, it should create mock repositories
-	return NewHandler(classifierInstance, batchProcessor, sourceRepScorer, topicClassifier, nil, sourceRepRepo, nil, logger)
+	return NewHandler(classifierInstance, batchProcessor, sourceRepScorer, topicClassifier, nil, sourceRepRepo, nil, nil, logger)
 }
 
 // setupRouter creates a test router with routes

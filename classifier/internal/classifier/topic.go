@@ -2,6 +2,7 @@ package classifier
 
 import (
 	"context"
+	"math"
 	"strings"
 
 	"github.com/jonesrussell/north-cloud/classifier/internal/domain"
@@ -78,32 +79,79 @@ func (t *TopicClassifier) Classify(ctx context.Context, raw *domain.RawContent) 
 	return result, nil
 }
 
-// scoreTextAgainstRule calculates a score (0.0-1.0) for how well the text matches the rule's keywords
-// Uses simple keyword matching with TF-like scoring
+// scoreTextAgainstRule calculates a score (0.0-1.0) using log-Term Frequency + coverage
+// Uses token-based matching to avoid substring false positives and log-TF for long document handling
 func (t *TopicClassifier) scoreTextAgainstRule(text string, rule domain.ClassificationRule) float64 {
 	if len(rule.Keywords) == 0 {
 		return 0.0
 	}
 
-	matchCount := 0
+	// Step 1: Tokenize text (lowercase, strip punctuation, split on whitespace)
+	text = strings.ToLower(text)
+	// Remove common punctuation for word boundary matching
+	text = strings.ReplaceAll(text, ",", " ")
+	text = strings.ReplaceAll(text, ".", " ")
+	text = strings.ReplaceAll(text, "!", " ")
+	text = strings.ReplaceAll(text, "?", " ")
+	text = strings.ReplaceAll(text, ";", " ")
+	text = strings.ReplaceAll(text, ":", " ")
+
+	textWords := strings.Fields(text)
+	wordCount := len(textWords)
+
+	if wordCount == 0 {
+		return 0.0
+	}
+
+	// Step 2: Build word frequency map for O(1) lookup
+	wordFreq := make(map[string]int)
+	for _, word := range textWords {
+		wordFreq[word]++
+	}
+
+	// Step 3: Count exact keyword matches (token-based, not substring)
+	totalMatches := 0
+	uniqueKeywordsMatched := 0
 	totalKeywords := len(rule.Keywords)
 
-	// Count how many keywords are present in the text
 	for _, keyword := range rule.Keywords {
 		keyword = strings.ToLower(strings.TrimSpace(keyword))
 		if keyword == "" {
 			continue
 		}
 
-		// Check if keyword is present in text
-		// Use word boundary matching to avoid partial matches
-		if strings.Contains(text, keyword) {
-			matchCount++
+		// Check for exact word match (not substring)
+		occurrences := wordFreq[keyword]
+		if occurrences > 0 {
+			totalMatches += occurrences
+			uniqueKeywordsMatched++
 		}
 	}
 
-	// Calculate score as ratio of matched keywords
-	score := float64(matchCount) / float64(totalKeywords)
+	if totalMatches == 0 {
+		return 0.0
+	}
+
+	// Step 4: Compute log-TF + coverage score
+	// Log-TF: log(1 + occurrences) prevents runaway scores in long documents
+	tf := math.Log(1 + float64(totalMatches))
+
+	// Coverage: ratio of unique keywords matched
+	coverage := float64(uniqueKeywordsMatched) / float64(totalKeywords)
+
+	// Normalize TF component (log(1+10) ≈ 2.4, so /10 gives ~0.24 max)
+	tfComponent := tf / 10.0
+	if tfComponent > 1.0 {
+		tfComponent = 1.0
+	}
+
+	// Weighted combination: TF (50%) + Coverage (50%)
+	score := (tfComponent * 0.5) + (coverage * 0.5)
+
+	// Cap at 1.0
+	if score > 1.0 {
+		score = 1.0
+	}
 
 	return score
 }

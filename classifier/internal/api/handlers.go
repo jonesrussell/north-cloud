@@ -11,6 +11,7 @@ import (
 	"github.com/jonesrussell/north-cloud/classifier/internal/database"
 	"github.com/jonesrussell/north-cloud/classifier/internal/domain"
 	"github.com/jonesrussell/north-cloud/classifier/internal/processor"
+	"github.com/jonesrussell/north-cloud/classifier/internal/storage"
 )
 
 const (
@@ -27,6 +28,7 @@ type Handler struct {
 	rulesRepo                 *database.RulesRepository
 	sourceReputationRepo      *database.SourceReputationRepository
 	classificationHistoryRepo *database.ClassificationHistoryRepository
+	storage                   *storage.ElasticsearchStorage
 	logger                    Logger
 }
 
@@ -47,6 +49,7 @@ func NewHandler(
 	rulesRepo *database.RulesRepository,
 	sourceReputationRepo *database.SourceReputationRepository,
 	classificationHistoryRepo *database.ClassificationHistoryRepository,
+	storage *storage.ElasticsearchStorage,
 	logger Logger,
 ) *Handler {
 	return &Handler{
@@ -57,6 +60,7 @@ func NewHandler(
 		rulesRepo:                 rulesRepo,
 		sourceReputationRepo:      sourceReputationRepo,
 		classificationHistoryRepo: classificationHistoryRepo,
+		storage:                   storage,
 		logger:                    logger,
 	}
 }
@@ -163,6 +167,73 @@ func (h *Handler) ClassifyBatch(c *gin.Context) {
 		Success: success,
 		Failed:  failed,
 	})
+}
+
+// ReclassifyDocument handles POST /api/v1/classify/reclassify/:content_id
+// Re-classifies an existing document using current classification rules
+func (h *Handler) ReclassifyDocument(c *gin.Context) {
+	contentID := c.Param("content_id")
+	ctx := c.Request.Context()
+
+	// Step 1: Fetch existing classified document to get source_name
+	// This ensures we know which index to query for raw content
+	existing, err := h.storage.GetClassifiedByID(ctx, contentID)
+	if err != nil {
+		h.logger.Warn("Classified document not found", "content_id", contentID, "error", err)
+		c.JSON(http.StatusNotFound, gin.H{"error": "Document not found"})
+		return
+	}
+
+	// Step 2: Fetch raw content from raw_content index
+	raw, err := h.storage.GetRawContentByID(ctx, contentID, existing.SourceName)
+	if err != nil {
+		h.logger.Error("Failed to fetch raw content", "content_id", contentID, "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch raw content"})
+		return
+	}
+
+	// Step 3: Run classification with current rules
+	result, err := h.classifier.Classify(ctx, raw)
+	if err != nil {
+		h.logger.Error("Classification failed", "content_id", contentID, "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Classification failed"})
+		return
+	}
+
+	// Step 4: Update classified_content index
+	classifiedContent := &domain.ClassifiedContent{
+		RawContent:         *raw,
+		ContentType:        result.ContentType,
+		ContentSubtype:     result.ContentSubtype,
+		QualityScore:       result.QualityScore,
+		QualityFactors:     result.QualityFactors,
+		Topics:             result.Topics,
+		TopicScores:        result.TopicScores,
+		SourceReputation:   result.SourceReputation,
+		SourceCategory:     result.SourceCategory,
+		ClassifierVersion:  result.ClassifierVersion,
+		ClassificationMethod: result.ClassificationMethod,
+		ModelVersion:       result.ModelVersion,
+		Confidence:         result.Confidence,
+		Body:               raw.RawText, // Publisher alias
+		Source:             raw.URL,     // Publisher alias
+	}
+
+	err = h.storage.IndexClassifiedContent(ctx, classifiedContent)
+	if err != nil {
+		h.logger.Error("Failed to update classified content", "content_id", contentID, "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update classified content"})
+		return
+	}
+
+	// Step 5: Return updated classification result
+	h.logger.Info("Document re-classified",
+		"content_id", contentID,
+		"topics", result.Topics,
+		"quality_score", result.QualityScore,
+	)
+
+	c.JSON(http.StatusOK, ClassifyResponse{Result: result})
 }
 
 // GetClassificationResult handles GET /api/v1/classify/:content_id

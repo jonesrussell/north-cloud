@@ -318,3 +318,133 @@ func GetClassifiedIndexName(rawIndex string) (string, error) {
 	// Replace "_raw_content" with "_classified_content"
 	return rawIndex[:len(rawIndex)-12] + "_classified_content", nil
 }
+
+// GetClassifiedByID retrieves classified content by document ID
+// Searches across all *_classified_content indices
+func (s *ElasticsearchStorage) GetClassifiedByID(ctx context.Context, contentID string) (*domain.ClassifiedContent, error) {
+	// Query all *_classified_content indices for the document
+	indexPattern := "*_classified_content"
+	query := map[string]interface{}{
+		"query": map[string]interface{}{
+			"term": map[string]interface{}{
+				"_id": contentID,
+			},
+		},
+		"size": 1,
+	}
+
+	queryBytes, err := json.Marshal(query)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal query: %w", err)
+	}
+
+	res, err := s.client.Search(
+		s.client.Search.WithContext(ctx),
+		s.client.Search.WithIndex(indexPattern),
+		s.client.Search.WithBody(bytes.NewReader(queryBytes)),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to search: %w", err)
+	}
+	defer func() {
+		if closeErr := res.Body.Close(); closeErr != nil {
+			_ = closeErr
+		}
+	}()
+
+	if res.IsError() {
+		return nil, fmt.Errorf("error searching: %s", res.String())
+	}
+
+	var searchResult struct {
+		Hits struct {
+			Hits []struct {
+				Index  string                  `json:"_index"`
+				ID     string                  `json:"_id"`
+				Source domain.ClassifiedContent `json:"_source"`
+			} `json:"hits"`
+		} `json:"hits"`
+	}
+
+	if err = json.NewDecoder(res.Body).Decode(&searchResult); err != nil {
+		return nil, fmt.Errorf("error decoding response: %w", err)
+	}
+
+	if len(searchResult.Hits.Hits) == 0 {
+		return nil, fmt.Errorf("classified document not found: %s", contentID)
+	}
+
+	hit := &searchResult.Hits.Hits[0]
+	content := hit.Source
+	// Preserve the Elasticsearch document ID if not already set
+	if content.ID == "" {
+		content.ID = hit.ID
+	}
+
+	return &content, nil
+}
+
+// GetRawContentByID retrieves raw content by document ID from specific source index
+func (s *ElasticsearchStorage) GetRawContentByID(ctx context.Context, contentID string, sourceName string) (*domain.RawContent, error) {
+	// Build the raw_content index name from source
+	rawIndex := sourceName + "_raw_content"
+
+	query := map[string]interface{}{
+		"query": map[string]interface{}{
+			"term": map[string]interface{}{
+				"_id": contentID,
+			},
+		},
+		"size": 1,
+	}
+
+	queryBytes, err := json.Marshal(query)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal query: %w", err)
+	}
+
+	res, err := s.client.Search(
+		s.client.Search.WithContext(ctx),
+		s.client.Search.WithIndex(rawIndex),
+		s.client.Search.WithBody(bytes.NewReader(queryBytes)),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to search: %w", err)
+	}
+	defer func() {
+		if closeErr := res.Body.Close(); closeErr != nil {
+			_ = closeErr
+		}
+	}()
+
+	if res.IsError() {
+		return nil, fmt.Errorf("error searching: %s", res.String())
+	}
+
+	var searchResult struct {
+		Hits struct {
+			Hits []struct {
+				Index  string            `json:"_index"`
+				ID     string            `json:"_id"`
+				Source domain.RawContent `json:"_source"`
+			} `json:"hits"`
+		} `json:"hits"`
+	}
+
+	if err = json.NewDecoder(res.Body).Decode(&searchResult); err != nil {
+		return nil, fmt.Errorf("error decoding response: %w", err)
+	}
+
+	if len(searchResult.Hits.Hits) == 0 {
+		return nil, fmt.Errorf("raw content not found: %s in index %s", contentID, rawIndex)
+	}
+
+	hit := &searchResult.Hits.Hits[0]
+	content := hit.Source
+	// Preserve the Elasticsearch document ID if not already set
+	if content.ID == "" {
+		content.ID = hit.ID
+	}
+
+	return &content, nil
+}

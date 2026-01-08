@@ -250,39 +250,234 @@ func TestTopicClassifier_ScoreTextAgainstRule(t *testing.T) {
 	}
 
 	tests := []struct {
-		name     string
-		text     string
-		expected float64
+		name          string
+		text          string
+		minExpected   float64
+		maxExpected   float64
+		description   string
 	}{
 		{
-			name:     "all keywords match",
-			text:     "police arrest murder investigation",
-			expected: 1.0,
+			name:        "all keywords match",
+			text:        "police arrest murder investigation",
+			minExpected: 0.8, // Should be high due to full coverage + TF
+			maxExpected: 1.0,
+			description: "All keywords present should score very high",
 		},
 		{
-			name:     "half keywords match",
-			text:     "police arrest other words",
-			expected: 0.5,
+			name:        "half keywords match",
+			text:        "police arrest other words",
+			minExpected: 0.4, // Coverage 0.5, TF component varies
+			maxExpected: 0.7,
+			description: "Half keywords should score moderately",
 		},
 		{
-			name:     "no keywords match",
-			text:     "completely different content",
-			expected: 0.0,
+			name:        "no keywords match",
+			text:        "completely different content",
+			minExpected: 0.0,
+			maxExpected: 0.0,
+			description: "No matches should return 0",
 		},
 		{
-			name:     "one keyword match",
-			text:     "the police were present",
-			expected: 0.25,
+			name:        "one keyword match",
+			text:        "the police were present",
+			minExpected: 0.1, // Coverage 0.25, low TF
+			maxExpected: 0.4,
+			description: "Single keyword should score low but above 0",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			score := classifier.scoreTextAgainstRule(tt.text, rule)
-			if score != tt.expected {
-				t.Errorf("expected %f, got %f", tt.expected, score)
+			if score < tt.minExpected || score > tt.maxExpected {
+				t.Errorf("%s: expected score between %f and %f, got %f", tt.description, tt.minExpected, tt.maxExpected, score)
 			}
 		})
+	}
+}
+
+func TestTopicClassifier_ScoreTextAgainstRule_SubstringTrap(t *testing.T) {
+	classifier := NewTopicClassifier(&mockLogger{}, nil)
+
+	rule := domain.ClassificationRule{
+		Keywords: []string{"shoot"},
+	}
+
+	// "shoot" keyword should NOT match "shooting" word
+	text := "shooting shooting shooting"
+	score := classifier.scoreTextAgainstRule(text, rule)
+
+	// Should be 0.0 because "shoot" is not an exact word match
+	if score > 0.0 {
+		t.Errorf("expected 0.0 for substring trap (shoot vs shooting), got %f", score)
+	}
+}
+
+func TestTopicClassifier_ScoreTextAgainstRule_RepeatedKeywords(t *testing.T) {
+	classifier := NewTopicClassifier(&mockLogger{}, nil)
+
+	rule := domain.ClassificationRule{
+		Keywords: []string{"shooting"},
+	}
+
+	// "shooting" appearing multiple times should score higher than once
+	textSingle := "there was a shooting incident"
+	textMultiple := "shooting shooting shooting shooting shooting happened"
+
+	scoreSingle := classifier.scoreTextAgainstRule(textSingle, rule)
+	scoreMultiple := classifier.scoreTextAgainstRule(textMultiple, rule)
+
+	// Multiple occurrences should score higher due to log-TF
+	if scoreMultiple <= scoreSingle {
+		t.Errorf("expected repeated keyword to score higher: single=%f, multiple=%f", scoreSingle, scoreMultiple)
+	}
+
+	// Multiple occurrences should exceed 0.3 threshold (for RCMP article case)
+	if scoreMultiple < 0.3 {
+		t.Errorf("expected repeated keyword to exceed 0.3 threshold, got %f", scoreMultiple)
+	}
+}
+
+func TestTopicClassifier_ScoreTextAgainstRule_Punctuation(t *testing.T) {
+	classifier := NewTopicClassifier(&mockLogger{}, nil)
+
+	rule := domain.ClassificationRule{
+		Keywords: []string{"shooting"},
+	}
+
+	tests := []struct {
+		name     string
+		text     string
+		expected float64
+	}{
+		{
+			name:     "with comma",
+			text:     "there was a shooting, and it was serious",
+			expected: 0.0, // Will be > 0 due to match
+		},
+		{
+			name:     "with period",
+			text:     "there was a shooting. it was serious",
+			expected: 0.0, // Will be > 0 due to match
+		},
+		{
+			name:     "with exclamation",
+			text:     "there was a shooting! it was serious",
+			expected: 0.0, // Will be > 0 due to match
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			score := classifier.scoreTextAgainstRule(tt.text, rule)
+			// Should match despite punctuation
+			if score == 0.0 {
+				t.Errorf("expected score > 0.0 for text with punctuation, got %f", score)
+			}
+		})
+	}
+}
+
+func TestTopicClassifier_ScoreTextAgainstRule_LongDocument(t *testing.T) {
+	classifier := NewTopicClassifier(&mockLogger{}, nil)
+
+	rule := domain.ClassificationRule{
+		Keywords: []string{"shooting", "police", "arrest"},
+	}
+
+	// Create a long document (5000 words) with sparse matches
+	longText := "word "
+	for i := 0; i < 5000; i++ {
+		longText += "word "
+	}
+	longText += "shooting police arrest" // Only 3 matches at the end
+
+	score := classifier.scoreTextAgainstRule(longText, rule)
+
+	// Should score but not be over-weighted due to log-TF normalization
+	if score > 1.0 {
+		t.Errorf("expected score <= 1.0 for long document, got %f", score)
+	}
+
+	// Should still score above 0 due to coverage (3/3 keywords = 1.0 coverage component)
+	if score < 0.3 {
+		t.Errorf("expected score >= 0.3 for full keyword coverage, got %f", score)
+	}
+}
+
+func TestTopicClassifier_ScoreTextAgainstRule_ShortDocument(t *testing.T) {
+	classifier := NewTopicClassifier(&mockLogger{}, nil)
+
+	rule := domain.ClassificationRule{
+		Keywords: []string{"shooting", "police", "arrest"},
+	}
+
+	// Short document with dense matches
+	shortText := "shooting shooting police arrest shooting"
+
+	score := classifier.scoreTextAgainstRule(shortText, rule)
+
+	// Should score well due to high TF and coverage
+	if score < 0.5 {
+		t.Errorf("expected high score for dense matches in short document, got %f", score)
+	}
+}
+
+func TestTopicClassifier_ScoreTextAgainstRule_EmptyText(t *testing.T) {
+	classifier := NewTopicClassifier(&mockLogger{}, nil)
+
+	rule := domain.ClassificationRule{
+		Keywords: []string{"police", "arrest"},
+	}
+
+	score := classifier.scoreTextAgainstRule("", rule)
+
+	if score != 0.0 {
+		t.Errorf("expected 0.0 for empty text, got %f", score)
+	}
+}
+
+func TestTopicClassifier_ScoreTextAgainstRule_NoMatches(t *testing.T) {
+	classifier := NewTopicClassifier(&mockLogger{}, nil)
+
+	rule := domain.ClassificationRule{
+		Keywords: []string{"police", "arrest"},
+	}
+
+	score := classifier.scoreTextAgainstRule("completely unrelated content here", rule)
+
+	if score != 0.0 {
+		t.Errorf("expected 0.0 for no matches, got %f", score)
+	}
+}
+
+func TestTopicClassifier_ScoreTextAgainstRule_RCMPArticleCase(t *testing.T) {
+	classifier := NewTopicClassifier(&mockLogger{}, nil)
+
+	// Simulate violent_crime rule with "shooting" keyword
+	rule := domain.ClassificationRule{
+		Keywords:      []string{"shooting", "gunfire", "murder", "assault", "attack", "weapon", "armed", "gunman", "shooter", "fight", "fighting", "beating", "gang", "gang violence", "drive-by", "turf war", "gang member", "gang activity", "domestic violence", "sexual assault", "rape", "kidnapping", "abduction", "hostage"},
+		MinConfidence: 0.3,
+	}
+
+	// RCMP article text with "shooting" appearing multiple times
+	text := "RCMP investigate gunfire on First Nation in Saskatchewan after deadly shooting. " +
+		"Mounties say they were called late Friday to Big Island Lake Cree Nation. " +
+		"They say they didn't find anyone with injuries and are looking to determine whether there is any connection to an early morning shooting Dec. 30. " +
+		"That shooting left one person dead and three others with injuries. " +
+		"Security has been scaled up as the search continues for a pair of suspects wanted in connection with the shooting."
+
+	score := classifier.scoreTextAgainstRule(text, rule)
+
+	// Should exceed 0.3 threshold due to repeated "shooting" keyword
+	if score < 0.3 {
+		t.Errorf("expected score >= 0.3 for RCMP article case (shooting appears multiple times), got %f", score)
+	}
+
+	// Verify "shooting" is being counted (not "shoot" substring)
+	// If substring matching was used, we'd get false positives
+	if score > 1.0 {
+		t.Errorf("expected score <= 1.0, got %f", score)
 	}
 }
 

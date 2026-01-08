@@ -10,12 +10,14 @@ import (
 	"syscall"
 	"time"
 
+	es "github.com/elastic/go-elasticsearch/v8"
 	"github.com/jmoiron/sqlx"
 	"github.com/jonesrussell/north-cloud/classifier/internal/api"
 	"github.com/jonesrussell/north-cloud/classifier/internal/classifier"
 	"github.com/jonesrussell/north-cloud/classifier/internal/database"
 	"github.com/jonesrussell/north-cloud/classifier/internal/domain"
 	"github.com/jonesrussell/north-cloud/classifier/internal/processor"
+	"github.com/jonesrussell/north-cloud/classifier/internal/storage"
 	"github.com/north-cloud/infrastructure/profiling"
 )
 
@@ -69,6 +71,7 @@ type serverComponents struct {
 	rulesRepo                 *database.RulesRepository
 	sourceRepRepo             *database.SourceReputationRepository
 	classificationHistoryRepo *database.ClassificationHistoryRepository
+	esStorage                 *storage.ElasticsearchStorage
 	classifierInstance        *classifier.Classifier
 	batchProcessor            *processor.BatchProcessor
 	sourceRepScorer           *classifier.SourceReputationScorer
@@ -106,11 +109,31 @@ func setupDatabaseAndRepos(logger *Logger) (*serverComponents, error) {
 
 	logger.Info("Repositories initialized")
 
+	// Setup Elasticsearch storage for re-classification endpoint
+	esURL := getEnv("ELASTICSEARCH_URL", "http://localhost:9200")
+	esCfg := es.Config{
+		Addresses: []string{esURL},
+	}
+	esClient, err := es.NewClient(esCfg)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create Elasticsearch client: %w", err)
+	}
+
+	esStorage := storage.NewElasticsearchStorage(esClient)
+	ctx := context.Background()
+	if err = esStorage.TestConnection(ctx); err != nil {
+		logger.Warn("Failed to connect to Elasticsearch", "error", err)
+		// Don't fail startup if ES is unavailable - re-classification endpoint just won't work
+	} else {
+		logger.Info("Elasticsearch connected successfully")
+	}
+
 	return &serverComponents{
 		db:                        db,
 		rulesRepo:                 rulesRepo,
 		sourceRepRepo:             sourceRepRepo,
 		classificationHistoryRepo: classificationHistoryRepo,
+		esStorage:                 esStorage,
 	}, nil
 }
 
@@ -167,6 +190,7 @@ func loadRulesAndCreateClassifier(ctx context.Context, comps *serverComponents, 
 		comps.rulesRepo,
 		comps.sourceRepRepo,
 		comps.classificationHistoryRepo,
+		comps.esStorage,
 		logger,
 	)
 
