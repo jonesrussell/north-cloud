@@ -66,5 +66,5 @@ type DocumentQueryResponse struct {
 
 // BulkDeleteRequest represents a request to delete multiple documents
 type BulkDeleteRequest struct {
-	DocumentIDs []string `json:"document_ids" binding:"required"`
+	DocumentIDs []string `binding:"required" json:"document_ids"`
 }

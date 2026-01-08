@@ -39,17 +39,17 @@ type Config struct {
 type ServiceConfig struct {
 	Name    string `yaml:"name"`
 	Version string `yaml:"version"`
-	Port    int    `yaml:"port" env:"INDEX_MANAGER_PORT"`
-	Debug   bool   `yaml:"debug" env:"APP_DEBUG"`
+	Port    int    `env:"INDEX_MANAGER_PORT" yaml:"port"`
+	Debug   bool   `env:"APP_DEBUG"          yaml:"debug"`
 }
 
 // DatabaseConfig holds database configuration.
 type DatabaseConfig struct {
-	Host                  string        `yaml:"host" env:"POSTGRES_INDEX_MANAGER_HOST"`
-	Port                  int           `yaml:"port" env:"POSTGRES_INDEX_MANAGER_PORT"`
-	User                  string        `yaml:"user" env:"POSTGRES_INDEX_MANAGER_USER"`
-	Password              string        `yaml:"password" env:"POSTGRES_INDEX_MANAGER_PASSWORD"`
-	Database              string        `yaml:"database" env:"POSTGRES_INDEX_MANAGER_DB"`
+	Host                  string        `env:"POSTGRES_INDEX_MANAGER_HOST"     yaml:"host"`
+	Port                  int           `env:"POSTGRES_INDEX_MANAGER_PORT"     yaml:"port"`
+	User                  string        `env:"POSTGRES_INDEX_MANAGER_USER"     yaml:"user"`
+	Password              string        `env:"POSTGRES_INDEX_MANAGER_PASSWORD" yaml:"password"`
+	Database              string        `env:"POSTGRES_INDEX_MANAGER_DB"       yaml:"database"`
 	SSLMode               string        `yaml:"sslmode"`
 	MaxConnections        int           `yaml:"max_connections"`
 	MaxIdleConns          int           `yaml:"max_idle_connections"`
@@ -58,7 +58,7 @@ type DatabaseConfig struct {
 
 // ElasticsearchConfig holds Elasticsearch configuration.
 type ElasticsearchConfig struct {
-	URL        string        `yaml:"url" env:"ELASTICSEARCH_URL"`
+	URL        string        `env:"ELASTICSEARCH_URL" yaml:"url"`
 	Username   string        `yaml:"username"`
 	Password   string        `yaml:"password"`
 	MaxRetries int           `yaml:"max_retries"`
@@ -81,8 +81,8 @@ type IndexTypeConfig struct {
 
 // LoggingConfig holds logging configuration.
 type LoggingConfig struct {
-	Level  string `yaml:"level" env:"LOG_LEVEL"`
-	Format string `yaml:"format" env:"LOG_FORMAT"`
+	Level  string `env:"LOG_LEVEL"  yaml:"level"`
+	Format string `env:"LOG_FORMAT" yaml:"format"`
 	Output string `yaml:"output"`
 }
 
