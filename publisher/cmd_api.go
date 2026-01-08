@@ -39,8 +39,8 @@ func runAPIServer() {
 		if cfg.Server.Address == "" {
 			cfg.Server.Address = ":8070"
 		}
-		if err := cfg.Validate(); err != nil {
-			log.Fatalf("Invalid default configuration: %v", err)
+		if validateErr := cfg.Validate(); validateErr != nil {
+			log.Fatalf("Invalid default configuration: %v", validateErr)
 		}
 	}
 
@@ -90,7 +90,7 @@ func runAPIServer() {
 	}
 	// Remove leading colon if present for display
 	portDisplay := port
-	if len(portDisplay) > 0 && portDisplay[0] == ':' {
+	if portDisplay != "" && portDisplay[0] == ':' {
 		portDisplay = portDisplay[1:]
 	}
 

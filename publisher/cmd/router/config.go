@@ -9,6 +9,10 @@ import (
 	infraconfig "github.com/north-cloud/infrastructure/config"
 )
 
+const (
+	defaultCheckInterval = 5 * time.Minute
+)
+
 // ServiceConfig holds all configuration for the router service
 type ServiceConfig struct {
 	Database      database.Config
@@ -30,13 +34,13 @@ func LoadConfig() ServiceConfig {
 		cfg = &config.Config{}
 		// Apply defaults manually
 		if cfg.Service.CheckInterval == 0 {
-			cfg.Service.CheckInterval = 5 * time.Minute
+			cfg.Service.CheckInterval = defaultCheckInterval
 		}
 		if cfg.Service.BatchSize == 0 {
 			cfg.Service.BatchSize = 100
 		}
-		if err := cfg.Validate(); err != nil {
-			log.Fatalf("Invalid default configuration: %v", err)
+		if validateErr := cfg.Validate(); validateErr != nil {
+			log.Fatalf("Invalid default configuration: %v", validateErr)
 		}
 	}
 
