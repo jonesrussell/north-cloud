@@ -72,11 +72,11 @@ type AuthConfig struct {
 
 // LoggingConfig holds logging configuration.
 type LoggingConfig struct {
-	Level       string   `env:"LOG_LEVEL" yaml:"level"`
-	Format      string   `env:"LOG_FORMAT" yaml:"format"`
+	Level       string   `env:"LOG_LEVEL"        yaml:"level"`
+	Format      string   `env:"LOG_FORMAT"       yaml:"format"`
 	OutputPaths []string `env:"LOG_OUTPUT_PATHS" yaml:"output_paths"`
-	Debug       bool     `env:"APP_DEBUG" yaml:"debug"`
-	Env         string   `env:"APP_ENV" yaml:"env"`
+	Debug       bool     `env:"APP_DEBUG"        yaml:"debug"`
+	Env         string   `env:"APP_ENV"          yaml:"env"`
 }
 
 // validateHTTPDConfig validates the configuration for the httpd command
@@ -120,7 +120,7 @@ func applyBackwardCompatibility(cfg *Config) {
 	// Support ELASTICSEARCH_HOSTS as fallback for ELASTICSEARCH_ADDRESSES
 	// Check if legacy env var exists and Addresses is empty (infrastructure/config already loaded ELASTICSEARCH_ADDRESSES)
 	if len(cfg.Elasticsearch.Addresses) == 0 {
-		// nolint: forbidigo // Backward compatibility for legacy ELASTICSEARCH_HOSTS env var
+		//nolint: forbidigo // Backward compatibility for legacy ELASTICSEARCH_HOSTS env var
 		if hostsEnv := os.Getenv("ELASTICSEARCH_HOSTS"); hostsEnv != "" {
 			cfg.Elasticsearch.Addresses = elasticsearch.ParseAddressesFromString(hostsEnv)
 		}
@@ -129,7 +129,7 @@ func applyBackwardCompatibility(cfg *Config) {
 	// Support ELASTICSEARCH_INDEX_PREFIX as fallback for ELASTICSEARCH_INDEX_NAME
 	// Check if legacy env var exists and IndexName is empty (infrastructure/config already loaded ELASTICSEARCH_INDEX_NAME)
 	if cfg.Elasticsearch.IndexName == "" {
-		// nolint: forbidigo // Backward compatibility for legacy ELASTICSEARCH_INDEX_PREFIX env var
+		//nolint: forbidigo // Backward compatibility for legacy ELASTICSEARCH_INDEX_PREFIX env var
 		if indexPrefix := os.Getenv("ELASTICSEARCH_INDEX_PREFIX"); indexPrefix != "" {
 			cfg.Elasticsearch.IndexName = indexPrefix
 		}
