@@ -3,6 +3,9 @@ package config
 import (
 	"os"
 	"testing"
+	"time"
+
+	infraconfig "github.com/north-cloud/infrastructure/config"
 )
 
 func TestParseBool(t *testing.T) {
@@ -56,18 +59,49 @@ func TestConfigDebugFromEnv(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			// Save original value
+			originalValue := os.Getenv("APP_DEBUG")
+			defer func() {
+				if originalValue != "" {
+					os.Setenv("APP_DEBUG", originalValue)
+				} else {
+					os.Unsetenv("APP_DEBUG")
+				}
+			}()
+
 			if tt.envValue != "" {
-				t.Setenv("APP_DEBUG", tt.envValue)
+				os.Setenv("APP_DEBUG", tt.envValue)
 			} else {
 				// Unset the environment variable for this test
-				t.Setenv("APP_DEBUG", "")
 				os.Unsetenv("APP_DEBUG")
 			}
 
-			// Create a minimal config for testing
-			cfg := &Config{}
-			if appDebug := os.Getenv("APP_DEBUG"); appDebug != "" {
-				cfg.Debug = parseBool(appDebug)
+			// Create a minimal config and use infrastructure/config to load env vars
+			// Create a temporary config file
+			tempFile, err := os.CreateTemp("", "config_test_*.yml")
+			if err != nil {
+				t.Fatalf("Failed to create temp file: %v", err)
+			}
+			defer os.Remove(tempFile.Name())
+
+			// Write minimal config
+			_, err = tempFile.WriteString("debug: false\nserver:\n  address: \":8070\"\nservice:\n  check_interval: \"5m\"\n")
+			if err != nil {
+				t.Fatalf("Failed to write temp file: %v", err)
+			}
+			tempFile.Close()
+
+			// Load config using infrastructure/config which will apply env overrides
+			cfg, err := infraconfig.LoadWithDefaults[Config](tempFile.Name(), func(cfg *Config) {
+				if cfg.Server.Address == "" {
+					cfg.Server.Address = ":8070"
+				}
+				if cfg.Service.CheckInterval == 0 {
+					cfg.Service.CheckInterval = 5 * time.Minute
+				}
+			})
+			if err != nil {
+				t.Fatalf("Failed to load config: %v", err)
 			}
 
 			if cfg.Debug != tt.expected {
