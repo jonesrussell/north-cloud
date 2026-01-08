@@ -6,7 +6,7 @@ Successfully implemented a comprehensive MCP (Model Context Protocol) server for
 
 ## What Was Built
 
-### HTTP Client Packages (5 clients)
+### HTTP Client Packages (6 clients)
 
 Created robust HTTP clients for all North Cloud services:
 
@@ -35,6 +35,11 @@ Created robust HTTP clients for all North Cloud services:
    - Content classification
    - Quality scoring
    - Topic detection
+
+6. **IndexManagerClient** (`internal/client/index_manager.go`)
+   - Index management operations
+   - List and delete Elasticsearch indexes
+   - Index health checks
 
 ### MCP Tools (22 total)
 

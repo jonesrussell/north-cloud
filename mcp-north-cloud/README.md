@@ -63,14 +63,20 @@ The server implements the MCP protocol using:
 │  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌─────────┐ │
 │  │ Crawler  │  │  Source  │  │Publisher │  │ Search  │ │
 │  │  Client  │  │ Manager  │  │  Client  │  │ Client  │ │
-│  │          │  │  Client  │  │          │  │         │ │
 │  └────┬─────┘  └────┬─────┘  └────┬─────┘  └────┬────┘ │
+│       │             │             │             │       │
+│  ┌────┴─────┐  ┌────┴─────┐       │             │       │
+│  │Classifier│  │  Index   │       │             │       │
+│  │  Client  │  │ Manager  │       │             │       │
+│  │          │  │  Client  │       │             │       │
+│  └────┬─────┘  └────┬─────┘       │             │       │
 │       │             │             │             │       │
 │       ▼             ▼             ▼             ▼       │
 │  ┌────────────────────────────────────────────────────┐ │
 │  │           North Cloud Services (Docker)            │ │
 │  │  crawler:8060 | source-manager:8050 |              │ │
 │  │  publisher:8080 | search:8090 | classifier:8070    │ │
+│  │  index-manager:8090                                  │ │
 │  └────────────────────────────────────────────────────┘ │
 └─────────────────────────────────────────────────────────┘
 ```

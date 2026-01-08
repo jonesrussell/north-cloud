@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Test script for MCP North Cloud Server
-# This script tests all 23 tools by sending JSON-RPC requests
+# This script tests all 22 tools by sending JSON-RPC requests
 
 set -e
 

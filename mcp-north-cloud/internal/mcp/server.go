@@ -237,65 +237,21 @@ func (s *Server) handleDeleteIndex(id any, arguments json.RawMessage) *Response 
 	}
 
 	if err := json.Unmarshal(arguments, &args); err != nil {
-		return &Response{
-			JSONRPC: "2.0",
-			ID:      id,
-			Error: &ErrorObject{
-				Code:    InvalidParams,
-				Message: "Invalid arguments: index_name is required",
-			},
-		}
+		return s.errorResponse(id, InvalidParams, "Invalid arguments: index_name is required")
 	}
 
 	if args.IndexName == "" {
-		return &Response{
-			JSONRPC: "2.0",
-			ID:      id,
-			Error: &ErrorObject{
-				Code:    InvalidParams,
-				Message: "index_name cannot be empty",
-			},
-		}
+		return s.errorResponse(id, InvalidParams, "index_name cannot be empty")
 	}
 
 	// Call index-manager API
 	err := s.indexClient.DeleteIndex(args.IndexName)
 	if err != nil {
-		return &Response{
-			JSONRPC: "2.0",
-			ID:      id,
-			Error: &ErrorObject{
-				Code:    InternalError,
-				Message: fmt.Sprintf("Failed to delete index: %v", err),
-			},
-		}
+		return s.errorResponse(id, InternalError, fmt.Sprintf("Failed to delete index: %v", err))
 	}
 
-	result := map[string]any{
-		"content": []map[string]any{
-			{
-				"type": "text",
-				"text": fmt.Sprintf("Successfully deleted index: %s", args.IndexName),
-			},
-		},
-		"isError": false,
-	}
-
-	resultJSON, err := json.Marshal(result)
-	if err != nil {
-		return &Response{
-			JSONRPC: "2.0",
-			ID:      id,
-			Error: &ErrorObject{
-				Code:    InternalError,
-				Message: fmt.Sprintf("Failed to marshal result: %v", err),
-			},
-		}
-	}
-
-	return &Response{
-		JSONRPC: "2.0",
-		ID:      id,
-		Result:  json.RawMessage(resultJSON),
-	}
+	return s.successResponse(id, map[string]any{
+		"index_name": args.IndexName,
+		"message":    fmt.Sprintf("Successfully deleted index: %s", args.IndexName),
+	})
 }

@@ -58,6 +58,16 @@ func (s *Server) handleScheduleCrawl(id any, arguments json.RawMessage) *Respons
 		return s.errorResponse(id, InvalidParams, "source_id, url, interval_minutes, and interval_type are required")
 	}
 
+	// Validate interval_type enum
+	validIntervalTypes := map[string]bool{
+		"minutes": true,
+		"hours":   true,
+		"days":    true,
+	}
+	if !validIntervalTypes[args.IntervalType] {
+		return s.errorResponse(id, InvalidParams, "interval_type must be 'minutes', 'hours', or 'days'")
+	}
+
 	job, err := s.crawlerClient.CreateJob(client.CreateJobRequest{
 		SourceID:        args.SourceID,
 		URL:             args.URL,
