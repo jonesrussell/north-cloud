@@ -29,22 +29,22 @@ type Config struct {
 // ServiceConfig holds service-level configuration.
 type ServiceConfig struct {
 	Name  string `yaml:"name"`
-	Port  int    `yaml:"port" env:"AUTH_PORT"`
-	Debug bool   `yaml:"debug" env:"APP_DEBUG"`
+	Port  int    `env:"AUTH_PORT" yaml:"port"`
+	Debug bool   `env:"APP_DEBUG" yaml:"debug"`
 }
 
 // AuthConfig holds authentication configuration.
 type AuthConfig struct {
-	Username      string        `yaml:"username" env:"AUTH_USERNAME"`
-	Password      string        `yaml:"password" env:"AUTH_PASSWORD"`
-	JWTSecret     string        `yaml:"jwt_secret" env:"AUTH_JWT_SECRET"`
+	Username      string        `env:"AUTH_USERNAME"   yaml:"username"`
+	Password      string        `env:"AUTH_PASSWORD"   yaml:"password"`
+	JWTSecret     string        `env:"AUTH_JWT_SECRET" yaml:"jwt_secret"`
 	JWTExpiration time.Duration `yaml:"jwt_expiration"`
 }
 
 // LoggingConfig holds logging configuration.
 type LoggingConfig struct {
-	Level  string `yaml:"level" env:"LOG_LEVEL"`
-	Format string `yaml:"format" env:"LOG_FORMAT"`
+	Level  string `env:"LOG_LEVEL"  yaml:"level"`
+	Format string `env:"LOG_FORMAT" yaml:"format"`
 }
 
 // Load loads configuration from the specified path.
