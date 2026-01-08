@@ -748,10 +748,15 @@ north-cloud/
 - **Linting**: Use `golangci-lint` with service-specific configurations
 - **Type Safety**: 
   - Use `any` instead of `interface{}` (Go 1.18+)
-  - Avoid magic numbers: define constants for numeric literals
   - Use integer range syntax (`for i := range n`) when possible (Go 1.22+)
   - Avoid copying large structs in loops: use pointers or indexing (`for i := range items { item := &items[i] }`)
   - Use compound assignment operators (`/=`, `*=`, etc.) instead of `x = x / y`
+- **Magic Numbers**: **NEVER use magic numbers** - always define named constants for numeric literals
+  - Define constants at the top of the file or in a constants section
+  - Use descriptive names that explain the purpose (e.g., `maxURLLength = 2048`, `urlPreviewLength = 100`)
+  - This applies to all numeric values: sizes, limits, timeouts, thresholds, etc.
+  - The linter (`golangci-lint`) will flag magic numbers as errors
+  - Example: `url[:100]` ❌ → `url[:urlPreviewLength]` ✅
 
 #### Go 1.25 Features
 The codebase leverages Go 1.25 improvements:
