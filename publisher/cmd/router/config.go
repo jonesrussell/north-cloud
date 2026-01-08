@@ -2,11 +2,11 @@ package main
 
 import (
 	"log"
-	"os"
-	"strconv"
 	"time"
 
+	"github.com/jonesrussell/north-cloud/publisher/internal/config"
 	"github.com/jonesrussell/north-cloud/publisher/internal/database"
+	infraconfig "github.com/north-cloud/infrastructure/config"
 )
 
 // ServiceConfig holds all configuration for the router service
@@ -19,46 +19,41 @@ type ServiceConfig struct {
 	BatchSize     int
 }
 
-// LoadConfig loads configuration from environment variables
+// LoadConfig loads configuration from config file with env var overrides
 func LoadConfig() ServiceConfig {
-	checkIntervalStr := getEnv("PUBLISHER_ROUTER_CHECK_INTERVAL", "5m")
-	checkInterval, parseErr := time.ParseDuration(checkIntervalStr)
-	if parseErr != nil {
-		log.Fatalf("Invalid check interval: %v", parseErr)
-	}
-
-	return ServiceConfig{
-		Database: database.Config{
-			Host:     getEnv("POSTGRES_PUBLISHER_HOST", "localhost"),
-			Port:     getEnv("POSTGRES_PUBLISHER_PORT", "5432"),
-			User:     getEnv("POSTGRES_PUBLISHER_USER", "postgres"),
-			Password: getEnv("POSTGRES_PUBLISHER_PASSWORD", ""),
-			DBName:   getEnv("POSTGRES_PUBLISHER_DB", "publisher"),
-			SSLMode:  getEnv("POSTGRES_PUBLISHER_SSLMODE", "disable"),
-		},
-		ESURL:         getEnv("ELASTICSEARCH_URL", "http://localhost:9200"),
-		RedisAddr:     getEnv("REDIS_ADDR", "localhost:6379"),
-		RedisPassword: getEnv("REDIS_PASSWORD", ""),
-		CheckInterval: checkInterval,
-		BatchSize:     getEnvInt("PUBLISHER_ROUTER_BATCH_SIZE", defaultBatchSize),
-	}
-}
-
-// getEnv gets an environment variable with a default value
-func getEnv(key, defaultValue string) string {
-	if value := os.Getenv(key); value != "" {
-		return value
-	}
-	return defaultValue
-}
-
-// getEnvInt gets an integer environment variable with a default value
-func getEnvInt(key string, defaultValue int) int {
-	if value := os.Getenv(key); value != "" {
-		intValue, parseErr := strconv.Atoi(value)
-		if parseErr == nil {
-			return intValue
+	// Load main config
+	configPath := infraconfig.GetConfigPath("config.yml")
+	cfg, err := config.Load(configPath)
+	if err != nil {
+		// Config file is optional - create default config if file doesn't exist
+		log.Printf("Warning: Failed to load config file (%s), using defaults: %v", configPath, err)
+		cfg = &config.Config{}
+		// Apply defaults manually
+		if cfg.Service.CheckInterval == 0 {
+			cfg.Service.CheckInterval = 5 * time.Minute
+		}
+		if cfg.Service.BatchSize == 0 {
+			cfg.Service.BatchSize = 100
+		}
+		if err := cfg.Validate(); err != nil {
+			log.Fatalf("Invalid default configuration: %v", err)
 		}
 	}
-	return defaultValue
+
+	// Convert main config to ServiceConfig
+	return ServiceConfig{
+		Database: database.Config{
+			Host:     cfg.Database.Host,
+			Port:     cfg.Database.Port,
+			User:     cfg.Database.User,
+			Password: cfg.Database.Password,
+			DBName:   cfg.Database.DBName,
+			SSLMode:  cfg.Database.SSLMode,
+		},
+		ESURL:         cfg.Elasticsearch.URL,
+		RedisAddr:     cfg.Redis.URL,
+		RedisPassword: cfg.Redis.Password,
+		CheckInterval: cfg.Service.CheckInterval,
+		BatchSize:     cfg.Service.BatchSize,
+	}
 }

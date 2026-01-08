@@ -11,8 +11,10 @@ import (
 	"time"
 
 	"github.com/jonesrussell/north-cloud/publisher/internal/api"
+	"github.com/jonesrussell/north-cloud/publisher/internal/config"
 	"github.com/jonesrussell/north-cloud/publisher/internal/database"
 	redisclient "github.com/jonesrussell/north-cloud/publisher/internal/redis"
+	infraconfig "github.com/north-cloud/infrastructure/config"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -26,14 +28,30 @@ const (
 func runAPIServer() {
 	log.Println("Starting Publisher API Server...")
 
-	// Load database configuration from environment
+	// Load configuration
+	configPath := infraconfig.GetConfigPath("config.yml")
+	cfg, err := config.Load(configPath)
+	if err != nil {
+		// Config file is optional - create default config if file doesn't exist
+		log.Printf("Warning: Failed to load config file (%s), using defaults: %v", configPath, err)
+		cfg = &config.Config{}
+		// Apply defaults manually
+		if cfg.Server.Address == "" {
+			cfg.Server.Address = ":8070"
+		}
+		if err := cfg.Validate(); err != nil {
+			log.Fatalf("Invalid default configuration: %v", err)
+		}
+	}
+
+	// Convert config database to database.Config
 	dbConfig := database.Config{
-		Host:     getEnv("POSTGRES_PUBLISHER_HOST", "localhost"),
-		Port:     getEnv("POSTGRES_PUBLISHER_PORT", "5432"),
-		User:     getEnv("POSTGRES_PUBLISHER_USER", "postgres"),
-		Password: getEnv("POSTGRES_PUBLISHER_PASSWORD", ""),
-		DBName:   getEnv("POSTGRES_PUBLISHER_DB", "publisher"),
-		SSLMode:  getEnv("POSTGRES_PUBLISHER_SSLMODE", "disable"),
+		Host:     cfg.Database.Host,
+		Port:     cfg.Database.Port,
+		User:     cfg.Database.User,
+		Password: cfg.Database.Password,
+		DBName:   cfg.Database.DBName,
+		SSLMode:  cfg.Database.SSLMode,
 	}
 
 	// Initialize database connection
@@ -50,14 +68,8 @@ func runAPIServer() {
 
 	// Initialize Redis client (optional - for health checks)
 	var redisClient *redis.Client
-	redisAddr := getEnv("REDIS_ADDR", "")
-	if redisAddr == "" {
-		// Fallback to REDIS_HOST:REDIS_PORT if REDIS_ADDR not set
-		redisHost := getEnv("REDIS_HOST", "localhost")
-		redisPort := getEnv("REDIS_PORT", "6379")
-		redisAddr = redisHost + ":" + redisPort
-	}
-	redisPassword := getEnv("REDIS_PASSWORD", "")
+	redisAddr := cfg.Redis.URL
+	redisPassword := cfg.Redis.Password
 	if redisAddr != "" {
 		var redisErr error
 		redisClient, redisErr = redisclient.NewClient(redisAddr, redisPassword)
@@ -67,25 +79,33 @@ func runAPIServer() {
 		}
 	}
 
-	// Setup router
-	router := api.NewRouter(repo, redisClient)
+	// Setup router with config
+	router := api.NewRouter(repo, redisClient, cfg)
 	ginEngine := router.SetupRoutes()
 
-	// Get port from environment
-	port := getEnv("PUBLISHER_PORT", "8070")
+	// Extract port from server address
+	port := cfg.Server.Address
+	if port == "" {
+		port = ":8070"
+	}
+	// Remove leading colon if present for display
+	portDisplay := port
+	if len(portDisplay) > 0 && portDisplay[0] == ':' {
+		portDisplay = portDisplay[1:]
+	}
 
 	// Create HTTP server
 	server := &http.Server{
-		Addr:         ":" + port,
+		Addr:         cfg.Server.Address,
 		Handler:      ginEngine,
-		ReadTimeout:  defaultReadTimeout,
-		WriteTimeout: defaultWriteTimeout,
+		ReadTimeout:  cfg.Server.ReadTimeout,
+		WriteTimeout: cfg.Server.WriteTimeout,
 		IdleTimeout:  defaultIdleTimeout,
 	}
 
 	// Start server in goroutine
 	go func() {
-		log.Printf("API server listening on port %s", port)
+		log.Printf("API server listening on port %s", portDisplay)
 		serveErr := server.ListenAndServe()
 		if serveErr != nil && !errors.Is(serveErr, http.ErrServerClosed) {
 			log.Fatalf("Failed to start server: %v", serveErr)

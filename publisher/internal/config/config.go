@@ -4,12 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"os"
 	"strings"
 	"time"
 
+	infraconfig "github.com/north-cloud/infrastructure/config"
 	infracontext "github.com/north-cloud/infrastructure/context"
-	"gopkg.in/yaml.v3"
 )
 
 const (
@@ -22,29 +21,45 @@ const (
 )
 
 type Config struct {
-	Debug         bool                `yaml:"debug"` // Application debug mode (controls log level and format)
+	Debug         bool                `env:"APP_DEBUG" yaml:"debug"` // Application debug mode (controls log level and format)
 	Server        ServerConfig        `yaml:"server"`
+	Database      DatabaseConfig      `yaml:"database"`
 	Elasticsearch ElasticsearchConfig `yaml:"elasticsearch"`
 	Redis         RedisConfig         `yaml:"redis"`
 	Service       ServiceConfig       `yaml:"service"`
 	Cities        []CityConfig        `yaml:"cities"`
 	Sources       SourcesConfig       `yaml:"sources"` // Optional: Sources service configuration
+	Auth          AuthConfig          `yaml:"auth"`
+}
+
+type DatabaseConfig struct {
+	Host     string `env:"POSTGRES_PUBLISHER_HOST" yaml:"host"`
+	Port     string `env:"POSTGRES_PUBLISHER_PORT" yaml:"port"`
+	User     string `env:"POSTGRES_PUBLISHER_USER" yaml:"user"`
+	Password string `env:"POSTGRES_PUBLISHER_PASSWORD" yaml:"password"`
+	DBName   string `env:"POSTGRES_PUBLISHER_DB" yaml:"dbname"`
+	SSLMode  string `env:"POSTGRES_PUBLISHER_SSLMODE" yaml:"sslmode"`
 }
 
 type ElasticsearchConfig struct {
-	URL      string `yaml:"url"`
+	URL      string `env:"ES_URL" yaml:"url"`
 	Username string `yaml:"username"`
 	Password string `yaml:"password"`
 }
 
 type RedisConfig struct {
-	URL      string `yaml:"url"`
+	URL      string `env:"REDIS_URL" yaml:"url"`
 	Password string `yaml:"password"`
 	DB       int    `yaml:"db"`
 }
 
+type AuthConfig struct {
+	JWTSecret string `env:"AUTH_JWT_SECRET" yaml:"jwt_secret"`
+}
+
 type ServiceConfig struct {
-	CheckInterval        time.Duration `yaml:"check_interval"`
+	CheckInterval        time.Duration `env:"PUBLISHER_ROUTER_CHECK_INTERVAL" yaml:"check_interval"`
+	BatchSize            int           `env:"PUBLISHER_ROUTER_BATCH_SIZE" yaml:"batch_size"`
 	UseClassifiedContent bool          `yaml:"use_classified_content"` // Use classified_content indexes instead of articles
 	MinQualityScore      int           `yaml:"min_quality_score"`      // Minimum quality score for classified content (0-100)
 	IndexSuffix          string        `yaml:"index_suffix"`           // Index suffix (_articles or _classified_content)
@@ -56,21 +71,26 @@ type CityConfig struct {
 }
 
 type SourcesConfig struct {
-	URL     string        `yaml:"url"`     // Sources service API URL (e.g., "http://localhost:8080")
-	Timeout time.Duration `yaml:"timeout"` // Request timeout (default: 5s)
-	Enabled bool          `yaml:"enabled"` // Enable fetching cities from sources service
+	URL     string        `env:"SOURCES_URL" yaml:"url"`         // Sources service API URL (e.g., "http://localhost:8080")
+	Timeout time.Duration `yaml:"timeout"`                       // Request timeout (default: 5s)
+	Enabled bool          `env:"SOURCES_ENABLED" yaml:"enabled"` // Enable fetching cities from sources service
 }
 
 type ServerConfig struct {
-	Address      string        `yaml:"address"`       // e.g., ":8070"
-	ReadTimeout  time.Duration `yaml:"read_timeout"`  // Default: 10s
-	WriteTimeout time.Duration `yaml:"write_timeout"` // Default: 30s
+	Address      string        `env:"PUBLISHER_PORT" yaml:"address"` // e.g., ":8070" or port number
+	ReadTimeout  time.Duration `yaml:"read_timeout"`                 // Default: 10s
+	WriteTimeout time.Duration `yaml:"write_timeout"`                // Default: 30s
+	CORSOrigins  []string      `env:"CORS_ORIGINS" yaml:"cors_origins"`
 }
 
 // Validate checks if the server configuration is valid and sets defaults.
 func (c *ServerConfig) Validate() error {
+	// Handle port - can be ":PORT" or just port number
 	if c.Address == "" {
 		c.Address = ":8070" // Default port
+	} else if c.Address != "" && !strings.HasPrefix(c.Address, ":") {
+		// If just a port number, prepend ":"
+		c.Address = ":" + c.Address
 	}
 	if c.ReadTimeout <= 0 {
 		c.ReadTimeout = DefaultReadTimeoutSeconds * time.Second
@@ -117,8 +137,27 @@ func setDefaults(cfg *Config) {
 	if cfg.Service.CheckInterval == 0 {
 		cfg.Service.CheckInterval = 5 * time.Minute
 	}
+	if cfg.Service.BatchSize == 0 {
+		cfg.Service.BatchSize = 100
+	}
 	if cfg.Sources.Timeout == 0 {
 		cfg.Sources.Timeout = 5 * time.Second
+	}
+	// Database defaults
+	if cfg.Database.Host == "" {
+		cfg.Database.Host = "localhost"
+	}
+	if cfg.Database.Port == "" {
+		cfg.Database.Port = "5432"
+	}
+	if cfg.Database.User == "" {
+		cfg.Database.User = "postgres"
+	}
+	if cfg.Database.DBName == "" {
+		cfg.Database.DBName = "publisher"
+	}
+	if cfg.Database.SSLMode == "" {
+		cfg.Database.SSLMode = "disable"
 	}
 	// Classified content defaults
 	if cfg.Service.MinQualityScore == 0 {
@@ -131,53 +170,25 @@ func setDefaults(cfg *Config) {
 			cfg.Service.IndexSuffix = "_articles"
 		}
 	}
-}
-
-// overrideWithEnvVars overrides configuration with environment variables
-func overrideWithEnvVars(cfg *Config) {
-	if esURL := os.Getenv("ES_URL"); esURL != "" {
-		cfg.Elasticsearch.URL = esURL
-	}
-	if redisURL := os.Getenv("REDIS_URL"); redisURL != "" {
-		cfg.Redis.URL = redisURL
-	}
-	if sourcesURL := os.Getenv("SOURCES_URL"); sourcesURL != "" {
-		cfg.Sources.URL = sourcesURL
-	}
-	if sourcesEnabled := os.Getenv("SOURCES_ENABLED"); sourcesEnabled != "" {
-		cfg.Sources.Enabled = parseBool(sourcesEnabled)
-	}
-	// Parse APP_DEBUG environment variable
-	if appDebug := os.Getenv("APP_DEBUG"); appDebug != "" {
-		cfg.Debug = parseBool(appDebug)
+	// Set default CORS origins if not provided
+	if len(cfg.Server.CORSOrigins) == 0 {
+		cfg.Server.CORSOrigins = []string{
+			"http://localhost:3000", // Legacy dashboard frontend
+			"http://localhost:3001", // Crawler frontend
+			"http://localhost:3002", // Unified dashboard frontend
+		}
 	}
 }
 
 func Load(path string) (*Config, error) {
-	data, err := os.ReadFile(path)
+	cfg, err := infraconfig.LoadWithDefaults(path, setDefaults)
 	if err != nil {
-		return nil, fmt.Errorf("read config file: %w", err)
+		return nil, fmt.Errorf("load config: %w", err)
 	}
 
-	var cfg Config
-	if err := yaml.Unmarshal(data, &cfg); err != nil {
-		return nil, fmt.Errorf("parse config: %w", err)
-	}
-
-	// Set defaults
-	setDefaults(&cfg)
-
-	// Override with environment variables if present
-	overrideWithEnvVars(&cfg)
-
-	// Set server defaults
+	// Validate server config (handles port formatting)
 	if err := cfg.Server.Validate(); err != nil {
 		return nil, fmt.Errorf("server config validation: %w", err)
-	}
-
-	// Override server config with environment variable if present
-	if publisherPort := os.Getenv("PUBLISHER_PORT"); publisherPort != "" {
-		cfg.Server.Address = ":" + publisherPort
 	}
 
 	// Validate configuration
@@ -185,7 +196,7 @@ func Load(path string) (*Config, error) {
 		return nil, fmt.Errorf("invalid config: %w", err)
 	}
 
-	return &cfg, nil
+	return cfg, nil
 }
 
 // LoadWithSources loads configuration and optionally fetches cities from sources service.
