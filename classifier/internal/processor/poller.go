@@ -311,8 +311,8 @@ func (p *Poller) IsRunning() bool {
 }
 
 // GetStats returns poller statistics
-func (p *Poller) GetStats() map[string]interface{} {
-	return map[string]interface{}{
+func (p *Poller) GetStats() map[string]any {
+	return map[string]any{
 		"running":       p.running,
 		"batch_size":    p.batchSize,
 		"poll_interval": p.pollInterval.String(),

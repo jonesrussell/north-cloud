@@ -29,16 +29,16 @@ func NewElasticsearchStorage(client *es.Client) *ElasticsearchStorage {
 func (s *ElasticsearchStorage) QueryRawContent(ctx context.Context, status string, batchSize int) ([]*domain.RawContent, error) {
 	// Query all *_raw_content indices
 	indexPattern := "*_raw_content"
-	query := map[string]interface{}{
-		"query": map[string]interface{}{
-			"term": map[string]interface{}{
+	query := map[string]any{
+		"query": map[string]any{
+			"term": map[string]any{
 				"classification_status": status,
 			},
 		},
 		"size": batchSize,
-		"sort": []map[string]interface{}{
+		"sort": []map[string]any{
 			{
-				"crawled_at": map[string]interface{}{
+				"crawled_at": map[string]any{
 					"order": "asc",
 				},
 			},
@@ -145,8 +145,8 @@ func (s *ElasticsearchStorage) UpdateRawContentStatus(ctx context.Context, conte
 	// For now, we'll update across all *_raw_content indices
 	// In production, you might want to track index per content ID
 
-	update := map[string]interface{}{
-		"doc": map[string]interface{}{
+	update := map[string]any{
+		"doc": map[string]any{
 			"classification_status": status,
 			"classified_at":         classifiedAt,
 		},
@@ -223,8 +223,8 @@ func (s *ElasticsearchStorage) BulkIndexClassifiedContent(ctx context.Context, c
 		content.ClassifiedAt = &now
 
 		// Create bulk index action
-		meta := map[string]interface{}{
-			"index": map[string]interface{}{
+		meta := map[string]any{
+			"index": map[string]any{
 				"_index": classifiedIndex,
 				"_id":    content.ID,
 			},
@@ -278,7 +278,7 @@ func (s *ElasticsearchStorage) ListRawContentIndices(ctx context.Context) ([]str
 		return nil, fmt.Errorf("error listing indices: %s", res.String())
 	}
 
-	var indices map[string]interface{}
+	var indices map[string]any
 	if err = json.NewDecoder(res.Body).Decode(&indices); err != nil {
 		return nil, fmt.Errorf("error decoding response: %w", err)
 	}
@@ -324,9 +324,9 @@ func GetClassifiedIndexName(rawIndex string) (string, error) {
 func (s *ElasticsearchStorage) GetClassifiedByID(ctx context.Context, contentID string) (*domain.ClassifiedContent, error) {
 	// Query all *_classified_content indices for the document
 	indexPattern := "*_classified_content"
-	query := map[string]interface{}{
-		"query": map[string]interface{}{
-			"term": map[string]interface{}{
+	query := map[string]any{
+		"query": map[string]any{
+			"term": map[string]any{
 				"_id": contentID,
 			},
 		},
@@ -389,9 +389,9 @@ func (s *ElasticsearchStorage) GetRawContentByID(ctx context.Context, contentID,
 	// Build the raw_content index name from source
 	rawIndex := sourceName + "_raw_content"
 
-	query := map[string]interface{}{
-		"query": map[string]interface{}{
-			"term": map[string]interface{}{
+	query := map[string]any{
+		"query": map[string]any{
+			"term": map[string]any{
 				"_id": contentID,
 			},
 		},

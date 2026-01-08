@@ -69,7 +69,7 @@ type MLModel struct {
 	RecallScore     float64                `db:"recall_score"    json:"recall_score,omitempty"`
 	TrainedAt       *time.Time             `db:"trained_at"      json:"trained_at,omitempty"`
 	FeatureSet      []string               `db:"feature_set"     json:"feature_set,omitempty"`
-	Hyperparameters map[string]interface{} `db:"hyperparameters" json:"hyperparameters,omitempty"`
+	Hyperparameters map[string]any `db:"hyperparameters" json:"hyperparameters,omitempty"`
 	ModelPath       string                 `db:"model_path"      json:"model_path,omitempty"`
 	IsActive        bool                   `db:"is_active"       json:"is_active"`
 	Enabled         bool                   `db:"enabled"         json:"enabled"`

@@ -49,21 +49,21 @@ func NewLogger(debug bool) *Logger {
 	return &Logger{debug: debug}
 }
 
-func (l *Logger) Debug(msg string, keysAndValues ...interface{}) {
+func (l *Logger) Debug(msg string, keysAndValues ...any) {
 	if l.debug {
 		log.Printf("[DEBUG] %s %v\n", msg, keysAndValues)
 	}
 }
 
-func (l *Logger) Info(msg string, keysAndValues ...interface{}) {
+func (l *Logger) Info(msg string, keysAndValues ...any) {
 	log.Printf("[INFO] %s %v\n", msg, keysAndValues)
 }
 
-func (l *Logger) Warn(msg string, keysAndValues ...interface{}) {
+func (l *Logger) Warn(msg string, keysAndValues ...any) {
 	log.Printf("[WARN] %s %v\n", msg, keysAndValues)
 }
 
-func (l *Logger) Error(msg string, keysAndValues ...interface{}) {
+func (l *Logger) Error(msg string, keysAndValues ...any) {
 	log.Printf("[ERROR] %s %v\n", msg, keysAndValues)
 }
 

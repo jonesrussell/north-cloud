@@ -24,10 +24,10 @@ import (
 // mockLogger implements Logger for testing
 type mockLogger struct{}
 
-func (m *mockLogger) Debug(msg string, keysAndValues ...interface{}) {}
-func (m *mockLogger) Info(msg string, keysAndValues ...interface{})  {}
-func (m *mockLogger) Warn(msg string, keysAndValues ...interface{})  {}
-func (m *mockLogger) Error(msg string, keysAndValues ...interface{}) {}
+func (m *mockLogger) Debug(msg string, keysAndValues ...any) {}
+func (m *mockLogger) Info(msg string, keysAndValues ...any)  {}
+func (m *mockLogger) Warn(msg string, keysAndValues ...any)  {}
+func (m *mockLogger) Error(msg string, keysAndValues ...any) {}
 
 // mockSourceReputationDB implements SourceReputationDB for testing
 type mockSourceReputationDB struct {
@@ -201,7 +201,7 @@ func TestHealthCheck(t *testing.T) {
 		t.Errorf("expected status 200, got %d", w.Code)
 	}
 
-	var response map[string]interface{}
+	var response map[string]any
 	if err := json.Unmarshal(w.Body.Bytes(), &response); err != nil {
 		t.Fatalf("failed to unmarshal response: %v", err)
 	}
@@ -223,7 +223,7 @@ func TestReadyCheck(t *testing.T) {
 		t.Errorf("expected status 200, got %d", w.Code)
 	}
 
-	var response map[string]interface{}
+	var response map[string]any
 	if err := json.Unmarshal(w.Body.Bytes(), &response); err != nil {
 		t.Fatalf("failed to unmarshal response: %v", err)
 	}
@@ -253,7 +253,10 @@ func TestClassify_Success(t *testing.T) {
 		},
 	}
 
-	body, _ := json.Marshal(reqBody)
+	body, err := json.Marshal(reqBody)
+	if err != nil {
+		t.Fatalf("failed to marshal request body: %v", err)
+	}
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest(http.MethodPost, "/api/v1/classify", bytes.NewBuffer(body))
 	req.Header.Set("Content-Type", "application/json")
@@ -394,7 +397,7 @@ func TestGetSource(t *testing.T) {
 		t.Errorf("expected status 200, got %d", w.Code)
 	}
 
-	var response map[string]interface{}
+	var response map[string]any
 	if err := json.Unmarshal(w.Body.Bytes(), &response); err != nil {
 		t.Fatalf("failed to unmarshal response: %v", err)
 	}

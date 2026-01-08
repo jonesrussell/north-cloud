@@ -14,7 +14,7 @@ type ClassificationResult struct {
 
 	// Quality scoring
 	QualityScore   int                    `json:"quality_score"`   // 0-100
-	QualityFactors map[string]interface{} `json:"quality_factors"` // Breakdown of quality score
+	QualityFactors map[string]any `json:"quality_factors"` // Breakdown of quality score
 
 	// Topic classification
 	Topics      []string           `json:"topics"`       // e.g., ["crime", "local_news"]
@@ -42,7 +42,7 @@ type ClassifiedContent struct {
 	ContentType      string                 `json:"content_type"`
 	ContentSubtype   string                 `json:"content_subtype,omitempty"`
 	QualityScore     int                    `json:"quality_score"`
-	QualityFactors   map[string]interface{} `json:"quality_factors"`
+	QualityFactors   map[string]any `json:"quality_factors"`
 	Topics           []string               `json:"topics"`
 	TopicScores      map[string]float64     `json:"topic_scores"`
 	SourceReputation int                    `json:"source_reputation"`
