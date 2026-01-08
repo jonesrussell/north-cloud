@@ -250,11 +250,11 @@ func TestTopicClassifier_ScoreTextAgainstRule(t *testing.T) {
 	}
 
 	tests := []struct {
-		name          string
-		text          string
-		minExpected   float64
-		maxExpected   float64
-		description   string
+		name        string
+		text        string
+		minExpected float64
+		maxExpected float64
+		description string
 	}{
 		{
 			name:        "all keywords match",

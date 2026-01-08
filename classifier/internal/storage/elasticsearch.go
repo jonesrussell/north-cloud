@@ -359,8 +359,8 @@ func (s *ElasticsearchStorage) GetClassifiedByID(ctx context.Context, contentID 
 	var searchResult struct {
 		Hits struct {
 			Hits []struct {
-				Index  string                  `json:"_index"`
-				ID     string                  `json:"_id"`
+				Index  string                   `json:"_index"`
+				ID     string                   `json:"_id"`
 				Source domain.ClassifiedContent `json:"_source"`
 			} `json:"hits"`
 		} `json:"hits"`

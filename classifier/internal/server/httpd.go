@@ -10,7 +10,6 @@ import (
 	"syscall"
 	"time"
 
-	es "github.com/elastic/go-elasticsearch/v8"
 	"github.com/jmoiron/sqlx"
 	"github.com/jonesrussell/north-cloud/classifier/internal/api"
 	"github.com/jonesrussell/north-cloud/classifier/internal/classifier"
@@ -18,7 +17,10 @@ import (
 	"github.com/jonesrussell/north-cloud/classifier/internal/domain"
 	"github.com/jonesrussell/north-cloud/classifier/internal/processor"
 	"github.com/jonesrussell/north-cloud/classifier/internal/storage"
+	esclient "github.com/north-cloud/infrastructure/elasticsearch"
+	infralogger "github.com/north-cloud/infrastructure/logger"
 	"github.com/north-cloud/infrastructure/profiling"
+	"github.com/north-cloud/infrastructure/retry"
 )
 
 const (
@@ -110,22 +112,54 @@ func setupDatabaseAndRepos(logger *Logger) (*serverComponents, error) {
 	logger.Info("Repositories initialized")
 
 	// Setup Elasticsearch storage for re-classification endpoint
+	// This is optional - if ES is unavailable, re-classification endpoint won't work
+	// but the service can still start and serve other endpoints
 	esURL := getEnv("ELASTICSEARCH_URL", "http://localhost:9200")
-	esCfg := es.Config{
-		Addresses: []string{esURL},
-	}
-	esClient, err := es.NewClient(esCfg)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create Elasticsearch client: %w", err)
+	ctx := context.Background()
+
+	// Try to create ES client with retry logic, but don't fail startup if it fails
+	// Use shorter retry config for optional connection (ES is not required for HTTP server)
+	const (
+		optionalESMaxAttempts  = 3
+		optionalESInitialDelay = 1 * time.Second
+		optionalESMaxDelay     = 5 * time.Second
+		optionalESMultiplier   = 2.0
+	)
+	esclientCfg := esclient.Config{
+		URL: esURL,
+		RetryConfig: &retry.Config{
+			MaxAttempts:  optionalESMaxAttempts,
+			InitialDelay: optionalESInitialDelay,
+			MaxDelay:     optionalESMaxDelay,
+			Multiplier:   optionalESMultiplier,
+		},
 	}
 
-	esStorage := storage.NewElasticsearchStorage(esClient)
-	ctx := context.Background()
-	if err = esStorage.TestConnection(ctx); err != nil {
+	// Create a simple logger for ES connection using infrastructure logger
+	esLog, err := infralogger.New(infralogger.Config{
+		Level:  "info",
+		Format: "console",
+	})
+	if err != nil {
+		esLog = nil
+	}
+
+	esClient, err := esclient.NewClient(ctx, esclientCfg, esLog)
+	var esStorage *storage.ElasticsearchStorage
+	if err != nil {
 		logger.Warn("Failed to connect to Elasticsearch", "error", err)
-		// Don't fail startup if ES is unavailable - re-classification endpoint just won't work
+		logger.Info("Re-classification endpoint will not be available")
+		// Continue without ES - this is optional functionality
+		esStorage = nil
 	} else {
-		logger.Info("Elasticsearch connected successfully")
+		esStorage = storage.NewElasticsearchStorage(esClient)
+		if err = esStorage.TestConnection(ctx); err != nil {
+			logger.Warn("Failed to verify Elasticsearch connection", "error", err)
+			logger.Info("Re-classification endpoint may not work correctly")
+			esStorage = nil
+		} else {
+			logger.Info("Elasticsearch connected successfully")
+		}
 	}
 
 	return &serverComponents{
