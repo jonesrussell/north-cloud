@@ -186,7 +186,7 @@ func Start() error {
 		}
 	}()
 
-	dbAdapter := storage.NewDatabaseAdapter(classificationHistoryRepo)
+	dbAdapter := storage.NewDatabaseAdapterWithLogger(classificationHistoryRepo, procLogger)
 
 	ctx := context.Background()
 	ruleValues, err := loadRules(ctx, rulesRepo)
@@ -252,7 +252,7 @@ func StartWithStop() (func(), error) {
 		return nil, err
 	}
 
-	dbAdapter := storage.NewDatabaseAdapter(classificationHistoryRepo)
+	dbAdapter := storage.NewDatabaseAdapterWithLogger(classificationHistoryRepo, procLogger)
 
 	ctx := context.Background()
 	ruleValues, err := loadRules(ctx, rulesRepo)
