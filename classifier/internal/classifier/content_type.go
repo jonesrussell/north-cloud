@@ -10,11 +10,10 @@ import (
 
 const (
 	// Content type confidence constants
-	articleConfidence          = 0.75
-	pageConfidence             = 0.6
-	urlExclusionConfidence     = 0.9
-	ogTypeValidationConfidence = 0.7
-	listingPageConfidence      = 0.85
+	articleConfidence      = 0.75
+	pageConfidence         = 0.6
+	urlExclusionConfidence = 0.9
+	listingPageConfidence  = 0.85
 	// String literal for article type matching
 	articleTypeString = "article"
 	// Listing page detection thresholds

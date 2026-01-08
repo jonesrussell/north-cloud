@@ -3,6 +3,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ArrowLeft, Loader2, ExternalLink, Copy, Check } from 'lucide-vue-next'
 import { indexManagerApi } from '@/api/client'
+import type { Document } from '@/types/indexManager'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -15,14 +16,14 @@ const documentId = computed(() => route.params.document_id as string)
 
 const loading = ref(true)
 const error = ref<string | null>(null)
-const document = ref<Record<string, unknown> | null>(null)
+const document = ref<(Document & Record<string, unknown>) | null>(null)
 const copied = ref(false)
 
 const loadDocument = async () => {
   try {
     loading.value = true
     const response = await indexManagerApi.documents.get(indexName.value, documentId.value)
-    document.value = response.data
+    document.value = response.data as Document & Record<string, unknown>
   } catch (err) {
     error.value = 'Unable to load document.'
   } finally {
@@ -129,6 +130,23 @@ onMounted(loadDocument)
               <dd class="mt-1">
                 <Badge :variant="(document as Record<string, unknown>).is_crime_related ? 'destructive' : 'secondary'">
                   {{ (document as Record<string, unknown>).is_crime_related ? 'Yes' : 'No' }}
+                </Badge>
+              </dd>
+            </div>
+            <div
+              v-if="(document as Record<string, unknown>).topics && Array.isArray((document as Record<string, unknown>).topics) && ((document as Record<string, unknown>).topics as string[]).length > 0"
+              class="col-span-2"
+            >
+              <dt class="text-sm text-muted-foreground">
+                Topics
+              </dt>
+              <dd class="mt-1 flex flex-wrap gap-2">
+                <Badge
+                  v-for="topic in (document as Record<string, unknown>).topics as string[]"
+                  :key="topic"
+                  variant="secondary"
+                >
+                  {{ topic }}
                 </Badge>
               </dd>
             </div>

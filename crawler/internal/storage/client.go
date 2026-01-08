@@ -2,15 +2,16 @@
 package storage
 
 import (
-	"crypto/tls"
+	"context"
 	"errors"
 	"fmt"
-	"net/http"
 
 	es "github.com/elastic/go-elasticsearch/v8"
 	"github.com/jonesrussell/north-cloud/crawler/internal/config"
 	"github.com/jonesrussell/north-cloud/crawler/internal/config/elasticsearch"
 	"github.com/jonesrussell/north-cloud/crawler/internal/logger"
+	esclient "github.com/north-cloud/infrastructure/elasticsearch"
+	infralogger "github.com/north-cloud/infrastructure/logger"
 )
 
 // ClientParams contains dependencies for creating the Elasticsearch client
@@ -24,8 +25,10 @@ type ClientResult struct {
 	Client *es.Client
 }
 
-// NewClient creates a new Elasticsearch client
+// NewClient creates a new Elasticsearch client using the standardized infrastructure client
 func NewClient(p ClientParams) (ClientResult, error) {
+	ctx := context.Background()
+
 	// Get Elasticsearch config
 	esConfig := p.Config.GetElasticsearchConfig()
 	if esConfig == nil {
@@ -37,85 +40,57 @@ func NewClient(p ClientParams) (ClientResult, error) {
 		p.Logger.Debug("Connecting to Elasticsearch", "addresses", esConfig.Addresses)
 	}
 
-	// Create transport
-	transport := CreateTransport(esConfig)
-	clientConfig := CreateClientConfig(esConfig, transport)
+	// Get the first address (standardized client uses single URL)
+	url := elasticsearch.DefaultAddresses
+	if len(esConfig.Addresses) > 0 {
+		url = esConfig.Addresses[0]
+	}
 
-	// Create client
-	client, err := es.NewClient(*clientConfig)
+	// Create infrastructure logger adapter
+	var infLog infralogger.Logger
+	if p.Logger != nil {
+		// Create a basic logger for the standardized client
+		// The crawler's logger interface is different, so we'll create a new one
+		var err error
+		infLog, err = infralogger.New(infralogger.Config{
+			Level:  "info",
+			Format: "json",
+		})
+		if err != nil {
+			// Continue without logger if creation fails
+			infLog = nil
+		}
+	}
+
+	// Map crawler config to standardized config
+	esCfg := esclient.Config{
+		URL:         url,
+		Username:    esConfig.Username,
+		Password:    esConfig.Password,
+		APIKey:      esConfig.APIKey,
+		CloudID:     esConfig.Cloud.ID,
+		CloudAPIKey: esConfig.Cloud.APIKey,
+		MaxRetries:  esConfig.Retry.MaxRetries,
+	}
+
+	// Map TLS config if present
+	if esConfig.TLS != nil && esConfig.TLS.Enabled {
+		esCfg.TLS = &esclient.TLSConfig{
+			Enabled:            esConfig.TLS.Enabled,
+			InsecureSkipVerify: esConfig.TLS.InsecureSkipVerify,
+			CertFile:           esConfig.TLS.CertFile,
+			KeyFile:            esConfig.TLS.KeyFile,
+			CAFile:             esConfig.TLS.CAFile,
+		}
+	}
+
+	// Use standardized client with retry logic
+	client, err := esclient.NewClient(ctx, esCfg, infLog)
 	if err != nil {
 		return ClientResult{}, fmt.Errorf("failed to create Elasticsearch client: %w", err)
-	}
-
-	// Verify client connection
-	res, err := client.Ping()
-	if err != nil {
-		return ClientResult{}, fmt.Errorf("failed to ping Elasticsearch: %w", err)
-	}
-	defer res.Body.Close()
-
-	if res.IsError() {
-		return ClientResult{}, fmt.Errorf("error pinging Elasticsearch: %s", res.String())
 	}
 
 	return ClientResult{
 		Client: client,
 	}, nil
-}
-
-// CreateTransport creates an HTTP transport with TLS configuration.
-func CreateTransport(cfg *elasticsearch.Config) *http.Transport {
-	transport := &http.Transport{}
-
-	// Configure TLS if enabled
-	if cfg.TLS != nil && cfg.TLS.Enabled {
-		tlsConfig := &tls.Config{
-			//nolint:gosec // InsecureSkipVerify is configurable for development/testing environments
-			InsecureSkipVerify: cfg.TLS.InsecureSkipVerify,
-		}
-
-		// Load certificates if provided
-		if cfg.TLS.CertFile != "" && cfg.TLS.KeyFile != "" {
-			cert, err := tls.LoadX509KeyPair(cfg.TLS.CertFile, cfg.TLS.KeyFile)
-			if err == nil {
-				tlsConfig.Certificates = []tls.Certificate{cert}
-			}
-		}
-
-		// Load CA certificate if provided
-		// TODO: Implement CA certificate loading using crypto/x509
-		if cfg.TLS.CAFile != "" {
-			_ = cfg.TLS.CAFile // Placeholder for future CA certificate loading implementation
-		}
-
-		transport.TLSClientConfig = tlsConfig
-	}
-
-	return transport
-}
-
-// CreateClientConfig creates an Elasticsearch client configuration.
-func CreateClientConfig(cfg *elasticsearch.Config, transport *http.Transport) *es.Config {
-	clientConfig := es.Config{
-		Addresses: cfg.Addresses,
-		Transport: transport,
-	}
-
-	// Configure authentication
-	if cfg.APIKey != "" {
-		clientConfig.APIKey = cfg.APIKey
-	} else if cfg.Username != "" && cfg.Password != "" {
-		clientConfig.Username = cfg.Username
-		clientConfig.Password = cfg.Password
-	}
-
-	// Configure cloud settings if provided
-	if cfg.Cloud.ID != "" {
-		clientConfig.CloudID = cfg.Cloud.ID
-	}
-	if cfg.Cloud.APIKey != "" {
-		clientConfig.APIKey = cfg.Cloud.APIKey
-	}
-
-	return &clientConfig
 }

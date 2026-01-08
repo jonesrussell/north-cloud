@@ -2,7 +2,6 @@ package elasticsearch
 
 import (
 	"context"
-	"crypto/tls"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -13,6 +12,9 @@ import (
 
 	es "github.com/elastic/go-elasticsearch/v8"
 	"github.com/elastic/go-elasticsearch/v8/esapi"
+	esclient "github.com/north-cloud/infrastructure/elasticsearch"
+	"github.com/north-cloud/infrastructure/logger"
+	"github.com/north-cloud/infrastructure/retry"
 )
 
 const unknownStatus = "unknown"
@@ -32,51 +34,46 @@ type Config struct {
 	Timeout    time.Duration
 }
 
-// NewClient creates a new Elasticsearch client
+// NewClient creates a new Elasticsearch client using the standardized infrastructure client
 func NewClient(cfg *Config) (*Client, error) {
-	// Parse URL to get addresses
-	addresses := []string{cfg.URL}
-	if !strings.HasPrefix(cfg.URL, "http://") && !strings.HasPrefix(cfg.URL, "https://") {
-		addresses = []string{"http://" + cfg.URL}
+	ctx := context.Background()
+
+	// Create a logger for connection initialization
+	log, err := logger.New(logger.Config{
+		Level:  "info",
+		Format: "json",
+	})
+	if err != nil {
+		// If logger creation fails, continue without logging
+		log = nil
 	}
 
-	// Create transport
-	transport := &http.Transport{
-		TLSClientConfig: &tls.Config{
-			InsecureSkipVerify: false,
+	// Map index-manager config to standardized config
+	// Use extended retry config for index-manager as ES may need more time to recover indices
+	const (
+		indexManagerRetryMaxAttempts  = 10
+		indexManagerRetryInitialDelay = 3 * time.Second
+		indexManagerRetryMaxDelay     = 15 * time.Second
+		indexManagerRetryMultiplier   = 2.0
+	)
+	esCfg := esclient.Config{
+		URL:         cfg.URL,
+		Username:    cfg.Username,
+		Password:    cfg.Password,
+		MaxRetries:  cfg.MaxRetries,
+		PingTimeout: cfg.Timeout,
+		RetryConfig: &retry.Config{
+			MaxAttempts:  indexManagerRetryMaxAttempts,
+			InitialDelay: indexManagerRetryInitialDelay,
+			MaxDelay:     indexManagerRetryMaxDelay,
+			Multiplier:   indexManagerRetryMultiplier,
 		},
 	}
 
-	// Create client config
-	clientConfig := es.Config{
-		Addresses:  addresses,
-		Transport:  transport,
-		MaxRetries: cfg.MaxRetries,
-	}
-
-	// Configure authentication
-	if cfg.Username != "" && cfg.Password != "" {
-		clientConfig.Username = cfg.Username
-		clientConfig.Password = cfg.Password
-	}
-
-	// Create client
-	esClient, err := es.NewClient(clientConfig)
+	// Use standardized client with retry logic
+	esClient, err := esclient.NewClient(ctx, esCfg, log)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create Elasticsearch client: %w", err)
-	}
-
-	// Verify connection
-	res, err := esClient.Ping()
-	if err != nil {
-		return nil, fmt.Errorf("failed to ping Elasticsearch: %w", err)
-	}
-	defer func() {
-		_ = res.Body.Close()
-	}()
-
-	if res.IsError() {
-		return nil, fmt.Errorf("error pinging Elasticsearch: %s", res.String())
 	}
 
 	return &Client{

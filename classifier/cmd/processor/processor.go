@@ -9,13 +9,14 @@ import (
 	"syscall"
 	"time"
 
-	es "github.com/elastic/go-elasticsearch/v8"
 	"github.com/jmoiron/sqlx"
 	"github.com/jonesrussell/north-cloud/classifier/internal/classifier"
 	"github.com/jonesrussell/north-cloud/classifier/internal/database"
 	"github.com/jonesrussell/north-cloud/classifier/internal/domain"
 	"github.com/jonesrussell/north-cloud/classifier/internal/processor"
 	"github.com/jonesrussell/north-cloud/classifier/internal/storage"
+	esclient "github.com/north-cloud/infrastructure/elasticsearch"
+	"github.com/north-cloud/infrastructure/logger"
 )
 
 const (
@@ -63,20 +64,33 @@ func LoadConfig() *Config {
 	}
 }
 
-// setupElasticsearch creates and tests Elasticsearch connection
+// setupElasticsearch creates and tests Elasticsearch connection with retry logic
 func setupElasticsearch(cfg *Config) (*storage.ElasticsearchStorage, error) {
-	esCfg := es.Config{
-		Addresses: []string{cfg.ElasticsearchURL},
+	ctx := context.Background()
+
+	// Create a logger for ES connection
+	esLog, err := logger.New(logger.Config{
+		Level:  "info",
+		Format: "console",
+	})
+	if err != nil {
+		// Continue without logger if creation fails
+		esLog = nil
 	}
-	esClient, err := es.NewClient(esCfg)
+
+	// Use standardized client with retry logic
+	esCfg := esclient.Config{
+		URL: cfg.ElasticsearchURL,
+	}
+
+	esClient, err := esclient.NewClient(ctx, esCfg, esLog)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create Elasticsearch client: %w", err)
 	}
 
 	esStorage := storage.NewElasticsearchStorage(esClient)
-	ctx := context.Background()
 	if err = esStorage.TestConnection(ctx); err != nil {
-		return nil, fmt.Errorf("failed to connect to Elasticsearch: %w", err)
+		return nil, fmt.Errorf("failed to verify Elasticsearch connection: %w", err)
 	}
 	log.Println("Connected to Elasticsearch")
 	return esStorage, nil
@@ -155,7 +169,7 @@ func Start() error {
 	log.Printf("Batch Size: %d", cfg.BatchSize)
 	log.Printf("Concurrent Workers: %d", cfg.ConcurrentWorkers)
 
-	logger := storage.NewSimpleLogger("[Processor] ")
+	procLogger := storage.NewSimpleLogger("[Processor] ")
 
 	esStorage, err := setupElasticsearch(cfg)
 	if err != nil {
@@ -172,7 +186,7 @@ func Start() error {
 		}
 	}()
 
-	dbAdapter := storage.NewDatabaseAdapter(classificationHistoryRepo)
+	dbAdapter := storage.NewDatabaseAdapterWithLogger(classificationHistoryRepo, procLogger)
 
 	ctx := context.Background()
 	ruleValues, err := loadRules(ctx, rulesRepo)
@@ -181,10 +195,10 @@ func Start() error {
 	}
 
 	classifierConfig := createClassifierConfig()
-	clf := classifier.NewClassifier(logger, ruleValues, sourceRepRepo, classifierConfig)
+	clf := classifier.NewClassifier(procLogger, ruleValues, sourceRepRepo, classifierConfig)
 	log.Println("Classifier initialized")
 
-	batchProcessor := processor.NewBatchProcessor(clf, cfg.ConcurrentWorkers, logger)
+	batchProcessor := processor.NewBatchProcessor(clf, cfg.ConcurrentWorkers, procLogger)
 
 	pollerConfig := processor.PollerConfig{
 		BatchSize:    cfg.BatchSize,
@@ -194,7 +208,7 @@ func Start() error {
 		esStorage,
 		dbAdapter,
 		batchProcessor,
-		logger,
+		procLogger,
 		pollerConfig,
 	)
 
@@ -226,7 +240,7 @@ func StartWithStop() (func(), error) {
 	log.Printf("Batch Size: %d", cfg.BatchSize)
 	log.Printf("Concurrent Workers: %d", cfg.ConcurrentWorkers)
 
-	logger := storage.NewSimpleLogger("[Processor] ")
+	procLogger := storage.NewSimpleLogger("[Processor] ")
 
 	esStorage, err := setupElasticsearch(cfg)
 	if err != nil {
@@ -238,7 +252,7 @@ func StartWithStop() (func(), error) {
 		return nil, err
 	}
 
-	dbAdapter := storage.NewDatabaseAdapter(classificationHistoryRepo)
+	dbAdapter := storage.NewDatabaseAdapterWithLogger(classificationHistoryRepo, procLogger)
 
 	ctx := context.Background()
 	ruleValues, err := loadRules(ctx, rulesRepo)
@@ -248,10 +262,10 @@ func StartWithStop() (func(), error) {
 	}
 
 	classifierConfig := createClassifierConfig()
-	clf := classifier.NewClassifier(logger, ruleValues, sourceRepRepo, classifierConfig)
+	clf := classifier.NewClassifier(procLogger, ruleValues, sourceRepRepo, classifierConfig)
 	log.Println("Classifier initialized")
 
-	batchProcessor := processor.NewBatchProcessor(clf, cfg.ConcurrentWorkers, logger)
+	batchProcessor := processor.NewBatchProcessor(clf, cfg.ConcurrentWorkers, procLogger)
 
 	pollerConfig := processor.PollerConfig{
 		BatchSize:    cfg.BatchSize,
@@ -261,7 +275,7 @@ func StartWithStop() (func(), error) {
 		esStorage,
 		dbAdapter,
 		batchProcessor,
-		logger,
+		procLogger,
 		pollerConfig,
 	)
 

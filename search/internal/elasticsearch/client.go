@@ -5,12 +5,12 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"strings"
-	"time"
 
 	es "github.com/elastic/go-elasticsearch/v8"
 	"github.com/elastic/go-elasticsearch/v8/esapi"
 	"github.com/jonesrussell/north-cloud/search/internal/config"
+	esclient "github.com/north-cloud/infrastructure/elasticsearch"
+	"github.com/north-cloud/infrastructure/logger"
 )
 
 // Client wraps the Elasticsearch client
@@ -19,47 +19,39 @@ type Client struct {
 	config   *config.ElasticsearchConfig
 }
 
-// NewClient creates a new Elasticsearch client
+// NewClient creates a new Elasticsearch client using the standardized infrastructure client
 func NewClient(cfg *config.ElasticsearchConfig) (*Client, error) {
-	// Prepare addresses
-	addresses := []string{cfg.URL}
-	if !strings.HasPrefix(cfg.URL, "http://") && !strings.HasPrefix(cfg.URL, "https://") {
-		addresses = []string{"http://" + cfg.URL}
+	ctx := context.Background()
+
+	// Create a logger for connection initialization
+	log, err := logger.New(logger.Config{
+		Level:  "info",
+		Format: "json",
+	})
+	if err != nil {
+		// If logger creation fails, continue without logging
+		log = nil
 	}
 
-	// Configure client
-	clientConfig := es.Config{
-		Addresses:  addresses,
-		MaxRetries: cfg.MaxRetries,
+	// Map search-service config to standardized config
+	esCfg := esclient.Config{
+		URL:         cfg.URL,
+		Username:    cfg.Username,
+		Password:    cfg.Password,
+		MaxRetries:  cfg.MaxRetries,
+		PingTimeout: cfg.Timeout,
 	}
 
-	// Add authentication if provided
-	if cfg.Username != "" {
-		clientConfig.Username = cfg.Username
-		clientConfig.Password = cfg.Password
-	}
-
-	// Create client
-	esClient, err := es.NewClient(clientConfig)
+	// Use standardized client with retry logic
+	esClient, err := esclient.NewClient(ctx, esCfg, log)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create elasticsearch client: %w", err)
 	}
 
-	client := &Client{
+	return &Client{
 		esClient: esClient,
 		config:   cfg,
-	}
-
-	// Verify connection
-	const pingTimeoutSeconds = 5
-	ctx, cancel := context.WithTimeout(context.Background(), pingTimeoutSeconds*time.Second)
-	defer cancel()
-
-	if pingErr := client.Ping(ctx); pingErr != nil {
-		return nil, fmt.Errorf("failed to ping elasticsearch: %w", pingErr)
-	}
-
-	return client, nil
+	}, nil
 }
 
 // Ping verifies the Elasticsearch connection

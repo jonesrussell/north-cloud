@@ -3,6 +3,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ArrowLeft, Loader2, Search, FileText } from 'lucide-vue-next'
 import { indexManagerApi } from '@/api/client'
+import type { GetIndexResponse } from '@/types/indexManager'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
@@ -15,6 +16,8 @@ interface Document {
   quality_score?: number
   content_type?: string
   created_at?: string
+  published_date?: string
+  crawled_at?: string
 }
 
 const route = useRoute()
@@ -24,10 +27,16 @@ const indexName = computed(() => route.params.index_name as string)
 
 const loading = ref(true)
 const error = ref<string | null>(null)
-const indexInfo = ref<Record<string, unknown> | null>(null)
+const indexInfo = ref<GetIndexResponse | null>(null)
 const documents = ref<Document[]>([])
 const searchQuery = ref('')
 const loadingDocs = ref(false)
+
+// Pagination state
+const currentPage = ref(1)
+const pageSize = ref(20)
+const totalHits = ref(0)
+const totalPages = ref(0)
 
 const loadIndex = async () => {
   try {
@@ -46,9 +55,11 @@ const loadDocuments = async () => {
     loadingDocs.value = true
     const response = await indexManagerApi.documents.query(indexName.value, {
       query: searchQuery.value || undefined,
-      pagination: { page: 1, size: 20 },
+      pagination: { page: currentPage.value, size: pageSize.value },
     })
     documents.value = response.data?.documents || []
+    totalHits.value = response.data?.total_hits || 0
+    totalPages.value = response.data?.total_pages || 0
   } catch (err) {
     console.error('Error loading documents:', err)
   } finally {
@@ -56,11 +67,71 @@ const loadDocuments = async () => {
   }
 }
 
+const previousPage = () => {
+  if (currentPage.value > 1) {
+    currentPage.value--
+    loadDocuments()
+  }
+}
+
+const nextPage = () => {
+  if (currentPage.value < totalPages.value) {
+    currentPage.value++
+    loadDocuments()
+  }
+}
+
+const goToPage = (page: number) => {
+  currentPage.value = page
+  loadDocuments()
+}
+
+const onPageSizeChange = () => {
+  currentPage.value = 1
+  loadDocuments()
+}
+
+// Reset to page 1 when search query changes
+const handleSearch = () => {
+  currentPage.value = 1
+  loadDocuments()
+}
+
 const viewDocument = (docId: string) => {
   router.push(`/intelligence/indexes/${indexName.value}/documents/${docId}`)
 }
 
-const formatDate = (date: string) => date ? new Date(date).toLocaleDateString() : 'N/A'
+const formatDate = (date: string) => {
+  if (!date) return 'N/A'
+  try {
+    return new Date(date).toLocaleDateString()
+  } catch {
+    return 'N/A'
+  }
+}
+
+const formatDateTime = (date: string) => {
+  if (!date) return 'N/A'
+  try {
+    return new Date(date).toLocaleString()
+  } catch {
+    return 'N/A'
+  }
+}
+
+const getHealthVariant = (health: string | undefined) => {
+  if (!health) return 'pending'
+  switch (health.toLowerCase()) {
+    case 'green':
+      return 'success'
+    case 'yellow':
+      return 'warning'
+    case 'red':
+      return 'destructive'
+    default:
+      return 'pending'
+  }
+}
 
 onMounted(() => {
   loadIndex()
@@ -119,7 +190,7 @@ onMounted(() => {
                 Documents
               </dt>
               <dd class="text-2xl font-bold">
-                {{ ((indexInfo as Record<string, unknown>)?.docs_count as number || 0).toLocaleString() }}
+                {{ totalHits.toLocaleString() }}
               </dd>
             </div>
             <div>
@@ -127,7 +198,7 @@ onMounted(() => {
                 Size
               </dt>
               <dd class="text-2xl font-bold">
-                {{ (indexInfo as Record<string, unknown>)?.size || 'N/A' }}
+                {{ indexInfo?.size || 'N/A' }}
               </dd>
             </div>
             <div>
@@ -135,8 +206,8 @@ onMounted(() => {
                 Health
               </dt>
               <dd>
-                <Badge variant="success">
-                  {{ (indexInfo as Record<string, unknown>)?.health || 'unknown' }}
+                <Badge :variant="getHealthVariant(indexInfo?.health)">
+                  {{ indexInfo?.health || 'unknown' }}
                 </Badge>
               </dd>
             </div>
@@ -145,7 +216,7 @@ onMounted(() => {
                 Type
               </dt>
               <dd class="text-lg font-medium">
-                {{ (indexInfo as Record<string, unknown>)?.type || 'content' }}
+                {{ indexInfo?.type || 'content' }}
               </dd>
             </div>
           </dl>
@@ -165,11 +236,11 @@ onMounted(() => {
                 v-model="searchQuery" 
                 placeholder="Search documents..." 
                 class="w-64"
-                @keyup.enter="loadDocuments"
+                @keyup.enter="handleSearch"
               />
               <Button
                 variant="outline"
-                @click="loadDocuments"
+                @click="handleSearch"
               >
                 <Search class="h-4 w-4" />
               </Button>
@@ -206,7 +277,10 @@ onMounted(() => {
                   Quality
                 </th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
-                  Date
+                  Created
+                </th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
+                  Published
                 </th>
               </tr>
             </thead>
@@ -238,11 +312,111 @@ onMounted(() => {
                   >—</span>
                 </td>
                 <td class="px-6 py-4 text-sm text-muted-foreground">
-                  {{ formatDate(doc.created_at || '') }}
+                  {{ formatDateTime(doc.created_at || doc.crawled_at || '') }}
+                </td>
+                <td class="px-6 py-4 text-sm text-muted-foreground">
+                  {{ formatDate(doc.published_date || '') }}
                 </td>
               </tr>
             </tbody>
           </table>
+          
+          <!-- Pagination -->
+          <div
+            v-if="totalPages > 1"
+            class="px-6 py-4 border-t flex items-center justify-between"
+          >
+            <div class="flex-1 flex justify-between sm:hidden">
+              <Button
+                variant="outline"
+                :disabled="currentPage === 1"
+                @click="previousPage"
+              >
+                Previous
+              </Button>
+              <Button
+                variant="outline"
+                :disabled="currentPage >= totalPages"
+                @click="nextPage"
+              >
+                Next
+              </Button>
+            </div>
+            <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+              <div>
+                <p class="text-sm text-muted-foreground">
+                  Showing
+                  <span class="font-medium">{{ ((currentPage - 1) * pageSize) + 1 }}</span>
+                  to
+                  <span class="font-medium">{{ Math.min(currentPage * pageSize, totalHits) }}</span>
+                  of
+                  <span class="font-medium">{{ totalHits }}</span>
+                  results
+                </p>
+              </div>
+              <div class="flex items-center gap-2">
+                <select
+                  v-model="pageSize"
+                  class="px-3 py-1.5 border border-input rounded-md text-sm bg-background"
+                  @change="onPageSizeChange"
+                >
+                  <option :value="10">
+                    10 per page
+                  </option>
+                  <option :value="20">
+                    20 per page
+                  </option>
+                  <option :value="50">
+                    50 per page
+                  </option>
+                  <option :value="100">
+                    100 per page
+                  </option>
+                </select>
+                <nav
+                  class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px"
+                  aria-label="Pagination"
+                >
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    :disabled="currentPage === 1"
+                    class="rounded-r-none"
+                    @click="goToPage(1)"
+                  >
+                    First
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    :disabled="currentPage === 1"
+                    class="rounded-none border-l-0"
+                    @click="previousPage"
+                  >
+                    Previous
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    :disabled="currentPage >= totalPages"
+                    class="rounded-none border-l-0"
+                    @click="nextPage"
+                  >
+                    Next
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    :disabled="currentPage >= totalPages"
+                    class="rounded-l-none border-l-0"
+                    @click="goToPage(totalPages)"
+                  >
+                    Last
+                  </Button>
+                </nav>
+              </div>
+            </div>
+          </div>
         </CardContent>
       </Card>
     </template>
