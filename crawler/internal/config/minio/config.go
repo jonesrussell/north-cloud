@@ -57,7 +57,6 @@ func NewConfig() *Config {
 	}
 }
 
-
 // Validate validates the MinIO configuration.
 func (c *Config) Validate() error {
 	if !c.Enabled {

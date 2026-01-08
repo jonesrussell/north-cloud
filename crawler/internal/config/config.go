@@ -79,10 +79,10 @@ func Load(path string) (*Config, error) {
 	if err != nil {
 		return nil, err
 	}
-	
+
 	// Apply backward compatibility fixes after env overrides
 	applyBackwardCompatibility(cfg)
-	
+
 	return cfg, nil
 }
 
@@ -96,7 +96,7 @@ func applyBackwardCompatibility(cfg *Config) {
 				cfg.Elasticsearch.Addresses = elasticsearch.ParseAddressesFromString(hostsEnv)
 			}
 		}
-		
+
 		// Support ELASTICSEARCH_INDEX_PREFIX as fallback for ELASTICSEARCH_INDEX_NAME
 		if cfg.Elasticsearch.IndexName == "" {
 			if indexPrefix := os.Getenv("ELASTICSEARCH_INDEX_PREFIX"); indexPrefix != "" {

@@ -238,4 +238,3 @@ func (c *TLSConfig) Validate() error {
 	}
 	return nil
 }
-

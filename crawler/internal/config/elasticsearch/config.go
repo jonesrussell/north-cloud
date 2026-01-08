@@ -285,9 +285,9 @@ func NewConfig() *Config {
 			Enabled:            true,
 			InsecureSkipVerify: false,
 		},
-		MaxSize:     DefaultMaxSize,
-		MaxItems:    DefaultMaxItems,
-		Compression: true,
+		MaxSize:       DefaultMaxSize,
+		MaxItems:      DefaultMaxItems,
+		Compression:   true,
 		DiscoverNodes: DefaultDiscoverNodes,
 	}
 }

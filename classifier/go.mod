@@ -32,6 +32,7 @@ require (
 	github.com/golang-jwt/jwt/v5 v5.3.0 // indirect
 	github.com/grafana/pyroscope-go v1.2.0 // indirect
 	github.com/grafana/pyroscope-go/godeltaprof v0.1.8 // indirect
+	github.com/joho/godotenv v1.5.1 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/klauspost/compress v1.17.8 // indirect
 	github.com/klauspost/cpuid/v2 v2.3.0 // indirect
