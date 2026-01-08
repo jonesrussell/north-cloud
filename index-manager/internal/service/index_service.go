@@ -228,7 +228,7 @@ func (s *IndexService) ListIndices(ctx context.Context, indexType, sourceName st
 		return nil, fmt.Errorf("failed to list indices: %w", err)
 	}
 
-	var result []*domain.Index
+	result := make([]*domain.Index, 0, len(indices))
 	for _, indexName := range indices {
 		info, infoErr := s.esClient.GetIndexInfo(ctx, indexName)
 		if infoErr != nil {
@@ -287,7 +287,7 @@ func (s *IndexService) CreateIndexesForSource(ctx context.Context, sourceName st
 		indexTypes = []domain.IndexType{domain.IndexTypeRawContent, domain.IndexTypeClassifiedContent}
 	}
 
-	var results []*domain.Index
+	results := make([]*domain.Index, 0, len(indexTypes))
 	for _, indexType := range indexTypes {
 		req := &domain.CreateIndexRequest{
 			IndexType:  indexType,

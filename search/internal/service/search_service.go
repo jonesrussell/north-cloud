@@ -84,7 +84,7 @@ func (s *SearchService) Search(ctx context.Context, req *domain.SearchRequest) (
 }
 
 // executeSearch performs the Elasticsearch search request
-func (s *SearchService) executeSearch(ctx context.Context, query map[string]interface{}) (*esapi.Response, error) {
+func (s *SearchService) executeSearch(ctx context.Context, query map[string]any) (*esapi.Response, error) {
 	// Marshal query to JSON
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(query); err != nil {
@@ -121,8 +121,8 @@ func (s *SearchService) executeSearch(ctx context.Context, query map[string]inte
 
 // aggregationBucket represents a single bucket in an aggregation
 type aggregationBucket struct {
-	Key      interface{} `json:"key"`
-	DocCount int64       `json:"doc_count"`
+	Key      any   `json:"key"`
+	DocCount int64 `json:"doc_count"`
 }
 
 // aggregation represents an aggregation with buckets

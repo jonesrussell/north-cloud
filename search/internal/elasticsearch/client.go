@@ -73,7 +73,7 @@ func (c *Client) Ping(ctx context.Context) error {
 }
 
 // Search executes a search query
-func (c *Client) Search(ctx context.Context, indexPattern string, query map[string]interface{}) (*esapi.Response, error) {
+func (c *Client) Search(ctx context.Context, indexPattern string, query map[string]any) (*esapi.Response, error) {
 	// Execute search
 	res, err := c.esClient.Search(
 		c.esClient.Search.WithContext(ctx),
@@ -147,7 +147,7 @@ func (c *Client) HealthCheck(ctx context.Context) error {
 }
 
 // buildRequestBody creates an io.Reader from the query map
-func (c *Client) buildRequestBody(_ map[string]interface{}) io.Reader {
+func (c *Client) buildRequestBody(_ map[string]any) io.Reader {
 	// This would typically use json.Marshal, but for simplicity we'll use strings.NewReader
 	// The actual implementation is in the QueryBuilder
 	return nil // Placeholder - actual implementation in search service
