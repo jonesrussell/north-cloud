@@ -10,6 +10,12 @@ import (
 )
 
 const (
+	// maxURLLength is the maximum reasonable URL length (2048 chars is common browser limit)
+	// URLs longer than this will be truncated with a warning log
+	maxURLLength = 2048
+)
+
+const (
 	// Default poll interval
 	defaultPollIntervalSeconds = 30
 )
@@ -230,6 +236,32 @@ func (p *Poller) indexResults(ctx context.Context, results []*ProcessResult) err
 	return nil
 }
 
+// validateURL validates and optionally truncates URLs to a reasonable length
+// This is defensive programming - the database column is now TEXT, but we want
+// to log warnings for extremely long URLs and prevent potential issues
+func (p *Poller) validateURL(url string) string {
+	if len(url) <= maxURLLength {
+		return url
+	}
+
+	// Truncate URL and log warning
+	truncated := url[:maxURLLength]
+	p.logger.Warn("URL truncated for classification history",
+		"original_length", len(url),
+		"truncated_length", maxURLLength,
+		"url_preview", url[:min(100, len(url))],
+	)
+	return truncated
+}
+
+// min returns the minimum of two integers
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
+
 // saveHistory saves classification results to database for ML training
 func (p *Poller) saveHistory(ctx context.Context, results []*ProcessResult) error {
 	var histories []*domain.ClassificationHistory
@@ -241,7 +273,7 @@ func (p *Poller) saveHistory(ctx context.Context, results []*ProcessResult) erro
 
 		history := &domain.ClassificationHistory{
 			ContentID:             result.Raw.ID,
-			ContentURL:            result.Raw.URL,
+			ContentURL:            p.validateURL(result.Raw.URL),
 			SourceName:            result.Raw.SourceName,
 			ContentType:           result.ClassificationResult.ContentType,
 			ContentSubtype:        result.ClassificationResult.ContentSubtype,
