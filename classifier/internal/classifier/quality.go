@@ -20,6 +20,7 @@ const (
 	readabilityScore200     = 20 // 80% of max (20/25)
 	readabilityScore100     = 15 // 60% of max
 	readabilityScoreDefault = 10 // 40% of max
+	qualityFactorCount      = 4  // Number of quality factors: word_count, metadata_completeness, content_richness, readability
 	// Default quality config constants
 	defaultQualityWeight025     = 0.25
 	defaultMinWordCount100      = 100
@@ -73,7 +74,7 @@ func NewQualityScorerWithConfig(logger Logger, config QualityConfig) *QualitySco
 
 // Score calculates the quality score for the given content
 func (q *QualityScorer) Score(ctx context.Context, raw *domain.RawContent) (*QualityResult, error) {
-	factors := make(map[string]any, 4) // Pre-allocate for 4 known keys: word_count, metadata_completeness, content_richness, readability
+	factors := make(map[string]any, qualityFactorCount)
 
 	// 1. Word count scoring (0-25 points)
 	wordCountScore := q.calculateWordCountScore(raw.WordCount)

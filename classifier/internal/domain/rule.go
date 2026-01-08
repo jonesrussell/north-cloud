@@ -59,20 +59,20 @@ type ClassificationHistory struct {
 
 // MLModel represents metadata about ML models
 type MLModel struct {
-	ID              int                    `db:"id"              json:"id"`
-	ModelName       string                 `db:"model_name"      json:"model_name"`
-	ModelVersion    string                 `db:"model_version"   json:"model_version"`
-	ModelType       string                 `db:"model_type"      json:"model_type"` // "content_type", "topic", "quality"
-	Accuracy        float64                `db:"accuracy"        json:"accuracy,omitempty"`
-	F1Score         float64                `db:"f1_score"        json:"f1_score,omitempty"`
-	PrecisionScore  float64                `db:"precision_score" json:"precision_score,omitempty"`
-	RecallScore     float64                `db:"recall_score"    json:"recall_score,omitempty"`
-	TrainedAt       *time.Time             `db:"trained_at"      json:"trained_at,omitempty"`
-	FeatureSet      []string               `db:"feature_set"     json:"feature_set,omitempty"`
+	ID              int            `db:"id"              json:"id"`
+	ModelName       string         `db:"model_name"      json:"model_name"`
+	ModelVersion    string         `db:"model_version"   json:"model_version"`
+	ModelType       string         `db:"model_type"      json:"model_type"` // "content_type", "topic", "quality"
+	Accuracy        float64        `db:"accuracy"        json:"accuracy,omitempty"`
+	F1Score         float64        `db:"f1_score"        json:"f1_score,omitempty"`
+	PrecisionScore  float64        `db:"precision_score" json:"precision_score,omitempty"`
+	RecallScore     float64        `db:"recall_score"    json:"recall_score,omitempty"`
+	TrainedAt       *time.Time     `db:"trained_at"      json:"trained_at,omitempty"`
+	FeatureSet      []string       `db:"feature_set"     json:"feature_set,omitempty"`
 	Hyperparameters map[string]any `db:"hyperparameters" json:"hyperparameters,omitempty"`
-	ModelPath       string                 `db:"model_path"      json:"model_path,omitempty"`
-	IsActive        bool                   `db:"is_active"       json:"is_active"`
-	Enabled         bool                   `db:"enabled"         json:"enabled"`
-	CreatedAt       time.Time              `db:"created_at"      json:"created_at"`
-	UpdatedAt       time.Time              `db:"updated_at"      json:"updated_at"`
+	ModelPath       string         `db:"model_path"      json:"model_path,omitempty"`
+	IsActive        bool           `db:"is_active"       json:"is_active"`
+	Enabled         bool           `db:"enabled"         json:"enabled"`
+	CreatedAt       time.Time      `db:"created_at"      json:"created_at"`
+	UpdatedAt       time.Time      `db:"updated_at"      json:"updated_at"`
 }

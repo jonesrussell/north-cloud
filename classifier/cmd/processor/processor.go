@@ -97,7 +97,13 @@ func setupElasticsearch(cfg *Config) (*storage.ElasticsearchStorage, error) {
 }
 
 // setupDatabase creates PostgreSQL connection and repositories
-func setupDatabase(cfg *Config) (*sqlx.DB, *database.RulesRepository, *database.SourceReputationRepository, *database.ClassificationHistoryRepository, error) {
+func setupDatabase(cfg *Config) (
+	*sqlx.DB,
+	*database.RulesRepository,
+	*database.SourceReputationRepository,
+	*database.ClassificationHistoryRepository,
+	error,
+) {
 	dbConfig := database.Config{
 		Host:     cfg.PostgresHost,
 		Port:     cfg.PostgresPort,

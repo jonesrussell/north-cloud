@@ -222,11 +222,12 @@ func setupTestEnvironment() (*mockESClient, *mockDBClient, *mockLogger) {
 	esClient.rawContent = []*domain.RawContent{
 		{
 			ID:                   "test-1",
-			URL:                  "https://example.com/article1",
-			SourceName:           "example.com",
-			Title:                "Police arrest suspect in downtown incident",
-			RawText:              "Local police arrested a suspect yesterday following an incident in downtown. The individual was charged with multiple offenses.",
-			OGType:               "article",
+			URL:        "https://example.com/article1",
+			SourceName: "example.com",
+			Title:      "Police arrest suspect in downtown incident",
+			RawText: "Local police arrested a suspect yesterday following an incident in downtown. " +
+				"The individual was charged with multiple offenses.",
+			OGType: "article",
 			MetaDescription:      "Local crime news",
 			PublishedDate:        &publishedDate,
 			ClassificationStatus: domain.StatusPending,
@@ -251,6 +252,7 @@ func setupTestEnvironment() (*mockESClient, *mockDBClient, *mockLogger) {
 
 // verifyCrimeArticle verifies crime article classification results
 func verifyCrimeArticle(t *testing.T, crimeArticle *domain.ClassifiedContent) {
+	t.Helper()
 	if crimeArticle.ContentType != domain.ContentTypeArticle {
 		t.Errorf("expected content_type article, got %s", crimeArticle.ContentType)
 	}
@@ -271,6 +273,7 @@ func verifyCrimeArticle(t *testing.T, crimeArticle *domain.ClassifiedContent) {
 
 // verifySportsArticle verifies sports article classification results
 func verifySportsArticle(t *testing.T, sportsArticle *domain.ClassifiedContent) {
+	t.Helper()
 	for _, topic := range sportsArticle.Topics {
 		if topic == "crime" {
 			t.Error("expected sports article NOT to have 'crime' in topics array")
@@ -281,6 +284,7 @@ func verifySportsArticle(t *testing.T, sportsArticle *domain.ClassifiedContent) 
 
 // verifyStatusUpdates verifies that status updates were applied
 func verifyStatusUpdates(t *testing.T, esClient *mockESClient) {
+	t.Helper()
 	if status, ok := esClient.statusUpdates["test-1"]; !ok || status != domain.StatusClassified {
 		t.Errorf("expected test-1 status to be classified, got %s", status)
 	}
