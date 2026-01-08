@@ -72,7 +72,7 @@ func (s *DBScheduler) Start(ctx context.Context) error {
 	s.logger.Info("Cron scheduler started")
 
 	// Load initial jobs
-	if err := s.reloadJobs(); err != nil {
+	if err := s.reloadJobs(ctx); err != nil {
 		s.logger.Error("Failed to load initial jobs", "error", err)
 	}
 
@@ -83,7 +83,7 @@ func (s *DBScheduler) Start(ctx context.Context) error {
 	s.logger.Info("Scheduled jobs loaded", "count", scheduledCount)
 
 	// Process any immediate jobs that are already pending
-	s.processPendingImmediateJobs()
+	s.processPendingImmediateJobs(ctx)
 
 	// Start immediate job processor
 	s.wg.Add(1)

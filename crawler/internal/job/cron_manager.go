@@ -1,6 +1,7 @@
 package job
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"time"
@@ -9,11 +10,11 @@ import (
 )
 
 // reloadJobs reloads all jobs from the database and updates schedules.
-func (s *DBScheduler) reloadJobs() error {
+func (s *DBScheduler) reloadJobs(ctx context.Context) error {
 	s.logger.Info("Reloading jobs from database")
 
 	// Get all jobs
-	jobs, err := s.repo.List(s.ctx, "", maxJobsListLimit, 0)
+	jobs, err := s.repo.List(ctx, "", maxJobsListLimit, 0)
 	if err != nil {
 		return fmt.Errorf("failed to list jobs: %w", err)
 	}
@@ -138,7 +139,8 @@ func (s *DBScheduler) scheduleJob(job *domain.Job) error {
 			"job_id", jobID,
 			"schedule", scheduleTime,
 			"triggered_at", triggerTime.Format("2006-01-02 15:04:05"))
-		s.executeJob(jobID)
+		// Use scheduler's lifecycle context for cron-triggered jobs
+		s.executeJob(s.ctx, jobID)
 	})
 
 	if err != nil {
@@ -185,8 +187,8 @@ func (s *DBScheduler) scheduleJob(job *domain.Job) error {
 }
 
 // processPendingImmediateJobs processes any immediate jobs that are already pending.
-func (s *DBScheduler) processPendingImmediateJobs() {
-	jobs, err := s.repo.List(s.ctx, "pending", pendingJobsListLimit, 0)
+func (s *DBScheduler) processPendingImmediateJobs(ctx context.Context) {
+	jobs, err := s.repo.List(ctx, "pending", pendingJobsListLimit, 0)
 	if err != nil {
 		s.logger.Error("Failed to list pending jobs on startup", "error", err)
 		return
@@ -197,7 +199,7 @@ func (s *DBScheduler) processPendingImmediateJobs() {
 		if !job.ScheduleEnabled {
 			immediateCount++
 			s.logger.Info("Processing pending immediate job on startup", "job_id", job.ID, "url", job.URL)
-			s.executeJob(job.ID)
+			s.executeJob(ctx, job.ID)
 		}
 	}
 	if immediateCount > 0 {
@@ -209,18 +211,19 @@ func (s *DBScheduler) processPendingImmediateJobs() {
 func (s *DBScheduler) processImmediateJobs() {
 	defer s.wg.Done()
 
+	ctx := s.ctx // Use scheduler's lifecycle context for goroutine
 	s.logger.Info("Starting immediate job processor", "check_interval", checkInterval)
 	ticker := time.NewTicker(checkInterval)
 	defer ticker.Stop()
 
 	for {
 		select {
-		case <-s.ctx.Done():
+		case <-ctx.Done():
 			s.logger.Info("Immediate job processor stopped")
 			return
 		case <-ticker.C:
 			// Get pending jobs with schedule_enabled: false
-			jobs, err := s.repo.List(s.ctx, "pending", pendingJobsListLimit, 0)
+			jobs, err := s.repo.List(ctx, "pending", pendingJobsListLimit, 0)
 			if err != nil {
 				s.logger.Error("Failed to list pending jobs", "error", err)
 				continue
@@ -232,7 +235,7 @@ func (s *DBScheduler) processImmediateJobs() {
 				if !job.ScheduleEnabled {
 					immediateCount++
 					s.logger.Info("Found immediate job", "job_id", job.ID, "url", job.URL)
-					s.executeJob(job.ID)
+					s.executeJob(ctx, job.ID)
 				}
 			}
 			if immediateCount > 0 {
@@ -246,16 +249,17 @@ func (s *DBScheduler) processImmediateJobs() {
 func (s *DBScheduler) periodicReload() {
 	defer s.wg.Done()
 
+	ctx := s.ctx // Use scheduler's lifecycle context for goroutine
 	ticker := time.NewTicker(reloadInterval)
 	defer ticker.Stop()
 
 	for {
 		select {
-		case <-s.ctx.Done():
+		case <-ctx.Done():
 			s.logger.Info("Periodic reload stopped")
 			return
 		case <-ticker.C:
-			if err := s.reloadJobs(); err != nil {
+			if err := s.reloadJobs(ctx); err != nil {
 				s.logger.Error("Failed to reload jobs", "error", err)
 			}
 		}
