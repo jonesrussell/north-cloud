@@ -19,7 +19,7 @@ func NewIndexManager(client *Client) *IndexManager {
 }
 
 // CreateIndexWithType creates an index with a specific type and mapping
-func (m *IndexManager) CreateIndexWithType(ctx context.Context, indexName, indexType string, mapping interface{}) error {
+func (m *IndexManager) CreateIndexWithType(ctx context.Context, indexName, indexType string, mapping any) error {
 	return m.client.EnsureIndex(ctx, indexName, mapping)
 }
 
