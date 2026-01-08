@@ -352,8 +352,8 @@ func TestClassifyBatch_Success(t *testing.T) {
 	}
 
 	var response BatchClassifyResponse
-	if err := json.Unmarshal(w.Body.Bytes(), &response); err != nil {
-		t.Fatalf("failed to unmarshal response: %v", err)
+	if unmarshalErr := json.Unmarshal(w.Body.Bytes(), &response); unmarshalErr != nil {
+		t.Fatalf("failed to unmarshal response: %v", unmarshalErr)
 	}
 
 	if response.Total != 2 {
