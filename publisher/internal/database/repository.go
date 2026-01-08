@@ -366,20 +366,6 @@ func (r *Repository) DeleteChannel(ctx context.Context, id uuid.UUID) error {
 	return nil
 }
 
-// Helper function to join strings
-func joinStrings(strs []string, sep string) string {
-	if len(strs) == 0 {
-		return ""
-	}
-	var result strings.Builder
-	result.WriteString(strs[0])
-	for i := 1; i < len(strs); i++ {
-		result.WriteString(sep)
-		result.WriteString(strs[i])
-	}
-	return result.String()
-}
-
 // buildUpdateQuery builds a dynamic UPDATE query with the given fields
 // Returns the query string and args slice, or error if no fields to update
 func buildUpdateQuery(table string, id uuid.UUID, updates map[string]any, returningFields string) (query string, args []any, err error) {
@@ -411,7 +397,7 @@ func buildUpdateQuery(table string, id uuid.UUID, updates map[string]any, return
 		SET %s
 		WHERE id = $%d
 		RETURNING %s
-	`, table, joinStrings(updateFields, ", "), argPos, returningFields)
+	`, table, strings.Join(updateFields, ", "), argPos, returningFields)
 
 	return query, args, nil
 }

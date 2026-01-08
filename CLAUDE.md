@@ -751,6 +751,19 @@ north-cloud/
   - Use integer range syntax (`for i := range n`) when possible (Go 1.22+)
   - Avoid copying large structs in loops: use pointers or indexing (`for i := range items { item := &items[i] }`)
   - Use compound assignment operators (`/=`, `*=`, etc.) instead of `x = x / y`
+  - Pre-allocate maps with size hints when the number of keys is known: `make(map[K]V, size)`
+- **Database Operations**:
+  - Always use context-aware methods: `PingContext()`, `QueryContext()`, `ExecContext()` instead of non-context versions
+  - Set timeouts for database operations using `context.WithTimeout()`
+  - Follow consistent connection initialization patterns across all services
+- **String Operations**:
+  - Prefer standard library functions: use `strings.Join()` instead of custom implementations
+  - Use `strings.Builder` for complex string concatenation in loops
+  - Avoid reimplementing standard library string functions
+- **Memory Efficiency**:
+  - Pre-allocate slices with known capacity: `make([]Type, 0, capacity)`
+  - Pre-allocate maps with known size: `make(map[K]V, size)`
+  - Review and optimize allocations in hot paths using profiling tools
 - **Magic Numbers**: **NEVER use magic numbers** - always define named constants for numeric literals
   - Define constants at the top of the file or in a constants section
   - Use descriptive names that explain the purpose (e.g., `maxURLLength = 2048`, `urlPreviewLength = 100`)

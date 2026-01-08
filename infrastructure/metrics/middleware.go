@@ -96,11 +96,11 @@ func (m *Metrics) GetActiveRequests() int64 {
 }
 
 // GetAllMetrics returns all metrics as a map
-func (m *Metrics) GetAllMetrics() map[string]interface{} {
+func (m *Metrics) GetAllMetrics() map[string]any {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
-	result := make(map[string]interface{})
+	result := make(map[string]any)
 	result["active_requests"] = m.activeRequests
 
 	counts := make(map[string]int64)

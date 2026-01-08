@@ -113,7 +113,7 @@ func (c *Checker) HTTPHandler() http.HandlerFunc {
 
 		status, results := c.Check(ctx)
 
-		response := map[string]interface{}{
+		response := map[string]any{
 			"status":  status,
 			"checks":  results,
 			"timestamp": time.Now().Format(time.RFC3339),

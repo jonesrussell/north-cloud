@@ -17,7 +17,7 @@ type Document struct {
 	Body           string                 `json:"body,omitempty"`
 	RawText        string                 `json:"raw_text,omitempty"`
 	RawHTML        string                 `json:"raw_html,omitempty"`
-	Meta           map[string]interface{} `json:"meta,omitempty"`
+	Meta           map[string]any `json:"meta,omitempty"`
 }
 
 // DocumentQueryRequest represents a request to query documents

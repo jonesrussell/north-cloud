@@ -38,7 +38,7 @@ type CreateIndexRequest struct {
 	IndexName  string                 `json:"index_name" binding:"required"`
 	IndexType  IndexType              `json:"index_type" binding:"required"`
 	SourceName string                 `json:"source_name,omitempty"`
-	Mapping    map[string]interface{} `json:"mapping,omitempty"`
+	Mapping    map[string]any `json:"mapping,omitempty"`
 }
 
 // BulkCreateIndexRequest represents a request to create multiple indexes

@@ -23,10 +23,10 @@ type IndexService struct {
 
 // Logger interface for logging
 type Logger interface {
-	Info(msg string, keysAndValues ...interface{})
-	Error(msg string, keysAndValues ...interface{})
-	Warn(msg string, keysAndValues ...interface{})
-	Debug(msg string, keysAndValues ...interface{})
+	Info(msg string, keysAndValues ...any)
+	Error(msg string, keysAndValues ...any)
+	Warn(msg string, keysAndValues ...any)
+	Debug(msg string, keysAndValues ...any)
 }
 
 // NewIndexService creates a new index service
@@ -92,7 +92,7 @@ func (s *IndexService) CreateIndex(ctx context.Context, req *domain.CreateIndexR
 	}
 
 	// Get mapping
-	var mapping map[string]interface{}
+	var mapping map[string]any
 	var err error
 	if req.Mapping != nil {
 		mapping = req.Mapping

@@ -204,10 +204,10 @@ func (s *DocumentService) BulkDeleteDocuments(ctx context.Context, indexName str
 // mapToDocument converts Elasticsearch source map to domain Document
 //
 //nolint:gocognit // Complex mapping with many field extractions
-func (s *DocumentService) mapToDocument(id string, source map[string]interface{}) *domain.Document {
+func (s *DocumentService) mapToDocument(id string, source map[string]any) *domain.Document {
 	doc := &domain.Document{
 		ID:   id,
-		Meta: make(map[string]interface{}),
+		Meta: make(map[string]any),
 	}
 
 	// Extract common fields
@@ -240,7 +240,7 @@ func (s *DocumentService) mapToDocument(id string, source map[string]interface{}
 	}
 
 	// Extract topics array
-	if topics, ok := source["topics"].([]interface{}); ok {
+	if topics, ok := source["topics"].([]any); ok {
 		doc.Topics = make([]string, 0, len(topics))
 		for _, topic := range topics {
 			if topicStr, okTopic := topic.(string); okTopic {

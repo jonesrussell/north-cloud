@@ -17,26 +17,26 @@ func NewSimpleLogger(prefix string) *SimpleLogger {
 }
 
 // Debug logs a debug message
-func (l *SimpleLogger) Debug(msg string, keysAndValues ...interface{}) {
+func (l *SimpleLogger) Debug(msg string, keysAndValues ...any) {
 	log.Printf("[DEBUG] %s%s %s", l.prefix, msg, formatKeyValues(keysAndValues...))
 }
 
 // Info logs an info message
-func (l *SimpleLogger) Info(msg string, keysAndValues ...interface{}) {
+func (l *SimpleLogger) Info(msg string, keysAndValues ...any) {
 	log.Printf("[INFO] %s%s %s", l.prefix, msg, formatKeyValues(keysAndValues...))
 }
 
 // Warn logs a warning message
-func (l *SimpleLogger) Warn(msg string, keysAndValues ...interface{}) {
+func (l *SimpleLogger) Warn(msg string, keysAndValues ...any) {
 	log.Printf("[WARN] %s%s %s", l.prefix, msg, formatKeyValues(keysAndValues...))
 }
 
 // Error logs an error message
-func (l *SimpleLogger) Error(msg string, keysAndValues ...interface{}) {
+func (l *SimpleLogger) Error(msg string, keysAndValues ...any) {
 	log.Printf("[ERROR] %s%s %s", l.prefix, msg, formatKeyValues(keysAndValues...))
 }
 
-func formatKeyValues(keysAndValues ...interface{}) string {
+func formatKeyValues(keysAndValues ...any) string {
 	if len(keysAndValues) == 0 {
 		return ""
 	}
