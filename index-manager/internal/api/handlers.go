@@ -258,8 +258,8 @@ func (h *Handler) BulkCreateIndexes(c *gin.Context) {
 
 	h.logger.Info("Bulk creating indexes", "count", len(req.Indexes))
 
-	var results []*domain.Index
-	var errors []string
+	results := make([]*domain.Index, 0, len(req.Indexes))
+	errors := make([]string, 0, len(req.Indexes))
 
 	for _, indexReq := range req.Indexes {
 		index, err := h.indexService.CreateIndex(c.Request.Context(), &indexReq)
@@ -305,8 +305,8 @@ func (h *Handler) BulkDeleteIndexes(c *gin.Context) {
 
 	h.logger.Info("Bulk deleting indexes", "count", len(req.IndexNames))
 
-	var deleted []string
-	var errors []string
+	deleted := make([]string, 0, len(req.IndexNames))
+	errors := make([]string, 0, len(req.IndexNames))
 
 	for _, indexName := range req.IndexNames {
 		if err := h.indexService.DeleteIndex(c.Request.Context(), indexName); err != nil {
