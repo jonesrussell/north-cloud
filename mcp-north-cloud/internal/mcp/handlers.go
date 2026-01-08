@@ -547,7 +547,10 @@ func (s *Server) successResponse(id, data any) *Response {
 		"isError": false,
 	}
 
-	resultJSON, _ := json.Marshal(result)
+	resultJSON, err := json.Marshal(result)
+	if err != nil {
+		return s.errorResponse(id, InternalError, fmt.Sprintf("Failed to marshal result: %v", err))
+	}
 
 	return &Response{
 		JSONRPC: "2.0",

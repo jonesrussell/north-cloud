@@ -122,6 +122,7 @@ func TestSourceHandler_Create(t *testing.T) {
 			},
 			expectedStatus: http.StatusCreated,
 			validateResp: func(t *testing.T, w *httptest.ResponseRecorder) {
+				t.Helper()
 				var source models.Source
 				err := json.Unmarshal(w.Body.Bytes(), &source)
 				require.NoError(t, err)

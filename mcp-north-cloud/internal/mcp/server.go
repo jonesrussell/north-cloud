@@ -100,7 +100,17 @@ func (s *Server) handleInitialize(_ *Request, id any) *Response {
 		"serverInfo":      serverInfo,
 	}
 
-	resultJSON, _ := json.Marshal(result)
+	resultJSON, err := json.Marshal(result)
+	if err != nil {
+		return &Response{
+			JSONRPC: "2.0",
+			ID:      id,
+			Error: &ErrorObject{
+				Code:    InternalError,
+				Message: fmt.Sprintf("Failed to marshal result: %v", err),
+			},
+		}
+	}
 
 	return &Response{
 		JSONRPC: "2.0",
@@ -117,7 +127,17 @@ func (s *Server) handleToolsList(_ *Request, id any) *Response {
 		"tools": tools,
 	}
 
-	resultJSON, _ := json.Marshal(result)
+	resultJSON, err := json.Marshal(result)
+	if err != nil {
+		return &Response{
+			JSONRPC: "2.0",
+			ID:      id,
+			Error: &ErrorObject{
+				Code:    InternalError,
+				Message: fmt.Sprintf("Failed to marshal result: %v", err),
+			},
+		}
+	}
 
 	return &Response{
 		JSONRPC: "2.0",
@@ -261,7 +281,17 @@ func (s *Server) handleDeleteIndex(id any, arguments json.RawMessage) *Response 
 		"isError": false,
 	}
 
-	resultJSON, _ := json.Marshal(result)
+	resultJSON, err := json.Marshal(result)
+	if err != nil {
+		return &Response{
+			JSONRPC: "2.0",
+			ID:      id,
+			Error: &ErrorObject{
+				Code:    InternalError,
+				Message: fmt.Sprintf("Failed to marshal result: %v", err),
+			},
+		}
+	}
 
 	return &Response{
 		JSONRPC: "2.0",

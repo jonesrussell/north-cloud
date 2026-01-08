@@ -214,6 +214,7 @@ func BenchmarkRouteProcessing(b *testing.B) {
 					}
 
 					// Serialize
+					//nolint:errchkjson // Benchmark test - intentionally ignoring error for performance
 					_, _ = json.Marshal(message)
 				}
 			}

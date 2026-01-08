@@ -17,6 +17,7 @@ import (
 // This requires a local PostgreSQL instance or can be adapted for testcontainers
 // Set GOSOURCES_TEST_DB environment variable to customize connection
 func setupTestDB(t *testing.T) (db *sql.DB, cleanup func()) {
+	t.Helper()
 	// Skip if running in short mode (unit tests only)
 	if testing.Short() {
 		t.Skip("Skipping integration test in short mode")
