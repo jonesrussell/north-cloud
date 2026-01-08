@@ -20,9 +20,9 @@ const (
 // Config represents the logger configuration.
 type Config struct {
 	// Level is the minimum logging level (debug, info, warn, error, fatal).
-	Level string `yaml:"level" env:"LOG_LEVEL"`
+	Level string `env:"LOG_LEVEL" yaml:"level"`
 	// Format is the output format: "json" or "console".
-	Format string `yaml:"format" env:"LOG_FORMAT"`
+	Format string `env:"LOG_FORMAT" yaml:"format"`
 	// Development enables development mode with prettier output.
 	Development bool `yaml:"development"`
 	// OutputPaths is a list of URLs or file paths to write logging output to.

@@ -57,8 +57,8 @@ func TestConfig_SetDefaults(t *testing.T) {
 			name:   "empty config gets defaults",
 			config: Config{},
 			expected: Config{
-				URL:        "http://localhost:9200",
-				MaxRetries: 3,
+				URL:         "http://localhost:9200",
+				MaxRetries:  3,
 				PingTimeout: 5 * time.Second,
 				RetryConfig: &retry.Config{
 					MaxAttempts:  5,
@@ -75,8 +75,8 @@ func TestConfig_SetDefaults(t *testing.T) {
 				MaxRetries: 5,
 			},
 			expected: Config{
-				URL:        "http://custom:9200",
-				MaxRetries: 5,
+				URL:         "http://custom:9200",
+				MaxRetries:  5,
 				PingTimeout: 5 * time.Second,
 				RetryConfig: &retry.Config{
 					MaxAttempts:  5,
@@ -190,8 +190,8 @@ func TestNewClient_InvalidURL(t *testing.T) {
 	}
 
 	cfg := Config{
-		URL:        "http://invalid-host-that-does-not-exist:9200",
-		MaxRetries: 1,
+		URL:         "http://invalid-host-that-does-not-exist:9200",
+		MaxRetries:  1,
 		PingTimeout: 1 * time.Second,
 		RetryConfig: &retry.Config{
 			MaxAttempts:  2, // Only 2 attempts for faster test

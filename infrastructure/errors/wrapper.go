@@ -20,4 +20,3 @@ func WrapWithContextf(err error, format string, args ...any) error {
 	context := fmt.Sprintf(format, args...)
 	return fmt.Errorf("%s: %w", context, err)
 }
-

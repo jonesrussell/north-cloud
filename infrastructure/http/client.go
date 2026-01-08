@@ -161,4 +161,3 @@ func NewClientWithTLS(timeout time.Duration, skipVerify bool) *http.Client {
 func NewDefaultClient() *http.Client {
 	return NewClient(nil)
 }
-

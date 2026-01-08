@@ -9,26 +9,26 @@ import (
 
 // MemoryMonitor tracks memory usage and detects potential leaks
 type MemoryMonitor struct {
-	mu                  sync.RWMutex
-	baselineHeap        uint64
-	baselineGoroutines  int
-	threshold           float64 // e.g., 2.0 for 200% growth
-	checkInterval       time.Duration
-	warningCallback     func(report string)
-	ticker              *time.Ticker
-	stopCh              chan struct{}
+	mu                 sync.RWMutex
+	baselineHeap       uint64
+	baselineGoroutines int
+	threshold          float64 // e.g., 2.0 for 200% growth
+	checkInterval      time.Duration
+	warningCallback    func(report string)
+	ticker             *time.Ticker
+	stopCh             chan struct{}
 }
 
 // MemorySnapshot represents a point-in-time memory state
 type MemorySnapshot struct {
-	Timestamp       time.Time
-	HeapAlloc       uint64
-	HeapIdle        uint64
-	HeapInuse       uint64
-	StackInuse      uint64
-	NumGC           uint32
-	PauseTotalNs    uint64
-	NumGoroutine    int
+	Timestamp    time.Time
+	HeapAlloc    uint64
+	HeapIdle     uint64
+	HeapInuse    uint64
+	StackInuse   uint64
+	NumGC        uint32
+	PauseTotalNs uint64
+	NumGoroutine int
 }
 
 // NewMemoryMonitor creates a new memory monitor

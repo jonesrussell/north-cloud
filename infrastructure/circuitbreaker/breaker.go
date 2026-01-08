@@ -59,19 +59,19 @@ func DefaultConfig() Config {
 	return Config{
 		FailureThreshold: 5,
 		SuccessThreshold: 2,
-		Timeout:           60 * time.Second,
+		Timeout:          60 * time.Second,
 	}
 }
 
 // Breaker implements a circuit breaker pattern
 type Breaker struct {
-	mu                sync.RWMutex
-	state             State
-	failureCount      int
-	successCount      int
-	lastFailureTime   time.Time
-	config            Config
-	onStateChange     func(from, to State)
+	mu              sync.RWMutex
+	state           State
+	failureCount    int
+	successCount    int
+	lastFailureTime time.Time
+	config          Config
+	onStateChange   func(from, to State)
 }
 
 // New creates a new circuit breaker with the given configuration
@@ -224,9 +224,9 @@ func (b *Breaker) Reset() {
 
 // Stats returns statistics about the circuit breaker
 type Stats struct {
-	State         State
-	FailureCount  int
-	SuccessCount  int
+	State           State
+	FailureCount    int
+	SuccessCount    int
 	LastFailureTime time.Time
 }
 
@@ -235,10 +235,9 @@ func (b *Breaker) GetStats() Stats {
 	b.mu.RLock()
 	defer b.mu.RUnlock()
 	return Stats{
-		State:          b.state,
-		FailureCount:   b.failureCount,
-		SuccessCount:   b.successCount,
+		State:           b.state,
+		FailureCount:    b.failureCount,
+		SuccessCount:    b.successCount,
 		LastFailureTime: b.lastFailureTime,
 	}
 }
-

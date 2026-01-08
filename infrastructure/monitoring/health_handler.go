@@ -9,17 +9,17 @@ import (
 
 // MemoryHealth represents memory health metrics
 type MemoryHealth struct {
-	Timestamp        time.Time `json:"timestamp"`
-	HeapAllocMB      float64   `json:"heap_alloc_mb"`
-	HeapInuseMB      float64   `json:"heap_inuse_mb"`
-	HeapIdleMB       float64   `json:"heap_idle_mb"`
-	StackInuseMB     float64   `json:"stack_inuse_mb"`
-	NumGC            uint32    `json:"num_gc"`
-	NumGoroutine     int       `json:"num_goroutine"`
-	GOMaxProcs       int       `json:"gomaxprocs"`
-	LastGCPauseMs    float64   `json:"last_gc_pause_ms,omitempty"`
-	BaselineHeapMB   float64   `json:"baseline_heap_mb,omitempty"`
-	BaselineGoroutines int     `json:"baseline_goroutines,omitempty"`
+	Timestamp          time.Time `json:"timestamp"`
+	HeapAllocMB        float64   `json:"heap_alloc_mb"`
+	HeapInuseMB        float64   `json:"heap_inuse_mb"`
+	HeapIdleMB         float64   `json:"heap_idle_mb"`
+	StackInuseMB       float64   `json:"stack_inuse_mb"`
+	NumGC              uint32    `json:"num_gc"`
+	NumGoroutine       int       `json:"num_goroutine"`
+	GOMaxProcs         int       `json:"gomaxprocs"`
+	LastGCPauseMs      float64   `json:"last_gc_pause_ms,omitempty"`
+	BaselineHeapMB     float64   `json:"baseline_heap_mb,omitempty"`
+	BaselineGoroutines int       `json:"baseline_goroutines,omitempty"`
 }
 
 // MemoryHealthHandler returns current memory statistics as JSON

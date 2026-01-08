@@ -10,11 +10,11 @@ import (
 
 // Metrics tracks HTTP request metrics
 type Metrics struct {
-	mu                sync.RWMutex
-	requestCount      map[string]int64      // method + path -> count
-	requestDuration   map[string]time.Duration // method + path -> total duration
-	requestErrors     map[string]int64      // method + path -> error count
-	activeRequests    int64                 // Currently active requests
+	mu              sync.RWMutex
+	requestCount    map[string]int64         // method + path -> count
+	requestDuration map[string]time.Duration // method + path -> total duration
+	requestErrors   map[string]int64         // method + path -> error count
+	activeRequests  int64                    // Currently active requests
 }
 
 // NewMetrics creates a new metrics tracker
@@ -138,7 +138,7 @@ func (m *Metrics) Reset() {
 func (m *Metrics) PrometheusHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/plain; version=0.0.4")
-		
+
 		m.mu.RLock()
 		defer m.mu.RUnlock()
 
@@ -192,4 +192,3 @@ func extractPath(key string) string {
 	}
 	return ""
 }
-
