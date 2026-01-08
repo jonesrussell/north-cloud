@@ -92,7 +92,7 @@ func TestConfigDebugFromEnv(t *testing.T) {
 			tempFile.Close()
 
 			// Load config using infrastructure/config which will apply env overrides
-			cfg, err := infraconfig.LoadWithDefaults[Config](tempFile.Name(), func(cfg *Config) {
+			cfg, err := infraconfig.LoadWithDefaults(tempFile.Name(), func(cfg *Config) {
 				if cfg.Server.Address == "" {
 					cfg.Server.Address = ":8070"
 				}
