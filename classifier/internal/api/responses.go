@@ -33,8 +33,8 @@ type RulesListResponse struct {
 
 // CreateRuleRequest represents a request to create a rule.
 type CreateRuleRequest struct {
-	Topic    string   `json:"topic" binding:"required"`
-	Keywords []string `json:"keywords" binding:"required"`
+	Topic    string   `binding:"required" json:"topic"`
+	Keywords []string `binding:"required" json:"keywords"`
 	Pattern  *string  `json:"pattern"`
 	Priority string   `json:"priority"` // "high", "normal", "low"
 	Enabled  bool     `json:"enabled"`
@@ -69,7 +69,7 @@ type SourcesListResponse struct {
 
 // UpdateSourceRequest represents a request to update a source.
 type UpdateSourceRequest struct {
-	Category string `json:"category" binding:"required,oneof=news blog government unknown"`
+	Category string `binding:"required,oneof=news blog government unknown" json:"category"`
 }
 
 // priorityStringToInt converts dashboard priority strings to database integer values.
