@@ -160,63 +160,71 @@ func (s *Server) handleToolsCall(req *Request, id any) *Response {
 		}
 	}
 
-	// Route to appropriate handler based on tool name
-	switch params.Name {
+	return s.routeToolCall(id, params.Name, params.Arguments)
+}
+
+// routeToolCall routes tool calls to appropriate handlers
+func (s *Server) routeToolCall(id any, toolName string, arguments json.RawMessage) *Response {
+	switch toolName {
 	// Crawler tools
 	case "start_crawl":
-		return s.handleStartCrawl(id, params.Arguments)
+		return s.handleStartCrawl(id, arguments)
 	case "schedule_crawl":
-		return s.handleScheduleCrawl(id, params.Arguments)
+		return s.handleScheduleCrawl(id, arguments)
 	case "list_crawl_jobs":
-		return s.handleListCrawlJobs(id, params.Arguments)
+		return s.handleListCrawlJobs(id, arguments)
 	case "pause_crawl_job":
-		return s.handlePauseCrawlJob(id, params.Arguments)
+		return s.handlePauseCrawlJob(id, arguments)
 	case "resume_crawl_job":
-		return s.handleResumeCrawlJob(id, params.Arguments)
+		return s.handleResumeCrawlJob(id, arguments)
 	case "cancel_crawl_job":
-		return s.handleCancelCrawlJob(id, params.Arguments)
+		return s.handleCancelCrawlJob(id, arguments)
 	case "get_crawl_stats":
-		return s.handleGetCrawlStats(id, params.Arguments)
+		return s.handleGetCrawlStats(id, arguments)
 
 	// Source Manager tools
 	case "add_source":
-		return s.handleAddSource(id, params.Arguments)
+		return s.handleAddSource(id, arguments)
 	case "list_sources":
-		return s.handleListSources(id, params.Arguments)
+		return s.handleListSources(id, arguments)
 	case "update_source":
-		return s.handleUpdateSource(id, params.Arguments)
+		return s.handleUpdateSource(id, arguments)
 	case "delete_source":
-		return s.handleDeleteSource(id, params.Arguments)
+		return s.handleDeleteSource(id, arguments)
 	case "test_source":
-		return s.handleTestSource(id, params.Arguments)
+		return s.handleTestSource(id, arguments)
 
 	// Publisher tools
 	case "create_route":
-		return s.handleCreateRoute(id, params.Arguments)
+		return s.handleCreateRoute(id, arguments)
 	case "list_routes":
-		return s.handleListRoutes(id, params.Arguments)
+		return s.handleListRoutes(id, arguments)
 	case "delete_route":
-		return s.handleDeleteRoute(id, params.Arguments)
+		return s.handleDeleteRoute(id, arguments)
 	case "preview_route":
-		return s.handlePreviewRoute(id, params.Arguments)
+		return s.handlePreviewRoute(id, arguments)
 	case "get_publish_history":
-		return s.handleGetPublishHistory(id, params.Arguments)
+		return s.handleGetPublishHistory(id, arguments)
 	case "get_publisher_stats":
-		return s.handleGetPublisherStats(id, params.Arguments)
+		return s.handleGetPublisherStats(id, arguments)
 
 	// Search tools
 	case "search_articles":
-		return s.handleSearchArticles(id, params.Arguments)
+		return s.handleSearchArticles(id, arguments)
 
 	// Classifier tools
 	case "classify_article":
-		return s.handleClassifyArticle(id, params.Arguments)
+		return s.handleClassifyArticle(id, arguments)
 
 	// Index Manager tools
 	case "delete_index":
-		return s.handleDeleteIndex(id, params.Arguments)
+		return s.handleDeleteIndex(id, arguments)
 	case "list_indexes":
-		return s.handleListIndexes(id, params.Arguments)
+		return s.handleListIndexes(id, arguments)
+
+	// Development tools
+	case "lint_file":
+		return s.handleLintFile(id, arguments)
 
 	default:
 		return &Response{
@@ -224,7 +232,7 @@ func (s *Server) handleToolsCall(req *Request, id any) *Response {
 			ID:      id,
 			Error: &ErrorObject{
 				Code:    InvalidParams,
-				Message: "Unknown tool: " + params.Name,
+				Message: "Unknown tool: " + toolName,
 			},
 		}
 	}

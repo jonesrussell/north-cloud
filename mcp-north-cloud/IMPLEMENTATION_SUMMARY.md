@@ -2,7 +2,7 @@
 
 ## Overview
 
-Successfully implemented a comprehensive MCP (Model Context Protocol) server for the North Cloud platform with **22 tools** across all major services.
+Successfully implemented a comprehensive MCP (Model Context Protocol) server for the North Cloud platform with **23 tools** across all major services.
 
 ## What Was Built
 
@@ -41,7 +41,7 @@ Created robust HTTP clients for all North Cloud services:
    - List and delete Elasticsearch indexes
    - Index health checks
 
-### MCP Tools (22 total)
+### MCP Tools (23 total)
 
 #### Crawler Tools (7)
 - `start_crawl` - Start immediate one-time crawl
@@ -77,6 +77,9 @@ Created robust HTTP clients for all North Cloud services:
 - `delete_index` - Delete Elasticsearch index
 - `list_indexes` - List all indexes
 
+#### Development Tools (1)
+- `lint_file` - Lint a specific file or entire service (automatically detects Go vs frontend)
+
 ## Architecture
 
 ```
@@ -88,7 +91,7 @@ MCP Server (stdio/JSON-RPC 2.0)
 │   ├── Search (port 8090)
 │   ├── Classifier (port 8070)
 │   └── Index Manager (port 8090)
-└── Tool Handlers (22 tools)
+└── Tool Handlers (23 tools)
     ├── Server handlers (server.go)
     └── Client handlers (handlers.go)
 ```
@@ -108,7 +111,7 @@ MCP Server (stdio/JSON-RPC 2.0)
 ### Modified Files (4)
 1. `/internal/mcp/server.go` - Updated server with new tools and routing
 2. `/main.go` - Initialize all service clients
-3. `/README.md` - Comprehensive documentation for all 22 tools
+3. `/README.md` - Comprehensive documentation for all 23 tools
 4. `/.cursor/mcp.json` - Updated with all service URLs
 
 ## Key Features
@@ -163,7 +166,7 @@ MCP Server (stdio/JSON-RPC 2.0)
 ## Testing
 
 Built tool registration tests to verify:
-- ✅ 22 tools registered correctly
+- ✅ 23 tools registered correctly
 - ✅ Initialize method works
 - ✅ Tools/list returns complete tool list
 - ✅ All tool schemas are valid
@@ -234,6 +237,6 @@ All service URLs configurable:
 
 ## Conclusion
 
-Successfully created a production-ready MCP server that provides comprehensive access to the entire North Cloud platform. All 22 tools are implemented, tested, and documented with a focus on usability and reliability.
+Successfully created a production-ready MCP server that provides comprehensive access to the entire North Cloud platform. All 23 tools are implemented, tested, and documented with a focus on usability and reliability.
 
 The implementation follows MCP protocol specifications, uses proper error handling, and provides a clean, consistent interface across all North Cloud services.
