@@ -21,7 +21,7 @@ const (
 )
 
 type Config struct {
-	Debug         bool                `env:"APP_DEBUG" yaml:"debug"` // Application debug mode (controls log level and format)
+	Debug         bool                `env:"APP_DEBUG"      yaml:"debug"` // Application debug mode (controls log level and format)
 	Server        ServerConfig        `yaml:"server"`
 	Database      DatabaseConfig      `yaml:"database"`
 	Elasticsearch ElasticsearchConfig `yaml:"elasticsearch"`
@@ -33,16 +33,16 @@ type Config struct {
 }
 
 type DatabaseConfig struct {
-	Host     string `env:"POSTGRES_PUBLISHER_HOST" yaml:"host"`
-	Port     string `env:"POSTGRES_PUBLISHER_PORT" yaml:"port"`
-	User     string `env:"POSTGRES_PUBLISHER_USER" yaml:"user"`
+	Host     string `env:"POSTGRES_PUBLISHER_HOST"     yaml:"host"`
+	Port     string `env:"POSTGRES_PUBLISHER_PORT"     yaml:"port"`
+	User     string `env:"POSTGRES_PUBLISHER_USER"     yaml:"user"`
 	Password string `env:"POSTGRES_PUBLISHER_PASSWORD" yaml:"password"`
-	DBName   string `env:"POSTGRES_PUBLISHER_DB" yaml:"dbname"`
-	SSLMode  string `env:"POSTGRES_PUBLISHER_SSLMODE" yaml:"sslmode"`
+	DBName   string `env:"POSTGRES_PUBLISHER_DB"       yaml:"dbname"`
+	SSLMode  string `env:"POSTGRES_PUBLISHER_SSLMODE"  yaml:"sslmode"`
 }
 
 type ElasticsearchConfig struct {
-	URL      string `env:"ES_URL" yaml:"url"`
+	URL      string `env:"ES_URL"    yaml:"url"`
 	Username string `yaml:"username"`
 	Password string `yaml:"password"`
 }
@@ -59,7 +59,7 @@ type AuthConfig struct {
 
 type ServiceConfig struct {
 	CheckInterval        time.Duration `env:"PUBLISHER_ROUTER_CHECK_INTERVAL" yaml:"check_interval"`
-	BatchSize            int           `env:"PUBLISHER_ROUTER_BATCH_SIZE" yaml:"batch_size"`
+	BatchSize            int           `env:"PUBLISHER_ROUTER_BATCH_SIZE"     yaml:"batch_size"`
 	UseClassifiedContent bool          `yaml:"use_classified_content"` // Use classified_content indexes instead of articles
 	MinQualityScore      int           `yaml:"min_quality_score"`      // Minimum quality score for classified content (0-100)
 	IndexSuffix          string        `yaml:"index_suffix"`           // Index suffix (_articles or _classified_content)
@@ -71,7 +71,7 @@ type CityConfig struct {
 }
 
 type SourcesConfig struct {
-	URL     string        `env:"SOURCES_URL" yaml:"url"`         // Sources service API URL (e.g., "http://localhost:8080")
+	URL     string        `env:"SOURCES_URL"     yaml:"url"`     // Sources service API URL (e.g., "http://localhost:8080")
 	Timeout time.Duration `yaml:"timeout"`                       // Request timeout (default: 5s)
 	Enabled bool          `env:"SOURCES_ENABLED" yaml:"enabled"` // Enable fetching cities from sources service
 }
@@ -80,7 +80,7 @@ type ServerConfig struct {
 	Address      string        `env:"PUBLISHER_PORT" yaml:"address"` // e.g., ":8070" or port number
 	ReadTimeout  time.Duration `yaml:"read_timeout"`                 // Default: 10s
 	WriteTimeout time.Duration `yaml:"write_timeout"`                // Default: 30s
-	CORSOrigins  []string      `env:"CORS_ORIGINS" yaml:"cors_origins"`
+	CORSOrigins  []string      `env:"CORS_ORIGINS"   yaml:"cors_origins"`
 }
 
 // Validate checks if the server configuration is valid and sets defaults.
