@@ -5,26 +5,35 @@ import (
 	"log"
 
 	"github.com/elastic/go-elasticsearch/v8"
+	esclient "github.com/north-cloud/infrastructure/elasticsearch"
+	"github.com/north-cloud/infrastructure/logger"
 	"github.com/redis/go-redis/v9"
 )
 
-// initElasticsearchClient initializes and tests the Elasticsearch client
+// initElasticsearchClient initializes and tests the Elasticsearch client with retry logic
 func initElasticsearchClient(esURL string) *elasticsearch.Client {
-	esCfg := elasticsearch.Config{
-		Addresses: []string{esURL},
-	}
-	esClient, esErr := elasticsearch.NewClient(esCfg)
-	if esErr != nil {
-		log.Fatalf("Failed to create Elasticsearch client: %v", esErr)
+	ctx := context.Background()
+
+	// Create a simple logger for connection initialization
+	// Using console format and info level for startup messages
+	loggerInstance, err := logger.New(logger.Config{
+		Level:  "info",
+		Format: "console",
+	})
+	if err != nil {
+		// Fallback to standard log if logger creation fails
+		log.Printf("Failed to create logger, using standard log: %v", err)
+		loggerInstance = nil
 	}
 
-	// Test Elasticsearch connection
-	info, infoErr := esClient.Info()
-	if infoErr != nil {
-		log.Fatalf("Failed to connect to Elasticsearch: %v", infoErr)
+	cfg := esclient.Config{
+		URL: esURL,
 	}
-	defer info.Body.Close()
-	log.Println("Elasticsearch connection established")
+
+	esClient, err := esclient.NewClient(ctx, cfg, loggerInstance)
+	if err != nil {
+		log.Fatalf("Failed to create Elasticsearch client: %v", err)
+	}
 
 	return esClient
 }
