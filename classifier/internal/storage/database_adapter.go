@@ -21,9 +21,15 @@ type Logger interface {
 	Error(msg string, keysAndValues ...interface{})
 }
 
+// HistoryRepository defines the interface for classification history operations
+// This allows for easier testing with mocks
+type HistoryRepository interface {
+	Create(ctx context.Context, history *domain.ClassificationHistory) error
+}
+
 // DatabaseAdapter adapts the ClassificationHistoryRepository to the DatabaseClient interface
 type DatabaseAdapter struct {
-	historyRepo *database.ClassificationHistoryRepository
+	historyRepo HistoryRepository
 	logger      Logger
 }
 
@@ -37,6 +43,14 @@ func NewDatabaseAdapter(historyRepo *database.ClassificationHistoryRepository) *
 
 // NewDatabaseAdapterWithLogger creates a new database adapter with a logger
 func NewDatabaseAdapterWithLogger(historyRepo *database.ClassificationHistoryRepository, logger Logger) *DatabaseAdapter {
+	return &DatabaseAdapter{
+		historyRepo: historyRepo,
+		logger:      logger,
+	}
+}
+
+// NewDatabaseAdapterWithRepository creates a new database adapter with a custom repository (for testing)
+func NewDatabaseAdapterWithRepository(historyRepo HistoryRepository, logger Logger) *DatabaseAdapter {
 	return &DatabaseAdapter{
 		historyRepo: historyRepo,
 		logger:      logger,
