@@ -268,11 +268,9 @@ linters:
         - G404  # Insecure random number source (math/rand)
         - G402  # TLS InsecureSkipVerify (intentional for development)
     forbidigo:
-      rules:
-        - pattern: 'os\.Getenv\('
-          desc: 'Use infrastructure/config package instead of direct os.Getenv calls. The config package automatically loads .env files and provides type-safe configuration via struct tags.'
-      exclude:
-        - '^infrastructure/config/.*\.go$'
+      forbid:
+        - pattern: '^os\.Getenv$'
+          msg: 'Use infrastructure/config package instead of direct os.Getenv calls. The config package automatically loads .env files and provides type-safe configuration via struct tags.'
   exclusions:
     generated: lax
     presets:
@@ -303,6 +301,9 @@ linters:
       - linters:
           - forbidigo
         path: cmd/.*\.go
+      - linters:
+          - forbidigo
+        path: infrastructure/config/.*\.go
       - linters:
           - testpackage
         path: internal/(config|logger)/.*_test\.go
