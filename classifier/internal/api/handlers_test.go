@@ -267,8 +267,8 @@ func TestClassify_Success(t *testing.T) {
 	}
 
 	var response ClassifyResponse
-	if err := json.Unmarshal(w.Body.Bytes(), &response); err != nil {
-		t.Fatalf("failed to unmarshal response: %v", err)
+	if unmarshalErr := json.Unmarshal(w.Body.Bytes(), &response); unmarshalErr != nil {
+		t.Fatalf("failed to unmarshal response: %v", unmarshalErr)
 	}
 
 	if response.Result == nil {
@@ -377,7 +377,10 @@ func TestClassifyBatch_EmptyRequest(t *testing.T) {
 		RawContents: []*domain.RawContent{},
 	}
 
-	body, _ := json.Marshal(reqBody)
+	body, err := json.Marshal(reqBody)
+	if err != nil {
+		t.Fatalf("failed to marshal request body: %v", err)
+	}
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest(http.MethodPost, "/api/v1/classify/batch", bytes.NewBuffer(body))
 	req.Header.Set("Content-Type", "application/json")
