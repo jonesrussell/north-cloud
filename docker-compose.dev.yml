@@ -228,48 +228,6 @@ services:
       start_period: 90s
 
   # ------------------------------------------------------------
-  # MCP North Cloud (Dev)
-  # ------------------------------------------------------------
-  mcp-north-cloud:
-    <<: *go-dev-defaults
-    build:
-      context: ./mcp-north-cloud
-      dockerfile: Dockerfile.dev
-      args:
-        UID: "${UID:-1000}"
-        GID: "${GID:-1000}"
-    stdin_open: true
-    tty: true
-    depends_on:
-      index-manager:
-        condition: service_healthy
-      crawler:
-        condition: service_healthy
-      source-manager:
-        condition: service_healthy
-      publisher-api:
-        condition: service_healthy
-      classifier:
-        condition: service_healthy
-      search-service:
-        condition: service_healthy
-    environment:
-      <<: *go-dev-environment
-      INDEX_MANAGER_URL: http://index-manager:8090
-      CRAWLER_URL: http://crawler:8080
-      SOURCE_MANAGER_URL: http://source-manager:8050
-      PUBLISHER_URL: http://publisher-api:8070
-      SEARCH_URL: http://search-service:8090
-      CLASSIFIER_URL: http://classifier:8070
-      # Use app directory for caches to avoid permission issues with named volumes
-      GOCACHE: /app/tmp/go-build-cache
-      GOMODCACHE: /app/tmp/go-mod-cache
-    volumes:
-      - ./mcp-north-cloud:/app
-      - ./infrastructure:/infrastructure:ro
-    command: ["sh", "-c", "mkdir -p /app/tmp/go-build-cache /app/tmp/go-mod-cache && go mod download && air -c .air.toml"]
-
-  # ------------------------------------------------------------
   # Search Service (Dev)
   # ------------------------------------------------------------
   search-service:
