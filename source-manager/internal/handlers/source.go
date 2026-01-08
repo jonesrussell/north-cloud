@@ -168,7 +168,7 @@ func (h *SourceHandler) GetCities(c *gin.Context) {
 // FetchMetadata extracts metadata from a URL for form prefilling
 func (h *SourceHandler) FetchMetadata(c *gin.Context) {
 	var request struct {
-		URL string `json:"url" binding:"required"`
+		URL string `binding:"required" json:"url"`
 	}
 
 	if err := c.ShouldBindJSON(&request); err != nil {
@@ -205,7 +205,7 @@ func (h *SourceHandler) FetchMetadata(c *gin.Context) {
 // This allows users to preview what articles will be extracted before creating a source
 func (h *SourceHandler) TestCrawl(c *gin.Context) {
 	var request struct {
-		URL       string         `json:"url" binding:"required"`
+		URL       string         `binding:"required" json:"url"`
 		Selectors map[string]any `json:"selectors"`
 	}
 

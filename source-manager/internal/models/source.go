@@ -9,16 +9,16 @@ import (
 
 // Source represents a content source configuration
 type Source struct {
-	ID        string         `json:"id" db:"id"`
-	Name      string         `json:"name" db:"name"`
-	URL       string         `json:"url" db:"url"`
-	RateLimit string         `json:"rate_limit" db:"rate_limit"`
-	MaxDepth  int            `json:"max_depth" db:"max_depth"`
-	Time      StringArray    `json:"time" db:"time"`
-	Selectors SelectorConfig `json:"selectors" db:"selectors"`
-	Enabled   bool           `json:"enabled" db:"enabled"`
-	CreatedAt time.Time      `json:"created_at" db:"created_at"`
-	UpdatedAt time.Time      `json:"updated_at" db:"updated_at"`
+	ID        string         `db:"id"         json:"id"`
+	Name      string         `db:"name"       json:"name"`
+	URL       string         `db:"url"        json:"url"`
+	RateLimit string         `db:"rate_limit" json:"rate_limit"`
+	MaxDepth  int            `db:"max_depth"  json:"max_depth"`
+	Time      StringArray    `db:"time"       json:"time"`
+	Selectors SelectorConfig `db:"selectors"  json:"selectors"`
+	Enabled   bool           `db:"enabled"    json:"enabled"`
+	CreatedAt time.Time      `db:"created_at" json:"created_at"`
+	UpdatedAt time.Time      `db:"updated_at" json:"updated_at"`
 }
 
 // SelectorConfig represents CSS selector configuration
