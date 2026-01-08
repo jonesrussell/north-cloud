@@ -143,8 +143,8 @@ func (l *Loader) loadRawSources() ([]map[string]any, error) {
 	}
 
 	var file sourcesFile
-	if err := yaml.Unmarshal(data, &file); err != nil {
-		return nil, fmt.Errorf("failed to parse YAML: %w", err)
+	if unmarshalErr := yaml.Unmarshal(data, &file); unmarshalErr != nil {
+		return nil, fmt.Errorf("failed to parse YAML: %w", unmarshalErr)
 	}
 
 	if len(file.Sources) == 0 {

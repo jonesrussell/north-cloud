@@ -89,19 +89,21 @@ func Load(path string) (*Config, error) {
 // applyBackwardCompatibility applies backward compatibility fixes for environment variables.
 // This runs after env overrides to handle legacy env var names.
 func applyBackwardCompatibility(cfg *Config) {
-	if cfg.Elasticsearch != nil {
-		// Support ELASTICSEARCH_HOSTS as fallback for ELASTICSEARCH_ADDRESSES
-		if len(cfg.Elasticsearch.Addresses) == 0 {
-			if hostsEnv := os.Getenv("ELASTICSEARCH_HOSTS"); hostsEnv != "" {
-				cfg.Elasticsearch.Addresses = elasticsearch.ParseAddressesFromString(hostsEnv)
-			}
-		}
+	if cfg.Elasticsearch == nil {
+		return
+	}
 
-		// Support ELASTICSEARCH_INDEX_PREFIX as fallback for ELASTICSEARCH_INDEX_NAME
-		if cfg.Elasticsearch.IndexName == "" {
-			if indexPrefix := os.Getenv("ELASTICSEARCH_INDEX_PREFIX"); indexPrefix != "" {
-				cfg.Elasticsearch.IndexName = indexPrefix
-			}
+	// Support ELASTICSEARCH_HOSTS as fallback for ELASTICSEARCH_ADDRESSES
+	if len(cfg.Elasticsearch.Addresses) == 0 {
+		if hostsEnv := os.Getenv("ELASTICSEARCH_HOSTS"); hostsEnv != "" {
+			cfg.Elasticsearch.Addresses = elasticsearch.ParseAddressesFromString(hostsEnv)
+		}
+	}
+
+	// Support ELASTICSEARCH_INDEX_PREFIX as fallback for ELASTICSEARCH_INDEX_NAME
+	if cfg.Elasticsearch.IndexName == "" {
+		if indexPrefix := os.Getenv("ELASTICSEARCH_INDEX_PREFIX"); indexPrefix != "" {
+			cfg.Elasticsearch.IndexName = indexPrefix
 		}
 	}
 }
