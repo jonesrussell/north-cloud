@@ -3,7 +3,7 @@ package testhelpers
 import (
 	"io"
 
-	"github.com/jonesrussell/gosources/internal/logger"
+	"github.com/jonesrussell/north-cloud/source-manager/internal/logger"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )

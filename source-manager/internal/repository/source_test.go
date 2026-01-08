@@ -6,9 +6,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/jonesrussell/gosources/internal/models"
-	"github.com/jonesrussell/gosources/internal/repository"
-	"github.com/jonesrussell/gosources/internal/testhelpers"
+	"github.com/jonesrussell/north-cloud/source-manager/internal/models"
+	"github.com/jonesrussell/north-cloud/source-manager/internal/repository"
+	"github.com/jonesrussell/north-cloud/source-manager/internal/testhelpers"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

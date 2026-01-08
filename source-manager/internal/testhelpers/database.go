@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"runtime"
 
-	"github.com/jonesrussell/gosources/internal/logger"
+	"github.com/jonesrussell/north-cloud/source-manager/internal/logger"
 	_ "github.com/lib/pq" //nolint:blankimports // PostgreSQL driver
 )
 

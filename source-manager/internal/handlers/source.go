@@ -4,10 +4,10 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/jonesrussell/gosources/internal/logger"
-	"github.com/jonesrussell/gosources/internal/metadata"
-	"github.com/jonesrussell/gosources/internal/models"
-	"github.com/jonesrussell/gosources/internal/repository"
+	"github.com/jonesrussell/north-cloud/source-manager/internal/logger"
+	"github.com/jonesrussell/north-cloud/source-manager/internal/metadata"
+	"github.com/jonesrussell/north-cloud/source-manager/internal/models"
+	"github.com/jonesrussell/north-cloud/source-manager/internal/repository"
 )
 
 const (

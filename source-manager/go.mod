@@ -1,4 +1,4 @@
-module github.com/jonesrussell/gosources
+module github.com/jonesrussell/north-cloud/source-manager
 
 go 1.25
 

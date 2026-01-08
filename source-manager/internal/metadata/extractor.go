@@ -9,8 +9,8 @@ import (
 	"time"
 
 	"github.com/PuerkitoBio/goquery"
-	"github.com/jonesrussell/gosources/internal/logger"
-	"github.com/jonesrussell/gosources/internal/models"
+	"github.com/jonesrussell/north-cloud/source-manager/internal/logger"
+	"github.com/jonesrussell/north-cloud/source-manager/internal/models"
 	infrahttp "github.com/north-cloud/infrastructure/http"
 )
 

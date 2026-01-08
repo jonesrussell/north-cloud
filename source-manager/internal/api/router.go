@@ -8,10 +8,10 @@ import (
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
-	"github.com/jonesrussell/gosources/internal/config"
-	"github.com/jonesrussell/gosources/internal/handlers"
-	"github.com/jonesrussell/gosources/internal/logger"
-	"github.com/jonesrussell/gosources/internal/repository"
+	"github.com/jonesrussell/north-cloud/source-manager/internal/config"
+	"github.com/jonesrussell/north-cloud/source-manager/internal/handlers"
+	"github.com/jonesrussell/north-cloud/source-manager/internal/logger"
+	"github.com/jonesrussell/north-cloud/source-manager/internal/repository"
 	infrajwt "github.com/north-cloud/infrastructure/jwt"
 	"github.com/north-cloud/infrastructure/monitoring"
 )

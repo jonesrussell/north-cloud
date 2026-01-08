@@ -120,7 +120,7 @@ Handler tests are currently structured but require refactoring the handler to us
 `testhelpers.NewTestLogger()` creates a logger that discards output, suitable for tests:
 
 ```go
-import "github.com/jonesrussell/gosources/internal/testhelpers"
+import "github.com/jonesrussell/north-cloud/source-manager/internal/testhelpers"
 
 logger := testhelpers.NewTestLogger()
 ```
@@ -130,7 +130,7 @@ logger := testhelpers.NewTestLogger()
 `testhelpers.RunMigrations()` runs database migrations for test database setup:
 
 ```go
-import "github.com/jonesrussell/gosources/internal/testhelpers"
+import "github.com/jonesrussell/north-cloud/source-manager/internal/testhelpers"
 
 ctx := context.Background()
 err := testhelpers.RunMigrations(ctx, db, logger)
