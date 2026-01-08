@@ -122,7 +122,14 @@ func newCommandDeps() (*CommandDeps, error) {
 	}
 
 	// Create logger
-	log, err := createLogger()
+	// Load config first to get logging configuration
+	cfg, cfgErr := loadConfig()
+	if cfgErr != nil {
+		fmt.Fprintf(os.Stderr, "Failed to load config: %v\n", cfgErr)
+		os.Exit(1)
+	}
+
+	log, err := createLogger(cfg)
 	if err != nil {
 		return nil, fmt.Errorf("create logger: %w", err)
 	}
@@ -145,14 +152,22 @@ func loadConfig() (config.Interface, error) {
 	return config.Load(configPath)
 }
 
-// createLogger creates a logger instance from environment variables.
-func createLogger() (logger.Interface, error) {
-	logLevel := normalizeLogLevel(getEnvOrDefault("LOG_LEVEL", "info"))
+// createLogger creates a logger instance from configuration.
+func createLogger(cfg config.Interface) (logger.Interface, error) {
+	loggingCfg := cfg.GetLoggingConfig()
+
+	logLevel := normalizeLogLevel(loggingCfg.Level)
+	if logLevel == "" {
+		logLevel = "info"
+	}
 
 	// Determine if we're in development mode
-	appEnv := getEnvOrDefault("APP_ENV", "production")
+	appEnv := loggingCfg.Env
+	if appEnv == "" {
+		appEnv = "production"
+	}
 	isDev := appEnv == "development"
-	appDebug := getEnvOrDefault("APP_DEBUG", "false") == "true"
+	appDebug := loggingCfg.Debug
 
 	// Set development mode based on APP_ENV
 	development := isDev
@@ -163,18 +178,19 @@ func createLogger() (logger.Interface, error) {
 	}
 
 	// Determine encoding based on environment
-	encoding := getEnvOrDefault("LOG_FORMAT", "json")
-	if isDev {
-		encoding = "console"
+	encoding := loggingCfg.Format
+	if encoding == "" {
+		if isDev {
+			encoding = "console"
+		} else {
+			encoding = "json"
+		}
 	}
 
-	// Get output paths (default to stdout)
-	outputPaths := []string{"stdout"}
-	if outputPathsStr := os.Getenv("LOG_OUTPUT_PATHS"); outputPathsStr != "" {
-		outputPaths = strings.Split(outputPathsStr, ",")
-		for i := range outputPaths {
-			outputPaths[i] = strings.TrimSpace(outputPaths[i])
-		}
+	// Get output paths from config (default to stdout)
+	outputPaths := loggingCfg.OutputPaths
+	if len(outputPaths) == 0 {
+		outputPaths = []string{"stdout"}
 	}
 
 	logCfg := &logger.Config{
@@ -185,14 +201,6 @@ func createLogger() (logger.Interface, error) {
 		EnableColor: isDev,
 	}
 	return logger.New(logCfg)
-}
-
-// getEnvOrDefault returns the environment variable value or a default.
-func getEnvOrDefault(key, defaultValue string) string {
-	if val := os.Getenv(key); val != "" {
-		return val
-	}
-	return defaultValue
 }
 
 // normalizeLogLevel normalizes log level string.

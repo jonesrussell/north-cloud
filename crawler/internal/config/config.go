@@ -30,6 +30,8 @@ type Interface interface {
 	GetMinIOConfig() *minio.Config
 	// GetAuthConfig returns the authentication configuration.
 	GetAuthConfig() *AuthConfig
+	// GetLoggingConfig returns the logging configuration.
+	GetLoggingConfig() *LoggingConfig
 	// Validate validates the configuration based on the current command.
 	Validate() error
 }
@@ -59,11 +61,22 @@ type Config struct {
 	MinIO *minio.Config `yaml:"minio"`
 	// Auth holds authentication configuration
 	Auth *AuthConfig `yaml:"auth"`
+	// Logging holds logging configuration
+	Logging *LoggingConfig `yaml:"logging"`
 }
 
 // AuthConfig holds authentication configuration.
 type AuthConfig struct {
 	JWTSecret string `env:"AUTH_JWT_SECRET" yaml:"jwt_secret"`
+}
+
+// LoggingConfig holds logging configuration.
+type LoggingConfig struct {
+	Level       string   `env:"LOG_LEVEL" yaml:"level"`
+	Format      string   `env:"LOG_FORMAT" yaml:"format"`
+	OutputPaths []string `env:"LOG_OUTPUT_PATHS" yaml:"output_paths"`
+	Debug       bool     `env:"APP_DEBUG" yaml:"debug"`
+	Env         string   `env:"APP_ENV" yaml:"env"`
 }
 
 // validateHTTPDConfig validates the configuration for the httpd command
@@ -144,6 +157,19 @@ func setDefaults(cfg *Config) {
 	if cfg.Auth == nil {
 		cfg.Auth = &AuthConfig{}
 	}
+	if cfg.Logging == nil {
+		cfg.Logging = &LoggingConfig{
+			Level:       "info",
+			Format:      "json",
+			OutputPaths: []string{"stdout"},
+			Debug:       false,
+			Env:         "production",
+		}
+	}
+	// Set default output paths if empty
+	if len(cfg.Logging.OutputPaths) == 0 {
+		cfg.Logging.OutputPaths = []string{"stdout"}
+	}
 
 	// Set server defaults
 	if cfg.Server.Address == "" {
@@ -203,6 +229,21 @@ func (c *Config) GetAuthConfig() *AuthConfig {
 		return &AuthConfig{}
 	}
 	return c.Auth
+}
+
+// GetLoggingConfig returns the logging configuration.
+func (c *Config) GetLoggingConfig() *LoggingConfig {
+	if c.Logging == nil {
+		// Return default config if not initialized
+		return &LoggingConfig{
+			Level:       "info",
+			Format:      "json",
+			OutputPaths: []string{"stdout"},
+			Debug:       false,
+			Env:         "production",
+		}
+	}
+	return c.Logging
 }
 
 // setupDevelopmentLogging configures logging settings based on environment variables.
