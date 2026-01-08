@@ -121,14 +121,7 @@ func newCommandDeps() (*CommandDeps, error) {
 		return nil, fmt.Errorf("load config: %w", err)
 	}
 
-	// Create logger
-	// Load config first to get logging configuration
-	cfg, cfgErr := loadConfig()
-	if cfgErr != nil {
-		fmt.Fprintf(os.Stderr, "Failed to load config: %v\n", cfgErr)
-		os.Exit(1)
-	}
-
+	// Create logger from config
 	log, err := createLogger(cfg)
 	if err != nil {
 		return nil, fmt.Errorf("create logger: %w", err)

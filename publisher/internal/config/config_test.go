@@ -59,18 +59,19 @@ func TestConfigDebugFromEnv(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Save original value
+			// Save original value and restore after test
+			//nolint: forbidigo // Test requires saving/restoring env var for proper cleanup
 			originalValue := os.Getenv("APP_DEBUG")
 			defer func() {
 				if originalValue != "" {
-					os.Setenv("APP_DEBUG", originalValue)
+					t.Setenv("APP_DEBUG", originalValue)
 				} else {
 					os.Unsetenv("APP_DEBUG")
 				}
 			}()
 
 			if tt.envValue != "" {
-				os.Setenv("APP_DEBUG", tt.envValue)
+				t.Setenv("APP_DEBUG", tt.envValue)
 			} else {
 				// Unset the environment variable for this test
 				os.Unsetenv("APP_DEBUG")
@@ -78,7 +79,7 @@ func TestConfigDebugFromEnv(t *testing.T) {
 
 			// Create a minimal config and use infrastructure/config to load env vars
 			// Create a temporary config file
-			tempFile, err := os.CreateTemp("", "config_test_*.yml")
+			tempFile, err := os.CreateTemp(t.TempDir(), "config_test_*.yml")
 			if err != nil {
 				t.Fatalf("Failed to create temp file: %v", err)
 			}
