@@ -132,7 +132,7 @@ func setupTestHandler() *Handler {
 	sourceRepDB := newMockSourceReputationDB()
 
 	// Create classifier config
-	config := classifier.Config{
+	classifierCfg := classifier.Config{
 		Version:         "1.0.0",
 		MinQualityScore: 50,
 		UpdateSourceRep: true,
@@ -154,7 +154,7 @@ func setupTestHandler() *Handler {
 	}
 
 	// Create classifier and related components
-	classifierInstance := classifier.NewClassifier(logger, rules, sourceRepDB, config)
+	classifierInstance := classifier.NewClassifier(logger, rules, sourceRepDB, classifierCfg)
 	batchProcessor := processor.NewBatchProcessor(classifierInstance, 2, logger)
 	sourceRepScorer := classifier.NewSourceReputationScorer(logger, sourceRepDB)
 	topicClassifier := classifier.NewTopicClassifier(logger, rules)

@@ -26,9 +26,9 @@ type ServerConfig struct {
 }
 
 // NewServer creates a new HTTP server
-func NewServer(handler *Handler, config ServerConfig, logger Logger, cfg *config.Config) *Server {
+func NewServer(handler *Handler, serverCfg ServerConfig, logger Logger, cfg *config.Config) *Server {
 	// Set Gin mode based on debug flag
-	if !config.Debug {
+	if !serverCfg.Debug {
 		gin.SetMode(gin.ReleaseMode)
 	}
 
@@ -44,12 +44,12 @@ func NewServer(handler *Handler, config ServerConfig, logger Logger, cfg *config
 	SetupRoutes(router, handler, cfg)
 
 	// Create HTTP server
-	addr := fmt.Sprintf(":%d", config.Port)
+	addr := fmt.Sprintf(":%d", serverCfg.Port)
 	server := &http.Server{
 		Addr:         addr,
 		Handler:      router,
-		ReadTimeout:  config.ReadTimeout,
-		WriteTimeout: config.WriteTimeout,
+		ReadTimeout:  serverCfg.ReadTimeout,
+		WriteTimeout: serverCfg.WriteTimeout,
 	}
 
 	return &Server{

@@ -329,22 +329,3 @@ func StartWithStop() (func(), error) {
 
 	return stopFunc, nil
 }
-
-func parseDuration(s string) time.Duration {
-	d, err := time.ParseDuration(s)
-	if err != nil {
-		log.Printf("Warning: Invalid duration %q, using 30s", s)
-		return defaultPollInterval
-	}
-	return d
-}
-
-func parseInt(s string) int {
-	var i int
-	_, err := fmt.Sscanf(s, "%d", &i)
-	if err != nil {
-		log.Printf("Warning: Invalid integer %q, using 0", s)
-		return 0
-	}
-	return i
-}
