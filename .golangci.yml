@@ -269,7 +269,7 @@ linters:
         - G402  # TLS InsecureSkipVerify (intentional for development)
     forbidigo:
       rules:
-        - pattern: 'os\.Getenv\(
+        - pattern: 'os\.Getenv\('
           desc: 'Use infrastructure/config package instead of direct os.Getenv calls. The config package automatically loads .env files and provides type-safe configuration via struct tags.'
       exclude:
         - '^infrastructure/config/.*\.go$'
