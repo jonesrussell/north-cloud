@@ -14,7 +14,6 @@ linters:
     - depguard
     - dupl
     - durationcheck
-    - errcheck
     - errchkjson
     - errname
     - errorlint
@@ -33,9 +32,7 @@ linters:
     - gomoddirectives
     - goprintffuncname
     - gosec
-    - govet
     - iface
-    - ineffassign
     - intrange
     - lll
     - loggercheck
@@ -63,7 +60,6 @@ linters:
     - sloglint
     - spancheck
     - sqlclosecheck
-    - staticcheck
     - tagalign
     - testableexamples
     - testifylint
@@ -72,7 +68,6 @@ linters:
     - tparallel
     - unconvert
     - unparam
-    - unused
     - usestdlibvars
     - usetesting
     - wastedassign
