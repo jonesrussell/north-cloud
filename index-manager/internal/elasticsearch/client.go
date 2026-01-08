@@ -647,8 +647,8 @@ func (c *Client) BulkDeleteDocuments(ctx context.Context, indexName string, docu
 	for _, item := range bulkResponse.Items {
 		if deleteItem, ok := item["delete"].(map[string]any); ok {
 			if errorData, hasError := deleteItem["error"]; hasError {
-				errorJSON, err := json.Marshal(errorData)
-				if err != nil {
+				errorJSON, marshalErr := json.Marshal(errorData)
+				if marshalErr != nil {
 					// If marshaling fails, use a fallback error message
 					errorMessages = append(errorMessages, fmt.Sprintf("error marshaling: %v", errorData))
 					continue
