@@ -114,7 +114,7 @@ func BenchmarkRedisMessageSerialization(b *testing.B) {
 		URL:            "https://example.com/article-123",
 		CanonicalURL:   "https://example.com/article-123",
 		Title:          "Breaking News: Major Event Downtown",
-		Body:           "Full article content with multiple paragraphs of text describing the event in detail. This includes quotes from witnesses and official statements.", //nolint:lll // Test data
+		Body:           "Full article content with multiple paragraphs of text describing the event in detail. This includes quotes from witnesses and official statements.",
 		PublishedDate:  time.Now().UTC(),
 		QualityScore:   85,
 		IsCrimeRelated: true,

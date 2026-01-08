@@ -9,25 +9,25 @@ import (
 
 // PublishHistory represents an audit trail entry for a published article
 type PublishHistory struct {
-	ID           uuid.UUID      `json:"id" db:"id"`
-	RouteID      *uuid.UUID     `json:"route_id,omitempty" db:"route_id"` // Nullable if route is deleted
-	ArticleID    string         `json:"article_id" db:"article_id"`       // Elasticsearch document ID
-	ArticleTitle string         `json:"article_title" db:"article_title"`
-	ArticleURL   string         `json:"article_url" db:"article_url"`
-	ChannelName  string         `json:"channel_name" db:"channel_name"` // Denormalized for faster querying
-	SourceName   string         `json:"source_name" db:"source_name"`   // Joined from sources table, defaults to "Unknown" if route deleted
-	PublishedAt  time.Time      `json:"published_at" db:"published_at"`
-	QualityScore int            `json:"quality_score" db:"quality_score"`
-	Topics       pq.StringArray `json:"topics" db:"topics"`
+	ID           uuid.UUID      `db:"id"            json:"id"`
+	RouteID      *uuid.UUID     `db:"route_id"      json:"route_id,omitempty"` // Nullable if route is deleted
+	ArticleID    string         `db:"article_id"    json:"article_id"`         // Elasticsearch document ID
+	ArticleTitle string         `db:"article_title" json:"article_title"`
+	ArticleURL   string         `db:"article_url"   json:"article_url"`
+	ChannelName  string         `db:"channel_name"  json:"channel_name"` // Denormalized for faster querying
+	SourceName   string         `db:"source_name"   json:"source_name"`  // Joined from sources table, defaults to "Unknown" if route deleted
+	PublishedAt  time.Time      `db:"published_at"  json:"published_at"`
+	QualityScore int            `db:"quality_score" json:"quality_score"`
+	Topics       pq.StringArray `db:"topics"        json:"topics"`
 }
 
 // PublishHistoryCreateRequest represents the data needed to create a publish history entry
 type PublishHistoryCreateRequest struct {
 	RouteID      uuid.UUID `json:"route_id"`
-	ArticleID    string    `json:"article_id" binding:"required"`
+	ArticleID    string    `binding:"required"   json:"article_id"`
 	ArticleTitle string    `json:"article_title"`
 	ArticleURL   string    `json:"article_url"`
-	ChannelName  string    `json:"channel_name" binding:"required"`
+	ChannelName  string    `binding:"required"   json:"channel_name"`
 	QualityScore int       `json:"quality_score"`
 	Topics       []string  `json:"topics"`
 }
@@ -36,8 +36,8 @@ type PublishHistoryCreateRequest struct {
 type PublishHistoryFilter struct {
 	ChannelName string     `form:"channel_name"`
 	ArticleID   string     `form:"article_id"`
-	StartDate   *time.Time `form:"start_date" time_format:"2006-01-02"`
-	EndDate     *time.Time `form:"end_date" time_format:"2006-01-02"`
-	Limit       int        `form:"limit" binding:"omitempty,min=1,max=1000"` // Default 100
-	Offset      int        `form:"offset" binding:"omitempty,min=0"`
+	StartDate   *time.Time `form:"start_date"                  time_format:"2006-01-02"`
+	EndDate     *time.Time `form:"end_date"                    time_format:"2006-01-02"`
+	Limit       int        `binding:"omitempty,min=1,max=1000" form:"limit"` // Default 100
+	Offset      int        `binding:"omitempty,min=0"          form:"offset"`
 }

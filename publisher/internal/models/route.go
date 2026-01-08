@@ -9,37 +9,37 @@ import (
 
 // Route represents a routing rule: source → channel with filters
 type Route struct {
-	ID              uuid.UUID      `json:"id" db:"id"`
-	SourceID        uuid.UUID      `json:"source_id" db:"source_id"`
-	ChannelID       uuid.UUID      `json:"channel_id" db:"channel_id"`
-	MinQualityScore int            `json:"min_quality_score" db:"min_quality_score"` // 0-100
-	Topics          pq.StringArray `json:"topics" db:"topics"`                       // e.g., ['crime', 'news']
-	Enabled         bool           `json:"enabled" db:"enabled"`
-	CreatedAt       time.Time      `json:"created_at" db:"created_at"`
-	UpdatedAt       time.Time      `json:"updated_at" db:"updated_at"`
+	ID              uuid.UUID      `db:"id"                json:"id"`
+	SourceID        uuid.UUID      `db:"source_id"         json:"source_id"`
+	ChannelID       uuid.UUID      `db:"channel_id"        json:"channel_id"`
+	MinQualityScore int            `db:"min_quality_score" json:"min_quality_score"` // 0-100
+	Topics          pq.StringArray `db:"topics"            json:"topics"`            // e.g., ['crime', 'news']
+	Enabled         bool           `db:"enabled"           json:"enabled"`
+	CreatedAt       time.Time      `db:"created_at"        json:"created_at"`
+	UpdatedAt       time.Time      `db:"updated_at"        json:"updated_at"`
 }
 
 // RouteWithDetails represents a route with joined source and channel details
 type RouteWithDetails struct {
 	Route
-	SourceName         string `json:"source_name" db:"source_name"`
-	SourceIndexPattern string `json:"source_index_pattern" db:"source_index_pattern"`
-	ChannelName        string `json:"channel_name" db:"channel_name"`
-	ChannelDescription string `json:"channel_description" db:"channel_description"`
+	SourceName         string `db:"source_name"          json:"source_name"`
+	SourceIndexPattern string `db:"source_index_pattern" json:"source_index_pattern"`
+	ChannelName        string `db:"channel_name"         json:"channel_name"`
+	ChannelDescription string `db:"channel_description"  json:"channel_description"`
 }
 
 // RouteCreateRequest represents the request payload for creating a route
 type RouteCreateRequest struct {
-	SourceID        uuid.UUID `json:"source_id" binding:"required"`
-	ChannelID       uuid.UUID `json:"channel_id" binding:"required"`
-	MinQualityScore *int      `json:"min_quality_score" binding:"omitempty,min=0,max=100"` // Defaults to 50
+	SourceID        uuid.UUID `binding:"required"                json:"source_id"`
+	ChannelID       uuid.UUID `binding:"required"                json:"channel_id"`
+	MinQualityScore *int      `binding:"omitempty,min=0,max=100" json:"min_quality_score"` // Defaults to 50
 	Topics          []string  `json:"topics"`                                              // Optional
 	Enabled         *bool     `json:"enabled"`                                             // Defaults to true
 }
 
 // RouteUpdateRequest represents the request payload for updating a route
 type RouteUpdateRequest struct {
-	MinQualityScore *int     `json:"min_quality_score" binding:"omitempty,min=0,max=100"`
+	MinQualityScore *int     `binding:"omitempty,min=0,max=100" json:"min_quality_score"`
 	Topics          []string `json:"topics"`
 	Enabled         *bool    `json:"enabled"`
 }
