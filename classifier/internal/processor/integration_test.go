@@ -221,13 +221,13 @@ func setupTestEnvironment() (*mockESClient, *mockDBClient, *mockLogger) {
 	publishedDate := time.Now().Add(-24 * time.Hour)
 	esClient.rawContent = []*domain.RawContent{
 		{
-			ID:                   "test-1",
-			URL:                  "https://example.com/article1",
-			SourceName:           "example.com",
-			Title:   "Police arrest suspect in downtown incident",
+			ID:         "test-1",
+			URL:        "https://example.com/article1",
+			SourceName: "example.com",
+			Title:      "Police arrest suspect in downtown incident",
 			RawText: "Local police arrested a suspect yesterday following an incident in downtown. " +
 				"The individual was charged with multiple offenses.",
-			OGType: "article",
+			OGType:               "article",
 			MetaDescription:      "Local crime news",
 			PublishedDate:        &publishedDate,
 			ClassificationStatus: domain.StatusPending,
