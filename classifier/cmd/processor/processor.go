@@ -24,12 +24,11 @@ import (
 
 const (
 	// Processor configuration constants
-	defaultMinQualityScore      = 30
-	defaultPollInterval         = 30 * time.Second
-	defaultQualityWeight        = 0.25
-	defaultMinWordCount         = 100
-	defaultOptimalWordCount800  = 800
-	defaultOptimalWordCount1000 = 1000
+	defaultMinQualityScore     = 30
+	defaultPollInterval        = 30 * time.Second
+	defaultQualityWeight       = 0.25
+	defaultMinWordCount        = 100
+	defaultOptimalWordCount800 = 800
 	// Source reputation constants
 	defaultReputationScore70     = 70
 	defaultReputationDecayRate95 = 0.95
