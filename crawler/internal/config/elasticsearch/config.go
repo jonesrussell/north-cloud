@@ -3,11 +3,8 @@ package elasticsearch
 
 import (
 	"fmt"
-	"os"
 	"strings"
 	"time"
-
-	"github.com/spf13/viper"
 )
 
 // ValidationLevel represents the level of configuration validation required
@@ -69,7 +66,8 @@ func (e *ConfigError) Error() string {
 // Config represents Elasticsearch configuration settings.
 type Config struct {
 	// Addresses is a list of Elasticsearch node addresses
-	Addresses []string `env:"ELASTICSEARCH_HOSTS" yaml:"addresses"`
+	// Supports both ELASTICSEARCH_HOSTS and ELASTICSEARCH_ADDRESSES (comma-separated)
+	Addresses []string `env:"ELASTICSEARCH_ADDRESSES" yaml:"addresses"`
 	// APIKey is the base64 encoded API key for authentication
 	APIKey string `env:"ELASTICSEARCH_API_KEY" yaml:"api_key"`
 	// Username is the username for authentication
@@ -77,7 +75,8 @@ type Config struct {
 	// Password is the password for authentication (minimum 8 characters)
 	Password string `env:"ELASTICSEARCH_PASSWORD" yaml:"password"`
 	// IndexName is the name of the index
-	IndexName string `env:"ELASTICSEARCH_INDEX_PREFIX" yaml:"index_name"`
+	// Supports both ELASTICSEARCH_INDEX_PREFIX and ELASTICSEARCH_INDEX_NAME
+	IndexName string `env:"ELASTICSEARCH_INDEX_NAME" yaml:"index_name"`
 	// Cloud contains cloud-specific configuration
 	Cloud struct {
 		ID     string `yaml:"id"`
@@ -93,9 +92,9 @@ type Config struct {
 		MaxRetries  int           `env:"ELASTICSEARCH_MAX_RETRIES"        yaml:"max_retries"`
 	} `yaml:"retry"`
 	// BulkSize is the number of documents to bulk index
-	BulkSize int `yaml:"bulk_size"`
+	BulkSize int `env:"ELASTICSEARCH_BULK_SIZE" yaml:"bulk_size"`
 	// FlushInterval is the interval at which to flush the bulk indexer
-	FlushInterval time.Duration `yaml:"flush_interval"`
+	FlushInterval time.Duration `env:"ELASTICSEARCH_FLUSH_INTERVAL" yaml:"flush_interval"`
 	// DiscoverNodes enables/disables node discovery
 	DiscoverNodes bool `env:"ELASTICSEARCH_DISCOVER_NODES" yaml:"discover_nodes"`
 	// MaxSize is the maximum size of the storage in bytes
@@ -268,6 +267,7 @@ func (c *Config) Validate() error {
 func NewConfig() *Config {
 	return &Config{
 		Addresses: []string{DefaultAddresses},
+		IndexName: DefaultIndexName,
 		Retry: struct {
 			Enabled     bool          `env:"ELASTICSEARCH_RETRY_ENABLED"      yaml:"enabled"`
 			InitialWait time.Duration `env:"ELASTICSEARCH_RETRY_INITIAL_WAIT" yaml:"initial_wait"`
@@ -288,115 +288,23 @@ func NewConfig() *Config {
 		MaxSize:     DefaultMaxSize,
 		MaxItems:    DefaultMaxItems,
 		Compression: true,
+		DiscoverNodes: DefaultDiscoverNodes,
 	}
 }
 
-// parseAddressesFromString parses comma-separated addresses from a string
-func parseAddressesFromString(addrStr string) []string {
+// ParseAddressesFromString parses comma-separated addresses from a string.
+func ParseAddressesFromString(addrStr string) []string {
 	addresses := strings.Split(addrStr, ",")
 	// Trim whitespace from each address
 	for i := range addresses {
 		addresses[i] = strings.TrimSpace(addresses[i])
 	}
 	// Remove any empty strings after trimming
-	var filtered []string
+	filtered := make([]string, 0, len(addresses))
 	for _, addr := range addresses {
 		if addr != "" {
 			filtered = append(filtered, addr)
 		}
 	}
 	return filtered
-}
-
-// parseAddressesFromConfig parses addresses from Viper configuration
-func parseAddressesFromConfig(v *viper.Viper) []string {
-	// Try GetStringSlice first (for YAML configs with array syntax)
-	addresses := v.GetStringSlice("elasticsearch.addresses")
-	// Filter out empty strings
-	var filtered []string
-	for _, addr := range addresses {
-		if addr != "" {
-			filtered = append(filtered, addr)
-		}
-	}
-	addresses = filtered
-
-	// If GetStringSlice returned empty, fall back to GetString and parse as comma-separated
-	if len(addresses) == 0 {
-		addrStr := v.GetString("elasticsearch.addresses")
-		if addrStr != "" {
-			addresses = parseAddressesFromString(addrStr)
-		} else {
-			// Fallback to single string value
-			if addr := v.GetString("elasticsearch.address"); addr != "" {
-				addresses = []string{addr}
-			}
-		}
-	}
-	return addresses
-}
-
-// LoadFromViper loads Elasticsearch configuration from Viper
-func LoadFromViper(v *viper.Viper) *Config {
-	var addresses []string
-
-	// First, check environment variables directly to ensure they take precedence over defaults
-	// Environment variables are always comma-separated strings
-	var addrStr string
-	if envAddr := os.Getenv("ELASTICSEARCH_HOSTS"); envAddr != "" {
-		addrStr = envAddr
-	} else if envAddr2 := os.Getenv("ELASTICSEARCH_ADDRESSES"); envAddr2 != "" {
-		addrStr = envAddr2
-	}
-
-	// If we have an environment variable, parse it as a comma-separated string
-	if addrStr != "" {
-		addresses = parseAddressesFromString(addrStr)
-	} else {
-		addresses = parseAddressesFromConfig(v)
-	}
-
-	// If addresses is still empty, use default
-	if len(addresses) == 0 {
-		addresses = []string{DefaultAddresses}
-	}
-
-	// Get index name - support both index_name and index_prefix for backward compatibility
-	indexName := v.GetString("elasticsearch.index_name")
-	if indexName == "" {
-		indexName = v.GetString("elasticsearch.index_prefix")
-	}
-	if indexName == "" {
-		indexName = DefaultIndexName
-	}
-
-	// Get flush interval with default
-	flushInterval := v.GetDuration("elasticsearch.flush_interval")
-	if flushInterval == 0 {
-		flushInterval = DefaultFlushInterval
-	}
-
-	// Get bulk size with default
-	bulkSize := v.GetInt("elasticsearch.bulk_size")
-	if bulkSize == 0 {
-		bulkSize = DefaultBulkSize
-	}
-
-	cfg := &Config{
-		Addresses:     addresses,
-		IndexName:     indexName,
-		Username:      v.GetString("elasticsearch.username"),
-		Password:      v.GetString("elasticsearch.password"),
-		APIKey:        v.GetString("elasticsearch.api_key"),
-		FlushInterval: flushInterval,
-		BulkSize:      bulkSize,
-		TLS: &TLSConfig{
-			Enabled:            v.GetBool("elasticsearch.tls.enabled"),
-			InsecureSkipVerify: v.GetBool("elasticsearch.tls.insecure_skip_verify"),
-			CAFile:             v.GetString("elasticsearch.tls.ca_file"),
-			CertFile:           v.GetString("elasticsearch.tls.cert_file"),
-			KeyFile:            v.GetString("elasticsearch.tls.key_file"),
-		},
-	}
-	return cfg
 }

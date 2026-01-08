@@ -1,10 +1,11 @@
 // Package config provides configuration management for the GoCrawl application.
 // It handles loading, validation, and access to configuration values from both
-// YAML files and environment variables using Viper.
+// YAML files and environment variables using infrastructure/config.
 package config
 
 import (
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/jonesrussell/north-cloud/crawler/internal/config/crawler"
@@ -12,7 +13,7 @@ import (
 	"github.com/jonesrussell/north-cloud/crawler/internal/config/elasticsearch"
 	"github.com/jonesrussell/north-cloud/crawler/internal/config/minio"
 	"github.com/jonesrussell/north-cloud/crawler/internal/config/server"
-	"github.com/spf13/viper"
+	infraconfig "github.com/north-cloud/infrastructure/config"
 )
 
 // Interface defines the interface for configuration management.
@@ -27,8 +28,6 @@ type Interface interface {
 	GetDatabaseConfig() *dbconfig.Config
 	// GetMinIOConfig returns the MinIO configuration.
 	GetMinIOConfig() *minio.Config
-	// GetConfigFile returns the path to the configuration file.
-	GetConfigFile() string
 	// Validate validates the configuration based on the current command.
 	Validate() error
 }
@@ -74,53 +73,74 @@ func (c *Config) Validate() error {
 	return c.validateHTTPDConfig()
 }
 
-// LoadConfig loads the configuration from Viper
-func LoadConfig() (*Config, error) {
-	cfg := &Config{
-		Server:        server.NewConfig(),
-		Elasticsearch: elasticsearch.LoadFromViper(viper.GetViper()),
-		Crawler:       crawler.LoadFromViper(viper.GetViper()),
-		Database:      dbconfig.LoadFromViper(viper.GetViper()),
-		MinIO:         minio.LoadFromViper(viper.GetViper()),
+// Load loads configuration from the specified path.
+func Load(path string) (*Config, error) {
+	cfg, err := infraconfig.LoadWithDefaults[Config](path, setDefaults)
+	if err != nil {
+		return nil, err
+	}
+	
+	// Apply backward compatibility fixes after env overrides
+	applyBackwardCompatibility(cfg)
+	
+	return cfg, nil
+}
+
+// applyBackwardCompatibility applies backward compatibility fixes for environment variables.
+// This runs after env overrides to handle legacy env var names.
+func applyBackwardCompatibility(cfg *Config) {
+	if cfg.Elasticsearch != nil {
+		// Support ELASTICSEARCH_HOSTS as fallback for ELASTICSEARCH_ADDRESSES
+		if len(cfg.Elasticsearch.Addresses) == 0 {
+			if hostsEnv := os.Getenv("ELASTICSEARCH_HOSTS"); hostsEnv != "" {
+				cfg.Elasticsearch.Addresses = elasticsearch.ParseAddressesFromString(hostsEnv)
+			}
+		}
+		
+		// Support ELASTICSEARCH_INDEX_PREFIX as fallback for ELASTICSEARCH_INDEX_NAME
+		if cfg.Elasticsearch.IndexName == "" {
+			if indexPrefix := os.Getenv("ELASTICSEARCH_INDEX_PREFIX"); indexPrefix != "" {
+				cfg.Elasticsearch.IndexName = indexPrefix
+			}
+		}
+	}
+}
+
+// setDefaults applies default values to the config.
+func setDefaults(cfg *Config) {
+	// Initialize nil pointers
+	if cfg.Server == nil {
+		cfg.Server = server.NewConfig()
+	}
+	if cfg.Crawler == nil {
+		cfg.Crawler = crawler.New()
+	}
+	if cfg.Elasticsearch == nil {
+		cfg.Elasticsearch = elasticsearch.NewConfig()
+	}
+	if cfg.Database == nil {
+		cfg.Database = dbconfig.NewConfig()
+	}
+	if cfg.MinIO == nil {
+		cfg.MinIO = minio.NewConfig()
 	}
 
-	// Set server config from Viper with defaults
-	cfg.Server.Address = viper.GetString("server.address")
+	// Set server defaults
 	if cfg.Server.Address == "" {
 		cfg.Server.Address = defaultServerAddress
 	}
-
-	cfg.Server.ReadTimeout = viper.GetDuration("server.readTimeout")
 	if cfg.Server.ReadTimeout == 0 {
 		cfg.Server.ReadTimeout = defaultServerReadTimeout
 	}
-
-	cfg.Server.WriteTimeout = viper.GetDuration("server.writeTimeout")
 	if cfg.Server.WriteTimeout == 0 {
 		cfg.Server.WriteTimeout = defaultServerWriteTimeout
 	}
-
-	cfg.Server.IdleTimeout = viper.GetDuration("server.idleTimeout")
 	if cfg.Server.IdleTimeout == 0 {
 		cfg.Server.IdleTimeout = defaultServerIdleTimeout
 	}
 
-	cfg.Server.SecurityEnabled = viper.GetBool("server.security.enabled")
-	cfg.Server.APIKey = viper.GetString("server.security.apiKey")
-
-	// Validate the configuration
-	if validateErr := cfg.Validate(); validateErr != nil {
-		return nil, fmt.Errorf("invalid config: %w", validateErr)
-	}
-
-	// Validate MinIO configuration
-	if cfg.MinIO != nil {
-		if err := cfg.MinIO.Validate(); err != nil {
-			return nil, fmt.Errorf("minio: %w", err)
-		}
-	}
-
-	return cfg, nil
+	// Apply development logging settings based on environment
+	setupDevelopmentLogging(cfg)
 }
 
 // GetServerConfig returns the server configuration.
@@ -142,7 +162,7 @@ func (c *Config) GetElasticsearchConfig() *elasticsearch.Config {
 func (c *Config) GetDatabaseConfig() *dbconfig.Config {
 	if c.Database == nil {
 		// Return default config if not initialized
-		return dbconfig.LoadFromViper(viper.GetViper())
+		return dbconfig.NewConfig()
 	}
 	return c.Database
 }
@@ -151,12 +171,18 @@ func (c *Config) GetDatabaseConfig() *dbconfig.Config {
 func (c *Config) GetMinIOConfig() *minio.Config {
 	if c.MinIO == nil {
 		// Return default config if not initialized
-		return minio.LoadFromViper(viper.GetViper())
+		return minio.NewConfig()
 	}
 	return c.MinIO
 }
 
-// GetConfigFile returns the path to the configuration file.
-func (c *Config) GetConfigFile() string {
-	return viper.ConfigFileUsed()
+// setupDevelopmentLogging configures logging settings based on environment variables.
+// It separates concerns: debug level (controlled by APP_DEBUG) vs development formatting (controlled by APP_ENV).
+func setupDevelopmentLogging(cfg *Config) {
+	// Note: Logging configuration is handled by the logger package itself,
+	// but we can set debug flag if APP_DEBUG is set
+	// This is a placeholder for any future logging-related config adjustments
+	_ = cfg
+	_ = os.Getenv("APP_DEBUG")
+	_ = os.Getenv("APP_ENV")
 }

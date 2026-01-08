@@ -26,9 +26,9 @@ import (
 	"github.com/jonesrussell/north-cloud/crawler/internal/sources"
 	"github.com/jonesrussell/north-cloud/crawler/internal/storage"
 	"github.com/jonesrussell/north-cloud/crawler/internal/storage/types"
+	infraconfig "github.com/north-cloud/infrastructure/config"
 	infracontext "github.com/north-cloud/infrastructure/context"
 	"github.com/north-cloud/infrastructure/profiling"
-	"github.com/spf13/viper"
 )
 
 // === Types ===
@@ -83,12 +83,7 @@ func Start() error {
 		}()
 	}
 
-	// Phase 1: Initialize Viper configuration
-	if err = config.InitializeViper(); err != nil {
-		return fmt.Errorf("failed to initialize config: %w", err)
-	}
-
-	// Phase 2: Initialize dependencies
+	// Phase 1: Initialize dependencies
 	deps, err := newCommandDeps()
 	if err != nil {
 		return fmt.Errorf("failed to initialize dependencies: %w", err)
@@ -146,20 +141,58 @@ func newCommandDeps() (*CommandDeps, error) {
 
 // loadConfig loads configuration from the config package.
 func loadConfig() (config.Interface, error) {
-	return config.LoadConfig()
+	configPath := infraconfig.GetConfigPath("config.yml")
+	return config.Load(configPath)
 }
 
-// createLogger creates a logger instance from Viper configuration.
+// createLogger creates a logger instance from environment variables.
 func createLogger() (logger.Interface, error) {
-	logLevel := normalizeLogLevel(viper.GetString("logger.level"))
+	logLevel := normalizeLogLevel(getEnvOrDefault("LOG_LEVEL", "info"))
+
+	// Determine if we're in development mode
+	appEnv := getEnvOrDefault("APP_ENV", "production")
+	isDev := appEnv == "development"
+	appDebug := getEnvOrDefault("APP_DEBUG", "false") == "true"
+
+	// Set development mode based on APP_ENV
+	development := isDev
+
+	// Override log level if APP_DEBUG is set
+	if appDebug {
+		logLevel = "debug"
+	}
+
+	// Determine encoding based on environment
+	encoding := getEnvOrDefault("LOG_FORMAT", "json")
+	if isDev {
+		encoding = "console"
+	}
+
+	// Get output paths (default to stdout)
+	outputPaths := []string{"stdout"}
+	if outputPathsStr := os.Getenv("LOG_OUTPUT_PATHS"); outputPathsStr != "" {
+		outputPaths = strings.Split(outputPathsStr, ",")
+		for i := range outputPaths {
+			outputPaths[i] = strings.TrimSpace(outputPaths[i])
+		}
+	}
+
 	logCfg := &logger.Config{
 		Level:       logger.Level(logLevel),
-		Development: viper.GetBool("logger.development"),
-		Encoding:    viper.GetString("logger.encoding"),
-		OutputPaths: viper.GetStringSlice("logger.output_paths"),
-		EnableColor: viper.GetBool("logger.enable_color"),
+		Development: development,
+		Encoding:    encoding,
+		OutputPaths: outputPaths,
+		EnableColor: isDev,
 	}
 	return logger.New(logCfg)
+}
+
+// getEnvOrDefault returns the environment variable value or a default.
+func getEnvOrDefault(key, defaultValue string) string {
+	if val := os.Getenv(key); val != "" {
+		return val
+	}
+	return defaultValue
 }
 
 // normalizeLogLevel normalizes log level string.
