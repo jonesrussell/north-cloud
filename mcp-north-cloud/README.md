@@ -132,6 +132,75 @@ The project includes a `.cursor/mcp.json` file for Cursor IDE integration:
 
 After modifying the configuration, **restart Cursor** to apply changes.
 
+### Claude Code Hooks Integration
+
+When using Claude Code hooks, MCP tools follow a specific naming pattern. Since the server is configured as `"north-cloud"` in the MCP configuration, all tools are accessible using the pattern:
+
+**Pattern**: `mcp__<server>__<tool>`
+
+**Examples**:
+- `mcp__north-cloud__start_crawl` - Start an immediate crawl job
+- `mcp__north-cloud__schedule_crawl` - Schedule a recurring crawl
+- `mcp__north-cloud__list_crawl_jobs` - List all crawl jobs
+- `mcp__north-cloud__add_source` - Add a new content source
+- `mcp__north-cloud__create_route` - Create a publishing route
+- `mcp__north-cloud__search_articles` - Search classified content
+- `mcp__north-cloud__classify_article` - Classify an article
+- `mcp__north-cloud__list_indexes` - List Elasticsearch indexes
+- `mcp__north-cloud__delete_index` - Delete an Elasticsearch index
+
+**All 22 tools** are available using this naming convention. You can reference them in Claude Code hooks to automate North Cloud operations.
+
+**Hook Example**:
+```yaml
+# Example hook that uses MCP tools
+on:
+  - event: file_changed
+    pattern: "crawler/**/*.go"
+actions:
+  - use: mcp__north-cloud__list_crawl_jobs
+    args:
+      status: "running"
+```
+
+**Complete Tool List for Claude Code Hooks**:
+
+All 22 tools available with `mcp__north-cloud__` prefix:
+
+**Crawler Tools (7)**:
+- `mcp__north-cloud__start_crawl`
+- `mcp__north-cloud__schedule_crawl`
+- `mcp__north-cloud__list_crawl_jobs`
+- `mcp__north-cloud__pause_crawl_job`
+- `mcp__north-cloud__resume_crawl_job`
+- `mcp__north-cloud__cancel_crawl_job`
+- `mcp__north-cloud__get_crawl_stats`
+
+**Source Manager Tools (5)**:
+- `mcp__north-cloud__add_source`
+- `mcp__north-cloud__list_sources`
+- `mcp__north-cloud__update_source`
+- `mcp__north-cloud__delete_source`
+- `mcp__north-cloud__test_source`
+
+**Publisher Tools (6)**:
+- `mcp__north-cloud__create_route`
+- `mcp__north-cloud__list_routes`
+- `mcp__north-cloud__delete_route`
+- `mcp__north-cloud__preview_route`
+- `mcp__north-cloud__get_publish_history`
+- `mcp__north-cloud__get_publisher_stats`
+
+**Search Tools (1)**:
+- `mcp__north-cloud__search_articles`
+
+**Classifier Tools (1)**:
+- `mcp__north-cloud__classify_article`
+
+**Index Manager Tools (2)**:
+- `mcp__north-cloud__list_indexes`
+- `mcp__north-cloud__delete_index`
+
 ### Environment Variables
 
 All service URLs can be configured via environment variables:
