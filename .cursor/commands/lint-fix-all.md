@@ -17,7 +17,7 @@ This command will:
 ## Command
 
 ```bash
-cd /home/jones/dev/north-cloud && for service in auth crawler classifier publisher search source-manager index-manager mcp-north-cloud; do echo "=== Fixing $service ===" && cd "$service" && golangci-lint run --fix && cd ..; done
+cd /home/jones/dev/north-cloud && for service in auth crawler classifier publisher search source-manager index-manager mcp-north-cloud; do if [ -d "$service" ]; then echo "=== Fixing $service ===" && (cd "$service" && golangci-lint run --fix || true); else echo "=== Skipping $service (not found) ==="; fi; done
 ```
 
 ## What Gets Fixed
@@ -53,7 +53,7 @@ Some issues cannot be auto-fixed and require manual intervention:
 
 1. **Run auto-fix**:
    ```bash
-   cd /home/jones/dev/north-cloud && for service in auth crawler classifier publisher search source-manager index-manager mcp-north-cloud; do echo "=== Fixing $service ===" && cd "$service" && golangci-lint run --fix && cd ..; done
+   cd /home/jones/dev/north-cloud && for service in auth crawler classifier publisher search source-manager index-manager mcp-north-cloud; do if [ -d "$service" ]; then echo "=== Fixing $service ===" && (cd "$service" && golangci-lint run --fix || true); else echo "=== Skipping $service (not found) ==="; fi; done
    ```
 
 2. **Check remaining issues**:
