@@ -13,10 +13,12 @@ import (
 	"github.com/jmoiron/sqlx"
 	"github.com/jonesrussell/north-cloud/classifier/internal/api"
 	"github.com/jonesrussell/north-cloud/classifier/internal/classifier"
+	"github.com/jonesrussell/north-cloud/classifier/internal/config"
 	"github.com/jonesrussell/north-cloud/classifier/internal/database"
 	"github.com/jonesrussell/north-cloud/classifier/internal/domain"
 	"github.com/jonesrussell/north-cloud/classifier/internal/processor"
 	"github.com/jonesrussell/north-cloud/classifier/internal/storage"
+	infraconfig "github.com/north-cloud/infrastructure/config"
 	esclient "github.com/north-cloud/infrastructure/elasticsearch"
 	infralogger "github.com/north-cloud/infrastructure/logger"
 	"github.com/north-cloud/infrastructure/profiling"
@@ -79,17 +81,38 @@ type serverComponents struct {
 	sourceRepScorer           *classifier.SourceReputationScorer
 	topicClassifier           *classifier.TopicClassifier
 	handler                   *api.Handler
+	config                    *config.Config
 }
 
 // setupDatabaseAndRepos creates database connection and repositories
-func setupDatabaseAndRepos(logger *Logger) (*serverComponents, error) {
+func setupDatabaseAndRepos(cfg *config.Config, logger *Logger) (*serverComponents, error) {
+	// Convert config database to database.Config
+	dbPort := strconv.Itoa(cfg.Database.Port)
+	if cfg.Database.Port == 0 {
+		dbPort = "5432"
+	}
+
 	dbConfig := database.Config{
-		Host:     getEnv("POSTGRES_HOST", "localhost"),
-		Port:     getEnv("POSTGRES_PORT", "5432"),
-		User:     getEnv("POSTGRES_USER", "postgres"),
-		Password: getEnv("POSTGRES_PASSWORD", ""),
-		DBName:   getEnv("POSTGRES_DB", "classifier"),
-		SSLMode:  getEnv("POSTGRES_SSLMODE", "disable"),
+		Host:     cfg.Database.Host,
+		Port:     dbPort,
+		User:     cfg.Database.User,
+		Password: cfg.Database.Password,
+		DBName:   cfg.Database.Database,
+		SSLMode:  cfg.Database.SSLMode,
+	}
+
+	// Set defaults if empty
+	if dbConfig.Host == "" {
+		dbConfig.Host = "localhost"
+	}
+	if dbConfig.User == "" {
+		dbConfig.User = "postgres"
+	}
+	if dbConfig.DBName == "" {
+		dbConfig.DBName = "classifier"
+	}
+	if dbConfig.SSLMode == "" {
+		dbConfig.SSLMode = "disable"
 	}
 
 	logger.Info("Connecting to PostgreSQL database",
@@ -114,7 +137,10 @@ func setupDatabaseAndRepos(logger *Logger) (*serverComponents, error) {
 	// Setup Elasticsearch storage for re-classification endpoint
 	// This is optional - if ES is unavailable, re-classification endpoint won't work
 	// but the service can still start and serve other endpoints
-	esURL := getEnv("ELASTICSEARCH_URL", "http://localhost:9200")
+	esURL := cfg.Elasticsearch.URL
+	if esURL == "" {
+		esURL = "http://localhost:9200"
+	}
 	ctx := context.Background()
 
 	// Try to create ES client with retry logic, but don't fail startup if it fails
@@ -172,7 +198,7 @@ func setupDatabaseAndRepos(logger *Logger) (*serverComponents, error) {
 }
 
 // loadRulesAndCreateClassifier loads rules and creates classifier components
-func loadRulesAndCreateClassifier(ctx context.Context, comps *serverComponents, logger *Logger) error {
+func loadRulesAndCreateClassifier(ctx context.Context, comps *serverComponents, cfg *config.Config, logger *Logger) error {
 	enabledOnly := true
 	rules, err := comps.rulesRepo.List(ctx, domain.RuleTypeTopic, &enabledOnly)
 	if err != nil {
@@ -185,7 +211,7 @@ func loadRulesAndCreateClassifier(ctx context.Context, comps *serverComponents, 
 		ruleValues[i] = *rule
 	}
 
-	config := classifier.Config{
+	classifierConfig := classifier.Config{
 		Version:         "1.0.0",
 		MinQualityScore: defaultMinQualityScore50,
 		UpdateSourceRep: true,
@@ -206,10 +232,13 @@ func loadRulesAndCreateClassifier(ctx context.Context, comps *serverComponents, 
 		},
 	}
 
-	comps.classifierInstance = classifier.NewClassifier(logger, ruleValues, comps.sourceRepRepo, config)
-	logger.Info("Classifier initialized", "version", config.Version, "rules_count", len(rules))
+	comps.classifierInstance = classifier.NewClassifier(logger, ruleValues, comps.sourceRepRepo, classifierConfig)
+	logger.Info("Classifier initialized", "version", classifierConfig.Version, "rules_count", len(rules))
 
-	concurrency := getEnvInt("CLASSIFIER_CONCURRENCY", defaultConcurrency)
+	concurrency := cfg.Service.Concurrency
+	if concurrency == 0 {
+		concurrency = defaultConcurrency
+	}
 	comps.batchProcessor = processor.NewBatchProcessor(comps.classifierInstance, concurrency, logger)
 	logger.Info("Batch processor initialized", "concurrency", concurrency)
 
@@ -227,6 +256,7 @@ func loadRulesAndCreateClassifier(ctx context.Context, comps *serverComponents, 
 		comps.esStorage,
 		logger,
 	)
+	comps.config = cfg
 
 	return nil
 }
@@ -236,20 +266,35 @@ func StartHTTPServer() {
 	// Start profiling server (if enabled)
 	profiling.StartPprofServer()
 
-	debug := os.Getenv("APP_DEBUG") == "true"
-	port := getEnvInt("CLASSIFIER_PORT", defaultClassifierPort)
+	// Load configuration
+	configPath := infraconfig.GetConfigPath("config.yml")
+	cfg, err := config.Load(configPath)
+	if err != nil {
+		log.Printf("Warning: Failed to load config file (%s), using defaults: %v", configPath, err)
+		// Create default config if file doesn't exist
+		cfg = &config.Config{}
+		if cfg.Service.Port == 0 {
+			cfg.Service.Port = defaultClassifierPort
+		}
+	}
+
+	debug := cfg.Service.Debug
+	port := cfg.Service.Port
+	if port == 0 {
+		port = defaultClassifierPort
+	}
 
 	logger := NewLogger(debug)
 	logger.Info("Starting classifier HTTP server", "port", port, "debug", debug)
 
-	comps, err := setupDatabaseAndRepos(logger)
+	comps, err := setupDatabaseAndRepos(cfg, logger)
 	if err != nil {
 		logger.Error("Failed to setup database", "error", err)
 		os.Exit(1)
 	}
 
 	ctx := context.Background()
-	if err = loadRulesAndCreateClassifier(ctx, comps, logger); err != nil {
+	if err = loadRulesAndCreateClassifier(ctx, comps, cfg, logger); err != nil {
 		logger.Error("Failed to load rules and create classifier", "error", err)
 		_ = comps.db.Close()
 		os.Exit(1)
@@ -261,7 +306,7 @@ func StartHTTPServer() {
 		WriteTimeout: defaultHTTPTimeout,
 		Debug:        debug,
 	}
-	server := api.NewServer(comps.handler, serverConfig, logger)
+	server := api.NewServer(comps.handler, serverConfig, logger, cfg)
 
 	// Start server in goroutine
 	serverErrors := make(chan error, 1)
@@ -300,19 +345,34 @@ func StartHTTPServer() {
 // StartHTTPServerWithStop starts the HTTP server and returns a stop function
 // This allows the server to run concurrently with other services
 func StartHTTPServerWithStop() (func(), error) {
-	debug := os.Getenv("APP_DEBUG") == "true"
-	port := getEnvInt("CLASSIFIER_PORT", defaultClassifierPort)
+	// Load configuration
+	configPath := infraconfig.GetConfigPath("config.yml")
+	cfg, err := config.Load(configPath)
+	if err != nil {
+		log.Printf("Warning: Failed to load config file (%s), using defaults: %v", configPath, err)
+		// Create default config if file doesn't exist
+		cfg = &config.Config{}
+		if cfg.Service.Port == 0 {
+			cfg.Service.Port = defaultClassifierPort
+		}
+	}
+
+	debug := cfg.Service.Debug
+	port := cfg.Service.Port
+	if port == 0 {
+		port = defaultClassifierPort
+	}
 
 	logger := NewLogger(debug)
 	logger.Info("Starting classifier HTTP server", "port", port, "debug", debug)
 
-	comps, err := setupDatabaseAndRepos(logger)
+	comps, err := setupDatabaseAndRepos(cfg, logger)
 	if err != nil {
 		return nil, fmt.Errorf("failed to setup database: %w", err)
 	}
 
 	ctx := context.Background()
-	if err = loadRulesAndCreateClassifier(ctx, comps, logger); err != nil {
+	if err = loadRulesAndCreateClassifier(ctx, comps, cfg, logger); err != nil {
 		_ = comps.db.Close()
 		return nil, fmt.Errorf("failed to load rules and create classifier: %w", err)
 	}
@@ -323,7 +383,7 @@ func StartHTTPServerWithStop() (func(), error) {
 		WriteTimeout: defaultHTTPTimeout,
 		Debug:        debug,
 	}
-	server := api.NewServer(comps.handler, serverConfig, logger)
+	server := api.NewServer(comps.handler, serverConfig, logger, cfg)
 
 	// Start server in goroutine
 	serverErrors := make(chan error, 1)
@@ -359,22 +419,4 @@ func StartHTTPServerWithStop() (func(), error) {
 	}
 
 	return stopFunc, nil
-}
-
-// getEnv retrieves a string from environment variable with a default fallback
-func getEnv(key, defaultValue string) string {
-	if value := os.Getenv(key); value != "" {
-		return value
-	}
-	return defaultValue
-}
-
-// getEnvInt retrieves an integer from environment variable with a default fallback
-func getEnvInt(key string, defaultValue int) int {
-	if value := os.Getenv(key); value != "" {
-		if intValue, err := strconv.Atoi(value); err == nil {
-			return intValue
-		}
-	}
-	return defaultValue
 }

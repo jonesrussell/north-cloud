@@ -8,13 +8,13 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"testing"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/jmoiron/sqlx"
 	"github.com/jonesrussell/north-cloud/classifier/internal/classifier"
+	"github.com/jonesrussell/north-cloud/classifier/internal/config"
 	"github.com/jonesrussell/north-cloud/classifier/internal/database"
 	"github.com/jonesrussell/north-cloud/classifier/internal/domain"
 	"github.com/jonesrussell/north-cloud/classifier/internal/processor"
@@ -174,18 +174,16 @@ func setupTestHandler() *Handler {
 
 // setupRouter creates a test router with routes
 func setupRouter(handler *Handler) *gin.Engine {
-	// Unset AUTH_JWT_SECRET to disable JWT authentication in tests
-	originalSecret := os.Getenv("AUTH_JWT_SECRET")
-	os.Unsetenv("AUTH_JWT_SECRET")
-	defer func() {
-		if originalSecret != "" {
-			os.Setenv("AUTH_JWT_SECRET", originalSecret)
-		}
-	}()
+	// Create test config without JWT secret to disable JWT authentication in tests
+	cfg := &config.Config{
+		Auth: config.AuthConfig{
+			JWTSecret: "", // No JWT secret for tests
+		},
+	}
 
 	gin.SetMode(gin.TestMode)
 	router := gin.New()
-	SetupRoutes(router, handler)
+	SetupRoutes(router, handler, cfg)
 	return router
 }
 

@@ -1,15 +1,14 @@
 package api
 
 import (
-	"os"
-
 	"github.com/gin-gonic/gin"
+	"github.com/jonesrussell/north-cloud/classifier/internal/config"
 	infrajwt "github.com/north-cloud/infrastructure/jwt"
 	"github.com/north-cloud/infrastructure/monitoring"
 )
 
 // SetupRoutes configures all API routes
-func SetupRoutes(router *gin.Engine, handler *Handler) {
+func SetupRoutes(router *gin.Engine, handler *Handler, cfg *config.Config) {
 	// Health and readiness checks
 	router.GET("/health", handler.HealthCheck)
 	router.GET("/ready", handler.ReadyCheck)
@@ -22,8 +21,8 @@ func SetupRoutes(router *gin.Engine, handler *Handler) {
 	// API v1 routes - protected with JWT
 	v1 := router.Group("/api/v1")
 	// Add JWT middleware if JWT secret is configured
-	if jwtSecret := os.Getenv("AUTH_JWT_SECRET"); jwtSecret != "" {
-		v1.Use(infrajwt.Middleware(jwtSecret))
+	if cfg != nil && cfg.Auth.JWTSecret != "" {
+		v1.Use(infrajwt.Middleware(cfg.Auth.JWTSecret))
 	}
 
 	// Classification endpoints

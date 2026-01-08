@@ -47,6 +47,7 @@ type Config struct {
 	Redis          RedisConfig          `yaml:"redis"`
 	Logging        LoggingConfig        `yaml:"logging"`
 	Classification ClassificationConfig `yaml:"classification"`
+	Auth           AuthConfig           `yaml:"auth"`
 }
 
 // ServiceConfig holds service-level configuration.
@@ -107,6 +108,11 @@ type LoggingConfig struct {
 	Output string `yaml:"output"`
 }
 
+// AuthConfig holds authentication configuration.
+type AuthConfig struct {
+	JWTSecret string `env:"AUTH_JWT_SECRET" yaml:"jwt_secret"`
+}
+
 // ClassificationConfig holds classification settings.
 type ClassificationConfig struct {
 	ContentType      ContentTypeConfig      `yaml:"content_type"`
@@ -157,6 +163,7 @@ func setDefaults(cfg *Config) {
 	setRedisDefaults(&cfg.Redis)
 	setLoggingDefaults(&cfg.Logging)
 	setClassificationDefaults(&cfg.Classification)
+	// Auth defaults are handled by env tags - no explicit defaults needed
 }
 
 func setServiceDefaults(s *ServiceConfig) {

@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/jonesrussell/north-cloud/classifier/internal/config"
 )
 
 // Server represents the HTTP server
@@ -25,7 +26,7 @@ type ServerConfig struct {
 }
 
 // NewServer creates a new HTTP server
-func NewServer(handler *Handler, config ServerConfig, logger Logger) *Server {
+func NewServer(handler *Handler, config ServerConfig, logger Logger, cfg *config.Config) *Server {
 	// Set Gin mode based on debug flag
 	if !config.Debug {
 		gin.SetMode(gin.ReleaseMode)
@@ -40,7 +41,7 @@ func NewServer(handler *Handler, config ServerConfig, logger Logger) *Server {
 	router.Use(CORSMiddleware())
 
 	// Setup routes
-	SetupRoutes(router, handler)
+	SetupRoutes(router, handler, cfg)
 
 	// Create HTTP server
 	addr := fmt.Sprintf(":%d", config.Port)

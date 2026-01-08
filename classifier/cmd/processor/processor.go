@@ -6,15 +6,18 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"strconv"
 	"syscall"
 	"time"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/jonesrussell/north-cloud/classifier/internal/classifier"
+	"github.com/jonesrussell/north-cloud/classifier/internal/config"
 	"github.com/jonesrussell/north-cloud/classifier/internal/database"
 	"github.com/jonesrussell/north-cloud/classifier/internal/domain"
 	"github.com/jonesrussell/north-cloud/classifier/internal/processor"
 	"github.com/jonesrussell/north-cloud/classifier/internal/storage"
+	infraconfig "github.com/north-cloud/infrastructure/config"
 	esclient "github.com/north-cloud/infrastructure/elasticsearch"
 	"github.com/north-cloud/infrastructure/logger"
 )
@@ -34,8 +37,8 @@ const (
 	minArticlesForTrust          = 10
 )
 
-// Config holds processor configuration
-type Config struct {
+// ProcessorConfig holds processor-specific configuration derived from main config
+type ProcessorConfig struct {
 	ElasticsearchURL  string
 	PostgresHost      string
 	PostgresPort      string
@@ -48,24 +51,48 @@ type Config struct {
 	ConcurrentWorkers int
 }
 
-// LoadConfig loads configuration from environment variables
-func LoadConfig() *Config {
-	return &Config{
-		ElasticsearchURL:  getEnv("ELASTICSEARCH_URL", "http://localhost:9200"),
-		PostgresHost:      getEnv("POSTGRES_HOST", "localhost"),
-		PostgresPort:      getEnv("POSTGRES_PORT", "5432"),
-		PostgresUser:      getEnv("POSTGRES_USER", "postgres"),
-		PostgresPassword:  getEnv("POSTGRES_PASSWORD", ""),
-		PostgresDB:        getEnv("POSTGRES_DB", "classifier"),
-		PostgresSSLMode:   getEnv("POSTGRES_SSLMODE", "disable"),
-		PollingInterval:   parseDuration(getEnv("POLLING_INTERVAL", "30s")),
-		BatchSize:         parseInt(getEnv("BATCH_SIZE", "100")),
-		ConcurrentWorkers: parseInt(getEnv("CONCURRENT_WORKERS", "5")),
+// LoadConfig loads configuration from config file with env var overrides
+func LoadConfig() *ProcessorConfig {
+	// Load main config
+	configPath := infraconfig.GetConfigPath("config.yml")
+	cfg, err := config.Load(configPath)
+	if err != nil {
+		log.Printf("Warning: Failed to load config file (%s), using defaults: %v", configPath, err)
+		// Create default config if file doesn't exist
+		cfg = &config.Config{}
+		if cfg.Service.PollInterval == 0 {
+			cfg.Service.PollInterval = defaultPollInterval
+		}
+		if cfg.Service.BatchSize == 0 {
+			cfg.Service.BatchSize = 100
+		}
+		if cfg.Service.Concurrency == 0 {
+			cfg.Service.Concurrency = 5
+		}
+	}
+
+	// Convert main config to processor config
+	postgresPort := "5432"
+	if cfg.Database.Port != 0 {
+		postgresPort = strconv.Itoa(cfg.Database.Port)
+	}
+
+	return &ProcessorConfig{
+		ElasticsearchURL:  cfg.Elasticsearch.URL,
+		PostgresHost:      cfg.Database.Host,
+		PostgresPort:      postgresPort,
+		PostgresUser:      cfg.Database.User,
+		PostgresPassword:  cfg.Database.Password,
+		PostgresDB:        cfg.Database.Database,
+		PostgresSSLMode:   cfg.Database.SSLMode,
+		PollingInterval:   cfg.Service.PollInterval,
+		BatchSize:         cfg.Service.BatchSize,
+		ConcurrentWorkers: cfg.Service.Concurrency,
 	}
 }
 
 // setupElasticsearch creates and tests Elasticsearch connection with retry logic
-func setupElasticsearch(cfg *Config) (*storage.ElasticsearchStorage, error) {
+func setupElasticsearch(cfg *ProcessorConfig) (*storage.ElasticsearchStorage, error) {
 	ctx := context.Background()
 
 	// Create a logger for ES connection
@@ -97,7 +124,7 @@ func setupElasticsearch(cfg *Config) (*storage.ElasticsearchStorage, error) {
 }
 
 // setupDatabase creates PostgreSQL connection and repositories
-func setupDatabase(cfg *Config) (
+func setupDatabase(cfg *ProcessorConfig) (
 	*sqlx.DB,
 	*database.RulesRepository,
 	*database.SourceReputationRepository,
@@ -301,13 +328,6 @@ func StartWithStop() (func(), error) {
 	}
 
 	return stopFunc, nil
-}
-
-func getEnv(key, defaultValue string) string {
-	if value := os.Getenv(key); value != "" {
-		return value
-	}
-	return defaultValue
 }
 
 func parseDuration(s string) time.Duration {
