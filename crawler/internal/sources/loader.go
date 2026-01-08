@@ -2,7 +2,6 @@ package sources
 
 import (
 	"errors"
-	"os"
 
 	"github.com/jonesrussell/north-cloud/crawler/internal/config"
 	"github.com/jonesrussell/north-cloud/crawler/internal/logger"
@@ -22,8 +21,12 @@ func NewSources(cfg config.Interface, log logger.Interface) (*Sources, error) {
 	// Store API URL for lazy loading
 	apiURL := crawlerCfg.SourcesAPIURL
 
-	// Get JWT secret from environment for service-to-service authentication
-	jwtSecret := os.Getenv("AUTH_JWT_SECRET")
+	// Get JWT secret from config for service-to-service authentication
+	authCfg := cfg.GetAuthConfig()
+	jwtSecret := ""
+	if authCfg != nil {
+		jwtSecret = authCfg.JWTSecret
+	}
 
 	return &Sources{
 		sources:   nil, // Sources will be loaded lazily on first GetSources() call
