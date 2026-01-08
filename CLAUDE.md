@@ -744,14 +744,32 @@ north-cloud/
 - **Go Version**: 1.24+ (crawler, source-manager), 1.25+ (classifier, publisher)
 - **Error Handling**: Always wrap errors with context using `fmt.Errorf("context: %w", err)`
 - **Logging**: Use structured logging (zap for publisher, configure per service)
-- **Testing**: Unit tests with 80%+ coverage target
+- **Testing**: 
+  - Unit tests with 80%+ coverage target
+  - **Test helper functions MUST start with `t.Helper()`** to mark them as helper functions
+    - ❌ `func verifyResult(t *testing.T, result Result) { ... }`
+    - ✅ `func verifyResult(t *testing.T, result Result) { t.Helper(); ... }`
+    - This ensures test failures point to the actual test code, not the helper function
 - **Linting**: Use `golangci-lint` with service-specific configurations
 - **Type Safety**: 
-  - Use `any` instead of `interface{}` (Go 1.18+)
+  - **ALWAYS use `any` instead of `interface{}`** (Go 1.18+) - the linter flags `interface{}` as an error
+    - ❌ `func Process(data map[string]interface{})`
+    - ✅ `func Process(data map[string]any)`
+    - ❌ `keysAndValues ...interface{}`
+    - ✅ `keysAndValues ...any`
   - Use integer range syntax (`for i := range n`) when possible (Go 1.22+)
   - Avoid copying large structs in loops: use pointers or indexing (`for i := range items { item := &items[i] }`)
   - Use compound assignment operators (`/=`, `*=`, etc.) instead of `x = x / y`
   - Pre-allocate maps with size hints when the number of keys is known: `make(map[K]V, size)`
+- **Error Handling in Tests**:
+  - **ALWAYS check errors from `json.Marshal` and `json.Unmarshal`** - never use `_` to ignore them
+    - ❌ `body, _ := json.Marshal(reqBody)`
+    - ✅ `body, err := json.Marshal(reqBody)` followed by `if err != nil { t.Fatalf(...) }`
+  - Avoid variable shadowing: use different variable names for errors in nested scopes (e.g., `unmarshalErr` vs `err`)
+- **Line Length**: Keep lines under 150 characters
+  - Break long function signatures across multiple lines
+  - Split long string concatenations across lines
+  - Use multi-line struct literals for better readability
 - **Database Operations**:
   - Always use context-aware methods: `PingContext()`, `QueryContext()`, `ExecContext()` instead of non-context versions
   - Set timeouts for database operations using `context.WithTimeout()`
@@ -761,7 +779,9 @@ north-cloud/
   - Use `strings.Builder` for complex string concatenation in loops
   - Avoid reimplementing standard library string functions
 - **Memory Efficiency**:
-  - Pre-allocate slices with known capacity: `make([]Type, 0, capacity)`
+  - **Pre-allocate slices with known capacity**: `make([]Type, 0, capacity)` instead of `var slice []Type`
+    - ❌ `var items []Item` when you know the size
+    - ✅ `items := make([]Item, 0, len(results))` when capacity is known
   - Pre-allocate maps with known size: `make(map[K]V, size)`
   - Review and optimize allocations in hot paths using profiling tools
 - **Magic Numbers**: **NEVER use magic numbers** - always define named constants for numeric literals
@@ -1707,7 +1727,52 @@ docker system prune -a --volumes
 3. Plan backward compatibility
 4. Consider migration paths
 
-#### 3. Service-Specific Guidelines
+#### 3. Linting Prevention - CRITICAL
+
+**ALWAYS follow these rules to prevent common linting errors:**
+
+- **Type Safety**:
+  - **NEVER use `interface{}`** - always use `any` (Go 1.18+)
+    - ❌ `func Process(data map[string]interface{})`
+    - ✅ `func Process(data map[string]any)`
+    - ❌ `keysAndValues ...interface{}`
+    - ✅ `keysAndValues ...any`
+  - The linter flags ALL `interface{}` usage as an error
+
+- **Error Handling**:
+  - **NEVER ignore JSON marshal/unmarshal errors** - always check them
+    - ❌ `body, _ := json.Marshal(reqBody)`
+    - ✅ `body, err := json.Marshal(reqBody)` followed by proper error checking
+  - Avoid variable shadowing: use different variable names for errors in nested scopes
+    - ❌ `err` used twice in same function scope
+    - ✅ Use `unmarshalErr`, `marshalErr`, `parseErr` etc. for clarity
+
+- **Code Formatting**:
+  - **Keep lines under 150 characters** - break long lines
+    - Break function signatures across multiple lines
+    - Split long string concatenations
+    - Use multi-line struct literals for readability
+
+- **Magic Numbers**:
+  - **NEVER use magic numbers** - always define named constants
+    - ❌ `make(map[string]any, 4)`
+    - ✅ `make(map[string]any, qualityFactorCount)` where `qualityFactorCount = 4`
+    - Define constants at the top of the file with descriptive names
+
+- **Memory Efficiency**:
+  - **Pre-allocate slices when capacity is known**
+    - ❌ `var items []Item` when you know the size
+    - ✅ `items := make([]Item, 0, len(results))` when capacity is known
+
+- **Test Helper Functions**:
+  - **ALL test helper functions MUST start with `t.Helper()`**
+    - ❌ `func verifyResult(t *testing.T, result Result) { ... }`
+    - ✅ `func verifyResult(t *testing.T, result Result) { t.Helper(); ... }`
+    - This ensures test failures point to the actual test, not the helper
+
+**Before committing, run**: `cd {service} && golangci-lint run` to verify no issues
+
+#### 4. Service-Specific Guidelines
 
 **For Crawler**:
 - Follow crawler-specific patterns
@@ -2092,6 +2157,16 @@ When encountering scenarios not covered in this guide:
 ---
 
 ## Version History
+
+- **Linting Prevention Guidelines** (2026-01-07): Enhanced CLAUDE.md with comprehensive linting prevention guidelines
+  - **Added "Linting Prevention - CRITICAL" section** in Important Guidelines for AI Assistants
+  - **Enhanced Type Safety section**: Emphasized `any` vs `interface{}` with examples (Go 1.18+)
+  - **Added Error Handling in Tests**: Guidance on checking JSON marshal/unmarshal errors and avoiding variable shadowing
+  - **Added Line Length guidance**: Keep lines under 150 characters with examples
+  - **Enhanced Memory Efficiency**: Pre-allocate slices with known capacity
+  - **Added Test Helper guidance**: All test helpers must use `t.Helper()`
+  - **Prevents common linting issues**: 50+ occurrences of `interface{}`, unchecked JSON errors, magic numbers, missing `t.Helper()`, etc.
+  - All guidelines include ❌/✅ examples for clarity
 
 - **Crime Sub-Category Classification System** (2026-01-07): Replaced generic "crime" classification with specific sub-categories
   - **Classifier Service**:
