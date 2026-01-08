@@ -75,7 +75,7 @@ func (c *Config) Validate() error {
 
 // Load loads configuration from the specified path.
 func Load(path string) (*Config, error) {
-	cfg, err := infraconfig.LoadWithDefaults[Config](path, setDefaults)
+	cfg, err := infraconfig.LoadWithDefaults(path, setDefaults)
 	if err != nil {
 		return nil, err
 	}
