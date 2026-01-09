@@ -1,14 +1,9 @@
 package main
 
 import (
-	"context"
-	"errors"
+	"fmt"
 	"log"
-	"net/http"
 	"os"
-	"os/signal"
-	"syscall"
-	"time"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/jonesrussell/north-cloud/publisher/internal/api"
@@ -16,24 +11,36 @@ import (
 	"github.com/jonesrussell/north-cloud/publisher/internal/database"
 	redisclient "github.com/jonesrussell/north-cloud/publisher/internal/redis"
 	infraconfig "github.com/north-cloud/infrastructure/config"
+	infragin "github.com/north-cloud/infrastructure/gin"
+	"github.com/north-cloud/infrastructure/logger"
 	"github.com/north-cloud/infrastructure/profiling"
 	"github.com/redis/go-redis/v9"
 )
 
-const (
-	defaultReadTimeout  = 10 * time.Second
-	defaultWriteTimeout = 30 * time.Second
-	defaultIdleTimeout  = 60 * time.Second
-	shutdownTimeout     = 30 * time.Second
-	defaultServerPort   = ":8070"
-)
+const defaultServerPort = ":8070"
 
 func main() {
+	os.Exit(run())
+}
+
+func run() int {
 	// Start profiling server (if enabled)
 	profiling.StartPprofServer()
 
 	// Load and validate configuration
 	cfg := loadAndValidateConfig()
+
+	// Initialize logger
+	infraLog, err := logger.New(logger.Config{
+		Level:       "info",
+		Format:      "json",
+		Development: cfg.Debug,
+	})
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to create logger: %v\n", err)
+		return 1
+	}
+	defer func() { _ = infraLog.Sync() }()
 
 	// Setup database and repository
 	db, repo := setupDatabase(cfg)
@@ -42,15 +49,17 @@ func main() {
 	// Setup Redis client
 	redisClient := setupRedis(cfg)
 
-	// Setup and start HTTP server
-	server := setupHTTPServer(cfg, repo, redisClient)
-	portDisplay := getPortDisplay(cfg.Server.Address)
+	// Setup and start HTTP server using infrastructure gin
+	server := setupHTTPServer(cfg, repo, redisClient, infraLog)
 
-	// Start server in goroutine
-	startServer(server, portDisplay)
+	// Run server with graceful shutdown
+	if runErr := server.Run(); runErr != nil {
+		infraLog.Error("Server error", logger.Error(runErr))
+		return 1
+	}
 
-	// Wait for interrupt signal and shutdown gracefully
-	waitForShutdown(server)
+	infraLog.Info("Publisher API server stopped")
+	return 0
 }
 
 // loadAndValidateConfig loads configuration from file or creates default
@@ -110,58 +119,13 @@ func setupRedis(cfg *config.Config) *redis.Client {
 	return redisClient
 }
 
-// setupHTTPServer creates and configures the HTTP server
-func setupHTTPServer(cfg *config.Config, repo *database.Repository, redisClient *redis.Client) *http.Server {
+// setupHTTPServer creates and configures the HTTP server using infrastructure gin
+func setupHTTPServer(
+	cfg *config.Config,
+	repo *database.Repository,
+	redisClient *redis.Client,
+	infraLog logger.Logger,
+) *infragin.Server {
 	router := api.NewRouter(repo, redisClient, cfg)
-	ginEngine := router.SetupRoutes()
-
-	return &http.Server{
-		Addr:         cfg.Server.Address,
-		Handler:      ginEngine,
-		ReadTimeout:  cfg.Server.ReadTimeout,
-		WriteTimeout: cfg.Server.WriteTimeout,
-		IdleTimeout:  defaultIdleTimeout,
-	}
-}
-
-// getPortDisplay extracts port from address for display purposes
-func getPortDisplay(address string) string {
-	if address == "" {
-		address = defaultServerPort
-	}
-	if address != "" && address[0] == ':' {
-		return address[1:]
-	}
-	return address
-}
-
-// startServer starts the HTTP server in a goroutine
-func startServer(server *http.Server, portDisplay string) {
-	go func() {
-		log.Printf("Starting publisher API server on port %s...", portDisplay)
-		if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			log.Fatalf("Failed to start server: %v", err)
-		}
-	}()
-
-	log.Printf("Publisher API server started successfully on http://localhost:%s", portDisplay)
-	log.Println("Press Ctrl+C to stop")
-}
-
-// waitForShutdown waits for interrupt signal and performs graceful shutdown
-func waitForShutdown(server *http.Server) {
-	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
-	<-quit
-
-	log.Println("Shutting down server...")
-
-	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), shutdownTimeout)
-	defer shutdownCancel()
-
-	if err := server.Shutdown(shutdownCtx); err != nil {
-		log.Printf("Server forced to shutdown: %v", err)
-	}
-
-	log.Println("Server exited")
+	return router.NewServer(infraLog)
 }
