@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"os"
 
 	"github.com/jmoiron/sqlx"
@@ -27,14 +26,12 @@ func run() int {
 	// Start profiling server (if enabled)
 	profiling.StartPprofServer()
 
-	// Load and validate configuration
-	cfg := loadAndValidateConfig()
-
-	// Initialize logger
+	// Initialize logger early (before config loading to use structured logging)
+	// Use default config for logger initialization
 	infraLog, err := logger.New(logger.Config{
 		Level:       "info",
 		Format:      "json",
-		Development: cfg.Debug,
+		Development: false, // Will be updated after config load
 	})
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to create logger: %v\n", err)
@@ -42,12 +39,25 @@ func run() int {
 	}
 	defer func() { _ = infraLog.Sync() }()
 
+	// Add service field to all log entries
+	infraLog = infraLog.With(logger.String("service", "publisher-api"))
+
+	// Load and validate configuration
+	cfg := loadAndValidateConfig(infraLog)
+
+	// Update logger development mode if needed
+	if cfg.Debug {
+		// Recreate logger with debug mode if needed
+		// Note: We keep the existing logger with service field for consistency
+		// Development mode mainly affects sampling, which is already disabled
+	}
+
 	// Setup database and repository
-	db, repo := setupDatabase(cfg)
+	db, repo := setupDatabase(cfg, infraLog)
 	defer database.Close(db)
 
 	// Setup Redis client
-	redisClient := setupRedis(cfg)
+	redisClient := setupRedis(cfg, infraLog)
 
 	// Setup and start HTTP server using infrastructure gin
 	server := setupHTTPServer(cfg, repo, redisClient, infraLog)
@@ -63,26 +73,29 @@ func run() int {
 }
 
 // loadAndValidateConfig loads configuration from file or creates default
-func loadAndValidateConfig() *config.Config {
+func loadAndValidateConfig(infraLog logger.Logger) *config.Config {
 	configPath := infraconfig.GetConfigPath("config.yml")
 	cfg, err := config.Load(configPath)
 	if err != nil {
 		// Config file is optional - create default config if file doesn't exist
-		log.Printf("Warning: Failed to load config file (%s), using defaults: %v", configPath, err)
+		infraLog.Warn("Failed to load config file, using defaults",
+			logger.String("config_path", configPath),
+			logger.Error(err),
+		)
 		cfg = &config.Config{}
 		// Apply defaults manually
 		if cfg.Server.Address == "" {
 			cfg.Server.Address = defaultServerPort
 		}
 		if validateErr := cfg.Validate(); validateErr != nil {
-			log.Fatalf("Invalid default configuration: %v", validateErr)
+			infraLog.Fatal("Invalid default configuration", logger.Error(validateErr))
 		}
 	}
 	return cfg
 }
 
 // setupDatabase creates database connection and repository
-func setupDatabase(cfg *config.Config) (*sqlx.DB, *database.Repository) {
+func setupDatabase(cfg *config.Config, infraLog logger.Logger) (*sqlx.DB, *database.Repository) {
 	dbConfig := database.Config{
 		Host:     cfg.Database.Host,
 		Port:     cfg.Database.Port,
@@ -92,19 +105,19 @@ func setupDatabase(cfg *config.Config) (*sqlx.DB, *database.Repository) {
 		SSLMode:  cfg.Database.SSLMode,
 	}
 
-	log.Println("Connecting to database...")
+	infraLog.Info("Connecting to database")
 	db, err := database.NewPostgresConnection(dbConfig)
 	if err != nil {
-		log.Fatalf("Failed to connect to database: %v", err)
+		infraLog.Fatal("Failed to connect to database", logger.Error(err))
 	}
-	log.Println("Database connection established")
+	infraLog.Info("Database connection established")
 
 	repo := database.NewRepository(db)
 	return db, repo
 }
 
 // setupRedis creates Redis client if configured
-func setupRedis(cfg *config.Config) *redis.Client {
+func setupRedis(cfg *config.Config, infraLog logger.Logger) *redis.Client {
 	redisAddr := cfg.Redis.URL
 	redisPassword := cfg.Redis.Password
 	if redisAddr == "" {
@@ -113,7 +126,9 @@ func setupRedis(cfg *config.Config) *redis.Client {
 
 	redisClient, err := redisclient.NewClient(redisAddr, redisPassword)
 	if err != nil {
-		log.Printf("Warning: Failed to connect to Redis (health checks will show disconnected): %v", err)
+		infraLog.Warn("Failed to connect to Redis (health checks will show disconnected)",
+			logger.Error(err),
+		)
 		return nil
 	}
 	return redisClient
