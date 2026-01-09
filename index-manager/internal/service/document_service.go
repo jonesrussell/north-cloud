@@ -10,17 +10,18 @@ import (
 
 	"github.com/jonesrussell/north-cloud/index-manager/internal/domain"
 	"github.com/jonesrussell/north-cloud/index-manager/internal/elasticsearch"
+	infralogger "github.com/north-cloud/infrastructure/logger"
 )
 
 // DocumentService provides business logic for document operations
 type DocumentService struct {
 	esClient     *elasticsearch.Client
 	queryBuilder *elasticsearch.DocumentQueryBuilder
-	logger       Logger
+	logger       infralogger.Logger
 }
 
 // NewDocumentService creates a new document service
-func NewDocumentService(esClient *elasticsearch.Client, logger Logger) *DocumentService {
+func NewDocumentService(esClient *elasticsearch.Client, logger infralogger.Logger) *DocumentService {
 	return &DocumentService{
 		esClient:     esClient,
 		queryBuilder: elasticsearch.NewDocumentQueryBuilder(),
@@ -50,10 +51,10 @@ func (s *DocumentService) QueryDocuments(
 	}
 
 	s.logger.Debug("Querying documents",
-		"index_name", indexName,
-		"query", req.Query,
-		"page", req.Pagination.Page,
-		"size", req.Pagination.Size,
+		infralogger.String("index_name", indexName),
+		infralogger.String("query", req.Query),
+		infralogger.Int("page", req.Pagination.Page),
+		infralogger.Int("size", req.Pagination.Size),
 	)
 
 	// Execute search
@@ -113,8 +114,8 @@ func (s *DocumentService) GetDocument(ctx context.Context, indexName, documentID
 	}
 
 	s.logger.Debug("Getting document",
-		"index_name", indexName,
-		"document_id", documentID,
+		infralogger.String("index_name", indexName),
+		infralogger.String("document_id", documentID),
 	)
 
 	// Get document from Elasticsearch
@@ -138,8 +139,8 @@ func (s *DocumentService) UpdateDocument(ctx context.Context, indexName, documen
 	}
 
 	s.logger.Info("Updating document",
-		"index_name", indexName,
-		"document_id", documentID,
+		infralogger.String("index_name", indexName),
+		infralogger.String("document_id", documentID),
 	)
 
 	// Convert document to map for update
@@ -165,8 +166,8 @@ func (s *DocumentService) DeleteDocument(ctx context.Context, indexName, documen
 	}
 
 	s.logger.Info("Deleting document",
-		"index_name", indexName,
-		"document_id", documentID,
+		infralogger.String("index_name", indexName),
+		infralogger.String("document_id", documentID),
 	)
 
 	// Delete document from Elasticsearch
@@ -193,8 +194,8 @@ func (s *DocumentService) BulkDeleteDocuments(ctx context.Context, indexName str
 	}
 
 	s.logger.Info("Bulk deleting documents",
-		"index_name", indexName,
-		"count", len(documentIDs),
+		infralogger.String("index_name", indexName),
+		infralogger.Int("count", len(documentIDs)),
 	)
 
 	// Bulk delete documents from Elasticsearch

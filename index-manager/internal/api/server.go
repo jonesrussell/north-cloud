@@ -5,7 +5,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	infragin "github.com/north-cloud/infrastructure/gin"
-	"github.com/north-cloud/infrastructure/logger"
+	infralogger "github.com/north-cloud/infrastructure/logger"
 )
 
 // Default timeout values.
@@ -26,7 +26,7 @@ type ServerConfig struct {
 }
 
 // NewServer creates a new HTTP server using the infrastructure gin package.
-func NewServer(handler *Handler, config ServerConfig, _ Logger, infraLog logger.Logger) *infragin.Server {
+func NewServer(handler *Handler, config ServerConfig, infraLog infralogger.Logger) *infragin.Server {
 	// Set timeout defaults if not provided
 	readTimeout := config.ReadTimeout
 	if readTimeout == 0 {

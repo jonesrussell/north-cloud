@@ -9,11 +9,10 @@ import (
 	"github.com/jonesrussell/north-cloud/index-manager/internal/config"
 	"github.com/jonesrussell/north-cloud/index-manager/internal/database"
 	"github.com/jonesrussell/north-cloud/index-manager/internal/elasticsearch"
-	"github.com/jonesrussell/north-cloud/index-manager/internal/logging"
 	"github.com/jonesrussell/north-cloud/index-manager/internal/service"
 	infraconfig "github.com/north-cloud/infrastructure/config"
 	infragin "github.com/north-cloud/infrastructure/gin"
-	"github.com/north-cloud/infrastructure/logger"
+	infralogger "github.com/north-cloud/infrastructure/logger"
 )
 
 const (
@@ -39,8 +38,8 @@ func run() int {
 		return 1
 	}
 
-	// Initialize logger
-	log, err := logger.New(logger.Config{
+	// Initialize logger using infrastructure logger
+	log, err := infralogger.New(infralogger.Config{
 		Level:       cfg.Logging.Level,
 		Format:      cfg.Logging.Format,
 		Development: cfg.Service.Debug,
@@ -51,29 +50,26 @@ func run() int {
 	}
 	defer func() { _ = log.Sync() }()
 
-	// Create logger adapter for services
-	logAdapter := logging.NewAdapter(log)
-
 	log.Info("Starting Index Manager Service",
-		logger.String("name", cfg.Service.Name),
-		logger.String("version", cfg.Service.Version),
-		logger.Int("port", cfg.Service.Port),
+		infralogger.String("name", cfg.Service.Name),
+		infralogger.String("version", cfg.Service.Version),
+		infralogger.Int("port", cfg.Service.Port),
 	)
 
 	// Initialize dependencies
 	esClient, db, cleanup, initErr := initDependencies(cfg, log)
 	if initErr != nil {
-		log.Error("Failed to initialize dependencies", logger.Error(initErr))
+		log.Error("Failed to initialize dependencies", infralogger.Error(initErr))
 		return 1
 	}
 	defer cleanup()
 
 	// Initialize and run server
-	server := initServer(cfg, esClient, db, logAdapter, log)
+	server := initServer(cfg, esClient, db, log)
 	return runServer(server, log)
 }
 
-func initDependencies(cfg *config.Config, log logger.Logger) (
+func initDependencies(cfg *config.Config, log infralogger.Logger) (
 	*elasticsearch.Client, *database.Connection, func(), error,
 ) {
 	// Initialize Elasticsearch client
@@ -112,7 +108,7 @@ func initDependencies(cfg *config.Config, log logger.Logger) (
 
 	cleanup := func() {
 		if closeErr := db.Close(); closeErr != nil {
-			log.Error("Failed to close database connection", logger.Error(closeErr))
+			log.Error("Failed to close database connection", infralogger.Error(closeErr))
 		}
 	}
 
@@ -123,15 +119,14 @@ func initServer(
 	cfg *config.Config,
 	esClient *elasticsearch.Client,
 	db *database.Connection,
-	logAdapter *logging.Adapter,
-	infraLog logger.Logger,
+	log infralogger.Logger,
 ) *infragin.Server {
 	// Initialize services
-	indexService := service.NewIndexService(esClient, db, logAdapter)
-	documentService := service.NewDocumentService(esClient, logAdapter)
+	indexService := service.NewIndexService(esClient, db, log)
+	documentService := service.NewDocumentService(esClient, log)
 
 	// Initialize API handler
-	handler := api.NewHandler(indexService, documentService, logAdapter)
+	handler := api.NewHandler(indexService, documentService, log)
 
 	// Initialize HTTP server
 	serverConfig := api.ServerConfig{
@@ -142,13 +137,13 @@ func initServer(
 		ServiceName:  cfg.Service.Name,
 	}
 
-	return api.NewServer(handler, serverConfig, logAdapter, infraLog)
+	return api.NewServer(handler, serverConfig, log)
 }
 
-func runServer(server *infragin.Server, log logger.Logger) int {
+func runServer(server *infragin.Server, log infralogger.Logger) int {
 	// Run server with graceful shutdown
 	if runErr := server.Run(); runErr != nil {
-		log.Error("Server error", logger.Error(runErr))
+		log.Error("Server error", infralogger.Error(runErr))
 		return 1
 	}
 

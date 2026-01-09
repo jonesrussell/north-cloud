@@ -12,25 +12,18 @@ import (
 	"github.com/jonesrussell/north-cloud/index-manager/internal/domain"
 	"github.com/jonesrussell/north-cloud/index-manager/internal/elasticsearch"
 	"github.com/jonesrussell/north-cloud/index-manager/internal/elasticsearch/mappings"
+	infralogger "github.com/north-cloud/infrastructure/logger"
 )
 
 // IndexService provides business logic for index operations
 type IndexService struct {
 	esClient *elasticsearch.Client
 	db       *database.Connection
-	logger   Logger
-}
-
-// Logger interface for logging
-type Logger interface {
-	Info(msg string, keysAndValues ...any)
-	Error(msg string, keysAndValues ...any)
-	Warn(msg string, keysAndValues ...any)
-	Debug(msg string, keysAndValues ...any)
+	logger   infralogger.Logger
 }
 
 // NewIndexService creates a new index service
-func NewIndexService(esClient *elasticsearch.Client, db *database.Connection, logger Logger) *IndexService {
+func NewIndexService(esClient *elasticsearch.Client, db *database.Connection, logger infralogger.Logger) *IndexService {
 	return &IndexService{
 		esClient: esClient,
 		db:       db,
@@ -132,12 +125,12 @@ func (s *IndexService) CreateIndex(ctx context.Context, req *domain.CreateIndexR
 		CompletedAt:   sql.NullTime{},
 	}
 	if recordErr := s.db.RecordMigration(ctx, migration); recordErr != nil {
-		s.logger.Warn("Failed to record migration", "error", recordErr)
+		s.logger.Warn("Failed to record migration", infralogger.Error(recordErr))
 	}
 
 	// Update migration status
 	if updateErr := s.db.UpdateMigrationStatus(ctx, migration.ID, "completed", ""); updateErr != nil {
-		s.logger.Warn("Failed to update migration status", "error", updateErr)
+		s.logger.Warn("Failed to update migration status", infralogger.Error(updateErr))
 	}
 
 	// Save metadata
@@ -149,7 +142,7 @@ func (s *IndexService) CreateIndex(ctx context.Context, req *domain.CreateIndexR
 		Status:         "active",
 	}
 	if saveErr := s.db.SaveIndexMetadata(ctx, metadata); saveErr != nil {
-		s.logger.Warn("Failed to save index metadata", "error", saveErr)
+		s.logger.Warn("Failed to save index metadata", infralogger.Error(saveErr))
 	}
 
 	// Get index info
@@ -158,7 +151,10 @@ func (s *IndexService) CreateIndex(ctx context.Context, req *domain.CreateIndexR
 		return nil, fmt.Errorf("failed to get index info: %w", err)
 	}
 
-	s.logger.Info("Index created successfully", "index_name", indexName, "index_type", req.IndexType)
+	s.logger.Info("Index created successfully",
+		infralogger.String("index_name", indexName),
+		infralogger.String("index_type", string(req.IndexType)),
+	)
 
 	return s.indexInfoToDomain(info, req.IndexType, req.SourceName), nil
 }
@@ -187,20 +183,20 @@ func (s *IndexService) DeleteIndex(ctx context.Context, indexName string) error 
 		CreatedAt:     time.Now(),
 	}
 	if recordErr := s.db.RecordMigration(ctx, migration); recordErr != nil {
-		s.logger.Warn("Failed to record migration", "error", recordErr)
+		s.logger.Warn("Failed to record migration", infralogger.Error(recordErr))
 	}
 
 	// Update migration status
 	if updateErr := s.db.UpdateMigrationStatus(ctx, migration.ID, "completed", ""); updateErr != nil {
-		s.logger.Warn("Failed to update migration status", "error", updateErr)
+		s.logger.Warn("Failed to update migration status", infralogger.Error(updateErr))
 	}
 
 	// Update metadata
 	if deleteMetaErr := s.db.DeleteIndexMetadata(ctx, indexName); deleteMetaErr != nil {
-		s.logger.Warn("Failed to update index metadata", "error", deleteMetaErr)
+		s.logger.Warn("Failed to update index metadata", infralogger.Error(deleteMetaErr))
 	}
 
-	s.logger.Info("Index deleted successfully", "index_name", indexName)
+	s.logger.Info("Index deleted successfully", infralogger.String("index_name", indexName))
 
 	return nil
 }
@@ -232,7 +228,10 @@ func (s *IndexService) ListIndices(ctx context.Context, indexType, sourceName st
 	for _, indexName := range indices {
 		info, infoErr := s.esClient.GetIndexInfo(ctx, indexName)
 		if infoErr != nil {
-			s.logger.Warn("Failed to get index info", "index_name", indexName, "error", infoErr)
+			s.logger.Warn("Failed to get index info",
+				infralogger.String("index_name", indexName),
+				infralogger.Error(infoErr),
+			)
 			continue
 		}
 
@@ -315,7 +314,10 @@ func (s *IndexService) DeleteIndexesForSource(ctx context.Context, sourceName st
 
 	for _, indexName := range indices {
 		if deleteErr := s.DeleteIndex(ctx, indexName); deleteErr != nil {
-			s.logger.Warn("Failed to delete index", "index_name", indexName, "error", deleteErr)
+			s.logger.Warn("Failed to delete index",
+				infralogger.String("index_name", indexName),
+				infralogger.Error(deleteErr),
+			)
 			// Continue with other indexes
 		}
 	}
