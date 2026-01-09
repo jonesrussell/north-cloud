@@ -76,6 +76,21 @@ scrape_configs:
             - "2006-01-02T15:04:05.000Z07:00"
             - "2006-01-02T15:04:05Z07:00"
 
+      # Extract log level from ANSI-coded log line
+      # Try multiple patterns to catch different formats
+      - regex:
+          expression: '\\[\\d+m(DEBUG|INFO|WARN|ERROR|FATAL|TRACE)\\[0m'
+          source: log
+          
+      # If first pattern didn't match, try without escape sequences (raw format)
+      - regex:
+          expression: '\t(DEBUG|INFO|WARN|ERROR|FATAL|TRACE)\t'
+          source: log
+          
+      # Extract level label from captured group
+      - labels:
+          level:
+
       # Try to parse the actual log line as JSON (for structured logs from Go services)
       - json:
           expressions:
@@ -90,7 +105,11 @@ scrape_configs:
             duration: duration
             status_code: status_code
           source: log
-          drop_malformed: true
+          drop_malformed: false  # Don't drop if JSON parsing fails
+
+      # If JSON parsing succeeded and has level, it will override the regex-extracted level
+      - labels:
+          level:
 
       # If JSON parsing succeeded, use the parsed timestamp
       - timestamp:
@@ -102,9 +121,8 @@ scrape_configs:
             - "2006-01-02T15:04:05Z07:00"
           on_failure: drop
 
-      # Add log level as a label for easy filtering (from parsed JSON or default to 'info')
+      # Add stream label
       - labels:
-          level:
           stream:
 
       # If service_name was extracted from log JSON, use it; otherwise keep the label from relabel_configs
