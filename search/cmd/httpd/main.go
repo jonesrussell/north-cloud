@@ -1,12 +1,8 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"os"
-	"os/signal"
-	"syscall"
-	"time"
 
 	"github.com/jonesrussell/north-cloud/search/internal/api"
 	"github.com/jonesrussell/north-cloud/search/internal/config"
@@ -17,8 +13,6 @@ import (
 	"github.com/north-cloud/infrastructure/logger"
 	"github.com/north-cloud/infrastructure/profiling"
 )
-
-const shutdownTimeout = 10 * time.Second
 
 func main() {
 	os.Exit(run())
@@ -75,40 +69,16 @@ func run() int {
 	handler := api.NewHandler(searchService, logAdapter)
 
 	// Create and start HTTP server
-	server := api.NewServer(handler, cfg, logAdapter)
+	server := api.NewServer(handler, cfg, logAdapter, log)
 
-	// Start server in goroutine
-	serverErr := make(chan error, 1)
-	go func() {
-		if startErr := server.Start(); startErr != nil {
-			serverErr <- startErr
-		}
-	}()
-
-	log.Info("Search service started successfully",
+	log.Info("Search service starting",
 		logger.Int("port", cfg.Service.Port),
 		logger.String("elasticsearch_pattern", cfg.Elasticsearch.ClassifiedContentPattern),
 	)
 
-	// Wait for interrupt signal for graceful shutdown
-	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
-
-	select {
-	case srvErr := <-serverErr:
-		log.Error("Server error", logger.Error(srvErr))
-		return 1
-	case <-quit:
-		log.Info("Shutdown signal received, gracefully shutting down...")
-	}
-
-	// Create shutdown context with timeout
-	ctx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
-	defer cancel()
-
-	// Shutdown HTTP server
-	if shutdownErr := server.Shutdown(ctx); shutdownErr != nil {
-		log.Error("Server forced to shutdown", logger.Error(shutdownErr))
+	// Run server with graceful shutdown
+	if runErr := server.Run(); runErr != nil {
+		log.Error("Server error", logger.Error(runErr))
 		return 1
 	}
 
