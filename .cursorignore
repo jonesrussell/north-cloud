@@ -1,0 +1,3 @@
+# .cursorignore
+# Ignore everything Git ignores, except config.yml
+!config.yml

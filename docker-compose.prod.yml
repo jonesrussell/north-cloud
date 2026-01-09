@@ -45,6 +45,8 @@ services:
       AUTH_JWT_SECRET: "${AUTH_JWT_SECRET}"
       SERVER_SECURITY_ENABLED: "false"
       SERVER_PORT: "8080"
+    volumes:
+      - ./crawler/config.yml:/app/config.yml:ro
     healthcheck:
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:8080/health"]
       interval: 30s
@@ -114,6 +116,8 @@ services:
       REDIS_PASSWORD: "${REDIS_PASSWORD}"
       GIN_MODE: release
       APP_DEBUG: "false"
+    volumes:
+      - ./publisher/config.yml:/app/config.yml:ro
     healthcheck:
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:8070/health"]
       interval: 30s
@@ -153,6 +157,8 @@ services:
       PUBLISHER_ROUTER_CHECK_INTERVAL: "${PUBLISHER_ROUTER_CHECK_INTERVAL:-5m}"
       PUBLISHER_ROUTER_BATCH_SIZE: "${PUBLISHER_ROUTER_BATCH_SIZE:-100}"
       APP_DEBUG: "false"
+    volumes:
+      - ./publisher/config.yml:/app/config.yml:ro
 
   # ------------------------------------------------------------
   # Classifier (Prod)
