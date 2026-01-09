@@ -45,13 +45,6 @@ func run() int {
 	// Load and validate configuration
 	cfg := loadAndValidateConfig(infraLog)
 
-	// Update logger development mode if needed
-	if cfg.Debug {
-		// Recreate logger with debug mode if needed
-		// Note: We keep the existing logger with service field for consistency
-		// Development mode mainly affects sampling, which is already disabled
-	}
-
 	// Setup database and repository
 	db, repo := setupDatabase(cfg, infraLog)
 	defer database.Close(db)
