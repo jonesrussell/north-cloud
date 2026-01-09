@@ -5,17 +5,17 @@ import (
 	"fmt"
 
 	"github.com/jonesrussell/north-cloud/source-manager/internal/config"
-	"github.com/jonesrussell/north-cloud/source-manager/internal/logger"
 	_ "github.com/lib/pq" //nolint:blankimports // PostgreSQL driver
 	infracontext "github.com/north-cloud/infrastructure/context"
+	infralogger "github.com/north-cloud/infrastructure/logger"
 )
 
 type DB struct {
 	db     *sql.DB
-	logger logger.Logger
+	logger infralogger.Logger
 }
 
-func New(cfg *config.Config, log logger.Logger) (*DB, error) {
+func New(cfg *config.Config, log infralogger.Logger) (*DB, error) {
 	dsn := fmt.Sprintf(
 		"host=%s port=%d user=%s password=%s dbname=%s sslmode=%s",
 		cfg.Database.Host,
@@ -44,9 +44,9 @@ func New(cfg *config.Config, log logger.Logger) (*DB, error) {
 	}
 
 	log.Info("Database connection established",
-		logger.String("host", cfg.Database.Host),
-		logger.Int("port", cfg.Database.Port),
-		logger.String("dbname", cfg.Database.DBName),
+		infralogger.String("host", cfg.Database.Host),
+		infralogger.Int("port", cfg.Database.Port),
+		infralogger.String("dbname", cfg.Database.DBName),
 	)
 
 	return &DB{
