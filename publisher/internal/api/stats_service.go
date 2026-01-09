@@ -4,8 +4,8 @@ import (
 	"context"
 	"errors"
 
-	"github.com/jonesrussell/north-cloud/publisher/internal/logger"
 	"github.com/jonesrussell/north-cloud/publisher/internal/metrics"
+	infralogger "github.com/north-cloud/infrastructure/logger"
 )
 
 const defaultLimit = 50
@@ -13,7 +13,7 @@ const defaultLimit = 50
 // StatsService provides business logic for statistics operations
 type StatsService struct {
 	tracker MetricsTracker
-	logger  logger.Logger
+	logger  infralogger.Logger
 }
 
 // MetricsTracker interface for dependency injection
@@ -23,7 +23,7 @@ type MetricsTracker interface {
 }
 
 // NewStatsService creates a new stats service
-func NewStatsService(tracker MetricsTracker, log logger.Logger) *StatsService {
+func NewStatsService(tracker MetricsTracker, log infralogger.Logger) *StatsService {
 	return &StatsService{
 		tracker: tracker,
 		logger:  log,

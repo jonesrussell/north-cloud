@@ -5,18 +5,18 @@ import (
 	"strconv"
 
 	"github.com/gin-gonic/gin"
-	"github.com/jonesrussell/north-cloud/publisher/internal/logger"
+	infralogger "github.com/north-cloud/infrastructure/logger"
 )
 
 // Handlers provides HTTP handlers for the API
 type Handlers struct {
 	statsService *StatsService
-	logger       logger.Logger
+	logger       infralogger.Logger
 	version      string
 }
 
 // NewHandlers creates a new handlers instance
-func NewHandlers(statsService *StatsService, log logger.Logger, version string) *Handlers {
+func NewHandlers(statsService *StatsService, log infralogger.Logger, version string) *Handlers {
 	return &Handlers{
 		statsService: statsService,
 		logger:       log,
@@ -29,9 +29,9 @@ func (h *Handlers) GetStats(c *gin.Context) {
 	stats, err := h.statsService.GetStats(c.Request.Context())
 	if err != nil {
 		h.logger.Error("Failed to get stats",
-			logger.Error(err),
-			logger.String("path", c.Request.URL.Path),
-			logger.String("method", c.Request.Method),
+			infralogger.Error(err),
+			infralogger.String("path", c.Request.URL.Path),
+			infralogger.String("method", c.Request.Method),
 		)
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": "Failed to retrieve statistics",
@@ -52,10 +52,10 @@ func (h *Handlers) GetRecentArticles(c *gin.Context) {
 	articles, err := h.statsService.GetRecentArticles(c.Request.Context(), limit)
 	if err != nil {
 		h.logger.Error("Failed to get recent articles",
-			logger.Error(err),
-			logger.String("path", c.Request.URL.Path),
-			logger.String("method", c.Request.Method),
-			logger.Int("limit", limit),
+			infralogger.Error(err),
+			infralogger.String("path", c.Request.URL.Path),
+			infralogger.String("method", c.Request.Method),
+			infralogger.Int("limit", limit),
 		)
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": "Failed to retrieve recent articles",
