@@ -6,18 +6,18 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/jonesrussell/north-cloud/crawler/internal/logger"
 	"github.com/jonesrussell/north-cloud/crawler/internal/sources/apiclient"
+	infralogger "github.com/north-cloud/infrastructure/logger"
 )
 
 // APILoader handles loading source configurations from the gosources API.
 type APILoader struct {
 	client *apiclient.Client
-	logger logger.Interface
+	logger infralogger.Logger
 }
 
 // NewAPILoader creates a new APILoader instance.
-func NewAPILoader(apiURL string, log logger.Interface, jwtSecret string) *APILoader {
+func NewAPILoader(apiURL string, log infralogger.Logger, jwtSecret string) *APILoader {
 	opts := []apiclient.Option{apiclient.WithBaseURL(apiURL)}
 	// Use JWT secret from config for service-to-service authentication
 	if jwtSecret != "" {
@@ -57,8 +57,8 @@ func (l *APILoader) LoadSources() ([]Config, error) {
 			}
 			if l.logger != nil {
 				l.logger.Warn("Failed to convert source from API, skipping",
-					"source", sourceName,
-					"error", convertErr,
+					infralogger.String("source", sourceName),
+					infralogger.Error(convertErr),
 				)
 			}
 			continue
