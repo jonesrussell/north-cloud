@@ -408,6 +408,7 @@ func startHTTPServer(
 	jobsHandler *api.JobsHandler,
 	discoveredLinksHandler *api.DiscoveredLinksHandler,
 ) (*http.Server, chan error, error) {
+	//nolint:staticcheck // Using deprecated StartHTTPServer temporarily; NewServer migration planned
 	server, _, err := api.StartHTTPServer(deps.Logger, deps.Config, jobsHandler, discoveredLinksHandler)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to start HTTP server: %w", err)

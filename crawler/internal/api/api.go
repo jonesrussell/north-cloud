@@ -10,15 +10,21 @@ import (
 	"github.com/jonesrussell/north-cloud/crawler/internal/api/middleware"
 	"github.com/jonesrussell/north-cloud/crawler/internal/config"
 	"github.com/jonesrussell/north-cloud/crawler/internal/logger"
+	infragin "github.com/north-cloud/infrastructure/gin"
 	infrajwt "github.com/north-cloud/infrastructure/jwt"
+	infralogger "github.com/north-cloud/infrastructure/logger"
 	"github.com/north-cloud/infrastructure/monitoring"
 )
 
 const (
-	readHeaderTimeout = 10 * time.Second // Timeout for reading headers
-	hoursPerDay       = 24               // Hours in a day
-	minutesPerHour    = 60               // Minutes in an hour
-	secondsPerMinute  = 60               // Seconds in a minute
+	readHeaderTimeout   = 10 * time.Second // Timeout for reading headers
+	hoursPerDay         = 24               // Hours in a day
+	minutesPerHour      = 60               // Minutes in an hour
+	secondsPerMinute    = 60               // Seconds in a minute
+	defaultReadTimeout  = 30 * time.Second
+	defaultWriteTimeout = 60 * time.Second
+	defaultIdleTimeout  = 120 * time.Second
+	serviceVersion      = "1.0.0"
 )
 
 // SetupRouter creates and configures the Gin router with all routes
@@ -240,6 +246,8 @@ func corsMiddleware() gin.HandlerFunc {
 }
 
 // StartHTTPServer starts the HTTP server with the given configuration
+//
+// Deprecated: Use NewServer() instead which uses the infrastructure gin package.
 func StartHTTPServer(
 	log logger.Interface,
 	cfg config.Interface,
@@ -258,4 +266,115 @@ func StartHTTPServer(
 	}
 
 	return srv, security, nil
+}
+
+// NewServer creates a new HTTP server using the infrastructure gin package.
+func NewServer(
+	_ logger.Interface,
+	cfg config.Interface,
+	jobsHandler *JobsHandler,
+	discoveredLinksHandler *DiscoveredLinksHandler,
+	infraLog infralogger.Logger,
+) *infragin.Server {
+	// Extract port from address
+	port := extractPortFromAddress(cfg.GetServerConfig().Address)
+
+	// Get JWT secret
+	var jwtSecret string
+	authCfg := cfg.GetAuthConfig()
+	if authCfg != nil {
+		jwtSecret = authCfg.JWTSecret
+	}
+
+	// Determine debug mode from logging config
+	debug := false
+	loggingCfg := cfg.GetLoggingConfig()
+	if loggingCfg != nil {
+		debug = loggingCfg.Debug
+	}
+
+	// Build server using infrastructure gin package
+	server := infragin.NewServerBuilder("crawler", port).
+		WithLogger(infraLog).
+		WithDebug(debug).
+		WithVersion(serviceVersion).
+		WithTimeouts(defaultReadTimeout, defaultWriteTimeout, defaultIdleTimeout).
+		WithRoutes(func(router *gin.Engine) {
+			// Setup service-specific routes (health routes added by builder)
+			setupCrawlerRoutes(router, jwtSecret, jobsHandler, discoveredLinksHandler)
+		}).
+		Build()
+
+	return server
+}
+
+// extractPortFromAddress extracts the port number from an address string.
+func extractPortFromAddress(address string) int {
+	const (
+		defaultPort = 8060
+		decimalBase = 10
+	)
+	if address == "" {
+		return defaultPort
+	}
+
+	// Find the last colon
+	for i := len(address) - 1; i >= 0; i-- {
+		if address[i] != ':' {
+			continue
+		}
+		portStr := address[i+1:]
+		port := 0
+		for _, c := range portStr {
+			if c < '0' || c > '9' {
+				return defaultPort
+			}
+			port = port*decimalBase + int(c-'0')
+		}
+		if port > 0 {
+			return port
+		}
+		break
+	}
+
+	return defaultPort
+}
+
+// setupCrawlerRoutes configures all service-specific routes.
+// Health routes are handled by the infrastructure gin package.
+func setupCrawlerRoutes(
+	router *gin.Engine,
+	jwtSecret string,
+	jobsHandler *JobsHandler,
+	discoveredLinksHandler *DiscoveredLinksHandler,
+) {
+	// API v1 routes - protected with JWT
+	v1 := infragin.ProtectedGroup(router, "/api/v1", jwtSecret)
+
+	// Stats endpoint for dashboard
+	v1.GET("/stats", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{
+			"totalArticles":   0,
+			"successRate":     0,
+			"avgResponseTime": 0,
+			"crawled":         0,
+			"failed":          0,
+			"pending":         0,
+			"activeSources":   0,
+			"totalSources":    0,
+		})
+	})
+
+	// Articles endpoint for dashboard
+	v1.GET("/articles", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{
+			"articles": []gin.H{},
+		})
+	})
+
+	// Setup job routes
+	setupJobRoutes(v1, jobsHandler)
+
+	// Setup discovered links routes
+	setupDiscoveredLinksRoutes(v1, discoveredLinksHandler)
 }
