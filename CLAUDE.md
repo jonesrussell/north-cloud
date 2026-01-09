@@ -931,18 +931,18 @@ The codebase leverages Go 1.25 improvements:
   - **Interface**: All services use the same `logger.Logger` interface
   - **Implementation**: Based on zap (uber-go/zap) but provides a unified, consistent interface
   - **No service-specific loggers**: Services do not implement their own logger packages - they all use `infrastructure/logger` directly
+  - **Standardized JSON format**: All services output JSON logs for consistency and better log aggregation
   - **Usage example**:
     ```go
     import infralogger "github.com/north-cloud/infrastructure/logger"
     
-    // Create logger
+    // Create logger (always uses JSON format)
     log, err := infralogger.New(infralogger.Config{
-        Level:       "info",
-        Format:      "json",
-        Development: false,
+        Level:  "info",
+        Format: "json",  // Always JSON for consistency
     })
     
-    // Use logger
+    // Use logger with structured fields
     log.Info("Service started",
         infralogger.String("service", "crawler"),
         infralogger.Int("port", 8060),
@@ -965,9 +965,13 @@ The codebase leverages Go 1.25 improvements:
   - `status_code`: HTTP status
 - **Field helpers**: Use `infralogger.String()`, `infralogger.Int()`, `infralogger.Error()`, etc. to create fields
 
-#### Debug Mode
-- Development: `APP_DEBUG=true` (human-readable logs, console format)
-- Production: `APP_DEBUG=false` (JSON logs)
+#### Log Format Standardization
+- **All environments use JSON format**: Services output structured JSON logs in both development and production
+  - **Format**: `{"level":"info","ts":"2026-01-09T04:49:42.157Z","caller":"service.go:123","msg":"Operation completed","service":"crawler","job_id":"abc123"}`
+  - **Benefits**: Consistent parsing, better Grafana/Loki integration, easier filtering and analysis
+  - **No console format**: Console format with ANSI colors has been removed for consistency
+- **Debug mode**: `APP_DEBUG=true` only affects log level (shows debug logs), not format
+- **Production**: `APP_DEBUG=false` uses info level, same JSON format
 
 ---
 

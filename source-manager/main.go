@@ -29,7 +29,7 @@ func main() {
 	if err != nil {
 		tempLogger, _ := infralogger.New(infralogger.Config{
 			Level:       "debug",
-			Format:      "console",
+			Format:      "json",
 			Development: true,
 		})
 		tempLogger.Error("Failed to load config",
@@ -41,19 +41,16 @@ func main() {
 	}
 
 	// Initialize logger using infrastructure logger
-	logFormat := "json"
-	if cfg.Debug {
-		logFormat = "console"
-	}
+	// Always use JSON format for consistency
 	appLogger, err := infralogger.New(infralogger.Config{
 		Level:       "info",
-		Format:      logFormat,
+		Format:      "json",
 		Development: cfg.Debug,
 	})
 	if err != nil {
 		tempLogger, _ := infralogger.New(infralogger.Config{
 			Level:       "debug",
-			Format:      "console",
+			Format:      "json",
 			Development: true,
 		})
 		tempLogger.Error("Failed to create logger",
