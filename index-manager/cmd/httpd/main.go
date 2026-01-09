@@ -1,11 +1,8 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"os"
-	"os/signal"
-	"syscall"
 	"time"
 
 	"github.com/jonesrussell/north-cloud/index-manager/internal/api"
@@ -15,11 +12,11 @@ import (
 	"github.com/jonesrussell/north-cloud/index-manager/internal/logging"
 	"github.com/jonesrussell/north-cloud/index-manager/internal/service"
 	infraconfig "github.com/north-cloud/infrastructure/config"
+	infragin "github.com/north-cloud/infrastructure/gin"
 	"github.com/north-cloud/infrastructure/logger"
 )
 
 const (
-	shutdownTimeout    = 10 * time.Second
 	httpTimeoutSeconds = 15
 )
 
@@ -72,7 +69,7 @@ func run() int {
 	defer cleanup()
 
 	// Initialize and run server
-	server := initServer(cfg, esClient, db, logAdapter)
+	server := initServer(cfg, esClient, db, logAdapter, log)
 	return runServer(server, log)
 }
 
@@ -127,7 +124,8 @@ func initServer(
 	esClient *elasticsearch.Client,
 	db *database.Connection,
 	logAdapter *logging.Adapter,
-) *api.Server {
+	infraLog logger.Logger,
+) *infragin.Server {
 	// Initialize services
 	indexService := service.NewIndexService(esClient, db, logAdapter)
 	documentService := service.NewDocumentService(esClient, logAdapter)
@@ -141,39 +139,16 @@ func initServer(
 		ReadTimeout:  httpTimeoutSeconds * time.Second,
 		WriteTimeout: httpTimeoutSeconds * time.Second,
 		Debug:        cfg.Service.Debug,
+		ServiceName:  cfg.Service.Name,
 	}
 
-	return api.NewServer(handler, serverConfig, logAdapter)
+	return api.NewServer(handler, serverConfig, logAdapter, infraLog)
 }
 
-func runServer(server *api.Server, log logger.Logger) int {
-	// Start server in goroutine
-	serverErr := make(chan error, 1)
-	go func() {
-		if startErr := server.Start(); startErr != nil {
-			serverErr <- startErr
-		}
-	}()
-
-	// Setup signal handling
-	sigChan := make(chan os.Signal, 1)
-	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
-
-	// Wait for signal or error
-	select {
-	case srvErr := <-serverErr:
-		log.Error("Server error", logger.Error(srvErr))
-		return 1
-	case sig := <-sigChan:
-		log.Info("Shutdown signal received", logger.String("signal", sig.String()))
-	}
-
-	// Graceful shutdown
-	ctx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
-	defer cancel()
-
-	if shutdownErr := server.Shutdown(ctx); shutdownErr != nil {
-		log.Error("Server shutdown error", logger.Error(shutdownErr))
+func runServer(server *infragin.Server, log logger.Logger) int {
+	// Run server with graceful shutdown
+	if runErr := server.Run(); runErr != nil {
+		log.Error("Server error", logger.Error(runErr))
 		return 1
 	}
 
