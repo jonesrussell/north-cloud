@@ -8,7 +8,7 @@ import (
 
 	"github.com/jonesrussell/north-cloud/crawler/internal/crawler"
 	"github.com/jonesrussell/north-cloud/crawler/internal/database"
-	"github.com/jonesrussell/north-cloud/crawler/internal/logger"
+	infralogger "github.com/north-cloud/infrastructure/logger"
 	"github.com/robfig/cron/v3"
 )
 
@@ -25,7 +25,7 @@ const (
 
 // DBScheduler implements a database-backed job scheduler.
 type DBScheduler struct {
-	logger          logger.Interface
+	logger          infralogger.Logger
 	repo            *database.JobRepository
 	crawler         crawler.Interface
 	cron            *cron.Cron
@@ -41,7 +41,7 @@ type DBScheduler struct {
 
 // NewDBScheduler creates a new database-backed scheduler.
 func NewDBScheduler(
-	log logger.Interface,
+	log infralogger.Logger,
 	repo *database.JobRepository,
 	crawlerInstance crawler.Interface,
 ) *DBScheduler {
@@ -73,15 +73,14 @@ func (s *DBScheduler) Start(ctx context.Context) error {
 
 	// Load initial jobs
 	if err := s.reloadJobs(ctx); err != nil {
-		s.logger.Error("Failed to load initial jobs", "error", err)
+		s.logger.Error("Failed to load initial jobs", infralogger.Error(err))
 	}
 
 	// Log number of scheduled jobs
 	s.scheduledJobsMu.RLock()
 	scheduledCount := len(s.scheduledJobs)
 	s.scheduledJobsMu.RUnlock()
-	s.logger.Info("Scheduled jobs loaded", "count", scheduledCount)
-
+	s.logger.Info("Scheduled jobs loaded", infralogger.Int("count", scheduledCount))
 	// Process any immediate jobs that are already pending
 	s.processPendingImmediateJobs(ctx)
 
@@ -110,7 +109,7 @@ func (s *DBScheduler) Stop() error {
 	// Cancel all active jobs
 	s.activeJobsMu.Lock()
 	for id, cancel := range s.activeJobs {
-		s.logger.Info("Cancelling active job", "job_id", id)
+		s.logger.Info("Cancelling active job", infralogger.String("job_id", id))
 		cancel()
 	}
 	s.activeJobsMu.Unlock()
