@@ -102,10 +102,7 @@ func Start() error {
 	defer db.Close()
 
 	// Phase 5: Start HTTP server
-	server, errChan, err := startHTTPServer(deps, jobsHandler, discoveredLinksHandler)
-	if err != nil {
-		return err
-	}
+	server, errChan := startHTTPServer(deps, jobsHandler, discoveredLinksHandler)
 
 	// Phase 6: Run server until interrupted
 	return runServerUntilInterrupt(deps.Logger, server, dbScheduler, errChan)
@@ -391,32 +388,22 @@ func createAndStartScheduler(
 
 // === Server Setup ===
 
-// createInfraLogger creates an infrastructure logger from the logging config.
-func createInfraLogger(cfg config.Interface) (infralogger.Logger, error) {
-	loggingCfg := cfg.GetLoggingConfig()
-	return infralogger.New(infralogger.Config{
-		Level:       loggingCfg.Level,
-		Format:      loggingCfg.Format,
-		Development: loggingCfg.Debug,
-	})
-}
-
 // startHTTPServer creates and starts the HTTP server.
 // Returns the server and an error channel for server errors.
 func startHTTPServer(
 	deps *CommandDeps,
 	jobsHandler *api.JobsHandler,
 	discoveredLinksHandler *api.DiscoveredLinksHandler,
-) (*infragin.Server, <-chan error, error) {
+) (server *infragin.Server, errChan <-chan error) {
 	// Use the logger that already has the service field attached
 	// Create server using the new infrastructure gin package
-	server := api.NewServer(deps.Config, jobsHandler, discoveredLinksHandler, deps.Logger)
+	server = api.NewServer(deps.Config, jobsHandler, discoveredLinksHandler, deps.Logger)
 
 	// Start server asynchronously
 	deps.Logger.Info("Starting HTTP server", infralogger.String("addr", deps.Config.GetServerConfig().Address))
-	errChan := server.StartAsync()
+	errChan = server.StartAsync()
 
-	return server, errChan, nil
+	return
 }
 
 // runServerUntilInterrupt runs the server until interrupted by signal or error.
