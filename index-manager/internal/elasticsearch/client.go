@@ -14,7 +14,6 @@ import (
 	"github.com/elastic/go-elasticsearch/v8/esapi"
 	esclient "github.com/north-cloud/infrastructure/elasticsearch"
 	"github.com/north-cloud/infrastructure/logger"
-	"github.com/north-cloud/infrastructure/retry"
 )
 
 const unknownStatus = "unknown"
@@ -49,25 +48,14 @@ func NewClient(cfg *Config) (*Client, error) {
 	}
 
 	// Map index-manager config to standardized config
-	// Use extended retry config for index-manager as ES may need more time to recover indices
-	const (
-		indexManagerRetryMaxAttempts  = 10
-		indexManagerRetryInitialDelay = 3 * time.Second
-		indexManagerRetryMaxDelay     = 15 * time.Second
-		indexManagerRetryMultiplier   = 2.0
-	)
+	// Uses infrastructure defaults for retry config (10 attempts, 3s initial, 15s max)
 	esCfg := esclient.Config{
 		URL:         cfg.URL,
 		Username:    cfg.Username,
 		Password:    cfg.Password,
 		MaxRetries:  cfg.MaxRetries,
 		PingTimeout: cfg.Timeout,
-		RetryConfig: &retry.Config{
-			MaxAttempts:  indexManagerRetryMaxAttempts,
-			InitialDelay: indexManagerRetryInitialDelay,
-			MaxDelay:     indexManagerRetryMaxDelay,
-			Multiplier:   indexManagerRetryMultiplier,
-		},
+		// RetryConfig uses infrastructure defaults
 	}
 
 	// Use standardized client with retry logic
