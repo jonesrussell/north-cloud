@@ -393,7 +393,7 @@ services:
           certbot renew &&
           echo "[$$(date)] Renewal check completed. If renewed, reload nginx with: docker exec north-cloud-nginx nginx -s reload";
         fi;
-        sleep 12h & wait $$$${!};
+        sleep 12h & SLEEP_PID=$$!; wait $$SLEEP_PID;
       done;
       '
     restart: always
