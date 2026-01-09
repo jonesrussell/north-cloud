@@ -12,6 +12,7 @@ import (
 	"github.com/jonesrussell/north-cloud/classifier/internal/domain"
 	"github.com/jonesrussell/north-cloud/classifier/internal/processor"
 	"github.com/jonesrussell/north-cloud/classifier/internal/storage"
+	infralogger "github.com/north-cloud/infrastructure/logger"
 )
 
 const (
@@ -29,15 +30,7 @@ type Handler struct {
 	sourceReputationRepo      *database.SourceReputationRepository
 	classificationHistoryRepo *database.ClassificationHistoryRepository
 	storage                   *storage.ElasticsearchStorage
-	logger                    Logger
-}
-
-// Logger defines the logging interface
-type Logger interface {
-	Debug(msg string, keysAndValues ...any)
-	Info(msg string, keysAndValues ...any)
-	Warn(msg string, keysAndValues ...any)
-	Error(msg string, keysAndValues ...any)
+	logger                    infralogger.Logger
 }
 
 // NewHandler creates a new API handler
@@ -50,7 +43,7 @@ func NewHandler(
 	sourceReputationRepo *database.SourceReputationRepository,
 	classificationHistoryRepo *database.ClassificationHistoryRepository,
 	elasticStorage *storage.ElasticsearchStorage,
-	logger Logger,
+	logger infralogger.Logger,
 ) *Handler {
 	return &Handler{
 		classifier:                classifierInstance,
@@ -93,21 +86,21 @@ type BatchClassifyResponse struct {
 func (h *Handler) Classify(c *gin.Context) {
 	var req ClassifyRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		h.logger.Warn("Invalid classification request", "error", err)
+		h.logger.Warn("Invalid classification request", infralogger.Error(err))
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
 	h.logger.Info("Classifying content",
-		"content_id", req.RawContent.ID,
-		"source_name", req.RawContent.SourceName,
+		infralogger.String("content_id", req.RawContent.ID),
+		infralogger.String("source_name", req.RawContent.SourceName),
 	)
 
 	result, err := h.classifier.Classify(c.Request.Context(), req.RawContent)
 	if err != nil {
 		h.logger.Error("Classification failed",
-			"content_id", req.RawContent.ID,
-			"error", err,
+			infralogger.String("content_id", req.RawContent.ID),
+			infralogger.Error(err),
 		)
 		c.JSON(http.StatusInternalServerError, ClassifyResponse{
 			Error: err.Error(),
@@ -116,9 +109,9 @@ func (h *Handler) Classify(c *gin.Context) {
 	}
 
 	h.logger.Info("Content classified successfully",
-		"content_id", result.ContentID,
-		"content_type", result.ContentType,
-		"quality_score", result.QualityScore,
+		infralogger.String("content_id", result.ContentID),
+		infralogger.String("content_type", result.ContentType),
+		infralogger.Int("quality_score", result.QualityScore),
 	)
 
 	c.JSON(http.StatusOK, ClassifyResponse{
@@ -130,16 +123,16 @@ func (h *Handler) Classify(c *gin.Context) {
 func (h *Handler) ClassifyBatch(c *gin.Context) {
 	var req BatchClassifyRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		h.logger.Warn("Invalid batch classification request", "error", err)
+		h.logger.Warn("Invalid batch classification request", infralogger.Error(err))
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	h.logger.Info("Batch classifying content", "batch_size", len(req.RawContents))
+	h.logger.Info("Batch classifying content", infralogger.Int("batch_size", len(req.RawContents)))
 
 	results, err := h.batchProcessor.Process(c.Request.Context(), req.RawContents)
 	if err != nil {
-		h.logger.Error("Batch classification failed", "error", err)
+		h.logger.Error("Batch classification failed", infralogger.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -156,9 +149,9 @@ func (h *Handler) ClassifyBatch(c *gin.Context) {
 	}
 
 	h.logger.Info("Batch classification completed",
-		"total", len(results),
-		"success", success,
-		"failed", failed,
+		infralogger.Int("total", len(results)),
+		infralogger.Int("success", success),
+		infralogger.Int("failed", failed),
 	)
 
 	c.JSON(http.StatusOK, BatchClassifyResponse{
@@ -179,7 +172,10 @@ func (h *Handler) ReclassifyDocument(c *gin.Context) {
 	// This ensures we know which index to query for raw content
 	existing, err := h.storage.GetClassifiedByID(ctx, contentID)
 	if err != nil {
-		h.logger.Warn("Classified document not found", "content_id", contentID, "error", err)
+		h.logger.Warn("Classified document not found",
+			infralogger.String("content_id", contentID),
+			infralogger.Error(err),
+		)
 		c.JSON(http.StatusNotFound, gin.H{"error": "Document not found"})
 		return
 	}
@@ -187,7 +183,10 @@ func (h *Handler) ReclassifyDocument(c *gin.Context) {
 	// Step 2: Fetch raw content from raw_content index
 	raw, err := h.storage.GetRawContentByID(ctx, contentID, existing.SourceName)
 	if err != nil {
-		h.logger.Error("Failed to fetch raw content", "content_id", contentID, "error", err)
+		h.logger.Error("Failed to fetch raw content",
+			infralogger.String("content_id", contentID),
+			infralogger.Error(err),
+		)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch raw content"})
 		return
 	}
@@ -195,7 +194,10 @@ func (h *Handler) ReclassifyDocument(c *gin.Context) {
 	// Step 3: Run classification with current rules
 	result, err := h.classifier.Classify(ctx, raw)
 	if err != nil {
-		h.logger.Error("Classification failed", "content_id", contentID, "error", err)
+		h.logger.Error("Classification failed",
+			infralogger.String("content_id", contentID),
+			infralogger.Error(err),
+		)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Classification failed"})
 		return
 	}
@@ -221,16 +223,19 @@ func (h *Handler) ReclassifyDocument(c *gin.Context) {
 
 	err = h.storage.IndexClassifiedContent(ctx, classifiedContent)
 	if err != nil {
-		h.logger.Error("Failed to update classified content", "content_id", contentID, "error", err)
+		h.logger.Error("Failed to update classified content",
+			infralogger.String("content_id", contentID),
+			infralogger.Error(err),
+		)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update classified content"})
 		return
 	}
 
 	// Step 5: Return updated classification result
 	h.logger.Info("Document re-classified",
-		"content_id", contentID,
-		"topics", result.Topics,
-		"quality_score", result.QualityScore,
+		infralogger.String("content_id", contentID),
+		infralogger.Any("topics", result.Topics),
+		infralogger.Int("quality_score", result.QualityScore),
 	)
 
 	c.JSON(http.StatusOK, ClassifyResponse{Result: result})
@@ -259,7 +264,7 @@ func (h *Handler) ListRules(c *gin.Context) {
 	// List all topic rules
 	rules, err := h.rulesRepo.List(c.Request.Context(), domain.RuleTypeTopic, nil)
 	if err != nil {
-		h.logger.Error("Failed to list rules", "error", err)
+		h.logger.Error("Failed to list rules", infralogger.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to load rules"})
 		return
 	}
@@ -270,7 +275,7 @@ func (h *Handler) ListRules(c *gin.Context) {
 		response[i] = toRuleResponse(rule)
 	}
 
-	h.logger.Info("Rules listed successfully", "count", len(response))
+	h.logger.Info("Rules listed successfully", infralogger.Int("count", len(response)))
 
 	c.JSON(http.StatusOK, RulesListResponse{
 		Rules: response,
@@ -282,12 +287,12 @@ func (h *Handler) ListRules(c *gin.Context) {
 func (h *Handler) CreateRule(c *gin.Context) {
 	var req CreateRuleRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		h.logger.Warn("Invalid create rule request", "error", err)
+		h.logger.Warn("Invalid create rule request", infralogger.Error(err))
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	h.logger.Info("Creating classification rule", "topic", req.Topic)
+	h.logger.Info("Creating classification rule", infralogger.String("topic", req.Topic))
 
 	// Build rule from request
 	rule := &domain.ClassificationRule{
@@ -302,7 +307,7 @@ func (h *Handler) CreateRule(c *gin.Context) {
 
 	// Create in database
 	if err := h.rulesRepo.Create(c.Request.Context(), rule); err != nil {
-		h.logger.Error("Failed to create rule", "error", err)
+		h.logger.Error("Failed to create rule", infralogger.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create rule"})
 		return
 	}
@@ -310,7 +315,10 @@ func (h *Handler) CreateRule(c *gin.Context) {
 	// Reload rules in topic classifier
 	h.reloadTopicClassifierRules(c.Request.Context())
 
-	h.logger.Info("Rule created successfully", "id", rule.ID, "topic", rule.TopicName)
+	h.logger.Info("Rule created successfully",
+		infralogger.String("id", strconv.Itoa(rule.ID)),
+		infralogger.String("topic", rule.TopicName),
+	)
 
 	c.JSON(http.StatusCreated, toRuleResponse(rule))
 }
@@ -331,17 +339,23 @@ func (h *Handler) UpdateRule(c *gin.Context) {
 
 	var req CreateRuleRequest
 	if err = c.ShouldBindJSON(&req); err != nil {
-		h.logger.Warn("Invalid update rule request", "error", err)
+		h.logger.Warn("Invalid update rule request", infralogger.Error(err))
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	h.logger.Info("Updating classification rule", "id", ruleID, "topic", req.Topic)
+	h.logger.Info("Updating classification rule",
+		infralogger.String("id", strconv.Itoa(ruleID)),
+		infralogger.String("topic", req.Topic),
+	)
 
 	// Get existing rule
 	rule, err := h.rulesRepo.GetByID(c.Request.Context(), ruleID)
 	if err != nil {
-		h.logger.Error("Failed to get rule", "id", ruleID, "error", err)
+		h.logger.Error("Failed to get rule",
+			infralogger.String("id", strconv.Itoa(ruleID)),
+			infralogger.Error(err),
+		)
 		c.JSON(http.StatusNotFound, gin.H{"error": "Rule not found"})
 		return
 	}
@@ -355,7 +369,10 @@ func (h *Handler) UpdateRule(c *gin.Context) {
 
 	// Update in database
 	if err = h.rulesRepo.Update(c.Request.Context(), rule); err != nil {
-		h.logger.Error("Failed to update rule", "id", ruleID, "error", err)
+		h.logger.Error("Failed to update rule",
+			infralogger.String("id", strconv.Itoa(ruleID)),
+			infralogger.Error(err),
+		)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update rule"})
 		return
 	}
@@ -363,7 +380,10 @@ func (h *Handler) UpdateRule(c *gin.Context) {
 	// Reload rules in topic classifier
 	h.reloadTopicClassifierRules(c.Request.Context())
 
-	h.logger.Info("Rule updated successfully", "id", ruleID, "topic", rule.TopicName)
+	h.logger.Info("Rule updated successfully",
+		infralogger.String("id", strconv.Itoa(ruleID)),
+		infralogger.String("topic", rule.TopicName),
+	)
 
 	c.JSON(http.StatusOK, toRuleResponse(rule))
 }
@@ -382,11 +402,14 @@ func (h *Handler) DeleteRule(c *gin.Context) {
 		return
 	}
 
-	h.logger.Info("Deleting classification rule", "id", ruleID)
+	h.logger.Info("Deleting classification rule", infralogger.String("id", strconv.Itoa(ruleID)))
 
 	// Delete from database
 	if err = h.rulesRepo.Delete(c.Request.Context(), ruleID); err != nil {
-		h.logger.Error("Failed to delete rule", "id", ruleID, "error", err)
+		h.logger.Error("Failed to delete rule",
+			infralogger.String("id", strconv.Itoa(ruleID)),
+			infralogger.Error(err),
+		)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete rule"})
 		return
 	}
@@ -394,7 +417,7 @@ func (h *Handler) DeleteRule(c *gin.Context) {
 	// Reload rules in topic classifier
 	h.reloadTopicClassifierRules(c.Request.Context())
 
-	h.logger.Info("Rule deleted successfully", "id", ruleID)
+	h.logger.Info("Rule deleted successfully", infralogger.String("id", strconv.Itoa(ruleID)))
 
 	c.JSON(http.StatusOK, gin.H{"message": "Rule deleted successfully"})
 }
@@ -417,12 +440,15 @@ func (h *Handler) ListSources(c *gin.Context) {
 		}
 	}
 
-	h.logger.Debug("Listing sources", "page", page, "page_size", pageSize)
+	h.logger.Debug("Listing sources",
+		infralogger.Int("page", page),
+		infralogger.Int("page_size", pageSize),
+	)
 
 	// Query database with pagination
 	sources, total, err := h.sourceReputationRepo.List(c.Request.Context(), page, pageSize)
 	if err != nil {
-		h.logger.Error("Failed to list sources", "error", err)
+		h.logger.Error("Failed to list sources", infralogger.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to load sources"})
 		return
 	}
@@ -433,7 +459,10 @@ func (h *Handler) ListSources(c *gin.Context) {
 		response[i] = toSourceResponse(source)
 	}
 
-	h.logger.Info("Sources listed successfully", "count", len(response), "total", total)
+	h.logger.Info("Sources listed successfully",
+		infralogger.Int("count", len(response)),
+		infralogger.Int("total", total),
+	)
 
 	c.JSON(http.StatusOK, SourcesListResponse{
 		Sources: response,
@@ -451,17 +480,20 @@ func (h *Handler) GetSource(c *gin.Context) {
 		return
 	}
 
-	h.logger.Debug("Getting source reputation", "source_name", sourceName)
+	h.logger.Debug("Getting source reputation", infralogger.String("source_name", sourceName))
 
 	// Get or create source from database (creates with defaults if not found)
 	source, err := h.sourceReputationRepo.GetOrCreateSource(c.Request.Context(), sourceName)
 	if err != nil {
-		h.logger.Error("Failed to get or create source", "source_name", sourceName, "error", err)
+		h.logger.Error("Failed to get or create source",
+			infralogger.String("source_name", sourceName),
+			infralogger.Error(err),
+		)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get source"})
 		return
 	}
 
-	h.logger.Info("Source retrieved successfully", "source_name", sourceName)
+	h.logger.Info("Source retrieved successfully", infralogger.String("source_name", sourceName))
 
 	c.JSON(http.StatusOK, toSourceResponse(source))
 }
@@ -476,17 +508,23 @@ func (h *Handler) UpdateSource(c *gin.Context) {
 
 	var req UpdateSourceRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		h.logger.Warn("Invalid update source request", "error", err)
+		h.logger.Warn("Invalid update source request", infralogger.Error(err))
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	h.logger.Info("Updating source", "source_name", sourceName, "category", req.Category)
+	h.logger.Info("Updating source",
+		infralogger.String("source_name", sourceName),
+		infralogger.String("category", req.Category),
+	)
 
 	// Get existing source
 	source, err := h.sourceReputationRepo.GetSource(c.Request.Context(), sourceName)
 	if err != nil {
-		h.logger.Error("Failed to get source", "source_name", sourceName, "error", err)
+		h.logger.Error("Failed to get source",
+			infralogger.String("source_name", sourceName),
+			infralogger.Error(err),
+		)
 		c.JSON(http.StatusNotFound, gin.H{"error": "Source not found"})
 		return
 	}
@@ -496,12 +534,15 @@ func (h *Handler) UpdateSource(c *gin.Context) {
 
 	// Update in database
 	if err = h.sourceReputationRepo.UpdateSource(c.Request.Context(), source); err != nil {
-		h.logger.Error("Failed to update source", "source_name", sourceName, "error", err)
+		h.logger.Error("Failed to update source",
+			infralogger.String("source_name", sourceName),
+			infralogger.Error(err),
+		)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update source"})
 		return
 	}
 
-	h.logger.Info("Source updated successfully", "source_name", sourceName)
+	h.logger.Info("Source updated successfully", infralogger.String("source_name", sourceName))
 
 	c.JSON(http.StatusOK, toSourceResponse(source))
 }
@@ -514,17 +555,20 @@ func (h *Handler) GetSourceStats(c *gin.Context) {
 		return
 	}
 
-	h.logger.Debug("Getting source stats", "source_name", sourceName)
+	h.logger.Debug("Getting source stats", infralogger.String("source_name", sourceName))
 
 	// Get stats from classification history
 	stats, err := h.classificationHistoryRepo.GetSourceStatsByName(c.Request.Context(), sourceName)
 	if err != nil {
-		h.logger.Error("Failed to get source stats", "source_name", sourceName, "error", err)
+		h.logger.Error("Failed to get source stats",
+			infralogger.String("source_name", sourceName),
+			infralogger.Error(err),
+		)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get source stats"})
 		return
 	}
 
-	h.logger.Info("Source stats retrieved successfully", "source_name", sourceName)
+	h.logger.Info("Source stats retrieved successfully", infralogger.String("source_name", sourceName))
 
 	c.JSON(http.StatusOK, stats)
 }
@@ -535,7 +579,7 @@ func (h *Handler) GetStats(c *gin.Context) {
 
 	stats, err := h.classificationHistoryRepo.GetStats(c.Request.Context())
 	if err != nil {
-		h.logger.Error("Failed to get stats", "error", err)
+		h.logger.Error("Failed to get stats", infralogger.Error(err))
 		// Return empty stats instead of error to avoid breaking dashboard
 		c.JSON(http.StatusOK, gin.H{
 			"total_classified":       0,
@@ -558,13 +602,13 @@ func (h *Handler) GetTopicStats(c *gin.Context) {
 
 	stats, err := h.classificationHistoryRepo.GetTopicStats(c.Request.Context())
 	if err != nil {
-		h.logger.Error("Failed to get topic stats", "error", err)
+		h.logger.Error("Failed to get topic stats", infralogger.Error(err))
 		// Return empty topics instead of error to avoid breaking dashboard
 		c.JSON(http.StatusOK, gin.H{"topics": []gin.H{}})
 		return
 	}
 
-	h.logger.Info("Topic stats retrieved successfully", "count", len(stats))
+	h.logger.Info("Topic stats retrieved successfully", infralogger.Int("count", len(stats)))
 
 	c.JSON(http.StatusOK, gin.H{"topics": stats})
 }
@@ -575,13 +619,13 @@ func (h *Handler) GetSourceDistribution(c *gin.Context) {
 
 	stats, err := h.classificationHistoryRepo.GetSourceStats(c.Request.Context())
 	if err != nil {
-		h.logger.Error("Failed to get source distribution", "error", err)
+		h.logger.Error("Failed to get source distribution", infralogger.Error(err))
 		// Return empty sources instead of error to avoid breaking dashboard
 		c.JSON(http.StatusOK, gin.H{"sources": []gin.H{}})
 		return
 	}
 
-	h.logger.Info("Source distribution retrieved successfully", "count", len(stats))
+	h.logger.Info("Source distribution retrieved successfully", infralogger.Int("count", len(stats)))
 
 	c.JSON(http.StatusOK, gin.H{"sources": stats})
 }
@@ -617,12 +661,12 @@ func (h *Handler) reloadTopicClassifierRules(ctx context.Context) {
 	// Load enabled topic rules from database
 	rules, err := h.rulesRepo.List(ctx, domain.RuleTypeTopic, ptr(true))
 	if err != nil {
-		h.logger.Error("Failed to reload rules from database", "error", err)
+		h.logger.Error("Failed to reload rules from database", infralogger.Error(err))
 		return
 	}
 
 	// Update topic classifier with new rules
 	h.topicClassifier.UpdateRules(rules)
 
-	h.logger.Info("Classification rules reloaded successfully", "count", len(rules))
+	h.logger.Info("Classification rules reloaded successfully", infralogger.Int("count", len(rules)))
 }
