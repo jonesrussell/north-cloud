@@ -4,9 +4,11 @@ package storage
 import (
 	"context"
 	"errors"
+	"reflect"
 	"testing"
 
 	"github.com/jonesrussell/north-cloud/classifier/internal/domain"
+	infralogger "github.com/north-cloud/infrastructure/logger"
 )
 
 // mockLoggerWithCalls tracks log calls for testing
@@ -18,8 +20,8 @@ type mockLoggerWithCalls struct {
 }
 
 type logCall struct {
-	msg           string
-	keysAndValues []any
+	msg    string
+	fields []infralogger.Field
 }
 
 func newMockLoggerWithCalls() *mockLoggerWithCalls {
@@ -31,20 +33,43 @@ func newMockLoggerWithCalls() *mockLoggerWithCalls {
 	}
 }
 
-func (m *mockLoggerWithCalls) Debug(msg string, keysAndValues ...any) {
-	m.debugCalls = append(m.debugCalls, logCall{msg: msg, keysAndValues: keysAndValues})
+func (m *mockLoggerWithCalls) Debug(msg string, fields ...infralogger.Field) {
+	m.debugCalls = append(m.debugCalls, logCall{msg: msg, fields: fields})
 }
 
-func (m *mockLoggerWithCalls) Info(msg string, keysAndValues ...any) {
-	m.infoCalls = append(m.infoCalls, logCall{msg: msg, keysAndValues: keysAndValues})
+func (m *mockLoggerWithCalls) Info(msg string, fields ...infralogger.Field) {
+	m.infoCalls = append(m.infoCalls, logCall{msg: msg, fields: fields})
 }
 
-func (m *mockLoggerWithCalls) Warn(msg string, keysAndValues ...any) {
-	m.warnCalls = append(m.warnCalls, logCall{msg: msg, keysAndValues: keysAndValues})
+func (m *mockLoggerWithCalls) Warn(msg string, fields ...infralogger.Field) {
+	m.warnCalls = append(m.warnCalls, logCall{msg: msg, fields: fields})
 }
 
-func (m *mockLoggerWithCalls) Error(msg string, keysAndValues ...any) {
-	m.errorCalls = append(m.errorCalls, logCall{msg: msg, keysAndValues: keysAndValues})
+func (m *mockLoggerWithCalls) Error(msg string, fields ...infralogger.Field) {
+	m.errorCalls = append(m.errorCalls, logCall{msg: msg, fields: fields})
+}
+
+func (m *mockLoggerWithCalls) Fatal(msg string, fields ...infralogger.Field)       {}
+func (m *mockLoggerWithCalls) With(fields ...infralogger.Field) infralogger.Logger { return m }
+func (m *mockLoggerWithCalls) Sync() error                                         { return nil }
+
+// getFieldValue extracts the value from a zap.Field by key name
+func getFieldValue(fields []infralogger.Field, key string) (any, bool) {
+	for _, field := range fields {
+		// Use reflection to access the private Key field of zap.Field
+		fieldValue := reflect.ValueOf(field)
+		if fieldValue.Kind() == reflect.Struct {
+			keyField := fieldValue.FieldByName("Key")
+			if keyField.IsValid() && keyField.String() == key {
+				// Get the value - zap.Field stores it in Interface field
+				interfaceField := fieldValue.FieldByName("Interface")
+				if interfaceField.IsValid() {
+					return interfaceField.Interface(), true
+				}
+			}
+		}
+	}
+	return nil, false
 }
 
 // mockHistoryRepository simulates database operations for testing
@@ -211,23 +236,11 @@ func TestDatabaseAdapter_SaveClassificationHistoryBatch_PartialFail(t *testing.T
 	}
 
 	// Verify warning includes failed_count
-	foundFailedCount := false
-	for i := 0; i < len(warnCall.keysAndValues); i += 2 {
-		if i+1 < len(warnCall.keysAndValues) {
-			key := warnCall.keysAndValues[i]
-			if key == "failed_count" {
-				foundFailedCount = true
-				value := warnCall.keysAndValues[i+1]
-				if value != expectedFailedCount {
-					t.Errorf("expected failed_count %d, got %v", expectedFailedCount, value)
-				}
-				break
-			}
-		}
-	}
-
+	failedCount, foundFailedCount := getFieldValue(warnCall.fields, "failed_count")
 	if !foundFailedCount {
 		t.Error("expected warning to include failed_count")
+	} else if failedCount != expectedFailedCount {
+		t.Errorf("expected failed_count %d, got %v", expectedFailedCount, failedCount)
 	}
 }
 
@@ -282,23 +295,11 @@ func TestDatabaseAdapter_SaveClassificationHistoryBatch_ErrorLoggingIncludesCont
 	}
 
 	// Verify content_id is included
-	foundContentID := false
-	for i := 0; i < len(errorCall.keysAndValues); i += 2 {
-		if i+1 < len(errorCall.keysAndValues) {
-			key := errorCall.keysAndValues[i]
-			if key == "content_id" {
-				foundContentID = true
-				value := errorCall.keysAndValues[i+1]
-				if value != "test-content-id" {
-					t.Errorf("expected content_id 'test-content-id', got %v", value)
-				}
-				break
-			}
-		}
-	}
-
+	contentID, foundContentID := getFieldValue(errorCall.fields, "content_id")
 	if !foundContentID {
 		t.Error("expected error log to include content_id")
+	} else if contentID != "test-content-id" {
+		t.Errorf("expected content_id 'test-content-id', got %v", contentID)
 	}
 }
 
@@ -338,25 +339,20 @@ func TestDatabaseAdapter_SaveClassificationHistoryBatch_ErrorLoggingTruncatesLon
 	}
 
 	// Verify content_url is truncated
-	foundContentURL := false
-	for i := 0; i < len(errorCall.keysAndValues); i += 2 {
-		if i+1 < len(errorCall.keysAndValues) {
-			key := errorCall.keysAndValues[i]
-			if key == "content_url" {
-				foundContentURL = true
-				value := errorCall.keysAndValues[i+1].(string)
-				// truncateString adds "..." so max length is urlLogTruncateLength + 3
-				maxExpectedLength := urlLogTruncateLength + 3
-				if len(value) > maxExpectedLength {
-					t.Errorf("expected content_url to be truncated to <= %d (including '...'), got length %d", maxExpectedLength, len(value))
-				}
-				break
-			}
-		}
-	}
-
+	contentURL, foundContentURL := getFieldValue(errorCall.fields, "content_url")
 	if !foundContentURL {
 		t.Error("expected error log to include content_url")
+		return
+	}
+	contentURLStr, ok := contentURL.(string)
+	if !ok {
+		t.Errorf("expected content_url to be string, got %T", contentURL)
+		return
+	}
+	// truncateString adds "..." so max length is urlLogTruncateLength + 3
+	maxExpectedLength := urlLogTruncateLength + 3
+	if len(contentURLStr) > maxExpectedLength {
+		t.Errorf("expected content_url to be truncated to <= %d (including '...'), got length %d", maxExpectedLength, len(contentURLStr))
 	}
 }
 
