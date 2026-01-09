@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"os"
 
 	"github.com/jonesrussell/north-cloud/publisher/internal/api"
@@ -87,7 +86,9 @@ func runAPIServerInternal() int {
 		var redisErr error
 		redisClient, redisErr = redisclient.NewClient(redisAddr, redisPassword)
 		if redisErr != nil {
-			log.Printf("Warning: Failed to connect to Redis (health checks will show disconnected): %v", redisErr)
+			infraLog.Warn("Failed to connect to Redis (health checks will show disconnected)",
+				logger.Error(redisErr),
+			)
 			// Continue without Redis - health check will show disconnected status
 		}
 	}
