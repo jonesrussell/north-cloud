@@ -1,87 +1,66 @@
 package api
 
 import (
-	"context"
-	"fmt"
-	"net/http"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/jonesrussell/north-cloud/search/internal/config"
 	"github.com/jonesrussell/north-cloud/search/internal/logging"
+	infragin "github.com/north-cloud/infrastructure/gin"
+	"github.com/north-cloud/infrastructure/logger"
 )
 
-// Server holds the HTTP server
-type Server struct {
-	router *gin.Engine
-	server *http.Server
-	logger logging.Logger
+// Default timeout values.
+const (
+	defaultReadTimeout  = 30 * time.Second
+	defaultWriteTimeout = 60 * time.Second
+	defaultIdleTimeout  = 120 * time.Second
+)
+
+// NewServer creates a new HTTP server using the infrastructure gin package.
+func NewServer(handler *Handler, cfg *config.Config, _ logging.Logger, infraLog logger.Logger) *infragin.Server {
+	// Build CORS config from service config
+	corsConfig := infragin.CORSConfig{
+		Enabled:          cfg.CORS.Enabled,
+		AllowedOrigins:   cfg.CORS.AllowedOrigins,
+		AllowedMethods:   cfg.CORS.AllowedMethods,
+		AllowedHeaders:   cfg.CORS.AllowedHeaders,
+		AllowCredentials: cfg.CORS.AllowCredentials,
+		MaxAge:           time.Duration(cfg.CORS.MaxAge) * time.Second,
+	}
+
+	// Build server using infrastructure gin package
+	server := infragin.NewServerBuilder(cfg.Service.Name, cfg.Service.Port).
+		WithLogger(infraLog).
+		WithDebug(cfg.Service.Debug).
+		WithVersion(cfg.Service.Version).
+		WithTimeouts(defaultReadTimeout, defaultWriteTimeout, defaultIdleTimeout).
+		WithCORS(corsConfig).
+		WithRoutes(func(router *gin.Engine) {
+			// Setup service-specific routes (health routes added by builder)
+			SetupServiceRoutes(router, handler)
+		}).
+		Build()
+
+	return server
 }
 
-// ServerConfig holds server configuration
-type ServerConfig struct {
-	Port         int
-	ReadTimeout  time.Duration
-	WriteTimeout time.Duration
-	Debug        bool
-}
+// SetupServiceRoutes configures service-specific API routes (not health routes).
+// Health routes are handled by the infrastructure gin package.
+func SetupServiceRoutes(router *gin.Engine, handler *Handler) {
+	// Additional readiness endpoint
+	router.GET("/ready", handler.ReadinessCheck)
 
-// NewServer creates a new HTTP server
-func NewServer(handler *Handler, cfg *config.Config, log logging.Logger) *Server {
-	// Set Gin mode
-	if !cfg.Service.Debug {
-		gin.SetMode(gin.ReleaseMode)
+	// API v1 routes
+	v1 := router.Group("/api/v1")
+	{
+		// Health checks within API v1
+		v1.GET("/health", handler.HealthCheck)
+		v1.GET("/ready", handler.ReadinessCheck)
+
+		// Search endpoints
+		search := v1.Group("/search")
+		search.POST("", handler.Search) // POST for complex searches
+		search.GET("", handler.Search)  // GET for simple searches
 	}
-
-	// Create router
-	router := gin.New()
-
-	// Add middleware
-	router.Use(RecoveryMiddleware(log))
-	router.Use(LoggerMiddleware(log))
-	router.Use(CORSMiddleware(&cfg.CORS))
-
-	// Setup routes
-	SetupRoutes(router, handler)
-
-	// Create HTTP server
-	const (
-		readTimeoutSeconds  = 30
-		writeTimeoutSeconds = 60
-	)
-	server := &http.Server{
-		Addr:         fmt.Sprintf(":%d", cfg.Service.Port),
-		Handler:      router,
-		ReadTimeout:  readTimeoutSeconds * time.Second,
-		WriteTimeout: writeTimeoutSeconds * time.Second,
-	}
-
-	return &Server{
-		router: router,
-		server: server,
-		logger: log,
-	}
-}
-
-// Start starts the HTTP server
-func (s *Server) Start() error {
-	s.logger.Info("Starting HTTP server", "addr", s.server.Addr)
-
-	if err := s.server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-		return fmt.Errorf("failed to start server: %w", err)
-	}
-
-	return nil
-}
-
-// Shutdown gracefully shuts down the HTTP server
-func (s *Server) Shutdown(ctx context.Context) error {
-	s.logger.Info("Shutting down HTTP server")
-
-	if err := s.server.Shutdown(ctx); err != nil {
-		return fmt.Errorf("server shutdown failed: %w", err)
-	}
-
-	s.logger.Info("HTTP server stopped")
-	return nil
 }

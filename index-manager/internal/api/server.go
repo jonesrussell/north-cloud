@@ -1,139 +1,93 @@
 package api
 
 import (
-	"context"
-	"fmt"
-	"net/http"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	infragin "github.com/north-cloud/infrastructure/gin"
+	"github.com/north-cloud/infrastructure/logger"
 )
 
-// Server represents the HTTP server
-type Server struct {
-	router *gin.Engine
-	server *http.Server
-	logger Logger
-}
+// Default timeout values.
+const (
+	defaultReadTimeout  = 30 * time.Second
+	defaultWriteTimeout = 60 * time.Second
+	defaultIdleTimeout  = 120 * time.Second
+	serviceVersion      = "1.0.0"
+)
 
-// ServerConfig holds server configuration
+// ServerConfig holds server configuration.
 type ServerConfig struct {
 	Port         int
 	ReadTimeout  time.Duration
 	WriteTimeout time.Duration
 	Debug        bool
+	ServiceName  string
 }
 
-// NewServer creates a new HTTP server
-func NewServer(handler *Handler, config ServerConfig, logger Logger) *Server {
-	// Set Gin mode based on debug flag
-	if !config.Debug {
-		gin.SetMode(gin.ReleaseMode)
+// NewServer creates a new HTTP server using the infrastructure gin package.
+func NewServer(handler *Handler, config ServerConfig, _ Logger, infraLog logger.Logger) *infragin.Server {
+	// Set timeout defaults if not provided
+	readTimeout := config.ReadTimeout
+	if readTimeout == 0 {
+		readTimeout = defaultReadTimeout
+	}
+	writeTimeout := config.WriteTimeout
+	if writeTimeout == 0 {
+		writeTimeout = defaultWriteTimeout
+	}
+	serviceName := config.ServiceName
+	if serviceName == "" {
+		serviceName = "index-manager"
 	}
 
-	// Create router
-	router := gin.New()
+	// Build server using infrastructure gin package
+	server := infragin.NewServerBuilder(serviceName, config.Port).
+		WithLogger(infraLog).
+		WithDebug(config.Debug).
+		WithVersion(serviceVersion).
+		WithTimeouts(readTimeout, writeTimeout, defaultIdleTimeout).
+		WithRoutes(func(router *gin.Engine) {
+			// Setup service-specific routes (health routes added by builder)
+			SetupServiceRoutes(router, handler)
+		}).
+		Build()
 
-	// Add middleware
-	router.Use(gin.Recovery())
-	router.Use(LoggerMiddleware(logger))
-	router.Use(CORSMiddleware())
-
-	// Setup routes
-	SetupRoutes(router, handler)
-
-	// Create HTTP server
-	addr := fmt.Sprintf(":%d", config.Port)
-	server := &http.Server{
-		Addr:         addr,
-		Handler:      router,
-		ReadTimeout:  config.ReadTimeout,
-		WriteTimeout: config.WriteTimeout,
-	}
-
-	return &Server{
-		router: router,
-		server: server,
-		logger: logger,
-	}
+	return server
 }
 
-// Start starts the HTTP server
-func (s *Server) Start() error {
-	s.logger.Info("Starting HTTP server",
-		"address", s.server.Addr,
-		"read_timeout", s.server.ReadTimeout,
-		"write_timeout", s.server.WriteTimeout,
-	)
+// SetupServiceRoutes configures service-specific API routes (not health routes).
+// Health routes are handled by the infrastructure gin package.
+func SetupServiceRoutes(router *gin.Engine, handler *Handler) {
+	// API v1 routes
+	v1 := router.Group("/api/v1")
 
-	if err := s.server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-		return fmt.Errorf("failed to start server: %w", err)
-	}
+	// Index management endpoints
+	indexes := v1.Group("/indexes")
+	indexes.POST("", handler.CreateIndex)                      // POST /api/v1/indexes
+	indexes.GET("", handler.ListIndices)                       // GET /api/v1/indexes
+	indexes.GET("/:index_name", handler.GetIndex)              // GET /api/v1/indexes/:index_name
+	indexes.DELETE("/:index_name", handler.DeleteIndex)        // DELETE /api/v1/indexes/:index_name
+	indexes.GET("/:index_name/health", handler.GetIndexHealth) // GET /api/v1/indexes/:index_name/health
 
-	return nil
-}
+	// Document management endpoints
+	indexes.GET("/:index_name/documents", handler.QueryDocuments)                   // GET /api/v1/indexes/:index_name/documents
+	indexes.GET("/:index_name/documents/:document_id", handler.GetDocument)         // GET /api/v1/indexes/:index_name/documents/:document_id
+	indexes.PUT("/:index_name/documents/:document_id", handler.UpdateDocument)      // PUT /api/v1/indexes/:index_name/documents/:document_id
+	indexes.DELETE("/:index_name/documents/:document_id", handler.DeleteDocument)   // DELETE /api/v1/indexes/:index_name/documents/:document_id
+	indexes.POST("/:index_name/documents/bulk-delete", handler.BulkDeleteDocuments) // POST /api/v1/indexes/:index_name/documents/bulk-delete
 
-// Shutdown gracefully shuts down the server
-func (s *Server) Shutdown(ctx context.Context) error {
-	s.logger.Info("Shutting down HTTP server")
+	// Bulk operations
+	bulk := v1.Group("/indexes/bulk")
+	bulk.POST("/create", handler.BulkCreateIndexes)   // POST /api/v1/indexes/bulk/create
+	bulk.DELETE("/delete", handler.BulkDeleteIndexes) // DELETE /api/v1/indexes/bulk/delete
 
-	if err := s.server.Shutdown(ctx); err != nil {
-		return fmt.Errorf("server shutdown failed: %w", err)
-	}
+	// Source-based operations
+	sources := v1.Group("/sources")
+	sources.POST("/:source_name/indexes", handler.CreateIndexesForSource)   // POST /api/v1/sources/:source_name/indexes
+	sources.GET("/:source_name/indexes", handler.ListIndexesForSource)      // GET /api/v1/sources/:source_name/indexes
+	sources.DELETE("/:source_name/indexes", handler.DeleteIndexesForSource) // DELETE /api/v1/sources/:source_name/indexes
 
-	s.logger.Info("HTTP server shut down successfully")
-	return nil
-}
-
-// LoggerMiddleware creates a Gin middleware for logging
-func LoggerMiddleware(logger Logger) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		start := time.Now()
-		path := c.Request.URL.Path
-		method := c.Request.Method
-
-		// Process request
-		c.Next()
-
-		// Log after request
-		duration := time.Since(start)
-		statusCode := c.Writer.Status()
-
-		logger.Info("HTTP request",
-			"method", method,
-			"path", path,
-			"status", statusCode,
-			"duration_ms", duration.Milliseconds(),
-			"client_ip", c.ClientIP(),
-		)
-
-		// Log errors if any
-		if len(c.Errors) > 0 {
-			for _, err := range c.Errors {
-				logger.Error("Request error",
-					"method", method,
-					"path", path,
-					"error", err.Error(),
-				)
-			}
-		}
-	}
-}
-
-// CORSMiddleware creates a Gin middleware for CORS
-func CORSMiddleware() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
-		c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
-		c.Writer.Header().Set("Access-Control-Allow-Headers",
-			"Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, accept, origin, Cache-Control, X-Requested-With")
-		c.Writer.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS, GET, PUT, DELETE")
-
-		if c.Request.Method == http.MethodOptions {
-			c.AbortWithStatus(http.StatusNoContent)
-			return
-		}
-
-		c.Next()
-	}
+	// Statistics
+	v1.GET("/stats", handler.GetStats) // GET /api/v1/stats
 }

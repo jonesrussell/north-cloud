@@ -105,6 +105,9 @@ func Load(path string) (*Config, error) {
 	// Apply backward compatibility fixes after env overrides
 	applyBackwardCompatibility(cfg)
 
+	// Ensure cleanup interval is valid after env overrides
+	ensureValidCleanupInterval(cfg)
+
 	return cfg, nil
 }
 
@@ -133,6 +136,20 @@ func applyBackwardCompatibility(cfg *Config) {
 		if indexPrefix := os.Getenv("ELASTICSEARCH_INDEX_PREFIX"); indexPrefix != "" {
 			cfg.Elasticsearch.IndexName = indexPrefix
 		}
+	}
+}
+
+// ensureValidCleanupInterval ensures that CleanupInterval is positive after environment variable loading.
+// This prevents panics when NewTicker is called with a non-positive interval.
+func ensureValidCleanupInterval(cfg *Config) {
+	if cfg.Crawler == nil {
+		return
+	}
+
+	// If cleanup interval is zero or negative (e.g., from CRAWLER_CLEANUP_INTERVAL=0 or empty),
+	// use the default to prevent NewTicker panic
+	if cfg.Crawler.CleanupInterval <= 0 {
+		cfg.Crawler.CleanupInterval = crawler.DefaultCleanupInterval
 	}
 }
 

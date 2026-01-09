@@ -2,18 +2,14 @@ package main
 
 import (
 	"flag"
-	"fmt"
-	"net/http"
 	"os"
-	"os/signal"
-	"syscall"
 
 	"github.com/jonesrussell/north-cloud/source-manager/internal/api"
 	"github.com/jonesrussell/north-cloud/source-manager/internal/config"
 	"github.com/jonesrussell/north-cloud/source-manager/internal/database"
 	"github.com/jonesrussell/north-cloud/source-manager/internal/logger"
 	"github.com/jonesrussell/north-cloud/source-manager/internal/repository"
-	infracontext "github.com/north-cloud/infrastructure/context"
+	infralogger "github.com/north-cloud/infrastructure/logger"
 	"github.com/north-cloud/infrastructure/profiling"
 )
 
@@ -79,47 +75,34 @@ func main() {
 	// Initialize repository
 	sourceRepo := repository.NewSourceRepository(db.DB(), appLogger)
 
-	// Initialize router
-	router := api.NewRouter(sourceRepo, cfg, appLogger)
-
-	// Create HTTP server
-	srv := &http.Server{
-		Addr:         fmt.Sprintf("%s:%d", cfg.Server.Host, cfg.Server.Port),
-		Handler:      router,
-		ReadTimeout:  cfg.Server.ReadTimeout,
-		WriteTimeout: cfg.Server.WriteTimeout,
+	// Create infrastructure logger for the gin server
+	infraLog, logErr := infralogger.New(infralogger.Config{
+		Level:       "info",
+		Format:      "json",
+		Development: cfg.Debug,
+	})
+	if logErr != nil {
+		appLogger.Error("Failed to create infrastructure logger",
+			logger.Error(logErr),
+		)
+		os.Exit(1)
 	}
+	defer func() { _ = infraLog.Sync() }()
 
-	// Start server in goroutine
-	go func() {
-		appLogger.Info("Starting HTTP server",
-			logger.String("host", cfg.Server.Host),
-			logger.Int("port", cfg.Server.Port),
+	// Initialize server using infrastructure gin
+	server := api.NewServer(sourceRepo, cfg, appLogger, infraLog)
+
+	appLogger.Info("Starting HTTP server",
+		logger.String("host", cfg.Server.Host),
+		logger.Int("port", cfg.Server.Port),
+	)
+
+	// Run server with graceful shutdown
+	if runErr := server.Run(); runErr != nil {
+		appLogger.Error("Server error",
+			logger.Error(runErr),
 		)
-
-		if serveErr := srv.ListenAndServe(); serveErr != nil && serveErr != http.ErrServerClosed {
-			appLogger.Error("HTTP server failed",
-				logger.Error(serveErr),
-			)
-			os.Exit(1)
-		}
-	}()
-
-	// Wait for interrupt signal
-	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
-	<-quit
-
-	appLogger.Info("Shutting down server")
-
-	// Graceful shutdown
-	ctx, cancel := infracontext.WithShutdownTimeout()
-	defer cancel()
-
-	if shutdownErr := srv.Shutdown(ctx); shutdownErr != nil {
-		appLogger.Error("Server forced to shutdown",
-			logger.Error(shutdownErr),
-		)
+		os.Exit(1)
 	}
 
 	appLogger.Info("Server exited")

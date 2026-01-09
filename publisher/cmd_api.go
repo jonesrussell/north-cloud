@@ -1,31 +1,24 @@
 package main
 
 import (
-	"context"
-	"errors"
+	"fmt"
 	"log"
-	"net/http"
 	"os"
-	"os/signal"
-	"syscall"
-	"time"
 
 	"github.com/jonesrussell/north-cloud/publisher/internal/api"
 	"github.com/jonesrussell/north-cloud/publisher/internal/config"
 	"github.com/jonesrussell/north-cloud/publisher/internal/database"
 	redisclient "github.com/jonesrussell/north-cloud/publisher/internal/redis"
 	infraconfig "github.com/north-cloud/infrastructure/config"
+	"github.com/north-cloud/infrastructure/logger"
 	"github.com/redis/go-redis/v9"
 )
 
-const (
-	defaultReadTimeout  = 10 * time.Second
-	defaultWriteTimeout = 30 * time.Second
-	defaultIdleTimeout  = 60 * time.Second
-	shutdownTimeout     = 30 * time.Second
-)
-
 func runAPIServer() {
+	os.Exit(runAPIServerInternal())
+}
+
+func runAPIServerInternal() int {
 	log.Println("Starting Publisher API Server...")
 
 	// Load configuration
@@ -40,9 +33,22 @@ func runAPIServer() {
 			cfg.Server.Address = ":8070"
 		}
 		if validateErr := cfg.Validate(); validateErr != nil {
-			log.Fatalf("Invalid default configuration: %v", validateErr)
+			log.Printf("Invalid default configuration: %v", validateErr)
+			return 1
 		}
 	}
+
+	// Initialize logger
+	infraLog, logErr := logger.New(logger.Config{
+		Level:       "info",
+		Format:      "json",
+		Development: cfg.Debug,
+	})
+	if logErr != nil {
+		fmt.Fprintf(os.Stderr, "Failed to create logger: %v\n", logErr)
+		return 1
+	}
+	defer func() { _ = infraLog.Sync() }()
 
 	// Convert config database to database.Config
 	dbConfig := database.Config{
@@ -57,7 +63,8 @@ func runAPIServer() {
 	// Initialize database connection
 	db, dbErr := database.NewPostgresConnection(dbConfig)
 	if dbErr != nil {
-		log.Fatalf("Failed to connect to database: %v", dbErr)
+		infraLog.Error("Failed to connect to database", logger.Error(dbErr))
+		return 1
 	}
 	defer db.Close()
 
@@ -79,53 +86,16 @@ func runAPIServer() {
 		}
 	}
 
-	// Setup router with config
+	// Setup router and create server using infrastructure gin
 	router := api.NewRouter(repo, redisClient, cfg)
-	ginEngine := router.SetupRoutes()
+	server := router.NewServer(infraLog)
 
-	// Extract port from server address
-	port := cfg.Server.Address
-	if port == "" {
-		port = ":8070"
-	}
-	// Remove leading colon if present for display
-	portDisplay := port
-	if portDisplay != "" && portDisplay[0] == ':' {
-		portDisplay = portDisplay[1:]
-	}
-
-	// Create HTTP server
-	server := &http.Server{
-		Addr:         cfg.Server.Address,
-		Handler:      ginEngine,
-		ReadTimeout:  cfg.Server.ReadTimeout,
-		WriteTimeout: cfg.Server.WriteTimeout,
-		IdleTimeout:  defaultIdleTimeout,
-	}
-
-	// Start server in goroutine
-	go func() {
-		log.Printf("API server listening on port %s", portDisplay)
-		serveErr := server.ListenAndServe()
-		if serveErr != nil && !errors.Is(serveErr, http.ErrServerClosed) {
-			log.Fatalf("Failed to start server: %v", serveErr)
-		}
-	}()
-
-	// Wait for interrupt signal
-	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
-	<-quit
-
-	log.Println("Shutting down server...")
-
-	// Graceful shutdown with timeout
-	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), shutdownTimeout)
-	defer shutdownCancel()
-
-	if shutdownErr := server.Shutdown(shutdownCtx); shutdownErr != nil {
-		log.Printf("Server forced to shutdown: %v", shutdownErr)
+	// Run server with graceful shutdown
+	if runErr := server.Run(); runErr != nil {
+		infraLog.Error("Server error", logger.Error(runErr))
+		return 1
 	}
 
 	log.Println("Server stopped")
+	return 0
 }

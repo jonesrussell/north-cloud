@@ -58,7 +58,16 @@ func (sc *SignalCoordinator) StartCleanupGoroutine(
 	sc.cleanupDone = make(chan struct{})
 
 	go func() {
-		ticker := time.NewTicker(sc.cfg.CleanupInterval)
+		// Ensure cleanup interval is positive (NewTicker requires > 0)
+		cleanupInterval := sc.cfg.CleanupInterval
+		if cleanupInterval <= 0 {
+			sc.logger.Warn("Invalid cleanup interval, using default",
+				"invalid_interval", cleanupInterval,
+				"default", crawler.DefaultCleanupInterval)
+			cleanupInterval = crawler.DefaultCleanupInterval
+		}
+
+		ticker := time.NewTicker(cleanupInterval)
 		defer ticker.Stop()
 		defer close(sc.cleanupDone)
 

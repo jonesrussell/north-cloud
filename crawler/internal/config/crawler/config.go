@@ -80,6 +80,9 @@ func (c *Config) Validate() error {
 	if c.RandomDelay < 0 {
 		return errors.New("random_delay must be non-negative")
 	}
+	if c.CleanupInterval <= 0 {
+		return errors.New("cleanup_interval must be positive")
+	}
 	return c.TLS.Validate()
 }
 
