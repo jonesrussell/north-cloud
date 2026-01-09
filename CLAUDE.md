@@ -465,6 +465,22 @@ The platform uses a **three-stage content pipeline** for intelligent article pro
 
 ### Infrastructure Services
 
+#### Shared Logger Package (`infrastructure/logger`)
+- **Purpose**: Unified structured logging interface for all North Cloud services
+- **Location**: `/infrastructure/logger/`
+- **Usage**: All services import and use this package directly
+  - **Import**: `infralogger "github.com/north-cloud/infrastructure/logger"`
+  - **Interface**: `logger.Logger` - consistent interface across all services
+  - **Implementation**: Based on zap (uber-go/zap) with a unified wrapper
+  - **No service-specific loggers**: Services do not implement their own logger packages
+- **Features**:
+  - Structured logging with typed fields (`String()`, `Int()`, `Error()`, etc.)
+  - Configurable log levels (debug, info, warn, error, fatal)
+  - JSON or console output formats
+  - Development mode for human-readable logs
+  - Thread-safe and production-ready
+- **Documentation**: See logging conventions in [Key Conventions](#6-logging-conventions)
+
 #### PostgreSQL Databases
 - **postgres-source-manager**: Source manager database (gosources)
 - **postgres-crawler**: Crawler database (crawler)
@@ -718,6 +734,10 @@ north-cloud/
 │   └── package.json
 │
 └── infrastructure/               # Shared infrastructure configs
+    ├── logger/                   # Unified logger package for all services
+    │   ├── logger.go             # Logger interface and zap implementation
+    │   ├── types.go              # Config and level types
+    │   └── nop.go                # No-op logger for testing
     ├── jwt/                     # Shared JWT authentication middleware
     │   └── middleware.go        # JWT validation middleware for Gin
     ├── nginx/
@@ -743,7 +763,11 @@ north-cloud/
 - **Standards**: Follow standard Go formatting (`gofmt`, `goimports`)
 - **Go Version**: 1.24+ (crawler, source-manager), 1.25+ (classifier, publisher)
 - **Error Handling**: Always wrap errors with context using `fmt.Errorf("context: %w", err)`
-- **Logging**: Use structured logging (zap for publisher, configure per service)
+- **Logging**: All services use the unified `infrastructure/logger` package directly
+  - Import: `infralogger "github.com/north-cloud/infrastructure/logger"`
+  - Provides consistent structured logging interface across all services
+  - Based on zap (uber-go/zap) but with a unified interface
+  - All services access it directly - no service-specific logger implementations
 - **Testing**: 
   - Unit tests with 80%+ coverage target
   - **Test helper functions MUST start with `t.Helper()`** to mark them as helper functions
@@ -901,6 +925,30 @@ The codebase leverages Go 1.25 improvements:
 
 ### 6. Logging Conventions
 
+#### Unified Logger Package
+- **All services use `infrastructure/logger` directly**: There is a single shared logger package at `/infrastructure/logger/` that all services import and use
+  - **Import pattern**: `infralogger "github.com/north-cloud/infrastructure/logger"`
+  - **Interface**: All services use the same `logger.Logger` interface
+  - **Implementation**: Based on zap (uber-go/zap) but provides a unified, consistent interface
+  - **No service-specific loggers**: Services do not implement their own logger packages - they all use `infrastructure/logger` directly
+  - **Usage example**:
+    ```go
+    import infralogger "github.com/north-cloud/infrastructure/logger"
+    
+    // Create logger
+    log, err := infralogger.New(infralogger.Config{
+        Level:       "info",
+        Format:      "json",
+        Development: false,
+    })
+    
+    // Use logger
+    log.Info("Service started",
+        infralogger.String("service", "crawler"),
+        infralogger.Int("port", 8060),
+    )
+    ```
+
 #### Log Levels
 - **Debug**: Detailed troubleshooting (queries, payloads)
 - **Info**: Important business events (service start, operations completed)
@@ -915,9 +963,10 @@ The codebase leverages Go 1.25 improvements:
   - `duration`: Operation duration
   - `error`: Error message
   - `status_code`: HTTP status
+- **Field helpers**: Use `infralogger.String()`, `infralogger.Int()`, `infralogger.Error()`, etc. to create fields
 
 #### Debug Mode
-- Development: `APP_DEBUG=true` (human-readable logs)
+- Development: `APP_DEBUG=true` (human-readable logs, console format)
 - Production: `APP_DEBUG=false` (JSON logs)
 
 ---
