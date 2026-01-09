@@ -4,7 +4,6 @@ package job
 import (
 	"context"
 	"sync"
-	"time"
 
 	"github.com/jonesrussell/north-cloud/crawler/internal/crawler"
 	"github.com/jonesrussell/north-cloud/crawler/internal/database"
@@ -12,31 +11,18 @@ import (
 	"github.com/robfig/cron/v3"
 )
 
-const (
-	// checkInterval is how often to check for new jobs
-	checkInterval = 10 * time.Second
-	// reloadInterval is how often to reload job schedules
-	reloadInterval = 5 * time.Minute
-	// maxJobsListLimit is the maximum number of jobs to list when reloading
-	maxJobsListLimit = 1000
-	// pendingJobsListLimit is the limit for listing pending jobs
-	pendingJobsListLimit = 100
-)
-
 // DBScheduler implements a database-backed job scheduler.
 type DBScheduler struct {
-	logger          infralogger.Logger
-	repo            *database.JobRepository
-	crawler         crawler.Interface
-	cron            *cron.Cron
-	cronParser      cron.Parser
-	activeJobs      map[string]context.CancelFunc
-	activeJobsMu    sync.RWMutex
-	scheduledJobs   map[string]cron.EntryID
-	scheduledJobsMu sync.RWMutex
-	ctx             context.Context
-	cancel          context.CancelFunc
-	wg              sync.WaitGroup
+	logger       infralogger.Logger
+	repo         *database.JobRepository
+	crawler      crawler.Interface
+	cron         *cron.Cron
+	cronParser   cron.Parser
+	activeJobs   map[string]context.CancelFunc
+	activeJobsMu sync.RWMutex
+	ctx          context.Context
+	cancel       context.CancelFunc
+	wg           sync.WaitGroup
 }
 
 // NewDBScheduler creates a new database-backed scheduler.
@@ -51,15 +37,14 @@ func NewDBScheduler(
 	cronParser := cron.NewParser(cron.Minute | cron.Hour | cron.Dom | cron.Month | cron.Dow)
 	c := cron.New(cron.WithParser(cronParser), cron.WithChain(cron.Recover(cron.DefaultLogger)))
 	return &DBScheduler{
-		logger:        log,
-		repo:          repo,
-		crawler:       crawlerInstance,
-		cron:          c,
-		cronParser:    cronParser,
-		activeJobs:    make(map[string]context.CancelFunc),
-		scheduledJobs: make(map[string]cron.EntryID),
-		ctx:           ctx,
-		cancel:        cancel,
+		logger:     log,
+		repo:       repo,
+		crawler:    crawlerInstance,
+		cron:       c,
+		cronParser: cronParser,
+		activeJobs: make(map[string]context.CancelFunc),
+		ctx:        ctx,
+		cancel:     cancel,
 	}
 }
 

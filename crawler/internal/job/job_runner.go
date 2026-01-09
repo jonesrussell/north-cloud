@@ -9,6 +9,8 @@ import (
 )
 
 // executeJob executes a job by ID.
+//
+//nolint:unused // Part of deprecated DBScheduler API, kept for backward compatibility
 func (s *DBScheduler) executeJob(ctx context.Context, jobID string) {
 	// Check if job is already running
 	s.activeJobsMu.RLock()
@@ -108,6 +110,8 @@ func (s *DBScheduler) executeJob(ctx context.Context, jobID string) {
 }
 
 // updateJobStatus updates the job status in the database.
+//
+//nolint:unused // Part of deprecated DBScheduler API, kept for backward compatibility
 func (s *DBScheduler) updateJobStatus(ctx context.Context, jobID, status string, err error) {
 	job, getErr := s.repo.GetByID(ctx, jobID)
 	if getErr != nil {
