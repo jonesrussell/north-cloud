@@ -93,16 +93,26 @@ func (c *Crawler) setupCollector(source *configtypes.Source) error {
 func (c *Crawler) setupCallbacks(ctx context.Context) {
 	// Set up response callback
 	c.collector.OnResponse(func(r *colly.Response) {
+		pageURL := r.Request.URL.String()
 		c.logger.Debug("Received response",
-			"url", r.Request.URL.String(),
+			"url", pageURL,
 			"status", r.StatusCode,
 			"headers", r.Headers)
+
+		// Detect Cloudflare challenge pages
+		if c.isCloudflareChallenge(r) {
+			c.logger.Warn("Cloudflare challenge detected - JavaScript execution required",
+				"url", pageURL,
+				"status", r.StatusCode,
+				"note", "This page requires JavaScript to load content. Links may not be discoverable without a JavaScript-enabled crawler.",
+				"suggestion", "Consider using a browser-based crawler (Playwright/Puppeteer) for this site")
+		}
 
 		// Archive HTML to MinIO if archiver is enabled
 		if c.archiver != nil {
 			task := &archive.UploadTask{
 				HTML:       r.Body,
-				URL:        r.Request.URL.String(),
+				URL:        pageURL,
 				SourceName: c.state.CurrentSource(),
 				StatusCode: r.StatusCode,
 				Headers:    convertHeaders(r.Headers),
@@ -112,7 +122,7 @@ func (c *Crawler) setupCallbacks(ctx context.Context) {
 
 			if err := c.archiver.Archive(ctx, task); err != nil {
 				c.logger.Warn("Failed to archive HTML",
-					"url", r.Request.URL.String(),
+					"url", pageURL,
 					"error", err)
 			}
 		}
@@ -155,11 +165,17 @@ func (c *Crawler) setupCallbacks(ctx context.Context) {
 	})
 
 	// Set up scraped callback for logging/metrics
+	// This callback allows us to track link counts after a page is fully processed
 	c.collector.OnScraped(func(r *colly.Response) {
 		// Note: OnScraped fires AFTER the request completes, so we can't abort here.
 		// This callback is only for post-processing (logging, metrics, etc.)
+		pageURL := r.Request.URL.String()
 		c.logger.Debug("Finished processing page",
-			"url", r.Request.URL.String())
+			"url", pageURL)
+
+		// Note: Link counts are tracked via the HandleLink callback logging.
+		// The actual count of queued links would require accessing colly's internal queue,
+		// which is not exposed. We rely on the "Discovered link" logs for diagnostics.
 	})
 }
 
@@ -264,6 +280,32 @@ func (c *Crawler) configureTransport() {
 // SetCollector sets the collector for the crawler.
 func (c *Crawler) SetCollector(collector *colly.Collector) {
 	c.collector = collector
+}
+
+// isCloudflareChallenge detects if a response is a Cloudflare challenge page.
+// Cloudflare challenge pages typically have:
+// - Cf-Ray header (Cloudflare request ID)
+// - Cf-Mitigated: challenge header
+// - "Just a moment..." or similar challenge content in body
+func (c *Crawler) isCloudflareChallenge(r *colly.Response) bool {
+	// Check for Cloudflare headers
+	hasCfRay := r.Headers.Get("Cf-Ray") != ""
+	hasCfMitigated := strings.ToLower(r.Headers.Get("Cf-Mitigated")) == "challenge"
+
+	// Check for challenge content in body (common Cloudflare challenge text)
+	bodyText := strings.ToLower(string(r.Body))
+	hasChallengeContent := strings.Contains(bodyText, "just a moment") ||
+		strings.Contains(bodyText, "checking your browser") ||
+		strings.Contains(bodyText, "ddos protection by cloudflare") ||
+		strings.Contains(bodyText, "please wait...")
+
+	// Also check for Cloudflare server header
+	server := strings.ToLower(r.Headers.Get("Server"))
+	hasCloudflareServer := strings.Contains(server, "cloudflare")
+
+	// Cloudflare challenge is likely if we have Cf-Ray + Cf-Mitigated: challenge
+	// OR if we have challenge content with Cloudflare headers
+	return (hasCfRay && hasCfMitigated) || (hasChallengeContent && (hasCfRay || hasCloudflareServer))
 }
 
 // convertHeaders converts Colly response headers to a map[string]string.
