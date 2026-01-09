@@ -5,8 +5,8 @@ import (
 
 	es "github.com/elastic/go-elasticsearch/v8"
 	"github.com/jonesrussell/north-cloud/crawler/internal/config"
-	"github.com/jonesrussell/north-cloud/crawler/internal/logger"
 	"github.com/jonesrussell/north-cloud/crawler/internal/storage/types"
+	infralogger "github.com/north-cloud/infrastructure/logger"
 )
 
 // Constants for timeout durations
@@ -19,7 +19,7 @@ const (
 // StorageParams contains dependencies for creating a storage instance
 type StorageParams struct {
 	Config config.Interface
-	Logger logger.Interface
+	Logger infralogger.Logger
 	Client *es.Client
 }
 
@@ -52,7 +52,7 @@ func NewStorage(p StorageParams) (StorageResult, error) {
 // Storage implements the storage interface
 type Storage struct {
 	client       *es.Client
-	logger       logger.Interface
+	logger       infralogger.Logger
 	opts         Options
 	indexManager types.IndexManager
 }

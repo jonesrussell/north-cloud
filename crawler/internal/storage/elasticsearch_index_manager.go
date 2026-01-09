@@ -9,8 +9,8 @@ import (
 	"strings"
 
 	"github.com/elastic/go-elasticsearch/v8"
-	"github.com/jonesrussell/north-cloud/crawler/internal/logger"
 	"github.com/jonesrussell/north-cloud/crawler/internal/storage/types"
+	infralogger "github.com/north-cloud/infrastructure/logger"
 )
 
 const (
@@ -21,11 +21,11 @@ const (
 // ElasticsearchIndexManager implements the types.IndexManager interface using Elasticsearch.
 type ElasticsearchIndexManager struct {
 	client *elasticsearch.Client
-	logger logger.Interface
+	logger infralogger.Logger
 }
 
 // NewElasticsearchIndexManager creates a new Elasticsearch index manager.
-func NewElasticsearchIndexManager(client *elasticsearch.Client, log logger.Interface) types.IndexManager {
+func NewElasticsearchIndexManager(client *elasticsearch.Client, log infralogger.Logger) types.IndexManager {
 	return &ElasticsearchIndexManager{
 		client: client,
 		logger: log,
