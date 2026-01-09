@@ -1,0 +1,590 @@
+# Grafana Centralized Logging
+
+This directory contains the configuration for Grafana, which provides a web-based UI for viewing and analyzing logs collected by Loki from all North Cloud services.
+
+## Overview
+
+The North Cloud logging stack consists of three components:
+
+1. **Grafana Loki** - Log aggregation and storage
+2. **Promtail** - Log collection from Docker containers
+3. **Grafana** - Web UI for querying and visualizing logs
+
+```
+Services (JSON logs) → Docker → Promtail → Loki → Grafana (Web UI)
+```
+
+## Architecture
+
+### Log Flow
+
+1. All North Cloud services write structured JSON logs to stdout using Zap logger
+2. Docker captures these logs using the json-file driver
+3. Promtail scrapes logs from Docker via the Docker socket
+4. Promtail parses JSON logs and extracts labels (service, level, container)
+5. Promtail forwards logs to Loki
+6. Loki stores logs with label-based indexing
+7. Grafana provides a web interface to query and visualize logs from Loki
+
+### Components
+
+#### Loki
+- **Image**: `grafana/loki:2.9.10`
+- **Port**: 3100 (HTTP API)
+- **Storage**: Filesystem-based (configurable to S3/MinIO)
+- **Retention**: 7 days (dev) / 30 days (prod)
+- **Configuration**: `/infrastructure/loki/loki-config*.yml`
+
+#### Promtail
+- **Image**: `grafana/promtail:2.9.10`
+- **Port**: 9080 (metrics endpoint)
+- **Scrapes**: Docker containers via Docker socket
+- **Configuration**: `/infrastructure/promtail/promtail-config.yml`
+
+#### Grafana
+- **Image**: `grafana/grafana:10.4.8`
+- **Port**: 3000 (Web UI)
+- **Datasources**: Auto-provisioned Loki datasource
+- **Dashboards**: Pre-configured North Cloud logs dashboard
+- **Configuration**: `/infrastructure/grafana/provisioning/`
+
+## Quick Start
+
+### Starting the Logging Stack
+
+```bash
+# Development environment
+docker compose -f docker-compose.base.yml -f docker-compose.dev.yml up -d loki promtail grafana
+
+# Wait for services to be healthy
+docker compose -f docker-compose.base.yml -f docker-compose.dev.yml ps loki promtail grafana
+```
+
+### Accessing Grafana
+
+1. Open your browser to [http://localhost:3000](http://localhost:3000)
+2. **Development**: Anonymous access enabled (no login required)
+3. **Production**: Login with credentials from `.env`:
+   - Username: `${GRAFANA_ADMIN_USER}` (default: admin)
+   - Password: `${GRAFANA_ADMIN_PASSWORD}` (default: changeme)
+
+### Viewing Logs
+
+#### Option 1: Pre-configured Dashboard
+
+1. Navigate to **Dashboards** → **North Cloud** folder
+2. Open **North Cloud Logs** dashboard
+3. Use filters:
+   - **Service**: Select one or more services (crawler, publisher, etc.)
+   - **Level**: Filter by log level (debug, info, warn, error)
+   - **Search**: Free-text search across log messages
+
+#### Option 2: Explore (Ad-hoc Queries)
+
+1. Navigate to **Explore** (compass icon in left sidebar)
+2. Ensure **Loki** is selected as the datasource
+3. Write LogQL queries:
+
+```logql
+# All logs from crawler service
+{service="crawler"}
+
+# All errors across all services
+{project="north-cloud", level="error"}
+
+# Logs containing specific text
+{service="publisher"} |= "published article"
+
+# Logs NOT containing text
+{service="crawler"} != "health check"
+
+# Combine filters
+{service="classifier", level=~"error|warn"} |= "failed"
+```
+
+## LogQL Query Language
+
+LogQL is Loki's query language, similar to Prometheus' PromQL.
+
+### Label Selectors
+
+```logql
+# Exact match
+{service="crawler"}
+
+# Regex match
+{service=~"crawler|publisher"}
+
+# Not equal
+{service!="nginx"}
+
+# Multiple labels
+{service="crawler", level="error"}
+```
+
+### Log Stream Filters
+
+```logql
+# Contains text (case-sensitive)
+{service="crawler"} |= "error"
+
+# Does not contain
+{service="crawler"} != "health"
+
+# Regex match
+{service="crawler"} |~ "error|warning"
+
+# Regex does not match
+{service="crawler"} !~ "debug.*info"
+```
+
+### Parsing and Filtering
+
+```logql
+# Parse JSON logs
+{service="crawler"} | json
+
+# Extract specific field
+{service="crawler"} | json | line_format "{{.msg}}"
+
+# Filter by parsed field
+{service="crawler"} | json | status_code >= 400
+```
+
+### Aggregations
+
+```logql
+# Count logs per service (last 5 minutes)
+sum by (service) (count_over_time({project="north-cloud"}[5m]))
+
+# Count errors per service
+sum by (service) (count_over_time({level="error"}[1h]))
+
+# Rate of logs per second
+rate({service="crawler"}[5m])
+```
+
+## Common Query Examples
+
+### Find All Errors
+
+```logql
+{project="north-cloud", level="error"}
+```
+
+### Find Slow Requests (>1s duration)
+
+```logql
+{service=~"crawler|publisher"} | json | duration > 1000
+```
+
+### Find HTTP 5xx Errors
+
+```logql
+{service="nginx"} | json | status_code >= 500
+```
+
+### View Crawler Job Executions
+
+```logql
+{service="crawler"} |= "job execution" | json
+```
+
+### Count Logs by Service (Last Hour)
+
+```logql
+sum by (service) (count_over_time({project="north-cloud"}[1h]))
+```
+
+### Alert on Error Rate
+
+```logql
+sum by (service) (
+  rate({level="error"}[5m])
+) > 0.1  # More than 0.1 errors per second
+```
+
+## Configuration
+
+### Environment Variables
+
+Defined in `.env.example`:
+
+```bash
+# Loki
+LOKI_PORT=3100
+LOKI_RETENTION_DAYS=7              # Dev: 7 days, Prod: 30 days
+LOKI_INGESTION_RATE_MB=5
+LOKI_INGESTION_BURST_MB=10
+
+# Promtail
+PROMTAIL_PORT=9080
+PROMTAIL_BATCH_WAIT=1s
+PROMTAIL_BATCH_SIZE=102400         # 100KB
+
+# Grafana
+GRAFANA_PORT=3000
+GRAFANA_ADMIN_USER=admin
+GRAFANA_ADMIN_PASSWORD=changeme    # CHANGE IN PRODUCTION
+GRAFANA_ANONYMOUS_ENABLED=false
+GRAFANA_ROOT_URL=http://localhost:3000
+GRAFANA_LOG_MODE=console
+GRAFANA_LOG_LEVEL=info
+```
+
+### Loki Configuration Files
+
+- **Base**: `/infrastructure/loki/loki-config.yml` (not used directly)
+- **Development**: `/infrastructure/loki/loki-config.dev.yml`
+  - 7-day retention
+  - Debug logging
+  - Higher ingestion limits
+  - More frequent compaction
+- **Production**: `/infrastructure/loki/loki-config.prod.yml`
+  - 30-day retention
+  - Info logging
+  - Conservative limits
+  - Optimized for stability
+
+### Promtail Configuration
+
+File: `/infrastructure/promtail/promtail-config.yml`
+
+**Scrape Jobs**:
+1. **Docker** - Scrapes all North Cloud containers via Docker API
+2. **Nginx Access** - Parses nginx access logs (if mounted)
+3. **Nginx Error** - Parses nginx error logs (if mounted)
+
+**Labels Extracted**:
+- `container` - Container name (e.g., `north-cloud-crawler`)
+- `service` - Service name from Docker Compose (e.g., `crawler`)
+- `project` - Project name (`north-cloud`)
+- `level` - Log level from Zap logs (debug, info, warn, error)
+- `environment` - dev or prod (based on compose files used)
+
+### Grafana Provisioning
+
+#### Datasources
+
+File: `/infrastructure/grafana/provisioning/datasources/loki.yml`
+
+Auto-configures Loki datasource on startup:
+- URL: `http://loki:3100`
+- Default datasource: Yes
+- Max lines: 1000
+
+#### Dashboards
+
+File: `/infrastructure/grafana/provisioning/dashboards/north-cloud-logs.json`
+
+Pre-configured dashboard includes:
+- **Log Volume by Service** - Bar chart of logs per service
+- **Logs by Level** - Time series of log levels
+- **Logs** - Live log stream with filtering
+- **Error Count by Service** - Bar gauge of recent errors
+- **Recent Errors** - Table of last 10 errors
+
+## Operational Tasks
+
+### Viewing Logs Without Grafana
+
+```bash
+# Query Loki API directly
+curl -G 'http://localhost:3100/loki/api/v1/query' \
+  --data-urlencode 'query={service="crawler"}' \
+  | jq '.data.result'
+
+# Stream logs in real-time
+curl -G 'http://localhost:3100/loki/api/v1/tail' \
+  --data-urlencode 'query={service="crawler"}' \
+  --data-urlencode 'limit=10'
+```
+
+### Checking Service Health
+
+```bash
+# Loki
+curl http://localhost:3100/ready
+
+# Promtail
+curl http://localhost:9080/ready
+
+# Grafana
+curl http://localhost:3000/api/health
+```
+
+### Viewing Service Metrics
+
+```bash
+# Loki metrics (Prometheus format)
+curl http://localhost:3100/metrics
+
+# Promtail metrics
+curl http://localhost:9080/metrics
+```
+
+### Managing Retention
+
+Loki automatically deletes logs older than the configured retention period:
+
+- **Development**: 7 days (168 hours)
+- **Production**: 30 days (720 hours)
+
+To manually trigger compaction:
+
+```bash
+# Not typically needed - Loki handles this automatically
+docker exec north-cloud-loki wget -qO- http://localhost:3100/loki/api/v1/delete
+```
+
+### Backup and Restore
+
+#### Backup Loki Data
+
+```bash
+# Stop Loki
+docker compose -f docker-compose.base.yml -f docker-compose.dev.yml stop loki
+
+# Backup volume
+docker run --rm \
+  -v north-cloud_loki_data:/data \
+  -v $(pwd)/backups:/backup \
+  alpine tar czf /backup/loki-backup-$(date +%Y%m%d).tar.gz -C /data .
+
+# Start Loki
+docker compose -f docker-compose.base.yml -f docker-compose.dev.yml start loki
+```
+
+#### Restore Loki Data
+
+```bash
+# Stop Loki
+docker compose -f docker-compose.base.yml -f docker-compose.dev.yml stop loki
+
+# Restore volume
+docker run --rm \
+  -v north-cloud_loki_data:/data \
+  -v $(pwd)/backups:/backup \
+  alpine sh -c "cd /data && tar xzf /backup/loki-backup-20260108.tar.gz"
+
+# Start Loki
+docker compose -f docker-compose.base.yml -f docker-compose.dev.yml start loki
+```
+
+#### Export Grafana Dashboards
+
+```bash
+# Get dashboard UID from Grafana UI or:
+curl -s http://admin:changeme@localhost:3000/api/search | jq '.[] | {title, uid}'
+
+# Export dashboard
+curl -s http://admin:changeme@localhost:3000/api/dashboards/uid/north-cloud-logs \
+  | jq '.dashboard' > dashboard-backup.json
+```
+
+## Troubleshooting
+
+### Logs Not Appearing in Grafana
+
+1. **Check Promtail is running and healthy**:
+   ```bash
+   docker compose -f docker-compose.base.yml -f docker-compose.dev.yml ps promtail
+   curl http://localhost:9080/ready
+   ```
+
+2. **Check Promtail logs**:
+   ```bash
+   docker compose -f docker-compose.base.yml -f docker-compose.dev.yml logs promtail
+   ```
+
+3. **Verify Docker socket is mounted**:
+   ```bash
+   docker inspect north-cloud-promtail | jq '.[].Mounts'
+   ```
+
+4. **Check Loki is receiving logs**:
+   ```bash
+   curl http://localhost:3100/metrics | grep loki_ingester_streams_created_total
+   ```
+
+5. **Verify service logs are JSON formatted**:
+   ```bash
+   docker compose -f docker-compose.base.yml -f docker-compose.dev.yml logs crawler | head -5
+   ```
+
+### Grafana Shows "Loki: Bad Gateway"
+
+1. **Check Loki is running**:
+   ```bash
+   docker compose -f docker-compose.base.yml -f docker-compose.dev.yml ps loki
+   ```
+
+2. **Verify network connectivity**:
+   ```bash
+   docker exec north-cloud-grafana wget -qO- http://loki:3100/ready
+   ```
+
+3. **Check datasource configuration**:
+   - Grafana UI → Configuration → Data sources → Loki
+   - Click "Test" button
+
+### High Memory Usage
+
+1. **Check Loki memory**:
+   ```bash
+   docker stats north-cloud-loki
+   ```
+
+2. **Reduce ingestion rate** in `.env`:
+   ```bash
+   LOKI_INGESTION_RATE_MB=3
+   LOKI_INGESTION_BURST_MB=6
+   ```
+
+3. **Reduce retention period**:
+   - Edit `/infrastructure/loki/loki-config.dev.yml`
+   - Change `retention_period: 168h` to `retention_period: 72h` (3 days)
+
+4. **Enable log sampling** in Promtail (advanced):
+   - Edit `/infrastructure/promtail/promtail-config.yml`
+   - Add `drop` stage to sample logs
+
+### Logs Missing from Specific Service
+
+1. **Check service is running**:
+   ```bash
+   docker compose -f docker-compose.base.yml -f docker-compose.dev.yml ps
+   ```
+
+2. **Verify service has correct labels**:
+   ```bash
+   docker inspect north-cloud-crawler | jq '.[].Config.Labels'
+   ```
+
+3. **Check Promtail targets**:
+   - Open http://localhost:9080/targets
+   - Verify service appears in list
+
+4. **Query Loki for service**:
+   ```bash
+   curl -G 'http://localhost:3100/loki/api/v1/label/service/values'
+   ```
+
+## Performance Tuning
+
+### For High-Volume Logging
+
+If you have >100 log lines per second:
+
+1. **Increase batch size** in `.env`:
+   ```bash
+   PROMTAIL_BATCH_SIZE=524288  # 512KB
+   PROMTAIL_BATCH_WAIT=2s
+   ```
+
+2. **Increase Loki limits**:
+   ```bash
+   LOKI_INGESTION_RATE_MB=10
+   LOKI_INGESTION_BURST_MB=20
+   ```
+
+3. **Consider using MinIO/S3 for storage**:
+   - Edit `/infrastructure/loki/loki-config.prod.yml`
+   - Change `storage_config` to use `s3` instead of `filesystem`
+
+### For Low-Resource Environments
+
+If you have limited RAM/CPU:
+
+1. **Reduce retention**:
+   ```bash
+   LOKI_RETENTION_DAYS=3
+   ```
+
+2. **Limit concurrent queries** in Loki config:
+   ```yaml
+   querier:
+     max_concurrent: 5  # Default: 10
+   ```
+
+3. **Sample logs** in Promtail (drop debug logs):
+   ```yaml
+   - drop:
+       expression: '.*level="debug".*'
+   ```
+
+## Security Considerations
+
+### Production Deployment
+
+1. **Change default Grafana password**:
+   ```bash
+   GRAFANA_ADMIN_PASSWORD="$(openssl rand -base64 32)"
+   ```
+
+2. **Disable anonymous access**:
+   ```bash
+   GRAFANA_ANONYMOUS_ENABLED=false
+   ```
+
+3. **Enable authentication on Loki** (optional):
+   - Edit `/infrastructure/loki/loki-config.prod.yml`
+   - Set `auth_enabled: true`
+   - Configure tenants
+
+4. **Restrict network access**:
+   - Use firewall rules to limit access to ports 3000, 3100, 9080
+   - Only expose Grafana (3000) externally
+
+5. **Use HTTPS**:
+   - Configure nginx reverse proxy for Grafana
+   - Use Let's Encrypt certificates
+
+### Log Data Privacy
+
+Logs may contain sensitive information. Consider:
+
+1. **Scrubbing sensitive data** in application logs
+2. **Encrypting log data at rest** (filesystem encryption)
+3. **Access control** for Grafana dashboards
+4. **Audit logging** of Grafana user actions
+
+## Integration with Other Tools
+
+### Linking to Pyroscope Profiles
+
+Grafana can link from logs to Pyroscope profiling data:
+
+1. Add `trace_id` field to logs
+2. Configure derived fields in Loki datasource
+3. Click log entry → Jump to profile
+
+### Alerting
+
+Grafana can send alerts based on log patterns:
+
+1. Navigate to **Alerting** → **Alert rules**
+2. Create new rule:
+   ```logql
+   sum by (service) (
+     rate({level="error"}[5m])
+   ) > 0.5
+   ```
+3. Configure notification channels (email, Slack, PagerDuty)
+
+## Additional Resources
+
+- [Grafana Loki Documentation](https://grafana.com/docs/loki/latest/)
+- [LogQL Query Language](https://grafana.com/docs/loki/latest/logql/)
+- [Promtail Configuration](https://grafana.com/docs/loki/latest/clients/promtail/configuration/)
+- [Grafana Dashboards](https://grafana.com/docs/grafana/latest/dashboards/)
+- [Grafana Provisioning](https://grafana.com/docs/grafana/latest/administration/provisioning/)
+
+## Support
+
+For issues with the logging stack:
+
+1. Check this README for troubleshooting steps
+2. Review service logs: `docker compose logs loki promtail grafana`
+3. Check Grafana community forums: https://community.grafana.com/
+4. Report bugs in the North Cloud repository
