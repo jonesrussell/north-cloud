@@ -34,19 +34,35 @@ func NewLinkHandler(c *Crawler, linkRepo *database.DiscoveredLinkRepository, sav
 func (h *LinkHandler) HandleLink(e *colly.HTMLElement) {
 	link := e.Attr("href")
 	if h.shouldSkipLink(link) {
+		h.crawler.logger.Debug("Skipping link",
+			"url", link,
+			"reason", "invalid scheme or empty",
+			"page_url", e.Request.URL.String())
 		return
 	}
 
 	absLink := e.Request.AbsoluteURL(link)
 	if absLink == "" {
-		h.crawler.logger.Debug("Failed to make absolute URL", "url", link)
+		h.crawler.logger.Debug("Skipping link",
+			"url", link,
+			"reason", "failed to make absolute URL",
+			"page_url", e.Request.URL.String())
 		return
 	}
 
 	if err := h.validateURL(absLink); err != nil {
-		h.crawler.logger.Debug("Invalid URL", "url", absLink, "error", err)
+		h.crawler.logger.Debug("Skipping link",
+			"url", absLink,
+			"reason", "invalid URL",
+			"error", err,
+			"page_url", e.Request.URL.String())
 		return
 	}
+
+	h.crawler.logger.Debug("Discovered link",
+		"url", absLink,
+		"page_url", e.Request.URL.String(),
+		"depth", e.Request.Depth)
 
 	// Save external links to database for tracking (if enabled), but always visit immediately
 	if h.shouldSaveLink() && h.isExternalLink(absLink) {
@@ -103,11 +119,15 @@ func (h *LinkHandler) visitWithRetries(e *colly.HTMLElement, absLink string) {
 	for attempt := range h.crawler.cfg.MaxRetries {
 		err := e.Request.Visit(absLink)
 		if err == nil {
-			h.crawler.logger.Debug("Successfully visited link", "url", absLink)
+			h.crawler.logger.Debug("Successfully queued link for visiting", "url", absLink)
 			return
 		}
 
 		if h.isNonRetryableError(err) {
+			h.crawler.logger.Debug("Skipping link visit due to non-retryable error",
+				"url", absLink,
+				"error", err,
+				"reason", h.getErrorReason(err))
 			return
 		}
 
@@ -124,7 +144,31 @@ func (h *LinkHandler) visitWithRetries(e *colly.HTMLElement, absLink string) {
 	h.crawler.logger.Error("Failed to visit link after retries",
 		"url", absLink,
 		"error", lastErr,
-		"max_retries", h.crawler.cfg.MaxRetries)
+		"max_retries", h.crawler.cfg.MaxRetries,
+		"page_url", e.Request.URL.String())
+}
+
+// getErrorReason extracts a human-readable reason from an error message.
+func (h *LinkHandler) getErrorReason(err error) string {
+	if err == nil {
+		return "unknown"
+	}
+
+	errMsg := strings.ToLower(err.Error())
+	if strings.Contains(errMsg, "forbidden domain") {
+		return "forbidden domain"
+	}
+	if strings.Contains(errMsg, "max depth") || strings.Contains(errMsg, "maximum depth") {
+		return "max depth reached"
+	}
+	if strings.Contains(errMsg, "already visited") {
+		return "already visited"
+	}
+	if strings.Contains(errMsg, "missing url") {
+		return "missing URL"
+	}
+
+	return "unknown error"
 }
 
 // isNonRetryableError checks if an error should not trigger a retry.
