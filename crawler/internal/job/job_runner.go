@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"time"
+
+	infralogger "github.com/north-cloud/infrastructure/logger"
 )
 
 // executeJob executes a job by ID.
@@ -11,7 +13,7 @@ func (s *DBScheduler) executeJob(ctx context.Context, jobID string) {
 	// Check if job is already running
 	s.activeJobsMu.RLock()
 	if _, exists := s.activeJobs[jobID]; exists {
-		s.logger.Warn("Job already running", "job_id", jobID)
+		s.logger.Warn("Job already running", infralogger.String("job_id", jobID))
 		s.activeJobsMu.RUnlock()
 		return
 	}
@@ -20,7 +22,10 @@ func (s *DBScheduler) executeJob(ctx context.Context, jobID string) {
 	// Get job from database
 	job, err := s.repo.GetByID(ctx, jobID)
 	if err != nil {
-		s.logger.Error("Failed to get job", "job_id", jobID, "error", err)
+		s.logger.Error("Failed to get job",
+			infralogger.String("job_id", jobID),
+			infralogger.Error(err),
+		)
 		return
 	}
 
@@ -30,7 +35,10 @@ func (s *DBScheduler) executeJob(ctx context.Context, jobID string) {
 	job.StartedAt = &now
 
 	if updateErr := s.repo.Update(ctx, job); updateErr != nil {
-		s.logger.Error("Failed to update job status", "job_id", jobID, "error", updateErr)
+		s.logger.Error("Failed to update job status",
+			infralogger.String("job_id", jobID),
+			infralogger.Error(updateErr),
+		)
 		return
 	}
 
@@ -64,28 +72,37 @@ func (s *DBScheduler) executeJob(ctx context.Context, jobID string) {
 
 		// Validate source ID is present
 		if job.SourceID == "" {
-			s.logger.Error("Job missing source ID", "job_id", jobID)
+			s.logger.Error("Job missing source ID", infralogger.String("job_id", jobID))
 			s.updateJobStatus(jobCtx, jobID, "failed", errors.New("job missing required source_id"))
 			return
 		}
 
-		s.logger.Info("Executing job", "job_id", jobID, "source_id", job.SourceID, "url", job.URL)
-
+		s.logger.Info("Executing job",
+			infralogger.String("job_id", jobID),
+			infralogger.String("source_id", job.SourceID),
+			infralogger.String("url", job.URL),
+		)
 		// Execute crawler - Start expects a source ID
 		if startErr := s.crawler.Start(jobCtx, job.SourceID); startErr != nil {
-			s.logger.Error("Failed to start crawler", "job_id", jobID, "error", startErr)
+			s.logger.Error("Failed to start crawler",
+				infralogger.String("job_id", jobID),
+				infralogger.Error(startErr),
+			)
 			s.updateJobStatus(jobCtx, jobID, "failed", startErr)
 			return
 		}
 
 		// Wait for crawler to complete
 		if waitErr := s.crawler.Wait(); waitErr != nil {
-			s.logger.Error("Crawler failed", "job_id", jobID, "error", waitErr)
+			s.logger.Error("Crawler failed",
+				infralogger.String("job_id", jobID),
+				infralogger.Error(waitErr),
+			)
 			s.updateJobStatus(jobCtx, jobID, "failed", waitErr)
 			return
 		}
 
-		s.logger.Info("Job completed successfully", "job_id", jobID)
+		s.logger.Info("Job completed successfully", infralogger.String("job_id", jobID))
 		s.updateJobStatus(jobCtx, jobID, "completed", nil)
 	}()
 }
@@ -94,7 +111,10 @@ func (s *DBScheduler) executeJob(ctx context.Context, jobID string) {
 func (s *DBScheduler) updateJobStatus(ctx context.Context, jobID, status string, err error) {
 	job, getErr := s.repo.GetByID(ctx, jobID)
 	if getErr != nil {
-		s.logger.Error("Failed to get job for status update", "job_id", jobID, "error", getErr)
+		s.logger.Error("Failed to get job for status update",
+			infralogger.String("job_id", jobID),
+			infralogger.Error(getErr),
+		)
 		return
 	}
 
@@ -111,6 +131,9 @@ func (s *DBScheduler) updateJobStatus(ctx context.Context, jobID, status string,
 	}
 
 	if updateErr := s.repo.Update(ctx, job); updateErr != nil {
-		s.logger.Error("Failed to update job status", "job_id", jobID, "error", updateErr)
+		s.logger.Error("Failed to update job status",
+			infralogger.String("job_id", jobID),
+			infralogger.Error(updateErr),
+		)
 	}
 }
