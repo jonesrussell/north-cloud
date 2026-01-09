@@ -15,7 +15,6 @@ require (
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/north-cloud/infrastructure v0.0.0-00010101000000-000000000000
 	github.com/robfig/cron/v3 v3.0.1
-	go.uber.org/zap v1.27.1
 	gopkg.in/yaml.v3 v3.0.1
 )
 
@@ -80,6 +79,7 @@ require (
 	go.opentelemetry.io/otel/sdk v1.37.0 // indirect
 	go.opentelemetry.io/otel/trace v1.39.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
+	go.uber.org/zap v1.27.1 // indirect
 	golang.org/x/arch v0.23.0 // indirect
 	golang.org/x/crypto v0.46.0 // indirect
 	golang.org/x/net v0.48.0 // indirect
