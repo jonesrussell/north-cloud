@@ -10,8 +10,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/jonesrussell/north-cloud/crawler/internal/config/server"
-	"github.com/jonesrussell/north-cloud/crawler/internal/logger"
 	"github.com/jonesrussell/north-cloud/crawler/internal/metrics"
+	infralogger "github.com/north-cloud/infrastructure/logger"
 )
 
 // SecurityMiddlewareInterface defines the interface for security middleware.
@@ -48,7 +48,7 @@ const (
 // SecurityMiddleware implements security measures for the API
 type SecurityMiddleware struct {
 	config          *server.Config
-	logger          logger.Interface
+	logger          infralogger.Logger
 	rateLimiter     map[string]rateLimitInfo
 	mu              sync.RWMutex
 	timeProvider    TimeProvider
@@ -70,7 +70,7 @@ var _ SecurityMiddlewareInterface = (*SecurityMiddleware)(nil)
 // No constants needed
 
 // NewSecurityMiddleware creates a new security middleware instance
-func NewSecurityMiddleware(cfg *server.Config, log logger.Interface) *SecurityMiddleware {
+func NewSecurityMiddleware(cfg *server.Config, log infralogger.Logger) *SecurityMiddleware {
 	rateLimit := DefaultRateLimit
 	rateLimitWindow := DefaultRateLimitWindow
 
