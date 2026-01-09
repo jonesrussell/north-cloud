@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { Loader2, FileText, ExternalLink, RefreshCw } from 'lucide-vue-next'
+import { Loader2, FileText, ExternalLink, RefreshCw, Trash2, AlertTriangle } from 'lucide-vue-next'
 import { publisherApi } from '@/api/client'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -18,6 +18,12 @@ interface Article {
 const loading = ref(true)
 const error = ref<string | null>(null)
 const articles = ref<Article[]>([])
+
+// Clear all state
+const clearModalOpen = ref(false)
+const clearing = ref(false)
+const clearError = ref<string | null>(null)
+const clearResult = ref<{ deleted: number } | null>(null)
 
 const loadArticles = async () => {
   try {
@@ -37,6 +43,39 @@ const formatDate = (date: string) => {
   return d.toLocaleString()
 }
 
+const confirmClear = () => {
+  clearError.value = null
+  clearResult.value = null
+  clearModalOpen.value = true
+}
+
+const cancelClear = () => {
+  clearModalOpen.value = false
+  clearError.value = null
+  clearResult.value = null
+}
+
+const clearAllHistory = async () => {
+  try {
+    clearing.value = true
+    clearError.value = null
+    const response = await publisherApi.history.clearAll()
+    clearResult.value = { deleted: response.data?.deleted || 0 }
+    // Reload the list after successful clear
+    await loadArticles()
+    // Close modal after a short delay to show result
+    setTimeout(() => {
+      clearModalOpen.value = false
+      clearResult.value = null
+    }, 1500)
+  } catch (err) {
+    console.error('Failed to clear publish history:', err)
+    clearError.value = 'Failed to clear publish history. Please try again.'
+  } finally {
+    clearing.value = false
+  }
+}
+
 onMounted(loadArticles)
 </script>
 
@@ -51,13 +90,23 @@ onMounted(loadArticles)
           Recently published articles across all channels
         </p>
       </div>
-      <Button
-        variant="outline"
-        @click="loadArticles"
-      >
-        <RefreshCw class="mr-2 h-4 w-4" />
-        Refresh
-      </Button>
+      <div class="flex gap-2">
+        <Button
+          variant="outline"
+          :disabled="articles.length === 0"
+          @click="confirmClear"
+        >
+          <Trash2 class="mr-2 h-4 w-4" />
+          Clear All
+        </Button>
+        <Button
+          variant="outline"
+          @click="loadArticles"
+        >
+          <RefreshCw class="mr-2 h-4 w-4" />
+          Refresh
+        </Button>
+      </div>
     </div>
 
     <div
@@ -162,5 +211,78 @@ onMounted(loadArticles)
         </table>
       </CardContent>
     </Card>
+
+    <!-- Clear Confirmation Modal -->
+    <div
+      v-if="clearModalOpen"
+      class="fixed inset-0 z-50 flex items-center justify-center"
+    >
+      <!-- Backdrop -->
+      <div
+        class="fixed inset-0 bg-black/50"
+        @click="cancelClear"
+      />
+      
+      <!-- Modal -->
+      <Card class="relative z-10 w-full max-w-md mx-4">
+        <CardContent class="pt-6">
+          <div class="flex items-start gap-4">
+            <div class="flex-shrink-0 w-10 h-10 rounded-full bg-destructive/10 flex items-center justify-center">
+              <AlertTriangle class="h-5 w-5 text-destructive" />
+            </div>
+            <div class="flex-1">
+              <h3 class="text-lg font-semibold mb-2">
+                Clear Publish History
+              </h3>
+              
+              <!-- Success message -->
+              <div
+                v-if="clearResult"
+                class="text-sm text-green-600 bg-green-50 px-3 py-2 rounded mb-4"
+              >
+                Successfully deleted {{ clearResult.deleted }} records.
+              </div>
+
+              <template v-else>
+                <p class="text-sm text-muted-foreground mb-4">
+                  Are you sure you want to clear all publish history? This will delete all records of published articles.
+                </p>
+                <p class="text-sm text-destructive mb-4">
+                  This action cannot be undone. The router may re-publish articles that were previously sent.
+                </p>
+
+                <div
+                  v-if="clearError"
+                  class="text-sm text-destructive bg-destructive/10 px-3 py-2 rounded mb-4"
+                >
+                  {{ clearError }}
+                </div>
+
+                <div class="flex justify-end gap-2">
+                  <Button
+                    variant="outline"
+                    :disabled="clearing"
+                    @click="cancelClear"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    :disabled="clearing"
+                    @click="clearAllHistory"
+                  >
+                    <Loader2
+                      v-if="clearing"
+                      class="mr-2 h-4 w-4 animate-spin"
+                    />
+                    {{ clearing ? 'Clearing...' : 'Clear All History' }}
+                  </Button>
+                </div>
+              </template>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
   </div>
 </template>
