@@ -14,15 +14,12 @@ import (
 
 // Default timeout and health constants.
 const (
-	defaultReadTimeout   = 30 * time.Second
-	defaultWriteTimeout  = 60 * time.Second
-	defaultIdleTimeout   = 120 * time.Second
-	httpStatusOK         = 200
-	healthStatusHealthy  = "healthy"
-	healthStatusDegraded = "degraded"
-	healthCheckTimeout   = 2 * time.Second
-	serviceVersion       = "1.0.0"
-	decimalBase          = 10 // Base 10 for decimal number parsing
+	defaultReadTimeout  = 30 * time.Second
+	defaultWriteTimeout = 60 * time.Second
+	defaultIdleTimeout  = 120 * time.Second
+	healthCheckTimeout  = 2 * time.Second
+	serviceVersion      = "1.0.0"
+	decimalBase         = 10 // Base 10 for decimal number parsing
 )
 
 // Router holds the API dependencies
@@ -159,97 +156,4 @@ func (r *Router) setupServiceRoutes(router *gin.Engine) {
 	// Articles
 	articles := v1.Group("/articles")
 	articles.GET("/recent", r.getRecentArticles)
-}
-
-// SetupRoutes is kept for backward compatibility but marked as deprecated.
-//
-// Deprecated: Use NewServer() instead which includes middleware setup.
-func (r *Router) SetupRoutes() *gin.Engine {
-	// Set Gin mode based on config
-	if !r.cfg.Debug {
-		gin.SetMode(gin.ReleaseMode)
-	} else {
-		gin.SetMode(gin.DebugMode)
-	}
-
-	router := gin.New()
-
-	// Global middleware
-	router.Use(gin.Recovery())
-	router.Use(corsMiddleware(r.cfg.Server.CORSOrigins)) // Defined in middleware.go
-
-	// Health check (public, no auth)
-	router.GET("/health", r.healthCheck)
-
-	// Setup service routes
-	r.setupServiceRoutes(router)
-
-	return router
-}
-
-// healthCheck returns the service health status (kept for backward compatibility)
-func (r *Router) healthCheck(c *gin.Context) {
-	health := gin.H{
-		"status":  healthStatusHealthy,
-		"service": "publisher",
-		"version": serviceVersion,
-	}
-
-	// Check database connection with timeout
-	ctx, cancel := context.WithTimeout(c.Request.Context(), healthCheckTimeout)
-	defer cancel()
-
-	dbConnected := true
-	if err := r.repo.Ping(ctx); err != nil {
-		dbConnected = false
-		health["status"] = healthStatusDegraded
-	}
-	health["database"] = gin.H{
-		"connected": dbConnected,
-	}
-
-	// Check Redis connection
-	redisHealth := r.checkRedisHealth(ctx)
-	health["redis"] = redisHealth
-
-	// Update status if Redis is not connected
-	if connected, ok := redisHealth["connected"].(bool); ok && !connected {
-		if health["status"] == healthStatusHealthy {
-			health["status"] = healthStatusDegraded
-		}
-	}
-
-	c.JSON(httpStatusOK, health)
-}
-
-// checkRedisHealth checks Redis connection and returns health info
-func (r *Router) checkRedisHealth(ctx context.Context) gin.H {
-	if r.redisClient == nil {
-		return gin.H{
-			"connected": false,
-			"error":     "Redis client not initialized",
-		}
-	}
-
-	redisConnected, redisErr := checkRedisConnection(ctx, r.redisClient)
-	redisHealth := gin.H{
-		"connected": redisConnected,
-	}
-	if redisErr != nil {
-		redisHealth["error"] = redisErr.Error()
-	}
-
-	return redisHealth
-}
-
-// checkRedisConnection tests Redis connectivity
-func checkRedisConnection(ctx context.Context, client *redis.Client) (bool, error) {
-	if client == nil {
-		return false, nil
-	}
-	err := client.Ping(ctx).Err()
-	if err != nil {
-		return false, err
-	}
-	return true, nil
 }

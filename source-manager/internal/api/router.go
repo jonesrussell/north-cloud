@@ -1,7 +1,6 @@
 package api
 
 import (
-	"net/http"
 	"strings"
 	"time"
 
@@ -107,11 +106,6 @@ func NewServer(
 		WithTimeouts(defaultReadTimeout, defaultWriteTimeout, defaultIdleTimeout).
 		WithCORS(corsConfig).
 		WithRoutes(func(router *gin.Engine) {
-			// HEAD /health for Docker health checks
-			router.HEAD("/health", func(c *gin.Context) {
-				c.Status(http.StatusOK)
-			})
-
 			// Setup service-specific routes (health routes added by builder)
 			setupServiceRoutes(router, sourceHandler, cfg)
 		}).
@@ -184,102 +178,4 @@ func convertFields(fields []logger.Field) []infralogger.Field {
 	result := make([]infralogger.Field, len(fields))
 	copy(result, fields)
 	return result
-}
-
-// NewRouter is kept for backward compatibility but marked as deprecated.
-//
-// Deprecated: Use NewServer() instead which includes middleware setup.
-func NewRouter(db *repository.SourceRepository, cfg *config.Config, log logger.Logger) *gin.Engine {
-	router := gin.New()
-
-	// CORS middleware - must be first
-	router.Use(corsMiddleware(getCORSOrigins(cfg)))
-
-	// Middleware
-	router.Use(ginLogger(log))
-	router.Use(gin.Recovery())
-
-	// Health check - support both GET and HEAD for Docker healthchecks
-	router.GET("/health", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{"status": "ok"})
-	})
-	router.HEAD("/health", func(c *gin.Context) {
-		c.Status(http.StatusOK)
-	})
-
-	sourceHandler := handlers.NewSourceHandler(db, log)
-
-	// Public API endpoints (no JWT required)
-	publicAPI := router.Group("/api/v1")
-	publicAPI.GET("/sources", sourceHandler.List)
-	publicAPI.GET("/cities", sourceHandler.GetCities)
-
-	// Protected API endpoints (JWT required)
-	v1 := infragin.ProtectedGroup(router, "/api/v1", cfg.Auth.JWTSecret)
-
-	sources := v1.Group("/sources")
-	sources.POST("", sourceHandler.Create)
-	sources.POST("/fetch-metadata", sourceHandler.FetchMetadata)
-	sources.POST("/test-crawl", sourceHandler.TestCrawl)
-	sources.GET("/:id", sourceHandler.GetByID)
-	sources.PUT("/:id", sourceHandler.Update)
-	sources.DELETE("/:id", sourceHandler.Delete)
-
-	return router
-}
-
-// corsMiddleware creates a CORS middleware with the given origins.
-func corsMiddleware(origins []string) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		origin := c.Request.Header.Get("Origin")
-		allowedOrigin := ""
-
-		for _, allowed := range origins {
-			if allowed == "*" {
-				allowedOrigin = "*"
-				break
-			}
-			if allowed == origin {
-				allowedOrigin = origin
-				break
-			}
-		}
-
-		if allowedOrigin != "" {
-			c.Writer.Header().Set("Access-Control-Allow-Origin", allowedOrigin)
-			c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
-			c.Writer.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS, PATCH")
-			c.Writer.Header().Set("Access-Control-Allow-Headers",
-				"Origin, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, accept, origin, Cache-Control, X-Requested-With, X-API-Key")
-			c.Writer.Header().Set("Access-Control-Max-Age", "43200") // 12 hours
-		}
-
-		if c.Request.Method == http.MethodOptions {
-			c.AbortWithStatus(http.StatusNoContent)
-			return
-		}
-
-		c.Next()
-	}
-}
-
-func ginLogger(log logger.Logger) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		start := time.Now()
-		path := c.Request.URL.Path
-		method := c.Request.Method
-
-		c.Next()
-
-		duration := time.Since(start)
-		statusCode := c.Writer.Status()
-
-		log.Info("HTTP request",
-			logger.String("method", method),
-			logger.String("path", path),
-			logger.Int("status_code", statusCode),
-			logger.String("client_ip", c.ClientIP()),
-			logger.Duration("duration", duration),
-		)
-	}
 }

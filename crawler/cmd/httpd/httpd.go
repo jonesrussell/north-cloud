@@ -5,7 +5,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"net/http"
 	"os"
 	"os/signal"
 	"strings"
@@ -27,7 +26,8 @@ import (
 	"github.com/jonesrussell/north-cloud/crawler/internal/storage"
 	"github.com/jonesrussell/north-cloud/crawler/internal/storage/types"
 	infraconfig "github.com/north-cloud/infrastructure/config"
-	infracontext "github.com/north-cloud/infrastructure/context"
+	infragin "github.com/north-cloud/infrastructure/gin"
+	infralogger "github.com/north-cloud/infrastructure/logger"
 	"github.com/north-cloud/infrastructure/profiling"
 )
 
@@ -401,27 +401,35 @@ func createAndStartScheduler(
 
 // === Server Setup ===
 
+// createInfraLogger creates an infrastructure logger from the logging config.
+func createInfraLogger(cfg config.Interface) (infralogger.Logger, error) {
+	loggingCfg := cfg.GetLoggingConfig()
+	return infralogger.New(infralogger.Config{
+		Level:       loggingCfg.Level,
+		Format:      loggingCfg.Format,
+		Development: loggingCfg.Debug,
+	})
+}
+
 // startHTTPServer creates and starts the HTTP server.
 // Returns the server and an error channel for server errors.
 func startHTTPServer(
 	deps *CommandDeps,
 	jobsHandler *api.JobsHandler,
 	discoveredLinksHandler *api.DiscoveredLinksHandler,
-) (*http.Server, chan error, error) {
-	//nolint:staticcheck // Using deprecated StartHTTPServer temporarily; NewServer migration planned
-	server, _, err := api.StartHTTPServer(deps.Logger, deps.Config, jobsHandler, discoveredLinksHandler)
+) (*infragin.Server, <-chan error, error) {
+	// Create infrastructure logger for the gin server
+	infraLog, err := createInfraLogger(deps.Config)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to start HTTP server: %w", err)
+		return nil, nil, fmt.Errorf("failed to create infrastructure logger: %w", err)
 	}
 
-	// Start server in goroutine
+	// Create server using the new infrastructure gin package
+	server := api.NewServer(deps.Logger, deps.Config, jobsHandler, discoveredLinksHandler, infraLog)
+
+	// Start server asynchronously
 	deps.Logger.Info("Starting HTTP server", "addr", deps.Config.GetServerConfig().Address)
-	errChan := make(chan error, errorChannelBufferSize)
-	go func() {
-		if serveErr := server.ListenAndServe(); serveErr != nil && !errors.Is(serveErr, http.ErrServerClosed) {
-			errChan <- serveErr
-		}
-	}()
+	errChan := server.StartAsync()
 
 	return server, errChan, nil
 }
@@ -429,9 +437,9 @@ func startHTTPServer(
 // runServerUntilInterrupt runs the server until interrupted by signal or error.
 func runServerUntilInterrupt(
 	log logger.Interface,
-	server *http.Server,
+	server *infragin.Server,
 	intervalScheduler *scheduler.IntervalScheduler,
-	errChan chan error,
+	errChan <-chan error,
 ) error {
 	// Set up signal handling for graceful shutdown
 	sigChan := make(chan os.Signal, signalChannelBufferSize)
@@ -450,13 +458,11 @@ func runServerUntilInterrupt(
 // shutdownServer performs graceful shutdown of the server and scheduler.
 func shutdownServer(
 	log logger.Interface,
-	server *http.Server,
+	server *infragin.Server,
 	intervalScheduler *scheduler.IntervalScheduler,
 	sig os.Signal,
 ) error {
 	log.Info("Shutdown signal received", "signal", sig.String())
-	shutdownCtx, cancel := infracontext.WithTimeout(defaultShutdownTimeout)
-	defer cancel()
 
 	// Stop scheduler first
 	if intervalScheduler != nil {
@@ -466,9 +472,9 @@ func shutdownServer(
 		}
 	}
 
-	// Stop HTTP server
+	// Stop HTTP server using infrastructure server's graceful shutdown
 	log.Info("Stopping HTTP server")
-	if err := server.Shutdown(shutdownCtx); err != nil {
+	if err := server.ShutdownWithTimeout(defaultShutdownTimeout); err != nil {
 		log.Error("Failed to stop server", "error", err)
 		return fmt.Errorf("failed to stop server: %w", err)
 	}
