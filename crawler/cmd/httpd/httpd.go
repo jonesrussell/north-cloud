@@ -96,10 +96,11 @@ func Start() error {
 	}
 
 	// Phase 4: Setup jobs handler and scheduler
-	jobsHandler, discoveredLinksHandler, dbScheduler, db := setupJobsAndScheduler(deps, storageResult)
-	if db != nil {
-		defer db.Close()
+	jobsHandler, discoveredLinksHandler, dbScheduler, db, err := setupJobsAndScheduler(deps, storageResult)
+	if err != nil {
+		return fmt.Errorf("failed to setup jobs and scheduler: %w", err)
 	}
+	defer db.Close()
 
 	// Phase 5: Start HTTP server
 	server, errChan, err := startHTTPServer(deps, jobsHandler, discoveredLinksHandler)
@@ -314,19 +315,19 @@ func createCrawler(
 
 // === Database & Scheduler Setup ===
 
-// setupJobsAndScheduler initializes the jobs handler and scheduler if database is available.
-// Returns jobsHandler, discoveredLinksHandler, intervalScheduler, and db connection (if available).
+// setupJobsAndScheduler initializes the jobs handler and scheduler.
+// Returns jobsHandler, discoveredLinksHandler, intervalScheduler, db connection, and error.
+// Database connection is required - the crawler cannot operate without it.
 func setupJobsAndScheduler(
 	deps *CommandDeps,
 	storageResult *StorageResult,
-) (*api.JobsHandler, *api.DiscoveredLinksHandler, *scheduler.IntervalScheduler, *sqlx.DB) {
+) (*api.JobsHandler, *api.DiscoveredLinksHandler, *scheduler.IntervalScheduler, *sqlx.DB, error) {
 	// Convert config to database config (DRY improvement)
 	dbConfig := databaseConfigFromInterface(deps.Config.GetDatabaseConfig())
 
 	db, err := database.NewPostgresConnection(dbConfig)
 	if err != nil {
-		deps.Logger.Warn("Failed to connect to database, jobs API will use fallback", "error", err)
-		return nil, nil, nil, nil
+		return nil, nil, nil, nil, fmt.Errorf("failed to connect to database: %w", err)
 	}
 
 	// Create repositories
@@ -347,7 +348,7 @@ func setupJobsAndScheduler(
 		discoveredLinksHandler.SetScheduler(intervalScheduler)
 	}
 
-	return jobsHandler, discoveredLinksHandler, intervalScheduler, db
+	return jobsHandler, discoveredLinksHandler, intervalScheduler, db, nil
 }
 
 // databaseConfigFromInterface converts config database config to database.Config.
