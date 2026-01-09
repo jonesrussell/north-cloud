@@ -96,8 +96,9 @@ func setupElasticsearch(cfg *ProcessorConfig) (*storage.ElasticsearchStorage, er
 
 	// Create a logger for ES connection
 	esLog, err := logger.New(logger.Config{
-		Level:  "info",
-		Format: "console",
+		Level:       "info",
+		Format:      "console",
+		Development: true,
 	})
 	if err != nil {
 		// Continue without logger if creation fails
@@ -201,7 +202,10 @@ func Start() error {
 	log.Printf("Batch Size: %d", cfg.BatchSize)
 	log.Printf("Concurrent Workers: %d", cfg.ConcurrentWorkers)
 
-	procLogger := storage.NewSimpleLogger("[Processor] ")
+	procLogger, err := storage.NewSimpleLogger("[Processor] ")
+	if err != nil {
+		return fmt.Errorf("failed to create logger: %w", err)
+	}
 
 	esStorage, err := setupElasticsearch(cfg)
 	if err != nil {
@@ -272,7 +276,10 @@ func StartWithStop() (func(), error) {
 	log.Printf("Batch Size: %d", cfg.BatchSize)
 	log.Printf("Concurrent Workers: %d", cfg.ConcurrentWorkers)
 
-	procLogger := storage.NewSimpleLogger("[Processor] ")
+	procLogger, err := storage.NewSimpleLogger("[Processor] ")
+	if err != nil {
+		return nil, fmt.Errorf("failed to create logger: %w", err)
+	}
 
 	esStorage, err := setupElasticsearch(cfg)
 	if err != nil {
