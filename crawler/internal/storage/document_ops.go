@@ -42,7 +42,8 @@ func (s *Storage) IndexDocument(ctx context.Context, index, id string, document 
 		s.logger.Error("Elasticsearch returned error response",
 			infralogger.String("error", res.String()),
 			infralogger.String("index", index),
-			infralogger.String("docID", id))
+			infralogger.String("docID", id),
+		)
 		return fmt.Errorf("elasticsearch error: %s", res.String())
 	}
 
@@ -50,7 +51,8 @@ func (s *Storage) IndexDocument(ctx context.Context, index, id string, document 
 		infralogger.String("index", index),
 		infralogger.String("docID", id),
 		infralogger.String("type", fmt.Sprintf("%T", document)),
-		infralogger.String("url", getURLFromDocument(document)))
+		infralogger.String("url", getURLFromDocument(document)),
+	)
 	return nil
 }
 
@@ -99,12 +101,14 @@ func (s *Storage) DeleteDocument(ctx context.Context, index, docID string) error
 		s.logger.Error("Failed to delete document",
 			infralogger.String("error", res.String()),
 			infralogger.String("index", index),
-			infralogger.String("doc_id", docID))
+			infralogger.String("doc_id", docID),
+		)
 		return fmt.Errorf("error deleting document: %s", res.String())
 	}
 
 	s.logger.Info("Deleted document",
 		infralogger.String("index", index),
-		infralogger.String("docID", docID))
+		infralogger.String("docID", docID),
+	)
 	return nil
 }

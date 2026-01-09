@@ -84,7 +84,8 @@ func (s *Storage) DeleteIndex(ctx context.Context, index string) error {
 	if res.IsError() {
 		s.logger.Error("Failed to delete index",
 			infralogger.String("error", res.String()),
-			infralogger.String("index", index))
+			infralogger.String("index", index),
+		)
 		return fmt.Errorf("error deleting index: %s", res.String())
 	}
 
