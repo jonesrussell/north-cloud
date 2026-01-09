@@ -10,8 +10,9 @@ import (
 
 const (
 	// tfNormalizationFactor normalizes log-TF component to prevent runaway scores
-	// log(1+10) ≈ 2.4, so dividing by 10 gives ~0.24 max for TF component
-	tfNormalizationFactor = 10.0
+	// log(1+4) ≈ 1.6, so dividing by 2.5 gives ~0.64 for typical matches
+	// This allows TF to contribute meaningfully while still capping at 1.0 for high counts
+	tfNormalizationFactor = 2.5
 
 	// tfWeight is the weight for term frequency component in score calculation
 	tfWeight = 0.5
