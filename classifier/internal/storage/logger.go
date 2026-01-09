@@ -55,3 +55,11 @@ func (l *SimpleLogger) Fatal(msg string, fields ...infralogger.Field) {
 func (l *SimpleLogger) Sync() error {
 	return l.logger.Sync()
 }
+
+// With creates a new logger with the given fields
+func (l *SimpleLogger) With(fields ...infralogger.Field) infralogger.Logger {
+	return &SimpleLogger{
+		logger: l.logger.With(fields...),
+		prefix: l.prefix,
+	}
+}
