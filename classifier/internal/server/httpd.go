@@ -135,7 +135,7 @@ func setupDatabaseAndRepos(cfg *config.Config, logger infralogger.Logger) (*serv
 	// Create a simple logger for ES connection using infrastructure logger
 	esLog, err := infralogger.New(infralogger.Config{
 		Level:  "info",
-		Format: "console",
+		Format: "json",
 	})
 	if err != nil {
 		esLog = nil

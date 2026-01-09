@@ -97,7 +97,7 @@ func setupElasticsearch(cfg *ProcessorConfig) (*storage.ElasticsearchStorage, er
 	// Create a logger for ES connection
 	esLog, err := logger.New(logger.Config{
 		Level:       "info",
-		Format:      "console",
+		Format:      "json",
 		Development: true,
 	})
 	if err != nil {

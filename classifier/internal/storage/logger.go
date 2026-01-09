@@ -14,7 +14,7 @@ type SimpleLogger struct {
 func NewSimpleLogger(prefix string) (*SimpleLogger, error) {
 	logger, err := infralogger.New(infralogger.Config{
 		Level:       "info",
-		Format:      "console",
+		Format:      "json",
 		Development: true,
 	})
 	if err != nil {
