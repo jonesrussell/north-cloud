@@ -31,7 +31,8 @@ func (s *Storage) CreateIndex(
 		if encodeErr := json.NewEncoder(&buf).Encode(mapping); encodeErr != nil {
 			s.logger.Error("Failed to create index",
 				infralogger.String("index", index),
-				infralogger.Error(encodeErr))
+				infralogger.Error(encodeErr),
+			)
 			return fmt.Errorf("error encoding mapping: %w", encodeErr)
 		}
 		res, err = s.client.Indices.Create(
@@ -55,7 +56,8 @@ func (s *Storage) CreateIndex(
 	if res.IsError() {
 		s.logger.Error("Failed to create index",
 			infralogger.String("index", index),
-			infralogger.String("error", res.String()))
+			infralogger.String("error", res.String()),
+		)
 		return fmt.Errorf("failed to create index: %s", res.String())
 	}
 
