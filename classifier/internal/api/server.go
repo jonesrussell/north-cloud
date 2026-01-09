@@ -1,23 +1,22 @@
 package api
 
 import (
-	"context"
-	"fmt"
-	"net/http"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/jonesrussell/north-cloud/classifier/internal/config"
+	infragin "github.com/north-cloud/infrastructure/gin"
+	"github.com/north-cloud/infrastructure/logger"
 )
 
-// Server represents the HTTP server
-type Server struct {
-	router *gin.Engine
-	server *http.Server
-	logger Logger
-}
+// Default timeout values.
+const (
+	defaultReadTimeout  = 30 * time.Second
+	defaultWriteTimeout = 60 * time.Second
+	defaultIdleTimeout  = 120 * time.Second
+)
 
-// ServerConfig holds server configuration
+// ServerConfig holds server configuration.
 type ServerConfig struct {
 	Port         int
 	ReadTimeout  time.Duration
@@ -25,116 +24,66 @@ type ServerConfig struct {
 	Debug        bool
 }
 
-// NewServer creates a new HTTP server
-func NewServer(handler *Handler, serverCfg ServerConfig, logger Logger, cfg *config.Config) *Server {
-	// Set Gin mode based on debug flag
-	if !serverCfg.Debug {
-		gin.SetMode(gin.ReleaseMode)
+// NewServer creates a new HTTP server using the infrastructure gin package.
+func NewServer(handler *Handler, serverCfg ServerConfig, _ Logger, cfg *config.Config, infraLog logger.Logger) *infragin.Server {
+	// Set timeout defaults if not provided
+	readTimeout := serverCfg.ReadTimeout
+	if readTimeout == 0 {
+		readTimeout = defaultReadTimeout
+	}
+	writeTimeout := serverCfg.WriteTimeout
+	if writeTimeout == 0 {
+		writeTimeout = defaultWriteTimeout
 	}
 
-	// Create router
-	router := gin.New()
+	// Build server using infrastructure gin package
+	server := infragin.NewServerBuilder(cfg.Service.Name, serverCfg.Port).
+		WithLogger(infraLog).
+		WithDebug(serverCfg.Debug).
+		WithVersion(cfg.Service.Version).
+		WithTimeouts(readTimeout, writeTimeout, defaultIdleTimeout).
+		WithRoutes(func(router *gin.Engine) {
+			// Setup service-specific routes (health routes added by builder)
+			SetupServiceRoutes(router, handler, cfg)
+		}).
+		Build()
 
-	// Add middleware
-	router.Use(gin.Recovery())
-	router.Use(LoggerMiddleware(logger))
-	router.Use(CORSMiddleware())
-
-	// Setup routes
-	SetupRoutes(router, handler, cfg)
-
-	// Create HTTP server
-	addr := fmt.Sprintf(":%d", serverCfg.Port)
-	server := &http.Server{
-		Addr:         addr,
-		Handler:      router,
-		ReadTimeout:  serverCfg.ReadTimeout,
-		WriteTimeout: serverCfg.WriteTimeout,
-	}
-
-	return &Server{
-		router: router,
-		server: server,
-		logger: logger,
-	}
+	return server
 }
 
-// Start starts the HTTP server
-func (s *Server) Start() error {
-	s.logger.Info("Starting HTTP server",
-		"address", s.server.Addr,
-		"read_timeout", s.server.ReadTimeout,
-		"write_timeout", s.server.WriteTimeout,
-	)
+// SetupServiceRoutes configures service-specific API routes (not health routes).
+// Health routes are handled by the infrastructure gin package.
+func SetupServiceRoutes(router *gin.Engine, handler *Handler, cfg *config.Config) {
+	// API v1 routes - protected with JWT
+	v1 := infragin.ProtectedGroup(router, "/api/v1", cfg.Auth.JWTSecret)
 
-	if err := s.server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-		return fmt.Errorf("failed to start server: %w", err)
-	}
+	// Classification endpoints
+	classify := v1.Group("/classify")
+	classify.POST("", handler.Classify)                                  // POST /api/v1/classify
+	classify.POST("/batch", handler.ClassifyBatch)                       // POST /api/v1/classify/batch
+	classify.POST("/reclassify/:content_id", handler.ReclassifyDocument) // POST /api/v1/classify/reclassify/:content_id
+	classify.GET("/:content_id", handler.GetClassificationResult)        // GET /api/v1/classify/:content_id
 
-	return nil
-}
+	// Rules management endpoints
+	rules := v1.Group("/rules")
+	rules.GET("", handler.ListRules)         // GET /api/v1/rules
+	rules.POST("", handler.CreateRule)       // POST /api/v1/rules
+	rules.PUT("/:id", handler.UpdateRule)    // PUT /api/v1/rules/:id
+	rules.DELETE("/:id", handler.DeleteRule) // DELETE /api/v1/rules/:id
 
-// Shutdown gracefully shuts down the server
-func (s *Server) Shutdown(ctx context.Context) error {
-	s.logger.Info("Shutting down HTTP server")
+	// Source reputation endpoints
+	sources := v1.Group("/sources")
+	sources.GET("", handler.ListSources)                // GET /api/v1/sources
+	sources.GET("/:name", handler.GetSource)            // GET /api/v1/sources/:name
+	sources.PUT("/:name", handler.UpdateSource)         // PUT /api/v1/sources/:name
+	sources.GET("/:name/stats", handler.GetSourceStats) // GET /api/v1/sources/:name/stats
 
-	if err := s.server.Shutdown(ctx); err != nil {
-		return fmt.Errorf("server shutdown failed: %w", err)
-	}
+	// Statistics endpoints
+	stats := v1.Group("/stats")
+	stats.GET("", handler.GetStats)                      // GET /api/v1/stats
+	stats.GET("/topics", handler.GetTopicStats)          // GET /api/v1/stats/topics
+	stats.GET("/sources", handler.GetSourceDistribution) // GET /api/v1/stats/sources
 
-	s.logger.Info("HTTP server shut down successfully")
-	return nil
-}
-
-// LoggerMiddleware creates a Gin middleware for logging
-func LoggerMiddleware(logger Logger) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		start := time.Now()
-		path := c.Request.URL.Path
-		method := c.Request.Method
-
-		// Process request
-		c.Next()
-
-		// Log after request
-		duration := time.Since(start)
-		statusCode := c.Writer.Status()
-
-		logger.Info("HTTP request",
-			"method", method,
-			"path", path,
-			"status", statusCode,
-			"duration_ms", duration.Milliseconds(),
-			"client_ip", c.ClientIP(),
-		)
-
-		// Log errors if any
-		if len(c.Errors) > 0 {
-			for _, err := range c.Errors {
-				logger.Error("Request error",
-					"method", method,
-					"path", path,
-					"error", err.Error(),
-				)
-			}
-		}
-	}
-}
-
-// CORSMiddleware creates a Gin middleware for CORS
-func CORSMiddleware() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
-		c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
-		c.Writer.Header().Set("Access-Control-Allow-Headers",
-			"Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, accept, origin, Cache-Control, X-Requested-With")
-		c.Writer.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS, GET, PUT, DELETE")
-
-		if c.Request.Method == http.MethodOptions {
-			c.AbortWithStatus(http.StatusNoContent)
-			return
-		}
-
-		c.Next()
-	}
+	// Keep original health check handlers for backward compatibility (/ready)
+	router.GET("/ready", handler.ReadyCheck)
 }

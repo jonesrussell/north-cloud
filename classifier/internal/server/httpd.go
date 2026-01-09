@@ -5,9 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"os/signal"
 	"strconv"
-	"syscall"
 	"time"
 
 	"github.com/jmoiron/sqlx"
@@ -300,46 +298,39 @@ func StartHTTPServer() {
 		os.Exit(1)
 	}
 
+	// Create infrastructure logger for the gin server
+	infraLog, logErr := infralogger.New(infralogger.Config{
+		Level:       cfg.Logging.Level,
+		Format:      cfg.Logging.Format,
+		Development: debug,
+	})
+	if logErr != nil {
+		logger.Error("Failed to create infrastructure logger", "error", logErr)
+		os.Exit(1)
+	}
+
 	serverConfig := api.ServerConfig{
 		Port:         port,
 		ReadTimeout:  defaultHTTPTimeout,
 		WriteTimeout: defaultHTTPTimeout,
 		Debug:        debug,
 	}
-	server := api.NewServer(comps.handler, serverConfig, logger, cfg)
+	server := api.NewServer(comps.handler, serverConfig, logger, cfg, infraLog)
 
-	// Start server in goroutine
-	serverErrors := make(chan error, 1)
-	go func() {
-		serverErrors <- server.Start()
-	}()
-
-	// Wait for interrupt signal
-	shutdown := make(chan os.Signal, 1)
-	signal.Notify(shutdown, os.Interrupt, syscall.SIGTERM)
-
-	select {
-	case serverErr := <-serverErrors:
-		logger.Error("Server error", "error", serverErr)
-		_ = comps.db.Close() // Explicit cleanup before exit
-		os.Exit(1)
-	case sig := <-shutdown:
-		logger.Info("Shutdown signal received", "signal", sig)
-
-		// Graceful shutdown with 30 second timeout
-		shutdownCtx, cancel := context.WithTimeout(context.Background(), defaultHTTPTimeout)
-
-		if err = server.Shutdown(shutdownCtx); err != nil {
-			cancel() // Explicit cancel before exit
-			logger.Error("Graceful shutdown failed", "error", err)
-			_ = comps.db.Close() // Explicit cleanup before exit
-			os.Exit(1)
-		}
-		cancel() // Cancel context after successful shutdown
-
-		logger.Info("Server stopped gracefully")
-		_ = comps.db.Close() // Cleanup on normal shutdown
+	// Cleanup function
+	cleanup := func() {
+		_ = comps.db.Close()
+		_ = infraLog.Sync()
 	}
+
+	// Run server with graceful shutdown
+	if runErr := server.Run(); runErr != nil {
+		logger.Error("Server error", "error", runErr)
+		cleanup()
+		os.Exit(1)
+	}
+
+	cleanup()
 }
 
 // StartHTTPServerWithStop starts the HTTP server and returns a stop function
@@ -377,19 +368,30 @@ func StartHTTPServerWithStop() (func(), error) {
 		return nil, fmt.Errorf("failed to load rules and create classifier: %w", err)
 	}
 
+	// Create infrastructure logger for the gin server
+	infraLog, logErr := infralogger.New(infralogger.Config{
+		Level:       cfg.Logging.Level,
+		Format:      cfg.Logging.Format,
+		Development: debug,
+	})
+	if logErr != nil {
+		_ = comps.db.Close()
+		return nil, fmt.Errorf("failed to create infrastructure logger: %w", logErr)
+	}
+
 	serverConfig := api.ServerConfig{
 		Port:         port,
 		ReadTimeout:  defaultHTTPTimeout,
 		WriteTimeout: defaultHTTPTimeout,
 		Debug:        debug,
 	}
-	server := api.NewServer(comps.handler, serverConfig, logger, cfg)
+	server := api.NewServer(comps.handler, serverConfig, logger, cfg, infraLog)
 
 	// Start server in goroutine
 	serverErrors := make(chan error, 1)
 	go func() {
-		if err = server.Start(); err != nil {
-			serverErrors <- err
+		if startErr := server.Start(); startErr != nil {
+			serverErrors <- startErr
 		}
 	}()
 
@@ -407,15 +409,16 @@ func StartHTTPServerWithStop() (func(), error) {
 		// Graceful shutdown with 30 second timeout
 		shutdownCtx, cancel := context.WithTimeout(context.Background(), defaultHTTPTimeout)
 
-		if err = server.Shutdown(shutdownCtx); err != nil {
+		if shutdownErr := server.Shutdown(shutdownCtx); shutdownErr != nil {
 			cancel() // Explicit cancel before cleanup
-			logger.Error("Graceful shutdown failed", "error", err)
+			logger.Error("Graceful shutdown failed", "error", shutdownErr)
 		} else {
 			cancel() // Cancel context after successful shutdown
 			logger.Info("HTTP server stopped gracefully")
 		}
 
 		_ = comps.db.Close()
+		_ = infraLog.Sync()
 	}
 
 	return stopFunc, nil
