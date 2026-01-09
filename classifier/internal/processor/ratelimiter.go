@@ -4,19 +4,20 @@ import (
 	"context"
 
 	"github.com/jonesrussell/north-cloud/classifier/internal/domain"
+	infralogger "github.com/north-cloud/infrastructure/logger"
 	"golang.org/x/time/rate"
 )
 
 // RateLimiter provides rate limiting for operations
 type RateLimiter struct {
 	limiter *rate.Limiter
-	logger  Logger
+	logger  infralogger.Logger
 }
 
 // NewRateLimiter creates a new rate limiter
 // rps: requests per second
 // burst: maximum burst size
-func NewRateLimiter(rps, burst int, logger Logger) *RateLimiter {
+func NewRateLimiter(rps, burst int, logger infralogger.Logger) *RateLimiter {
 	if rps <= 0 {
 		rps = 100 // Default 100 requests per second
 	}
@@ -33,7 +34,7 @@ func NewRateLimiter(rps, burst int, logger Logger) *RateLimiter {
 // Wait waits until rate limit allows the operation
 func (r *RateLimiter) Wait(ctx context.Context) error {
 	if err := r.limiter.Wait(ctx); err != nil {
-		r.logger.Warn("Rate limiter wait failed", "error", err)
+		r.logger.Warn("Rate limiter wait failed", infralogger.Error(err))
 		return err
 	}
 	return nil
@@ -52,13 +53,13 @@ func (r *RateLimiter) Reserve() *rate.Reservation {
 // SetLimit updates the rate limit
 func (r *RateLimiter) SetLimit(rps int) {
 	r.limiter.SetLimit(rate.Limit(rps))
-	r.logger.Info("Rate limit updated", "new_rps", rps)
+	r.logger.Info("Rate limit updated", infralogger.Int("new_rps", rps))
 }
 
 // SetBurst updates the burst size
 func (r *RateLimiter) SetBurst(burst int) {
 	r.limiter.SetBurst(burst)
-	r.logger.Info("Burst size updated", "new_burst", burst)
+	r.logger.Info("Burst size updated", infralogger.Int("new_burst", burst))
 }
 
 // RateLimitedProcessor wraps a batch processor with rate limiting
@@ -66,7 +67,7 @@ type RateLimitedProcessor struct {
 	processor *BatchProcessor
 	esLimiter *RateLimiter
 	dbLimiter *RateLimiter
-	logger    Logger
+	logger    infralogger.Logger
 }
 
 // NewRateLimitedProcessor creates a processor with rate limiting
@@ -74,7 +75,7 @@ func NewRateLimitedProcessor(
 	processor *BatchProcessor,
 	esRPS int,
 	dbRPS int,
-	logger Logger,
+	logger infralogger.Logger,
 ) *RateLimitedProcessor {
 	return &RateLimitedProcessor{
 		processor: processor,
@@ -102,7 +103,7 @@ func (r *RateLimitedProcessor) ProcessWithRateLimit(
 
 	// Wait for DB rate limit (we'll be writing to DB)
 	if err = r.dbLimiter.Wait(ctx); err != nil {
-		r.logger.Warn("DB rate limit wait failed, continuing anyway", "error", err)
+		r.logger.Warn("DB rate limit wait failed, continuing anyway", infralogger.Error(err))
 		// Don't fail the operation, just log the warning
 	}
 
@@ -123,14 +124,14 @@ func (r *RateLimitedProcessor) GetDBLimiter() *RateLimiter {
 type RateLimitedPoller struct {
 	poller      *Poller
 	rateLimiter *RateLimiter
-	logger      Logger
+	logger      infralogger.Logger
 }
 
 // NewRateLimitedPoller creates a poller with rate limiting
 func NewRateLimitedPoller(
 	poller *Poller,
 	pollRPS int,
-	logger Logger,
+	logger infralogger.Logger,
 ) *RateLimitedPoller {
 	return &RateLimitedPoller{
 		poller:      poller,
