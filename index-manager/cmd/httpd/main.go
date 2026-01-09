@@ -50,6 +50,9 @@ func run() int {
 	}
 	defer func() { _ = log.Sync() }()
 
+	// Add service name to all log entries
+	log = log.With(infralogger.String("service", "index-manager"))
+
 	log.Info("Starting Index Manager Service",
 		infralogger.String("name", cfg.Service.Name),
 		infralogger.String("version", cfg.Service.Version),

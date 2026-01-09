@@ -260,13 +260,17 @@ func StartHTTPServer() {
 
 	logger, err := infralogger.New(infralogger.Config{
 		Level:       "info",
-		Format:      "console",
+		Format:      "json",
 		Development: debug,
 	})
 	if err != nil {
 		log.Printf("Failed to create logger: %v", err)
 		os.Exit(1)
 	}
+
+	// Add service name to all log entries
+	logger = logger.With(infralogger.String("service", "classifier"))
+
 	logger.Info("Starting classifier HTTP server",
 		infralogger.Int("port", port),
 		infralogger.Bool("debug", debug),

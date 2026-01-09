@@ -127,6 +127,9 @@ func newCommandDeps() (*CommandDeps, error) {
 		return nil, fmt.Errorf("create logger: %w", err)
 	}
 
+	// Add service name to all log entries
+	log = log.With(infralogger.String("service", "crawler"))
+
 	deps := &CommandDeps{
 		Logger: log,
 		Config: cfg,
@@ -405,14 +408,9 @@ func startHTTPServer(
 	jobsHandler *api.JobsHandler,
 	discoveredLinksHandler *api.DiscoveredLinksHandler,
 ) (*infragin.Server, <-chan error, error) {
-	// Create infrastructure logger for the gin server
-	infraLog, err := createInfraLogger(deps.Config)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to create infrastructure logger: %w", err)
-	}
-
+	// Use the logger that already has the service field attached
 	// Create server using the new infrastructure gin package
-	server := api.NewServer(deps.Config, jobsHandler, discoveredLinksHandler, infraLog)
+	server := api.NewServer(deps.Config, jobsHandler, discoveredLinksHandler, deps.Logger)
 
 	// Start server asynchronously
 	deps.Logger.Info("Starting HTTP server", infralogger.String("addr", deps.Config.GetServerConfig().Address))

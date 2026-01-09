@@ -45,6 +45,9 @@ func run() int {
 	}
 	defer func() { _ = log.Sync() }()
 
+	// Add service name to all log entries
+	log = log.With(logger.String("service", "auth"))
+
 	log.Info("Starting auth service",
 		logger.String("name", cfg.Service.Name),
 		logger.Int("port", cfg.Service.Port),

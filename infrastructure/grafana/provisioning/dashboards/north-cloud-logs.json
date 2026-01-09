@@ -192,9 +192,10 @@
             "uid": "loki"
           },
           "editorMode": "code",
-          "expr": "sum by (level) (count_over_time({project=\"north-cloud\", service=~\"$service\", level=~\"$level\"} [$__interval]))",
+          "expr": "sum by (level) (count_over_time({project=\"north-cloud\", service=~\"$service\"} | json | __error__=\"\" | level=~\"$level\" [$__interval]))",
           "queryType": "range",
-          "refId": "A"
+          "refId": "A",
+          "legendFormat": "{{level}}"
         }
       ],
       "title": "Logs by Level",
@@ -229,7 +230,7 @@
             "uid": "loki"
           },
           "editorMode": "code",
-          "expr": "{project=\"north-cloud\", service=~\"$service\"} |~ \"$search\"",
+          "expr": "{project=\"north-cloud\", service=~\"$service\"} | json | line_format \"[{{.service}}] {{.level}} | {{.msg}}\" |~ \"$search\"",
           "queryType": "range",
           "refId": "A"
         }

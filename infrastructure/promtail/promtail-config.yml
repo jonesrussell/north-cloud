@@ -83,6 +83,7 @@ scrape_configs:
           source: log
 
       # Extract level label from JSON (primary source)
+      # This extracts the 'level' field from the parsed JSON and adds it as a label
       - labels:
           level:
 
