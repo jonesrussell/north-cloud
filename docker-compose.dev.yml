@@ -125,7 +125,7 @@ services:
       - ./source-manager/migrations:/migrations:ro
       - source_manager_go_mod_cache:/tmp/go-mod-cache
       - source_manager_go_build_cache:/tmp/go-build-cache
-    command: ["sh", "-c", "go mod download && go run -mod=mod ./main.go -config config.yml"]
+    command: ["sh", "-c", "go mod download && air -c .air.toml"]
     healthcheck:
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:8050/health"]
       interval: 30s
@@ -405,14 +405,7 @@ services:
       - publisher_go_mod_cache:/tmp/go-mod-cache
       - publisher_go_build_cache:/tmp/go-build-cache
       - ./infrastructure:/infrastructure
-    command:
-      - sh
-      - -c
-      - >
-        export PATH=/usr/local/go/bin:/go/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin &&
-        go mod download &&
-        go build -mod=mod -o /tmp/publisher . &&
-        /tmp/publisher api
+    command: ["sh", "-c", "go mod download && air -c .air.api.toml"]
     healthcheck:
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:8070/health"]
       interval: 30s
@@ -459,7 +452,7 @@ services:
       - publisher_go_mod_cache:/tmp/go-mod-cache
       - publisher_go_build_cache:/tmp/go-build-cache
       - ./infrastructure:/infrastructure
-    command: ["sh", "-c", "go mod download && go run -mod=mod . router"]
+    command: ["sh", "-c", "go mod download && air -c .air.router.toml"]
 
   # ------------------------------------------------------------
   # Pyroscope (Continuous Profiling)
