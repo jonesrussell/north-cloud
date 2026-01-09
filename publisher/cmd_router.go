@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"errors"
-	"log"
 	"os"
 	"os/signal"
 	"syscall"
@@ -11,10 +10,34 @@ import (
 
 	"github.com/jonesrussell/north-cloud/publisher/internal/database"
 	"github.com/jonesrussell/north-cloud/publisher/internal/router"
+	infralogger "github.com/north-cloud/infrastructure/logger"
+	"github.com/north-cloud/infrastructure/profiling"
 )
 
 func runRouter() {
-	log.Println("Starting Publisher Router Service...")
+	// Start profiling server (if enabled)
+	profiling.StartPprofServer()
+
+	// Initialize logger using infrastructure logger
+	appLogger, loggerErr := infralogger.New(infralogger.Config{
+		Level:  "info",
+		Format: "json",
+	})
+	if loggerErr != nil {
+		// Fallback to standard log if logger creation fails
+		os.Stderr.WriteString("Failed to create logger, exiting\n")
+		os.Exit(1)
+	}
+	defer func() {
+		_ = appLogger.Sync()
+	}()
+
+	appLogger = appLogger.With(
+		infralogger.String("service", "publisher-router"),
+		infralogger.String("version", version),
+	)
+
+	appLogger.Info("Starting Publisher Router Service...")
 
 	// Load configuration
 	cfg := LoadRouterConfig()
@@ -22,10 +45,10 @@ func runRouter() {
 	// Initialize database connection
 	db, dbErr := database.NewPostgresConnection(cfg.Database)
 	if dbErr != nil {
-		log.Fatalf("Failed to connect to database: %v", dbErr)
+		appLogger.Fatal("Failed to connect to database", infralogger.Error(dbErr))
 	}
 	defer db.Close()
-	log.Println("Database connection established")
+	appLogger.Info("Database connection established")
 
 	// Initialize repository
 	repo := database.NewRepository(db)
@@ -42,7 +65,7 @@ func runRouter() {
 		CheckInterval: cfg.CheckInterval,
 		BatchSize:     cfg.BatchSize,
 	}
-	routerService := router.NewService(repo, esClient, redisClient, routerConfig)
+	routerService := router.NewService(repo, esClient, redisClient, routerConfig, appLogger)
 
 	// Setup graceful shutdown
 	serviceCtx, cancel := context.WithCancel(context.Background())
@@ -61,15 +84,18 @@ func runRouter() {
 		}
 	}()
 
-	log.Printf("Router service started (check interval: %s, batch size: %d)", cfg.CheckInterval, cfg.BatchSize)
+	appLogger.Info("Router service started",
+		infralogger.Duration("check_interval", cfg.CheckInterval),
+		infralogger.Int("batch_size", cfg.BatchSize),
+	)
 
 	// Wait for shutdown signal or error
 	select {
 	case <-sigChan:
-		log.Println("Received shutdown signal")
+		appLogger.Info("Received shutdown signal")
 		cancel()
 	case serviceErr := <-errChan:
-		log.Printf("Router service error: %v", serviceErr)
+		appLogger.Error("Router service error", infralogger.Error(serviceErr))
 		cancel()
 	}
 
@@ -88,8 +114,8 @@ func runRouter() {
 
 	select {
 	case <-done:
-		log.Println("Router service stopped gracefully")
+		appLogger.Info("Router service stopped gracefully")
 	case <-shutdownCtx.Done():
-		log.Println("Shutdown timeout exceeded, forcing exit")
+		appLogger.Warn("Shutdown timeout exceeded, forcing exit")
 	}
 }

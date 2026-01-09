@@ -1,7 +1,8 @@
 package main
 
 import (
-	"log"
+	"fmt"
+	"os"
 	"time"
 
 	"github.com/jonesrussell/north-cloud/publisher/internal/config"
@@ -30,7 +31,8 @@ func LoadRouterConfig() RouterConfig {
 	cfg, err := config.Load(configPath)
 	if err != nil {
 		// Config file is optional - create default config if file doesn't exist
-		log.Printf("Warning: Failed to load config file (%s), using defaults: %v", configPath, err)
+		// Use fmt for config loading errors since logger isn't initialized yet
+		fmt.Printf("Warning: Failed to load config file (%s), using defaults: %v\n", configPath, err)
 		cfg = &config.Config{}
 		// Apply defaults manually
 		if cfg.Service.CheckInterval == 0 {
@@ -40,7 +42,8 @@ func LoadRouterConfig() RouterConfig {
 			cfg.Service.BatchSize = 100
 		}
 		if validateErr := cfg.Validate(); validateErr != nil {
-			log.Fatalf("Invalid default configuration: %v", validateErr)
+			fmt.Fprintf(os.Stderr, "Invalid default configuration: %v\n", validateErr)
+			os.Exit(1)
 		}
 	}
 
