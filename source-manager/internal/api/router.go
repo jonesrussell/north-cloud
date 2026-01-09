@@ -26,36 +26,56 @@ func getCORSOrigins(cfg *config.Config) []string {
 	origins = append(origins, cfg.Server.CORSOrigins...)
 
 	// If SOURCE_MANAGER_API_URL is set, extract host and add frontend origins dynamically
-	if cfg.Server.APIURL != "" {
-		// Extract host from URL (e.g., http://localhost:8050 -> http://localhost:3000)
-		if strings.HasPrefix(cfg.Server.APIURL, "http://") || strings.HasPrefix(cfg.Server.APIURL, "https://") {
-			parts := strings.Split(strings.TrimPrefix(strings.TrimPrefix(cfg.Server.APIURL, "http://"), "https://"), ":")
-			if len(parts) > 0 {
-				host := parts[0]
-				// Add dynamic origins if not already present
-				dynamicOrigins := []string{
-					"http://" + host + ":3000",
-					"http://" + host + ":3001",
-					"http://" + host + ":3002",
-				}
-				for _, dynOrigin := range dynamicOrigins {
-					// Check if already in origins list
-					found := false
-					for _, existing := range origins {
-						if existing == dynOrigin {
-							found = true
-							break
-						}
-					}
-					if !found {
-						origins = append(origins, dynOrigin)
-					}
-				}
-			}
+	if cfg.Server.APIURL == "" {
+		return origins
+	}
+
+	// Extract host from URL (e.g., http://localhost:8050 -> http://localhost:3000)
+	host := extractHostFromURL(cfg.Server.APIURL)
+	if host == "" {
+		return origins
+	}
+
+	// Add dynamic origins if not already present
+	dynamicOrigins := []string{
+		"http://" + host + ":3000",
+		"http://" + host + ":3001",
+		"http://" + host + ":3002",
+	}
+
+	for _, dynOrigin := range dynamicOrigins {
+		if !contains(origins, dynOrigin) {
+			origins = append(origins, dynOrigin)
 		}
 	}
 
 	return origins
+}
+
+// extractHostFromURL extracts the host from a URL string
+func extractHostFromURL(url string) string {
+	if !strings.HasPrefix(url, "http://") && !strings.HasPrefix(url, "https://") {
+		return ""
+	}
+
+	// Remove protocol prefix
+	withoutProtocol := strings.TrimPrefix(strings.TrimPrefix(url, "http://"), "https://")
+	parts := strings.Split(withoutProtocol, ":")
+	if len(parts) == 0 {
+		return ""
+	}
+
+	return parts[0]
+}
+
+// contains checks if a string slice contains a specific string
+func contains(slice []string, str string) bool {
+	for _, s := range slice {
+		if s == str {
+			return true
+		}
+	}
+	return false
 }
 
 func NewRouter(db *repository.SourceRepository, cfg *config.Config, log logger.Logger) *gin.Engine {
