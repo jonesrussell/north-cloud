@@ -166,10 +166,16 @@ services:
     networks:
       - north-cloud-network
     depends_on:
-      - minio
+      minio:
+        condition: service_healthy
     entrypoint: >
       /bin/sh -c "
-      mc alias set local http://minio:9000 ${MINIO_ROOT_USER:-minioadmin} ${MINIO_ROOT_PASSWORD:-changeme123};
+      echo 'Waiting for MinIO to be ready...';
+      until mc alias set local http://minio:9000 ${MINIO_ROOT_USER:-minioadmin} ${MINIO_ROOT_PASSWORD:-changeme123} 2>/dev/null; do
+        echo 'MinIO not ready yet, retrying in 2 seconds...';
+        sleep 2;
+      done;
+      echo 'MinIO is ready, initializing buckets...';
       mc mb --ignore-existing local/html-archives;
       mc mb --ignore-existing local/crawler-metadata;
       mc ilm rule add local/html-archives --expire-days ${HTML_RETENTION_DAYS:-90} --prefix 'archived/' || true;
@@ -263,7 +269,6 @@ services:
     command: -config.file=/etc/promtail/config.yml
     volumes:
       - ./infrastructure/promtail/promtail-config.yml:/etc/promtail/config.yml:ro
-      - /var/run/docker.sock:/var/run/docker.sock:ro
       - /var/lib/docker/containers:/var/lib/docker/containers:ro
       - promtail_positions:/tmp/positions
     depends_on:

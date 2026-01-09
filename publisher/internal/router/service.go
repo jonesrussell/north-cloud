@@ -112,7 +112,9 @@ func (s *Service) processRoute(ctx context.Context, route *models.RouteWithDetai
 	// Fetch articles from Elasticsearch
 	articles, err := s.fetchArticles(ctx, route)
 	if err != nil {
-		return fmt.Errorf("failed to fetch articles: %w", err)
+		// Log error but don't fail the entire route processing
+		log.Printf("Error fetching articles for route %s -> %s: %v", route.SourceName, route.ChannelName, err)
+		return nil // Return nil to continue processing other routes
 	}
 
 	if len(articles) == 0 {
@@ -227,6 +229,11 @@ func (s *Service) fetchArticles(ctx context.Context, route *models.RouteWithDeta
 	defer res.Body.Close()
 
 	if res.IsError() {
+		// Check if it's a 404 (index not found) - this is expected for new sources
+		if res.StatusCode == 404 {
+			log.Printf("Index not found: %s (this is normal for new sources)", route.SourceIndexPattern)
+			return []Article{}, nil // Return empty slice, not an error
+		}
 		return nil, fmt.Errorf("elasticsearch error: %s", res.String())
 	}
 
