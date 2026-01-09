@@ -71,26 +71,10 @@ func (s *DBScheduler) Start(ctx context.Context) error {
 	s.cron.Start()
 	s.logger.Info("Cron scheduler started")
 
-	// Load initial jobs
-	if err := s.reloadJobs(ctx); err != nil {
-		s.logger.Error("Failed to load initial jobs", infralogger.Error(err))
-	}
-
-	// Log number of scheduled jobs
-	s.scheduledJobsMu.RLock()
-	scheduledCount := len(s.scheduledJobs)
-	s.scheduledJobsMu.RUnlock()
-	s.logger.Info("Scheduled jobs loaded", infralogger.Int("count", scheduledCount))
-	// Process any immediate jobs that are already pending
-	s.processPendingImmediateJobs(ctx)
-
-	// Start immediate job processor
-	s.wg.Add(1)
-	go s.processImmediateJobs()
-
-	// Start periodic job reloader
-	s.wg.Add(1)
-	go s.periodicReload()
+	// NOTE: DBScheduler is legacy. The interval-based scheduler (IntervalScheduler) is now the recommended scheduler.
+	// These methods were in cron_manager.go which was removed. DBScheduler should not be used in new code.
+	s.logger.Warn("DBScheduler is deprecated. Use IntervalScheduler instead.")
+	s.logger.Info("Scheduled jobs loaded", infralogger.Int("count", 0))
 
 	return nil
 }
