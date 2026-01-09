@@ -5,6 +5,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+
+	infralogger "github.com/north-cloud/infrastructure/logger"
 )
 
 // GetMapping retrieves the mapping for an index
@@ -14,27 +16,27 @@ func (s *Storage) GetMapping(ctx context.Context, index string) (map[string]any,
 		s.client.Indices.GetMapping.WithIndex(index),
 	)
 	if err != nil {
-		s.logger.Error("Failed to get mapping", "error", err)
+		s.logger.Error("Failed to get mapping", infralogger.Error(err))
 		return nil, fmt.Errorf("failed to get mapping: %w", err)
 	}
 	defer func() {
 		if closeErr := res.Body.Close(); closeErr != nil {
-			s.logger.Error("Error closing response body", "error", closeErr)
+			s.logger.Error("Error closing response body", infralogger.Error(closeErr))
 		}
 	}()
 
 	if res.IsError() {
-		s.logger.Error("Failed to get mapping", "error", res.String())
+		s.logger.Error("Failed to get mapping", infralogger.String("error", res.String()))
 		return nil, fmt.Errorf("error getting mapping: %s", res.String())
 	}
 
 	var mapping map[string]any
 	if decodeErr := json.NewDecoder(res.Body).Decode(&mapping); decodeErr != nil {
-		s.logger.Error("Failed to get mapping", "error", decodeErr)
+		s.logger.Error("Failed to get mapping", infralogger.Error(decodeErr))
 		return nil, fmt.Errorf("error decoding mapping: %w", decodeErr)
 	}
 
-	s.logger.Info("Retrieved mapping", "index", index)
+	s.logger.Info("Retrieved mapping", infralogger.String("index", index))
 	return mapping, nil
 }
 
@@ -55,7 +57,7 @@ func (s *Storage) UpdateMapping(ctx context.Context, index string, mapping map[s
 	}
 	defer func() {
 		if closeErr := res.Body.Close(); closeErr != nil {
-			s.logger.Error("Error closing response body", "error", closeErr)
+			s.logger.Error("Error closing response body", infralogger.Error(closeErr))
 		}
 	}()
 
@@ -77,7 +79,7 @@ func (s *Storage) GetIndexHealth(ctx context.Context, index string) (string, err
 	}
 	defer func() {
 		if closeErr := res.Body.Close(); closeErr != nil {
-			s.logger.Error("Error closing response body", "error", closeErr)
+			s.logger.Error("Error closing response body", infralogger.Error(closeErr))
 		}
 	}()
 
@@ -109,7 +111,7 @@ func (s *Storage) GetIndexDocCount(ctx context.Context, index string) (int64, er
 	}
 	defer func() {
 		if closeErr := res.Body.Close(); closeErr != nil {
-			s.logger.Error("Error closing response body", "error", closeErr)
+			s.logger.Error("Error closing response body", infralogger.Error(closeErr))
 		}
 	}()
 

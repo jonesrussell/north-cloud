@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+
+	infralogger "github.com/north-cloud/infrastructure/logger"
 )
 
 // IndexDocument indexes a document in Elasticsearch
@@ -38,17 +40,17 @@ func (s *Storage) IndexDocument(ctx context.Context, index, id string, document 
 
 	if res.IsError() {
 		s.logger.Error("Elasticsearch returned error response",
-			"error", res.String(),
-			"index", index,
-			"docID", id)
+			infralogger.String("error", res.String()),
+			infralogger.String("index", index),
+			infralogger.String("docID", id))
 		return fmt.Errorf("elasticsearch error: %s", res.String())
 	}
 
 	s.logger.Info("Document indexed successfully",
-		"index", index,
-		"docID", id,
-		"type", fmt.Sprintf("%T", document),
-		"url", getURLFromDocument(document))
+		infralogger.String("index", index),
+		infralogger.String("docID", id),
+		infralogger.String("type", fmt.Sprintf("%T", document)),
+		infralogger.String("url", getURLFromDocument(document)))
 	return nil
 }
 
@@ -94,10 +96,15 @@ func (s *Storage) DeleteDocument(ctx context.Context, index, docID string) error
 	defer s.closeResponse(res, "DeleteDocument", index, docID)
 
 	if res.IsError() {
-		s.logger.Error("Failed to delete document", "error", res.String(), "index", index, "doc_id", docID)
+		s.logger.Error("Failed to delete document",
+			infralogger.String("error", res.String()),
+			infralogger.String("index", index),
+			infralogger.String("doc_id", docID))
 		return fmt.Errorf("error deleting document: %s", res.String())
 	}
 
-	s.logger.Info("Deleted document", "index", index, "docID", docID)
+	s.logger.Info("Deleted document",
+		infralogger.String("index", index),
+		infralogger.String("docID", docID))
 	return nil
 }
