@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { Loader2, Database, RefreshCw, Trash2 } from 'lucide-vue-next'
+import { Loader2, Database, RefreshCw, Trash2, AlertTriangle } from 'lucide-vue-next'
 import { indexManagerApi } from '@/api/client'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -20,6 +20,12 @@ const router = useRouter()
 const loading = ref(true)
 const error = ref<string | null>(null)
 const indexes = ref<DisplayIndex[]>([])
+
+// Delete confirmation state
+const deleteModalOpen = ref(false)
+const indexToDelete = ref<string | null>(null)
+const deleting = ref(false)
+const deleteError = ref<string | null>(null)
 
 const loadIndexes = async () => {
   try {
@@ -53,6 +59,37 @@ const getHealthVariant = (health: string) => {
 }
 
 const viewIndex = (name: string) => router.push(`/intelligence/indexes/${name}`)
+
+const confirmDelete = (indexName: string) => {
+  indexToDelete.value = indexName
+  deleteError.value = null
+  deleteModalOpen.value = true
+}
+
+const cancelDelete = () => {
+  deleteModalOpen.value = false
+  indexToDelete.value = null
+  deleteError.value = null
+}
+
+const deleteIndex = async () => {
+  if (!indexToDelete.value) return
+
+  try {
+    deleting.value = true
+    deleteError.value = null
+    await indexManagerApi.indexes.delete(indexToDelete.value)
+    deleteModalOpen.value = false
+    indexToDelete.value = null
+    // Reload the list after successful deletion
+    await loadIndexes()
+  } catch (err) {
+    console.error('Failed to delete index:', err)
+    deleteError.value = 'Failed to delete index. Please try again.'
+  } finally {
+    deleting.value = false
+  }
+}
 
 onMounted(loadIndexes)
 </script>
@@ -165,7 +202,8 @@ onMounted(loadIndexes)
                 <Button
                   variant="ghost"
                   size="icon"
-                  @click.stop
+                  title="Delete index"
+                  @click.stop="confirmDelete(index.name)"
                 >
                   <Trash2 class="h-4 w-4 text-destructive" />
                 </Button>
@@ -175,5 +213,70 @@ onMounted(loadIndexes)
         </table>
       </CardContent>
     </Card>
+
+    <!-- Delete Confirmation Modal -->
+    <div
+      v-if="deleteModalOpen"
+      class="fixed inset-0 z-50 flex items-center justify-center"
+    >
+      <!-- Backdrop -->
+      <div
+        class="fixed inset-0 bg-black/50"
+        @click="cancelDelete"
+      />
+      
+      <!-- Modal -->
+      <Card class="relative z-10 w-full max-w-md mx-4">
+        <CardContent class="pt-6">
+          <div class="flex items-start gap-4">
+            <div class="flex-shrink-0 w-10 h-10 rounded-full bg-destructive/10 flex items-center justify-center">
+              <AlertTriangle class="h-5 w-5 text-destructive" />
+            </div>
+            <div class="flex-1">
+              <h3 class="text-lg font-semibold mb-2">
+                Delete Index
+              </h3>
+              <p class="text-sm text-muted-foreground mb-1">
+                Are you sure you want to delete the index:
+              </p>
+              <p class="text-sm font-mono font-medium mb-4 break-all">
+                {{ indexToDelete }}
+              </p>
+              <p class="text-sm text-destructive mb-4">
+                This action cannot be undone. All documents in this index will be permanently deleted.
+              </p>
+
+              <div
+                v-if="deleteError"
+                class="text-sm text-destructive bg-destructive/10 px-3 py-2 rounded mb-4"
+              >
+                {{ deleteError }}
+              </div>
+
+              <div class="flex justify-end gap-2">
+                <Button
+                  variant="outline"
+                  :disabled="deleting"
+                  @click="cancelDelete"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  variant="destructive"
+                  :disabled="deleting"
+                  @click="deleteIndex"
+                >
+                  <Loader2
+                    v-if="deleting"
+                    class="mr-2 h-4 w-4 animate-spin"
+                  />
+                  {{ deleting ? 'Deleting...' : 'Delete Index' }}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
   </div>
 </template>
