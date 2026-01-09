@@ -67,31 +67,7 @@ scrape_configs:
             stream: stream
             time: time
 
-      # Extract timestamp from Docker's 'time' field
-      - timestamp:
-          source: time
-          format: RFC3339Nano
-          fallback_formats:
-            - RFC3339
-            - "2006-01-02T15:04:05.000Z07:00"
-            - "2006-01-02T15:04:05Z07:00"
-
-      # Extract log level from ANSI-coded log line
-      # Try multiple patterns to catch different formats
-      - regex:
-          expression: '\\[\\d+m(DEBUG|INFO|WARN|ERROR|FATAL|TRACE)\\[0m'
-          source: log
-          
-      # If first pattern didn't match, try without escape sequences (raw format)
-      - regex:
-          expression: '\t(DEBUG|INFO|WARN|ERROR|FATAL|TRACE)\t'
-          source: log
-          
-      # Extract level label from captured group
-      - labels:
-          level:
-
-      # Try to parse the actual log line as JSON (for structured logs from Go services)
+      # Parse the actual log line as JSON (all services now use JSON format)
       - json:
           expressions:
             level: level
@@ -99,19 +75,18 @@ scrape_configs:
             caller: caller
             msg: msg
             ts: ts
-            service_name: service
+            service: service
             method: method
             error: error
             duration: duration
             status_code: status_code
           source: log
-          drop_malformed: false  # Don't drop if JSON parsing fails
 
-      # If JSON parsing succeeded and has level, it will override the regex-extracted level
+      # Extract level label from JSON (primary source)
       - labels:
           level:
 
-      # If JSON parsing succeeded, use the parsed timestamp
+      # If JSON parsing succeeded, use the parsed timestamp (more accurate than Docker's time)
       - timestamp:
           source: ts
           format: RFC3339Nano
@@ -121,15 +96,25 @@ scrape_configs:
             - "2006-01-02T15:04:05Z07:00"
           on_failure: drop
 
-      # Add stream label
+      # Fallback to Docker's timestamp if JSON timestamp parsing failed
+      - timestamp:
+          source: time
+          format: RFC3339Nano
+          fallback_formats:
+            - RFC3339
+            - "2006-01-02T15:04:05.000Z07:00"
+            - "2006-01-02T15:04:05Z07:00"
+          on_failure: drop
+
+      # Add stream label (stdout/stderr)
       - labels:
           stream:
 
-      # If service_name was extracted from log JSON, use it; otherwise keep the label from relabel_configs
+      # If service was extracted from log JSON, use it; otherwise keep the label from relabel_configs
       - labels:
-          service_name:
+          service:
 
-      # Output formatting - use msg if available, otherwise use log
+      # Output formatting - use msg if available (from JSON), otherwise use log (raw)
       - output:
           source: msg
           on_failure: log

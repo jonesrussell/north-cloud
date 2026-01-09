@@ -6,7 +6,7 @@ auth_enabled: false
 server:
   http_listen_port: 3100
   grpc_listen_port: 9096
-  log_level: debug  # Verbose logging for development
+  log_level: info  # Info level to reduce noise from mock KV store debug messages
 
 common:
   path_prefix: /loki

@@ -46,18 +46,11 @@ func New(cfg Config) (Logger, error) {
 
 	level := parseLevel(cfg.Level)
 
-	var zapCfg zap.Config
-	if cfg.Development || cfg.Format == "console" {
-		zapCfg = zap.NewDevelopmentConfig()
-		zapCfg.EncoderConfig.EncodeLevel = zapcore.CapitalColorLevelEncoder
-		zapCfg.EncoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder
-		zapCfg.EncoderConfig.EncodeCaller = zapcore.ShortCallerEncoder
-		zapCfg.Encoding = "console"
-		zapCfg.Development = cfg.Development
-	} else {
-		zapCfg = zap.NewProductionConfig()
-		zapCfg.EncoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder
-	}
+	// Always use JSON format for consistency across all environments
+	// This ensures better log aggregation, parsing, and querying in Grafana/Loki
+	zapCfg := zap.NewProductionConfig()
+	zapCfg.EncoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder
+	zapCfg.EncoderConfig.EncodeCaller = zapcore.ShortCallerEncoder
 
 	zapCfg.Level = zap.NewAtomicLevelAt(level)
 	if len(cfg.OutputPaths) > 0 {
