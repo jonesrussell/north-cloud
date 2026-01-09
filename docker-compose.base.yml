@@ -263,13 +263,13 @@ services:
 
   promtail:
     <<: *service-defaults
-    image: grafana/promtail:2.9.10
+    image: grafana/promtail:latest
     ports:
       - "${PROMTAIL_PORT:-9080}:9080"
     command: -config.file=/etc/promtail/config.yml
     volumes:
       - ./infrastructure/promtail/promtail-config.yml:/etc/promtail/config.yml:ro
-      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
       - promtail_positions:/tmp/positions
     depends_on:
       loki:

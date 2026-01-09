@@ -20,21 +20,46 @@ clients:
     batchsize: 102400  # 100KB
 
 scrape_configs:
-  # Docker container logs via file system (avoids Docker API version issues)
+  # Docker container logs via Docker API
   - job_name: docker
-    static_configs:
-      - targets:
-          - localhost
-        labels:
-          job: docker
-          __path__: /var/lib/docker/containers/*/*-json.log
+    docker_sd_configs:
+      - host: unix:///var/run/docker.sock
+        refresh_interval: 5s
+        filters:
+          - name: label
+            values: ["com.docker.compose.project=north-cloud"]
+
+    relabel_configs:
+      # Extract container name (remove leading slash and project prefix)
+      - source_labels: ['__meta_docker_container_name']
+        regex: '/north-cloud-(.+?)(?:-\d+)?'
+        target_label: 'service'
+        replacement: '${1}'
+
+      # Extract service name from Docker Compose label (more reliable)
+      - source_labels: ['__meta_docker_container_label_com_docker_compose_service']
+        target_label: 'service'
+
+      # Extract project name
+      - source_labels: ['__meta_docker_container_label_com_docker_compose_project']
+        target_label: 'project'
+
+      # Add static project label if not present
+      - target_label: 'project'
+        replacement: 'north-cloud'
+        action: replace
+        source_labels: []
+
+      # Extract container ID (short version, first 12 chars)
+      - source_labels: ['__meta_docker_container_id']
+        regex: '^(.{12}).*'
+        target_label: 'container_id'
+
+      # Add job label
+      - target_label: 'job'
+        replacement: 'docker'
 
     pipeline_stages:
-      # Extract container ID from file path
-      - regex:
-          expression: '/var/lib/docker/containers/(?P<container_id>[^/]+)/.*'
-          source: filename
-
       # Parse JSON logs from Docker (Docker wraps logs in JSON with 'log', 'stream', 'time' fields)
       - json:
           expressions:
@@ -77,25 +102,16 @@ scrape_configs:
             - "2006-01-02T15:04:05Z07:00"
           on_failure: drop
 
-      # Add log level as a label for easy filtering
+      # Add log level as a label for easy filtering (from parsed JSON or default to 'info')
       - labels:
           level:
-          service_name:
           stream:
 
-      # Add container ID label (short version, first 12 chars)
+      # If service_name was extracted from log JSON, use it; otherwise keep the label from relabel_configs
       - labels:
-          container_id:
-      - regex:
-          expression: '^(.{12}).*'
-          source: container_id
-          target_label: container_id_short
+          service_name:
 
-      # Add static labels
-      - static_labels:
-          job: docker
-
-      # Output formatting
+      # Output formatting - use msg if available, otherwise use log
       - output:
           source: msg
           on_failure: log
