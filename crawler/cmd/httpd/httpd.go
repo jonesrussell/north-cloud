@@ -35,7 +35,7 @@ import (
 
 // CommandDeps holds common dependencies for the HTTP server.
 type CommandDeps struct {
-	Logger logger.Interface
+	Logger infralogger.Logger
 	Config config.Interface
 }
 
@@ -146,8 +146,8 @@ func loadConfig() (config.Interface, error) {
 	return config.Load(configPath)
 }
 
-// createLogger creates a logger instance from configuration.
-func createLogger(cfg config.Interface) (logger.Interface, error) {
+// createLogger creates a logger instance from configuration using infrastructure logger.
+func createLogger(cfg config.Interface) (infralogger.Logger, error) {
 	loggingCfg := cfg.GetLoggingConfig()
 
 	logLevel := normalizeLogLevel(loggingCfg.Level)
@@ -162,9 +162,6 @@ func createLogger(cfg config.Interface) (logger.Interface, error) {
 	}
 	isDev := appEnv == "development"
 	appDebug := loggingCfg.Debug
-
-	// Set development mode based on APP_ENV
-	development := isDev
 
 	// Override log level if APP_DEBUG is set
 	if appDebug {
@@ -181,20 +178,11 @@ func createLogger(cfg config.Interface) (logger.Interface, error) {
 		}
 	}
 
-	// Get output paths from config (default to stdout)
-	outputPaths := loggingCfg.OutputPaths
-	if len(outputPaths) == 0 {
-		outputPaths = []string{"stdout"}
-	}
-
-	logCfg := &logger.Config{
-		Level:       logger.Level(logLevel),
-		Development: development,
-		Encoding:    encoding,
-		OutputPaths: outputPaths,
-		EnableColor: isDev,
-	}
-	return logger.New(logCfg)
+	return infralogger.New(infralogger.Config{
+		Level:       logLevel,
+		Format:      encoding,
+		Development: isDev || appDebug,
+	})
 }
 
 // normalizeLogLevel normalizes log level string.

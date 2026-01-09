@@ -40,33 +40,6 @@ const (
 	defaultReputationDecayRate01 = 0.1
 )
 
-// Logger is a simple logger implementation
-type Logger struct {
-	debug bool
-}
-
-func NewLogger(debug bool) *Logger {
-	return &Logger{debug: debug}
-}
-
-func (l *Logger) Debug(msg string, keysAndValues ...any) {
-	if l.debug {
-		log.Printf("[DEBUG] %s %v\n", msg, keysAndValues)
-	}
-}
-
-func (l *Logger) Info(msg string, keysAndValues ...any) {
-	log.Printf("[INFO] %s %v\n", msg, keysAndValues)
-}
-
-func (l *Logger) Warn(msg string, keysAndValues ...any) {
-	log.Printf("[WARN] %s %v\n", msg, keysAndValues)
-}
-
-func (l *Logger) Error(msg string, keysAndValues ...any) {
-	log.Printf("[ERROR] %s %v\n", msg, keysAndValues)
-}
-
 // serverComponents holds all components needed for the HTTP server
 type serverComponents struct {
 	db                        *sqlx.DB
@@ -83,7 +56,7 @@ type serverComponents struct {
 }
 
 // setupDatabaseAndRepos creates database connection and repositories
-func setupDatabaseAndRepos(cfg *config.Config, logger *Logger) (*serverComponents, error) {
+func setupDatabaseAndRepos(cfg *config.Config, logger infralogger.Logger) (*serverComponents, error) {
 	// Convert config database to database.Config
 	dbPort := strconv.Itoa(cfg.Database.Port)
 	if cfg.Database.Port == 0 {
@@ -114,9 +87,9 @@ func setupDatabaseAndRepos(cfg *config.Config, logger *Logger) (*serverComponent
 	}
 
 	logger.Info("Connecting to PostgreSQL database",
-		"host", dbConfig.Host,
-		"port", dbConfig.Port,
-		"database", dbConfig.DBName,
+		infralogger.String("host", dbConfig.Host),
+		infralogger.String("port", dbConfig.Port),
+		infralogger.String("database", dbConfig.DBName),
 	)
 
 	db, err := database.NewPostgresConnection(dbConfig)
@@ -171,14 +144,14 @@ func setupDatabaseAndRepos(cfg *config.Config, logger *Logger) (*serverComponent
 	esClient, err := esclient.NewClient(ctx, esclientCfg, esLog)
 	var esStorage *storage.ElasticsearchStorage
 	if err != nil {
-		logger.Warn("Failed to connect to Elasticsearch", "error", err)
+		logger.Warn("Failed to connect to Elasticsearch", infralogger.Error(err))
 		logger.Info("Re-classification endpoint will not be available")
 		// Continue without ES - this is optional functionality
 		esStorage = nil
 	} else {
 		esStorage = storage.NewElasticsearchStorage(esClient)
 		if err = esStorage.TestConnection(ctx); err != nil {
-			logger.Warn("Failed to verify Elasticsearch connection", "error", err)
+			logger.Warn("Failed to verify Elasticsearch connection", infralogger.Error(err))
 			logger.Info("Re-classification endpoint may not work correctly")
 			esStorage = nil
 		} else {
@@ -196,13 +169,13 @@ func setupDatabaseAndRepos(cfg *config.Config, logger *Logger) (*serverComponent
 }
 
 // loadRulesAndCreateClassifier loads rules and creates classifier components
-func loadRulesAndCreateClassifier(ctx context.Context, comps *serverComponents, cfg *config.Config, logger *Logger) error {
+func loadRulesAndCreateClassifier(ctx context.Context, comps *serverComponents, cfg *config.Config, logger infralogger.Logger) error {
 	enabledOnly := true
 	rules, err := comps.rulesRepo.List(ctx, domain.RuleTypeTopic, &enabledOnly)
 	if err != nil {
 		return fmt.Errorf("failed to load rules from database: %w", err)
 	}
-	logger.Info("Rules loaded from database", "count", len(rules))
+	logger.Info("Rules loaded from database", infralogger.Int("count", len(rules)))
 
 	ruleValues := make([]domain.ClassificationRule, len(rules))
 	for i, rule := range rules {
@@ -231,14 +204,17 @@ func loadRulesAndCreateClassifier(ctx context.Context, comps *serverComponents, 
 	}
 
 	comps.classifierInstance = classifier.NewClassifier(logger, ruleValues, comps.sourceRepRepo, classifierConfig)
-	logger.Info("Classifier initialized", "version", classifierConfig.Version, "rules_count", len(rules))
+	logger.Info("Classifier initialized",
+		infralogger.String("version", classifierConfig.Version),
+		infralogger.Int("rules_count", len(rules)),
+	)
 
 	concurrency := cfg.Service.Concurrency
 	if concurrency == 0 {
 		concurrency = defaultConcurrency
 	}
 	comps.batchProcessor = processor.NewBatchProcessor(comps.classifierInstance, concurrency, logger)
-	logger.Info("Batch processor initialized", "concurrency", concurrency)
+	logger.Info("Batch processor initialized", infralogger.Int("concurrency", concurrency))
 
 	comps.sourceRepScorer = classifier.NewSourceReputationScorer(logger, comps.sourceRepRepo)
 	comps.topicClassifier = classifier.NewTopicClassifier(logger, ruleValues)
@@ -282,18 +258,29 @@ func StartHTTPServer() {
 		port = defaultClassifierPort
 	}
 
-	logger := NewLogger(debug)
-	logger.Info("Starting classifier HTTP server", "port", port, "debug", debug)
+	logger, err := infralogger.New(infralogger.Config{
+		Level:       "info",
+		Format:      "console",
+		Development: debug,
+	})
+	if err != nil {
+		log.Printf("Failed to create logger: %v", err)
+		os.Exit(1)
+	}
+	logger.Info("Starting classifier HTTP server",
+		infralogger.Int("port", port),
+		infralogger.Bool("debug", debug),
+	)
 
 	comps, err := setupDatabaseAndRepos(cfg, logger)
 	if err != nil {
-		logger.Error("Failed to setup database", "error", err)
+		logger.Error("Failed to setup database", infralogger.Error(err))
 		os.Exit(1)
 	}
 
 	ctx := context.Background()
 	if err = loadRulesAndCreateClassifier(ctx, comps, cfg, logger); err != nil {
-		logger.Error("Failed to load rules and create classifier", "error", err)
+		logger.Error("Failed to load rules and create classifier", infralogger.Error(err))
 		_ = comps.db.Close()
 		os.Exit(1)
 	}
@@ -305,7 +292,7 @@ func StartHTTPServer() {
 		Development: debug,
 	})
 	if logErr != nil {
-		logger.Error("Failed to create infrastructure logger", "error", logErr)
+		logger.Error("Failed to create infrastructure logger", infralogger.Error(logErr))
 		os.Exit(1)
 	}
 
@@ -315,7 +302,7 @@ func StartHTTPServer() {
 		WriteTimeout: defaultHTTPTimeout,
 		Debug:        debug,
 	}
-	server := api.NewServer(comps.handler, serverConfig, logger, cfg, infraLog)
+	server := api.NewServer(comps.handler, serverConfig, cfg, infraLog)
 
 	// Cleanup function
 	cleanup := func() {
@@ -325,7 +312,7 @@ func StartHTTPServer() {
 
 	// Run server with graceful shutdown
 	if runErr := server.Run(); runErr != nil {
-		logger.Error("Server error", "error", runErr)
+		logger.Error("Server error", infralogger.Error(runErr))
 		cleanup()
 		os.Exit(1)
 	}
@@ -354,8 +341,19 @@ func StartHTTPServerWithStop() (func(), error) {
 		port = defaultClassifierPort
 	}
 
-	logger := NewLogger(debug)
-	logger.Info("Starting classifier HTTP server", "port", port, "debug", debug)
+	logger, err := infralogger.New(infralogger.Config{
+		Level:       "info",
+		Format:      "console",
+		Development: debug,
+	})
+	if err != nil {
+		log.Printf("Failed to create logger: %v", err)
+		return nil, fmt.Errorf("failed to create logger: %w", err)
+	}
+	logger.Info("Starting classifier HTTP server",
+		infralogger.Int("port", port),
+		infralogger.Bool("debug", debug),
+	)
 
 	comps, err := setupDatabaseAndRepos(cfg, logger)
 	if err != nil {
@@ -385,7 +383,7 @@ func StartHTTPServerWithStop() (func(), error) {
 		WriteTimeout: defaultHTTPTimeout,
 		Debug:        debug,
 	}
-	server := api.NewServer(comps.handler, serverConfig, logger, cfg, infraLog)
+	server := api.NewServer(comps.handler, serverConfig, cfg, infraLog)
 
 	// Start server in goroutine
 	serverErrors := make(chan error, 1)
@@ -398,7 +396,7 @@ func StartHTTPServerWithStop() (func(), error) {
 	// Monitor server errors in background
 	go func() {
 		if serverErr := <-serverErrors; serverErr != nil {
-			logger.Error("Server error", "error", serverErr)
+			logger.Error("Server error", infralogger.Error(serverErr))
 		}
 	}()
 
@@ -411,7 +409,7 @@ func StartHTTPServerWithStop() (func(), error) {
 
 		if shutdownErr := server.Shutdown(shutdownCtx); shutdownErr != nil {
 			cancel() // Explicit cancel before cleanup
-			logger.Error("Graceful shutdown failed", "error", shutdownErr)
+			logger.Error("Graceful shutdown failed", infralogger.Error(shutdownErr))
 		} else {
 			cancel() // Cancel context after successful shutdown
 			logger.Info("HTTP server stopped gracefully")
