@@ -8,15 +8,15 @@ import (
 
 	"github.com/jonesrussell/north-cloud/crawler/internal/content"
 	"github.com/jonesrussell/north-cloud/crawler/internal/crawler"
-	"github.com/jonesrussell/north-cloud/crawler/internal/logger"
 	"github.com/jonesrussell/north-cloud/crawler/internal/metrics"
 	"github.com/jonesrussell/north-cloud/crawler/internal/sources"
 	"github.com/jonesrussell/north-cloud/crawler/internal/storage/types"
+	infralogger "github.com/north-cloud/infrastructure/logger"
 )
 
 // BaseService provides base job service functionality.
 type BaseService struct {
-	logger     logger.Interface
+	logger     infralogger.Logger
 	sources    sources.Interface
 	crawler    crawler.Interface
 	storage    types.Interface
@@ -28,7 +28,7 @@ type BaseService struct {
 
 // ServiceParams holds parameters for creating a new BaseService.
 type ServiceParams struct {
-	Logger    logger.Interface
+	Logger    infralogger.Logger
 	Sources   sources.Interface
 	Crawler   crawler.Interface
 	Storage   types.Interface
@@ -103,7 +103,7 @@ func (s *BaseService) UpdateMetrics(fn func(*metrics.Metrics)) {
 }
 
 // GetLogger returns the logger.
-func (s *BaseService) GetLogger() logger.Interface {
+func (s *BaseService) GetLogger() infralogger.Logger {
 	return s.logger
 }
 

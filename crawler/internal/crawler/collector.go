@@ -12,6 +12,7 @@ import (
 	colly "github.com/gocolly/colly/v2"
 	"github.com/jonesrussell/north-cloud/crawler/internal/archive"
 	configtypes "github.com/jonesrussell/north-cloud/crawler/internal/config/types"
+	infralogger "github.com/north-cloud/infrastructure/logger"
 )
 
 // Collector defaults
@@ -36,8 +37,9 @@ func (c *Crawler) setupCollector(source *configtypes.Source) error {
 	maxDepth := source.MaxDepth
 
 	c.logger.Debug("Setting up collector",
-		"max_depth", maxDepth,
-		"allowed_domains", source.AllowedDomains)
+		infralogger.Int("max_depth", maxDepth),
+		infralogger.Any("allowed_domains", source.AllowedDomains),
+	)
 
 	opts := []colly.CollectorOption{
 		colly.MaxDepth(maxDepth),
@@ -60,9 +62,10 @@ func (c *Crawler) setupCollector(source *configtypes.Source) error {
 	rateLimit, err := time.ParseDuration(source.RateLimit)
 	if err != nil {
 		c.logger.Error("Failed to parse rate limit, using default",
-			"rate_limit", source.RateLimit,
-			"default", defaultRateLimit,
-			"error", err)
+			infralogger.String("rate_limit", source.RateLimit),
+			infralogger.Duration("default", defaultRateLimit),
+			infralogger.Error(err),
+		)
 		rateLimit = defaultRateLimit
 	}
 
@@ -75,16 +78,18 @@ func (c *Crawler) setupCollector(source *configtypes.Source) error {
 
 	if c.cfg.TLS.InsecureSkipVerify {
 		c.logger.Warn("TLS certificate verification is disabled. This is not recommended for production use.",
-			"component", "crawler",
-			"source", source.Name,
-			"warning", "This makes HTTPS connections vulnerable to man-in-the-middle attacks")
+			infralogger.String("component", "crawler"),
+			infralogger.String("source", source.Name),
+			infralogger.String("warning", "This makes HTTPS connections vulnerable to man-in-the-middle attacks"),
+		)
 	}
 
 	c.logger.Debug("Collector configured",
-		"max_depth", maxDepth,
-		"allowed_domains", source.AllowedDomains,
-		"rate_limit", rateLimit,
-		"parallelism", defaultParallelism)
+		infralogger.Int("max_depth", maxDepth),
+		infralogger.Any("allowed_domains", source.AllowedDomains),
+		infralogger.Duration("rate_limit", rateLimit),
+		infralogger.Int("parallelism", defaultParallelism),
+	)
 
 	return nil
 }
@@ -95,17 +100,19 @@ func (c *Crawler) setupCallbacks(ctx context.Context) {
 	c.collector.OnResponse(func(r *colly.Response) {
 		pageURL := r.Request.URL.String()
 		c.logger.Debug("Received response",
-			"url", pageURL,
-			"status", r.StatusCode,
-			"headers", r.Headers)
+			infralogger.String("url", pageURL),
+			infralogger.Int("status", r.StatusCode),
+			infralogger.Any("headers", r.Headers),
+		)
 
 		// Detect Cloudflare challenge pages
 		if c.isCloudflareChallenge(r) {
 			c.logger.Warn("Cloudflare challenge detected - JavaScript execution required",
-				"url", pageURL,
-				"status", r.StatusCode,
-				"note", "This page requires JavaScript to load content. Links may not be discoverable without a JavaScript-enabled crawler.",
-				"suggestion", "Consider using a browser-based crawler (Playwright/Puppeteer) for this site")
+				infralogger.String("url", pageURL),
+				infralogger.Int("status", r.StatusCode),
+				infralogger.String("note", "This page requires JavaScript to load content. Links may not be discoverable without a JavaScript-enabled crawler."),
+				infralogger.String("suggestion", "Consider using a browser-based crawler (Playwright/Puppeteer) for this site"),
+			)
 		}
 
 		// Archive HTML to MinIO if archiver is enabled
@@ -122,8 +129,9 @@ func (c *Crawler) setupCallbacks(ctx context.Context) {
 
 			if err := c.archiver.Archive(ctx, task); err != nil {
 				c.logger.Warn("Failed to archive HTML",
-					"url", pageURL,
-					"error", err)
+					infralogger.String("url", pageURL),
+					infralogger.Error(err),
+				)
 			}
 		}
 	})
@@ -139,7 +147,8 @@ func (c *Crawler) setupCallbacks(ctx context.Context) {
 			return
 		default:
 			c.logger.Debug("Visiting URL",
-				"url", r.URL.String())
+				infralogger.String("url", r.URL.String()),
+			)
 		}
 	})
 
@@ -171,7 +180,8 @@ func (c *Crawler) setupCallbacks(ctx context.Context) {
 		// This callback is only for post-processing (logging, metrics, etc.)
 		pageURL := r.Request.URL.String()
 		c.logger.Debug("Finished processing page",
-			"url", pageURL)
+			infralogger.String("url", pageURL),
+		)
 
 		// Note: Link counts are tracked via the HandleLink callback logging.
 		// The actual count of queued links would require accessing colly's internal queue,
@@ -198,9 +208,10 @@ func (c *Crawler) handleCrawlError(r *colly.Response, visitErr error) {
 	if isExpectedError {
 		// These are expected conditions, log at debug level
 		c.logger.Debug("Expected error while crawling",
-			"url", r.Request.URL.String(),
-			"status", r.StatusCode,
-			"error", errMsg)
+			infralogger.String("url", r.Request.URL.String()),
+			infralogger.Int("status", r.StatusCode),
+			infralogger.String("error", errMsg),
+		)
 		return
 	}
 
@@ -213,18 +224,20 @@ func (c *Crawler) handleCrawlError(r *colly.Response, visitErr error) {
 	if isTimeout {
 		// Timeouts are common when crawling, log at warn level
 		c.logger.Warn("Timeout while crawling",
-			"url", r.Request.URL.String(),
-			"status", r.StatusCode,
-			"error", errMsg)
+			infralogger.String("url", r.Request.URL.String()),
+			infralogger.Int("status", r.StatusCode),
+			infralogger.String("error", errMsg),
+		)
 		c.IncrementError()
 		return
 	}
 
 	// Log actual errors
 	c.logger.Error("Error while crawling",
-		"url", r.Request.URL.String(),
-		"status", r.StatusCode,
-		"error", visitErr)
+		infralogger.String("url", r.Request.URL.String()),
+		infralogger.Int("status", r.StatusCode),
+		infralogger.Error(visitErr),
+	)
 
 	c.IncrementError()
 }

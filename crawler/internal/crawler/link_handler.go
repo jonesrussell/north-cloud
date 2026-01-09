@@ -12,6 +12,7 @@ import (
 	"github.com/gocolly/colly/v2"
 	"github.com/jonesrussell/north-cloud/crawler/internal/database"
 	"github.com/jonesrussell/north-cloud/crawler/internal/domain"
+	infralogger "github.com/north-cloud/infrastructure/logger"
 )
 
 // LinkHandler handles link processing for the crawler.
@@ -35,34 +36,38 @@ func (h *LinkHandler) HandleLink(e *colly.HTMLElement) {
 	link := e.Attr("href")
 	if h.shouldSkipLink(link) {
 		h.crawler.logger.Debug("Skipping link",
-			"url", link,
-			"reason", "invalid scheme or empty",
-			"page_url", e.Request.URL.String())
+			infralogger.String("url", link),
+			infralogger.String("reason", "invalid scheme or empty"),
+			infralogger.String("page_url", e.Request.URL.String()),
+		)
 		return
 	}
 
 	absLink := e.Request.AbsoluteURL(link)
 	if absLink == "" {
 		h.crawler.logger.Debug("Skipping link",
-			"url", link,
-			"reason", "failed to make absolute URL",
-			"page_url", e.Request.URL.String())
+			infralogger.String("url", link),
+			infralogger.String("reason", "failed to make absolute URL"),
+			infralogger.String("page_url", e.Request.URL.String()),
+		)
 		return
 	}
 
 	if err := h.validateURL(absLink); err != nil {
 		h.crawler.logger.Debug("Skipping link",
-			"url", absLink,
-			"reason", "invalid URL",
-			"error", err,
-			"page_url", e.Request.URL.String())
+			infralogger.String("url", absLink),
+			infralogger.String("reason", "invalid URL"),
+			infralogger.Error(err),
+			infralogger.String("page_url", e.Request.URL.String()),
+		)
 		return
 	}
 
 	h.crawler.logger.Debug("Discovered link",
-		"url", absLink,
-		"page_url", e.Request.URL.String(),
-		"depth", e.Request.Depth)
+		infralogger.String("url", absLink),
+		infralogger.String("page_url", e.Request.URL.String()),
+		infralogger.Int("depth", e.Request.Depth),
+	)
 
 	// Save external links to database for tracking (if enabled), but always visit immediately
 	if h.shouldSaveLink() && h.isExternalLink(absLink) {
@@ -119,33 +124,36 @@ func (h *LinkHandler) visitWithRetries(e *colly.HTMLElement, absLink string) {
 	for attempt := range h.crawler.cfg.MaxRetries {
 		err := e.Request.Visit(absLink)
 		if err == nil {
-			h.crawler.logger.Debug("Successfully queued link for visiting", "url", absLink)
+			h.crawler.logger.Debug("Successfully queued link for visiting", infralogger.String("url", absLink))
 			return
 		}
 
 		if h.isNonRetryableError(err) {
 			h.crawler.logger.Debug("Skipping link visit due to non-retryable error",
-				"url", absLink,
-				"error", err,
-				"reason", h.getErrorReason(err))
+				infralogger.String("url", absLink),
+				infralogger.Error(err),
+				infralogger.String("reason", h.getErrorReason(err)),
+			)
 			return
 		}
 
 		lastErr = err
 		h.crawler.logger.Debug("Failed to visit link, retrying",
-			"url", absLink,
-			"error", err,
-			"attempt", attempt+1,
-			"max_retries", h.crawler.cfg.MaxRetries)
+			infralogger.String("url", absLink),
+			infralogger.Error(err),
+			infralogger.Int("attempt", attempt+1),
+			infralogger.Int("max_retries", h.crawler.cfg.MaxRetries),
+		)
 
 		time.Sleep(h.crawler.cfg.RetryDelay)
 	}
 
 	h.crawler.logger.Error("Failed to visit link after retries",
-		"url", absLink,
-		"error", lastErr,
-		"max_retries", h.crawler.cfg.MaxRetries,
-		"page_url", e.Request.URL.String())
+		infralogger.String("url", absLink),
+		infralogger.Error(lastErr),
+		infralogger.Int("max_retries", h.crawler.cfg.MaxRetries),
+		infralogger.String("page_url", e.Request.URL.String()),
+	)
 }
 
 // getErrorReason extracts a human-readable reason from an error message.
@@ -256,19 +264,23 @@ func (h *LinkHandler) trySaveLink(absLink string, e *colly.HTMLElement) bool {
 	ctx := h.crawler.state.Context()
 	if ctx == nil {
 		// Context is nil, crawler has been stopped/reset - abort
-		h.crawler.logger.Debug("Cannot save link - crawler context is nil", "url", absLink)
+		h.crawler.logger.Debug("Cannot save link - crawler context is nil", infralogger.String("url", absLink))
 		return false
 	}
 
 	parentURL := e.Request.URL.String()
 	if err := h.saveLinkToQueue(ctx, absLink, parentURL, e.Request.Depth); err != nil {
 		h.crawler.logger.Warn("Failed to save discovered link, continuing with visit",
-			"url", absLink,
-			"error", err)
+			infralogger.String("url", absLink),
+			infralogger.Error(err),
+		)
 		return false
 	}
 
-	h.crawler.logger.Debug("Saved discovered link", "url", absLink, "depth", e.Request.Depth)
+	h.crawler.logger.Debug("Saved discovered link",
+		infralogger.String("url", absLink),
+		infralogger.Int("depth", e.Request.Depth),
+	)
 	return true
 }
 

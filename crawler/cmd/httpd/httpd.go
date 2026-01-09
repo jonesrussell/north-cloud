@@ -20,7 +20,6 @@ import (
 	"github.com/jonesrussell/north-cloud/crawler/internal/crawler"
 	"github.com/jonesrussell/north-cloud/crawler/internal/crawler/events"
 	"github.com/jonesrussell/north-cloud/crawler/internal/database"
-	"github.com/jonesrussell/north-cloud/crawler/internal/logger"
 	"github.com/jonesrussell/north-cloud/crawler/internal/scheduler"
 	"github.com/jonesrussell/north-cloud/crawler/internal/sources"
 	"github.com/jonesrussell/north-cloud/crawler/internal/storage"
@@ -207,7 +206,7 @@ func (d *CommandDeps) validate() error {
 // === Storage Setup ===
 
 // createStorageClient creates an Elasticsearch client with the given config and logger.
-func createStorageClient(cfg config.Interface, log logger.Interface) (*es.Client, error) {
+func createStorageClient(cfg config.Interface, log infralogger.Logger) (*es.Client, error) {
 	clientResult, err := storage.NewClient(storage.ClientParams{
 		Config: cfg,
 		Logger: log,
@@ -219,7 +218,7 @@ func createStorageClient(cfg config.Interface, log logger.Interface) (*es.Client
 }
 
 // createStorage creates both storage client and storage instance in one call.
-func createStorage(cfg config.Interface, log logger.Interface) (*StorageResult, error) {
+func createStorage(cfg config.Interface, log infralogger.Logger) (*StorageResult, error) {
 	// Create storage client
 	client, err := createStorageClient(cfg, log)
 	if err != nil {
@@ -365,7 +364,7 @@ func createAndStartScheduler(
 	// Create crawler for job execution
 	crawlerInstance, err := createCrawlerForJobs(deps, storageResult, db)
 	if err != nil {
-		deps.Logger.Warn("Failed to create crawler for jobs, scheduler disabled", "error", err)
+		deps.Logger.Warn("Failed to create crawler for jobs, scheduler disabled", infralogger.Error(err))
 		return nil
 	}
 
@@ -379,7 +378,7 @@ func createAndStartScheduler(
 
 	// Start the scheduler
 	if startErr := intervalScheduler.Start(context.Background()); startErr != nil {
-		deps.Logger.Error("Failed to start interval scheduler", "error", startErr)
+		deps.Logger.Error("Failed to start interval scheduler", infralogger.Error(startErr))
 		return nil
 	}
 
@@ -413,10 +412,10 @@ func startHTTPServer(
 	}
 
 	// Create server using the new infrastructure gin package
-	server := api.NewServer(deps.Logger, deps.Config, jobsHandler, discoveredLinksHandler, infraLog)
+	server := api.NewServer(deps.Config, jobsHandler, discoveredLinksHandler, infraLog)
 
 	// Start server asynchronously
-	deps.Logger.Info("Starting HTTP server", "addr", deps.Config.GetServerConfig().Address)
+	deps.Logger.Info("Starting HTTP server", infralogger.String("addr", deps.Config.GetServerConfig().Address))
 	errChan := server.StartAsync()
 
 	return server, errChan, nil
@@ -424,7 +423,7 @@ func startHTTPServer(
 
 // runServerUntilInterrupt runs the server until interrupted by signal or error.
 func runServerUntilInterrupt(
-	log logger.Interface,
+	log infralogger.Logger,
 	server *infragin.Server,
 	intervalScheduler *scheduler.IntervalScheduler,
 	errChan <-chan error,
@@ -436,7 +435,7 @@ func runServerUntilInterrupt(
 	// Wait for interrupt signal or error
 	select {
 	case serverErr := <-errChan:
-		log.Error("Server error", "error", serverErr)
+		log.Error("Server error", infralogger.Error(serverErr))
 		return fmt.Errorf("server error: %w", serverErr)
 	case sig := <-sigChan:
 		return shutdownServer(log, server, intervalScheduler, sig)
@@ -445,25 +444,25 @@ func runServerUntilInterrupt(
 
 // shutdownServer performs graceful shutdown of the server and scheduler.
 func shutdownServer(
-	log logger.Interface,
+	log infralogger.Logger,
 	server *infragin.Server,
 	intervalScheduler *scheduler.IntervalScheduler,
 	sig os.Signal,
 ) error {
-	log.Info("Shutdown signal received", "signal", sig.String())
+	log.Info("Shutdown signal received", infralogger.String("signal", sig.String()))
 
 	// Stop scheduler first
 	if intervalScheduler != nil {
 		log.Info("Stopping interval scheduler")
 		if err := intervalScheduler.Stop(); err != nil {
-			log.Error("Failed to stop scheduler", "error", err)
+			log.Error("Failed to stop scheduler", infralogger.Error(err))
 		}
 	}
 
 	// Stop HTTP server using infrastructure server's graceful shutdown
 	log.Info("Stopping HTTP server")
 	if err := server.ShutdownWithTimeout(defaultShutdownTimeout); err != nil {
-		log.Error("Failed to stop server", "error", err)
+		log.Error("Failed to stop server", infralogger.Error(err))
 		return fmt.Errorf("failed to stop server: %w", err)
 	}
 
