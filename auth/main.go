@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"os"
 
@@ -10,7 +9,6 @@ import (
 	infraconfig "github.com/north-cloud/infrastructure/config"
 	"github.com/north-cloud/infrastructure/logger"
 	"github.com/north-cloud/infrastructure/profiling"
-	"github.com/north-cloud/infrastructure/server"
 )
 
 func main() {
@@ -61,7 +59,7 @@ func run() int {
 	}
 
 	// Run server with graceful shutdown
-	if runErr := server.RunWithGracefulShutdown(context.Background(), srv, log); runErr != nil {
+	if runErr := srv.Run(); runErr != nil {
 		log.Error("Server error", logger.Error(runErr))
 		return 1
 	}
