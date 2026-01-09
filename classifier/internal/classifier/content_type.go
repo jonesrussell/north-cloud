@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/jonesrussell/north-cloud/classifier/internal/domain"
+	infralogger "github.com/north-cloud/infrastructure/logger"
 )
 
 const (
@@ -51,7 +52,7 @@ var paginationQueryParams = []string{
 
 // ContentTypeClassifier determines the type of content (article, page, video, image, job)
 type ContentTypeClassifier struct {
-	logger Logger
+	logger infralogger.Logger
 }
 
 // ContentTypeResult represents the result of content type classification
@@ -63,7 +64,7 @@ type ContentTypeResult struct {
 }
 
 // NewContentTypeClassifier creates a new content type classifier
-func NewContentTypeClassifier(logger Logger) *ContentTypeClassifier {
+func NewContentTypeClassifier(logger infralogger.Logger) *ContentTypeClassifier {
 	return &ContentTypeClassifier{
 		logger: logger,
 	}
@@ -75,9 +76,9 @@ func (c *ContentTypeClassifier) Classify(ctx context.Context, raw *domain.RawCon
 	// Strategy 0: Check URL exclusions first (non-article patterns)
 	if c.isNonArticleURL(raw.URL) {
 		c.logger.Debug("Content type excluded via URL pattern",
-			"content_id", raw.ID,
-			"url", raw.URL,
-			"result", domain.ContentTypePage,
+			infralogger.String("content_id", raw.ID),
+			infralogger.String("url", raw.URL),
+			infralogger.String("result", domain.ContentTypePage),
 		)
 		return &ContentTypeResult{
 			Type:       domain.ContentTypePage,
@@ -100,9 +101,9 @@ func (c *ContentTypeClassifier) Classify(ctx context.Context, raw *domain.RawCon
 	// Listing pages often have multiple article links or "Read more" patterns
 	if c.isListingPageContent(raw) {
 		c.logger.Debug("Content type detected as listing page via content patterns",
-			"content_id", raw.ID,
-			"url", raw.URL,
-			"result", domain.ContentTypePage,
+			infralogger.String("content_id", raw.ID),
+			infralogger.String("url", raw.URL),
+			infralogger.String("result", domain.ContentTypePage),
 		)
 		return &ContentTypeResult{
 			Type:       domain.ContentTypePage,
@@ -116,11 +117,11 @@ func (c *ContentTypeClassifier) Classify(ctx context.Context, raw *domain.RawCon
 	// Check if content has characteristics of an article
 	if c.hasArticleCharacteristics(raw) {
 		c.logger.Debug("Content type detected via heuristics",
-			"content_id", raw.ID,
-			"word_count", raw.WordCount,
-			"has_title", raw.Title != "",
-			"has_meta_description", raw.MetaDescription != "",
-			"result", domain.ContentTypeArticle,
+			infralogger.String("content_id", raw.ID),
+			infralogger.Int("word_count", raw.WordCount),
+			infralogger.Bool("has_title", raw.Title != ""),
+			infralogger.Bool("has_meta_description", raw.MetaDescription != ""),
+			infralogger.String("result", domain.ContentTypeArticle),
 		)
 		return &ContentTypeResult{
 			Type:       domain.ContentTypeArticle,
@@ -132,9 +133,9 @@ func (c *ContentTypeClassifier) Classify(ctx context.Context, raw *domain.RawCon
 
 	// Default: page
 	c.logger.Debug("Content type defaulted to page",
-		"content_id", raw.ID,
-		"word_count", raw.WordCount,
-		"result", domain.ContentTypePage,
+		infralogger.String("content_id", raw.ID),
+		infralogger.Int("word_count", raw.WordCount),
+		infralogger.String("result", domain.ContentTypePage),
 	)
 	return &ContentTypeResult{
 		Type:       domain.ContentTypePage,
@@ -159,9 +160,9 @@ func (c *ContentTypeClassifier) classifyFromOGType(raw *domain.RawContent) *Cont
 	// Trust og_type as authoritative - if it says "article", it's an article
 	if ogType == articleTypeString || ogType == "news" || strings.Contains(ogType, articleTypeString) {
 		c.logger.Debug("Content type detected via OG metadata",
-			"content_id", raw.ID,
-			"og_type", ogType,
-			"result", domain.ContentTypeArticle,
+			infralogger.String("content_id", raw.ID),
+			infralogger.String("og_type", ogType),
+			infralogger.String("result", domain.ContentTypeArticle),
 		)
 		return &ContentTypeResult{
 			Type:       domain.ContentTypeArticle,
@@ -174,7 +175,7 @@ func (c *ContentTypeClassifier) classifyFromOGType(raw *domain.RawContent) *Cont
 	// Don't trust "website" OGType - it's the default and not meaningful
 	if ogType == "website" {
 		c.logger.Debug("OGType is 'website' (default), ignoring and using heuristics",
-			"content_id", raw.ID,
+			infralogger.String("content_id", raw.ID),
 		)
 		return nil // Return nil to fall through to heuristic check
 	}
@@ -182,9 +183,9 @@ func (c *ContentTypeClassifier) classifyFromOGType(raw *domain.RawContent) *Cont
 	// Check for video
 	if ogType == "video" || ogType == "video.other" || strings.Contains(ogType, "video") {
 		c.logger.Debug("Content type detected via OG metadata",
-			"content_id", raw.ID,
-			"og_type", ogType,
-			"result", domain.ContentTypeVideo,
+			infralogger.String("content_id", raw.ID),
+			infralogger.String("og_type", ogType),
+			infralogger.String("result", domain.ContentTypeVideo),
 		)
 		return &ContentTypeResult{
 			Type:       domain.ContentTypeVideo,
@@ -197,9 +198,9 @@ func (c *ContentTypeClassifier) classifyFromOGType(raw *domain.RawContent) *Cont
 	// Check for image
 	if ogType == "image" || strings.Contains(ogType, "image") {
 		c.logger.Debug("Content type detected via OG metadata",
-			"content_id", raw.ID,
-			"og_type", ogType,
-			"result", domain.ContentTypeImage,
+			infralogger.String("content_id", raw.ID),
+			infralogger.String("og_type", ogType),
+			infralogger.String("result", domain.ContentTypeImage),
 		)
 		return &ContentTypeResult{
 			Type:       domain.ContentTypeImage,
@@ -311,9 +312,9 @@ func (c *ContentTypeClassifier) isNonArticleURL(urlStr string) bool {
 	for _, pattern := range nonArticleURLPatterns {
 		if matchesURLPattern(path, pattern) {
 			c.logger.Debug("URL matched non-article pattern",
-				"url", urlStr,
-				"path", path,
-				"pattern", pattern,
+				infralogger.String("url", urlStr),
+				infralogger.String("path", path),
+				infralogger.String("pattern", pattern),
 			)
 			return true
 		}
@@ -328,8 +329,8 @@ func (c *ContentTypeClassifier) isNonArticleURL(urlStr string) bool {
 	// Check for pagination query parameters (indicates listing/index pages)
 	if c.hasPaginationQuery(query) {
 		c.logger.Debug("URL matched pagination query parameter",
-			"url", urlStr,
-			"query", query,
+			infralogger.String("url", urlStr),
+			infralogger.String("query", query),
 		)
 		return true
 	}

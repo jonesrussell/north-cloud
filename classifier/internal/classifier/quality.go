@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/jonesrussell/north-cloud/classifier/internal/domain"
+	infralogger "github.com/north-cloud/infrastructure/logger"
 )
 
 const (
@@ -29,7 +30,7 @@ const (
 
 // QualityScorer evaluates content quality on a 0-100 scale
 type QualityScorer struct {
-	logger Logger
+	logger infralogger.Logger
 	config QualityConfig
 }
 
@@ -50,7 +51,7 @@ type QualityResult struct {
 }
 
 // NewQualityScorer creates a new quality scorer with default config
-func NewQualityScorer(logger Logger) *QualityScorer {
+func NewQualityScorer(logger infralogger.Logger) *QualityScorer {
 	return &QualityScorer{
 		logger: logger,
 		config: QualityConfig{
@@ -65,7 +66,7 @@ func NewQualityScorer(logger Logger) *QualityScorer {
 }
 
 // NewQualityScorerWithConfig creates a new quality scorer with custom config
-func NewQualityScorerWithConfig(logger Logger, config QualityConfig) *QualityScorer {
+func NewQualityScorerWithConfig(logger infralogger.Logger, config QualityConfig) *QualityScorer {
 	return &QualityScorer{
 		logger: logger,
 		config: config,
@@ -125,9 +126,9 @@ func (q *QualityScorer) Score(ctx context.Context, raw *domain.RawContent) (*Qua
 	}
 
 	q.logger.Debug("Quality score calculated",
-		"content_id", raw.ID,
-		"total_score", totalScore,
-		"word_count", raw.WordCount,
+		infralogger.String("content_id", raw.ID),
+		infralogger.Int("total_score", totalScore),
+		infralogger.Int("word_count", raw.WordCount),
 	)
 
 	return &QualityResult{

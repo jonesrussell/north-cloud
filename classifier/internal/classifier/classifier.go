@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/jonesrussell/north-cloud/classifier/internal/domain"
+	infralogger "github.com/north-cloud/infrastructure/logger"
 )
 
 const (
@@ -22,7 +23,7 @@ type Classifier struct {
 	quality          *QualityScorer
 	topic            *TopicClassifier
 	sourceReputation *SourceReputationScorer
-	logger           Logger
+	logger           infralogger.Logger
 	version          string
 }
 
@@ -37,7 +38,7 @@ type Config struct {
 
 // NewClassifier creates a new classifier with all strategies
 func NewClassifier(
-	logger Logger,
+	logger infralogger.Logger,
 	rules []domain.ClassificationRule,
 	sourceRepDB SourceReputationDB,
 	config Config,
@@ -57,9 +58,9 @@ func (c *Classifier) Classify(ctx context.Context, raw *domain.RawContent) (*dom
 	startTime := time.Now()
 
 	c.logger.Debug("Starting classification",
-		"content_id", raw.ID,
-		"source_name", raw.SourceName,
-		"word_count", raw.WordCount,
+		infralogger.String("content_id", raw.ID),
+		infralogger.String("source_name", raw.SourceName),
+		infralogger.Int("word_count", raw.WordCount),
 	)
 
 	// 1. Content Type Classification
@@ -90,8 +91,8 @@ func (c *Classifier) Classify(ctx context.Context, raw *domain.RawContent) (*dom
 	isSpam := qualityResult.TotalScore < spamThresholdScore // Spam threshold
 	if err = c.sourceReputation.UpdateAfterClassification(ctx, raw.SourceName, qualityResult.TotalScore, isSpam); err != nil {
 		c.logger.Warn("Failed to update source reputation",
-			"source_name", raw.SourceName,
-			"error", err,
+			infralogger.String("source_name", raw.SourceName),
+			infralogger.Error(err),
 		)
 		// Don't fail the whole classification if reputation update fails
 	}
@@ -123,11 +124,11 @@ func (c *Classifier) Classify(ctx context.Context, raw *domain.RawContent) (*dom
 	}
 
 	c.logger.Info("Classification complete",
-		"content_id", raw.ID,
-		"content_type", result.ContentType,
-		"quality_score", result.QualityScore,
-		"topics", result.Topics,
-		"processing_time_ms", result.ProcessingTimeMs,
+		infralogger.String("content_id", raw.ID),
+		infralogger.String("content_type", result.ContentType),
+		infralogger.Int("quality_score", result.QualityScore),
+		infralogger.Any("topics", result.Topics),
+		infralogger.Int64("processing_time_ms", result.ProcessingTimeMs),
 	)
 
 	return result, nil
@@ -141,9 +142,9 @@ func (c *Classifier) ClassifyBatch(ctx context.Context, rawItems []*domain.RawCo
 		result, err := c.Classify(ctx, raw)
 		if err != nil {
 			c.logger.Error("Batch classification failed for item",
-				"index", i,
-				"content_id", raw.ID,
-				"error", err,
+				infralogger.Int("index", i),
+				infralogger.String("content_id", raw.ID),
+				infralogger.Error(err),
 			)
 			// Continue with next item instead of failing entire batch
 			continue

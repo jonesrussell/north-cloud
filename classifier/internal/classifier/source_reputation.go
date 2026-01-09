@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/jonesrussell/north-cloud/classifier/internal/domain"
+	infralogger "github.com/north-cloud/infrastructure/logger"
 )
 
 const (
@@ -21,7 +22,7 @@ const (
 
 // SourceReputationScorer evaluates and tracks source trustworthiness
 type SourceReputationScorer struct {
-	logger Logger
+	logger infralogger.Logger
 	db     SourceReputationDB
 	config SourceReputationConfig
 }
@@ -51,7 +52,7 @@ type SourceReputationResult struct {
 }
 
 // NewSourceReputationScorer creates a new source reputation scorer
-func NewSourceReputationScorer(logger Logger, db SourceReputationDB) *SourceReputationScorer {
+func NewSourceReputationScorer(logger infralogger.Logger, db SourceReputationDB) *SourceReputationScorer {
 	return &SourceReputationScorer{
 		logger: logger,
 		db:     db,
@@ -66,7 +67,7 @@ func NewSourceReputationScorer(logger Logger, db SourceReputationDB) *SourceRepu
 }
 
 // NewSourceReputationScorerWithConfig creates a scorer with custom config
-func NewSourceReputationScorerWithConfig(logger Logger, db SourceReputationDB, config SourceReputationConfig) *SourceReputationScorer {
+func NewSourceReputationScorerWithConfig(logger infralogger.Logger, db SourceReputationDB, config SourceReputationConfig) *SourceReputationScorer {
 	return &SourceReputationScorer{
 		logger: logger,
 		db:     db,
@@ -92,11 +93,11 @@ func (s *SourceReputationScorer) Score(ctx context.Context, sourceName string) (
 	rank := s.determineRank(score, sourceRecord.TotalArticles)
 
 	s.logger.Debug("Source reputation scored",
-		"source_name", sourceName,
-		"score", score,
-		"category", category,
-		"rank", rank,
-		"total_articles", sourceRecord.TotalArticles,
+		infralogger.String("source_name", sourceName),
+		infralogger.Int("score", score),
+		infralogger.String("category", category),
+		infralogger.String("rank", rank),
+		infralogger.Int("total_articles", sourceRecord.TotalArticles),
 	)
 
 	return &SourceReputationResult{
@@ -147,11 +148,11 @@ func (s *SourceReputationScorer) UpdateAfterClassification(
 	}
 
 	s.logger.Debug("Source reputation updated",
-		"source_name", sourceName,
-		"new_score", sourceRecord.ReputationScore,
-		"total_articles", sourceRecord.TotalArticles,
-		"avg_quality", sourceRecord.AverageQualityScore,
-		"spam_count", sourceRecord.SpamCount,
+		infralogger.String("source_name", sourceName),
+		infralogger.Int("new_score", sourceRecord.ReputationScore),
+		infralogger.Int("total_articles", sourceRecord.TotalArticles),
+		infralogger.Float64("avg_quality", sourceRecord.AverageQualityScore),
+		infralogger.Int("spam_count", sourceRecord.SpamCount),
 	)
 
 	return nil
