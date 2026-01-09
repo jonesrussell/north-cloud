@@ -7,7 +7,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/jonesrussell/north-cloud/search/internal/config"
-	"github.com/jonesrussell/north-cloud/search/internal/logging"
+	infralogger "github.com/north-cloud/infrastructure/logger"
 )
 
 const (
@@ -17,7 +17,7 @@ const (
 )
 
 // LoggerMiddleware logs HTTP requests
-func LoggerMiddleware(log logging.Logger) gin.HandlerFunc {
+func LoggerMiddleware(log infralogger.Logger) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		start := time.Now()
 
@@ -29,12 +29,12 @@ func LoggerMiddleware(log logging.Logger) gin.HandlerFunc {
 
 		// Log request
 		log.Info("HTTP request",
-			"method", c.Request.Method,
-			"path", c.Request.URL.Path,
-			"status", c.Writer.Status(),
-			"duration_ms", duration.Milliseconds(),
-			"client_ip", c.ClientIP(),
-			"user_agent", c.Request.UserAgent(),
+			infralogger.String("method", c.Request.Method),
+			infralogger.String("path", c.Request.URL.Path),
+			infralogger.Int("status", c.Writer.Status()),
+			infralogger.Int64("duration_ms", duration.Milliseconds()),
+			infralogger.String("client_ip", c.ClientIP()),
+			infralogger.String("user_agent", c.Request.UserAgent()),
 		)
 	}
 }
@@ -76,14 +76,14 @@ func CORSMiddleware(cfg *config.CORSConfig) gin.HandlerFunc {
 }
 
 // RecoveryMiddleware handles panics
-func RecoveryMiddleware(log logging.Logger) gin.HandlerFunc {
+func RecoveryMiddleware(log infralogger.Logger) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		defer func() {
 			if err := recover(); err != nil {
 				log.Error("Panic recovered",
-					"error", err,
-					"path", c.Request.URL.Path,
-					"method", c.Request.Method,
+					infralogger.Any("error", err),
+					infralogger.String("path", c.Request.URL.Path),
+					infralogger.String("method", c.Request.Method),
 				)
 
 				c.JSON(httpStatusInternalServerError, ErrorResponse{
