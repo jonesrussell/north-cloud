@@ -1,0 +1,98 @@
+# Loki Configuration (Development)
+# Development-specific overrides for faster iteration and debugging
+
+auth_enabled: false
+
+server:
+  http_listen_port: 3100
+  grpc_listen_port: 9096
+  log_level: debug  # Verbose logging for development
+
+common:
+  path_prefix: /loki
+  storage:
+    filesystem:
+      chunks_directory: /loki/chunks
+      rules_directory: /loki/rules
+  replication_factor: 1
+  ring:
+    instance_addr: 127.0.0.1
+    kvstore:
+      store: inmemory
+
+schema_config:
+  configs:
+    - from: 2024-01-01
+      store: tsdb
+      object_store: filesystem
+      schema: v13
+      index:
+        prefix: index_
+        period: 24h
+
+storage_config:
+  tsdb_shipper:
+    active_index_directory: /loki/tsdb-index
+    cache_location: /loki/tsdb-cache
+  filesystem:
+    directory: /loki/chunks
+
+limits_config:
+  retention_period: 168h  # 7 days - shorter for dev
+  ingestion_rate_mb: 10  # Higher limits for dev
+  ingestion_burst_size_mb: 20
+  per_stream_rate_limit: 10MB
+  per_stream_rate_limit_burst: 20MB
+  max_query_length: 721h
+  max_query_lookback: 168h
+  max_streams_per_user: 10000
+  max_global_streams_per_user: 50000
+  reject_old_samples: false  # Allow old samples in dev
+  max_label_names_per_series: 50  # More labels for debugging
+
+compactor:
+  working_directory: /loki/compactor
+  compaction_interval: 5m  # More frequent in dev
+  retention_enabled: true
+  retention_delete_delay: 1h  # Faster deletion in dev
+  retention_delete_worker_count: 150
+
+ingester:
+  lifecycler:
+    address: 127.0.0.1
+    ring:
+      kvstore:
+        store: inmemory
+      replication_factor: 1
+    final_sleep: 0s
+  chunk_idle_period: 3m  # Flush more frequently in dev
+  chunk_retain_period: 30s
+  max_chunk_age: 30m  # Smaller chunks in dev
+  chunk_target_size: 524288  # 512KB - smaller for faster flushing
+  chunk_encoding: snappy
+  flush_check_period: 15s
+  flush_op_timeout: 10s
+
+querier:
+  max_concurrent: 20  # More concurrent queries in dev
+
+query_range:
+  parallelise_shardable_queries: true
+  cache_results: false  # Disable caching for fresh results in dev
+
+table_manager:
+  retention_deletes_enabled: true
+  retention_period: 168h
+
+ruler:
+  storage:
+    type: local
+    local:
+      directory: /loki/rules
+  rule_path: /loki/rules-temp
+  alertmanager_url: http://localhost:9093
+  ring:
+    kvstore:
+      store: inmemory
+  enable_api: true
+  enable_alertmanager_v2: true

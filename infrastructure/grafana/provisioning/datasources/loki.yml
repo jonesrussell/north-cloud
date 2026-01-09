@@ -1,0 +1,21 @@
+# Grafana Datasource Provisioning
+# Auto-configures Loki as a datasource on Grafana startup
+
+apiVersion: 1
+
+datasources:
+  - name: Loki
+    type: loki
+    access: proxy
+    uid: loki
+    url: http://loki:3100
+    isDefault: true
+    editable: true
+    jsonData:
+      maxLines: 1000
+      derivedFields:
+        # Extract trace ID from logs if present
+        - datasourceUid: tempo
+          matcherRegex: "trace_id=(\\w+)"
+          name: TraceID
+          url: "$${__value.raw}"

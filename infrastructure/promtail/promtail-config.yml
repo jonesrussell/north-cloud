@@ -1,0 +1,154 @@
+# Promtail Configuration
+# Collects logs from Docker containers and forwards to Loki
+
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+  log_level: info
+
+positions:
+  filename: /tmp/positions/positions.yaml
+
+clients:
+  - url: http://loki:3100/loki/api/v1/push
+    timeout: 10s
+    backoff_config:
+      min_period: 500ms
+      max_period: 5m
+      max_retries: 10
+    batchwait: 1s
+    batchsize: 102400  # 100KB
+
+scrape_configs:
+  # Docker container logs via Docker API
+  - job_name: docker
+    docker_sd_configs:
+      - host: unix:///var/run/docker.sock
+        refresh_interval: 5s
+        filters:
+          - name: label
+            values: ["com.docker.compose.project=north-cloud"]
+
+    relabel_configs:
+      # Extract container name (remove leading slash)
+      - source_labels: ['__meta_docker_container_name']
+        regex: '/(.*)'
+        target_label: 'container'
+
+      # Extract service name from Docker Compose label
+      - source_labels: ['__meta_docker_container_label_com_docker_compose_service']
+        target_label: 'service'
+
+      # Extract project name
+      - source_labels: ['__meta_docker_container_label_com_docker_compose_project']
+        target_label: 'project'
+
+      # Add environment label (from APP_ENV if set, otherwise 'development')
+      - source_labels: ['__meta_docker_container_label_com_docker_compose_config_files']
+        regex: '.*dev.*'
+        replacement: 'development'
+        target_label: 'environment'
+
+      - source_labels: ['__meta_docker_container_label_com_docker_compose_config_files']
+        regex: '.*prod.*'
+        replacement: 'production'
+        target_label: 'environment'
+
+      # Add container ID (short version, first 12 chars)
+      - source_labels: ['__meta_docker_container_id']
+        regex: '(.{12}).*'
+        target_label: 'container_id'
+
+    pipeline_stages:
+      # Parse JSON logs from Zap logger
+      - json:
+          expressions:
+            level: level
+            logger: logger
+            caller: caller
+            msg: msg
+            ts: ts
+            service_name: service
+            method: method
+            error: error
+            duration: duration
+            status_code: status_code
+
+      # Extract timestamp from 'ts' field
+      - timestamp:
+          source: ts
+          format: RFC3339Nano
+          fallback_formats:
+            - RFC3339
+            - "2006-01-02T15:04:05.000Z07:00"
+            - "2006-01-02T15:04:05Z07:00"
+
+      # Add log level as a label for easy filtering
+      - labels:
+          level:
+          service_name:
+
+      # Add static labels
+      - static_labels:
+          job: docker
+
+      # Output formatting (optional - useful for debugging)
+      - output:
+          source: msg
+
+  # Nginx access logs (if mounted)
+  - job_name: nginx_access
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: nginx
+          log_type: access
+          __path__: /var/log/nginx/access.log
+
+    pipeline_stages:
+      # Parse nginx access log format
+      - regex:
+          expression: '^(?P<remote_addr>[\w\.]+) - (?P<remote_user>[\w-]+) \[(?P<time_local>.*?)\] "(?P<method>\w+) (?P<request>.*?) (?P<protocol>HTTP/[\d\.]+)" (?P<status>\d+) (?P<body_bytes_sent>\d+) "(?P<http_referer>.*?)" "(?P<http_user_agent>.*?)"'
+
+      - timestamp:
+          source: time_local
+          format: "02/Jan/2006:15:04:05 -0700"
+
+      - labels:
+          method:
+          status:
+
+      - static_labels:
+          service: nginx
+          level: info
+
+  # Nginx error logs (if mounted)
+  - job_name: nginx_error
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: nginx
+          log_type: error
+          __path__: /var/log/nginx/error.log
+
+    pipeline_stages:
+      # Parse nginx error log format
+      - regex:
+          expression: '^(?P<timestamp>\d{4}/\d{2}/\d{2} \d{2}:\d{2}:\d{2}) \[(?P<level>\w+)\] (?P<message>.*)'
+
+      - timestamp:
+          source: timestamp
+          format: "2006/01/02 15:04:05"
+
+      - labels:
+          level:
+
+      - static_labels:
+          service: nginx
+
+limits_config:
+  readline_rate_enabled: false
+  readline_rate: 10000
+  readline_burst: 20000
