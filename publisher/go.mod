@@ -12,7 +12,6 @@ require (
 	github.com/north-cloud/infrastructure v0.0.0
 	github.com/redis/go-redis/v9 v9.17.2
 	go.uber.org/zap v1.27.1
-	gopkg.in/yaml.v3 v3.0.1
 )
 
 replace github.com/north-cloud/infrastructure => ../infrastructure
@@ -38,6 +37,7 @@ require (
 	github.com/golang-jwt/jwt/v5 v5.3.0 // indirect
 	github.com/grafana/pyroscope-go v1.2.0 // indirect
 	github.com/grafana/pyroscope-go/godeltaprof v0.1.8 // indirect
+	github.com/joho/godotenv v1.5.1 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/klauspost/compress v1.17.8 // indirect
 	github.com/klauspost/cpuid/v2 v2.3.0 // indirect
@@ -63,4 +63,5 @@ require (
 	golang.org/x/sys v0.39.0 // indirect
 	golang.org/x/text v0.32.0 // indirect
 	google.golang.org/protobuf v1.36.11 // indirect
+	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

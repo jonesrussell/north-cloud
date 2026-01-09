@@ -14,7 +14,6 @@ import (
 	"github.com/elastic/go-elasticsearch/v8/esapi"
 	esclient "github.com/north-cloud/infrastructure/elasticsearch"
 	"github.com/north-cloud/infrastructure/logger"
-	"github.com/north-cloud/infrastructure/retry"
 )
 
 const unknownStatus = "unknown"
@@ -49,25 +48,14 @@ func NewClient(cfg *Config) (*Client, error) {
 	}
 
 	// Map index-manager config to standardized config
-	// Use extended retry config for index-manager as ES may need more time to recover indices
-	const (
-		indexManagerRetryMaxAttempts  = 10
-		indexManagerRetryInitialDelay = 3 * time.Second
-		indexManagerRetryMaxDelay     = 15 * time.Second
-		indexManagerRetryMultiplier   = 2.0
-	)
+	// Uses infrastructure defaults for retry config (10 attempts, 3s initial, 15s max)
 	esCfg := esclient.Config{
 		URL:         cfg.URL,
 		Username:    cfg.Username,
 		Password:    cfg.Password,
 		MaxRetries:  cfg.MaxRetries,
 		PingTimeout: cfg.Timeout,
-		RetryConfig: &retry.Config{
-			MaxAttempts:  indexManagerRetryMaxAttempts,
-			InitialDelay: indexManagerRetryInitialDelay,
-			MaxDelay:     indexManagerRetryMaxDelay,
-			Multiplier:   indexManagerRetryMultiplier,
-		},
+		// RetryConfig uses infrastructure defaults
 	}
 
 	// Use standardized client with retry logic
@@ -89,17 +77,17 @@ func (c *Client) GetClient() *es.Client {
 
 // IndexInfo represents information about an Elasticsearch index
 type IndexInfo struct {
-	Name          string                 `json:"name"`
-	Health        string                 `json:"health"`
-	Status        string                 `json:"status"`
-	DocumentCount int64                  `json:"document_count"`
-	Size          string                 `json:"size"`
-	Settings      map[string]interface{} `json:"settings,omitempty"`
-	Mappings      map[string]interface{} `json:"mappings,omitempty"`
+	Name          string         `json:"name"`
+	Health        string         `json:"health"`
+	Status        string         `json:"status"`
+	DocumentCount int64          `json:"document_count"`
+	Size          string         `json:"size"`
+	Settings      map[string]any `json:"settings,omitempty"`
+	Mappings      map[string]any `json:"mappings,omitempty"`
 }
 
 // CreateIndex creates a new index with the specified mapping
-func (c *Client) CreateIndex(ctx context.Context, indexName string, mapping interface{}) error {
+func (c *Client) CreateIndex(ctx context.Context, indexName string, mapping any) error {
 	// Check if index already exists
 	exists, err := c.IndexExists(ctx, indexName)
 	if err != nil {
@@ -137,7 +125,7 @@ func (c *Client) CreateIndex(ctx context.Context, indexName string, mapping inte
 }
 
 // EnsureIndex ensures an index exists, creating it if it doesn't
-func (c *Client) EnsureIndex(ctx context.Context, indexName string, mapping interface{}) error {
+func (c *Client) EnsureIndex(ctx context.Context, indexName string, mapping any) error {
 	exists, err := c.IndexExists(ctx, indexName)
 	if err != nil {
 		return fmt.Errorf("failed to check if index exists: %w", err)
@@ -211,7 +199,7 @@ func (c *Client) ListIndices(ctx context.Context, pattern string) ([]string, err
 		return nil, fmt.Errorf("error listing indices: %s", string(body))
 	}
 
-	var results []map[string]interface{}
+	var results []map[string]any
 	if decodeErr := json.NewDecoder(res.Body).Decode(&results); decodeErr != nil {
 		return nil, fmt.Errorf("failed to decode response: %w", decodeErr)
 	}
@@ -229,23 +217,23 @@ func (c *Client) ListIndices(ctx context.Context, pattern string) ([]string, err
 }
 
 // extractDocumentCount extracts document count from stats data
-func extractDocumentCount(statsData map[string]interface{}, indexName string) int64 {
-	indices, ok1 := statsData["indices"].(map[string]interface{})
+func extractDocumentCount(statsData map[string]any, indexName string) int64 {
+	indices, ok1 := statsData["indices"].(map[string]any)
 	if !ok1 {
 		return 0
 	}
 
-	indexStats, ok2 := indices[indexName].(map[string]interface{})
+	indexStats, ok2 := indices[indexName].(map[string]any)
 	if !ok2 {
 		return 0
 	}
 
-	total, ok3 := indexStats["total"].(map[string]interface{})
+	total, ok3 := indexStats["total"].(map[string]any)
 	if !ok3 {
 		return 0
 	}
 
-	docs, ok4 := total["docs"].(map[string]interface{})
+	docs, ok4 := total["docs"].(map[string]any)
 	if !ok4 {
 		return 0
 	}
@@ -259,15 +247,15 @@ func extractDocumentCount(statsData map[string]interface{}, indexName string) in
 }
 
 // extractHealthStatus extracts health and status from health data
-func extractHealthStatus(healthData map[string]interface{}, indexName string) (health, status string) {
+func extractHealthStatus(healthData map[string]any, indexName string) (health, status string) {
 	health = unknownStatus
 	if h, ok1 := healthData["status"].(string); ok1 {
 		health = h
 	}
 
 	status = unknownStatus
-	if indices, ok1 := healthData["indices"].(map[string]interface{}); ok1 {
-		if indexHealth, ok2 := indices[indexName].(map[string]interface{}); ok2 {
+	if indices, ok1 := healthData["indices"].(map[string]any); ok1 {
+		if indexHealth, ok2 := indices[indexName].(map[string]any); ok2 {
 			if s, ok3 := indexHealth["status"].(string); ok3 {
 				status = s
 			}
@@ -296,7 +284,7 @@ func (c *Client) GetIndexInfo(ctx context.Context, indexName string) (*IndexInfo
 		return nil, fmt.Errorf("error getting index stats: %s", string(body))
 	}
 
-	var statsData map[string]interface{}
+	var statsData map[string]any
 	if statsDecodeErr := json.NewDecoder(statsRes.Body).Decode(&statsData); statsDecodeErr != nil {
 		return nil, fmt.Errorf("failed to decode stats: %w", statsDecodeErr)
 	}
@@ -313,7 +301,7 @@ func (c *Client) GetIndexInfo(ctx context.Context, indexName string) (*IndexInfo
 		_ = healthRes.Body.Close()
 	}()
 
-	var healthData map[string]interface{}
+	var healthData map[string]any
 	if healthDecodeErr := json.NewDecoder(healthRes.Body).Decode(&healthData); healthDecodeErr != nil {
 		return nil, fmt.Errorf("failed to decode health: %w", healthDecodeErr)
 	}
@@ -335,12 +323,12 @@ func (c *Client) GetIndexInfo(ctx context.Context, indexName string) (*IndexInfo
 		return nil, fmt.Errorf("error getting index info: %s", string(body))
 	}
 
-	var infoData map[string]interface{}
+	var infoData map[string]any
 	if infoDecodeErr := json.NewDecoder(infoRes.Body).Decode(&infoData); infoDecodeErr != nil {
 		return nil, fmt.Errorf("failed to decode info: %w", infoDecodeErr)
 	}
 
-	indexData, ok := infoData[indexName].(map[string]interface{})
+	indexData, ok := infoData[indexName].(map[string]any)
 	if !ok {
 		return nil, errors.New("invalid index data format")
 	}
@@ -360,12 +348,12 @@ func (c *Client) GetIndexInfo(ctx context.Context, indexName string) (*IndexInfo
 	}
 
 	// Extract settings
-	if settings, ok1 := indexData["settings"].(map[string]interface{}); ok1 {
+	if settings, ok1 := indexData["settings"].(map[string]any); ok1 {
 		info.Settings = settings
 	}
 
 	// Extract mappings
-	if mappings, ok1 := indexData["mappings"].(map[string]interface{}); ok1 {
+	if mappings, ok1 := indexData["mappings"].(map[string]any); ok1 {
 		info.Mappings = mappings
 	}
 
@@ -390,7 +378,7 @@ func (c *Client) GetIndexHealth(ctx context.Context, indexName string) (string, 
 		return "", fmt.Errorf("error getting index health: %s", string(body))
 	}
 
-	var healthData map[string]interface{}
+	var healthData map[string]any
 	if decodeErr := json.NewDecoder(res.Body).Decode(&healthData); decodeErr != nil {
 		return "", fmt.Errorf("failed to decode health: %w", decodeErr)
 	}
@@ -403,7 +391,7 @@ func (c *Client) GetIndexHealth(ctx context.Context, indexName string) (string, 
 }
 
 // GetIndexMapping gets the mapping for an index
-func (c *Client) GetIndexMapping(ctx context.Context, indexName string) (map[string]interface{}, error) {
+func (c *Client) GetIndexMapping(ctx context.Context, indexName string) (map[string]any, error) {
 	res, err := c.esClient.Indices.GetMapping(
 		c.esClient.Indices.GetMapping.WithIndex(indexName),
 		c.esClient.Indices.GetMapping.WithContext(ctx),
@@ -420,13 +408,13 @@ func (c *Client) GetIndexMapping(ctx context.Context, indexName string) (map[str
 		return nil, fmt.Errorf("error getting index mapping: %s", string(body))
 	}
 
-	var mappingData map[string]interface{}
+	var mappingData map[string]any
 	if decodeErr := json.NewDecoder(res.Body).Decode(&mappingData); decodeErr != nil {
 		return nil, fmt.Errorf("failed to decode mapping: %w", decodeErr)
 	}
 
-	if indexData, ok1 := mappingData[indexName].(map[string]interface{}); ok1 {
-		if mappings, ok2 := indexData["mappings"].(map[string]interface{}); ok2 {
+	if indexData, ok1 := mappingData[indexName].(map[string]any); ok1 {
+		if mappings, ok2 := indexData["mappings"].(map[string]any); ok2 {
 			return mappings, nil
 		}
 	}
@@ -435,7 +423,7 @@ func (c *Client) GetIndexMapping(ctx context.Context, indexName string) (map[str
 }
 
 // UpdateIndexMapping updates the mapping for an index (additive only)
-func (c *Client) UpdateIndexMapping(ctx context.Context, indexName string, mapping map[string]interface{}) error {
+func (c *Client) UpdateIndexMapping(ctx context.Context, indexName string, mapping map[string]any) error {
 	// Elasticsearch only allows additive mapping updates
 	// We need to use the put mapping API
 	mappingJSON, err := json.Marshal(mapping)
@@ -464,7 +452,7 @@ func (c *Client) UpdateIndexMapping(ctx context.Context, indexName string, mappi
 }
 
 // GetClusterHealth gets the overall cluster health
-func (c *Client) GetClusterHealth(ctx context.Context) (map[string]interface{}, error) {
+func (c *Client) GetClusterHealth(ctx context.Context) (map[string]any, error) {
 	res, err := c.esClient.Cluster.Health(c.esClient.Cluster.Health.WithContext(ctx))
 	if err != nil {
 		return nil, fmt.Errorf("failed to get cluster health: %w", err)
@@ -478,7 +466,7 @@ func (c *Client) GetClusterHealth(ctx context.Context) (map[string]interface{}, 
 		return nil, fmt.Errorf("error getting cluster health: %s", string(body))
 	}
 
-	var healthData map[string]interface{}
+	var healthData map[string]any
 	if decodeErr := json.NewDecoder(res.Body).Decode(&healthData); decodeErr != nil {
 		return nil, fmt.Errorf("failed to decode cluster health: %w", decodeErr)
 	}
@@ -487,7 +475,7 @@ func (c *Client) GetClusterHealth(ctx context.Context) (map[string]interface{}, 
 }
 
 // SearchDocuments executes a search query on a specific index
-func (c *Client) SearchDocuments(ctx context.Context, indexName string, query map[string]interface{}) (*esapi.Response, error) {
+func (c *Client) SearchDocuments(ctx context.Context, indexName string, query map[string]any) (*esapi.Response, error) {
 	queryJSON, err := json.Marshal(query)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal query: %w", err)
@@ -515,7 +503,7 @@ func (c *Client) SearchDocuments(ctx context.Context, indexName string, query ma
 }
 
 // GetDocument retrieves a document by ID from an index
-func (c *Client) GetDocument(ctx context.Context, indexName, documentID string) (map[string]interface{}, error) {
+func (c *Client) GetDocument(ctx context.Context, indexName, documentID string) (map[string]any, error) {
 	res, err := c.esClient.Get(indexName, documentID, c.esClient.Get.WithContext(ctx))
 	if err != nil {
 		return nil, fmt.Errorf("failed to get document: %w", err)
@@ -533,7 +521,7 @@ func (c *Client) GetDocument(ctx context.Context, indexName, documentID string) 
 	}
 
 	var result struct {
-		Source map[string]interface{} `json:"_source"`
+		Source map[string]any `json:"_source"`
 	}
 	if decodeErr := json.NewDecoder(res.Body).Decode(&result); decodeErr != nil {
 		return nil, fmt.Errorf("failed to decode response: %w", decodeErr)
@@ -543,8 +531,8 @@ func (c *Client) GetDocument(ctx context.Context, indexName, documentID string) 
 }
 
 // UpdateDocument updates a document in an index
-func (c *Client) UpdateDocument(ctx context.Context, indexName, documentID string, doc map[string]interface{}) error {
-	updateBody := map[string]interface{}{
+func (c *Client) UpdateDocument(ctx context.Context, indexName, documentID string, doc map[string]any) error {
+	updateBody := map[string]any{
 		"doc": doc,
 	}
 	updateJSON, err := json.Marshal(updateBody)
@@ -606,8 +594,8 @@ func (c *Client) BulkDeleteDocuments(ctx context.Context, indexName string, docu
 	var bulkBody strings.Builder
 	for _, docID := range documentIDs {
 		// Bulk API format: action and meta-data line, then optional source line
-		action := map[string]interface{}{
-			"delete": map[string]interface{}{
+		action := map[string]any{
+			"delete": map[string]any{
 				"_index": indexName,
 				"_id":    docID,
 			},
@@ -635,7 +623,7 @@ func (c *Client) BulkDeleteDocuments(ctx context.Context, indexName string, docu
 
 	// Parse response to check for individual errors
 	var bulkResponse struct {
-		Items []map[string]interface{} `json:"items"`
+		Items []map[string]any `json:"items"`
 	}
 	if decodeErr := json.NewDecoder(res.Body).Decode(&bulkResponse); decodeErr != nil {
 		// If we can't parse, the bulk request may have succeeded partially
@@ -645,9 +633,14 @@ func (c *Client) BulkDeleteDocuments(ctx context.Context, indexName string, docu
 	// Check for errors in individual items
 	var errorMessages []string
 	for _, item := range bulkResponse.Items {
-		if deleteItem, ok := item["delete"].(map[string]interface{}); ok {
+		if deleteItem, ok := item["delete"].(map[string]any); ok {
 			if errorData, hasError := deleteItem["error"]; hasError {
-				errorJSON, _ := json.Marshal(errorData)
+				errorJSON, marshalErr := json.Marshal(errorData)
+				if marshalErr != nil {
+					// If marshaling fails, use a fallback error message
+					errorMessages = append(errorMessages, fmt.Sprintf("error marshaling: %v", errorData))
+					continue
+				}
 				errorMessages = append(errorMessages, string(errorJSON))
 			}
 		}

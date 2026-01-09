@@ -33,7 +33,10 @@ func BenchmarkJWTGeneration(b *testing.B) {
 			"alg": "HS256",
 			"typ": "JWT",
 		}
-		headerJSON, _ := json.Marshal(header)
+		headerJSON, err := json.Marshal(header)
+		if err != nil {
+			b.Fatal(err)
+		}
 		headerB64 := base64.RawURLEncoding.EncodeToString(headerJSON)
 
 		// Create JWT payload
@@ -42,7 +45,10 @@ func BenchmarkJWTGeneration(b *testing.B) {
 			ExpiresAt: now + 86400, // 24 hours
 			IssuedAt:  now,
 		}
-		payloadJSON, _ := json.Marshal(payload)
+		payloadJSON, err := json.Marshal(payload)
+		if err != nil {
+			b.Fatal(err)
+		}
 		payloadB64 := base64.RawURLEncoding.EncodeToString(payloadJSON)
 
 		// Create signature
@@ -64,7 +70,10 @@ func BenchmarkJWTValidation(b *testing.B) {
 	// Pre-generate a valid token
 	now := time.Now().Unix()
 	header := map[string]string{"alg": "HS256", "typ": "JWT"}
-	headerJSON, _ := json.Marshal(header)
+	headerJSON, err := json.Marshal(header)
+	if err != nil {
+		b.Fatal(err)
+	}
 	headerB64 := base64.RawURLEncoding.EncodeToString(headerJSON)
 
 	payload := BenchmarkClaims{
@@ -72,7 +81,10 @@ func BenchmarkJWTValidation(b *testing.B) {
 		ExpiresAt: now + 86400,
 		IssuedAt:  now,
 	}
-	payloadJSON, _ := json.Marshal(payload)
+	payloadJSON, err := json.Marshal(payload)
+	if err != nil {
+		b.Fatal(err)
+	}
 	payloadB64 := base64.RawURLEncoding.EncodeToString(payloadJSON)
 
 	message := headerB64 + "." + payloadB64
@@ -101,15 +113,15 @@ func BenchmarkJWTValidation(b *testing.B) {
 
 		if isValid {
 			// Decode payload
-			payloadBytes, err := base64.RawURLEncoding.DecodeString(parts[1])
-			if err != nil {
-				b.Fatal(err)
+			payloadBytes, decodeErr := base64.RawURLEncoding.DecodeString(parts[1])
+			if decodeErr != nil {
+				b.Fatal(decodeErr)
 			}
 
 			var claims BenchmarkClaims
-			err = json.Unmarshal(payloadBytes, &claims)
-			if err != nil {
-				b.Fatal(err)
+			unmarshalErr := json.Unmarshal(payloadBytes, &claims)
+			if unmarshalErr != nil {
+				b.Fatal(unmarshalErr)
 			}
 
 			// Check expiration

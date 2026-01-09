@@ -34,10 +34,10 @@ type Handler struct {
 
 // Logger defines the logging interface
 type Logger interface {
-	Debug(msg string, keysAndValues ...interface{})
-	Info(msg string, keysAndValues ...interface{})
-	Warn(msg string, keysAndValues ...interface{})
-	Error(msg string, keysAndValues ...interface{})
+	Debug(msg string, keysAndValues ...any)
+	Info(msg string, keysAndValues ...any)
+	Warn(msg string, keysAndValues ...any)
+	Error(msg string, keysAndValues ...any)
 }
 
 // NewHandler creates a new API handler
@@ -67,7 +67,7 @@ func NewHandler(
 
 // ClassifyRequest represents a single classification request
 type ClassifyRequest struct {
-	RawContent *domain.RawContent `json:"raw_content" binding:"required"`
+	RawContent *domain.RawContent `binding:"required" json:"raw_content"`
 }
 
 // ClassifyResponse represents a classification response
@@ -78,7 +78,7 @@ type ClassifyResponse struct {
 
 // BatchClassifyRequest represents a batch classification request
 type BatchClassifyRequest struct {
-	RawContents []*domain.RawContent `json:"raw_contents" binding:"required,min=1,max=100"`
+	RawContents []*domain.RawContent `binding:"required,min=1,max=100" json:"raw_contents"`
 }
 
 // BatchClassifyResponse represents a batch classification response

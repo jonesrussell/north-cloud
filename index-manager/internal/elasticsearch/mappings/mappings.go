@@ -18,14 +18,14 @@ func DefaultSettings() BaseSettings {
 	}
 }
 
-// ToMap converts a mapping to a map[string]interface{} for Elasticsearch
-func ToMap(mapping interface{}) (map[string]interface{}, error) {
+// ToMap converts a mapping to a map[string]any for Elasticsearch
+func ToMap(mapping any) (map[string]any, error) {
 	data, err := json.Marshal(mapping)
 	if err != nil {
 		return nil, err
 	}
 
-	var result map[string]interface{}
+	var result map[string]any
 	if unmarshalErr := json.Unmarshal(data, &result); unmarshalErr != nil {
 		return nil, unmarshalErr
 	}

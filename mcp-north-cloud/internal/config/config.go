@@ -12,18 +12,18 @@ type Config struct {
 
 // ServicesConfig holds URLs for all North Cloud services.
 type ServicesConfig struct {
-	IndexManagerURL  string `yaml:"index_manager_url" env:"INDEX_MANAGER_URL"`
-	CrawlerURL       string `yaml:"crawler_url" env:"CRAWLER_URL"`
-	SourceManagerURL string `yaml:"source_manager_url" env:"SOURCE_MANAGER_URL"`
-	PublisherURL     string `yaml:"publisher_url" env:"PUBLISHER_URL"`
-	SearchURL        string `yaml:"search_url" env:"SEARCH_URL"`
-	ClassifierURL    string `yaml:"classifier_url" env:"CLASSIFIER_URL"`
+	IndexManagerURL  string `env:"INDEX_MANAGER_URL"  yaml:"index_manager_url"`
+	CrawlerURL       string `env:"CRAWLER_URL"        yaml:"crawler_url"`
+	SourceManagerURL string `env:"SOURCE_MANAGER_URL" yaml:"source_manager_url"`
+	PublisherURL     string `env:"PUBLISHER_URL"      yaml:"publisher_url"`
+	SearchURL        string `env:"SEARCH_URL"         yaml:"search_url"`
+	ClassifierURL    string `env:"CLASSIFIER_URL"     yaml:"classifier_url"`
 }
 
 // LoggingConfig holds logging configuration.
 type LoggingConfig struct {
-	Level  string `yaml:"level" env:"LOG_LEVEL"`
-	Format string `yaml:"format" env:"LOG_FORMAT"`
+	Level  string `env:"LOG_LEVEL"  yaml:"level"`
+	Format string `env:"LOG_FORMAT" yaml:"format"`
 }
 
 // Load loads configuration from the specified path.

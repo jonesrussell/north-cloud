@@ -1,11 +1,17 @@
 package database
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"time"
 
 	_ "github.com/lib/pq"
+)
+
+const (
+	// dbConnectionTimeout is the timeout for database connection test
+	dbConnectionTimeout = 5 * time.Second
 )
 
 // Config holds database configuration
@@ -43,8 +49,10 @@ func NewConnection(cfg *Config) (*Connection, error) {
 	db.SetMaxIdleConns(cfg.MaxIdleConns)
 	db.SetConnMaxLifetime(cfg.ConnMaxLifetime)
 
-	// Test connection
-	if pingErr := db.Ping(); pingErr != nil {
+	// Test connection with timeout
+	ctx, cancel := context.WithTimeout(context.Background(), dbConnectionTimeout)
+	defer cancel()
+	if pingErr := db.PingContext(ctx); pingErr != nil {
 		return nil, fmt.Errorf("failed to ping database: %w", pingErr)
 	}
 

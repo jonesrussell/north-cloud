@@ -45,19 +45,19 @@ type Config struct {
 type ServiceConfig struct {
 	Name            string        `yaml:"name"`
 	Version         string        `yaml:"version"`
-	Port            int           `yaml:"port" env:"SEARCH_PORT"`
-	Debug           bool          `yaml:"debug" env:"SEARCH_DEBUG"`
-	MaxPageSize     int           `yaml:"max_page_size" env:"SEARCH_MAX_PAGE_SIZE"`
-	DefaultPageSize int           `yaml:"default_page_size" env:"SEARCH_DEFAULT_PAGE_SIZE"`
+	Port            int           `env:"SEARCH_PORT"              yaml:"port"`
+	Debug           bool          `env:"SEARCH_DEBUG"             yaml:"debug"`
+	MaxPageSize     int           `env:"SEARCH_MAX_PAGE_SIZE"     yaml:"max_page_size"`
+	DefaultPageSize int           `env:"SEARCH_DEFAULT_PAGE_SIZE" yaml:"default_page_size"`
 	MaxQueryLength  int           `yaml:"max_query_length"`
 	SearchTimeout   time.Duration `yaml:"search_timeout"`
 }
 
 // ElasticsearchConfig holds Elasticsearch connection and search configuration.
 type ElasticsearchConfig struct {
-	URL                      string        `yaml:"url" env:"ELASTICSEARCH_URL"`
-	Username                 string        `yaml:"username" env:"ELASTICSEARCH_USERNAME"`
-	Password                 string        `yaml:"password" env:"ELASTICSEARCH_PASSWORD"`
+	URL                      string        `env:"ELASTICSEARCH_URL"           yaml:"url"`
+	Username                 string        `env:"ELASTICSEARCH_USERNAME"      yaml:"username"`
+	Password                 string        `env:"ELASTICSEARCH_PASSWORD"      yaml:"password"`
 	MaxRetries               int           `yaml:"max_retries"`
 	Timeout                  time.Duration `yaml:"timeout"`
 	ClassifiedContentPattern string        `yaml:"classified_content_pattern"`
@@ -86,15 +86,15 @@ type FacetsConfig struct {
 
 // LoggingConfig holds logging configuration.
 type LoggingConfig struct {
-	Level  string `yaml:"level" env:"LOG_LEVEL"`
-	Format string `yaml:"format" env:"LOG_FORMAT"`
+	Level  string `env:"LOG_LEVEL"  yaml:"level"`
+	Format string `env:"LOG_FORMAT" yaml:"format"`
 	Output string `yaml:"output"`
 }
 
 // CORSConfig holds CORS configuration.
 type CORSConfig struct {
 	Enabled          bool     `yaml:"enabled"`
-	AllowedOrigins   []string `yaml:"allowed_origins" env:"CORS_ORIGINS"`
+	AllowedOrigins   []string `env:"CORS_ORIGINS"       yaml:"allowed_origins"`
 	AllowedMethods   []string `yaml:"allowed_methods"`
 	AllowedHeaders   []string `yaml:"allowed_headers"`
 	AllowCredentials bool     `yaml:"allow_credentials"`

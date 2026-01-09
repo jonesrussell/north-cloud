@@ -78,7 +78,7 @@ func (s *Sources) loadSourcesIfNeeded() error {
 		return nil
 	}
 
-	apiLoader := loader.NewAPILoader(s.apiURL, s.logger)
+	apiLoader := loader.NewAPILoader(s.apiURL, s.logger, s.jwtSecret)
 	configs, err := apiLoader.LoadSources()
 	if err != nil {
 		return fmt.Errorf("failed to load sources from API: %w", err)

@@ -15,7 +15,7 @@ type mockLoggerWithCalls struct {
 
 type logCall struct {
 	msg           string
-	keysAndValues []interface{}
+	keysAndValues []any
 }
 
 func newMockLoggerWithCalls() *mockLoggerWithCalls {
@@ -27,19 +27,19 @@ func newMockLoggerWithCalls() *mockLoggerWithCalls {
 	}
 }
 
-func (m *mockLoggerWithCalls) Debug(msg string, keysAndValues ...interface{}) {
+func (m *mockLoggerWithCalls) Debug(msg string, keysAndValues ...any) {
 	m.debugCalls = append(m.debugCalls, logCall{msg: msg, keysAndValues: keysAndValues})
 }
 
-func (m *mockLoggerWithCalls) Info(msg string, keysAndValues ...interface{}) {
+func (m *mockLoggerWithCalls) Info(msg string, keysAndValues ...any) {
 	m.infoCalls = append(m.infoCalls, logCall{msg: msg, keysAndValues: keysAndValues})
 }
 
-func (m *mockLoggerWithCalls) Warn(msg string, keysAndValues ...interface{}) {
+func (m *mockLoggerWithCalls) Warn(msg string, keysAndValues ...any) {
 	m.warnCalls = append(m.warnCalls, logCall{msg: msg, keysAndValues: keysAndValues})
 }
 
-func (m *mockLoggerWithCalls) Error(msg string, keysAndValues ...interface{}) {
+func (m *mockLoggerWithCalls) Error(msg string, keysAndValues ...any) {
 	m.errorCalls = append(m.errorCalls, logCall{msg: msg, keysAndValues: keysAndValues})
 }
 

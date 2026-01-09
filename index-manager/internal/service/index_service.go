@@ -23,10 +23,10 @@ type IndexService struct {
 
 // Logger interface for logging
 type Logger interface {
-	Info(msg string, keysAndValues ...interface{})
-	Error(msg string, keysAndValues ...interface{})
-	Warn(msg string, keysAndValues ...interface{})
-	Debug(msg string, keysAndValues ...interface{})
+	Info(msg string, keysAndValues ...any)
+	Error(msg string, keysAndValues ...any)
+	Warn(msg string, keysAndValues ...any)
+	Debug(msg string, keysAndValues ...any)
 }
 
 // NewIndexService creates a new index service
@@ -92,7 +92,7 @@ func (s *IndexService) CreateIndex(ctx context.Context, req *domain.CreateIndexR
 	}
 
 	// Get mapping
-	var mapping map[string]interface{}
+	var mapping map[string]any
 	var err error
 	if req.Mapping != nil {
 		mapping = req.Mapping
@@ -228,7 +228,7 @@ func (s *IndexService) ListIndices(ctx context.Context, indexType, sourceName st
 		return nil, fmt.Errorf("failed to list indices: %w", err)
 	}
 
-	var result []*domain.Index
+	result := make([]*domain.Index, 0, len(indices))
 	for _, indexName := range indices {
 		info, infoErr := s.esClient.GetIndexInfo(ctx, indexName)
 		if infoErr != nil {
@@ -287,7 +287,7 @@ func (s *IndexService) CreateIndexesForSource(ctx context.Context, sourceName st
 		indexTypes = []domain.IndexType{domain.IndexTypeRawContent, domain.IndexTypeClassifiedContent}
 	}
 
-	var results []*domain.Index
+	results := make([]*domain.Index, 0, len(indexTypes))
 	for _, indexType := range indexTypes {
 		req := &domain.CreateIndexRequest{
 			IndexType:  indexType,

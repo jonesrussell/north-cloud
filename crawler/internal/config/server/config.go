@@ -14,17 +14,17 @@ const APIKeyParts = 2
 // Config represents server-specific configuration settings.
 type Config struct {
 	// ReadTimeout is the maximum duration for reading the entire request
-	ReadTimeout time.Duration `yaml:"read_timeout"`
+	ReadTimeout time.Duration `env:"CRAWLER_SERVER_READ_TIMEOUT" yaml:"read_timeout"`
 	// WriteTimeout is the maximum duration before timing out writes of the response
-	WriteTimeout time.Duration `yaml:"write_timeout"`
+	WriteTimeout time.Duration `env:"CRAWLER_SERVER_WRITE_TIMEOUT" yaml:"write_timeout"`
 	// IdleTimeout is the maximum amount of time to wait for the next request
-	IdleTimeout time.Duration `yaml:"idle_timeout"`
+	IdleTimeout time.Duration `env:"CRAWLER_SERVER_IDLE_TIMEOUT" yaml:"idle_timeout"`
 	// SecurityEnabled determines if security features are enabled
-	SecurityEnabled bool `yaml:"security_enabled"`
+	SecurityEnabled bool `env:"CRAWLER_SERVER_SECURITY_ENABLED" yaml:"security_enabled"`
 	// APIKey is the API key used for authentication
-	APIKey string `yaml:"api_key"`
+	APIKey string `env:"CRAWLER_SERVER_API_KEY" yaml:"api_key"`
 	// Address is the address to listen on (e.g., ":8080")
-	Address string `yaml:"address"`
+	Address string `env:"CRAWLER_SERVER_ADDRESS" yaml:"address"`
 }
 
 // Validate checks if the configuration is valid.

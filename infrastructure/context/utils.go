@@ -36,4 +36,3 @@ func WithShutdownTimeout() (context.Context, context.CancelFunc) {
 func WithPingTimeout() (context.Context, context.CancelFunc) {
 	return context.WithTimeout(context.Background(), DefaultPingTimeout)
 }
-

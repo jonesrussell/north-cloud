@@ -113,18 +113,19 @@ func (c *Checker) HTTPHandler() http.HandlerFunc {
 
 		status, results := c.Check(ctx)
 
-		response := map[string]interface{}{
-			"status":  status,
-			"checks":  results,
+		response := map[string]any{
+			"status":    status,
+			"checks":    results,
 			"timestamp": time.Now().Format(time.RFC3339),
 		}
 
 		w.Header().Set("Content-Type", "application/json")
 
 		statusCode := http.StatusOK
-		if status == StatusUnhealthy {
+		switch status {
+		case StatusUnhealthy:
 			statusCode = http.StatusServiceUnavailable
-		} else if status == StatusDegraded {
+		case StatusDegraded:
 			statusCode = http.StatusOK // Still 200, but status indicates degraded
 		}
 
@@ -148,4 +149,3 @@ func LivenessHandler() http.HandlerFunc {
 func ReadinessHandler(checker *Checker) http.HandlerFunc {
 	return checker.HTTPHandler()
 }
-

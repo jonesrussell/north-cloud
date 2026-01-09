@@ -8,25 +8,25 @@ import (
 
 // Source represents an Elasticsearch index to monitor for articles
 type Source struct {
-	ID           uuid.UUID `json:"id" db:"id"`
-	Name         string    `json:"name" db:"name"`                   // e.g., "sudbury_com"
-	IndexPattern string    `json:"index_pattern" db:"index_pattern"` // e.g., "sudbury_com_classified_content"
-	Enabled      bool      `json:"enabled" db:"enabled"`
-	CreatedAt    time.Time `json:"created_at" db:"created_at"`
-	UpdatedAt    time.Time `json:"updated_at" db:"updated_at"`
+	ID           uuid.UUID `db:"id"            json:"id"`
+	Name         string    `db:"name"          json:"name"`          // e.g., "sudbury_com"
+	IndexPattern string    `db:"index_pattern" json:"index_pattern"` // e.g., "sudbury_com_classified_content"
+	Enabled      bool      `db:"enabled"       json:"enabled"`
+	CreatedAt    time.Time `db:"created_at"    json:"created_at"`
+	UpdatedAt    time.Time `db:"updated_at"    json:"updated_at"`
 }
 
 // SourceCreateRequest represents the request payload for creating a source
 type SourceCreateRequest struct {
-	Name         string `json:"name" binding:"required,min=1,max=255"`
-	IndexPattern string `json:"index_pattern" binding:"required,min=1,max=255"`
+	Name         string `binding:"required,min=1,max=255" json:"name"`
+	IndexPattern string `binding:"required,min=1,max=255" json:"index_pattern"`
 	Enabled      *bool  `json:"enabled"` // Pointer to allow omission (defaults to true)
 }
 
 // SourceUpdateRequest represents the request payload for updating a source
 type SourceUpdateRequest struct {
-	Name         *string `json:"name" binding:"omitempty,min=1,max=255"`
-	IndexPattern *string `json:"index_pattern" binding:"omitempty,min=1,max=255"`
+	Name         *string `binding:"omitempty,min=1,max=255" json:"name"`
+	IndexPattern *string `binding:"omitempty,min=1,max=255" json:"index_pattern"`
 	Enabled      *bool   `json:"enabled"`
 }
 

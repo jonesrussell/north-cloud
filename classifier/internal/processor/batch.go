@@ -19,10 +19,10 @@ type BatchProcessor struct {
 
 // Logger defines the logging interface
 type Logger interface {
-	Debug(msg string, keysAndValues ...interface{})
-	Info(msg string, keysAndValues ...interface{})
-	Warn(msg string, keysAndValues ...interface{})
-	Error(msg string, keysAndValues ...interface{})
+	Debug(msg string, keysAndValues ...any)
+	Info(msg string, keysAndValues ...any)
+	Warn(msg string, keysAndValues ...any)
+	Error(msg string, keysAndValues ...any)
 }
 
 // ProcessResult holds the result of processing a single item
@@ -170,8 +170,8 @@ func (b *BatchProcessor) processItem(ctx context.Context, raw *domain.RawContent
 }
 
 // GetStats returns statistics about the batch processor
-func (b *BatchProcessor) GetStats() map[string]interface{} {
-	return map[string]interface{}{
+func (b *BatchProcessor) GetStats() map[string]any {
+	return map[string]any{
 		"concurrency": b.concurrency,
 	}
 }

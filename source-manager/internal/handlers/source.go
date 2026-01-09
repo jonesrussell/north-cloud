@@ -4,10 +4,10 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/jonesrussell/gosources/internal/logger"
-	"github.com/jonesrussell/gosources/internal/metadata"
-	"github.com/jonesrussell/gosources/internal/models"
-	"github.com/jonesrussell/gosources/internal/repository"
+	"github.com/jonesrussell/north-cloud/source-manager/internal/logger"
+	"github.com/jonesrussell/north-cloud/source-manager/internal/metadata"
+	"github.com/jonesrussell/north-cloud/source-manager/internal/models"
+	"github.com/jonesrussell/north-cloud/source-manager/internal/repository"
 )
 
 const (
@@ -168,7 +168,7 @@ func (h *SourceHandler) GetCities(c *gin.Context) {
 // FetchMetadata extracts metadata from a URL for form prefilling
 func (h *SourceHandler) FetchMetadata(c *gin.Context) {
 	var request struct {
-		URL string `json:"url" binding:"required"`
+		URL string `binding:"required" json:"url"`
 	}
 
 	if err := c.ShouldBindJSON(&request); err != nil {
@@ -205,7 +205,7 @@ func (h *SourceHandler) FetchMetadata(c *gin.Context) {
 // This allows users to preview what articles will be extracted before creating a source
 func (h *SourceHandler) TestCrawl(c *gin.Context) {
 	var request struct {
-		URL       string         `json:"url" binding:"required"`
+		URL       string         `binding:"required" json:"url"`
 		Selectors map[string]any `json:"selectors"`
 	}
 

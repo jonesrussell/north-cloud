@@ -28,8 +28,12 @@ func NewDocumentService(esClient *elasticsearch.Client, logger Logger) *Document
 	}
 }
 
-// QueryDocuments queries documents from an index with filters, pagination, and sorting
-func (s *DocumentService) QueryDocuments(ctx context.Context, indexName string, req *domain.DocumentQueryRequest) (*domain.DocumentQueryResponse, error) {
+// QueryDocuments queries documents from an index with filters, pagination, and sorting.
+func (s *DocumentService) QueryDocuments(
+	ctx context.Context,
+	indexName string,
+	req *domain.DocumentQueryRequest,
+) (*domain.DocumentQueryResponse, error) {
 	// Verify index exists
 	exists, err := s.esClient.IndexExists(ctx, indexName)
 	if err != nil {
@@ -68,8 +72,8 @@ func (s *DocumentService) QueryDocuments(ctx context.Context, indexName string, 
 				Value int64 `json:"value"`
 			} `json:"total"`
 			Hits []struct {
-				ID     string                 `json:"_id"`
-				Source map[string]interface{} `json:"_source"`
+				ID     string         `json:"_id"`
+				Source map[string]any `json:"_source"`
 			} `json:"hits"`
 		} `json:"hits"`
 	}
@@ -204,10 +208,10 @@ func (s *DocumentService) BulkDeleteDocuments(ctx context.Context, indexName str
 // mapToDocument converts Elasticsearch source map to domain Document
 //
 //nolint:gocognit // Complex mapping with many field extractions
-func (s *DocumentService) mapToDocument(id string, source map[string]interface{}) *domain.Document {
+func (s *DocumentService) mapToDocument(id string, source map[string]any) *domain.Document {
 	doc := &domain.Document{
 		ID:   id,
-		Meta: make(map[string]interface{}),
+		Meta: make(map[string]any),
 	}
 
 	// Extract common fields
@@ -240,7 +244,7 @@ func (s *DocumentService) mapToDocument(id string, source map[string]interface{}
 	}
 
 	// Extract topics array
-	if topics, ok := source["topics"].([]interface{}); ok {
+	if topics, ok := source["topics"].([]any); ok {
 		doc.Topics = make([]string, 0, len(topics))
 		for _, topic := range topics {
 			if topicStr, okTopic := topic.(string); okTopic {
@@ -277,8 +281,8 @@ func (s *DocumentService) mapToDocument(id string, source map[string]interface{}
 }
 
 // documentToMap converts domain Document to map for Elasticsearch update
-func (s *DocumentService) documentToMap(doc *domain.Document) map[string]interface{} {
-	result := make(map[string]interface{})
+func (s *DocumentService) documentToMap(doc *domain.Document) map[string]any {
+	result := make(map[string]any)
 
 	if doc.Title != "" {
 		result["title"] = doc.Title

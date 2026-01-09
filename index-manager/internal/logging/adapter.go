@@ -20,27 +20,27 @@ func NewAdapter(log logger.Logger) *Adapter {
 }
 
 // Info logs an info message with key-value pairs.
-func (a *Adapter) Info(msg string, keysAndValues ...interface{}) {
+func (a *Adapter) Info(msg string, keysAndValues ...any) {
 	a.log.Info(msg, toFields(keysAndValues)...)
 }
 
 // Error logs an error message with key-value pairs.
-func (a *Adapter) Error(msg string, keysAndValues ...interface{}) {
+func (a *Adapter) Error(msg string, keysAndValues ...any) {
 	a.log.Error(msg, toFields(keysAndValues)...)
 }
 
 // Warn logs a warning message with key-value pairs.
-func (a *Adapter) Warn(msg string, keysAndValues ...interface{}) {
+func (a *Adapter) Warn(msg string, keysAndValues ...any) {
 	a.log.Warn(msg, toFields(keysAndValues)...)
 }
 
 // Debug logs a debug message with key-value pairs.
-func (a *Adapter) Debug(msg string, keysAndValues ...interface{}) {
+func (a *Adapter) Debug(msg string, keysAndValues ...any) {
 	a.log.Debug(msg, toFields(keysAndValues)...)
 }
 
 // toFields converts key-value pairs to logger.Field slice.
-func toFields(keysAndValues []interface{}) []logger.Field {
+func toFields(keysAndValues []any) []logger.Field {
 	fields := make([]logger.Field, 0, len(keysAndValues)/keyValuePairSize)
 	for i := 0; i < len(keysAndValues); i += keyValuePairSize {
 		if i+1 >= len(keysAndValues) {

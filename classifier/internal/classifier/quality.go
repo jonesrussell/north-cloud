@@ -20,6 +20,7 @@ const (
 	readabilityScore200     = 20 // 80% of max (20/25)
 	readabilityScore100     = 15 // 60% of max
 	readabilityScoreDefault = 10 // 40% of max
+	qualityFactorCount      = 4  // Number of quality factors: word_count, metadata_completeness, content_richness, readability
 	// Default quality config constants
 	defaultQualityWeight025     = 0.25
 	defaultMinWordCount100      = 100
@@ -44,8 +45,8 @@ type QualityConfig struct {
 
 // QualityResult represents the quality scoring result
 type QualityResult struct {
-	TotalScore int                    `json:"total_score"` // 0-100
-	Factors    map[string]interface{} `json:"factors"`     // Breakdown of scores
+	TotalScore int            `json:"total_score"` // 0-100
+	Factors    map[string]any `json:"factors"`     // Breakdown of scores
 }
 
 // NewQualityScorer creates a new quality scorer with default config
@@ -73,11 +74,11 @@ func NewQualityScorerWithConfig(logger Logger, config QualityConfig) *QualitySco
 
 // Score calculates the quality score for the given content
 func (q *QualityScorer) Score(ctx context.Context, raw *domain.RawContent) (*QualityResult, error) {
-	factors := make(map[string]interface{})
+	factors := make(map[string]any, qualityFactorCount)
 
 	// 1. Word count scoring (0-25 points)
 	wordCountScore := q.calculateWordCountScore(raw.WordCount)
-	factors["word_count"] = map[string]interface{}{
+	factors["word_count"] = map[string]any{
 		"value": raw.WordCount,
 		"score": wordCountScore,
 		"max":   maxComponentScore,
@@ -95,7 +96,7 @@ func (q *QualityScorer) Score(ctx context.Context, raw *domain.RawContent) (*Qua
 	// For now, use a default mid-range score
 	// Future: Implement Flesch-Kincaid or similar readability scoring
 	readabilityScore := q.calculateReadabilityScore(raw)
-	factors["readability"] = map[string]interface{}{
+	factors["readability"] = map[string]any{
 		"score":  readabilityScore,
 		"max":    maxComponentScore,
 		"method": "default",
@@ -160,7 +161,7 @@ func (q *QualityScorer) calculateWordCountScore(wordCount int) int {
 }
 
 // calculateMetadataScore scores based on metadata completeness (0-25 points)
-func (q *QualityScorer) calculateMetadataScore(raw *domain.RawContent) map[string]interface{} {
+func (q *QualityScorer) calculateMetadataScore(raw *domain.RawContent) map[string]any {
 	score := 0
 	details := make(map[string]bool)
 
@@ -194,7 +195,7 @@ func (q *QualityScorer) calculateMetadataScore(raw *domain.RawContent) map[strin
 		details["has_keywords"] = true
 	}
 
-	return map[string]interface{}{
+	return map[string]any{
 		"score":   score,
 		"max":     maxComponentScore,
 		"details": details,
@@ -202,7 +203,7 @@ func (q *QualityScorer) calculateMetadataScore(raw *domain.RawContent) map[strin
 }
 
 // calculateRichnessScore scores based on content richness (0-25 points)
-func (q *QualityScorer) calculateRichnessScore(raw *domain.RawContent) map[string]interface{} {
+func (q *QualityScorer) calculateRichnessScore(raw *domain.RawContent) map[string]any {
 	score := 0
 	details := make(map[string]bool)
 
@@ -230,7 +231,7 @@ func (q *QualityScorer) calculateRichnessScore(raw *domain.RawContent) map[strin
 		details["has_structured_og"] = true
 	}
 
-	return map[string]interface{}{
+	return map[string]any{
 		"score":   score,
 		"max":     maxComponentScore,
 		"details": details,

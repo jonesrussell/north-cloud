@@ -13,11 +13,10 @@ func WrapWithContext(err error, context string) error {
 }
 
 // WrapWithContextf wraps an error with formatted context information.
-func WrapWithContextf(err error, format string, args ...interface{}) error {
+func WrapWithContextf(err error, format string, args ...any) error {
 	if err == nil {
 		return nil
 	}
 	context := fmt.Sprintf(format, args...)
 	return fmt.Errorf("%s: %w", context, err)
 }
-

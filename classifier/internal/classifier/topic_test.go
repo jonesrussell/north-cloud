@@ -459,16 +459,23 @@ func TestTopicClassifier_ScoreTextAgainstRule_RCMPArticleCase(t *testing.T) {
 
 	// Simulate violent_crime rule with "shooting" keyword
 	rule := domain.ClassificationRule{
-		Keywords:      []string{"shooting", "gunfire", "murder", "assault", "attack", "weapon", "armed", "gunman", "shooter", "fight", "fighting", "beating", "gang", "gang violence", "drive-by", "turf war", "gang member", "gang activity", "domestic violence", "sexual assault", "rape", "kidnapping", "abduction", "hostage"},
+		Keywords: []string{
+			"shooting", "gunfire", "murder", "assault", "attack", "weapon", "armed",
+			"gunman", "shooter", "fight", "fighting", "beating", "gang", "gang violence",
+			"drive-by", "turf war", "gang member", "gang activity", "domestic violence",
+			"sexual assault", "rape", "kidnapping", "abduction", "hostage",
+		},
 		MinConfidence: 0.3,
 	}
 
 	// RCMP article text with "shooting" appearing multiple times
 	text := "RCMP investigate gunfire on First Nation in Saskatchewan after deadly shooting. " +
 		"Mounties say they were called late Friday to Big Island Lake Cree Nation. " +
-		"They say they didn't find anyone with injuries and are looking to determine whether there is any connection to an early morning shooting Dec. 30. " +
+		"They say they didn't find anyone with injuries and are looking to determine " +
+		"whether there is any connection to an early morning shooting Dec. 30. " +
 		"That shooting left one person dead and three others with injuries. " +
-		"Security has been scaled up as the search continues for a pair of suspects wanted in connection with the shooting."
+		"Security has been scaled up as the search continues for a pair of suspects " +
+		"wanted in connection with the shooting."
 
 	score := classifier.scoreTextAgainstRule(text, rule)
 

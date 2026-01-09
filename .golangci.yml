@@ -6,17 +6,24 @@ linters:
     - asasalint
     - asciicheck
     - bidichk
+    - bodyclose
+    - canonicalheader
+    - contextcheck
     - copyloopvar
     - cyclop
     - depguard
     - dupl
     - durationcheck
+    - errchkjson
     - errname
+    - errorlint
     - exptostd
+    - exhaustive
     - fatcontext
     - forbidigo
     - funlen
     - gocheckcompilerdirectives
+    - gochecknoinits
     - gochecksumtype
     - gocognit
     - goconst
@@ -24,8 +31,10 @@ linters:
     - gocyclo
     - gomoddirectives
     - goprintffuncname
+    - gosec
     - iface
     - intrange
+    - lll
     - loggercheck
     - makezero
     - mirror
@@ -36,20 +45,26 @@ linters:
     - nilerr
     - nilnesserr
     - nilnil
+    - noctx
+    - nolintlint
     - nosprintfhostport
     - perfsprint
+    - prealloc
     - predeclared
     - promlinter
     - protogetter
     - reassign
     - recvcheck
+    - revive
     - rowserrcheck
     - sloglint
     - spancheck
     - sqlclosecheck
+    - tagalign
     - testableexamples
     - testifylint
     - testpackage
+    - thelper
     - tparallel
     - unconvert
     - unparam
@@ -59,6 +74,9 @@ linters:
     - whitespace
     - misspell
   settings:
+    contextcheck:
+      disable: false
+      enable-avoid-perf-hit: false
     cyclop:
       max-complexity: 30
       package-average: 10
@@ -72,8 +90,22 @@ linters:
               desc: Use github.com/google/uuid instead, satori's package is not maintained
             - pkg: github.com/gofrs/uuid$
               desc: Use github.com/gofrs/uuid/v5 or later, it was not a go module before v5
+        type_aliases:
+          files:
+            - '!internal/logger/*'
+            - '!internal/storage/*'
+            - '!internal/sources/*'
+            - '!internal/config/*'
+            - '!internal/common/*'
+          deny:
+            - pkg: github.com/jonesrussell/north-cloud/crawler/internal/storage/types.Interface
+              desc: Use common.Storage type alias instead of storage.Interface directly
+            - pkg: github.com/jonesrussell/north-cloud/crawler/internal/sources.Interface
     errcheck:
       check-type-assertions: true
+    errchkjson:
+      check-error-variable-names: true
+      report-no-exported: false
     exhaustive:
       check:
         - switch
@@ -136,6 +168,8 @@ linters:
           strict: true
     inamedparam:
       skip-single-param: true
+    lll:
+      line-length: 150
     mnd:
       ignored-functions:
         - args.Error
@@ -159,6 +193,10 @@ linters:
         - lll
     perfsprint:
       strconcat: false
+    prealloc:
+      simple: true
+      range-loops: true
+      for-loops: false
     reassign:
       patterns:
         - .*
@@ -228,6 +266,11 @@ linters:
     gosec:
       excludes:
         - G404  # Insecure random number source (math/rand)
+        - G402  # TLS InsecureSkipVerify (intentional for development)
+    forbidigo:
+      forbid:
+        - pattern: '^os\.Getenv$'
+          msg: 'Use infrastructure/config package instead of direct os.Getenv calls. The config package automatically loads .env files and provides type-safe configuration via struct tags.'
   exclusions:
     generated: lax
     presets:
@@ -253,11 +296,70 @@ linters:
           - wrapcheck
         path: _test\.go
       - linters:
+          - lll
+        path: .*_bench_test\.go$
+      - linters:
           - forbidigo
         path: cmd/.*\.go
       - linters:
+          - forbidigo
+        path: infrastructure/config/.*\.go
+      - linters:
+          - testpackage
+        path: internal/(config|logger)/.*_test\.go
+      - linters:
+          - canonicalheader
+        path: .*/(drupal|publisher)/.*client\.go
+        text: (API-KEY|AUTH-METHOD|X-CSRF-Token)
+      - linters:
+          - mnd
+        path: .*/(drupal|publisher)/.*client\.go
+        text: (30|400)
+      - linters:
+          - mnd
+        path: .*/config/config\.go
+        text: "5"
+      - linters:
+          - mnd
+        path: .*/integration/service\.go
+        text: (5|100)
+      - linters:
+          - unparam
+        path: .*/integration/service\.go
+        text: runOnce.*always nil
+      - linters:
+          - nestif
+        path: .*/integration/service\.go
+      - linters:
+          - testableexamples
+        path: .*/logger/example_test\.go
+      - linters:
+          - govet
+        path: .*/(config|drupal|integration|publisher)/.*\.go
+        text: "shadow"
+      - linters:
+          - gocritic
+        path: (main|cmd/.*/main)\.go
+        text: "exitAfterDefer"
+      - linters:
+          - funlen
+          - gocognit
+        path: .*/(integration|drupal|publisher)/.*\.go
+      - linters:
+          - contextcheck
+        path: .*/(crawler|scheduler)/.*\.go
+      - linters:
           - gochecknoglobals
         path: .*module\.go$
+      - linters:
+          - gocritic
+        text: Use common.Logger type alias instead of logger.Interface directly
+      - linters:
+          - gocritic
+        text: Use common.Storage type alias instead of storage.Interface directly
+      - linters:
+          - gocritic
+        text: Use common.Config type alias instead of config.Config directly
       - linters:
           - gomoddirectives
         path: go\.mod$

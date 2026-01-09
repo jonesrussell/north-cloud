@@ -12,10 +12,10 @@ import (
 // mockLogger implements the Logger interface for testing
 type mockLogger struct{}
 
-func (m *mockLogger) Debug(msg string, keysAndValues ...interface{}) {}
-func (m *mockLogger) Info(msg string, keysAndValues ...interface{})  {}
-func (m *mockLogger) Warn(msg string, keysAndValues ...interface{})  {}
-func (m *mockLogger) Error(msg string, keysAndValues ...interface{}) {}
+func (m *mockLogger) Debug(msg string, keysAndValues ...any) {}
+func (m *mockLogger) Info(msg string, keysAndValues ...any)  {}
+func (m *mockLogger) Warn(msg string, keysAndValues ...any)  {}
+func (m *mockLogger) Error(msg string, keysAndValues ...any) {}
 
 func TestContentTypeClassifier_Classify_Article_ViaOG(t *testing.T) {
 	classifier := NewContentTypeClassifier(&mockLogger{})

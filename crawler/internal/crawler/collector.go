@@ -248,7 +248,7 @@ func (c *Crawler) setRateLimit(delay, randomDelay time.Duration) error {
 func (c *Crawler) configureTransport() {
 	c.collector.WithTransport(&http.Transport{
 		TLSClientConfig: &tls.Config{
-			InsecureSkipVerify: c.cfg.TLS.InsecureSkipVerify, //nolint:gosec // Configurable for development/testing
+			InsecureSkipVerify: c.cfg.TLS.InsecureSkipVerify,
 			MinVersion:         c.cfg.TLS.MinVersion,
 			MaxVersion:         c.cfg.TLS.MaxVersion,
 		},

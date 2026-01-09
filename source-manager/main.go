@@ -8,11 +8,11 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/jonesrussell/gosources/internal/api"
-	"github.com/jonesrussell/gosources/internal/config"
-	"github.com/jonesrussell/gosources/internal/database"
-	"github.com/jonesrussell/gosources/internal/logger"
-	"github.com/jonesrussell/gosources/internal/repository"
+	"github.com/jonesrussell/north-cloud/source-manager/internal/api"
+	"github.com/jonesrussell/north-cloud/source-manager/internal/config"
+	"github.com/jonesrussell/north-cloud/source-manager/internal/database"
+	"github.com/jonesrussell/north-cloud/source-manager/internal/logger"
+	"github.com/jonesrussell/north-cloud/source-manager/internal/repository"
 	infracontext "github.com/north-cloud/infrastructure/context"
 	"github.com/north-cloud/infrastructure/profiling"
 )

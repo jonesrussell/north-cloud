@@ -8,13 +8,13 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"testing"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/jmoiron/sqlx"
 	"github.com/jonesrussell/north-cloud/classifier/internal/classifier"
+	"github.com/jonesrussell/north-cloud/classifier/internal/config"
 	"github.com/jonesrussell/north-cloud/classifier/internal/database"
 	"github.com/jonesrussell/north-cloud/classifier/internal/domain"
 	"github.com/jonesrussell/north-cloud/classifier/internal/processor"
@@ -24,10 +24,10 @@ import (
 // mockLogger implements Logger for testing
 type mockLogger struct{}
 
-func (m *mockLogger) Debug(msg string, keysAndValues ...interface{}) {}
-func (m *mockLogger) Info(msg string, keysAndValues ...interface{})  {}
-func (m *mockLogger) Warn(msg string, keysAndValues ...interface{})  {}
-func (m *mockLogger) Error(msg string, keysAndValues ...interface{}) {}
+func (m *mockLogger) Debug(msg string, keysAndValues ...any) {}
+func (m *mockLogger) Info(msg string, keysAndValues ...any)  {}
+func (m *mockLogger) Warn(msg string, keysAndValues ...any)  {}
+func (m *mockLogger) Error(msg string, keysAndValues ...any) {}
 
 // mockSourceReputationDB implements SourceReputationDB for testing
 type mockSourceReputationDB struct {
@@ -132,7 +132,7 @@ func setupTestHandler() *Handler {
 	sourceRepDB := newMockSourceReputationDB()
 
 	// Create classifier config
-	config := classifier.Config{
+	classifierCfg := classifier.Config{
 		Version:         "1.0.0",
 		MinQualityScore: 50,
 		UpdateSourceRep: true,
@@ -154,7 +154,7 @@ func setupTestHandler() *Handler {
 	}
 
 	// Create classifier and related components
-	classifierInstance := classifier.NewClassifier(logger, rules, sourceRepDB, config)
+	classifierInstance := classifier.NewClassifier(logger, rules, sourceRepDB, classifierCfg)
 	batchProcessor := processor.NewBatchProcessor(classifierInstance, 2, logger)
 	sourceRepScorer := classifier.NewSourceReputationScorer(logger, sourceRepDB)
 	topicClassifier := classifier.NewTopicClassifier(logger, rules)
@@ -174,18 +174,16 @@ func setupTestHandler() *Handler {
 
 // setupRouter creates a test router with routes
 func setupRouter(handler *Handler) *gin.Engine {
-	// Unset AUTH_JWT_SECRET to disable JWT authentication in tests
-	originalSecret := os.Getenv("AUTH_JWT_SECRET")
-	os.Unsetenv("AUTH_JWT_SECRET")
-	defer func() {
-		if originalSecret != "" {
-			os.Setenv("AUTH_JWT_SECRET", originalSecret)
-		}
-	}()
+	// Create test config without JWT secret to disable JWT authentication in tests
+	cfg := &config.Config{
+		Auth: config.AuthConfig{
+			JWTSecret: "", // No JWT secret for tests
+		},
+	}
 
 	gin.SetMode(gin.TestMode)
 	router := gin.New()
-	SetupRoutes(router, handler)
+	SetupRoutes(router, handler, cfg)
 	return router
 }
 
@@ -201,7 +199,7 @@ func TestHealthCheck(t *testing.T) {
 		t.Errorf("expected status 200, got %d", w.Code)
 	}
 
-	var response map[string]interface{}
+	var response map[string]any
 	if err := json.Unmarshal(w.Body.Bytes(), &response); err != nil {
 		t.Fatalf("failed to unmarshal response: %v", err)
 	}
@@ -223,7 +221,7 @@ func TestReadyCheck(t *testing.T) {
 		t.Errorf("expected status 200, got %d", w.Code)
 	}
 
-	var response map[string]interface{}
+	var response map[string]any
 	if err := json.Unmarshal(w.Body.Bytes(), &response); err != nil {
 		t.Fatalf("failed to unmarshal response: %v", err)
 	}
@@ -253,7 +251,10 @@ func TestClassify_Success(t *testing.T) {
 		},
 	}
 
-	body, _ := json.Marshal(reqBody)
+	body, err := json.Marshal(reqBody)
+	if err != nil {
+		t.Fatalf("failed to marshal request body: %v", err)
+	}
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest(http.MethodPost, "/api/v1/classify", bytes.NewBuffer(body))
 	req.Header.Set("Content-Type", "application/json")
@@ -264,8 +265,8 @@ func TestClassify_Success(t *testing.T) {
 	}
 
 	var response ClassifyResponse
-	if err := json.Unmarshal(w.Body.Bytes(), &response); err != nil {
-		t.Fatalf("failed to unmarshal response: %v", err)
+	if unmarshalErr := json.Unmarshal(w.Body.Bytes(), &response); unmarshalErr != nil {
+		t.Fatalf("failed to unmarshal response: %v", unmarshalErr)
 	}
 
 	if response.Result == nil {
@@ -335,7 +336,10 @@ func TestClassifyBatch_Success(t *testing.T) {
 		},
 	}
 
-	body, _ := json.Marshal(reqBody)
+	body, err := json.Marshal(reqBody)
+	if err != nil {
+		t.Fatalf("failed to marshal request body: %v", err)
+	}
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest(http.MethodPost, "/api/v1/classify/batch", bytes.NewBuffer(body))
 	req.Header.Set("Content-Type", "application/json")
@@ -346,8 +350,8 @@ func TestClassifyBatch_Success(t *testing.T) {
 	}
 
 	var response BatchClassifyResponse
-	if err := json.Unmarshal(w.Body.Bytes(), &response); err != nil {
-		t.Fatalf("failed to unmarshal response: %v", err)
+	if unmarshalErr := json.Unmarshal(w.Body.Bytes(), &response); unmarshalErr != nil {
+		t.Fatalf("failed to unmarshal response: %v", unmarshalErr)
 	}
 
 	if response.Total != 2 {
@@ -371,7 +375,10 @@ func TestClassifyBatch_EmptyRequest(t *testing.T) {
 		RawContents: []*domain.RawContent{},
 	}
 
-	body, _ := json.Marshal(reqBody)
+	body, err := json.Marshal(reqBody)
+	if err != nil {
+		t.Fatalf("failed to marshal request body: %v", err)
+	}
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest(http.MethodPost, "/api/v1/classify/batch", bytes.NewBuffer(body))
 	req.Header.Set("Content-Type", "application/json")
@@ -394,7 +401,7 @@ func TestGetSource(t *testing.T) {
 		t.Errorf("expected status 200, got %d", w.Code)
 	}
 
-	var response map[string]interface{}
+	var response map[string]any
 	if err := json.Unmarshal(w.Body.Bytes(), &response); err != nil {
 		t.Fatalf("failed to unmarshal response: %v", err)
 	}

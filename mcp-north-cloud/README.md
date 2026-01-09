@@ -1,6 +1,6 @@
 # MCP North Cloud Server
 
-An MCP (Model Context Protocol) server that provides comprehensive tools for managing the North Cloud content platform. This server exposes 22 tools across all North Cloud services for crawling, source management, content classification, publishing, and search operations.
+An MCP (Model Context Protocol) server that provides comprehensive tools for managing the North Cloud content platform. This server exposes 23 tools across all North Cloud services for crawling, source management, content classification, publishing, search operations, and development tasks.
 
 ## Overview
 
@@ -48,6 +48,9 @@ This MCP server acts as a unified interface to the entire North Cloud microservi
 - `delete_index` - Delete an Elasticsearch index
 - `list_indexes` - List all Elasticsearch indexes
 
+### Development Tools (1 tool)
+- `lint_file` - Lint a specific file or entire service (automatically detects Go vs frontend)
+
 ## Architecture
 
 The server implements the MCP protocol using:
@@ -63,14 +66,20 @@ The server implements the MCP protocol using:
 │  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌─────────┐ │
 │  │ Crawler  │  │  Source  │  │Publisher │  │ Search  │ │
 │  │  Client  │  │ Manager  │  │  Client  │  │ Client  │ │
-│  │          │  │  Client  │  │          │  │         │ │
 │  └────┬─────┘  └────┬─────┘  └────┬─────┘  └────┬────┘ │
+│       │             │             │             │       │
+│  ┌────┴─────┐  ┌────┴─────┐       │             │       │
+│  │Classifier│  │  Index   │       │             │       │
+│  │  Client  │  │ Manager  │       │             │       │
+│  │          │  │  Client  │       │             │       │
+│  └────┬─────┘  └────┬─────┘       │             │       │
 │       │             │             │             │       │
 │       ▼             ▼             ▼             ▼       │
 │  ┌────────────────────────────────────────────────────┐ │
 │  │           North Cloud Services (Docker)            │ │
 │  │  crawler:8060 | source-manager:8050 |              │ │
 │  │  publisher:8080 | search:8090 | classifier:8070    │ │
+│  │  index-manager:8090                                  │ │
 │  └────────────────────────────────────────────────────┘ │
 └─────────────────────────────────────────────────────────┘
 ```
@@ -125,6 +134,78 @@ The project includes a `.cursor/mcp.json` file for Cursor IDE integration:
 ```
 
 After modifying the configuration, **restart Cursor** to apply changes.
+
+### Claude Code Hooks Integration
+
+When using Claude Code hooks, MCP tools follow a specific naming pattern. Since the server is configured as `"north-cloud"` in the MCP configuration, all tools are accessible using the pattern:
+
+**Pattern**: `mcp__<server>__<tool>`
+
+**Examples**:
+- `mcp__north-cloud__start_crawl` - Start an immediate crawl job
+- `mcp__north-cloud__schedule_crawl` - Schedule a recurring crawl
+- `mcp__north-cloud__list_crawl_jobs` - List all crawl jobs
+- `mcp__north-cloud__add_source` - Add a new content source
+- `mcp__north-cloud__create_route` - Create a publishing route
+- `mcp__north-cloud__search_articles` - Search classified content
+- `mcp__north-cloud__classify_article` - Classify an article
+- `mcp__north-cloud__list_indexes` - List Elasticsearch indexes
+- `mcp__north-cloud__delete_index` - Delete an Elasticsearch index
+
+**All 23 tools** are available using this naming convention. You can reference them in Claude Code hooks to automate North Cloud operations.
+
+**Hook Example**:
+```yaml
+# Example hook that uses MCP tools
+on:
+  - event: file_changed
+    pattern: "crawler/**/*.go"
+actions:
+  - use: mcp__north-cloud__list_crawl_jobs
+    args:
+      status: "running"
+```
+
+**Complete Tool List for Claude Code Hooks**:
+
+All 23 tools available with `mcp__north-cloud__` prefix:
+
+**Crawler Tools (7)**:
+- `mcp__north-cloud__start_crawl`
+- `mcp__north-cloud__schedule_crawl`
+- `mcp__north-cloud__list_crawl_jobs`
+- `mcp__north-cloud__pause_crawl_job`
+- `mcp__north-cloud__resume_crawl_job`
+- `mcp__north-cloud__cancel_crawl_job`
+- `mcp__north-cloud__get_crawl_stats`
+
+**Source Manager Tools (5)**:
+- `mcp__north-cloud__add_source`
+- `mcp__north-cloud__list_sources`
+- `mcp__north-cloud__update_source`
+- `mcp__north-cloud__delete_source`
+- `mcp__north-cloud__test_source`
+
+**Publisher Tools (6)**:
+- `mcp__north-cloud__create_route`
+- `mcp__north-cloud__list_routes`
+- `mcp__north-cloud__delete_route`
+- `mcp__north-cloud__preview_route`
+- `mcp__north-cloud__get_publish_history`
+- `mcp__north-cloud__get_publisher_stats`
+
+**Search Tools (1)**:
+- `mcp__north-cloud__search_articles`
+
+**Classifier Tools (1)**:
+- `mcp__north-cloud__classify_article`
+
+**Index Manager Tools (2)**:
+- `mcp__north-cloud__list_indexes`
+- `mcp__north-cloud__delete_index`
+
+**Development Tools (1)**:
+- `mcp__north-cloud__lint_file`
 
 ### Environment Variables
 
@@ -559,6 +640,56 @@ List all Elasticsearch indexes.
     "example_com_classified_content"
   ],
   "count": 2
+}
+```
+
+### Development Tools
+
+#### lint_file
+
+Lint a specific file or entire service. Automatically detects Go files vs Vue.js/TypeScript frontend files and runs the appropriate linter.
+
+**Parameters:**
+- `file_path` (string, optional): Absolute or relative path to the file to lint
+- `service_name` (string, optional): Service name to lint entire service (Go: crawler, source-manager, classifier, publisher, index-manager, search, auth, mcp-north-cloud | Frontend: dashboard, search-frontend)
+
+**Note:** Either `file_path` or `service_name` must be provided.
+
+**Example (lint a file):**
+```json
+{
+  "file_path": "crawler/main.go"
+}
+```
+
+**Example (lint entire service):**
+```json
+{
+  "service_name": "publisher"
+}
+```
+
+**Response:**
+```json
+{
+  "lint_type": "go",
+  "service_dir": "/home/jones/dev/north-cloud/publisher",
+  "command": "task lint",
+  "output": "Running golangci-lint...\n✅ No issues found",
+  "success": true
+}
+```
+
+**Error Response:**
+```json
+{
+  "lint_type": "go",
+  "service_dir": "/home/jones/dev/north-cloud/crawler",
+  "command": "task lint",
+  "output": "internal/scheduler/interval_scheduler.go:45:10: Error: unused variable 'x'",
+  "success": false,
+  "error": "exit status 1",
+  "exit_code": 1
 }
 ```
 

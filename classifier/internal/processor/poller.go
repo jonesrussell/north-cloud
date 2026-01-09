@@ -185,7 +185,7 @@ func (p *Poller) processPending(ctx context.Context) error {
 // indexResults indexes classification results to Elasticsearch
 func (p *Poller) indexResults(ctx context.Context, results []*ProcessResult) error {
 	// Separate successful and failed results
-	var classifiedContents []*domain.ClassifiedContent
+	classifiedContents := make([]*domain.ClassifiedContent, 0, len(results))
 	var failedContentIDs []string
 
 	for _, result := range results {
@@ -265,7 +265,7 @@ func (p *Poller) validateURL(url string) string {
 
 // saveHistory saves classification results to database for ML training
 func (p *Poller) saveHistory(ctx context.Context, results []*ProcessResult) error {
-	var histories []*domain.ClassificationHistory
+	histories := make([]*domain.ClassificationHistory, 0, len(results))
 
 	for _, result := range results {
 		if result.Error != nil || result.ClassificationResult == nil {
@@ -311,8 +311,8 @@ func (p *Poller) IsRunning() bool {
 }
 
 // GetStats returns poller statistics
-func (p *Poller) GetStats() map[string]interface{} {
-	return map[string]interface{}{
+func (p *Poller) GetStats() map[string]any {
+	return map[string]any{
 		"running":       p.running,
 		"batch_size":    p.batchSize,
 		"poll_interval": p.pollInterval.String(),

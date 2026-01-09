@@ -1,54 +1,54 @@
 package mappings
 
 // GetPageMapping returns the Elasticsearch mapping for legacy page indexes
-func GetPageMapping() map[string]interface{} {
-	return map[string]interface{}{
-		"settings": map[string]interface{}{
+func GetPageMapping() map[string]any {
+	return map[string]any{
+		"settings": map[string]any{
 			"number_of_shards":   1,
 			"number_of_replicas": 1,
 		},
-		"mappings": map[string]interface{}{
-			"properties": map[string]interface{}{
-				"id": map[string]interface{}{
+		"mappings": map[string]any{
+			"properties": map[string]any{
+				"id": map[string]any{
 					"type": "keyword",
 				},
-				"url": map[string]interface{}{
+				"url": map[string]any{
 					"type": "keyword",
 				},
-				"title": map[string]interface{}{
+				"title": map[string]any{
 					"type": "text",
 				},
-				"content": map[string]interface{}{
+				"content": map[string]any{
 					"type": "text",
 				},
-				"description": map[string]interface{}{
+				"description": map[string]any{
 					"type": "text",
 				},
-				"keywords": map[string]interface{}{
+				"keywords": map[string]any{
 					"type": "keyword",
 				},
-				"og_title": map[string]interface{}{
+				"og_title": map[string]any{
 					"type": "text",
 				},
-				"og_description": map[string]interface{}{
+				"og_description": map[string]any{
 					"type": "text",
 				},
-				"og_image": map[string]interface{}{
+				"og_image": map[string]any{
 					"type": "keyword",
 				},
-				"og_url": map[string]interface{}{
+				"og_url": map[string]any{
 					"type": "keyword",
 				},
-				"canonical_url": map[string]interface{}{
+				"canonical_url": map[string]any{
 					"type": "keyword",
 				},
-				"created_at": map[string]interface{}{
+				"created_at": map[string]any{
 					"type": "date",
 				},
-				"updated_at": map[string]interface{}{
+				"updated_at": map[string]any{
 					"type": "date",
 				},
-				"status": map[string]interface{}{
+				"status": map[string]any{
 					"type": "keyword",
 				},
 			},

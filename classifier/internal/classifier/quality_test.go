@@ -46,7 +46,7 @@ func TestQualityScorer_Score_HighQuality(t *testing.T) {
 	}
 
 	// Verify word count factor
-	wordCountFactor, ok := result.Factors["word_count"].(map[string]interface{})
+	wordCountFactor, ok := result.Factors["word_count"].(map[string]any)
 	if !ok {
 		t.Fatal("expected word_count factor")
 	}

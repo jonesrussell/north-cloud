@@ -1,5 +1,30 @@
 // Package config provides a unified configuration loader for all North Cloud services.
 // It uses YAML files with environment variable overrides.
+//
+// Environment Variables and .env Files:
+//
+// The package automatically loads .env files before applying environment variable overrides.
+// Files are loaded in the following priority order (higher priority overrides lower):
+//
+//  1. Environment variable ENV_FILE (if set, loads only this file)
+//  2. .env.local (if exists, overrides .env)
+//  3. .env (default, always checked if ENV_FILE is not set)
+//
+// Example .env file:
+//
+//	MY_PORT=8080
+//	MY_HOST=localhost
+//	DEBUG=true
+//
+// Example config struct:
+//
+//	type MyConfig struct {
+//	    Port  int    `yaml:"port" env:"MY_PORT"`
+//	    Host  string `yaml:"host" env:"MY_HOST"`
+//	    Debug bool   `yaml:"debug" env:"DEBUG"`
+//	}
+//
+//	cfg, err := config.Load[MyConfig]("config.yml")
 package config
 
 import (
@@ -10,12 +35,43 @@ import (
 	"strings"
 	"time"
 
+	"github.com/joho/godotenv"
 	"gopkg.in/yaml.v3"
 )
+
+// loadEnvFiles loads .env files in priority order:
+// 1. ENV_FILE environment variable (if set, loads only this file)
+// 2. .env.local (if exists, overrides .env)
+// 3. .env (default)
+// Returns error only if loading fails (file not found errors are ignored).
+func loadEnvFiles() error {
+	// Check for ENV_FILE environment variable (highest priority)
+	if envFile := os.Getenv("ENV_FILE"); envFile != "" {
+		if err := godotenv.Load(envFile); err != nil && !os.IsNotExist(err) {
+			return fmt.Errorf("load env file %s: %w", envFile, err)
+		}
+		return nil
+	}
+
+	// Load .env.local if it exists (overrides .env)
+	if err := godotenv.Load(".env.local"); err != nil && !os.IsNotExist(err) {
+		return fmt.Errorf("load .env.local: %w", err)
+	}
+
+	// Load .env (default, always checked)
+	if err := godotenv.Load(".env"); err != nil && !os.IsNotExist(err) {
+		return fmt.Errorf("load .env: %w", err)
+	}
+
+	return nil
+}
 
 // Load reads a YAML config file and applies environment variable overrides.
 // The type parameter T must be a struct type.
 // Environment variables are specified using the `env` struct tag.
+//
+// Load automatically loads .env files before applying environment variable overrides.
+// See package documentation for .env file loading priority.
 //
 // Example:
 //
@@ -26,6 +82,11 @@ import (
 //
 //	cfg, err := config.Load[MyConfig]("config.yml")
 func Load[T any](path string) (*T, error) {
+	// Load .env files first (non-fatal if files don't exist)
+	if err := loadEnvFiles(); err != nil {
+		return nil, fmt.Errorf("load environment files: %w", err)
+	}
+
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, fmt.Errorf("read config file %s: %w", path, err)

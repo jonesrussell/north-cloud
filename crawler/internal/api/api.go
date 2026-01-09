@@ -4,7 +4,6 @@ package api
 import (
 	"fmt"
 	"net/http"
-	"os"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -48,7 +47,7 @@ func SetupRouter(
 	setupPublicRoutes(router, startTime, version)
 
 	// API v1 routes (for dashboard frontend) - protected with JWT
-	v1 := setupV1Routes(router)
+	v1 := setupV1Routes(router, cfg)
 
 	// Setup job routes
 	setupJobRoutes(v1, jobsHandler)
@@ -77,11 +76,12 @@ func setupPublicRoutes(router *gin.Engine, startTime time.Time, version string) 
 }
 
 // setupV1Routes configures API v1 routes with JWT middleware
-func setupV1Routes(router *gin.Engine) *gin.RouterGroup {
+func setupV1Routes(router *gin.Engine, cfg config.Interface) *gin.RouterGroup {
 	v1 := router.Group("/api/v1")
 	// Add JWT middleware if JWT secret is configured
-	if jwtSecret := os.Getenv("AUTH_JWT_SECRET"); jwtSecret != "" {
-		v1.Use(infrajwt.Middleware(jwtSecret))
+	authCfg := cfg.GetAuthConfig()
+	if authCfg != nil && authCfg.JWTSecret != "" {
+		v1.Use(infrajwt.Middleware(authCfg.JWTSecret))
 	}
 
 	// Stats endpoint for dashboard

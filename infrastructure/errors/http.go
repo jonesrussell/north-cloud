@@ -3,6 +3,7 @@ package errors
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -114,15 +115,16 @@ func WrapHTTPError(err error, context string) error {
 
 // IsHTTPError checks if an error is an HTTPError
 func IsHTTPError(err error) bool {
-	_, ok := err.(*HTTPError)
+	hTTPError := &HTTPError{}
+	ok := errors.As(err, &hTTPError)
 	return ok
 }
 
 // GetHTTPStatusCode extracts the HTTP status code from an error if it's an HTTPError
 func GetHTTPStatusCode(err error) (int, bool) {
-	if httpErr, ok := err.(*HTTPError); ok {
+	httpErr := &HTTPError{}
+	if errors.As(err, &httpErr) {
 		return httpErr.StatusCode, true
 	}
 	return 0, false
 }
-

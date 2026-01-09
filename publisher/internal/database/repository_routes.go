@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -205,7 +206,7 @@ func (r *Repository) UpdateRoute(ctx context.Context, id uuid.UUID, req *models.
 		SET %s
 		WHERE id = $%d
 		RETURNING id, source_id, channel_id, min_quality_score, topics, enabled, created_at, updated_at
-	`, joinStrings(updateFields, ", "), argPos)
+	`, strings.Join(updateFields, ", "), argPos)
 
 	route := &models.Route{}
 	err := r.db.QueryRowxContext(ctx, query, args...).StructScan(route)

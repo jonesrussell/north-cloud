@@ -9,6 +9,7 @@ func getAllTools() []Tool {
 	tools = append(tools, getSearchTools()...)
 	tools = append(tools, getClassifierTools()...)
 	tools = append(tools, getIndexManagerTools()...)
+	tools = append(tools, getDevelopmentTools()...)
 	return tools
 }
 
@@ -444,6 +445,34 @@ func getIndexManagerTools() []Tool {
 			Description: "List all Elasticsearch indexes.",
 			InputSchema: map[string]any{
 				"type": "object",
+			},
+		},
+	}
+}
+
+func getDevelopmentTools() []Tool {
+	return []Tool{
+		{
+			Name: "lint_file",
+			Description: "Lint a specific file or service. Automatically detects Go files vs " +
+				"Vue.js/TypeScript frontend files and runs the appropriate linter " +
+				"(golangci-lint for Go, ESLint for frontend).",
+			InputSchema: map[string]any{
+				"type": "object",
+				"properties": map[string]any{
+					"file_path": map[string]any{
+						"type": "string",
+						"description": "Absolute or relative path to the file to lint " +
+							"(e.g., '/home/jones/dev/north-cloud/crawler/main.go' or 'crawler/main.go')",
+					},
+					"service_name": map[string]any{
+						"type": "string",
+						"description": "Service name to lint entire service " +
+							"(Go: crawler, source-manager, classifier, publisher, index-manager, search, auth, mcp-north-cloud | " +
+							"Frontend: dashboard, search-frontend). " +
+							"If provided, lints the entire service instead of a single file.",
+					},
+				},
 			},
 		},
 	}

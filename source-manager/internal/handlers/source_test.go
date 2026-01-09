@@ -12,10 +12,10 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
-	"github.com/jonesrussell/gosources/internal/handlers"
-	"github.com/jonesrussell/gosources/internal/models"
-	"github.com/jonesrussell/gosources/internal/repository"
-	"github.com/jonesrussell/gosources/internal/testhelpers"
+	"github.com/jonesrussell/north-cloud/source-manager/internal/handlers"
+	"github.com/jonesrussell/north-cloud/source-manager/internal/models"
+	"github.com/jonesrussell/north-cloud/source-manager/internal/repository"
+	"github.com/jonesrussell/north-cloud/source-manager/internal/testhelpers"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -122,6 +122,7 @@ func TestSourceHandler_Create(t *testing.T) {
 			},
 			expectedStatus: http.StatusCreated,
 			validateResp: func(t *testing.T, w *httptest.ResponseRecorder) {
+				t.Helper()
 				var source models.Source
 				err := json.Unmarshal(w.Body.Bytes(), &source)
 				require.NoError(t, err)

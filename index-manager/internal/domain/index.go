@@ -35,20 +35,20 @@ type Index struct {
 
 // CreateIndexRequest represents a request to create an index
 type CreateIndexRequest struct {
-	IndexName  string                 `json:"index_name" binding:"required"`
-	IndexType  IndexType              `json:"index_type" binding:"required"`
-	SourceName string                 `json:"source_name,omitempty"`
-	Mapping    map[string]interface{} `json:"mapping,omitempty"`
+	IndexName  string         `binding:"required"           json:"index_name"`
+	IndexType  IndexType      `binding:"required"           json:"index_type"`
+	SourceName string         `json:"source_name,omitempty"`
+	Mapping    map[string]any `json:"mapping,omitempty"`
 }
 
 // BulkCreateIndexRequest represents a request to create multiple indexes
 type BulkCreateIndexRequest struct {
-	Indexes []CreateIndexRequest `json:"indexes" binding:"required"`
+	Indexes []CreateIndexRequest `binding:"required" json:"indexes"`
 }
 
 // BulkDeleteIndexRequest represents a request to delete multiple indexes
 type BulkDeleteIndexRequest struct {
-	IndexNames []string `json:"index_names" binding:"required"`
+	IndexNames []string `binding:"required" json:"index_names"`
 }
 
 // IndexStats represents statistics about indexes

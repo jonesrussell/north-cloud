@@ -27,8 +27,8 @@ func NewAuthHandler(cfg *config.Config, jwtManager *auth.JWTManager, log logger.
 
 // LoginRequest represents a login request.
 type LoginRequest struct {
-	Username string `json:"username" binding:"required"`
-	Password string `json:"password" binding:"required"`
+	Username string `binding:"required" json:"username"`
+	Password string `binding:"required" json:"password"`
 }
 
 // LoginResponse represents a login response.

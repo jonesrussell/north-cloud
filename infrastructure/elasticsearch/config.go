@@ -58,23 +58,46 @@ type TLSConfig struct {
 	CAFile string
 }
 
+// Default retry configuration constants for Elasticsearch connection
+// These are used across all services for consistent retry behavior
+const (
+	// DefaultMaxRetries is the default number of retries for ES client operations
+	DefaultMaxRetries = 3
+
+	// DefaultPingTimeout is the default timeout for ping verification
+	DefaultPingTimeout = 5 * time.Second
+
+	// DefaultRetryMaxAttempts is the default max connection attempts during startup
+	// Set high enough to handle slow ES startup in containers
+	DefaultRetryMaxAttempts = 10
+
+	// DefaultRetryInitialDelay is the initial delay between retry attempts
+	DefaultRetryInitialDelay = 3 * time.Second
+
+	// DefaultRetryMaxDelay is the maximum delay between retry attempts
+	DefaultRetryMaxDelay = 15 * time.Second
+
+	// DefaultRetryMultiplier is the exponential backoff multiplier
+	DefaultRetryMultiplier = 2.0
+)
+
 // SetDefaults applies default values to the config if not set
 func (c *Config) SetDefaults() {
 	if c.URL == "" {
 		c.URL = "http://localhost:9200"
 	}
 	if c.MaxRetries == 0 {
-		c.MaxRetries = 3
+		c.MaxRetries = DefaultMaxRetries
 	}
 	if c.PingTimeout == 0 {
-		c.PingTimeout = 5 * time.Second
+		c.PingTimeout = DefaultPingTimeout
 	}
 	if c.RetryConfig == nil {
 		c.RetryConfig = &retry.Config{
-			MaxAttempts:  5,
-			InitialDelay: 2 * time.Second,
-			MaxDelay:     10 * time.Second,
-			Multiplier:   2.0,
+			MaxAttempts:  DefaultRetryMaxAttempts,
+			InitialDelay: DefaultRetryInitialDelay,
+			MaxDelay:     DefaultRetryMaxDelay,
+			Multiplier:   DefaultRetryMultiplier,
 		}
 	}
 }

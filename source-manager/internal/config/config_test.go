@@ -32,15 +32,15 @@ database:
 		t.Fatalf("Load() error = %v, want nil", err)
 	}
 
-	if cfg == nil {
+	if cfg == nil { //nolint:SA5011 // This is a valid nil check for test validation
 		t.Fatal("Load() returned nil config")
 	}
 
-	if !cfg.Debug {
+	if !cfg.Debug { //nolint:SA5011 // t.Fatal exits, so cfg is guaranteed non-nil
 		t.Error("Load() cfg.Debug = false, want true")
 	}
 
-	if cfg.Server.Host != "0.0.0.0" {
+	if cfg.Server.Host != "0.0.0.0" { //nolint:SA5011 // t.Fatal exits, so cfg is guaranteed non-nil
 		t.Errorf("Load() cfg.Server.Host = %v, want 0.0.0.0", cfg.Server.Host)
 	}
 

@@ -4,8 +4,8 @@ import (
 	"database/sql"
 	"fmt"
 
-	"github.com/jonesrussell/gosources/internal/config"
-	"github.com/jonesrussell/gosources/internal/logger"
+	"github.com/jonesrussell/north-cloud/source-manager/internal/config"
+	"github.com/jonesrussell/north-cloud/source-manager/internal/logger"
 	_ "github.com/lib/pq" //nolint:blankimports // PostgreSQL driver
 	infracontext "github.com/north-cloud/infrastructure/context"
 )

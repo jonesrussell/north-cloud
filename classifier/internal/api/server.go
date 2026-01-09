@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/jonesrussell/north-cloud/classifier/internal/config"
 )
 
 // Server represents the HTTP server
@@ -25,9 +26,9 @@ type ServerConfig struct {
 }
 
 // NewServer creates a new HTTP server
-func NewServer(handler *Handler, config ServerConfig, logger Logger) *Server {
+func NewServer(handler *Handler, serverCfg ServerConfig, logger Logger, cfg *config.Config) *Server {
 	// Set Gin mode based on debug flag
-	if !config.Debug {
+	if !serverCfg.Debug {
 		gin.SetMode(gin.ReleaseMode)
 	}
 
@@ -40,15 +41,15 @@ func NewServer(handler *Handler, config ServerConfig, logger Logger) *Server {
 	router.Use(CORSMiddleware())
 
 	// Setup routes
-	SetupRoutes(router, handler)
+	SetupRoutes(router, handler, cfg)
 
 	// Create HTTP server
-	addr := fmt.Sprintf(":%d", config.Port)
+	addr := fmt.Sprintf(":%d", serverCfg.Port)
 	server := &http.Server{
 		Addr:         addr,
 		Handler:      router,
-		ReadTimeout:  config.ReadTimeout,
-		WriteTimeout: config.WriteTimeout,
+		ReadTimeout:  serverCfg.ReadTimeout,
+		WriteTimeout: serverCfg.WriteTimeout,
 	}
 
 	return &Server{
@@ -125,7 +126,8 @@ func CORSMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
 		c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
-		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, accept, origin, Cache-Control, X-Requested-With")
+		c.Writer.Header().Set("Access-Control-Allow-Headers",
+			"Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, accept, origin, Cache-Control, X-Requested-With")
 		c.Writer.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS, GET, PUT, DELETE")
 
 		if c.Request.Method == http.MethodOptions {

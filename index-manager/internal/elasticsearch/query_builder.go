@@ -24,13 +24,13 @@ func NewDocumentQueryBuilder() *DocumentQueryBuilder {
 }
 
 // Build constructs the complete Elasticsearch query from a DocumentQueryRequest
-func (qb *DocumentQueryBuilder) Build(req *domain.DocumentQueryRequest) (map[string]interface{}, error) {
+func (qb *DocumentQueryBuilder) Build(req *domain.DocumentQueryRequest) (map[string]any, error) {
 	// Validate and set defaults
 	if err := qb.validateRequest(req); err != nil {
 		return nil, err
 	}
 
-	query := map[string]interface{}{
+	query := map[string]any{
 		"query": qb.buildBoolQuery(req),
 		"from":  (req.Pagination.Page - 1) * req.Pagination.Size,
 		"size":  req.Pagination.Size,
@@ -119,15 +119,15 @@ func (qb *DocumentQueryBuilder) validateRequest(req *domain.DocumentQueryRequest
 }
 
 // buildBoolQuery constructs the bool query with must, filter, and should clauses
-func (qb *DocumentQueryBuilder) buildBoolQuery(req *domain.DocumentQueryRequest) map[string]interface{} {
-	boolQuery := map[string]interface{}{
-		"must":   []interface{}{},
-		"filter": []interface{}{},
+func (qb *DocumentQueryBuilder) buildBoolQuery(req *domain.DocumentQueryRequest) map[string]any {
+	boolQuery := map[string]any{
+		"must":   []any{},
+		"filter": []any{},
 	}
 
 	// Multi-match query for full-text search
 	if req.Query != "" && strings.TrimSpace(req.Query) != "" {
-		boolQuery["must"] = []interface{}{
+		boolQuery["must"] = []any{
 			qb.buildMultiMatchQuery(req.Query),
 		}
 	}
@@ -140,13 +140,13 @@ func (qb *DocumentQueryBuilder) buildBoolQuery(req *domain.DocumentQueryRequest)
 		}
 	}
 
-	return map[string]interface{}{"bool": boolQuery}
+	return map[string]any{"bool": boolQuery}
 }
 
 // buildMultiMatchQuery creates a multi-match query with field boosting
-func (qb *DocumentQueryBuilder) buildMultiMatchQuery(query string) map[string]interface{} {
-	return map[string]interface{}{
-		"multi_match": map[string]interface{}{
+func (qb *DocumentQueryBuilder) buildMultiMatchQuery(query string) map[string]any {
+	return map[string]any{
+		"multi_match": map[string]any{
 			"query": query,
 			"fields": []string{
 				"title^3",
@@ -164,14 +164,14 @@ func (qb *DocumentQueryBuilder) buildMultiMatchQuery(query string) map[string]in
 // buildFilters constructs filter clauses
 //
 //nolint:gocognit // Complex filter building with multiple conditionals
-func (qb *DocumentQueryBuilder) buildFilters(filters *domain.DocumentFilters) []interface{} {
-	var result []interface{}
+func (qb *DocumentQueryBuilder) buildFilters(filters *domain.DocumentFilters) []any {
+	var result []any
 
 	// Title filter (contains)
 	if filters.Title != "" {
-		result = append(result, map[string]interface{}{
-			"wildcard": map[string]interface{}{
-				"title.keyword": map[string]interface{}{
+		result = append(result, map[string]any{
+			"wildcard": map[string]any{
+				"title.keyword": map[string]any{
 					"value":            "*" + strings.ToLower(filters.Title) + "*",
 					"case_insensitive": true,
 				},
@@ -181,9 +181,9 @@ func (qb *DocumentQueryBuilder) buildFilters(filters *domain.DocumentFilters) []
 
 	// URL filter (contains)
 	if filters.URL != "" {
-		result = append(result, map[string]interface{}{
-			"wildcard": map[string]interface{}{
-				"url.keyword": map[string]interface{}{
+		result = append(result, map[string]any{
+			"wildcard": map[string]any{
+				"url.keyword": map[string]any{
 					"value":            "*" + strings.ToLower(filters.URL) + "*",
 					"case_insensitive": true,
 				},
@@ -193,8 +193,8 @@ func (qb *DocumentQueryBuilder) buildFilters(filters *domain.DocumentFilters) []
 
 	// Content type filter
 	if filters.ContentType != "" {
-		result = append(result, map[string]interface{}{
-			"term": map[string]interface{}{
+		result = append(result, map[string]any{
+			"term": map[string]any{
 				"content_type.keyword": filters.ContentType,
 			},
 		})
@@ -202,7 +202,7 @@ func (qb *DocumentQueryBuilder) buildFilters(filters *domain.DocumentFilters) []
 
 	// Quality score range filter
 	if filters.MinQualityScore > 0 || filters.MaxQualityScore < maxQualityScore {
-		qualityRange := make(map[string]interface{})
+		qualityRange := make(map[string]any)
 		if filters.MinQualityScore > 0 {
 			qualityRange["gte"] = filters.MinQualityScore
 		}
@@ -210,8 +210,8 @@ func (qb *DocumentQueryBuilder) buildFilters(filters *domain.DocumentFilters) []
 			qualityRange["lte"] = filters.MaxQualityScore
 		}
 		if len(qualityRange) > 0 {
-			result = append(result, map[string]interface{}{
-				"range": map[string]interface{}{
+			result = append(result, map[string]any{
+				"range": map[string]any{
 					"quality_score": qualityRange,
 				},
 			})
@@ -220,8 +220,8 @@ func (qb *DocumentQueryBuilder) buildFilters(filters *domain.DocumentFilters) []
 
 	// Topics filter
 	if len(filters.Topics) > 0 {
-		result = append(result, map[string]interface{}{
-			"terms": map[string]interface{}{
+		result = append(result, map[string]any{
+			"terms": map[string]any{
 				"topics.keyword": filters.Topics,
 			},
 		})
@@ -229,15 +229,15 @@ func (qb *DocumentQueryBuilder) buildFilters(filters *domain.DocumentFilters) []
 
 	// Published date range filter
 	if filters.FromDate != nil || filters.ToDate != nil {
-		dateRange := make(map[string]interface{})
+		dateRange := make(map[string]any)
 		if filters.FromDate != nil {
 			dateRange["gte"] = filters.FromDate.Format(time.RFC3339)
 		}
 		if filters.ToDate != nil {
 			dateRange["lte"] = filters.ToDate.Format(time.RFC3339)
 		}
-		result = append(result, map[string]interface{}{
-			"range": map[string]interface{}{
+		result = append(result, map[string]any{
+			"range": map[string]any{
 				"published_date": dateRange,
 			},
 		})
@@ -245,15 +245,15 @@ func (qb *DocumentQueryBuilder) buildFilters(filters *domain.DocumentFilters) []
 
 	// Crawled at date range filter
 	if filters.FromCrawledAt != nil || filters.ToCrawledAt != nil {
-		dateRange := make(map[string]interface{})
+		dateRange := make(map[string]any)
 		if filters.FromCrawledAt != nil {
 			dateRange["gte"] = filters.FromCrawledAt.Format(time.RFC3339)
 		}
 		if filters.ToCrawledAt != nil {
 			dateRange["lte"] = filters.ToCrawledAt.Format(time.RFC3339)
 		}
-		result = append(result, map[string]interface{}{
-			"range": map[string]interface{}{
+		result = append(result, map[string]any{
+			"range": map[string]any{
 				"crawled_at": dateRange,
 			},
 		})
@@ -261,8 +261,8 @@ func (qb *DocumentQueryBuilder) buildFilters(filters *domain.DocumentFilters) []
 
 	// Crime-related filter
 	if filters.IsCrimeRelated != nil {
-		result = append(result, map[string]interface{}{
-			"term": map[string]interface{}{
+		result = append(result, map[string]any{
+			"term": map[string]any{
 				"is_crime_related": *filters.IsCrimeRelated,
 			},
 		})
@@ -272,55 +272,55 @@ func (qb *DocumentQueryBuilder) buildFilters(filters *domain.DocumentFilters) []
 }
 
 // buildSort constructs the sort clause
-func (qb *DocumentQueryBuilder) buildSort(sort *domain.DocumentSort) []map[string]interface{} {
-	var sortClauses []map[string]interface{}
+func (qb *DocumentQueryBuilder) buildSort(sort *domain.DocumentSort) []map[string]any {
+	var sortClauses []map[string]any
 
 	if sort == nil {
 		// Default: sort by relevance descending (score)
-		return []map[string]interface{}{
-			{"_score": map[string]interface{}{"order": "desc"}},
+		return []map[string]any{
+			{"_score": map[string]any{"order": "desc"}},
 		}
 	}
 
 	switch sort.Field {
 	case "relevance":
-		sortClauses = append(sortClauses, map[string]interface{}{
-			"_score": map[string]interface{}{"order": sort.Order},
+		sortClauses = append(sortClauses, map[string]any{
+			"_score": map[string]any{"order": sort.Order},
 		})
 	case "published_date":
-		sortClauses = append(sortClauses, map[string]interface{}{
-			"published_date": map[string]interface{}{
+		sortClauses = append(sortClauses, map[string]any{
+			"published_date": map[string]any{
 				"order":         sort.Order,
 				"missing":       "_last",
 				"unmapped_type": "date",
 			},
 		})
 	case "crawled_at":
-		sortClauses = append(sortClauses, map[string]interface{}{
-			"crawled_at": map[string]interface{}{
+		sortClauses = append(sortClauses, map[string]any{
+			"crawled_at": map[string]any{
 				"order":         sort.Order,
 				"missing":       "_last",
 				"unmapped_type": "date",
 			},
 		})
 	case "quality_score":
-		sortClauses = append(sortClauses, map[string]interface{}{
-			"quality_score": map[string]interface{}{
+		sortClauses = append(sortClauses, map[string]any{
+			"quality_score": map[string]any{
 				"order":   sort.Order,
 				"missing": "_last",
 			},
 		})
 	case "title":
-		sortClauses = append(sortClauses, map[string]interface{}{
-			"title.keyword": map[string]interface{}{
+		sortClauses = append(sortClauses, map[string]any{
+			"title.keyword": map[string]any{
 				"order":   sort.Order,
 				"missing": "_last",
 			},
 		})
 	default:
 		// Default to relevance
-		sortClauses = append(sortClauses, map[string]interface{}{
-			"_score": map[string]interface{}{"order": sort.Order},
+		sortClauses = append(sortClauses, map[string]any{
+			"_score": map[string]any{"order": sort.Order},
 		})
 	}
 

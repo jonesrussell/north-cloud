@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/jonesrussell/gosources/internal/models"
+	"github.com/jonesrussell/north-cloud/source-manager/internal/models"
 )
 
 func TestStringArray_Value(t *testing.T) {

@@ -47,16 +47,17 @@ type Config struct {
 	Redis          RedisConfig          `yaml:"redis"`
 	Logging        LoggingConfig        `yaml:"logging"`
 	Classification ClassificationConfig `yaml:"classification"`
+	Auth           AuthConfig           `yaml:"auth"`
 }
 
 // ServiceConfig holds service-level configuration.
 type ServiceConfig struct {
 	Name              string        `yaml:"name"`
 	Version           string        `yaml:"version"`
-	Port              int           `yaml:"port" env:"CLASSIFIER_PORT"`
-	Debug             bool          `yaml:"debug" env:"APP_DEBUG"`
+	Port              int           `env:"CLASSIFIER_PORT"         yaml:"port"`
+	Debug             bool          `env:"APP_DEBUG"               yaml:"debug"`
 	Enabled           bool          `yaml:"enabled"`
-	Concurrency       int           `yaml:"concurrency" env:"CLASSIFIER_CONCURRENCY"`
+	Concurrency       int           `env:"CLASSIFIER_CONCURRENCY"  yaml:"concurrency"`
 	BatchSize         int           `yaml:"batch_size"`
 	PollInterval      time.Duration `yaml:"poll_interval"`
 	MinQualityScore   int           `yaml:"min_quality_score"`
@@ -66,12 +67,12 @@ type ServiceConfig struct {
 
 // DatabaseConfig holds database configuration.
 type DatabaseConfig struct {
-	Host            string        `yaml:"host" env:"POSTGRES_HOST"`
-	Port            int           `yaml:"port" env:"POSTGRES_PORT"`
-	User            string        `yaml:"user" env:"POSTGRES_USER"`
-	Password        string        `yaml:"password" env:"POSTGRES_PASSWORD"`
-	Database        string        `yaml:"database" env:"POSTGRES_DB"`
-	SSLMode         string        `yaml:"sslmode" env:"POSTGRES_SSLMODE"`
+	Host            string        `env:"POSTGRES_HOST"            yaml:"host"`
+	Port            int           `env:"POSTGRES_PORT"            yaml:"port"`
+	User            string        `env:"POSTGRES_USER"            yaml:"user"`
+	Password        string        `env:"POSTGRES_PASSWORD"        yaml:"password"`
+	Database        string        `env:"POSTGRES_DB"              yaml:"database"`
+	SSLMode         string        `env:"POSTGRES_SSLMODE"         yaml:"sslmode"`
 	MaxConnections  int           `yaml:"max_connections"`
 	MaxIdleConns    int           `yaml:"max_idle_connections"`
 	ConnMaxLifetime time.Duration `yaml:"connection_max_lifetime"`
@@ -79,7 +80,7 @@ type DatabaseConfig struct {
 
 // ElasticsearchConfig holds Elasticsearch configuration.
 type ElasticsearchConfig struct {
-	URL                     string        `yaml:"url" env:"ELASTICSEARCH_URL"`
+	URL                     string        `env:"ELASTICSEARCH_URL"          yaml:"url"`
 	Username                string        `yaml:"username"`
 	Password                string        `yaml:"password"`
 	MaxRetries              int           `yaml:"max_retries"`
@@ -90,7 +91,7 @@ type ElasticsearchConfig struct {
 
 // RedisConfig holds Redis configuration.
 type RedisConfig struct {
-	URL                    string        `yaml:"url" env:"REDIS_URL"`
+	URL                    string        `env:"REDIS_URL"                 yaml:"url"`
 	Password               string        `yaml:"password"`
 	Database               int           `yaml:"database"`
 	MaxRetries             int           `yaml:"max_retries"`
@@ -102,9 +103,14 @@ type RedisConfig struct {
 
 // LoggingConfig holds logging configuration.
 type LoggingConfig struct {
-	Level  string `yaml:"level" env:"LOG_LEVEL"`
-	Format string `yaml:"format" env:"LOG_FORMAT"`
+	Level  string `env:"LOG_LEVEL"  yaml:"level"`
+	Format string `env:"LOG_FORMAT" yaml:"format"`
 	Output string `yaml:"output"`
+}
+
+// AuthConfig holds authentication configuration.
+type AuthConfig struct {
+	JWTSecret string `env:"AUTH_JWT_SECRET" yaml:"jwt_secret"`
 }
 
 // ClassificationConfig holds classification settings.
@@ -157,6 +163,7 @@ func setDefaults(cfg *Config) {
 	setRedisDefaults(&cfg.Redis)
 	setLoggingDefaults(&cfg.Logging)
 	setClassificationDefaults(&cfg.Classification)
+	// Auth defaults are handled by env tags - no explicit defaults needed
 }
 
 func setServiceDefaults(s *ServiceConfig) {

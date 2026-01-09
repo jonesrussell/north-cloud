@@ -15,10 +15,10 @@ import (
 // mockLogger implements the Logger interface for testing
 type mockLogger struct{}
 
-func (m *mockLogger) Debug(msg string, keysAndValues ...interface{}) {}
-func (m *mockLogger) Info(msg string, keysAndValues ...interface{})  {}
-func (m *mockLogger) Warn(msg string, keysAndValues ...interface{})  {}
-func (m *mockLogger) Error(msg string, keysAndValues ...interface{}) {}
+func (m *mockLogger) Debug(msg string, keysAndValues ...any) {}
+func (m *mockLogger) Info(msg string, keysAndValues ...any)  {}
+func (m *mockLogger) Warn(msg string, keysAndValues ...any)  {}
+func (m *mockLogger) Error(msg string, keysAndValues ...any) {}
 
 // mockSourceReputationDB implements SourceReputationDB for testing
 type mockSourceReputationDB struct {
@@ -221,11 +221,12 @@ func setupTestEnvironment() (*mockESClient, *mockDBClient, *mockLogger) {
 	publishedDate := time.Now().Add(-24 * time.Hour)
 	esClient.rawContent = []*domain.RawContent{
 		{
-			ID:                   "test-1",
-			URL:                  "https://example.com/article1",
-			SourceName:           "example.com",
-			Title:                "Police arrest suspect in downtown incident",
-			RawText:              "Local police arrested a suspect yesterday following an incident in downtown. The individual was charged with multiple offenses.",
+			ID:         "test-1",
+			URL:        "https://example.com/article1",
+			SourceName: "example.com",
+			Title:      "Police arrest suspect in downtown incident",
+			RawText: "Local police arrested a suspect yesterday following an incident in downtown. " +
+				"The individual was charged with multiple offenses.",
 			OGType:               "article",
 			MetaDescription:      "Local crime news",
 			PublishedDate:        &publishedDate,
@@ -251,6 +252,7 @@ func setupTestEnvironment() (*mockESClient, *mockDBClient, *mockLogger) {
 
 // verifyCrimeArticle verifies crime article classification results
 func verifyCrimeArticle(t *testing.T, crimeArticle *domain.ClassifiedContent) {
+	t.Helper()
 	if crimeArticle.ContentType != domain.ContentTypeArticle {
 		t.Errorf("expected content_type article, got %s", crimeArticle.ContentType)
 	}
@@ -271,6 +273,7 @@ func verifyCrimeArticle(t *testing.T, crimeArticle *domain.ClassifiedContent) {
 
 // verifySportsArticle verifies sports article classification results
 func verifySportsArticle(t *testing.T, sportsArticle *domain.ClassifiedContent) {
+	t.Helper()
 	for _, topic := range sportsArticle.Topics {
 		if topic == "crime" {
 			t.Error("expected sports article NOT to have 'crime' in topics array")
@@ -281,6 +284,7 @@ func verifySportsArticle(t *testing.T, sportsArticle *domain.ClassifiedContent) 
 
 // verifyStatusUpdates verifies that status updates were applied
 func verifyStatusUpdates(t *testing.T, esClient *mockESClient) {
+	t.Helper()
 	if status, ok := esClient.statusUpdates["test-1"]; !ok || status != domain.StatusClassified {
 		t.Errorf("expected test-1 status to be classified, got %s", status)
 	}

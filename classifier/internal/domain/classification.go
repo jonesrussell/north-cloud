@@ -13,8 +13,8 @@ type ClassificationResult struct {
 	TypeMethod     string  `json:"type_method"`     // "og_metadata", "selector_based", "heuristic", "ml_model"
 
 	// Quality scoring
-	QualityScore   int                    `json:"quality_score"`   // 0-100
-	QualityFactors map[string]interface{} `json:"quality_factors"` // Breakdown of quality score
+	QualityScore   int            `json:"quality_score"`   // 0-100
+	QualityFactors map[string]any `json:"quality_factors"` // Breakdown of quality score
 
 	// Topic classification
 	Topics      []string           `json:"topics"`       // e.g., ["crime", "local_news"]
@@ -39,14 +39,14 @@ type ClassifiedContent struct {
 	RawContent
 
 	// Classification results (flattened for ES indexing)
-	ContentType      string                 `json:"content_type"`
-	ContentSubtype   string                 `json:"content_subtype,omitempty"`
-	QualityScore     int                    `json:"quality_score"`
-	QualityFactors   map[string]interface{} `json:"quality_factors"`
-	Topics           []string               `json:"topics"`
-	TopicScores      map[string]float64     `json:"topic_scores"`
-	SourceReputation int                    `json:"source_reputation"`
-	SourceCategory   string                 `json:"source_category"`
+	ContentType      string             `json:"content_type"`
+	ContentSubtype   string             `json:"content_subtype,omitempty"`
+	QualityScore     int                `json:"quality_score"`
+	QualityFactors   map[string]any     `json:"quality_factors"`
+	Topics           []string           `json:"topics"`
+	TopicScores      map[string]float64 `json:"topic_scores"`
+	SourceReputation int                `json:"source_reputation"`
+	SourceCategory   string             `json:"source_category"`
 
 	// Classification metadata
 	ClassifierVersion    string  `json:"classifier_version"`

@@ -5,7 +5,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"os"
 
 	"github.com/jonesrussell/north-cloud/crawler/internal/logger"
 	"github.com/jonesrussell/north-cloud/crawler/internal/sources/apiclient"
@@ -18,10 +17,10 @@ type APILoader struct {
 }
 
 // NewAPILoader creates a new APILoader instance.
-func NewAPILoader(apiURL string, log logger.Interface) *APILoader {
+func NewAPILoader(apiURL string, log logger.Interface, jwtSecret string) *APILoader {
 	opts := []apiclient.Option{apiclient.WithBaseURL(apiURL)}
-	// Get JWT secret from environment for service-to-service authentication
-	if jwtSecret := os.Getenv("AUTH_JWT_SECRET"); jwtSecret != "" {
+	// Use JWT secret from config for service-to-service authentication
+	if jwtSecret != "" {
 		opts = append(opts, apiclient.WithJWTSecret(jwtSecret))
 	}
 	client := apiclient.NewClient(opts...)

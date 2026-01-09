@@ -76,11 +76,11 @@ func contains(s, substr string) bool {
 	// Simple case-insensitive contains check
 	sLower := toLower(s)
 	substrLower := toLower(substr)
-	
+
 	if len(sLower) < len(substrLower) {
 		return false
 	}
-	
+
 	for i := 0; i <= len(sLower)-len(substrLower); i++ {
 		if sLower[i:i+len(substrLower)] == substrLower {
 			return true
@@ -92,7 +92,7 @@ func contains(s, substr string) bool {
 // toLower converts a string to lowercase (simple implementation)
 func toLower(s string) string {
 	result := make([]byte, len(s))
-	for i := 0; i < len(s); i++ {
+	for i := range len(s) {
 		c := s[i]
 		if c >= 'A' && c <= 'Z' {
 			c += 'a' - 'A'
@@ -126,7 +126,7 @@ func Retry(ctx context.Context, config Config, fn func() error) error {
 	for attempt := 1; attempt <= config.MaxAttempts; attempt++ {
 		// Check context cancellation
 		if ctx.Err() != nil {
-			return fmt.Errorf("%w: %v", ErrContextCancelled, ctx.Err())
+			return fmt.Errorf("%w: %w", ErrContextCancelled, ctx.Err())
 		}
 
 		// Execute the function
@@ -154,7 +154,7 @@ func Retry(ctx context.Context, config Config, fn func() error) error {
 			// Wait with context cancellation support
 			select {
 			case <-ctx.Done():
-				return fmt.Errorf("%w: %v", ErrContextCancelled, ctx.Err())
+				return fmt.Errorf("%w: %w", ErrContextCancelled, ctx.Err())
 			case <-time.After(backoffDelay):
 				// Continue to next attempt
 			}
@@ -168,4 +168,3 @@ func Retry(ctx context.Context, config Config, fn func() error) error {
 func RetryWithDefaults(ctx context.Context, fn func() error) error {
 	return Retry(ctx, DefaultConfig(), fn)
 }
-

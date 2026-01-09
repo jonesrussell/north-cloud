@@ -6,9 +6,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/jonesrussell/gosources/internal/models"
-	"github.com/jonesrussell/gosources/internal/repository"
-	"github.com/jonesrussell/gosources/internal/testhelpers"
+	"github.com/jonesrussell/north-cloud/source-manager/internal/models"
+	"github.com/jonesrussell/north-cloud/source-manager/internal/repository"
+	"github.com/jonesrussell/north-cloud/source-manager/internal/testhelpers"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -17,6 +17,7 @@ import (
 // This requires a local PostgreSQL instance or can be adapted for testcontainers
 // Set GOSOURCES_TEST_DB environment variable to customize connection
 func setupTestDB(t *testing.T) (db *sql.DB, cleanup func()) {
+	t.Helper()
 	// Skip if running in short mode (unit tests only)
 	if testing.Short() {
 		t.Skip("Skipping integration test in short mode")

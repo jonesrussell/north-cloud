@@ -26,9 +26,9 @@ import (
 	"github.com/jonesrussell/north-cloud/crawler/internal/sources"
 	"github.com/jonesrussell/north-cloud/crawler/internal/storage"
 	"github.com/jonesrussell/north-cloud/crawler/internal/storage/types"
+	infraconfig "github.com/north-cloud/infrastructure/config"
 	infracontext "github.com/north-cloud/infrastructure/context"
 	"github.com/north-cloud/infrastructure/profiling"
-	"github.com/spf13/viper"
 )
 
 // === Types ===
@@ -83,12 +83,7 @@ func Start() error {
 		}()
 	}
 
-	// Phase 1: Initialize Viper configuration
-	if err = config.InitializeViper(); err != nil {
-		return fmt.Errorf("failed to initialize config: %w", err)
-	}
-
-	// Phase 2: Initialize dependencies
+	// Phase 1: Initialize dependencies
 	deps, err := newCommandDeps()
 	if err != nil {
 		return fmt.Errorf("failed to initialize dependencies: %w", err)
@@ -126,8 +121,8 @@ func newCommandDeps() (*CommandDeps, error) {
 		return nil, fmt.Errorf("load config: %w", err)
 	}
 
-	// Create logger
-	log, err := createLogger()
+	// Create logger from config
+	log, err := createLogger(cfg)
 	if err != nil {
 		return nil, fmt.Errorf("create logger: %w", err)
 	}
@@ -146,18 +141,57 @@ func newCommandDeps() (*CommandDeps, error) {
 
 // loadConfig loads configuration from the config package.
 func loadConfig() (config.Interface, error) {
-	return config.LoadConfig()
+	configPath := infraconfig.GetConfigPath("config.yml")
+	return config.Load(configPath)
 }
 
-// createLogger creates a logger instance from Viper configuration.
-func createLogger() (logger.Interface, error) {
-	logLevel := normalizeLogLevel(viper.GetString("logger.level"))
+// createLogger creates a logger instance from configuration.
+func createLogger(cfg config.Interface) (logger.Interface, error) {
+	loggingCfg := cfg.GetLoggingConfig()
+
+	logLevel := normalizeLogLevel(loggingCfg.Level)
+	if logLevel == "" {
+		logLevel = "info"
+	}
+
+	// Determine if we're in development mode
+	appEnv := loggingCfg.Env
+	if appEnv == "" {
+		appEnv = "production"
+	}
+	isDev := appEnv == "development"
+	appDebug := loggingCfg.Debug
+
+	// Set development mode based on APP_ENV
+	development := isDev
+
+	// Override log level if APP_DEBUG is set
+	if appDebug {
+		logLevel = "debug"
+	}
+
+	// Determine encoding based on environment
+	encoding := loggingCfg.Format
+	if encoding == "" {
+		if isDev {
+			encoding = "console"
+		} else {
+			encoding = "json"
+		}
+	}
+
+	// Get output paths from config (default to stdout)
+	outputPaths := loggingCfg.OutputPaths
+	if len(outputPaths) == 0 {
+		outputPaths = []string{"stdout"}
+	}
+
 	logCfg := &logger.Config{
 		Level:       logger.Level(logLevel),
-		Development: viper.GetBool("logger.development"),
-		Encoding:    viper.GetString("logger.encoding"),
-		OutputPaths: viper.GetStringSlice("logger.output_paths"),
-		EnableColor: viper.GetBool("logger.enable_color"),
+		Development: development,
+		Encoding:    encoding,
+		OutputPaths: outputPaths,
+		EnableColor: isDev,
 	}
 	return logger.New(logCfg)
 }

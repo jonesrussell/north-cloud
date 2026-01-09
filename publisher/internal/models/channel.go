@@ -8,25 +8,25 @@ import (
 
 // Channel represents a Redis pub/sub channel for routing articles by topic
 type Channel struct {
-	ID          uuid.UUID `json:"id" db:"id"`
-	Name        string    `json:"name" db:"name"`               // e.g., "articles:crime", "articles:news"
-	Description string    `json:"description" db:"description"` // Human-readable description
-	Enabled     bool      `json:"enabled" db:"enabled"`
-	CreatedAt   time.Time `json:"created_at" db:"created_at"`
-	UpdatedAt   time.Time `json:"updated_at" db:"updated_at"`
+	ID          uuid.UUID `db:"id"          json:"id"`
+	Name        string    `db:"name"        json:"name"`        // e.g., "articles:crime", "articles:news"
+	Description string    `db:"description" json:"description"` // Human-readable description
+	Enabled     bool      `db:"enabled"     json:"enabled"`
+	CreatedAt   time.Time `db:"created_at"  json:"created_at"`
+	UpdatedAt   time.Time `db:"updated_at"  json:"updated_at"`
 }
 
 // ChannelCreateRequest represents the request payload for creating a channel
 type ChannelCreateRequest struct {
-	Name        string `json:"name" binding:"required,min=1,max=255"`
-	Description string `json:"description" binding:"max=1000"`
+	Name        string `binding:"required,min=1,max=255" json:"name"`
+	Description string `binding:"max=1000"               json:"description"`
 	Enabled     *bool  `json:"enabled"` // Pointer to allow omission (defaults to true)
 }
 
 // ChannelUpdateRequest represents the request payload for updating a channel
 type ChannelUpdateRequest struct {
-	Name        *string `json:"name" binding:"omitempty,min=1,max=255"`
-	Description *string `json:"description" binding:"omitempty,max=1000"`
+	Name        *string `binding:"omitempty,min=1,max=255" json:"name"`
+	Description *string `binding:"omitempty,max=1000"      json:"description"`
 	Enabled     *bool   `json:"enabled"`
 }
 

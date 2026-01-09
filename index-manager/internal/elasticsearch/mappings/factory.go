@@ -3,7 +3,7 @@ package mappings
 import "fmt"
 
 // GetMappingForType returns the appropriate mapping for an index type
-func GetMappingForType(indexType string) (map[string]interface{}, error) {
+func GetMappingForType(indexType string) (map[string]any, error) {
 	switch indexType {
 	case "raw_content":
 		return GetRawContentMapping(), nil

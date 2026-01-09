@@ -1,8 +1,14 @@
 package mcp
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"strings"
 
 	"github.com/jonesrussell/north-cloud/mcp-north-cloud/internal/client"
 )
@@ -56,6 +62,16 @@ func (s *Server) handleScheduleCrawl(id any, arguments json.RawMessage) *Respons
 
 	if args.SourceID == "" || args.URL == "" || args.IntervalMinutes <= 0 || args.IntervalType == "" {
 		return s.errorResponse(id, InvalidParams, "source_id, url, interval_minutes, and interval_type are required")
+	}
+
+	// Validate interval_type enum
+	validIntervalTypes := map[string]bool{
+		"minutes": true,
+		"hours":   true,
+		"days":    true,
+	}
+	if !validIntervalTypes[args.IntervalType] {
+		return s.errorResponse(id, InvalidParams, "interval_type must be 'minutes', 'hours', or 'days'")
 	}
 
 	job, err := s.crawlerClient.CreateJob(client.CreateJobRequest{
@@ -534,6 +550,172 @@ func (s *Server) handleListIndexes(id any, _ json.RawMessage) *Response {
 	})
 }
 
+// Development tool handlers
+
+func (s *Server) handleLintFile(id any, arguments json.RawMessage) *Response {
+	var args struct {
+		FilePath    string `json:"file_path"`
+		ServiceName string `json:"service_name"`
+	}
+
+	if err := json.Unmarshal(arguments, &args); err != nil {
+		return s.errorResponse(id, InvalidParams, "Invalid arguments: "+err.Error())
+	}
+
+	projectRoot := s.detectProjectRoot()
+	if projectRoot == "" {
+		return s.errorResponse(id, InvalidParams, "Could not determine project root")
+	}
+
+	var serviceDir string
+	var lintCommand *exec.Cmd
+	var lintType string
+	var setupErr error
+
+	if args.ServiceName != "" {
+		serviceDir, lintCommand, lintType, setupErr = s.setupServiceLint(projectRoot, args.ServiceName)
+	} else if args.FilePath != "" {
+		serviceDir, lintCommand, lintType, setupErr = s.setupFileLint(projectRoot, args.FilePath)
+	} else {
+		return s.errorResponse(id, InvalidParams, "Either file_path or service_name must be provided")
+	}
+
+	if setupErr != nil {
+		return s.errorResponse(id, InvalidParams, setupErr.Error())
+	}
+
+	return s.executeLintCommand(id, lintCommand, lintType, serviceDir)
+}
+
+// detectProjectRoot determines the project root directory
+func (s *Server) detectProjectRoot() string {
+	projectRoot := "/home/jones/dev/north-cloud"
+	if _, statErr := os.Stat(projectRoot); os.IsNotExist(statErr) {
+		cwd, getwdErr := os.Getwd()
+		if getwdErr != nil {
+			return ""
+		}
+		for {
+			if _, statErr2 := os.Stat(filepath.Join(cwd, ".cursor")); statErr2 == nil {
+				return cwd
+			}
+			parent := filepath.Dir(cwd)
+			if parent == cwd {
+				break
+			}
+			cwd = parent
+		}
+		return ""
+	}
+	return projectRoot
+}
+
+// setupServiceLint configures linting for an entire service
+func (s *Server) setupServiceLint(projectRoot, serviceName string) (
+	serviceDir string, lintCommand *exec.Cmd, lintType string, err error,
+) {
+	serviceDir = filepath.Join(projectRoot, serviceName)
+	ctx := context.Background()
+
+	if _, statErr := os.Stat(filepath.Join(serviceDir, "package.json")); statErr == nil {
+		cmd := exec.CommandContext(ctx, "npm", "run", "lint")
+		cmd.Dir = serviceDir
+		return serviceDir, cmd, "frontend", nil
+	}
+
+	if _, statErr := os.Stat(filepath.Join(serviceDir, "Taskfile.yml")); statErr == nil {
+		cmd := exec.CommandContext(ctx, "task", "lint")
+		cmd.Dir = serviceDir
+		return serviceDir, cmd, "go", nil
+	}
+
+	return "", nil, "", fmt.Errorf("service '%s' not found or doesn't have a lint configuration", serviceName)
+}
+
+// setupFileLint configures linting for a specific file
+func (s *Server) setupFileLint(projectRoot, filePath string) (
+	serviceDir string, lintCommand *exec.Cmd, lintType string, err error,
+) {
+	if !filepath.IsAbs(filePath) {
+		filePath = filepath.Join(projectRoot, filePath)
+	}
+
+	relPath, relErr := filepath.Rel(projectRoot, filePath)
+	if relErr != nil {
+		return "", nil, "", fmt.Errorf("file path '%s' is not within project root", filePath)
+	}
+
+	parts := strings.Split(relPath, string(filepath.Separator))
+	if len(parts) == 0 {
+		return "", nil, "", errors.New("could not determine service from file path")
+	}
+
+	serviceDir = filepath.Join(projectRoot, parts[0])
+	ext := strings.ToLower(filepath.Ext(filePath))
+	ctx := context.Background()
+
+	switch ext {
+	case ".go":
+		return s.setupGoFileLint(ctx, serviceDir, parts[0])
+	case ".vue", ".ts", ".js", ".tsx", ".jsx":
+		return s.setupFrontendFileLint(ctx, serviceDir, parts[0])
+	default:
+		return "", nil, "", fmt.Errorf(
+			"file type '%s' is not supported for linting. Supported: .go, .vue, .ts, .js, .tsx, .jsx",
+			ext,
+		)
+	}
+}
+
+// setupGoFileLint configures linting for a Go file
+func (s *Server) setupGoFileLint(ctx context.Context, serviceDir, serviceName string) (
+	dir string, lintCommand *exec.Cmd, lintType string, err error,
+) {
+	if _, statErr := os.Stat(filepath.Join(serviceDir, "Taskfile.yml")); statErr == nil {
+		cmd := exec.CommandContext(ctx, "task", "lint")
+		cmd.Dir = serviceDir
+		return serviceDir, cmd, "go", nil
+	}
+	return "", nil, "", fmt.Errorf("service directory '%s' doesn't have a Taskfile.yml for linting", serviceName)
+}
+
+// setupFrontendFileLint configures linting for a frontend file
+func (s *Server) setupFrontendFileLint(ctx context.Context, serviceDir, serviceName string) (
+	dir string, lintCommand *exec.Cmd, lintType string, err error,
+) {
+	if _, statErr := os.Stat(filepath.Join(serviceDir, "package.json")); statErr == nil {
+		cmd := exec.CommandContext(ctx, "npm", "run", "lint")
+		cmd.Dir = serviceDir
+		return serviceDir, cmd, "frontend", nil
+	}
+	return "", nil, "", fmt.Errorf("service directory '%s' doesn't have a package.json for linting", serviceName)
+}
+
+// executeLintCommand runs the lint command and returns the response
+func (s *Server) executeLintCommand(id any, lintCommand *exec.Cmd, lintType, serviceDir string) *Response {
+	output, err := lintCommand.CombinedOutput()
+	outputStr := string(output)
+
+	result := map[string]any{
+		"lint_type":   lintType,
+		"service_dir": serviceDir,
+		"command":     strings.Join(lintCommand.Args, " "),
+		"output":      outputStr,
+		"success":     err == nil,
+	}
+
+	if err != nil {
+		result["error"] = err.Error()
+		if lintCommand.ProcessState != nil {
+			result["exit_code"] = lintCommand.ProcessState.ExitCode()
+		} else {
+			result["exit_code"] = -1
+		}
+	}
+
+	return s.successResponse(id, result)
+}
+
 // Helper methods
 
 func (s *Server) successResponse(id, data any) *Response {
@@ -547,7 +729,10 @@ func (s *Server) successResponse(id, data any) *Response {
 		"isError": false,
 	}
 
-	resultJSON, _ := json.Marshal(result)
+	resultJSON, err := json.Marshal(result)
+	if err != nil {
+		return s.errorResponse(id, InternalError, fmt.Sprintf("Failed to marshal result: %v", err))
+	}
 
 	return &Response{
 		JSONRPC: "2.0",

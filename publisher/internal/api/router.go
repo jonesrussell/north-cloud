@@ -2,10 +2,10 @@ package api
 
 import (
 	"context"
-	"os"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/jonesrussell/north-cloud/publisher/internal/config"
 	"github.com/jonesrussell/north-cloud/publisher/internal/database"
 	infrajwt "github.com/north-cloud/infrastructure/jwt"
 	"github.com/north-cloud/infrastructure/monitoring"
@@ -16,22 +16,22 @@ import (
 type Router struct {
 	repo        *database.Repository
 	redisClient *redis.Client
+	cfg         *config.Config
 }
 
 // NewRouter creates a new API router
-func NewRouter(repo *database.Repository, redisClient *redis.Client) *Router {
+func NewRouter(repo *database.Repository, redisClient *redis.Client, cfg *config.Config) *Router {
 	return &Router{
 		repo:        repo,
 		redisClient: redisClient,
+		cfg:         cfg,
 	}
 }
 
 // SetupRoutes configures all API routes with middleware
 func (r *Router) SetupRoutes() *gin.Engine {
-	// Set Gin mode based on environment
-	if ginMode := os.Getenv("GIN_MODE"); ginMode == "release" {
-		gin.SetMode(gin.ReleaseMode)
-	} else if appDebug := os.Getenv("APP_DEBUG"); appDebug == "false" {
+	// Set Gin mode based on config
+	if !r.cfg.Debug {
 		gin.SetMode(gin.ReleaseMode)
 	} else {
 		gin.SetMode(gin.DebugMode)
@@ -41,7 +41,7 @@ func (r *Router) SetupRoutes() *gin.Engine {
 
 	// Global middleware
 	router.Use(gin.Recovery())
-	router.Use(corsMiddleware()) // Defined in middleware.go
+	router.Use(corsMiddleware(r.cfg.Server.CORSOrigins)) // Defined in middleware.go
 
 	// Health check (public, no auth)
 	router.GET("/health", r.healthCheck)
@@ -55,8 +55,8 @@ func (r *Router) SetupRoutes() *gin.Engine {
 	v1 := router.Group("/api/v1")
 
 	// Add JWT middleware if JWT secret is configured
-	if jwtSecret := os.Getenv("AUTH_JWT_SECRET"); jwtSecret != "" {
-		v1.Use(infrajwt.Middleware(jwtSecret))
+	if r.cfg.Auth.JWTSecret != "" {
+		v1.Use(infrajwt.Middleware(r.cfg.Auth.JWTSecret))
 	}
 
 	// Sources

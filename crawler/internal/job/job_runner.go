@@ -7,7 +7,7 @@ import (
 )
 
 // executeJob executes a job by ID.
-func (s *DBScheduler) executeJob(jobID string) {
+func (s *DBScheduler) executeJob(ctx context.Context, jobID string) {
 	// Check if job is already running
 	s.activeJobsMu.RLock()
 	if _, exists := s.activeJobs[jobID]; exists {
@@ -18,7 +18,7 @@ func (s *DBScheduler) executeJob(jobID string) {
 	s.activeJobsMu.RUnlock()
 
 	// Get job from database
-	job, err := s.repo.GetByID(s.ctx, jobID)
+	job, err := s.repo.GetByID(ctx, jobID)
 	if err != nil {
 		s.logger.Error("Failed to get job", "job_id", jobID, "error", err)
 		return
@@ -29,13 +29,24 @@ func (s *DBScheduler) executeJob(jobID string) {
 	job.Status = "processing"
 	job.StartedAt = &now
 
-	if updateErr := s.repo.Update(s.ctx, job); updateErr != nil {
+	if updateErr := s.repo.Update(ctx, job); updateErr != nil {
 		s.logger.Error("Failed to update job status", "job_id", jobID, "error", updateErr)
 		return
 	}
 
-	// Create job context
-	jobCtx, cancel := context.WithCancel(s.ctx)
+	// Create job context derived from passed context
+	// Also ensure it's cancelled when scheduler stops by listening to s.ctx
+	jobCtx, cancel := context.WithCancel(ctx)
+
+	// Cancel job context when scheduler stops
+	go func() {
+		select {
+		case <-s.ctx.Done():
+			cancel()
+		case <-jobCtx.Done():
+			// Job context already cancelled, nothing to do
+		}
+	}()
 
 	// Track active job
 	s.activeJobsMu.Lock()
@@ -54,7 +65,7 @@ func (s *DBScheduler) executeJob(jobID string) {
 		// Validate source ID is present
 		if job.SourceID == "" {
 			s.logger.Error("Job missing source ID", "job_id", jobID)
-			s.updateJobStatus(jobID, "failed", errors.New("job missing required source_id"))
+			s.updateJobStatus(jobCtx, jobID, "failed", errors.New("job missing required source_id"))
 			return
 		}
 
@@ -63,25 +74,25 @@ func (s *DBScheduler) executeJob(jobID string) {
 		// Execute crawler - Start expects a source ID
 		if startErr := s.crawler.Start(jobCtx, job.SourceID); startErr != nil {
 			s.logger.Error("Failed to start crawler", "job_id", jobID, "error", startErr)
-			s.updateJobStatus(jobID, "failed", startErr)
+			s.updateJobStatus(jobCtx, jobID, "failed", startErr)
 			return
 		}
 
 		// Wait for crawler to complete
 		if waitErr := s.crawler.Wait(); waitErr != nil {
 			s.logger.Error("Crawler failed", "job_id", jobID, "error", waitErr)
-			s.updateJobStatus(jobID, "failed", waitErr)
+			s.updateJobStatus(jobCtx, jobID, "failed", waitErr)
 			return
 		}
 
 		s.logger.Info("Job completed successfully", "job_id", jobID)
-		s.updateJobStatus(jobID, "completed", nil)
+		s.updateJobStatus(jobCtx, jobID, "completed", nil)
 	}()
 }
 
 // updateJobStatus updates the job status in the database.
-func (s *DBScheduler) updateJobStatus(jobID, status string, err error) {
-	job, getErr := s.repo.GetByID(s.ctx, jobID)
+func (s *DBScheduler) updateJobStatus(ctx context.Context, jobID, status string, err error) {
+	job, getErr := s.repo.GetByID(ctx, jobID)
 	if getErr != nil {
 		s.logger.Error("Failed to get job for status update", "job_id", jobID, "error", getErr)
 		return
@@ -99,7 +110,7 @@ func (s *DBScheduler) updateJobStatus(jobID, status string, err error) {
 		job.ErrorMessage = &errMsg
 	}
 
-	if updateErr := s.repo.Update(s.ctx, job); updateErr != nil {
+	if updateErr := s.repo.Update(ctx, job); updateErr != nil {
 		s.logger.Error("Failed to update job status", "job_id", jobID, "error", updateErr)
 	}
 }

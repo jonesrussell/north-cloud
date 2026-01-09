@@ -8,8 +8,6 @@ import (
 	"errors"
 	"fmt"
 	"time"
-
-	"github.com/spf13/viper"
 )
 
 // Default configuration values
@@ -31,41 +29,41 @@ const (
 // Config represents the crawler configuration.
 type Config struct {
 	// MaxConcurrency is the maximum number of concurrent requests
-	MaxConcurrency int `yaml:"max_concurrency"`
+	MaxConcurrency int `env:"CRAWLER_MAX_CONCURRENCY" yaml:"max_concurrency"`
 	// RequestTimeout is the timeout for each request
-	RequestTimeout time.Duration `yaml:"request_timeout"`
+	RequestTimeout time.Duration `env:"CRAWLER_REQUEST_TIMEOUT" yaml:"request_timeout"`
 	// UserAgent is the user agent to use for requests
-	UserAgent string `yaml:"user_agent"`
+	UserAgent string `env:"CRAWLER_USER_AGENT" yaml:"user_agent"`
 	// RespectRobotsTxt indicates whether to respect robots.txt
-	RespectRobotsTxt bool `yaml:"respect_robots_txt"`
+	RespectRobotsTxt bool `env:"CRAWLER_RESPECT_ROBOTS_TXT" yaml:"respect_robots_txt"`
 	// AllowedDomains is the list of domains to crawl
-	AllowedDomains []string `yaml:"allowed_domains"`
+	AllowedDomains []string `env:"CRAWLER_ALLOWED_DOMAINS" yaml:"allowed_domains"`
 	// DisallowedDomains is the list of domains to exclude
-	DisallowedDomains []string `yaml:"disallowed_domains"`
+	DisallowedDomains []string `env:"CRAWLER_DISALLOWED_DOMAINS" yaml:"disallowed_domains"`
 	// Delay is the delay between requests
-	Delay time.Duration `yaml:"delay"`
+	Delay time.Duration `env:"CRAWLER_DELAY" yaml:"delay"`
 	// RandomDelay is the random delay to add to the base delay
-	RandomDelay time.Duration `yaml:"random_delay"`
+	RandomDelay time.Duration `env:"CRAWLER_RANDOM_DELAY" yaml:"random_delay"`
 	// SourcesAPIURL is the URL of the gosources API service
-	SourcesAPIURL string `yaml:"sources_api_url"`
+	SourcesAPIURL string `env:"CRAWLER_SOURCES_API_URL" yaml:"sources_api_url"`
 	// Debug enables debug logging
-	Debug bool `yaml:"debug"`
+	Debug bool `env:"APP_DEBUG" yaml:"debug"`
 	// TLS contains TLS configuration
 	TLS TLSConfig `yaml:"tls"`
 	// MaxRetries is the maximum number of retries for failed requests
-	MaxRetries int `yaml:"max_retries"`
+	MaxRetries int `env:"CRAWLER_MAX_RETRIES" yaml:"max_retries"`
 	// RetryDelay is the delay between retries
-	RetryDelay time.Duration `yaml:"retry_delay"`
+	RetryDelay time.Duration `env:"CRAWLER_RETRY_DELAY" yaml:"retry_delay"`
 	// FollowRedirects indicates whether to follow redirects
-	FollowRedirects bool `yaml:"follow_redirects"`
+	FollowRedirects bool `env:"CRAWLER_FOLLOW_REDIRECTS" yaml:"follow_redirects"`
 	// MaxRedirects is the maximum number of redirects to follow
-	MaxRedirects int `yaml:"max_redirects"`
+	MaxRedirects int `env:"CRAWLER_MAX_REDIRECTS" yaml:"max_redirects"`
 	// ValidateURLs indicates whether to validate URLs before visiting
-	ValidateURLs bool `yaml:"validate_urls"`
+	ValidateURLs bool `env:"CRAWLER_VALIDATE_URLS" yaml:"validate_urls"`
 	// CleanupInterval is the interval for cleaning up resources
-	CleanupInterval time.Duration `yaml:"cleanup_interval"`
+	CleanupInterval time.Duration `env:"CRAWLER_CLEANUP_INTERVAL" yaml:"cleanup_interval"`
 	// SaveDiscoveredLinks indicates whether to save discovered links to database for later processing
-	SaveDiscoveredLinks bool `mapstructure:"save_discovered_links" yaml:"save_discovered_links"`
+	SaveDiscoveredLinks bool `env:"CRAWLER_SAVE_DISCOVERED_LINKS" yaml:"save_discovered_links"`
 }
 
 // Validate validates the crawler configuration.
@@ -205,21 +203,21 @@ type TLSConfig struct {
 	// In this mode, TLS is susceptible to man-in-the-middle attacks. This should be used
 	// only for testing or with trusted sources.
 	// Default: false
-	InsecureSkipVerify bool `yaml:"insecure_skip_verify"`
+	InsecureSkipVerify bool `env:"CRAWLER_TLS_INSECURE_SKIP_VERIFY" yaml:"insecure_skip_verify"`
 
 	// MinVersion is the minimum TLS version that is acceptable.
 	// Default: TLS 1.2
-	MinVersion uint16 `yaml:"min_version"`
+	MinVersion uint16 `env:"CRAWLER_TLS_MIN_VERSION" yaml:"min_version"`
 
 	// MaxVersion is the maximum TLS version that is acceptable.
 	// If zero, the maximum version supported by this package is used, which is currently TLS 1.3.
 	// Default: 0 (use highest supported version)
-	MaxVersion uint16 `yaml:"max_version"`
+	MaxVersion uint16 `env:"CRAWLER_TLS_MAX_VERSION" yaml:"max_version"`
 
 	// PreferServerCipherSuites controls whether the server's preference for cipher suites is honored.
 	// If true, the server's preference is used. If false, the client's preference is used.
 	// Default: true
-	PreferServerCipherSuites bool `yaml:"prefer_server_cipher_suites"`
+	PreferServerCipherSuites bool `env:"CRAWLER_TLS_PREFER_SERVER_CIPHER_SUITES" yaml:"prefer_server_cipher_suites"`
 }
 
 // NewTLSConfig creates a new TLS configuration with secure defaults.
@@ -239,74 +237,4 @@ func (c *TLSConfig) Validate() error {
 			"production use as it makes HTTPS connections vulnerable to man-in-the-middle attacks")
 	}
 	return nil
-}
-
-// LoadFromViper loads crawler configuration from Viper
-// Viper will return values from (in order of precedence):
-// 1. Environment variables
-// 2. Config file
-// 3. Defaults set via viper.SetDefault()
-func LoadFromViper(v *viper.Viper) *Config {
-	cfg := New()
-
-	// Load values from Viper (will use defaults if not set)
-	// Note: parallelism is an alias for max_concurrency
-	if v.IsSet("crawler.parallelism") {
-		cfg.MaxConcurrency = v.GetInt("crawler.parallelism")
-	} else if v.IsSet("crawler.max_concurrency") {
-		cfg.MaxConcurrency = v.GetInt("crawler.max_concurrency")
-	}
-
-	cfg.RequestTimeout = v.GetDuration("crawler.request_timeout")
-	cfg.UserAgent = v.GetString("crawler.user_agent")
-	cfg.RespectRobotsTxt = v.GetBool("crawler.respect_robots_txt")
-	cfg.AllowedDomains = v.GetStringSlice("crawler.allowed_domains")
-	cfg.DisallowedDomains = v.GetStringSlice("crawler.disallowed_domains")
-	cfg.Delay = v.GetDuration("crawler.delay")
-	cfg.RandomDelay = v.GetDuration("crawler.random_delay")
-	cfg.SourcesAPIURL = v.GetString("crawler.sources_api_url")
-	cfg.Debug = v.GetBool("crawler.debug")
-	// Only set MaxRetries if it's actually set and > 0 in Viper
-	// This prevents overwriting the default with 0 when defaults haven't been loaded yet
-	if maxRetries := v.GetInt("crawler.max_retries"); maxRetries > 0 {
-		cfg.MaxRetries = maxRetries
-	}
-	// Only set RetryDelay if it's actually set and > 0 in Viper
-	if retryDelay := v.GetDuration("crawler.retry_delay"); retryDelay > 0 {
-		cfg.RetryDelay = retryDelay
-	}
-	cfg.FollowRedirects = v.GetBool("crawler.follow_redirects")
-	cfg.MaxRedirects = v.GetInt("crawler.max_redirects")
-	cfg.ValidateURLs = v.GetBool("crawler.validate_urls")
-	// Get save_discovered_links - check both the config key and direct env var
-	if v.IsSet("crawler.save_discovered_links") {
-		cfg.SaveDiscoveredLinks = v.GetBool("crawler.save_discovered_links")
-	} else if v.IsSet("CRAWLER_SAVE_DISCOVERED_LINKS") {
-		cfg.SaveDiscoveredLinks = v.GetBool("CRAWLER_SAVE_DISCOVERED_LINKS")
-	} else {
-		cfg.SaveDiscoveredLinks = false
-	}
-	// Only set CleanupInterval if it's actually set and non-zero in Viper
-	// This prevents overwriting the default with 0 when defaults haven't been loaded yet
-	if cleanupInterval := v.GetDuration("crawler.cleanup_interval"); cleanupInterval > 0 {
-		cfg.CleanupInterval = cleanupInterval
-	}
-
-	// Load TLS configuration
-	cfg.TLS.InsecureSkipVerify = v.GetBool("crawler.tls.insecure_skip_verify")
-	if v.IsSet("crawler.tls.min_version") {
-		minVer := v.GetInt("crawler.tls.min_version")
-		if minVer >= 0 && minVer <= 65535 {
-			cfg.TLS.MinVersion = uint16(minVer)
-		}
-	}
-	if v.IsSet("crawler.tls.max_version") {
-		maxVer := v.GetInt("crawler.tls.max_version")
-		if maxVer >= 0 && maxVer <= 65535 {
-			cfg.TLS.MaxVersion = uint16(maxVer)
-		}
-	}
-	cfg.TLS.PreferServerCipherSuites = v.GetBool("crawler.tls.prefer_server_cipher_suites")
-
-	return cfg
 }

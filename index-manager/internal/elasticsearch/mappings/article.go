@@ -1,75 +1,75 @@
 package mappings
 
 // GetArticleMapping returns the Elasticsearch mapping for legacy article indexes
-func GetArticleMapping() map[string]interface{} {
-	return map[string]interface{}{
-		"settings": map[string]interface{}{
+func GetArticleMapping() map[string]any {
+	return map[string]any{
+		"settings": map[string]any{
 			"number_of_shards":   1,
 			"number_of_replicas": 1,
 		},
-		"mappings": map[string]interface{}{
-			"properties": map[string]interface{}{
-				"id": map[string]interface{}{
+		"mappings": map[string]any{
+			"properties": map[string]any{
+				"id": map[string]any{
 					"type": "keyword",
 				},
-				"title": map[string]interface{}{
+				"title": map[string]any{
 					"type": "text",
 				},
-				"body": map[string]interface{}{
+				"body": map[string]any{
 					"type": "text",
 				},
-				"author": map[string]interface{}{
+				"author": map[string]any{
 					"type": "keyword",
 				},
-				"byline_name": map[string]interface{}{
+				"byline_name": map[string]any{
 					"type": "keyword",
 				},
-				"published_date": map[string]interface{}{
+				"published_date": map[string]any{
 					"type": "date",
 				},
-				"source": map[string]interface{}{
+				"source": map[string]any{
 					"type": "keyword",
 				},
-				"tags": map[string]interface{}{
+				"tags": map[string]any{
 					"type": "keyword",
 				},
-				"keywords": map[string]interface{}{
+				"keywords": map[string]any{
 					"type": "keyword",
 				},
-				"intro": map[string]interface{}{
+				"intro": map[string]any{
 					"type": "text",
 				},
-				"description": map[string]interface{}{
+				"description": map[string]any{
 					"type": "text",
 				},
-				"og_title": map[string]interface{}{
+				"og_title": map[string]any{
 					"type": "text",
 				},
-				"og_description": map[string]interface{}{
+				"og_description": map[string]any{
 					"type": "text",
 				},
-				"og_image": map[string]interface{}{
+				"og_image": map[string]any{
 					"type": "keyword",
 				},
-				"og_url": map[string]interface{}{
+				"og_url": map[string]any{
 					"type": "keyword",
 				},
-				"canonical_url": map[string]interface{}{
+				"canonical_url": map[string]any{
 					"type": "keyword",
 				},
-				"word_count": map[string]interface{}{
+				"word_count": map[string]any{
 					"type": "integer",
 				},
-				"category": map[string]interface{}{
+				"category": map[string]any{
 					"type": "keyword",
 				},
-				"section": map[string]interface{}{
+				"section": map[string]any{
 					"type": "keyword",
 				},
-				"created_at": map[string]interface{}{
+				"created_at": map[string]any{
 					"type": "date",
 				},
-				"updated_at": map[string]interface{}{
+				"updated_at": map[string]any{
 					"type": "date",
 				},
 			},

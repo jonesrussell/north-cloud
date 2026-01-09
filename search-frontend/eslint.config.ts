@@ -5,8 +5,20 @@ import pluginVue from "eslint-plugin-vue";
 import { defineConfig } from "eslint/config";
 
 export default defineConfig([
+  {
+    ignores: ["node_modules/**", "dist/**", "*.log", ".vscode/**", ".idea/**"],
+  },
   { files: ["**/*.{js,mjs,cjs,ts,mts,cts,vue}"], plugins: { js }, extends: ["js/recommended"], languageOptions: { globals: globals.browser } },
   tseslint.configs.recommended,
   pluginVue.configs["flat/essential"],
-  { files: ["**/*.vue"], languageOptions: { parserOptions: { parser: tseslint.parser } } },
+  {
+    files: ["**/*.vue"],
+    languageOptions: { parserOptions: { parser: tseslint.parser } },
+  },
+  {
+    files: ["**/*.{js,ts}"],
+    rules: {
+      "@typescript-eslint/no-unused-vars": ["warn", { argsIgnorePattern: "^_" }],
+    },
+  },
 ]);

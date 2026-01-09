@@ -4,16 +4,16 @@ import "time"
 
 // ClassificationRule represents a rule for classifying content
 type ClassificationRule struct {
-	ID            int       `json:"id" db:"id"`
-	RuleName      string    `json:"rule_name" db:"rule_name"`
-	RuleType      string    `json:"rule_type" db:"rule_type"` // "content_type", "topic", "quality"
-	TopicName     string    `json:"topic_name,omitempty" db:"topic_name"`
-	Keywords      []string  `json:"keywords" db:"keywords"`
-	MinConfidence float64   `json:"min_confidence" db:"min_confidence"`
-	Enabled       bool      `json:"enabled" db:"enabled"`
-	Priority      int       `json:"priority" db:"priority"` // Higher priority rules evaluated first
-	CreatedAt     time.Time `json:"created_at" db:"created_at"`
-	UpdatedAt     time.Time `json:"updated_at" db:"updated_at"`
+	ID            int       `db:"id"             json:"id"`
+	RuleName      string    `db:"rule_name"      json:"rule_name"`
+	RuleType      string    `db:"rule_type"      json:"rule_type"` // "content_type", "topic", "quality"
+	TopicName     string    `db:"topic_name"     json:"topic_name,omitempty"`
+	Keywords      []string  `db:"keywords"       json:"keywords"`
+	MinConfidence float64   `db:"min_confidence" json:"min_confidence"`
+	Enabled       bool      `db:"enabled"        json:"enabled"`
+	Priority      int       `db:"priority"       json:"priority"` // Higher priority rules evaluated first
+	CreatedAt     time.Time `db:"created_at"     json:"created_at"`
+	UpdatedAt     time.Time `db:"updated_at"     json:"updated_at"`
 }
 
 // RuleType constants
@@ -25,54 +25,54 @@ const (
 
 // SourceReputation represents source trustworthiness data
 type SourceReputation struct {
-	ID                  int        `json:"id" db:"id"`
-	SourceName          string     `json:"source_name" db:"source_name"`
-	SourceURL           string     `json:"source_url,omitempty" db:"source_url"`
-	Category            string     `json:"category" db:"category"`                 // "news", "blog", "government", "unknown"
-	ReputationScore     int        `json:"reputation_score" db:"reputation_score"` // 0-100
-	TotalArticles       int        `json:"total_articles" db:"total_articles"`
-	AverageQualityScore float64    `json:"average_quality_score" db:"average_quality_score"`
-	SpamCount           int        `json:"spam_count" db:"spam_count"`
-	LastClassifiedAt    *time.Time `json:"last_classified_at,omitempty" db:"last_classified_at"`
-	CreatedAt           time.Time  `json:"created_at" db:"created_at"`
-	UpdatedAt           time.Time  `json:"updated_at" db:"updated_at"`
+	ID                  int        `db:"id"                    json:"id"`
+	SourceName          string     `db:"source_name"           json:"source_name"`
+	SourceURL           string     `db:"source_url"            json:"source_url,omitempty"`
+	Category            string     `db:"category"              json:"category"`         // "news", "blog", "government", "unknown"
+	ReputationScore     int        `db:"reputation_score"      json:"reputation_score"` // 0-100
+	TotalArticles       int        `db:"total_articles"        json:"total_articles"`
+	AverageQualityScore float64    `db:"average_quality_score" json:"average_quality_score"`
+	SpamCount           int        `db:"spam_count"            json:"spam_count"`
+	LastClassifiedAt    *time.Time `db:"last_classified_at"    json:"last_classified_at,omitempty"`
+	CreatedAt           time.Time  `db:"created_at"            json:"created_at"`
+	UpdatedAt           time.Time  `db:"updated_at"            json:"updated_at"`
 }
 
 // ClassificationHistory represents audit trail for classifications
 type ClassificationHistory struct {
-	ID                    int       `json:"id" db:"id"`
-	ContentID             string    `json:"content_id" db:"content_id"`
-	ContentURL            string    `json:"content_url" db:"content_url"`
-	SourceName            string    `json:"source_name" db:"source_name"`
-	ContentType           string    `json:"content_type,omitempty" db:"content_type"`
-	ContentSubtype        string    `json:"content_subtype,omitempty" db:"content_subtype"`
-	QualityScore          int       `json:"quality_score,omitempty" db:"quality_score"`
-	Topics                []string  `json:"topics,omitempty" db:"topics"`
-	SourceReputationScore int       `json:"source_reputation_score,omitempty" db:"source_reputation_score"`
-	ClassifierVersion     string    `json:"classifier_version" db:"classifier_version"`
-	ClassificationMethod  string    `json:"classification_method" db:"classification_method"`
-	ModelVersion          string    `json:"model_version,omitempty" db:"model_version"`
-	Confidence            float64   `json:"confidence,omitempty" db:"confidence"`
-	ProcessingTimeMs      int       `json:"processing_time_ms,omitempty" db:"processing_time_ms"`
-	ClassifiedAt          time.Time `json:"classified_at" db:"classified_at"`
+	ID                    int       `db:"id"                      json:"id"`
+	ContentID             string    `db:"content_id"              json:"content_id"`
+	ContentURL            string    `db:"content_url"             json:"content_url"`
+	SourceName            string    `db:"source_name"             json:"source_name"`
+	ContentType           string    `db:"content_type"            json:"content_type,omitempty"`
+	ContentSubtype        string    `db:"content_subtype"         json:"content_subtype,omitempty"`
+	QualityScore          int       `db:"quality_score"           json:"quality_score,omitempty"`
+	Topics                []string  `db:"topics"                  json:"topics,omitempty"`
+	SourceReputationScore int       `db:"source_reputation_score" json:"source_reputation_score,omitempty"`
+	ClassifierVersion     string    `db:"classifier_version"      json:"classifier_version"`
+	ClassificationMethod  string    `db:"classification_method"   json:"classification_method"`
+	ModelVersion          string    `db:"model_version"           json:"model_version,omitempty"`
+	Confidence            float64   `db:"confidence"              json:"confidence,omitempty"`
+	ProcessingTimeMs      int       `db:"processing_time_ms"      json:"processing_time_ms,omitempty"`
+	ClassifiedAt          time.Time `db:"classified_at"           json:"classified_at"`
 }
 
 // MLModel represents metadata about ML models
 type MLModel struct {
-	ID              int                    `json:"id" db:"id"`
-	ModelName       string                 `json:"model_name" db:"model_name"`
-	ModelVersion    string                 `json:"model_version" db:"model_version"`
-	ModelType       string                 `json:"model_type" db:"model_type"` // "content_type", "topic", "quality"
-	Accuracy        float64                `json:"accuracy,omitempty" db:"accuracy"`
-	F1Score         float64                `json:"f1_score,omitempty" db:"f1_score"`
-	PrecisionScore  float64                `json:"precision_score,omitempty" db:"precision_score"`
-	RecallScore     float64                `json:"recall_score,omitempty" db:"recall_score"`
-	TrainedAt       *time.Time             `json:"trained_at,omitempty" db:"trained_at"`
-	FeatureSet      []string               `json:"feature_set,omitempty" db:"feature_set"`
-	Hyperparameters map[string]interface{} `json:"hyperparameters,omitempty" db:"hyperparameters"`
-	ModelPath       string                 `json:"model_path,omitempty" db:"model_path"`
-	IsActive        bool                   `json:"is_active" db:"is_active"`
-	Enabled         bool                   `json:"enabled" db:"enabled"`
-	CreatedAt       time.Time              `json:"created_at" db:"created_at"`
-	UpdatedAt       time.Time              `json:"updated_at" db:"updated_at"`
+	ID              int            `db:"id"              json:"id"`
+	ModelName       string         `db:"model_name"      json:"model_name"`
+	ModelVersion    string         `db:"model_version"   json:"model_version"`
+	ModelType       string         `db:"model_type"      json:"model_type"` // "content_type", "topic", "quality"
+	Accuracy        float64        `db:"accuracy"        json:"accuracy,omitempty"`
+	F1Score         float64        `db:"f1_score"        json:"f1_score,omitempty"`
+	PrecisionScore  float64        `db:"precision_score" json:"precision_score,omitempty"`
+	RecallScore     float64        `db:"recall_score"    json:"recall_score,omitempty"`
+	TrainedAt       *time.Time     `db:"trained_at"      json:"trained_at,omitempty"`
+	FeatureSet      []string       `db:"feature_set"     json:"feature_set,omitempty"`
+	Hyperparameters map[string]any `db:"hyperparameters" json:"hyperparameters,omitempty"`
+	ModelPath       string         `db:"model_path"      json:"model_path,omitempty"`
+	IsActive        bool           `db:"is_active"       json:"is_active"`
+	Enabled         bool           `db:"enabled"         json:"enabled"`
+	CreatedAt       time.Time      `db:"created_at"      json:"created_at"`
+	UpdatedAt       time.Time      `db:"updated_at"      json:"updated_at"`
 }

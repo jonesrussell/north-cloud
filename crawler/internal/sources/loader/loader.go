@@ -5,10 +5,11 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
+	"os"
 	"time"
 
 	"github.com/mitchellh/mapstructure"
-	"github.com/spf13/viper"
+	"gopkg.in/yaml.v3"
 )
 
 var (
@@ -98,22 +99,20 @@ type PageSelectors struct {
 	Exclude       []string `mapstructure:"exclude"`
 }
 
+// sourcesFile represents the structure of a sources YAML file.
+type sourcesFile struct {
+	Sources []map[string]any `yaml:"sources"`
+}
+
 // Loader handles loading and validating source configurations.
 type Loader struct {
 	configPath string
-	viper      *viper.Viper
 }
 
 // NewLoader creates a new Loader instance.
 func NewLoader(configPath string) (*Loader, error) {
-	v, err := newConfigLoader(configPath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create config loader: %w", err)
-	}
-
 	return &Loader{
 		configPath: configPath,
-		viper:      v,
 	}, nil
 }
 
@@ -132,28 +131,27 @@ func (l *Loader) LoadSources() ([]Config, error) {
 	return configs, nil
 }
 
-// loadRawSources loads the raw source data from the configuration.
+// loadRawSources loads the raw source data from the configuration file.
 func (l *Loader) loadRawSources() ([]map[string]any, error) {
-	if !l.viper.IsSet("sources") {
+	data, err := os.ReadFile(l.configPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			// If config file doesn't exist, return empty sources
+			return []map[string]any{}, nil
+		}
+		return nil, fmt.Errorf("failed to read config file: %w", err)
+	}
+
+	var file sourcesFile
+	if unmarshalErr := yaml.Unmarshal(data, &file); unmarshalErr != nil {
+		return nil, fmt.Errorf("failed to parse YAML: %w", unmarshalErr)
+	}
+
+	if len(file.Sources) == 0 {
 		return nil, ErrNoSources
 	}
 
-	sourcesRaw := l.viper.Get("sources")
-	sourcesArray, ok := sourcesRaw.([]any)
-	if !ok {
-		return nil, ErrInvalidSourceFormat
-	}
-
-	sources := make([]map[string]any, 0, len(sourcesArray))
-	for _, src := range sourcesArray {
-		srcMap, srcOk := src.(map[string]any)
-		if !srcOk {
-			continue
-		}
-		sources = append(sources, srcMap)
-	}
-
-	return sources, nil
+	return file.Sources, nil
 }
 
 // validateAndConvertSources validates and converts the sources to Config structs.
@@ -285,22 +283,4 @@ func (l *Loader) validateTime(cfg *Config) error {
 		}
 	}
 	return nil
-}
-
-// newConfigLoader creates a new Viper instance for loading configuration.
-func newConfigLoader(path string) (*viper.Viper, error) {
-	v := viper.New()
-	v.SetConfigFile(path)
-	v.SetConfigType("yaml")
-
-	if err := v.ReadInConfig(); err != nil {
-		var configFileNotFound viper.ConfigFileNotFoundError
-		if !errors.As(err, &configFileNotFound) {
-			return nil, fmt.Errorf("failed to read config file: %w", err)
-		}
-		// If config file is not found, create a default config
-		v.Set("sources", []map[string]any{})
-	}
-
-	return v, nil
 }

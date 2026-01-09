@@ -32,16 +32,16 @@ type ClassificationStats struct {
 
 // TopicStat represents statistics for a single topic.
 type TopicStat struct {
-	Topic      string  `json:"topic" db:"topic"`
-	Count      int     `json:"count" db:"count"`
-	AvgQuality float64 `json:"avg_quality,omitempty" db:"avg_quality"`
+	Topic      string  `db:"topic"       json:"topic"`
+	Count      int     `db:"count"       json:"count"`
+	AvgQuality float64 `db:"avg_quality" json:"avg_quality,omitempty"`
 }
 
 // SourceStat represents statistics for a single source.
 type SourceStat struct {
-	SourceName string  `json:"source_name" db:"source_name"`
-	Count      int     `json:"count" db:"count"`
-	AvgQuality float64 `json:"avg_quality,omitempty" db:"avg_quality"`
+	SourceName string  `db:"source_name" json:"source_name"`
+	Count      int     `db:"count"       json:"count"`
+	AvgQuality float64 `db:"avg_quality" json:"avg_quality,omitempty"`
 }
 
 // Create inserts a new classification history record.

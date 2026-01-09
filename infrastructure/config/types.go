@@ -82,7 +82,7 @@ func (c *DatabaseConfig) SetDefaults() {
 
 // ElasticsearchConfig holds Elasticsearch configuration.
 type ElasticsearchConfig struct {
-	URL        string        `yaml:"url" env:"ELASTICSEARCH_URL"`
+	URL        string        `env:"ELASTICSEARCH_URL" yaml:"url"`
 	Username   string        `yaml:"username"`
 	Password   string        `yaml:"password"`
 	MaxRetries int           `yaml:"max_retries"`
@@ -104,7 +104,7 @@ func (c *ElasticsearchConfig) SetDefaults() {
 
 // RedisConfig holds Redis configuration.
 type RedisConfig struct {
-	URL      string `yaml:"url" env:"REDIS_URL"`
+	URL      string `env:"REDIS_URL" yaml:"url"`
 	Password string `yaml:"password"`
 	DB       int    `yaml:"db"`
 }
@@ -118,8 +118,8 @@ func (c *RedisConfig) SetDefaults() {
 
 // LoggingConfig holds logging configuration.
 type LoggingConfig struct {
-	Level  string `yaml:"level" env:"LOG_LEVEL"`
-	Format string `yaml:"format" env:"LOG_FORMAT"`
+	Level  string `env:"LOG_LEVEL"  yaml:"level"`
+	Format string `env:"LOG_FORMAT" yaml:"format"`
 }
 
 // SetDefaults applies default values for LoggingConfig.

@@ -4,20 +4,20 @@ import "time"
 
 // Document represents a document in Elasticsearch
 type Document struct {
-	ID             string                 `json:"id"`
-	Title          string                 `json:"title,omitempty"`
-	URL            string                 `json:"url,omitempty"`
-	SourceName     string                 `json:"source_name,omitempty"`
-	PublishedDate  *time.Time             `json:"published_date,omitempty"`
-	CrawledAt      *time.Time             `json:"crawled_at,omitempty"`
-	QualityScore   int                    `json:"quality_score,omitempty"`
-	ContentType    string                 `json:"content_type,omitempty"`
-	Topics         []string               `json:"topics,omitempty"`
-	IsCrimeRelated bool                   `json:"is_crime_related,omitempty"`
-	Body           string                 `json:"body,omitempty"`
-	RawText        string                 `json:"raw_text,omitempty"`
-	RawHTML        string                 `json:"raw_html,omitempty"`
-	Meta           map[string]interface{} `json:"meta,omitempty"`
+	ID             string         `json:"id"`
+	Title          string         `json:"title,omitempty"`
+	URL            string         `json:"url,omitempty"`
+	SourceName     string         `json:"source_name,omitempty"`
+	PublishedDate  *time.Time     `json:"published_date,omitempty"`
+	CrawledAt      *time.Time     `json:"crawled_at,omitempty"`
+	QualityScore   int            `json:"quality_score,omitempty"`
+	ContentType    string         `json:"content_type,omitempty"`
+	Topics         []string       `json:"topics,omitempty"`
+	IsCrimeRelated bool           `json:"is_crime_related,omitempty"`
+	Body           string         `json:"body,omitempty"`
+	RawText        string         `json:"raw_text,omitempty"`
+	RawHTML        string         `json:"raw_html,omitempty"`
+	Meta           map[string]any `json:"meta,omitempty"`
 }
 
 // DocumentQueryRequest represents a request to query documents
@@ -66,5 +66,5 @@ type DocumentQueryResponse struct {
 
 // BulkDeleteRequest represents a request to delete multiple documents
 type BulkDeleteRequest struct {
-	DocumentIDs []string `json:"document_ids" binding:"required"`
+	DocumentIDs []string `binding:"required" json:"document_ids"`
 }

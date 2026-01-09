@@ -34,8 +34,8 @@ func NewQueryBuilder(cfg *config.ElasticsearchConfig) *QueryBuilder {
 }
 
 // Build constructs the complete Elasticsearch query
-func (qb *QueryBuilder) Build(req *domain.SearchRequest) map[string]interface{} {
-	query := map[string]interface{}{
+func (qb *QueryBuilder) Build(req *domain.SearchRequest) map[string]any {
+	query := map[string]any{
 		"query": qb.buildBoolQuery(req),
 		"from":  (req.Pagination.Page - 1) * req.Pagination.Size,
 		"size":  req.Pagination.Size,
@@ -73,16 +73,16 @@ func (qb *QueryBuilder) Build(req *domain.SearchRequest) map[string]interface{} 
 }
 
 // buildBoolQuery constructs the bool query with must, filter, and should clauses
-func (qb *QueryBuilder) buildBoolQuery(req *domain.SearchRequest) map[string]interface{} {
-	boolQuery := map[string]interface{}{
-		"must":   []interface{}{},
-		"filter": []interface{}{},
-		"should": []interface{}{},
+func (qb *QueryBuilder) buildBoolQuery(req *domain.SearchRequest) map[string]any {
+	boolQuery := map[string]any{
+		"must":   []any{},
+		"filter": []any{},
+		"should": []any{},
 	}
 
 	// Multi-match query for full-text search
 	if req.Query != "" {
-		boolQuery["must"] = []interface{}{
+		boolQuery["must"] = []any{
 			qb.buildMultiMatchQuery(req.Query),
 		}
 	}
@@ -99,11 +99,11 @@ func (qb *QueryBuilder) buildBoolQuery(req *domain.SearchRequest) map[string]int
 		boolQuery["should"] = shouldClauses
 	}
 
-	return map[string]interface{}{"bool": boolQuery}
+	return map[string]any{"bool": boolQuery}
 }
 
 // buildMultiMatchQuery creates a multi-match query with field boosting
-func (qb *QueryBuilder) buildMultiMatchQuery(query string) map[string]interface{} {
+func (qb *QueryBuilder) buildMultiMatchQuery(query string) map[string]any {
 	boost := qb.config.DefaultBoost
 
 	// Count words in query to adjust minimum_should_match
@@ -111,7 +111,7 @@ func (qb *QueryBuilder) buildMultiMatchQuery(query string) map[string]interface{
 
 	// For single-word queries, don't use minimum_should_match
 	// For multi-word queries, use a more lenient setting
-	multiMatch := map[string]interface{}{
+	multiMatch := map[string]any{
 		"query": query,
 		"fields": []string{
 			"title^" + floatToString(boost.Title),
@@ -131,19 +131,19 @@ func (qb *QueryBuilder) buildMultiMatchQuery(query string) map[string]interface{
 		multiMatch["minimum_should_match"] = "75%"
 	}
 
-	return map[string]interface{}{
+	return map[string]any{
 		"multi_match": multiMatch,
 	}
 }
 
 // buildFilters constructs filter clauses
-func (qb *QueryBuilder) buildFilters(filters *domain.Filters) []interface{} {
-	var result []interface{}
+func (qb *QueryBuilder) buildFilters(filters *domain.Filters) []any {
+	var result []any
 
 	// Topics filter - use .keyword subfield for text fields
 	if len(filters.Topics) > 0 {
-		result = append(result, map[string]interface{}{
-			"terms": map[string]interface{}{
+		result = append(result, map[string]any{
+			"terms": map[string]any{
 				"topics.keyword": filters.Topics,
 			},
 		})
@@ -154,8 +154,8 @@ func (qb *QueryBuilder) buildFilters(filters *domain.Filters) []interface{} {
 	// Using .keyword works for text fields, but will fail for pure keyword fields
 	// For now, using .keyword since existing indexes appear to be text
 	if filters.ContentType != "" {
-		result = append(result, map[string]interface{}{
-			"term": map[string]interface{}{
+		result = append(result, map[string]any{
+			"term": map[string]any{
 				"content_type.keyword": filters.ContentType,
 			},
 		})
@@ -165,7 +165,7 @@ func (qb *QueryBuilder) buildFilters(filters *domain.Filters) []interface{} {
 	// Only add filter if there's an actual constraint (min > 0 or max < 100)
 	// If both are at defaults (min=0, max=100), don't add the filter
 	if filters.MinQualityScore > 0 || filters.MaxQualityScore < maxQualityScoreValue {
-		qualityRange := make(map[string]interface{})
+		qualityRange := make(map[string]any)
 		if filters.MinQualityScore > 0 {
 			qualityRange["gte"] = filters.MinQualityScore
 		}
@@ -174,8 +174,8 @@ func (qb *QueryBuilder) buildFilters(filters *domain.Filters) []interface{} {
 		}
 		// Only add filter if we have at least one constraint
 		if len(qualityRange) > 0 {
-			result = append(result, map[string]interface{}{
-				"range": map[string]interface{}{
+			result = append(result, map[string]any{
+				"range": map[string]any{
 					"quality_score": qualityRange,
 				},
 			})
@@ -184,8 +184,8 @@ func (qb *QueryBuilder) buildFilters(filters *domain.Filters) []interface{} {
 
 	// Crime-related filter
 	if filters.IsCrimeRelated != nil {
-		result = append(result, map[string]interface{}{
-			"term": map[string]interface{}{
+		result = append(result, map[string]any{
+			"term": map[string]any{
 				"is_crime_related": *filters.IsCrimeRelated,
 			},
 		})
@@ -193,8 +193,8 @@ func (qb *QueryBuilder) buildFilters(filters *domain.Filters) []interface{} {
 
 	// Source names filter - use .keyword subfield for text fields
 	if len(filters.SourceNames) > 0 {
-		result = append(result, map[string]interface{}{
-			"terms": map[string]interface{}{
+		result = append(result, map[string]any{
+			"terms": map[string]any{
 				"source_name.keyword": filters.SourceNames,
 			},
 		})
@@ -202,7 +202,7 @@ func (qb *QueryBuilder) buildFilters(filters *domain.Filters) []interface{} {
 
 	// Date range filter - use crawled_at since published_date may not exist in all documents
 	if filters.FromDate != nil || filters.ToDate != nil {
-		dateRange := map[string]interface{}{}
+		dateRange := map[string]any{}
 		if filters.FromDate != nil {
 			dateRange["gte"] = filters.FromDate.Format("2006-01-02T15:04:05Z07:00")
 		}
@@ -210,8 +210,8 @@ func (qb *QueryBuilder) buildFilters(filters *domain.Filters) []interface{} {
 			dateRange["lte"] = filters.ToDate.Format("2006-01-02T15:04:05Z07:00")
 		}
 		// Use crawled_at as it's more reliable (always exists)
-		result = append(result, map[string]interface{}{
-			"range": map[string]interface{}{
+		result = append(result, map[string]any{
+			"range": map[string]any{
 				"crawled_at": dateRange,
 			},
 		})
@@ -221,15 +221,15 @@ func (qb *QueryBuilder) buildFilters(filters *domain.Filters) []interface{} {
 }
 
 // buildBoosts adds score boosting for recency and quality
-func (qb *QueryBuilder) buildBoosts() []interface{} {
+func (qb *QueryBuilder) buildBoosts() []any {
 	// Boost recent content using crawled_at (more reliable than published_date)
 	// Use crawled_at since published_date may not exist in all documents
 	// Boost high-quality content
-	return []interface{}{
-		map[string]interface{}{
-			"function_score": map[string]interface{}{
-				"gauss": map[string]interface{}{
-					"crawled_at": map[string]interface{}{
+	return []any{
+		map[string]any{
+			"function_score": map[string]any{
+				"gauss": map[string]any{
+					"crawled_at": map[string]any{
 						"origin": "now",
 						"scale":  "30d",
 						"decay":  recencyDecayFactor,
@@ -237,9 +237,9 @@ func (qb *QueryBuilder) buildBoosts() []interface{} {
 				},
 			},
 		},
-		map[string]interface{}{
-			"function_score": map[string]interface{}{
-				"field_value_factor": map[string]interface{}{
+		map[string]any{
+			"function_score": map[string]any{
+				"field_value_factor": map[string]any{
 					"field":    "quality_score",
 					"factor":   qualityBoostFactor,
 					"modifier": "log1p",
@@ -250,40 +250,40 @@ func (qb *QueryBuilder) buildBoosts() []interface{} {
 }
 
 // buildSort constructs sort criteria
-func (qb *QueryBuilder) buildSort(req *domain.SearchRequest) []interface{} {
-	var sortCriteria []interface{}
+func (qb *QueryBuilder) buildSort(req *domain.SearchRequest) []any {
+	var sortCriteria []any
 
 	switch req.Sort.Field {
 	case "relevance":
-		sortCriteria = append(sortCriteria, map[string]interface{}{
-			"_score": map[string]interface{}{
+		sortCriteria = append(sortCriteria, map[string]any{
+			"_score": map[string]any{
 				"order": req.Sort.Order,
 			},
 		})
 	case "published_date":
 		// Use crawled_at instead since published_date may not exist in all documents
 		// This is more reliable for sorting
-		sortCriteria = append(sortCriteria, map[string]interface{}{
-			"crawled_at": map[string]interface{}{
+		sortCriteria = append(sortCriteria, map[string]any{
+			"crawled_at": map[string]any{
 				"order": req.Sort.Order,
 			},
 		})
 	case "quality_score":
-		sortCriteria = append(sortCriteria, map[string]interface{}{
-			"quality_score": map[string]interface{}{
+		sortCriteria = append(sortCriteria, map[string]any{
+			"quality_score": map[string]any{
 				"order": req.Sort.Order,
 			},
 		})
 	case "crawled_at":
-		sortCriteria = append(sortCriteria, map[string]interface{}{
-			"crawled_at": map[string]interface{}{
+		sortCriteria = append(sortCriteria, map[string]any{
+			"crawled_at": map[string]any{
 				"order": req.Sort.Order,
 			},
 		})
 	default:
 		// Default to relevance if field is unknown
-		sortCriteria = append(sortCriteria, map[string]interface{}{
-			"_score": map[string]interface{}{
+		sortCriteria = append(sortCriteria, map[string]any{
+			"_score": map[string]any{
 				"order": "desc",
 			},
 		})
@@ -291,8 +291,8 @@ func (qb *QueryBuilder) buildSort(req *domain.SearchRequest) []interface{} {
 
 	// Always add secondary sort by relevance score
 	if req.Sort.Field != "relevance" {
-		sortCriteria = append(sortCriteria, map[string]interface{}{
-			"_score": map[string]interface{}{
+		sortCriteria = append(sortCriteria, map[string]any{
+			"_score": map[string]any{
 				"order": "desc",
 			},
 		})
@@ -302,17 +302,17 @@ func (qb *QueryBuilder) buildSort(req *domain.SearchRequest) []interface{} {
 }
 
 // buildHighlight constructs highlight configuration
-func (qb *QueryBuilder) buildHighlight() map[string]interface{} {
-	return map[string]interface{}{
-		"fields": map[string]interface{}{
-			"title": map[string]interface{}{
+func (qb *QueryBuilder) buildHighlight() map[string]any {
+	return map[string]any{
+		"fields": map[string]any{
+			"title": map[string]any{
 				"number_of_fragments": 1,
 			},
-			"body": map[string]interface{}{
+			"body": map[string]any{
 				"fragment_size":       qb.config.HighlightFragmentSize,
 				"number_of_fragments": qb.config.HighlightMaxFragments,
 			},
-			"raw_text": map[string]interface{}{
+			"raw_text": map[string]any{
 				"fragment_size":       qb.config.HighlightFragmentSize,
 				"number_of_fragments": qb.config.HighlightMaxFragments,
 			},
@@ -323,10 +323,10 @@ func (qb *QueryBuilder) buildHighlight() map[string]interface{} {
 }
 
 // buildAggregations constructs faceted search aggregations
-func (qb *QueryBuilder) buildAggregations() map[string]interface{} {
-	return map[string]interface{}{
-		"topics": map[string]interface{}{
-			"terms": map[string]interface{}{
+func (qb *QueryBuilder) buildAggregations() map[string]any {
+	return map[string]any{
+		"topics": map[string]any{
+			"terms": map[string]any{
 				"field": "topics.keyword",
 				"size":  topicsAggSize,
 			},
@@ -334,22 +334,22 @@ func (qb *QueryBuilder) buildAggregations() map[string]interface{} {
 		// content_type aggregation - use .keyword subfield
 		// Note: Some indexes have content_type as text (with .keyword), others as keyword (direct)
 		// Using .keyword works for text fields (which is what existing indexes have)
-		"content_types": map[string]interface{}{
-			"terms": map[string]interface{}{
+		"content_types": map[string]any{
+			"terms": map[string]any{
 				"field": "content_type.keyword",
 				"size":  contentTypesAggSize,
 			},
 		},
-		"sources": map[string]interface{}{
-			"terms": map[string]interface{}{
+		"sources": map[string]any{
+			"terms": map[string]any{
 				"field": "source_name.keyword",
 				"size":  sourcesAggSize,
 			},
 		},
-		"quality_ranges": map[string]interface{}{
-			"range": map[string]interface{}{
+		"quality_ranges": map[string]any{
+			"range": map[string]any{
 				"field": "quality_score",
-				"ranges": []map[string]interface{}{
+				"ranges": []map[string]any{
 					{"key": "0-39", "from": 0, "to": qualityRangeLow},
 					{"key": "40-59", "from": qualityRangeLow, "to": qualityRangeMid},
 					{"key": "60-79", "from": qualityRangeMid, "to": qualityRangeHigh},
