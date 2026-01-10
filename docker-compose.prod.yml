@@ -397,10 +397,10 @@ services:
     environment:
       LOKI_LOG_LEVEL: info
 
-  promtail:
+  alloy:
     restart: always
     environment:
-      LOG_LEVEL: info
+      ALLOY_LOG_LEVEL: info
 
   grafana:
     restart: always
