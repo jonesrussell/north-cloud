@@ -63,6 +63,7 @@ export interface IndexStats {
   total_indexes: number
   indexes_by_type: Record<string, number>
   total_documents: number
+  indexed_today?: number
   cluster_health: HealthStatus
   indexes_by_health: Record<string, number>
 }

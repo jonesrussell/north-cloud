@@ -407,11 +407,11 @@ func (r *ExecutionRepository) GetStuckJobs(ctx context.Context, threshold time.D
 	return jobs, nil
 }
 
-// GetTodayStats returns today's aggregated crawled and indexed counts from completed job executions.
+// GetTodayStats returns today's count of completed crawl jobs and total indexed items.
 func (r *ExecutionRepository) GetTodayStats(ctx context.Context) (crawledToday, indexedToday int64, err error) {
 	query := `
 		SELECT 
-			COALESCE(SUM(items_crawled), 0) as crawled_today,
+			COUNT(*) as crawled_today,
 			COALESCE(SUM(items_indexed), 0) as indexed_today
 		FROM job_executions
 		WHERE started_at >= CURRENT_DATE

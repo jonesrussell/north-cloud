@@ -340,10 +340,18 @@ func (s *IntervalScheduler) handleJobSuccess(jobExec *JobExecution, startTime *t
 	now := time.Now()
 	durationMs := time.Since(*startTime).Milliseconds()
 
+	// Get metrics from crawler
+	metrics := s.crawler.GetMetrics()
+	itemsCrawled := int(metrics.ProcessedCount)
+	// Items are indexed immediately after crawling, so indexed count equals crawled count
+	itemsIndexed := itemsCrawled
+
 	// Update execution record
 	execution.Status = "completed"
 	execution.CompletedAt = &now
 	execution.DurationMs = &durationMs
+	execution.ItemsCrawled = itemsCrawled
+	execution.ItemsIndexed = itemsIndexed
 
 	if err := s.executionRepo.Update(s.ctx, execution); err != nil {
 		s.logger.Error("Failed to update execution",
@@ -378,6 +386,8 @@ func (s *IntervalScheduler) handleJobSuccess(jobExec *JobExecution, startTime *t
 	s.logger.Info("Job completed successfully",
 		infralogger.String("job_id", job.ID),
 		infralogger.Int64("duration_ms", durationMs),
+		infralogger.Int("items_crawled", itemsCrawled),
+		infralogger.Int("items_indexed", itemsIndexed),
 		infralogger.Any("next_run_at", job.NextRunAt),
 	)
 }
