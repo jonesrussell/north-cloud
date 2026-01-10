@@ -10,10 +10,6 @@ import (
 	infralogger "github.com/north-cloud/infrastructure/logger"
 )
 
-const (
-	minArgsCount = 1
-)
-
 var (
 	// version can be set at build time via -ldflags
 	version = "dev"
