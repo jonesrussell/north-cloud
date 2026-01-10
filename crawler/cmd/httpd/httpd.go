@@ -57,7 +57,6 @@ type JobsSchedulerResult struct {
 
 const (
 	signalChannelBufferSize = 1
-	errorChannelBufferSize  = 1
 	defaultShutdownTimeout  = 30 * time.Second
 )
 
