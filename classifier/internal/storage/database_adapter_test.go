@@ -54,18 +54,80 @@ func (m *mockLoggerWithCalls) With(fields ...infralogger.Field) infralogger.Logg
 func (m *mockLoggerWithCalls) Sync() error                                         { return nil }
 
 // getFieldValue extracts the value from a zap.Field by key name
+// zapcore.Field structure: Key (string, index 0), Type (FieldType, index 1), Integer (int64, index 2), String (string, index 3), Interface (any, index 4)
 func getFieldValue(fields []infralogger.Field, key string) (any, bool) {
 	for _, field := range fields {
-		// Use reflection to access the private Key field of zap.Field
 		fieldValue := reflect.ValueOf(field)
-		if fieldValue.Kind() == reflect.Struct {
-			keyField := fieldValue.FieldByName("Key")
-			if keyField.IsValid() && keyField.String() == key {
-				// Get the value - zap.Field stores it in Interface field
-				interfaceField := fieldValue.FieldByName("Interface")
-				if interfaceField.IsValid() {
-					return interfaceField.Interface(), true
+		if fieldValue.Kind() != reflect.Struct {
+			continue
+		}
+
+		numFields := fieldValue.NumField()
+		if numFields < 2 {
+			continue
+		}
+
+		// Get Key field (index 0 should be the Key string)
+		keyField := fieldValue.Field(0)
+		if keyField.Kind() != reflect.String {
+			continue
+		}
+
+		fieldKey := keyField.String()
+		if fieldKey != key {
+			continue
+		}
+
+		// Now extract the value based on field indices
+		// Field layout: 0=Key, 1=Type, 2=Integer, 3=String, 4=Interface
+		// Strategy: Check which value field has a non-zero/non-empty value
+
+		// Check Integer field (index 2) for Int/Int64 fields first
+		if numFields > 2 {
+			intField := fieldValue.Field(2)
+			if intField.Kind() == reflect.Int64 && intField.IsValid() {
+				intVal := intField.Int()
+				if intVal != 0 {
+					return intVal, true
 				}
+			}
+		}
+
+		// Check String field (index 3) for String fields
+		if numFields > 3 {
+			strField := fieldValue.Field(3)
+			if strField.Kind() == reflect.String && strField.IsValid() {
+				strVal := strField.String()
+				// For String fields, check if Integer field is zero (to distinguish from Int fields)
+				isStringField := true
+				if numFields > 2 {
+					intField := fieldValue.Field(2)
+					if intField.Kind() == reflect.Int64 && intField.Int() != 0 {
+						isStringField = false
+					}
+				}
+				if isStringField {
+					return strVal, true
+				}
+			}
+		}
+
+		// Try Interface field (index 4) for other types
+		if numFields > 4 {
+			ifaceField := fieldValue.Field(4)
+			if ifaceField.Kind() == reflect.Interface && ifaceField.IsValid() && !ifaceField.IsNil() {
+				ifaceVal := ifaceField.Interface()
+				if ifaceVal != nil {
+					return ifaceVal, true
+				}
+			}
+		}
+
+		// Fallback: Return Integer field even if zero (for Int fields with zero value)
+		if numFields > 2 {
+			intField := fieldValue.Field(2)
+			if intField.Kind() == reflect.Int64 && intField.IsValid() {
+				return intField.Int(), true
 			}
 		}
 	}
@@ -239,8 +301,21 @@ func TestDatabaseAdapter_SaveClassificationHistoryBatch_PartialFail(t *testing.T
 	failedCount, foundFailedCount := getFieldValue(warnCall.fields, "failed_count")
 	if !foundFailedCount {
 		t.Error("expected warning to include failed_count")
-	} else if failedCount != expectedFailedCount {
-		t.Errorf("expected failed_count %d, got %v", expectedFailedCount, failedCount)
+	} else {
+		// Handle type conversion (zap stores int as int64)
+		var failedCountInt int
+		switch v := failedCount.(type) {
+		case int:
+			failedCountInt = v
+		case int64:
+			failedCountInt = int(v)
+		default:
+			t.Errorf("expected failed_count to be int or int64, got %T", failedCount)
+			return
+		}
+		if failedCountInt != expectedFailedCount {
+			t.Errorf("expected failed_count %d, got %d", expectedFailedCount, failedCountInt)
+		}
 	}
 }
 
