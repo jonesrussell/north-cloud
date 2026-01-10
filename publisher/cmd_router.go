@@ -18,7 +18,7 @@ import (
 func runRouter() {
 	stop, err := runRouterWithStop()
 	if err != nil {
-		os.Stderr.WriteString(fmt.Sprintf("Failed to start router: %v\n", err))
+		fmt.Fprintf(os.Stderr, "Failed to start router: %v\n", err)
 		os.Exit(1)
 	}
 

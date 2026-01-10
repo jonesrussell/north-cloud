@@ -50,19 +50,21 @@ func LoggerMiddleware(log logger.Logger) gin.HandlerFunc {
 			fields = append(fields, logger.String("user_agent", c.Request.UserAgent()))
 		}
 
-		// Log any errors that occurred
+		// Add error information to the single log entry (avoid double-logging)
 		if len(c.Errors) > 0 {
-			for _, err := range c.Errors {
-				log.Error("Request error",
-					logger.String("method", method),
-					logger.String("path", path),
-					logger.Error(err.Err),
-				)
+			errorMessages := make([]string, len(c.Errors))
+			for i, err := range c.Errors {
+				errorMessages[i] = err.Err.Error()
 			}
+			fields = append(fields, logger.Strings("errors", errorMessages))
 		}
 
-		// Log the request
-		log.Info("HTTP request", fields...)
+		// Log the request once with all context
+		if len(c.Errors) > 0 {
+			log.Error("HTTP request with errors", fields...)
+		} else {
+			log.Info("HTTP request", fields...)
+		}
 	}
 }
 

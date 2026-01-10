@@ -321,7 +321,12 @@ func (s *Service) fetchArticles(ctx context.Context, route *models.RouteWithDeta
 			infralogger.String("response_preview", errorPreview),
 			infralogger.Error(decodeErr),
 		)
-		return nil, fmt.Errorf("failed to decode response from index %s (response length: %d bytes): %w", route.SourceIndexPattern, len(bodyBytes), decodeErr)
+		return nil, fmt.Errorf(
+			"failed to decode response from index %s (response length: %d bytes): %w",
+			route.SourceIndexPattern,
+			len(bodyBytes),
+			decodeErr,
+		)
 	}
 
 	// Convert to articles
