@@ -1,4 +1,3 @@
-// Grafana Alloy Configuration
 logging {
   level  = "info"
   format = "logfmt"
@@ -6,7 +5,6 @@ logging {
 
 discovery.docker "north_cloud" {
   host = "unix:///var/run/docker.sock"
-  refresh_interval = "5s"
 
   filter {
     name   = "label"
@@ -17,7 +15,20 @@ discovery.docker "north_cloud" {
 discovery.relabel "north_cloud" {
   targets = discovery.docker.north_cloud.targets
 
-  // Extract service name from container name
+  // Drop Grafana, Loki, and Alloy containers - check container name first
+  rule {
+    source_labels = ["__meta_docker_container_name"]
+    regex         = "/north-cloud-(grafana|loki|alloy)-\\d+"
+    action        = "drop"
+  }
+
+  // Also drop by service label if name matching doesn't work
+  rule {
+    source_labels = ["__meta_docker_container_label_com_docker_compose_service"]
+    regex         = "^(grafana|loki|alloy)$"
+    action        = "drop"
+  }
+
   rule {
     source_labels = ["__meta_docker_container_name"]
     regex         = "/north-cloud-(.+?)(?:-\\d+)?"
@@ -25,19 +36,16 @@ discovery.relabel "north_cloud" {
     replacement   = "$1"
   }
 
-  // Prefer Compose service label
   rule {
     source_labels = ["__meta_docker_container_label_com_docker_compose_service"]
     target_label  = "service"
   }
 
-  // Project name
   rule {
     source_labels = ["__meta_docker_container_label_com_docker_compose_project"]
     target_label  = "project"
   }
 
-  // Fallback project
   rule {
     source_labels = ["project"]
     regex         = "^$"
@@ -45,7 +53,6 @@ discovery.relabel "north_cloud" {
     target_label  = "project"
   }
 
-  // Short container ID
   rule {
     source_labels = ["__meta_docker_container_id"]
     regex         = "^(.{12}).*"
@@ -60,90 +67,80 @@ discovery.relabel "north_cloud" {
 }
 
 loki.source.docker "north_cloud" {
-  host        = "unix:///var/run/docker.sock"
-  targets     = discovery.relabel.north_cloud.output
-  forward_to  = [loki.process.north_cloud.receiver]
+  host          = "unix:///var/run/docker.sock"
+  targets       = discovery.relabel.north_cloud.output
+  forward_to    = [loki.process.north_cloud.receiver]
   relabel_rules = discovery.relabel.north_cloud.rules
 }
 
 loki.process "north_cloud" {
-  // Parse Docker JSON wrapper
   stage.json {
     expressions = {
-      log    = "log"
-      stream = "stream"
-      time   = "time"
+      log    = "log",
+      stream = "stream",
+      time   = "time",
     }
   }
 
-  // JSON-first parsing
   stage.match {
     selector = "{log=~\"^\\\\s*\\\\{.*\"}"
-
     stage.json {
       source = "log"
       expressions = {
-        level       = "level"
-        logger      = "logger"
-        caller      = "caller"
-        msg         = "msg"
-        ts          = "ts"
-        t           = "t"
-        log_service = "service"
-        method      = "method"
-        error       = "error"
-        err         = "err"
-        duration    = "duration"
-        status_code = "status_code"
+        level       = "level",
+        logger      = "logger",
+        caller      = "caller",
+        msg         = "msg",
+        ts          = "ts",
+        t           = "t",
+        log_service = "service",
+        method      = "method",
+        error       = "error",
+        err         = "err",
+        duration    = "duration",
+        status_code = "status_code",
       }
     }
   }
 
-  // Logfmt fallback
   stage.match {
     selector = "{level=\"\"}"
-
     stage.logfmt {
       source = "log"
       mapping = {
-        level       = "level"
-        msg         = "msg"
-        ts          = "ts"
-        t           = "t"
-        logger      = "logger"
-        caller      = "caller"
-        method      = "method"
-        error       = "error"
-        err         = "err"
-        duration    = "duration"
-        status_code = "status_code"
+        level       = "level",
+        msg         = "msg",
+        ts          = "ts",
+        t           = "t",
+        logger      = "logger",
+        caller      = "caller",
+        method      = "method",
+        error       = "error",
+        err         = "err",
+        duration    = "duration",
+        status_code = "status_code",
       }
     }
   }
 
-  // Regex fallback for plain text logs
   stage.match {
     selector = "{level=\"\"}"
-
     stage.regex {
       source     = "log"
       expression = "(?i)(?:level=)?(debug|info|warn|warning|error|fatal|panic)"
     }
   }
 
-  // Normalize "warning"
   stage.match {
     selector = "{level=\"warning\"}"
     stage.static_labels { values = { level = "warn" } }
   }
 
-  // Default level
   stage.match {
     selector = "{level=\"\"}"
     stage.static_labels { values = { level = "info" } }
   }
 
-  // Timestamp parsing (ts → t → time)
   stage.timestamp {
     source = "ts"
     format = "RFC3339Nano"
@@ -186,10 +183,8 @@ loki.process "north_cloud" {
     }
   }
 
-  // Add stream label
   stage.labels { values = { stream = "" } }
 
-  // Prefer msg → fallback to log
   stage.output { source = "msg" }
   stage.match {
     selector = "{msg=\"\"}"
