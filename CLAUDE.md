@@ -236,20 +236,23 @@ The platform uses a **three-stage content pipeline** for intelligent article pro
 - **Database**: `postgres-publisher` (publisher database)
 - **Dependencies**: Elasticsearch (classified_content indexes), Redis (pub/sub), PostgreSQL
 - **Ports**: 8070 (API)
-- **Architecture**: Two-component system
-  1. **API Server** (`/app/publisher api`):
+- **Architecture**: Unified service with multiple run modes
+ 1. **API Server** (`publisher api`):
      - REST API for managing sources, channels, and routes
      - JWT authentication integration
      - Publishing statistics and history
-  2. **Router Service** (`/app/publisher router`):
+ 2. **Router Service** (`publisher router`):
      - Background worker that processes routes
      - Queries Elasticsearch classified_content indexes
-     - Filters by `content_type: "article"` to exclude pages/listings
      - Filters by `content_type: "article"` to exclude pages/listings
      - Filters by quality_score and topics
      - Publishes to Redis pub/sub channels
      - Records publish history in database
-  3. **Frontend Dashboard** (part of unified dashboard):
+ 3. **Unified Mode** (`publisher both` - default):
+     - Runs both API server and router concurrently in a single container
+     - Matches the pattern used by classifier service
+     - Default command when no argument is provided
+ 4. **Frontend Dashboard** (part of unified dashboard):
      - Vue.js 3 interface for managing publisher configuration
      - CRUD operations for sources, channels, routes
      - Real-time statistics and publish history
@@ -1451,7 +1454,7 @@ Located in `/scripts/` directory:
    ./scripts/profile.sh crawler heap
 
    # Capture 60s CPU profile
-   ./scripts/profile.sh publisher-api cpu 60
+   ./scripts/profile.sh publisher cpu 60
 
    # Capture goroutine profile
    ./scripts/profile.sh classifier goroutine
@@ -1486,7 +1489,7 @@ Located in `/scripts/` directory:
    ./scripts/check-memory-leaks.sh
 
    # Extended check for specific service
-   ./scripts/check-memory-leaks.sh -s publisher-api -i 900 -c 10
+   ./scripts/check-memory-leaks.sh -s publisher -i 900 -c 10
 
    # With log-based alerts
    ./scripts/check-memory-leaks.sh -a
@@ -2351,11 +2354,13 @@ When encountering scenarios not covered in this guide:
     - Database-backed deduplication via publish_history table
     - Many-to-many routes (multiple sources → multiple channels)
   - **Docker Integration**:
-    - Two separate containers: `publisher-api` and `publisher-router`
+    - Single unified container: `publisher` (runs both API and router by default)
+    - Can run separately if needed: `publisher api` or `publisher router`
     - Frontend is part of unified `dashboard` service
-    - Single binary with multi-command CLI (`api` and `router` commands)
+    - Single binary with multi-command CLI (`both`, `api`, and `router` commands)
     - Production and development Docker configurations
     - Nginx routing for `/dashboard/publisher` frontend and `/api/publisher` API
+    - Consistent with classifier service pattern (both API and worker in one container)
   - **Documentation**:
     - `/publisher/docs/REDIS_MESSAGE_FORMAT.md` - Complete message specification
     - `/publisher/docs/CONSUMER_GUIDE.md` - Integration examples (Python, Node.js, PHP/Drupal)

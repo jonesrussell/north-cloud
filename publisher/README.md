@@ -113,15 +113,21 @@ go install github.com/go-task/task/v3/cmd/task@latest
 # Install dependencies
 task deps
 
-# Run API server
+# Run both API server and router (default)
+publisher
+# or explicitly:
+publisher both
+
+# Run API server only
 publisher api
 
-# Run router service (in separate terminal)
+# Run router service only
 publisher router
 
 # Or use task commands
-task run:api
-task run:router
+task run        # Runs both by default
+task run:api    # API only
+task run:router # Router only
 ```
 
 ### 4. Run with Docker Compose
@@ -131,13 +137,12 @@ task run:router
 docker compose -f docker-compose.base.yml -f docker-compose.dev.yml up -d
 
 # View logs
-docker compose -f docker-compose.base.yml -f docker-compose.dev.yml logs -f publisher-api
-docker compose -f docker-compose.base.yml -f docker-compose.dev.yml logs -f publisher-router
+docker compose -f docker-compose.base.yml -f docker-compose.dev.yml logs -f publisher
 ```
 
 ## Service Components
 
-The publisher service consists of two components:
+The publisher service consists of two components that can run together or separately:
 
 ### 1. API Server (`publisher api`)
 
