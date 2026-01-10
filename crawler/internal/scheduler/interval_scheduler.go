@@ -202,7 +202,6 @@ func (s *IntervalScheduler) acquireJobLock(job *domain.Job) (bool, error) {
 	if acquired {
 		s.logger.Debug("Lock acquired",
 			infralogger.String("job_id", job.ID),
-			infralogger.String("lock_token", lockToken.String()),
 		)
 		// Update job with lock token for tracking
 		job.LockToken = new(string)
