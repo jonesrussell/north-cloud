@@ -26,14 +26,16 @@ cd "$PROJECT_ROOT" || exit 1
 COMPOSE_FILES="-f docker-compose.base.yml -f docker-compose.prod.yml"
 
 # Services to build (in order)
+# Note: Services are built in dependency order to optimize build caching
 SERVICES=(
   "auth"
   "crawler"
   "source-manager"
   "classifier"
   "index-manager"
-  "publisher-api"  # publisher-api and publisher-router share the same image
+  "publisher"  # Publisher runs both API and router with the 'both' command
   "search-service"
+  "search-frontend"
   "dashboard"
 )
 
