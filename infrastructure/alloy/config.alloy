@@ -74,6 +74,7 @@ loki.source.docker "north_cloud" {
 }
 
 loki.process "north_cloud" {
+  // Parse Docker JSON wrapper
   stage.json {
     expressions = {
       log    = "log",
@@ -82,6 +83,7 @@ loki.process "north_cloud" {
     }
   }
 
+  // Parse JSON logs - extract all fields including level (matches logs starting with {)
   stage.match {
     selector = "{log=~\"^\\\\s*\\\\{.*\"}"
     stage.json {
@@ -103,8 +105,9 @@ loki.process "north_cloud" {
     }
   }
 
+  // Fallback: Parse logfmt logs if JSON parsing didn't happen
   stage.match {
-    selector = "{level=\"\"}"
+    selector = "{log=~\"level=\", level=\"\"}"
     stage.logfmt {
       source = "log"
       mapping = {
@@ -123,22 +126,26 @@ loki.process "north_cloud" {
     }
   }
 
+  // Fallback: Extract level via regex if not already extracted
   stage.match {
     selector = "{level=\"\"}"
     stage.regex {
       source     = "log"
-      expression = "(?i)(?:level=)?(debug|info|warn|warning|error|fatal|panic)"
+      expression = "(?i)(?:\"level\"\\s*:\\s*\"|level\\s*=\\s*)(?P<level>debug|info|warn|warning|error|fatal|panic)"
     }
   }
 
-  stage.match {
-    selector = "{level=\"warning\"}"
-    stage.static_labels { values = { level = "warn" } }
+  // Promote extracted level field to label (runs after all extraction attempts)
+  stage.labels {
+    values = { level = "" }
   }
 
+  // Normalize warning to warn (after label is created)
   stage.match {
-    selector = "{level=\"\"}"
-    stage.static_labels { values = { level = "info" } }
+    selector = "{level=\"warning\"}"
+    stage.static_labels {
+      values = { level = "warn" }
+    }
   }
 
   stage.timestamp {

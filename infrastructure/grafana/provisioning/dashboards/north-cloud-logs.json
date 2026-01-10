@@ -192,7 +192,7 @@
             "uid": "loki"
           },
           "editorMode": "code",
-          "expr": "sum by (level) (count_over_time({project=\"north-cloud\", service=~\"$service\"} | json | __error__=\"\" | level=~\"$level\" [$__interval]))",
+          "expr": "sum by (level) (count_over_time({project=\"north-cloud\", service=~\"$service\", level=~\"$level\"} [$__interval]))",
           "queryType": "range",
           "refId": "A",
           "legendFormat": "{{level}}"
@@ -230,7 +230,7 @@
             "uid": "loki"
           },
           "editorMode": "code",
-          "expr": "{project=\"north-cloud\", service=~\"$service\"} | json | __error__=\"\" | level=~\"$level\" | line_format \"{{if .service}}[{{.service}}] {{end}}{{if .level}}{{.level}}{{else}}log{{end}} | {{if .msg}}{{.msg}}{{else}}{{.__line__}}{{end}}\" |~ \"$search\"",
+          "expr": "{project=\"north-cloud\", service=~\"$service\", level=~\"$level\"} |~ \"$search\"",
           "queryType": "range",
           "refId": "A"
         }
@@ -337,7 +337,7 @@
             "uid": "loki"
           },
           "editorMode": "code",
-          "expr": "{project=\"north-cloud\", level=\"error\"} | json | line_format \"{{.msg}}\"",
+          "expr": "{project=\"north-cloud\", level=\"error\"}",
           "queryType": "instant",
           "refId": "A"
         }
