@@ -399,7 +399,10 @@ export const classifierApi = {
 
   // Statistics
   stats: {
-    get: () => classifierClient.get('/stats'),
+    get: (params?: { date?: string }) => {
+      const queryParams = params?.date ? { date: params.date } : {}
+      return classifierClient.get('/stats', { params: queryParams })
+    },
     topics: () => classifierClient.get('/stats/topics'),
     sources: () => classifierClient.get('/stats/sources'),
   },
