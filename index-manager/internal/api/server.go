@@ -59,6 +59,9 @@ func NewServer(handler *Handler, config ServerConfig, infraLog infralogger.Logge
 // SetupServiceRoutes configures service-specific API routes (not health routes).
 // Health routes are handled by the infrastructure gin package.
 func SetupServiceRoutes(router *gin.Engine, handler *Handler) {
+	// API v1 health endpoint (for docker-compose health checks)
+	router.GET("/api/v1/health", handler.HealthCheck)
+
 	// API v1 routes
 	v1 := router.Group("/api/v1")
 
