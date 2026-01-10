@@ -82,6 +82,11 @@ cd SERVICE && go build -o bin/SERVICE main.go
   - ❌ `func verifyResult(t *testing.T, result Result) { ... }`
   - ✅ `func verifyResult(t *testing.T, result Result) { t.Helper(); ... }`
 
+- **Keep cognitive complexity ≤ 20** - break down complex functions into smaller helpers
+  - ❌ `func complexFunction() { if a { if b { if c { ... } } } }` (high complexity)
+  - ✅ `func complexFunction() { helperA(); helperB(); helperC() }` with separate helper functions
+  - The `gocognit` linter flags functions with complexity > 20 - refactor immediately if flagged
+
 - **Keep lines under 150 characters** - break long lines
 - **Avoid variable shadowing** - use `unmarshalErr`, `marshalErr`, etc. for clarity
 
