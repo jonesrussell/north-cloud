@@ -173,7 +173,20 @@ func (r *RawContentIndexer) EnsureRawContentIndex(ctx context.Context, sourceNam
 				"classification_status": map[string]string{"type": "keyword"},
 				"crawled_at":            map[string]string{"type": "date"},
 				"word_count":            map[string]string{"type": "integer"},
-				"meta":                  map[string]string{"type": "object"},
+				"meta": map[string]any{
+					"type": "object",
+					"properties": map[string]any{
+						"twitter_card":         map[string]string{"type": "keyword"},
+						"twitter_site":         map[string]string{"type": "keyword"},
+						"og_image_width":       map[string]string{"type": "integer"},
+						"og_image_height":      map[string]string{"type": "integer"},
+						"og_site_name":         map[string]string{"type": "keyword"},
+						"created_at":           map[string]string{"type": "date"},
+						"updated_at":           map[string]string{"type": "date"},
+						"article_opinion":      map[string]string{"type": "boolean"},
+						"article_content_tier": map[string]string{"type": "keyword"},
+					},
+				},
 			},
 		},
 		"settings": map[string]any{

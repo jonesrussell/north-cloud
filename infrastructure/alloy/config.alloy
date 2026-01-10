@@ -1,0 +1,199 @@
+logging {
+  level  = "info"
+  format = "logfmt"
+}
+
+discovery.docker "north_cloud" {
+  host = "unix:///var/run/docker.sock"
+
+  filter {
+    name   = "label"
+    values = ["com.docker.compose.project=north-cloud"]
+  }
+}
+
+discovery.relabel "north_cloud" {
+  targets = discovery.docker.north_cloud.targets
+
+  // Drop Grafana, Loki, and Alloy containers - check container name first
+  rule {
+    source_labels = ["__meta_docker_container_name"]
+    regex         = "/north-cloud-(grafana|loki|alloy)-[0-9]+"
+    action        = "drop"
+  }
+
+  // Also drop by service label (fallback)
+  rule {
+    source_labels = ["__meta_docker_container_label_com_docker_compose_service"]
+    regex         = "^(grafana|loki|alloy)$"
+    action        = "drop"
+  }
+
+  rule {
+    source_labels = ["__meta_docker_container_name"]
+    regex         = "/north-cloud-(.+?)(?:-\\d+)?"
+    target_label  = "service"
+    replacement   = "$1"
+  }
+
+  rule {
+    source_labels = ["__meta_docker_container_label_com_docker_compose_service"]
+    target_label  = "service"
+  }
+
+  rule {
+    source_labels = ["__meta_docker_container_label_com_docker_compose_project"]
+    target_label  = "project"
+  }
+
+  rule {
+    source_labels = ["project"]
+    regex         = "^$"
+    replacement   = "north-cloud"
+    target_label  = "project"
+  }
+
+  rule {
+    source_labels = ["__meta_docker_container_id"]
+    regex         = "^(.{12}).*"
+    replacement   = "$1"
+    target_label  = "container_id"
+  }
+
+  rule {
+    target_label = "job"
+    replacement  = "docker"
+  }
+}
+
+loki.source.docker "north_cloud" {
+  host          = "unix:///var/run/docker.sock"
+  targets       = discovery.relabel.north_cloud.output
+  forward_to    = [loki.process.north_cloud.receiver]
+  relabel_rules = discovery.relabel.north_cloud.rules
+}
+
+loki.process "north_cloud" {
+  // Parse JSON logs directly - loki.source.docker already unwraps Docker format
+  stage.json {
+    expressions = {
+      level       = "level",
+      logger      = "logger",
+      caller      = "caller",
+      msg         = "msg",
+      ts          = "ts",
+      t           = "t",
+      log_service = "service",
+      stream      = "stream",
+      method      = "method",
+      error       = "error",
+      err         = "err",
+      duration    = "duration",
+      status_code = "status_code",
+    }
+  }
+
+  // Fallback: Parse logfmt logs if JSON parsing didn't happen
+  stage.match {
+    selector = "{log=~\"level=\", level=\"\"}"
+    stage.logfmt {
+      source = "log"
+      mapping = {
+        level       = "level",
+        msg         = "msg",
+        ts          = "ts",
+        t           = "t",
+        logger      = "logger",
+        caller      = "caller",
+        method      = "method",
+        error       = "error",
+        err         = "err",
+        duration    = "duration",
+        status_code = "status_code",
+      }
+    }
+  }
+
+  // Fallback: Extract level via regex if not already extracted
+  stage.match {
+    selector = "{level=\"\"}"
+    stage.regex {
+      source     = "log"
+      expression = "(?i)(?:\"level\"\\s*:\\s*\"|level\\s*=\\s*)(?P<level>debug|info|warn|warning|error|fatal|panic)"
+    }
+  }
+
+  // Promote extracted level field to label (runs after all extraction attempts)
+  stage.labels {
+    values = { level = "" }
+  }
+
+  // Normalize warning to warn (after label is created)
+  stage.match {
+    selector = "{level=\"warning\"}"
+    stage.static_labels {
+      values = { level = "warn" }
+    }
+  }
+
+  stage.timestamp {
+    source = "ts"
+    format = "RFC3339Nano"
+    fallback_formats = [
+      "RFC3339",
+      "2006-01-02T15:04:05.000Z07:00",
+      "2006-01-02T15:04:05Z07:00",
+      "2006-01-02T15:04:05.000000000Z07:00",
+    ]
+    action_on_failure = "fudge"
+  }
+
+  stage.match {
+    selector = "{ts=\"\"}"
+    stage.timestamp {
+      source = "t"
+      format = "RFC3339Nano"
+      fallback_formats = [
+        "RFC3339",
+        "2006-01-02T15:04:05.000Z07:00",
+        "2006-01-02T15:04:05Z07:00",
+        "2006-01-02T15:04:05.000000000Z07:00",
+      ]
+      action_on_failure = "fudge"
+    }
+  }
+
+  stage.match {
+    selector = "{ts=\"\"}"
+    stage.timestamp {
+      source = "time"
+      format = "RFC3339Nano"
+      fallback_formats = [
+        "RFC3339",
+        "2006-01-02T15:04:05.000Z07:00",
+        "2006-01-02T15:04:05Z07:00",
+        "2006-01-02T15:04:05.000000000Z07:00",
+      ]
+      action_on_failure = "fudge"
+    }
+  }
+
+  stage.labels { values = { stream = "" } }
+
+  // Keep the full JSON log line - don't use stage.output to preserve all details
+  // The log line will contain the complete JSON with all fields
+
+  forward_to = [loki.write.north_cloud.receiver]
+}
+
+loki.write "north_cloud" {
+  endpoint {
+    url = "http://loki:3100/loki/api/v1/push"
+    remote_timeout = "10s"
+    batch_wait     = "1s"
+    batch_size     = "100KiB"
+    min_backoff_period  = "500ms"
+    max_backoff_period  = "5m"
+    max_backoff_retries = 10
+  }
+}

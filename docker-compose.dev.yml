@@ -484,9 +484,9 @@ services:
       - ./infrastructure/loki/loki-config.dev.yml:/etc/loki/config.yml:ro
       - loki_data:/loki
 
-  promtail:
+  alloy:
     environment:
-      LOG_LEVEL: debug
+      ALLOY_LOG_LEVEL: debug
 
   grafana:
     environment:

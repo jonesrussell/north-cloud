@@ -50,7 +50,7 @@ export const navigation: NavSection[] = [
   {
     title: 'Content Intake',
     icon: Download,
-    quickAction: { label: 'New Job', path: '/intake/jobs/new' },
+    quickAction: { label: 'New Job', path: '/intake/jobs?create=true' },
     children: [
       { title: 'Jobs', path: '/intake/jobs', icon: ListTodo },
       { title: 'Discovered Links', path: '/intake/discovered-links', icon: Link },

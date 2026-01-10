@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { Plus, Briefcase, Loader2 } from 'lucide-vue-next'
 import { crawlerApi, sourcesApi } from '@/api/client'
 import { Button } from '@/components/ui/button'
@@ -28,6 +28,7 @@ interface Source {
 }
 
 const router = useRouter()
+const route = useRoute()
 
 const loading = ref(true)
 const error = ref<string | null>(null)
@@ -176,6 +177,13 @@ watch(showCreateModal, (val) => {
 onMounted(() => {
   loadJobs()
   loadSources()
+  
+  // Auto-open create modal if ?create=true query param is present
+  if (route.query.create === 'true') {
+    showCreateModal.value = true
+    // Clean up query param from URL
+    router.replace({ query: {} })
+  }
 })
 </script>
 

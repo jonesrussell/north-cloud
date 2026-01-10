@@ -349,8 +349,8 @@ func extractJSONLD(e *colly.HTMLElement) map[string]any {
 			// Extract fields from NewsArticle schema
 			extractNewsArticleFields(objMap, result)
 
-			// Store full JSON-LD object for reference
-			result["jsonld_raw"] = objMap
+			// Store full JSON-LD object for reference (normalized to prevent Elasticsearch mapping conflicts)
+			result["jsonld_raw"] = normalizeJSONLDObject(objMap)
 		}
 	})
 
@@ -449,6 +449,76 @@ func extractJSONLDImage(objMap, result map[string]any) {
 	if imageStr, isImageString := objMap["image"].(string); isImageString && imageStr != "" {
 		result["jsonld_image_url"] = imageStr
 	}
+}
+
+// normalizeJSONLDObject normalizes a JSON-LD object to prevent Elasticsearch mapping conflicts.
+// Specifically normalizes the author field which can be string, object, or array.
+func normalizeJSONLDObject(objMap map[string]any) map[string]any {
+	// Create a deep copy to avoid mutating the original
+	normalized := make(map[string]any, len(objMap))
+
+	// Copy all fields
+	for key, val := range objMap {
+		normalized[key] = val
+	}
+
+	// Normalize author field to always be a string
+	if authorVal, hasAuthor := normalized["author"]; hasAuthor {
+		normalized["author"] = normalizeAuthorField(authorVal)
+		if normalized["author"] == nil {
+			delete(normalized, "author")
+		}
+	}
+
+	return normalized
+}
+
+// normalizeAuthorField normalizes the author field from various types to a string.
+func normalizeAuthorField(authorVal any) any {
+	switch v := authorVal.(type) {
+	case string:
+		// Already a string, keep it
+		return v
+	case map[string]any:
+		// Convert object to string (extract name if available)
+		return extractAuthorNameFromObject(v)
+	case []any:
+		// Handle array of authors - extract names and join them
+		return extractAuthorNamesFromArray(v)
+	default:
+		// Unknown type, return nil to signal removal
+		return nil
+	}
+}
+
+// extractAuthorNameFromObject extracts the author name from an object.
+func extractAuthorNameFromObject(authorObj map[string]any) any {
+	if name, hasName := authorObj["name"].(string); hasName && name != "" {
+		return name
+	}
+	// If no name field, return nil to signal removal
+	return nil
+}
+
+// extractAuthorNamesFromArray extracts author names from an array and joins them.
+func extractAuthorNamesFromArray(authorArr []any) any {
+	authorNames := make([]string, 0, len(authorArr))
+	for _, item := range authorArr {
+		switch itemVal := item.(type) {
+		case string:
+			authorNames = append(authorNames, itemVal)
+		case map[string]any:
+			if name, hasName := itemVal["name"].(string); hasName && name != "" {
+				authorNames = append(authorNames, name)
+			}
+		}
+	}
+	if len(authorNames) > 0 {
+		// Join multiple authors with comma
+		return strings.Join(authorNames, ", ")
+	}
+	// If no valid authors found, return nil to signal removal
+	return nil
 }
 
 // extractArticleMeta extracts article-specific metadata

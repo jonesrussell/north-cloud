@@ -50,20 +50,112 @@ func (m *mockLoggerWithCalls) Fatal(msg string, fields ...infralogger.Field)    
 func (m *mockLoggerWithCalls) With(fields ...infralogger.Field) infralogger.Logger { return m }
 func (m *mockLoggerWithCalls) Sync() error                                         { return nil }
 
-// getFieldValue extracts the value from a zap.Field by key name
+// getFieldValue extracts the value from a zap.Field by key name.
+// zapcore.Field structure: Key (string, index 0), Type (FieldType, index 1),
+// Integer (int64, index 2), String (string, index 3), Interface (any, index 4)
 func getFieldValue(fields []infralogger.Field, key string) (any, bool) {
 	for _, field := range fields {
-		// Use reflection to access the private Key field of zap.Field
 		fieldValue := reflect.ValueOf(field)
-		if fieldValue.Kind() == reflect.Struct {
-			keyField := fieldValue.FieldByName("Key")
-			if keyField.IsValid() && keyField.String() == key {
-				// Get the value - zap.Field stores it in Interface field
-				interfaceField := fieldValue.FieldByName("Interface")
-				if interfaceField.IsValid() {
-					return interfaceField.Interface(), true
-				}
-			}
+		if fieldValue.Kind() != reflect.Struct {
+			continue
+		}
+
+		numFields := fieldValue.NumField()
+		if numFields < 2 {
+			continue
+		}
+
+		// Get Key field (index 0 should be the Key string)
+		keyField := fieldValue.Field(0)
+		if keyField.Kind() != reflect.String {
+			continue
+		}
+
+		fieldKey := keyField.String()
+		if fieldKey != key {
+			continue
+		}
+
+		// Extract value based on field indices
+		if val, found := extractFieldValue(fieldValue, numFields); found {
+			return val, true
+		}
+	}
+	return nil, false
+}
+
+// extractFieldValue extracts the value from a zap.Field based on field indices.
+func extractFieldValue(fieldValue reflect.Value, numFields int) (any, bool) {
+	// Check Integer field (index 2) for Int/Int64 fields first
+	if numFields > 2 {
+		if intVal, found := extractIntValue(fieldValue); found {
+			return intVal, true
+		}
+	}
+
+	// Check String field (index 3) for String fields
+	if numFields > 3 {
+		if strVal, found := extractStringValue(fieldValue, numFields); found {
+			return strVal, true
+		}
+	}
+
+	// Try Interface field (index 4) for other types
+	if numFields > 4 {
+		if ifaceVal, found := extractInterfaceValue(fieldValue); found {
+			return ifaceVal, true
+		}
+	}
+
+	// Fallback: Return Integer field even if zero (for Int fields with zero value)
+	if numFields > 2 {
+		intField := fieldValue.Field(2)
+		if intField.Kind() == reflect.Int64 && intField.IsValid() {
+			return intField.Int(), true
+		}
+	}
+
+	return nil, false
+}
+
+// extractIntValue extracts integer value from field at index 2.
+func extractIntValue(fieldValue reflect.Value) (any, bool) {
+	intField := fieldValue.Field(2)
+	if intField.Kind() == reflect.Int64 && intField.IsValid() {
+		intVal := intField.Int()
+		if intVal != 0 {
+			return intVal, true
+		}
+	}
+	return nil, false
+}
+
+// extractStringValue extracts string value from field at index 3.
+func extractStringValue(fieldValue reflect.Value, numFields int) (any, bool) {
+	strField := fieldValue.Field(3)
+	if strField.Kind() != reflect.String || !strField.IsValid() {
+		return nil, false
+	}
+
+	// For String fields, check if Integer field is zero (to distinguish from Int fields)
+	if numFields > 2 {
+		intField := fieldValue.Field(2)
+		if intField.Kind() == reflect.Int64 && intField.Int() != 0 {
+			// Integer field is non-zero, this is likely an Int field, not String
+			return nil, false
+		}
+	}
+
+	return strField.String(), true
+}
+
+// extractInterfaceValue extracts interface value from field at index 4.
+func extractInterfaceValue(fieldValue reflect.Value) (any, bool) {
+	ifaceField := fieldValue.Field(4)
+	if ifaceField.Kind() == reflect.Interface && ifaceField.IsValid() && !ifaceField.IsNil() {
+		ifaceVal := ifaceField.Interface()
+		if ifaceVal != nil {
+			return ifaceVal, true
 		}
 	}
 	return nil, false
@@ -139,8 +231,21 @@ func TestPoller_validateURL_LongURL(t *testing.T) {
 	originalLength, foundOriginalLength := getFieldValue(warnCall.fields, "original_length")
 	if !foundOriginalLength {
 		t.Error("expected warning to include original_length")
-	} else if originalLength != len(urlStr) {
-		t.Errorf("expected original_length %d, got %v", len(urlStr), originalLength)
+	} else {
+		// Handle type conversion (zap stores int as int64)
+		var originalLengthInt int
+		switch v := originalLength.(type) {
+		case int:
+			originalLengthInt = v
+		case int64:
+			originalLengthInt = int(v)
+		default:
+			t.Errorf("expected original_length to be int or int64, got %T", originalLength)
+			return
+		}
+		if originalLengthInt != len(urlStr) {
+			t.Errorf("expected original_length %d, got %d", len(urlStr), originalLengthInt)
+		}
 	}
 }
 

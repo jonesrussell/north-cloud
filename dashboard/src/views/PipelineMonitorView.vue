@@ -3,7 +3,7 @@ import { ref, onMounted } from 'vue'
 import { Download, Share2, BarChart3, GitBranch } from 'lucide-vue-next'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { PipelineFlow, MetricCard, HealthBadge, QuickActions } from '@/components/pipeline'
-import { crawlerApi, publisherApi, classifierApi } from '@/api/client'
+import { crawlerApi, publisherApi, classifierApi, indexManagerApi } from '@/api/client'
 
 // Mock data for pipeline stats - in production, fetch from APIs
 const loading = ref(true)
@@ -15,7 +15,7 @@ const pipelineStages = ref([
   { name: 'Indexed', count: 0, change: 0, status: 'healthy' as const },
   { name: 'Classified', count: 0, change: 0, status: 'healthy' as const },
   { name: 'Routed', count: 0, change: 0, status: 'healthy' as const },
-  { name: 'Delivered', count: 0, change: 0, status: 'healthy' as const },
+  { name: 'Published', count: 0, change: 0, status: 'healthy' as const },
 ])
 
 // Key metrics
@@ -40,7 +40,7 @@ const serviceHealth = ref<
 
 // Quick actions
 const quickActions = [
-  { label: 'New Crawl Job', path: '/intake/jobs/new', icon: 'plus' as const },
+  { label: 'New Crawl Job', path: '/intake/jobs?create=true', icon: 'plus' as const },
   { label: 'Add Source', path: '/scheduling/sources/new', icon: 'plus' as const },
   { label: 'New Route', path: '/distribution/routes/new', icon: 'plus' as const },
   { label: 'View Analytics', path: '/intelligence/stats', icon: 'chart' as const },
@@ -66,47 +66,73 @@ onMounted(async () => {
     serviceHealth.value[3].status = healthChecks[2].status === 'fulfilled' ? 'healthy' : 'unknown'
     serviceHealth.value[4].status = healthChecks[0].status === 'fulfilled' ? 'healthy' : 'unknown'
 
-    // Try to fetch stats from crawler
+    // Fetch crawler stats for today's crawled count
     try {
-      const crawlerStats = await crawlerApi.getStats()
-      if (crawlerStats) {
-        pipelineStages.value[0].count = crawlerStats.total_jobs || 0
-        pipelineStages.value[1].count = crawlerStats.total_indexed || crawlerStats.total_jobs || 0
-        metrics.value.contentToday = crawlerStats.jobs_today || 0
+      const crawlerStatsRes = await crawlerApi.getStats()
+      if (crawlerStatsRes?.data) {
+        const crawlerStats = crawlerStatsRes.data
+        pipelineStages.value[0].count = crawlerStats.crawled_today || 0
+        metrics.value.contentToday = crawlerStats.crawled_today || 0
+        // Use crawler's indexed_today as fallback if index-manager fails
+        pipelineStages.value[1].count = crawlerStats.indexed_today || 0
       }
-    } catch {
-      // Use mock data
-      pipelineStages.value[0].count = 847
-      pipelineStages.value[0].change = 12
-      pipelineStages.value[1].count = 832
-      pipelineStages.value[1].change = 10
+    } catch (err) {
+      console.warn('Failed to fetch crawler stats:', err)
     }
 
-    // Try to fetch stats from publisher
+    // Fetch index-manager stats for today's indexed count
     try {
-      const publisherStats = await publisherApi.getStats()
-      if (publisherStats) {
-        metrics.value.activeRoutes = publisherStats.active_routes || 0
-        metrics.value.totalRoutes = publisherStats.total_routes || 0
-        metrics.value.articlesRouted = publisherStats.articles_today || 0
-        pipelineStages.value[3].count = publisherStats.articles_today || 0
-        pipelineStages.value[4].count = publisherStats.articles_delivered || 0
+      const indexStatsRes = await indexManagerApi.stats.get()
+      if (indexStatsRes?.data) {
+        const indexStats = indexStatsRes.data
+        // Use index-manager's indexed_today if available, otherwise keep crawler's indexed_today
+        if (indexStats.indexed_today !== undefined) {
+          pipelineStages.value[1].count = indexStats.indexed_today || 0
+        }
       }
-    } catch {
-      // Use mock data
-      pipelineStages.value[3].count = 456
-      pipelineStages.value[3].change = -3
-      pipelineStages.value[4].count = 442
-      pipelineStages.value[4].change = -5
-      metrics.value.activeRoutes = 12
-      metrics.value.totalRoutes = 15
-      metrics.value.articlesRouted = 456
+    } catch (err) {
+      console.warn('Failed to fetch index-manager stats:', err)
+      // Keep crawler's indexed_today as fallback
     }
 
-    // Mock classifier data
-    pipelineStages.value[2].count = 819
-    pipelineStages.value[2].change = 8
-    metrics.value.avgQualityScore = 72
+    // Fetch classifier stats for today's classified count
+    try {
+      const classifierStatsRes = await classifierApi.stats.get({ date: 'today' })
+      if (classifierStatsRes?.data) {
+        const classifierStats = classifierStatsRes.data
+        pipelineStages.value[2].count = classifierStats.total_classified || 0
+        metrics.value.avgQualityScore = Math.round(classifierStats.avg_quality_score || 0)
+      }
+    } catch (err) {
+      console.warn('Failed to fetch classifier stats:', err)
+    }
+
+    // Fetch publisher stats for today's routed and published count
+    try {
+      const publisherStatsRes = await publisherApi.stats.overview('today')
+      if (publisherStatsRes?.data) {
+        const publisherStats = publisherStatsRes.data
+        const articlesToday = publisherStats.total_articles || 0
+        // Both Routed and Published use the same count (articles published/routed today)
+        pipelineStages.value[3].count = articlesToday
+        pipelineStages.value[4].count = articlesToday
+        metrics.value.articlesRouted = articlesToday
+      }
+    } catch (err) {
+      console.warn('Failed to fetch publisher stats:', err)
+    }
+
+    // Fetch routes info for active routes count
+    try {
+      const routesRes = await publisherApi.routes.list(false)
+      if (routesRes?.data?.routes) {
+        const routes = routesRes.data.routes
+        metrics.value.totalRoutes = routes.length || 0
+        metrics.value.activeRoutes = routes.filter((r: { enabled: boolean }) => r.enabled).length || 0
+      }
+    } catch (err) {
+      console.warn('Failed to fetch routes:', err)
+    }
 
     loading.value = false
   } catch (e) {

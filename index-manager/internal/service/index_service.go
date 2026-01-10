@@ -3,8 +3,10 @@ package service
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"strings"
 	"time"
 
@@ -341,6 +343,7 @@ func (s *IndexService) GetStats(ctx context.Context) (*domain.IndexStats, error)
 		TotalIndexes:    len(indices),
 		IndexesByType:   make(map[string]int),
 		IndexesByHealth: make(map[string]int),
+		IndexedToday:    0,
 	}
 
 	var totalDocs int64
@@ -364,6 +367,18 @@ func (s *IndexService) GetStats(ctx context.Context) (*domain.IndexStats, error)
 
 	stats.TotalDocuments = totalDocs
 
+	// Get today's indexed count from all raw_content indexes
+	indexedToday, err := s.getIndexedTodayCount(ctx)
+	if err != nil {
+		s.logger.Warn("Failed to get today's indexed count",
+			infralogger.Error(err),
+		)
+		// Continue with 0 if query fails
+		stats.IndexedToday = 0
+	} else {
+		stats.IndexedToday = indexedToday
+	}
+
 	// Get cluster health
 	clusterHealth, err := s.esClient.GetClusterHealth(ctx)
 	if err == nil {
@@ -373,6 +388,70 @@ func (s *IndexService) GetStats(ctx context.Context) (*domain.IndexStats, error)
 	}
 
 	return stats, nil
+}
+
+// getIndexedTodayCount counts documents indexed today across all raw_content indexes
+func (s *IndexService) getIndexedTodayCount(ctx context.Context) (int64, error) {
+	// Get today's start time (00:00:00)
+	now := time.Now()
+	todayStart := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+
+	// Build query to count documents indexed today
+	query := map[string]any{
+		"query": map[string]any{
+			"bool": map[string]any{
+				"filter": []any{
+					map[string]any{
+						"range": map[string]any{
+							"crawled_at": map[string]any{
+								"gte": todayStart.Format(time.RFC3339),
+							},
+						},
+					},
+				},
+			},
+		},
+		"size": 0, // We only need the count
+	}
+
+	// Search all raw_content indexes
+	queryJSON, err := json.Marshal(query)
+	if err != nil {
+		return 0, fmt.Errorf("failed to marshal query: %w", err)
+	}
+
+	res, err := s.esClient.GetClient().Search(
+		s.esClient.GetClient().Search.WithContext(ctx),
+		s.esClient.GetClient().Search.WithIndex("*_raw_content"),
+		s.esClient.GetClient().Search.WithBody(strings.NewReader(string(queryJSON))),
+		s.esClient.GetClient().Search.WithTrackTotalHits(true),
+	)
+	if err != nil {
+		return 0, fmt.Errorf("failed to execute search: %w", err)
+	}
+	defer func() {
+		_ = res.Body.Close()
+	}()
+
+	if res.IsError() {
+		body, _ := io.ReadAll(res.Body)
+		return 0, fmt.Errorf("search returned error [%d]: %s", res.StatusCode, string(body))
+	}
+
+	// Parse response to get total count
+	var esResponse struct {
+		Hits struct {
+			Total struct {
+				Value int64 `json:"value"`
+			} `json:"total"`
+		} `json:"hits"`
+	}
+
+	if decodeErr := json.NewDecoder(res.Body).Decode(&esResponse); decodeErr != nil {
+		return 0, fmt.Errorf("failed to decode search response: %w", decodeErr)
+	}
+
+	return esResponse.Hits.Total.Value, nil
 }
 
 // Helper functions

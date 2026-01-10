@@ -278,6 +278,14 @@ func (s *RawContentService) convertToRawContent(rawData *RawContentData, sourceN
 		WordCount:            wordCount,
 	}
 
+	// Add CreatedAt and UpdatedAt to meta if they exist
+	if !rawData.CreatedAt.IsZero() {
+		meta["created_at"] = rawData.CreatedAt
+	}
+	if !rawData.UpdatedAt.IsZero() {
+		meta["updated_at"] = rawData.UpdatedAt
+	}
+
 	// Only add meta object if it has content
 	if len(meta) > 0 {
 		rawContent.Meta = meta

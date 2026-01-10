@@ -232,7 +232,7 @@ To enable debug logs in production:
   {"level":"info","ts":"2026-01-09T04:49:42.157Z","caller":"service.go:123","msg":"Job completed","service":"crawler","job_id":"123","duration":"5s"}
   ```
 - **Benefits**:
-  - Consistent parsing by Promtail
+  - Consistent parsing by Alloy
   - Better Grafana/Loki integration
   - Easier filtering and querying
   - Structured fields enable advanced analysis

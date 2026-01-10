@@ -44,11 +44,19 @@ type StorageResult struct {
 	IndexManager types.IndexManager
 }
 
+// JobsSchedulerResult holds the results from setupJobsAndScheduler.
+type JobsSchedulerResult struct {
+	JobsHandler            *api.JobsHandler
+	DiscoveredLinksHandler *api.DiscoveredLinksHandler
+	Scheduler              *scheduler.IntervalScheduler
+	DB                     *sqlx.DB
+	ExecutionRepo          *database.ExecutionRepository
+}
+
 // === Constants ===
 
 const (
 	signalChannelBufferSize = 1
-	errorChannelBufferSize  = 1
 	defaultShutdownTimeout  = 30 * time.Second
 )
 
@@ -95,17 +103,17 @@ func Start() error {
 	}
 
 	// Phase 4: Setup jobs handler and scheduler
-	jobsHandler, discoveredLinksHandler, dbScheduler, db, err := setupJobsAndScheduler(deps, storageResult)
+	jsResult, err := setupJobsAndScheduler(deps, storageResult)
 	if err != nil {
 		return fmt.Errorf("failed to setup jobs and scheduler: %w", err)
 	}
-	defer db.Close()
+	defer jsResult.DB.Close()
 
 	// Phase 5: Start HTTP server
-	server, errChan := startHTTPServer(deps, jobsHandler, discoveredLinksHandler)
+	server, errChan := startHTTPServer(deps, jsResult.JobsHandler, jsResult.DiscoveredLinksHandler, jsResult.ExecutionRepo)
 
 	// Phase 6: Run server until interrupted
-	return runServerUntilInterrupt(deps.Logger, server, dbScheduler, errChan)
+	return runServerUntilInterrupt(deps.Logger, server, jsResult.Scheduler, errChan)
 }
 
 // === Dependency Setup ===
@@ -303,18 +311,18 @@ func createCrawler(
 // === Database & Scheduler Setup ===
 
 // setupJobsAndScheduler initializes the jobs handler and scheduler.
-// Returns jobsHandler, discoveredLinksHandler, intervalScheduler, db connection, and error.
+// Returns JobsSchedulerResult containing all components and an error.
 // Database connection is required - the crawler cannot operate without it.
 func setupJobsAndScheduler(
 	deps *CommandDeps,
 	storageResult *StorageResult,
-) (*api.JobsHandler, *api.DiscoveredLinksHandler, *scheduler.IntervalScheduler, *sqlx.DB, error) {
+) (*JobsSchedulerResult, error) {
 	// Convert config to database config (DRY improvement)
 	dbConfig := databaseConfigFromInterface(deps.Config.GetDatabaseConfig())
 
 	db, err := database.NewPostgresConnection(dbConfig)
 	if err != nil {
-		return nil, nil, nil, nil, fmt.Errorf("failed to connect to database: %w", err)
+		return nil, fmt.Errorf("failed to connect to database: %w", err)
 	}
 
 	// Create repositories
@@ -335,7 +343,13 @@ func setupJobsAndScheduler(
 		discoveredLinksHandler.SetScheduler(intervalScheduler)
 	}
 
-	return jobsHandler, discoveredLinksHandler, intervalScheduler, db, nil
+	return &JobsSchedulerResult{
+		JobsHandler:            jobsHandler,
+		DiscoveredLinksHandler: discoveredLinksHandler,
+		Scheduler:              intervalScheduler,
+		DB:                     db,
+		ExecutionRepo:          executionRepo,
+	}, nil
 }
 
 // databaseConfigFromInterface converts config database config to database.Config.
@@ -394,10 +408,11 @@ func startHTTPServer(
 	deps *CommandDeps,
 	jobsHandler *api.JobsHandler,
 	discoveredLinksHandler *api.DiscoveredLinksHandler,
+	executionRepo *database.ExecutionRepository,
 ) (server *infragin.Server, errChan <-chan error) {
 	// Use the logger that already has the service field attached
 	// Create server using the new infrastructure gin package
-	server = api.NewServer(deps.Config, jobsHandler, discoveredLinksHandler, deps.Logger)
+	server = api.NewServer(deps.Config, jobsHandler, discoveredLinksHandler, executionRepo, deps.Logger)
 
 	// Start server asynchronously
 	deps.Logger.Info("Starting HTTP server", infralogger.String("addr", deps.Config.GetServerConfig().Address))
