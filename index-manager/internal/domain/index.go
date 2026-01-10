@@ -56,6 +56,7 @@ type IndexStats struct {
 	TotalIndexes    int            `json:"total_indexes"`
 	IndexesByType   map[string]int `json:"indexes_by_type"`
 	TotalDocuments  int64          `json:"total_documents"`
+	IndexedToday    int64          `json:"indexed_today"`
 	ClusterHealth   string         `json:"cluster_health"`
 	IndexesByHealth map[string]int `json:"indexes_by_health"`
 }
