@@ -41,6 +41,13 @@ services:
       ELASTICSEARCH_HOSTS: http://elasticsearch:9200
       CRAWLER_SOURCES_API_URL: http://source-manager:8050/api/v1/sources
       CRAWLER_SAVE_DISCOVERED_LINKS: "${CRAWLER_SAVE_DISCOVERED_LINKS:-false}"
+      CRAWLER_MINIO_ENABLED: "${CRAWLER_MINIO_ENABLED:-false}"
+      CRAWLER_MINIO_ENDPOINT: "${CRAWLER_MINIO_ENDPOINT:-minio:9000}"
+      CRAWLER_MINIO_ACCESS_KEY: "${CRAWLER_MINIO_ACCESS_KEY:-}"
+      CRAWLER_MINIO_SECRET_KEY: "${CRAWLER_MINIO_SECRET_KEY:-}"
+      CRAWLER_MINIO_USE_SSL: "${CRAWLER_MINIO_USE_SSL:-false}"
+      CRAWLER_MINIO_BUCKET: "${CRAWLER_MINIO_BUCKET:-html-archives}"
+      CRAWLER_MINIO_METADATA_BUCKET: "${CRAWLER_MINIO_METADATA_BUCKET:-crawler-metadata}"
       APP_ENV: production
       AUTH_JWT_SECRET: "${AUTH_JWT_SECRET}"
       SERVER_SECURITY_ENABLED: "false"
@@ -296,7 +303,7 @@ services:
         condition: service_healthy
       source-manager:
         condition: service_healthy
-      publisher-api:
+      publisher:
         condition: service_healthy
       classifier:
         condition: service_healthy
@@ -329,7 +336,7 @@ services:
         condition: service_healthy
       dashboard:
         condition: service_healthy
-      publisher-api:
+      publisher:
         condition: service_healthy
       auth:
         condition: service_healthy
@@ -399,11 +406,18 @@ services:
 
   alloy:
     restart: always
+    volumes:
+      - ./infrastructure/alloy/config.alloy:/etc/alloy/config.alloy:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - alloy_data:/var/lib/alloy
     environment:
       ALLOY_LOG_LEVEL: info
 
   grafana:
     restart: always
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./infrastructure/grafana/provisioning:/etc/grafana/provisioning:ro
     environment:
       GF_AUTH_ANONYMOUS_ENABLED: "false"
       GF_SECURITY_ADMIN_PASSWORD: "${GRAFANA_ADMIN_PASSWORD}"
@@ -417,4 +431,10 @@ volumes:
   certbot_etc:
     driver: local
   certbot_www:
+    driver: local
+  loki_data:
+    driver: local
+  alloy_data:
+    driver: local
+  grafana_data:
     driver: local
