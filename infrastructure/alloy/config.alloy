@@ -1,14 +1,9 @@
 // Grafana Alloy Configuration
-// Collects logs from Docker containers and forwards to Loki
-// Migrated from Promtail configuration
-
-// Logging configuration for Alloy itself
 logging {
   level  = "info"
   format = "logfmt"
 }
 
-// Discovery: Find Docker containers
 discovery.docker "north_cloud" {
   host = "unix:///var/run/docker.sock"
   refresh_interval = "5s"
@@ -19,11 +14,10 @@ discovery.docker "north_cloud" {
   }
 }
 
-// Relabeling: Extract metadata from Docker labels
 discovery.relabel "north_cloud" {
   targets = discovery.docker.north_cloud.targets
 
-  // Extract service name from container name (remove leading slash and project prefix)
+  // Extract service name from container name
   rule {
     source_labels = ["__meta_docker_container_name"]
     regex         = "/north-cloud-(.+?)(?:-\\d+)?"
@@ -31,254 +25,186 @@ discovery.relabel "north_cloud" {
     replacement   = "$1"
   }
 
-  // Preferred: Extract service name from Docker Compose label
+  // Prefer Compose service label
   rule {
     source_labels = ["__meta_docker_container_label_com_docker_compose_service"]
     target_label  = "service"
   }
 
-  // Extract project name from Docker Compose label
+  // Project name
   rule {
     source_labels = ["__meta_docker_container_label_com_docker_compose_project"]
     target_label  = "project"
   }
 
-  // Fallback: Set project to 'north-cloud' if missing
+  // Fallback project
   rule {
     source_labels = ["project"]
     regex         = "^$"
-    target_label  = "project"
     replacement   = "north-cloud"
+    target_label  = "project"
   }
 
-  // Extract container ID (short version, first 12 chars)
+  // Short container ID
   rule {
     source_labels = ["__meta_docker_container_id"]
     regex         = "^(.{12}).*"
-    target_label  = "container_id"
     replacement   = "$1"
+    target_label  = "container_id"
   }
 
-  // Add job label
   rule {
     target_label = "job"
     replacement  = "docker"
   }
 }
 
-// Source: Collect logs from Docker containers
 loki.source.docker "north_cloud" {
-  host             = "unix:///var/run/docker.sock"
-  targets          = discovery.relabel.north_cloud.output
-  forward_to       = [loki.process.north_cloud.receiver]
-  relabel_rules    = discovery.relabel.north_cloud.rules
-  refresh_interval = "5s"
+  host        = "unix:///var/run/docker.sock"
+  targets     = discovery.relabel.north_cloud.output
+  forward_to  = [loki.process.north_cloud.receiver]
+  relabel_rules = discovery.relabel.north_cloud.rules
 }
 
-// Process: Parse and transform logs
-// Handles both JSON logs (North Cloud services) and plain text logs (Grafana, Loki)
 loki.process "north_cloud" {
-  // Stage 1: Parse Docker JSON wrapper (log, stream, time fields)
+  // Parse Docker JSON wrapper
   stage.json {
     expressions = {
-      log    = "log",
-      stream = "stream",
-      time   = "time",
+      log    = "log"
+      stream = "stream"
+      time   = "time"
     }
   }
 
-  // Stage 2: Try to parse logfmt format first (Grafana, Loki output logfmt: key=value)
-  // This will parse logfmt logs like: level=debug msg="message" ts=2026-01-10T18:20:20Z
-  // Grafana uses 't' for timestamp, Loki uses 'ts' - we'll handle both in timestamp parsing
-  stage.logfmt {
-    mapping = {
-      level       = "level",
-      msg         = "msg",
-      ts          = "ts",  // Loki timestamp field
-      t           = "t",   // Grafana timestamp field (handled separately)
-      logger      = "logger",
-      caller      = "caller",
-      method      = "method",
-      error       = "error",
-      err         = "err",
-      duration    = "duration",
-      status_code = "status_code",
-    }
-    source = "log"
-  }
+  // JSON-first parsing
+  stage.match {
+    selector = "{log=~\"^\\\\s*\\\\{.*\"}"
 
-  // Stage 3: Extract level label from logfmt logs (if parsing succeeded)
-  stage.labels {
-    values = {
-      level = "",
+    stage.json {
+      source = "log"
+      expressions = {
+        level       = "level"
+        logger      = "logger"
+        caller      = "caller"
+        msg         = "msg"
+        ts          = "ts"
+        t           = "t"
+        log_service = "service"
+        method      = "method"
+        error       = "error"
+        err         = "err"
+        duration    = "duration"
+        status_code = "status_code"
+      }
     }
   }
 
-  // Stage 4: Try JSON parsing for North Cloud services (if logfmt didn't work)
-  // This handles logs that are in JSON format (crawler, publisher, etc.)
+  // Logfmt fallback
   stage.match {
     selector = "{level=\"\"}"
 
-    stage.json {
-      expressions = {
-        level       = "level",
-        logger      = "logger",
-        caller      = "caller",
-        msg         = "msg",
-        ts          = "ts",
-        log_service = "service",  // Renamed to avoid overwriting Docker-derived service label
-        method      = "method",
-        error       = "error",
-        duration    = "duration",
-        status_code = "status_code",
-      }
+    stage.logfmt {
       source = "log"
-    }
-
-    stage.labels {
-      values = {
-        level = "",
+      mapping = {
+        level       = "level"
+        msg         = "msg"
+        ts          = "ts"
+        t           = "t"
+        logger      = "logger"
+        caller      = "caller"
+        method      = "method"
+        error       = "error"
+        err         = "err"
+        duration    = "duration"
+        status_code = "status_code"
       }
     }
   }
 
-  // Stage 5: Fallback regex for logs that neither logfmt nor JSON parsing worked
-  // Extract level from plain text logs using regex patterns
+  // Regex fallback for plain text logs
   stage.match {
     selector = "{level=\"\"}"
 
     stage.regex {
-      expression = "(?i)(?:level=)?(debug|info|warn|warning|error|fatal|panic)"
       source     = "log"
-    }
-
-    stage.labels {
-      values = {
-        level = "",
-      }
+      expression = "(?i)(?:level=)?(debug|info|warn|warning|error|fatal|panic)"
     }
   }
 
-  // Stage 6: Normalize "warning" to "warn" for consistency
+  // Normalize "warning"
   stage.match {
     selector = "{level=\"warning\"}"
-
-    stage.labels {
-      values = {
-        level = "warn",
-      }
-    }
+    stage.static_labels { values = { level = "warn" } }
   }
 
-  // Stage 7: Default to "info" level if no level was detected
+  // Default level
   stage.match {
     selector = "{level=\"\"}"
-
-    stage.static_labels {
-      values = {
-        level = "info",
-      }
-    }
+    stage.static_labels { values = { level = "info" } }
   }
 
-  // Stage 8: Parse timestamp from logfmt/JSON logs (ts or t field)
-  // Try 'ts' first (Loki, some services), then 't' (Grafana), then Docker wrapper time
+  // Timestamp parsing (ts → t → time)
   stage.timestamp {
     source = "ts"
     format = "RFC3339Nano"
-
     fallback_formats = [
       "RFC3339",
       "2006-01-02T15:04:05.000Z07:00",
       "2006-01-02T15:04:05Z07:00",
       "2006-01-02T15:04:05.000000000Z07:00",
     ]
-
     action_on_failure = "fudge"
   }
 
-  // Stage 8b: Fallback timestamp parsing from Grafana's 't' field
   stage.match {
     selector = "{ts=\"\"}"
-
     stage.timestamp {
       source = "t"
       format = "RFC3339Nano"
-
       fallback_formats = [
         "RFC3339",
         "2006-01-02T15:04:05.000Z07:00",
         "2006-01-02T15:04:05Z07:00",
         "2006-01-02T15:04:05.000000000Z07:00",
       ]
-
       action_on_failure = "fudge"
     }
   }
 
-  // Stage 9: Final fallback timestamp from Docker wrapper time
   stage.match {
     selector = "{ts=\"\"}"
-
     stage.timestamp {
       source = "time"
       format = "RFC3339Nano"
-
       fallback_formats = [
         "RFC3339",
         "2006-01-02T15:04:05.000Z07:00",
         "2006-01-02T15:04:05Z07:00",
         "2006-01-02T15:04:05.000000000Z07:00",
       ]
-
       action_on_failure = "fudge"
     }
   }
 
-  // Stage 10: Add stream label (stdout/stderr)
-  stage.labels {
-    values = {
-      stream = "",
-    }
-  }
+  // Add stream label
+  stage.labels { values = { stream = "" } }
 
-  // Stage 11: Output handling
-  // For logfmt/JSON logs: preserve structure for Grafana re-parsing
-  // For plain text logs: output the full log message
-  // Prefer 'msg' field if available (extracted from logfmt/JSON), otherwise use original 'log'
-  stage.match {
-    selector = "{msg!=\"\"}"
-
-    stage.output {
-      source = "msg"
-    }
-  }
-
-  // If no msg field, output the original log content
+  // Prefer msg → fallback to log
+  stage.output { source = "msg" }
   stage.match {
     selector = "{msg=\"\"}"
-
-    stage.output {
-      source = "log"
-    }
+    stage.output { source = "log" }
   }
 
   forward_to = [loki.write.north_cloud.receiver]
 }
 
-// Write: Send logs to Loki
 loki.write "north_cloud" {
   endpoint {
     url = "http://loki:3100/loki/api/v1/push"
-
-    // Timeout configuration
     remote_timeout = "10s"
-
-    // Batch configuration (matches Promtail: 100KB or 1 second)
-    batch_wait = "1s"
-    batch_size = "100KiB"
-
-    // Retry configuration (matches Promtail: 10 retries, 500ms to 5m backoff)
+    batch_wait     = "1s"
+    batch_size     = "100KiB"
     min_backoff_period  = "500ms"
     max_backoff_period  = "5m"
     max_backoff_retries = 10
