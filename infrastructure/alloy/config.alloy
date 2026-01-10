@@ -1,0 +1,277 @@
+// Grafana Alloy Configuration
+// Collects logs from Docker containers and forwards to Loki
+// Migrated from Promtail configuration
+
+// Logging configuration for Alloy itself
+logging {
+  level  = "info"
+  format = "logfmt"
+}
+
+// Discovery: Find Docker containers
+discovery.docker "north_cloud" {
+  host = "unix:///var/run/docker.sock"
+  refresh_interval = "5s"
+
+  filter {
+    name   = "label"
+    values = ["com.docker.compose.project=north-cloud"]
+  }
+}
+
+// Relabeling: Extract metadata from Docker labels
+discovery.relabel "north_cloud" {
+  targets = discovery.docker.north_cloud.targets
+
+  // Extract service name from container name (remove leading slash and project prefix)
+  rule {
+    source_labels = ["__meta_docker_container_name"]
+    regex         = "/north-cloud-(.+?)(?:-\\d+)?"
+    target_label  = "service"
+    replacement   = "$1"
+  }
+
+  // Preferred: Extract service name from Docker Compose label
+  rule {
+    source_labels = ["__meta_docker_container_label_com_docker_compose_service"]
+    target_label  = "service"
+  }
+
+  // Extract project name from Docker Compose label
+  rule {
+    source_labels = ["__meta_docker_container_label_com_docker_compose_project"]
+    target_label  = "project"
+  }
+
+  // Fallback: Set project to 'north-cloud' if missing
+  rule {
+    source_labels = ["project"]
+    regex         = "^$"
+    target_label  = "project"
+    replacement   = "north-cloud"
+  }
+
+  // Extract container ID (short version, first 12 chars)
+  rule {
+    source_labels = ["__meta_docker_container_id"]
+    regex         = "^(.{12}).*"
+    target_label  = "container_id"
+    replacement   = "$1"
+  }
+
+  // Add job label
+  rule {
+    target_label = "job"
+    replacement  = "docker"
+  }
+}
+
+// Source: Collect logs from Docker containers
+loki.source.docker "north_cloud" {
+  host             = "unix:///var/run/docker.sock"
+  targets          = discovery.relabel.north_cloud.output
+  forward_to       = [loki.process.north_cloud.receiver]
+  relabel_rules    = discovery.relabel.north_cloud.rules
+  refresh_interval = "5s"
+}
+
+// Process: Parse and transform logs
+loki.process "north_cloud" {
+  // Stage 1: Parse Docker JSON wrapper (log, stream, time fields)
+  stage.json {
+    expressions = {
+      log    = "log",
+      stream = "stream",
+      time   = "time",
+    }
+  }
+
+  // Stage 2: Parse service JSON logs (North Cloud services output structured JSON)
+  stage.json {
+    expressions = {
+      level       = "level",
+      logger      = "logger",
+      caller      = "caller",
+      msg         = "msg",
+      ts          = "ts",
+      log_service = "service",  // Renamed to avoid overwriting Docker-derived service label
+      method      = "method",
+      error       = "error",
+      duration    = "duration",
+      status_code = "status_code",
+    }
+    source = "log"
+  }
+
+  // Stage 3: Extract level as a label for filtering/grouping
+  stage.labels {
+    values = {
+      level = "",
+    }
+  }
+
+  // Stage 4: Fallback regex for non-JSON logs
+  // Matches level keywords: debug, info, warn, error, fatal (case-insensitive)
+  stage.match {
+    selector = "{level=\"\"}"
+
+    stage.regex {
+      expression = "(?i)(?P<level>debug|info|warn|error|fatal)"
+      source     = "log"
+    }
+
+    stage.labels {
+      values = {
+        level = "",
+      }
+    }
+  }
+
+  // Stage 5: Parse timestamp from service logs (preferred)
+  stage.timestamp {
+    source = "ts"
+    format = "RFC3339Nano"
+
+    fallback_formats = [
+      "RFC3339",
+      "2006-01-02T15:04:05.000Z07:00",
+      "2006-01-02T15:04:05Z07:00",
+    ]
+
+    action_on_failure = "fudge"  // Continue processing on failure
+  }
+
+  // Stage 6: Fallback timestamp from Docker wrapper
+  stage.timestamp {
+    source = "time"
+    format = "RFC3339Nano"
+
+    fallback_formats = [
+      "RFC3339",
+      "2006-01-02T15:04:05.000Z07:00",
+      "2006-01-02T15:04:05Z07:00",
+    ]
+
+    action_on_failure = "fudge"
+  }
+
+  // Stage 7: Add stream label (stdout/stderr)
+  stage.labels {
+    values = {
+      stream = "",
+    }
+  }
+
+  // Stage 8: Preserve JSON structure for Grafana sorting
+  // Output the original 'log' field (service's JSON) instead of just 'msg'
+  // This allows Grafana to re-parse with `| json` for field extraction and sorting
+  stage.output {
+    source = "log"
+  }
+
+  forward_to = [loki.write.north_cloud.receiver]
+}
+
+// Write: Send logs to Loki
+loki.write "north_cloud" {
+  endpoint {
+    url = "http://loki:3100/loki/api/v1/push"
+
+    // Timeout configuration
+    remote_timeout = "10s"
+
+    // Batch configuration (matches Promtail: 100KB or 1 second)
+    batch_wait = "1s"
+    batch_size = "100KiB"
+
+    // Retry configuration (matches Promtail: 10 retries, 500ms to 5m backoff)
+    min_backoff_period  = "500ms"
+    max_backoff_period  = "5m"
+    max_backoff_retries = 10
+  }
+}
+
+// Nginx access logs (optional - only if nginx logs are mounted)
+// NOTE: Commented out by default - uncomment if you mount nginx logs
+/*
+local.file_match "nginx_access" {
+  path_targets = [{
+    __address__ = "localhost",
+    __path__    = "/var/log/nginx/access.log",
+    job         = "nginx",
+    log_type    = "access",
+  }]
+}
+
+loki.source.file "nginx_access" {
+  targets    = local.file_match.nginx_access.targets
+  forward_to = [loki.process.nginx_access.receiver]
+}
+
+loki.process "nginx_access" {
+  stage.regex {
+    expression = "^(?P<remote_addr>[\\w\\.]+) - (?P<remote_user>[\\w-]+) \\[(?P<time_local>.*?)\\] \"(?P<method>\\w+) (?P<request>.*?) (?P<protocol>HTTP/[\\d\\.]+)\" (?P<status>\\d+) (?P<body_bytes_sent>\\d+) \"(?P<http_referer>.*?)\" \"(?P<http_user_agent>.*?)\""
+  }
+
+  stage.timestamp {
+    source = "time_local"
+    format = "02/Jan/2006:15:04:05 -0700"
+  }
+
+  stage.labels {
+    values = {
+      method = "",
+      status = "",
+    }
+  }
+
+  stage.static_labels {
+    values = {
+      service = "nginx",
+      level   = "info",
+    }
+  }
+
+  forward_to = [loki.write.north_cloud.receiver]
+}
+
+// Nginx error logs (optional - only if nginx logs are mounted)
+local.file_match "nginx_error" {
+  path_targets = [{
+    __address__ = "localhost",
+    __path__    = "/var/log/nginx/error.log",
+    job         = "nginx",
+    log_type    = "error",
+  }]
+}
+
+loki.source.file "nginx_error" {
+  targets    = local.file_match.nginx_error.targets
+  forward_to = [loki.process.nginx_error.receiver]
+}
+
+loki.process "nginx_error" {
+  stage.regex {
+    expression = "^(?P<timestamp>\\d{4}/\\d{2}/\\d{2} \\d{2}:\\d{2}:\\d{2}) \\[(?P<level>\\w+)\\] (?P<message>.*)"
+  }
+
+  stage.timestamp {
+    source = "timestamp"
+    format = "2006/01/02 15:04:05"
+  }
+
+  stage.labels {
+    values = {
+      level = "",
+    }
+  }
+
+  stage.static_labels {
+    values = {
+      service = "nginx",
+    }
+  }
+
+  forward_to = [loki.write.north_cloud.receiver]
+}
+*/
