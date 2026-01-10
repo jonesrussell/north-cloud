@@ -7,11 +7,11 @@ This directory contains the configuration for Grafana, which provides a web-base
 The North Cloud logging stack consists of three components:
 
 1. **Grafana Loki** - Log aggregation and storage
-2. **Promtail** - Log collection from Docker containers
+2. **Grafana Alloy** - Log collection from Docker containers
 3. **Grafana** - Web UI for querying and visualizing logs
 
 ```
-Services (JSON logs) → Docker → Promtail → Loki → Grafana (Web UI)
+Services (JSON logs) → Docker → Alloy → Loki → Grafana (Web UI)
 ```
 
 ## Architecture
@@ -20,9 +20,9 @@ Services (JSON logs) → Docker → Promtail → Loki → Grafana (Web UI)
 
 1. All North Cloud services write structured JSON logs to stdout using Zap logger
 2. Docker captures these logs using the json-file driver
-3. Promtail scrapes logs from Docker via the Docker socket
-4. Promtail parses JSON logs and extracts labels (service, level, container)
-5. Promtail forwards logs to Loki
+3. Grafana Alloy discovers and collects logs from Docker containers via the Docker socket
+4. Alloy parses JSON logs and extracts labels (service, level, container)
+5. Alloy processes logs and forwards them to Loki
 6. Loki stores logs with label-based indexing
 7. Grafana provides a web interface to query and visualize logs from Loki
 
@@ -35,11 +35,12 @@ Services (JSON logs) → Docker → Promtail → Loki → Grafana (Web UI)
 - **Retention**: 7 days (dev) / 30 days (prod)
 - **Configuration**: `/infrastructure/loki/loki-config*.yml`
 
-#### Promtail
-- **Image**: `grafana/promtail:2.9.10`
-- **Port**: 9080 (metrics endpoint)
-- **Scrapes**: Docker containers via Docker socket
-- **Configuration**: `/infrastructure/promtail/promtail-config.yml`
+#### Grafana Alloy
+- **Image**: `grafana/alloy:latest`
+- **Port**: 12345 (debugging UI), metrics on same port
+- **Collects**: Logs from Docker containers via Docker socket
+- **Configuration**: `/infrastructure/alloy/config.alloy` (HCL format)
+- **Docs**: `/infrastructure/alloy/README.md`
 
 #### Grafana
 - **Image**: `grafana/grafana:10.4.8`
@@ -54,10 +55,10 @@ Services (JSON logs) → Docker → Promtail → Loki → Grafana (Web UI)
 
 ```bash
 # Development environment
-docker compose -f docker-compose.base.yml -f docker-compose.dev.yml up -d loki promtail grafana
+docker compose -f docker-compose.base.yml -f docker-compose.dev.yml up -d loki alloy grafana
 
 # Wait for services to be healthy
-docker compose -f docker-compose.base.yml -f docker-compose.dev.yml ps loki promtail grafana
+docker compose -f docker-compose.base.yml -f docker-compose.dev.yml ps loki alloy grafana
 ```
 
 ### Accessing Grafana
@@ -217,10 +218,8 @@ LOKI_RETENTION_DAYS=7              # Dev: 7 days, Prod: 30 days
 LOKI_INGESTION_RATE_MB=5
 LOKI_INGESTION_BURST_MB=10
 
-# Promtail
-PROMTAIL_PORT=9080
-PROMTAIL_BATCH_WAIT=1s
-PROMTAIL_BATCH_SIZE=102400         # 100KB
+# Grafana Alloy
+ALLOY_PORT=12345
 
 # Grafana
 GRAFANA_PORT=3000
@@ -246,21 +245,26 @@ GRAFANA_LOG_LEVEL=info
   - Conservative limits
   - Optimized for stability
 
-### Promtail Configuration
+### Grafana Alloy Configuration
 
-File: `/infrastructure/promtail/promtail-config.yml`
+File: `/infrastructure/alloy/config.alloy` (HCL format)
 
-**Scrape Jobs**:
-1. **Docker** - Scrapes all North Cloud containers via Docker API
-2. **Nginx Access** - Parses nginx access logs (if mounted)
-3. **Nginx Error** - Parses nginx error logs (if mounted)
+**Components**:
+1. **discovery.docker** - Discovers all North Cloud Docker containers
+2. **discovery.relabel** - Extracts labels from container metadata
+3. **loki.source.docker** - Collects logs from discovered containers
+4. **loki.process** - Parses and transforms logs (JSON, logfmt, regex)
+5. **loki.write** - Forwards processed logs to Loki
 
 **Labels Extracted**:
-- `container` - Container name (e.g., `north-cloud-crawler`)
 - `service` - Service name from Docker Compose (e.g., `crawler`)
 - `project` - Project name (`north-cloud`)
-- `level` - Log level from Zap logs (debug, info, warn, error)
-- `environment` - dev or prod (based on compose files used)
+- `container_id` - Docker container ID (first 12 chars)
+- `job` - Fixed to `docker`
+- `level` - Log level extracted from service logs (debug, info, warn, error)
+- `stream` - stdout or stderr
+
+**Configuration Details**: See `/infrastructure/alloy/README.md` for comprehensive documentation
 
 ### Grafana Provisioning
 
@@ -306,8 +310,8 @@ curl -G 'http://localhost:3100/loki/api/v1/tail' \
 # Loki
 curl http://localhost:3100/ready
 
-# Promtail
-curl http://localhost:9080/ready
+# Grafana Alloy
+curl http://localhost:12345/ready
 
 # Grafana
 curl http://localhost:3000/api/health
@@ -319,8 +323,8 @@ curl http://localhost:3000/api/health
 # Loki metrics (Prometheus format)
 curl http://localhost:3100/metrics
 
-# Promtail metrics
-curl http://localhost:9080/metrics
+# Grafana Alloy metrics
+curl http://localhost:12345/metrics
 ```
 
 ### Managing Retention
@@ -386,21 +390,26 @@ curl -s http://admin:changeme@localhost:3000/api/dashboards/uid/north-cloud-logs
 
 ### Logs Not Appearing in Grafana
 
-1. **Check Promtail is running and healthy**:
+1. **Check Alloy is running and healthy**:
    ```bash
-   docker compose -f docker-compose.base.yml -f docker-compose.dev.yml ps promtail
-   curl http://localhost:9080/ready
+   docker compose -f docker-compose.base.yml -f docker-compose.dev.yml ps alloy
+   curl http://localhost:12345/ready
    ```
 
-2. **Check Promtail logs**:
+2. **Check Alloy logs**:
    ```bash
-   docker compose -f docker-compose.base.yml -f docker-compose.dev.yml logs promtail
+   docker compose -f docker-compose.base.yml -f docker-compose.dev.yml logs alloy
    ```
 
 3. **Verify Docker socket is mounted**:
    ```bash
-   docker inspect north-cloud-promtail | jq '.[].Mounts'
+   docker inspect north-cloud-alloy | jq '.[].Mounts'
    ```
+
+4. **Check Alloy UI for target discovery**:
+   - Open http://localhost:12345 in browser
+   - Navigate to "Targets" or "Components"
+   - Verify Docker containers are listed
 
 4. **Check Loki is receiving logs**:
    ```bash
@@ -445,9 +454,9 @@ curl -s http://admin:changeme@localhost:3000/api/dashboards/uid/north-cloud-logs
    - Edit `/infrastructure/loki/loki-config.dev.yml`
    - Change `retention_period: 168h` to `retention_period: 72h` (3 days)
 
-4. **Enable log sampling** in Promtail (advanced):
-   - Edit `/infrastructure/promtail/promtail-config.yml`
-   - Add `drop` stage to sample logs
+4. **Enable log sampling** in Alloy (advanced):
+   - Edit `/infrastructure/alloy/config.alloy`
+   - Add `drop` stage in `loki.process` component to filter logs
 
 ### Logs Missing from Specific Service
 
@@ -461,9 +470,10 @@ curl -s http://admin:changeme@localhost:3000/api/dashboards/uid/north-cloud-logs
    docker inspect north-cloud-crawler | jq '.[].Config.Labels'
    ```
 
-3. **Check Promtail targets**:
-   - Open http://localhost:9080/targets
-   - Verify service appears in list
+3. **Check Alloy targets**:
+   - Open http://localhost:12345 in browser
+   - Navigate to "Targets" or "Components"
+   - Verify service appears in discovered containers list
 
 4. **Query Loki for service**:
    ```bash
@@ -476,10 +486,14 @@ curl -s http://admin:changeme@localhost:3000/api/dashboards/uid/north-cloud-logs
 
 If you have >100 log lines per second:
 
-1. **Increase batch size** in `.env`:
-   ```bash
-   PROMTAIL_BATCH_SIZE=524288  # 512KB
-   PROMTAIL_BATCH_WAIT=2s
+1. **Adjust Alloy batch settings** in `/infrastructure/alloy/config.alloy`:
+   ```hcl
+   loki.write "north_cloud" {
+     endpoint {
+       batch_wait = "2s"
+       batch_size = "512KiB"
+     }
+   }
    ```
 
 2. **Increase Loki limits**:
@@ -507,11 +521,9 @@ If you have limited RAM/CPU:
      max_concurrent: 5  # Default: 10
    ```
 
-3. **Sample logs** in Promtail (drop debug logs):
-   ```yaml
-   - drop:
-       expression: '.*level="debug".*'
-   ```
+3. **Sample logs** in Alloy (drop debug logs):
+   - Edit `/infrastructure/alloy/config.alloy`
+   - Add a `drop` stage in `loki.process` component to filter debug logs
 
 ## Security Considerations
 
@@ -533,7 +545,7 @@ If you have limited RAM/CPU:
    - Configure tenants
 
 4. **Restrict network access**:
-   - Use firewall rules to limit access to ports 3000, 3100, 9080
+   - Use firewall rules to limit access to ports 3000, 3100, 12345
    - Only expose Grafana (3000) externally
 
 5. **Use HTTPS**:
@@ -576,7 +588,8 @@ Grafana can send alerts based on log patterns:
 
 - [Grafana Loki Documentation](https://grafana.com/docs/loki/latest/)
 - [LogQL Query Language](https://grafana.com/docs/loki/latest/logql/)
-- [Promtail Configuration](https://grafana.com/docs/loki/latest/clients/promtail/configuration/)
+- [Grafana Alloy Documentation](https://grafana.com/docs/alloy/latest/)
+- [Alloy Docker Monitoring](https://grafana.com/docs/alloy/latest/monitor/monitor-docker-containers/)
 - [Grafana Dashboards](https://grafana.com/docs/grafana/latest/dashboards/)
 - [Grafana Provisioning](https://grafana.com/docs/grafana/latest/administration/provisioning/)
 
@@ -585,6 +598,8 @@ Grafana can send alerts based on log patterns:
 For issues with the logging stack:
 
 1. Check this README for troubleshooting steps
-2. Review service logs: `docker compose logs loki promtail grafana`
-3. Check Grafana community forums: https://community.grafana.com/
-4. Report bugs in the North Cloud repository
+2. Review service logs: `docker compose logs loki alloy grafana`
+3. Check Alloy UI: http://localhost:12345 (debugging interface)
+4. Consult Alloy documentation: `/infrastructure/alloy/README.md`
+5. Check Grafana community forums: https://community.grafana.com/
+6. Report bugs in the North Cloud repository

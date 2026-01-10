@@ -174,7 +174,13 @@ cd SERVICE && go build -o bin/SERVICE main.go
 - **Redis**: Pub/Sub channels (e.g., `articles:crime:violent`, `articles:news`)
 - **Elasticsearch**: `{source}_raw_content` and `{source}_classified_content` indexes
 - **Nginx**: Reverse proxy, SSL/TLS (northcloud.biz), routes `/api/*` and `/dashboard/*`
-- **Loki + Grafana Alloy + Grafana**: Centralized logging (replaces Promtail)
+- **Loki + Grafana Alloy + Grafana**: Centralized logging infrastructure
+  - **Alloy**: Collects logs from Docker containers and forwards to Loki
+  - **Loki**: Aggregates and stores logs with label-based indexing
+  - **Grafana**: Web UI for querying and visualizing logs
+  - **Configuration**: `/infrastructure/alloy/config.alloy` (HCL format)
+  - **Port**: 12345 (Alloy debugging UI), 3100 (Loki), 3000 (Grafana)
+  - **Docs**: `/infrastructure/alloy/README.md`, `/infrastructure/grafana/README.md`
 
 ---
 
@@ -404,7 +410,8 @@ bash infrastructure/certbot/scripts/renew-and-reload.sh
 ### Infrastructure Docs
 - `/DOCKER.md` - Docker quick reference
 - `/infrastructure/certbot/README.md` - SSL/TLS certificate management
-- `/infrastructure/grafana/README.md` - Logging infrastructure guide
+- `/infrastructure/alloy/README.md` - Grafana Alloy log collection
+- `/infrastructure/grafana/README.md` - Logging infrastructure guide (Loki + Alloy + Grafana)
 - `/docs/PROFILING.md` - Profiling and performance monitoring
 
 ### Cursor Commands
