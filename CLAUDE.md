@@ -537,6 +537,55 @@ The platform uses a **three-stage content pipeline** for intelligent article pro
 - **Monitoring**: Certificate expiry check script available
 - **Manual Renewal**: Use scripts in `/infrastructure/certbot/scripts/`
 
+#### Centralized Logging Infrastructure (Loki + Grafana Alloy + Grafana)
+- **Purpose**: Centralized log aggregation, storage, and visualization for all North Cloud services
+- **Architecture**: Services → Docker logs → Grafana Alloy → Loki → Grafana
+- **Components**:
+  - **Grafana Loki** (Port 3100): Log aggregation and storage server
+    - Time-series database optimized for logs
+    - Label-based indexing for efficient queries
+    - 7-day retention (dev), 30-day retention (prod)
+    - Snappy compression for efficient storage
+  - **Grafana Alloy** (Port 12345): Modern telemetry collector
+    - **Status**: ✅ Active - Replacement for deprecated Promtail
+    - **Migration**: Promtail EOL March 2026 - Alloy is the successor
+    - Collects logs from Docker containers via Docker socket
+    - Two-stage JSON parsing (Docker wrapper + service logs)
+    - Label extraction from Docker metadata (service, level, project)
+    - HCL-based configuration (HashiCorp Configuration Language)
+    - Built-in debugging UI at http://localhost:12345
+  - **Grafana** (Port 3000): Web-based log visualization and analysis
+    - Auto-provisioned Loki datasource
+    - Pre-built "North Cloud Logs" dashboard
+    - LogQL query language for log filtering and analysis
+- **Log Flow**:
+  1. Services write structured JSON logs via `infrastructure/logger` package
+  2. Docker captures logs with json-file driver
+  3. Alloy scrapes Docker containers every 5 seconds
+  4. Alloy parses JSON logs, extracts fields, and adds labels
+  5. Alloy batches logs (100KB or 1 second) and sends to Loki
+  6. Loki indexes by labels (service, level, project) and stores compressed chunks
+  7. Grafana queries Loki and displays logs in web UI
+- **Key Features**:
+  - Structured logging with JSON format (all services)
+  - Label-based filtering: `{service="crawler", level="error"}`
+  - Field extraction in Grafana: `{service="crawler"} | json | status_code=500`
+  - Automatic retention and cleanup (7/30 days)
+  - Health checks on all three services
+  - Persistent storage via Docker volumes
+- **Configuration**:
+  - Loki: `/infrastructure/loki/loki-config.yml` (base/dev/prod variants)
+  - Alloy: `/infrastructure/alloy/config.alloy` (HCL format)
+  - Grafana: `/infrastructure/grafana/provisioning/` (datasources, dashboards)
+- **Documentation**:
+  - `/infrastructure/grafana/README.md` - Comprehensive guide (591 lines)
+  - `/infrastructure/alloy/MIGRATION.md` - Promtail to Alloy migration guide
+  - `/infrastructure/certbot/README.md` - SSL/TLS setup for production
+- **Migration Status**:
+  - ✅ Alloy configuration complete and ready for deployment
+  - ⚠️ Promtail still present for parallel operation during migration
+  - 📅 Recommended migration completion: February 2026 (before Promtail EOL)
+
 ---
 
 ## Directory Structure
@@ -745,6 +794,18 @@ north-cloud/
     │   └── middleware.go        # JWT validation middleware for Gin
     ├── nginx/
     │   └── nginx.conf           # Main nginx configuration with SSL/TLS
+    ├── loki/                    # Loki log aggregation configuration
+    │   ├── loki-config.yml      # Base Loki configuration
+    │   ├── loki-config.dev.yml  # Development overrides
+    │   └── loki-config.prod.yml # Production configuration
+    ├── alloy/                   # Grafana Alloy telemetry collector (replaces Promtail)
+    │   ├── config.alloy         # Alloy HCL configuration
+    │   └── MIGRATION.md         # Promtail to Alloy migration guide
+    ├── promtail/                # Promtail log collector (DEPRECATED - EOL March 2026)
+    │   └── promtail-config.yml  # Promtail YAML configuration (kept during migration)
+    ├── grafana/                 # Grafana dashboards and provisioning
+    │   ├── README.md            # Comprehensive Grafana/Loki guide
+    │   └── provisioning/        # Auto-provisioned datasources and dashboards
     ├── elasticsearch/
     ├── postgres/
     └── certbot/                 # SSL/TLS certificate management

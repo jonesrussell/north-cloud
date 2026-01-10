@@ -263,7 +263,7 @@ services:
 
   promtail:
     <<: *service-defaults
-    image: grafana/promtail:latest
+    image: grafana/promtail:2.9.10  # Pinned version (was :latest)
     ports:
       - "${PROMTAIL_PORT:-9080}:9080"
     command: -config.file=/etc/promtail/config.yml
@@ -279,6 +279,33 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+
+  # Grafana Alloy - Replacement for Promtail (running alongside during migration)
+  # Alloy is the next-generation telemetry collector from Grafana
+  # Promtail reaches EOL March 2026 - migrate to Alloy for long-term support
+  alloy:
+    <<: *service-defaults
+    image: grafana/alloy:latest
+    ports:
+      - "${ALLOY_PORT:-12345}:12345"  # Alloy UI/API port
+    command:
+      - run
+      - --server.http.listen-addr=0.0.0.0:12345
+      - --storage.path=/var/lib/alloy/data
+      - /etc/alloy/config.alloy
+    volumes:
+      - ./infrastructure/alloy/config.alloy:/etc/alloy/config.alloy:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - alloy_data:/var/lib/alloy
+    depends_on:
+      loki:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:12345/ready || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
 
   grafana:
     <<: *service-defaults
@@ -320,6 +347,7 @@ volumes:
   minio_data:
   loki_data:
   promtail_positions:
+  alloy_data:
   grafana_data:
 
 networks:
