@@ -36,7 +36,7 @@ scrape_configs:
         target_label: 'service'
         replacement: '${1}'
 
-      # Extract service name from Docker Compose label (more reliable)
+      # Extract service name from Docker Compose label (preferred)
       - source_labels: ['__meta_docker_container_label_com_docker_compose_service']
         target_label: 'service'
 
@@ -44,12 +44,11 @@ scrape_configs:
       - source_labels: ['__meta_docker_container_label_com_docker_compose_project']
         target_label: 'project'
 
-      # Ensure project label is always set (fallback if Docker label missing)
-      # This guarantees consistent labeling even if Docker labels are inconsistent
-      - target_label: 'project'
+      # Fallback: only set project if missing (does NOT overwrite valid labels)
+      - source_labels: ['project']
+        regex: '^$'
+        target_label: 'project'
         replacement: 'north-cloud'
-        action: replace
-        source_labels: []
 
       # Extract container ID (short version, first 12 chars)
       - source_labels: ['__meta_docker_container_id']
@@ -61,17 +60,14 @@ scrape_configs:
         replacement: 'docker'
 
     pipeline_stages:
-      # Parse JSON logs from Docker (Docker wraps logs in JSON with 'log', 'stream', 'time' fields)
+      # Parse JSON logs from Docker (Docker wraps logs in JSON with 'log', 'stream', 'time')
       - json:
           expressions:
             log: log
             stream: stream
             time: time
 
-      # Parse the actual log line as JSON (all services now use JSON format)
-      # Expected: All North Cloud services output structured JSON logs
-      # If parsing fails, structured fields (level, service, etc.) won't be available
-      # This is logged as a warning by Promtail but doesn't drop the log line
+      # Parse the actual log line as JSON (North Cloud services output structured JSON)
       - json:
           expressions:
             level: level
@@ -79,32 +75,18 @@ scrape_configs:
             caller: caller
             msg: msg
             ts: ts
-            log_service: service  # Extract as log_service to avoid overwriting Docker service label
+            log_service: service   # Avoid overwriting Docker-derived service label
             method: method
             error: error
             duration: duration
             status_code: status_code
           source: log
-          # Note: drop_malformed would drop non-JSON logs entirely
-          # We keep it false so logs are still ingested, just without structured fields
-          # Monitor Promtail logs for JSON parsing failures to identify misconfigured services
 
-      # Normalize level field: ensure it exists (even if empty) for reliable matching
-      # This allows match stages to work correctly whether level was extracted or not
-      - template:
-          source: level
-          template: '{{ if .level }}{{ .level }}{{ else }}{{ end }}'
-
-      # Extract level as a label (from JSON parsing if successful)
-      # After normalization above, level will always exist (empty string if not extracted)
+      # Extract level as a label (JSON parsing may or may not populate it)
       - labels:
           level:
 
-      # Fallback: Multi-stage level extraction if JSON parsing failed
-      # Match stage only processes logs where level label is empty (JSON parsing failed)
-      # This prevents unnecessary regex/logfmt processing when JSON already succeeded
-      
-      # 1. Try logfmt format (common in Go/Rust services: level=info msg="...")
+      # Fallback 1: logfmt (level=info msg="...")
       - match:
           selector: '{level=""}'
           stages:
@@ -114,9 +96,7 @@ scrape_configs:
             - labels:
                 level:
 
-      # 2. If logfmt also failed, try generic regex (last resort)
-      # Matches: "level":"info", level="info", [INFO], INFO:, level=debug, etc.
-      # More permissive pattern to catch various log format variations
+      # Fallback 2: generic regex (INFO, [INFO], "level":"info", etc.)
       - match:
           selector: '{level=""}'
           stages:
@@ -126,7 +106,7 @@ scrape_configs:
             - labels:
                 level:
 
-      # If JSON parsing succeeded, use the parsed timestamp (more accurate than Docker's time)
+      # Timestamp from JSON logs (preferred)
       - timestamp:
           source: ts
           format: RFC3339Nano
@@ -136,7 +116,7 @@ scrape_configs:
             - "2006-01-02T15:04:05Z07:00"
           on_failure: drop
 
-      # Fallback to Docker's timestamp if JSON timestamp parsing failed
+      # Fallback timestamp from Docker wrapper
       - timestamp:
           source: time
           format: RFC3339Nano
@@ -150,14 +130,7 @@ scrape_configs:
       - labels:
           stream:
 
-      # Service label handling:
-      # - Primary: Docker Compose service label (set in relabel_configs) - most reliable
-      # - Fallback: log_service from JSON (only used if Docker label missing)
-      # We extract log_service from JSON but don't automatically use it as a label
-      # to avoid overwriting the reliable Docker-derived service label
-      # If needed, you can query by log_service in LogQL: | json | log_service="..."
-
-      # Output formatting - use msg if available (from JSON), otherwise use log (raw)
+      # Output formatting — prefer structured msg, fallback to raw log
       - output:
           source: msg
           on_failure: log
@@ -173,7 +146,6 @@ scrape_configs:
           __path__: /var/log/nginx/access.log
 
     pipeline_stages:
-      # Parse nginx access log format
       - regex:
           expression: '^(?P<remote_addr>[\w\.]+) - (?P<remote_user>[\w-]+) \[(?P<time_local>.*?)\] "(?P<method>\w+) (?P<request>.*?) (?P<protocol>HTTP/[\d\.]+)" (?P<status>\d+) (?P<body_bytes_sent>\d+) "(?P<http_referer>.*?)" "(?P<http_user_agent>.*?)"'
 
@@ -200,7 +172,6 @@ scrape_configs:
           __path__: /var/log/nginx/error.log
 
     pipeline_stages:
-      # Parse nginx error log format
       - regex:
           expression: '^(?P<timestamp>\d{4}/\d{2}/\d{2} \d{2}:\d{2}:\d{2}) \[(?P<level>\w+)\] (?P<message>.*)'
 
