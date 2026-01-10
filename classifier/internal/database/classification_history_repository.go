@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/jonesrussell/north-cloud/classifier/internal/domain"
@@ -125,11 +126,11 @@ func (r *ClassificationHistoryRepository) GetByContentID(ctx context.Context, co
 }
 
 // GetStats retrieves overall classification statistics.
-func (r *ClassificationHistoryRepository) GetStats(ctx context.Context) (*ClassificationStats, error) {
+// If startDate is provided, filters results to include only classifications on or after that date.
+func (r *ClassificationHistoryRepository) GetStats(ctx context.Context, startDate *time.Time) (*ClassificationStats, error) {
 	var stats ClassificationStats
 
-	// Get overall stats
-	// Crime-related count is calculated from topics array (checking if "crime" is in topics)
+	// Build query with optional date filter
 	query := `
 		SELECT
 			COUNT(*) as total_classified,
@@ -138,8 +139,14 @@ func (r *ClassificationHistoryRepository) GetStats(ctx context.Context) (*Classi
 			COALESCE(AVG(processing_time_ms), 0) as avg_processing_time_ms
 		FROM classification_history
 	`
+	args := []any{}
 
-	err := r.db.QueryRowContext(ctx, query).Scan(
+	if startDate != nil {
+		query += " WHERE classified_at >= $1"
+		args = append(args, *startDate)
+	}
+
+	err := r.db.QueryRowContext(ctx, query, args...).Scan(
 		&stats.TotalClassified,
 		&stats.AvgQualityScore,
 		&stats.CrimeRelated,
@@ -149,16 +156,25 @@ func (r *ClassificationHistoryRepository) GetStats(ctx context.Context) (*Classi
 		return nil, fmt.Errorf("failed to get classification stats: %w", err)
 	}
 
-	// Get content type distribution
+	// Get content type distribution with same date filter
 	stats.ContentTypes = make(map[string]int)
 	typeQuery := `
 		SELECT content_type, COUNT(*) as count
 		FROM classification_history
 		WHERE content_type IS NOT NULL
-		GROUP BY content_type
 	`
+	if startDate != nil {
+		typeQuery += " AND classified_at >= $1"
+	}
 
-	rows, err := r.db.QueryContext(ctx, typeQuery)
+	typeQuery += " GROUP BY content_type"
+
+	typeArgs := []any{}
+	if startDate != nil {
+		typeArgs = append(typeArgs, *startDate)
+	}
+
+	rows, err := r.db.QueryContext(ctx, typeQuery, typeArgs...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get content type distribution: %w", err)
 	}

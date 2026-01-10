@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/jonesrussell/north-cloud/classifier/internal/classifier"
@@ -573,11 +574,21 @@ func (h *Handler) GetSourceStats(c *gin.Context) {
 	c.JSON(http.StatusOK, stats)
 }
 
-// GetStats handles GET /api/v1/stats
+// GetStats handles GET /api/v1/stats?date=today
 func (h *Handler) GetStats(c *gin.Context) {
 	h.logger.Debug("Getting overall classification stats")
 
-	stats, err := h.classificationHistoryRepo.GetStats(c.Request.Context())
+	// Parse optional date parameter
+	var startDate *time.Time
+	dateParam := c.Query("date")
+	if dateParam == "today" {
+		now := time.Now()
+		start := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+		startDate = &start
+		h.logger.Debug("Filtering stats for today", infralogger.String("start_date", startDate.Format(time.RFC3339)))
+	}
+
+	stats, err := h.classificationHistoryRepo.GetStats(c.Request.Context(), startDate)
 	if err != nil {
 		h.logger.Error("Failed to get stats", infralogger.Error(err))
 		// Return empty stats instead of error to avoid breaking dashboard
