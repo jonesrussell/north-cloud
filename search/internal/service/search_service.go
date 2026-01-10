@@ -13,7 +13,7 @@ import (
 	"github.com/jonesrussell/north-cloud/search/internal/config"
 	"github.com/jonesrussell/north-cloud/search/internal/domain"
 	"github.com/jonesrussell/north-cloud/search/internal/elasticsearch"
-	"github.com/jonesrussell/north-cloud/search/internal/logging"
+	infralogger "github.com/north-cloud/infrastructure/logger"
 )
 
 // SearchService orchestrates search operations
@@ -21,11 +21,11 @@ type SearchService struct {
 	esClient     *elasticsearch.Client
 	queryBuilder *elasticsearch.QueryBuilder
 	config       *config.Config
-	logger       logging.Logger
+	logger       infralogger.Logger
 }
 
 // NewSearchService creates a new search service
-func NewSearchService(esClient *elasticsearch.Client, cfg *config.Config, log logging.Logger) *SearchService {
+func NewSearchService(esClient *elasticsearch.Client, cfg *config.Config, log infralogger.Logger) *SearchService {
 	return &SearchService{
 		esClient:     esClient,
 		queryBuilder: elasticsearch.NewQueryBuilder(&cfg.Elasticsearch),
@@ -40,15 +40,16 @@ func (s *SearchService) Search(ctx context.Context, req *domain.SearchRequest) (
 
 	// Validate request
 	if err := req.Validate(s.config.Service.MaxPageSize, s.config.Service.DefaultPageSize, s.config.Service.MaxQueryLength); err != nil {
-		s.logger.Warn("Invalid search request", "error", err)
+		s.logger.Warn("Invalid search request",
+			infralogger.Error(err),
+		)
 		return nil, fmt.Errorf("validation error: %w", err)
 	}
 
 	s.logger.Info("Executing search",
-		"query", req.Query,
-		"page", req.Pagination.Page,
-		"size", req.Pagination.Size,
-		"filters", req.Filters,
+		infralogger.String("query", req.Query),
+		infralogger.Int("page", req.Pagination.Page),
+		infralogger.Int("size", req.Pagination.Size),
 	)
 
 	// Build Elasticsearch query
@@ -57,7 +58,10 @@ func (s *SearchService) Search(ctx context.Context, req *domain.SearchRequest) (
 	// Execute search
 	res, err := s.executeSearch(ctx, esQuery)
 	if err != nil {
-		s.logger.Error("Search execution failed", "error", err, "query", req.Query)
+		s.logger.Error("Search execution failed",
+			infralogger.Error(err),
+			infralogger.String("query", req.Query),
+		)
 		return nil, err
 	}
 	defer func() {
@@ -67,7 +71,9 @@ func (s *SearchService) Search(ctx context.Context, req *domain.SearchRequest) (
 	// Parse response
 	response, err := s.parseSearchResponse(res.Body, req)
 	if err != nil {
-		s.logger.Error("Failed to parse search response", "error", err)
+		s.logger.Error("Failed to parse search response",
+			infralogger.Error(err),
+		)
 		return nil, err
 	}
 
@@ -75,9 +81,9 @@ func (s *SearchService) Search(ctx context.Context, req *domain.SearchRequest) (
 	response.TookMs = time.Since(startTime).Milliseconds()
 
 	s.logger.Info("Search completed",
-		"query", req.Query,
-		"total_hits", response.TotalHits,
-		"took_ms", response.TookMs,
+		infralogger.String("query", req.Query),
+		infralogger.Int64("total_hits", response.TotalHits),
+		infralogger.Int64("took_ms", response.TookMs),
 	)
 
 	return response, nil
@@ -93,7 +99,9 @@ func (s *SearchService) executeSearch(ctx context.Context, query map[string]any)
 
 	// Log query in debug mode
 	if s.config.Service.Debug {
-		s.logger.Debug("Elasticsearch query", "query", buf.String())
+		s.logger.Debug("Elasticsearch query",
+			infralogger.String("query", buf.String()),
+		)
 	}
 
 	// Execute search

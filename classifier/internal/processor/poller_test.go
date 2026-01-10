@@ -2,7 +2,10 @@
 package processor
 
 import (
+	"reflect"
 	"testing"
+
+	infralogger "github.com/north-cloud/infrastructure/logger"
 )
 
 // mockLoggerWithCalls tracks log calls for testing
@@ -14,8 +17,8 @@ type mockLoggerWithCalls struct {
 }
 
 type logCall struct {
-	msg           string
-	keysAndValues []any
+	msg    string
+	fields []infralogger.Field
 }
 
 func newMockLoggerWithCalls() *mockLoggerWithCalls {
@@ -27,20 +30,43 @@ func newMockLoggerWithCalls() *mockLoggerWithCalls {
 	}
 }
 
-func (m *mockLoggerWithCalls) Debug(msg string, keysAndValues ...any) {
-	m.debugCalls = append(m.debugCalls, logCall{msg: msg, keysAndValues: keysAndValues})
+func (m *mockLoggerWithCalls) Debug(msg string, fields ...infralogger.Field) {
+	m.debugCalls = append(m.debugCalls, logCall{msg: msg, fields: fields})
 }
 
-func (m *mockLoggerWithCalls) Info(msg string, keysAndValues ...any) {
-	m.infoCalls = append(m.infoCalls, logCall{msg: msg, keysAndValues: keysAndValues})
+func (m *mockLoggerWithCalls) Info(msg string, fields ...infralogger.Field) {
+	m.infoCalls = append(m.infoCalls, logCall{msg: msg, fields: fields})
 }
 
-func (m *mockLoggerWithCalls) Warn(msg string, keysAndValues ...any) {
-	m.warnCalls = append(m.warnCalls, logCall{msg: msg, keysAndValues: keysAndValues})
+func (m *mockLoggerWithCalls) Warn(msg string, fields ...infralogger.Field) {
+	m.warnCalls = append(m.warnCalls, logCall{msg: msg, fields: fields})
 }
 
-func (m *mockLoggerWithCalls) Error(msg string, keysAndValues ...any) {
-	m.errorCalls = append(m.errorCalls, logCall{msg: msg, keysAndValues: keysAndValues})
+func (m *mockLoggerWithCalls) Error(msg string, fields ...infralogger.Field) {
+	m.errorCalls = append(m.errorCalls, logCall{msg: msg, fields: fields})
+}
+
+func (m *mockLoggerWithCalls) Fatal(msg string, fields ...infralogger.Field)       {}
+func (m *mockLoggerWithCalls) With(fields ...infralogger.Field) infralogger.Logger { return m }
+func (m *mockLoggerWithCalls) Sync() error                                         { return nil }
+
+// getFieldValue extracts the value from a zap.Field by key name
+func getFieldValue(fields []infralogger.Field, key string) (any, bool) {
+	for _, field := range fields {
+		// Use reflection to access the private Key field of zap.Field
+		fieldValue := reflect.ValueOf(field)
+		if fieldValue.Kind() == reflect.Struct {
+			keyField := fieldValue.FieldByName("Key")
+			if keyField.IsValid() && keyField.String() == key {
+				// Get the value - zap.Field stores it in Interface field
+				interfaceField := fieldValue.FieldByName("Interface")
+				if interfaceField.IsValid() {
+					return interfaceField.Interface(), true
+				}
+			}
+		}
+	}
+	return nil, false
 }
 
 func TestPoller_validateURL_ShortURL(t *testing.T) {
@@ -110,23 +136,11 @@ func TestPoller_validateURL_LongURL(t *testing.T) {
 	}
 
 	// Verify warning includes original_length
-	foundOriginalLength := false
-	for i := 0; i < len(warnCall.keysAndValues); i += 2 {
-		if i+1 < len(warnCall.keysAndValues) {
-			key := warnCall.keysAndValues[i]
-			if key == "original_length" {
-				foundOriginalLength = true
-				value := warnCall.keysAndValues[i+1]
-				if value != len(urlStr) {
-					t.Errorf("expected original_length %d, got %v", len(urlStr), value)
-				}
-				break
-			}
-		}
-	}
-
+	originalLength, foundOriginalLength := getFieldValue(warnCall.fields, "original_length")
 	if !foundOriginalLength {
 		t.Error("expected warning to include original_length")
+	} else if originalLength != len(urlStr) {
+		t.Errorf("expected original_length %d, got %v", len(urlStr), originalLength)
 	}
 }
 
@@ -155,23 +169,16 @@ func TestPoller_validateURL_VeryLongURL(t *testing.T) {
 
 	// Verify URL preview is truncated to urlPreviewLength
 	warnCall := logger.warnCalls[0]
-	foundURLPreview := false
-	for i := 0; i < len(warnCall.keysAndValues); i += 2 {
-		if i+1 < len(warnCall.keysAndValues) {
-			key := warnCall.keysAndValues[i]
-			if key == "url_preview" {
-				foundURLPreview = true
-				value := warnCall.keysAndValues[i+1].(string)
-				if len(value) > urlPreviewLength {
-					t.Errorf("expected url_preview length <= %d, got %d", urlPreviewLength, len(value))
-				}
-				break
-			}
-		}
-	}
-
+	urlPreview, foundURLPreview := getFieldValue(warnCall.fields, "url_preview")
 	if !foundURLPreview {
 		t.Error("expected warning to include url_preview")
+	} else {
+		urlPreviewStr, ok := urlPreview.(string)
+		if !ok {
+			t.Errorf("expected url_preview to be string, got %T", urlPreview)
+		} else if len(urlPreviewStr) > urlPreviewLength {
+			t.Errorf("expected url_preview length <= %d, got %d", urlPreviewLength, len(urlPreviewStr))
+		}
 	}
 }
 

@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/jonesrussell/north-cloud/classifier/internal/domain"
+	infralogger "github.com/north-cloud/infrastructure/logger"
 )
 
 const (
@@ -23,7 +24,7 @@ const (
 
 // TopicClassifier classifies content by topic using rule-based keyword matching
 type TopicClassifier struct {
-	logger Logger
+	logger infralogger.Logger
 	rules  []domain.ClassificationRule
 }
 
@@ -35,7 +36,7 @@ type TopicResult struct {
 }
 
 // NewTopicClassifier creates a new topic classifier with the given rules
-func NewTopicClassifier(logger Logger, rules []domain.ClassificationRule) *TopicClassifier {
+func NewTopicClassifier(logger infralogger.Logger, rules []domain.ClassificationRule) *TopicClassifier {
 	return &TopicClassifier{
 		logger: logger,
 		rules:  rules,
@@ -70,10 +71,10 @@ func (t *TopicClassifier) Classify(ctx context.Context, raw *domain.RawContent) 
 			result.TopicScores[rule.TopicName] = score
 
 			t.logger.Debug("Topic matched",
-				"content_id", raw.ID,
-				"topic", rule.TopicName,
-				"score", score,
-				"min_confidence", rule.MinConfidence,
+				infralogger.String("content_id", raw.ID),
+				infralogger.String("topic", rule.TopicName),
+				infralogger.Float64("score", score),
+				infralogger.Float64("min_confidence", rule.MinConfidence),
 			)
 		}
 	}
@@ -84,9 +85,9 @@ func (t *TopicClassifier) Classify(ctx context.Context, raw *domain.RawContent) 
 	}
 
 	t.logger.Debug("Topic classification complete",
-		"content_id", raw.ID,
-		"topics", result.Topics,
-		"highest_topic", result.HighestTopic,
+		infralogger.String("content_id", raw.ID),
+		infralogger.Any("topics", result.Topics),
+		infralogger.String("highest_topic", result.HighestTopic),
 	)
 
 	return result, nil
@@ -207,7 +208,7 @@ func (t *TopicClassifier) UpdateRules(rules []*domain.ClassificationRule) {
 		ruleValues[i] = *rule
 	}
 	t.rules = ruleValues
-	t.logger.Info("Topic classification rules updated", "count", len(rules))
+	t.logger.Info("Topic classification rules updated", infralogger.Int("count", len(rules)))
 }
 
 // GetRules returns the current classification rules

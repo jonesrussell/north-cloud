@@ -3,16 +3,16 @@ package events
 import (
 	"context"
 
-	"github.com/jonesrussell/north-cloud/crawler/internal/logger"
+	infralogger "github.com/north-cloud/infrastructure/logger"
 )
 
 // DefaultHandler provides a basic implementation of EventHandler that logs events.
 type DefaultHandler struct {
-	logger logger.Interface
+	logger infralogger.Logger
 }
 
 // NewDefaultHandler creates a new DefaultHandler instance.
-func NewDefaultHandler(log logger.Interface) EventHandler {
+func NewDefaultHandler(log infralogger.Logger) EventHandler {
 	return &DefaultHandler{
 		logger: log,
 	}
@@ -21,8 +21,8 @@ func NewDefaultHandler(log logger.Interface) EventHandler {
 // HandleError logs error events.
 func (h *DefaultHandler) HandleError(ctx context.Context, err error) error {
 	h.logger.Error("Error occurred",
-		"error", err,
-		"component", "crawler",
+		infralogger.Error(err),
+		infralogger.String("component", "crawler"),
 	)
 	return nil
 }
@@ -30,7 +30,7 @@ func (h *DefaultHandler) HandleError(ctx context.Context, err error) error {
 // HandleStart logs start events.
 func (h *DefaultHandler) HandleStart(ctx context.Context) error {
 	h.logger.Info("Crawler started",
-		"component", "crawler",
+		infralogger.String("component", "crawler"),
 	)
 	return nil
 }
@@ -38,7 +38,7 @@ func (h *DefaultHandler) HandleStart(ctx context.Context) error {
 // HandleStop logs stop events.
 func (h *DefaultHandler) HandleStop(ctx context.Context) error {
 	h.logger.Info("Crawler stopped",
-		"component", "crawler",
+		infralogger.String("component", "crawler"),
 	)
 	return nil
 }

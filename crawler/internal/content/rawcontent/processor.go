@@ -10,19 +10,19 @@ import (
 	"github.com/gocolly/colly/v2"
 	"github.com/jonesrussell/north-cloud/crawler/internal/content"
 	"github.com/jonesrussell/north-cloud/crawler/internal/content/contenttype"
-	"github.com/jonesrussell/north-cloud/crawler/internal/logger"
+	infralogger "github.com/north-cloud/infrastructure/logger"
 )
 
 // RawContentProcessor implements the content.Processor interface for raw content extraction.
 // It processes any HTML page without type detection or validation.
 type RawContentProcessor struct {
-	logger  logger.Interface
+	logger  infralogger.Logger
 	service Interface
 }
 
 // NewProcessor creates a new raw content processor.
 func NewProcessor(
-	log logger.Interface,
+	log infralogger.Logger,
 	service Interface,
 ) *RawContentProcessor {
 	return &RawContentProcessor{
@@ -41,8 +41,8 @@ func (p *RawContentProcessor) Process(ctx context.Context, contentData any) erro
 	// Use the service to process the raw content
 	if err := p.service.Process(e); err != nil {
 		p.logger.Error("Failed to process raw content",
-			"error", err,
-			"url", e.Request.URL.String())
+			infralogger.Error(err),
+			infralogger.String("url", e.Request.URL.String()))
 		return fmt.Errorf("failed to process raw content: %w", err)
 	}
 

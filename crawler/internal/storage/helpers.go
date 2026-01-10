@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/elastic/go-elasticsearch/v8/esapi"
+	infralogger "github.com/north-cloud/infrastructure/logger"
 )
 
 // Helper function to create a context with timeout
@@ -22,15 +23,15 @@ func (s *Storage) createContextWithTimeout(
 // For operations that don't have a docID (like searches), pass empty string
 func (s *Storage) closeResponse(res *esapi.Response, operation, index, docID string) {
 	if closeErr := res.Body.Close(); closeErr != nil {
-		fields := []any{
-			"error", closeErr,
-			"operation", operation,
+		fields := []infralogger.Field{
+			infralogger.Error(closeErr),
+			infralogger.String("operation", operation),
 		}
 		if index != "" {
-			fields = append(fields, "index", index)
+			fields = append(fields, infralogger.String("index", index))
 		}
 		if docID != "" {
-			fields = append(fields, "doc_id", docID)
+			fields = append(fields, infralogger.String("doc_id", docID))
 		}
 		s.logger.Error("Failed to close response body", fields...)
 	}
@@ -39,10 +40,10 @@ func (s *Storage) closeResponse(res *esapi.Response, operation, index, docID str
 // logOperationError logs storage operation errors with context
 func (s *Storage) logOperationError(operation, index, docID string, err error) {
 	s.logger.Error("Storage operation failed",
-		"operation", operation,
-		"index", index,
-		"doc_id", docID,
-		"error", err)
+		infralogger.String("operation", operation),
+		infralogger.String("index", index),
+		infralogger.String("doc_id", docID),
+		infralogger.Error(err))
 }
 
 // getURLFromDocument extracts the URL from a document using reflection

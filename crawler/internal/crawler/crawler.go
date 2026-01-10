@@ -10,10 +10,10 @@ import (
 	"github.com/jonesrussell/north-cloud/crawler/internal/config/crawler"
 	"github.com/jonesrussell/north-cloud/crawler/internal/content"
 	"github.com/jonesrussell/north-cloud/crawler/internal/crawler/events"
-	"github.com/jonesrussell/north-cloud/crawler/internal/logger"
 	"github.com/jonesrussell/north-cloud/crawler/internal/metrics"
 	"github.com/jonesrussell/north-cloud/crawler/internal/sources"
 	storagetypes "github.com/jonesrussell/north-cloud/crawler/internal/storage/types"
+	infralogger "github.com/north-cloud/infrastructure/logger"
 )
 
 // Core Interfaces
@@ -116,7 +116,7 @@ type Interface interface {
 	// Wait waits for the crawler to complete
 	Wait() error
 	// GetLogger returns the logger
-	GetLogger() logger.Interface
+	GetLogger() infralogger.Logger
 	// GetSource returns the source
 	GetSource() sources.Interface
 	// GetProcessors returns the processors
@@ -135,7 +135,7 @@ const (
 // Crawler implements the Processor interface for web crawling.
 // Refactored to use focused component pattern for better SRP compliance.
 type Crawler struct {
-	logger              logger.Interface
+	logger              infralogger.Logger
 	collector           *colly.Collector
 	bus                 *events.EventBus
 	indexManager        storagetypes.IndexManager
@@ -161,7 +161,7 @@ var _ CrawlerMetrics = (*Crawler)(nil)
 // -------------
 
 // GetLogger returns the logger.
-func (c *Crawler) GetLogger() logger.Interface {
+func (c *Crawler) GetLogger() infralogger.Logger {
 	return c.logger
 }
 

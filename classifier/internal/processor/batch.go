@@ -8,21 +8,14 @@ import (
 
 	"github.com/jonesrussell/north-cloud/classifier/internal/classifier"
 	"github.com/jonesrussell/north-cloud/classifier/internal/domain"
+	infralogger "github.com/north-cloud/infrastructure/logger"
 )
 
 // BatchProcessor processes multiple content items in parallel using a worker pool
 type BatchProcessor struct {
 	classifier  *classifier.Classifier
 	concurrency int
-	logger      Logger
-}
-
-// Logger defines the logging interface
-type Logger interface {
-	Debug(msg string, keysAndValues ...any)
-	Info(msg string, keysAndValues ...any)
-	Warn(msg string, keysAndValues ...any)
-	Error(msg string, keysAndValues ...any)
+	logger      infralogger.Logger
 }
 
 // ProcessResult holds the result of processing a single item
@@ -34,7 +27,7 @@ type ProcessResult struct {
 }
 
 // NewBatchProcessor creates a new batch processor
-func NewBatchProcessor(classifierInstance *classifier.Classifier, concurrency int, logger Logger) *BatchProcessor {
+func NewBatchProcessor(classifierInstance *classifier.Classifier, concurrency int, logger infralogger.Logger) *BatchProcessor {
 	if concurrency <= 0 {
 		concurrency = 10 // Default concurrency
 	}
@@ -53,8 +46,8 @@ func (b *BatchProcessor) Process(ctx context.Context, rawItems []*domain.RawCont
 	}
 
 	b.logger.Info("Starting batch processing",
-		"batch_size", len(rawItems),
-		"concurrency", b.concurrency,
+		infralogger.Int("batch_size", len(rawItems)),
+		infralogger.Int("concurrency", b.concurrency),
 	)
 
 	startTime := time.Now()
@@ -99,11 +92,11 @@ func (b *BatchProcessor) Process(ctx context.Context, rawItems []*domain.RawCont
 	}
 
 	b.logger.Info("Batch processing complete",
-		"total", len(rawItems),
-		"success", successCount,
-		"errors", errorCount,
-		"duration_ms", duration.Milliseconds(),
-		"items_per_second", float64(len(rawItems))/duration.Seconds(),
+		infralogger.Int("total", len(rawItems)),
+		infralogger.Int("success", successCount),
+		infralogger.Int("errors", errorCount),
+		infralogger.Int64("duration_ms", duration.Milliseconds()),
+		infralogger.Float64("items_per_second", float64(len(rawItems))/duration.Seconds()),
 	)
 
 	return processResults, nil
@@ -119,13 +112,13 @@ func (b *BatchProcessor) worker(
 ) {
 	defer wg.Done()
 
-	b.logger.Debug("Worker started", "worker_id", id)
+	b.logger.Debug("Worker started", infralogger.Int("worker_id", id))
 
 	for raw := range jobs {
 		// Check context cancellation
 		select {
 		case <-ctx.Done():
-			b.logger.Warn("Worker stopping due to context cancellation", "worker_id", id)
+			b.logger.Warn("Worker stopping due to context cancellation", infralogger.Int("worker_id", id))
 			return
 		default:
 		}
@@ -134,7 +127,7 @@ func (b *BatchProcessor) worker(
 		results <- result
 	}
 
-	b.logger.Debug("Worker finished", "worker_id", id)
+	b.logger.Debug("Worker finished", infralogger.Int("worker_id", id))
 }
 
 // processItem processes a single content item
@@ -148,8 +141,8 @@ func (b *BatchProcessor) processItem(ctx context.Context, raw *domain.RawContent
 	if err != nil {
 		result.Error = fmt.Errorf("classification failed: %w", err)
 		b.logger.Error("Failed to classify content",
-			"content_id", raw.ID,
-			"error", err,
+			infralogger.String("content_id", raw.ID),
+			infralogger.Error(err),
 		)
 		return result
 	}
@@ -161,9 +154,9 @@ func (b *BatchProcessor) processItem(ctx context.Context, raw *domain.RawContent
 	result.ClassifiedContent = classifiedContent
 
 	b.logger.Debug("Item processed successfully",
-		"content_id", raw.ID,
-		"content_type", classificationResult.ContentType,
-		"quality_score", classificationResult.QualityScore,
+		infralogger.String("content_id", raw.ID),
+		infralogger.String("content_type", classificationResult.ContentType),
+		infralogger.Int("quality_score", classificationResult.QualityScore),
 	)
 
 	return result
@@ -180,6 +173,6 @@ func (b *BatchProcessor) GetStats() map[string]any {
 func (b *BatchProcessor) SetConcurrency(concurrency int) {
 	if concurrency > 0 {
 		b.concurrency = concurrency
-		b.logger.Info("Concurrency updated", "new_concurrency", concurrency)
+		b.logger.Info("Concurrency updated", infralogger.Int("new_concurrency", concurrency))
 	}
 }

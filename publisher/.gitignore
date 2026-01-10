@@ -32,6 +32,8 @@ config.yml
 dist/
 build/
 bin/
+tmp/
+build-errors.log
 
 # Coverage files
 coverage.out

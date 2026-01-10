@@ -8,8 +8,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/jonesrussell/north-cloud/search/internal/domain"
-	"github.com/jonesrussell/north-cloud/search/internal/logging"
 	"github.com/jonesrussell/north-cloud/search/internal/service"
+	infralogger "github.com/north-cloud/infrastructure/logger"
 )
 
 const trueString = "true"
@@ -17,11 +17,11 @@ const trueString = "true"
 // Handler holds HTTP request handlers
 type Handler struct {
 	searchService *service.SearchService
-	logger        logging.Logger
+	logger        infralogger.Logger
 }
 
 // NewHandler creates a new handler instance
-func NewHandler(searchService *service.SearchService, log logging.Logger) *Handler {
+func NewHandler(searchService *service.SearchService, log infralogger.Logger) *Handler {
 	return &Handler{
 		searchService: searchService,
 		logger:        log,
@@ -37,7 +37,9 @@ func (h *Handler) Search(c *gin.Context) {
 		req = h.parseQueryParams(c)
 	} else {
 		if err := c.ShouldBindJSON(&req); err != nil {
-			h.logger.Warn("Invalid search request body", "error", err)
+			h.logger.Warn("Invalid search request body",
+				infralogger.Error(err),
+			)
 			c.JSON(http.StatusBadRequest, ErrorResponse{
 				Error:     "Invalid request body: " + err.Error(),
 				Code:      "INVALID_REQUEST",
@@ -50,7 +52,10 @@ func (h *Handler) Search(c *gin.Context) {
 	// Execute search
 	result, err := h.searchService.Search(c.Request.Context(), &req)
 	if err != nil {
-		h.logger.Error("Search failed", "error", err, "query", req.Query)
+		h.logger.Error("Search failed",
+			infralogger.Error(err),
+			infralogger.String("query", req.Query),
+		)
 
 		// Determine error type
 		statusCode := http.StatusInternalServerError

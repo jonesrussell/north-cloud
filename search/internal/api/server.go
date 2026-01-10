@@ -5,9 +5,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/jonesrussell/north-cloud/search/internal/config"
-	"github.com/jonesrussell/north-cloud/search/internal/logging"
 	infragin "github.com/north-cloud/infrastructure/gin"
-	"github.com/north-cloud/infrastructure/logger"
+	infralogger "github.com/north-cloud/infrastructure/logger"
 )
 
 // Default timeout values.
@@ -18,7 +17,7 @@ const (
 )
 
 // NewServer creates a new HTTP server using the infrastructure gin package.
-func NewServer(handler *Handler, cfg *config.Config, _ logging.Logger, infraLog logger.Logger) *infragin.Server {
+func NewServer(handler *Handler, cfg *config.Config, infraLog infralogger.Logger) *infragin.Server {
 	// Build CORS config from service config
 	corsConfig := infragin.CORSConfig{
 		Enabled:          cfg.CORS.Enabled,

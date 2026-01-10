@@ -16,16 +16,16 @@ import (
 	"unicode"
 
 	"github.com/jonesrussell/north-cloud/crawler/internal/config/minio"
-	"github.com/jonesrussell/north-cloud/crawler/internal/logger"
 	miniogo "github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
+	infralogger "github.com/north-cloud/infrastructure/logger"
 )
 
 // Archiver handles HTML archiving to MinIO object storage.
 type Archiver struct {
 	client       *miniogo.Client
 	config       *minio.Config
-	logger       logger.Interface
+	logger       infralogger.Logger
 	uploadChan   chan *UploadTask
 	uploadWorker *UploadWorker
 }
@@ -36,7 +36,7 @@ const (
 )
 
 // NewArchiver creates a new HTML archiver.
-func NewArchiver(cfg *minio.Config, log logger.Interface) (*Archiver, error) {
+func NewArchiver(cfg *minio.Config, log infralogger.Logger) (*Archiver, error) {
 	if cfg == nil {
 		return nil, errors.New("minio config is nil")
 	}
@@ -59,7 +59,7 @@ func NewArchiver(cfg *minio.Config, log logger.Interface) (*Archiver, error) {
 	})
 	if err != nil {
 		if cfg.FailSilently {
-			log.Warn("Failed to create MinIO client, continuing without archiving", "error", err)
+			log.Warn("Failed to create MinIO client, continuing without archiving", infralogger.Error(err))
 			return archiver, nil
 		}
 		return nil, fmt.Errorf("failed to create minio client: %w", err)
@@ -72,13 +72,14 @@ func NewArchiver(cfg *minio.Config, log logger.Interface) (*Archiver, error) {
 		archiver.uploadChan = make(chan *UploadTask, defaultUploadQueueSize)
 		archiver.uploadWorker = NewUploadWorker(archiver, log)
 		archiver.uploadWorker.Start()
-		log.Info("Started async MinIO upload worker", "queue_size", defaultUploadQueueSize)
+		log.Info("Started async MinIO upload worker", infralogger.Int("queue_size", defaultUploadQueueSize))
 	}
 
 	log.Info("MinIO archiver initialized",
-		"endpoint", cfg.Endpoint,
-		"bucket", cfg.Bucket,
-		"async", cfg.UploadAsync)
+		infralogger.String("endpoint", cfg.Endpoint),
+		infralogger.String("bucket", cfg.Bucket),
+		infralogger.Bool("async", cfg.UploadAsync),
+	)
 
 	return archiver, nil
 }
@@ -99,7 +100,7 @@ func (a *Archiver) Archive(ctx context.Context, task *UploadTask) error {
 		case a.uploadChan <- task:
 			return nil
 		default:
-			a.logger.Warn("Upload queue full, dropping task", "url", task.URL)
+			a.logger.Warn("Upload queue full, dropping task", infralogger.String("url", task.URL))
 			if !a.config.FailSilently {
 				return errors.New("upload queue full")
 			}
@@ -142,15 +143,17 @@ func (a *Archiver) uploadHTML(ctx context.Context, task *UploadTask) error {
 	}
 
 	a.logger.Debug("Uploaded HTML to MinIO",
-		"object_key", objectKey,
-		"size", len(task.HTML),
-		"url", task.URL)
+		infralogger.String("object_key", objectKey),
+		infralogger.Int("size", len(task.HTML)),
+		infralogger.String("url", task.URL),
+	)
 
 	// Upload metadata file
 	if err2 := a.uploadMetadata(ctx, metadata); err2 != nil {
 		a.logger.Warn("Failed to upload metadata, continuing",
-			"error", err2,
-			"url", task.URL)
+			infralogger.Error(err2),
+			infralogger.String("url", task.URL),
+		)
 		// Don't fail the whole operation if metadata upload fails
 	}
 
@@ -186,8 +189,9 @@ func (a *Archiver) uploadMetadata(ctx context.Context, metadata *HTMLMetadata) e
 	}
 
 	a.logger.Debug("Uploaded metadata to MinIO",
-		"object_key", metadataKey,
-		"size", len(jsonData))
+		infralogger.String("object_key", metadataKey),
+		infralogger.Int("size", len(jsonData)),
+	)
 
 	return nil
 }

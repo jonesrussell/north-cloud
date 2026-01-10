@@ -4,18 +4,18 @@ import (
 	"context"
 	"sync"
 
-	"github.com/jonesrussell/north-cloud/crawler/internal/logger"
+	infralogger "github.com/north-cloud/infrastructure/logger"
 )
 
 // EventBus implements the crawler.EventBus interface for managing event distribution.
 type EventBus struct {
 	mu       sync.RWMutex
 	handlers []EventHandler
-	logger   logger.Interface
+	logger   infralogger.Logger
 }
 
 // NewEventBus creates a new EventBus instance.
-func NewEventBus(log logger.Interface) *EventBus {
+func NewEventBus(log infralogger.Logger) *EventBus {
 	return &EventBus{
 		handlers: make([]EventHandler, 0),
 		logger:   log,
@@ -51,8 +51,8 @@ func (b *EventBus) PublishError(ctx context.Context, err error) {
 		handlerErr := handler.HandleError(ctx, err)
 		if handlerErr != nil {
 			b.logger.Error("Failed to handle error",
-				"error", handlerErr,
-				"original_error", err,
+				infralogger.Error(handlerErr),
+				infralogger.Error(err),
 			)
 		}
 	}
@@ -75,7 +75,7 @@ func (b *EventBus) PublishStart(ctx context.Context) error {
 	for _, handler := range handlers {
 		if err := handler.HandleStart(ctx); err != nil {
 			b.logger.Error("failed to handle start event",
-				"error", err,
+				infralogger.Error(err),
 			)
 		}
 	}
@@ -99,7 +99,7 @@ func (b *EventBus) PublishStop(ctx context.Context) error {
 	for _, handler := range handlers {
 		if err := handler.HandleStop(ctx); err != nil {
 			b.logger.Error("failed to handle stop event",
-				"error", err,
+				infralogger.Error(err),
 			)
 		}
 	}
@@ -109,8 +109,8 @@ func (b *EventBus) PublishStop(ctx context.Context) error {
 // HandleHandlerError handles an error that occurred in an event handler.
 func (b *EventBus) HandleHandlerError(handlerErr, err error) {
 	b.logger.Error("Error in event handler",
-		"error", handlerErr,
-		"original_error", err,
+		infralogger.Error(handlerErr),
+		infralogger.Error(err),
 	)
 }
 

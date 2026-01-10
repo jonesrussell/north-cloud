@@ -6,20 +6,13 @@ import (
 
 	"github.com/jonesrussell/north-cloud/classifier/internal/database"
 	"github.com/jonesrussell/north-cloud/classifier/internal/domain"
+	infralogger "github.com/north-cloud/infrastructure/logger"
 )
 
 const (
 	// urlLogTruncateLength is the maximum length for URLs in log messages
 	urlLogTruncateLength = 100
 )
-
-// Logger defines the logging interface for DatabaseAdapter
-type Logger interface {
-	Debug(msg string, keysAndValues ...any)
-	Info(msg string, keysAndValues ...any)
-	Warn(msg string, keysAndValues ...any)
-	Error(msg string, keysAndValues ...any)
-}
 
 // HistoryRepository defines the interface for classification history operations
 // This allows for easier testing with mocks
@@ -30,7 +23,7 @@ type HistoryRepository interface {
 // DatabaseAdapter adapts the ClassificationHistoryRepository to the DatabaseClient interface
 type DatabaseAdapter struct {
 	historyRepo HistoryRepository
-	logger      Logger
+	logger      infralogger.Logger
 }
 
 // NewDatabaseAdapter creates a new database adapter
@@ -42,7 +35,7 @@ func NewDatabaseAdapter(historyRepo *database.ClassificationHistoryRepository) *
 }
 
 // NewDatabaseAdapterWithLogger creates a new database adapter with a logger
-func NewDatabaseAdapterWithLogger(historyRepo *database.ClassificationHistoryRepository, logger Logger) *DatabaseAdapter {
+func NewDatabaseAdapterWithLogger(historyRepo *database.ClassificationHistoryRepository, logger infralogger.Logger) *DatabaseAdapter {
 	return &DatabaseAdapter{
 		historyRepo: historyRepo,
 		logger:      logger,
@@ -50,7 +43,7 @@ func NewDatabaseAdapterWithLogger(historyRepo *database.ClassificationHistoryRep
 }
 
 // NewDatabaseAdapterWithRepository creates a new database adapter with a custom repository (for testing)
-func NewDatabaseAdapterWithRepository(historyRepo HistoryRepository, logger Logger) *DatabaseAdapter {
+func NewDatabaseAdapterWithRepository(historyRepo HistoryRepository, logger infralogger.Logger) *DatabaseAdapter {
 	return &DatabaseAdapter{
 		historyRepo: historyRepo,
 		logger:      logger,
@@ -85,9 +78,9 @@ func (d *DatabaseAdapter) SaveClassificationHistoryBatch(ctx context.Context, hi
 			// Log each individual error if logger is available
 			if d.logger != nil {
 				d.logger.Error("Failed to save classification history record",
-					"content_id", history.ContentID,
-					"content_url", truncateString(history.ContentURL, urlLogTruncateLength),
-					"error", err,
+					infralogger.String("content_id", history.ContentID),
+					infralogger.String("content_url", truncateString(history.ContentURL, urlLogTruncateLength)),
+					infralogger.Error(err),
 				)
 			}
 		}
@@ -97,9 +90,9 @@ func (d *DatabaseAdapter) SaveClassificationHistoryBatch(ctx context.Context, hi
 	if failedCount == len(histories) {
 		if d.logger != nil {
 			d.logger.Error("All classification history records failed to save",
-				"total_count", len(histories),
-				"failed_count", failedCount,
-				"first_error", firstError,
+				infralogger.Int("total_count", len(histories)),
+				infralogger.Int("failed_count", failedCount),
+				infralogger.Error(firstError),
 			)
 		}
 		return fmt.Errorf("all %d classification history records failed: %w", failedCount, firstError)
@@ -109,11 +102,11 @@ func (d *DatabaseAdapter) SaveClassificationHistoryBatch(ctx context.Context, hi
 	if failedCount > 0 {
 		if d.logger != nil {
 			d.logger.Warn("Some classification history records failed to save",
-				"total_count", len(histories),
-				"success_count", len(histories)-failedCount,
-				"failed_count", failedCount,
-				"failed_content_ids", failedContentIDs,
-				"first_error", firstError,
+				infralogger.Int("total_count", len(histories)),
+				infralogger.Int("success_count", len(histories)-failedCount),
+				infralogger.Int("failed_count", failedCount),
+				infralogger.Any("failed_content_ids", failedContentIDs),
+				infralogger.Error(firstError),
 			)
 		}
 		// Return nil to allow processing to continue, but log the partial failure

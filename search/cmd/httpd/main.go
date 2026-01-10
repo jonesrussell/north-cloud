@@ -7,10 +7,9 @@ import (
 	"github.com/jonesrussell/north-cloud/search/internal/api"
 	"github.com/jonesrussell/north-cloud/search/internal/config"
 	"github.com/jonesrussell/north-cloud/search/internal/elasticsearch"
-	"github.com/jonesrussell/north-cloud/search/internal/logging"
 	"github.com/jonesrussell/north-cloud/search/internal/service"
 	infraconfig "github.com/north-cloud/infrastructure/config"
-	"github.com/north-cloud/infrastructure/logger"
+	infralogger "github.com/north-cloud/infrastructure/logger"
 	"github.com/north-cloud/infrastructure/profiling"
 )
 
@@ -30,8 +29,8 @@ func run() int {
 		return 1
 	}
 
-	// Initialize logger
-	log, err := logger.New(logger.Config{
+	// Initialize logger using infrastructure logger
+	log, err := infralogger.New(infralogger.Config{
 		Level:       cfg.Logging.Level,
 		Format:      cfg.Logging.Format,
 		Development: cfg.Service.Debug,
@@ -42,43 +41,43 @@ func run() int {
 	}
 	defer func() { _ = log.Sync() }()
 
-	// Create logger adapter for services
-	logAdapter := logging.NewAdapter(log)
+	// Add service name to all log entries
+	log = log.With(infralogger.String("service", "search-service"))
 
 	log.Info("Starting search service",
-		logger.String("name", cfg.Service.Name),
-		logger.String("version", cfg.Service.Version),
-		logger.Int("port", cfg.Service.Port),
-		logger.Bool("debug", cfg.Service.Debug),
+		infralogger.String("name", cfg.Service.Name),
+		infralogger.String("version", cfg.Service.Version),
+		infralogger.Int("port", cfg.Service.Port),
+		infralogger.Bool("debug", cfg.Service.Debug),
 	)
 
 	// Initialize Elasticsearch client
-	log.Info("Connecting to Elasticsearch", logger.String("url", cfg.Elasticsearch.URL))
+	log.Info("Connecting to Elasticsearch", infralogger.String("url", cfg.Elasticsearch.URL))
 	esClient, esErr := elasticsearch.NewClient(&cfg.Elasticsearch)
 	if esErr != nil {
-		log.Error("Failed to create Elasticsearch client", logger.Error(esErr))
+		log.Error("Failed to create Elasticsearch client", infralogger.Error(esErr))
 		return 1
 	}
 	log.Info("Successfully connected to Elasticsearch")
 
 	// Initialize search service
-	searchService := service.NewSearchService(esClient, cfg, logAdapter)
+	searchService := service.NewSearchService(esClient, cfg, log)
 	log.Info("Search service initialized")
 
 	// Initialize API handler
-	handler := api.NewHandler(searchService, logAdapter)
+	handler := api.NewHandler(searchService, log)
 
 	// Create and start HTTP server
-	server := api.NewServer(handler, cfg, logAdapter, log)
+	server := api.NewServer(handler, cfg, log)
 
 	log.Info("Search service starting",
-		logger.Int("port", cfg.Service.Port),
-		logger.String("elasticsearch_pattern", cfg.Elasticsearch.ClassifiedContentPattern),
+		infralogger.Int("port", cfg.Service.Port),
+		infralogger.String("elasticsearch_pattern", cfg.Elasticsearch.ClassifiedContentPattern),
 	)
 
 	// Run server with graceful shutdown
 	if runErr := server.Run(); runErr != nil {
-		log.Error("Server error", logger.Error(runErr))
+		log.Error("Server error", infralogger.Error(runErr))
 		return 1
 	}
 

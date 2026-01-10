@@ -18,7 +18,7 @@ func initElasticsearchClient(esURL string) *elasticsearch.Client {
 	// Using console format and info level for startup messages
 	loggerInstance, err := logger.New(logger.Config{
 		Level:  "info",
-		Format: "console",
+		Format: "json",
 	})
 	if err != nil {
 		// Fallback to standard log if logger creation fails

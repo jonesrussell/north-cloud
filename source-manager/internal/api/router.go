@@ -7,7 +7,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/jonesrussell/north-cloud/source-manager/internal/config"
 	"github.com/jonesrussell/north-cloud/source-manager/internal/handlers"
-	"github.com/jonesrussell/north-cloud/source-manager/internal/logger"
 	"github.com/jonesrussell/north-cloud/source-manager/internal/repository"
 	infragin "github.com/north-cloud/infrastructure/gin"
 	infralogger "github.com/north-cloud/infrastructure/logger"
@@ -85,10 +84,9 @@ func contains(slice []string, str string) bool {
 func NewServer(
 	db *repository.SourceRepository,
 	cfg *config.Config,
-	_ logger.Logger,
 	infraLog infralogger.Logger,
 ) *infragin.Server {
-	sourceHandler := handlers.NewSourceHandler(db, wrapInfraLogger(infraLog))
+	sourceHandler := handlers.NewSourceHandler(db, infraLog)
 
 	// Build CORS config
 	corsConfig := infragin.CORSConfig{
@@ -135,47 +133,4 @@ func setupServiceRoutes(router *gin.Engine, sourceHandler *handlers.SourceHandle
 	sources.GET("/:id", sourceHandler.GetByID)
 	sources.PUT("/:id", sourceHandler.Update)
 	sources.DELETE("/:id", sourceHandler.Delete)
-}
-
-// wrapInfraLogger wraps infrastructure logger to match the service Logger interface.
-// This is needed because handlers expect the local Logger interface.
-func wrapInfraLogger(log infralogger.Logger) logger.Logger {
-	return &infraLoggerWrapper{log: log}
-}
-
-// infraLoggerWrapper wraps infrastructure logger to implement local Logger interface.
-type infraLoggerWrapper struct {
-	log infralogger.Logger
-}
-
-func (w *infraLoggerWrapper) Debug(msg string, fields ...logger.Field) {
-	w.log.Debug(msg, convertFields(fields)...)
-}
-
-func (w *infraLoggerWrapper) Info(msg string, fields ...logger.Field) {
-	w.log.Info(msg, convertFields(fields)...)
-}
-
-func (w *infraLoggerWrapper) Warn(msg string, fields ...logger.Field) {
-	w.log.Warn(msg, convertFields(fields)...)
-}
-
-func (w *infraLoggerWrapper) Error(msg string, fields ...logger.Field) {
-	w.log.Error(msg, convertFields(fields)...)
-}
-
-func (w *infraLoggerWrapper) With(fields ...logger.Field) logger.Logger {
-	return &infraLoggerWrapper{log: w.log.With(convertFields(fields)...)}
-}
-
-func (w *infraLoggerWrapper) Sync() error {
-	return w.log.Sync()
-}
-
-// convertFields converts local logger.Field to infrastructure logger.Field.
-// Since both use zap.Field (zapcore.Field), this is a no-op type conversion.
-func convertFields(fields []logger.Field) []infralogger.Field {
-	result := make([]infralogger.Field, len(fields))
-	copy(result, fields)
-	return result
 }

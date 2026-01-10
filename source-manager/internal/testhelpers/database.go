@@ -8,8 +8,8 @@ import (
 	"path/filepath"
 	"runtime"
 
-	"github.com/jonesrussell/north-cloud/source-manager/internal/logger"
 	_ "github.com/lib/pq" //nolint:blankimports // PostgreSQL driver
+	infralogger "github.com/north-cloud/infrastructure/logger"
 )
 
 // TestDatabase provides helper functions for test database setup
@@ -17,7 +17,7 @@ import (
 // See internal/repository/source_test.go for an example of using a local test database
 
 // RunMigrations executes SQL migration files on a database connection
-func RunMigrations(ctx context.Context, db *sql.DB, log logger.Logger) error {
+func RunMigrations(ctx context.Context, db *sql.DB, log infralogger.Logger) error {
 	// Get the path to migrations directory
 	_, filename, _, _ := runtime.Caller(0)
 	migrationsPath := filepath.Join(filepath.Dir(filename), "..", "..", "migrations")
@@ -34,7 +34,7 @@ func RunMigrations(ctx context.Context, db *sql.DB, log logger.Logger) error {
 
 	if log != nil {
 		log.Info("Migrations applied successfully",
-			logger.String("migration_file", migrationFile),
+			infralogger.String("migration_file", migrationFile),
 		)
 	}
 

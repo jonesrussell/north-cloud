@@ -21,7 +21,8 @@ const (
 type Config struct {
 	// Level is the minimum logging level (debug, info, warn, error, fatal).
 	Level string `env:"LOG_LEVEL" yaml:"level"`
-	// Format is the output format: "json" or "console".
+	// Format is the output format. Always uses "json" for consistency.
+	// The "console" format is deprecated and will be ignored.
 	Format string `env:"LOG_FORMAT" yaml:"format"`
 	// Development enables development mode with prettier output.
 	Development bool `yaml:"development"`

@@ -221,24 +221,21 @@ To enable debug logs in production:
 
 **Note**: Debug logs can be verbose. Use for troubleshooting specific issues, then disable when done.
 
-## Production vs Development Formatting
+## Log Format Standardization
 
-### Production Formatting (APP_ENV=production)
-- **Encoding**: JSON
-- **Output**: Machine-readable, suitable for log aggregation tools
+### JSON Format (All Environments)
+- **Encoding**: JSON (standardized across all environments)
+- **Output**: Machine-readable, suitable for log aggregation tools (Loki, Grafana)
+- **Consistency**: Same format in development and production for easier debugging
 - **Example**:
   ```json
-  {"level":"info","ts":1234567890,"msg":"Job completed","job_id":"123","duration":"5s"}
+  {"level":"info","ts":"2026-01-09T04:49:42.157Z","caller":"service.go:123","msg":"Job completed","service":"crawler","job_id":"123","duration":"5s"}
   ```
-
-### Development Formatting (APP_ENV=development)
-- **Encoding**: Console (human-readable)
-- **Colors**: Enabled for log levels
-- **Caller**: Includes file and line number
-- **Example**:
-  ```
-  2024-01-01 12:00:00.000 | INFO | Job completed | job_id=123 | duration=5s
-  ```
+- **Benefits**:
+  - Consistent parsing by Promtail
+  - Better Grafana/Loki integration
+  - Easier filtering and querying
+  - Structured fields enable advanced analysis
 
 ## Common Logging Patterns
 
@@ -342,6 +339,6 @@ logger.Debug("Processing request",
 ### Logs not in JSON format in production
 
 1. Verify `APP_ENV=production` is set
-2. Check `LOG_FORMAT` is not set to `console`
+2. Verify `LOG_FORMAT` is set to `json` (default, but can be explicitly set)
 3. Verify config file has `app.environment=production`
 

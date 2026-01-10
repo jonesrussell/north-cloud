@@ -8,8 +8,8 @@ import (
 
 	"github.com/jonesrussell/north-cloud/crawler/internal/content"
 	"github.com/jonesrussell/north-cloud/crawler/internal/content/contenttype"
-	"github.com/jonesrussell/north-cloud/crawler/internal/logger"
 	"github.com/jonesrussell/north-cloud/crawler/internal/sources"
+	infralogger "github.com/north-cloud/infrastructure/logger"
 )
 
 // defaultProcessorsCapacity is the pre-allocated capacity for processor slice
@@ -17,14 +17,14 @@ const defaultProcessorsCapacity = 2
 
 // HTMLProcessor processes HTML content and delegates to appropriate content processors.
 type HTMLProcessor struct {
-	logger       logger.Interface
+	logger       infralogger.Logger
 	processors   []content.Processor
 	unknownTypes map[contenttype.Type]int
 	sources      sources.Interface
 }
 
 // NewHTMLProcessor creates a new HTMLProcessor.
-func NewHTMLProcessor(log logger.Interface, sourcesManager sources.Interface) *HTMLProcessor {
+func NewHTMLProcessor(log infralogger.Logger, sourcesManager sources.Interface) *HTMLProcessor {
 	return &HTMLProcessor{
 		logger:       log,
 		processors:   make([]content.Processor, 0, defaultProcessorsCapacity), // Pre-allocate for article and page processors

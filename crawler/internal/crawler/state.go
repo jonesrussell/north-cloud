@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/jonesrussell/north-cloud/crawler/internal/logger"
+	infralogger "github.com/north-cloud/infrastructure/logger"
 )
 
 // State implements the CrawlerState and CrawlerMetrics interfaces.
@@ -20,11 +20,11 @@ type State struct {
 	processedCount    int64
 	errorCount        int64
 	lastProcessedTime time.Time
-	logger            logger.Interface
+	logger            infralogger.Logger
 }
 
 // NewState creates a new crawler state.
-func NewState(log logger.Interface) *State {
+func NewState(log infralogger.Logger) *State {
 	return &State{
 		logger: log,
 	}
@@ -96,9 +96,9 @@ func (s *State) Stop() {
 
 	// Log metrics
 	s.logger.Info("Crawler stopped",
-		"processed", s.processedCount,
-		"errors", s.errorCount,
-		"duration", time.Since(s.startTime))
+		infralogger.Int64("processed", s.processedCount),
+		infralogger.Int64("errors", s.errorCount),
+		infralogger.Duration("duration", time.Since(s.startTime)))
 }
 
 // Update updates the metrics with new values.

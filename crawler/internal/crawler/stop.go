@@ -5,6 +5,7 @@ import (
 	"errors"
 
 	"github.com/jonesrussell/north-cloud/crawler/internal/crawler/events"
+	infralogger "github.com/north-cloud/infrastructure/logger"
 )
 
 // Stop stops the crawler.
@@ -35,10 +36,12 @@ func (c *Crawler) Stop(ctx context.Context) error {
 	case <-ctx.Done():
 		if errors.Is(ctx.Err(), context.DeadlineExceeded) {
 			c.logger.Warn("Crawler shutdown timed out",
-				"timeout", ctx.Err())
+				infralogger.Error(ctx.Err()),
+			)
 		} else {
 			c.logger.Warn("Crawler shutdown cancelled",
-				"error", ctx.Err())
+				infralogger.Error(ctx.Err()),
+			)
 		}
 		return ctx.Err()
 	}

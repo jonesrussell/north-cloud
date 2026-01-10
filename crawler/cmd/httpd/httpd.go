@@ -20,7 +20,6 @@ import (
 	"github.com/jonesrussell/north-cloud/crawler/internal/crawler"
 	"github.com/jonesrussell/north-cloud/crawler/internal/crawler/events"
 	"github.com/jonesrussell/north-cloud/crawler/internal/database"
-	"github.com/jonesrussell/north-cloud/crawler/internal/logger"
 	"github.com/jonesrussell/north-cloud/crawler/internal/scheduler"
 	"github.com/jonesrussell/north-cloud/crawler/internal/sources"
 	"github.com/jonesrussell/north-cloud/crawler/internal/storage"
@@ -35,7 +34,7 @@ import (
 
 // CommandDeps holds common dependencies for the HTTP server.
 type CommandDeps struct {
-	Logger logger.Interface
+	Logger infralogger.Logger
 	Config config.Interface
 }
 
@@ -103,10 +102,7 @@ func Start() error {
 	defer db.Close()
 
 	// Phase 5: Start HTTP server
-	server, errChan, err := startHTTPServer(deps, jobsHandler, discoveredLinksHandler)
-	if err != nil {
-		return err
-	}
+	server, errChan := startHTTPServer(deps, jobsHandler, discoveredLinksHandler)
 
 	// Phase 6: Run server until interrupted
 	return runServerUntilInterrupt(deps.Logger, server, dbScheduler, errChan)
@@ -128,6 +124,9 @@ func newCommandDeps() (*CommandDeps, error) {
 		return nil, fmt.Errorf("create logger: %w", err)
 	}
 
+	// Add service name to all log entries
+	log = log.With(infralogger.String("service", "crawler"))
+
 	deps := &CommandDeps{
 		Logger: log,
 		Config: cfg,
@@ -146,8 +145,8 @@ func loadConfig() (config.Interface, error) {
 	return config.Load(configPath)
 }
 
-// createLogger creates a logger instance from configuration.
-func createLogger(cfg config.Interface) (logger.Interface, error) {
+// createLogger creates a logger instance from configuration using infrastructure logger.
+func createLogger(cfg config.Interface) (infralogger.Logger, error) {
 	loggingCfg := cfg.GetLoggingConfig()
 
 	logLevel := normalizeLogLevel(loggingCfg.Level)
@@ -162,9 +161,6 @@ func createLogger(cfg config.Interface) (logger.Interface, error) {
 	}
 	isDev := appEnv == "development"
 	appDebug := loggingCfg.Debug
-
-	// Set development mode based on APP_ENV
-	development := isDev
 
 	// Override log level if APP_DEBUG is set
 	if appDebug {
@@ -181,20 +177,11 @@ func createLogger(cfg config.Interface) (logger.Interface, error) {
 		}
 	}
 
-	// Get output paths from config (default to stdout)
-	outputPaths := loggingCfg.OutputPaths
-	if len(outputPaths) == 0 {
-		outputPaths = []string{"stdout"}
-	}
-
-	logCfg := &logger.Config{
-		Level:       logger.Level(logLevel),
-		Development: development,
-		Encoding:    encoding,
-		OutputPaths: outputPaths,
-		EnableColor: isDev,
-	}
-	return logger.New(logCfg)
+	return infralogger.New(infralogger.Config{
+		Level:       logLevel,
+		Format:      encoding,
+		Development: isDev || appDebug,
+	})
 }
 
 // normalizeLogLevel normalizes log level string.
@@ -219,7 +206,7 @@ func (d *CommandDeps) validate() error {
 // === Storage Setup ===
 
 // createStorageClient creates an Elasticsearch client with the given config and logger.
-func createStorageClient(cfg config.Interface, log logger.Interface) (*es.Client, error) {
+func createStorageClient(cfg config.Interface, log infralogger.Logger) (*es.Client, error) {
 	clientResult, err := storage.NewClient(storage.ClientParams{
 		Config: cfg,
 		Logger: log,
@@ -231,7 +218,7 @@ func createStorageClient(cfg config.Interface, log logger.Interface) (*es.Client
 }
 
 // createStorage creates both storage client and storage instance in one call.
-func createStorage(cfg config.Interface, log logger.Interface) (*StorageResult, error) {
+func createStorage(cfg config.Interface, log infralogger.Logger) (*StorageResult, error) {
 	// Create storage client
 	client, err := createStorageClient(cfg, log)
 	if err != nil {
@@ -377,7 +364,7 @@ func createAndStartScheduler(
 	// Create crawler for job execution
 	crawlerInstance, err := createCrawlerForJobs(deps, storageResult, db)
 	if err != nil {
-		deps.Logger.Warn("Failed to create crawler for jobs, scheduler disabled", "error", err)
+		deps.Logger.Warn("Failed to create crawler for jobs, scheduler disabled", infralogger.Error(err))
 		return nil
 	}
 
@@ -391,7 +378,7 @@ func createAndStartScheduler(
 
 	// Start the scheduler
 	if startErr := intervalScheduler.Start(context.Background()); startErr != nil {
-		deps.Logger.Error("Failed to start interval scheduler", "error", startErr)
+		deps.Logger.Error("Failed to start interval scheduler", infralogger.Error(startErr))
 		return nil
 	}
 
@@ -401,42 +388,27 @@ func createAndStartScheduler(
 
 // === Server Setup ===
 
-// createInfraLogger creates an infrastructure logger from the logging config.
-func createInfraLogger(cfg config.Interface) (infralogger.Logger, error) {
-	loggingCfg := cfg.GetLoggingConfig()
-	return infralogger.New(infralogger.Config{
-		Level:       loggingCfg.Level,
-		Format:      loggingCfg.Format,
-		Development: loggingCfg.Debug,
-	})
-}
-
 // startHTTPServer creates and starts the HTTP server.
 // Returns the server and an error channel for server errors.
 func startHTTPServer(
 	deps *CommandDeps,
 	jobsHandler *api.JobsHandler,
 	discoveredLinksHandler *api.DiscoveredLinksHandler,
-) (*infragin.Server, <-chan error, error) {
-	// Create infrastructure logger for the gin server
-	infraLog, err := createInfraLogger(deps.Config)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to create infrastructure logger: %w", err)
-	}
-
+) (server *infragin.Server, errChan <-chan error) {
+	// Use the logger that already has the service field attached
 	// Create server using the new infrastructure gin package
-	server := api.NewServer(deps.Logger, deps.Config, jobsHandler, discoveredLinksHandler, infraLog)
+	server = api.NewServer(deps.Config, jobsHandler, discoveredLinksHandler, deps.Logger)
 
 	// Start server asynchronously
-	deps.Logger.Info("Starting HTTP server", "addr", deps.Config.GetServerConfig().Address)
-	errChan := server.StartAsync()
+	deps.Logger.Info("Starting HTTP server", infralogger.String("addr", deps.Config.GetServerConfig().Address))
+	errChan = server.StartAsync()
 
-	return server, errChan, nil
+	return
 }
 
 // runServerUntilInterrupt runs the server until interrupted by signal or error.
 func runServerUntilInterrupt(
-	log logger.Interface,
+	log infralogger.Logger,
 	server *infragin.Server,
 	intervalScheduler *scheduler.IntervalScheduler,
 	errChan <-chan error,
@@ -448,7 +420,7 @@ func runServerUntilInterrupt(
 	// Wait for interrupt signal or error
 	select {
 	case serverErr := <-errChan:
-		log.Error("Server error", "error", serverErr)
+		log.Error("Server error", infralogger.Error(serverErr))
 		return fmt.Errorf("server error: %w", serverErr)
 	case sig := <-sigChan:
 		return shutdownServer(log, server, intervalScheduler, sig)
@@ -457,25 +429,25 @@ func runServerUntilInterrupt(
 
 // shutdownServer performs graceful shutdown of the server and scheduler.
 func shutdownServer(
-	log logger.Interface,
+	log infralogger.Logger,
 	server *infragin.Server,
 	intervalScheduler *scheduler.IntervalScheduler,
 	sig os.Signal,
 ) error {
-	log.Info("Shutdown signal received", "signal", sig.String())
+	log.Info("Shutdown signal received", infralogger.String("signal", sig.String()))
 
 	// Stop scheduler first
 	if intervalScheduler != nil {
 		log.Info("Stopping interval scheduler")
 		if err := intervalScheduler.Stop(); err != nil {
-			log.Error("Failed to stop scheduler", "error", err)
+			log.Error("Failed to stop scheduler", infralogger.Error(err))
 		}
 	}
 
 	// Stop HTTP server using infrastructure server's graceful shutdown
 	log.Info("Stopping HTTP server")
 	if err := server.ShutdownWithTimeout(defaultShutdownTimeout); err != nil {
-		log.Error("Failed to stop server", "error", err)
+		log.Error("Failed to stop server", infralogger.Error(err))
 		return fmt.Errorf("failed to stop server: %w", err)
 	}
 

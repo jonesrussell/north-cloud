@@ -6,19 +6,19 @@ import (
 	"sync"
 	"time"
 
-	"github.com/jonesrussell/north-cloud/crawler/internal/logger"
+	infralogger "github.com/north-cloud/infrastructure/logger"
 )
 
 // UploadWorker processes upload tasks asynchronously.
 type UploadWorker struct {
 	archiver *Archiver
-	logger   logger.Interface
+	logger   infralogger.Logger
 	wg       sync.WaitGroup
 	stopCh   chan struct{}
 }
 
 // NewUploadWorker creates a new upload worker.
-func NewUploadWorker(archiver *Archiver, log logger.Interface) *UploadWorker {
+func NewUploadWorker(archiver *Archiver, log infralogger.Logger) *UploadWorker {
 	return &UploadWorker{
 		archiver: archiver,
 		logger:   log,
@@ -69,9 +69,10 @@ func (w *UploadWorker) processTask(task *UploadTask) {
 			backoffSeconds := int64(math.Pow(backoffBase, float64(shift)))
 			backoff := time.Duration(backoffSeconds) * time.Second
 			w.logger.Debug("Retrying upload",
-				"attempt", attempt,
-				"backoff", backoff,
-				"url", task.URL)
+				infralogger.Int("attempt", attempt),
+				infralogger.Duration("backoff", backoff),
+				infralogger.String("url", task.URL),
+			)
 			time.Sleep(backoff)
 		}
 
@@ -83,21 +84,24 @@ func (w *UploadWorker) processTask(task *UploadTask) {
 
 		lastErr = err
 		w.logger.Warn("Upload failed",
-			"attempt", attempt+1,
-			"max_retries", w.archiver.config.MaxRetries+1,
-			"error", err,
-			"url", task.URL)
+			infralogger.Int("attempt", attempt+1),
+			infralogger.Int("max_retries", w.archiver.config.MaxRetries+1),
+			infralogger.Error(err),
+			infralogger.String("url", task.URL),
+		)
 	}
 
 	// All retries exhausted
 	if w.archiver.config.FailSilently {
 		w.logger.Error("Upload failed after all retries, continuing",
-			"error", lastErr,
-			"url", task.URL)
+			infralogger.Error(lastErr),
+			infralogger.String("url", task.URL),
+		)
 	} else {
 		w.logger.Error("Upload failed after all retries",
-			"error", lastErr,
-			"url", task.URL)
+			infralogger.Error(lastErr),
+			infralogger.String("url", task.URL),
+		)
 	}
 }
 
@@ -120,8 +124,9 @@ func (w *UploadWorker) drainQueue() {
 		case task := <-w.archiver.uploadChan:
 			if time.Now().After(deadline) {
 				w.logger.Warn("Queue drain timeout reached, dropping task",
-					"url", task.URL,
-					"drained", drained)
+					infralogger.String("url", task.URL),
+					infralogger.Int("drained", drained),
+				)
 				continue
 			}
 			w.processTask(task)
@@ -129,7 +134,7 @@ func (w *UploadWorker) drainQueue() {
 		default:
 			// Queue is empty
 			if drained > 0 {
-				w.logger.Info("Queue drained successfully", "tasks_processed", drained)
+				w.logger.Info("Queue drained successfully", infralogger.Int("tasks_processed", drained))
 			}
 			return
 		}

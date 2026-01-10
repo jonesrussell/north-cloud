@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/jonesrussell/north-cloud/crawler/internal/config/crawler"
-	"github.com/jonesrussell/north-cloud/crawler/internal/logger"
+	infralogger "github.com/north-cloud/infrastructure/logger"
 )
 
 // SignalCoordinator manages cancellation signals and cleanup operations.
@@ -16,11 +16,11 @@ type SignalCoordinator struct {
 	abortOnce   sync.Once
 	cleanupDone chan struct{}
 	cfg         *crawler.Config
-	logger      logger.Interface
+	logger      infralogger.Logger
 }
 
 // NewSignalCoordinator creates a new signal coordinator.
-func NewSignalCoordinator(cfg *crawler.Config, log logger.Interface) *SignalCoordinator {
+func NewSignalCoordinator(cfg *crawler.Config, log infralogger.Logger) *SignalCoordinator {
 	return &SignalCoordinator{
 		abortChan: make(chan struct{}),
 		abortOnce: sync.Once{},
@@ -62,8 +62,8 @@ func (sc *SignalCoordinator) StartCleanupGoroutine(
 		cleanupInterval := sc.cfg.CleanupInterval
 		if cleanupInterval <= 0 {
 			sc.logger.Warn("Invalid cleanup interval, using default",
-				"invalid_interval", cleanupInterval,
-				"default", crawler.DefaultCleanupInterval)
+				infralogger.Duration("invalid_interval", cleanupInterval),
+				infralogger.Duration("default", crawler.DefaultCleanupInterval))
 			cleanupInterval = crawler.DefaultCleanupInterval
 		}
 
@@ -113,6 +113,6 @@ func (sc *SignalCoordinator) WaitForCleanup(ctx context.Context, timeout time.Du
 		sc.logger.Debug("Cleanup wait cancelled by context")
 	case <-time.After(timeout):
 		sc.logger.Warn("Cleanup goroutine did not finish within timeout",
-			"timeout", timeout)
+			infralogger.Duration("timeout", timeout))
 	}
 }

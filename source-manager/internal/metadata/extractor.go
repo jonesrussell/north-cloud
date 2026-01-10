@@ -9,9 +9,9 @@ import (
 	"time"
 
 	"github.com/PuerkitoBio/goquery"
-	"github.com/jonesrussell/north-cloud/source-manager/internal/logger"
 	"github.com/jonesrussell/north-cloud/source-manager/internal/models"
 	infrahttp "github.com/north-cloud/infrastructure/http"
+	infralogger "github.com/north-cloud/infrastructure/logger"
 )
 
 const (
@@ -28,12 +28,12 @@ type MetadataResponse struct {
 
 // Extractor handles metadata extraction from URLs
 type Extractor struct {
-	logger logger.Logger
+	logger infralogger.Logger
 	client *http.Client
 }
 
 // NewExtractor creates a new metadata extractor
-func NewExtractor(log logger.Logger) *Extractor {
+func NewExtractor(log infralogger.Logger) *Extractor {
 	return &Extractor{
 		logger: log,
 		client: infrahttp.NewClient(&infrahttp.ClientConfig{
@@ -45,7 +45,7 @@ func NewExtractor(log logger.Logger) *Extractor {
 // Extract fetches a URL and extracts metadata for form prefilling
 func (e *Extractor) Extract(ctx context.Context, sourceURL string) (*MetadataResponse, error) {
 	e.logger.Info("Extracting metadata from URL",
-		logger.String("url", sourceURL),
+		infralogger.String("url", sourceURL),
 	)
 
 	// Validate URL
@@ -102,8 +102,8 @@ func (e *Extractor) Extract(ctx context.Context, sourceURL string) (*MetadataRes
 	e.extractStructuredData(doc, &metadata.Selectors)
 
 	e.logger.Info("Metadata extraction complete",
-		logger.String("url", sourceURL),
-		logger.String("name", metadata.Name),
+		infralogger.String("url", sourceURL),
+		infralogger.String("name", metadata.Name),
 	)
 
 	return metadata, nil

@@ -8,6 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/jonesrussell/north-cloud/index-manager/internal/domain"
 	"github.com/jonesrussell/north-cloud/index-manager/internal/service"
+	infralogger "github.com/north-cloud/infrastructure/logger"
 )
 
 const errDocumentNotFound = "document not found"
@@ -16,19 +17,11 @@ const errDocumentNotFound = "document not found"
 type Handler struct {
 	indexService    *service.IndexService
 	documentService *service.DocumentService
-	logger          Logger
-}
-
-// Logger defines the logging interface
-type Logger interface {
-	Info(msg string, keysAndValues ...any)
-	Error(msg string, keysAndValues ...any)
-	Warn(msg string, keysAndValues ...any)
-	Debug(msg string, keysAndValues ...any)
+	logger          infralogger.Logger
 }
 
 // NewHandler creates a new API handler
-func NewHandler(indexService *service.IndexService, documentService *service.DocumentService, logger Logger) *Handler {
+func NewHandler(indexService *service.IndexService, documentService *service.DocumentService, logger infralogger.Logger) *Handler {
 	return &Handler{
 		indexService:    indexService,
 		documentService: documentService,
@@ -56,30 +49,30 @@ func (h *Handler) HealthCheck(c *gin.Context) {
 func (h *Handler) CreateIndex(c *gin.Context) {
 	var req domain.CreateIndexRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		h.logger.Warn("Invalid create index request", "error", err)
+		h.logger.Warn("Invalid create index request", infralogger.Error(err))
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
 	h.logger.Info("Creating index",
-		"index_name", req.IndexName,
-		"index_type", req.IndexType,
-		"source_name", req.SourceName,
+		infralogger.String("index_name", req.IndexName),
+		infralogger.String("index_type", string(req.IndexType)),
+		infralogger.String("source_name", req.SourceName),
 	)
 
 	index, err := h.indexService.CreateIndex(c.Request.Context(), &req)
 	if err != nil {
 		h.logger.Error("Failed to create index",
-			"index_name", req.IndexName,
-			"error", err,
+			infralogger.String("index_name", req.IndexName),
+			infralogger.Error(err),
 		)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
 	h.logger.Info("Index created successfully",
-		"index_name", index.Name,
-		"index_type", index.Type,
+		infralogger.String("index_name", index.Name),
+		infralogger.String("index_type", string(index.Type)),
 	)
 
 	c.JSON(http.StatusCreated, index)
@@ -91,13 +84,13 @@ func (h *Handler) ListIndices(c *gin.Context) {
 	sourceName := c.Query("source")
 
 	h.logger.Debug("Listing indices",
-		"index_type", indexType,
-		"source_name", sourceName,
+		infralogger.String("index_type", indexType),
+		infralogger.String("source_name", sourceName),
 	)
 
 	indices, err := h.indexService.ListIndices(c.Request.Context(), indexType, sourceName)
 	if err != nil {
-		h.logger.Error("Failed to list indices", "error", err)
+		h.logger.Error("Failed to list indices", infralogger.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -112,13 +105,13 @@ func (h *Handler) ListIndices(c *gin.Context) {
 func (h *Handler) GetIndex(c *gin.Context) {
 	indexName := c.Param("index_name")
 
-	h.logger.Debug("Getting index", "index_name", indexName)
+	h.logger.Debug("Getting index", infralogger.String("index_name", indexName))
 
 	index, err := h.indexService.GetIndex(c.Request.Context(), indexName)
 	if err != nil {
 		h.logger.Error("Failed to get index",
-			"index_name", indexName,
-			"error", err,
+			infralogger.String("index_name", indexName),
+			infralogger.Error(err),
 		)
 		c.JSON(http.StatusNotFound, gin.H{"error": "index not found"})
 		return
@@ -131,18 +124,18 @@ func (h *Handler) GetIndex(c *gin.Context) {
 func (h *Handler) DeleteIndex(c *gin.Context) {
 	indexName := c.Param("index_name")
 
-	h.logger.Info("Deleting index", "index_name", indexName)
+	h.logger.Info("Deleting index", infralogger.String("index_name", indexName))
 
 	if err := h.indexService.DeleteIndex(c.Request.Context(), indexName); err != nil {
 		h.logger.Error("Failed to delete index",
-			"index_name", indexName,
-			"error", err,
+			infralogger.String("index_name", indexName),
+			infralogger.Error(err),
 		)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	h.logger.Info("Index deleted successfully", "index_name", indexName)
+	h.logger.Info("Index deleted successfully", infralogger.String("index_name", indexName))
 	c.JSON(http.StatusOK, gin.H{"message": "index deleted successfully"})
 }
 
@@ -153,8 +146,8 @@ func (h *Handler) GetIndexHealth(c *gin.Context) {
 	health, err := h.indexService.GetIndexHealth(c.Request.Context(), indexName)
 	if err != nil {
 		h.logger.Error("Failed to get index health",
-			"index_name", indexName,
-			"error", err,
+			infralogger.String("index_name", indexName),
+			infralogger.Error(err),
 		)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -174,28 +167,28 @@ func (h *Handler) CreateIndexesForSource(c *gin.Context) {
 		IndexTypes []domain.IndexType `json:"index_types,omitempty"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil && err.Error() != "EOF" {
-		h.logger.Warn("Invalid request body", "error", err)
+		h.logger.Warn("Invalid request body", infralogger.Error(err))
 		// Continue with default index types
 	}
 
 	h.logger.Info("Creating indexes for source",
-		"source_name", sourceName,
-		"index_types", req.IndexTypes,
+		infralogger.String("source_name", sourceName),
+		infralogger.Any("index_types", req.IndexTypes),
 	)
 
 	indices, err := h.indexService.CreateIndexesForSource(c.Request.Context(), sourceName, req.IndexTypes)
 	if err != nil {
 		h.logger.Error("Failed to create indexes for source",
-			"source_name", sourceName,
-			"error", err,
+			infralogger.String("source_name", sourceName),
+			infralogger.Error(err),
 		)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
 	h.logger.Info("Indexes created for source",
-		"source_name", sourceName,
-		"count", len(indices),
+		infralogger.String("source_name", sourceName),
+		infralogger.Int("count", len(indices)),
 	)
 
 	c.JSON(http.StatusCreated, gin.H{
@@ -209,13 +202,13 @@ func (h *Handler) CreateIndexesForSource(c *gin.Context) {
 func (h *Handler) ListIndexesForSource(c *gin.Context) {
 	sourceName := c.Param("source_name")
 
-	h.logger.Debug("Listing indexes for source", "source_name", sourceName)
+	h.logger.Debug("Listing indexes for source", infralogger.String("source_name", sourceName))
 
 	indices, err := h.indexService.ListIndices(c.Request.Context(), "", sourceName)
 	if err != nil {
 		h.logger.Error("Failed to list indexes for source",
-			"source_name", sourceName,
-			"error", err,
+			infralogger.String("source_name", sourceName),
+			infralogger.Error(err),
 		)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -232,18 +225,18 @@ func (h *Handler) ListIndexesForSource(c *gin.Context) {
 func (h *Handler) DeleteIndexesForSource(c *gin.Context) {
 	sourceName := c.Param("source_name")
 
-	h.logger.Info("Deleting indexes for source", "source_name", sourceName)
+	h.logger.Info("Deleting indexes for source", infralogger.String("source_name", sourceName))
 
 	if err := h.indexService.DeleteIndexesForSource(c.Request.Context(), sourceName); err != nil {
 		h.logger.Error("Failed to delete indexes for source",
-			"source_name", sourceName,
-			"error", err,
+			infralogger.String("source_name", sourceName),
+			infralogger.Error(err),
 		)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	h.logger.Info("Indexes deleted for source", "source_name", sourceName)
+	h.logger.Info("Indexes deleted for source", infralogger.String("source_name", sourceName))
 	c.JSON(http.StatusOK, gin.H{"message": "indexes deleted successfully"})
 }
 
@@ -251,12 +244,12 @@ func (h *Handler) DeleteIndexesForSource(c *gin.Context) {
 func (h *Handler) BulkCreateIndexes(c *gin.Context) {
 	var req domain.BulkCreateIndexRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		h.logger.Warn("Invalid bulk create request", "error", err)
+		h.logger.Warn("Invalid bulk create request", infralogger.Error(err))
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	h.logger.Info("Bulk creating indexes", "count", len(req.Indexes))
+	h.logger.Info("Bulk creating indexes", infralogger.Int("count", len(req.Indexes)))
 
 	results := make([]*domain.Index, 0, len(req.Indexes))
 	errors := make([]string, 0, len(req.Indexes))
@@ -265,8 +258,8 @@ func (h *Handler) BulkCreateIndexes(c *gin.Context) {
 		index, err := h.indexService.CreateIndex(c.Request.Context(), &indexReq)
 		if err != nil {
 			h.logger.Warn("Failed to create index in bulk",
-				"index_name", indexReq.IndexName,
-				"error", err,
+				infralogger.String("index_name", indexReq.IndexName),
+				infralogger.Error(err),
 			)
 			errors = append(errors, err.Error())
 			continue
@@ -298,12 +291,12 @@ func (h *Handler) BulkCreateIndexes(c *gin.Context) {
 func (h *Handler) BulkDeleteIndexes(c *gin.Context) {
 	var req domain.BulkDeleteIndexRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		h.logger.Warn("Invalid bulk delete request", "error", err)
+		h.logger.Warn("Invalid bulk delete request", infralogger.Error(err))
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	h.logger.Info("Bulk deleting indexes", "count", len(req.IndexNames))
+	h.logger.Info("Bulk deleting indexes", infralogger.Int("count", len(req.IndexNames)))
 
 	deleted := make([]string, 0, len(req.IndexNames))
 	errors := make([]string, 0, len(req.IndexNames))
@@ -311,8 +304,8 @@ func (h *Handler) BulkDeleteIndexes(c *gin.Context) {
 	for _, indexName := range req.IndexNames {
 		if err := h.indexService.DeleteIndex(c.Request.Context(), indexName); err != nil {
 			h.logger.Warn("Failed to delete index in bulk",
-				"index_name", indexName,
-				"error", err,
+				infralogger.String("index_name", indexName),
+				infralogger.Error(err),
 			)
 			errors = append(errors, err.Error())
 			continue
@@ -344,7 +337,7 @@ func (h *Handler) BulkDeleteIndexes(c *gin.Context) {
 func (h *Handler) GetStats(c *gin.Context) {
 	stats, err := h.indexService.GetStats(c.Request.Context())
 	if err != nil {
-		h.logger.Error("Failed to get stats", "error", err)
+		h.logger.Error("Failed to get stats", infralogger.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -360,7 +353,7 @@ func (h *Handler) QueryDocuments(c *gin.Context) {
 	if bindErr := c.ShouldBindQuery(&req); bindErr != nil {
 		// Try to bind from JSON body if query params fail
 		if jsonErr := c.ShouldBindJSON(&req); jsonErr != nil {
-			h.logger.Warn("Invalid query documents request", "error", jsonErr)
+			h.logger.Warn("Invalid query documents request", infralogger.Error(jsonErr))
 			c.JSON(http.StatusBadRequest, gin.H{"error": jsonErr.Error()})
 			return
 		}
@@ -399,8 +392,8 @@ func (h *Handler) QueryDocuments(c *gin.Context) {
 	response, err := h.documentService.QueryDocuments(c.Request.Context(), indexName, &req)
 	if err != nil {
 		h.logger.Error("Failed to query documents",
-			"index_name", indexName,
-			"error", err,
+			infralogger.String("index_name", indexName),
+			infralogger.Error(err),
 		)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -415,16 +408,16 @@ func (h *Handler) GetDocument(c *gin.Context) {
 	documentID := c.Param("document_id")
 
 	h.logger.Debug("Getting document",
-		"index_name", indexName,
-		"document_id", documentID,
+		infralogger.String("index_name", indexName),
+		infralogger.String("document_id", documentID),
 	)
 
 	document, err := h.documentService.GetDocument(c.Request.Context(), indexName, documentID)
 	if err != nil {
 		h.logger.Error("Failed to get document",
-			"index_name", indexName,
-			"document_id", documentID,
-			"error", err,
+			infralogger.String("index_name", indexName),
+			infralogger.String("document_id", documentID),
+			infralogger.Error(err),
 		)
 		statusCode := http.StatusInternalServerError
 		if err.Error() == errDocumentNotFound || err.Error() == fmt.Sprintf("index %s does not exist", indexName) {
@@ -444,7 +437,7 @@ func (h *Handler) UpdateDocument(c *gin.Context) {
 
 	var doc domain.Document
 	if err := c.ShouldBindJSON(&doc); err != nil {
-		h.logger.Warn("Invalid update document request", "error", err)
+		h.logger.Warn("Invalid update document request", infralogger.Error(err))
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -453,15 +446,15 @@ func (h *Handler) UpdateDocument(c *gin.Context) {
 	doc.ID = documentID
 
 	h.logger.Info("Updating document",
-		"index_name", indexName,
-		"document_id", documentID,
+		infralogger.String("index_name", indexName),
+		infralogger.String("document_id", documentID),
 	)
 
 	if err := h.documentService.UpdateDocument(c.Request.Context(), indexName, documentID, &doc); err != nil {
 		h.logger.Error("Failed to update document",
-			"index_name", indexName,
-			"document_id", documentID,
-			"error", err,
+			infralogger.String("index_name", indexName),
+			infralogger.String("document_id", documentID),
+			infralogger.Error(err),
 		)
 		statusCode := http.StatusInternalServerError
 		if err.Error() == errDocumentNotFound || err.Error() == fmt.Sprintf("index %s does not exist", indexName) {
@@ -472,8 +465,8 @@ func (h *Handler) UpdateDocument(c *gin.Context) {
 	}
 
 	h.logger.Info("Document updated successfully",
-		"index_name", indexName,
-		"document_id", documentID,
+		infralogger.String("index_name", indexName),
+		infralogger.String("document_id", documentID),
 	)
 
 	c.JSON(http.StatusOK, gin.H{"message": "document updated successfully"})
@@ -485,15 +478,15 @@ func (h *Handler) DeleteDocument(c *gin.Context) {
 	documentID := c.Param("document_id")
 
 	h.logger.Info("Deleting document",
-		"index_name", indexName,
-		"document_id", documentID,
+		infralogger.String("index_name", indexName),
+		infralogger.String("document_id", documentID),
 	)
 
 	if err := h.documentService.DeleteDocument(c.Request.Context(), indexName, documentID); err != nil {
 		h.logger.Error("Failed to delete document",
-			"index_name", indexName,
-			"document_id", documentID,
-			"error", err,
+			infralogger.String("index_name", indexName),
+			infralogger.String("document_id", documentID),
+			infralogger.Error(err),
 		)
 		statusCode := http.StatusInternalServerError
 		if err.Error() == errDocumentNotFound || err.Error() == fmt.Sprintf("index %s does not exist", indexName) {
@@ -504,8 +497,8 @@ func (h *Handler) DeleteDocument(c *gin.Context) {
 	}
 
 	h.logger.Info("Document deleted successfully",
-		"index_name", indexName,
-		"document_id", documentID,
+		infralogger.String("index_name", indexName),
+		infralogger.String("document_id", documentID),
 	)
 
 	c.JSON(http.StatusOK, gin.H{"message": "document deleted successfully"})
@@ -517,28 +510,28 @@ func (h *Handler) BulkDeleteDocuments(c *gin.Context) {
 
 	var req domain.BulkDeleteRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		h.logger.Warn("Invalid bulk delete request", "error", err)
+		h.logger.Warn("Invalid bulk delete request", infralogger.Error(err))
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
 	h.logger.Info("Bulk deleting documents",
-		"index_name", indexName,
-		"count", len(req.DocumentIDs),
+		infralogger.String("index_name", indexName),
+		infralogger.Int("count", len(req.DocumentIDs)),
 	)
 
 	if err := h.documentService.BulkDeleteDocuments(c.Request.Context(), indexName, req.DocumentIDs); err != nil {
 		h.logger.Error("Failed to bulk delete documents",
-			"index_name", indexName,
-			"error", err,
+			infralogger.String("index_name", indexName),
+			infralogger.Error(err),
 		)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
 	h.logger.Info("Documents bulk deleted successfully",
-		"index_name", indexName,
-		"count", len(req.DocumentIDs),
+		infralogger.String("index_name", indexName),
+		infralogger.Int("count", len(req.DocumentIDs)),
 	)
 
 	c.JSON(http.StatusOK, gin.H{

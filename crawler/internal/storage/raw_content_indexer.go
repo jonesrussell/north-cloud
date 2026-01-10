@@ -10,8 +10,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/jonesrussell/north-cloud/crawler/internal/logger"
 	"github.com/jonesrussell/north-cloud/crawler/internal/storage/types"
+	infralogger "github.com/north-cloud/infrastructure/logger"
 )
 
 // RawContent represents minimally-processed content for classification
@@ -43,12 +43,12 @@ type RawContent struct {
 // RawContentIndexer handles indexing of raw content for the classifier
 type RawContentIndexer struct {
 	storage        types.Interface
-	logger         logger.Interface
+	logger         infralogger.Logger
 	ensuredIndexes sync.Map // Cache of indexes that have been ensured (map[string]bool)
 }
 
 // NewRawContentIndexer creates a new raw content indexer
-func NewRawContentIndexer(storage types.Interface, log logger.Interface) *RawContentIndexer {
+func NewRawContentIndexer(storage types.Interface, log infralogger.Logger) *RawContentIndexer {
 	return &RawContentIndexer{
 		storage: storage,
 		logger:  log,
@@ -65,26 +65,26 @@ func (r *RawContentIndexer) IndexRawContent(ctx context.Context, rawContent *Raw
 	indexName := r.getRawContentIndexName(rawContent.SourceName)
 
 	r.logger.Debug("Indexing raw content for classification",
-		"index", indexName,
-		"content_id", rawContent.ID,
-		"source_name", rawContent.SourceName,
-		"word_count", rawContent.WordCount,
+		infralogger.String("index", indexName),
+		infralogger.String("content_id", rawContent.ID),
+		infralogger.String("source_name", rawContent.SourceName),
+		infralogger.Int("word_count", rawContent.WordCount),
 	)
 
 	err := r.storage.IndexDocument(ctx, indexName, rawContent.ID, rawContent)
 	if err != nil {
 		r.logger.Error("Failed to index raw content",
-			"error", err,
-			"index", indexName,
-			"content_id", rawContent.ID,
+			infralogger.Error(err),
+			infralogger.String("index", indexName),
+			infralogger.String("content_id", rawContent.ID),
 		)
 		return fmt.Errorf("failed to index raw content: %w", err)
 	}
 
 	r.logger.Info("Indexed raw content for classification",
-		"index", indexName,
-		"content_id", rawContent.ID,
-		"classification_status", rawContent.ClassificationStatus,
+		infralogger.String("index", indexName),
+		infralogger.String("content_id", rawContent.ID),
+		infralogger.String("classification_status", rawContent.ClassificationStatus),
 	)
 
 	return nil
@@ -189,8 +189,8 @@ func (r *RawContentIndexer) EnsureRawContentIndex(ctx context.Context, sourceNam
 	}
 
 	r.logger.Info("Ensuring raw_content index",
-		"index", indexName,
-		"source_name", sourceName,
+		infralogger.String("index", indexName),
+		infralogger.String("source_name", sourceName),
 	)
 
 	// Create index using storage

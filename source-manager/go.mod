@@ -9,7 +9,6 @@ require (
 	github.com/lib/pq v1.10.9
 	github.com/north-cloud/infrastructure v0.0.0
 	github.com/stretchr/testify v1.11.1
-	go.uber.org/zap v1.27.1
 )
 
 replace github.com/north-cloud/infrastructure => ../infrastructure
@@ -47,6 +46,7 @@ require (
 	github.com/twitchyliquid64/golang-asm v0.15.1 // indirect
 	github.com/ugorji/go/codec v1.3.1 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
+	go.uber.org/zap v1.27.0 // indirect
 	golang.org/x/arch v0.23.0 // indirect
 	golang.org/x/crypto v0.46.0 // indirect
 	golang.org/x/net v0.48.0 // indirect

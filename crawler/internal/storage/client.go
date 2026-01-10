@@ -9,7 +9,6 @@ import (
 	es "github.com/elastic/go-elasticsearch/v8"
 	"github.com/jonesrussell/north-cloud/crawler/internal/config"
 	"github.com/jonesrussell/north-cloud/crawler/internal/config/elasticsearch"
-	"github.com/jonesrussell/north-cloud/crawler/internal/logger"
 	esclient "github.com/north-cloud/infrastructure/elasticsearch"
 	infralogger "github.com/north-cloud/infrastructure/logger"
 )
@@ -17,7 +16,7 @@ import (
 // ClientParams contains dependencies for creating the Elasticsearch client
 type ClientParams struct {
 	Config config.Interface
-	Logger logger.Interface
+	Logger infralogger.Logger
 }
 
 // ClientResult contains the Elasticsearch client
@@ -37,7 +36,7 @@ func NewClient(p ClientParams) (ClientResult, error) {
 
 	// Log the addresses being used for debugging
 	if len(esConfig.Addresses) > 0 {
-		p.Logger.Debug("Connecting to Elasticsearch", "addresses", esConfig.Addresses)
+		p.Logger.Debug("Connecting to Elasticsearch", infralogger.Any("addresses", esConfig.Addresses))
 	}
 
 	// Get the first address (standardized client uses single URL)
@@ -46,21 +45,8 @@ func NewClient(p ClientParams) (ClientResult, error) {
 		url = esConfig.Addresses[0]
 	}
 
-	// Create infrastructure logger adapter
-	var infLog infralogger.Logger
-	if p.Logger != nil {
-		// Create a basic logger for the standardized client
-		// The crawler's logger interface is different, so we'll create a new one
-		var err error
-		infLog, err = infralogger.New(infralogger.Config{
-			Level:  "info",
-			Format: "json",
-		})
-		if err != nil {
-			// Continue without logger if creation fails
-			infLog = nil
-		}
-	}
+	// Use the provided logger directly
+	infLog := p.Logger
 
 	// Map crawler config to standardized config
 	esCfg := esclient.Config{

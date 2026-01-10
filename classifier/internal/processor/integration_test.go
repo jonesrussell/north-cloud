@@ -10,15 +10,19 @@ import (
 
 	"github.com/jonesrussell/north-cloud/classifier/internal/classifier"
 	"github.com/jonesrussell/north-cloud/classifier/internal/domain"
+	infralogger "github.com/north-cloud/infrastructure/logger"
 )
 
 // mockLogger implements the Logger interface for testing
 type mockLogger struct{}
 
-func (m *mockLogger) Debug(msg string, keysAndValues ...any) {}
-func (m *mockLogger) Info(msg string, keysAndValues ...any)  {}
-func (m *mockLogger) Warn(msg string, keysAndValues ...any)  {}
-func (m *mockLogger) Error(msg string, keysAndValues ...any) {}
+func (m *mockLogger) Debug(msg string, fields ...infralogger.Field)       {}
+func (m *mockLogger) Info(msg string, fields ...infralogger.Field)        {}
+func (m *mockLogger) Warn(msg string, fields ...infralogger.Field)        {}
+func (m *mockLogger) Error(msg string, fields ...infralogger.Field)       {}
+func (m *mockLogger) Fatal(msg string, fields ...infralogger.Field)       {}
+func (m *mockLogger) With(fields ...infralogger.Field) infralogger.Logger { return m }
+func (m *mockLogger) Sync() error                                         { return nil }
 
 // mockSourceReputationDB implements SourceReputationDB for testing
 type mockSourceReputationDB struct {

@@ -5,17 +5,17 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/jonesrussell/north-cloud/publisher/internal/logger"
+	infralogger "github.com/north-cloud/infrastructure/logger"
 	"github.com/redis/go-redis/v9"
 )
 
 type Tracker struct {
 	client redis.UniversalClient
 	ttl    time.Duration
-	logger logger.Logger
+	logger infralogger.Logger
 }
 
-func NewTracker(client redis.UniversalClient, ttl time.Duration, log logger.Logger) *Tracker {
+func NewTracker(client redis.UniversalClient, ttl time.Duration, log infralogger.Logger) *Tracker {
 	return &Tracker{
 		client: client,
 		ttl:    ttl,
@@ -31,16 +31,16 @@ func (t *Tracker) HasPosted(ctx context.Context, articleID string) bool {
 	key := t.key(articleID)
 
 	t.logger.Debug("Checking if article was posted",
-		logger.String("article_id", articleID),
-		logger.String("redis_key", key),
+		infralogger.String("article_id", articleID),
+		infralogger.String("redis_key", key),
 	)
 
 	exists, err := t.client.Exists(ctx, key).Result()
 	if err != nil {
 		t.logger.Error("Redis error checking article",
-			logger.String("article_id", articleID),
-			logger.String("redis_key", key),
-			logger.Error(err),
+			infralogger.String("article_id", articleID),
+			infralogger.String("redis_key", key),
+			infralogger.Error(err),
 		)
 		// Log error but don't fail - assume not posted
 		return false
@@ -49,13 +49,13 @@ func (t *Tracker) HasPosted(ctx context.Context, articleID string) bool {
 	alreadyPosted := exists == 1
 	if alreadyPosted {
 		t.logger.Debug("Article already posted",
-			logger.String("article_id", articleID),
-			logger.String("redis_key", key),
+			infralogger.String("article_id", articleID),
+			infralogger.String("redis_key", key),
 		)
 	} else {
 		t.logger.Debug("Article not yet posted",
-			logger.String("article_id", articleID),
-			logger.String("redis_key", key),
+			infralogger.String("article_id", articleID),
+			infralogger.String("redis_key", key),
 		)
 	}
 
@@ -66,25 +66,25 @@ func (t *Tracker) MarkPosted(ctx context.Context, articleID string) error {
 	key := t.key(articleID)
 
 	t.logger.Debug("Marking article as posted",
-		logger.String("article_id", articleID),
-		logger.String("redis_key", key),
-		logger.Duration("ttl", t.ttl),
+		infralogger.String("article_id", articleID),
+		infralogger.String("redis_key", key),
+		infralogger.Duration("ttl", t.ttl),
 	)
 
 	err := t.client.Set(ctx, key, "1", t.ttl).Err()
 	if err != nil {
 		t.logger.Error("Redis error marking article as posted",
-			logger.String("article_id", articleID),
-			logger.String("redis_key", key),
-			logger.Duration("ttl", t.ttl),
-			logger.Error(err),
+			infralogger.String("article_id", articleID),
+			infralogger.String("redis_key", key),
+			infralogger.Duration("ttl", t.ttl),
+			infralogger.Error(err),
 		)
 		return err
 	}
 
 	t.logger.Debug("Article marked as posted",
-		logger.String("article_id", articleID),
-		logger.String("redis_key", key),
+		infralogger.String("article_id", articleID),
+		infralogger.String("redis_key", key),
 	)
 
 	return nil
@@ -94,23 +94,23 @@ func (t *Tracker) Clear(ctx context.Context, articleID string) error {
 	key := t.key(articleID)
 
 	t.logger.Debug("Clearing article from posted cache",
-		logger.String("article_id", articleID),
-		logger.String("redis_key", key),
+		infralogger.String("article_id", articleID),
+		infralogger.String("redis_key", key),
 	)
 
 	err := t.client.Del(ctx, key).Err()
 	if err != nil {
 		t.logger.Error("Redis error clearing article",
-			logger.String("article_id", articleID),
-			logger.String("redis_key", key),
-			logger.Error(err),
+			infralogger.String("article_id", articleID),
+			infralogger.String("redis_key", key),
+			infralogger.Error(err),
 		)
 		return err
 	}
 
 	t.logger.Debug("Article cleared from posted cache",
-		logger.String("article_id", articleID),
-		logger.String("redis_key", key),
+		infralogger.String("article_id", articleID),
+		infralogger.String("redis_key", key),
 	)
 
 	return nil
@@ -134,8 +134,8 @@ func (t *Tracker) FlushAll(ctx context.Context) error {
 		keys, cursor, err = t.client.Scan(ctx, cursor, pattern, scanBatchSize).Result()
 		if err != nil {
 			t.logger.Error("Redis error scanning for keys",
-				logger.String("pattern", pattern),
-				logger.Error(err),
+				infralogger.String("pattern", pattern),
+				infralogger.Error(err),
 			)
 			return fmt.Errorf("scan keys: %w", err)
 		}
@@ -144,8 +144,8 @@ func (t *Tracker) FlushAll(ctx context.Context) error {
 			deleted, delErr := t.client.Del(ctx, keys...).Result()
 			if delErr != nil {
 				t.logger.Error("Redis error deleting keys",
-					logger.Int("key_count", len(keys)),
-					logger.Error(delErr),
+					infralogger.Int("key_count", len(keys)),
+					infralogger.Error(delErr),
 				)
 				return fmt.Errorf("delete keys: %w", delErr)
 			}
@@ -158,8 +158,8 @@ func (t *Tracker) FlushAll(ctx context.Context) error {
 	}
 
 	t.logger.Info("Flushed Redis cache",
-		logger.Int("keys_deleted", deletedCount),
-		logger.String("pattern", pattern),
+		infralogger.Int("keys_deleted", deletedCount),
+		infralogger.String("pattern", pattern),
 	)
 
 	return nil

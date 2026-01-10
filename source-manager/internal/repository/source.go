@@ -11,16 +11,16 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/jonesrussell/north-cloud/source-manager/internal/logger"
 	"github.com/jonesrussell/north-cloud/source-manager/internal/models"
+	infralogger "github.com/north-cloud/infrastructure/logger"
 )
 
 type SourceRepository struct {
 	db     *sql.DB
-	logger logger.Logger
+	logger infralogger.Logger
 }
 
-func NewSourceRepository(db *sql.DB, log logger.Logger) *SourceRepository {
+func NewSourceRepository(db *sql.DB, log infralogger.Logger) *SourceRepository {
 	return &SourceRepository{
 		db:     db,
 		logger: log,

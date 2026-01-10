@@ -11,10 +11,10 @@ import (
 	"time"
 
 	"github.com/gocolly/colly/v2"
-	"github.com/jonesrussell/north-cloud/crawler/internal/logger"
 	"github.com/jonesrussell/north-cloud/crawler/internal/sources"
 	storagepkg "github.com/jonesrussell/north-cloud/crawler/internal/storage"
 	"github.com/jonesrussell/north-cloud/crawler/internal/storage/types"
+	infralogger "github.com/north-cloud/infrastructure/logger"
 )
 
 // Interface defines the interface for processing raw content.
@@ -29,7 +29,7 @@ var _ Interface = (*RawContentService)(nil)
 // RawContentService extracts and indexes raw content from any HTML page.
 // It does not perform type detection or validation - that's the classifier's job.
 type RawContentService struct {
-	logger     logger.Interface
+	logger     infralogger.Logger
 	storage    types.Interface
 	sources    sources.Interface
 	rawIndexer *storagepkg.RawContentIndexer
@@ -37,7 +37,7 @@ type RawContentService struct {
 
 // NewRawContentService creates a new raw content service.
 func NewRawContentService(
-	log logger.Interface,
+	log infralogger.Logger,
 	storage types.Interface,
 	sourcesManager sources.Interface,
 ) *RawContentService {
@@ -76,8 +76,8 @@ func (s *RawContentService) Process(e *colly.HTMLElement) error {
 	ctx := context.Background()
 	if err := s.rawIndexer.EnsureRawContentIndex(ctx, sourceName); err != nil {
 		s.logger.Warn("Failed to ensure raw_content index, continuing anyway",
-			"error", err,
-			"source_name", sourceName)
+			infralogger.Error(err),
+			infralogger.String("source_name", sourceName))
 	}
 
 	// Convert RawContentData to RawContent for indexing
@@ -87,17 +87,18 @@ func (s *RawContentService) Process(e *colly.HTMLElement) error {
 	err := s.rawIndexer.IndexRawContent(ctx, rawContent)
 	if err != nil {
 		s.logger.Error("Failed to index raw content",
-			"error", err,
-			"url", sourceURL,
-			"source_name", sourceName)
+			infralogger.Error(err),
+			infralogger.String("url", sourceURL),
+			infralogger.String("source_name", sourceName))
 		return fmt.Errorf("failed to index raw content: %w", err)
 	}
 
 	s.logger.Debug("Indexed raw content for classification",
-		"url", sourceURL,
-		"source_name", sourceName,
-		"title", rawData.Title,
-		"word_count", rawContent.WordCount)
+		infralogger.String("url", sourceURL),
+		infralogger.String("source_name", sourceName),
+		infralogger.String("title", rawData.Title),
+		infralogger.Int("word_count", rawContent.WordCount),
+	)
 
 	return nil
 }
@@ -111,8 +112,8 @@ func (s *RawContentService) getSourceConfig(sourceURL string) (string, SourceSel
 		// No sources manager, use URL as source name
 		sourceName = extractSourceNameFromURL(sourceURL)
 		s.logger.Debug("No sources manager available, using URL-based source name",
-			"source_name", sourceName,
-			"url", sourceURL)
+			infralogger.String("source_name", sourceName),
+			infralogger.String("url", sourceURL))
 		return sourceName, selectors
 	}
 
@@ -122,8 +123,8 @@ func (s *RawContentService) getSourceConfig(sourceURL string) (string, SourceSel
 		// Source not found, use URL as source name
 		sourceName = extractSourceNameFromURL(sourceURL)
 		s.logger.Debug("Source not found for URL, using URL-based source name",
-			"url", sourceURL,
-			"source_name", sourceName)
+			infralogger.String("url", sourceURL),
+			infralogger.String("source_name", sourceName))
 		return sourceName, selectors
 	}
 
@@ -131,9 +132,9 @@ func (s *RawContentService) getSourceConfig(sourceURL string) (string, SourceSel
 	// This ensures index names are based on URLs (e.g., "www.sudbury.com") rather than human-readable names
 	sourceName = extractSourceNameFromURL(sourceURL)
 	s.logger.Debug("Source found by URL, using URL-based source name for indexing",
-		"url", sourceURL,
-		"source_name", sourceName,
-		"source_config_name", sourceConfig.Name)
+		infralogger.String("url", sourceURL),
+		infralogger.String("source_name", sourceName),
+		infralogger.String("source_config_name", sourceConfig.Name))
 
 	// Extract selectors from source config (if available)
 	// We'll use article selectors as a guide, but won't enforce article-specific logic

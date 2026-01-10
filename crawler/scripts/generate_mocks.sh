@@ -46,7 +46,8 @@ mockgen -source=internal/crawler/events/eventhandler.go -destination=testutils/m
 
 # Generate mocks for Logger interface
 echo "Generating Logger mocks..."
-mockgen -source=internal/logger/logger.go -destination=testutils/mocks/logger/logger.go -package=logger || {
+# Note: internal/logger package has been removed. Services now use infrastructure/logger directly.
+# mockgen -source=internal/logger/logger.go -destination=testutils/mocks/logger/logger.go -package=logger || {
     echo "Failed to generate Logger mocks" >&2
     exit 1
 }

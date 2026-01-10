@@ -4,10 +4,10 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/jonesrussell/north-cloud/source-manager/internal/logger"
 	"github.com/jonesrussell/north-cloud/source-manager/internal/metadata"
 	"github.com/jonesrussell/north-cloud/source-manager/internal/models"
 	"github.com/jonesrussell/north-cloud/source-manager/internal/repository"
+	infralogger "github.com/north-cloud/infrastructure/logger"
 )
 
 const (
@@ -20,11 +20,11 @@ const (
 
 type SourceHandler struct {
 	repo      *repository.SourceRepository
-	logger    logger.Logger
+	logger    infralogger.Logger
 	extractor *metadata.Extractor
 }
 
-func NewSourceHandler(repo *repository.SourceRepository, log logger.Logger) *SourceHandler {
+func NewSourceHandler(repo *repository.SourceRepository, log infralogger.Logger) *SourceHandler {
 	return &SourceHandler{
 		repo:      repo,
 		logger:    log,
@@ -36,7 +36,7 @@ func (h *SourceHandler) Create(c *gin.Context) {
 	var source models.Source
 	if err := c.ShouldBindJSON(&source); err != nil {
 		h.logger.Debug("Invalid request body",
-			logger.String("error", err.Error()),
+			infralogger.String("error", err.Error()),
 		)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body", "details": err.Error()})
 		return
@@ -44,16 +44,16 @@ func (h *SourceHandler) Create(c *gin.Context) {
 
 	if err := h.repo.Create(c.Request.Context(), &source); err != nil {
 		h.logger.Error("Failed to create source",
-			logger.String("source_name", source.Name),
-			logger.Error(err),
+			infralogger.String("source_name", source.Name),
+			infralogger.Error(err),
 		)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create source"})
 		return
 	}
 
 	h.logger.Info("Source created",
-		logger.String("source_id", source.ID),
-		logger.String("source_name", source.Name),
+		infralogger.String("source_id", source.ID),
+		infralogger.String("source_name", source.Name),
 	)
 
 	c.JSON(http.StatusCreated, source)
@@ -65,8 +65,8 @@ func (h *SourceHandler) GetByID(c *gin.Context) {
 	source, err := h.repo.GetByID(c.Request.Context(), id)
 	if err != nil {
 		h.logger.Debug("Source not found",
-			logger.String("source_id", id),
-			logger.Error(err),
+			infralogger.String("source_id", id),
+			infralogger.Error(err),
 		)
 		c.JSON(http.StatusNotFound, gin.H{"error": "Source not found"})
 		return
@@ -79,7 +79,7 @@ func (h *SourceHandler) List(c *gin.Context) {
 	sources, err := h.repo.List(c.Request.Context())
 	if err != nil {
 		h.logger.Error("Failed to list sources",
-			logger.Error(err),
+			infralogger.Error(err),
 		)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to list sources"})
 		return
@@ -97,8 +97,8 @@ func (h *SourceHandler) Update(c *gin.Context) {
 	var source models.Source
 	if err := c.ShouldBindJSON(&source); err != nil {
 		h.logger.Debug("Invalid request body",
-			logger.String("source_id", id),
-			logger.String("error", err.Error()),
+			infralogger.String("source_id", id),
+			infralogger.String("error", err.Error()),
 		)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body", "details": err.Error()})
 		return
@@ -108,16 +108,16 @@ func (h *SourceHandler) Update(c *gin.Context) {
 
 	if err := h.repo.Update(c.Request.Context(), &source); err != nil {
 		h.logger.Error("Failed to update source",
-			logger.String("source_id", id),
-			logger.Error(err),
+			infralogger.String("source_id", id),
+			infralogger.Error(err),
 		)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update source"})
 		return
 	}
 
 	h.logger.Info("Source updated",
-		logger.String("source_id", id),
-		logger.String("source_name", source.Name),
+		infralogger.String("source_id", id),
+		infralogger.String("source_name", source.Name),
 	)
 
 	// Fetch updated source
@@ -135,15 +135,15 @@ func (h *SourceHandler) Delete(c *gin.Context) {
 
 	if err := h.repo.Delete(c.Request.Context(), id); err != nil {
 		h.logger.Error("Failed to delete source",
-			logger.String("source_id", id),
-			logger.Error(err),
+			infralogger.String("source_id", id),
+			infralogger.Error(err),
 		)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete source"})
 		return
 	}
 
 	h.logger.Info("Source deleted",
-		logger.String("source_id", id),
+		infralogger.String("source_id", id),
 	)
 
 	c.JSON(http.StatusNoContent, nil)
@@ -153,7 +153,7 @@ func (h *SourceHandler) GetCities(c *gin.Context) {
 	cities, err := h.repo.GetCities(c.Request.Context())
 	if err != nil {
 		h.logger.Error("Failed to get cities",
-			logger.Error(err),
+			infralogger.Error(err),
 		)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get cities"})
 		return
@@ -173,29 +173,29 @@ func (h *SourceHandler) FetchMetadata(c *gin.Context) {
 
 	if err := c.ShouldBindJSON(&request); err != nil {
 		h.logger.Debug("Invalid request body",
-			logger.String("error", err.Error()),
+			infralogger.String("error", err.Error()),
 		)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "URL is required", "details": err.Error()})
 		return
 	}
 
 	h.logger.Info("Fetching metadata",
-		logger.String("url", request.URL),
+		infralogger.String("url", request.URL),
 	)
 
 	metadataResp, err := h.extractor.Extract(c.Request.Context(), request.URL)
 	if err != nil {
 		h.logger.Error("Failed to extract metadata",
-			logger.String("url", request.URL),
-			logger.Error(err),
+			infralogger.String("url", request.URL),
+			infralogger.Error(err),
 		)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to extract metadata", "details": err.Error()})
 		return
 	}
 
 	h.logger.Info("Metadata extracted successfully",
-		logger.String("url", request.URL),
-		logger.String("name", metadataResp.Name),
+		infralogger.String("url", request.URL),
+		infralogger.String("name", metadataResp.Name),
 	)
 
 	c.JSON(http.StatusOK, metadataResp)
@@ -211,14 +211,14 @@ func (h *SourceHandler) TestCrawl(c *gin.Context) {
 
 	if err := c.ShouldBindJSON(&request); err != nil {
 		h.logger.Debug("Invalid request body",
-			logger.String("error", err.Error()),
+			infralogger.String("error", err.Error()),
 		)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body", "details": err.Error()})
 		return
 	}
 
 	h.logger.Info("Test crawl requested",
-		logger.String("url", request.URL),
+		infralogger.String("url", request.URL),
 	)
 
 	// For now, return a simulated response
@@ -250,8 +250,8 @@ func (h *SourceHandler) TestCrawl(c *gin.Context) {
 	}
 
 	h.logger.Info("Test crawl completed",
-		logger.String("url", request.URL),
-		logger.Int("articles_found", defaultTestArticlesFound),
+		infralogger.String("url", request.URL),
+		infralogger.Int("articles_found", defaultTestArticlesFound),
 	)
 
 	c.JSON(http.StatusOK, response)

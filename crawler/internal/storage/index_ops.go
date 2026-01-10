@@ -8,6 +8,7 @@ import (
 	"net/http"
 
 	"github.com/elastic/go-elasticsearch/v8/esapi"
+	infralogger "github.com/north-cloud/infrastructure/logger"
 )
 
 // CreateIndex creates a new index with the specified mapping
@@ -28,7 +29,10 @@ func (s *Storage) CreateIndex(
 		// Create index with mapping
 		var buf bytes.Buffer
 		if encodeErr := json.NewEncoder(&buf).Encode(mapping); encodeErr != nil {
-			s.logger.Error("Failed to create index", "index", index, "error", encodeErr)
+			s.logger.Error("Failed to create index",
+				infralogger.String("index", index),
+				infralogger.Error(encodeErr),
+			)
 			return fmt.Errorf("error encoding mapping: %w", encodeErr)
 		}
 		res, err = s.client.Indices.Create(
@@ -50,11 +54,14 @@ func (s *Storage) CreateIndex(
 	defer s.closeResponse(res, "CreateIndex", index, "")
 
 	if res.IsError() {
-		s.logger.Error("Failed to create index", "index", index, "error", res.String())
+		s.logger.Error("Failed to create index",
+			infralogger.String("index", index),
+			infralogger.String("error", res.String()),
+		)
 		return fmt.Errorf("failed to create index: %s", res.String())
 	}
 
-	s.logger.Info("Created index", "index", index)
+	s.logger.Info("Created index", infralogger.String("index", index))
 	return nil
 }
 
@@ -75,11 +82,14 @@ func (s *Storage) DeleteIndex(ctx context.Context, index string) error {
 	defer s.closeResponse(res, "DeleteIndex", index, "")
 
 	if res.IsError() {
-		s.logger.Error("Failed to delete index", "error", res.String(), "index", index)
+		s.logger.Error("Failed to delete index",
+			infralogger.String("error", res.String()),
+			infralogger.String("index", index),
+		)
 		return fmt.Errorf("error deleting index: %s", res.String())
 	}
 
-	s.logger.Info("Deleted index", "index", index)
+	s.logger.Info("Deleted index", infralogger.String("index", index))
 	return nil
 }
 
@@ -104,17 +114,17 @@ func (s *Storage) ListIndices(ctx context.Context) ([]string, error) {
 		s.client.Cat.Indices.WithFormat("json"),
 	)
 	if err != nil {
-		s.logger.Error("Failed to list index", "error", err)
+		s.logger.Error("Failed to list index", infralogger.Error(err))
 		return nil, fmt.Errorf("failed to list index: %w", err)
 	}
 	defer func() {
 		if closeErr := res.Body.Close(); closeErr != nil {
-			s.logger.Error("Error closing response body", "error", closeErr)
+			s.logger.Error("Error closing response body", infralogger.Error(closeErr))
 		}
 	}()
 
 	if res.IsError() {
-		s.logger.Error("Failed to list index", "error", res.String())
+		s.logger.Error("Failed to list index", infralogger.String("error", res.String()))
 		return nil, fmt.Errorf("error listing index: %s", res.String())
 	}
 
@@ -122,7 +132,7 @@ func (s *Storage) ListIndices(ctx context.Context) ([]string, error) {
 		Index string `json:"index"`
 	}
 	if decodeErr := json.NewDecoder(res.Body).Decode(&index); decodeErr != nil {
-		s.logger.Error("Failed to list index", "error", decodeErr)
+		s.logger.Error("Failed to list index", infralogger.Error(decodeErr))
 		return nil, fmt.Errorf("error decoding index: %w", decodeErr)
 	}
 

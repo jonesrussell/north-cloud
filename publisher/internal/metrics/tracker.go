@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/jonesrussell/north-cloud/publisher/internal/logger"
+	infralogger "github.com/north-cloud/infrastructure/logger"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -15,12 +15,12 @@ import (
 type Tracker struct {
 	client redis.UniversalClient
 	keys   *RedisKeys
-	logger logger.Logger
+	logger infralogger.Logger
 	cities []string // For GetStats aggregation
 }
 
 // NewTracker creates a new metrics tracker
-func NewTracker(client redis.UniversalClient, cities []string, log logger.Logger) *Tracker {
+func NewTracker(client redis.UniversalClient, cities []string, log infralogger.Logger) *Tracker {
 	return &Tracker{
 		client: client,
 		keys:   NewRedisKeys(KeyPrefixMetrics),
@@ -42,9 +42,9 @@ func (t *Tracker) IncrementPosted(ctx context.Context, city string) error {
 	_, err := pipe.Exec(ctx)
 	if err != nil {
 		t.logger.Warn("Failed to increment posted counter",
-			logger.String("city", city),
-			logger.String("redis_key", key),
-			logger.Error(err),
+			infralogger.String("city", city),
+			infralogger.String("redis_key", key),
+			infralogger.Error(err),
 		)
 		return fmt.Errorf("increment posted counter: %w", err)
 	}
@@ -65,9 +65,9 @@ func (t *Tracker) IncrementSkipped(ctx context.Context, city string) error {
 	_, err := pipe.Exec(ctx)
 	if err != nil {
 		t.logger.Warn("Failed to increment skipped counter",
-			logger.String("city", city),
-			logger.String("redis_key", key),
-			logger.Error(err),
+			infralogger.String("city", city),
+			infralogger.String("redis_key", key),
+			infralogger.Error(err),
 		)
 		return fmt.Errorf("increment skipped counter: %w", err)
 	}
@@ -88,9 +88,9 @@ func (t *Tracker) IncrementErrors(ctx context.Context, city string) error {
 	_, err := pipe.Exec(ctx)
 	if err != nil {
 		t.logger.Warn("Failed to increment error counter",
-			logger.String("city", city),
-			logger.String("redis_key", key),
-			logger.Error(err),
+			infralogger.String("city", city),
+			infralogger.String("redis_key", key),
+			infralogger.Error(err),
 		)
 		return fmt.Errorf("increment error counter: %w", err)
 	}
@@ -179,9 +179,9 @@ func (t *Tracker) AddRecentArticle(ctx context.Context, article any) error {
 	_, err = pipe.Exec(ctx)
 	if err != nil {
 		t.logger.Warn("Failed to add recent article",
-			logger.String("article_id", recentArticle.ID),
-			logger.String("city", recentArticle.City),
-			logger.Error(err),
+			infralogger.String("article_id", recentArticle.ID),
+			infralogger.String("city", recentArticle.City),
+			infralogger.Error(err),
 		)
 		return fmt.Errorf("add recent article: %w", err)
 	}
@@ -288,7 +288,7 @@ func (t *Tracker) GetRecentArticles(ctx context.Context, limit int) ([]RecentArt
 		var article RecentArticle
 		if unmarshalErr := json.Unmarshal([]byte(result), &article); unmarshalErr != nil {
 			t.logger.Warn("Failed to unmarshal recent article",
-				logger.Error(unmarshalErr),
+				infralogger.Error(unmarshalErr),
 			)
 			continue
 		}
@@ -306,7 +306,7 @@ func (t *Tracker) UpdateLastSync(ctx context.Context) error {
 	err := t.client.Set(ctx, key, now, 0).Err() // No expiration for last sync
 	if err != nil {
 		t.logger.Warn("Failed to update last sync",
-			logger.Error(err),
+			infralogger.Error(err),
 		)
 		return fmt.Errorf("update last sync: %w", err)
 	}

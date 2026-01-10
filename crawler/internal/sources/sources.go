@@ -9,9 +9,9 @@ import (
 	"sync"
 
 	configtypes "github.com/jonesrussell/north-cloud/crawler/internal/config/types"
-	"github.com/jonesrussell/north-cloud/crawler/internal/logger"
 	"github.com/jonesrussell/north-cloud/crawler/internal/sources/loader"
 	"github.com/jonesrussell/north-cloud/crawler/internal/sources/types"
+	infralogger "github.com/north-cloud/infrastructure/logger"
 )
 
 // Interface defines the read-only interface for accessing sources.
@@ -38,7 +38,7 @@ type ArticleSelectors = types.ArticleSelectors
 // Sources manages a collection of web content sources.
 type Sources struct {
 	sources   []Config
-	logger    logger.Interface
+	logger    infralogger.Logger
 	metrics   *types.SourcesMetrics
 	apiURL    string       // Store API URL for loading sources
 	jwtSecret string       // JWT secret for service-to-service authentication
@@ -96,8 +96,8 @@ func (s *Sources) loadSourcesIfNeeded() error {
 	s.sources = sourceConfigs
 	if s.logger != nil {
 		s.logger.Info("Sources loaded from API",
-			"count", len(sourceConfigs),
-			"url", s.apiURL)
+			infralogger.Int("count", len(sourceConfigs)),
+			infralogger.String("url", s.apiURL))
 	}
 	return nil
 }

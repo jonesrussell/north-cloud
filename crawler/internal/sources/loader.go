@@ -4,13 +4,13 @@ import (
 	"errors"
 
 	"github.com/jonesrussell/north-cloud/crawler/internal/config"
-	"github.com/jonesrussell/north-cloud/crawler/internal/logger"
 	"github.com/jonesrussell/north-cloud/crawler/internal/sources/types"
+	infralogger "github.com/north-cloud/infrastructure/logger"
 )
 
 // NewSources creates a new Sources instance without loading sources immediately.
 // Sources will be loaded lazily when GetSources() is first called.
-func NewSources(cfg config.Interface, log logger.Interface) (*Sources, error) {
+func NewSources(cfg config.Interface, log infralogger.Logger) (*Sources, error) {
 	crawlerCfg := cfg.GetCrawlerConfig()
 
 	// API loader is required - no file-based fallback

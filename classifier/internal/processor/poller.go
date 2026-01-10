@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/jonesrussell/north-cloud/classifier/internal/domain"
+	infralogger "github.com/north-cloud/infrastructure/logger"
 )
 
 const (
@@ -51,7 +52,7 @@ type Poller struct {
 	esClient       ElasticsearchClient
 	dbClient       DatabaseClient
 	batchProcessor *BatchProcessor
-	logger         Logger
+	logger         infralogger.Logger
 
 	batchSize    int
 	pollInterval time.Duration
@@ -70,7 +71,7 @@ func NewPoller(
 	esClient ElasticsearchClient,
 	dbClient DatabaseClient,
 	batchProcessor *BatchProcessor,
-	logger Logger,
+	logger infralogger.Logger,
 	config PollerConfig,
 ) *Poller {
 	if config.BatchSize <= 0 {
@@ -99,8 +100,8 @@ func (p *Poller) Start(ctx context.Context) error {
 
 	p.running = true
 	p.logger.Info("Poller starting",
-		"batch_size", p.batchSize,
-		"poll_interval", p.pollInterval,
+		infralogger.Int("batch_size", p.batchSize),
+		infralogger.Duration("poll_interval", p.pollInterval),
 	)
 
 	go p.run(ctx)
@@ -126,7 +127,7 @@ func (p *Poller) run(ctx context.Context) {
 
 	// Process immediately on start
 	if err := p.processPending(ctx); err != nil {
-		p.logger.Error("Failed to process pending content on startup", "error", err)
+		p.logger.Error("Failed to process pending content on startup", infralogger.Error(err))
 	}
 
 	for {
@@ -139,7 +140,7 @@ func (p *Poller) run(ctx context.Context) {
 			return
 		case <-ticker.C:
 			if err := p.processPending(ctx); err != nil {
-				p.logger.Error("Failed to process pending content", "error", err)
+				p.logger.Error("Failed to process pending content", infralogger.Error(err))
 			}
 		}
 	}
@@ -147,7 +148,7 @@ func (p *Poller) run(ctx context.Context) {
 
 // processPending processes all pending content
 func (p *Poller) processPending(ctx context.Context) error {
-	p.logger.Debug("Polling for pending content", "batch_size", p.batchSize)
+	p.logger.Debug("Polling for pending content", infralogger.Int("batch_size", p.batchSize))
 
 	// Query for pending raw content
 	pendingItems, err := p.esClient.QueryRawContent(ctx, domain.StatusPending, p.batchSize)
@@ -160,7 +161,7 @@ func (p *Poller) processPending(ctx context.Context) error {
 		return nil
 	}
 
-	p.logger.Info("Found pending content", "count", len(pendingItems))
+	p.logger.Info("Found pending content", infralogger.Int("count", len(pendingItems)))
 
 	// Process batch
 	results, err := p.batchProcessor.Process(ctx, pendingItems)
@@ -175,7 +176,7 @@ func (p *Poller) processPending(ctx context.Context) error {
 
 	// Save to classification history
 	if err = p.saveHistory(ctx, results); err != nil {
-		p.logger.Warn("Failed to save classification history", "error", err)
+		p.logger.Warn("Failed to save classification history", infralogger.Error(err))
 		// Don't fail the whole operation if history save fails
 	}
 
@@ -194,8 +195,8 @@ func (p *Poller) indexResults(ctx context.Context, results []*ProcessResult) err
 			// Update status to failed
 			if err := p.esClient.UpdateRawContentStatus(ctx, result.Raw.ID, domain.StatusFailed, time.Now()); err != nil {
 				p.logger.Error("Failed to update status to failed",
-					"content_id", result.Raw.ID,
-					"error", err,
+					infralogger.String("content_id", result.Raw.ID),
+					infralogger.Error(err),
 				)
 			}
 			continue
@@ -206,8 +207,8 @@ func (p *Poller) indexResults(ctx context.Context, results []*ProcessResult) err
 
 	if len(failedContentIDs) > 0 {
 		p.logger.Warn("Some items failed classification",
-			"failed_count", len(failedContentIDs),
-			"failed_ids", failedContentIDs,
+			infralogger.Int("failed_count", len(failedContentIDs)),
+			infralogger.Any("failed_ids", failedContentIDs),
 		)
 	}
 
@@ -216,7 +217,7 @@ func (p *Poller) indexResults(ctx context.Context, results []*ProcessResult) err
 	}
 
 	// Bulk index classified content
-	p.logger.Info("Indexing classified content", "count", len(classifiedContents))
+	p.logger.Info("Indexing classified content", infralogger.Int("count", len(classifiedContents)))
 
 	if err := p.esClient.BulkIndexClassifiedContent(ctx, classifiedContents); err != nil {
 		return fmt.Errorf("bulk indexing failed: %w", err)
@@ -226,14 +227,14 @@ func (p *Poller) indexResults(ctx context.Context, results []*ProcessResult) err
 	for _, content := range classifiedContents {
 		if err := p.esClient.UpdateRawContentStatus(ctx, content.ID, domain.StatusClassified, time.Now()); err != nil {
 			p.logger.Error("Failed to update raw content status",
-				"content_id", content.ID,
-				"error", err,
+				infralogger.String("content_id", content.ID),
+				infralogger.Error(err),
 			)
 			// Continue with next item
 		}
 	}
 
-	p.logger.Info("Successfully indexed classified content", "count", len(classifiedContents))
+	p.logger.Info("Successfully indexed classified content", infralogger.Int("count", len(classifiedContents)))
 
 	return nil
 }
@@ -256,9 +257,9 @@ func (p *Poller) validateURL(url string) string {
 	}
 
 	p.logger.Warn("URL truncated for classification history",
-		"original_length", len(url),
-		"truncated_length", maxURLLength,
-		"url_preview", url[:previewLen],
+		infralogger.Int("original_length", len(url)),
+		infralogger.Int("truncated_length", maxURLLength),
+		infralogger.String("url_preview", url[:previewLen]),
 	)
 	return truncated
 }
@@ -296,7 +297,7 @@ func (p *Poller) saveHistory(ctx context.Context, results []*ProcessResult) erro
 		return nil
 	}
 
-	p.logger.Debug("Saving classification history", "count", len(histories))
+	p.logger.Debug("Saving classification history", infralogger.Int("count", len(histories)))
 
 	if err := p.dbClient.SaveClassificationHistoryBatch(ctx, histories); err != nil {
 		return fmt.Errorf("failed to save history batch: %w", err)

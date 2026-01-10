@@ -7,7 +7,6 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/jonesrussell/north-cloud/crawler/internal/config"
-	"github.com/jonesrussell/north-cloud/crawler/internal/logger"
 	infragin "github.com/north-cloud/infrastructure/gin"
 	infralogger "github.com/north-cloud/infrastructure/logger"
 )
@@ -94,7 +93,6 @@ func setupDiscoveredLinksRoutes(v1 *gin.RouterGroup, discoveredLinksHandler *Dis
 
 // NewServer creates a new HTTP server using the infrastructure gin package.
 func NewServer(
-	_ logger.Interface,
 	cfg config.Interface,
 	jobsHandler *JobsHandler,
 	discoveredLinksHandler *DiscoveredLinksHandler,

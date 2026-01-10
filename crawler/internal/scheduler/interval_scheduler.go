@@ -13,7 +13,7 @@ import (
 	"github.com/jonesrussell/north-cloud/crawler/internal/crawler"
 	"github.com/jonesrussell/north-cloud/crawler/internal/database"
 	"github.com/jonesrussell/north-cloud/crawler/internal/domain"
-	"github.com/jonesrussell/north-cloud/crawler/internal/logger"
+	infralogger "github.com/north-cloud/infrastructure/logger"
 )
 
 const (
@@ -35,7 +35,7 @@ type JobExecution struct {
 
 // IntervalScheduler replaces the cron-based scheduler with interval-based scheduling.
 type IntervalScheduler struct {
-	logger        logger.Interface
+	logger        infralogger.Logger
 	repo          database.JobRepositoryInterface
 	executionRepo database.ExecutionRepositoryInterface
 	crawler       crawler.Interface
@@ -61,7 +61,7 @@ type IntervalScheduler struct {
 
 // NewIntervalScheduler creates a new interval-based scheduler.
 func NewIntervalScheduler(
-	log logger.Interface,
+	log infralogger.Logger,
 	repo database.JobRepositoryInterface,
 	executionRepo database.ExecutionRepositoryInterface,
 	crawlerInstance crawler.Interface,
@@ -95,9 +95,10 @@ func NewIntervalScheduler(
 // Start starts the interval scheduler.
 func (s *IntervalScheduler) Start(ctx context.Context) error {
 	s.logger.Info("Starting interval scheduler",
-		"check_interval", s.checkInterval,
-		"lock_duration", s.lockDuration,
-		"metrics_interval", s.metricsInterval)
+		infralogger.Duration("check_interval", s.checkInterval),
+		infralogger.Duration("lock_duration", s.lockDuration),
+		infralogger.Duration("metrics_interval", s.metricsInterval),
+	)
 
 	// Start job poller
 	s.wg.Add(1)
@@ -139,7 +140,7 @@ func (s *IntervalScheduler) pollJobs() {
 	ticker := time.NewTicker(s.checkInterval)
 	defer ticker.Stop()
 
-	s.logger.Info("Job poller started", "interval", s.checkInterval)
+	s.logger.Info("Job poller started", infralogger.Duration("interval", s.checkInterval))
 
 	for {
 		select {
@@ -159,24 +160,27 @@ func (s *IntervalScheduler) checkAndExecuteJobs() {
 	// Get jobs ready to run
 	jobs, err := s.repo.GetJobsReadyToRun(s.ctx)
 	if err != nil {
-		s.logger.Error("Failed to get jobs ready to run", "error", err)
+		s.logger.Error("Failed to get jobs ready to run", infralogger.Error(err))
 		return
 	}
 
 	if len(jobs) > 0 {
-		s.logger.Debug("Found jobs ready to run", "count", len(jobs))
+		s.logger.Debug("Found jobs ready to run", infralogger.Int("count", len(jobs)))
 	}
 
 	for _, job := range jobs {
 		// Try to acquire lock
 		acquired, lockErr := s.acquireJobLock(job)
 		if lockErr != nil {
-			s.logger.Error("Failed to acquire lock", "job_id", job.ID, "error", lockErr)
+			s.logger.Error("Failed to acquire lock",
+				infralogger.String("job_id", job.ID),
+				infralogger.Error(lockErr),
+			)
 			continue
 		}
 
 		if !acquired {
-			s.logger.Debug("Job already locked by another instance", "job_id", job.ID)
+			s.logger.Debug("Job already locked by another instance", infralogger.String("job_id", job.ID))
 			continue
 		}
 
@@ -196,7 +200,10 @@ func (s *IntervalScheduler) acquireJobLock(job *domain.Job) (bool, error) {
 	}
 
 	if acquired {
-		s.logger.Debug("Lock acquired", "job_id", job.ID, "lock_token", lockToken)
+		s.logger.Debug("Lock acquired",
+			infralogger.String("job_id", job.ID),
+			infralogger.String("lock_token", lockToken.String()),
+		)
 		// Update job with lock token for tracking
 		job.LockToken = new(string)
 		*job.LockToken = lockToken.String()
@@ -211,7 +218,7 @@ func (s *IntervalScheduler) executeJob(job *domain.Job) {
 	// Check if already running
 	s.activeJobsMu.RLock()
 	if _, exists := s.activeJobs[job.ID]; exists {
-		s.logger.Warn("Job already running", "job_id", job.ID)
+		s.logger.Warn("Job already running", infralogger.String("job_id", job.ID))
 		s.activeJobsMu.RUnlock()
 		return
 	}
@@ -228,7 +235,10 @@ func (s *IntervalScheduler) executeJob(job *domain.Job) {
 	}
 
 	if err := s.executionRepo.Create(s.ctx, execution); err != nil {
-		s.logger.Error("Failed to create execution record", "job_id", job.ID, "error", err)
+		s.logger.Error("Failed to create execution record",
+			infralogger.String("job_id", job.ID),
+			infralogger.Error(err),
+		)
 		s.releaseLock(job)
 		return
 	}
@@ -239,7 +249,10 @@ func (s *IntervalScheduler) executeJob(job *domain.Job) {
 	job.StartedAt = &now
 
 	if err := s.repo.Update(s.ctx, job); err != nil {
-		s.logger.Error("Failed to update job status", "job_id", job.ID, "error", err)
+		s.logger.Error("Failed to update job status",
+			infralogger.String("job_id", job.ID),
+			infralogger.Error(err),
+		)
 		s.releaseLock(job)
 		return
 	}
@@ -283,10 +296,11 @@ func (s *IntervalScheduler) runJob(jobExec *JobExecution) {
 	job := jobExec.Job
 
 	s.logger.Info("Executing job",
-		"job_id", job.ID,
-		"source_id", job.SourceID,
-		"url", job.URL,
-		"retry_attempt", job.CurrentRetryCount)
+		infralogger.String("job_id", job.ID),
+		infralogger.String("source_id", job.SourceID),
+		infralogger.String("url", job.URL),
+		infralogger.Int("retry_attempt", job.CurrentRetryCount),
+	)
 
 	// Validate source ID
 	if job.SourceID == "" {
@@ -300,9 +314,10 @@ func (s *IntervalScheduler) runJob(jobExec *JobExecution) {
 
 	if err != nil {
 		s.logger.Error("Crawler start failed",
-			"job_id", job.ID,
-			"source_id", job.SourceID,
-			"error", err)
+			infralogger.String("job_id", job.ID),
+			infralogger.String("source_id", job.SourceID),
+			infralogger.Error(err),
+		)
 		s.handleJobFailure(jobExec, err, &startTime)
 		return
 	}
@@ -332,7 +347,10 @@ func (s *IntervalScheduler) handleJobSuccess(jobExec *JobExecution, startTime *t
 	execution.DurationMs = &durationMs
 
 	if err := s.executionRepo.Update(s.ctx, execution); err != nil {
-		s.logger.Error("Failed to update execution", "execution_id", execution.ID, "error", err)
+		s.logger.Error("Failed to update execution",
+			infralogger.String("execution_id", execution.ID),
+			infralogger.Error(err),
+		)
 	}
 
 	// Update job
@@ -349,16 +367,20 @@ func (s *IntervalScheduler) handleJobSuccess(jobExec *JobExecution, startTime *t
 	}
 
 	if err := s.repo.Update(s.ctx, job); err != nil {
-		s.logger.Error("Failed to update job", "job_id", job.ID, "error", err)
+		s.logger.Error("Failed to update job",
+			infralogger.String("job_id", job.ID),
+			infralogger.Error(err),
+		)
 	}
 
 	s.metrics.IncrementCompleted()
 	s.metrics.IncrementTotalExecutions()
 
 	s.logger.Info("Job completed successfully",
-		"job_id", job.ID,
-		"duration_ms", durationMs,
-		"next_run_at", job.NextRunAt)
+		infralogger.String("job_id", job.ID),
+		infralogger.Int64("duration_ms", durationMs),
+		infralogger.Any("next_run_at", job.NextRunAt),
+	)
 }
 
 // handleJobFailure handles job execution failure.
@@ -380,7 +402,10 @@ func (s *IntervalScheduler) handleJobFailure(jobExec *JobExecution, execErr erro
 	execution.ErrorMessage = &errMsg
 
 	if err := s.executionRepo.Update(s.ctx, execution); err != nil {
-		s.logger.Error("Failed to update execution", "execution_id", execution.ID, "error", err)
+		s.logger.Error("Failed to update execution",
+			infralogger.String("execution_id", execution.ID),
+			infralogger.Error(err),
+		)
 	}
 
 	// Check if should retry
@@ -393,12 +418,13 @@ func (s *IntervalScheduler) handleJobFailure(jobExec *JobExecution, execErr erro
 		job.Status = "scheduled"
 
 		s.logger.Info("Scheduling retry",
-			"job_id", job.ID,
-			"retry_attempt", job.CurrentRetryCount,
-			"max_retries", job.MaxRetries,
-			"backoff", backoff,
-			"next_run_at", nextRun,
-			"error", execErr)
+			infralogger.String("job_id", job.ID),
+			infralogger.Int("retry_attempt", job.CurrentRetryCount),
+			infralogger.Int("max_retries", job.MaxRetries),
+			infralogger.Duration("backoff", backoff),
+			infralogger.Time("next_run_at", nextRun),
+			infralogger.Error(execErr),
+		)
 	} else {
 		// No more retries
 		job.Status = "failed"
@@ -407,14 +433,18 @@ func (s *IntervalScheduler) handleJobFailure(jobExec *JobExecution, execErr erro
 		s.metrics.IncrementFailed()
 
 		s.logger.Error("Job failed after all retries",
-			"job_id", job.ID,
-			"error", execErr,
-			"retries", job.CurrentRetryCount)
+			infralogger.String("job_id", job.ID),
+			infralogger.Error(execErr),
+			infralogger.Int("retries", job.CurrentRetryCount),
+		)
 	}
 
 	job.ErrorMessage = &errMsg
 	if err := s.repo.Update(s.ctx, job); err != nil {
-		s.logger.Error("Failed to update job", "job_id", job.ID, "error", err)
+		s.logger.Error("Failed to update job",
+			infralogger.String("job_id", job.ID),
+			infralogger.Error(err),
+		)
 	}
 
 	s.metrics.IncrementTotalExecutions()
@@ -461,9 +491,12 @@ func (s *IntervalScheduler) calculateBackoff(job *domain.Job) time.Duration {
 // releaseLock releases the job lock.
 func (s *IntervalScheduler) releaseLock(job *domain.Job) {
 	if err := s.repo.ReleaseLock(s.ctx, job.ID); err != nil {
-		s.logger.Error("Failed to release lock", "job_id", job.ID, "error", err)
+		s.logger.Error("Failed to release lock",
+			infralogger.String("job_id", job.ID),
+			infralogger.Error(err),
+		)
 	} else {
-		s.logger.Debug("Lock released", "job_id", job.ID)
+		s.logger.Debug("Lock released", infralogger.String("job_id", job.ID))
 	}
 }
 
@@ -473,7 +506,7 @@ func (s *IntervalScheduler) cancelAllActiveJobs() {
 	defer s.activeJobsMu.Unlock()
 
 	for id, jobExec := range s.activeJobs {
-		s.logger.Info("Cancelling active job", "job_id", id)
+		s.logger.Info("Cancelling active job", infralogger.String("job_id", id))
 		jobExec.Cancel()
 	}
 }
@@ -485,7 +518,7 @@ func (s *IntervalScheduler) cleanStaleLocks() {
 	ticker := time.NewTicker(s.staleLockCheckInterval)
 	defer ticker.Stop()
 
-	s.logger.Info("Stale lock cleaner started", "interval", s.staleLockCheckInterval)
+	s.logger.Info("Stale lock cleaner started", infralogger.Duration("interval", s.staleLockCheckInterval))
 
 	for {
 		select {
@@ -496,9 +529,9 @@ func (s *IntervalScheduler) cleanStaleLocks() {
 			cutoff := time.Now().Add(-s.lockDuration)
 			count, err := s.repo.ClearStaleLocks(s.ctx, cutoff)
 			if err != nil {
-				s.logger.Error("Failed to clear stale locks", "error", err)
+				s.logger.Error("Failed to clear stale locks", infralogger.Error(err))
 			} else if count > 0 {
-				s.logger.Info("Cleared stale locks", "count", count)
+				s.logger.Info("Cleared stale locks", infralogger.Int("count", count))
 				s.metrics.AddStaleLocksCleared(count)
 			}
 		}
@@ -512,8 +545,7 @@ func (s *IntervalScheduler) collectMetrics() {
 	ticker := time.NewTicker(s.metricsInterval)
 	defer ticker.Stop()
 
-	s.logger.Info("Metrics collector started", "interval", s.metricsInterval)
-
+	s.logger.Info("Metrics collector started", infralogger.Duration("interval", s.metricsInterval))
 	for {
 		select {
 		case <-s.ctx.Done():
@@ -530,17 +562,18 @@ func (s *IntervalScheduler) updateMetrics() {
 	// Get aggregate stats from database
 	stats, err := s.executionRepo.GetAggregateStats(s.ctx)
 	if err != nil {
-		s.logger.Error("Failed to get aggregate stats", "error", err)
+		s.logger.Error("Failed to get aggregate stats", infralogger.Error(err))
 		return
 	}
 
 	s.metrics.UpdateAggregateMetrics(stats.AvgDurationMs, stats.SuccessRate)
 
 	s.logger.Debug("Metrics updated",
-		"avg_duration_ms", stats.AvgDurationMs,
-		"success_rate", stats.SuccessRate,
-		"active_jobs", stats.ActiveJobs,
-		"scheduled_jobs", stats.ScheduledJobs)
+		infralogger.Float64("avg_duration_ms", stats.AvgDurationMs),
+		infralogger.Float64("success_rate", stats.SuccessRate),
+		infralogger.Int64("active_jobs", stats.ActiveJobs),
+		infralogger.Int64("scheduled_jobs", stats.ScheduledJobs),
+	)
 }
 
 // GetMetrics returns a snapshot of current scheduler metrics.
@@ -552,7 +585,10 @@ func (s *IntervalScheduler) GetMetrics() SchedulerMetrics {
 func (s *IntervalScheduler) getNextExecutionNumber(jobID string) int {
 	count, err := s.executionRepo.CountByJobID(s.ctx, jobID)
 	if err != nil {
-		s.logger.Error("Failed to get execution count", "job_id", jobID, "error", err)
+		s.logger.Error("Failed to get execution count",
+			infralogger.String("job_id", jobID),
+			infralogger.Error(err),
+		)
 		return 1
 	}
 	return count + 1
@@ -569,7 +605,7 @@ func (s *IntervalScheduler) CancelJob(jobID string) error {
 		return fmt.Errorf("job not currently running: %s", jobID)
 	}
 
-	s.logger.Info("Cancelling job execution", "job_id", jobID)
+	s.logger.Info("Cancelling job execution", infralogger.String("job_id", jobID))
 	jobExec.Cancel()
 
 	s.metrics.IncrementCancelled()

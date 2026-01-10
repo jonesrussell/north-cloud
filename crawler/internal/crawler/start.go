@@ -8,14 +8,15 @@ import (
 
 	colly "github.com/gocolly/colly/v2"
 	configtypes "github.com/jonesrussell/north-cloud/crawler/internal/config/types"
+	infralogger "github.com/north-cloud/infrastructure/logger"
 )
 
 // Start begins the crawling process for a given source by ID.
 // Refactored to use component-based architecture for better separation of concerns.
 func (c *Crawler) Start(ctx context.Context, sourceID string) error {
 	c.logger.Debug("Starting crawler",
-		"source_id", sourceID,
-		"debug_enabled", c.cfg.Debug,
+		infralogger.String("source_id", sourceID),
+		infralogger.Bool("debug_enabled", c.cfg.Debug),
 	)
 
 	// Reset components for new execution (supports concurrent jobs)
@@ -77,15 +78,15 @@ func (c *Crawler) Start(ctx context.Context, sourceID string) error {
 	// Wait with context cancellation support
 	select {
 	case <-waitDone:
-		c.logger.Info("Collector finished", "source_id", sourceID)
+		c.logger.Info("Collector finished", infralogger.String("source_id", sourceID))
 	case <-ctx.Done():
-		c.logger.Info("Context cancelled, aborting collector", "source_id", sourceID)
+		c.logger.Info("Context cancelled, aborting collector", infralogger.String("source_id", sourceID))
 		c.signals.SignalAbort()
 		// Give collector a moment to finish after abort
 		select {
 		case <-waitDone:
 		case <-time.After(collectorTimeoutDuration):
-			c.logger.Warn("Collector did not finish after cancellation", "source_id", sourceID)
+			c.logger.Warn("Collector did not finish after cancellation", infralogger.String("source_id", sourceID))
 		}
 		return ctx.Err()
 	}
@@ -124,8 +125,9 @@ func (c *Crawler) validateAndSetup(ctx context.Context, sourceID string) (*confi
 	c.state.Start(ctx, sourceID)
 
 	c.logger.Debug("Starting to wait for collector to complete",
-		"source_id", sourceID,
-		"url", source.URL)
+		infralogger.String("source_id", sourceID),
+		infralogger.String("url", source.URL),
+	)
 
 	return source, nil
 }
@@ -188,8 +190,9 @@ func (c *Crawler) handleInitialPageScraped(
 		if initialPageScraped.CompareAndSwap(false, true) {
 			linkCount := initialPageLinkCount.Load()
 			c.logger.Debug("Initial page scraped, all links should be queued",
-				"url", initialPageURL,
-				"links_discovered", linkCount)
+				infralogger.String("url", initialPageURL),
+				infralogger.Int64("links_discovered", linkCount),
+			)
 
 			// Warn if no links were discovered on the initial page
 			if linkCount == 0 {
@@ -211,9 +214,10 @@ func (c *Crawler) logWarnNoLinksDiscovered(initialPageURL string) {
 	)
 
 	c.logger.Warn("No links discovered on initial page",
-		"url", initialPageURL,
-		"suggestion", noLinksSuggestion,
-		"note", noLinksNote)
+		infralogger.String("url", initialPageURL),
+		infralogger.String("suggestion", noLinksSuggestion),
+		infralogger.String("note", noLinksNote),
+	)
 }
 
 // cleanupResources performs periodic cleanup of crawler resources
@@ -231,7 +235,7 @@ func (c *Crawler) cleanupResources() {
 	if c.archiver != nil {
 		c.logger.Debug("Closing MinIO archiver")
 		if err := c.archiver.Close(); err != nil {
-			c.logger.Error("Failed to close archiver", "error", err)
+			c.logger.Error("Failed to close archiver", infralogger.Error(err))
 		}
 	}
 

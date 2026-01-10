@@ -12,9 +12,9 @@ import (
 	"github.com/jonesrussell/north-cloud/crawler/internal/content/rawcontent"
 	"github.com/jonesrussell/north-cloud/crawler/internal/crawler/events"
 	"github.com/jonesrussell/north-cloud/crawler/internal/database"
-	"github.com/jonesrussell/north-cloud/crawler/internal/logger"
 	"github.com/jonesrussell/north-cloud/crawler/internal/sources"
 	"github.com/jonesrussell/north-cloud/crawler/internal/storage/types"
+	infralogger "github.com/north-cloud/infrastructure/logger"
 )
 
 const (
@@ -34,7 +34,7 @@ const (
 
 // CrawlerParams holds parameters for creating a crawler instance
 type CrawlerParams struct {
-	Logger       logger.Interface
+	Logger       infralogger.Logger
 	Bus          *events.EventBus
 	IndexManager types.IndexManager
 	Sources      sources.Interface
@@ -75,7 +75,7 @@ func NewCrawlerWithParams(p CrawlerParams) (*CrawlerResult, error) {
 			arch, archErr := archive.NewArchiver(minioConfig, p.Logger)
 			if archErr != nil {
 				p.Logger.Warn("Failed to initialize MinIO archiver, continuing without archiving",
-					"error", archErr)
+					infralogger.Error(archErr))
 			} else {
 				archiver = arch
 				p.Logger.Info("MinIO archiver initialized successfully")
