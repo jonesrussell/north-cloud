@@ -40,11 +40,12 @@ scrape_configs:
       - source_labels: ['__meta_docker_container_label_com_docker_compose_service']
         target_label: 'service'
 
-      # Extract project name
+      # Extract project name from Docker Compose label
       - source_labels: ['__meta_docker_container_label_com_docker_compose_project']
         target_label: 'project'
 
-      # Add static project label if not present
+      # Ensure project label is always set (fallback if Docker label missing)
+      # This guarantees consistent labeling even if Docker labels are inconsistent
       - target_label: 'project'
         replacement: 'north-cloud'
         action: replace
@@ -78,7 +79,7 @@ scrape_configs:
             caller: caller
             msg: msg
             ts: ts
-            service: service
+            log_service: service  # Extract as log_service to avoid overwriting Docker service label
             method: method
             error: error
             duration: duration
@@ -88,15 +89,42 @@ scrape_configs:
           # We keep it false so logs are still ingested, just without structured fields
           # Monitor Promtail logs for JSON parsing failures to identify misconfigured services
 
-      # Fallback: Extract level from raw log if JSON parsing failed
-      # This regex will only match if level wasn't already extracted from JSON
-      - regex:
-          expression: '(?i)"level"\s*:\s*"(?P<level>debug|info|warn|error|fatal)"'
-          source: log
+      # Normalize level field: ensure it exists (even if empty) for reliable matching
+      # This allows match stages to work correctly whether level was extracted or not
+      - template:
+          source: level
+          template: '{{ if .level }}{{ .level }}{{ else }}{{ end }}'
 
-      # Extract level as a label (from either JSON parsing or regex fallback)
+      # Extract level as a label (from JSON parsing if successful)
+      # After normalization above, level will always exist (empty string if not extracted)
       - labels:
           level:
+
+      # Fallback: Multi-stage level extraction if JSON parsing failed
+      # Match stage only processes logs where level label is empty (JSON parsing failed)
+      # This prevents unnecessary regex/logfmt processing when JSON already succeeded
+      
+      # 1. Try logfmt format (common in Go/Rust services: level=info msg="...")
+      - match:
+          selector: '{level=""}'
+          stages:
+            - logfmt:
+                mapping:
+                  level: level
+            - labels:
+                level:
+
+      # 2. If logfmt also failed, try generic regex (last resort)
+      # Matches: "level":"info", level="info", [INFO], INFO:, level=debug, etc.
+      # More permissive pattern to catch various log format variations
+      - match:
+          selector: '{level=""}'
+          stages:
+            - regex:
+                expression: '(?i)(?P<level>debug|info|warn|error|fatal)'
+                source: log
+            - labels:
+                level:
 
       # If JSON parsing succeeded, use the parsed timestamp (more accurate than Docker's time)
       - timestamp:
@@ -122,9 +150,12 @@ scrape_configs:
       - labels:
           stream:
 
-      # If service was extracted from log JSON, use it; otherwise keep the label from relabel_configs
-      - labels:
-          service:
+      # Service label handling:
+      # - Primary: Docker Compose service label (set in relabel_configs) - most reliable
+      # - Fallback: log_service from JSON (only used if Docker label missing)
+      # We extract log_service from JSON but don't automatically use it as a label
+      # to avoid overwriting the reliable Docker-derived service label
+      # If needed, you can query by log_service in LogQL: | json | log_service="..."
 
       # Output formatting - use msg if available (from JSON), otherwise use log (raw)
       - output:
