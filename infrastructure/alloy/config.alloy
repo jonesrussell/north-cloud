@@ -74,34 +74,22 @@ loki.source.docker "north_cloud" {
 }
 
 loki.process "north_cloud" {
-  // Parse Docker JSON wrapper
+  // Parse JSON logs directly - loki.source.docker already unwraps Docker format
   stage.json {
     expressions = {
-      log    = "log",
-      stream = "stream",
-      time   = "time",
-    }
-  }
-
-  // Parse JSON logs - extract all fields including level (matches logs starting with {)
-  stage.match {
-    selector = "{log=~\"^\\\\s*\\\\{.*\"}"
-    stage.json {
-      source = "log"
-      expressions = {
-        level       = "level",
-        logger      = "logger",
-        caller      = "caller",
-        msg         = "msg",
-        ts          = "ts",
-        t           = "t",
-        log_service = "service",
-        method      = "method",
-        error       = "error",
-        err         = "err",
-        duration    = "duration",
-        status_code = "status_code",
-      }
+      level       = "level",
+      logger      = "logger",
+      caller      = "caller",
+      msg         = "msg",
+      ts          = "ts",
+      t           = "t",
+      log_service = "service",
+      stream      = "stream",
+      method      = "method",
+      error       = "error",
+      err         = "err",
+      duration    = "duration",
+      status_code = "status_code",
     }
   }
 
