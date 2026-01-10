@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
@@ -15,6 +16,24 @@ import (
 )
 
 func runRouter() {
+	stop, err := runRouterWithStop()
+	if err != nil {
+		os.Stderr.WriteString(fmt.Sprintf("Failed to start router: %v\n", err))
+		os.Exit(1)
+	}
+
+	// Handle OS signals
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
+
+	// Wait for shutdown signal
+	<-sigChan
+	stop()
+}
+
+// runRouterWithStop starts the router service and returns a stop function
+// This allows the router to run concurrently with other services
+func runRouterWithStop() (func(), error) {
 	// Start profiling server (if enabled)
 	profiling.StartPprofServer()
 
@@ -24,13 +43,8 @@ func runRouter() {
 		Format: "json",
 	})
 	if loggerErr != nil {
-		// Fallback to standard log if logger creation fails
-		os.Stderr.WriteString("Failed to create logger, exiting\n")
-		os.Exit(1)
+		return nil, fmt.Errorf("failed to create logger: %w", loggerErr)
 	}
-	defer func() {
-		_ = appLogger.Sync()
-	}()
 
 	appLogger = appLogger.With(
 		infralogger.String("service", "publisher-router"),
@@ -45,9 +59,10 @@ func runRouter() {
 	// Initialize database connection
 	db, dbErr := database.NewPostgresConnection(cfg.Database)
 	if dbErr != nil {
-		appLogger.Fatal("Failed to connect to database", infralogger.Error(dbErr))
+		_ = appLogger.Sync()
+		return nil, fmt.Errorf("failed to connect to database: %w", dbErr)
 	}
-	defer db.Close()
+
 	appLogger.Info("Database connection established")
 
 	// Initialize repository
@@ -58,7 +73,6 @@ func runRouter() {
 
 	// Initialize Redis client
 	redisClient := initRedisClient(cfg.RedisAddr, cfg.RedisPassword)
-	defer redisClient.Close()
 
 	// Initialize router service
 	routerConfig := router.Config{
@@ -67,20 +81,14 @@ func runRouter() {
 	}
 	routerService := router.NewService(repo, esClient, redisClient, routerConfig, appLogger)
 
-	// Setup graceful shutdown
+	// Setup graceful shutdown context
 	serviceCtx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	// Handle OS signals
-	sigChan := make(chan os.Signal, 1)
-	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
 
 	// Start router service in goroutine
-	errChan := make(chan error, 1)
 	go func() {
 		startErr := routerService.Start(serviceCtx)
 		if startErr != nil && !errors.Is(startErr, context.Canceled) {
-			errChan <- startErr
+			appLogger.Error("Router service error", infralogger.Error(startErr))
 		}
 	}()
 
@@ -89,33 +97,35 @@ func runRouter() {
 		infralogger.Int("batch_size", cfg.BatchSize),
 	)
 
-	// Wait for shutdown signal or error
-	select {
-	case <-sigChan:
-		appLogger.Info("Received shutdown signal")
+	// Return stop function
+	stop := func() {
+		appLogger.Info("Stopping router service")
 		cancel()
-	case serviceErr := <-errChan:
-		appLogger.Error("Router service error", infralogger.Error(serviceErr))
-		cancel()
+
+		// Wait for graceful shutdown with timeout
+		const shutdownTimeout = 30 * time.Second
+		const gracefulShutdownWait = 5 * time.Second
+		shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), shutdownTimeout)
+		defer shutdownCancel()
+
+		// Give the service time to finish current operations
+		done := make(chan struct{})
+		go func() {
+			time.Sleep(gracefulShutdownWait)
+			close(done)
+		}()
+
+		select {
+		case <-done:
+			appLogger.Info("Router service stopped gracefully")
+		case <-shutdownCtx.Done():
+			appLogger.Warn("Shutdown timeout exceeded, forcing exit")
+		}
+
+		redisClient.Close()
+		db.Close()
+		_ = appLogger.Sync()
 	}
 
-	// Wait for graceful shutdown with timeout
-	const shutdownTimeout = 30 * time.Second
-	const gracefulShutdownWait = 5 * time.Second
-	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), shutdownTimeout)
-	defer shutdownCancel()
-
-	// Give the service time to finish current operations
-	done := make(chan struct{})
-	go func() {
-		time.Sleep(gracefulShutdownWait)
-		close(done)
-	}()
-
-	select {
-	case <-done:
-		appLogger.Info("Router service stopped gracefully")
-	case <-shutdownCtx.Done():
-		appLogger.Warn("Shutdown timeout exceeded, forcing exit")
-	}
+	return stop, nil
 }

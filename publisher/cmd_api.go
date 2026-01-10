@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 
@@ -9,7 +10,7 @@ import (
 	"github.com/jonesrussell/north-cloud/publisher/internal/database"
 	redisclient "github.com/jonesrussell/north-cloud/publisher/internal/redis"
 	infraconfig "github.com/north-cloud/infrastructure/config"
-	"github.com/north-cloud/infrastructure/logger"
+	infralogger "github.com/north-cloud/infrastructure/logger"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -17,22 +18,21 @@ func runAPIServer() {
 	os.Exit(runAPIServerInternal())
 }
 
-func runAPIServerInternal() int {
+// runAPIServerWithStop starts the API server and returns a stop function
+// This allows the server to run concurrently with other services
+func runAPIServerWithStop() (func(), error) {
 	// Initialize logger early (before config loading to use structured logging)
-	// Use default config for logger initialization
-	infraLog, logErr := logger.New(logger.Config{
+	infraLog, logErr := infralogger.New(infralogger.Config{
 		Level:       "info",
 		Format:      "json",
 		Development: false, // Will be updated after config load
 	})
 	if logErr != nil {
-		fmt.Fprintf(os.Stderr, "Failed to create logger: %v\n", logErr)
-		return 1
+		return nil, fmt.Errorf("failed to create logger: %w", logErr)
 	}
-	defer func() { _ = infraLog.Sync() }()
 
 	// Add service field to all log entries
-	infraLog = infraLog.With(logger.String("service", "publisher-api"))
+	infraLog = infraLog.With(infralogger.String("service", "publisher-api"))
 
 	infraLog.Info("Starting Publisher API Server")
 
@@ -42,8 +42,8 @@ func runAPIServerInternal() int {
 	if err != nil {
 		// Config file is optional - create default config if file doesn't exist
 		infraLog.Warn("Failed to load config file, using defaults",
-			logger.String("config_path", configPath),
-			logger.Error(err),
+			infralogger.String("config_path", configPath),
+			infralogger.Error(err),
 		)
 		cfg = &config.Config{}
 		// Apply defaults manually
@@ -51,7 +51,9 @@ func runAPIServerInternal() int {
 			cfg.Server.Address = ":8070"
 		}
 		if validateErr := cfg.Validate(); validateErr != nil {
-			infraLog.Fatal("Invalid default configuration", logger.Error(validateErr))
+			infraLog.Error("Invalid default configuration", infralogger.Error(validateErr))
+			_ = infraLog.Sync()
+			return nil, fmt.Errorf("invalid default configuration: %w", validateErr)
 		}
 	}
 
@@ -69,7 +71,118 @@ func runAPIServerInternal() int {
 	infraLog.Info("Connecting to database")
 	db, dbErr := database.NewPostgresConnection(dbConfig)
 	if dbErr != nil {
-		infraLog.Fatal("Failed to connect to database", logger.Error(dbErr))
+		infraLog.Error("Failed to connect to database", infralogger.Error(dbErr))
+		_ = infraLog.Sync()
+		return nil, fmt.Errorf("failed to connect to database: %w", dbErr)
+	}
+
+	infraLog.Info("Database connection established")
+
+	// Initialize repository
+	repo := database.NewRepository(db)
+
+	// Initialize Redis client (optional - for health checks)
+	var redisClient *redis.Client
+	redisAddr := cfg.Redis.URL
+	redisPassword := cfg.Redis.Password
+	if redisAddr != "" {
+		var redisErr error
+		redisClient, redisErr = redisclient.NewClient(redisAddr, redisPassword)
+		if redisErr != nil {
+			infraLog.Warn("Failed to connect to Redis (health checks will show disconnected)",
+				infralogger.Error(redisErr),
+			)
+			// Continue without Redis - health check will show disconnected status
+		}
+	}
+
+	// Setup router and create server using infrastructure gin
+	router := api.NewRouter(repo, redisClient, cfg)
+	server := router.NewServer(infraLog)
+
+	// Start server in goroutine
+	errChan := server.StartAsync()
+
+	// Monitor server errors in background
+	go func() {
+		for err := range errChan {
+			if err != nil {
+				infraLog.Error("Server error", infralogger.Error(err))
+			}
+		}
+	}()
+
+	// Return stop function
+	stop := func() {
+		infraLog.Info("Stopping API server")
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), server.Config().ShutdownTimeout)
+		defer cancel()
+
+		if shutdownErr := server.Shutdown(shutdownCtx); shutdownErr != nil {
+			infraLog.Error("Error shutting down API server", infralogger.Error(shutdownErr))
+		}
+
+		db.Close()
+		_ = infraLog.Sync()
+		infraLog.Info("API server stopped")
+	}
+
+	return stop, nil
+}
+
+func runAPIServerInternal() int {
+	// Initialize logger early (before config loading to use structured logging)
+	// Use default config for logger initialization
+	infraLog, logErr := infralogger.New(infralogger.Config{
+		Level:       "info",
+		Format:      "json",
+		Development: false, // Will be updated after config load
+	})
+	if logErr != nil {
+		fmt.Fprintf(os.Stderr, "Failed to create logger: %v\n", logErr)
+		return 1
+	}
+	defer func() { _ = infraLog.Sync() }()
+
+	// Add service field to all log entries
+	infraLog = infraLog.With(infralogger.String("service", "publisher-api"))
+
+	infraLog.Info("Starting Publisher API Server")
+
+	// Load configuration
+	configPath := infraconfig.GetConfigPath("config.yml")
+	cfg, err := config.Load(configPath)
+	if err != nil {
+		// Config file is optional - create default config if file doesn't exist
+		infraLog.Warn("Failed to load config file, using defaults",
+			infralogger.String("config_path", configPath),
+			infralogger.Error(err),
+		)
+		cfg = &config.Config{}
+		// Apply defaults manually
+		if cfg.Server.Address == "" {
+			cfg.Server.Address = ":8070"
+		}
+		if validateErr := cfg.Validate(); validateErr != nil {
+			infraLog.Fatal("Invalid default configuration", infralogger.Error(validateErr))
+		}
+	}
+
+	// Convert config database to database.Config
+	dbConfig := database.Config{
+		Host:     cfg.Database.Host,
+		Port:     cfg.Database.Port,
+		User:     cfg.Database.User,
+		Password: cfg.Database.Password,
+		DBName:   cfg.Database.DBName,
+		SSLMode:  cfg.Database.SSLMode,
+	}
+
+	// Initialize database connection
+	infraLog.Info("Connecting to database")
+	db, dbErr := database.NewPostgresConnection(dbConfig)
+	if dbErr != nil {
+		infraLog.Fatal("Failed to connect to database", infralogger.Error(dbErr))
 	}
 	defer db.Close()
 
@@ -87,7 +200,7 @@ func runAPIServerInternal() int {
 		redisClient, redisErr = redisclient.NewClient(redisAddr, redisPassword)
 		if redisErr != nil {
 			infraLog.Warn("Failed to connect to Redis (health checks will show disconnected)",
-				logger.Error(redisErr),
+				infralogger.Error(redisErr),
 			)
 			// Continue without Redis - health check will show disconnected status
 		}
@@ -99,7 +212,7 @@ func runAPIServerInternal() int {
 
 	// Run server with graceful shutdown
 	if runErr := server.Run(); runErr != nil {
-		infraLog.Error("Server error", logger.Error(runErr))
+		infraLog.Error("Server error", infralogger.Error(runErr))
 		return 1
 	}
 
