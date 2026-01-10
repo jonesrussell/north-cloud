@@ -83,6 +83,8 @@ export interface Document {
   source_name?: string
   published_date?: string
   crawled_at?: string
+  created_at?: string
+  updated_at?: string
   quality_score?: number
   content_type?: string
   topics?: string[]
@@ -90,7 +92,18 @@ export interface Document {
   body?: string
   raw_text?: string
   raw_html?: string
-  meta?: Record<string, unknown>
+  meta?: {
+    twitter_card?: string
+    twitter_site?: string
+    og_image_width?: number
+    og_image_height?: number
+    og_site_name?: string
+    created_at?: string
+    updated_at?: string
+    article_opinion?: boolean
+    article_content_tier?: string
+    [key: string]: unknown
+  }
 }
 
 export interface DocumentFilters {

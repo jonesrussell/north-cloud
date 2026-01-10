@@ -180,6 +180,79 @@
             </dd>
           </div>
           <div
+            v-if="document.meta?.twitter_site"
+          >
+            <dt class="text-sm font-medium text-gray-500">
+              Twitter Site
+            </dt>
+            <dd class="mt-1 text-sm text-gray-900">
+              {{ document.meta.twitter_site as string }}
+            </dd>
+          </div>
+          <div
+            v-if="document.meta?.og_image"
+          >
+            <dt class="text-sm font-medium text-gray-500">
+              OG Image
+            </dt>
+            <dd class="mt-1 text-sm">
+              <a
+                :href="document.meta.og_image as string"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="text-blue-600 hover:text-blue-800 break-all"
+              >
+                {{ document.meta.og_image as string }}
+              </a>
+              <span
+                v-if="document.meta.og_image_width || document.meta.og_image_height"
+                class="ml-2 text-gray-500"
+              >
+                ({{ document.meta.og_image_width as number }} × {{ document.meta.og_image_height as number }})
+              </span>
+            </dd>
+          </div>
+          <div
+            v-else-if="document.meta?.og_image_width || document.meta?.og_image_height"
+          >
+            <dt class="text-sm font-medium text-gray-500">
+              OG Image Dimensions
+            </dt>
+            <dd class="mt-1 text-sm text-gray-900">
+              {{ document.meta.og_image_width as number }} × {{ document.meta.og_image_height as number }}
+            </dd>
+          </div>
+          <div
+            v-if="document.meta?.og_site_name"
+          >
+            <dt class="text-sm font-medium text-gray-500">
+              OG Site Name
+            </dt>
+            <dd class="mt-1 text-sm text-gray-900">
+              {{ document.meta.og_site_name as string }}
+            </dd>
+          </div>
+          <div
+            v-if="document.created_at || document.meta?.created_at"
+          >
+            <dt class="text-sm font-medium text-gray-500">
+              Created At
+            </dt>
+            <dd class="mt-1 text-sm text-gray-900">
+              {{ formatDate((document.created_at || document.meta?.created_at) as string) }}
+            </dd>
+          </div>
+          <div
+            v-if="document.updated_at || document.meta?.updated_at"
+          >
+            <dt class="text-sm font-medium text-gray-500">
+              Updated At
+            </dt>
+            <dd class="mt-1 text-sm text-gray-900">
+              {{ formatDate((document.updated_at || document.meta?.updated_at) as string) }}
+            </dd>
+          </div>
+          <div
             v-if="document.topics && document.topics.length > 0"
           >
             <dt class="text-sm font-medium text-gray-500">
