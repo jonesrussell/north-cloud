@@ -68,6 +68,7 @@ scrape_configs:
             time: time
 
       # Parse the actual log line as JSON (North Cloud services output structured JSON)
+      # NOTE: Promtail preserves the 'log' source field after parsing, so it's still available
       - json:
           expressions:
             level: level
@@ -82,21 +83,14 @@ scrape_configs:
             status_code: status_code
           source: log
 
-      # Extract level as a label (JSON parsing may or may not populate it)
+      # Extract level as a label (for filtering/grouping in Grafana)
       - labels:
           level:
 
-      # Fallback 1: logfmt (level=info msg="...")
-      - match:
-          selector: '{level=""}'
-          stages:
-            - logfmt:
-                mapping:
-                  level: level
-            - labels:
-                level:
-
-      # Fallback 2: generic regex (INFO, [INFO], "level":"info", etc.)
+      # Fallback: generic regex for logs where JSON parsing failed
+      # This works for both JSON and plain text logs that contain level keywords
+      # More forgiving than logfmt, which fails when trying to parse JSON strings
+      # Matches level keywords: debug, info, warn, error, fatal (case-insensitive)
       - match:
           selector: '{level=""}'
           stages:
@@ -130,10 +124,20 @@ scrape_configs:
       - labels:
           stream:
 
-      # Output formatting — prefer structured msg, fallback to raw log
+      # KEY FIX: Preserve JSON structure for Grafana sorting
+      # Output the original 'log' field (service's JSON log) instead of just 'msg'
+      # 
+      # Why this works:
+      # - The 'log' field contains the service's original JSON log line
+      # - Promtail preserves the source field after JSON parsing, so 'log' still contains the JSON
+      # - Grafana can re-parse this JSON with `| json` to extract fields for sorting
+      # - Labels (like 'level') are still available for filtering/grouping
+      # - Fields (level, method, status_code, etc.) are now available for sorting in the log table
+      #
+      # Fallback: If 'log' is missing (non-JSON logs), output 'msg' as last resort
       - output:
-          source: msg
-          on_failure: log
+          source: log
+          on_failure: msg
 
   # Nginx access logs (if mounted)
   - job_name: nginx_access
