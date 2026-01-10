@@ -118,13 +118,23 @@ func (h *LinkHandler) validateURL(absLink string) error {
 }
 
 // visitWithRetries attempts to visit a URL with configured retry logic.
+// Always attempts at least once, then retries up to MaxRetries times if it fails.
 func (h *LinkHandler) visitWithRetries(e *colly.HTMLElement, absLink string) {
 	var lastErr error
+	const initialAttempt = 0
+	totalAttempts := h.crawler.cfg.MaxRetries + 1 // Always attempt at least once
 
-	for attempt := range h.crawler.cfg.MaxRetries {
+	for attempt := initialAttempt; attempt < totalAttempts; attempt++ {
 		err := e.Request.Visit(absLink)
 		if err == nil {
-			h.crawler.logger.Debug("Successfully queued link for visiting", infralogger.String("url", absLink))
+			if attempt > initialAttempt {
+				h.crawler.logger.Debug("Successfully queued link for visiting after retry",
+					infralogger.String("url", absLink),
+					infralogger.Int("attempt", attempt+1),
+				)
+			} else {
+				h.crawler.logger.Debug("Successfully queued link for visiting", infralogger.String("url", absLink))
+			}
 			return
 		}
 
@@ -138,19 +148,26 @@ func (h *LinkHandler) visitWithRetries(e *colly.HTMLElement, absLink string) {
 		}
 
 		lastErr = err
-		h.crawler.logger.Debug("Failed to visit link, retrying",
-			infralogger.String("url", absLink),
-			infralogger.Error(err),
-			infralogger.Int("attempt", attempt+1),
-			infralogger.Int("max_retries", h.crawler.cfg.MaxRetries),
-		)
-
-		time.Sleep(h.crawler.cfg.RetryDelay)
+		// Only log retry message if we have more attempts remaining
+		if attempt < totalAttempts-1 {
+			h.crawler.logger.Debug("Failed to visit link, retrying",
+				infralogger.String("url", absLink),
+				infralogger.Error(err),
+				infralogger.Int("attempt", attempt+1),
+				infralogger.Int("max_retries", h.crawler.cfg.MaxRetries),
+			)
+			time.Sleep(h.crawler.cfg.RetryDelay)
+		}
 	}
 
+	// Log error (lastErr should always be set at this point, but check defensively)
+	if lastErr == nil {
+		lastErr = errors.New("unknown error: all attempts failed but no error was captured")
+	}
 	h.crawler.logger.Error("Failed to visit link after retries",
 		infralogger.String("url", absLink),
 		infralogger.Error(lastErr),
+		infralogger.Int("total_attempts", totalAttempts),
 		infralogger.Int("max_retries", h.crawler.cfg.MaxRetries),
 		infralogger.String("page_url", e.Request.URL.String()),
 	)

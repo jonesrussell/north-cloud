@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"time"
 
 	"github.com/elastic/go-elasticsearch/v8"
@@ -283,7 +284,18 @@ func (s *Service) fetchArticles(ctx context.Context, route *models.RouteWithDeta
 			)
 			return []Article{}, nil // Return empty slice, not an error
 		}
-		return nil, fmt.Errorf("elasticsearch error: %s", res.String())
+		// Read error response body for better error messages
+		errorBody, readErr := io.ReadAll(res.Body)
+		if readErr != nil {
+			return nil, fmt.Errorf("elasticsearch error (status %d): failed to read error body: %w", res.StatusCode, readErr)
+		}
+		return nil, fmt.Errorf("elasticsearch error (status %d): %s", res.StatusCode, string(errorBody))
+	}
+
+	// Read response body into buffer first to detect truncation
+	bodyBytes, readErr := io.ReadAll(res.Body)
+	if readErr != nil {
+		return nil, fmt.Errorf("failed to read response body: %w", readErr)
 	}
 
 	// Parse response
@@ -296,8 +308,20 @@ func (s *Service) fetchArticles(ctx context.Context, route *models.RouteWithDeta
 		} `json:"hits"`
 	}
 
-	if decodeErr := json.NewDecoder(res.Body).Decode(&esResponse); decodeErr != nil {
-		return nil, fmt.Errorf("failed to decode response: %w", decodeErr)
+	if decodeErr := json.Unmarshal(bodyBytes, &esResponse); decodeErr != nil {
+		// Log partial response for debugging (truncate if too long)
+		const maxErrorBodyLength = 1000
+		errorPreview := string(bodyBytes)
+		if len(errorPreview) > maxErrorBodyLength {
+			errorPreview = errorPreview[:maxErrorBodyLength] + "... (truncated)"
+		}
+		s.logger.Error("Failed to decode Elasticsearch response",
+			infralogger.String("index_pattern", route.SourceIndexPattern),
+			infralogger.Int("response_length", len(bodyBytes)),
+			infralogger.String("response_preview", errorPreview),
+			infralogger.Error(decodeErr),
+		)
+		return nil, fmt.Errorf("failed to decode response from index %s (response length: %d bytes): %w", route.SourceIndexPattern, len(bodyBytes), decodeErr)
 	}
 
 	// Convert to articles
