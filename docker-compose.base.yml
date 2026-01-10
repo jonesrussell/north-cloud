@@ -297,6 +297,7 @@ services:
       GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
       GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
       GF_SERVER_ROOT_URL: ${GRAFANA_ROOT_URL:-http://localhost:3000}
+      GF_SERVER_SERVE_FROM_SUB_PATH: "true"
       GF_LOG_MODE: ${GRAFANA_LOG_MODE:-console}
       GF_LOG_LEVEL: ${GRAFANA_LOG_LEVEL:-info}
     volumes:

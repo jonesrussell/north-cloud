@@ -491,6 +491,8 @@ services:
   grafana:
     environment:
       GF_AUTH_ANONYMOUS_ENABLED: "true"  # Easy access in dev
+      GF_SERVER_ROOT_URL: "http://localhost/grafana"
+      GF_SERVER_SERVE_FROM_SUB_PATH: "true"
       GF_LOG_LEVEL: debug
 
 # ============================================================
