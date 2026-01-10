@@ -230,7 +230,7 @@
             "uid": "loki"
           },
           "editorMode": "code",
-          "expr": "{project=\"north-cloud\", service=~\"$service\", level=~\"$level\"} |~ \"$search\"",
+          "expr": "{project=\"north-cloud\", service=~\"$service\", level=~\"$level\"} |~ \"$search\" | line_format \"[{{.service}}] {{.level}} | {{ __line__ }}\"",
           "queryType": "range",
           "refId": "A"
         }
