@@ -18,11 +18,11 @@ discovery.relabel "north_cloud" {
   // Drop Grafana, Loki, and Alloy containers - check container name first
   rule {
     source_labels = ["__meta_docker_container_name"]
-    regex         = "/north-cloud-(grafana|loki|alloy)-\\d+"
+    regex         = "/north-cloud-(grafana|loki|alloy)-[0-9]+"
     action        = "drop"
   }
 
-  // Also drop by service label if name matching doesn't work
+  // Also drop by service label (fallback)
   rule {
     source_labels = ["__meta_docker_container_label_com_docker_compose_service"]
     regex         = "^(grafana|loki|alloy)$"
