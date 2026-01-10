@@ -89,9 +89,9 @@ services:
       start_period: 20s
 
   # ------------------------------------------------------------
-  # Publisher API (Prod)
+  # Publisher (Prod) - Unified API and Router
   # ------------------------------------------------------------
-  publisher-api:
+  publisher:
     <<: *prod-defaults
     build:
       context: .
@@ -99,44 +99,7 @@ services:
       args:
         BUILD_ENV: production
     image: northcloud/publisher:latest
-    command: ["/app/publisher", "api"]
-    depends_on:
-      postgres-publisher:
-        condition: service_healthy
-    environment:
-      POSTGRES_PUBLISHER_HOST: postgres-publisher
-      POSTGRES_PUBLISHER_PORT: 5432
-      POSTGRES_PUBLISHER_USER: "${POSTGRES_PUBLISHER_USER:-postgres}"
-      POSTGRES_PUBLISHER_PASSWORD: "${POSTGRES_PUBLISHER_PASSWORD:-postgres}"
-      POSTGRES_PUBLISHER_DB: "${POSTGRES_PUBLISHER_DB:-publisher}"
-      POSTGRES_PUBLISHER_SSLMODE: disable
-      PUBLISHER_PORT: 8070
-      AUTH_JWT_SECRET: "${AUTH_JWT_SECRET}"
-      REDIS_ADDR: redis:6379
-      REDIS_PASSWORD: "${REDIS_PASSWORD}"
-      GIN_MODE: release
-      APP_DEBUG: "false"
-    volumes:
-      - ./publisher/config.yml:/app/config.yml:ro
-    healthcheck:
-      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:8070/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 25s
-
-  # ------------------------------------------------------------
-  # Publisher Router (Prod)
-  # ------------------------------------------------------------
-  publisher-router:
-    <<: *prod-defaults
-    build:
-      context: .
-      dockerfile: ./publisher/Dockerfile
-      args:
-        BUILD_ENV: production
-    image: northcloud/publisher:latest
-    command: ["/app/publisher", "router"]
+    command: ["/app/publisher", "both"]
     depends_on:
       postgres-publisher:
         condition: service_healthy
@@ -151,14 +114,23 @@ services:
       POSTGRES_PUBLISHER_PASSWORD: "${POSTGRES_PUBLISHER_PASSWORD:-postgres}"
       POSTGRES_PUBLISHER_DB: "${POSTGRES_PUBLISHER_DB:-publisher}"
       POSTGRES_PUBLISHER_SSLMODE: disable
+      PUBLISHER_PORT: 8070
       ELASTICSEARCH_URL: http://elasticsearch:9200
       REDIS_ADDR: redis:6379
       REDIS_PASSWORD: "${REDIS_PASSWORD}"
       PUBLISHER_ROUTER_CHECK_INTERVAL: "${PUBLISHER_ROUTER_CHECK_INTERVAL:-5m}"
       PUBLISHER_ROUTER_BATCH_SIZE: "${PUBLISHER_ROUTER_BATCH_SIZE:-100}"
+      AUTH_JWT_SECRET: "${AUTH_JWT_SECRET}"
+      GIN_MODE: release
       APP_DEBUG: "false"
     volumes:
       - ./publisher/config.yml:/app/config.yml:ro
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:8070/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 25s
 
   # ------------------------------------------------------------
   # Classifier (Prod)

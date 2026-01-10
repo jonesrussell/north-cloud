@@ -281,7 +281,7 @@ services:
         condition: service_healthy
       source-manager:
         condition: service_healthy
-      publisher-api:
+      publisher:
         condition: service_healthy
       classifier:
         condition: service_healthy
@@ -295,7 +295,7 @@ services:
       <<: *node-dev-environment
       CRAWLER_API_URL: http://crawler:8080
       SOURCES_API_URL: http://source-manager:8050
-      PUBLISHER_API_URL: http://publisher-api:8070
+      PUBLISHER_API_URL: http://publisher:8070
       CLASSIFIER_API_URL: http://classifier:8070
       AUTH_API_URL: http://auth:8040
       INDEX_MANAGER_API_URL: http://index-manager:8090
@@ -371,9 +371,9 @@ services:
       start_period: 15s
 
   # ------------------------------------------------------------
-  # Publisher API (Dev)
+  # Publisher (Dev) - Unified API and Router
   # ------------------------------------------------------------
-  publisher-api:
+  publisher:
     <<: *go-dev-defaults
     build:
       context: ./publisher
@@ -383,49 +383,7 @@ services:
         GID: "${GID:-1000}"
     ports:
       - "${PUBLISHER_PORT:-8070}:8070"
-      - "${PUBLISHER_API_PPROF_PORT:-6063}:6060"
-    depends_on:
-      postgres-publisher:
-        condition: service_healthy
-    environment:
-      <<: *go-dev-environment
-      POSTGRES_PUBLISHER_HOST: postgres-publisher
-      POSTGRES_PUBLISHER_PORT: 5432
-      POSTGRES_PUBLISHER_USER: "${POSTGRES_PUBLISHER_USER:-postgres}"
-      POSTGRES_PUBLISHER_PASSWORD: "${POSTGRES_PUBLISHER_PASSWORD:-postgres}"
-      POSTGRES_PUBLISHER_DB: "${POSTGRES_PUBLISHER_DB:-publisher}"
-      POSTGRES_PUBLISHER_SSLMODE: disable
-      PUBLISHER_PORT: 8070
-      REDIS_ADDR: "${REDIS_ADDR:-redis:6379}"
-      REDIS_PASSWORD: "${REDIS_PASSWORD:-}"
-      GIN_MODE: debug
-      PPROF_PORT: 6060
-    volumes:
-      - ./publisher:/app
-      - publisher_go_mod_cache:/tmp/go-mod-cache
-      - publisher_go_build_cache:/tmp/go-build-cache
-      - ./infrastructure:/infrastructure
-    command: ["sh", "-c", "go mod download && air -c .air.api.toml"]
-    healthcheck:
-      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:8070/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 25s
-
-  # ------------------------------------------------------------
-  # Publisher Router (Dev)
-  # ------------------------------------------------------------
-  publisher-router:
-    <<: *go-dev-defaults
-    build:
-      context: ./publisher
-      dockerfile: Dockerfile.dev
-      args:
-        UID: "${UID:-1000}"
-        GID: "${GID:-1000}"
-    ports:
-      - "${PUBLISHER_ROUTER_PPROF_PORT:-6064}:6060"
+      - "${PUBLISHER_PPROF_PORT:-6063}:6060"
     depends_on:
       postgres-publisher:
         condition: service_healthy
@@ -441,18 +399,26 @@ services:
       POSTGRES_PUBLISHER_PASSWORD: "${POSTGRES_PUBLISHER_PASSWORD:-postgres}"
       POSTGRES_PUBLISHER_DB: "${POSTGRES_PUBLISHER_DB:-publisher}"
       POSTGRES_PUBLISHER_SSLMODE: disable
+      PUBLISHER_PORT: 8070
       ELASTICSEARCH_URL: http://elasticsearch:9200
       REDIS_ADDR: redis:6379
       REDIS_PASSWORD: "${REDIS_PASSWORD:-}"
       PUBLISHER_ROUTER_CHECK_INTERVAL: "${PUBLISHER_ROUTER_CHECK_INTERVAL:-5m}"
       PUBLISHER_ROUTER_BATCH_SIZE: "${PUBLISHER_ROUTER_BATCH_SIZE:-100}"
+      GIN_MODE: debug
       PPROF_PORT: 6060
     volumes:
       - ./publisher:/app
       - publisher_go_mod_cache:/tmp/go-mod-cache
       - publisher_go_build_cache:/tmp/go-build-cache
       - ./infrastructure:/infrastructure
-    command: ["sh", "-c", "go mod download && air -c .air.router.toml"]
+    command: ["sh", "-c", "go mod download && air -c .air.toml"]
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:8070/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 25s
 
   # ------------------------------------------------------------
   # Pyroscope (Continuous Profiling)
@@ -494,7 +460,7 @@ services:
         condition: service_healthy
       dashboard:
         condition: service_healthy
-      publisher-api:
+      publisher:
         condition: service_healthy
       auth:
         condition: service_healthy
