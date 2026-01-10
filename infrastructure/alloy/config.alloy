@@ -76,6 +76,7 @@ loki.source.docker "north_cloud" {
 }
 
 // Process: Parse and transform logs
+// Handles both JSON logs (North Cloud services) and plain text logs (Grafana, Loki)
 loki.process "north_cloud" {
   // Stage 1: Parse Docker JSON wrapper (log, stream, time fields)
   stage.json {
@@ -86,7 +87,8 @@ loki.process "north_cloud" {
     }
   }
 
-  // Stage 2: Parse service JSON logs (North Cloud services output structured JSON)
+  // Stage 2: Try to parse service JSON logs (North Cloud services output structured JSON)
+  // For non-JSON logs (Grafana, Loki), this will fail gracefully and processing continues
   stage.json {
     expressions = {
       level       = "level",
@@ -103,20 +105,27 @@ loki.process "north_cloud" {
     source = "log"
   }
 
-  // Stage 3: Extract level as a label for filtering/grouping
-  stage.labels {
-    values = {
-      level = "",
+  // Stage 3: Extract level label from JSON logs (if parsing succeeded)
+  // Only applies to logs that successfully parsed as JSON and have a level field
+  stage.match {
+    selector = "{level=~\"debug|info|warn|error|fatal\"}"
+
+    stage.labels {
+      values = {
+        level = "",
+      }
     }
   }
 
-  // Stage 4: Fallback regex for non-JSON logs
-  // Matches level keywords: debug, info, warn, error, fatal (case-insensitive)
+  // Stage 4: Fallback regex for plain text logs (Grafana, Loki, etc.)
+  // Extract level from plain text logs that don't have a level label yet
+  // This matches common log level patterns in plain text
   stage.match {
     selector = "{level=\"\"}"
 
+    // Try multiple patterns for log levels in plain text
     stage.regex {
-      expression = "(?i)(?P<level>debug|info|warn|error|fatal)"
+      expression = "(?i)(?:level=)?(debug|info|warn|warning|error|fatal|panic)"
       source     = "log"
     }
 
@@ -127,7 +136,29 @@ loki.process "north_cloud" {
     }
   }
 
-  // Stage 5: Parse timestamp from service logs (preferred)
+  // Stage 5: Fallback level extraction for logs with "warn" instead of "warning"
+  stage.match {
+    selector = "{level=\"warning\"}"
+
+    stage.labels {
+      values = {
+        level = "warn",
+      }
+    }
+  }
+
+  // Stage 6: Default to "info" level if no level was detected
+  stage.match {
+    selector = "{level=\"\"}"
+
+    stage.static_labels {
+      values = {
+        level = "info",
+      }
+    }
+  }
+
+  // Stage 7: Parse timestamp from JSON logs (North Cloud services with ts field)
   stage.timestamp {
     source = "ts"
     format = "RFC3339Nano"
@@ -136,12 +167,13 @@ loki.process "north_cloud" {
       "RFC3339",
       "2006-01-02T15:04:05.000Z07:00",
       "2006-01-02T15:04:05Z07:00",
+      "2006-01-02T15:04:05.000000000Z07:00",
     ]
 
     action_on_failure = "fudge"  // Continue processing on failure
   }
 
-  // Stage 6: Fallback timestamp from Docker wrapper
+  // Stage 8: Fallback timestamp from Docker wrapper (for plain text logs)
   stage.timestamp {
     source = "time"
     format = "RFC3339Nano"
@@ -150,21 +182,23 @@ loki.process "north_cloud" {
       "RFC3339",
       "2006-01-02T15:04:05.000Z07:00",
       "2006-01-02T15:04:05Z07:00",
+      "2006-01-02T15:04:05.000000000Z07:00",
     ]
 
     action_on_failure = "fudge"
   }
 
-  // Stage 7: Add stream label (stdout/stderr)
+  // Stage 9: Add stream label (stdout/stderr)
   stage.labels {
     values = {
       stream = "",
     }
   }
 
-  // Stage 8: Preserve JSON structure for Grafana sorting
-  // Output the original 'log' field (service's JSON) instead of just 'msg'
-  // This allows Grafana to re-parse with `| json` for field extraction and sorting
+  // Stage 10: Output handling
+  // For JSON logs: output preserves structure for Grafana re-parsing
+  // For plain text logs: output the full log message
+  // The 'log' field contains either the JSON string or the plain text message
   stage.output {
     source = "log"
   }
