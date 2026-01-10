@@ -112,7 +112,7 @@ func (b *BatchProcessor) worker(
 ) {
 	defer wg.Done()
 
-	b.logger.Debug("Worker started", infralogger.Int("worker_id", id))
+	// Worker lifecycle logging removed from hot loop - only log cancellations
 
 	for raw := range jobs {
 		// Check context cancellation
@@ -127,7 +127,7 @@ func (b *BatchProcessor) worker(
 		results <- result
 	}
 
-	b.logger.Debug("Worker finished", infralogger.Int("worker_id", id))
+	// Worker finished - no log needed, batch summary provides observability
 }
 
 // processItem processes a single content item
@@ -153,11 +153,7 @@ func (b *BatchProcessor) processItem(ctx context.Context, raw *domain.RawContent
 	classifiedContent := b.classifier.BuildClassifiedContent(raw, classificationResult)
 	result.ClassifiedContent = classifiedContent
 
-	b.logger.Debug("Item processed successfully",
-		infralogger.String("content_id", raw.ID),
-		infralogger.String("content_type", classificationResult.ContentType),
-		infralogger.Int("quality_score", classificationResult.QualityScore),
-	)
+	// Debug logging removed from hot loop - batch summary provides sufficient observability
 
 	return result
 }

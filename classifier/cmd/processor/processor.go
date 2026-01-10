@@ -3,7 +3,6 @@ package processor
 import (
 	"context"
 	"fmt"
-	"log"
 	"os"
 	"os/signal"
 	"strconv"
@@ -19,7 +18,7 @@ import (
 	"github.com/jonesrussell/north-cloud/classifier/internal/storage"
 	infraconfig "github.com/north-cloud/infrastructure/config"
 	esclient "github.com/north-cloud/infrastructure/elasticsearch"
-	"github.com/north-cloud/infrastructure/logger"
+	infralogger "github.com/north-cloud/infrastructure/logger"
 )
 
 const (
@@ -56,7 +55,8 @@ func LoadConfig() *ProcessorConfig {
 	configPath := infraconfig.GetConfigPath("config.yml")
 	cfg, err := config.Load(configPath)
 	if err != nil {
-		log.Printf("Warning: Failed to load config file (%s), using defaults: %v", configPath, err)
+		// Use fmt for early config warnings (before logger is initialized)
+		fmt.Fprintf(os.Stderr, "Warning: Failed to load config file (%s), using defaults: %v\n", configPath, err)
 		// Create default config if file doesn't exist
 		cfg = &config.Config{}
 		if cfg.Service.PollInterval == 0 {
@@ -91,18 +91,17 @@ func LoadConfig() *ProcessorConfig {
 }
 
 // setupElasticsearch creates and tests Elasticsearch connection with retry logic
-func setupElasticsearch(cfg *ProcessorConfig) (*storage.ElasticsearchStorage, error) {
+func setupElasticsearch(cfg *ProcessorConfig, log infralogger.Logger) (*storage.ElasticsearchStorage, error) {
 	ctx := context.Background()
 
 	// Create a logger for ES connection
-	esLog, err := logger.New(logger.Config{
+	esLog, err := infralogger.New(infralogger.Config{
 		Level:       "info",
 		Format:      "json",
 		Development: true,
 	})
 	if err != nil {
-		// Continue without logger if creation fails
-		esLog = nil
+		return nil, fmt.Errorf("failed to create elasticsearch logger: %w", err)
 	}
 
 	// Use standardized client with retry logic
@@ -119,12 +118,14 @@ func setupElasticsearch(cfg *ProcessorConfig) (*storage.ElasticsearchStorage, er
 	if err = esStorage.TestConnection(ctx); err != nil {
 		return nil, fmt.Errorf("failed to verify Elasticsearch connection: %w", err)
 	}
-	log.Println("Connected to Elasticsearch")
+	log.Info("Elasticsearch connection established",
+		infralogger.String("url", cfg.ElasticsearchURL),
+	)
 	return esStorage, nil
 }
 
 // setupDatabase creates PostgreSQL connection and repositories
-func setupDatabase(cfg *ProcessorConfig) (
+func setupDatabase(cfg *ProcessorConfig, log infralogger.Logger) (
 	*sqlx.DB,
 	*database.RulesRepository,
 	*database.SourceReputationRepository,
@@ -143,7 +144,11 @@ func setupDatabase(cfg *ProcessorConfig) (
 	if err != nil {
 		return nil, nil, nil, nil, fmt.Errorf("failed to connect to database: %w", err)
 	}
-	log.Println("Connected to PostgreSQL")
+	log.Info("Database connection established",
+		infralogger.String("host", cfg.PostgresHost),
+		infralogger.String("port", cfg.PostgresPort),
+		infralogger.String("database", cfg.PostgresDB),
+	)
 
 	rulesRepo := database.NewRulesRepository(db)
 	sourceRepRepo := database.NewSourceReputationRepository(db)
@@ -153,13 +158,15 @@ func setupDatabase(cfg *ProcessorConfig) (
 }
 
 // loadRules loads classification rules from database
-func loadRules(ctx context.Context, rulesRepo *database.RulesRepository) ([]domain.ClassificationRule, error) {
+func loadRules(ctx context.Context, rulesRepo *database.RulesRepository, log infralogger.Logger) ([]domain.ClassificationRule, error) {
 	enabledOnly := true
 	rules, err := rulesRepo.List(ctx, domain.RuleTypeTopic, &enabledOnly)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load rules from database: %w", err)
 	}
-	log.Printf("Loaded %d classification rules from database", len(rules))
+	log.Info("Classification rules loaded",
+		infralogger.Int("rule_count", len(rules)),
+	)
 
 	ruleValues := make([]domain.ClassificationRule, len(rules))
 	for i, rule := range rules {
@@ -194,45 +201,56 @@ func createClassifierConfig() classifier.Config {
 
 // Start starts the processor
 func Start() error {
+	// Initialize logger
+	log, err := infralogger.New(infralogger.Config{
+		Level:  "info",
+		Format: "json",
+	})
+	if err != nil {
+		return fmt.Errorf("failed to create logger: %w", err)
+	}
+	log = log.With(infralogger.String("service", "classifier-processor"))
+
 	cfg := LoadConfig()
 
-	log.Println("Starting Classifier Processor")
-	log.Printf("Elasticsearch URL: %s", cfg.ElasticsearchURL)
-	log.Printf("Polling Interval: %s", cfg.PollingInterval)
-	log.Printf("Batch Size: %d", cfg.BatchSize)
-	log.Printf("Concurrent Workers: %d", cfg.ConcurrentWorkers)
+	log.Info("Processor starting",
+		infralogger.String("elasticsearch_url", cfg.ElasticsearchURL),
+		infralogger.Duration("polling_interval", cfg.PollingInterval),
+		infralogger.Int("batch_size", cfg.BatchSize),
+		infralogger.Int("concurrent_workers", cfg.ConcurrentWorkers),
+	)
 
 	procLogger, err := storage.NewSimpleLogger("[Processor] ")
 	if err != nil {
 		return fmt.Errorf("failed to create logger: %w", err)
 	}
 
-	esStorage, err := setupElasticsearch(cfg)
+	esStorage, err := setupElasticsearch(cfg, log)
 	if err != nil {
 		return err
 	}
 
-	db, rulesRepo, sourceRepRepo, classificationHistoryRepo, err := setupDatabase(cfg)
+	db, rulesRepo, sourceRepRepo, classificationHistoryRepo, err := setupDatabase(cfg, log)
 	if err != nil {
 		return err
 	}
 	defer func() {
 		if closeErr := db.Close(); closeErr != nil {
-			log.Printf("Error closing database connection: %v", closeErr)
+			log.Error("Error closing database connection", infralogger.Error(closeErr))
 		}
 	}()
 
 	dbAdapter := storage.NewDatabaseAdapterWithLogger(classificationHistoryRepo, procLogger)
 
 	ctx := context.Background()
-	ruleValues, err := loadRules(ctx, rulesRepo)
+	ruleValues, err := loadRules(ctx, rulesRepo, log)
 	if err != nil {
 		return err
 	}
 
 	classifierConfig := createClassifierConfig()
 	clf := classifier.NewClassifier(procLogger, ruleValues, sourceRepRepo, classifierConfig)
-	log.Println("Classifier initialized")
+	log.Info("Classifier initialized")
 
 	batchProcessor := processor.NewBatchProcessor(clf, cfg.ConcurrentWorkers, procLogger)
 
@@ -252,41 +270,52 @@ func Start() error {
 		return fmt.Errorf("failed to start poller: %w", err)
 	}
 
-	log.Println("Processor started, polling for raw_content...")
+	log.Info("Processor started, polling for raw_content")
 
 	// Wait for shutdown signal
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
 	sig := <-sigChan
-	log.Printf("Received signal %v, shutting down...", sig)
+	log.Info("Shutdown signal received", infralogger.String("signal", sig.String()))
 	poller.Stop()
 
-	log.Println("Processor stopped successfully")
+	log.Info("Processor stopped successfully")
 	return nil
 }
 
 // StartWithStop returns a stop function that can be called to stop the processor
 // This allows the processor to run concurrently with other services
 func StartWithStop() (func(), error) {
+	// Initialize logger
+	log, err := infralogger.New(infralogger.Config{
+		Level:  "info",
+		Format: "json",
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to create logger: %w", err)
+	}
+	log = log.With(infralogger.String("service", "classifier-processor"))
+
 	cfg := LoadConfig()
 
-	log.Println("Starting Classifier Processor")
-	log.Printf("Elasticsearch URL: %s", cfg.ElasticsearchURL)
-	log.Printf("Polling Interval: %s", cfg.PollingInterval)
-	log.Printf("Batch Size: %d", cfg.BatchSize)
-	log.Printf("Concurrent Workers: %d", cfg.ConcurrentWorkers)
+	log.Info("Processor starting",
+		infralogger.String("elasticsearch_url", cfg.ElasticsearchURL),
+		infralogger.Duration("polling_interval", cfg.PollingInterval),
+		infralogger.Int("batch_size", cfg.BatchSize),
+		infralogger.Int("concurrent_workers", cfg.ConcurrentWorkers),
+	)
 
 	procLogger, err := storage.NewSimpleLogger("[Processor] ")
 	if err != nil {
 		return nil, fmt.Errorf("failed to create logger: %w", err)
 	}
 
-	esStorage, err := setupElasticsearch(cfg)
+	esStorage, err := setupElasticsearch(cfg, log)
 	if err != nil {
 		return nil, err
 	}
 
-	db, rulesRepo, sourceRepRepo, classificationHistoryRepo, err := setupDatabase(cfg)
+	db, rulesRepo, sourceRepRepo, classificationHistoryRepo, err := setupDatabase(cfg, log)
 	if err != nil {
 		return nil, err
 	}
@@ -294,7 +323,7 @@ func StartWithStop() (func(), error) {
 	dbAdapter := storage.NewDatabaseAdapterWithLogger(classificationHistoryRepo, procLogger)
 
 	ctx := context.Background()
-	ruleValues, err := loadRules(ctx, rulesRepo)
+	ruleValues, err := loadRules(ctx, rulesRepo, log)
 	if err != nil {
 		_ = db.Close()
 		return nil, err
@@ -302,7 +331,7 @@ func StartWithStop() (func(), error) {
 
 	classifierConfig := createClassifierConfig()
 	clf := classifier.NewClassifier(procLogger, ruleValues, sourceRepRepo, classifierConfig)
-	log.Println("Classifier initialized")
+	log.Info("Classifier initialized")
 
 	batchProcessor := processor.NewBatchProcessor(clf, cfg.ConcurrentWorkers, procLogger)
 
@@ -323,14 +352,14 @@ func StartWithStop() (func(), error) {
 		return nil, fmt.Errorf("failed to start poller: %w", err)
 	}
 
-	log.Println("Processor started, polling for raw_content...")
+	log.Info("Processor started, polling for raw_content")
 
 	// Return stop function
 	stopFunc := func() {
-		log.Println("Stopping processor...")
+		log.Info("Stopping processor")
 		poller.Stop()
 		_ = db.Close()
-		log.Println("Processor stopped successfully")
+		log.Info("Processor stopped successfully")
 	}
 
 	return stopFunc, nil
