@@ -87,40 +87,66 @@ loki.process "north_cloud" {
     }
   }
 
-  // Stage 2: Try to parse service JSON logs (North Cloud services output structured JSON)
-  // For non-JSON logs (Grafana, Loki), this will fail gracefully and processing continues
-  stage.json {
-    expressions = {
+  // Stage 2: Try to parse logfmt format first (Grafana, Loki output logfmt: key=value)
+  // This will parse logfmt logs like: level=debug msg="message" ts=2026-01-10T18:20:20Z
+  // Grafana uses 't' for timestamp, Loki uses 'ts' - we'll handle both in timestamp parsing
+  stage.logfmt {
+    mapping = {
       level       = "level",
+      msg         = "msg",
+      ts          = "ts",  // Loki timestamp field
+      t           = "t",   // Grafana timestamp field (handled separately)
       logger      = "logger",
       caller      = "caller",
-      msg         = "msg",
-      ts          = "ts",
-      log_service = "service",  // Renamed to avoid overwriting Docker-derived service label
       method      = "method",
       error       = "error",
+      err         = "err",
       duration    = "duration",
       status_code = "status_code",
     }
     source = "log"
   }
 
-  // Stage 3: Extract level label from JSON logs (if parsing succeeded)
-  // Only applies to logs that successfully parsed as JSON and have a level field
-  // If level field exists from JSON parsing, extract it as a label
+  // Stage 3: Extract level label from logfmt logs (if parsing succeeded)
   stage.labels {
     values = {
       level = "",
     }
   }
 
-  // Stage 4: Fallback regex for plain text logs (Grafana, Loki, etc.)
-  // Extract level from plain text logs that don't have a level label yet
-  // This matches common log level patterns in plain text
+  // Stage 4: Try JSON parsing for North Cloud services (if logfmt didn't work)
+  // This handles logs that are in JSON format (crawler, publisher, etc.)
   stage.match {
     selector = "{level=\"\"}"
 
-    // Try multiple patterns for log levels in plain text
+    stage.json {
+      expressions = {
+        level       = "level",
+        logger      = "logger",
+        caller      = "caller",
+        msg         = "msg",
+        ts          = "ts",
+        log_service = "service",  // Renamed to avoid overwriting Docker-derived service label
+        method      = "method",
+        error       = "error",
+        duration    = "duration",
+        status_code = "status_code",
+      }
+      source = "log"
+    }
+
+    stage.labels {
+      values = {
+        level = "",
+      }
+    }
+  }
+
+  // Stage 5: Fallback regex for logs that neither logfmt nor JSON parsing worked
+  // Extract level from plain text logs using regex patterns
+  stage.match {
+    selector = "{level=\"\"}"
+
     stage.regex {
       expression = "(?i)(?:level=)?(debug|info|warn|warning|error|fatal|panic)"
       source     = "log"
@@ -133,7 +159,7 @@ loki.process "north_cloud" {
     }
   }
 
-  // Stage 5: Fallback level extraction for logs with "warn" instead of "warning"
+  // Stage 6: Normalize "warning" to "warn" for consistency
   stage.match {
     selector = "{level=\"warning\"}"
 
@@ -144,7 +170,7 @@ loki.process "north_cloud" {
     }
   }
 
-  // Stage 6: Default to "info" level if no level was detected
+  // Stage 7: Default to "info" level if no level was detected
   stage.match {
     selector = "{level=\"\"}"
 
@@ -155,24 +181,10 @@ loki.process "north_cloud" {
     }
   }
 
-  // Stage 7: Parse timestamp from JSON logs (North Cloud services with ts field)
+  // Stage 8: Parse timestamp from logfmt/JSON logs (ts or t field)
+  // Try 'ts' first (Loki, some services), then 't' (Grafana), then Docker wrapper time
   stage.timestamp {
     source = "ts"
-    format = "RFC3339Nano"
-
-    fallback_formats = [
-      "RFC3339",
-      "2006-01-02T15:04:05.000Z07:00",
-      "2006-01-02T15:04:05Z07:00",
-      "2006-01-02T15:04:05.000000000Z07:00",
-    ]
-
-    action_on_failure = "fudge"  // Continue processing on failure
-  }
-
-  // Stage 8: Fallback timestamp from Docker wrapper (for plain text logs)
-  stage.timestamp {
-    source = "time"
     format = "RFC3339Nano"
 
     fallback_formats = [
@@ -185,19 +197,70 @@ loki.process "north_cloud" {
     action_on_failure = "fudge"
   }
 
-  // Stage 9: Add stream label (stdout/stderr)
+  // Stage 8b: Fallback timestamp parsing from Grafana's 't' field
+  stage.match {
+    selector = "{ts=\"\"}"
+
+    stage.timestamp {
+      source = "t"
+      format = "RFC3339Nano"
+
+      fallback_formats = [
+        "RFC3339",
+        "2006-01-02T15:04:05.000Z07:00",
+        "2006-01-02T15:04:05Z07:00",
+        "2006-01-02T15:04:05.000000000Z07:00",
+      ]
+
+      action_on_failure = "fudge"
+    }
+  }
+
+  // Stage 9: Final fallback timestamp from Docker wrapper time
+  stage.match {
+    selector = "{ts=\"\"}"
+
+    stage.timestamp {
+      source = "time"
+      format = "RFC3339Nano"
+
+      fallback_formats = [
+        "RFC3339",
+        "2006-01-02T15:04:05.000Z07:00",
+        "2006-01-02T15:04:05Z07:00",
+        "2006-01-02T15:04:05.000000000Z07:00",
+      ]
+
+      action_on_failure = "fudge"
+    }
+  }
+
+  // Stage 10: Add stream label (stdout/stderr)
   stage.labels {
     values = {
       stream = "",
     }
   }
 
-  // Stage 10: Output handling
-  // For JSON logs: output preserves structure for Grafana re-parsing
+  // Stage 11: Output handling
+  // For logfmt/JSON logs: preserve structure for Grafana re-parsing
   // For plain text logs: output the full log message
-  // The 'log' field contains either the JSON string or the plain text message
-  stage.output {
-    source = "log"
+  // Prefer 'msg' field if available (extracted from logfmt/JSON), otherwise use original 'log'
+  stage.match {
+    selector = "{msg!=\"\"}"
+
+    stage.output {
+      source = "msg"
+    }
+  }
+
+  // If no msg field, output the original log content
+  stage.match {
+    selector = "{msg=\"\"}"
+
+    stage.output {
+      source = "log"
+    }
   }
 
   forward_to = [loki.write.north_cloud.receiver]
