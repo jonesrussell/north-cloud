@@ -349,8 +349,8 @@ func extractJSONLD(e *colly.HTMLElement) map[string]any {
 			// Extract fields from NewsArticle schema
 			extractNewsArticleFields(objMap, result)
 
-			// Store full JSON-LD object for reference
-			result["jsonld_raw"] = objMap
+			// Store full JSON-LD object for reference (normalized to prevent Elasticsearch mapping conflicts)
+			result["jsonld_raw"] = normalizeJSONLDObject(objMap)
 		}
 	})
 
@@ -449,6 +449,58 @@ func extractJSONLDImage(objMap, result map[string]any) {
 	if imageStr, isImageString := objMap["image"].(string); isImageString && imageStr != "" {
 		result["jsonld_image_url"] = imageStr
 	}
+}
+
+// normalizeJSONLDObject normalizes a JSON-LD object to prevent Elasticsearch mapping conflicts.
+// Specifically normalizes the author field which can be string, object, or array.
+func normalizeJSONLDObject(objMap map[string]any) map[string]any {
+	// Create a deep copy to avoid mutating the original
+	normalized := make(map[string]any, len(objMap))
+
+	// Copy all fields
+	for key, val := range objMap {
+		normalized[key] = val
+	}
+
+	// Normalize author field to always be a string
+	if authorVal, hasAuthor := normalized["author"]; hasAuthor {
+		if authorStr, isString := authorVal.(string); isString {
+			// Already a string, keep it
+			normalized["author"] = authorStr
+		} else if authorObj, isObject := authorVal.(map[string]any); isObject {
+			// Convert object to string (extract name if available)
+			if name, hasName := authorObj["name"].(string); hasName && name != "" {
+				normalized["author"] = name
+			} else {
+				// If no name field, remove author to avoid mapping conflicts
+				delete(normalized, "author")
+			}
+		} else if authorArr, isArray := authorVal.([]any); isArray {
+			// Handle array of authors - extract names and join them
+			authorNames := make([]string, 0, len(authorArr))
+			for _, item := range authorArr {
+				if authorStr, isString := item.(string); isString {
+					authorNames = append(authorNames, authorStr)
+				} else if authorObj, isObject := item.(map[string]any); isObject {
+					if name, hasName := authorObj["name"].(string); hasName && name != "" {
+						authorNames = append(authorNames, name)
+					}
+				}
+			}
+			if len(authorNames) > 0 {
+				// Join multiple authors with comma
+				normalized["author"] = strings.Join(authorNames, ", ")
+			} else {
+				// If no valid authors found, remove to avoid mapping conflicts
+				delete(normalized, "author")
+			}
+		} else {
+			// Unknown type, remove to avoid mapping conflicts
+			delete(normalized, "author")
+		}
+	}
+
+	return normalized
 }
 
 // extractArticleMeta extracts article-specific metadata
