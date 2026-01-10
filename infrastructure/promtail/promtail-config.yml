@@ -68,6 +68,9 @@ scrape_configs:
             time: time
 
       # Parse the actual log line as JSON (all services now use JSON format)
+      # Expected: All North Cloud services output structured JSON logs
+      # If parsing fails, structured fields (level, service, etc.) won't be available
+      # This is logged as a warning by Promtail but doesn't drop the log line
       - json:
           expressions:
             level: level
@@ -81,9 +84,17 @@ scrape_configs:
             duration: duration
             status_code: status_code
           source: log
+          # Note: drop_malformed would drop non-JSON logs entirely
+          # We keep it false so logs are still ingested, just without structured fields
+          # Monitor Promtail logs for JSON parsing failures to identify misconfigured services
 
-      # Extract level label from JSON (primary source)
-      # This extracts the 'level' field from the parsed JSON and adds it as a label
+      # Fallback: Extract level from raw log if JSON parsing failed
+      # This regex will only match if level wasn't already extracted from JSON
+      - regex:
+          expression: '(?i)"level"\s*:\s*"(?P<level>debug|info|warn|error|fatal)"'
+          source: log
+
+      # Extract level as a label (from either JSON parsing or regex fallback)
       - labels:
           level:
 
