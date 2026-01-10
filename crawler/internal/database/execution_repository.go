@@ -407,6 +407,25 @@ func (r *ExecutionRepository) GetStuckJobs(ctx context.Context, threshold time.D
 	return jobs, nil
 }
 
+// GetTodayStats returns today's aggregated crawled and indexed counts from completed job executions.
+func (r *ExecutionRepository) GetTodayStats(ctx context.Context) (crawledToday, indexedToday int64, err error) {
+	query := `
+		SELECT 
+			COALESCE(SUM(items_crawled), 0) as crawled_today,
+			COALESCE(SUM(items_indexed), 0) as indexed_today
+		FROM job_executions
+		WHERE started_at >= CURRENT_DATE
+		  AND status = 'completed'
+	`
+
+	err = r.db.QueryRowContext(ctx, query).Scan(&crawledToday, &indexedToday)
+	if err != nil {
+		return 0, 0, fmt.Errorf("failed to get today's stats: %w", err)
+	}
+
+	return crawledToday, indexedToday, nil
+}
+
 // CleanupOldExecutions removes old execution records based on the retention policy.
 // Keeps the 100 most recent executions per job OR executions from the last 30 days.
 // Returns the number of executions deleted.

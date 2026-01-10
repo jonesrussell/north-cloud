@@ -46,6 +46,7 @@ type ExecutionRepositoryInterface interface {
 	// Analytics operations
 	GetJobStats(ctx context.Context, jobID string) (*domain.JobStats, error)
 	GetAggregateStats(ctx context.Context) (*domain.AggregateStats, error)
+	GetTodayStats(ctx context.Context) (crawledToday int64, indexedToday int64, err error)
 	GetFailureRate(ctx context.Context, window time.Duration) (float64, error)
 	GetStuckJobs(ctx context.Context, threshold time.Duration) ([]*domain.Job, error)
 

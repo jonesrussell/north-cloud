@@ -7,6 +7,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/jonesrussell/north-cloud/crawler/internal/config"
+	"github.com/jonesrussell/north-cloud/crawler/internal/database"
 	infragin "github.com/north-cloud/infrastructure/gin"
 	infralogger "github.com/north-cloud/infrastructure/logger"
 )
@@ -96,6 +97,7 @@ func NewServer(
 	cfg config.Interface,
 	jobsHandler *JobsHandler,
 	discoveredLinksHandler *DiscoveredLinksHandler,
+	executionRepo database.ExecutionRepositoryInterface,
 	infraLog infralogger.Logger,
 ) *infragin.Server {
 	// Extract port from address
@@ -123,7 +125,7 @@ func NewServer(
 		WithTimeouts(defaultReadTimeout, defaultWriteTimeout, defaultIdleTimeout).
 		WithRoutes(func(router *gin.Engine) {
 			// Setup service-specific routes (health routes added by builder)
-			setupCrawlerRoutes(router, jwtSecret, jobsHandler, discoveredLinksHandler)
+			setupCrawlerRoutes(router, jwtSecret, jobsHandler, discoveredLinksHandler, executionRepo)
 		}).
 		Build()
 
@@ -169,12 +171,24 @@ func setupCrawlerRoutes(
 	jwtSecret string,
 	jobsHandler *JobsHandler,
 	discoveredLinksHandler *DiscoveredLinksHandler,
+	executionRepo database.ExecutionRepositoryInterface,
 ) {
 	// API v1 routes - protected with JWT
 	v1 := infragin.ProtectedGroup(router, "/api/v1", jwtSecret)
 
 	// Stats endpoint for dashboard
 	v1.GET("/stats", func(c *gin.Context) {
+		crawledToday := int64(0)
+		indexedToday := int64(0)
+
+		if executionRepo != nil {
+			crawled, indexed, err := executionRepo.GetTodayStats(c.Request.Context())
+			if err == nil {
+				crawledToday = crawled
+				indexedToday = indexed
+			}
+		}
+
 		c.JSON(http.StatusOK, gin.H{
 			"totalArticles":   0,
 			"successRate":     0,
@@ -184,6 +198,8 @@ func setupCrawlerRoutes(
 			"pending":         0,
 			"activeSources":   0,
 			"totalSources":    0,
+			"crawled_today":   crawledToday,
+			"indexed_today":   indexedToday,
 		})
 	})
 
