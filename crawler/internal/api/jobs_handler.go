@@ -91,6 +91,14 @@ func (h *JobsHandler) ListJobs(c *gin.Context) {
 func (h *JobsHandler) GetJob(c *gin.Context) {
 	id := c.Param("id")
 
+	// Validate job ID
+	if id == "" || id == "undefined" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Invalid job ID",
+		})
+		return
+	}
+
 	job, err := h.repo.GetByID(c.Request.Context(), id)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{
@@ -394,6 +402,14 @@ func (h *JobsHandler) RetryJob(c *gin.Context) {
 func (h *JobsHandler) GetJobExecutions(c *gin.Context) {
 	id := c.Param("id")
 
+	// Validate job ID
+	if id == "" || id == "undefined" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Invalid job ID",
+		})
+		return
+	}
+
 	limitStr := c.DefaultQuery("limit", strconv.Itoa(defaultLimit))
 	offsetStr := c.DefaultQuery("offset", strconv.Itoa(defaultOffset))
 
@@ -434,6 +450,14 @@ func (h *JobsHandler) GetJobExecutions(c *gin.Context) {
 // GetJobStats handles GET /api/v1/jobs/:id/stats
 func (h *JobsHandler) GetJobStats(c *gin.Context) {
 	id := c.Param("id")
+
+	// Validate job ID
+	if id == "" || id == "undefined" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Invalid job ID",
+		})
+		return
+	}
 
 	stats, err := h.executionRepo.GetJobStats(c.Request.Context(), id)
 	if err != nil {

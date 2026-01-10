@@ -77,13 +77,6 @@ const routes: RouteRecordRaw[] = [
     meta: { title: 'Crawl Jobs', section: 'intake', requiresAuth: true },
   },
   {
-    path: '/intake/jobs/new',
-    name: 'intake-jobs-new',
-    component: JobDetailView,
-    props: { isNew: true },
-    meta: { title: 'New Crawl Job', section: 'intake', requiresAuth: true },
-  },
-  {
     path: '/intake/jobs/:id',
     name: 'intake-job-detail',
     component: JobDetailView,

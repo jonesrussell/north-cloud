@@ -40,7 +40,7 @@ const serviceHealth = ref<
 
 // Quick actions
 const quickActions = [
-  { label: 'New Crawl Job', path: '/intake/jobs/new', icon: 'plus' as const },
+  { label: 'New Crawl Job', path: '/intake/jobs?create=true', icon: 'plus' as const },
   { label: 'Add Source', path: '/scheduling/sources/new', icon: 'plus' as const },
   { label: 'New Route', path: '/distribution/routes/new', icon: 'plus' as const },
   { label: 'View Analytics', path: '/intelligence/stats', icon: 'chart' as const },

@@ -10,7 +10,13 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 const route = useRoute()
 const router = useRouter()
 
-const jobId = computed(() => String(route.params.id))
+const jobId = computed((): string | null => {
+  const id = route.params.id
+  if (!id || id === 'undefined') {
+    return null
+  }
+  return String(id)
+})
 
 const loading = ref(true)
 const error = ref<string | null>(null)
@@ -20,6 +26,8 @@ const executions = ref<Array<Record<string, unknown>>>([])
 const loadingExecutions = ref(false)
 
 const loadJob = async () => {
+  if (!jobId.value) return
+  
   try {
     loading.value = true
     error.value = null
@@ -33,6 +41,8 @@ const loadJob = async () => {
 }
 
 const loadStats = async () => {
+  if (!jobId.value) return
+  
   try {
     const response = await crawlerApi.jobs.stats(jobId.value)
     stats.value = response.data
@@ -42,6 +52,8 @@ const loadStats = async () => {
 }
 
 const loadExecutions = async () => {
+  if (!jobId.value) return
+  
   try {
     loadingExecutions.value = true
     const response = await crawlerApi.jobs.executions(jobId.value, { limit: 20 })
@@ -54,16 +66,19 @@ const loadExecutions = async () => {
 }
 
 const pauseJob = async () => {
+  if (!jobId.value) return
   await crawlerApi.jobs.pause(jobId.value)
   await loadJob()
 }
 
 const resumeJob = async () => {
+  if (!jobId.value) return
   await crawlerApi.jobs.resume(jobId.value)
   await loadJob()
 }
 
 const cancelJob = async () => {
+  if (!jobId.value) return
   await crawlerApi.jobs.cancel(jobId.value)
   await loadJob()
 }
@@ -89,6 +104,13 @@ const canResume = computed(() => job.value?.is_paused)
 const canCancel = computed(() => job.value && ['pending', 'scheduled', 'running'].includes(job.value.status as string))
 
 onMounted(() => {
+  // Redirect to jobs list if no valid ID
+  if (!jobId.value) {
+    router.replace('/intake/jobs')
+    return
+  }
+  
+  // Load data for valid job ID
   loadJob()
   loadStats()
   loadExecutions()
@@ -112,7 +134,7 @@ onMounted(() => {
             {{ (job as Record<string, unknown>)?.source_name || 'Job Details' }}
           </h1>
           <p class="text-muted-foreground">
-            Job ID: {{ jobId }}
+            Job ID: {{ jobId || 'N/A' }}
           </p>
         </div>
       </div>
