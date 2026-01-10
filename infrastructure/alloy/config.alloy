@@ -107,13 +107,10 @@ loki.process "north_cloud" {
 
   // Stage 3: Extract level label from JSON logs (if parsing succeeded)
   // Only applies to logs that successfully parsed as JSON and have a level field
-  stage.match {
-    selector = "{level=~\"debug|info|warn|error|fatal\"}"
-
-    stage.labels {
-      values = {
-        level = "",
-      }
+  // If level field exists from JSON parsing, extract it as a label
+  stage.labels {
+    values = {
+      level = "",
     }
   }
 
