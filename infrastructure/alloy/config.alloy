@@ -180,11 +180,8 @@ loki.process "north_cloud" {
 
   stage.labels { values = { stream = "" } }
 
-  stage.output { source = "msg" }
-  stage.match {
-    selector = "{msg=\"\"}"
-    stage.output { source = "log" }
-  }
+  // Keep the full JSON log line - don't use stage.output to preserve all details
+  // The log line will contain the complete JSON with all fields
 
   forward_to = [loki.write.north_cloud.receiver]
 }

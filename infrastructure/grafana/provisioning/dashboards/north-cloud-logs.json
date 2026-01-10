@@ -230,7 +230,7 @@
             "uid": "loki"
           },
           "editorMode": "code",
-          "expr": "{project=\"north-cloud\", service=~\"$service\", level=~\"$level\"} |~ \"$search\" | line_format \"[{{.service}}] {{.level}} | {{ __line__ }}\"",
+          "expr": "{project=\"north-cloud\", service=~\"$service\", level=~\"$level\"} |~ \"$search\" | json | line_format \"[{{.service}}] {{.level}} | {{.msg}}{{if .method}} | {{.method}} {{.path}} [{{.status}}] ({{.duration}}){{end}}{{if and .caller (not .method)}} - {{.caller}}{{end}}{{if .error}} ERROR: {{.error}}{{end}}{{if .err}} ERROR: {{.err}}{{end}}\"",
           "queryType": "range",
           "refId": "A"
         }
