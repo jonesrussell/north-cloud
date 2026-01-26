@@ -76,7 +76,7 @@ func (r *JobRepository) GetByID(ctx context.Context, id string) (*domain.Job, er
 		       interval_minutes, interval_type, next_run_at,
 		       is_paused, max_retries, retry_backoff_seconds, current_retry_count,
 		       lock_token, lock_acquired_at,
-		       status,
+		       status, scheduler_version,
 		       created_at, updated_at, started_at, completed_at,
 		       paused_at, cancelled_at,
 		       error_message, metadata
@@ -107,7 +107,7 @@ func (r *JobRepository) List(ctx context.Context, status string, limit, offset i
 		interval_minutes, interval_type, next_run_at,
 		is_paused, max_retries, retry_backoff_seconds, current_retry_count,
 		lock_token, lock_acquired_at,
-		status,
+		status, scheduler_version,
 		created_at, updated_at, started_at, completed_at,
 		paused_at, cancelled_at,
 		error_message, metadata
@@ -253,7 +253,9 @@ func (r *JobRepository) Count(ctx context.Context, status string) (int, error) {
 	return count, nil
 }
 
-// GetJobsReadyToRun retrieves all jobs that are ready to be executed.
+// GetJobsReadyToRun retrieves all V1 scheduler jobs that are ready to be executed.
+// This method is used by the V1 interval scheduler and only returns jobs with
+// scheduler_version = 1 (or NULL for backward compatibility).
 // Returns jobs where:
 //   - next_run_at is in the past (for scheduled jobs), OR
 //   - schedule_enabled = false and status = 'pending' (for immediate jobs)
@@ -265,7 +267,7 @@ func (r *JobRepository) GetJobsReadyToRun(ctx context.Context) ([]*domain.Job, e
 		       interval_minutes, interval_type, next_run_at,
 		       is_paused, max_retries, retry_backoff_seconds, current_retry_count,
 		       lock_token, lock_acquired_at,
-		       status,
+		       status, scheduler_version,
 		       created_at, updated_at, started_at, completed_at,
 		       paused_at, cancelled_at,
 		       error_message, metadata
@@ -273,6 +275,7 @@ func (r *JobRepository) GetJobsReadyToRun(ctx context.Context) ([]*domain.Job, e
 		WHERE is_paused = false
 		  AND status IN ('pending', 'scheduled')
 		  AND lock_token IS NULL
+		  AND (scheduler_version = 1 OR scheduler_version IS NULL)
 		  AND (
 		      -- Scheduled jobs: next_run_at is in the past
 		      (next_run_at IS NOT NULL AND next_run_at <= NOW())
@@ -280,8 +283,8 @@ func (r *JobRepository) GetJobsReadyToRun(ctx context.Context) ([]*domain.Job, e
 		      -- Immediate jobs: no schedule, ready to run immediately
 		      (schedule_enabled = false AND next_run_at IS NULL AND status = 'pending')
 		  )
-		ORDER BY 
-		  CASE 
+		ORDER BY
+		  CASE
 		    WHEN schedule_enabled = false THEN 0  -- Immediate jobs first
 		    ELSE 1
 		  END,
