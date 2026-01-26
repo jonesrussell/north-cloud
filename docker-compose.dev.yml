@@ -58,6 +58,8 @@ services:
     depends_on:
       postgres-crawler:
         condition: service_healthy
+      elasticsearch:
+        condition: service_healthy
       minio:
         condition: service_healthy
     environment:
@@ -68,6 +70,7 @@ services:
       POSTGRES_CRAWLER_PASSWORD: "${POSTGRES_CRAWLER_PASSWORD:-postgres}"
       POSTGRES_CRAWLER_DB: "${POSTGRES_CRAWLER_DB:-crawler}"
       POSTGRES_CRAWLER_SSLMODE: disable
+      ELASTICSEARCH_HOSTS: http://elasticsearch:9200
       SERVER_HOST: "${CRAWLER_HOST:-0.0.0.0}"
       SERVER_PORT: "${CRAWLER_PORT:-8060}"
       CRAWLER_SOURCES_API_URL: "${CRAWLER_SOURCES_API_URL:-http://source-manager:8050/api/v1/sources}"
