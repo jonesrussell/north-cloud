@@ -62,6 +62,10 @@ services:
         condition: service_healthy
       minio:
         condition: service_healthy
+      redis:
+        condition: service_healthy
+      source-manager:
+        condition: service_healthy
     environment:
       <<: *go-dev-environment
       POSTGRES_CRAWLER_HOST: postgres-crawler
@@ -279,6 +283,9 @@ services:
       args:
         UID: "${UID:-1000}"
         GID: "${GID:-1000}"
+    depends_on:
+      auth:
+        condition: service_healthy
     ports:
       - "${DASHBOARD_PORT:-3002}:3002"
     environment:
