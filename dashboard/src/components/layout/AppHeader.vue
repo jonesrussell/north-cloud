@@ -25,7 +25,12 @@ import {
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import ThemeToggle from './ThemeToggle.vue'
+import { ConnectionStatus } from '@/components/domain/realtime'
 import { crawlerApi, publisherApi, classifierApi } from '@/api/client'
+import { useUIStore } from '@/stores/ui'
+
+const uiStore = useUIStore()
+const isRealtimeEnabled = computed(() => uiStore.isFeatureEnabled('realtimeUpdates'))
 
 const route = useRoute()
 const router = useRouter()
@@ -143,6 +148,13 @@ const healthLabel = computed(() => {
 
     <!-- Right side actions -->
     <div class="flex items-center gap-2">
+      <!-- Real-time Connection Status -->
+      <ConnectionStatus
+        v-if="isRealtimeEnabled"
+        :show-label="false"
+        class="hidden sm:flex"
+      />
+
       <!-- Health Status -->
       <Badge
         :variant="healthBadgeVariant"

@@ -6,13 +6,19 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { JobsFilterBar, JobsTable, JobStatsCard } from '@/components/domain/jobs'
+import { LiveUpdateIndicator } from '@/components/domain/realtime'
 import { useJobsStore, useSourcesStore } from '@/stores'
+import { useJobsRealtime } from '@/composables/useJobsRealtime'
 import type { Job } from '@/types/crawler'
 
 const router = useRouter()
 const route = useRoute()
 const jobsStore = useJobsStore()
 const sourcesStore = useSourcesStore()
+
+// Use realtime composable - automatically handles polling vs SSE
+const { isRealtime } = useJobsRealtime()
+const updateMode = computed(() => (isRealtime() ? 'Real-time' : 'Polling'))
 
 // Modal state
 const showCreateModal = ref(false)
@@ -173,7 +179,13 @@ onUnmounted(() => {
           Manage and monitor content crawling jobs
         </p>
       </div>
-      <div class="flex items-center gap-2">
+      <div class="flex items-center gap-3">
+        <!-- Update mode indicator -->
+        <div class="flex items-center gap-2 text-sm text-muted-foreground">
+          <LiveUpdateIndicator :event-types="['job:status', 'job:completed']" />
+          <span>{{ updateMode }}</span>
+        </div>
+
         <Button
           variant="outline"
           size="sm"

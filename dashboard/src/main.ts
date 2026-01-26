@@ -10,5 +10,10 @@ const pinia = createPinia()
 app.use(pinia)
 app.use(router)
 
+// Initialize realtime store after Pinia is ready
+import { useRealtimeStore } from './stores/realtime'
+const realtimeStore = useRealtimeStore()
+realtimeStore.init()
+
 app.mount('#app')
 
