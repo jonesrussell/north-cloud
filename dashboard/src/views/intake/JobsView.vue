@@ -1,96 +1,55 @@
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted, onUnmounted, watch, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { Plus, Briefcase, Loader2 } from 'lucide-vue-next'
-import { crawlerApi, sourcesApi } from '@/api/client'
+import { Plus, Briefcase, Loader2, RefreshCw } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
-
-interface Job {
-  id: string
-  source_name: string
-  source_id: string
-  url: string
-  status: string
-  created_at: string
-  next_run_at?: string
-  schedule_enabled: boolean
-  interval_minutes?: number
-  interval_type?: string
-}
-
-interface Source {
-  id: string
-  name: string
-  url: string
-}
+import { JobsFilterBar, JobsTable, JobStatsCard } from '@/components/domain/jobs'
+import { useJobsStore, useSourcesStore } from '@/stores'
+import type { Job } from '@/types/crawler'
 
 const router = useRouter()
 const route = useRoute()
+const jobsStore = useJobsStore()
+const sourcesStore = useSourcesStore()
 
-const loading = ref(true)
-const error = ref<string | null>(null)
-const jobs = ref<Job[]>([])
+// Modal state
 const showCreateModal = ref(false)
 const creating = ref(false)
 const createError = ref<string | null>(null)
 const createSuccess = ref(false)
-const deleting = ref(false)
 const showDeleteModal = ref(false)
+const deleting = ref(false)
 const jobToDelete = ref<Job | null>(null)
 
-// Sources data
-const sources = ref<Source[]>([])
-const loadingSources = ref(false)
-const selectedSource = ref<Source | null>(null)
+// Selected source for create modal
+const selectedSource = computed(() =>
+  sourcesStore.getSourceById(newJob.value.source_id)
+)
 
 // New job form
 const newJob = ref({
   source_id: '',
   url: '',
   interval_minutes: 30,
-  interval_type: 'minutes',
+  interval_type: 'minutes' as const,
   schedule_enabled: false,
 })
 
-const loadSources = async () => {
-  try {
-    loadingSources.value = true
-    const response = await sourcesApi.list()
-    sources.value = response.data?.sources || response.data || []
-  } catch (err) {
-    console.error('Error loading sources:', err)
-  } finally {
-    loadingSources.value = false
-  }
-}
+// Polling interval
+const POLL_INTERVAL = 30000
 
-const loadJobs = async () => {
-  try {
-    loading.value = true
-    error.value = null
-    const response = await crawlerApi.jobs.list()
-    jobs.value = response.data?.jobs || response.data || []
-  } catch (err) {
-    error.value = 'Unable to load jobs. Backend API may not be available.'
-    console.error('Error loading jobs:', err)
-  } finally {
-    loading.value = false
-  }
-}
-
-const onSourceChange = (e: Event) => {
+function onSourceChange(e: Event) {
   const target = e.target as HTMLSelectElement
   newJob.value.source_id = target.value
-  selectedSource.value = sources.value.find((s) => s.id === target.value) || null
-  if (selectedSource.value) {
-    newJob.value.url = selectedSource.value.url
+  const source = sourcesStore.getSourceById(target.value)
+  if (source) {
+    newJob.value.url = source.url
   }
 }
 
-const createJob = async () => {
+async function createJob() {
   createError.value = null
   createSuccess.value = false
 
@@ -112,15 +71,12 @@ const createJob = async () => {
       }),
     }
 
-    await crawlerApi.jobs.create(jobData)
+    await jobsStore.createJob(jobData)
     createSuccess.value = true
-    await loadJobs()
-    
+
     setTimeout(() => {
       showCreateModal.value = false
-      newJob.value = { source_id: '', url: '', interval_minutes: 30, interval_type: 'minutes', schedule_enabled: false }
-      selectedSource.value = null
-      createSuccess.value = false
+      resetCreateForm()
     }, 1000)
   } catch (err: unknown) {
     const error = err as { response?: { data?: { error?: string } } }
@@ -130,60 +86,78 @@ const createJob = async () => {
   }
 }
 
-const confirmDelete = (job: Job) => {
+function resetCreateForm() {
+  newJob.value = {
+    source_id: '',
+    url: '',
+    interval_minutes: 30,
+    interval_type: 'minutes',
+    schedule_enabled: false,
+  }
+  createSuccess.value = false
+  createError.value = null
+}
+
+function confirmDelete(job: Job) {
   jobToDelete.value = job
   showDeleteModal.value = true
 }
 
-const deleteJob = async () => {
+async function handleDelete() {
   if (!jobToDelete.value) return
   try {
     deleting.value = true
-    await crawlerApi.jobs.delete(jobToDelete.value.id)
-    jobs.value = jobs.value.filter((j) => j.id !== jobToDelete.value?.id)
+    await jobsStore.deleteJob(jobToDelete.value.id)
     showDeleteModal.value = false
   } catch (err) {
-    console.error('Error deleting job:', err)
+    console.error('Failed to delete job:', err)
   } finally {
     deleting.value = false
     jobToDelete.value = null
   }
 }
 
-const getStatusVariant = (status: string) => {
-  switch (status) {
-    case 'completed': return 'success'
-    case 'running': return 'default'
-    case 'failed': return 'destructive'
-    case 'cancelled': return 'secondary'
-    case 'paused': return 'warning'
-    default: return 'pending'
-  }
+// Table event handlers
+function handleView(job: Job) {
+  router.push({ name: 'intake-job-detail', params: { id: job.id } })
 }
 
-const truncateId = (id: string) => id.length <= 12 ? id : `${id.substring(0, 8)}...`
-const formatDate = (date: string) => date ? new Date(date).toLocaleString() : 'N/A'
-const formatNextRun = (job: Job) => {
-  if (!job.schedule_enabled) return job.status === 'pending' ? 'Pending' : 'N/A'
-  return job.next_run_at ? new Date(job.next_run_at).toLocaleString() : 'N/A'
+async function handlePause(job: Job) {
+  await jobsStore.pauseJob(job.id)
 }
 
-const navigateToJob = (jobId: string) => router.push(`/intake/jobs/${jobId}`)
+async function handleResume(job: Job) {
+  await jobsStore.resumeJob(job.id)
+}
+
+async function handleCancel(job: Job) {
+  await jobsStore.cancelJob(job.id)
+}
+
+async function handleRetry(job: Job) {
+  await jobsStore.retryJob(job.id)
+}
 
 watch(showCreateModal, (val) => {
-  if (val && sources.value.length === 0) loadSources()
+  if (val && sourcesStore.items.length === 0) {
+    sourcesStore.fetchSources()
+  }
 })
 
-onMounted(() => {
-  loadJobs()
-  loadSources()
-  
-  // Auto-open create modal if ?create=true query param is present
+onMounted(async () => {
+  await jobsStore.fetchJobs()
+  await sourcesStore.fetchSources()
+  jobsStore.startPolling(POLL_INTERVAL)
+
+  // Auto-open create modal if ?create=true
   if (route.query.create === 'true') {
     showCreateModal.value = true
-    // Clean up query param from URL
     router.replace({ query: {} })
   }
+})
+
+onUnmounted(() => {
+  jobsStore.stopPolling()
 })
 </script>
 
@@ -199,40 +173,45 @@ onMounted(() => {
           Manage and monitor content crawling jobs
         </p>
       </div>
-      <Button @click="showCreateModal = true">
-        <Plus class="mr-2 h-4 w-4" />
-        Create Job
-      </Button>
+      <div class="flex items-center gap-2">
+        <Button
+          variant="outline"
+          size="sm"
+          @click="jobsStore.fetchJobs()"
+        >
+          <RefreshCw :class="['mr-2 h-4 w-4', jobsStore.loading && 'animate-spin']" />
+          Refresh
+        </Button>
+        <Button @click="showCreateModal = true">
+          <Plus class="mr-2 h-4 w-4" />
+          Create Job
+        </Button>
+      </div>
     </div>
 
-    <!-- Loading -->
-    <div
-      v-if="loading"
-      class="flex items-center justify-center py-12"
-    >
-      <Loader2 class="h-8 w-8 animate-spin text-muted-foreground" />
-    </div>
+    <!-- Stats Cards -->
+    <JobStatsCard />
 
     <!-- Error -->
     <Card
-      v-else-if="error"
+      v-if="jobsStore.error"
       class="border-destructive"
     >
       <CardContent class="pt-6">
         <p class="text-destructive">
-          {{ error }}
+          {{ jobsStore.error }}
         </p>
       </CardContent>
     </Card>
 
-    <!-- Empty state -->
-    <Card v-else-if="jobs.length === 0">
+    <!-- Empty state (only show when no jobs at all) -->
+    <Card v-else-if="!jobsStore.loading && jobsStore.items.length === 0">
       <CardContent class="flex flex-col items-center justify-center py-12">
-        <Briefcase class="h-12 w-12 text-muted-foreground mb-4" />
-        <h3 class="text-lg font-medium mb-2">
+        <Briefcase class="mb-4 h-12 w-12 text-muted-foreground" />
+        <h3 class="mb-2 text-lg font-medium">
           No crawl jobs
         </h3>
-        <p class="text-muted-foreground mb-4">
+        <p class="mb-4 text-muted-foreground">
           Get started by creating your first crawl job.
         </p>
         <Button @click="showCreateModal = true">
@@ -242,83 +221,42 @@ onMounted(() => {
       </CardContent>
     </Card>
 
-    <!-- Jobs table -->
-    <Card v-else>
-      <CardContent class="p-0">
-        <table class="w-full">
-          <thead class="border-b bg-muted/50">
-            <tr>
-              <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
-                Job ID
-              </th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
-                Source
-              </th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
-                Status
-              </th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
-                Created
-              </th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
-                Next Run
-              </th>
-              <th class="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase">
-                Actions
-              </th>
-            </tr>
-          </thead>
-          <tbody class="divide-y">
-            <tr
-              v-for="job in jobs"
-              :key="job.id"
-              class="hover:bg-muted/50 cursor-pointer"
-              @click="navigateToJob(job.id)"
-            >
-              <td class="px-6 py-4 text-sm font-medium">
-                <button
-                  class="text-primary hover:underline"
-                  @click.stop="navigateToJob(job.id)"
-                >
-                  {{ truncateId(job.id) }}
-                </button>
-              </td>
-              <td class="px-6 py-4 text-sm text-muted-foreground">
-                {{ job.source_name || 'N/A' }}
-              </td>
-              <td class="px-6 py-4">
-                <Badge :variant="getStatusVariant(job.status)">
-                  {{ job.status }}
-                </Badge>
-              </td>
-              <td class="px-6 py-4 text-sm text-muted-foreground">
-                {{ formatDate(job.created_at) }}
-              </td>
-              <td class="px-6 py-4 text-sm text-muted-foreground">
-                {{ formatNextRun(job) }}
-              </td>
-              <td class="px-6 py-4 text-right">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  class="text-destructive"
-                  @click.stop="confirmDelete(job)"
-                >
-                  Delete
-                </Button>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </CardContent>
-    </Card>
+    <!-- Filter Bar + Table -->
+    <template v-else>
+      <Card>
+        <CardHeader class="pb-4">
+          <CardTitle class="text-base">
+            Filter Jobs
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <JobsFilterBar
+            show-source-filter
+            :sources="sourcesStore.sourceOptions"
+          />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardContent class="p-0">
+          <JobsTable
+            @view="handleView"
+            @pause="handlePause"
+            @resume="handleResume"
+            @cancel="handleCancel"
+            @retry="handleRetry"
+            @delete="confirmDelete"
+          />
+        </CardContent>
+      </Card>
+    </template>
 
     <!-- Create Modal -->
     <div
       v-if="showCreateModal"
       class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
     >
-      <Card class="w-full max-w-md mx-4">
+      <Card class="mx-4 w-full max-w-md">
         <CardHeader>
           <CardTitle>Create Crawl Job</CardTitle>
           <CardDescription>Create a new job to crawl content from a source</CardDescription>
@@ -329,17 +267,17 @@ onMounted(() => {
             @submit.prevent="createJob"
           >
             <div>
-              <label class="block text-sm font-medium mb-2">Source</label>
+              <label class="mb-2 block text-sm font-medium">Source</label>
               <select
                 :value="newJob.source_id"
-                class="w-full px-3 py-2 border rounded-md bg-background"
+                class="w-full rounded-md border bg-background px-3 py-2"
                 @change="onSourceChange"
               >
                 <option value="">
                   Select a source...
                 </option>
                 <option
-                  v-for="s in sources"
+                  v-for="s in sourcesStore.items"
                   :key="s.id"
                   :value="s.id"
                 >
@@ -349,7 +287,7 @@ onMounted(() => {
             </div>
 
             <div>
-              <label class="block text-sm font-medium mb-2">URL</label>
+              <label class="mb-2 block text-sm font-medium">URL</label>
               <Input
                 :model-value="newJob.url"
                 disabled
@@ -382,7 +320,7 @@ onMounted(() => {
               />
               <select
                 v-model="newJob.interval_type"
-                class="flex-1 px-3 py-2 border rounded-md bg-background"
+                class="flex-1 rounded-md border bg-background px-3 py-2"
               >
                 <option value="minutes">
                   Minutes
@@ -398,14 +336,14 @@ onMounted(() => {
 
             <div
               v-if="createError"
-              class="p-3 text-sm text-destructive bg-destructive/10 rounded-md"
+              class="rounded-md bg-destructive/10 p-3 text-sm text-destructive"
             >
               {{ createError }}
             </div>
 
             <div
               v-if="createSuccess"
-              class="p-3 text-sm text-green-600 bg-green-50 rounded-md"
+              class="rounded-md bg-green-50 p-3 text-sm text-green-600"
             >
               Job created successfully!
             </div>
@@ -439,7 +377,7 @@ onMounted(() => {
       v-if="showDeleteModal"
       class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
     >
-      <Card class="w-full max-w-md mx-4">
+      <Card class="mx-4 w-full max-w-md">
         <CardHeader>
           <CardTitle>Delete Job</CardTitle>
           <CardDescription>Are you sure you want to delete this job? This action cannot be undone.</CardDescription>
@@ -455,7 +393,7 @@ onMounted(() => {
             <Button
               variant="destructive"
               :disabled="deleting"
-              @click="deleteJob"
+              @click="handleDelete"
             >
               <Loader2
                 v-if="deleting"
