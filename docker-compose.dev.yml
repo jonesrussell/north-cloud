@@ -279,19 +279,6 @@ services:
       args:
         UID: "${UID:-1000}"
         GID: "${GID:-1000}"
-    depends_on:
-      crawler:
-        condition: service_healthy
-      source-manager:
-        condition: service_healthy
-      publisher:
-        condition: service_healthy
-      classifier:
-        condition: service_healthy
-      auth:
-        condition: service_healthy
-      index-manager:
-        condition: service_started
     ports:
       - "${DASHBOARD_PORT:-3002}:3002"
     environment:
