@@ -25,7 +25,7 @@ func setupTestDB(t *testing.T) (db *sql.DB, cleanup func()) {
 
 	// Try to connect to a test database
 	// In CI/CD or with testcontainers, this would be set up differently
-	connStr := "host=localhost port=5432 user=postgres password=postgres dbname=gosources_test sslmode=disable"
+	connStr := "host=localhost port=5432 user=postgres password=postgres dbname=source_manager_test sslmode=disable"
 	var err error
 	db, err = sql.Open("postgres", connStr)
 	if err != nil {

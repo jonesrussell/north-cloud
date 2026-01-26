@@ -1,9 +1,9 @@
-// Package apiclient provides HTTP client functionality for interacting with the gosources API.
+// Package apiclient provides HTTP client functionality for interacting with the source-manager API.
 package apiclient
 
 import "time"
 
-// APISource represents a source as returned by the gosources API.
+// APISource represents a source as returned by the source-manager API.
 type APISource struct {
 	ID           string       `json:"id,omitempty"`
 	Name         string       `json:"name"`

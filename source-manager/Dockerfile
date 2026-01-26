@@ -21,7 +21,7 @@ COPY source-manager/ .
 RUN CGO_ENABLED=0 go build \
     -ldflags="-w -s" \
     -trimpath \
-    -o gosources \
+    -o source-manager \
     main.go
 
 # Runtime stage
@@ -34,7 +34,7 @@ RUN apk --no-cache add ca-certificates tzdata wget && \
 WORKDIR /app
 
 # Copy binary and config
-COPY --from=builder /build/source-manager/gosources .
+COPY --from=builder /build/source-manager/source-manager .
 COPY --from=builder /build/source-manager/config.yml .
 
 # Switch to non-root user
@@ -46,4 +46,4 @@ EXPOSE 8050
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
     CMD wget --no-verbose --tries=1 --spider http://localhost:8050/health || exit 1
 
-CMD ["./gosources", "-config", "config.yml"]
+CMD ["./source-manager", "-config", "config.yml"]

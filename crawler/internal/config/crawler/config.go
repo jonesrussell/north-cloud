@@ -44,7 +44,7 @@ type Config struct {
 	Delay time.Duration `env:"CRAWLER_DELAY" yaml:"delay"`
 	// RandomDelay is the random delay to add to the base delay
 	RandomDelay time.Duration `env:"CRAWLER_RANDOM_DELAY" yaml:"random_delay"`
-	// SourcesAPIURL is the URL of the gosources API service
+	// SourcesAPIURL is the URL of the source-manager API service
 	SourcesAPIURL string `env:"CRAWLER_SOURCES_API_URL" yaml:"sources_api_url"`
 	// Debug enables debug logging
 	Debug bool `env:"APP_DEBUG" yaml:"debug"`

@@ -122,7 +122,7 @@ services:
       DB_PORT: 5432
       DB_USER: "${POSTGRES_SOURCE_MANAGER_USER:-postgres}"
       DB_PASSWORD: "${POSTGRES_SOURCE_MANAGER_PASSWORD:-postgres}"
-      DB_NAME: "${POSTGRES_SOURCE_MANAGER_DB:-gosources}"
+      DB_NAME: "${POSTGRES_SOURCE_MANAGER_DB:-source_manager}"
       DB_SSLMODE: disable
       SOURCE_MANAGER_API_URL: "${SOURCE_MANAGER_API_URL:-http://localhost:8050}"
       PPROF_PORT: 6060

@@ -90,14 +90,14 @@ Integration tests require a database connection:
 
 **Note**: Integration tests are skipped when running with `-short` flag. They require:
 - A PostgreSQL database accessible at `localhost:5432`
-- Test database named `gosources_test`
+- Test database named `source_manager_test`
 - User `postgres` with password `postgres` (or modify connection string in tests)
 
 To run integration tests:
 
 ```bash
 # Create test database (one-time setup)
-createdb -U postgres gosources_test
+createdb -U postgres source_manager_test
 
 # Run integration tests
 go test -mod=mod ./internal/repository/...
@@ -250,7 +250,7 @@ Tests should run in CI/CD with:
 Integration tests skip when database is unavailable. To run them:
 
 1. Ensure PostgreSQL is running
-2. Create test database: `createdb -U postgres gosources_test`
+2. Create test database: `createdb -U postgres source_manager_test`
 3. Run migrations manually or let tests handle it
 4. Ensure connection string matches your setup
 

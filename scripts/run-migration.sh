@@ -54,7 +54,7 @@ case "$SERVICE" in
         ;;
     source-manager)
         ENV_PREFIX="POSTGRES_SOURCE_MANAGER"
-        DB_DEFAULT="gosources"
+        DB_DEFAULT="source_manager"
         PORT_DEFAULT="5432"
         CONTAINER_PATTERN="postgres-source-manager"
         SWARM_SERVICE="northcloud_postgres-source-manager"

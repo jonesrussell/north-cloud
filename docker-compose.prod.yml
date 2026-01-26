@@ -88,7 +88,7 @@ services:
       DB_PORT: 5432
       DB_USER: "${POSTGRES_SOURCE_MANAGER_USER}"
       DB_PASSWORD: "${POSTGRES_SOURCE_MANAGER_PASSWORD}"
-      DB_NAME: "${POSTGRES_SOURCE_MANAGER_DB:-gosources}"
+      DB_NAME: "${POSTGRES_SOURCE_MANAGER_DB:-source_manager}"
       DB_SSLMODE: disable
     volumes:
       - ./source-manager/migrations:/migrations:ro

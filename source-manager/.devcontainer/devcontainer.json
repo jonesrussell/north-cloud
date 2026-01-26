@@ -1,8 +1,8 @@
 {
-	"name": "GoSources Dev",
+	"name": "Source Manager Dev",
 	"dockerComposeFile": "docker-compose.yml",
 	"service": "app",
-	"workspaceFolder": "/workspaces/gosources",
+	"workspaceFolder": "/workspaces/source-manager",
 	
 	"customizations": {
 		"vscode": {
@@ -59,7 +59,7 @@
 	"forwardPorts": [8050, 5432],
 	"portsAttributes": {
 		"8050": {
-			"label": "GoSources API"
+			"label": "Source Manager API"
 		},
 		"5432": {
 			"label": "PostgreSQL"

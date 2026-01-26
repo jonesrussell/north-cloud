@@ -33,7 +33,7 @@ services:
     environment:
       POSTGRES_USER: ${POSTGRES_SOURCE_MANAGER_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_SOURCE_MANAGER_PASSWORD:-postgres}
-      POSTGRES_DB: ${POSTGRES_SOURCE_MANAGER_DB:-gosources}
+      POSTGRES_DB: ${POSTGRES_SOURCE_MANAGER_DB:-source_manager}
     volumes:
       - postgres_source_manager_data:/var/lib/postgresql/data
       - ./source-manager/migrations:/migrations:ro

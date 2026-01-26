@@ -20,7 +20,7 @@ services:
       - DB_PORT=5432
       - DB_USER=postgres
       - DB_PASSWORD=postgres
-      - DB_NAME=gosources
+      - DB_NAME=source_manager
       - DB_SSLMODE=disable
       # Set GOMODCACHE to user-writable location to avoid permission issues
       - GOMODCACHE=/home/vscode/go/pkg/mod
@@ -34,7 +34,7 @@ services:
     environment:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgres
-      - POSTGRES_DB=gosources
+      - POSTGRES_DB=source_manager
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ../migrations:/migrations:ro

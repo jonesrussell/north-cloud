@@ -282,7 +282,7 @@ jobs:
                 "postgres-source-manager" "5432" \
                 "$POSTGRES_SOURCE_MANAGER_USER" \
                 "$POSTGRES_SOURCE_MANAGER_PASSWORD" \
-                "${POSTGRES_SOURCE_MANAGER_DB:-gosources}" \
+                "${POSTGRES_SOURCE_MANAGER_DB:-source_manager}" \
                 "source-manager/migrations"
             else
               echo "WARNING: POSTGRES_SOURCE_MANAGER credentials not found, skipping source-manager migrations"

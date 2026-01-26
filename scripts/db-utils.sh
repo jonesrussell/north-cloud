@@ -48,7 +48,7 @@ get_service_config() {
             ;;
         source-manager)
             SERVICE_CONFIG_ENV_PREFIX="POSTGRES_SOURCE_MANAGER"
-            SERVICE_CONFIG_DB_DEFAULT="gosources"
+            SERVICE_CONFIG_DB_DEFAULT="source_manager"
             SERVICE_CONFIG_PORT_DEFAULT="5432"
             SERVICE_CONFIG_CONTAINER="postgres-source-manager"
             SERVICE_CONFIG_SWARM="northcloud_postgres-source-manager"

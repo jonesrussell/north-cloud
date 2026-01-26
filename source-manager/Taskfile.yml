@@ -3,16 +3,16 @@ version: '3'
 dotenv: ['../.env']
 
 vars:
-  BINARY_NAME: gosources
+  BINARY_NAME: source-manager
   MAIN_PATH: ./main.go
   BUILD_DIR: ./bin
-  DOCKER_IMAGE: gosources
+  DOCKER_IMAGE: source-manager
   CONFIG_FILE: config.yml
   DB_HOST: '{{.POSTGRES_SOURCE_MANAGER_HOST | default .DB_HOST | default "localhost"}}'
   DB_PORT: '{{.POSTGRES_SOURCE_MANAGER_PORT | default .DB_PORT | default "5432"}}'
   DB_USER: '{{.POSTGRES_SOURCE_MANAGER_USER | default .DB_USER | default "postgres"}}'
   DB_PASSWORD: '{{.POSTGRES_SOURCE_MANAGER_PASSWORD | default .DB_PASSWORD | default ""}}'
-  DB_NAME: '{{.POSTGRES_SOURCE_MANAGER_DB | default .DB_NAME | default "gosources"}}'
+  DB_NAME: '{{.POSTGRES_SOURCE_MANAGER_DB | default .DB_NAME | default "source_manager"}}'
 
 tasks:
   default:
@@ -21,7 +21,7 @@ tasks:
       - task --list
 
   build:
-    desc: Build the gosources service
+    desc: Build the source-manager service
     cmds:
       - mkdir -p {{.BUILD_DIR}}
       - go build -o {{.BUILD_DIR}}/{{.BINARY_NAME}} {{.MAIN_PATH}}
@@ -196,9 +196,9 @@ tasks:
       - docker compose -f docker-compose.yml down
 
   docker:logs:
-    desc: View gosources service logs
+    desc: View source-manager service logs
     cmds:
-      - docker compose -f docker-compose.yml logs -f gosources
+      - docker compose -f docker-compose.yml logs -f source-manager
 
   docker:restart:
     desc: Restart Docker services
@@ -209,7 +209,7 @@ tasks:
   docker:migrate:
     desc: Run migrations in Docker environment
     cmds:
-      - docker compose -f docker-compose.yml exec -T postgres psql -U postgres -d gosources < migrations/001_create_sources_table.sql
+      - docker compose -f docker-compose.yml exec -T postgres psql -U postgres -d source_manager < migrations/001_create_sources_table.sql
 
   install:tools:
     desc: "Install development tools"

@@ -64,7 +64,7 @@ func main() {
 	}()
 
 	appLogger = appLogger.With(
-		infralogger.String("service", "gosources"),
+		infralogger.String("service", "source-manager"),
 		infralogger.String("version", version),
 	)
 

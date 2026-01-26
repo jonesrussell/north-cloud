@@ -159,7 +159,7 @@ cd SERVICE && go build -o bin/SERVICE main.go
 ### 2. source-manager (`/source-manager`)
 - **Port**: 8050
 - **Purpose**: Manage content sources and crawling configs
-- **Database**: `postgres-source-manager` (gosources database)
+- **Database**: `postgres-source-manager` (source_manager database)
 - **Test Crawl**: `POST /api/v1/sources/test-crawl` (preview without saving)
 
 ### 3. classifier (`/classifier`)
@@ -241,7 +241,7 @@ docker compose -f docker-compose.base.yml -f docker-compose.dev.yml up -d
 ### Database Access
 ```bash
 # Source manager
-docker exec -it north-cloud-postgres-source-manager psql -U postgres -d gosources
+docker exec -it north-cloud-postgres-source-manager psql -U postgres -d source_manager
 
 # Crawler
 docker exec -it north-cloud-postgres-crawler psql -U postgres -d crawler
