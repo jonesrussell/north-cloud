@@ -137,221 +137,38 @@ tasks:
   migrate:up:
     desc: Run database migrations up
     silent: true
-    env:
-      PGPASSWORD: '{{.DB_PASSWORD | default "postgres"}}'
     cmds:
-      - |
-        DB_HOST="{{.DB_HOST | default "localhost"}}"
-        DB_PORT="{{.DB_PORT | default "5432"}}"
-        DB_USER="{{.DB_USER | default "postgres"}}"
-        DB_PASSWORD="{{.DB_PASSWORD | default "postgres"}}"
-        DB_NAME="{{.DB_NAME | default "gosources"}}"
-        
-        # Ensure defaults are set (fallback if env vars are empty)
-        DB_PASSWORD="${DB_PASSWORD:-postgres}"
-        DB_USER="${DB_USER:-postgres}"
-        DB_NAME="${DB_NAME:-gosources}"
-        
-        # Detect Docker Swarm mode
-        if docker service ls --format '{{.Name}}' 2>/dev/null | grep -q 'northcloud_postgres-source-manager'; then
-          echo "Running migration via Docker Swarm (connecting to northcloud_postgres-source-manager service)..."
-          NETWORK="northcloud_north-cloud-network"
-          docker run --rm --network "$NETWORK" \
-            -v "$(pwd)/migrations:/migrations:ro" \
-            migrate/migrate:latest \
-            -path /migrations \
-            -database "postgres://${DB_USER}:${DB_PASSWORD}@northcloud_postgres-source-manager:5432/${DB_NAME}?sslmode=disable" \
-            up
-        # Check for Docker Compose mode
-        elif docker ps --format '{{.Names}}' | grep -q 'north-cloud-postgres-source-manager\|postgres-source-manager'; then
-          echo "Running migration via Docker Compose (connecting to postgres-source-manager container)..."
-          # Use known network name for Docker Compose
-          NETWORK="north-cloud_north-cloud-network"
-          docker run --rm --network "$NETWORK" \
-            -v "$(pwd)/migrations:/migrations:ro" \
-            migrate/migrate:latest \
-            -path /migrations \
-            -database "postgres://${DB_USER}:${DB_PASSWORD}@postgres-source-manager:5432/${DB_NAME}?sslmode=disable" \
-            up
-        # Fallback: use localhost with exposed port
-        else
-          echo "Running migration via localhost connection (port ${DB_PORT})..."
-          docker run --rm \
-            -v "$(pwd)/migrations:/migrations:ro" \
-            --network host \
-            migrate/migrate:latest \
-            -path /migrations \
-            -database "postgres://${DB_USER}:${DB_PASSWORD}@localhost:${DB_PORT}/${DB_NAME}?sslmode=disable" \
-            up
-        fi
+      - ../scripts/run-migration.sh source-manager up
 
   migrate:down:
     desc: Rollback last migration
     silent: true
-    env:
-      PGPASSWORD: '{{.DB_PASSWORD | default "postgres"}}'
     cmds:
-      - |
-        DB_HOST="{{.DB_HOST | default "localhost"}}"
-        DB_PORT="{{.DB_PORT | default "5432"}}"
-        DB_USER="{{.DB_USER | default "postgres"}}"
-        DB_PASSWORD="{{.DB_PASSWORD | default "postgres"}}"
-        DB_NAME="{{.DB_NAME | default "gosources"}}"
-        
-        # Ensure defaults are set (fallback if env vars are empty)
-        DB_PASSWORD="${DB_PASSWORD:-postgres}"
-        DB_USER="${DB_USER:-postgres}"
-        DB_NAME="${DB_NAME:-gosources}"
-        
-        # Detect Docker Swarm mode
-        if docker service ls --format '{{.Name}}' 2>/dev/null | grep -q 'northcloud_postgres-source-manager'; then
-          echo "Rolling back migration via Docker Swarm..."
-          NETWORK="northcloud_north-cloud-network"
-          docker run --rm --network "$NETWORK" \
-            -v "$(pwd)/migrations:/migrations:ro" \
-            migrate/migrate:latest \
-            -path /migrations \
-            -database "postgres://${DB_USER}:${DB_PASSWORD}@northcloud_postgres-source-manager:5432/${DB_NAME}?sslmode=disable" \
-            down 1
-        # Check for Docker Compose mode
-        elif docker ps --format '{{.Names}}' | grep -q 'north-cloud-postgres-source-manager\|postgres-source-manager'; then
-          echo "Rolling back migration via Docker Compose..."
-          NETWORK="north-cloud_north-cloud-network"
-          docker run --rm --network "$NETWORK" \
-            -v "$(pwd)/migrations:/migrations:ro" \
-            migrate/migrate:latest \
-            -path /migrations \
-            -database "postgres://${DB_USER}:${DB_PASSWORD}@postgres-source-manager:5432/${DB_NAME}?sslmode=disable" \
-            down 1
-        # Fallback: use localhost with exposed port
-        else
-          echo "Rolling back migration via localhost connection..."
-          docker run --rm \
-            -v "$(pwd)/migrations:/migrations:ro" \
-            --network host \
-            migrate/migrate:latest \
-            -path /migrations \
-            -database "postgres://${DB_USER}:${DB_PASSWORD}@localhost:${DB_PORT}/${DB_NAME}?sslmode=disable" \
-            down 1
-        fi
+      - ../scripts/run-migration.sh source-manager down
 
   migrate:version:
     desc: Show current migration version
     silent: true
-    env:
-      PGPASSWORD: '{{.DB_PASSWORD | default "postgres"}}'
     cmds:
-      - |
-        DB_HOST="{{.DB_HOST | default "localhost"}}"
-        DB_PORT="{{.DB_PORT | default "5432"}}"
-        DB_USER="{{.DB_USER | default "postgres"}}"
-        DB_PASSWORD="{{.DB_PASSWORD | default "postgres"}}"
-        DB_NAME="{{.DB_NAME | default "gosources"}}"
-        
-        # Ensure defaults are set (fallback if env vars are empty)
-        DB_PASSWORD="${DB_PASSWORD:-postgres}"
-        DB_USER="${DB_USER:-postgres}"
-        DB_NAME="${DB_NAME:-gosources}"
-        
-        # Detect Docker Swarm mode
-        if docker service ls --format '{{.Name}}' 2>/dev/null | grep -q 'northcloud_postgres-source-manager'; then
-          NETWORK="northcloud_north-cloud-network"
-          docker run --rm --network "$NETWORK" \
-            -v "$(pwd)/migrations:/migrations:ro" \
-            migrate/migrate:latest \
-            -path /migrations \
-            -database "postgres://${DB_USER}:${DB_PASSWORD}@northcloud_postgres-source-manager:5432/${DB_NAME}?sslmode=disable" \
-            version
-        # Check for Docker Compose mode
-        elif docker ps --format '{{.Names}}' | grep -q 'north-cloud-postgres-source-manager\|postgres-source-manager'; then
-          NETWORK="north-cloud_north-cloud-network"
-          docker run --rm --network "$NETWORK" \
-            -v "$(pwd)/migrations:/migrations:ro" \
-            migrate/migrate:latest \
-            -path /migrations \
-            -database "postgres://${DB_USER}:${DB_PASSWORD}@postgres-source-manager:5432/${DB_NAME}?sslmode=disable" \
-            version
-        # Fallback: use localhost with exposed port
-        else
-          docker run --rm \
-            -v "$(pwd)/migrations:/migrations:ro" \
-            --network host \
-            migrate/migrate:latest \
-            -path /migrations \
-            -database "postgres://${DB_USER}:${DB_PASSWORD}@localhost:${DB_PORT}/${DB_NAME}?sslmode=disable" \
-            version
-        fi
+      - ../scripts/run-migration.sh source-manager version
 
   migrate:check:
     desc: Check if migrations have been applied
     silent: true
-    env:
-      PGPASSWORD: '{{.DB_PASSWORD}}'
     cmds:
-      - |
-        if [ -z "{{.DB_PASSWORD}}" ]; then
-          echo "DB_PASSWORD or POSTGRES_SOURCE_MANAGER_PASSWORD environment variable not set"
-          exit 1
-        fi
-      - |
-        DB_HOST="{{.DB_HOST}}"
-        DB_PORT="{{.DB_PORT}}"
-        DB_USER="{{.DB_USER}}"
-        DB_PASSWORD="{{.DB_PASSWORD}}"
-        DB_NAME="{{.DB_NAME}}"
-        
-        # Use Docker to run migration if connecting to containerized database
-        if [ "$DB_HOST" = "localhost" ] && docker ps --format '{{.Names}}' | grep -q 'north-cloud-postgres-source-manager'; then
-          docker run --rm --network north-cloud_north-cloud-network \
-            -v "$(pwd)/migrations:/migrations" \
-            migrate/migrate:latest \
-            -path /migrations \
-            -database "postgres://${DB_USER}:${DB_PASSWORD}@postgres-source-manager:5432/${DB_NAME}?sslmode=disable" \
-            version || echo "No migrations applied yet. Run 'task migrate:up' to apply migrations."
-        else
-          DATABASE_URL="postgres://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_NAME}?sslmode=disable"
-          migrate -path ./migrations -database "$DATABASE_URL" version || echo "No migrations applied yet. Run 'task migrate:up' to apply migrations."
-        fi
+      - ../scripts/run-migration.sh source-manager version || echo "No migrations applied yet. Run 'task migrate:up' to apply migrations."
 
   migrate:force:
     desc: Force database to a specific migration version (use to fix dirty state)
     silent: true
-    env:
-      PGPASSWORD: '{{.DB_PASSWORD}}'
     cmds:
-      - |
-        if [ -z "{{.DB_PASSWORD}}" ]; then
-          echo "DB_PASSWORD or POSTGRES_SOURCE_MANAGER_PASSWORD environment variable not set"
-          exit 1
-        fi
       - |
         if [ -z "{{.VERSION}}" ]; then
           echo "VERSION environment variable not set. Usage: VERSION=1 task migrate:force"
-          echo "This will force the database to version 1 (marking it as clean if dirty)"
+          echo "This will force the database to the specified version (marking it as clean if dirty)"
           exit 1
         fi
-      - |
-        DB_HOST="{{.DB_HOST}}"
-        DB_PORT="{{.DB_PORT}}"
-        DB_USER="{{.DB_USER}}"
-        DB_PASSWORD="{{.DB_PASSWORD}}"
-        DB_NAME="{{.DB_NAME}}"
-        VERSION="{{.VERSION}}"
-        
-        # Use Docker to run migration if connecting to containerized database
-        if [ "$DB_HOST" = "localhost" ] && docker ps --format '{{.Names}}' | grep -q 'north-cloud-postgres-source-manager'; then
-          echo "Forcing database to version ${VERSION} via Docker (connecting to postgres-source-manager container)..."
-          docker run --rm --network north-cloud_north-cloud-network \
-            -v "$(pwd)/migrations:/migrations" \
-            migrate/migrate:latest \
-            -path /migrations \
-            -database "postgres://${DB_USER}:${DB_PASSWORD}@postgres-source-manager:5432/${DB_NAME}?sslmode=disable" \
-            force ${VERSION}
-        else
-          echo "Forcing database to version ${VERSION} via local connection..."
-          DATABASE_URL="postgres://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_NAME}?sslmode=disable"
-          migrate -path ./migrations -database "$DATABASE_URL" force ${VERSION}
-        fi
+      - ../scripts/run-migration.sh source-manager force {{.VERSION}}
 
   migrate:
     desc: Alias for migrate:up

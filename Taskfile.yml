@@ -723,6 +723,7 @@ tasks:
       - task: migrate:source-manager
       - task: migrate:classifier
       - task: migrate:publisher
+      - task: migrate:index-manager
 
   migrate:down:
     desc: "Rollback last migration for all microservices sequentially"
@@ -731,6 +732,7 @@ tasks:
       - task: migrate:down:source-manager
       - task: migrate:down:classifier
       - task: migrate:down:publisher
+      - task: migrate:down:index-manager
 
   migrate:version:
     desc: "Show migration version for all microservices"
@@ -739,6 +741,7 @@ tasks:
       - task: migrate:version:source-manager
       - task: migrate:version:classifier
       - task: migrate:version:publisher
+      - task: migrate:version:index-manager
 
   migrate:crawler:
     desc: "Run database migrations for crawler service"
@@ -824,6 +827,42 @@ tasks:
     cmds:
       - task migrate:version
 
+  migrate:force:publisher:
+    desc: "Force publisher database to a specific migration version (use to fix dirty state)"
+    dir: publisher
+    cmds:
+      - task migrate:force
+
+  migrate:index-manager:
+    desc: "Run database migrations for index-manager service"
+    dir: index-manager
+    cmds:
+      - task migrate:up
+
+  migrate:down:index-manager:
+    desc: "Rollback last migration for index-manager service"
+    dir: index-manager
+    cmds:
+      - task migrate:down
+
+  migrate:version:index-manager:
+    desc: "Show migration version for index-manager service"
+    dir: index-manager
+    cmds:
+      - task migrate:version
+
+  migrate:force:index-manager:
+    desc: "Force index-manager database to a specific migration version (use to fix dirty state)"
+    dir: index-manager
+    cmds:
+      - task migrate:force
+
+  migrate:force:crawler:
+    desc: "Force crawler database to a specific migration version (use to fix dirty state)"
+    dir: crawler
+    cmds:
+      - task migrate:force
+
   config:init:
     desc: "Copy all config.yml.example files to config.yml"
     cmds:
@@ -841,3 +880,87 @@ tasks:
       - go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest || true
       - go install golang.org/x/tools/cmd/goimports@latest || true
       - go install github.com/golang-migrate/migrate/v4/cmd/migrate@latest || true
+
+  # ============================================================
+  # Database Backup/Restore/Sync Commands
+  # ============================================================
+
+  db:backup:
+    desc: "Backup database for a service (usage: task db:backup -- crawler)"
+    cmds:
+      - ./scripts/db-backup.sh {{.CLI_ARGS}}
+
+  db:backup:all:
+    desc: "Backup all databases"
+    cmds:
+      - ./scripts/db-backup.sh all
+
+  db:backup:crawler:
+    desc: "Backup crawler database"
+    cmds:
+      - ./scripts/db-backup.sh crawler
+
+  db:backup:source-manager:
+    desc: "Backup source-manager database"
+    cmds:
+      - ./scripts/db-backup.sh source-manager
+
+  db:backup:classifier:
+    desc: "Backup classifier database"
+    cmds:
+      - ./scripts/db-backup.sh classifier
+
+  db:backup:publisher:
+    desc: "Backup publisher database"
+    cmds:
+      - ./scripts/db-backup.sh publisher
+
+  db:backup:index-manager:
+    desc: "Backup index-manager database"
+    cmds:
+      - ./scripts/db-backup.sh index-manager
+
+  db:restore:
+    desc: "Restore database from backup (usage: task db:restore -- crawler ./backups/crawler/backup.sql.gz --confirm)"
+    cmds:
+      - ./scripts/db-restore.sh {{.CLI_ARGS}}
+
+  db:sync:
+    desc: "Sync database from production (usage: task db:sync -- crawler)"
+    cmds:
+      - ./scripts/db-sync.sh {{.CLI_ARGS}}
+
+  db:sync:all:
+    desc: "Sync all databases from production"
+    cmds:
+      - ./scripts/db-sync.sh all
+
+  db:sync:crawler:
+    desc: "Sync crawler database from production"
+    cmds:
+      - ./scripts/db-sync.sh crawler
+
+  db:sync:source-manager:
+    desc: "Sync source-manager database from production"
+    cmds:
+      - ./scripts/db-sync.sh source-manager
+
+  db:sync:classifier:
+    desc: "Sync classifier database from production"
+    cmds:
+      - ./scripts/db-sync.sh classifier
+
+  db:sync:publisher:
+    desc: "Sync publisher database from production"
+    cmds:
+      - ./scripts/db-sync.sh publisher
+
+  db:sync:index-manager:
+    desc: "Sync index-manager database from production"
+    cmds:
+      - ./scripts/db-sync.sh index-manager
+
+  db:list:
+    desc: "List available database backups"
+    cmds:
+      - ./scripts/db-list.sh {{.CLI_ARGS}}

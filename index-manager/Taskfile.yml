@@ -79,11 +79,40 @@ tasks:
       - docker build -f Dockerfile.dev -t north-cloud-index-manager:dev .
 
   migrate:up:
-    desc: "Run database migrations"
-    env:
-      PGPASSWORD: '{{.POSTGRES_INDEX_MANAGER_PASSWORD | default ""}}'
+    desc: "Run database migrations up"
+    silent: true
     cmds:
-      - psql -h {{.POSTGRES_INDEX_MANAGER_HOST | default "localhost"}} -p {{.POSTGRES_INDEX_MANAGER_PORT | default "5436"}} -U {{.POSTGRES_INDEX_MANAGER_USER | default "postgres"}} -d {{.POSTGRES_INDEX_MANAGER_DB | default "index_manager"}} -f migrations/001_create_index_metadata.sql
+      - ../scripts/run-migration.sh index-manager up
+
+  migrate:down:
+    desc: "Rollback last migration"
+    silent: true
+    cmds:
+      - ../scripts/run-migration.sh index-manager down
+
+  migrate:version:
+    desc: "Show current migration version"
+    silent: true
+    cmds:
+      - ../scripts/run-migration.sh index-manager version
+
+  migrate:check:
+    desc: "Check if migrations have been applied"
+    silent: true
+    cmds:
+      - ../scripts/run-migration.sh index-manager version || echo "No migrations applied yet. Run 'task migrate:up' to apply migrations."
+
+  migrate:force:
+    desc: "Force database to a specific migration version (use to fix dirty state)"
+    silent: true
+    cmds:
+      - |
+        if [ -z "{{.VERSION}}" ]; then
+          echo "VERSION environment variable not set. Usage: VERSION=1 task migrate:force"
+          echo "This will force the database to the specified version (marking it as clean if dirty)"
+          exit 1
+        fi
+      - ../scripts/run-migration.sh index-manager force {{.VERSION}}
 
   db:shell:
     desc: "Open PostgreSQL shell"

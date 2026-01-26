@@ -49,6 +49,7 @@ services:
       POSTGRES_DB: ${POSTGRES_CRAWLER_DB:-crawler}
     volumes:
       - postgres_crawler_data:/var/lib/postgresql/data
+      - ./crawler/migrations:/migrations:ro
 
   postgres-classifier:
     <<: *postgres-defaults
@@ -78,7 +79,7 @@ services:
       POSTGRES_DB: ${POSTGRES_PUBLISHER_DB:-publisher}
     volumes:
       - postgres_publisher_data:/var/lib/postgresql/data
-      - ./publisher/internal/database/migrations:/migrations:ro
+      - ./publisher/migrations:/migrations:ro
 
   # ------------------------------------------------------------
   # Elasticsearch

@@ -37,10 +37,3 @@ CREATE TABLE IF NOT EXISTS migration_history (
 CREATE INDEX IF NOT EXISTS idx_migration_history_index_name ON migration_history(index_name);
 CREATE INDEX IF NOT EXISTS idx_migration_history_status ON migration_history(status);
 CREATE INDEX IF NOT EXISTS idx_migration_history_created_at ON migration_history(created_at DESC);
-
--- Add foreign key constraint (optional, for referential integrity)
--- Note: This assumes indexes are never deleted from metadata, only marked as deleted
--- ALTER TABLE migration_history
---     ADD CONSTRAINT fk_migration_index_name
---     FOREIGN KEY (index_name) REFERENCES index_metadata(index_name) ON DELETE SET NULL;
-

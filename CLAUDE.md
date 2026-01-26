@@ -372,6 +372,39 @@ bash infrastructure/certbot/scripts/renew-and-reload.sh
 ```
 **Note**: Certbot service auto-checks every 12 hours, renews 30 days before expiry
 
+### Database Backup/Restore/Sync
+```bash
+# Backup single service
+task db:backup:crawler
+
+# Backup all databases
+task db:backup:all
+
+# List available backups
+task db:list
+
+# Restore from backup (requires --confirm)
+task db:restore -- crawler ./backups/crawler/backup.sql.gz --confirm
+
+# Sync from production to development (requires PROD_SSH_HOST)
+task db:sync:crawler         # Single service
+task db:sync:all             # All databases
+task db:sync -- crawler --dry-run  # Preview without executing
+```
+
+**Environment variables for sync**:
+```bash
+PROD_SSH_HOST=user@production-server
+PROD_SSH_PORT=22
+PROD_DEPLOY_PATH=/opt/north-cloud
+```
+
+**Safety features**:
+- Restore requires `--confirm` flag
+- Auto-backup before restore
+- Sync refuses to run in production (one-way only: prod → dev)
+- Retention policy cleans old backups (default: 7 per service)
+
 ---
 
 ## Git Workflow
