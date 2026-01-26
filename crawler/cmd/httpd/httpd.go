@@ -28,6 +28,7 @@ import (
 	infragin "github.com/north-cloud/infrastructure/gin"
 	infralogger "github.com/north-cloud/infrastructure/logger"
 	"github.com/north-cloud/infrastructure/profiling"
+	"github.com/north-cloud/infrastructure/sse"
 )
 
 // === Types ===
@@ -51,6 +52,8 @@ type JobsSchedulerResult struct {
 	Scheduler              *scheduler.IntervalScheduler
 	DB                     *sqlx.DB
 	ExecutionRepo          *database.ExecutionRepository
+	SSEBroker              sse.Broker
+	SSEHandler             *api.SSEHandler
 }
 
 // === Constants ===
@@ -110,10 +113,10 @@ func Start() error {
 	defer jsResult.DB.Close()
 
 	// Phase 5: Start HTTP server
-	server, errChan := startHTTPServer(deps, jsResult.JobsHandler, jsResult.DiscoveredLinksHandler, jsResult.ExecutionRepo)
+	server, errChan := startHTTPServer(deps, jsResult.JobsHandler, jsResult.DiscoveredLinksHandler, jsResult.ExecutionRepo, jsResult.SSEHandler)
 
 	// Phase 6: Run server until interrupted
-	return runServerUntilInterrupt(deps.Logger, server, jsResult.Scheduler, errChan)
+	return runServerUntilInterrupt(deps.Logger, server, jsResult.Scheduler, jsResult.SSEBroker, errChan)
 }
 
 // === Dependency Setup ===
@@ -336,11 +339,28 @@ func setupJobsAndScheduler(
 	discoveredLinkRepo := database.NewDiscoveredLinkRepository(db)
 	discoveredLinksHandler := api.NewDiscoveredLinksHandler(discoveredLinkRepo, jobRepo)
 
+	// Create SSE broker for real-time events
+	sseBroker := sse.NewBroker(deps.Logger)
+	if startErr := sseBroker.Start(context.Background()); startErr != nil {
+		deps.Logger.Error("Failed to start SSE broker", infralogger.Error(startErr))
+		// Continue without SSE - it's optional
+	} else {
+		deps.Logger.Info("SSE broker started successfully")
+	}
+
+	// Create SSE handler
+	sseHandler := api.NewSSEHandler(sseBroker, deps.Logger)
+
+	// Create SSE publisher for scheduler
+	ssePublisher := scheduler.NewSSEPublisher(sseBroker, deps.Logger)
+
 	// Create and start scheduler
 	intervalScheduler := createAndStartScheduler(deps, storageResult, jobRepo, executionRepo, db)
 	if intervalScheduler != nil {
 		jobsHandler.SetScheduler(intervalScheduler)
 		discoveredLinksHandler.SetScheduler(intervalScheduler)
+		// Connect SSE publisher to scheduler
+		intervalScheduler.SetSSEPublisher(ssePublisher)
 	}
 
 	return &JobsSchedulerResult{
@@ -349,6 +369,8 @@ func setupJobsAndScheduler(
 		Scheduler:              intervalScheduler,
 		DB:                     db,
 		ExecutionRepo:          executionRepo,
+		SSEBroker:              sseBroker,
+		SSEHandler:             sseHandler,
 	}, nil
 }
 
@@ -409,10 +431,11 @@ func startHTTPServer(
 	jobsHandler *api.JobsHandler,
 	discoveredLinksHandler *api.DiscoveredLinksHandler,
 	executionRepo *database.ExecutionRepository,
+	sseHandler *api.SSEHandler,
 ) (server *infragin.Server, errChan <-chan error) {
 	// Use the logger that already has the service field attached
 	// Create server using the new infrastructure gin package
-	server = api.NewServer(deps.Config, jobsHandler, discoveredLinksHandler, executionRepo, deps.Logger)
+	server = api.NewServer(deps.Config, jobsHandler, discoveredLinksHandler, executionRepo, deps.Logger, sseHandler)
 
 	// Start server asynchronously
 	deps.Logger.Info("Starting HTTP server", infralogger.String("addr", deps.Config.GetServerConfig().Address))
@@ -426,6 +449,7 @@ func runServerUntilInterrupt(
 	log infralogger.Logger,
 	server *infragin.Server,
 	intervalScheduler *scheduler.IntervalScheduler,
+	sseBroker sse.Broker,
 	errChan <-chan error,
 ) error {
 	// Set up signal handling for graceful shutdown
@@ -438,7 +462,7 @@ func runServerUntilInterrupt(
 		log.Error("Server error", infralogger.Error(serverErr))
 		return fmt.Errorf("server error: %w", serverErr)
 	case sig := <-sigChan:
-		return shutdownServer(log, server, intervalScheduler, sig)
+		return shutdownServer(log, server, intervalScheduler, sseBroker, sig)
 	}
 }
 
@@ -447,11 +471,20 @@ func shutdownServer(
 	log infralogger.Logger,
 	server *infragin.Server,
 	intervalScheduler *scheduler.IntervalScheduler,
+	sseBroker sse.Broker,
 	sig os.Signal,
 ) error {
 	log.Info("Shutdown signal received", infralogger.String("signal", sig.String()))
 
-	// Stop scheduler first
+	// Stop SSE broker first (closes all client connections)
+	if sseBroker != nil {
+		log.Info("Stopping SSE broker")
+		if err := sseBroker.Stop(); err != nil {
+			log.Error("Failed to stop SSE broker", infralogger.Error(err))
+		}
+	}
+
+	// Stop scheduler
 	if intervalScheduler != nil {
 		log.Info("Stopping interval scheduler")
 		if err := intervalScheduler.Stop(); err != nil {
