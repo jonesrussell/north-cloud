@@ -20,6 +20,17 @@ set -e
 set -o pipefail  # Ensure pipeline failures are detected
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+
+# Load .env file if it exists
+if [ -f "${PROJECT_ROOT}/.env" ]; then
+    set -a  # Automatically export all variables
+    # shellcheck source=/dev/null
+    # Ignore errors from readonly variables (like UID)
+    source "${PROJECT_ROOT}/.env" 2>/dev/null || true
+    set +a  # Stop automatically exporting
+fi
+
 # shellcheck source=scripts/db-utils.sh
 source "${SCRIPT_DIR}/db-utils.sh"
 
@@ -64,11 +75,26 @@ fi
 # Backup Functions
 # =============================================================================
 
+# URL-encode a string (simple version for passwords)
+url_encode() {
+    local string="$1"
+    # Use Python if available, otherwise use sed for basic encoding
+    if command -v python3 >/dev/null 2>&1; then
+        python3 -c "import urllib.parse; print(urllib.parse.quote('$string'))"
+    else
+        # Basic encoding: @ -> %40, : -> %3A, / -> %2F, ? -> %3F, = -> %3D, & -> %26, # -> %23
+        echo "$string" | sed 's/@/%40/g; s/:/%3A/g; s/\//%2F/g; s/?/%3F/g; s/=/%3D/g; s/&/%26/g; s/#/%23/g'
+    fi
+}
+
 # Run pg_dump via docker
 # Usage: run_pg_dump <output_file>
 run_pg_dump() {
     local output_file="$1"
-    local db_url="postgres://${DB_USER}:${DB_PASSWORD}@${DB_HOSTNAME}:${DB_INTERNAL_PORT}/${DB_NAME}?sslmode=disable"
+    # URL-encode password to handle special characters like @
+    local encoded_password
+    encoded_password=$(url_encode "$DB_PASSWORD")
+    local db_url="postgres://${DB_USER}:${encoded_password}@${DB_HOSTNAME}:${DB_INTERNAL_PORT}/${DB_NAME}?sslmode=disable"
 
     if [ "$ENV_MODE" = "localhost" ]; then
         # Direct connection - pipefail will catch pg_dump failures
