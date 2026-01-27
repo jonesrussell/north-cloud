@@ -158,11 +158,11 @@ jobs:
             changed: ${{ needs.detect-changes.outputs.search-service }}
           - name: search-frontend
             context: ./search-frontend
-            dockerfile: Dockerfile
+            dockerfile: ./search-frontend/Dockerfile
             changed: ${{ needs.detect-changes.outputs.search-frontend }}
           - name: dashboard
             context: ./dashboard
-            dockerfile: Dockerfile
+            dockerfile: ./dashboard/Dockerfile
             changed: ${{ needs.detect-changes.outputs.dashboard }}
     steps:
       - name: Checkout code
