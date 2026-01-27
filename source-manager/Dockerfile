@@ -35,7 +35,7 @@ WORKDIR /app
 
 # Copy binary and config
 COPY --from=builder /build/source-manager/source-manager .
-COPY --from=builder /build/source-manager/config.yml .
+COPY --from=builder /build/source-manager/config.yml.example ./config.yml
 
 # Switch to non-root user
 USER appuser
