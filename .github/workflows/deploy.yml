@@ -314,6 +314,31 @@ jobs:
             ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} \
             'chmod +x /opt/north-cloud/deploy.sh'
 
+      - name: Transfer infrastructure config files
+        env:
+          SSH_PORT: ${{ secrets.DEPLOY_SSH_PORT || 22 }}
+        run: |
+          # Create infrastructure directories
+          ssh -p ${SSH_PORT} \
+            -o StrictHostKeyChecking=no \
+            ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} \
+            'mkdir -p /opt/north-cloud/infrastructure/{elasticsearch,loki}'
+
+          # Remove any incorrectly created directories (from previous failed runs)
+          ssh -p ${SSH_PORT} \
+            -o StrictHostKeyChecking=no \
+            ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} \
+            'rm -rf /opt/north-cloud/infrastructure/elasticsearch/elasticsearch.yml /opt/north-cloud/infrastructure/loki/loki-config.prod.yml 2>/dev/null || true'
+
+          # Transfer config files (as files, not directories)
+          scp -P ${SSH_PORT} -o StrictHostKeyChecking=no \
+            infrastructure/elasticsearch/elasticsearch.yml \
+            ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}:/opt/north-cloud/infrastructure/elasticsearch/
+
+          scp -P ${SSH_PORT} -o StrictHostKeyChecking=no \
+            infrastructure/loki/loki-config.prod.yml \
+            ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}:/opt/north-cloud/infrastructure/loki/
+
       - name: Transfer migration files
         env:
           SSH_PORT: ${{ secrets.DEPLOY_SSH_PORT || 22 }}
@@ -323,7 +348,7 @@ jobs:
             -o StrictHostKeyChecking=no \
             ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} \
             'mkdir -p /opt/north-cloud/{crawler,source-manager,classifier,publisher,index-manager}/migrations'
-          
+
           # Transfer migrations for each service
           scp -P ${SSH_PORT} -o StrictHostKeyChecking=no -r \
             crawler/migrations/* \
