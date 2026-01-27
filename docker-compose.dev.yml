@@ -49,6 +49,7 @@ services:
   # ------------------------------------------------------------
   crawler:
     <<: *go-dev-defaults
+    pull_policy: build
     build:
       context: ./crawler
       dockerfile: Dockerfile.dev
@@ -113,6 +114,7 @@ services:
   # ------------------------------------------------------------
   source-manager:
     <<: *go-dev-defaults
+    pull_policy: build
     build:
       context: .
       dockerfile: ./source-manager/Dockerfile.dev
@@ -153,6 +155,7 @@ services:
   # ------------------------------------------------------------
   classifier:
     <<: *go-dev-defaults
+    pull_policy: build
     build:
       context: ./classifier
       dockerfile: Dockerfile.dev
@@ -206,6 +209,7 @@ services:
   # ------------------------------------------------------------
   index-manager:
     <<: *go-dev-defaults
+    pull_policy: build
     build:
       context: ./index-manager
       dockerfile: Dockerfile.dev
@@ -247,6 +251,7 @@ services:
   # ------------------------------------------------------------
   search-service:
     <<: *go-dev-defaults
+    pull_policy: build
     build:
       context: ./search
       dockerfile: Dockerfile.dev
@@ -285,6 +290,7 @@ services:
   # ------------------------------------------------------------
   dashboard:
     <<: *node-dev-defaults
+    pull_policy: build
     build:
       context: ./dashboard
       dockerfile: Dockerfile.dev
@@ -321,6 +327,7 @@ services:
   # ------------------------------------------------------------
   search-frontend:
     <<: *node-dev-defaults
+    pull_policy: build
     build:
       context: ./search-frontend
       dockerfile: Dockerfile.dev
@@ -346,6 +353,7 @@ services:
   # ------------------------------------------------------------
   auth:
     <<: *go-dev-defaults
+    pull_policy: build
     build:
       context: .
       dockerfile: ./auth/Dockerfile.dev
@@ -380,6 +388,7 @@ services:
   # ------------------------------------------------------------
   publisher:
     <<: *go-dev-defaults
+    pull_policy: build
     build:
       context: ./publisher
       dockerfile: Dockerfile.dev
