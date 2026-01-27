@@ -23,6 +23,25 @@
 set -e
 
 # =============================================================================
+# Load .env file from project root
+# =============================================================================
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
+
+if [ -f "$PROJECT_ROOT/.env" ]; then
+    # Export variables from .env (skip comments, empty lines, and readonly vars like UID/GID)
+    while IFS='=' read -r key value; do
+        # Skip comments, empty lines, and readonly shell variables
+        [[ -z "$key" || "$key" =~ ^# || "$key" == "UID" || "$key" == "GID" ]] && continue
+        # Remove surrounding quotes from value
+        value="${value%\"}"
+        value="${value#\"}"
+        export "$key=$value" 2>/dev/null || true
+    done < "$PROJECT_ROOT/.env"
+fi
+
+# =============================================================================
 # Configuration
 # =============================================================================
 

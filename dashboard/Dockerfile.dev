@@ -1,4 +1,4 @@
-FROM node:25-alpine
+FROM node:25-slim
 
 ARG UID=1000
 ARG GID=1000
@@ -6,11 +6,21 @@ ARG GID=1000
 WORKDIR /app
 
 # Install minimal dev tools
-RUN apk add --no-cache git
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends git wget && \
+    rm -rf /var/lib/apt/lists/*
 
-# Create matching user
-RUN addgroup -g ${GID} appuser && \
-    adduser -D -u ${UID} -G appuser appuser
+# Create matching user (handle existing UID/GID)
+RUN if getent group ${GID} >/dev/null; then \
+      existing_group=$(getent group ${GID} | cut -d: -f1); \
+    else \
+      groupadd -g ${GID} appuser && existing_group=appuser; \
+    fi && \
+    if getent passwd ${UID} >/dev/null; then \
+      echo "Using existing user with UID ${UID}"; \
+    else \
+      useradd -u ${UID} -g ${existing_group} -m appuser; \
+    fi
 
 # Writable npm cache
 RUN mkdir -p /tmp/npm-cache && \

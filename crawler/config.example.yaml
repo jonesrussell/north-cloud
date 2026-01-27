@@ -39,23 +39,21 @@ server:
 # Elasticsearch connection settings
 elasticsearch:
   # List of Elasticsearch nodes to connect to
+  # NOTE: In Docker, override with ELASTICSEARCH_ADDRESSES env var
   addresses:
-    - "https://localhost:9200"
-    # Add additional nodes for high availability
-    # - "https://es2.example.com:9200"
-    # - "https://es3.example.com:9200"
-  
+    - "http://localhost:9200"
+
   # Authentication - use either username/password OR api_key
   username: ""        # Your Elasticsearch username
   password: ""        # Your Elasticsearch password
   api_key: ""         # Alternative to username/password
   auth_type: "apikey" # Authentication method: "basic" or "apikey"
   index_name: "crawler" # Default index name for articles
-  
+
   # TLS/SSL Configuration
   tls:
-    enabled: true
-    skip_verify: false  # Set to true only in development
+    enabled: false      # Set to true for production with HTTPS
+    skip_verify: true   # Set to false in production
     certificate: ""     # Path to client certificate for mTLS
     key: ""            # Path to client key for mTLS
     ca: ""             # Path to CA certificate for custom certificate authorities
@@ -80,6 +78,6 @@ crawler:
   index_name: "crawler" # Index name for articles
   content_index_name: "crawler_content" # Index name for content
   source_file: "config/sources.yml"    # Path to sources configuration (deprecated, use sources_api_url)
-  sources_api_url: "http://localhost:8050/api/v1/sources"  # URL of the source-manager API service
+  sources_api_url: "http://localhost:8050/api/v1/sources"  # Override with CRAWLER_SOURCES_API_URL env var in Docker
   tls:
     insecure_skip_verify: false  # Set to true only in development for testing
