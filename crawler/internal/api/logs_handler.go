@@ -1,6 +1,9 @@
 package api
 
 import (
+	"bufio"
+	"compress/gzip"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -16,7 +19,8 @@ import (
 
 // Constants for log handler operations.
 const (
-	maxExecutionsForSearch = 100 // Maximum executions to search for log download
+	maxExecutionsForSearch    = 100      // Maximum executions to search for log download
+	latestExecutionIdentifier = "latest" // Identifier for the latest execution
 )
 
 // Errors for log handler operations.
@@ -199,7 +203,7 @@ func (h *LogsHandler) DownloadLogs(c *gin.Context) {
 	executionNumStr := c.Query("execution")
 	if executionNumStr == "" {
 		// Default to latest execution
-		executionNumStr = "latest"
+		executionNumStr = latestExecutionIdentifier
 	}
 
 	// Find the log object key based on execution parameter
@@ -248,7 +252,7 @@ func (h *LogsHandler) DownloadLogs(c *gin.Context) {
 func (h *LogsHandler) findLogObjectKey(
 	c *gin.Context, jobID, executionNumStr string,
 ) (objectKey string, execNum int, err error) {
-	if executionNumStr == "latest" {
+	if executionNumStr == latestExecutionIdentifier {
 		return h.findLatestLogObjectKey(c, jobID)
 	}
 	return h.findSpecificLogObjectKey(c, jobID, executionNumStr)
@@ -289,4 +293,124 @@ func (h *LogsHandler) findSpecificLogObjectKey(
 
 	c.JSON(http.StatusNotFound, gin.H{"error": "no logs found for specified execution"})
 	return "", 0, errNoLogsFound
+}
+
+// ViewLogs handles GET /api/v1/jobs/:id/logs/view
+// Returns decompressed log content as JSON for viewing in the UI.
+func (h *LogsHandler) ViewLogs(c *gin.Context) {
+	jobID := c.Param("id")
+	if jobID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "job ID required"})
+		return
+	}
+
+	// Get execution number from query param
+	executionNumStr := c.Query("execution")
+	if executionNumStr == "" {
+		executionNumStr = latestExecutionIdentifier
+	}
+
+	// Find the log object key
+	objectKey, executionNum, findErr := h.findLogObjectKey(c, jobID, executionNumStr)
+	if findErr != nil {
+		return // Error response already sent
+	}
+
+	// Get log reader from service (returns gzipped content)
+	reader, readerErr := h.logService.GetLogReader(c.Request.Context(), objectKey)
+	if readerErr != nil {
+		h.logger.Error("Failed to get log reader",
+			infralogger.Error(readerErr),
+			infralogger.String("object_key", objectKey),
+		)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to retrieve logs"})
+		return
+	}
+	defer reader.Close()
+
+	// Decompress gzip content
+	gzReader, gzErr := newGzipReader(reader)
+	if gzErr != nil {
+		h.logger.Error("Failed to create gzip reader",
+			infralogger.Error(gzErr),
+			infralogger.String("object_key", objectKey),
+		)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to decompress logs"})
+		return
+	}
+	defer gzReader.Close()
+
+	// Read decompressed content
+	content, readErr := io.ReadAll(gzReader)
+	if readErr != nil {
+		h.logger.Error("Failed to read log content",
+			infralogger.Error(readErr),
+			infralogger.String("object_key", objectKey),
+		)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to read logs"})
+		return
+	}
+
+	// Parse JSON lines into log entries
+	lines := parseLogLines(content)
+
+	h.logger.Debug("Viewed logs",
+		infralogger.String("job_id", jobID),
+		infralogger.Int("execution_number", executionNum),
+		infralogger.Int("line_count", len(lines)),
+	)
+
+	c.JSON(http.StatusOK, gin.H{
+		"job_id":           jobID,
+		"execution_number": executionNum,
+		"lines":            lines,
+		"line_count":       len(lines),
+	})
+}
+
+// newGzipReader creates a gzip reader from the given reader.
+func newGzipReader(r io.Reader) (*gzip.Reader, error) {
+	return gzip.NewReader(r)
+}
+
+// parseLogLines parses JSON lines content into a slice of log entries.
+func parseLogLines(content []byte) []map[string]any {
+	var lines []map[string]any
+	scanner := bufio.NewScanner(bufio.NewReader(
+		&bytesReader{data: content, pos: 0},
+	))
+
+	for scanner.Scan() {
+		line := scanner.Bytes()
+		if len(line) == 0 {
+			continue
+		}
+
+		var entry map[string]any
+		if err := json.Unmarshal(line, &entry); err != nil {
+			// If not valid JSON, create a simple message entry
+			entry = map[string]any{
+				"message": string(line),
+				"level":   "info",
+			}
+		}
+		lines = append(lines, entry)
+	}
+
+	return lines
+}
+
+// bytesReader implements io.Reader for a byte slice.
+type bytesReader struct {
+	data []byte
+	pos  int
+}
+
+func (r *bytesReader) Read(p []byte) (n int, err error) {
+	if r.pos >= len(r.data) {
+		return 0, io.EOF
+	}
+	n = copy(p, r.data[r.pos:])
+	r.pos += n
+	return n, nil
 }

@@ -27,6 +27,14 @@
           Resume
         </button>
         <button
+          v-if="job && canRetry"
+          class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors ml-2"
+          :disabled="retrying"
+          @click="retryJob"
+        >
+          {{ retrying ? 'Retrying...' : 'Retry' }}
+        </button>
+        <button
           v-if="job && canCancel"
           class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors ml-2"
           @click="confirmCancel"
@@ -363,6 +371,7 @@ const stats = ref(null)
 
 const showCancelModal = ref(false)
 const cancelling = ref(false)
+const retrying = ref(false)
 
 const loadJob = async () => {
   try {
@@ -457,6 +466,19 @@ const cancelJob = async () => {
   }
 }
 
+const retryJob = async () => {
+  try {
+    retrying.value = true
+    await crawlerApi.jobs.retry(jobId.value)
+    // Reload job and executions to see the new execution
+    await Promise.all([loadJob(), loadExecutions(true)])
+  } catch (err) {
+    console.error('[JobDetailView] Error retrying job:', err)
+  } finally {
+    retrying.value = false
+  }
+}
+
 const viewExecution = (executionId) => {
   // Could navigate to execution detail page in the future
   console.log('View execution:', executionId)
@@ -525,6 +547,12 @@ const canResume = computed(() => {
 const canCancel = computed(() => {
   if (!job.value) return false
   return ['pending', 'scheduled', 'running'].includes(job.value.status)
+})
+
+const canRetry = computed(() => {
+  if (!job.value) return false
+  // Can retry completed, failed, or cancelled jobs that aren't currently running
+  return ['completed', 'failed', 'cancelled'].includes(job.value.status)
 })
 
 onMounted(() => {

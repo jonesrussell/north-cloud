@@ -6,7 +6,10 @@ ARG GID=1000
 WORKDIR /app
 
 # Dev tools
-RUN apk add --no-cache git
+RUN apk add --no-cache git bash
+
+# Install Air for hot reload
+RUN go install github.com/air-verse/air@latest
 
 # Create matching user
 RUN addgroup -g ${GID} appuser && \

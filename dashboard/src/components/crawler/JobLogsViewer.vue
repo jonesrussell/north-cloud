@@ -1,5 +1,7 @@
 <template>
   <div class="bg-white shadow rounded-lg overflow-hidden">
+    <!-- DEBUG: This should always show -->
+    <div class="p-2 bg-yellow-100 text-yellow-800 text-xs">DEBUG: JobLogsViewer rendered for job {{ jobId }}</div>
     <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
       <h2 class="text-lg font-medium text-gray-900">
         Job Logs
@@ -189,10 +191,13 @@ const canDownload = computed(() => {
 
 // Methods
 const loadLogsMetadata = async () => {
+  console.log('[JobLogsViewer] loadLogsMetadata called for jobId:', props.jobId)
   try {
     loading.value = true
     error.value = null
+    console.log('[JobLogsViewer] Calling crawlerApi.jobs.logs...')
     const response = await crawlerApi.jobs.logs(props.jobId)
+    console.log('[JobLogsViewer] logs response:', response.data)
     const data = response.data as LogsMetadataResponse
     executions.value = data.executions || []
     hasLiveLogs.value = data.has_live_logs || false
@@ -202,9 +207,13 @@ const loadLogsMetadata = async () => {
       selectedExecution.value = executions.value[0].execution_number
     }
 
-    // Start live streaming if available
+    // Start live streaming if available, otherwise load archived logs
     if (isLiveStreaming.value) {
       startLiveStream()
+    } else if (selectedExecution.value !== null) {
+      // Load archived logs for the selected execution
+      await loadArchivedLogs(selectedExecution.value)
+      return // Skip finally block, loadArchivedLogs handles loading state
     }
   } catch (err) {
     error.value = 'Unable to load logs metadata.'
@@ -264,6 +273,32 @@ const stopLiveStream = () => {
   if (eventSource) {
     eventSource.close()
     eventSource = null
+  }
+}
+
+const loadArchivedLogs = async (executionNumber: number) => {
+  // Check if this execution has logs available
+  const exec = executions.value.find(e => e.execution_number === executionNumber)
+  if (!exec?.log_available) {
+    displayedLogs.value = []
+    return
+  }
+
+  try {
+    loading.value = true
+    error.value = null
+    const response = await crawlerApi.jobs.viewLogs(props.jobId, executionNumber)
+    const data = response.data as { lines: LogLine[]; line_count: number }
+    displayedLogs.value = data.lines || []
+    if (autoScroll.value) {
+      scrollToBottom()
+    }
+  } catch (err) {
+    console.error('[JobLogsViewer] Error loading archived logs:', err)
+    error.value = 'Failed to load archived logs.'
+    displayedLogs.value = []
+  } finally {
+    loading.value = false
   }
 }
 
@@ -362,16 +397,16 @@ watch(() => props.jobStatus, (newStatus) => {
 })
 
 // Watch for execution selection changes
-watch(selectedExecution, () => {
-  // Clear displayed logs when switching executions
-  // (archived logs would need to be fetched separately - not implemented yet)
-  if (!isLiveStreaming.value) {
-    displayedLogs.value = []
+watch(selectedExecution, async (newExec) => {
+  if (!isLiveStreaming.value && newExec !== null) {
+    // Fetch archived logs for the selected execution
+    await loadArchivedLogs(newExec)
   }
 })
 
 // Lifecycle
 onMounted(() => {
+  console.log('[JobLogsViewer] Component mounted, jobId:', props.jobId, 'jobStatus:', props.jobStatus)
   loadLogsMetadata()
 })
 

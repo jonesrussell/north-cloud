@@ -13,6 +13,7 @@ import (
 	"github.com/jonesrussell/north-cloud/crawler/internal/crawler"
 	"github.com/jonesrussell/north-cloud/crawler/internal/database"
 	"github.com/jonesrussell/north-cloud/crawler/internal/domain"
+	"github.com/jonesrussell/north-cloud/crawler/internal/logs"
 	infralogger "github.com/north-cloud/infrastructure/logger"
 )
 
@@ -60,6 +61,9 @@ type IntervalScheduler struct {
 
 	// SSE integration (optional)
 	ssePublisher *SSEPublisher
+
+	// Log service for job log capture (optional)
+	logService logs.Service
 }
 
 // NewIntervalScheduler creates a new interval-based scheduler.
@@ -284,21 +288,80 @@ func (s *IntervalScheduler) executeJob(job *domain.Job) {
 	go s.runJob(jobExec)
 }
 
-// runJob executes the actual crawl job.
-func (s *IntervalScheduler) runJob(jobExec *JobExecution) {
-	defer func() {
-		// Remove from active jobs
-		s.activeJobsMu.Lock()
-		delete(s.activeJobs, jobExec.Job.ID)
-		s.activeJobsMu.Unlock()
+// writeLog writes a log entry if the log writer is available.
+func writeLog(w logs.Writer, level, message, jobID, execID string, fields map[string]any) {
+	if w == nil {
+		return
+	}
+	w.WriteEntry(logs.LogEntry{
+		Timestamp: time.Now(),
+		Level:     level,
+		Message:   message,
+		JobID:     jobID,
+		ExecID:    execID,
+		Fields:    fields,
+	})
+}
 
-		s.metrics.DecrementRunning()
-
-		// Release lock
-		s.releaseLock(jobExec.Job)
-	}()
+// startLogCapture starts log capture for a job execution.
+func (s *IntervalScheduler) startLogCapture(jobExec *JobExecution) logs.Writer {
+	if s.logService == nil {
+		return nil
+	}
 
 	job := jobExec.Job
+	execution := jobExec.Execution
+
+	logWriter, captureErr := s.logService.StartCapture(
+		jobExec.Context,
+		job.ID,
+		execution.ID,
+		execution.ExecutionNumber,
+	)
+	if captureErr != nil {
+		s.logger.Warn("Failed to start log capture, continuing without logging",
+			infralogger.String("job_id", job.ID),
+			infralogger.Error(captureErr),
+		)
+		return nil
+	}
+	return logWriter
+}
+
+// stopLogCapture stops log capture for a job execution.
+func (s *IntervalScheduler) stopLogCapture(jobExec *JobExecution, logWriter logs.Writer) {
+	if s.logService == nil || logWriter == nil {
+		return
+	}
+	if _, stopErr := s.logService.StopCapture(s.ctx, jobExec.Job.ID, jobExec.Execution.ID); stopErr != nil {
+		s.logger.Error("Failed to stop log capture",
+			infralogger.String("job_id", jobExec.Job.ID),
+			infralogger.Error(stopErr),
+		)
+	}
+}
+
+// runJob executes the actual crawl job.
+func (s *IntervalScheduler) runJob(jobExec *JobExecution) {
+	job := jobExec.Job
+	execution := jobExec.Execution
+	logWriter := s.startLogCapture(jobExec)
+
+	defer func() {
+		s.stopLogCapture(jobExec, logWriter)
+		s.activeJobsMu.Lock()
+		delete(s.activeJobs, job.ID)
+		s.activeJobsMu.Unlock()
+		s.metrics.DecrementRunning()
+		s.releaseLock(job)
+	}()
+
+	// Write initial log entry
+	writeLog(logWriter, "info", "Starting job execution", job.ID, execution.ID, map[string]any{
+		"source_id":     job.SourceID,
+		"url":           job.URL,
+		"retry_attempt": job.CurrentRetryCount,
+	})
 
 	s.logger.Info("Executing job",
 		infralogger.String("job_id", job.ID),
@@ -309,15 +372,20 @@ func (s *IntervalScheduler) runJob(jobExec *JobExecution) {
 
 	// Validate source ID
 	if job.SourceID == "" {
+		writeLog(logWriter, "error", "Job missing required source_id", job.ID, execution.ID, nil)
 		s.handleJobFailure(jobExec, errors.New("job missing required source_id"), nil)
 		return
 	}
 
 	// Execute crawler
 	startTime := time.Now()
-	err := s.crawler.Start(jobExec.Context, job.SourceID)
+	writeLog(logWriter, "info", "Starting crawler", job.ID, execution.ID, map[string]any{
+		"source_id": job.SourceID,
+	})
 
+	err := s.crawler.Start(jobExec.Context, job.SourceID)
 	if err != nil {
+		writeLog(logWriter, "error", "Crawler start failed: "+err.Error(), job.ID, execution.ID, nil)
 		s.logger.Error("Crawler start failed",
 			infralogger.String("job_id", job.ID),
 			infralogger.String("source_id", job.SourceID),
@@ -328,12 +396,23 @@ func (s *IntervalScheduler) runJob(jobExec *JobExecution) {
 	}
 
 	// Wait for completion
-	err = s.crawler.Wait()
+	writeLog(logWriter, "info", "Waiting for crawler to complete", job.ID, execution.ID, nil)
 
+	err = s.crawler.Wait()
 	if err != nil {
+		writeLog(logWriter, "error", "Crawler failed: "+err.Error(), job.ID, execution.ID, nil)
 		s.handleJobFailure(jobExec, err, &startTime)
 		return
 	}
+
+	// Get metrics for final log
+	crawlerMetrics := s.crawler.GetMetrics()
+	writeLog(logWriter, "info", "Job completed successfully", job.ID, execution.ID, map[string]any{
+		"duration_ms":   time.Since(startTime).Milliseconds(),
+		"items_crawled": crawlerMetrics.ProcessedCount,
+		"items_indexed": crawlerMetrics.ProcessedCount,
+		"error_count":   crawlerMetrics.ErrorCount,
+	})
 
 	s.handleJobSuccess(jobExec, &startTime)
 }
@@ -642,6 +721,14 @@ func (s *IntervalScheduler) CancelJob(jobID string) error {
 // set once during initialization and never changed during the scheduler's lifetime.
 func (s *IntervalScheduler) SetSSEPublisher(publisher *SSEPublisher) {
 	s.ssePublisher = publisher
+}
+
+// SetLogService sets the log service for job log capture.
+// This is optional - if not set, no logs will be captured during job execution.
+//
+// IMPORTANT: This method must be called before Start() to avoid data races.
+func (s *IntervalScheduler) SetLogService(logService logs.Service) {
+	s.logService = logService
 }
 
 // publishJobStatus publishes a job status event if SSE is enabled.

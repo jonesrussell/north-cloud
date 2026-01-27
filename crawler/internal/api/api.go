@@ -65,6 +65,7 @@ func setupLogRoutes(v1 *gin.RouterGroup, logsHandler *LogsHandler) {
 		v1.GET("/jobs/:id/logs", logsHandler.GetLogsMetadata)
 		v1.GET("/jobs/:id/logs/stream", logsHandler.StreamLogs)
 		v1.GET("/jobs/:id/logs/download", logsHandler.DownloadLogs)
+		v1.GET("/jobs/:id/logs/view", logsHandler.ViewLogs)
 	}
 }
 

@@ -185,6 +185,10 @@ export const crawlerApi = {
     // Log endpoints
     logs: (id: string | number, params?: { limit?: number; offset?: number }) =>
       crawlerClient.get(`/jobs/${id}/logs`, { params }),
+    viewLogs: (id: string | number, execution?: number | string) => {
+      const params = execution !== undefined ? { execution: execution.toString() } : {}
+      return crawlerClient.get(`/jobs/${id}/logs/view`, { params })
+    },
     downloadLogs: (id: string | number, execution?: number | string) => {
       const params = execution !== undefined ? { execution: execution.toString() } : {}
       return crawlerClient.get(`/jobs/${id}/logs/download`, {

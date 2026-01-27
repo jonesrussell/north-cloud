@@ -56,6 +56,7 @@ type JobsSchedulerResult struct {
 	ExecutionRepo          *database.ExecutionRepository
 	SSEBroker              sse.Broker
 	SSEHandler             *api.SSEHandler
+	LogService             logs.Service
 }
 
 // === Constants ===
@@ -121,7 +122,7 @@ func Start() error {
 	)
 
 	// Phase 6: Run server until interrupted
-	return runServerUntilInterrupt(deps.Logger, server, jsResult.Scheduler, jsResult.SSEBroker, errChan)
+	return runServerUntilInterrupt(deps.Logger, server, jsResult.Scheduler, jsResult.SSEBroker, jsResult.LogService, errChan)
 }
 
 // === Dependency Setup ===
@@ -382,6 +383,8 @@ func setupJobsAndScheduler(
 		discoveredLinksHandler.SetScheduler(intervalScheduler)
 		// Connect SSE publisher to scheduler
 		intervalScheduler.SetSSEPublisher(ssePublisher)
+		// Connect log service to scheduler for job log capture
+		intervalScheduler.SetLogService(logService)
 	}
 
 	return &JobsSchedulerResult{
@@ -393,6 +396,7 @@ func setupJobsAndScheduler(
 		ExecutionRepo:          executionRepo,
 		SSEBroker:              sseBroker,
 		SSEHandler:             sseHandler,
+		LogService:             logService,
 	}, nil
 }
 
@@ -473,6 +477,7 @@ func runServerUntilInterrupt(
 	server *infragin.Server,
 	intervalScheduler *scheduler.IntervalScheduler,
 	sseBroker sse.Broker,
+	logService logs.Service,
 	errChan <-chan error,
 ) error {
 	// Set up signal handling for graceful shutdown
@@ -485,7 +490,7 @@ func runServerUntilInterrupt(
 		log.Error("Server error", infralogger.Error(serverErr))
 		return fmt.Errorf("server error: %w", serverErr)
 	case sig := <-sigChan:
-		return shutdownServer(log, server, intervalScheduler, sseBroker, sig)
+		return shutdownServer(log, server, intervalScheduler, sseBroker, logService, sig)
 	}
 }
 
@@ -495,6 +500,7 @@ func shutdownServer(
 	server *infragin.Server,
 	intervalScheduler *scheduler.IntervalScheduler,
 	sseBroker sse.Broker,
+	logService logs.Service,
 	sig os.Signal,
 ) error {
 	log.Info("Shutdown signal received", infralogger.String("signal", sig.String()))
@@ -512,6 +518,14 @@ func shutdownServer(
 		log.Info("Stopping interval scheduler")
 		if err := intervalScheduler.Stop(); err != nil {
 			log.Error("Failed to stop scheduler", infralogger.Error(err))
+		}
+	}
+
+	// Stop log service (archives any pending logs)
+	if logService != nil {
+		log.Info("Stopping log service")
+		if err := logService.Close(); err != nil {
+			log.Error("Failed to stop log service", infralogger.Error(err))
 		}
 	}
 

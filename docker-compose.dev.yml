@@ -367,7 +367,7 @@ services:
       - ./infrastructure:/infrastructure:ro
       - auth_go_mod_cache:/tmp/go-mod-cache
       - auth_go_build_cache:/tmp/go-build-cache
-    command: ["sh", "-c", "go mod download && go run main.go"]
+    command: ["sh", "-c", "go mod download && air -c .air.toml"]
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8040/health"]
       interval: 30s
