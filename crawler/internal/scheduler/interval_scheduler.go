@@ -353,7 +353,7 @@ func (s *IntervalScheduler) handleJobSuccess(jobExec *JobExecution, startTime *t
 	itemsIndexed := itemsCrawled
 
 	// Update execution record
-	execution.Status = "completed"
+	execution.Status = string(StateCompleted)
 	execution.CompletedAt = &now
 	execution.DurationMs = &durationMs
 	execution.ItemsCrawled = itemsCrawled
@@ -367,7 +367,7 @@ func (s *IntervalScheduler) handleJobSuccess(jobExec *JobExecution, startTime *t
 	}
 
 	// Update job
-	job.Status = "completed"
+	job.Status = string(StateCompleted)
 	job.CompletedAt = &now
 	job.CurrentRetryCount = 0
 	job.ErrorMessage = nil
@@ -413,7 +413,7 @@ func (s *IntervalScheduler) handleJobFailure(jobExec *JobExecution, execErr erro
 	}
 
 	// Update execution record
-	execution.Status = "failed"
+	execution.Status = string(StateFailed)
 	execution.CompletedAt = &now
 	execution.DurationMs = &durationMs
 	errMsg := execErr.Error()
@@ -445,7 +445,7 @@ func (s *IntervalScheduler) handleJobFailure(jobExec *JobExecution, execErr erro
 		)
 	} else {
 		// No more retries
-		job.Status = "failed"
+		job.Status = string(StateFailed)
 		job.CompletedAt = &now
 
 		s.metrics.IncrementFailed()

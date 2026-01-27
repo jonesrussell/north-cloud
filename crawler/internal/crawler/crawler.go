@@ -3,6 +3,7 @@ package crawler
 
 import (
 	"context"
+	"sync"
 	"time"
 
 	colly "github.com/gocolly/colly/v2"
@@ -151,6 +152,10 @@ type Crawler struct {
 	// Extracted components for better separation of concerns
 	lifecycle *LifecycleManager
 	signals   *SignalCoordinator
+
+	// Per-run cached source config (set in validateAndSetup, cleared when Start returns)
+	crawlContext   *CrawlContext
+	crawlContextMu sync.RWMutex
 }
 
 var _ Interface = (*Crawler)(nil)
@@ -231,4 +236,18 @@ func (c *Crawler) Update(startTime time.Time, processed, errorCount int64) {
 // Reset resets all metrics to zero.
 func (c *Crawler) Reset() {
 	c.state.Reset()
+}
+
+// getCrawlContext returns the current crawl context (cached source config). Safe for concurrent reads.
+func (c *Crawler) getCrawlContext() *CrawlContext {
+	c.crawlContextMu.RLock()
+	defer c.crawlContextMu.RUnlock()
+	return c.crawlContext
+}
+
+// clearCrawlContext clears the cached crawl context. Called when Start returns.
+func (c *Crawler) clearCrawlContext() {
+	c.crawlContextMu.Lock()
+	defer c.crawlContextMu.Unlock()
+	c.crawlContext = nil
 }

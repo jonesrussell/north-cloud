@@ -2,7 +2,7 @@ package api
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -60,7 +60,7 @@ func (r *Router) NewServer(log logger.Logger) *infragin.Server {
 		WithCORS(corsConfig).
 		WithDatabaseHealthCheck(func() error {
 			if r.repo == nil {
-				return fmt.Errorf("database repository not initialized")
+				return errors.New("database repository not initialized")
 			}
 			ctx, cancel := context.WithTimeout(context.Background(), healthCheckTimeout)
 			defer cancel()
