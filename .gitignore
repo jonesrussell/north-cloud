@@ -80,8 +80,8 @@ $RECYCLE.BIN/
 
 # Log Files
 *.log
-logs/
-log/
+/logs/
+/log/
 
 # Temporary Files
 tmp/
