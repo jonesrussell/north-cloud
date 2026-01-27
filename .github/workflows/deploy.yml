@@ -215,18 +215,12 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup SSH
-        uses: webfactory/ssh-agent@v0.9.0
-        with:
-          ssh-private-key: ${{ secrets.DEPLOY_SSH_KEY }}
-
-      - name: Add server to known hosts
-        run: |
-          ssh-keyscan -p ${DEPLOY_SSH_PORT:-22} ${{ secrets.DEPLOY_HOST }} >> ~/.ssh/known_hosts
-
       - name: Deploy via SSH
-        env:
-          SSH_PORT: ${{ secrets.DEPLOY_SSH_PORT || '22' }}
-        run: |
-          ssh -p ${SSH_PORT} ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} \
-            'bash /opt/north-cloud/deploy.sh'
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          port: ${{ secrets.DEPLOY_SSH_PORT || 22 }}
+          script: |
+            bash /opt/north-cloud/deploy.sh
