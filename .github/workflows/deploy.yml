@@ -226,7 +226,7 @@ jobs:
           mkdir -p ~/.ssh
           ssh-keyscan -p ${{ secrets.DEPLOY_SSH_PORT || 22 }} ${{ secrets.DEPLOY_HOST }} >> ~/.ssh/known_hosts
 
-      - name: Transfer docker-compose files
+      - name: Transfer docker-compose files and deploy script
         env:
           SSH_PORT: ${{ secrets.DEPLOY_SSH_PORT || 22 }}
         run: |
@@ -234,7 +234,14 @@ jobs:
             -o StrictHostKeyChecking=no \
             docker-compose.base.yml \
             docker-compose.prod.yml \
+            scripts/deploy.sh \
             ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}:/opt/north-cloud/
+          
+          # Make deploy script executable
+          ssh -p ${SSH_PORT} \
+            -o StrictHostKeyChecking=no \
+            ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} \
+            'chmod +x /opt/north-cloud/deploy.sh'
 
       - name: Transfer migration files
         env:
