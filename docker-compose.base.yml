@@ -179,7 +179,9 @@ services:
       echo 'MinIO is ready, initializing buckets...';
       mc mb --ignore-existing local/html-archives;
       mc mb --ignore-existing local/crawler-metadata;
+      mc mb --ignore-existing local/crawler-logs;
       mc ilm rule add local/html-archives --expire-days ${HTML_RETENTION_DAYS:-90} --prefix 'archived/' || true;
+      mc ilm rule add local/crawler-logs --expire-days ${JOB_LOGS_RETENTION_DAYS:-30} || true;
       mc version enable local/html-archives;
       echo 'MinIO buckets initialized successfully';
       exit 0;

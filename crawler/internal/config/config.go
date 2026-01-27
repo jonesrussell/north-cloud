@@ -11,6 +11,7 @@ import (
 	"github.com/jonesrussell/north-cloud/crawler/internal/config/crawler"
 	dbconfig "github.com/jonesrussell/north-cloud/crawler/internal/config/database"
 	"github.com/jonesrussell/north-cloud/crawler/internal/config/elasticsearch"
+	logsconfig "github.com/jonesrussell/north-cloud/crawler/internal/config/logs"
 	"github.com/jonesrussell/north-cloud/crawler/internal/config/minio"
 	"github.com/jonesrussell/north-cloud/crawler/internal/config/server"
 	infraconfig "github.com/north-cloud/infrastructure/config"
@@ -28,6 +29,8 @@ type Interface interface {
 	GetDatabaseConfig() *dbconfig.Config
 	// GetMinIOConfig returns the MinIO configuration.
 	GetMinIOConfig() *minio.Config
+	// GetLogsConfig returns the job logs configuration.
+	GetLogsConfig() *logsconfig.Config
 	// GetAuthConfig returns the authentication configuration.
 	GetAuthConfig() *AuthConfig
 	// GetLoggingConfig returns the logging configuration.
@@ -59,6 +62,8 @@ type Config struct {
 	Database *dbconfig.Config `yaml:"database"`
 	// MinIO holds MinIO configuration for HTML archiving
 	MinIO *minio.Config `yaml:"minio"`
+	// Logs holds job logs streaming and archival configuration
+	Logs *logsconfig.Config `yaml:"logs"`
 	// Auth holds authentication configuration
 	Auth *AuthConfig `yaml:"auth"`
 	// Logging holds logging configuration
@@ -171,6 +176,9 @@ func setDefaults(cfg *Config) {
 	if cfg.MinIO == nil {
 		cfg.MinIO = minio.NewConfig()
 	}
+	if cfg.Logs == nil {
+		cfg.Logs = logsconfig.NewConfig()
+	}
 	if cfg.Auth == nil {
 		cfg.Auth = &AuthConfig{}
 	}
@@ -237,6 +245,15 @@ func (c *Config) GetMinIOConfig() *minio.Config {
 		return minio.NewConfig()
 	}
 	return c.MinIO
+}
+
+// GetLogsConfig returns the job logs configuration.
+func (c *Config) GetLogsConfig() *logsconfig.Config {
+	if c.Logs == nil {
+		// Return default config if not initialized
+		return logsconfig.NewConfig()
+	}
+	return c.Logs
 }
 
 // GetAuthConfig returns the authentication configuration.
