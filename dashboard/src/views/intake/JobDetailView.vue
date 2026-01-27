@@ -12,6 +12,7 @@ import { ArrowLeft, Pause, Play, XCircle, RotateCcw, Loader2 } from 'lucide-vue-
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import JobLogsViewer from '@/components/crawler/JobLogsViewer.vue'
 
 import { useJobDetail } from '@/features/intake'
 import type { Job, JobStatus, JobExecution } from '@/types/crawler'
@@ -334,6 +335,13 @@ function goBack() {
           </div>
         </CardContent>
       </Card>
+
+      <!-- Job Logs -->
+      <JobLogsViewer
+        v-if="jobId"
+        :job-id="jobId"
+        :job-status="job.status"
+      />
 
       <!-- Executions -->
       <Card>
