@@ -86,6 +86,14 @@ services:
       CRAWLER_MINIO_METADATA_BUCKET: "${CRAWLER_MINIO_METADATA_BUCKET:-crawler-metadata}"
       CRAWLER_MINIO_USE_SSL: "${CRAWLER_MINIO_USE_SSL:-false}"
       CRAWLER_SAVE_DISCOVERED_LINKS: "${CRAWLER_SAVE_DISCOVERED_LINKS:-true}"
+      # Job Logs Configuration
+      JOB_LOGS_ENABLED: "${JOB_LOGS_ENABLED:-true}"
+      JOB_LOGS_BUFFER_SIZE: "${JOB_LOGS_BUFFER_SIZE:-1000}"
+      JOB_LOGS_SSE_ENABLED: "${JOB_LOGS_SSE_ENABLED:-true}"
+      JOB_LOGS_ARCHIVE_ENABLED: "${JOB_LOGS_ARCHIVE_ENABLED:-true}"
+      JOB_LOGS_RETENTION_DAYS: "${JOB_LOGS_RETENTION_DAYS:-30}"
+      JOB_LOGS_MIN_LEVEL: "${JOB_LOGS_MIN_LEVEL:-info}"
+      JOB_LOGS_MINIO_BUCKET: "${JOB_LOGS_MINIO_BUCKET:-crawler-logs}"
       PPROF_PORT: 6060
     volumes:
       - ./crawler:/app
@@ -359,7 +367,7 @@ services:
       - ./infrastructure:/infrastructure:ro
       - auth_go_mod_cache:/tmp/go-mod-cache
       - auth_go_build_cache:/tmp/go-build-cache
-    command: ["sh", "-c", "go mod download && go run main.go"]
+    command: ["sh", "-c", "go mod download && air -c .air.toml"]
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8040/health"]
       interval: 30s

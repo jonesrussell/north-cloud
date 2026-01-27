@@ -34,6 +34,11 @@ type JobExecution struct {
 	// Retry tracking
 	RetryAttempt int `db:"retry_attempt" json:"retry_attempt"` // 0 = first try, 1+ = retry
 
+	// Log archival
+	LogObjectKey *string `db:"log_object_key" json:"log_object_key,omitempty"` // MinIO object key for archived logs
+	LogSizeBytes *int64  `db:"log_size_bytes" json:"log_size_bytes,omitempty"` // Size of archived logs (compressed)
+	LogLineCount *int    `db:"log_line_count" json:"log_line_count,omitempty"` // Number of log lines
+
 	// Metadata
 	Metadata JSONBMap `db:"metadata" json:"metadata,omitempty"`
 }

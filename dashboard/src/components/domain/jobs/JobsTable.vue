@@ -23,7 +23,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Skeleton } from '@/components/ui/skeleton'
-import { useJobsStore } from '@/stores/jobs'
+import { useJobs } from '@/features/intake'
 import type { Job, JobStatus } from '@/types/crawler'
 
 interface Props {
@@ -46,7 +46,7 @@ const emit = defineEmits<{
 }>()
 
 const router = useRouter()
-const jobsStore = useJobsStore()
+const jobs = useJobs()
 
 type BadgeVariant = 'default' | 'secondary' | 'destructive' | 'outline' | 'success' | 'warning' | 'pending'
 
@@ -61,8 +61,8 @@ const statusVariants: Record<JobStatus, BadgeVariant> = {
 }
 
 const pageNumbers = computed(() => {
-  const current = jobsStore.pagination.page
-  const total = jobsStore.totalPages
+  const current = jobs.page.value
+  const total = jobs.totalPages.value
   const pages: (number | string)[] = []
 
   if (total <= 7) {
@@ -136,7 +136,7 @@ function handleRowClick(job: Job) {
 
 function goToPage(page: number | string) {
   if (typeof page === 'number') {
-    jobsStore.setPage(page)
+    jobs.setPage(page)
   }
 }
 </script>
@@ -176,7 +176,7 @@ function goToPage(page: number | string) {
         </thead>
         <tbody>
           <!-- Loading State -->
-          <template v-if="jobsStore.loading">
+          <template v-if="jobs.isLoading.value">
             <tr
               v-for="i in 5"
               :key="i"
@@ -210,7 +210,7 @@ function goToPage(page: number | string) {
           </template>
 
           <!-- Empty State -->
-          <tr v-else-if="jobsStore.paginatedItems.length === 0">
+          <tr v-else-if="jobs.paginatedJobs.value.length === 0">
             <td
               :colspan="showActions ? 7 : 6"
               class="px-4 py-12 text-center"
@@ -218,13 +218,13 @@ function goToPage(page: number | string) {
               <div class="flex flex-col items-center gap-2">
                 <AlertTriangle class="h-8 w-8 text-muted-foreground" />
                 <p class="text-sm text-muted-foreground">
-                  {{ jobsStore.filters.search || jobsStore.filters.status ? 'No jobs match your filters' : 'No jobs found' }}
+                  {{ jobs.filters.value.search || jobs.filters.value.status ? 'No jobs match your filters' : 'No jobs found' }}
                 </p>
                 <Button
-                  v-if="jobsStore.filters.search || jobsStore.filters.status"
+                  v-if="jobs.filters.value.search || jobs.filters.value.status"
                   variant="outline"
                   size="sm"
-                  @click="jobsStore.clearFilters()"
+                  @click="jobs.clearAllFilters()"
                 >
                   Clear filters
                 </Button>
@@ -234,7 +234,7 @@ function goToPage(page: number | string) {
 
           <!-- Data Rows -->
           <tr
-            v-for="job in jobsStore.paginatedItems"
+            v-for="job in jobs.paginatedJobs.value"
             v-else
             :key="job.id"
             class="border-b transition-colors hover:bg-muted/50 cursor-pointer"
@@ -360,21 +360,21 @@ function goToPage(page: number | string) {
 
     <!-- Pagination -->
     <div
-      v-if="jobsStore.totalPages > 1"
+      v-if="jobs.totalPages.value > 1"
       class="flex items-center justify-between border-t pt-4"
     >
       <p class="text-sm text-muted-foreground">
-        Showing {{ (jobsStore.pagination.page - 1) * jobsStore.pagination.pageSize + 1 }} to
-        {{ Math.min(jobsStore.pagination.page * jobsStore.pagination.pageSize, jobsStore.filteredItems.length) }}
-        of {{ jobsStore.filteredItems.length }} jobs
+        Showing {{ (jobs.page.value - 1) * jobs.pageSize.value + 1 }} to
+        {{ Math.min(jobs.page.value * jobs.pageSize.value, jobs.jobs.value.length) }}
+        of {{ jobs.jobs.value.length }} jobs
       </p>
 
       <div class="flex items-center gap-1">
         <Button
           variant="outline"
           size="sm"
-          :disabled="jobsStore.pagination.page === 1"
-          @click="goToPage(jobsStore.pagination.page - 1)"
+          :disabled="jobs.page.value === 1"
+          @click="goToPage(jobs.page.value - 1)"
         >
           <ChevronLeft class="h-4 w-4" />
         </Button>
@@ -385,7 +385,7 @@ function goToPage(page: number | string) {
         >
           <Button
             v-if="typeof page === 'number'"
-            :variant="page === jobsStore.pagination.page ? 'default' : 'outline'"
+            :variant="page === jobs.page.value ? 'default' : 'outline'"
             size="sm"
             class="min-w-9"
             @click="goToPage(page)"
@@ -401,8 +401,8 @@ function goToPage(page: number | string) {
         <Button
           variant="outline"
           size="sm"
-          :disabled="jobsStore.pagination.page === jobsStore.totalPages"
-          @click="goToPage(jobsStore.pagination.page + 1)"
+          :disabled="jobs.page.value === jobs.totalPages.value"
+          @click="goToPage(jobs.page.value + 1)"
         >
           <ChevronRight class="h-4 w-4" />
         </Button>

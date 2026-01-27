@@ -59,6 +59,16 @@ func setupJobRoutes(v1 *gin.RouterGroup, jobsHandler *JobsHandler) {
 	}
 }
 
+// setupLogRoutes configures log streaming endpoints
+func setupLogRoutes(v1 *gin.RouterGroup, logsHandler *LogsHandler) {
+	if logsHandler != nil {
+		v1.GET("/jobs/:id/logs", logsHandler.GetLogsMetadata)
+		v1.GET("/jobs/:id/logs/stream", logsHandler.StreamLogs)
+		v1.GET("/jobs/:id/logs/download", logsHandler.DownloadLogs)
+		v1.GET("/jobs/:id/logs/view", logsHandler.ViewLogs)
+	}
+}
+
 // setupDiscoveredLinksRoutes configures discovered links endpoints
 func setupDiscoveredLinksRoutes(v1 *gin.RouterGroup, discoveredLinksHandler *DiscoveredLinksHandler) {
 	if discoveredLinksHandler != nil {
@@ -97,6 +107,7 @@ func NewServer(
 	cfg config.Interface,
 	jobsHandler *JobsHandler,
 	discoveredLinksHandler *DiscoveredLinksHandler,
+	logsHandler *LogsHandler, // Optional - pass nil to disable log streaming
 	executionRepo database.ExecutionRepositoryInterface,
 	infraLog infralogger.Logger,
 	sseHandler *SSEHandler, // Optional - pass nil to disable SSE
@@ -126,7 +137,7 @@ func NewServer(
 		WithTimeouts(defaultReadTimeout, defaultWriteTimeout, defaultIdleTimeout).
 		WithRoutes(func(router *gin.Engine) {
 			// Setup service-specific routes (health routes added by builder)
-			setupCrawlerRoutes(router, jwtSecret, jobsHandler, discoveredLinksHandler, executionRepo, sseHandler)
+			setupCrawlerRoutes(router, jwtSecret, jobsHandler, discoveredLinksHandler, logsHandler, executionRepo, sseHandler)
 		}).
 		Build()
 
@@ -172,6 +183,7 @@ func setupCrawlerRoutes(
 	jwtSecret string,
 	jobsHandler *JobsHandler,
 	discoveredLinksHandler *DiscoveredLinksHandler,
+	logsHandler *LogsHandler,
 	executionRepo database.ExecutionRepositoryInterface,
 	sseHandler *SSEHandler,
 ) {
@@ -214,6 +226,9 @@ func setupCrawlerRoutes(
 
 	// Setup job routes
 	setupJobRoutes(v1, jobsHandler)
+
+	// Setup log routes
+	setupLogRoutes(v1, logsHandler)
 
 	// Setup discovered links routes
 	setupDiscoveredLinksRoutes(v1, discoveredLinksHandler)

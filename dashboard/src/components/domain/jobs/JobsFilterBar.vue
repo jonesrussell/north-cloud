@@ -1,10 +1,9 @@
 <script setup lang="ts">
-import { computed } from 'vue'
 import { Search, X, Filter } from 'lucide-vue-next'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { useJobsStore } from '@/stores/jobs'
+import { useJobs } from '@/features/intake'
 import type { JobStatus } from '@/types/crawler'
 
 interface Props {
@@ -17,7 +16,7 @@ withDefaults(defineProps<Props>(), {
   sources: () => [],
 })
 
-const jobsStore = useJobsStore()
+const jobs = useJobs()
 
 const statusOptions: Array<{ value: JobStatus; label: string; color: string }> = [
   { value: 'running', label: 'Running', color: 'bg-blue-500' },
@@ -29,32 +28,17 @@ const statusOptions: Array<{ value: JobStatus; label: string; color: string }> =
   { value: 'cancelled', label: 'Cancelled', color: 'bg-gray-500' },
 ]
 
-const activeFiltersCount = computed(() => {
-  let count = 0
-  if (jobsStore.filters.status) count++
-  if (jobsStore.filters.source_id) count++
-  if (jobsStore.filters.search) count++
-  if (jobsStore.filters.schedule_enabled !== undefined) count++
-  return count
-})
-
-const hasActiveFilters = computed(() => activeFiltersCount.value > 0)
-
 function toggleStatusFilter(status: JobStatus) {
-  if (jobsStore.filters.status === status) {
-    jobsStore.setFilter('status', undefined)
-  } else {
-    jobsStore.setFilter('status', status)
-  }
+  jobs.toggleStatusFilter(status)
 }
 
 function handleSearchInput(value: string) {
-  jobsStore.setFilter('search', value || undefined)
+  jobs.setFilter('search', value || undefined)
 }
 
 function handleSourceChange(event: Event) {
   const target = event.target as HTMLSelectElement
-  jobsStore.setFilter('source_id', target.value || undefined)
+  jobs.setFilter('source_id', target.value || undefined)
 }
 </script>
 
@@ -66,7 +50,7 @@ function handleSourceChange(event: Event) {
       <div class="relative flex-1">
         <Search class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
-          :model-value="jobsStore.filters.search || ''"
+          :model-value="jobs.filters.value.search || ''"
           placeholder="Search jobs by ID, source, or URL..."
           class="pl-9"
           @update:model-value="handleSearchInput"
@@ -79,7 +63,7 @@ function handleSourceChange(event: Event) {
         class="sm:w-48"
       >
         <select
-          :value="jobsStore.filters.source_id || ''"
+          :value="jobs.filters.value.source_id || ''"
           class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           @change="handleSourceChange"
         >
@@ -98,14 +82,14 @@ function handleSourceChange(event: Event) {
 
       <!-- Clear Filters Button -->
       <Button
-        v-if="hasActiveFilters"
+        v-if="jobs.hasActiveFilters.value"
         variant="outline"
         size="sm"
         class="shrink-0"
-        @click="jobsStore.clearFilters()"
+        @click="jobs.clearAllFilters()"
       >
         <X class="mr-1 h-4 w-4" />
-        Clear ({{ activeFiltersCount }})
+        Clear ({{ jobs.activeFilterCount.value }})
       </Button>
     </div>
 
@@ -121,7 +105,7 @@ function handleSourceChange(event: Event) {
         :key="option.value"
         :class="[
           'inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium transition-colors',
-          jobsStore.filters.status === option.value
+          jobs.isStatusActive(option.value)
             ? 'bg-primary text-primary-foreground'
             : 'bg-muted text-muted-foreground hover:bg-muted/80',
         ]"
@@ -132,11 +116,11 @@ function handleSourceChange(event: Event) {
         />
         {{ option.label }}
         <Badge
-          v-if="jobsStore.statusCounts[option.value] > 0"
+          v-if="jobs.statusCounts.value[option.value] > 0"
           variant="secondary"
           class="ml-0.5 h-4 min-w-4 px-1 text-[10px]"
         >
-          {{ jobsStore.statusCounts[option.value] }}
+          {{ jobs.statusCounts.value[option.value] }}
         </Badge>
       </button>
     </div>

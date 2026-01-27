@@ -1,19 +1,20 @@
 import { watch, onMounted, onUnmounted, ref } from 'vue'
-import { useJobsStore } from '@/stores/jobs'
+import { useQueryClient } from '@tanstack/vue-query'
 import { useRealtimeStore } from '@/stores/realtime'
-import { useUIStore } from '@/stores/ui'
+import { useToast } from '@/composables/useToast'
+import { jobsKeys } from '@/features/intake/api/jobs'
 import type { JobStatusEvent, JobProgressEvent, JobCompletedEvent } from '@/types/realtime'
 
 /**
- * Composable for integrating real-time job updates with the jobs store
+ * Composable for integrating real-time job updates with TanStack Query
  *
  * When enabled, job status changes are received via SSE and automatically
- * update the local store state without polling.
+ * invalidate the query cache, triggering refetches for fresh data.
  */
 export function useJobsRealtime() {
-  const jobsStore = useJobsStore()
+  const queryClient = useQueryClient()
   const realtimeStore = useRealtimeStore()
-  const uiStore = useUIStore()
+  const toast = useToast()
 
   const lastUpdate = ref<Date | null>(null)
   const updateCount = ref(0)
@@ -21,38 +22,30 @@ export function useJobsRealtime() {
   let unsubscribes: Array<() => void> = []
 
   function handleJobStatus(event: JobStatusEvent) {
-    const job = jobsStore.items.find((j) => j.id === event.job_id)
-    if (job) {
-      // Update job status in place
-      job.status = event.status as typeof job.status
-      if (event.details?.next_run_at) {
-        job.next_run_at = event.details.next_run_at
-      }
-      if (event.details?.error_message) {
-        job.error_message = event.details.error_message
-      }
+    // Invalidate job list and specific job detail queries
+    queryClient.invalidateQueries({ queryKey: jobsKeys.lists() })
 
-      lastUpdate.value = new Date()
-      updateCount.value++
-
-      // Show toast for important status changes
-      if (event.status === 'failed') {
-        uiStore.error(`Job ${event.job_id.slice(0, 8)} failed`, 'Job Error')
-      }
+    if (event.job_id) {
+      queryClient.invalidateQueries({ queryKey: jobsKeys.detail(event.job_id) })
     }
 
-    // Also update selected job if it matches
-    if (jobsStore.selectedJob?.id === event.job_id) {
-      jobsStore.selectedJob.status = event.status as typeof jobsStore.selectedJob.status
+    lastUpdate.value = new Date()
+    updateCount.value++
+
+    // Show toast for important status changes
+    if (event.status === 'failed') {
+      toast.error(`Job ${event.job_id.slice(0, 8)} failed`, {
+        description: event.details?.error_message || 'Unknown error',
+      })
     }
   }
 
   function handleJobProgress(event: JobProgressEvent) {
-    // Find execution in the store and update progress
-    const execution = jobsStore.executions.find((e) => e.id === event.execution_id)
-    if (execution) {
-      execution.articles_found = event.articles_found
-      execution.articles_indexed = event.articles_indexed
+    // Invalidate executions query for this job
+    if (event.job_id) {
+      queryClient.invalidateQueries({
+        queryKey: jobsKeys.executions(event.job_id),
+      })
     }
 
     lastUpdate.value = new Date()
@@ -60,35 +53,29 @@ export function useJobsRealtime() {
   }
 
   function handleJobCompleted(event: JobCompletedEvent) {
-    // Update job status
-    const job = jobsStore.items.find((j) => j.id === event.job_id)
-    if (job) {
-      job.status = event.status
-      job.last_run_at = event.timestamp
+    // Invalidate all relevant queries
+    queryClient.invalidateQueries({ queryKey: jobsKeys.lists() })
 
-      // Show toast notification
-      if (event.status === 'completed') {
-        uiStore.success(
-          `Indexed ${event.articles_indexed} articles in ${Math.round(event.duration_ms / 1000)}s`,
-          'Job Completed'
-        )
-      } else if (event.status === 'failed') {
-        uiStore.error(event.error_message || 'Unknown error', 'Job Failed')
-      }
-    }
-
-    // Update execution
-    const execution = jobsStore.executions.find((e) => e.id === event.execution_id)
-    if (execution) {
-      execution.status = event.status
-      execution.completed_at = event.timestamp
-      execution.duration_ms = event.duration_ms
-      execution.articles_indexed = event.articles_indexed
-      execution.error_message = event.error_message
+    if (event.job_id) {
+      queryClient.invalidateQueries({ queryKey: jobsKeys.detail(event.job_id) })
+      queryClient.invalidateQueries({ queryKey: jobsKeys.executions(event.job_id) })
+      queryClient.invalidateQueries({ queryKey: jobsKeys.stats(event.job_id) })
     }
 
     lastUpdate.value = new Date()
     updateCount.value++
+
+    // Show toast notification
+    if (event.status === 'completed') {
+      const duration = event.duration_ms ? Math.round(event.duration_ms / 1000) : 0
+      toast.success('Job completed', {
+        description: `Indexed ${event.articles_indexed || 0} articles in ${duration}s`,
+      })
+    } else if (event.status === 'failed') {
+      toast.error('Job failed', {
+        description: event.error_message || 'Unknown error',
+      })
+    }
   }
 
   function setupSubscriptions() {
@@ -120,12 +107,8 @@ export function useJobsRealtime() {
     (connected) => {
       if (connected) {
         setupSubscriptions()
-        // Stop polling when realtime is active
-        jobsStore.stopPolling()
       } else {
         cleanupSubscriptions()
-        // Resume polling when realtime is not available
-        jobsStore.startPolling()
       }
     },
     { immediate: true }

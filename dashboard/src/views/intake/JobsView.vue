@@ -1,5 +1,15 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, watch, computed } from 'vue'
+/**
+ * Jobs View (Refactored)
+ *
+ * Uses the new feature module architecture:
+ * - TanStack Query for server state (jobs list, loading, error)
+ * - useJobsQueryStore for filters and pagination
+ * - useJobsUIStore for modals and selections
+ * - useJobs composable combines everything
+ * - useSources composable for source dropdown
+ */
+import { ref, computed, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { Plus, Briefcase, Loader2, RefreshCw } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
@@ -7,34 +17,28 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Input } from '@/components/ui/input'
 import { JobsFilterBar, JobsTable, JobStatsCard } from '@/components/domain/jobs'
 import { LiveUpdateIndicator } from '@/components/domain/realtime'
-import { useJobsStore, useSourcesStore } from '@/stores'
-import { useJobsRealtime } from '@/composables/useJobsRealtime'
-import type { Job } from '@/types/crawler'
+
+// Import from new feature modules
+import { useJobs } from '@/features/intake'
+import { useSources } from '@/features/scheduling'
+import type { Job, CreateJobRequest } from '@/types/crawler'
 
 const router = useRouter()
 const route = useRoute()
-const jobsStore = useJobsStore()
-const sourcesStore = useSourcesStore()
 
-// Use realtime composable - automatically handles polling vs SSE
-const { isRealtime } = useJobsRealtime()
-const updateMode = computed(() => (isRealtime() ? 'Real-time' : 'Polling'))
+// Use the new combined composables
+const jobs = useJobs()
+const sources = useSources()
 
-// Modal state
-const showCreateModal = ref(false)
-const creating = ref(false)
-const createError = ref<string | null>(null)
-const createSuccess = ref(false)
-const showDeleteModal = ref(false)
-const deleting = ref(false)
-const jobToDelete = ref<Job | null>(null)
+// Computed for update mode display
+const updateMode = computed(() => jobs.isFetching.value ? 'Updating...' : 'Polling')
 
 // Selected source for create modal
 const selectedSource = computed(() =>
-  sourcesStore.getSourceById(newJob.value.source_id)
+  sources.getSourceById(newJob.value.source_id)
 )
 
-// New job form
+// New job form state (local to this component)
 const newJob = ref({
   source_id: '',
   url: '',
@@ -43,19 +47,23 @@ const newJob = ref({
   schedule_enabled: false,
 })
 
-// Polling interval
-const POLL_INTERVAL = 30000
+// Local state for create form
+const createError = ref<string | null>(null)
+const createSuccess = ref(false)
+
+// Job to delete (for confirmation modal)
+const jobToDelete = ref<Job | null>(null)
 
 function onSourceChange(e: Event) {
   const target = e.target as HTMLSelectElement
   newJob.value.source_id = target.value
-  const source = sourcesStore.getSourceById(target.value)
+  const source = sources.getSourceById(target.value)
   if (source) {
     newJob.value.url = source.url
   }
 }
 
-async function createJob() {
+async function handleCreateJob() {
   createError.value = null
   createSuccess.value = false
 
@@ -65,8 +73,7 @@ async function createJob() {
   }
 
   try {
-    creating.value = true
-    const jobData = {
+    const jobData: CreateJobRequest = {
       source_id: newJob.value.source_id,
       source_name: selectedSource.value?.name || '',
       url: newJob.value.url,
@@ -77,18 +84,16 @@ async function createJob() {
       }),
     }
 
-    await jobsStore.createJob(jobData)
+    await jobs.createJob(jobData)
     createSuccess.value = true
 
     setTimeout(() => {
-      showCreateModal.value = false
+      jobs.ui.closeModal('create')
       resetCreateForm()
     }, 1000)
   } catch (err: unknown) {
-    const error = err as { response?: { data?: { error?: string } } }
-    createError.value = error.response?.data?.error || 'Failed to create job'
-  } finally {
-    creating.value = false
+    const error = err as { response?: { data?: { error?: string } }; message?: string }
+    createError.value = error.response?.data?.error || error.message || 'Failed to create job'
   }
 }
 
@@ -106,20 +111,17 @@ function resetCreateForm() {
 
 function confirmDelete(job: Job) {
   jobToDelete.value = job
-  showDeleteModal.value = true
+  jobs.ui.selectJob(job.id, job)
+  jobs.ui.openModal('delete')
 }
 
 async function handleDelete() {
   if (!jobToDelete.value) return
   try {
-    deleting.value = true
-    await jobsStore.deleteJob(jobToDelete.value.id)
-    showDeleteModal.value = false
+    await jobs.deleteJob(jobToDelete.value.id)
+    jobToDelete.value = null
   } catch (err) {
     console.error('Failed to delete job:', err)
-  } finally {
-    deleting.value = false
-    jobToDelete.value = null
   }
 }
 
@@ -129,42 +131,30 @@ function handleView(job: Job) {
 }
 
 async function handlePause(job: Job) {
-  await jobsStore.pauseJob(job.id)
+  await jobs.pauseJob(job.id)
 }
 
 async function handleResume(job: Job) {
-  await jobsStore.resumeJob(job.id)
+  await jobs.resumeJob(job.id)
 }
 
 async function handleCancel(job: Job) {
-  await jobsStore.cancelJob(job.id)
+  await jobs.cancelJob(job.id)
 }
 
 async function handleRetry(job: Job) {
-  await jobsStore.retryJob(job.id)
+  await jobs.retryJob(job.id)
 }
 
-watch(showCreateModal, (val) => {
-  if (val && sourcesStore.items.length === 0) {
-    sourcesStore.fetchSources()
-  }
-})
-
-onMounted(async () => {
-  await jobsStore.fetchJobs()
-  await sourcesStore.fetchSources()
-  jobsStore.startPolling(POLL_INTERVAL)
-
-  // Auto-open create modal if ?create=true
-  if (route.query.create === 'true') {
-    showCreateModal.value = true
+// Auto-open create modal if ?create=true in URL
+watch(() => route.query.create, (create) => {
+  if (create === 'true') {
+    jobs.ui.openModal('create')
     router.replace({ query: {} })
   }
-})
+}, { immediate: true })
 
-onUnmounted(() => {
-  jobsStore.stopPolling()
-})
+// Sources are fetched automatically by TanStack Query via useSources()
 </script>
 
 <template>
@@ -189,12 +179,13 @@ onUnmounted(() => {
         <Button
           variant="outline"
           size="sm"
-          @click="jobsStore.fetchJobs()"
+          :disabled="jobs.isFetching.value"
+          @click="jobs.refetch()"
         >
-          <RefreshCw :class="['mr-2 h-4 w-4', jobsStore.loading && 'animate-spin']" />
+          <RefreshCw :class="['mr-2 h-4 w-4', jobs.isFetching.value && 'animate-spin']" />
           Refresh
         </Button>
-        <Button @click="showCreateModal = true">
+        <Button @click="jobs.ui.openModal('create')">
           <Plus class="mr-2 h-4 w-4" />
           Create Job
         </Button>
@@ -204,20 +195,30 @@ onUnmounted(() => {
     <!-- Stats Cards -->
     <JobStatsCard />
 
-    <!-- Error -->
+    <!-- Error State -->
     <Card
-      v-if="jobsStore.error"
+      v-if="jobs.error.value"
       class="border-destructive"
     >
       <CardContent class="pt-6">
         <p class="text-destructive">
-          {{ jobsStore.error }}
+          {{ jobs.error.value?.message || 'Failed to load jobs. Please check if the crawler service is running.' }}
+        </p>
+      </CardContent>
+    </Card>
+
+    <!-- Loading State -->
+    <Card v-else-if="jobs.isLoading.value">
+      <CardContent class="flex flex-col items-center justify-center py-12">
+        <Loader2 class="mb-4 h-8 w-8 animate-spin text-muted-foreground" />
+        <p class="text-muted-foreground">
+          Loading jobs...
         </p>
       </CardContent>
     </Card>
 
     <!-- Empty state (only show when no jobs at all) -->
-    <Card v-else-if="!jobsStore.loading && jobsStore.items.length === 0">
+    <Card v-else-if="jobs.jobs.value.length === 0">
       <CardContent class="flex flex-col items-center justify-center py-12">
         <Briefcase class="mb-4 h-12 w-12 text-muted-foreground" />
         <h3 class="mb-2 text-lg font-medium">
@@ -226,7 +227,7 @@ onUnmounted(() => {
         <p class="mb-4 text-muted-foreground">
           Get started by creating your first crawl job.
         </p>
-        <Button @click="showCreateModal = true">
+        <Button @click="jobs.ui.openModal('create')">
           <Plus class="mr-2 h-4 w-4" />
           Create Job
         </Button>
@@ -244,7 +245,7 @@ onUnmounted(() => {
         <CardContent>
           <JobsFilterBar
             show-source-filter
-            :sources="sourcesStore.sourceOptions"
+            :sources="sources.sourceOptions.value"
           />
         </CardContent>
       </Card>
@@ -265,7 +266,7 @@ onUnmounted(() => {
 
     <!-- Create Modal -->
     <div
-      v-if="showCreateModal"
+      v-if="jobs.ui.modals.create"
       class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
     >
       <Card class="mx-4 w-full max-w-md">
@@ -276,7 +277,7 @@ onUnmounted(() => {
         <CardContent>
           <form
             class="space-y-4"
-            @submit.prevent="createJob"
+            @submit.prevent="handleCreateJob"
           >
             <div>
               <label class="mb-2 block text-sm font-medium">Source</label>
@@ -289,7 +290,7 @@ onUnmounted(() => {
                   Select a source...
                 </option>
                 <option
-                  v-for="s in sourcesStore.items"
+                  v-for="s in sources.sources.value"
                   :key="s.id"
                   :value="s.id"
                 >
@@ -364,19 +365,19 @@ onUnmounted(() => {
               <Button
                 type="button"
                 variant="outline"
-                @click="showCreateModal = false"
+                @click="jobs.ui.closeModal('create')"
               >
                 Cancel
               </Button>
               <Button
                 type="submit"
-                :disabled="creating"
+                :disabled="jobs.isCreating.value"
               >
                 <Loader2
-                  v-if="creating"
+                  v-if="jobs.isCreating.value"
                   class="mr-2 h-4 w-4 animate-spin"
                 />
-                {{ creating ? 'Creating...' : 'Create Job' }}
+                {{ jobs.isCreating.value ? 'Creating...' : 'Create Job' }}
               </Button>
             </div>
           </form>
@@ -386,7 +387,7 @@ onUnmounted(() => {
 
     <!-- Delete Modal -->
     <div
-      v-if="showDeleteModal"
+      v-if="jobs.ui.modals.delete"
       class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
     >
       <Card class="mx-4 w-full max-w-md">
@@ -398,17 +399,17 @@ onUnmounted(() => {
           <div class="flex justify-end gap-3">
             <Button
               variant="outline"
-              @click="showDeleteModal = false"
+              @click="jobs.ui.closeModal('delete')"
             >
               Cancel
             </Button>
             <Button
               variant="destructive"
-              :disabled="deleting"
+              :disabled="jobs.isDeleting.value"
               @click="handleDelete"
             >
               <Loader2
-                v-if="deleting"
+                v-if="jobs.isDeleting.value"
                 class="mr-2 h-4 w-4 animate-spin"
               />
               Delete

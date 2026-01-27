@@ -75,6 +75,12 @@ const (
 	EventTypePipelineStage = "pipeline:stage"
 )
 
+// Event types for log streaming events.
+const (
+	EventTypeLogLine     = "log:line"
+	EventTypeLogArchived = "log:archived"
+)
+
 // Internal event types.
 const (
 	eventTypeConnected = "connected"
@@ -215,6 +221,58 @@ func NewPipelineStageEvent(stage string, count int) Event {
 			Stage:     stage,
 			Count:     count,
 			Timestamp: time.Now().UTC().Format(time.RFC3339),
+		},
+	}
+}
+
+// LogLineData is the payload for log:line events.
+type LogLineData struct {
+	JobID       string         `json:"job_id"`
+	ExecutionID string         `json:"execution_id"`
+	Level       string         `json:"level"`
+	Message     string         `json:"message"`
+	Fields      map[string]any `json:"fields,omitempty"`
+	Timestamp   string         `json:"timestamp"`
+}
+
+// LogArchivedData is the payload for log:archived events.
+type LogArchivedData struct {
+	JobID           string `json:"job_id"`
+	ExecutionID     string `json:"execution_id"`
+	ExecutionNumber int    `json:"execution_number"`
+	ObjectKey       string `json:"object_key"`
+	SizeBytes       int64  `json:"size_bytes"`
+	LineCount       int    `json:"line_count"`
+	Timestamp       string `json:"timestamp"`
+}
+
+// NewLogLineEvent creates a log:line event.
+func NewLogLineEvent(jobID, executionID, level, message string, fields map[string]any) Event {
+	return Event{
+		Type: EventTypeLogLine,
+		Data: LogLineData{
+			JobID:       jobID,
+			ExecutionID: executionID,
+			Level:       level,
+			Message:     message,
+			Fields:      fields,
+			Timestamp:   time.Now().UTC().Format(time.RFC3339),
+		},
+	}
+}
+
+// NewLogArchivedEvent creates a log:archived event.
+func NewLogArchivedEvent(jobID, executionID string, executionNumber int, objectKey string, sizeBytes int64, lineCount int) Event {
+	return Event{
+		Type: EventTypeLogArchived,
+		Data: LogArchivedData{
+			JobID:           jobID,
+			ExecutionID:     executionID,
+			ExecutionNumber: executionNumber,
+			ObjectKey:       objectKey,
+			SizeBytes:       sizeBytes,
+			LineCount:       lineCount,
+			Timestamp:       time.Now().UTC().Format(time.RFC3339),
 		},
 	}
 }

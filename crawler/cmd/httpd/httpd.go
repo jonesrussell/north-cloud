@@ -20,6 +20,7 @@ import (
 	"github.com/jonesrussell/north-cloud/crawler/internal/crawler"
 	"github.com/jonesrussell/north-cloud/crawler/internal/crawler/events"
 	"github.com/jonesrussell/north-cloud/crawler/internal/database"
+	"github.com/jonesrussell/north-cloud/crawler/internal/logs"
 	"github.com/jonesrussell/north-cloud/crawler/internal/scheduler"
 	"github.com/jonesrussell/north-cloud/crawler/internal/sources"
 	"github.com/jonesrussell/north-cloud/crawler/internal/storage"
@@ -49,11 +50,13 @@ type StorageResult struct {
 type JobsSchedulerResult struct {
 	JobsHandler            *api.JobsHandler
 	DiscoveredLinksHandler *api.DiscoveredLinksHandler
+	LogsHandler            *api.LogsHandler
 	Scheduler              *scheduler.IntervalScheduler
 	DB                     *sqlx.DB
 	ExecutionRepo          *database.ExecutionRepository
 	SSEBroker              sse.Broker
 	SSEHandler             *api.SSEHandler
+	LogService             logs.Service
 }
 
 // === Constants ===
@@ -113,10 +116,13 @@ func Start() error {
 	defer jsResult.DB.Close()
 
 	// Phase 5: Start HTTP server
-	server, errChan := startHTTPServer(deps, jsResult.JobsHandler, jsResult.DiscoveredLinksHandler, jsResult.ExecutionRepo, jsResult.SSEHandler)
+	server, errChan := startHTTPServer(
+		deps, jsResult.JobsHandler, jsResult.DiscoveredLinksHandler,
+		jsResult.LogsHandler, jsResult.ExecutionRepo, jsResult.SSEHandler,
+	)
 
 	// Phase 6: Run server until interrupted
-	return runServerUntilInterrupt(deps.Logger, server, jsResult.Scheduler, jsResult.SSEBroker, errChan)
+	return runServerUntilInterrupt(deps.Logger, server, jsResult.Scheduler, jsResult.SSEBroker, jsResult.LogService, errChan)
 }
 
 // === Dependency Setup ===
@@ -354,6 +360,22 @@ func setupJobsAndScheduler(
 	// Create SSE publisher for scheduler
 	ssePublisher := scheduler.NewSSEPublisher(sseBroker, deps.Logger)
 
+	// Create log service components
+	logsCfg := logs.DefaultConfig()
+	logArchiver, archiveErr := logs.NewArchiver(
+		deps.Config.GetMinIOConfig(),
+		logsCfg.MinioBucket,
+		deps.Logger,
+	)
+	if archiveErr != nil {
+		deps.Logger.Warn("Failed to create log archiver, log archiving disabled", infralogger.Error(archiveErr))
+	}
+	logsPublisher := logs.NewPublisher(sseBroker, deps.Logger, logsCfg.SSEEnabled)
+	logService := logs.NewService(logsCfg, logArchiver, logsPublisher, executionRepo, deps.Logger)
+
+	// Create logs handler
+	logsHandler := api.NewLogsHandler(logService, executionRepo, sseBroker, deps.Logger)
+
 	// Create and start scheduler
 	intervalScheduler := createAndStartScheduler(deps, storageResult, jobRepo, executionRepo, db)
 	if intervalScheduler != nil {
@@ -361,16 +383,20 @@ func setupJobsAndScheduler(
 		discoveredLinksHandler.SetScheduler(intervalScheduler)
 		// Connect SSE publisher to scheduler
 		intervalScheduler.SetSSEPublisher(ssePublisher)
+		// Connect log service to scheduler for job log capture
+		intervalScheduler.SetLogService(logService)
 	}
 
 	return &JobsSchedulerResult{
 		JobsHandler:            jobsHandler,
 		DiscoveredLinksHandler: discoveredLinksHandler,
+		LogsHandler:            logsHandler,
 		Scheduler:              intervalScheduler,
 		DB:                     db,
 		ExecutionRepo:          executionRepo,
 		SSEBroker:              sseBroker,
 		SSEHandler:             sseHandler,
+		LogService:             logService,
 	}, nil
 }
 
@@ -430,12 +456,13 @@ func startHTTPServer(
 	deps *CommandDeps,
 	jobsHandler *api.JobsHandler,
 	discoveredLinksHandler *api.DiscoveredLinksHandler,
+	logsHandler *api.LogsHandler,
 	executionRepo *database.ExecutionRepository,
 	sseHandler *api.SSEHandler,
 ) (server *infragin.Server, errChan <-chan error) {
 	// Use the logger that already has the service field attached
 	// Create server using the new infrastructure gin package
-	server = api.NewServer(deps.Config, jobsHandler, discoveredLinksHandler, executionRepo, deps.Logger, sseHandler)
+	server = api.NewServer(deps.Config, jobsHandler, discoveredLinksHandler, logsHandler, executionRepo, deps.Logger, sseHandler)
 
 	// Start server asynchronously
 	deps.Logger.Info("Starting HTTP server", infralogger.String("addr", deps.Config.GetServerConfig().Address))
@@ -450,6 +477,7 @@ func runServerUntilInterrupt(
 	server *infragin.Server,
 	intervalScheduler *scheduler.IntervalScheduler,
 	sseBroker sse.Broker,
+	logService logs.Service,
 	errChan <-chan error,
 ) error {
 	// Set up signal handling for graceful shutdown
@@ -462,7 +490,7 @@ func runServerUntilInterrupt(
 		log.Error("Server error", infralogger.Error(serverErr))
 		return fmt.Errorf("server error: %w", serverErr)
 	case sig := <-sigChan:
-		return shutdownServer(log, server, intervalScheduler, sseBroker, sig)
+		return shutdownServer(log, server, intervalScheduler, sseBroker, logService, sig)
 	}
 }
 
@@ -472,6 +500,7 @@ func shutdownServer(
 	server *infragin.Server,
 	intervalScheduler *scheduler.IntervalScheduler,
 	sseBroker sse.Broker,
+	logService logs.Service,
 	sig os.Signal,
 ) error {
 	log.Info("Shutdown signal received", infralogger.String("signal", sig.String()))
@@ -489,6 +518,14 @@ func shutdownServer(
 		log.Info("Stopping interval scheduler")
 		if err := intervalScheduler.Stop(); err != nil {
 			log.Error("Failed to stop scheduler", infralogger.Error(err))
+		}
+	}
+
+	// Stop log service (archives any pending logs)
+	if logService != nil {
+		log.Info("Stopping log service")
+		if err := logService.Close(); err != nil {
+			log.Error("Failed to stop log service", infralogger.Error(err))
 		}
 	}
 

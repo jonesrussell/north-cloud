@@ -182,6 +182,20 @@ export const crawlerApi = {
     resume: (id: string | number) => crawlerClient.post(`/jobs/${id}/resume`),
     cancel: (id: string | number) => crawlerClient.post(`/jobs/${id}/cancel`),
     retry: (id: string | number) => crawlerClient.post(`/jobs/${id}/retry`),
+    // Log endpoints
+    logs: (id: string | number, params?: { limit?: number; offset?: number }) =>
+      crawlerClient.get(`/jobs/${id}/logs`, { params }),
+    viewLogs: (id: string | number, execution?: number | string) => {
+      const params = execution !== undefined ? { execution: execution.toString() } : {}
+      return crawlerClient.get(`/jobs/${id}/logs/view`, { params })
+    },
+    downloadLogs: (id: string | number, execution?: number | string) => {
+      const params = execution !== undefined ? { execution: execution.toString() } : {}
+      return crawlerClient.get(`/jobs/${id}/logs/download`, {
+        params,
+        responseType: 'blob',
+      })
+    },
   },
   // Executions
   executions: {
