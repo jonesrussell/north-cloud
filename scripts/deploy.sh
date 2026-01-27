@@ -257,8 +257,8 @@ if ! check_health "publisher" "http://localhost:8070/health" 5; then
   FAILED_CHECKS=$((FAILED_CHECKS + 1))
 fi
 
-# index-manager: GET /api/v1/health on port 8090
-if ! check_health "index-manager" "http://localhost:8090/api/v1/health" 5; then
+# index-manager: GET /health on port 8090
+if ! check_health "index-manager" "http://localhost:8090/health" 5; then
   FAILED_CHECKS=$((FAILED_CHECKS + 1))
 fi
 

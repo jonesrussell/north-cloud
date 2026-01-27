@@ -242,8 +242,7 @@ export const sourcesApi = {
 // Publisher API
 export const publisherApi = {
   // Health check
-  getHealth: (): Promise<AxiosResponse<HealthStatus>> => publisherClient.get('/health'),
-  health: (): Promise<AxiosResponse<HealthStatus>> => publisherClient.get('/health'),
+  getHealth: (): Promise<AxiosResponse<HealthStatus>> => axios.get('/api/health/publisher'),
   
   // Stats - shortcut for stats.overview()
   getStats: () => publisherClient.get('/stats/overview?period=all'),
@@ -425,7 +424,7 @@ export const classifierApi = {
 // Index Manager API
 export const indexManagerApi = {
   // Health check
-  getHealth: (): Promise<AxiosResponse<HealthStatus>> => indexManagerClient.get('/api/v1/health'),
+  getHealth: (): Promise<AxiosResponse<HealthStatus>> => axios.get('/api/health/index-manager'),
 
   // Index operations
   indexes: {

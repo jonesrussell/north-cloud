@@ -110,7 +110,7 @@ curl "http://localhost:8092/api/v1/search?q=crime&topics=crime&page=1&size=20&so
 
 #### 2. Health Check
 
-**GET /health** or **GET /api/v1/health**
+**GET /health**
 
 ```bash
 curl http://localhost:8092/health

@@ -746,7 +746,7 @@ air -c .air.toml
 
 1. Verify the service is accessible:
    ```bash
-   curl http://localhost:<PORT>/api/v1/health
+   curl http://localhost:<PORT>/health
    ```
 
 2. Check service-specific logs:

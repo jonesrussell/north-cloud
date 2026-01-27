@@ -236,7 +236,7 @@ services:
       - ./infrastructure:/infrastructure
     command: ["sh", "-c", "go mod download && air -c .air.toml"]
     healthcheck:
-      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:8090/api/v1/health"]
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:8090/health"]
       interval: 30s
       timeout: 10s
       retries: 3

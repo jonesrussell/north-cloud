@@ -108,14 +108,6 @@ export default defineConfig({
         proxyTimeout: 10000,
         rewrite: () => '/health',
       },
-      // Publisher health endpoint (must come before general /api/publisher route)
-      '/api/publisher/health': {
-        target: PUBLISHER_API_URL,
-        changeOrigin: true,
-        timeout: 10000, // Health checks should be fast
-        proxyTimeout: 10000,
-        rewrite: () => '/health',
-      },
       // Publisher API proxy
       '/api/publisher': {
         target: PUBLISHER_API_URL,
@@ -165,6 +157,14 @@ export default defineConfig({
       // Classifier health endpoint
       '/api/health/classifier': {
         target: CLASSIFIER_API_URL,
+        changeOrigin: true,
+        timeout: 10000, // Health checks should be fast
+        proxyTimeout: 10000,
+        rewrite: () => '/health',
+      },
+      // Index Manager health endpoint
+      '/api/health/index-manager': {
+        target: INDEX_MANAGER_API_URL,
         changeOrigin: true,
         timeout: 10000, // Health checks should be fast
         proxyTimeout: 10000,

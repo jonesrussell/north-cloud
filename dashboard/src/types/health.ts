@@ -45,8 +45,8 @@ export const HEALTH_THRESHOLDS = {
 export const SERVICES = [
   { name: 'Crawler', endpoint: '/api/health/crawler' },
   { name: 'Classifier', endpoint: '/api/health/classifier' },
-  { name: 'Publisher', endpoint: '/api/publisher/health' },
-  { name: 'Index Manager', endpoint: '/api/index-manager/api/v1/health' },
+  { name: 'Publisher', endpoint: '/api/health/publisher' },
+  { name: 'Index Manager', endpoint: '/api/health/index-manager' },
   { name: 'Elasticsearch', endpoint: null }, // Inferred from other services
   { name: 'Redis', endpoint: null }, // Inferred from publisher
 ] as const

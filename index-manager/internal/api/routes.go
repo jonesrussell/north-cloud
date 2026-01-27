@@ -6,8 +6,8 @@ import (
 
 // SetupRoutes configures all API routes
 func SetupRoutes(router *gin.Engine, handler *Handler) {
-	// Health and readiness checks
-	router.GET("/api/v1/health", handler.HealthCheck)
+	// Health routes are handled by the infrastructure/gin package (exposes /health)
+	// No manual health route needed here
 
 	// API v1 routes
 	v1 := router.Group("/api/v1")

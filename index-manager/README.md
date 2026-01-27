@@ -83,7 +83,7 @@ Key configuration sections:
 
 ### Health & Status
 
-- `GET /api/v1/health` - Service health check
+- `GET /health` - Service health check
 - `GET /api/v1/stats` - Index statistics
 
 ## Environment Variables

@@ -29,7 +29,7 @@ func NewHandler(indexService *service.IndexService, documentService *service.Doc
 	}
 }
 
-// HealthCheck handles GET /api/v1/health
+// HealthCheck handles GET /health
 func (h *Handler) HealthCheck(c *gin.Context) {
 	health := &domain.HealthStatus{
 		Status:    "healthy",
