@@ -17,6 +17,7 @@
 #   ./scripts/db-backup.sh all --retention 14   # Keep 14 backups per service
 
 set -e
+set -o pipefail  # Ensure pipeline failures are detected
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=scripts/db-utils.sh
@@ -70,10 +71,10 @@ run_pg_dump() {
     local db_url="postgres://${DB_USER}:${DB_PASSWORD}@${DB_HOSTNAME}:${DB_INTERNAL_PORT}/${DB_NAME}?sslmode=disable"
 
     if [ "$ENV_MODE" = "localhost" ]; then
-        # Direct connection
+        # Direct connection - pipefail will catch pg_dump failures
         PGPASSWORD="$DB_PASSWORD" pg_dump -h "$DB_HOSTNAME" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" | gzip > "$output_file"
     else
-        # Run pg_dump via docker
+        # Run pg_dump via docker - pipefail will catch pg_dump failures
         docker run --rm \
             --network "$NETWORK" \
             postgres:16-alpine \
@@ -142,9 +143,14 @@ backup_service() {
         echo "$backup_path"
         return 0
     else
-        log_error "Backup failed for $service"
+        local exit_code=$?
+        log_error "Backup failed for $service (exit code: $exit_code)"
+        if [ "$ENV_MODE" = "localhost" ]; then
+            log_error "Connection refused - is the database running?"
+            log_error "Try: docker compose -f docker-compose.base.yml -f docker-compose.dev.yml up -d postgres-$service"
+        fi
         rm -f "$backup_path"
-        return 1
+        return $exit_code
     fi
 }
 
