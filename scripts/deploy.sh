@@ -222,17 +222,20 @@ echo ""
 # Step 5: Health checks
 echo -e "${GREEN}Step 5: Performing health checks...${NC}"
 
-# Function to check health endpoint
+# Function to check health via docker compose exec (services don't expose ports to host)
 check_health() {
   local service_name=$1
-  local health_url=$2
-  local max_attempts=${3:-5}
+  local health_path=$2
+  local port=$3
+  local max_attempts=${4:-5}
   local attempt=1
 
-  echo -e "${YELLOW}Checking health for $service_name at $health_url...${NC}"
+  echo -e "${YELLOW}Checking health for $service_name...${NC}"
 
   while [ $attempt -le $max_attempts ]; do
-    if curl -f -s "$health_url" > /dev/null 2>&1; then
+    # Use docker compose exec to check health from inside the container
+    if docker compose -f docker-compose.base.yml -f docker-compose.prod.yml exec -T "$service_name" \
+        wget -q -O /dev/null "http://localhost:${port}${health_path}" 2>/dev/null; then
       echo -e "${GREEN}✓ $service_name is healthy${NC}"
       return 0
     fi
@@ -248,41 +251,41 @@ check_health() {
   return 1
 }
 
-# Check backend services (using verified endpoints)
+# Check backend services (using docker exec to check inside containers)
 FAILED_CHECKS=0
 
 # auth: GET /health on port 8040
-if ! check_health "auth" "http://localhost:8040/health" 5; then
+if ! check_health "auth" "/health" "8040" 5; then
   FAILED_CHECKS=$((FAILED_CHECKS + 1))
 fi
 
 # crawler: GET /health on port 8080 (internal)
-if ! check_health "crawler" "http://localhost:8080/health" 5; then
+if ! check_health "crawler" "/health" "8080" 5; then
   FAILED_CHECKS=$((FAILED_CHECKS + 1))
 fi
 
 # source-manager: GET /health on port 8050
-if ! check_health "source-manager" "http://localhost:8050/health" 5; then
+if ! check_health "source-manager" "/health" "8050" 5; then
   FAILED_CHECKS=$((FAILED_CHECKS + 1))
 fi
 
 # classifier: GET /health on port 8070
-if ! check_health "classifier" "http://localhost:8070/health" 5; then
+if ! check_health "classifier" "/health" "8070" 5; then
   FAILED_CHECKS=$((FAILED_CHECKS + 1))
 fi
 
 # publisher: GET /health on port 8070
-if ! check_health "publisher" "http://localhost:8070/health" 5; then
+if ! check_health "publisher" "/health" "8070" 5; then
   FAILED_CHECKS=$((FAILED_CHECKS + 1))
 fi
 
 # index-manager: GET /health on port 8090
-if ! check_health "index-manager" "http://localhost:8090/health" 5; then
+if ! check_health "index-manager" "/health" "8090" 5; then
   FAILED_CHECKS=$((FAILED_CHECKS + 1))
 fi
 
 # search-service: GET /health on port 8090
-if ! check_health "search-service" "http://localhost:8090/health" 5; then
+if ! check_health "search-service" "/health" "8090" 5; then
   FAILED_CHECKS=$((FAILED_CHECKS + 1))
 fi
 
