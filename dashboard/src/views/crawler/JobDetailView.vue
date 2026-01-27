@@ -200,6 +200,12 @@
         </div>
       </div>
 
+      <!-- Job Logs -->
+      <JobLogsViewer
+        :job-id="jobId"
+        :job-status="job.status"
+      />
+
       <!-- Execution History -->
       <div class="bg-white shadow rounded-lg overflow-hidden">
         <div class="px-6 py-4 border-b border-gray-200">
@@ -334,6 +340,7 @@ import {
   StatusBadge,
   ConfirmModal,
 } from '../../components/common'
+import JobLogsViewer from '../../components/crawler/JobLogsViewer.vue'
 
 const route = useRoute()
 const router = useRouter()
