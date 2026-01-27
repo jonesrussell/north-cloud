@@ -196,7 +196,7 @@ services:
     build:
       context: .
       dockerfile: ./search/Dockerfile
-    image: northcloud/search-service:latest
+    image: docker.io/jonesrussell/search-service:latest
     environment:
       APP_DEBUG: ${APP_DEBUG:-true}
       SEARCH_PORT: ${SEARCH_PORT:-8090}
@@ -221,7 +221,7 @@ services:
     build:
       context: ./search-frontend
       dockerfile: Dockerfile
-    image: northcloud/search-frontend:latest
+    image: docker.io/jonesrussell/search-frontend:latest
     depends_on:
       - search-service
 
@@ -230,7 +230,7 @@ services:
     build:
       context: .
       dockerfile: ./auth/Dockerfile
-    image: northcloud/auth:latest
+    image: docker.io/jonesrussell/auth:latest
     environment:
       AUTH_USERNAME: ${AUTH_USERNAME:-admin}
       AUTH_PASSWORD: ${AUTH_PASSWORD:-admin}
