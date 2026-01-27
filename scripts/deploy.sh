@@ -134,24 +134,27 @@ echo "Waiting for databases to be ready..."
 sleep 10
 
 # Run migrations in exact order (as verified)
+# NOTE: Migrations run inside Docker network, so we use container hostnames (not localhost)
+# and the internal port 5432 (not mapped host ports)
+
 # 1. source-manager
-if [ -n "${DB_USER:-}" ] && [ -n "${DB_PASSWORD:-}" ]; then
+if [ -n "${POSTGRES_SOURCE_MANAGER_USER:-}" ] && [ -n "${POSTGRES_SOURCE_MANAGER_PASSWORD:-}" ]; then
   run_migration "source-manager" \
-    "${DB_HOST:-postgres-source-manager}" \
-    "${DB_PORT:-5432}" \
-    "$DB_USER" \
-    "$DB_PASSWORD" \
-    "${DB_NAME:-source_manager}" \
+    "postgres-source-manager" \
+    "5432" \
+    "$POSTGRES_SOURCE_MANAGER_USER" \
+    "$POSTGRES_SOURCE_MANAGER_PASSWORD" \
+    "${POSTGRES_SOURCE_MANAGER_DB:-source_manager}" \
     "source-manager/migrations"
 else
-  echo -e "${YELLOW}WARNING: DB_USER or DB_PASSWORD not set, skipping source-manager migrations${NC}"
+  echo -e "${YELLOW}WARNING: POSTGRES_SOURCE_MANAGER_USER or POSTGRES_SOURCE_MANAGER_PASSWORD not set, skipping source-manager migrations${NC}"
 fi
 
 # 2. crawler
 if [ -n "${POSTGRES_CRAWLER_USER:-}" ] && [ -n "${POSTGRES_CRAWLER_PASSWORD:-}" ]; then
   run_migration "crawler" \
-    "${POSTGRES_CRAWLER_HOST:-postgres-crawler}" \
-    "${POSTGRES_CRAWLER_PORT:-5432}" \
+    "postgres-crawler" \
+    "5432" \
     "$POSTGRES_CRAWLER_USER" \
     "$POSTGRES_CRAWLER_PASSWORD" \
     "${POSTGRES_CRAWLER_DB:-crawler}" \
@@ -161,23 +164,23 @@ else
 fi
 
 # 3. classifier
-if [ -n "${POSTGRES_USER:-}" ] && [ -n "${POSTGRES_PASSWORD:-}" ]; then
+if [ -n "${POSTGRES_CLASSIFIER_USER:-}" ] && [ -n "${POSTGRES_CLASSIFIER_PASSWORD:-}" ]; then
   run_migration "classifier" \
-    "${POSTGRES_HOST:-postgres-classifier}" \
-    "${POSTGRES_PORT:-5432}" \
-    "$POSTGRES_USER" \
-    "$POSTGRES_PASSWORD" \
-    "${POSTGRES_DB:-classifier}" \
+    "postgres-classifier" \
+    "5432" \
+    "$POSTGRES_CLASSIFIER_USER" \
+    "$POSTGRES_CLASSIFIER_PASSWORD" \
+    "${POSTGRES_CLASSIFIER_DB:-classifier}" \
     "classifier/migrations"
 else
-  echo -e "${YELLOW}WARNING: POSTGRES_USER or POSTGRES_PASSWORD not set, skipping classifier migrations${NC}"
+  echo -e "${YELLOW}WARNING: POSTGRES_CLASSIFIER_USER or POSTGRES_CLASSIFIER_PASSWORD not set, skipping classifier migrations${NC}"
 fi
 
 # 4. publisher
 if [ -n "${POSTGRES_PUBLISHER_USER:-}" ] && [ -n "${POSTGRES_PUBLISHER_PASSWORD:-}" ]; then
   run_migration "publisher" \
-    "${POSTGRES_PUBLISHER_HOST:-postgres-publisher}" \
-    "${POSTGRES_PUBLISHER_PORT:-5432}" \
+    "postgres-publisher" \
+    "5432" \
     "$POSTGRES_PUBLISHER_USER" \
     "$POSTGRES_PUBLISHER_PASSWORD" \
     "${POSTGRES_PUBLISHER_DB:-publisher}" \
@@ -189,8 +192,8 @@ fi
 # 5. index-manager
 if [ -n "${POSTGRES_INDEX_MANAGER_USER:-}" ] && [ -n "${POSTGRES_INDEX_MANAGER_PASSWORD:-}" ]; then
   run_migration "index-manager" \
-    "${POSTGRES_INDEX_MANAGER_HOST:-postgres-index-manager}" \
-    "${POSTGRES_INDEX_MANAGER_PORT:-5432}" \
+    "postgres-index-manager" \
+    "5432" \
     "$POSTGRES_INDEX_MANAGER_USER" \
     "$POSTGRES_INDEX_MANAGER_PASSWORD" \
     "${POSTGRES_INDEX_MANAGER_DB:-index_manager}" \
