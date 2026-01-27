@@ -31,8 +31,6 @@ services:
         condition: service_healthy
       minio:
         condition: service_healthy
-      redis:
-        condition: service_healthy
       source-manager:
         condition: service_healthy
     environment:
@@ -56,6 +54,10 @@ services:
       AUTH_JWT_SECRET: "${AUTH_JWT_SECRET}"
       SERVER_SECURITY_ENABLED: "false"
       SERVER_PORT: "8080"
+      REDIS_ADDR: "${REDIS_HOST:-host.docker.internal}:6379"
+      REDIS_PASSWORD: "${REDIS_PASSWORD:-}"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     volumes:
       - ./crawler/config.yml:/app/config.yml:ro
     healthcheck:
@@ -116,8 +118,6 @@ services:
         condition: service_healthy
       elasticsearch:
         condition: service_healthy
-      redis:
-        condition: service_healthy
     environment:
       POSTGRES_PUBLISHER_HOST: postgres-publisher
       POSTGRES_PUBLISHER_PORT: 5432
@@ -127,13 +127,15 @@ services:
       POSTGRES_PUBLISHER_SSLMODE: disable
       PUBLISHER_PORT: 8070
       ELASTICSEARCH_URL: http://elasticsearch:9200
-      REDIS_ADDR: redis:6379
-      REDIS_PASSWORD: "${REDIS_PASSWORD}"
+      REDIS_ADDR: ${REDIS_HOST:-host.docker.internal}:6379
+      REDIS_PASSWORD: "${REDIS_PASSWORD:-}"
       PUBLISHER_ROUTER_CHECK_INTERVAL: "${PUBLISHER_ROUTER_CHECK_INTERVAL:-5m}"
       PUBLISHER_ROUTER_BATCH_SIZE: "${PUBLISHER_ROUTER_BATCH_SIZE:-100}"
       AUTH_JWT_SECRET: "${AUTH_JWT_SECRET}"
       GIN_MODE: release
       APP_DEBUG: "false"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     volumes:
       - ./publisher/config.yml:/app/config.yml:ro
     healthcheck:
@@ -160,8 +162,6 @@ services:
         condition: service_healthy
       elasticsearch:
         condition: service_healthy
-      redis:
-        condition: service_healthy
     environment:
       POSTGRES_HOST: postgres-classifier
       POSTGRES_PORT: 5432
@@ -171,11 +171,13 @@ services:
       POSTGRES_SSLMODE: disable
       ELASTICSEARCH_URL: http://elasticsearch:9200
       ES_URL: http://elasticsearch:9200
-      REDIS_URL: redis:6379
-      REDIS_PASSWORD: "${REDIS_PASSWORD}"
+      REDIS_URL: ${REDIS_HOST:-host.docker.internal}:6379
+      REDIS_PASSWORD: "${REDIS_PASSWORD:-}"
       APP_DEBUG: "false"
       APP_ENV: production
       CLASSIFIER_PORT: 8070
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     volumes:
       - ./classifier/config.yml:/root/config.yml:ro
     healthcheck:
@@ -382,9 +384,10 @@ services:
   # ============================================================
   # Redis (Prod Overrides)
   # ============================================================
+  # Redis is disabled in production - using host Redis instead
   redis:
-    environment:
-      REDIS_PASSWORD: "${REDIS_PASSWORD}"
+    profiles:
+      - disabled
 
   # ============================================================
   # Logging Infrastructure (Prod)
