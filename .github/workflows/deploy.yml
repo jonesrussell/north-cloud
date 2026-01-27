@@ -218,15 +218,15 @@ jobs:
       - name: Setup SSH
         uses: webfactory/ssh-agent@v0.9.0
         with:
-          ssh-private-key: ${{ secrets.PROD_SSH_KEY }}
+          ssh-private-key: ${{ secrets.DEPLOY_SSH_KEY }}
 
       - name: Add server to known hosts
         run: |
-          ssh-keyscan -p ${PROD_SSH_PORT:-22} ${{ secrets.PROD_SSH_HOST }} >> ~/.ssh/known_hosts
+          ssh-keyscan -p ${DEPLOY_SSH_PORT:-22} ${{ secrets.DEPLOY_HOST }} >> ~/.ssh/known_hosts
 
       - name: Deploy via SSH
         env:
-          SSH_PORT: ${{ secrets.PROD_SSH_PORT || '22' }}
+          SSH_PORT: ${{ secrets.DEPLOY_SSH_PORT || '22' }}
         run: |
-          ssh -p ${SSH_PORT} ${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SSH_HOST }} \
+          ssh -p ${SSH_PORT} ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} \
             'bash /opt/north-cloud/deploy.sh'
