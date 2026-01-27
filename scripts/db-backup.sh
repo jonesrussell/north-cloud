@@ -147,7 +147,12 @@ backup_service() {
         log_error "Backup failed for $service (exit code: $exit_code)"
         if [ "$ENV_MODE" = "localhost" ]; then
             log_error "Connection refused - is the database running?"
-            log_error "Try: docker compose -f docker-compose.base.yml -f docker-compose.dev.yml up -d postgres-$service"
+            # Get container name from service config
+            if get_service_config "$service"; then
+                log_error "Try: docker compose -f docker-compose.base.yml -f docker-compose.dev.yml up -d $SERVICE_CONFIG_CONTAINER"
+            else
+                log_error "Try: docker compose -f docker-compose.base.yml -f docker-compose.dev.yml up -d postgres-$service"
+            fi
         fi
         rm -f "$backup_path"
         return $exit_code
