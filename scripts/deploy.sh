@@ -34,6 +34,20 @@ else
   echo -e "${YELLOW}WARNING: .env file not found. Some operations may fail.${NC}"
 fi
 
+# Step 0: Login to Docker Hub (if credentials are provided)
+if [ -n "${DOCKERHUB_USERNAME:-}" ] && [ -n "${DOCKERHUB_PASSWORD:-}" ]; then
+  echo -e "${GREEN}Step 0: Logging in to Docker Hub...${NC}"
+  echo "$DOCKERHUB_PASSWORD" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin || {
+    echo -e "${RED}ERROR: Failed to login to Docker Hub${NC}" >&2
+    exit 1
+  }
+  echo -e "${GREEN}✓ Docker Hub login successful${NC}"
+  echo ""
+else
+  echo -e "${YELLOW}WARNING: DOCKERHUB_USERNAME or DOCKERHUB_PASSWORD not set. Private images may fail to pull.${NC}"
+  echo ""
+fi
+
 # Step 1: Pull latest images
 echo -e "${GREEN}Step 1: Pulling latest Docker images...${NC}"
 docker compose -f docker-compose.base.yml -f docker-compose.prod.yml pull || {
