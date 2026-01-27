@@ -236,6 +236,37 @@ jobs:
             docker-compose.prod.yml \
             ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}:/opt/north-cloud/
 
+      - name: Transfer migration files
+        env:
+          SSH_PORT: ${{ secrets.DEPLOY_SSH_PORT || 22 }}
+        run: |
+          # Create migration directories on server
+          ssh -p ${SSH_PORT} \
+            -o StrictHostKeyChecking=no \
+            ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} \
+            'mkdir -p /opt/north-cloud/{crawler,source-manager,classifier,publisher,index-manager}/migrations'
+          
+          # Transfer migrations for each service
+          scp -P ${SSH_PORT} -o StrictHostKeyChecking=no -r \
+            crawler/migrations/* \
+            ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}:/opt/north-cloud/crawler/migrations/
+          
+          scp -P ${SSH_PORT} -o StrictHostKeyChecking=no -r \
+            source-manager/migrations/* \
+            ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}:/opt/north-cloud/source-manager/migrations/
+          
+          scp -P ${SSH_PORT} -o StrictHostKeyChecking=no -r \
+            classifier/migrations/* \
+            ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}:/opt/north-cloud/classifier/migrations/
+          
+          scp -P ${SSH_PORT} -o StrictHostKeyChecking=no -r \
+            publisher/migrations/* \
+            ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}:/opt/north-cloud/publisher/migrations/
+          
+          scp -P ${SSH_PORT} -o StrictHostKeyChecking=no -r \
+            index-manager/migrations/* \
+            ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}:/opt/north-cloud/index-manager/migrations/
+
       - name: Deploy via SSH
         env:
           SSH_PORT: ${{ secrets.DEPLOY_SSH_PORT || 22 }}
