@@ -50,11 +50,13 @@ fi
 
 # Step 1: Pull latest images
 echo -e "${GREEN}Step 1: Pulling latest Docker images...${NC}"
-docker compose -f docker-compose.base.yml -f docker-compose.prod.yml pull || {
-  echo -e "${RED}ERROR: Failed to pull Docker images${NC}" >&2
-  exit 1
-}
-echo -e "${GREEN}✓ Images pulled successfully${NC}"
+# Pull images, but don't fail if some are missing (they may not exist yet or may be built locally)
+if docker compose -f docker-compose.base.yml -f docker-compose.prod.yml pull; then
+  echo -e "${GREEN}✓ All images pulled successfully${NC}"
+else
+  echo -e "${YELLOW}WARNING: Some images failed to pull. This may be normal if images don't exist yet or need to be built locally.${NC}"
+  echo -e "${YELLOW}Continuing with deployment...${NC}"
+fi
 echo ""
 
 # Step 2: Run database migrations
