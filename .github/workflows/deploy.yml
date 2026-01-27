@@ -322,15 +322,20 @@ jobs:
           ssh -p ${SSH_PORT} \
             -o StrictHostKeyChecking=no \
             ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} \
-            'mkdir -p /opt/north-cloud/infrastructure/{elasticsearch,loki}'
+            'mkdir -p /opt/north-cloud/infrastructure/{elasticsearch,loki,alloy,nginx,grafana/provisioning/dashboards,grafana/provisioning/datasources}'
 
           # Remove any incorrectly created directories (from previous failed runs)
           ssh -p ${SSH_PORT} \
             -o StrictHostKeyChecking=no \
             ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} \
-            'rm -rf /opt/north-cloud/infrastructure/elasticsearch/elasticsearch.yml /opt/north-cloud/infrastructure/loki/loki-config.prod.yml 2>/dev/null || true'
+            'rm -rf /opt/north-cloud/infrastructure/elasticsearch/elasticsearch.yml \
+                    /opt/north-cloud/infrastructure/loki/loki-config.prod.yml \
+                    /opt/north-cloud/infrastructure/alloy/config.alloy \
+                    /opt/north-cloud/infrastructure/nginx/nginx.conf \
+                    /opt/north-cloud/infrastructure/grafana/provisioning/dashboards/dashboards.yml \
+                    /opt/north-cloud/infrastructure/grafana/provisioning/datasources/loki.yml 2>/dev/null || true'
 
-          # Transfer config files (as files, not directories)
+          # Transfer all infrastructure config files
           scp -P ${SSH_PORT} -o StrictHostKeyChecking=no \
             infrastructure/elasticsearch/elasticsearch.yml \
             ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}:/opt/north-cloud/infrastructure/elasticsearch/
@@ -338,6 +343,22 @@ jobs:
           scp -P ${SSH_PORT} -o StrictHostKeyChecking=no \
             infrastructure/loki/loki-config.prod.yml \
             ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}:/opt/north-cloud/infrastructure/loki/
+
+          scp -P ${SSH_PORT} -o StrictHostKeyChecking=no \
+            infrastructure/alloy/config.alloy \
+            ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}:/opt/north-cloud/infrastructure/alloy/
+
+          scp -P ${SSH_PORT} -o StrictHostKeyChecking=no \
+            infrastructure/nginx/nginx.conf \
+            ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}:/opt/north-cloud/infrastructure/nginx/
+
+          scp -P ${SSH_PORT} -o StrictHostKeyChecking=no \
+            infrastructure/grafana/provisioning/dashboards/dashboards.yml \
+            ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}:/opt/north-cloud/infrastructure/grafana/provisioning/dashboards/
+
+          scp -P ${SSH_PORT} -o StrictHostKeyChecking=no \
+            infrastructure/grafana/provisioning/datasources/loki.yml \
+            ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}:/opt/north-cloud/infrastructure/grafana/provisioning/datasources/
 
       - name: Transfer migration files
         env:
