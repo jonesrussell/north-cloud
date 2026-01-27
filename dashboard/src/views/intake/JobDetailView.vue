@@ -1,11 +1,21 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+/**
+ * Job Detail View (Refactored)
+ *
+ * Uses the new feature module architecture:
+ * - TanStack Query for server state (job, executions, stats)
+ * - useJobDetail composable for all data and actions
+ */
+import { computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ArrowLeft, Pause, Play, XCircle, Loader2 } from 'lucide-vue-next'
-import { crawlerApi } from '@/api/client'
+import { ArrowLeft, Pause, Play, XCircle, RotateCcw, Loader2 } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import JobLogsViewer from '@/components/crawler/JobLogsViewer.vue'
+
+import { useJobDetail } from '@/features/intake'
+import type { Job, JobStatus, JobExecution } from '@/types/crawler'
 
 const route = useRoute()
 const router = useRouter()
@@ -18,103 +28,90 @@ const jobId = computed((): string | null => {
   return String(id)
 })
 
-const loading = ref(true)
-const error = ref<string | null>(null)
-const job = ref<Record<string, unknown> | null>(null)
-const stats = ref<Record<string, unknown> | null>(null)
-const executions = ref<Array<Record<string, unknown>>>([])
-const loadingExecutions = ref(false)
-
-const loadJob = async () => {
-  if (!jobId.value) return
-  
-  try {
-    loading.value = true
-    error.value = null
-    const response = await crawlerApi.jobs.get(jobId.value)
-    job.value = response.data
-  } catch (err) {
-    error.value = 'Unable to load job details.'
-  } finally {
-    loading.value = false
-  }
-}
-
-const loadStats = async () => {
-  if (!jobId.value) return
-  
-  try {
-    const response = await crawlerApi.jobs.stats(jobId.value)
-    stats.value = response.data
-  } catch (err) {
-    console.error('Error loading stats:', err)
-  }
-}
-
-const loadExecutions = async () => {
-  if (!jobId.value) return
-  
-  try {
-    loadingExecutions.value = true
-    const response = await crawlerApi.jobs.executions(jobId.value, { limit: 20 })
-    executions.value = response.data?.executions || []
-  } catch (err) {
-    console.error('Error loading executions:', err)
-  } finally {
-    loadingExecutions.value = false
-  }
-}
-
-const pauseJob = async () => {
-  if (!jobId.value) return
-  await crawlerApi.jobs.pause(jobId.value)
-  await loadJob()
-}
-
-const resumeJob = async () => {
-  if (!jobId.value) return
-  await crawlerApi.jobs.resume(jobId.value)
-  await loadJob()
-}
-
-const cancelJob = async () => {
-  if (!jobId.value) return
-  await crawlerApi.jobs.cancel(jobId.value)
-  await loadJob()
-}
-
-const getStatusVariant = (status: string) => {
-  switch (status) {
-    case 'completed': return 'success'
-    case 'running': return 'default'
-    case 'failed': return 'destructive'
-    default: return 'secondary'
-  }
-}
-
-const formatDate = (date: string) => date ? new Date(date).toLocaleString() : 'N/A'
-const formatDuration = (ms: number) => {
-  if (!ms) return 'N/A'
-  if (ms < 1000) return `${ms}ms`
-  return `${(ms / 1000).toFixed(1)}s`
-}
-
-const canPause = computed(() => job.value && ['pending', 'scheduled'].includes(job.value.status as string) && !job.value.is_paused)
-const canResume = computed(() => job.value?.is_paused)
-const canCancel = computed(() => job.value && ['pending', 'scheduled', 'running'].includes(job.value.status as string))
-
-onMounted(() => {
-  // Redirect to jobs list if no valid ID
-  if (!jobId.value) {
+// Redirect if no valid ID
+watch(jobId, (id) => {
+  if (!id) {
     router.replace('/intake/jobs')
-    return
   }
-  
-  // Load data for valid job ID
-  loadJob()
-  loadStats()
-  loadExecutions()
+}, { immediate: true })
+
+// Use the new composable
+const detail = useJobDetail(jobId.value || '')
+
+// Typed accessors
+const job = computed(() => detail.job.value as Job | undefined)
+const stats = computed(() => detail.stats.value as Record<string, unknown> | undefined)
+const executions = computed(() => detail.executions.value as JobExecution[])
+
+type BadgeVariant = 'default' | 'secondary' | 'destructive' | 'outline' | 'success' | 'warning' | 'pending'
+
+const statusVariants: Record<JobStatus, BadgeVariant> = {
+  running: 'default',
+  scheduled: 'secondary',
+  pending: 'pending',
+  completed: 'success',
+  failed: 'destructive',
+  paused: 'warning',
+  cancelled: 'outline',
+}
+
+const getStatusVariant = (status: string): BadgeVariant => {
+  return statusVariants[status as JobStatus] || 'secondary'
+}
+
+const formatDate = (date: string | undefined | null): string => {
+  if (!date) return 'N/A'
+  return new Date(date).toLocaleString()
+}
+
+const formatDuration = (ms: number | undefined | null): string => {
+  if (!ms && ms !== 0) return 'N/A'
+  if (ms < 1000) return `${ms}ms`
+  if (ms < 60000) return `${(ms / 1000).toFixed(1)}s`
+  const minutes = Math.floor(ms / 60000)
+  const seconds = Math.floor((ms % 60000) / 1000)
+  return `${minutes}m ${seconds}s`
+}
+
+const canPause = computed(() => {
+  if (!job.value) return false
+  return ['pending', 'scheduled'].includes(job.value.status) && !job.value.is_paused
 })
+
+const canResume = computed(() => {
+  if (!job.value) return false
+  return job.value.is_paused || job.value.status === 'paused'
+})
+
+const canCancel = computed(() => {
+  if (!job.value) return false
+  return ['pending', 'scheduled', 'running'].includes(job.value.status)
+})
+
+const canRetry = computed(() => {
+  if (!job.value) return false
+  return ['completed', 'failed', 'cancelled'].includes(job.value.status)
+})
+
+async function handlePause() {
+  await detail.pauseJob()
+}
+
+async function handleResume() {
+  await detail.resumeJob()
+}
+
+async function handleCancel() {
+  await detail.cancelJob()
+}
+
+async function handleRetry() {
+  await detail.retryJob()
+}
+
+function goBack() {
+  router.push('/intake/jobs')
+}
 </script>
 
 <template>
@@ -125,13 +122,13 @@ onMounted(() => {
         <Button
           variant="ghost"
           size="icon"
-          @click="router.push('/intake/jobs')"
+          @click="goBack"
         >
           <ArrowLeft class="h-5 w-5" />
         </Button>
         <div>
           <h1 class="text-3xl font-bold tracking-tight">
-            {{ (job as Record<string, unknown>)?.source_name || 'Job Details' }}
+            {{ job?.source_name || 'Job Details' }}
           </h1>
           <p class="text-muted-foreground">
             Job ID: {{ jobId || 'N/A' }}
@@ -142,30 +139,73 @@ onMounted(() => {
         <Button
           v-if="canPause"
           variant="outline"
-          @click="pauseJob"
+          :disabled="detail.isPausing.value"
+          @click="handlePause"
         >
-          <Pause class="mr-2 h-4 w-4" /> Pause
+          <Loader2
+            v-if="detail.isPausing.value"
+            class="mr-2 h-4 w-4 animate-spin"
+          />
+          <Pause
+            v-else
+            class="mr-2 h-4 w-4"
+          />
+          Pause
         </Button>
         <Button
           v-if="canResume"
           variant="outline"
-          @click="resumeJob"
+          :disabled="detail.isResuming.value"
+          @click="handleResume"
         >
-          <Play class="mr-2 h-4 w-4" /> Resume
+          <Loader2
+            v-if="detail.isResuming.value"
+            class="mr-2 h-4 w-4 animate-spin"
+          />
+          <Play
+            v-else
+            class="mr-2 h-4 w-4"
+          />
+          Resume
+        </Button>
+        <Button
+          v-if="canRetry"
+          variant="outline"
+          :disabled="detail.isRetrying.value"
+          @click="handleRetry"
+        >
+          <Loader2
+            v-if="detail.isRetrying.value"
+            class="mr-2 h-4 w-4 animate-spin"
+          />
+          <RotateCcw
+            v-else
+            class="mr-2 h-4 w-4"
+          />
+          Retry
         </Button>
         <Button
           v-if="canCancel"
           variant="destructive"
-          @click="cancelJob"
+          :disabled="detail.isCancelling.value"
+          @click="handleCancel"
         >
-          <XCircle class="mr-2 h-4 w-4" /> Cancel
+          <Loader2
+            v-if="detail.isCancelling.value"
+            class="mr-2 h-4 w-4 animate-spin"
+          />
+          <XCircle
+            v-else
+            class="mr-2 h-4 w-4"
+          />
+          Cancel
         </Button>
       </div>
     </div>
 
     <!-- Loading -->
     <div
-      v-if="loading"
+      v-if="detail.isLoadingJob.value"
       class="flex items-center justify-center py-12"
     >
       <Loader2 class="h-8 w-8 animate-spin text-muted-foreground" />
@@ -173,12 +213,12 @@ onMounted(() => {
 
     <!-- Error -->
     <Card
-      v-else-if="error"
+      v-else-if="detail.jobError.value"
       class="border-destructive"
     >
       <CardContent class="pt-6">
         <p class="text-destructive">
-          {{ error }}
+          {{ detail.jobError.value?.message || 'Unable to load job details.' }}
         </p>
       </CardContent>
     </Card>
@@ -197,8 +237,8 @@ onMounted(() => {
                 Status
               </dt>
               <dd class="mt-1">
-                <Badge :variant="getStatusVariant((job as Record<string, unknown>).status as string)">
-                  {{ (job as Record<string, unknown>).status }}
+                <Badge :variant="getStatusVariant(job.status)">
+                  {{ job.status }}
                 </Badge>
               </dd>
             </div>
@@ -207,7 +247,7 @@ onMounted(() => {
                 Source
               </dt>
               <dd class="mt-1">
-                {{ (job as Record<string, unknown>).source_name || 'N/A' }}
+                {{ job.source_name || 'N/A' }}
               </dd>
             </div>
             <div class="col-span-2">
@@ -216,11 +256,12 @@ onMounted(() => {
               </dt>
               <dd class="mt-1">
                 <a
-                  :href="(job as Record<string, unknown>).url as string"
+                  :href="job.url"
                   target="_blank"
+                  rel="noopener noreferrer"
                   class="text-primary hover:underline break-all"
                 >
-                  {{ (job as Record<string, unknown>).url }}
+                  {{ job.url }}
                 </a>
               </dd>
             </div>
@@ -229,15 +270,31 @@ onMounted(() => {
                 Created
               </dt>
               <dd class="mt-1">
-                {{ formatDate((job as Record<string, unknown>).created_at as string) }}
+                {{ formatDate(job.created_at) }}
               </dd>
             </div>
-            <div v-if="(job as Record<string, unknown>).schedule_enabled">
+            <div v-if="job.schedule_enabled">
               <dt class="text-sm text-muted-foreground">
                 Schedule
               </dt>
               <dd class="mt-1">
-                Every {{ (job as Record<string, unknown>).interval_minutes }} {{ (job as Record<string, unknown>).interval_type }}
+                Every {{ job.interval_minutes }} {{ job.interval_type }}
+              </dd>
+            </div>
+            <div v-if="job.next_run_at">
+              <dt class="text-sm text-muted-foreground">
+                Next Run
+              </dt>
+              <dd class="mt-1">
+                {{ formatDate(job.next_run_at) }}
+              </dd>
+            </div>
+            <div v-if="job.last_run_at">
+              <dt class="text-sm text-muted-foreground">
+                Last Run
+              </dt>
+              <dd class="mt-1">
+                {{ formatDate(job.last_run_at) }}
               </dd>
             </div>
           </dl>
@@ -245,7 +302,7 @@ onMounted(() => {
       </Card>
 
       <!-- Statistics -->
-      <Card v-if="stats">
+      <Card v-if="stats && !detail.isLoadingStats.value">
         <CardHeader>
           <CardTitle>Statistics</CardTitle>
         </CardHeader>
@@ -256,7 +313,7 @@ onMounted(() => {
                 Total Executions
               </p>
               <p class="text-2xl font-bold">
-                {{ (stats as Record<string, unknown>).total_executions || 0 }}
+                {{ stats.total_executions || 0 }}
               </p>
             </div>
             <div>
@@ -264,7 +321,7 @@ onMounted(() => {
                 Successful
               </p>
               <p class="text-2xl font-bold text-green-600">
-                {{ (stats as Record<string, unknown>).successful_runs || 0 }}
+                {{ stats.successful_runs || 0 }}
               </p>
             </div>
             <div>
@@ -272,12 +329,19 @@ onMounted(() => {
                 Failed
               </p>
               <p class="text-2xl font-bold text-red-600">
-                {{ (stats as Record<string, unknown>).failed_runs || 0 }}
+                {{ stats.failed_runs || 0 }}
               </p>
             </div>
           </div>
         </CardContent>
       </Card>
+
+      <!-- Job Logs -->
+      <JobLogsViewer
+        v-if="jobId"
+        :job-id="jobId"
+        :job-status="job.status"
+      />
 
       <!-- Executions -->
       <Card>
@@ -286,7 +350,7 @@ onMounted(() => {
         </CardHeader>
         <CardContent class="p-0">
           <div
-            v-if="loadingExecutions"
+            v-if="detail.isLoadingExecutions.value"
             class="flex justify-center py-8"
           >
             <Loader2 class="h-6 w-6 animate-spin" />
@@ -315,26 +379,33 @@ onMounted(() => {
                 <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
                   Duration
                 </th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
+                  Items
+                </th>
               </tr>
             </thead>
             <tbody class="divide-y">
               <tr
                 v-for="exec in executions"
-                :key="(exec as Record<string, unknown>).id as string"
+                :key="exec.id"
+                class="hover:bg-muted/50"
               >
-                <td class="px-6 py-4 text-sm">
-                  #{{ (exec as Record<string, unknown>).execution_number }}
+                <td class="px-6 py-4 text-sm font-medium">
+                  #{{ exec.execution_number }}
                 </td>
                 <td class="px-6 py-4">
-                  <Badge :variant="getStatusVariant((exec as Record<string, unknown>).status as string)">
-                    {{ (exec as Record<string, unknown>).status }}
+                  <Badge :variant="getStatusVariant(exec.status)">
+                    {{ exec.status }}
                   </Badge>
                 </td>
                 <td class="px-6 py-4 text-sm text-muted-foreground">
-                  {{ formatDate((exec as Record<string, unknown>).started_at as string) }}
+                  {{ formatDate(exec.started_at) }}
                 </td>
                 <td class="px-6 py-4 text-sm text-muted-foreground">
-                  {{ formatDuration((exec as Record<string, unknown>).duration_ms as number) }}
+                  {{ formatDuration(exec.duration_ms) }}
+                </td>
+                <td class="px-6 py-4 text-sm text-muted-foreground">
+                  {{ exec.items_indexed || 0 }} indexed
                 </td>
               </tr>
             </tbody>

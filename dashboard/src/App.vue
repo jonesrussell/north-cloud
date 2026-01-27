@@ -11,6 +11,13 @@
     <template v-else>
       <router-view />
     </template>
+
+    <!-- Global toast notifications -->
+    <Toaster
+      position="bottom-right"
+      :rich-colors="true"
+      :close-button="true"
+    />
   </div>
 </template>
 
@@ -18,6 +25,7 @@
 import { useAuth } from './composables/useAuth'
 import { useTheme } from './composables/useTheme'
 import { AppShell } from './components/layout'
+import { Toaster } from 'vue-sonner'
 
 const { isAuthenticated } = useAuth()
 

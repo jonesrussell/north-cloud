@@ -1,3 +1,10 @@
+/**
+ * @deprecated Use the feature module instead:
+ * import { useSources, useSourceDetail } from '@/features/scheduling'
+ *
+ * This store is kept for backwards compatibility only.
+ * All new code should use the TanStack Query-based feature module.
+ */
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { sourcesApi } from '@/api/client'
@@ -15,6 +22,9 @@ export interface Source {
   }
 }
 
+/**
+ * @deprecated Use useSources() from '@/features/scheduling' instead
+ */
 export const useSourcesStore = defineStore('sources', () => {
   // State
   const items = ref<Source[]>([])

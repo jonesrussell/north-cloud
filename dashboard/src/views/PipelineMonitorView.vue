@@ -6,13 +6,13 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button'
 import { PipelineFlow, MetricCard, HealthBadge, QuickActions } from '@/components/pipeline'
 import { JobStatsCard } from '@/components/domain/jobs'
-import { useHealthStore, useMetricsStore, useJobsStore } from '@/stores'
+import { useHealthStore, useMetricsStore } from '@/stores'
 import { DEFAULT_QUICK_ACTIONS } from '@/types/metrics'
 
 const router = useRouter()
 const healthStore = useHealthStore()
 const metricsStore = useMetricsStore()
-const jobsStore = useJobsStore()
+// JobStatsCard now uses TanStack Query internally via useJobs()
 
 // Computed values from stores
 const pipelineStages = computed(() => metricsStore.pipelineStages)
@@ -39,13 +39,11 @@ const quickActions = DEFAULT_QUICK_ACTIONS
 const HEALTH_INTERVAL = 30000 // 30 seconds
 const METRICS_INTERVAL = 30000 // 30 seconds
 
-onMounted(async () => {
+onMounted(() => {
   // Start polling for health and metrics
+  // Jobs data is automatically fetched by JobStatsCard via TanStack Query
   healthStore.startPolling(HEALTH_INTERVAL)
   metricsStore.startPolling(METRICS_INTERVAL)
-
-  // Fetch jobs for the summary (no polling here, just initial load)
-  await jobsStore.fetchJobs()
 })
 
 onUnmounted(() => {
