@@ -99,6 +99,7 @@ func NewServer(
 	discoveredLinksHandler *DiscoveredLinksHandler,
 	executionRepo database.ExecutionRepositoryInterface,
 	infraLog infralogger.Logger,
+	sseHandler *SSEHandler, // Optional - pass nil to disable SSE
 ) *infragin.Server {
 	// Extract port from address
 	port := extractPortFromAddress(cfg.GetServerConfig().Address)
@@ -125,7 +126,7 @@ func NewServer(
 		WithTimeouts(defaultReadTimeout, defaultWriteTimeout, defaultIdleTimeout).
 		WithRoutes(func(router *gin.Engine) {
 			// Setup service-specific routes (health routes added by builder)
-			setupCrawlerRoutes(router, jwtSecret, jobsHandler, discoveredLinksHandler, executionRepo)
+			setupCrawlerRoutes(router, jwtSecret, jobsHandler, discoveredLinksHandler, executionRepo, sseHandler)
 		}).
 		Build()
 
@@ -172,6 +173,7 @@ func setupCrawlerRoutes(
 	jobsHandler *JobsHandler,
 	discoveredLinksHandler *DiscoveredLinksHandler,
 	executionRepo database.ExecutionRepositoryInterface,
+	sseHandler *SSEHandler,
 ) {
 	// API v1 routes - protected with JWT
 	v1 := infragin.ProtectedGroup(router, "/api/v1", jwtSecret)
@@ -215,4 +217,13 @@ func setupCrawlerRoutes(
 
 	// Setup discovered links routes
 	setupDiscoveredLinksRoutes(v1, discoveredLinksHandler)
+
+	// Setup SSE routes (protected with JWT)
+	if sseHandler != nil {
+		// Note: SSE endpoints use /api prefix (not /api/v1) per frontend expectations
+		sseGroup := infragin.ProtectedGroup(router, "/api", jwtSecret)
+		sseGroup.GET("/crawler/events", sseHandler.HandleCrawlerEvents)
+		sseGroup.GET("/health/events", sseHandler.HandleHealthEvents)
+		sseGroup.GET("/metrics/events", sseHandler.HandleMetricsEvents)
+	}
 }

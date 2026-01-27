@@ -165,7 +165,7 @@ func TestSourceHandler_Create(t *testing.T) {
 			logger := testhelpers.NewTestLogger()
 			// TODO: Handler needs interface injection for proper mocking
 			// For now, create a dummy repository (tests may require actual DB)
-			db, _ := sql.Open("postgres", "host=localhost port=5432 user=postgres password=postgres dbname=gosources_test sslmode=disable")
+			db, _ := sql.Open("postgres", "host=localhost port=5432 user=postgres password=postgres dbname=source_manager_test sslmode=disable")
 			repo := repository.NewSourceRepository(db, logger)
 			handler := handlers.NewSourceHandler(repo, logger)
 
@@ -234,7 +234,7 @@ func TestSourceHandler_GetByID(t *testing.T) {
 
 			logger := testhelpers.NewTestLogger()
 			// TODO: Handler needs interface injection for proper mocking
-			db, _ := sql.Open("postgres", "host=localhost port=5432 user=postgres password=postgres dbname=gosources_test sslmode=disable")
+			db, _ := sql.Open("postgres", "host=localhost port=5432 user=postgres password=postgres dbname=source_manager_test sslmode=disable")
 			repo := repository.NewSourceRepository(db, logger)
 			handler := handlers.NewSourceHandler(repo, logger)
 
@@ -308,7 +308,7 @@ func TestSourceHandler_List(t *testing.T) {
 
 			logger := testhelpers.NewTestLogger()
 			// TODO: Handler needs interface injection for proper mocking
-			db, _ := sql.Open("postgres", "host=localhost port=5432 user=postgres password=postgres dbname=gosources_test sslmode=disable")
+			db, _ := sql.Open("postgres", "host=localhost port=5432 user=postgres password=postgres dbname=source_manager_test sslmode=disable")
 			repo := repository.NewSourceRepository(db, logger)
 			handler := handlers.NewSourceHandler(repo, logger)
 
@@ -367,7 +367,7 @@ func TestSourceHandler_GetCities(t *testing.T) {
 
 			logger := testhelpers.NewTestLogger()
 			// TODO: Handler needs interface injection for proper mocking
-			db, _ := sql.Open("postgres", "host=localhost port=5432 user=postgres password=postgres dbname=gosources_test sslmode=disable")
+			db, _ := sql.Open("postgres", "host=localhost port=5432 user=postgres password=postgres dbname=source_manager_test sslmode=disable")
 			repo := repository.NewSourceRepository(db, logger)
 			handler := handlers.NewSourceHandler(repo, logger)
 

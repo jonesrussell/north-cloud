@@ -64,7 +64,7 @@ docker-compose -f docker-compose.base.yml down
 
 ```bash
 # Source manager database
-docker exec -it north-cloud-postgres-source-manager psql -U postgres -d gosources
+docker exec -it north-cloud-postgres-source-manager psql -U postgres -d source_manager
 
 # Crawler database
 docker exec -it north-cloud-postgres-crawler psql -U postgres -d crawler

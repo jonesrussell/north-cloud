@@ -37,7 +37,7 @@ END $$;
 -- 
 -- Each service should handle its own database setup:
 -- 
--- 1. source-manager: Creates 'gosources' database
+-- 1. source-manager: Creates 'source_manager' database
 --    - Run migrations from ./source-manager/migrations/
 -- 
 -- 2. crawler: Creates 'crawler' database  

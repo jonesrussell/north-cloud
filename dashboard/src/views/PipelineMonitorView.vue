@@ -1,145 +1,62 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
-import { Download, Share2, BarChart3, GitBranch } from 'lucide-vue-next'
+import { computed, onMounted, onUnmounted } from 'vue'
+import { useRouter } from 'vue-router'
+import { Download, Share2, BarChart3, GitBranch, Briefcase, ArrowRight } from 'lucide-vue-next'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
 import { PipelineFlow, MetricCard, HealthBadge, QuickActions } from '@/components/pipeline'
-import { crawlerApi, publisherApi, classifierApi, indexManagerApi } from '@/api/client'
+import { JobStatsCard } from '@/components/domain/jobs'
+import { useHealthStore, useMetricsStore, useJobsStore } from '@/stores'
+import { DEFAULT_QUICK_ACTIONS } from '@/types/metrics'
 
-// Mock data for pipeline stats - in production, fetch from APIs
-const loading = ref(true)
-const error = ref<string | null>(null)
+const router = useRouter()
+const healthStore = useHealthStore()
+const metricsStore = useMetricsStore()
+const jobsStore = useJobsStore()
 
-// Pipeline stages data
-const pipelineStages = ref([
-  { name: 'Crawled', count: 0, change: 0, status: 'healthy' as const },
-  { name: 'Indexed', count: 0, change: 0, status: 'healthy' as const },
-  { name: 'Classified', count: 0, change: 0, status: 'healthy' as const },
-  { name: 'Routed', count: 0, change: 0, status: 'healthy' as const },
-  { name: 'Published', count: 0, change: 0, status: 'healthy' as const },
-])
+// Computed values from stores
+const pipelineStages = computed(() => metricsStore.pipelineStages)
 
-// Key metrics
-const metrics = ref({
-  avgQualityScore: 0,
-  activeRoutes: 0,
-  totalRoutes: 0,
-  contentToday: 0,
-  articlesRouted: 0,
-})
+const metrics = computed(() => ({
+  contentToday: metricsStore.totalCrawledToday,
+  articlesRouted: metricsStore.totalPublishedToday,
+  avgQualityScore: metricsStore.avgQualityScore,
+  activeRoutes: metricsStore.activeRoutes,
+  totalRoutes: metricsStore.totalRoutes,
+}))
 
-// Service health
-const serviceHealth = ref<
-  Array<{ name: string; status: 'healthy' | 'degraded' | 'unhealthy' | 'unknown' }>
->([
-  { name: 'Crawler', status: 'unknown' },
-  { name: 'Classifier', status: 'unknown' },
-  { name: 'Publisher', status: 'unknown' },
-  { name: 'Redis', status: 'unknown' },
-  { name: 'Elasticsearch', status: 'unknown' },
-])
+// Service health from health store (first 5 services for compact display)
+const serviceHealth = computed(() =>
+  healthStore.services.slice(0, 5).map((s) => ({
+    name: s.name,
+    status: s.status === 'checking' ? 'unknown' : s.status,
+  }))
+)
 
-// Quick actions
-const quickActions = [
-  { label: 'New Crawl Job', path: '/intake/jobs?create=true', icon: 'plus' as const },
-  { label: 'Add Source', path: '/scheduling/sources/new', icon: 'plus' as const },
-  { label: 'New Route', path: '/distribution/routes/new', icon: 'plus' as const },
-  { label: 'View Analytics', path: '/intelligence/stats', icon: 'chart' as const },
-]
+const quickActions = DEFAULT_QUICK_ACTIONS
 
-// Fetch data on mount
+// Polling intervals
+const HEALTH_INTERVAL = 30000 // 30 seconds
+const METRICS_INTERVAL = 30000 // 30 seconds
+
 onMounted(async () => {
-  try {
-    loading.value = true
+  // Start polling for health and metrics
+  healthStore.startPolling(HEALTH_INTERVAL)
+  metricsStore.startPolling(METRICS_INTERVAL)
 
-    // Check service health
-    const healthChecks = await Promise.allSettled([
-      crawlerApi.getHealth(),
-      classifierApi.getHealth(),
-      publisherApi.getHealth(),
-    ])
-
-    serviceHealth.value[0].status = healthChecks[0].status === 'fulfilled' ? 'healthy' : 'unhealthy'
-    serviceHealth.value[1].status = healthChecks[1].status === 'fulfilled' ? 'healthy' : 'unhealthy'
-    serviceHealth.value[2].status = healthChecks[2].status === 'fulfilled' ? 'healthy' : 'unhealthy'
-    
-    // Redis and ES are considered healthy if services are up
-    serviceHealth.value[3].status = healthChecks[2].status === 'fulfilled' ? 'healthy' : 'unknown'
-    serviceHealth.value[4].status = healthChecks[0].status === 'fulfilled' ? 'healthy' : 'unknown'
-
-    // Fetch crawler stats for today's crawled count
-    try {
-      const crawlerStatsRes = await crawlerApi.getStats()
-      if (crawlerStatsRes?.data) {
-        const crawlerStats = crawlerStatsRes.data
-        pipelineStages.value[0].count = crawlerStats.crawled_today || 0
-        metrics.value.contentToday = crawlerStats.crawled_today || 0
-        // Use crawler's indexed_today as fallback if index-manager fails
-        pipelineStages.value[1].count = crawlerStats.indexed_today || 0
-      }
-    } catch (err) {
-      console.warn('Failed to fetch crawler stats:', err)
-    }
-
-    // Fetch index-manager stats for today's indexed count
-    try {
-      const indexStatsRes = await indexManagerApi.stats.get()
-      if (indexStatsRes?.data) {
-        const indexStats = indexStatsRes.data
-        // Use index-manager's indexed_today if available, otherwise keep crawler's indexed_today
-        if (indexStats.indexed_today !== undefined) {
-          pipelineStages.value[1].count = indexStats.indexed_today || 0
-        }
-      }
-    } catch (err) {
-      console.warn('Failed to fetch index-manager stats:', err)
-      // Keep crawler's indexed_today as fallback
-    }
-
-    // Fetch classifier stats for today's classified count
-    try {
-      const classifierStatsRes = await classifierApi.stats.get({ date: 'today' })
-      if (classifierStatsRes?.data) {
-        const classifierStats = classifierStatsRes.data
-        pipelineStages.value[2].count = classifierStats.total_classified || 0
-        metrics.value.avgQualityScore = Math.round(classifierStats.avg_quality_score || 0)
-      }
-    } catch (err) {
-      console.warn('Failed to fetch classifier stats:', err)
-    }
-
-    // Fetch publisher stats for today's routed and published count
-    try {
-      const publisherStatsRes = await publisherApi.stats.overview('today')
-      if (publisherStatsRes?.data) {
-        const publisherStats = publisherStatsRes.data
-        const articlesToday = publisherStats.total_articles || 0
-        // Both Routed and Published use the same count (articles published/routed today)
-        pipelineStages.value[3].count = articlesToday
-        pipelineStages.value[4].count = articlesToday
-        metrics.value.articlesRouted = articlesToday
-      }
-    } catch (err) {
-      console.warn('Failed to fetch publisher stats:', err)
-    }
-
-    // Fetch routes info for active routes count
-    try {
-      const routesRes = await publisherApi.routes.list(false)
-      if (routesRes?.data?.routes) {
-        const routes = routesRes.data.routes
-        metrics.value.totalRoutes = routes.length || 0
-        metrics.value.activeRoutes = routes.filter((r: { enabled: boolean }) => r.enabled).length || 0
-      }
-    } catch (err) {
-      console.warn('Failed to fetch routes:', err)
-    }
-
-    loading.value = false
-  } catch (e) {
-    error.value = 'Failed to load pipeline data'
-    loading.value = false
-  }
+  // Fetch jobs for the summary (no polling here, just initial load)
+  await jobsStore.fetchJobs()
 })
+
+onUnmounted(() => {
+  // Stop polling when leaving the view
+  healthStore.stopPolling()
+  metricsStore.stopPolling()
+})
+
+function goToJobs() {
+  router.push({ name: 'intake-jobs' })
+}
 </script>
 
 <template>
@@ -149,7 +66,7 @@ onMounted(async () => {
       <h1 class="text-3xl font-bold tracking-tight">
         Pipeline Monitor
       </h1>
-      <p class="text-muted-foreground mt-1">
+      <p class="mt-1 text-muted-foreground">
         Overview of your content pipeline health and throughput
       </p>
     </div>
@@ -171,18 +88,14 @@ onMounted(async () => {
     <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
       <MetricCard
         title="Content Ingested"
-        :value="metrics.contentToday || pipelineStages[0].count"
+        :value="metrics.contentToday"
         subtitle="articles today"
-        :change="pipelineStages[0].change"
-        :trend="pipelineStages[0].change > 0 ? 'up' : 'down'"
         :icon="Download"
       />
       <MetricCard
         title="Articles Routed"
-        :value="metrics.articlesRouted || pipelineStages[3].count"
+        :value="metrics.articlesRouted"
         subtitle="to channels today"
-        :change="pipelineStages[3].change"
-        :trend="pipelineStages[3].change > 0 ? 'up' : 'down'"
         :icon="Share2"
       />
       <MetricCard
@@ -198,6 +111,30 @@ onMounted(async () => {
         :icon="GitBranch"
       />
     </div>
+
+    <!-- Jobs Summary -->
+    <Card>
+      <CardHeader class="flex flex-row items-center justify-between">
+        <div>
+          <CardTitle class="flex items-center gap-2">
+            <Briefcase class="h-5 w-5" />
+            Crawl Jobs
+          </CardTitle>
+          <CardDescription>Current status of all crawler jobs</CardDescription>
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          @click="goToJobs"
+        >
+          View All
+          <ArrowRight class="ml-1 h-4 w-4" />
+        </Button>
+      </CardHeader>
+      <CardContent>
+        <JobStatsCard compact />
+      </CardContent>
+    </Card>
 
     <!-- Bottom Row: Health + Quick Actions -->
     <div class="grid gap-4 md:grid-cols-3">

@@ -2,7 +2,11 @@ package mcp
 
 // getAllTools returns all available MCP tools grouped by service
 func getAllTools() []Tool {
-	tools := []Tool{}
+	const (
+		toolGroupCount         = 7
+		estimatedToolsPerGroup = 8
+	)
+	tools := make([]Tool, 0, toolGroupCount*estimatedToolsPerGroup)
 	tools = append(tools, getCrawlerTools()...)
 	tools = append(tools, getSourceManagerTools()...)
 	tools = append(tools, getPublisherTools()...)

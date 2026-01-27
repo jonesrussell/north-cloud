@@ -10,7 +10,7 @@ import (
 	infralogger "github.com/north-cloud/infrastructure/logger"
 )
 
-// APILoader handles loading source configurations from the gosources API.
+// APILoader handles loading source configurations from the source-manager API.
 type APILoader struct {
 	client *apiclient.Client
 	logger infralogger.Logger
@@ -30,7 +30,7 @@ func NewAPILoader(apiURL string, log infralogger.Logger, jwtSecret string) *APIL
 	}
 }
 
-// LoadSources loads all sources from the gosources API.
+// LoadSources loads all sources from the source-manager API.
 func (l *APILoader) LoadSources() ([]Config, error) {
 	ctx := context.Background()
 

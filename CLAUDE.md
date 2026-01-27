@@ -1,4 +1,6 @@
-# CLAUDE.md - AI Assistant Guide for North Cloud
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 **IMPORTANT**: This file is automatically loaded into Claude's context. It's tuned for effectiveness - most critical information is at the top. Follow the structure: read what you need, not everything.
 
@@ -21,7 +23,31 @@ docker compose -f docker-compose.base.yml -f docker-compose.dev.yml up -d --buil
 docker compose -f docker-compose.base.yml -f docker-compose.dev.yml down
 ```
 
-**Service Development**:
+**Taskfile Commands (Preferred)**:
+```bash
+# Run all linters
+task lint
+
+# Run all tests
+task test
+
+# Run tests with coverage
+task test:cover
+
+# Single service (replace SERVICE with: auth, classifier, crawler, etc.)
+task lint:SERVICE
+task test:SERVICE
+task test:cover:SERVICE
+
+# Run migrations
+task migrate:up
+task migrate:SERVICE
+
+# Install dev tools (golangci-lint, air, goimports, migrate)
+task install:tools
+```
+
+**Service Development (Manual)**:
 ```bash
 # Run tests
 cd SERVICE && go test ./...
@@ -47,7 +73,7 @@ cd SERVICE && go build -o bin/SERVICE main.go
 |---------|------|---------|
 | crawler | 8060 | Crawler API |
 | source-manager | 8050 | Source Manager API |
-| classifier | 8070 | Classifier HTTP API |
+| classifier | 8071 | Classifier HTTP API |
 | publisher | 8070 | Publisher API |
 | auth | 8040 | Authentication |
 | index-manager | 8090 | Index Manager API |
@@ -90,6 +116,11 @@ cd SERVICE && go build -o bin/SERVICE main.go
 - **Keep lines under 150 characters** - break long lines
 - **Avoid variable shadowing** - use `unmarshalErr`, `marshalErr`, etc. for clarity
 
+- **NEVER use `os.Getenv` directly** - use `infrastructure/config` package instead
+  - ❌ `port := os.Getenv("PORT")`
+  - ✅ Use config struct with `env` tags loaded via `infrastructure/config`
+  - The `forbidigo` linter enforces this (exception: `cmd/` and `infrastructure/config/` directories)
+
 **Before committing**: `cd SERVICE && golangci-lint run`
 
 ### Before Making Changes - YOU MUST
@@ -128,7 +159,7 @@ cd SERVICE && go build -o bin/SERVICE main.go
 ### 2. source-manager (`/source-manager`)
 - **Port**: 8050
 - **Purpose**: Manage content sources and crawling configs
-- **Database**: `postgres-source-manager` (gosources database)
+- **Database**: `postgres-source-manager` (source_manager database)
 - **Test Crawl**: `POST /api/v1/sources/test-crawl` (preview without saving)
 
 ### 3. classifier (`/classifier`)
@@ -210,7 +241,7 @@ docker compose -f docker-compose.base.yml -f docker-compose.dev.yml up -d
 ### Database Access
 ```bash
 # Source manager
-docker exec -it north-cloud-postgres-source-manager psql -U postgres -d gosources
+docker exec -it north-cloud-postgres-source-manager psql -U postgres -d source_manager
 
 # Crawler
 docker exec -it north-cloud-postgres-crawler psql -U postgres -d crawler
@@ -268,14 +299,12 @@ docker exec -it north-cloud-streetcode drush updb
 - **8 API endpoints**: `/pause`, `/resume`, `/cancel`, `/retry`, `/executions`, `/stats`, `/scheduler/metrics`
 
 ### Classifier
-- **IMPORTANT**: Read `/classifier/CLAUDE.md` for detailed guidelines
 - **Pipeline**: Processes `{source}_raw_content` with `classification_status=pending`
 - **Output**: `{source}_classified_content` with quality (0-100), topics, crime sub-categories
 - **Publisher compatibility**: Must populate `Body` and `Source` alias fields
 - **Crime sub-categories**: violent_crime, property_crime, drug_crime, organized_crime, criminal_justice
 
 ### Publisher
-- **IMPORTANT**: Read `/publisher/CLAUDE.md` for detailed guidelines
 - **Mode**: `use_classified_content: true` (recommended) - queries `{source}_classified_content`
 - **Filter**: `content_type: "article"` to exclude pages/listings
 - **Routes**: Database-backed (PostgreSQL), many-to-many (sources → channels)
@@ -343,6 +372,39 @@ bash infrastructure/certbot/scripts/renew-and-reload.sh
 ```
 **Note**: Certbot service auto-checks every 12 hours, renews 30 days before expiry
 
+### Database Backup/Restore/Sync
+```bash
+# Backup single service
+task db:backup:crawler
+
+# Backup all databases
+task db:backup:all
+
+# List available backups
+task db:list
+
+# Restore from backup (requires --confirm)
+task db:restore -- crawler ./backups/crawler/backup.sql.gz --confirm
+
+# Sync from production to development (requires PROD_SSH_HOST)
+task db:sync:crawler         # Single service
+task db:sync:all             # All databases
+task db:sync -- crawler --dry-run  # Preview without executing
+```
+
+**Environment variables for sync**:
+```bash
+PROD_SSH_HOST=user@production-server
+PROD_SSH_PORT=22
+PROD_DEPLOY_PATH=/opt/north-cloud
+```
+
+**Safety features**:
+- Restore requires `--confirm` flag
+- Auto-backup before restore
+- Sync refuses to run in production (one-way only: prod → dev)
+- Retention policy cleans old backups (default: 7 per service)
+
 ---
 
 ## Git Workflow
@@ -406,8 +468,6 @@ bash infrastructure/certbot/scripts/renew-and-reload.sh
 - `/crawler/README.md` - General crawler docs
 - `/crawler/docs/INTERVAL_SCHEDULER.md` - **RECOMMENDED** Interval scheduler guide
 - `/crawler/docs/DATABASE_SCHEDULER.md` - Legacy cron scheduler (deprecated)
-- `/classifier/CLAUDE.md` - Classifier detailed guidelines
-- `/publisher/CLAUDE.md` - Publisher detailed guidelines
 - `/publisher/docs/REDIS_MESSAGE_FORMAT.md` - Redis message specification
 - `/publisher/docs/CONSUMER_GUIDE.md` - Integration examples
 - `/mcp-north-cloud/README.md` - MCP server tool documentation

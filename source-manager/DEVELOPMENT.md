@@ -1,6 +1,6 @@
 # Development Guide
 
-This guide covers setting up and running the gosources application in development mode.
+This guide covers setting up and running the source_manager application in development mode.
 
 ## Prerequisites
 
@@ -35,7 +35,7 @@ Create a PostgreSQL database and run migrations:
 task docker:up
 
 # Or manually with psql
-createdb gosources
+createdb source_manager
 DB_PASSWORD=yourpassword task migrate
 ```
 
@@ -53,7 +53,7 @@ database:
   port: 5432
   user: postgres
   password: yourpassword
-  dbname: gosources
+  dbname: source_manager
   sslmode: disable
   max_open_conns: 25
   max_idle_conns: 25
@@ -184,7 +184,7 @@ Edit `.air.toml` to customize the hot reload behavior:
 ## Project Structure
 
 ```
-gosources/
+source_manager/
 ├── .air.toml              # Air hot reload configuration
 ├── Taskfile.yml           # Task definitions
 ├── config.yml             # Application configuration (gitignored)
@@ -249,7 +249,7 @@ kill -9 <PID>
 **Database connection error**
 - Check PostgreSQL is running: `pg_isready`
 - Verify config.yml database settings
-- Check credentials: `psql -U postgres -d gosources`
+- Check credentials: `psql -U postgres -d source_manager`
 
 ## Best Practices
 

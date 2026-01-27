@@ -1,4 +1,4 @@
-// Package apiclient provides HTTP client functionality for interacting with the gosources API.
+// Package apiclient provides HTTP client functionality for interacting with the source-manager API.
 package apiclient
 
 import (

@@ -80,6 +80,6 @@ crawler:
   index_name: "crawler" # Index name for articles
   content_index_name: "crawler_content" # Index name for content
   source_file: "config/sources.yml"    # Path to sources configuration (deprecated, use sources_api_url)
-  sources_api_url: "http://localhost:8050/api/v1/sources"  # URL of the gosources API service
+  sources_api_url: "http://localhost:8050/api/v1/sources"  # URL of the source-manager API service
   tls:
     insecure_skip_verify: false  # Set to true only in development for testing

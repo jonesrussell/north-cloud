@@ -1,4 +1,4 @@
-// Package apiclient provides HTTP client functionality for interacting with the gosources API.
+// Package apiclient provides HTTP client functionality for interacting with the source-manager API.
 package apiclient
 
 import (
@@ -17,7 +17,7 @@ import (
 )
 
 const (
-	// DefaultBaseURL is the default base URL for the gosources API.
+	// DefaultBaseURL is the default base URL for the source-manager API.
 	DefaultBaseURL = "http://localhost:8050/api/v1/sources"
 	// DefaultTimeout is the default timeout for API requests.
 	DefaultTimeout = 30 * time.Second
@@ -25,7 +25,7 @@ const (
 	ServiceTokenExpirationHours = 24
 )
 
-// Client is an HTTP client for interacting with the gosources API.
+// Client is an HTTP client for interacting with the source-manager API.
 type Client struct {
 	baseURL    string
 	httpClient *http.Client
@@ -63,7 +63,7 @@ func WithJWTSecret(secret string) Option {
 	}
 }
 
-// NewClient creates a new gosources API client.
+// NewClient creates a new source-manager API client.
 func NewClient(opts ...Option) *Client {
 	client := &Client{
 		baseURL: DefaultBaseURL,
@@ -216,7 +216,7 @@ func (c *Client) doRequest(req *http.Request, result any) error {
 		if errors.As(err, &urlErr) {
 			if urlErr.Op == "dial" || urlErr.Err != nil {
 				return fmt.Errorf("failed to connect to sources API at %s: %w. "+
-					"Ensure the gosources service is running and accessible", c.baseURL, err)
+					"Ensure the source-manager service is running and accessible", c.baseURL, err)
 			}
 		}
 		return fmt.Errorf("request failed: %w", err)

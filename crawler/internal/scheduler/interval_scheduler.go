@@ -57,6 +57,9 @@ type IntervalScheduler struct {
 
 	// Metrics
 	metrics *SchedulerMetrics
+
+	// SSE integration (optional)
+	ssePublisher *SSEPublisher
 }
 
 // NewIntervalScheduler creates a new interval-based scheduler.
@@ -256,6 +259,9 @@ func (s *IntervalScheduler) executeJob(job *domain.Job) {
 		return
 	}
 
+	// Publish SSE event for job start
+	s.publishJobStatus(s.ctx, job)
+
 	// Create execution context with cancellation
 	jobCtx, cancel := context.WithCancel(s.ctx)
 
@@ -347,7 +353,7 @@ func (s *IntervalScheduler) handleJobSuccess(jobExec *JobExecution, startTime *t
 	itemsIndexed := itemsCrawled
 
 	// Update execution record
-	execution.Status = "completed"
+	execution.Status = string(StateCompleted)
 	execution.CompletedAt = &now
 	execution.DurationMs = &durationMs
 	execution.ItemsCrawled = itemsCrawled
@@ -361,7 +367,7 @@ func (s *IntervalScheduler) handleJobSuccess(jobExec *JobExecution, startTime *t
 	}
 
 	// Update job
-	job.Status = "completed"
+	job.Status = string(StateCompleted)
 	job.CompletedAt = &now
 	job.CurrentRetryCount = 0
 	job.ErrorMessage = nil
@@ -390,6 +396,9 @@ func (s *IntervalScheduler) handleJobSuccess(jobExec *JobExecution, startTime *t
 		infralogger.Int("items_indexed", itemsIndexed),
 		infralogger.Any("next_run_at", job.NextRunAt),
 	)
+
+	// Publish SSE event for job completion
+	s.publishJobCompleted(s.ctx, job, execution)
 }
 
 // handleJobFailure handles job execution failure.
@@ -404,7 +413,7 @@ func (s *IntervalScheduler) handleJobFailure(jobExec *JobExecution, execErr erro
 	}
 
 	// Update execution record
-	execution.Status = "failed"
+	execution.Status = string(StateFailed)
 	execution.CompletedAt = &now
 	execution.DurationMs = &durationMs
 	errMsg := execErr.Error()
@@ -436,7 +445,7 @@ func (s *IntervalScheduler) handleJobFailure(jobExec *JobExecution, execErr erro
 		)
 	} else {
 		// No more retries
-		job.Status = "failed"
+		job.Status = string(StateFailed)
 		job.CompletedAt = &now
 
 		s.metrics.IncrementFailed()
@@ -457,6 +466,9 @@ func (s *IntervalScheduler) handleJobFailure(jobExec *JobExecution, execErr erro
 	}
 
 	s.metrics.IncrementTotalExecutions()
+
+	// Publish SSE event for job failure
+	s.publishJobCompleted(s.ctx, job, execution)
 }
 
 // calculateNextRun calculates the next run time based on interval configuration.
@@ -620,4 +632,28 @@ func (s *IntervalScheduler) CancelJob(jobID string) error {
 	s.metrics.IncrementCancelled()
 
 	return nil
+}
+
+// SetSSEPublisher sets the SSE publisher for real-time event streaming.
+// This is optional - if not set, no SSE events will be published.
+//
+// IMPORTANT: This method must be called before Start() to avoid data races.
+// The ssePublisher field is not synchronized because it's intended to be
+// set once during initialization and never changed during the scheduler's lifetime.
+func (s *IntervalScheduler) SetSSEPublisher(publisher *SSEPublisher) {
+	s.ssePublisher = publisher
+}
+
+// publishJobStatus publishes a job status event if SSE is enabled.
+func (s *IntervalScheduler) publishJobStatus(ctx context.Context, job *domain.Job) {
+	if s.ssePublisher != nil {
+		s.ssePublisher.PublishJobStatus(ctx, job, nil)
+	}
+}
+
+// publishJobCompleted publishes a job completion event if SSE is enabled.
+func (s *IntervalScheduler) publishJobCompleted(ctx context.Context, job *domain.Job, execution *domain.JobExecution) {
+	if s.ssePublisher != nil {
+		s.ssePublisher.PublishJobCompleted(ctx, job, execution)
+	}
 }

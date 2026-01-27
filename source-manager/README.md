@@ -43,7 +43,7 @@ database:
   port: 5432
   user: "postgres"
   password: "postgres"
-  dbname: "gosources"
+  dbname: "source_manager"
 ```
 
 Environment variables override config file values:
@@ -62,13 +62,13 @@ Environment variables override config file values:
 Run the migration to create the sources table:
 
 ```bash
-psql -U postgres -d gosources -f migrations/001_create_sources_table.sql
+psql -U postgres -d source_manager -f migrations/001_create_sources_table.sql
 ```
 
 Or using docker:
 
 ```bash
-docker exec -i postgres psql -U postgres -d gosources < migrations/001_create_sources_table.sql
+docker exec -i postgres psql -U postgres -d source_manager < migrations/001_create_sources_table.sql
 ```
 
 ## Source JSON Format
@@ -111,6 +111,6 @@ go run main.go -config config.yml
 ## Building
 
 ```bash
-go build -o bin/gosources main.go
+go build -o bin/source-manager main.go
 ```
 

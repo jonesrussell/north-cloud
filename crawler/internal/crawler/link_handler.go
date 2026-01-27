@@ -4,7 +4,6 @@ package crawler
 import (
 	"context"
 	"errors"
-	"fmt"
 	"net/url"
 	"strings"
 	"time"
@@ -226,6 +225,7 @@ func (h *LinkHandler) shouldSaveLink() bool {
 }
 
 // isExternalLink checks if a link points to an external domain (not in the source's allowed domains).
+// Uses cached source config from CrawlContext (no API calls).
 func (h *LinkHandler) isExternalLink(linkURL string) bool {
 	parsedLink, err := url.Parse(linkURL)
 	if err != nil {
@@ -237,25 +237,13 @@ func (h *LinkHandler) isExternalLink(linkURL string) bool {
 		return false
 	}
 
-	// Get source configuration to check allowed domains
-	sourceID := h.crawler.state.CurrentSource()
-	if sourceID == "" {
-		return false
-	}
-
-	ctx := h.crawler.state.Context()
-	if ctx == nil {
-		return false
-	}
-
-	source, err := h.crawler.sources.ValidateSourceByID(ctx, sourceID)
-	if err != nil {
-		// If we can't get source config, don't save the link
+	cc := h.crawler.getCrawlContext()
+	if cc == nil || cc.Source == nil {
 		return false
 	}
 
 	// Check if link's domain matches any allowed domain
-	for _, allowedDomain := range source.AllowedDomains {
+	for _, allowedDomain := range cc.Source.AllowedDomains {
 		// Exact match
 		if allowedDomain == linkHostname {
 			return false // Internal link
@@ -303,21 +291,17 @@ func (h *LinkHandler) trySaveLink(absLink string, e *colly.HTMLElement) bool {
 
 // saveLinkToQueue saves a discovered link to the database for tracking and discovery purposes.
 // This allows tracking of discovered links even though they are also visited immediately.
+// Uses cached source config from CrawlContext (no API calls).
 func (h *LinkHandler) saveLinkToQueue(ctx context.Context, linkURL, parentURL string, depth int) error {
-	sourceID := h.crawler.state.CurrentSource()
-	if sourceID == "" {
-		return errors.New("no current source")
-	}
-
-	// Get source config to get the source name
-	source, err := h.crawler.sources.ValidateSourceByID(ctx, sourceID)
-	if err != nil {
-		return fmt.Errorf("failed to get source config: %w", err)
+	cc := h.crawler.getCrawlContext()
+	if cc == nil || cc.Source == nil {
+		h.crawler.logger.Debug("Cannot save link - no crawl context", infralogger.String("url", linkURL))
+		return errors.New("no crawl context")
 	}
 
 	discoveredLink := &domain.DiscoveredLink{
-		SourceID:   sourceID,
-		SourceName: source.Name,
+		SourceID:   cc.SourceID,
+		SourceName: cc.Source.Name,
 		URL:        linkURL,
 		ParentURL:  &parentURL,
 		Depth:      depth + 1, // Increment depth (colly's depth is 0-indexed from start URL)

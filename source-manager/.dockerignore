@@ -15,7 +15,7 @@ DEVELOPMENT.md
 *.swo
 
 # Build artifacts
-gosources
+source-manager
 bin/
 *.exe
 *.test

@@ -35,6 +35,9 @@ type Job struct {
 	// State tracking
 	Status string `db:"status" json:"status"` // pending, scheduled, running, paused, cancelled, completed, failed
 
+	// Scheduler version (1=V1 interval-based, 2=V2 Redis Streams)
+	SchedulerVersion int `db:"scheduler_version" json:"scheduler_version"`
+
 	// Timestamps
 	CreatedAt   time.Time  `db:"created_at"   json:"created_at"`
 	UpdatedAt   time.Time  `db:"updated_at"   json:"updated_at"`

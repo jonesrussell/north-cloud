@@ -28,6 +28,7 @@ func (c *Crawler) Start(ctx context.Context, sourceID string) error {
 
 	// Ensure abort signal is sent on exit
 	defer c.signals.SignalAbort()
+	defer c.clearCrawlContext()
 
 	// Validate and setup
 	source, err := c.validateAndSetup(ctx, sourceID)
@@ -106,12 +107,18 @@ func (c *Crawler) Start(ctx context.Context, sourceID string) error {
 }
 
 // validateAndSetup validates the source by ID and sets up the collector.
+// Fetches the source once and stores it in CrawlContext for link handler reuse.
 func (c *Crawler) validateAndSetup(ctx context.Context, sourceID string) (*configtypes.Source, error) {
-	// Validate source by ID
+	// Validate source by ID (single fetch per crawl)
 	source, err := c.sources.ValidateSourceByID(ctx, sourceID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to validate source: %w", err)
 	}
+
+	// Cache source config for link handler (avoids repeated ValidateSourceByID calls per link)
+	c.crawlContextMu.Lock()
+	c.crawlContext = &CrawlContext{SourceID: sourceID, Source: source}
+	c.crawlContextMu.Unlock()
 
 	// Set up collector
 	if setupErr := c.setupCollector(source); setupErr != nil {

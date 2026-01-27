@@ -393,6 +393,329 @@ tasks:
     cmds:
       - docker compose -f docker-compose.base.yml -f docker-compose.prod.yml build {{.CLI_ARGS}}
 
+  # ============================================================
+  # Individual Service Commands (Development)
+  # ============================================================
+
+  # ------------------------------------------------------------
+  # Crawler
+  # ------------------------------------------------------------
+  docker:dev:up:crawler:
+    desc: "Start crawler service and dependencies"
+    cmds:
+      - docker compose -f docker-compose.base.yml -f docker-compose.dev.yml up -d crawler
+
+  docker:dev:down:crawler:
+    desc: "Stop crawler service"
+    cmds:
+      - docker compose -f docker-compose.base.yml -f docker-compose.dev.yml stop crawler
+
+  docker:dev:logs:crawler:
+    desc: "View crawler service logs"
+    cmds:
+      - docker compose -f docker-compose.base.yml -f docker-compose.dev.yml logs -f {{.CLI_ARGS}} crawler
+
+  docker:dev:build:crawler:
+    desc: "Build crawler service image"
+    cmds:
+      - docker compose -f docker-compose.base.yml -f docker-compose.dev.yml build crawler
+
+  docker:dev:restart:crawler:
+    desc: "Restart crawler service"
+    cmds:
+      - task: docker:dev:down:crawler
+      - task: docker:dev:up:crawler
+
+  # ------------------------------------------------------------
+  # Source Manager
+  # ------------------------------------------------------------
+  docker:dev:up:source-manager:
+    desc: "Start source-manager service and dependencies"
+    cmds:
+      - docker compose -f docker-compose.base.yml -f docker-compose.dev.yml up -d source-manager
+
+  docker:dev:down:source-manager:
+    desc: "Stop source-manager service"
+    cmds:
+      - docker compose -f docker-compose.base.yml -f docker-compose.dev.yml stop source-manager
+
+  docker:dev:logs:source-manager:
+    desc: "View source-manager service logs"
+    cmds:
+      - docker compose -f docker-compose.base.yml -f docker-compose.dev.yml logs -f {{.CLI_ARGS}} source-manager
+
+  docker:dev:build:source-manager:
+    desc: "Build source-manager service image"
+    cmds:
+      - docker compose -f docker-compose.base.yml -f docker-compose.dev.yml build source-manager
+
+  docker:dev:restart:source-manager:
+    desc: "Restart source-manager service"
+    cmds:
+      - task: docker:dev:down:source-manager
+      - task: docker:dev:up:source-manager
+
+  # ------------------------------------------------------------
+  # Publisher
+  # ------------------------------------------------------------
+  docker:dev:up:publisher:
+    desc: "Start publisher service and dependencies"
+    cmds:
+      - docker compose -f docker-compose.base.yml -f docker-compose.dev.yml up -d publisher
+
+  docker:dev:down:publisher:
+    desc: "Stop publisher service"
+    cmds:
+      - docker compose -f docker-compose.base.yml -f docker-compose.dev.yml stop publisher
+
+  docker:dev:logs:publisher:
+    desc: "View publisher service logs"
+    cmds:
+      - docker compose -f docker-compose.base.yml -f docker-compose.dev.yml logs -f {{.CLI_ARGS}} publisher
+
+  docker:dev:build:publisher:
+    desc: "Build publisher service image"
+    cmds:
+      - docker compose -f docker-compose.base.yml -f docker-compose.dev.yml build publisher
+
+  docker:dev:restart:publisher:
+    desc: "Restart publisher service"
+    cmds:
+      - task: docker:dev:down:publisher
+      - task: docker:dev:up:publisher
+
+  # ------------------------------------------------------------
+  # Classifier
+  # ------------------------------------------------------------
+  docker:dev:up:classifier:
+    desc: "Start classifier service and dependencies"
+    cmds:
+      - docker compose -f docker-compose.base.yml -f docker-compose.dev.yml up -d classifier
+
+  docker:dev:down:classifier:
+    desc: "Stop classifier service"
+    cmds:
+      - docker compose -f docker-compose.base.yml -f docker-compose.dev.yml stop classifier
+
+  docker:dev:logs:classifier:
+    desc: "View classifier service logs"
+    cmds:
+      - docker compose -f docker-compose.base.yml -f docker-compose.dev.yml logs -f {{.CLI_ARGS}} classifier
+
+  docker:dev:build:classifier:
+    desc: "Build classifier service image"
+    cmds:
+      - docker compose -f docker-compose.base.yml -f docker-compose.dev.yml build classifier
+
+  docker:dev:restart:classifier:
+    desc: "Restart classifier service"
+    cmds:
+      - task: docker:dev:down:classifier
+      - task: docker:dev:up:classifier
+
+  # ------------------------------------------------------------
+  # Auth
+  # ------------------------------------------------------------
+  docker:dev:up:auth:
+    desc: "Start auth service"
+    cmds:
+      - docker compose -f docker-compose.base.yml -f docker-compose.dev.yml up -d auth
+
+  docker:dev:down:auth:
+    desc: "Stop auth service"
+    cmds:
+      - docker compose -f docker-compose.base.yml -f docker-compose.dev.yml stop auth
+
+  docker:dev:logs:auth:
+    desc: "View auth service logs"
+    cmds:
+      - docker compose -f docker-compose.base.yml -f docker-compose.dev.yml logs -f {{.CLI_ARGS}} auth
+
+  docker:dev:build:auth:
+    desc: "Build auth service image"
+    cmds:
+      - docker compose -f docker-compose.base.yml -f docker-compose.dev.yml build auth
+
+  docker:dev:restart:auth:
+    desc: "Restart auth service"
+    cmds:
+      - task: docker:dev:down:auth
+      - task: docker:dev:up:auth
+
+  # ------------------------------------------------------------
+  # Index Manager
+  # ------------------------------------------------------------
+  docker:dev:up:index-manager:
+    desc: "Start index-manager service and dependencies"
+    cmds:
+      - docker compose -f docker-compose.base.yml -f docker-compose.dev.yml up -d index-manager
+
+  docker:dev:down:index-manager:
+    desc: "Stop index-manager service"
+    cmds:
+      - docker compose -f docker-compose.base.yml -f docker-compose.dev.yml stop index-manager
+
+  docker:dev:logs:index-manager:
+    desc: "View index-manager service logs"
+    cmds:
+      - docker compose -f docker-compose.base.yml -f docker-compose.dev.yml logs -f {{.CLI_ARGS}} index-manager
+
+  docker:dev:build:index-manager:
+    desc: "Build index-manager service image"
+    cmds:
+      - docker compose -f docker-compose.base.yml -f docker-compose.dev.yml build index-manager
+
+  docker:dev:restart:index-manager:
+    desc: "Restart index-manager service"
+    cmds:
+      - task: docker:dev:down:index-manager
+      - task: docker:dev:up:index-manager
+
+  # ------------------------------------------------------------
+  # Search Service
+  # ------------------------------------------------------------
+  docker:dev:up:search-service:
+    desc: "Start search-service and dependencies"
+    cmds:
+      - docker compose -f docker-compose.base.yml -f docker-compose.dev.yml up -d search-service
+
+  docker:dev:down:search-service:
+    desc: "Stop search-service"
+    cmds:
+      - docker compose -f docker-compose.base.yml -f docker-compose.dev.yml stop search-service
+
+  docker:dev:logs:search-service:
+    desc: "View search-service logs"
+    cmds:
+      - docker compose -f docker-compose.base.yml -f docker-compose.dev.yml logs -f {{.CLI_ARGS}} search-service
+
+  docker:dev:build:search-service:
+    desc: "Build search-service image"
+    cmds:
+      - docker compose -f docker-compose.base.yml -f docker-compose.dev.yml build search-service
+
+  docker:dev:restart:search-service:
+    desc: "Restart search-service"
+    cmds:
+      - task: docker:dev:down:search-service
+      - task: docker:dev:up:search-service
+
+  # ------------------------------------------------------------
+  # Search Frontend
+  # ------------------------------------------------------------
+  docker:dev:up:search-frontend:
+    desc: "Start search-frontend and dependencies"
+    cmds:
+      - docker compose -f docker-compose.base.yml -f docker-compose.dev.yml up -d search-frontend
+
+  docker:dev:down:search-frontend:
+    desc: "Stop search-frontend"
+    cmds:
+      - docker compose -f docker-compose.base.yml -f docker-compose.dev.yml stop search-frontend
+
+  docker:dev:logs:search-frontend:
+    desc: "View search-frontend logs"
+    cmds:
+      - docker compose -f docker-compose.base.yml -f docker-compose.dev.yml logs -f {{.CLI_ARGS}} search-frontend
+
+  docker:dev:build:search-frontend:
+    desc: "Build search-frontend image"
+    cmds:
+      - docker compose -f docker-compose.base.yml -f docker-compose.dev.yml build search-frontend
+
+  docker:dev:restart:search-frontend:
+    desc: "Restart search-frontend"
+    cmds:
+      - task: docker:dev:down:search-frontend
+      - task: docker:dev:up:search-frontend
+
+  # ------------------------------------------------------------
+  # Dashboard
+  # ------------------------------------------------------------
+  docker:dev:up:dashboard:
+    desc: "Start dashboard and dependencies"
+    cmds:
+      - docker compose -f docker-compose.base.yml -f docker-compose.dev.yml up -d dashboard
+
+  docker:dev:down:dashboard:
+    desc: "Stop dashboard"
+    cmds:
+      - docker compose -f docker-compose.base.yml -f docker-compose.dev.yml stop dashboard
+
+  docker:dev:logs:dashboard:
+    desc: "View dashboard logs"
+    cmds:
+      - docker compose -f docker-compose.base.yml -f docker-compose.dev.yml logs -f {{.CLI_ARGS}} dashboard
+
+  docker:dev:build:dashboard:
+    desc: "Build dashboard image"
+    cmds:
+      - docker compose -f docker-compose.base.yml -f docker-compose.dev.yml build dashboard
+
+  docker:dev:restart:dashboard:
+    desc: "Restart dashboard"
+    cmds:
+      - task: docker:dev:down:dashboard
+      - task: docker:dev:up:dashboard
+
+  # ------------------------------------------------------------
+  # Nginx
+  # ------------------------------------------------------------
+  docker:dev:up:nginx:
+    desc: "Start nginx and dependencies"
+    cmds:
+      - docker compose -f docker-compose.base.yml -f docker-compose.dev.yml up -d nginx
+
+  docker:dev:down:nginx:
+    desc: "Stop nginx"
+    cmds:
+      - docker compose -f docker-compose.base.yml -f docker-compose.dev.yml stop nginx
+
+  docker:dev:logs:nginx:
+    desc: "View nginx logs"
+    cmds:
+      - docker compose -f docker-compose.base.yml -f docker-compose.dev.yml logs -f {{.CLI_ARGS}} nginx
+
+  docker:dev:build:nginx:
+    desc: "Build nginx image"
+    cmds:
+      - docker compose -f docker-compose.base.yml -f docker-compose.dev.yml build nginx
+
+  docker:dev:restart:nginx:
+    desc: "Restart nginx"
+    cmds:
+      - task: docker:dev:down:nginx
+      - task: docker:dev:up:nginx
+
+  # ------------------------------------------------------------
+  # Pyroscope
+  # ------------------------------------------------------------
+  docker:dev:up:pyroscope:
+    desc: "Start pyroscope"
+    cmds:
+      - docker compose -f docker-compose.base.yml -f docker-compose.dev.yml up -d pyroscope
+
+  docker:dev:down:pyroscope:
+    desc: "Stop pyroscope"
+    cmds:
+      - docker compose -f docker-compose.base.yml -f docker-compose.dev.yml stop pyroscope
+
+  docker:dev:logs:pyroscope:
+    desc: "View pyroscope logs"
+    cmds:
+      - docker compose -f docker-compose.base.yml -f docker-compose.dev.yml logs -f {{.CLI_ARGS}} pyroscope
+
+  docker:dev:build:pyroscope:
+    desc: "Build pyroscope image"
+    cmds:
+      - docker compose -f docker-compose.base.yml -f docker-compose.dev.yml build pyroscope
+
+  docker:dev:restart:pyroscope:
+    desc: "Restart pyroscope"
+    cmds:
+      - task: docker:dev:down:pyroscope
+      - task: docker:dev:up:pyroscope
+
   migrate:up:
     desc: "Run database migrations for all microservices sequentially"
     cmds:
@@ -400,6 +723,7 @@ tasks:
       - task: migrate:source-manager
       - task: migrate:classifier
       - task: migrate:publisher
+      - task: migrate:index-manager
 
   migrate:down:
     desc: "Rollback last migration for all microservices sequentially"
@@ -408,6 +732,7 @@ tasks:
       - task: migrate:down:source-manager
       - task: migrate:down:classifier
       - task: migrate:down:publisher
+      - task: migrate:down:index-manager
 
   migrate:version:
     desc: "Show migration version for all microservices"
@@ -416,6 +741,7 @@ tasks:
       - task: migrate:version:source-manager
       - task: migrate:version:classifier
       - task: migrate:version:publisher
+      - task: migrate:version:index-manager
 
   migrate:crawler:
     desc: "Run database migrations for crawler service"
@@ -501,6 +827,42 @@ tasks:
     cmds:
       - task migrate:version
 
+  migrate:force:publisher:
+    desc: "Force publisher database to a specific migration version (use to fix dirty state)"
+    dir: publisher
+    cmds:
+      - task migrate:force
+
+  migrate:index-manager:
+    desc: "Run database migrations for index-manager service"
+    dir: index-manager
+    cmds:
+      - task migrate:up
+
+  migrate:down:index-manager:
+    desc: "Rollback last migration for index-manager service"
+    dir: index-manager
+    cmds:
+      - task migrate:down
+
+  migrate:version:index-manager:
+    desc: "Show migration version for index-manager service"
+    dir: index-manager
+    cmds:
+      - task migrate:version
+
+  migrate:force:index-manager:
+    desc: "Force index-manager database to a specific migration version (use to fix dirty state)"
+    dir: index-manager
+    cmds:
+      - task migrate:force
+
+  migrate:force:crawler:
+    desc: "Force crawler database to a specific migration version (use to fix dirty state)"
+    dir: crawler
+    cmds:
+      - task migrate:force
+
   config:init:
     desc: "Copy all config.yml.example files to config.yml"
     cmds:
@@ -518,3 +880,87 @@ tasks:
       - go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest || true
       - go install golang.org/x/tools/cmd/goimports@latest || true
       - go install github.com/golang-migrate/migrate/v4/cmd/migrate@latest || true
+
+  # ============================================================
+  # Database Backup/Restore/Sync Commands
+  # ============================================================
+
+  db:backup:
+    desc: "Backup database for a service (usage: task db:backup -- crawler)"
+    cmds:
+      - ./scripts/db-backup.sh {{.CLI_ARGS}}
+
+  db:backup:all:
+    desc: "Backup all databases"
+    cmds:
+      - ./scripts/db-backup.sh all
+
+  db:backup:crawler:
+    desc: "Backup crawler database"
+    cmds:
+      - ./scripts/db-backup.sh crawler
+
+  db:backup:source-manager:
+    desc: "Backup source-manager database"
+    cmds:
+      - ./scripts/db-backup.sh source-manager
+
+  db:backup:classifier:
+    desc: "Backup classifier database"
+    cmds:
+      - ./scripts/db-backup.sh classifier
+
+  db:backup:publisher:
+    desc: "Backup publisher database"
+    cmds:
+      - ./scripts/db-backup.sh publisher
+
+  db:backup:index-manager:
+    desc: "Backup index-manager database"
+    cmds:
+      - ./scripts/db-backup.sh index-manager
+
+  db:restore:
+    desc: "Restore database from backup (usage: task db:restore -- crawler ./backups/crawler/backup.sql.gz --confirm)"
+    cmds:
+      - ./scripts/db-restore.sh {{.CLI_ARGS}}
+
+  db:sync:
+    desc: "Sync database from production (usage: task db:sync -- crawler)"
+    cmds:
+      - ./scripts/db-sync.sh {{.CLI_ARGS}}
+
+  db:sync:all:
+    desc: "Sync all databases from production"
+    cmds:
+      - ./scripts/db-sync.sh all
+
+  db:sync:crawler:
+    desc: "Sync crawler database from production"
+    cmds:
+      - ./scripts/db-sync.sh crawler
+
+  db:sync:source-manager:
+    desc: "Sync source-manager database from production"
+    cmds:
+      - ./scripts/db-sync.sh source-manager
+
+  db:sync:classifier:
+    desc: "Sync classifier database from production"
+    cmds:
+      - ./scripts/db-sync.sh classifier
+
+  db:sync:publisher:
+    desc: "Sync publisher database from production"
+    cmds:
+      - ./scripts/db-sync.sh publisher
+
+  db:sync:index-manager:
+    desc: "Sync index-manager database from production"
+    cmds:
+      - ./scripts/db-sync.sh index-manager
+
+  db:list:
+    desc: "List available database backups"
+    cmds:
+      - ./scripts/db-list.sh {{.CLI_ARGS}}
