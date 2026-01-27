@@ -68,7 +68,9 @@ func (r *ExecutionRepository) GetByID(ctx context.Context, id string) (*domain.J
 		       items_crawled, items_indexed,
 		       error_message, stack_trace,
 		       cpu_time_ms, memory_peak_mb,
-		       retry_attempt, metadata
+		       retry_attempt,
+		       log_object_key, log_size_bytes, log_line_count,
+		       metadata
 		FROM job_executions
 		WHERE id = $1
 	`
@@ -97,8 +99,11 @@ func (r *ExecutionRepository) Update(ctx context.Context, execution *domain.JobE
 		    stack_trace = $7,
 		    cpu_time_ms = $8,
 		    memory_peak_mb = $9,
-		    metadata = $10
-		WHERE id = $11
+		    log_object_key = $10,
+		    log_size_bytes = $11,
+		    log_line_count = $12,
+		    metadata = $13
+		WHERE id = $14
 	`
 
 	// Convert Metadata to pointer for driver.Valuer interface
@@ -119,6 +124,9 @@ func (r *ExecutionRepository) Update(ctx context.Context, execution *domain.JobE
 		execution.StackTrace,
 		execution.CPUTimeMs,
 		execution.MemoryPeakMB,
+		execution.LogObjectKey,
+		execution.LogSizeBytes,
+		execution.LogLineCount,
 		metadataPtr,
 		execution.ID,
 	)
@@ -173,7 +181,9 @@ func (r *ExecutionRepository) ListByJobID(
 		       items_crawled, items_indexed,
 		       error_message, stack_trace,
 		       cpu_time_ms, memory_peak_mb,
-		       retry_attempt, metadata
+		       retry_attempt,
+		       log_object_key, log_size_bytes, log_line_count,
+		       metadata
 		FROM job_executions
 		WHERE job_id = $1
 		ORDER BY started_at DESC
@@ -214,7 +224,9 @@ func (r *ExecutionRepository) GetLatestByJobID(ctx context.Context, jobID string
 		       items_crawled, items_indexed,
 		       error_message, stack_trace,
 		       cpu_time_ms, memory_peak_mb,
-		       retry_attempt, metadata
+		       retry_attempt,
+		       log_object_key, log_size_bytes, log_line_count,
+		       metadata
 		FROM job_executions
 		WHERE job_id = $1
 		ORDER BY started_at DESC
