@@ -1,0 +1,232 @@
+name: Deploy to Production
+
+on:
+  push:
+    branches:
+      - main
+
+env:
+  REGISTRY: docker.io
+  IMAGE_PREFIX: jonesrussell
+
+jobs:
+  detect-changes:
+    name: Detect Changed Services
+    runs-on: ubuntu-latest
+    outputs:
+      auth: ${{ steps.changes.outputs.auth }}
+      crawler: ${{ steps.changes.outputs.crawler }}
+      source-manager: ${{ steps.changes.outputs.source-manager }}
+      classifier: ${{ steps.changes.outputs.classifier }}
+      publisher: ${{ steps.changes.outputs.publisher }}
+      index-manager: ${{ steps.changes.outputs.index-manager }}
+      search-service: ${{ steps.changes.outputs.search-service }}
+      search-frontend: ${{ steps.changes.outputs.search-frontend }}
+      dashboard: ${{ steps.changes.outputs.dashboard }}
+      infrastructure: ${{ steps.changes.outputs.infrastructure }}
+      docker-compose: ${{ steps.changes.outputs.docker-compose }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Detect changed services
+        id: changes
+        run: |
+          if [ "${{ github.event_name }}" == "pull_request" ]; then
+            BASE_SHA="${{ github.event.pull_request.base.sha }}"
+            HEAD_SHA="${{ github.event.pull_request.head.sha }}"
+          else
+            BASE_SHA="${{ github.event.before }}"
+            HEAD_SHA="${{ github.sha }}"
+          fi
+
+          # If BASE_SHA is empty or invalid, check all services
+          if [ -z "$BASE_SHA" ] || [ "$BASE_SHA" == "0000000000000000000000000000000000000000" ]; then
+            echo "auth=true" >> $GITHUB_OUTPUT
+            echo "crawler=true" >> $GITHUB_OUTPUT
+            echo "source-manager=true" >> $GITHUB_OUTPUT
+            echo "classifier=true" >> $GITHUB_OUTPUT
+            echo "publisher=true" >> $GITHUB_OUTPUT
+            echo "index-manager=true" >> $GITHUB_OUTPUT
+            echo "search-service=true" >> $GITHUB_OUTPUT
+            echo "search-frontend=true" >> $GITHUB_OUTPUT
+            echo "dashboard=true" >> $GITHUB_OUTPUT
+            echo "infrastructure=true" >> $GITHUB_OUTPUT
+            echo "docker-compose=true" >> $GITHUB_OUTPUT
+          else
+            CHANGED_FILES=$(git diff --name-only $BASE_SHA $HEAD_SHA)
+            
+            echo "auth=false" >> $GITHUB_OUTPUT
+            echo "crawler=false" >> $GITHUB_OUTPUT
+            echo "source-manager=false" >> $GITHUB_OUTPUT
+            echo "classifier=false" >> $GITHUB_OUTPUT
+            echo "publisher=false" >> $GITHUB_OUTPUT
+            echo "index-manager=false" >> $GITHUB_OUTPUT
+            echo "search-service=false" >> $GITHUB_OUTPUT
+            echo "search-frontend=false" >> $GITHUB_OUTPUT
+            echo "dashboard=false" >> $GITHUB_OUTPUT
+            echo "infrastructure=false" >> $GITHUB_OUTPUT
+            echo "docker-compose=false" >> $GITHUB_OUTPUT
+            
+            if echo "$CHANGED_FILES" | grep -q "^auth/"; then
+              echo "auth=true" >> $GITHUB_OUTPUT
+            fi
+            if echo "$CHANGED_FILES" | grep -q "^crawler/"; then
+              echo "crawler=true" >> $GITHUB_OUTPUT
+            fi
+            if echo "$CHANGED_FILES" | grep -q "^source-manager/"; then
+              echo "source-manager=true" >> $GITHUB_OUTPUT
+            fi
+            if echo "$CHANGED_FILES" | grep -q "^classifier/"; then
+              echo "classifier=true" >> $GITHUB_OUTPUT
+            fi
+            if echo "$CHANGED_FILES" | grep -q "^publisher/"; then
+              echo "publisher=true" >> $GITHUB_OUTPUT
+            fi
+            if echo "$CHANGED_FILES" | grep -q "^index-manager/"; then
+              echo "index-manager=true" >> $GITHUB_OUTPUT
+            fi
+            if echo "$CHANGED_FILES" | grep -q "^search/"; then
+              echo "search-service=true" >> $GITHUB_OUTPUT
+            fi
+            if echo "$CHANGED_FILES" | grep -q "^search-frontend/"; then
+              echo "search-frontend=true" >> $GITHUB_OUTPUT
+            fi
+            if echo "$CHANGED_FILES" | grep -q "^dashboard/"; then
+              echo "dashboard=true" >> $GITHUB_OUTPUT
+            fi
+            INFRASTRUCTURE_CHANGED=false
+            DOCKER_COMPOSE_CHANGED=false
+            
+            if echo "$CHANGED_FILES" | grep -q "^infrastructure/"; then
+              echo "infrastructure=true" >> $GITHUB_OUTPUT
+              INFRASTRUCTURE_CHANGED=true
+            fi
+            if echo "$CHANGED_FILES" | grep -qE "docker-compose\.(base|prod)\.yml"; then
+              echo "docker-compose=true" >> $GITHUB_OUTPUT
+              DOCKER_COMPOSE_CHANGED=true
+            fi
+            
+            # If infrastructure or docker-compose changed, rebuild all services
+            if [ "$INFRASTRUCTURE_CHANGED" == "true" ] || [ "$DOCKER_COMPOSE_CHANGED" == "true" ]; then
+              echo "auth=true" >> $GITHUB_OUTPUT
+              echo "crawler=true" >> $GITHUB_OUTPUT
+              echo "source-manager=true" >> $GITHUB_OUTPUT
+              echo "classifier=true" >> $GITHUB_OUTPUT
+              echo "publisher=true" >> $GITHUB_OUTPUT
+              echo "index-manager=true" >> $GITHUB_OUTPUT
+              echo "search-service=true" >> $GITHUB_OUTPUT
+            fi
+          fi
+
+  build-and-push:
+    name: Build and Push Docker Images
+    needs: detect-changes
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service:
+          - name: auth
+            context: .
+            dockerfile: ./auth/Dockerfile
+            changed: ${{ needs.detect-changes.outputs.auth }}
+          - name: crawler
+            context: .
+            dockerfile: ./crawler/Dockerfile
+            changed: ${{ needs.detect-changes.outputs.crawler }}
+          - name: source-manager
+            context: .
+            dockerfile: ./source-manager/Dockerfile
+            changed: ${{ needs.detect-changes.outputs.source-manager }}
+          - name: classifier
+            context: .
+            dockerfile: ./classifier/Dockerfile
+            changed: ${{ needs.detect-changes.outputs.classifier }}
+          - name: publisher
+            context: .
+            dockerfile: ./publisher/Dockerfile
+            changed: ${{ needs.detect-changes.outputs.publisher }}
+          - name: index-manager
+            context: .
+            dockerfile: ./index-manager/Dockerfile
+            changed: ${{ needs.detect-changes.outputs.index-manager }}
+          - name: search-service
+            context: .
+            dockerfile: ./search/Dockerfile
+            changed: ${{ needs.detect-changes.outputs.search-service }}
+          - name: search-frontend
+            context: ./search-frontend
+            dockerfile: Dockerfile
+            changed: ${{ needs.detect-changes.outputs.search-frontend }}
+          - name: dashboard
+            context: ./dashboard
+            dockerfile: Dockerfile
+            changed: ${{ needs.detect-changes.outputs.dashboard }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Docker Hub
+        if: matrix.service.changed == 'true'
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        if: matrix.service.changed == 'true'
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/${{ matrix.service.name }}
+          tags: |
+            type=raw,value=latest
+            type=sha,format=short
+
+      - name: Build and push
+        if: matrix.service.changed == 'true'
+        uses: docker/build-push-action@v5
+        with:
+          context: ${{ matrix.service.context }}
+          file: ${{ matrix.service.dockerfile }}
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/${{ matrix.service.name }}:buildcache
+          cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/${{ matrix.service.name }}:buildcache,mode=max
+          build-args: |
+            BUILD_ENV=production
+
+      - name: Skip build
+        if: matrix.service.changed != 'true'
+        run: echo "Skipping build for ${{ matrix.service.name }} - no changes detected"
+
+  deploy:
+    name: Deploy to Production
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup SSH
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.PROD_SSH_KEY }}
+
+      - name: Add server to known hosts
+        run: |
+          ssh-keyscan -p ${PROD_SSH_PORT:-22} ${{ secrets.PROD_SSH_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Deploy via SSH
+        env:
+          SSH_PORT: ${{ secrets.PROD_SSH_PORT || '22' }}
+        run: |
+          ssh -p ${SSH_PORT} ${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SSH_HOST }} \
+            'bash /opt/north-cloud/deploy.sh'

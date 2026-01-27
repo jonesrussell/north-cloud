@@ -18,12 +18,7 @@ services:
   # ------------------------------------------------------------
   crawler:
     <<: *prod-defaults
-    build:
-      context: .
-      dockerfile: ./crawler/Dockerfile
-      args:
-        BUILD_ENV: production
-    image: northcloud/crawler:latest
+    image: docker.io/jonesrussell/crawler:latest
     depends_on:
       postgres-crawler:
         condition: service_healthy
@@ -80,12 +75,7 @@ services:
   # ------------------------------------------------------------
   source-manager:
     <<: *prod-defaults
-    build:
-      context: .
-      dockerfile: ./source-manager/Dockerfile
-      args:
-        BUILD_ENV: production
-    image: northcloud/source-manager:latest
+    image: docker.io/jonesrussell/source-manager:latest
     depends_on:
       postgres-source-manager:
         condition: service_healthy
@@ -114,12 +104,7 @@ services:
   # ------------------------------------------------------------
   publisher:
     <<: *prod-defaults
-    build:
-      context: .
-      dockerfile: ./publisher/Dockerfile
-      args:
-        BUILD_ENV: production
-    image: northcloud/publisher:latest
+    image: docker.io/jonesrussell/publisher:latest
     command: ["/app/publisher", "both"]
     depends_on:
       postgres-publisher:
@@ -158,12 +143,7 @@ services:
   # ------------------------------------------------------------
   classifier:
     <<: *prod-defaults
-    build:
-      context: .
-      dockerfile: ./classifier/Dockerfile
-      args:
-        BUILD_ENV: production
-    image: northcloud/classifier:latest
+    image: docker.io/jonesrussell/classifier:latest
     command: ["./classifier", "httpd"]
     depends_on:
       postgres-classifier:
@@ -200,10 +180,7 @@ services:
   # ------------------------------------------------------------
   index-manager:
     <<: *prod-defaults
-    build:
-      context: .
-      dockerfile: ./index-manager/Dockerfile
-    image: northcloud/index-manager:latest
+    image: docker.io/jonesrussell/index-manager:latest
     depends_on:
       postgres-index-manager:
         condition: service_healthy
@@ -234,10 +211,7 @@ services:
   # ------------------------------------------------------------
   search-service:
     <<: *prod-defaults
-    build:
-      context: .
-      dockerfile: ./search/Dockerfile
-    image: northcloud/search-service:latest
+    image: docker.io/jonesrussell/search-service:latest
     depends_on:
       elasticsearch:
         condition: service_healthy
@@ -265,10 +239,7 @@ services:
   # ------------------------------------------------------------
   search-frontend:
     <<: *prod-defaults
-    build:
-      context: ./search-frontend
-      dockerfile: Dockerfile
-    image: northcloud/search-frontend:latest
+    image: docker.io/jonesrussell/search-frontend:latest
     depends_on:
       search-service:
         condition: service_healthy
@@ -281,10 +252,7 @@ services:
   # ------------------------------------------------------------
   auth:
     <<: *prod-defaults
-    build:
-      context: .
-      dockerfile: ./auth/Dockerfile
-    image: northcloud/auth:latest
+    image: docker.io/jonesrussell/auth:latest
     environment:
       AUTH_USERNAME: "${AUTH_USERNAME}"
       AUTH_PASSWORD: "${AUTH_PASSWORD}"
@@ -306,12 +274,7 @@ services:
   # ------------------------------------------------------------
   dashboard:
     <<: *prod-defaults
-    build:
-      context: ./dashboard
-      dockerfile: Dockerfile
-      args:
-        BUILD_ENV: production
-    image: northcloud/dashboard:latest
+    image: docker.io/jonesrussell/dashboard:latest
     depends_on:
       auth:
         condition: service_healthy
