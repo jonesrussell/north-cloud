@@ -29,7 +29,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 2
+          fetch-depth: 0
 
       - name: Detect changed services
         id: changes
@@ -42,8 +42,19 @@ jobs:
             HEAD_SHA="${{ github.sha }}"
           fi
 
-          # If BASE_SHA is empty or invalid, check all services
+          # Validate BASE_SHA exists, fallback to HEAD~1 if invalid
           if [ -z "$BASE_SHA" ] || [ "$BASE_SHA" == "0000000000000000000000000000000000000000" ]; then
+            BASE_SHA=""
+          else
+            # Check if commit exists
+            if ! git cat-file -e "$BASE_SHA" 2>/dev/null; then
+              echo "Warning: BASE_SHA $BASE_SHA not found, using HEAD~1"
+              BASE_SHA="HEAD~1"
+            fi
+          fi
+
+          # If BASE_SHA is still empty or invalid, check all services
+          if [ -z "$BASE_SHA" ] || ! git cat-file -e "$BASE_SHA" 2>/dev/null; then
             echo "auth=true" >> $GITHUB_OUTPUT
             echo "crawler=true" >> $GITHUB_OUTPUT
             echo "source-manager=true" >> $GITHUB_OUTPUT
@@ -118,6 +129,8 @@ jobs:
               echo "publisher=true" >> $GITHUB_OUTPUT
               echo "index-manager=true" >> $GITHUB_OUTPUT
               echo "search-service=true" >> $GITHUB_OUTPUT
+              echo "search-frontend=true" >> $GITHUB_OUTPUT
+              echo "dashboard=true" >> $GITHUB_OUTPUT
             fi
           fi
 
