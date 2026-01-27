@@ -1,3 +1,10 @@
+/**
+ * @deprecated Use the feature module instead:
+ * import { useJobs, useJobDetail } from '@/features/intake'
+ *
+ * This store is kept for backwards compatibility only.
+ * All new code should use the TanStack Query-based feature module.
+ */
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { crawlerApi } from '@/api/client'
@@ -6,6 +13,9 @@ import type { Job, JobExecution, JobStats, JobFilters, JobStatus } from '@/types
 const DEFAULT_PAGE_SIZE = 25
 const DEFAULT_EXECUTIONS_LIMIT = 50
 
+/**
+ * @deprecated Use useJobs() or useJobDetail() from '@/features/intake' instead
+ */
 export const useJobsStore = defineStore('jobs', () => {
   // State
   const items = ref<Job[]>([])

@@ -1,7 +1,9 @@
 <template>
   <div class="bg-white shadow rounded-lg overflow-hidden">
     <!-- DEBUG: This should always show -->
-    <div class="p-2 bg-yellow-100 text-yellow-800 text-xs">DEBUG: JobLogsViewer rendered for job {{ jobId }}</div>
+    <div class="p-2 bg-yellow-100 text-yellow-800 text-xs">
+      DEBUG: JobLogsViewer rendered for job {{ jobId }}
+    </div>
     <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
       <h2 class="text-lg font-medium text-gray-900">
         Job Logs

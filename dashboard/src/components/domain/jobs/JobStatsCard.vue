@@ -2,7 +2,7 @@
 import { computed } from 'vue'
 import { Activity, CheckCircle2, XCircle, Clock, TrendingUp } from 'lucide-vue-next'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { useJobsStore } from '@/stores/jobs'
+import { useJobs } from '@/features/intake'
 
 interface Props {
   compact?: boolean
@@ -12,40 +12,40 @@ withDefaults(defineProps<Props>(), {
   compact: false,
 })
 
-const jobsStore = useJobsStore()
+const jobs = useJobs()
 
 const stats = computed(() => [
   {
     label: 'Total Jobs',
-    value: jobsStore.items.length,
+    value: jobs.jobs.value.length,
     icon: Activity,
     color: 'text-blue-500',
     bgColor: 'bg-blue-500/10',
   },
   {
     label: 'Active',
-    value: jobsStore.activeJobsCount,
+    value: jobs.activeJobsCount.value,
     icon: TrendingUp,
     color: 'text-green-500',
     bgColor: 'bg-green-500/10',
   },
   {
     label: 'Completed',
-    value: jobsStore.statusCounts.completed,
+    value: jobs.statusCounts.value.completed,
     icon: CheckCircle2,
     color: 'text-emerald-500',
     bgColor: 'bg-emerald-500/10',
   },
   {
     label: 'Failed',
-    value: jobsStore.failedJobsCount,
+    value: jobs.failedJobsCount.value,
     icon: XCircle,
-    color: jobsStore.failedJobsCount > 0 ? 'text-red-500' : 'text-muted-foreground',
-    bgColor: jobsStore.failedJobsCount > 0 ? 'bg-red-500/10' : 'bg-muted',
+    color: jobs.failedJobsCount.value > 0 ? 'text-red-500' : 'text-muted-foreground',
+    bgColor: jobs.failedJobsCount.value > 0 ? 'bg-red-500/10' : 'bg-muted',
   },
   {
     label: 'Paused',
-    value: jobsStore.statusCounts.paused,
+    value: jobs.statusCounts.value.paused,
     icon: Clock,
     color: 'text-yellow-500',
     bgColor: 'bg-yellow-500/10',
