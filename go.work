@@ -1,6 +1,13 @@
 go 1.25
 
 use (
+	./auth
+	./classifier
 	./crawler
+	./index-manager
 	./infrastructure
+	./mcp-north-cloud
+	./publisher
+	./search
+	./source-manager
 )
