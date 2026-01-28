@@ -20,6 +20,10 @@ const (
 	defaultHTTPTimeout = 30 * time.Second
 	// dialTimeout is the timeout for establishing connections
 	dialTimeout = 10 * time.Second
+	// maxIdleConns is the maximum number of idle connections across all hosts
+	maxIdleConns = 10
+	// maxRedirects is the maximum number of redirects to follow (matches net/http default)
+	maxRedirects = 10
 )
 
 // isPrivateIP checks if an IP address is in a private/reserved range
@@ -97,7 +101,7 @@ func newSSRFSafeClient() *http.Client {
 	transport := &http.Transport{
 		DialContext:           safeDialContext,
 		ForceAttemptHTTP2:     true,
-		MaxIdleConns:          10,
+		MaxIdleConns:          maxIdleConns,
 		IdleConnTimeout:       defaultHTTPTimeout,
 		TLSHandshakeTimeout:   dialTimeout,
 		ExpectContinueTimeout: 1 * time.Second,
@@ -108,7 +112,7 @@ func newSSRFSafeClient() *http.Client {
 		Timeout:   defaultHTTPTimeout,
 		// Don't follow redirects automatically - validate each redirect URL
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
-			if len(via) >= 10 {
+			if len(via) >= maxRedirects {
 				return errors.New("too many redirects")
 			}
 			// The safeDialContext will validate the redirect destination
