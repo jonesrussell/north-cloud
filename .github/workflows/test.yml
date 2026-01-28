@@ -56,10 +56,10 @@ jobs:
       - name: Install frontend dependencies
         run: |
           if [ -f "dashboard/package.json" ]; then
-            cd dashboard && npm ci
+            (cd dashboard && npm ci)
           fi
           if [ -f "search-frontend/package.json" ]; then
-            cd search-frontend && npm ci
+            (cd search-frontend && npm ci)
           fi
 
       - name: Run linters
@@ -105,10 +105,10 @@ jobs:
       - name: Install frontend dependencies
         run: |
           if [ -f "dashboard/package.json" ]; then
-            cd dashboard && npm ci
+            (cd dashboard && npm ci)
           fi
           if [ -f "search-frontend/package.json" ]; then
-            cd search-frontend && npm ci
+            (cd search-frontend && npm ci)
           fi
 
       - name: Run tests
