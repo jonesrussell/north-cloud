@@ -1,9 +1,6 @@
 name: Deploy to Production
 
 on:
-  push:
-    branches:
-      - main
   workflow_run:
     workflows: ["Test"]
     types:
@@ -24,6 +21,10 @@ jobs:
   detect-changes:
     name: Detect Changed Services
     runs-on: ubuntu-latest
+    # Only run for main branch or manual dispatch
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main')
     outputs:
       auth: ${{ steps.changes.outputs.auth }}
       crawler: ${{ steps.changes.outputs.crawler }}
@@ -285,14 +286,6 @@ jobs:
     name: Deploy to Production
     needs: build-and-push
     runs-on: ubuntu-latest
-    # Only deploy if on main branch
-    # If triggered by workflow_run, also check that test workflow succeeded
-    if: |
-      github.ref == 'refs/heads/main' && (
-        github.event_name == 'push' ||
-        github.event_name == 'workflow_dispatch' ||
-        (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success')
-      )
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
