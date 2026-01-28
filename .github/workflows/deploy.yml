@@ -4,12 +4,16 @@ on:
   push:
     branches:
       - main
+  workflow_run:
+    workflows: ["Test"]
+    types:
+      - completed
   workflow_dispatch:
     inputs:
       force_rebuild_all:
         description: 'Force rebuild all services (ignore change detection)'
         required: false
-        default: 'false'
+        default: false
         type: boolean
 
 env:
@@ -281,7 +285,14 @@ jobs:
     name: Deploy to Production
     needs: build-and-push
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
+    # Only deploy if on main branch
+    # If triggered by workflow_run, also check that test workflow succeeded
+    if: |
+      github.ref == 'refs/heads/main' && (
+        github.event_name == 'push' ||
+        github.event_name == 'workflow_dispatch' ||
+        (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success')
+      )
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
