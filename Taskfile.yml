@@ -94,6 +94,66 @@ tasks:
     cmds:
       - task lint
 
+  vuln:
+    desc: "Run vulnerability check for all Go microservices"
+    cmds:
+      - task: vuln:auth
+      - task: vuln:classifier
+      - task: vuln:crawler
+      - task: vuln:index-manager
+      - task: vuln:mcp-north-cloud
+      - task: vuln:publisher
+      - task: vuln:search
+      - task: vuln:source-manager
+
+  vuln:auth:
+    desc: "Run vulnerability check for auth service"
+    dir: auth
+    cmds:
+      - govulncheck ./...
+
+  vuln:classifier:
+    desc: "Run vulnerability check for classifier service"
+    dir: classifier
+    cmds:
+      - govulncheck ./...
+
+  vuln:crawler:
+    desc: "Run vulnerability check for crawler service"
+    dir: crawler
+    cmds:
+      - govulncheck ./...
+
+  vuln:index-manager:
+    desc: "Run vulnerability check for index-manager service"
+    dir: index-manager
+    cmds:
+      - govulncheck ./...
+
+  vuln:mcp-north-cloud:
+    desc: "Run vulnerability check for mcp-north-cloud service"
+    dir: mcp-north-cloud
+    cmds:
+      - govulncheck ./...
+
+  vuln:publisher:
+    desc: "Run vulnerability check for publisher service"
+    dir: publisher
+    cmds:
+      - govulncheck ./...
+
+  vuln:search:
+    desc: "Run vulnerability check for search service"
+    dir: search
+    cmds:
+      - govulncheck ./...
+
+  vuln:source-manager:
+    desc: "Run vulnerability check for source-manager service"
+    dir: source-manager
+    cmds:
+      - govulncheck ./...
+
   test:
     desc: "Run tests for all microservices sequentially"
     cmds:
@@ -877,9 +937,10 @@ tasks:
     desc: "Install development tools"
     cmds:
       - go install github.com/air-verse/air@latest || true
-      - go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest || true
+      - go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest || true
       - go install golang.org/x/tools/cmd/goimports@latest || true
       - go install github.com/golang-migrate/migrate/v4/cmd/migrate@latest || true
+      - go install golang.org/x/vuln/cmd/govulncheck@latest || true
 
   # ============================================================
   # Database Backup/Restore/Sync Commands
