@@ -135,7 +135,7 @@ func (r *ClassificationHistoryRepository) GetStats(ctx context.Context, startDat
 		SELECT
 			COUNT(*) as total_classified,
 			COALESCE(AVG(quality_score), 0) as avg_quality_score,
-			SUM(CASE WHEN 'crime' = ANY(topics) THEN 1 ELSE 0 END) as crime_related,
+			COALESCE(SUM(CASE WHEN 'crime' = ANY(topics) THEN 1 ELSE 0 END), 0) as crime_related,
 			COALESCE(AVG(processing_time_ms), 0) as avg_processing_time_ms
 		FROM classification_history
 	`
