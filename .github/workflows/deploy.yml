@@ -17,6 +17,10 @@ env:
   REGISTRY: docker.io
   IMAGE_PREFIX: jonesrussell
 
+permissions:
+  contents: read
+  packages: write
+
 jobs:
   detect-changes:
     name: Detect Changed Services

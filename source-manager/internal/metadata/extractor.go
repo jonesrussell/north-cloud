@@ -2,7 +2,9 @@ package metadata
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"net"
 	"net/http"
 	"net/url"
 	"strings"
@@ -18,6 +20,84 @@ const (
 	// defaultHTTPTimeout is the default timeout for HTTP requests
 	defaultHTTPTimeout = 30 * time.Second
 )
+
+// isPrivateIP checks if an IP address is in a private/reserved range
+func isPrivateIP(ip net.IP) bool {
+	if ip == nil {
+		return false
+	}
+
+	// Check for loopback
+	if ip.IsLoopback() {
+		return true
+	}
+
+	// Check for private ranges
+	if ip.IsPrivate() {
+		return true
+	}
+
+	// Check for link-local
+	if ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() {
+		return true
+	}
+
+	// Check for unspecified (0.0.0.0 or ::)
+	if ip.IsUnspecified() {
+		return true
+	}
+
+	return false
+}
+
+// errInvalidURLScheme is returned when URL scheme is not http or https
+var errInvalidURLScheme = errors.New("invalid URL scheme: only http and https are allowed")
+
+// validateURL checks if a URL is safe to fetch (prevents SSRF attacks)
+func validateURL(ctx context.Context, rawURL string) error {
+	parsedURL, err := url.Parse(rawURL)
+	if err != nil {
+		return fmt.Errorf("invalid URL: %w", err)
+	}
+
+	// Only allow http and https schemes
+	if parsedURL.Scheme != "http" && parsedURL.Scheme != "https" {
+		return errInvalidURLScheme
+	}
+
+	// Block localhost and common internal hostnames
+	hostname := strings.ToLower(parsedURL.Hostname())
+	blockedHostnames := []string{
+		"localhost",
+		"127.0.0.1",
+		"::1",
+		"0.0.0.0",
+		"metadata.google.internal",
+		"169.254.169.254", // AWS/GCP metadata service
+	}
+	for _, blocked := range blockedHostnames {
+		if hostname == blocked {
+			return fmt.Errorf("blocked hostname: %s", hostname)
+		}
+	}
+
+	// Resolve hostname and check for private IPs
+	resolver := &net.Resolver{}
+	ips, err := resolver.LookupIPAddr(ctx, hostname)
+	if err != nil {
+		// If we can't resolve, allow it (might be a valid external domain)
+		// The HTTP request will fail if unreachable
+		return nil //nolint:nilerr // intentional: DNS failure is acceptable, HTTP will fail if unreachable
+	}
+
+	for _, ipAddr := range ips {
+		if isPrivateIP(ipAddr.IP) {
+			return fmt.Errorf("hostname resolves to private IP: %s", ipAddr.IP.String())
+		}
+	}
+
+	return nil
+}
 
 // MetadataResponse represents suggested values from URL extraction
 type MetadataResponse struct {
@@ -48,7 +128,12 @@ func (e *Extractor) Extract(ctx context.Context, sourceURL string) (*MetadataRes
 		infralogger.String("url", sourceURL),
 	)
 
-	// Validate URL
+	// Validate URL for SSRF protection
+	if err := validateURL(ctx, sourceURL); err != nil {
+		return nil, fmt.Errorf("URL validation failed: %w", err)
+	}
+
+	// Parse URL for metadata extraction
 	parsedURL, err := url.Parse(sourceURL)
 	if err != nil {
 		return nil, fmt.Errorf("invalid URL: %w", err)
