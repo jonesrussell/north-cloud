@@ -148,6 +148,23 @@ func validateURLScheme(rawURL string) error {
 	return nil
 }
 
+// validateAndGetRequestURL validates user-provided URL (scheme + blocked hostnames)
+// and returns a normalized URL string suitable for use in the HTTP request.
+// Only the returned requestURL must be used for the network request to avoid
+// request forgery (go/request-forgery). Connection-time IP validation is
+// enforced by the SSRF-safe client.
+func validateAndGetRequestURL(rawURL string) (string, *url.URL, error) {
+	if err := validateURLScheme(rawURL); err != nil {
+		return "", nil, err
+	}
+	parsed, err := url.Parse(rawURL)
+	if err != nil {
+		return "", nil, fmt.Errorf("invalid URL: %w", err)
+	}
+	requestURL := parsed.String()
+	return requestURL, parsed, nil
+}
+
 // MetadataResponse represents suggested values from URL extraction
 type MetadataResponse struct {
 	Name      string                `json:"name"`
@@ -177,19 +194,14 @@ func (e *Extractor) Extract(ctx context.Context, sourceURL string) (*MetadataRes
 		infralogger.String("url", sourceURL),
 	)
 
-	// Validate URL scheme (SSRF protection is enforced at connection time by safeDialContext)
-	if err := validateURLScheme(sourceURL); err != nil {
+	// Validate and get URL for request; only use validated URL for network request (go/request-forgery)
+	requestURL, parsedURL, err := validateAndGetRequestURL(sourceURL)
+	if err != nil {
 		return nil, fmt.Errorf("URL validation failed: %w", err)
 	}
 
-	// Parse URL for metadata extraction
-	parsedURL, err := url.Parse(sourceURL)
-	if err != nil {
-		return nil, fmt.Errorf("invalid URL: %w", err)
-	}
-
-	// Fetch the page
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, sourceURL, http.NoBody)
+	// Fetch the page using validated URL only
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, requestURL, http.NoBody)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
