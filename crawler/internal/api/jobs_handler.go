@@ -332,14 +332,15 @@ func (h *JobsHandler) CancelJob(c *gin.Context) {
 		return
 	}
 
-	// If job is currently running, cancel via scheduler
+	// If job is currently running, attempt to cancel via scheduler
+	// Note: If the scheduler doesn't have this job in its active list,
+	// we still proceed to update the database status. The scheduler
+	// might not have the job if execution already finished or if the
+	// scheduler was restarted.
 	if job.Status == "running" && h.scheduler != nil {
-		if cancelErr := h.scheduler.CancelJob(id); cancelErr != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{
-				"error": "Failed to cancel running job: " + cancelErr.Error(),
-			})
-			return
-		}
+		// Attempt to cancel - ignore "job not currently running" errors
+		// since the job may have finished between status check and cancel
+		_ = h.scheduler.CancelJob(id)
 	}
 
 	// Update job status in database
@@ -375,10 +376,15 @@ func (h *JobsHandler) RetryJob(c *gin.Context) {
 		return
 	}
 
-	// Only failed jobs can be retried
-	if job.Status != "failed" {
+	// Jobs can be retried from completed, failed, or cancelled states
+	retryableStatuses := map[string]bool{
+		"completed": true,
+		"failed":    true,
+		"cancelled": true,
+	}
+	if !retryableStatuses[job.Status] {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Only failed jobs can be retried",
+			"error": "Jobs can only be retried from completed, failed, or cancelled status",
 		})
 		return
 	}
@@ -388,6 +394,7 @@ func (h *JobsHandler) RetryJob(c *gin.Context) {
 	job.CurrentRetryCount = 0
 	job.ErrorMessage = nil
 	job.CompletedAt = nil
+	job.CancelledAt = nil
 
 	if updateErr := h.repo.Update(c.Request.Context(), job); updateErr != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
