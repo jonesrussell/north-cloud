@@ -12,13 +12,14 @@ import (
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/jonesrussell/north-cloud/source-manager/internal/models"
-	infrahttp "github.com/north-cloud/infrastructure/http"
 	infralogger "github.com/north-cloud/infrastructure/logger"
 )
 
 const (
 	// defaultHTTPTimeout is the default timeout for HTTP requests
 	defaultHTTPTimeout = 30 * time.Second
+	// dialTimeout is the timeout for establishing connections
+	dialTimeout = 10 * time.Second
 )
 
 // isPrivateIP checks if an IP address is in a private/reserved range
@@ -53,46 +54,90 @@ func isPrivateIP(ip net.IP) bool {
 // errInvalidURLScheme is returned when URL scheme is not http or https
 var errInvalidURLScheme = errors.New("invalid URL scheme: only http and https are allowed")
 
-// validateURL checks if a URL is safe to fetch (prevents SSRF attacks)
-func validateURL(ctx context.Context, rawURL string) error {
+// errPrivateIPBlocked is returned when connection to private IP is attempted
+var errPrivateIPBlocked = errors.New("connection to private/internal IP address is not allowed")
+
+// safeDialContext creates a DialContext function that blocks connections to private IPs.
+// This prevents SSRF attacks including DNS rebinding by validating IPs at connection time.
+func safeDialContext(ctx context.Context, network, addr string) (net.Conn, error) {
+	// Parse host and port
+	host, port, err := net.SplitHostPort(addr)
+	if err != nil {
+		return nil, fmt.Errorf("invalid address: %w", err)
+	}
+
+	// Resolve the hostname to IP addresses
+	ips, err := net.DefaultResolver.LookupIPAddr(ctx, host)
+	if err != nil {
+		return nil, fmt.Errorf("DNS resolution failed: %w", err)
+	}
+
+	// Check all resolved IPs - block if any are private
+	for _, ipAddr := range ips {
+		if isPrivateIP(ipAddr.IP) {
+			return nil, fmt.Errorf("%w: %s resolves to %s", errPrivateIPBlocked, host, ipAddr.IP)
+		}
+	}
+
+	// All IPs are safe, proceed with connection using the first IP
+	if len(ips) == 0 {
+		return nil, fmt.Errorf("no IP addresses found for host: %s", host)
+	}
+
+	// Connect to the first safe IP
+	dialer := &net.Dialer{Timeout: dialTimeout}
+	target := net.JoinHostPort(ips[0].IP.String(), port)
+
+	return dialer.DialContext(ctx, network, target)
+}
+
+// newSSRFSafeClient creates an HTTP client that prevents SSRF attacks
+// by validating destination IPs at connection time.
+func newSSRFSafeClient() *http.Client {
+	transport := &http.Transport{
+		DialContext:           safeDialContext,
+		ForceAttemptHTTP2:     true,
+		MaxIdleConns:          10,
+		IdleConnTimeout:       defaultHTTPTimeout,
+		TLSHandshakeTimeout:   dialTimeout,
+		ExpectContinueTimeout: 1 * time.Second,
+	}
+
+	return &http.Client{
+		Transport: transport,
+		Timeout:   defaultHTTPTimeout,
+		// Don't follow redirects automatically - validate each redirect URL
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			if len(via) >= 10 {
+				return errors.New("too many redirects")
+			}
+			// The safeDialContext will validate the redirect destination
+			return nil
+		},
+	}
+}
+
+// validateURLScheme checks if a URL has a valid scheme (http/https only)
+func validateURLScheme(rawURL string) error {
 	parsedURL, err := url.Parse(rawURL)
 	if err != nil {
 		return fmt.Errorf("invalid URL: %w", err)
 	}
 
-	// Only allow http and https schemes
 	if parsedURL.Scheme != "http" && parsedURL.Scheme != "https" {
 		return errInvalidURLScheme
 	}
 
-	// Block localhost and common internal hostnames
+	// Block obviously dangerous hostnames before even attempting DNS
 	hostname := strings.ToLower(parsedURL.Hostname())
 	blockedHostnames := []string{
 		"localhost",
-		"127.0.0.1",
-		"::1",
-		"0.0.0.0",
 		"metadata.google.internal",
-		"169.254.169.254", // AWS/GCP metadata service
+		"169.254.169.254", // AWS/GCP/Azure metadata service
 	}
 	for _, blocked := range blockedHostnames {
 		if hostname == blocked {
 			return fmt.Errorf("blocked hostname: %s", hostname)
-		}
-	}
-
-	// Resolve hostname and check for private IPs
-	resolver := &net.Resolver{}
-	ips, err := resolver.LookupIPAddr(ctx, hostname)
-	if err != nil {
-		// If we can't resolve, allow it (might be a valid external domain)
-		// The HTTP request will fail if unreachable
-		return nil //nolint:nilerr // intentional: DNS failure is acceptable, HTTP will fail if unreachable
-	}
-
-	for _, ipAddr := range ips {
-		if isPrivateIP(ipAddr.IP) {
-			return fmt.Errorf("hostname resolves to private IP: %s", ipAddr.IP.String())
 		}
 	}
 
@@ -112,13 +157,13 @@ type Extractor struct {
 	client *http.Client
 }
 
-// NewExtractor creates a new metadata extractor
+// NewExtractor creates a new metadata extractor with SSRF protection.
+// The client validates destination IPs at connection time to prevent
+// SSRF attacks including DNS rebinding.
 func NewExtractor(log infralogger.Logger) *Extractor {
 	return &Extractor{
 		logger: log,
-		client: infrahttp.NewClient(&infrahttp.ClientConfig{
-			Timeout: defaultHTTPTimeout,
-		}),
+		client: newSSRFSafeClient(),
 	}
 }
 
@@ -128,8 +173,8 @@ func (e *Extractor) Extract(ctx context.Context, sourceURL string) (*MetadataRes
 		infralogger.String("url", sourceURL),
 	)
 
-	// Validate URL for SSRF protection
-	if err := validateURL(ctx, sourceURL); err != nil {
+	// Validate URL scheme (SSRF protection is enforced at connection time by safeDialContext)
+	if err := validateURLScheme(sourceURL); err != nil {
 		return nil, fmt.Errorf("URL validation failed: %w", err)
 	}
 
