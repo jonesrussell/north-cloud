@@ -5,6 +5,31 @@
         Job Logs
       </h2>
       <div class="flex items-center space-x-2">
+        <!-- Category Filter -->
+        <select
+          v-model="categoryFilter"
+          class="text-sm border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500"
+        >
+          <option value="">All Categories</option>
+          <option value="crawler.lifecycle">Lifecycle</option>
+          <option value="crawler.fetch">Fetch</option>
+          <option value="crawler.extract">Extract</option>
+          <option value="crawler.error">Errors</option>
+          <option value="crawler.queue">Queue</option>
+          <option value="crawler.rate_limit">Rate Limit</option>
+          <option value="crawler.metrics">Metrics</option>
+        </select>
+        <!-- Level Filter -->
+        <select
+          v-model="levelFilter"
+          class="text-sm border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500"
+        >
+          <option value="">All Levels</option>
+          <option value="error">Errors Only</option>
+          <option value="warn">Warnings+</option>
+          <option value="info">Info+</option>
+          <option value="debug">Debug+</option>
+        </select>
         <!-- Execution Selector -->
         <select
           v-if="!isLiveStreaming && executions.length > 0"
@@ -83,9 +108,9 @@
       >
         <div class="p-4 space-y-0.5">
           <div
-            v-for="(line, index) in displayedLogs"
+            v-for="(line, index) in filteredLogs"
             :key="index"
-            class="flex items-start"
+            class="flex items-start hover:bg-gray-800 px-2 py-0.5 rounded"
           >
             <span
               class="w-20 flex-shrink-0 text-gray-500 select-none text-xs"
@@ -94,6 +119,11 @@
               :class="getLevelClass(line.level)"
               class="w-12 flex-shrink-0 uppercase text-xs font-semibold"
             >{{ line.level }}</span>
+            <span
+              v-if="line.category"
+              class="w-20 flex-shrink-0 text-xs text-gray-400 truncate"
+              :title="line.category"
+            >{{ formatCategory(line.category) }}</span>
             <span class="flex-1 break-all whitespace-pre-wrap">{{ line.message }}</span>
           </div>
           <!-- Replay indicator -->
@@ -105,16 +135,16 @@
           </div>
           <!-- Empty state for streaming -->
           <div
-            v-if="isLiveStreaming && displayedLogs.length === 0"
+            v-if="isLiveStreaming && filteredLogs.length === 0"
             class="text-gray-500 italic"
           >
-            Waiting for log output...
+            {{ displayedLogs.length > 0 ? 'No logs match current filters' : 'Waiting for log output...' }}
           </div>
         </div>
       </div>
       <!-- Auto-scroll toggle -->
       <button
-        v-if="displayedLogs.length > 0"
+        v-if="filteredLogs.length > 0"
         class="absolute bottom-4 right-4 px-3 py-1.5 rounded-md text-xs font-medium transition-colors"
         :class="autoScroll ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'"
         @click="autoScroll = !autoScroll"
@@ -130,7 +160,8 @@ import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { ArrowDownTrayIcon } from '@heroicons/vue/24/outline'
 import { crawlerApi } from '../../api/client'
 import { LoadingSpinner, ErrorAlert } from '../common'
-import type { LogLine, LogSSEEvent } from '@/types/logs'
+import type { LogLine, LogSSEEvent, LogCategory, LogLevel } from '@/types/logs'
+import { getCategoryShortName, shouldShowLevel } from '@/types/logs'
 
 interface ExecutionLogInfo {
   execution_id: string
@@ -169,6 +200,8 @@ const downloading = ref(false)
 const autoScroll = ref(true)
 const logContainer = ref<HTMLElement | null>(null)
 const replayedCount = ref(0)
+const categoryFilter = ref<LogCategory | ''>('')
+const levelFilter = ref<LogLevel | ''>('')
 
 // SSE connection
 let eventSource: EventSource | null = null
@@ -184,6 +217,22 @@ const canDownload = computed(() => {
   if (!selectedExecution.value) return false
   const exec = executions.value.find(e => e.execution_number === selectedExecution.value)
   return exec?.log_available === true
+})
+
+const filteredLogs = computed(() => {
+  return displayedLogs.value.filter(line => {
+    // Category filter
+    if (categoryFilter.value && line.category !== categoryFilter.value) {
+      return false
+    }
+    // Level filter (hierarchical - show selected level and above)
+    if (levelFilter.value && line.level) {
+      if (!shouldShowLevel(line.level as LogLevel, levelFilter.value)) {
+        return false
+      }
+    }
+    return true
+  })
 })
 
 // Methods
@@ -381,6 +430,10 @@ const formatTimestamp = (timestamp: string): string => {
 
 const formatStatus = (status: string): string => {
   return status.charAt(0).toUpperCase() + status.slice(1)
+}
+
+const formatCategory = (category: string): string => {
+  return getCategoryShortName(category as LogCategory)
 }
 
 const getLevelClass = (level: string): string => {
