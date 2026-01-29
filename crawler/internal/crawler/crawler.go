@@ -11,6 +11,7 @@ import (
 	"github.com/jonesrussell/north-cloud/crawler/internal/config/crawler"
 	"github.com/jonesrussell/north-cloud/crawler/internal/content"
 	"github.com/jonesrussell/north-cloud/crawler/internal/crawler/events"
+	"github.com/jonesrussell/north-cloud/crawler/internal/logs"
 	"github.com/jonesrussell/north-cloud/crawler/internal/metrics"
 	"github.com/jonesrussell/north-cloud/crawler/internal/sources"
 	storagetypes "github.com/jonesrussell/north-cloud/crawler/internal/storage/types"
@@ -124,6 +125,10 @@ type Interface interface {
 	GetProcessors() []content.Processor
 	// Done returns a channel that's closed when the crawler is done
 	Done() <-chan struct{}
+	// SetJobLogger sets the job logger for the current job execution
+	SetJobLogger(logger logs.JobLogger)
+	// GetJobLogger returns the current job logger
+	GetJobLogger() logs.JobLogger
 }
 
 const (
@@ -137,6 +142,7 @@ const (
 // Refactored to use focused component pattern for better SRP compliance.
 type Crawler struct {
 	logger              infralogger.Logger
+	jobLogger           logs.JobLogger
 	collector           *colly.Collector
 	bus                 *events.EventBus
 	indexManager        storagetypes.IndexManager
@@ -178,6 +184,20 @@ func (c *Crawler) GetSource() sources.Interface {
 // GetIndexManager returns the index manager.
 func (c *Crawler) GetIndexManager() storagetypes.IndexManager {
 	return c.indexManager
+}
+
+// SetJobLogger sets the job logger for the current job execution.
+// Should be called before Start() for each job.
+func (c *Crawler) SetJobLogger(logger logs.JobLogger) {
+	c.jobLogger = logger
+}
+
+// GetJobLogger returns the current job logger, or NoopJobLogger if not set.
+func (c *Crawler) GetJobLogger() logs.JobLogger {
+	if c.jobLogger == nil {
+		return logs.NoopJobLogger()
+	}
+	return c.jobLogger
 }
 
 // Metrics Management
