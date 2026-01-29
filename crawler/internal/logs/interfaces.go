@@ -50,6 +50,10 @@ type Buffer interface {
 	// ReadAll returns all buffered entries.
 	ReadAll() []LogEntry
 
+	// ReadLast returns the last n entries in chronological order.
+	// Used for SSE replay when clients connect mid-stream.
+	ReadLast(n int) []LogEntry
+
 	// Size returns the number of entries in the buffer.
 	Size() int
 
