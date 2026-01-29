@@ -21,6 +21,11 @@ type Service interface {
 	// IsCapturing returns true if logs are being captured for the given execution.
 	IsCapturing(executionID string) bool
 
+	// GetLiveBuffer returns the buffer for an active job capture.
+	// Used by SSE handler to replay buffered logs on client connect.
+	// Returns nil if no active capture exists for the job.
+	GetLiveBuffer(jobID string) Buffer
+
 	// Close gracefully shuts down the service.
 	Close() error
 }

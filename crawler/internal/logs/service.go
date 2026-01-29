@@ -192,6 +192,22 @@ func (s *logService) IsCapturing(executionID string) bool {
 	return exists
 }
 
+// GetLiveBuffer returns the buffer for an active job capture.
+// Used by SSE handler to replay buffered logs on client connect.
+// Returns nil if no active capture exists for the job.
+func (s *logService) GetLiveBuffer(jobID string) Buffer {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	// Find active writer for this job
+	for _, aw := range s.activeWriters {
+		if aw.jobID == jobID {
+			return aw.writer.GetBuffer()
+		}
+	}
+	return nil
+}
+
 // Close gracefully shuts down the service.
 func (s *logService) Close() error {
 	s.mu.Lock()
