@@ -10,6 +10,9 @@ import (
 // ErrNotFound is returned when an entity is not found in the database.
 var ErrNotFound = errors.New("entity not found")
 
+// ErrInvalidDeadLetterEntry is returned when creating a DLQ entry with invalid fields.
+var ErrInvalidDeadLetterEntry = errors.New("invalid dead letter entry")
+
 // ErrorCode categorizes DLQ errors for filtering and alerting
 type ErrorCode string
 
@@ -45,8 +48,19 @@ type DeadLetterEntry struct {
 	LastAttemptAt time.Time `db:"last_attempt_at"`
 }
 
-// NewDeadLetterEntry creates a new DLQ entry with exponential backoff
-func NewDeadLetterEntry(contentID, sourceName, indexName, errorMsg string, errorCode ErrorCode) *DeadLetterEntry {
+// NewDeadLetterEntry creates a new DLQ entry with exponential backoff.
+// Returns an error if required fields (contentID, sourceName, indexName) are empty.
+func NewDeadLetterEntry(contentID, sourceName, indexName, errorMsg string, errorCode ErrorCode) (*DeadLetterEntry, error) {
+	if contentID == "" {
+		return nil, fmt.Errorf("%w: content_id is required", ErrInvalidDeadLetterEntry)
+	}
+	if sourceName == "" {
+		return nil, fmt.Errorf("%w: source_name is required", ErrInvalidDeadLetterEntry)
+	}
+	if indexName == "" {
+		return nil, fmt.Errorf("%w: index_name is required", ErrInvalidDeadLetterEntry)
+	}
+
 	now := time.Now()
 	return &DeadLetterEntry{
 		ContentID:     contentID,
@@ -59,7 +73,17 @@ func NewDeadLetterEntry(contentID, sourceName, indexName, errorMsg string, error
 		NextRetryAt:   now.Add(time.Duration(baseRetryDelaySeconds) * time.Second),
 		CreatedAt:     now,
 		LastAttemptAt: now,
+	}, nil
+}
+
+// MustNewDeadLetterEntry is like NewDeadLetterEntry but panics on validation error.
+// Use only when you're certain the inputs are valid (e.g., in tests).
+func MustNewDeadLetterEntry(contentID, sourceName, indexName, errorMsg string, errorCode ErrorCode) *DeadLetterEntry {
+	entry, err := NewDeadLetterEntry(contentID, sourceName, indexName, errorMsg, errorCode)
+	if err != nil {
+		panic(err)
 	}
+	return entry
 }
 
 // NextRetryDelay calculates exponential backoff with cap

@@ -26,6 +26,10 @@ const (
 	stalePublishingAge    = 5 * time.Minute
 	cleanupRetention      = 7 * 24 * time.Hour // Keep published entries for 7 days
 	retryBatchDivisor     = 2                  // Retry batch = batchSize / divisor
+
+	// consecutiveFailureThreshold is the number of consecutive fetch failures
+	// before the worker is considered degraded
+	consecutiveFailureThreshold = 5
 )
 
 // OutboxWorker polls the outbox and publishes to Redis Pub/Sub
@@ -43,6 +47,11 @@ type OutboxWorker struct {
 	wg       sync.WaitGroup
 	started  bool
 	mu       sync.Mutex
+
+	// Failure tracking for health monitoring
+	consecutiveFailures   int
+	lastError             error
+	markPublishedFailures int64 // Count of MarkPublished failures (causes duplicates)
 }
 
 // OutboxWorkerConfig holds configuration options
@@ -158,10 +167,13 @@ func (w *OutboxWorker) run(ctx context.Context) {
 }
 
 func (w *OutboxWorker) processOnce(ctx context.Context) {
+	var fetchFailed bool
+
 	// Process pending entries
 	pending, err := w.repo.FetchPending(ctx, w.batchSize)
 	if err != nil {
-		w.logger.Error("failed to fetch pending outbox entries", infralogger.Error(err))
+		w.trackFetchFailure(err, "pending")
+		fetchFailed = true
 	} else if len(pending) > 0 {
 		w.logger.Debug("processing pending entries", infralogger.Int("count", len(pending)))
 		w.publishBatch(ctx, pending)
@@ -170,10 +182,40 @@ func (w *OutboxWorker) processOnce(ctx context.Context) {
 	// Process retryable entries (reduced batch to prioritize new content)
 	retryable, err := w.repo.FetchRetryable(ctx, w.batchSize/retryBatchDivisor)
 	if err != nil {
-		w.logger.Error("failed to fetch retryable outbox entries", infralogger.Error(err))
+		w.trackFetchFailure(err, "retryable")
+		fetchFailed = true
 	} else if len(retryable) > 0 {
 		w.logger.Debug("processing retryable entries", infralogger.Int("count", len(retryable)))
 		w.publishBatch(ctx, retryable)
+	}
+
+	// Reset failure counter on successful fetch
+	if !fetchFailed {
+		w.mu.Lock()
+		w.consecutiveFailures = 0
+		w.lastError = nil
+		w.mu.Unlock()
+	}
+}
+
+// trackFetchFailure records a fetch failure and logs escalating warnings
+func (w *OutboxWorker) trackFetchFailure(err error, fetchType string) {
+	w.mu.Lock()
+	w.consecutiveFailures++
+	w.lastError = err
+	failures := w.consecutiveFailures
+	w.mu.Unlock()
+
+	w.logger.Error("failed to fetch outbox entries",
+		infralogger.String("fetch_type", fetchType),
+		infralogger.Int("consecutive_failures", failures),
+		infralogger.Error(err))
+
+	if failures >= consecutiveFailureThreshold {
+		w.logger.Error("DEGRADED: outbox worker has too many consecutive failures - messages are not being published",
+			infralogger.Int("consecutive_failures", failures),
+			infralogger.Int("threshold", consecutiveFailureThreshold),
+			infralogger.Error(err))
 	}
 }
 
@@ -215,11 +257,20 @@ func (w *OutboxWorker) publishOne(ctx context.Context, entry *domain.OutboxEntry
 	// Mark as published
 	markErr := w.repo.MarkPublished(ctx, entry.ID)
 	if markErr != nil {
-		w.logger.Error("failed to mark outbox entry as published",
+		// CRITICAL: Message was published to Redis but status update failed.
+		// This entry will remain in "publishing" status and after stalePublishingAge (5 min),
+		// the recovery process will reset it to "pending", causing a DUPLICATE publish.
+		w.mu.Lock()
+		w.markPublishedFailures++
+		failCount := w.markPublishedFailures
+		w.mu.Unlock()
+
+		w.logger.Error("CRITICAL: published to Redis but failed to update status - WILL CAUSE DUPLICATE",
 			infralogger.String("outbox_id", entry.ID),
+			infralogger.String("content_id", entry.ContentID),
+			infralogger.String("channel", channel),
+			infralogger.Int64("total_mark_failures", failCount),
 			infralogger.Error(markErr))
-		// Don't return error - message was published, just DB update failed
-		// This is acceptable as the entry will eventually be cleaned up
 	}
 
 	w.logger.Debug("published to Redis",
@@ -300,15 +351,24 @@ func (w *OutboxWorker) GetStats(ctx context.Context) (map[string]any, error) {
 		return nil, err
 	}
 
+	w.mu.Lock()
+	consecutiveFailures := w.consecutiveFailures
+	markPublishedFailures := w.markPublishedFailures
+	isDegraded := consecutiveFailures >= consecutiveFailureThreshold
+	w.mu.Unlock()
+
 	return map[string]any{
-		"pending":                 stats.Pending,
-		"publishing":              stats.Publishing,
-		"published":               stats.Published,
-		"failed_retryable":        stats.FailedRetryable,
-		"failed_exhausted":        stats.FailedExhausted,
-		"avg_publish_lag_seconds": stats.AvgPublishLagSeconds,
-		"poll_interval":           w.pollInterval.String(),
-		"batch_size":              w.batchSize,
-		"running":                 w.IsRunning(),
+		"pending":                    stats.Pending,
+		"publishing":                 stats.Publishing,
+		"published":                  stats.Published,
+		"failed_retryable":           stats.FailedRetryable,
+		"failed_exhausted":           stats.FailedExhausted,
+		"avg_publish_lag_seconds":    stats.AvgPublishLagSeconds,
+		"poll_interval":              w.pollInterval.String(),
+		"batch_size":                 w.batchSize,
+		"running":                    w.IsRunning(),
+		"consecutive_fetch_failures": consecutiveFailures,
+		"mark_published_failures":    markPublishedFailures,
+		"degraded":                   isDegraded,
 	}, nil
 }

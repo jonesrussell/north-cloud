@@ -221,6 +221,7 @@ func TestReadyCheck(t *testing.T) {
 	req, _ := http.NewRequest(http.MethodGet, "/ready", http.NoBody)
 	router.ServeHTTP(w, req)
 
+	// With nil dependencies, we expect ready status (unconfigured is not unhealthy)
 	if w.Code != http.StatusOK {
 		t.Errorf("expected status 200, got %d", w.Code)
 	}
@@ -232,6 +233,20 @@ func TestReadyCheck(t *testing.T) {
 
 	if response["status"] != "ready" {
 		t.Errorf("expected status ready, got %v", response["status"])
+	}
+
+	// Verify checks field exists
+	checks, ok := response["checks"].(map[string]any)
+	if !ok {
+		t.Fatal("expected checks to be a map")
+	}
+
+	// With test setup, postgresql and elasticsearch are unconfigured
+	if checks["postgresql"] != "unconfigured" {
+		t.Logf("postgresql check: %v", checks["postgresql"])
+	}
+	if checks["redis"] != "not_applicable" {
+		t.Errorf("expected redis to be not_applicable, got %v", checks["redis"])
 	}
 }
 
@@ -445,5 +460,79 @@ func TestGetClassificationResult_NotImplemented(t *testing.T) {
 
 	if w.Code != http.StatusNotImplemented {
 		t.Errorf("expected status 501, got %d", w.Code)
+	}
+}
+
+func TestTestRule_InvalidRuleID(t *testing.T) {
+	handler := setupTestHandler()
+	router := setupRouter(handler)
+
+	reqBody := TestRuleRequest{
+		Title: "Test",
+		Body:  "Test body content",
+	}
+
+	body, err := json.Marshal(reqBody)
+	if err != nil {
+		t.Fatalf("failed to marshal request body: %v", err)
+	}
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest(http.MethodPost, "/api/v1/rules/invalid/test", bytes.NewBuffer(body))
+	req.Header.Set("Content-Type", "application/json")
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected status 400, got %d", w.Code)
+	}
+}
+
+func TestTestRule_MissingBody(t *testing.T) {
+	handler := setupTestHandler()
+	router := setupRouter(handler)
+
+	// Body field is required - empty body should fail validation
+	reqBody := TestRuleRequest{
+		Title: "Test Title",
+		Body:  "", // Empty body should fail required validation
+	}
+
+	body, err := json.Marshal(reqBody)
+	if err != nil {
+		t.Fatalf("failed to marshal request body: %v", err)
+	}
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest(http.MethodPost, "/api/v1/rules/1/test", bytes.NewBuffer(body))
+	req.Header.Set("Content-Type", "application/json")
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected status 400, got %d", w.Code)
+	}
+}
+
+func TestTestRule_RepoNotConfigured(t *testing.T) {
+	handler := setupTestHandler()
+	router := setupRouter(handler)
+
+	reqBody := TestRuleRequest{
+		Title: "Test",
+		Body:  "Test body content that is valid",
+	}
+
+	body, err := json.Marshal(reqBody)
+	if err != nil {
+		t.Fatalf("failed to marshal request body: %v", err)
+	}
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest(http.MethodPost, "/api/v1/rules/999/test", bytes.NewBuffer(body))
+	req.Header.Set("Content-Type", "application/json")
+	router.ServeHTTP(w, req)
+
+	// Returns 503 because rulesRepo is nil in test handler
+	if w.Code != http.StatusServiceUnavailable {
+		t.Errorf("expected status 503, got %d: %s", w.Code, w.Body.String())
 	}
 }

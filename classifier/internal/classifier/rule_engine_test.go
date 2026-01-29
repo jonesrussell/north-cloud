@@ -9,8 +9,6 @@ import (
 )
 
 func TestTrieRuleEngine_Match_KeywordsMatchContent(t *testing.T) {
-	t.Helper()
-
 	rules := []*domain.ClassificationRule{
 		{
 			ID:            1,
@@ -91,8 +89,6 @@ func TestTrieRuleEngine_Match_KeywordsMatchContent(t *testing.T) {
 }
 
 func TestTrieRuleEngine_DisabledRulesNotMatched(t *testing.T) {
-	t.Helper()
-
 	rules := []*domain.ClassificationRule{
 		{
 			ID:            1,
@@ -144,8 +140,6 @@ func TestTrieRuleEngine_DisabledRulesNotMatched(t *testing.T) {
 }
 
 func TestTrieRuleEngine_UpdateRulesDynamically(t *testing.T) {
-	t.Helper()
-
 	initialRules := []*domain.ClassificationRule{
 		{
 			ID:            1,
@@ -226,8 +220,6 @@ func TestTrieRuleEngine_UpdateRulesDynamically(t *testing.T) {
 }
 
 func TestTrieRuleEngine_MatchScoring(t *testing.T) {
-	t.Helper()
-
 	rules := []*domain.ClassificationRule{
 		{
 			ID:            1,
@@ -276,8 +268,6 @@ func TestTrieRuleEngine_MatchScoring(t *testing.T) {
 }
 
 func TestTrieRuleEngine_PrioritySorting(t *testing.T) {
-	t.Helper()
-
 	rules := []*domain.ClassificationRule{
 		{
 			ID:            1,
@@ -336,8 +326,6 @@ func TestTrieRuleEngine_PrioritySorting(t *testing.T) {
 }
 
 func TestTrieRuleEngine_EmptyRules(t *testing.T) {
-	t.Helper()
-
 	engine := classifier.NewTrieRuleEngine(nil, nil, nil)
 
 	if engine.RuleCount() != 0 {
@@ -355,8 +343,6 @@ func TestTrieRuleEngine_EmptyRules(t *testing.T) {
 }
 
 func TestTrieRuleEngine_MinConfidenceFiltering(t *testing.T) {
-	t.Helper()
-
 	rules := []*domain.ClassificationRule{
 		{
 			ID:            1,

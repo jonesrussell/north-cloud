@@ -91,7 +91,10 @@ func (r *DeadLetterRepository) Remove(ctx context.Context, contentID string) err
 		return fmt.Errorf("remove from DLQ: %w", err)
 	}
 
-	rows, _ := result.RowsAffected()
+	rows, rowsErr := result.RowsAffected()
+	if rowsErr != nil {
+		return fmt.Errorf("get affected rows: %w", rowsErr)
+	}
 	if rows == 0 {
 		return fmt.Errorf("DLQ entry not found: %s", contentID)
 	}
@@ -174,12 +177,14 @@ func (r *DeadLetterRepository) CountBySource(ctx context.Context) ([]domain.DLQS
 	}
 	defer rows.Close()
 
-	var result []domain.DLQSourceCount
+	// Pre-allocate with reasonable capacity for typical source count
+	const expectedSourceCount = 20
+	result := make([]domain.DLQSourceCount, 0, expectedSourceCount)
 	for rows.Next() {
 		var sc domain.DLQSourceCount
 		scanErr := rows.Scan(&sc.SourceName, &sc.Count)
 		if scanErr != nil {
-			return nil, scanErr
+			return nil, fmt.Errorf("scan DLQ source count: %w", scanErr)
 		}
 		result = append(result, sc)
 	}
@@ -201,12 +206,14 @@ func (r *DeadLetterRepository) CountByErrorCode(ctx context.Context) ([]domain.D
 	}
 	defer rows.Close()
 
-	var result []domain.DLQErrorCount
+	// Pre-allocate with capacity matching defined error code count
+	const errorCodeCount = 8
+	result := make([]domain.DLQErrorCount, 0, errorCodeCount)
 	for rows.Next() {
 		var ec domain.DLQErrorCount
 		scanErr := rows.Scan(&ec.ErrorCode, &ec.Count)
 		if scanErr != nil {
-			return nil, scanErr
+			return nil, fmt.Errorf("scan DLQ error count: %w", scanErr)
 		}
 		result = append(result, ec)
 	}

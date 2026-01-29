@@ -25,8 +25,6 @@ func getTestProvider(t *testing.T) *telemetry.Provider {
 }
 
 func TestNewProvider(t *testing.T) {
-	t.Helper()
-
 	provider := getTestProvider(t)
 	if provider == nil {
 		t.Fatal("expected non-nil provider")
@@ -40,8 +38,6 @@ func TestNewProvider(t *testing.T) {
 }
 
 func TestRecordClassification(t *testing.T) {
-	t.Helper()
-
 	provider := getTestProvider(t)
 	ctx := context.Background()
 
@@ -51,8 +47,6 @@ func TestRecordClassification(t *testing.T) {
 }
 
 func TestRecordRuleMatch(t *testing.T) {
-	t.Helper()
-
 	provider := getTestProvider(t)
 	ctx := context.Background()
 
@@ -61,8 +55,6 @@ func TestRecordRuleMatch(t *testing.T) {
 }
 
 func TestSetQueueDepth(t *testing.T) {
-	t.Helper()
-
 	provider := getTestProvider(t)
 
 	// Should not panic

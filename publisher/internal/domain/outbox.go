@@ -3,11 +3,15 @@ package domain
 
 import (
 	"errors"
+	"fmt"
 	"time"
 )
 
 // ErrNotFound is returned when an entity is not found in the database.
 var ErrNotFound = errors.New("entity not found")
+
+// ErrInvalidOutboxEntry is returned when creating an outbox entry with invalid fields.
+var ErrInvalidOutboxEntry = errors.New("invalid outbox entry")
 
 // OutboxStatus represents the state of an outbox entry
 type OutboxStatus string
@@ -116,4 +120,61 @@ type OutboxSourceStats struct {
 	Pending    int64  `json:"pending"`
 	Published  int64  `json:"published"`
 	Failed     int64  `json:"failed"`
+}
+
+const (
+	defaultOutboxMaxRetries = 5
+	minQualityScore         = 0
+	maxQualityScore         = 100
+)
+
+// NewOutboxEntry creates a new outbox entry with validation.
+// Returns an error if required fields are empty or quality score is out of range.
+func NewOutboxEntry(contentID, sourceName, indexName, contentType, title, body, url string) (*OutboxEntry, error) {
+	if contentID == "" {
+		return nil, fmt.Errorf("%w: content_id is required", ErrInvalidOutboxEntry)
+	}
+	if sourceName == "" {
+		return nil, fmt.Errorf("%w: source_name is required", ErrInvalidOutboxEntry)
+	}
+	if indexName == "" {
+		return nil, fmt.Errorf("%w: index_name is required", ErrInvalidOutboxEntry)
+	}
+
+	now := time.Now()
+	return &OutboxEntry{
+		ContentID:   contentID,
+		SourceName:  sourceName,
+		IndexName:   indexName,
+		ContentType: contentType,
+		Title:       title,
+		Body:        body,
+		URL:         url,
+		Topics:      []string{}, // Initialize to empty, never nil
+		Status:      OutboxStatusPending,
+		MaxRetries:  defaultOutboxMaxRetries,
+		CreatedAt:   now,
+		UpdatedAt:   now,
+	}, nil
+}
+
+// SetQualityScore sets the quality score with validation (0-100).
+func (o *OutboxEntry) SetQualityScore(score int) error {
+	if score < minQualityScore || score > maxQualityScore {
+		return fmt.Errorf("%w: quality_score must be between %d and %d, got %d",
+			ErrInvalidOutboxEntry, minQualityScore, maxQualityScore, score)
+	}
+	o.QualityScore = score
+	return nil
+}
+
+// SetCrimeStatus sets crime-related fields together to maintain consistency.
+// If isCrime is false, subcategory is always set to nil.
+func (o *OutboxEntry) SetCrimeStatus(isCrime bool, subcategory string) {
+	o.IsCrimeRelated = isCrime
+	if isCrime && subcategory != "" {
+		o.CrimeSubcategory = &subcategory
+	} else {
+		o.CrimeSubcategory = nil
+	}
 }

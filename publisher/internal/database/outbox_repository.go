@@ -96,7 +96,10 @@ func (r *OutboxRepository) MarkPublished(ctx context.Context, id string) error {
 		return fmt.Errorf("mark published: %w", err)
 	}
 
-	rows, _ := result.RowsAffected()
+	rows, rowsErr := result.RowsAffected()
+	if rowsErr != nil {
+		return fmt.Errorf("get affected rows: %w", rowsErr)
+	}
 	if rows == 0 {
 		return fmt.Errorf("outbox entry not found: %s", id)
 	}
@@ -115,9 +118,17 @@ func (r *OutboxRepository) MarkFailed(ctx context.Context, id, errorMsg string) 
 		    updated_at = NOW()
 		WHERE id = $1`
 
-	_, err := r.db.ExecContext(ctx, query, id, errorMsg)
+	result, err := r.db.ExecContext(ctx, query, id, errorMsg)
 	if err != nil {
 		return fmt.Errorf("mark failed: %w", err)
+	}
+
+	rows, rowsErr := result.RowsAffected()
+	if rowsErr != nil {
+		return fmt.Errorf("get affected rows: %w", rowsErr)
+	}
+	if rows == 0 {
+		return fmt.Errorf("outbox entry not found: %s", id)
 	}
 	return nil
 }
@@ -225,8 +236,11 @@ func (r *OutboxRepository) Count(ctx context.Context, status domain.OutboxStatus
 	return count, nil
 }
 
+// initialOutboxCapacity is a reasonable default for batch operations
+const initialOutboxCapacity = 100
+
 func scanOutboxEntries(rows *sql.Rows) ([]domain.OutboxEntry, error) {
-	entries := make([]domain.OutboxEntry, 0)
+	entries := make([]domain.OutboxEntry, 0, initialOutboxCapacity)
 	for rows.Next() {
 		var e domain.OutboxEntry
 		var topics pq.StringArray

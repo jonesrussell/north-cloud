@@ -65,7 +65,8 @@ func NewTrieRuleEngine(rules []*domain.ClassificationRule, logger infralogger.Lo
 		telemetry: tp,
 		logger:    logger,
 	}
-	engine.rebuild()
+	// No lock needed in constructor - engine not yet shared
+	engine.rebuildLocked()
 
 	if logger != nil {
 		logger.Info("trie rule engine initialized",
@@ -76,11 +77,9 @@ func NewTrieRuleEngine(rules []*domain.ClassificationRule, logger infralogger.Lo
 	return engine
 }
 
-// rebuild constructs the Aho-Corasick automaton
-func (e *TrieRuleEngine) rebuild() {
-	e.mu.Lock()
-	defer e.mu.Unlock()
-
+// rebuildLocked constructs the Aho-Corasick automaton.
+// MUST be called with e.mu held (either read or write lock).
+func (e *TrieRuleEngine) rebuildLocked() {
 	e.keywords = make([]string, 0, len(e.rules)*estimatedKeywordsPerRule)
 	e.kwToRules = make(map[string][]*ruleMapping)
 
@@ -221,7 +220,8 @@ type MatchDetails struct {
 	DurationMs     int64 `json:"duration_ms"`
 }
 
-// UpdateRules hot-reloads rules without restart
+// UpdateRules hot-reloads rules without restart.
+// Thread-safe: acquires write lock to update rules and rebuild matcher atomically.
 func (e *TrieRuleEngine) UpdateRules(rules []domain.ClassificationRule) {
 	enabledRules := make([]*domain.ClassificationRule, 0, len(rules))
 	for i := range rules {
@@ -229,13 +229,18 @@ func (e *TrieRuleEngine) UpdateRules(rules []domain.ClassificationRule) {
 			enabledRules = append(enabledRules, &rules[i])
 		}
 	}
+
+	// Acquire lock before updating rules to prevent race with Match()
+	e.mu.Lock()
 	e.rules = enabledRules
-	e.rebuild()
+	e.rebuildLocked()
+	keywordCount := len(e.keywords)
+	e.mu.Unlock()
 
 	if e.logger != nil {
 		e.logger.Info("trie rule engine updated",
 			infralogger.Int("rules", len(enabledRules)),
-			infralogger.Int("keywords", len(e.keywords)))
+			infralogger.Int("keywords", keywordCount))
 	}
 }
 

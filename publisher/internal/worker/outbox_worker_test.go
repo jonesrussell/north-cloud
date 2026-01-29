@@ -9,8 +9,6 @@ import (
 )
 
 func TestDefaultOutboxWorkerConfig(t *testing.T) {
-	t.Helper()
-
 	cfg := worker.DefaultOutboxWorkerConfig()
 
 	if cfg.PollInterval != 5*time.Second {
@@ -25,8 +23,6 @@ func TestDefaultOutboxWorkerConfig(t *testing.T) {
 }
 
 func TestOutboxWorkerConfig_Validation(t *testing.T) {
-	t.Helper()
-
 	// Test that default config has valid values
 	defaultCfg := worker.DefaultOutboxWorkerConfig()
 	if defaultCfg.PollInterval <= 0 {
@@ -41,8 +37,6 @@ func TestOutboxWorkerConfig_Validation(t *testing.T) {
 }
 
 func TestOutboxEntry_RoutingKey(t *testing.T) {
-	t.Helper()
-
 	testCases := []struct {
 		name    string
 		entry   domain.OutboxEntry
@@ -147,8 +141,6 @@ func TestOutboxEntry_RoutingKey(t *testing.T) {
 }
 
 func TestOutboxEntry_ToPublishMessage(t *testing.T) {
-	t.Helper()
-
 	now := time.Now()
 	entry := domain.OutboxEntry{
 		ID:            "outbox-123",
@@ -197,8 +189,6 @@ func TestOutboxEntry_ToPublishMessage(t *testing.T) {
 }
 
 func TestOutboxStats_Fields(t *testing.T) {
-	t.Helper()
-
 	stats := domain.OutboxStats{
 		Pending:         10,
 		Publishing:      2,
@@ -225,8 +215,6 @@ func TestOutboxStats_Fields(t *testing.T) {
 }
 
 func TestOutboxStatus_Constants(t *testing.T) {
-	t.Helper()
-
 	// Verify status constants exist and have expected string values
 	testCases := []struct {
 		status domain.OutboxStatus
@@ -248,8 +236,6 @@ func TestOutboxStatus_Constants(t *testing.T) {
 }
 
 func TestOutboxEntry_ShouldRetry(t *testing.T) {
-	t.Helper()
-
 	testCases := []struct {
 		name       string
 		retryCount int
@@ -276,8 +262,6 @@ func TestOutboxEntry_ShouldRetry(t *testing.T) {
 }
 
 func TestOutboxEntry_IsExhausted(t *testing.T) {
-	t.Helper()
-
 	testCases := []struct {
 		name       string
 		retryCount int
