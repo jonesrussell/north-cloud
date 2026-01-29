@@ -240,6 +240,49 @@ func (r *SourceRepository) Delete(ctx context.Context, id string) error {
 	return nil
 }
 
+// UpsertSourcesTx upserts multiple sources in a single transaction.
+// Returns the count of created and updated sources.
+// If any upsert fails, the entire transaction is rolled back.
+func (r *SourceRepository) UpsertSourcesTx(ctx context.Context, sources []*models.Source) (created, updated int, err error) {
+	if len(sources) == 0 {
+		return 0, 0, nil
+	}
+
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return 0, 0, fmt.Errorf("begin transaction: %w", err)
+	}
+	defer func() {
+		if err != nil {
+			if rbErr := tx.Rollback(); rbErr != nil {
+				r.logger.Error("failed to rollback transaction",
+					infralogger.Error(rbErr),
+				)
+			}
+		}
+	}()
+
+	for _, source := range sources {
+		isCreated, upsertErr := r.UpsertSource(ctx, tx, source)
+		if upsertErr != nil {
+			err = fmt.Errorf("upsert source %q: %w", source.Name, upsertErr)
+			return 0, 0, err
+		}
+		if isCreated {
+			created++
+		} else {
+			updated++
+		}
+	}
+
+	if commitErr := tx.Commit(); commitErr != nil {
+		err = fmt.Errorf("commit transaction: %w", commitErr)
+		return 0, 0, err
+	}
+
+	return created, updated, nil
+}
+
 // UpsertSource inserts or updates a source within an existing transaction.
 // Returns true if the source was created (new), false if updated (existed).
 // Uses PostgreSQL's ON CONFLICT with xmax trick to determine insert vs update.

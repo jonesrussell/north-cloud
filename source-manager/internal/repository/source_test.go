@@ -379,6 +379,127 @@ func TestSourceRepository_GetCities(t *testing.T) {
 	assert.False(t, cityNames["Disabled Source"], "Disabled Source should not be in results")
 }
 
+func TestSourceRepository_UpsertSourcesTx(t *testing.T) {
+	db, cleanup := setupTestDB(t)
+	defer cleanup()
+
+	logger := testhelpers.NewTestLogger()
+	repo := repository.NewSourceRepository(db, logger)
+	ctx := context.Background()
+
+	t.Run("batch insert all new", func(t *testing.T) {
+		sources := []*models.Source{
+			{
+				Name:      "Batch New Source 1",
+				URL:       "https://batch-new-1.com",
+				RateLimit: "1s",
+				MaxDepth:  2,
+				Time:      models.StringArray{"09:00"},
+				Selectors: models.SelectorConfig{
+					Article: models.ArticleSelectors{Title: "h1", Body: ".content"},
+				},
+				Enabled: true,
+			},
+			{
+				Name:      "Batch New Source 2",
+				URL:       "https://batch-new-2.com",
+				RateLimit: "2s",
+				MaxDepth:  3,
+				Time:      models.StringArray{"10:00"},
+				Selectors: models.SelectorConfig{
+					Article: models.ArticleSelectors{Title: "h2", Body: ".body"},
+				},
+				Enabled: true,
+			},
+		}
+
+		created, updated, err := repo.UpsertSourcesTx(ctx, sources)
+		require.NoError(t, err)
+		assert.Equal(t, 2, created, "Should create 2 new sources")
+		assert.Equal(t, 0, updated, "Should update 0 sources")
+
+		// Verify sources were persisted
+		for _, s := range sources {
+			assert.NotEmpty(t, s.ID, "Source ID should be set")
+			fetched, fetchErr := repo.GetByID(ctx, s.ID)
+			require.NoError(t, fetchErr)
+			assert.Equal(t, s.Name, fetched.Name)
+		}
+	})
+
+	t.Run("batch with mix of new and existing", func(t *testing.T) {
+		// First create an existing source
+		existingSource := &models.Source{
+			Name:      "Batch Existing Source",
+			URL:       "https://batch-existing.com",
+			RateLimit: "1s",
+			MaxDepth:  2,
+			Time:      models.StringArray{"09:00"},
+			Selectors: models.SelectorConfig{
+				Article: models.ArticleSelectors{Title: "h1", Body: ".content"},
+			},
+			Enabled: true,
+		}
+		err := repo.Create(ctx, existingSource)
+		require.NoError(t, err)
+		originalID := existingSource.ID
+
+		// Now upsert with the existing source (updated) and a new source
+		sources := []*models.Source{
+			{
+				Name:      "Batch Existing Source", // Same name - will be updated
+				URL:       "https://batch-existing-updated.com",
+				RateLimit: "5s",
+				MaxDepth:  10,
+				Time:      models.StringArray{"12:00"},
+				Selectors: models.SelectorConfig{
+					Article: models.ArticleSelectors{Title: "h1.updated", Body: ".updated"},
+				},
+				Enabled: false,
+			},
+			{
+				Name:      "Batch Mix New Source",
+				URL:       "https://batch-mix-new.com",
+				RateLimit: "3s",
+				MaxDepth:  4,
+				Time:      models.StringArray{"14:00"},
+				Selectors: models.SelectorConfig{
+					Article: models.ArticleSelectors{Title: "h3", Body: ".new-body"},
+				},
+				Enabled: true,
+			},
+		}
+
+		created, updated, err := repo.UpsertSourcesTx(ctx, sources)
+		require.NoError(t, err)
+		assert.Equal(t, 1, created, "Should create 1 new source")
+		assert.Equal(t, 1, updated, "Should update 1 source")
+
+		// Verify the existing source was updated with the original ID
+		assert.Equal(t, originalID, sources[0].ID, "Updated source should keep original ID")
+		fetched, fetchErr := repo.GetByID(ctx, originalID)
+		require.NoError(t, fetchErr)
+		assert.Equal(t, "https://batch-existing-updated.com", fetched.URL)
+		assert.Equal(t, "5s", fetched.RateLimit)
+		assert.False(t, fetched.Enabled)
+
+		// Verify the new source was created
+		assert.NotEmpty(t, sources[1].ID, "New source should have ID set")
+		newFetched, newErr := repo.GetByID(ctx, sources[1].ID)
+		require.NoError(t, newErr)
+		assert.Equal(t, "Batch Mix New Source", newFetched.Name)
+	})
+
+	t.Run("empty batch", func(t *testing.T) {
+		sources := []*models.Source{}
+
+		created, updated, err := repo.UpsertSourcesTx(ctx, sources)
+		require.NoError(t, err)
+		assert.Equal(t, 0, created, "Should create 0 sources")
+		assert.Equal(t, 0, updated, "Should update 0 sources")
+	})
+}
+
 func TestSourceRepository_UpsertSource(t *testing.T) {
 	db, cleanup := setupTestDB(t)
 	defer cleanup()
