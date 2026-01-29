@@ -341,11 +341,36 @@ func (s *IntervalScheduler) stopLogCapture(jobExec *JobExecution, logWriter logs
 	}
 }
 
+// createCaptureFunc creates a capture function from a logs.Writer.
+func createCaptureFunc(w logs.Writer) func(logs.LogEntry) {
+	if w == nil {
+		return nil
+	}
+	return func(entry logs.LogEntry) {
+		w.WriteEntry(entry)
+	}
+}
+
 // runJob executes the actual crawl job.
 func (s *IntervalScheduler) runJob(jobExec *JobExecution) {
 	job := jobExec.Job
 	execution := jobExec.Execution
 	logWriter := s.startLogCapture(jobExec)
+
+	// Create and set JobLogger for this execution
+	captureFunc := createCaptureFunc(logWriter)
+	noThrottling := 0 // No throttling for normal verbosity
+	jobLogger := logs.NewJobLoggerImpl(
+		job.ID,
+		execution.ID,
+		logs.VerbosityNormal, // Default verbosity, can be made configurable later
+		captureFunc,
+		noThrottling,
+	)
+	s.crawler.SetJobLogger(jobLogger)
+
+	// Start heartbeat for long-running jobs
+	jobLogger.StartHeartbeat(jobExec.Context)
 
 	defer func() {
 		s.stopLogCapture(jobExec, logWriter)
