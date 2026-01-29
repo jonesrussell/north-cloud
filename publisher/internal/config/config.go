@@ -18,6 +18,8 @@ const (
 	DefaultWriteTimeoutSeconds = 30
 	// DefaultShutdownTimeoutSeconds is the default shutdown timeout in seconds
 	DefaultShutdownTimeoutSeconds = 30
+	// DefaultServerAddress is the default server listen address
+	DefaultServerAddress = ":8070"
 )
 
 type Config struct {
@@ -48,7 +50,7 @@ type ElasticsearchConfig struct {
 }
 
 type RedisConfig struct {
-	URL      string `env:"REDIS_URL" yaml:"url"`
+	URL      string `env:"REDIS_URL"      yaml:"url"`
 	Password string `env:"REDIS_PASSWORD" yaml:"password"`
 	DB       int    `yaml:"db"`
 }
@@ -77,7 +79,7 @@ type SourcesConfig struct {
 }
 
 type ServerConfig struct {
-	Address      string        `env:"PUBLISHER_PORT" yaml:"address"` // e.g., ":8070" or port number
+	Address      string        `env:"PUBLISHER_PORT" yaml:"address"` // e.g., DefaultServerAddress or port number
 	ReadTimeout  time.Duration `yaml:"read_timeout"`                 // Default: 10s
 	WriteTimeout time.Duration `yaml:"write_timeout"`                // Default: 30s
 	CORSOrigins  []string      `env:"CORS_ORIGINS"   yaml:"cors_origins"`
@@ -87,7 +89,7 @@ type ServerConfig struct {
 func (c *ServerConfig) Validate() error {
 	// Handle port - can be ":PORT" or just port number
 	if c.Address == "" {
-		c.Address = ":8070" // Default port
+		c.Address = DefaultServerAddress
 	} else if c.Address != "" && !strings.HasPrefix(c.Address, ":") {
 		// If just a port number, prepend ":"
 		c.Address = ":" + c.Address
@@ -126,7 +128,7 @@ func (c *Config) Validate() error {
 // setDefaults sets default values for configuration fields
 func setDefaults(cfg *Config) {
 	if cfg.Server.Address == "" {
-		cfg.Server.Address = ":8070"
+		cfg.Server.Address = DefaultServerAddress
 	}
 	if cfg.Server.ReadTimeout == 0 {
 		cfg.Server.ReadTimeout = DefaultReadTimeoutSeconds * time.Second

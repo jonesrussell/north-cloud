@@ -114,7 +114,7 @@ func testConfigDebugWithEnv(t *testing.T, envValue string, expected bool) {
 // setTestDefaults sets default values for test config
 func setTestDefaults(cfg *Config) {
 	if cfg.Server.Address == "" {
-		cfg.Server.Address = ":8070"
+		cfg.Server.Address = DefaultServerAddress
 	}
 	if cfg.Service.CheckInterval == 0 {
 		cfg.Service.CheckInterval = 5 * time.Minute

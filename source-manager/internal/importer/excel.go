@@ -179,6 +179,11 @@ func ParseExcelFile(reader io.Reader) ([]SourceRow, []ImportError) {
 		// Parse the row using column map
 		sourceRow := parseRowWithMap(cells, rowNum, colMap)
 
+		// Skip rows without URL (don't treat as error)
+		if strings.TrimSpace(sourceRow.URL) == "" {
+			continue
+		}
+
 		// Validate the row
 		if errMsg := ValidateRow(sourceRow); errMsg != "" {
 			errors = append(errors, ImportError{Row: rowNum, Error: errMsg})

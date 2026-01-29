@@ -252,13 +252,23 @@ func TestParseExcelFile(t *testing.T) {
 			wantErrorMsg:   "name is required",
 		},
 		{
-			name: "missing url in row 2",
+			name: "missing url in row 2 is skipped",
 			rows: [][]string{
 				{"Source 1", "", "true", "1s", "2", `["morning"]`, `{}`},
 			},
 			wantRowCount:   0,
-			wantErrorCount: 1,
-			wantErrorMsg:   "url is required",
+			wantErrorCount: 0,
+			wantErrorMsg:   "",
+		},
+		{
+			name: "row without url is skipped, valid rows imported",
+			rows: [][]string{
+				{"Source 1", "https://example.com", "true", "1s", "2", `["morning"]`, `{}`},
+				{"Source 2", "", "true", "2s", "3", `["evening"]`, `{}`},
+			},
+			wantRowCount:   1,
+			wantErrorCount: 0,
+			wantErrorMsg:   "",
 		},
 		{
 			name: "invalid json in time",

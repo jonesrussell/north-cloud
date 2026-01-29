@@ -48,7 +48,7 @@ func runAPIServerWithStop() (func(), error) {
 		cfg = &config.Config{}
 		// Apply defaults manually
 		if cfg.Server.Address == "" {
-			cfg.Server.Address = ":8070"
+			cfg.Server.Address = config.DefaultServerAddress
 		}
 		if validateErr := cfg.Validate(); validateErr != nil {
 			infraLog.Error("Invalid default configuration", infralogger.Error(validateErr))
@@ -161,7 +161,7 @@ func runAPIServerInternal() int {
 		cfg = &config.Config{}
 		// Apply defaults manually
 		if cfg.Server.Address == "" {
-			cfg.Server.Address = ":8070"
+			cfg.Server.Address = config.DefaultServerAddress
 		}
 		if validateErr := cfg.Validate(); validateErr != nil {
 			infraLog.Fatal("Invalid default configuration", infralogger.Error(validateErr))
