@@ -62,3 +62,124 @@ func TestImportErrorExists(t *testing.T) {
 		t.Errorf("expected Error to be 'invalid URL format', got %s", importErr.Error)
 	}
 }
+
+func TestValidateRow(t *testing.T) {
+	t.Helper()
+
+	tests := []struct {
+		name    string
+		row     importer.SourceRow
+		wantErr string
+	}{
+		{
+			name: "valid row",
+			row: importer.SourceRow{
+				Row:       2,
+				Name:      "Test Source",
+				URL:       "https://example.com",
+				Enabled:   true,
+				RateLimit: "1s",
+				MaxDepth:  2,
+				Time:      `["morning"]`,
+				Selectors: `{"article":{"title":"h1"}}`,
+			},
+			wantErr: "",
+		},
+		{
+			name: "missing name",
+			row: importer.SourceRow{
+				Row:       2,
+				Name:      "",
+				URL:       "https://example.com",
+				Enabled:   true,
+				RateLimit: "1s",
+				MaxDepth:  2,
+			},
+			wantErr: "name is required",
+		},
+		{
+			name: "missing url",
+			row: importer.SourceRow{
+				Row:       2,
+				Name:      "Test Source",
+				URL:       "",
+				Enabled:   true,
+				RateLimit: "1s",
+				MaxDepth:  2,
+			},
+			wantErr: "url is required",
+		},
+		{
+			name: "invalid url scheme",
+			row: importer.SourceRow{
+				Row:       2,
+				Name:      "Test Source",
+				URL:       "ftp://example.com",
+				Enabled:   true,
+				RateLimit: "1s",
+				MaxDepth:  2,
+			},
+			wantErr: "url must start with http:// or https://",
+		},
+		{
+			name: "invalid time json",
+			row: importer.SourceRow{
+				Row:       2,
+				Name:      "Test Source",
+				URL:       "https://example.com",
+				Enabled:   true,
+				RateLimit: "1s",
+				MaxDepth:  2,
+				Time:      `invalid json`,
+			},
+			wantErr: "time must be a valid JSON array",
+		},
+		{
+			name: "time not array",
+			row: importer.SourceRow{
+				Row:       2,
+				Name:      "Test Source",
+				URL:       "https://example.com",
+				Enabled:   true,
+				RateLimit: "1s",
+				MaxDepth:  2,
+				Time:      `{"key": "value"}`,
+			},
+			wantErr: "time must be a valid JSON array",
+		},
+		{
+			name: "invalid selectors json",
+			row: importer.SourceRow{
+				Row:       2,
+				Name:      "Test Source",
+				URL:       "https://example.com",
+				Enabled:   true,
+				RateLimit: "1s",
+				MaxDepth:  2,
+				Selectors: `not valid json`,
+			},
+			wantErr: "selectors must be valid JSON",
+		},
+		{
+			name: "negative max_depth",
+			row: importer.SourceRow{
+				Row:       2,
+				Name:      "Test Source",
+				URL:       "https://example.com",
+				Enabled:   true,
+				RateLimit: "1s",
+				MaxDepth:  -1,
+			},
+			wantErr: "max_depth must be non-negative",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := importer.ValidateRow(tt.row)
+			if got != tt.wantErr {
+				t.Errorf("ValidateRow() = %q, want %q", got, tt.wantErr)
+			}
+		})
+	}
+}
