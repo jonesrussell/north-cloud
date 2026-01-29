@@ -49,6 +49,22 @@ type UpdateRuleRequest struct {
 	Enabled  *bool    `json:"enabled"`
 }
 
+// TestRuleRequest represents a request to test a rule against content.
+type TestRuleRequest struct {
+	Title string `json:"title"`
+	Body  string `binding:"required" json:"body"`
+}
+
+// TestRuleResponse represents the result of testing a rule against content.
+type TestRuleResponse struct {
+	Matched         bool     `json:"matched"`
+	Score           float64  `json:"score"`
+	Coverage        float64  `json:"coverage"`
+	MatchCount      int      `json:"match_count"`
+	UniqueMatches   int      `json:"unique_matches"`
+	MatchedKeywords []string `json:"matched_keywords"`
+}
+
 // SourceReputationResponse represents a source reputation response for the dashboard.
 type SourceReputationResponse struct {
 	Name            string     `json:"name"`       // source_name

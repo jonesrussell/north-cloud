@@ -664,6 +664,63 @@ func (h *Handler) ReadyCheck(c *gin.Context) {
 	})
 }
 
+// TestRule handles POST /api/v1/rules/:id/test
+// It tests a rule against provided content and returns match details
+func (h *Handler) TestRule(c *gin.Context) {
+	ruleIDStr := c.Param("id")
+	if ruleIDStr == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "rule_id is required"})
+		return
+	}
+
+	ruleID, err := strconv.Atoi(ruleIDStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid rule ID"})
+		return
+	}
+
+	var req TestRuleRequest
+	if err = c.ShouldBindJSON(&req); err != nil {
+		h.logger.Warn("Invalid test rule request", infralogger.Error(err))
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	h.logger.Debug("Testing rule",
+		infralogger.String("id", ruleIDStr),
+		infralogger.Int("body_length", len(req.Body)),
+	)
+
+	// Get the rule from database
+	rule, err := h.rulesRepo.GetByID(c.Request.Context(), ruleID)
+	if err != nil {
+		h.logger.Error("Failed to get rule",
+			infralogger.String("id", ruleIDStr),
+			infralogger.Error(err),
+		)
+		c.JSON(http.StatusNotFound, gin.H{"error": "Rule not found"})
+		return
+	}
+
+	// Test the rule using topic classifier
+	match := h.topicClassifier.TestRule(rule, req.Title, req.Body)
+
+	h.logger.Info("Rule tested",
+		infralogger.String("id", ruleIDStr),
+		infralogger.Bool("matched", match.Matched),
+		infralogger.Float64("score", match.Score),
+	)
+
+	c.JSON(http.StatusOK, TestRuleResponse{
+		Matched:         match.Matched,
+		Score:           match.Score,
+		Coverage:        match.Coverage,
+		MatchCount:      match.MatchCount,
+		UniqueMatches:   match.UniqueMatches,
+		MatchedKeywords: match.MatchedKeywords,
+	})
+}
+
 // reloadTopicClassifierRules reloads classification rules from the database into the topic classifier.
 // This is called after any CRUD operation on rules to ensure the classifier uses the latest rules.
 func (h *Handler) reloadTopicClassifierRules(ctx context.Context) {

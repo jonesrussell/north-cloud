@@ -229,3 +229,93 @@ func (t *TopicClassifier) GetTopicStats() map[string]int {
 	}
 	return stats
 }
+
+// TestRuleResult represents the result of testing a single rule against content
+type TestRuleResult struct {
+	Matched         bool
+	Score           float64
+	Coverage        float64
+	MatchCount      int
+	UniqueMatches   int
+	MatchedKeywords []string
+}
+
+// TestRule tests a single rule against content and returns detailed match information
+func (t *TopicClassifier) TestRule(rule *domain.ClassificationRule, title, body string) *TestRuleResult {
+	// Combine title and body for matching
+	text := title + " " + body
+	text = strings.ToLower(text)
+
+	// Remove common punctuation for word boundary matching
+	text = strings.ReplaceAll(text, ",", " ")
+	text = strings.ReplaceAll(text, ".", " ")
+	text = strings.ReplaceAll(text, "!", " ")
+	text = strings.ReplaceAll(text, "?", " ")
+	text = strings.ReplaceAll(text, ";", " ")
+	text = strings.ReplaceAll(text, ":", " ")
+
+	textWords := strings.Fields(text)
+
+	if len(textWords) == 0 || len(rule.Keywords) == 0 {
+		return &TestRuleResult{
+			Matched:         false,
+			MatchedKeywords: []string{},
+		}
+	}
+
+	// Build word frequency map for O(1) lookup
+	wordFreq := make(map[string]int)
+	for _, word := range textWords {
+		wordFreq[word]++
+	}
+
+	// Count keyword matches and track which keywords matched
+	totalMatches := 0
+	matchedKeywords := make([]string, 0)
+	totalKeywords := len(rule.Keywords)
+
+	for _, keyword := range rule.Keywords {
+		keyword = strings.ToLower(strings.TrimSpace(keyword))
+		if keyword == "" {
+			continue
+		}
+
+		occurrences := wordFreq[keyword]
+		if occurrences > 0 {
+			totalMatches += occurrences
+			matchedKeywords = append(matchedKeywords, keyword)
+		}
+	}
+
+	if totalMatches == 0 {
+		return &TestRuleResult{
+			Matched:         false,
+			MatchedKeywords: []string{},
+		}
+	}
+
+	// Compute log-TF + coverage score
+	tf := math.Log(1 + float64(totalMatches))
+	coverage := float64(len(matchedKeywords)) / float64(totalKeywords)
+
+	tfComponent := tf / tfNormalizationFactor
+	if tfComponent > 1.0 {
+		tfComponent = 1.0
+	}
+
+	score := (tfComponent * tfWeight) + (coverage * coverageWeight)
+	if score > 1.0 {
+		score = 1.0
+	}
+
+	matched := score >= rule.MinConfidence
+
+	return &TestRuleResult{
+		Matched:         matched,
+		Score:           score,
+		Coverage:        coverage,
+		MatchCount:      totalMatches,
+		UniqueMatches:   len(matchedKeywords),
+		MatchedKeywords: matchedKeywords,
+	}
+}
