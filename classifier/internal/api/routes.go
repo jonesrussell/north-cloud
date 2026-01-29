@@ -3,12 +3,18 @@ package api
 import (
 	"github.com/gin-gonic/gin"
 	"github.com/jonesrussell/north-cloud/classifier/internal/config"
+	"github.com/jonesrussell/north-cloud/classifier/internal/telemetry"
 	infrajwt "github.com/north-cloud/infrastructure/jwt"
 	"github.com/north-cloud/infrastructure/monitoring"
 )
 
 // SetupRoutes configures all API routes
 func SetupRoutes(router *gin.Engine, handler *Handler, cfg *config.Config) {
+	SetupRoutesWithTelemetry(router, handler, cfg, nil)
+}
+
+// SetupRoutesWithTelemetry configures all API routes with optional telemetry provider
+func SetupRoutesWithTelemetry(router *gin.Engine, handler *Handler, cfg *config.Config, tp *telemetry.Provider) {
 	// Health and readiness checks
 	router.GET("/health", handler.HealthCheck)
 	router.GET("/ready", handler.ReadyCheck)
@@ -17,6 +23,11 @@ func SetupRoutes(router *gin.Engine, handler *Handler, cfg *config.Config) {
 	router.GET("/health/memory", func(c *gin.Context) {
 		monitoring.MemoryHealthHandler(c.Writer, c.Request)
 	})
+
+	// Prometheus metrics endpoint (public, no auth required)
+	if tp != nil {
+		router.GET("/metrics", gin.WrapH(tp.Handler()))
+	}
 
 	// API v1 routes - protected with JWT
 	v1 := router.Group("/api/v1")
@@ -34,10 +45,11 @@ func SetupRoutes(router *gin.Engine, handler *Handler, cfg *config.Config) {
 
 	// Rules management endpoints
 	rules := v1.Group("/rules")
-	rules.GET("", handler.ListRules)         // GET /api/v1/rules
-	rules.POST("", handler.CreateRule)       // POST /api/v1/rules
-	rules.PUT("/:id", handler.UpdateRule)    // PUT /api/v1/rules/:id
-	rules.DELETE("/:id", handler.DeleteRule) // DELETE /api/v1/rules/:id
+	rules.GET("", handler.ListRules)          // GET /api/v1/rules
+	rules.POST("", handler.CreateRule)        // POST /api/v1/rules
+	rules.PUT("/:id", handler.UpdateRule)     // PUT /api/v1/rules/:id
+	rules.DELETE("/:id", handler.DeleteRule)  // DELETE /api/v1/rules/:id
+	rules.POST("/:id/test", handler.TestRule) // POST /api/v1/rules/:id/test
 
 	// Source reputation endpoints
 	sources := v1.Group("/sources")

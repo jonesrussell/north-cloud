@@ -107,6 +107,12 @@
               </td>
               <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                 <button
+                  class="text-green-600 hover:text-green-900 mr-4"
+                  @click="testRule(rule)"
+                >
+                  Test
+                </button>
+                <button
                   class="text-blue-600 hover:text-blue-900 mr-4"
                   @click="editRule(rule)"
                 >
@@ -211,6 +217,115 @@
       </div>
     </div>
 
+    <!-- Test Rule Modal -->
+    <div
+      v-if="testingRule"
+      class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50"
+      @click.self="closeTestModal"
+    >
+      <div class="relative top-10 mx-auto p-5 border w-[600px] shadow-lg rounded-md bg-white">
+        <h3 class="text-lg font-medium text-gray-900 mb-4">
+          Test Rule: {{ testingRule.topic }}
+        </h3>
+        <form
+          class="space-y-4"
+          @submit.prevent="runTest"
+        >
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Title (optional)</label>
+            <input
+              v-model="testForm.title"
+              type="text"
+              class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              placeholder="Enter article title to test..."
+            >
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Body Content</label>
+            <textarea
+              v-model="testForm.body"
+              required
+              rows="6"
+              class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              placeholder="Enter article body text to test against the rule keywords..."
+            />
+          </div>
+          <div class="flex justify-between items-center pt-2">
+            <button
+              type="button"
+              class="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
+              @click="closeTestModal"
+            >
+              Close
+            </button>
+            <button
+              type="submit"
+              :disabled="testLoading"
+              class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 disabled:opacity-50"
+            >
+              {{ testLoading ? 'Testing...' : 'Run Test' }}
+            </button>
+          </div>
+        </form>
+
+        <!-- Test Results -->
+        <div
+          v-if="testResult"
+          class="mt-6 pt-4 border-t"
+        >
+          <h4 class="text-md font-medium text-gray-900 mb-3">
+            Test Results
+          </h4>
+          <div
+            class="p-4 rounded-md"
+            :class="testResult.matched ? 'bg-green-50' : 'bg-red-50'"
+          >
+            <div class="flex items-center mb-2">
+              <span
+                class="px-2 py-1 text-sm font-semibold rounded"
+                :class="testResult.matched ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'"
+              >
+                {{ testResult.matched ? 'MATCHED' : 'NOT MATCHED' }}
+              </span>
+            </div>
+            <div class="grid grid-cols-2 gap-4 mt-3 text-sm">
+              <div>
+                <span class="text-gray-600">Score:</span>
+                <span class="ml-2 font-medium">{{ (testResult.score * 100).toFixed(1) }}%</span>
+              </div>
+              <div>
+                <span class="text-gray-600">Coverage:</span>
+                <span class="ml-2 font-medium">{{ (testResult.coverage * 100).toFixed(1) }}%</span>
+              </div>
+              <div>
+                <span class="text-gray-600">Match Count:</span>
+                <span class="ml-2 font-medium">{{ testResult.match_count }}</span>
+              </div>
+              <div>
+                <span class="text-gray-600">Unique Matches:</span>
+                <span class="ml-2 font-medium">{{ testResult.unique_matches }}</span>
+              </div>
+            </div>
+            <div
+              v-if="testResult.matched_keywords && testResult.matched_keywords.length > 0"
+              class="mt-3"
+            >
+              <span class="text-gray-600 text-sm">Matched Keywords:</span>
+              <div class="mt-1 flex flex-wrap gap-1">
+                <span
+                  v-for="kw in testResult.matched_keywords"
+                  :key="kw"
+                  class="px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded"
+                >
+                  {{ kw }}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Delete Confirmation Modal -->
     <ConfirmModal
       v-if="ruleToDelete"
@@ -243,6 +358,15 @@ const rules = ref([])
 const showCreateModal = ref(false)
 const editingRule = ref(null)
 const ruleToDelete = ref(null)
+
+// Test rule state
+const testingRule = ref(null)
+const testLoading = ref(false)
+const testResult = ref(null)
+const testForm = ref({
+  title: '',
+  body: '',
+})
 
 const ruleForm = ref({
   topic: '',
@@ -346,6 +470,45 @@ const confirmDelete = async () => {
   } catch (err) {
     error.value = err.response?.data?.error || err.message || 'Failed to delete rule'
     console.error('[ClassifierRulesView] Error deleting rule:', err)
+  }
+}
+
+// Test rule functions
+const testRule = (rule) => {
+  testingRule.value = rule
+  testResult.value = null
+  testForm.value = {
+    title: '',
+    body: '',
+  }
+}
+
+const closeTestModal = () => {
+  testingRule.value = null
+  testResult.value = null
+  testForm.value = {
+    title: '',
+    body: '',
+  }
+}
+
+const runTest = async () => {
+  if (!testingRule.value || !testForm.value.body) return
+
+  try {
+    testLoading.value = true
+    testResult.value = null
+
+    const res = await classifierApi.rules.test(testingRule.value.id, {
+      title: testForm.value.title || '',
+      body: testForm.value.body,
+    })
+    testResult.value = res.data
+  } catch (err) {
+    error.value = err.response?.data?.error || err.message || 'Failed to test rule'
+    console.error('[ClassifierRulesView] Error testing rule:', err)
+  } finally {
+    testLoading.value = false
   }
 }
 

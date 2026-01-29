@@ -19,6 +19,8 @@ import (
 const (
 	// Default confidence threshold for classification rules
 	defaultMinConfidence = 0.3
+	// retryAfterSeconds is the suggested retry delay for temporarily unavailable endpoints
+	retryAfterSeconds = 30
 )
 
 // Handler handles HTTP requests for the classifier API
@@ -314,7 +316,17 @@ func (h *Handler) CreateRule(c *gin.Context) {
 	}
 
 	// Reload rules in topic classifier
-	h.reloadTopicClassifierRules(c.Request.Context())
+	if err := h.reloadTopicClassifierRules(c.Request.Context()); err != nil {
+		h.logger.Error("Failed to reload rules after create",
+			infralogger.String("id", strconv.Itoa(rule.ID)),
+			infralogger.Error(err))
+		// Rule was created but failed to activate - return partial success
+		c.JSON(http.StatusCreated, gin.H{
+			"rule":    toRuleResponse(rule),
+			"warning": "Rule created but failed to activate - please refresh or contact support",
+		})
+		return
+	}
 
 	h.logger.Info("Rule created successfully",
 		infralogger.String("id", strconv.Itoa(rule.ID)),
@@ -379,7 +391,17 @@ func (h *Handler) UpdateRule(c *gin.Context) {
 	}
 
 	// Reload rules in topic classifier
-	h.reloadTopicClassifierRules(c.Request.Context())
+	if err = h.reloadTopicClassifierRules(c.Request.Context()); err != nil {
+		h.logger.Error("Failed to reload rules after update",
+			infralogger.String("id", strconv.Itoa(ruleID)),
+			infralogger.Error(err))
+		// Rule was updated but failed to activate - return partial success
+		c.JSON(http.StatusOK, gin.H{
+			"rule":    toRuleResponse(rule),
+			"warning": "Rule updated but failed to activate - please refresh or contact support",
+		})
+		return
+	}
 
 	h.logger.Info("Rule updated successfully",
 		infralogger.String("id", strconv.Itoa(ruleID)),
@@ -416,7 +438,17 @@ func (h *Handler) DeleteRule(c *gin.Context) {
 	}
 
 	// Reload rules in topic classifier
-	h.reloadTopicClassifierRules(c.Request.Context())
+	if err = h.reloadTopicClassifierRules(c.Request.Context()); err != nil {
+		h.logger.Error("Failed to reload rules after delete",
+			infralogger.String("id", strconv.Itoa(ruleID)),
+			infralogger.Error(err))
+		// Rule was deleted but failed to reload - return partial success
+		c.JSON(http.StatusOK, gin.H{
+			"message": "Rule deleted but failed to reload classifier - please refresh or contact support",
+			"warning": "Rule deleted but failed to activate changes",
+		})
+		return
+	}
 
 	h.logger.Info("Rule deleted successfully", infralogger.String("id", strconv.Itoa(ruleID)))
 
@@ -591,13 +623,9 @@ func (h *Handler) GetStats(c *gin.Context) {
 	stats, err := h.classificationHistoryRepo.GetStats(c.Request.Context(), startDate)
 	if err != nil {
 		h.logger.Error("Failed to get stats", infralogger.Error(err))
-		// Return empty stats instead of error to avoid breaking dashboard
-		c.JSON(http.StatusOK, gin.H{
-			"total_classified":       0,
-			"avg_quality_score":      0,
-			"crime_related":          0,
-			"avg_processing_time_ms": 0,
-			"content_types":          gin.H{},
+		c.JSON(http.StatusServiceUnavailable, gin.H{
+			"error":               "Statistics temporarily unavailable",
+			"retry_after_seconds": retryAfterSeconds,
 		})
 		return
 	}
@@ -614,8 +642,10 @@ func (h *Handler) GetTopicStats(c *gin.Context) {
 	stats, err := h.classificationHistoryRepo.GetTopicStats(c.Request.Context())
 	if err != nil {
 		h.logger.Error("Failed to get topic stats", infralogger.Error(err))
-		// Return empty topics instead of error to avoid breaking dashboard
-		c.JSON(http.StatusOK, gin.H{"topics": []gin.H{}})
+		c.JSON(http.StatusServiceUnavailable, gin.H{
+			"error":               "Topic statistics temporarily unavailable",
+			"retry_after_seconds": retryAfterSeconds,
+		})
 		return
 	}
 
@@ -631,8 +661,10 @@ func (h *Handler) GetSourceDistribution(c *gin.Context) {
 	stats, err := h.classificationHistoryRepo.GetSourceStats(c.Request.Context())
 	if err != nil {
 		h.logger.Error("Failed to get source distribution", infralogger.Error(err))
-		// Return empty sources instead of error to avoid breaking dashboard
-		c.JSON(http.StatusOK, gin.H{"sources": []gin.H{}})
+		c.JSON(http.StatusServiceUnavailable, gin.H{
+			"error":               "Source distribution temporarily unavailable",
+			"retry_after_seconds": retryAfterSeconds,
+		})
 		return
 	}
 
@@ -651,33 +683,161 @@ func (h *Handler) HealthCheck(c *gin.Context) {
 }
 
 // ReadyCheck handles GET /ready
+// Performs actual health checks on dependencies.
 func (h *Handler) ReadyCheck(c *gin.Context) {
-	// TODO: Check dependencies (ES, PostgreSQL, Redis)
-	// For now, always return ready
-	c.JSON(http.StatusOK, gin.H{
-		"status": "ready",
-		"checks": gin.H{
-			"elasticsearch": "ok",
-			"postgresql":    "ok",
-			"redis":         "ok",
-		},
+	ctx := c.Request.Context()
+	checks := make(map[string]string)
+	allHealthy := true
+
+	// Check PostgreSQL via rules repository
+	if h.rulesRepo != nil {
+		// Try to list rules with a limit of 1 to verify DB connectivity
+		_, err := h.rulesRepo.List(ctx, "", nil)
+		if err != nil {
+			checks["postgresql"] = "unhealthy: " + err.Error()
+			allHealthy = false
+		} else {
+			checks["postgresql"] = "ok"
+		}
+	} else {
+		checks["postgresql"] = "unconfigured"
+	}
+
+	// Check Elasticsearch via storage
+	if h.storage != nil {
+		// Try to check if storage is accessible by getting a non-existent doc
+		// This will return an error but proves ES is reachable
+		_, err := h.storage.GetClassifiedByID(ctx, "__health_check_probe__")
+		// ErrNotFound is expected and means ES is healthy
+		if err != nil && err.Error() != "not found" && !isNotFoundError(err) {
+			checks["elasticsearch"] = "unhealthy: " + err.Error()
+			allHealthy = false
+		} else {
+			checks["elasticsearch"] = "ok"
+		}
+	} else {
+		checks["elasticsearch"] = "unconfigured"
+	}
+
+	// Redis is not directly used by classifier - mark as not applicable
+	checks["redis"] = "not_applicable"
+
+	status := "ready"
+	statusCode := http.StatusOK
+	if !allHealthy {
+		status = "degraded"
+		statusCode = http.StatusServiceUnavailable
+	}
+
+	c.JSON(statusCode, gin.H{
+		"status": status,
+		"checks": checks,
+	})
+}
+
+// isNotFoundError checks if an error indicates a not-found condition
+func isNotFoundError(err error) bool {
+	if err == nil {
+		return false
+	}
+	errStr := err.Error()
+	return errStr == "not found" || errStr == "document not found" ||
+		contains(errStr, "404", "not_found", "index_not_found")
+}
+
+// contains checks if s contains any of the substrings
+func contains(s string, substrs ...string) bool {
+	for _, sub := range substrs {
+		if sub != "" && len(s) >= len(sub) {
+			for i := 0; i <= len(s)-len(sub); i++ {
+				if s[i:i+len(sub)] == sub {
+					return true
+				}
+			}
+		}
+	}
+	return false
+}
+
+// TestRule handles POST /api/v1/rules/:id/test
+// It tests a rule against provided content and returns match details
+func (h *Handler) TestRule(c *gin.Context) {
+	ruleIDStr := c.Param("id")
+	if ruleIDStr == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "rule_id is required"})
+		return
+	}
+
+	ruleID, err := strconv.Atoi(ruleIDStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid rule ID"})
+		return
+	}
+
+	var req TestRuleRequest
+	if err = c.ShouldBindJSON(&req); err != nil {
+		h.logger.Warn("Invalid test rule request", infralogger.Error(err))
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	h.logger.Debug("Testing rule",
+		infralogger.String("id", ruleIDStr),
+		infralogger.Int("body_length", len(req.Body)),
+	)
+
+	// Check if rules repository is configured
+	if h.rulesRepo == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "Rules repository not configured"})
+		return
+	}
+
+	// Get the rule from database
+	rule, err := h.rulesRepo.GetByID(c.Request.Context(), ruleID)
+	if err != nil {
+		h.logger.Error("Failed to get rule",
+			infralogger.String("id", ruleIDStr),
+			infralogger.Error(err),
+		)
+		c.JSON(http.StatusNotFound, gin.H{"error": "Rule not found"})
+		return
+	}
+
+	// Test the rule using topic classifier
+	match := h.topicClassifier.TestRule(rule, req.Title, req.Body)
+
+	h.logger.Info("Rule tested",
+		infralogger.String("id", ruleIDStr),
+		infralogger.Bool("matched", match.Matched),
+		infralogger.Float64("score", match.Score),
+	)
+
+	c.JSON(http.StatusOK, TestRuleResponse{
+		Matched:         match.Matched,
+		Score:           match.Score,
+		Coverage:        match.Coverage,
+		MatchCount:      match.MatchCount,
+		UniqueMatches:   match.UniqueMatches,
+		MatchedKeywords: match.MatchedKeywords,
 	})
 }
 
 // reloadTopicClassifierRules reloads classification rules from the database into the topic classifier.
 // This is called after any CRUD operation on rules to ensure the classifier uses the latest rules.
-func (h *Handler) reloadTopicClassifierRules(ctx context.Context) {
+// Returns an error if rules cannot be loaded - callers should handle this appropriately.
+func (h *Handler) reloadTopicClassifierRules(ctx context.Context) error {
 	h.logger.Info("Reloading classification rules from database")
 
 	// Load enabled topic rules from database
 	rules, err := h.rulesRepo.List(ctx, domain.RuleTypeTopic, ptr(true))
 	if err != nil {
 		h.logger.Error("Failed to reload rules from database", infralogger.Error(err))
-		return
+		return fmt.Errorf("reload rules from database: %w", err)
 	}
 
 	// Update topic classifier with new rules
 	h.topicClassifier.UpdateRules(rules)
 
 	h.logger.Info("Classification rules reloaded successfully", infralogger.Int("count", len(rules)))
+	return nil
 }

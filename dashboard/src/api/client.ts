@@ -400,6 +400,8 @@ export const classifierApi = {
     create: (data: unknown) => classifierClient.post('/rules', data),
     update: (id: string | number, data: unknown) => classifierClient.put(`/rules/${id}`, data),
     delete: (id: string | number) => classifierClient.delete(`/rules/${id}`),
+    test: (id: string | number, data: { title?: string; body: string }) =>
+      classifierClient.post(`/rules/${id}/test`, data),
   },
 
   // Sources
