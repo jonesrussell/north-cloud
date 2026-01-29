@@ -92,7 +92,7 @@ type ElasticsearchConfig struct {
 // RedisConfig holds Redis configuration.
 type RedisConfig struct {
 	URL                    string        `env:"REDIS_URL"                 yaml:"url"`
-	Password               string        `yaml:"password"`
+	Password               string        `env:"REDIS_PASSWORD"            yaml:"password"`
 	Database               int           `yaml:"database"`
 	MaxRetries             int           `yaml:"max_retries"`
 	Timeout                time.Duration `yaml:"timeout"`

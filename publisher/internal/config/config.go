@@ -49,7 +49,7 @@ type ElasticsearchConfig struct {
 
 type RedisConfig struct {
 	URL      string `env:"REDIS_URL" yaml:"url"`
-	Password string `yaml:"password"`
+	Password string `env:"REDIS_PASSWORD" yaml:"password"`
 	DB       int    `yaml:"db"`
 }
 
