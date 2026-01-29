@@ -9,6 +9,7 @@ require (
 	github.com/lib/pq v1.10.9
 	github.com/north-cloud/infrastructure v0.0.0
 	github.com/stretchr/testify v1.11.1
+	github.com/xuri/excelize/v2 v2.10.0
 )
 
 replace github.com/north-cloud/infrastructure => ../infrastructure
