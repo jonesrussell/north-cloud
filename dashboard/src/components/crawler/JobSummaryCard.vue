@@ -1,6 +1,8 @@
 <template>
   <div class="p-6 bg-gray-50">
-    <h3 class="text-sm font-medium text-gray-900 mb-4">Job Summary</h3>
+    <h3 class="text-sm font-medium text-gray-900 mb-4">
+      Job Summary
+    </h3>
 
     <!-- Core Metrics Grid -->
     <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -8,21 +10,27 @@
         <div class="text-2xl font-semibold text-gray-900">
           {{ summary.pages_discovered }}
         </div>
-        <div class="text-xs text-gray-500">Pages Discovered</div>
+        <div class="text-xs text-gray-500">
+          Pages Discovered
+        </div>
       </div>
 
       <div class="bg-white rounded-lg p-3 shadow-sm">
         <div class="text-2xl font-semibold text-gray-900">
           {{ summary.pages_crawled }}
         </div>
-        <div class="text-xs text-gray-500">Pages Crawled</div>
+        <div class="text-xs text-gray-500">
+          Pages Crawled
+        </div>
       </div>
 
       <div class="bg-white rounded-lg p-3 shadow-sm">
         <div class="text-2xl font-semibold text-gray-900">
           {{ summary.items_extracted }}
         </div>
-        <div class="text-xs text-gray-500">Items Extracted</div>
+        <div class="text-xs text-gray-500">
+          Items Extracted
+        </div>
       </div>
 
       <div class="bg-white rounded-lg p-3 shadow-sm">
@@ -32,7 +40,9 @@
         >
           {{ summary.errors_count }}
         </div>
-        <div class="text-xs text-gray-500">Errors</div>
+        <div class="text-xs text-gray-500">
+          Errors
+        </div>
       </div>
     </div>
 
@@ -42,7 +52,9 @@
         <div class="text-lg font-semibold text-gray-900">
           {{ formatDuration(summary.duration_ms) }}
         </div>
-        <div class="text-xs text-gray-500">Total Duration</div>
+        <div class="text-xs text-gray-500">
+          Total Duration
+        </div>
       </div>
 
       <div
@@ -52,7 +64,9 @@
         <div class="text-lg font-semibold text-gray-900">
           {{ formatBytes(summary.bytes_fetched) }}
         </div>
-        <div class="text-xs text-gray-500">Data Fetched</div>
+        <div class="text-xs text-gray-500">
+          Data Fetched
+        </div>
       </div>
 
       <div
@@ -62,7 +76,9 @@
         <div class="text-lg font-semibold text-gray-900">
           {{ summary.requests_total }}
         </div>
-        <div class="text-xs text-gray-500">Total Requests</div>
+        <div class="text-xs text-gray-500">
+          Total Requests
+        </div>
       </div>
 
       <div
@@ -75,7 +91,9 @@
         >
           {{ summary.requests_failed }}
         </div>
-        <div class="text-xs text-gray-500">Failed Requests</div>
+        <div class="text-xs text-gray-500">
+          Failed Requests
+        </div>
       </div>
     </div>
 
@@ -84,7 +102,9 @@
       v-if="hasStatusCodes"
       class="mt-4"
     >
-      <h4 class="text-xs font-medium text-gray-500 mb-2">Status Codes</h4>
+      <h4 class="text-xs font-medium text-gray-500 mb-2">
+        Status Codes
+      </h4>
       <div class="flex flex-wrap gap-2">
         <span
           v-for="(count, code) in summary.status_codes"
@@ -102,7 +122,9 @@
       v-if="summary.top_errors && summary.top_errors.length > 0"
       class="mt-4"
     >
-      <h4 class="text-xs font-medium text-gray-500 mb-2">Top Errors</h4>
+      <h4 class="text-xs font-medium text-gray-500 mb-2">
+        Top Errors
+      </h4>
       <ul class="space-y-1">
         <li
           v-for="(error, index) in summary.top_errors"

@@ -10,25 +10,51 @@
           v-model="categoryFilter"
           class="text-sm border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500"
         >
-          <option value="">All Categories</option>
-          <option value="crawler.lifecycle">Lifecycle</option>
-          <option value="crawler.fetch">Fetch</option>
-          <option value="crawler.extract">Extract</option>
-          <option value="crawler.error">Errors</option>
-          <option value="crawler.queue">Queue</option>
-          <option value="crawler.rate_limit">Rate Limit</option>
-          <option value="crawler.metrics">Metrics</option>
+          <option value="">
+            All Categories
+          </option>
+          <option value="crawler.lifecycle">
+            Lifecycle
+          </option>
+          <option value="crawler.fetch">
+            Fetch
+          </option>
+          <option value="crawler.extract">
+            Extract
+          </option>
+          <option value="crawler.error">
+            Errors
+          </option>
+          <option value="crawler.queue">
+            Queue
+          </option>
+          <option value="crawler.rate_limit">
+            Rate Limit
+          </option>
+          <option value="crawler.metrics">
+            Metrics
+          </option>
         </select>
         <!-- Level Filter -->
         <select
           v-model="levelFilter"
           class="text-sm border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500"
         >
-          <option value="">All Levels</option>
-          <option value="error">Errors Only</option>
-          <option value="warn">Warnings+</option>
-          <option value="info">Info+</option>
-          <option value="debug">Debug+</option>
+          <option value="">
+            All Levels
+          </option>
+          <option value="error">
+            Errors Only
+          </option>
+          <option value="warn">
+            Warnings+
+          </option>
+          <option value="info">
+            Info+
+          </option>
+          <option value="debug">
+            Debug+
+          </option>
         </select>
         <!-- Execution Selector -->
         <select
