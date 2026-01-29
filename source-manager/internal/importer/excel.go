@@ -2,13 +2,14 @@ package importer
 
 import (
 	"encoding/json"
+	"io"
+	"strconv"
 	"strings"
+
+	"github.com/xuri/excelize/v2"
 )
 
 // Column indices for Excel spreadsheet (0-based).
-// These constants are used by ParseExcelFile (implemented in Task 2.3).
-//
-//nolint:unused // Constants will be used by ParseExcelFile in Task 2.3
 const (
 	colName      = 0 // Column A
 	colURL       = 1 // Column B
@@ -38,6 +39,123 @@ type SourceRow struct {
 type ImportError struct {
 	Row   int    `json:"row"`
 	Error string `json:"error"`
+}
+
+// ParseExcelFile parses an Excel file from an io.Reader and returns parsed rows and any validation errors.
+// If any validation errors occur, returns nil rows with all errors.
+func ParseExcelFile(reader io.Reader) ([]SourceRow, []ImportError) {
+	f, err := excelize.OpenReader(reader)
+	if err != nil {
+		return nil, []ImportError{{Row: 0, Error: "failed to open Excel file: " + err.Error()}}
+	}
+	defer f.Close()
+
+	// Get the first sheet
+	sheetName := f.GetSheetName(0)
+	if sheetName == "" {
+		return nil, []ImportError{{Row: 0, Error: "no sheets found in Excel file"}}
+	}
+
+	// Get all rows
+	excelRows, err := f.GetRows(sheetName)
+	if err != nil {
+		return nil, []ImportError{{Row: 0, Error: "failed to read rows: " + err.Error()}}
+	}
+
+	// Skip header row, check if there's any data
+	if len(excelRows) <= headerRowIndex {
+		return []SourceRow{}, []ImportError{}
+	}
+
+	var rows []SourceRow
+	var errors []ImportError
+
+	// Parse data rows (skip header at index 0)
+	for i := headerRowIndex; i < len(excelRows); i++ {
+		cells := excelRows[i]
+		rowNum := i + 1 // Excel rows are 1-based
+
+		// Skip empty rows
+		if isEmptyRow(cells) {
+			continue
+		}
+
+		// Parse the row
+		sourceRow := parseRow(cells, rowNum)
+
+		// Validate the row
+		if errMsg := ValidateRow(sourceRow); errMsg != "" {
+			errors = append(errors, ImportError{Row: rowNum, Error: errMsg})
+			continue
+		}
+
+		rows = append(rows, sourceRow)
+	}
+
+	// If any validation errors, return nil rows with all errors
+	if len(errors) > 0 {
+		return nil, errors
+	}
+
+	return rows, errors
+}
+
+// parseRow converts Excel row cells to a SourceRow.
+func parseRow(cells []string, rowNum int) SourceRow {
+	row := SourceRow{Row: rowNum}
+
+	if len(cells) > colName {
+		row.Name = strings.TrimSpace(cells[colName])
+	}
+	if len(cells) > colURL {
+		row.URL = strings.TrimSpace(cells[colURL])
+	}
+	if len(cells) > colEnabled {
+		row.Enabled = parseBool(cells[colEnabled])
+	}
+	if len(cells) > colRateLimit {
+		row.RateLimit = strings.TrimSpace(cells[colRateLimit])
+	}
+	if len(cells) > colMaxDepth {
+		row.MaxDepth = parseInt(cells[colMaxDepth])
+	}
+	if len(cells) > colTime {
+		row.Time = strings.TrimSpace(cells[colTime])
+	}
+	if len(cells) > colSelectors {
+		row.Selectors = strings.TrimSpace(cells[colSelectors])
+	}
+
+	return row
+}
+
+// parseBool parses a string to bool, treating "true", "1", "yes", "y" as true.
+func parseBool(s string) bool {
+	s = strings.ToLower(strings.TrimSpace(s))
+	return s == "true" || s == "1" || s == "yes" || s == "y"
+}
+
+// parseInt parses a string to int, returns 0 on error.
+func parseInt(s string) int {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return 0
+	}
+	val, err := strconv.Atoi(s)
+	if err != nil {
+		return 0
+	}
+	return val
+}
+
+// isEmptyRow checks if all cells in a row are empty.
+func isEmptyRow(cells []string) bool {
+	for _, cell := range cells {
+		if strings.TrimSpace(cell) != "" {
+			return false
+		}
+	}
+	return true
 }
 
 // ValidateRow validates a single row and returns an error message or empty string.

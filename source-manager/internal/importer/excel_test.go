@@ -1,9 +1,12 @@
 package importer_test
 
 import (
+	"bytes"
+	"strings"
 	"testing"
 
 	"github.com/jonesrussell/north-cloud/source-manager/internal/importer"
+	"github.com/xuri/excelize/v2"
 )
 
 func TestSourceRowExists(t *testing.T) {
@@ -179,6 +182,119 @@ func TestValidateRow(t *testing.T) {
 			got := importer.ValidateRow(tt.row)
 			if got != tt.wantErr {
 				t.Errorf("ValidateRow() = %q, want %q", got, tt.wantErr)
+			}
+		})
+	}
+}
+
+// createTestExcel creates an in-memory Excel file for testing.
+func createTestExcel(t *testing.T, rows [][]string) *bytes.Reader {
+	t.Helper()
+
+	f := excelize.NewFile()
+	sheetName := "Sheet1"
+
+	// Write header
+	headers := []string{"name", "url", "enabled", "rate_limit", "max_depth", "time", "selectors"}
+	for i, h := range headers {
+		cell, _ := excelize.CoordinatesToCellName(i+1, 1)
+		if err := f.SetCellValue(sheetName, cell, h); err != nil {
+			t.Fatalf("failed to set header cell: %v", err)
+		}
+	}
+
+	// Write data rows
+	for rowIdx, row := range rows {
+		for colIdx, val := range row {
+			cell, _ := excelize.CoordinatesToCellName(colIdx+1, rowIdx+2)
+			if err := f.SetCellValue(sheetName, cell, val); err != nil {
+				t.Fatalf("failed to set cell: %v", err)
+			}
+		}
+	}
+
+	var buf bytes.Buffer
+	if err := f.Write(&buf); err != nil {
+		t.Fatalf("failed to write Excel file: %v", err)
+	}
+
+	return bytes.NewReader(buf.Bytes())
+}
+
+func TestParseExcelFile(t *testing.T) {
+	t.Helper()
+
+	tests := []struct {
+		name           string
+		rows           [][]string
+		wantRowCount   int
+		wantErrorCount int
+		wantErrorMsg   string
+	}{
+		{
+			name: "valid file with two sources",
+			rows: [][]string{
+				{"Source 1", "https://example.com", "true", "1s", "2", `["morning"]`, `{"article":{"title":"h1"}}`},
+				{"Source 2", "https://test.com", "false", "2s", "3", `["evening"]`, `{"article":{"body":"p"}}`},
+			},
+			wantRowCount:   2,
+			wantErrorCount: 0,
+			wantErrorMsg:   "",
+		},
+		{
+			name: "missing name in row 2",
+			rows: [][]string{
+				{"", "https://example.com", "true", "1s", "2", `["morning"]`, `{}`},
+			},
+			wantRowCount:   0,
+			wantErrorCount: 1,
+			wantErrorMsg:   "name is required",
+		},
+		{
+			name: "missing url in row 2",
+			rows: [][]string{
+				{"Source 1", "", "true", "1s", "2", `["morning"]`, `{}`},
+			},
+			wantRowCount:   0,
+			wantErrorCount: 1,
+			wantErrorMsg:   "url is required",
+		},
+		{
+			name: "invalid json in time",
+			rows: [][]string{
+				{"Source 1", "https://example.com", "true", "1s", "2", `invalid json`, `{}`},
+			},
+			wantRowCount:   0,
+			wantErrorCount: 1,
+			wantErrorMsg:   "time must be a valid JSON array",
+		},
+		{
+			name:           "empty file (header only)",
+			rows:           [][]string{},
+			wantRowCount:   0,
+			wantErrorCount: 0,
+			wantErrorMsg:   "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			reader := createTestExcel(t, tt.rows)
+
+			rows, errors := importer.ParseExcelFile(reader)
+
+			if len(rows) != tt.wantRowCount {
+				t.Errorf("ParseExcelFile() got %d rows, want %d", len(rows), tt.wantRowCount)
+			}
+
+			if len(errors) != tt.wantErrorCount {
+				t.Errorf("ParseExcelFile() got %d errors, want %d", len(errors), tt.wantErrorCount)
+			}
+
+			if tt.wantErrorMsg != "" && len(errors) > 0 {
+				if !strings.Contains(errors[0].Error, tt.wantErrorMsg) {
+					t.Errorf("ParseExcelFile() error = %q, want to contain %q", errors[0].Error, tt.wantErrorMsg)
+				}
 			}
 		})
 	}
