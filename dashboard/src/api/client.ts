@@ -33,6 +33,7 @@ import type {
   DocumentQueryRequest,
   DocumentQueryResponse,
 } from '../types/indexManager'
+import type { ImportExcelResult } from '../types/source'
 
 // Debug mode - logs all requests and responses
 const DEBUG = import.meta.env.DEV
@@ -232,6 +233,16 @@ export const sourcesApi = {
   fetchMetadata: (url: string) => sourcesClient.post('/fetch-metadata', { url }),
   testCrawl: (data: { url: string; selectors?: Record<string, unknown> }) =>
     sourcesClient.post('/test-crawl', data),
+
+  // Import sources from Excel file
+  importExcel: (file: File): Promise<AxiosResponse<ImportExcelResult>> => {
+    const formData = new FormData()
+    formData.append('file', file)
+    return sourcesClient.post('/import-excel', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      timeout: 60000, // Longer timeout for file processing
+    })
+  },
 
   // Cities (endpoint is at /api/v1/cities, not under /api/v1/sources)
   cities: {

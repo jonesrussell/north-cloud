@@ -11,4 +11,5 @@ export { default as SetupStatusCard } from './SetupStatusCard.vue'
 export { default as BulkActionsToolbar } from './BulkActionsToolbar.vue'
 export { default as TestResultsModal } from './TestResultsModal.vue'
 export { default as RoutePreviewPanel } from './RoutePreviewPanel.vue'
+export { default as ImportExcelModal } from './ImportExcelModal.vue'
 

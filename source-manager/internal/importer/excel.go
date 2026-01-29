@@ -11,19 +11,57 @@ import (
 	"github.com/xuri/excelize/v2"
 )
 
-// Column indices for Excel spreadsheet (0-based).
+// Header names for flexible column mapping (case-insensitive).
+// Supports both the original format and common spreadsheet formats.
 const (
-	colName      = 0 // Column A
-	colURL       = 1 // Column B
-	colEnabled   = 2 // Column C
-	colRateLimit = 3 // Column D
-	colMaxDepth  = 4 // Column E
-	colTime      = 5 // Column F
-	colSelectors = 6 // Column G
-
-	minRequiredColumns = 7
-	headerRowIndex     = 1 // Excel rows are 1-based, header is row 1
+	headerRowIndex = 1 // Excel rows are 1-based, header is row 1
 )
+
+// columnMap stores the index for each recognized header.
+type columnMap struct {
+	name      int
+	url       int
+	enabled   int
+	rateLimit int
+	maxDepth  int
+	time      int
+	selectors int
+}
+
+// headerAliases maps various header names to their canonical field.
+var headerAliases = map[string]string{
+	// Name field aliases
+	"name":           "name",
+	"news site name": "name",
+	"site name":      "name",
+	"source name":    "name",
+	"source":         "name",
+	"title":          "name",
+	// URL field aliases
+	"url":      "url",
+	"website":  "url",
+	"site url": "url",
+	"link":     "url",
+	// Enabled field aliases
+	"enabled": "enabled",
+	"status":  "enabled",
+	"active":  "enabled",
+	// RateLimit field aliases
+	"rate_limit": "ratelimit",
+	"ratelimit":  "ratelimit",
+	"rate limit": "ratelimit",
+	// MaxDepth field aliases
+	"max_depth": "maxdepth",
+	"maxdepth":  "maxdepth",
+	"max depth": "maxdepth",
+	"depth":     "maxdepth",
+	// Time field aliases
+	"time":  "time",
+	"times": "time",
+	// Selectors field aliases
+	"selectors": "selectors",
+	"selector":  "selectors",
+}
 
 // SourceRow represents a parsed row from the Excel spreadsheet.
 type SourceRow struct {
@@ -41,6 +79,43 @@ type SourceRow struct {
 type ImportError struct {
 	Row   int    `json:"row"`
 	Error string `json:"error"`
+}
+
+// parseHeaders builds a column map from the header row.
+func parseHeaders(headerRow []string) columnMap {
+	colMap := columnMap{
+		name:      -1,
+		url:       -1,
+		enabled:   -1,
+		rateLimit: -1,
+		maxDepth:  -1,
+		time:      -1,
+		selectors: -1,
+	}
+
+	for i, header := range headerRow {
+		normalized := strings.ToLower(strings.TrimSpace(header))
+		if field, ok := headerAliases[normalized]; ok {
+			switch field {
+			case "name":
+				colMap.name = i
+			case "url":
+				colMap.url = i
+			case "enabled":
+				colMap.enabled = i
+			case "ratelimit":
+				colMap.rateLimit = i
+			case "maxdepth":
+				colMap.maxDepth = i
+			case "time":
+				colMap.time = i
+			case "selectors":
+				colMap.selectors = i
+			}
+		}
+	}
+
+	return colMap
 }
 
 // ParseExcelFile parses an Excel file from an io.Reader and returns parsed rows and any validation errors.
@@ -64,6 +139,25 @@ func ParseExcelFile(reader io.Reader) ([]SourceRow, []ImportError) {
 		return nil, []ImportError{{Row: 0, Error: "failed to read rows: " + err.Error()}}
 	}
 
+	// Need at least a header row
+	if len(excelRows) == 0 {
+		return []SourceRow{}, []ImportError{}
+	}
+
+	// Parse headers to build column map
+	colMap := parseHeaders(excelRows[0])
+
+	// Validate required columns exist
+	if colMap.name == -1 && colMap.url == -1 {
+		return nil, []ImportError{{Row: 1, Error: "missing required columns: need 'Name' (or 'News Site Name') and 'URL' headers"}}
+	}
+	if colMap.name == -1 {
+		return nil, []ImportError{{Row: 1, Error: "missing required column: 'Name' (or 'News Site Name', 'Site Name', 'Source')"}}
+	}
+	if colMap.url == -1 {
+		return nil, []ImportError{{Row: 1, Error: "missing required column: 'URL' (or 'Website', 'Link')"}}
+	}
+
 	// Skip header row, check if there's any data
 	if len(excelRows) <= headerRowIndex {
 		return []SourceRow{}, []ImportError{}
@@ -82,8 +176,8 @@ func ParseExcelFile(reader io.Reader) ([]SourceRow, []ImportError) {
 			continue
 		}
 
-		// Parse the row
-		sourceRow := parseRow(cells, rowNum)
+		// Parse the row using column map
+		sourceRow := parseRowWithMap(cells, rowNum, colMap)
 
 		// Validate the row
 		if errMsg := ValidateRow(sourceRow); errMsg != "" {
@@ -102,39 +196,35 @@ func ParseExcelFile(reader io.Reader) ([]SourceRow, []ImportError) {
 	return rows, errors
 }
 
-// parseRow converts Excel row cells to a SourceRow.
-func parseRow(cells []string, rowNum int) SourceRow {
+// parseRowWithMap converts Excel row cells to a SourceRow using the column map.
+func parseRowWithMap(cells []string, rowNum int, colMap columnMap) SourceRow {
 	row := SourceRow{Row: rowNum}
 
-	if len(cells) > colName {
-		row.Name = strings.TrimSpace(cells[colName])
+	// Helper to safely get cell value
+	getCell := func(idx int) string {
+		if idx >= 0 && idx < len(cells) {
+			return strings.TrimSpace(cells[idx])
+		}
+		return ""
 	}
-	if len(cells) > colURL {
-		row.URL = strings.TrimSpace(cells[colURL])
+
+	row.Name = getCell(colMap.name)
+	row.URL = getCell(colMap.url)
+
+	// Parse enabled - support "Active", "true", "yes", "1", etc.
+	if colMap.enabled >= 0 {
+		enabledStr := strings.ToLower(getCell(colMap.enabled))
+		row.Enabled = enabledStr == "active" || enabledStr == "true" || enabledStr == "yes" || enabledStr == "y" || enabledStr == "1"
+	} else {
+		row.Enabled = true // Default to enabled if no status column
 	}
-	if len(cells) > colEnabled {
-		row.Enabled = parseBool(cells[colEnabled])
-	}
-	if len(cells) > colRateLimit {
-		row.RateLimit = strings.TrimSpace(cells[colRateLimit])
-	}
-	if len(cells) > colMaxDepth {
-		row.MaxDepth = parseInt(cells[colMaxDepth])
-	}
-	if len(cells) > colTime {
-		row.Time = strings.TrimSpace(cells[colTime])
-	}
-	if len(cells) > colSelectors {
-		row.Selectors = strings.TrimSpace(cells[colSelectors])
-	}
+
+	row.RateLimit = getCell(colMap.rateLimit)
+	row.MaxDepth = parseInt(getCell(colMap.maxDepth))
+	row.Time = getCell(colMap.time)
+	row.Selectors = getCell(colMap.selectors)
 
 	return row
-}
-
-// parseBool parses a string to bool, treating "true", "1", "yes", "y" as true.
-func parseBool(s string) bool {
-	s = strings.ToLower(strings.TrimSpace(s))
-	return s == "true" || s == "1" || s == "yes" || s == "y"
 }
 
 // parseInt parses a string to int, returns 0 on error.

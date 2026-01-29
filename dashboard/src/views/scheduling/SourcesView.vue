@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { Loader2, Globe, Plus, Pencil, Trash2 } from 'lucide-vue-next'
+import { Loader2, Globe, Plus, Pencil, Trash2, Upload } from 'lucide-vue-next'
 import { sourcesApi } from '@/api/client'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
+import { ImportExcelModal } from '@/components/common'
 
 interface Source {
   id: string
@@ -20,6 +21,7 @@ const loading = ref(true)
 const error = ref<string | null>(null)
 const sources = ref<Source[]>([])
 const deleting = ref<string | null>(null)
+const importExcelModalRef = ref<InstanceType<typeof ImportExcelModal> | null>(null)
 
 const loadSources = async () => {
   try {
@@ -50,6 +52,14 @@ const deleteSource = async (id: string) => {
 
 const formatDate = (date: string) => date ? new Date(date).toLocaleDateString() : 'N/A'
 
+const openImportExcel = () => {
+  importExcelModalRef.value?.open()
+}
+
+const onSourcesImported = () => {
+  loadSources()
+}
+
 onMounted(loadSources)
 </script>
 
@@ -64,10 +74,19 @@ onMounted(loadSources)
           Manage content sources for crawling
         </p>
       </div>
-      <Button @click="router.push('/scheduling/sources/new')">
-        <Plus class="mr-2 h-4 w-4" />
-        Add Source
-      </Button>
+      <div class="flex gap-2">
+        <Button
+          variant="outline"
+          @click="openImportExcel"
+        >
+          <Upload class="mr-2 h-4 w-4" />
+          Import Excel
+        </Button>
+        <Button @click="router.push('/scheduling/sources/new')">
+          <Plus class="mr-2 h-4 w-4" />
+          Add Source
+        </Button>
+      </div>
     </div>
 
     <div
@@ -183,5 +202,11 @@ onMounted(loadSources)
         </table>
       </CardContent>
     </Card>
+
+    <!-- Import Excel Modal -->
+    <ImportExcelModal
+      ref="importExcelModalRef"
+      @imported="onSourcesImported"
+    />
   </div>
 </template>
