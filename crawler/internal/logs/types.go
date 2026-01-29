@@ -3,6 +3,10 @@ package logs
 
 import "time"
 
+// CurrentSchemaVersion is the current version of the log entry schema.
+// Increment when making breaking changes to LogEntry structure.
+const CurrentSchemaVersion = 1
+
 // Configuration constants.
 const (
 	defaultBufferSize    = 1000
@@ -13,12 +17,14 @@ const (
 
 // LogEntry represents a single log line captured during job execution.
 type LogEntry struct {
-	Timestamp time.Time      `json:"timestamp"`
-	Level     string         `json:"level"` // debug, info, warn, error
-	Message   string         `json:"message"`
-	Fields    map[string]any `json:"fields,omitempty"`
-	JobID     string         `json:"job_id"`
-	ExecID    string         `json:"execution_id"`
+	SchemaVersion int            `json:"schema_version"`
+	Timestamp     time.Time      `json:"timestamp"`
+	Level         string         `json:"level"` // debug, info, warn, error
+	Category      string         `json:"category"`
+	Message       string         `json:"message"`
+	JobID         string         `json:"job_id"`
+	ExecID        string         `json:"execution_id"`
+	Fields        map[string]any `json:"fields,omitempty"`
 }
 
 // LogMetadata represents metadata about archived logs stored in the database.
