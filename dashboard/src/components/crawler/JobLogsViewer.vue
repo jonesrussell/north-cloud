@@ -96,6 +96,13 @@
             >{{ line.level }}</span>
             <span class="flex-1 break-all whitespace-pre-wrap">{{ line.message }}</span>
           </div>
+          <!-- Replay indicator -->
+          <div
+            v-if="replayedCount > 0 && displayedLogs.length > replayedCount"
+            class="text-center text-gray-500 text-xs py-2 border-t border-gray-700 mt-2"
+          >
+            &#8593; {{ replayedCount }} buffered logs replayed &#8593;
+          </div>
           <!-- Empty state for streaming -->
           <div
             v-if="isLiveStreaming && displayedLogs.length === 0"
@@ -123,16 +130,7 @@ import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { ArrowDownTrayIcon } from '@heroicons/vue/24/outline'
 import { crawlerApi } from '../../api/client'
 import { LoadingSpinner, ErrorAlert } from '../common'
-
-// Types
-interface LogLine {
-  timestamp: string
-  level: string
-  message: string
-  fields?: Record<string, unknown>
-  job_id?: string
-  execution_id?: string
-}
+import type { LogLine, LogSSEEvent } from '@/types/logs'
 
 interface ExecutionLogInfo {
   execution_id: string
@@ -170,6 +168,7 @@ const displayedLogs = ref<LogLine[]>([])
 const downloading = ref(false)
 const autoScroll = ref(true)
 const logContainer = ref<HTMLElement | null>(null)
+const replayedCount = ref(0)
 
 // SSE connection
 let eventSource: EventSource | null = null
@@ -232,6 +231,10 @@ const startLiveStream = () => {
     return
   }
 
+  // Reset state for new stream
+  replayedCount.value = 0
+  displayedLogs.value = []
+
   // Connect to SSE endpoint
   const url = `/api/crawler/jobs/${props.jobId}/logs/stream`
   eventSource = new EventSource(`${url}?token=${encodeURIComponent(token)}`)
@@ -242,12 +245,27 @@ const startLiveStream = () => {
 
   eventSource.onmessage = (event) => {
     try {
-      const data = JSON.parse(event.data)
-      if (data.type === 'log:line') {
-        addLogLine(data.data as LogLine)
-      } else if (data.type === 'log:archived') {
-        // Logs archived, reload metadata
-        loadLogsMetadata()
+      const data = JSON.parse(event.data) as LogSSEEvent
+      switch (data.type) {
+        case 'log:replay':
+          // Replay batch: prepend to displayed logs
+          displayedLogs.value = [...data.data.lines, ...displayedLogs.value]
+          replayedCount.value = data.data.count
+          console.log(`[JobLogsViewer] Replayed ${data.data.count} buffered lines`)
+          if (autoScroll.value) {
+            scrollToBottom()
+          }
+          break
+        case 'log:line':
+          addLogLine(data.data)
+          break
+        case 'log:archived':
+          // Logs archived, reload metadata
+          loadLogsMetadata()
+          break
+        case 'connected':
+          console.log('[JobLogsViewer] SSE connected:', data.data.message)
+          break
       }
     } catch (err) {
       console.error('[JobLogsViewer] Error parsing SSE event:', err)
