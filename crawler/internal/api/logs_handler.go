@@ -126,7 +126,7 @@ func (h *LogsHandler) StreamLogs(c *gin.Context) {
 	}
 }
 
-// replayBufferedLogs sends buffered log entries to the SSE client.
+// replayBufferedLogs sends buffered log entries to the SSE client as a single batch.
 // Returns the number of entries replayed.
 func (h *LogsHandler) replayBufferedLogs(c *gin.Context, jobID string) int {
 	buffer := h.logService.GetLiveBuffer(jobID)
@@ -139,22 +139,25 @@ func (h *LogsHandler) replayBufferedLogs(c *gin.Context, jobID string) int {
 		return 0
 	}
 
+	// Convert entries to LogLineData for the replay event
+	lines := make([]sse.LogLineData, 0, len(entries))
 	for _, entry := range entries {
-		event := sse.Event{
-			Type: sse.EventTypeLogLine,
-			Data: sse.LogLineData{
-				JobID:       entry.JobID,
-				ExecutionID: entry.ExecID,
-				Timestamp:   entry.Timestamp.Format("2006-01-02T15:04:05.000Z07:00"),
-				Level:       entry.Level,
-				Message:     entry.Message,
-				Fields:      entry.Fields,
-			},
-		}
-		if err := sse.WriteEventDirect(c.Writer, event); err != nil {
-			h.logger.Debug("Failed to write replay event", infralogger.Error(err))
-			return len(entries)
-		}
+		lines = append(lines, sse.LogLineData{
+			JobID:       entry.JobID,
+			ExecutionID: entry.ExecID,
+			Timestamp:   entry.Timestamp.Format("2006-01-02T15:04:05.000Z07:00"),
+			Level:       entry.Level,
+			Category:    entry.Category,
+			Message:     entry.Message,
+			Fields:      entry.Fields,
+		})
+	}
+
+	// Send a single log:replay event with all buffered entries
+	event := sse.NewLogReplayEvent(lines)
+	if err := sse.WriteEventDirect(c.Writer, event); err != nil {
+		h.logger.Debug("Failed to write replay event", infralogger.Error(err))
+		return 0
 	}
 
 	return len(entries)

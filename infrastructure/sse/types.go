@@ -78,6 +78,7 @@ const (
 // Event types for log streaming events.
 const (
 	EventTypeLogLine     = "log:line"
+	EventTypeLogReplay   = "log:replay"
 	EventTypeLogArchived = "log:archived"
 )
 
@@ -230,9 +231,16 @@ type LogLineData struct {
 	JobID       string         `json:"job_id"`
 	ExecutionID string         `json:"execution_id"`
 	Level       string         `json:"level"`
+	Category    string         `json:"category,omitempty"`
 	Message     string         `json:"message"`
 	Fields      map[string]any `json:"fields,omitempty"`
 	Timestamp   string         `json:"timestamp"`
+}
+
+// LogReplayData is the payload for log:replay events (buffered logs on SSE connect).
+type LogReplayData struct {
+	Lines []LogLineData `json:"lines"`
+	Count int           `json:"count"`
 }
 
 // LogArchivedData is the payload for log:archived events.
@@ -247,16 +255,28 @@ type LogArchivedData struct {
 }
 
 // NewLogLineEvent creates a log:line event.
-func NewLogLineEvent(jobID, executionID, level, message string, fields map[string]any) Event {
+func NewLogLineEvent(jobID, executionID, level, category, message string, fields map[string]any) Event {
 	return Event{
 		Type: EventTypeLogLine,
 		Data: LogLineData{
 			JobID:       jobID,
 			ExecutionID: executionID,
 			Level:       level,
+			Category:    category,
 			Message:     message,
 			Fields:      fields,
 			Timestamp:   time.Now().UTC().Format(time.RFC3339),
+		},
+	}
+}
+
+// NewLogReplayEvent creates a log:replay event with buffered log lines.
+func NewLogReplayEvent(lines []LogLineData) Event {
+	return Event{
+		Type: EventTypeLogReplay,
+		Data: LogReplayData{
+			Lines: lines,
+			Count: len(lines),
 		},
 	}
 }

@@ -35,6 +35,7 @@ func (p *ssePublisher) PublishLogLine(ctx context.Context, entry LogEntry) {
 		entry.JobID,
 		entry.ExecID,
 		entry.Level,
+		entry.Category,
 		entry.Message,
 		entry.Fields,
 	)
