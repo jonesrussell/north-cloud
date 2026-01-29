@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/jonesrussell/north-cloud/source-manager/internal/importer"
+	"github.com/jonesrussell/north-cloud/source-manager/internal/models"
 	"github.com/xuri/excelize/v2"
 )
 
@@ -297,5 +298,177 @@ func TestParseExcelFile(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+// validateFullRowConversion validates a fully populated source from ToSource.
+func validateFullRowConversion(t *testing.T, source *models.Source) {
+	t.Helper()
+	if source.Name != "Test Source" {
+		t.Errorf("Name = %q, want %q", source.Name, "Test Source")
+	}
+	if source.URL != "https://example.com" {
+		t.Errorf("URL = %q, want %q", source.URL, "https://example.com")
+	}
+	if !source.Enabled {
+		t.Error("Enabled = false, want true")
+	}
+	if source.RateLimit != "1s" {
+		t.Errorf("RateLimit = %q, want %q", source.RateLimit, "1s")
+	}
+	if source.MaxDepth != 2 {
+		t.Errorf("MaxDepth = %d, want %d", source.MaxDepth, 2)
+	}
+	validateFullRowTime(t, source)
+	validateFullRowSelectors(t, source)
+}
+
+func validateFullRowTime(t *testing.T, source *models.Source) {
+	t.Helper()
+	expectedTimeLen := 2
+	if len(source.Time) != expectedTimeLen {
+		t.Errorf("Time length = %d, want %d", len(source.Time), expectedTimeLen)
+	}
+	if len(source.Time) >= expectedTimeLen && (source.Time[0] != "morning" || source.Time[1] != "evening") {
+		t.Errorf("Time = %v, want [morning, evening]", source.Time)
+	}
+}
+
+func validateFullRowSelectors(t *testing.T, source *models.Source) {
+	t.Helper()
+	if source.Selectors.Article.Title != "h1" {
+		t.Errorf("Selectors.Article.Title = %q, want %q", source.Selectors.Article.Title, "h1")
+	}
+	if source.Selectors.Article.Body != "p" {
+		t.Errorf("Selectors.Article.Body = %q, want %q", source.Selectors.Article.Body, "p")
+	}
+	if source.Selectors.List.Container != ".list" {
+		t.Errorf("Selectors.List.Container = %q, want %q", source.Selectors.List.Container, ".list")
+	}
+}
+
+// validateMinimalRowConversion validates a minimal source from ToSource.
+func validateMinimalRowConversion(t *testing.T, source *models.Source) {
+	t.Helper()
+	if source.Name != "Minimal Source" {
+		t.Errorf("Name = %q, want %q", source.Name, "Minimal Source")
+	}
+	if source.URL != "https://minimal.com" {
+		t.Errorf("URL = %q, want %q", source.URL, "https://minimal.com")
+	}
+	if source.Enabled {
+		t.Error("Enabled = true, want false (default)")
+	}
+	if len(source.Time) != 0 {
+		t.Errorf("Time length = %d, want 0 (empty)", len(source.Time))
+	}
+	if source.Selectors.Article.Title != "" {
+		t.Errorf("Selectors.Article.Title = %q, want empty", source.Selectors.Article.Title)
+	}
+}
+
+func TestToSource(t *testing.T) {
+	tests := []struct {
+		name       string
+		row        importer.SourceRow
+		wantErr    bool
+		wantErrMsg string
+		validate   func(t *testing.T, source *models.Source)
+	}{
+		{
+			name: "full row conversion",
+			row: importer.SourceRow{
+				Row:       2,
+				Name:      "Test Source",
+				URL:       "https://example.com",
+				Enabled:   true,
+				RateLimit: "1s",
+				MaxDepth:  2,
+				Time:      `["morning", "evening"]`,
+				Selectors: `{"article":{"title":"h1","body":"p"},"list":{"container":".list"}}`,
+			},
+			wantErr:  false,
+			validate: validateFullRowConversion,
+		},
+		{
+			name: "minimal row conversion",
+			row: importer.SourceRow{
+				Row:  2,
+				Name: "Minimal Source",
+				URL:  "https://minimal.com",
+			},
+			wantErr:  false,
+			validate: validateMinimalRowConversion,
+		},
+		{
+			name: "invalid time json",
+			row: importer.SourceRow{
+				Row:  2,
+				Name: "Test",
+				URL:  "https://test.com",
+				Time: `not valid json`,
+			},
+			wantErr:    true,
+			wantErrMsg: "parse time",
+		},
+		{
+			name: "invalid selectors json",
+			row: importer.SourceRow{
+				Row:       2,
+				Name:      "Test",
+				URL:       "https://test.com",
+				Selectors: `{invalid}`,
+			},
+			wantErr:    true,
+			wantErrMsg: "parse selectors",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			source, err := importer.ToSource(tt.row)
+			verifyToSourceResult(t, source, err, tt.wantErr, tt.wantErrMsg, tt.validate)
+		})
+	}
+}
+
+func verifyToSourceResult(
+	t *testing.T,
+	source *models.Source,
+	err error,
+	wantErr bool,
+	wantErrMsg string,
+	validate func(t *testing.T, source *models.Source),
+) {
+	t.Helper()
+
+	if wantErr {
+		verifyToSourceError(t, err, wantErrMsg)
+		return
+	}
+
+	if err != nil {
+		t.Errorf("ToSource() unexpected error = %v", err)
+		return
+	}
+
+	if source == nil {
+		t.Error("ToSource() returned nil source")
+		return
+	}
+
+	if validate != nil {
+		validate(t, source)
+	}
+}
+
+func verifyToSourceError(t *testing.T, err error, wantErrMsg string) {
+	t.Helper()
+	if err == nil {
+		t.Error("ToSource() error = nil, want error")
+		return
+	}
+	if wantErrMsg != "" && !strings.Contains(err.Error(), wantErrMsg) {
+		t.Errorf("ToSource() error = %q, want to contain %q", err.Error(), wantErrMsg)
 	}
 }

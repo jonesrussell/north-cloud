@@ -2,10 +2,12 @@ package importer
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"strconv"
 	"strings"
 
+	"github.com/jonesrussell/north-cloud/source-manager/internal/models"
 	"github.com/xuri/excelize/v2"
 )
 
@@ -195,4 +197,36 @@ func ValidateRow(row SourceRow) string {
 	}
 
 	return ""
+}
+
+// ToSource converts a validated SourceRow to a models.Source.
+// This should only be called after validation passes.
+func ToSource(row SourceRow) (*models.Source, error) {
+	source := &models.Source{
+		Name:      row.Name,
+		URL:       row.URL,
+		Enabled:   row.Enabled,
+		RateLimit: row.RateLimit,
+		MaxDepth:  row.MaxDepth,
+	}
+
+	// Parse Time JSON array
+	if row.Time != "" {
+		var timeArr []string
+		if err := json.Unmarshal([]byte(row.Time), &timeArr); err != nil {
+			return nil, fmt.Errorf("parse time: %w", err)
+		}
+		source.Time = models.StringArray(timeArr)
+	}
+
+	// Parse Selectors JSON object
+	if row.Selectors != "" {
+		var selectors models.SelectorConfig
+		if err := json.Unmarshal([]byte(row.Selectors), &selectors); err != nil {
+			return nil, fmt.Errorf("parse selectors: %w", err)
+		}
+		source.Selectors = selectors
+	}
+
+	return source, nil
 }
