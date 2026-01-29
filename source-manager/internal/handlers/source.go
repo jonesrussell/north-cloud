@@ -2,8 +2,10 @@ package handlers
 
 import (
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
+	"github.com/jonesrussell/north-cloud/source-manager/internal/importer"
 	"github.com/jonesrussell/north-cloud/source-manager/internal/metadata"
 	"github.com/jonesrussell/north-cloud/source-manager/internal/models"
 	"github.com/jonesrussell/north-cloud/source-manager/internal/repository"
@@ -17,6 +19,13 @@ const (
 	highTestQualityScore     = 85
 	mediumTestQualityScore   = 72
 )
+
+// ImportResult is the response for the import-excel endpoint.
+type ImportResult struct {
+	Created int                    `json:"created"`
+	Updated int                    `json:"updated"`
+	Errors  []importer.ImportError `json:"errors"`
+}
 
 type SourceHandler struct {
 	repo      *repository.SourceRepository
@@ -255,4 +264,83 @@ func (h *SourceHandler) TestCrawl(c *gin.Context) {
 	)
 
 	c.JSON(http.StatusOK, response)
+}
+
+// ImportExcel handles bulk import of sources from an Excel file.
+func (h *SourceHandler) ImportExcel(c *gin.Context) {
+	// 1. Extract file from multipart form
+	file, header, err := c.Request.FormFile("file")
+	if err != nil {
+		h.logger.Debug("No file in request",
+			infralogger.Error(err),
+		)
+		c.JSON(http.StatusBadRequest, gin.H{"error": "No file uploaded"})
+		return
+	}
+	defer file.Close()
+
+	// 2. Validate file extension
+	if !strings.HasSuffix(strings.ToLower(header.Filename), ".xlsx") {
+		h.logger.Debug("Invalid file extension",
+			infralogger.String("filename", header.Filename),
+		)
+		c.JSON(http.StatusBadRequest, gin.H{"error": "File must be .xlsx format"})
+		return
+	}
+
+	h.logger.Info("Processing Excel import",
+		infralogger.String("filename", header.Filename),
+		infralogger.Int64("size", header.Size),
+	)
+
+	// 3. Parse and validate all rows
+	rows, validationErrors := importer.ParseExcelFile(file)
+	if len(validationErrors) > 0 {
+		h.logger.Debug("Validation errors in Excel file",
+			infralogger.Int("error_count", len(validationErrors)),
+		)
+		c.JSON(http.StatusBadRequest, ImportResult{Errors: validationErrors})
+		return
+	}
+
+	// 4. Convert to models
+	sources := make([]*models.Source, 0, len(rows))
+	for _, row := range rows {
+		source, convErr := importer.ToSource(row)
+		if convErr != nil {
+			// This shouldn't happen if validation passed, but handle it
+			h.logger.Error("Failed to convert row to source",
+				infralogger.Int("row", row.Row),
+				infralogger.Error(convErr),
+			)
+			c.JSON(http.StatusBadRequest, ImportResult{
+				Errors: []importer.ImportError{{Row: row.Row, Error: convErr.Error()}},
+			})
+			return
+		}
+		sources = append(sources, source)
+	}
+
+	// 5. Upsert in transaction
+	created, updated, err := h.repo.UpsertSourcesTx(c.Request.Context(), sources)
+	if err != nil {
+		h.logger.Error("Failed to import sources",
+			infralogger.Error(err),
+		)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to import sources"})
+		return
+	}
+
+	// 6. Log success and return
+	h.logger.Info("Sources imported successfully",
+		infralogger.Int("created", created),
+		infralogger.Int("updated", updated),
+		infralogger.String("filename", header.Filename),
+	)
+
+	c.JSON(http.StatusOK, ImportResult{
+		Created: created,
+		Updated: updated,
+		Errors:  []importer.ImportError{},
+	})
 }
