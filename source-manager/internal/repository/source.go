@@ -240,6 +240,72 @@ func (r *SourceRepository) Delete(ctx context.Context, id string) error {
 	return nil
 }
 
+// UpsertSource inserts or updates a source within an existing transaction.
+// Returns true if the source was created (new), false if updated (existed).
+// Uses PostgreSQL's ON CONFLICT with xmax trick to determine insert vs update.
+func (r *SourceRepository) UpsertSource(ctx context.Context, tx *sql.Tx, source *models.Source) (bool, error) {
+	now := time.Now()
+
+	// Generate new ID if not set (will be overwritten if exists)
+	if source.ID == "" {
+		source.ID = uuid.New().String()
+	}
+	source.CreatedAt = now
+	source.UpdatedAt = now
+
+	selectorsJSON, err := json.Marshal(source.Selectors)
+	if err != nil {
+		return false, fmt.Errorf("marshal selectors: %w", err)
+	}
+
+	timeJSON, err := json.Marshal(source.Time)
+	if err != nil {
+		return false, fmt.Errorf("marshal time: %w", err)
+	}
+
+	// Use ON CONFLICT to upsert, and xmax = 0 trick to determine if inserted
+	query := `
+		INSERT INTO sources (
+			id, name, url, rate_limit, max_depth,
+			time, selectors, enabled, created_at, updated_at
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+		ON CONFLICT (name) DO UPDATE SET
+			url = EXCLUDED.url,
+			rate_limit = EXCLUDED.rate_limit,
+			max_depth = EXCLUDED.max_depth,
+			time = EXCLUDED.time,
+			selectors = EXCLUDED.selectors,
+			enabled = EXCLUDED.enabled,
+			updated_at = EXCLUDED.updated_at
+		RETURNING id, (xmax = 0) AS is_insert
+	`
+
+	var returnedID string
+	var isInsert bool
+	err = tx.QueryRowContext(ctx,
+		query,
+		source.ID,
+		source.Name,
+		source.URL,
+		source.RateLimit,
+		source.MaxDepth,
+		timeJSON,
+		selectorsJSON,
+		source.Enabled,
+		source.CreatedAt,
+		source.UpdatedAt,
+	).Scan(&returnedID, &isInsert)
+
+	if err != nil {
+		return false, fmt.Errorf("upsert source: %w", err)
+	}
+
+	// Update the source ID (may have changed if it was an update)
+	source.ID = returnedID
+
+	return isInsert, nil
+}
+
 func (r *SourceRepository) GetCities(ctx context.Context) ([]models.City, error) {
 	query := `
 		SELECT name as source_name

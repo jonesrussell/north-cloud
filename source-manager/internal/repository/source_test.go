@@ -378,3 +378,110 @@ func TestSourceRepository_GetCities(t *testing.T) {
 	assert.True(t, cityNames["City B Source"], "City B Source should be in results")
 	assert.False(t, cityNames["Disabled Source"], "Disabled Source should not be in results")
 }
+
+func TestSourceRepository_UpsertSource(t *testing.T) {
+	db, cleanup := setupTestDB(t)
+	defer cleanup()
+
+	logger := testhelpers.NewTestLogger()
+	repo := repository.NewSourceRepository(db, logger)
+	ctx := context.Background()
+
+	t.Run("insert new source", func(t *testing.T) {
+		// Start a transaction
+		tx, err := db.BeginTx(ctx, nil)
+		require.NoError(t, err)
+
+		source := &models.Source{
+			Name:      "Upsert New Source",
+			URL:       "https://upsert-new.com",
+			RateLimit: "2s",
+			MaxDepth:  3,
+			Time:      models.StringArray{"10:00", "14:00"},
+			Selectors: models.SelectorConfig{
+				Article: models.ArticleSelectors{
+					Title: "h1.title",
+					Body:  ".article-body",
+				},
+			},
+			Enabled: true,
+		}
+
+		created, err := repo.UpsertSource(ctx, tx, source)
+		require.NoError(t, err)
+		require.NoError(t, tx.Commit())
+
+		// Should be a new insert
+		assert.True(t, created, "UpsertSource should return true for new source")
+		assert.NotEmpty(t, source.ID, "Source ID should be set")
+		assert.False(t, source.CreatedAt.IsZero(), "CreatedAt should be set")
+		assert.False(t, source.UpdatedAt.IsZero(), "UpdatedAt should be set")
+
+		// Verify source was persisted
+		fetched, err := repo.GetByID(ctx, source.ID)
+		require.NoError(t, err)
+		assert.Equal(t, "Upsert New Source", fetched.Name)
+		assert.Equal(t, "https://upsert-new.com", fetched.URL)
+		assert.Equal(t, "2s", fetched.RateLimit)
+		assert.Equal(t, 3, fetched.MaxDepth)
+		assert.True(t, fetched.Enabled)
+	})
+
+	t.Run("update existing source", func(t *testing.T) {
+		// First, create a source normally
+		existingSource := &models.Source{
+			Name:      "Upsert Existing Source",
+			URL:       "https://original-url.com",
+			RateLimit: "1s",
+			MaxDepth:  2,
+			Time:      models.StringArray{"09:00"},
+			Selectors: models.SelectorConfig{
+				Article: models.ArticleSelectors{
+					Title: "h1",
+					Body:  ".content",
+				},
+			},
+			Enabled: true,
+		}
+
+		err := repo.Create(ctx, existingSource)
+		require.NoError(t, err)
+		originalID := existingSource.ID
+
+		// Now upsert with same name but different data
+		tx, err := db.BeginTx(ctx, nil)
+		require.NoError(t, err)
+
+		updatedSource := &models.Source{
+			Name:      "Upsert Existing Source", // Same name
+			URL:       "https://updated-url.com",
+			RateLimit: "5s",
+			MaxDepth:  10,
+			Time:      models.StringArray{"12:00", "18:00"},
+			Selectors: models.SelectorConfig{
+				Article: models.ArticleSelectors{
+					Title: "h2.updated-title",
+					Body:  ".updated-body",
+				},
+			},
+			Enabled: false,
+		}
+
+		created, err := repo.UpsertSource(ctx, tx, updatedSource)
+		require.NoError(t, err)
+		require.NoError(t, tx.Commit())
+
+		// Should be an update, not insert
+		assert.False(t, created, "UpsertSource should return false for existing source")
+		assert.Equal(t, originalID, updatedSource.ID, "ID should match the original source")
+
+		// Verify source was updated
+		fetched, err := repo.GetByID(ctx, originalID)
+		require.NoError(t, err)
+		assert.Equal(t, "Upsert Existing Source", fetched.Name)
+		assert.Equal(t, "https://updated-url.com", fetched.URL)
+		assert.Equal(t, "5s", fetched.RateLimit)
+		assert.Equal(t, 10, fetched.MaxDepth)
+		assert.False(t, fetched.Enabled)
+	})
+}
