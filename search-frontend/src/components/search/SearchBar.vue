@@ -1,10 +1,10 @@
 <template>
-  <div class="relative">
-    <div class="relative">
+  <div class="flex gap-2">
+    <div class="relative flex-1">
       <input
         v-model="localQuery"
         type="text"
-        class="w-full px-4 py-3 pl-12 pr-12 text-lg border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+        class="w-full px-4 py-3 pl-12 pr-10 text-lg border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
         @keydown.enter="handleSearch"
       />
       <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
@@ -14,14 +14,22 @@
       </div>
       <button
         v-if="localQuery"
+        type="button"
         @click="clearSearch"
-        class="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-400 hover:text-gray-600"
+        class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
       >
         <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
         </svg>
       </button>
     </div>
+    <button
+      type="submit"
+      class="px-6 py-3 text-lg font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 shrink-0"
+      @click="handleSearch"
+    >
+      Search
+    </button>
   </div>
 </template>
 

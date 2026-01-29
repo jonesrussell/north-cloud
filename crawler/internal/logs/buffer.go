@@ -77,6 +77,31 @@ func (b *circularBuffer) ReadAll() []LogEntry {
 	return result
 }
 
+// ReadLast returns the last n entries in chronological order.
+// If n >= count, returns all entries. If n <= 0, returns empty slice.
+func (b *circularBuffer) ReadLast(n int) []LogEntry {
+	b.mu.RLock()
+	defer b.mu.RUnlock()
+
+	if n <= 0 {
+		return []LogEntry{}
+	}
+
+	// Cap n to the number of entries we have
+	if n > b.count {
+		n = b.count
+	}
+
+	result := make([]LogEntry, n)
+	// Start from (count - n) entries after head
+	startOffset := b.count - n
+	for i := range n {
+		idx := (b.head + startOffset + i) % b.size
+		result[i] = b.entries[idx]
+	}
+	return result
+}
+
 // Size returns the number of entries currently in the buffer.
 func (b *circularBuffer) Size() int {
 	b.mu.RLock()

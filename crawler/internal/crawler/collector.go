@@ -12,7 +12,7 @@ import (
 	colly "github.com/gocolly/colly/v2"
 	"github.com/jonesrussell/north-cloud/crawler/internal/archive"
 	configtypes "github.com/jonesrussell/north-cloud/crawler/internal/config/types"
-	infralogger "github.com/north-cloud/infrastructure/logger"
+	"github.com/jonesrussell/north-cloud/crawler/internal/logs"
 )
 
 // Collector defaults
@@ -36,9 +36,9 @@ const (
 func (c *Crawler) setupCollector(source *configtypes.Source) error {
 	maxDepth := source.MaxDepth
 
-	c.logger.Debug("Setting up collector",
-		infralogger.Int("max_depth", maxDepth),
-		infralogger.Any("allowed_domains", source.AllowedDomains),
+	c.GetJobLogger().Debug(logs.CategoryLifecycle, "Setting up collector",
+		logs.Int("max_depth", maxDepth),
+		logs.Any("allowed_domains", source.AllowedDomains),
 	)
 
 	opts := []colly.CollectorOption{
@@ -61,10 +61,10 @@ func (c *Crawler) setupCollector(source *configtypes.Source) error {
 	// Parse and set rate limit
 	rateLimit, err := time.ParseDuration(source.RateLimit)
 	if err != nil {
-		c.logger.Error("Failed to parse rate limit, using default",
-			infralogger.String("rate_limit", source.RateLimit),
-			infralogger.Duration("default", defaultRateLimit),
-			infralogger.Error(err),
+		c.GetJobLogger().Error(logs.CategoryError, "Failed to parse rate limit, using default",
+			logs.String("rate_limit", source.RateLimit),
+			logs.Duration("default", defaultRateLimit),
+			logs.Err(err),
 		)
 		rateLimit = defaultRateLimit
 	}
@@ -77,18 +77,15 @@ func (c *Crawler) setupCollector(source *configtypes.Source) error {
 	c.configureTransport()
 
 	if c.cfg.TLS.InsecureSkipVerify {
-		c.logger.Warn("TLS certificate verification is disabled. This is not recommended for production use.",
-			infralogger.String("component", "crawler"),
-			infralogger.String("source", source.Name),
-			infralogger.String("warning", "This makes HTTPS connections vulnerable to man-in-the-middle attacks"),
+		c.GetJobLogger().Warn(logs.CategoryLifecycle, "TLS certificate verification is disabled",
+			logs.String("source", source.Name),
 		)
 	}
 
-	c.logger.Debug("Collector configured",
-		infralogger.Int("max_depth", maxDepth),
-		infralogger.Any("allowed_domains", source.AllowedDomains),
-		infralogger.Duration("rate_limit", rateLimit),
-		infralogger.Int("parallelism", defaultParallelism),
+	c.GetJobLogger().Debug(logs.CategoryLifecycle, "Collector configured",
+		logs.Int("max_depth", maxDepth),
+		logs.Duration("rate_limit", rateLimit),
+		logs.Int("parallelism", defaultParallelism),
 	)
 
 	return nil
@@ -99,19 +96,16 @@ func (c *Crawler) setupCallbacks(ctx context.Context) {
 	// Set up response callback
 	c.collector.OnResponse(func(r *colly.Response) {
 		pageURL := r.Request.URL.String()
-		c.logger.Debug("Received response",
-			infralogger.String("url", pageURL),
-			infralogger.Int("status", r.StatusCode),
-			infralogger.Any("headers", r.Headers),
+		c.GetJobLogger().Debug(logs.CategoryFetch, "Response received",
+			logs.URL(pageURL),
+			logs.Int("status", r.StatusCode),
 		)
 
 		// Detect Cloudflare challenge pages
 		if c.isCloudflareChallenge(r) {
-			c.logger.Warn("Cloudflare challenge detected - JavaScript execution required",
-				infralogger.String("url", pageURL),
-				infralogger.Int("status", r.StatusCode),
-				infralogger.String("note", "This page requires JavaScript to load content. Links may not be discoverable without a JavaScript-enabled crawler."),
-				infralogger.String("suggestion", "Consider using a browser-based crawler (Playwright/Puppeteer) for this site"),
+			c.GetJobLogger().Warn(logs.CategoryFetch, "Cloudflare challenge detected",
+				logs.URL(pageURL),
+				logs.Int("status", r.StatusCode),
 			)
 		}
 
@@ -128,9 +122,9 @@ func (c *Crawler) setupCallbacks(ctx context.Context) {
 			}
 
 			if err := c.archiver.Archive(ctx, task); err != nil {
-				c.logger.Warn("Failed to archive HTML",
-					infralogger.String("url", pageURL),
-					infralogger.Error(err),
+				c.GetJobLogger().Warn(logs.CategoryError, "Failed to archive HTML",
+					logs.URL(pageURL),
+					logs.Err(err),
 				)
 			}
 		}
@@ -146,8 +140,8 @@ func (c *Crawler) setupCallbacks(ctx context.Context) {
 			r.Abort()
 			return
 		default:
-			c.logger.Debug("Visiting URL",
-				infralogger.String("url", r.URL.String()),
+			c.GetJobLogger().Debug(logs.CategoryFetch, "Visiting URL",
+				logs.URL(r.URL.String()),
 			)
 		}
 	})
@@ -179,8 +173,8 @@ func (c *Crawler) setupCallbacks(ctx context.Context) {
 		// Note: OnScraped fires AFTER the request completes, so we can't abort here.
 		// This callback is only for post-processing (logging, metrics, etc.)
 		pageURL := r.Request.URL.String()
-		c.logger.Debug("Finished processing page",
-			infralogger.String("url", pageURL),
+		c.GetJobLogger().Debug(logs.CategoryFetch, "Page processed",
+			logs.URL(pageURL),
 		)
 
 		// Note: Link counts are tracked via the HandleLink callback logging.
@@ -207,10 +201,10 @@ func (c *Crawler) handleCrawlError(r *colly.Response, visitErr error) {
 
 	if isExpectedError {
 		// These are expected conditions, log at debug level
-		c.logger.Debug("Expected error while crawling",
-			infralogger.String("url", r.Request.URL.String()),
-			infralogger.Int("status", r.StatusCode),
-			infralogger.String("error", errMsg),
+		c.GetJobLogger().Debug(logs.CategoryError, "Expected error while crawling",
+			logs.URL(r.Request.URL.String()),
+			logs.Int("status", r.StatusCode),
+			logs.String("error", errMsg),
 		)
 		return
 	}
@@ -223,20 +217,19 @@ func (c *Crawler) handleCrawlError(r *colly.Response, visitErr error) {
 
 	if isTimeout {
 		// Timeouts are common when crawling, log at warn level
-		c.logger.Warn("Timeout while crawling",
-			infralogger.String("url", r.Request.URL.String()),
-			infralogger.Int("status", r.StatusCode),
-			infralogger.String("error", errMsg),
+		c.GetJobLogger().Warn(logs.CategoryError, "Timeout while crawling",
+			logs.URL(r.Request.URL.String()),
+			logs.Int("status", r.StatusCode),
 		)
 		c.IncrementError()
 		return
 	}
 
 	// Log actual errors
-	c.logger.Error("Error while crawling",
-		infralogger.String("url", r.Request.URL.String()),
-		infralogger.Int("status", r.StatusCode),
-		infralogger.Error(visitErr),
+	c.GetJobLogger().Error(logs.CategoryError, "Crawl error",
+		logs.URL(r.Request.URL.String()),
+		logs.Int("status", r.StatusCode),
+		logs.Err(visitErr),
 	)
 
 	c.IncrementError()

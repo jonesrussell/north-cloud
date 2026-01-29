@@ -21,6 +21,7 @@ import (
 const (
 	maxExecutionsForSearch    = 100      // Maximum executions to search for log download
 	latestExecutionIdentifier = "latest" // Identifier for the latest execution
+	sseReplayLineCount        = 200      // Number of buffered lines to replay on SSE connect
 )
 
 // Errors for log handler operations.
@@ -96,9 +97,13 @@ func (h *LogsHandler) StreamLogs(c *gin.Context) {
 		return
 	}
 
+	// Replay buffered logs if job is actively capturing
+	replayCount := h.replayBufferedLogs(c, jobID)
+
 	h.logger.Debug("SSE log stream started",
 		infralogger.String("job_id", jobID),
 		infralogger.String("client_ip", c.ClientIP()),
+		infralogger.Int("replayed_lines", replayCount),
 	)
 
 	// Stream events until client disconnects
@@ -119,6 +124,43 @@ func (h *LogsHandler) StreamLogs(c *gin.Context) {
 			return
 		}
 	}
+}
+
+// replayBufferedLogs sends buffered log entries to the SSE client as a single batch.
+// Returns the number of entries replayed.
+func (h *LogsHandler) replayBufferedLogs(c *gin.Context, jobID string) int {
+	buffer := h.logService.GetLiveBuffer(jobID)
+	if buffer == nil {
+		return 0
+	}
+
+	entries := buffer.ReadLast(sseReplayLineCount)
+	if len(entries) == 0 {
+		return 0
+	}
+
+	// Convert entries to LogLineData for the replay event
+	lines := make([]sse.LogLineData, 0, len(entries))
+	for _, entry := range entries {
+		lines = append(lines, sse.LogLineData{
+			JobID:       entry.JobID,
+			ExecutionID: entry.ExecID,
+			Timestamp:   entry.Timestamp.Format("2006-01-02T15:04:05.000Z07:00"),
+			Level:       entry.Level,
+			Category:    entry.Category,
+			Message:     entry.Message,
+			Fields:      entry.Fields,
+		})
+	}
+
+	// Send a single log:replay event with all buffered entries
+	event := sse.NewLogReplayEvent(lines)
+	if err := sse.WriteEventDirect(c.Writer, event); err != nil {
+		h.logger.Debug("Failed to write replay event", infralogger.Error(err))
+		return 0
+	}
+
+	return len(entries)
 }
 
 // GetLogsMetadata handles GET /api/v1/jobs/:id/logs

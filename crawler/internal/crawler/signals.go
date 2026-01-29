@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/jonesrussell/north-cloud/crawler/internal/config/crawler"
+	"github.com/jonesrussell/north-cloud/crawler/internal/logs"
 	infralogger "github.com/north-cloud/infrastructure/logger"
 )
 
@@ -17,6 +18,7 @@ type SignalCoordinator struct {
 	cleanupDone chan struct{}
 	cfg         *crawler.Config
 	logger      infralogger.Logger
+	jobLogger   logs.JobLogger
 }
 
 // NewSignalCoordinator creates a new signal coordinator.
@@ -34,6 +36,19 @@ func (sc *SignalCoordinator) Reset() {
 	sc.abortChan = make(chan struct{})
 	sc.abortOnce = sync.Once{}
 	sc.cleanupDone = nil
+}
+
+// SetJobLogger sets the job logger for the current job execution.
+func (sc *SignalCoordinator) SetJobLogger(logger logs.JobLogger) {
+	sc.jobLogger = logger
+}
+
+// getJobLogger returns the job logger, or NoopJobLogger if not set.
+func (sc *SignalCoordinator) getJobLogger() logs.JobLogger {
+	if sc.jobLogger == nil {
+		return logs.NoopJobLogger()
+	}
+	return sc.jobLogger
 }
 
 // AbortChannel returns the abort signal channel.
@@ -61,9 +76,9 @@ func (sc *SignalCoordinator) StartCleanupGoroutine(
 		// Ensure cleanup interval is positive (NewTicker requires > 0)
 		cleanupInterval := sc.cfg.CleanupInterval
 		if cleanupInterval <= 0 {
-			sc.logger.Warn("Invalid cleanup interval, using default",
-				infralogger.Duration("invalid_interval", cleanupInterval),
-				infralogger.Duration("default", crawler.DefaultCleanupInterval))
+			sc.getJobLogger().Warn(logs.CategoryLifecycle, "Invalid cleanup interval, using default",
+				logs.Duration("invalid_interval", cleanupInterval),
+				logs.Duration("default", crawler.DefaultCleanupInterval))
 			cleanupInterval = crawler.DefaultCleanupInterval
 		}
 
@@ -74,22 +89,22 @@ func (sc *SignalCoordinator) StartCleanupGoroutine(
 		for {
 			select {
 			case <-ctx.Done():
-				sc.logger.Debug("Cleanup goroutine stopping: context cancelled")
+				sc.getJobLogger().Debug(logs.CategoryLifecycle, "Cleanup goroutine stopping: context cancelled")
 				return
 			case <-sc.abortChan:
-				sc.logger.Debug("Cleanup goroutine stopping: abort signal received")
+				sc.getJobLogger().Debug(logs.CategoryLifecycle, "Cleanup goroutine stopping: abort signal")
 				return
 			case <-ticker.C:
 				// Check for abort before running cleanup to avoid blocking
 				select {
 				case <-sc.abortChan:
-					sc.logger.Debug("Cleanup goroutine stopping: abort signal received during cleanup")
+					sc.getJobLogger().Debug(logs.CategoryLifecycle, "Cleanup goroutine stopping: abort during cleanup")
 					return
 				case <-ctx.Done():
-					sc.logger.Debug("Cleanup goroutine stopping: context cancelled during cleanup")
+					sc.getJobLogger().Debug(logs.CategoryLifecycle, "Cleanup goroutine stopping: context cancelled during cleanup")
 					return
 				default:
-					sc.logger.Debug("Running periodic cleanup")
+					sc.getJobLogger().Debug(logs.CategoryLifecycle, "Running periodic cleanup")
 					cleanupFunc()
 				}
 			}
@@ -102,17 +117,17 @@ func (sc *SignalCoordinator) StartCleanupGoroutine(
 // WaitForCleanup waits for the cleanup goroutine to finish with timeout.
 func (sc *SignalCoordinator) WaitForCleanup(ctx context.Context, timeout time.Duration) {
 	if sc.cleanupDone == nil {
-		sc.logger.Debug("No cleanup goroutine to wait for")
+		sc.getJobLogger().Debug(logs.CategoryLifecycle, "No cleanup goroutine to wait for")
 		return
 	}
 
 	select {
 	case <-sc.cleanupDone:
-		sc.logger.Debug("Cleanup goroutine finished successfully")
+		sc.getJobLogger().Debug(logs.CategoryLifecycle, "Cleanup goroutine finished")
 	case <-ctx.Done():
-		sc.logger.Debug("Cleanup wait cancelled by context")
+		sc.getJobLogger().Debug(logs.CategoryLifecycle, "Cleanup wait cancelled by context")
 	case <-time.After(timeout):
-		sc.logger.Warn("Cleanup goroutine did not finish within timeout",
-			infralogger.Duration("timeout", timeout))
+		sc.getJobLogger().Warn(logs.CategoryLifecycle, "Cleanup goroutine did not finish within timeout",
+			logs.Duration("timeout", timeout))
 	}
 }

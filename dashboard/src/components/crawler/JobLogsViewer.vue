@@ -5,6 +5,57 @@
         Job Logs
       </h2>
       <div class="flex items-center space-x-2">
+        <!-- Category Filter -->
+        <select
+          v-model="categoryFilter"
+          class="text-sm border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500"
+        >
+          <option value="">
+            All Categories
+          </option>
+          <option value="crawler.lifecycle">
+            Lifecycle
+          </option>
+          <option value="crawler.fetch">
+            Fetch
+          </option>
+          <option value="crawler.extract">
+            Extract
+          </option>
+          <option value="crawler.error">
+            Errors
+          </option>
+          <option value="crawler.queue">
+            Queue
+          </option>
+          <option value="crawler.rate_limit">
+            Rate Limit
+          </option>
+          <option value="crawler.metrics">
+            Metrics
+          </option>
+        </select>
+        <!-- Level Filter -->
+        <select
+          v-model="levelFilter"
+          class="text-sm border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500"
+        >
+          <option value="">
+            All Levels
+          </option>
+          <option value="error">
+            Errors Only
+          </option>
+          <option value="warn">
+            Warnings+
+          </option>
+          <option value="info">
+            Info+
+          </option>
+          <option value="debug">
+            Debug+
+          </option>
+        </select>
         <!-- Execution Selector -->
         <select
           v-if="!isLiveStreaming && executions.length > 0"
@@ -83,9 +134,9 @@
       >
         <div class="p-4 space-y-0.5">
           <div
-            v-for="(line, index) in displayedLogs"
+            v-for="(line, index) in filteredLogs"
             :key="index"
-            class="flex items-start"
+            class="flex items-start hover:bg-gray-800 px-2 py-0.5 rounded"
           >
             <span
               class="w-20 flex-shrink-0 text-gray-500 select-none text-xs"
@@ -94,20 +145,32 @@
               :class="getLevelClass(line.level)"
               class="w-12 flex-shrink-0 uppercase text-xs font-semibold"
             >{{ line.level }}</span>
+            <span
+              v-if="line.category"
+              class="w-20 flex-shrink-0 text-xs text-gray-400 truncate"
+              :title="line.category"
+            >{{ formatCategory(line.category) }}</span>
             <span class="flex-1 break-all whitespace-pre-wrap">{{ line.message }}</span>
+          </div>
+          <!-- Replay indicator -->
+          <div
+            v-if="replayedCount > 0 && displayedLogs.length > replayedCount"
+            class="text-center text-gray-500 text-xs py-2 border-t border-gray-700 mt-2"
+          >
+            &#8593; {{ replayedCount }} buffered logs replayed &#8593;
           </div>
           <!-- Empty state for streaming -->
           <div
-            v-if="isLiveStreaming && displayedLogs.length === 0"
+            v-if="isLiveStreaming && filteredLogs.length === 0"
             class="text-gray-500 italic"
           >
-            Waiting for log output...
+            {{ displayedLogs.length > 0 ? 'No logs match current filters' : 'Waiting for log output...' }}
           </div>
         </div>
       </div>
       <!-- Auto-scroll toggle -->
       <button
-        v-if="displayedLogs.length > 0"
+        v-if="filteredLogs.length > 0"
         class="absolute bottom-4 right-4 px-3 py-1.5 rounded-md text-xs font-medium transition-colors"
         :class="autoScroll ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'"
         @click="autoScroll = !autoScroll"
@@ -115,6 +178,13 @@
         Auto-scroll {{ autoScroll ? 'ON' : 'OFF' }}
       </button>
     </div>
+
+    <!-- Job Summary Card -->
+    <JobSummaryCard
+      v-if="summary"
+      :summary="summary"
+      class="border-t border-gray-200"
+    />
   </div>
 </template>
 
@@ -123,16 +193,9 @@ import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { ArrowDownTrayIcon } from '@heroicons/vue/24/outline'
 import { crawlerApi } from '../../api/client'
 import { LoadingSpinner, ErrorAlert } from '../common'
-
-// Types
-interface LogLine {
-  timestamp: string
-  level: string
-  message: string
-  fields?: Record<string, unknown>
-  job_id?: string
-  execution_id?: string
-}
+import JobSummaryCard from './JobSummaryCard.vue'
+import type { LogLine, LogSSEEvent, LogCategory, LogLevel, JobSummary } from '@/types/logs'
+import { getCategoryShortName, shouldShowLevel } from '@/types/logs'
 
 interface ExecutionLogInfo {
   execution_id: string
@@ -170,6 +233,10 @@ const displayedLogs = ref<LogLine[]>([])
 const downloading = ref(false)
 const autoScroll = ref(true)
 const logContainer = ref<HTMLElement | null>(null)
+const replayedCount = ref(0)
+const categoryFilter = ref<LogCategory | ''>('')
+const levelFilter = ref<LogLevel | ''>('')
+const summary = ref<JobSummary | null>(null)
 
 // SSE connection
 let eventSource: EventSource | null = null
@@ -185,6 +252,22 @@ const canDownload = computed(() => {
   if (!selectedExecution.value) return false
   const exec = executions.value.find(e => e.execution_number === selectedExecution.value)
   return exec?.log_available === true
+})
+
+const filteredLogs = computed(() => {
+  return displayedLogs.value.filter(line => {
+    // Category filter
+    if (categoryFilter.value && line.category !== categoryFilter.value) {
+      return false
+    }
+    // Level filter (hierarchical - show selected level and above)
+    if (levelFilter.value && line.level) {
+      if (!shouldShowLevel(line.level as LogLevel, levelFilter.value)) {
+        return false
+      }
+    }
+    return true
+  })
 })
 
 // Methods
@@ -232,6 +315,11 @@ const startLiveStream = () => {
     return
   }
 
+  // Reset state for new stream
+  replayedCount.value = 0
+  displayedLogs.value = []
+  summary.value = null
+
   // Connect to SSE endpoint
   const url = `/api/crawler/jobs/${props.jobId}/logs/stream`
   eventSource = new EventSource(`${url}?token=${encodeURIComponent(token)}`)
@@ -242,12 +330,33 @@ const startLiveStream = () => {
 
   eventSource.onmessage = (event) => {
     try {
-      const data = JSON.parse(event.data)
-      if (data.type === 'log:line') {
-        addLogLine(data.data as LogLine)
-      } else if (data.type === 'log:archived') {
-        // Logs archived, reload metadata
-        loadLogsMetadata()
+      const data = JSON.parse(event.data) as LogSSEEvent
+      switch (data.type) {
+        case 'log:replay':
+          // Replay batch: prepend to displayed logs
+          displayedLogs.value = [...data.data.lines, ...displayedLogs.value]
+          replayedCount.value = data.data.count
+          console.log(`[JobLogsViewer] Replayed ${data.data.count} buffered lines`)
+          if (autoScroll.value) {
+            scrollToBottom()
+          }
+          break
+        case 'log:line':
+          addLogLine(data.data)
+          // Extract summary from job completed message
+          if (data.data.category === 'crawler.lifecycle' &&
+              data.data.message === 'Job completed' &&
+              data.data.fields) {
+            summary.value = extractSummary(data.data.fields)
+          }
+          break
+        case 'log:archived':
+          // Logs archived, reload metadata
+          loadLogsMetadata()
+          break
+        case 'connected':
+          console.log('[JobLogsViewer] SSE connected:', data.data.message)
+          break
       }
     } catch (err) {
       console.error('[JobLogsViewer] Error parsing SSE event:', err)
@@ -363,6 +472,28 @@ const formatTimestamp = (timestamp: string): string => {
 
 const formatStatus = (status: string): string => {
   return status.charAt(0).toUpperCase() + status.slice(1)
+}
+
+const formatCategory = (category: string): string => {
+  return getCategoryShortName(category as LogCategory)
+}
+
+const extractSummary = (fields: Record<string, unknown>): JobSummary => {
+  return {
+    pages_discovered: (fields.pages_discovered as number) || 0,
+    pages_crawled: (fields.pages_crawled as number) || 0,
+    items_extracted: (fields.items_extracted as number) || 0,
+    errors_count: (fields.errors_count as number) || 0,
+    duration_ms: (fields.duration_ms as number) || 0,
+    bytes_fetched: fields.bytes_fetched as number,
+    requests_total: fields.requests_total as number,
+    requests_failed: fields.requests_failed as number,
+    status_codes: fields.status_codes as Record<number, number>,
+    top_errors: fields.top_errors as JobSummary['top_errors'],
+    logs_emitted: fields.logs_emitted as number,
+    logs_throttled: fields.logs_throttled as number,
+    throttle_percent: fields.throttle_percent as number,
+  }
 }
 
 const getLevelClass = (level: string): string => {

@@ -7,7 +7,7 @@ import (
 	colly "github.com/gocolly/colly/v2"
 	"github.com/jonesrussell/north-cloud/crawler/internal/content"
 	"github.com/jonesrussell/north-cloud/crawler/internal/content/contenttype"
-	infralogger "github.com/north-cloud/infrastructure/logger"
+	"github.com/jonesrussell/north-cloud/crawler/internal/logs"
 )
 
 // ProcessHTML processes the HTML content as raw content for classification.
@@ -35,9 +35,7 @@ func (c *Crawler) ProcessHTML(e *colly.HTMLElement) {
 	// The classifier will handle content type classification later
 	processor := c.rawContentProcessor
 	if processor == nil {
-		c.logger.Debug("Raw content processor not available, skipping content",
-			infralogger.String("url", e.Request.URL.String()),
-		)
+		c.GetJobLogger().Debug(logs.CategoryExtract, "Raw content processor not available", logs.URL(e.Request.URL.String()))
 		c.state.IncrementProcessed()
 		return
 	}
@@ -48,20 +46,13 @@ func (c *Crawler) ProcessHTML(e *colly.HTMLElement) {
 		// If the error is "not implemented", log at debug level since this is expected
 		// until the feature is implemented
 		if err.Error() == "not implemented" {
-			c.logger.Debug("Content processing not implemented",
-				infralogger.String("url", e.Request.URL.String()),
-			)
+			c.GetJobLogger().Debug(logs.CategoryExtract, "Content processing not implemented", logs.URL(e.Request.URL.String()))
 		} else {
-			c.logger.Error("Failed to process raw content",
-				infralogger.Error(err),
-				infralogger.String("url", e.Request.URL.String()),
-			)
+			c.GetJobLogger().Error(logs.CategoryError, "Failed to process raw content", logs.Err(err), logs.URL(e.Request.URL.String()))
 			c.state.IncrementError()
 		}
 	} else {
-		c.logger.Debug("Successfully processed raw content",
-			infralogger.String("url", e.Request.URL.String()),
-		)
+		c.GetJobLogger().Debug(logs.CategoryExtract, "Content extracted", logs.URL(e.Request.URL.String()))
 	}
 
 	c.state.IncrementProcessed()

@@ -21,6 +21,11 @@ type Service interface {
 	// IsCapturing returns true if logs are being captured for the given execution.
 	IsCapturing(executionID string) bool
 
+	// GetLiveBuffer returns the buffer for an active job capture.
+	// Used by SSE handler to replay buffered logs on client connect.
+	// Returns nil if no active capture exists for the job.
+	GetLiveBuffer(jobID string) Buffer
+
 	// Close gracefully shuts down the service.
 	Close() error
 }
@@ -49,6 +54,10 @@ type Buffer interface {
 
 	// ReadAll returns all buffered entries.
 	ReadAll() []LogEntry
+
+	// ReadLast returns the last n entries in chronological order.
+	// Used for SSE replay when clients connect mid-stream.
+	ReadLast(n int) []LogEntry
 
 	// Size returns the number of entries in the buffer.
 	Size() int

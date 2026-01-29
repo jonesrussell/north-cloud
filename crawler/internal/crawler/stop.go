@@ -5,14 +5,14 @@ import (
 	"errors"
 
 	"github.com/jonesrussell/north-cloud/crawler/internal/crawler/events"
-	infralogger "github.com/north-cloud/infrastructure/logger"
+	"github.com/jonesrussell/north-cloud/crawler/internal/logs"
 )
 
 // Stop stops the crawler.
 func (c *Crawler) Stop(ctx context.Context) error {
-	c.logger.Debug("Stopping crawler")
+	c.GetJobLogger().Debug(logs.CategoryLifecycle, "Stopping crawler")
 	if !c.state.IsRunning() {
-		c.logger.Debug("Crawler already stopped")
+		c.GetJobLogger().Debug(logs.CategoryLifecycle, "Crawler already stopped")
 		return nil
 	}
 
@@ -31,17 +31,13 @@ func (c *Crawler) Stop(ctx context.Context) error {
 	case <-waitDone:
 		c.state.Stop()
 		c.cleanupResources() // Final cleanup
-		c.logger.Debug("Crawler stopped successfully")
+		c.GetJobLogger().Debug(logs.CategoryLifecycle, "Crawler stopped successfully")
 		return nil
 	case <-ctx.Done():
 		if errors.Is(ctx.Err(), context.DeadlineExceeded) {
-			c.logger.Warn("Crawler shutdown timed out",
-				infralogger.Error(ctx.Err()),
-			)
+			c.GetJobLogger().Warn(logs.CategoryLifecycle, "Crawler shutdown timed out", logs.Err(ctx.Err()))
 		} else {
-			c.logger.Warn("Crawler shutdown cancelled",
-				infralogger.Error(ctx.Err()),
-			)
+			c.GetJobLogger().Warn(logs.CategoryLifecycle, "Crawler shutdown cancelled", logs.Err(ctx.Err()))
 		}
 		return ctx.Err()
 	}
