@@ -152,6 +152,13 @@
         Auto-scroll {{ autoScroll ? 'ON' : 'OFF' }}
       </button>
     </div>
+
+    <!-- Job Summary Card -->
+    <JobSummaryCard
+      v-if="summary"
+      :summary="summary"
+      class="border-t border-gray-200"
+    />
   </div>
 </template>
 
@@ -160,7 +167,8 @@ import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { ArrowDownTrayIcon } from '@heroicons/vue/24/outline'
 import { crawlerApi } from '../../api/client'
 import { LoadingSpinner, ErrorAlert } from '../common'
-import type { LogLine, LogSSEEvent, LogCategory, LogLevel } from '@/types/logs'
+import JobSummaryCard from './JobSummaryCard.vue'
+import type { LogLine, LogSSEEvent, LogCategory, LogLevel, JobSummary } from '@/types/logs'
 import { getCategoryShortName, shouldShowLevel } from '@/types/logs'
 
 interface ExecutionLogInfo {
@@ -202,6 +210,7 @@ const logContainer = ref<HTMLElement | null>(null)
 const replayedCount = ref(0)
 const categoryFilter = ref<LogCategory | ''>('')
 const levelFilter = ref<LogLevel | ''>('')
+const summary = ref<JobSummary | null>(null)
 
 // SSE connection
 let eventSource: EventSource | null = null
@@ -283,6 +292,7 @@ const startLiveStream = () => {
   // Reset state for new stream
   replayedCount.value = 0
   displayedLogs.value = []
+  summary.value = null
 
   // Connect to SSE endpoint
   const url = `/api/crawler/jobs/${props.jobId}/logs/stream`
@@ -307,6 +317,12 @@ const startLiveStream = () => {
           break
         case 'log:line':
           addLogLine(data.data)
+          // Extract summary from job completed message
+          if (data.data.category === 'crawler.lifecycle' &&
+              data.data.message === 'Job completed' &&
+              data.data.fields) {
+            summary.value = extractSummary(data.data.fields)
+          }
           break
         case 'log:archived':
           // Logs archived, reload metadata
@@ -434,6 +450,24 @@ const formatStatus = (status: string): string => {
 
 const formatCategory = (category: string): string => {
   return getCategoryShortName(category as LogCategory)
+}
+
+const extractSummary = (fields: Record<string, unknown>): JobSummary => {
+  return {
+    pages_discovered: (fields.pages_discovered as number) || 0,
+    pages_crawled: (fields.pages_crawled as number) || 0,
+    items_extracted: (fields.items_extracted as number) || 0,
+    errors_count: (fields.errors_count as number) || 0,
+    duration_ms: (fields.duration_ms as number) || 0,
+    bytes_fetched: fields.bytes_fetched as number,
+    requests_total: fields.requests_total as number,
+    requests_failed: fields.requests_failed as number,
+    status_codes: fields.status_codes as Record<number, number>,
+    top_errors: fields.top_errors as JobSummary['top_errors'],
+    logs_emitted: fields.logs_emitted as number,
+    logs_throttled: fields.logs_throttled as number,
+    throttle_percent: fields.throttle_percent as number,
+  }
 }
 
 const getLevelClass = (level: string): string => {
