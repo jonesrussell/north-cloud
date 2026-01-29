@@ -130,6 +130,7 @@ func setupServiceRoutes(router *gin.Engine, sourceHandler *handlers.SourceHandle
 	sources.POST("", sourceHandler.Create)
 	sources.POST("/fetch-metadata", sourceHandler.FetchMetadata)
 	sources.POST("/test-crawl", sourceHandler.TestCrawl)
+	sources.POST("/import-excel", sourceHandler.ImportExcel)
 	sources.GET("/:id", sourceHandler.GetByID)
 	sources.PUT("/:id", sourceHandler.Update)
 	sources.DELETE("/:id", sourceHandler.Delete)
