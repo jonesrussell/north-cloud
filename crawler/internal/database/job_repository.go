@@ -12,6 +12,10 @@ import (
 	"github.com/jonesrussell/north-cloud/crawler/internal/domain"
 )
 
+// ErrJobNotFoundBySourceID is returned when no job exists for a given source ID.
+// This is a sentinel error that callers can check with errors.Is().
+var ErrJobNotFoundBySourceID = errors.New("job not found for source_id")
+
 // JobRepository handles database operations for jobs.
 type JobRepository struct {
 	db *sqlx.DB
@@ -463,4 +467,151 @@ func (r *JobRepository) CancelJob(ctx context.Context, jobID string) error {
 	}
 
 	return nil
+}
+
+// FindBySourceID retrieves a job by its source ID.
+// Returns nil, nil if no job exists for the source.
+func (r *JobRepository) FindBySourceID(ctx context.Context, sourceID uuid.UUID) (*domain.Job, error) {
+	var job domain.Job
+	query := `
+		SELECT id, source_id, source_name, url,
+		       schedule_time, schedule_enabled,
+		       interval_minutes, interval_type, next_run_at,
+		       is_paused, max_retries, retry_backoff_seconds, current_retry_count,
+		       lock_token, lock_acquired_at,
+		       status, scheduler_version,
+		       auto_managed, priority, failure_count, last_failure_at, backoff_until,
+		       created_at, updated_at, started_at, completed_at,
+		       paused_at, cancelled_at,
+		       error_message, metadata
+		FROM jobs
+		WHERE source_id = $1
+	`
+
+	err := r.db.GetContext(ctx, &job, query, sourceID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, ErrJobNotFoundBySourceID
+		}
+		return nil, fmt.Errorf("find job by source_id: %w", err)
+	}
+
+	return &job, nil
+}
+
+// UpsertAutoManaged creates or updates an auto-managed job.
+// Uses source_id as the unique key for upsert.
+func (r *JobRepository) UpsertAutoManaged(ctx context.Context, job *domain.Job) error {
+	query := `
+		INSERT INTO jobs (
+			id, source_id, source_name, url,
+			interval_minutes, interval_type, next_run_at,
+			status, auto_managed, priority,
+			failure_count, last_failure_at, backoff_until,
+			schedule_enabled, is_paused,
+			max_retries, retry_backoff_seconds
+		)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
+		ON CONFLICT (source_id) DO UPDATE SET
+			source_name = EXCLUDED.source_name,
+			url = EXCLUDED.url,
+			interval_minutes = EXCLUDED.interval_minutes,
+			interval_type = EXCLUDED.interval_type,
+			next_run_at = COALESCE(jobs.next_run_at, EXCLUDED.next_run_at),
+			status = CASE
+				WHEN jobs.status IN ('running', 'scheduled') THEN jobs.status
+				ELSE EXCLUDED.status
+			END,
+			priority = EXCLUDED.priority,
+			failure_count = EXCLUDED.failure_count,
+			last_failure_at = EXCLUDED.last_failure_at,
+			backoff_until = EXCLUDED.backoff_until,
+			updated_at = NOW()
+		RETURNING id, created_at, updated_at
+	`
+
+	err := r.db.QueryRowContext(
+		ctx,
+		query,
+		job.ID,
+		job.SourceID,
+		job.SourceName,
+		job.URL,
+		job.IntervalMinutes,
+		job.IntervalType,
+		job.NextRunAt,
+		job.Status,
+		job.AutoManaged,
+		job.Priority,
+		job.FailureCount,
+		job.LastFailureAt,
+		job.BackoffUntil,
+		job.ScheduleEnabled,
+		job.IsPaused,
+		job.MaxRetries,
+		job.RetryBackoffSeconds,
+	).Scan(&job.ID, &job.CreatedAt, &job.UpdatedAt)
+
+	if err != nil {
+		return fmt.Errorf("upsert auto-managed job: %w", err)
+	}
+
+	return nil
+}
+
+// DeleteBySourceID deletes a job by its source ID.
+func (r *JobRepository) DeleteBySourceID(ctx context.Context, sourceID uuid.UUID) error {
+	query := `DELETE FROM jobs WHERE source_id = $1`
+
+	_, err := r.db.ExecContext(ctx, query, sourceID)
+	if err != nil {
+		return fmt.Errorf("delete job by source_id: %w", err)
+	}
+
+	return nil
+}
+
+// UpdateStatusBySourceID updates a job's status by source ID.
+func (r *JobRepository) UpdateStatusBySourceID(ctx context.Context, sourceID uuid.UUID, status string) error {
+	query := `
+		UPDATE jobs
+		SET status = $1, updated_at = NOW()
+		WHERE source_id = $2
+	`
+
+	_, err := r.db.ExecContext(ctx, query, status, sourceID)
+	if err != nil {
+		return fmt.Errorf("update job status: %w", err)
+	}
+
+	return nil
+}
+
+// RecordProcessedEvent records an event as processed for idempotency.
+func (r *JobRepository) RecordProcessedEvent(ctx context.Context, eventID uuid.UUID) error {
+	query := `
+		INSERT INTO processed_events (event_id, processed_at)
+		VALUES ($1, NOW())
+		ON CONFLICT (event_id) DO NOTHING
+	`
+
+	_, err := r.db.ExecContext(ctx, query, eventID)
+	if err != nil {
+		return fmt.Errorf("record processed event: %w", err)
+	}
+
+	return nil
+}
+
+// IsEventProcessed checks if an event has already been processed.
+func (r *JobRepository) IsEventProcessed(ctx context.Context, eventID uuid.UUID) (bool, error) {
+	var exists bool
+	query := `SELECT EXISTS(SELECT 1 FROM processed_events WHERE event_id = $1)`
+
+	err := r.db.GetContext(ctx, &exists, query, eventID)
+	if err != nil {
+		return false, fmt.Errorf("check event processed: %w", err)
+	}
+
+	return exists, nil
 }
