@@ -18,8 +18,9 @@ import (
 	crawlerconfigtypes "github.com/jonesrussell/north-cloud/crawler/internal/config/crawler"
 	dbconfig "github.com/jonesrussell/north-cloud/crawler/internal/config/database"
 	"github.com/jonesrussell/north-cloud/crawler/internal/crawler"
-	"github.com/jonesrussell/north-cloud/crawler/internal/crawler/events"
+	crawlerevents "github.com/jonesrussell/north-cloud/crawler/internal/crawler/events"
 	"github.com/jonesrussell/north-cloud/crawler/internal/database"
+	crawlerintevents "github.com/jonesrussell/north-cloud/crawler/internal/events"
 	"github.com/jonesrussell/north-cloud/crawler/internal/logs"
 	"github.com/jonesrussell/north-cloud/crawler/internal/scheduler"
 	"github.com/jonesrussell/north-cloud/crawler/internal/sources"
@@ -29,6 +30,7 @@ import (
 	infragin "github.com/north-cloud/infrastructure/gin"
 	infralogger "github.com/north-cloud/infrastructure/logger"
 	"github.com/north-cloud/infrastructure/profiling"
+	infraredis "github.com/north-cloud/infrastructure/redis"
 	"github.com/north-cloud/infrastructure/sse"
 )
 
@@ -115,6 +117,9 @@ func Start() error {
 	}
 	defer jsResult.DB.Close()
 
+	// Phase 4.5: Setup event consumer (if Redis events enabled)
+	eventConsumer := setupEventConsumer(deps)
+
 	// Phase 5: Start HTTP server
 	server, errChan := startHTTPServer(
 		deps, jsResult.JobsHandler, jsResult.DiscoveredLinksHandler,
@@ -122,7 +127,7 @@ func Start() error {
 	)
 
 	// Phase 6: Run server until interrupted
-	return runServerUntilInterrupt(deps.Logger, server, jsResult.Scheduler, jsResult.SSEBroker, jsResult.LogService, errChan)
+	return runServerUntilInterrupt(deps.Logger, server, jsResult.Scheduler, jsResult.SSEBroker, jsResult.LogService, eventConsumer, errChan)
 }
 
 // === Dependency Setup ===
@@ -267,7 +272,7 @@ func createCrawlerForJobs(
 	db *sqlx.DB,
 ) (crawler.Interface, error) {
 	// Create event bus
-	bus := events.NewEventBus(deps.Logger)
+	bus := crawlerevents.NewEventBus(deps.Logger)
 
 	// Get crawler config
 	crawlerCfg := deps.Config.GetCrawlerConfig()
@@ -295,7 +300,7 @@ func loadSourceManager(deps *CommandDeps) (sources.Interface, error) {
 // createCrawler creates a crawler instance with the given parameters.
 func createCrawler(
 	deps *CommandDeps,
-	bus *events.EventBus,
+	bus *crawlerevents.EventBus,
 	crawlerCfg *crawlerconfigtypes.Config,
 	storageResult *StorageResult,
 	sourceManager sources.Interface,
@@ -315,6 +320,40 @@ func createCrawler(
 		return nil, fmt.Errorf("failed to create crawler: %w", err)
 	}
 	return crawlerResult.Crawler, nil
+}
+
+// === Event Consumer Setup ===
+
+// setupEventConsumer creates and starts the event consumer if Redis events are enabled.
+// Returns nil if events are disabled or Redis is unavailable.
+func setupEventConsumer(deps *CommandDeps) *crawlerintevents.Consumer {
+	redisCfg := deps.Config.GetRedisConfig()
+	if !redisCfg.Enabled {
+		return nil
+	}
+
+	redisClient, err := infraredis.NewClient(infraredis.Config{
+		Address:  redisCfg.Address,
+		Password: redisCfg.Password,
+		DB:       redisCfg.DB,
+	})
+	if err != nil {
+		deps.Logger.Warn("Redis not available, event consumer disabled",
+			infralogger.Error(err),
+		)
+		return nil
+	}
+
+	handler := crawlerintevents.NewNoOpHandler(deps.Logger)
+	consumer := crawlerintevents.NewConsumer(redisClient, "", handler, deps.Logger)
+
+	if startErr := consumer.Start(context.Background()); startErr != nil {
+		deps.Logger.Error("Failed to start event consumer", infralogger.Error(startErr))
+		return nil
+	}
+
+	deps.Logger.Info("Event consumer started")
+	return consumer
 }
 
 // === Database & Scheduler Setup ===
@@ -478,6 +517,7 @@ func runServerUntilInterrupt(
 	intervalScheduler *scheduler.IntervalScheduler,
 	sseBroker sse.Broker,
 	logService logs.Service,
+	eventConsumer *crawlerintevents.Consumer,
 	errChan <-chan error,
 ) error {
 	// Set up signal handling for graceful shutdown
@@ -490,7 +530,7 @@ func runServerUntilInterrupt(
 		log.Error("Server error", infralogger.Error(serverErr))
 		return fmt.Errorf("server error: %w", serverErr)
 	case sig := <-sigChan:
-		return shutdownServer(log, server, intervalScheduler, sseBroker, logService, sig)
+		return shutdownServer(log, server, intervalScheduler, sseBroker, logService, eventConsumer, sig)
 	}
 }
 
@@ -501,11 +541,18 @@ func shutdownServer(
 	intervalScheduler *scheduler.IntervalScheduler,
 	sseBroker sse.Broker,
 	logService logs.Service,
+	eventConsumer *crawlerintevents.Consumer,
 	sig os.Signal,
 ) error {
 	log.Info("Shutdown signal received", infralogger.String("signal", sig.String()))
 
-	// Stop SSE broker first (closes all client connections)
+	// Stop event consumer first (stops reading from Redis)
+	if eventConsumer != nil {
+		log.Info("Stopping event consumer")
+		eventConsumer.Stop()
+	}
+
+	// Stop SSE broker (closes all client connections)
 	if sseBroker != nil {
 		log.Info("Stopping SSE broker")
 		if err := sseBroker.Stop(); err != nil {
