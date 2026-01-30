@@ -61,6 +61,7 @@ type JobsSchedulerResult struct {
 	SSEHandler             *api.SSEHandler
 	LogService             logs.Service
 	JobRepo                *database.JobRepository
+	Migrator               *job.Migrator
 }
 
 // === Constants ===
@@ -126,6 +127,7 @@ func Start() error {
 	server, errChan := startHTTPServer(
 		deps, jsResult.JobsHandler, jsResult.DiscoveredLinksHandler,
 		jsResult.LogsHandler, jsResult.ExecutionRepo, jsResult.SSEHandler,
+		jsResult.Migrator,
 	)
 
 	// Phase 6: Run server until interrupted
@@ -365,6 +367,15 @@ func setupEventConsumer(deps *CommandDeps, jobRepo *database.JobRepository) *cra
 	return consumer
 }
 
+// setupMigrator creates the migrator service for Phase 3 job migration.
+func setupMigrator(deps *CommandDeps, jobRepo *database.JobRepository) *job.Migrator {
+	sourceManagerCfg := deps.Config.GetSourceManagerConfig()
+	sourceClient := sources.NewHTTPClient(sourceManagerCfg.URL, nil)
+	scheduleComputer := job.NewScheduleComputer()
+
+	return job.NewMigrator(jobRepo, sourceClient, scheduleComputer, deps.Logger)
+}
+
 // === Database & Scheduler Setup ===
 
 // setupJobsAndScheduler initializes the jobs handler and scheduler.
@@ -435,6 +446,9 @@ func setupJobsAndScheduler(
 		intervalScheduler.SetLogService(logService)
 	}
 
+	// Create migrator for Phase 3 job migration
+	migrator := setupMigrator(deps, jobRepo)
+
 	return &JobsSchedulerResult{
 		JobsHandler:            jobsHandler,
 		DiscoveredLinksHandler: discoveredLinksHandler,
@@ -446,6 +460,7 @@ func setupJobsAndScheduler(
 		SSEHandler:             sseHandler,
 		LogService:             logService,
 		JobRepo:                jobRepo,
+		Migrator:               migrator,
 	}, nil
 }
 
@@ -508,10 +523,14 @@ func startHTTPServer(
 	logsHandler *api.LogsHandler,
 	executionRepo *database.ExecutionRepository,
 	sseHandler *api.SSEHandler,
+	migrator *job.Migrator,
 ) (server *infragin.Server, errChan <-chan error) {
+	// Create migration handler for Phase 3 migration endpoints
+	migrationHandler := api.NewMigrationHandler(migrator, deps.Logger)
+
 	// Use the logger that already has the service field attached
 	// Create server using the new infrastructure gin package
-	server = api.NewServer(deps.Config, jobsHandler, discoveredLinksHandler, logsHandler, executionRepo, deps.Logger, sseHandler)
+	server = api.NewServer(deps.Config, jobsHandler, discoveredLinksHandler, logsHandler, executionRepo, deps.Logger, sseHandler, migrationHandler)
 
 	// Start server asynchronously
 	deps.Logger.Info("Starting HTTP server", infralogger.String("addr", deps.Config.GetServerConfig().Address))

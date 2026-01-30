@@ -642,7 +642,7 @@ func (r *JobRepository) FindManualJobs(ctx context.Context, limit int) ([]*domai
 }
 
 // UpdateMigrationStatus updates the migration status for a job.
-func (r *JobRepository) UpdateMigrationStatus(ctx context.Context, jobID string, status string) error {
+func (r *JobRepository) UpdateMigrationStatus(ctx context.Context, jobID, status string) error {
 	query := `
 		UPDATE jobs
 		SET migration_status = $1, updated_at = NOW()

@@ -69,6 +69,14 @@ func setupLogRoutes(v1 *gin.RouterGroup, logsHandler *LogsHandler) {
 	}
 }
 
+// setupMigrationRoutes configures Phase 3 migration endpoints
+func setupMigrationRoutes(v1 *gin.RouterGroup, migrationHandler *MigrationHandler) {
+	if migrationHandler != nil {
+		v1.POST("/jobs/migrate", migrationHandler.RunMigration)
+		v1.GET("/jobs/migration-stats", migrationHandler.GetStats)
+	}
+}
+
 // setupDiscoveredLinksRoutes configures discovered links endpoints
 func setupDiscoveredLinksRoutes(v1 *gin.RouterGroup, discoveredLinksHandler *DiscoveredLinksHandler) {
 	if discoveredLinksHandler != nil {
@@ -111,6 +119,7 @@ func NewServer(
 	executionRepo database.ExecutionRepositoryInterface,
 	infraLog infralogger.Logger,
 	sseHandler *SSEHandler, // Optional - pass nil to disable SSE
+	migrationHandler *MigrationHandler, // Optional - pass nil to disable migration endpoints
 ) *infragin.Server {
 	// Extract port from address
 	port := extractPortFromAddress(cfg.GetServerConfig().Address)
@@ -137,7 +146,7 @@ func NewServer(
 		WithTimeouts(defaultReadTimeout, defaultWriteTimeout, defaultIdleTimeout).
 		WithRoutes(func(router *gin.Engine) {
 			// Setup service-specific routes (health routes added by builder)
-			setupCrawlerRoutes(router, jwtSecret, jobsHandler, discoveredLinksHandler, logsHandler, executionRepo, sseHandler)
+			setupCrawlerRoutes(router, jwtSecret, jobsHandler, discoveredLinksHandler, logsHandler, executionRepo, sseHandler, migrationHandler)
 		}).
 		Build()
 
@@ -186,6 +195,7 @@ func setupCrawlerRoutes(
 	logsHandler *LogsHandler,
 	executionRepo database.ExecutionRepositoryInterface,
 	sseHandler *SSEHandler,
+	migrationHandler *MigrationHandler,
 ) {
 	// API v1 routes - protected with JWT
 	v1 := infragin.ProtectedGroup(router, "/api/v1", jwtSecret)
@@ -232,6 +242,9 @@ func setupCrawlerRoutes(
 
 	// Setup discovered links routes
 	setupDiscoveredLinksRoutes(v1, discoveredLinksHandler)
+
+	// Setup migration routes (Phase 3)
+	setupMigrationRoutes(v1, migrationHandler)
 
 	// Setup SSE routes (protected with JWT)
 	if sseHandler != nil {

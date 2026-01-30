@@ -43,7 +43,7 @@ func TestMigrationHandler_RunMigration(t *testing.T) {
 	handler := api.NewMigrationHandler(migrator, nil)
 	router.POST("/api/v1/jobs/migrate", handler.RunMigration)
 
-	req := httptest.NewRequest(http.MethodPost, "/api/v1/jobs/migrate", nil)
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/jobs/migrate", http.NoBody)
 	w := httptest.NewRecorder()
 
 	router.ServeHTTP(w, req)
@@ -70,7 +70,7 @@ func TestMigrationHandler_GetStats(t *testing.T) {
 	handler := api.NewMigrationHandler(migrator, nil)
 	router.GET("/api/v1/jobs/migration-stats", handler.GetStats)
 
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/jobs/migration-stats", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/jobs/migration-stats", http.NoBody)
 	w := httptest.NewRecorder()
 
 	router.ServeHTTP(w, req)
