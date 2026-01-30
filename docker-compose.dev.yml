@@ -95,6 +95,9 @@ services:
       JOB_LOGS_RETENTION_DAYS: "${JOB_LOGS_RETENTION_DAYS:-30}"
       JOB_LOGS_MIN_LEVEL: "${JOB_LOGS_MIN_LEVEL:-info}"
       JOB_LOGS_MINIO_BUCKET: "${JOB_LOGS_MINIO_BUCKET:-crawler-logs}"
+      # Redis Events Configuration (Phase 2)
+      REDIS_EVENTS_ENABLED: "${REDIS_EVENTS_ENABLED:-false}"
+      REDIS_ADDRESS: redis:6379
       PPROF_PORT: 6060
     volumes:
       - ./crawler:/app
@@ -124,6 +127,8 @@ services:
     depends_on:
       postgres-source-manager:
         condition: service_healthy
+      redis:
+        condition: service_healthy
     environment:
       <<: *go-dev-environment
       SERVER_HOST: "${SOURCE_MANAGER_HOST:-0.0.0.0}"
@@ -135,6 +140,9 @@ services:
       DB_NAME: "${POSTGRES_SOURCE_MANAGER_DB:-source_manager}"
       DB_SSLMODE: disable
       SOURCE_MANAGER_API_URL: "${SOURCE_MANAGER_API_URL:-http://localhost:8050}"
+      # Redis Events Configuration (Phase 1)
+      REDIS_EVENTS_ENABLED: "${REDIS_EVENTS_ENABLED:-false}"
+      REDIS_ADDRESS: redis:6379
       PPROF_PORT: 6060
     volumes:
       - ./source-manager:/app
