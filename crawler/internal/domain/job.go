@@ -49,6 +49,13 @@ type Job struct {
 	// Metadata
 	ErrorMessage *string  `db:"error_message" json:"error_message,omitempty"`
 	Metadata     JSONBMap `db:"metadata"      json:"metadata,omitempty"`
+
+	// Auto-managed job lifecycle
+	AutoManaged   bool       `db:"auto_managed"    json:"auto_managed"`
+	Priority      int        `db:"priority"        json:"priority"`
+	FailureCount  int        `db:"failure_count"   json:"failure_count"`
+	LastFailureAt *time.Time `db:"last_failure_at" json:"last_failure_at,omitempty"`
+	BackoffUntil  *time.Time `db:"backoff_until"   json:"backoff_until,omitempty"`
 }
 
 // Item represents a crawled item from a job.
