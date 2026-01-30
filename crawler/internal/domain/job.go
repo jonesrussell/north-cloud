@@ -56,7 +56,17 @@ type Job struct {
 	FailureCount  int        `db:"failure_count"   json:"failure_count"`
 	LastFailureAt *time.Time `db:"last_failure_at" json:"last_failure_at,omitempty"`
 	BackoffUntil  *time.Time `db:"backoff_until"   json:"backoff_until,omitempty"`
+
+	// Phase 3 migration tracking
+	MigrationStatus *string `db:"migration_status" json:"migration_status,omitempty"`
 }
+
+// Migration status values (Phase 3)
+const (
+	MigrationStatusMigrated = "migrated" // Successfully converted to auto-managed
+	MigrationStatusOrphaned = "orphaned" // Source not found, marked for review
+	MigrationStatusSkipped  = "skipped"  // Intentionally left as manual
+)
 
 // Item represents a crawled item from a job.
 type Item struct {
