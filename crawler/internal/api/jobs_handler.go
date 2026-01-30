@@ -177,6 +177,11 @@ func (h *JobsHandler) CreateJob(c *gin.Context) {
 		return
 	}
 
+	// Add deprecation warning headers (Phase 3 migration)
+	c.Header("Deprecation", "true")
+	c.Header("Sunset", "2026-06-01")
+	c.Header("X-Deprecation-Notice", "POST /api/v1/jobs is deprecated. Use source-manager to create sources; jobs are created automatically.")
+
 	c.JSON(http.StatusCreated, job)
 }
 
