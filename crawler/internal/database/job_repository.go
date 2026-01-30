@@ -615,3 +615,86 @@ func (r *JobRepository) IsEventProcessed(ctx context.Context, eventID uuid.UUID)
 
 	return exists, nil
 }
+
+// FindManualJobs returns jobs that are not auto-managed and need migration.
+// Excludes already-migrated jobs.
+func (r *JobRepository) FindManualJobs(ctx context.Context, limit int) ([]*domain.Job, error) {
+	query := `
+		SELECT id, source_id, source_name, url, interval_minutes, interval_type,
+		       schedule_time, next_run_at, status,
+		       is_paused, max_retries, retry_backoff_seconds,
+		       created_at, updated_at, schedule_enabled, scheduler_version,
+		       auto_managed, priority, failure_count, last_failure_at, backoff_until,
+		       migration_status
+		FROM jobs
+		WHERE (auto_managed = false OR auto_managed IS NULL)
+		  AND (migration_status IS NULL OR migration_status NOT IN ('migrated', 'skipped'))
+		ORDER BY created_at ASC
+		LIMIT $1
+	`
+
+	var jobs []*domain.Job
+	if selectErr := r.db.SelectContext(ctx, &jobs, query, limit); selectErr != nil {
+		return nil, fmt.Errorf("find manual jobs: %w", selectErr)
+	}
+
+	return jobs, nil
+}
+
+// UpdateMigrationStatus updates the migration status for a job.
+func (r *JobRepository) UpdateMigrationStatus(ctx context.Context, jobID string, status string) error {
+	query := `
+		UPDATE jobs
+		SET migration_status = $1, updated_at = NOW()
+		WHERE id = $2
+	`
+
+	result, err := r.db.ExecContext(ctx, query, status, jobID)
+	if err != nil {
+		return fmt.Errorf("update migration status: %w", err)
+	}
+
+	rowsAffected, affectedErr := result.RowsAffected()
+	if affectedErr != nil {
+		return fmt.Errorf("get rows affected: %w", affectedErr)
+	}
+
+	if rowsAffected == 0 {
+		return fmt.Errorf("job not found: %s", jobID)
+	}
+
+	return nil
+}
+
+// CountByMigrationStatus returns counts of jobs grouped by migration status.
+func (r *JobRepository) CountByMigrationStatus(ctx context.Context) (map[string]int, error) {
+	query := `
+		SELECT
+			COALESCE(migration_status, 'pending') as status,
+			COUNT(*) as count
+		FROM jobs
+		GROUP BY migration_status
+	`
+
+	rows, err := r.db.QueryxContext(ctx, query)
+	if err != nil {
+		return nil, fmt.Errorf("count by migration status: %w", err)
+	}
+	defer rows.Close()
+
+	counts := make(map[string]int)
+	for rows.Next() {
+		var status string
+		var count int
+		if scanErr := rows.Scan(&status, &count); scanErr != nil {
+			return nil, fmt.Errorf("scan row: %w", scanErr)
+		}
+		counts[status] = count
+	}
+
+	if rowsErr := rows.Err(); rowsErr != nil {
+		return nil, fmt.Errorf("iterate rows: %w", rowsErr)
+	}
+
+	return counts, nil
+}
