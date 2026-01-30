@@ -88,7 +88,8 @@ func main() {
 	sourceRepo := repository.NewSourceRepository(db.DB(), appLogger)
 
 	// Initialize server using infrastructure gin
-	server := api.NewServer(sourceRepo, cfg, appLogger)
+	// NOTE: Event publisher will be wired up in Task 5 (Redis integration)
+	server := api.NewServer(sourceRepo, cfg, appLogger, nil)
 
 	appLogger.Info("Starting HTTP server",
 		infralogger.String("host", cfg.Server.Host),
