@@ -13,9 +13,10 @@ ALTER TABLE jobs
     ADD COLUMN IF NOT EXISTS backoff_until TIMESTAMPTZ;
 
 -- Index for efficient due job queries with priority ordering
+-- Note: backoff_until comparison must be done at query time (NOW() is not immutable)
 CREATE INDEX IF NOT EXISTS idx_jobs_due_priority
-    ON jobs (next_run_at, priority DESC)
-    WHERE status = 'pending' AND (backoff_until IS NULL OR backoff_until < NOW());
+    ON jobs (next_run_at, priority DESC, backoff_until)
+    WHERE status = 'pending';
 
 -- Index for finding jobs by source_id (used by JobService)
 CREATE INDEX IF NOT EXISTS idx_jobs_source_id
