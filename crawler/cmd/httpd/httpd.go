@@ -21,6 +21,7 @@ import (
 	crawlerevents "github.com/jonesrussell/north-cloud/crawler/internal/crawler/events"
 	"github.com/jonesrussell/north-cloud/crawler/internal/database"
 	crawlerintevents "github.com/jonesrussell/north-cloud/crawler/internal/events"
+	"github.com/jonesrussell/north-cloud/crawler/internal/job"
 	"github.com/jonesrussell/north-cloud/crawler/internal/logs"
 	"github.com/jonesrussell/north-cloud/crawler/internal/scheduler"
 	"github.com/jonesrussell/north-cloud/crawler/internal/sources"
@@ -59,6 +60,7 @@ type JobsSchedulerResult struct {
 	SSEBroker              sse.Broker
 	SSEHandler             *api.SSEHandler
 	LogService             logs.Service
+	JobRepo                *database.JobRepository
 }
 
 // === Constants ===
@@ -118,7 +120,7 @@ func Start() error {
 	defer jsResult.DB.Close()
 
 	// Phase 4.5: Setup event consumer (if Redis events enabled)
-	eventConsumer := setupEventConsumer(deps)
+	eventConsumer := setupEventConsumer(deps, jsResult.JobRepo)
 
 	// Phase 5: Start HTTP server
 	server, errChan := startHTTPServer(
@@ -326,7 +328,7 @@ func createCrawler(
 
 // setupEventConsumer creates and starts the event consumer if Redis events are enabled.
 // Returns nil if events are disabled or Redis is unavailable.
-func setupEventConsumer(deps *CommandDeps) *crawlerintevents.Consumer {
+func setupEventConsumer(deps *CommandDeps, jobRepo *database.JobRepository) *crawlerintevents.Consumer {
 	redisCfg := deps.Config.GetRedisConfig()
 	if !redisCfg.Enabled {
 		return nil
@@ -344,15 +346,22 @@ func setupEventConsumer(deps *CommandDeps) *crawlerintevents.Consumer {
 		return nil
 	}
 
-	handler := crawlerintevents.NewNoOpHandler(deps.Logger)
-	consumer := crawlerintevents.NewConsumer(redisClient, "", handler, deps.Logger)
+	// Create source client for fetching source data
+	sourceManagerCfg := deps.Config.GetSourceManagerConfig()
+	sourceClient := sources.NewHTTPClient(sourceManagerCfg.URL, nil)
+
+	// Create EventService as the event handler
+	scheduleComputer := job.NewScheduleComputer()
+	eventService := job.NewEventService(jobRepo, scheduleComputer, sourceClient, deps.Logger)
+
+	consumer := crawlerintevents.NewConsumer(redisClient, "", eventService, deps.Logger)
 
 	if startErr := consumer.Start(context.Background()); startErr != nil {
 		deps.Logger.Error("Failed to start event consumer", infralogger.Error(startErr))
 		return nil
 	}
 
-	deps.Logger.Info("Event consumer started")
+	deps.Logger.Info("Event consumer started with EventService handler")
 	return consumer
 }
 
@@ -436,6 +445,7 @@ func setupJobsAndScheduler(
 		SSEBroker:              sseBroker,
 		SSEHandler:             sseHandler,
 		LogService:             logService,
+		JobRepo:                jobRepo,
 	}, nil
 }
 

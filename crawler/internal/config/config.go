@@ -37,6 +37,8 @@ type Interface interface {
 	GetLoggingConfig() *LoggingConfig
 	// GetRedisConfig returns the Redis configuration.
 	GetRedisConfig() *RedisConfig
+	// GetSourceManagerConfig returns the source-manager configuration.
+	GetSourceManagerConfig() *SourceManagerConfig
 	// Validate validates the configuration based on the current command.
 	Validate() error
 }
@@ -53,6 +55,11 @@ const (
 const (
 	defaultRedisAddress = "localhost:6379"
 	defaultRedisDB      = 0
+)
+
+// Source manager defaults
+const (
+	defaultSourceManagerURL = "http://localhost:8050"
 )
 
 // Ensure Config implements Interface
@@ -78,6 +85,8 @@ type Config struct {
 	Logging *LoggingConfig `yaml:"logging"`
 	// Redis holds Redis configuration for event consumption
 	Redis *RedisConfig `yaml:"redis"`
+	// SourceManager holds source-manager API configuration
+	SourceManager *SourceManagerConfig `yaml:"source_manager"`
 }
 
 // AuthConfig holds authentication configuration.
@@ -100,6 +109,11 @@ type RedisConfig struct {
 	Password string `env:"REDIS_PASSWORD"       yaml:"password"`
 	DB       int    `env:"REDIS_DB"             yaml:"db"`
 	Enabled  bool   `env:"REDIS_EVENTS_ENABLED" yaml:"enabled"` // Feature flag for event consumption
+}
+
+// SourceManagerConfig holds configuration for source-manager API.
+type SourceManagerConfig struct {
+	URL string `env:"SOURCE_MANAGER_URL" yaml:"url"`
 }
 
 // validateHTTPDConfig validates the configuration for the httpd command
@@ -224,6 +238,15 @@ func setDefaults(cfg *Config) {
 	if cfg.Redis.Address == "" {
 		cfg.Redis.Address = defaultRedisAddress
 	}
+	// Set default source-manager configuration
+	if cfg.SourceManager == nil {
+		cfg.SourceManager = &SourceManagerConfig{
+			URL: defaultSourceManagerURL,
+		}
+	}
+	if cfg.SourceManager.URL == "" {
+		cfg.SourceManager.URL = defaultSourceManagerURL
+	}
 
 	// Set server defaults
 	if cfg.Server.Address == "" {
@@ -320,6 +343,17 @@ func (c *Config) GetRedisConfig() *RedisConfig {
 		}
 	}
 	return c.Redis
+}
+
+// GetSourceManagerConfig returns the source-manager configuration.
+func (c *Config) GetSourceManagerConfig() *SourceManagerConfig {
+	if c.SourceManager == nil {
+		// Return default config if not initialized
+		return &SourceManagerConfig{
+			URL: defaultSourceManagerURL,
+		}
+	}
+	return c.SourceManager
 }
 
 // setupDevelopmentLogging configures logging settings based on environment variables.
