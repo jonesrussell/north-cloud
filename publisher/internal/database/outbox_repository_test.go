@@ -556,3 +556,207 @@ func runGetByIDTests(t *testing.T) {
 		})
 	}
 }
+
+func TestOutboxRepository_FetchPending(t *testing.T) {
+	t.Helper()
+	runFetchPendingTests(t)
+}
+
+func runFetchPendingTests(t *testing.T) {
+	t.Helper()
+
+	db, mock, setupErr := sqlmock.New()
+	if setupErr != nil {
+		t.Fatalf("failed to create sqlmock: %v", setupErr)
+	}
+	defer db.Close()
+
+	repo := database.NewOutboxRepository(db)
+	ctx := context.Background()
+	now := time.Now()
+	limit := 10
+
+	testCases := []struct {
+		name       string
+		setupMock  func()
+		wantCount  int
+		wantErr    bool
+		checkOrder bool
+	}{
+		{
+			name: "returns pending entries with crime priority",
+			setupMock: func() {
+				rows := sqlmock.NewRows([]string{
+					"id", "content_id", "source_name", "index_name", "content_type", "topics",
+					"quality_score", "is_crime_related", "crime_subcategory",
+					"title", "body", "url", "published_date", "status", "retry_count",
+					"max_retries", "error_message", "created_at", "updated_at",
+					"published_at", "next_retry_at",
+				}).
+					AddRow("entry-1", "content-1", "news", "news_classified", "article",
+						pq.StringArray{"crime", "local"}, 85, true, "violent_crime",
+						"Crime Article", "Body", "https://example.com/1", now,
+						domain.OutboxStatusPublishing, 0, 5, nil, now, now, nil, nil).
+					AddRow("entry-2", "content-2", "news", "news_classified", "article",
+						pq.StringArray{"news"}, 75, false, nil,
+						"News Article", "Body", "https://example.com/2", now,
+						domain.OutboxStatusPublishing, 0, 5, nil, now, now, nil, nil)
+				mock.ExpectQuery("UPDATE classified_outbox").
+					WithArgs(limit).
+					WillReturnRows(rows)
+			},
+			wantCount:  2,
+			wantErr:    false,
+			checkOrder: true,
+		},
+		{
+			name: "returns empty when no pending entries",
+			setupMock: func() {
+				rows := sqlmock.NewRows([]string{
+					"id", "content_id", "source_name", "index_name", "content_type", "topics",
+					"quality_score", "is_crime_related", "crime_subcategory",
+					"title", "body", "url", "published_date", "status", "retry_count",
+					"max_retries", "error_message", "created_at", "updated_at",
+					"published_at", "next_retry_at",
+				})
+				mock.ExpectQuery("UPDATE classified_outbox").
+					WithArgs(limit).
+					WillReturnRows(rows)
+			},
+			wantCount: 0,
+			wantErr:   false,
+		},
+		{
+			name: "database error returns error",
+			setupMock: func() {
+				mock.ExpectQuery("UPDATE classified_outbox").
+					WithArgs(limit).
+					WillReturnError(sql.ErrConnDone)
+			},
+			wantCount: 0,
+			wantErr:   true,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			tc.setupMock()
+
+			entries, callErr := repo.FetchPending(ctx, limit)
+			if (callErr != nil) != tc.wantErr {
+				t.Errorf("FetchPending() error = %v, wantErr %v", callErr, tc.wantErr)
+			}
+
+			if len(entries) != tc.wantCount {
+				t.Errorf("FetchPending() returned %d entries, want %d", len(entries), tc.wantCount)
+			}
+
+			// Verify crime-related entries are prioritized (first)
+			if tc.checkOrder && len(entries) >= 2 {
+				if !entries[0].IsCrimeRelated {
+					t.Error("FetchPending() should prioritize crime-related entries first")
+				}
+			}
+
+			if expectErr := mock.ExpectationsWereMet(); expectErr != nil {
+				t.Errorf("unfulfilled expectations: %v", expectErr)
+			}
+		})
+	}
+}
+
+func TestOutboxRepository_FetchRetryable(t *testing.T) {
+	t.Helper()
+	runFetchRetryableTests(t)
+}
+
+func runFetchRetryableTests(t *testing.T) {
+	t.Helper()
+
+	db, mock, setupErr := sqlmock.New()
+	if setupErr != nil {
+		t.Fatalf("failed to create sqlmock: %v", setupErr)
+	}
+	defer db.Close()
+
+	repo := database.NewOutboxRepository(db)
+	ctx := context.Background()
+	now := time.Now()
+	limit := 10
+
+	testCases := []struct {
+		name      string
+		setupMock func()
+		wantCount int
+		wantErr   bool
+	}{
+		{
+			name: "returns retryable failed entries",
+			setupMock: func() {
+				nextRetry := now.Add(time.Hour)
+				rows := sqlmock.NewRows([]string{
+					"id", "content_id", "source_name", "index_name", "content_type", "topics",
+					"quality_score", "is_crime_related", "crime_subcategory",
+					"title", "body", "url", "published_date", "status", "retry_count",
+					"max_retries", "error_message", "created_at", "updated_at",
+					"published_at", "next_retry_at",
+				}).
+					AddRow("entry-1", "content-1", "news", "news_classified", "article",
+						pq.StringArray{"news"}, 80, false, nil,
+						"Article 1", "Body", "https://example.com/1", now,
+						domain.OutboxStatusPublishing, 2, 5, "timeout error", now, now, nil, &nextRetry)
+				mock.ExpectQuery("UPDATE classified_outbox").
+					WithArgs(limit).
+					WillReturnRows(rows)
+			},
+			wantCount: 1,
+			wantErr:   false,
+		},
+		{
+			name: "returns empty when no retryable entries",
+			setupMock: func() {
+				rows := sqlmock.NewRows([]string{
+					"id", "content_id", "source_name", "index_name", "content_type", "topics",
+					"quality_score", "is_crime_related", "crime_subcategory",
+					"title", "body", "url", "published_date", "status", "retry_count",
+					"max_retries", "error_message", "created_at", "updated_at",
+					"published_at", "next_retry_at",
+				})
+				mock.ExpectQuery("UPDATE classified_outbox").
+					WithArgs(limit).
+					WillReturnRows(rows)
+			},
+			wantCount: 0,
+			wantErr:   false,
+		},
+		{
+			name: "database error returns error",
+			setupMock: func() {
+				mock.ExpectQuery("UPDATE classified_outbox").
+					WithArgs(limit).
+					WillReturnError(sql.ErrConnDone)
+			},
+			wantCount: 0,
+			wantErr:   true,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			tc.setupMock()
+
+			entries, callErr := repo.FetchRetryable(ctx, limit)
+			if (callErr != nil) != tc.wantErr {
+				t.Errorf("FetchRetryable() error = %v, wantErr %v", callErr, tc.wantErr)
+			}
+
+			if len(entries) != tc.wantCount {
+				t.Errorf("FetchRetryable() returned %d entries, want %d", len(entries), tc.wantCount)
+			}
+
+			if expectErr := mock.ExpectationsWereMet(); expectErr != nil {
+				t.Errorf("unfulfilled expectations: %v", expectErr)
+			}
+		})
+	}
+}

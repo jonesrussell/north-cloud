@@ -17,11 +17,11 @@ import (
 
 type mockLogger struct{}
 
-func (m *mockLogger) Debug(_ string, _ ...infralogger.Field)       {}
-func (m *mockLogger) Info(_ string, _ ...infralogger.Field)        {}
-func (m *mockLogger) Warn(_ string, _ ...infralogger.Field)        {}
-func (m *mockLogger) Error(_ string, _ ...infralogger.Field)       {}
-func (m *mockLogger) Fatal(_ string, _ ...infralogger.Field)       {}
+func (m *mockLogger) Debug(_ string, _ ...infralogger.Field)         {}
+func (m *mockLogger) Info(_ string, _ ...infralogger.Field)          {}
+func (m *mockLogger) Warn(_ string, _ ...infralogger.Field)          {}
+func (m *mockLogger) Error(_ string, _ ...infralogger.Field)         {}
+func (m *mockLogger) Fatal(_ string, _ ...infralogger.Field)         {}
 func (m *mockLogger) With(_ ...infralogger.Field) infralogger.Logger { return m }
 func (m *mockLogger) Sync() error                                    { return nil }
 
