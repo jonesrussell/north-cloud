@@ -24,6 +24,10 @@ const (
 	DefaultMaxRedirects = 5
 	// DefaultCleanupInterval is the default interval for cleanup operations
 	DefaultCleanupInterval = 24 * time.Hour
+	// DefaultHTTPRetryMax is the default number of HTTP retries in OnError
+	DefaultHTTPRetryMax = 2
+	// DefaultHTTPRetryDelay is the default delay between HTTP retries
+	DefaultHTTPRetryDelay = 2 * time.Second
 )
 
 // Config represents the crawler configuration.
@@ -64,6 +68,24 @@ type Config struct {
 	CleanupInterval time.Duration `env:"CRAWLER_CLEANUP_INTERVAL" yaml:"cleanup_interval"`
 	// SaveDiscoveredLinks indicates whether to save discovered links to database for later processing
 	SaveDiscoveredLinks bool `env:"CRAWLER_SAVE_DISCOVERED_LINKS" yaml:"save_discovered_links"`
+	// UseRandomUserAgent enables RandomUserAgent extension (overrides UserAgent when true)
+	UseRandomUserAgent bool `env:"CRAWLER_USE_RANDOM_USER_AGENT" yaml:"use_random_user_agent"`
+	// UseReferer enables Referer extension
+	UseReferer bool `env:"CRAWLER_USE_REFERER" yaml:"use_referer"`
+	// MaxURLLength filters out URLs longer than this (0 = no filter)
+	MaxURLLength int `env:"CRAWLER_MAX_URL_LENGTH" yaml:"max_url_length"`
+	// MaxRequests caps total requests per crawl (0 = no limit)
+	MaxRequests uint32 `env:"CRAWLER_MAX_REQUESTS" yaml:"max_requests"`
+	// DetectCharset enables character encoding detection for non-UTF-8 responses
+	DetectCharset bool `env:"CRAWLER_DETECT_CHARSET" yaml:"detect_charset"`
+	// TraceHTTP enables HTTP trace collection on Response.Trace
+	TraceHTTP bool `env:"CRAWLER_TRACE_HTTP" yaml:"trace_http"`
+	// MaxBodySize is the maximum response body size in bytes (0 = use Colly default)
+	MaxBodySize int `env:"CRAWLER_MAX_BODY_SIZE" yaml:"max_body_size"`
+	// HTTPRetryMax is the maximum HTTP retries in OnError for transient failures
+	HTTPRetryMax int `env:"CRAWLER_HTTP_RETRY_MAX" yaml:"http_retry_max"`
+	// HTTPRetryDelay is the delay between HTTP retries in OnError
+	HTTPRetryDelay time.Duration `env:"CRAWLER_HTTP_RETRY_DELAY" yaml:"http_retry_delay"`
 }
 
 // Validate validates the crawler configuration.
@@ -82,6 +104,15 @@ func (c *Config) Validate() error {
 	}
 	if c.CleanupInterval <= 0 {
 		return errors.New("cleanup_interval must be positive")
+	}
+	if c.MaxURLLength < 0 {
+		return errors.New("max_url_length must be non-negative")
+	}
+	if c.HTTPRetryMax < 0 {
+		return errors.New("http_retry_max must be non-negative")
+	}
+	if c.MaxBodySize < 0 {
+		return errors.New("max_body_size must be non-negative")
 	}
 	return c.TLS.Validate()
 }

@@ -268,12 +268,17 @@ func (c *Consumer) claimAbandonedLoop(ctx context.Context) {
 	}
 }
 
+// xAutoClaimStartID is the stream ID from which XAUTOCLAIM scans the pending list.
+// Redis requires a valid stream ID; "0-0" means "start from the beginning".
+const xAutoClaimStartID = "0-0"
+
 func (c *Consumer) claimAbandonedMessages(ctx context.Context) {
 	messages, _, err := c.client.XAutoClaim(ctx, &redis.XAutoClaimArgs{
 		Stream:   infraevents.StreamName,
 		Group:    infraevents.ConsumerGroup,
 		Consumer: c.consumerID,
 		MinIdle:  claimIdleTimeout,
+		Start:    xAutoClaimStartID,
 		Count:    batchSize,
 	}).Result()
 
