@@ -359,6 +359,28 @@ func getPublisherTools() []Tool {
 			},
 		},
 		{
+			Name:        "create_channel",
+			Description: "Create a new publishing channel. Use when: User wants to set up a new Redis pub/sub topic for article routing. Returns: channel_id, name, and status. Channel names typically follow 'articles:{topic}' pattern (e.g., 'articles:crime', 'articles:news').",
+			InputSchema: map[string]any{
+				"type": "object",
+				"properties": map[string]any{
+					"name": map[string]any{
+						"type":        "string",
+						"description": "Channel name, typically 'articles:{topic}' (e.g., 'articles:crime', 'articles:local')",
+					},
+					"description": map[string]any{
+						"type":        "string",
+						"description": "Human-readable description of what this channel publishes",
+					},
+					"enabled": map[string]any{
+						"type":        "boolean",
+						"description": "Whether the channel is active (default: true)",
+					},
+				},
+				"required": []string{"name"},
+			},
+		},
+		{
 			Name:        "list_channels",
 			Description: "List all publishing channels. Use when: User wants to see available channels for routing or needs a channel_id for create_route/onboard_source. Returns: channel IDs, names, descriptions, and active status.",
 			InputSchema: map[string]any{

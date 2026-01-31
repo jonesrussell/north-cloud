@@ -378,12 +378,70 @@ func (c *PublisherClient) ListSources() ([]PublisherSource, error) {
 		return nil, fmt.Errorf("unexpected status code: %d, body: %s", resp.StatusCode, string(body))
 	}
 
-	var sources []PublisherSource
-	if err = json.Unmarshal(body, &sources); err != nil {
+	// Publisher returns {"sources": [...], "count": N}
+	var response struct {
+		Sources []PublisherSource `json:"sources"`
+		Count   int               `json:"count"`
+	}
+	if err = json.Unmarshal(body, &response); err != nil {
 		return nil, fmt.Errorf("failed to parse response: %w", err)
 	}
 
-	return sources, nil
+	return response.Sources, nil
+}
+
+// CreatePublisherSourceRequest represents a request to create a publisher source
+type CreatePublisherSourceRequest struct {
+	Name         string `json:"name"`
+	IndexPattern string `json:"index_pattern"`
+	Enabled      *bool  `json:"enabled,omitempty"`
+}
+
+// CreatePublisherSource creates a new publisher source (Elasticsearch index mapping)
+//
+//nolint:dupl // Similar HTTP client pattern across different services is acceptable
+func (c *PublisherClient) CreatePublisherSource(req CreatePublisherSourceRequest) (*PublisherSource, error) {
+	endpoint := fmt.Sprintf("%s/api/v1/sources", c.baseURL)
+
+	body, err := json.Marshal(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal request: %w", err)
+	}
+
+	httpReq, err := http.NewRequestWithContext(context.Background(), http.MethodPost, endpoint, bytes.NewReader(body))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	httpReq.Header.Set("Content-Type", "application/json")
+
+	resp, err := c.httpClient.Do(httpReq)
+	if err != nil {
+		return nil, fmt.Errorf("failed to execute request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response: %w", err)
+	}
+
+	if resp.StatusCode != http.StatusCreated && resp.StatusCode != http.StatusOK {
+		var errorResp struct {
+			Error string `json:"error"`
+		}
+		if jsonErr := json.Unmarshal(respBody, &errorResp); jsonErr == nil && errorResp.Error != "" {
+			return nil, fmt.Errorf("publisher error: %s", errorResp.Error)
+		}
+		return nil, fmt.Errorf("unexpected status code: %d, body: %s", resp.StatusCode, string(respBody))
+	}
+
+	var source PublisherSource
+	if err = json.Unmarshal(respBody, &source); err != nil {
+		return nil, fmt.Errorf("failed to parse response: %w", err)
+	}
+
+	return &source, nil
 }
 
 // ListChannels lists all channels

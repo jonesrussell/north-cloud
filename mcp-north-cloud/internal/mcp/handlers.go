@@ -83,7 +83,7 @@ func (s *Server) executeOnboardWorkflow(id any, args onboardSourceArgs) *Respons
 
 	// Step 3: Create publishing route (optional)
 	if args.ChannelID != "" {
-		stepsCompleted, err = s.onboardRouteStep(args, source.ID, result, stepsCompleted)
+		stepsCompleted, err = s.onboardRouteStep(args, result, stepsCompleted)
 		if err != nil {
 			result["route_error"] = err.Error()
 			result["steps_completed"] = stepsCompleted
@@ -132,26 +132,66 @@ func (s *Server) onboardCrawlStep(args onboardSourceArgs, sourceID string, resul
 	return steps, nil
 }
 
-func (s *Server) onboardRouteStep(args onboardSourceArgs, sourceID string, result map[string]any, steps []string) ([]string, error) {
+func (s *Server) onboardRouteStep(args onboardSourceArgs, result map[string]any, steps []string) ([]string, error) {
+	// First, create a publisher source (Elasticsearch index mapping)
+	// Sanitize name: lowercase, replace spaces/special chars with underscores
+	sanitizedName := sanitizeSourceName(args.Name)
+	indexPattern := sanitizedName + "_classified_content"
+
+	pubSource, err := s.publisherClient.CreatePublisherSource(client.CreatePublisherSourceRequest{
+		Name:         sanitizedName,
+		IndexPattern: indexPattern,
+	})
+	if err != nil {
+		return steps, fmt.Errorf("failed to create publisher source: %w", err)
+	}
+	result["publisher_source_id"] = pubSource.ID
+	result["index_pattern"] = indexPattern
+	steps = append(steps, "publisher_source_created")
+
+	// Now create the route using the publisher source ID
 	minQuality := args.MinQualityScore
 	if minQuality == 0 {
 		minQuality = defaultMinQualityScore
 	}
 
 	route, err := s.publisherClient.CreateRoute(client.CreateRouteRequest{
-		SourceID:        sourceID,
+		SourceID:        pubSource.ID,
 		ChannelID:       args.ChannelID,
 		MinQualityScore: minQuality,
 		Topics:          args.Topics,
 		Active:          true,
 	})
 	if err != nil {
-		return steps, err
+		return steps, fmt.Errorf("failed to create route: %w", err)
 	}
 
 	result["route_id"] = route.ID
 	result["channel_id"] = args.ChannelID
 	return append(steps, "route_created"), nil
+}
+
+// sanitizeSourceName converts a source name to a valid index prefix
+// e.g., "My News Site" → "my_news_site"
+func sanitizeSourceName(name string) string {
+	// Lowercase
+	result := strings.ToLower(name)
+	// Replace spaces and special chars with underscores
+	replacer := strings.NewReplacer(
+		" ", "_",
+		"-", "_",
+		".", "_",
+		"/", "_",
+		"\\", "_",
+	)
+	result = replacer.Replace(result)
+	// Remove consecutive underscores
+	for strings.Contains(result, "__") {
+		result = strings.ReplaceAll(result, "__", "_")
+	}
+	// Trim underscores from ends
+	result = strings.Trim(result, "_")
+	return result
 }
 
 // Crawler tool handlers
@@ -601,6 +641,40 @@ func (s *Server) handleListRoutes(id any, arguments json.RawMessage) *Response {
 		"total":  total,
 		"limit":  limit,
 		"offset": offset,
+	})
+}
+
+func (s *Server) handleCreateChannel(id any, arguments json.RawMessage) *Response {
+	var args struct {
+		Name        string `json:"name"`
+		Description string `json:"description"`
+		Enabled     *bool  `json:"enabled"`
+	}
+
+	if err := json.Unmarshal(arguments, &args); err != nil {
+		return s.errorResponse(id, InvalidParams, "Invalid arguments: "+err.Error())
+	}
+
+	if args.Name == "" {
+		return s.errorResponse(id, InvalidParams, "name is required")
+	}
+
+	channel, err := s.publisherClient.CreateChannel(client.CreateChannelRequest{
+		Name:        args.Name,
+		Description: args.Description,
+		Enabled:     args.Enabled,
+	})
+	if err != nil {
+		return s.errorResponse(id, InternalError, fmt.Sprintf("Failed to create channel: %v", err))
+	}
+
+	return s.successResponse(id, map[string]any{
+		"channel_id":  channel.ID,
+		"name":        channel.Name,
+		"description": channel.Description,
+		"enabled":     channel.Active,
+		"created_at":  channel.CreatedAt,
+		"message":     "Channel created successfully",
 	})
 }
 
