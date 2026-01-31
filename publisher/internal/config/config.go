@@ -231,11 +231,3 @@ func LoadWithSources(path string, sourcesClient interface {
 
 	return cfg, nil
 }
-
-// parseBool parses a string value as a boolean.
-// Returns true for "true", "1", "yes" (case-insensitive), false otherwise.
-// This function handles common boolean string representations.
-func parseBool(s string) bool {
-	s = strings.ToLower(strings.TrimSpace(s))
-	return s == "true" || s == "1" || s == "yes"
-}
