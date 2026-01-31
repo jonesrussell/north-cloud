@@ -139,31 +139,6 @@ func TestStringArray_Scan(t *testing.T) {
 	}
 }
 
-func TestSource_Validation(t *testing.T) {
-	validSource := models.Source{
-		ID:   "test-id",
-		Name: "Test Source",
-		URL:  "https://example.com",
-		Selectors: models.SelectorConfig{
-			Article: models.ArticleSelectors{
-				Title: "h1",
-				Body:  ".content",
-			},
-		},
-	}
-
-	// Test that valid source has all required fields
-	if validSource.ID == "" {
-		t.Error("Source.ID should not be empty")
-	}
-	if validSource.Name == "" {
-		t.Error("Source.Name should not be empty")
-	}
-	if validSource.URL == "" {
-		t.Error("Source.URL should not be empty")
-	}
-}
-
 func TestArticleSelectors_MergeWithDefaults(t *testing.T) {
 	tests := []struct {
 		name     string
