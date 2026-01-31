@@ -1,14 +1,18 @@
 package handlers
 
 import (
+	"fmt"
 	"net/http"
 	"strings"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
+	"github.com/jonesrussell/north-cloud/source-manager/internal/events"
 	"github.com/jonesrussell/north-cloud/source-manager/internal/importer"
 	"github.com/jonesrussell/north-cloud/source-manager/internal/metadata"
 	"github.com/jonesrussell/north-cloud/source-manager/internal/models"
 	"github.com/jonesrussell/north-cloud/source-manager/internal/repository"
+	infraevents "github.com/north-cloud/infrastructure/events"
 	infralogger "github.com/north-cloud/infrastructure/logger"
 )
 
@@ -31,14 +35,33 @@ type SourceHandler struct {
 	repo      *repository.SourceRepository
 	logger    infralogger.Logger
 	extractor *metadata.Extractor
+	publisher *events.Publisher
 }
 
-func NewSourceHandler(repo *repository.SourceRepository, log infralogger.Logger) *SourceHandler {
+func NewSourceHandler(repo *repository.SourceRepository, log infralogger.Logger, publisher *events.Publisher) *SourceHandler {
 	return &SourceHandler{
 		repo:      repo,
 		logger:    log,
 		extractor: metadata.NewExtractor(log),
+		publisher: publisher,
 	}
+}
+
+// defaultRateLimit is the default rate limit when parsing fails.
+const defaultRateLimit = 10
+
+// parseRateLimit parses a rate limit string like "10/s" to an integer.
+// Returns defaultRateLimit if parsing fails.
+func parseRateLimit(rateLimit string) int {
+	if rateLimit == "" {
+		return defaultRateLimit
+	}
+	var rate int
+	_, err := fmt.Sscanf(rateLimit, "%d", &rate)
+	if err != nil || rate <= 0 {
+		return defaultRateLimit
+	}
+	return rate
 }
 
 func (h *SourceHandler) Create(c *gin.Context) {
@@ -64,6 +87,23 @@ func (h *SourceHandler) Create(c *gin.Context) {
 		infralogger.String("source_id", source.ID),
 		infralogger.String("source_name", source.Name),
 	)
+
+	// Publish event asynchronously
+	if h.publisher != nil {
+		sourceID, _ := uuid.Parse(source.ID)
+		h.publisher.PublishAsync(infraevents.SourceEvent{
+			EventType: infraevents.SourceCreated,
+			SourceID:  sourceID,
+			Payload: infraevents.SourceCreatedPayload{
+				Name:      source.Name,
+				URL:       source.URL,
+				RateLimit: parseRateLimit(source.RateLimit),
+				MaxDepth:  source.MaxDepth,
+				Enabled:   source.Enabled,
+				Priority:  infraevents.PriorityNormal,
+			},
+		})
+	}
 
 	c.JSON(http.StatusCreated, source)
 }
@@ -129,6 +169,24 @@ func (h *SourceHandler) Update(c *gin.Context) {
 		infralogger.String("source_name", source.Name),
 	)
 
+	// Publish event asynchronously
+	if h.publisher != nil {
+		sourceID, _ := uuid.Parse(id)
+		h.publisher.PublishAsync(infraevents.SourceEvent{
+			EventType: infraevents.SourceUpdated,
+			SourceID:  sourceID,
+			Payload: infraevents.SourceUpdatedPayload{
+				ChangedFields: []string{}, // TODO: Track changed fields
+				Current: map[string]any{
+					"name":       source.Name,
+					"rate_limit": source.RateLimit,
+					"max_depth":  source.MaxDepth,
+					"enabled":    source.Enabled,
+				},
+			},
+		})
+	}
+
 	// Fetch updated source
 	updated, err := h.repo.GetByID(c.Request.Context(), id)
 	if err != nil {
@@ -154,6 +212,18 @@ func (h *SourceHandler) Delete(c *gin.Context) {
 	h.logger.Info("Source deleted",
 		infralogger.String("source_id", id),
 	)
+
+	// Publish event asynchronously
+	if h.publisher != nil {
+		sourceID, _ := uuid.Parse(id)
+		h.publisher.PublishAsync(infraevents.SourceEvent{
+			EventType: infraevents.SourceDeleted,
+			SourceID:  sourceID,
+			Payload: infraevents.SourceDeletedPayload{
+				DeletionReason: "user_requested",
+			},
+		})
+	}
 
 	c.JSON(http.StatusNoContent, nil)
 }

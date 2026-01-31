@@ -12,16 +12,14 @@ import (
 // ClassifierClient is a client for the classifier API
 type ClassifierClient struct {
 	baseURL    string
-	httpClient *http.Client
+	httpClient *AuthenticatedClient
 }
 
 // NewClassifierClient creates a new classifier client
-func NewClassifierClient(baseURL string) *ClassifierClient {
+func NewClassifierClient(baseURL string, authClient *AuthenticatedClient) *ClassifierClient {
 	return &ClassifierClient{
-		baseURL: baseURL,
-		httpClient: &http.Client{
-			Timeout: defaultHTTPTimeout,
-		},
+		baseURL:    baseURL,
+		httpClient: authClient,
 	}
 }
 

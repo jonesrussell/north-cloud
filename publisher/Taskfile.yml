@@ -3,10 +3,10 @@ version: '3'
 dotenv: ['../.env']
 
 vars:
-  BINARY_NAME: integration
+  BINARY_NAME: publisher
   MAIN_PATH: ./main.go
   BUILD_DIR: ./bin
-  DOCKER_IMAGE: gopost-integration
+  DOCKER_IMAGE: north-cloud-publisher
   CONFIG_FILE: config.yml
 
 tasks:
@@ -63,6 +63,11 @@ tasks:
     deps: [deps]
     cmds:
       - go test -race ./...
+
+  vuln:
+    desc: "Run vulnerability check"
+    cmds:
+      - govulncheck ./...
 
   bench:
     desc: "Run benchmarks"
@@ -126,7 +131,7 @@ tasks:
     cmds:
       - go fmt ./...
       - go vet ./...
-      - golangci-lint run
+      - golangci-lint run --config ../.golangci.yml ./...
 
   check:
     desc: Run all code quality checks (fmt, vet, lint)

@@ -7,9 +7,11 @@ import (
 	"github.com/jonesrussell/north-cloud/source-manager/internal/api"
 	"github.com/jonesrussell/north-cloud/source-manager/internal/config"
 	"github.com/jonesrussell/north-cloud/source-manager/internal/database"
+	"github.com/jonesrussell/north-cloud/source-manager/internal/events"
 	"github.com/jonesrussell/north-cloud/source-manager/internal/repository"
 	infralogger "github.com/north-cloud/infrastructure/logger"
 	"github.com/north-cloud/infrastructure/profiling"
+	infraredis "github.com/north-cloud/infrastructure/redis"
 )
 
 var (
@@ -87,8 +89,28 @@ func main() {
 	// Initialize repository
 	sourceRepo := repository.NewSourceRepository(db.DB(), appLogger)
 
+	// Initialize event publisher (if Redis events enabled)
+	var publisher *events.Publisher
+	if cfg.Redis.Enabled {
+		redisClient, redisErr := infraredis.NewClient(infraredis.Config{
+			Address:  cfg.Redis.Address,
+			Password: cfg.Redis.Password,
+			DB:       cfg.Redis.DB,
+		})
+		if redisErr != nil {
+			appLogger.Warn("Redis not available, events disabled",
+				infralogger.Error(redisErr),
+			)
+		} else {
+			publisher = events.NewPublisher(redisClient, appLogger)
+			appLogger.Info("Event publisher initialized",
+				infralogger.String("redis_address", cfg.Redis.Address),
+			)
+		}
+	}
+
 	// Initialize server using infrastructure gin
-	server := api.NewServer(sourceRepo, cfg, appLogger)
+	server := api.NewServer(sourceRepo, cfg, appLogger, publisher)
 
 	appLogger.Info("Starting HTTP server",
 		infralogger.String("host", cfg.Server.Host),

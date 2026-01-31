@@ -8,10 +8,193 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/jonesrussell/north-cloud/mcp-north-cloud/internal/client"
 )
+
+// Workflow tool handlers (high-level, multi-service)
+
+const defaultMinQualityScore = 50
+
+// onboardSourceArgs holds the arguments for onboarding a source
+type onboardSourceArgs struct {
+	Name                 string         `json:"name"`
+	URL                  string         `json:"url"`
+	SourceType           string         `json:"source_type"`
+	Selectors            map[string]any `json:"selectors"`
+	CrawlIntervalMinutes int            `json:"crawl_interval_minutes"`
+	CrawlIntervalType    string         `json:"crawl_interval_type"`
+	ChannelID            string         `json:"channel_id"`
+	MinQualityScore      int            `json:"min_quality_score"`
+	Topics               []string       `json:"topics"`
+}
+
+func (s *Server) handleOnboardSource(id any, arguments json.RawMessage) *Response {
+	var args onboardSourceArgs
+	if err := json.Unmarshal(arguments, &args); err != nil {
+		return s.errorResponse(id, InvalidParams, "Invalid arguments: "+err.Error())
+	}
+
+	if errResp := s.validateOnboardArgs(id, args); errResp != nil {
+		return errResp
+	}
+
+	return s.executeOnboardWorkflow(id, args)
+}
+
+func (s *Server) validateOnboardArgs(id any, args onboardSourceArgs) *Response {
+	if args.Name == "" || args.URL == "" || args.SourceType == "" || args.Selectors == nil {
+		return s.errorResponse(id, InvalidParams, "name, url, source_type, and selectors are required")
+	}
+	if args.CrawlIntervalMinutes > 0 && args.CrawlIntervalType == "" {
+		return s.errorResponse(id, InvalidParams, "crawl_interval_type is required when crawl_interval_minutes is set")
+	}
+	return nil
+}
+
+func (s *Server) executeOnboardWorkflow(id any, args onboardSourceArgs) *Response {
+	const maxOnboardSteps = 3
+	result := map[string]any{}
+	stepsCompleted := make([]string, 0, maxOnboardSteps)
+
+	// Step 1: Create the source
+	source, err := s.sourceClient.CreateSource(client.CreateSourceRequest{
+		Name:      args.Name,
+		URL:       args.URL,
+		Type:      args.SourceType,
+		Selectors: args.Selectors,
+		Active:    true,
+	})
+	if err != nil {
+		return s.errorResponse(id, InternalError, fmt.Sprintf("Failed to create source: %v", err))
+	}
+	result["source_id"] = source.ID
+	result["source_name"] = source.Name
+	stepsCompleted = append(stepsCompleted, "source_created")
+
+	// Step 2: Start or schedule crawl
+	stepsCompleted, err = s.onboardCrawlStep(args, source.ID, result, stepsCompleted)
+	if err != nil {
+		result["crawl_error"] = err.Error()
+		result["steps_completed"] = stepsCompleted
+		return s.successResponse(id, result)
+	}
+
+	// Step 3: Create publishing route (optional)
+	if args.ChannelID != "" {
+		stepsCompleted, err = s.onboardRouteStep(args, result, stepsCompleted)
+		if err != nil {
+			result["route_error"] = err.Error()
+			result["steps_completed"] = stepsCompleted
+			return s.successResponse(id, result)
+		}
+	}
+
+	result["steps_completed"] = stepsCompleted
+	result["message"] = fmt.Sprintf("Source '%s' onboarded successfully with %d steps completed", args.Name, len(stepsCompleted))
+	return s.successResponse(id, result)
+}
+
+func (s *Server) onboardCrawlStep(args onboardSourceArgs, sourceID string, result map[string]any, steps []string) ([]string, error) {
+	var job *client.Job
+	var err error
+
+	if args.CrawlIntervalMinutes > 0 {
+		job, err = s.crawlerClient.CreateJob(client.CreateJobRequest{
+			SourceID:        sourceID,
+			URL:             args.URL,
+			ScheduleEnabled: true,
+			IntervalMinutes: args.CrawlIntervalMinutes,
+			IntervalType:    args.CrawlIntervalType,
+		})
+		if err != nil {
+			return steps, err
+		}
+		result["crawl_scheduled"] = true
+		result["crawl_interval"] = fmt.Sprintf("%d %s", args.CrawlIntervalMinutes, args.CrawlIntervalType)
+		steps = append(steps, "crawl_scheduled")
+	} else {
+		job, err = s.crawlerClient.CreateJob(client.CreateJobRequest{
+			SourceID:        sourceID,
+			URL:             args.URL,
+			ScheduleEnabled: false,
+		})
+		if err != nil {
+			return steps, err
+		}
+		result["crawl_scheduled"] = false
+		steps = append(steps, "crawl_started")
+	}
+
+	result["job_id"] = job.ID
+	result["job_status"] = job.Status
+	return steps, nil
+}
+
+func (s *Server) onboardRouteStep(args onboardSourceArgs, result map[string]any, steps []string) ([]string, error) {
+	// First, create a publisher source (Elasticsearch index mapping)
+	// Sanitize name: lowercase, replace spaces/special chars with underscores
+	sanitizedName := sanitizeSourceName(args.Name)
+	indexPattern := sanitizedName + "_classified_content"
+
+	pubSource, err := s.publisherClient.CreatePublisherSource(client.CreatePublisherSourceRequest{
+		Name:         sanitizedName,
+		IndexPattern: indexPattern,
+	})
+	if err != nil {
+		return steps, fmt.Errorf("failed to create publisher source: %w", err)
+	}
+	result["publisher_source_id"] = pubSource.ID
+	result["index_pattern"] = indexPattern
+	steps = append(steps, "publisher_source_created")
+
+	// Now create the route using the publisher source ID
+	minQuality := args.MinQualityScore
+	if minQuality == 0 {
+		minQuality = defaultMinQualityScore
+	}
+
+	route, err := s.publisherClient.CreateRoute(client.CreateRouteRequest{
+		SourceID:        pubSource.ID,
+		ChannelID:       args.ChannelID,
+		MinQualityScore: minQuality,
+		Topics:          args.Topics,
+		Active:          true,
+	})
+	if err != nil {
+		return steps, fmt.Errorf("failed to create route: %w", err)
+	}
+
+	result["route_id"] = route.ID
+	result["channel_id"] = args.ChannelID
+	return append(steps, "route_created"), nil
+}
+
+// sanitizeSourceName converts a source name to a valid index prefix
+// e.g., "My News Site" → "my_news_site"
+func sanitizeSourceName(name string) string {
+	// Lowercase
+	result := strings.ToLower(name)
+	// Replace spaces and special chars with underscores
+	replacer := strings.NewReplacer(
+		" ", "_",
+		"-", "_",
+		".", "_",
+		"/", "_",
+		"\\", "_",
+	)
+	result = replacer.Replace(result)
+	// Remove consecutive underscores
+	for strings.Contains(result, "__") {
+		result = strings.ReplaceAll(result, "__", "_")
+	}
+	// Trim underscores from ends
+	result = strings.Trim(result, "_")
+	return result
+}
 
 // Crawler tool handlers
 
@@ -98,30 +281,57 @@ func (s *Server) handleScheduleCrawl(id any, arguments json.RawMessage) *Respons
 	})
 }
 
+const (
+	defaultLimit = 20
+	maxLimit     = 100
+)
+
 func (s *Server) handleListCrawlJobs(id any, arguments json.RawMessage) *Response {
 	var args struct {
 		Status string `json:"status"`
+		Limit  int    `json:"limit"`
+		Offset int    `json:"offset"`
 	}
 
-	if err := json.Unmarshal(arguments, &args); err != nil {
-		// Empty args is okay for listing all jobs
-		args.Status = ""
-	}
+	_ = json.Unmarshal(arguments, &args) // Empty args is okay
 
 	jobs, err := s.crawlerClient.ListJobs(args.Status)
 	if err != nil {
 		return s.errorResponse(id, InternalError, fmt.Sprintf("Failed to list jobs: %v", err))
 	}
 
+	// Apply pagination in MCP layer (until backend supports it)
+	total := len(jobs)
+	limit := max(args.Limit, 0)
+	if limit == 0 {
+		limit = defaultLimit
+	}
+	limit = min(limit, maxLimit)
+
+	offset := max(args.Offset, 0)
+
+	// Slice the results
+	var paginatedJobs []client.Job
+	if offset >= total {
+		paginatedJobs = []client.Job{}
+	} else {
+		end := min(offset+limit, total)
+		paginatedJobs = jobs[offset:end]
+	}
+
 	return s.successResponse(id, map[string]any{
-		"jobs":  jobs,
-		"count": len(jobs),
+		"jobs":   paginatedJobs,
+		"count":  len(paginatedJobs),
+		"total":  total,
+		"limit":  limit,
+		"offset": offset,
 	})
 }
 
-func (s *Server) handlePauseCrawlJob(id any, arguments json.RawMessage) *Response {
+func (s *Server) handleControlCrawlJob(id any, arguments json.RawMessage) *Response {
 	var args struct {
-		JobID string `json:"job_id"`
+		JobID  string `json:"job_id"`
+		Action string `json:"action"`
 	}
 
 	if err := json.Unmarshal(arguments, &args); err != nil {
@@ -132,65 +342,37 @@ func (s *Server) handlePauseCrawlJob(id any, arguments json.RawMessage) *Respons
 		return s.errorResponse(id, InvalidParams, "job_id is required")
 	}
 
-	job, err := s.crawlerClient.PauseJob(args.JobID)
+	if args.Action == "" {
+		return s.errorResponse(id, InvalidParams, "action is required")
+	}
+
+	var job *client.Job
+	var err error
+	var actionMessage string
+
+	switch args.Action {
+	case "pause":
+		job, err = s.crawlerClient.PauseJob(args.JobID)
+		actionMessage = "paused"
+	case "resume":
+		job, err = s.crawlerClient.ResumeJob(args.JobID)
+		actionMessage = "resumed"
+	case "cancel":
+		job, err = s.crawlerClient.CancelJob(args.JobID)
+		actionMessage = "cancelled"
+	default:
+		return s.errorResponse(id, InvalidParams, "action must be 'pause', 'resume', or 'cancel'")
+	}
+
 	if err != nil {
-		return s.errorResponse(id, InternalError, fmt.Sprintf("Failed to pause job: %v", err))
+		return s.errorResponse(id, InternalError, fmt.Sprintf("Failed to %s job: %v", args.Action, err))
 	}
 
 	return s.successResponse(id, map[string]any{
 		"job_id":  job.ID,
 		"status":  job.Status,
-		"message": "Job paused successfully",
-	})
-}
-
-func (s *Server) handleResumeCrawlJob(id any, arguments json.RawMessage) *Response {
-	var args struct {
-		JobID string `json:"job_id"`
-	}
-
-	if err := json.Unmarshal(arguments, &args); err != nil {
-		return s.errorResponse(id, InvalidParams, "Invalid arguments: "+err.Error())
-	}
-
-	if args.JobID == "" {
-		return s.errorResponse(id, InvalidParams, "job_id is required")
-	}
-
-	job, err := s.crawlerClient.ResumeJob(args.JobID)
-	if err != nil {
-		return s.errorResponse(id, InternalError, fmt.Sprintf("Failed to resume job: %v", err))
-	}
-
-	return s.successResponse(id, map[string]any{
-		"job_id":  job.ID,
-		"status":  job.Status,
-		"message": "Job resumed successfully",
-	})
-}
-
-func (s *Server) handleCancelCrawlJob(id any, arguments json.RawMessage) *Response {
-	var args struct {
-		JobID string `json:"job_id"`
-	}
-
-	if err := json.Unmarshal(arguments, &args); err != nil {
-		return s.errorResponse(id, InvalidParams, "Invalid arguments: "+err.Error())
-	}
-
-	if args.JobID == "" {
-		return s.errorResponse(id, InvalidParams, "job_id is required")
-	}
-
-	job, err := s.crawlerClient.CancelJob(args.JobID)
-	if err != nil {
-		return s.errorResponse(id, InternalError, fmt.Sprintf("Failed to cancel job: %v", err))
-	}
-
-	return s.successResponse(id, map[string]any{
-		"job_id":  job.ID,
-		"status":  job.Status,
-		"message": "Job cancelled successfully",
+		"action":  args.Action,
+		"message": fmt.Sprintf("Job %s successfully", actionMessage),
 	})
 }
 
@@ -256,15 +438,43 @@ func (s *Server) handleAddSource(id any, arguments json.RawMessage) *Response {
 	})
 }
 
-func (s *Server) handleListSources(id any, _ json.RawMessage) *Response {
+func (s *Server) handleListSources(id any, arguments json.RawMessage) *Response {
+	var args struct {
+		Limit  int `json:"limit"`
+		Offset int `json:"offset"`
+	}
+
+	_ = json.Unmarshal(arguments, &args) // Empty args is okay
+
 	sources, err := s.sourceClient.ListSources()
 	if err != nil {
 		return s.errorResponse(id, InternalError, fmt.Sprintf("Failed to list sources: %v", err))
 	}
 
+	// Apply pagination in MCP layer
+	total := len(sources)
+	limit := max(args.Limit, 0)
+	if limit == 0 {
+		limit = defaultLimit
+	}
+	limit = min(limit, maxLimit)
+
+	offset := max(args.Offset, 0)
+
+	var paginatedSources []client.Source
+	if offset >= total {
+		paginatedSources = []client.Source{}
+	} else {
+		end := min(offset+limit, total)
+		paginatedSources = sources[offset:end]
+	}
+
 	return s.successResponse(id, map[string]any{
-		"sources": sources,
-		"count":   len(sources),
+		"sources": paginatedSources,
+		"count":   len(paginatedSources),
+		"total":   total,
+		"limit":   limit,
+		"offset":  offset,
 	})
 }
 
@@ -399,22 +609,103 @@ func (s *Server) handleListRoutes(id any, arguments json.RawMessage) *Response {
 	var args struct {
 		SourceID  string `json:"source_id"`
 		ChannelID string `json:"channel_id"`
+		Limit     int    `json:"limit"`
+		Offset    int    `json:"offset"`
 	}
 
-	if err := json.Unmarshal(arguments, &args); err != nil {
-		// Empty args is okay
-		args.SourceID = ""
-		args.ChannelID = ""
-	}
+	_ = json.Unmarshal(arguments, &args) // Empty args is okay
 
 	routes, err := s.publisherClient.ListRoutes(args.SourceID, args.ChannelID)
 	if err != nil {
 		return s.errorResponse(id, InternalError, fmt.Sprintf("Failed to list routes: %v", err))
 	}
 
+	// Apply pagination in MCP layer
+	total := len(routes)
+	limit := max(args.Limit, 0)
+	if limit == 0 {
+		limit = defaultLimit
+	}
+	limit = min(limit, maxLimit)
+
+	offset := max(args.Offset, 0)
+
+	if offset >= total {
+		routes = []client.Route{}
+	} else {
+		end := min(offset+limit, total)
+		routes = routes[offset:end]
+	}
+
 	return s.successResponse(id, map[string]any{
 		"routes": routes,
 		"count":  len(routes),
+		"total":  total,
+		"limit":  limit,
+		"offset": offset,
+	})
+}
+
+func (s *Server) handleCreateChannel(id any, arguments json.RawMessage) *Response {
+	var args struct {
+		Name        string `json:"name"`
+		Description string `json:"description"`
+		Enabled     *bool  `json:"enabled"`
+	}
+
+	if err := json.Unmarshal(arguments, &args); err != nil {
+		return s.errorResponse(id, InvalidParams, "Invalid arguments: "+err.Error())
+	}
+
+	if args.Name == "" {
+		return s.errorResponse(id, InvalidParams, "name is required")
+	}
+
+	channel, err := s.publisherClient.CreateChannel(client.CreateChannelRequest{
+		Name:        args.Name,
+		Description: args.Description,
+		Enabled:     args.Enabled,
+	})
+	if err != nil {
+		return s.errorResponse(id, InternalError, fmt.Sprintf("Failed to create channel: %v", err))
+	}
+
+	return s.successResponse(id, map[string]any{
+		"channel_id":  channel.ID,
+		"name":        channel.Name,
+		"description": channel.Description,
+		"enabled":     channel.Active,
+		"created_at":  channel.CreatedAt,
+		"message":     "Channel created successfully",
+	})
+}
+
+func (s *Server) handleListChannels(id any, arguments json.RawMessage) *Response {
+	var args struct {
+		ActiveOnly bool `json:"active_only"`
+	}
+
+	_ = json.Unmarshal(arguments, &args) // Empty args is okay
+
+	channels, err := s.publisherClient.ListChannels()
+	if err != nil {
+		return s.errorResponse(id, InternalError, fmt.Sprintf("Failed to list channels: %v", err))
+	}
+
+	// Filter by active if requested
+	if args.ActiveOnly {
+		filtered := make([]client.Channel, 0, len(channels))
+		for i := range channels {
+			if channels[i].Active {
+				filtered = append(filtered, channels[i])
+			}
+		}
+		channels = filtered
+	}
+
+	return s.successResponse(id, map[string]any{
+		"channels": channels,
+		"count":    len(channels),
 	})
 }
 
@@ -474,7 +765,15 @@ func (s *Server) handleGetPublishHistory(id any, arguments json.RawMessage) *Res
 
 	_ = json.Unmarshal(arguments, &args) // Empty args is okay, use defaults
 
-	history, err := s.publisherClient.GetPublishHistory(args.ChannelName, args.Limit, args.Offset)
+	// Apply limit/offset defaults and cap (Phase E: response size safeguard)
+	limit := max(args.Limit, 0)
+	if limit == 0 {
+		limit = 50 // Tool schema default for publish history
+	}
+	limit = min(limit, maxLimit)
+	offset := max(args.Offset, 0)
+
+	history, err := s.publisherClient.GetPublishHistory(args.ChannelName, limit, offset)
 	if err != nil {
 		return s.errorResponse(id, InternalError, fmt.Sprintf("Failed to get publish history: %v", err))
 	}
@@ -482,6 +781,8 @@ func (s *Server) handleGetPublishHistory(id any, arguments json.RawMessage) *Res
 	return s.successResponse(id, map[string]any{
 		"history": history,
 		"count":   len(history),
+		"limit":   limit,
+		"offset":  offset,
 	})
 }
 
@@ -538,19 +839,49 @@ func (s *Server) handleClassifyArticle(id any, arguments json.RawMessage) *Respo
 
 // Index Manager tool handlers
 
-func (s *Server) handleListIndexes(id any, _ json.RawMessage) *Response {
+func (s *Server) handleListIndexes(id any, arguments json.RawMessage) *Response {
+	var args struct {
+		Limit  int `json:"limit"`
+		Offset int `json:"offset"`
+	}
+
+	_ = json.Unmarshal(arguments, &args) // Empty args is okay
+
 	indexes, err := s.indexClient.ListIndices()
 	if err != nil {
 		return s.errorResponse(id, InternalError, fmt.Sprintf("Failed to list indexes: %v", err))
 	}
 
+	// Apply pagination in MCP layer
+	total := len(indexes)
+	limit := max(args.Limit, 0)
+	if limit == 0 {
+		limit = defaultLimit
+	}
+	limit = min(limit, maxLimit)
+
+	offset := max(args.Offset, 0)
+
+	var paginatedIndexes []string
+	if offset >= total {
+		paginatedIndexes = []string{}
+	} else {
+		end := min(offset+limit, total)
+		paginatedIndexes = indexes[offset:end]
+	}
+
 	return s.successResponse(id, map[string]any{
-		"indexes": indexes,
-		"count":   len(indexes),
+		"indexes": paginatedIndexes,
+		"count":   len(paginatedIndexes),
+		"total":   total,
+		"limit":   limit,
+		"offset":  offset,
 	})
 }
 
 // Development tool handlers
+
+const taskTest = "test"
 
 func (s *Server) handleLintFile(id any, arguments json.RawMessage) *Response {
 	var args struct {
@@ -714,6 +1045,134 @@ func (s *Server) executeLintCommand(id any, lintCommand *exec.Cmd, lintType, ser
 	}
 
 	return s.successResponse(id, result)
+}
+
+func (s *Server) handleBuildService(id any, arguments json.RawMessage) *Response {
+	var args struct {
+		ServiceName string `json:"service_name"`
+	}
+	if err := json.Unmarshal(arguments, &args); err != nil {
+		return s.errorResponse(id, InvalidParams, "Invalid arguments: "+err.Error())
+	}
+	if args.ServiceName == "" {
+		return s.errorResponse(id, InvalidParams, "service_name is required")
+	}
+	return s.executeBuildTestCommand(id, args.ServiceName, "build", false)
+}
+
+func (s *Server) handleTestService(id any, arguments json.RawMessage) *Response {
+	var args struct {
+		ServiceName  string `json:"service_name"`
+		WithCoverage bool   `json:"with_coverage"`
+	}
+	if err := json.Unmarshal(arguments, &args); err != nil {
+		return s.errorResponse(id, InvalidParams, "Invalid arguments: "+err.Error())
+	}
+	if args.ServiceName == "" {
+		return s.errorResponse(id, InvalidParams, "service_name is required")
+	}
+	taskName := taskTest
+	if args.WithCoverage {
+		taskName = "test:coverage"
+	}
+	return s.executeBuildTestCommand(id, args.ServiceName, taskName, true)
+}
+
+// executeBuildTestCommand runs build or test for a service and returns structured output.
+func (s *Server) executeBuildTestCommand(id any, serviceName, taskName string, isTest bool) *Response {
+	projectRoot := s.detectProjectRoot()
+	if projectRoot == "" {
+		return s.errorResponse(id, InvalidParams, "Could not determine project root")
+	}
+	serviceDir := filepath.Join(projectRoot, serviceName)
+	ctx := context.Background()
+
+	var cmd *exec.Cmd
+	var isGo bool
+	if _, statErr := os.Stat(filepath.Join(serviceDir, "Taskfile.yml")); statErr == nil {
+		_, goModErr := os.Stat(filepath.Join(serviceDir, "go.mod"))
+		isGo = (goModErr == nil)
+		// Frontend services (dashboard, search-frontend) have Taskfile but no test:coverage
+		runTask := taskName
+		if taskName == "test:coverage" && !isGo {
+			runTask = taskTest
+		}
+		cmd = exec.CommandContext(ctx, "task", runTask)
+		cmd.Dir = serviceDir
+	} else if _, pkgJSONErr := os.Stat(filepath.Join(serviceDir, "package.json")); pkgJSONErr == nil {
+		isGo = false
+		script := "build"
+		if isTest {
+			script = taskTest
+		}
+		cmd = exec.CommandContext(ctx, "npm", "run", script)
+		cmd.Dir = serviceDir
+	} else {
+		return s.errorResponse(id, InvalidParams,
+			fmt.Sprintf("service '%s' not found or doesn't have Taskfile.yml or package.json", serviceName))
+	}
+
+	output, err := cmd.CombinedOutput()
+	outputStr := string(output)
+
+	result := map[string]any{
+		"success": err == nil,
+		"service": serviceName,
+		"command": strings.Join(cmd.Args, " "),
+		"output":  outputStr,
+	}
+	populateBuildTestErrorResult(result, cmd, err, outputStr, isGo)
+
+	return s.successResponse(id, result)
+}
+
+func populateBuildTestErrorResult(result map[string]any, cmd *exec.Cmd, cmdErr error, outputStr string, isGo bool) {
+	if cmdErr == nil {
+		return
+	}
+	result["error"] = cmdErr.Error()
+	if cmd.ProcessState != nil {
+		result["exit_code"] = cmd.ProcessState.ExitCode()
+	} else {
+		result["exit_code"] = -1
+	}
+	if isGo {
+		if parsed := parseGoErrors(outputStr); len(parsed) > 0 {
+			result["errors"] = parsed
+		}
+	}
+}
+
+// goError represents a parsed Go compiler or test error.
+type goError struct {
+	File    string `json:"file"`
+	Line    int    `json:"line"`
+	Column  int    `json:"column,omitempty"`
+	Message string `json:"message"`
+}
+
+// parseGoErrors extracts file:line:column: message patterns from Go build/test output.
+func parseGoErrors(output string) []goError {
+	// Matches: path/to/file.go:42:5: message or path/to/file.go:42: message
+	re := regexp.MustCompile(`(?m)^([^:]+):(\d+)(?::(\d+))?:\s*(.+)$`)
+	matches := re.FindAllStringSubmatch(output, -1)
+	if len(matches) == 0 {
+		return nil
+	}
+	errs := make([]goError, 0, len(matches))
+	for _, m := range matches {
+		e := goError{File: m[1], Message: m[4]}
+		if line, err := strconv.Atoi(m[2]); err == nil {
+			e.Line = line
+		}
+		if m[3] != "" {
+			if col, colErr := strconv.Atoi(m[3]); colErr == nil {
+				e.Column = col
+			}
+		}
+		errs = append(errs, e)
+	}
+	return errs
 }
 
 // Helper methods

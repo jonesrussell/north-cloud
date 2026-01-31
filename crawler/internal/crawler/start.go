@@ -121,7 +121,7 @@ func (c *Crawler) validateAndSetup(ctx context.Context, sourceID string) (*confi
 	c.crawlContextMu.Unlock()
 
 	// Set up collector
-	if setupErr := c.setupCollector(source); setupErr != nil {
+	if setupErr := c.setupCollector(ctx, source); setupErr != nil {
 		return nil, fmt.Errorf("failed to setup collector: %w", setupErr)
 	}
 

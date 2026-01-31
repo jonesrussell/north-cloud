@@ -3,10 +3,11 @@ package mcp
 // getAllTools returns all available MCP tools grouped by service
 func getAllTools() []Tool {
 	const (
-		toolGroupCount         = 7
+		toolGroupCount         = 8
 		estimatedToolsPerGroup = 8
 	)
 	tools := make([]Tool, 0, toolGroupCount*estimatedToolsPerGroup)
+	tools = append(tools, getWorkflowTools()...)
 	tools = append(tools, getCrawlerTools()...)
 	tools = append(tools, getSourceManagerTools()...)
 	tools = append(tools, getPublisherTools()...)
@@ -15,6 +16,65 @@ func getAllTools() []Tool {
 	tools = append(tools, getIndexManagerTools()...)
 	tools = append(tools, getDevelopmentTools()...)
 	return tools
+}
+
+// getWorkflowTools returns high-level workflow tools that orchestrate multiple services
+func getWorkflowTools() []Tool {
+	return []Tool{
+		{
+			Name: "onboard_source",
+			Description: "Set up a complete content pipeline in one step: creates a source, starts crawling, " +
+				"and optionally configures a publishing route. Use when: User wants to add a new website/source and start crawling. " +
+				"Returns: source_id, job_id, optional route_id. Prefer over add_source + schedule_crawl for new sources.",
+			InputSchema: map[string]any{
+				"type": "object",
+				"properties": map[string]any{
+					"name": map[string]any{
+						"type":        "string",
+						"description": "Name of the source (e.g., 'Example News')",
+					},
+					"url": map[string]any{
+						"type":        "string",
+						"description": "Base URL of the source to crawl",
+					},
+					"source_type": map[string]any{
+						"type":        "string",
+						"description": "Type of source (e.g., 'news', 'blog')",
+					},
+					"selectors": map[string]any{
+						"type": "object",
+						"description": "CSS selectors for content extraction. Minimal: {title: 'h1', body: 'article'}. " +
+							"Optional: date (e.g. 'time[datetime]'), author (e.g. '.byline').",
+					},
+					"crawl_interval_minutes": map[string]any{
+						"type":        "integer",
+						"description": "Crawl interval in minutes (optional, omit for one-time crawl)",
+					},
+					"crawl_interval_type": map[string]any{
+						"type":        "string",
+						"description": "Interval type: 'minutes', 'hours', or 'days' (required if crawl_interval_minutes set)",
+						"enum":        []string{"minutes", "hours", "days"},
+					},
+					"channel_id": map[string]any{
+						"type":        "string",
+						"description": "Channel ID to publish to (optional, omit to skip route creation)",
+					},
+					"min_quality_score": map[string]any{
+						"type":        "integer",
+						"description": "Minimum quality score for publishing (0-100, default: 50, only used if channel_id provided)",
+					},
+					"topics": map[string]any{
+						"type":        "array",
+						"description": "Topics to filter by when publishing (optional)",
+						"items": map[string]any{
+							"type": "string",
+						},
+					},
+				},
+				"required": []string{"name", "url", "source_type", "selectors"},
+			},
+		},
+	}
 }
 
 //nolint:funlen // Tool definitions are data structures, not complex logic
@@ -67,7 +127,7 @@ func getCrawlerTools() []Tool {
 		},
 		{
 			Name:        "list_crawl_jobs",
-			Description: "List all crawl jobs with optional status filter.",
+			Description: "List all crawl jobs with optional status filter and pagination.",
 			InputSchema: map[string]any{
 				"type": "object",
 				"properties": map[string]any{
@@ -76,49 +136,34 @@ func getCrawlerTools() []Tool {
 						"description": "Filter by status (pending, scheduled, running, completed, failed, paused, cancelled)",
 						"enum":        []string{"pending", "scheduled", "running", "completed", "failed", "paused", "cancelled"},
 					},
+					"limit": map[string]any{
+						"type":        "integer",
+						"description": "Maximum number of jobs to return (default: 20, max: 100)",
+					},
+					"offset": map[string]any{
+						"type":        "integer",
+						"description": "Number of jobs to skip for pagination (default: 0)",
+					},
 				},
 			},
 		},
 		{
-			Name:        "pause_crawl_job",
-			Description: "Pause a running or scheduled crawl job.",
+			Name:        "control_crawl_job",
+			Description: "Control a crawl job's state: pause, resume, or cancel. Use when: User wants to pause, resume, or cancel a crawl job.",
 			InputSchema: map[string]any{
 				"type": "object",
 				"properties": map[string]any{
 					"job_id": map[string]any{
 						"type":        "string",
-						"description": "The ID of the job to pause",
+						"description": "The ID of the job to control",
 					},
-				},
-				"required": []string{"job_id"},
-			},
-		},
-		{
-			Name:        "resume_crawl_job",
-			Description: "Resume a paused crawl job.",
-			InputSchema: map[string]any{
-				"type": "object",
-				"properties": map[string]any{
-					"job_id": map[string]any{
+					"action": map[string]any{
 						"type":        "string",
-						"description": "The ID of the job to resume",
+						"description": "Action to perform: 'pause' (stop scheduled job), 'resume' (restart paused job), or 'cancel' (permanently stop job)",
+						"enum":        []string{"pause", "resume", "cancel"},
 					},
 				},
-				"required": []string{"job_id"},
-			},
-		},
-		{
-			Name:        "cancel_crawl_job",
-			Description: "Cancel a crawl job.",
-			InputSchema: map[string]any{
-				"type": "object",
-				"properties": map[string]any{
-					"job_id": map[string]any{
-						"type":        "string",
-						"description": "The ID of the job to cancel",
-					},
-				},
-				"required": []string{"job_id"},
+				"required": []string{"job_id", "action"},
 			},
 		},
 		{
@@ -142,8 +187,9 @@ func getCrawlerTools() []Tool {
 func getSourceManagerTools() []Tool {
 	return []Tool{
 		{
-			Name:        "add_source",
-			Description: "Add a new content source for crawling.",
+			Name: "add_source",
+			Description: "Add a new content source for crawling. Use when: Only need to register a source " +
+				"without crawling. For full setup, prefer onboard_source.",
 			InputSchema: map[string]any{
 				"type": "object",
 				"properties": map[string]any{
@@ -160,8 +206,9 @@ func getSourceManagerTools() []Tool {
 						"description": "Type of source (e.g., 'news', 'blog')",
 					},
 					"selectors": map[string]any{
-						"type":        "object",
-						"description": "CSS selectors for extracting content (JSON object)",
+						"type": "object",
+						"description": "CSS selectors for content extraction. Minimal: {title: 'h1', body: 'article'}. " +
+							"Optional: date (e.g. 'time[datetime]'), author (e.g. '.byline').",
 					},
 					"active": map[string]any{
 						"type":        "boolean",
@@ -173,9 +220,19 @@ func getSourceManagerTools() []Tool {
 		},
 		{
 			Name:        "list_sources",
-			Description: "List all configured content sources.",
+			Description: "List all configured content sources with pagination.",
 			InputSchema: map[string]any{
 				"type": "object",
+				"properties": map[string]any{
+					"limit": map[string]any{
+						"type":        "integer",
+						"description": "Maximum number of sources to return (default: 20, max: 100)",
+					},
+					"offset": map[string]any{
+						"type":        "integer",
+						"description": "Number of sources to skip for pagination (default: 0)",
+					},
+				},
 			},
 		},
 		{
@@ -223,8 +280,9 @@ func getSourceManagerTools() []Tool {
 			},
 		},
 		{
-			Name:        "test_source",
-			Description: "Test crawl a source without saving the results. Useful for validating selectors before adding a source.",
+			Name: "test_source",
+			Description: "Test crawl a source without saving the results. Use when: Validating selectors " +
+				"before adding a source. Call before add_source or onboard_source if selectors are uncertain.",
 			InputSchema: map[string]any{
 				"type": "object",
 				"properties": map[string]any{
@@ -233,8 +291,9 @@ func getSourceManagerTools() []Tool {
 						"description": "URL to test crawl",
 					},
 					"selectors": map[string]any{
-						"type":        "object",
-						"description": "CSS selectors to test (JSON object)",
+						"type": "object",
+						"description": "CSS selectors to test. Minimal: {title: 'h1', body: 'article'}. " +
+							"Optional: date (e.g. 'time[datetime]'), author (e.g. '.byline').",
 					},
 				},
 				"required": []string{"url", "selectors"},
@@ -281,7 +340,7 @@ func getPublisherTools() []Tool {
 		},
 		{
 			Name:        "list_routes",
-			Description: "List all publishing routes with optional filters.",
+			Description: "List all publishing routes with optional filters and pagination.",
 			InputSchema: map[string]any{
 				"type": "object",
 				"properties": map[string]any{
@@ -292,6 +351,53 @@ func getPublisherTools() []Tool {
 					"channel_id": map[string]any{
 						"type":        "string",
 						"description": "Filter by channel ID",
+					},
+					"limit": map[string]any{
+						"type":        "integer",
+						"description": "Maximum number of routes to return (default: 20, max: 100)",
+					},
+					"offset": map[string]any{
+						"type":        "integer",
+						"description": "Number of routes to skip for pagination (default: 0)",
+					},
+				},
+			},
+		},
+		{
+			Name: "create_channel",
+			Description: "Create a new publishing channel. Use when: User wants to set up a new Redis pub/sub " +
+				"topic for article routing. Returns: channel_id, name, and status. Channel names typically " +
+				"follow 'articles:{topic}' pattern (e.g., 'articles:crime', 'articles:news').",
+			InputSchema: map[string]any{
+				"type": "object",
+				"properties": map[string]any{
+					"name": map[string]any{
+						"type":        "string",
+						"description": "Channel name, typically 'articles:{topic}' (e.g., 'articles:crime', 'articles:local')",
+					},
+					"description": map[string]any{
+						"type":        "string",
+						"description": "Human-readable description of what this channel publishes",
+					},
+					"enabled": map[string]any{
+						"type":        "boolean",
+						"description": "Whether the channel is active (default: true)",
+					},
+				},
+				"required": []string{"name"},
+			},
+		},
+		{
+			Name: "list_channels",
+			Description: "List all publishing channels. Use when: User wants to see available channels for " +
+				"routing or needs a channel_id for create_route/onboard_source. Returns: channel IDs, " +
+				"names, descriptions, and active status.",
+			InputSchema: map[string]any{
+				"type": "object",
+				"properties": map[string]any{
+					"active_only": map[string]any{
+						"type":        "boolean",
+						"description": "If true, return only active channels (default: false)",
 					},
 				},
 			},
@@ -358,8 +464,9 @@ func getPublisherTools() []Tool {
 func getSearchTools() []Tool {
 	return []Tool{
 		{
-			Name:        "search_articles",
-			Description: "Full-text search across all classified content with filtering and facets.",
+			Name: "search_articles",
+			Description: "Full-text search across all classified content with filtering and facets. " +
+				"Use when: User wants to find articles by keyword, topic, or quality. Returns up to 20 results per page.",
 			InputSchema: map[string]any{
 				"type": "object",
 				"properties": map[string]any{
@@ -446,9 +553,19 @@ func getIndexManagerTools() []Tool {
 		},
 		{
 			Name:        "list_indexes",
-			Description: "List all Elasticsearch indexes.",
+			Description: "List all Elasticsearch indexes with pagination.",
 			InputSchema: map[string]any{
 				"type": "object",
+				"properties": map[string]any{
+					"limit": map[string]any{
+						"type":        "integer",
+						"description": "Maximum number of indexes to return (default: 20, max: 100)",
+					},
+					"offset": map[string]any{
+						"type":        "integer",
+						"description": "Number of indexes to skip for pagination (default: 0)",
+					},
+				},
 			},
 		},
 	}
@@ -477,6 +594,40 @@ func getDevelopmentTools() []Tool {
 							"If provided, lints the entire service instead of a single file.",
 					},
 				},
+			},
+		},
+		{
+			Name:        "build_service",
+			Description: "Build a North Cloud service. Runs 'task build' for Go services or 'npm run build' for frontend.",
+			InputSchema: map[string]any{
+				"type": "object",
+				"properties": map[string]any{
+					"service_name": map[string]any{
+						"type": "string",
+						"description": "Service to build: crawler, source-manager, classifier, publisher, auth, " +
+							"index-manager, search, mcp-north-cloud, dashboard, search-frontend",
+					},
+				},
+				"required": []string{"service_name"},
+			},
+		},
+		{
+			Name:        "test_service",
+			Description: "Run tests for a North Cloud service. Runs 'task test' or 'npm run test'.",
+			InputSchema: map[string]any{
+				"type": "object",
+				"properties": map[string]any{
+					"service_name": map[string]any{
+						"type": "string",
+						"description": "Service to test: crawler, source-manager, classifier, publisher, auth, " +
+							"index-manager, search, mcp-north-cloud, dashboard, search-frontend",
+					},
+					"with_coverage": map[string]any{
+						"type":        "boolean",
+						"description": "If true, run tests with coverage (Go: task test:coverage)",
+					},
+				},
+				"required": []string{"service_name"},
 			},
 		},
 	}

@@ -6,6 +6,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/jonesrussell/north-cloud/source-manager/internal/config"
+	"github.com/jonesrussell/north-cloud/source-manager/internal/events"
 	"github.com/jonesrussell/north-cloud/source-manager/internal/handlers"
 	"github.com/jonesrussell/north-cloud/source-manager/internal/repository"
 	infragin "github.com/north-cloud/infrastructure/gin"
@@ -85,8 +86,9 @@ func NewServer(
 	db *repository.SourceRepository,
 	cfg *config.Config,
 	infraLog infralogger.Logger,
+	publisher *events.Publisher,
 ) *infragin.Server {
-	sourceHandler := handlers.NewSourceHandler(db, infraLog)
+	sourceHandler := handlers.NewSourceHandler(db, infraLog, publisher)
 
 	// Build CORS config
 	corsConfig := infragin.CORSConfig{

@@ -16,6 +16,16 @@ tasks:
     cmds:
       - echo "No tests configured for dashboard"
 
+  test:coverage:
+    desc: "Run tests with coverage (no-op for dashboard)"
+    cmds:
+      - echo "No coverage configured for dashboard"
+
+  test:race:
+    desc: "Run tests with race detector (no-op for frontend)"
+    cmds:
+      - echo "test:race is not applicable for dashboard"
+
   build:
     desc: "Build for production"
     cmds:

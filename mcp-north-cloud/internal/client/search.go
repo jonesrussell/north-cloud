@@ -13,16 +13,14 @@ import (
 // SearchClient is a client for the search API
 type SearchClient struct {
 	baseURL    string
-	httpClient *http.Client
+	httpClient *AuthenticatedClient
 }
 
 // NewSearchClient creates a new search client
-func NewSearchClient(baseURL string) *SearchClient {
+func NewSearchClient(baseURL string, authClient *AuthenticatedClient) *SearchClient {
 	return &SearchClient{
-		baseURL: baseURL,
-		httpClient: &http.Client{
-			Timeout: defaultHTTPTimeout,
-		},
+		baseURL:    baseURL,
+		httpClient: authClient,
 	}
 }
 

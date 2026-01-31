@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Test script for MCP North Cloud Server
-# This script tests all 23 tools by sending JSON-RPC requests
+# This script tests all 26 tools by sending JSON-RPC requests
 
 set -e
 
@@ -72,11 +72,11 @@ test_tools_list() {
     # Count tools
     tool_count=$(echo "$response" | jq '.result.tools | length' 2>/dev/null)
 
-    if [ "$tool_count" -eq 23 ]; then
+    if [ "$tool_count" -eq 26 ]; then
         echo -e "${GREEN}✓ PASSED: tools/list (found $tool_count tools)${NC}"
         return 0
     else
-        echo -e "${RED}✗ FAILED: tools/list (expected 23 tools, found $tool_count)${NC}"
+        echo -e "${RED}✗ FAILED: tools/list (expected 26 tools, found $tool_count)${NC}"
         echo "Response: $response"
         return 1
     fi
@@ -130,8 +130,8 @@ if [ $failed -eq 0 ]; then
     echo "  - Search tools: 1"
     echo "  - Classifier tools: 1"
     echo "  - Index Manager tools: 2"
-    echo "  - Development tools: 1"
-    echo "  - Total: 23 tools"
+    echo "  - Development tools: 3"
+    echo "  - Total: 26 tools"
     exit 0
 else
     echo -e "${RED}Some tests failed!${NC}"

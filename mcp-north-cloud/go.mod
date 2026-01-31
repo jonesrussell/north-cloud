@@ -2,7 +2,10 @@ module github.com/jonesrussell/north-cloud/mcp-north-cloud
 
 go 1.25
 
-require github.com/north-cloud/infrastructure v0.0.0
+require (
+	github.com/golang-jwt/jwt/v5 v5.3.0
+	github.com/north-cloud/infrastructure v0.0.0
+)
 
 require (
 	github.com/joho/godotenv v1.5.1 // indirect

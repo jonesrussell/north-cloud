@@ -8,22 +8,21 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strconv"
 	"time"
 )
 
 // CrawlerClient is a client for the crawler API
 type CrawlerClient struct {
 	baseURL    string
-	httpClient *http.Client
+	httpClient *AuthenticatedClient
 }
 
 // NewCrawlerClient creates a new crawler client
-func NewCrawlerClient(baseURL string) *CrawlerClient {
+func NewCrawlerClient(baseURL string, authClient *AuthenticatedClient) *CrawlerClient {
 	return &CrawlerClient{
-		baseURL: baseURL,
-		httpClient: &http.Client{
-			Timeout: defaultHTTPTimeout,
-		},
+		baseURL:    baseURL,
+		httpClient: authClient,
 	}
 }
 
@@ -134,14 +133,34 @@ func (c *CrawlerClient) CreateJob(req CreateJobRequest) (*Job, error) {
 	return &job, nil
 }
 
-// ListJobs lists all crawl jobs with optional status filter
+// ListJobsParams contains parameters for listing jobs
+type ListJobsParams struct {
+	Status string
+	Limit  int
+	Offset int
+}
+
+// ListJobs lists all crawl jobs with optional status filter and pagination
 func (c *CrawlerClient) ListJobs(status string) ([]Job, error) {
+	return c.ListJobsWithParams(ListJobsParams{Status: status})
+}
+
+// ListJobsWithParams lists crawl jobs with full parameter support
+func (c *CrawlerClient) ListJobsWithParams(params ListJobsParams) ([]Job, error) {
 	endpoint := fmt.Sprintf("%s/api/v1/jobs", c.baseURL)
 
-	if status != "" {
-		params := url.Values{}
-		params.Add("status", status)
-		endpoint = fmt.Sprintf("%s?%s", endpoint, params.Encode())
+	queryParams := url.Values{}
+	if params.Status != "" {
+		queryParams.Add("status", params.Status)
+	}
+	if params.Limit > 0 {
+		queryParams.Add("limit", strconv.Itoa(params.Limit))
+	}
+	if params.Offset > 0 {
+		queryParams.Add("offset", strconv.Itoa(params.Offset))
+	}
+	if len(queryParams) > 0 {
+		endpoint = fmt.Sprintf("%s?%s", endpoint, queryParams.Encode())
 	}
 
 	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, endpoint, http.NoBody)
@@ -164,6 +183,18 @@ func (c *CrawlerClient) ListJobs(status string) ([]Job, error) {
 		return nil, fmt.Errorf("unexpected status code: %d, body: %s", resp.StatusCode, string(body))
 	}
 
+	// Try to parse as paginated response first
+	var paginatedResponse struct {
+		Jobs   []Job `json:"jobs"`
+		Total  int   `json:"total"`
+		Limit  int   `json:"limit"`
+		Offset int   `json:"offset"`
+	}
+	if err = json.Unmarshal(body, &paginatedResponse); err == nil && paginatedResponse.Jobs != nil {
+		return paginatedResponse.Jobs, nil
+	}
+
+	// Fall back to simple array response
 	var jobs []Job
 	if err = json.Unmarshal(body, &jobs); err != nil {
 		return nil, fmt.Errorf("failed to parse response: %w", err)

@@ -75,15 +75,19 @@ func initializeClients(cfg *config.Config, log logger.Logger) *serviceClients {
 		logger.String("publisher_url", cfg.Services.PublisherURL),
 		logger.String("search_url", cfg.Services.SearchURL),
 		logger.String("classifier_url", cfg.Services.ClassifierURL),
+		logger.Bool("auth_configured", cfg.Auth.JWTSecret != ""),
 	)
 
+	// Create authenticated HTTP client for service-to-service calls
+	authClient := client.NewAuthenticatedClient(cfg.Auth.JWTSecret)
+
 	return &serviceClients{
-		indexManager:  client.NewIndexManagerClient(cfg.Services.IndexManagerURL),
-		crawler:       client.NewCrawlerClient(cfg.Services.CrawlerURL),
-		sourceManager: client.NewSourceManagerClient(cfg.Services.SourceManagerURL),
-		publisher:     client.NewPublisherClient(cfg.Services.PublisherURL),
-		search:        client.NewSearchClient(cfg.Services.SearchURL),
-		classifier:    client.NewClassifierClient(cfg.Services.ClassifierURL),
+		indexManager:  client.NewIndexManagerClient(cfg.Services.IndexManagerURL, authClient),
+		crawler:       client.NewCrawlerClient(cfg.Services.CrawlerURL, authClient),
+		sourceManager: client.NewSourceManagerClient(cfg.Services.SourceManagerURL, authClient),
+		publisher:     client.NewPublisherClient(cfg.Services.PublisherURL, authClient),
+		search:        client.NewSearchClient(cfg.Services.SearchURL, authClient),
+		classifier:    client.NewClassifierClient(cfg.Services.ClassifierURL, authClient),
 	}
 }
 

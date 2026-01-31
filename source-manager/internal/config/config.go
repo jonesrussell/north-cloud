@@ -16,6 +16,8 @@ const (
 	defaultMaxOpenConns    = 25
 	defaultMaxIdleConns    = 5
 	defaultConnMaxLifetime = 5
+	defaultRedisAddress    = "localhost:6379"
+	defaultRedisDB         = 0
 )
 
 type Config struct {
@@ -23,6 +25,15 @@ type Config struct {
 	Server   ServerConfig   `yaml:"server"`
 	Database DatabaseConfig `yaml:"database"`
 	Auth     AuthConfig     `yaml:"auth"`
+	Redis    RedisConfig    `yaml:"redis"`
+}
+
+// RedisConfig holds Redis connection configuration for event publishing.
+type RedisConfig struct {
+	Address  string `env:"REDIS_ADDRESS"        yaml:"address"`
+	Password string `env:"REDIS_PASSWORD"       yaml:"password"`
+	DB       int    `env:"REDIS_DB"             yaml:"db"`
+	Enabled  bool   `env:"REDIS_EVENTS_ENABLED" yaml:"enabled"` // Feature flag for event publishing
 }
 
 type ServerConfig struct {
@@ -122,6 +133,14 @@ func setDefaults(cfg *Config) {
 			"http://localhost:3002", // Unified dashboard frontend
 		}
 	}
+	// Set default Redis configuration
+	if cfg.Redis.Address == "" {
+		cfg.Redis.Address = defaultRedisAddress
+	}
+	if cfg.Redis.DB == 0 {
+		cfg.Redis.DB = defaultRedisDB
+	}
+	// Note: cfg.Redis.Enabled defaults to false (feature flag)
 }
 
 func parseBool(s string) bool {

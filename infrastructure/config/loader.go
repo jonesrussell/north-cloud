@@ -128,6 +128,17 @@ func MustLoad[T any](path string) *T {
 	return cfg
 }
 
+// ApplyEnvOverrides applies environment variable overrides to a config struct.
+// This is useful when creating a config with defaults without a YAML file.
+// It loads .env files and applies environment variable values based on `env` struct tags.
+func ApplyEnvOverrides(cfg any) error {
+	if err := loadEnvFiles(); err != nil {
+		return err
+	}
+	applyEnvOverrides(cfg)
+	return nil
+}
+
 // applyEnvOverrides uses struct tags to apply environment variable values.
 // Tag format: `env:"VAR_NAME"`
 func applyEnvOverrides(cfg any) {

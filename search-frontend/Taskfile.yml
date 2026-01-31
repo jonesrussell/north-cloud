@@ -16,6 +16,16 @@ tasks:
     cmds:
       - echo "No tests configured for search-frontend"
 
+  test:coverage:
+    desc: "Run tests with coverage (no-op for search-frontend)"
+    cmds:
+      - echo "No coverage configured for search-frontend"
+
+  test:race:
+    desc: "Run tests with race detector (no-op for frontend)"
+    cmds:
+      - echo "test:race is not applicable for search-frontend"
+
   build:
     desc: "Build for production"
     cmds:

@@ -163,78 +163,48 @@ func (s *Server) handleToolsCall(req *Request, id any) *Response {
 	return s.routeToolCall(id, params.Name, params.Arguments)
 }
 
-// routeToolCall routes tool calls to appropriate handlers
+type toolHandlerFunc func(s *Server, id any, arguments json.RawMessage) *Response
+
+var toolHandlers = map[string]toolHandlerFunc{
+	"onboard_source":      (*Server).handleOnboardSource,
+	"start_crawl":         (*Server).handleStartCrawl,
+	"schedule_crawl":      (*Server).handleScheduleCrawl,
+	"list_crawl_jobs":     (*Server).handleListCrawlJobs,
+	"control_crawl_job":   (*Server).handleControlCrawlJob,
+	"get_crawl_stats":     (*Server).handleGetCrawlStats,
+	"add_source":          (*Server).handleAddSource,
+	"list_sources":        (*Server).handleListSources,
+	"update_source":       (*Server).handleUpdateSource,
+	"delete_source":       (*Server).handleDeleteSource,
+	"test_source":         (*Server).handleTestSource,
+	"create_route":        (*Server).handleCreateRoute,
+	"list_routes":         (*Server).handleListRoutes,
+	"create_channel":      (*Server).handleCreateChannel,
+	"list_channels":       (*Server).handleListChannels,
+	"delete_route":        (*Server).handleDeleteRoute,
+	"preview_route":       (*Server).handlePreviewRoute,
+	"get_publish_history": (*Server).handleGetPublishHistory,
+	"get_publisher_stats": (*Server).handleGetPublisherStats,
+	"search_articles":     (*Server).handleSearchArticles,
+	"classify_article":    (*Server).handleClassifyArticle,
+	"delete_index":        (*Server).handleDeleteIndex,
+	"list_indexes":        (*Server).handleListIndexes,
+	"lint_file":           (*Server).handleLintFile,
+	"build_service":       (*Server).handleBuildService,
+	"test_service":        (*Server).handleTestService,
+}
+
 func (s *Server) routeToolCall(id any, toolName string, arguments json.RawMessage) *Response {
-	switch toolName {
-	// Crawler tools
-	case "start_crawl":
-		return s.handleStartCrawl(id, arguments)
-	case "schedule_crawl":
-		return s.handleScheduleCrawl(id, arguments)
-	case "list_crawl_jobs":
-		return s.handleListCrawlJobs(id, arguments)
-	case "pause_crawl_job":
-		return s.handlePauseCrawlJob(id, arguments)
-	case "resume_crawl_job":
-		return s.handleResumeCrawlJob(id, arguments)
-	case "cancel_crawl_job":
-		return s.handleCancelCrawlJob(id, arguments)
-	case "get_crawl_stats":
-		return s.handleGetCrawlStats(id, arguments)
-
-	// Source Manager tools
-	case "add_source":
-		return s.handleAddSource(id, arguments)
-	case "list_sources":
-		return s.handleListSources(id, arguments)
-	case "update_source":
-		return s.handleUpdateSource(id, arguments)
-	case "delete_source":
-		return s.handleDeleteSource(id, arguments)
-	case "test_source":
-		return s.handleTestSource(id, arguments)
-
-	// Publisher tools
-	case "create_route":
-		return s.handleCreateRoute(id, arguments)
-	case "list_routes":
-		return s.handleListRoutes(id, arguments)
-	case "delete_route":
-		return s.handleDeleteRoute(id, arguments)
-	case "preview_route":
-		return s.handlePreviewRoute(id, arguments)
-	case "get_publish_history":
-		return s.handleGetPublishHistory(id, arguments)
-	case "get_publisher_stats":
-		return s.handleGetPublisherStats(id, arguments)
-
-	// Search tools
-	case "search_articles":
-		return s.handleSearchArticles(id, arguments)
-
-	// Classifier tools
-	case "classify_article":
-		return s.handleClassifyArticle(id, arguments)
-
-	// Index Manager tools
-	case "delete_index":
-		return s.handleDeleteIndex(id, arguments)
-	case "list_indexes":
-		return s.handleListIndexes(id, arguments)
-
-	// Development tools
-	case "lint_file":
-		return s.handleLintFile(id, arguments)
-
-	default:
-		return &Response{
-			JSONRPC: "2.0",
-			ID:      id,
-			Error: &ErrorObject{
-				Code:    InvalidParams,
-				Message: "Unknown tool: " + toolName,
-			},
-		}
+	if h, ok := toolHandlers[toolName]; ok {
+		return h(s, id, arguments)
+	}
+	return &Response{
+		JSONRPC: "2.0",
+		ID:      id,
+		Error: &ErrorObject{
+			Code:    InvalidParams,
+			Message: "Unknown tool: " + toolName,
+		},
 	}
 }
 

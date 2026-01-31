@@ -1,6 +1,6 @@
 # MCP North Cloud Server
 
-An MCP (Model Context Protocol) server that provides comprehensive tools for managing the North Cloud content platform. This server exposes 23 tools across all North Cloud services for crawling, source management, content classification, publishing, search operations, and development tasks.
+An MCP (Model Context Protocol) server that provides comprehensive tools for managing the North Cloud content platform. This server exposes 26 tools across all North Cloud services for crawling, source management, content classification, publishing, search operations, and development tasks.
 
 ## Overview
 
@@ -48,8 +48,10 @@ This MCP server acts as a unified interface to the entire North Cloud microservi
 - `delete_index` - Delete an Elasticsearch index
 - `list_indexes` - List all Elasticsearch indexes
 
-### Development Tools (1 tool)
+### Development Tools (3 tools)
 - `lint_file` - Lint a specific file or entire service (automatically detects Go vs frontend)
+- `build_service` - Build a Go or frontend service
+- `test_service` - Run tests for a service (optional coverage for Go)
 
 ## Architecture
 
@@ -86,54 +88,37 @@ The server implements the MCP protocol using:
 
 ## Installation
 
-### Running with Docker
+### Building the MCP server (for Cursor / Claude Code)
+
+From the **repository root**, build the binary so Cursor and Claude Code can run it:
 
 ```bash
-# Start the service (included in docker-compose)
-docker compose -f docker-compose.base.yml -f docker-compose.dev.yml up -d mcp-north-cloud
-
-# View logs
-docker compose -f docker-compose.base.yml -f docker-compose.dev.yml logs -f mcp-north-cloud
+task mcp:build
 ```
 
-### Building Locally
+This writes `mcp-north-cloud/bin/mcp-north-cloud`. Re-run after changing MCP server code.
 
-```bash
-cd mcp-north-cloud
-go build -o mcp-north-cloud main.go
-```
+From inside `mcp-north-cloud` you can also use `task build` or `go build -o bin/mcp-north-cloud ./main.go`.
+
+### Running with Docker (optional)
+
+If you prefer to run the MCP server inside Docker instead of using the built binary, add an `mcp-north-cloud` service to your dev compose and point Cursor/Claude Code at it via `docker exec -i <container> /app/tmp/mcp-north-cloud`. The default setup uses the built binary and localhost URLs.
 
 ## Configuration
 
-### Cursor IDE Integration
+### Cursor IDE
 
-The project includes a `.cursor/mcp.json` file for Cursor IDE integration:
+Cursor reads **`.cursor/mcp.json`** in this repo. It runs `run-mcp.sh`, which loads `.env` (for `AUTH_JWT_SECRET`) and then starts the MCP binary with env pointing at your dev stack on localhost (ports match `docker-compose.dev.yml`). Ensure the binary exists:
 
-```json
-{
-  "mcpServers": {
-    "north-cloud": {
-      "command": "docker",
-      "args": [
-        "exec",
-        "-i",
-        "north-cloud-mcp-north-cloud-1",
-        "/app/tmp/mcp-north-cloud"
-      ],
-      "env": {
-        "INDEX_MANAGER_URL": "http://index-manager:8090",
-        "CRAWLER_URL": "http://crawler:8060",
-        "SOURCE_MANAGER_URL": "http://source-manager:8050",
-        "PUBLISHER_URL": "http://publisher-api:8080",
-        "SEARCH_URL": "http://search:8090",
-        "CLASSIFIER_URL": "http://classifier:8070"
-      }
-    }
-  }
-}
+```bash
+task mcp:build
 ```
 
-After modifying the configuration, **restart Cursor** to apply changes.
+After changing `.cursor/mcp.json` or the binary, **restart Cursor** (or reload the window) to apply changes.
+
+### Claude Code
+
+Claude Code can use a **project-level** MCP config. This repo includes **`.mcp.json`** at the root with the same command and env as `.cursor/mcp.json`. If your Claude Code setup uses project-level config (e.g. `~/.claude.json` or a `.mcp.json` in the project), ensure the binary is built (`task mcp:build`) and that the config points at `./mcp-north-cloud/bin/mcp-north-cloud` with the same localhost env. Adjust paths or use a global config if your tool expects a different location.
 
 ### Claude Code Hooks Integration
 
@@ -152,7 +137,7 @@ When using Claude Code hooks, MCP tools follow a specific naming pattern. Since 
 - `mcp__north-cloud__list_indexes` - List Elasticsearch indexes
 - `mcp__north-cloud__delete_index` - Delete an Elasticsearch index
 
-**All 23 tools** are available using this naming convention. You can reference them in Claude Code hooks to automate North Cloud operations.
+**All 26 tools** are available using this naming convention. You can reference them in Claude Code hooks to automate North Cloud operations.
 
 **Hook Example**:
 ```yaml
@@ -204,8 +189,10 @@ All 23 tools available with `mcp__north-cloud__` prefix:
 - `mcp__north-cloud__list_indexes`
 - `mcp__north-cloud__delete_index`
 
-**Development Tools (1)**:
+**Development Tools (3)**:
 - `mcp__north-cloud__lint_file`
+- `mcp__north-cloud__build_service`
+- `mcp__north-cloud__test_service`
 
 ### Environment Variables
 
@@ -219,6 +206,18 @@ All service URLs can be configured via environment variables:
 | `PUBLISHER_URL` | `http://localhost:8080` | Publisher service URL |
 | `SEARCH_URL` | `http://localhost:8090` | Search service URL |
 | `CLASSIFIER_URL` | `http://localhost:8070` | Classifier service URL |
+
+### Authentication
+
+Tools that call protected APIs (source-manager, publisher, crawler, etc.) require JWT authentication. The MCP server uses `AUTH_JWT_SECRET` to generate service-to-service tokens.
+
+**Setup:**
+
+1. Ensure `.env` exists in the project root with `AUTH_JWT_SECRET` set to the same value used by auth, source-manager, and other North Cloud services.
+2. The wrapper script (`run-mcp.sh`) loads `.env` automatically when Cursor or Claude Code starts the MCP server. No additional configuration is needed.
+3. Generate a secret if needed: `openssl rand -hex 32` (see the main project `.env.example`).
+
+**Without `AUTH_JWT_SECRET`:** Protected tools (e.g. `onboard_source`, `add_source`, `create_route`) will fail with "missing authorization". Public endpoints (e.g. `list_sources` via GET) may work depending on service configuration.
 
 ## Tool Reference
 
@@ -690,6 +689,78 @@ Lint a specific file or entire service. Automatically detects Go files vs Vue.js
   "success": false,
   "error": "exit status 1",
   "exit_code": 1
+}
+```
+
+#### build_service
+
+Build a North Cloud service. Runs `task build` for Go services or `npm run build` for frontend.
+
+**Parameters:**
+- `service_name` (string, required): Service to build (crawler, source-manager, classifier, publisher, auth, index-manager, search, mcp-north-cloud, dashboard, search-frontend)
+
+**Example:**
+```json
+{
+  "service_name": "crawler"
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "service": "crawler",
+  "command": "task build",
+  "output": "...",
+  "exit_code": 0
+}
+```
+
+#### test_service
+
+Run tests for a North Cloud service. Runs `task test` or `npm run test`. For Go services, supports `with_coverage` to run `task test:coverage`.
+
+**Parameters:**
+- `service_name` (string, required): Service to test
+- `with_coverage` (boolean, optional): If true, run tests with coverage (Go services only)
+
+**Example:**
+```json
+{
+  "service_name": "crawler",
+  "with_coverage": false
+}
+```
+
+**Response (success):**
+```json
+{
+  "success": true,
+  "service": "crawler",
+  "command": "task test",
+  "output": "PASS\nok\t...",
+  "exit_code": 0
+}
+```
+
+**Response (failure with parsed errors):**
+```json
+{
+  "success": false,
+  "service": "crawler",
+  "command": "task test",
+  "output": "...",
+  "error": "exit status 1",
+  "exit_code": 1,
+  "errors": [
+    {
+      "file": "internal/parser/parser.go",
+      "line": 42,
+      "column": 5,
+      "message": "undefined: foo"
+    }
+  ]
 }
 ```
 

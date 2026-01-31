@@ -13,16 +13,14 @@ import (
 // SourceManagerClient is a client for the source-manager API
 type SourceManagerClient struct {
 	baseURL    string
-	httpClient *http.Client
+	httpClient *AuthenticatedClient
 }
 
 // NewSourceManagerClient creates a new source-manager client
-func NewSourceManagerClient(baseURL string) *SourceManagerClient {
+func NewSourceManagerClient(baseURL string, authClient *AuthenticatedClient) *SourceManagerClient {
 	return &SourceManagerClient{
-		baseURL: baseURL,
-		httpClient: &http.Client{
-			Timeout: defaultHTTPTimeout,
-		},
+		baseURL:    baseURL,
+		httpClient: authClient,
 	}
 }
 
@@ -119,8 +117,6 @@ func (c *SourceManagerClient) CreateSource(req CreateSourceRequest) (*Source, er
 }
 
 // ListSources lists all sources
-//
-//nolint:dupl // Similar HTTP client pattern across different services is acceptable
 func (c *SourceManagerClient) ListSources() ([]Source, error) {
 	endpoint := fmt.Sprintf("%s/api/v1/sources", c.baseURL)
 
