@@ -282,34 +282,3 @@ database:
 		t.Error("Load() cfg.Debug = false, want true")
 	}
 }
-
-func TestParseBool(t *testing.T) {
-	tests := []struct {
-		name string
-		s    string
-		want bool
-	}{
-		{"true", "true", true},
-		{"True", "True", true},
-		{"TRUE", "TRUE", true},
-		{"1", "1", true},
-		{"yes", "yes", true},
-		{"YES", "YES", true},
-		{"false", "false", false},
-		{"False", "False", false},
-		{"0", "0", false},
-		{"no", "no", false},
-		{"empty", "", false},
-		{"with spaces", "  true  ", true},
-		{"invalid", "invalid", false},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got := parseBool(tt.s)
-			if got != tt.want {
-				t.Errorf("parseBool(%q) = %v, want %v", tt.s, got, tt.want)
-			}
-		})
-	}
-}

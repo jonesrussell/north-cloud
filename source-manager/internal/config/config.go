@@ -3,7 +3,6 @@ package config
 import (
 	"errors"
 	"fmt"
-	"strings"
 	"time"
 
 	infraconfig "github.com/north-cloud/infrastructure/config"
@@ -141,9 +140,4 @@ func setDefaults(cfg *Config) {
 		cfg.Redis.DB = defaultRedisDB
 	}
 	// Note: cfg.Redis.Enabled defaults to false (feature flag)
-}
-
-func parseBool(s string) bool {
-	s = strings.ToLower(strings.TrimSpace(s))
-	return s == "true" || s == "1" || s == "yes"
 }
