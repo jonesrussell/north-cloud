@@ -199,6 +199,8 @@ func (s *Server) routeToolCall(id any, toolName string, arguments json.RawMessag
 		return s.handleCreateRoute(id, arguments)
 	case "list_routes":
 		return s.handleListRoutes(id, arguments)
+	case "list_channels":
+		return s.handleListChannels(id, arguments)
 	case "delete_route":
 		return s.handleDeleteRoute(id, arguments)
 	case "preview_route":

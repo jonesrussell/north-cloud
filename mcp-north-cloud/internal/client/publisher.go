@@ -412,10 +412,68 @@ func (c *PublisherClient) ListChannels() ([]Channel, error) {
 		return nil, fmt.Errorf("unexpected status code: %d, body: %s", resp.StatusCode, string(body))
 	}
 
-	var channels []Channel
-	if err = json.Unmarshal(body, &channels); err != nil {
+	// Publisher returns {"channels": [...], "count": N}
+	var response struct {
+		Channels []Channel `json:"channels"`
+		Count    int       `json:"count"`
+	}
+	if err = json.Unmarshal(body, &response); err != nil {
 		return nil, fmt.Errorf("failed to parse response: %w", err)
 	}
 
-	return channels, nil
+	return response.Channels, nil
+}
+
+// CreateChannelRequest represents a request to create a channel
+type CreateChannelRequest struct {
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	Enabled     *bool  `json:"enabled,omitempty"`
+}
+
+// CreateChannel creates a new publishing channel
+//
+//nolint:dupl // Similar HTTP client pattern across different services is acceptable
+func (c *PublisherClient) CreateChannel(req CreateChannelRequest) (*Channel, error) {
+	endpoint := fmt.Sprintf("%s/api/v1/channels", c.baseURL)
+
+	body, err := json.Marshal(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal request: %w", err)
+	}
+
+	httpReq, err := http.NewRequestWithContext(context.Background(), http.MethodPost, endpoint, bytes.NewReader(body))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	httpReq.Header.Set("Content-Type", "application/json")
+
+	resp, err := c.httpClient.Do(httpReq)
+	if err != nil {
+		return nil, fmt.Errorf("failed to execute request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response: %w", err)
+	}
+
+	if resp.StatusCode != http.StatusCreated && resp.StatusCode != http.StatusOK {
+		var errorResp struct {
+			Error string `json:"error"`
+		}
+		if jsonErr := json.Unmarshal(respBody, &errorResp); jsonErr == nil && errorResp.Error != "" {
+			return nil, fmt.Errorf("publisher error: %s", errorResp.Error)
+		}
+		return nil, fmt.Errorf("unexpected status code: %d, body: %s", resp.StatusCode, string(respBody))
+	}
+
+	var channel Channel
+	if err = json.Unmarshal(respBody, &channel); err != nil {
+		return nil, fmt.Errorf("failed to parse response: %w", err)
+	}
+
+	return &channel, nil
 }

@@ -359,6 +359,19 @@ func getPublisherTools() []Tool {
 			},
 		},
 		{
+			Name:        "list_channels",
+			Description: "List all publishing channels. Use when: User wants to see available channels for routing or needs a channel_id for create_route/onboard_source. Returns: channel IDs, names, descriptions, and active status.",
+			InputSchema: map[string]any{
+				"type": "object",
+				"properties": map[string]any{
+					"active_only": map[string]any{
+						"type":        "boolean",
+						"description": "If true, return only active channels (default: false)",
+					},
+				},
+			},
+		},
+		{
 			Name:        "delete_route",
 			Description: "Delete a publishing route.",
 			InputSchema: map[string]any{

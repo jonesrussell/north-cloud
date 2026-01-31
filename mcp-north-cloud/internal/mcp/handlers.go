@@ -604,6 +604,35 @@ func (s *Server) handleListRoutes(id any, arguments json.RawMessage) *Response {
 	})
 }
 
+func (s *Server) handleListChannels(id any, arguments json.RawMessage) *Response {
+	var args struct {
+		ActiveOnly bool `json:"active_only"`
+	}
+
+	_ = json.Unmarshal(arguments, &args) // Empty args is okay
+
+	channels, err := s.publisherClient.ListChannels()
+	if err != nil {
+		return s.errorResponse(id, InternalError, fmt.Sprintf("Failed to list channels: %v", err))
+	}
+
+	// Filter by active if requested
+	if args.ActiveOnly {
+		filtered := make([]client.Channel, 0, len(channels))
+		for i := range channels {
+			if channels[i].Active {
+				filtered = append(filtered, channels[i])
+			}
+		}
+		channels = filtered
+	}
+
+	return s.successResponse(id, map[string]any{
+		"channels": channels,
+		"count":    len(channels),
+	})
+}
+
 func (s *Server) handleDeleteRoute(id any, arguments json.RawMessage) *Response {
 	var args struct {
 		RouteID string `json:"route_id"`
