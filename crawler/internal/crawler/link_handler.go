@@ -62,6 +62,16 @@ func (h *LinkHandler) HandleLink(e *colly.HTMLElement) {
 		return
 	}
 
+	if h.crawler.cfg.MaxURLLength > 0 && len(absLink) > h.crawler.cfg.MaxURLLength {
+		h.crawler.logger.Debug("Skipping link",
+			infralogger.String("url", absLink),
+			infralogger.String("reason", "URL exceeds max length"),
+			infralogger.Int("length", len(absLink)),
+			infralogger.Int("max", h.crawler.cfg.MaxURLLength),
+		)
+		return
+	}
+
 	h.crawler.logger.Debug("Discovered link",
 		infralogger.String("url", absLink),
 		infralogger.String("page_url", e.Request.URL.String()),
@@ -124,6 +134,8 @@ func (h *LinkHandler) visitWithRetries(e *colly.HTMLElement, absLink string) {
 	totalAttempts := h.crawler.cfg.MaxRetries + 1 // Always attempt at least once
 
 	for attempt := initialAttempt; attempt < totalAttempts; attempt++ {
+		// Set referer so OnRequest can add Referer header when UseReferer is enabled
+		e.Request.Ctx.Put(refererCtxKey, e.Request.URL.String())
 		err := e.Request.Visit(absLink)
 		if err == nil {
 			if attempt > initialAttempt {

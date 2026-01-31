@@ -229,6 +229,10 @@ func (s *Server) routeToolCall(id any, toolName string, arguments json.RawMessag
 	// Development tools
 	case "lint_file":
 		return s.handleLintFile(id, arguments)
+	case "build_service":
+		return s.handleBuildService(id, arguments)
+	case "test_service":
+		return s.handleTestService(id, arguments)
 
 	default:
 		return &Response{

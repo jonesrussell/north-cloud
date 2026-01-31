@@ -8,6 +8,8 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/jonesrussell/north-cloud/mcp-north-cloud/internal/client"
@@ -879,6 +881,8 @@ func (s *Server) handleListIndexes(id any, arguments json.RawMessage) *Response 
 
 // Development tool handlers
 
+const taskTest = "test"
+
 func (s *Server) handleLintFile(id any, arguments json.RawMessage) *Response {
 	var args struct {
 		FilePath    string `json:"file_path"`
@@ -1041,6 +1045,134 @@ func (s *Server) executeLintCommand(id any, lintCommand *exec.Cmd, lintType, ser
 	}
 
 	return s.successResponse(id, result)
+}
+
+func (s *Server) handleBuildService(id any, arguments json.RawMessage) *Response {
+	var args struct {
+		ServiceName string `json:"service_name"`
+	}
+	if err := json.Unmarshal(arguments, &args); err != nil {
+		return s.errorResponse(id, InvalidParams, "Invalid arguments: "+err.Error())
+	}
+	if args.ServiceName == "" {
+		return s.errorResponse(id, InvalidParams, "service_name is required")
+	}
+	return s.executeBuildTestCommand(id, args.ServiceName, "build", false)
+}
+
+func (s *Server) handleTestService(id any, arguments json.RawMessage) *Response {
+	var args struct {
+		ServiceName  string `json:"service_name"`
+		WithCoverage bool   `json:"with_coverage"`
+	}
+	if err := json.Unmarshal(arguments, &args); err != nil {
+		return s.errorResponse(id, InvalidParams, "Invalid arguments: "+err.Error())
+	}
+	if args.ServiceName == "" {
+		return s.errorResponse(id, InvalidParams, "service_name is required")
+	}
+	taskName := taskTest
+	if args.WithCoverage {
+		taskName = "test:coverage"
+	}
+	return s.executeBuildTestCommand(id, args.ServiceName, taskName, true)
+}
+
+// executeBuildTestCommand runs build or test for a service and returns structured output.
+func (s *Server) executeBuildTestCommand(id any, serviceName, taskName string, isTest bool) *Response {
+	projectRoot := s.detectProjectRoot()
+	if projectRoot == "" {
+		return s.errorResponse(id, InvalidParams, "Could not determine project root")
+	}
+	serviceDir := filepath.Join(projectRoot, serviceName)
+	ctx := context.Background()
+
+	var cmd *exec.Cmd
+	var isGo bool
+	if _, statErr := os.Stat(filepath.Join(serviceDir, "Taskfile.yml")); statErr == nil {
+		_, goModErr := os.Stat(filepath.Join(serviceDir, "go.mod"))
+		isGo = (goModErr == nil)
+		// Frontend services (dashboard, search-frontend) have Taskfile but no test:coverage
+		runTask := taskName
+		if taskName == "test:coverage" && !isGo {
+			runTask = taskTest
+		}
+		cmd = exec.CommandContext(ctx, "task", runTask)
+		cmd.Dir = serviceDir
+	} else if _, pkgJSONErr := os.Stat(filepath.Join(serviceDir, "package.json")); pkgJSONErr == nil {
+		isGo = false
+		script := "build"
+		if isTest {
+			script = taskTest
+		}
+		cmd = exec.CommandContext(ctx, "npm", "run", script)
+		cmd.Dir = serviceDir
+	} else {
+		return s.errorResponse(id, InvalidParams,
+			fmt.Sprintf("service '%s' not found or doesn't have Taskfile.yml or package.json", serviceName))
+	}
+
+	output, err := cmd.CombinedOutput()
+	outputStr := string(output)
+
+	result := map[string]any{
+		"success": err == nil,
+		"service": serviceName,
+		"command": strings.Join(cmd.Args, " "),
+		"output":  outputStr,
+	}
+	populateBuildTestErrorResult(result, cmd, err, outputStr, isGo)
+
+	return s.successResponse(id, result)
+}
+
+func populateBuildTestErrorResult(result map[string]any, cmd *exec.Cmd, cmdErr error, outputStr string, isGo bool) {
+	if cmdErr == nil {
+		return
+	}
+	result["error"] = cmdErr.Error()
+	if cmd.ProcessState != nil {
+		result["exit_code"] = cmd.ProcessState.ExitCode()
+	} else {
+		result["exit_code"] = -1
+	}
+	if isGo {
+		if parsed := parseGoErrors(outputStr); len(parsed) > 0 {
+			result["errors"] = parsed
+		}
+	}
+}
+
+// goError represents a parsed Go compiler or test error.
+type goError struct {
+	File    string `json:"file"`
+	Line    int    `json:"line"`
+	Column  int    `json:"column,omitempty"`
+	Message string `json:"message"`
+}
+
+// parseGoErrors extracts file:line:column: message patterns from Go build/test output.
+func parseGoErrors(output string) []goError {
+	// Matches: path/to/file.go:42:5: message or path/to/file.go:42: message
+	re := regexp.MustCompile(`(?m)^([^:]+):(\d+)(?::(\d+))?:\s*(.+)$`)
+	matches := re.FindAllStringSubmatch(output, -1)
+	if len(matches) == 0 {
+		return nil
+	}
+	errs := make([]goError, 0, len(matches))
+	for _, m := range matches {
+		e := goError{File: m[1], Message: m[4]}
+		if line, err := strconv.Atoi(m[2]); err == nil {
+			e.Line = line
+		}
+		if m[3] != "" {
+			if col, colErr := strconv.Atoi(m[3]); colErr == nil {
+				e.Column = col
+			}
+		}
+		errs = append(errs, e)
+	}
+	return errs
 }
 
 // Helper methods

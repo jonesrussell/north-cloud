@@ -5,7 +5,9 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
+	"math/rand"
 	"net/http"
+	"regexp"
 	"strings"
 	"time"
 
@@ -32,8 +34,28 @@ const (
 	defaultExpectContinueTimeout = 1 * time.Second
 )
 
+// Rule action values for URLFilters (source Rules).
+const (
+	ruleActionAllow    = "allow"
+	ruleActionDisallow = "disallow"
+)
+
+// refererCtxKey is the request context key for the referer URL (set before Visit from link handler).
+const refererCtxKey = "referer"
+
+// retryCountKey is the request context key for HTTP retry count in OnError.
+const retryCountKey = "retry_count"
+
+// randomUserAgents is a small set of desktop browser user agents for UseRandomUserAgent.
+var randomUserAgents = []string{
+	"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+	"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+	"Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:121.0) Gecko/20100101 Firefox/121.0",
+	"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.2 Safari/605.1.15",
+}
+
 // setupCollector configures the collector with the given source settings.
-func (c *Crawler) setupCollector(source *configtypes.Source) error {
+func (c *Crawler) setupCollector(ctx context.Context, source *configtypes.Source) error {
 	maxDepth := source.MaxDepth
 
 	c.GetJobLogger().Debug(logs.CategoryLifecycle, "Setting up collector",
@@ -42,13 +64,45 @@ func (c *Crawler) setupCollector(source *configtypes.Source) error {
 	)
 
 	opts := []colly.CollectorOption{
+		colly.StdlibContext(ctx),
 		colly.MaxDepth(maxDepth),
 		colly.Async(true),
 		colly.ParseHTTPErrorResponse(),
-		colly.IgnoreRobotsTxt(),
-		colly.UserAgent(c.cfg.UserAgent),
 		// Note: Not using AllowURLRevisit() to prevent excessive request queuing.
 		// Each URL will only be crawled once, which significantly reduces Wait() time.
+	}
+
+	if !c.cfg.RespectRobotsTxt {
+		opts = append(opts, colly.IgnoreRobotsTxt())
+	}
+
+	if !c.cfg.UseRandomUserAgent {
+		opts = append(opts, colly.UserAgent(c.cfg.UserAgent))
+	}
+
+	if c.cfg.MaxBodySize > 0 {
+		opts = append(opts, colly.MaxBodySize(c.cfg.MaxBodySize))
+	}
+
+	if c.cfg.DetectCharset {
+		opts = append(opts, colly.DetectCharset())
+	}
+
+	if c.cfg.TraceHTTP {
+		opts = append(opts, colly.TraceHTTP())
+	}
+
+	if c.cfg.MaxRequests > 0 {
+		opts = append(opts, colly.MaxRequests(c.cfg.MaxRequests))
+	}
+
+	// URLFilters from source Rules: "allow" -> URLFilters, "disallow" -> DisallowedURLFilters
+	allowRegexes, disallowRegexes := c.compileRuleFilters(source)
+	if len(allowRegexes) > 0 {
+		opts = append(opts, colly.URLFilters(allowRegexes...))
+	}
+	if len(disallowRegexes) > 0 {
+		opts = append(opts, colly.DisallowedURLFilters(disallowRegexes...))
 	}
 
 	// Only set allowed domains if they are configured
@@ -57,6 +111,11 @@ func (c *Crawler) setupCollector(source *configtypes.Source) error {
 	}
 
 	c.collector = colly.NewCollector(opts...)
+
+	c.collector.SetRequestTimeout(c.cfg.RequestTimeout)
+
+	// Referer and RandomUserAgent are applied in OnRequest (setupCallbacks)
+	// MaxURLLength is applied in link_handler.HandleLink
 
 	// Parse and set rate limit
 	rateLimit, err := time.ParseDuration(source.RateLimit)
@@ -91,25 +150,71 @@ func (c *Crawler) setupCollector(source *configtypes.Source) error {
 	return nil
 }
 
-// setupCallbacks configures the collector's callbacks.
-func (c *Crawler) setupCallbacks(ctx context.Context) {
-	// Set up response callback
-	c.collector.OnResponse(func(r *colly.Response) {
+// compileRuleFilters compiles source Rules into allow and disallow regex slices.
+func (c *Crawler) compileRuleFilters(source *configtypes.Source) (allow, disallow []*regexp.Regexp) {
+	for _, rule := range source.Rules {
+		re, err := regexp.Compile(rule.Pattern)
+		if err != nil {
+			c.GetJobLogger().Warn(logs.CategoryLifecycle, "Skipping invalid rule pattern",
+				logs.String("pattern", rule.Pattern),
+				logs.String("action", rule.Action),
+				logs.Err(err),
+			)
+			continue
+		}
+		switch strings.ToLower(strings.TrimSpace(rule.Action)) {
+		case ruleActionAllow:
+			allow = append(allow, re)
+		case ruleActionDisallow:
+			disallow = append(disallow, re)
+		}
+	}
+	return allow, disallow
+}
+
+// responseHeadersCallback returns a callback that aborts non-HTML or oversized responses.
+func (c *Crawler) responseHeadersCallback() func(*colly.Response) {
+	return func(r *colly.Response) {
+		contentType := strings.ToLower(strings.TrimSpace(r.Headers.Get("Content-Type")))
+		isHTML := strings.HasPrefix(contentType, "text/html") ||
+			strings.HasPrefix(contentType, "application/xhtml+xml") ||
+			strings.Contains(contentType, "text/html")
+		if contentType != "" && !isHTML {
+			r.Request.Abort()
+			return
+		}
+		if c.cfg.MaxBodySize > 0 {
+			if cl := r.Headers.Get("Content-Length"); cl != "" {
+				var contentLength int
+				if _, err := fmt.Sscanf(cl, "%d", &contentLength); err == nil && contentLength > c.cfg.MaxBodySize {
+					r.Request.Abort()
+				}
+			}
+		}
+	}
+}
+
+// responseCallback returns the OnResponse callback (archiving, trace logging, Cloudflare detection).
+func (c *Crawler) responseCallback(ctx context.Context) func(*colly.Response) {
+	return func(r *colly.Response) {
 		pageURL := r.Request.URL.String()
 		c.GetJobLogger().Debug(logs.CategoryFetch, "Response received",
 			logs.URL(pageURL),
 			logs.Int("status", r.StatusCode),
 		)
-
-		// Detect Cloudflare challenge pages
+		if c.cfg.Debug && c.cfg.TraceHTTP && r.Trace != nil {
+			c.GetJobLogger().Debug(logs.CategoryFetch, "HTTP trace",
+				logs.URL(pageURL),
+				logs.Duration("connect", r.Trace.ConnectDuration),
+				logs.Duration("first_byte", r.Trace.FirstByteDuration),
+			)
+		}
 		if c.isCloudflareChallenge(r) {
 			c.GetJobLogger().Warn(logs.CategoryFetch, "Cloudflare challenge detected",
 				logs.URL(pageURL),
 				logs.Int("status", r.StatusCode),
 			)
 		}
-
-		// Archive HTML to MinIO if archiver is enabled
 		if c.archiver != nil {
 			task := &archive.UploadTask{
 				HTML:       r.Body,
@@ -120,7 +225,6 @@ func (c *Crawler) setupCallbacks(ctx context.Context) {
 				Timestamp:  time.Now(),
 				Ctx:        ctx,
 			}
-
 			if err := c.archiver.Archive(ctx, task); err != nil {
 				c.GetJobLogger().Warn(logs.CategoryError, "Failed to archive HTML",
 					logs.URL(pageURL),
@@ -128,10 +232,12 @@ func (c *Crawler) setupCallbacks(ctx context.Context) {
 				)
 			}
 		}
-	})
+	}
+}
 
-	// Set up request callback
-	c.collector.OnRequest(func(r *colly.Request) {
+// requestCallback returns the OnRequest callback (abort checks, Referer, RandomUserAgent).
+func (c *Crawler) requestCallback(ctx context.Context) func(*colly.Request) {
+	return func(r *colly.Request) {
 		select {
 		case <-ctx.Done():
 			r.Abort()
@@ -140,11 +246,26 @@ func (c *Crawler) setupCallbacks(ctx context.Context) {
 			r.Abort()
 			return
 		default:
+			if c.cfg.UseReferer {
+				if referer := r.Ctx.Get(refererCtxKey); referer != "" {
+					r.Headers.Set("Referer", referer)
+				}
+			}
+			if c.cfg.UseRandomUserAgent {
+				r.Headers.Set("User-Agent", randomUserAgents[rand.Intn(len(randomUserAgents))])
+			}
 			c.GetJobLogger().Debug(logs.CategoryFetch, "Visiting URL",
 				logs.URL(r.URL.String()),
 			)
 		}
-	})
+	}
+}
+
+// setupCallbacks configures the collector's callbacks.
+func (c *Crawler) setupCallbacks(ctx context.Context) {
+	c.collector.OnResponseHeaders(c.responseHeadersCallback())
+	c.collector.OnResponse(c.responseCallback(ctx))
+	c.collector.OnRequest(c.requestCallback(ctx))
 
 	// Set up HTML processing
 	c.collector.OnHTML("html", func(e *colly.HTMLElement) {
@@ -183,7 +304,7 @@ func (c *Crawler) setupCallbacks(ctx context.Context) {
 	})
 }
 
-// handleCrawlError handles crawl errors with appropriate logging levels.
+// handleCrawlError handles crawl errors with appropriate logging levels and optional HTTP retry.
 func (c *Crawler) handleCrawlError(r *colly.Response, visitErr error) {
 	errMsg := visitErr.Error()
 
@@ -225,7 +346,12 @@ func (c *Crawler) handleCrawlError(r *colly.Response, visitErr error) {
 		return
 	}
 
-	// Log actual errors
+	// Transient errors: retry up to HTTPRetryMax times
+	if c.tryHTTPRetry(r, visitErr) {
+		return
+	}
+
+	// Log actual errors (non-retryable or retries disabled)
 	c.GetJobLogger().Error(logs.CategoryError, "Crawl error",
 		logs.URL(r.Request.URL.String()),
 		logs.Int("status", r.StatusCode),
@@ -233,6 +359,59 @@ func (c *Crawler) handleCrawlError(r *colly.Response, visitErr error) {
 	)
 
 	c.IncrementError()
+}
+
+// tryHTTPRetry attempts to retry the request for transient errors.
+// Returns true if it handled the error (retried or logged after exhausting retries), false if not retryable.
+func (c *Crawler) tryHTTPRetry(r *colly.Response, visitErr error) bool {
+	if !c.isTransientCrawlError(r, visitErr) || c.cfg.HTTPRetryMax <= 0 {
+		return false
+	}
+	count := 0
+	if v := r.Request.Ctx.GetAny(retryCountKey); v != nil {
+		if n, ok := v.(int); ok {
+			count = n
+		}
+	}
+	if count >= c.cfg.HTTPRetryMax {
+		c.GetJobLogger().Error(logs.CategoryError, "Crawl error after retries",
+			logs.URL(r.Request.URL.String()),
+			logs.Int("status", r.StatusCode),
+			logs.Err(visitErr),
+			logs.Int("retries", count),
+		)
+		c.IncrementError()
+		return true
+	}
+	r.Request.Ctx.Put(retryCountKey, count+1)
+	time.Sleep(c.cfg.HTTPRetryDelay)
+	if retryErr := r.Request.Retry(); retryErr != nil {
+		c.GetJobLogger().Warn(logs.CategoryError, "Retry failed",
+			logs.URL(r.Request.URL.String()),
+			logs.Err(retryErr),
+		)
+		c.IncrementError()
+	}
+	return true
+}
+
+// isTransientCrawlError returns true if the error looks retryable (5xx, connection issues).
+func (c *Crawler) isTransientCrawlError(r *colly.Response, visitErr error) bool {
+	errMsg := strings.ToLower(visitErr.Error())
+	transientPatterns := []string{
+		"connection refused", "connection reset", "connection reset by peer",
+		"temporary failure", "eof", "broken pipe", "no such host",
+		"i/o timeout", "connection timed out",
+	}
+	for _, p := range transientPatterns {
+		if strings.Contains(errMsg, p) {
+			return true
+		}
+	}
+	if r != nil && r.StatusCode >= 500 && r.StatusCode < 600 {
+		return true
+	}
+	return false
 }
 
 // Collector Management Methods

@@ -143,6 +143,15 @@ func New(opts ...Option) *Config {
 		ValidateURLs:        true,
 		CleanupInterval:     DefaultCleanupInterval,
 		SaveDiscoveredLinks: false,
+		UseRandomUserAgent:  false,
+		UseReferer:          true,
+		MaxURLLength:        0,
+		MaxRequests:         0,
+		DetectCharset:       false,
+		TraceHTTP:           false,
+		MaxBodySize:         DefaultMaxBodySize,
+		HTTPRetryMax:        DefaultHTTPRetryMax,
+		HTTPRetryDelay:      DefaultHTTPRetryDelay,
 	}
 
 	for _, opt := range opts {

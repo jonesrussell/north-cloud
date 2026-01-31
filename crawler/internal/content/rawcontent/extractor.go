@@ -114,13 +114,13 @@ func extractTitle(e *colly.HTMLElement, selector string) string {
 	}
 
 	// Try title tag
-	title := e.DOM.Find("title").First().Text()
+	title := e.ChildText("title")
 	if title != "" {
 		return strings.TrimSpace(title)
 	}
 
 	// Try h1 as fallback
-	h1 := e.DOM.Find("h1").First().Text()
+	h1 := e.ChildText("h1")
 	if h1 != "" {
 		return strings.TrimSpace(h1)
 	}
@@ -679,24 +679,19 @@ func extractTextFromContainer(e *colly.HTMLElement, containerSelector string, ex
 func extractMeta(e *colly.HTMLElement, property string) string {
 	// Try property attribute first (for og: tags)
 	selector := fmt.Sprintf("meta[property='%s']", property)
-	value := e.DOM.Find(selector).AttrOr("content", "")
+	value := e.ChildAttr(selector, "content")
 	if value != "" {
 		return value
 	}
 
 	// Try name attribute (for standard meta tags)
 	selector = fmt.Sprintf("meta[name='%s']", property)
-	value = e.DOM.Find(selector).AttrOr("content", "")
-	return value
+	return e.ChildAttr(selector, "content")
 }
 
 // extractAttr extracts an attribute from an element
 func extractAttr(e *colly.HTMLElement, selector, attr string) string {
-	element := e.DOM.Find(selector).First()
-	if element.Length() > 0 {
-		return element.AttrOr(attr, "")
-	}
-	return ""
+	return e.ChildAttr(selector, attr)
 }
 
 // generateID generates a unique ID from the URL

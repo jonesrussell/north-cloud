@@ -1,6 +1,6 @@
 # MCP North Cloud Server
 
-An MCP (Model Context Protocol) server that provides comprehensive tools for managing the North Cloud content platform. This server exposes 23 tools across all North Cloud services for crawling, source management, content classification, publishing, search operations, and development tasks.
+An MCP (Model Context Protocol) server that provides comprehensive tools for managing the North Cloud content platform. This server exposes 26 tools across all North Cloud services for crawling, source management, content classification, publishing, search operations, and development tasks.
 
 ## Overview
 
@@ -48,8 +48,10 @@ This MCP server acts as a unified interface to the entire North Cloud microservi
 - `delete_index` - Delete an Elasticsearch index
 - `list_indexes` - List all Elasticsearch indexes
 
-### Development Tools (1 tool)
+### Development Tools (3 tools)
 - `lint_file` - Lint a specific file or entire service (automatically detects Go vs frontend)
+- `build_service` - Build a Go or frontend service
+- `test_service` - Run tests for a service (optional coverage for Go)
 
 ## Architecture
 
@@ -135,7 +137,7 @@ When using Claude Code hooks, MCP tools follow a specific naming pattern. Since 
 - `mcp__north-cloud__list_indexes` - List Elasticsearch indexes
 - `mcp__north-cloud__delete_index` - Delete an Elasticsearch index
 
-**All 23 tools** are available using this naming convention. You can reference them in Claude Code hooks to automate North Cloud operations.
+**All 26 tools** are available using this naming convention. You can reference them in Claude Code hooks to automate North Cloud operations.
 
 **Hook Example**:
 ```yaml
@@ -187,8 +189,10 @@ All 23 tools available with `mcp__north-cloud__` prefix:
 - `mcp__north-cloud__list_indexes`
 - `mcp__north-cloud__delete_index`
 
-**Development Tools (1)**:
+**Development Tools (3)**:
 - `mcp__north-cloud__lint_file`
+- `mcp__north-cloud__build_service`
+- `mcp__north-cloud__test_service`
 
 ### Environment Variables
 
@@ -685,6 +689,78 @@ Lint a specific file or entire service. Automatically detects Go files vs Vue.js
   "success": false,
   "error": "exit status 1",
   "exit_code": 1
+}
+```
+
+#### build_service
+
+Build a North Cloud service. Runs `task build` for Go services or `npm run build` for frontend.
+
+**Parameters:**
+- `service_name` (string, required): Service to build (crawler, source-manager, classifier, publisher, auth, index-manager, search, mcp-north-cloud, dashboard, search-frontend)
+
+**Example:**
+```json
+{
+  "service_name": "crawler"
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "service": "crawler",
+  "command": "task build",
+  "output": "...",
+  "exit_code": 0
+}
+```
+
+#### test_service
+
+Run tests for a North Cloud service. Runs `task test` or `npm run test`. For Go services, supports `with_coverage` to run `task test:coverage`.
+
+**Parameters:**
+- `service_name` (string, required): Service to test
+- `with_coverage` (boolean, optional): If true, run tests with coverage (Go services only)
+
+**Example:**
+```json
+{
+  "service_name": "crawler",
+  "with_coverage": false
+}
+```
+
+**Response (success):**
+```json
+{
+  "success": true,
+  "service": "crawler",
+  "command": "task test",
+  "output": "PASS\nok\t...",
+  "exit_code": 0
+}
+```
+
+**Response (failure with parsed errors):**
+```json
+{
+  "success": false,
+  "service": "crawler",
+  "command": "task test",
+  "output": "...",
+  "error": "exit status 1",
+  "exit_code": 1,
+  "errors": [
+    {
+      "file": "internal/parser/parser.go",
+      "line": 42,
+      "column": 5,
+      "message": "undefined: foo"
+    }
+  ]
 }
 ```
 

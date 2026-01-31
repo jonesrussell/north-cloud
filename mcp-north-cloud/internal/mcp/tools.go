@@ -586,5 +586,39 @@ func getDevelopmentTools() []Tool {
 				},
 			},
 		},
+		{
+			Name:        "build_service",
+			Description: "Build a North Cloud service. Runs 'task build' for Go services or 'npm run build' for frontend.",
+			InputSchema: map[string]any{
+				"type": "object",
+				"properties": map[string]any{
+					"service_name": map[string]any{
+						"type": "string",
+						"description": "Service to build: crawler, source-manager, classifier, publisher, auth, " +
+							"index-manager, search, mcp-north-cloud, dashboard, search-frontend",
+					},
+				},
+				"required": []string{"service_name"},
+			},
+		},
+		{
+			Name:        "test_service",
+			Description: "Run tests for a North Cloud service. Runs 'task test' or 'npm run test'.",
+			InputSchema: map[string]any{
+				"type": "object",
+				"properties": map[string]any{
+					"service_name": map[string]any{
+						"type": "string",
+						"description": "Service to test: crawler, source-manager, classifier, publisher, auth, " +
+							"index-manager, search, mcp-north-cloud, dashboard, search-frontend",
+					},
+					"with_coverage": map[string]any{
+						"type":        "boolean",
+						"description": "If true, run tests with coverage (Go: task test:coverage)",
+					},
+				},
+				"required": []string{"service_name"},
+			},
+		},
 	}
 }
