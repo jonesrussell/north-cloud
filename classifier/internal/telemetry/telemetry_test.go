@@ -41,23 +41,90 @@ func TestRecordClassification(t *testing.T) {
 	provider := getTestProvider(t)
 	ctx := context.Background()
 
-	// Should not panic
-	provider.RecordClassification(ctx, "test-source", true, 100*time.Millisecond)
-	provider.RecordClassification(ctx, "test-source", false, 50*time.Millisecond)
+	// Record multiple classifications
+	provider.RecordClassification(ctx, "test-source-1", true, 100*time.Millisecond)
+	provider.RecordClassification(ctx, "test-source-1", true, 50*time.Millisecond)
+	provider.RecordClassification(ctx, "test-source-2", false, 200*time.Millisecond)
+
+	// Verify metrics are accessible (non-nil)
+	if provider.Metrics == nil {
+		t.Error("metrics should be accessible after recording")
+	}
+
+	// Test with zero duration (edge case)
+	provider.RecordClassification(ctx, "test-source-3", true, 0)
+
+	// Test with very long duration (edge case)
+	provider.RecordClassification(ctx, "test-source-4", false, 10*time.Second)
 }
 
 func TestRecordRuleMatch(t *testing.T) {
 	provider := getTestProvider(t)
 	ctx := context.Background()
 
-	// Should not panic
-	provider.RecordRuleMatch(ctx, 5*time.Millisecond, 25, 3)
+	testCases := []struct {
+		name       string
+		duration   time.Duration
+		rulesCount int
+		matchCount int
+	}{
+		{"fast with matches", 5 * time.Millisecond, 25, 3},
+		{"slow with no matches", 100 * time.Millisecond, 50, 0},
+		{"zero duration", 0, 10, 1},
+		{"many matches", 10 * time.Millisecond, 100, 50},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			// Should complete without panic
+			provider.RecordRuleMatch(ctx, tc.duration, tc.rulesCount, tc.matchCount)
+		})
+	}
 }
 
 func TestSetQueueDepth(t *testing.T) {
 	provider := getTestProvider(t)
 
-	// Should not panic
-	provider.SetQueueDepth(100)
-	provider.SetActiveWorkers(5)
+	testCases := []struct {
+		name    string
+		depth   int
+		workers int
+	}{
+		{"normal load", 100, 5},
+		{"empty queue", 0, 5},
+		{"high load", 10000, 10},
+		{"single worker", 50, 1},
+		{"no workers", 0, 0},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			// Should complete without panic and accept any valid int
+			provider.SetQueueDepth(tc.depth)
+			provider.SetActiveWorkers(tc.workers)
+		})
+	}
+}
+
+func TestRecordClassification_Concurrency(t *testing.T) {
+	provider := getTestProvider(t)
+	ctx := context.Background()
+
+	// Test concurrent access to metrics
+	var wg sync.WaitGroup
+	concurrency := 10
+	iterations := 100
+
+	for i := range concurrency {
+		wg.Add(1)
+		go func(workerID int) {
+			defer wg.Done()
+			for j := range iterations {
+				provider.RecordClassification(ctx, "concurrent-source", j%2 == 0, time.Duration(j)*time.Millisecond)
+			}
+		}(i)
+	}
+
+	wg.Wait()
+	// If we get here without panic/race, concurrent access is safe
 }
