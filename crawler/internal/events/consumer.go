@@ -138,6 +138,19 @@ func (c *Consumer) processMessage(ctx context.Context, msg redis.XMessage) {
 		return
 	}
 
+	// Convert payload from map[string]any to typed struct
+	if convertErr := c.convertPayload(&event); convertErr != nil {
+		if c.log != nil {
+			c.log.Error("Failed to convert payload",
+				infralogger.String("stream_id", msg.ID),
+				infralogger.String("event_type", string(event.EventType)),
+				infralogger.Error(convertErr),
+			)
+		}
+		c.ackMessage(ctx, msg.ID)
+		return
+	}
+
 	var err error
 	switch event.EventType {
 	case infraevents.SourceCreated:
@@ -178,6 +191,54 @@ func (c *Consumer) processMessage(ctx context.Context, msg redis.XMessage) {
 			infralogger.String("stream_id", msg.ID),
 		)
 	}
+}
+
+// convertPayload converts the payload from map[string]any to the typed struct
+// based on the event type. JSON unmarshaling into any produces map[string]any,
+// so we need to re-marshal and unmarshal into the correct type.
+func (c *Consumer) convertPayload(event *infraevents.SourceEvent) error {
+	if event.Payload == nil {
+		return nil
+	}
+
+	// Re-marshal the payload to JSON
+	payloadBytes, err := json.Marshal(event.Payload)
+	if err != nil {
+		return fmt.Errorf("marshal payload: %w", err)
+	}
+
+	// Unmarshal into the correct type based on event type
+	switch event.EventType {
+	case infraevents.SourceCreated:
+		var payload infraevents.SourceCreatedPayload
+		if unmarshalErr := json.Unmarshal(payloadBytes, &payload); unmarshalErr != nil {
+			return fmt.Errorf("unmarshal SourceCreatedPayload: %w", unmarshalErr)
+		}
+		event.Payload = payload
+
+	case infraevents.SourceUpdated:
+		var payload infraevents.SourceUpdatedPayload
+		if unmarshalErr := json.Unmarshal(payloadBytes, &payload); unmarshalErr != nil {
+			return fmt.Errorf("unmarshal SourceUpdatedPayload: %w", unmarshalErr)
+		}
+		event.Payload = payload
+
+	case infraevents.SourceDeleted:
+		var payload infraevents.SourceDeletedPayload
+		if unmarshalErr := json.Unmarshal(payloadBytes, &payload); unmarshalErr != nil {
+			return fmt.Errorf("unmarshal SourceDeletedPayload: %w", unmarshalErr)
+		}
+		event.Payload = payload
+
+	case infraevents.SourceEnabled, infraevents.SourceDisabled:
+		var payload infraevents.SourceTogglePayload
+		if unmarshalErr := json.Unmarshal(payloadBytes, &payload); unmarshalErr != nil {
+			return fmt.Errorf("unmarshal SourceTogglePayload: %w", unmarshalErr)
+		}
+		event.Payload = payload
+	}
+
+	return nil
 }
 
 func (c *Consumer) ackMessage(ctx context.Context, streamID string) {
