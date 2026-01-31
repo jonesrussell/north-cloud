@@ -60,12 +60,16 @@ func setupJobRoutes(v1 *gin.RouterGroup, jobsHandler *JobsHandler) {
 }
 
 // setupLogRoutes configures log streaming endpoints
-func setupLogRoutes(v1 *gin.RouterGroup, logsHandler *LogsHandler) {
+func setupLogRoutes(v1 *gin.RouterGroup, logsHandler *LogsHandler, logsV2Handler *LogsStreamV2Handler) {
 	if logsHandler != nil {
 		v1.GET("/jobs/:id/logs", logsHandler.GetLogsMetadata)
 		v1.GET("/jobs/:id/logs/stream", logsHandler.StreamLogs)
 		v1.GET("/jobs/:id/logs/download", logsHandler.DownloadLogs)
 		v1.GET("/jobs/:id/logs/view", logsHandler.ViewLogs)
+	}
+	// V2 streaming endpoint (Redis Streams-backed)
+	if logsV2Handler != nil {
+		v1.GET("/jobs/:id/logs/stream/v2", logsV2Handler.Stream)
 	}
 }
 
@@ -116,6 +120,7 @@ func NewServer(
 	jobsHandler *JobsHandler,
 	discoveredLinksHandler *DiscoveredLinksHandler,
 	logsHandler *LogsHandler, // Optional - pass nil to disable log streaming
+	logsV2Handler *LogsStreamV2Handler, // Optional - pass nil to disable v2 log streaming
 	executionRepo database.ExecutionRepositoryInterface,
 	infraLog infralogger.Logger,
 	sseHandler *SSEHandler, // Optional - pass nil to disable SSE
@@ -146,7 +151,7 @@ func NewServer(
 		WithTimeouts(defaultReadTimeout, defaultWriteTimeout, defaultIdleTimeout).
 		WithRoutes(func(router *gin.Engine) {
 			// Setup service-specific routes (health routes added by builder)
-			setupCrawlerRoutes(router, jwtSecret, jobsHandler, discoveredLinksHandler, logsHandler, executionRepo, sseHandler, migrationHandler)
+			setupCrawlerRoutes(router, jwtSecret, jobsHandler, discoveredLinksHandler, logsHandler, logsV2Handler, executionRepo, sseHandler, migrationHandler)
 		}).
 		Build()
 
@@ -193,6 +198,7 @@ func setupCrawlerRoutes(
 	jobsHandler *JobsHandler,
 	discoveredLinksHandler *DiscoveredLinksHandler,
 	logsHandler *LogsHandler,
+	logsV2Handler *LogsStreamV2Handler,
 	executionRepo database.ExecutionRepositoryInterface,
 	sseHandler *SSEHandler,
 	migrationHandler *MigrationHandler,
@@ -238,7 +244,7 @@ func setupCrawlerRoutes(
 	setupJobRoutes(v1, jobsHandler)
 
 	// Setup log routes
-	setupLogRoutes(v1, logsHandler)
+	setupLogRoutes(v1, logsHandler, logsV2Handler)
 
 	// Setup discovered links routes
 	setupDiscoveredLinksRoutes(v1, discoveredLinksHandler)

@@ -54,6 +54,7 @@ type JobsSchedulerResult struct {
 	JobsHandler            *api.JobsHandler
 	DiscoveredLinksHandler *api.DiscoveredLinksHandler
 	LogsHandler            *api.LogsHandler
+	LogsV2Handler          *api.LogsStreamV2Handler
 	Scheduler              *scheduler.IntervalScheduler
 	DB                     *sqlx.DB
 	ExecutionRepo          *database.ExecutionRepository
@@ -126,8 +127,8 @@ func Start() error {
 	// Phase 5: Start HTTP server
 	server, errChan := startHTTPServer(
 		deps, jsResult.JobsHandler, jsResult.DiscoveredLinksHandler,
-		jsResult.LogsHandler, jsResult.ExecutionRepo, jsResult.SSEHandler,
-		jsResult.Migrator,
+		jsResult.LogsHandler, jsResult.LogsV2Handler, jsResult.ExecutionRepo,
+		jsResult.SSEHandler, jsResult.Migrator,
 	)
 
 	// Phase 6: Run server until interrupted
@@ -376,12 +377,19 @@ func setupMigrator(deps *CommandDeps, jobRepo *database.JobRepository) *job.Migr
 	return job.NewMigrator(jobRepo, sourceClient, scheduleComputer, deps.Logger)
 }
 
+// LogServiceResult holds the log service and optional Redis writer.
+type LogServiceResult struct {
+	Service     logs.Service
+	Config      *logs.Config
+	RedisWriter *logs.RedisStreamWriter // nil if Redis not enabled/available
+}
+
 // setupLogService creates the log service with optional Redis persistence.
 func setupLogService(
 	deps *CommandDeps,
 	sseBroker sse.Broker,
 	executionRepo database.ExecutionRepositoryInterface,
-) (logs.Service, *logs.Config) {
+) LogServiceResult {
 	configLogsCfg := deps.Config.GetLogsConfig()
 	logsCfg := &logs.Config{
 		Enabled:           configLogsCfg.Enabled,
@@ -409,6 +417,7 @@ func setupLogService(
 
 	// Create optional Redis writer for log persistence
 	var serviceOpts []logs.ServiceOption
+	var redisWriter *logs.RedisStreamWriter
 	if logsCfg.RedisEnabled {
 		redisCfg := deps.Config.GetRedisConfig()
 		if redisCfg.Enabled {
@@ -421,7 +430,7 @@ func setupLogService(
 				deps.Logger.Warn("Redis not available for job logs, falling back to in-memory",
 					infralogger.Error(redisErr))
 			} else {
-				redisWriter := logs.NewRedisStreamWriter(
+				redisWriter = logs.NewRedisStreamWriter(
 					redisClient,
 					logsCfg.RedisKeyPrefix,
 					logsCfg.RedisTTLSeconds,
@@ -434,7 +443,11 @@ func setupLogService(
 	}
 
 	logService := logs.NewService(logsCfg, logArchiver, logsPublisher, executionRepo, deps.Logger, serviceOpts...)
-	return logService, logsCfg
+	return LogServiceResult{
+		Service:     logService,
+		Config:      logsCfg,
+		RedisWriter: redisWriter,
+	}
 }
 
 // === Database & Scheduler Setup ===
@@ -481,10 +494,17 @@ func setupJobsAndScheduler(
 	ssePublisher := scheduler.NewSSEPublisher(sseBroker, deps.Logger)
 
 	// Create log service with optional Redis persistence
-	logService, _ := setupLogService(deps, sseBroker, executionRepo)
+	logResult := setupLogService(deps, sseBroker, executionRepo)
 
 	// Create logs handler
-	logsHandler := api.NewLogsHandler(logService, executionRepo, sseBroker, deps.Logger)
+	logsHandler := api.NewLogsHandler(logResult.Service, executionRepo, sseBroker, deps.Logger)
+
+	// Create v2 logs handler (if Redis is available)
+	var logsV2Handler *api.LogsStreamV2Handler
+	if logResult.RedisWriter != nil {
+		logsV2Handler = api.NewLogsStreamV2Handler(logResult.RedisWriter, deps.Logger)
+		deps.Logger.Info("V2 log streaming endpoint enabled (Redis-backed)")
+	}
 
 	// Create and start scheduler
 	intervalScheduler := createAndStartScheduler(deps, storageResult, jobRepo, executionRepo, db)
@@ -494,7 +514,7 @@ func setupJobsAndScheduler(
 		// Connect SSE publisher to scheduler
 		intervalScheduler.SetSSEPublisher(ssePublisher)
 		// Connect log service to scheduler for job log capture
-		intervalScheduler.SetLogService(logService)
+		intervalScheduler.SetLogService(logResult.Service)
 	}
 
 	// Create migrator for Phase 3 job migration
@@ -504,12 +524,13 @@ func setupJobsAndScheduler(
 		JobsHandler:            jobsHandler,
 		DiscoveredLinksHandler: discoveredLinksHandler,
 		LogsHandler:            logsHandler,
+		LogsV2Handler:          logsV2Handler,
 		Scheduler:              intervalScheduler,
 		DB:                     db,
 		ExecutionRepo:          executionRepo,
 		SSEBroker:              sseBroker,
 		SSEHandler:             sseHandler,
-		LogService:             logService,
+		LogService:             logResult.Service,
 		JobRepo:                jobRepo,
 		Migrator:               migrator,
 	}, nil
@@ -572,6 +593,7 @@ func startHTTPServer(
 	jobsHandler *api.JobsHandler,
 	discoveredLinksHandler *api.DiscoveredLinksHandler,
 	logsHandler *api.LogsHandler,
+	logsV2Handler *api.LogsStreamV2Handler,
 	executionRepo *database.ExecutionRepository,
 	sseHandler *api.SSEHandler,
 	migrator *job.Migrator,
@@ -581,7 +603,11 @@ func startHTTPServer(
 
 	// Use the logger that already has the service field attached
 	// Create server using the new infrastructure gin package
-	server = api.NewServer(deps.Config, jobsHandler, discoveredLinksHandler, logsHandler, executionRepo, deps.Logger, sseHandler, migrationHandler)
+	server = api.NewServer(
+		deps.Config, jobsHandler, discoveredLinksHandler,
+		logsHandler, logsV2Handler, executionRepo,
+		deps.Logger, sseHandler, migrationHandler,
+	)
 
 	// Start server asynchronously
 	deps.Logger.Info("Starting HTTP server", infralogger.String("addr", deps.Config.GetServerConfig().Address))
