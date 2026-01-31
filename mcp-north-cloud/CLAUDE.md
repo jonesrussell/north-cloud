@@ -154,7 +154,7 @@ type Client struct {
 
 3. **EOF is graceful shutdown**: When stdin closes, server exits cleanly.
 
-4. **lint_file hardcodes project root**: Uses `/home/jones/dev/north-cloud` for path resolution.
+4. **lint_file uses configurable project root**: Set via `NORTH_CLOUD_ROOT` env var or defaults to current directory.
 
 5. **All build output to stderr**: The `run-mcp.sh` wrapper ensures clean stdout.
 

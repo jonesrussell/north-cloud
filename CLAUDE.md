@@ -81,8 +81,8 @@ cd SERVICE && go build -o bin/SERVICE main.go
 | classifier | 8071 | Classifier HTTP API |
 | publisher | 8070 | Publisher API |
 | auth | 8040 | Authentication |
-| index-manager | 8090 | Index Manager API |
-| search | 8090 | Search API |
+| index-manager | 8090 | Index Manager API (shares port with search in dev) |
+| search | 8092 | Search API (dev), 8090 (prod via nginx) |
 | dashboard | 3002 | Dashboard UI |
 
 ---
@@ -168,7 +168,7 @@ cd SERVICE && go build -o bin/SERVICE main.go
 - **Test Crawl**: `POST /api/v1/sources/test-crawl` (preview without saving)
 
 ### 3. classifier (`/classifier`)
-- **Port**: 8070
+- **Port**: 8071
 - **Purpose**: Classify raw content (type, quality 0-100, topics, crime detection)
 - **Dependencies**: Elasticsearch (reads `{source}_raw_content`, writes `{source}_classified_content`)
 - **IMPORTANT**: Must populate `Body` and `Source` alias fields for publisher
