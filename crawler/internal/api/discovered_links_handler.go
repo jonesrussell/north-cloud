@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jonesrussell/north-cloud/crawler/internal/database"
 	"github.com/jonesrussell/north-cloud/crawler/internal/domain"
+	infralogger "github.com/north-cloud/infrastructure/logger"
 )
 
 const (
@@ -20,6 +21,7 @@ type DiscoveredLinksHandler struct {
 	repo      *database.DiscoveredLinkRepository
 	jobRepo   *database.JobRepository
 	scheduler SchedulerInterface
+	log       infralogger.Logger
 }
 
 // NewDiscoveredLinksHandler creates a new discovered links handler.
@@ -33,6 +35,11 @@ func NewDiscoveredLinksHandler(repo *database.DiscoveredLinkRepository, jobRepo 
 // SetScheduler sets the scheduler for the discovered links handler.
 func (h *DiscoveredLinksHandler) SetScheduler(scheduler SchedulerInterface) {
 	h.scheduler = scheduler
+}
+
+// SetLogger sets the logger for observability.
+func (h *DiscoveredLinksHandler) SetLogger(log infralogger.Logger) {
+	h.log = log
 }
 
 // ListDiscoveredLinks handles GET /api/v1/discovered-links
@@ -183,11 +190,20 @@ func (h *DiscoveredLinksHandler) CreateJobFromLink(c *gin.Context) {
 	}
 
 	// Save to database
-	if createErr := h.jobRepo.Create(c.Request.Context(), job); createErr != nil {
+	wasInserted, createErr := h.jobRepo.CreateOrUpdate(c.Request.Context(), job)
+	if createErr != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": "Failed to create job: " + createErr.Error(),
 		})
 		return
+	}
+
+	if h.log != nil {
+		if wasInserted {
+			h.log.Info("Job created", infralogger.String("job_id", job.ID), infralogger.String("source_id", job.SourceID))
+		} else {
+			h.log.Info("Job updated on create request", infralogger.String("job_id", job.ID), infralogger.String("source_id", job.SourceID))
+		}
 	}
 
 	// Update link status to processing

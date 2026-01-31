@@ -506,6 +506,10 @@ func setupJobsAndScheduler(
 		deps.Logger.Info("V2 log streaming endpoint enabled (Redis-backed)")
 	}
 
+	// Set logger for observability
+	jobsHandler.SetLogger(deps.Logger)
+	discoveredLinksHandler.SetLogger(deps.Logger)
+
 	// Create and start scheduler
 	intervalScheduler := createAndStartScheduler(deps, storageResult, jobRepo, executionRepo, db)
 	if intervalScheduler != nil {

@@ -9,6 +9,7 @@ import (
 	"github.com/jonesrussell/north-cloud/crawler/internal/database"
 	"github.com/jonesrussell/north-cloud/crawler/internal/domain"
 	"github.com/jonesrussell/north-cloud/crawler/internal/scheduler"
+	infralogger "github.com/north-cloud/infrastructure/logger"
 )
 
 const (
@@ -22,6 +23,7 @@ type JobsHandler struct {
 	repo          database.JobRepositoryInterface
 	executionRepo database.ExecutionRepositoryInterface
 	scheduler     SchedulerInterface
+	log           infralogger.Logger
 }
 
 // SchedulerInterface defines the interface for the scheduler.
@@ -45,6 +47,11 @@ func NewJobsHandler(
 // SetScheduler sets the scheduler for the jobs handler.
 func (h *JobsHandler) SetScheduler(sched SchedulerInterface) {
 	h.scheduler = sched
+}
+
+// SetLogger sets the logger for observability.
+func (h *JobsHandler) SetLogger(log infralogger.Logger) {
+	h.log = log
 }
 
 // ListJobs handles GET /api/v1/jobs
@@ -170,11 +177,20 @@ func (h *JobsHandler) CreateJob(c *gin.Context) {
 	}
 
 	// Save to database (trigger will calculate next_run_at)
-	if err := h.repo.Create(c.Request.Context(), job); err != nil {
+	wasInserted, err := h.repo.CreateOrUpdate(c.Request.Context(), job)
+	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": "Failed to create job: " + err.Error(),
 		})
 		return
+	}
+
+	if h.log != nil {
+		if wasInserted {
+			h.log.Info("Job created", infralogger.String("job_id", job.ID), infralogger.String("source_id", job.SourceID))
+		} else {
+			h.log.Info("Job updated on create request", infralogger.String("job_id", job.ID), infralogger.String("source_id", job.SourceID))
+		}
 	}
 
 	// Add deprecation warning headers (Phase 3 migration)

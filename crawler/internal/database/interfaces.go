@@ -12,6 +12,7 @@ import (
 type JobRepositoryInterface interface {
 	// Basic CRUD operations
 	Create(ctx context.Context, job *domain.Job) error
+	CreateOrUpdate(ctx context.Context, job *domain.Job) (bool, error)
 	GetByID(ctx context.Context, id string) (*domain.Job, error)
 	List(ctx context.Context, status string, limit, offset int) ([]*domain.Job, error)
 	Update(ctx context.Context, job *domain.Job) error

@@ -71,6 +71,70 @@ func (r *JobRepository) Create(ctx context.Context, job *domain.Job) error {
 	return nil
 }
 
+// CreateOrUpdate inserts a new job or updates an existing one by source_id.
+// Returns wasInserted=true for new jobs, false when updating an existing job.
+func (r *JobRepository) CreateOrUpdate(ctx context.Context, job *domain.Job) (bool, error) {
+	query := `
+		INSERT INTO jobs (
+			id, source_id, source_name, url,
+			schedule_time, schedule_enabled,
+			interval_minutes, interval_type,
+			is_paused, max_retries, retry_backoff_seconds,
+			status, metadata
+		)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+		ON CONFLICT (source_id) DO UPDATE SET
+			source_name = EXCLUDED.source_name,
+			url = EXCLUDED.url,
+			schedule_time = EXCLUDED.schedule_time,
+			schedule_enabled = EXCLUDED.schedule_enabled,
+			interval_minutes = EXCLUDED.interval_minutes,
+			interval_type = EXCLUDED.interval_type,
+			is_paused = EXCLUDED.is_paused,
+			max_retries = EXCLUDED.max_retries,
+			retry_backoff_seconds = EXCLUDED.retry_backoff_seconds,
+			status = CASE
+				WHEN jobs.status = 'running' THEN jobs.status
+				ELSE EXCLUDED.status
+			END,
+			metadata = EXCLUDED.metadata,
+			updated_at = NOW()
+		RETURNING id, created_at, updated_at, next_run_at
+	`
+
+	var metadataPtr *domain.JSONBMap
+	if job.Metadata != nil {
+		metadataPtr = &job.Metadata
+	}
+
+	originalID := job.ID
+	err := r.db.QueryRowContext(
+		ctx,
+		query,
+		job.ID,
+		job.SourceID,
+		job.SourceName,
+		job.URL,
+		job.ScheduleTime,
+		job.ScheduleEnabled,
+		job.IntervalMinutes,
+		job.IntervalType,
+		job.IsPaused,
+		job.MaxRetries,
+		job.RetryBackoffSeconds,
+		job.Status,
+		metadataPtr,
+	).Scan(&job.ID, &job.CreatedAt, &job.UpdatedAt, &job.NextRunAt)
+
+	if err != nil {
+		return false, fmt.Errorf("failed to create or update job: %w", err)
+	}
+
+	// Insert returns our id; update returns the existing row's id
+	wasInserted := job.ID == originalID
+	return wasInserted, nil
+}
+
 // GetByID retrieves a job by its ID.
 func (r *JobRepository) GetByID(ctx context.Context, id string) (*domain.Job, error) {
 	var job domain.Job
