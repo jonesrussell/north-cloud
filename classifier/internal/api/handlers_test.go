@@ -3,9 +3,7 @@ package api
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
-	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -18,6 +16,7 @@ import (
 	"github.com/jonesrussell/north-cloud/classifier/internal/database"
 	"github.com/jonesrussell/north-cloud/classifier/internal/domain"
 	"github.com/jonesrussell/north-cloud/classifier/internal/processor"
+	"github.com/jonesrussell/north-cloud/classifier/internal/testhelpers"
 	_ "github.com/mattn/go-sqlite3"
 	infralogger "github.com/north-cloud/infrastructure/logger"
 )
@@ -33,54 +32,6 @@ func (m *mockLogger) Fatal(msg string, fields ...infralogger.Field)       {}
 func (m *mockLogger) With(fields ...infralogger.Field) infralogger.Logger { return m }
 func (m *mockLogger) Sync() error                                         { return nil }
 
-// mockSourceReputationDB implements SourceReputationDB for testing
-type mockSourceReputationDB struct {
-	sources map[string]*domain.SourceReputation
-}
-
-func newMockSourceReputationDB() *mockSourceReputationDB {
-	return &mockSourceReputationDB{
-		sources: make(map[string]*domain.SourceReputation),
-	}
-}
-
-var errSourceNotFound = errors.New("source not found")
-
-func (m *mockSourceReputationDB) GetSource(ctx context.Context, sourceName string) (*domain.SourceReputation, error) {
-	source, ok := m.sources[sourceName]
-	if !ok {
-		return nil, errSourceNotFound
-	}
-	return source, nil
-}
-
-func (m *mockSourceReputationDB) CreateSource(ctx context.Context, source *domain.SourceReputation) error {
-	m.sources[source.SourceName] = source
-	return nil
-}
-
-func (m *mockSourceReputationDB) UpdateSource(ctx context.Context, source *domain.SourceReputation) error {
-	m.sources[source.SourceName] = source
-	return nil
-}
-
-func (m *mockSourceReputationDB) GetOrCreateSource(ctx context.Context, sourceName string) (*domain.SourceReputation, error) {
-	source, ok := m.sources[sourceName]
-	if !ok {
-		source = &domain.SourceReputation{
-			SourceName:          sourceName,
-			Category:            domain.SourceCategoryUnknown,
-			ReputationScore:     50,
-			TotalArticles:       0,
-			AverageQualityScore: 0,
-			SpamCount:           0,
-			CreatedAt:           time.Now(),
-			UpdatedAt:           time.Now(),
-		}
-		m.sources[sourceName] = source
-	}
-	return source, nil
-}
 
 // setupTestSourceReputationRepository creates an in-memory SQLite repository for testing
 func setupTestSourceReputationRepository() (*database.SourceReputationRepository, error) {
@@ -133,7 +84,7 @@ func setupTestHandler() *Handler {
 	}
 
 	// Create source reputation DB
-	sourceRepDB := newMockSourceReputationDB()
+	sourceRepDB := testhelpers.NewMockSourceReputationDB()
 
 	// Create classifier config
 	classifierCfg := classifier.Config{

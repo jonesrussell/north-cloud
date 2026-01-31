@@ -3,63 +3,14 @@ package classifier
 
 import (
 	"context"
-	"errors"
 	"testing"
-	"time"
 
 	"github.com/jonesrussell/north-cloud/classifier/internal/domain"
+	"github.com/jonesrussell/north-cloud/classifier/internal/testhelpers"
 )
 
-// mockSourceReputationDB implements SourceReputationDB for testing
-type mockSourceReputationDB struct {
-	sources map[string]*domain.SourceReputation
-}
-
-func newMockSourceReputationDB() *mockSourceReputationDB {
-	return &mockSourceReputationDB{
-		sources: make(map[string]*domain.SourceReputation),
-	}
-}
-
-func (m *mockSourceReputationDB) GetSource(ctx context.Context, sourceName string) (*domain.SourceReputation, error) {
-	source, ok := m.sources[sourceName]
-	if !ok {
-		return nil, errors.New("source not found")
-	}
-	return source, nil
-}
-
-func (m *mockSourceReputationDB) CreateSource(ctx context.Context, source *domain.SourceReputation) error {
-	m.sources[source.SourceName] = source
-	return nil
-}
-
-func (m *mockSourceReputationDB) UpdateSource(ctx context.Context, source *domain.SourceReputation) error {
-	m.sources[source.SourceName] = source
-	return nil
-}
-
-func (m *mockSourceReputationDB) GetOrCreateSource(ctx context.Context, sourceName string) (*domain.SourceReputation, error) {
-	source, ok := m.sources[sourceName]
-	if !ok {
-		// Create new source with default values
-		source = &domain.SourceReputation{
-			SourceName:          sourceName,
-			Category:            domain.SourceCategoryUnknown,
-			ReputationScore:     50, // Default
-			TotalArticles:       0,
-			AverageQualityScore: 0,
-			SpamCount:           0,
-			CreatedAt:           time.Now(),
-			UpdatedAt:           time.Now(),
-		}
-		m.sources[sourceName] = source
-	}
-	return source, nil
-}
-
 func TestSourceReputationScorer_Score_NewSource(t *testing.T) {
-	db := newMockSourceReputationDB()
+	db := testhelpers.NewMockSourceReputationDB()
 	scorer := NewSourceReputationScorer(&mockLogger{}, db)
 
 	result, err := scorer.Score(context.Background(), "example.com")
@@ -83,18 +34,18 @@ func TestSourceReputationScorer_Score_NewSource(t *testing.T) {
 }
 
 func TestSourceReputationScorer_Score_EstablishedSource(t *testing.T) {
-	db := newMockSourceReputationDB()
+	db := testhelpers.NewMockSourceReputationDB()
 	scorer := NewSourceReputationScorer(&mockLogger{}, db)
 
 	// Pre-populate with an established source
-	db.sources["trusted-news.com"] = &domain.SourceReputation{
+	db.SetSource(&domain.SourceReputation{
 		SourceName:          "trusted-news.com",
 		Category:            domain.SourceCategoryNews,
 		ReputationScore:     85,
 		TotalArticles:       100,
 		AverageQualityScore: 85.0,
 		SpamCount:           2, // Very low spam ratio
-	}
+	})
 
 	result, err := scorer.Score(context.Background(), "trusted-news.com")
 
@@ -117,7 +68,7 @@ func TestSourceReputationScorer_Score_EstablishedSource(t *testing.T) {
 }
 
 func TestSourceReputationScorer_UpdateAfterClassification_HighQuality(t *testing.T) {
-	db := newMockSourceReputationDB()
+	db := testhelpers.NewMockSourceReputationDB()
 	scorer := NewSourceReputationScorer(&mockLogger{}, db)
 
 	sourceName := "example.com"
@@ -150,7 +101,7 @@ func TestSourceReputationScorer_UpdateAfterClassification_HighQuality(t *testing
 }
 
 func TestSourceReputationScorer_UpdateAfterClassification_LowQuality(t *testing.T) {
-	db := newMockSourceReputationDB()
+	db := testhelpers.NewMockSourceReputationDB()
 	scorer := NewSourceReputationScorer(&mockLogger{}, db)
 
 	sourceName := "spam-site.com"
@@ -179,7 +130,7 @@ func TestSourceReputationScorer_UpdateAfterClassification_LowQuality(t *testing.
 }
 
 func TestSourceReputationScorer_UpdateAfterClassification_Multiple(t *testing.T) {
-	db := newMockSourceReputationDB()
+	db := testhelpers.NewMockSourceReputationDB()
 	scorer := NewSourceReputationScorer(&mockLogger{}, db)
 
 	sourceName := "mixed-quality.com"
@@ -227,7 +178,7 @@ func TestSourceReputationScorer_UpdateAfterClassification_Multiple(t *testing.T)
 }
 
 func TestSourceReputationScorer_DetermineRank(t *testing.T) {
-	scorer := NewSourceReputationScorer(&mockLogger{}, newMockSourceReputationDB())
+	scorer := NewSourceReputationScorer(&mockLogger{}, testhelpers.NewMockSourceReputationDB())
 
 	tests := []struct {
 		name          string
@@ -253,7 +204,7 @@ func TestSourceReputationScorer_DetermineRank(t *testing.T) {
 }
 
 func TestSourceReputationScorer_CalculateReputationScore(t *testing.T) {
-	scorer := NewSourceReputationScorer(&mockLogger{}, newMockSourceReputationDB())
+	scorer := NewSourceReputationScorer(&mockLogger{}, testhelpers.NewMockSourceReputationDB())
 
 	tests := []struct {
 		name     string
@@ -314,23 +265,23 @@ func TestSourceReputationScorer_CalculateReputationScore(t *testing.T) {
 }
 
 func TestSourceReputationScorer_ScoreBatch(t *testing.T) {
-	db := newMockSourceReputationDB()
+	db := testhelpers.NewMockSourceReputationDB()
 	scorer := NewSourceReputationScorer(&mockLogger{}, db)
 
 	// Pre-populate some sources
-	db.sources["source1.com"] = &domain.SourceReputation{
+	db.SetSource(&domain.SourceReputation{
 		SourceName:          "source1.com",
 		ReputationScore:     80,
 		TotalArticles:       50,
 		AverageQualityScore: 80.0,
 		SpamCount:           0, // No spam - qualifies for trust boost
-	}
-	db.sources["source2.com"] = &domain.SourceReputation{
+	})
+	db.SetSource(&domain.SourceReputation{
 		SourceName:          "source2.com",
 		ReputationScore:     40,
 		TotalArticles:       20,
 		AverageQualityScore: 40.0,
-	}
+	})
 
 	sourceNames := []string{"source1.com", "source2.com", "source3.com"}
 	results, err := scorer.ScoreBatch(context.Background(), sourceNames)
