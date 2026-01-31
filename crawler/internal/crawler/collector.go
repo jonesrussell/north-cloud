@@ -34,6 +34,12 @@ const (
 	defaultExpectContinueTimeout = 1 * time.Second
 )
 
+// Progress logging configuration
+const (
+	// progressMilestoneInterval defines how often (in pages) to emit progress milestones.
+	progressMilestoneInterval = 50
+)
+
 // Rule action values for URLFilters (source Rules).
 const (
 	ruleActionAllow    = "allow"
@@ -298,9 +304,18 @@ func (c *Crawler) setupCallbacks(ctx context.Context) {
 			logs.URL(pageURL),
 		)
 
-		// Note: Link counts are tracked via the HandleLink callback logging.
-		// The actual count of queued links would require accessing colly's internal queue,
-		// which is not exposed. We rely on the "Discovered link" logs for diagnostics.
+		// Track pages crawled for heartbeat and milestone progress
+		c.GetJobLogger().IncrementPagesCrawled()
+
+		// Emit milestone progress logs every N pages
+		summary := c.GetJobLogger().BuildSummary()
+		pagesCrawled := summary.PagesCrawled
+		if pagesCrawled > 0 && pagesCrawled%progressMilestoneInterval == 0 {
+			c.GetJobLogger().Info(logs.CategoryMetrics, "progress",
+				logs.Int64("pages_crawled", pagesCrawled),
+				logs.Int64("items_extracted", summary.ItemsExtracted),
+			)
+		}
 	})
 }
 
@@ -343,6 +358,7 @@ func (c *Crawler) handleCrawlError(r *colly.Response, visitErr error) {
 			logs.Int("status", r.StatusCode),
 		)
 		c.IncrementError()
+		c.GetJobLogger().IncrementErrors()
 		return
 	}
 
@@ -359,6 +375,7 @@ func (c *Crawler) handleCrawlError(r *colly.Response, visitErr error) {
 	)
 
 	c.IncrementError()
+	c.GetJobLogger().IncrementErrors()
 }
 
 // tryHTTPRetry attempts to retry the request for transient errors.
@@ -381,6 +398,7 @@ func (c *Crawler) tryHTTPRetry(r *colly.Response, visitErr error) bool {
 			logs.Int("retries", count),
 		)
 		c.IncrementError()
+		c.GetJobLogger().IncrementErrors()
 		return true
 	}
 	r.Request.Ctx.Put(retryCountKey, count+1)
@@ -391,6 +409,7 @@ func (c *Crawler) tryHTTPRetry(r *colly.Response, visitErr error) bool {
 			logs.Err(retryErr),
 		)
 		c.IncrementError()
+		c.GetJobLogger().IncrementErrors()
 	}
 	return true
 }

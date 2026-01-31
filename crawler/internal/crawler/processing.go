@@ -50,9 +50,11 @@ func (c *Crawler) ProcessHTML(e *colly.HTMLElement) {
 		} else {
 			c.GetJobLogger().Error(logs.CategoryError, "Failed to process raw content", logs.Err(err), logs.URL(e.Request.URL.String()))
 			c.state.IncrementError()
+			c.GetJobLogger().IncrementErrors()
 		}
 	} else {
 		c.GetJobLogger().Debug(logs.CategoryExtract, "Content extracted", logs.URL(e.Request.URL.String()))
+		c.GetJobLogger().IncrementItemsExtracted()
 	}
 
 	c.state.IncrementProcessed()

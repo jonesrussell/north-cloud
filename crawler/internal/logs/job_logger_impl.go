@@ -121,6 +121,21 @@ func (j *jobLoggerImpl) JobFailed(err error) {
 	})
 }
 
+// IncrementPagesCrawled increments the pages crawled counter.
+func (j *jobLoggerImpl) IncrementPagesCrawled() {
+	j.metrics.IncrementPagesCrawled()
+}
+
+// IncrementItemsExtracted increments the items extracted counter.
+func (j *jobLoggerImpl) IncrementItemsExtracted() {
+	j.metrics.IncrementItemsExtracted()
+}
+
+// IncrementErrors increments the errors counter.
+func (j *jobLoggerImpl) IncrementErrors() {
+	j.metrics.IncrementErrors()
+}
+
 // IsDebugEnabled returns true if debug logging is enabled.
 func (j *jobLoggerImpl) IsDebugEnabled() bool {
 	return j.verbosity.AllowsLevel("debug")
@@ -151,7 +166,9 @@ func (j *jobLoggerImpl) StartHeartbeat(ctx context.Context) {
 				return
 			case <-ticker.C:
 				j.log("info", CategoryLifecycle, "heartbeat", []Field{
-					Int64("logs_emitted", j.metrics.LogsEmitted()),
+					Int64("pages_crawled", j.metrics.PagesCrawled()),
+					Int64("items_extracted", j.metrics.ItemsExtracted()),
+					Int64("errors_count", j.metrics.ErrorsCount()),
 					Int64("queue_depth", j.metrics.QueueDepth()),
 				})
 			}
@@ -212,6 +229,18 @@ func (s *scopedJobLogger) JobCompleted(summary *JobSummary) {
 
 func (s *scopedJobLogger) JobFailed(err error) {
 	s.parent.JobFailed(err)
+}
+
+func (s *scopedJobLogger) IncrementPagesCrawled() {
+	s.parent.IncrementPagesCrawled()
+}
+
+func (s *scopedJobLogger) IncrementItemsExtracted() {
+	s.parent.IncrementItemsExtracted()
+}
+
+func (s *scopedJobLogger) IncrementErrors() {
+	s.parent.IncrementErrors()
 }
 
 func (s *scopedJobLogger) IsDebugEnabled() bool {

@@ -19,6 +19,11 @@ type JobLogger interface {
 	JobCompleted(summary *JobSummary)
 	JobFailed(err error)
 
+	// Metric tracking (for heartbeat progress display)
+	IncrementPagesCrawled()
+	IncrementItemsExtracted()
+	IncrementErrors()
+
 	// Verbosity check (for expensive operations)
 	IsDebugEnabled() bool
 	IsTraceEnabled() bool

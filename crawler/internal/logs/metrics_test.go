@@ -100,3 +100,28 @@ func TestLogMetrics_ThrottlePercent(t *testing.T) {
 		t.Errorf("ThrottlePercent = %f, want 20.0", summary.ThrottlePercent)
 	}
 }
+
+func TestLogMetrics_Getters(t *testing.T) {
+	t.Helper()
+
+	m := logs.NewLogMetrics()
+
+	// Increment counters
+	m.IncrementPagesCrawled()
+	m.IncrementPagesCrawled()
+	m.IncrementItemsExtracted()
+	m.IncrementErrors()
+	m.IncrementErrors()
+	m.IncrementErrors()
+
+	// Test individual getters
+	if got := m.PagesCrawled(); got != 2 {
+		t.Errorf("PagesCrawled() = %d, want 2", got)
+	}
+	if got := m.ItemsExtracted(); got != 1 {
+		t.Errorf("ItemsExtracted() = %d, want 1", got)
+	}
+	if got := m.ErrorsCount(); got != 3 {
+		t.Errorf("ErrorsCount() = %d, want 3", got)
+	}
+}

@@ -18,6 +18,9 @@ func (n *noopJobLogger) Debug(_ Category, _ string, _ ...Field) {}
 func (n *noopJobLogger) JobStarted(_, _ string)                 {}
 func (n *noopJobLogger) JobCompleted(_ *JobSummary)             {}
 func (n *noopJobLogger) JobFailed(_ error)                      {}
+func (n *noopJobLogger) IncrementPagesCrawled()                 {}
+func (n *noopJobLogger) IncrementItemsExtracted()               {}
+func (n *noopJobLogger) IncrementErrors()                       {}
 func (n *noopJobLogger) StartHeartbeat(_ context.Context)       {}
 func (n *noopJobLogger) IsDebugEnabled() bool                   { return false }
 func (n *noopJobLogger) IsTraceEnabled() bool                   { return false }

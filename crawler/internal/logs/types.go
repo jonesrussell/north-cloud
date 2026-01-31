@@ -9,10 +9,11 @@ const CurrentSchemaVersion = 1
 
 // Configuration constants.
 const (
-	defaultBufferSize    = 1000
-	defaultRetentionDays = 30
-	defaultMinLevel      = "info"
-	defaultMinioBucket   = "crawler-logs"
+	defaultBufferSize        = 1000
+	defaultRetentionDays     = 30
+	defaultMinLevel          = "info"
+	defaultMinioBucket       = "crawler-logs"
+	defaultMilestoneInterval = 50
 )
 
 // LogEntry represents a single log line captured during job execution.
@@ -70,17 +71,21 @@ type Config struct {
 
 	// MinioBucket is the bucket name for log archives.
 	MinioBucket string `default:"crawler-logs" env:"JOB_LOGS_MINIO_BUCKET" yaml:"minio_bucket"`
+
+	// MilestoneInterval is how often (in pages crawled) to emit progress milestones.
+	MilestoneInterval int `default:"50" env:"JOB_LOGS_MILESTONE_INTERVAL" yaml:"milestone_interval"`
 }
 
 // DefaultConfig returns a Config with sensible defaults.
 func DefaultConfig() *Config {
 	return &Config{
-		Enabled:        true,
-		BufferSize:     defaultBufferSize,
-		SSEEnabled:     true,
-		ArchiveEnabled: true,
-		RetentionDays:  defaultRetentionDays,
-		MinLevel:       defaultMinLevel,
-		MinioBucket:    defaultMinioBucket,
+		Enabled:           true,
+		BufferSize:        defaultBufferSize,
+		SSEEnabled:        true,
+		ArchiveEnabled:    true,
+		RetentionDays:     defaultRetentionDays,
+		MinLevel:          defaultMinLevel,
+		MinioBucket:       defaultMinioBucket,
+		MilestoneInterval: defaultMilestoneInterval,
 	}
 }

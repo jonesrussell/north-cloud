@@ -139,3 +139,18 @@ func (m *LogMetrics) LogsEmitted() int64 {
 func (m *LogMetrics) QueueDepth() int64 {
 	return m.queueDepth.Load()
 }
+
+// PagesCrawled returns the current count of pages crawled.
+func (m *LogMetrics) PagesCrawled() int64 {
+	return m.pagesCrawled.Load()
+}
+
+// ItemsExtracted returns the current count of items extracted.
+func (m *LogMetrics) ItemsExtracted() int64 {
+	return m.itemsExtracted.Load()
+}
+
+// ErrorsCount returns the current count of errors.
+func (m *LogMetrics) ErrorsCount() int64 {
+	return m.errorsCount.Load()
+}

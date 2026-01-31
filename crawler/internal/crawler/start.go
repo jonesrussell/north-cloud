@@ -196,7 +196,7 @@ func (c *Crawler) handleInitialPageScraped(
 	if !initialPageScraped.Load() {
 		if initialPageScraped.CompareAndSwap(false, true) {
 			linkCount := initialPageLinkCount.Load()
-			c.GetJobLogger().Debug(logs.CategoryQueue, "Initial page scraped",
+			c.GetJobLogger().Info(logs.CategoryQueue, "Initial page scraped",
 				logs.URL(initialPageURL),
 				logs.Int64("links_discovered", linkCount),
 			)

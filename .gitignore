@@ -147,3 +147,7 @@ search/config.yml
 mcp-north-cloud/bin/mcp-north-cloud
 auth/config.yml
 .task/
+
+coverage.html
+coverage.out
+
