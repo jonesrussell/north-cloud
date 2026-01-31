@@ -71,16 +71,6 @@ func (o *OutboxEntry) RoutingKey() string {
 	}
 }
 
-// ShouldRetry returns true if the entry can be retried
-func (o *OutboxEntry) ShouldRetry() bool {
-	return o.RetryCount < o.MaxRetries
-}
-
-// IsExhausted returns true if all retries have been exhausted
-func (o *OutboxEntry) IsExhausted() bool {
-	return o.RetryCount >= o.MaxRetries
-}
-
 // ToPublishMessage converts to Redis message format
 func (o *OutboxEntry) ToPublishMessage() map[string]any {
 	return map[string]any{
