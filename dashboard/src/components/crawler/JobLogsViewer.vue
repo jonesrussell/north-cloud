@@ -304,6 +304,9 @@ const loadLogsMetadata = async () => {
   }
 }
 
+// Track which endpoint version we're using
+let usingV2Endpoint = true
+
 const startLiveStream = () => {
   if (eventSource) {
     eventSource.close()
@@ -320,12 +323,14 @@ const startLiveStream = () => {
   displayedLogs.value = []
   summary.value = null
 
-  // Connect to SSE endpoint
-  const url = `/api/crawler/jobs/${props.jobId}/logs/stream`
+  // Try v2 endpoint first (Redis Streams-backed), fall back to v1
+  const baseUrl = `/api/crawler/jobs/${props.jobId}/logs/stream`
+  const url = usingV2Endpoint ? `${baseUrl}/v2` : baseUrl
+  console.log(`[JobLogsViewer] Connecting to ${usingV2Endpoint ? 'v2' : 'v1'} endpoint`)
   eventSource = new EventSource(`${url}?token=${encodeURIComponent(token)}`)
 
   eventSource.onopen = () => {
-    console.log('[JobLogsViewer] SSE connection opened')
+    console.log(`[JobLogsViewer] SSE connection opened (${usingV2Endpoint ? 'v2' : 'v1'})`)
   }
 
   eventSource.onmessage = (event) => {
@@ -365,6 +370,16 @@ const startLiveStream = () => {
 
   eventSource.onerror = (err) => {
     console.error('[JobLogsViewer] SSE error:', err)
+
+    // If v2 endpoint failed immediately, fall back to v1
+    if (usingV2Endpoint && displayedLogs.value.length === 0 && replayedCount.value === 0) {
+      console.log('[JobLogsViewer] V2 endpoint failed, falling back to v1')
+      usingV2Endpoint = false
+      eventSource?.close()
+      startLiveStream()
+      return
+    }
+
     // Reconnect after a delay if job is still running
     if (isLiveStreaming.value) {
       setTimeout(() => {
