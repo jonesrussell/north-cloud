@@ -376,6 +376,67 @@ func setupMigrator(deps *CommandDeps, jobRepo *database.JobRepository) *job.Migr
 	return job.NewMigrator(jobRepo, sourceClient, scheduleComputer, deps.Logger)
 }
 
+// setupLogService creates the log service with optional Redis persistence.
+func setupLogService(
+	deps *CommandDeps,
+	sseBroker sse.Broker,
+	executionRepo database.ExecutionRepositoryInterface,
+) (logs.Service, *logs.Config) {
+	configLogsCfg := deps.Config.GetLogsConfig()
+	logsCfg := &logs.Config{
+		Enabled:           configLogsCfg.Enabled,
+		BufferSize:        configLogsCfg.BufferSize,
+		SSEEnabled:        configLogsCfg.SSEEnabled,
+		ArchiveEnabled:    configLogsCfg.ArchiveEnabled,
+		RetentionDays:     configLogsCfg.RetentionDays,
+		MinLevel:          configLogsCfg.MinLevel,
+		MinioBucket:       configLogsCfg.MinioBucket,
+		MilestoneInterval: configLogsCfg.MilestoneInterval,
+		RedisEnabled:      configLogsCfg.RedisEnabled,
+		RedisKeyPrefix:    configLogsCfg.RedisKeyPrefix,
+		RedisTTLSeconds:   configLogsCfg.RedisTTLSeconds,
+	}
+
+	logArchiver, archiveErr := logs.NewArchiver(
+		deps.Config.GetMinIOConfig(),
+		logsCfg.MinioBucket,
+		deps.Logger,
+	)
+	if archiveErr != nil {
+		deps.Logger.Warn("Failed to create log archiver, log archiving disabled", infralogger.Error(archiveErr))
+	}
+	logsPublisher := logs.NewPublisher(sseBroker, deps.Logger, logsCfg.SSEEnabled)
+
+	// Create optional Redis writer for log persistence
+	var serviceOpts []logs.ServiceOption
+	if logsCfg.RedisEnabled {
+		redisCfg := deps.Config.GetRedisConfig()
+		if redisCfg.Enabled {
+			redisClient, redisErr := infraredis.NewClient(infraredis.Config{
+				Address:  redisCfg.Address,
+				Password: redisCfg.Password,
+				DB:       redisCfg.DB,
+			})
+			if redisErr != nil {
+				deps.Logger.Warn("Redis not available for job logs, falling back to in-memory",
+					infralogger.Error(redisErr))
+			} else {
+				redisWriter := logs.NewRedisStreamWriter(
+					redisClient,
+					logsCfg.RedisKeyPrefix,
+					logsCfg.RedisTTLSeconds,
+				)
+				serviceOpts = append(serviceOpts, logs.WithRedisWriter(redisWriter))
+				deps.Logger.Info("Job logs Redis persistence enabled",
+					infralogger.String("prefix", logsCfg.RedisKeyPrefix))
+			}
+		}
+	}
+
+	logService := logs.NewService(logsCfg, logArchiver, logsPublisher, executionRepo, deps.Logger, serviceOpts...)
+	return logService, logsCfg
+}
+
 // === Database & Scheduler Setup ===
 
 // setupJobsAndScheduler initializes the jobs handler and scheduler.
@@ -419,18 +480,8 @@ func setupJobsAndScheduler(
 	// Create SSE publisher for scheduler
 	ssePublisher := scheduler.NewSSEPublisher(sseBroker, deps.Logger)
 
-	// Create log service components
-	logsCfg := logs.DefaultConfig()
-	logArchiver, archiveErr := logs.NewArchiver(
-		deps.Config.GetMinIOConfig(),
-		logsCfg.MinioBucket,
-		deps.Logger,
-	)
-	if archiveErr != nil {
-		deps.Logger.Warn("Failed to create log archiver, log archiving disabled", infralogger.Error(archiveErr))
-	}
-	logsPublisher := logs.NewPublisher(sseBroker, deps.Logger, logsCfg.SSEEnabled)
-	logService := logs.NewService(logsCfg, logArchiver, logsPublisher, executionRepo, deps.Logger)
+	// Create log service with optional Redis persistence
+	logService, _ := setupLogService(deps, sseBroker, executionRepo)
 
 	// Create logs handler
 	logsHandler := api.NewLogsHandler(logService, executionRepo, sseBroker, deps.Logger)
