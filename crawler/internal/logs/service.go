@@ -31,6 +31,18 @@ type logService struct {
 
 	activeWriters map[string]*activeWriter // keyed by executionID
 	mu            sync.RWMutex
+
+	redisWriter *RedisStreamWriter // nil if Redis disabled
+}
+
+// ServiceOption configures the log service.
+type ServiceOption func(*logService)
+
+// WithRedisWriter enables Redis-backed log buffering.
+func WithRedisWriter(writer *RedisStreamWriter) ServiceOption {
+	return func(s *logService) {
+		s.redisWriter = writer
+	}
 }
 
 // NewService creates a new log service.
@@ -40,12 +52,13 @@ func NewService(
 	publisher Publisher,
 	executionRepo database.ExecutionRepositoryInterface,
 	logger infralogger.Logger,
+	opts ...ServiceOption,
 ) Service {
 	if cfg == nil {
 		cfg = DefaultConfig()
 	}
 
-	return &logService{
+	s := &logService{
 		config:        cfg,
 		archiver:      archiver,
 		publisher:     publisher,
@@ -53,6 +66,12 @@ func NewService(
 		logger:        logger,
 		activeWriters: make(map[string]*activeWriter),
 	}
+
+	for _, opt := range opts {
+		opt(s)
+	}
+
+	return s
 }
 
 // StartCapture initializes log capture for a job execution.
@@ -73,8 +92,14 @@ func (s *logService) StartCapture(
 		return nil, fmt.Errorf("log capture already active for execution: %s", executionID)
 	}
 
-	// Create buffer and writer
-	buffer := NewBuffer(s.config.BufferSize)
+	// Create buffer based on config - use Redis if enabled and available
+	var buffer Buffer
+	if s.config.RedisEnabled && s.redisWriter != nil {
+		buffer = NewRedisBuffer(s.redisWriter, jobID)
+	} else {
+		buffer = NewBuffer(s.config.BufferSize)
+	}
+
 	writer := NewWriter(ctx, jobID, executionID, buffer, s.publisher, s.config.MinLevel)
 
 	// Track active writer

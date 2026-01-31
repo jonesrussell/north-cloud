@@ -54,3 +54,18 @@ func TestCurrentSchemaVersion(t *testing.T) {
 		t.Errorf("CurrentSchemaVersion = %d, want 1", logs.CurrentSchemaVersion)
 	}
 }
+
+func TestConfig_RedisDefaults(t *testing.T) {
+	t.Helper()
+	cfg := logs.DefaultConfig()
+
+	if cfg.RedisEnabled {
+		t.Error("RedisEnabled should be false by default")
+	}
+	if cfg.RedisKeyPrefix != "logs" {
+		t.Errorf("RedisKeyPrefix = %q, want %q", cfg.RedisKeyPrefix, "logs")
+	}
+	if cfg.RedisTTLSeconds != 86400 {
+		t.Errorf("RedisTTLSeconds = %d, want %d", cfg.RedisTTLSeconds, 86400)
+	}
+}
