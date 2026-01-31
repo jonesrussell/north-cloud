@@ -86,54 +86,37 @@ The server implements the MCP protocol using:
 
 ## Installation
 
-### Running with Docker
+### Building the MCP server (for Cursor / Claude Code)
+
+From the **repository root**, build the binary so Cursor and Claude Code can run it:
 
 ```bash
-# Start the service (included in docker-compose)
-docker compose -f docker-compose.base.yml -f docker-compose.dev.yml up -d mcp-north-cloud
-
-# View logs
-docker compose -f docker-compose.base.yml -f docker-compose.dev.yml logs -f mcp-north-cloud
+task mcp:build
 ```
 
-### Building Locally
+This writes `mcp-north-cloud/bin/mcp-north-cloud`. Re-run after changing MCP server code.
 
-```bash
-cd mcp-north-cloud
-go build -o mcp-north-cloud main.go
-```
+From inside `mcp-north-cloud` you can also use `task build` or `go build -o bin/mcp-north-cloud ./main.go`.
+
+### Running with Docker (optional)
+
+If you prefer to run the MCP server inside Docker instead of using the built binary, add an `mcp-north-cloud` service to your dev compose and point Cursor/Claude Code at it via `docker exec -i <container> /app/tmp/mcp-north-cloud`. The default setup uses the built binary and localhost URLs.
 
 ## Configuration
 
-### Cursor IDE Integration
+### Cursor IDE
 
-The project includes a `.cursor/mcp.json` file for Cursor IDE integration:
+Cursor reads **`.cursor/mcp.json`** in this repo. It runs the built binary with env pointing at your dev stack on localhost (ports match `docker-compose.dev.yml`). Ensure the binary exists:
 
-```json
-{
-  "mcpServers": {
-    "north-cloud": {
-      "command": "docker",
-      "args": [
-        "exec",
-        "-i",
-        "north-cloud-mcp-north-cloud-1",
-        "/app/tmp/mcp-north-cloud"
-      ],
-      "env": {
-        "INDEX_MANAGER_URL": "http://index-manager:8090",
-        "CRAWLER_URL": "http://crawler:8060",
-        "SOURCE_MANAGER_URL": "http://source-manager:8050",
-        "PUBLISHER_URL": "http://publisher-api:8080",
-        "SEARCH_URL": "http://search:8090",
-        "CLASSIFIER_URL": "http://classifier:8070"
-      }
-    }
-  }
-}
+```bash
+task mcp:build
 ```
 
-After modifying the configuration, **restart Cursor** to apply changes.
+After changing `.cursor/mcp.json` or the binary, **restart Cursor** (or reload the window) to apply changes.
+
+### Claude Code
+
+Claude Code can use a **project-level** MCP config. This repo includes **`.mcp.json`** at the root with the same command and env as `.cursor/mcp.json`. If your Claude Code setup uses project-level config (e.g. `~/.claude.json` or a `.mcp.json` in the project), ensure the binary is built (`task mcp:build`) and that the config points at `./mcp-north-cloud/bin/mcp-north-cloud` with the same localhost env. Adjust paths or use a global config if your tool expects a different location.
 
 ### Claude Code Hooks Integration
 

@@ -64,6 +64,18 @@ tasks:
     cmds:
       - task lint
 
+  mcp:build:
+    desc: "Build the MCP North Cloud server binary (for Cursor/Claude Code)"
+    dir: mcp-north-cloud
+    cmds:
+      - task build
+    sources:
+      - "**/*.go"
+      - go.mod
+      - go.sum
+    generates:
+      - bin/mcp-north-cloud
+
   lint:publisher:
     desc: "Run linter for publisher service"
     dir: publisher
