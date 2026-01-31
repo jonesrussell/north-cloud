@@ -332,8 +332,26 @@ func TestIntegration_EndToEndClassificationFlow(t *testing.T) {
 		t.Errorf("expected 2 classified items, got %d", len(esClient.classifiedContent))
 	}
 
-	verifyCrimeArticle(t, esClient.classifiedContent[0])
-	verifySportsArticle(t, esClient.classifiedContent[1])
+	// Find articles by ID (batch processing returns results in non-deterministic order)
+	var crimeArticle, sportsArticle *domain.ClassifiedContent
+	for _, content := range esClient.classifiedContent {
+		switch content.ID {
+		case "test-1":
+			crimeArticle = content
+		case "test-2":
+			sportsArticle = content
+		}
+	}
+
+	if crimeArticle == nil {
+		t.Fatal("crime article (test-1) not found in classified content")
+	}
+	if sportsArticle == nil {
+		t.Fatal("sports article (test-2) not found in classified content")
+	}
+
+	verifyCrimeArticle(t, crimeArticle)
+	verifySportsArticle(t, sportsArticle)
 	verifyStatusUpdates(t, esClient)
 
 	if len(dbClient.histories) != 2 {
