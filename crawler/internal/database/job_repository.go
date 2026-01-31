@@ -16,6 +16,28 @@ import (
 // This is a sentinel error that callers can check with errors.Is().
 var ErrJobNotFoundBySourceID = errors.New("job not found for source_id")
 
+// jobInsertColumns lists columns for job INSERT operations.
+const jobInsertColumns = `id, source_id, source_name, url,
+	schedule_time, schedule_enabled,
+	interval_minutes, interval_type,
+	is_paused, max_retries, retry_backoff_seconds,
+	status, metadata`
+
+// jobSelectBase lists columns for job SELECT queries (without auto-managed fields).
+const jobSelectBase = `id, source_id, source_name, url,
+	schedule_time, schedule_enabled,
+	interval_minutes, interval_type, next_run_at,
+	is_paused, max_retries, retry_backoff_seconds, current_retry_count,
+	lock_token, lock_acquired_at,
+	status, scheduler_version,
+	created_at, updated_at, started_at, completed_at,
+	paused_at, cancelled_at,
+	error_message, metadata`
+
+// jobSelectAutoManaged extends jobSelectBase with auto-managed fields.
+const jobSelectAutoManaged = jobSelectBase + `,
+	auto_managed, priority, failure_count, last_failure_at, backoff_until`
+
 // JobRepository handles database operations for jobs.
 type JobRepository struct {
 	db *sqlx.DB
@@ -28,23 +50,9 @@ func NewJobRepository(db *sqlx.DB) *JobRepository {
 
 // Create inserts a new job into the database.
 func (r *JobRepository) Create(ctx context.Context, job *domain.Job) error {
-	query := `
-		INSERT INTO jobs (
-			id, source_id, source_name, url,
-			schedule_time, schedule_enabled,
-			interval_minutes, interval_type,
-			is_paused, max_retries, retry_backoff_seconds,
-			status, metadata
-		)
+	query := `INSERT INTO jobs (` + jobInsertColumns + `)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
-		RETURNING created_at, updated_at, next_run_at
-	`
-
-	// Convert Metadata to pointer for driver.Valuer interface
-	var metadataPtr *domain.JSONBMap
-	if job.Metadata != nil {
-		metadataPtr = &job.Metadata
-	}
+		RETURNING created_at, updated_at, next_run_at`
 
 	err := r.db.QueryRowContext(
 		ctx,
@@ -61,7 +69,7 @@ func (r *JobRepository) Create(ctx context.Context, job *domain.Job) error {
 		job.MaxRetries,
 		job.RetryBackoffSeconds,
 		job.Status,
-		metadataPtr,
+		domain.MetadataPtr(job.Metadata),
 	).Scan(&job.CreatedAt, &job.UpdatedAt, &job.NextRunAt)
 
 	if err != nil {
@@ -74,14 +82,7 @@ func (r *JobRepository) Create(ctx context.Context, job *domain.Job) error {
 // CreateOrUpdate inserts a new job or updates an existing one by source_id.
 // Returns wasInserted=true for new jobs, false when updating an existing job.
 func (r *JobRepository) CreateOrUpdate(ctx context.Context, job *domain.Job) (bool, error) {
-	query := `
-		INSERT INTO jobs (
-			id, source_id, source_name, url,
-			schedule_time, schedule_enabled,
-			interval_minutes, interval_type,
-			is_paused, max_retries, retry_backoff_seconds,
-			status, metadata
-		)
+	query := `INSERT INTO jobs (` + jobInsertColumns + `)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
 		ON CONFLICT (source_id) DO UPDATE SET
 			source_name = EXCLUDED.source_name,
@@ -102,11 +103,6 @@ func (r *JobRepository) CreateOrUpdate(ctx context.Context, job *domain.Job) (bo
 		RETURNING id, created_at, updated_at, next_run_at
 	`
 
-	var metadataPtr *domain.JSONBMap
-	if job.Metadata != nil {
-		metadataPtr = &job.Metadata
-	}
-
 	originalID := job.ID
 	err := r.db.QueryRowContext(
 		ctx,
@@ -123,7 +119,7 @@ func (r *JobRepository) CreateOrUpdate(ctx context.Context, job *domain.Job) (bo
 		job.MaxRetries,
 		job.RetryBackoffSeconds,
 		job.Status,
-		metadataPtr,
+		domain.MetadataPtr(job.Metadata),
 	).Scan(&job.ID, &job.CreatedAt, &job.UpdatedAt, &job.NextRunAt)
 
 	if err != nil {
@@ -138,19 +134,9 @@ func (r *JobRepository) CreateOrUpdate(ctx context.Context, job *domain.Job) (bo
 // GetByID retrieves a job by its ID.
 func (r *JobRepository) GetByID(ctx context.Context, id string) (*domain.Job, error) {
 	var job domain.Job
-	query := `
-		SELECT id, source_id, source_name, url,
-		       schedule_time, schedule_enabled,
-		       interval_minutes, interval_type, next_run_at,
-		       is_paused, max_retries, retry_backoff_seconds, current_retry_count,
-		       lock_token, lock_acquired_at,
-		       status, scheduler_version,
-		       created_at, updated_at, started_at, completed_at,
-		       paused_at, cancelled_at,
-		       error_message, metadata
+	query := `SELECT ` + jobSelectBase + `
 		FROM jobs
-		WHERE id = $1
-	`
+		WHERE id = $1`
 
 	err := r.db.GetContext(ctx, &job, query, id)
 	if err != nil {
@@ -169,34 +155,20 @@ func (r *JobRepository) List(ctx context.Context, status string, limit, offset i
 	var query string
 	var args []any
 
-	selectFields := `
-		id, source_id, source_name, url,
-		schedule_time, schedule_enabled,
-		interval_minutes, interval_type, next_run_at,
-		is_paused, max_retries, retry_backoff_seconds, current_retry_count,
-		lock_token, lock_acquired_at,
-		status, scheduler_version,
-		created_at, updated_at, started_at, completed_at,
-		paused_at, cancelled_at,
-		error_message, metadata
-	`
-
 	if status != "" {
-		query = fmt.Sprintf(`
-			SELECT %s
+		query = fmt.Sprintf(`SELECT %s
 			FROM jobs
 			WHERE status = $1
 			ORDER BY created_at DESC
 			LIMIT $2 OFFSET $3
-		`, selectFields)
+		`, jobSelectBase)
 		args = []any{status, limit, offset}
 	} else {
-		query = fmt.Sprintf(`
-			SELECT %s
+		query = fmt.Sprintf(`SELECT %s
 			FROM jobs
 			ORDER BY created_at DESC
 			LIMIT $1 OFFSET $2
-		`, selectFields)
+		`, jobSelectBase)
 		args = []any{limit, offset}
 	}
 
@@ -229,13 +201,7 @@ func (r *JobRepository) Update(ctx context.Context, job *domain.Job) error {
 		WHERE id = $22
 	`
 
-	// Convert Metadata to pointer for driver.Valuer interface
-	var metadataPtr *domain.JSONBMap
-	if job.Metadata != nil {
-		metadataPtr = &job.Metadata
-	}
-
-	result, err := r.db.ExecContext(
+	result, execErr := r.db.ExecContext(
 		ctx,
 		query,
 		job.SourceID,
@@ -258,45 +224,19 @@ func (r *JobRepository) Update(ctx context.Context, job *domain.Job) error {
 		job.PausedAt,
 		job.CancelledAt,
 		job.ErrorMessage,
-		metadataPtr,
+		domain.MetadataPtr(job.Metadata),
 		job.ID,
 	)
 
-	if err != nil {
-		return fmt.Errorf("failed to update job: %w", err)
-	}
-
-	rowsAffected, err := result.RowsAffected()
-	if err != nil {
-		return fmt.Errorf("failed to get rows affected: %w", err)
-	}
-
-	if rowsAffected == 0 {
-		return fmt.Errorf("job not found: %s", job.ID)
-	}
-
-	return nil
+	return execRequireRows(result, execErr, fmt.Errorf("job not found: %s", job.ID))
 }
 
 // Delete removes a job from the database.
 func (r *JobRepository) Delete(ctx context.Context, id string) error {
 	query := `DELETE FROM jobs WHERE id = $1`
 
-	result, err := r.db.ExecContext(ctx, query, id)
-	if err != nil {
-		return fmt.Errorf("failed to delete job: %w", err)
-	}
-
-	rowsAffected, err := result.RowsAffected()
-	if err != nil {
-		return fmt.Errorf("failed to get rows affected: %w", err)
-	}
-
-	if rowsAffected == 0 {
-		return fmt.Errorf("job not found: %s", id)
-	}
-
-	return nil
+	result, execErr := r.db.ExecContext(ctx, query, id)
+	return execRequireRows(result, execErr, fmt.Errorf("job not found: %s", id))
 }
 
 // Count returns the total number of jobs, optionally filtered by status.
@@ -329,16 +269,7 @@ func (r *JobRepository) Count(ctx context.Context, status string) (int, error) {
 //   - schedule_enabled = false and status = 'pending' (for immediate jobs)
 func (r *JobRepository) GetJobsReadyToRun(ctx context.Context) ([]*domain.Job, error) {
 	var jobs []*domain.Job
-	query := `
-		SELECT id, source_id, source_name, url,
-		       schedule_time, schedule_enabled,
-		       interval_minutes, interval_type, next_run_at,
-		       is_paused, max_retries, retry_backoff_seconds, current_retry_count,
-		       lock_token, lock_acquired_at,
-		       status, scheduler_version,
-		       created_at, updated_at, started_at, completed_at,
-		       paused_at, cancelled_at,
-		       error_message, metadata
+	query := `SELECT ` + jobSelectBase + `
 		FROM jobs
 		WHERE is_paused = false
 		  AND status IN ('pending', 'scheduled')
@@ -458,21 +389,8 @@ func (r *JobRepository) PauseJob(ctx context.Context, jobID string) error {
 		  AND status = 'scheduled'
 	`
 
-	result, err := r.db.ExecContext(ctx, query, jobID)
-	if err != nil {
-		return fmt.Errorf("failed to pause job: %w", err)
-	}
-
-	rowsAffected, err := result.RowsAffected()
-	if err != nil {
-		return fmt.Errorf("failed to get rows affected: %w", err)
-	}
-
-	if rowsAffected == 0 {
-		return fmt.Errorf("job not found or not in scheduled state: %s", jobID)
-	}
-
-	return nil
+	result, execErr := r.db.ExecContext(ctx, query, jobID)
+	return execRequireRows(result, execErr, fmt.Errorf("job not found or not in scheduled state: %s", jobID))
 }
 
 // ResumeJob resumes a paused job.
@@ -487,21 +405,8 @@ func (r *JobRepository) ResumeJob(ctx context.Context, jobID string) error {
 		  AND status = 'paused'
 	`
 
-	result, err := r.db.ExecContext(ctx, query, jobID)
-	if err != nil {
-		return fmt.Errorf("failed to resume job: %w", err)
-	}
-
-	rowsAffected, err := result.RowsAffected()
-	if err != nil {
-		return fmt.Errorf("failed to get rows affected: %w", err)
-	}
-
-	if rowsAffected == 0 {
-		return fmt.Errorf("job not found or not in paused state: %s", jobID)
-	}
-
-	return nil
+	result, execErr := r.db.ExecContext(ctx, query, jobID)
+	return execRequireRows(result, execErr, fmt.Errorf("job not found or not in paused state: %s", jobID))
 }
 
 // CancelJob cancels a job.
@@ -516,41 +421,17 @@ func (r *JobRepository) CancelJob(ctx context.Context, jobID string) error {
 		  AND status IN ('scheduled', 'running', 'paused', 'pending')
 	`
 
-	result, err := r.db.ExecContext(ctx, query, jobID)
-	if err != nil {
-		return fmt.Errorf("failed to cancel job: %w", err)
-	}
-
-	rowsAffected, err := result.RowsAffected()
-	if err != nil {
-		return fmt.Errorf("failed to get rows affected: %w", err)
-	}
-
-	if rowsAffected == 0 {
-		return fmt.Errorf("job not found or already completed/failed/cancelled: %s", jobID)
-	}
-
-	return nil
+	result, execErr := r.db.ExecContext(ctx, query, jobID)
+	return execRequireRows(result, execErr, fmt.Errorf("job not found or already completed/failed/cancelled: %s", jobID))
 }
 
 // FindBySourceID retrieves a job by its source ID.
 // Returns nil, nil if no job exists for the source.
 func (r *JobRepository) FindBySourceID(ctx context.Context, sourceID uuid.UUID) (*domain.Job, error) {
 	var job domain.Job
-	query := `
-		SELECT id, source_id, source_name, url,
-		       schedule_time, schedule_enabled,
-		       interval_minutes, interval_type, next_run_at,
-		       is_paused, max_retries, retry_backoff_seconds, current_retry_count,
-		       lock_token, lock_acquired_at,
-		       status, scheduler_version,
-		       auto_managed, priority, failure_count, last_failure_at, backoff_until,
-		       created_at, updated_at, started_at, completed_at,
-		       paused_at, cancelled_at,
-		       error_message, metadata
+	query := `SELECT ` + jobSelectAutoManaged + `
 		FROM jobs
-		WHERE source_id = $1
-	`
+		WHERE source_id = $1`
 
 	err := r.db.GetContext(ctx, &job, query, sourceID)
 	if err != nil {
@@ -651,35 +532,6 @@ func (r *JobRepository) UpdateStatusBySourceID(ctx context.Context, sourceID uui
 	return nil
 }
 
-// RecordProcessedEvent records an event as processed for idempotency.
-func (r *JobRepository) RecordProcessedEvent(ctx context.Context, eventID uuid.UUID) error {
-	query := `
-		INSERT INTO processed_events (event_id, processed_at)
-		VALUES ($1, NOW())
-		ON CONFLICT (event_id) DO NOTHING
-	`
-
-	_, err := r.db.ExecContext(ctx, query, eventID)
-	if err != nil {
-		return fmt.Errorf("record processed event: %w", err)
-	}
-
-	return nil
-}
-
-// IsEventProcessed checks if an event has already been processed.
-func (r *JobRepository) IsEventProcessed(ctx context.Context, eventID uuid.UUID) (bool, error) {
-	var exists bool
-	query := `SELECT EXISTS(SELECT 1 FROM processed_events WHERE event_id = $1)`
-
-	err := r.db.GetContext(ctx, &exists, query, eventID)
-	if err != nil {
-		return false, fmt.Errorf("check event processed: %w", err)
-	}
-
-	return exists, nil
-}
-
 // FindManualJobs returns jobs that are not auto-managed and need migration.
 // Excludes already-migrated jobs.
 func (r *JobRepository) FindManualJobs(ctx context.Context, limit int) ([]*domain.Job, error) {
@@ -713,21 +565,8 @@ func (r *JobRepository) UpdateMigrationStatus(ctx context.Context, jobID, status
 		WHERE id = $2
 	`
 
-	result, err := r.db.ExecContext(ctx, query, status, jobID)
-	if err != nil {
-		return fmt.Errorf("update migration status: %w", err)
-	}
-
-	rowsAffected, affectedErr := result.RowsAffected()
-	if affectedErr != nil {
-		return fmt.Errorf("get rows affected: %w", affectedErr)
-	}
-
-	if rowsAffected == 0 {
-		return fmt.Errorf("job not found: %s", jobID)
-	}
-
-	return nil
+	result, execErr := r.db.ExecContext(ctx, query, status, jobID)
+	return execRequireRows(result, execErr, fmt.Errorf("job not found: %s", jobID))
 }
 
 // CountByMigrationStatus returns counts of jobs grouped by migration status.

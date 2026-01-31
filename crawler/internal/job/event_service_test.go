@@ -18,20 +18,16 @@ import (
 // MockJobRepository implements job.Repository for testing.
 type MockJobRepository struct {
 	jobs            map[uuid.UUID]*domain.Job
-	processedEvents map[uuid.UUID]bool
 	findBySourceErr error
 	upsertErr       error
 	deleteErr       error
 	updateStatusErr error
-	recordEventErr  error
-	isProcessedErr  error
 }
 
 // NewMockJobRepository creates a new mock repository.
 func NewMockJobRepository() *MockJobRepository {
 	return &MockJobRepository{
-		jobs:            make(map[uuid.UUID]*domain.Job),
-		processedEvents: make(map[uuid.UUID]bool),
+		jobs: make(map[uuid.UUID]*domain.Job),
 	}
 }
 
@@ -79,8 +75,22 @@ func (m *MockJobRepository) UpdateStatusBySourceID(_ context.Context, sourceID u
 	return nil
 }
 
+// MockProcessedEventsRepository implements job.ProcessedEventsRepository for testing.
+type MockProcessedEventsRepository struct {
+	processedEvents map[uuid.UUID]bool
+	recordEventErr  error
+	isProcessedErr  error
+}
+
+// NewMockProcessedEventsRepository creates a new mock processed events repository.
+func NewMockProcessedEventsRepository() *MockProcessedEventsRepository {
+	return &MockProcessedEventsRepository{
+		processedEvents: make(map[uuid.UUID]bool),
+	}
+}
+
 // RecordProcessedEvent records an event as processed.
-func (m *MockJobRepository) RecordProcessedEvent(_ context.Context, eventID uuid.UUID) error {
+func (m *MockProcessedEventsRepository) RecordProcessedEvent(_ context.Context, eventID uuid.UUID) error {
 	if m.recordEventErr != nil {
 		return m.recordEventErr
 	}
@@ -89,7 +99,7 @@ func (m *MockJobRepository) RecordProcessedEvent(_ context.Context, eventID uuid
 }
 
 // IsEventProcessed checks if an event has been processed.
-func (m *MockJobRepository) IsEventProcessed(_ context.Context, eventID uuid.UUID) (bool, error) {
+func (m *MockProcessedEventsRepository) IsEventProcessed(_ context.Context, eventID uuid.UUID) (bool, error) {
 	if m.isProcessedErr != nil {
 		return false, m.isProcessedErr
 	}
@@ -134,7 +144,8 @@ func TestEventService_HandleSourceCreated_CreatesJob(t *testing.T) {
 	sourceClient := NewMockSourceClient()
 	scheduleComputer := job.NewScheduleComputer()
 
-	service := job.NewEventService(repo, scheduleComputer, sourceClient, nil)
+	processedEventsRepo := NewMockProcessedEventsRepository()
+	service := job.NewEventService(repo, processedEventsRepo, scheduleComputer, sourceClient, nil)
 
 	sourceID := uuid.New()
 	eventID := uuid.New()
@@ -182,7 +193,7 @@ func TestEventService_HandleSourceCreated_CreatesJob(t *testing.T) {
 	}
 
 	// Verify event was recorded
-	if !repo.processedEvents[eventID] {
+	if !processedEventsRepo.processedEvents[eventID] {
 		t.Error("expected event to be recorded as processed")
 	}
 }
@@ -194,7 +205,8 @@ func TestEventService_HandleSourceCreated_SkipsDisabled(t *testing.T) {
 	sourceClient := NewMockSourceClient()
 	scheduleComputer := job.NewScheduleComputer()
 
-	service := job.NewEventService(repo, scheduleComputer, sourceClient, nil)
+	processedEventsRepo := NewMockProcessedEventsRepository()
+	service := job.NewEventService(repo, processedEventsRepo, scheduleComputer, sourceClient, nil)
 
 	sourceID := uuid.New()
 	eventID := uuid.New()
@@ -226,7 +238,7 @@ func TestEventService_HandleSourceCreated_SkipsDisabled(t *testing.T) {
 	}
 
 	// Event should still be recorded
-	if !repo.processedEvents[eventID] {
+	if !processedEventsRepo.processedEvents[eventID] {
 		t.Error("expected event to be recorded as processed")
 	}
 }
@@ -238,7 +250,8 @@ func TestEventService_HandleSourceDeleted_DeletesJob(t *testing.T) {
 	sourceClient := NewMockSourceClient()
 	scheduleComputer := job.NewScheduleComputer()
 
-	service := job.NewEventService(repo, scheduleComputer, sourceClient, nil)
+	processedEventsRepo := NewMockProcessedEventsRepository()
+	service := job.NewEventService(repo, processedEventsRepo, scheduleComputer, sourceClient, nil)
 
 	sourceID := uuid.New()
 	eventID := uuid.New()
@@ -276,7 +289,7 @@ func TestEventService_HandleSourceDeleted_DeletesJob(t *testing.T) {
 	}
 
 	// Verify event was recorded
-	if !repo.processedEvents[eventID] {
+	if !processedEventsRepo.processedEvents[eventID] {
 		t.Error("expected event to be recorded as processed")
 	}
 }
@@ -288,7 +301,8 @@ func TestEventService_HandleSourceDisabled_PausesJob(t *testing.T) {
 	sourceClient := NewMockSourceClient()
 	scheduleComputer := job.NewScheduleComputer()
 
-	service := job.NewEventService(repo, scheduleComputer, sourceClient, nil)
+	processedEventsRepo := NewMockProcessedEventsRepository()
+	service := job.NewEventService(repo, processedEventsRepo, scheduleComputer, sourceClient, nil)
 
 	sourceID := uuid.New()
 	eventID := uuid.New()
@@ -330,7 +344,7 @@ func TestEventService_HandleSourceDisabled_PausesJob(t *testing.T) {
 	}
 
 	// Verify event was recorded
-	if !repo.processedEvents[eventID] {
+	if !processedEventsRepo.processedEvents[eventID] {
 		t.Error("expected event to be recorded as processed")
 	}
 }
@@ -342,7 +356,8 @@ func TestEventService_HandleSourceEnabled_ResumesJob(t *testing.T) {
 	sourceClient := NewMockSourceClient()
 	scheduleComputer := job.NewScheduleComputer()
 
-	service := job.NewEventService(repo, scheduleComputer, sourceClient, nil)
+	processedEventsRepo := NewMockProcessedEventsRepository()
+	service := job.NewEventService(repo, processedEventsRepo, scheduleComputer, sourceClient, nil)
 
 	sourceID := uuid.New()
 	eventID := uuid.New()
@@ -395,7 +410,7 @@ func TestEventService_HandleSourceEnabled_ResumesJob(t *testing.T) {
 	}
 
 	// Verify event was recorded
-	if !repo.processedEvents[eventID] {
+	if !processedEventsRepo.processedEvents[eventID] {
 		t.Error("expected event to be recorded as processed")
 	}
 }
@@ -407,13 +422,14 @@ func TestEventService_Idempotency_SkipsDuplicateEvents(t *testing.T) {
 	sourceClient := NewMockSourceClient()
 	scheduleComputer := job.NewScheduleComputer()
 
-	service := job.NewEventService(repo, scheduleComputer, sourceClient, nil)
+	processedEventsRepo := NewMockProcessedEventsRepository()
+	service := job.NewEventService(repo, processedEventsRepo, scheduleComputer, sourceClient, nil)
 
 	sourceID := uuid.New()
 	eventID := uuid.New()
 
 	// Mark event as already processed
-	repo.processedEvents[eventID] = true
+	processedEventsRepo.processedEvents[eventID] = true
 
 	event := infraevents.SourceEvent{
 		EventID:   eventID,
@@ -449,7 +465,8 @@ func TestEventService_HandleSourceUpdated_ReschedulesJob(t *testing.T) {
 	sourceClient := NewMockSourceClient()
 	scheduleComputer := job.NewScheduleComputer()
 
-	service := job.NewEventService(repo, scheduleComputer, sourceClient, nil)
+	processedEventsRepo := NewMockProcessedEventsRepository()
+	service := job.NewEventService(repo, processedEventsRepo, scheduleComputer, sourceClient, nil)
 
 	sourceID := uuid.New()
 	eventID := uuid.New()
@@ -516,7 +533,7 @@ func TestEventService_HandleSourceUpdated_ReschedulesJob(t *testing.T) {
 	}
 
 	// Verify event was recorded
-	if !repo.processedEvents[eventID] {
+	if !processedEventsRepo.processedEvents[eventID] {
 		t.Error("expected event to be recorded as processed")
 	}
 }
@@ -535,7 +552,8 @@ func TestEventService_HandleSourceEnabled_CreatesJobIfNotExists(t *testing.T) {
 	sourceClient := NewMockSourceClient()
 	scheduleComputer := job.NewScheduleComputer()
 
-	service := job.NewEventService(repo, scheduleComputer, sourceClient, nil)
+	processedEventsRepo := NewMockProcessedEventsRepository()
+	service := job.NewEventService(repo, processedEventsRepo, scheduleComputer, sourceClient, nil)
 
 	sourceID := uuid.New()
 	eventID := uuid.New()
@@ -584,7 +602,7 @@ func TestEventService_HandleSourceEnabled_CreatesJobIfNotExists(t *testing.T) {
 	}
 
 	// Verify event was recorded
-	if !repo.processedEvents[eventID] {
+	if !processedEventsRepo.processedEvents[eventID] {
 		t.Error("expected event to be recorded as processed")
 	}
 }

@@ -2,7 +2,6 @@ package api
 
 import (
 	"net/http"
-	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -44,25 +43,14 @@ func (h *DiscoveredLinksHandler) SetLogger(log infralogger.Logger) {
 
 // ListDiscoveredLinks handles GET /api/v1/discovered-links
 func (h *DiscoveredLinksHandler) ListDiscoveredLinks(c *gin.Context) {
-	// Get query parameters
+	limit, offset := parseLimitOffset(c, defaultDiscoveredLinksLimit, defaultDiscoveredLinksOffset)
+
 	status := c.Query("status")
 	sourceID := c.Query("source_id")
 	sourceName := c.Query("source_name")
 	search := c.Query("search")
 	sortBy := c.DefaultQuery("sort", "priority")
 	sortOrder := c.DefaultQuery("order", "desc")
-	limitStr := c.DefaultQuery("limit", strconv.Itoa(defaultDiscoveredLinksLimit))
-	offsetStr := c.DefaultQuery("offset", strconv.Itoa(defaultDiscoveredLinksOffset))
-
-	limit, err := strconv.Atoi(limitStr)
-	if err != nil || limit <= 0 {
-		limit = defaultDiscoveredLinksLimit
-	}
-
-	offset, err := strconv.Atoi(offsetStr)
-	if err != nil || offset < 0 {
-		offset = defaultDiscoveredLinksOffset
-	}
 
 	// Build filters
 	filters := database.ListFilters{
@@ -76,21 +64,15 @@ func (h *DiscoveredLinksHandler) ListDiscoveredLinks(c *gin.Context) {
 		Offset:     offset,
 	}
 
-	// Get discovered links from database
 	links, err := h.repo.List(c.Request.Context(), filters)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Failed to retrieve discovered links",
-		})
+		respondInternalError(c, "Failed to retrieve discovered links")
 		return
 	}
 
-	// Get total count
 	total, err := h.repo.Count(c.Request.Context(), filters)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Failed to get total count",
-		})
+		respondInternalError(c, "Failed to get total count")
 		return
 	}
 
@@ -120,9 +102,7 @@ func (h *DiscoveredLinksHandler) DeleteDiscoveredLink(c *gin.Context) {
 	id := c.Param("id")
 
 	if err := h.repo.Delete(c.Request.Context(), id); err != nil {
-		c.JSON(http.StatusNotFound, gin.H{
-			"error": "Discovered link not found",
-		})
+		respondNotFound(c, "Discovered link")
 		return
 	}
 
@@ -143,21 +123,16 @@ type CreateJobFromLinkRequest struct {
 func (h *DiscoveredLinksHandler) CreateJobFromLink(c *gin.Context) {
 	id := c.Param("id")
 
-	// Get discovered link
 	link, err := h.repo.GetByID(c.Request.Context(), id)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{
-			"error": "Discovered link not found",
-		})
+		respondNotFound(c, "Discovered link")
 		return
 	}
 
 	// Parse request body
 	var req CreateJobFromLinkRequest
 	if bindErr := c.ShouldBindJSON(&req); bindErr != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Invalid request: " + bindErr.Error(),
-		})
+		respondBadRequest(c, "Invalid request: "+bindErr.Error())
 		return
 	}
 
@@ -192,9 +167,7 @@ func (h *DiscoveredLinksHandler) CreateJobFromLink(c *gin.Context) {
 	// Save to database
 	wasInserted, createErr := h.jobRepo.CreateOrUpdate(c.Request.Context(), job)
 	if createErr != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Failed to create job: " + createErr.Error(),
-		})
+		respondInternalError(c, "Failed to create job: "+createErr.Error())
 		return
 	}
 

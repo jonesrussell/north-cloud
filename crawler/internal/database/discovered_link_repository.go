@@ -89,13 +89,10 @@ type ListFilters struct {
 	Offset     int
 }
 
-// List retrieves discovered links with optional filtering.
-func (r *DiscoveredLinkRepository) List(ctx context.Context, filters ListFilters) ([]*domain.DiscoveredLink, error) {
-	var links []*domain.DiscoveredLink
-
-	// Build WHERE clause
+// buildDiscoveredLinksWhere builds the WHERE clause and args for List/Count.
+func buildDiscoveredLinksWhere(filters ListFilters) (whereClause string, args []any) {
 	whereClauses := []string{}
-	args := []any{}
+	args = []any{}
 	argIndex := 1
 
 	if filters.Status != "" {
@@ -119,13 +116,20 @@ func (r *DiscoveredLinkRepository) List(ctx context.Context, filters ListFilters
 	if filters.Search != "" {
 		whereClauses = append(whereClauses, fmt.Sprintf("url ILIKE $%d", argIndex))
 		args = append(args, "%"+filters.Search+"%")
-		argIndex++
 	}
 
-	whereClause := ""
 	if len(whereClauses) > 0 {
 		whereClause = "WHERE " + strings.Join(whereClauses, " AND ")
 	}
+	return whereClause, args
+}
+
+// List retrieves discovered links with optional filtering.
+func (r *DiscoveredLinkRepository) List(ctx context.Context, filters ListFilters) ([]*domain.DiscoveredLink, error) {
+	var links []*domain.DiscoveredLink
+
+	whereClause, args := buildDiscoveredLinksWhere(filters)
+	argIndex := len(args) + 1
 
 	// Build ORDER BY clause
 	sortBy := filters.SortBy
@@ -178,39 +182,7 @@ func (r *DiscoveredLinkRepository) List(ctx context.Context, filters ListFilters
 func (r *DiscoveredLinkRepository) Count(ctx context.Context, filters ListFilters) (int, error) {
 	var count int
 
-	// Build WHERE clause (same as List)
-	whereClauses := []string{}
-	args := []any{}
-	argIndex := 1
-
-	if filters.Status != "" {
-		whereClauses = append(whereClauses, fmt.Sprintf("status = $%d", argIndex))
-		args = append(args, filters.Status)
-		argIndex++
-	}
-
-	if filters.SourceID != "" {
-		whereClauses = append(whereClauses, fmt.Sprintf("source_id = $%d", argIndex))
-		args = append(args, filters.SourceID)
-		argIndex++
-	}
-
-	if filters.SourceName != "" {
-		whereClauses = append(whereClauses, fmt.Sprintf("source_name = $%d", argIndex))
-		args = append(args, filters.SourceName)
-		argIndex++
-	}
-
-	if filters.Search != "" {
-		whereClauses = append(whereClauses, fmt.Sprintf("url ILIKE $%d", argIndex))
-		args = append(args, "%"+filters.Search+"%")
-		// argIndex not used after this in Count function
-	}
-
-	whereClause := ""
-	if len(whereClauses) > 0 {
-		whereClause = "WHERE " + strings.Join(whereClauses, " AND ")
-	}
+	whereClause, args := buildDiscoveredLinksWhere(filters)
 
 	query := fmt.Sprintf(`SELECT COUNT(*) FROM discovered_links %s`, whereClause)
 
@@ -280,42 +252,16 @@ func (r *DiscoveredLinkRepository) GetPendingBySource(
 func (r *DiscoveredLinkRepository) UpdateStatus(ctx context.Context, id, status string) error {
 	query := `UPDATE discovered_links SET status = $1, updated_at = NOW() WHERE id = $2`
 
-	result, err := r.db.ExecContext(ctx, query, status, id)
-	if err != nil {
-		return fmt.Errorf("failed to update status: %w", err)
-	}
-
-	rowsAffected, err := result.RowsAffected()
-	if err != nil {
-		return fmt.Errorf("failed to get rows affected: %w", err)
-	}
-
-	if rowsAffected == 0 {
-		return fmt.Errorf("discovered link not found: %s", id)
-	}
-
-	return nil
+	result, execErr := r.db.ExecContext(ctx, query, status, id)
+	return execRequireRows(result, execErr, fmt.Errorf("discovered link not found: %s", id))
 }
 
 // Delete removes a discovered link from the database.
 func (r *DiscoveredLinkRepository) Delete(ctx context.Context, id string) error {
 	query := `DELETE FROM discovered_links WHERE id = $1`
 
-	result, err := r.db.ExecContext(ctx, query, id)
-	if err != nil {
-		return fmt.Errorf("failed to delete discovered link: %w", err)
-	}
-
-	rowsAffected, err := result.RowsAffected()
-	if err != nil {
-		return fmt.Errorf("failed to get rows affected: %w", err)
-	}
-
-	if rowsAffected == 0 {
-		return fmt.Errorf("discovered link not found: %s", id)
-	}
-
-	return nil
+	result, execErr := r.db.ExecContext(ctx, query, id)
+	return execRequireRows(result, execErr, fmt.Errorf("discovered link not found: %s", id))
 }
 
 // CountPendingBySource returns the count of pending links for a source.

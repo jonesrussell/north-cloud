@@ -16,6 +16,16 @@ type ExecutionRepository struct {
 	db *sqlx.DB
 }
 
+// executionSelectFields lists columns for job_executions SELECT queries.
+const executionSelectFields = `id, job_id, execution_number, status,
+	started_at, completed_at, duration_ms,
+	items_crawled, items_indexed,
+	error_message, stack_trace,
+	cpu_time_ms, memory_peak_mb,
+	retry_attempt,
+	log_object_key, log_size_bytes, log_line_count,
+	metadata`
+
 // NewExecutionRepository creates a new execution repository.
 func NewExecutionRepository(db *sqlx.DB) *ExecutionRepository {
 	return &ExecutionRepository{db: db}
@@ -32,12 +42,6 @@ func (r *ExecutionRepository) Create(ctx context.Context, execution *domain.JobE
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 	`
 
-	// Convert Metadata to pointer for driver.Valuer interface
-	var metadataPtr *domain.JSONBMap
-	if execution.Metadata != nil {
-		metadataPtr = &execution.Metadata
-	}
-
 	_, err := r.db.ExecContext(
 		ctx,
 		query,
@@ -49,7 +53,7 @@ func (r *ExecutionRepository) Create(ctx context.Context, execution *domain.JobE
 		execution.ItemsCrawled,
 		execution.ItemsIndexed,
 		execution.RetryAttempt,
-		metadataPtr,
+		domain.MetadataPtr(execution.Metadata),
 	)
 
 	if err != nil {
@@ -62,18 +66,9 @@ func (r *ExecutionRepository) Create(ctx context.Context, execution *domain.JobE
 // GetByID retrieves an execution by its ID.
 func (r *ExecutionRepository) GetByID(ctx context.Context, id string) (*domain.JobExecution, error) {
 	var execution domain.JobExecution
-	query := `
-		SELECT id, job_id, execution_number, status,
-		       started_at, completed_at, duration_ms,
-		       items_crawled, items_indexed,
-		       error_message, stack_trace,
-		       cpu_time_ms, memory_peak_mb,
-		       retry_attempt,
-		       log_object_key, log_size_bytes, log_line_count,
-		       metadata
+	query := `SELECT ` + executionSelectFields + `
 		FROM job_executions
-		WHERE id = $1
-	`
+		WHERE id = $1`
 
 	err := r.db.GetContext(ctx, &execution, query, id)
 	if err != nil {
@@ -106,13 +101,7 @@ func (r *ExecutionRepository) Update(ctx context.Context, execution *domain.JobE
 		WHERE id = $14
 	`
 
-	// Convert Metadata to pointer for driver.Valuer interface
-	var metadataPtr *domain.JSONBMap
-	if execution.Metadata != nil {
-		metadataPtr = &execution.Metadata
-	}
-
-	result, err := r.db.ExecContext(
+	result, execErr := r.db.ExecContext(
 		ctx,
 		query,
 		execution.Status,
@@ -127,45 +116,19 @@ func (r *ExecutionRepository) Update(ctx context.Context, execution *domain.JobE
 		execution.LogObjectKey,
 		execution.LogSizeBytes,
 		execution.LogLineCount,
-		metadataPtr,
+		domain.MetadataPtr(execution.Metadata),
 		execution.ID,
 	)
 
-	if err != nil {
-		return fmt.Errorf("failed to update execution: %w", err)
-	}
-
-	rowsAffected, err := result.RowsAffected()
-	if err != nil {
-		return fmt.Errorf("failed to get rows affected: %w", err)
-	}
-
-	if rowsAffected == 0 {
-		return fmt.Errorf("execution not found: %s", execution.ID)
-	}
-
-	return nil
+	return execRequireRows(result, execErr, fmt.Errorf("execution not found: %s", execution.ID))
 }
 
 // Delete removes an execution from the database.
 func (r *ExecutionRepository) Delete(ctx context.Context, id string) error {
 	query := `DELETE FROM job_executions WHERE id = $1`
 
-	result, err := r.db.ExecContext(ctx, query, id)
-	if err != nil {
-		return fmt.Errorf("failed to delete execution: %w", err)
-	}
-
-	rowsAffected, err := result.RowsAffected()
-	if err != nil {
-		return fmt.Errorf("failed to get rows affected: %w", err)
-	}
-
-	if rowsAffected == 0 {
-		return fmt.Errorf("execution not found: %s", id)
-	}
-
-	return nil
+	result, execErr := r.db.ExecContext(ctx, query, id)
+	return execRequireRows(result, execErr, fmt.Errorf("execution not found: %s", id))
 }
 
 // ListByJobID retrieves all executions for a specific job with pagination.
@@ -175,20 +138,11 @@ func (r *ExecutionRepository) ListByJobID(
 	limit, offset int,
 ) ([]*domain.JobExecution, error) {
 	var executions []*domain.JobExecution
-	query := `
-		SELECT id, job_id, execution_number, status,
-		       started_at, completed_at, duration_ms,
-		       items_crawled, items_indexed,
-		       error_message, stack_trace,
-		       cpu_time_ms, memory_peak_mb,
-		       retry_attempt,
-		       log_object_key, log_size_bytes, log_line_count,
-		       metadata
+	query := `SELECT ` + executionSelectFields + `
 		FROM job_executions
 		WHERE job_id = $1
 		ORDER BY started_at DESC
-		LIMIT $2 OFFSET $3
-	`
+		LIMIT $2 OFFSET $3`
 
 	err := r.db.SelectContext(ctx, &executions, query, jobID, limit, offset)
 	if err != nil {
@@ -218,20 +172,11 @@ func (r *ExecutionRepository) CountByJobID(ctx context.Context, jobID string) (i
 // GetLatestByJobID retrieves the most recent execution for a job.
 func (r *ExecutionRepository) GetLatestByJobID(ctx context.Context, jobID string) (*domain.JobExecution, error) {
 	var execution domain.JobExecution
-	query := `
-		SELECT id, job_id, execution_number, status,
-		       started_at, completed_at, duration_ms,
-		       items_crawled, items_indexed,
-		       error_message, stack_trace,
-		       cpu_time_ms, memory_peak_mb,
-		       retry_attempt,
-		       log_object_key, log_size_bytes, log_line_count,
-		       metadata
+	query := `SELECT ` + executionSelectFields + `
 		FROM job_executions
 		WHERE job_id = $1
 		ORDER BY started_at DESC
-		LIMIT 1
-	`
+		LIMIT 1`
 
 	err := r.db.GetContext(ctx, &execution, query, jobID)
 	if err != nil {

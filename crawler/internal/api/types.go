@@ -1,7 +1,17 @@
 // Package api implements the HTTP API for the crawler service.
 package api
 
-import "time"
+import (
+	"time"
+
+	"github.com/jonesrussell/north-cloud/crawler/internal/scheduler"
+)
+
+// SchedulerInterface defines the scheduler operations needed by job handlers.
+type SchedulerInterface interface {
+	CancelJob(jobID string) error
+	GetMetrics() scheduler.SchedulerMetrics
+}
 
 // CreateJobRequest represents a job creation request.
 type CreateJobRequest struct {

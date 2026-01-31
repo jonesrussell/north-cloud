@@ -43,6 +43,10 @@ type Repository interface {
 	UpsertAutoManaged(ctx context.Context, job *domain.Job) error
 	DeleteBySourceID(ctx context.Context, sourceID uuid.UUID) error
 	UpdateStatusBySourceID(ctx context.Context, sourceID uuid.UUID, status string) error
+}
+
+// ProcessedEventsRepository defines the interface for event idempotency.
+type ProcessedEventsRepository interface {
 	RecordProcessedEvent(ctx context.Context, eventID uuid.UUID) error
 	IsEventProcessed(ctx context.Context, eventID uuid.UUID) (bool, error)
 }
@@ -50,31 +54,34 @@ type Repository interface {
 // EventService manages job lifecycle based on source events.
 // It implements the events.EventHandler interface.
 type EventService struct {
-	repo             Repository
-	scheduleComputer *ScheduleComputer
-	sourceClient     sources.Client
-	log              infralogger.Logger
+	repo                Repository
+	processedEventsRepo ProcessedEventsRepository
+	scheduleComputer    *ScheduleComputer
+	sourceClient        sources.Client
+	log                 infralogger.Logger
 }
 
 // NewEventService creates a new event-driven job service.
 func NewEventService(
 	repo Repository,
+	processedEventsRepo ProcessedEventsRepository,
 	scheduleComputer *ScheduleComputer,
 	sourceClient sources.Client,
 	log infralogger.Logger,
 ) *EventService {
 	return &EventService{
-		repo:             repo,
-		scheduleComputer: scheduleComputer,
-		sourceClient:     sourceClient,
-		log:              log,
+		repo:                repo,
+		processedEventsRepo: processedEventsRepo,
+		scheduleComputer:    scheduleComputer,
+		sourceClient:        sourceClient,
+		log:                 log,
 	}
 }
 
 // HandleSourceCreated creates an auto-managed job when a source is created.
 func (s *EventService) HandleSourceCreated(ctx context.Context, event infraevents.SourceEvent) error {
 	// Check idempotency
-	processed, err := s.repo.IsEventProcessed(ctx, event.EventID)
+	processed, err := s.processedEventsRepo.IsEventProcessed(ctx, event.EventID)
 	if err != nil {
 		return fmt.Errorf("check event processed: %w", err)
 	}
@@ -145,7 +152,7 @@ func (s *EventService) HandleSourceCreated(ctx context.Context, event infraevent
 // HandleSourceUpdated reschedules a job if schedule-affecting fields changed.
 func (s *EventService) HandleSourceUpdated(ctx context.Context, event infraevents.SourceEvent) error {
 	// Check idempotency
-	processed, err := s.repo.IsEventProcessed(ctx, event.EventID)
+	processed, err := s.processedEventsRepo.IsEventProcessed(ctx, event.EventID)
 	if err != nil {
 		return fmt.Errorf("check event processed: %w", err)
 	}
@@ -224,7 +231,7 @@ func (s *EventService) HandleSourceUpdated(ctx context.Context, event infraevent
 // HandleSourceDeleted deletes the job associated with a source.
 func (s *EventService) HandleSourceDeleted(ctx context.Context, event infraevents.SourceEvent) error {
 	// Check idempotency
-	processed, err := s.repo.IsEventProcessed(ctx, event.EventID)
+	processed, err := s.processedEventsRepo.IsEventProcessed(ctx, event.EventID)
 	if err != nil {
 		return fmt.Errorf("check event processed: %w", err)
 	}
@@ -251,7 +258,7 @@ func (s *EventService) HandleSourceDeleted(ctx context.Context, event infraevent
 // HandleSourceEnabled resumes or creates a job when a source is enabled.
 func (s *EventService) HandleSourceEnabled(ctx context.Context, event infraevents.SourceEvent) error {
 	// Check idempotency
-	processed, err := s.repo.IsEventProcessed(ctx, event.EventID)
+	processed, err := s.processedEventsRepo.IsEventProcessed(ctx, event.EventID)
 	if err != nil {
 		return fmt.Errorf("check event processed: %w", err)
 	}
@@ -336,7 +343,7 @@ func (s *EventService) HandleSourceEnabled(ctx context.Context, event infraevent
 // HandleSourceDisabled pauses the job associated with a source.
 func (s *EventService) HandleSourceDisabled(ctx context.Context, event infraevents.SourceEvent) error {
 	// Check idempotency
-	processed, err := s.repo.IsEventProcessed(ctx, event.EventID)
+	processed, err := s.processedEventsRepo.IsEventProcessed(ctx, event.EventID)
 	if err != nil {
 		return fmt.Errorf("check event processed: %w", err)
 	}
@@ -372,7 +379,7 @@ func (s *EventService) hasScheduleAffectingChanges(changedFields []string) bool 
 
 // recordEvent records an event as processed.
 func (s *EventService) recordEvent(ctx context.Context, eventID uuid.UUID) error {
-	if recordErr := s.repo.RecordProcessedEvent(ctx, eventID); recordErr != nil {
+	if recordErr := s.processedEventsRepo.RecordProcessedEvent(ctx, eventID); recordErr != nil {
 		return fmt.Errorf("record processed event: %w", recordErr)
 	}
 	return nil
@@ -380,7 +387,7 @@ func (s *EventService) recordEvent(ctx context.Context, eventID uuid.UUID) error
 
 // recordAndReturn records the event and returns the provided error.
 func (s *EventService) recordAndReturn(ctx context.Context, eventID uuid.UUID, err error) error {
-	if recordErr := s.repo.RecordProcessedEvent(ctx, eventID); recordErr != nil {
+	if recordErr := s.processedEventsRepo.RecordProcessedEvent(ctx, eventID); recordErr != nil {
 		s.logWarn("Failed to record processed event",
 			infralogger.String("event_id", eventID.String()),
 			infralogger.String("record_error", recordErr.Error()),

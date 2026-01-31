@@ -4,6 +4,7 @@ package api_test
 import (
 	"bytes"
 	"context"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -14,6 +15,9 @@ import (
 	"github.com/jonesrussell/north-cloud/crawler/internal/api"
 	"github.com/jonesrussell/north-cloud/crawler/internal/domain"
 )
+
+// errMockNoData is returned by mock methods that return nil values (not implemented in test).
+var errMockNoData = errors.New("mock: no data")
 
 // mockJobRepo implements the job repository interface for testing.
 type mockJobRepo struct {
@@ -32,11 +36,11 @@ func (m *mockJobRepo) CreateOrUpdate(ctx context.Context, job *domain.Job) (bool
 }
 
 func (m *mockJobRepo) GetByID(ctx context.Context, id string) (*domain.Job, error) {
-	return nil, nil
+	return nil, errMockNoData
 }
 
 func (m *mockJobRepo) List(ctx context.Context, status string, limit, offset int) ([]*domain.Job, error) {
-	return nil, nil
+	return nil, errMockNoData
 }
 
 func (m *mockJobRepo) Update(ctx context.Context, job *domain.Job) error {
@@ -52,7 +56,7 @@ func (m *mockJobRepo) Count(ctx context.Context, status string) (int, error) {
 }
 
 func (m *mockJobRepo) GetJobsReadyToRun(ctx context.Context) ([]*domain.Job, error) {
-	return nil, nil
+	return nil, errMockNoData
 }
 
 func (m *mockJobRepo) AcquireLock(ctx context.Context, jobID string, token uuid.UUID, now time.Time, duration time.Duration) (bool, error) {
@@ -87,7 +91,7 @@ func (m *mockExecutionRepo) Create(ctx context.Context, execution *domain.JobExe
 }
 
 func (m *mockExecutionRepo) GetByID(ctx context.Context, id string) (*domain.JobExecution, error) {
-	return nil, nil
+	return nil, errMockNoData
 }
 
 func (m *mockExecutionRepo) Update(ctx context.Context, execution *domain.JobExecution) error {
@@ -99,7 +103,7 @@ func (m *mockExecutionRepo) Delete(ctx context.Context, id string) error {
 }
 
 func (m *mockExecutionRepo) ListByJobID(ctx context.Context, jobID string, limit, offset int) ([]*domain.JobExecution, error) {
-	return nil, nil
+	return nil, errMockNoData
 }
 
 func (m *mockExecutionRepo) CountByJobID(ctx context.Context, jobID string) (int, error) {
@@ -107,18 +111,18 @@ func (m *mockExecutionRepo) CountByJobID(ctx context.Context, jobID string) (int
 }
 
 func (m *mockExecutionRepo) GetLatestByJobID(ctx context.Context, jobID string) (*domain.JobExecution, error) {
-	return nil, nil
+	return nil, errMockNoData
 }
 
 func (m *mockExecutionRepo) GetJobStats(ctx context.Context, jobID string) (*domain.JobStats, error) {
-	return nil, nil
+	return nil, errMockNoData
 }
 
 func (m *mockExecutionRepo) GetAggregateStats(ctx context.Context) (*domain.AggregateStats, error) {
-	return nil, nil
+	return nil, errMockNoData
 }
 
-func (m *mockExecutionRepo) GetTodayStats(ctx context.Context) (int64, int64, error) {
+func (m *mockExecutionRepo) GetTodayStats(ctx context.Context) (crawledToday, indexedToday int64, err error) {
 	return 0, 0, nil
 }
 
@@ -127,7 +131,7 @@ func (m *mockExecutionRepo) GetFailureRate(ctx context.Context, window time.Dura
 }
 
 func (m *mockExecutionRepo) GetStuckJobs(ctx context.Context, threshold time.Duration) ([]*domain.Job, error) {
-	return nil, nil
+	return nil, errMockNoData
 }
 
 func (m *mockExecutionRepo) CleanupOldExecutions(ctx context.Context) (int, error) {
@@ -152,7 +156,8 @@ func TestJobsHandler_CreateJob_Insert(t *testing.T) {
 	handler := api.NewJobsHandler(jobRepo, &mockExecutionRepo{})
 	router.POST("/api/v1/jobs", handler.CreateJob)
 
-	body := `{"source_id":"80729e12-5127-48f5-9f5c-dcc2647c6fe6","source_name":"Calgary Herald","url":"https://calgaryherald.com","schedule_enabled":false}`
+	body := `{"source_id":"80729e12-5127-48f5-9f5c-dcc2647c6fe6","source_name":"Calgary Herald",` +
+		`"url":"https://calgaryherald.com","schedule_enabled":false}`
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/jobs", bytes.NewBufferString(body))
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
@@ -183,7 +188,8 @@ func TestJobsHandler_CreateJob_UpdateExisting(t *testing.T) {
 	handler := api.NewJobsHandler(jobRepo, &mockExecutionRepo{})
 	router.POST("/api/v1/jobs", handler.CreateJob)
 
-	body := `{"source_id":"80729e12-5127-48f5-9f5c-dcc2647c6fe6","source_name":"Calgary Herald","url":"https://calgaryherald.com","schedule_enabled":false}`
+	body := `{"source_id":"80729e12-5127-48f5-9f5c-dcc2647c6fe6","source_name":"Calgary Herald",` +
+		`"url":"https://calgaryherald.com","schedule_enabled":false}`
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/jobs", bytes.NewBufferString(body))
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()

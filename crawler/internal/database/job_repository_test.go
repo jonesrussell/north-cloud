@@ -74,8 +74,8 @@ func TestJobRepository_CreateOrUpdate_Insert(t *testing.T) {
 		t.Errorf("expected job.ID=%s, got %s", jobID, job.ID)
 	}
 
-	if err := mock.ExpectationsWereMet(); err != nil {
-		t.Errorf("unfulfilled expectations: %v", err)
+	if checkErr := mock.ExpectationsWereMet(); checkErr != nil {
+		t.Errorf("unfulfilled expectations: %v", checkErr)
 	}
 }
 
@@ -142,7 +142,7 @@ func TestJobRepository_CreateOrUpdate_UpdateExisting(t *testing.T) {
 		t.Errorf("expected job.ID=%s (existing row), got %s", existingJobID, job.ID)
 	}
 
-	if err := mock.ExpectationsWereMet(); err != nil {
-		t.Errorf("unfulfilled expectations: %v", err)
+	if checkErr := mock.ExpectationsWereMet(); checkErr != nil {
+		t.Errorf("unfulfilled expectations: %v", checkErr)
 	}
 }

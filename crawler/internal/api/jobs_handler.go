@@ -2,13 +2,11 @@ package api
 
 import (
 	"net/http"
-	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/jonesrussell/north-cloud/crawler/internal/database"
 	"github.com/jonesrussell/north-cloud/crawler/internal/domain"
-	"github.com/jonesrussell/north-cloud/crawler/internal/scheduler"
 	infralogger "github.com/north-cloud/infrastructure/logger"
 )
 
@@ -24,13 +22,6 @@ type JobsHandler struct {
 	executionRepo database.ExecutionRepositoryInterface
 	scheduler     SchedulerInterface
 	log           infralogger.Logger
-}
-
-// SchedulerInterface defines the interface for the scheduler.
-// This allows the handler to interact with the scheduler for job control.
-type SchedulerInterface interface {
-	CancelJob(jobID string) error
-	GetMetrics() scheduler.SchedulerMetrics
 }
 
 // NewJobsHandler creates a new jobs handler.
@@ -56,36 +47,19 @@ func (h *JobsHandler) SetLogger(log infralogger.Logger) {
 
 // ListJobs handles GET /api/v1/jobs
 func (h *JobsHandler) ListJobs(c *gin.Context) {
-	// Get query parameters
 	status := c.Query("status")
-	limitStr := c.DefaultQuery("limit", strconv.Itoa(defaultLimit))
-	offsetStr := c.DefaultQuery("offset", strconv.Itoa(defaultOffset))
-
-	limit, err := strconv.Atoi(limitStr)
-	if err != nil || limit <= 0 {
-		limit = defaultLimit
-	}
-
-	offset, err := strconv.Atoi(offsetStr)
-	if err != nil || offset < 0 {
-		offset = defaultOffset
-	}
+	limit, offset := parseLimitOffset(c, defaultLimit, defaultOffset)
 
 	// Get jobs from database
 	jobs, err := h.repo.List(c.Request.Context(), status, limit, offset)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Failed to retrieve jobs",
-		})
+		respondInternalError(c, "Failed to retrieve jobs")
 		return
 	}
 
-	// Get total count
 	total, err := h.repo.Count(c.Request.Context(), status)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Failed to get total count",
-		})
+		respondInternalError(c, "Failed to get total count")
 		return
 	}
 
@@ -99,19 +73,14 @@ func (h *JobsHandler) ListJobs(c *gin.Context) {
 func (h *JobsHandler) GetJob(c *gin.Context) {
 	id := c.Param("id")
 
-	// Validate job ID
 	if id == "" || id == undefinedID {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Invalid job ID",
-		})
+		respondBadRequest(c, "Invalid job ID")
 		return
 	}
 
 	job, err := h.repo.GetByID(c.Request.Context(), id)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{
-			"error": "Job not found",
-		})
+		respondNotFound(c, "Job")
 		return
 	}
 
@@ -431,40 +400,22 @@ func (h *JobsHandler) RetryJob(c *gin.Context) {
 func (h *JobsHandler) GetJobExecutions(c *gin.Context) {
 	id := c.Param("id")
 
-	// Validate job ID
 	if id == "" || id == undefinedID {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Invalid job ID",
-		})
+		respondBadRequest(c, "Invalid job ID")
 		return
 	}
 
-	limitStr := c.DefaultQuery("limit", strconv.Itoa(defaultLimit))
-	offsetStr := c.DefaultQuery("offset", strconv.Itoa(defaultOffset))
-
-	limit, err := strconv.Atoi(limitStr)
-	if err != nil || limit <= 0 {
-		limit = defaultLimit
-	}
-
-	offset, err := strconv.Atoi(offsetStr)
-	if err != nil || offset < 0 {
-		offset = defaultOffset
-	}
+	limit, offset := parseLimitOffset(c, defaultLimit, defaultOffset)
 
 	executions, err := h.executionRepo.ListByJobID(c.Request.Context(), id, limit, offset)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Failed to retrieve executions",
-		})
+		respondInternalError(c, "Failed to retrieve executions")
 		return
 	}
 
 	total, err := h.executionRepo.CountByJobID(c.Request.Context(), id)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Failed to get total count",
-		})
+		respondInternalError(c, "Failed to get total count")
 		return
 	}
 
@@ -480,19 +431,14 @@ func (h *JobsHandler) GetJobExecutions(c *gin.Context) {
 func (h *JobsHandler) GetJobStats(c *gin.Context) {
 	id := c.Param("id")
 
-	// Validate job ID
 	if id == "" || id == undefinedID {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Invalid job ID",
-		})
+		respondBadRequest(c, "Invalid job ID")
 		return
 	}
 
 	stats, err := h.executionRepo.GetJobStats(c.Request.Context(), id)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Failed to retrieve job statistics",
-		})
+		respondInternalError(c, "Failed to retrieve job statistics")
 		return
 	}
 
@@ -505,9 +451,7 @@ func (h *JobsHandler) GetExecution(c *gin.Context) {
 
 	execution, err := h.executionRepo.GetByID(c.Request.Context(), id)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{
-			"error": "Execution not found",
-		})
+		respondNotFound(c, "Execution")
 		return
 	}
 

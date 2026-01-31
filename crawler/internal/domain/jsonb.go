@@ -45,3 +45,12 @@ func (j *JSONBMap) Value() (driver.Value, error) {
 	}
 	return json.Marshal(j)
 }
+
+// MetadataPtr returns a pointer to m for use with driver.Valuer interface.
+// Returns nil if m is nil.
+func MetadataPtr(m JSONBMap) *JSONBMap {
+	if m != nil {
+		return &m
+	}
+	return nil
+}

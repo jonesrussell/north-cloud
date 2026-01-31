@@ -33,6 +33,7 @@ import (
 	"github.com/north-cloud/infrastructure/profiling"
 	infraredis "github.com/north-cloud/infrastructure/redis"
 	"github.com/north-cloud/infrastructure/sse"
+	"github.com/redis/go-redis/v9"
 )
 
 // === Types ===
@@ -49,6 +50,19 @@ type StorageResult struct {
 	IndexManager types.IndexManager
 }
 
+// HTTPServerDeps holds dependencies for the HTTP server.
+type HTTPServerDeps struct {
+	Config                 config.Interface
+	Logger                 infralogger.Logger
+	JobsHandler            *api.JobsHandler
+	DiscoveredLinksHandler *api.DiscoveredLinksHandler
+	LogsHandler            *api.LogsHandler
+	LogsV2Handler          *api.LogsStreamV2Handler
+	ExecutionRepo          database.ExecutionRepositoryInterface
+	SSEHandler             *api.SSEHandler
+	Migrator               *job.Migrator
+}
+
 // JobsSchedulerResult holds the results from setupJobsAndScheduler.
 type JobsSchedulerResult struct {
 	JobsHandler            *api.JobsHandler
@@ -62,6 +76,7 @@ type JobsSchedulerResult struct {
 	SSEHandler             *api.SSEHandler
 	LogService             logs.Service
 	JobRepo                *database.JobRepository
+	ProcessedEventsRepo    *database.ProcessedEventsRepository
 	Migrator               *job.Migrator
 }
 
@@ -108,30 +123,37 @@ func Start() error {
 		return fmt.Errorf("failed to initialize dependencies: %w", err)
 	}
 
-	// Phase 3: Setup storage
+	// Phase 2: Setup storage
 	storageResult, err := createStorage(deps.Config, deps.Logger)
 	if err != nil {
 		return fmt.Errorf("failed to create storage: %w", err)
 	}
 
-	// Phase 4: Setup jobs handler and scheduler
+	// Phase 3: Setup jobs handler and scheduler
 	jsResult, err := setupJobsAndScheduler(deps, storageResult)
 	if err != nil {
 		return fmt.Errorf("failed to setup jobs and scheduler: %w", err)
 	}
 	defer jsResult.DB.Close()
 
-	// Phase 4.5: Setup event consumer (if Redis events enabled)
-	eventConsumer := setupEventConsumer(deps, jsResult.JobRepo)
+	// Phase 4: Setup event consumer (if Redis events enabled)
+	eventConsumer := setupEventConsumer(deps, jsResult.JobRepo, jsResult.ProcessedEventsRepo)
 
-	// Phase 5: Start HTTP server
-	server, errChan := startHTTPServer(
-		deps, jsResult.JobsHandler, jsResult.DiscoveredLinksHandler,
-		jsResult.LogsHandler, jsResult.LogsV2Handler, jsResult.ExecutionRepo,
-		jsResult.SSEHandler, jsResult.Migrator,
-	)
+	// Phase 5: Create server deps and start HTTP server
+	serverDeps := &HTTPServerDeps{
+		Config:                 deps.Config,
+		Logger:                 deps.Logger,
+		JobsHandler:            jsResult.JobsHandler,
+		DiscoveredLinksHandler: jsResult.DiscoveredLinksHandler,
+		LogsHandler:            jsResult.LogsHandler,
+		LogsV2Handler:          jsResult.LogsV2Handler,
+		ExecutionRepo:          jsResult.ExecutionRepo,
+		SSEHandler:             jsResult.SSEHandler,
+		Migrator:               jsResult.Migrator,
+	}
+	server, errChan := startHTTPServer(serverDeps)
 
-	// Phase 6: Run server until interrupted
+	// Phase 6: Run until interrupt or error
 	return runServerUntilInterrupt(deps.Logger, server, jsResult.Scheduler, jsResult.SSEBroker, jsResult.LogService, eventConsumer, errChan)
 }
 
@@ -331,21 +353,18 @@ func createCrawler(
 
 // setupEventConsumer creates and starts the event consumer if Redis events are enabled.
 // Returns nil if events are disabled or Redis is unavailable.
-func setupEventConsumer(deps *CommandDeps, jobRepo *database.JobRepository) *crawlerintevents.Consumer {
-	redisCfg := deps.Config.GetRedisConfig()
-	if !redisCfg.Enabled {
-		return nil
-	}
-
-	redisClient, err := infraredis.NewClient(infraredis.Config{
-		Address:  redisCfg.Address,
-		Password: redisCfg.Password,
-		DB:       redisCfg.DB,
-	})
+func setupEventConsumer(
+	deps *CommandDeps,
+	jobRepo *database.JobRepository,
+	processedEventsRepo *database.ProcessedEventsRepository,
+) *crawlerintevents.Consumer {
+	redisClient, err := createRedisClient(deps.Config.GetRedisConfig())
 	if err != nil {
-		deps.Logger.Warn("Redis not available, event consumer disabled",
-			infralogger.Error(err),
-		)
+		if !errors.Is(err, errRedisDisabled) {
+			deps.Logger.Warn("Redis not available, event consumer disabled",
+				infralogger.Error(err),
+			)
+		}
 		return nil
 	}
 
@@ -355,7 +374,7 @@ func setupEventConsumer(deps *CommandDeps, jobRepo *database.JobRepository) *cra
 
 	// Create EventService as the event handler
 	scheduleComputer := job.NewScheduleComputer()
-	eventService := job.NewEventService(jobRepo, scheduleComputer, sourceClient, deps.Logger)
+	eventService := job.NewEventService(jobRepo, processedEventsRepo, scheduleComputer, sourceClient, deps.Logger)
 
 	consumer := crawlerintevents.NewConsumer(redisClient, "", eventService, deps.Logger)
 
@@ -419,26 +438,21 @@ func setupLogService(
 	var serviceOpts []logs.ServiceOption
 	var redisWriter *logs.RedisStreamWriter
 	if logsCfg.RedisEnabled {
-		redisCfg := deps.Config.GetRedisConfig()
-		if redisCfg.Enabled {
-			redisClient, redisErr := infraredis.NewClient(infraredis.Config{
-				Address:  redisCfg.Address,
-				Password: redisCfg.Password,
-				DB:       redisCfg.DB,
-			})
-			if redisErr != nil {
+		redisClient, redisErr := createRedisClient(deps.Config.GetRedisConfig())
+		if redisErr != nil {
+			if !errors.Is(redisErr, errRedisDisabled) {
 				deps.Logger.Warn("Redis not available for job logs, falling back to in-memory",
 					infralogger.Error(redisErr))
-			} else {
-				redisWriter = logs.NewRedisStreamWriter(
-					redisClient,
-					logsCfg.RedisKeyPrefix,
-					logsCfg.RedisTTLSeconds,
-				)
-				serviceOpts = append(serviceOpts, logs.WithRedisWriter(redisWriter))
-				deps.Logger.Info("Job logs Redis persistence enabled",
-					infralogger.String("prefix", logsCfg.RedisKeyPrefix))
 			}
+		} else {
+			redisWriter = logs.NewRedisStreamWriter(
+				redisClient,
+				logsCfg.RedisKeyPrefix,
+				logsCfg.RedisTTLSeconds,
+			)
+			serviceOpts = append(serviceOpts, logs.WithRedisWriter(redisWriter))
+			deps.Logger.Info("Job logs Redis persistence enabled",
+				infralogger.String("prefix", logsCfg.RedisKeyPrefix))
 		}
 	}
 
@@ -452,6 +466,33 @@ func setupLogService(
 
 // === Database & Scheduler Setup ===
 
+// setupRepositories creates all database repositories.
+func setupRepositories(db *sqlx.DB) (
+	jobRepo *database.JobRepository,
+	executionRepo *database.ExecutionRepository,
+	discoveredLinkRepo *database.DiscoveredLinkRepository,
+	processedEventsRepo *database.ProcessedEventsRepository,
+) {
+	jobRepo = database.NewJobRepository(db)
+	executionRepo = database.NewExecutionRepository(db)
+	discoveredLinkRepo = database.NewDiscoveredLinkRepository(db)
+	processedEventsRepo = database.NewProcessedEventsRepository(db)
+	return jobRepo, executionRepo, discoveredLinkRepo, processedEventsRepo
+}
+
+// setupSSE creates SSE broker, handler, and publisher.
+func setupSSE(deps *CommandDeps) (sseBroker sse.Broker, sseHandler *api.SSEHandler, ssePublisher *scheduler.SSEPublisher) {
+	sseBroker = sse.NewBroker(deps.Logger)
+	if startErr := sseBroker.Start(context.Background()); startErr != nil {
+		deps.Logger.Error("Failed to start SSE broker", infralogger.Error(startErr))
+	} else {
+		deps.Logger.Info("SSE broker started successfully")
+	}
+	sseHandler = api.NewSSEHandler(sseBroker, deps.Logger)
+	ssePublisher = scheduler.NewSSEPublisher(sseBroker, deps.Logger)
+	return sseBroker, sseHandler, ssePublisher
+}
+
 // setupJobsAndScheduler initializes the jobs handler and scheduler.
 // Returns JobsSchedulerResult containing all components and an error.
 // Database connection is required - the crawler cannot operate without it.
@@ -459,7 +500,6 @@ func setupJobsAndScheduler(
 	deps *CommandDeps,
 	storageResult *StorageResult,
 ) (*JobsSchedulerResult, error) {
-	// Convert config to database config (DRY improvement)
 	dbConfig := databaseConfigFromInterface(deps.Config.GetDatabaseConfig())
 
 	db, err := database.NewPostgresConnection(dbConfig)
@@ -467,31 +507,12 @@ func setupJobsAndScheduler(
 		return nil, fmt.Errorf("failed to connect to database: %w", err)
 	}
 
-	// Create repositories
-	jobRepo := database.NewJobRepository(db)
-	executionRepo := database.NewExecutionRepository(db)
+	jobRepo, executionRepo, discoveredLinkRepo, processedEventsRepo := setupRepositories(db)
 
-	// Create jobs handler with both repositories
 	jobsHandler := api.NewJobsHandler(jobRepo, executionRepo)
-
-	// Create discovered links handler
-	discoveredLinkRepo := database.NewDiscoveredLinkRepository(db)
 	discoveredLinksHandler := api.NewDiscoveredLinksHandler(discoveredLinkRepo, jobRepo)
 
-	// Create SSE broker for real-time events
-	sseBroker := sse.NewBroker(deps.Logger)
-	if startErr := sseBroker.Start(context.Background()); startErr != nil {
-		deps.Logger.Error("Failed to start SSE broker", infralogger.Error(startErr))
-		// Continue without SSE - it's optional
-	} else {
-		deps.Logger.Info("SSE broker started successfully")
-	}
-
-	// Create SSE handler
-	sseHandler := api.NewSSEHandler(sseBroker, deps.Logger)
-
-	// Create SSE publisher for scheduler
-	ssePublisher := scheduler.NewSSEPublisher(sseBroker, deps.Logger)
+	sseBroker, sseHandler, ssePublisher := setupSSE(deps)
 
 	// Create log service with optional Redis persistence
 	logResult := setupLogService(deps, sseBroker, executionRepo)
@@ -521,7 +542,6 @@ func setupJobsAndScheduler(
 		intervalScheduler.SetLogService(logResult.Service)
 	}
 
-	// Create migrator for Phase 3 job migration
 	migrator := setupMigrator(deps, jobRepo)
 
 	return &JobsSchedulerResult{
@@ -536,8 +556,24 @@ func setupJobsAndScheduler(
 		SSEHandler:             sseHandler,
 		LogService:             logResult.Service,
 		JobRepo:                jobRepo,
+		ProcessedEventsRepo:    processedEventsRepo,
 		Migrator:               migrator,
 	}, nil
+}
+
+// errRedisDisabled indicates Redis is disabled or not configured.
+var errRedisDisabled = errors.New("redis disabled")
+
+// createRedisClient creates a Redis client from config. Returns errRedisDisabled if config is nil or disabled.
+func createRedisClient(redisCfg *config.RedisConfig) (*redis.Client, error) {
+	if redisCfg == nil || !redisCfg.Enabled {
+		return nil, errRedisDisabled
+	}
+	return infraredis.NewClient(infraredis.Config{
+		Address:  redisCfg.Address,
+		Password: redisCfg.Password,
+		DB:       redisCfg.DB,
+	})
 }
 
 // databaseConfigFromInterface converts config database config to database.Config.
@@ -592,32 +628,19 @@ func createAndStartScheduler(
 
 // startHTTPServer creates and starts the HTTP server.
 // Returns the server and an error channel for server errors.
-func startHTTPServer(
-	deps *CommandDeps,
-	jobsHandler *api.JobsHandler,
-	discoveredLinksHandler *api.DiscoveredLinksHandler,
-	logsHandler *api.LogsHandler,
-	logsV2Handler *api.LogsStreamV2Handler,
-	executionRepo *database.ExecutionRepository,
-	sseHandler *api.SSEHandler,
-	migrator *job.Migrator,
-) (server *infragin.Server, errChan <-chan error) {
-	// Create migration handler for Phase 3 migration endpoints
-	migrationHandler := api.NewMigrationHandler(migrator, deps.Logger)
+func startHTTPServer(deps *HTTPServerDeps) (server *infragin.Server, errChan <-chan error) {
+	migrationHandler := api.NewMigrationHandler(deps.Migrator, deps.Logger)
 
-	// Use the logger that already has the service field attached
-	// Create server using the new infrastructure gin package
 	server = api.NewServer(
-		deps.Config, jobsHandler, discoveredLinksHandler,
-		logsHandler, logsV2Handler, executionRepo,
-		deps.Logger, sseHandler, migrationHandler,
+		deps.Config, deps.JobsHandler, deps.DiscoveredLinksHandler,
+		deps.LogsHandler, deps.LogsV2Handler, deps.ExecutionRepo,
+		deps.Logger, deps.SSEHandler, migrationHandler,
 	)
 
-	// Start server asynchronously
 	deps.Logger.Info("Starting HTTP server", infralogger.String("addr", deps.Config.GetServerConfig().Address))
 	errChan = server.StartAsync()
 
-	return
+	return server, errChan
 }
 
 // runServerUntilInterrupt runs the server until interrupted by signal or error.
