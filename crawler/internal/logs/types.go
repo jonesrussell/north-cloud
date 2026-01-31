@@ -14,6 +14,8 @@ const (
 	defaultMinLevel          = "info"
 	defaultMinioBucket       = "crawler-logs"
 	defaultMilestoneInterval = 50
+	defaultRedisKeyPrefix    = "logs"
+	defaultRedisTTLSeconds   = 86400 // 24 hours
 )
 
 // LogEntry represents a single log line captured during job execution.
@@ -74,6 +76,15 @@ type Config struct {
 
 	// MilestoneInterval is how often (in pages crawled) to emit progress milestones.
 	MilestoneInterval int `default:"50" env:"JOB_LOGS_MILESTONE_INTERVAL" yaml:"milestone_interval"`
+
+	// RedisEnabled enables Redis Streams for log persistence (replaces in-memory buffer).
+	RedisEnabled bool `default:"false" env:"JOB_LOGS_REDIS_ENABLED" yaml:"redis_enabled"`
+
+	// RedisKeyPrefix is the prefix for Redis stream keys (e.g., "logs" -> "logs:{job_id}").
+	RedisKeyPrefix string `default:"logs" env:"JOB_LOGS_REDIS_KEY_PREFIX" yaml:"redis_key_prefix"`
+
+	// RedisTTLSeconds is how long to keep log streams in Redis (default 24 hours).
+	RedisTTLSeconds int `default:"86400" env:"JOB_LOGS_REDIS_TTL_SECONDS" yaml:"redis_ttl_seconds"`
 }
 
 // DefaultConfig returns a Config with sensible defaults.
@@ -87,5 +98,8 @@ func DefaultConfig() *Config {
 		MinLevel:          defaultMinLevel,
 		MinioBucket:       defaultMinioBucket,
 		MilestoneInterval: defaultMilestoneInterval,
+		RedisEnabled:      false,
+		RedisKeyPrefix:    defaultRedisKeyPrefix,
+		RedisTTLSeconds:   defaultRedisTTLSeconds,
 	}
 }
