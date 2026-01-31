@@ -1,7 +1,7 @@
 {
   "mcpServers": {
     "North Cloud": {
-      "command": "./mcp-north-cloud/bin/mcp-north-cloud",
+      "command": "./mcp-north-cloud/run-mcp.sh",
       "env": {
         "INDEX_MANAGER_URL": "http://localhost:8090",
         "CRAWLER_URL": "http://localhost:8060",

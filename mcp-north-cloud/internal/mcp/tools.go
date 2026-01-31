@@ -24,7 +24,8 @@ func getWorkflowTools() []Tool {
 		{
 			Name: "onboard_source",
 			Description: "Set up a complete content pipeline in one step: creates a source, starts crawling, " +
-				"and optionally configures a publishing route. Ideal for quickly onboarding new content sources.",
+				"and optionally configures a publishing route. Use when: User wants to add a new website/source and start crawling. " +
+				"Returns: source_id, job_id, optional route_id. Prefer over add_source + schedule_crawl for new sources.",
 			InputSchema: map[string]any{
 				"type": "object",
 				"properties": map[string]any{
@@ -42,7 +43,7 @@ func getWorkflowTools() []Tool {
 					},
 					"selectors": map[string]any{
 						"type":        "object",
-						"description": "CSS selectors for extracting content: {title, body, date, author}",
+						"description": "CSS selectors for content extraction. Minimal: {title: 'h1', body: 'article'}. Optional: date (e.g. 'time[datetime]'), author (e.g. '.byline').",
 					},
 					"crawl_interval_minutes": map[string]any{
 						"type":        "integer",
@@ -147,7 +148,7 @@ func getCrawlerTools() []Tool {
 		},
 		{
 			Name:        "control_crawl_job",
-			Description: "Control a crawl job's state: pause, resume, or cancel. Consolidates job state management into a single tool.",
+			Description: "Control a crawl job's state: pause, resume, or cancel. Use when: User wants to pause, resume, or cancel a crawl job.",
 			InputSchema: map[string]any{
 				"type": "object",
 				"properties": map[string]any{
@@ -186,7 +187,7 @@ func getSourceManagerTools() []Tool {
 	return []Tool{
 		{
 			Name:        "add_source",
-			Description: "Add a new content source for crawling.",
+			Description: "Add a new content source for crawling. Use when: Only need to register a source without crawling. For full setup, prefer onboard_source.",
 			InputSchema: map[string]any{
 				"type": "object",
 				"properties": map[string]any{
@@ -204,7 +205,7 @@ func getSourceManagerTools() []Tool {
 					},
 					"selectors": map[string]any{
 						"type":        "object",
-						"description": "CSS selectors for extracting content (JSON object)",
+						"description": "CSS selectors for content extraction. Minimal: {title: 'h1', body: 'article'}. Optional: date (e.g. 'time[datetime]'), author (e.g. '.byline').",
 					},
 					"active": map[string]any{
 						"type":        "boolean",
@@ -277,7 +278,7 @@ func getSourceManagerTools() []Tool {
 		},
 		{
 			Name:        "test_source",
-			Description: "Test crawl a source without saving the results. Useful for validating selectors before adding a source.",
+			Description: "Test crawl a source without saving the results. Use when: Validating selectors before adding a source. Call before add_source or onboard_source if selectors are uncertain.",
 			InputSchema: map[string]any{
 				"type": "object",
 				"properties": map[string]any{
@@ -287,7 +288,7 @@ func getSourceManagerTools() []Tool {
 					},
 					"selectors": map[string]any{
 						"type":        "object",
-						"description": "CSS selectors to test (JSON object)",
+						"description": "CSS selectors to test. Minimal: {title: 'h1', body: 'article'}. Optional: date (e.g. 'time[datetime]'), author (e.g. '.byline').",
 					},
 				},
 				"required": []string{"url", "selectors"},
@@ -420,7 +421,7 @@ func getSearchTools() []Tool {
 	return []Tool{
 		{
 			Name:        "search_articles",
-			Description: "Full-text search across all classified content with filtering and facets.",
+			Description: "Full-text search across all classified content with filtering and facets. Use when: User wants to find articles by keyword, topic, or quality. Returns up to 20 results per page.",
 			InputSchema: map[string]any{
 				"type": "object",
 				"properties": map[string]any{

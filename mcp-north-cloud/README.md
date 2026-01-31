@@ -106,7 +106,7 @@ If you prefer to run the MCP server inside Docker instead of using the built bin
 
 ### Cursor IDE
 
-Cursor reads **`.cursor/mcp.json`** in this repo. It runs the built binary with env pointing at your dev stack on localhost (ports match `docker-compose.dev.yml`). Ensure the binary exists:
+Cursor reads **`.cursor/mcp.json`** in this repo. It runs `run-mcp.sh`, which loads `.env` (for `AUTH_JWT_SECRET`) and then starts the MCP binary with env pointing at your dev stack on localhost (ports match `docker-compose.dev.yml`). Ensure the binary exists:
 
 ```bash
 task mcp:build
@@ -202,6 +202,18 @@ All service URLs can be configured via environment variables:
 | `PUBLISHER_URL` | `http://localhost:8080` | Publisher service URL |
 | `SEARCH_URL` | `http://localhost:8090` | Search service URL |
 | `CLASSIFIER_URL` | `http://localhost:8070` | Classifier service URL |
+
+### Authentication
+
+Tools that call protected APIs (source-manager, publisher, crawler, etc.) require JWT authentication. The MCP server uses `AUTH_JWT_SECRET` to generate service-to-service tokens.
+
+**Setup:**
+
+1. Ensure `.env` exists in the project root with `AUTH_JWT_SECRET` set to the same value used by auth, source-manager, and other North Cloud services.
+2. The wrapper script (`run-mcp.sh`) loads `.env` automatically when Cursor or Claude Code starts the MCP server. No additional configuration is needed.
+3. Generate a secret if needed: `openssl rand -hex 32` (see the main project `.env.example`).
+
+**Without `AUTH_JWT_SECRET`:** Protected tools (e.g. `onboard_source`, `add_source`, `create_route`) will fail with "missing authorization". Public endpoints (e.g. `list_sources` via GET) may work depending on service configuration.
 
 ## Tool Reference
 

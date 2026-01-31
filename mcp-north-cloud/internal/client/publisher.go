@@ -131,12 +131,16 @@ func (c *PublisherClient) ListRoutes(sourceID, channelID string) ([]Route, error
 		return nil, fmt.Errorf("unexpected status code: %d, body: %s", resp.StatusCode, string(body))
 	}
 
-	var routes []Route
-	if err = json.Unmarshal(body, &routes); err != nil {
+	// Publisher returns {"routes": [...], "count": N}
+	var response struct {
+		Routes []Route `json:"routes"`
+		Count  int     `json:"count"`
+	}
+	if err = json.Unmarshal(body, &response); err != nil {
 		return nil, fmt.Errorf("failed to parse response: %w", err)
 	}
 
-	return routes, nil
+	return response.Routes, nil
 }
 
 // CreateRoute creates a new publishing route
@@ -251,12 +255,16 @@ func (c *PublisherClient) PreviewRoute(routeID string) ([]PreviewArticle, error)
 		return nil, fmt.Errorf("unexpected status code: %d, body: %s", resp.StatusCode, string(body))
 	}
 
-	var articles []PreviewArticle
-	if err = json.Unmarshal(body, &articles); err != nil {
+	// Publisher returns {"estimated_count": N, "filters": {...}, "sample_articles": [...]}
+	var response struct {
+		SampleArticles []PreviewArticle `json:"sample_articles"`
+		EstimatedCount int              `json:"estimated_count"`
+	}
+	if err = json.Unmarshal(body, &response); err != nil {
 		return nil, fmt.Errorf("failed to parse response: %w", err)
 	}
 
-	return articles, nil
+	return response.SampleArticles, nil
 }
 
 // GetPublishHistory gets publish history with pagination
@@ -298,12 +306,16 @@ func (c *PublisherClient) GetPublishHistory(channelName string, limit, offset in
 		return nil, fmt.Errorf("unexpected status code: %d, body: %s", resp.StatusCode, string(body))
 	}
 
-	var history []PublishHistory
-	if err = json.Unmarshal(body, &history); err != nil {
+	// Publisher returns {"history": [...], "count": N, "limit": X, "offset": Y}
+	var response struct {
+		History []PublishHistory `json:"history"`
+		Count   int              `json:"count"`
+	}
+	if err = json.Unmarshal(body, &response); err != nil {
 		return nil, fmt.Errorf("failed to parse response: %w", err)
 	}
 
-	return history, nil
+	return response.History, nil
 }
 
 // GetStats gets publisher statistics

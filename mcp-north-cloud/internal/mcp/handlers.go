@@ -660,7 +660,15 @@ func (s *Server) handleGetPublishHistory(id any, arguments json.RawMessage) *Res
 
 	_ = json.Unmarshal(arguments, &args) // Empty args is okay, use defaults
 
-	history, err := s.publisherClient.GetPublishHistory(args.ChannelName, args.Limit, args.Offset)
+	// Apply limit/offset defaults and cap (Phase E: response size safeguard)
+	limit := max(args.Limit, 0)
+	if limit == 0 {
+		limit = 50 // Tool schema default for publish history
+	}
+	limit = min(limit, maxLimit)
+	offset := max(args.Offset, 0)
+
+	history, err := s.publisherClient.GetPublishHistory(args.ChannelName, limit, offset)
 	if err != nil {
 		return s.errorResponse(id, InternalError, fmt.Sprintf("Failed to get publish history: %v", err))
 	}
@@ -668,6 +676,8 @@ func (s *Server) handleGetPublishHistory(id any, arguments json.RawMessage) *Res
 	return s.successResponse(id, map[string]any{
 		"history": history,
 		"count":   len(history),
+		"limit":   limit,
+		"offset":  offset,
 	})
 }
 
