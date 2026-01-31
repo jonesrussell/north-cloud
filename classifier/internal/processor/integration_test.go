@@ -36,6 +36,19 @@ func newMockSourceReputationDB() *mockSourceReputationDB {
 	}
 }
 
+// copySourceReputation returns a deep copy so concurrent callers do not share mutable state.
+func copySourceReputation(s *domain.SourceReputation) *domain.SourceReputation {
+	if s == nil {
+		return nil
+	}
+	c := *s
+	if s.LastClassifiedAt != nil {
+		t := *s.LastClassifiedAt
+		c.LastClassifiedAt = &t
+	}
+	return &c
+}
+
 func (m *mockSourceReputationDB) GetSource(ctx context.Context, sourceName string) (*domain.SourceReputation, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
@@ -44,14 +57,14 @@ func (m *mockSourceReputationDB) GetSource(ctx context.Context, sourceName strin
 	if !ok {
 		return nil, errors.New("source not found")
 	}
-	return source, nil
+	return copySourceReputation(source), nil
 }
 
 func (m *mockSourceReputationDB) CreateSource(ctx context.Context, source *domain.SourceReputation) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	m.sources[source.SourceName] = source
+	m.sources[source.SourceName] = copySourceReputation(source)
 	return nil
 }
 
@@ -59,7 +72,7 @@ func (m *mockSourceReputationDB) UpdateSource(ctx context.Context, source *domai
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	m.sources[source.SourceName] = source
+	m.sources[source.SourceName] = copySourceReputation(source)
 	return nil
 }
 
@@ -81,7 +94,7 @@ func (m *mockSourceReputationDB) GetOrCreateSource(ctx context.Context, sourceNa
 		}
 		m.sources[sourceName] = source
 	}
-	return source, nil
+	return copySourceReputation(source), nil
 }
 
 // createTestClassifier creates a classifier with all dependencies for testing
