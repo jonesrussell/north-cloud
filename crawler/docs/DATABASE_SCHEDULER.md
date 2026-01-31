@@ -84,7 +84,7 @@ The database-backed scheduler replaces the old `sources.yml` configuration-based
 - `crawler/internal/job/db_scheduler.go` - Database-backed scheduler implementation
 
 #### Modified Files
-- `crawler/cmd/httpd/httpd.go` - Integrated scheduler with httpd command
+- `crawler/internal/bootstrap/` - Integrated scheduler (refactored from cmd/httpd)
 - `crawler/go.mod` - Added `github.com/robfig/cron/v3` dependency
 
 ### Database Schema

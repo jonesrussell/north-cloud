@@ -52,10 +52,10 @@ crawler/docs/INTERVAL_SCHEDULER.md                # V1 interval scheduler docs (
 
 ## Code Changes
 
-### 1. Update cmd/httpd/httpd.go
+### 1. Update internal/bootstrap/ Package
 
 Remove V1 scheduler initialization:
-- Remove `NewIntervalScheduler()` calls
+- Remove `NewIntervalScheduler()` calls from `services.go`
 - Remove V1 scheduler start/stop
 - Keep only V2 scheduler initialization
 

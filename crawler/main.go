@@ -4,11 +4,11 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/jonesrussell/north-cloud/crawler/cmd/httpd"
+	"github.com/jonesrussell/north-cloud/crawler/internal/bootstrap"
 )
 
 func main() {
-	if err := httpd.Start(); err != nil {
+	if err := bootstrap.Start(); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
 	}

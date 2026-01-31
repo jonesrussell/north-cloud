@@ -545,7 +545,7 @@ go test -v ./internal/database/... -tags=integration
 
 ```bash
 # Start service
-go run cmd/httpd/main.go
+go run main.go
 
 # Test job creation
 curl -X POST http://localhost:8060/api/v1/jobs \

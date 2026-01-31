@@ -125,7 +125,7 @@ GET    /api/v1/scheduler/metrics     - Scheduler-wide metrics
 ### Phase 5: Main Integration ✅
 
 **Files Modified**:
-- `cmd/httpd/httpd.go` - Wired IntervalScheduler into main server
+- `internal/bootstrap/` - Bootstrap package handles IntervalScheduler integration
 
 **Changes**:
 - Updated imports to use `internal/scheduler` package
@@ -204,7 +204,7 @@ GET    /api/v1/scheduler/metrics     - Scheduler-wide metrics
 4. `internal/api/types.go` - Added new request/response types
 5. `internal/api/api.go` - Registered 8 new routes
 6. `internal/api/queued_links_handler.go` - Removed ReloadJob calls
-7. `cmd/httpd/httpd.go` - Integrated new scheduler
+7. `internal/bootstrap/` - Integrated new scheduler (refactored from cmd/httpd)
 8. `internal/domain/execution.go` - Enhanced with new fields
 
 ### Total Lines of Code: ~3,500 lines
@@ -326,7 +326,7 @@ docker-compose restart crawler
 2. **Test Environment Validation**:
    - Run migration test script: `bash scripts/test-migration.sh`
    - Verify all unit tests pass: `go test -v ./internal/scheduler/...`
-   - Build binary: `go build -o bin/crawler cmd/httpd/main.go`
+   - Build binary: `go build -o bin/crawler .`
 
 ### Deployment Steps
 
