@@ -15,16 +15,14 @@ import (
 // PublisherClient is a client for the publisher API
 type PublisherClient struct {
 	baseURL    string
-	httpClient *http.Client
+	httpClient *AuthenticatedClient
 }
 
 // NewPublisherClient creates a new publisher client
-func NewPublisherClient(baseURL string) *PublisherClient {
+func NewPublisherClient(baseURL string, authClient *AuthenticatedClient) *PublisherClient {
 	return &PublisherClient{
-		baseURL: baseURL,
-		httpClient: &http.Client{
-			Timeout: defaultHTTPTimeout,
-		},
+		baseURL:    baseURL,
+		httpClient: authClient,
 	}
 }
 

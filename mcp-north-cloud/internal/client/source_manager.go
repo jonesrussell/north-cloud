@@ -13,16 +13,14 @@ import (
 // SourceManagerClient is a client for the source-manager API
 type SourceManagerClient struct {
 	baseURL    string
-	httpClient *http.Client
+	httpClient *AuthenticatedClient
 }
 
 // NewSourceManagerClient creates a new source-manager client
-func NewSourceManagerClient(baseURL string) *SourceManagerClient {
+func NewSourceManagerClient(baseURL string, authClient *AuthenticatedClient) *SourceManagerClient {
 	return &SourceManagerClient{
-		baseURL: baseURL,
-		httpClient: &http.Client{
-			Timeout: defaultHTTPTimeout,
-		},
+		baseURL:    baseURL,
+		httpClient: authClient,
 	}
 }
 

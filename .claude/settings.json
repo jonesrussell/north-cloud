@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__North_Cloud__list_crawl_jobs"
+    ]
+  }
+}

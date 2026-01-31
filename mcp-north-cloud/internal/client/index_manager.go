@@ -17,16 +17,14 @@ const (
 // IndexManagerClient is a client for the index-manager API
 type IndexManagerClient struct {
 	baseURL    string
-	httpClient *http.Client
+	httpClient *AuthenticatedClient
 }
 
 // NewIndexManagerClient creates a new index-manager client
-func NewIndexManagerClient(baseURL string) *IndexManagerClient {
+func NewIndexManagerClient(baseURL string, authClient *AuthenticatedClient) *IndexManagerClient {
 	return &IndexManagerClient{
-		baseURL: baseURL,
-		httpClient: &http.Client{
-			Timeout: defaultHTTPTimeout,
-		},
+		baseURL:    baseURL,
+		httpClient: authClient,
 	}
 }
 

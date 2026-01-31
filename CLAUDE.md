@@ -10,8 +10,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **Docker (Development)**:
 ```bash
-# Start all services
-docker compose -f docker-compose.base.yml -f docker-compose.dev.yml up -d
+# Start core services only (no Loki/Grafana/Pyroscope)
+task docker:dev:up
+# Or: docker compose -f docker-compose.base.yml -f docker-compose.dev.yml up -d
+
+# Include logging/observability (Loki, Alloy, Grafana, Pyroscope)
+task docker:dev:up:observability
+# Or: docker compose -f docker-compose.base.yml -f docker-compose.dev.yml --profile observability up -d
 
 # View logs
 docker compose -f docker-compose.base.yml -f docker-compose.dev.yml logs -f SERVICE

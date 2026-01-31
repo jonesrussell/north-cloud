@@ -8,6 +8,12 @@ import (
 type Config struct {
 	Services ServicesConfig `yaml:"services"`
 	Logging  LoggingConfig  `yaml:"logging"`
+	Auth     AuthConfig     `yaml:"auth"`
+}
+
+// AuthConfig holds authentication configuration for service-to-service calls.
+type AuthConfig struct {
+	JWTSecret string `env:"AUTH_JWT_SECRET" yaml:"jwt_secret"`
 }
 
 // ServicesConfig holds URLs for all North Cloud services.
@@ -76,9 +82,12 @@ func LoadOrDefault(path string) *Config {
 	return cfg
 }
 
-// NewDefault creates a new config with all default values.
+// NewDefault creates a new config with all default values and environment overrides.
+// This is used when no config file exists.
 func NewDefault() *Config {
 	cfg := &Config{}
 	setDefaults(cfg)
+	// Apply environment variable overrides (loads .env files internally)
+	_ = infraconfig.ApplyEnvOverrides(cfg)
 	return cfg
 }

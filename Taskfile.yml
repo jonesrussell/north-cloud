@@ -414,9 +414,14 @@ tasks:
       - task test:coverage
 
   docker:dev:up:
-    desc: "Start development environment"
+    desc: "Start development environment (core services only; use -- observability to include Loki/Grafana/Pyroscope)"
     cmds:
       - docker compose -f docker-compose.base.yml -f docker-compose.dev.yml up -d {{.CLI_ARGS}}
+
+  docker:dev:up:observability:
+    desc: "Start development environment including Loki, Alloy, Grafana, Pyroscope"
+    cmds:
+      - docker compose -f docker-compose.base.yml -f docker-compose.dev.yml --profile observability up -d {{.CLI_ARGS}}
 
   docker:dev:down:
     desc: "Stop development environment"

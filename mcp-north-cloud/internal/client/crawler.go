@@ -15,16 +15,14 @@ import (
 // CrawlerClient is a client for the crawler API
 type CrawlerClient struct {
 	baseURL    string
-	httpClient *http.Client
+	httpClient *AuthenticatedClient
 }
 
 // NewCrawlerClient creates a new crawler client
-func NewCrawlerClient(baseURL string) *CrawlerClient {
+func NewCrawlerClient(baseURL string, authClient *AuthenticatedClient) *CrawlerClient {
 	return &CrawlerClient{
-		baseURL: baseURL,
-		httpClient: &http.Client{
-			Timeout: defaultHTTPTimeout,
-		},
+		baseURL:    baseURL,
+		httpClient: authClient,
 	}
 }
 
