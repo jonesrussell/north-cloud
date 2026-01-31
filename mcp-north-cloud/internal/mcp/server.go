@@ -166,6 +166,10 @@ func (s *Server) handleToolsCall(req *Request, id any) *Response {
 // routeToolCall routes tool calls to appropriate handlers
 func (s *Server) routeToolCall(id any, toolName string, arguments json.RawMessage) *Response {
 	switch toolName {
+	// Workflow tools (high-level, multi-service)
+	case "onboard_source":
+		return s.handleOnboardSource(id, arguments)
+
 	// Crawler tools
 	case "start_crawl":
 		return s.handleStartCrawl(id, arguments)
@@ -173,12 +177,8 @@ func (s *Server) routeToolCall(id any, toolName string, arguments json.RawMessag
 		return s.handleScheduleCrawl(id, arguments)
 	case "list_crawl_jobs":
 		return s.handleListCrawlJobs(id, arguments)
-	case "pause_crawl_job":
-		return s.handlePauseCrawlJob(id, arguments)
-	case "resume_crawl_job":
-		return s.handleResumeCrawlJob(id, arguments)
-	case "cancel_crawl_job":
-		return s.handleCancelCrawlJob(id, arguments)
+	case "control_crawl_job":
+		return s.handleControlCrawlJob(id, arguments)
 	case "get_crawl_stats":
 		return s.handleGetCrawlStats(id, arguments)
 
