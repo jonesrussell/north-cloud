@@ -33,11 +33,6 @@ x-node-dev-environment: &node-dev-environment
   NODE_ENV: development
   npm_config_cache: /tmp/npm-cache
 
-x-service-defaults: &service-defaults
-  restart: unless-stopped
-  networks:
-    - north-cloud-network
-
 # ============================================================
 # Development Services
 # ============================================================
@@ -275,10 +270,12 @@ services:
       start_period: 90s
 
   # ------------------------------------------------------------
-  # Search Service (Dev)
+  # Search Service (Dev, profile: search)
   # ------------------------------------------------------------
   search-service:
     <<: *go-dev-defaults
+    profiles:
+      - search
     deploy:
       resources:
         limits:
@@ -361,10 +358,12 @@ services:
       start_period: 45s
 
   # ------------------------------------------------------------
-  # Search Frontend (Dev)
+  # Search Frontend (Dev, profile: search)
   # ------------------------------------------------------------
   search-frontend:
     <<: *node-dev-defaults
+    profiles:
+      - search
     deploy:
       resources:
         limits:
@@ -544,8 +543,6 @@ services:
       auth:
         condition: service_healthy
       crawler:
-        condition: service_healthy
-      search-service:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1/health"]
