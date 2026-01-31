@@ -3,10 +3,14 @@ package testhelpers
 
 import (
 	"context"
+	"errors"
 	"sync"
 
 	"github.com/jonesrussell/north-cloud/classifier/internal/domain"
 )
+
+// ErrSourceNotFound is returned when a source is not found in the mock database.
+var ErrSourceNotFound = errors.New("source not found")
 
 // MockSourceReputationDB implements SourceReputationDB for testing.
 type MockSourceReputationDB struct {
@@ -28,7 +32,7 @@ func (m *MockSourceReputationDB) GetSource(_ context.Context, sourceName string)
 	if source, ok := m.sources[sourceName]; ok {
 		return source, nil
 	}
-	return nil, nil
+	return nil, ErrSourceNotFound
 }
 
 // CreateSource creates a new source.

@@ -115,14 +115,14 @@ func TestRecordClassification_Concurrency(t *testing.T) {
 	concurrency := 10
 	iterations := 100
 
-	for i := range concurrency {
+	for range concurrency {
 		wg.Add(1)
-		go func(workerID int) {
+		go func() {
 			defer wg.Done()
 			for j := range iterations {
 				provider.RecordClassification(ctx, "concurrent-source", j%2 == 0, time.Duration(j)*time.Millisecond)
 			}
-		}(i)
+		}()
 	}
 
 	wg.Wait()

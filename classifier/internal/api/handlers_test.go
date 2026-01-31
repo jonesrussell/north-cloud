@@ -32,7 +32,6 @@ func (m *mockLogger) Fatal(msg string, fields ...infralogger.Field)       {}
 func (m *mockLogger) With(fields ...infralogger.Field) infralogger.Logger { return m }
 func (m *mockLogger) Sync() error                                         { return nil }
 
-
 // setupTestSourceReputationRepository creates an in-memory SQLite repository for testing
 func setupTestSourceReputationRepository() (*database.SourceReputationRepository, error) {
 	// Create in-memory SQLite database
