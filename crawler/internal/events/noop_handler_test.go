@@ -10,93 +10,80 @@ import (
 	infraevents "github.com/north-cloud/infrastructure/events"
 )
 
-func TestNoOpHandler_HandleSourceCreated_LogsAndReturnsNil(t *testing.T) {
+func TestNoOpHandler_AllMethods_ReturnNil(t *testing.T) {
 	t.Helper()
 
 	handler := events.NewNoOpHandler(nil)
+	ctx := context.Background()
 
-	event := infraevents.SourceEvent{
-		EventID:   uuid.New(),
-		EventType: infraevents.SourceCreated,
-		SourceID:  uuid.New(),
-		Payload:   infraevents.SourceCreatedPayload{Name: "Test"},
+	testCases := []struct {
+		name    string
+		handler func() error
+	}{
+		{
+			name: "HandleSourceCreated",
+			handler: func() error {
+				return handler.HandleSourceCreated(ctx, infraevents.SourceEvent{
+					EventID:   uuid.New(),
+					EventType: infraevents.SourceCreated,
+					SourceID:  uuid.New(),
+					Payload:   infraevents.SourceCreatedPayload{Name: "Test"},
+				})
+			},
+		},
+		{
+			name: "HandleSourceUpdated",
+			handler: func() error {
+				return handler.HandleSourceUpdated(ctx, infraevents.SourceEvent{
+					EventID:   uuid.New(),
+					EventType: infraevents.SourceUpdated,
+					SourceID:  uuid.New(),
+					Payload:   infraevents.SourceUpdatedPayload{ChangedFields: []string{"name"}},
+				})
+			},
+		},
+		{
+			name: "HandleSourceDeleted",
+			handler: func() error {
+				return handler.HandleSourceDeleted(ctx, infraevents.SourceEvent{
+					EventID:   uuid.New(),
+					EventType: infraevents.SourceDeleted,
+					SourceID:  uuid.New(),
+					Payload:   infraevents.SourceDeletedPayload{Name: "Test", DeletionReason: "test"},
+				})
+			},
+		},
+		{
+			name: "HandleSourceEnabled",
+			handler: func() error {
+				return handler.HandleSourceEnabled(ctx, infraevents.SourceEvent{
+					EventID:   uuid.New(),
+					EventType: infraevents.SourceEnabled,
+					SourceID:  uuid.New(),
+					Payload:   infraevents.SourceTogglePayload{Reason: "test", ToggledBy: "user"},
+				})
+			},
+		},
+		{
+			name: "HandleSourceDisabled",
+			handler: func() error {
+				return handler.HandleSourceDisabled(ctx, infraevents.SourceEvent{
+					EventID:   uuid.New(),
+					EventType: infraevents.SourceDisabled,
+					SourceID:  uuid.New(),
+					Payload:   infraevents.SourceTogglePayload{Reason: "test", ToggledBy: "system"},
+				})
+			},
+		},
 	}
 
-	err := handler.HandleSourceCreated(context.Background(), event)
-	if err != nil {
-		t.Errorf("expected nil error, got %v", err)
-	}
-}
-
-func TestNoOpHandler_HandleSourceUpdated_LogsAndReturnsNil(t *testing.T) {
-	t.Helper()
-
-	handler := events.NewNoOpHandler(nil)
-
-	event := infraevents.SourceEvent{
-		EventID:   uuid.New(),
-		EventType: infraevents.SourceUpdated,
-		SourceID:  uuid.New(),
-		Payload:   infraevents.SourceUpdatedPayload{ChangedFields: []string{"name"}},
-	}
-
-	err := handler.HandleSourceUpdated(context.Background(), event)
-	if err != nil {
-		t.Errorf("expected nil error, got %v", err)
-	}
-}
-
-func TestNoOpHandler_HandleSourceDeleted_LogsAndReturnsNil(t *testing.T) {
-	t.Helper()
-
-	handler := events.NewNoOpHandler(nil)
-
-	event := infraevents.SourceEvent{
-		EventID:   uuid.New(),
-		EventType: infraevents.SourceDeleted,
-		SourceID:  uuid.New(),
-		Payload:   infraevents.SourceDeletedPayload{Name: "Test", DeletionReason: "test"},
-	}
-
-	err := handler.HandleSourceDeleted(context.Background(), event)
-	if err != nil {
-		t.Errorf("expected nil error, got %v", err)
-	}
-}
-
-func TestNoOpHandler_HandleSourceEnabled_LogsAndReturnsNil(t *testing.T) {
-	t.Helper()
-
-	handler := events.NewNoOpHandler(nil)
-
-	event := infraevents.SourceEvent{
-		EventID:   uuid.New(),
-		EventType: infraevents.SourceEnabled,
-		SourceID:  uuid.New(),
-		Payload:   infraevents.SourceTogglePayload{Reason: "test", ToggledBy: "user"},
-	}
-
-	err := handler.HandleSourceEnabled(context.Background(), event)
-	if err != nil {
-		t.Errorf("expected nil error, got %v", err)
-	}
-}
-
-func TestNoOpHandler_HandleSourceDisabled_LogsAndReturnsNil(t *testing.T) {
-	t.Helper()
-
-	handler := events.NewNoOpHandler(nil)
-
-	event := infraevents.SourceEvent{
-		EventID:   uuid.New(),
-		EventType: infraevents.SourceDisabled,
-		SourceID:  uuid.New(),
-		Payload:   infraevents.SourceTogglePayload{Reason: "test", ToggledBy: "system"},
-	}
-
-	err := handler.HandleSourceDisabled(context.Background(), event)
-	if err != nil {
-		t.Errorf("expected nil error, got %v", err)
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := tc.handler()
+			if err != nil {
+				t.Errorf("%s: expected nil error, got %v", tc.name, err)
+			}
+		})
 	}
 }
 
