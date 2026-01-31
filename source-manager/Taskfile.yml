@@ -63,6 +63,11 @@ tasks:
     cmds:
       - go test -race ./...
 
+  vuln:
+    desc: "Run vulnerability check"
+    cmds:
+      - govulncheck ./...
+
   bench:
     desc: "Run benchmarks"
     cmds:
@@ -125,7 +130,7 @@ tasks:
     cmds:
       - go fmt ./...
       - go vet ./...
-      - golangci-lint run
+      - golangci-lint run --config ../.golangci.yml ./...
 
   check:
     desc: Run all code quality checks (fmt, vet, lint)

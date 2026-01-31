@@ -44,12 +44,22 @@ tasks:
       - go tool cover -html=coverage.out -o coverage.html
       - 'echo "Coverage report generated: coverage.html"'
 
+  test:race:
+    desc: "Run tests with race detector"
+    cmds:
+      - go test -race ./...
+
+  vuln:
+    desc: "Run vulnerability check"
+    cmds:
+      - govulncheck ./...
+
   lint:
     desc: "Lint the Go code"
     cmds:
       - go fmt ./...
       - go vet ./...
-      - golangci-lint run
+      - golangci-lint run --config ../.golangci.yml ./...
 
   fmt:
     desc: "Format code"

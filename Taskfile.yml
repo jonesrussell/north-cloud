@@ -1,3 +1,12 @@
+# Root Taskfile: delegates to service Taskfiles only. No inline logic.
+#
+# Canonical service list:
+#   Go: auth, classifier, crawler, index-manager, mcp-north-cloud, publisher, search, source-manager
+#   Frontend: dashboard, search-frontend
+#   With migrations: crawler, source-manager, classifier, publisher, index-manager
+#
+# Adding a new service: add SERVICE/Taskfile.yml with contract tasks (lint, test, test:coverage,
+# test:race, vuln for Go; build; migrate:* if DB), then add root delegates below.
 version: '3'
 
 tasks:
@@ -69,12 +78,6 @@ tasks:
     dir: mcp-north-cloud
     cmds:
       - task build
-    sources:
-      - "**/*.go"
-      - go.mod
-      - go.sum
-    generates:
-      - bin/mcp-north-cloud
 
   lint:publisher:
     desc: "Run linter for publisher service"
@@ -122,49 +125,49 @@ tasks:
     desc: "Run vulnerability check for auth service"
     dir: auth
     cmds:
-      - govulncheck ./...
+      - task vuln
 
   vuln:classifier:
     desc: "Run vulnerability check for classifier service"
     dir: classifier
     cmds:
-      - govulncheck ./...
+      - task vuln
 
   vuln:crawler:
     desc: "Run vulnerability check for crawler service"
     dir: crawler
     cmds:
-      - govulncheck ./...
+      - task vuln
 
   vuln:index-manager:
     desc: "Run vulnerability check for index-manager service"
     dir: index-manager
     cmds:
-      - govulncheck ./...
+      - task vuln
 
   vuln:mcp-north-cloud:
     desc: "Run vulnerability check for mcp-north-cloud service"
     dir: mcp-north-cloud
     cmds:
-      - govulncheck ./...
+      - task vuln
 
   vuln:publisher:
     desc: "Run vulnerability check for publisher service"
     dir: publisher
     cmds:
-      - govulncheck ./...
+      - task vuln
 
   vuln:search:
     desc: "Run vulnerability check for search service"
     dir: search
     cmds:
-      - govulncheck ./...
+      - task vuln
 
   vuln:source-manager:
     desc: "Run vulnerability check for source-manager service"
     dir: source-manager
     cmds:
-      - govulncheck ./...
+      - task vuln
 
   test:
     desc: "Run tests for all microservices sequentially"
@@ -174,6 +177,7 @@ tasks:
       - task: test:crawler
       - task: test:dashboard
       - task: test:index-manager
+      - task: test:mcp-north-cloud
       - task: test:publisher
       - task: test:search
       - task: test:search-frontend
@@ -187,6 +191,7 @@ tasks:
       - task: test:crawler
       - task: test:dashboard
       - task: test:index-manager
+      - task: test:mcp-north-cloud
       - task: test:publisher
       - task: test:search
       - task: test:search-frontend
@@ -246,6 +251,12 @@ tasks:
     cmds:
       - task test
 
+  test:mcp-north-cloud:
+    desc: "Run tests for mcp-north-cloud service"
+    dir: mcp-north-cloud
+    cmds:
+      - task test
+
   test:race:
     desc: "Run tests with race detector for all microservices sequentially"
     cmds:
@@ -254,6 +265,7 @@ tasks:
       - task: test:race:crawler
       - task: test:race:dashboard
       - task: test:race:index-manager
+      - task: test:race:mcp-north-cloud
       - task: test:race:publisher
       - task: test:race:search
       - task: test:race:search-frontend
@@ -267,6 +279,7 @@ tasks:
       - task: test:race:crawler
       - task: test:race:dashboard
       - task: test:race:index-manager
+      - task: test:race:mcp-north-cloud
       - task: test:race:publisher
       - task: test:race:search
       - task: test:race:search-frontend
@@ -277,35 +290,36 @@ tasks:
     dir: auth
     cmds:
       - task test:race
-    ignore_error: true
 
   test:race:classifier:
     desc: "Run tests with race detector for classifier service"
     dir: classifier
     cmds:
       - task test:race
-    ignore_error: true
 
   test:race:crawler:
     desc: "Run tests with race detector for crawler service"
     dir: crawler
     cmds:
       - task test:race
-    ignore_error: true
 
   test:race:dashboard:
     desc: "Run tests with race detector for dashboard service"
     dir: dashboard
     cmds:
       - task test:race
-    ignore_error: true
 
   test:race:index-manager:
     desc: "Run tests with race detector for index-manager service"
     dir: index-manager
     cmds:
       - task test:race
-    ignore_error: true
+
+  test:race:mcp-north-cloud:
+    desc: "Run tests with race detector for mcp-north-cloud service"
+    dir: mcp-north-cloud
+    cmds:
+      - task test:race
 
   test:race:publisher:
     desc: "Run tests with race detector for publisher service"
@@ -318,14 +332,12 @@ tasks:
     dir: search
     cmds:
       - task test:race
-    ignore_error: true
 
   test:race:search-frontend:
     desc: "Run tests with race detector for search-frontend service"
     dir: search-frontend
     cmds:
       - task test:race
-    ignore_error: true
 
   test:race:source-manager:
     desc: "Run tests with race detector for source-manager service"
@@ -341,6 +353,7 @@ tasks:
       - task: test:cover:crawler
       - task: test:cover:dashboard
       - task: test:cover:index-manager
+      - task: test:cover:mcp-north-cloud
       - task: test:cover:publisher
       - task: test:cover:search
       - task: test:cover:search-frontend
@@ -354,6 +367,7 @@ tasks:
       - task: test:cover:crawler
       - task: test:cover:dashboard
       - task: test:cover:index-manager
+      - task: test:cover:mcp-north-cloud
       - task: test:cover:publisher
       - task: test:cover:search
       - task: test:cover:search-frontend
@@ -386,6 +400,12 @@ tasks:
   test:cover:index-manager:
     desc: "Run tests with coverage for index-manager service"
     dir: index-manager
+    cmds:
+      - task test:coverage
+
+  test:cover:mcp-north-cloud:
+    desc: "Run tests with coverage for mcp-north-cloud service"
+    dir: mcp-north-cloud
     cmds:
       - task test:coverage
 
