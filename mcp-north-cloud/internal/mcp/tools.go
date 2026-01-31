@@ -42,8 +42,9 @@ func getWorkflowTools() []Tool {
 						"description": "Type of source (e.g., 'news', 'blog')",
 					},
 					"selectors": map[string]any{
-						"type":        "object",
-						"description": "CSS selectors for content extraction. Minimal: {title: 'h1', body: 'article'}. Optional: date (e.g. 'time[datetime]'), author (e.g. '.byline').",
+						"type": "object",
+						"description": "CSS selectors for content extraction. Minimal: {title: 'h1', body: 'article'}. " +
+							"Optional: date (e.g. 'time[datetime]'), author (e.g. '.byline').",
 					},
 					"crawl_interval_minutes": map[string]any{
 						"type":        "integer",
@@ -186,8 +187,9 @@ func getCrawlerTools() []Tool {
 func getSourceManagerTools() []Tool {
 	return []Tool{
 		{
-			Name:        "add_source",
-			Description: "Add a new content source for crawling. Use when: Only need to register a source without crawling. For full setup, prefer onboard_source.",
+			Name: "add_source",
+			Description: "Add a new content source for crawling. Use when: Only need to register a source " +
+				"without crawling. For full setup, prefer onboard_source.",
 			InputSchema: map[string]any{
 				"type": "object",
 				"properties": map[string]any{
@@ -204,8 +206,9 @@ func getSourceManagerTools() []Tool {
 						"description": "Type of source (e.g., 'news', 'blog')",
 					},
 					"selectors": map[string]any{
-						"type":        "object",
-						"description": "CSS selectors for content extraction. Minimal: {title: 'h1', body: 'article'}. Optional: date (e.g. 'time[datetime]'), author (e.g. '.byline').",
+						"type": "object",
+						"description": "CSS selectors for content extraction. Minimal: {title: 'h1', body: 'article'}. " +
+							"Optional: date (e.g. 'time[datetime]'), author (e.g. '.byline').",
 					},
 					"active": map[string]any{
 						"type":        "boolean",
@@ -277,8 +280,9 @@ func getSourceManagerTools() []Tool {
 			},
 		},
 		{
-			Name:        "test_source",
-			Description: "Test crawl a source without saving the results. Use when: Validating selectors before adding a source. Call before add_source or onboard_source if selectors are uncertain.",
+			Name: "test_source",
+			Description: "Test crawl a source without saving the results. Use when: Validating selectors " +
+				"before adding a source. Call before add_source or onboard_source if selectors are uncertain.",
 			InputSchema: map[string]any{
 				"type": "object",
 				"properties": map[string]any{
@@ -287,8 +291,9 @@ func getSourceManagerTools() []Tool {
 						"description": "URL to test crawl",
 					},
 					"selectors": map[string]any{
-						"type":        "object",
-						"description": "CSS selectors to test. Minimal: {title: 'h1', body: 'article'}. Optional: date (e.g. 'time[datetime]'), author (e.g. '.byline').",
+						"type": "object",
+						"description": "CSS selectors to test. Minimal: {title: 'h1', body: 'article'}. " +
+							"Optional: date (e.g. 'time[datetime]'), author (e.g. '.byline').",
 					},
 				},
 				"required": []string{"url", "selectors"},
@@ -359,8 +364,10 @@ func getPublisherTools() []Tool {
 			},
 		},
 		{
-			Name:        "create_channel",
-			Description: "Create a new publishing channel. Use when: User wants to set up a new Redis pub/sub topic for article routing. Returns: channel_id, name, and status. Channel names typically follow 'articles:{topic}' pattern (e.g., 'articles:crime', 'articles:news').",
+			Name: "create_channel",
+			Description: "Create a new publishing channel. Use when: User wants to set up a new Redis pub/sub " +
+				"topic for article routing. Returns: channel_id, name, and status. Channel names typically " +
+				"follow 'articles:{topic}' pattern (e.g., 'articles:crime', 'articles:news').",
 			InputSchema: map[string]any{
 				"type": "object",
 				"properties": map[string]any{
@@ -381,8 +388,10 @@ func getPublisherTools() []Tool {
 			},
 		},
 		{
-			Name:        "list_channels",
-			Description: "List all publishing channels. Use when: User wants to see available channels for routing or needs a channel_id for create_route/onboard_source. Returns: channel IDs, names, descriptions, and active status.",
+			Name: "list_channels",
+			Description: "List all publishing channels. Use when: User wants to see available channels for " +
+				"routing or needs a channel_id for create_route/onboard_source. Returns: channel IDs, " +
+				"names, descriptions, and active status.",
 			InputSchema: map[string]any{
 				"type": "object",
 				"properties": map[string]any{
@@ -455,8 +464,9 @@ func getPublisherTools() []Tool {
 func getSearchTools() []Tool {
 	return []Tool{
 		{
-			Name:        "search_articles",
-			Description: "Full-text search across all classified content with filtering and facets. Use when: User wants to find articles by keyword, topic, or quality. Returns up to 20 results per page.",
+			Name: "search_articles",
+			Description: "Full-text search across all classified content with filtering and facets. " +
+				"Use when: User wants to find articles by keyword, topic, or quality. Returns up to 20 results per page.",
 			InputSchema: map[string]any{
 				"type": "object",
 				"properties": map[string]any{

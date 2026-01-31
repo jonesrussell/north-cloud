@@ -117,8 +117,6 @@ func (c *SourceManagerClient) CreateSource(req CreateSourceRequest) (*Source, er
 }
 
 // ListSources lists all sources
-//
-//nolint:dupl // Similar HTTP client pattern across different services is acceptable
 func (c *SourceManagerClient) ListSources() ([]Source, error) {
 	endpoint := fmt.Sprintf("%s/api/v1/sources", c.baseURL)
 

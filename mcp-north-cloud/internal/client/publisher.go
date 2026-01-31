@@ -353,8 +353,6 @@ func (c *PublisherClient) GetStats() (*PublisherStats, error) {
 }
 
 // ListSources lists all publisher sources
-//
-//nolint:dupl // Similar HTTP client pattern across different services is acceptable
 func (c *PublisherClient) ListSources() ([]PublisherSource, error) {
 	endpoint := fmt.Sprintf("%s/api/v1/sources", c.baseURL)
 
@@ -445,8 +443,6 @@ func (c *PublisherClient) CreatePublisherSource(req CreatePublisherSourceRequest
 }
 
 // ListChannels lists all channels
-//
-//nolint:dupl // Similar HTTP client pattern across different services is acceptable
 func (c *PublisherClient) ListChannels() ([]Channel, error) {
 	endpoint := fmt.Sprintf("%s/api/v1/channels", c.baseURL)
 
