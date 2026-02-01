@@ -227,8 +227,9 @@ func TestJobLoggerImpl_JobCompleted(t *testing.T) {
 	if entry.Category != string(logs.CategoryLifecycle) {
 		t.Errorf("Category = %q, want %s", entry.Category, logs.CategoryLifecycle)
 	}
-	if entry.Message != "job_completed" {
-		t.Errorf("Message = %q, want job_completed", entry.Message)
+	expectedMsg := "Completed: 10 pages crawled, 5 items extracted, 0 errors"
+	if entry.Message != expectedMsg {
+		t.Errorf("Message = %q, want %q", entry.Message, expectedMsg)
 	}
 }
 

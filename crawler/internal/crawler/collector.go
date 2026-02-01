@@ -311,7 +311,9 @@ func (c *Crawler) setupCallbacks(ctx context.Context) {
 		summary := c.GetJobLogger().BuildSummary()
 		pagesCrawled := summary.PagesCrawled
 		if pagesCrawled > 0 && pagesCrawled%progressMilestoneInterval == 0 {
-			c.GetJobLogger().Info(logs.CategoryMetrics, "progress",
+			c.GetJobLogger().Info(logs.CategoryMetrics,
+				fmt.Sprintf("Milestone: %d pages crawled, %d items extracted",
+					pagesCrawled, summary.ItemsExtracted),
 				logs.Int64("pages_crawled", pagesCrawled),
 				logs.Int64("items_extracted", summary.ItemsExtracted),
 			)

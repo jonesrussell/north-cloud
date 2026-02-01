@@ -2,6 +2,7 @@ package logs
 
 import (
 	"context"
+	"fmt"
 	"sync/atomic"
 	"time"
 )
@@ -97,7 +98,7 @@ func (j *jobLoggerImpl) log(level string, category Category, msg string, fields 
 
 // JobStarted logs the job started lifecycle event.
 func (j *jobLoggerImpl) JobStarted(sourceID, url string) {
-	j.log("info", CategoryLifecycle, "job_started", []Field{
+	j.log("info", CategoryLifecycle, fmt.Sprintf("Started crawling %s", url), []Field{
 		String("source_id", sourceID),
 		URL(url),
 	})
@@ -105,20 +106,25 @@ func (j *jobLoggerImpl) JobStarted(sourceID, url string) {
 
 // JobCompleted logs the job completed lifecycle event.
 func (j *jobLoggerImpl) JobCompleted(summary *JobSummary) {
-	j.log("info", CategoryLifecycle, "job_completed", []Field{
-		Int64("pages_crawled", summary.PagesCrawled),
-		Int64("items_extracted", summary.ItemsExtracted),
-		Int64("errors_count", summary.ErrorsCount),
-		Int64("logs_emitted", summary.LogsEmitted),
-		Int64("logs_throttled", summary.LogsThrottled),
-	})
+	j.log("info", CategoryLifecycle,
+		fmt.Sprintf("Completed: %d pages crawled, %d items extracted, %d errors",
+			summary.PagesCrawled, summary.ItemsExtracted, summary.ErrorsCount),
+		[]Field{
+			Int64("pages_crawled", summary.PagesCrawled),
+			Int64("items_extracted", summary.ItemsExtracted),
+			Int64("errors_count", summary.ErrorsCount),
+			Int64("logs_emitted", summary.LogsEmitted),
+			Int64("logs_throttled", summary.LogsThrottled),
+		})
 }
 
 // JobFailed logs the job failed lifecycle event.
 func (j *jobLoggerImpl) JobFailed(err error) {
-	j.log("error", CategoryLifecycle, "job_failed", []Field{
-		Err(err),
-	})
+	j.log("error", CategoryLifecycle,
+		fmt.Sprintf("Job failed: %s", err.Error()),
+		[]Field{
+			Err(err),
+		})
 }
 
 // IncrementPagesCrawled increments the pages crawled counter.
@@ -165,12 +171,16 @@ func (j *jobLoggerImpl) StartHeartbeat(ctx context.Context) {
 			case <-ctx.Done():
 				return
 			case <-ticker.C:
-				j.log("info", CategoryLifecycle, "heartbeat", []Field{
-					Int64("pages_crawled", j.metrics.PagesCrawled()),
-					Int64("items_extracted", j.metrics.ItemsExtracted()),
-					Int64("errors_count", j.metrics.ErrorsCount()),
-					Int64("queue_depth", j.metrics.QueueDepth()),
-				})
+				j.log("info", CategoryLifecycle,
+					fmt.Sprintf("Progress: %d pages crawled, %d items extracted, %d errors, queue depth %d",
+						j.metrics.PagesCrawled(), j.metrics.ItemsExtracted(),
+						j.metrics.ErrorsCount(), j.metrics.QueueDepth()),
+					[]Field{
+						Int64("pages_crawled", j.metrics.PagesCrawled()),
+						Int64("items_extracted", j.metrics.ItemsExtracted()),
+						Int64("errors_count", j.metrics.ErrorsCount()),
+						Int64("queue_depth", j.metrics.QueueDepth()),
+					})
 			}
 		}
 	}()
