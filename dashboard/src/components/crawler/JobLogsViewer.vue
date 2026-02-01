@@ -1,7 +1,7 @@
 <template>
   <div class="bg-white shadow rounded-lg overflow-hidden">
     <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
-      <h2 class="text-lg font-medium text-gray-900">
+      <h2 class="text-lg font-semibold text-black">
         Job Logs
       </h2>
       <div class="flex items-center space-x-2">
