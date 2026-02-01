@@ -66,6 +66,7 @@ func SetupServices(
 	var logsV2Handler *api.LogsStreamV2Handler
 	if logResult.RedisWriter != nil {
 		logsV2Handler = api.NewLogsStreamV2Handler(logResult.RedisWriter, deps.Logger)
+		logsHandler.SetStreamV2Available(true)
 		deps.Logger.Info("V2 log streaming endpoint enabled (Redis-backed)")
 	}
 

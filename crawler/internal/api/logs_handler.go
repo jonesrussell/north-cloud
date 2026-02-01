@@ -32,10 +32,11 @@ var (
 
 // LogsHandler handles log-related HTTP endpoints.
 type LogsHandler struct {
-	logService    logs.Service
-	executionRepo database.ExecutionRepositoryInterface
-	sseBroker     sse.Broker
-	logger        infralogger.Logger
+	logService        logs.Service
+	executionRepo     database.ExecutionRepositoryInterface
+	sseBroker         sse.Broker
+	logger            infralogger.Logger
+	streamV2Available bool // true when GET /jobs/:id/logs/stream/v2 is registered
 }
 
 // NewLogsHandler creates a new LogsHandler.
@@ -51,6 +52,11 @@ func NewLogsHandler(
 		sseBroker:     sseBroker,
 		logger:        logger,
 	}
+}
+
+// SetStreamV2Available sets whether the v2 log stream endpoint is registered (Redis-backed).
+func (h *LogsHandler) SetStreamV2Available(available bool) {
+	h.streamV2Available = available
 }
 
 // StreamLogs handles GET /api/v1/jobs/:id/logs/stream
@@ -224,11 +230,12 @@ func (h *LogsHandler) GetLogsMetadata(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"job_id":        jobID,
-		"executions":    logsInfo,
-		"has_live_logs": hasLiveLogs,
-		"limit":         limit,
-		"offset":        offset,
+		"job_id":              jobID,
+		"executions":          logsInfo,
+		"has_live_logs":       hasLiveLogs,
+		"stream_v2_available": h.streamV2Available,
+		"limit":               limit,
+		"offset":              offset,
 	})
 }
 

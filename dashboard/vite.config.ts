@@ -59,12 +59,12 @@ export default defineConfig({
       strict: false,
     },
     proxy: {
-      // Crawler API proxy
+      // Crawler API proxy (long timeout for SSE log streaming)
       '/api/crawler': {
         target: CRAWLER_API_URL,
         changeOrigin: true,
-        timeout: 30000, // 30 seconds
-        proxyTimeout: 30000,
+        timeout: 3600000, // 1 hour for long-lived SSE
+        proxyTimeout: 3600000,
         rewrite: (path) => path.replace(/^\/api\/crawler/, '/api/v1'),
         configure: (proxy, _options) => {
           proxy.on('proxyReq', (proxyReq, req, _res) => {

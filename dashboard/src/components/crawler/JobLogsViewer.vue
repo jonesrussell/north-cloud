@@ -213,6 +213,7 @@ interface LogsMetadataResponse {
   job_id: string
   executions: ExecutionLogInfo[]
   has_live_logs: boolean
+  stream_v2_available?: boolean
   limit: number
   offset: number
 }
@@ -282,6 +283,7 @@ const loadLogsMetadata = async () => {
     const data = response.data as LogsMetadataResponse
     executions.value = data.executions || []
     hasLiveLogs.value = data.has_live_logs || false
+    usingV2Endpoint.value = data.stream_v2_available === true
 
     // Select the latest execution by default
     if (executions.value.length > 0) {
@@ -304,8 +306,8 @@ const loadLogsMetadata = async () => {
   }
 }
 
-// Track which endpoint version we're using
-let usingV2Endpoint = true
+// Track which endpoint version we're using (v2 only when backend reports stream_v2_available)
+const usingV2Endpoint = ref(false)
 
 const startLiveStream = () => {
   if (eventSource) {
@@ -323,44 +325,45 @@ const startLiveStream = () => {
   displayedLogs.value = []
   summary.value = null
 
-  // Try v2 endpoint first (Redis Streams-backed), fall back to v1
+  // Use v2 only when backend reported stream_v2_available; otherwise v1
   const baseUrl = `/api/crawler/jobs/${props.jobId}/logs/stream`
-  const url = usingV2Endpoint ? `${baseUrl}/v2` : baseUrl
-  console.log(`[JobLogsViewer] Connecting to ${usingV2Endpoint ? 'v2' : 'v1'} endpoint`)
+  const url = usingV2Endpoint.value ? `${baseUrl}/v2` : baseUrl
+  console.log(`[JobLogsViewer] Connecting to ${usingV2Endpoint.value ? 'v2' : 'v1'} endpoint`)
   eventSource = new EventSource(`${url}?token=${encodeURIComponent(token)}`)
 
   eventSource.onopen = () => {
-    console.log(`[JobLogsViewer] SSE connection opened (${usingV2Endpoint ? 'v2' : 'v1'})`)
+    console.log(`[JobLogsViewer] SSE connection opened (${usingV2Endpoint.value ? 'v2' : 'v1'})`)
   }
 
-  eventSource.onmessage = (event) => {
+  // Server sends named SSE events (event: log:line, etc.). EventSource only delivers
+  // named events to addEventListener; onmessage receives only default/unnamed events.
+  const handleSSEData = (eventType: string, rawData: string) => {
     try {
-      const data = JSON.parse(event.data) as LogSSEEvent
-      switch (data.type) {
+      const data = JSON.parse(rawData)
+      switch (eventType) {
         case 'log:replay':
-          // Replay batch: prepend to displayed logs
-          displayedLogs.value = [...data.data.lines, ...displayedLogs.value]
-          replayedCount.value = data.data.count
-          console.log(`[JobLogsViewer] Replayed ${data.data.count} buffered lines`)
+          displayedLogs.value = [...(data.lines ?? []), ...displayedLogs.value]
+          replayedCount.value = data.count ?? 0
+          console.log(`[JobLogsViewer] Replayed ${data.count ?? 0} buffered lines`)
           if (autoScroll.value) {
             scrollToBottom()
           }
           break
         case 'log:line':
-          addLogLine(data.data)
-          // Extract summary from job completed message
-          if (data.data.category === 'crawler.lifecycle' &&
-              data.data.message === 'Job completed' &&
-              data.data.fields) {
-            summary.value = extractSummary(data.data.fields)
+          addLogLine(data as LogLine)
+          if (
+            data.category === 'crawler.lifecycle' &&
+            data.message === 'Job completed' &&
+            data.fields
+          ) {
+            summary.value = extractSummary(data.fields)
           }
           break
         case 'log:archived':
-          // Logs archived, reload metadata
           loadLogsMetadata()
           break
         case 'connected':
-          console.log('[JobLogsViewer] SSE connected:', data.data.message)
+          console.log('[JobLogsViewer] SSE connected:', data.message)
           break
       }
     } catch (err) {
@@ -368,13 +371,30 @@ const startLiveStream = () => {
     }
   }
 
+  eventSource.addEventListener('log:replay', (e: MessageEvent) => handleSSEData('log:replay', e.data))
+  eventSource.addEventListener('log:line', (e: MessageEvent) => handleSSEData('log:line', e.data))
+  eventSource.addEventListener('log:archived', (e: MessageEvent) => handleSSEData('log:archived', e.data))
+  eventSource.addEventListener('connected', (e: MessageEvent) => handleSSEData('connected', e.data))
+
+  // Fallback: some servers may send unnamed events with full { type, data } payload
+  eventSource.onmessage = (event) => {
+    try {
+      const envelope = JSON.parse(event.data) as LogSSEEvent
+      if (envelope.type && envelope.data !== undefined) {
+        handleSSEData(envelope.type, JSON.stringify(envelope.data))
+      }
+    } catch {
+      // ignore parse errors for non-JSON messages (e.g. heartbeat)
+    }
+  }
+
   eventSource.onerror = (err) => {
     console.error('[JobLogsViewer] SSE error:', err)
 
     // If v2 endpoint failed immediately, fall back to v1
-    if (usingV2Endpoint && displayedLogs.value.length === 0 && replayedCount.value === 0) {
+    if (usingV2Endpoint.value && displayedLogs.value.length === 0 && replayedCount.value === 0) {
       console.log('[JobLogsViewer] V2 endpoint failed, falling back to v1')
-      usingV2Endpoint = false
+      usingV2Endpoint.value = false
       eventSource?.close()
       startLiveStream()
       return
