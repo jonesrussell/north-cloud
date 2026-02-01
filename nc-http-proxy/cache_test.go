@@ -153,3 +153,79 @@ func TestCacheLookupMissingBody(t *testing.T) {
 		t.Errorf("expected source none for partial cache, got %s", source)
 	}
 }
+
+func TestCacheStore(t *testing.T) {
+	t.Helper()
+	cacheDir := t.TempDir()
+	cache := NewCache(t.TempDir(), cacheDir)
+
+	entry := &CacheEntry{
+		Domain:   "example-com",
+		CacheKey: "GET_newentry",
+		BaseDir:  cacheDir,
+		Metadata: &CacheEntryMetadata{
+			Request:  CachedRequest{Method: "GET", URL: "https://example.com/new"},
+			Response: CachedResponse{Status: 200},
+			CacheKey: "GET_newentry",
+		},
+		Body: []byte("<html>New content</html>"),
+	}
+
+	if err := cache.Store(entry); err != nil {
+		t.Fatalf("failed to store: %v", err)
+	}
+
+	// Verify files were created
+	metaPath := filepath.Join(cacheDir, "example-com", "GET_newentry.json")
+	if _, err := os.Stat(metaPath); err != nil {
+		t.Errorf("metadata file not created: %v", err)
+	}
+
+	bodyPath := filepath.Join(cacheDir, "example-com", "GET_newentry.body")
+	if _, err := os.Stat(bodyPath); err != nil {
+		t.Errorf("body file not created: %v", err)
+	}
+
+	// Verify content
+	retrieved, source, err := cache.Lookup("example-com", "GET_newentry")
+	if err != nil {
+		t.Fatalf("lookup error: %v", err)
+	}
+	if source != SourceCache {
+		t.Errorf("expected source cache, got %s", source)
+	}
+	if string(retrieved.Body) != "<html>New content</html>" {
+		t.Errorf("body mismatch: %s", string(retrieved.Body))
+	}
+}
+
+func TestCacheStats(t *testing.T) {
+	t.Helper()
+	fixturesDir := setupTestFixtures(t)
+	cacheDir := t.TempDir()
+
+	// Add another domain to cache
+	domain2Dir := filepath.Join(cacheDir, "other-com")
+	if err := os.MkdirAll(domain2Dir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(domain2Dir, "GET_xyz.json"), []byte(`{}`), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(domain2Dir, "GET_xyz.body"), []byte("body"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	cache := NewCache(fixturesDir, cacheDir)
+	stats := cache.Stats()
+
+	if stats.FixturesCount < 1 {
+		t.Errorf("expected at least 1 fixture, got %d", stats.FixturesCount)
+	}
+	if stats.CacheCount < 1 {
+		t.Errorf("expected at least 1 cache entry, got %d", stats.CacheCount)
+	}
+	if len(stats.Domains) < 1 {
+		t.Errorf("expected at least 1 domain, got %d", len(stats.Domains))
+	}
+}

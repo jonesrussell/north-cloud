@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"os"
+	"path/filepath"
 	"sync"
 )
 
@@ -109,4 +110,97 @@ func (c *Cache) FixturesDir() string {
 // CacheDir returns the cache directory path.
 func (c *Cache) CacheDir() string {
 	return c.cacheDir
+}
+
+// Store saves a cache entry to the cache directory.
+func (c *Cache) Store(entry *CacheEntry) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	// Ensure domain directory exists
+	domainDir := filepath.Join(c.cacheDir, entry.Domain)
+	if err := os.MkdirAll(domainDir, 0755); err != nil {
+		return err
+	}
+
+	// Update entry base dir to cache dir
+	entry.BaseDir = c.cacheDir
+
+	// Write metadata
+	metaData, err := json.MarshalIndent(entry.Metadata, "", "  ")
+	if err != nil {
+		return err
+	}
+	if writeErr := os.WriteFile(entry.MetadataPath(), metaData, 0600); writeErr != nil {
+		return writeErr
+	}
+
+	// Write body
+	if writeErr := os.WriteFile(entry.BodyPath(), entry.Body, 0600); writeErr != nil {
+		return writeErr
+	}
+
+	return nil
+}
+
+// CacheStats holds statistics about the cache.
+type CacheStats struct {
+	FixturesCount int      `json:"fixtures_count"`
+	CacheCount    int      `json:"cache_count"`
+	Domains       []string `json:"domains"`
+}
+
+// Stats returns statistics about cached entries.
+func (c *Cache) Stats() *CacheStats {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
+	stats := &CacheStats{
+		Domains: make([]string, 0),
+	}
+
+	domainSet := make(map[string]bool)
+
+	// Count fixtures
+	stats.FixturesCount = c.countEntries(c.fixturesDir, domainSet)
+
+	// Count cache
+	stats.CacheCount = c.countEntries(c.cacheDir, domainSet)
+
+	for domain := range domainSet {
+		stats.Domains = append(stats.Domains, domain)
+	}
+
+	return stats
+}
+
+func (c *Cache) countEntries(baseDir string, domainSet map[string]bool) int {
+	count := 0
+
+	entries, err := os.ReadDir(baseDir)
+	if err != nil {
+		return 0
+	}
+
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			continue
+		}
+		domain := entry.Name()
+		domainSet[domain] = true
+
+		domainPath := filepath.Join(baseDir, domain)
+		files, readErr := os.ReadDir(domainPath)
+		if readErr != nil {
+			continue
+		}
+
+		for _, file := range files {
+			if filepath.Ext(file.Name()) == ".json" {
+				count++
+			}
+		}
+	}
+
+	return count
 }
