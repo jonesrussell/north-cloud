@@ -111,9 +111,9 @@
       <ErrorAlert :message="error" />
     </div>
 
-    <!-- No Logs Available -->
+    <!-- No Logs Available (only when job is not running/pending) -->
     <div
-      v-else-if="!hasLiveLogs && executions.length === 0"
+      v-else-if="!hasLiveLogs && executions.length === 0 && !jobMayHaveLiveLogs"
       class="p-8 text-center"
     >
       <p class="text-sm text-gray-500">
@@ -121,7 +121,7 @@
       </p>
     </div>
 
-    <!-- Logs Display -->
+    <!-- Logs Display (when we have executions, live logs, or job is running/pending) -->
     <div
       v-else
       class="relative"
@@ -159,9 +159,9 @@
           >
             &#8593; {{ replayedCount }} buffered logs replayed &#8593;
           </div>
-          <!-- Empty state for streaming -->
+          <!-- Empty state for streaming or job running/pending (execution may not be in metadata yet) -->
           <div
-            v-if="isLiveStreaming && filteredLogs.length === 0"
+            v-if="(isLiveStreaming || jobMayHaveLiveLogs) && filteredLogs.length === 0"
             class="text-gray-500 italic"
           >
             {{ displayedLogs.length > 0 ? 'No logs match current filters' : 'Waiting for log output...' }}
@@ -242,12 +242,20 @@ const summary = ref<JobSummary | null>(null)
 // SSE connection
 let eventSource: EventSource | null = null
 
+// Only retry metadata once when execution list is empty on first load (running/pending job)
+const metadataRetryScheduled = ref(false)
+
 // Computed
 const containerHeight = computed(() => '400px')
 
 const isLiveStreaming = computed(() => {
   return hasLiveLogs.value && ['running', 'pending'].includes(props.jobStatus)
 })
+
+// Job is running/pending; we may not have execution in metadata yet (race on first load)
+const jobMayHaveLiveLogs = computed(() =>
+  ['running', 'pending'].includes(props.jobStatus)
+)
 
 const canDownload = computed(() => {
   if (!selectedExecution.value) return false
@@ -290,9 +298,18 @@ const loadLogsMetadata = async () => {
       selectedExecution.value = executions.value[0].execution_number
     }
 
-    // Start live streaming if available, otherwise load archived logs
-    if (isLiveStreaming.value) {
+    // Start live streaming if available or job is running/pending (execution may not be in metadata yet)
+    if (isLiveStreaming.value || (executions.value.length === 0 && jobMayHaveLiveLogs.value)) {
       startLiveStream()
+      // Retry metadata once shortly so we pick up the execution when it appears
+      if (
+        executions.value.length === 0 &&
+        jobMayHaveLiveLogs.value &&
+        !metadataRetryScheduled.value
+      ) {
+        metadataRetryScheduled.value = true
+        setTimeout(() => loadLogsMetadata(), 2000)
+      }
     } else if (selectedExecution.value !== null) {
       // Load archived logs for the selected execution
       await loadArchivedLogs(selectedExecution.value)
@@ -571,6 +588,7 @@ watch(selectedExecution, async (newExec) => {
 // Lifecycle
 onMounted(() => {
   console.log('[JobLogsViewer] Component mounted, jobId:', props.jobId, 'jobStatus:', props.jobStatus)
+  metadataRetryScheduled.value = false
   loadLogsMetadata()
 })
 
