@@ -32,4 +32,4 @@ EXPOSE 8090
 ENV GOCACHE=/tmp/go-build-cache
 ENV GOMODCACHE=/tmp/go-mod-cache
 
-CMD ["sh", "-c", "go mod download && go run -mod=mod ./cmd/httpd/main.go"]
+CMD ["sh", "-c", "go mod download && go run -mod=mod ."]

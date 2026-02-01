@@ -22,27 +22,19 @@ func run() int {
 	profiling.StartPprofServer()
 
 	// Load configuration
-	configPath := infraconfig.GetConfigPath("config.yml")
-	cfg, err := config.Load(configPath)
+	cfg, err := loadConfig()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to load configuration: %v\n", err)
 		return 1
 	}
 
-	// Initialize logger using infrastructure logger
-	log, err := infralogger.New(infralogger.Config{
-		Level:       cfg.Logging.Level,
-		Format:      cfg.Logging.Format,
-		Development: cfg.Service.Debug,
-	})
+	// Initialize logger
+	log, err := createLogger(cfg)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to create logger: %v\n", err)
 		return 1
 	}
 	defer func() { _ = log.Sync() }()
-
-	// Add service name to all log entries
-	log = log.With(infralogger.String("service", "search-service"))
 
 	log.Info("Starting search service",
 		infralogger.String("name", cfg.Service.Name),
@@ -51,23 +43,53 @@ func run() int {
 		infralogger.Bool("debug", cfg.Service.Debug),
 	)
 
-	// Initialize Elasticsearch client
-	log.Info("Connecting to Elasticsearch", infralogger.String("url", cfg.Elasticsearch.URL))
-	esClient, esErr := elasticsearch.NewClient(&cfg.Elasticsearch)
-	if esErr != nil {
-		log.Error("Failed to create Elasticsearch client", infralogger.Error(esErr))
+	// Setup Elasticsearch
+	esClient, err := setupElasticsearch(cfg, log)
+	if err != nil {
+		log.Error("Failed to create Elasticsearch client", infralogger.Error(err))
 		return 1
 	}
-	log.Info("Successfully connected to Elasticsearch")
 
-	// Initialize search service
+	// Setup search service and run server
+	return runServer(cfg, esClient, log)
+}
+
+// loadConfig loads configuration from config file.
+func loadConfig() (*config.Config, error) {
+	configPath := infraconfig.GetConfigPath("config.yml")
+	return config.Load(configPath)
+}
+
+// createLogger creates a logger instance from configuration.
+func createLogger(cfg *config.Config) (infralogger.Logger, error) {
+	log, err := infralogger.New(infralogger.Config{
+		Level:       cfg.Logging.Level,
+		Format:      cfg.Logging.Format,
+		Development: cfg.Service.Debug,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return log.With(infralogger.String("service", "search-service")), nil
+}
+
+// setupElasticsearch creates and connects the Elasticsearch client.
+func setupElasticsearch(cfg *config.Config, log infralogger.Logger) (*elasticsearch.Client, error) {
+	log.Info("Connecting to Elasticsearch", infralogger.String("url", cfg.Elasticsearch.URL))
+	esClient, err := elasticsearch.NewClient(&cfg.Elasticsearch)
+	if err != nil {
+		return nil, err
+	}
+	log.Info("Successfully connected to Elasticsearch")
+	return esClient, nil
+}
+
+// runServer creates the search service, handler, and HTTP server, then runs with graceful shutdown.
+func runServer(cfg *config.Config, esClient *elasticsearch.Client, log infralogger.Logger) int {
 	searchService := service.NewSearchService(esClient, cfg, log)
 	log.Info("Search service initialized")
 
-	// Initialize API handler
 	handler := api.NewHandler(searchService, log)
-
-	// Create and start HTTP server
 	server := api.NewServer(handler, cfg, log)
 
 	log.Info("Search service starting",
@@ -75,7 +97,6 @@ func run() int {
 		infralogger.String("elasticsearch_pattern", cfg.Elasticsearch.ClassifiedContentPattern),
 	)
 
-	// Run server with graceful shutdown
 	if runErr := server.Run(); runErr != nil {
 		log.Error("Server error", infralogger.Error(runErr))
 		return 1
