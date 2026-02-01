@@ -151,3 +151,9 @@ auth/config.yml
 coverage.html
 coverage.out
 
+auth/auth
+classifier/classifier
+index-manager/index-manager
+source-manager/source-manager
+publisher/publisher
+search/search
