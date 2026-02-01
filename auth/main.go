@@ -20,48 +20,64 @@ func run() int {
 	profiling.StartPprofServer()
 
 	// Load configuration
-	configPath := infraconfig.GetConfigPath("config.yml")
-	cfg, err := config.Load(configPath)
+	cfg, err := loadConfig()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to load config: %v\n", err)
 		return 1
 	}
 
-	// Validate configuration
-	if validationErr := cfg.Validate(); validationErr != nil {
-		fmt.Fprintf(os.Stderr, "Configuration error: %v\n", validationErr)
-		return 1
-	}
-
 	// Initialize logger
-	log, err := logger.New(logger.Config{
-		Level:       cfg.Logging.Level,
-		Format:      cfg.Logging.Format,
-		Development: cfg.Service.Debug,
-	})
+	log, err := createLogger(cfg)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to create logger: %v\n", err)
 		return 1
 	}
 	defer func() { _ = log.Sync() }()
 
-	// Add service name to all log entries
-	log = log.With(logger.String("service", "auth"))
+	// Create and run server
+	return runServer(cfg, log)
+}
 
+// loadConfig loads and validates configuration.
+func loadConfig() (*config.Config, error) {
+	configPath := infraconfig.GetConfigPath("config.yml")
+	cfg, err := config.Load(configPath)
+	if err != nil {
+		return nil, err
+	}
+	if validationErr := cfg.Validate(); validationErr != nil {
+		return nil, validationErr
+	}
+	return cfg, nil
+}
+
+// createLogger creates a logger instance from configuration.
+func createLogger(cfg *config.Config) (logger.Logger, error) {
+	log, err := logger.New(logger.Config{
+		Level:       cfg.Logging.Level,
+		Format:      cfg.Logging.Format,
+		Development: cfg.Service.Debug,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return log.With(logger.String("service", "auth")), nil
+}
+
+// runServer creates and runs the HTTP server with graceful shutdown.
+func runServer(cfg *config.Config, log logger.Logger) int {
 	log.Info("Starting auth service",
 		logger.String("name", cfg.Service.Name),
 		logger.Int("port", cfg.Service.Port),
 		logger.Bool("debug", cfg.Service.Debug),
 	)
 
-	// Create server
 	srv, srvErr := api.NewServer(cfg, log)
 	if srvErr != nil {
 		log.Error("Failed to create server", logger.Error(srvErr))
 		return 1
 	}
 
-	// Run server with graceful shutdown
 	if runErr := srv.Run(); runErr != nil {
 		log.Error("Server error", logger.Error(runErr))
 		return 1
