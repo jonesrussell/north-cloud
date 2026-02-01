@@ -39,7 +39,10 @@ func main() {
 		startBoth()
 	case "httpd":
 		// Run HTTP server only
-		server.StartHTTPServer()
+		if err := server.StartHTTPServer(); err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
 	case "processor", "worker":
 		// Run background processor only (operational log)
 		log := initLogger()
