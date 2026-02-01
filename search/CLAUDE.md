@@ -18,7 +18,7 @@ curl "http://localhost:8092/api/v1/search?q=crime&page=1&size=20"
 
 ```
 search/
-├── cmd/httpd/main.go
+├── main.go
 └── internal/
     ├── api/
     │   ├── server.go      # Gin server setup

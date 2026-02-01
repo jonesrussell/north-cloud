@@ -20,7 +20,7 @@ curl http://localhost:8090/api/v1/indexes/example_com_raw_content
 
 ```
 index-manager/
-├── cmd/httpd/main.go    # Entry point
+├── main.go              # Entry point
 └── internal/
     ├── api/
     │   ├── server.go    # Gin server setup

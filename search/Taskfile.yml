@@ -4,7 +4,7 @@ dotenv: ['../.env']
 
 vars:
   BINARY_NAME: search
-  MAIN_PATH: ./cmd/httpd/main.go
+  MAIN_PATH: .
 
 tasks:
   default:

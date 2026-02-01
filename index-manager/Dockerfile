@@ -22,7 +22,7 @@ RUN CGO_ENABLED=0 go build \
     -ldflags="-w -s" \
     -trimpath \
     -o /index-manager \
-    cmd/httpd/main.go
+    .
 
 # Runtime stage
 FROM alpine:latest

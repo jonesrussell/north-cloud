@@ -63,8 +63,8 @@ cd SERVICE && golangci-lint run
 # Run migrations
 cd SERVICE && go run cmd/migrate/main.go up
 
-# Build
-cd SERVICE && go build -o bin/SERVICE main.go
+# Build (most services use main.go at root)
+cd SERVICE && go build -o bin/SERVICE .
 ```
 
 **Before Committing**:
@@ -156,7 +156,7 @@ cd SERVICE && go build -o bin/SERVICE main.go
 - **Port**: 8060 (API), 3001 (Frontend)
 - **Purpose**: Web crawler with interval-based job scheduler
 - **Database**: `postgres-crawler` (crawler database)
-- **Key Files**: `cmd/httpd/httpd.go`, `internal/scheduler/interval_scheduler.go`
+- **Key Files**: `main.go`, `internal/bootstrap/`, `internal/scheduler/interval_scheduler.go`
 - **IMPORTANT**: Jobs require `source_id` (not `source_name`)
 - **Scheduler**: Interval-based (NOT cron) - use `interval_minutes` + `interval_type`
 - **Docs**: `/crawler/docs/INTERVAL_SCHEDULER.md` (recommended), `/crawler/docs/DATABASE_SCHEDULER.md` (deprecated)
@@ -278,6 +278,26 @@ docker exec -it north-cloud-streetcode drush updb
   - Example: `log.Info("Service started", infralogger.String("service", "crawler"))`
 - **Database**: Always use context-aware methods (`PingContext()`, `QueryContext()`, etc.)
 - **Testing**: Target 80%+ coverage, all helper functions use `t.Helper()`
+
+### Bootstrap Pattern (Go Services)
+
+All HTTP services follow a consistent bootstrap pattern:
+
+**Entry point**: `main.go` at service root with `main() { os.Exit(run()) }` or `main() { if err := bootstrap.Start(); err != nil { ... os.Exit(1) } }`
+
+**Config**: Use `infraconfig.GetConfigPath("config.yml")` for config path (source-manager allows `-config` flag override)
+
+**Profiling**: Call `profiling.StartPprofServer()` at startup
+
+**Logger**: `infralogger` with `log.With(infralogger.String("service", "name"))`
+
+**Two patterns by complexity**:
+- **Simple services** (auth, search): Helper functions in main.go (`loadConfig()`, `createLogger()`, `setupX()`, `runServer()`)
+- **Medium/Complex services** (crawler, index-manager, source-manager, classifier): `internal/bootstrap/` package with phased modules (config, database, storage, server, lifecycle)
+
+**Phase ordering**: Profiling → Config → Logger → Database → Storage/Services → Server → Lifecycle (graceful shutdown)
+
+**Exit codes**: Return 0 on success, 1 on failure
 
 ### Frontend (Vue.js 3)
 - **Framework**: Vue 3 Composition API + TypeScript

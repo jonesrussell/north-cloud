@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/jonesrussell/north-cloud/source-manager/internal/bootstrap"
+	"github.com/jonesrussell/north-cloud/index-manager/internal/bootstrap"
 )
 
 func main() {

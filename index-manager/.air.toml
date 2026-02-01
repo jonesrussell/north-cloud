@@ -5,7 +5,7 @@ tmp_dir = "tmp"
 [build]
   args_bin = []
   entrypoint = "./tmp/main"
-  cmd = "go build -mod=mod -o ./tmp/main ./cmd/httpd/main.go"
+  cmd = "go build -mod=mod -o ./tmp/main ."
   delay = 1000
   exclude_dir = ["assets", "tmp", "vendor", "testdata", "bin", "dist", ".git", "node_modules"]
   exclude_file = []
