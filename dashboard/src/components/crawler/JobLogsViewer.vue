@@ -139,15 +139,15 @@
             class="flex items-start hover:bg-gray-800 px-2 py-0.5 rounded"
           >
             <span
-              class="w-20 flex-shrink-0 text-gray-500 select-none text-xs"
+              class="w-20 shrink-0 text-gray-500 select-none text-xs"
             >{{ formatTimestamp(line.timestamp) }}</span>
             <span
               :class="getLevelClass(line.level)"
-              class="w-12 flex-shrink-0 uppercase text-xs font-semibold"
+              class="w-12 shrink-0 uppercase text-xs font-semibold"
             >{{ line.level }}</span>
             <span
               v-if="line.category"
-              class="w-20 flex-shrink-0 text-xs text-gray-400 truncate"
+              class="w-20 shrink-0 text-xs text-gray-400 truncate"
               :title="line.category"
             >{{ formatCategory(line.category) }}</span>
             <span class="flex-1 break-all whitespace-pre-wrap">{{ line.message }}</span>
