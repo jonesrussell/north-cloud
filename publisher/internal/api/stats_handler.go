@@ -67,7 +67,7 @@ func (r *Router) getStatsOverview(c *gin.Context) {
 	})
 }
 
-// getChannelStats returns statistics per channel
+// getChannelStats returns statistics per custom channel (Layer 2)
 // GET /api/v1/stats/channels?since=2025-12-01
 func (r *Router) getChannelStats(c *gin.Context) {
 	ctx := c.Request.Context()
@@ -91,7 +91,7 @@ func (r *Router) getChannelStats(c *gin.Context) {
 		since = &thirtyDaysAgo
 	}
 
-	// Get all enabled channels
+	// Get all enabled channels (Layer 2 custom channels)
 	channels, err := r.repo.ListChannels(ctx, true)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
@@ -100,20 +100,23 @@ func (r *Router) getChannelStats(c *gin.Context) {
 		return
 	}
 
-	// Get publish count for each channel
+	// Get publish count for each channel using redis_channel name
 	channelStats := make([]gin.H, 0, len(channels))
 	for i := range channels {
-		count, countErr := r.repo.GetPublishCountByChannel(ctx, channels[i].Name, since)
+		count, countErr := r.repo.GetPublishCountByChannel(ctx, channels[i].RedisChannel, since)
 		if countErr != nil {
 			// Log error but continue
 			count = 0
 		}
 
 		channelStats = append(channelStats, gin.H{
-			"channel_id":          channels[i].ID,
-			"channel_name":        channels[i].Name,
-			"channel_description": channels[i].Description,
-			"article_count":       count,
+			"channel_id":    channels[i].ID,
+			"name":          channels[i].Name,
+			"slug":          channels[i].Slug,
+			"redis_channel": channels[i].RedisChannel,
+			"description":   channels[i].Description,
+			"rules":         channels[i].Rules,
+			"article_count": count,
 		})
 	}
 
@@ -124,46 +127,12 @@ func (r *Router) getChannelStats(c *gin.Context) {
 	})
 }
 
-// getRouteStats returns statistics per route
-// GET /api/v1/stats/routes
-func (r *Router) getRouteStats(c *gin.Context) {
-	ctx := c.Request.Context()
-
-	// Get all enabled routes with details
-	routes, err := r.repo.ListRoutesWithDetails(ctx, true)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Failed to list routes",
-		})
-		return
-	}
-
-	// For now, return route info (can be enhanced with per-route publish counts)
-	routeStats := make([]gin.H, 0, len(routes))
-	for i := range routes {
-		routeStats = append(routeStats, gin.H{
-			"route_id":          routes[i].ID,
-			"source_name":       routes[i].SourceName,
-			"source_index":      routes[i].SourceIndexPattern,
-			"channel_name":      routes[i].ChannelName,
-			"min_quality_score": routes[i].MinQualityScore,
-			"topics":            routes[i].Topics,
-			"enabled":           routes[i].Enabled,
-		})
-	}
-
-	c.JSON(http.StatusOK, gin.H{
-		"routes": routeStats,
-		"count":  len(routeStats),
-	})
-}
-
-// getActiveChannels returns channels with their publish activity
+// getActiveChannels returns custom channels (Layer 2) with their publish activity
 // GET /api/v1/stats/channels/active
 func (r *Router) getActiveChannels(c *gin.Context) {
 	ctx := c.Request.Context()
 
-	// Get all channels
+	// Get all channels (Layer 2 custom channels)
 	channels, err := r.repo.ListChannels(ctx, false)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
@@ -184,11 +153,16 @@ func (r *Router) getActiveChannels(c *gin.Context) {
 	// Build response
 	activeChannels := make([]gin.H, 0, len(channels))
 	for i := range channels {
-		stats, hasStats := channelStats[channels[i].Name]
+		// Look up stats by redis_channel name
+		stats, hasStats := channelStats[channels[i].RedisChannel]
 
 		channelInfo := gin.H{
+			"id":            channels[i].ID,
 			"name":          channels[i].Name,
+			"slug":          channels[i].Slug,
+			"redis_channel": channels[i].RedisChannel,
 			"description":   channels[i].Description,
+			"rules":         channels[i].Rules,
 			"enabled":       channels[i].Enabled,
 			"has_published": hasStats,
 		}
@@ -208,7 +182,7 @@ func (r *Router) getActiveChannels(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"channels": activeChannels,
 		"count":    len(activeChannels),
-		"note":     "Redis pub/sub doesn't track active subscribers. This shows channels that have received published articles.",
+		"note":     "Layer 2 custom channels. Layer 1 automatic topic channels (articles:{topic}) are not tracked here.",
 	})
 }
 

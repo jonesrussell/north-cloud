@@ -7,25 +7,12 @@ import (
 	"github.com/jonesrussell/north-cloud/publisher/internal/models"
 )
 
-const (
-	// Test publish simulation constants
-	defaultRouteArticleCount    = 50
-	topicsMultiplier            = 25
-	highQualityThreshold        = 70
-	qualityScoreReductionFactor = 2
-	baseQualityScore            = 70
-	qualityScoreIncrement       = 8
-	maxSampleArticlesPerRoute   = 3
-	maxTotalSampleArticles      = 10
-)
-
-// listChannels returns all channels
+// listChannels returns all custom channels (Layer 2)
 // GET /api/v1/channels?enabled_only=true
 func (r *Router) listChannels(c *gin.Context) {
 	ctx := c.Request.Context()
 
 	const queryTrue = "true"
-	// Parse query parameters
 	enabledOnly := c.Query("enabled_only") == queryTrue
 
 	channels, err := r.repo.ListChannels(ctx, enabledOnly)
@@ -42,7 +29,7 @@ func (r *Router) listChannels(c *gin.Context) {
 	})
 }
 
-// createChannel creates a new channel
+// createChannel creates a new custom channel with rules
 // POST /api/v1/channels
 func (r *Router) createChannel(c *gin.Context) {
 	ctx := c.Request.Context()
@@ -56,7 +43,6 @@ func (r *Router) createChannel(c *gin.Context) {
 		return
 	}
 
-	// Validate request
 	if err := req.Validate(); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": err.Error(),
@@ -111,7 +97,6 @@ func (r *Router) updateChannel(c *gin.Context) {
 		return
 	}
 
-	// Validate request
 	if validateErr := req.Validate(); validateErr != nil {
 		handleValidationError(c, validateErr)
 		return
@@ -147,9 +132,10 @@ func (r *Router) deleteChannel(c *gin.Context) {
 	})
 }
 
-// testPublish simulates publishing to a channel and returns preview of articles that would be published
-// GET /api/v1/channels/:id/test-publish
-func (r *Router) testPublish(c *gin.Context) {
+// previewChannel returns a preview of articles that would match this channel's rules
+// GET /api/v1/channels/:id/preview
+// Note: This is a placeholder - full implementation would query Elasticsearch
+func (r *Router) previewChannel(c *gin.Context) {
 	ctx := c.Request.Context()
 
 	channelID, ok := parseUUID(c, "id", "channel")
@@ -157,127 +143,28 @@ func (r *Router) testPublish(c *gin.Context) {
 		return
 	}
 
-	// Get channel details
 	channel, err := r.repo.GetChannelByID(ctx, channelID)
 	if err != nil {
 		handleRepositoryError(c, err, "channel", "get")
 		return
 	}
 
-	// Get all enabled routes for this channel
-	routes, err := r.repo.GetRoutesByChannelID(ctx, channelID)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Failed to get routes for channel",
-		})
-		return
-	}
-
-	if len(routes) == 0 {
-		c.JSON(http.StatusOK, gin.H{
-			"channel_name":    channel.Name,
-			"routes_count":    0,
-			"estimated_count": 0,
-			"message":         "No enabled routes found for this channel",
-			"sample_articles": []gin.H{},
-		})
-		return
-	}
-
-	// Aggregate statistics across all routes
-	totalEstimated := 0
-	sampleArticles := []gin.H{}
-	routeStats := []gin.H{}
-
-	for i := range routes {
-		route := &routes[i]
-		// For each route, simulate article count (in real implementation, would query Elasticsearch)
-		// Using similar logic to previewRoute
-		routeCount := defaultRouteArticleCount + (len(route.Topics) * topicsMultiplier) // Simulated: more topics = more articles
-		if route.MinQualityScore > highQualityThreshold {
-			routeCount /= qualityScoreReductionFactor // Higher quality threshold = fewer articles
-		}
-		totalEstimated += routeCount
-
-		// Add route statistics
-		routeStats = append(routeStats, gin.H{
-			"route_id":          route.ID,
-			"source_name":       route.SourceName,
-			"min_quality_score": route.MinQualityScore,
-			"topics":            route.Topics,
-			"estimated_count":   routeCount,
-		})
-
-		// Add sample articles for this route (limit to maxSampleArticlesPerRoute per route to avoid overwhelming response)
-		articlesToAdd := maxSampleArticlesPerRoute
-		if routeCount < maxSampleArticlesPerRoute {
-			articlesToAdd = routeCount
-		}
-		for j := range articlesToAdd {
-			sampleArticles = append(sampleArticles, gin.H{
-				"title":          generateSampleTitle(route.Topics),
-				"quality_score":  baseQualityScore + (j * qualityScoreIncrement), // Varying quality scores
-				"topics":         route.Topics,
-				"published_date": "2026-01-02T14:30:00Z",
-				"url":            "https://example.com/article-" + route.ID.String() + "-" + string(rune(j)),
-				"source":         route.SourceName,
-				"route_id":       route.ID,
-			})
-		}
-	}
-
-	// Limit total sample articles to maxTotalSampleArticles
-	if len(sampleArticles) > maxTotalSampleArticles {
-		sampleArticles = sampleArticles[:maxTotalSampleArticles]
-	}
-
+	// Build response with channel details and rules summary
+	// Full implementation would query Elasticsearch for matching articles
 	response := gin.H{
-		"channel_name":    channel.Name,
-		"channel_id":      channelID,
-		"routes_count":    len(routes),
-		"estimated_count": totalEstimated,
-		"route_stats":     routeStats,
-		"sample_articles": sampleArticles,
-		"message":         "Test publish simulation completed",
+		"channel": channel,
+		"rules_summary": gin.H{
+			"include_topics": channel.Rules.IncludeTopics,
+			"exclude_topics": channel.Rules.ExcludeTopics,
+			"min_quality":    channel.Rules.MinQualityScore,
+			"content_types":  channel.Rules.ContentTypes,
+			"rules_is_empty": channel.Rules.IsEmpty(),
+			"rules_version":  channel.RulesVersion,
+		},
+		"matching_count":  0,       // Would be populated by ES query
+		"sample_articles": []any{}, // Would be populated by ES query
+		"note":            "Preview endpoint - full ES query not implemented yet",
 	}
 
 	c.JSON(http.StatusOK, response)
-}
-
-// generateSampleTitle generates a sample article title based on topics
-func generateSampleTitle(topics []string) string {
-	if len(topics) == 0 {
-		return "Sample Article Title"
-	}
-
-	// Use first topic to generate title
-	topic := topics[0]
-	titles := map[string][]string{
-		"crime": {
-			"Crime Report: Downtown Incident",
-			"Breaking: Major Arrest Made",
-			"Local Police Update",
-		},
-		"local": {
-			"Local Community News Update",
-			"City Council Meeting Summary",
-			"Neighborhood Events This Week",
-		},
-		"news": {
-			"Breaking News: Important Update",
-			"Today's Top Stories",
-			"News Brief: Latest Developments",
-		},
-		"breaking": {
-			"Breaking: Urgent Update",
-			"Alert: Breaking News",
-			"Urgent: Breaking Story",
-		},
-	}
-
-	if topicTitles, ok := titles[topic]; ok {
-		return topicTitles[0] // Use first title for consistency
-	}
-
-	return "Sample " + topic + " Article"
 }

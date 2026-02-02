@@ -118,31 +118,14 @@ func (r *Router) setupServiceRoutes(router *gin.Engine) {
 	// API v1 routes - protected with JWT
 	v1 := infragin.ProtectedGroup(router, "/api/v1", r.cfg.Auth.JWTSecret)
 
-	// Sources
-	sources := v1.Group("/sources")
-	sources.GET("", r.listSources)
-	sources.POST("", r.createSource)
-	sources.GET("/:id", r.getSource)
-	sources.PUT("/:id", r.updateSource)
-	sources.DELETE("/:id", r.deleteSource)
-
-	// Channels
+	// Channels (Layer 2 custom channels with rules)
 	channels := v1.Group("/channels")
 	channels.GET("", r.listChannels)
 	channels.POST("", r.createChannel)
-	channels.GET("/:id/test-publish", r.testPublish) // More specific route before :id
+	channels.GET("/:id/preview", r.previewChannel) // Preview matching articles
 	channels.GET("/:id", r.getChannel)
 	channels.PUT("/:id", r.updateChannel)
 	channels.DELETE("/:id", r.deleteChannel)
-
-	// Routes
-	routes := v1.Group("/routes")
-	routes.GET("", r.listRoutes)
-	routes.GET("/preview", r.previewRoute) // More specific route before :id
-	routes.POST("", r.createRoute)
-	routes.GET("/:id", r.getRoute)
-	routes.PUT("/:id", r.updateRoute)
-	routes.DELETE("/:id", r.deleteRoute)
 
 	// Publish History
 	history := v1.Group("/publish-history")
@@ -153,9 +136,8 @@ func (r *Router) setupServiceRoutes(router *gin.Engine) {
 	// Stats
 	stats := v1.Group("/stats")
 	stats.GET("/overview", r.getStatsOverview)
-	stats.GET("/channels/active", r.getActiveChannels) // More specific route first
+	stats.GET("/channels/active", r.getActiveChannels)
 	stats.GET("/channels", r.getChannelStats)
-	stats.GET("/routes", r.getRouteStats)
 
 	// Articles
 	articles := v1.Group("/articles")
