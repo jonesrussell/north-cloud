@@ -3,6 +3,7 @@ import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   Play,
+  PlayCircle,
   Pause,
   XCircle,
   RotateCcw,
@@ -40,6 +41,7 @@ const emit = defineEmits<{
   (e: 'view', job: Job): void
   (e: 'pause', job: Job): void
   (e: 'resume', job: Job): void
+  (e: 'runNow', job: Job): void
   (e: 'cancel', job: Job): void
   (e: 'retry', job: Job): void
   (e: 'delete', job: Job): void
@@ -124,6 +126,10 @@ function canCancel(job: Job): boolean {
 
 function canRetry(job: Job): boolean {
   return ['failed', 'cancelled'].includes(job.status)
+}
+
+function canRunNow(job: Job): boolean {
+  return ['scheduled', 'paused', 'pending'].includes(job.status)
 }
 
 function handleRowClick(job: Job) {
@@ -327,6 +333,13 @@ function goToPage(page: number | string) {
                   >
                     <Play class="mr-2 h-4 w-4" />
                     Resume
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    v-if="canRunNow(job)"
+                    @click="emit('runNow', job)"
+                  >
+                    <PlayCircle class="mr-2 h-4 w-4" />
+                    Run now
                   </DropdownMenuItem>
                   <DropdownMenuItem
                     v-if="canCancel(job)"

@@ -47,6 +47,7 @@ import {
   useResumeJobMutation,
   useCancelJobMutation,
   useRetryJobMutation,
+  useForceRunJobMutation,
   useBulkPauseJobsMutation,
   useBulkDeleteJobsMutation,
 } from './useJobMutations'
@@ -78,6 +79,7 @@ export function useJobs() {
   const resumeMutation = useResumeJobMutation()
   const cancelMutation = useCancelJobMutation()
   const retryMutation = useRetryJobMutation()
+  const forceRunMutation = useForceRunJobMutation()
   const bulkPauseMutation = useBulkPauseJobsMutation()
   const bulkDeleteMutation = useBulkDeleteJobsMutation()
 
@@ -140,6 +142,10 @@ export function useJobs() {
 
   async function retryJob(id: string) {
     return retryMutation.mutateAsync(id)
+  }
+
+  async function forceRunJob(id: string) {
+    return forceRunMutation.mutateAsync(id)
   }
 
   async function bulkPauseJobs(ids: string[]) {
@@ -220,6 +226,7 @@ export function useJobs() {
     resumeJob,
     cancelJob,
     retryJob,
+    forceRunJob,
     bulkPauseJobs,
     bulkDeleteJobs,
 
@@ -231,6 +238,7 @@ export function useJobs() {
     isResuming: computed(() => resumeMutation.isPending.value),
     isCancelling: computed(() => cancelMutation.isPending.value),
     isRetrying: computed(() => retryMutation.isPending.value),
+    isForceRunning: computed(() => forceRunMutation.isPending.value),
 
     // Utilities
     refetch,
@@ -259,6 +267,7 @@ export function useJobDetail(jobId: string) {
   const resumeMutation = useResumeJobMutation()
   const cancelMutation = useCancelJobMutation()
   const retryMutation = useRetryJobMutation()
+  const forceRunMutation = useForceRunJobMutation()
   const deleteMutation = useDeleteJobMutation()
 
   return {
@@ -283,6 +292,7 @@ export function useJobDetail(jobId: string) {
     resumeJob: () => resumeMutation.mutateAsync(jobId),
     cancelJob: () => cancelMutation.mutateAsync(jobId),
     retryJob: () => retryMutation.mutateAsync(jobId),
+    forceRunJob: () => forceRunMutation.mutateAsync(jobId),
     deleteJob: () => deleteMutation.mutateAsync(jobId),
 
     // Mutation states
@@ -290,6 +300,7 @@ export function useJobDetail(jobId: string) {
     isResuming: computed(() => resumeMutation.isPending.value),
     isCancelling: computed(() => cancelMutation.isPending.value),
     isRetrying: computed(() => retryMutation.isPending.value),
+    isForceRunning: computed(() => forceRunMutation.isPending.value),
     isDeleting: computed(() => deleteMutation.isPending.value),
 
     // UI

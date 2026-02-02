@@ -146,6 +146,10 @@ async function handleRetry(job: Job) {
   await jobs.retryJob(job.id)
 }
 
+async function handleRunNow(job: Job) {
+  await jobs.forceRunJob(job.id)
+}
+
 // Auto-open create modal if ?create=true in URL
 watch(() => route.query.create, (create) => {
   if (create === 'true') {
@@ -256,6 +260,7 @@ watch(() => route.query.create, (create) => {
             @view="handleView"
             @pause="handlePause"
             @resume="handleResume"
+            @run-now="handleRunNow"
             @cancel="handleCancel"
             @retry="handleRetry"
             @delete="confirmDelete"

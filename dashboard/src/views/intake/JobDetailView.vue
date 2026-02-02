@@ -8,7 +8,7 @@
  */
 import { computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ArrowLeft, Pause, Play, XCircle, RotateCcw, Loader2 } from 'lucide-vue-next'
+import { ArrowLeft, Pause, Play, PlayCircle, XCircle, RotateCcw, Loader2 } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -93,6 +93,11 @@ const canRetry = computed(() => {
   return ['completed', 'failed', 'cancelled'].includes(job.value.status)
 })
 
+const canRunNow = computed(() => {
+  if (!job.value) return false
+  return ['scheduled', 'paused', 'pending'].includes(job.value.status)
+})
+
 async function handlePause() {
   await detail.pauseJob()
 }
@@ -107,6 +112,10 @@ async function handleCancel() {
 
 async function handleRetry() {
   await detail.retryJob()
+}
+
+async function handleRunNow() {
+  await detail.forceRunJob()
 }
 
 function goBack() {
@@ -167,6 +176,22 @@ function goBack() {
             class="mr-2 h-4 w-4"
           />
           Resume
+        </Button>
+        <Button
+          v-if="canRunNow"
+          variant="outline"
+          :disabled="detail.isForceRunning.value"
+          @click="handleRunNow"
+        >
+          <Loader2
+            v-if="detail.isForceRunning.value"
+            class="mr-2 h-4 w-4 animate-spin"
+          />
+          <PlayCircle
+            v-else
+            class="mr-2 h-4 w-4"
+          />
+          Run now
         </Button>
         <Button
           v-if="canRetry"

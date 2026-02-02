@@ -15,6 +15,7 @@ import {
   resumeJob as resumeJobApi,
   cancelJob as cancelJobApi,
   retryJob as retryJobApi,
+  forceRunJob as forceRunJobApi,
 } from '../api/jobs'
 import { useJobsUIStore } from '../stores/useJobsUIStore'
 import { useToast } from '@/composables/useToast'
@@ -261,6 +262,35 @@ export function useRetryJobMutation() {
     },
     onError: (error: Error & { response?: { data?: { error?: string } } }) => {
       const message = error.response?.data?.error || error.message || 'Failed to retry job'
+      toast.error(message)
+    },
+    onSettled: () => {
+      uiStore.setActionInProgress(null)
+    },
+  })
+}
+
+/**
+ * Run a scheduled job now (force-run)
+ */
+export function useForceRunJobMutation() {
+  const queryClient = useQueryClient()
+  const uiStore = useJobsUIStore()
+  const { toast } = useToast()
+
+  return useMutation({
+    mutationFn: (id: string) => forceRunJobApi(id),
+    onMutate: (id) => {
+      uiStore.setActionInProgress(id)
+    },
+    onSuccess: (_data, id) => {
+      queryClient.invalidateQueries({ queryKey: jobsKeys.detail(id) })
+      queryClient.invalidateQueries({ queryKey: jobsKeys.executions(id) })
+      queryClient.invalidateQueries({ queryKey: jobsKeys.lists() })
+      toast.success('Job queued for immediate execution')
+    },
+    onError: (error: Error & { response?: { data?: { error?: string } } }) => {
+      const message = error.response?.data?.error || error.message || 'Failed to run job now'
       toast.error(message)
     },
     onSettled: () => {

@@ -250,6 +250,10 @@ func setupCrawlerRoutes(
 	// Setup job routes
 	setupJobRoutes(v1, jobsHandler)
 
+	// API v2 routes (minimal: run-now only; same JWT protection)
+	v2 := infragin.ProtectedGroup(router, "/api/v2", jwtSecret)
+	v2.POST("/jobs/:id/force-run", jobsHandler.ForceRun)
+
 	// Setup log routes
 	setupLogRoutes(v1, logsHandler, logsV2Handler)
 
