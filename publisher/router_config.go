@@ -32,19 +32,18 @@ func LoadRouterConfig() RouterConfig {
 	configPath := infraconfig.GetConfigPath("config.yml")
 	cfg, err := config.Load(configPath)
 	if err != nil {
-		// Config file is optional - create default config if file doesn't exist
+		// Config file is optional - try loading from environment variables only
 		// Use fmt for config loading errors since logger isn't initialized yet
-		fmt.Printf("Warning: Failed to load config file (%s), using defaults: %v\n", configPath, err)
+		fmt.Printf("Warning: Failed to load config file (%s), trying environment variables: %v\n", configPath, err)
 		cfg = &config.Config{}
-		// Apply defaults manually
-		if cfg.Service.CheckInterval == 0 {
-			cfg.Service.CheckInterval = defaultPollInterval
+		// Apply environment variables to the config
+		if envErr := infraconfig.ApplyEnvOverrides(cfg); envErr != nil {
+			fmt.Fprintf(os.Stderr, "Failed to apply environment overrides: %v\n", envErr)
 		}
-		if cfg.Service.BatchSize == 0 {
-			cfg.Service.BatchSize = 100
-		}
+		// Apply defaults for any missing values
+		config.SetDefaults(cfg)
 		if validateErr := cfg.Validate(); validateErr != nil {
-			fmt.Fprintf(os.Stderr, "Invalid default configuration: %v\n", validateErr)
+			fmt.Fprintf(os.Stderr, "Invalid configuration from environment: %v\n", validateErr)
 			os.Exit(1)
 		}
 	}

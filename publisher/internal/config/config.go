@@ -125,8 +125,8 @@ func (c *Config) Validate() error {
 	return nil
 }
 
-// setDefaults sets default values for configuration fields
-func setDefaults(cfg *Config) {
+// SetDefaults sets default values for configuration fields
+func SetDefaults(cfg *Config) {
 	if cfg.Server.Address == "" {
 		cfg.Server.Address = DefaultServerAddress
 	}
@@ -183,7 +183,7 @@ func setDefaults(cfg *Config) {
 }
 
 func Load(path string) (*Config, error) {
-	cfg, err := infraconfig.LoadWithDefaults(path, setDefaults)
+	cfg, err := infraconfig.LoadWithDefaults(path, SetDefaults)
 	if err != nil {
 		return nil, fmt.Errorf("load config: %w", err)
 	}
