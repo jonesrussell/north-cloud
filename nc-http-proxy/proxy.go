@@ -220,16 +220,16 @@ func (w *connResponseWriter) WriteHeader(statusCode int) {
 	statusText := http.StatusText(statusCode)
 	fmt.Fprintf(w.conn, "HTTP/1.1 %d %s\r\n", statusCode, statusText)
 
+	// For HTTPS MITM connections, always close after response to ensure
+	// the client knows the response is complete (simpler than tracking Content-Length)
+	w.closeAfter = true
+	w.headers.Set("Connection", "close")
+
 	// Write headers
 	for key, values := range w.headers {
 		for _, value := range values {
 			fmt.Fprintf(w.conn, "%s: %s\r\n", key, value)
 		}
-	}
-
-	// Check Connection header
-	if w.headers.Get("Connection") == "close" {
-		w.closeAfter = true
 	}
 
 	// End headers
