@@ -8,3 +8,6 @@ export { useHealthRealtime } from './useHealthRealtime'
 
 // Toast notifications
 export { useToast, type ToastOptions } from './useToast'
+
+// Server-side paginated tables
+export { useServerPaginatedTable } from './useServerPaginatedTable'
