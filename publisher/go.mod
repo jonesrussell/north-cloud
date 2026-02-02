@@ -11,6 +11,7 @@ require (
 	github.com/lib/pq v1.11.0
 	github.com/north-cloud/infrastructure v0.0.0
 	github.com/redis/go-redis/v9 v9.17.3
+	github.com/stretchr/testify v1.11.1
 	go.opentelemetry.io/otel v1.39.0
 	go.opentelemetry.io/otel/trace v1.39.0
 )
