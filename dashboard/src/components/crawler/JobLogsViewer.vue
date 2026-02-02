@@ -1,14 +1,14 @@
 <template>
   <div class="bg-white shadow rounded-lg overflow-hidden">
-    <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
-      <h2 class="text-lg font-semibold text-black">
+    <div class="px-6 py-4 border-b border-gray-700 bg-gray-800 flex items-center justify-between">
+      <h2 class="text-lg font-semibold text-gray-100">
         Job Logs
       </h2>
       <div class="flex items-center space-x-2">
         <!-- Category Filter -->
         <select
           v-model="categoryFilter"
-          class="text-sm border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500"
+          class="text-sm bg-gray-700 border-gray-600 text-gray-100 rounded-md shadow-sm focus:border-blue-400 focus:ring-blue-400"
         >
           <option value="">
             All Categories
@@ -38,7 +38,7 @@
         <!-- Level Filter -->
         <select
           v-model="levelFilter"
-          class="text-sm border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500"
+          class="text-sm bg-gray-700 border-gray-600 text-gray-100 rounded-md shadow-sm focus:border-blue-400 focus:ring-blue-400"
         >
           <option value="">
             All Levels
@@ -60,7 +60,7 @@
         <select
           v-if="!isLiveStreaming && executions.length > 0"
           v-model="selectedExecution"
-          class="text-sm border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500"
+          class="text-sm bg-gray-700 border-gray-600 text-gray-100 rounded-md shadow-sm focus:border-blue-400 focus:ring-blue-400"
         >
           <option
             v-for="exec in executions"
@@ -74,7 +74,7 @@
         <!-- Download Button -->
         <button
           v-if="canDownload"
-          class="inline-flex items-center px-3 py-1.5 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors"
+          class="inline-flex items-center px-3 py-1.5 border border-gray-600 rounded-md text-sm font-medium text-gray-200 bg-gray-700 hover:bg-gray-600 transition-colors"
           :disabled="downloading"
           @click="downloadLogs"
         >
@@ -84,7 +84,7 @@
         <!-- Live Status Indicator -->
         <span
           v-if="isLiveStreaming"
-          class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800"
+          class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-900/60 text-green-300 border border-green-700/50"
         >
           <span class="w-2 h-2 mr-1.5 bg-green-500 rounded-full animate-pulse" />
           Live
