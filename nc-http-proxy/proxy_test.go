@@ -16,8 +16,12 @@ func TestProxyCacheMissInReplayMode(t *testing.T) {
 		Mode:        ModeReplay,
 		FixturesDir: fixturesDir,
 		CacheDir:    cacheDir,
+		CertsDir:    t.TempDir(),
 	}
-	proxy := NewProxy(cfg)
+	proxy, err := NewProxy(cfg)
+	if err != nil {
+		t.Fatalf("failed to create proxy: %v", err)
+	}
 
 	req := httptest.NewRequest(http.MethodGet, "http://notfound.example.com/missing", http.NoBody)
 	w := httptest.NewRecorder()
@@ -51,9 +55,13 @@ func TestProxyLiveMode(t *testing.T) {
 		Mode:        ModeLive,
 		FixturesDir: t.TempDir(),
 		CacheDir:    t.TempDir(),
+		CertsDir:    t.TempDir(),
 		LiveTimeout: defaultLiveTimeout,
 	}
-	proxy := NewProxy(cfg)
+	proxy, err := NewProxy(cfg)
+	if err != nil {
+		t.Fatalf("failed to create proxy: %v", err)
+	}
 
 	// Request to the test backend
 	req := httptest.NewRequest(http.MethodGet, backend.URL+"/test", http.NoBody)
@@ -71,8 +79,16 @@ func TestProxyLiveMode(t *testing.T) {
 
 func TestProxyModeSwitch(t *testing.T) {
 	t.Helper()
-	cfg := &Config{Mode: ModeReplay, FixturesDir: t.TempDir(), CacheDir: t.TempDir()}
-	proxy := NewProxy(cfg)
+	cfg := &Config{
+		Mode:        ModeReplay,
+		FixturesDir: t.TempDir(),
+		CacheDir:    t.TempDir(),
+		CertsDir:    t.TempDir(),
+	}
+	proxy, err := NewProxy(cfg)
+	if err != nil {
+		t.Fatalf("failed to create proxy: %v", err)
+	}
 
 	if proxy.Mode() != ModeReplay {
 		t.Errorf("expected initial mode replay, got %s", proxy.Mode())
@@ -104,9 +120,13 @@ func TestProxyRecordMode(t *testing.T) {
 		Mode:        ModeRecord,
 		FixturesDir: t.TempDir(),
 		CacheDir:    cacheDir,
+		CertsDir:    t.TempDir(),
 		LiveTimeout: defaultLiveTimeout,
 	}
-	proxy := NewProxy(cfg)
+	proxy, err := NewProxy(cfg)
+	if err != nil {
+		t.Fatalf("failed to create proxy: %v", err)
+	}
 
 	// Make request - should fetch and cache
 	req := httptest.NewRequest(http.MethodGet, backend.URL+"/page", http.NoBody)
@@ -133,8 +153,12 @@ func TestProxyCacheHit(t *testing.T) {
 		Mode:        ModeReplay,
 		FixturesDir: fixturesDir,
 		CacheDir:    cacheDir,
+		CertsDir:    t.TempDir(),
 	}
-	proxy := NewProxy(cfg)
+	proxy, err := NewProxy(cfg)
+	if err != nil {
+		t.Fatalf("failed to create proxy: %v", err)
+	}
 
 	// We need to generate a request that matches the fixture's cache key
 	// The fixture has cache_key "GET_abc123", but our GenerateCacheKey will produce different key

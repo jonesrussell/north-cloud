@@ -14,8 +14,12 @@ func TestAdminStatus(t *testing.T) {
 		Mode:        ModeReplay,
 		FixturesDir: fixturesDir,
 		CacheDir:    t.TempDir(),
+		CertsDir:    t.TempDir(),
 	}
-	proxy := NewProxy(cfg)
+	proxy, err := NewProxy(cfg)
+	if err != nil {
+		t.Fatalf("failed to create proxy: %v", err)
+	}
 	admin := NewAdminHandler(proxy)
 
 	req := httptest.NewRequest(http.MethodGet, "/admin/status", http.NoBody)
@@ -28,8 +32,8 @@ func TestAdminStatus(t *testing.T) {
 	}
 
 	var status StatusResponse
-	if err := json.Unmarshal(w.Body.Bytes(), &status); err != nil {
-		t.Fatalf("failed to parse response: %v", err)
+	if unmarshalErr := json.Unmarshal(w.Body.Bytes(), &status); unmarshalErr != nil {
+		t.Fatalf("failed to parse response: %v", unmarshalErr)
 	}
 
 	if status.Mode != "replay" {
@@ -43,8 +47,12 @@ func TestAdminModeSwitch(t *testing.T) {
 		Mode:        ModeReplay,
 		FixturesDir: t.TempDir(),
 		CacheDir:    t.TempDir(),
+		CertsDir:    t.TempDir(),
 	}
-	proxy := NewProxy(cfg)
+	proxy, err := NewProxy(cfg)
+	if err != nil {
+		t.Fatalf("failed to create proxy: %v", err)
+	}
 	admin := NewAdminHandler(proxy)
 
 	// Switch to record mode
@@ -81,8 +89,16 @@ func TestAdminModeSwitch(t *testing.T) {
 
 func TestAdminInvalidMode(t *testing.T) {
 	t.Helper()
-	cfg := &Config{Mode: ModeReplay, FixturesDir: t.TempDir(), CacheDir: t.TempDir()}
-	proxy := NewProxy(cfg)
+	cfg := &Config{
+		Mode:        ModeReplay,
+		FixturesDir: t.TempDir(),
+		CacheDir:    t.TempDir(),
+		CertsDir:    t.TempDir(),
+	}
+	proxy, err := NewProxy(cfg)
+	if err != nil {
+		t.Fatalf("failed to create proxy: %v", err)
+	}
 	admin := NewAdminHandler(proxy)
 
 	req := httptest.NewRequest(http.MethodPost, "/admin/mode/invalid", http.NoBody)
@@ -101,8 +117,12 @@ func TestAdminListCache(t *testing.T) {
 		Mode:        ModeReplay,
 		FixturesDir: fixturesDir,
 		CacheDir:    t.TempDir(),
+		CertsDir:    t.TempDir(),
 	}
-	proxy := NewProxy(cfg)
+	proxy, err := NewProxy(cfg)
+	if err != nil {
+		t.Fatalf("failed to create proxy: %v", err)
+	}
 	admin := NewAdminHandler(proxy)
 
 	req := httptest.NewRequest(http.MethodGet, "/admin/cache", http.NoBody)
@@ -114,8 +134,8 @@ func TestAdminListCache(t *testing.T) {
 	}
 
 	var domains []string
-	if err := json.Unmarshal(w.Body.Bytes(), &domains); err != nil {
-		t.Fatalf("failed to parse response: %v", err)
+	if unmarshalErr := json.Unmarshal(w.Body.Bytes(), &domains); unmarshalErr != nil {
+		t.Fatalf("failed to parse response: %v", unmarshalErr)
 	}
 
 	if len(domains) == 0 {
@@ -125,8 +145,16 @@ func TestAdminListCache(t *testing.T) {
 
 func TestAdminNotFound(t *testing.T) {
 	t.Helper()
-	cfg := &Config{Mode: ModeReplay, FixturesDir: t.TempDir(), CacheDir: t.TempDir()}
-	proxy := NewProxy(cfg)
+	cfg := &Config{
+		Mode:        ModeReplay,
+		FixturesDir: t.TempDir(),
+		CacheDir:    t.TempDir(),
+		CertsDir:    t.TempDir(),
+	}
+	proxy, err := NewProxy(cfg)
+	if err != nil {
+		t.Fatalf("failed to create proxy: %v", err)
+	}
 	admin := NewAdminHandler(proxy)
 
 	req := httptest.NewRequest(http.MethodGet, "/admin/unknown", http.NoBody)

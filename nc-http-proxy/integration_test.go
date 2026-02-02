@@ -17,9 +17,13 @@ func testServer(t *testing.T) (*httptest.Server, *Proxy) {
 		Mode:        ModeReplay,
 		FixturesDir: t.TempDir(),
 		CacheDir:    t.TempDir(),
+		CertsDir:    t.TempDir(),
 	}
 
-	proxy := NewProxy(cfg)
+	proxy, err := NewProxy(cfg)
+	if err != nil {
+		t.Fatalf("failed to create proxy: %v", err)
+	}
 	admin := NewAdminHandler(proxy)
 
 	mux := http.NewServeMux()

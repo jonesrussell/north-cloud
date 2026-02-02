@@ -31,8 +31,7 @@ type Config struct {
 	Mode        Mode
 	FixturesDir string
 	CacheDir    string
-	CertFile    string
-	KeyFile     string
+	CertsDir    string
 	LiveTimeout time.Duration
 }
 
@@ -42,8 +41,7 @@ const (
 	defaultMode        = ModeReplay
 	defaultFixturesDir = "/app/fixtures"
 	defaultCacheDir    = "/app/cache"
-	defaultCertFile    = "/app/certs/proxy.crt"
-	defaultKeyFile     = "/app/certs/proxy.key"
+	defaultCertsDir    = "/app/certs"
 	defaultLiveTimeout = 30 * time.Second
 )
 
@@ -54,8 +52,7 @@ func LoadConfig() *Config {
 		Mode:        defaultMode,
 		FixturesDir: defaultFixturesDir,
 		CacheDir:    defaultCacheDir,
-		CertFile:    defaultCertFile,
-		KeyFile:     defaultKeyFile,
+		CertsDir:    defaultCertsDir,
 		LiveTimeout: defaultLiveTimeout,
 	}
 
@@ -80,12 +77,8 @@ func LoadConfig() *Config {
 		cfg.CacheDir = cache
 	}
 
-	if cert := os.Getenv("PROXY_CERT_FILE"); cert != "" {
-		cfg.CertFile = cert
-	}
-
-	if key := os.Getenv("PROXY_KEY_FILE"); key != "" {
-		cfg.KeyFile = key
+	if certs := os.Getenv("PROXY_CERTS_DIR"); certs != "" {
+		cfg.CertsDir = certs
 	}
 
 	if timeout := os.Getenv("PROXY_LIVE_TIMEOUT"); timeout != "" {

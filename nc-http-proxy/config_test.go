@@ -25,6 +25,9 @@ func TestLoadConfigDefaults(t *testing.T) {
 	if cfg.CacheDir != "/app/cache" {
 		t.Errorf("expected cache dir /app/cache, got %s", cfg.CacheDir)
 	}
+	if cfg.CertsDir != "/app/certs" {
+		t.Errorf("expected certs dir /app/certs, got %s", cfg.CertsDir)
+	}
 	if cfg.LiveTimeout.Seconds() != 30 {
 		t.Errorf("expected timeout 30s, got %v", cfg.LiveTimeout)
 	}

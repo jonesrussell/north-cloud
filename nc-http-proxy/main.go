@@ -22,7 +22,10 @@ func run() error {
 
 	fmt.Printf("nc-http-proxy starting (mode: %s, port: %d)\n", cfg.Mode, cfg.Port)
 
-	proxy := NewProxy(cfg)
+	proxy, err := NewProxy(cfg)
+	if err != nil {
+		return fmt.Errorf("failed to create proxy: %w", err)
+	}
 	admin := NewAdminHandler(proxy)
 
 	mux := http.NewServeMux()
@@ -39,9 +42,19 @@ func run() error {
 	// All other requests go to proxy
 	mux.Handle("/", proxy)
 
+	// Wrap handler to handle CONNECT method for HTTPS proxying
+	// CONNECT requests have a different URL format (host:port) that ServeMux doesn't route properly
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodConnect {
+			proxy.ServeHTTP(w, r)
+			return
+		}
+		mux.ServeHTTP(w, r)
+	})
+
 	server := &http.Server{
 		Addr:         fmt.Sprintf(":%d", cfg.Port),
-		Handler:      mux,
+		Handler:      handler,
 		ReadTimeout:  readTimeout,
 		WriteTimeout: writeTimeout,
 		IdleTimeout:  idleTimeout,
@@ -54,14 +67,14 @@ func run() error {
 	errCh := make(chan error, 1)
 	go func() {
 		fmt.Printf("Listening on :%d\n", cfg.Port)
-		if err := server.ListenAndServe(); err != http.ErrServerClosed {
-			errCh <- err
+		if listenErr := server.ListenAndServe(); listenErr != http.ErrServerClosed {
+			errCh <- listenErr
 		}
 	}()
 
 	select {
-	case err := <-errCh:
-		return err
+	case serverErr := <-errCh:
+		return serverErr
 	case sig := <-shutdownCh:
 		fmt.Printf("\nReceived %s, shutting down...\n", sig)
 		ctx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)

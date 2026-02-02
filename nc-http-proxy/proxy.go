@@ -1,11 +1,16 @@
 package main
 
 import (
+	"bufio"
+	"crypto/tls"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/url"
+	"strings"
 	"sync"
 	"time"
 )
@@ -19,18 +24,27 @@ type Proxy struct {
 
 	// HTTP client for live requests
 	client *http.Client
+
+	// Certificate manager for HTTPS MITM
+	certMgr *CertManager
 }
 
 // NewProxy creates a new proxy instance.
-func NewProxy(cfg *Config) *Proxy {
+func NewProxy(cfg *Config) (*Proxy, error) {
+	certMgr, err := NewCertManager(cfg.CertsDir)
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize certificate manager: %w", err)
+	}
+
 	return &Proxy{
-		cfg:   cfg,
-		cache: NewCache(cfg.FixturesDir, cfg.CacheDir),
-		mode:  cfg.Mode,
+		cfg:     cfg,
+		cache:   NewCache(cfg.FixturesDir, cfg.CacheDir),
+		mode:    cfg.Mode,
+		certMgr: certMgr,
 		client: &http.Client{
 			Timeout: cfg.LiveTimeout,
 		},
-	}
+	}, nil
 }
 
 // Mode returns the current operating mode.
@@ -88,9 +102,145 @@ func (p *Proxy) handleHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (p *Proxy) handleConnect(w http.ResponseWriter, _ *http.Request) {
-	// HTTPS CONNECT handling will be implemented later
-	http.Error(w, "CONNECT not yet implemented", http.StatusNotImplemented)
+func (p *Proxy) handleConnect(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	// Extract host from CONNECT request (host:port format)
+	host := r.Host
+	if !strings.Contains(host, ":") {
+		host += ":443"
+	}
+
+	// Extract just the hostname for certificate generation
+	hostname := strings.Split(host, ":")[0]
+
+	// Hijack the connection
+	hijacker, ok := w.(http.Hijacker)
+	if !ok {
+		http.Error(w, "hijacking not supported", http.StatusInternalServerError)
+		return
+	}
+
+	clientConn, _, err := hijacker.Hijack()
+	if err != nil {
+		http.Error(w, fmt.Sprintf("hijack failed: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	// Send 200 Connection Established
+	_, err = clientConn.Write([]byte("HTTP/1.1 200 Connection Established\r\n\r\n"))
+	if err != nil {
+		clientConn.Close()
+		return
+	}
+
+	// Get certificate for this host
+	cert, err := p.certMgr.GetCertificate(hostname)
+	if err != nil {
+		fmt.Printf("failed to get certificate for %s: %v\n", hostname, err)
+		clientConn.Close()
+		return
+	}
+
+	// Upgrade to TLS
+	tlsConfig := &tls.Config{
+		Certificates: []tls.Certificate{*cert},
+		MinVersion:   tls.VersionTLS12,
+	}
+
+	tlsConn := tls.Server(clientConn, tlsConfig)
+	if handshakeErr := tlsConn.HandshakeContext(ctx); handshakeErr != nil {
+		fmt.Printf("TLS handshake failed for %s: %v\n", hostname, handshakeErr)
+		tlsConn.Close()
+		return
+	}
+
+	// Handle HTTP requests over the TLS connection
+	p.serveHTTPSConnection(tlsConn, hostname)
+}
+
+// serveHTTPSConnection handles HTTP requests over an established TLS connection.
+func (p *Proxy) serveHTTPSConnection(conn net.Conn, hostname string) {
+	defer conn.Close()
+
+	reader := bufio.NewReader(conn)
+
+	for {
+		// Read HTTP request
+		req, readErr := http.ReadRequest(reader)
+		if readErr != nil {
+			if !errors.Is(readErr, io.EOF) {
+				fmt.Printf("failed to read request: %v\n", readErr)
+			}
+			return
+		}
+
+		// Reconstruct the full URL (request only has path)
+		req.URL.Scheme = "https"
+		req.URL.Host = hostname
+		req.RequestURI = "" // Must be empty for client requests
+
+		// Create a response writer that writes to the connection
+		rw := &connResponseWriter{
+			conn:    conn,
+			headers: make(http.Header),
+		}
+
+		// Process through normal HTTP handling
+		p.handleHTTP(rw, req)
+
+		// Check if we should close the connection
+		if req.Close || rw.closeAfter {
+			return
+		}
+	}
+}
+
+// connResponseWriter implements http.ResponseWriter for raw connections.
+type connResponseWriter struct {
+	conn        net.Conn
+	headers     http.Header
+	wroteHeader bool
+	statusCode  int
+	closeAfter  bool
+}
+
+func (w *connResponseWriter) Header() http.Header {
+	return w.headers
+}
+
+func (w *connResponseWriter) WriteHeader(statusCode int) {
+	if w.wroteHeader {
+		return
+	}
+	w.wroteHeader = true
+	w.statusCode = statusCode
+
+	// Write status line
+	statusText := http.StatusText(statusCode)
+	fmt.Fprintf(w.conn, "HTTP/1.1 %d %s\r\n", statusCode, statusText)
+
+	// Write headers
+	for key, values := range w.headers {
+		for _, value := range values {
+			fmt.Fprintf(w.conn, "%s: %s\r\n", key, value)
+		}
+	}
+
+	// Check Connection header
+	if w.headers.Get("Connection") == "close" {
+		w.closeAfter = true
+	}
+
+	// End headers
+	fmt.Fprint(w.conn, "\r\n")
+}
+
+func (w *connResponseWriter) Write(data []byte) (int, error) {
+	if !w.wroteHeader {
+		w.WriteHeader(http.StatusOK)
+	}
+	return w.conn.Write(data)
 }
 
 func (p *Proxy) serveCachedResponse(w http.ResponseWriter, entry *CacheEntry, source CacheSource) {
