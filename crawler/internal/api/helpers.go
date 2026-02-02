@@ -42,3 +42,43 @@ func respondBadRequest(c *gin.Context, message string) {
 func respondInternalError(c *gin.Context, message string) {
 	respondError(c, http.StatusInternalServerError, message)
 }
+
+// MaxPageSize is the maximum allowed page size for list endpoints.
+const MaxPageSize = 250
+
+// parseSortParams parses sort_by and sort_order query params with validation.
+// allowedFields maps external names to internal column names/expressions.
+// Returns the internal column name and normalized sort order.
+func parseSortParams(
+	c *gin.Context,
+	allowedFields map[string]string,
+	defaultSortBy, defaultOrder string,
+) (sortBy, sortOrder string) {
+	sortBy = c.DefaultQuery("sort_by", defaultSortBy)
+	sortOrder = c.DefaultQuery("sort_order", defaultOrder)
+
+	// Validate sort field against whitelist
+	if column, ok := allowedFields[sortBy]; ok {
+		sortBy = column
+	} else {
+		sortBy = allowedFields[defaultSortBy]
+		if sortBy == "" {
+			sortBy = defaultSortBy
+		}
+	}
+
+	// Normalize sort order
+	if sortOrder != "asc" && sortOrder != "desc" {
+		sortOrder = defaultOrder
+	}
+
+	return sortBy, sortOrder
+}
+
+// clampLimit ensures limit is within valid bounds.
+func clampLimit(limit, maxLimit int) int {
+	if limit <= 0 || limit > maxLimit {
+		return maxLimit
+	}
+	return limit
+}
