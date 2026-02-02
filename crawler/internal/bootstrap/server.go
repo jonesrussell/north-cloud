@@ -1,13 +1,19 @@
 package bootstrap
 
 import (
+	"time"
+
+	"github.com/jonesrussell/north-cloud/crawler/internal/admin"
 	"github.com/jonesrussell/north-cloud/crawler/internal/api"
 	"github.com/jonesrussell/north-cloud/crawler/internal/config"
 	"github.com/jonesrussell/north-cloud/crawler/internal/database"
 	"github.com/jonesrussell/north-cloud/crawler/internal/job"
+	"github.com/jonesrussell/north-cloud/crawler/internal/sources"
 	infragin "github.com/north-cloud/infrastructure/gin"
 	infralogger "github.com/north-cloud/infrastructure/logger"
 )
+
+const syncStaggerMinutes = 5
 
 // HTTPServerDeps holds dependencies for the HTTP server.
 type HTTPServerDeps struct {
@@ -20,6 +26,7 @@ type HTTPServerDeps struct {
 	ExecutionRepo          database.ExecutionRepositoryInterface
 	SSEHandler             *api.SSEHandler
 	Migrator               *job.Migrator
+	JobRepo                *database.JobRepository
 }
 
 // ServerComponents holds the HTTP server and error channel.
@@ -33,10 +40,21 @@ type ServerComponents struct {
 func SetupHTTPServer(deps *HTTPServerDeps) *ServerComponents {
 	migrationHandler := api.NewMigrationHandler(deps.Migrator, deps.Logger)
 
+	sourceManagerCfg := deps.Config.GetSourceManagerConfig()
+	sourceClient := sources.NewHTTPClient(sourceManagerCfg.URL, nil)
+	scheduleComputer := job.NewScheduleComputer()
+	syncHandler := admin.NewSyncEnabledSourcesHandler(
+		sourceClient,
+		deps.JobRepo,
+		scheduleComputer,
+		deps.Logger,
+		syncStaggerMinutes*time.Minute,
+	)
+
 	server := api.NewServer(
 		deps.Config, deps.JobsHandler, deps.DiscoveredLinksHandler,
 		deps.LogsHandler, deps.LogsV2Handler, deps.ExecutionRepo,
-		deps.Logger, deps.SSEHandler, migrationHandler,
+		deps.Logger, deps.SSEHandler, migrationHandler, syncHandler,
 	)
 
 	deps.Logger.Info("Starting HTTP server", infralogger.String("addr", deps.Config.GetServerConfig().Address))

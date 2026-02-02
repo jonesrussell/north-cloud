@@ -4,6 +4,7 @@ package job_test
 import (
 	"context"
 	"errors"
+	"strconv"
 	"testing"
 	"time"
 
@@ -128,6 +129,23 @@ func (m *MockSourceClient) GetSource(_ context.Context, sourceID uuid.UUID) (*so
 		return s, nil
 	}
 	return nil, sources.ErrSourceNotFound
+}
+
+// ListSources returns all sources as SourceListItem (for sync endpoint tests).
+func (m *MockSourceClient) ListSources(_ context.Context) ([]*sources.SourceListItem, error) {
+	result := make([]*sources.SourceListItem, 0, len(m.sources))
+	for _, s := range m.sources {
+		result = append(result, &sources.SourceListItem{
+			ID:        s.ID,
+			Name:      s.Name,
+			URL:       s.URL,
+			RateLimit: strconv.Itoa(s.RateLimit),
+			MaxDepth:  s.MaxDepth,
+			Enabled:   s.Enabled,
+			Priority:  s.Priority,
+		})
+	}
+	return result, nil
 }
 
 // AddSource adds a source to the mock.

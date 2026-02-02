@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/jonesrussell/north-cloud/crawler/internal/admin"
 	"github.com/jonesrussell/north-cloud/crawler/internal/config"
 	"github.com/jonesrussell/north-cloud/crawler/internal/database"
 	infragin "github.com/north-cloud/infrastructure/gin"
@@ -125,6 +126,7 @@ func NewServer(
 	infraLog infralogger.Logger,
 	sseHandler *SSEHandler, // Optional - pass nil to disable SSE
 	migrationHandler *MigrationHandler, // Optional - pass nil to disable migration endpoints
+	syncHandler *admin.SyncEnabledSourcesHandler, // Optional - pass nil to disable sync endpoint
 ) *infragin.Server {
 	// Extract port from address
 	port := extractPortFromAddress(cfg.GetServerConfig().Address)
@@ -151,7 +153,11 @@ func NewServer(
 		WithTimeouts(defaultReadTimeout, defaultWriteTimeout, defaultIdleTimeout).
 		WithRoutes(func(router *gin.Engine) {
 			// Setup service-specific routes (health routes added by builder)
-			setupCrawlerRoutes(router, jwtSecret, jobsHandler, discoveredLinksHandler, logsHandler, logsV2Handler, executionRepo, sseHandler, migrationHandler)
+			setupCrawlerRoutes(
+				router, jwtSecret, jobsHandler, discoveredLinksHandler,
+				logsHandler, logsV2Handler, executionRepo, sseHandler,
+				migrationHandler, syncHandler,
+			)
 		}).
 		Build()
 
@@ -202,6 +208,7 @@ func setupCrawlerRoutes(
 	executionRepo database.ExecutionRepositoryInterface,
 	sseHandler *SSEHandler,
 	migrationHandler *MigrationHandler,
+	syncHandler *admin.SyncEnabledSourcesHandler,
 ) {
 	// API v1 routes - protected with JWT
 	v1 := infragin.ProtectedGroup(router, "/api/v1", jwtSecret)
@@ -251,6 +258,11 @@ func setupCrawlerRoutes(
 
 	// Setup migration routes (Phase 3)
 	setupMigrationRoutes(v1, migrationHandler)
+
+	// Admin: sync enabled sources to crawler jobs
+	if syncHandler != nil {
+		v1.POST("/admin/sync-enabled-sources", syncHandler.SyncEnabledSources)
+	}
 
 	// Setup SSE routes (protected with JWT)
 	if sseHandler != nil {
