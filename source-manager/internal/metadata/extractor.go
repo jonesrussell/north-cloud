@@ -209,7 +209,10 @@ func (e *Extractor) Extract(ctx context.Context, sourceURL string) (*MetadataRes
 	// Set user agent to avoid bot blocking
 	req.Header.Set("User-Agent", "Mozilla/5.0 (compatible; North-Cloud-SourceManager/1.0)")
 
-	resp, err := e.client.Do(req)
+	// SSRF Protection: requestURL is validated by validateAndGetRequestURL (scheme + hostname blocklist)
+	// and the client uses safeDialContext which validates resolved IPs at connection time,
+	// preventing private/internal IP access including DNS rebinding attacks.
+	resp, err := e.client.Do(req) // codeql[go/request-forgery] URL validated; IP checked at dial time
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch URL: %w", err)
 	}

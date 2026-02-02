@@ -21,6 +21,8 @@ const (
 	defaultMinConfidence = 0.3
 	// retryAfterSeconds is the suggested retry delay for temporarily unavailable endpoints
 	retryAfterSeconds = 30
+	// healthStatusUnconfigured indicates a dependency is not configured
+	healthStatusUnconfigured = "unconfigured"
 )
 
 // Handler handles HTTP requests for the classifier API
@@ -700,7 +702,7 @@ func (h *Handler) ReadyCheck(c *gin.Context) {
 			checks["postgresql"] = "ok"
 		}
 	} else {
-		checks["postgresql"] = "unconfigured"
+		checks["postgresql"] = healthStatusUnconfigured
 	}
 
 	// Check Elasticsearch via storage
@@ -716,7 +718,7 @@ func (h *Handler) ReadyCheck(c *gin.Context) {
 			checks["elasticsearch"] = "ok"
 		}
 	} else {
-		checks["elasticsearch"] = "unconfigured"
+		checks["elasticsearch"] = healthStatusUnconfigured
 	}
 
 	// Redis is not directly used by classifier - mark as not applicable
