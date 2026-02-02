@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -131,6 +132,17 @@ func (r *JobRepository) CreateOrUpdate(ctx context.Context, job *domain.Job) (bo
 	return wasInserted, nil
 }
 
+// ListJobsParams contains parameters for listing jobs.
+type ListJobsParams struct {
+	Status    string // Optional status filter
+	SourceID  string // Optional source_id filter
+	Search    string // Optional search term (source_name, url)
+	SortBy    string // Column to sort by (already validated)
+	SortOrder string // "asc" or "desc" (already validated)
+	Limit     int
+	Offset    int
+}
+
 // GetByID retrieves a job by its ID.
 func (r *JobRepository) GetByID(ctx context.Context, id string) (*domain.Job, error) {
 	var job domain.Job
@@ -149,28 +161,59 @@ func (r *JobRepository) GetByID(ctx context.Context, id string) (*domain.Job, er
 	return &job, nil
 }
 
-// List retrieves all jobs with optional filtering.
-func (r *JobRepository) List(ctx context.Context, status string, limit, offset int) ([]*domain.Job, error) {
+// List retrieves jobs with filtering, sorting, and pagination.
+func (r *JobRepository) List(ctx context.Context, params ListJobsParams) ([]*domain.Job, error) {
 	var jobs []*domain.Job
-	var query string
+	var conditions []string
 	var args []any
+	argIndex := 1
 
-	if status != "" {
-		query = fmt.Sprintf(`SELECT %s
-			FROM jobs
-			WHERE status = $1
-			ORDER BY created_at DESC
-			LIMIT $2 OFFSET $3
-		`, jobSelectBase)
-		args = []any{status, limit, offset}
-	} else {
-		query = fmt.Sprintf(`SELECT %s
-			FROM jobs
-			ORDER BY created_at DESC
-			LIMIT $1 OFFSET $2
-		`, jobSelectBase)
-		args = []any{limit, offset}
+	// Build WHERE conditions
+	if params.Status != "" {
+		conditions = append(conditions, fmt.Sprintf("status = $%d", argIndex))
+		args = append(args, params.Status)
+		argIndex++
 	}
+
+	if params.SourceID != "" {
+		conditions = append(conditions, fmt.Sprintf("source_id = $%d", argIndex))
+		args = append(args, params.SourceID)
+		argIndex++
+	}
+
+	if params.Search != "" {
+		conditions = append(conditions, fmt.Sprintf(
+			"(COALESCE(source_name, '') ILIKE $%d OR url ILIKE $%d)",
+			argIndex, argIndex,
+		))
+		args = append(args, "%"+params.Search+"%")
+		argIndex++
+	}
+
+	// Build WHERE clause
+	whereClause := ""
+	if len(conditions) > 0 {
+		whereClause = "WHERE " + strings.Join(conditions, " AND ")
+	}
+
+	// Default sort
+	sortBy := params.SortBy
+	if sortBy == "" {
+		sortBy = "created_at"
+	}
+	sortOrder := params.SortOrder
+	if sortOrder == "" {
+		sortOrder = "desc"
+	}
+
+	query := fmt.Sprintf(`SELECT %s
+		FROM jobs
+		%s
+		ORDER BY %s %s NULLS LAST
+		LIMIT $%d OFFSET $%d
+	`, jobSelectBase, whereClause, sortBy, strings.ToUpper(sortOrder), argIndex, argIndex+1)
+
+	args = append(args, params.Limit, params.Offset)
 
 	err := r.db.SelectContext(ctx, &jobs, query, args...)
 	if err != nil {
