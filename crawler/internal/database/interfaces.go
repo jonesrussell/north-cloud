@@ -14,10 +14,10 @@ type JobRepositoryInterface interface {
 	Create(ctx context.Context, job *domain.Job) error
 	CreateOrUpdate(ctx context.Context, job *domain.Job) (bool, error)
 	GetByID(ctx context.Context, id string) (*domain.Job, error)
-	List(ctx context.Context, status string, limit, offset int) ([]*domain.Job, error)
+	List(ctx context.Context, params ListJobsParams) ([]*domain.Job, error)
 	Update(ctx context.Context, job *domain.Job) error
 	Delete(ctx context.Context, id string) error
-	Count(ctx context.Context, status string) (int, error)
+	Count(ctx context.Context, params CountJobsParams) (int, error)
 
 	// Scheduler operations
 	GetJobsReadyToRun(ctx context.Context) ([]*domain.Job, error)

@@ -14,6 +14,7 @@ import type {
   CreateJobRequest,
   UpdateJobRequest,
 } from '@/types/crawler'
+import type { FetchParams, PaginatedResponse } from '@/types/table'
 
 // ============================================================================
 // Query Key Factory
@@ -62,34 +63,42 @@ export interface JobExecutionsResponse {
 // ============================================================================
 
 /**
- * Fetch jobs list with optional filters
+ * Fetch jobs list with pagination, sorting, and filters.
+ * Returns items and total for server-side pagination.
  */
-export async function fetchJobs(filters?: JobFilters): Promise<JobsListResponse> {
-  const params: Record<string, unknown> = {}
-
-  if (filters?.status) {
-    params.status = Array.isArray(filters.status)
-      ? filters.status.join(',')
-      : filters.status
+export async function fetchJobs(params: FetchParams<JobFilters>): Promise<PaginatedResponse<Job>> {
+  const queryParams: Record<string, unknown> = {
+    limit: params.limit,
+    offset: params.offset,
+    sort_by: params.sortBy,
+    sort_order: params.sortOrder,
   }
 
-  if (filters?.source_id) {
-    params.source_id = filters.source_id
+  // Add filters
+  if (params.filters?.status) {
+    queryParams.status = Array.isArray(params.filters.status)
+      ? params.filters.status.join(',')
+      : params.filters.status
   }
 
-  if (filters?.schedule_enabled !== undefined) {
-    params.schedule_enabled = filters.schedule_enabled
+  if (params.filters?.source_id) {
+    queryParams.source_id = params.filters.source_id
   }
 
-  if (filters?.search) {
-    params.search = filters.search
+  if (params.filters?.schedule_enabled !== undefined) {
+    queryParams.schedule_enabled = params.filters.schedule_enabled
   }
 
-  const response = await crawlerApi.jobs.list(params)
-  const jobs = response.data?.jobs || response.data || []
-  const total = response.data?.total || jobs.length
+  if (params.filters?.search) {
+    queryParams.search = params.filters.search
+  }
 
-  return { jobs, total }
+  const response = await crawlerApi.jobs.list(queryParams)
+
+  return {
+    items: response.data?.jobs ?? [],
+    total: response.data?.total ?? 0,
+  }
 }
 
 /**

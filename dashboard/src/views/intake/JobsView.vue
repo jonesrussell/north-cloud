@@ -1,12 +1,10 @@
 <script setup lang="ts">
 /**
- * Jobs View (Refactored)
+ * Jobs View
  *
- * Uses the new feature module architecture:
- * - TanStack Query for server state (jobs list, loading, error)
- * - useJobsQueryStore for filters and pagination
+ * Uses the feature module architecture:
+ * - useJobs composable for jobs data, pagination, sorting, filters
  * - useJobsUIStore for modals and selections
- * - useJobs composable combines everything
  * - useSources composable for source dropdown
  */
 import { ref, computed, watch } from 'vue'

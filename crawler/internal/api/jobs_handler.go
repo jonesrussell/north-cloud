@@ -45,27 +45,70 @@ func (h *JobsHandler) SetLogger(log infralogger.Logger) {
 	h.log = log
 }
 
+// allowedJobSortFields maps API field names to database column expressions.
+var allowedJobSortFields = map[string]string{
+	"created_at":  "created_at",
+	"updated_at":  "updated_at",
+	"status":      "status",
+	"source_name": "COALESCE(source_name, '')",
+	"next_run_at": "next_run_at",
+	"last_run_at": "started_at", // last_run_at maps to started_at in DB
+}
+
 // ListJobs handles GET /api/v1/jobs
 func (h *JobsHandler) ListJobs(c *gin.Context) {
-	status := c.Query("status")
+	// Parse pagination
 	limit, offset := parseLimitOffset(c, defaultLimit, defaultOffset)
+	limit = clampLimit(limit, MaxPageSize)
+
+	// Parse sorting
+	sortBy, sortOrder := parseSortParams(c, allowedJobSortFields, "created_at", "desc")
+
+	// Parse filters
+	status := c.Query("status")
+	sourceID := c.Query("source_id")
+	search := c.Query("search")
+
+	// Build params
+	listParams := database.ListJobsParams{
+		Status:    status,
+		SourceID:  sourceID,
+		Search:    search,
+		SortBy:    sortBy,
+		SortOrder: sortOrder,
+		Limit:     limit,
+		Offset:    offset,
+	}
+
+	countParams := database.CountJobsParams{
+		Status:   status,
+		SourceID: sourceID,
+		Search:   search,
+	}
 
 	// Get jobs from database
-	jobs, err := h.repo.List(c.Request.Context(), status, limit, offset)
+	jobs, err := h.repo.List(c.Request.Context(), listParams)
 	if err != nil {
 		respondInternalError(c, "Failed to retrieve jobs")
 		return
 	}
 
-	total, err := h.repo.Count(c.Request.Context(), status)
+	total, err := h.repo.Count(c.Request.Context(), countParams)
 	if err != nil {
 		respondInternalError(c, "Failed to get total count")
 		return
 	}
 
+	// Map sortBy back to external name for response
+	externalSortBy := c.DefaultQuery("sort_by", "created_at")
+
 	c.JSON(http.StatusOK, gin.H{
-		"jobs":  jobs,
-		"total": total,
+		"jobs":       jobs,
+		"total":      total,
+		"limit":      limit,
+		"offset":     offset,
+		"sort_by":    externalSortBy,
+		"sort_order": sortOrder,
 	})
 }
 

@@ -1,71 +1,21 @@
 /**
  * Jobs Query Composables
  *
- * TanStack Query hooks for fetching job data.
- * Provides automatic caching, refetching, and loading states.
+ * TanStack Query hooks for fetching individual job data.
+ * For job lists with pagination/sorting, use useJobs composable instead.
  */
 
 import { useQuery, useInfiniteQuery, type UseQueryOptions } from '@tanstack/vue-query'
 import { computed, toValue, type MaybeRefOrGetter } from 'vue'
 import {
   jobsKeys,
-  fetchJobs,
   fetchJob,
   fetchJobExecutions,
   fetchJobStats,
   fetchJobLogs,
-  type JobsListResponse,
   type JobExecutionsResponse,
 } from '../api/jobs'
-import { useJobsQueryStore } from '../stores/useJobsQueryStore'
-import type { Job, JobStats, JobFilters, JobStatus } from '@/types/crawler'
-
-// ============================================================================
-// Jobs List Query
-// ============================================================================
-
-/**
- * Fetch jobs list with filters from the query store
- *
- * @example
- * ```ts
- * const { data, isLoading, error } = useJobsListQuery()
- * const jobs = computed(() => data.value?.jobs || [])
- * ```
- */
-export function useJobsListQuery(
-  options?: Partial<UseQueryOptions<JobsListResponse, Error>>
-) {
-  const queryStore = useJobsQueryStore()
-
-  return useQuery({
-    queryKey: computed(() => jobsKeys.list(queryStore.filters)),
-    queryFn: () => fetchJobs(queryStore.filters),
-    // Refetch every 30 seconds for near-realtime updates
-    refetchInterval: 30000,
-    refetchIntervalInBackground: false,
-    // Data is fresh for 10 seconds
-    staleTime: 10000,
-    ...options,
-  })
-}
-
-/**
- * Fetch jobs list with explicit filters (not from store)
- */
-export function useJobsListQueryWithFilters(
-  filters: MaybeRefOrGetter<JobFilters | undefined>,
-  options?: Partial<UseQueryOptions<JobsListResponse, Error>>
-) {
-  const filtersValue = computed(() => toValue(filters))
-
-  return useQuery({
-    queryKey: computed(() => jobsKeys.list(filtersValue.value)),
-    queryFn: () => fetchJobs(filtersValue.value),
-    staleTime: 10000,
-    ...options,
-  })
-}
+import type { Job, JobStats } from '@/types/crawler'
 
 // ============================================================================
 // Job Detail Query
@@ -231,54 +181,3 @@ export function useJobLogsQuery(
   })
 }
 
-// ============================================================================
-// Derived Computations
-// ============================================================================
-
-/**
- * Compute status counts from jobs list
- */
-export function useJobStatusCounts() {
-  const { data } = useJobsListQuery()
-
-  return computed(() => {
-    const jobs = data.value?.jobs || []
-    const counts: Record<JobStatus, number> = {
-      pending: 0,
-      scheduled: 0,
-      running: 0,
-      paused: 0,
-      completed: 0,
-      failed: 0,
-      cancelled: 0,
-    }
-
-    for (const job of jobs) {
-      if (job.status in counts) {
-        counts[job.status]++
-      }
-    }
-
-    return counts
-  })
-}
-
-/**
- * Compute active jobs count
- */
-export function useActiveJobsCount() {
-  const statusCounts = useJobStatusCounts()
-
-  return computed(() => {
-    const counts = statusCounts.value
-    return counts.running + counts.scheduled + counts.pending
-  })
-}
-
-/**
- * Compute failed jobs count
- */
-export function useFailedJobsCount() {
-  const statusCounts = useJobStatusCounts()
-  return computed(() => statusCounts.value.failed)
-}

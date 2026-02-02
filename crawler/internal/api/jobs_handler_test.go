@@ -13,6 +13,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/jonesrussell/north-cloud/crawler/internal/api"
+	"github.com/jonesrussell/north-cloud/crawler/internal/database"
 	"github.com/jonesrussell/north-cloud/crawler/internal/domain"
 )
 
@@ -39,7 +40,7 @@ func (m *mockJobRepo) GetByID(ctx context.Context, id string) (*domain.Job, erro
 	return nil, errMockNoData
 }
 
-func (m *mockJobRepo) List(ctx context.Context, status string, limit, offset int) ([]*domain.Job, error) {
+func (m *mockJobRepo) List(ctx context.Context, params database.ListJobsParams) ([]*domain.Job, error) {
 	return nil, errMockNoData
 }
 
@@ -51,7 +52,7 @@ func (m *mockJobRepo) Delete(ctx context.Context, id string) error {
 	return nil
 }
 
-func (m *mockJobRepo) Count(ctx context.Context, status string) (int, error) {
+func (m *mockJobRepo) Count(ctx context.Context, params database.CountJobsParams) (int, error) {
 	return 0, nil
 }
 

@@ -17,7 +17,7 @@ const jobs = useJobs()
 const stats = computed(() => [
   {
     label: 'Total Jobs',
-    value: jobs.jobs.value.length,
+    value: jobs.totalJobs.value,
     icon: Activity,
     color: 'text-blue-500',
     bgColor: 'bg-blue-500/10',

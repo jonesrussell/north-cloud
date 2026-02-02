@@ -12,6 +12,9 @@ import {
   ExternalLink,
   Clock,
   AlertTriangle,
+  ArrowUp,
+  ArrowDown,
+  ArrowUpDown,
 } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -58,6 +61,23 @@ const statusVariants: Record<JobStatus, BadgeVariant> = {
   failed: 'destructive',
   paused: 'warning',
   cancelled: 'outline',
+}
+
+// Define sortable columns
+const sortableColumns = [
+  { key: 'source_name', label: 'Source' },
+  { key: 'status', label: 'Status' },
+  { key: 'next_run_at', label: 'Next Run' },
+  { key: 'last_run_at', label: 'Last Run' },
+] as const
+
+function getSortIcon(column: string) {
+  if (jobs.sortBy.value !== column) return ArrowUpDown
+  return jobs.sortOrder.value === 'asc' ? ArrowUp : ArrowDown
+}
+
+function handleSort(column: string) {
+  jobs.toggleSort(column)
 }
 
 const pageNumbers = computed(() => {
@@ -139,6 +159,11 @@ function goToPage(page: number | string) {
     jobs.setPage(page)
   }
 }
+
+function handlePageSizeChange(event: Event) {
+  const target = event.target as HTMLSelectElement
+  jobs.setPageSize(Number(target.value))
+}
 </script>
 
 <template>
@@ -151,20 +176,25 @@ function goToPage(page: number | string) {
             <th class="px-4 py-3 text-left text-sm font-medium text-muted-foreground">
               Job ID
             </th>
-            <th class="px-4 py-3 text-left text-sm font-medium text-muted-foreground">
-              Source
-            </th>
-            <th class="px-4 py-3 text-left text-sm font-medium text-muted-foreground">
-              Status
+            <th
+              v-for="col in sortableColumns"
+              :key="col.key"
+              class="px-4 py-3 text-left text-sm font-medium text-muted-foreground cursor-pointer hover:text-foreground transition-colors"
+              @click="handleSort(col.key)"
+            >
+              <div class="flex items-center gap-1">
+                {{ col.label }}
+                <component
+                  :is="getSortIcon(col.key)"
+                  :class="[
+                    'h-4 w-4',
+                    jobs.sortBy.value === col.key ? 'text-foreground' : 'text-muted-foreground/50'
+                  ]"
+                />
+              </div>
             </th>
             <th class="px-4 py-3 text-left text-sm font-medium text-muted-foreground">
               Schedule
-            </th>
-            <th class="px-4 py-3 text-left text-sm font-medium text-muted-foreground">
-              Next Run
-            </th>
-            <th class="px-4 py-3 text-left text-sm font-medium text-muted-foreground">
-              Last Run
             </th>
             <th
               v-if="showActions"
@@ -192,13 +222,13 @@ function goToPage(page: number | string) {
                 <Skeleton class="h-5 w-20" />
               </td>
               <td class="px-4 py-3">
+                <Skeleton class="h-4 w-24" />
+              </td>
+              <td class="px-4 py-3">
+                <Skeleton class="h-4 w-24" />
+              </td>
+              <td class="px-4 py-3">
                 <Skeleton class="h-4 w-16" />
-              </td>
-              <td class="px-4 py-3">
-                <Skeleton class="h-4 w-24" />
-              </td>
-              <td class="px-4 py-3">
-                <Skeleton class="h-4 w-24" />
               </td>
               <td
                 v-if="showActions"
@@ -210,7 +240,7 @@ function goToPage(page: number | string) {
           </template>
 
           <!-- Empty State -->
-          <tr v-else-if="jobs.paginatedJobs.value.length === 0">
+          <tr v-else-if="jobs.jobs.value.length === 0">
             <td
               :colspan="showActions ? 7 : 6"
               class="px-4 py-12 text-center"
@@ -218,10 +248,10 @@ function goToPage(page: number | string) {
               <div class="flex flex-col items-center gap-2">
                 <AlertTriangle class="h-8 w-8 text-muted-foreground" />
                 <p class="text-sm text-muted-foreground">
-                  {{ jobs.filters.value.search || jobs.filters.value.status ? 'No jobs match your filters' : 'No jobs found' }}
+                  {{ jobs.hasActiveFilters.value ? 'No jobs match your filters' : 'No jobs found' }}
                 </p>
                 <Button
-                  v-if="jobs.filters.value.search || jobs.filters.value.status"
+                  v-if="jobs.hasActiveFilters.value"
                   variant="outline"
                   size="sm"
                   @click="jobs.clearAllFilters()"
@@ -234,7 +264,7 @@ function goToPage(page: number | string) {
 
           <!-- Data Rows -->
           <tr
-            v-for="job in jobs.paginatedJobs.value"
+            v-for="job in jobs.jobs.value"
             v-else
             :key="job.id"
             class="border-b transition-colors hover:bg-muted/50 cursor-pointer"
@@ -264,19 +294,6 @@ function goToPage(page: number | string) {
                 {{ job.status }}
               </Badge>
             </td>
-            <td class="px-4 py-3">
-              <div
-                v-if="job.schedule_enabled"
-                class="flex items-center gap-1.5 text-sm"
-              >
-                <Clock class="h-3.5 w-3.5 text-muted-foreground" />
-                <span>{{ job.interval_minutes }} {{ job.interval_type }}</span>
-              </div>
-              <span
-                v-else
-                class="text-sm text-muted-foreground"
-              >One-time</span>
-            </td>
             <td class="px-4 py-3 text-sm">
               <span
                 v-if="job.next_run_at"
@@ -290,7 +307,20 @@ function goToPage(page: number | string) {
               >—</span>
             </td>
             <td class="px-4 py-3 text-sm text-muted-foreground">
-              {{ formatDate(job.last_run_at) }}
+              {{ formatDate(job.started_at) }}
+            </td>
+            <td class="px-4 py-3">
+              <div
+                v-if="job.schedule_enabled"
+                class="flex items-center gap-1.5 text-sm"
+              >
+                <Clock class="h-3.5 w-3.5 text-muted-foreground" />
+                <span>{{ job.interval_minutes }} {{ job.interval_type }}</span>
+              </div>
+              <span
+                v-else
+                class="text-sm text-muted-foreground"
+              >One-time</span>
             </td>
             <td
               v-if="showActions"
@@ -360,52 +390,73 @@ function goToPage(page: number | string) {
 
     <!-- Pagination -->
     <div
-      v-if="jobs.totalPages.value > 1"
+      v-if="jobs.totalPages.value > 1 || jobs.totalJobs.value > 0"
       class="flex items-center justify-between border-t pt-4"
     >
       <p class="text-sm text-muted-foreground">
         Showing {{ (jobs.page.value - 1) * jobs.pageSize.value + 1 }} to
-        {{ Math.min(jobs.page.value * jobs.pageSize.value, jobs.jobs.value.length) }}
-        of {{ jobs.jobs.value.length }} jobs
+        {{ Math.min(jobs.page.value * jobs.pageSize.value, jobs.totalJobs.value) }}
+        of {{ jobs.totalJobs.value }} jobs
       </p>
 
-      <div class="flex items-center gap-1">
-        <Button
-          variant="outline"
-          size="sm"
-          :disabled="jobs.page.value === 1"
-          @click="goToPage(jobs.page.value - 1)"
-        >
-          <ChevronLeft class="h-4 w-4" />
-        </Button>
-
-        <template
-          v-for="page in pageNumbers"
-          :key="page"
-        >
-          <Button
-            v-if="typeof page === 'number'"
-            :variant="page === jobs.page.value ? 'default' : 'outline'"
-            size="sm"
-            class="min-w-9"
-            @click="goToPage(page)"
+      <div class="flex items-center gap-4">
+        <!-- Page Size Selector -->
+        <div class="flex items-center gap-2">
+          <span class="text-sm text-muted-foreground">Show:</span>
+          <select
+            :value="jobs.pageSize.value"
+            class="rounded-md border bg-background px-2 py-1 text-sm"
+            @change="handlePageSizeChange"
           >
-            {{ page }}
-          </Button>
-          <span
-            v-else
-            class="px-2 text-muted-foreground"
-          >...</span>
-        </template>
+            <option
+              v-for="size in jobs.allowedPageSizes"
+              :key="size"
+              :value="size"
+            >
+              {{ size }}
+            </option>
+          </select>
+        </div>
 
-        <Button
-          variant="outline"
-          size="sm"
-          :disabled="jobs.page.value === jobs.totalPages.value"
-          @click="goToPage(jobs.page.value + 1)"
-        >
-          <ChevronRight class="h-4 w-4" />
-        </Button>
+        <!-- Page Numbers -->
+        <div class="flex items-center gap-1">
+          <Button
+            variant="outline"
+            size="sm"
+            :disabled="jobs.page.value === 1"
+            @click="goToPage(jobs.page.value - 1)"
+          >
+            <ChevronLeft class="h-4 w-4" />
+          </Button>
+
+          <template
+            v-for="page in pageNumbers"
+            :key="page"
+          >
+            <Button
+              v-if="typeof page === 'number'"
+              :variant="page === jobs.page.value ? 'default' : 'outline'"
+              size="sm"
+              class="min-w-9"
+              @click="goToPage(page)"
+            >
+              {{ page }}
+            </Button>
+            <span
+              v-else
+              class="px-2 text-muted-foreground"
+            >...</span>
+          </template>
+
+          <Button
+            variant="outline"
+            size="sm"
+            :disabled="jobs.page.value === jobs.totalPages.value"
+            @click="goToPage(jobs.page.value + 1)"
+          >
+            <ChevronRight class="h-4 w-4" />
+          </Button>
+        </div>
       </div>
     </div>
   </div>
