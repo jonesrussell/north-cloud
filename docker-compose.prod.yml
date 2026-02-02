@@ -288,6 +288,36 @@ services:
       SEARCH_API_URL: http://search-service:8090
 
   # ------------------------------------------------------------
+  # nc-http-proxy (Prod) - HTTP replay proxy for crawler
+  # ------------------------------------------------------------
+  nc-http-proxy:
+    <<: *prod-defaults
+    image: docker.io/jonesrussell/nc-http-proxy:latest
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 128M
+    ports:
+      - "${PROXY_PORT:-8055}:8055"
+    environment:
+      PROXY_PORT: "8055"
+      PROXY_MODE: "${PROXY_MODE:-replay}"
+      PROXY_FIXTURES_DIR: /app/fixtures
+      PROXY_CACHE_DIR: /app/cache
+      PROXY_CERT_FILE: /app/certs/proxy.crt
+      PROXY_KEY_FILE: /app/certs/proxy.key
+    volumes:
+      - ./crawler/fixtures:/app/fixtures:ro
+      - nc_http_proxy_cache:/app/cache
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8055/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+
+  # ------------------------------------------------------------
   # Auth (Prod)
   # ------------------------------------------------------------
   auth:
@@ -452,6 +482,8 @@ volumes:
   certbot_etc:
     driver: local
   certbot_www:
+    driver: local
+  nc_http_proxy_cache:
     driver: local
   loki_data:
     driver: local
