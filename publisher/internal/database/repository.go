@@ -3,6 +3,7 @@ package database
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -37,183 +38,31 @@ func (r *Repository) Ping(ctx context.Context) error {
 }
 
 // ====================
-// Sources
-// ====================
-
-// CreateSource creates a new source
-func (r *Repository) CreateSource(ctx context.Context, req *models.SourceCreateRequest) (*models.Source, error) {
-	source := &models.Source{
-		ID:           uuid.New(),
-		Name:         req.Name,
-		IndexPattern: req.IndexPattern,
-		Enabled:      true, // Default to true
-		CreatedAt:    time.Now(),
-		UpdatedAt:    time.Now(),
-	}
-
-	if req.Enabled != nil {
-		source.Enabled = *req.Enabled
-	}
-
-	query := `
-		INSERT INTO sources (id, name, index_pattern, enabled, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6)
-		RETURNING id, name, index_pattern, enabled, created_at, updated_at
-	`
-
-	err := r.db.QueryRowxContext(
-		ctx, query,
-		source.ID, source.Name, source.IndexPattern, source.Enabled, source.CreatedAt, source.UpdatedAt,
-	).StructScan(source)
-
-	if err != nil {
-		var pqErr *pq.Error
-		if errors.As(err, &pqErr) && pqErr.Code == "23505" { // unique_violation
-			return nil, models.ErrAlreadyExists
-		}
-		return nil, fmt.Errorf("failed to create source: %w", err)
-	}
-
-	return source, nil
-}
-
-// GetSourceByID retrieves a source by ID
-func (r *Repository) GetSourceByID(ctx context.Context, id uuid.UUID) (*models.Source, error) {
-	source := &models.Source{}
-	query := `
-		SELECT id, name, index_pattern, enabled, created_at, updated_at
-		FROM sources
-		WHERE id = $1
-	`
-
-	err := r.db.GetContext(ctx, source, query, id)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, models.ErrNotFound
-		}
-		return nil, fmt.Errorf("failed to get source: %w", err)
-	}
-
-	return source, nil
-}
-
-// GetSourceByName retrieves a source by name
-func (r *Repository) GetSourceByName(ctx context.Context, name string) (*models.Source, error) {
-	source := &models.Source{}
-	query := `
-		SELECT id, name, index_pattern, enabled, created_at, updated_at
-		FROM sources
-		WHERE name = $1
-	`
-
-	err := r.db.GetContext(ctx, source, query, name)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, models.ErrNotFound
-		}
-		return nil, fmt.Errorf("failed to get source: %w", err)
-	}
-
-	return source, nil
-}
-
-// ListSources retrieves all sources
-func (r *Repository) ListSources(ctx context.Context, enabledOnly bool) ([]models.Source, error) {
-	sources := []models.Source{}
-	query := `
-		SELECT id, name, index_pattern, enabled, created_at, updated_at
-		FROM sources
-	`
-
-	if enabledOnly {
-		query += whereEnabledTrue
-	}
-
-	query += " ORDER BY name ASC"
-
-	err := r.db.SelectContext(ctx, &sources, query)
-	if err != nil {
-		return nil, fmt.Errorf("failed to list sources: %w", err)
-	}
-
-	return sources, nil
-}
-
-// UpdateSource updates a source
-//
-//nolint:dupl // Similar structure to UpdateChannel
-func (r *Repository) UpdateSource(ctx context.Context, id uuid.UUID, req *models.SourceUpdateRequest) (*models.Source, error) {
-	updates := make(map[string]any)
-
-	if req.Name != nil {
-		updates["name"] = *req.Name
-	}
-	if req.IndexPattern != nil {
-		updates["index_pattern"] = *req.IndexPattern
-	}
-	if req.Enabled != nil {
-		updates["enabled"] = *req.Enabled
-	}
-
-	query, args, err := buildUpdateQuery(
-		"sources",
-		id,
-		updates,
-		"id, name, index_pattern, enabled, created_at, updated_at",
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	source := &models.Source{}
-	err = r.db.QueryRowxContext(ctx, query, args...).StructScan(source)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, models.ErrNotFound
-		}
-		var pqErr *pq.Error
-		if errors.As(err, &pqErr) && pqErr.Code == "23505" {
-			return nil, models.ErrAlreadyExists
-		}
-		return nil, fmt.Errorf("failed to update source: %w", err)
-	}
-
-	return source, nil
-}
-
-// DeleteSource deletes a source
-func (r *Repository) DeleteSource(ctx context.Context, id uuid.UUID) error {
-	query := `DELETE FROM sources WHERE id = $1`
-	result, err := r.db.ExecContext(ctx, query, id)
-	if err != nil {
-		return fmt.Errorf("failed to delete source: %w", err)
-	}
-
-	rowsAffected, err := result.RowsAffected()
-	if err != nil {
-		return fmt.Errorf("failed to get rows affected: %w", err)
-	}
-
-	if rowsAffected == 0 {
-		return models.ErrNotFound
-	}
-
-	return nil
-}
-
-// ====================
 // Channels
 // ====================
 
-// CreateChannel creates a new channel
+// CreateChannel creates a new channel with rules
 func (r *Repository) CreateChannel(ctx context.Context, req *models.ChannelCreateRequest) (*models.Channel, error) {
+	rulesJSON := []byte("{}")
+	if req.Rules != nil {
+		var err error
+		rulesJSON, err = json.Marshal(req.Rules)
+		if err != nil {
+			return nil, fmt.Errorf("failed to marshal rules: %w", err)
+		}
+	}
+
 	channel := &models.Channel{
-		ID:          uuid.New(),
-		Name:        req.Name,
-		Description: req.Description,
-		Enabled:     true,
-		CreatedAt:   time.Now(),
-		UpdatedAt:   time.Now(),
+		ID:           uuid.New(),
+		Name:         req.Name,
+		Slug:         req.Slug,
+		RedisChannel: req.RedisChannel,
+		Description:  req.Description,
+		RulesJSON:    rulesJSON,
+		RulesVersion: 1,
+		Enabled:      true,
+		CreatedAt:    time.Now(),
+		UpdatedAt:    time.Now(),
 	}
 
 	if req.Enabled != nil {
@@ -221,14 +70,16 @@ func (r *Repository) CreateChannel(ctx context.Context, req *models.ChannelCreat
 	}
 
 	query := `
-		INSERT INTO channels (id, name, description, enabled, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6)
-		RETURNING id, name, description, enabled, created_at, updated_at
+		INSERT INTO channels (id, name, slug, redis_channel, description, rules, rules_version, enabled, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+		RETURNING id, name, slug, redis_channel, description, rules, rules_version, enabled, created_at, updated_at
 	`
 
 	err := r.db.QueryRowxContext(
 		ctx, query,
-		channel.ID, channel.Name, channel.Description, channel.Enabled, channel.CreatedAt, channel.UpdatedAt,
+		channel.ID, channel.Name, channel.Slug, channel.RedisChannel,
+		channel.Description, channel.RulesJSON, channel.RulesVersion,
+		channel.Enabled, channel.CreatedAt, channel.UpdatedAt,
 	).StructScan(channel)
 
 	if err != nil {
@@ -239,6 +90,10 @@ func (r *Repository) CreateChannel(ctx context.Context, req *models.ChannelCreat
 		return nil, fmt.Errorf("failed to create channel: %w", err)
 	}
 
+	if parseErr := channel.ParseRules(); parseErr != nil {
+		return nil, fmt.Errorf("failed to parse rules: %w", parseErr)
+	}
+
 	return channel, nil
 }
 
@@ -246,7 +101,7 @@ func (r *Repository) CreateChannel(ctx context.Context, req *models.ChannelCreat
 func (r *Repository) GetChannelByID(ctx context.Context, id uuid.UUID) (*models.Channel, error) {
 	channel := &models.Channel{}
 	query := `
-		SELECT id, name, description, enabled, created_at, updated_at
+		SELECT id, name, slug, redis_channel, description, rules, rules_version, enabled, created_at, updated_at
 		FROM channels
 		WHERE id = $1
 	`
@@ -259,24 +114,32 @@ func (r *Repository) GetChannelByID(ctx context.Context, id uuid.UUID) (*models.
 		return nil, fmt.Errorf("failed to get channel: %w", err)
 	}
 
+	if parseErr := channel.ParseRules(); parseErr != nil {
+		return nil, fmt.Errorf("failed to parse rules: %w", parseErr)
+	}
+
 	return channel, nil
 }
 
-// GetChannelByName retrieves a channel by name
-func (r *Repository) GetChannelByName(ctx context.Context, name string) (*models.Channel, error) {
+// GetChannelBySlug retrieves a channel by slug
+func (r *Repository) GetChannelBySlug(ctx context.Context, slug string) (*models.Channel, error) {
 	channel := &models.Channel{}
 	query := `
-		SELECT id, name, description, enabled, created_at, updated_at
+		SELECT id, name, slug, redis_channel, description, rules, rules_version, enabled, created_at, updated_at
 		FROM channels
-		WHERE name = $1
+		WHERE slug = $1
 	`
 
-	err := r.db.GetContext(ctx, channel, query, name)
+	err := r.db.GetContext(ctx, channel, query, slug)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, models.ErrNotFound
 		}
 		return nil, fmt.Errorf("failed to get channel: %w", err)
+	}
+
+	if parseErr := channel.ParseRules(); parseErr != nil {
+		return nil, fmt.Errorf("failed to parse rules: %w", parseErr)
 	}
 
 	return channel, nil
@@ -286,7 +149,7 @@ func (r *Repository) GetChannelByName(ctx context.Context, name string) (*models
 func (r *Repository) ListChannels(ctx context.Context, enabledOnly bool) ([]models.Channel, error) {
 	channels := []models.Channel{}
 	query := `
-		SELECT id, name, description, enabled, created_at, updated_at
+		SELECT id, name, slug, redis_channel, description, rules, rules_version, enabled, created_at, updated_at
 		FROM channels
 	`
 
@@ -301,20 +164,43 @@ func (r *Repository) ListChannels(ctx context.Context, enabledOnly bool) ([]mode
 		return nil, fmt.Errorf("failed to list channels: %w", err)
 	}
 
+	// Parse rules for each channel
+	for i := range channels {
+		if parseErr := channels[i].ParseRules(); parseErr != nil {
+			return nil, fmt.Errorf("failed to parse rules for channel %s: %w", channels[i].Slug, parseErr)
+		}
+	}
+
 	return channels, nil
 }
 
+// ListEnabledChannelsWithRules returns all enabled channels with parsed rules
+func (r *Repository) ListEnabledChannelsWithRules(ctx context.Context) ([]models.Channel, error) {
+	return r.ListChannels(ctx, true)
+}
+
 // UpdateChannel updates a channel
-//
-//nolint:dupl // Similar structure to UpdateSource
 func (r *Repository) UpdateChannel(ctx context.Context, id uuid.UUID, req *models.ChannelUpdateRequest) (*models.Channel, error) {
 	updates := make(map[string]any)
 
 	if req.Name != nil {
 		updates["name"] = *req.Name
 	}
+	if req.Slug != nil {
+		updates["slug"] = *req.Slug
+	}
+	if req.RedisChannel != nil {
+		updates["redis_channel"] = *req.RedisChannel
+	}
 	if req.Description != nil {
 		updates["description"] = *req.Description
+	}
+	if req.Rules != nil {
+		rulesJSON, err := json.Marshal(req.Rules)
+		if err != nil {
+			return nil, fmt.Errorf("failed to marshal rules: %w", err)
+		}
+		updates["rules"] = rulesJSON
 	}
 	if req.Enabled != nil {
 		updates["enabled"] = *req.Enabled
@@ -324,7 +210,7 @@ func (r *Repository) UpdateChannel(ctx context.Context, id uuid.UUID, req *model
 		"channels",
 		id,
 		updates,
-		"id, name, description, enabled, created_at, updated_at",
+		"id, name, slug, redis_channel, description, rules, rules_version, enabled, created_at, updated_at",
 	)
 	if err != nil {
 		return nil, err
@@ -341,6 +227,10 @@ func (r *Repository) UpdateChannel(ctx context.Context, id uuid.UUID, req *model
 			return nil, models.ErrAlreadyExists
 		}
 		return nil, fmt.Errorf("failed to update channel: %w", err)
+	}
+
+	if parseErr := channel.ParseRules(); parseErr != nil {
+		return nil, fmt.Errorf("failed to parse rules: %w", parseErr)
 	}
 
 	return channel, nil
