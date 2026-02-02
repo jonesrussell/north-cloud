@@ -301,7 +301,7 @@ func ToSource(row SourceRow) (*models.Source, error) {
 		Name:      row.Name,
 		URL:       row.URL,
 		Enabled:   row.Enabled,
-		RateLimit: row.RateLimit,
+		RateLimit: models.NormalizeRateLimit(row.RateLimit),
 		MaxDepth:  row.MaxDepth,
 	}
 

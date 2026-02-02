@@ -73,6 +73,7 @@ func (h *SourceHandler) Create(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body", "details": err.Error()})
 		return
 	}
+	source.RateLimit = models.NormalizeRateLimit(source.RateLimit)
 
 	if err := h.repo.Create(c.Request.Context(), &source); err != nil {
 		h.logger.Error("Failed to create source",
@@ -154,6 +155,7 @@ func (h *SourceHandler) Update(c *gin.Context) {
 	}
 
 	source.ID = id
+	source.RateLimit = models.NormalizeRateLimit(source.RateLimit)
 
 	if err := h.repo.Update(c.Request.Context(), &source); err != nil {
 		h.logger.Error("Failed to update source",
