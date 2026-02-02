@@ -1,3 +1,4 @@
+//nolint:testpackage // Testing unexported functions parseSortParams and clampLimit
 package api
 
 import (
@@ -72,7 +73,7 @@ func TestParseSortParams(t *testing.T) {
 			t.Helper()
 			w := httptest.NewRecorder()
 			c, _ := gin.CreateTestContext(w)
-			c.Request = httptest.NewRequest(http.MethodGet, "/"+tt.query, nil)
+			c.Request = httptest.NewRequest(http.MethodGet, "/"+tt.query, http.NoBody)
 
 			gotSortBy, gotSortOrder := parseSortParams(c, tt.allowedFields, tt.defaultSortBy, tt.defaultOrder)
 
