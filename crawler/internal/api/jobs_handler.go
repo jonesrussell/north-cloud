@@ -2,6 +2,7 @@ package api
 
 import (
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -14,6 +15,15 @@ const (
 	defaultLimit  = 50
 	defaultOffset = 0
 	undefinedID   = "undefined"
+
+	// Job status values (for goconst)
+	statusPending   = "pending"
+	statusScheduled = "scheduled"
+	statusRunning   = "running"
+	statusPaused    = "paused"
+	statusCompleted = "completed"
+	statusFailed    = "failed"
+	statusCancelled = "cancelled"
 )
 
 // JobsHandler handles job-related HTTP requests.
@@ -157,9 +167,9 @@ func (h *JobsHandler) CreateJob(c *gin.Context) {
 	}
 
 	// Determine initial status
-	status := "pending"
+	status := statusPending
 	if req.IntervalMinutes != nil && req.ScheduleEnabled {
-		status = "scheduled"
+		status = statusScheduled
 	}
 
 	// Create job domain object
@@ -370,7 +380,7 @@ func (h *JobsHandler) CancelJob(c *gin.Context) {
 	// we still proceed to update the database status. The scheduler
 	// might not have the job if execution already finished or if the
 	// scheduler was restarted.
-	if job.Status == "running" && h.scheduler != nil {
+	if job.Status == statusRunning && h.scheduler != nil {
 		// Attempt to cancel - ignore "job not currently running" errors
 		// since the job may have finished between status check and cancel
 		_ = h.scheduler.CancelJob(id)
@@ -423,7 +433,7 @@ func (h *JobsHandler) RetryJob(c *gin.Context) {
 	}
 
 	// Reset job for retry
-	job.Status = "pending"
+	job.Status = statusPending
 	job.CurrentRetryCount = 0
 	job.ErrorMessage = nil
 	job.CompletedAt = nil
@@ -526,4 +536,46 @@ func (h *JobsHandler) GetSchedulerMetrics(c *gin.Context) {
 	response.StaleLocksCleared = metrics.StaleLocksCleared
 
 	c.JSON(http.StatusOK, response)
+}
+
+// ForceRun handles POST /api/v2/jobs/:id/force-run (run scheduled job now).
+// Sets next_run_at to now so the V1 interval scheduler picks the job up on its next poll.
+func (h *JobsHandler) ForceRun(c *gin.Context) {
+	id := c.Param("id")
+	if id == "" || id == undefinedID {
+		respondBadRequest(c, "Invalid job ID")
+		return
+	}
+
+	job, err := h.repo.GetByID(c.Request.Context(), id)
+	if err != nil {
+		respondNotFound(c, "Job")
+		return
+	}
+
+	switch job.Status {
+	case statusRunning:
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Job is already running"})
+		return
+	case statusCompleted, statusFailed, statusCancelled:
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Job in terminal state: " + job.Status})
+		return
+	case statusScheduled, statusPaused, statusPending:
+		// allowed
+	default:
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Job status cannot run now: " + job.Status})
+		return
+	}
+
+	now := time.Now()
+	job.NextRunAt = &now
+	if updateErr := h.repo.Update(c.Request.Context(), job); updateErr != nil {
+		respondInternalError(c, "Failed to schedule job for immediate run")
+		return
+	}
+
+	c.JSON(http.StatusAccepted, gin.H{
+		"message": "Job queued for immediate execution",
+		"job_id":  job.ID,
+	})
 }

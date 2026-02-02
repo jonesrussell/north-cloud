@@ -196,3 +196,10 @@ export async function cancelJob(id: string): Promise<void> {
 export async function retryJob(id: string): Promise<void> {
   await crawlerApi.jobs.retry(id)
 }
+
+/**
+ * Run a scheduled job now (force-run)
+ */
+export async function forceRunJob(id: string): Promise<void> {
+  await crawlerApi.jobs.forceRun(id)
+}

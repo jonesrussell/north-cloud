@@ -183,6 +183,7 @@ export const crawlerApi = {
     resume: (id: string | number) => crawlerClient.post(`/jobs/${id}/resume`),
     cancel: (id: string | number) => crawlerClient.post(`/jobs/${id}/cancel`),
     retry: (id: string | number) => crawlerClient.post(`/jobs/${id}/retry`),
+    forceRun: (id: string | number) => crawlerClient.post(`/v2/jobs/${id}/force-run`),
     // Log endpoints
     logs: (id: string | number, params?: { limit?: number; offset?: number }) =>
       crawlerClient.get(`/jobs/${id}/logs`, { params }),

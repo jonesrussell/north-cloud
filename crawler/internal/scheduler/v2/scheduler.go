@@ -474,6 +474,27 @@ func (s *Scheduler) handleEventTrigger(ctx context.Context, jobID string, event 
 	return s.enqueueJob(ctx, job)
 }
 
+// ForceRun queues a job for immediate execution (run now).
+// Allowed for jobs in status scheduled, paused, or pending.
+func (s *Scheduler) ForceRun(ctx context.Context, jobID string) error {
+	job, err := s.jobRepo.GetV2Job(ctx, jobID)
+	if err != nil {
+		return fmt.Errorf("failed to get job: %w", err)
+	}
+	status := job.Status
+	switch status {
+	case "running":
+		return fmt.Errorf("%w: job is already running", ErrInvalidJobState)
+	case "completed", "failed", "cancelled":
+		return fmt.Errorf("%w: job in terminal state %q", ErrInvalidJobState, status)
+	case "scheduled", "paused", "pending":
+		// allowed
+	default:
+		return fmt.Errorf("%w: job status %q", ErrInvalidJobState, status)
+	}
+	return s.enqueueJob(ctx, job)
+}
+
 // leaderElectionLoop monitors leader election status.
 func (s *Scheduler) leaderElectionLoop(ctx context.Context) {
 	defer s.wg.Done()
