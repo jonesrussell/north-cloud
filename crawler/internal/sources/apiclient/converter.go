@@ -12,29 +12,36 @@ import (
 	"github.com/jonesrussell/north-cloud/crawler/internal/sources/types"
 )
 
+// parseRateLimitDuration parses rate_limit string ("10s", "1m" or bare number as seconds).
+// Returns default (1s) for empty; error for invalid or non-positive.
+func parseRateLimitDuration(s string) (time.Duration, error) {
+	const defaultRateLimit = time.Second
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return defaultRateLimit, nil
+	}
+	d, err := time.ParseDuration(s)
+	if err != nil {
+		if n, parseErr := strconv.Atoi(s); parseErr == nil && n > 0 {
+			return time.Duration(n) * time.Second, nil
+		}
+		return 0, fmt.Errorf("invalid rate limit: %w", err)
+	}
+	if d <= 0 {
+		return 0, fmt.Errorf("invalid rate limit: must be positive, got %s", d)
+	}
+	return d, nil
+}
+
 // ConvertAPISourceToConfig converts an APISource to a types.SourceConfig.
 func ConvertAPISourceToConfig(apiSource *APISource) (*types.SourceConfig, error) {
 	if apiSource == nil {
 		return nil, errors.New("apiSource cannot be nil")
 	}
 
-	// Parse rate limit (accepts "10s", "1m" or bare number as seconds e.g. "10")
-	rateLimit := time.Second // Default
-	if apiSource.RateLimit != "" {
-		s := strings.TrimSpace(apiSource.RateLimit)
-		d, err := time.ParseDuration(s)
-		if err != nil {
-			if n, parseErr := strconv.Atoi(s); parseErr == nil && n > 0 {
-				rateLimit = time.Duration(n) * time.Second
-			} else {
-				return nil, fmt.Errorf("invalid rate limit: %w", err)
-			}
-		} else {
-			rateLimit = d
-		}
-		if rateLimit <= 0 {
-			return nil, fmt.Errorf("invalid rate limit: must be positive, got %s", rateLimit)
-		}
+	rateLimit, err := parseRateLimitDuration(apiSource.RateLimit)
+	if err != nil {
+		return nil, err
 	}
 
 	// Parse URL to get domain
