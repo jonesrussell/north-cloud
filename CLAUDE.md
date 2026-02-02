@@ -84,6 +84,7 @@ cd SERVICE && go build -o bin/SERVICE .
 | index-manager | 8090 | Index Manager API (shares port with search in dev) |
 | search | 8092 | Search API (dev), 8090 (prod via nginx) |
 | dashboard | 3002 | Dashboard UI |
+| nc-http-proxy | 8055 | HTTP Replay Proxy |
 
 ---
 
@@ -222,6 +223,13 @@ cd SERVICE && go build -o bin/SERVICE .
   - **Configuration**: `/infrastructure/alloy/config.alloy` (HCL format)
   - **Port**: 12345 (Alloy debugging UI), 3100 (Loki), 3000 (Grafana)
   - **Docs**: `/infrastructure/alloy/README.md`, `/infrastructure/grafana/README.md`
+- **nc-http-proxy**: HTTP replay proxy for deterministic crawler testing
+  - **Port**: 8055 (configurable via `PROXY_PORT`)
+  - **Modes**: `replay` (fixtures+cache), `record` (live+cache), `live` (pass-through)
+  - **Fixtures**: Version-controlled in `crawler/fixtures/` (read-only)
+  - **Cache**: User-local at `~/.northcloud/http-cache/`
+  - **Commands**: `task proxy:up/status/mode:replay/mode:record/mode:live/list/clear`
+  - **Docs**: `/nc-http-proxy/README.md`
 
 ---
 
