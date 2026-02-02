@@ -53,6 +53,15 @@ publisher/
 - `topics[]` (optional - articles must match at least one)
 - `content_type: "article"` (excludes pages/listings)
 
+## Channel Model
+
+The publisher is **topic-driven and consumer-agnostic**. Channels define *what* content is published; the publisher does not track or limit who subscribes.
+
+- **Layer 1 (automatic topic channels)**: For each article topic, the router publishes to `articles:{topic}` (e.g. `articles:technology`, `articles:politics`, `articles:violent_crime`). These channels always exist; no DB record or configuration required. Any number of consumers may subscribe.
+- **Layer 2 (custom channels)**: Optional DB-backed channels with rules (include/exclude topics, min quality, content types). Used for aggregations (e.g. one channel for all crime sub-categories). Stored in the `channels` table. Same rule: one channel can serve unlimited consumers.
+
+Name and describe channels by **content** (e.g. "Crime Feed", "Technology Feed"), not by consumer (e.g. avoid "StreetCode Crime Feed").
+
 ## Redis Pub/Sub
 
 **Channel Pattern**: `articles:{topic}`
