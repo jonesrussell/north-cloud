@@ -36,6 +36,11 @@ import { useServerPaginatedTable } from '@/composables/useServerPaginatedTable'
 import { useJobsUIStore } from '../stores/useJobsUIStore'
 import { fetchJobs } from '../api/jobs'
 import {
+  useJobQuery,
+  useJobExecutionsQuery,
+  useJobStatsQuery,
+} from './useJobsQuery'
+import {
   useCreateJobMutation,
   useUpdateJobMutation,
   useDeleteJobMutation,
@@ -277,5 +282,65 @@ export function useJobs() {
 // Job Detail Composable
 // ============================================================================
 
-// Re-export useJobDetail from useJobsQuery (unchanged)
-export { useJobDetail } from './useJobsQuery'
+/**
+ * Composable for job detail view
+ * Combines job data, executions, stats, and mutations for a single job
+ */
+export function useJobDetail(jobId: string) {
+  const uiStore = useJobsUIStore()
+
+  const jobQuery = useJobQuery(jobId)
+  const executionsQuery = useJobExecutionsQuery(jobId, { limit: 50, offset: 0 })
+  const statsQuery = useJobStatsQuery(jobId)
+
+  const pauseMutation = usePauseJobMutation()
+  const resumeMutation = useResumeJobMutation()
+  const cancelMutation = useCancelJobMutation()
+  const retryMutation = useRetryJobMutation()
+  const deleteMutation = useDeleteJobMutation()
+
+  return {
+    // Data
+    job: jobQuery.data,
+    executions: computed(() => executionsQuery.data.value?.executions || []),
+    totalExecutions: computed(() => executionsQuery.data.value?.total || 0),
+    stats: statsQuery.data,
+
+    // Loading states
+    isLoadingJob: jobQuery.isLoading,
+    isLoadingExecutions: executionsQuery.isLoading,
+    isLoadingStats: statsQuery.isLoading,
+
+    // Errors
+    jobError: jobQuery.error,
+    executionsError: executionsQuery.error,
+    statsError: statsQuery.error,
+
+    // Actions
+    pauseJob: () => pauseMutation.mutateAsync(jobId),
+    resumeJob: () => resumeMutation.mutateAsync(jobId),
+    cancelJob: () => cancelMutation.mutateAsync(jobId),
+    retryJob: () => retryMutation.mutateAsync(jobId),
+    deleteJob: () => deleteMutation.mutateAsync(jobId),
+
+    // Mutation states
+    isPausing: computed(() => pauseMutation.isPending.value),
+    isResuming: computed(() => resumeMutation.isPending.value),
+    isCancelling: computed(() => cancelMutation.isPending.value),
+    isRetrying: computed(() => retryMutation.isPending.value),
+    isDeleting: computed(() => deleteMutation.isPending.value),
+
+    // UI
+    ui: uiStore,
+
+    // Refetch functions
+    refetchJob: () => jobQuery.refetch(),
+    refetchExecutions: () => executionsQuery.refetch(),
+    refetchStats: () => statsQuery.refetch(),
+
+    // Raw queries
+    jobQuery,
+    executionsQuery,
+    statsQuery,
+  }
+}
