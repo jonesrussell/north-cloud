@@ -11,17 +11,19 @@ import (
 )
 
 const (
-	defaultCheckInterval = 5 * time.Minute
+	defaultPollInterval      = 30 * time.Second
+	defaultDiscoveryInterval = 5 * time.Minute
 )
 
 // ServiceConfig holds all configuration for the router service
 type ServiceConfig struct {
-	Database      database.Config
-	ESURL         string
-	RedisAddr     string
-	RedisPassword string
-	CheckInterval time.Duration
-	BatchSize     int
+	Database          database.Config
+	ESURL             string
+	RedisAddr         string
+	RedisPassword     string
+	PollInterval      time.Duration
+	DiscoveryInterval time.Duration
+	BatchSize         int
 }
 
 // LoadConfig loads configuration from config file with env var overrides
@@ -36,7 +38,7 @@ func LoadConfig() ServiceConfig {
 		cfg = &config.Config{}
 		// Apply defaults manually
 		if cfg.Service.CheckInterval == 0 {
-			cfg.Service.CheckInterval = defaultCheckInterval
+			cfg.Service.CheckInterval = defaultPollInterval
 		}
 		if cfg.Service.BatchSize == 0 {
 			cfg.Service.BatchSize = 100
@@ -45,6 +47,12 @@ func LoadConfig() ServiceConfig {
 			fmt.Fprintf(os.Stderr, "Invalid default configuration: %v\n", validateErr)
 			os.Exit(1)
 		}
+	}
+
+	// Map CheckInterval to PollInterval for Routing V2
+	pollInterval := cfg.Service.CheckInterval
+	if pollInterval == 0 {
+		pollInterval = defaultPollInterval
 	}
 
 	// Convert main config to ServiceConfig
@@ -57,10 +65,11 @@ func LoadConfig() ServiceConfig {
 			DBName:   cfg.Database.DBName,
 			SSLMode:  cfg.Database.SSLMode,
 		},
-		ESURL:         cfg.Elasticsearch.URL,
-		RedisAddr:     cfg.Redis.URL,
-		RedisPassword: cfg.Redis.Password,
-		CheckInterval: cfg.Service.CheckInterval,
-		BatchSize:     cfg.Service.BatchSize,
+		ESURL:             cfg.Elasticsearch.URL,
+		RedisAddr:         cfg.Redis.URL,
+		RedisPassword:     cfg.Redis.Password,
+		PollInterval:      pollInterval,
+		DiscoveryInterval: defaultDiscoveryInterval,
+		BatchSize:         cfg.Service.BatchSize,
 	}
 }

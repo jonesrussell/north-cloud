@@ -20,6 +20,8 @@ func runAPIServer() {
 
 // runAPIServerWithStop starts the API server and returns a stop function
 // This allows the server to run concurrently with other services
+//
+//nolint:funlen // Function length is acceptable for server initialization
 func runAPIServerWithStop() (func(), error) {
 	// Initialize logger early (before config loading to use structured logging)
 	infraLog, logErr := infralogger.New(infralogger.Config{
@@ -40,20 +42,22 @@ func runAPIServerWithStop() (func(), error) {
 	configPath := infraconfig.GetConfigPath("config.yml")
 	cfg, err := config.Load(configPath)
 	if err != nil {
-		// Config file is optional - create default config if file doesn't exist
-		infraLog.Warn("Failed to load config file, using defaults",
+		// Config file is optional - try loading from environment variables only
+		infraLog.Warn("Failed to load config file, trying environment variables",
 			infralogger.String("config_path", configPath),
 			infralogger.Error(err),
 		)
 		cfg = &config.Config{}
-		// Apply defaults manually
-		if cfg.Server.Address == "" {
-			cfg.Server.Address = config.DefaultServerAddress
+		// Apply environment variables to the config
+		if envErr := infraconfig.ApplyEnvOverrides(cfg); envErr != nil {
+			infraLog.Error("Failed to apply environment overrides", infralogger.Error(envErr))
 		}
+		// Apply defaults for any missing values
+		config.SetDefaults(cfg)
 		if validateErr := cfg.Validate(); validateErr != nil {
-			infraLog.Error("Invalid default configuration", infralogger.Error(validateErr))
+			infraLog.Error("Invalid configuration from environment", infralogger.Error(validateErr))
 			_ = infraLog.Sync()
-			return nil, fmt.Errorf("invalid default configuration: %w", validateErr)
+			return nil, fmt.Errorf("invalid configuration from environment: %w", validateErr)
 		}
 	}
 
@@ -96,8 +100,11 @@ func runAPIServerWithStop() (func(), error) {
 		}
 	}
 
+	// Initialize Elasticsearch client (optional - for indexes endpoint)
+	var esClient = initElasticsearchClientOptional(cfg.Elasticsearch.URL, infraLog)
+
 	// Setup router and create server using infrastructure gin
-	router := api.NewRouter(repo, redisClient, cfg)
+	router := api.NewRouter(repo, redisClient, esClient, cfg)
 	server := router.NewServer(infraLog)
 
 	// Start server in goroutine
@@ -153,18 +160,20 @@ func runAPIServerInternal() int {
 	configPath := infraconfig.GetConfigPath("config.yml")
 	cfg, err := config.Load(configPath)
 	if err != nil {
-		// Config file is optional - create default config if file doesn't exist
-		infraLog.Warn("Failed to load config file, using defaults",
+		// Config file is optional - try loading from environment variables only
+		infraLog.Warn("Failed to load config file, trying environment variables",
 			infralogger.String("config_path", configPath),
 			infralogger.Error(err),
 		)
 		cfg = &config.Config{}
-		// Apply defaults manually
-		if cfg.Server.Address == "" {
-			cfg.Server.Address = config.DefaultServerAddress
+		// Apply environment variables to the config
+		if envErr := infraconfig.ApplyEnvOverrides(cfg); envErr != nil {
+			infraLog.Error("Failed to apply environment overrides", infralogger.Error(envErr))
 		}
+		// Apply defaults for any missing values
+		config.SetDefaults(cfg)
 		if validateErr := cfg.Validate(); validateErr != nil {
-			infraLog.Fatal("Invalid default configuration", infralogger.Error(validateErr))
+			infraLog.Fatal("Invalid configuration from environment", infralogger.Error(validateErr))
 		}
 	}
 
@@ -206,8 +215,11 @@ func runAPIServerInternal() int {
 		}
 	}
 
+	// Initialize Elasticsearch client (optional - for indexes endpoint)
+	var esClient = initElasticsearchClientOptional(cfg.Elasticsearch.URL, infraLog)
+
 	// Setup router and create server using infrastructure gin
-	router := api.NewRouter(repo, redisClient, cfg)
+	router := api.NewRouter(repo, redisClient, esClient, cfg)
 	server := router.NewServer(infraLog)
 
 	// Run server with graceful shutdown

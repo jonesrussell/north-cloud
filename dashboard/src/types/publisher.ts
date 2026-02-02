@@ -1,156 +1,166 @@
-// Publisher API Types
+// Publisher API Types - Routing V2
 
-export interface Source {
-  id: number
-  name: string
-  index_pattern: string
-  enabled: boolean
-  created_at: string
-  updated_at?: string
+// ============================================================================
+// Channel Rules (JSONB stored in channels table)
+// ============================================================================
+
+export interface ChannelRules {
+  include_topics?: string[]
+  exclude_topics?: string[]
+  min_quality_score?: number
+  content_types?: string[]
 }
+
+// ============================================================================
+// Channel (Layer 2 - Custom channels with rules)
+// ============================================================================
 
 export interface Channel {
-  id: number
+  id: string // UUID
   name: string
+  slug: string
+  redis_channel: string
   description?: string
+  rules: ChannelRules
+  rules_version: number
   enabled: boolean
   created_at: string
   updated_at?: string
 }
 
-export interface Route {
-  id: number
-  source_id: number
-  channel_id: number
-  source_name: string
-  source_index_pattern: string
-  channel_name: string
-  min_quality_score: number
-  topics: string[] | null
-  enabled: boolean
-  created_at: string
-  updated_at?: string
+export interface CreateChannelRequest {
+  name: string
+  slug: string
+  redis_channel: string
+  description?: string
+  rules?: ChannelRules
+  enabled?: boolean
 }
+
+export interface UpdateChannelRequest {
+  name?: string
+  slug?: string
+  redis_channel?: string
+  description?: string
+  rules?: ChannelRules
+  enabled?: boolean
+}
+
+export interface ChannelsListResponse {
+  channels: Channel[]
+  count: number
+}
+
+export interface ChannelPreviewResponse {
+  channel: Channel
+  rules_summary: {
+    include_topics: string[] | null
+    exclude_topics: string[] | null
+    min_quality: number
+    content_types: string[] | null
+    rules_is_empty: boolean
+    rules_version: number
+  }
+  matching_count: number
+  sample_articles: PreviewArticle[]
+  note: string
+}
+
+// ============================================================================
+// Topics (Layer 1 - Automatic topic-based channels)
+// ============================================================================
+
+export interface TopicInfo {
+  name: string
+  layer1_channel: string
+}
+
+export interface TopicsResponse {
+  topics: TopicInfo[]
+  count: number
+  note: string
+}
+
+// ============================================================================
+// Indexes (Discovered Elasticsearch indexes)
+// ============================================================================
+
+export interface IndexInfo {
+  name: string
+  source: string
+  health?: string
+  status?: string
+  docs_count?: string
+}
+
+export interface IndexesResponse {
+  indexes: IndexInfo[]
+  count: number
+  note: string
+}
+
+// ============================================================================
+// Publish History
+// ============================================================================
 
 export interface PublishHistoryItem {
-  id: number
+  id: string
+  channel_id?: string // Layer 2 channel ID if applicable
   article_id: string
   article_title: string
   article_url: string
   channel_name: string
-  source_name?: string
   quality_score: number
   topics: string[] | null
   published_at: string
 }
 
-export interface StatsOverview {
-  total_articles: number
-  channel_count: number
-  by_channel: Record<string, number>
-}
-
-export interface StatsChannels {
-  [channelName: string]: number
-}
-
-export interface StatsRoutes {
-  [routeId: string]: {
-    source_name: string
-    channel_name: string
-    article_count: number
-  }
-}
-
-// API Request Types
-export interface CreateSourceRequest {
-  name: string
-  index_pattern: string
-  enabled: boolean
-}
-
-export interface UpdateSourceRequest {
-  name?: string
-  index_pattern?: string
-  enabled?: boolean
-}
-
-export interface CreateChannelRequest {
-  name: string
-  description?: string
-  enabled: boolean
-}
-
-export interface UpdateChannelRequest {
-  name?: string
-  description?: string
-  enabled?: boolean
-}
-
-export interface CreateRouteRequest {
-  source_id: number
-  channel_id: number
-  min_quality_score: number
-  topics: string[] | null
-  enabled: boolean
-}
-
-export interface UpdateRouteRequest {
-  source_id?: number
-  channel_id?: number
-  min_quality_score?: number
-  topics?: string[] | null
-  enabled?: boolean
-}
-
-// API Response Types
-export interface SourcesListResponse {
-  sources: Source[]
-  count?: number
-}
-
-export interface ChannelsListResponse {
-  channels: Channel[]
-  count?: number
-}
-
-export interface RoutesListResponse {
-  routes: Route[]
-  count?: number
-}
-
 export interface PublishHistoryListResponse {
   history: PublishHistoryItem[]
-  count?: number
-  total?: number
+  count: number
   limit?: number
   offset?: number
 }
 
-export interface StatsOverviewResponse {
+// ============================================================================
+// Stats
+// ============================================================================
+
+export interface StatsOverview {
+  period: string
   total_articles: number
   channel_count: number
   by_channel: Record<string, number>
+  generated_at: string
 }
+
+export interface StatsOverviewResponse extends StatsOverview {}
 
 export type StatsPeriod = 'today' | 'week' | 'month' | 'all'
 
-export interface HealthStatus {
-  status: 'healthy' | 'degraded' | 'unhealthy'
-  service: string
-  version: string
-  redis?: {
-    connected: boolean
-    error?: string
-  }
-  database?: {
-    connected: boolean
-  }
+export interface ChannelStats {
+  channel_id: string
+  name: string
+  slug: string
+  redis_channel: string
+  description?: string
+  rules: ChannelRules
+  article_count: number
+}
+
+export interface ChannelStatsResponse {
+  channels: ChannelStats[]
+  since: string
+  count: number
 }
 
 export interface ActiveChannel {
+  id: string
   name: string
+  slug: string
+  redis_channel: string
   description?: string
+  rules: ChannelRules
   enabled: boolean
   has_published: boolean
   total_published: number
@@ -163,7 +173,10 @@ export interface ActiveChannelsResponse {
   note: string
 }
 
-// Article types for recent articles view
+// ============================================================================
+// Articles
+// ============================================================================
+
 export interface RecentArticle {
   id: string | number
   title: string
@@ -185,7 +198,6 @@ export interface RecentArticlesResponse {
   count: number
 }
 
-// Article types for preview and testing
 export interface PreviewArticle {
   title: string
   quality_score: number
@@ -193,15 +205,21 @@ export interface PreviewArticle {
   published_date: string
   url?: string
   source?: string
-  route_id?: string
 }
 
-export interface TestCrawlArticle {
-  title?: string
-  body?: string
-  url?: string
-  published_date?: string
-  author?: string
-  quality_score?: number
-}
+// ============================================================================
+// Health
+// ============================================================================
 
+export interface HealthStatus {
+  status: 'healthy' | 'degraded' | 'unhealthy'
+  service: string
+  version: string
+  redis?: {
+    connected: boolean
+    error?: string
+  }
+  database?: {
+    connected: boolean
+  }
+}

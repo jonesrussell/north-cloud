@@ -24,7 +24,6 @@ import IndexDetailView from '../views/intelligence/IndexDetailView.vue'
 import DocumentDetailView from '../views/intelligence/DocumentDetailView.vue'
 
 // Distribution Engine views (formerly Publisher)
-import RoutesView from '../views/distribution/RoutesView.vue'
 import ChannelsView from '../views/distribution/ChannelsView.vue'
 import ArticlesView from '../views/distribution/ArticlesView.vue'
 
@@ -162,21 +161,8 @@ const routes: RouteRecordRaw[] = [
   },
 
   // ==========================================
-  // Distribution Engine (formerly Publisher)
+  // Distribution Engine (Routing V2)
   // ==========================================
-  {
-    path: '/distribution/routes',
-    name: 'distribution-routes',
-    component: RoutesView,
-    meta: { title: 'Routes', section: 'distribution', requiresAuth: true },
-  },
-  {
-    path: '/distribution/routes/new',
-    name: 'distribution-routes-new',
-    component: RoutesView,
-    props: { showCreateModal: true },
-    meta: { title: 'New Route', section: 'distribution', requiresAuth: true },
-  },
   {
     path: '/distribution/channels',
     name: 'distribution-channels',
@@ -244,11 +230,12 @@ const routes: RouteRecordRaw[] = [
   { path: '/classifier/rules', redirect: '/intake/rules' },
   { path: '/classifier/sources', redirect: '/scheduling/reputation' },
   { path: '/classifier/stats', redirect: '/intelligence/stats' },
-  { path: '/publisher', redirect: '/distribution/routes' },
-  { path: '/publisher/sources', redirect: '/distribution/routes' },
+  { path: '/publisher', redirect: '/distribution/channels' },
+  { path: '/publisher/sources', redirect: '/distribution/channels' },
   { path: '/publisher/channels', redirect: '/distribution/channels' },
-  { path: '/publisher/routes', redirect: '/distribution/routes' },
+  { path: '/publisher/routes', redirect: '/distribution/channels' },
   { path: '/publisher/articles', redirect: '/distribution/articles' },
+  { path: '/distribution/routes', redirect: '/distribution/channels' },
   { path: '/publisher/stats', redirect: '/intelligence/stats' },
   { path: '/analytics', redirect: '/intelligence/stats' },
 

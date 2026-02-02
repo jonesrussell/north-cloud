@@ -11,17 +11,19 @@ import (
 )
 
 const (
-	defaultCheckInterval = 5 * time.Minute
+	defaultPollInterval      = 30 * time.Second
+	defaultDiscoveryInterval = 5 * time.Minute
 )
 
 // RouterConfig holds configuration for the router service
 type RouterConfig struct {
-	Database      database.Config
-	ESURL         string
-	RedisAddr     string
-	RedisPassword string
-	CheckInterval time.Duration
-	BatchSize     int
+	Database          database.Config
+	ESURL             string
+	RedisAddr         string
+	RedisPassword     string
+	PollInterval      time.Duration
+	DiscoveryInterval time.Duration
+	BatchSize         int
 }
 
 // LoadRouterConfig loads configuration from config file with env var overrides
@@ -30,21 +32,26 @@ func LoadRouterConfig() RouterConfig {
 	configPath := infraconfig.GetConfigPath("config.yml")
 	cfg, err := config.Load(configPath)
 	if err != nil {
-		// Config file is optional - create default config if file doesn't exist
+		// Config file is optional - try loading from environment variables only
 		// Use fmt for config loading errors since logger isn't initialized yet
-		fmt.Printf("Warning: Failed to load config file (%s), using defaults: %v\n", configPath, err)
+		fmt.Printf("Warning: Failed to load config file (%s), trying environment variables: %v\n", configPath, err)
 		cfg = &config.Config{}
-		// Apply defaults manually
-		if cfg.Service.CheckInterval == 0 {
-			cfg.Service.CheckInterval = defaultCheckInterval
+		// Apply environment variables to the config
+		if envErr := infraconfig.ApplyEnvOverrides(cfg); envErr != nil {
+			fmt.Fprintf(os.Stderr, "Failed to apply environment overrides: %v\n", envErr)
 		}
-		if cfg.Service.BatchSize == 0 {
-			cfg.Service.BatchSize = 100
-		}
+		// Apply defaults for any missing values
+		config.SetDefaults(cfg)
 		if validateErr := cfg.Validate(); validateErr != nil {
-			fmt.Fprintf(os.Stderr, "Invalid default configuration: %v\n", validateErr)
+			fmt.Fprintf(os.Stderr, "Invalid configuration from environment: %v\n", validateErr)
 			os.Exit(1)
 		}
+	}
+
+	// Map CheckInterval to PollInterval for Routing V2
+	pollInterval := cfg.Service.CheckInterval
+	if pollInterval == 0 {
+		pollInterval = defaultPollInterval
 	}
 
 	// Convert main config to RouterConfig
@@ -57,10 +64,11 @@ func LoadRouterConfig() RouterConfig {
 			DBName:   cfg.Database.DBName,
 			SSLMode:  cfg.Database.SSLMode,
 		},
-		ESURL:         cfg.Elasticsearch.URL,
-		RedisAddr:     cfg.Redis.URL,
-		RedisPassword: cfg.Redis.Password,
-		CheckInterval: cfg.Service.CheckInterval,
-		BatchSize:     cfg.Service.BatchSize,
+		ESURL:             cfg.Elasticsearch.URL,
+		RedisAddr:         cfg.Redis.URL,
+		RedisPassword:     cfg.Redis.Password,
+		PollInterval:      pollInterval,
+		DiscoveryInterval: defaultDiscoveryInterval,
+		BatchSize:         cfg.Service.BatchSize,
 	}
 }

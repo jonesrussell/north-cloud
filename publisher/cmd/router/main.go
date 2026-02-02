@@ -9,13 +9,13 @@ import (
 	"time"
 
 	"github.com/jonesrussell/north-cloud/publisher/internal/database"
+	"github.com/jonesrussell/north-cloud/publisher/internal/discovery"
 	"github.com/jonesrussell/north-cloud/publisher/internal/router"
 	infralogger "github.com/north-cloud/infrastructure/logger"
 	"github.com/north-cloud/infrastructure/profiling"
 )
 
 const (
-	defaultBatchSize     = 100
 	shutdownTimeout      = 30 * time.Second
 	gracefulShutdownWait = 5 * time.Second
 )
@@ -64,12 +64,16 @@ func main() {
 	redisClient := initRedisClient(cfg.RedisAddr, cfg.RedisPassword)
 	defer redisClient.Close()
 
+	// Initialize discovery service
+	discoveryService := discovery.NewService(esClient, appLogger)
+
 	// Initialize router service
 	routerConfig := router.Config{
-		CheckInterval: cfg.CheckInterval,
-		BatchSize:     cfg.BatchSize,
+		PollInterval:      cfg.PollInterval,
+		DiscoveryInterval: cfg.DiscoveryInterval,
+		BatchSize:         cfg.BatchSize,
 	}
-	routerService := router.NewService(repo, esClient, redisClient, routerConfig, appLogger)
+	routerService := router.NewService(repo, discoveryService, esClient, redisClient, routerConfig, appLogger)
 
 	// Setup graceful shutdown
 	serviceCtx, cancel := context.WithCancel(context.Background())
@@ -89,7 +93,8 @@ func main() {
 	}()
 
 	appLogger.Info("Router service started",
-		infralogger.Duration("check_interval", cfg.CheckInterval),
+		infralogger.Duration("poll_interval", cfg.PollInterval),
+		infralogger.Duration("discovery_interval", cfg.DiscoveryInterval),
 		infralogger.Int("batch_size", cfg.BatchSize),
 	)
 

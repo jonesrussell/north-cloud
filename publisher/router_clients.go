@@ -38,6 +38,31 @@ func initElasticsearchClient(esURL string) *elasticsearch.Client {
 	return esClient
 }
 
+// initElasticsearchClientOptional initializes the Elasticsearch client without failing on error
+// This is used by the API server where ES is optional (only needed for indexes endpoint)
+func initElasticsearchClientOptional(esURL string, appLogger logger.Logger) *elasticsearch.Client {
+	if esURL == "" {
+		appLogger.Warn("Elasticsearch URL not configured, indexes endpoint will be unavailable")
+		return nil
+	}
+
+	ctx := context.Background()
+	cfg := esclient.Config{
+		URL: esURL,
+	}
+
+	esClient, err := esclient.NewClient(ctx, cfg, appLogger)
+	if err != nil {
+		appLogger.Warn("Failed to create Elasticsearch client, indexes endpoint will be unavailable",
+			logger.Error(err),
+		)
+		return nil
+	}
+
+	appLogger.Info("Elasticsearch connection established")
+	return esClient
+}
+
 // initRedisClient initializes and tests the Redis client
 func initRedisClient(addr, password string) *redis.Client {
 	redisClient := redis.NewClient(&redis.Options{
