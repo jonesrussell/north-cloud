@@ -1,0 +1,33 @@
+version: '3'
+
+tasks:
+  build:
+    desc: Build the proxy binary
+    cmds:
+      - go build -o bin/nc-http-proxy .
+
+  test:
+    desc: Run tests
+    cmds:
+      - go test -v ./...
+
+  test:cover:
+    desc: Run tests with coverage
+    cmds:
+      - go test -coverprofile=coverage.out ./...
+      - go tool cover -html=coverage.out -o coverage.html
+
+  test:coverage:
+    desc: Run tests with coverage (alias)
+    cmds:
+      - task: test:cover
+
+  lint:
+    desc: Run linter
+    cmds:
+      - golangci-lint run
+
+  run:
+    desc: Run the proxy locally
+    cmds:
+      - go run .

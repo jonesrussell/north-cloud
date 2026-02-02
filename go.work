@@ -7,6 +7,7 @@ use (
 	./index-manager
 	./infrastructure
 	./mcp-north-cloud
+	./nc-http-proxy
 	./publisher
 	./search
 	./source-manager

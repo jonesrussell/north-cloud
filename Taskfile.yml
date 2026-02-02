@@ -1067,3 +1067,90 @@ tasks:
     desc: "List available database backups"
     cmds:
       - ./scripts/db-list.sh {{.CLI_ARGS}}
+
+  # ============================================================
+  # HTTP Replay Proxy Commands
+  # ============================================================
+
+  # ------------------------------------------------------------
+  # Proxy Docker Lifecycle
+  # ------------------------------------------------------------
+  proxy:up:
+    desc: "Start HTTP replay proxy (default: replay mode)"
+    cmds:
+      - docker compose -f docker-compose.base.yml -f docker-compose.dev.yml up -d nc-http-proxy
+
+  proxy:down:
+    desc: "Stop HTTP replay proxy"
+    cmds:
+      - docker compose -f docker-compose.base.yml -f docker-compose.dev.yml stop nc-http-proxy
+
+  proxy:logs:
+    desc: "View HTTP replay proxy logs"
+    cmds:
+      - docker compose -f docker-compose.base.yml -f docker-compose.dev.yml logs -f {{.CLI_ARGS}} nc-http-proxy
+
+  proxy:build:
+    desc: "Build HTTP replay proxy image"
+    cmds:
+      - docker compose -f docker-compose.base.yml -f docker-compose.dev.yml build nc-http-proxy
+
+  proxy:restart:
+    desc: "Restart HTTP replay proxy"
+    cmds:
+      - task: proxy:down
+      - task: proxy:up
+
+  # ------------------------------------------------------------
+  # Proxy Operational Commands
+  # ------------------------------------------------------------
+  proxy:status:
+    desc: "Get HTTP proxy status (mode, cache stats)"
+    cmds:
+      - curl -s http://localhost:${PROXY_PORT:-8055}/admin/status | jq .
+
+  proxy:mode:replay:
+    desc: "Switch proxy to replay mode (fixtures + cache only)"
+    cmds:
+      - curl -s -X POST http://localhost:${PROXY_PORT:-8055}/admin/mode/replay | jq .
+
+  proxy:mode:record:
+    desc: "Switch proxy to record mode (live requests, cache responses)"
+    cmds:
+      - curl -s -X POST http://localhost:${PROXY_PORT:-8055}/admin/mode/record | jq .
+
+  proxy:mode:live:
+    desc: "Switch proxy to live mode (pass-through, no caching)"
+    cmds:
+      - curl -s -X POST http://localhost:${PROXY_PORT:-8055}/admin/mode/live | jq .
+
+  proxy:list:
+    desc: "List cached domains"
+    cmds:
+      - curl -s http://localhost:${PROXY_PORT:-8055}/admin/cache | jq .
+
+  proxy:clear:
+    desc: "Clear proxy cache (keeps fixtures)"
+    cmds:
+      - curl -s -X DELETE http://localhost:${PROXY_PORT:-8055}/admin/cache | jq .
+
+  # ------------------------------------------------------------
+  # Proxy Test/Lint (delegates to nc-http-proxy/Taskfile.yml)
+  # ------------------------------------------------------------
+  lint:nc-http-proxy:
+    desc: "Run linter for nc-http-proxy"
+    dir: nc-http-proxy
+    cmds:
+      - task lint
+
+  test:nc-http-proxy:
+    desc: "Run tests for nc-http-proxy"
+    dir: nc-http-proxy
+    cmds:
+      - task test
+
+  test:cover:nc-http-proxy:
+    desc: "Run tests with coverage for nc-http-proxy"
+    dir: nc-http-proxy
+    cmds:
+      - task test:coverage

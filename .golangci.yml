@@ -305,6 +305,9 @@ linters:
           - forbidigo
         path: infrastructure/config/.*\.go
       - linters:
+          - forbidigo
+        path: nc-http-proxy/.*\.go
+      - linters:
           - testpackage
         path: internal/(config|logger)/.*_test\.go
       - linters:
