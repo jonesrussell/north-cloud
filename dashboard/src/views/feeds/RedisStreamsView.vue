@@ -9,10 +9,12 @@ import type { ActiveChannel } from '@/types/publisher'
 
 interface StreamStats {
   name: string
+  redis_channel: string
   messages_count: number
   last_activity: string | null
   status: 'active' | 'idle' | 'never'
   enabled: boolean
+  layer?: 'layer1' | 'layer2'
 }
 
 const loading = ref(true)
@@ -28,10 +30,12 @@ const loadStreams = async () => {
     
     streams.value = channels.map((ch) => ({
       name: ch.name,
-      messages_count: ch.total_published || 0,
-      last_activity: ch.last_published_at || null,
+      redis_channel: ch.redis_channel,
+      messages_count: ch.total_published ?? 0,
+      last_activity: ch.last_published_at ?? null,
       status: ch.has_published ? 'active' : (ch.enabled ? 'idle' : 'never'),
-      enabled: ch.enabled,
+      enabled: ch.enabled ?? true,
+      layer: ch.layer,
     }))
   } catch (err) {
     error.value = 'Failed to load channel data'
@@ -123,16 +127,25 @@ onMounted(loadStreams)
     >
       <Card
         v-for="stream in streams"
-        :key="stream.name"
+        :key="stream.redis_channel"
       >
         <CardHeader class="pb-2">
-          <div class="flex items-center justify-between">
-            <CardTitle class="text-base font-mono">
+          <div class="flex items-center justify-between gap-2">
+            <CardTitle class="text-base font-mono truncate">
               {{ stream.name }}
             </CardTitle>
-            <Badge :variant="getStatusVariant(stream.status)">
-              {{ getStatusLabel(stream.status, stream.enabled) }}
-            </Badge>
+            <div class="flex items-center gap-1 shrink-0">
+              <Badge
+                v-if="stream.layer"
+                variant="outline"
+                class="text-xs"
+              >
+                {{ stream.layer === 'layer1' ? 'Topic' : 'Custom' }}
+              </Badge>
+              <Badge :variant="getStatusVariant(stream.status)">
+                {{ getStatusLabel(stream.status, stream.enabled) }}
+              </Badge>
+            </div>
           </div>
         </CardHeader>
         <CardContent>

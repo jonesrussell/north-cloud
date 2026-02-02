@@ -155,16 +155,17 @@ export interface ChannelStatsResponse {
 }
 
 export interface ActiveChannel {
-  id: string
+  id?: string
   name: string
-  slug: string
+  slug?: string
   redis_channel: string
   description?: string
-  rules: ChannelRules
+  rules?: ChannelRules
   enabled: boolean
   has_published: boolean
   total_published: number
   last_published_at?: string
+  layer?: 'layer1' | 'layer2'
 }
 
 export interface ActiveChannelsResponse {

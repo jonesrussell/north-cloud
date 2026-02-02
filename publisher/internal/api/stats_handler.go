@@ -127,7 +127,7 @@ func (r *Router) getChannelStats(c *gin.Context) {
 	})
 }
 
-// getActiveChannels returns custom channels (Layer 2) with their publish activity
+// getActiveChannels returns Layer 2 custom channels and Layer 1 topic channels with publish activity
 // GET /api/v1/stats/channels/active
 func (r *Router) getActiveChannels(c *gin.Context) {
 	ctx := c.Request.Context()
@@ -141,7 +141,7 @@ func (r *Router) getActiveChannels(c *gin.Context) {
 		return
 	}
 
-	// Get channel stats (publish counts and last published dates)
+	// Get channel stats (publish counts and last published dates for all channel_name in publish_history)
 	channelStats, statsErr := r.repo.GetChannelStats(ctx)
 	if statsErr != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
@@ -150,10 +150,15 @@ func (r *Router) getActiveChannels(c *gin.Context) {
 		return
 	}
 
-	// Build response
-	activeChannels := make([]gin.H, 0, len(channels))
+	// Set of Layer 2 redis_channel values so we can exclude them when adding Layer 1 entries
+	layer2RedisChannels := make(map[string]bool, len(channels))
 	for i := range channels {
-		// Look up stats by redis_channel name
+		layer2RedisChannels[channels[i].RedisChannel] = true
+	}
+
+	// Build response: Layer 2 channels first
+	activeChannels := make([]gin.H, 0, len(channels)+len(channelStats))
+	for i := range channels {
 		stats, hasStats := channelStats[channels[i].RedisChannel]
 
 		channelInfo := gin.H{
@@ -165,6 +170,7 @@ func (r *Router) getActiveChannels(c *gin.Context) {
 			"rules":         channels[i].Rules,
 			"enabled":       channels[i].Enabled,
 			"has_published": hasStats,
+			"layer":         "layer2",
 		}
 
 		if hasStats {
@@ -179,10 +185,29 @@ func (r *Router) getActiveChannels(c *gin.Context) {
 		activeChannels = append(activeChannels, channelInfo)
 	}
 
+	// Append Layer 1 channels (channel names in publish_history that are not Layer 2 redis_channel)
+	for channelName, stats := range channelStats {
+		if layer2RedisChannels[channelName] {
+			continue
+		}
+		layer1Entry := gin.H{
+			"name":            channelName,
+			"redis_channel":   channelName,
+			"total_published": stats.TotalPublished,
+			"has_published":   true,
+			"enabled":         true,
+			"layer":           "layer1",
+		}
+		if stats.LastPublished != nil {
+			layer1Entry["last_published_at"] = stats.LastPublished.Format(time.RFC3339)
+		}
+		activeChannels = append(activeChannels, layer1Entry)
+	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"channels": activeChannels,
 		"count":    len(activeChannels),
-		"note":     "Layer 2 custom channels. Layer 1 automatic topic channels (articles:{topic}) are not tracked here.",
+		"note":     "Layer 1 (topic) and Layer 2 (custom) channels with publish activity from publish_history.",
 	})
 }
 
