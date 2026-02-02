@@ -20,6 +20,8 @@ func runAPIServer() {
 
 // runAPIServerWithStop starts the API server and returns a stop function
 // This allows the server to run concurrently with other services
+//
+//nolint:funlen // Function length is acceptable for server initialization
 func runAPIServerWithStop() (func(), error) {
 	// Initialize logger early (before config loading to use structured logging)
 	infraLog, logErr := infralogger.New(infralogger.Config{
@@ -96,8 +98,11 @@ func runAPIServerWithStop() (func(), error) {
 		}
 	}
 
+	// Initialize Elasticsearch client (optional - for indexes endpoint)
+	var esClient = initElasticsearchClientOptional(cfg.Elasticsearch.URL, infraLog)
+
 	// Setup router and create server using infrastructure gin
-	router := api.NewRouter(repo, redisClient, cfg)
+	router := api.NewRouter(repo, redisClient, esClient, cfg)
 	server := router.NewServer(infraLog)
 
 	// Start server in goroutine
@@ -206,8 +211,11 @@ func runAPIServerInternal() int {
 		}
 	}
 
+	// Initialize Elasticsearch client (optional - for indexes endpoint)
+	var esClient = initElasticsearchClientOptional(cfg.Elasticsearch.URL, infraLog)
+
 	// Setup router and create server using infrastructure gin
-	router := api.NewRouter(repo, redisClient, cfg)
+	router := api.NewRouter(repo, redisClient, esClient, cfg)
 	server := router.NewServer(infraLog)
 
 	// Run server with graceful shutdown

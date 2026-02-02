@@ -5,6 +5,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/elastic/go-elasticsearch/v8"
 	"github.com/gin-gonic/gin"
 	"github.com/jonesrussell/north-cloud/publisher/internal/config"
 	"github.com/jonesrussell/north-cloud/publisher/internal/database"
@@ -27,14 +28,16 @@ const (
 type Router struct {
 	repo        *database.Repository
 	redisClient *redis.Client
+	esClient    *elasticsearch.Client
 	cfg         *config.Config
 }
 
 // NewRouter creates a new API router
-func NewRouter(repo *database.Repository, redisClient *redis.Client, cfg *config.Config) *Router {
+func NewRouter(repo *database.Repository, redisClient *redis.Client, esClient *elasticsearch.Client, cfg *config.Config) *Router {
 	return &Router{
 		repo:        repo,
 		redisClient: redisClient,
+		esClient:    esClient,
 		cfg:         cfg,
 	}
 }
@@ -142,4 +145,8 @@ func (r *Router) setupServiceRoutes(router *gin.Engine) {
 	// Articles
 	articles := v1.Group("/articles")
 	articles.GET("/recent", r.getRecentArticles)
+
+	// Metadata (topics and indexes for Routing V2)
+	v1.GET("/topics", r.listTopics)
+	v1.GET("/indexes", r.listIndexes)
 }

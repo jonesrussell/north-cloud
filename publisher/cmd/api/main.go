@@ -1,15 +1,18 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 
+	"github.com/elastic/go-elasticsearch/v8"
 	"github.com/jmoiron/sqlx"
 	"github.com/jonesrussell/north-cloud/publisher/internal/api"
 	"github.com/jonesrussell/north-cloud/publisher/internal/config"
 	"github.com/jonesrussell/north-cloud/publisher/internal/database"
 	redisclient "github.com/jonesrussell/north-cloud/publisher/internal/redis"
 	infraconfig "github.com/north-cloud/infrastructure/config"
+	esclient "github.com/north-cloud/infrastructure/elasticsearch"
 	infragin "github.com/north-cloud/infrastructure/gin"
 	"github.com/north-cloud/infrastructure/logger"
 	"github.com/north-cloud/infrastructure/profiling"
@@ -52,8 +55,11 @@ func run() int {
 	// Setup Redis client
 	redisClient := setupRedis(cfg, infraLog)
 
+	// Setup Elasticsearch client (optional - for indexes endpoint)
+	esClient := setupElasticsearch(cfg, infraLog)
+
 	// Setup and start HTTP server using infrastructure gin
-	server := setupHTTPServer(cfg, repo, redisClient, infraLog)
+	server := setupHTTPServer(cfg, repo, redisClient, esClient, infraLog)
 
 	// Run server with graceful shutdown
 	if runErr := server.Run(); runErr != nil {
@@ -127,13 +133,39 @@ func setupRedis(cfg *config.Config, infraLog logger.Logger) *redis.Client {
 	return redisClient
 }
 
+// setupElasticsearch creates Elasticsearch client if configured (optional for indexes endpoint)
+func setupElasticsearch(cfg *config.Config, infraLog logger.Logger) *elasticsearch.Client {
+	esURL := cfg.Elasticsearch.URL
+	if esURL == "" {
+		infraLog.Warn("Elasticsearch URL not configured, indexes endpoint will be unavailable")
+		return nil
+	}
+
+	ctx := context.Background()
+	esCfg := esclient.Config{
+		URL: esURL,
+	}
+
+	esClient, err := esclient.NewClient(ctx, esCfg, infraLog)
+	if err != nil {
+		infraLog.Warn("Failed to create Elasticsearch client, indexes endpoint will be unavailable",
+			logger.Error(err),
+		)
+		return nil
+	}
+
+	infraLog.Info("Elasticsearch connection established")
+	return esClient
+}
+
 // setupHTTPServer creates and configures the HTTP server using infrastructure gin
 func setupHTTPServer(
 	cfg *config.Config,
 	repo *database.Repository,
 	redisClient *redis.Client,
+	esClient *elasticsearch.Client,
 	infraLog logger.Logger,
 ) *infragin.Server {
-	router := api.NewRouter(repo, redisClient, cfg)
+	router := api.NewRouter(repo, redisClient, esClient, cfg)
 	return router.NewServer(infraLog)
 }
