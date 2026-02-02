@@ -1,20 +1,16 @@
 import axios, { type AxiosInstance, type AxiosResponse } from 'axios'
 import type {
-  Source,
   Channel,
-  Route,
-  PublishHistoryItem,
-  CreateSourceRequest,
-  UpdateSourceRequest,
   CreateChannelRequest,
   UpdateChannelRequest,
-  CreateRouteRequest,
-  UpdateRouteRequest,
-  SourcesListResponse,
   ChannelsListResponse,
-  RoutesListResponse,
+  ChannelPreviewResponse,
+  TopicsResponse,
+  IndexesResponse,
+  PublishHistoryItem,
   PublishHistoryListResponse,
   StatsOverviewResponse,
+  ChannelStatsResponse,
   StatsPeriod,
   HealthStatus,
   ActiveChannelsResponse,
@@ -251,24 +247,23 @@ export const sourcesApi = {
   },
 }
 
-// Publisher API
+// Publisher API - Routing V2
 export const publisherApi = {
   // Health check
   getHealth: (): Promise<AxiosResponse<HealthStatus>> => axios.get('/api/health/publisher'),
-  
+
   // Stats - shortcut for stats.overview()
   getStats: () => publisherClient.get('/stats/overview?period=all'),
 
   // Stats
   stats: {
-    // Note: /stats endpoint doesn't exist, using /stats/overview instead
     get: () => publisherClient.get('/stats/overview?period=all'),
     overview: (period: StatsPeriod = 'today'): Promise<AxiosResponse<StatsOverviewResponse>> =>
       publisherClient.get(`/stats/overview?period=${period}`),
-    channels: (since?: string) => publisherClient.get(`/stats/channels${since ? `?since=${since}` : ''}`),
+    channels: (since?: string): Promise<AxiosResponse<ChannelStatsResponse>> =>
+      publisherClient.get(`/stats/channels${since ? `?since=${since}` : ''}`),
     activeChannels: (): Promise<AxiosResponse<ActiveChannelsResponse>> =>
       publisherClient.get('/stats/channels/active'),
-    routes: () => publisherClient.get('/stats/routes'),
   },
 
   // Recent articles
@@ -277,94 +272,28 @@ export const publisherApi = {
       publisherClient.get('/articles/recent', { params }),
   },
 
-  // Sources CRUD
-  sources: {
-    list: (enabledOnly = false): Promise<AxiosResponse<SourcesListResponse>> =>
-      publisherClient.get(`/sources${enabledOnly ? '?enabled_only=true' : ''}`),
-    get: (id: number): Promise<AxiosResponse<{ source: Source }>> =>
-      publisherClient.get(`/sources/${id}`),
-    create: (data: CreateSourceRequest): Promise<AxiosResponse<{ source: Source }>> =>
-      publisherClient.post('/sources', data),
-    update: (id: number, data: UpdateSourceRequest): Promise<AxiosResponse<{ source: Source }>> =>
-      publisherClient.put(`/sources/${id}`, data),
-    delete: (id: number): Promise<AxiosResponse<void>> =>
-      publisherClient.delete(`/sources/${id}`),
+  // Topics (Layer 1 - automatic topic channels)
+  topics: {
+    list: (): Promise<AxiosResponse<TopicsResponse>> => publisherClient.get('/topics'),
   },
 
-  // Channels CRUD
+  // Indexes (discovered Elasticsearch indexes)
+  indexes: {
+    list: (): Promise<AxiosResponse<IndexesResponse>> => publisherClient.get('/indexes'),
+  },
+
+  // Channels CRUD (Layer 2 - custom channels with rules)
   channels: {
     list: (enabledOnly = false): Promise<AxiosResponse<ChannelsListResponse>> =>
       publisherClient.get(`/channels${enabledOnly ? '?enabled_only=true' : ''}`),
-    get: (id: number): Promise<AxiosResponse<{ channel: Channel }>> =>
-      publisherClient.get(`/channels/${id}`),
-    create: (data: CreateChannelRequest): Promise<AxiosResponse<{ channel: Channel }>> =>
+    get: (id: string): Promise<AxiosResponse<Channel>> => publisherClient.get(`/channels/${id}`),
+    create: (data: CreateChannelRequest): Promise<AxiosResponse<Channel>> =>
       publisherClient.post('/channels', data),
-    update: (id: number, data: UpdateChannelRequest): Promise<AxiosResponse<{ channel: Channel }>> =>
+    update: (id: string, data: UpdateChannelRequest): Promise<AxiosResponse<Channel>> =>
       publisherClient.put(`/channels/${id}`, data),
-    delete: (id: number): Promise<AxiosResponse<void>> =>
-      publisherClient.delete(`/channels/${id}`),
-    testPublish: (id: number): Promise<AxiosResponse<{
-      channel_name: string
-      channel_id: string
-      routes_count: number
-      estimated_count: number
-      route_stats: Array<{
-        route_id: string
-        source_name: string
-        min_quality_score: number
-        topics: string[]
-        estimated_count: number
-      }>
-      sample_articles: Array<{
-        title: string
-        quality_score: number
-        topics: string[]
-        published_date: string
-        url: string
-        source: string
-        route_id: string
-      }>
-      message: string
-    }>> => publisherClient.get(`/channels/${id}/test-publish`),
-  },
-
-  // Routes CRUD
-  routes: {
-    list: (enabledOnly = false): Promise<AxiosResponse<RoutesListResponse>> =>
-      publisherClient.get(`/routes${enabledOnly ? '?enabled_only=true' : ''}`),
-    get: (id: number): Promise<AxiosResponse<{ route: Route }>> =>
-      publisherClient.get(`/routes/${id}`),
-    create: (data: CreateRouteRequest): Promise<AxiosResponse<{ route: Route }>> =>
-      publisherClient.post('/routes', data),
-    update: (id: number, data: UpdateRouteRequest): Promise<AxiosResponse<{ route: Route }>> =>
-      publisherClient.put(`/routes/${id}`, data),
-    delete: (id: number): Promise<AxiosResponse<void>> =>
-      publisherClient.delete(`/routes/${id}`),
-    preview: (params: {
-      source_id?: string
-      min_quality_score?: string
-      topics?: string
-    }): Promise<AxiosResponse<{
-      estimated_count: number
-      filters: {
-        source_id?: string
-        min_quality_score: string
-        topics?: string
-      }
-      sample_articles: Array<{
-        title: string
-        quality_score: number
-        topics: string[]
-        published_date: string
-        url: string
-      }>
-    }>> => {
-      const query = new URLSearchParams()
-      if (params.source_id) query.append('source_id', params.source_id)
-      if (params.min_quality_score) query.append('min_quality_score', params.min_quality_score)
-      if (params.topics) query.append('topics', params.topics)
-      return publisherClient.get(`/routes/preview${query.toString() ? `?${query.toString()}` : ''}`)
-    },
+    delete: (id: string): Promise<AxiosResponse<void>> => publisherClient.delete(`/channels/${id}`),
+    preview: (id: string): Promise<AxiosResponse<ChannelPreviewResponse>> =>
+      publisherClient.get(`/channels/${id}/preview`),
   },
 
   // Publish History

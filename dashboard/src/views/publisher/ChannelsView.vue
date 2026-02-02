@@ -2,7 +2,7 @@
   <div>
     <PageHeader
       title="Channels"
-      subtitle="Manage Redis pub/sub channels for article distribution"
+      subtitle="Manage Layer 2 custom channels with filtering rules"
     />
 
     <div class="bg-white shadow rounded-lg p-6">
@@ -46,13 +46,13 @@
                   Name
                 </th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Description
+                  Redis Channel
+                </th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Rules
                 </th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Status
-                </th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Created
                 </th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Actions
@@ -65,12 +65,45 @@
                 :key="channel.id"
                 class="hover:bg-gray-50"
               >
+                <td class="px-6 py-4">
+                  <div class="text-sm font-medium text-gray-900">
+                    {{ channel.name }}
+                  </div>
+                  <div class="text-xs text-gray-500">
+                    {{ channel.slug }}
+                  </div>
+                </td>
                 <td class="px-6 py-4 whitespace-nowrap">
-                  <code class="text-sm text-gray-900">{{ channel.name }}</code>
+                  <code class="text-sm text-blue-600 bg-blue-50 px-2 py-1 rounded">
+                    {{ channel.redis_channel }}
+                  </code>
                 </td>
                 <td class="px-6 py-4">
-                  <div class="text-sm text-gray-500">
-                    {{ channel.description || '-' }}
+                  <div class="text-xs space-y-1">
+                    <div
+                      v-if="channel.rules.include_topics?.length"
+                      class="text-green-600"
+                    >
+                      Include: {{ channel.rules.include_topics.join(', ') }}
+                    </div>
+                    <div
+                      v-if="channel.rules.exclude_topics?.length"
+                      class="text-red-600"
+                    >
+                      Exclude: {{ channel.rules.exclude_topics.join(', ') }}
+                    </div>
+                    <div
+                      v-if="channel.rules.min_quality_score"
+                      class="text-gray-600"
+                    >
+                      Min Quality: {{ channel.rules.min_quality_score }}
+                    </div>
+                    <div
+                      v-if="!hasRules(channel)"
+                      class="text-gray-400 italic"
+                    >
+                      No rules (matches all)
+                    </div>
                   </div>
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap">
@@ -78,18 +111,15 @@
                     :status="channel.enabled ? 'enabled' : 'disabled'"
                   />
                 </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {{ formatDate(channel.created_at) }}
-                </td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                   <button
-                    class="text-green-600 hover:text-green-900 mr-4"
-                    @click="testPublish(channel)"
+                    class="text-green-600 hover:text-green-900 mr-3"
+                    @click="previewChannel(channel)"
                   >
-                    Test Publish
+                    Preview
                   </button>
                   <button
-                    class="text-blue-600 hover:text-blue-900 mr-4"
+                    class="text-blue-600 hover:text-blue-900 mr-3"
                     @click="openEditModal(channel)"
                   >
                     Edit
@@ -126,7 +156,7 @@
           class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
           @click="closeModal"
         />
-        <div class="relative bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+        <div class="relative bg-white rounded-lg shadow-xl max-w-lg w-full p-6">
           <div class="flex justify-between items-center mb-4">
             <h2 class="text-xl font-semibold text-gray-900">
               {{ isEditing ? 'Edit Channel' : 'Create Channel' }}
@@ -159,43 +189,129 @@
           />
 
           <form @submit.prevent="saveChannel">
-            <div class="mb-4">
-              <label class="block text-sm font-medium text-gray-700 mb-1">
-                Name *
-              </label>
-              <input
-                v-model="formData.name"
-                type="text"
-                placeholder="e.g., articles:crime"
-                required
-                class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-              >
-              <p class="mt-1 text-xs text-gray-500">
-                Redis pub/sub channel name (e.g., articles:crime, articles:news)
-              </p>
-            </div>
-
-            <div class="mb-4">
-              <label class="block text-sm font-medium text-gray-700 mb-1">
-                Description
-              </label>
-              <textarea
-                v-model="formData.description"
-                placeholder="Description of what content this channel contains"
-                rows="3"
-                class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-              />
-            </div>
-
-            <div class="mb-4">
-              <label class="flex items-center">
+            <div class="space-y-4">
+              <!-- Basic Info -->
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">
+                  Name *
+                </label>
                 <input
-                  v-model="formData.enabled"
-                  type="checkbox"
-                  class="mr-2 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  v-model="formData.name"
+                  type="text"
+                  placeholder="e.g., StreetCode Crime Feed"
+                  required
+                  class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                 >
-                <span class="text-sm text-gray-700">Enabled</span>
-              </label>
+              </div>
+
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">
+                  Slug *
+                </label>
+                <input
+                  v-model="formData.slug"
+                  type="text"
+                  placeholder="e.g., streetcode-crime-feed"
+                  required
+                  class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                >
+                <p class="mt-1 text-xs text-gray-500">
+                  URL-safe identifier (lowercase, hyphens)
+                </p>
+              </div>
+
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">
+                  Redis Channel *
+                </label>
+                <input
+                  v-model="formData.redis_channel"
+                  type="text"
+                  placeholder="e.g., streetcode:crime_feed"
+                  required
+                  class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                >
+                <p class="mt-1 text-xs text-gray-500">
+                  Redis pub/sub channel name
+                </p>
+              </div>
+
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">
+                  Description
+                </label>
+                <textarea
+                  v-model="formData.description"
+                  placeholder="Description of what content this channel contains"
+                  rows="2"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+
+              <!-- Rules Section -->
+              <div class="border-t pt-4">
+                <h3 class="text-sm font-medium text-gray-900 mb-3">
+                  Filtering Rules
+                </h3>
+
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">
+                    Include Topics
+                  </label>
+                  <input
+                    v-model="rulesInput.include_topics"
+                    type="text"
+                    placeholder="violent_crime, property_crime"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                  >
+                  <p class="mt-1 text-xs text-gray-500">
+                    Comma-separated list of topics to include
+                  </p>
+                </div>
+
+                <div class="mt-3">
+                  <label class="block text-sm font-medium text-gray-700 mb-1">
+                    Exclude Topics
+                  </label>
+                  <input
+                    v-model="rulesInput.exclude_topics"
+                    type="text"
+                    placeholder="criminal_justice"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                  >
+                  <p class="mt-1 text-xs text-gray-500">
+                    Comma-separated list of topics to exclude
+                  </p>
+                </div>
+
+                <div class="mt-3">
+                  <label class="block text-sm font-medium text-gray-700 mb-1">
+                    Minimum Quality Score
+                  </label>
+                  <input
+                    v-model.number="rulesInput.min_quality_score"
+                    type="number"
+                    min="0"
+                    max="100"
+                    placeholder="50"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                  >
+                  <p class="mt-1 text-xs text-gray-500">
+                    0-100, articles below this score are excluded
+                  </p>
+                </div>
+              </div>
+
+              <div>
+                <label class="flex items-center">
+                  <input
+                    v-model="formData.enabled"
+                    type="checkbox"
+                    class="mr-2 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  >
+                  <span class="text-sm text-gray-700">Enabled</span>
+                </label>
+              </div>
             </div>
 
             <div class="flex justify-end space-x-3 mt-6">
@@ -219,22 +335,106 @@
       </div>
     </div>
 
-    <!-- Test Results Modal -->
-    <TestResultsModal
-      ref="testResultsModal"
-      title="Test Publish Results"
-      subtitle="Preview articles that would be published to this channel"
-      loading-message="Testing publish configuration..."
-      @close="testResultsModal?.close()"
-    />
+    <!-- Preview Modal -->
+    <div
+      v-if="showPreviewModal"
+      class="fixed inset-0 z-50 overflow-y-auto"
+      @click.self="closePreviewModal"
+    >
+      <div class="flex items-center justify-center min-h-screen px-4">
+        <div
+          class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
+          @click="closePreviewModal"
+        />
+        <div class="relative bg-white rounded-lg shadow-xl max-w-2xl w-full p-6">
+          <div class="flex justify-between items-center mb-4">
+            <h2 class="text-xl font-semibold text-gray-900">
+              Channel Preview
+            </h2>
+            <button
+              class="text-gray-400 hover:text-gray-500"
+              @click="closePreviewModal"
+            >
+              <span class="sr-only">Close</span>
+              <svg
+                class="h-6 w-6"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              </svg>
+            </button>
+          </div>
+
+          <LoadingSpinner
+            v-if="previewLoading"
+            text="Loading preview..."
+          />
+
+          <div
+            v-else-if="previewData"
+            class="space-y-4"
+          >
+            <div class="bg-gray-50 rounded-lg p-4">
+              <h3 class="font-medium text-gray-900 mb-2">
+                {{ previewData.channel.name }}
+              </h3>
+              <p class="text-sm text-gray-500">
+                {{ previewData.channel.description || 'No description' }}
+              </p>
+              <code class="text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded mt-2 inline-block">
+                {{ previewData.channel.redis_channel }}
+              </code>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+              <div class="bg-blue-50 rounded-lg p-4">
+                <div class="text-2xl font-bold text-blue-700">
+                  {{ previewData.matching_count }}
+                </div>
+                <div class="text-sm text-blue-600">
+                  Matching Articles
+                </div>
+              </div>
+              <div class="bg-gray-50 rounded-lg p-4">
+                <div class="text-2xl font-bold text-gray-700">
+                  v{{ previewData.rules_summary.rules_version }}
+                </div>
+                <div class="text-sm text-gray-600">
+                  Rules Version
+                </div>
+              </div>
+            </div>
+
+            <div class="bg-yellow-50 rounded-lg p-4">
+              <p class="text-sm text-yellow-700">
+                {{ previewData.note }}
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { publisherApi } from '../../api/client'
-import type { Channel, CreateChannelRequest, UpdateChannelRequest, PreviewArticle } from '../../types/publisher'
-import { PageHeader, LoadingSpinner, ErrorAlert, StatusBadge, TestResultsModal } from '../../components/common'
+import type {
+  Channel,
+  ChannelRules,
+  CreateChannelRequest,
+  UpdateChannelRequest,
+  ChannelPreviewResponse,
+} from '../../types/publisher'
+import { PageHeader, LoadingSpinner, ErrorAlert, StatusBadge } from '../../components/common'
 
 const channels = ref<Channel[]>([])
 const loading = ref(false)
@@ -247,12 +447,31 @@ const modalError = ref<string | null>(null)
 const saving = ref(false)
 const formData = ref<CreateChannelRequest>({
   name: '',
+  slug: '',
+  redis_channel: '',
   description: '',
   enabled: true,
 })
+const rulesInput = ref({
+  include_topics: '',
+  exclude_topics: '',
+  min_quality_score: 0,
+})
 const currentChannel = ref<Channel | null>(null)
-const testResultsModal = ref<InstanceType<typeof TestResultsModal> | null>(null)
-const testingPublish = ref(false)
+
+const showPreviewModal = ref(false)
+const previewLoading = ref(false)
+const previewData = ref<ChannelPreviewResponse | null>(null)
+
+const hasRules = (channel: Channel): boolean => {
+  const rules = channel.rules
+  return !!(
+    rules.include_topics?.length ||
+    rules.exclude_topics?.length ||
+    rules.min_quality_score ||
+    rules.content_types?.length
+  )
+}
 
 const loadChannels = async (): Promise<void> => {
   loading.value = true
@@ -268,12 +487,47 @@ const loadChannels = async (): Promise<void> => {
   }
 }
 
+const parseTopicsInput = (input: string): string[] => {
+  if (!input.trim()) return []
+  return input
+    .split(',')
+    .map((t) => t.trim())
+    .filter((t) => t.length > 0)
+}
+
+const buildRulesFromInput = (): ChannelRules => {
+  const rules: ChannelRules = {}
+
+  const includeTopics = parseTopicsInput(rulesInput.value.include_topics)
+  if (includeTopics.length > 0) {
+    rules.include_topics = includeTopics
+  }
+
+  const excludeTopics = parseTopicsInput(rulesInput.value.exclude_topics)
+  if (excludeTopics.length > 0) {
+    rules.exclude_topics = excludeTopics
+  }
+
+  if (rulesInput.value.min_quality_score > 0) {
+    rules.min_quality_score = rulesInput.value.min_quality_score
+  }
+
+  return rules
+}
+
 const openCreateModal = (): void => {
   isEditing.value = false
   formData.value = {
     name: '',
+    slug: '',
+    redis_channel: '',
     description: '',
     enabled: true,
+  }
+  rulesInput.value = {
+    include_topics: '',
+    exclude_topics: '',
+    min_quality_score: 0,
   }
   currentChannel.value = null
   modalError.value = null
@@ -284,8 +538,15 @@ const openEditModal = (channel: Channel): void => {
   isEditing.value = true
   formData.value = {
     name: channel.name,
+    slug: channel.slug,
+    redis_channel: channel.redis_channel,
     description: channel.description,
     enabled: channel.enabled,
+  }
+  rulesInput.value = {
+    include_topics: channel.rules.include_topics?.join(', ') || '',
+    exclude_topics: channel.rules.exclude_topics?.join(', ') || '',
+    min_quality_score: channel.rules.min_quality_score || 0,
   }
   currentChannel.value = channel
   modalError.value = null
@@ -294,7 +555,8 @@ const openEditModal = (channel: Channel): void => {
 
 const closeModal = (): void => {
   showModal.value = false
-  formData.value = { name: '', description: '', enabled: true }
+  formData.value = { name: '', slug: '', redis_channel: '', description: '', enabled: true }
+  rulesInput.value = { include_topics: '', exclude_topics: '', min_quality_score: 0 }
   currentChannel.value = null
   modalError.value = null
 }
@@ -303,10 +565,16 @@ const saveChannel = async (): Promise<void> => {
   saving.value = true
   modalError.value = null
   try {
+    const rules = buildRulesFromInput()
+    const requestData = {
+      ...formData.value,
+      rules,
+    }
+
     if (isEditing.value && currentChannel.value) {
-      await publisherApi.channels.update(currentChannel.value.id, formData.value as UpdateChannelRequest)
+      await publisherApi.channels.update(currentChannel.value.id, requestData as UpdateChannelRequest)
     } else {
-      await publisherApi.channels.create(formData.value)
+      await publisherApi.channels.create(requestData)
     }
     closeModal()
     await loadChannels()
@@ -332,54 +600,29 @@ const deleteChannel = async (channel: Channel): Promise<void> => {
   }
 }
 
-const testPublish = async (channel: Channel): Promise<void> => {
-  testingPublish.value = true
-  error.value = null
+const previewChannel = async (channel: Channel): Promise<void> => {
+  showPreviewModal.value = true
+  previewLoading.value = true
+  previewData.value = null
 
   try {
-    // Open modal and show loading
-    testResultsModal.value?.open()
-    testResultsModal.value?.setLoading(true, 'Testing publish configuration...')
-
-    // Call test publish API
-    const response = await publisherApi.channels.testPublish(channel.id)
-
-    // Transform response to match TestResultsModal format
-    const testResults = {
-      articles_found: response.data.estimated_count || 0,
-      success_rate: response.data.routes_count > 0 ? 100 : 0,
-      warnings: response.data.routes_count === 0
-        ? ['No enabled routes found for this channel']
-        : [],
-      sample_articles: (response.data.sample_articles || []).map((article: PreviewArticle) => ({
-        title: article.title,
-        url: article.url,
-        published_date: article.published_date,
-        quality_score: article.quality_score,
-        topics: article.topics,
-        source: article.source,
-      })),
-    }
-
-    // Show results
-    testResultsModal.value?.setLoading(false)
-    testResultsModal.value?.open(testResults)
-  } catch (err: unknown) {
-    testingPublish.value = false
+    const response = await publisherApi.channels.preview(channel.id)
+    previewData.value = response.data
+  } catch (err) {
     const axiosError = err as { response?: { data?: { error?: string } } }
-    error.value = axiosError.response?.data?.error || 'Failed to test publish'
-    testResultsModal.value?.setLoading(false)
+    error.value = axiosError.response?.data?.error || 'Failed to load preview'
+    showPreviewModal.value = false
   } finally {
-    testingPublish.value = false
+    previewLoading.value = false
   }
 }
 
-const formatDate = (dateString: string): string => {
-  return new Date(dateString).toLocaleString()
+const closePreviewModal = (): void => {
+  showPreviewModal.value = false
+  previewData.value = null
 }
 
 onMounted(() => {
   loadChannels()
 })
 </script>
-
