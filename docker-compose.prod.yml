@@ -42,6 +42,7 @@ services:
       POSTGRES_CRAWLER_SSLMODE: disable
       ELASTICSEARCH_ADDRESSES: http://elasticsearch:9200
       CRAWLER_SOURCES_API_URL: http://source-manager:8050/api/v1/sources
+      SOURCE_MANAGER_URL: http://source-manager:8050
       CRAWLER_SAVE_DISCOVERED_LINKS: "${CRAWLER_SAVE_DISCOVERED_LINKS:-false}"
       CRAWLER_MINIO_ENABLED: "${CRAWLER_MINIO_ENABLED:-false}"
       CRAWLER_MINIO_ENDPOINT: "${CRAWLER_MINIO_ENDPOINT:-minio:9000}"
