@@ -143,6 +143,13 @@ type ListJobsParams struct {
 	Offset    int
 }
 
+// CountJobsParams contains parameters for counting jobs.
+type CountJobsParams struct {
+	Status   string // Optional status filter
+	SourceID string // Optional source_id filter
+	Search   string // Optional search term
+}
+
 // GetByID retrieves a job by its ID.
 func (r *JobRepository) GetByID(ctx context.Context, id string) (*domain.Job, error) {
 	var job domain.Job
@@ -282,19 +289,39 @@ func (r *JobRepository) Delete(ctx context.Context, id string) error {
 	return execRequireRows(result, execErr, fmt.Errorf("job not found: %s", id))
 }
 
-// Count returns the total number of jobs, optionally filtered by status.
-func (r *JobRepository) Count(ctx context.Context, status string) (int, error) {
+// Count returns the total number of jobs matching the given filters.
+func (r *JobRepository) Count(ctx context.Context, params CountJobsParams) (int, error) {
 	var count int
-	var query string
+	var conditions []string
 	var args []any
+	argIndex := 1
 
-	if status != "" {
-		query = `SELECT COUNT(*) FROM jobs WHERE status = $1`
-		args = []any{status}
-	} else {
-		query = `SELECT COUNT(*) FROM jobs`
-		args = []any{}
+	if params.Status != "" {
+		conditions = append(conditions, fmt.Sprintf("status = $%d", argIndex))
+		args = append(args, params.Status)
+		argIndex++
 	}
+
+	if params.SourceID != "" {
+		conditions = append(conditions, fmt.Sprintf("source_id = $%d", argIndex))
+		args = append(args, params.SourceID)
+		argIndex++
+	}
+
+	if params.Search != "" {
+		conditions = append(conditions, fmt.Sprintf(
+			"(COALESCE(source_name, '') ILIKE $%d OR url ILIKE $%d)",
+			argIndex, argIndex,
+		))
+		args = append(args, "%"+params.Search+"%")
+	}
+
+	whereClause := ""
+	if len(conditions) > 0 {
+		whereClause = "WHERE " + strings.Join(conditions, " AND ")
+	}
+
+	query := fmt.Sprintf("SELECT COUNT(*) FROM jobs %s", whereClause)
 
 	err := r.db.GetContext(ctx, &count, query, args...)
 	if err != nil {

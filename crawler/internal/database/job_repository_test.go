@@ -249,3 +249,39 @@ func TestJobRepository_List_WithStatusFilter(t *testing.T) {
 		t.Errorf("unfulfilled expectations: %v", checkErr)
 	}
 }
+
+func TestJobRepository_Count_WithFilters(t *testing.T) {
+	t.Helper()
+
+	mockDB, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("failed to create sqlmock: %v", err)
+	}
+	defer mockDB.Close()
+
+	db := sqlx.NewDb(mockDB, "postgres")
+	repo := database.NewJobRepository(db)
+	ctx := context.Background()
+
+	mock.ExpectQuery("SELECT COUNT\\(\\*\\) FROM jobs WHERE status = \\$1 AND source_id = \\$2").
+		WithArgs("running", "src-123").
+		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(42))
+
+	params := database.CountJobsParams{
+		Status:   "running",
+		SourceID: "src-123",
+	}
+
+	count, countErr := repo.Count(ctx, params)
+	if countErr != nil {
+		t.Fatalf("Count() error = %v", countErr)
+	}
+
+	if count != 42 {
+		t.Errorf("expected count=42, got %d", count)
+	}
+
+	if checkErr := mock.ExpectationsWereMet(); checkErr != nil {
+		t.Errorf("unfulfilled expectations: %v", checkErr)
+	}
+}
