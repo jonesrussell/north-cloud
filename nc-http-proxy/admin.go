@@ -2,12 +2,16 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
 )
+
+// errPathTraversal is returned when a path traversal attempt is detected.
+var errPathTraversal = errors.New("path traversal attempt detected")
 
 // StatusResponse is the response for GET /admin/status.
 type StatusResponse struct {
@@ -113,7 +117,13 @@ func (h *AdminHandler) handleClearCache(w http.ResponseWriter) {
 
 func (h *AdminHandler) handleClearDomainCache(w http.ResponseWriter, r *http.Request) {
 	domain := strings.TrimPrefix(r.URL.Path, "/admin/cache/")
-	domainDir := filepath.Join(h.proxy.Cache().CacheDir(), domain)
+
+	// Validate path to prevent traversal attacks
+	domainDir, err := safePath(h.proxy.Cache().CacheDir(), domain)
+	if err != nil {
+		h.writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid domain"})
+		return
+	}
 
 	_ = os.RemoveAll(domainDir)
 
@@ -125,13 +135,15 @@ func (h *AdminHandler) handleClearDomainCache(w http.ResponseWriter, r *http.Req
 func (h *AdminHandler) listDomainEntries(domain string) []string {
 	entries := make([]string, 0)
 
-	// Check fixtures
-	fixturesDir := filepath.Join(h.proxy.Cache().FixturesDir(), domain)
-	h.appendEntriesFromDir(fixturesDir, &entries)
+	// Check fixtures - validate path to prevent traversal
+	if fixturesDir, err := safePath(h.proxy.Cache().FixturesDir(), domain); err == nil {
+		h.appendEntriesFromDir(fixturesDir, &entries)
+	}
 
-	// Check cache
-	cacheDir := filepath.Join(h.proxy.Cache().CacheDir(), domain)
-	h.appendEntriesFromDir(cacheDir, &entries)
+	// Check cache - validate path to prevent traversal
+	if cacheDir, err := safePath(h.proxy.Cache().CacheDir(), domain); err == nil {
+		h.appendEntriesFromDir(cacheDir, &entries)
+	}
 
 	return entries
 }
@@ -156,4 +168,28 @@ func (h *AdminHandler) writeJSON(w http.ResponseWriter, status int, data any) {
 	if encodeErr := json.NewEncoder(w).Encode(data); encodeErr != nil {
 		fmt.Printf("warning: failed to encode JSON response: %v\n", encodeErr)
 	}
+}
+
+// safePath joins baseDir with untrusted input and returns the result only if
+// it remains within baseDir. This prevents path traversal attacks.
+func safePath(baseDir, untrusted string) (string, error) {
+	// Clean the untrusted input to remove any path traversal attempts
+	cleaned := filepath.Clean(untrusted)
+
+	// Reject obvious traversal attempts
+	if strings.Contains(cleaned, "..") {
+		return "", errPathTraversal
+	}
+
+	// Join with base and verify result stays within base
+	result := filepath.Join(baseDir, cleaned)
+
+	// Ensure the result starts with the base directory
+	// Use Clean on baseDir too for consistent comparison
+	cleanBase := filepath.Clean(baseDir)
+	if !strings.HasPrefix(result, cleanBase+string(filepath.Separator)) && result != cleanBase {
+		return "", errPathTraversal
+	}
+
+	return result, nil
 }
