@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/jonesrussell/north-cloud/crawler/internal/sources/types"
@@ -16,13 +18,22 @@ func ConvertAPISourceToConfig(apiSource *APISource) (*types.SourceConfig, error)
 		return nil, errors.New("apiSource cannot be nil")
 	}
 
-	// Parse rate limit
+	// Parse rate limit (accepts "10s", "1m" or bare number as seconds e.g. "10")
 	rateLimit := time.Second // Default
 	if apiSource.RateLimit != "" {
-		var err error
-		rateLimit, err = time.ParseDuration(apiSource.RateLimit)
+		s := strings.TrimSpace(apiSource.RateLimit)
+		d, err := time.ParseDuration(s)
 		if err != nil {
-			return nil, fmt.Errorf("invalid rate limit: %w", err)
+			if n, parseErr := strconv.Atoi(s); parseErr == nil && n > 0 {
+				rateLimit = time.Duration(n) * time.Second
+			} else {
+				return nil, fmt.Errorf("invalid rate limit: %w", err)
+			}
+		} else {
+			rateLimit = d
+		}
+		if rateLimit <= 0 {
+			return nil, fmt.Errorf("invalid rate limit: must be positive, got %s", rateLimit)
 		}
 	}
 
