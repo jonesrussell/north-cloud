@@ -23,10 +23,10 @@ type PublishHistory struct {
 // PublishHistoryCreateRequest represents the data needed to create a publish history entry
 type PublishHistoryCreateRequest struct {
 	ChannelID    *uuid.UUID `json:"channel_id,omitempty"` // Optional: custom channel ID (Layer 2)
-	ArticleID    string     `binding:"required"   json:"article_id"`
+	ArticleID    string     `binding:"required"          json:"article_id"`
 	ArticleTitle string     `json:"article_title"`
 	ArticleURL   string     `json:"article_url"`
-	ChannelName  string     `binding:"required"   json:"channel_name"`
+	ChannelName  string     `binding:"required"          json:"channel_name"`
 	QualityScore int        `json:"quality_score"`
 	Topics       []string   `json:"topics"`
 }

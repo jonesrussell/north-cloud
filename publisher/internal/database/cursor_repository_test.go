@@ -38,7 +38,10 @@ func runGetCursorTests(t *testing.T) {
 		{
 			name: "returns cursor when exists",
 			setupMock: func() {
-				cursorJSON, _ := json.Marshal([]any{"2026-02-02T12:00:00Z", "doc123"})
+				cursorJSON, marshalErr := json.Marshal([]any{"2026-02-02T12:00:00Z", "doc123"})
+				if marshalErr != nil {
+					t.Fatalf("failed to marshal cursor: %v", marshalErr)
+				}
 				rows := sqlmock.NewRows([]string{"last_sort"}).AddRow(cursorJSON)
 				mock.ExpectQuery("SELECT last_sort FROM publisher_cursor").
 					WillReturnRows(rows)
