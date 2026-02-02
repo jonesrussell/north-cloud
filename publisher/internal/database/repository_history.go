@@ -20,7 +20,7 @@ import (
 func (r *Repository) CreatePublishHistory(ctx context.Context, req *models.PublishHistoryCreateRequest) (*models.PublishHistory, error) {
 	history := &models.PublishHistory{
 		ID:           uuid.New(),
-		RouteID:      &req.RouteID,
+		RouteID:      req.ChannelID, // Repurposed: now stores channel_id for Layer 2 channels
 		ArticleID:    req.ArticleID,
 		ArticleTitle: req.ArticleTitle,
 		ArticleURL:   req.ArticleURL,
@@ -82,56 +82,50 @@ func (r *Repository) ListPublishHistory(ctx context.Context, filter *models.Publ
 		filter.Limit = maxLimit
 	}
 
-	// Build query dynamically with JOIN to get source name
+	// Build query - simplified without routes/sources joins
 	query := `
-		SELECT 
-			ph.id, 
-			ph.route_id, 
-			ph.article_id, 
-			ph.article_title, 
-			ph.article_url, 
-			ph.channel_name, 
-			ph.published_at, 
-			ph.quality_score, 
-			ph.topics,
-			COALESCE(s.name, 'Unknown') as source_name
-		FROM publish_history ph
-		LEFT JOIN routes r ON ph.route_id = r.id
-		LEFT JOIN sources s ON r.source_id = s.id
+		SELECT
+			id,
+			route_id,
+			article_id,
+			article_title,
+			article_url,
+			channel_name,
+			published_at,
+			quality_score,
+			topics
+		FROM publish_history
 		WHERE 1=1
 	`
 
 	args := []any{}
 	argPos := 1
 
-	// Apply filters (use table prefix for clarity)
 	if filter.ChannelName != "" {
-		query += fmt.Sprintf(" AND ph.channel_name = $%d", argPos)
+		query += fmt.Sprintf(" AND channel_name = $%d", argPos)
 		args = append(args, filter.ChannelName)
 		argPos++
 	}
 
 	if filter.ArticleID != "" {
-		query += fmt.Sprintf(" AND ph.article_id = $%d", argPos)
+		query += fmt.Sprintf(" AND article_id = $%d", argPos)
 		args = append(args, filter.ArticleID)
 		argPos++
 	}
 
 	if filter.StartDate != nil {
-		query += fmt.Sprintf(" AND ph.published_at >= $%d", argPos)
+		query += fmt.Sprintf(" AND published_at >= $%d", argPos)
 		args = append(args, *filter.StartDate)
 		argPos++
 	}
 
 	if filter.EndDate != nil {
-		query += fmt.Sprintf(" AND ph.published_at <= $%d", argPos)
+		query += fmt.Sprintf(" AND published_at <= $%d", argPos)
 		args = append(args, *filter.EndDate)
 		argPos++
 	}
-	// argPos is used in the LIMIT/OFFSET clause below
 
-	// Order and pagination
-	query += " ORDER BY ph.published_at DESC"
+	query += " ORDER BY published_at DESC"
 	query += fmt.Sprintf(" LIMIT $%d OFFSET $%d", argPos, argPos+1)
 	args = append(args, filter.Limit, filter.Offset)
 
@@ -199,7 +193,6 @@ func (r *Repository) GetPublishStats(ctx context.Context, startDate, endDate *ti
 	if endDate != nil {
 		query += fmt.Sprintf(" AND published_at <= $%d", argPos)
 		args = append(args, *endDate)
-		// argPos not needed after this - query is complete
 	}
 
 	query += " GROUP BY channel_name ORDER BY count DESC"
@@ -252,7 +245,7 @@ func (r *Repository) GetChannelStats(ctx context.Context) (map[string]struct {
 	LastPublished  *time.Time
 }, error) {
 	query := `
-		SELECT 
+		SELECT
 			channel_name,
 			COUNT(*) as total_published,
 			MAX(published_at) as last_published
