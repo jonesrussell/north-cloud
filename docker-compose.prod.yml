@@ -165,7 +165,7 @@ services:
   classifier:
     <<: *prod-defaults
     image: docker.io/jonesrussell/classifier:latest
-    command: ["./classifier", "httpd"]
+    command: ["./classifier", "both"]
     deploy:
       resources:
         limits:
