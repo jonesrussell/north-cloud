@@ -310,7 +310,7 @@ func (s *Service) buildESQuery() map[string]any {
 
 	sortClause := []map[string]any{
 		{"crawled_at": map[string]any{"order": "asc"}},
-		{"_id": map[string]any{"order": "asc"}},
+		{"_shard_doc": map[string]any{"order": "asc"}}, // ES 9.x: use _shard_doc instead of _id for tiebreaker
 	}
 
 	query := map[string]any{
