@@ -212,6 +212,21 @@ export function useJobs() {
     table.clearFilters()
   }
 
+  /** Set a single filter by key (used by JobsFilterBar) */
+  function setFilter<K extends keyof JobFilters>(key: K, value: JobFilters[K]) {
+    table.setFilters({ [key]: value } as Partial<JobFilters>)
+  }
+
+  const activeFilterCount = computed(() => {
+    const f = table.filters.value
+    let count = 0
+    if (f.search != null && f.search !== '') count += 1
+    if (f.source_id != null && f.source_id !== '') count += 1
+    if (f.status != null && (Array.isArray(f.status) ? f.status.length > 0 : true)) count += 1
+    if (f.schedule_enabled != null) count += 1
+    return count
+  })
+
   // ---------------------------------------------------------------------------
   // Return
   // ---------------------------------------------------------------------------
@@ -245,10 +260,12 @@ export function useJobs() {
     // Filters
     filters: table.filters,
     setFilters: table.setFilters,
+    setFilter,
     clearAllFilters,
     toggleStatusFilter,
     isStatusActive,
     hasActiveFilters: computed(() => Object.keys(table.filters.value).length > 0),
+    activeFilterCount,
 
     // Status counts (computed from current page)
     statusCounts,
