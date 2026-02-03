@@ -15,6 +15,13 @@ tasks:
     cmds:
       - task --list
 
+  ci:
+    desc: "Run lint, test, and vuln (CI pipeline)"
+    cmds:
+      - task: lint
+      - task: test
+      - task: vuln
+
   lint:
     desc: "Run linters for all microservices sequentially"
     cmds:
