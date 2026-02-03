@@ -109,6 +109,9 @@ func (r *SourceRepository) GetByID(ctx context.Context, id string) (*models.Sour
 		return nil, fmt.Errorf("unmarshal time: %w", unmarshalErr)
 	}
 
+	// Normalize rate_limit so API always returns parseable duration (e.g. "10" -> "10s")
+	source.RateLimit = models.NormalizeRateLimit(source.RateLimit)
+
 	// Merge selectors with defaults
 	source.Selectors = source.Selectors.MergeWithDefaults()
 
@@ -157,6 +160,9 @@ func (r *SourceRepository) List(ctx context.Context) ([]models.Source, error) {
 		if unmarshalErr := json.Unmarshal(timeJSON, &source.Time); unmarshalErr != nil {
 			return nil, fmt.Errorf("unmarshal time: %w", unmarshalErr)
 		}
+
+		// Normalize rate_limit so API always returns parseable duration (e.g. "10" -> "10s")
+		source.RateLimit = models.NormalizeRateLimit(source.RateLimit)
 
 		// Merge selectors with defaults
 		source.Selectors = source.Selectors.MergeWithDefaults()

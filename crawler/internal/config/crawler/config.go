@@ -7,6 +7,8 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
+	"strconv"
+	"strings"
 	"time"
 )
 
@@ -221,13 +223,23 @@ func WithRandomDelay(delay time.Duration) Option {
 }
 
 // ParseRateLimit parses a rate limit string into a time.Duration.
+// Accepts Go duration strings ("10s", "1m") or bare numbers as seconds ("10", "10.0").
 func ParseRateLimit(limit string) (time.Duration, error) {
+	limit = strings.TrimSpace(limit)
 	if limit == "" {
 		return 0, errors.New("rate limit cannot be empty")
 	}
 
 	duration, err := time.ParseDuration(limit)
 	if err != nil {
+		// Bare integer as seconds (e.g. "10")
+		if n, parseErr := strconv.Atoi(limit); parseErr == nil && n > 0 {
+			return time.Duration(n) * time.Second, nil
+		}
+		// Bare float as seconds (e.g. "10.0")
+		if f, parseErr := strconv.ParseFloat(limit, 64); parseErr == nil && f > 0 {
+			return time.Duration(f * float64(time.Second)), nil
+		}
 		return 0, fmt.Errorf("error parsing duration: %w", err)
 	}
 

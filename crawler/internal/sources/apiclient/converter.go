@@ -25,6 +25,9 @@ func parseRateLimitDuration(s string) (time.Duration, error) {
 		if n, parseErr := strconv.Atoi(s); parseErr == nil && n > 0 {
 			return time.Duration(n) * time.Second, nil
 		}
+		if f, parseErr := strconv.ParseFloat(s, 64); parseErr == nil && f > 0 {
+			return time.Duration(f * float64(time.Second)), nil
+		}
 		return 0, fmt.Errorf("invalid rate limit: %w", err)
 	}
 	if d <= 0 {

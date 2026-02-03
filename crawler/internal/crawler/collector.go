@@ -13,6 +13,7 @@ import (
 
 	colly "github.com/gocolly/colly/v2"
 	"github.com/jonesrussell/north-cloud/crawler/internal/archive"
+	crawlerconfig "github.com/jonesrussell/north-cloud/crawler/internal/config/crawler"
 	configtypes "github.com/jonesrussell/north-cloud/crawler/internal/config/types"
 	"github.com/jonesrussell/north-cloud/crawler/internal/logs"
 )
@@ -123,14 +124,16 @@ func (c *Crawler) setupCollector(ctx context.Context, source *configtypes.Source
 	// Referer and RandomUserAgent are applied in OnRequest (setupCallbacks)
 	// MaxURLLength is applied in link_handler.HandleLink
 
-	// Parse and set rate limit
-	rateLimit, err := time.ParseDuration(source.RateLimit)
-	if err != nil {
-		c.GetJobLogger().Error(logs.CategoryError, "Failed to parse rate limit, using default",
-			logs.String("rate_limit", source.RateLimit),
-			logs.Duration("default", defaultRateLimit),
-			logs.Err(err),
-		)
+	// Parse and set rate limit (accepts "10s", "1m", or bare number as seconds e.g. "10")
+	rateLimit, err := crawlerconfig.ParseRateLimit(source.RateLimit)
+	if err != nil || source.RateLimit == "" {
+		if source.RateLimit != "" {
+			c.GetJobLogger().Error(logs.CategoryError, "Failed to parse rate limit, using default",
+				logs.String("rate_limit", source.RateLimit),
+				logs.Duration("default", defaultRateLimit),
+				logs.Err(err),
+			)
+		}
 		rateLimit = defaultRateLimit
 	}
 
