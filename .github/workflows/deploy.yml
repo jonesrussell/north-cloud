@@ -12,6 +12,11 @@ on:
         required: false
         default: false
         type: boolean
+      services:
+        description: 'Comma-separated list of services to deploy (empty = auto-detect)'
+        required: false
+        default: ''
+        type: string
 
 env:
   REGISTRY: docker.io
@@ -23,25 +28,20 @@ permissions:
 
 jobs:
   detect-changes:
-    name: Detect Changed Services
+    name: Detect Changes
     runs-on: ubuntu-latest
-    # Only run for main branch or manual dispatch
     if: |
       github.event_name == 'workflow_dispatch' ||
       (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main')
     outputs:
-      auth: ${{ steps.changes.outputs.auth }}
-      crawler: ${{ steps.changes.outputs.crawler }}
-      source-manager: ${{ steps.changes.outputs.source-manager }}
-      classifier: ${{ steps.changes.outputs.classifier }}
-      publisher: ${{ steps.changes.outputs.publisher }}
-      index-manager: ${{ steps.changes.outputs.index-manager }}
-      search-service: ${{ steps.changes.outputs.search-service }}
-      search-frontend: ${{ steps.changes.outputs.search-frontend }}
-      dashboard: ${{ steps.changes.outputs.dashboard }}
-      nc-http-proxy: ${{ steps.changes.outputs.nc-http-proxy }}
-      infrastructure: ${{ steps.changes.outputs.infrastructure }}
-      docker-compose: ${{ steps.changes.outputs.docker-compose }}
+      # JSON array of services to build
+      services_matrix: ${{ steps.changes.outputs.services_matrix }}
+      # Comma-separated list for deploy script
+      services_list: ${{ steps.changes.outputs.services_list }}
+      # Boolean flags for deploy decisions
+      has_services: ${{ steps.changes.outputs.has_services }}
+      has_infrastructure: ${{ steps.changes.outputs.has_infrastructure }}
+      has_migrations: ${{ steps.changes.outputs.has_migrations }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -52,186 +52,153 @@ jobs:
         id: changes
         env:
           FORCE_REBUILD: ${{ inputs.force_rebuild_all }}
+          MANUAL_SERVICES: ${{ inputs.services }}
         run: |
-          # Check if force rebuild is requested (from workflow_dispatch)
-          if [ "$FORCE_REBUILD" == "true" ]; then
-            echo "Force rebuild requested - building all services"
-            echo "auth=true" >> $GITHUB_OUTPUT
-            echo "crawler=true" >> $GITHUB_OUTPUT
-            echo "source-manager=true" >> $GITHUB_OUTPUT
-            echo "classifier=true" >> $GITHUB_OUTPUT
-            echo "publisher=true" >> $GITHUB_OUTPUT
-            echo "index-manager=true" >> $GITHUB_OUTPUT
-            echo "search-service=true" >> $GITHUB_OUTPUT
-            echo "search-frontend=true" >> $GITHUB_OUTPUT
-            echo "dashboard=true" >> $GITHUB_OUTPUT
-            echo "nc-http-proxy=true" >> $GITHUB_OUTPUT
-            echo "infrastructure=true" >> $GITHUB_OUTPUT
-            echo "docker-compose=true" >> $GITHUB_OUTPUT
-            exit 0
-          fi
+          # All available services
+          ALL_SERVICES="auth crawler source-manager classifier publisher index-manager search-service search-frontend dashboard nc-http-proxy"
 
-          if [ "${{ github.event_name }}" == "pull_request" ]; then
-            BASE_SHA="${{ github.event.pull_request.base.sha }}"
-            HEAD_SHA="${{ github.event.pull_request.head.sha }}"
+          # Handle manual service list
+          if [ -n "$MANUAL_SERVICES" ]; then
+            echo "Manual services specified: $MANUAL_SERVICES"
+            CHANGED_SERVICES="$MANUAL_SERVICES"
+          # Handle force rebuild
+          elif [ "$FORCE_REBUILD" == "true" ]; then
+            echo "Force rebuild requested"
+            CHANGED_SERVICES="$ALL_SERVICES"
           else
-            BASE_SHA="${{ github.event.before }}"
-            HEAD_SHA="${{ github.sha }}"
-          fi
+            # Detect changes from git
+            if [ "${{ github.event_name }}" == "workflow_run" ]; then
+              # For workflow_run, compare HEAD with HEAD~1 (last commit)
+              BASE_SHA="HEAD~1"
+              HEAD_SHA="HEAD"
+            elif [ "${{ github.event_name }}" == "pull_request" ]; then
+              BASE_SHA="${{ github.event.pull_request.base.sha }}"
+              HEAD_SHA="${{ github.event.pull_request.head.sha }}"
+            else
+              BASE_SHA="${{ github.event.before }}"
+              HEAD_SHA="${{ github.sha }}"
+            fi
 
-          # Validate BASE_SHA exists, fallback to HEAD~1 if invalid
-          if [ -z "$BASE_SHA" ] || [ "$BASE_SHA" == "0000000000000000000000000000000000000000" ]; then
-            BASE_SHA=""
-          else
-            # Check if commit exists
-            if ! git cat-file -e "$BASE_SHA" 2>/dev/null; then
-              echo "Warning: BASE_SHA $BASE_SHA not found, using HEAD~1"
+            # Validate BASE_SHA
+            if [ -z "$BASE_SHA" ] || [ "$BASE_SHA" == "0000000000000000000000000000000000000000" ]; then
               BASE_SHA="HEAD~1"
             fi
+            if ! git cat-file -e "$BASE_SHA" 2>/dev/null; then
+              echo "Warning: BASE_SHA invalid, using HEAD~1"
+              BASE_SHA="HEAD~1"
+            fi
+
+            CHANGED_FILES=$(git diff --name-only $BASE_SHA $HEAD_SHA 2>/dev/null || echo "")
+
+            if [ -z "$CHANGED_FILES" ]; then
+              echo "No changed files detected, building all"
+              CHANGED_SERVICES="$ALL_SERVICES"
+            else
+              echo "Changed files:"
+              echo "$CHANGED_FILES"
+              echo ""
+
+              CHANGED_SERVICES=""
+
+              # Map directories to services
+              echo "$CHANGED_FILES" | grep -q "^auth/" && CHANGED_SERVICES="$CHANGED_SERVICES auth"
+              echo "$CHANGED_FILES" | grep -q "^crawler/" && CHANGED_SERVICES="$CHANGED_SERVICES crawler"
+              echo "$CHANGED_FILES" | grep -q "^source-manager/" && CHANGED_SERVICES="$CHANGED_SERVICES source-manager"
+              echo "$CHANGED_FILES" | grep -q "^classifier/" && CHANGED_SERVICES="$CHANGED_SERVICES classifier"
+              echo "$CHANGED_FILES" | grep -q "^publisher/" && CHANGED_SERVICES="$CHANGED_SERVICES publisher"
+              echo "$CHANGED_FILES" | grep -q "^index-manager/" && CHANGED_SERVICES="$CHANGED_SERVICES index-manager"
+              echo "$CHANGED_FILES" | grep -q "^search/" && CHANGED_SERVICES="$CHANGED_SERVICES search-service"
+              echo "$CHANGED_FILES" | grep -q "^search-frontend/" && CHANGED_SERVICES="$CHANGED_SERVICES search-frontend"
+              echo "$CHANGED_FILES" | grep -q "^dashboard/" && CHANGED_SERVICES="$CHANGED_SERVICES dashboard"
+              echo "$CHANGED_FILES" | grep -q "^nc-http-proxy/" && CHANGED_SERVICES="$CHANGED_SERVICES nc-http-proxy"
+
+              # Trim whitespace
+              CHANGED_SERVICES=$(echo "$CHANGED_SERVICES" | xargs)
+            fi
           fi
 
-          # If BASE_SHA is still empty or invalid, check all services
-          if [ -z "$BASE_SHA" ] || ! git cat-file -e "$BASE_SHA" 2>/dev/null; then
-            echo "auth=true" >> $GITHUB_OUTPUT
-            echo "crawler=true" >> $GITHUB_OUTPUT
-            echo "source-manager=true" >> $GITHUB_OUTPUT
-            echo "classifier=true" >> $GITHUB_OUTPUT
-            echo "publisher=true" >> $GITHUB_OUTPUT
-            echo "index-manager=true" >> $GITHUB_OUTPUT
-            echo "search-service=true" >> $GITHUB_OUTPUT
-            echo "search-frontend=true" >> $GITHUB_OUTPUT
-            echo "dashboard=true" >> $GITHUB_OUTPUT
-            echo "nc-http-proxy=true" >> $GITHUB_OUTPUT
-            echo "infrastructure=true" >> $GITHUB_OUTPUT
-            echo "docker-compose=true" >> $GITHUB_OUTPUT
+          # Detect infrastructure changes (needs sync but not rebuild)
+          INFRA_CHANGED="false"
+          if [ -n "$CHANGED_FILES" ]; then
+            if echo "$CHANGED_FILES" | grep -qE "^infrastructure/|^scripts/|docker-compose\.(base|prod)\.yml|^\.github/"; then
+              INFRA_CHANGED="true"
+            fi
+          fi
+
+          # Detect migration changes
+          MIGRATIONS_CHANGED="false"
+          if [ -n "$CHANGED_FILES" ]; then
+            if echo "$CHANGED_FILES" | grep -q "/migrations/"; then
+              MIGRATIONS_CHANGED="true"
+            fi
+          fi
+
+          # Build matrix JSON
+          if [ -n "$CHANGED_SERVICES" ]; then
+            # Convert space-separated to JSON array of objects
+            MATRIX_JSON="["
+            FIRST=true
+            for svc in $CHANGED_SERVICES; do
+              if [ "$FIRST" = true ]; then
+                FIRST=false
+              else
+                MATRIX_JSON="$MATRIX_JSON,"
+              fi
+
+              # Map service name to context/dockerfile
+              case "$svc" in
+                search-service)
+                  CONTEXT="."
+                  DOCKERFILE="./search/Dockerfile"
+                  ;;
+                search-frontend)
+                  CONTEXT="./search-frontend"
+                  DOCKERFILE="./search-frontend/Dockerfile"
+                  ;;
+                dashboard)
+                  CONTEXT="./dashboard"
+                  DOCKERFILE="./dashboard/Dockerfile"
+                  ;;
+                nc-http-proxy)
+                  CONTEXT="./nc-http-proxy"
+                  DOCKERFILE="./nc-http-proxy/Dockerfile"
+                  ;;
+                *)
+                  CONTEXT="."
+                  DOCKERFILE="./${svc}/Dockerfile"
+                  ;;
+              esac
+
+              MATRIX_JSON="$MATRIX_JSON{\"name\":\"$svc\",\"context\":\"$CONTEXT\",\"dockerfile\":\"$DOCKERFILE\"}"
+            done
+            MATRIX_JSON="$MATRIX_JSON]"
+
+            echo "services_matrix={\"service\":$MATRIX_JSON}" >> $GITHUB_OUTPUT
+            echo "services_list=$(echo $CHANGED_SERVICES | tr ' ' ',')" >> $GITHUB_OUTPUT
+            echo "has_services=true" >> $GITHUB_OUTPUT
           else
-            CHANGED_FILES=$(git diff --name-only $BASE_SHA $HEAD_SHA)
-            
-            echo "auth=false" >> $GITHUB_OUTPUT
-            echo "crawler=false" >> $GITHUB_OUTPUT
-            echo "source-manager=false" >> $GITHUB_OUTPUT
-            echo "classifier=false" >> $GITHUB_OUTPUT
-            echo "publisher=false" >> $GITHUB_OUTPUT
-            echo "index-manager=false" >> $GITHUB_OUTPUT
-            echo "search-service=false" >> $GITHUB_OUTPUT
-            echo "search-frontend=false" >> $GITHUB_OUTPUT
-            echo "dashboard=false" >> $GITHUB_OUTPUT
-            echo "nc-http-proxy=false" >> $GITHUB_OUTPUT
-            echo "infrastructure=false" >> $GITHUB_OUTPUT
-            echo "docker-compose=false" >> $GITHUB_OUTPUT
-
-            if echo "$CHANGED_FILES" | grep -q "^auth/"; then
-              echo "auth=true" >> $GITHUB_OUTPUT
-            fi
-            if echo "$CHANGED_FILES" | grep -q "^crawler/"; then
-              echo "crawler=true" >> $GITHUB_OUTPUT
-            fi
-            if echo "$CHANGED_FILES" | grep -q "^source-manager/"; then
-              echo "source-manager=true" >> $GITHUB_OUTPUT
-            fi
-            if echo "$CHANGED_FILES" | grep -q "^classifier/"; then
-              echo "classifier=true" >> $GITHUB_OUTPUT
-            fi
-            if echo "$CHANGED_FILES" | grep -q "^publisher/"; then
-              echo "publisher=true" >> $GITHUB_OUTPUT
-            fi
-            if echo "$CHANGED_FILES" | grep -q "^index-manager/"; then
-              echo "index-manager=true" >> $GITHUB_OUTPUT
-            fi
-            if echo "$CHANGED_FILES" | grep -q "^search/"; then
-              echo "search-service=true" >> $GITHUB_OUTPUT
-            fi
-            if echo "$CHANGED_FILES" | grep -q "^search-frontend/"; then
-              echo "search-frontend=true" >> $GITHUB_OUTPUT
-            fi
-            if echo "$CHANGED_FILES" | grep -q "^dashboard/"; then
-              echo "dashboard=true" >> $GITHUB_OUTPUT
-            fi
-            if echo "$CHANGED_FILES" | grep -q "^nc-http-proxy/"; then
-              echo "nc-http-proxy=true" >> $GITHUB_OUTPUT
-            fi
-            INFRASTRUCTURE_CHANGED=false
-            DOCKER_COMPOSE_CHANGED=false
-            
-            if echo "$CHANGED_FILES" | grep -q "^infrastructure/"; then
-              echo "infrastructure=true" >> $GITHUB_OUTPUT
-              INFRASTRUCTURE_CHANGED=true
-            fi
-            if echo "$CHANGED_FILES" | grep -q "^scripts/"; then
-              echo "infrastructure=true" >> $GITHUB_OUTPUT
-              INFRASTRUCTURE_CHANGED=true
-            fi
-            if echo "$CHANGED_FILES" | grep -qE "docker-compose\.(base|prod)\.yml"; then
-              echo "docker-compose=true" >> $GITHUB_OUTPUT
-              DOCKER_COMPOSE_CHANGED=true
-            fi
-            if echo "$CHANGED_FILES" | grep -qE "^\.github/"; then
-              echo "infrastructure=true" >> $GITHUB_OUTPUT
-              INFRASTRUCTURE_CHANGED=true
-            fi
-            
-            # If infrastructure or docker-compose changed, rebuild all services
-            if [ "$INFRASTRUCTURE_CHANGED" == "true" ] || [ "$DOCKER_COMPOSE_CHANGED" == "true" ]; then
-              echo "auth=true" >> $GITHUB_OUTPUT
-              echo "crawler=true" >> $GITHUB_OUTPUT
-              echo "source-manager=true" >> $GITHUB_OUTPUT
-              echo "classifier=true" >> $GITHUB_OUTPUT
-              echo "publisher=true" >> $GITHUB_OUTPUT
-              echo "index-manager=true" >> $GITHUB_OUTPUT
-              echo "search-service=true" >> $GITHUB_OUTPUT
-              echo "search-frontend=true" >> $GITHUB_OUTPUT
-              echo "dashboard=true" >> $GITHUB_OUTPUT
-              echo "nc-http-proxy=true" >> $GITHUB_OUTPUT
-            fi
+            echo "services_matrix={\"service\":[]}" >> $GITHUB_OUTPUT
+            echo "services_list=" >> $GITHUB_OUTPUT
+            echo "has_services=false" >> $GITHUB_OUTPUT
           fi
+
+          echo "has_infrastructure=$INFRA_CHANGED" >> $GITHUB_OUTPUT
+          echo "has_migrations=$MIGRATIONS_CHANGED" >> $GITHUB_OUTPUT
+
+          echo ""
+          echo "=== Summary ==="
+          echo "Services to build: ${CHANGED_SERVICES:-none}"
+          echo "Infrastructure changed: $INFRA_CHANGED"
+          echo "Migrations changed: $MIGRATIONS_CHANGED"
 
   build-and-push:
-    name: Build and Push Docker Images
+    name: Build ${{ matrix.service.name }}
     needs: detect-changes
+    if: needs.detect-changes.outputs.has_services == 'true'
     runs-on: ubuntu-latest
     strategy:
-      matrix:
-        service:
-          - name: auth
-            context: .
-            dockerfile: ./auth/Dockerfile
-            changed: ${{ needs.detect-changes.outputs.auth }}
-          - name: crawler
-            context: .
-            dockerfile: ./crawler/Dockerfile
-            changed: ${{ needs.detect-changes.outputs.crawler }}
-          - name: source-manager
-            context: .
-            dockerfile: ./source-manager/Dockerfile
-            changed: ${{ needs.detect-changes.outputs.source-manager }}
-          - name: classifier
-            context: .
-            dockerfile: ./classifier/Dockerfile
-            changed: ${{ needs.detect-changes.outputs.classifier }}
-          - name: publisher
-            context: .
-            dockerfile: ./publisher/Dockerfile
-            changed: ${{ needs.detect-changes.outputs.publisher }}
-          - name: index-manager
-            context: .
-            dockerfile: ./index-manager/Dockerfile
-            changed: ${{ needs.detect-changes.outputs.index-manager }}
-          - name: search-service
-            context: .
-            dockerfile: ./search/Dockerfile
-            changed: ${{ needs.detect-changes.outputs.search-service }}
-          - name: search-frontend
-            context: ./search-frontend
-            dockerfile: ./search-frontend/Dockerfile
-            changed: ${{ needs.detect-changes.outputs.search-frontend }}
-          - name: dashboard
-            context: ./dashboard
-            dockerfile: ./dashboard/Dockerfile
-            changed: ${{ needs.detect-changes.outputs.dashboard }}
-          - name: nc-http-proxy
-            context: ./nc-http-proxy
-            dockerfile: ./nc-http-proxy/Dockerfile
-            changed: ${{ needs.detect-changes.outputs.nc-http-proxy }}
+      fail-fast: false
+      matrix: ${{ fromJson(needs.detect-changes.outputs.services_matrix) }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -239,23 +206,7 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Debug build info
-        if: matrix.service.changed == 'true'
-        run: |
-          echo "Building service: ${{ matrix.service.name }}"
-          echo "Context: ${{ matrix.service.context }}"
-          echo "Dockerfile: ${{ matrix.service.dockerfile }}"
-          echo "Target image: ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/${{ matrix.service.name }}"
-          echo "Docker Hub username: ${{ secrets.DOCKERHUB_USERNAME }}"
-          if [ -z "${{ secrets.DOCKERHUB_USERNAME }}" ]; then
-            echo "WARNING: DOCKERHUB_USERNAME secret is not set!"
-          fi
-          if [ -z "${{ secrets.DOCKERHUB_TOKEN }}" ]; then
-            echo "WARNING: DOCKERHUB_TOKEN secret is not set!"
-          fi
-
       - name: Log in to Docker Hub
-        if: matrix.service.changed == 'true'
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
@@ -264,7 +215,6 @@ jobs:
       - name: Extract metadata
         id: meta
         uses: docker/metadata-action@v5
-        if: matrix.service.changed == 'true'
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/${{ matrix.service.name }}
           tags: |
@@ -272,7 +222,6 @@ jobs:
             type=sha,format=short
 
       - name: Build and push
-        if: matrix.service.changed == 'true'
         uses: docker/build-push-action@v5
         with:
           context: ${{ matrix.service.context }}
@@ -280,28 +229,29 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/${{ matrix.service.name }}:buildcache
-          cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/${{ matrix.service.name }}:buildcache,mode=max
+          cache-from: |
+            type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/${{ matrix.service.name }}:buildcache
+            type=gha,scope=${{ matrix.service.name }}
+          cache-to: |
+            type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/${{ matrix.service.name }}:buildcache,mode=max
+            type=gha,scope=${{ matrix.service.name }},mode=max
           build-args: |
             BUILD_ENV=production
 
-      - name: Verify push
-        if: matrix.service.changed == 'true'
-        run: |
-          echo "Verifying image push for ${{ matrix.service.name }}..."
-          echo "Expected tags: ${{ steps.meta.outputs.tags }}"
-          echo "Image: ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/${{ matrix.service.name }}:latest"
-          # Note: We can't easily verify from GitHub Actions without Docker Hub API access
-          # But this step helps confirm the workflow reached this point
-
-      - name: Skip build
-        if: matrix.service.changed != 'true'
-        run: echo "Skipping build for ${{ matrix.service.name }} - no changes detected"
-
   deploy:
     name: Deploy to Production
-    needs: build-and-push
+    needs: [detect-changes, build-and-push]
+    # Run if services were built OR if only infrastructure changed
+    if: |
+      always() &&
+      needs.detect-changes.result == 'success' &&
+      (needs.build-and-push.result == 'success' || needs.build-and-push.result == 'skipped') &&
+      (needs.detect-changes.outputs.has_services == 'true' || needs.detect-changes.outputs.has_infrastructure == 'true')
     runs-on: ubuntu-latest
+    env:
+      CHANGED_SERVICES: ${{ needs.detect-changes.outputs.services_list }}
+      INFRA_CHANGED: ${{ needs.detect-changes.outputs.has_infrastructure }}
+      MIGRATIONS_CHANGED: ${{ needs.detect-changes.outputs.has_migrations }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -309,113 +259,56 @@ jobs:
       - name: Setup SSH
         uses: webfactory/ssh-agent@v0.9.0
         with:
-          ssh-private-key: |
-            ${{ secrets.DEPLOY_SSH_KEY }}
+          ssh-private-key: ${{ secrets.DEPLOY_SSH_KEY }}
 
       - name: Add server to known hosts
         run: |
           mkdir -p ~/.ssh
           ssh-keyscan -p ${{ secrets.DEPLOY_SSH_PORT || 22 }} ${{ secrets.DEPLOY_HOST }} >> ~/.ssh/known_hosts
 
-      - name: Transfer docker-compose files and deploy script
+      - name: Sync files to server
         env:
           SSH_PORT: ${{ secrets.DEPLOY_SSH_PORT || 22 }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
         run: |
-          scp -P ${SSH_PORT} \
-            -o StrictHostKeyChecking=no \
+          # Create a tarball of all deployment files (faster than multiple scp)
+          tar -czf /tmp/deploy-files.tar.gz \
             docker-compose.base.yml \
             docker-compose.prod.yml \
             scripts/deploy.sh \
-            ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}:/opt/north-cloud/
-          
-          # Make deploy script executable
-          ssh -p ${SSH_PORT} \
-            -o StrictHostKeyChecking=no \
-            ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} \
-            'chmod +x /opt/north-cloud/deploy.sh'
+            infrastructure/ \
+            */migrations/ \
+            --exclude='*.md' \
+            --exclude='*.txt' \
+            2>/dev/null || true
 
-      - name: Transfer infrastructure config files
+          # Transfer and extract in one operation
+          scp -P "${SSH_PORT}" /tmp/deploy-files.tar.gz "${DEPLOY_USER}@${DEPLOY_HOST}:/tmp/"
+
+          ssh -p "${SSH_PORT}" "${DEPLOY_USER}@${DEPLOY_HOST}" '
+            cd /opt/north-cloud
+            tar -xzf /tmp/deploy-files.tar.gz
+            rm /tmp/deploy-files.tar.gz
+            chmod +x scripts/deploy.sh 2>/dev/null || chmod +x deploy.sh 2>/dev/null || true
+            # Move deploy.sh to expected location if it was in scripts/
+            [ -f scripts/deploy.sh ] && mv scripts/deploy.sh deploy.sh
+          '
+
+      - name: Deploy services
         env:
           SSH_PORT: ${{ secrets.DEPLOY_SSH_PORT || 22 }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
         run: |
-          # Create infrastructure directories
-          ssh -p ${SSH_PORT} \
-            -o StrictHostKeyChecking=no \
-            ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} \
-            'mkdir -p /opt/north-cloud/infrastructure/{elasticsearch,loki,alloy,nginx,grafana/provisioning/dashboards,grafana/provisioning/datasources}'
+          ssh -p "${SSH_PORT}" "${DEPLOY_USER}@${DEPLOY_HOST}" "
+            cd /opt/north-cloud
 
-          # Remove any incorrectly created directories (from previous failed runs)
-          ssh -p ${SSH_PORT} \
-            -o StrictHostKeyChecking=no \
-            ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} \
-            'rm -rf /opt/north-cloud/infrastructure/elasticsearch/elasticsearch.yml \
-                    /opt/north-cloud/infrastructure/loki/loki-config.prod.yml \
-                    /opt/north-cloud/infrastructure/alloy/config.alloy \
-                    /opt/north-cloud/infrastructure/nginx/nginx.conf \
-                    /opt/north-cloud/infrastructure/grafana/provisioning/dashboards/dashboards.yml \
-                    /opt/north-cloud/infrastructure/grafana/provisioning/datasources/loki.yml 2>/dev/null || true'
+            # Export variables for deploy script
+            export CHANGED_SERVICES='${CHANGED_SERVICES}'
+            export INFRA_CHANGED='${INFRA_CHANGED}'
+            export MIGRATIONS_CHANGED='${MIGRATIONS_CHANGED}'
 
-          # Transfer all infrastructure config files
-          scp -P ${SSH_PORT} -o StrictHostKeyChecking=no \
-            infrastructure/elasticsearch/elasticsearch.yml \
-            ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}:/opt/north-cloud/infrastructure/elasticsearch/
-
-          scp -P ${SSH_PORT} -o StrictHostKeyChecking=no \
-            infrastructure/loki/loki-config.prod.yml \
-            ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}:/opt/north-cloud/infrastructure/loki/
-
-          scp -P ${SSH_PORT} -o StrictHostKeyChecking=no \
-            infrastructure/alloy/config.alloy \
-            ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}:/opt/north-cloud/infrastructure/alloy/
-
-          scp -P ${SSH_PORT} -o StrictHostKeyChecking=no \
-            infrastructure/nginx/nginx.conf \
-            ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}:/opt/north-cloud/infrastructure/nginx/
-
-          scp -P ${SSH_PORT} -o StrictHostKeyChecking=no \
-            infrastructure/grafana/provisioning/dashboards/dashboards.yml \
-            ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}:/opt/north-cloud/infrastructure/grafana/provisioning/dashboards/
-
-          scp -P ${SSH_PORT} -o StrictHostKeyChecking=no \
-            infrastructure/grafana/provisioning/datasources/loki.yml \
-            ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}:/opt/north-cloud/infrastructure/grafana/provisioning/datasources/
-
-      - name: Transfer migration files
-        env:
-          SSH_PORT: ${{ secrets.DEPLOY_SSH_PORT || 22 }}
-        run: |
-          # Create migration directories on server
-          ssh -p ${SSH_PORT} \
-            -o StrictHostKeyChecking=no \
-            ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} \
-            'mkdir -p /opt/north-cloud/{crawler,source-manager,classifier,publisher,index-manager}/migrations'
-
-          # Transfer migrations for each service
-          scp -P ${SSH_PORT} -o StrictHostKeyChecking=no -r \
-            crawler/migrations/* \
-            ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}:/opt/north-cloud/crawler/migrations/
-          
-          scp -P ${SSH_PORT} -o StrictHostKeyChecking=no -r \
-            source-manager/migrations/* \
-            ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}:/opt/north-cloud/source-manager/migrations/
-          
-          scp -P ${SSH_PORT} -o StrictHostKeyChecking=no -r \
-            classifier/migrations/* \
-            ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}:/opt/north-cloud/classifier/migrations/
-          
-          scp -P ${SSH_PORT} -o StrictHostKeyChecking=no -r \
-            publisher/migrations/* \
-            ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}:/opt/north-cloud/publisher/migrations/
-          
-          scp -P ${SSH_PORT} -o StrictHostKeyChecking=no -r \
-            index-manager/migrations/* \
-            ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}:/opt/north-cloud/index-manager/migrations/
-
-      - name: Deploy via SSH
-        env:
-          SSH_PORT: ${{ secrets.DEPLOY_SSH_PORT || 22 }}
-        run: |
-          ssh -o StrictHostKeyChecking=no \
-            -p ${SSH_PORT} \
-            ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} \
-            'bash /opt/north-cloud/deploy.sh'
+            # Run optimized deploy
+            bash deploy.sh
+          "
