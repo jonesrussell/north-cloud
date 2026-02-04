@@ -12,20 +12,71 @@ permissions:
   contents: read
 
 jobs:
-  lint:
-    name: Lint All Services
+  detect-changes:
+    name: Detect Changed Services
     runs-on: ubuntu-latest
+    outputs:
+      services: ${{ steps.detect.outputs.services }}
+      has_go: ${{ steps.detect.outputs.has_go }}
+      has_frontend: ${{ steps.detect.outputs.has_frontend }}
+      run_all: ${{ steps.detect.outputs.run_all }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Need full history for diff
+
+      - name: Detect changed services
+        id: detect
+        env:
+          # Use env vars to safely pass GitHub context (avoids injection risks)
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          # Get changed services - use BASE_SHA if available, otherwise HEAD~1
+          BASE_REF="${BASE_SHA:-HEAD~1}"
+          SERVICES=$(./scripts/detect-changed-services.sh "$BASE_REF")
+          echo "Detected changes: $SERVICES"
+          echo "services=$SERVICES" >> $GITHUB_OUTPUT
+
+          # Check if "all" or specific services
+          if echo "$SERVICES" | grep -q '"all"'; then
+            echo "run_all=true" >> $GITHUB_OUTPUT
+            echo "has_go=true" >> $GITHUB_OUTPUT
+            echo "has_frontend=true" >> $GITHUB_OUTPUT
+          else
+            echo "run_all=false" >> $GITHUB_OUTPUT
+            # Check for Go services
+            if echo "$SERVICES" | grep -qE '"(auth|classifier|crawler|index-manager|mcp-north-cloud|publisher|search|source-manager|nc-http-proxy)"'; then
+              echo "has_go=true" >> $GITHUB_OUTPUT
+            else
+              echo "has_go=false" >> $GITHUB_OUTPUT
+            fi
+            # Check for frontend services
+            if echo "$SERVICES" | grep -qE '"(dashboard|search-frontend)"'; then
+              echo "has_frontend=true" >> $GITHUB_OUTPUT
+            else
+              echo "has_frontend=false" >> $GITHUB_OUTPUT
+            fi
+          fi
+
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    needs: detect-changes
+    if: needs.detect-changes.outputs.services != '[]'
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
       - name: Set up Go
+        if: needs.detect-changes.outputs.has_go == 'true' || needs.detect-changes.outputs.run_all == 'true'
         uses: actions/setup-go@v5
         with:
           go-version: '1.25'
-          cache: false  # Using actions/cache with **/go.sum for monorepo
+          cache: false
 
       - name: Set up Node.js
+        if: needs.detect-changes.outputs.has_frontend == 'true' || needs.detect-changes.outputs.run_all == 'true'
         uses: actions/setup-node@v4
         with:
           node-version: '25'
@@ -35,6 +86,7 @@ jobs:
             search-frontend/package-lock.json
 
       - name: Cache Go modules
+        if: needs.detect-changes.outputs.has_go == 'true' || needs.detect-changes.outputs.run_all == 'true'
         uses: actions/cache@v4
         with:
           path: |
@@ -50,11 +102,13 @@ jobs:
           echo "$HOME/.local/bin" >> $GITHUB_PATH
 
       - name: Install golangci-lint v2
+        if: needs.detect-changes.outputs.has_go == 'true' || needs.detect-changes.outputs.run_all == 'true'
         run: |
           go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.8.0
           echo "$(go env GOPATH)/bin" >> $GITHUB_PATH
 
       - name: Install frontend dependencies
+        if: needs.detect-changes.outputs.has_frontend == 'true' || needs.detect-changes.outputs.run_all == 'true'
         run: |
           if [ -f "dashboard/package.json" ]; then
             (cd dashboard && npm ci)
@@ -63,12 +117,29 @@ jobs:
             (cd search-frontend && npm ci)
           fi
 
-      - name: Run linters
+      - name: Run linters (all services)
+        if: needs.detect-changes.outputs.run_all == 'true'
         run: task lint
+
+      - name: Run linters (changed services only)
+        if: needs.detect-changes.outputs.run_all == 'false'
+        env:
+          CHANGED_SERVICES: ${{ needs.detect-changes.outputs.services }}
+        run: |
+          echo "Linting changed services: $CHANGED_SERVICES"
+
+          # Parse JSON and run lint for each service
+          for service in $(echo "$CHANGED_SERVICES" | jq -r '.[]'); do
+            echo "::group::Linting $service"
+            task "lint:$service" || exit 1
+            echo "::endgroup::"
+          done
 
   vuln:
     name: Vulnerability Check
     runs-on: ubuntu-latest
+    needs: detect-changes
+    if: needs.detect-changes.outputs.has_go == 'true' || needs.detect-changes.outputs.run_all == 'true'
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -77,7 +148,7 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: '1.25'
-          cache: false  # Using actions/cache with **/go.sum for monorepo
+          cache: false
 
       - name: Cache Go modules
         uses: actions/cache@v4
@@ -99,24 +170,50 @@ jobs:
           go install golang.org/x/vuln/cmd/govulncheck@latest
           echo "$(go env GOPATH)/bin" >> $GITHUB_PATH
 
-      - name: Run vulnerability check
+      - name: Run vulnerability check (all services)
+        if: needs.detect-changes.outputs.run_all == 'true'
         run: task vuln
 
+      - name: Run vulnerability check (changed services only)
+        if: needs.detect-changes.outputs.run_all == 'false'
+        env:
+          CHANGED_SERVICES: ${{ needs.detect-changes.outputs.services }}
+        run: |
+          echo "Checking vulnerabilities for changed services: $CHANGED_SERVICES"
+
+          # Only check Go services
+          GO_SERVICES="auth classifier crawler index-manager mcp-north-cloud publisher search source-manager nc-http-proxy"
+
+          for service in $(echo "$CHANGED_SERVICES" | jq -r '.[]'); do
+            if echo "$GO_SERVICES" | grep -qw "$service"; then
+              echo "::group::Vulnerability check $service"
+              task "vuln:$service" || exit 1
+              echo "::endgroup::"
+            fi
+          done
+
   test:
-    name: Test All Services
+    name: Test
     runs-on: ubuntu-latest
-    needs: [lint, vuln]
+    needs: [detect-changes, lint, vuln]
+    if: |
+      always() &&
+      needs.detect-changes.outputs.services != '[]' &&
+      (needs.lint.result == 'success' || needs.lint.result == 'skipped') &&
+      (needs.vuln.result == 'success' || needs.vuln.result == 'skipped')
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
       - name: Set up Go
+        if: needs.detect-changes.outputs.has_go == 'true' || needs.detect-changes.outputs.run_all == 'true'
         uses: actions/setup-go@v5
         with:
           go-version: '1.25'
-          cache: false  # Using actions/cache with **/go.sum for monorepo
+          cache: false
 
       - name: Set up Node.js
+        if: needs.detect-changes.outputs.has_frontend == 'true' || needs.detect-changes.outputs.run_all == 'true'
         uses: actions/setup-node@v4
         with:
           node-version: '25'
@@ -126,6 +223,7 @@ jobs:
             search-frontend/package-lock.json
 
       - name: Cache Go modules
+        if: needs.detect-changes.outputs.has_go == 'true' || needs.detect-changes.outputs.run_all == 'true'
         uses: actions/cache@v4
         with:
           path: |
@@ -141,6 +239,7 @@ jobs:
           echo "$HOME/.local/bin" >> $GITHUB_PATH
 
       - name: Install frontend dependencies
+        if: needs.detect-changes.outputs.has_frontend == 'true' || needs.detect-changes.outputs.run_all == 'true'
         run: |
           if [ -f "dashboard/package.json" ]; then
             (cd dashboard && npm ci)
@@ -149,5 +248,19 @@ jobs:
             (cd search-frontend && npm ci)
           fi
 
-      - name: Run tests
+      - name: Run tests (all services)
+        if: needs.detect-changes.outputs.run_all == 'true'
         run: task test
+
+      - name: Run tests (changed services only)
+        if: needs.detect-changes.outputs.run_all == 'false'
+        env:
+          CHANGED_SERVICES: ${{ needs.detect-changes.outputs.services }}
+        run: |
+          echo "Testing changed services: $CHANGED_SERVICES"
+
+          for service in $(echo "$CHANGED_SERVICES" | jq -r '.[]'); do
+            echo "::group::Testing $service"
+            task "test:$service" || exit 1
+            echo "::endgroup::"
+          done

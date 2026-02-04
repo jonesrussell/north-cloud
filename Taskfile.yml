@@ -22,6 +22,70 @@ tasks:
       - task: test
       - task: vuln
 
+  ci:changed:
+    desc: "Run lint, test, and vuln only for changed services (vs HEAD~1)"
+    cmds:
+      - task: lint:changed
+      - task: test:changed
+      - task: vuln:changed
+
+  lint:changed:
+    desc: "Lint only services that have changed (vs HEAD~1 or BASE_REF env var)"
+    cmds:
+      - |
+        SERVICES=$(./scripts/detect-changed-services.sh "${BASE_REF:-HEAD~1}")
+        echo "Changed services: $SERVICES"
+        if echo "$SERVICES" | grep -q '"all"'; then
+          echo "Infrastructure changed - linting all services"
+          task lint
+        elif [ "$SERVICES" = "[]" ]; then
+          echo "No services changed"
+        else
+          for service in $(echo "$SERVICES" | jq -r '.[]'); do
+            echo "=== Linting $service ==="
+            task "lint:$service"
+          done
+        fi
+
+  test:changed:
+    desc: "Test only services that have changed (vs HEAD~1 or BASE_REF env var)"
+    cmds:
+      - |
+        SERVICES=$(./scripts/detect-changed-services.sh "${BASE_REF:-HEAD~1}")
+        echo "Changed services: $SERVICES"
+        if echo "$SERVICES" | grep -q '"all"'; then
+          echo "Infrastructure changed - testing all services"
+          task test
+        elif [ "$SERVICES" = "[]" ]; then
+          echo "No services changed"
+        else
+          for service in $(echo "$SERVICES" | jq -r '.[]'); do
+            echo "=== Testing $service ==="
+            task "test:$service"
+          done
+        fi
+
+  vuln:changed:
+    desc: "Vulnerability check only for changed Go services (vs HEAD~1 or BASE_REF env var)"
+    cmds:
+      - |
+        SERVICES=$(./scripts/detect-changed-services.sh "${BASE_REF:-HEAD~1}")
+        echo "Changed services: $SERVICES"
+        GO_SERVICES="auth classifier crawler index-manager mcp-north-cloud publisher search source-manager nc-http-proxy"
+        if echo "$SERVICES" | grep -q '"all"'; then
+          echo "Infrastructure changed - checking all services"
+          task vuln
+        elif [ "$SERVICES" = "[]" ]; then
+          echo "No services changed"
+        else
+          for service in $(echo "$SERVICES" | jq -r '.[]'); do
+            if echo "$GO_SERVICES" | grep -qw "$service"; then
+              echo "=== Vulnerability check $service ==="
+              task "vuln:$service"
+            fi
+          done
+        fi
+
   lint:
     desc: "Run linters for all microservices sequentially"
     cmds:
