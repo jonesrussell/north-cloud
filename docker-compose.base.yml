@@ -285,6 +285,30 @@ services:
       start_period: 10s
 
   # ------------------------------------------------------------
+  # StreetCode ML Classifier
+  # ------------------------------------------------------------
+
+  streetcode-ml:
+    <<: *service-defaults
+    build:
+      context: ./streetcode-ml
+      dockerfile: Dockerfile
+    image: docker.io/jonesrussell/streetcode-ml:latest
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 512M
+    environment:
+      MODEL_PATH: /app/models
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8076/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+  # ------------------------------------------------------------
   # HTTP Replay Proxy (nc-http-proxy)
   # ------------------------------------------------------------
 
