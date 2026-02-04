@@ -399,6 +399,30 @@ func (r *JobRepository) GetJobsReadyToRun(ctx context.Context) ([]*domain.Job, e
 	return jobs, nil
 }
 
+// GetScheduledJobs returns all scheduled jobs (next_run_at IS NOT NULL, not paused).
+// Used to rebuild the bucket map on scheduler startup.
+func (r *JobRepository) GetScheduledJobs(ctx context.Context) ([]*domain.Job, error) {
+	query := `SELECT ` + jobSelectBase + `
+		FROM jobs
+		WHERE next_run_at IS NOT NULL
+		AND is_paused = false
+		AND status IN ('pending', 'scheduled')
+		ORDER BY next_run_at
+	`
+
+	var jobs []*domain.Job
+	err := r.db.SelectContext(ctx, &jobs, query)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get scheduled jobs: %w", err)
+	}
+
+	if jobs == nil {
+		jobs = []*domain.Job{}
+	}
+
+	return jobs, nil
+}
+
 // AcquireLock attempts to acquire a distributed lock for a job.
 // Uses atomic compare-and-swap to prevent race conditions.
 // Returns true if lock was acquired, false if already locked by another instance.

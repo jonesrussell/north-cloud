@@ -103,6 +103,29 @@ func NewIntervalScheduler(
 	return s
 }
 
+// rebuildBucketMap rebuilds the bucket map from database state on startup.
+func (s *IntervalScheduler) rebuildBucketMap() error {
+	if s.bucketMap == nil {
+		return nil // Load balancing disabled
+	}
+
+	jobs, err := s.repo.GetScheduledJobs(s.ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get scheduled jobs: %w", err)
+	}
+
+	for _, job := range jobs {
+		if job.NextRunAt != nil {
+			s.bucketMap.AddJob(job.ID, SlotKey(*job.NextRunAt))
+		}
+	}
+
+	s.logger.Info("Bucket map rebuilt",
+		infralogger.Int("job_count", len(jobs)),
+	)
+	return nil
+}
+
 // Start starts the interval scheduler.
 func (s *IntervalScheduler) Start(ctx context.Context) error {
 	s.logger.Info("Starting interval scheduler",
@@ -110,6 +133,11 @@ func (s *IntervalScheduler) Start(ctx context.Context) error {
 		infralogger.Duration("lock_duration", s.lockDuration),
 		infralogger.Duration("metrics_interval", s.metricsInterval),
 	)
+
+	// Rebuild bucket map from existing scheduled jobs
+	if err := s.rebuildBucketMap(); err != nil {
+		return fmt.Errorf("failed to rebuild bucket map: %w", err)
+	}
 
 	// Start job poller
 	s.wg.Add(1)

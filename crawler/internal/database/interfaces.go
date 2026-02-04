@@ -21,6 +21,7 @@ type JobRepositoryInterface interface {
 
 	// Scheduler operations
 	GetJobsReadyToRun(ctx context.Context) ([]*domain.Job, error)
+	GetScheduledJobs(ctx context.Context) ([]*domain.Job, error)
 	AcquireLock(ctx context.Context, jobID string, token uuid.UUID, now time.Time, duration time.Duration) (bool, error)
 	ReleaseLock(ctx context.Context, jobID string) error
 	ClearStaleLocks(ctx context.Context, cutoff time.Time) (int, error)
