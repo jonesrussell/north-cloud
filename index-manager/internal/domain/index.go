@@ -60,3 +60,30 @@ type IndexStats struct {
 	ClusterHealth   string         `json:"cluster_health"`
 	IndexesByHealth map[string]int `json:"indexes_by_health"`
 }
+
+// ListIndicesRequest holds pagination, filtering, and sorting parameters
+type ListIndicesRequest struct {
+	// Existing filters
+	Type       string // IndexType filter
+	SourceName string // Source name filter
+
+	// New filters
+	Search string // Name search filter (case-insensitive substring)
+	Health string // Health filter (green, yellow, red)
+
+	// Pagination
+	Limit  int // Default: 50
+	Offset int // Default: 0
+
+	// Sorting
+	SortBy    string // name, document_count, size, health (default: name)
+	SortOrder string // asc, desc (default: asc)
+}
+
+// ListIndicesResponse represents paginated indices response
+type ListIndicesResponse struct {
+	Indices []*Index `json:"indices"`
+	Total   int      `json:"total"`
+	Limit   int      `json:"limit"`
+	Offset  int      `json:"offset"`
+}

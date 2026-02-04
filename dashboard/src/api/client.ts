@@ -371,7 +371,16 @@ export const indexManagerApi = {
 
   // Index operations
   indexes: {
-    list: (params?: { type?: string; source?: string }): Promise<AxiosResponse<ListIndexesResponse>> =>
+    list: (params?: {
+      limit?: number
+      offset?: number
+      sortBy?: string
+      sortOrder?: 'asc' | 'desc'
+      search?: string
+      type?: string
+      health?: string
+      source?: string
+    }): Promise<AxiosResponse<ListIndexesResponse>> =>
       indexManagerClient.get('/api/v1/indexes', { params }),
     get: (indexName: string): Promise<AxiosResponse<GetIndexResponse>> =>
       indexManagerClient.get(`/api/v1/indexes/${indexName}`),

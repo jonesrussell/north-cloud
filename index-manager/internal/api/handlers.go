@@ -13,6 +13,14 @@ import (
 
 const errDocumentNotFound = "document not found"
 
+// Pagination constants
+const (
+	defaultLimit     = 50
+	maxLimit         = 100
+	defaultSortBy    = "name"
+	defaultSortOrder = "asc"
+)
+
 // Handler handles HTTP requests for the index manager API
 type Handler struct {
 	indexService    *service.IndexService
@@ -78,27 +86,65 @@ func (h *Handler) CreateIndex(c *gin.Context) {
 	c.JSON(http.StatusCreated, index)
 }
 
-// ListIndices handles GET /api/v1/indexes
+// ListIndices handles GET /api/v1/indexes with pagination, filtering, and sorting
 func (h *Handler) ListIndices(c *gin.Context) {
-	indexType := c.Query("type")
-	sourceName := c.Query("source")
+	// Parse filters
+	req := &domain.ListIndicesRequest{
+		Type:       c.Query("type"),
+		SourceName: c.Query("source"),
+		Search:     c.Query("search"),
+		Health:     c.Query("health"),
+		SortBy:     c.DefaultQuery("sortBy", defaultSortBy),
+		SortOrder:  c.DefaultQuery("sortOrder", defaultSortOrder),
+	}
+
+	// Parse pagination
+	req.Limit = defaultLimit
+	if limitStr := c.Query("limit"); limitStr != "" {
+		if limit, parseErr := strconv.Atoi(limitStr); parseErr == nil && limit > 0 && limit <= maxLimit {
+			req.Limit = limit
+		}
+	}
+
+	req.Offset = 0
+	if offsetStr := c.Query("offset"); offsetStr != "" {
+		if offset, parseErr := strconv.Atoi(offsetStr); parseErr == nil && offset >= 0 {
+			req.Offset = offset
+		}
+	}
+
+	// Validate sortBy
+	validSortFields := map[string]bool{
+		"name": true, "document_count": true, "size": true, "health": true, "type": true,
+	}
+	if !validSortFields[req.SortBy] {
+		req.SortBy = defaultSortBy
+	}
+
+	// Validate sortOrder
+	if req.SortOrder != "asc" && req.SortOrder != "desc" {
+		req.SortOrder = defaultSortOrder
+	}
 
 	h.logger.Debug("Listing indices",
-		infralogger.String("index_type", indexType),
-		infralogger.String("source_name", sourceName),
+		infralogger.String("type", req.Type),
+		infralogger.String("source", req.SourceName),
+		infralogger.String("search", req.Search),
+		infralogger.String("health", req.Health),
+		infralogger.Int("limit", req.Limit),
+		infralogger.Int("offset", req.Offset),
+		infralogger.String("sort_by", req.SortBy),
+		infralogger.String("sort_order", req.SortOrder),
 	)
 
-	indices, err := h.indexService.ListIndices(c.Request.Context(), indexType, sourceName)
+	response, err := h.indexService.ListIndices(c.Request.Context(), req)
 	if err != nil {
 		h.logger.Error("Failed to list indices", infralogger.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"indices": indices,
-		"count":   len(indices),
-	})
+	c.JSON(http.StatusOK, response)
 }
 
 // GetIndex handles GET /api/v1/indexes/:index_name
@@ -204,7 +250,15 @@ func (h *Handler) ListIndexesForSource(c *gin.Context) {
 
 	h.logger.Debug("Listing indexes for source", infralogger.String("source_name", sourceName))
 
-	indices, err := h.indexService.ListIndices(c.Request.Context(), "", sourceName)
+	// Use a high limit to return all indexes for a source
+	const allIndexesLimit = 1000
+	response, err := h.indexService.ListIndices(c.Request.Context(), &domain.ListIndicesRequest{
+		SourceName: sourceName,
+		Limit:      allIndexesLimit,
+		Offset:     0,
+		SortBy:     "name",
+		SortOrder:  "asc",
+	})
 	if err != nil {
 		h.logger.Error("Failed to list indexes for source",
 			infralogger.String("source_name", sourceName),
@@ -216,8 +270,8 @@ func (h *Handler) ListIndexesForSource(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"source_name": sourceName,
-		"indices":     indices,
-		"count":       len(indices),
+		"indices":     response.Indices,
+		"count":       response.Total,
 	})
 }
 
