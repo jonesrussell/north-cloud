@@ -305,6 +305,7 @@ else
 fi
 echo ""
 echo "Services status:"
-$COMPOSE_CMD ps --format "table {{.Name}}\t{{.Status}}\t{{.Ports}}" | head -20
+# Use head -25 to avoid SIGPIPE when many containers (head -20 + pipefail causes script exit)
+$COMPOSE_CMD ps --format "table {{.Name}}\t{{.Status}}\t{{.Ports}}" 2>/dev/null | head -25 || true
 echo ""
 echo -e "${GREEN}Deployment completed!${NC}"
