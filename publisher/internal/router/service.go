@@ -164,7 +164,7 @@ func (s *Service) pollAndRoute(ctx context.Context) {
 	}
 }
 
-// routeArticle routes a single article to Layer 1 and Layer 2 channels
+// routeArticle routes a single article to Layer 1, Layer 2, and Layer 3 channels
 func (s *Service) routeArticle(ctx context.Context, article *Article, channels []models.Channel) {
 	// Layer 1: Automatic topic channels
 	for _, topic := range article.Topics {
@@ -178,6 +178,12 @@ func (s *Service) routeArticle(ctx context.Context, article *Article, channels [
 		if ch.Rules.Matches(article.QualityScore, article.ContentType, article.Topics) {
 			s.publishToChannel(ctx, article, ch.RedisChannel, &ch.ID)
 		}
+	}
+
+	// Layer 3: Crime classification channels
+	crimeChannels := GenerateCrimeChannels(article)
+	for _, channel := range crimeChannels {
+		s.publishToChannel(ctx, article, channel, nil)
 	}
 }
 
