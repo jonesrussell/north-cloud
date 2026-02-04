@@ -48,6 +48,13 @@ The interval-based scheduler is a modern, user-friendly job scheduling system th
 - **Exponential backoff**: `base × 2^(attempt-1)`, capped at 1 hour
 - **Example backoff**: 60s → 120s → 240s → 480s → 960s → 3600s (max)
 
+### 8. Self-Balancing Load Distribution
+- **Automatic load spreading**: Jobs are distributed across 15-minute time slots
+- **Rhythm preservation**: Recurring jobs maintain their slot phase across intervals
+- **Anti-thrashing protection**: Jobs cannot be moved too frequently
+- **On-demand rebalancing**: API endpoints for preview and execution
+- **Real-time monitoring**: Distribution metrics available via API
+
 ## Architecture
 
 ```
@@ -77,6 +84,14 @@ The interval-based scheduler is a modern, user-friendly job scheduling system th
 │  │  │   Active Jobs Map (thread-safe)             │     │       │
 │  │  │   - Job contexts                            │     │       │
 │  │  │   - Cancellation support                    │     │       │
+│  │  └─────────────────────────────────────────────┘     │       │
+│  │         │                                              │       │
+│  │         ▼                                              │       │
+│  │  ┌─────────────────────────────────────────────┐     │       │
+│  │  │   BucketMap (load balancing)                │     │       │
+│  │  │   - 15-minute time slots                    │     │       │
+│  │  │   - Job distribution tracking               │     │       │
+│  │  │   - Anti-thrashing protection               │     │       │
 │  │  └─────────────────────────────────────────────┘     │       │
 │  └────────────────────────────────────────────────────────┘       │
 │           │                                                         │
@@ -385,6 +400,58 @@ Response: 200 OK
 }
 ```
 
+### Load Distribution (New)
+
+#### Get Job Distribution
+```http
+GET /api/v1/scheduler/distribution
+
+Response: 200 OK
+{
+  "hourly_counts": {
+    "0": 15,
+    "1": 12,
+    "2": 18
+  },
+  "total_jobs": 150,
+  "average_per_hour": 6.25,
+  "max_per_hour": 18,
+  "min_per_hour": 3,
+  "distribution_score": 0.85
+}
+```
+
+#### Preview Rebalance
+```http
+POST /api/v1/scheduler/rebalance/preview
+
+Response: 200 OK
+{
+  "moves": [
+    {"job_id": "abc-123", "from_slot": 8, "to_slot": 12, "reason": "load_balancing"}
+  ],
+  "total_moves": 5,
+  "before_score": 0.65,
+  "after_score": 0.92,
+  "improvement": 0.27
+}
+```
+
+#### Execute Rebalance
+```http
+POST /api/v1/scheduler/rebalance
+
+Response: 200 OK
+{
+  "moves": [...],
+  "total_moves": 5,
+  "jobs_updated": 5,
+  "before_score": 0.65,
+  "after_score": 0.92,
+  "improvement": 0.27
+}
+```
+
 ## Job Lifecycle
 
 ### State Transitions
@@ -682,6 +749,185 @@ If jobs are stuck with locks:
 2. **Execution retention**: Clean up old executions to keep table small
 3. **Lock duration**: Set to 2x typical job duration to minimize stale locks
 
+## Load Balancing
+
+The scheduler includes a self-balancing load distribution system that spreads jobs across time slots to prevent resource contention and ensure predictable scheduling.
+
+### How It Works
+
+Jobs are distributed across 15-minute time slots using a `BucketMap` data structure:
+
+```
+Hour 0                      Hour 1
+├── Slot 0 (00:00-00:15)   ├── Slot 4 (01:00-01:15)
+├── Slot 1 (00:15-00:30)   ├── Slot 5 (01:15-01:30)
+├── Slot 2 (00:30-00:45)   ├── Slot 6 (01:30-01:45)
+└── Slot 3 (00:45-01:00)   └── Slot 7 (01:45-02:00)
+```
+
+Each slot tracks:
+- **Job count**: Number of jobs scheduled in that slot
+- **Job mapping**: Which jobs are assigned to each slot
+- **Placement timestamps**: When jobs were last placed (for anti-thrashing)
+
+### Slot Assignment Algorithm
+
+When scheduling a new job, the `FindLeastLoaded` algorithm:
+
+1. Calculates the search window (default: 24 hours from now)
+2. Scans all slots within the window
+3. Selects the slot with the **fewest jobs** (load balancing)
+4. If multiple slots have equal load, picks the **earliest** slot
+
+```go
+// Example: 3 jobs need scheduling, slots have [2, 1, 3, 1] jobs
+// Result: Jobs placed in slots 1, 3, 0 (filling least-loaded first)
+```
+
+### Rhythm Preservation
+
+Recurring jobs maintain their "rhythm" (slot position within their interval):
+
+```
+Job A: 30-minute interval, starts at 00:05
+├── Run 1: 00:05 (slot 0)
+├── Run 2: 00:35 (slot 2)
+├── Run 3: 01:05 (slot 4)
+└── Run 4: 01:35 (slot 6)
+
+Rhythm preserved: Always runs at :05 or :35 minutes past the hour
+```
+
+This ensures:
+- Predictable scheduling patterns
+- Jobs don't drift over time
+- Easy monitoring and debugging
+
+### Anti-Thrashing Protection
+
+To prevent jobs from being constantly moved around:
+
+| Protection | Duration | Purpose |
+|------------|----------|---------|
+| **Protection Window** | 30 minutes | Jobs cannot be moved if next run is within this window |
+| **Placement Cooldown** | 1 hour | Jobs cannot be moved again until cooldown expires |
+
+The `CanMoveJob` function enforces these rules before any rebalancing.
+
+### Load Balancing API
+
+#### Get Distribution
+```http
+GET /api/v1/scheduler/distribution
+
+Response: 200 OK
+{
+  "hourly_counts": {
+    "0": 15,   // 15 jobs in hour 0 (00:00-01:00)
+    "1": 12,   // 12 jobs in hour 1 (01:00-02:00)
+    "2": 18,   // 18 jobs in hour 2 (02:00-03:00)
+    ...
+  },
+  "total_jobs": 150,
+  "average_per_hour": 6.25,
+  "max_per_hour": 18,
+  "min_per_hour": 3,
+  "distribution_score": 0.85  // 0-1, higher is more balanced
+}
+```
+
+#### Preview Rebalance (Dry Run)
+```http
+POST /api/v1/scheduler/rebalance/preview
+
+Response: 200 OK
+{
+  "moves": [
+    {
+      "job_id": "abc-123",
+      "from_slot": 8,
+      "to_slot": 12,
+      "reason": "load_balancing"
+    },
+    ...
+  ],
+  "total_moves": 5,
+  "before_score": 0.65,
+  "after_score": 0.92,
+  "improvement": 0.27
+}
+```
+
+#### Execute Rebalance
+```http
+POST /api/v1/scheduler/rebalance
+
+Response: 200 OK
+{
+  "moves": [...],
+  "total_moves": 5,
+  "jobs_updated": 5,
+  "before_score": 0.65,
+  "after_score": 0.92,
+  "improvement": 0.27
+}
+```
+
+### When Rebalancing Occurs
+
+The scheduler automatically considers load balancing during:
+
+| Event | Behavior |
+|-------|----------|
+| **Job Creation** | New job placed in least-loaded slot |
+| **Job Resume** | Resumed job placed in optimal slot |
+| **Interval Change** | Job may be repositioned for better distribution |
+| **Manual Rebalance** | All eligible jobs redistributed |
+
+### Distribution Score
+
+The distribution score (0.0 to 1.0) measures how evenly jobs are spread:
+
+```
+Score = 1 - (stddev / mean)
+
+Score 1.0: Perfect distribution (all slots equal)
+Score 0.8: Good distribution (minor imbalance)
+Score 0.5: Fair distribution (noticeable clustering)
+Score 0.2: Poor distribution (severe hotspots)
+```
+
+### Monitoring Load Distribution
+
+**Dashboard Metrics**:
+- View hourly job counts via `/api/v1/scheduler/distribution`
+- Monitor distribution score trends
+- Identify hotspot hours needing attention
+
+**Logging**:
+```
+INFO  Job placed in slot  job_id=xxx slot=12 slot_load=3
+INFO  Rebalance completed  moves=5 before_score=0.65 after_score=0.92
+WARN  Skipped job move  job_id=xxx reason="within_protection_window"
+```
+
+**Best Practices**:
+1. Run preview rebalance before executing
+2. Schedule rebalances during low-traffic periods
+3. Monitor distribution score - rebalance if < 0.7
+4. Review jobs with very short intervals (< 15 min) - they affect multiple slots
+
+### Configuration
+
+Load balancing is enabled by default. To disable (not recommended):
+
+```go
+scheduler := scheduler.NewIntervalScheduler(
+    logger, jobRepo, executionRepo, crawlerInstance,
+    scheduler.WithLoadBalancing(false),  // Disable load balancing
+)
+```
+
 ## Future Enhancements
 
 Potential features for future development:
@@ -696,6 +942,7 @@ Potential features for future development:
 
 ---
 
-**Version**: 1.0.0
-**Last Updated**: 2025-12-29
+**Version**: 1.1.0
+**Last Updated**: 2026-02-04
 **Migration**: Supersedes `DATABASE_SCHEDULER.md` (cron-based scheduler)
+**New in 1.1.0**: Self-balancing load distribution with BucketMap
