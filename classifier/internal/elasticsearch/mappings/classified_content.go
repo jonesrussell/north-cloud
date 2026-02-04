@@ -78,6 +78,9 @@ type ClassifiedContentProperties struct {
 
 	// Crime classification (hybrid rule + ML)
 	Crime CrimeProperties `json:"crime,omitempty"`
+
+	// Location detection (content-based)
+	Location LocationProperties `json:"location,omitempty"`
 }
 
 // CrimeProperties defines the nested properties for crime classification.
@@ -89,12 +92,28 @@ type CrimeProperties struct {
 // CrimeFieldProperties defines individual fields within crime classification.
 type CrimeFieldProperties struct {
 	Relevance           Field `json:"street_crime_relevance"`
+	SubLabel            Field `json:"sub_label"`
 	CrimeTypes          Field `json:"crime_types"`
 	LocationSpecificity Field `json:"location_specificity"`
 	FinalConfidence     Field `json:"final_confidence"`
 	HomepageEligible    Field `json:"homepage_eligible"`
 	CategoryPages       Field `json:"category_pages"`
 	ReviewRequired      Field `json:"review_required"`
+}
+
+// LocationProperties defines the nested properties for location detection.
+type LocationProperties struct {
+	Type       string                  `json:"type,omitempty"`
+	Properties LocationFieldProperties `json:"properties,omitempty"`
+}
+
+// LocationFieldProperties defines individual fields within location detection.
+type LocationFieldProperties struct {
+	City        Field `json:"city"`
+	Province    Field `json:"province"`
+	Country     Field `json:"country"`
+	Specificity Field `json:"specificity"`
+	Confidence  Field `json:"confidence"`
 }
 
 // createRawContentProperties creates properties for raw content fields
@@ -143,6 +162,7 @@ func createClassificationProperties() ClassifiedContentProperties {
 		ModelVersion:         Field{Type: "keyword"},
 		Confidence:           Field{Type: "float"},
 		Crime:                createCrimeProperties(),
+		Location:             createLocationProperties(),
 	}
 }
 
@@ -152,12 +172,27 @@ func createCrimeProperties() CrimeProperties {
 		Type: "object",
 		Properties: CrimeFieldProperties{
 			Relevance:           Field{Type: "keyword"},
+			SubLabel:            Field{Type: "keyword"},
 			CrimeTypes:          Field{Type: "keyword"},
 			LocationSpecificity: Field{Type: "keyword"},
 			FinalConfidence:     Field{Type: "float"},
 			HomepageEligible:    Field{Type: "boolean"},
 			CategoryPages:       Field{Type: "keyword"},
 			ReviewRequired:      Field{Type: "boolean"},
+		},
+	}
+}
+
+// createLocationProperties creates nested properties for location detection.
+func createLocationProperties() LocationProperties {
+	return LocationProperties{
+		Type: "object",
+		Properties: LocationFieldProperties{
+			City:        Field{Type: "keyword"},
+			Province:    Field{Type: "keyword"},
+			Country:     Field{Type: "keyword"},
+			Specificity: Field{Type: "keyword"},
+			Confidence:  Field{Type: "float"},
 		},
 	}
 }
@@ -183,7 +218,8 @@ func mergeProperties(raw, classified ClassifiedContentProperties) ClassifiedCont
 		ClassifierVersion:    classified.ClassifierVersion,
 		ClassificationMethod: classified.ClassificationMethod,
 		ModelVersion:         classified.ModelVersion, Confidence: classified.Confidence,
-		Crime: classified.Crime,
+		Crime:    classified.Crime,
+		Location: classified.Location,
 	}
 }
 

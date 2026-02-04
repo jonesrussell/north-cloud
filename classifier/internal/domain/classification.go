@@ -34,6 +34,9 @@ type ClassificationResult struct {
 
 	// Crime hybrid classification (optional)
 	Crime *CrimeResult `json:"crime,omitempty"`
+
+	// Location detection (content-based)
+	Location *LocationResult `json:"location,omitempty"`
 }
 
 // CrimeResult holds Crime hybrid classification results.
@@ -71,6 +74,9 @@ type ClassifiedContent struct {
 
 	// Crime hybrid classification (optional)
 	Crime *CrimeResult `json:"crime,omitempty"`
+
+	// Location detection (content-based)
+	Location *LocationResult `json:"location,omitempty"`
 
 	// Publisher compatibility aliases
 	// These duplicate RawContent fields for backward compatibility with publisher
