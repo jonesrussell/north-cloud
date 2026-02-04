@@ -185,6 +185,12 @@ func (s *Service) routeArticle(ctx context.Context, article *Article, channels [
 	for _, channel := range crimeChannels {
 		s.publishToChannel(ctx, article, channel, nil)
 	}
+
+	// Layer 4: Location-based channels
+	locationChannels := GenerateLocationChannels(article)
+	for _, channel := range locationChannels {
+		s.publishToChannel(ctx, article, channel, nil)
+	}
 }
 
 // Article represents an article from Elasticsearch
@@ -208,11 +214,18 @@ type Article struct {
 
 	// Crime classification (hybrid rule + ML)
 	CrimeRelevance      string   `json:"crime_relevance"`
+	CrimeSubLabel       string   `json:"crime_sub_label,omitempty"`
 	CrimeTypes          []string `json:"crime_types"`
 	LocationSpecificity string   `json:"location_specificity"`
 	HomepageEligible    bool     `json:"homepage_eligible"`
 	CategoryPages       []string `json:"category_pages"`
 	ReviewRequired      bool     `json:"review_required"`
+
+	// Location detection (content-based)
+	LocationCity       string  `json:"location_city,omitempty"`
+	LocationProvince   string  `json:"location_province,omitempty"`
+	LocationCountry    string  `json:"location_country"`
+	LocationConfidence float64 `json:"location_confidence"`
 
 	// Open Graph metadata
 	OGTitle       string `json:"og_title"`
@@ -394,11 +407,17 @@ func (s *Service) publishToChannel(ctx context.Context, article *Article, channe
 		"keywords":          article.Keywords,
 		// Crime classification
 		"crime_relevance":      article.CrimeRelevance,
+		"crime_sub_label":      article.CrimeSubLabel,
 		"crime_types":          article.CrimeTypes,
 		"location_specificity": article.LocationSpecificity,
 		"homepage_eligible":    article.HomepageEligible,
 		"category_pages":       article.CategoryPages,
 		"review_required":      article.ReviewRequired,
+		// Location detection
+		"location_city":       article.LocationCity,
+		"location_province":   article.LocationProvince,
+		"location_country":    article.LocationCountry,
+		"location_confidence": article.LocationConfidence,
 	}
 
 	messageJSON, err := json.Marshal(payload)
