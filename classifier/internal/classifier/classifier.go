@@ -24,6 +24,7 @@ type Classifier struct {
 	topic            *TopicClassifier
 	sourceReputation *SourceReputationScorer
 	crime            *CrimeClassifier
+	location         *LocationClassifier
 	logger           infralogger.Logger
 	version          string
 }
@@ -51,6 +52,7 @@ func NewClassifier(
 		topic:            NewTopicClassifier(logger, rules),
 		sourceReputation: NewSourceReputationScorerWithConfig(logger, sourceRepDB, config.SourceReputationConfig),
 		crime:            config.CrimeClassifier,
+		location:         NewLocationClassifier(logger),
 		logger:           logger,
 		version:          config.Version,
 	}
@@ -103,6 +105,19 @@ func (c *Classifier) Classify(ctx context.Context, raw *domain.RawContent) (*dom
 		}
 	}
 
+	// 6. Location Classification (content-based)
+	var locationResult *domain.LocationResult
+	if c.location != nil {
+		locResult, locErr := c.location.Classify(ctx, raw)
+		if locErr != nil {
+			c.logger.Warn("Location classification failed",
+				infralogger.String("content_id", raw.ID),
+				infralogger.Error(locErr))
+		} else if locResult != nil {
+			locationResult = locResult
+		}
+	}
+
 	// Update source reputation if enabled
 	isSpam := qualityResult.TotalScore < spamThresholdScore // Spam threshold
 	if err = c.sourceReputation.UpdateAfterClassification(ctx, raw.SourceName, qualityResult.TotalScore, isSpam); err != nil {
@@ -138,6 +153,7 @@ func (c *Classifier) Classify(ctx context.Context, raw *domain.RawContent) (*dom
 		ProcessingTimeMs:     time.Since(startTime).Milliseconds(),
 		ClassifiedAt:         time.Now(),
 		Crime:                crimeResult,
+		Location:             locationResult,
 	}
 
 	c.logger.Info("Classification complete",
@@ -223,6 +239,7 @@ func (c *Classifier) BuildClassifiedContent(raw *domain.RawContent, result *doma
 		ModelVersion:         result.ModelVersion,
 		Confidence:           result.Confidence,
 		Crime:                result.Crime,
+		Location:             result.Location,
 		// Publisher compatibility aliases
 		Body:   raw.RawText, // Alias for RawText
 		Source: raw.URL,     // Alias for URL
@@ -233,6 +250,7 @@ func (c *Classifier) BuildClassifiedContent(raw *domain.RawContent, result *doma
 func convertCrimeResult(sc *CrimeResult) *domain.CrimeResult {
 	return &domain.CrimeResult{
 		Relevance:           sc.Relevance,
+		SubLabel:            sc.SubLabel,
 		CrimeTypes:          sc.CrimeTypes,
 		LocationSpecificity: sc.LocationSpecificity,
 		FinalConfidence:     sc.FinalConfidence,

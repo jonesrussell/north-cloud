@@ -34,11 +34,15 @@ type ClassificationResult struct {
 
 	// Crime hybrid classification (optional)
 	Crime *CrimeResult `json:"crime,omitempty"`
+
+	// Location detection (content-based)
+	Location *LocationResult `json:"location,omitempty"`
 }
 
 // CrimeResult holds Crime hybrid classification results.
 type CrimeResult struct {
 	Relevance           string   `json:"street_crime_relevance"`
+	SubLabel            string   `json:"sub_label,omitempty"` // "criminal_justice" or "crime_context" for peripheral_crime
 	CrimeTypes          []string `json:"crime_types"`
 	LocationSpecificity string   `json:"location_specificity"`
 	FinalConfidence     float64  `json:"final_confidence"`
@@ -71,6 +75,9 @@ type ClassifiedContent struct {
 	// Crime hybrid classification (optional)
 	Crime *CrimeResult `json:"crime,omitempty"`
 
+	// Location detection (content-based)
+	Location *LocationResult `json:"location,omitempty"`
+
 	// Publisher compatibility aliases
 	// These duplicate RawContent fields for backward compatibility with publisher
 	Body   string `json:"body"`   // Alias for RawText (publisher expects "body")
@@ -100,3 +107,34 @@ const (
 	MethodMLModel   = "ml_model"
 	MethodHybrid    = "hybrid"
 )
+
+// Location specificity constants.
+const (
+	SpecificityCity     = "city"
+	SpecificityProvince = "province"
+	SpecificityCountry  = "country"
+	SpecificityUnknown  = "unknown"
+)
+
+// LocationResult holds the detected location for an article.
+type LocationResult struct {
+	City        string  `json:"city,omitempty"`
+	Province    string  `json:"province,omitempty"`
+	Country     string  `json:"country"`
+	Specificity string  `json:"specificity"`
+	Confidence  float64 `json:"confidence"`
+}
+
+// GetSpecificity returns the specificity level based on populated fields.
+func (l *LocationResult) GetSpecificity() string {
+	if l.City != "" {
+		return SpecificityCity
+	}
+	if l.Province != "" {
+		return SpecificityProvince
+	}
+	if l.Country != "" && l.Country != "unknown" {
+		return SpecificityCountry
+	}
+	return SpecificityUnknown
+}

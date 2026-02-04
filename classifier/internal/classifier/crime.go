@@ -3,6 +3,7 @@ package classifier
 
 import (
 	"context"
+	"strings"
 
 	"github.com/jonesrussell/north-cloud/classifier/internal/domain"
 	"github.com/jonesrussell/north-cloud/classifier/internal/mlclient"
@@ -20,6 +21,15 @@ const (
 	mlOverrideWeight      = 0.8
 )
 
+// Sub-label constants for peripheral_crime articles.
+const (
+	SubLabelCriminalJustice = "criminal_justice"
+	SubLabelCrimeContext    = "crime_context"
+)
+
+// Minimum signals required for criminal_justice classification.
+const minCriminalJusticeSignals = 2
+
 // MLClassifier defines the interface for ML classification.
 type MLClassifier interface {
 	Classify(ctx context.Context, title, body string) (*mlclient.ClassifyResponse, error)
@@ -36,6 +46,7 @@ type CrimeClassifier struct {
 // CrimeResult holds the hybrid classification result.
 type CrimeResult struct {
 	Relevance           string   `json:"street_crime_relevance"`
+	SubLabel            string   `json:"sub_label,omitempty"` // "criminal_justice" or "crime_context" for peripheral_crime
 	CrimeTypes          []string `json:"crime_types"`
 	LocationSpecificity string   `json:"location_specificity"`
 	FinalConfidence     float64  `json:"final_confidence"`
@@ -85,7 +96,12 @@ func (s *CrimeClassifier) Classify(ctx context.Context, raw *domain.RawContent) 
 	}
 
 	// Decision layer: merge results
-	return s.mergeResults(ruleResult, mlResult), nil
+	result := s.mergeResults(ruleResult, mlResult)
+
+	// Determine sub-label for peripheral_crime
+	s.determineSubLabel(result, raw.Title, raw.RawText)
+
+	return result, nil
 }
 
 // mergeResults combines rule and ML results using the decision matrix.
@@ -178,4 +194,55 @@ func mapToCategoryPages(crimeTypes []string) []string {
 		result = append(result, page)
 	}
 	return result
+}
+
+// criminalJusticeVerbs are verbs indicating active legal proceedings.
+var criminalJusticeVerbs = []string{
+	"charged", "arrested", "arraigned", "pleads", "pleaded",
+	"sentenced", "convicted", "acquitted", "appeals", "appealed",
+	"investigation launched", "warrant issued", "indicted",
+}
+
+// jurisdictionIndicators are terms that suggest criminal justice context.
+var jurisdictionIndicators = []string{
+	"court", "judge", "prosecutor", "crown", "district attorney",
+	"police", "rcmp", "opp", "fbi", "doj", "justice department",
+}
+
+// determineSubLabel sets the sub_label for peripheral_crime articles.
+func (s *CrimeClassifier) determineSubLabel(result *CrimeResult, title, body string) {
+	// Only peripheral_crime gets sub-labels
+	if result.Relevance != relevancePeripheral {
+		result.SubLabel = ""
+		return
+	}
+
+	text := strings.ToLower(title + " " + body)
+
+	// Count signals for criminal_justice
+	cjScore := 0
+
+	// Check jurisdiction indicators
+	for _, indicator := range jurisdictionIndicators {
+		if strings.Contains(text, indicator) {
+			cjScore++
+			break // Only count once
+		}
+	}
+
+	// Check criminal justice verbs
+	for _, verb := range criminalJusticeVerbs {
+		if strings.Contains(text, verb) {
+			cjScore++
+			break
+		}
+	}
+
+	// Decision: criminal_justice needs 2+ signals, otherwise crime_context
+	if cjScore >= minCriminalJusticeSignals {
+		result.SubLabel = SubLabelCriminalJustice
+	} else {
+		// Default for peripheral_crime (crime_context covers document releases and ambiguous cases)
+		result.SubLabel = SubLabelCrimeContext
+	}
 }
