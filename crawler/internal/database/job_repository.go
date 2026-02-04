@@ -177,9 +177,22 @@ func (r *JobRepository) List(ctx context.Context, params ListJobsParams) ([]*dom
 
 	// Build WHERE conditions
 	if params.Status != "" {
-		conditions = append(conditions, fmt.Sprintf("status = $%d", argIndex))
-		args = append(args, params.Status)
-		argIndex++
+		// Handle comma-separated status values
+		statuses := strings.Split(params.Status, ",")
+		if len(statuses) == 1 {
+			conditions = append(conditions, fmt.Sprintf("status = $%d", argIndex))
+			args = append(args, params.Status)
+			argIndex++
+		} else {
+			// Build IN clause for multiple statuses
+			placeholders := make([]string, len(statuses))
+			for i, s := range statuses {
+				placeholders[i] = fmt.Sprintf("$%d", argIndex)
+				args = append(args, strings.TrimSpace(s))
+				argIndex++
+			}
+			conditions = append(conditions, fmt.Sprintf("status IN (%s)", strings.Join(placeholders, ", ")))
+		}
 	}
 
 	if params.SourceID != "" {
@@ -297,9 +310,22 @@ func (r *JobRepository) Count(ctx context.Context, params CountJobsParams) (int,
 	argIndex := 1
 
 	if params.Status != "" {
-		conditions = append(conditions, fmt.Sprintf("status = $%d", argIndex))
-		args = append(args, params.Status)
-		argIndex++
+		// Handle comma-separated status values
+		statuses := strings.Split(params.Status, ",")
+		if len(statuses) == 1 {
+			conditions = append(conditions, fmt.Sprintf("status = $%d", argIndex))
+			args = append(args, params.Status)
+			argIndex++
+		} else {
+			// Build IN clause for multiple statuses
+			placeholders := make([]string, len(statuses))
+			for i, s := range statuses {
+				placeholders[i] = fmt.Sprintf("$%d", argIndex)
+				args = append(args, strings.TrimSpace(s))
+				argIndex++
+			}
+			conditions = append(conditions, fmt.Sprintf("status IN (%s)", strings.Join(placeholders, ", ")))
+		}
 	}
 
 	if params.SourceID != "" {
