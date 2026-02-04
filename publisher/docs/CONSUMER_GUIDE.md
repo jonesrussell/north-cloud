@@ -5,12 +5,13 @@ This guide explains how to build a service that consumes articles from the Publi
 ## Table of Contents
 
 1. [Overview](#overview)
-2. [Prerequisites](#prerequisites)
-3. [Quick Start](#quick-start)
-4. [Architecture Patterns](#architecture-patterns)
-5. [Implementation Examples](#implementation-examples)
-6. [Best Practices](#best-practices)
-7. [Production Deployment](#production-deployment)
+2. [Crime-only consumers (e.g. StreetCode)](#crime-only-consumers-eg-streetcode)
+3. [Prerequisites](#prerequisites)
+4. [Quick Start](#quick-start)
+5. [Architecture Patterns](#architecture-patterns)
+6. [Implementation Examples](#implementation-examples)
+7. [Best Practices](#best-practices)
+8. [Production Deployment](#production-deployment)
 
 ## Overview
 
@@ -26,6 +27,10 @@ As a consumer, you are responsible for:
 - ✅ **Data transformation** - Map article fields to your database schema
 - ✅ **Error handling** - Handle network failures, malformed messages, etc.
 - ✅ **Storage** - Save articles to your database or CMS
+
+### Crime-only consumers (e.g. StreetCode)
+
+If your site should show **only crime-related content**, subscribe to the **Layer 3 crime channels** (`crime:homepage`, `crime:category:*`, `crime:courts`, `crime:context`) and **do not** subscribe to topic channels like `articles:news` or `articles:politics` (those carry mixed content). For a full runbook (Redis channel list, soft-deleting existing non-crime articles on Laravel), see [STREETCODE_RUNBOOK.md](../../docs/STREETCODE_RUNBOOK.md).
 
 ### Publisher Responsibilities
 
