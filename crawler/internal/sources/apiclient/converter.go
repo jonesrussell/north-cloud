@@ -12,6 +12,25 @@ import (
 	"github.com/jonesrussell/north-cloud/crawler/internal/sources/types"
 )
 
+// wwwPrefix is the www subdomain prefix.
+const wwwPrefix = "www."
+
+// buildAllowedDomains returns a list of allowed domains including both www and non-www variants.
+// This ensures redirects between www.example.com and example.com are followed correctly.
+func buildAllowedDomains(domain string) []string {
+	if domain == "" {
+		return nil
+	}
+
+	// If domain starts with www., include both www and non-www
+	if baseDomain, hasWWW := strings.CutPrefix(domain, wwwPrefix); hasWWW {
+		return []string{domain, baseDomain}
+	}
+
+	// Otherwise, include both non-www and www
+	return []string{domain, wwwPrefix + domain}
+}
+
 // parseRateLimitDuration parses rate_limit string ("10s", "1m" or bare number as seconds).
 // Returns default (1s) for empty; error for invalid or non-positive.
 func parseRateLimitDuration(s string) (time.Duration, error) {
@@ -67,7 +86,7 @@ func ConvertAPISourceToConfig(apiSource *APISource) (*types.SourceConfig, error)
 	return &types.SourceConfig{
 		Name:           apiSource.Name,
 		URL:            apiSource.URL,
-		AllowedDomains: []string{domain},
+		AllowedDomains: buildAllowedDomains(domain),
 		StartURLs:      []string{apiSource.URL},
 		RateLimit:      rateLimit,
 		MaxDepth:       maxDepth,
