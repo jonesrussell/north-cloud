@@ -161,13 +161,50 @@ func (qb *DocumentQueryBuilder) buildMultiMatchQuery(query string) map[string]an
 	}
 }
 
+// BuildFiltersOnly returns just the filter array without wrapping in bool query
+func (qb *DocumentQueryBuilder) BuildFiltersOnly(filters *domain.DocumentFilters) []any {
+	if filters == nil {
+		return []any{}
+	}
+	return qb.buildFilters(filters)
+}
+
 // buildFilters constructs filter clauses
-//
-//nolint:gocognit // Complex filter building with multiple conditionals
 func (qb *DocumentQueryBuilder) buildFilters(filters *domain.DocumentFilters) []any {
 	var result []any
 
-	// Title filter (contains)
+	// Basic text filters
+	result = qb.appendTextFilters(result, filters)
+
+	// Quality and topic filters
+	result = qb.appendQualityTopicFilters(result, filters)
+
+	// Date range filters
+	result = qb.appendDateFilters(result, filters)
+
+	// Crime filters
+	result = qb.appendCrimeFilters(result, filters)
+
+	// Location filters
+	result = qb.appendLocationFilters(result, filters)
+
+	// Sources filter
+	if len(filters.Sources) > 0 {
+		result = append(result, map[string]any{
+			"terms": map[string]any{
+				"source_name": filters.Sources,
+			},
+		})
+	}
+
+	// Legacy crime-related filter (backward compatibility)
+	result = qb.appendLegacyCrimeFilter(result, filters)
+
+	return result
+}
+
+// appendTextFilters adds title, URL, and content type filters
+func (qb *DocumentQueryBuilder) appendTextFilters(result []any, filters *domain.DocumentFilters) []any {
 	if filters.Title != "" {
 		result = append(result, map[string]any{
 			"wildcard": map[string]any{
@@ -178,8 +215,6 @@ func (qb *DocumentQueryBuilder) buildFilters(filters *domain.DocumentFilters) []
 			},
 		})
 	}
-
-	// URL filter (contains)
 	if filters.URL != "" {
 		result = append(result, map[string]any{
 			"wildcard": map[string]any{
@@ -190,8 +225,6 @@ func (qb *DocumentQueryBuilder) buildFilters(filters *domain.DocumentFilters) []
 			},
 		})
 	}
-
-	// Content type filter
 	if filters.ContentType != "" {
 		result = append(result, map[string]any{
 			"term": map[string]any{
@@ -199,8 +232,11 @@ func (qb *DocumentQueryBuilder) buildFilters(filters *domain.DocumentFilters) []
 			},
 		})
 	}
+	return result
+}
 
-	// Quality score range filter
+// appendQualityTopicFilters adds quality score and topics filters
+func (qb *DocumentQueryBuilder) appendQualityTopicFilters(result []any, filters *domain.DocumentFilters) []any {
 	if filters.MinQualityScore > 0 || filters.MaxQualityScore < maxQualityScore {
 		qualityRange := make(map[string]any)
 		if filters.MinQualityScore > 0 {
@@ -217,8 +253,6 @@ func (qb *DocumentQueryBuilder) buildFilters(filters *domain.DocumentFilters) []
 			})
 		}
 	}
-
-	// Topics filter
 	if len(filters.Topics) > 0 {
 		result = append(result, map[string]any{
 			"terms": map[string]any{
@@ -226,8 +260,11 @@ func (qb *DocumentQueryBuilder) buildFilters(filters *domain.DocumentFilters) []
 			},
 		})
 	}
+	return result
+}
 
-	// Published date range filter
+// appendDateFilters adds published date and crawled at filters
+func (qb *DocumentQueryBuilder) appendDateFilters(result []any, filters *domain.DocumentFilters) []any {
 	if filters.FromDate != nil || filters.ToDate != nil {
 		dateRange := make(map[string]any)
 		if filters.FromDate != nil {
@@ -242,8 +279,6 @@ func (qb *DocumentQueryBuilder) buildFilters(filters *domain.DocumentFilters) []
 			},
 		})
 	}
-
-	// Crawled at date range filter
 	if filters.FromCrawledAt != nil || filters.ToCrawledAt != nil {
 		dateRange := make(map[string]any)
 		if filters.FromCrawledAt != nil {
@@ -258,12 +293,113 @@ func (qb *DocumentQueryBuilder) buildFilters(filters *domain.DocumentFilters) []
 			},
 		})
 	}
+	return result
+}
 
-	// Crime-related filter
-	if filters.IsCrimeRelated != nil {
+// appendLegacyCrimeFilter adds backward-compatible is_crime_related filter
+func (qb *DocumentQueryBuilder) appendLegacyCrimeFilter(result []any, filters *domain.DocumentFilters) []any {
+	if filters.IsCrimeRelated != nil && len(filters.CrimeRelevance) == 0 {
+		if *filters.IsCrimeRelated {
+			result = append(result, map[string]any{
+				"terms": map[string]any{
+					"crime.relevance": []string{"core_street_crime", "peripheral_crime"},
+				},
+			})
+		} else {
+			result = append(result, map[string]any{
+				"term": map[string]any{
+					"crime.relevance": "not_crime",
+				},
+			})
+		}
+	}
+	return result
+}
+
+// appendCrimeFilters adds crime-related filters to the result slice
+func (qb *DocumentQueryBuilder) appendCrimeFilters(result []any, filters *domain.DocumentFilters) []any {
+	// Crime relevance filter
+	if len(filters.CrimeRelevance) > 0 {
+		result = append(result, map[string]any{
+			"terms": map[string]any{
+				"crime.relevance": filters.CrimeRelevance,
+			},
+		})
+	}
+
+	// Crime sub-labels filter
+	if len(filters.CrimeSubLabels) > 0 {
+		result = append(result, map[string]any{
+			"terms": map[string]any{
+				"crime.sub_label": filters.CrimeSubLabels,
+			},
+		})
+	}
+
+	// Crime types filter
+	if len(filters.CrimeTypes) > 0 {
+		result = append(result, map[string]any{
+			"terms": map[string]any{
+				"crime.crime_types": filters.CrimeTypes,
+			},
+		})
+	}
+
+	// Homepage eligible filter
+	if filters.HomepageEligible != nil {
 		result = append(result, map[string]any{
 			"term": map[string]any{
-				"is_crime_related": *filters.IsCrimeRelated,
+				"crime.homepage_eligible": *filters.HomepageEligible,
+			},
+		})
+	}
+
+	// Review required filter
+	if filters.ReviewRequired != nil {
+		result = append(result, map[string]any{
+			"term": map[string]any{
+				"crime.review_required": *filters.ReviewRequired,
+			},
+		})
+	}
+
+	return result
+}
+
+// appendLocationFilters adds location-related filters to the result slice
+func (qb *DocumentQueryBuilder) appendLocationFilters(result []any, filters *domain.DocumentFilters) []any {
+	// Cities filter
+	if len(filters.Cities) > 0 {
+		result = append(result, map[string]any{
+			"terms": map[string]any{
+				"location.city": filters.Cities,
+			},
+		})
+	}
+
+	// Provinces filter
+	if len(filters.Provinces) > 0 {
+		result = append(result, map[string]any{
+			"terms": map[string]any{
+				"location.province": filters.Provinces,
+			},
+		})
+	}
+
+	// Countries filter
+	if len(filters.Countries) > 0 {
+		result = append(result, map[string]any{
+			"terms": map[string]any{
+				"location.country": filters.Countries,
+			},
+		})
+	}
+
+	// Specificity filter
+	if len(filters.Specificity) > 0 {
+		result = append(result, map[string]any{
+			"terms": map[string]any{
+				"location.specificity": filters.Specificity,
 			},
 		})
 	}
