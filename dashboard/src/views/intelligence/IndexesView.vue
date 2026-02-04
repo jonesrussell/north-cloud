@@ -65,11 +65,11 @@ async function confirmDelete() {
               <Database class="h-6 w-6 text-blue-500" />
             </div>
             <h1 class="text-2xl font-semibold tracking-tight">
-              Elasticsearch Indexes
+              Index Explorer
             </h1>
           </div>
           <p class="ml-[52px] text-sm text-muted-foreground">
-            Monitor and manage Elasticsearch indexes across your data pipeline
+            Browse and manage Elasticsearch indexes with document search and filtering
           </p>
         </div>
         <Button
