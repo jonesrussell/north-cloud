@@ -196,6 +196,34 @@ func (s *IntervalScheduler) HandleJobDeleted(jobID string) {
 	}
 }
 
+// HandleIntervalChange re-places a job when its interval changes.
+func (s *IntervalScheduler) HandleIntervalChange(job *domain.Job) error {
+	if s.bucketMap == nil {
+		return nil
+	}
+
+	interval := getIntervalDuration(job)
+	s.bucketMap.RemoveJob(job.ID)
+	nextRun := s.bucketMap.PlaceNewJob(job.ID, interval)
+	job.NextRunAt = &nextRun
+
+	return s.repo.Update(s.ctx, job)
+}
+
+// HandleResume re-places a job when it resumes from pause.
+func (s *IntervalScheduler) HandleResume(job *domain.Job) error {
+	if s.bucketMap == nil {
+		return nil
+	}
+
+	interval := getIntervalDuration(job)
+	s.bucketMap.RemoveJob(job.ID)
+	nextRun := s.bucketMap.PlaceNewJob(job.ID, interval)
+	job.NextRunAt = &nextRun
+
+	return s.repo.Update(s.ctx, job)
+}
+
 // Stop stops the interval scheduler gracefully.
 func (s *IntervalScheduler) Stop() error {
 	s.logger.Info("Stopping interval scheduler")

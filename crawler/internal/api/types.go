@@ -15,6 +15,8 @@ type SchedulerInterface interface {
 	GetDistribution() *scheduler.Distribution
 	ScheduleNewJob(job *domain.Job) error
 	HandleJobDeleted(jobID string)
+	HandleIntervalChange(job *domain.Job) error
+	HandleResume(job *domain.Job) error
 }
 
 // CreateJobRequest represents a job creation request.
