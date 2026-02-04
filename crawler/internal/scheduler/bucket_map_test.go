@@ -332,3 +332,35 @@ func TestBucketMap_CanMoveJob_Allowed(t *testing.T) {
 		t.Errorf("job should be movable, got reason: %q", reason)
 	}
 }
+
+func TestBucketMap_GetDistribution(t *testing.T) {
+	t.Helper()
+
+	bm := scheduler.NewBucketMap()
+	now := time.Now()
+
+	// Add jobs across different hours
+	// Hour 0: 2 jobs
+	bm.AddJob("job-1", scheduler.SlotKey(now.Add(10*time.Minute)))
+	bm.AddJob("job-2", scheduler.SlotKey(now.Add(20*time.Minute)))
+	// Hour 1: 3 jobs
+	bm.AddJob("job-3", scheduler.SlotKey(now.Add(1*time.Hour)))
+	bm.AddJob("job-4", scheduler.SlotKey(now.Add(1*time.Hour+15*time.Minute)))
+	bm.AddJob("job-5", scheduler.SlotKey(now.Add(1*time.Hour+30*time.Minute)))
+
+	dist := bm.GetDistribution(24)
+
+	if dist.TotalJobs != 5 {
+		t.Errorf("TotalJobs = %d, want 5", dist.TotalJobs)
+	}
+
+	// Check that we have hourly data
+	if len(dist.HourlyDistribution) != 24 {
+		t.Errorf("HourlyDistribution length = %d, want 24", len(dist.HourlyDistribution))
+	}
+
+	// Verify peak detection
+	if dist.PeakCount < 3 {
+		t.Errorf("PeakCount = %d, expected at least 3", dist.PeakCount)
+	}
+}

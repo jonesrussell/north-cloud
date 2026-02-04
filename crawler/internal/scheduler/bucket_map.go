@@ -11,6 +11,8 @@ const (
 	SlotDuration = 15 * time.Minute
 	// slotSeconds is SlotDuration in seconds for slot key calculation.
 	slotSeconds = 900
+	// slotMinutes is SlotDuration in minutes for API responses.
+	slotMinutes = 15
 	// ProtectionWindow is the minimum time before execution when a job cannot be moved.
 	ProtectionWindow = 30 * time.Minute
 	// PlacementCooldown is the minimum time between job placements.
@@ -208,4 +210,85 @@ func (b *BucketMap) SetLastPlacedForTest(jobID string, t time.Time) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	b.lastPlaced[jobID] = t
+}
+
+// HourlyCount represents job count for a specific hour.
+type HourlyCount struct {
+	Hour     int `json:"hour"`
+	JobCount int `json:"job_count"`
+}
+
+// Distribution represents the schedule distribution metrics.
+type Distribution struct {
+	WindowHours        int           `json:"window_hours"`
+	SlotMinutes        int           `json:"slot_minutes"`
+	TotalJobs          int           `json:"total_jobs"`
+	HourlyDistribution []HourlyCount `json:"hourly_distribution"`
+	DistributionScore  float64       `json:"distribution_score"`
+	PeakHour           int           `json:"peak_hour"`
+	PeakCount          int           `json:"peak_count"`
+}
+
+// GetDistribution returns the current schedule distribution metrics.
+func (b *BucketMap) GetDistribution(windowHours int) Distribution {
+	b.mu.RLock()
+	defer b.mu.RUnlock()
+
+	now := time.Now()
+	hourly := make([]HourlyCount, windowHours)
+	totalJobs := 0
+	peakHour := 0
+	peakCount := 0
+
+	// Aggregate by hour
+	for h := range windowHours {
+		hourStart := now.Add(time.Duration(h) * time.Hour)
+		hourEnd := hourStart.Add(time.Hour)
+		count := 0
+
+		for t := hourStart; t.Before(hourEnd); t = t.Add(SlotDuration) {
+			slot := SlotKey(t)
+			count += b.slots[slot]
+		}
+
+		hourly[h] = HourlyCount{Hour: h, JobCount: count}
+		totalJobs += count
+
+		if count > peakCount {
+			peakCount = count
+			peakHour = h
+		}
+	}
+
+	// Calculate distribution score (1.0 = perfectly even)
+	var score float64
+	if totalJobs > 0 && windowHours > 0 {
+		ideal := float64(totalJobs) / float64(windowHours)
+		var variance float64
+		for _, hc := range hourly {
+			diff := float64(hc.JobCount) - ideal
+			variance += diff * diff
+		}
+		variance /= float64(windowHours)
+		// Score: 1 - normalized stddev (capped at 0)
+		if ideal > 0 {
+			stddev := variance / (ideal * ideal)
+			score = 1.0 - stddev
+			if score < 0 {
+				score = 0
+			}
+		}
+	} else {
+		score = 1.0 // Empty schedule is perfectly distributed
+	}
+
+	return Distribution{
+		WindowHours:        windowHours,
+		SlotMinutes:        slotMinutes,
+		TotalJobs:          totalJobs,
+		HourlyDistribution: hourly,
+		DistributionScore:  score,
+		PeakHour:           peakHour,
+		PeakCount:          peakCount,
+	}
 }
