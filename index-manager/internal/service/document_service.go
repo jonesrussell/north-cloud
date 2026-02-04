@@ -381,7 +381,6 @@ func (s *DocumentService) documentToMap(doc *domain.Document) map[string]any {
 	if doc.QualityScore > 0 {
 		result["quality_score"] = doc.QualityScore
 	}
-	result["is_crime_related"] = doc.IsCrimeRelated
 	if doc.Body != "" {
 		result["body"] = doc.Body
 	}
@@ -401,10 +400,70 @@ func (s *DocumentService) documentToMap(doc *domain.Document) map[string]any {
 		result["crawled_at"] = doc.CrawledAt.Format(time.RFC3339)
 	}
 
+	// Add crime object
+	if doc.Crime != nil {
+		result["crime"] = s.crimeInfoToMap(doc.Crime)
+		result["is_crime_related"] = doc.Crime.IsCrimeRelated()
+	} else {
+		result["is_crime_related"] = doc.IsCrimeRelated
+	}
+
+	// Add location object
+	if doc.Location != nil {
+		result["location"] = s.locationInfoToMap(doc.Location)
+	}
+
 	// Merge meta fields
 	for key, value := range doc.Meta {
 		result[key] = value
 	}
 
+	return result
+}
+
+// crimeInfoToMap converts CrimeInfo to map for ES
+func (s *DocumentService) crimeInfoToMap(crime *domain.CrimeInfo) map[string]any {
+	result := make(map[string]any)
+	if crime.SubLabel != "" {
+		result["sub_label"] = crime.SubLabel
+	}
+	if crime.PrimaryCrimeType != "" {
+		result["primary_crime_type"] = crime.PrimaryCrimeType
+	}
+	if crime.Relevance != "" {
+		result["relevance"] = crime.Relevance
+	}
+	if len(crime.CrimeTypes) > 0 {
+		result["crime_types"] = crime.CrimeTypes
+	}
+	if crime.Confidence > 0 {
+		result["final_confidence"] = crime.Confidence
+	}
+	result["homepage_eligible"] = crime.HomepageEligible
+	result["review_required"] = crime.ReviewRequired
+	if crime.ModelVersion != "" {
+		result["model_version"] = crime.ModelVersion
+	}
+	return result
+}
+
+// locationInfoToMap converts LocationInfo to map for ES
+func (s *DocumentService) locationInfoToMap(loc *domain.LocationInfo) map[string]any {
+	result := make(map[string]any)
+	if loc.City != "" {
+		result["city"] = loc.City
+	}
+	if loc.Province != "" {
+		result["province"] = loc.Province
+	}
+	if loc.Country != "" {
+		result["country"] = loc.Country
+	}
+	if loc.Specificity != "" {
+		result["specificity"] = loc.Specificity
+	}
+	if loc.Confidence > 0 {
+		result["confidence"] = loc.Confidence
+	}
 	return result
 }
