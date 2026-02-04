@@ -72,6 +72,10 @@ func (m *mockJobRepo) ClearStaleLocks(ctx context.Context, cutoff time.Time) (in
 	return 0, nil
 }
 
+func (m *mockJobRepo) GetScheduledJobs(ctx context.Context) ([]*domain.Job, error) {
+	return nil, errMockNoData
+}
+
 func (m *mockJobRepo) PauseJob(ctx context.Context, jobID string) error {
 	return nil
 }

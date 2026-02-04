@@ -538,6 +538,66 @@ func (h *JobsHandler) GetSchedulerMetrics(c *gin.Context) {
 	c.JSON(http.StatusOK, response)
 }
 
+// GetSchedulerDistribution returns the current schedule distribution.
+// GET /api/v1/scheduler/distribution
+func (h *JobsHandler) GetSchedulerDistribution(c *gin.Context) {
+	if h.scheduler == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{
+			"error": "Scheduler not available",
+		})
+		return
+	}
+
+	dist := h.scheduler.GetDistribution()
+	if dist == nil {
+		c.JSON(http.StatusOK, gin.H{
+			"enabled": false,
+			"message": "Load balancing is disabled",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, dist)
+}
+
+// PostSchedulerRebalance triggers a full schedule rebalance.
+// POST /api/v1/scheduler/rebalance
+func (h *JobsHandler) PostSchedulerRebalance(c *gin.Context) {
+	if h.scheduler == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{
+			"error": "Scheduler not available",
+		})
+		return
+	}
+
+	result, err := h.scheduler.FullRebalance()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, result)
+}
+
+// PostSchedulerRebalancePreview previews what a rebalance would do.
+// POST /api/v1/scheduler/rebalance/preview
+func (h *JobsHandler) PostSchedulerRebalancePreview(c *gin.Context) {
+	if h.scheduler == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{
+			"error": "Scheduler not available",
+		})
+		return
+	}
+
+	result, err := h.scheduler.PreviewRebalance()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, result)
+}
+
 // ForceRun handles POST /api/v2/jobs/:id/force-run (run scheduled job now).
 // Sets next_run_at to now so the V1 interval scheduler picks the job up on its next poll.
 func (h *JobsHandler) ForceRun(c *gin.Context) {
