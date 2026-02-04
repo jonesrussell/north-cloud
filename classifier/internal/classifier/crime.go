@@ -1,4 +1,4 @@
-// classifier/internal/classifier/streetcode.go
+// classifier/internal/classifier/crime.go
 package classifier
 
 import (
@@ -9,7 +9,7 @@ import (
 	infralogger "github.com/north-cloud/infrastructure/logger"
 )
 
-// StreetCode classification thresholds.
+// Crime classification thresholds.
 const (
 	HomepageMinConfidence = 0.75
 	RuleHighConfidence    = 0.85
@@ -26,15 +26,15 @@ type MLClassifier interface {
 	Health(ctx context.Context) error
 }
 
-// StreetCodeClassifier implements hybrid rule + ML classification.
-type StreetCodeClassifier struct {
+// CrimeClassifier implements hybrid rule + ML classification.
+type CrimeClassifier struct {
 	mlClient MLClassifier
 	logger   infralogger.Logger
 	enabled  bool
 }
 
-// StreetCodeResult holds the hybrid classification result.
-type StreetCodeResult struct {
+// CrimeResult holds the hybrid classification result.
+type CrimeResult struct {
 	Relevance           string   `json:"street_crime_relevance"`
 	CrimeTypes          []string `json:"crime_types"`
 	LocationSpecificity string   `json:"location_specificity"`
@@ -48,9 +48,9 @@ type StreetCodeResult struct {
 	MLConfidence        float64  `json:"ml_confidence,omitempty"`
 }
 
-// NewStreetCodeClassifier creates a new hybrid classifier.
-func NewStreetCodeClassifier(mlClient MLClassifier, logger infralogger.Logger, enabled bool) *StreetCodeClassifier {
-	return &StreetCodeClassifier{
+// NewCrimeClassifier creates a new hybrid classifier.
+func NewCrimeClassifier(mlClient MLClassifier, logger infralogger.Logger, enabled bool) *CrimeClassifier {
+	return &CrimeClassifier{
 		mlClient: mlClient,
 		logger:   logger,
 		enabled:  enabled,
@@ -59,8 +59,8 @@ func NewStreetCodeClassifier(mlClient MLClassifier, logger infralogger.Logger, e
 
 // Classify performs hybrid classification on raw content.
 // Returns (nil, nil) when classification is disabled - this is intentional to indicate
-// "no result available, don't add StreetCode fields".
-func (s *StreetCodeClassifier) Classify(ctx context.Context, raw *domain.RawContent) (*StreetCodeResult, error) {
+// "no result available, don't add Crime fields".
+func (s *CrimeClassifier) Classify(ctx context.Context, raw *domain.RawContent) (*CrimeResult, error) {
 	if !s.enabled {
 		return nil, nil //nolint:nilnil // Intentional: nil result signals disabled, not an error
 	}
@@ -89,8 +89,8 @@ func (s *StreetCodeClassifier) Classify(ctx context.Context, raw *domain.RawCont
 }
 
 // mergeResults combines rule and ML results using the decision matrix.
-func (s *StreetCodeClassifier) mergeResults(rule *ruleResult, ml *mlclient.ClassifyResponse) *StreetCodeResult {
-	result := &StreetCodeResult{
+func (s *CrimeClassifier) mergeResults(rule *ruleResult, ml *mlclient.ClassifyResponse) *CrimeResult {
+	result := &CrimeResult{
 		RuleRelevance:  rule.relevance,
 		RuleConfidence: rule.confidence,
 		CrimeTypes:     rule.crimeTypes,
@@ -121,7 +121,7 @@ func (s *StreetCodeClassifier) mergeResults(rule *ruleResult, ml *mlclient.Class
 }
 
 // applyDecisionLogic applies the decision matrix for relevance classification.
-func (s *StreetCodeClassifier) applyDecisionLogic(result *StreetCodeResult, rule *ruleResult, ml *mlclient.ClassifyResponse) {
+func (s *CrimeClassifier) applyDecisionLogic(result *CrimeResult, rule *ruleResult, ml *mlclient.ClassifyResponse) {
 	switch {
 	case rule.relevance == relevanceCoreStreetCrime && ml != nil && ml.Relevance == relevanceCoreStreetCrime:
 		// Both agree: high confidence
@@ -154,7 +154,7 @@ func (s *StreetCodeClassifier) applyDecisionLogic(result *StreetCodeResult, rule
 	}
 }
 
-// mapToCategoryPages converts crime types to StreetCode category page slugs.
+// mapToCategoryPages converts crime types to Crime category page slugs.
 func mapToCategoryPages(crimeTypes []string) []string {
 	mapping := map[string][]string{
 		"violent_crime":    {"violent-crime", "crime"},

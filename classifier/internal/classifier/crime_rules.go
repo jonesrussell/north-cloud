@@ -1,4 +1,4 @@
-// classifier/internal/classifier/streetcode_rules.go
+// classifier/internal/classifier/crime_rules.go
 package classifier
 
 import (

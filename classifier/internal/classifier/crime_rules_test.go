@@ -1,4 +1,4 @@
-// classifier/internal/classifier/streetcode_rules_test.go
+// classifier/internal/classifier/crime_rules_test.go
 //
 //nolint:testpackage // Testing internal classifier requires same package access
 package classifier
@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-func TestStreetCodeRules_ClassifyByRules_ViolentCrime(t *testing.T) {
+func TestCrimeRules_ClassifyByRules_ViolentCrime(t *testing.T) {
 	t.Helper()
 
 	tests := []struct {
@@ -60,7 +60,7 @@ func TestStreetCodeRules_ClassifyByRules_ViolentCrime(t *testing.T) {
 	}
 }
 
-func TestStreetCodeRules_ClassifyByRules_Exclusions(t *testing.T) {
+func TestCrimeRules_ClassifyByRules_Exclusions(t *testing.T) {
 	t.Helper()
 
 	tests := []struct {
@@ -83,7 +83,7 @@ func TestStreetCodeRules_ClassifyByRules_Exclusions(t *testing.T) {
 	}
 }
 
-func TestStreetCodeRules_ClassifyByRules_NotCrime(t *testing.T) {
+func TestCrimeRules_ClassifyByRules_NotCrime(t *testing.T) {
 	t.Helper()
 
 	tests := []struct {

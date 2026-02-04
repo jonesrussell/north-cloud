@@ -10,6 +10,7 @@ import (
 	"github.com/jonesrussell/north-cloud/classifier/internal/classifier"
 	"github.com/jonesrussell/north-cloud/classifier/internal/config"
 	"github.com/jonesrussell/north-cloud/classifier/internal/domain"
+	"github.com/jonesrussell/north-cloud/classifier/internal/mlclient"
 	"github.com/jonesrussell/north-cloud/classifier/internal/processor"
 	infragin "github.com/north-cloud/infrastructure/gin"
 	infralogger "github.com/north-cloud/infrastructure/logger"
@@ -62,26 +63,8 @@ func NewHTTPComponents(cfg *config.Config, logger infralogger.Logger) (*HTTPComp
 		ruleValues[i] = *rule
 	}
 
-	classifierConfig := classifier.Config{
-		Version:         "1.0.0",
-		MinQualityScore: defaultMinQualityScore50,
-		UpdateSourceRep: true,
-		QualityConfig: classifier.QualityConfig{
-			WordCountWeight:   defaultQualityWeight025,
-			MetadataWeight:    defaultQualityWeight025,
-			RichnessWeight:    defaultQualityWeight025,
-			ReadabilityWeight: defaultQualityWeight025,
-			MinWordCount:      defaultMinWordCount100,
-			OptimalWordCount:  defaultOptimalWordCount1000,
-		},
-		SourceReputationConfig: classifier.SourceReputationConfig{
-			DefaultScore:               defaultReputationScore50,
-			UpdateOnEachClassification: true,
-			SpamThreshold:              defaultSpamThreshold,
-			MinArticlesForTrust:        minArticlesForTrust,
-			ReputationDecayRate:        defaultReputationDecayRate01,
-		},
-	}
+	// Create classifier config with optional Crime
+	classifierConfig := createClassifierConfig(cfg, logger)
 
 	classifierInstance := classifier.NewClassifier(logger, ruleValues, dbComps.SourceRepRepo, classifierConfig)
 	logger.Info("Classifier initialized",
@@ -145,4 +128,46 @@ func NewHTTPComponents(cfg *config.Config, logger infralogger.Logger) (*HTTPComp
 // HTTPShutdownTimeout returns the timeout for HTTP server graceful shutdown.
 func HTTPShutdownTimeout() time.Duration {
 	return defaultHTTPTimeout
+}
+
+// createClassifierConfig creates the classifier configuration with all sub-components.
+func createClassifierConfig(cfg *config.Config, logger infralogger.Logger) classifier.Config {
+	return classifier.Config{
+		Version:         "1.0.0",
+		MinQualityScore: defaultMinQualityScore50,
+		UpdateSourceRep: true,
+		QualityConfig: classifier.QualityConfig{
+			WordCountWeight:   defaultQualityWeight025,
+			MetadataWeight:    defaultQualityWeight025,
+			RichnessWeight:    defaultQualityWeight025,
+			ReadabilityWeight: defaultQualityWeight025,
+			MinWordCount:      defaultMinWordCount100,
+			OptimalWordCount:  defaultOptimalWordCount1000,
+		},
+		SourceReputationConfig: classifier.SourceReputationConfig{
+			DefaultScore:               defaultReputationScore50,
+			UpdateOnEachClassification: true,
+			SpamThreshold:              defaultSpamThreshold,
+			MinArticlesForTrust:        minArticlesForTrust,
+			ReputationDecayRate:        defaultReputationDecayRate01,
+		},
+		CrimeClassifier: createCrimeClassifier(cfg, logger),
+	}
+}
+
+// createCrimeClassifier creates a Crime classifier if enabled in config.
+func createCrimeClassifier(cfg *config.Config, logger infralogger.Logger) *classifier.CrimeClassifier {
+	if !cfg.Classification.Crime.Enabled {
+		return nil
+	}
+
+	var mlClient classifier.MLClassifier
+	if cfg.Classification.Crime.MLServiceURL != "" {
+		mlClient = mlclient.NewClient(cfg.Classification.Crime.MLServiceURL)
+	}
+
+	logger.Info("Crime classifier enabled",
+		infralogger.String("ml_service_url", cfg.Classification.Crime.MLServiceURL))
+
+	return classifier.NewCrimeClassifier(mlClient, logger, true)
 }

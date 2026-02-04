@@ -1,4 +1,4 @@
-// classifier/internal/classifier/streetcode_test.go
+// classifier/internal/classifier/crime_test.go
 //
 //nolint:testpackage // Testing internal classifier requires same package access
 package classifier
@@ -24,10 +24,10 @@ func (m *mockMLClient) Health(_ context.Context) error {
 	return nil
 }
 
-func TestStreetCodeClassifier_Classify_RulesOnly(t *testing.T) {
+func TestCrimeClassifier_Classify_RulesOnly(t *testing.T) {
 	t.Helper()
 
-	sc := NewStreetCodeClassifier(nil, &mockLogger{}, true)
+	sc := NewCrimeClassifier(nil, &mockLogger{}, true)
 
 	raw := &domain.RawContent{
 		ID:      "test-1",
@@ -49,7 +49,7 @@ func TestStreetCodeClassifier_Classify_RulesOnly(t *testing.T) {
 	}
 }
 
-func TestStreetCodeClassifier_Classify_BothAgree(t *testing.T) {
+func TestCrimeClassifier_Classify_BothAgree(t *testing.T) {
 	t.Helper()
 
 	mlMock := &mockMLClient{
@@ -61,7 +61,7 @@ func TestStreetCodeClassifier_Classify_BothAgree(t *testing.T) {
 		},
 	}
 
-	sc := NewStreetCodeClassifier(mlMock, &mockLogger{}, true)
+	sc := NewCrimeClassifier(mlMock, &mockLogger{}, true)
 
 	raw := &domain.RawContent{
 		ID:      "test-2",
@@ -84,10 +84,10 @@ func TestStreetCodeClassifier_Classify_BothAgree(t *testing.T) {
 	}
 }
 
-func TestStreetCodeClassifier_Classify_Disabled(t *testing.T) {
+func TestCrimeClassifier_Classify_Disabled(t *testing.T) {
 	t.Helper()
 
-	sc := NewStreetCodeClassifier(nil, &mockLogger{}, false)
+	sc := NewCrimeClassifier(nil, &mockLogger{}, false)
 
 	raw := &domain.RawContent{
 		ID:    "test-3",

@@ -32,12 +32,12 @@ type ClassificationResult struct {
 	ProcessingTimeMs     int64     `json:"processing_time_ms"`      // Processing duration
 	ClassifiedAt         time.Time `json:"classified_at"`
 
-	// StreetCode hybrid classification (optional)
-	StreetCode *StreetCodeResult `json:"streetcode,omitempty"`
+	// Crime hybrid classification (optional)
+	Crime *CrimeResult `json:"crime,omitempty"`
 }
 
-// StreetCodeResult holds StreetCode hybrid classification results.
-type StreetCodeResult struct {
+// CrimeResult holds Crime hybrid classification results.
+type CrimeResult struct {
 	Relevance           string   `json:"street_crime_relevance"`
 	CrimeTypes          []string `json:"crime_types"`
 	LocationSpecificity string   `json:"location_specificity"`
@@ -68,8 +68,8 @@ type ClassifiedContent struct {
 	ModelVersion         string  `json:"model_version,omitempty"`
 	Confidence           float64 `json:"confidence"`
 
-	// StreetCode hybrid classification (optional)
-	StreetCode *StreetCodeResult `json:"streetcode,omitempty"`
+	// Crime hybrid classification (optional)
+	Crime *CrimeResult `json:"crime,omitempty"`
 
 	// Publisher compatibility aliases
 	// These duplicate RawContent fields for backward compatibility with publisher
