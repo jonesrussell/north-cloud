@@ -30,6 +30,12 @@ import type {
   DocumentQueryResponse,
 } from '../types/indexManager'
 import type { ImportExcelResult } from '../types/source'
+import type {
+  CrimeAggregation,
+  LocationAggregation,
+  OverviewAggregation,
+  AggregationFilters,
+} from '../types/aggregation'
 
 // Debug mode - logs all requests and responses
 const DEBUG = import.meta.env.DEV
@@ -364,6 +370,21 @@ export const classifierApi = {
   },
 }
 
+// Helper to build aggregation query params
+const buildAggregationParams = (filters?: AggregationFilters): Record<string, string | string[]> => {
+  if (!filters) return {}
+  const params: Record<string, string | string[]> = {}
+  if (filters.crime_relevance?.length) params.crime_relevance = filters.crime_relevance
+  if (filters.crime_sub_labels?.length) params.crime_sub_labels = filters.crime_sub_labels
+  if (filters.crime_types?.length) params.crime_types = filters.crime_types
+  if (filters.cities?.length) params.cities = filters.cities
+  if (filters.provinces?.length) params.provinces = filters.provinces
+  if (filters.countries?.length) params.countries = filters.countries
+  if (filters.sources?.length) params.sources = filters.sources
+  if (filters.min_quality !== undefined) params.min_quality = String(filters.min_quality)
+  return params
+}
+
 // Index Manager API
 export const indexManagerApi = {
   // Health check
@@ -433,6 +454,9 @@ export const indexManagerApi = {
         if (params.filters.is_crime_related !== undefined) {
           flatParams.is_crime_related = params.filters.is_crime_related
         }
+        if (params.filters.review_required !== undefined) {
+          flatParams.review_required = params.filters.review_required
+        }
         if (params.filters.content_type) {
           flatParams.content_type = params.filters.content_type
         }
@@ -465,6 +489,22 @@ export const indexManagerApi = {
       indexManagerClient.post(`/api/v1/indexes/${indexName}/documents/bulk-delete`, {
         document_ids: documentIds,
       }),
+  },
+
+  // Aggregations
+  aggregations: {
+    getCrime: (filters?: AggregationFilters): Promise<AxiosResponse<CrimeAggregation>> => {
+      const params = buildAggregationParams(filters)
+      return indexManagerClient.get('/api/v1/aggregations/crime', { params })
+    },
+    getLocation: (filters?: AggregationFilters): Promise<AxiosResponse<LocationAggregation>> => {
+      const params = buildAggregationParams(filters)
+      return indexManagerClient.get('/api/v1/aggregations/location', { params })
+    },
+    getOverview: (filters?: AggregationFilters): Promise<AxiosResponse<OverviewAggregation>> => {
+      const params = buildAggregationParams(filters)
+      return indexManagerClient.get('/api/v1/aggregations/overview', { params })
+    },
   },
 }
 
