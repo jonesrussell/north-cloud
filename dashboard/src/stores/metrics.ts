@@ -113,10 +113,9 @@ export const useMetricsStore = defineStore('metrics', () => {
           total_documents: response.data.total_documents || 0,
           indexed_today: response.data.indexed_today || 0,
         }
-        // Update indexed count if available from index manager
-        if (index.value.indexed_today > 0) {
-          pipelineStages.value[1].count = index.value.indexed_today
-        }
+        // Note: index.indexed_today is a storage metric (docs in ES with today's timestamp)
+        // Pipeline stage "Indexed" uses crawler.indexed_today (throughput metric) instead
+        // to reflect items that moved through the indexing stage today
       }
     } catch (err) {
       console.warn('Failed to fetch index metrics:', err)
