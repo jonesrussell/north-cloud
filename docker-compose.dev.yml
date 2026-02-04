@@ -437,11 +437,11 @@ services:
       start_period: 15s
 
   # ------------------------------------------------------------
-  # StreetCode ML Classifier (Dev)
+  # Crime ML Classifier (Dev)
   # ------------------------------------------------------------
-  streetcode-ml:
+  crime-ml:
     ports:
-      - "${STREETCODE_ML_PORT:-8076}:8076"
+      - "${CRIME_ML_PORT:-8076}:8076"
 
   # ------------------------------------------------------------
   # HTTP Replay Proxy (Dev)

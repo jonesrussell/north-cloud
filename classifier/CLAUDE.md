@@ -89,7 +89,7 @@ INSERT INTO classification_rules (topic, keywords, priority) VALUES
 
 ## Crime Hybrid Classification
 
-**Enabled via**: `CRIME_ENABLED=true` and `CRIME_ML_SERVICE_URL=http://streetcode-ml:8076`
+**Enabled via**: `CRIME_ENABLED=true` and `CRIME_ML_SERVICE_URL=http://crime-ml:8076`
 
 **Architecture**: Rules (precision) + ML (recall) with decision matrix
 
