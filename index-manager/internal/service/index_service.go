@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"sort"
 	"strings"
 	"time"
 
@@ -203,19 +204,19 @@ func (s *IndexService) DeleteIndex(ctx context.Context, indexName string) error 
 	return nil
 }
 
-// ListIndices lists all indices with optional filtering
-func (s *IndexService) ListIndices(ctx context.Context, indexType, sourceName string) ([]*domain.Index, error) {
+// ListIndices lists all indices with pagination, filtering, and sorting
+func (s *IndexService) ListIndices(ctx context.Context, req *domain.ListIndicesRequest) (*domain.ListIndicesResponse, error) {
 	var indices []string
 	var err error
 
-	if sourceName != "" {
+	if req.SourceName != "" {
 		// List by source
-		normalized := NormalizeSourceName(sourceName)
+		normalized := NormalizeSourceName(req.SourceName)
 		pattern := fmt.Sprintf("%s_*", normalized)
 		indices, err = s.esClient.ListIndices(ctx, pattern)
-	} else if indexType != "" {
+	} else if req.Type != "" {
 		// List by type
-		pattern := fmt.Sprintf("*_%s", indexType)
+		pattern := fmt.Sprintf("*_%s", req.Type)
 		indices, err = s.esClient.ListIndices(ctx, pattern)
 	} else {
 		// List all
@@ -239,22 +240,122 @@ func (s *IndexService) ListIndices(ctx context.Context, indexType, sourceName st
 
 		// Get metadata
 		metadata, _ := s.db.GetIndexMetadata(ctx, indexName)
-		var indexType domain.IndexType
+		var idxType domain.IndexType
 		var inferredSourceName string
 		if metadata != nil {
-			indexType = domain.IndexType(metadata.IndexType)
+			idxType = domain.IndexType(metadata.IndexType)
 			if metadata.SourceName.Valid {
 				inferredSourceName = metadata.SourceName.String
 			}
 		} else {
 			// Try to infer from index name
-			indexType, inferredSourceName = s.inferIndexTypeAndSource(indexName)
+			idxType, inferredSourceName = s.inferIndexTypeAndSource(indexName)
 		}
 
-		result = append(result, s.indexInfoToDomain(info, indexType, inferredSourceName))
+		result = append(result, s.indexInfoToDomain(info, idxType, inferredSourceName))
 	}
 
-	return result, nil
+	// Apply search filter
+	if req.Search != "" {
+		result = filterBySearch(result, req.Search)
+	}
+
+	// Apply health filter
+	if req.Health != "" {
+		result = filterByHealth(result, req.Health)
+	}
+
+	// Get total before pagination
+	total := len(result)
+
+	// Apply sorting
+	sortIndices(result, req.SortBy, req.SortOrder)
+
+	// Apply pagination
+	result = paginateIndices(result, req.Offset, req.Limit)
+
+	return &domain.ListIndicesResponse{
+		Indices: result,
+		Total:   total,
+		Limit:   req.Limit,
+		Offset:  req.Offset,
+	}, nil
+}
+
+// filterBySearch filters indices by name (case-insensitive substring match)
+func filterBySearch(indices []*domain.Index, search string) []*domain.Index {
+	search = strings.ToLower(search)
+	filtered := make([]*domain.Index, 0, len(indices))
+	for _, idx := range indices {
+		if strings.Contains(strings.ToLower(idx.Name), search) {
+			filtered = append(filtered, idx)
+		}
+	}
+	return filtered
+}
+
+// filterByHealth filters indices by health status
+func filterByHealth(indices []*domain.Index, health string) []*domain.Index {
+	filtered := make([]*domain.Index, 0, len(indices))
+	for _, idx := range indices {
+		if strings.EqualFold(idx.Health, health) {
+			filtered = append(filtered, idx)
+		}
+	}
+	return filtered
+}
+
+// Health order constants for sorting
+const (
+	healthOrderGreen  = 0
+	healthOrderYellow = 1
+	healthOrderRed    = 2
+)
+
+// sortIndices sorts indices by specified field and order
+func sortIndices(indices []*domain.Index, sortBy, sortOrder string) {
+	sort.Slice(indices, func(i, j int) bool {
+		var less bool
+
+		switch sortBy {
+		case "document_count":
+			less = indices[i].DocumentCount < indices[j].DocumentCount
+		case "size":
+			// Size is string like "1.2kb" - compare as strings for simplicity
+			less = indices[i].Size < indices[j].Size
+		case "health":
+			// Health priority: green < yellow < red
+			healthOrder := map[string]int{
+				"green":  healthOrderGreen,
+				"yellow": healthOrderYellow,
+				"red":    healthOrderRed,
+			}
+			less = healthOrder[indices[i].Health] < healthOrder[indices[j].Health]
+		case "type":
+			less = string(indices[i].Type) < string(indices[j].Type)
+		default: // name
+			less = indices[i].Name < indices[j].Name
+		}
+
+		if sortOrder == "desc" {
+			return !less
+		}
+		return less
+	})
+}
+
+// paginateIndices slices indices array for pagination
+func paginateIndices(indices []*domain.Index, offset, limit int) []*domain.Index {
+	if offset >= len(indices) {
+		return []*domain.Index{}
+	}
+
+	end := offset + limit
+	if end > len(indices) {
+		end = len(indices)
+	}
+
+	return indices[offset:end]
 }
 
 // GetIndex gets detailed information about an index

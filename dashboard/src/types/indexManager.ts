@@ -31,10 +31,20 @@ export interface CreateSourceIndexesRequest {
   index_types?: IndexType[]
 }
 
+// Filter Types
+export interface IndexFilters {
+  search?: string
+  type?: IndexType
+  health?: HealthStatus
+  source?: string
+}
+
 // Response Types
 export interface ListIndexesResponse {
   indices: Index[]
-  count: number
+  total: number
+  limit: number
+  offset: number
 }
 
 export interface GetIndexResponse extends Index {}
