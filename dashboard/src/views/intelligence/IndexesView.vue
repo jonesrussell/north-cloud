@@ -144,7 +144,7 @@ async function confirmDelete() {
           <div class="relative z-10 w-full max-w-md rounded-2xl border bg-card shadow-xl">
             <div class="p-6">
               <div class="flex items-start gap-4">
-                <div class="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-rose-500/10">
+                <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-rose-500/10">
                   <AlertTriangle class="h-6 w-6 text-rose-400" />
                 </div>
                 <div class="min-w-0 flex-1">
