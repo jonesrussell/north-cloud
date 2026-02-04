@@ -64,6 +64,9 @@ type IntervalScheduler struct {
 
 	// Log service for job log capture (optional)
 	logService logs.Service
+
+	// Load balancing
+	bucketMap *BucketMap
 }
 
 // NewIntervalScheduler creates a new interval-based scheduler.
@@ -89,6 +92,7 @@ func NewIntervalScheduler(
 		metricsInterval:        defaultMetricsInterval,
 		staleLockCheckInterval: 1 * time.Minute,
 		metrics:                &SchedulerMetrics{},
+		bucketMap:              NewBucketMap(),
 	}
 
 	// Apply options

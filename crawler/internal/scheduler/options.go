@@ -38,3 +38,13 @@ func WithStaleLockCheckInterval(interval time.Duration) SchedulerOption {
 		s.staleLockCheckInterval = interval
 	}
 }
+
+// WithLoadBalancing enables or disables load-balanced placement.
+// Default is true (enabled).
+func WithLoadBalancing(enabled bool) SchedulerOption {
+	return func(s *IntervalScheduler) {
+		if !enabled {
+			s.bucketMap = nil
+		}
+	}
+}
