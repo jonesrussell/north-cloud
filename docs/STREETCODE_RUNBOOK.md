@@ -77,11 +77,13 @@ Restart the systemd service (e.g. `articles-subscribe.service`) after deploy so 
 
 ## 3. Soft-delete non-crime articles on StreetCode (Laravel)
 
-The StreetCode Laravel app already uses `SoftDeletes` on the Article model and has a dedicated command. This hides existing non-crime articles (ingested from `articles:news`, `articles:crime`, or legacy rows with no channel) without deleting rows.
+The StreetCode Laravel app already uses `SoftDeletes` on the Article model and has a dedicated command. This hides existing non-crime articles (ingested from `articles:news`, `articles:politics`, or legacy rows with no channel) without deleting rows.
 
 ### 3.1 One-time: soft-delete existing non-crime articles
 
-Uses `metadata->publisher->channel`: only articles where channel **starts with** `crime:` are kept; all others (e.g. `articles:news`, `articles:crime`, or null) are soft-deleted.
+Uses `metadata->publisher->channel`: articles are **kept** if channel starts with `crime:` (Layer 3) OR equals `articles:crime` (Layer 1 crime topic). All others (e.g. `articles:news`, `articles:politics`, or null) are soft-deleted.
+
+The `--dry-run` flag shows a channel breakdown so you can see which articles will be kept vs deleted.
 
 **On StreetCode server** (after deploy):
 
