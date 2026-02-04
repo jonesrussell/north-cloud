@@ -285,15 +285,15 @@ services:
       start_period: 10s
 
   # ------------------------------------------------------------
-  # StreetCode ML Classifier
+  # Crime ML Classifier
   # ------------------------------------------------------------
 
-  streetcode-ml:
+  crime-ml:
     <<: *service-defaults
     build:
-      context: ./streetcode-ml
+      context: ./crime-ml
       dockerfile: Dockerfile
-    image: docker.io/jonesrussell/streetcode-ml:latest
+    image: docker.io/jonesrussell/crime-ml:latest
     deploy:
       resources:
         limits:

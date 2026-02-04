@@ -111,6 +111,7 @@ jobs:
               echo "$CHANGED_FILES" | grep -q "^search-frontend/" && CHANGED_SERVICES="$CHANGED_SERVICES search-frontend"
               echo "$CHANGED_FILES" | grep -q "^dashboard/" && CHANGED_SERVICES="$CHANGED_SERVICES dashboard"
               echo "$CHANGED_FILES" | grep -q "^nc-http-proxy/" && CHANGED_SERVICES="$CHANGED_SERVICES nc-http-proxy"
+              echo "$CHANGED_FILES" | grep -q "^crime-ml/" && CHANGED_SERVICES="$CHANGED_SERVICES crime-ml"
 
               # Trim whitespace
               CHANGED_SERVICES=$(echo "$CHANGED_SERVICES" | xargs)
@@ -162,6 +163,10 @@ jobs:
                 nc-http-proxy)
                   CONTEXT="./nc-http-proxy"
                   DOCKERFILE="./nc-http-proxy/Dockerfile"
+                  ;;
+                crime-ml)
+                  CONTEXT="./crime-ml"
+                  DOCKERFILE="./crime-ml/Dockerfile"
                   ;;
                 *)
                   CONTEXT="."
