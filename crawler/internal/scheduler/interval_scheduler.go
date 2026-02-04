@@ -608,24 +608,37 @@ func (s *IntervalScheduler) handleJobFailure(jobExec *JobExecution, execErr erro
 }
 
 // calculateNextRun calculates the next run time based on interval configuration.
+// getIntervalDuration converts job interval settings to a time.Duration.
+func getIntervalDuration(job *domain.Job) time.Duration {
+	if job.IntervalMinutes == nil {
+		return searchWindowDefault // Default for one-time jobs
+	}
+	switch job.IntervalType {
+	case "hours":
+		return time.Duration(*job.IntervalMinutes) * time.Hour
+	case "days":
+		return time.Duration(*job.IntervalMinutes) * hoursPerDay * time.Hour
+	default: // "minutes"
+		return time.Duration(*job.IntervalMinutes) * time.Minute
+	}
+}
+
+// calculateNextRun calculates the next run time based on interval configuration.
+// Uses rhythm preservation when load balancing is enabled.
 func (s *IntervalScheduler) calculateNextRun(job *domain.Job) time.Time {
 	if job.IntervalMinutes == nil {
 		return time.Time{}
 	}
 
-	var duration time.Duration
-	switch job.IntervalType {
-	case "minutes":
-		duration = time.Duration(*job.IntervalMinutes) * time.Minute
-	case "hours":
-		duration = time.Duration(*job.IntervalMinutes) * time.Hour
-	case "days":
-		duration = time.Duration(*job.IntervalMinutes) * hoursPerDay * time.Hour
-	default:
-		duration = time.Duration(*job.IntervalMinutes) * time.Minute
+	interval := getIntervalDuration(job)
+
+	// Use rhythm preservation when load balancing is enabled
+	if s.bucketMap != nil {
+		return s.bucketMap.CalculateNextRunPreserveRhythm(job.ID, interval)
 	}
 
-	return time.Now().Add(duration)
+	// Fallback to original behavior
+	return time.Now().Add(interval)
 }
 
 // calculateBackoff calculates exponential backoff duration for retries.
