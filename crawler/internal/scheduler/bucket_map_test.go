@@ -267,3 +267,68 @@ func TestBucketMap_CalculateNextRunPreserveRhythm_UnknownJob(t *testing.T) {
 		t.Error("result should not be zero time")
 	}
 }
+
+func TestBucketMap_CanMoveJob_Running(t *testing.T) {
+	t.Helper()
+
+	bm := scheduler.NewBucketMap()
+
+	reason, canMove := bm.CanMoveJob("job-1", "running", nil)
+	if canMove {
+		t.Error("running job should not be movable")
+	}
+	if reason != "job_running" {
+		t.Errorf("reason = %q, want %q", reason, "job_running")
+	}
+}
+
+func TestBucketMap_CanMoveJob_ProtectionWindow(t *testing.T) {
+	t.Helper()
+
+	bm := scheduler.NewBucketMap()
+
+	// Job running in 10 minutes - cannot move
+	soon := time.Now().Add(10 * time.Minute)
+	reason, canMove := bm.CanMoveJob("job-1", "scheduled", &soon)
+	if canMove {
+		t.Error("job in protection window should not be movable")
+	}
+	if reason != "protection_window" {
+		t.Errorf("reason = %q, want %q", reason, "protection_window")
+	}
+}
+
+func TestBucketMap_CanMoveJob_Cooldown(t *testing.T) {
+	t.Helper()
+
+	bm := scheduler.NewBucketMap()
+
+	// Add job (sets lastPlaced to now)
+	bm.AddJob("job-1", scheduler.SlotKey(time.Now().Add(2*time.Hour)))
+
+	// Job was just placed - cannot move
+	farFuture := time.Now().Add(2 * time.Hour)
+	reason, canMove := bm.CanMoveJob("job-1", "scheduled", &farFuture)
+	if canMove {
+		t.Error("recently placed job should not be movable")
+	}
+	if reason != "placement_cooldown" {
+		t.Errorf("reason = %q, want %q", reason, "placement_cooldown")
+	}
+}
+
+func TestBucketMap_CanMoveJob_Allowed(t *testing.T) {
+	t.Helper()
+
+	bm := scheduler.NewBucketMap()
+
+	// Add job then manually set lastPlaced to 2 hours ago to bypass cooldown
+	bm.AddJob("job-1", scheduler.SlotKey(time.Now().Add(3*time.Hour)))
+	bm.SetLastPlacedForTest("job-1", time.Now().Add(-2*time.Hour))
+
+	farFuture := time.Now().Add(3 * time.Hour)
+	reason, canMove := bm.CanMoveJob("job-1", "scheduled", &farFuture)
+	if !canMove {
+		t.Errorf("job should be movable, got reason: %q", reason)
+	}
+}

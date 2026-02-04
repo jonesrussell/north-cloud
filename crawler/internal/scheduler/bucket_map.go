@@ -175,3 +175,37 @@ func (b *BucketMap) CalculateNextRunPreserveRhythm(jobID string, interval time.D
 
 	return SlotTime(nextSlot)
 }
+
+// CanMoveJob checks if a job can be moved during rebalancing.
+// Returns (reason, canMove) where reason explains why the job cannot be moved.
+func (b *BucketMap) CanMoveJob(jobID, status string, nextRunAt *time.Time) (string, bool) {
+	// Rule 1: Running jobs are untouchable
+	if status == "running" {
+		return "job_running", false
+	}
+
+	// Rule 2: Protection window for imminent jobs
+	if nextRunAt != nil {
+		if time.Until(*nextRunAt) <= ProtectionWindow {
+			return "protection_window", false
+		}
+	}
+
+	// Rule 3: Placement cooldown
+	b.mu.RLock()
+	lastPlaced, exists := b.lastPlaced[jobID]
+	b.mu.RUnlock()
+	if exists && time.Since(lastPlaced) < PlacementCooldown {
+		return "placement_cooldown", false
+	}
+
+	return "", true
+}
+
+// SetLastPlacedForTest allows tests to set the lastPlaced time for a job.
+// This is used to bypass the placement cooldown in tests.
+func (b *BucketMap) SetLastPlacedForTest(jobID string, t time.Time) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	b.lastPlaced[jobID] = t
+}
