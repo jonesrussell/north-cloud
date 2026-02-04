@@ -200,6 +200,14 @@ type Article struct {
 	SourceReputation int      `json:"source_reputation"`
 	Confidence       float64  `json:"confidence"`
 
+	// Crime classification (hybrid rule + ML)
+	CrimeRelevance      string   `json:"crime_relevance"`
+	CrimeTypes          []string `json:"crime_types"`
+	LocationSpecificity string   `json:"location_specificity"`
+	HomepageEligible    bool     `json:"homepage_eligible"`
+	CategoryPages       []string `json:"category_pages"`
+	ReviewRequired      bool     `json:"review_required"`
+
 	// Open Graph metadata
 	OGTitle       string `json:"og_title"`
 	OGDescription string `json:"og_description"`
@@ -378,6 +386,13 @@ func (s *Service) publishToChannel(ctx context.Context, article *Article, channe
 		"category":          article.Category,
 		"section":           article.Section,
 		"keywords":          article.Keywords,
+		// Crime classification
+		"crime_relevance":      article.CrimeRelevance,
+		"crime_types":          article.CrimeTypes,
+		"location_specificity": article.LocationSpecificity,
+		"homepage_eligible":    article.HomepageEligible,
+		"category_pages":       article.CategoryPages,
+		"review_required":      article.ReviewRequired,
 	}
 
 	messageJSON, err := json.Marshal(payload)
