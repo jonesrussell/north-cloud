@@ -39,6 +39,7 @@ type ClassificationResult struct {
 // CrimeResult holds Crime hybrid classification results.
 type CrimeResult struct {
 	Relevance           string   `json:"street_crime_relevance"`
+	SubLabel            string   `json:"sub_label,omitempty"` // "criminal_justice" or "crime_context" for peripheral_crime
 	CrimeTypes          []string `json:"crime_types"`
 	LocationSpecificity string   `json:"location_specificity"`
 	FinalConfidence     float64  `json:"final_confidence"`
