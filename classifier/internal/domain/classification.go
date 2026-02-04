@@ -31,6 +31,20 @@ type ClassificationResult struct {
 	Confidence           float64   `json:"confidence"`              // Overall confidence (0.0-1.0)
 	ProcessingTimeMs     int64     `json:"processing_time_ms"`      // Processing duration
 	ClassifiedAt         time.Time `json:"classified_at"`
+
+	// StreetCode hybrid classification (optional)
+	StreetCode *StreetCodeResult `json:"streetcode,omitempty"`
+}
+
+// StreetCodeResult holds StreetCode hybrid classification results.
+type StreetCodeResult struct {
+	Relevance           string   `json:"street_crime_relevance"`
+	CrimeTypes          []string `json:"crime_types"`
+	LocationSpecificity string   `json:"location_specificity"`
+	FinalConfidence     float64  `json:"final_confidence"`
+	HomepageEligible    bool     `json:"homepage_eligible"`
+	CategoryPages       []string `json:"category_pages"`
+	ReviewRequired      bool     `json:"review_required"`
 }
 
 // ClassifiedContent represents the full enriched document for Elasticsearch
@@ -53,6 +67,9 @@ type ClassifiedContent struct {
 	ClassificationMethod string  `json:"classification_method"`
 	ModelVersion         string  `json:"model_version,omitempty"`
 	Confidence           float64 `json:"confidence"`
+
+	// StreetCode hybrid classification (optional)
+	StreetCode *StreetCodeResult `json:"streetcode,omitempty"`
 
 	// Publisher compatibility aliases
 	// These duplicate RawContent fields for backward compatibility with publisher
