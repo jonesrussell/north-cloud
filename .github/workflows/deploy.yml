@@ -51,150 +51,31 @@ jobs:
       - name: Detect changed services
         id: changes
         env:
-          FORCE_REBUILD: ${{ inputs.force_rebuild_all }}
+          # Use env vars to safely pass inputs (avoids injection risks)
+          FORCE_ALL: ${{ inputs.force_rebuild_all }}
           MANUAL_SERVICES: ${{ inputs.services }}
+          EVENT_NAME: ${{ github.event_name }}
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PUSH_BEFORE_SHA: ${{ github.event.before }}
         run: |
-          # All available services
-          ALL_SERVICES="auth crawler source-manager classifier publisher index-manager search-service search-frontend dashboard nc-http-proxy"
-
-          # Handle manual service list
-          if [ -n "$MANUAL_SERVICES" ]; then
-            echo "Manual services specified: $MANUAL_SERVICES"
-            CHANGED_SERVICES="$MANUAL_SERVICES"
-          # Handle force rebuild
-          elif [ "$FORCE_REBUILD" == "true" ]; then
-            echo "Force rebuild requested"
-            CHANGED_SERVICES="$ALL_SERVICES"
+          # Determine base ref based on event type
+          if [ "$EVENT_NAME" = "workflow_run" ]; then
+            BASE_REF="HEAD~1"
+          elif [ "$EVENT_NAME" = "pull_request" ] && [ -n "$PR_BASE_SHA" ]; then
+            BASE_REF="$PR_BASE_SHA"
+          elif [ -n "$PUSH_BEFORE_SHA" ] && [ "$PUSH_BEFORE_SHA" != "0000000000000000000000000000000000000000" ]; then
+            BASE_REF="$PUSH_BEFORE_SHA"
           else
-            # Detect changes from git
-            if [ "${{ github.event_name }}" == "workflow_run" ]; then
-              # For workflow_run, compare HEAD with HEAD~1 (last commit)
-              BASE_SHA="HEAD~1"
-              HEAD_SHA="HEAD"
-            elif [ "${{ github.event_name }}" == "pull_request" ]; then
-              BASE_SHA="${{ github.event.pull_request.base.sha }}"
-              HEAD_SHA="${{ github.event.pull_request.head.sha }}"
-            else
-              BASE_SHA="${{ github.event.before }}"
-              HEAD_SHA="${{ github.sha }}"
-            fi
-
-            # Validate BASE_SHA
-            if [ -z "$BASE_SHA" ] || [ "$BASE_SHA" == "0000000000000000000000000000000000000000" ]; then
-              BASE_SHA="HEAD~1"
-            fi
-            if ! git cat-file -e "$BASE_SHA" 2>/dev/null; then
-              echo "Warning: BASE_SHA invalid, using HEAD~1"
-              BASE_SHA="HEAD~1"
-            fi
-
-            CHANGED_FILES=$(git diff --name-only $BASE_SHA $HEAD_SHA 2>/dev/null || echo "")
-
-            if [ -z "$CHANGED_FILES" ]; then
-              echo "No changed files detected, building all"
-              CHANGED_SERVICES="$ALL_SERVICES"
-            else
-              echo "Changed files:"
-              echo "$CHANGED_FILES"
-              echo ""
-
-              CHANGED_SERVICES=""
-
-              # Map directories to services
-              echo "$CHANGED_FILES" | grep -q "^auth/" && CHANGED_SERVICES="$CHANGED_SERVICES auth"
-              echo "$CHANGED_FILES" | grep -q "^crawler/" && CHANGED_SERVICES="$CHANGED_SERVICES crawler"
-              echo "$CHANGED_FILES" | grep -q "^source-manager/" && CHANGED_SERVICES="$CHANGED_SERVICES source-manager"
-              echo "$CHANGED_FILES" | grep -q "^classifier/" && CHANGED_SERVICES="$CHANGED_SERVICES classifier"
-              echo "$CHANGED_FILES" | grep -q "^publisher/" && CHANGED_SERVICES="$CHANGED_SERVICES publisher"
-              echo "$CHANGED_FILES" | grep -q "^index-manager/" && CHANGED_SERVICES="$CHANGED_SERVICES index-manager"
-              echo "$CHANGED_FILES" | grep -q "^search/" && CHANGED_SERVICES="$CHANGED_SERVICES search-service"
-              echo "$CHANGED_FILES" | grep -q "^search-frontend/" && CHANGED_SERVICES="$CHANGED_SERVICES search-frontend"
-              echo "$CHANGED_FILES" | grep -q "^dashboard/" && CHANGED_SERVICES="$CHANGED_SERVICES dashboard"
-              echo "$CHANGED_FILES" | grep -q "^nc-http-proxy/" && CHANGED_SERVICES="$CHANGED_SERVICES nc-http-proxy"
-              echo "$CHANGED_FILES" | grep -q "^crime-ml/" && CHANGED_SERVICES="$CHANGED_SERVICES crime-ml"
-
-              # Trim whitespace
-              CHANGED_SERVICES=$(echo "$CHANGED_SERVICES" | xargs)
-            fi
+            BASE_REF="HEAD~1"
           fi
 
-          # Detect infrastructure changes (needs sync but not rebuild)
-          INFRA_CHANGED="false"
-          if [ -n "$CHANGED_FILES" ]; then
-            if echo "$CHANGED_FILES" | grep -qE "^infrastructure/|^scripts/|docker-compose\.(base|prod)\.yml|^\.github/"; then
-              INFRA_CHANGED="true"
-            fi
-          fi
-
-          # Detect migration changes
-          MIGRATIONS_CHANGED="false"
-          if [ -n "$CHANGED_FILES" ]; then
-            if echo "$CHANGED_FILES" | grep -q "/migrations/"; then
-              MIGRATIONS_CHANGED="true"
-            fi
-          fi
-
-          # Build matrix JSON
-          if [ -n "$CHANGED_SERVICES" ]; then
-            # Convert space-separated to JSON array of objects
-            MATRIX_JSON="["
-            FIRST=true
-            for svc in $CHANGED_SERVICES; do
-              if [ "$FIRST" = true ]; then
-                FIRST=false
-              else
-                MATRIX_JSON="$MATRIX_JSON,"
-              fi
-
-              # Map service name to context/dockerfile
-              case "$svc" in
-                search-service)
-                  CONTEXT="."
-                  DOCKERFILE="./search/Dockerfile"
-                  ;;
-                search-frontend)
-                  CONTEXT="./search-frontend"
-                  DOCKERFILE="./search-frontend/Dockerfile"
-                  ;;
-                dashboard)
-                  CONTEXT="./dashboard"
-                  DOCKERFILE="./dashboard/Dockerfile"
-                  ;;
-                nc-http-proxy)
-                  CONTEXT="./nc-http-proxy"
-                  DOCKERFILE="./nc-http-proxy/Dockerfile"
-                  ;;
-                crime-ml)
-                  CONTEXT="./crime-ml"
-                  DOCKERFILE="./crime-ml/Dockerfile"
-                  ;;
-                *)
-                  CONTEXT="."
-                  DOCKERFILE="./${svc}/Dockerfile"
-                  ;;
-              esac
-
-              MATRIX_JSON="$MATRIX_JSON{\"name\":\"$svc\",\"context\":\"$CONTEXT\",\"dockerfile\":\"$DOCKERFILE\"}"
-            done
-            MATRIX_JSON="$MATRIX_JSON]"
-
-            echo "services_matrix={\"service\":$MATRIX_JSON}" >> $GITHUB_OUTPUT
-            echo "services_list=$(echo $CHANGED_SERVICES | tr ' ' ',')" >> $GITHUB_OUTPUT
-            echo "has_services=true" >> $GITHUB_OUTPUT
-          else
-            echo "services_matrix={\"service\":[]}" >> $GITHUB_OUTPUT
-            echo "services_list=" >> $GITHUB_OUTPUT
-            echo "has_services=false" >> $GITHUB_OUTPUT
-          fi
-
-          echo "has_infrastructure=$INFRA_CHANGED" >> $GITHUB_OUTPUT
-          echo "has_migrations=$MIGRATIONS_CHANGED" >> $GITHUB_OUTPUT
+          # Use shared detection script with deploy format
+          # Script reads FORCE_ALL and MANUAL_SERVICES from env
+          ./scripts/detect-changed-services.sh "$BASE_REF" --format=deploy >> $GITHUB_OUTPUT
 
           echo ""
-          echo "=== Summary ==="
-          echo "Services to build: ${CHANGED_SERVICES:-none}"
-          echo "Infrastructure changed: $INFRA_CHANGED"
-          echo "Migrations changed: $MIGRATIONS_CHANGED"
+          echo "=== Detection Summary ==="
+          ./scripts/detect-changed-services.sh "$BASE_REF" --format=deploy
 
   build-and-push:
     name: Build ${{ matrix.service.name }}
