@@ -33,20 +33,36 @@ type LocationInfo struct {
 
 // Document represents a document in Elasticsearch
 type Document struct {
-	ID             string         `json:"id"`
-	Title          string         `json:"title,omitempty"`
-	URL            string         `json:"url,omitempty"`
-	SourceName     string         `json:"source_name,omitempty"`
-	PublishedDate  *time.Time     `json:"published_date,omitempty"`
-	CrawledAt      *time.Time     `json:"crawled_at,omitempty"`
-	QualityScore   int            `json:"quality_score,omitempty"`
-	ContentType    string         `json:"content_type,omitempty"`
-	Topics         []string       `json:"topics,omitempty"`
-	IsCrimeRelated bool           `json:"is_crime_related,omitempty"`
-	Body           string         `json:"body,omitempty"`
-	RawText        string         `json:"raw_text,omitempty"`
-	RawHTML        string         `json:"raw_html,omitempty"`
-	Meta           map[string]any `json:"meta,omitempty"`
+	ID            string         `json:"id"`
+	Title         string         `json:"title,omitempty"`
+	URL           string         `json:"url,omitempty"`
+	SourceName    string         `json:"source_name,omitempty"`
+	PublishedDate *time.Time     `json:"published_date,omitempty"`
+	CrawledAt     *time.Time     `json:"crawled_at,omitempty"`
+	QualityScore  int            `json:"quality_score,omitempty"`
+	ContentType   string         `json:"content_type,omitempty"`
+	Topics        []string       `json:"topics,omitempty"`
+	Body          string         `json:"body,omitempty"`
+	RawText       string         `json:"raw_text,omitempty"`
+	RawHTML       string         `json:"raw_html,omitempty"`
+
+	// Structured classification fields
+	Crime    *CrimeInfo    `json:"crime,omitempty"`
+	Location *LocationInfo `json:"location,omitempty"`
+
+	// Backward compatibility (computed from Crime.Relevance)
+	IsCrimeRelated bool `json:"is_crime_related,omitempty"`
+
+	// Unstructured spillover
+	Meta map[string]any `json:"meta,omitempty"`
+}
+
+// ComputedIsCrimeRelated returns whether this document is crime-related
+func (d *Document) ComputedIsCrimeRelated() bool {
+	if d.Crime != nil {
+		return d.Crime.IsCrimeRelated()
+	}
+	return d.IsCrimeRelated
 }
 
 // DocumentQueryRequest represents a request to query documents
