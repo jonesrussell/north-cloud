@@ -292,3 +292,32 @@ func (b *BucketMap) GetDistribution(windowHours int) Distribution {
 		PeakCount:          peakCount,
 	}
 }
+
+// Reassignment represents a job that was moved during rebalance.
+type Reassignment struct {
+	JobID   string    `json:"job_id"`
+	OldTime time.Time `json:"old_time"`
+	NewTime time.Time `json:"new_time"`
+}
+
+// SkippedJob represents a job that could not be moved.
+type SkippedJob struct {
+	JobID  string `json:"job_id"`
+	Reason string `json:"reason"`
+}
+
+// RebalanceResult contains the outcome of a full rebalance operation.
+type RebalanceResult struct {
+	Moved                []Reassignment `json:"moved"`
+	Skipped              []SkippedJob   `json:"skipped"`
+	NewDistributionScore float64        `json:"new_distribution_score"`
+}
+
+// Clear removes all jobs from the bucket map.
+func (b *BucketMap) Clear() {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	b.slots = make(map[int64]int)
+	b.jobToSlot = make(map[string]int64)
+	b.lastPlaced = make(map[string]time.Time)
+}

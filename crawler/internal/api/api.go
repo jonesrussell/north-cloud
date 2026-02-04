@@ -44,6 +44,8 @@ func setupJobRoutes(v1 *gin.RouterGroup, jobsHandler *JobsHandler) {
 		// Scheduler metrics and distribution
 		v1.GET("/scheduler/metrics", jobsHandler.GetSchedulerMetrics)
 		v1.GET("/scheduler/distribution", jobsHandler.GetSchedulerDistribution)
+		v1.POST("/scheduler/rebalance", jobsHandler.PostSchedulerRebalance)
+		v1.POST("/scheduler/rebalance/preview", jobsHandler.PostSchedulerRebalancePreview)
 	} else {
 		// Fallback to placeholder endpoints if no handler provided
 		v1.GET("/jobs", func(c *gin.Context) {

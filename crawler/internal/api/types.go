@@ -17,6 +17,8 @@ type SchedulerInterface interface {
 	HandleJobDeleted(jobID string)
 	HandleIntervalChange(job *domain.Job) error
 	HandleResume(job *domain.Job) error
+	FullRebalance() (*scheduler.RebalanceResult, error)
+	PreviewRebalance() (*scheduler.RebalanceResult, error)
 }
 
 // CreateJobRequest represents a job creation request.
