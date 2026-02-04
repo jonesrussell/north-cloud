@@ -1,20 +1,22 @@
-package domain
+package domain_test
 
 import (
 	"testing"
+
+	"github.com/jonesrussell/north-cloud/index-manager/internal/domain"
 )
 
 func TestCrimeInfo_IsCrimeRelated(t *testing.T) {
 	t.Helper()
 	tests := []struct {
 		name     string
-		crime    *CrimeInfo
+		crime    *domain.CrimeInfo
 		expected bool
 	}{
 		{"nil crime", nil, false},
-		{"not_crime relevance", &CrimeInfo{Relevance: "not_crime"}, false},
-		{"core_street_crime relevance", &CrimeInfo{Relevance: "core_street_crime"}, true},
-		{"peripheral_crime relevance", &CrimeInfo{Relevance: "peripheral_crime"}, true},
+		{"not_crime relevance", &domain.CrimeInfo{Relevance: "not_crime"}, false},
+		{"core_street_crime relevance", &domain.CrimeInfo{Relevance: "core_street_crime"}, true},
+		{"peripheral_crime relevance", &domain.CrimeInfo{Relevance: "peripheral_crime"}, true},
 	}
 
 	for _, tt := range tests {
@@ -31,17 +33,17 @@ func TestDocument_ComputedIsCrimeRelated(t *testing.T) {
 	t.Helper()
 	tests := []struct {
 		name     string
-		doc      Document
+		doc      domain.Document
 		expected bool
 	}{
 		{
 			name:     "nil crime",
-			doc:      Document{},
+			doc:      domain.Document{},
 			expected: false,
 		},
 		{
 			name:     "crime related",
-			doc:      Document{Crime: &CrimeInfo{Relevance: "core_street_crime"}},
+			doc:      domain.Document{Crime: &domain.CrimeInfo{Relevance: "core_street_crime"}},
 			expected: true,
 		},
 	}
