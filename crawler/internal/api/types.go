@@ -4,6 +4,7 @@ package api
 import (
 	"time"
 
+	"github.com/jonesrussell/north-cloud/crawler/internal/domain"
 	"github.com/jonesrussell/north-cloud/crawler/internal/scheduler"
 )
 
@@ -12,6 +13,8 @@ type SchedulerInterface interface {
 	CancelJob(jobID string) error
 	GetMetrics() scheduler.SchedulerMetrics
 	GetDistribution() *scheduler.Distribution
+	ScheduleNewJob(job *domain.Job) error
+	HandleJobDeleted(jobID string)
 }
 
 // CreateJobRequest represents a job creation request.

@@ -165,6 +165,37 @@ func (s *IntervalScheduler) GetDistribution() *Distribution {
 	return &dist
 }
 
+// ScheduleNewJob schedules a new job with load-balanced placement.
+// This should be called when a job is created via API.
+func (s *IntervalScheduler) ScheduleNewJob(job *domain.Job) error {
+	if job.IntervalMinutes == nil || !job.ScheduleEnabled {
+		// One-time job - no load balancing needed
+		return nil
+	}
+
+	interval := getIntervalDuration(job)
+
+	if s.bucketMap != nil {
+		nextRun := s.bucketMap.PlaceNewJob(job.ID, interval)
+		job.NextRunAt = &nextRun
+		job.Status = string(StateScheduled)
+	} else {
+		// Fallback to original behavior
+		nextRun := time.Now().Add(interval)
+		job.NextRunAt = &nextRun
+		job.Status = string(StateScheduled)
+	}
+
+	return s.repo.Update(s.ctx, job)
+}
+
+// HandleJobDeleted removes a job from the bucket map when deleted.
+func (s *IntervalScheduler) HandleJobDeleted(jobID string) {
+	if s.bucketMap != nil {
+		s.bucketMap.RemoveJob(jobID)
+	}
+}
+
 // Stop stops the interval scheduler gracefully.
 func (s *IntervalScheduler) Stop() error {
 	s.logger.Info("Stopping interval scheduler")
