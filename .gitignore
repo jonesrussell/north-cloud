@@ -158,3 +158,6 @@ source-manager/source-manager
 publisher/publisher
 search/search
 nc-http-proxy/nc-http-proxy
+
+# Git worktrees
+.worktrees/
