@@ -5,33 +5,32 @@ import PipelineMonitorView from '../views/PipelineMonitorView.vue'
 import LoginView from '../views/LoginView.vue'
 import NotFoundView from '../views/NotFoundView.vue'
 
-// Content Intake views (formerly Crawler)
+// Operations views
+import ArticlesView from '../views/distribution/ArticlesView.vue'
+
+// Content Intake views
 import JobsView from '../views/intake/JobsView.vue'
 import JobDetailView from '../views/intake/JobDetailView.vue'
-import QueuedLinksView from '../views/intake/DiscoveredLinksView.vue'
+import DiscoveredLinksView from '../views/intake/DiscoveredLinksView.vue'
 import RulesView from '../views/intake/RulesView.vue'
 
-// Source Scheduling views (formerly Sources + Classifier Sources)
+// Sources views (consolidated from scheduling)
 import SourcesView from '../views/scheduling/SourcesView.vue'
 import SourceFormView from '../views/scheduling/SourceFormView.vue'
 import CitiesView from '../views/scheduling/CitiesView.vue'
 import ReputationView from '../views/scheduling/ReputationView.vue'
 
-// Content Intelligence views (Classifier + Indexes)
+// Intelligence views
 import ClassifierStatsView from '../views/intelligence/ClassifierStatsView.vue'
 import IndexesView from '../views/intelligence/IndexesView.vue'
 import IndexDetailView from '../views/intelligence/IndexDetailView.vue'
 import DocumentDetailView from '../views/intelligence/DocumentDetailView.vue'
 
-// Distribution Engine views (formerly Publisher)
+// Distribution views
 import ChannelsView from '../views/distribution/ChannelsView.vue'
-import ArticlesView from '../views/distribution/ArticlesView.vue'
-
-// External Feeds views (new)
-import RedisStreamsView from '../views/feeds/RedisStreamsView.vue'
 import DeliveryLogsView from '../views/feeds/DeliveryLogsView.vue'
 
-// System Overview views (new)
+// System views
 import HealthView from '../views/system/HealthView.vue'
 import AuthView from '../views/system/AuthView.vue'
 import CacheView from '../views/system/CacheView.vue'
@@ -58,92 +57,51 @@ const routes: RouteRecordRaw[] = [
     meta: { title: 'Login', requiresAuth: false },
   },
 
-  // Pipeline Monitor (Dashboard) - root route
+  // ==========================================
+  // Operations - daily cockpit
+  // ==========================================
   {
     path: '/',
     name: 'pipeline-monitor',
     component: PipelineMonitorView,
-    meta: { title: 'Pipeline Monitor', requiresAuth: true },
+    meta: { title: 'Pipeline Monitor', section: 'operations', requiresAuth: true },
+  },
+  {
+    path: '/operations/articles',
+    name: 'operations-articles',
+    component: ArticlesView,
+    meta: { title: 'Recent Articles', section: 'operations', requiresAuth: true },
+  },
+  {
+    path: '/operations/review',
+    name: 'operations-review',
+    // Lazy load - will be created in Task 13
+    component: () => import('../views/operations/ReviewQueueView.vue'),
+    meta: { title: 'Review Queue', section: 'operations', requiresAuth: true },
   },
 
   // ==========================================
-  // Content Intake (formerly Crawler)
+  // Intelligence - crime/location analytics
   // ==========================================
   {
-    path: '/intake/jobs',
-    name: 'intake-jobs',
-    component: JobsView,
-    meta: { title: 'Crawl Jobs', section: 'intake', requiresAuth: true },
+    path: '/intelligence/crime',
+    name: 'intelligence-crime',
+    // Lazy load - will be created in Task 14
+    component: () => import('../views/intelligence/CrimeBreakdownView.vue'),
+    meta: { title: 'Crime Breakdown', section: 'intelligence', requiresAuth: true },
   },
   {
-    path: '/intake/jobs/:id',
-    name: 'intake-job-detail',
-    component: JobDetailView,
-    props: true,
-    meta: { title: 'Job Details', section: 'intake', requiresAuth: true },
-  },
-  {
-    path: '/intake/discovered-links',
-    name: 'intake-discovered-links',
-    component: QueuedLinksView,
-    meta: { title: 'Queued Links', section: 'intake', requiresAuth: true },
-  },
-  {
-    path: '/intake/rules',
-    name: 'intake-rules',
-    component: RulesView,
-    meta: { title: 'Classification Rules', section: 'intake', requiresAuth: true },
-  },
-
-  // ==========================================
-  // Source Scheduling
-  // ==========================================
-  {
-    path: '/scheduling/sources',
-    name: 'scheduling-sources',
-    component: SourcesView,
-    meta: { title: 'Sources', section: 'scheduling', requiresAuth: true },
-  },
-  {
-    path: '/scheduling/sources/new',
-    name: 'scheduling-sources-new',
-    component: SourceFormView,
-    meta: { title: 'New Source', section: 'scheduling', requiresAuth: true },
-  },
-  {
-    path: '/scheduling/sources/:id/edit',
-    name: 'scheduling-sources-edit',
-    component: SourceFormView,
-    props: true,
-    meta: { title: 'Edit Source', section: 'scheduling', requiresAuth: true },
-  },
-  {
-    path: '/scheduling/cities',
-    name: 'scheduling-cities',
-    component: CitiesView,
-    meta: { title: 'Cities', section: 'scheduling', requiresAuth: true },
-  },
-  {
-    path: '/scheduling/reputation',
-    name: 'scheduling-reputation',
-    component: ReputationView,
-    meta: { title: 'Source Reputation', section: 'scheduling', requiresAuth: true },
-  },
-
-  // ==========================================
-  // Content Intelligence
-  // ==========================================
-  {
-    path: '/intelligence/stats',
-    name: 'intelligence-stats',
-    component: ClassifierStatsView,
-    meta: { title: 'Classifier Stats', section: 'intelligence', requiresAuth: true },
+    path: '/intelligence/location',
+    name: 'intelligence-location',
+    // Lazy load - will be created in Task 15
+    component: () => import('../views/intelligence/LocationBreakdownView.vue'),
+    meta: { title: 'Location Breakdown', section: 'intelligence', requiresAuth: true },
   },
   {
     path: '/intelligence/indexes',
     name: 'intelligence-indexes',
     component: IndexesView,
-    meta: { title: 'Elasticsearch Indexes', section: 'intelligence', requiresAuth: true },
+    meta: { title: 'Index Explorer', section: 'intelligence', requiresAuth: true },
   },
   {
     path: '/intelligence/indexes/:index_name',
@@ -159,9 +117,80 @@ const routes: RouteRecordRaw[] = [
     props: true,
     meta: { title: 'Document Details', section: 'intelligence', requiresAuth: true },
   },
+  // Legacy intelligence routes
+  {
+    path: '/intelligence/stats',
+    name: 'intelligence-stats',
+    component: ClassifierStatsView,
+    meta: { title: 'Classifier Stats', section: 'intelligence', requiresAuth: true },
+  },
 
   // ==========================================
-  // Distribution Engine (Routing V2)
+  // Content Intake
+  // ==========================================
+  {
+    path: '/intake/jobs',
+    name: 'intake-jobs',
+    component: JobsView,
+    meta: { title: 'Crawler Jobs', section: 'intake', requiresAuth: true },
+  },
+  {
+    path: '/intake/jobs/:id',
+    name: 'intake-job-detail',
+    component: JobDetailView,
+    props: true,
+    meta: { title: 'Job Details', section: 'intake', requiresAuth: true },
+  },
+  {
+    path: '/intake/discovered-links',
+    name: 'intake-discovered-links',
+    component: DiscoveredLinksView,
+    meta: { title: 'Discovered Links', section: 'intake', requiresAuth: true },
+  },
+  {
+    path: '/intake/rules',
+    name: 'intake-rules',
+    component: RulesView,
+    meta: { title: 'Rules', section: 'intake', requiresAuth: true },
+  },
+
+  // ==========================================
+  // Sources (consolidated from scheduling)
+  // ==========================================
+  {
+    path: '/sources',
+    name: 'sources',
+    component: SourcesView,
+    meta: { title: 'All Sources', section: 'sources', requiresAuth: true },
+  },
+  {
+    path: '/sources/new',
+    name: 'sources-new',
+    component: SourceFormView,
+    meta: { title: 'New Source', section: 'sources', requiresAuth: true },
+  },
+  {
+    path: '/sources/:id/edit',
+    name: 'sources-edit',
+    component: SourceFormView,
+    props: true,
+    meta: { title: 'Edit Source', section: 'sources', requiresAuth: true },
+  },
+  {
+    path: '/sources/cities',
+    name: 'sources-cities',
+    component: CitiesView,
+    meta: { title: 'Cities', section: 'sources', requiresAuth: true },
+  },
+  {
+    path: '/sources/reputation',
+    name: 'sources-reputation',
+    component: ReputationView,
+    meta: { title: 'Reputation', section: 'sources', requiresAuth: true },
+  },
+
+  // ==========================================
+  // Distribution
   // ==========================================
   {
     path: '/distribution/channels',
@@ -170,73 +199,82 @@ const routes: RouteRecordRaw[] = [
     meta: { title: 'Channels', section: 'distribution', requiresAuth: true },
   },
   {
-    path: '/distribution/articles',
-    name: 'distribution-articles',
-    component: ArticlesView,
-    meta: { title: 'Recent Articles', section: 'distribution', requiresAuth: true },
-  },
-
-  // ==========================================
-  // External Feeds
-  // ==========================================
-  {
-    path: '/feeds/streams',
-    name: 'feeds-streams',
-    component: RedisStreamsView,
-    meta: { title: 'Redis Streams', section: 'feeds', requiresAuth: true },
+    path: '/distribution/routes',
+    name: 'distribution-routes',
+    // Lazy load - will be created in Task 16
+    component: () => import('../views/distribution/RoutesView.vue'),
+    meta: { title: 'Routes', section: 'distribution', requiresAuth: true },
   },
   {
-    path: '/feeds/logs',
-    name: 'feeds-logs',
+    path: '/distribution/logs',
+    name: 'distribution-logs',
     component: DeliveryLogsView,
-    meta: { title: 'Delivery Logs', section: 'feeds', requiresAuth: true },
+    meta: { title: 'Delivery Logs', section: 'distribution', requiresAuth: true },
   },
 
   // ==========================================
-  // System Overview
+  // System
   // ==========================================
   {
     path: '/system/health',
     name: 'system-health',
     component: HealthView,
-    meta: { title: 'System Health', section: 'system', requiresAuth: true },
+    meta: { title: 'Health', section: 'system', requiresAuth: true },
   },
   {
     path: '/system/auth',
     name: 'system-auth',
     component: AuthView,
-    meta: { title: 'Authentication', section: 'system', requiresAuth: true },
+    meta: { title: 'Auth', section: 'system', requiresAuth: true },
   },
   {
     path: '/system/cache',
     name: 'system-cache',
     component: CacheView,
-    meta: { title: 'Cache Status', section: 'system', requiresAuth: true },
+    meta: { title: 'Cache', section: 'system', requiresAuth: true },
   },
 
   // ==========================================
   // Legacy Redirects (backward compatibility)
   // ==========================================
+  // Old crawler routes
   { path: '/crawler/jobs', redirect: '/intake/jobs' },
   { path: '/crawler/jobs/:id', redirect: (to) => `/intake/jobs/${to.params.id}` },
   { path: '/crawler/discovered-links', redirect: '/intake/discovered-links' },
   { path: '/crawler/stats', redirect: '/intelligence/stats' },
-  { path: '/sources', redirect: '/scheduling/sources' },
-  { path: '/sources/new', redirect: '/scheduling/sources/new' },
-  { path: '/sources/:id/edit', redirect: (to) => `/scheduling/sources/${to.params.id}/edit` },
-  { path: '/sources/cities', redirect: '/scheduling/cities' },
+
+  // Old scheduling routes -> sources
+  { path: '/scheduling/sources', redirect: '/sources' },
+  { path: '/scheduling/sources/new', redirect: '/sources/new' },
+  { path: '/scheduling/sources/:id/edit', redirect: (to) => `/sources/${to.params.id}/edit` },
+  { path: '/scheduling/cities', redirect: '/sources/cities' },
+  { path: '/scheduling/reputation', redirect: '/sources/reputation' },
+
+  // Old indexes routes
   { path: '/indexes', redirect: '/intelligence/indexes' },
   { path: '/indexes/:index_name', redirect: (to) => `/intelligence/indexes/${to.params.index_name}` },
+
+  // Old classifier routes
   { path: '/classifier/rules', redirect: '/intake/rules' },
-  { path: '/classifier/sources', redirect: '/scheduling/reputation' },
+  { path: '/classifier/sources', redirect: '/sources/reputation' },
   { path: '/classifier/stats', redirect: '/intelligence/stats' },
+
+  // Old publisher routes
   { path: '/publisher', redirect: '/distribution/channels' },
   { path: '/publisher/sources', redirect: '/distribution/channels' },
   { path: '/publisher/channels', redirect: '/distribution/channels' },
-  { path: '/publisher/routes', redirect: '/distribution/channels' },
-  { path: '/publisher/articles', redirect: '/distribution/articles' },
-  { path: '/distribution/routes', redirect: '/distribution/channels' },
+  { path: '/publisher/routes', redirect: '/distribution/routes' },
+  { path: '/publisher/articles', redirect: '/operations/articles' },
   { path: '/publisher/stats', redirect: '/intelligence/stats' },
+
+  // Old distribution routes
+  { path: '/distribution/articles', redirect: '/operations/articles' },
+
+  // Old feeds routes
+  { path: '/feeds/streams', redirect: '/distribution/logs' },
+  { path: '/feeds/logs', redirect: '/distribution/logs' },
+
+  // Old analytics route
   { path: '/analytics', redirect: '/intelligence/stats' },
 
   // 404 catch-all route - must be last

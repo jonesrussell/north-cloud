@@ -39,4 +39,10 @@ func SetupRoutes(router *gin.Engine, handler *Handler) {
 
 	// Statistics
 	v1.GET("/stats", handler.GetStats) // GET /api/v1/stats
+
+	// Aggregation routes
+	aggregations := v1.Group("/aggregations")
+	aggregations.GET("/crime", handler.GetCrimeAggregation)       // GET /api/v1/aggregations/crime
+	aggregations.GET("/location", handler.GetLocationAggregation) // GET /api/v1/aggregations/location
+	aggregations.GET("/overview", handler.GetOverviewAggregation) // GET /api/v1/aggregations/overview
 }

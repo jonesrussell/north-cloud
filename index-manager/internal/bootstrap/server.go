@@ -23,7 +23,8 @@ func SetupHTTPServer(
 ) *infragin.Server {
 	indexService := service.NewIndexService(esClient, db, log)
 	documentService := service.NewDocumentService(esClient, log)
-	handler := api.NewHandler(indexService, documentService, log)
+	aggregationService := service.NewAggregationService(esClient, log)
+	handler := api.NewHandler(indexService, documentService, aggregationService, log)
 
 	serverConfig := api.ServerConfig{
 		Port:         cfg.Service.Port,

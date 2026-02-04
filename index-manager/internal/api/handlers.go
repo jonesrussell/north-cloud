@@ -23,17 +23,24 @@ const (
 
 // Handler handles HTTP requests for the index manager API
 type Handler struct {
-	indexService    *service.IndexService
-	documentService *service.DocumentService
-	logger          infralogger.Logger
+	indexService       *service.IndexService
+	documentService    *service.DocumentService
+	aggregationService *service.AggregationService
+	logger             infralogger.Logger
 }
 
 // NewHandler creates a new API handler
-func NewHandler(indexService *service.IndexService, documentService *service.DocumentService, logger infralogger.Logger) *Handler {
+func NewHandler(
+	indexService *service.IndexService,
+	documentService *service.DocumentService,
+	aggregationService *service.AggregationService,
+	logger infralogger.Logger,
+) *Handler {
 	return &Handler{
-		indexService:    indexService,
-		documentService: documentService,
-		logger:          logger,
+		indexService:       indexService,
+		documentService:    documentService,
+		aggregationService: aggregationService,
+		logger:             logger,
 	}
 }
 
@@ -592,4 +599,89 @@ func (h *Handler) BulkDeleteDocuments(c *gin.Context) {
 		"message": "documents deleted successfully",
 		"count":   len(req.DocumentIDs),
 	})
+}
+
+// GetCrimeAggregation handles GET /api/v1/aggregations/crime
+func (h *Handler) GetCrimeAggregation(c *gin.Context) {
+	req := h.parseAggregationRequest(c)
+
+	result, err := h.aggregationService.GetCrimeAggregation(c.Request.Context(), req)
+	if err != nil {
+		h.logger.Error("Failed to get crime aggregation", infralogger.Error(err))
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, result)
+}
+
+// GetLocationAggregation handles GET /api/v1/aggregations/location
+func (h *Handler) GetLocationAggregation(c *gin.Context) {
+	req := h.parseAggregationRequest(c)
+
+	result, err := h.aggregationService.GetLocationAggregation(c.Request.Context(), req)
+	if err != nil {
+		h.logger.Error("Failed to get location aggregation", infralogger.Error(err))
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, result)
+}
+
+// GetOverviewAggregation handles GET /api/v1/aggregations/overview
+func (h *Handler) GetOverviewAggregation(c *gin.Context) {
+	req := h.parseAggregationRequest(c)
+
+	result, err := h.aggregationService.GetOverviewAggregation(c.Request.Context(), req)
+	if err != nil {
+		h.logger.Error("Failed to get overview aggregation", infralogger.Error(err))
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, result)
+}
+
+// parseAggregationRequest extracts filters from query parameters
+func (h *Handler) parseAggregationRequest(c *gin.Context) *domain.AggregationRequest {
+	req := &domain.AggregationRequest{
+		Filters: &domain.DocumentFilters{},
+	}
+
+	// Parse crime filters
+	if v := c.QueryArray("crime_relevance"); len(v) > 0 {
+		req.Filters.CrimeRelevance = v
+	}
+	if v := c.QueryArray("crime_sub_labels"); len(v) > 0 {
+		req.Filters.CrimeSubLabels = v
+	}
+	if v := c.QueryArray("crime_types"); len(v) > 0 {
+		req.Filters.CrimeTypes = v
+	}
+
+	// Parse location filters
+	if v := c.QueryArray("cities"); len(v) > 0 {
+		req.Filters.Cities = v
+	}
+	if v := c.QueryArray("provinces"); len(v) > 0 {
+		req.Filters.Provinces = v
+	}
+	if v := c.QueryArray("countries"); len(v) > 0 {
+		req.Filters.Countries = v
+	}
+
+	// Parse source filter
+	if v := c.QueryArray("sources"); len(v) > 0 {
+		req.Filters.Sources = v
+	}
+
+	// Parse quality filters
+	if minQ := c.Query("min_quality"); minQ != "" {
+		if val, err := strconv.Atoi(minQ); err == nil {
+			req.Filters.MinQualityScore = val
+		}
+	}
+
+	return req
 }

@@ -1,21 +1,19 @@
 import {
   Activity,
+  FileText,
+  AlertTriangle,
+  Brain,
+  MapPin,
+  Database,
   Download,
   ListTodo,
   Link,
   Filter,
-  Calendar,
   Globe,
-  MapPin,
+  Building2,
   Star,
-  Brain,
-  BarChart3,
-  Database,
-  Share2,
-  GitBranch,
   Radio,
-  FileText,
-  Rss,
+  GitBranch,
   ScrollText,
   Settings,
   HeartPulse,
@@ -42,60 +40,63 @@ export interface NavSection {
 }
 
 export const navigation: NavSection[] = [
+  // Operations - daily cockpit
   {
-    title: 'Pipeline Monitor',
+    title: 'Operations',
     icon: Activity,
-    path: '/',
+    children: [
+      { title: 'Pipeline Monitor', path: '/', icon: Activity },
+      { title: 'Recent Articles', path: '/operations/articles', icon: FileText },
+      { title: 'Review Queue', path: '/operations/review', icon: AlertTriangle },
+    ],
   },
+  // Intelligence - new value from Option B
+  {
+    title: 'Intelligence',
+    icon: Brain,
+    quickAction: { label: 'View Stats', path: '/intelligence/crime' },
+    children: [
+      { title: 'Crime Breakdown', path: '/intelligence/crime', icon: AlertTriangle },
+      { title: 'Location Breakdown', path: '/intelligence/location', icon: MapPin },
+      { title: 'Index Explorer', path: '/intelligence/indexes', icon: Database },
+    ],
+  },
+  // Content Intake - fix upstream issues
   {
     title: 'Content Intake',
     icon: Download,
     quickAction: { label: 'New Job', path: '/intake/jobs?create=true' },
     children: [
-      { title: 'Jobs', path: '/intake/jobs', icon: ListTodo },
+      { title: 'Crawler Jobs', path: '/intake/jobs', icon: ListTodo },
       { title: 'Discovered Links', path: '/intake/discovered-links', icon: Link },
       { title: 'Rules', path: '/intake/rules', icon: Filter },
     ],
   },
+  // Sources - manage the ecosystem
   {
-    title: 'Source Scheduling',
-    icon: Calendar,
-    quickAction: { label: 'Add Source', path: '/scheduling/sources/new' },
+    title: 'Sources',
+    icon: Globe,
+    quickAction: { label: 'Add Source', path: '/sources/new' },
     children: [
-      { title: 'Sources', path: '/scheduling/sources', icon: Globe },
-      { title: 'Cities', path: '/scheduling/cities', icon: MapPin },
-      { title: 'Reputation', path: '/scheduling/reputation', icon: Star },
+      { title: 'All Sources', path: '/sources', icon: Globe },
+      { title: 'Cities', path: '/sources/cities', icon: Building2 },
+      { title: 'Reputation', path: '/sources/reputation', icon: Star },
     ],
   },
+  // Distribution - where content goes
   {
-    title: 'Content Intelligence',
-    icon: Brain,
-    quickAction: { label: 'View Stats', path: '/intelligence/stats' },
-    children: [
-      { title: 'Classifier Stats', path: '/intelligence/stats', icon: BarChart3 },
-      { title: 'Indexes', path: '/intelligence/indexes', icon: Database },
-    ],
-  },
-  {
-    title: 'Distribution Engine',
-    icon: Share2,
+    title: 'Distribution',
+    icon: Radio,
     quickAction: { label: 'New Route', path: '/distribution/routes/new' },
     children: [
-      { title: 'Routes', path: '/distribution/routes', icon: GitBranch },
       { title: 'Channels', path: '/distribution/channels', icon: Radio },
-      { title: 'Articles', path: '/distribution/articles', icon: FileText },
+      { title: 'Routes', path: '/distribution/routes', icon: GitBranch },
+      { title: 'Delivery Logs', path: '/distribution/logs', icon: ScrollText },
     ],
   },
+  // System - rarely used but essential
   {
-    title: 'External Feeds',
-    icon: Rss,
-    children: [
-      { title: 'Redis Streams', path: '/feeds/streams', icon: Activity },
-      { title: 'Delivery Logs', path: '/feeds/logs', icon: ScrollText },
-    ],
-  },
-  {
-    title: 'System Overview',
+    title: 'System',
     icon: Settings,
     children: [
       { title: 'Health', path: '/system/health', icon: HeartPulse },
@@ -107,18 +108,15 @@ export const navigation: NavSection[] = [
 
 // Helper to find the current section based on route path
 export function getCurrentSection(path: string): NavSection | undefined {
-  // Check exact matches first
-  const exactMatch = navigation.find((section) => section.path === path)
-  if (exactMatch) return exactMatch
-
-  // Check children
   for (const section of navigation) {
+    if (section.path === path) return section
     if (section.children) {
-      const childMatch = section.children.find((child) => path.startsWith(child.path))
+      const childMatch = section.children.find(
+        (child) => path === child.path || path.startsWith(child.path + '/')
+      )
       if (childMatch) return section
     }
   }
-
   return undefined
 }
 
@@ -126,18 +124,7 @@ export function getCurrentSection(path: string): NavSection | undefined {
 export function getBreadcrumbs(path: string): { label: string; path: string }[] {
   const breadcrumbs: { label: string; path: string }[] = []
 
-  // Always add home
-  breadcrumbs.push({ label: 'Pipeline Monitor', path: '/' })
-
-  if (path === '/') return breadcrumbs
-
-  // Find section and child
   for (const section of navigation) {
-    if (section.path === path) {
-      breadcrumbs.push({ label: section.title, path: section.path })
-      return breadcrumbs
-    }
-
     if (section.children) {
       for (const child of section.children) {
         if (path === child.path || path.startsWith(child.path + '/')) {

@@ -86,6 +86,27 @@ export const INDEX_TYPE_OPTIONS = [
   { value: 'page', label: 'Page (Deprecated)', description: 'Legacy page format' },
 ] as const
 
+// Crime Info
+export interface CrimeInfo {
+  sub_label?: string
+  primary_crime_type?: string
+  relevance?: string
+  crime_types?: string[]
+  confidence?: number
+  homepage_eligible?: boolean
+  review_required?: boolean
+  model_version?: string
+}
+
+// Location Info
+export interface LocationInfo {
+  city?: string
+  province?: string
+  country?: string
+  specificity?: string
+  confidence?: number
+}
+
 // Document Types
 export interface Document {
   id: string
@@ -100,6 +121,8 @@ export interface Document {
   content_type?: string
   topics?: string[]
   is_crime_related?: boolean
+  crime?: CrimeInfo
+  location?: LocationInfo
   body?: string
   raw_text?: string
   raw_html?: string
@@ -129,6 +152,13 @@ export interface DocumentFilters {
   from_crawled_at?: string
   to_crawled_at?: string
   is_crime_related?: boolean
+  review_required?: boolean
+  crime_relevance?: string[]
+  crime_sub_labels?: string[]
+  crime_types?: string[]
+  cities?: string[]
+  provinces?: string[]
+  sources?: string[]
 }
 
 export interface DocumentPagination {
