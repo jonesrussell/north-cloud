@@ -59,18 +59,23 @@ The publisher is **topic-driven and consumer-agnostic**. Channels define *what* 
 
 - **Layer 1 (automatic topic channels)**: For each article topic, the router publishes to `articles:{topic}` (e.g. `articles:technology`, `articles:politics`, `articles:violent_crime`). These channels always exist; no DB record or configuration required. Any number of consumers may subscribe.
 - **Layer 2 (custom channels)**: Optional DB-backed channels with rules (include/exclude topics, min quality, content types). Used for aggregations (e.g. one channel for all crime sub-categories). Stored in the `channels` table. Same rule: one channel can serve unlimited consumers.
+- **Layer 3 (crime classification channels)**: Automatic channels based on classifier's hybrid rule + ML crime classification. Routes to `crime:homepage` (for homepage-eligible articles) and `crime:category:{type}` (for category page listings). Only articles with `crime_relevance != "not_crime"` are routed.
 
 Name and describe channels by **content** (e.g. "Crime Feed", "Technology Feed"), not by consumer (e.g. avoid "StreetCode Crime Feed").
 
 ## Redis Pub/Sub
 
-**Channel Pattern**: `articles:{topic}`
+**Layer 1 & 2 Channel Pattern**: `articles:{topic}`
 - `articles:crime:violent`
 - `articles:crime:property`
 - `articles:crime:drug`
 - `articles:crime:organized`
 - `articles:crime:justice`
 - `articles:news`
+
+**Layer 3 Crime Channel Patterns**:
+- `crime:homepage` - Homepage-eligible crime articles (core_street_crime with high confidence)
+- `crime:category:{type}` - Category page listings (e.g., `crime:category:violent-crime`, `crime:category:crime`)
 
 **Message Format**:
 ```json
@@ -86,9 +91,25 @@ Name and describe channels by **content** (e.g. "Crime Feed", "Technology Feed")
   "quality_score": 85,
   "topics": ["crime", "local"],
   "content_type": "article",
+  "crime_relevance": "core_street_crime",
+  "crime_types": ["violent_crime"],
+  "location_specificity": "local_canada",
+  "homepage_eligible": true,
+  "category_pages": ["violent-crime", "crime"],
+  "review_required": false,
   ...
 }
 ```
+
+**Crime Classification Fields** (from classifier's hybrid rule + ML):
+| Field | Type | Description |
+|-------|------|-------------|
+| `crime_relevance` | string | `core_street_crime`, `peripheral_crime`, or `not_crime` |
+| `crime_types` | []string | Multi-label: `violent_crime`, `property_crime`, `drug_crime`, `gang_violence`, `organized_crime`, `criminal_justice`, `other_crime` |
+| `location_specificity` | string | `local_canada`, `national_canada`, `international`, `not_specified` |
+| `homepage_eligible` | bool | True if article qualifies for homepage display |
+| `category_pages` | []string | Category page slugs (e.g., `["violent-crime", "crime"]`) |
+| `review_required` | bool | True if rules and ML disagreed (needs human review) |
 
 ## API Endpoints (JWT Protected)
 
@@ -126,12 +147,13 @@ Name and describe channels by **content** (e.g. "Crime Feed", "Technology Feed")
 
 ## Router Flow
 
-1. **Poll** (every 5 min): Fetches enabled routes from PostgreSQL
-2. **Query**: For each route, queries `{source}_classified_content` in Elasticsearch
-3. **Filter**: Applies quality score, content type, topic filters
-4. **Dedupe**: Checks `publish_history` table
-5. **Publish**: Sends JSON to Redis channel
-6. **Record**: Writes to `publish_history`
+1. **Poll** (every 30s): Fetches articles from all discovered `*_classified_content` indexes
+2. **Route Layer 1**: Publishes to `articles:{topic}` for each article topic
+3. **Route Layer 2**: Applies custom channel rules (quality, content type, topics)
+4. **Route Layer 3**: Generates crime channels from classification fields
+5. **Dedupe**: Checks `publish_history` table (per-channel deduplication)
+6. **Publish**: Sends JSON to Redis channels
+7. **Record**: Writes to `publish_history` for each channel
 
 ## Configuration
 

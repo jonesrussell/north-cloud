@@ -158,3 +158,16 @@ source-manager/source-manager
 publisher/publisher
 search/search
 nc-http-proxy/nc-http-proxy
+
+# Git worktrees
+.worktrees/
+
+# Python
+__pycache__/
+**/__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.pytest_cache/
+.venv/
+venv/

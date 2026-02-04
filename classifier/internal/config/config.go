@@ -37,6 +37,7 @@ const (
 	defaultQualityWeight      = 0.25
 	defaultReputationScore    = 50
 	defaultMaxTopics          = 5
+	defaultCrimeMLServiceURL  = "http://crime-ml:8076"
 )
 
 // Config holds all configuration for the classifier service.
@@ -119,6 +120,13 @@ type ClassificationConfig struct {
 	Quality          QualityConfig          `yaml:"quality"`
 	Topic            TopicConfig            `yaml:"topic"`
 	SourceReputation SourceReputationConfig `yaml:"source_reputation"`
+	Crime            CrimeConfig            `yaml:"crime"`
+}
+
+// CrimeConfig holds Crime hybrid classification settings.
+type CrimeConfig struct {
+	Enabled      bool   `env:"CRIME_ENABLED"        yaml:"enabled"`
+	MLServiceURL string `env:"CRIME_ML_SERVICE_URL" yaml:"ml_service_url"`
 }
 
 // ContentTypeConfig holds content type detection settings.
@@ -280,5 +288,9 @@ func setClassificationDefaults(c *ClassificationConfig) {
 	}
 	if c.Topic.MaxTopics == 0 {
 		c.Topic.MaxTopics = defaultMaxTopics
+	}
+	// Crime defaults: disabled by default, but set ML URL
+	if c.Crime.MLServiceURL == "" {
+		c.Crime.MLServiceURL = defaultCrimeMLServiceURL
 	}
 }

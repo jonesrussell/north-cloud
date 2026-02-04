@@ -23,6 +23,7 @@ type Classifier struct {
 	quality          *QualityScorer
 	topic            *TopicClassifier
 	sourceReputation *SourceReputationScorer
+	crime            *CrimeClassifier
 	logger           infralogger.Logger
 	version          string
 }
@@ -34,6 +35,7 @@ type Config struct {
 	UpdateSourceRep        bool
 	QualityConfig          QualityConfig
 	SourceReputationConfig SourceReputationConfig
+	CrimeClassifier        *CrimeClassifier // Optional: hybrid street crime classifier
 }
 
 // NewClassifier creates a new classifier with all strategies
@@ -48,6 +50,7 @@ func NewClassifier(
 		quality:          NewQualityScorerWithConfig(logger, config.QualityConfig),
 		topic:            NewTopicClassifier(logger, rules),
 		sourceReputation: NewSourceReputationScorerWithConfig(logger, sourceRepDB, config.SourceReputationConfig),
+		crime:            config.CrimeClassifier,
 		logger:           logger,
 		version:          config.Version,
 	}
@@ -87,6 +90,19 @@ func (c *Classifier) Classify(ctx context.Context, raw *domain.RawContent) (*dom
 		return nil, fmt.Errorf("source reputation scoring failed: %w", err)
 	}
 
+	// 5. Crime Classification (if enabled)
+	var crimeResult *domain.CrimeResult
+	if c.crime != nil {
+		scResult, scErr := c.crime.Classify(ctx, raw)
+		if scErr != nil {
+			c.logger.Warn("Crime classification failed",
+				infralogger.String("content_id", raw.ID),
+				infralogger.Error(scErr))
+		} else if scResult != nil {
+			crimeResult = convertCrimeResult(scResult)
+		}
+	}
+
 	// Update source reputation if enabled
 	isSpam := qualityResult.TotalScore < spamThresholdScore // Spam threshold
 	if err = c.sourceReputation.UpdateAfterClassification(ctx, raw.SourceName, qualityResult.TotalScore, isSpam); err != nil {
@@ -121,6 +137,7 @@ func (c *Classifier) Classify(ctx context.Context, raw *domain.RawContent) (*dom
 		Confidence:           overallConfidence,
 		ProcessingTimeMs:     time.Since(startTime).Milliseconds(),
 		ClassifiedAt:         time.Now(),
+		Crime:                crimeResult,
 	}
 
 	c.logger.Info("Classification complete",
@@ -205,8 +222,22 @@ func (c *Classifier) BuildClassifiedContent(raw *domain.RawContent, result *doma
 		ClassificationMethod: result.ClassificationMethod,
 		ModelVersion:         result.ModelVersion,
 		Confidence:           result.Confidence,
+		Crime:                result.Crime,
 		// Publisher compatibility aliases
 		Body:   raw.RawText, // Alias for RawText
 		Source: raw.URL,     // Alias for URL
+	}
+}
+
+// convertCrimeResult converts classifier.CrimeResult to domain.CrimeResult
+func convertCrimeResult(sc *CrimeResult) *domain.CrimeResult {
+	return &domain.CrimeResult{
+		Relevance:           sc.Relevance,
+		CrimeTypes:          sc.CrimeTypes,
+		LocationSpecificity: sc.LocationSpecificity,
+		FinalConfidence:     sc.FinalConfidence,
+		HomepageEligible:    sc.HomepageEligible,
+		CategoryPages:       sc.CategoryPages,
+		ReviewRequired:      sc.ReviewRequired,
 	}
 }

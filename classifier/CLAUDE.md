@@ -87,6 +87,58 @@ INSERT INTO classification_rules (topic, keywords, priority) VALUES
 - `organized_crime` - gang, cartel, money laundering
 - `criminal_justice` - court, sentencing, trial
 
+## Crime Hybrid Classification
+
+**Enabled via**: `CRIME_ENABLED=true` and `CRIME_ML_SERVICE_URL=http://streetcode-ml:8076`
+
+**Architecture**: Rules (precision) + ML (recall) with decision matrix
+
+**5-Step Classification** (when enabled):
+1. Content Type
+2. Quality Score
+3. Topic Detection
+4. Source Reputation
+5. **Crime Classification** (hybrid rule + ML)
+
+**Relevance Classes**:
+- `core_street_crime` - Homepage eligible (murders, shootings, assaults with arrest)
+- `peripheral_crime` - Category pages only (impaired driving, international, policy)
+- `not_crime` - Excluded
+
+**Decision Matrix**:
+| Rules | ML | Result | Confidence |
+|-------|-----|--------|------------|
+| core | core | core | High (avg) |
+| core | not_crime | core + review | Medium |
+| core | - | core | Rule conf |
+| - | core (>0.9) | peripheral + review | ML conf * 0.8 |
+| other | other | Rule result | Rule conf |
+
+**Crime Types** (multi-label):
+- `violent_crime`, `property_crime`, `drug_crime`
+- `gang_violence`, `organized_crime`, `criminal_justice`, `other_crime`
+
+**Location Classes**:
+- `local_canada` - Local Canadian news
+- `national_canada` - National Canadian news
+- `international` - Foreign news (downgraded)
+- `not_specified` - Location unknown
+
+**Output Fields** (in ClassifiedContent):
+```json
+{
+  "crime": {
+    "street_crime_relevance": "core_street_crime",
+    "crime_types": ["violent_crime"],
+    "location_specificity": "local_canada",
+    "final_confidence": 0.92,
+    "homepage_eligible": true,
+    "category_pages": ["violent-crime", "crime"],
+    "review_required": false
+  }
+}
+```
+
 ## Common Gotchas
 
 1. **Must populate `Body` and `Source` aliases**: Publisher expects these fields:

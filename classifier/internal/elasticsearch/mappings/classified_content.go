@@ -75,6 +75,26 @@ type ClassifiedContentProperties struct {
 	ClassificationMethod Field `json:"classification_method"`
 	ModelVersion         Field `json:"model_version"`
 	Confidence           Field `json:"confidence"`
+
+	// Crime classification (hybrid rule + ML)
+	Crime CrimeProperties `json:"crime,omitempty"`
+}
+
+// CrimeProperties defines the nested properties for crime classification.
+type CrimeProperties struct {
+	Type       string               `json:"type,omitempty"`
+	Properties CrimeFieldProperties `json:"properties,omitempty"`
+}
+
+// CrimeFieldProperties defines individual fields within crime classification.
+type CrimeFieldProperties struct {
+	Relevance           Field `json:"street_crime_relevance"`
+	CrimeTypes          Field `json:"crime_types"`
+	LocationSpecificity Field `json:"location_specificity"`
+	FinalConfidence     Field `json:"final_confidence"`
+	HomepageEligible    Field `json:"homepage_eligible"`
+	CategoryPages       Field `json:"category_pages"`
+	ReviewRequired      Field `json:"review_required"`
 }
 
 // createRawContentProperties creates properties for raw content fields
@@ -122,6 +142,23 @@ func createClassificationProperties() ClassifiedContentProperties {
 		ClassificationMethod: Field{Type: "keyword"},
 		ModelVersion:         Field{Type: "keyword"},
 		Confidence:           Field{Type: "float"},
+		Crime:                createCrimeProperties(),
+	}
+}
+
+// createCrimeProperties creates nested properties for crime classification.
+func createCrimeProperties() CrimeProperties {
+	return CrimeProperties{
+		Type: "object",
+		Properties: CrimeFieldProperties{
+			Relevance:           Field{Type: "keyword"},
+			CrimeTypes:          Field{Type: "keyword"},
+			LocationSpecificity: Field{Type: "keyword"},
+			FinalConfidence:     Field{Type: "float"},
+			HomepageEligible:    Field{Type: "boolean"},
+			CategoryPages:       Field{Type: "keyword"},
+			ReviewRequired:      Field{Type: "boolean"},
+		},
 	}
 }
 
@@ -146,6 +183,7 @@ func mergeProperties(raw, classified ClassifiedContentProperties) ClassifiedCont
 		ClassifierVersion:    classified.ClassifierVersion,
 		ClassificationMethod: classified.ClassificationMethod,
 		ModelVersion:         classified.ModelVersion, Confidence: classified.Confidence,
+		Crime: classified.Crime,
 	}
 }
 

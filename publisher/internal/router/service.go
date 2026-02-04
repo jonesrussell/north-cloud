@@ -164,7 +164,7 @@ func (s *Service) pollAndRoute(ctx context.Context) {
 	}
 }
 
-// routeArticle routes a single article to Layer 1 and Layer 2 channels
+// routeArticle routes a single article to Layer 1, Layer 2, and Layer 3 channels
 func (s *Service) routeArticle(ctx context.Context, article *Article, channels []models.Channel) {
 	// Layer 1: Automatic topic channels
 	for _, topic := range article.Topics {
@@ -178,6 +178,12 @@ func (s *Service) routeArticle(ctx context.Context, article *Article, channels [
 		if ch.Rules.Matches(article.QualityScore, article.ContentType, article.Topics) {
 			s.publishToChannel(ctx, article, ch.RedisChannel, &ch.ID)
 		}
+	}
+
+	// Layer 3: Crime classification channels
+	crimeChannels := GenerateCrimeChannels(article)
+	for _, channel := range crimeChannels {
+		s.publishToChannel(ctx, article, channel, nil)
 	}
 }
 
@@ -199,6 +205,14 @@ type Article struct {
 	IsCrimeRelated   bool     `json:"is_crime_related"`
 	SourceReputation int      `json:"source_reputation"`
 	Confidence       float64  `json:"confidence"`
+
+	// Crime classification (hybrid rule + ML)
+	CrimeRelevance      string   `json:"crime_relevance"`
+	CrimeTypes          []string `json:"crime_types"`
+	LocationSpecificity string   `json:"location_specificity"`
+	HomepageEligible    bool     `json:"homepage_eligible"`
+	CategoryPages       []string `json:"category_pages"`
+	ReviewRequired      bool     `json:"review_required"`
 
 	// Open Graph metadata
 	OGTitle       string `json:"og_title"`
@@ -378,6 +392,13 @@ func (s *Service) publishToChannel(ctx context.Context, article *Article, channe
 		"category":          article.Category,
 		"section":           article.Section,
 		"keywords":          article.Keywords,
+		// Crime classification
+		"crime_relevance":      article.CrimeRelevance,
+		"crime_types":          article.CrimeTypes,
+		"location_specificity": article.LocationSpecificity,
+		"homepage_eligible":    article.HomepageEligible,
+		"category_pages":       article.CategoryPages,
+		"review_required":      article.ReviewRequired,
 	}
 
 	messageJSON, err := json.Marshal(payload)
