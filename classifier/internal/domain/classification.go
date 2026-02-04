@@ -100,3 +100,34 @@ const (
 	MethodMLModel   = "ml_model"
 	MethodHybrid    = "hybrid"
 )
+
+// Location specificity constants.
+const (
+	SpecificityCity     = "city"
+	SpecificityProvince = "province"
+	SpecificityCountry  = "country"
+	SpecificityUnknown  = "unknown"
+)
+
+// LocationResult holds the detected location for an article.
+type LocationResult struct {
+	City        string  `json:"city,omitempty"`
+	Province    string  `json:"province,omitempty"`
+	Country     string  `json:"country"`
+	Specificity string  `json:"specificity"`
+	Confidence  float64 `json:"confidence"`
+}
+
+// GetSpecificity returns the specificity level based on populated fields.
+func (l *LocationResult) GetSpecificity() string {
+	if l.City != "" {
+		return SpecificityCity
+	}
+	if l.Province != "" {
+		return SpecificityProvince
+	}
+	if l.Country != "" && l.Country != "unknown" {
+		return SpecificityCountry
+	}
+	return SpecificityUnknown
+}
