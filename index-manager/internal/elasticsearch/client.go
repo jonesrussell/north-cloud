@@ -652,3 +652,30 @@ func (c *Client) BulkDeleteDocuments(ctx context.Context, indexName string, docu
 
 	return nil
 }
+
+// SearchAllClassifiedContent executes a search across all classified content indexes
+func (c *Client) SearchAllClassifiedContent(ctx context.Context, query map[string]any) (*esapi.Response, error) {
+	queryJSON, err := json.Marshal(query)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal query: %w", err)
+	}
+
+	res, err := c.esClient.Search(
+		c.esClient.Search.WithContext(ctx),
+		c.esClient.Search.WithIndex("*_classified_content"),
+		c.esClient.Search.WithBody(strings.NewReader(string(queryJSON))),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to execute search: %w", err)
+	}
+
+	if res.IsError() {
+		defer func() {
+			_ = res.Body.Close()
+		}()
+		body, _ := io.ReadAll(res.Body)
+		return nil, fmt.Errorf("search returned error [%d]: %s", res.StatusCode, string(body))
+	}
+
+	return res, nil
+}
