@@ -65,3 +65,27 @@ func (c *AuthenticatedClient) generateServiceToken() (string, error) {
 func (c *AuthenticatedClient) HTTPClient() *http.Client {
 	return c.client
 }
+
+// GenerateToken generates a JWT token for manual API testing.
+// Returns the token string and expiration time.
+func (c *AuthenticatedClient) GenerateToken() (token string, expiresAt time.Time, err error) {
+	if c.jwtSecret == "" {
+		return "", time.Time{}, errors.New("JWT secret not configured")
+	}
+
+	now := time.Now()
+	expiresAt = now.Add(serviceTokenExpirationHours * time.Hour)
+	claims := &jwt.RegisteredClaims{
+		ExpiresAt: jwt.NewNumericDate(expiresAt),
+		IssuedAt:  jwt.NewNumericDate(now),
+		NotBefore: jwt.NewNumericDate(now),
+		Subject:   "mcp-north-cloud-cli",
+	}
+
+	jwtToken := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	token, err = jwtToken.SignedString([]byte(c.jwtSecret))
+	if err != nil {
+		return "", time.Time{}, fmt.Errorf("failed to sign token: %w", err)
+	}
+	return token, expiresAt, nil
+}

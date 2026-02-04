@@ -15,6 +15,7 @@ type Server struct {
 	publisherClient  *client.PublisherClient
 	searchClient     *client.SearchClient
 	classifierClient *client.ClassifierClient
+	authClient       *client.AuthenticatedClient
 }
 
 // NewServer creates a new MCP server
@@ -25,6 +26,7 @@ func NewServer(
 	publisherClient *client.PublisherClient,
 	searchClient *client.SearchClient,
 	classifierClient *client.ClassifierClient,
+	authClient *client.AuthenticatedClient,
 ) *Server {
 	return &Server{
 		indexClient:      indexClient,
@@ -33,6 +35,7 @@ func NewServer(
 		publisherClient:  publisherClient,
 		searchClient:     searchClient,
 		classifierClient: classifierClient,
+		authClient:       authClient,
 	}
 }
 
@@ -166,6 +169,7 @@ func (s *Server) handleToolsCall(req *Request, id any) *Response {
 type toolHandlerFunc func(s *Server, id any, arguments json.RawMessage) *Response
 
 var toolHandlers = map[string]toolHandlerFunc{
+	"get_auth_token":      (*Server).handleGetAuthToken,
 	"onboard_source":      (*Server).handleOnboardSource,
 	"start_crawl":         (*Server).handleStartCrawl,
 	"schedule_crawl":      (*Server).handleScheduleCrawl,

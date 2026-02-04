@@ -52,6 +52,7 @@ func main() {
 		clients.publisher,
 		clients.search,
 		clients.classifier,
+		clients.authClient,
 	)
 
 	// Process requests
@@ -65,6 +66,7 @@ type serviceClients struct {
 	publisher     *client.PublisherClient
 	search        *client.SearchClient
 	classifier    *client.ClassifierClient
+	authClient    *client.AuthenticatedClient
 }
 
 func initializeClients(cfg *config.Config, log logger.Logger) *serviceClients {
@@ -88,6 +90,7 @@ func initializeClients(cfg *config.Config, log logger.Logger) *serviceClients {
 		publisher:     client.NewPublisherClient(cfg.Services.PublisherURL, authClient),
 		search:        client.NewSearchClient(cfg.Services.SearchURL, authClient),
 		classifier:    client.NewClassifierClient(cfg.Services.ClassifierURL, authClient),
+		authClient:    authClient,
 	}
 }
 

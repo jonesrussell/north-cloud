@@ -14,6 +14,7 @@ func getAllTools() []Tool {
 	tools = append(tools, getSearchTools()...)
 	tools = append(tools, getClassifierTools()...)
 	tools = append(tools, getIndexManagerTools()...)
+	tools = append(tools, getAuthTools()...)
 	tools = append(tools, getDevelopmentTools()...)
 	return tools
 }
@@ -566,6 +567,21 @@ func getIndexManagerTools() []Tool {
 						"description": "Number of indexes to skip for pagination (default: 0)",
 					},
 				},
+			},
+		},
+	}
+}
+
+func getAuthTools() []Tool {
+	return []Tool{
+		{
+			Name: "get_auth_token",
+			Description: "Generate a JWT auth token for manual API testing. Use when: You need to make " +
+				"authenticated API calls to North Cloud services from CLI. Returns a 24-hour JWT token. " +
+				"The MCP server already handles auth internally, so this is only needed for manual curl commands.",
+			InputSchema: map[string]any{
+				"type":       "object",
+				"properties": map[string]any{},
 			},
 		},
 	}

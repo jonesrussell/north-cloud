@@ -15,6 +15,22 @@ import (
 	"github.com/jonesrussell/north-cloud/mcp-north-cloud/internal/client"
 )
 
+// Auth tool handlers
+
+func (s *Server) handleGetAuthToken(id any, _ json.RawMessage) *Response {
+	token, expiresAt, err := s.authClient.GenerateToken()
+	if err != nil {
+		return s.errorResponse(id, InternalError, fmt.Sprintf("Failed to generate token: %v", err))
+	}
+
+	return s.successResponse(id, map[string]any{
+		"token":      token,
+		"expires_at": expiresAt.Format("2006-01-02T15:04:05Z"),
+		"usage":      "curl -H 'Authorization: Bearer <token>' http://SERVICE:PORT/api/v1/...",
+		"message":    "Token generated successfully. Valid for 24 hours.",
+	})
+}
+
 // Workflow tool handlers (high-level, multi-service)
 
 const defaultMinQualityScore = 50
