@@ -81,20 +81,20 @@ export const useMetricsStore = defineStore('metrics', () => {
 
   async function fetchPublisherMetrics() {
     try {
-      const [statsResponse, routesResponse] = await Promise.all([
+      const [statsResponse, channelsResponse] = await Promise.all([
         publisherApi.stats.overview('today'),
-        publisherApi.routes.list(false),
+        publisherApi.channels.list(false),
       ])
 
       const articles = statsResponse?.data?.total_articles || 0
-      const routes = routesResponse?.data?.routes || []
+      const channels = channelsResponse?.data?.channels || []
 
       publisher.value = {
         total_articles: articles,
         channel_count: statsResponse?.data?.channel_count || 0,
         by_channel: statsResponse?.data?.by_channel || {},
-        active_routes: routes.filter((r: { enabled: boolean }) => r.enabled).length,
-        total_routes: routes.length,
+        active_routes: channels.filter((c: { enabled: boolean }) => c.enabled).length,
+        total_routes: channels.length,
       }
 
       pipelineStages.value[3].count = articles // Routed
