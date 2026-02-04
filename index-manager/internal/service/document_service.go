@@ -231,9 +231,6 @@ func (s *DocumentService) mapToDocument(id string, source map[string]any) *domai
 	if qualityScore, ok := source["quality_score"].(float64); ok {
 		doc.QualityScore = int(qualityScore)
 	}
-	if isCrimeRelated, ok := source["is_crime_related"].(bool); ok {
-		doc.IsCrimeRelated = isCrimeRelated
-	}
 	if body, ok := source["body"].(string); ok {
 		doc.Body = body
 	}
@@ -266,19 +263,103 @@ func (s *DocumentService) mapToDocument(id string, source map[string]any) *domai
 		}
 	}
 
-	// Store all other fields in Meta
+	// Extract crime object
+	doc.Crime = s.extractCrimeInfo(source)
+
+	// Extract location object
+	doc.Location = s.extractLocationInfo(source)
+
+	// Compute is_crime_related for backward compatibility
+	doc.IsCrimeRelated = doc.ComputedIsCrimeRelated()
+
+	// Store remaining fields in Meta
+	excludedKeys := map[string]bool{
+		"title": true, "url": true, "source_name": true, "content_type": true,
+		"quality_score": true, "body": true, "raw_text": true, "raw_html": true,
+		"topics": true, "published_date": true, "crawled_at": true,
+		"crime": true, "location": true, "is_crime_related": true,
+	}
 	for key, value := range source {
-		switch key {
-		case "title", "url", "source_name", "content_type", "quality_score",
-			"is_crime_related", "body", "raw_text", "raw_html", "topics",
-			"published_date", "crawled_at":
-			// Already extracted
-		default:
+		if !excludedKeys[key] {
 			doc.Meta[key] = value
 		}
 	}
 
 	return doc
+}
+
+// extractCrimeInfo extracts crime classification from ES source
+func (s *DocumentService) extractCrimeInfo(source map[string]any) *domain.CrimeInfo {
+	crimeData, hasCrime := source["crime"].(map[string]any)
+	if !hasCrime {
+		// Fallback to legacy is_crime_related boolean
+		if isCrime, hasBool := source["is_crime_related"].(bool); hasBool && isCrime {
+			return &domain.CrimeInfo{Relevance: "core_street_crime"}
+		}
+		return nil
+	}
+
+	crime := &domain.CrimeInfo{}
+	if v, hasSubLabel := crimeData["sub_label"].(string); hasSubLabel {
+		crime.SubLabel = v
+	}
+	if v, hasPrimary := crimeData["primary_crime_type"].(string); hasPrimary {
+		crime.PrimaryCrimeType = v
+	}
+	if v, hasRelevance := crimeData["relevance"].(string); hasRelevance {
+		crime.Relevance = v
+	}
+	if v, hasConfidence := crimeData["final_confidence"].(float64); hasConfidence {
+		crime.Confidence = v
+	}
+	if v, hasHomepage := crimeData["homepage_eligible"].(bool); hasHomepage {
+		crime.HomepageEligible = v
+	}
+	if v, hasReview := crimeData["review_required"].(bool); hasReview {
+		crime.ReviewRequired = v
+	}
+	if v, hasModel := crimeData["model_version"].(string); hasModel {
+		crime.ModelVersion = v
+	}
+
+	// Extract crime_types array
+	if types, hasTypes := crimeData["crime_types"].([]any); hasTypes {
+		crime.CrimeTypes = make([]string, 0, len(types))
+		for _, t := range types {
+			if ts, isStr := t.(string); isStr {
+				crime.CrimeTypes = append(crime.CrimeTypes, ts)
+			}
+		}
+	}
+
+	return crime
+}
+
+// extractLocationInfo extracts location data from ES source
+func (s *DocumentService) extractLocationInfo(source map[string]any) *domain.LocationInfo {
+	locData, hasLoc := source["location"].(map[string]any)
+	if !hasLoc {
+		return nil
+	}
+
+	loc := &domain.LocationInfo{}
+	if v, hasCity := locData["city"].(string); hasCity {
+		loc.City = v
+	}
+	if v, hasProvince := locData["province"].(string); hasProvince {
+		loc.Province = v
+	}
+	if v, hasCountry := locData["country"].(string); hasCountry {
+		loc.Country = v
+	}
+	if v, hasSpec := locData["specificity"].(string); hasSpec {
+		loc.Specificity = v
+	}
+	if v, hasConf := locData["confidence"].(float64); hasConf {
+		loc.Confidence = v
+	}
+
+	return loc
 }
 
 // documentToMap converts domain Document to map for Elasticsearch update
