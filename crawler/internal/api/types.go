@@ -11,6 +11,7 @@ import (
 type SchedulerInterface interface {
 	CancelJob(jobID string) error
 	GetMetrics() scheduler.SchedulerMetrics
+	GetDistribution() *scheduler.Distribution
 }
 
 // CreateJobRequest represents a job creation request.

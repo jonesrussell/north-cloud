@@ -155,6 +155,16 @@ func (s *IntervalScheduler) Start(ctx context.Context) error {
 	return nil
 }
 
+// GetDistribution returns the current schedule distribution.
+// Returns nil if load balancing is disabled.
+func (s *IntervalScheduler) GetDistribution() *Distribution {
+	if s.bucketMap == nil {
+		return nil
+	}
+	dist := s.bucketMap.GetDistribution(hoursPerDay)
+	return &dist
+}
+
 // Stop stops the interval scheduler gracefully.
 func (s *IntervalScheduler) Stop() error {
 	s.logger.Info("Stopping interval scheduler")

@@ -538,6 +538,28 @@ func (h *JobsHandler) GetSchedulerMetrics(c *gin.Context) {
 	c.JSON(http.StatusOK, response)
 }
 
+// GetSchedulerDistribution returns the current schedule distribution.
+// GET /api/v1/scheduler/distribution
+func (h *JobsHandler) GetSchedulerDistribution(c *gin.Context) {
+	if h.scheduler == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{
+			"error": "Scheduler not available",
+		})
+		return
+	}
+
+	dist := h.scheduler.GetDistribution()
+	if dist == nil {
+		c.JSON(http.StatusOK, gin.H{
+			"enabled": false,
+			"message": "Load balancing is disabled",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, dist)
+}
+
 // ForceRun handles POST /api/v2/jobs/:id/force-run (run scheduled job now).
 // Sets next_run_at to now so the V1 interval scheduler picks the job up on its next poll.
 func (h *JobsHandler) ForceRun(c *gin.Context) {
