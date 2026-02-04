@@ -94,6 +94,58 @@ func getClassificationFields() map[string]any {
 		"topic_scores": map[string]any{
 			"type": "object",
 		},
+		// Nested crime object (replaces is_crime_related boolean)
+		"crime": map[string]any{
+			"type": "object",
+			"properties": map[string]any{
+				"sub_label": map[string]any{
+					"type": "keyword",
+				},
+				"primary_crime_type": map[string]any{
+					"type": "keyword",
+				},
+				"relevance": map[string]any{
+					"type": "keyword",
+				},
+				"crime_types": map[string]any{
+					"type": "keyword",
+				},
+				"final_confidence": map[string]any{
+					"type": "float",
+				},
+				"homepage_eligible": map[string]any{
+					"type": "boolean",
+				},
+				"review_required": map[string]any{
+					"type": "boolean",
+				},
+				"model_version": map[string]any{
+					"type": "keyword",
+				},
+			},
+		},
+		// Nested location object
+		"location": map[string]any{
+			"type": "object",
+			"properties": map[string]any{
+				"city": map[string]any{
+					"type": "keyword",
+				},
+				"province": map[string]any{
+					"type": "keyword",
+				},
+				"country": map[string]any{
+					"type": "keyword",
+				},
+				"specificity": map[string]any{
+					"type": "keyword",
+				},
+				"confidence": map[string]any{
+					"type": "float",
+				},
+			},
+		},
+		// Keep is_crime_related for backward compatibility (computed field)
 		"is_crime_related": map[string]any{
 			"type": "boolean",
 		},
