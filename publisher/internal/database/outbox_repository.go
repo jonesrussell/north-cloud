@@ -4,6 +4,7 @@ package database
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"time"
 
@@ -11,6 +12,13 @@ import (
 
 	"github.com/jonesrussell/north-cloud/publisher/internal/domain"
 )
+
+// outboxSelectList is the column list for SELECT/RETURNING on classified_outbox (single source for schema changes)
+const outboxSelectList = `id, content_id, source_name, index_name, content_type, topics,
+			quality_score, is_crime_related, crime_subcategory,
+			title, body, url, published_date, status, retry_count,
+			max_retries, error_message, created_at, updated_at,
+			published_at, next_retry_at`
 
 // OutboxRepository manages the transactional outbox in PostgreSQL
 type OutboxRepository struct {
@@ -38,11 +46,8 @@ func (r *OutboxRepository) FetchPending(ctx context.Context, limit int) ([]domai
 			LIMIT $1
 			FOR UPDATE SKIP LOCKED
 		)
-		RETURNING id, content_id, source_name, index_name, content_type, topics,
-		          quality_score, is_crime_related, crime_subcategory,
-		          title, body, url, published_date, status, retry_count,
-		          max_retries, error_message, created_at, updated_at,
-		          published_at, next_retry_at`
+		RETURNING ` + outboxSelectList + `
+	`
 
 	rows, err := r.db.QueryContext(ctx, query, limit)
 	if err != nil {
@@ -67,11 +72,8 @@ func (r *OutboxRepository) FetchRetryable(ctx context.Context, limit int) ([]dom
 			LIMIT $1
 			FOR UPDATE SKIP LOCKED
 		)
-		RETURNING id, content_id, source_name, index_name, content_type, topics,
-		          quality_score, is_crime_related, crime_subcategory,
-		          title, body, url, published_date, status, retry_count,
-		          max_retries, error_message, created_at, updated_at,
-		          published_at, next_retry_at`
+		RETURNING ` + outboxSelectList + `
+	`
 
 	rows, err := r.db.QueryContext(ctx, query, limit)
 	if err != nil {
@@ -82,6 +84,22 @@ func (r *OutboxRepository) FetchRetryable(ctx context.Context, limit int) ([]dom
 	return scanOutboxEntries(rows)
 }
 
+// execExpectOneRow runs an exec and returns domain.ErrNotFound when no row was affected
+func (r *OutboxRepository) execExpectOneRow(ctx context.Context, query string, args ...any) error {
+	result, err := r.db.ExecContext(ctx, query, args...)
+	if err != nil {
+		return err
+	}
+	rows, rowsErr := result.RowsAffected()
+	if rowsErr != nil {
+		return fmt.Errorf("get affected rows: %w", rowsErr)
+	}
+	if rows == 0 {
+		return domain.ErrNotFound
+	}
+	return nil
+}
+
 // MarkPublished marks an entry as successfully published
 func (r *OutboxRepository) MarkPublished(ctx context.Context, id string) error {
 	query := `
@@ -90,18 +108,11 @@ func (r *OutboxRepository) MarkPublished(ctx context.Context, id string) error {
 		    published_at = NOW(),
 		    updated_at = NOW()
 		WHERE id = $1`
-
-	result, err := r.db.ExecContext(ctx, query, id)
-	if err != nil {
+	if err := r.execExpectOneRow(ctx, query, id); err != nil {
+		if errors.Is(err, domain.ErrNotFound) {
+			return err
+		}
 		return fmt.Errorf("mark published: %w", err)
-	}
-
-	rows, rowsErr := result.RowsAffected()
-	if rowsErr != nil {
-		return fmt.Errorf("get affected rows: %w", rowsErr)
-	}
-	if rows == 0 {
-		return fmt.Errorf("outbox entry not found: %s", id)
 	}
 	return nil
 }
@@ -117,18 +128,11 @@ func (r *OutboxRepository) MarkFailed(ctx context.Context, id, errorMsg string) 
 		    next_retry_at = NOW() + (INTERVAL '1 minute' * POWER(2, retry_count)),
 		    updated_at = NOW()
 		WHERE id = $1`
-
-	result, err := r.db.ExecContext(ctx, query, id, errorMsg)
-	if err != nil {
+	if err := r.execExpectOneRow(ctx, query, id, errorMsg); err != nil {
+		if errors.Is(err, domain.ErrNotFound) {
+			return err
+		}
 		return fmt.Errorf("mark failed: %w", err)
-	}
-
-	rows, rowsErr := result.RowsAffected()
-	if rowsErr != nil {
-		return fmt.Errorf("get affected rows: %w", rowsErr)
-	}
-	if rows == 0 {
-		return fmt.Errorf("outbox entry not found: %s", id)
 	}
 	return nil
 }
@@ -195,12 +199,7 @@ func (r *OutboxRepository) GetStats(ctx context.Context) (*domain.OutboxStats, e
 
 // GetByID retrieves a single outbox entry by ID
 func (r *OutboxRepository) GetByID(ctx context.Context, id string) (*domain.OutboxEntry, error) {
-	query := `
-		SELECT id, content_id, source_name, index_name, content_type, topics,
-		       quality_score, is_crime_related, crime_subcategory,
-		       title, body, url, published_date, status, retry_count,
-		       max_retries, error_message, created_at, updated_at,
-		       published_at, next_retry_at
+	query := `SELECT ` + outboxSelectList + `
 		FROM classified_outbox
 		WHERE id = $1`
 

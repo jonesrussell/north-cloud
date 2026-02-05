@@ -12,6 +12,15 @@ import (
 	"github.com/lib/pq"
 )
 
+// publishHistoryColumns is the column list for SELECT/INSERT/RETURNING on publish_history (single source for schema changes)
+const publishHistoryColumns = "id, route_id, article_id, article_title, article_url, channel_name, published_at, quality_score, topics"
+
+// ChannelStat holds per-channel publish statistics (total count and last published time)
+type ChannelStat struct {
+	TotalPublished int
+	LastPublished  *time.Time
+}
+
 // ====================
 // Publish History
 // ====================
@@ -31,9 +40,9 @@ func (r *Repository) CreatePublishHistory(ctx context.Context, req *models.Publi
 	}
 
 	query := `
-		INSERT INTO publish_history (id, route_id, article_id, article_title, article_url, channel_name, published_at, quality_score, topics)
+		INSERT INTO publish_history (` + publishHistoryColumns + `)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-		RETURNING id, route_id, article_id, article_title, article_url, channel_name, published_at, quality_score, topics
+		RETURNING ` + publishHistoryColumns + `
 	`
 
 	err := r.db.QueryRowxContext(
@@ -52,8 +61,7 @@ func (r *Repository) CreatePublishHistory(ctx context.Context, req *models.Publi
 // GetPublishHistoryByID retrieves publish history by ID
 func (r *Repository) GetPublishHistoryByID(ctx context.Context, id uuid.UUID) (*models.PublishHistory, error) {
 	history := &models.PublishHistory{}
-	query := `
-		SELECT id, route_id, article_id, article_title, article_url, channel_name, published_at, quality_score, topics
+	query := `SELECT ` + publishHistoryColumns + `
 		FROM publish_history
 		WHERE id = $1
 	`
@@ -73,27 +81,17 @@ func (r *Repository) GetPublishHistoryByID(ctx context.Context, id uuid.UUID) (*
 func (r *Repository) ListPublishHistory(ctx context.Context, filter *models.PublishHistoryFilter) ([]models.PublishHistory, error) {
 	history := []models.PublishHistory{}
 
-	// Default pagination
-	if filter.Limit == 0 {
-		filter.Limit = 100
+	limit := filter.Limit
+	if limit == 0 {
+		limit = 100
 	}
 	const maxLimit = 1000
-	if filter.Limit > maxLimit {
-		filter.Limit = maxLimit
+	if limit > maxLimit {
+		limit = maxLimit
 	}
 
 	// Build query - simplified without routes/sources joins
-	query := `
-		SELECT
-			id,
-			route_id,
-			article_id,
-			article_title,
-			article_url,
-			channel_name,
-			published_at,
-			quality_score,
-			topics
+	query := `SELECT ` + publishHistoryColumns + `
 		FROM publish_history
 		WHERE 1=1
 	`
@@ -127,7 +125,7 @@ func (r *Repository) ListPublishHistory(ctx context.Context, filter *models.Publ
 
 	query += " ORDER BY published_at DESC"
 	query += fmt.Sprintf(" LIMIT $%d OFFSET $%d", argPos, argPos+1)
-	args = append(args, filter.Limit, filter.Offset)
+	args = append(args, limit, filter.Offset)
 
 	err := r.db.SelectContext(ctx, &history, query, args...)
 	if err != nil {
@@ -140,8 +138,7 @@ func (r *Repository) ListPublishHistory(ctx context.Context, filter *models.Publ
 // GetPublishHistoryByArticleID retrieves all publish history for a specific article
 func (r *Repository) GetPublishHistoryByArticleID(ctx context.Context, articleID string) ([]models.PublishHistory, error) {
 	history := []models.PublishHistory{}
-	query := `
-		SELECT id, route_id, article_id, article_title, article_url, channel_name, published_at, quality_score, topics
+	query := `SELECT ` + publishHistoryColumns + `
 		FROM publish_history
 		WHERE article_id = $1
 		ORDER BY published_at DESC
@@ -240,10 +237,7 @@ func (r *Repository) GetPublishCountByChannel(ctx context.Context, channelName s
 }
 
 // GetChannelStats retrieves statistics for all channels including last published date and total count
-func (r *Repository) GetChannelStats(ctx context.Context) (map[string]struct {
-	TotalPublished int
-	LastPublished  *time.Time
-}, error) {
+func (r *Repository) GetChannelStats(ctx context.Context) (map[string]ChannelStat, error) {
 	query := `
 		SELECT
 			channel_name,
@@ -259,10 +253,7 @@ func (r *Repository) GetChannelStats(ctx context.Context) (map[string]struct {
 	}
 	defer rows.Close()
 
-	stats := make(map[string]struct {
-		TotalPublished int
-		LastPublished  *time.Time
-	})
+	stats := make(map[string]ChannelStat)
 
 	for rows.Next() {
 		var channelName string
@@ -278,10 +269,7 @@ func (r *Repository) GetChannelStats(ctx context.Context) (map[string]struct {
 			lastPub = &lastPublished.Time
 		}
 
-		stats[channelName] = struct {
-			TotalPublished int
-			LastPublished  *time.Time
-		}{
+		stats[channelName] = ChannelStat{
 			TotalPublished: totalPublished,
 			LastPublished:  lastPub,
 		}
