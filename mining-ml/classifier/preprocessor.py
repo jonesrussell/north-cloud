@@ -38,8 +38,8 @@ def preprocess_text(text: Optional[str]) -> str:
     # Remove email addresses (negated classes prevent overlapping \S+ ReDoS)
     text = _EMAIL_PATTERN.sub('', text)
 
-    # Remove special characters but keep spaces
-    text = re.sub(r'[^\w\s]', ' ', text)
+    # Remove special characters but keep spaces (avoid regex - CodeQL py/polynomial-redos)
+    text = "".join(c if (c.isalnum() or c == "_" or c.isspace()) else " " for c in text)
 
     # Collapse multiple spaces
     text = re.sub(r'\s+', ' ', text)
