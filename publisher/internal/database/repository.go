@@ -268,8 +268,11 @@ func buildUpdateQuery(table string, id uuid.UUID, updates map[string]any, return
 		return "", nil, fmt.Errorf("too many update fields: %d exceeds maximum %d", len(updates), maxUpdateFields)
 	}
 
-	updateFields := make([]string, 0, len(updates)+1)
-	args = make([]any, 0, len(updates)+updateQueryExtraArgs)
+	// Use constant-derived capacities so allocation size cannot overflow (CodeQL go/allocation-size-overflow)
+	updateFieldsCap := maxUpdateFields + 1
+	argsCap := maxUpdateFields + updateQueryExtraArgs
+	updateFields := make([]string, 0, updateFieldsCap)
+	args = make([]any, 0, argsCap)
 	argPos := 1
 
 	// Add update fields
