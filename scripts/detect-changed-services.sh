@@ -168,7 +168,7 @@ case "$FORMAT" in
                         CONTEXT="."
                         DOCKERFILE="./search/Dockerfile"
                         ;;
-                    search-frontend|dashboard|nc-http-proxy|crime-ml)
+                    search-frontend|dashboard|nc-http-proxy|crime-ml|mcp-north-cloud)
                         CONTEXT="./${svc}"
                         DOCKERFILE="./${svc}/Dockerfile"
                         ;;
