@@ -176,6 +176,8 @@ services:
         condition: service_healthy
       elasticsearch:
         condition: service_healthy
+      crime-ml:
+        condition: service_healthy
     environment:
       POSTGRES_HOST: postgres-classifier
       POSTGRES_PORT: 5432
@@ -190,6 +192,8 @@ services:
       APP_DEBUG: "false"
       APP_ENV: production
       CLASSIFIER_PORT: 8070
+      CRIME_ENABLED: "true"
+      CRIME_ML_SERVICE_URL: http://crime-ml:8076
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:
