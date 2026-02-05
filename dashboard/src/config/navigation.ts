@@ -4,6 +4,7 @@ import {
   AlertTriangle,
   Brain,
   MapPin,
+  Pickaxe,
   Database,
   Download,
   ListTodo,
@@ -57,6 +58,7 @@ export const navigation: NavSection[] = [
     quickAction: { label: 'View Stats', path: '/intelligence/crime' },
     children: [
       { title: 'Crime Breakdown', path: '/intelligence/crime', icon: AlertTriangle },
+      { title: 'Mining Breakdown', path: '/intelligence/mining', icon: Pickaxe },
       { title: 'Location Breakdown', path: '/intelligence/location', icon: MapPin },
       { title: 'Index Explorer', path: '/intelligence/indexes', icon: Database },
     ],

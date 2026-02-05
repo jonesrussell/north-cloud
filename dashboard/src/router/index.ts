@@ -91,6 +91,12 @@ const routes: RouteRecordRaw[] = [
     meta: { title: 'Crime Breakdown', section: 'intelligence', requiresAuth: true },
   },
   {
+    path: '/intelligence/mining',
+    name: 'intelligence-mining',
+    component: () => import('../views/intelligence/MiningBreakdownView.vue'),
+    meta: { title: 'Mining Breakdown', section: 'intelligence', requiresAuth: true },
+  },
+  {
     path: '/intelligence/location',
     name: 'intelligence-location',
     // Lazy load - will be created in Task 15

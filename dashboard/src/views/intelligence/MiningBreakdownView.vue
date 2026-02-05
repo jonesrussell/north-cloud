@@ -3,6 +3,7 @@ import { ref, computed, onMounted } from 'vue'
 import { Loader2, Pickaxe, RefreshCw, BarChart3, MapPin } from 'lucide-vue-next'
 import { indexManagerApi } from '@/api/client'
 import type { MiningAggregation } from '@/types/aggregation'
+import { ClassifierHealthWidget } from '@/components/domain/classifier'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 
@@ -110,7 +111,7 @@ onMounted(loadAggregation)
 
 <template>
   <div class="space-y-6">
-    <div class="flex items-center justify-between">
+    <div class="flex items-start justify-between gap-4">
       <div>
         <h1 class="text-3xl font-bold tracking-tight">
           Mining Breakdown
@@ -119,17 +120,20 @@ onMounted(loadAggregation)
           Distribution of mining-related content across all indexes
         </p>
       </div>
-      <Button
-        variant="outline"
-        :disabled="loading"
-        @click="loadAggregation"
-      >
-        <RefreshCw
-          class="mr-2 h-4 w-4"
-          :class="{ 'animate-spin': loading }"
-        />
-        Refresh
-      </Button>
+      <div class="flex items-center gap-2">
+        <ClassifierHealthWidget />
+        <Button
+          variant="outline"
+          :disabled="loading"
+          @click="loadAggregation"
+        >
+          <RefreshCw
+            class="mr-2 h-4 w-4"
+            :class="{ 'animate-spin': loading }"
+          />
+          Refresh
+        </Button>
+      </div>
     </div>
 
     <div
