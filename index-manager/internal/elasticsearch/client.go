@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
@@ -653,23 +654,40 @@ func (c *Client) BulkDeleteDocuments(ctx context.Context, indexName string, docu
 	return nil
 }
 
-// SearchAllClassifiedContent executes a search across all classified content indexes
+// ClassifiedContentIndexPattern is the index pattern for all classified content indexes.
+// Used in the path without encoding so Elasticsearch receives the wildcard literally.
+const ClassifiedContentIndexPattern = "*_classified_content"
+
+// SearchAllClassifiedContent executes a search across all classified content indexes.
+// Uses a raw request path so the wildcard (*) is not URL-encoded; the go-elasticsearch
+// client would otherwise encode it and Elasticsearch would match zero indices.
 func (c *Client) SearchAllClassifiedContent(ctx context.Context, query map[string]any) (*esapi.Response, error) {
 	queryJSON, err := json.Marshal(query)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal query: %w", err)
 	}
 
-	res, err := c.esClient.Search(
-		c.esClient.Search.WithContext(ctx),
-		c.esClient.Search.WithIndex("*_classified_content"),
-		c.esClient.Search.WithBody(strings.NewReader(string(queryJSON))),
-	)
+	baseURL, err := url.Parse(c.config.URL)
+	if err != nil {
+		return nil, fmt.Errorf("invalid elasticsearch URL: %w", err)
+	}
+	// Build path with wildcard unencoded. Opaque avoids path encoding so ES receives *_classified_content.
+	baseURL.Opaque = "//" + baseURL.Host + "/" + ClassifiedContentIndexPattern + "/_search"
+	baseURL.Path = ""
+	baseURL.RawPath = ""
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, baseURL.String(), strings.NewReader(string(queryJSON)))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create search request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	res, err := c.esClient.Transport.Perform(req)
 	if err != nil {
 		return nil, fmt.Errorf("failed to execute search: %w", err)
 	}
 
-	if res.IsError() {
+	if res.StatusCode >= 400 {
 		defer func() {
 			_ = res.Body.Close()
 		}()
@@ -677,5 +695,5 @@ func (c *Client) SearchAllClassifiedContent(ctx context.Context, query map[strin
 		return nil, fmt.Errorf("search returned error [%d]: %s", res.StatusCode, string(body))
 	}
 
-	return res, nil
+	return &esapi.Response{StatusCode: res.StatusCode, Body: res.Body, Header: res.Header}, nil
 }

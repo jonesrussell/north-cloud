@@ -112,7 +112,7 @@ function goToJobs() {
       <CardHeader>
         <CardTitle>Content Flow Today</CardTitle>
         <CardDescription>
-          Track content as it moves through each stage of the pipeline
+          Track content as it moves through each stage. &quot;Today&quot; is each service&apos;s server-local date.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -123,9 +123,9 @@ function goToJobs() {
     <!-- Metrics Grid -->
     <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
       <MetricCard
-        title="Content Ingested"
+        title="Items Crawled"
         :value="metrics.contentToday"
-        subtitle="articles today"
+        subtitle="URLs/pages today (crawler)"
         :icon="Download"
       />
       <MetricCard
@@ -141,9 +141,9 @@ function goToJobs() {
         :icon="BarChart3"
       />
       <MetricCard
-        title="Active Routes"
+        title="Active Channels"
         :value="`${metrics.activeRoutes}/${metrics.totalRoutes}`"
-        subtitle="routes enabled"
+        subtitle="channels enabled"
         :icon="GitBranch"
       />
     </div>
