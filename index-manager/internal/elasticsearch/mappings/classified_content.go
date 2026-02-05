@@ -1,5 +1,7 @@
 package mappings
 
+import "maps"
+
 // getRawContentFields returns the raw content field definitions
 func getRawContentFields() map[string]any {
 	indexFalse := false
@@ -73,6 +75,93 @@ func getRawContentFields() map[string]any {
 	}
 }
 
+// getCrimeMapping returns the nested crime object mapping
+func getCrimeMapping() map[string]any {
+	return map[string]any{
+		"type": "object",
+		"properties": map[string]any{
+			"sub_label": map[string]any{
+				"type": "keyword",
+			},
+			"primary_crime_type": map[string]any{
+				"type": "keyword",
+			},
+			"relevance": map[string]any{
+				"type": "keyword",
+			},
+			"crime_types": map[string]any{
+				"type": "keyword",
+			},
+			"final_confidence": map[string]any{
+				"type": "float",
+			},
+			"homepage_eligible": map[string]any{
+				"type": "boolean",
+			},
+			"review_required": map[string]any{
+				"type": "boolean",
+			},
+			"model_version": map[string]any{
+				"type": "keyword",
+			},
+		},
+	}
+}
+
+// getLocationMapping returns the nested location object mapping
+func getLocationMapping() map[string]any {
+	return map[string]any{
+		"type": "object",
+		"properties": map[string]any{
+			"city": map[string]any{
+				"type": "keyword",
+			},
+			"province": map[string]any{
+				"type": "keyword",
+			},
+			"country": map[string]any{
+				"type": "keyword",
+			},
+			"specificity": map[string]any{
+				"type": "keyword",
+			},
+			"confidence": map[string]any{
+				"type": "float",
+			},
+		},
+	}
+}
+
+// getMiningMapping returns the nested mining object mapping
+func getMiningMapping() map[string]any {
+	return map[string]any{
+		"type": "object",
+		"properties": map[string]any{
+			"relevance": map[string]any{
+				"type": "keyword",
+			},
+			"mining_stage": map[string]any{
+				"type": "keyword",
+			},
+			"commodities": map[string]any{
+				"type": "keyword",
+			},
+			"location": map[string]any{
+				"type": "keyword",
+			},
+			"final_confidence": map[string]any{
+				"type": "float",
+			},
+			"review_required": map[string]any{
+				"type": "boolean",
+			},
+			"model_version": map[string]any{
+				"type": "keyword",
+			},
+		},
+	}
+}
+
 // getClassificationFields returns the classification result field definitions
 func getClassificationFields() map[string]any {
 	return map[string]any{
@@ -94,57 +183,9 @@ func getClassificationFields() map[string]any {
 		"topic_scores": map[string]any{
 			"type": "object",
 		},
-		// Nested crime object (replaces is_crime_related boolean)
-		"crime": map[string]any{
-			"type": "object",
-			"properties": map[string]any{
-				"sub_label": map[string]any{
-					"type": "keyword",
-				},
-				"primary_crime_type": map[string]any{
-					"type": "keyword",
-				},
-				"relevance": map[string]any{
-					"type": "keyword",
-				},
-				"crime_types": map[string]any{
-					"type": "keyword",
-				},
-				"final_confidence": map[string]any{
-					"type": "float",
-				},
-				"homepage_eligible": map[string]any{
-					"type": "boolean",
-				},
-				"review_required": map[string]any{
-					"type": "boolean",
-				},
-				"model_version": map[string]any{
-					"type": "keyword",
-				},
-			},
-		},
-		// Nested location object
-		"location": map[string]any{
-			"type": "object",
-			"properties": map[string]any{
-				"city": map[string]any{
-					"type": "keyword",
-				},
-				"province": map[string]any{
-					"type": "keyword",
-				},
-				"country": map[string]any{
-					"type": "keyword",
-				},
-				"specificity": map[string]any{
-					"type": "keyword",
-				},
-				"confidence": map[string]any{
-					"type": "float",
-				},
-			},
-		},
+		"crime":    getCrimeMapping(),
+		"location": getLocationMapping(),
+		"mining":   getMiningMapping(),
 		// Keep is_crime_related for backward compatibility (computed field)
 		"is_crime_related": map[string]any{
 			"type": "boolean",
@@ -175,14 +216,10 @@ func GetClassifiedContentMapping() map[string]any {
 	properties := make(map[string]any)
 
 	// Add raw content fields
-	for k, v := range getRawContentFields() {
-		properties[k] = v
-	}
+	maps.Copy(properties, getRawContentFields())
 
 	// Add classification fields
-	for k, v := range getClassificationFields() {
-		properties[k] = v
-	}
+	maps.Copy(properties, getClassificationFields())
 
 	return map[string]any{
 		"settings": map[string]any{
