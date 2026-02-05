@@ -9,6 +9,16 @@ type CrimeAggregation struct {
 	TotalDocuments    int64            `json:"total_documents"`
 }
 
+// MiningAggregation represents mining distribution statistics
+type MiningAggregation struct {
+	ByRelevance    map[string]int64 `json:"by_relevance"`
+	ByMiningStage  map[string]int64 `json:"by_mining_stage"`
+	ByCommodity    map[string]int64 `json:"by_commodity"`
+	ByLocation     map[string]int64 `json:"by_location"`
+	TotalMining    int64            `json:"total_mining"`
+	TotalDocuments int64            `json:"total_documents"`
+}
+
 // LocationAggregation represents geographic distribution statistics
 type LocationAggregation struct {
 	ByCountry     map[string]int64 `json:"by_country"`
