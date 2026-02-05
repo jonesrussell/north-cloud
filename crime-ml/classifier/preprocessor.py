@@ -4,6 +4,9 @@
 import re
 from typing import Optional
 
+# Cap input length to bound regex work and avoid ReDoS on adversarial input (CodeQL py/polynomial-redos).
+MAX_PREPROCESS_LENGTH = 1_000_000
+
 # ReDoS-safe patterns: avoid ambiguous greedy repetition (e.g. \S+@\S+).
 # URL: one [^\s]+ so no backtracking overlap.
 _URL_PATTERN = re.compile(r'https?://[^\s]+')
@@ -22,6 +25,9 @@ def preprocess_text(text: Optional[str]) -> str:
     """
     if not text:
         return ""
+
+    if len(text) > MAX_PREPROCESS_LENGTH:
+        text = text[:MAX_PREPROCESS_LENGTH]
 
     # Lowercase
     text = text.lower()
