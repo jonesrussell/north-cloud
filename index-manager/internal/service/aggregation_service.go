@@ -209,6 +209,66 @@ func (s *AggregationService) GetOverviewAggregation(
 	}, nil
 }
 
+// GetMiningAggregation returns mining distribution statistics
+func (s *AggregationService) GetMiningAggregation(
+	ctx context.Context,
+	req *domain.AggregationRequest,
+) (*domain.MiningAggregation, error) {
+	query := s.buildAggregationQuery(req, map[string]any{
+		"by_relevance": map[string]any{
+			"terms": map[string]any{
+				"field": "mining.relevance",
+				"size":  topCitiesLimit,
+			},
+		},
+		"by_mining_stage": map[string]any{
+			"terms": map[string]any{
+				"field": "mining.mining_stage",
+				"size":  topCitiesLimit,
+			},
+		},
+		"by_commodity": map[string]any{
+			"terms": map[string]any{
+				"field": "mining.commodities",
+				"size":  topCrimeTypesLimit,
+			},
+		},
+		"by_location": map[string]any{
+			"terms": map[string]any{
+				"field": "mining.location",
+				"size":  topCitiesLimit,
+			},
+		},
+		"mining_related": map[string]any{
+			"filter": map[string]any{
+				"terms": map[string]any{
+					"mining.relevance": []string{"core_mining", "peripheral_mining"},
+				},
+			},
+		},
+	})
+
+	res, err := s.esClient.SearchAllClassifiedContent(ctx, query)
+	if err != nil {
+		return nil, fmt.Errorf("failed to execute mining aggregation: %w", err)
+	}
+	defer func() { _ = res.Body.Close() }()
+
+	var esResp aggregationResponse
+	if decodeErr := json.NewDecoder(res.Body).Decode(&esResp); decodeErr != nil {
+		return nil, fmt.Errorf("failed to decode mining aggregation response: %w", decodeErr)
+	}
+
+	return &domain.MiningAggregation{
+		ByRelevance:    extractBuckets(esResp.Aggregations["by_relevance"]),
+		ByMiningStage:  extractBuckets(esResp.Aggregations["by_mining_stage"]),
+		ByCommodity:    extractBuckets(esResp.Aggregations["by_commodity"]),
+		ByLocation:     extractBuckets(esResp.Aggregations["by_location"]),
+		TotalMining:    extractFilterCount(esResp.Aggregations["mining_related"]),
+		TotalDocuments: esResp.Hits.Total.Value,
+	}, nil
+}
+
 // buildAggregationQuery constructs an ES aggregation query with optional filters
 func (s *AggregationService) buildAggregationQuery(
 	req *domain.AggregationRequest,
