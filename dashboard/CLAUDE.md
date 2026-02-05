@@ -29,11 +29,17 @@ dashboard/src/
 ├── components/          # Reusable UI components
 │   ├── ui/              # Base UI components (buttons, inputs)
 │   ├── layout/          # Layout components
+│   ├── domain/          # Domain-specific components
+│   │   └── classifier/  # Classifier health widget, etc.
 │   ├── sources/         # Source management components
 │   ├── routes/          # Route management components
 │   └── channels/        # Channel management components
 ├── views/               # Page components
 │   ├── DashboardView.vue
+│   ├── intelligence/     # Intelligence section views
+│   │   ├── CrimeBreakdownView.vue
+│   │   ├── MiningBreakdownView.vue
+│   │   └── DocumentDetailView.vue
 │   ├── SourcesView.vue
 │   ├── RoutesView.vue
 │   ├── ChannelsView.vue

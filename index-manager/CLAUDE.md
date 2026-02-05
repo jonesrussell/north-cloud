@@ -80,6 +80,11 @@ index-manager/
 **Stats**:
 - `GET /api/v1/stats` - Overall statistics
 
+**Aggregations**:
+- `GET /api/v1/aggregations/crime` - Crime classification breakdown
+- `GET /api/v1/aggregations/mining` - Mining classification breakdown
+  - Query params: `source` (optional, filter by source name)
+
 ## Index Mappings
 
 **raw_content** mapping (key fields):
@@ -101,9 +106,13 @@ index-manager/
   "quality_score": { "type": "integer" },
   "topics": { "type": "keyword" },
   "source_reputation": { "type": "integer" },
-  "classified_at": { "type": "date" }
+  "classified_at": { "type": "date" },
+  "crime": { "type": "object", "properties": { "street_crime_relevance", "crime_types", "..." } },
+  "mining": { "type": "object", "properties": { "relevance", "mining_stage", "commodities", "location", "..." } }
 }
 ```
+
+**Note**: `classified_content.go` uses extracted helpers (`getCrimeMapping()`, `getLocationMapping()`, `getMiningMapping()`) to stay under the 100-line `funlen` lint limit.
 
 ## Common Gotchas
 
