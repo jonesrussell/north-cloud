@@ -20,6 +20,8 @@ const (
 	// updateQueryExtraArgs is the number of additional arguments added to update queries
 	// (updated_at timestamp and id for WHERE clause)
 	updateQueryExtraArgs = 2
+	// maxUpdateFields caps the number of columns in a single UPDATE to avoid allocation-size overflow
+	maxUpdateFields = 256
 )
 
 // Repository provides database operations for all entities
@@ -261,6 +263,9 @@ func (r *Repository) DeleteChannel(ctx context.Context, id uuid.UUID) error {
 func buildUpdateQuery(table string, id uuid.UUID, updates map[string]any, returningFields string) (query string, args []any, err error) {
 	if len(updates) == 0 {
 		return "", nil, models.ErrNoFieldsToUpdate
+	}
+	if len(updates) > maxUpdateFields {
+		return "", nil, fmt.Errorf("too many update fields: %d exceeds maximum %d", len(updates), maxUpdateFields)
 	}
 
 	updateFields := make([]string, 0, len(updates)+1)
