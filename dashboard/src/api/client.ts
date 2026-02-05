@@ -402,15 +402,15 @@ export const indexManagerApi = {
       health?: string
       source?: string
     }): Promise<AxiosResponse<ListIndexesResponse>> =>
-      indexManagerClient.get('/v1/indexes', { params }),
+      indexManagerClient.get('/api/v1/indexes', { params }),
     get: (indexName: string): Promise<AxiosResponse<GetIndexResponse>> =>
-      indexManagerClient.get(`/v1/indexes/${indexName}`),
+      indexManagerClient.get(`/api/v1/indexes/${indexName}`),
     create: (data: CreateIndexRequest): Promise<AxiosResponse<{ index: Index }>> =>
-      indexManagerClient.post('/v1/indexes', data),
+      indexManagerClient.post('/api/v1/indexes', data),
     delete: (indexName: string): Promise<AxiosResponse<void>> =>
-      indexManagerClient.delete(`/v1/indexes/${indexName}`),
+      indexManagerClient.delete(`/api/v1/indexes/${indexName}`),
     getHealth: (indexName: string): Promise<AxiosResponse<IndexHealthResponse>> =>
-      indexManagerClient.get(`/v1/indexes/${indexName}/health`),
+      indexManagerClient.get(`/api/v1/indexes/${indexName}/health`),
   },
 
   // Source operations
@@ -419,16 +419,16 @@ export const indexManagerApi = {
       sourceName: string,
       data?: CreateSourceIndexesRequest
     ): Promise<AxiosResponse<CreateSourceIndexesResponse>> =>
-      indexManagerClient.post(`/v1/sources/${sourceName}/indexes`, data),
+      indexManagerClient.post(`/api/v1/sources/${sourceName}/indexes`, data),
     listIndexes: (sourceName: string): Promise<AxiosResponse<ListIndexesResponse>> =>
-      indexManagerClient.get(`/v1/sources/${sourceName}/indexes`),
+      indexManagerClient.get(`/api/v1/sources/${sourceName}/indexes`),
     deleteIndexes: (sourceName: string): Promise<AxiosResponse<void>> =>
-      indexManagerClient.delete(`/v1/sources/${sourceName}/indexes`),
+      indexManagerClient.delete(`/api/v1/sources/${sourceName}/indexes`),
   },
 
   // Stats
   stats: {
-    get: (): Promise<AxiosResponse<IndexStats>> => indexManagerClient.get('/v1/stats'),
+    get: (): Promise<AxiosResponse<IndexStats>> => indexManagerClient.get('/api/v1/stats'),
   },
 
   // Document operations
@@ -470,23 +470,23 @@ export const indexManagerApi = {
           flatParams.topics = params.filters.topics.join(',')
         }
       }
-      return indexManagerClient.get(`/v1/indexes/${indexName}/documents`, { params: flatParams })
+      return indexManagerClient.get(`/api/v1/indexes/${indexName}/documents`, { params: flatParams })
     },
     get: (indexName: string, documentId: string): Promise<AxiosResponse<Document>> =>
-      indexManagerClient.get(`/v1/indexes/${indexName}/documents/${documentId}`),
+      indexManagerClient.get(`/api/v1/indexes/${indexName}/documents/${documentId}`),
     update: (
       indexName: string,
       documentId: string,
       data: Document
     ): Promise<AxiosResponse<void>> =>
-      indexManagerClient.put(`/v1/indexes/${indexName}/documents/${documentId}`, data),
+      indexManagerClient.put(`/api/v1/indexes/${indexName}/documents/${documentId}`, data),
     delete: (indexName: string, documentId: string): Promise<AxiosResponse<void>> =>
-      indexManagerClient.delete(`/v1/indexes/${indexName}/documents/${documentId}`),
+      indexManagerClient.delete(`/api/v1/indexes/${indexName}/documents/${documentId}`),
     bulkDelete: (
       indexName: string,
       documentIds: string[]
     ): Promise<AxiosResponse<void>> =>
-      indexManagerClient.post(`/v1/indexes/${indexName}/documents/bulk-delete`, {
+      indexManagerClient.post(`/api/v1/indexes/${indexName}/documents/bulk-delete`, {
         document_ids: documentIds,
       }),
   },
@@ -495,15 +495,15 @@ export const indexManagerApi = {
   aggregations: {
     getCrime: (filters?: AggregationFilters): Promise<AxiosResponse<CrimeAggregation>> => {
       const params = buildAggregationParams(filters)
-      return indexManagerClient.get('/v1/aggregations/crime', { params })
+      return indexManagerClient.get('/api/v1/aggregations/crime', { params })
     },
     getLocation: (filters?: AggregationFilters): Promise<AxiosResponse<LocationAggregation>> => {
       const params = buildAggregationParams(filters)
-      return indexManagerClient.get('/v1/aggregations/location', { params })
+      return indexManagerClient.get('/api/v1/aggregations/location', { params })
     },
     getOverview: (filters?: AggregationFilters): Promise<AxiosResponse<OverviewAggregation>> => {
       const params = buildAggregationParams(filters)
-      return indexManagerClient.get('/v1/aggregations/overview', { params })
+      return indexManagerClient.get('/api/v1/aggregations/overview', { params })
     },
   },
 }
