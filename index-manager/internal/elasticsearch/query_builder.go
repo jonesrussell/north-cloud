@@ -237,12 +237,12 @@ func (qb *DocumentQueryBuilder) appendTextFilters(result []any, filters *domain.
 
 // appendQualityTopicFilters adds quality score and topics filters
 func (qb *DocumentQueryBuilder) appendQualityTopicFilters(result []any, filters *domain.DocumentFilters) []any {
-	if filters.MinQualityScore > 0 || filters.MaxQualityScore < maxQualityScore {
+	if filters.MinQualityScore > 0 || (filters.MaxQualityScore > 0 && filters.MaxQualityScore < maxQualityScore) {
 		qualityRange := make(map[string]any)
 		if filters.MinQualityScore > 0 {
 			qualityRange["gte"] = filters.MinQualityScore
 		}
-		if filters.MaxQualityScore < maxQualityScore {
+		if filters.MaxQualityScore > 0 && filters.MaxQualityScore < maxQualityScore {
 			qualityRange["lte"] = filters.MaxQualityScore
 		}
 		if len(qualityRange) > 0 {

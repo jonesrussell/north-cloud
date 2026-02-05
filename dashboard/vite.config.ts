@@ -192,7 +192,7 @@ export default defineConfig({
         changeOrigin: true,
         timeout: 30000, // 30 seconds
         proxyTimeout: 30000,
-        rewrite: (path) => path.replace(/^\/api\/index-manager/, ''),
+        rewrite: (path) => path.replace(/^\/api\/index-manager/, '/api'),
         configure: (proxy, _options) => {
           proxy.on('proxyReq', (proxyReq, req, _res) => {
             // Forward Authorization header if present
