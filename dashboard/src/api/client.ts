@@ -34,6 +34,8 @@ import type {
   CrimeAggregation,
   LocationAggregation,
   OverviewAggregation,
+  MiningAggregation,
+  MLHealthResponse,
   AggregationFilters,
 } from '../types/aggregation'
 
@@ -368,6 +370,12 @@ export const classifierApi = {
     topics: () => classifierClient.get('/stats/topics'),
     sources: () => classifierClient.get('/stats/sources'),
   },
+
+  // Metrics
+  metrics: {
+    mlHealth: (): Promise<AxiosResponse<MLHealthResponse>> =>
+      classifierClient.get('/metrics/ml-health'),
+  },
 }
 
 // Helper to build aggregation query params
@@ -504,6 +512,10 @@ export const indexManagerApi = {
     getOverview: (filters?: AggregationFilters): Promise<AxiosResponse<OverviewAggregation>> => {
       const params = buildAggregationParams(filters)
       return indexManagerClient.get('/api/v1/aggregations/overview', { params })
+    },
+    getMining: (filters?: AggregationFilters): Promise<AxiosResponse<MiningAggregation>> => {
+      const params = buildAggregationParams(filters)
+      return indexManagerClient.get('/api/v1/aggregations/mining', { params })
     },
   },
 }
