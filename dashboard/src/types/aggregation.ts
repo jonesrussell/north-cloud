@@ -6,6 +6,15 @@ export interface CrimeAggregation {
   total_documents: number
 }
 
+export interface MiningAggregation {
+  by_relevance: Record<string, number>
+  by_mining_stage: Record<string, number>
+  by_commodity: Record<string, number>
+  by_location: Record<string, number>
+  total_mining: number
+  total_documents: number
+}
+
 export interface LocationAggregation {
   by_country: Record<string, number>
   by_province: Record<string, number>
@@ -25,6 +34,25 @@ export interface OverviewAggregation {
   top_cities: string[]
   top_crime_types: string[]
   quality_distribution: QualityBuckets
+}
+
+export interface MLServiceHealth {
+  reachable: boolean
+  model_version?: string
+  latency_ms?: number
+  last_checked_at: string
+  error?: string
+}
+
+export interface MLHealthResponse {
+  crime_ml?: MLServiceHealth
+  mining_ml?: MLServiceHealth
+  pipeline_mode: PipelineMode
+}
+
+export interface PipelineMode {
+  crime: 'hybrid' | 'rules-only' | 'disabled'
+  mining: 'hybrid' | 'rules-only' | 'disabled'
 }
 
 export interface AggregationFilters {
