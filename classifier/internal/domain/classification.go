@@ -35,8 +35,23 @@ type ClassificationResult struct {
 	// Crime hybrid classification (optional)
 	Crime *CrimeResult `json:"crime,omitempty"`
 
+	// Mining hybrid classification (optional)
+	Mining *MiningResult `json:"mining,omitempty"`
+
 	// Location detection (content-based)
 	Location *LocationResult `json:"location,omitempty"`
+}
+
+// MiningResult holds Mining hybrid classification results.
+type MiningResult struct {
+	Relevance       string   `json:"relevance"`
+	MiningStage     string   `json:"mining_stage"`
+	Commodities     []string `json:"commodities"`
+	Location        string   `json:"location"`
+	FinalConfidence float64  `json:"final_confidence"`
+	ReviewRequired  bool     `json:"review_required"`
+	ModelVersion    string   `json:"model_version,omitempty"`
+	SourceTextUsed  string   `json:"-"` // Internal only, for debugging
 }
 
 // CrimeResult holds Crime hybrid classification results.
@@ -74,6 +89,9 @@ type ClassifiedContent struct {
 
 	// Crime hybrid classification (optional)
 	Crime *CrimeResult `json:"crime,omitempty"`
+
+	// Mining hybrid classification (optional)
+	Mining *MiningResult `json:"mining,omitempty"`
 
 	// Location detection (content-based)
 	Location *LocationResult `json:"location,omitempty"`
