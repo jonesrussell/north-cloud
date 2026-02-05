@@ -209,19 +209,36 @@ fi
 # Step 3: Restart services (selective if CHANGED_SERVICES is set)
 echo -e "${GREEN}Step 3: Restarting services...${NC}"
 
+MAX_RESTART_ATTEMPTS=3
+RESTART_WAIT_SECONDS=15
+
+restart_with_retry() {
+  local services="$1"
+  local attempt=1
+
+  while [ $attempt -le $MAX_RESTART_ATTEMPTS ]; do
+    if [ $attempt -gt 1 ]; then
+      echo -e "${YELLOW}Retry $attempt/$MAX_RESTART_ATTEMPTS (waiting ${RESTART_WAIT_SECONDS}s for dependencies)...${NC}"
+      sleep "$RESTART_WAIT_SECONDS"
+    fi
+
+    if $COMPOSE_CMD up -d $services 2>&1; then
+      return 0
+    fi
+
+    echo -e "${YELLOW}Attempt $attempt/$MAX_RESTART_ATTEMPTS failed${NC}"
+    attempt=$((attempt + 1))
+  done
+
+  echo -e "${RED}ERROR: Failed to restart services after $MAX_RESTART_ATTEMPTS attempts${NC}" >&2
+  return 1
+}
+
 if [ -n "$SERVICES_TO_UPDATE" ]; then
-  # Restart only changed services
   echo "Restarting: $SERVICES_TO_UPDATE"
-  $COMPOSE_CMD up -d $SERVICES_TO_UPDATE || {
-    echo -e "${RED}ERROR: Failed to restart services${NC}" >&2
-    exit 1
-  }
+  restart_with_retry "$SERVICES_TO_UPDATE" || exit 1
 else
-  # Restart all services
-  $COMPOSE_CMD up -d || {
-    echo -e "${RED}ERROR: Failed to restart services${NC}" >&2
-    exit 1
-  }
+  restart_with_retry "" || exit 1
 fi
 echo -e "${GREEN}✓ Services restarted${NC}"
 echo ""
