@@ -91,6 +91,7 @@ func NewHTTPComponents(cfg *config.Config, logger infralogger.Logger) (*HTTPComp
 		dbComps.SourceRepRepo,
 		dbComps.ClassificationHistoryRepo,
 		esStorage,
+		cfg,
 		logger,
 	)
 

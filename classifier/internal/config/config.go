@@ -121,12 +121,19 @@ type ClassificationConfig struct {
 	Topic            TopicConfig            `yaml:"topic"`
 	SourceReputation SourceReputationConfig `yaml:"source_reputation"`
 	Crime            CrimeConfig            `yaml:"crime"`
+	Mining           MiningConfig           `yaml:"mining"`
 }
 
 // CrimeConfig holds Crime hybrid classification settings.
 type CrimeConfig struct {
 	Enabled      bool   `env:"CRIME_ENABLED"        yaml:"enabled"`
 	MLServiceURL string `env:"CRIME_ML_SERVICE_URL" yaml:"ml_service_url"`
+}
+
+// MiningConfig holds Mining hybrid classification settings.
+type MiningConfig struct {
+	Enabled      bool   `env:"MINING_ENABLED"        yaml:"enabled"`
+	MLServiceURL string `env:"MINING_ML_SERVICE_URL" yaml:"ml_service_url"`
 }
 
 // ContentTypeConfig holds content type detection settings.

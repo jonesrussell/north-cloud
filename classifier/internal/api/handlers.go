@@ -7,8 +7,11 @@ import (
 	"strconv"
 	"time"
 
+	"encoding/json"
+
 	"github.com/gin-gonic/gin"
 	"github.com/jonesrussell/north-cloud/classifier/internal/classifier"
+	"github.com/jonesrussell/north-cloud/classifier/internal/config"
 	"github.com/jonesrussell/north-cloud/classifier/internal/database"
 	"github.com/jonesrussell/north-cloud/classifier/internal/domain"
 	"github.com/jonesrussell/north-cloud/classifier/internal/processor"
@@ -35,6 +38,7 @@ type Handler struct {
 	sourceReputationRepo      *database.SourceReputationRepository
 	classificationHistoryRepo *database.ClassificationHistoryRepository
 	storage                   *storage.ElasticsearchStorage
+	config                    *config.Config
 	logger                    infralogger.Logger
 }
 
@@ -48,6 +52,7 @@ func NewHandler(
 	sourceReputationRepo *database.SourceReputationRepository,
 	classificationHistoryRepo *database.ClassificationHistoryRepository,
 	elasticStorage *storage.ElasticsearchStorage,
+	cfg *config.Config,
 	logger infralogger.Logger,
 ) *Handler {
 	return &Handler{
@@ -59,6 +64,7 @@ func NewHandler(
 		sourceReputationRepo:      sourceReputationRepo,
 		classificationHistoryRepo: classificationHistoryRepo,
 		storage:                   elasticStorage,
+		config:                    cfg,
 		logger:                    logger,
 	}
 }
@@ -842,4 +848,111 @@ func (h *Handler) reloadTopicClassifierRules(ctx context.Context) error {
 
 	h.logger.Info("Classification rules reloaded successfully", infralogger.Int("count", len(rules)))
 	return nil
+}
+
+// MLServiceHealth represents the health status of a single ML service
+type MLServiceHealth struct {
+	Reachable    bool   `json:"reachable"`
+	ModelVersion string `json:"model_version,omitempty"`
+	LatencyMs    int64  `json:"latency_ms,omitempty"`
+	LastChecked  string `json:"last_checked_at"`
+	Error        string `json:"error,omitempty"`
+}
+
+// MLHealthResponse represents the overall ML health status
+type MLHealthResponse struct {
+	CrimeML      *MLServiceHealth `json:"crime_ml,omitempty"`
+	MiningML     *MLServiceHealth `json:"mining_ml,omitempty"`
+	PipelineMode PipelineMode     `json:"pipeline_mode"`
+}
+
+// PipelineMode represents the current classifier pipeline configuration
+type PipelineMode struct {
+	Crime  string `json:"crime"`
+	Mining string `json:"mining"`
+}
+
+// mlHealthCheckTimeout is the timeout for ML service health checks
+const mlHealthCheckTimeout = 5 * time.Second
+
+// GetMLHealth handles GET /api/v1/metrics/ml-health
+func (h *Handler) GetMLHealth(c *gin.Context) {
+	resp := MLHealthResponse{
+		PipelineMode: h.getPipelineMode(),
+	}
+
+	if h.config.Classification.Crime.Enabled {
+		resp.CrimeML = h.checkMLServiceHealth(
+			c.Request.Context(),
+			h.config.Classification.Crime.MLServiceURL,
+		)
+	}
+
+	if h.config.Classification.Mining.Enabled {
+		resp.MiningML = h.checkMLServiceHealth(
+			c.Request.Context(),
+			h.config.Classification.Mining.MLServiceURL,
+		)
+	}
+
+	c.JSON(http.StatusOK, resp)
+}
+
+func (h *Handler) getPipelineMode() PipelineMode {
+	mode := PipelineMode{Crime: "disabled", Mining: "disabled"}
+
+	if h.config.Classification.Crime.Enabled {
+		if h.config.Classification.Crime.MLServiceURL != "" {
+			mode.Crime = "hybrid"
+		} else {
+			mode.Crime = "rules-only"
+		}
+	}
+
+	if h.config.Classification.Mining.Enabled {
+		if h.config.Classification.Mining.MLServiceURL != "" {
+			mode.Mining = "hybrid"
+		} else {
+			mode.Mining = "rules-only"
+		}
+	}
+
+	return mode
+}
+
+func (h *Handler) checkMLServiceHealth(ctx context.Context, baseURL string) *MLServiceHealth {
+	start := time.Now()
+	health := &MLServiceHealth{
+		LastChecked: time.Now().UTC().Format(time.RFC3339),
+	}
+
+	req, reqErr := http.NewRequestWithContext(ctx, http.MethodGet, baseURL+"/health", http.NoBody)
+	if reqErr != nil {
+		health.Error = fmt.Sprintf("failed to create request: %v", reqErr)
+		return health
+	}
+
+	client := &http.Client{Timeout: mlHealthCheckTimeout}
+	resp, doErr := client.Do(req)
+	if doErr != nil {
+		health.Error = fmt.Sprintf("service unreachable: %v", doErr)
+		return health
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	health.LatencyMs = time.Since(start).Milliseconds()
+
+	if resp.StatusCode == http.StatusOK {
+		health.Reachable = true
+		var healthResp struct {
+			ModelVersion string `json:"model_version"`
+		}
+		if decodeErr := json.NewDecoder(resp.Body).Decode(&healthResp); decodeErr == nil {
+			health.ModelVersion = healthResp.ModelVersion
+		}
+	} else {
+		health.Error = fmt.Sprintf("unhealthy status: %d", resp.StatusCode)
+	}
+
+	return health
 }
