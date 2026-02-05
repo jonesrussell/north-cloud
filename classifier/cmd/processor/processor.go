@@ -14,6 +14,7 @@ import (
 	"github.com/jonesrussell/north-cloud/classifier/internal/config"
 	"github.com/jonesrussell/north-cloud/classifier/internal/database"
 	"github.com/jonesrussell/north-cloud/classifier/internal/domain"
+	"github.com/jonesrussell/north-cloud/classifier/internal/mlclient"
 	"github.com/jonesrussell/north-cloud/classifier/internal/processor"
 	"github.com/jonesrussell/north-cloud/classifier/internal/storage"
 	infraconfig "github.com/north-cloud/infrastructure/config"
@@ -50,7 +51,7 @@ type ProcessorConfig struct {
 }
 
 // LoadConfig loads configuration from config file with env var overrides
-func LoadConfig() *ProcessorConfig {
+func LoadConfig() (*ProcessorConfig, *config.Config) {
 	// Load main config
 	configPath := infraconfig.GetConfigPath("config.yml")
 	cfg, err := config.Load(configPath)
@@ -87,7 +88,7 @@ func LoadConfig() *ProcessorConfig {
 		PollingInterval:   cfg.Service.PollInterval,
 		BatchSize:         cfg.Service.BatchSize,
 		ConcurrentWorkers: cfg.Service.Concurrency,
-	}
+	}, cfg
 }
 
 // setupElasticsearch creates and tests Elasticsearch connection with retry logic
@@ -175,8 +176,8 @@ func loadRules(ctx context.Context, rulesRepo *database.RulesRepository, log inf
 	return ruleValues, nil
 }
 
-// createClassifierConfig creates classifier configuration
-func createClassifierConfig() classifier.Config {
+// createClassifierConfig creates classifier configuration with optional crime classifier
+func createClassifierConfig(cfg *config.Config, log infralogger.Logger) classifier.Config {
 	return classifier.Config{
 		Version:         "1.0.0",
 		MinQualityScore: defaultMinQualityScore,
@@ -196,7 +197,25 @@ func createClassifierConfig() classifier.Config {
 			MinArticlesForTrust:        minArticlesForTrust,
 			ReputationDecayRate:        defaultReputationDecayRate95,
 		},
+		CrimeClassifier: createCrimeClassifier(cfg, log),
 	}
+}
+
+// createCrimeClassifier creates a Crime classifier if enabled in config.
+func createCrimeClassifier(cfg *config.Config, log infralogger.Logger) *classifier.CrimeClassifier {
+	if !cfg.Classification.Crime.Enabled {
+		return nil
+	}
+
+	var mlClient classifier.MLClassifier
+	if cfg.Classification.Crime.MLServiceURL != "" {
+		mlClient = mlclient.NewClient(cfg.Classification.Crime.MLServiceURL)
+	}
+
+	log.Info("Crime classifier enabled for processor",
+		infralogger.String("ml_service_url", cfg.Classification.Crime.MLServiceURL))
+
+	return classifier.NewCrimeClassifier(mlClient, log, true)
 }
 
 // Start starts the processor
@@ -211,7 +230,7 @@ func Start() error {
 	}
 	log = log.With(infralogger.String("service", "classifier-processor"))
 
-	cfg := LoadConfig()
+	cfg, fullCfg := LoadConfig()
 
 	log.Info("Processor starting",
 		infralogger.String("elasticsearch_url", cfg.ElasticsearchURL),
@@ -248,7 +267,7 @@ func Start() error {
 		return err
 	}
 
-	classifierConfig := createClassifierConfig()
+	classifierConfig := createClassifierConfig(fullCfg, log)
 	clf := classifier.NewClassifier(procLogger, ruleValues, sourceRepRepo, classifierConfig)
 	log.Info("Classifier initialized")
 
@@ -296,7 +315,7 @@ func StartWithStop() (func(), error) {
 	}
 	log = log.With(infralogger.String("service", "classifier-processor"))
 
-	cfg := LoadConfig()
+	cfg, fullCfg := LoadConfig()
 
 	log.Info("Processor starting",
 		infralogger.String("elasticsearch_url", cfg.ElasticsearchURL),
@@ -329,7 +348,7 @@ func StartWithStop() (func(), error) {
 		return nil, err
 	}
 
-	classifierConfig := createClassifierConfig()
+	classifierConfig := createClassifierConfig(fullCfg, log)
 	clf := classifier.NewClassifier(procLogger, ruleValues, sourceRepRepo, classifierConfig)
 	log.Info("Classifier initialized")
 
