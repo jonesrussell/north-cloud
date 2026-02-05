@@ -643,6 +643,20 @@ func (h *Handler) GetOverviewAggregation(c *gin.Context) {
 	c.JSON(http.StatusOK, result)
 }
 
+// GetMiningAggregation handles GET /api/v1/aggregations/mining
+func (h *Handler) GetMiningAggregation(c *gin.Context) {
+	req := h.parseAggregationRequest(c)
+
+	result, err := h.aggregationService.GetMiningAggregation(c.Request.Context(), req)
+	if err != nil {
+		h.logger.Error("Failed to get mining aggregation", infralogger.Error(err))
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, result)
+}
+
 // parseAggregationRequest extracts filters from query parameters
 func (h *Handler) parseAggregationRequest(c *gin.Context) *domain.AggregationRequest {
 	req := &domain.AggregationRequest{
