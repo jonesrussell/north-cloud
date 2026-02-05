@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"sort"
 	"strings"
 	"time"
 
@@ -17,6 +18,8 @@ import (
 
 const (
 	whereEnabledTrue = " WHERE enabled = true"
+	// channelsSelectList is the column list for SELECT/RETURNING on channels (single source for schema changes)
+	channelsSelectList = "id, name, slug, redis_channel, description, rules, rules_version, enabled, created_at, updated_at"
 	// updateQueryExtraArgs is the number of additional arguments added to update queries
 	// (updated_at timestamp and id for WHERE clause)
 	updateQueryExtraArgs = 2
@@ -85,8 +88,7 @@ func (r *Repository) CreateChannel(ctx context.Context, req *models.ChannelCreat
 	).StructScan(channel)
 
 	if err != nil {
-		var pqErr *pq.Error
-		if errors.As(err, &pqErr) && pqErr.Code == "23505" {
+		if isPQUniqueViolation(err) {
 			return nil, models.ErrAlreadyExists
 		}
 		return nil, fmt.Errorf("failed to create channel: %w", err)
@@ -101,57 +103,42 @@ func (r *Repository) CreateChannel(ctx context.Context, req *models.ChannelCreat
 
 // GetChannelByID retrieves a channel by ID
 func (r *Repository) GetChannelByID(ctx context.Context, id uuid.UUID) (*models.Channel, error) {
-	channel := &models.Channel{}
-	query := `
-		SELECT id, name, slug, redis_channel, description, rules, rules_version, enabled, created_at, updated_at
+	query := `SELECT ` + channelsSelectList + `
 		FROM channels
 		WHERE id = $1
 	`
-
-	err := r.db.GetContext(ctx, channel, query, id)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, models.ErrNotFound
-		}
-		return nil, fmt.Errorf("failed to get channel: %w", err)
-	}
-
-	if parseErr := channel.ParseRules(); parseErr != nil {
-		return nil, fmt.Errorf("failed to parse rules: %w", parseErr)
-	}
-
-	return channel, nil
+	return r.getChannelBy(ctx, query, id)
 }
 
 // GetChannelBySlug retrieves a channel by slug
 func (r *Repository) GetChannelBySlug(ctx context.Context, slug string) (*models.Channel, error) {
-	channel := &models.Channel{}
-	query := `
-		SELECT id, name, slug, redis_channel, description, rules, rules_version, enabled, created_at, updated_at
+	query := `SELECT ` + channelsSelectList + `
 		FROM channels
 		WHERE slug = $1
 	`
+	return r.getChannelBy(ctx, query, slug)
+}
 
-	err := r.db.GetContext(ctx, channel, query, slug)
+// getChannelBy runs a channel SELECT and returns the channel with parsed rules, or ErrNotFound
+func (r *Repository) getChannelBy(ctx context.Context, query string, arg any) (*models.Channel, error) {
+	channel := &models.Channel{}
+	err := r.db.GetContext(ctx, channel, query, arg)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, models.ErrNotFound
 		}
 		return nil, fmt.Errorf("failed to get channel: %w", err)
 	}
-
 	if parseErr := channel.ParseRules(); parseErr != nil {
 		return nil, fmt.Errorf("failed to parse rules: %w", parseErr)
 	}
-
 	return channel, nil
 }
 
 // ListChannels retrieves all channels
 func (r *Repository) ListChannels(ctx context.Context, enabledOnly bool) ([]models.Channel, error) {
 	channels := []models.Channel{}
-	query := `
-		SELECT id, name, slug, redis_channel, description, rules, rules_version, enabled, created_at, updated_at
+	query := `SELECT ` + channelsSelectList + `
 		FROM channels
 	`
 
@@ -212,7 +199,7 @@ func (r *Repository) UpdateChannel(ctx context.Context, id uuid.UUID, req *model
 		"channels",
 		id,
 		updates,
-		"id, name, slug, redis_channel, description, rules, rules_version, enabled, created_at, updated_at",
+		channelsSelectList,
 	)
 	if err != nil {
 		return nil, err
@@ -224,8 +211,7 @@ func (r *Repository) UpdateChannel(ctx context.Context, id uuid.UUID, req *model
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, models.ErrNotFound
 		}
-		var pqErr *pq.Error
-		if errors.As(err, &pqErr) && pqErr.Code == "23505" {
+		if isPQUniqueViolation(err) {
 			return nil, models.ErrAlreadyExists
 		}
 		return nil, fmt.Errorf("failed to update channel: %w", err)
@@ -275,8 +261,14 @@ func buildUpdateQuery(table string, id uuid.UUID, updates map[string]any, return
 	args = make([]any, 0, argsCap)
 	argPos := 1
 
-	// Add update fields
-	for field, value := range updates {
+	// Add update fields in deterministic order (sorted by column name)
+	keys := make([]string, 0, len(updates))
+	for k := range updates {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	for _, field := range keys {
+		value := updates[field]
 		updateFields = append(updateFields, fmt.Sprintf("%s = $%d", field, argPos))
 		args = append(args, value)
 		argPos++
@@ -298,4 +290,10 @@ func buildUpdateQuery(table string, id uuid.UUID, updates map[string]any, return
 	`, table, strings.Join(updateFields, ", "), argPos, returningFields)
 
 	return query, args, nil
+}
+
+// isPQUniqueViolation reports whether err is a PostgreSQL unique violation (23505)
+func isPQUniqueViolation(err error) bool {
+	var pqErr *pq.Error
+	return errors.As(err, &pqErr) && pqErr.Code == "23505"
 }
