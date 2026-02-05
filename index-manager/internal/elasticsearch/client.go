@@ -687,7 +687,7 @@ func (c *Client) SearchAllClassifiedContent(ctx context.Context, query map[strin
 		return nil, fmt.Errorf("failed to execute search: %w", err)
 	}
 
-	if res.StatusCode >= 400 {
+	if res.StatusCode >= http.StatusBadRequest {
 		defer func() {
 			_ = res.Body.Close()
 		}()
