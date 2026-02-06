@@ -99,6 +99,8 @@ INSERT INTO classification_rules (topic, keywords, priority) VALUES
 3. Topic Detection
 4. Source Reputation
 5. **Crime Classification** (hybrid rule + ML)
+
+**IMPORTANT**: `Classify()` in `classifier.go` is near the 100-line `funlen` limit. Optional classifiers (crime, mining, location) are extracted into `runOptionalClassifiers()`. When adding new classification steps, add them to that helper, NOT to `Classify()` directly.
 6. **Mining Classification** (hybrid rule + ML, optional)
 7. **Location Classification** (content-based)
 
