@@ -3,9 +3,10 @@ FROM golang:1.25.7-alpine AS builder
 
 RUN apk add --no-cache ca-certificates
 
-# Prepare workspace for replace ../infrastructure
+# Prepare workspace for replace directives (../infrastructure, ../index-manager)
 WORKDIR /build
 COPY infrastructure ./infrastructure
+COPY index-manager ./index-manager
 
 # Move into search module
 WORKDIR /build/search
