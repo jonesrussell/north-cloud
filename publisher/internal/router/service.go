@@ -265,8 +265,13 @@ type Article struct {
 	Sort []any `json:"-"`
 }
 
-// fetchArticles fetches articles from all classified indexes using search_after
-func (s *Service) fetchArticles(ctx context.Context, indexes []string) ([]Article, error) {
+// classifiedContentWildcard matches all classified content indexes in Elasticsearch.
+const classifiedContentWildcard = "*_classified_content"
+
+// fetchArticles fetches articles from all classified indexes using search_after.
+// Uses a wildcard pattern instead of listing individual indexes to avoid exceeding
+// Elasticsearch's HTTP line length limit when many indexes exist.
+func (s *Service) fetchArticles(ctx context.Context, _ []string) ([]Article, error) {
 	query := s.buildESQuery()
 
 	queryJSON, err := json.Marshal(query)
@@ -276,7 +281,7 @@ func (s *Service) fetchArticles(ctx context.Context, indexes []string) ([]Articl
 
 	res, err := s.esClient.Search(
 		s.esClient.Search.WithContext(ctx),
-		s.esClient.Search.WithIndex(indexes...),
+		s.esClient.Search.WithIndex(classifiedContentWildcard),
 		s.esClient.Search.WithBody(bytes.NewReader(queryJSON)),
 		s.esClient.Search.WithSize(s.config.BatchSize),
 	)

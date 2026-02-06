@@ -4,7 +4,7 @@ dotenv: ['../.env']
 
 vars:
   BINARY_NAME: publisher
-  MAIN_PATH: ./main.go
+  MAIN_PATH: .
   BUILD_DIR: ./bin
   DOCKER_IMAGE: north-cloud-publisher
   CONFIG_FILE: config.yml
