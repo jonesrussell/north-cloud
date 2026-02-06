@@ -25,7 +25,6 @@ import type { OverviewAggregation } from '@/types/aggregation'
 const router = useRouter()
 const healthStore = useHealthStore()
 const metricsStore = useMetricsStore()
-// JobStatsCard now uses TanStack Query internally via useJobs()
 
 // Intelligence overview from aggregations
 const intelligenceOverview = ref<OverviewAggregation | null>(null)
@@ -76,16 +75,12 @@ const HEALTH_INTERVAL = 30000 // 30 seconds
 const METRICS_INTERVAL = 30000 // 30 seconds
 
 onMounted(() => {
-  // Start polling for health and metrics
-  // Jobs data is automatically fetched by JobStatsCard via TanStack Query
   healthStore.startPolling(HEALTH_INTERVAL)
   metricsStore.startPolling(METRICS_INTERVAL)
-  // Load intelligence overview
   loadIntelligenceOverview()
 })
 
 onUnmounted(() => {
-  // Stop polling when leaving the view
   healthStore.stopPolling()
   metricsStore.stopPolling()
 })
@@ -96,22 +91,24 @@ function goToJobs() {
 </script>
 
 <template>
-  <div class="space-y-6">
+  <div class="space-y-6 animate-fade-up">
     <!-- Page Header -->
     <div>
-      <h1 class="text-3xl font-bold tracking-tight">
+      <h1 class="text-2xl font-semibold tracking-tight">
         Pipeline Monitor
       </h1>
-      <p class="mt-1 text-muted-foreground">
-        Overview of your content pipeline health and throughput
+      <p class="mt-0.5 text-sm text-muted-foreground">
+        Content pipeline health and throughput
       </p>
     </div>
 
     <!-- Pipeline Flow -->
     <Card>
-      <CardHeader>
-        <CardTitle>Content Flow Today</CardTitle>
-        <CardDescription>
+      <CardHeader class="pb-3">
+        <CardTitle class="text-sm font-medium uppercase tracking-wider text-muted-foreground">
+          Content Flow Today
+        </CardTitle>
+        <CardDescription class="text-xs">
           Track content as it moves through each stage. &quot;Today&quot; is each service&apos;s server-local date.
         </CardDescription>
       </CardHeader>
@@ -121,7 +118,7 @@ function goToJobs() {
     </Card>
 
     <!-- Metrics Grid -->
-    <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+    <div class="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
       <MetricCard
         title="Items Crawled"
         :value="metrics.contentToday"
@@ -150,19 +147,19 @@ function goToJobs() {
 
     <!-- Intelligence Overview -->
     <Card v-if="intelligenceOverview || intelligenceLoading">
-      <CardHeader>
-        <CardTitle class="flex items-center gap-2">
-          <Brain class="h-5 w-5" />
+      <CardHeader class="pb-3">
+        <CardTitle class="flex items-center gap-2 text-sm font-medium uppercase tracking-wider text-muted-foreground">
+          <Brain class="h-4 w-4" />
           Intelligence Overview
         </CardTitle>
-        <CardDescription>
+        <CardDescription class="text-xs">
           Content classification insights across all indexed documents
         </CardDescription>
       </CardHeader>
       <CardContent>
         <div
           v-if="intelligenceLoading"
-          class="text-center py-4 text-muted-foreground"
+          class="text-center py-4 text-xs text-muted-foreground font-mono"
         >
           Loading intelligence data...
         </div>
@@ -171,31 +168,31 @@ function goToJobs() {
           class="grid gap-6 md:grid-cols-2 lg:grid-cols-4"
         >
           <!-- Total Documents -->
-          <div class="space-y-1">
-            <p class="text-sm text-muted-foreground">
+          <div class="space-y-0.5">
+            <p class="text-[10px] font-mono uppercase tracking-widest text-muted-foreground">
               Total Documents
             </p>
-            <p class="text-2xl font-bold">
+            <p class="text-2xl font-semibold font-mono tracking-tight">
               {{ intelligenceOverview.total_documents.toLocaleString() }}
             </p>
           </div>
 
           <!-- Crime Related -->
-          <div class="space-y-1">
-            <p class="text-sm text-muted-foreground">
+          <div class="space-y-0.5">
+            <p class="text-[10px] font-mono uppercase tracking-widest text-muted-foreground">
               Crime Related
             </p>
-            <p class="text-2xl font-bold text-red-500">
+            <p class="text-2xl font-semibold font-mono tracking-tight text-red-500">
               {{ crimePercentage }}%
             </p>
-            <p class="text-xs text-muted-foreground">
+            <p class="text-[10px] font-mono text-muted-foreground">
               {{ intelligenceOverview.total_crime_related.toLocaleString() }} articles
             </p>
           </div>
 
           <!-- Top Crime Types -->
-          <div class="space-y-2">
-            <p class="text-sm text-muted-foreground flex items-center gap-1">
+          <div class="space-y-1.5">
+            <p class="text-[10px] font-mono uppercase tracking-widest text-muted-foreground flex items-center gap-1">
               <AlertTriangle class="h-3 w-3" />
               Top Crime Types
             </p>
@@ -204,20 +201,19 @@ function goToJobs() {
                 v-for="type in intelligenceOverview.top_crime_types?.slice(0, 3)"
                 :key="type"
                 variant="secondary"
-                class="text-xs"
               >
                 {{ type.replace(/_/g, ' ') }}
               </Badge>
               <span
                 v-if="!intelligenceOverview.top_crime_types?.length"
-                class="text-xs text-muted-foreground"
+                class="text-xs text-muted-foreground font-mono"
               >None</span>
             </div>
           </div>
 
           <!-- Top Cities -->
-          <div class="space-y-2">
-            <p class="text-sm text-muted-foreground flex items-center gap-1">
+          <div class="space-y-1.5">
+            <p class="text-[10px] font-mono uppercase tracking-widest text-muted-foreground flex items-center gap-1">
               <MapPin class="h-3 w-3" />
               Top Cities
             </p>
@@ -226,13 +222,12 @@ function goToJobs() {
                 v-for="city in intelligenceOverview.top_cities?.slice(0, 3)"
                 :key="city"
                 variant="outline"
-                class="text-xs"
               >
                 {{ city }}
               </Badge>
               <span
                 v-if="!intelligenceOverview.top_cities?.length"
-                class="text-xs text-muted-foreground"
+                class="text-xs text-muted-foreground font-mono"
               >None</span>
             </div>
           </div>
@@ -243,17 +238,17 @@ function goToJobs() {
           v-if="intelligenceOverview?.quality_distribution"
           class="mt-4 pt-4 border-t"
         >
-          <p class="text-sm text-muted-foreground mb-2">
+          <p class="text-[10px] font-mono uppercase tracking-widest text-muted-foreground mb-2">
             Quality Distribution
           </p>
-          <div class="flex h-3 rounded-full overflow-hidden bg-muted">
+          <div class="flex h-2 rounded-sm overflow-hidden bg-muted">
             <div
               class="bg-green-500"
               :style="{ width: `${(intelligenceOverview.quality_distribution.high / intelligenceOverview.total_documents) * 100}%` }"
               :title="`High: ${intelligenceOverview.quality_distribution.high}`"
             />
             <div
-              class="bg-yellow-500"
+              class="bg-amber-500"
               :style="{ width: `${(intelligenceOverview.quality_distribution.medium / intelligenceOverview.total_documents) * 100}%` }"
               :title="`Medium: ${intelligenceOverview.quality_distribution.medium}`"
             />
@@ -263,7 +258,7 @@ function goToJobs() {
               :title="`Low: ${intelligenceOverview.quality_distribution.low}`"
             />
           </div>
-          <div class="flex justify-between text-xs text-muted-foreground mt-1">
+          <div class="flex justify-between text-[10px] font-mono text-muted-foreground mt-1">
             <span>High ({{ intelligenceOverview.quality_distribution.high }})</span>
             <span>Medium ({{ intelligenceOverview.quality_distribution.medium }})</span>
             <span>Low ({{ intelligenceOverview.quality_distribution.low }})</span>
@@ -274,19 +269,21 @@ function goToJobs() {
         <div class="mt-4 pt-4 border-t flex gap-2">
           <Button
             variant="outline"
-            size="sm"
+            size="xs"
+            class="font-mono"
             @click="router.push('/intelligence/crime')"
           >
             Crime Details
-            <ArrowRight class="ml-1 h-4 w-4" />
+            <ArrowRight class="ml-1 h-3 w-3" />
           </Button>
           <Button
             variant="outline"
-            size="sm"
+            size="xs"
+            class="font-mono"
             @click="router.push('/intelligence/location')"
           >
             Location Details
-            <ArrowRight class="ml-1 h-4 w-4" />
+            <ArrowRight class="ml-1 h-3 w-3" />
           </Button>
         </div>
       </CardContent>
@@ -294,21 +291,24 @@ function goToJobs() {
 
     <!-- Jobs Summary -->
     <Card>
-      <CardHeader class="flex flex-row items-center justify-between">
+      <CardHeader class="flex flex-row items-center justify-between pb-3">
         <div>
-          <CardTitle class="flex items-center gap-2">
-            <Briefcase class="h-5 w-5" />
+          <CardTitle class="flex items-center gap-2 text-sm font-medium uppercase tracking-wider text-muted-foreground">
+            <Briefcase class="h-4 w-4" />
             Crawl Jobs
           </CardTitle>
-          <CardDescription>Current status of all crawler jobs</CardDescription>
+          <CardDescription class="text-xs">
+            Current status of all crawler jobs
+          </CardDescription>
         </div>
         <Button
           variant="outline"
-          size="sm"
+          size="xs"
+          class="font-mono"
           @click="goToJobs"
         >
           View All
-          <ArrowRight class="ml-1 h-4 w-4" />
+          <ArrowRight class="ml-1 h-3 w-3" />
         </Button>
       </CardHeader>
       <CardContent>
@@ -317,12 +317,16 @@ function goToJobs() {
     </Card>
 
     <!-- Bottom Row: Health + Quick Actions -->
-    <div class="grid gap-4 md:grid-cols-3">
+    <div class="grid gap-3 md:grid-cols-3">
       <!-- System Health -->
       <Card class="md:col-span-2">
-        <CardHeader>
-          <CardTitle>System Health</CardTitle>
-          <CardDescription>Status of all pipeline services</CardDescription>
+        <CardHeader class="pb-3">
+          <CardTitle class="text-sm font-medium uppercase tracking-wider text-muted-foreground">
+            System Health
+          </CardTitle>
+          <CardDescription class="text-xs">
+            Status of all pipeline services
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <div class="flex flex-wrap gap-3">

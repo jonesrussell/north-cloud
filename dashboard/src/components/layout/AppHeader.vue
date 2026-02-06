@@ -89,26 +89,32 @@ const healthBadgeVariant = computed(() => {
 const healthLabel = computed(() => {
   switch (healthStatus.value) {
     case 'healthy':
-      return 'All Systems OK'
+      return 'OK'
     case 'degraded':
-      return 'Partial Outage'
+      return 'DEGRADED'
     case 'unhealthy':
     default:
-      return 'System Issues'
+      return 'DOWN'
   }
 })
 </script>
 
 <template>
-  <header class="sticky top-0 z-40 flex h-16 items-center gap-4 border-b bg-background px-4 md:px-6">
+  <header
+    :class="cn(
+      'sticky top-0 z-40 flex h-14 items-center gap-4 border-b bg-background/95 backdrop-blur-sm px-4 md:px-6',
+      healthStatus === 'healthy' ? 'border-b-primary/10' : ''
+    )"
+  >
     <!-- Mobile menu button -->
     <Button
       v-if="isMobile"
       variant="ghost"
       size="icon"
+      class="h-8 w-8"
       @click="openMobile"
     >
-      <Menu class="h-5 w-5" />
+      <Menu class="h-4 w-4" />
       <span class="sr-only">Toggle menu</span>
     </Button>
 
@@ -125,21 +131,26 @@ const healthLabel = computed(() => {
           >
             <router-link
               :to="crumb.path"
-              class="hover:text-foreground"
+              class="font-mono text-xs text-muted-foreground hover:text-foreground transition-colors"
             >
               {{ crumb.label }}
             </router-link>
           </BreadcrumbLink>
-          <BreadcrumbPage v-else>
+          <BreadcrumbPage
+            v-else
+            class="font-mono text-xs"
+          >
             {{ crumb.label }}
           </BreadcrumbPage>
         </BreadcrumbItem>
-        <BreadcrumbSeparator v-if="index < breadcrumbs.length - 1" />
+        <BreadcrumbSeparator v-if="index < breadcrumbs.length - 1">
+          <span class="font-mono text-muted-foreground/50">/</span>
+        </BreadcrumbSeparator>
       </template>
     </Breadcrumb>
 
     <!-- Page title (mobile) -->
-    <h1 class="md:hidden font-semibold">
+    <h1 class="md:hidden font-mono text-sm font-medium tracking-tight">
       {{ pageTitle }}
     </h1>
 
@@ -158,13 +169,13 @@ const healthLabel = computed(() => {
       <!-- Health Status -->
       <Badge
         :variant="healthBadgeVariant"
-        class="hidden sm:flex"
+        class="hidden sm:flex font-mono text-[10px] tracking-wider"
       >
         <span
           :class="
-            cn('mr-1.5 h-2 w-2 rounded-full', {
-              'bg-green-500': healthStatus === 'healthy',
-              'bg-yellow-500': healthStatus === 'degraded',
+            cn('mr-1.5 h-1.5 w-1.5 rounded-full', {
+              'bg-green-500 animate-pulse-glow': healthStatus === 'healthy',
+              'bg-amber-500': healthStatus === 'degraded',
               'bg-red-500': healthStatus === 'unhealthy',
             })
           "
@@ -180,24 +191,26 @@ const healthLabel = computed(() => {
         <DropdownMenuTrigger>
           <Button
             variant="ghost"
-            class="relative h-9 w-9 rounded-full"
+            class="relative h-8 w-8 rounded-sm"
           >
-            <Avatar class="h-9 w-9">
-              <AvatarFallback>
-                <User class="h-4 w-4" />
+            <Avatar class="h-8 w-8 rounded-sm">
+              <AvatarFallback class="rounded-sm bg-primary/10 text-primary">
+                <User class="h-3.5 w-3.5" />
               </AvatarFallback>
             </Avatar>
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent
           align="end"
-          class="w-56"
+          class="w-48"
         >
-          <DropdownMenuLabel>My Account</DropdownMenuLabel>
+          <DropdownMenuLabel class="font-mono text-xs">
+            Account
+          </DropdownMenuLabel>
           <DropdownMenuSeparator />
           <DropdownMenuItem @select="handleLogout">
-            <LogOut class="mr-2 h-4 w-4" />
-            <span>Log out</span>
+            <LogOut class="mr-2 h-3.5 w-3.5" />
+            <span class="text-sm">Log out</span>
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>

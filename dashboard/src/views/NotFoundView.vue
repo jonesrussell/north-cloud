@@ -7,26 +7,41 @@ const router = useRouter()
 </script>
 
 <template>
-  <div class="min-h-[80vh] flex flex-col items-center justify-center text-center px-4">
-    <div class="text-9xl font-bold text-muted-foreground/20">
-      404
+  <div class="min-h-[80vh] flex flex-col items-center justify-center text-center px-4 animate-fade-up">
+    <!-- Giant 404 with noise effect -->
+    <div class="relative select-none">
+      <span class="text-[10rem] leading-none font-mono font-bold text-muted-foreground/5 tracking-tighter">
+        404
+      </span>
+      <span
+        class="absolute inset-0 text-[10rem] leading-none font-mono font-bold text-muted-foreground/10 tracking-tighter"
+        style="clip-path: inset(0 0 50% 0); transform: translateX(2px);"
+      >
+        404
+      </span>
     </div>
-    <h1 class="mt-4 text-3xl font-bold tracking-tight">
+    <h1 class="mt-2 text-lg font-mono font-medium tracking-tight uppercase">
       Page not found
     </h1>
-    <p class="mt-2 text-muted-foreground max-w-md">
-      Sorry, we couldn't find the page you're looking for. It may have been moved or doesn't exist.
+    <p class="mt-2 text-sm text-muted-foreground max-w-sm font-mono">
+      The requested resource does not exist or has been relocated.
     </p>
-    <div class="mt-8 flex gap-4">
+    <div class="mt-8 flex gap-3">
       <Button
         variant="outline"
+        size="sm"
+        class="font-mono"
         @click="router.back()"
       >
-        <ArrowLeft class="mr-2 h-4 w-4" />
+        <ArrowLeft class="mr-2 h-3.5 w-3.5" />
         Go back
       </Button>
-      <Button @click="router.push('/')">
-        <Home class="mr-2 h-4 w-4" />
+      <Button
+        size="sm"
+        class="font-mono"
+        @click="router.push('/')"
+      >
+        <Home class="mr-2 h-3.5 w-3.5" />
         Home
       </Button>
     </div>

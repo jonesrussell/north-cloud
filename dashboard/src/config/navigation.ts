@@ -108,6 +108,34 @@ export const navigation: NavSection[] = [
   },
 ]
 
+// Type alias for command palette compatibility
+export type NavigationItem = {
+  label: string
+  path: string
+  description?: string
+  external?: boolean
+}
+
+// Flatten all navigation items into a single list
+export function getAllNavigationItems(): NavigationItem[] {
+  const items: NavigationItem[] = []
+  for (const section of navigation) {
+    if (section.path) {
+      items.push({ label: section.title, path: section.path })
+    }
+    if (section.children) {
+      for (const child of section.children) {
+        items.push({
+          label: child.title,
+          path: child.path,
+          description: section.title,
+        })
+      }
+    }
+  }
+  return items
+}
+
 // Helper to find the current section based on route path
 export function getCurrentSection(path: string): NavSection | undefined {
   for (const section of navigation) {
