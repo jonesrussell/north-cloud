@@ -4,8 +4,157 @@
 package router
 
 import (
+	"encoding/json"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
+
+func TestArticle_UnmarshalNestedCrimeFields(t *testing.T) {
+	t.Helper()
+
+	esJSON := `{
+		"title": "Man charged with murder in downtown Vancouver",
+		"body": "A man has been charged...",
+		"canonical_url": "https://example.com/article",
+		"source": "example_com",
+		"quality_score": 75,
+		"content_type": "article",
+		"is_crime_related": true,
+		"crime": {
+			"street_crime_relevance": "core_street_crime",
+			"sub_label": "",
+			"crime_types": ["violent_crime"],
+			"location_specificity": "local_canada",
+			"final_confidence": 0.95,
+			"homepage_eligible": true,
+			"category_pages": ["violent-crime", "crime"],
+			"review_required": false
+		},
+		"location": {
+			"city": "vancouver",
+			"province": "BC",
+			"country": "canada",
+			"specificity": "city",
+			"confidence": 0.85
+		}
+	}`
+
+	var article Article
+	err := json.Unmarshal([]byte(esJSON), &article)
+	require.NoError(t, err)
+
+	// Nested structs populated
+	require.NotNil(t, article.Crime)
+	assert.Equal(t, "core_street_crime", article.Crime.Relevance)
+	assert.True(t, article.Crime.Homepage)
+	assert.Equal(t, []string{"violent-crime", "crime"}, article.Crime.Categories)
+
+	require.NotNil(t, article.Location)
+	assert.Equal(t, "vancouver", article.Location.City)
+	assert.Equal(t, "BC", article.Location.Province)
+	assert.Equal(t, "canada", article.Location.Country)
+}
+
+func TestArticle_FullUnmarshalPipeline(t *testing.T) {
+	t.Helper()
+
+	esJSON := `{
+		"title": "Drug bust in Toronto",
+		"body": "Toronto police seized...",
+		"canonical_url": "https://example.com/drug-bust",
+		"source": "example_com",
+		"quality_score": 80,
+		"content_type": "article",
+		"is_crime_related": true,
+		"crime": {
+			"street_crime_relevance": "core_street_crime",
+			"sub_label": "",
+			"crime_types": ["drug_crime"],
+			"location_specificity": "local_canada",
+			"final_confidence": 0.90,
+			"homepage_eligible": true,
+			"category_pages": ["drug-crime", "crime"],
+			"review_required": false
+		},
+		"location": {
+			"city": "toronto",
+			"province": "ON",
+			"country": "canada",
+			"specificity": "city",
+			"confidence": 0.90
+		}
+	}`
+
+	var article Article
+	err := json.Unmarshal([]byte(esJSON), &article)
+	require.NoError(t, err)
+	article.extractNestedFields()
+
+	// Crime channels should now generate correctly
+	crimeChannels := GenerateCrimeChannels(&article)
+	assert.Contains(t, crimeChannels, "crime:homepage")
+	assert.Contains(t, crimeChannels, "crime:category:drug-crime")
+	assert.Contains(t, crimeChannels, "crime:category:crime")
+
+	// Location channels should now generate correctly
+	locationChannels := GenerateLocationChannels(&article)
+	assert.Contains(t, locationChannels, "crime:local:toronto")
+	assert.Contains(t, locationChannels, "crime:province:on")
+	assert.Contains(t, locationChannels, "crime:canada")
+}
+
+func TestArticle_ExtractNestedFields_Crime(t *testing.T) {
+	t.Helper()
+
+	article := Article{
+		Crime: &CrimeData{
+			Relevance:  "core_street_crime",
+			SubLabel:   "",
+			CrimeTypes: []string{"violent_crime"},
+			Confidence: 0.95,
+			Homepage:   true,
+			Categories: []string{"violent-crime", "crime"},
+		},
+		Location: &LocationData{
+			City:        "vancouver",
+			Province:    "BC",
+			Country:     "canada",
+			Specificity: "city",
+			Confidence:  0.85,
+		},
+	}
+
+	article.extractNestedFields()
+
+	// Crime flat fields populated
+	assert.Equal(t, "core_street_crime", article.CrimeRelevance)
+	assert.Empty(t, article.CrimeSubLabel)
+	assert.Equal(t, []string{"violent_crime"}, article.CrimeTypes)
+	assert.True(t, article.HomepageEligible)
+	assert.Equal(t, []string{"violent-crime", "crime"}, article.CategoryPages)
+
+	// Location flat fields populated
+	assert.Equal(t, "vancouver", article.LocationCity)
+	assert.Equal(t, "BC", article.LocationProvince)
+	assert.Equal(t, "canada", article.LocationCountry)
+	assert.Equal(t, "city", article.LocationSpecificity)
+	assert.InDelta(t, 0.85, article.LocationConfidence, 0.001)
+}
+
+func TestArticle_ExtractNestedFields_NilCrime(t *testing.T) {
+	t.Helper()
+
+	article := Article{
+		CrimeRelevance: "should-not-change",
+	}
+
+	article.extractNestedFields()
+
+	// Flat fields untouched when nested structs are nil
+	assert.Equal(t, "should-not-change", article.CrimeRelevance)
+}
 
 func TestCrimeRouter_Route_HomepageEligible(t *testing.T) {
 	t.Helper()
