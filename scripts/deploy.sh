@@ -40,11 +40,27 @@ echo -e "${GREEN}=== North Cloud Deployment Script ===${NC}"
 echo "Deployment directory: $DEPLOY_DIR"
 echo "Timestamp: $(date -u +"%Y-%m-%d %H:%M:%S UTC")"
 
+# Services that are built but not deployed via docker-compose
+NON_COMPOSE_SERVICES="mcp-north-cloud"
+
 # Parse changed services
 if [ -n "${CHANGED_SERVICES:-}" ]; then
-  # Convert comma-separated to space-separated
-  SERVICES_TO_UPDATE=$(echo "$CHANGED_SERVICES" | tr ',' ' ')
-  echo -e "${BLUE}Selective deployment: $SERVICES_TO_UPDATE${NC}"
+  # Convert comma-separated to space-separated, filtering out non-compose services
+  SERVICES_TO_UPDATE=""
+  for svc in $(echo "$CHANGED_SERVICES" | tr ',' ' '); do
+    if echo "$NON_COMPOSE_SERVICES" | grep -qw "$svc"; then
+      echo -e "${BLUE}Skipping $svc (build-only, not a compose service)${NC}"
+    else
+      SERVICES_TO_UPDATE="$SERVICES_TO_UPDATE $svc"
+    fi
+  done
+  SERVICES_TO_UPDATE=$(echo "$SERVICES_TO_UPDATE" | xargs)  # trim whitespace
+  if [ -n "$SERVICES_TO_UPDATE" ]; then
+    echo -e "${BLUE}Selective deployment: $SERVICES_TO_UPDATE${NC}"
+  else
+    echo -e "${GREEN}No compose services to deploy (all changes were build-only). Done.${NC}"
+    exit 0
+  fi
 else
   SERVICES_TO_UPDATE=""
   echo -e "${BLUE}Full deployment: all services${NC}"
