@@ -310,6 +310,30 @@ services:
       start_period: 15s
 
   # ------------------------------------------------------------
+  # Mining ML Classifier
+  # ------------------------------------------------------------
+
+  mining-ml:
+    <<: *service-defaults
+    build:
+      context: ./mining-ml
+      dockerfile: Dockerfile
+    image: docker.io/jonesrussell/mining-ml:latest
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 512M
+    environment:
+      MODEL_PATH: /app/models
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8077/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+  # ------------------------------------------------------------
   # HTTP Replay Proxy (nc-http-proxy)
   # ------------------------------------------------------------
 

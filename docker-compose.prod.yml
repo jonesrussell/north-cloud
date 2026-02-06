@@ -178,6 +178,8 @@ services:
         condition: service_healthy
       crime-ml:
         condition: service_healthy
+      mining-ml:
+        condition: service_healthy
     environment:
       POSTGRES_HOST: postgres-classifier
       POSTGRES_PORT: 5432
@@ -194,6 +196,8 @@ services:
       CLASSIFIER_PORT: 8070
       CRIME_ENABLED: "true"
       CRIME_ML_SERVICE_URL: http://crime-ml:8076
+      MINING_ENABLED: "true"
+      MINING_ML_SERVICE_URL: http://mining-ml:8077
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:
@@ -204,6 +208,13 @@ services:
       timeout: 10s
       retries: 3
       start_period: 25s
+
+  # ------------------------------------------------------------
+  # Mining ML Classifier (Prod)
+  # ------------------------------------------------------------
+  mining-ml:
+    <<: *prod-defaults
+    image: docker.io/jonesrussell/mining-ml:latest
 
   # ------------------------------------------------------------
   # Index Manager (Prod)
