@@ -190,7 +190,13 @@ case "$FORMAT" in
             MATRIX_JSON="$MATRIX_JSON]"
 
             echo "services_matrix={\"service\":$MATRIX_JSON}"
-            echo "services_list=$(echo $CHANGED_SERVICES_STR | tr ' ' ',')"
+            # Map directory names to deploy names for docker compose
+            DEPLOY_LIST=""
+            for svc in $CHANGED_SERVICES_STR; do
+                DEPLOY_NAME="${SERVICE_TO_DEPLOY_NAME[$svc]:-$svc}"
+                DEPLOY_LIST="${DEPLOY_LIST:+$DEPLOY_LIST,}$DEPLOY_NAME"
+            done
+            echo "services_list=$DEPLOY_LIST"
             echo "has_services=true"
         else
             echo 'services_matrix={"service":[]}'
