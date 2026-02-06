@@ -668,12 +668,12 @@ func (s *IntervalScheduler) runJob(jobExec *JobExecution) {
 	}
 
 	// Get metrics for final log
-	crawlerMetrics := s.crawler.GetMetrics()
+	jobSummary := s.crawler.GetJobLogger().BuildSummary()
 	writeLog(logWriter, "info", "Job completed successfully", job.ID, execution.ID, map[string]any{
-		"duration_ms":   time.Since(startTime).Milliseconds(),
-		"items_crawled": crawlerMetrics.ProcessedCount,
-		"items_indexed": crawlerMetrics.ProcessedCount,
-		"error_count":   crawlerMetrics.ErrorCount,
+		"duration_ms":     time.Since(startTime).Milliseconds(),
+		"pages_crawled":   jobSummary.PagesCrawled,
+		"items_extracted": jobSummary.ItemsExtracted,
+		"error_count":     jobSummary.ErrorsCount,
 	})
 
 	s.handleJobSuccess(jobExec, &startTime)
@@ -687,11 +687,10 @@ func (s *IntervalScheduler) handleJobSuccess(jobExec *JobExecution, startTime *t
 	now := time.Now()
 	durationMs := time.Since(*startTime).Milliseconds()
 
-	// Get metrics from crawler
-	metrics := s.crawler.GetMetrics()
-	itemsCrawled := int(metrics.ProcessedCount)
-	// Items are indexed immediately after crawling, so indexed count equals crawled count
-	itemsIndexed := itemsCrawled
+	// Get metrics from job logger
+	summary := s.crawler.GetJobLogger().BuildSummary()
+	itemsCrawled := int(summary.PagesCrawled)
+	itemsIndexed := int(summary.ItemsExtracted)
 
 	// Update execution record
 	execution.Status = string(StateCompleted)
