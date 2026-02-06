@@ -96,7 +96,7 @@ type CreateRouteRequest struct {
 }
 
 // ListRoutes lists all publishing routes
-func (c *PublisherClient) ListRoutes(sourceID, channelID string) ([]Route, error) {
+func (c *PublisherClient) ListRoutes(ctx context.Context, sourceID, channelID string) ([]Route, error) {
 	endpoint := fmt.Sprintf("%s/api/v1/routes", c.baseURL)
 
 	params := url.Values{}
@@ -111,7 +111,7 @@ func (c *PublisherClient) ListRoutes(sourceID, channelID string) ([]Route, error
 		endpoint = fmt.Sprintf("%s?%s", endpoint, params.Encode())
 	}
 
-	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, endpoint, http.NoBody)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, http.NoBody)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
@@ -146,7 +146,7 @@ func (c *PublisherClient) ListRoutes(sourceID, channelID string) ([]Route, error
 // CreateRoute creates a new publishing route
 //
 //nolint:dupl // Similar HTTP client pattern across different services is acceptable
-func (c *PublisherClient) CreateRoute(req CreateRouteRequest) (*Route, error) {
+func (c *PublisherClient) CreateRoute(ctx context.Context, req CreateRouteRequest) (*Route, error) {
 	endpoint := fmt.Sprintf("%s/api/v1/routes", c.baseURL)
 
 	body, err := json.Marshal(req)
@@ -154,7 +154,7 @@ func (c *PublisherClient) CreateRoute(req CreateRouteRequest) (*Route, error) {
 		return nil, fmt.Errorf("failed to marshal request: %w", err)
 	}
 
-	httpReq, err := http.NewRequestWithContext(context.Background(), http.MethodPost, endpoint, bytes.NewReader(body))
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, bytes.NewReader(body))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
@@ -193,10 +193,10 @@ func (c *PublisherClient) CreateRoute(req CreateRouteRequest) (*Route, error) {
 // DeleteRoute deletes a publishing route
 //
 //nolint:dupl // Similar HTTP client pattern across different services is acceptable
-func (c *PublisherClient) DeleteRoute(routeID string) error {
+func (c *PublisherClient) DeleteRoute(ctx context.Context, routeID string) error {
 	endpoint := fmt.Sprintf("%s/api/v1/routes/%s", c.baseURL, routeID)
 
-	req, err := http.NewRequestWithContext(context.Background(), http.MethodDelete, endpoint, http.NoBody)
+	req, err := http.NewRequestWithContext(ctx, http.MethodDelete, endpoint, http.NoBody)
 	if err != nil {
 		return fmt.Errorf("failed to create request: %w", err)
 	}
@@ -226,10 +226,10 @@ func (c *PublisherClient) DeleteRoute(routeID string) error {
 }
 
 // PreviewRoute previews articles matching route filters
-func (c *PublisherClient) PreviewRoute(routeID string) ([]PreviewArticle, error) {
+func (c *PublisherClient) PreviewRoute(ctx context.Context, routeID string) ([]PreviewArticle, error) {
 	endpoint := fmt.Sprintf("%s/api/v1/routes/preview?route_id=%s", c.baseURL, routeID)
 
-	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, endpoint, http.NoBody)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, http.NoBody)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
@@ -268,7 +268,7 @@ func (c *PublisherClient) PreviewRoute(routeID string) ([]PreviewArticle, error)
 }
 
 // GetPublishHistory gets publish history with pagination
-func (c *PublisherClient) GetPublishHistory(channelName string, limit, offset int) ([]PublishHistory, error) {
+func (c *PublisherClient) GetPublishHistory(ctx context.Context, channelName string, limit, offset int) ([]PublishHistory, error) {
 	endpoint := fmt.Sprintf("%s/api/v1/publish-history", c.baseURL)
 
 	params := url.Values{}
@@ -286,7 +286,7 @@ func (c *PublisherClient) GetPublishHistory(channelName string, limit, offset in
 		endpoint = fmt.Sprintf("%s?%s", endpoint, params.Encode())
 	}
 
-	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, endpoint, http.NoBody)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, http.NoBody)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
@@ -321,10 +321,10 @@ func (c *PublisherClient) GetPublishHistory(channelName string, limit, offset in
 // GetStats gets publisher statistics
 //
 //nolint:dupl // Similar HTTP client pattern across different services is acceptable
-func (c *PublisherClient) GetStats() (*PublisherStats, error) {
+func (c *PublisherClient) GetStats(ctx context.Context) (*PublisherStats, error) {
 	endpoint := fmt.Sprintf("%s/api/v1/stats/overview", c.baseURL)
 
-	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, endpoint, http.NoBody)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, http.NoBody)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
@@ -353,10 +353,10 @@ func (c *PublisherClient) GetStats() (*PublisherStats, error) {
 }
 
 // ListSources lists all publisher sources
-func (c *PublisherClient) ListSources() ([]PublisherSource, error) {
+func (c *PublisherClient) ListSources(ctx context.Context) ([]PublisherSource, error) {
 	endpoint := fmt.Sprintf("%s/api/v1/sources", c.baseURL)
 
-	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, endpoint, http.NoBody)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, http.NoBody)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
@@ -398,7 +398,7 @@ type CreatePublisherSourceRequest struct {
 // CreatePublisherSource creates a new publisher source (Elasticsearch index mapping)
 //
 //nolint:dupl // Similar HTTP client pattern across different services is acceptable
-func (c *PublisherClient) CreatePublisherSource(req CreatePublisherSourceRequest) (*PublisherSource, error) {
+func (c *PublisherClient) CreatePublisherSource(ctx context.Context, req CreatePublisherSourceRequest) (*PublisherSource, error) {
 	endpoint := fmt.Sprintf("%s/api/v1/sources", c.baseURL)
 
 	body, err := json.Marshal(req)
@@ -406,7 +406,7 @@ func (c *PublisherClient) CreatePublisherSource(req CreatePublisherSourceRequest
 		return nil, fmt.Errorf("failed to marshal request: %w", err)
 	}
 
-	httpReq, err := http.NewRequestWithContext(context.Background(), http.MethodPost, endpoint, bytes.NewReader(body))
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, bytes.NewReader(body))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
@@ -443,10 +443,10 @@ func (c *PublisherClient) CreatePublisherSource(req CreatePublisherSourceRequest
 }
 
 // ListChannels lists all channels
-func (c *PublisherClient) ListChannels() ([]Channel, error) {
+func (c *PublisherClient) ListChannels(ctx context.Context) ([]Channel, error) {
 	endpoint := fmt.Sprintf("%s/api/v1/channels", c.baseURL)
 
-	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, endpoint, http.NoBody)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, http.NoBody)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
@@ -488,7 +488,7 @@ type CreateChannelRequest struct {
 // CreateChannel creates a new publishing channel
 //
 //nolint:dupl // Similar HTTP client pattern across different services is acceptable
-func (c *PublisherClient) CreateChannel(req CreateChannelRequest) (*Channel, error) {
+func (c *PublisherClient) CreateChannel(ctx context.Context, req CreateChannelRequest) (*Channel, error) {
 	endpoint := fmt.Sprintf("%s/api/v1/channels", c.baseURL)
 
 	body, err := json.Marshal(req)
@@ -496,7 +496,7 @@ func (c *PublisherClient) CreateChannel(req CreateChannelRequest) (*Channel, err
 		return nil, fmt.Errorf("failed to marshal request: %w", err)
 	}
 
-	httpReq, err := http.NewRequestWithContext(context.Background(), http.MethodPost, endpoint, bytes.NewReader(body))
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, bytes.NewReader(body))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}

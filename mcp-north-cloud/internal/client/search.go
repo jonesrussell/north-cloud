@@ -63,7 +63,7 @@ type SearchResponse struct {
 // Search performs a full-text search
 //
 //nolint:dupl // Similar HTTP client pattern across different services is acceptable
-func (c *SearchClient) Search(req SearchRequest) (*SearchResponse, error) {
+func (c *SearchClient) Search(ctx context.Context, req SearchRequest) (*SearchResponse, error) {
 	endpoint := fmt.Sprintf("%s/api/v1/search", c.baseURL)
 
 	body, err := json.Marshal(req)
@@ -71,7 +71,7 @@ func (c *SearchClient) Search(req SearchRequest) (*SearchResponse, error) {
 		return nil, fmt.Errorf("failed to marshal request: %w", err)
 	}
 
-	httpReq, err := http.NewRequestWithContext(context.Background(), http.MethodPost, endpoint, bytes.NewReader(body))
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, bytes.NewReader(body))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}

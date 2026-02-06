@@ -361,6 +361,36 @@ services:
       start_period: 10s
 
   # ------------------------------------------------------------
+  # MCP North Cloud (Prod) - stdio server for Cursor/Claude
+  # Connect from host: docker exec -i <container> /app/mcp-north-cloud
+  # ------------------------------------------------------------
+  mcp-north-cloud:
+    <<: *prod-defaults
+    image: docker.io/jonesrussell/mcp-north-cloud:latest
+    command: ["/app/mcp-north-cloud"]
+    depends_on:
+      crawler:
+        condition: service_healthy
+      source-manager:
+        condition: service_healthy
+      publisher:
+        condition: service_healthy
+      classifier:
+        condition: service_healthy
+      search-service:
+        condition: service_healthy
+      index-manager:
+        condition: service_healthy
+    environment:
+      CRAWLER_URL: http://crawler:8080
+      SOURCE_MANAGER_URL: http://source-manager:8050
+      PUBLISHER_URL: http://publisher:8070
+      CLASSIFIER_URL: http://classifier:8070
+      SEARCH_URL: http://search-service:8090
+      INDEX_MANAGER_URL: http://index-manager:8090
+      AUTH_JWT_SECRET: "${AUTH_JWT_SECRET}"
+
+  # ------------------------------------------------------------
   # Dashboard (Prod)
   # ------------------------------------------------------------
   dashboard:

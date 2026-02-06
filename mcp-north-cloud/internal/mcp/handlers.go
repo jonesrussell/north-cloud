@@ -17,7 +17,7 @@ import (
 
 // Auth tool handlers
 
-func (s *Server) handleGetAuthToken(id any, _ json.RawMessage) *Response {
+func (s *Server) handleGetAuthToken(ctx context.Context, id any, _ json.RawMessage) *Response {
 	token, expiresAt, err := s.authClient.GenerateToken()
 	if err != nil {
 		return s.errorResponse(id, InternalError, fmt.Sprintf("Failed to generate token: %v", err))
@@ -48,7 +48,7 @@ type onboardSourceArgs struct {
 	Topics               []string       `json:"topics"`
 }
 
-func (s *Server) handleOnboardSource(id any, arguments json.RawMessage) *Response {
+func (s *Server) handleOnboardSource(ctx context.Context, id any, arguments json.RawMessage) *Response {
 	var args onboardSourceArgs
 	if err := json.Unmarshal(arguments, &args); err != nil {
 		return s.errorResponse(id, InvalidParams, "Invalid arguments: "+err.Error())
@@ -58,7 +58,7 @@ func (s *Server) handleOnboardSource(id any, arguments json.RawMessage) *Respons
 		return errResp
 	}
 
-	return s.executeOnboardWorkflow(id, args)
+	return s.executeOnboardWorkflow(ctx, id, args)
 }
 
 func (s *Server) validateOnboardArgs(id any, args onboardSourceArgs) *Response {
@@ -71,13 +71,13 @@ func (s *Server) validateOnboardArgs(id any, args onboardSourceArgs) *Response {
 	return nil
 }
 
-func (s *Server) executeOnboardWorkflow(id any, args onboardSourceArgs) *Response {
+func (s *Server) executeOnboardWorkflow(ctx context.Context, id any, args onboardSourceArgs) *Response {
 	const maxOnboardSteps = 3
 	result := map[string]any{}
 	stepsCompleted := make([]string, 0, maxOnboardSteps)
 
 	// Step 1: Create the source
-	source, err := s.sourceClient.CreateSource(client.CreateSourceRequest{
+	source, err := s.sourceClient.CreateSource(ctx, client.CreateSourceRequest{
 		Name:      args.Name,
 		URL:       args.URL,
 		Type:      args.SourceType,
@@ -92,7 +92,7 @@ func (s *Server) executeOnboardWorkflow(id any, args onboardSourceArgs) *Respons
 	stepsCompleted = append(stepsCompleted, "source_created")
 
 	// Step 2: Start or schedule crawl
-	stepsCompleted, err = s.onboardCrawlStep(args, source.ID, result, stepsCompleted)
+	stepsCompleted, err = s.onboardCrawlStep(ctx, args, source.ID, result, stepsCompleted)
 	if err != nil {
 		result["crawl_error"] = err.Error()
 		result["steps_completed"] = stepsCompleted
@@ -101,7 +101,7 @@ func (s *Server) executeOnboardWorkflow(id any, args onboardSourceArgs) *Respons
 
 	// Step 3: Create publishing route (optional)
 	if args.ChannelID != "" {
-		stepsCompleted, err = s.onboardRouteStep(args, result, stepsCompleted)
+		stepsCompleted, err = s.onboardRouteStep(ctx, args, result, stepsCompleted)
 		if err != nil {
 			result["route_error"] = err.Error()
 			result["steps_completed"] = stepsCompleted
@@ -114,12 +114,14 @@ func (s *Server) executeOnboardWorkflow(id any, args onboardSourceArgs) *Respons
 	return s.successResponse(id, result)
 }
 
-func (s *Server) onboardCrawlStep(args onboardSourceArgs, sourceID string, result map[string]any, steps []string) ([]string, error) {
+func (s *Server) onboardCrawlStep(
+	ctx context.Context, args onboardSourceArgs, sourceID string, result map[string]any, steps []string,
+) ([]string, error) {
 	var job *client.Job
 	var err error
 
 	if args.CrawlIntervalMinutes > 0 {
-		job, err = s.crawlerClient.CreateJob(client.CreateJobRequest{
+		job, err = s.crawlerClient.CreateJob(ctx, client.CreateJobRequest{
 			SourceID:        sourceID,
 			URL:             args.URL,
 			ScheduleEnabled: true,
@@ -133,7 +135,7 @@ func (s *Server) onboardCrawlStep(args onboardSourceArgs, sourceID string, resul
 		result["crawl_interval"] = fmt.Sprintf("%d %s", args.CrawlIntervalMinutes, args.CrawlIntervalType)
 		steps = append(steps, "crawl_scheduled")
 	} else {
-		job, err = s.crawlerClient.CreateJob(client.CreateJobRequest{
+		job, err = s.crawlerClient.CreateJob(ctx, client.CreateJobRequest{
 			SourceID:        sourceID,
 			URL:             args.URL,
 			ScheduleEnabled: false,
@@ -150,13 +152,13 @@ func (s *Server) onboardCrawlStep(args onboardSourceArgs, sourceID string, resul
 	return steps, nil
 }
 
-func (s *Server) onboardRouteStep(args onboardSourceArgs, result map[string]any, steps []string) ([]string, error) {
+func (s *Server) onboardRouteStep(ctx context.Context, args onboardSourceArgs, result map[string]any, steps []string) ([]string, error) {
 	// First, create a publisher source (Elasticsearch index mapping)
 	// Sanitize name: lowercase, replace spaces/special chars with underscores
 	sanitizedName := sanitizeSourceName(args.Name)
 	indexPattern := sanitizedName + "_classified_content"
 
-	pubSource, err := s.publisherClient.CreatePublisherSource(client.CreatePublisherSourceRequest{
+	pubSource, err := s.publisherClient.CreatePublisherSource(ctx, client.CreatePublisherSourceRequest{
 		Name:         sanitizedName,
 		IndexPattern: indexPattern,
 	})
@@ -173,7 +175,7 @@ func (s *Server) onboardRouteStep(args onboardSourceArgs, result map[string]any,
 		minQuality = defaultMinQualityScore
 	}
 
-	route, err := s.publisherClient.CreateRoute(client.CreateRouteRequest{
+	route, err := s.publisherClient.CreateRoute(ctx, client.CreateRouteRequest{
 		SourceID:        pubSource.ID,
 		ChannelID:       args.ChannelID,
 		MinQualityScore: minQuality,
@@ -214,7 +216,7 @@ func sanitizeSourceName(name string) string {
 
 // Crawler tool handlers
 
-func (s *Server) handleStartCrawl(id any, arguments json.RawMessage) *Response {
+func (s *Server) handleStartCrawl(ctx context.Context, id any, arguments json.RawMessage) *Response {
 	var args struct {
 		SourceID string `json:"source_id"`
 		URL      string `json:"url"`
@@ -228,7 +230,7 @@ func (s *Server) handleStartCrawl(id any, arguments json.RawMessage) *Response {
 		return s.errorResponse(id, InvalidParams, "source_id and url are required")
 	}
 
-	job, err := s.crawlerClient.CreateJob(client.CreateJobRequest{
+	job, err := s.crawlerClient.CreateJob(ctx, client.CreateJobRequest{
 		SourceID:        args.SourceID,
 		URL:             args.URL,
 		ScheduleEnabled: false,
@@ -247,7 +249,7 @@ func (s *Server) handleStartCrawl(id any, arguments json.RawMessage) *Response {
 	})
 }
 
-func (s *Server) handleScheduleCrawl(id any, arguments json.RawMessage) *Response {
+func (s *Server) handleScheduleCrawl(ctx context.Context, id any, arguments json.RawMessage) *Response {
 	var args struct {
 		SourceID        string `json:"source_id"`
 		URL             string `json:"url"`
@@ -273,7 +275,7 @@ func (s *Server) handleScheduleCrawl(id any, arguments json.RawMessage) *Respons
 		return s.errorResponse(id, InvalidParams, "interval_type must be 'minutes', 'hours', or 'days'")
 	}
 
-	job, err := s.crawlerClient.CreateJob(client.CreateJobRequest{
+	job, err := s.crawlerClient.CreateJob(ctx, client.CreateJobRequest{
 		SourceID:        args.SourceID,
 		URL:             args.URL,
 		ScheduleEnabled: true,
@@ -302,7 +304,7 @@ const (
 	maxLimit     = 100
 )
 
-func (s *Server) handleListCrawlJobs(id any, arguments json.RawMessage) *Response {
+func (s *Server) handleListCrawlJobs(ctx context.Context, id any, arguments json.RawMessage) *Response {
 	var args struct {
 		Status string `json:"status"`
 		Limit  int    `json:"limit"`
@@ -311,7 +313,7 @@ func (s *Server) handleListCrawlJobs(id any, arguments json.RawMessage) *Respons
 
 	_ = json.Unmarshal(arguments, &args) // Empty args is okay
 
-	jobs, err := s.crawlerClient.ListJobs(args.Status)
+	jobs, err := s.crawlerClient.ListJobs(ctx, args.Status)
 	if err != nil {
 		return s.errorResponse(id, InternalError, fmt.Sprintf("Failed to list jobs: %v", err))
 	}
@@ -344,7 +346,7 @@ func (s *Server) handleListCrawlJobs(id any, arguments json.RawMessage) *Respons
 	})
 }
 
-func (s *Server) handleControlCrawlJob(id any, arguments json.RawMessage) *Response {
+func (s *Server) handleControlCrawlJob(ctx context.Context, id any, arguments json.RawMessage) *Response {
 	var args struct {
 		JobID  string `json:"job_id"`
 		Action string `json:"action"`
@@ -368,13 +370,13 @@ func (s *Server) handleControlCrawlJob(id any, arguments json.RawMessage) *Respo
 
 	switch args.Action {
 	case "pause":
-		job, err = s.crawlerClient.PauseJob(args.JobID)
+		job, err = s.crawlerClient.PauseJob(ctx, args.JobID)
 		actionMessage = "paused"
 	case "resume":
-		job, err = s.crawlerClient.ResumeJob(args.JobID)
+		job, err = s.crawlerClient.ResumeJob(ctx, args.JobID)
 		actionMessage = "resumed"
 	case "cancel":
-		job, err = s.crawlerClient.CancelJob(args.JobID)
+		job, err = s.crawlerClient.CancelJob(ctx, args.JobID)
 		actionMessage = "cancelled"
 	default:
 		return s.errorResponse(id, InvalidParams, "action must be 'pause', 'resume', or 'cancel'")
@@ -392,7 +394,7 @@ func (s *Server) handleControlCrawlJob(id any, arguments json.RawMessage) *Respo
 	})
 }
 
-func (s *Server) handleGetCrawlStats(id any, arguments json.RawMessage) *Response {
+func (s *Server) handleGetCrawlStats(ctx context.Context, id any, arguments json.RawMessage) *Response {
 	var args struct {
 		JobID string `json:"job_id"`
 	}
@@ -405,7 +407,7 @@ func (s *Server) handleGetCrawlStats(id any, arguments json.RawMessage) *Respons
 		return s.errorResponse(id, InvalidParams, "job_id is required")
 	}
 
-	stats, err := s.crawlerClient.GetJobStats(args.JobID)
+	stats, err := s.crawlerClient.GetJobStats(ctx, args.JobID)
 	if err != nil {
 		return s.errorResponse(id, InternalError, fmt.Sprintf("Failed to get stats: %v", err))
 	}
@@ -415,7 +417,7 @@ func (s *Server) handleGetCrawlStats(id any, arguments json.RawMessage) *Respons
 
 // Source Manager tool handlers
 
-func (s *Server) handleAddSource(id any, arguments json.RawMessage) *Response {
+func (s *Server) handleAddSource(ctx context.Context, id any, arguments json.RawMessage) *Response {
 	var args struct {
 		Name      string         `json:"name"`
 		URL       string         `json:"url"`
@@ -432,7 +434,7 @@ func (s *Server) handleAddSource(id any, arguments json.RawMessage) *Response {
 		return s.errorResponse(id, InvalidParams, "name, url, type, and selectors are required")
 	}
 
-	source, err := s.sourceClient.CreateSource(client.CreateSourceRequest{
+	source, err := s.sourceClient.CreateSource(ctx, client.CreateSourceRequest{
 		Name:      args.Name,
 		URL:       args.URL,
 		Type:      args.Type,
@@ -454,7 +456,7 @@ func (s *Server) handleAddSource(id any, arguments json.RawMessage) *Response {
 	})
 }
 
-func (s *Server) handleListSources(id any, arguments json.RawMessage) *Response {
+func (s *Server) handleListSources(ctx context.Context, id any, arguments json.RawMessage) *Response {
 	var args struct {
 		Limit  int `json:"limit"`
 		Offset int `json:"offset"`
@@ -462,7 +464,7 @@ func (s *Server) handleListSources(id any, arguments json.RawMessage) *Response 
 
 	_ = json.Unmarshal(arguments, &args) // Empty args is okay
 
-	sources, err := s.sourceClient.ListSources()
+	sources, err := s.sourceClient.ListSources(ctx)
 	if err != nil {
 		return s.errorResponse(id, InternalError, fmt.Sprintf("Failed to list sources: %v", err))
 	}
@@ -494,7 +496,7 @@ func (s *Server) handleListSources(id any, arguments json.RawMessage) *Response 
 	})
 }
 
-func (s *Server) handleUpdateSource(id any, arguments json.RawMessage) *Response {
+func (s *Server) handleUpdateSource(ctx context.Context, id any, arguments json.RawMessage) *Response {
 	var args struct {
 		SourceID  string         `json:"source_id"`
 		Name      string         `json:"name"`
@@ -511,7 +513,7 @@ func (s *Server) handleUpdateSource(id any, arguments json.RawMessage) *Response
 		return s.errorResponse(id, InvalidParams, "source_id is required")
 	}
 
-	source, err := s.sourceClient.UpdateSource(args.SourceID, client.UpdateSourceRequest{
+	source, err := s.sourceClient.UpdateSource(ctx, args.SourceID, client.UpdateSourceRequest{
 		Name:      args.Name,
 		URL:       args.URL,
 		Selectors: args.Selectors,
@@ -531,7 +533,7 @@ func (s *Server) handleUpdateSource(id any, arguments json.RawMessage) *Response
 	})
 }
 
-func (s *Server) handleDeleteSource(id any, arguments json.RawMessage) *Response {
+func (s *Server) handleDeleteSource(ctx context.Context, id any, arguments json.RawMessage) *Response {
 	var args struct {
 		SourceID string `json:"source_id"`
 	}
@@ -544,7 +546,7 @@ func (s *Server) handleDeleteSource(id any, arguments json.RawMessage) *Response
 		return s.errorResponse(id, InvalidParams, "source_id is required")
 	}
 
-	if err := s.sourceClient.DeleteSource(args.SourceID); err != nil {
+	if err := s.sourceClient.DeleteSource(ctx, args.SourceID); err != nil {
 		return s.errorResponse(id, InternalError, fmt.Sprintf("Failed to delete source: %v", err))
 	}
 
@@ -554,7 +556,7 @@ func (s *Server) handleDeleteSource(id any, arguments json.RawMessage) *Response
 	})
 }
 
-func (s *Server) handleTestSource(id any, arguments json.RawMessage) *Response {
+func (s *Server) handleTestSource(ctx context.Context, id any, arguments json.RawMessage) *Response {
 	var args struct {
 		URL       string         `json:"url"`
 		Selectors map[string]any `json:"selectors"`
@@ -568,7 +570,7 @@ func (s *Server) handleTestSource(id any, arguments json.RawMessage) *Response {
 		return s.errorResponse(id, InvalidParams, "url and selectors are required")
 	}
 
-	result, err := s.sourceClient.TestCrawl(client.TestCrawlRequest{
+	result, err := s.sourceClient.TestCrawl(ctx, client.TestCrawlRequest{
 		URL:       args.URL,
 		Selectors: args.Selectors,
 	})
@@ -581,7 +583,7 @@ func (s *Server) handleTestSource(id any, arguments json.RawMessage) *Response {
 
 // Publisher tool handlers
 
-func (s *Server) handleCreateRoute(id any, arguments json.RawMessage) *Response {
+func (s *Server) handleCreateRoute(ctx context.Context, id any, arguments json.RawMessage) *Response {
 	var args struct {
 		SourceID        string   `json:"source_id"`
 		ChannelID       string   `json:"channel_id"`
@@ -598,7 +600,7 @@ func (s *Server) handleCreateRoute(id any, arguments json.RawMessage) *Response 
 		return s.errorResponse(id, InvalidParams, "source_id and channel_id are required")
 	}
 
-	route, err := s.publisherClient.CreateRoute(client.CreateRouteRequest{
+	route, err := s.publisherClient.CreateRoute(ctx, client.CreateRouteRequest{
 		SourceID:        args.SourceID,
 		ChannelID:       args.ChannelID,
 		MinQualityScore: args.MinQualityScore,
@@ -621,7 +623,7 @@ func (s *Server) handleCreateRoute(id any, arguments json.RawMessage) *Response 
 	})
 }
 
-func (s *Server) handleListRoutes(id any, arguments json.RawMessage) *Response {
+func (s *Server) handleListRoutes(ctx context.Context, id any, arguments json.RawMessage) *Response {
 	var args struct {
 		SourceID  string `json:"source_id"`
 		ChannelID string `json:"channel_id"`
@@ -631,7 +633,7 @@ func (s *Server) handleListRoutes(id any, arguments json.RawMessage) *Response {
 
 	_ = json.Unmarshal(arguments, &args) // Empty args is okay
 
-	routes, err := s.publisherClient.ListRoutes(args.SourceID, args.ChannelID)
+	routes, err := s.publisherClient.ListRoutes(ctx, args.SourceID, args.ChannelID)
 	if err != nil {
 		return s.errorResponse(id, InternalError, fmt.Sprintf("Failed to list routes: %v", err))
 	}
@@ -662,7 +664,7 @@ func (s *Server) handleListRoutes(id any, arguments json.RawMessage) *Response {
 	})
 }
 
-func (s *Server) handleCreateChannel(id any, arguments json.RawMessage) *Response {
+func (s *Server) handleCreateChannel(ctx context.Context, id any, arguments json.RawMessage) *Response {
 	var args struct {
 		Name        string `json:"name"`
 		Description string `json:"description"`
@@ -677,7 +679,7 @@ func (s *Server) handleCreateChannel(id any, arguments json.RawMessage) *Respons
 		return s.errorResponse(id, InvalidParams, "name is required")
 	}
 
-	channel, err := s.publisherClient.CreateChannel(client.CreateChannelRequest{
+	channel, err := s.publisherClient.CreateChannel(ctx, client.CreateChannelRequest{
 		Name:        args.Name,
 		Description: args.Description,
 		Enabled:     args.Enabled,
@@ -696,14 +698,14 @@ func (s *Server) handleCreateChannel(id any, arguments json.RawMessage) *Respons
 	})
 }
 
-func (s *Server) handleListChannels(id any, arguments json.RawMessage) *Response {
+func (s *Server) handleListChannels(ctx context.Context, id any, arguments json.RawMessage) *Response {
 	var args struct {
 		ActiveOnly bool `json:"active_only"`
 	}
 
 	_ = json.Unmarshal(arguments, &args) // Empty args is okay
 
-	channels, err := s.publisherClient.ListChannels()
+	channels, err := s.publisherClient.ListChannels(ctx)
 	if err != nil {
 		return s.errorResponse(id, InternalError, fmt.Sprintf("Failed to list channels: %v", err))
 	}
@@ -725,7 +727,7 @@ func (s *Server) handleListChannels(id any, arguments json.RawMessage) *Response
 	})
 }
 
-func (s *Server) handleDeleteRoute(id any, arguments json.RawMessage) *Response {
+func (s *Server) handleDeleteRoute(ctx context.Context, id any, arguments json.RawMessage) *Response {
 	var args struct {
 		RouteID string `json:"route_id"`
 	}
@@ -738,7 +740,7 @@ func (s *Server) handleDeleteRoute(id any, arguments json.RawMessage) *Response 
 		return s.errorResponse(id, InvalidParams, "route_id is required")
 	}
 
-	if err := s.publisherClient.DeleteRoute(args.RouteID); err != nil {
+	if err := s.publisherClient.DeleteRoute(ctx, args.RouteID); err != nil {
 		return s.errorResponse(id, InternalError, fmt.Sprintf("Failed to delete route: %v", err))
 	}
 
@@ -748,7 +750,7 @@ func (s *Server) handleDeleteRoute(id any, arguments json.RawMessage) *Response 
 	})
 }
 
-func (s *Server) handlePreviewRoute(id any, arguments json.RawMessage) *Response {
+func (s *Server) handlePreviewRoute(ctx context.Context, id any, arguments json.RawMessage) *Response {
 	var args struct {
 		RouteID string `json:"route_id"`
 	}
@@ -761,7 +763,7 @@ func (s *Server) handlePreviewRoute(id any, arguments json.RawMessage) *Response
 		return s.errorResponse(id, InvalidParams, "route_id is required")
 	}
 
-	articles, err := s.publisherClient.PreviewRoute(args.RouteID)
+	articles, err := s.publisherClient.PreviewRoute(ctx, args.RouteID)
 	if err != nil {
 		return s.errorResponse(id, InternalError, fmt.Sprintf("Failed to preview route: %v", err))
 	}
@@ -772,7 +774,7 @@ func (s *Server) handlePreviewRoute(id any, arguments json.RawMessage) *Response
 	})
 }
 
-func (s *Server) handleGetPublishHistory(id any, arguments json.RawMessage) *Response {
+func (s *Server) handleGetPublishHistory(ctx context.Context, id any, arguments json.RawMessage) *Response {
 	var args struct {
 		ChannelName string `json:"channel_name"`
 		Limit       int    `json:"limit"`
@@ -789,7 +791,7 @@ func (s *Server) handleGetPublishHistory(id any, arguments json.RawMessage) *Res
 	limit = min(limit, maxLimit)
 	offset := max(args.Offset, 0)
 
-	history, err := s.publisherClient.GetPublishHistory(args.ChannelName, limit, offset)
+	history, err := s.publisherClient.GetPublishHistory(ctx, args.ChannelName, limit, offset)
 	if err != nil {
 		return s.errorResponse(id, InternalError, fmt.Sprintf("Failed to get publish history: %v", err))
 	}
@@ -802,8 +804,8 @@ func (s *Server) handleGetPublishHistory(id any, arguments json.RawMessage) *Res
 	})
 }
 
-func (s *Server) handleGetPublisherStats(id any, _ json.RawMessage) *Response {
-	stats, err := s.publisherClient.GetStats()
+func (s *Server) handleGetPublisherStats(ctx context.Context, id any, _ json.RawMessage) *Response {
+	stats, err := s.publisherClient.GetStats(ctx)
 	if err != nil {
 		return s.errorResponse(id, InternalError, fmt.Sprintf("Failed to get stats: %v", err))
 	}
@@ -813,7 +815,7 @@ func (s *Server) handleGetPublisherStats(id any, _ json.RawMessage) *Response {
 
 // Search tool handlers
 
-func (s *Server) handleSearchArticles(id any, arguments json.RawMessage) *Response {
+func (s *Server) handleSearchArticles(ctx context.Context, id any, arguments json.RawMessage) *Response {
 	var args client.SearchRequest
 
 	if err := json.Unmarshal(arguments, &args); err != nil {
@@ -824,7 +826,7 @@ func (s *Server) handleSearchArticles(id any, arguments json.RawMessage) *Respon
 		return s.errorResponse(id, InvalidParams, "query is required")
 	}
 
-	result, err := s.searchClient.Search(args)
+	result, err := s.searchClient.Search(ctx, args)
 	if err != nil {
 		return s.errorResponse(id, InternalError, fmt.Sprintf("Failed to search: %v", err))
 	}
@@ -834,7 +836,7 @@ func (s *Server) handleSearchArticles(id any, arguments json.RawMessage) *Respon
 
 // Classifier tool handlers
 
-func (s *Server) handleClassifyArticle(id any, arguments json.RawMessage) *Response {
+func (s *Server) handleClassifyArticle(ctx context.Context, id any, arguments json.RawMessage) *Response {
 	var args client.ClassifyRequest
 
 	if err := json.Unmarshal(arguments, &args); err != nil {
@@ -845,7 +847,7 @@ func (s *Server) handleClassifyArticle(id any, arguments json.RawMessage) *Respo
 		return s.errorResponse(id, InvalidParams, "title, raw_text, and url are required")
 	}
 
-	result, err := s.classifierClient.Classify(args)
+	result, err := s.classifierClient.Classify(ctx, args)
 	if err != nil {
 		return s.errorResponse(id, InternalError, fmt.Sprintf("Failed to classify article: %v", err))
 	}
@@ -855,7 +857,7 @@ func (s *Server) handleClassifyArticle(id any, arguments json.RawMessage) *Respo
 
 // Index Manager tool handlers
 
-func (s *Server) handleListIndexes(id any, arguments json.RawMessage) *Response {
+func (s *Server) handleListIndexes(ctx context.Context, id any, arguments json.RawMessage) *Response {
 	var args struct {
 		Limit  int `json:"limit"`
 		Offset int `json:"offset"`
@@ -863,7 +865,7 @@ func (s *Server) handleListIndexes(id any, arguments json.RawMessage) *Response 
 
 	_ = json.Unmarshal(arguments, &args) // Empty args is okay
 
-	indexes, err := s.indexClient.ListIndices()
+	indexes, err := s.indexClient.ListIndices(ctx)
 	if err != nil {
 		return s.errorResponse(id, InternalError, fmt.Sprintf("Failed to list indexes: %v", err))
 	}
@@ -899,7 +901,7 @@ func (s *Server) handleListIndexes(id any, arguments json.RawMessage) *Response 
 
 const taskTest = "test"
 
-func (s *Server) handleLintFile(id any, arguments json.RawMessage) *Response {
+func (s *Server) handleLintFile(ctx context.Context, id any, arguments json.RawMessage) *Response {
 	var args struct {
 		FilePath    string `json:"file_path"`
 		ServiceName string `json:"service_name"`
@@ -920,9 +922,9 @@ func (s *Server) handleLintFile(id any, arguments json.RawMessage) *Response {
 	var setupErr error
 
 	if args.ServiceName != "" {
-		serviceDir, lintCommand, lintType, setupErr = s.setupServiceLint(projectRoot, args.ServiceName)
+		serviceDir, lintCommand, lintType, setupErr = s.setupServiceLint(ctx, projectRoot, args.ServiceName)
 	} else if args.FilePath != "" {
-		serviceDir, lintCommand, lintType, setupErr = s.setupFileLint(projectRoot, args.FilePath)
+		serviceDir, lintCommand, lintType, setupErr = s.setupFileLint(ctx, projectRoot, args.FilePath)
 	} else {
 		return s.errorResponse(id, InvalidParams, "Either file_path or service_name must be provided")
 	}
@@ -958,12 +960,10 @@ func (s *Server) detectProjectRoot() string {
 }
 
 // setupServiceLint configures linting for an entire service
-func (s *Server) setupServiceLint(projectRoot, serviceName string) (
+func (s *Server) setupServiceLint(ctx context.Context, projectRoot, serviceName string) (
 	serviceDir string, lintCommand *exec.Cmd, lintType string, err error,
 ) {
 	serviceDir = filepath.Join(projectRoot, serviceName)
-	ctx := context.Background()
-
 	if _, statErr := os.Stat(filepath.Join(serviceDir, "package.json")); statErr == nil {
 		cmd := exec.CommandContext(ctx, "npm", "run", "lint")
 		cmd.Dir = serviceDir
@@ -980,7 +980,7 @@ func (s *Server) setupServiceLint(projectRoot, serviceName string) (
 }
 
 // setupFileLint configures linting for a specific file
-func (s *Server) setupFileLint(projectRoot, filePath string) (
+func (s *Server) setupFileLint(ctx context.Context, projectRoot, filePath string) (
 	serviceDir string, lintCommand *exec.Cmd, lintType string, err error,
 ) {
 	if !filepath.IsAbs(filePath) {
@@ -999,7 +999,6 @@ func (s *Server) setupFileLint(projectRoot, filePath string) (
 
 	serviceDir = filepath.Join(projectRoot, parts[0])
 	ext := strings.ToLower(filepath.Ext(filePath))
-	ctx := context.Background()
 
 	switch ext {
 	case ".go":
@@ -1063,7 +1062,7 @@ func (s *Server) executeLintCommand(id any, lintCommand *exec.Cmd, lintType, ser
 	return s.successResponse(id, result)
 }
 
-func (s *Server) handleBuildService(id any, arguments json.RawMessage) *Response {
+func (s *Server) handleBuildService(ctx context.Context, id any, arguments json.RawMessage) *Response {
 	var args struct {
 		ServiceName string `json:"service_name"`
 	}
@@ -1073,10 +1072,10 @@ func (s *Server) handleBuildService(id any, arguments json.RawMessage) *Response
 	if args.ServiceName == "" {
 		return s.errorResponse(id, InvalidParams, "service_name is required")
 	}
-	return s.executeBuildTestCommand(id, args.ServiceName, "build", false)
+	return s.executeBuildTestCommand(ctx, id, args.ServiceName, "build", false)
 }
 
-func (s *Server) handleTestService(id any, arguments json.RawMessage) *Response {
+func (s *Server) handleTestService(ctx context.Context, id any, arguments json.RawMessage) *Response {
 	var args struct {
 		ServiceName  string `json:"service_name"`
 		WithCoverage bool   `json:"with_coverage"`
@@ -1091,17 +1090,16 @@ func (s *Server) handleTestService(id any, arguments json.RawMessage) *Response 
 	if args.WithCoverage {
 		taskName = "test:coverage"
 	}
-	return s.executeBuildTestCommand(id, args.ServiceName, taskName, true)
+	return s.executeBuildTestCommand(ctx, id, args.ServiceName, taskName, true)
 }
 
 // executeBuildTestCommand runs build or test for a service and returns structured output.
-func (s *Server) executeBuildTestCommand(id any, serviceName, taskName string, isTest bool) *Response {
+func (s *Server) executeBuildTestCommand(ctx context.Context, id any, serviceName, taskName string, isTest bool) *Response {
 	projectRoot := s.detectProjectRoot()
 	if projectRoot == "" {
 		return s.errorResponse(id, InvalidParams, "Could not determine project root")
 	}
 	serviceDir := filepath.Join(projectRoot, serviceName)
-	ctx := context.Background()
 
 	var cmd *exec.Cmd
 	var isGo bool

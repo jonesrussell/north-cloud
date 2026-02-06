@@ -1,12 +1,16 @@
 # MCP North Cloud Configuration
 # Copy this file to config.yml and adjust values for your environment
 
+# Client settings
+client:
+  http_timeout_seconds: 30  # HTTP client timeout; request timeout in main is 60s
+
 # Service endpoints
 services:
   index_manager_url: "http://localhost:8090"
   crawler_url: "http://localhost:8060"
   source_manager_url: "http://localhost:8050"
-  publisher_url: "http://localhost:8080"
+  publisher_url: "http://localhost:8070"
   search_url: "http://localhost:8090"
   classifier_url: "http://localhost:8070"
 
