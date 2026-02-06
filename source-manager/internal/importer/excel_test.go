@@ -188,15 +188,19 @@ func TestValidateRow(t *testing.T) {
 	}
 }
 
-// createTestExcel creates an in-memory Excel file for testing.
+// createTestExcel creates an in-memory Excel file for testing with default headers.
 func createTestExcel(t *testing.T, rows [][]string) *bytes.Reader {
+	t.Helper()
+	return createTestExcelWithHeaders(t, []string{"name", "url", "enabled", "rate_limit", "max_depth", "time", "selectors"}, rows)
+}
+
+// createTestExcelWithHeaders creates an in-memory Excel file with custom headers.
+func createTestExcelWithHeaders(t *testing.T, headers []string, rows [][]string) *bytes.Reader {
 	t.Helper()
 
 	f := excelize.NewFile()
 	sheetName := "Sheet1"
 
-	// Write header
-	headers := []string{"name", "url", "enabled", "rate_limit", "max_depth", "time", "selectors"}
 	for i, h := range headers {
 		cell, _ := excelize.CoordinatesToCellName(i+1, 1)
 		if err := f.SetCellValue(sheetName, cell, h); err != nil {
@@ -306,6 +310,49 @@ func TestParseExcelFile(t *testing.T) {
 				if !strings.Contains(errors[0].Error, tt.wantErrorMsg) {
 					t.Errorf("ParseExcelFile() error = %q, want to contain %q", errors[0].Error, tt.wantErrorMsg)
 				}
+			}
+		})
+	}
+}
+
+func TestParseExcelFileWithAlternateHeaders(t *testing.T) {
+	tests := []struct {
+		name           string
+		headers        []string
+		rows           [][]string
+		wantRowCount   int
+		wantErrorCount int
+	}{
+		{
+			name:    "Website Name header alias",
+			headers: []string{"Website Name", "URL", "Status"},
+			rows: [][]string{
+				{"MINING.COM", "https://www.mining.com", "Active"},
+			},
+			wantRowCount:   1,
+			wantErrorCount: 0,
+		},
+		{
+			name:    "News Site Name header alias",
+			headers: []string{"News Site Name", "URL"},
+			rows: [][]string{
+				{"CBC News", "https://www.cbc.ca"},
+			},
+			wantRowCount:   1,
+			wantErrorCount: 0,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			reader := createTestExcelWithHeaders(t, tt.headers, tt.rows)
+			rows, errors := importer.ParseExcelFile(reader)
+
+			if len(rows) != tt.wantRowCount {
+				t.Errorf("ParseExcelFile() got %d rows, want %d", len(rows), tt.wantRowCount)
+			}
+			if len(errors) != tt.wantErrorCount {
+				t.Errorf("ParseExcelFile() got %d errors, want %d; errors: %v", len(errors), tt.wantErrorCount, errors)
 			}
 		})
 	}

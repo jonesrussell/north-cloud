@@ -37,6 +37,7 @@ var headerAliases = map[string]string{
 	"source name":    "name",
 	"source":         "name",
 	"title":          "name",
+	"website name":   "name",
 	// URL field aliases
 	"url":      "url",
 	"website":  "url",

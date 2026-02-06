@@ -127,7 +127,7 @@ services:
       resources:
         limits:
           cpus: "0.5"
-          memory: 256M
+          memory: 512M
     pull_policy: build
     build:
       context: .
