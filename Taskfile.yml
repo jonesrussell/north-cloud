@@ -253,6 +253,7 @@ tasks:
       - task: test:search
       - task: test:search-frontend
       - task: test:source-manager
+      - task: test:contracts
 
   test:parallel:
     desc: "Run tests for all microservices in parallel"
@@ -1229,6 +1230,12 @@ tasks:
   # ============================================================
   # Integration Tests
   # ============================================================
+
+  test:contracts:
+    desc: "Run contract tests (verifies services produce/consume valid ES mappings)"
+    dir: tests/contracts
+    cmds:
+      - GOWORK=off go test -v ./...
 
   test:integration:pipeline:
     desc: "Run pipeline integration tests (requires docker compose test stack)"

@@ -8,7 +8,6 @@ require (
 	github.com/gin-gonic/gin v1.11.0
 	github.com/google/uuid v1.6.0
 	github.com/jmoiron/sqlx v1.4.0
-	github.com/jonesrussell/north-cloud/index-manager v0.0.0-00010101000000-000000000000
 	github.com/lib/pq v1.11.0
 	github.com/north-cloud/infrastructure v0.0.0
 	github.com/redis/go-redis/v9 v9.17.3
@@ -18,8 +17,6 @@ require (
 )
 
 replace github.com/north-cloud/infrastructure => ../infrastructure
-
-replace github.com/jonesrussell/north-cloud/index-manager => ../index-manager
 
 require (
 	github.com/bytedance/gopkg v0.1.3 // indirect

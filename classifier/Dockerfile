@@ -3,10 +3,9 @@ FROM golang:1.25.7-alpine AS builder
 
 RUN apk add --no-cache ca-certificates
 
-# Prepare workspace for replace directives (../infrastructure, ../index-manager)
+# Prepare workspace for replace directive (../infrastructure)
 WORKDIR /build
 COPY infrastructure ./infrastructure
-COPY index-manager ./index-manager
 
 # Move into classifier module
 WORKDIR /build/classifier
