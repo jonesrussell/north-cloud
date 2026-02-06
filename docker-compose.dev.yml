@@ -584,6 +584,14 @@ services:
       start_period: 10s
 
   # ------------------------------------------------------------
+  # Elasticsearch (Dev) - use named volume instead of host bind mount
+  # ------------------------------------------------------------
+  elasticsearch:
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data
+      - ./infrastructure/elasticsearch/elasticsearch.yml:/usr/share/elasticsearch/config/elasticsearch.yml:ro
+
+  # ------------------------------------------------------------
   # Logging Infrastructure (Dev)
   # ------------------------------------------------------------
 
@@ -629,3 +637,4 @@ volumes:
   mcp_index_manager_go_mod_cache:
   mcp_index_manager_go_build_cache:
   pyroscope_data:
+  elasticsearch_data:

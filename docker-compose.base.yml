@@ -109,7 +109,7 @@ services:
         soft: -1
         hard: -1
     volumes:
-      - elasticsearch_data:/usr/share/elasticsearch/data
+      - /mnt/volume_tor1_01_es:/usr/share/elasticsearch/data
       - ./infrastructure/elasticsearch/elasticsearch.yml:/usr/share/elasticsearch/config/elasticsearch.yml:ro
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:9200/_cluster/health?wait_for_status=green&timeout=30s || curl -f http://localhost:9200/_cluster/health?wait_for_status=yellow&timeout=30s || exit 1"]
@@ -470,7 +470,6 @@ volumes:
   postgres_classifier_data:
   postgres_index_manager_data:
   postgres_publisher_data:
-  elasticsearch_data:
   redis_data:
   minio_data:
   loki_data:
