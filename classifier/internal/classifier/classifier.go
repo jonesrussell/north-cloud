@@ -24,6 +24,7 @@ type Classifier struct {
 	topic            *TopicClassifier
 	sourceReputation *SourceReputationScorer
 	crime            *CrimeClassifier
+	mining           *MiningClassifier
 	location         *LocationClassifier
 	logger           infralogger.Logger
 	version          string
@@ -36,7 +37,8 @@ type Config struct {
 	UpdateSourceRep        bool
 	QualityConfig          QualityConfig
 	SourceReputationConfig SourceReputationConfig
-	CrimeClassifier        *CrimeClassifier // Optional: hybrid street crime classifier
+	CrimeClassifier        *CrimeClassifier  // Optional: hybrid street crime classifier
+	MiningClassifier       *MiningClassifier // Optional: hybrid mining classifier
 }
 
 // NewClassifier creates a new classifier with all strategies
@@ -52,6 +54,7 @@ func NewClassifier(
 		topic:            NewTopicClassifier(logger, rules),
 		sourceReputation: NewSourceReputationScorerWithConfig(logger, sourceRepDB, config.SourceReputationConfig),
 		crime:            config.CrimeClassifier,
+		mining:           config.MiningClassifier,
 		location:         NewLocationClassifier(logger),
 		logger:           logger,
 		version:          config.Version,
@@ -92,31 +95,8 @@ func (c *Classifier) Classify(ctx context.Context, raw *domain.RawContent) (*dom
 		return nil, fmt.Errorf("source reputation scoring failed: %w", err)
 	}
 
-	// 5. Crime Classification (if enabled)
-	var crimeResult *domain.CrimeResult
-	if c.crime != nil {
-		scResult, scErr := c.crime.Classify(ctx, raw)
-		if scErr != nil {
-			c.logger.Warn("Crime classification failed",
-				infralogger.String("content_id", raw.ID),
-				infralogger.Error(scErr))
-		} else if scResult != nil {
-			crimeResult = convertCrimeResult(scResult)
-		}
-	}
-
-	// 6. Location Classification (content-based)
-	var locationResult *domain.LocationResult
-	if c.location != nil {
-		locResult, locErr := c.location.Classify(ctx, raw)
-		if locErr != nil {
-			c.logger.Warn("Location classification failed",
-				infralogger.String("content_id", raw.ID),
-				infralogger.Error(locErr))
-		} else if locResult != nil {
-			locationResult = locResult
-		}
-	}
+	// 5-7. Optional classifiers (crime, mining, location)
+	crimeResult, miningResult, locationResult := c.runOptionalClassifiers(ctx, raw)
 
 	// Update source reputation if enabled
 	isSpam := qualityResult.TotalScore < spamThresholdScore // Spam threshold
@@ -153,6 +133,7 @@ func (c *Classifier) Classify(ctx context.Context, raw *domain.RawContent) (*dom
 		ProcessingTimeMs:     time.Since(startTime).Milliseconds(),
 		ClassifiedAt:         time.Now(),
 		Crime:                crimeResult,
+		Mining:               miningResult,
 		Location:             locationResult,
 	}
 
@@ -203,6 +184,49 @@ func (c *Classifier) GetRules() []domain.ClassificationRule {
 	return c.topic.GetRules()
 }
 
+// runOptionalClassifiers runs crime, mining, and location classifiers if enabled.
+func (c *Classifier) runOptionalClassifiers(
+	ctx context.Context, raw *domain.RawContent,
+) (*domain.CrimeResult, *domain.MiningResult, *domain.LocationResult) {
+	var crimeResult *domain.CrimeResult
+	if c.crime != nil {
+		scResult, scErr := c.crime.Classify(ctx, raw)
+		if scErr != nil {
+			c.logger.Warn("Crime classification failed",
+				infralogger.String("content_id", raw.ID),
+				infralogger.Error(scErr))
+		} else if scResult != nil {
+			crimeResult = convertCrimeResult(scResult)
+		}
+	}
+
+	var miningResult *domain.MiningResult
+	if c.mining != nil {
+		minResult, minErr := c.mining.Classify(ctx, raw)
+		if minErr != nil {
+			c.logger.Warn("Mining classification failed",
+				infralogger.String("content_id", raw.ID),
+				infralogger.Error(minErr))
+		} else if minResult != nil {
+			miningResult = minResult
+		}
+	}
+
+	var locationResult *domain.LocationResult
+	if c.location != nil {
+		locResult, locErr := c.location.Classify(ctx, raw)
+		if locErr != nil {
+			c.logger.Warn("Location classification failed",
+				infralogger.String("content_id", raw.ID),
+				infralogger.Error(locErr))
+		} else if locResult != nil {
+			locationResult = locResult
+		}
+	}
+
+	return crimeResult, miningResult, locationResult
+}
+
 // calculateTopicConfidence calculates overall topic confidence
 // If no topics matched, confidence is low
 // If topics matched, use the highest topic score
@@ -239,6 +263,7 @@ func (c *Classifier) BuildClassifiedContent(raw *domain.RawContent, result *doma
 		ModelVersion:         result.ModelVersion,
 		Confidence:           result.Confidence,
 		Crime:                result.Crime,
+		Mining:               result.Mining,
 		Location:             result.Location,
 		// Publisher compatibility aliases
 		Body:   raw.RawText, // Alias for RawText

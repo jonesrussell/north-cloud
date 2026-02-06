@@ -10,6 +10,7 @@ import (
 	"github.com/jonesrussell/north-cloud/classifier/internal/classifier"
 	"github.com/jonesrussell/north-cloud/classifier/internal/config"
 	"github.com/jonesrussell/north-cloud/classifier/internal/domain"
+	"github.com/jonesrussell/north-cloud/classifier/internal/miningmlclient"
 	"github.com/jonesrussell/north-cloud/classifier/internal/mlclient"
 	"github.com/jonesrussell/north-cloud/classifier/internal/processor"
 	infragin "github.com/north-cloud/infrastructure/gin"
@@ -152,7 +153,8 @@ func createClassifierConfig(cfg *config.Config, logger infralogger.Logger) class
 			MinArticlesForTrust:        minArticlesForTrust,
 			ReputationDecayRate:        defaultReputationDecayRate01,
 		},
-		CrimeClassifier: createCrimeClassifier(cfg, logger),
+		CrimeClassifier:  createCrimeClassifier(cfg, logger),
+		MiningClassifier: createMiningClassifier(cfg, logger),
 	}
 }
 
@@ -171,4 +173,21 @@ func createCrimeClassifier(cfg *config.Config, logger infralogger.Logger) *class
 		infralogger.String("ml_service_url", cfg.Classification.Crime.MLServiceURL))
 
 	return classifier.NewCrimeClassifier(mlClient, logger, true)
+}
+
+// createMiningClassifier creates a Mining classifier if enabled in config.
+func createMiningClassifier(cfg *config.Config, logger infralogger.Logger) *classifier.MiningClassifier {
+	if !cfg.Classification.Mining.Enabled {
+		return nil
+	}
+
+	var mlClient classifier.MiningMLClassifier
+	if cfg.Classification.Mining.MLServiceURL != "" {
+		mlClient = miningmlclient.NewClient(cfg.Classification.Mining.MLServiceURL)
+	}
+
+	logger.Info("Mining classifier enabled",
+		infralogger.String("ml_service_url", cfg.Classification.Mining.MLServiceURL))
+
+	return classifier.NewMiningClassifier(mlClient, logger, true)
 }
