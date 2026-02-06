@@ -141,6 +141,13 @@ else
         done
     fi
 
+    # index-manager/pkg/contracts/ changes affect services with contract tests
+    if echo "$CHANGED_FILES" | grep -q "^index-manager/pkg/contracts/"; then
+        for service in classifier publisher crawler search; do
+            CHANGED_SERVICES_MAP[$service]=1
+        done
+    fi
+
     # Build space-separated list
     CHANGED_SERVICES_STR=""
     for service in "${!CHANGED_SERVICES_MAP[@]}"; do

@@ -1,0 +1,18 @@
+{
+  "request": {
+    "method": "GET",
+    "url": "https://fixture-news-site.com/article/downtown-robbery-arrests",
+    "headers": {
+      "User-Agent": ""
+    }
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "text/html; charset=utf-8"
+    },
+    "was_compressed": false
+  },
+  "recorded_at": "2026-02-06T05:51:28Z",
+  "cache_key": "GET_c910c16364f6"
+}

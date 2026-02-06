@@ -54,6 +54,9 @@ func getRawContentFields() map[string]any {
 		"canonical_url": map[string]any{
 			"type": "keyword",
 		},
+		"author": map[string]any{
+			"type": "text",
+		},
 		"crawled_at": map[string]any{
 			"type":   "date",
 			"format": "strict_date_optional_time||epoch_millis",
