@@ -1,11 +1,10 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { CloudCog, Loader2 } from 'lucide-vue-next'
+import { Loader2 } from 'lucide-vue-next'
 import { useAuth } from '@/composables/useAuth'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 
 const router = useRouter()
 const { login, isAuthenticated } = useAuth()
@@ -28,7 +27,7 @@ const handleLogin = async () => {
 
   try {
     const result = await login(username.value, password.value)
-    
+
     if (result.success) {
       router.push('/')
     } else {
@@ -43,86 +42,105 @@ const handleLogin = async () => {
 </script>
 
 <template>
-  <div class="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-background to-primary/5 px-4">
-    <!-- Decorative background elements -->
-    <div class="absolute inset-0 overflow-hidden pointer-events-none">
-      <div class="absolute -top-40 -right-40 w-80 h-80 bg-primary/5 rounded-full blur-3xl" />
-      <div class="absolute -bottom-40 -left-40 w-80 h-80 bg-primary/5 rounded-full blur-3xl" />
+  <div class="min-h-screen flex items-center justify-center bg-[hsl(220_14%_6%)] px-4 relative overflow-hidden">
+    <!-- Animated grid background -->
+    <div class="absolute inset-0 opacity-[0.03]">
+      <div
+        class="absolute inset-0"
+        style="background-image: linear-gradient(hsl(185 80% 50%) 1px, transparent 1px), linear-gradient(90deg, hsl(185 80% 50%) 1px, transparent 1px); background-size: 60px 60px;"
+      />
     </div>
 
-    <Card class="w-full max-w-md relative">
-      <CardHeader class="text-center pb-2">
-        <div class="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-xl bg-primary text-primary-foreground">
-          <CloudCog class="h-8 w-8" />
-        </div>
-        <CardTitle class="text-2xl font-bold">
-          Welcome back
-        </CardTitle>
-        <CardDescription>Sign in to North Cloud Dashboard</CardDescription>
-      </CardHeader>
+    <!-- Subtle scan line effect -->
+    <div class="absolute inset-0 pointer-events-none overflow-hidden opacity-[0.02]">
+      <div
+        class="absolute inset-0 h-[200%]"
+        style="background: repeating-linear-gradient(0deg, transparent, transparent 2px, hsl(185 80% 50%) 2px, hsl(185 80% 50%) 4px); animation: scan-line 8s linear infinite;"
+      />
+    </div>
 
-      <CardContent>
-        <form
-          class="space-y-4"
-          @submit.prevent="handleLogin"
-        >
-          <!-- Error message -->
-          <div
-            v-if="error"
-            class="rounded-lg bg-destructive/10 p-4 text-sm text-destructive border border-destructive/20"
-          >
-            {{ error }}
+    <!-- Login card -->
+    <div class="w-full max-w-sm relative animate-fade-up">
+      <div class="border border-[hsl(220_13%_18%)] bg-[hsl(220_14%_9%)] rounded-sm shadow-2xl shadow-black/50">
+        <!-- Header -->
+        <div class="px-8 pt-10 pb-2 text-center">
+          <!-- NC brand mark -->
+          <div class="mx-auto mb-6 flex h-12 w-12 items-center justify-center rounded-sm border border-[hsl(185_80%_50%_/_0.3)] bg-[hsl(185_80%_50%_/_0.1)]">
+            <span class="font-mono font-bold text-lg text-[hsl(185_80%_50%)]">NC</span>
           </div>
-
-          <div class="space-y-2">
-            <label
-              for="username"
-              class="text-sm font-medium"
-            >Username</label>
-            <Input
-              id="username"
-              v-model="username"
-              type="text"
-              placeholder="Enter your username"
-              :disabled="loading"
-              required
-            />
-          </div>
-
-          <div class="space-y-2">
-            <label
-              for="password"
-              class="text-sm font-medium"
-            >Password</label>
-            <Input
-              id="password"
-              v-model="password"
-              type="password"
-              placeholder="Enter your password"
-              :disabled="loading"
-              required
-            />
-          </div>
-
-          <Button
-            type="submit"
-            class="w-full"
-            :disabled="loading"
-          >
-            <Loader2
-              v-if="loading"
-              class="mr-2 h-4 w-4 animate-spin"
-            />
-            {{ loading ? 'Signing in...' : 'Sign in' }}
-          </Button>
-        </form>
-
-        <div class="mt-6 text-center">
-          <p class="text-xs text-muted-foreground">
-            North Cloud Content Pipeline
+          <h1 class="font-mono text-sm font-semibold tracking-[0.2em] uppercase text-[hsl(210_20%_93%)]">
+            North Cloud
+          </h1>
+          <p class="mt-1 text-xs text-[hsl(220_10%_45%)] font-mono">
+            Content Intelligence Platform
           </p>
         </div>
-      </CardContent>
-    </Card>
+
+        <!-- Form -->
+        <div class="px-8 pb-8 pt-6">
+          <form
+            class="space-y-4"
+            @submit.prevent="handleLogin"
+          >
+            <!-- Error message -->
+            <div
+              v-if="error"
+              class="rounded-sm bg-[hsl(0_72%_51%_/_0.1)] border border-[hsl(0_72%_51%_/_0.2)] p-3 text-xs text-[hsl(0_72%_60%)] font-mono"
+            >
+              {{ error }}
+            </div>
+
+            <div class="space-y-1.5">
+              <label
+                for="username"
+                class="text-[10px] font-mono font-medium uppercase tracking-widest text-[hsl(220_10%_45%)]"
+              >Username</label>
+              <Input
+                id="username"
+                v-model="username"
+                type="text"
+                placeholder="admin"
+                :disabled="loading"
+                class="bg-[hsl(220_14%_7%)] border-[hsl(220_13%_18%)] text-[hsl(210_20%_93%)] placeholder:text-[hsl(220_10%_30%)] font-mono"
+                required
+              />
+            </div>
+
+            <div class="space-y-1.5">
+              <label
+                for="password"
+                class="text-[10px] font-mono font-medium uppercase tracking-widest text-[hsl(220_10%_45%)]"
+              >Password</label>
+              <Input
+                id="password"
+                v-model="password"
+                type="password"
+                placeholder="••••••••"
+                :disabled="loading"
+                class="bg-[hsl(220_14%_7%)] border-[hsl(220_13%_18%)] text-[hsl(210_20%_93%)] placeholder:text-[hsl(220_10%_30%)] font-mono"
+                required
+              />
+            </div>
+
+            <Button
+              type="submit"
+              class="w-full font-mono text-xs tracking-wider uppercase mt-6"
+              :disabled="loading"
+            >
+              <Loader2
+                v-if="loading"
+                class="mr-2 h-3.5 w-3.5 animate-spin"
+              />
+              {{ loading ? 'Authenticating...' : 'Sign In' }}
+            </Button>
+          </form>
+        </div>
+      </div>
+
+      <!-- Footer -->
+      <p class="mt-6 text-center text-[10px] text-[hsl(220_10%_30%)] font-mono tracking-wider">
+        v2.0 &middot; Content Pipeline
+      </p>
+    </div>
   </div>
 </template>
