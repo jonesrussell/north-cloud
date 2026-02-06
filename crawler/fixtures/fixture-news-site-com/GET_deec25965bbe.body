@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Business Directory - Northern Ontario</title>
+  <meta name="description" content="Browse businesses in Northern Ontario.">
+  <meta property="og:title" content="Business Directory - Northern Ontario">
+  <meta property="og:type" content="website">
+</head>
+<body>
+  <h1>Business Directory</h1>
+  <ul>
+    <li><a href="/business/acme-corp">Acme Corp</a> - Mining Equipment</li>
+    <li><a href="/business/northern-tech">Northern Tech Solutions</a> - IT Services</li>
+    <li><a href="/business/timber-co">Timber Co</a> - Forestry</li>
+    <li><a href="/business/lake-lodge">Lake Lodge</a> - Tourism</li>
+    <li><a href="/business/gold-mining">Gold Mining Inc</a> - Mining</li>
+  </ul>
+  <nav>
+    <a href="?page=2">Next Page</a>
+  </nav>
+</body>
+</html>
