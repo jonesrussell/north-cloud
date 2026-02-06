@@ -210,6 +210,27 @@ type MiningData struct {
 	ModelVersion    string   `json:"model_version,omitempty"`
 }
 
+// CrimeData matches the classifier's nested crime object in Elasticsearch.
+type CrimeData struct {
+	Relevance      string   `json:"street_crime_relevance"`
+	SubLabel       string   `json:"sub_label,omitempty"`
+	CrimeTypes     []string `json:"crime_types"`
+	Specificity    string   `json:"location_specificity"`
+	Confidence     float64  `json:"final_confidence"`
+	Homepage       bool     `json:"homepage_eligible"`
+	Categories     []string `json:"category_pages"`
+	ReviewRequired bool     `json:"review_required"`
+}
+
+// LocationData matches the classifier's nested location object in Elasticsearch.
+type LocationData struct {
+	City        string  `json:"city,omitempty"`
+	Province    string  `json:"province,omitempty"`
+	Country     string  `json:"country"`
+	Specificity string  `json:"specificity"`
+	Confidence  float64 `json:"confidence"`
+}
+
 // Article represents an article from Elasticsearch
 type Article struct {
 	ID            string    `json:"id"`
@@ -244,6 +265,10 @@ type Article struct {
 	LocationCountry    string  `json:"location_country"`
 	LocationConfidence float64 `json:"location_confidence"`
 
+	// Crime classification (nested ES object from classifier)
+	Crime    *CrimeData    `json:"crime,omitempty"`
+	Location *LocationData `json:"location,omitempty"`
+
 	// Mining classification (hybrid rule + ML)
 	Mining *MiningData `json:"mining,omitempty"`
 
@@ -263,6 +288,31 @@ type Article struct {
 
 	// Sort values for search_after pagination
 	Sort []any `json:"-"`
+}
+
+// extractNestedFields copies values from the nested Crime and Location
+// structs into the flat Article fields used by GenerateCrimeChannels()
+// and GenerateLocationChannels(). Call after unmarshaling from Elasticsearch.
+func (a *Article) extractNestedFields() {
+	if a.Crime != nil {
+		a.CrimeRelevance = a.Crime.Relevance
+		a.CrimeSubLabel = a.Crime.SubLabel
+		a.CrimeTypes = a.Crime.CrimeTypes
+		a.LocationSpecificity = a.Crime.Specificity
+		a.HomepageEligible = a.Crime.Homepage
+		a.CategoryPages = a.Crime.Categories
+		a.ReviewRequired = a.Crime.ReviewRequired
+	}
+
+	if a.Location != nil {
+		a.LocationCity = a.Location.City
+		a.LocationProvince = a.Location.Province
+		a.LocationCountry = a.Location.Country
+		a.LocationConfidence = a.Location.Confidence
+		if a.Location.Specificity != "" {
+			a.LocationSpecificity = a.Location.Specificity
+		}
+	}
 }
 
 // classifiedContentWildcard matches all classified content indexes in Elasticsearch.
@@ -344,6 +394,7 @@ func (s *Service) fetchArticles(ctx context.Context, _ []string) ([]Article, err
 		}
 		article.ID = hit.ID
 		article.Sort = hit.Sort
+		article.extractNestedFields()
 		articles = append(articles, article)
 	}
 
