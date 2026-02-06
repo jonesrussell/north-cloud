@@ -60,6 +60,8 @@ The publisher is **topic-driven and consumer-agnostic**. Channels define *what* 
 - **Layer 1 (automatic topic channels)**: For each article topic, the router publishes to `articles:{topic}` (e.g. `articles:technology`, `articles:politics`, `articles:violent_crime`). These channels always exist; no DB record or configuration required. Any number of consumers may subscribe.
 - **Layer 2 (custom channels)**: Optional DB-backed channels with rules (include/exclude topics, min quality, content types). Used for aggregations (e.g. one channel for all crime sub-categories). Stored in the `channels` table. Same rule: one channel can serve unlimited consumers.
 - **Layer 3 (crime classification channels)**: Automatic channels based on classifier's hybrid rule + ML crime classification. Routes to `crime:homepage` (for homepage-eligible articles) and `crime:category:{type}` (for category page listings). Only articles with `crime_relevance != "not_crime"` are routed.
+- **Layer 4 (location channels)**: Automatic channels for geographic routing of crime content (`crime:local:{city}`, `crime:province:{code}`, `crime:canada`, `crime:international`).
+- **Layer 5 (mining classification channels)**: Automatic channel based on classifier's hybrid rule + ML mining classification. Routes to `articles:mining` for all `core_mining` and `peripheral_mining` articles. Mining metadata (relevance, stage, commodities, location) included in payload for downstream filtering.
 
 Name and describe channels by **content** (e.g. "Crime Feed", "Technology Feed"), not by consumer (e.g. avoid "StreetCode Crime Feed").
 
@@ -76,6 +78,9 @@ Name and describe channels by **content** (e.g. "Crime Feed", "Technology Feed")
 **Layer 3 Crime Channel Patterns**:
 - `crime:homepage` - Homepage-eligible crime articles (core_street_crime with high confidence)
 - `crime:category:{type}` - Category page listings (e.g., `crime:category:violent-crime`, `crime:category:crime`)
+
+**Layer 5 Mining Channel**:
+- `articles:mining` - All mining-related articles (core + peripheral)
 
 **Message Format**:
 ```json
@@ -110,6 +115,16 @@ Name and describe channels by **content** (e.g. "Crime Feed", "Technology Feed")
 | `homepage_eligible` | bool | True if article qualifies for homepage display |
 | `category_pages` | []string | Category page slugs (e.g., `["violent-crime", "crime"]`) |
 | `review_required` | bool | True if rules and ML disagreed (needs human review) |
+
+**Mining Classification Fields** (from classifier's hybrid rule + ML):
+| Field | Type | Description |
+|-------|------|-------------|
+| `mining.relevance` | string | `core_mining`, `peripheral_mining`, or `not_mining` |
+| `mining.mining_stage` | string | `exploration`, `development`, `production`, `unspecified` |
+| `mining.commodities` | []string | Multi-label: `gold`, `copper`, `lithium`, `nickel`, `uranium`, `iron_ore`, `rare_earths`, `other` |
+| `mining.location` | string | `local_canada`, `national_canada`, `international`, `not_specified` |
+| `mining.final_confidence` | float | 0.0-1.0 confidence score |
+| `mining.review_required` | bool | True if rules and ML disagreed |
 
 ## API Endpoints (JWT Protected)
 
@@ -151,9 +166,11 @@ Name and describe channels by **content** (e.g. "Crime Feed", "Technology Feed")
 2. **Route Layer 1**: Publishes to `articles:{topic}` for each article topic
 3. **Route Layer 2**: Applies custom channel rules (quality, content type, topics)
 4. **Route Layer 3**: Generates crime channels from classification fields
-5. **Dedupe**: Checks `publish_history` table (per-channel deduplication)
-6. **Publish**: Sends JSON to Redis channels
-7. **Record**: Writes to `publish_history` for each channel
+5. **Route Layer 4**: Generates location-based channels
+6. **Route Layer 5**: Generates mining channels from classification fields
+7. **Dedupe**: Checks `publish_history` table (per-channel deduplication)
+8. **Publish**: Sends JSON to Redis channels
+9. **Record**: Writes to `publish_history` for each channel
 
 ## Configuration
 

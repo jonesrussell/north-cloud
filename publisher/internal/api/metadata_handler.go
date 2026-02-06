@@ -26,6 +26,10 @@ var knownTopics = []string{
 	"drug_crime",
 	"organized_crime",
 	"criminal_justice",
+	// Mining topics
+	"mining",
+	"core_mining",
+	"peripheral_mining",
 	// General topics
 	"local_news",
 	"politics",

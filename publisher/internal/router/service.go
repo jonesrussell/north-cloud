@@ -191,6 +191,23 @@ func (s *Service) routeArticle(ctx context.Context, article *Article, channels [
 	for _, channel := range locationChannels {
 		s.publishToChannel(ctx, article, channel, nil)
 	}
+
+	// Layer 5: Mining classification channels
+	miningChannels := GenerateMiningChannels(article)
+	for _, channel := range miningChannels {
+		s.publishToChannel(ctx, article, channel, nil)
+	}
+}
+
+// MiningData holds mining classification fields from Elasticsearch.
+type MiningData struct {
+	Relevance       string   `json:"relevance"`
+	MiningStage     string   `json:"mining_stage"`
+	Commodities     []string `json:"commodities"`
+	Location        string   `json:"location"`
+	FinalConfidence float64  `json:"final_confidence"`
+	ReviewRequired  bool     `json:"review_required"`
+	ModelVersion    string   `json:"model_version,omitempty"`
 }
 
 // Article represents an article from Elasticsearch
@@ -226,6 +243,9 @@ type Article struct {
 	LocationProvince   string  `json:"location_province,omitempty"`
 	LocationCountry    string  `json:"location_country"`
 	LocationConfidence float64 `json:"location_confidence"`
+
+	// Mining classification (hybrid rule + ML)
+	Mining *MiningData `json:"mining,omitempty"`
 
 	// Open Graph metadata
 	OGTitle       string `json:"og_title"`
@@ -413,6 +433,8 @@ func (s *Service) publishToChannel(ctx context.Context, article *Article, channe
 		"homepage_eligible":    article.HomepageEligible,
 		"category_pages":       article.CategoryPages,
 		"review_required":      article.ReviewRequired,
+		// Mining classification
+		"mining": article.Mining,
 		// Location detection
 		"location_city":       article.LocationCity,
 		"location_province":   article.LocationProvince,
