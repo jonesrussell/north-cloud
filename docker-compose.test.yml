@@ -48,12 +48,12 @@ services:
     networks:
       - north-cloud-network
     environment:
-      POSTGRES_SOURCE_MANAGER_HOST: postgres-source-manager
-      POSTGRES_SOURCE_MANAGER_PORT: "5432"
-      POSTGRES_SOURCE_MANAGER_USER: postgres
-      POSTGRES_SOURCE_MANAGER_PASSWORD: postgres
-      POSTGRES_SOURCE_MANAGER_DB: source_manager
-      POSTGRES_SOURCE_MANAGER_SSLMODE: disable
+      DB_HOST: postgres-source-manager
+      DB_PORT: "5432"
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      DB_NAME: source_manager
+      DB_SSLMODE: disable
       AUTH_JWT_SECRET: test-jwt-secret-for-integration-tests
       APP_DEBUG: "false"
     depends_on:
@@ -151,12 +151,12 @@ services:
     networks:
       - north-cloud-network
     environment:
-      POSTGRES_CLASSIFIER_HOST: postgres-classifier
-      POSTGRES_CLASSIFIER_PORT: "5432"
-      POSTGRES_CLASSIFIER_USER: postgres
-      POSTGRES_CLASSIFIER_PASSWORD: postgres
-      POSTGRES_CLASSIFIER_DB: classifier
-      POSTGRES_CLASSIFIER_SSLMODE: disable
+      POSTGRES_HOST: postgres-classifier
+      POSTGRES_PORT: "5432"
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: classifier
+      POSTGRES_SSLMODE: disable
       ELASTICSEARCH_ADDRESSES: http://elasticsearch:9200
       CLASSIFIER_POLL_INTERVAL: "5s"
       AUTH_JWT_SECRET: test-jwt-secret-for-integration-tests
