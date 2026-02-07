@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   Download,
@@ -9,45 +9,21 @@ import {
   Briefcase,
   ArrowRight,
   Brain,
-  AlertTriangle,
-  MapPin,
 } from 'lucide-vue-next'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import { PipelineFlow, MetricCard, HealthBadge, QuickActions } from '@/components/pipeline'
 import { JobStatsCard } from '@/components/domain/jobs'
+import { ContentIntelligenceSummary } from '@/components/intelligence'
+import { Skeleton } from '@/components/ui/skeleton'
 import { useHealthStore, useMetricsStore } from '@/stores'
+import { useIntelligenceOverview } from '@/composables'
 import { DEFAULT_QUICK_ACTIONS } from '@/types/metrics'
-import { indexManagerApi } from '@/api/client'
-import type { OverviewAggregation } from '@/types/aggregation'
 
 const router = useRouter()
 const healthStore = useHealthStore()
 const metricsStore = useMetricsStore()
-
-// Intelligence overview from aggregations
-const intelligenceOverview = ref<OverviewAggregation | null>(null)
-const intelligenceLoading = ref(true)
-
-const loadIntelligenceOverview = async () => {
-  try {
-    intelligenceLoading.value = true
-    const response = await indexManagerApi.aggregations.getOverview()
-    intelligenceOverview.value = response.data
-  } catch (err) {
-    console.error('Failed to load intelligence overview:', err)
-  } finally {
-    intelligenceLoading.value = false
-  }
-}
-
-const crimePercentage = computed(() => {
-  if (!intelligenceOverview.value) return 0
-  const { total_crime_related, total_documents } = intelligenceOverview.value
-  if (total_documents === 0) return 0
-  return Math.round((total_crime_related / total_documents) * 100)
-})
+const { data: intelligenceData, loading: intelligenceLoading, hasLoaded: intelligenceHasLoaded } = useIntelligenceOverview()
 
 // Computed values from stores
 const pipelineStages = computed(() => metricsStore.pipelineStages)
@@ -77,7 +53,6 @@ const METRICS_INTERVAL = 30000 // 30 seconds
 onMounted(() => {
   healthStore.startPolling(HEALTH_INTERVAL)
   metricsStore.startPolling(METRICS_INTERVAL)
-  loadIntelligenceOverview()
 })
 
 onUnmounted(() => {
@@ -87,6 +62,10 @@ onUnmounted(() => {
 
 function goToJobs() {
   router.push({ name: 'intake-jobs' })
+}
+
+function goToIntelligence() {
+  router.push('/intelligence')
 }
 </script>
 
@@ -145,147 +124,43 @@ function goToJobs() {
       />
     </div>
 
-    <!-- Intelligence Overview -->
-    <Card v-if="intelligenceOverview || intelligenceLoading">
+    <!-- Content Intelligence (compact) -->
+    <Card>
       <CardHeader class="pb-3">
         <CardTitle class="flex items-center gap-2 text-sm font-medium uppercase tracking-wider text-muted-foreground">
           <Brain class="h-4 w-4" />
-          Intelligence Overview
+          Content Intelligence
         </CardTitle>
         <CardDescription class="text-xs">
-          Content classification insights across all indexed documents
+          Classification insights across all indexed documents
         </CardDescription>
       </CardHeader>
       <CardContent>
         <div
-          v-if="intelligenceLoading"
-          class="text-center py-4 text-xs text-muted-foreground font-mono"
+          v-if="!intelligenceHasLoaded || intelligenceLoading"
+          class="space-y-2"
         >
-          Loading intelligence data...
+          <Skeleton class="h-6 w-20" />
+          <Skeleton class="h-1.5 w-full rounded-sm" />
         </div>
-        <div
-          v-else-if="intelligenceOverview"
-          class="grid gap-6 md:grid-cols-2 lg:grid-cols-4"
-        >
-          <!-- Total Documents -->
-          <div class="space-y-0.5">
-            <p class="text-[10px] font-mono uppercase tracking-widest text-muted-foreground">
-              Total Documents
-            </p>
-            <p class="text-2xl font-semibold font-mono tracking-tight">
-              {{ intelligenceOverview.total_documents.toLocaleString() }}
-            </p>
+        <template v-else>
+          <ContentIntelligenceSummary
+            mode="compact"
+            :total-documents="intelligenceData.total_documents"
+            :quality-distribution="intelligenceData.quality_distribution"
+          />
+          <div class="mt-4 pt-3 border-t">
+            <Button
+              variant="outline"
+              size="xs"
+              class="font-mono w-full justify-between"
+              @click="goToIntelligence()"
+            >
+              View Intelligence
+              <ArrowRight class="ml-1 h-3 w-3" />
+            </Button>
           </div>
-
-          <!-- Crime Related -->
-          <div class="space-y-0.5">
-            <p class="text-[10px] font-mono uppercase tracking-widest text-muted-foreground">
-              Crime Related
-            </p>
-            <p class="text-2xl font-semibold font-mono tracking-tight text-red-500">
-              {{ crimePercentage }}%
-            </p>
-            <p class="text-[10px] font-mono text-muted-foreground">
-              {{ intelligenceOverview.total_crime_related.toLocaleString() }} articles
-            </p>
-          </div>
-
-          <!-- Top Crime Types -->
-          <div class="space-y-1.5">
-            <p class="text-[10px] font-mono uppercase tracking-widest text-muted-foreground flex items-center gap-1">
-              <AlertTriangle class="h-3 w-3" />
-              Top Crime Types
-            </p>
-            <div class="flex flex-wrap gap-1">
-              <Badge
-                v-for="type in intelligenceOverview.top_crime_types?.slice(0, 3)"
-                :key="type"
-                variant="secondary"
-              >
-                {{ type.replace(/_/g, ' ') }}
-              </Badge>
-              <span
-                v-if="!intelligenceOverview.top_crime_types?.length"
-                class="text-xs text-muted-foreground font-mono"
-              >None</span>
-            </div>
-          </div>
-
-          <!-- Top Cities -->
-          <div class="space-y-1.5">
-            <p class="text-[10px] font-mono uppercase tracking-widest text-muted-foreground flex items-center gap-1">
-              <MapPin class="h-3 w-3" />
-              Top Cities
-            </p>
-            <div class="flex flex-wrap gap-1">
-              <Badge
-                v-for="city in intelligenceOverview.top_cities?.slice(0, 3)"
-                :key="city"
-                variant="outline"
-              >
-                {{ city }}
-              </Badge>
-              <span
-                v-if="!intelligenceOverview.top_cities?.length"
-                class="text-xs text-muted-foreground font-mono"
-              >None</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- Quality Distribution Bar -->
-        <div
-          v-if="intelligenceOverview?.quality_distribution"
-          class="mt-4 pt-4 border-t"
-        >
-          <p class="text-[10px] font-mono uppercase tracking-widest text-muted-foreground mb-2">
-            Quality Distribution
-          </p>
-          <div class="flex h-2 rounded-sm overflow-hidden bg-muted">
-            <div
-              class="bg-green-500"
-              :style="{ width: `${(intelligenceOverview.quality_distribution.high / intelligenceOverview.total_documents) * 100}%` }"
-              :title="`High: ${intelligenceOverview.quality_distribution.high}`"
-            />
-            <div
-              class="bg-amber-500"
-              :style="{ width: `${(intelligenceOverview.quality_distribution.medium / intelligenceOverview.total_documents) * 100}%` }"
-              :title="`Medium: ${intelligenceOverview.quality_distribution.medium}`"
-            />
-            <div
-              class="bg-red-500"
-              :style="{ width: `${(intelligenceOverview.quality_distribution.low / intelligenceOverview.total_documents) * 100}%` }"
-              :title="`Low: ${intelligenceOverview.quality_distribution.low}`"
-            />
-          </div>
-          <div class="flex justify-between text-[10px] font-mono text-muted-foreground mt-1">
-            <span>High ({{ intelligenceOverview.quality_distribution.high }})</span>
-            <span>Medium ({{ intelligenceOverview.quality_distribution.medium }})</span>
-            <span>Low ({{ intelligenceOverview.quality_distribution.low }})</span>
-          </div>
-        </div>
-
-        <!-- Link to detailed views -->
-        <div class="mt-4 pt-4 border-t flex gap-2">
-          <Button
-            variant="outline"
-            size="xs"
-            class="font-mono"
-            @click="router.push('/intelligence/crime')"
-          >
-            Crime Details
-            <ArrowRight class="ml-1 h-3 w-3" />
-          </Button>
-          <Button
-            variant="outline"
-            size="xs"
-            class="font-mono"
-            @click="router.push('/intelligence/location')"
-          >
-            Location Details
-            <ArrowRight class="ml-1 h-3 w-3" />
-          </Button>
-        </div>
+        </template>
       </CardContent>
     </Card>
 

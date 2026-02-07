@@ -14,3 +14,9 @@ export { useServerPaginatedTable } from './useServerPaginatedTable'
 
 // Publish history
 export { usePublishHistory, type GroupedArticle, type PublishHistoryFilters } from './usePublishHistory'
+
+// Intelligence overview
+export {
+  useIntelligenceOverview,
+  type IntelligenceOverviewData,
+} from './useIntelligenceOverview'

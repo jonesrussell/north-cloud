@@ -81,8 +81,14 @@ const routes: RouteRecordRaw[] = [
   },
 
   // ==========================================
-  // Intelligence - crime/location analytics
+  // Intelligence - overview and drill-downs
   // ==========================================
+  {
+    path: '/intelligence',
+    name: 'intelligence-overview',
+    component: () => import('../views/intelligence/IntelligenceOverviewView.vue'),
+    meta: { title: 'Intelligence', section: 'intelligence', requiresAuth: true },
+  },
   {
     path: '/intelligence/crime',
     name: 'intelligence-crime',
