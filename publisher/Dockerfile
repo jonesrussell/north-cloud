@@ -34,8 +34,9 @@ RUN apk --no-cache add ca-certificates tzdata curl && \
 
 WORKDIR /app
 
-# Copy binary
+# Copy binary and config
 COPY --from=builder /build/publisher/publisher .
+COPY --from=builder /build/publisher/config.yml.example ./config.yml
 
 # Switch to non-root user
 USER publisher

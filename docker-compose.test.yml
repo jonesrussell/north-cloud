@@ -11,8 +11,39 @@
 #   - Deterministic ports (no env var overrides)
 #   - nc-http-proxy forced to replay mode
 #   - Ephemeral volumes (removed on down -v)
+#   - Postgres containers auto-run migrations on first init
 
 services:
+
+  # ------------------------------------------------------------
+  # PostgreSQL — mount migration init script for auto-schema
+  # ------------------------------------------------------------
+  postgres-source-manager:
+    volumes:
+      - ./infrastructure/postgres/run-migrations.sh:/docker-entrypoint-initdb.d/run-migrations.sh:ro
+
+  postgres-crawler:
+    volumes:
+      - ./infrastructure/postgres/run-migrations.sh:/docker-entrypoint-initdb.d/run-migrations.sh:ro
+
+  postgres-classifier:
+    volumes:
+      - ./infrastructure/postgres/run-migrations.sh:/docker-entrypoint-initdb.d/run-migrations.sh:ro
+
+  postgres-index-manager:
+    volumes:
+      - ./infrastructure/postgres/run-migrations.sh:/docker-entrypoint-initdb.d/run-migrations.sh:ro
+
+  postgres-publisher:
+    volumes:
+      - ./infrastructure/postgres/run-migrations.sh:/docker-entrypoint-initdb.d/run-migrations.sh:ro
+
+  # ------------------------------------------------------------
+  # Elasticsearch — override production host path with named volume
+  # ------------------------------------------------------------
+  elasticsearch:
+    volumes:
+      - es_test_data:/usr/share/elasticsearch/data
 
   # ------------------------------------------------------------
   # Auth
@@ -82,7 +113,7 @@ services:
       POSTGRES_INDEX_MANAGER_PASSWORD: postgres
       POSTGRES_INDEX_MANAGER_DB: index_manager
       POSTGRES_INDEX_MANAGER_SSLMODE: disable
-      ELASTICSEARCH_ADDRESSES: http://elasticsearch:9200
+      ELASTICSEARCH_URL: http://elasticsearch:9200
       AUTH_JWT_SECRET: test-jwt-secret-for-integration-tests
       APP_DEBUG: "false"
     depends_on:
@@ -157,7 +188,7 @@ services:
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: classifier
       POSTGRES_SSLMODE: disable
-      ELASTICSEARCH_ADDRESSES: http://elasticsearch:9200
+      ELASTICSEARCH_URL: http://elasticsearch:9200
       CLASSIFIER_POLL_INTERVAL: "5s"
       AUTH_JWT_SECRET: test-jwt-secret-for-integration-tests
       APP_DEBUG: "false"
@@ -167,7 +198,7 @@ services:
       elasticsearch:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8071/health"]
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8070/health"]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -189,8 +220,8 @@ services:
       POSTGRES_PUBLISHER_PASSWORD: postgres
       POSTGRES_PUBLISHER_DB: publisher
       POSTGRES_PUBLISHER_SSLMODE: disable
-      ELASTICSEARCH_ADDRESSES: http://elasticsearch:9200
-      REDIS_ADDRESS: redis:6379
+      ES_URL: http://elasticsearch:9200
+      REDIS_URL: redis:6379
       PUBLISHER_ROUTER_CHECK_INTERVAL: "10s"
       AUTH_JWT_SECRET: test-jwt-secret-for-integration-tests
       APP_DEBUG: "false"
@@ -214,6 +245,9 @@ services:
   nc-http-proxy:
     environment:
       PROXY_MODE: replay
+
+volumes:
+  es_test_data:
 
 networks:
   north-cloud-network:
