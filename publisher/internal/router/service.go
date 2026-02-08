@@ -246,7 +246,6 @@ type Article struct {
 	QualityScore     int      `json:"quality_score"`
 	Topics           []string `json:"topics"`
 	ContentType      string   `json:"content_type"`
-	IsCrimeRelated   bool     `json:"is_crime_related"`
 	SourceReputation int      `json:"source_reputation"`
 	Confidence       float64  `json:"confidence"`
 
@@ -279,12 +278,7 @@ type Article struct {
 	OGURL         string `json:"og_url"`
 
 	// Additional fields
-	Intro       string   `json:"intro"`
-	Description string   `json:"description"`
-	WordCount   int      `json:"word_count"`
-	Category    string   `json:"category"`
-	Section     string   `json:"section"`
-	Keywords    []string `json:"keywords"`
+	WordCount int `json:"word_count"`
 
 	// Sort values for search_after pagination
 	Sort []any `json:"-"`
@@ -468,19 +462,13 @@ func (s *Service) publishToChannel(ctx context.Context, article *Article, channe
 		"quality_score":     article.QualityScore,
 		"topics":            article.Topics,
 		"content_type":      article.ContentType,
-		"is_crime_related":  article.IsCrimeRelated,
 		"source_reputation": article.SourceReputation,
 		"confidence":        article.Confidence,
 		"og_title":          article.OGTitle,
 		"og_description":    article.OGDescription,
 		"og_image":          article.OGImage,
 		"og_url":            article.OGURL,
-		"intro":             article.Intro,
-		"description":       article.Description,
 		"word_count":        article.WordCount,
-		"category":          article.Category,
-		"section":           article.Section,
-		"keywords":          article.Keywords,
 		// Crime classification
 		"crime_relevance":      article.CrimeRelevance,
 		"crime_sub_label":      article.CrimeSubLabel,
