@@ -200,7 +200,7 @@ services:
       CRIME_ML_SERVICE_URL: http://crime-ml:8076
       MINING_ENABLED: "true"
       MINING_ML_SERVICE_URL: http://mining-ml:8077
-      COFORGE_ENABLED: "${COFORGE_ENABLED:-false}"
+      COFORGE_ENABLED: "true"
       COFORGE_ML_SERVICE_URL: http://coforge-ml:8078
     extra_hosts:
       - "host.docker.internal:host-gateway"
