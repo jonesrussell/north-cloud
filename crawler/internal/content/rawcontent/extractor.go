@@ -479,6 +479,35 @@ func normalizeJSONLDObject(objMap map[string]any) map[string]any {
 		}
 	}
 
+	// Normalize image to always be a string URL
+	if imgVal, hasImg := normalized["image"]; hasImg {
+		normalized["image"] = normalizeImageField(imgVal)
+		if normalized["image"] == nil {
+			delete(normalized, "image")
+		}
+	}
+
+	// Normalize publisher to always be a string name
+	if pubVal, hasPub := normalized["publisher"]; hasPub {
+		normalized["publisher"] = normalizeObjectToName(pubVal)
+		if normalized["publisher"] == nil {
+			delete(normalized, "publisher")
+		}
+	}
+
+	// Normalize mainEntityOfPage to always be a string URL
+	if meVal, hasME := normalized["mainEntityOfPage"]; hasME {
+		normalized["mainEntityOfPage"] = normalizeEntityToURL(meVal)
+		if normalized["mainEntityOfPage"] == nil {
+			delete(normalized, "mainEntityOfPage")
+		}
+	}
+
+	// Normalize wordCount to always be a string (some sites emit it as int, others as string)
+	if wcVal, hasWC := normalized["wordCount"]; hasWC {
+		normalized["wordCount"] = normalizeToString(wcVal)
+	}
+
 	return normalized
 }
 
@@ -506,6 +535,75 @@ func normalizeContextField(ctxVal any) string {
 	default:
 		return defaultSchemaOrgURL
 	}
+}
+
+// normalizeImageField normalizes the image field to a string URL.
+// Image can be a string URL, an object with "url" field, or an array.
+func normalizeImageField(imgVal any) any {
+	switch v := imgVal.(type) {
+	case string:
+		return v
+	case map[string]any:
+		if u, ok := v["url"].(string); ok && u != "" {
+			return u
+		}
+		return nil
+	case []any:
+		// Extract URL from first element
+		for _, item := range v {
+			switch img := item.(type) {
+			case string:
+				return img
+			case map[string]any:
+				if u, ok := img["url"].(string); ok && u != "" {
+					return u
+				}
+			}
+		}
+		return nil
+	default:
+		return nil
+	}
+}
+
+// normalizeObjectToName extracts a string name from a field that can be string or object.
+// Used for publisher and similar fields that have a "name" property.
+func normalizeObjectToName(val any) any {
+	switch v := val.(type) {
+	case string:
+		return v
+	case map[string]any:
+		if name, ok := v["name"].(string); ok && name != "" {
+			return name
+		}
+		return nil
+	default:
+		return nil
+	}
+}
+
+// normalizeEntityToURL extracts a string URL from mainEntityOfPage.
+// Can be a string URL or an object with "@id" or "url" field.
+func normalizeEntityToURL(val any) any {
+	switch v := val.(type) {
+	case string:
+		return v
+	case map[string]any:
+		if id, ok := v["@id"].(string); ok && id != "" {
+			return id
+		}
+		if u, ok := v["url"].(string); ok && u != "" {
+			return u
+		}
+		return nil
+	default:
+		return nil
+	}
+}
+
+// normalizeToString converts any scalar value to its string representation.
+func normalizeToString(val any) string {
+	return fmt.Sprintf("%v", val)
 }
 
 // normalizeAuthorField normalizes the author field from various types to a string.

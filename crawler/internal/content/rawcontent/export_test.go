@@ -5,3 +5,11 @@ package rawcontent
 var NormalizeContextField = normalizeContextField
 
 var NormalizeJSONLDObject = normalizeJSONLDObject
+
+var NormalizeImageField = normalizeImageField
+
+var NormalizeObjectToName = normalizeObjectToName
+
+var NormalizeEntityToURL = normalizeEntityToURL
+
+var NormalizeToString = normalizeToString
