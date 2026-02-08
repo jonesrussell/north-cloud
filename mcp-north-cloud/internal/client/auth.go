@@ -20,12 +20,17 @@ type AuthenticatedClient struct {
 	jwtSecret string
 }
 
-// NewAuthenticatedClient creates a new authenticated HTTP client.
+// NewAuthenticatedClient creates a new authenticated HTTP client with default timeout.
 // If jwtSecret is empty, requests will be made without authentication.
 func NewAuthenticatedClient(jwtSecret string) *AuthenticatedClient {
+	return NewAuthenticatedClientWithTimeout(jwtSecret, defaultHTTPTimeout)
+}
+
+// NewAuthenticatedClientWithTimeout creates a new authenticated HTTP client with the given timeout.
+func NewAuthenticatedClientWithTimeout(jwtSecret string, timeout time.Duration) *AuthenticatedClient {
 	return &AuthenticatedClient{
 		client: &http.Client{
-			Timeout: defaultHTTPTimeout,
+			Timeout: timeout,
 		},
 		jwtSecret: jwtSecret,
 	}

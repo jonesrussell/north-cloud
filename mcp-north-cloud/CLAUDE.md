@@ -9,7 +9,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with th
 task dev              # Start with hot reload
 task test             # Run tests
 task lint             # Run linter
-./test-tools.sh       # Verify tool registration (23 tools)
+./test-tools.sh       # Verify tool registration (27 tools)
 
 # Test tool execution
 echo '{"jsonrpc":"2.0","id":1,"method":"tools/list"}' | ./bin/mcp-north-cloud
@@ -24,10 +24,12 @@ mcp-north-cloud/
 ├── main.go              # Stdio processing loop
 ├── internal/
 │   ├── mcp/
-│   │   ├── server.go    # Request routing
-│   │   ├── types.go     # JSON-RPC types
-│   │   ├── tools.go     # 23 tool definitions
-│   │   └── handlers.go  # Tool implementations
+│   │   ├── server.go    # Request routing, prompts/resources handlers
+│   │   ├── types.go     # JSON-RPC types, Prompt/Resource types
+│   │   ├── tools.go     # 27 tool definitions
+│   │   ├── handlers.go  # Tool implementations
+│   │   ├── prompts.go  # prompts/list, prompts/get (4 prompts)
+│   │   └── resources.go # resources/list, resources/read (static docs)
 │   ├── client/          # HTTP clients for all services
 │   │   ├── crawler.go
 │   │   ├── publisher.go
@@ -53,31 +55,37 @@ fmt.Println("debug info")  // Goes to stdout, corrupts JSON-RPC
 
 The `run-mcp.sh` wrapper enforces this with `>&2` redirects.
 
-## 23 Tools by Category
+## 27 Tools by Category
 
 | Category | Tools |
 |----------|-------|
-| **Crawler (7)** | start_crawl, schedule_crawl, list_crawl_jobs, pause_crawl_job, resume_crawl_job, cancel_crawl_job, get_crawl_stats |
+| **Auth (1)** | get_auth_token |
+| **Workflow (1)** | onboard_source |
+| **Crawler (5)** | start_crawl, schedule_crawl, list_crawl_jobs, control_crawl_job, get_crawl_stats |
 | **Source Manager (5)** | add_source, list_sources, update_source, delete_source, test_source |
-| **Publisher (6)** | create_route, list_routes, delete_route, preview_route, get_publish_history, get_publisher_stats |
+| **Publisher (8)** | create_route, list_routes, create_channel, list_channels, delete_route, preview_route, get_publish_history, get_publisher_stats |
 | **Search (1)** | search_articles |
 | **Classifier (1)** | classify_article |
 | **Index Manager (2)** | list_indexes, delete_index |
-| **Development (1)** | lint_file |
+| **Development (3)** | lint_file, build_service, test_service |
 
 ## MCP Protocol Methods
 
-- `initialize` - Returns protocol version & capabilities
-- `tools/list` - Returns all 23 tool definitions
+- `initialize` - Returns protocol version & capabilities (tools, prompts, resources)
+- `tools/list` - Returns all 27 tool definitions
 - `tools/call` - Routes to specific handler
+- `prompts/list` - Returns prompt templates (e.g. onboard_new_source, debug_crawl_job)
+- `prompts/get` - Returns messages for a prompt with argument substitution
+- `resources/list` - Returns static doc resources (northcloud://docs/*)
+- `resources/read` - Returns content for a resource URI
 - `ping` - Keepalive
 
 ## Handler Pattern
 
-All tool handlers follow this structure:
+All tool handlers take context and follow this structure (handlers are registered in `server.go` in `toolHandlers` map):
 
 ```go
-func (s *Server) handleToolName(id any, arguments json.RawMessage) *Response {
+func (s *Server) handleToolName(ctx context.Context, id any, arguments json.RawMessage) *Response {
     // 1. Unmarshal arguments
     var args struct { ... }
     if err := json.Unmarshal(arguments, &args); err != nil {
@@ -89,8 +97,8 @@ func (s *Server) handleToolName(id any, arguments json.RawMessage) *Response {
         return s.errorResponse(id, InvalidParams, "field is required")
     }
 
-    // 3. Call service client
-    result, err := s.client.DoSomething(args)
+    // 3. Call service client (pass ctx)
+    result, err := s.client.DoSomething(ctx, args)
     if err != nil {
         return s.errorResponse(id, InternalError, err.Error())
     }
@@ -102,30 +110,13 @@ func (s *Server) handleToolName(id any, arguments json.RawMessage) *Response {
 
 ## Adding a New Tool
 
-1. **Define tool** in `internal/mcp/tools.go`:
-```go
-{
-    Name:        "tool_name",
-    Description: "What the tool does",
-    InputSchema: map[string]any{
-        "type": "object",
-        "properties": map[string]any{
-            "param": map[string]any{"type": "string", "description": "..."},
-        },
-        "required": []string{"param"},
-    },
-}
-```
+1. **Define tool** in `internal/mcp/tools.go` (add to `getAllTools()` slice).
 
-2. **Add routing** in `server.go:routeToolCall()`:
-```go
-case "tool_name":
-    return s.handleToolName(id, arguments)
-```
+2. **Register handler** in `server.go`: add to `toolHandlers` map, e.g. `"tool_name": (*Server).handleToolName`.
 
-3. **Implement handler** in `handlers.go`
+3. **Implement handler** in `handlers.go` with signature `(ctx context.Context, id any, arguments json.RawMessage) *Response`; pass `ctx` into client calls.
 
-4. **Update test** in `test-tools.sh` (tool count)
+4. **Update** `test-tools.sh` expected count (27 → 28), README tool list, and this CLAUDE.md table. Optionally update `internal/mcp/resources.go` static tool-reference text.
 
 ## Service Client Pattern
 
@@ -141,10 +132,11 @@ type Client struct {
 **Configuration** (env vars with defaults):
 - `CRAWLER_URL` → `http://localhost:8060`
 - `SOURCE_MANAGER_URL` → `http://localhost:8050`
-- `PUBLISHER_URL` → `http://localhost:8080`
+- `PUBLISHER_URL` → `http://localhost:8070`
 - `SEARCH_URL` → `http://localhost:8090`
 - `CLASSIFIER_URL` → `http://localhost:8070`
 - `INDEX_MANAGER_URL` → `http://localhost:8090`
+- `MCP_HTTP_TIMEOUT_SECONDS` → `30` (HTTP client timeout; request timeout in main is 60s)
 
 ## Common Gotchas
 
@@ -160,19 +152,18 @@ type Client struct {
 
 ## Cursor IDE Integration
 
-Config in `.cursor/mcp.json`:
+For local binary, config in `.cursor/mcp.json` points at `run-mcp.sh` or the binary. For MCP running in production Docker, use `docker exec -i` (see README "Deploying MCP in production"):
 ```json
 {
   "mcpServers": {
     "north-cloud": {
       "command": "docker",
-      "args": ["exec", "-i", "north-cloud-mcp-north-cloud-1", "/app/tmp/mcp-north-cloud"]
+      "args": ["exec", "-i", "north-cloud-mcp-north-cloud-1", "/app/mcp-north-cloud"]
     }
   }
 }
 ```
-
-Requires container running with binary at `/app/tmp/mcp-north-cloud`.
+Adjust container name if different (`docker ps`).
 
 ## JSON-RPC Error Codes
 
@@ -180,15 +171,19 @@ Requires container running with binary at `/app/tmp/mcp-north-cloud`.
 |------|---------|
 | -32700 | Parse error (invalid JSON) |
 | -32600 | Invalid request |
-| -32601 | Method not found |
+| -32601 | Method not found (unknown tool name) |
 | -32602 | Invalid params |
 | -32603 | Internal error |
+| -32002 | Resource not found (unknown resource URI) |
 
 ## Testing
 
 ```bash
-# Verify 23 tools registered
+# Verify 27 tools registered
 ./test-tools.sh
+
+# Optional: test prompts and resources (set MCP_TEST_PROMPTS=1)
+MCP_TEST_PROMPTS=1 ./test-tools.sh
 
 # Manual tool call
 echo '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"list_sources","arguments":{}}}' | ./bin/mcp-north-cloud

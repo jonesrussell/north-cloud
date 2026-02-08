@@ -29,10 +29,10 @@ func NewIndexManagerClient(baseURL string, authClient *AuthenticatedClient) *Ind
 }
 
 // DeleteIndex deletes an index by name
-func (c *IndexManagerClient) DeleteIndex(indexName string) error {
+func (c *IndexManagerClient) DeleteIndex(ctx context.Context, indexName string) error {
 	url := fmt.Sprintf("%s/api/v1/indexes/%s", c.baseURL, indexName)
 
-	req, err := http.NewRequestWithContext(context.Background(), http.MethodDelete, url, http.NoBody)
+	req, err := http.NewRequestWithContext(ctx, http.MethodDelete, url, http.NoBody)
 	if err != nil {
 		return fmt.Errorf("failed to create request: %w", err)
 	}
@@ -72,10 +72,10 @@ func (c *IndexManagerClient) DeleteIndex(indexName string) error {
 }
 
 // ListIndices lists all indices (optional helper method)
-func (c *IndexManagerClient) ListIndices() ([]string, error) {
+func (c *IndexManagerClient) ListIndices(ctx context.Context) ([]string, error) {
 	url := fmt.Sprintf("%s/api/v1/indexes", c.baseURL)
 
-	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, url, http.NoBody)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, http.NoBody)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}

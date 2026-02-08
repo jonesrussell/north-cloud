@@ -2,7 +2,7 @@
 
 ## Overview
 
-Successfully implemented a comprehensive MCP (Model Context Protocol) server for the North Cloud platform with **23 tools** across all major services.
+Successfully implemented a comprehensive MCP (Model Context Protocol) server for the North Cloud platform with **27 tools** across all major services.
 
 ## What Was Built
 
@@ -41,15 +41,19 @@ Created robust HTTP clients for all North Cloud services:
    - List and delete Elasticsearch indexes
    - Index health checks
 
-### MCP Tools (23 total)
+### MCP Tools (27 total)
 
-#### Crawler Tools (7)
+#### Auth (1)
+- `get_auth_token` - Generate JWT for API testing
+
+#### Workflow (1)
+- `onboard_source` - Create source, start/schedule crawl, optionally create route
+
+#### Crawler Tools (5)
 - `start_crawl` - Start immediate one-time crawl
 - `schedule_crawl` - Create recurring crawl with interval scheduling
 - `list_crawl_jobs` - List jobs with status filtering
-- `pause_crawl_job` - Pause running/scheduled jobs
-- `resume_crawl_job` - Resume paused jobs
-- `cancel_crawl_job` - Cancel jobs
+- `control_crawl_job` - Pause, resume, or cancel a job
 - `get_crawl_stats` - Get job statistics
 
 #### Source Manager Tools (5)
@@ -59,9 +63,11 @@ Created robust HTTP clients for all North Cloud services:
 - `delete_source` - Delete source
 - `test_source` - Test crawl without saving
 
-#### Publisher Tools (6)
+#### Publisher Tools (8)
 - `create_route` - Create publishing route with filters
 - `list_routes` - List routes with optional filters
+- `create_channel` - Create a new publishing channel
+- `list_channels` - List all channels
 - `delete_route` - Delete route
 - `preview_route` - Preview articles before publishing
 - `get_publish_history` - Get publish history with pagination
@@ -77,8 +83,10 @@ Created robust HTTP clients for all North Cloud services:
 - `delete_index` - Delete Elasticsearch index
 - `list_indexes` - List all indexes
 
-#### Development Tools (1)
+#### Development Tools (3)
 - `lint_file` - Lint a specific file or entire service (automatically detects Go vs frontend)
+- `build_service` - Build a Go or frontend service
+- `test_service` - Run tests for a service (optional coverage for Go)
 
 ## Architecture
 
@@ -87,31 +95,33 @@ MCP Server (stdio/JSON-RPC 2.0)
 ├── HTTP Clients (6 services)
 │   ├── Crawler (port 8060)
 │   ├── Source Manager (port 8050)
-│   ├── Publisher (port 8080)
+│   ├── Publisher (port 8070)
 │   ├── Search (port 8090)
 │   ├── Classifier (port 8070)
 │   └── Index Manager (port 8090)
-└── Tool Handlers (23 tools)
+└── Tool Handlers (27 tools)
     ├── Server handlers (server.go)
     └── Client handlers (handlers.go)
 ```
 
 ## Files Created/Modified
 
-### New Files Created (8)
-1. `/internal/client/crawler.go` - Crawler HTTP client (400+ lines)
-2. `/internal/client/source_manager.go` - Source manager client (300+ lines)
-3. `/internal/client/publisher.go` - Publisher client (350+ lines)
-4. `/internal/client/search.go` - Search client (100+ lines)
-5. `/internal/client/classifier.go` - Classifier client (80+ lines)
-6. `/internal/mcp/handlers.go` - Tool handler implementations (600+ lines)
-7. `/test-tools.sh` - Tool registration test script
-8. `/IMPLEMENTATION_SUMMARY.md` - This file
+### New Files Created
+1. `/internal/client/crawler.go` - Crawler HTTP client
+2. `/internal/client/source_manager.go` - Source manager client
+3. `/internal/client/publisher.go` - Publisher client
+4. `/internal/client/search.go` - Search client
+5. `/internal/client/classifier.go` - Classifier client
+6. `/internal/mcp/handlers.go` - Tool handler implementations
+7. `/internal/mcp/prompts.go` - Prompt definitions and prompts/list, prompts/get
+8. `/internal/mcp/resources.go` - Static resources and resources/list, resources/read
+9. `/test-tools.sh` - Tool registration test script (27 tools; optional MCP_TEST_PROMPTS=1 for prompts/resources)
+10. `/IMPLEMENTATION_SUMMARY.md` - This file
 
 ### Modified Files (4)
 1. `/internal/mcp/server.go` - Updated server with new tools and routing
 2. `/main.go` - Initialize all service clients
-3. `/README.md` - Comprehensive documentation for all 23 tools
+3. `/README.md` - Comprehensive documentation for all 27 tools
 4. `/.cursor/mcp.json` - Updated with all service URLs
 
 ## Key Features
@@ -133,10 +143,16 @@ MCP Server (stdio/JSON-RPC 2.0)
 - Connection pooling via http.Client
 - Environment variable configuration
 
+### Prompts and Resources
+- `prompts/list` and `prompts/get` with 4 prompts (onboard_new_source, debug_crawl_job, publishing_review, classify_and_search)
+- `resources/list` and `resources/read` with static docs (northcloud://docs/tool-reference, selectors, pipeline)
+- Initialize declares capabilities for tools, prompts, and resources
+
 ### Cursor IDE Integration
 - Pre-configured `.cursor/mcp.json`
 - Docker-based execution
 - Internal service URL mapping
+- Production: connect via `docker exec -i` (see README)
 
 ## Usage Examples
 
@@ -166,7 +182,7 @@ MCP Server (stdio/JSON-RPC 2.0)
 ## Testing
 
 Built tool registration tests to verify:
-- ✅ 23 tools registered correctly
+- ✅ 27 tools registered correctly
 - ✅ Initialize method works
 - ✅ Tools/list returns complete tool list
 - ✅ All tool schemas are valid
@@ -189,7 +205,7 @@ All service URLs configurable:
 - `INDEX_MANAGER_URL` - Default: http://localhost:8090
 - `CRAWLER_URL` - Default: http://localhost:8060
 - `SOURCE_MANAGER_URL` - Default: http://localhost:8050
-- `PUBLISHER_URL` - Default: http://localhost:8080
+- `PUBLISHER_URL` - Default: http://localhost:8070
 - `SEARCH_URL` - Default: http://localhost:8090
 - `CLASSIFIER_URL` - Default: http://localhost:8070
 
@@ -237,6 +253,6 @@ All service URLs configurable:
 
 ## Conclusion
 
-Successfully created a production-ready MCP server that provides comprehensive access to the entire North Cloud platform. All 23 tools are implemented, tested, and documented with a focus on usability and reliability.
+Successfully created a production-ready MCP server that provides comprehensive access to the entire North Cloud platform. All 27 tools are implemented, tested, and documented with a focus on usability and reliability.
 
 The implementation follows MCP protocol specifications, uses proper error handling, and provides a clean, consistent interface across all North Cloud services.

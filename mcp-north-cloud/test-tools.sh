@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Test script for MCP North Cloud Server
-# This script tests all 26 tools by sending JSON-RPC requests
+# This script tests all 27 tools by sending JSON-RPC requests
 
 set -e
 
@@ -72,11 +72,11 @@ test_tools_list() {
     # Count tools
     tool_count=$(echo "$response" | jq '.result.tools | length' 2>/dev/null)
 
-    if [ "$tool_count" -eq 26 ]; then
+    if [ "$tool_count" -eq 27 ]; then
         echo -e "${GREEN}✓ PASSED: tools/list (found $tool_count tools)${NC}"
         return 0
     else
-        echo -e "${RED}✗ FAILED: tools/list (expected 26 tools, found $tool_count)${NC}"
+        echo -e "${RED}✗ FAILED: tools/list (expected 27 tools, found $tool_count)${NC}"
         echo "Response: $response"
         return 1
     fi
@@ -98,7 +98,7 @@ fi
 export INDEX_MANAGER_URL="http://localhost:8090"
 export CRAWLER_URL="http://localhost:8060"
 export SOURCE_MANAGER_URL="http://localhost:8050"
-export PUBLISHER_URL="http://localhost:8080"
+export PUBLISHER_URL="http://localhost:8070"
 export SEARCH_URL="http://localhost:8090"
 export CLASSIFIER_URL="http://localhost:8070"
 
@@ -108,6 +108,34 @@ failed=0
 # Test protocol methods
 test_initialize && ((passed++)) || ((failed++))
 test_tools_list && ((passed++)) || ((failed++))
+
+# Optional: test prompts and resources when MCP_TEST_PROMPTS=1
+if [ "${MCP_TEST_PROMPTS:-0}" = "1" ]; then
+    # prompts/list
+    echo -e "${YELLOW}Testing: prompts/list${NC}"
+    req='{"jsonrpc":"2.0","id":1,"method":"prompts/list","params":{}}'
+    resp=$(timeout 5 bash -c "echo '$req' | $MCP_BIN" 2>&1 | head -1)
+    n=$(echo "$resp" | jq '.result.prompts | length' 2>/dev/null || echo "0")
+    if [ "${n:-0}" -ge 1 ]; then
+        echo -e "${GREEN}✓ PASSED: prompts/list ($n prompts)${NC}"
+        ((passed++)) || true
+    else
+        echo -e "${RED}✗ FAILED: prompts/list${NC}"
+        ((failed++)) || true
+    fi
+    # resources/list
+    echo -e "${YELLOW}Testing: resources/list${NC}"
+    req='{"jsonrpc":"2.0","id":1,"method":"resources/list","params":{}}'
+    resp=$(timeout 5 bash -c "echo '$req' | $MCP_BIN" 2>&1 | head -1)
+    n=$(echo "$resp" | jq '.result.resources | length' 2>/dev/null || echo "0")
+    if [ "${n:-0}" -ge 1 ]; then
+        echo -e "${GREEN}✓ PASSED: resources/list ($n resources)${NC}"
+        ((passed++)) || true
+    else
+        echo -e "${RED}✗ FAILED: resources/list${NC}"
+        ((failed++)) || true
+    fi
+fi
 
 # Note: The following tool tests require actual services to be running
 # For now, we'll just test that the tools are registered correctly
@@ -124,14 +152,16 @@ if [ $failed -eq 0 ]; then
     echo -e "${GREEN}All tests passed!${NC}"
     echo ""
     echo "Tools registered:"
-    echo "  - Crawler tools: 7"
-    echo "  - Source Manager tools: 5"
-    echo "  - Publisher tools: 6"
-    echo "  - Search tools: 1"
-    echo "  - Classifier tools: 1"
-    echo "  - Index Manager tools: 2"
-    echo "  - Development tools: 3"
-    echo "  - Total: 26 tools"
+    echo "  - Auth: 1 (get_auth_token)"
+    echo "  - Workflow: 1 (onboard_source)"
+    echo "  - Crawler: 5 (start_crawl, schedule_crawl, list_crawl_jobs, control_crawl_job, get_crawl_stats)"
+    echo "  - Source Manager: 5 (add_source, list_sources, update_source, delete_source, test_source)"
+    echo "  - Publisher: 8 (create_route, list_routes, create_channel, list_channels, delete_route, preview_route, get_publish_history, get_publisher_stats)"
+    echo "  - Search: 1 (search_articles)"
+    echo "  - Classifier: 1 (classify_article)"
+    echo "  - Index Manager: 2 (list_indexes, delete_index)"
+    echo "  - Development: 3 (lint_file, build_service, test_service)"
+    echo "  - Total: 27 tools"
     exit 0
 else
     echo -e "${RED}Some tests failed!${NC}"

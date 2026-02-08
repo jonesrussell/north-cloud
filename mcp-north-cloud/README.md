@@ -1,6 +1,6 @@
 # MCP North Cloud Server
 
-An MCP (Model Context Protocol) server that provides comprehensive tools for managing the North Cloud content platform. This server exposes 26 tools across all North Cloud services for crawling, source management, content classification, publishing, search operations, and development tasks.
+An MCP (Model Context Protocol) server that provides comprehensive tools for managing the North Cloud content platform. This server exposes 27 tools across all North Cloud services for crawling, source management, content classification, publishing, search operations, and development tasks.
 
 ## Overview
 
@@ -14,13 +14,17 @@ This MCP server acts as a unified interface to the entire North Cloud microservi
 
 ## Features
 
-### Crawler Tools (7 tools)
+### Auth Tools (1 tool)
+- `get_auth_token` - Generate a JWT token for API testing or service-to-service calls
+
+### Workflow Tools (1 tool)
+- `onboard_source` - Set up a complete content pipeline in one step: create source, start or schedule crawl, optionally create a publishing route
+
+### Crawler Tools (5 tools)
 - `start_crawl` - Start an immediate one-time crawl job
 - `schedule_crawl` - Schedule recurring crawls with interval-based scheduling
 - `list_crawl_jobs` - List all crawl jobs with status filtering
-- `pause_crawl_job` - Pause a running or scheduled job
-- `resume_crawl_job` - Resume a paused job
-- `cancel_crawl_job` - Cancel a job
+- `control_crawl_job` - Pause, resume, or cancel a job (parameters: `job_id`, `action` one of pause | resume | cancel)
 - `get_crawl_stats` - Get job statistics and execution history
 
 ### Source Manager Tools (5 tools)
@@ -30,9 +34,11 @@ This MCP server acts as a unified interface to the entire North Cloud microservi
 - `delete_source` - Delete a source
 - `test_source` - Test crawl a source without saving (validate selectors)
 
-### Publisher Tools (6 tools)
+### Publisher Tools (8 tools)
 - `create_route` - Create a publishing route with quality/topic filters
 - `list_routes` - List all publishing routes
+- `create_channel` - Create a new publishing channel
+- `list_channels` - List all publishing channels
 - `delete_route` - Delete a publishing route
 - `preview_route` - Preview articles matching route filters
 - `get_publish_history` - Get publishing history with pagination
@@ -80,7 +86,7 @@ The server implements the MCP protocol using:
 │  ┌────────────────────────────────────────────────────┐ │
 │  │           North Cloud Services (Docker)            │ │
 │  │  crawler:8060 | source-manager:8050 |              │ │
-│  │  publisher:8080 | search:8090 | classifier:8070    │ │
+│  │  publisher:8070 | search:8090 | classifier:8070    │ │
 │  │  index-manager:8090                                  │ │
 │  └────────────────────────────────────────────────────┘ │
 └─────────────────────────────────────────────────────────┘
@@ -137,7 +143,7 @@ When using Claude Code hooks, MCP tools follow a specific naming pattern. Since 
 - `mcp__north-cloud__list_indexes` - List Elasticsearch indexes
 - `mcp__north-cloud__delete_index` - Delete an Elasticsearch index
 
-**All 26 tools** are available using this naming convention. You can reference them in Claude Code hooks to automate North Cloud operations.
+**All 27 tools** are available using this naming convention. You can reference them in Claude Code hooks to automate North Cloud operations.
 
 **Hook Example**:
 ```yaml
@@ -153,15 +159,19 @@ actions:
 
 **Complete Tool List for Claude Code Hooks**:
 
-All 23 tools available with `mcp__north-cloud__` prefix:
+All 27 tools available with `mcp__north-cloud__` prefix:
 
-**Crawler Tools (7)**:
+**Auth (1)**:
+- `mcp__north-cloud__get_auth_token`
+
+**Workflow (1)**:
+- `mcp__north-cloud__onboard_source`
+
+**Crawler Tools (5)**:
 - `mcp__north-cloud__start_crawl`
 - `mcp__north-cloud__schedule_crawl`
 - `mcp__north-cloud__list_crawl_jobs`
-- `mcp__north-cloud__pause_crawl_job`
-- `mcp__north-cloud__resume_crawl_job`
-- `mcp__north-cloud__cancel_crawl_job`
+- `mcp__north-cloud__control_crawl_job`
 - `mcp__north-cloud__get_crawl_stats`
 
 **Source Manager Tools (5)**:
@@ -171,9 +181,11 @@ All 23 tools available with `mcp__north-cloud__` prefix:
 - `mcp__north-cloud__delete_source`
 - `mcp__north-cloud__test_source`
 
-**Publisher Tools (6)**:
+**Publisher Tools (8)**:
 - `mcp__north-cloud__create_route`
 - `mcp__north-cloud__list_routes`
+- `mcp__north-cloud__create_channel`
+- `mcp__north-cloud__list_channels`
 - `mcp__north-cloud__delete_route`
 - `mcp__north-cloud__preview_route`
 - `mcp__north-cloud__get_publish_history`
@@ -203,9 +215,10 @@ All service URLs can be configured via environment variables:
 | `INDEX_MANAGER_URL` | `http://localhost:8090` | Index manager service URL |
 | `CRAWLER_URL` | `http://localhost:8060` | Crawler service URL |
 | `SOURCE_MANAGER_URL` | `http://localhost:8050` | Source manager service URL |
-| `PUBLISHER_URL` | `http://localhost:8080` | Publisher service URL |
+| `PUBLISHER_URL` | `http://localhost:8070` | Publisher service URL |
 | `SEARCH_URL` | `http://localhost:8090` | Search service URL |
 | `CLASSIFIER_URL` | `http://localhost:8070` | Classifier service URL |
+| `MCP_HTTP_TIMEOUT_SECONDS` | `30` | HTTP client timeout for backend calls (optional) |
 
 ### Authentication
 
@@ -218,6 +231,83 @@ Tools that call protected APIs (source-manager, publisher, crawler, etc.) requir
 3. Generate a secret if needed: `openssl rand -hex 32` (see the main project `.env.example`).
 
 **Without `AUTH_JWT_SECRET`:** Protected tools (e.g. `onboard_source`, `add_source`, `create_route`) will fail with "missing authorization". Public endpoints (e.g. `list_sources` via GET) may work depending on service configuration.
+
+### Production backends
+
+To run the MCP server **locally** while pointing at **production** API backends:
+
+1. Set environment variables to production API base URLs (in `.cursor/mcp.json` or in the shell before starting the server):
+   - `CRAWLER_URL`, `SOURCE_MANAGER_URL`, `PUBLISHER_URL`, `CLASSIFIER_URL`, `SEARCH_URL`, `INDEX_MANAGER_URL` (use your prod hostnames and ports, e.g. `https://api.northcloud.biz` or internal URLs if on VPN).
+2. Set `AUTH_JWT_SECRET` to the **same** value as the production auth service. If production uses a different secret, MCP calls to protected endpoints will receive 401.
+3. Ensure your machine can reach production (VPN or public URLs with TLS). Prefer HTTPS for public URLs.
+
+**Security note:** The JWT secret will be present on your local machine; restrict access to your environment and config files.
+
+Example `.cursor/mcp.json` snippet for production backends (replace with your prod URLs):
+
+```json
+{
+  "mcpServers": {
+    "north-cloud": {
+      "command": "/path/to/mcp-north-cloud/bin/mcp-north-cloud",
+      "env": {
+        "CRAWLER_URL": "https://crawler.example.com",
+        "SOURCE_MANAGER_URL": "https://source-manager.example.com",
+        "PUBLISHER_URL": "https://publisher.example.com",
+        "CLASSIFIER_URL": "https://classifier.example.com",
+        "SEARCH_URL": "https://search.example.com",
+        "INDEX_MANAGER_URL": "https://index-manager.example.com",
+        "AUTH_JWT_SECRET": "<same-as-production-auth>"
+      }
+    }
+  }
+}
+```
+
+### Deploying MCP in production
+
+The MCP server can run inside production Docker Compose so that a host (e.g. the same machine or via SSH) can start the process and connect Cursor/Claude to it.
+
+- The `mcp-north-cloud` service is defined in `docker-compose.prod.yml`. It uses internal service URLs (e.g. `http://crawler:8080`, `http://publisher:8070`) and `AUTH_JWT_SECRET` from prod secrets.
+- The server uses **stdio** only (no HTTP port). To connect from Cursor when Cursor runs on the **same host** as Docker, use `docker exec -i` as the MCP command.
+
+Example `.cursor/mcp.json` when Cursor runs on the prod host:
+
+```json
+{
+  "mcpServers": {
+    "north-cloud": {
+      "command": "docker",
+      "args": ["exec", "-i", "north-cloud-mcp-north-cloud-1", "/app/mcp-north-cloud"]
+    }
+  }
+}
+```
+
+Adjust the container name if different (e.g. `docker ps` to see the actual name). The container name often includes the project prefix (e.g. `north-cloud-mcp-north-cloud-1`).
+
+### Prompts
+
+The server supports `prompts/list` and `prompts/get`. Clients (e.g. Cursor) can expose these as slash commands or prompt templates.
+
+| Name | Description |
+|------|--------------|
+| `onboard_new_source` | Add a new website/source and optionally start crawling and create a publishing route. |
+| `debug_crawl_job` | Inspect a crawl job: status, stats, and suggestions. |
+| `publishing_review` | Preview a route and review publish history and stats. |
+| `classify_and_search` | Search classified content and optionally classify a sample. |
+
+### Resources
+
+The server supports `resources/list` and `resources/read`. Static documentation is available under the `northcloud://` URI scheme:
+
+| URI | Name | Description |
+|-----|------|--------------|
+| `northcloud://docs/tool-reference` | North Cloud Tool Reference | List of MCP tools and when to use them |
+| `northcloud://docs/selectors` | Selector Cheatsheet | CSS selectors for source extraction |
+| `northcloud://docs/pipeline` | Pipeline Overview | Crawl → Classify → Publish flow |
+
+Dynamic resources (e.g. live sources) may be added in a future release.
 
 ## Tool Reference
 
@@ -313,17 +403,19 @@ List all crawl jobs with optional status filter.
 }
 ```
 
-#### pause_crawl_job, resume_crawl_job, cancel_crawl_job
+#### control_crawl_job
 
-Control job execution state.
+Pause, resume, or cancel a crawl job.
 
 **Parameters:**
 - `job_id` (string, required): ID of the job to control
+- `action` (string, required): One of `pause`, `resume`, or `cancel`
 
 **Example:**
 ```json
 {
-  "job_id": "job-uuid"
+  "job_id": "job-uuid",
+  "action": "pause"
 }
 ```
 
@@ -792,7 +884,25 @@ The service uses Air for hot reloading in development:
 air -c .air.toml
 ```
 
+### When adding a tool
+
+When adding or removing tools, update in the same PR:
+
+1. Add handler in `internal/mcp/server.go` (`toolHandlers`) and `internal/mcp/handlers.go`
+2. Update `test-tools.sh` expected count
+3. Update README tool list (Features and Complete Tool List for Claude Code Hooks)
+4. Update CLAUDE.md table
+5. Optionally update the tool-reference resource (if prompts/resources exist)
+
 ## Troubleshooting
+
+### MCP works locally but not against production
+
+If the server works with local backends but fails when using production URLs:
+
+- **URLs:** Confirm each service URL (CRAWLER_URL, PUBLISHER_URL, etc.) is correct and reachable from your machine (VPN or public HTTPS).
+- **JWT secret:** `AUTH_JWT_SECRET` must match the production auth service exactly; otherwise protected endpoints return 401.
+- **Network:** Test connectivity (e.g. `curl` to a prod health endpoint).
 
 ### Server not responding
 
@@ -805,7 +915,7 @@ air -c .air.toml
    ```bash
    curl http://localhost:8060/health  # crawler
    curl http://localhost:8050/health  # source-manager
-   curl http://localhost:8080/health  # publisher
+   curl http://localhost:8070/health  # publisher
    ```
 
 3. Check MCP server logs:
