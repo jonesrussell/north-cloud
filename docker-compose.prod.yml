@@ -257,6 +257,7 @@ services:
   # ------------------------------------------------------------
   search-service:
     <<: *prod-defaults
+    profiles: []  # override base's profiles: [search] so service is always in project (fixes selective deploy)
     image: docker.io/jonesrussell/search-service:latest
     deploy:
       resources:
@@ -290,6 +291,7 @@ services:
   # ------------------------------------------------------------
   search-frontend:
     <<: *prod-defaults
+    profiles: []  # override base's profiles: [search] so service is always in project
     image: docker.io/jonesrussell/search-frontend:latest
     deploy:
       resources:
