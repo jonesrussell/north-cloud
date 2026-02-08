@@ -18,11 +18,13 @@ import (
 )
 
 const (
-	defaultCheckInterval   = 10 * time.Second
-	defaultLockDuration    = 5 * time.Minute
-	defaultMetricsInterval = 30 * time.Second
-	hoursPerDay            = 24
-	exponentialBackoffBase = 2
+	defaultCheckInterval         = 10 * time.Second
+	defaultLockDuration          = 5 * time.Minute
+	defaultMetricsInterval       = 30 * time.Second
+	defaultExecutionTimeout      = 1 * time.Hour
+	defaultStuckJobCheckInterval = 2 * time.Minute
+	hoursPerDay                  = 24
+	exponentialBackoffBase       = 2
 )
 
 // JobExecution represents an active job execution with its context.
@@ -55,6 +57,8 @@ type IntervalScheduler struct {
 	lockDuration           time.Duration
 	metricsInterval        time.Duration
 	staleLockCheckInterval time.Duration
+	executionTimeout       time.Duration
+	stuckJobCheckInterval  time.Duration
 
 	// Metrics
 	metrics *SchedulerMetrics
@@ -91,6 +95,8 @@ func NewIntervalScheduler(
 		lockDuration:           defaultLockDuration,
 		metricsInterval:        defaultMetricsInterval,
 		staleLockCheckInterval: 1 * time.Minute,
+		executionTimeout:       defaultExecutionTimeout,
+		stuckJobCheckInterval:  defaultStuckJobCheckInterval,
 		metrics:                &SchedulerMetrics{},
 		bucketMap:              NewBucketMap(),
 	}
@@ -150,6 +156,10 @@ func (s *IntervalScheduler) Start(ctx context.Context) error {
 	// Start stale lock cleaner
 	s.wg.Add(1)
 	go s.cleanStaleLocks()
+
+	// Start stuck job recovery
+	s.wg.Add(1)
+	go s.recoverStuckJobs()
 
 	s.logger.Info("Interval scheduler started successfully")
 	return nil
@@ -503,8 +513,8 @@ func (s *IntervalScheduler) executeJob(job *domain.Job) {
 	// Publish SSE event for job start
 	s.publishJobStatus(s.ctx, job)
 
-	// Create execution context with cancellation
-	jobCtx, cancel := context.WithCancel(s.ctx)
+	// Create execution context with timeout to prevent indefinite hangs
+	jobCtx, cancel := context.WithTimeout(s.ctx, s.executionTimeout)
 
 	jobExec := &JobExecution{
 		Job:       job,
@@ -592,6 +602,11 @@ func createCaptureFunc(w logs.Writer) func(logs.LogEntry) {
 func (s *IntervalScheduler) runJob(jobExec *JobExecution) {
 	job := jobExec.Job
 	execution := jobExec.Execution
+
+	// Panic recovery registered first — runs last (LIFO) after cleanup defer.
+	// Ensures the goroutine never crashes and the job is marked failed on panic.
+	defer s.recoverFromPanic(job, execution)
+
 	logWriter := s.startLogCapture(jobExec)
 
 	// Create and set JobLogger for this execution
@@ -677,6 +692,58 @@ func (s *IntervalScheduler) runJob(jobExec *JobExecution) {
 	})
 
 	s.handleJobSuccess(jobExec, &startTime)
+}
+
+// recoverFromPanic catches panics in job execution and marks the job as failed.
+// This prevents the goroutine from crashing and leaving the job stuck in "running" state.
+func (s *IntervalScheduler) recoverFromPanic(job *domain.Job, execution *domain.JobExecution) {
+	r := recover()
+	if r == nil {
+		return
+	}
+
+	s.logger.Error("Recovered from panic in job execution",
+		infralogger.String("job_id", job.ID),
+		infralogger.Any("panic", r),
+	)
+
+	now := time.Now()
+	errMsg := fmt.Sprintf("panic: %v", r)
+
+	// Mark execution as failed
+	execution.Status = string(StateFailed)
+	execution.CompletedAt = &now
+	execution.ErrorMessage = &errMsg
+	if updateErr := s.executionRepo.Update(s.ctx, execution); updateErr != nil {
+		s.logger.Error("Failed to update panicked execution", infralogger.Error(updateErr))
+	}
+
+	// Reset job: schedule next run if recurring, otherwise mark failed
+	s.resetJobAfterFailure(job, &errMsg, &now)
+	s.metrics.IncrementFailed()
+	s.metrics.IncrementTotalExecutions()
+}
+
+// resetJobAfterFailure resets a job after a failure (panic or stuck recovery).
+// Recurring jobs are rescheduled; one-time jobs are marked failed.
+func (s *IntervalScheduler) resetJobAfterFailure(job *domain.Job, errMsg *string, now *time.Time) {
+	if job.IntervalMinutes != nil && job.ScheduleEnabled {
+		job.Status = string(StateScheduled)
+		nextRun := s.calculateNextRun(job)
+		job.NextRunAt = &nextRun
+	} else {
+		job.Status = string(StateFailed)
+		job.CompletedAt = now
+	}
+
+	job.ErrorMessage = errMsg
+
+	if updateErr := s.repo.Update(s.ctx, job); updateErr != nil {
+		s.logger.Error("Failed to update job after failure",
+			infralogger.String("job_id", job.ID),
+			infralogger.Error(updateErr),
+		)
+	}
 }
 
 // handleJobSuccess handles successful job completion.
@@ -909,6 +976,106 @@ func (s *IntervalScheduler) cleanStaleLocks() {
 				s.metrics.AddStaleLocksCleared(count)
 			}
 		}
+	}
+}
+
+// recoverStuckJobs periodically checks for and recovers jobs stuck in "running" state.
+// This is a safety net for cases where the execution timeout or panic recovery failed.
+func (s *IntervalScheduler) recoverStuckJobs() {
+	defer s.wg.Done()
+
+	ticker := time.NewTicker(s.stuckJobCheckInterval)
+	defer ticker.Stop()
+
+	s.logger.Info("Stuck job recovery started",
+		infralogger.Duration("interval", s.stuckJobCheckInterval),
+		infralogger.Duration("threshold", s.executionTimeout),
+	)
+
+	for {
+		select {
+		case <-s.ctx.Done():
+			s.logger.Info("Stuck job recovery stopping")
+			return
+		case <-ticker.C:
+			s.checkForStuckJobs()
+		}
+	}
+}
+
+// checkForStuckJobs queries for stuck jobs and resets them.
+func (s *IntervalScheduler) checkForStuckJobs() {
+	stuckJobs, err := s.executionRepo.GetStuckJobs(s.ctx, s.executionTimeout)
+	if err != nil {
+		s.logger.Error("Failed to check for stuck jobs", infralogger.Error(err))
+		return
+	}
+
+	for _, job := range stuckJobs {
+		s.resetStuckJob(job)
+	}
+}
+
+// resetStuckJob recovers a single job that is stuck in "running" state.
+func (s *IntervalScheduler) resetStuckJob(job *domain.Job) {
+	// Skip if this job is actively running in this scheduler instance.
+	// The execution timeout context cancellation will handle it.
+	s.activeJobsMu.RLock()
+	_, isActive := s.activeJobs[job.ID]
+	s.activeJobsMu.RUnlock()
+
+	if isActive {
+		return
+	}
+
+	s.logger.Warn("Recovering stuck job",
+		infralogger.String("job_id", job.ID),
+		infralogger.String("source_id", job.SourceID),
+		infralogger.String("url", job.URL),
+	)
+
+	// Mark the stuck execution as failed
+	s.failStuckExecution(job.ID)
+
+	// Reset the job itself
+	now := time.Now()
+	errMsg := "recovered: job exceeded maximum execution time"
+	s.resetJobAfterFailure(job, &errMsg, &now)
+	s.metrics.IncrementFailed()
+	s.metrics.IncrementTotalExecutions()
+}
+
+// failStuckExecution marks the latest running execution for a job as failed.
+func (s *IntervalScheduler) failStuckExecution(jobID string) {
+	latestExec, err := s.executionRepo.GetLatestByJobID(s.ctx, jobID)
+	if err != nil {
+		s.logger.Error("Failed to get latest execution for stuck job",
+			infralogger.String("job_id", jobID),
+			infralogger.Error(err),
+		)
+		return
+	}
+
+	if latestExec.Status != string(StateRunning) {
+		return
+	}
+
+	now := time.Now()
+	errMsg := "recovered: job exceeded maximum execution time"
+	latestExec.Status = string(StateFailed)
+	latestExec.CompletedAt = &now
+	latestExec.ErrorMessage = &errMsg
+
+	if !latestExec.StartedAt.IsZero() {
+		durationMs := now.Sub(latestExec.StartedAt).Milliseconds()
+		latestExec.DurationMs = &durationMs
+	}
+
+	if updateErr := s.executionRepo.Update(s.ctx, latestExec); updateErr != nil {
+		s.logger.Error("Failed to update stuck execution",
+			infralogger.String("job_id", jobID),
+			infralogger.Error(updateErr),
+		)
 	}
 }
 
