@@ -212,6 +212,25 @@ func (h *Handler) GetIndexHealth(c *gin.Context) {
 	})
 }
 
+// MigrateIndex handles POST /api/v1/indexes/:index_name/migrate
+func (h *Handler) MigrateIndex(c *gin.Context) {
+	indexName := c.Param("index_name")
+
+	h.logger.Info("Migrating index", infralogger.String("index_name", indexName))
+
+	result, err := h.indexService.MigrateIndex(c.Request.Context(), indexName)
+	if err != nil {
+		h.logger.Error("Failed to migrate index",
+			infralogger.String("index_name", indexName),
+			infralogger.Error(err),
+		)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, result)
+}
+
 // CreateIndexesForSource handles POST /api/v1/sources/:source_name/indexes
 func (h *Handler) CreateIndexesForSource(c *gin.Context) {
 	sourceName := c.Param("source_name")

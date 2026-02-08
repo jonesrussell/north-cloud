@@ -654,6 +654,43 @@ func (c *Client) BulkDeleteDocuments(ctx context.Context, indexName string, docu
 	return nil
 }
 
+// Reindex copies documents from source index to destination index using the ES Reindex API.
+func (c *Client) Reindex(ctx context.Context, sourceIndex, destIndex string) (int64, error) {
+	body := map[string]any{
+		"source": map[string]any{"index": sourceIndex},
+		"dest":   map[string]any{"index": destIndex},
+	}
+
+	bodyJSON, err := json.Marshal(body)
+	if err != nil {
+		return 0, fmt.Errorf("failed to marshal reindex body: %w", err)
+	}
+
+	res, err := c.esClient.Reindex(
+		strings.NewReader(string(bodyJSON)),
+		c.esClient.Reindex.WithContext(ctx),
+		c.esClient.Reindex.WithWaitForCompletion(true),
+	)
+	if err != nil {
+		return 0, fmt.Errorf("reindex API call failed: %w", err)
+	}
+	defer func() { _ = res.Body.Close() }()
+
+	if res.IsError() {
+		respBody, _ := io.ReadAll(res.Body)
+		return 0, fmt.Errorf("reindex returned error [%d]: %s", res.StatusCode, string(respBody))
+	}
+
+	var result struct {
+		Total int64 `json:"total"`
+	}
+	if decodeErr := json.NewDecoder(res.Body).Decode(&result); decodeErr != nil {
+		return 0, fmt.Errorf("failed to decode reindex response: %w", decodeErr)
+	}
+
+	return result.Total, nil
+}
+
 // ClassifiedContentIndexPattern is the index pattern for all classified content indexes.
 // Used in the path without encoding so Elasticsearch receives the wildcard literally.
 const ClassifiedContentIndexPattern = "*_classified_content"
