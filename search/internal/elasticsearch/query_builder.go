@@ -62,7 +62,7 @@ func (qb *QueryBuilder) Build(req *domain.SearchRequest) map[string]any {
 			"id", "title", "url", "source_name",
 			"published_date", "crawled_at",
 			"quality_score", "content_type", "topics",
-			"is_crime_related", "body", "raw_text",
+			"crime", "body", "raw_text",
 		}
 	}
 
@@ -182,11 +182,11 @@ func (qb *QueryBuilder) buildFilters(filters *domain.Filters) []any {
 		}
 	}
 
-	// Crime-related filter
-	if filters.IsCrimeRelated != nil {
+	// Crime relevance filter
+	if len(filters.CrimeRelevance) > 0 {
 		result = append(result, map[string]any{
-			"term": map[string]any{
-				"is_crime_related": *filters.IsCrimeRelated,
+			"terms": map[string]any{
+				"crime.relevance": filters.CrimeRelevance,
 			},
 		})
 	}

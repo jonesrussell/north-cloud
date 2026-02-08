@@ -107,9 +107,8 @@ func parseFilters(c *gin.Context) *domain.Filters {
 			filters.MaxQualityScore = mq
 		}
 	}
-	if isCrime := c.Query("is_crime_related"); isCrime != "" {
-		val := isCrime == trueString
-		filters.IsCrimeRelated = &val
+	if crimeRelevance := c.Query("crime_relevance"); crimeRelevance != "" {
+		filters.CrimeRelevance = strings.Split(crimeRelevance, ",")
 	}
 	if sources := c.Query("sources"); sources != "" {
 		filters.SourceNames = strings.Split(sources, ",")

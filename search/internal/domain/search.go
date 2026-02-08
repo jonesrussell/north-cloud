@@ -23,7 +23,7 @@ type Filters struct {
 	ContentType     string     `json:"content_type,omitempty"`
 	MinQualityScore int        `json:"min_quality_score,omitempty"`
 	MaxQualityScore int        `json:"max_quality_score,omitempty"`
-	IsCrimeRelated  *bool      `json:"is_crime_related,omitempty"`
+	CrimeRelevance  []string   `json:"crime_relevance,omitempty"`
 	SourceNames     []string   `json:"source_names,omitempty"`
 	FromDate        *time.Time `json:"from_date,omitempty"`
 	ToDate          *time.Time `json:"to_date,omitempty"`
@@ -71,7 +71,7 @@ type SearchHit struct {
 	QualityScore   int                 `json:"quality_score"`
 	ContentType    string              `json:"content_type"`
 	Topics         []string            `json:"topics,omitempty"`
-	IsCrimeRelated bool                `json:"is_crime_related"`
+	CrimeRelevance string              `json:"crime_relevance,omitempty"`
 	Score          float64             `json:"score"` // Relevance score
 	Highlight      map[string][]string `json:"highlight,omitempty"`
 	Snippet        string              `json:"snippet,omitempty"`
