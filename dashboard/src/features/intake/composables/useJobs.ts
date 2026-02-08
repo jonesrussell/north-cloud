@@ -372,3 +372,6 @@ export function useJobDetail(jobId: string) {
     statsQuery,
   }
 }
+
+/** Return type of useJobs() for passing as prop to JobsFilterBar, JobsTable, JobStatsCard */
+export type JobsComposable = ReturnType<typeof useJobs>

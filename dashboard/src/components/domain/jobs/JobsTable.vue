@@ -27,10 +27,11 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Skeleton } from '@/components/ui/skeleton'
-import { useJobs } from '@/features/intake'
+import type { JobsComposable } from '@/features/intake'
 import type { Job, JobStatus } from '@/types/crawler'
 
 interface Props {
+  jobs: JobsComposable
   showActions?: boolean
   onRowClick?: (job: Job) => void
 }
@@ -51,7 +52,6 @@ const emit = defineEmits<{
 }>()
 
 const router = useRouter()
-const jobs = useJobs()
 
 type BadgeVariant = 'default' | 'secondary' | 'destructive' | 'outline' | 'success' | 'warning' | 'pending'
 
@@ -74,17 +74,17 @@ const sortableColumns = [
 ] as const
 
 function getSortIcon(column: string) {
-  if (jobs.sortBy.value !== column) return ArrowUpDown
-  return jobs.sortOrder.value === 'asc' ? ArrowUp : ArrowDown
+  if (props.jobs.sortBy.value !== column) return ArrowUpDown
+  return props.jobs.sortOrder.value === 'asc' ? ArrowUp : ArrowDown
 }
 
 function handleSort(column: string) {
-  jobs.toggleSort(column)
+  props.jobs.toggleSort(column)
 }
 
 const pageNumbers = computed(() => {
-  const current = jobs.page.value
-  const total = jobs.totalPages.value
+  const current = props.jobs.page.value
+  const total = props.jobs.totalPages.value
   const pages: (number | string)[] = []
 
   if (total <= 7) {
@@ -162,13 +162,13 @@ function handleRowClick(job: Job) {
 
 function goToPage(page: number | string) {
   if (typeof page === 'number') {
-    jobs.setPage(page)
+    props.jobs.setPage(page)
   }
 }
 
 function handlePageSizeChange(event: Event) {
   const target = event.target as HTMLSelectElement
-  jobs.setPageSize(Number(target.value))
+  props.jobs.setPageSize(Number(target.value))
 }
 </script>
 
