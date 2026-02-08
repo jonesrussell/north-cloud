@@ -8,6 +8,7 @@ func GetRawContentMapping() map[string]any {
 			"number_of_replicas": 1,
 		},
 		"mappings": map[string]any{
+			"dynamic":    "strict",
 			"properties": getRawContentFields(),
 		},
 	}

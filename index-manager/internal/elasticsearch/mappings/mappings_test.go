@@ -176,6 +176,36 @@ func TestGetRawContentMapping_RawHTMLNotIndexed(t *testing.T) {
 	}
 }
 
+func TestGetRawContentMapping_DynamicStrict(t *testing.T) {
+	t.Helper()
+
+	mapping := mappings.GetRawContentMapping()
+	mappingsObj := mapping["mappings"].(map[string]any)
+
+	dynamic, exists := mappingsObj["dynamic"]
+	if !exists {
+		t.Fatal("raw_content mapping missing 'dynamic' setting")
+	}
+	if dynamic != "strict" {
+		t.Errorf("dynamic = %v, want \"strict\"", dynamic)
+	}
+}
+
+func TestGetClassifiedContentMapping_DynamicStrict(t *testing.T) {
+	t.Helper()
+
+	mapping := mappings.GetClassifiedContentMapping()
+	mappingsObj := mapping["mappings"].(map[string]any)
+
+	dynamic, exists := mappingsObj["dynamic"]
+	if !exists {
+		t.Fatal("classified_content mapping missing 'dynamic' setting")
+	}
+	if dynamic != "strict" {
+		t.Errorf("dynamic = %v, want \"strict\"", dynamic)
+	}
+}
+
 func TestGetRawContentMapping_MetaSubFields(t *testing.T) {
 	t.Helper()
 
