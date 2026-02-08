@@ -15,6 +15,11 @@ interface Props {
 
 const props = defineProps<Props>()
 
+const displayValue = computed(() => {
+  const v = props.value
+  return typeof v === 'number' ? v.toLocaleString() : v
+})
+
 const trendIcon = computed(() => {
   if (props.trend === 'up') return TrendingUp
   if (props.trend === 'down') return TrendingDown
@@ -37,7 +42,7 @@ const trendClass = computed(() => {
             {{ title }}
           </p>
           <p class="text-2xl font-bold">
-            {{ value }}
+            {{ displayValue }}
           </p>
           <p
             v-if="subtitle"

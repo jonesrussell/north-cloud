@@ -7,8 +7,14 @@ import (
 // Config holds the MCP server configuration.
 type Config struct {
 	Services ServicesConfig `yaml:"services"`
+	Client   ClientConfig   `yaml:"client"`
 	Logging  LoggingConfig  `yaml:"logging"`
 	Auth     AuthConfig     `yaml:"auth"`
+}
+
+// ClientConfig holds client-level settings (e.g. HTTP timeouts).
+type ClientConfig struct {
+	HTTPTimeoutSeconds int `env:"MCP_HTTP_TIMEOUT_SECONDS" yaml:"http_timeout_seconds"`
 }
 
 // AuthConfig holds authentication configuration for service-to-service calls.
@@ -50,13 +56,18 @@ func setDefaults(cfg *Config) {
 		cfg.Services.SourceManagerURL = "http://localhost:8050"
 	}
 	if cfg.Services.PublisherURL == "" {
-		cfg.Services.PublisherURL = "http://localhost:8080"
+		cfg.Services.PublisherURL = "http://localhost:8070"
 	}
 	if cfg.Services.SearchURL == "" {
 		cfg.Services.SearchURL = "http://localhost:8090"
 	}
 	if cfg.Services.ClassifierURL == "" {
 		cfg.Services.ClassifierURL = "http://localhost:8070"
+	}
+
+	// Client defaults
+	if cfg.Client.HTTPTimeoutSeconds == 0 {
+		cfg.Client.HTTPTimeoutSeconds = 30
 	}
 
 	// Logging defaults

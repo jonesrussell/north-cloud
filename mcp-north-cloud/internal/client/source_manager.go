@@ -72,7 +72,7 @@ type TestCrawlResponse struct {
 // CreateSource creates a new source
 //
 //nolint:dupl // Similar HTTP client pattern across different services is acceptable
-func (c *SourceManagerClient) CreateSource(req CreateSourceRequest) (*Source, error) {
+func (c *SourceManagerClient) CreateSource(ctx context.Context, req CreateSourceRequest) (*Source, error) {
 	endpoint := fmt.Sprintf("%s/api/v1/sources", c.baseURL)
 
 	body, err := json.Marshal(req)
@@ -80,7 +80,7 @@ func (c *SourceManagerClient) CreateSource(req CreateSourceRequest) (*Source, er
 		return nil, fmt.Errorf("failed to marshal request: %w", err)
 	}
 
-	httpReq, err := http.NewRequestWithContext(context.Background(), http.MethodPost, endpoint, bytes.NewReader(body))
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, bytes.NewReader(body))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
@@ -117,10 +117,10 @@ func (c *SourceManagerClient) CreateSource(req CreateSourceRequest) (*Source, er
 }
 
 // ListSources lists all sources
-func (c *SourceManagerClient) ListSources() ([]Source, error) {
+func (c *SourceManagerClient) ListSources(ctx context.Context) ([]Source, error) {
 	endpoint := fmt.Sprintf("%s/api/v1/sources", c.baseURL)
 
-	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, endpoint, http.NoBody)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, http.NoBody)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
@@ -149,10 +149,10 @@ func (c *SourceManagerClient) ListSources() ([]Source, error) {
 }
 
 // GetSource gets a source by ID
-func (c *SourceManagerClient) GetSource(sourceID string) (*Source, error) {
+func (c *SourceManagerClient) GetSource(ctx context.Context, sourceID string) (*Source, error) {
 	endpoint := fmt.Sprintf("%s/api/v1/sources/%s", c.baseURL, sourceID)
 
-	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, endpoint, http.NoBody)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, http.NoBody)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
@@ -187,7 +187,7 @@ func (c *SourceManagerClient) GetSource(sourceID string) (*Source, error) {
 }
 
 // UpdateSource updates a source
-func (c *SourceManagerClient) UpdateSource(sourceID string, req UpdateSourceRequest) (*Source, error) {
+func (c *SourceManagerClient) UpdateSource(ctx context.Context, sourceID string, req UpdateSourceRequest) (*Source, error) {
 	endpoint := fmt.Sprintf("%s/api/v1/sources/%s", c.baseURL, sourceID)
 
 	body, err := json.Marshal(req)
@@ -195,7 +195,7 @@ func (c *SourceManagerClient) UpdateSource(sourceID string, req UpdateSourceRequ
 		return nil, fmt.Errorf("failed to marshal request: %w", err)
 	}
 
-	httpReq, err := http.NewRequestWithContext(context.Background(), http.MethodPut, endpoint, bytes.NewReader(body))
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPut, endpoint, bytes.NewReader(body))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
@@ -234,10 +234,10 @@ func (c *SourceManagerClient) UpdateSource(sourceID string, req UpdateSourceRequ
 // DeleteSource deletes a source
 //
 //nolint:dupl // Similar HTTP client pattern across different services is acceptable
-func (c *SourceManagerClient) DeleteSource(sourceID string) error {
+func (c *SourceManagerClient) DeleteSource(ctx context.Context, sourceID string) error {
 	endpoint := fmt.Sprintf("%s/api/v1/sources/%s", c.baseURL, sourceID)
 
-	req, err := http.NewRequestWithContext(context.Background(), http.MethodDelete, endpoint, http.NoBody)
+	req, err := http.NewRequestWithContext(ctx, http.MethodDelete, endpoint, http.NoBody)
 	if err != nil {
 		return fmt.Errorf("failed to create request: %w", err)
 	}
@@ -269,7 +269,7 @@ func (c *SourceManagerClient) DeleteSource(sourceID string) error {
 // TestCrawl tests crawling a source without saving
 //
 //nolint:dupl // Similar HTTP client pattern across different services is acceptable
-func (c *SourceManagerClient) TestCrawl(req TestCrawlRequest) (*TestCrawlResponse, error) {
+func (c *SourceManagerClient) TestCrawl(ctx context.Context, req TestCrawlRequest) (*TestCrawlResponse, error) {
 	endpoint := fmt.Sprintf("%s/api/v1/sources/test-crawl", c.baseURL)
 
 	body, err := json.Marshal(req)
@@ -277,7 +277,7 @@ func (c *SourceManagerClient) TestCrawl(req TestCrawlRequest) (*TestCrawlRespons
 		return nil, fmt.Errorf("failed to marshal request: %w", err)
 	}
 
-	httpReq, err := http.NewRequestWithContext(context.Background(), http.MethodPost, endpoint, bytes.NewReader(body))
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, bytes.NewReader(body))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}

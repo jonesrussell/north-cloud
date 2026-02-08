@@ -89,7 +89,7 @@ type CreateJobRequest struct {
 // CreateJob creates a new crawl job
 //
 //nolint:dupl // Similar HTTP client pattern across different services is acceptable
-func (c *CrawlerClient) CreateJob(req CreateJobRequest) (*Job, error) {
+func (c *CrawlerClient) CreateJob(ctx context.Context, req CreateJobRequest) (*Job, error) {
 	endpoint := fmt.Sprintf("%s/api/v1/jobs", c.baseURL)
 
 	body, err := json.Marshal(req)
@@ -97,7 +97,7 @@ func (c *CrawlerClient) CreateJob(req CreateJobRequest) (*Job, error) {
 		return nil, fmt.Errorf("failed to marshal request: %w", err)
 	}
 
-	httpReq, err := http.NewRequestWithContext(context.Background(), http.MethodPost, endpoint, bytes.NewReader(body))
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, bytes.NewReader(body))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
@@ -141,12 +141,12 @@ type ListJobsParams struct {
 }
 
 // ListJobs lists all crawl jobs with optional status filter and pagination
-func (c *CrawlerClient) ListJobs(status string) ([]Job, error) {
-	return c.ListJobsWithParams(ListJobsParams{Status: status})
+func (c *CrawlerClient) ListJobs(ctx context.Context, status string) ([]Job, error) {
+	return c.ListJobsWithParams(ctx, ListJobsParams{Status: status})
 }
 
 // ListJobsWithParams lists crawl jobs with full parameter support
-func (c *CrawlerClient) ListJobsWithParams(params ListJobsParams) ([]Job, error) {
+func (c *CrawlerClient) ListJobsWithParams(ctx context.Context, params ListJobsParams) ([]Job, error) {
 	endpoint := fmt.Sprintf("%s/api/v1/jobs", c.baseURL)
 
 	queryParams := url.Values{}
@@ -163,7 +163,7 @@ func (c *CrawlerClient) ListJobsWithParams(params ListJobsParams) ([]Job, error)
 		endpoint = fmt.Sprintf("%s?%s", endpoint, queryParams.Encode())
 	}
 
-	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, endpoint, http.NoBody)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, http.NoBody)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
@@ -206,10 +206,10 @@ func (c *CrawlerClient) ListJobsWithParams(params ListJobsParams) ([]Job, error)
 // PauseJob pauses a crawl job
 //
 //nolint:dupl // Similar HTTP client pattern for job control operations is acceptable
-func (c *CrawlerClient) PauseJob(jobID string) (*Job, error) {
+func (c *CrawlerClient) PauseJob(ctx context.Context, jobID string) (*Job, error) {
 	endpoint := fmt.Sprintf("%s/api/v1/jobs/%s/pause", c.baseURL, jobID)
 
-	req, err := http.NewRequestWithContext(context.Background(), http.MethodPost, endpoint, http.NoBody)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, http.NoBody)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
@@ -248,10 +248,10 @@ func (c *CrawlerClient) PauseJob(jobID string) (*Job, error) {
 // ResumeJob resumes a paused job
 //
 //nolint:dupl // Similar HTTP client pattern for job control operations is acceptable
-func (c *CrawlerClient) ResumeJob(jobID string) (*Job, error) {
+func (c *CrawlerClient) ResumeJob(ctx context.Context, jobID string) (*Job, error) {
 	endpoint := fmt.Sprintf("%s/api/v1/jobs/%s/resume", c.baseURL, jobID)
 
-	req, err := http.NewRequestWithContext(context.Background(), http.MethodPost, endpoint, http.NoBody)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, http.NoBody)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
@@ -290,10 +290,10 @@ func (c *CrawlerClient) ResumeJob(jobID string) (*Job, error) {
 // CancelJob cancels a job
 //
 //nolint:dupl // Similar HTTP client pattern for job control operations is acceptable
-func (c *CrawlerClient) CancelJob(jobID string) (*Job, error) {
+func (c *CrawlerClient) CancelJob(ctx context.Context, jobID string) (*Job, error) {
 	endpoint := fmt.Sprintf("%s/api/v1/jobs/%s/cancel", c.baseURL, jobID)
 
-	req, err := http.NewRequestWithContext(context.Background(), http.MethodPost, endpoint, http.NoBody)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, http.NoBody)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
@@ -330,10 +330,10 @@ func (c *CrawlerClient) CancelJob(jobID string) (*Job, error) {
 }
 
 // GetJobStats gets statistics for a job
-func (c *CrawlerClient) GetJobStats(jobID string) (*JobStats, error) {
+func (c *CrawlerClient) GetJobStats(ctx context.Context, jobID string) (*JobStats, error) {
 	endpoint := fmt.Sprintf("%s/api/v1/jobs/%s/stats", c.baseURL, jobID)
 
-	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, endpoint, http.NoBody)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, http.NoBody)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
@@ -364,10 +364,10 @@ func (c *CrawlerClient) GetJobStats(jobID string) (*JobStats, error) {
 // GetSchedulerMetrics gets scheduler-wide metrics
 //
 //nolint:dupl // Similar HTTP client pattern across different services is acceptable
-func (c *CrawlerClient) GetSchedulerMetrics() (*SchedulerMetrics, error) {
+func (c *CrawlerClient) GetSchedulerMetrics(ctx context.Context) (*SchedulerMetrics, error) {
 	endpoint := fmt.Sprintf("%s/api/v1/scheduler/metrics", c.baseURL)
 
-	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, endpoint, http.NoBody)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, http.NoBody)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
@@ -396,10 +396,10 @@ func (c *CrawlerClient) GetSchedulerMetrics() (*SchedulerMetrics, error) {
 }
 
 // ListJobExecutions lists executions for a job
-func (c *CrawlerClient) ListJobExecutions(jobID string) ([]JobExecution, error) {
+func (c *CrawlerClient) ListJobExecutions(ctx context.Context, jobID string) ([]JobExecution, error) {
 	endpoint := fmt.Sprintf("%s/api/v1/jobs/%s/executions", c.baseURL, jobID)
 
-	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, endpoint, http.NoBody)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, http.NoBody)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}

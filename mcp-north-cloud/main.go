@@ -2,10 +2,12 @@ package main
 
 import (
 	"bufio"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"os"
+	"time"
 
 	"github.com/jonesrussell/north-cloud/mcp-north-cloud/internal/client"
 	"github.com/jonesrussell/north-cloud/mcp-north-cloud/internal/config"
@@ -81,7 +83,8 @@ func initializeClients(cfg *config.Config, log logger.Logger) *serviceClients {
 	)
 
 	// Create authenticated HTTP client for service-to-service calls
-	authClient := client.NewAuthenticatedClient(cfg.Auth.JWTSecret)
+	httpTimeout := time.Duration(cfg.Client.HTTPTimeoutSeconds) * time.Second
+	authClient := client.NewAuthenticatedClientWithTimeout(cfg.Auth.JWTSecret, httpTimeout)
 
 	return &serviceClients{
 		indexManager:  client.NewIndexManagerClient(cfg.Services.IndexManagerURL, authClient),
@@ -98,6 +101,7 @@ func processRequests(reader *bufio.Reader, writer io.Writer, server *mcp.Server,
 	decoder := json.NewDecoder(reader)
 	encoder := json.NewEncoder(writer)
 
+	const requestTimeout = 60 * time.Second // must be >= HTTP client timeout
 	for {
 		var request mcp.Request
 		if err := decoder.Decode(&request); err != nil {
@@ -115,7 +119,9 @@ func processRequests(reader *bufio.Reader, writer io.Writer, server *mcp.Server,
 			logger.Any("id", request.ID),
 		)
 
-		response := server.HandleRequest(&request)
+		ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
+		response := server.HandleRequestWithContext(ctx, &request)
+		cancel()
 		if response != nil {
 			if response.ID == nil && request.ID != nil {
 				response.ID = request.ID
