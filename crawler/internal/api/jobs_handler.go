@@ -480,6 +480,17 @@ func (h *JobsHandler) GetJobExecutions(c *gin.Context) {
 	})
 }
 
+// GetJobStatusCounts handles GET /api/v1/jobs/status-counts
+func (h *JobsHandler) GetJobStatusCounts(c *gin.Context) {
+	counts, err := h.repo.CountByStatus(c.Request.Context())
+	if err != nil {
+		respondInternalError(c, "Failed to retrieve job status counts")
+		return
+	}
+
+	c.JSON(http.StatusOK, counts)
+}
+
 // GetJobStats handles GET /api/v1/jobs/:id/stats
 func (h *JobsHandler) GetJobStats(c *gin.Context) {
 	id := c.Param("id")

@@ -689,6 +689,33 @@ func (r *JobRepository) UpdateMigrationStatus(ctx context.Context, jobID, status
 	return execRequireRows(result, execErr, fmt.Errorf("job not found: %s", jobID))
 }
 
+// CountByStatus returns the count of jobs grouped by status.
+func (r *JobRepository) CountByStatus(ctx context.Context) (map[string]int, error) {
+	query := `SELECT status, COUNT(*) as count FROM jobs GROUP BY status`
+
+	rows, err := r.db.QueryxContext(ctx, query)
+	if err != nil {
+		return nil, fmt.Errorf("failed to count jobs by status: %w", err)
+	}
+	defer rows.Close()
+
+	counts := make(map[string]int)
+	for rows.Next() {
+		var status string
+		var count int
+		if scanErr := rows.Scan(&status, &count); scanErr != nil {
+			return nil, fmt.Errorf("failed to scan status count: %w", scanErr)
+		}
+		counts[status] = count
+	}
+
+	if rowsErr := rows.Err(); rowsErr != nil {
+		return nil, fmt.Errorf("failed to iterate status counts: %w", rowsErr)
+	}
+
+	return counts, nil
+}
+
 // CountByMigrationStatus returns counts of jobs grouped by migration status.
 func (r *JobRepository) CountByMigrationStatus(ctx context.Context) (map[string]int, error) {
 	query := `

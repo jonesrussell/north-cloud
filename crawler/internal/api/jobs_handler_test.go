@@ -88,6 +88,10 @@ func (m *mockJobRepo) CancelJob(ctx context.Context, jobID string) error {
 	return nil
 }
 
+func (m *mockJobRepo) CountByStatus(ctx context.Context) (map[string]int, error) {
+	return map[string]int{}, nil
+}
+
 // mockExecutionRepo implements database.ExecutionRepositoryInterface for testing.
 type mockExecutionRepo struct{}
 

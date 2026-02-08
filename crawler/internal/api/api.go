@@ -23,6 +23,9 @@ const (
 // setupJobRoutes configures job-related endpoints
 func setupJobRoutes(v1 *gin.RouterGroup, jobsHandler *JobsHandler) {
 	if jobsHandler != nil {
+		// Aggregate endpoints (before :id to avoid route conflict)
+		v1.GET("/jobs/status-counts", jobsHandler.GetJobStatusCounts)
+
 		// Basic CRUD
 		v1.GET("/jobs", jobsHandler.ListJobs)
 		v1.POST("/jobs", jobsHandler.CreateJob)

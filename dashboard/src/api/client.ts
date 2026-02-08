@@ -183,6 +183,7 @@ export const crawlerApi = {
     executions: (id: string | number, params?: { limit?: number; offset?: number }) =>
       crawlerClient.get(`/jobs/${id}/executions`, { params }),
     stats: (id: string | number) => crawlerClient.get(`/jobs/${id}/stats`),
+    statusCounts: () => crawlerClient.get('/jobs/status-counts'),
     pause: (id: string | number) => crawlerClient.post(`/jobs/${id}/pause`),
     resume: (id: string | number) => crawlerClient.post(`/jobs/${id}/resume`),
     cancel: (id: string | number) => crawlerClient.post(`/jobs/${id}/cancel`),

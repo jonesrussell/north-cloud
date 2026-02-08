@@ -30,6 +30,9 @@ type JobRepositoryInterface interface {
 	PauseJob(ctx context.Context, jobID string) error
 	ResumeJob(ctx context.Context, jobID string) error
 	CancelJob(ctx context.Context, jobID string) error
+
+	// Analytics
+	CountByStatus(ctx context.Context) (map[string]int, error)
 }
 
 // ExecutionRepositoryInterface defines the contract for execution history data access.
