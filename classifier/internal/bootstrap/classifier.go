@@ -8,6 +8,7 @@ import (
 	"github.com/jmoiron/sqlx"
 	"github.com/jonesrussell/north-cloud/classifier/internal/api"
 	"github.com/jonesrussell/north-cloud/classifier/internal/classifier"
+	"github.com/jonesrussell/north-cloud/classifier/internal/coforgemlclient"
 	"github.com/jonesrussell/north-cloud/classifier/internal/config"
 	"github.com/jonesrussell/north-cloud/classifier/internal/domain"
 	"github.com/jonesrussell/north-cloud/classifier/internal/miningmlclient"
@@ -153,8 +154,9 @@ func createClassifierConfig(cfg *config.Config, logger infralogger.Logger) class
 			MinArticlesForTrust:        minArticlesForTrust,
 			ReputationDecayRate:        defaultReputationDecayRate01,
 		},
-		CrimeClassifier:  createCrimeClassifier(cfg, logger),
-		MiningClassifier: createMiningClassifier(cfg, logger),
+		CrimeClassifier:   createCrimeClassifier(cfg, logger),
+		MiningClassifier:  createMiningClassifier(cfg, logger),
+		CoforgeClassifier: createCoforgeClassifier(cfg, logger),
 	}
 }
 
@@ -190,4 +192,21 @@ func createMiningClassifier(cfg *config.Config, logger infralogger.Logger) *clas
 		infralogger.String("ml_service_url", cfg.Classification.Mining.MLServiceURL))
 
 	return classifier.NewMiningClassifier(mlClient, logger, true)
+}
+
+// createCoforgeClassifier creates a Coforge classifier if enabled in config.
+func createCoforgeClassifier(cfg *config.Config, logger infralogger.Logger) *classifier.CoforgeClassifier {
+	if !cfg.Classification.Coforge.Enabled {
+		return nil
+	}
+
+	var mlClient classifier.CoforgeMLClassifier
+	if cfg.Classification.Coforge.MLServiceURL != "" {
+		mlClient = coforgemlclient.NewClient(cfg.Classification.Coforge.MLServiceURL)
+	}
+
+	logger.Info("Coforge classifier enabled",
+		infralogger.String("ml_service_url", cfg.Classification.Coforge.MLServiceURL))
+
+	return classifier.NewCoforgeClassifier(mlClient, logger, true)
 }

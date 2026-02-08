@@ -25,6 +25,7 @@ type Classifier struct {
 	sourceReputation *SourceReputationScorer
 	crime            *CrimeClassifier
 	mining           *MiningClassifier
+	coforge          *CoforgeClassifier
 	location         *LocationClassifier
 	logger           infralogger.Logger
 	version          string
@@ -37,8 +38,9 @@ type Config struct {
 	UpdateSourceRep        bool
 	QualityConfig          QualityConfig
 	SourceReputationConfig SourceReputationConfig
-	CrimeClassifier        *CrimeClassifier  // Optional: hybrid street crime classifier
-	MiningClassifier       *MiningClassifier // Optional: hybrid mining classifier
+	CrimeClassifier        *CrimeClassifier   // Optional: hybrid street crime classifier
+	MiningClassifier       *MiningClassifier  // Optional: hybrid mining classifier
+	CoforgeClassifier      *CoforgeClassifier // Optional: hybrid coforge classifier
 }
 
 // NewClassifier creates a new classifier with all strategies
@@ -55,6 +57,7 @@ func NewClassifier(
 		sourceReputation: NewSourceReputationScorerWithConfig(logger, sourceRepDB, config.SourceReputationConfig),
 		crime:            config.CrimeClassifier,
 		mining:           config.MiningClassifier,
+		coforge:          config.CoforgeClassifier,
 		location:         NewLocationClassifier(logger),
 		logger:           logger,
 		version:          config.Version,
@@ -96,7 +99,7 @@ func (c *Classifier) Classify(ctx context.Context, raw *domain.RawContent) (*dom
 	}
 
 	// 5-7. Optional classifiers (crime, mining, location)
-	crimeResult, miningResult, locationResult := c.runOptionalClassifiers(ctx, raw)
+	crimeResult, miningResult, coforgeResult, locationResult := c.runOptionalClassifiers(ctx, raw)
 
 	// Update source reputation if enabled
 	isSpam := qualityResult.TotalScore < spamThresholdScore // Spam threshold
@@ -134,6 +137,7 @@ func (c *Classifier) Classify(ctx context.Context, raw *domain.RawContent) (*dom
 		ClassifiedAt:         time.Now(),
 		Crime:                crimeResult,
 		Mining:               miningResult,
+		Coforge:              coforgeResult,
 		Location:             locationResult,
 	}
 
@@ -187,7 +191,7 @@ func (c *Classifier) GetRules() []domain.ClassificationRule {
 // runOptionalClassifiers runs crime, mining, and location classifiers if enabled.
 func (c *Classifier) runOptionalClassifiers(
 	ctx context.Context, raw *domain.RawContent,
-) (*domain.CrimeResult, *domain.MiningResult, *domain.LocationResult) {
+) (*domain.CrimeResult, *domain.MiningResult, *domain.CoforgeResult, *domain.LocationResult) {
 	var crimeResult *domain.CrimeResult
 	if c.crime != nil {
 		scResult, scErr := c.crime.Classify(ctx, raw)
@@ -212,6 +216,18 @@ func (c *Classifier) runOptionalClassifiers(
 		}
 	}
 
+	var coforgeResult *domain.CoforgeResult
+	if c.coforge != nil {
+		cfResult, cfErr := c.coforge.Classify(ctx, raw)
+		if cfErr != nil {
+			c.logger.Warn("Coforge classification failed",
+				infralogger.String("content_id", raw.ID),
+				infralogger.Error(cfErr))
+		} else if cfResult != nil {
+			coforgeResult = cfResult
+		}
+	}
+
 	var locationResult *domain.LocationResult
 	if c.location != nil {
 		locResult, locErr := c.location.Classify(ctx, raw)
@@ -224,7 +240,7 @@ func (c *Classifier) runOptionalClassifiers(
 		}
 	}
 
-	return crimeResult, miningResult, locationResult
+	return crimeResult, miningResult, coforgeResult, locationResult
 }
 
 // calculateTopicConfidence calculates overall topic confidence
@@ -264,6 +280,7 @@ func (c *Classifier) BuildClassifiedContent(raw *domain.RawContent, result *doma
 		Confidence:           result.Confidence,
 		Crime:                result.Crime,
 		Mining:               result.Mining,
+		Coforge:              result.Coforge,
 		Location:             result.Location,
 		// Publisher compatibility aliases
 		Body:   raw.RawText, // Alias for RawText

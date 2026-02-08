@@ -212,6 +212,42 @@ func getMiningMapping() map[string]any {
 	}
 }
 
+// getCoforgeMapping returns the nested coforge object mapping
+func getCoforgeMapping() map[string]any {
+	return map[string]any{
+		"type": "object",
+		"properties": map[string]any{
+			"relevance": map[string]any{
+				"type": "keyword",
+			},
+			"relevance_confidence": map[string]any{
+				"type": "float",
+			},
+			"audience": map[string]any{
+				"type": "keyword",
+			},
+			"audience_confidence": map[string]any{
+				"type": "float",
+			},
+			"topics": map[string]any{
+				"type": "keyword",
+			},
+			"industries": map[string]any{
+				"type": "keyword",
+			},
+			"final_confidence": map[string]any{
+				"type": "float",
+			},
+			"review_required": map[string]any{
+				"type": "boolean",
+			},
+			"model_version": map[string]any{
+				"type": "keyword",
+			},
+		},
+	}
+}
+
 // getClassificationFields returns the classification result field definitions
 func getClassificationFields() map[string]any {
 	return map[string]any{
@@ -236,6 +272,7 @@ func getClassificationFields() map[string]any {
 		"crime":    getCrimeMapping(),
 		"location": getLocationMapping(),
 		"mining":   getMiningMapping(),
+		"coforge":  getCoforgeMapping(),
 		"source_reputation": map[string]any{
 			"type": "integer",
 		},
