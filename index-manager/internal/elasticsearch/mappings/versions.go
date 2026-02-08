@@ -5,7 +5,7 @@ package mappings
 // Bump minor for additions.
 const (
 	RawContentMappingVersion        = "2.0.0"
-	ClassifiedContentMappingVersion = "2.0.0"
+	ClassifiedContentMappingVersion = "2.1.0"
 )
 
 // GetMappingVersion returns the current mapping version for an index type.

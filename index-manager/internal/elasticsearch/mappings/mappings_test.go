@@ -286,7 +286,7 @@ func TestGetClassifiedContentMapping_ClassificationFields(t *testing.T) {
 
 	classificationFields := []string{
 		"content_type", "content_subtype", "quality_score", "quality_factors",
-		"topics", "topic_scores", "crime", "location", "mining",
+		"topics", "topic_scores", "crime", "location", "mining", "coforge",
 		"source_reputation", "source_category",
 		"classifier_version", "classification_method", "model_version", "confidence",
 	}
@@ -369,6 +369,32 @@ func TestGetClassifiedContentMapping_NestedMiningFields(t *testing.T) {
 	for _, field := range expectedMiningFields {
 		if _, exists := miningProps[field]; !exists {
 			t.Errorf("mining missing field %q", field)
+		}
+	}
+}
+
+func TestGetClassifiedContentMapping_NestedCoforgeFields(t *testing.T) {
+	t.Helper()
+
+	mapping := mappings.GetClassifiedContentMapping(1, 1)
+	properties := mapping["mappings"].(map[string]any)["properties"].(map[string]any)
+
+	coforgeObj, ok := properties["coforge"].(map[string]any)
+	if !ok {
+		t.Fatal("coforge field missing or not an object")
+	}
+	coforgeProps, ok := coforgeObj["properties"].(map[string]any)
+	if !ok {
+		t.Fatal("coforge.properties missing")
+	}
+
+	expectedCoforgeFields := []string{
+		"relevance", "relevance_confidence", "audience", "audience_confidence",
+		"topics", "industries", "final_confidence", "review_required", "model_version",
+	}
+	for _, field := range expectedCoforgeFields {
+		if _, exists := coforgeProps[field]; !exists {
+			t.Errorf("coforge missing field %q", field)
 		}
 	}
 }
