@@ -247,6 +247,24 @@ func (c *Connection) ListIndexMetadataByType(ctx context.Context, indexType stri
 	return scanIndexMetadataRows(rows)
 }
 
+// ListAllActiveMetadata returns all active index metadata records.
+func (c *Connection) ListAllActiveMetadata(ctx context.Context) ([]*IndexMetadata, error) {
+	query := `
+		SELECT id, index_name, index_type, source_name, mapping_version, created_at, updated_at, status
+		FROM index_metadata
+		WHERE status = 'active'
+		ORDER BY index_name
+	`
+
+	rows, err := c.DB.QueryContext(ctx, query)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list all index metadata: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	return scanIndexMetadataRows(rows)
+}
+
 // DeleteIndexMetadata marks an index as deleted
 func (c *Connection) DeleteIndexMetadata(ctx context.Context, indexName string) error {
 	query := `

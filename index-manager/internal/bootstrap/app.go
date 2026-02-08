@@ -51,6 +51,9 @@ func Start() error {
 	}()
 	log.Info("Database connection established")
 
+	// Phase 3b: Check for mapping version drift
+	CheckMappingVersionDrift(db, log)
+
 	// Phase 4: Setup and run HTTP server
 	server := SetupHTTPServer(cfg, esClient, db, log)
 
