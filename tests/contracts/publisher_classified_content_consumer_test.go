@@ -16,7 +16,7 @@ func TestPublisherExpectedClassifiedContentFields(t *testing.T) {
 		"content_type", "crawled_at",
 
 		// Routing fields
-		"topics", "quality_score", "is_crime_related",
+		"topics", "quality_score",
 
 		// Payload fields included in Redis messages
 		"title", "url", "source_name", "raw_text", "word_count",

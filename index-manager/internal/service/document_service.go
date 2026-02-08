@@ -269,15 +269,12 @@ func (s *DocumentService) mapToDocument(id string, source map[string]any) *domai
 	// Extract location object
 	doc.Location = s.extractLocationInfo(source)
 
-	// Compute is_crime_related for backward compatibility
-	doc.IsCrimeRelated = doc.ComputedIsCrimeRelated()
-
 	// Store remaining fields in Meta
 	excludedKeys := map[string]bool{
 		"title": true, "url": true, "source_name": true, "content_type": true,
 		"quality_score": true, "body": true, "raw_text": true, "raw_html": true,
 		"topics": true, "published_date": true, "crawled_at": true,
-		"crime": true, "location": true, "is_crime_related": true,
+		"crime": true, "location": true,
 	}
 	for key, value := range source {
 		if !excludedKeys[key] {
@@ -403,9 +400,6 @@ func (s *DocumentService) documentToMap(doc *domain.Document) map[string]any {
 	// Add crime object
 	if doc.Crime != nil {
 		result["crime"] = s.crimeInfoToMap(doc.Crime)
-		result["is_crime_related"] = doc.Crime.IsCrimeRelated()
-	} else {
-		result["is_crime_related"] = doc.IsCrimeRelated
 	}
 
 	// Add location object

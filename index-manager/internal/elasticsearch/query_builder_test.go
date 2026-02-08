@@ -331,38 +331,6 @@ func TestBuildFilters_CrimeRelevance(t *testing.T) {
 	}
 }
 
-func TestBuildFilters_LegacyCrimeRelated(t *testing.T) {
-	t.Helper()
-
-	qb := NewDocumentQueryBuilder()
-	trueVal := true
-	filters := &domain.DocumentFilters{
-		IsCrimeRelated: &trueVal,
-	}
-
-	result := qb.BuildFiltersOnly(filters)
-	if len(result) != 1 {
-		t.Fatalf("filter count = %d, want 1", len(result))
-	}
-}
-
-func TestBuildFilters_LegacyCrimeNotUsedWithNewFilter(t *testing.T) {
-	t.Helper()
-
-	qb := NewDocumentQueryBuilder()
-	trueVal := true
-	filters := &domain.DocumentFilters{
-		IsCrimeRelated: &trueVal,
-		CrimeRelevance: []string{"core_street_crime"},
-	}
-
-	result := qb.BuildFiltersOnly(filters)
-	// Should only have new filter, not legacy
-	if len(result) != 1 {
-		t.Fatalf("filter count = %d, want 1 (new filter only)", len(result))
-	}
-}
-
 func TestBuildFilters_LocationFilters(t *testing.T) {
 	t.Helper()
 

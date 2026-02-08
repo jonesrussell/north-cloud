@@ -28,32 +28,3 @@ func TestCrimeInfo_IsCrimeRelated(t *testing.T) {
 		})
 	}
 }
-
-func TestDocument_ComputedIsCrimeRelated(t *testing.T) {
-	t.Helper()
-	tests := []struct {
-		name     string
-		doc      domain.Document
-		expected bool
-	}{
-		{
-			name:     "nil crime",
-			doc:      domain.Document{},
-			expected: false,
-		},
-		{
-			name:     "crime related",
-			doc:      domain.Document{Crime: &domain.CrimeInfo{Relevance: "core_street_crime"}},
-			expected: true,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got := tt.doc.ComputedIsCrimeRelated()
-			if got != tt.expected {
-				t.Errorf("ComputedIsCrimeRelated() = %v, want %v", got, tt.expected)
-			}
-		})
-	}
-}

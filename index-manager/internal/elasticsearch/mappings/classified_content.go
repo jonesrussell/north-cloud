@@ -236,10 +236,6 @@ func getClassificationFields() map[string]any {
 		"crime":    getCrimeMapping(),
 		"location": getLocationMapping(),
 		"mining":   getMiningMapping(),
-		// Keep is_crime_related for backward compatibility (computed field)
-		"is_crime_related": map[string]any{
-			"type": "boolean",
-		},
 		"source_reputation": map[string]any{
 			"type": "integer",
 		},

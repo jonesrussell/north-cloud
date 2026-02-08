@@ -18,7 +18,7 @@ func TestSearchExpectedClassifiedContentFields(t *testing.T) {
 
 		// Source fields returned in results
 		"id", "url", "source_name", "published_date", "crawled_at",
-		"quality_score", "content_type", "topics", "is_crime_related",
+		"quality_score", "content_type", "topics",
 
 		// Filter and aggregation fields
 		"source_reputation", "confidence", "word_count",

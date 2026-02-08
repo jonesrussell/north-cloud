@@ -21,7 +21,6 @@ func TestClassifierProducesValidClassifiedContent(t *testing.T) {
 		"content_type", "content_subtype",
 		"quality_score", "quality_factors",
 		"topics", "topic_scores",
-		"is_crime_related",
 		"source_reputation", "source_category",
 		"classifier_version", "classification_method", "model_version",
 		"confidence",

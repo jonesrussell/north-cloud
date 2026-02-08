@@ -50,19 +50,8 @@ type Document struct {
 	Crime    *CrimeInfo    `json:"crime,omitempty"`
 	Location *LocationInfo `json:"location,omitempty"`
 
-	// Backward compatibility (computed from Crime.Relevance)
-	IsCrimeRelated bool `json:"is_crime_related,omitempty"`
-
 	// Unstructured spillover
 	Meta map[string]any `json:"meta,omitempty"`
-}
-
-// ComputedIsCrimeRelated returns whether this document is crime-related
-func (d *Document) ComputedIsCrimeRelated() bool {
-	if d.Crime != nil {
-		return d.Crime.IsCrimeRelated()
-	}
-	return d.IsCrimeRelated
 }
 
 // DocumentQueryRequest represents a request to query documents
@@ -102,9 +91,6 @@ type DocumentFilters struct {
 
 	// Source filter (new)
 	Sources []string `json:"sources,omitempty"`
-
-	// Legacy filter (deprecated, use CrimeRelevance instead)
-	IsCrimeRelated *bool `json:"is_crime_related,omitempty"`
 }
 
 // DocumentPagination holds pagination parameters
