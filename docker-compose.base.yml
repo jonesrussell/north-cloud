@@ -215,8 +215,7 @@ services:
 
   search-service:
     <<: *service-defaults
-    profiles:
-      - search
+    # No profiles here so prod (base+prod) always has search-service; dev (base+dev) overrides with profiles: [search]
     build:
       context: .
       dockerfile: ./search/Dockerfile
@@ -247,8 +246,7 @@ services:
 
   search-frontend:
     <<: *service-defaults
-    profiles:
-      - search
+    # No profiles here so prod always has search-frontend; dev overrides with profiles: [search]
     build:
       context: ./search-frontend
       dockerfile: Dockerfile
