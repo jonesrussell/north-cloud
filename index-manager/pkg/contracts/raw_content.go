@@ -8,6 +8,6 @@ import (
 // contract Mapping. Services that write to or read from *_raw_content indexes
 // should test against this mapping to ensure field compatibility.
 func RawContentMapping() Mapping {
-	full := mappings.GetRawContentMapping()
+	full := mappings.GetRawContentMapping(1, 0)
 	return extractProperties(full)
 }

@@ -57,7 +57,7 @@ func TestGetMappingForType_ValidTypes(t *testing.T) {
 
 	for _, indexType := range types {
 		t.Run(indexType, func(t *testing.T) {
-			mapping, err := mappings.GetMappingForType(indexType)
+			mapping, err := mappings.GetMappingForType(indexType, 1, 1)
 			if err != nil {
 				t.Fatalf("GetMappingForType(%q) error = %v", indexType, err)
 			}
@@ -77,7 +77,7 @@ func TestGetMappingForType_ValidTypes(t *testing.T) {
 func TestGetMappingForType_UnknownType(t *testing.T) {
 	t.Helper()
 
-	_, err := mappings.GetMappingForType("nonexistent")
+	_, err := mappings.GetMappingForType("nonexistent", 1, 1)
 	if err == nil {
 		t.Fatal("GetMappingForType(nonexistent) = nil error, want error")
 	}
@@ -88,7 +88,7 @@ func TestGetMappingForType_UnknownType(t *testing.T) {
 func TestGetRawContentMapping_Structure(t *testing.T) {
 	t.Helper()
 
-	mapping := mappings.GetRawContentMapping()
+	mapping := mappings.GetRawContentMapping(1, 1)
 
 	settings, ok := mapping["settings"].(map[string]any)
 	if !ok {
@@ -130,7 +130,7 @@ func TestGetRawContentMapping_Structure(t *testing.T) {
 func TestGetRawContentMapping_FieldTypes(t *testing.T) {
 	t.Helper()
 
-	mapping := mappings.GetRawContentMapping()
+	mapping := mappings.GetRawContentMapping(1, 1)
 	properties := mapping["mappings"].(map[string]any)["properties"].(map[string]any)
 
 	keywordFields := []string{
@@ -159,7 +159,7 @@ func TestGetRawContentMapping_FieldTypes(t *testing.T) {
 func TestGetRawContentMapping_RawHTMLNotIndexed(t *testing.T) {
 	t.Helper()
 
-	mapping := mappings.GetRawContentMapping()
+	mapping := mappings.GetRawContentMapping(1, 1)
 	properties := mapping["mappings"].(map[string]any)["properties"].(map[string]any)
 
 	rawHTML, ok := properties["raw_html"].(map[string]any)
@@ -179,7 +179,7 @@ func TestGetRawContentMapping_RawHTMLNotIndexed(t *testing.T) {
 func TestGetRawContentMapping_DynamicStrict(t *testing.T) {
 	t.Helper()
 
-	mapping := mappings.GetRawContentMapping()
+	mapping := mappings.GetRawContentMapping(1, 1)
 	mappingsObj := mapping["mappings"].(map[string]any)
 
 	dynamic, exists := mappingsObj["dynamic"]
@@ -194,7 +194,7 @@ func TestGetRawContentMapping_DynamicStrict(t *testing.T) {
 func TestGetClassifiedContentMapping_DynamicStrict(t *testing.T) {
 	t.Helper()
 
-	mapping := mappings.GetClassifiedContentMapping()
+	mapping := mappings.GetClassifiedContentMapping(1, 1)
 	mappingsObj := mapping["mappings"].(map[string]any)
 
 	dynamic, exists := mappingsObj["dynamic"]
@@ -209,7 +209,7 @@ func TestGetClassifiedContentMapping_DynamicStrict(t *testing.T) {
 func TestGetRawContentMapping_MetaSubFields(t *testing.T) {
 	t.Helper()
 
-	mapping := mappings.GetRawContentMapping()
+	mapping := mappings.GetRawContentMapping(1, 1)
 	properties := mapping["mappings"].(map[string]any)["properties"].(map[string]any)
 
 	metaObj, ok := properties["meta"].(map[string]any)
@@ -235,7 +235,7 @@ func TestGetRawContentMapping_MetaSubFields(t *testing.T) {
 func TestGetRawContentMapping_JsonLdDataSubFields(t *testing.T) {
 	t.Helper()
 
-	mapping := mappings.GetRawContentMapping()
+	mapping := mappings.GetRawContentMapping(1, 1)
 	properties := mapping["mappings"].(map[string]any)["properties"].(map[string]any)
 
 	jsonLdObj, ok := properties["json_ld_data"].(map[string]any)
@@ -265,8 +265,8 @@ func TestGetRawContentMapping_JsonLdDataSubFields(t *testing.T) {
 func TestGetClassifiedContentMapping_InheritsRawFields(t *testing.T) {
 	t.Helper()
 
-	rawMapping := mappings.GetRawContentMapping()
-	classifiedMapping := mappings.GetClassifiedContentMapping()
+	rawMapping := mappings.GetRawContentMapping(1, 1)
+	classifiedMapping := mappings.GetClassifiedContentMapping(1, 1)
 
 	rawProps := rawMapping["mappings"].(map[string]any)["properties"].(map[string]any)
 	classifiedProps := classifiedMapping["mappings"].(map[string]any)["properties"].(map[string]any)
@@ -281,7 +281,7 @@ func TestGetClassifiedContentMapping_InheritsRawFields(t *testing.T) {
 func TestGetClassifiedContentMapping_ClassificationFields(t *testing.T) {
 	t.Helper()
 
-	mapping := mappings.GetClassifiedContentMapping()
+	mapping := mappings.GetClassifiedContentMapping(1, 1)
 	properties := mapping["mappings"].(map[string]any)["properties"].(map[string]any)
 
 	classificationFields := []string{
@@ -301,7 +301,7 @@ func TestGetClassifiedContentMapping_ClassificationFields(t *testing.T) {
 func TestGetClassifiedContentMapping_NestedCrimeFields(t *testing.T) {
 	t.Helper()
 
-	mapping := mappings.GetClassifiedContentMapping()
+	mapping := mappings.GetClassifiedContentMapping(1, 1)
 	properties := mapping["mappings"].(map[string]any)["properties"].(map[string]any)
 
 	crimeObj, ok := properties["crime"].(map[string]any)
@@ -327,7 +327,7 @@ func TestGetClassifiedContentMapping_NestedCrimeFields(t *testing.T) {
 func TestGetClassifiedContentMapping_NestedLocationFields(t *testing.T) {
 	t.Helper()
 
-	mapping := mappings.GetClassifiedContentMapping()
+	mapping := mappings.GetClassifiedContentMapping(1, 1)
 	properties := mapping["mappings"].(map[string]any)["properties"].(map[string]any)
 
 	locationObj, ok := properties["location"].(map[string]any)
@@ -350,7 +350,7 @@ func TestGetClassifiedContentMapping_NestedLocationFields(t *testing.T) {
 func TestGetClassifiedContentMapping_NestedMiningFields(t *testing.T) {
 	t.Helper()
 
-	mapping := mappings.GetClassifiedContentMapping()
+	mapping := mappings.GetClassifiedContentMapping(1, 1)
 	properties := mapping["mappings"].(map[string]any)["properties"].(map[string]any)
 
 	miningObj, ok := properties["mining"].(map[string]any)

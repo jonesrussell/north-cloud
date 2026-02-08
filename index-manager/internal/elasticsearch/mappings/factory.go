@@ -3,12 +3,12 @@ package mappings
 import "fmt"
 
 // GetMappingForType returns the appropriate mapping for an index type
-func GetMappingForType(indexType string) (map[string]any, error) {
+func GetMappingForType(indexType string, shards, replicas int) (map[string]any, error) {
 	switch indexType {
 	case "raw_content":
-		return GetRawContentMapping(), nil
+		return GetRawContentMapping(shards, replicas), nil
 	case "classified_content":
-		return GetClassifiedContentMapping(), nil
+		return GetClassifiedContentMapping(shards, replicas), nil
 	case "article":
 		return GetArticleMapping(), nil
 	case "page":

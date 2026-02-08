@@ -258,7 +258,7 @@ func getClassificationFields() map[string]any {
 }
 
 // GetClassifiedContentMapping returns the Elasticsearch mapping for classified content indexes
-func GetClassifiedContentMapping() map[string]any {
+func GetClassifiedContentMapping(shards, replicas int) map[string]any {
 	properties := make(map[string]any)
 
 	// Add raw content fields
@@ -269,8 +269,8 @@ func GetClassifiedContentMapping() map[string]any {
 
 	return map[string]any{
 		"settings": map[string]any{
-			"number_of_shards":   1,
-			"number_of_replicas": 1,
+			"number_of_shards":   shards,
+			"number_of_replicas": replicas,
 		},
 		"mappings": map[string]any{
 			"dynamic":    "strict",

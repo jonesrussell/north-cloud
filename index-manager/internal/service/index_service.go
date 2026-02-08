@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/jonesrussell/north-cloud/index-manager/internal/config"
 	"github.com/jonesrussell/north-cloud/index-manager/internal/database"
 	"github.com/jonesrussell/north-cloud/index-manager/internal/domain"
 	"github.com/jonesrussell/north-cloud/index-manager/internal/elasticsearch"
@@ -20,17 +21,22 @@ import (
 
 // IndexService provides business logic for index operations
 type IndexService struct {
-	esClient *elasticsearch.Client
-	db       *database.Connection
-	logger   infralogger.Logger
+	esClient   *elasticsearch.Client
+	db         *database.Connection
+	logger     infralogger.Logger
+	indexTypes config.IndexTypesConfig
 }
 
 // NewIndexService creates a new index service
-func NewIndexService(esClient *elasticsearch.Client, db *database.Connection, logger infralogger.Logger) *IndexService {
+func NewIndexService(
+	esClient *elasticsearch.Client, db *database.Connection,
+	logger infralogger.Logger, indexTypes config.IndexTypesConfig,
+) *IndexService {
 	return &IndexService{
-		esClient: esClient,
-		db:       db,
-		logger:   logger,
+		esClient:   esClient,
+		db:         db,
+		logger:     logger,
+		indexTypes: indexTypes,
 	}
 }
 
@@ -93,7 +99,7 @@ func (s *IndexService) CreateIndex(ctx context.Context, req *domain.CreateIndexR
 	if req.Mapping != nil {
 		mapping = req.Mapping
 	} else {
-		mapping, err = mappings.GetMappingForType(string(req.IndexType))
+		mapping, err = mappings.GetMappingForType(string(req.IndexType), s.getShards(req.IndexType), s.getReplicas(req.IndexType))
 		if err != nil {
 			return nil, fmt.Errorf("failed to get mapping for type %s: %w", req.IndexType, err)
 		}
@@ -556,6 +562,32 @@ func (s *IndexService) getIndexedTodayCount(ctx context.Context) (int64, error) 
 }
 
 // Helper functions
+
+func (s *IndexService) getShards(indexType domain.IndexType) int {
+	switch indexType {
+	case domain.IndexTypeRawContent:
+		return s.indexTypes.RawContent.Shards
+	case domain.IndexTypeClassifiedContent:
+		return s.indexTypes.ClassifiedContent.Shards
+	case domain.IndexTypeArticle, domain.IndexTypePage:
+		return 1
+	default:
+		return 1
+	}
+}
+
+func (s *IndexService) getReplicas(indexType domain.IndexType) int {
+	switch indexType {
+	case domain.IndexTypeRawContent:
+		return s.indexTypes.RawContent.Replicas
+	case domain.IndexTypeClassifiedContent:
+		return s.indexTypes.ClassifiedContent.Replicas
+	case domain.IndexTypeArticle, domain.IndexTypePage:
+		return 1
+	default:
+		return 1
+	}
+}
 
 func isValidIndexType(indexType domain.IndexType) bool {
 	switch indexType {
