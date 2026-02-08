@@ -373,6 +373,33 @@ func TestGetClassifiedContentMapping_NestedMiningFields(t *testing.T) {
 	}
 }
 
+// --- Version Constants ---
+
+func TestMappingVersionConstants(t *testing.T) {
+	t.Helper()
+
+	if mappings.RawContentMappingVersion == "" {
+		t.Error("RawContentMappingVersion is empty")
+	}
+	if mappings.ClassifiedContentMappingVersion == "" {
+		t.Error("ClassifiedContentMappingVersion is empty")
+	}
+}
+
+func TestGetMappingVersion(t *testing.T) {
+	t.Helper()
+
+	if v := mappings.GetMappingVersion("raw_content"); v != mappings.RawContentMappingVersion {
+		t.Errorf("GetMappingVersion(raw_content) = %q, want %q", v, mappings.RawContentMappingVersion)
+	}
+	if v := mappings.GetMappingVersion("classified_content"); v != mappings.ClassifiedContentMappingVersion {
+		t.Errorf("GetMappingVersion(classified_content) = %q, want %q", v, mappings.ClassifiedContentMappingVersion)
+	}
+	if v := mappings.GetMappingVersion("unknown"); v != "1.0.0" {
+		t.Errorf("GetMappingVersion(unknown) = %q, want \"1.0.0\"", v)
+	}
+}
+
 // --- Helpers ---
 
 func assertFieldType(t *testing.T, properties map[string]any, field, expectedType string) {

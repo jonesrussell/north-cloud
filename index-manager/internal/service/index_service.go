@@ -121,7 +121,7 @@ func (s *IndexService) CreateIndex(ctx context.Context, req *domain.CreateIndexR
 	// Record migration
 	migration := &database.MigrationHistory{
 		IndexName:     indexName,
-		ToVersion:     sql.NullString{String: "1.0.0", Valid: true},
+		ToVersion:     sql.NullString{String: mappings.GetMappingVersion(string(req.IndexType)), Valid: true},
 		MigrationType: "create",
 		Status:        "pending",
 		CreatedAt:     time.Now(),
@@ -141,7 +141,7 @@ func (s *IndexService) CreateIndex(ctx context.Context, req *domain.CreateIndexR
 		IndexName:      indexName,
 		IndexType:      string(req.IndexType),
 		SourceName:     sql.NullString{String: req.SourceName, Valid: req.SourceName != ""},
-		MappingVersion: "1.0.0",
+		MappingVersion: mappings.GetMappingVersion(string(req.IndexType)),
 		Status:         "active",
 	}
 	if saveErr := s.db.SaveIndexMetadata(ctx, metadata); saveErr != nil {
