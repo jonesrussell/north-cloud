@@ -131,6 +131,7 @@ func extractTitle(e *colly.HTMLElement, selector string) string {
 const (
 	minHTMLContentLength = 50
 	minParagraphLength   = 20
+	defaultSchemaOrgURL  = "https://schema.org"
 )
 
 // extractRawHTML extracts the raw HTML content from the page
@@ -452,7 +453,8 @@ func extractJSONLDImage(objMap, result map[string]any) {
 }
 
 // normalizeJSONLDObject normalizes a JSON-LD object to prevent Elasticsearch mapping conflicts.
-// Specifically normalizes the author field which can be string, object, or array.
+// Fields like @context and author can be string, object, or array depending on the page,
+// which causes ES dynamic mapping conflicts. Normalize them to consistent types.
 func normalizeJSONLDObject(objMap map[string]any) map[string]any {
 	// Create a deep copy to avoid mutating the original
 	normalized := make(map[string]any, len(objMap))
@@ -460,6 +462,13 @@ func normalizeJSONLDObject(objMap map[string]any) map[string]any {
 	// Copy all fields
 	for key, val := range objMap {
 		normalized[key] = val
+	}
+
+	// Normalize @context to always be a string (prevents ES mapping conflicts
+	// when some pages have "@context": "https://schema.org" and others have
+	// "@context": {"@vocab": "https://schema.org/"})
+	if ctxVal, hasCtx := normalized["@context"]; hasCtx {
+		normalized["@context"] = normalizeContextField(ctxVal)
 	}
 
 	// Normalize author field to always be a string
@@ -471,6 +480,32 @@ func normalizeJSONLDObject(objMap map[string]any) map[string]any {
 	}
 
 	return normalized
+}
+
+// normalizeContextField normalizes JSON-LD @context to always be a string.
+// @context can be a string ("https://schema.org"), an object ({"@vocab": "..."}),
+// or an array (["https://schema.org", {...}]).
+func normalizeContextField(ctxVal any) string {
+	switch v := ctxVal.(type) {
+	case string:
+		return v
+	case map[string]any:
+		// Extract @vocab or first string value from the context object
+		if vocab, ok := v["@vocab"].(string); ok {
+			return vocab
+		}
+		return defaultSchemaOrgURL
+	case []any:
+		// Extract the first string element from the array
+		for _, item := range v {
+			if s, ok := item.(string); ok {
+				return s
+			}
+		}
+		return defaultSchemaOrgURL
+	default:
+		return defaultSchemaOrgURL
+	}
 }
 
 // normalizeAuthorField normalizes the author field from various types to a string.
