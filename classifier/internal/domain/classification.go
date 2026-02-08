@@ -38,6 +38,9 @@ type ClassificationResult struct {
 	// Mining hybrid classification (optional)
 	Mining *MiningResult `json:"mining,omitempty"`
 
+	// Coforge hybrid classification (optional)
+	Coforge *CoforgeResult `json:"coforge,omitempty"`
+
 	// Location detection (content-based)
 	Location *LocationResult `json:"location,omitempty"`
 }
@@ -52,6 +55,19 @@ type MiningResult struct {
 	ReviewRequired  bool     `json:"review_required"`
 	ModelVersion    string   `json:"model_version,omitempty"`
 	SourceTextUsed  string   `json:"-"` // Internal only, for debugging
+}
+
+// CoforgeResult holds Coforge hybrid classification results.
+type CoforgeResult struct {
+	Relevance           string   `json:"relevance"`
+	RelevanceConfidence float64  `json:"relevance_confidence"`
+	Audience            string   `json:"audience"`
+	AudienceConfidence  float64  `json:"audience_confidence"`
+	Topics              []string `json:"topics"`
+	Industries          []string `json:"industries"`
+	FinalConfidence     float64  `json:"final_confidence"`
+	ReviewRequired      bool     `json:"review_required"`
+	ModelVersion        string   `json:"model_version,omitempty"`
 }
 
 // CrimeResult holds Crime hybrid classification results.
@@ -92,6 +108,9 @@ type ClassifiedContent struct {
 
 	// Mining hybrid classification (optional)
 	Mining *MiningResult `json:"mining,omitempty"`
+
+	// Coforge hybrid classification (optional)
+	Coforge *CoforgeResult `json:"coforge,omitempty"`
 
 	// Location detection (content-based)
 	Location *LocationResult `json:"location,omitempty"`
