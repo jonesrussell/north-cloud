@@ -373,6 +373,38 @@ func TestGetClassifiedContentMapping_NestedMiningFields(t *testing.T) {
 	}
 }
 
+// --- English Analyzer ---
+
+func TestGetClassifiedContentMapping_HasEnglishAnalyzer(t *testing.T) {
+	t.Helper()
+	mapping := mappings.GetClassifiedContentMapping(1, 1)
+	settings := mapping["settings"].(map[string]any)
+
+	analysis, hasAnalysis := settings["analysis"]
+	if !hasAnalysis {
+		t.Fatal("classified_content mapping missing 'analysis' settings")
+	}
+	analysisMap := analysis.(map[string]any)
+
+	analyzer, hasAnalyzer := analysisMap["analyzer"]
+	if !hasAnalyzer {
+		t.Fatal("missing analyzer in analysis settings")
+	}
+	analyzerMap := analyzer.(map[string]any)
+
+	if _, hasEnglish := analyzerMap["english_content"]; !hasEnglish {
+		t.Error("missing english_content analyzer")
+	}
+}
+
+func TestGetClassifiedContentMapping_TextFieldsUseEnglishAnalyzer(t *testing.T) {
+	t.Helper()
+	mapping := mappings.GetClassifiedContentMapping(1, 1)
+	properties := mapping["mappings"].(map[string]any)["properties"].(map[string]any)
+	assertFieldHasAnalyzer(t, properties, "title", "english_content")
+	assertFieldHasAnalyzer(t, properties, "raw_text", "english_content")
+}
+
 // --- Version Constants ---
 
 func TestMappingVersionConstants(t *testing.T) {

@@ -267,14 +267,43 @@ func GetClassifiedContentMapping(shards, replicas int) map[string]any {
 	// Add classification fields
 	maps.Copy(properties, getClassificationFields())
 
+	// Override text fields to use english_content analyzer for search quality
+	overrideAnalyzer(properties, "title", "english_content")
+	overrideAnalyzer(properties, "raw_text", "english_content")
+
 	return map[string]any{
 		"settings": map[string]any{
 			"number_of_shards":   shards,
 			"number_of_replicas": replicas,
+			"analysis":           getEnglishAnalysisSettings(),
 		},
 		"mappings": map[string]any{
 			"dynamic":    "strict",
 			"properties": properties,
 		},
+	}
+}
+
+// getEnglishAnalysisSettings returns custom English analyzer settings for better search quality
+func getEnglishAnalysisSettings() map[string]any {
+	return map[string]any{
+		"analyzer": map[string]any{
+			"english_content": map[string]any{
+				"type":      "custom",
+				"tokenizer": "standard",
+				"filter":    []string{"lowercase", "english_stop", "english_stemmer"},
+			},
+		},
+		"filter": map[string]any{
+			"english_stop":    map[string]any{"type": "stop", "stopwords": "_english_"},
+			"english_stemmer": map[string]any{"type": "stemmer", "language": "english"},
+		},
+	}
+}
+
+// overrideAnalyzer overrides the analyzer for a field in the properties map
+func overrideAnalyzer(properties map[string]any, field, analyzer string) {
+	if fieldMap, ok := properties[field].(map[string]any); ok {
+		fieldMap["analyzer"] = analyzer
 	}
 }
