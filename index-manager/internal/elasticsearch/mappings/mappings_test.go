@@ -112,7 +112,7 @@ func TestGetRawContentMapping_Structure(t *testing.T) {
 		"og_type", "og_title", "og_description", "og_image", "og_url",
 		"meta_description", "meta_keywords", "canonical_url", "author",
 		"crawled_at", "published_date", "classification_status", "classified_at",
-		"word_count",
+		"word_count", "article_section", "json_ld_data", "meta",
 	}
 
 	for _, field := range expectedFields {
@@ -121,7 +121,7 @@ func TestGetRawContentMapping_Structure(t *testing.T) {
 		}
 	}
 
-	expectedFieldCount := 20
+	expectedFieldCount := 23
 	if len(properties) != expectedFieldCount {
 		t.Errorf("raw_content has %d fields, want %d", len(properties), expectedFieldCount)
 	}
@@ -173,6 +173,60 @@ func TestGetRawContentMapping_RawHTMLNotIndexed(t *testing.T) {
 	}
 	if indexVal != false {
 		t.Errorf("raw_html index = %v, want false", indexVal)
+	}
+}
+
+func TestGetRawContentMapping_MetaSubFields(t *testing.T) {
+	t.Helper()
+
+	mapping := mappings.GetRawContentMapping()
+	properties := mapping["mappings"].(map[string]any)["properties"].(map[string]any)
+
+	metaObj, ok := properties["meta"].(map[string]any)
+	if !ok {
+		t.Fatal("meta field missing or not an object")
+	}
+	metaProps, ok := metaObj["properties"].(map[string]any)
+	if !ok {
+		t.Fatal("meta.properties missing")
+	}
+
+	expectedMetaFields := []string{
+		"twitter_card", "twitter_site", "og_image_width", "og_image_height",
+		"og_site_name", "created_at", "updated_at", "article_opinion", "article_content_tier",
+	}
+	for _, field := range expectedMetaFields {
+		if _, exists := metaProps[field]; !exists {
+			t.Errorf("meta missing field %q", field)
+		}
+	}
+}
+
+func TestGetRawContentMapping_JsonLdDataSubFields(t *testing.T) {
+	t.Helper()
+
+	mapping := mappings.GetRawContentMapping()
+	properties := mapping["mappings"].(map[string]any)["properties"].(map[string]any)
+
+	jsonLdObj, ok := properties["json_ld_data"].(map[string]any)
+	if !ok {
+		t.Fatal("json_ld_data field missing or not an object")
+	}
+	jsonLdProps, ok := jsonLdObj["properties"].(map[string]any)
+	if !ok {
+		t.Fatal("json_ld_data.properties missing")
+	}
+
+	expectedJSONLdFields := []string{
+		"jsonld_headline", "jsonld_description", "jsonld_article_section",
+		"jsonld_author", "jsonld_publisher_name", "jsonld_url", "jsonld_image_url",
+		"jsonld_date_published", "jsonld_date_created", "jsonld_date_modified",
+		"jsonld_word_count", "jsonld_keywords", "jsonld_raw",
+	}
+	for _, field := range expectedJSONLdFields {
+		if _, exists := jsonLdProps[field]; !exists {
+			t.Errorf("json_ld_data missing field %q", field)
+		}
 	}
 }
 

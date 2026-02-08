@@ -75,6 +75,53 @@ func getRawContentFields() map[string]any {
 		"word_count": map[string]any{
 			"type": "integer",
 		},
+		"article_section": map[string]any{
+			"type": "keyword",
+		},
+		"json_ld_data": map[string]any{
+			"type":       "object",
+			"properties": getJSONLdDataFields(),
+		},
+		"meta": map[string]any{
+			"type":       "object",
+			"properties": getMetaFields(),
+		},
+	}
+}
+
+// getJSONLdDataFields returns the JSON-LD extracted data field definitions
+func getJSONLdDataFields() map[string]any {
+	dateFormat := "strict_date_optional_time||epoch_millis"
+	return map[string]any{
+		"jsonld_headline":        map[string]any{"type": "text"},
+		"jsonld_description":     map[string]any{"type": "text"},
+		"jsonld_article_section": map[string]any{"type": "keyword"},
+		"jsonld_author":          map[string]any{"type": "text"},
+		"jsonld_publisher_name":  map[string]any{"type": "text"},
+		"jsonld_url":             map[string]any{"type": "keyword"},
+		"jsonld_image_url":       map[string]any{"type": "keyword"},
+		"jsonld_date_published":  map[string]any{"type": "date", "format": dateFormat},
+		"jsonld_date_created":    map[string]any{"type": "date", "format": dateFormat},
+		"jsonld_date_modified":   map[string]any{"type": "date", "format": dateFormat},
+		"jsonld_word_count":      map[string]any{"type": "integer"},
+		"jsonld_keywords":        map[string]any{"type": "keyword"},
+		"jsonld_raw":             map[string]any{"type": "object", "enabled": false},
+	}
+}
+
+// getMetaFields returns the meta tag field definitions
+func getMetaFields() map[string]any {
+	dateFormat := "strict_date_optional_time||epoch_millis"
+	return map[string]any{
+		"twitter_card":         map[string]any{"type": "keyword"},
+		"twitter_site":         map[string]any{"type": "keyword"},
+		"og_image_width":       map[string]any{"type": "integer"},
+		"og_image_height":      map[string]any{"type": "integer"},
+		"og_site_name":         map[string]any{"type": "keyword"},
+		"created_at":           map[string]any{"type": "date", "format": dateFormat},
+		"updated_at":           map[string]any{"type": "date", "format": dateFormat},
+		"article_opinion":      map[string]any{"type": "boolean"},
+		"article_content_tier": map[string]any{"type": "keyword"},
 	}
 }
 
