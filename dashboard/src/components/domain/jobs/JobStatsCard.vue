@@ -12,6 +12,7 @@ interface Props {
 }
 
 const props = withDefaults(defineProps<Props>(), {
+  jobs: undefined,
   compact: false,
 })
 
