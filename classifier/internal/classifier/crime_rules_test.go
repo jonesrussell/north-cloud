@@ -4,6 +4,7 @@
 package classifier
 
 import (
+	"slices"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -47,14 +48,7 @@ func TestCrimeRules_ClassifyByRules_ViolentCrime(t *testing.T) {
 			}
 
 			for _, expectedType := range tt.expectedTypes {
-				found := false
-				for _, actualType := range result.crimeTypes {
-					if actualType == expectedType {
-						found = true
-						break
-					}
-				}
-				if !found {
+				if !slices.Contains(result.crimeTypes, expectedType) {
 					t.Errorf("missing crime type %s in %v", expectedType, result.crimeTypes)
 				}
 			}
@@ -275,14 +269,7 @@ func TestCrimeRules_ClassifyByRules_MissingPatterns(t *testing.T) {
 			}
 
 			for _, expectedType := range tt.expectedTypes {
-				found := false
-				for _, actualType := range result.crimeTypes {
-					if actualType == expectedType {
-						found = true
-						break
-					}
-				}
-				if !found {
+				if !slices.Contains(result.crimeTypes, expectedType) {
 					t.Errorf("missing crime type %s in %v for title: %s",
 						expectedType, result.crimeTypes, tt.title)
 				}
