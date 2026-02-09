@@ -11,16 +11,19 @@ import (
 
 const (
 	// Content type confidence constants
-	articleConfidence      = 0.75
-	pageConfidence         = 0.6
-	urlExclusionConfidence = 0.9
-	listingPageConfidence  = 0.85
+	articleConfidence        = 0.75
+	relaxedArticleConfidence = 0.65
+	pageConfidence           = 0.6
+	urlExclusionConfidence   = 0.9
+	listingPageConfidence    = 0.85
 	// String literal for article type matching
 	articleTypeString = "article"
 	// Listing page detection thresholds
 	minReadMoreCountForListing = 3
 	minDateCountForListing     = 5
 	minSummaryCountForListing  = 3
+	// Relaxed heuristic requires higher word count when published date is missing
+	relaxedMinWordCount = 300
 )
 
 // alwaysExcludedPrefixes contains URL path prefixes that always indicate non-article content.
@@ -132,6 +135,23 @@ func (c *ContentTypeClassifier) Classify(ctx context.Context, raw *domain.RawCon
 			Confidence: articleConfidence,
 			Method:     "heuristic",
 			Reason:     "Content has article characteristics (sufficient length, metadata)",
+		}, nil
+	}
+
+	// Strategy 3b: Relaxed heuristic (no published date, higher word count)
+	if c.hasRelaxedArticleCharacteristics(raw) {
+		c.logger.Debug("Content type detected via relaxed heuristics (no published date)",
+			infralogger.String("content_id", raw.ID),
+			infralogger.Int("word_count", raw.WordCount),
+			infralogger.Bool("has_title", raw.Title != ""),
+			infralogger.Bool("has_meta_description", raw.MetaDescription != ""),
+			infralogger.String("result", domain.ContentTypeArticle),
+		)
+		return &ContentTypeResult{
+			Type:       domain.ContentTypeArticle,
+			Confidence: relaxedArticleConfidence,
+			Method:     "heuristic_relaxed",
+			Reason:     "Content has article characteristics (high word count, metadata) but no published date",
 		}, nil
 	}
 
@@ -465,6 +485,30 @@ func (c *ContentTypeClassifier) hasArticleCharacteristics(raw *domain.RawContent
 	}
 
 	// Require description (meta or OG) - not just OGTitle which is too common
+	hasDescription := raw.MetaDescription != "" || raw.OGDescription != ""
+	return hasDescription
+}
+
+// hasRelaxedArticleCharacteristics checks if content is likely an article
+// when published date is missing. Requires higher word count (300+) to compensate
+// for the missing date signal.
+func (c *ContentTypeClassifier) hasRelaxedArticleCharacteristics(raw *domain.RawContent) bool {
+	// Only use relaxed check when published date is missing
+	if raw.PublishedDate != nil {
+		return false
+	}
+
+	// Require higher word count to compensate for missing date
+	if raw.WordCount < relaxedMinWordCount {
+		return false
+	}
+
+	// Must have a title
+	if raw.Title == "" {
+		return false
+	}
+
+	// Require description (meta or OG)
 	hasDescription := raw.MetaDescription != "" || raw.OGDescription != ""
 	return hasDescription
 }

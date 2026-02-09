@@ -703,6 +703,42 @@ func TestContentTypeClassifier_ListingPageContent(t *testing.T) {
 	}
 }
 
+// TestContentTypeClassifier_ArticleWithoutPublishedDate verifies that articles
+// with strong signals but no published_date are classified as article with reduced confidence.
+func TestContentTypeClassifier_ArticleWithoutPublishedDate(t *testing.T) {
+	classifier := NewContentTypeClassifier(&mockLogger{})
+
+	raw := &domain.RawContent{
+		ID:              "test-no-date",
+		URL:             "https://example.com/some-article",
+		Title:           "Six men now charged in 2024 multi-city drug bust",
+		RawText:         "The police arrested several suspects in a large drug bust spanning multiple cities.",
+		PublishedDate:   nil, // Missing!
+		MetaDescription: "Six men have been charged in connection with a drug bust.",
+		WordCount:       600,
+	}
+
+	result, err := classifier.Classify(context.Background(), raw)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// Should classify as article with reduced confidence
+	if result.Type != domain.ContentTypeArticle {
+		t.Errorf("expected type %s, got %s (method: %s)", domain.ContentTypeArticle, result.Type, result.Method)
+	}
+
+	// Confidence should be lower than full heuristic (0.75)
+	if result.Confidence >= articleConfidence {
+		t.Errorf("expected confidence < %f, got %f", articleConfidence, result.Confidence)
+	}
+
+	// Method should indicate relaxed heuristic
+	if result.Method != "heuristic_relaxed" {
+		t.Errorf("expected method heuristic_relaxed, got %s", result.Method)
+	}
+}
+
 // TestContentTypeClassifier_SectionURLExclusion verifies that section index pages
 // are excluded but articles within those sections are NOT excluded.
 func TestContentTypeClassifier_SectionURLExclusion(t *testing.T) {
