@@ -1,5 +1,5 @@
 import type { AxiosRequestConfig, AxiosResponse } from 'axios'
-import type { SearchRequest, SearchResponse } from './search'
+import type { SearchRequest, SearchResponse, SuggestResponse } from './search'
 
 /**
  * Search API client interface
@@ -14,6 +14,11 @@ export interface SearchApi {
    * Simple search via query parameters
    */
   simpleSearch: (params: Record<string, unknown>) => Promise<AxiosResponse<SearchResponse>>
+
+  /**
+   * Autocomplete suggestions
+   */
+  suggest: (query: string) => Promise<AxiosResponse<SuggestResponse>>
 
   /**
    * Health check for search service

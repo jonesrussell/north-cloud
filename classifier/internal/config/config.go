@@ -8,36 +8,38 @@ import (
 
 // Default configuration values.
 const (
-	defaultServiceName        = "classifier"
-	defaultServiceVersion     = "1.0.0"
-	defaultServicePort        = 8070
-	defaultConcurrency        = 10
-	defaultBatchSize          = 100
-	defaultPollIntervalSec    = 30
-	defaultMinQualityScore    = 50
-	defaultMinWordCount       = 100
-	defaultDBHost             = "localhost"
-	defaultDBPort             = 5432
-	defaultDBUser             = "postgres"
-	defaultDBName             = "classifier"
-	defaultDBSSLMode          = "disable"
-	defaultDBMaxConns         = 25
-	defaultDBMaxIdleConns     = 5
-	defaultESURL              = "http://localhost:9200"
-	defaultESMaxRetries       = 3
-	defaultESTimeoutSec       = 30
-	defaultESRawSuffix        = "_raw_content"
-	defaultESClassifiedSuffix = "_classified_content"
-	defaultRedisURL           = "localhost:6379"
-	defaultRedisMaxRetries    = 3
-	defaultRedisTimeoutSec    = 5
-	defaultCacheTTLHours      = 24
-	defaultLogLevel           = "info"
-	defaultLogFormat          = "json"
-	defaultQualityWeight      = 0.25
-	defaultReputationScore    = 50
-	defaultMaxTopics          = 5
-	defaultCrimeMLServiceURL  = "http://crime-ml:8076"
+	defaultServiceName               = "classifier"
+	defaultServiceVersion            = "1.0.0"
+	defaultServicePort               = 8070
+	defaultConcurrency               = 10
+	defaultBatchSize                 = 100
+	defaultPollIntervalSec           = 30
+	defaultMinQualityScore           = 50
+	defaultMinWordCount              = 100
+	defaultDBHost                    = "localhost"
+	defaultDBPort                    = 5432
+	defaultDBUser                    = "postgres"
+	defaultDBName                    = "classifier"
+	defaultDBSSLMode                 = "disable"
+	defaultDBMaxConns                = 25
+	defaultDBMaxIdleConns            = 5
+	defaultESURL                     = "http://localhost:9200"
+	defaultESMaxRetries              = 3
+	defaultESTimeoutSec              = 30
+	defaultESRawSuffix               = "_raw_content"
+	defaultESClassifiedSuffix        = "_classified_content"
+	defaultRedisURL                  = "localhost:6379"
+	defaultRedisMaxRetries           = 3
+	defaultRedisTimeoutSec           = 5
+	defaultCacheTTLHours             = 24
+	defaultLogLevel                  = "info"
+	defaultLogFormat                 = "json"
+	defaultQualityWeight             = 0.25
+	defaultReputationScore           = 50
+	defaultMaxTopics                 = 5
+	defaultCrimeMLServiceURL         = "http://crime-ml:8076"
+	defaultCoforgeMLServiceURL       = "http://coforge-ml:8078"
+	defaultEntertainmentMLServiceURL = "http://entertainment-ml:8079"
 )
 
 // Config holds all configuration for the classifier service.
@@ -121,12 +123,33 @@ type ClassificationConfig struct {
 	Topic            TopicConfig            `yaml:"topic"`
 	SourceReputation SourceReputationConfig `yaml:"source_reputation"`
 	Crime            CrimeConfig            `yaml:"crime"`
+	Mining           MiningConfig           `yaml:"mining"`
+	Coforge          CoforgeConfig          `yaml:"coforge"`
+	Entertainment    EntertainmentConfig    `yaml:"entertainment"`
 }
 
 // CrimeConfig holds Crime hybrid classification settings.
 type CrimeConfig struct {
 	Enabled      bool   `env:"CRIME_ENABLED"        yaml:"enabled"`
 	MLServiceURL string `env:"CRIME_ML_SERVICE_URL" yaml:"ml_service_url"`
+}
+
+// MiningConfig holds Mining hybrid classification settings.
+type MiningConfig struct {
+	Enabled      bool   `env:"MINING_ENABLED"        yaml:"enabled"`
+	MLServiceURL string `env:"MINING_ML_SERVICE_URL" yaml:"ml_service_url"`
+}
+
+// CoforgeConfig holds Coforge hybrid classification settings.
+type CoforgeConfig struct {
+	Enabled      bool   `env:"COFORGE_ENABLED"        yaml:"enabled"`
+	MLServiceURL string `env:"COFORGE_ML_SERVICE_URL" yaml:"ml_service_url"`
+}
+
+// EntertainmentConfig holds Entertainment hybrid classification settings.
+type EntertainmentConfig struct {
+	Enabled      bool   `env:"ENTERTAINMENT_ENABLED"        yaml:"enabled"`
+	MLServiceURL string `env:"ENTERTAINMENT_ML_SERVICE_URL" yaml:"ml_service_url"`
 }
 
 // ContentTypeConfig holds content type detection settings.
@@ -292,5 +315,13 @@ func setClassificationDefaults(c *ClassificationConfig) {
 	// Crime defaults: disabled by default, but set ML URL
 	if c.Crime.MLServiceURL == "" {
 		c.Crime.MLServiceURL = defaultCrimeMLServiceURL
+	}
+	// Coforge defaults: disabled by default, but set ML URL
+	if c.Coforge.MLServiceURL == "" {
+		c.Coforge.MLServiceURL = defaultCoforgeMLServiceURL
+	}
+	// Entertainment defaults: disabled by default, but set ML URL
+	if c.Entertainment.MLServiceURL == "" {
+		c.Entertainment.MLServiceURL = defaultEntertainmentMLServiceURL
 	}
 }

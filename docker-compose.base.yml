@@ -109,7 +109,7 @@ services:
         soft: -1
         hard: -1
     volumes:
-      - elasticsearch_data:/usr/share/elasticsearch/data
+      - /mnt/volume_tor1_01_es:/usr/share/elasticsearch/data
       - ./infrastructure/elasticsearch/elasticsearch.yml:/usr/share/elasticsearch/config/elasticsearch.yml:ro
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:9200/_cluster/health?wait_for_status=green&timeout=30s || curl -f http://localhost:9200/_cluster/health?wait_for_status=yellow&timeout=30s || exit 1"]
@@ -181,6 +181,7 @@ services:
       interval: 30s
       timeout: 10s
       retries: 5
+      start_period: 15s
 
   minio-init:
     image: quay.io/minio/mc:latest
@@ -214,8 +215,7 @@ services:
 
   search-service:
     <<: *service-defaults
-    profiles:
-      - search
+    # No profiles here so prod (base+prod) always has search-service; dev (base+dev) overrides with profiles: [search]
     build:
       context: .
       dockerfile: ./search/Dockerfile
@@ -246,8 +246,7 @@ services:
 
   search-frontend:
     <<: *service-defaults
-    profiles:
-      - search
+    # No profiles here so prod always has search-frontend; dev overrides with profiles: [search]
     build:
       context: ./search-frontend
       dockerfile: Dockerfile
@@ -307,6 +306,76 @@ services:
       timeout: 10s
       retries: 3
       start_period: 15s
+
+  # ------------------------------------------------------------
+  # Mining ML Classifier
+  # ------------------------------------------------------------
+
+  mining-ml:
+    <<: *service-defaults
+    build:
+      context: ./mining-ml
+      dockerfile: Dockerfile
+    image: docker.io/jonesrussell/mining-ml:latest
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 512M
+    environment:
+      MODEL_PATH: /app/models
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8077/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+  # ------------------------------------------------------------
+  # Coforge ML Classifier
+  # ------------------------------------------------------------
+
+  coforge-ml:
+    <<: *service-defaults
+    build:
+      context: ./coforge-ml
+      dockerfile: Dockerfile
+    image: docker.io/jonesrussell/coforge-ml:latest
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 512M
+    environment:
+      MODEL_PATH: /app/models
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8078/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+  # ------------------------------------------------------------
+  # Entertainment ML Classifier
+  # ------------------------------------------------------------
+
+  entertainment-ml:
+    <<: *service-defaults
+    build:
+      context: ./entertainment-ml
+      dockerfile: Dockerfile
+    image: docker.io/jonesrussell/entertainment-ml:latest
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 512M
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8079/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
 
   # ------------------------------------------------------------
   # HTTP Replay Proxy (nc-http-proxy)
@@ -445,7 +514,6 @@ volumes:
   postgres_classifier_data:
   postgres_index_manager_data:
   postgres_publisher_data:
-  elasticsearch_data:
   redis_data:
   minio_data:
   loki_data:

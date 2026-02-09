@@ -34,6 +34,8 @@ import type {
   CrimeAggregation,
   LocationAggregation,
   OverviewAggregation,
+  MiningAggregation,
+  MLHealthResponse,
   AggregationFilters,
 } from '../types/aggregation'
 
@@ -181,6 +183,7 @@ export const crawlerApi = {
     executions: (id: string | number, params?: { limit?: number; offset?: number }) =>
       crawlerClient.get(`/jobs/${id}/executions`, { params }),
     stats: (id: string | number) => crawlerClient.get(`/jobs/${id}/stats`),
+    statusCounts: () => crawlerClient.get('/jobs/status-counts'),
     pause: (id: string | number) => crawlerClient.post(`/jobs/${id}/pause`),
     resume: (id: string | number) => crawlerClient.post(`/jobs/${id}/resume`),
     cancel: (id: string | number) => crawlerClient.post(`/jobs/${id}/cancel`),
@@ -368,6 +371,12 @@ export const classifierApi = {
     topics: () => classifierClient.get('/stats/topics'),
     sources: () => classifierClient.get('/stats/sources'),
   },
+
+  // Metrics
+  metrics: {
+    mlHealth: (): Promise<AxiosResponse<MLHealthResponse>> =>
+      classifierClient.get('/metrics/ml-health'),
+  },
 }
 
 // Helper to build aggregation query params
@@ -504,6 +513,10 @@ export const indexManagerApi = {
     getOverview: (filters?: AggregationFilters): Promise<AxiosResponse<OverviewAggregation>> => {
       const params = buildAggregationParams(filters)
       return indexManagerClient.get('/api/v1/aggregations/overview', { params })
+    },
+    getMining: (filters?: AggregationFilters): Promise<AxiosResponse<MiningAggregation>> => {
+      const params = buildAggregationParams(filters)
+      return indexManagerClient.get('/api/v1/aggregations/mining', { params })
     },
   },
 }

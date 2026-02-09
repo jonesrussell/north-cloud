@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { formatTime } from '@/lib/utils'
 import { CheckCircle2, XCircle, AlertTriangle, Loader2, HelpCircle } from 'lucide-vue-next'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -31,9 +32,9 @@ const formatLatency = (ms?: number) => {
   return `${ms}ms`
 }
 
-const formatLastCheck = (dateStr: string | null) => {
+const formatLastCheck = (dateStr: string | null): string => {
   if (!dateStr) return '—'
-  return new Date(dateStr).toLocaleTimeString()
+  return formatTime(dateStr)
 }
 </script>
 

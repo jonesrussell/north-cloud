@@ -107,6 +107,17 @@ export interface LocationInfo {
   confidence?: number
 }
 
+// Mining Info
+export interface MiningInfo {
+  relevance?: string
+  mining_stage?: string
+  commodities?: string[]
+  location?: string
+  final_confidence?: number
+  review_required?: boolean
+  model_version?: string
+}
+
 // Document Types
 export interface Document {
   id: string
@@ -123,6 +134,7 @@ export interface Document {
   is_crime_related?: boolean
   crime?: CrimeInfo
   location?: LocationInfo
+  mining?: MiningInfo
   body?: string
   raw_text?: string
   raw_html?: string

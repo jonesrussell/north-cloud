@@ -9,8 +9,10 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/jonesrussell/north-cloud/classifier/internal/classifier"
+	"github.com/jonesrussell/north-cloud/classifier/internal/config"
 	"github.com/jonesrussell/north-cloud/classifier/internal/database"
 	"github.com/jonesrussell/north-cloud/classifier/internal/domain"
+	"github.com/jonesrussell/north-cloud/classifier/internal/mlhealth"
 	"github.com/jonesrussell/north-cloud/classifier/internal/processor"
 	"github.com/jonesrussell/north-cloud/classifier/internal/storage"
 	infralogger "github.com/north-cloud/infrastructure/logger"
@@ -35,6 +37,7 @@ type Handler struct {
 	sourceReputationRepo      *database.SourceReputationRepository
 	classificationHistoryRepo *database.ClassificationHistoryRepository
 	storage                   *storage.ElasticsearchStorage
+	config                    *config.Config
 	logger                    infralogger.Logger
 }
 
@@ -48,6 +51,7 @@ func NewHandler(
 	sourceReputationRepo *database.SourceReputationRepository,
 	classificationHistoryRepo *database.ClassificationHistoryRepository,
 	elasticStorage *storage.ElasticsearchStorage,
+	cfg *config.Config,
 	logger infralogger.Logger,
 ) *Handler {
 	return &Handler{
@@ -59,6 +63,7 @@ func NewHandler(
 		sourceReputationRepo:      sourceReputationRepo,
 		classificationHistoryRepo: classificationHistoryRepo,
 		storage:                   elasticStorage,
+		config:                    cfg,
 		logger:                    logger,
 	}
 }
@@ -842,4 +847,117 @@ func (h *Handler) reloadTopicClassifierRules(ctx context.Context) error {
 
 	h.logger.Info("Classification rules reloaded successfully", infralogger.Int("count", len(rules)))
 	return nil
+}
+
+// MLServiceHealth represents the health status of a single ML service
+type MLServiceHealth struct {
+	Reachable    bool   `json:"reachable"`
+	ModelVersion string `json:"model_version,omitempty"`
+	LatencyMs    int64  `json:"latency_ms,omitempty"`
+	LastChecked  string `json:"last_checked_at"`
+	Error        string `json:"error,omitempty"`
+}
+
+// MLHealthResponse represents the overall ML health status
+type MLHealthResponse struct {
+	CrimeML         *MLServiceHealth `json:"crime_ml,omitempty"`
+	MiningML        *MLServiceHealth `json:"mining_ml,omitempty"`
+	CoforgeML       *MLServiceHealth `json:"coforge_ml,omitempty"`
+	EntertainmentML *MLServiceHealth `json:"entertainment_ml,omitempty"`
+	PipelineMode    PipelineMode     `json:"pipeline_mode"`
+}
+
+// Pipeline mode values for GetMLHealth.
+const (
+	pipelineModeDisabled  = "disabled"
+	pipelineModeHybrid    = "hybrid"
+	pipelineModeRulesOnly = "rules-only"
+)
+
+// PipelineMode represents the current classifier pipeline configuration
+type PipelineMode struct {
+	Crime         string `json:"crime"`
+	Mining        string `json:"mining"`
+	Coforge       string `json:"coforge"`
+	Entertainment string `json:"entertainment"`
+}
+
+// GetMLHealth handles GET /api/v1/metrics/ml-health
+func (h *Handler) GetMLHealth(c *gin.Context) {
+	resp := MLHealthResponse{
+		PipelineMode: h.getPipelineMode(),
+	}
+
+	if h.config.Classification.Crime.Enabled {
+		resp.CrimeML = h.checkMLServiceHealth(c.Request.Context(), h.config.Classification.Crime.MLServiceURL)
+	}
+
+	if h.config.Classification.Mining.Enabled {
+		resp.MiningML = h.checkMLServiceHealth(c.Request.Context(), h.config.Classification.Mining.MLServiceURL)
+	}
+
+	if h.config.Classification.Coforge.Enabled {
+		resp.CoforgeML = h.checkMLServiceHealth(c.Request.Context(), h.config.Classification.Coforge.MLServiceURL)
+	}
+
+	if h.config.Classification.Entertainment.Enabled {
+		resp.EntertainmentML = h.checkMLServiceHealth(c.Request.Context(), h.config.Classification.Entertainment.MLServiceURL)
+	}
+
+	c.JSON(http.StatusOK, resp)
+}
+
+func (h *Handler) getPipelineMode() PipelineMode {
+	mode := PipelineMode{
+		Crime: pipelineModeDisabled, Mining: pipelineModeDisabled,
+		Coforge: pipelineModeDisabled, Entertainment: pipelineModeDisabled,
+	}
+
+	if h.config.Classification.Crime.Enabled {
+		if h.config.Classification.Crime.MLServiceURL != "" {
+			mode.Crime = pipelineModeHybrid
+		} else {
+			mode.Crime = pipelineModeRulesOnly
+		}
+	}
+
+	if h.config.Classification.Mining.Enabled {
+		if h.config.Classification.Mining.MLServiceURL != "" {
+			mode.Mining = pipelineModeHybrid
+		} else {
+			mode.Mining = pipelineModeRulesOnly
+		}
+	}
+
+	if h.config.Classification.Coforge.Enabled {
+		if h.config.Classification.Coforge.MLServiceURL != "" {
+			mode.Coforge = pipelineModeHybrid
+		} else {
+			mode.Coforge = pipelineModeRulesOnly
+		}
+	}
+
+	if h.config.Classification.Entertainment.Enabled {
+		if h.config.Classification.Entertainment.MLServiceURL != "" {
+			mode.Entertainment = pipelineModeHybrid
+		} else {
+			mode.Entertainment = pipelineModeRulesOnly
+		}
+	}
+
+	return mode
+}
+
+func (h *Handler) checkMLServiceHealth(ctx context.Context, baseURL string) *MLServiceHealth {
+	reachable, latencyMs, modelVersion, err := mlhealth.Check(ctx, baseURL)
+	health := &MLServiceHealth{
+		LastChecked:  time.Now().UTC().Format(time.RFC3339),
+		Reachable:    reachable,
+		LatencyMs:    latencyMs,
+		ModelVersion: modelVersion,
+	}
+	if err != nil {
+		health.Error = err.Error()
+	}
+	return health
 }

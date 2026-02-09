@@ -40,7 +40,7 @@ done
 # Note: 'search' dir maps to 'search-service' container in deploy
 GO_SERVICES=(auth classifier crawler index-manager mcp-north-cloud publisher search source-manager nc-http-proxy)
 FRONTEND_SERVICES=(dashboard search-frontend)
-OTHER_SERVICES=(crime-ml)
+OTHER_SERVICES=(crime-ml mining-ml coforge-ml entertainment-ml)
 ALL_SERVICES=("${GO_SERVICES[@]}" "${FRONTEND_SERVICES[@]}" "${OTHER_SERVICES[@]}")
 
 # Deploy service names (may differ from directory names)
@@ -141,6 +141,13 @@ else
         done
     fi
 
+    # index-manager/pkg/contracts/ changes affect services with contract tests
+    if echo "$CHANGED_FILES" | grep -q "^index-manager/pkg/contracts/"; then
+        for service in classifier publisher crawler search; do
+            CHANGED_SERVICES_MAP[$service]=1
+        done
+    fi
+
     # Build space-separated list
     CHANGED_SERVICES_STR=""
     for service in "${!CHANGED_SERVICES_MAP[@]}"; do
@@ -168,7 +175,7 @@ case "$FORMAT" in
                         CONTEXT="."
                         DOCKERFILE="./search/Dockerfile"
                         ;;
-                    search-frontend|dashboard|nc-http-proxy|crime-ml)
+                    search-frontend|dashboard|nc-http-proxy|crime-ml|mining-ml|coforge-ml|entertainment-ml)
                         CONTEXT="./${svc}"
                         DOCKERFILE="./${svc}/Dockerfile"
                         ;;
@@ -183,7 +190,13 @@ case "$FORMAT" in
             MATRIX_JSON="$MATRIX_JSON]"
 
             echo "services_matrix={\"service\":$MATRIX_JSON}"
-            echo "services_list=$(echo $CHANGED_SERVICES_STR | tr ' ' ',')"
+            # Map directory names to deploy names for docker compose
+            DEPLOY_LIST=""
+            for svc in $CHANGED_SERVICES_STR; do
+                DEPLOY_NAME="${SERVICE_TO_DEPLOY_NAME[$svc]:-$svc}"
+                DEPLOY_LIST="${DEPLOY_LIST:+$DEPLOY_LIST,}$DEPLOY_NAME"
+            done
+            echo "services_list=$DEPLOY_LIST"
             echo "has_services=true"
         else
             echo 'services_matrix={"service":[]}'

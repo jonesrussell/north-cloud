@@ -79,8 +79,30 @@ type ClassifiedContentProperties struct {
 	// Crime classification (hybrid rule + ML)
 	Crime CrimeProperties `json:"crime,omitempty"`
 
+	// Mining classification (hybrid rule + ML)
+	Mining MiningProperties `json:"mining,omitempty"`
+
+	// Entertainment classification (hybrid rule + ML)
+	Entertainment EntertainmentProperties `json:"entertainment,omitempty"`
+
 	// Location detection (content-based)
 	Location LocationProperties `json:"location,omitempty"`
+}
+
+// EntertainmentProperties defines the nested properties for entertainment classification.
+type EntertainmentProperties struct {
+	Type       string                       `json:"type,omitempty"`
+	Properties EntertainmentFieldProperties `json:"properties,omitempty"`
+}
+
+// EntertainmentFieldProperties defines individual fields within entertainment classification.
+type EntertainmentFieldProperties struct {
+	Relevance        Field `json:"relevance"`
+	Categories       Field `json:"categories"`
+	FinalConfidence  Field `json:"final_confidence"`
+	HomepageEligible Field `json:"homepage_eligible"`
+	ReviewRequired   Field `json:"review_required"`
+	ModelVersion     Field `json:"model_version"`
 }
 
 // CrimeProperties defines the nested properties for crime classification.
@@ -99,6 +121,23 @@ type CrimeFieldProperties struct {
 	HomepageEligible    Field `json:"homepage_eligible"`
 	CategoryPages       Field `json:"category_pages"`
 	ReviewRequired      Field `json:"review_required"`
+}
+
+// MiningProperties defines the nested properties for mining classification.
+type MiningProperties struct {
+	Type       string                `json:"type,omitempty"`
+	Properties MiningFieldProperties `json:"properties,omitempty"`
+}
+
+// MiningFieldProperties defines individual fields within mining classification.
+type MiningFieldProperties struct {
+	Relevance       Field `json:"relevance"`
+	MiningStage     Field `json:"mining_stage"`
+	Commodities     Field `json:"commodities"`
+	Location        Field `json:"location"`
+	FinalConfidence Field `json:"final_confidence"`
+	ReviewRequired  Field `json:"review_required"`
+	ModelVersion    Field `json:"model_version"`
 }
 
 // LocationProperties defines the nested properties for location detection.
@@ -162,7 +201,24 @@ func createClassificationProperties() ClassifiedContentProperties {
 		ModelVersion:         Field{Type: "keyword"},
 		Confidence:           Field{Type: "float"},
 		Crime:                createCrimeProperties(),
+		Mining:               createMiningProperties(),
+		Entertainment:        createEntertainmentProperties(),
 		Location:             createLocationProperties(),
+	}
+}
+
+// createEntertainmentProperties creates nested properties for entertainment classification.
+func createEntertainmentProperties() EntertainmentProperties {
+	return EntertainmentProperties{
+		Type: "object",
+		Properties: EntertainmentFieldProperties{
+			Relevance:        Field{Type: "keyword"},
+			Categories:       Field{Type: "keyword"},
+			FinalConfidence:  Field{Type: "float"},
+			HomepageEligible: Field{Type: "boolean"},
+			ReviewRequired:   Field{Type: "boolean"},
+			ModelVersion:     Field{Type: "keyword"},
+		},
 	}
 }
 
@@ -197,6 +253,22 @@ func createLocationProperties() LocationProperties {
 	}
 }
 
+// createMiningProperties creates nested properties for mining classification.
+func createMiningProperties() MiningProperties {
+	return MiningProperties{
+		Type: "object",
+		Properties: MiningFieldProperties{
+			Relevance:       Field{Type: "keyword"},
+			MiningStage:     Field{Type: "keyword"},
+			Commodities:     Field{Type: "keyword"},
+			Location:        Field{Type: "keyword"},
+			FinalConfidence: Field{Type: "float"},
+			ReviewRequired:  Field{Type: "boolean"},
+			ModelVersion:    Field{Type: "keyword"},
+		},
+	}
+}
+
 // mergeProperties merges two ClassifiedContentProperties structs
 func mergeProperties(raw, classified ClassifiedContentProperties) ClassifiedContentProperties {
 	return ClassifiedContentProperties{
@@ -218,8 +290,10 @@ func mergeProperties(raw, classified ClassifiedContentProperties) ClassifiedCont
 		ClassifierVersion:    classified.ClassifierVersion,
 		ClassificationMethod: classified.ClassificationMethod,
 		ModelVersion:         classified.ModelVersion, Confidence: classified.Confidence,
-		Crime:    classified.Crime,
-		Location: classified.Location,
+		Crime:         classified.Crime,
+		Mining:        classified.Mining,
+		Entertainment: classified.Entertainment,
+		Location:      classified.Location,
 	}
 }
 

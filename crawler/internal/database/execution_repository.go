@@ -364,11 +364,43 @@ func (r *ExecutionRepository) GetStuckJobs(ctx context.Context, threshold time.D
 	return jobs, nil
 }
 
-// GetTodayStats returns today's count of completed crawl jobs and total indexed items.
+// GetOrphanedRunningJobs returns all jobs in "running" state with a running execution.
+// Unlike GetStuckJobs, this has no time threshold — it finds ALL running jobs.
+// Used at startup to recover jobs orphaned by a container restart.
+func (r *ExecutionRepository) GetOrphanedRunningJobs(ctx context.Context) ([]*domain.Job, error) {
+	var jobs []*domain.Job
+
+	query := `
+		SELECT j.id, j.source_id, j.source_name, j.url,
+		       j.schedule_time, j.schedule_enabled,
+		       j.interval_minutes, j.interval_type, j.next_run_at,
+		       j.is_paused, j.max_retries, j.retry_backoff_seconds, j.current_retry_count,
+		       j.lock_token, j.lock_acquired_at,
+		       j.status,
+		       j.created_at, j.updated_at, j.started_at, j.completed_at,
+		       j.paused_at, j.cancelled_at,
+		       j.error_message, j.metadata
+		FROM jobs j
+		WHERE j.status = 'running'
+	`
+
+	err := r.db.SelectContext(ctx, &jobs, query)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get orphaned running jobs: %w", err)
+	}
+
+	if jobs == nil {
+		jobs = []*domain.Job{}
+	}
+
+	return jobs, nil
+}
+
+// GetTodayStats returns today's total items crawled and indexed across all completed executions.
 func (r *ExecutionRepository) GetTodayStats(ctx context.Context) (crawledToday, indexedToday int64, err error) {
 	query := `
-		SELECT 
-			COUNT(*) as crawled_today,
+		SELECT
+			COALESCE(SUM(items_crawled), 0) as crawled_today,
 			COALESCE(SUM(items_indexed), 0) as indexed_today
 		FROM job_executions
 		WHERE started_at >= CURRENT_DATE

@@ -10,6 +10,7 @@ import type {
   Job,
   JobExecution,
   JobStats,
+  JobStatusCounts,
   JobFilters,
   CreateJobRequest,
   UpdateJobRequest,
@@ -35,6 +36,7 @@ export const jobsKeys = {
   all: ['jobs'] as const,
   lists: () => [...jobsKeys.all, 'list'] as const,
   list: (filters?: JobFilters) => [...jobsKeys.lists(), filters] as const,
+  statusCounts: () => [...jobsKeys.all, 'status-counts'] as const,
   details: () => [...jobsKeys.all, 'detail'] as const,
   detail: (id: string) => [...jobsKeys.details(), id] as const,
   executions: (id: string, params?: { limit?: number; offset?: number }) =>
@@ -121,6 +123,24 @@ export async function fetchJobExecutions(
   const total = response.data?.total || executions.length
 
   return { executions, total }
+}
+
+/**
+ * Fetch aggregate job status counts from server.
+ */
+export async function fetchJobStatusCounts(): Promise<JobStatusCounts> {
+  const response = await crawlerApi.jobs.statusCounts()
+  const data = response.data as Record<string, number>
+
+  return {
+    pending: data.pending ?? 0,
+    scheduled: data.scheduled ?? 0,
+    running: data.running ?? 0,
+    paused: data.paused ?? 0,
+    completed: data.completed ?? 0,
+    failed: data.failed ?? 0,
+    cancelled: data.cancelled ?? 0,
+  }
 }
 
 /**

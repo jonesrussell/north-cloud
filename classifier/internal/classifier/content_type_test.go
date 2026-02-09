@@ -702,3 +702,227 @@ func TestContentTypeClassifier_ListingPageContent(t *testing.T) {
 		})
 	}
 }
+
+// TestContentTypeClassifier_ArticleWithoutPublishedDate verifies that articles
+// with strong signals but no published_date are classified as article with reduced confidence.
+func TestContentTypeClassifier_ArticleWithoutPublishedDate(t *testing.T) {
+	classifier := NewContentTypeClassifier(&mockLogger{})
+
+	raw := &domain.RawContent{
+		ID:              "test-no-date",
+		URL:             "https://example.com/some-article",
+		Title:           "Six men now charged in 2024 multi-city drug bust",
+		RawText:         "The police arrested several suspects in a large drug bust spanning multiple cities.",
+		PublishedDate:   nil, // Missing!
+		MetaDescription: "Six men have been charged in connection with a drug bust.",
+		WordCount:       600,
+	}
+
+	result, err := classifier.Classify(context.Background(), raw)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// Should classify as article with reduced confidence
+	if result.Type != domain.ContentTypeArticle {
+		t.Errorf("expected type %s, got %s (method: %s)", domain.ContentTypeArticle, result.Type, result.Method)
+	}
+
+	// Confidence should be lower than full heuristic (0.75)
+	if result.Confidence >= articleConfidence {
+		t.Errorf("expected confidence < %f, got %f", articleConfidence, result.Confidence)
+	}
+
+	// Method should indicate relaxed heuristic
+	if result.Method != "heuristic_relaxed" {
+		t.Errorf("expected method heuristic_relaxed, got %s", result.Method)
+	}
+}
+
+// TestContentTypeClassifier_SectionURLExclusion verifies that section index pages
+// are excluded but articles within those sections are NOT excluded.
+func TestContentTypeClassifier_SectionURLExclusion(t *testing.T) {
+	classifier := NewContentTypeClassifier(&mockLogger{})
+
+	publishedDate := time.Now()
+
+	tests := []struct {
+		name           string
+		url            string
+		expectedType   string
+		expectedMethod string
+	}{
+		// Section index pages should be excluded
+		{
+			name:           "news index page",
+			url:            "https://example.com/news",
+			expectedType:   domain.ContentTypePage,
+			expectedMethod: "url_exclusion",
+		},
+		{
+			name:           "news index page with trailing slash",
+			url:            "https://example.com/news/",
+			expectedType:   domain.ContentTypePage,
+			expectedMethod: "url_exclusion",
+		},
+		{
+			name:           "articles index page",
+			url:            "https://example.com/articles",
+			expectedType:   domain.ContentTypePage,
+			expectedMethod: "url_exclusion",
+		},
+		{
+			name:           "blog index page",
+			url:            "https://example.com/blog",
+			expectedType:   domain.ContentTypePage,
+			expectedMethod: "url_exclusion",
+		},
+		{
+			name:           "local-news index page",
+			url:            "https://example.com/local-news",
+			expectedType:   domain.ContentTypePage,
+			expectedMethod: "url_exclusion",
+		},
+		{
+			name:           "ontario-news index page",
+			url:            "https://example.com/ontario-news",
+			expectedType:   domain.ContentTypePage,
+			expectedMethod: "url_exclusion",
+		},
+		{
+			name:           "breaking-news index page",
+			url:            "https://example.com/breaking-news",
+			expectedType:   domain.ContentTypePage,
+			expectedMethod: "url_exclusion",
+		},
+		{
+			name:           "stories index page",
+			url:            "https://example.com/stories",
+			expectedType:   domain.ContentTypePage,
+			expectedMethod: "url_exclusion",
+		},
+		{
+			name:           "posts index page",
+			url:            "https://example.com/posts",
+			expectedType:   domain.ContentTypePage,
+			expectedMethod: "url_exclusion",
+		},
+
+		// Articles WITHIN section paths should NOT be excluded by URL
+		{
+			name:           "article in news section",
+			url:            "https://example.com/news/six-men-charged-drug-bust",
+			expectedType:   domain.ContentTypeArticle,
+			expectedMethod: "heuristic",
+		},
+		{
+			name:           "article in local-news section",
+			url:            "https://example.com/local-news/fire-downtown-causes-evacuations",
+			expectedType:   domain.ContentTypeArticle,
+			expectedMethod: "heuristic",
+		},
+		{
+			name:           "article in ontario-news section",
+			url:            "https://www.sudbury.com/ontario-news/man-arrested-after-standoff",
+			expectedType:   domain.ContentTypeArticle,
+			expectedMethod: "heuristic",
+		},
+		{
+			name:           "article in breaking-news section",
+			url:            "https://example.com/breaking-news/highway-closed-due-to-collision",
+			expectedType:   domain.ContentTypeArticle,
+			expectedMethod: "heuristic",
+		},
+		{
+			name:           "article in articles section",
+			url:            "https://example.com/articles/climate-change-report-2026",
+			expectedType:   domain.ContentTypeArticle,
+			expectedMethod: "heuristic",
+		},
+		{
+			name:           "article in blog section",
+			url:            "https://example.com/blog/my-first-post",
+			expectedType:   domain.ContentTypeArticle,
+			expectedMethod: "heuristic",
+		},
+		{
+			name:           "article in stories section",
+			url:            "https://example.com/stories/community-hero-saves-child",
+			expectedType:   domain.ContentTypeArticle,
+			expectedMethod: "heuristic",
+		},
+		{
+			name:           "article in posts section",
+			url:            "https://example.com/posts/weekly-update",
+			expectedType:   domain.ContentTypeArticle,
+			expectedMethod: "heuristic",
+		},
+
+		// Always-excluded paths should still match as prefixes
+		{
+			name:           "account subpath still excluded",
+			url:            "https://example.com/account/settings",
+			expectedType:   domain.ContentTypePage,
+			expectedMethod: "url_exclusion",
+		},
+		{
+			name:           "classifieds subpath still excluded",
+			url:            "https://example.com/classifieds/job-listings/plumber",
+			expectedType:   domain.ContentTypePage,
+			expectedMethod: "url_exclusion",
+		},
+		{
+			name:           "directory subpath still excluded",
+			url:            "https://example.com/directory/health-care/wellwise",
+			expectedType:   domain.ContentTypePage,
+			expectedMethod: "url_exclusion",
+		},
+		{
+			name:           "login subpath still excluded",
+			url:            "https://example.com/login/reset-password",
+			expectedType:   domain.ContentTypePage,
+			expectedMethod: "url_exclusion",
+		},
+		{
+			name:           "category subpath still excluded",
+			url:            "https://example.com/category/sports",
+			expectedType:   domain.ContentTypePage,
+			expectedMethod: "url_exclusion",
+		},
+		{
+			name:           "search subpath still excluded",
+			url:            "https://example.com/search/results",
+			expectedType:   domain.ContentTypePage,
+			expectedMethod: "url_exclusion",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			raw := &domain.RawContent{
+				ID:              "test-section-" + tt.name,
+				URL:             tt.url,
+				Title:           "Test Article Title",
+				RawText:         "This is a test article with substantial content to be classified.",
+				WordCount:       300,
+				MetaDescription: "Test article description for classification",
+				PublishedDate:   &publishedDate,
+			}
+
+			result, err := classifier.Classify(context.Background(), raw)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+
+			if result.Type != tt.expectedType {
+				t.Errorf("URL %s: expected type %s, got %s (method: %s)",
+					tt.url, tt.expectedType, result.Type, result.Method)
+			}
+
+			if result.Method != tt.expectedMethod {
+				t.Errorf("URL %s: expected method %s, got %s",
+					tt.url, tt.expectedMethod, result.Method)
+			}
+		})
+	}
+}

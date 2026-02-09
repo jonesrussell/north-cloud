@@ -72,6 +72,10 @@ func (m *mockJobRepo) ClearStaleLocks(ctx context.Context, cutoff time.Time) (in
 	return 0, nil
 }
 
+func (m *mockJobRepo) GetScheduledJobs(ctx context.Context) ([]*domain.Job, error) {
+	return nil, errMockNoData
+}
+
 func (m *mockJobRepo) PauseJob(ctx context.Context, jobID string) error {
 	return nil
 }
@@ -82,6 +86,10 @@ func (m *mockJobRepo) ResumeJob(ctx context.Context, jobID string) error {
 
 func (m *mockJobRepo) CancelJob(ctx context.Context, jobID string) error {
 	return nil
+}
+
+func (m *mockJobRepo) CountByStatus(ctx context.Context) (map[string]int, error) {
+	return map[string]int{}, nil
 }
 
 // mockExecutionRepo implements database.ExecutionRepositoryInterface for testing.
@@ -132,6 +140,10 @@ func (m *mockExecutionRepo) GetFailureRate(ctx context.Context, window time.Dura
 }
 
 func (m *mockExecutionRepo) GetStuckJobs(ctx context.Context, threshold time.Duration) ([]*domain.Job, error) {
+	return nil, errMockNoData
+}
+
+func (m *mockExecutionRepo) GetOrphanedRunningJobs(ctx context.Context) ([]*domain.Job, error) {
 	return nil, errMockNoData
 }
 

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { formatDate } from '@/lib/utils'
 import { ArrowLeft, Loader2, ExternalLink, Copy, Check } from 'lucide-vue-next'
 import { indexManagerApi } from '@/api/client'
 import type { Document } from '@/types/indexManager'
@@ -36,8 +37,6 @@ const copyJson = async () => {
   copied.value = true
   setTimeout(() => (copied.value = false), 2000)
 }
-
-const formatDate = (date: string) => date ? new Date(date).toLocaleString() : 'N/A'
 
 onMounted(loadDocument)
 </script>
@@ -164,6 +163,167 @@ onMounted(loadDocument)
               </dt>
               <dd class="mt-1 text-sm">
                 {{ formatDate((document as Record<string, unknown>).created_at as string) }}
+              </dd>
+            </div>
+          </dl>
+        </CardContent>
+      </Card>
+
+      <!-- Crime Decision Audit -->
+      <Card v-if="document.crime">
+        <CardHeader>
+          <CardTitle class="text-lg">
+            Crime Classification Audit
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <dl class="grid grid-cols-2 gap-4">
+            <div v-if="document.crime.relevance">
+              <dt class="text-sm text-muted-foreground">
+                Relevance
+              </dt>
+              <dd class="mt-1">
+                <Badge variant="destructive">
+                  {{ document.crime.relevance }}
+                </Badge>
+              </dd>
+            </div>
+            <div v-if="document.crime.confidence !== undefined">
+              <dt class="text-sm text-muted-foreground">
+                Confidence
+              </dt>
+              <dd class="mt-1 font-mono text-sm">
+                {{ document.crime.confidence?.toFixed(2) ?? 'N/A' }}
+              </dd>
+            </div>
+            <div v-if="document.crime.sub_label">
+              <dt class="text-sm text-muted-foreground">
+                Sub Label
+              </dt>
+              <dd class="mt-1">
+                <Badge variant="secondary">
+                  {{ document.crime.sub_label }}
+                </Badge>
+              </dd>
+            </div>
+            <div v-if="document.crime.homepage_eligible !== undefined">
+              <dt class="text-sm text-muted-foreground">
+                Homepage Eligible
+              </dt>
+              <dd class="mt-1">
+                <Badge :variant="document.crime.homepage_eligible ? 'default' : 'secondary'">
+                  {{ document.crime.homepage_eligible ? 'Yes' : 'No' }}
+                </Badge>
+              </dd>
+            </div>
+            <div v-if="document.crime.review_required !== undefined">
+              <dt class="text-sm text-muted-foreground">
+                Review Required
+              </dt>
+              <dd class="mt-1">
+                <Badge :variant="document.crime.review_required ? 'destructive' : 'secondary'">
+                  {{ document.crime.review_required ? 'Yes' : 'No' }}
+                </Badge>
+              </dd>
+            </div>
+            <div v-if="document.crime.crime_types?.length">
+              <dt class="text-sm text-muted-foreground">
+                Crime Types
+              </dt>
+              <dd class="mt-1 flex flex-wrap gap-1">
+                <Badge
+                  v-for="ct in document.crime.crime_types"
+                  :key="ct"
+                  variant="outline"
+                  class="text-xs"
+                >
+                  {{ ct }}
+                </Badge>
+              </dd>
+            </div>
+            <div v-if="document.crime.model_version">
+              <dt class="text-sm text-muted-foreground">
+                Model Version
+              </dt>
+              <dd class="mt-1 font-mono text-xs text-muted-foreground">
+                {{ document.crime.model_version }}
+              </dd>
+            </div>
+          </dl>
+        </CardContent>
+      </Card>
+
+      <!-- Mining Decision Audit -->
+      <Card v-if="document.mining">
+        <CardHeader>
+          <CardTitle class="text-lg">
+            Mining Classification Audit
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <dl class="grid grid-cols-2 gap-4">
+            <div v-if="document.mining.relevance">
+              <dt class="text-sm text-muted-foreground">
+                Relevance
+              </dt>
+              <dd class="mt-1">
+                <Badge
+                  variant="default"
+                  class="bg-amber-500"
+                >
+                  {{ document.mining.relevance }}
+                </Badge>
+              </dd>
+            </div>
+            <div v-if="document.mining.final_confidence !== undefined">
+              <dt class="text-sm text-muted-foreground">
+                Confidence
+              </dt>
+              <dd class="mt-1 font-mono text-sm">
+                {{ document.mining.final_confidence?.toFixed(2) ?? 'N/A' }}
+              </dd>
+            </div>
+            <div v-if="document.mining.mining_stage">
+              <dt class="text-sm text-muted-foreground">
+                Mining Stage
+              </dt>
+              <dd class="mt-1">
+                <Badge variant="secondary">
+                  {{ document.mining.mining_stage }}
+                </Badge>
+              </dd>
+            </div>
+            <div v-if="document.mining.review_required !== undefined">
+              <dt class="text-sm text-muted-foreground">
+                Review Required
+              </dt>
+              <dd class="mt-1">
+                <Badge :variant="document.mining.review_required ? 'destructive' : 'secondary'">
+                  {{ document.mining.review_required ? 'Yes' : 'No' }}
+                </Badge>
+              </dd>
+            </div>
+            <div v-if="document.mining.commodities?.length">
+              <dt class="text-sm text-muted-foreground">
+                Commodities
+              </dt>
+              <dd class="mt-1 flex flex-wrap gap-1">
+                <Badge
+                  v-for="c in document.mining.commodities"
+                  :key="c"
+                  variant="outline"
+                  class="text-xs"
+                >
+                  {{ c }}
+                </Badge>
+              </dd>
+            </div>
+            <div v-if="document.mining.model_version">
+              <dt class="text-sm text-muted-foreground">
+                Model Version
+              </dt>
+              <dd class="mt-1 font-mono text-xs text-muted-foreground">
+                {{ document.mining.model_version }}
               </dd>
             </div>
           </dl>

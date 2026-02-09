@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
+import { formatDate, formatRelativeTime } from '@/lib/utils'
 import {
   Play,
   PlayCircle,
@@ -27,10 +28,11 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Skeleton } from '@/components/ui/skeleton'
-import { useJobs } from '@/features/intake'
+import type { JobsComposable } from '@/features/intake'
 import type { Job, JobStatus } from '@/types/crawler'
 
 interface Props {
+  jobs: JobsComposable
   showActions?: boolean
   onRowClick?: (job: Job) => void
 }
@@ -51,7 +53,6 @@ const emit = defineEmits<{
 }>()
 
 const router = useRouter()
-const jobs = useJobs()
 
 type BadgeVariant = 'default' | 'secondary' | 'destructive' | 'outline' | 'success' | 'warning' | 'pending'
 
@@ -74,17 +75,17 @@ const sortableColumns = [
 ] as const
 
 function getSortIcon(column: string) {
-  if (jobs.sortBy.value !== column) return ArrowUpDown
-  return jobs.sortOrder.value === 'asc' ? ArrowUp : ArrowDown
+  if (props.jobs.sortBy.value !== column) return ArrowUpDown
+  return props.jobs.sortOrder.value === 'asc' ? ArrowUp : ArrowDown
 }
 
 function handleSort(column: string) {
-  jobs.toggleSort(column)
+  props.jobs.toggleSort(column)
 }
 
 const pageNumbers = computed(() => {
-  const current = jobs.page.value
-  const total = jobs.totalPages.value
+  const current = props.jobs.page.value
+  const total = props.jobs.totalPages.value
   const pages: (number | string)[] = []
 
   if (total <= 7) {
@@ -104,32 +105,6 @@ const pageNumbers = computed(() => {
 
 function truncateId(id: string): string {
   return id.length > 8 ? `${id.slice(0, 8)}...` : id
-}
-
-function formatDate(dateStr: string | undefined | null): string {
-  if (!dateStr) return '—'
-  return new Date(dateStr).toLocaleString()
-}
-
-function formatRelativeTime(dateStr: string | undefined | null): string {
-  if (!dateStr) return '—'
-  const date = new Date(dateStr)
-  const now = new Date()
-  const diffMs = date.getTime() - now.getTime()
-  const diffMins = Math.round(diffMs / 60000)
-
-  if (diffMins < 0) {
-    const absMins = Math.abs(diffMins)
-    if (absMins < 60) return `${absMins}m ago`
-    const hours = Math.floor(absMins / 60)
-    if (hours < 24) return `${hours}h ago`
-    return `${Math.floor(hours / 24)}d ago`
-  }
-
-  if (diffMins < 60) return `in ${diffMins}m`
-  const hours = Math.floor(diffMins / 60)
-  if (hours < 24) return `in ${hours}h`
-  return `in ${Math.floor(hours / 24)}d`
 }
 
 function canPause(job: Job): boolean {
@@ -162,13 +137,13 @@ function handleRowClick(job: Job) {
 
 function goToPage(page: number | string) {
   if (typeof page === 'number') {
-    jobs.setPage(page)
+    props.jobs.setPage(page)
   }
 }
 
 function handlePageSizeChange(event: Event) {
   const target = event.target as HTMLSelectElement
-  jobs.setPageSize(Number(target.value))
+  props.jobs.setPageSize(Number(target.value))
 }
 </script>
 

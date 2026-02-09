@@ -8,8 +8,11 @@ import (
 	"github.com/jmoiron/sqlx"
 	"github.com/jonesrussell/north-cloud/classifier/internal/api"
 	"github.com/jonesrussell/north-cloud/classifier/internal/classifier"
+	"github.com/jonesrussell/north-cloud/classifier/internal/coforgemlclient"
 	"github.com/jonesrussell/north-cloud/classifier/internal/config"
 	"github.com/jonesrussell/north-cloud/classifier/internal/domain"
+	"github.com/jonesrussell/north-cloud/classifier/internal/entertainmentmlclient"
+	"github.com/jonesrussell/north-cloud/classifier/internal/miningmlclient"
 	"github.com/jonesrussell/north-cloud/classifier/internal/mlclient"
 	"github.com/jonesrussell/north-cloud/classifier/internal/processor"
 	infragin "github.com/north-cloud/infrastructure/gin"
@@ -91,6 +94,7 @@ func NewHTTPComponents(cfg *config.Config, logger infralogger.Logger) (*HTTPComp
 		dbComps.SourceRepRepo,
 		dbComps.ClassificationHistoryRepo,
 		esStorage,
+		cfg,
 		logger,
 	)
 
@@ -132,6 +136,31 @@ func HTTPShutdownTimeout() time.Duration {
 
 // createClassifierConfig creates the classifier configuration with all sub-components.
 func createClassifierConfig(cfg *config.Config, logger infralogger.Logger) classifier.Config {
+	crimeCC := createOptionalClassifier(
+		cfg.Classification.Crime.Enabled, cfg.Classification.Crime.MLServiceURL, logger,
+		"Crime classifier", mlclient.NewClient,
+		func(c *mlclient.Client, l infralogger.Logger, e bool) *classifier.CrimeClassifier {
+			return classifier.NewCrimeClassifier(c, l, e)
+		})
+	miningCC := createOptionalClassifier(
+		cfg.Classification.Mining.Enabled, cfg.Classification.Mining.MLServiceURL, logger,
+		"Mining classifier", miningmlclient.NewClient,
+		func(c *miningmlclient.Client, l infralogger.Logger, e bool) *classifier.MiningClassifier {
+			return classifier.NewMiningClassifier(c, l, e)
+		})
+	coforgeCC := createOptionalClassifier(
+		cfg.Classification.Coforge.Enabled, cfg.Classification.Coforge.MLServiceURL, logger,
+		"Coforge classifier", coforgemlclient.NewClient,
+		func(c *coforgemlclient.Client, l infralogger.Logger, e bool) *classifier.CoforgeClassifier {
+			return classifier.NewCoforgeClassifier(c, l, e)
+		})
+	entertainmentCC := createOptionalClassifier(
+		cfg.Classification.Entertainment.Enabled, cfg.Classification.Entertainment.MLServiceURL, logger,
+		"Entertainment classifier", entertainmentmlclient.NewClient,
+		func(c *entertainmentmlclient.Client, l infralogger.Logger, e bool) *classifier.EntertainmentClassifier {
+			return classifier.NewEntertainmentClassifier(c, l, e)
+		})
+
 	return classifier.Config{
 		Version:         "1.0.0",
 		MinQualityScore: defaultMinQualityScore50,
@@ -151,23 +180,27 @@ func createClassifierConfig(cfg *config.Config, logger infralogger.Logger) class
 			MinArticlesForTrust:        minArticlesForTrust,
 			ReputationDecayRate:        defaultReputationDecayRate01,
 		},
-		CrimeClassifier: createCrimeClassifier(cfg, logger),
+		CrimeClassifier:         crimeCC,
+		MiningClassifier:        miningCC,
+		CoforgeClassifier:       coforgeCC,
+		EntertainmentClassifier: entertainmentCC,
 	}
 }
 
-// createCrimeClassifier creates a Crime classifier if enabled in config.
-func createCrimeClassifier(cfg *config.Config, logger infralogger.Logger) *classifier.CrimeClassifier {
-	if !cfg.Classification.Crime.Enabled {
-		return nil
+// createOptionalClassifier creates an optional ML classifier when enabled; returns nil otherwise.
+// newClient is only called when mlURL is non-empty. Label is used for logging.
+func createOptionalClassifier[C any, T any](
+	enabled bool, mlURL string, logger infralogger.Logger, label string,
+	newClient func(string) C, newClassifier func(C, infralogger.Logger, bool) T,
+) T {
+	if !enabled {
+		var zero T
+		return zero
 	}
-
-	var mlClient classifier.MLClassifier
-	if cfg.Classification.Crime.MLServiceURL != "" {
-		mlClient = mlclient.NewClient(cfg.Classification.Crime.MLServiceURL)
+	var client C
+	if mlURL != "" {
+		client = newClient(mlURL)
 	}
-
-	logger.Info("Crime classifier enabled",
-		infralogger.String("ml_service_url", cfg.Classification.Crime.MLServiceURL))
-
-	return classifier.NewCrimeClassifier(mlClient, logger, true)
+	logger.Info(label+" enabled", infralogger.String("ml_service_url", mlURL))
+	return newClassifier(client, logger, true)
 }

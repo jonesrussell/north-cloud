@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { formatDate } from '@/lib/utils'
 import {
   Loader2,
   AlertTriangle,
@@ -87,15 +88,6 @@ const refresh = async () => {
 const viewDocument = (doc: Document) => {
   const indexName = `${doc.source_name}_classified_content`
   router.push(`/intelligence/indexes/${indexName}/documents/${doc.id}`)
-}
-
-const formatDate = (date?: string) => {
-  if (!date) return 'N/A'
-  try {
-    return new Date(date).toLocaleString()
-  } catch {
-    return 'N/A'
-  }
 }
 
 const formatRelevance = (relevance?: string) => {

@@ -107,9 +107,8 @@ func parseFilters(c *gin.Context) *domain.Filters {
 			filters.MaxQualityScore = mq
 		}
 	}
-	if isCrime := c.Query("is_crime_related"); isCrime != "" {
-		val := isCrime == trueString
-		filters.IsCrimeRelated = &val
+	if crimeRelevance := c.Query("crime_relevance"); crimeRelevance != "" {
+		filters.CrimeRelevance = strings.Split(crimeRelevance, ",")
 	}
 	if sources := c.Query("sources"); sources != "" {
 		filters.SourceNames = strings.Split(sources, ",")
@@ -172,6 +171,27 @@ func parseOptions(c *gin.Context) *domain.Options {
 	}
 
 	return options
+}
+
+// Suggest handles autocomplete suggestion requests
+func (h *Handler) Suggest(c *gin.Context) {
+	q := strings.TrimSpace(c.Query("q"))
+	if q == "" {
+		c.JSON(http.StatusOK, domain.SuggestResponse{Suggestions: []string{}})
+		return
+	}
+
+	result, err := h.searchService.Suggest(c.Request.Context(), q)
+	if err != nil {
+		h.logger.Warn("Suggest failed",
+			infralogger.Error(err),
+			infralogger.String("query", q),
+		)
+		c.JSON(http.StatusOK, domain.SuggestResponse{Suggestions: []string{}})
+		return
+	}
+
+	c.JSON(http.StatusOK, result)
 }
 
 // HealthCheck handles health check requests

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"math"
+	"strings"
 	"time"
 
 	"github.com/elastic/go-elasticsearch/v8/esapi"
@@ -87,6 +88,86 @@ func (s *SearchService) Search(ctx context.Context, req *domain.SearchRequest) (
 	)
 
 	return response, nil
+}
+
+const (
+	suggestMaxSize   = 15
+	suggestReturn    = 10
+	suggestMinLength = 2
+)
+
+// Suggest returns autocomplete suggestions based on title prefix match
+func (s *SearchService) Suggest(ctx context.Context, q string) (*domain.SuggestResponse, error) {
+	q = strings.TrimSpace(q)
+	if len(q) < suggestMinLength {
+		return &domain.SuggestResponse{Suggestions: []string{}}, nil
+	}
+
+	esQuery := map[string]any{
+		"size":    suggestMaxSize,
+		"_source": []string{"title"},
+		"query": map[string]any{
+			"match_phrase_prefix": map[string]any{
+				"title": map[string]any{
+					"query": q,
+					"slop":  0,
+				},
+			},
+		},
+	}
+
+	res, err := s.executeSearch(ctx, esQuery)
+	if err != nil {
+		s.logger.Warn("Suggest execution failed",
+			infralogger.Error(err),
+			infralogger.String("query", q),
+		)
+		return &domain.SuggestResponse{Suggestions: []string{}}, nil
+	}
+	defer func() {
+		_ = res.Body.Close()
+	}()
+
+	suggestions, parseErr := s.parseSuggestResponse(res.Body)
+	if parseErr != nil {
+		return &domain.SuggestResponse{Suggestions: []string{}}, nil
+	}
+
+	return &domain.SuggestResponse{Suggestions: suggestions}, nil
+}
+
+// parseSuggestResponse extracts unique title strings from a minimal search response
+func (s *SearchService) parseSuggestResponse(body io.Reader) ([]string, error) {
+	var esResponse struct {
+		Hits struct {
+			Hits []struct {
+				Source struct {
+					Title string `json:"title"`
+				} `json:"_source"`
+			} `json:"hits"`
+		} `json:"hits"`
+	}
+	if err := json.NewDecoder(body).Decode(&esResponse); err != nil {
+		return nil, fmt.Errorf("decode suggest response: %w", err)
+	}
+
+	seen := make(map[string]struct{}, suggestReturn)
+	out := make([]string, 0, suggestReturn)
+	for _, hit := range esResponse.Hits.Hits {
+		t := strings.TrimSpace(hit.Source.Title)
+		if t == "" {
+			continue
+		}
+		if _, ok := seen[t]; ok {
+			continue
+		}
+		seen[t] = struct{}{}
+		out = append(out, t)
+		if len(out) >= suggestReturn {
+			break
+		}
+	}
+	return out, nil
 }
 
 // executeSearch performs the Elasticsearch search request

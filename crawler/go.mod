@@ -14,7 +14,7 @@ require (
 	github.com/lib/pq v1.10.9
 	github.com/minio/minio-go/v7 v7.0.97
 	github.com/mitchellh/mapstructure v1.5.0
-	github.com/north-cloud/infrastructure v0.0.0-00010101000000-000000000000
+	github.com/north-cloud/infrastructure v0.0.0
 	github.com/prometheus/client_golang v1.23.2
 	github.com/redis/go-redis/v9 v9.17.3
 	github.com/reugn/go-quartz v0.15.2

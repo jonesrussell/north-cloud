@@ -1,7 +1,7 @@
 import { ref, computed, type Ref, type ComputedRef } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import searchApi from '@/api/search'
-import type { SearchResult, SearchFilters, Facet } from '@/types/search'
+import type { SearchResult, SearchFilters, FacetsFromApi } from '@/types/search'
 
 /**
  * Search state management composable
@@ -14,7 +14,7 @@ export function useSearch() {
   // Core search state
   const query: Ref<string> = ref('')
   const results: Ref<SearchResult[]> = ref([])
-  const facets: Ref<Facet | null> = ref(null)
+  const facets: Ref<FacetsFromApi | null> = ref(null)
   const totalHits: Ref<number> = ref(0)
   const currentPage: Ref<number> = ref(1)
   const pageSize: Ref<number> = ref(20)
@@ -114,7 +114,15 @@ export function useSearch() {
     sortBy.value = (route.query.sort as string) || 'relevance'
     sortOrder.value = (route.query.order as 'asc' | 'desc') || 'desc'
 
-    // Parse filters from URL
+    // Reset filters then apply URL params so URL is source of truth
+    filters.value = {
+      topics: [],
+      content_type: null,
+      min_quality_score: 0,
+      from_date: null,
+      to_date: null,
+      source_names: [],
+    }
     if (route.query.topics) {
       filters.value.topics = typeof route.query.topics === 'string'
         ? route.query.topics.split(',')

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { formatTime } from '@/lib/utils'
 import { HeartPulse, RefreshCw, Wifi, WifiOff } from 'lucide-vue-next'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -46,7 +47,7 @@ const overallStatusConfig = computed(() => {
 
 const formatLastUpdate = computed(() => {
   if (!healthStore.lastUpdate) return 'Never'
-  return healthStore.lastUpdate.toLocaleTimeString()
+  return formatTime(healthStore.lastUpdate.toISOString())
 })
 
 async function handleRefresh() {

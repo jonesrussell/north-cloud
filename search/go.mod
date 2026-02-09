@@ -5,7 +5,7 @@ go 1.25
 require (
 	github.com/elastic/go-elasticsearch/v8 v8.19.1
 	github.com/gin-gonic/gin v1.11.0
-	github.com/north-cloud/infrastructure v0.0.0-00010101000000-000000000000
+	github.com/north-cloud/infrastructure v0.0.0
 )
 
 require (

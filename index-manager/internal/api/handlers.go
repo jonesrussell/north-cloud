@@ -212,6 +212,25 @@ func (h *Handler) GetIndexHealth(c *gin.Context) {
 	})
 }
 
+// MigrateIndex handles POST /api/v1/indexes/:index_name/migrate
+func (h *Handler) MigrateIndex(c *gin.Context) {
+	indexName := c.Param("index_name")
+
+	h.logger.Info("Migrating index", infralogger.String("index_name", indexName))
+
+	result, err := h.indexService.MigrateIndex(c.Request.Context(), indexName)
+	if err != nil {
+		h.logger.Error("Failed to migrate index",
+			infralogger.String("index_name", indexName),
+			infralogger.Error(err),
+		)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, result)
+}
+
 // CreateIndexesForSource handles POST /api/v1/sources/:source_name/indexes
 func (h *Handler) CreateIndexesForSource(c *gin.Context) {
 	sourceName := c.Param("source_name")
@@ -636,6 +655,20 @@ func (h *Handler) GetOverviewAggregation(c *gin.Context) {
 	result, err := h.aggregationService.GetOverviewAggregation(c.Request.Context(), req)
 	if err != nil {
 		h.logger.Error("Failed to get overview aggregation", infralogger.Error(err))
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, result)
+}
+
+// GetMiningAggregation handles GET /api/v1/aggregations/mining
+func (h *Handler) GetMiningAggregation(c *gin.Context) {
+	req := h.parseAggregationRequest(c)
+
+	result, err := h.aggregationService.GetMiningAggregation(c.Request.Context(), req)
+	if err != nil {
+		h.logger.Error("Failed to get mining aggregation", infralogger.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}

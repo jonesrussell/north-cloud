@@ -24,6 +24,8 @@ const (
 	defaultESTimeoutSec    = 30
 	defaultLogLevel        = "info"
 	defaultLogFormat       = "json"
+	defaultShards          = 1
+	defaultReplicas        = 1
 )
 
 // Config holds the application configuration.
@@ -77,6 +79,8 @@ type IndexTypesConfig struct {
 type IndexTypeConfig struct {
 	Suffix     string `yaml:"suffix"`
 	AutoCreate bool   `yaml:"auto_create"`
+	Shards     int    `yaml:"shards"`
+	Replicas   int    `yaml:"replicas"`
 }
 
 // LoggingConfig holds logging configuration.
@@ -96,6 +100,7 @@ func setDefaults(cfg *Config) {
 	setServiceDefaults(&cfg.Service)
 	setDatabaseDefaults(&cfg.Database)
 	setElasticsearchDefaults(&cfg.Elasticsearch)
+	setIndexTypeDefaults(&cfg.IndexTypes)
 	setLoggingDefaults(&cfg.Logging)
 }
 
@@ -147,6 +152,21 @@ func setElasticsearchDefaults(e *ElasticsearchConfig) {
 	}
 	if e.Timeout == 0 {
 		e.Timeout = defaultESTimeoutSec * time.Second
+	}
+}
+
+func setIndexTypeDefaults(cfg *IndexTypesConfig) {
+	if cfg.RawContent.Shards == 0 {
+		cfg.RawContent.Shards = defaultShards
+	}
+	// raw_content replicas default 0 (transient, rebuildable from source)
+	// No special handling needed since Go zero-value is 0
+
+	if cfg.ClassifiedContent.Shards == 0 {
+		cfg.ClassifiedContent.Shards = defaultShards
+	}
+	if cfg.ClassifiedContent.Replicas == 0 {
+		cfg.ClassifiedContent.Replicas = defaultReplicas
 	}
 }
 

@@ -46,17 +46,48 @@ var excludePatterns = []*regexp.Regexp{
 	regexp.MustCompile(`(?i)^(Listings? By|Directory|Careers|Jobs)`),
 	regexp.MustCompile(`(?i)(Part.Time|Full.Time|Hiring|Position)`),
 	regexp.MustCompile(`(?i)^Local (Sports|Events|Weather)$`),
+	// Opinion/editorial content
+	regexp.MustCompile(`(?i)^(opinion|editorial|commentary|letters?|column|op-ed)\s*:`),
+	regexp.MustCompile(`(?i)\b(i think|in my view|in our view|we believe|my view)\b`),
+	// Lifestyle/non-crime content
+	regexp.MustCompile(`(?i)\b(renovation|contractor|tournament|recipe|travel guide|lifeline)\b`),
+	regexp.MustCompile(`(?i)\bbest\s+.+\s+in\s+the\s+.+\s+area\b`),
 }
 
-// Violent crime patterns.
+// authorityIndicators are words that signal real crime reporting (police, courts, arrests).
+// Used to prevent fiction, metaphors, and opinion from being classified as core_street_crime.
+const authorityIndicators = `police|rcmp|opp|sq|court|judge|investigation|suspect|accused|` +
+	`officer|constable|detective|prosecution|charged|arrest|sentenced|convicted|` +
+	`custody|detained|apprehended|wanted|manhunt`
+
+// Violent crime patterns — murder/shooting/stabbing require authority indicators.
 var violentCrimePatterns = []patternWithConf{
-	{regexp.MustCompile(`(?i)(murder|homicide|manslaughter)`), confidenceHighViolent},
-	{regexp.MustCompile(`(?i)(shooting|shootout|shot dead|gunfire)`), confidenceMediumViolent},
-	{regexp.MustCompile(`(?i)(stab|stabbing|stabbed)`), confidenceMediumViolent},
+	// Murder/homicide: action + authority (either order)
+	{regexp.MustCompile(`(?i)(murder|homicide|manslaughter).*(` + authorityIndicators + `)`), confidenceHighViolent},
+	{regexp.MustCompile(`(?i)(` + authorityIndicators + `).*(murder|homicide|manslaughter)`), confidenceHighViolent},
+	// Shooting: action + authority (either order)
+	{regexp.MustCompile(`(?i)(shooting|shootout|shot dead|gunfire).*(` + authorityIndicators + `)`), confidenceMediumViolent},
+	{regexp.MustCompile(`(?i)(` + authorityIndicators + `).*(shooting|shootout|shot dead|gunfire)`), confidenceMediumViolent},
+	// Stabbing: action + authority (either order)
+	{regexp.MustCompile(`(?i)(stab|stabbing|stabbed).*(` + authorityIndicators + `)`), confidenceMediumViolent},
+	{regexp.MustCompile(`(?i)(` + authorityIndicators + `).*(stab|stabbing|stabbed)`), confidenceMediumViolent},
+	// Assault already requires context (unchanged)
 	{regexp.MustCompile(`(?i)(assault|assaulted).*(charged|arrest|police)`), confidenceAssault},
 	{regexp.MustCompile(`(?i)(charged|arrest|police).*(assault|assaulted)`), confidenceAssault},
+	// Sexual assault and found dead are inherently crime-related (unchanged)
 	{regexp.MustCompile(`(?i)(sexual assault|rape|sex assault)`), confidenceMediumViolent},
 	{regexp.MustCompile(`(?i)(found dead|human remains)`), confidenceFoundDead},
+	// Robbery/armed robbery: action + authority (either order)
+	{regexp.MustCompile(`(?i)(robbery|robbed|armed robbery).*(` + authorityIndicators + `)`), confidenceAssault},
+	{regexp.MustCompile(`(?i)(` + authorityIndicators + `).*(robbery|robbed|armed robbery)`), confidenceAssault},
+	// Carjacking: action + authority (either order)
+	{regexp.MustCompile(`(?i)(carjack\w*).*(` + authorityIndicators + `)`), confidenceMediumViolent},
+	{regexp.MustCompile(`(?i)(` + authorityIndicators + `).*(carjack\w*)`), confidenceMediumViolent},
+	// Kidnapping/abduction: action + authority (either order)
+	{regexp.MustCompile(`(?i)(kidnap\w*|abduct\w*).*(` + authorityIndicators + `)`), confidenceMediumViolent},
+	{regexp.MustCompile(`(?i)(` + authorityIndicators + `).*(kidnap\w*|abduct\w*)`), confidenceMediumViolent},
+	// Hostage situations are inherently crime-related
+	{regexp.MustCompile(`(?i)(hostage)`), confidenceMediumViolent},
 }
 
 // Property crime patterns.
@@ -73,12 +104,22 @@ var drugCrimePatterns = []patternWithConf{
 	{regexp.MustCompile(`(?i)(fentanyl|cocaine|heroin).*(seiz|arrest|trafficking)`), confidenceDrug},
 }
 
+// Court outcome patterns — sentencing/verdict with authority context.
+var courtOutcomePatterns = []patternWithConf{
+	{regexp.MustCompile(`(?i)(sentenced|convicts?\b|convicted|found guilty|pleaded guilty|prison term)` +
+		`.*(court|judge|jury|prison|jail|penitentiary|charges)`), confidenceAssault},
+	{regexp.MustCompile(`(?i)(court|judge|jury)` +
+		`.*(sentenced|convicts?\b|convicted|found guilty|pleaded guilty|prison term)`), confidenceAssault},
+}
+
 // International patterns - downgrade to peripheral.
 var internationalPatterns = []*regexp.Regexp{
 	regexp.MustCompile(`(?i)(Minneapolis|U\.S\.|American|Mexico|European|Israel)`),
 }
 
-var justicePattern = regexp.MustCompile(`(?i)(charged|arrest|sentenced|trial)`)
+var justicePattern = regexp.MustCompile(
+	`(?i)(charged|arrest|sentenced|trial|convicts?\b|convicted|found guilty|pleaded guilty|prison term)`,
+)
 
 // classifyByRules applies rule-based classification.
 // The body parameter is reserved for future use when body text analysis is added.
@@ -98,6 +139,7 @@ func classifyByRules(title, _ string) *ruleResult {
 	result = checkViolentCrime(result, title)
 	result = checkPropertyCrime(result, title)
 	result = checkDrugCrime(result, title)
+	result = checkCourtOutcomes(result, title)
 
 	// Check international (downgrade to peripheral)
 	result = checkInternational(result, title)
@@ -152,6 +194,19 @@ func checkDrugCrime(result *ruleResult, title string) *ruleResult {
 			result.confidence = maxFloat(result.confidence, p.confidence)
 			if !containsString(result.crimeTypes, "drug_crime") {
 				result.crimeTypes = append(result.crimeTypes, "drug_crime")
+			}
+		}
+	}
+	return result
+}
+
+func checkCourtOutcomes(result *ruleResult, title string) *ruleResult {
+	for _, p := range courtOutcomePatterns {
+		if p.pattern.MatchString(title) {
+			result.relevance = relevanceCoreStreetCrime
+			result.confidence = maxFloat(result.confidence, p.confidence)
+			if !containsString(result.crimeTypes, "criminal_justice") {
+				result.crimeTypes = append(result.crimeTypes, "criminal_justice")
 			}
 		}
 	}

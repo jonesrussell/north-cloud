@@ -3,49 +3,54 @@ import { computed } from 'vue'
 import { Activity, CheckCircle2, XCircle, Clock, TrendingUp } from 'lucide-vue-next'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { useJobs } from '@/features/intake'
+import type { JobsComposable } from '@/features/intake'
 
 interface Props {
+  /** When provided (e.g. from JobsView), uses shared state. When omitted, uses own useJobs() for standalone use (e.g. PipelineMonitorView). */
+  jobs?: JobsComposable
   compact?: boolean
 }
 
-withDefaults(defineProps<Props>(), {
+const props = withDefaults(defineProps<Props>(), {
+  jobs: undefined,
   compact: false,
 })
 
-const jobs = useJobs()
+const jobsFromComposable = useJobs()
+const jobs = computed(() => props.jobs ?? jobsFromComposable)
 
 const stats = computed(() => [
   {
     label: 'Total Jobs',
-    value: jobs.totalJobs.value,
+    value: jobs.value.totalJobs.value,
     icon: Activity,
     color: 'text-blue-500',
     bgColor: 'bg-blue-500/10',
   },
   {
     label: 'Active',
-    value: jobs.activeJobsCount.value,
+    value: jobs.value.activeJobsCount.value,
     icon: TrendingUp,
     color: 'text-green-500',
     bgColor: 'bg-green-500/10',
   },
   {
     label: 'Completed',
-    value: jobs.statusCounts.value.completed,
+    value: jobs.value.statusCounts.value.completed,
     icon: CheckCircle2,
     color: 'text-emerald-500',
     bgColor: 'bg-emerald-500/10',
   },
   {
     label: 'Failed',
-    value: jobs.failedJobsCount.value,
+    value: jobs.value.failedJobsCount.value,
     icon: XCircle,
-    color: jobs.failedJobsCount.value > 0 ? 'text-red-500' : 'text-muted-foreground',
-    bgColor: jobs.failedJobsCount.value > 0 ? 'bg-red-500/10' : 'bg-muted',
+    color: jobs.value.failedJobsCount.value > 0 ? 'text-red-500' : 'text-muted-foreground',
+    bgColor: jobs.value.failedJobsCount.value > 0 ? 'bg-red-500/10' : 'bg-muted',
   },
   {
     label: 'Paused',
-    value: jobs.statusCounts.value.paused,
+    value: jobs.value.statusCounts.value.paused,
     icon: Clock,
     color: 'text-yellow-500',
     bgColor: 'bg-yellow-500/10',

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { formatDateShort } from '@/lib/utils'
 import { Loader2, Star } from 'lucide-vue-next'
 import { classifierApi } from '@/api/client'
 import { Badge } from '@/components/ui/badge'
@@ -39,9 +40,9 @@ const getScoreVariant = (score: number) => {
   return 'destructive'
 }
 
-const formatDate = (date: string | null) => {
+const formatLastUpdated = (date: string | null): string => {
   if (!date) return 'Never'
-  return new Date(date).toLocaleDateString()
+  return formatDateShort(date)
 }
 
 onMounted(loadSources)
@@ -143,7 +144,7 @@ onMounted(loadSources)
                 {{ source.total_classified?.toLocaleString() || 0 }}
               </td>
               <td class="px-6 py-4 text-sm text-muted-foreground">
-                {{ formatDate(source.last_updated) }}
+                {{ formatLastUpdated(source.last_updated) }}
               </td>
             </tr>
           </tbody>

@@ -1,5 +1,7 @@
 package mappings
 
+import "maps"
+
 // getRawContentFields returns the raw content field definitions
 func getRawContentFields() map[string]any {
 	indexFalse := false
@@ -52,6 +54,9 @@ func getRawContentFields() map[string]any {
 		"canonical_url": map[string]any{
 			"type": "keyword",
 		},
+		"author": map[string]any{
+			"type": "text",
+		},
 		"crawled_at": map[string]any{
 			"type":   "date",
 			"format": "strict_date_optional_time||epoch_millis",
@@ -69,6 +74,176 @@ func getRawContentFields() map[string]any {
 		},
 		"word_count": map[string]any{
 			"type": "integer",
+		},
+		"article_section": map[string]any{
+			"type": "keyword",
+		},
+		"json_ld_data": map[string]any{
+			"type":       "object",
+			"properties": getJSONLdDataFields(),
+		},
+		"meta": map[string]any{
+			"type":       "object",
+			"properties": getMetaFields(),
+		},
+	}
+}
+
+// getJSONLdDataFields returns the JSON-LD extracted data field definitions
+func getJSONLdDataFields() map[string]any {
+	dateFormat := "strict_date_optional_time||epoch_millis"
+	return map[string]any{
+		"jsonld_headline":        map[string]any{"type": "text"},
+		"jsonld_description":     map[string]any{"type": "text"},
+		"jsonld_article_section": map[string]any{"type": "keyword"},
+		"jsonld_author":          map[string]any{"type": "text"},
+		"jsonld_publisher_name":  map[string]any{"type": "text"},
+		"jsonld_url":             map[string]any{"type": "keyword"},
+		"jsonld_image_url":       map[string]any{"type": "keyword"},
+		"jsonld_date_published":  map[string]any{"type": "date", "format": dateFormat},
+		"jsonld_date_created":    map[string]any{"type": "date", "format": dateFormat},
+		"jsonld_date_modified":   map[string]any{"type": "date", "format": dateFormat},
+		"jsonld_word_count":      map[string]any{"type": "integer"},
+		"jsonld_keywords":        map[string]any{"type": "keyword"},
+		"jsonld_raw":             map[string]any{"type": "object", "enabled": false},
+	}
+}
+
+// getMetaFields returns the meta tag field definitions
+func getMetaFields() map[string]any {
+	dateFormat := "strict_date_optional_time||epoch_millis"
+	return map[string]any{
+		"twitter_card":         map[string]any{"type": "keyword"},
+		"twitter_site":         map[string]any{"type": "keyword"},
+		"og_image_width":       map[string]any{"type": "integer"},
+		"og_image_height":      map[string]any{"type": "integer"},
+		"og_site_name":         map[string]any{"type": "keyword"},
+		"created_at":           map[string]any{"type": "date", "format": dateFormat},
+		"updated_at":           map[string]any{"type": "date", "format": dateFormat},
+		"article_opinion":      map[string]any{"type": "boolean"},
+		"article_content_tier": map[string]any{"type": "keyword"},
+	}
+}
+
+// getCrimeMapping returns the nested crime object mapping
+func getCrimeMapping() map[string]any {
+	return map[string]any{
+		"type": "object",
+		"properties": map[string]any{
+			"sub_label": map[string]any{
+				"type": "keyword",
+			},
+			"primary_crime_type": map[string]any{
+				"type": "keyword",
+			},
+			"relevance": map[string]any{
+				"type": "keyword",
+			},
+			"crime_types": map[string]any{
+				"type": "keyword",
+			},
+			"final_confidence": map[string]any{
+				"type": "float",
+			},
+			"homepage_eligible": map[string]any{
+				"type": "boolean",
+			},
+			"review_required": map[string]any{
+				"type": "boolean",
+			},
+			"model_version": map[string]any{
+				"type": "keyword",
+			},
+		},
+	}
+}
+
+// getLocationMapping returns the nested location object mapping
+func getLocationMapping() map[string]any {
+	return map[string]any{
+		"type": "object",
+		"properties": map[string]any{
+			"city": map[string]any{
+				"type": "keyword",
+			},
+			"province": map[string]any{
+				"type": "keyword",
+			},
+			"country": map[string]any{
+				"type": "keyword",
+			},
+			"specificity": map[string]any{
+				"type": "keyword",
+			},
+			"confidence": map[string]any{
+				"type": "float",
+			},
+		},
+	}
+}
+
+// getMiningMapping returns the nested mining object mapping
+func getMiningMapping() map[string]any {
+	return map[string]any{
+		"type": "object",
+		"properties": map[string]any{
+			"relevance": map[string]any{
+				"type": "keyword",
+			},
+			"mining_stage": map[string]any{
+				"type": "keyword",
+			},
+			"commodities": map[string]any{
+				"type": "keyword",
+			},
+			"location": map[string]any{
+				"type": "keyword",
+			},
+			"final_confidence": map[string]any{
+				"type": "float",
+			},
+			"review_required": map[string]any{
+				"type": "boolean",
+			},
+			"model_version": map[string]any{
+				"type": "keyword",
+			},
+		},
+	}
+}
+
+// getCoforgeMapping returns the nested coforge object mapping
+func getCoforgeMapping() map[string]any {
+	return map[string]any{
+		"type": "object",
+		"properties": map[string]any{
+			"relevance": map[string]any{
+				"type": "keyword",
+			},
+			"relevance_confidence": map[string]any{
+				"type": "float",
+			},
+			"audience": map[string]any{
+				"type": "keyword",
+			},
+			"audience_confidence": map[string]any{
+				"type": "float",
+			},
+			"topics": map[string]any{
+				"type": "keyword",
+			},
+			"industries": map[string]any{
+				"type": "keyword",
+			},
+			"final_confidence": map[string]any{
+				"type": "float",
+			},
+			"review_required": map[string]any{
+				"type": "boolean",
+			},
+			"model_version": map[string]any{
+				"type": "keyword",
+			},
 		},
 	}
 }
@@ -94,61 +269,10 @@ func getClassificationFields() map[string]any {
 		"topic_scores": map[string]any{
 			"type": "object",
 		},
-		// Nested crime object (replaces is_crime_related boolean)
-		"crime": map[string]any{
-			"type": "object",
-			"properties": map[string]any{
-				"sub_label": map[string]any{
-					"type": "keyword",
-				},
-				"primary_crime_type": map[string]any{
-					"type": "keyword",
-				},
-				"relevance": map[string]any{
-					"type": "keyword",
-				},
-				"crime_types": map[string]any{
-					"type": "keyword",
-				},
-				"final_confidence": map[string]any{
-					"type": "float",
-				},
-				"homepage_eligible": map[string]any{
-					"type": "boolean",
-				},
-				"review_required": map[string]any{
-					"type": "boolean",
-				},
-				"model_version": map[string]any{
-					"type": "keyword",
-				},
-			},
-		},
-		// Nested location object
-		"location": map[string]any{
-			"type": "object",
-			"properties": map[string]any{
-				"city": map[string]any{
-					"type": "keyword",
-				},
-				"province": map[string]any{
-					"type": "keyword",
-				},
-				"country": map[string]any{
-					"type": "keyword",
-				},
-				"specificity": map[string]any{
-					"type": "keyword",
-				},
-				"confidence": map[string]any{
-					"type": "float",
-				},
-			},
-		},
-		// Keep is_crime_related for backward compatibility (computed field)
-		"is_crime_related": map[string]any{
-			"type": "boolean",
-		},
+		"crime":    getCrimeMapping(),
+		"location": getLocationMapping(),
+		"mining":   getMiningMapping(),
+		"coforge":  getCoforgeMapping(),
 		"source_reputation": map[string]any{
 			"type": "integer",
 		},
@@ -171,26 +295,52 @@ func getClassificationFields() map[string]any {
 }
 
 // GetClassifiedContentMapping returns the Elasticsearch mapping for classified content indexes
-func GetClassifiedContentMapping() map[string]any {
+func GetClassifiedContentMapping(shards, replicas int) map[string]any {
 	properties := make(map[string]any)
 
 	// Add raw content fields
-	for k, v := range getRawContentFields() {
-		properties[k] = v
-	}
+	maps.Copy(properties, getRawContentFields())
 
 	// Add classification fields
-	for k, v := range getClassificationFields() {
-		properties[k] = v
-	}
+	maps.Copy(properties, getClassificationFields())
+
+	// Override text fields to use english_content analyzer for search quality
+	overrideAnalyzer(properties, "title", "english_content")
+	overrideAnalyzer(properties, "raw_text", "english_content")
 
 	return map[string]any{
 		"settings": map[string]any{
-			"number_of_shards":   1,
-			"number_of_replicas": 1,
+			"number_of_shards":   shards,
+			"number_of_replicas": replicas,
+			"analysis":           getEnglishAnalysisSettings(),
 		},
 		"mappings": map[string]any{
+			"dynamic":    "strict",
 			"properties": properties,
 		},
+	}
+}
+
+// getEnglishAnalysisSettings returns custom English analyzer settings for better search quality
+func getEnglishAnalysisSettings() map[string]any {
+	return map[string]any{
+		"analyzer": map[string]any{
+			"english_content": map[string]any{
+				"type":      "custom",
+				"tokenizer": "standard",
+				"filter":    []string{"lowercase", "english_stop", "english_stemmer"},
+			},
+		},
+		"filter": map[string]any{
+			"english_stop":    map[string]any{"type": "stop", "stopwords": "_english_"},
+			"english_stemmer": map[string]any{"type": "stemmer", "language": "english"},
+		},
+	}
+}
+
+// overrideAnalyzer overrides the analyzer for a field in the properties map
+func overrideAnalyzer(properties map[string]any, field, analyzer string) {
+	if fieldMap, ok := properties[field].(map[string]any); ok {
+		fieldMap["analyzer"] = analyzer
 	}
 }

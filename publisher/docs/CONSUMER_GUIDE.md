@@ -30,7 +30,7 @@ As a consumer, you are responsible for:
 
 ### Crime-only consumers (e.g. StreetCode)
 
-If your site should show **only crime-related content**, subscribe to the **Layer 3 crime channels** (`crime:homepage`, `crime:category:*`, `crime:courts`, `crime:context`) and **do not** subscribe to topic channels like `articles:news` or `articles:politics` (those carry mixed content). For a full runbook (Redis channel list, soft-deleting existing non-crime articles on Laravel), see [STREETCODE_RUNBOOK.md](../../docs/STREETCODE_RUNBOOK.md).
+If your site should show **only crime-related content**, subscribe to the **Layer 3 crime channels** (`crime:homepage`, `crime:category:*`, `crime:courts`, `crime:context`) and **do not** subscribe to topic channels like `articles:news` or `articles:politics` (those carry mixed content). For a full runbook (Redis channel list, soft-deleting existing non-crime articles on Laravel), see [STREETCODE_RUNBOOK.md](../../docs/STREETCODE_RUNBOOK.md). For **entertainment content**, subscribe to **Layer 6 channels**: `entertainment:homepage`, `entertainment:category:*`, `entertainment:peripheral`. Message payload includes `entertainment_relevance`, `entertainment_categories`, and nested `entertainment` object.
 
 ### Publisher Responsibilities
 

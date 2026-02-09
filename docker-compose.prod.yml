@@ -176,6 +176,14 @@ services:
         condition: service_healthy
       elasticsearch:
         condition: service_healthy
+      crime-ml:
+        condition: service_healthy
+      mining-ml:
+        condition: service_healthy
+      coforge-ml:
+        condition: service_healthy
+      entertainment-ml:
+        condition: service_healthy
     environment:
       POSTGRES_HOST: postgres-classifier
       POSTGRES_PORT: 5432
@@ -190,6 +198,14 @@ services:
       APP_DEBUG: "false"
       APP_ENV: production
       CLASSIFIER_PORT: 8070
+      CRIME_ENABLED: "true"
+      CRIME_ML_SERVICE_URL: http://crime-ml:8076
+      MINING_ENABLED: "true"
+      MINING_ML_SERVICE_URL: http://mining-ml:8077
+      COFORGE_ENABLED: "true"
+      COFORGE_ML_SERVICE_URL: http://coforge-ml:8078
+      ENTERTAINMENT_ENABLED: "true"
+      ENTERTAINMENT_ML_SERVICE_URL: http://entertainment-ml:8079
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:
@@ -200,6 +216,27 @@ services:
       timeout: 10s
       retries: 3
       start_period: 25s
+
+  # ------------------------------------------------------------
+  # Mining ML Classifier (Prod)
+  # ------------------------------------------------------------
+  mining-ml:
+    <<: *prod-defaults
+    image: docker.io/jonesrussell/mining-ml:latest
+
+  # ------------------------------------------------------------
+  # Coforge ML Classifier (Prod)
+  # ------------------------------------------------------------
+  coforge-ml:
+    <<: *prod-defaults
+    image: docker.io/jonesrussell/coforge-ml:latest
+
+  # ------------------------------------------------------------
+  # Entertainment ML Classifier (Prod)
+  # ------------------------------------------------------------
+  entertainment-ml:
+    <<: *prod-defaults
+    image: docker.io/jonesrussell/entertainment-ml:latest
 
   # ------------------------------------------------------------
   # Index Manager (Prod)
@@ -344,6 +381,38 @@ services:
       timeout: 5s
       retries: 3
       start_period: 10s
+
+  # ------------------------------------------------------------
+  # MCP North Cloud (Prod) - stdio server for Cursor/Claude
+  # Connect from host: docker exec -i <container> /app/mcp-north-cloud
+  # ------------------------------------------------------------
+  mcp-north-cloud:
+    <<: *prod-defaults
+    image: docker.io/jonesrussell/mcp-north-cloud:latest
+    # MCP server is stdio-based: connect via `docker exec -i <container> /app/mcp-north-cloud`
+    # The container idles so the binary is available for on-demand connections.
+    command: ["sleep", "infinity"]
+    depends_on:
+      crawler:
+        condition: service_healthy
+      source-manager:
+        condition: service_healthy
+      publisher:
+        condition: service_healthy
+      classifier:
+        condition: service_healthy
+      search-service:
+        condition: service_healthy
+      index-manager:
+        condition: service_healthy
+    environment:
+      CRAWLER_URL: http://crawler:8080
+      SOURCE_MANAGER_URL: http://source-manager:8050
+      PUBLISHER_URL: http://publisher:8070
+      CLASSIFIER_URL: http://classifier:8070
+      SEARCH_URL: http://search-service:8090
+      INDEX_MANAGER_URL: http://index-manager:8090
+      AUTH_JWT_SECRET: "${AUTH_JWT_SECRET}"
 
   # ------------------------------------------------------------
   # Dashboard (Prod)

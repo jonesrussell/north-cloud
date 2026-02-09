@@ -85,6 +85,7 @@ cd SERVICE && go build -o bin/SERVICE .
 | search | 8092 | Search API (dev), 8090 (prod via nginx) |
 | dashboard | 3002 | Dashboard UI |
 | nc-http-proxy | 8055 | HTTP Replay Proxy |
+| mining-ml | 8077 | Mining ML Classifier |
 
 ---
 
@@ -115,6 +116,10 @@ cd SERVICE && go build -o bin/SERVICE .
   - ✅ `func verifyResult(t *testing.T, result Result) { t.Helper(); ... }`
 
 - **Keep cognitive complexity ≤ 20** - break down complex functions into smaller helpers
+
+- **Keep function length ≤ 100 lines** (`funlen` linter) - extract helper functions
+  - Example: ES mapping builders use `getCrimeMapping()`, `getMiningMapping()` helpers
+  - Example: `classifier.go:Classify()` uses `runOptionalClassifiers()` to stay under limit
   - ❌ `func complexFunction() { if a { if b { if c { ... } } } }` (high complexity)
   - ✅ `func complexFunction() { helperA(); helperB(); helperC() }` with separate helper functions
   - The `gocognit` linter flags functions with complexity > 20 - refactor immediately if flagged
@@ -148,6 +153,7 @@ cd SERVICE && go build -o bin/SERVICE .
 1. **Crawler** → `{source}_raw_content` (Elasticsearch) with `classification_status=pending`
 2. **Classifier** → `{source}_classified_content` (enriched with quality, topics, crime detection)
 3. **Publisher** → Redis Pub/Sub channels (e.g., `articles:crime:violent`, `articles:news`)
+4. **Mining-ML** sidecar classifies mining content via hybrid rules+ML → publisher routes to `articles:mining`
 
 ---
 
@@ -546,6 +552,7 @@ PROD_DEPLOY_PATH=/opt/north-cloud
 
 Key architectural changes (see full history in git):
 
+- **Mining-ML Pipeline** (2026-02-05): Added mining-ml sidecar, wired hybrid mining classifier into classifier pipeline, added Layer 5 mining routing to publisher
 - **Crime Sub-Category Classification** (2026-01-07): Replaced generic "crime" with 5 sub-categories (violent, property, drug, organized, justice)
 - **Crawler Scheduler Refactor** (2025-12-29): Interval-based scheduling replaces cron (Migration 003)
 - **Publisher Modernization** (2025-12-28): Database-backed Redis Pub/Sub routing hub

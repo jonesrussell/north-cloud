@@ -1,9 +1,9 @@
-FROM golang:1.25-alpine AS builder
+FROM golang:1.25.7-alpine AS builder
 
 # Only install git if you pull private modules
 RUN apk add --no-cache ca-certificates
 
-# Prepare workspace for replace ../infrastructure
+# Prepare workspace for replace directive (../infrastructure)
 WORKDIR /build
 COPY infrastructure ./infrastructure
 
@@ -37,7 +37,7 @@ WORKDIR /app
 COPY --from=builder /build/crawler/crawler-bin ./crawler
 
 # Copy config
-COPY --from=builder /build/crawler/config.example.yaml ./config.yaml
+COPY --from=builder /build/crawler/config.example.yaml ./config.yml
 
 # Switch to non-root user
 USER appuser

@@ -87,18 +87,24 @@ INSERT INTO classification_rules (topic, keywords, priority) VALUES
 - `organized_crime` - gang, cartel, money laundering
 - `criminal_justice` - court, sentencing, trial
 
+**Mining topic rule** (migration 011): Uses `min_confidence: 0.5` with mining-specific keywords only. Ambiguous terms (gold, silver, resource, grade, deposit, etc.) were removed to prevent false positives — the mining-ML hybrid classifier (Layer 5) handles nuanced relevance filtering.
+
 ## Crime Hybrid Classification
 
 **Enabled via**: `CRIME_ENABLED=true` and `CRIME_ML_SERVICE_URL=http://crime-ml:8076`
 
 **Architecture**: Rules (precision) + ML (recall) with decision matrix
 
-**5-Step Classification** (when enabled):
+**7-Step Classification** (when Crime and Mining enabled):
 1. Content Type
 2. Quality Score
 3. Topic Detection
 4. Source Reputation
 5. **Crime Classification** (hybrid rule + ML)
+
+**IMPORTANT**: `Classify()` in `classifier.go` is near the 100-line `funlen` limit. Optional classifiers (crime, mining, location) are extracted into `runOptionalClassifiers()`. When adding new classification steps, add them to that helper, NOT to `Classify()` directly.
+6. **Mining Classification** (hybrid rule + ML, optional)
+7. **Location Classification** (content-based)
 
 **Relevance Classes**:
 - `core_street_crime` - Homepage eligible (murders, shootings, assaults with arrest)
@@ -139,6 +145,49 @@ INSERT INTO classification_rules (topic, keywords, priority) VALUES
 }
 ```
 
+## Mining Hybrid Classification
+
+**Enabled via**: `MINING_ENABLED=true` and `MINING_ML_SERVICE_URL=http://mining-ml:8077`
+
+**Operator mental model**: Mining is optional, rules-first, ML-augmented. No ML failure will block classification.
+
+**Failure modes**:
+- Mining disabled → no Mining fields in output
+- ML unreachable → rules-only mode, log warning
+- ML returns low confidence → merge via decision matrix
+
+**Schema** (machine keys only; display labels handled in frontend):
+- **Relevance**: `core_mining`, `peripheral_mining`, `not_mining`
+- **Mining stage**: `exploration`, `development`, `production`, `unspecified`
+- **Commodities** (multi-label): `gold`, `copper`, `lithium`, `nickel`, `uranium`, `iron_ore`, `rare_earths`, `other`
+- **Location**: `local_canada`, `national_canada`, `international`, `not_specified`
+
+**Decision Matrix**:
+
+| Rules | ML | Result | ReviewRequired |
+|-------|-----|--------|----------------|
+| core | core | core_mining, high conf | false |
+| core | not_mining | core_mining | true |
+| core | - | core_mining, rule conf | false |
+| peripheral | core, high conf | core_mining | optional |
+| not_mining | core, high conf | peripheral_mining | true |
+| not_mining | core, low conf | peripheral_mining | true |
+
+**Output Fields** (in ClassifiedContent):
+```json
+{
+  "mining": {
+    "relevance": "core_mining",
+    "mining_stage": "exploration",
+    "commodities": ["gold", "copper"],
+    "location": "local_canada",
+    "final_confidence": 0.92,
+    "review_required": false,
+    "model_version": "2025-02-01-mining-v1"
+  }
+}
+```
+
 ## Common Gotchas
 
 1. **Must populate `Body` and `Source` aliases**: Publisher expects these fields:
@@ -158,6 +207,9 @@ INSERT INTO classification_rules (topic, keywords, priority) VALUES
 ## API Endpoints
 
 **Health**: `GET /health`
+
+**Metrics**:
+- `GET /api/v1/metrics/ml-health` - ML service health check (crime-ml, mining-ml, coforge-ml, entertainment-ml reachability, latency, pipeline mode)
 
 **Classification**:
 - `POST /api/v1/classify` - Classify single article

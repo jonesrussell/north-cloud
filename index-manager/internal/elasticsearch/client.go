@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
@@ -653,23 +654,77 @@ func (c *Client) BulkDeleteDocuments(ctx context.Context, indexName string, docu
 	return nil
 }
 
-// SearchAllClassifiedContent executes a search across all classified content indexes
+// Reindex copies documents from source index to destination index using the ES Reindex API.
+func (c *Client) Reindex(ctx context.Context, sourceIndex, destIndex string) (int64, error) {
+	body := map[string]any{
+		"source": map[string]any{"index": sourceIndex},
+		"dest":   map[string]any{"index": destIndex},
+	}
+
+	bodyJSON, err := json.Marshal(body)
+	if err != nil {
+		return 0, fmt.Errorf("failed to marshal reindex body: %w", err)
+	}
+
+	res, err := c.esClient.Reindex(
+		strings.NewReader(string(bodyJSON)),
+		c.esClient.Reindex.WithContext(ctx),
+		c.esClient.Reindex.WithWaitForCompletion(true),
+	)
+	if err != nil {
+		return 0, fmt.Errorf("reindex API call failed: %w", err)
+	}
+	defer func() { _ = res.Body.Close() }()
+
+	if res.IsError() {
+		respBody, _ := io.ReadAll(res.Body)
+		return 0, fmt.Errorf("reindex returned error [%d]: %s", res.StatusCode, string(respBody))
+	}
+
+	var result struct {
+		Total int64 `json:"total"`
+	}
+	if decodeErr := json.NewDecoder(res.Body).Decode(&result); decodeErr != nil {
+		return 0, fmt.Errorf("failed to decode reindex response: %w", decodeErr)
+	}
+
+	return result.Total, nil
+}
+
+// ClassifiedContentIndexPattern is the index pattern for all classified content indexes.
+// Used in the path without encoding so Elasticsearch receives the wildcard literally.
+const ClassifiedContentIndexPattern = "*_classified_content"
+
+// SearchAllClassifiedContent executes a search across all classified content indexes.
+// Uses a raw request path so the wildcard (*) is not URL-encoded; the go-elasticsearch
+// client would otherwise encode it and Elasticsearch would match zero indices.
 func (c *Client) SearchAllClassifiedContent(ctx context.Context, query map[string]any) (*esapi.Response, error) {
 	queryJSON, err := json.Marshal(query)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal query: %w", err)
 	}
 
-	res, err := c.esClient.Search(
-		c.esClient.Search.WithContext(ctx),
-		c.esClient.Search.WithIndex("*_classified_content"),
-		c.esClient.Search.WithBody(strings.NewReader(string(queryJSON))),
-	)
+	baseURL, err := url.Parse(c.config.URL)
+	if err != nil {
+		return nil, fmt.Errorf("invalid elasticsearch URL: %w", err)
+	}
+	// Build path with wildcard unencoded. Opaque avoids path encoding so ES receives *_classified_content.
+	baseURL.Opaque = "//" + baseURL.Host + "/" + ClassifiedContentIndexPattern + "/_search"
+	baseURL.Path = ""
+	baseURL.RawPath = ""
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, baseURL.String(), strings.NewReader(string(queryJSON)))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create search request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	res, err := c.esClient.Transport.Perform(req)
 	if err != nil {
 		return nil, fmt.Errorf("failed to execute search: %w", err)
 	}
 
-	if res.IsError() {
+	if res.StatusCode >= http.StatusBadRequest {
 		defer func() {
 			_ = res.Body.Close()
 		}()
@@ -677,5 +732,5 @@ func (c *Client) SearchAllClassifiedContent(ctx context.Context, query map[strin
 		return nil, fmt.Errorf("search returned error [%d]: %s", res.StatusCode, string(body))
 	}
 
-	return res, nil
+	return &esapi.Response{StatusCode: res.StatusCode, Body: res.Body, Header: res.Header}, nil
 }

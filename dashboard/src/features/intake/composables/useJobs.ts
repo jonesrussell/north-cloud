@@ -39,6 +39,7 @@ import {
   useJobQuery,
   useJobExecutionsQuery,
   useJobStatsQuery,
+  useJobStatusCountsQuery,
 } from './useJobsQuery'
 import {
   useCreateJobMutation,
@@ -100,28 +101,22 @@ export function useJobs() {
   const bulkDeleteMutation = useBulkDeleteJobsMutation()
 
   // ---------------------------------------------------------------------------
-  // Computed: Status Counts (from current page data)
+  // Status Counts (from server)
   // ---------------------------------------------------------------------------
 
-  const statusCounts = computed(() => {
-    const counts: Record<JobStatus, number> = {
-      pending: 0,
-      scheduled: 0,
-      running: 0,
-      paused: 0,
-      completed: 0,
-      failed: 0,
-      cancelled: 0,
-    }
+  const statusCountsQuery = useJobStatusCountsQuery()
 
-    for (const job of table.items.value) {
-      if (job.status in counts) {
-        counts[job.status as JobStatus]++
-      }
-    }
+  const defaultCounts: Record<JobStatus, number> = {
+    pending: 0,
+    scheduled: 0,
+    running: 0,
+    paused: 0,
+    completed: 0,
+    failed: 0,
+    cancelled: 0,
+  }
 
-    return counts
-  })
+  const statusCounts = computed(() => statusCountsQuery.data.value ?? defaultCounts)
 
   const activeJobsCount = computed(() => {
     const counts = statusCounts.value
@@ -267,7 +262,7 @@ export function useJobs() {
     hasActiveFilters: computed(() => Object.keys(table.filters.value).length > 0),
     activeFilterCount,
 
-    // Status counts (computed from current page)
+    // Status counts (from server)
     statusCounts,
     activeJobsCount,
     failedJobsCount,
@@ -372,3 +367,6 @@ export function useJobDetail(jobId: string) {
     statsQuery,
   }
 }
+
+/** Return type of useJobs() for passing as prop to JobsFilterBar, JobsTable, JobStatsCard */
+export type JobsComposable = ReturnType<typeof useJobs>

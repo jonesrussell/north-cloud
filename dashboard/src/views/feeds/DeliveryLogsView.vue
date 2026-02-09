@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { formatDate } from '@/lib/utils'
 import { Loader2, ScrollText, RefreshCw, CheckCircle2, XCircle, Clock } from 'lucide-vue-next'
 import { publisherApi } from '@/api/client'
 import { Button } from '@/components/ui/button'
@@ -55,8 +56,6 @@ const getStatusVariant = (status: string) => {
     default: return 'warning'
   }
 }
-
-const formatDate = (date: string) => date ? new Date(date).toLocaleString() : 'N/A'
 
 onMounted(loadLogs)
 </script>

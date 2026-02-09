@@ -84,6 +84,10 @@ func SetupServiceRoutes(router *gin.Engine, handler *Handler, cfg *config.Config
 	stats.GET("/topics", handler.GetTopicStats)          // GET /api/v1/stats/topics
 	stats.GET("/sources", handler.GetSourceDistribution) // GET /api/v1/stats/sources
 
+	// Metrics endpoints
+	metrics := v1.Group("/metrics")
+	metrics.GET("/ml-health", handler.GetMLHealth) // GET /api/v1/metrics/ml-health
+
 	// Keep original health check handlers for backward compatibility (/ready)
 	router.GET("/ready", handler.ReadyCheck)
 }

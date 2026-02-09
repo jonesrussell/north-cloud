@@ -37,6 +37,27 @@ func TestGenerateLayer1Channels(t *testing.T) {
 			},
 			expected: []string{},
 		},
+		{
+			name: "mining topic skipped",
+			article: &router.Article{
+				Topics: []string{"news", "mining", "technology"},
+			},
+			expected: []string{"articles:news", "articles:technology"},
+		},
+		{
+			name: "mining-only produces empty",
+			article: &router.Article{
+				Topics: []string{"mining"},
+			},
+			expected: []string{},
+		},
+		{
+			name: "mining mixed with others excludes only mining",
+			article: &router.Article{
+				Topics: []string{"mining", "violent_crime"},
+			},
+			expected: []string{"articles:violent_crime"},
+		},
 	}
 
 	for _, tc := range testCases {

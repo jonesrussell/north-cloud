@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { formatDate } from '@/lib/utils'
 import { Loader2, Link, Trash2, RefreshCw } from 'lucide-vue-next'
 import { crawlerApi } from '@/api/client'
 import { Button } from '@/components/ui/button'
@@ -47,11 +48,6 @@ const deleteLink = async (id: string) => {
   } catch (err) {
     console.error('Error deleting link:', err)
   }
-}
-
-const formatDate = (date: string) => {
-  if (!date) return 'N/A'
-  return new Date(date).toLocaleString()
 }
 
 const getStatusVariant = (status: string) => {

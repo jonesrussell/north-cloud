@@ -195,7 +195,7 @@ watch(() => route.query.create, (create) => {
     </div>
 
     <!-- Stats Cards -->
-    <JobStatsCard />
+    <JobStatsCard :jobs="jobs" />
 
     <!-- Error State -->
     <Card
@@ -246,6 +246,7 @@ watch(() => route.query.create, (create) => {
         </CardHeader>
         <CardContent>
           <JobsFilterBar
+            :jobs="jobs"
             show-source-filter
             :sources="sources.sourceOptions.value"
           />
@@ -255,6 +256,7 @@ watch(() => route.query.create, (create) => {
       <Card>
         <CardContent class="p-0">
           <JobsTable
+            :jobs="jobs"
             @view="handleView"
             @pause="handlePause"
             @resume="handleResume"

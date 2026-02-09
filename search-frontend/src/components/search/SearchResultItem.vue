@@ -1,13 +1,37 @@
 <template>
-  <div class="bg-white p-6 rounded-lg shadow-sm hover:shadow-md transition-shadow">
+  <div
+    class="rounded-lg shadow-sm hover:shadow-md transition-shadow"
+    :class="featured ? 'bg-blue-50/50 border border-blue-100 p-8' : 'bg-white p-6'"
+    role="listitem"
+  >
     <a
       :href="result.url"
       target="_blank"
       rel="noopener noreferrer"
       class="block group"
+      :aria-label="`Open result: ${result.title}`"
     >
+      <!-- Content type + source badges -->
+      <div class="flex flex-wrap items-center gap-2 mb-2">
+        <span
+          v-if="contentTypeLabel"
+          class="inline-flex items-center rounded px-2 py-0.5 text-xs font-medium bg-slate-100 text-slate-700"
+        >
+          {{ contentTypeLabel }}
+        </span>
+        <span
+          v-if="sourceBadge"
+          class="inline-flex items-center rounded px-2 py-0.5 text-xs font-medium bg-emerald-50 text-emerald-800 border border-emerald-200"
+        >
+          {{ sourceBadge }}
+        </span>
+      </div>
+
       <!-- Title -->
-      <h3 class="text-xl font-semibold text-blue-600 group-hover:text-blue-800 mb-2">
+      <h3
+        class="font-semibold text-blue-600 group-hover:text-blue-800 mb-2"
+        :class="featured ? 'text-2xl' : 'text-xl'"
+      >
         <span v-if="highlightedTitle" v-html="highlightedTitle"></span>
         <span v-else>{{ result.title }}</span>
       </h3>
@@ -22,12 +46,17 @@
       <p v-else class="text-gray-700 mb-3">{{ truncatedText }}</p>
 
       <!-- Metadata -->
-      <div class="flex items-center space-x-4 text-sm text-gray-500">
+      <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-gray-500">
         <span v-if="result.published_date">
           {{ formattedDate }}
         </span>
-        <span v-if="result.quality_score" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium" :class="qualityBadgeClass">
-          Quality: {{ result.quality_score }}
+        <span
+          v-if="result.quality_score !== undefined && result.quality_score !== null"
+          class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
+          :class="qualityBadgeClass"
+          :title="`Quality score: ${result.quality_score} out of 100`"
+        >
+          Quality {{ result.quality_score }}
         </span>
         <div v-if="result.topics && result.topics.length" class="flex flex-wrap gap-1">
           <span
@@ -51,9 +80,22 @@ import type { SearchResult } from '@/types/search'
 
 interface Props {
   result: SearchResult
+  featured?: boolean
 }
 
-const props = defineProps<Props>()
+const props = withDefaults(defineProps<Props>(), {
+  featured: false,
+})
+
+const contentTypeLabel = computed((): string => {
+  const ct = props.result.content_type
+  if (!ct) return ''
+  return ct.charAt(0).toUpperCase() + ct.slice(1).toLowerCase()
+})
+
+const sourceBadge = computed((): string => {
+  return props.result.source_name ?? props.result.source ?? ''
+})
 
 const highlightedTitle = computed((): string | null => {
   if (props.result.highlight && props.result.highlight.title && props.result.highlight.title.length > 0) {

@@ -11,6 +11,7 @@ require (
 	github.com/mattn/go-sqlite3 v1.14.32
 	github.com/north-cloud/infrastructure v0.0.0
 	github.com/prometheus/client_golang v1.23.2
+	github.com/stretchr/testify v1.11.1
 	go.opentelemetry.io/otel v1.39.0
 	go.opentelemetry.io/otel/trace v1.39.0
 	golang.org/x/text v0.32.0

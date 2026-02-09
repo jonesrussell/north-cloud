@@ -1,4 +1,4 @@
-ARG VARIANT=1.25-bookworm
+ARG VARIANT=1.25.7-bookworm
 FROM mcr.microsoft.com/devcontainers/go:${VARIANT}
 
 # Install PostgreSQL client tools for database migrations and management

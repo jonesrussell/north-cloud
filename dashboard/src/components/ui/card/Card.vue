@@ -11,7 +11,13 @@ const props = withDefaults(defineProps<Props>(), {
 </script>
 
 <template>
-  <div :class="cn('rounded-lg border bg-card text-card-foreground shadow-sm', props.class)">
+  <div
+    :class="cn(
+      'rounded-sm border bg-card text-card-foreground shadow-sm',
+      'dark:shadow-none dark:border-t-[hsl(220_13%_22%)]',
+      props.class
+    )"
+  >
     <slot />
   </div>
 </template>

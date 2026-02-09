@@ -1,5 +1,6 @@
 // Jobs composables exports
 export { useJobs, useJobDetail } from './useJobs'
+export type { JobsComposable } from './useJobs'
 export {
   useJobQuery,
   useJobExecutionsQuery,

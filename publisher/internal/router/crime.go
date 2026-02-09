@@ -69,6 +69,11 @@ func GenerateCrimeChannels(article *Article) []string {
 func GenerateLocationChannels(article *Article) []string {
 	channels := make([]string, 0)
 
+	// Skip non-crime articles - location channels are only for crime content
+	if article.CrimeRelevance == CrimeRelevanceNotCrime || article.CrimeRelevance == "" {
+		return channels
+	}
+
 	// Skip unknown or empty locations
 	if article.LocationCountry == LocationCountryUnknown || article.LocationCountry == "" {
 		return channels

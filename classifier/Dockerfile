@@ -1,9 +1,9 @@
 # Build stage
-FROM golang:1.25-alpine AS builder
+FROM golang:1.25.7-alpine AS builder
 
 RUN apk add --no-cache ca-certificates
 
-# Prepare workspace for replace ../infrastructure
+# Prepare workspace for replace directive (../infrastructure)
 WORKDIR /build
 COPY infrastructure ./infrastructure
 

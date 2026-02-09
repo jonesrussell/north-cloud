@@ -69,6 +69,8 @@ export interface JobFilters {
   search?: string
 }
 
+export type JobStatusCounts = Record<JobStatus, number>
+
 export interface CrawlerStats {
   crawled_today: number
   indexed_today: number

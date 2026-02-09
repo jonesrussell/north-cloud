@@ -81,14 +81,26 @@ const routes: RouteRecordRaw[] = [
   },
 
   // ==========================================
-  // Intelligence - crime/location analytics
+  // Intelligence - overview and drill-downs
   // ==========================================
+  {
+    path: '/intelligence',
+    name: 'intelligence-overview',
+    component: () => import('../views/intelligence/IntelligenceOverviewView.vue'),
+    meta: { title: 'Intelligence', section: 'intelligence', requiresAuth: true },
+  },
   {
     path: '/intelligence/crime',
     name: 'intelligence-crime',
     // Lazy load - will be created in Task 14
     component: () => import('../views/intelligence/CrimeBreakdownView.vue'),
     meta: { title: 'Crime Breakdown', section: 'intelligence', requiresAuth: true },
+  },
+  {
+    path: '/intelligence/mining',
+    name: 'intelligence-mining',
+    component: () => import('../views/intelligence/MiningBreakdownView.vue'),
+    meta: { title: 'Mining Breakdown', section: 'intelligence', requiresAuth: true },
   },
   {
     path: '/intelligence/location',

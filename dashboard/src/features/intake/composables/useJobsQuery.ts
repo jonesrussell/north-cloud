@@ -12,10 +12,11 @@ import {
   fetchJob,
   fetchJobExecutions,
   fetchJobStats,
+  fetchJobStatusCounts,
   fetchJobLogs,
   type JobExecutionsResponse,
 } from '../api/jobs'
-import type { Job, JobStats } from '@/types/crawler'
+import type { Job, JobStats, JobStatusCounts } from '@/types/crawler'
 
 // ============================================================================
 // Job Detail Query
@@ -178,6 +179,22 @@ export function useJobLogsQuery(
     enabled: computed(() => !!id.value),
     staleTime: 60000,
     ...options,
+  })
+}
+
+// ============================================================================
+// Job Status Counts Query
+// ============================================================================
+
+/**
+ * Fetch aggregate job status counts from server
+ */
+export function useJobStatusCountsQuery() {
+  return useQuery<JobStatusCounts, Error>({
+    queryKey: jobsKeys.statusCounts(),
+    queryFn: fetchJobStatusCounts,
+    refetchInterval: 30_000,
+    staleTime: 10_000,
   })
 }
 

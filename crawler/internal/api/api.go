@@ -23,6 +23,9 @@ const (
 // setupJobRoutes configures job-related endpoints
 func setupJobRoutes(v1 *gin.RouterGroup, jobsHandler *JobsHandler) {
 	if jobsHandler != nil {
+		// Aggregate endpoints (before :id to avoid route conflict)
+		v1.GET("/jobs/status-counts", jobsHandler.GetJobStatusCounts)
+
 		// Basic CRUD
 		v1.GET("/jobs", jobsHandler.ListJobs)
 		v1.POST("/jobs", jobsHandler.CreateJob)
@@ -41,8 +44,11 @@ func setupJobRoutes(v1 *gin.RouterGroup, jobsHandler *JobsHandler) {
 		v1.GET("/jobs/:id/stats", jobsHandler.GetJobStats)
 		v1.GET("/executions/:id", jobsHandler.GetExecution)
 
-		// Scheduler metrics (new)
+		// Scheduler metrics and distribution
 		v1.GET("/scheduler/metrics", jobsHandler.GetSchedulerMetrics)
+		v1.GET("/scheduler/distribution", jobsHandler.GetSchedulerDistribution)
+		v1.POST("/scheduler/rebalance", jobsHandler.PostSchedulerRebalance)
+		v1.POST("/scheduler/rebalance/preview", jobsHandler.PostSchedulerRebalancePreview)
 	} else {
 		// Fallback to placeholder endpoints if no handler provided
 		v1.GET("/jobs", func(c *gin.Context) {

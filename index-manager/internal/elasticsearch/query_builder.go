@@ -197,9 +197,6 @@ func (qb *DocumentQueryBuilder) buildFilters(filters *domain.DocumentFilters) []
 		})
 	}
 
-	// Legacy crime-related filter (backward compatibility)
-	result = qb.appendLegacyCrimeFilter(result, filters)
-
 	return result
 }
 
@@ -237,12 +234,12 @@ func (qb *DocumentQueryBuilder) appendTextFilters(result []any, filters *domain.
 
 // appendQualityTopicFilters adds quality score and topics filters
 func (qb *DocumentQueryBuilder) appendQualityTopicFilters(result []any, filters *domain.DocumentFilters) []any {
-	if filters.MinQualityScore > 0 || filters.MaxQualityScore < maxQualityScore {
+	if filters.MinQualityScore > 0 || (filters.MaxQualityScore > 0 && filters.MaxQualityScore < maxQualityScore) {
 		qualityRange := make(map[string]any)
 		if filters.MinQualityScore > 0 {
 			qualityRange["gte"] = filters.MinQualityScore
 		}
-		if filters.MaxQualityScore < maxQualityScore {
+		if filters.MaxQualityScore > 0 && filters.MaxQualityScore < maxQualityScore {
 			qualityRange["lte"] = filters.MaxQualityScore
 		}
 		if len(qualityRange) > 0 {
@@ -292,26 +289,6 @@ func (qb *DocumentQueryBuilder) appendDateFilters(result []any, filters *domain.
 				"crawled_at": dateRange,
 			},
 		})
-	}
-	return result
-}
-
-// appendLegacyCrimeFilter adds backward-compatible is_crime_related filter
-func (qb *DocumentQueryBuilder) appendLegacyCrimeFilter(result []any, filters *domain.DocumentFilters) []any {
-	if filters.IsCrimeRelated != nil && len(filters.CrimeRelevance) == 0 {
-		if *filters.IsCrimeRelated {
-			result = append(result, map[string]any{
-				"terms": map[string]any{
-					"crime.relevance": []string{"core_street_crime", "peripheral_crime"},
-				},
-			})
-		} else {
-			result = append(result, map[string]any{
-				"term": map[string]any{
-					"crime.relevance": "not_crime",
-				},
-			})
-		}
 	}
 	return result
 }

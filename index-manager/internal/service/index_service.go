@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/jonesrussell/north-cloud/index-manager/internal/config"
 	"github.com/jonesrussell/north-cloud/index-manager/internal/database"
 	"github.com/jonesrussell/north-cloud/index-manager/internal/domain"
 	"github.com/jonesrussell/north-cloud/index-manager/internal/elasticsearch"
@@ -20,17 +21,22 @@ import (
 
 // IndexService provides business logic for index operations
 type IndexService struct {
-	esClient *elasticsearch.Client
-	db       *database.Connection
-	logger   infralogger.Logger
+	esClient   *elasticsearch.Client
+	db         *database.Connection
+	logger     infralogger.Logger
+	indexTypes config.IndexTypesConfig
 }
 
 // NewIndexService creates a new index service
-func NewIndexService(esClient *elasticsearch.Client, db *database.Connection, logger infralogger.Logger) *IndexService {
+func NewIndexService(
+	esClient *elasticsearch.Client, db *database.Connection,
+	logger infralogger.Logger, indexTypes config.IndexTypesConfig,
+) *IndexService {
 	return &IndexService{
-		esClient: esClient,
-		db:       db,
-		logger:   logger,
+		esClient:   esClient,
+		db:         db,
+		logger:     logger,
+		indexTypes: indexTypes,
 	}
 }
 
@@ -93,7 +99,7 @@ func (s *IndexService) CreateIndex(ctx context.Context, req *domain.CreateIndexR
 	if req.Mapping != nil {
 		mapping = req.Mapping
 	} else {
-		mapping, err = mappings.GetMappingForType(string(req.IndexType))
+		mapping, err = mappings.GetMappingForType(string(req.IndexType), s.getShards(req.IndexType), s.getReplicas(req.IndexType))
 		if err != nil {
 			return nil, fmt.Errorf("failed to get mapping for type %s: %w", req.IndexType, err)
 		}
@@ -121,7 +127,7 @@ func (s *IndexService) CreateIndex(ctx context.Context, req *domain.CreateIndexR
 	// Record migration
 	migration := &database.MigrationHistory{
 		IndexName:     indexName,
-		ToVersion:     sql.NullString{String: "1.0.0", Valid: true},
+		ToVersion:     sql.NullString{String: mappings.GetMappingVersion(string(req.IndexType)), Valid: true},
 		MigrationType: "create",
 		Status:        "pending",
 		CreatedAt:     time.Now(),
@@ -141,7 +147,7 @@ func (s *IndexService) CreateIndex(ctx context.Context, req *domain.CreateIndexR
 		IndexName:      indexName,
 		IndexType:      string(req.IndexType),
 		SourceName:     sql.NullString{String: req.SourceName, Valid: req.SourceName != ""},
-		MappingVersion: "1.0.0",
+		MappingVersion: mappings.GetMappingVersion(string(req.IndexType)),
 		Status:         "active",
 	}
 	if saveErr := s.db.SaveIndexMetadata(ctx, metadata); saveErr != nil {
@@ -433,6 +439,84 @@ func (s *IndexService) GetIndexHealth(ctx context.Context, indexName string) (st
 	return s.esClient.GetIndexHealth(ctx, indexName)
 }
 
+// MigrateIndex migrates an index to the latest mapping version.
+// Creates a new index with _v{version} suffix, reindexes documents, deletes old index.
+func (s *IndexService) MigrateIndex(ctx context.Context, indexName string) (*domain.MigrationResult, error) {
+	// Get current metadata
+	metadata, err := s.db.GetIndexMetadata(ctx, indexName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get index metadata: %w", err)
+	}
+
+	// Check if already up to date
+	targetVersion := mappings.GetMappingVersion(metadata.IndexType)
+	if metadata.MappingVersion == targetVersion {
+		return &domain.MigrationResult{
+			IndexName: indexName,
+			Status:    "up_to_date",
+			Message:   fmt.Sprintf("index already at version %s", targetVersion),
+		}, nil
+	}
+
+	// Create new index with latest mapping
+	idxType := domain.IndexType(metadata.IndexType)
+	tempName := fmt.Sprintf("%s_v%s", indexName, strings.ReplaceAll(targetVersion, ".", "_"))
+	mapping, mapErr := mappings.GetMappingForType(metadata.IndexType, s.getShards(idxType), s.getReplicas(idxType))
+	if mapErr != nil {
+		return nil, fmt.Errorf("failed to get mapping: %w", mapErr)
+	}
+	if createErr := s.esClient.CreateIndex(ctx, tempName, mapping); createErr != nil {
+		return nil, fmt.Errorf("failed to create new index: %w", createErr)
+	}
+
+	// Reindex documents
+	docCount, reindexErr := s.esClient.Reindex(ctx, indexName, tempName)
+	if reindexErr != nil {
+		_ = s.esClient.DeleteIndex(ctx, tempName)
+		return nil, fmt.Errorf("reindex failed: %w", reindexErr)
+	}
+
+	// Delete old index
+	if deleteErr := s.esClient.DeleteIndex(ctx, indexName); deleteErr != nil {
+		return nil, fmt.Errorf("failed to delete old index: %w", deleteErr)
+	}
+
+	// Record migration and update metadata
+	s.recordReindexMigration(ctx, indexName, metadata.MappingVersion, targetVersion)
+	s.updateMetadataAfterMigration(ctx, metadata, tempName, targetVersion)
+
+	return &domain.MigrationResult{
+		IndexName:     tempName,
+		FromVersion:   metadata.MappingVersion,
+		ToVersion:     targetVersion,
+		DocumentCount: docCount,
+		Status:        "completed",
+	}, nil
+}
+
+func (s *IndexService) recordReindexMigration(ctx context.Context, indexName, fromVersion, toVersion string) {
+	migration := &database.MigrationHistory{
+		IndexName:     indexName,
+		FromVersion:   sql.NullString{String: fromVersion, Valid: true},
+		ToVersion:     sql.NullString{String: toVersion, Valid: true},
+		MigrationType: "reindex",
+		Status:        "completed",
+		CreatedAt:     time.Now(),
+		CompletedAt:   sql.NullTime{Time: time.Now(), Valid: true},
+	}
+	if err := s.db.RecordMigration(ctx, migration); err != nil {
+		s.logger.Warn("Failed to record reindex migration", infralogger.Error(err))
+	}
+}
+
+func (s *IndexService) updateMetadataAfterMigration(ctx context.Context, metadata *database.IndexMetadata, newName, newVersion string) {
+	metadata.IndexName = newName
+	metadata.MappingVersion = newVersion
+	if err := s.db.SaveIndexMetadata(ctx, metadata); err != nil {
+		s.logger.Warn("Failed to update index metadata after migration", infralogger.Error(err))
+	}
+}
+
 // GetStats gets statistics about all indexes
 func (s *IndexService) GetStats(ctx context.Context) (*domain.IndexStats, error) {
 	indices, err := s.esClient.ListIndices(ctx, "*")
@@ -556,6 +640,32 @@ func (s *IndexService) getIndexedTodayCount(ctx context.Context) (int64, error) 
 }
 
 // Helper functions
+
+func (s *IndexService) getShards(indexType domain.IndexType) int {
+	switch indexType {
+	case domain.IndexTypeRawContent:
+		return s.indexTypes.RawContent.Shards
+	case domain.IndexTypeClassifiedContent:
+		return s.indexTypes.ClassifiedContent.Shards
+	case domain.IndexTypeArticle, domain.IndexTypePage:
+		return 1
+	default:
+		return 1
+	}
+}
+
+func (s *IndexService) getReplicas(indexType domain.IndexType) int {
+	switch indexType {
+	case domain.IndexTypeRawContent:
+		return s.indexTypes.RawContent.Replicas
+	case domain.IndexTypeClassifiedContent:
+		return s.indexTypes.ClassifiedContent.Replicas
+	case domain.IndexTypeArticle, domain.IndexTypePage:
+		return 1
+	default:
+		return 1
+	}
+}
 
 func isValidIndexType(indexType domain.IndexType) bool {
 	switch indexType {

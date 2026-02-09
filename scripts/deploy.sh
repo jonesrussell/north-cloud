@@ -2,6 +2,12 @@
 # Production deployment script for North Cloud
 # This script should be placed at /opt/north-cloud/deploy.sh on the production server
 #
+# Features:
+#   - Selective service deployment (only changed services)
+#   - Parallel database migrations
+#   - Retry logic for transient dependency failures
+#   - Automatic rollback on health check failure
+#
 # Environment variables (optional, set by CI):
 #   CHANGED_SERVICES - Comma-separated list of services that changed (empty = all)
 #   INFRA_CHANGED    - "true" if infrastructure files changed
@@ -20,6 +26,10 @@ NC='\033[0m' # No Color
 DEPLOY_DIR="/opt/north-cloud"
 COMPOSE_CMD="docker compose -f docker-compose.base.yml -f docker-compose.prod.yml"
 
+# Rollback state
+SNAPSHOT_FILE="/tmp/nc-deploy-snapshot-$$"
+ROLLBACK_ATTEMPTED=false
+
 # Change to deployment directory
 cd "$DEPLOY_DIR" || {
   echo -e "${RED}ERROR: Failed to change to deployment directory: $DEPLOY_DIR${NC}" >&2
@@ -30,11 +40,27 @@ echo -e "${GREEN}=== North Cloud Deployment Script ===${NC}"
 echo "Deployment directory: $DEPLOY_DIR"
 echo "Timestamp: $(date -u +"%Y-%m-%d %H:%M:%S UTC")"
 
+# Services that are built but not deployed via docker-compose
+NON_COMPOSE_SERVICES="mcp-north-cloud"
+
 # Parse changed services
 if [ -n "${CHANGED_SERVICES:-}" ]; then
-  # Convert comma-separated to space-separated
-  SERVICES_TO_UPDATE=$(echo "$CHANGED_SERVICES" | tr ',' ' ')
-  echo -e "${BLUE}Selective deployment: $SERVICES_TO_UPDATE${NC}"
+  # Convert comma-separated to space-separated, filtering out non-compose services
+  SERVICES_TO_UPDATE=""
+  for svc in $(echo "$CHANGED_SERVICES" | tr ',' ' '); do
+    if echo "$NON_COMPOSE_SERVICES" | grep -qw "$svc"; then
+      echo -e "${BLUE}Skipping $svc (build-only, not a compose service)${NC}"
+    else
+      SERVICES_TO_UPDATE="$SERVICES_TO_UPDATE $svc"
+    fi
+  done
+  SERVICES_TO_UPDATE=$(echo "$SERVICES_TO_UPDATE" | xargs)  # trim whitespace
+  if [ -n "$SERVICES_TO_UPDATE" ]; then
+    echo -e "${BLUE}Selective deployment: $SERVICES_TO_UPDATE${NC}"
+  else
+    echo -e "${GREEN}No compose services to deploy (all changes were build-only). Done.${NC}"
+    exit 0
+  fi
 else
   SERVICES_TO_UPDATE=""
   echo -e "${BLUE}Full deployment: all services${NC}"
@@ -52,7 +78,152 @@ else
   echo -e "${YELLOW}WARNING: .env file not found. Some operations may fail.${NC}"
 fi
 
-# Step 0: Login to Docker Hub (if credentials are provided)
+# ============================================================
+# Rollback Functions
+# ============================================================
+
+# Map compose service name to container name
+container_name_for() {
+  local service="$1"
+  echo "north-cloud-${service}-1"
+}
+
+# Snapshot current image IDs for services being updated.
+# Writes service=image_id pairs to SNAPSHOT_FILE.
+snapshot_images() {
+  local services="$1"
+  echo -e "${BLUE}Snapshotting current image versions...${NC}"
+
+  # Determine which services to snapshot
+  local svc_list
+  if [ -n "$services" ]; then
+    svc_list="$services"
+  else
+    svc_list="auth crawler source-manager classifier publisher index-manager search-service dashboard"
+  fi
+
+  rm -f "$SNAPSHOT_FILE"
+  touch "$SNAPSHOT_FILE"
+
+  local snapshot_count=0
+  for svc in $svc_list; do
+    local container
+    container=$(container_name_for "$svc")
+
+    # Skip if container doesn't exist (first deploy)
+    if ! docker inspect "$container" >/dev/null 2>&1; then
+      continue
+    fi
+
+    # Capture the image ID (sha256 digest) currently running
+    local image_id
+    image_id=$(docker inspect --format '{{.Image}}' "$container" 2>/dev/null || true)
+
+    # Capture the image name (e.g., docker.io/jonesrussell/crawler:latest)
+    local image_name
+    image_name=$(docker inspect --format '{{.Config.Image}}' "$container" 2>/dev/null || true)
+
+    if [ -n "$image_id" ] && [ -n "$image_name" ]; then
+      echo "${svc}|${image_name}|${image_id}" >> "$SNAPSHOT_FILE"
+      snapshot_count=$((snapshot_count + 1))
+    fi
+  done
+
+  echo -e "${GREEN}  Snapshotted $snapshot_count service(s)${NC}"
+}
+
+# Rollback failed services to their previous image versions.
+# Reads from SNAPSHOT_FILE, re-tags old images, restarts services.
+rollback_services() {
+  local failed_services="$1"
+  ROLLBACK_ATTEMPTED=true
+
+  echo ""
+  echo -e "${RED}=== ROLLBACK: Reverting failed services ===${NC}"
+
+  if [ ! -f "$SNAPSHOT_FILE" ]; then
+    echo -e "${RED}No snapshot file found - cannot rollback${NC}" >&2
+    return 1
+  fi
+
+  local rollback_count=0
+  local services_to_restart=""
+
+  for svc in $failed_services; do
+    # Find this service in the snapshot
+    local snapshot_line
+    snapshot_line=$(grep "^${svc}|" "$SNAPSHOT_FILE" 2>/dev/null || true)
+
+    if [ -z "$snapshot_line" ]; then
+      echo -e "${YELLOW}  No snapshot for $svc - skipping rollback${NC}"
+      continue
+    fi
+
+    local image_name image_id
+    image_name=$(echo "$snapshot_line" | cut -d'|' -f2)
+    image_id=$(echo "$snapshot_line" | cut -d'|' -f3)
+
+    echo -e "  Reverting $svc: tagging $image_id as $image_name"
+
+    if docker tag "$image_id" "$image_name" 2>/dev/null; then
+      services_to_restart="$services_to_restart $svc"
+      rollback_count=$((rollback_count + 1))
+    else
+      echo -e "${RED}  Failed to re-tag image for $svc${NC}"
+    fi
+  done
+
+  if [ -z "$services_to_restart" ]; then
+    echo -e "${RED}No services could be rolled back${NC}" >&2
+    return 1
+  fi
+
+  echo ""
+  echo -e "${YELLOW}Restarting rolled-back services:$services_to_restart${NC}"
+  if $COMPOSE_CMD up -d $services_to_restart 2>&1; then
+    echo -e "${GREEN}  Rolled back $rollback_count service(s)${NC}"
+  else
+    echo -e "${RED}  Failed to restart rolled-back services${NC}" >&2
+    return 1
+  fi
+
+  # Verify rolled-back services are healthy
+  echo ""
+  echo -e "${YELLOW}Verifying rollback health...${NC}"
+  sleep 5
+
+  local rollback_healthy=true
+  for svc in $services_to_restart; do
+    case "$svc" in
+      auth)          check_health "auth" "/health" "8040" 10 || rollback_healthy=false ;;
+      crawler)       check_health "crawler" "/health" "8060" 20 || rollback_healthy=false ;;
+      source-manager) check_health "source-manager" "/health" "8050" 10 || rollback_healthy=false ;;
+      classifier)    check_health "classifier" "/health" "8070" 10 || rollback_healthy=false ;;
+      publisher)     check_health "publisher" "/health" "8070" 10 || rollback_healthy=false ;;
+      index-manager) check_health "index-manager" "/health" "8090" 10 || rollback_healthy=false ;;
+      search-service) check_health "search-service" "/health" "8090" 10 || rollback_healthy=false ;;
+    esac
+  done
+
+  if [ "$rollback_healthy" = true ]; then
+    echo -e "${GREEN}  Rollback successful - services restored to previous version${NC}"
+  else
+    echo -e "${RED}  Rollback completed but some services still unhealthy${NC}" >&2
+  fi
+
+  return 0
+}
+
+# Cleanup snapshot file on exit
+cleanup() {
+  rm -f "$SNAPSHOT_FILE"
+}
+trap cleanup EXIT
+
+# ============================================================
+# Step 0: Login to Docker Hub
+# ============================================================
+
 if [ -n "${DOCKERHUB_USERNAME:-}" ] && [ -n "${DOCKERHUB_PASSWORD:-}" ]; then
   echo -e "${GREEN}Step 0: Logging in to Docker Hub...${NC}"
   echo "$DOCKERHUB_PASSWORD" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin || {
@@ -66,11 +237,16 @@ else
   echo ""
 fi
 
-# Step 1: Pull latest images (selective if CHANGED_SERVICES is set)
+# ============================================================
+# Step 1: Snapshot current images, then pull new ones
+# ============================================================
+
 echo -e "${GREEN}Step 1: Pulling Docker images...${NC}"
 
+# Snapshot BEFORE pulling so we can rollback
+snapshot_images "$SERVICES_TO_UPDATE"
+
 if [ -n "$SERVICES_TO_UPDATE" ]; then
-  # Pull only changed services
   echo "Pulling images for: $SERVICES_TO_UPDATE"
   if $COMPOSE_CMD pull $SERVICES_TO_UPDATE; then
     echo -e "${GREEN}✓ Selected images pulled successfully${NC}"
@@ -78,7 +254,6 @@ if [ -n "$SERVICES_TO_UPDATE" ]; then
     echo -e "${YELLOW}WARNING: Some images failed to pull. Continuing...${NC}"
   fi
 else
-  # Pull all images
   if $COMPOSE_CMD pull; then
     echo -e "${GREEN}✓ All images pulled successfully${NC}"
   else
@@ -87,11 +262,13 @@ else
 fi
 echo ""
 
-# Step 2: Run database migrations (only if migrations changed or full deploy)
+# ============================================================
+# Step 2: Run database migrations
+# ============================================================
+
 if [ "${MIGRATIONS_CHANGED:-true}" == "true" ] || [ -z "$SERVICES_TO_UPDATE" ]; then
   echo -e "${GREEN}Step 2: Running database migrations...${NC}"
 
-  # Function to run migrations for a service
   run_migration() {
     local service=$1
     local db_host=$2
@@ -103,16 +280,13 @@ if [ "${MIGRATIONS_CHANGED:-true}" == "true" ] || [ -z "$SERVICES_TO_UPDATE" ]; 
 
     echo -e "${YELLOW}Running migrations for $service...${NC}"
 
-    # Check if migrations directory exists and has files
     if [ ! -d "$migrations_path" ] || [ -z "$(ls -A "$migrations_path" 2>/dev/null)" ]; then
       echo -e "${YELLOW}No migrations found for $service, skipping...${NC}"
       return 0
     fi
 
-    # Construct PostgreSQL connection URL
     local db_url="postgres://${db_user}:${db_password}@${db_host}:${db_port}/${db_name}?sslmode=disable"
 
-    # Run migrations
     if ! docker run --rm --network north-cloud_north-cloud-network \
       -v "$DEPLOY_DIR/$migrations_path:/migrations" \
       migrate/migrate:latest \
@@ -126,7 +300,6 @@ if [ "${MIGRATIONS_CHANGED:-true}" == "true" ] || [ -z "$SERVICES_TO_UPDATE" ]; 
     echo -e "${GREEN}✓ Migration completed for $service${NC}"
   }
 
-  # Ensure database services are running for migrations
   echo "Starting database services..."
   $COMPOSE_CMD up -d \
     postgres-crawler \
@@ -138,7 +311,6 @@ if [ "${MIGRATIONS_CHANGED:-true}" == "true" ] || [ -z "$SERVICES_TO_UPDATE" ]; 
     exit 1
   }
 
-  # Wait for databases to be ready (with health check polling)
   echo "Waiting for databases to be ready..."
   for i in {1..30}; do
     if $COMPOSE_CMD exec -T postgres-crawler pg_isready -q 2>/dev/null; then
@@ -148,7 +320,6 @@ if [ "${MIGRATIONS_CHANGED:-true}" == "true" ] || [ -z "$SERVICES_TO_UPDATE" ]; 
     sleep 1
   done
 
-  # Run migrations in parallel (they use separate databases)
   MIGRATION_PIDS=()
 
   if [ -n "${POSTGRES_SOURCE_MANAGER_USER:-}" ] && [ -n "${POSTGRES_SOURCE_MANAGER_PASSWORD:-}" ]; then
@@ -186,7 +357,6 @@ if [ "${MIGRATIONS_CHANGED:-true}" == "true" ] || [ -z "$SERVICES_TO_UPDATE" ]; 
     MIGRATION_PIDS+=($!)
   fi
 
-  # Wait for all migrations to complete
   MIGRATION_FAILED=false
   for pid in "${MIGRATION_PIDS[@]}"; do
     if ! wait "$pid"; then
@@ -206,27 +376,50 @@ else
   echo ""
 fi
 
-# Step 3: Restart services (selective if CHANGED_SERVICES is set)
+# ============================================================
+# Step 3: Restart services (with retry for transient failures)
+# ============================================================
+
 echo -e "${GREEN}Step 3: Restarting services...${NC}"
 
+MAX_RESTART_ATTEMPTS=3
+RESTART_WAIT_SECONDS=15
+
+restart_with_retry() {
+  local services="$1"
+  local attempt=1
+
+  while [ $attempt -le $MAX_RESTART_ATTEMPTS ]; do
+    if [ $attempt -gt 1 ]; then
+      echo -e "${YELLOW}Retry $attempt/$MAX_RESTART_ATTEMPTS (waiting ${RESTART_WAIT_SECONDS}s for dependencies)...${NC}"
+      sleep "$RESTART_WAIT_SECONDS"
+    fi
+
+    if $COMPOSE_CMD up -d $services 2>&1; then
+      return 0
+    fi
+
+    echo -e "${YELLOW}Attempt $attempt/$MAX_RESTART_ATTEMPTS failed${NC}"
+    attempt=$((attempt + 1))
+  done
+
+  echo -e "${RED}ERROR: Failed to restart services after $MAX_RESTART_ATTEMPTS attempts${NC}" >&2
+  return 1
+}
+
 if [ -n "$SERVICES_TO_UPDATE" ]; then
-  # Restart only changed services
   echo "Restarting: $SERVICES_TO_UPDATE"
-  $COMPOSE_CMD up -d $SERVICES_TO_UPDATE || {
-    echo -e "${RED}ERROR: Failed to restart services${NC}" >&2
-    exit 1
-  }
+  restart_with_retry "$SERVICES_TO_UPDATE" || exit 1
 else
-  # Restart all services
-  $COMPOSE_CMD up -d || {
-    echo -e "${RED}ERROR: Failed to restart services${NC}" >&2
-    exit 1
-  }
+  restart_with_retry "" || exit 1
 fi
 echo -e "${GREEN}✓ Services restarted${NC}"
 echo ""
 
-# Step 4: Health checks (poll instead of static sleep)
+# ============================================================
+# Step 4: Health checks (with automatic rollback on failure)
+# ============================================================
+
 echo -e "${GREEN}Step 4: Performing health checks...${NC}"
 
 check_health() {
@@ -260,42 +453,60 @@ else
 fi
 
 FAILED_CHECKS=0
+FAILED_SERVICES=""
 
 for svc in $SERVICES_TO_CHECK; do
   case "$svc" in
     auth)
-      check_health "auth" "/health" "8040" 10 || FAILED_CHECKS=$((FAILED_CHECKS + 1))
+      check_health "auth" "/health" "8040" 10 || { FAILED_CHECKS=$((FAILED_CHECKS + 1)); FAILED_SERVICES="$FAILED_SERVICES $svc"; }
       ;;
     crawler)
-      check_health "crawler" "/health" "8080" 10 || FAILED_CHECKS=$((FAILED_CHECKS + 1))
+      check_health "crawler" "/health" "8080" 20 || { FAILED_CHECKS=$((FAILED_CHECKS + 1)); FAILED_SERVICES="$FAILED_SERVICES $svc"; }
       ;;
     source-manager)
-      check_health "source-manager" "/health" "8050" 10 || FAILED_CHECKS=$((FAILED_CHECKS + 1))
+      check_health "source-manager" "/health" "8050" 10 || { FAILED_CHECKS=$((FAILED_CHECKS + 1)); FAILED_SERVICES="$FAILED_SERVICES $svc"; }
       ;;
     classifier)
-      check_health "classifier" "/health" "8070" 10 || FAILED_CHECKS=$((FAILED_CHECKS + 1))
+      check_health "classifier" "/health" "8070" 10 || { FAILED_CHECKS=$((FAILED_CHECKS + 1)); FAILED_SERVICES="$FAILED_SERVICES $svc"; }
       ;;
     publisher)
-      check_health "publisher" "/health" "8070" 10 || FAILED_CHECKS=$((FAILED_CHECKS + 1))
+      check_health "publisher" "/health" "8070" 10 || { FAILED_CHECKS=$((FAILED_CHECKS + 1)); FAILED_SERVICES="$FAILED_SERVICES $svc"; }
       ;;
     index-manager)
-      check_health "index-manager" "/health" "8090" 10 || FAILED_CHECKS=$((FAILED_CHECKS + 1))
+      check_health "index-manager" "/health" "8090" 10 || { FAILED_CHECKS=$((FAILED_CHECKS + 1)); FAILED_SERVICES="$FAILED_SERVICES $svc"; }
       ;;
     search-service)
-      check_health "search-service" "/health" "8090" 10 || FAILED_CHECKS=$((FAILED_CHECKS + 1))
+      check_health "search-service" "/health" "8090" 10 || { FAILED_CHECKS=$((FAILED_CHECKS + 1)); FAILED_SERVICES="$FAILED_SERVICES $svc"; }
       ;;
     # search-frontend and dashboard don't have health endpoints (static nginx)
   esac
 done
 
 if [ $FAILED_CHECKS -gt 0 ]; then
-  echo -e "${RED}WARNING: $FAILED_CHECKS service(s) failed health checks${NC}" >&2
-  # Don't exit - services might still be starting
+  echo ""
+  echo -e "${RED}$FAILED_CHECKS service(s) failed health checks:$FAILED_SERVICES${NC}" >&2
+
+  # Attempt automatic rollback
+  if rollback_services "$FAILED_SERVICES"; then
+    echo ""
+    echo -e "${RED}=== Deployment FAILED (rolled back to previous version) ===${NC}" >&2
+  else
+    echo ""
+    echo -e "${RED}=== Deployment FAILED (rollback also failed - manual intervention required) ===${NC}" >&2
+  fi
+
+  echo ""
+  echo "Services status:"
+  $COMPOSE_CMD ps --format "table {{.Name}}\t{{.Status}}\t{{.Ports}}" 2>/dev/null | head -25 || true
+  exit 1
 fi
 
 echo ""
 
+# ============================================================
 # Step 5: Deployment summary
+# ============================================================
+
 echo -e "${GREEN}=== Deployment Summary ===${NC}"
 echo "Completed at $(date -u +"%Y-%m-%d %H:%M:%S UTC")"
 if [ -n "$SERVICES_TO_UPDATE" ]; then

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { formatDate, formatDateShort } from '@/lib/utils'
 import { ArrowLeft, Loader2, Search, FileText } from 'lucide-vue-next'
 import { indexManagerApi } from '@/api/client'
 import type { GetIndexResponse } from '@/types/indexManager'
@@ -99,24 +100,6 @@ const handleSearch = () => {
 
 const viewDocument = (docId: string) => {
   router.push(`/intelligence/indexes/${indexName.value}/documents/${docId}`)
-}
-
-const formatDate = (date: string) => {
-  if (!date) return 'N/A'
-  try {
-    return new Date(date).toLocaleDateString()
-  } catch {
-    return 'N/A'
-  }
-}
-
-const formatDateTime = (date: string) => {
-  if (!date) return 'N/A'
-  try {
-    return new Date(date).toLocaleString()
-  } catch {
-    return 'N/A'
-  }
 }
 
 const getHealthVariant = (health: string | undefined) => {
@@ -312,10 +295,10 @@ onMounted(() => {
                   >—</span>
                 </td>
                 <td class="px-6 py-4 text-sm text-muted-foreground">
-                  {{ formatDateTime(doc.created_at || doc.crawled_at || '') }}
+                  {{ formatDate(doc.created_at || doc.crawled_at || '') }}
                 </td>
                 <td class="px-6 py-4 text-sm text-muted-foreground">
-                  {{ formatDate(doc.published_date || '') }}
+                  {{ formatDateShort(doc.published_date || '') }}
                 </td>
               </tr>
             </tbody>

@@ -3,20 +3,19 @@ import { Search, X, Filter } from 'lucide-vue-next'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { useJobs } from '@/features/intake'
+import type { JobsComposable } from '@/features/intake'
 import type { JobStatus } from '@/types/crawler'
 
 interface Props {
+  jobs: JobsComposable
   showSourceFilter?: boolean
   sources?: Array<{ id: string; name: string }>
 }
 
-withDefaults(defineProps<Props>(), {
+const props = withDefaults(defineProps<Props>(), {
   showSourceFilter: false,
   sources: () => [],
 })
-
-const jobs = useJobs()
 
 const statusOptions: Array<{ value: JobStatus; label: string; color: string }> = [
   { value: 'running', label: 'Running', color: 'bg-blue-500' },
@@ -29,16 +28,16 @@ const statusOptions: Array<{ value: JobStatus; label: string; color: string }> =
 ]
 
 function toggleStatusFilter(status: JobStatus) {
-  jobs.toggleStatusFilter(status)
+  props.jobs.toggleStatusFilter(status)
 }
 
 function handleSearchInput(value: string) {
-  jobs.setFilter('search', value || undefined)
+  props.jobs.setFilter('search', value || undefined)
 }
 
 function handleSourceChange(event: Event) {
   const target = event.target as HTMLSelectElement
-  jobs.setFilter('source_id', target.value || undefined)
+  props.jobs.setFilter('source_id', target.value || undefined)
 }
 </script>
 

@@ -82,12 +82,8 @@ func (s *CrimeClassifier) Classify(ctx context.Context, raw *domain.RawContent) 
 	// Layer 3: ML classification (if ML service available)
 	var mlResult *mlclient.ClassifyResponse
 	if s.mlClient != nil {
-		body := raw.RawText
-		if len(body) > maxBodyChars {
-			body = body[:maxBodyChars]
-		}
 		var err error
-		mlResult, err = s.mlClient.Classify(ctx, raw.Title, body)
+		mlResult, err = CallMLWithBodyLimit(ctx, raw.Title, raw.RawText, maxBodyChars, s.mlClient.Classify)
 		if err != nil {
 			s.logger.Warn("ML classification failed, using rules only",
 				infralogger.String("content_id", raw.ID),

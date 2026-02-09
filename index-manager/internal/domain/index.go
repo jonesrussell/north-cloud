@@ -87,3 +87,13 @@ type ListIndicesResponse struct {
 	Limit   int      `json:"limit"`
 	Offset  int      `json:"offset"`
 }
+
+// MigrationResult represents the result of an index migration
+type MigrationResult struct {
+	IndexName     string `json:"index_name"`
+	FromVersion   string `json:"from_version,omitempty"`
+	ToVersion     string `json:"to_version,omitempty"`
+	DocumentCount int64  `json:"document_count,omitempty"`
+	Status        string `json:"status"`
+	Message       string `json:"message,omitempty"`
+}

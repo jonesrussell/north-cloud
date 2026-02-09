@@ -1,0 +1,18 @@
+{
+  "request": {
+    "method": "GET",
+    "url": "https://fixture-news-site.com/listings/businesses",
+    "headers": {
+      "User-Agent": ""
+    }
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "text/html; charset=utf-8"
+    },
+    "was_compressed": false
+  },
+  "recorded_at": "2026-02-06T05:51:28Z",
+  "cache_key": "GET_deec25965bbe"
+}

@@ -21,7 +21,7 @@ func SetupHTTPServer(
 	db *database.Connection,
 	log infralogger.Logger,
 ) *infragin.Server {
-	indexService := service.NewIndexService(esClient, db, log)
+	indexService := service.NewIndexService(esClient, db, log, cfg.IndexTypes)
 	documentService := service.NewDocumentService(esClient, log)
 	aggregationService := service.NewAggregationService(esClient, log)
 	handler := api.NewHandler(indexService, documentService, aggregationService, log)

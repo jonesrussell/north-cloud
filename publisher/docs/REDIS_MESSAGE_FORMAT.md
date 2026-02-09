@@ -120,6 +120,19 @@ Each message is a JSON object with two main sections:
 | `section` | String | Site section |
 | `keywords` | Array[String] | Article keywords |
 
+### Entertainment Classification (Layer 6)
+
+When the classifier has entertainment classification enabled, messages may include:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `entertainment_relevance` | String | `core_entertainment`, `peripheral_entertainment`, or `not_entertainment` |
+| `entertainment_categories` | Array[String] | e.g. `["film", "music", "gaming", "reviews"]` |
+| `entertainment_homepage_eligible` | Boolean | True if article qualifies for entertainment homepage |
+| `entertainment` | Object | Nested: relevance, categories, final_confidence, homepage_eligible, review_required, model_version |
+
+**Layer 6 channels**: `entertainment:homepage`, `entertainment:category:{slug}`, `entertainment:peripheral`.
+
 ## Field Aliases
 
 For backward compatibility and convenience, the following aliases exist:

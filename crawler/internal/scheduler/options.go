@@ -38,3 +38,30 @@ func WithStaleLockCheckInterval(interval time.Duration) SchedulerOption {
 		s.staleLockCheckInterval = interval
 	}
 }
+
+// WithExecutionTimeout sets the maximum time a job execution can run before
+// its context is cancelled. This prevents jobs from hanging indefinitely.
+// Default: 1 hour
+func WithExecutionTimeout(timeout time.Duration) SchedulerOption {
+	return func(s *IntervalScheduler) {
+		s.executionTimeout = timeout
+	}
+}
+
+// WithStuckJobCheckInterval sets how often to check for and recover stuck jobs.
+// Default: 2 minutes
+func WithStuckJobCheckInterval(interval time.Duration) SchedulerOption {
+	return func(s *IntervalScheduler) {
+		s.stuckJobCheckInterval = interval
+	}
+}
+
+// WithLoadBalancing enables or disables load-balanced placement.
+// Default is true (enabled).
+func WithLoadBalancing(enabled bool) SchedulerOption {
+	return func(s *IntervalScheduler) {
+		if !enabled {
+			s.bucketMap = nil
+		}
+	}
+}

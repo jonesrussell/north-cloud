@@ -4,6 +4,7 @@ import {
   AlertTriangle,
   Brain,
   MapPin,
+  Pickaxe,
   Database,
   Download,
   ListTodo,
@@ -50,13 +51,16 @@ export const navigation: NavSection[] = [
       { title: 'Review Queue', path: '/operations/review', icon: AlertTriangle },
     ],
   },
-  // Intelligence - new value from Option B
+  // Intelligence - overview and drill-downs
   {
     title: 'Intelligence',
     icon: Brain,
-    quickAction: { label: 'View Stats', path: '/intelligence/crime' },
+    path: '/intelligence',
+    quickAction: { label: 'Overview', path: '/intelligence' },
     children: [
+      { title: 'Overview', path: '/intelligence', icon: Brain },
       { title: 'Crime Breakdown', path: '/intelligence/crime', icon: AlertTriangle },
+      { title: 'Mining Breakdown', path: '/intelligence/mining', icon: Pickaxe },
       { title: 'Location Breakdown', path: '/intelligence/location', icon: MapPin },
       { title: 'Index Explorer', path: '/intelligence/indexes', icon: Database },
     ],
@@ -106,6 +110,34 @@ export const navigation: NavSection[] = [
   },
 ]
 
+// Type alias for command palette compatibility
+export type NavigationItem = {
+  label: string
+  path: string
+  description?: string
+  external?: boolean
+}
+
+// Flatten all navigation items into a single list
+export function getAllNavigationItems(): NavigationItem[] {
+  const items: NavigationItem[] = []
+  for (const section of navigation) {
+    if (section.path) {
+      items.push({ label: section.title, path: section.path })
+    }
+    if (section.children) {
+      for (const child of section.children) {
+        items.push({
+          label: child.title,
+          path: child.path,
+          description: section.title,
+        })
+      }
+    }
+  }
+  return items
+}
+
 // Helper to find the current section based on route path
 export function getCurrentSection(path: string): NavSection | undefined {
   for (const section of navigation) {
@@ -120,18 +152,20 @@ export function getCurrentSection(path: string): NavSection | undefined {
   return undefined
 }
 
-// Helper to get breadcrumb items for a path
+// Helper to get breadcrumb items for a path (prefer longest matching child so /intelligence/crime → Crime Breakdown, not Overview)
 export function getBreadcrumbs(path: string): { label: string; path: string }[] {
   const breadcrumbs: { label: string; path: string }[] = []
 
   for (const section of navigation) {
     if (section.children) {
-      for (const child of section.children) {
-        if (path === child.path || path.startsWith(child.path + '/')) {
-          breadcrumbs.push({ label: section.title, path: section.children[0].path })
-          breadcrumbs.push({ label: child.title, path: child.path })
-          return breadcrumbs
-        }
+      const matching = section.children.filter(
+        (child) => path === child.path || path.startsWith(child.path + '/')
+      )
+      const best = matching.sort((a, b) => b.path.length - a.path.length)[0]
+      if (best) {
+        breadcrumbs.push({ label: section.title, path: section.children[0].path })
+        breadcrumbs.push({ label: best.title, path: best.path })
+        return breadcrumbs
       }
     }
   }

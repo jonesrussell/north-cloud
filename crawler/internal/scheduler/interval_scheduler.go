@@ -18,11 +18,13 @@ import (
 )
 
 const (
-	defaultCheckInterval   = 10 * time.Second
-	defaultLockDuration    = 5 * time.Minute
-	defaultMetricsInterval = 30 * time.Second
-	hoursPerDay            = 24
-	exponentialBackoffBase = 2
+	defaultCheckInterval         = 10 * time.Second
+	defaultLockDuration          = 5 * time.Minute
+	defaultMetricsInterval       = 30 * time.Second
+	defaultExecutionTimeout      = 1 * time.Hour
+	defaultStuckJobCheckInterval = 2 * time.Minute
+	hoursPerDay                  = 24
+	exponentialBackoffBase       = 2
 )
 
 // JobExecution represents an active job execution with its context.
@@ -55,6 +57,8 @@ type IntervalScheduler struct {
 	lockDuration           time.Duration
 	metricsInterval        time.Duration
 	staleLockCheckInterval time.Duration
+	executionTimeout       time.Duration
+	stuckJobCheckInterval  time.Duration
 
 	// Metrics
 	metrics *SchedulerMetrics
@@ -64,6 +68,9 @@ type IntervalScheduler struct {
 
 	// Log service for job log capture (optional)
 	logService logs.Service
+
+	// Load balancing
+	bucketMap *BucketMap
 }
 
 // NewIntervalScheduler creates a new interval-based scheduler.
@@ -88,7 +95,10 @@ func NewIntervalScheduler(
 		lockDuration:           defaultLockDuration,
 		metricsInterval:        defaultMetricsInterval,
 		staleLockCheckInterval: 1 * time.Minute,
+		executionTimeout:       defaultExecutionTimeout,
+		stuckJobCheckInterval:  defaultStuckJobCheckInterval,
 		metrics:                &SchedulerMetrics{},
+		bucketMap:              NewBucketMap(),
 	}
 
 	// Apply options
@@ -99,6 +109,29 @@ func NewIntervalScheduler(
 	return s
 }
 
+// rebuildBucketMap rebuilds the bucket map from database state on startup.
+func (s *IntervalScheduler) rebuildBucketMap() error {
+	if s.bucketMap == nil {
+		return nil // Load balancing disabled
+	}
+
+	jobs, err := s.repo.GetScheduledJobs(s.ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get scheduled jobs: %w", err)
+	}
+
+	for _, job := range jobs {
+		if job.NextRunAt != nil {
+			s.bucketMap.AddJob(job.ID, SlotKey(*job.NextRunAt))
+		}
+	}
+
+	s.logger.Info("Bucket map rebuilt",
+		infralogger.Int("job_count", len(jobs)),
+	)
+	return nil
+}
+
 // Start starts the interval scheduler.
 func (s *IntervalScheduler) Start(ctx context.Context) error {
 	s.logger.Info("Starting interval scheduler",
@@ -106,6 +139,14 @@ func (s *IntervalScheduler) Start(ctx context.Context) error {
 		infralogger.Duration("lock_duration", s.lockDuration),
 		infralogger.Duration("metrics_interval", s.metricsInterval),
 	)
+
+	// Rebuild bucket map from existing scheduled jobs
+	if err := s.rebuildBucketMap(); err != nil {
+		return fmt.Errorf("failed to rebuild bucket map: %w", err)
+	}
+
+	// Recover jobs orphaned by a prior container restart
+	s.recoverOrphanedJobs()
 
 	// Start job poller
 	s.wg.Add(1)
@@ -119,8 +160,217 @@ func (s *IntervalScheduler) Start(ctx context.Context) error {
 	s.wg.Add(1)
 	go s.cleanStaleLocks()
 
+	// Start stuck job recovery
+	s.wg.Add(1)
+	go s.recoverStuckJobs()
+
 	s.logger.Info("Interval scheduler started successfully")
 	return nil
+}
+
+// GetDistribution returns the current schedule distribution.
+// Returns nil if load balancing is disabled.
+func (s *IntervalScheduler) GetDistribution() *Distribution {
+	if s.bucketMap == nil {
+		return nil
+	}
+	dist := s.bucketMap.GetDistribution(hoursPerDay)
+	return &dist
+}
+
+// ScheduleNewJob schedules a new job with load-balanced placement.
+// This should be called when a job is created via API.
+func (s *IntervalScheduler) ScheduleNewJob(job *domain.Job) error {
+	if job.IntervalMinutes == nil || !job.ScheduleEnabled {
+		// One-time job - no load balancing needed
+		return nil
+	}
+
+	interval := getIntervalDuration(job)
+
+	if s.bucketMap != nil {
+		nextRun := s.bucketMap.PlaceNewJob(job.ID, interval)
+		job.NextRunAt = &nextRun
+		job.Status = string(StateScheduled)
+	} else {
+		// Fallback to original behavior
+		nextRun := time.Now().Add(interval)
+		job.NextRunAt = &nextRun
+		job.Status = string(StateScheduled)
+	}
+
+	return s.repo.Update(s.ctx, job)
+}
+
+// HandleJobDeleted removes a job from the bucket map when deleted.
+func (s *IntervalScheduler) HandleJobDeleted(jobID string) {
+	if s.bucketMap != nil {
+		s.bucketMap.RemoveJob(jobID)
+	}
+}
+
+// HandleIntervalChange re-places a job when its interval changes.
+func (s *IntervalScheduler) HandleIntervalChange(job *domain.Job) error {
+	if s.bucketMap == nil {
+		return nil
+	}
+
+	interval := getIntervalDuration(job)
+	s.bucketMap.RemoveJob(job.ID)
+	nextRun := s.bucketMap.PlaceNewJob(job.ID, interval)
+	job.NextRunAt = &nextRun
+
+	return s.repo.Update(s.ctx, job)
+}
+
+// HandleResume re-places a job when it resumes from pause.
+func (s *IntervalScheduler) HandleResume(job *domain.Job) error {
+	if s.bucketMap == nil {
+		return nil
+	}
+
+	interval := getIntervalDuration(job)
+	s.bucketMap.RemoveJob(job.ID)
+	nextRun := s.bucketMap.PlaceNewJob(job.ID, interval)
+	job.NextRunAt = &nextRun
+
+	return s.repo.Update(s.ctx, job)
+}
+
+// FullRebalance redistributes all scheduled jobs for optimal load balancing.
+// Returns the result of the rebalance operation.
+func (s *IntervalScheduler) FullRebalance() (*RebalanceResult, error) {
+	if s.bucketMap == nil {
+		return nil, errors.New("load balancing is disabled")
+	}
+
+	jobs, err := s.repo.GetScheduledJobs(s.ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get scheduled jobs: %w", err)
+	}
+
+	result := &RebalanceResult{
+		Moved:   make([]Reassignment, 0, len(jobs)),
+		Skipped: make([]SkippedJob, 0),
+	}
+
+	// Sort jobs by interval (longest first) for better placement
+	sortJobsByInterval(jobs)
+
+	// Clear the bucket map and re-place all jobs
+	s.bucketMap.Clear()
+
+	for _, job := range jobs {
+		oldTime := job.NextRunAt
+		reason, canMove := s.bucketMap.CanMoveJob(job.ID, job.Status, job.NextRunAt)
+
+		if !canMove {
+			result.Skipped = append(result.Skipped, SkippedJob{
+				JobID:  job.ID,
+				Reason: reason,
+			})
+			// Re-add at original position
+			if oldTime != nil {
+				s.bucketMap.AddJob(job.ID, SlotKey(*oldTime))
+			}
+			continue
+		}
+
+		interval := getIntervalDuration(job)
+		newTime := s.bucketMap.PlaceNewJob(job.ID, interval)
+		job.NextRunAt = &newTime
+
+		if updateErr := s.repo.Update(s.ctx, job); updateErr != nil {
+			s.logger.Error("Failed to update job during rebalance",
+				infralogger.String("job_id", job.ID),
+				infralogger.Error(updateErr),
+			)
+			continue
+		}
+
+		if oldTime != nil {
+			result.Moved = append(result.Moved, Reassignment{
+				JobID:   job.ID,
+				OldTime: *oldTime,
+				NewTime: newTime,
+			})
+		}
+	}
+
+	dist := s.bucketMap.GetDistribution(hoursPerDay)
+	result.NewDistributionScore = dist.DistributionScore
+
+	s.logger.Info("Rebalance completed",
+		infralogger.Int("moved", len(result.Moved)),
+		infralogger.Int("skipped", len(result.Skipped)),
+		infralogger.Float64("score", result.NewDistributionScore),
+	)
+
+	return result, nil
+}
+
+// PreviewRebalance shows what a full rebalance would do without making changes.
+func (s *IntervalScheduler) PreviewRebalance() (*RebalanceResult, error) {
+	if s.bucketMap == nil {
+		return nil, errors.New("load balancing is disabled")
+	}
+
+	jobs, err := s.repo.GetScheduledJobs(s.ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get scheduled jobs: %w", err)
+	}
+
+	// Create a temporary bucket map for preview
+	tempBucketMap := NewBucketMap()
+
+	result := &RebalanceResult{
+		Moved:   make([]Reassignment, 0, len(jobs)),
+		Skipped: make([]SkippedJob, 0),
+	}
+
+	// Sort jobs by interval (longest first)
+	sortJobsByInterval(jobs)
+
+	for _, job := range jobs {
+		oldTime := job.NextRunAt
+		reason, canMove := s.bucketMap.CanMoveJob(job.ID, job.Status, job.NextRunAt)
+
+		if !canMove {
+			result.Skipped = append(result.Skipped, SkippedJob{
+				JobID:  job.ID,
+				Reason: reason,
+			})
+			if oldTime != nil {
+				tempBucketMap.AddJob(job.ID, SlotKey(*oldTime))
+			}
+			continue
+		}
+
+		interval := getIntervalDuration(job)
+		newTime := tempBucketMap.PlaceNewJob(job.ID, interval)
+
+		if oldTime != nil {
+			result.Moved = append(result.Moved, Reassignment{
+				JobID:   job.ID,
+				OldTime: *oldTime,
+				NewTime: newTime,
+			})
+		}
+	}
+
+	dist := tempBucketMap.GetDistribution(hoursPerDay)
+	result.NewDistributionScore = dist.DistributionScore
+
+	return result, nil
+}
+
+// sortJobsByInterval sorts jobs by interval duration (longest first).
+func sortJobsByInterval(jobs []*domain.Job) {
+	for i := 1; i < len(jobs); i++ {
+		for j := i; j > 0 && getIntervalDuration(jobs[j]) > getIntervalDuration(jobs[j-1]); j-- {
+			jobs[j], jobs[j-1] = jobs[j-1], jobs[j]
+		}
+	}
 }
 
 // Stop stops the interval scheduler gracefully.
@@ -266,8 +516,8 @@ func (s *IntervalScheduler) executeJob(job *domain.Job) {
 	// Publish SSE event for job start
 	s.publishJobStatus(s.ctx, job)
 
-	// Create execution context with cancellation
-	jobCtx, cancel := context.WithCancel(s.ctx)
+	// Create execution context with timeout to prevent indefinite hangs
+	jobCtx, cancel := context.WithTimeout(s.ctx, s.executionTimeout)
 
 	jobExec := &JobExecution{
 		Job:       job,
@@ -355,6 +605,11 @@ func createCaptureFunc(w logs.Writer) func(logs.LogEntry) {
 func (s *IntervalScheduler) runJob(jobExec *JobExecution) {
 	job := jobExec.Job
 	execution := jobExec.Execution
+
+	// Panic recovery registered first — runs last (LIFO) after cleanup defer.
+	// Ensures the goroutine never crashes and the job is marked failed on panic.
+	defer s.recoverFromPanic(job, execution)
+
 	logWriter := s.startLogCapture(jobExec)
 
 	// Create and set JobLogger for this execution
@@ -431,15 +686,67 @@ func (s *IntervalScheduler) runJob(jobExec *JobExecution) {
 	}
 
 	// Get metrics for final log
-	crawlerMetrics := s.crawler.GetMetrics()
+	jobSummary := s.crawler.GetJobLogger().BuildSummary()
 	writeLog(logWriter, "info", "Job completed successfully", job.ID, execution.ID, map[string]any{
-		"duration_ms":   time.Since(startTime).Milliseconds(),
-		"items_crawled": crawlerMetrics.ProcessedCount,
-		"items_indexed": crawlerMetrics.ProcessedCount,
-		"error_count":   crawlerMetrics.ErrorCount,
+		"duration_ms":     time.Since(startTime).Milliseconds(),
+		"pages_crawled":   jobSummary.PagesCrawled,
+		"items_extracted": jobSummary.ItemsExtracted,
+		"error_count":     jobSummary.ErrorsCount,
 	})
 
 	s.handleJobSuccess(jobExec, &startTime)
+}
+
+// recoverFromPanic catches panics in job execution and marks the job as failed.
+// This prevents the goroutine from crashing and leaving the job stuck in "running" state.
+func (s *IntervalScheduler) recoverFromPanic(job *domain.Job, execution *domain.JobExecution) {
+	r := recover()
+	if r == nil {
+		return
+	}
+
+	s.logger.Error("Recovered from panic in job execution",
+		infralogger.String("job_id", job.ID),
+		infralogger.Any("panic", r),
+	)
+
+	now := time.Now()
+	errMsg := fmt.Sprintf("panic: %v", r)
+
+	// Mark execution as failed
+	execution.Status = string(StateFailed)
+	execution.CompletedAt = &now
+	execution.ErrorMessage = &errMsg
+	if updateErr := s.executionRepo.Update(s.ctx, execution); updateErr != nil {
+		s.logger.Error("Failed to update panicked execution", infralogger.Error(updateErr))
+	}
+
+	// Reset job: schedule next run if recurring, otherwise mark failed
+	s.resetJobAfterFailure(job, &errMsg, &now)
+	s.metrics.IncrementFailed()
+	s.metrics.IncrementTotalExecutions()
+}
+
+// resetJobAfterFailure resets a job after a failure (panic or stuck recovery).
+// Recurring jobs are rescheduled; one-time jobs are marked failed.
+func (s *IntervalScheduler) resetJobAfterFailure(job *domain.Job, errMsg *string, now *time.Time) {
+	if job.IntervalMinutes != nil && job.ScheduleEnabled {
+		job.Status = string(StateScheduled)
+		nextRun := s.calculateNextRun(job)
+		job.NextRunAt = &nextRun
+	} else {
+		job.Status = string(StateFailed)
+		job.CompletedAt = now
+	}
+
+	job.ErrorMessage = errMsg
+
+	if updateErr := s.repo.Update(s.ctx, job); updateErr != nil {
+		s.logger.Error("Failed to update job after failure",
+			infralogger.String("job_id", job.ID),
+			infralogger.Error(updateErr),
+		)
+	}
 }
 
 // handleJobSuccess handles successful job completion.
@@ -450,11 +757,10 @@ func (s *IntervalScheduler) handleJobSuccess(jobExec *JobExecution, startTime *t
 	now := time.Now()
 	durationMs := time.Since(*startTime).Milliseconds()
 
-	// Get metrics from crawler
-	metrics := s.crawler.GetMetrics()
-	itemsCrawled := int(metrics.ProcessedCount)
-	// Items are indexed immediately after crawling, so indexed count equals crawled count
-	itemsIndexed := itemsCrawled
+	// Get metrics from job logger
+	summary := s.crawler.GetJobLogger().BuildSummary()
+	itemsCrawled := int(summary.PagesCrawled)
+	itemsIndexed := int(summary.ItemsExtracted)
 
 	// Update execution record
 	execution.Status = string(StateCompleted)
@@ -576,24 +882,37 @@ func (s *IntervalScheduler) handleJobFailure(jobExec *JobExecution, execErr erro
 }
 
 // calculateNextRun calculates the next run time based on interval configuration.
+// getIntervalDuration converts job interval settings to a time.Duration.
+func getIntervalDuration(job *domain.Job) time.Duration {
+	if job.IntervalMinutes == nil {
+		return searchWindowDefault // Default for one-time jobs
+	}
+	switch job.IntervalType {
+	case "hours":
+		return time.Duration(*job.IntervalMinutes) * time.Hour
+	case "days":
+		return time.Duration(*job.IntervalMinutes) * hoursPerDay * time.Hour
+	default: // "minutes"
+		return time.Duration(*job.IntervalMinutes) * time.Minute
+	}
+}
+
+// calculateNextRun calculates the next run time based on interval configuration.
+// Uses rhythm preservation when load balancing is enabled.
 func (s *IntervalScheduler) calculateNextRun(job *domain.Job) time.Time {
 	if job.IntervalMinutes == nil {
 		return time.Time{}
 	}
 
-	var duration time.Duration
-	switch job.IntervalType {
-	case "minutes":
-		duration = time.Duration(*job.IntervalMinutes) * time.Minute
-	case "hours":
-		duration = time.Duration(*job.IntervalMinutes) * time.Hour
-	case "days":
-		duration = time.Duration(*job.IntervalMinutes) * hoursPerDay * time.Hour
-	default:
-		duration = time.Duration(*job.IntervalMinutes) * time.Minute
+	interval := getIntervalDuration(job)
+
+	// Use rhythm preservation when load balancing is enabled
+	if s.bucketMap != nil {
+		return s.bucketMap.CalculateNextRunPreserveRhythm(job.ID, interval)
 	}
 
-	return time.Now().Add(duration)
+	// Fallback to original behavior
+	return time.Now().Add(interval)
 }
 
 // calculateBackoff calculates exponential backoff duration for retries.
@@ -660,6 +979,140 @@ func (s *IntervalScheduler) cleanStaleLocks() {
 				s.metrics.AddStaleLocksCleared(count)
 			}
 		}
+	}
+}
+
+// recoverOrphanedJobs runs once at startup to recover jobs left in "running" state
+// from a prior container lifecycle. At startup, activeJobs is empty, so any job
+// marked "running" in the DB is guaranteed to be orphaned.
+func (s *IntervalScheduler) recoverOrphanedJobs() {
+	orphanedJobs, err := s.executionRepo.GetOrphanedRunningJobs(s.ctx)
+	if err != nil {
+		s.logger.Error("Failed to check for orphaned jobs at startup", infralogger.Error(err))
+		return
+	}
+
+	if len(orphanedJobs) == 0 {
+		return
+	}
+
+	s.logger.Warn("Recovering orphaned jobs from prior container lifecycle",
+		infralogger.Int("count", len(orphanedJobs)),
+	)
+
+	for _, job := range orphanedJobs {
+		s.logger.Warn("Recovering orphaned job",
+			infralogger.String("job_id", job.ID),
+			infralogger.String("url", job.URL),
+		)
+
+		s.failStuckExecution(job.ID)
+
+		now := time.Now()
+		errMsg := "recovered: job orphaned by container restart"
+		s.resetJobAfterFailure(job, &errMsg, &now)
+		s.metrics.IncrementFailed()
+		s.metrics.IncrementTotalExecutions()
+	}
+}
+
+// recoverStuckJobs periodically checks for and recovers jobs stuck in "running" state.
+// This is a safety net for cases where the execution timeout or panic recovery failed.
+func (s *IntervalScheduler) recoverStuckJobs() {
+	defer s.wg.Done()
+
+	ticker := time.NewTicker(s.stuckJobCheckInterval)
+	defer ticker.Stop()
+
+	s.logger.Info("Stuck job recovery started",
+		infralogger.Duration("interval", s.stuckJobCheckInterval),
+		infralogger.Duration("threshold", s.executionTimeout),
+	)
+
+	for {
+		select {
+		case <-s.ctx.Done():
+			s.logger.Info("Stuck job recovery stopping")
+			return
+		case <-ticker.C:
+			s.checkForStuckJobs()
+		}
+	}
+}
+
+// checkForStuckJobs queries for stuck jobs and resets them.
+func (s *IntervalScheduler) checkForStuckJobs() {
+	stuckJobs, err := s.executionRepo.GetStuckJobs(s.ctx, s.executionTimeout)
+	if err != nil {
+		s.logger.Error("Failed to check for stuck jobs", infralogger.Error(err))
+		return
+	}
+
+	for _, job := range stuckJobs {
+		s.resetStuckJob(job)
+	}
+}
+
+// resetStuckJob recovers a single job that is stuck in "running" state.
+func (s *IntervalScheduler) resetStuckJob(job *domain.Job) {
+	// Skip if this job is actively running in this scheduler instance.
+	// The execution timeout context cancellation will handle it.
+	s.activeJobsMu.RLock()
+	_, isActive := s.activeJobs[job.ID]
+	s.activeJobsMu.RUnlock()
+
+	if isActive {
+		return
+	}
+
+	s.logger.Warn("Recovering stuck job",
+		infralogger.String("job_id", job.ID),
+		infralogger.String("source_id", job.SourceID),
+		infralogger.String("url", job.URL),
+	)
+
+	// Mark the stuck execution as failed
+	s.failStuckExecution(job.ID)
+
+	// Reset the job itself
+	now := time.Now()
+	errMsg := "recovered: job exceeded maximum execution time"
+	s.resetJobAfterFailure(job, &errMsg, &now)
+	s.metrics.IncrementFailed()
+	s.metrics.IncrementTotalExecutions()
+}
+
+// failStuckExecution marks the latest running execution for a job as failed.
+func (s *IntervalScheduler) failStuckExecution(jobID string) {
+	latestExec, err := s.executionRepo.GetLatestByJobID(s.ctx, jobID)
+	if err != nil {
+		s.logger.Error("Failed to get latest execution for stuck job",
+			infralogger.String("job_id", jobID),
+			infralogger.Error(err),
+		)
+		return
+	}
+
+	if latestExec.Status != string(StateRunning) {
+		return
+	}
+
+	now := time.Now()
+	errMsg := "recovered: job exceeded maximum execution time"
+	latestExec.Status = string(StateFailed)
+	latestExec.CompletedAt = &now
+	latestExec.ErrorMessage = &errMsg
+
+	if !latestExec.StartedAt.IsZero() {
+		durationMs := now.Sub(latestExec.StartedAt).Milliseconds()
+		latestExec.DurationMs = &durationMs
+	}
+
+	if updateErr := s.executionRepo.Update(s.ctx, latestExec); updateErr != nil {
+		s.logger.Error("Failed to update stuck execution",
+			infralogger.String("job_id", jobID),
+			infralogger.Error(updateErr),
+		)
 	}
 }
 

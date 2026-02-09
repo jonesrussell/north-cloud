@@ -14,6 +14,7 @@ import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import JobLogsViewer from '@/components/crawler/JobLogsViewer.vue'
 
+import { formatDate } from '@/lib/utils'
 import { useJobDetail } from '@/features/intake'
 import type { Job, JobStatus, JobExecution } from '@/types/crawler'
 
@@ -57,11 +58,6 @@ const statusVariants: Record<JobStatus, BadgeVariant> = {
 
 const getStatusVariant = (status: string): BadgeVariant => {
   return statusVariants[status as JobStatus] || 'secondary'
-}
-
-const formatDate = (date: string | undefined | null): string => {
-  if (!date) return 'N/A'
-  return new Date(date).toLocaleString()
 }
 
 const formatDuration = (ms: number | undefined | null): string => {

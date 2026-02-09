@@ -2,7 +2,6 @@ package storage
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"regexp"
@@ -139,66 +138,14 @@ func (r *RawContentIndexer) getRawContentIndexName(sourceName string) string {
 	return fmt.Sprintf("%s_raw_content", normalized)
 }
 
-// EnsureRawContentIndex ensures the raw_content index exists with proper mappings.
-// Uses a cache to avoid redundant checks and log messages for indexes that have already been ensured.
+// EnsureRawContentIndex ensures the raw_content index exists.
+// The canonical mapping is managed by the index-manager service.
+// Uses a cache to avoid redundant checks for indexes that have already been ensured.
 func (r *RawContentIndexer) EnsureRawContentIndex(ctx context.Context, sourceName string) error {
 	indexName := r.getRawContentIndexName(sourceName)
 
-	// Check cache first - if we've already ensured this index, skip the check
 	if _, alreadyEnsured := r.ensuredIndexes.Load(indexName); alreadyEnsured {
 		return nil
-	}
-
-	// Define raw content index mapping
-	mapping := map[string]any{
-		"mappings": map[string]any{
-			"properties": map[string]any{
-				"id":                    map[string]string{"type": "keyword"},
-				"url":                   map[string]string{"type": "keyword"},
-				"source_name":           map[string]string{"type": "keyword"},
-				"title":                 map[string]string{"type": "text"},
-				"raw_text":              map[string]string{"type": "text"},
-				"raw_html":              map[string]any{"type": "text", "index": "false"}, // Store but don't index
-				"meta_description":      map[string]string{"type": "text"},
-				"meta_keywords":         map[string]string{"type": "text"},
-				"og_type":               map[string]string{"type": "keyword"},
-				"og_title":              map[string]string{"type": "text"},
-				"og_description":        map[string]string{"type": "text"},
-				"og_image":              map[string]string{"type": "keyword"},
-				"author":                map[string]string{"type": "text"},
-				"published_date":        map[string]string{"type": "date"},
-				"canonical_url":         map[string]string{"type": "keyword"},
-				"article_section":       map[string]string{"type": "keyword"},
-				"json_ld_data":          map[string]string{"type": "object"},
-				"classification_status": map[string]string{"type": "keyword"},
-				"crawled_at":            map[string]string{"type": "date"},
-				"word_count":            map[string]string{"type": "integer"},
-				"meta": map[string]any{
-					"type": "object",
-					"properties": map[string]any{
-						"twitter_card":         map[string]string{"type": "keyword"},
-						"twitter_site":         map[string]string{"type": "keyword"},
-						"og_image_width":       map[string]string{"type": "integer"},
-						"og_image_height":      map[string]string{"type": "integer"},
-						"og_site_name":         map[string]string{"type": "keyword"},
-						"created_at":           map[string]string{"type": "date"},
-						"updated_at":           map[string]string{"type": "date"},
-						"article_opinion":      map[string]string{"type": "boolean"},
-						"article_content_tier": map[string]string{"type": "keyword"},
-					},
-				},
-			},
-		},
-		"settings": map[string]any{
-			"number_of_shards":   1,
-			"number_of_replicas": 1,
-		},
-	}
-
-	// Convert mapping to JSON
-	mappingJSON, err := json.Marshal(mapping)
-	if err != nil {
-		return fmt.Errorf("failed to marshal index mapping: %w", err)
 	}
 
 	r.logger.Info("Ensuring raw_content index",
@@ -206,15 +153,12 @@ func (r *RawContentIndexer) EnsureRawContentIndex(ctx context.Context, sourceNam
 		infralogger.String("source_name", sourceName),
 	)
 
-	// Create index using storage
 	indexManager := r.storage.GetIndexManager()
-	err = indexManager.EnsureIndex(ctx, indexName, string(mappingJSON))
+	err := indexManager.EnsureIndex(ctx, indexName, "")
 	if err != nil {
 		return fmt.Errorf("failed to ensure raw_content index: %w", err)
 	}
 
-	// Cache that this index has been ensured
 	r.ensuredIndexes.Store(indexName, true)
-
 	return nil
 }

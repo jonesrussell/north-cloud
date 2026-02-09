@@ -18,6 +18,7 @@ func SetupRoutes(router *gin.Engine, handler *Handler) {
 	indexes.GET("/:index_name", handler.GetIndex)              // GET /api/v1/indexes/:index_name
 	indexes.DELETE("/:index_name", handler.DeleteIndex)        // DELETE /api/v1/indexes/:index_name
 	indexes.GET("/:index_name/health", handler.GetIndexHealth) // GET /api/v1/indexes/:index_name/health
+	indexes.POST("/:index_name/migrate", handler.MigrateIndex) // POST /api/v1/indexes/:index_name/migrate
 
 	// Document management endpoints
 	indexes.GET("/:index_name/documents", handler.QueryDocuments)                   // GET /api/v1/indexes/:index_name/documents
@@ -45,4 +46,5 @@ func SetupRoutes(router *gin.Engine, handler *Handler) {
 	aggregations.GET("/crime", handler.GetCrimeAggregation)       // GET /api/v1/aggregations/crime
 	aggregations.GET("/location", handler.GetLocationAggregation) // GET /api/v1/aggregations/location
 	aggregations.GET("/overview", handler.GetOverviewAggregation) // GET /api/v1/aggregations/overview
+	aggregations.GET("/mining", handler.GetMiningAggregation)     // GET /api/v1/aggregations/mining
 }

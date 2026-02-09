@@ -17,6 +17,13 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
+// layer1SkipTopics lists topics handled by dedicated routing layers.
+// These topics are excluded from Layer 1 auto-routing to prevent
+// bypassing their specialized classifiers (e.g. mining → Layer 5).
+var layer1SkipTopics = map[string]bool{
+	"mining": true,
+}
+
 // Config holds router service configuration
 type Config struct {
 	PollInterval      time.Duration
@@ -118,7 +125,7 @@ func (s *Service) Start(ctx context.Context) error {
 func (s *Service) pollAndRoute(ctx context.Context) {
 	indexes := s.discovery.GetIndexes()
 	if len(indexes) == 0 {
-		s.logger.Debug("No indexes discovered, skipping poll")
+		s.logger.Info("No indexes discovered, skipping poll")
 		return
 	}
 
@@ -142,7 +149,7 @@ func (s *Service) pollAndRoute(ctx context.Context) {
 			return
 		}
 
-		s.logger.Debug("Processing articles",
+		s.logger.Info("Processing articles batch",
 			infralogger.Int("count", len(articles)),
 		)
 
@@ -166,8 +173,11 @@ func (s *Service) pollAndRoute(ctx context.Context) {
 
 // routeArticle routes a single article to Layer 1, Layer 2, and Layer 3 channels
 func (s *Service) routeArticle(ctx context.Context, article *Article, channels []models.Channel) {
-	// Layer 1: Automatic topic channels
+	// Layer 1: Automatic topic channels (skip topics with dedicated layers)
 	for _, topic := range article.Topics {
+		if layer1SkipTopics[topic] {
+			continue
+		}
 		channel := fmt.Sprintf("articles:%s", topic)
 		s.publishToChannel(ctx, article, channel, nil)
 	}
@@ -191,6 +201,60 @@ func (s *Service) routeArticle(ctx context.Context, article *Article, channels [
 	for _, channel := range locationChannels {
 		s.publishToChannel(ctx, article, channel, nil)
 	}
+
+	// Layer 5: Mining classification channels
+	miningChannels := GenerateMiningChannels(article)
+	for _, channel := range miningChannels {
+		s.publishToChannel(ctx, article, channel, nil)
+	}
+
+	// Layer 6: Entertainment classification channels
+	entertainmentChannels := GenerateEntertainmentChannels(article)
+	for _, channel := range entertainmentChannels {
+		s.publishToChannel(ctx, article, channel, nil)
+	}
+}
+
+// MiningData holds mining classification fields from Elasticsearch.
+type MiningData struct {
+	Relevance       string   `json:"relevance"`
+	MiningStage     string   `json:"mining_stage"`
+	Commodities     []string `json:"commodities"`
+	Location        string   `json:"location"`
+	FinalConfidence float64  `json:"final_confidence"`
+	ReviewRequired  bool     `json:"review_required"`
+	ModelVersion    string   `json:"model_version,omitempty"`
+}
+
+// CrimeData matches the classifier's nested crime object in Elasticsearch.
+type CrimeData struct {
+	Relevance      string   `json:"street_crime_relevance"`
+	SubLabel       string   `json:"sub_label,omitempty"`
+	CrimeTypes     []string `json:"crime_types"`
+	Specificity    string   `json:"location_specificity"`
+	Confidence     float64  `json:"final_confidence"`
+	Homepage       bool     `json:"homepage_eligible"`
+	Categories     []string `json:"category_pages"`
+	ReviewRequired bool     `json:"review_required"`
+}
+
+// LocationData matches the classifier's nested location object in Elasticsearch.
+type LocationData struct {
+	City        string  `json:"city,omitempty"`
+	Province    string  `json:"province,omitempty"`
+	Country     string  `json:"country"`
+	Specificity string  `json:"specificity"`
+	Confidence  float64 `json:"confidence"`
+}
+
+// EntertainmentData holds entertainment classification fields from Elasticsearch.
+type EntertainmentData struct {
+	Relevance        string   `json:"relevance"`
+	Categories       []string `json:"categories"`
+	FinalConfidence  float64  `json:"final_confidence"`
+	HomepageEligible bool     `json:"homepage_eligible"`
+	ReviewRequired   bool     `json:"review_required"`
+	ModelVersion     string   `json:"model_version,omitempty"`
 }
 
 // Article represents an article from Elasticsearch
@@ -208,7 +272,6 @@ type Article struct {
 	QualityScore     int      `json:"quality_score"`
 	Topics           []string `json:"topics"`
 	ContentType      string   `json:"content_type"`
-	IsCrimeRelated   bool     `json:"is_crime_related"`
 	SourceReputation int      `json:"source_reputation"`
 	Confidence       float64  `json:"confidence"`
 
@@ -227,6 +290,19 @@ type Article struct {
 	LocationCountry    string  `json:"location_country"`
 	LocationConfidence float64 `json:"location_confidence"`
 
+	// Crime classification (nested ES object from classifier)
+	Crime    *CrimeData    `json:"crime,omitempty"`
+	Location *LocationData `json:"location,omitempty"`
+
+	// Mining classification (hybrid rule + ML)
+	Mining *MiningData `json:"mining,omitempty"`
+
+	// Entertainment classification (hybrid rule + ML)
+	Entertainment                 *EntertainmentData `json:"entertainment,omitempty"`
+	EntertainmentRelevance        string             `json:"entertainment_relevance"`
+	EntertainmentCategories       []string           `json:"entertainment_categories"`
+	EntertainmentHomepageEligible bool               `json:"entertainment_homepage_eligible"`
+
 	// Open Graph metadata
 	OGTitle       string `json:"og_title"`
 	OGDescription string `json:"og_description"`
@@ -234,19 +310,50 @@ type Article struct {
 	OGURL         string `json:"og_url"`
 
 	// Additional fields
-	Intro       string   `json:"intro"`
-	Description string   `json:"description"`
-	WordCount   int      `json:"word_count"`
-	Category    string   `json:"category"`
-	Section     string   `json:"section"`
-	Keywords    []string `json:"keywords"`
+	WordCount int `json:"word_count"`
 
 	// Sort values for search_after pagination
 	Sort []any `json:"-"`
 }
 
-// fetchArticles fetches articles from all classified indexes using search_after
-func (s *Service) fetchArticles(ctx context.Context, indexes []string) ([]Article, error) {
+// extractNestedFields copies values from the nested Crime and Location
+// structs into the flat Article fields used by GenerateCrimeChannels()
+// and GenerateLocationChannels(). Call after unmarshaling from Elasticsearch.
+func (a *Article) extractNestedFields() {
+	if a.Crime != nil {
+		a.CrimeRelevance = a.Crime.Relevance
+		a.CrimeSubLabel = a.Crime.SubLabel
+		a.CrimeTypes = a.Crime.CrimeTypes
+		a.LocationSpecificity = a.Crime.Specificity
+		a.HomepageEligible = a.Crime.Homepage
+		a.CategoryPages = a.Crime.Categories
+		a.ReviewRequired = a.Crime.ReviewRequired
+	}
+
+	if a.Location != nil {
+		a.LocationCity = a.Location.City
+		a.LocationProvince = a.Location.Province
+		a.LocationCountry = a.Location.Country
+		a.LocationConfidence = a.Location.Confidence
+		if a.Location.Specificity != "" {
+			a.LocationSpecificity = a.Location.Specificity
+		}
+	}
+
+	if a.Entertainment != nil {
+		a.EntertainmentRelevance = a.Entertainment.Relevance
+		a.EntertainmentCategories = a.Entertainment.Categories
+		a.EntertainmentHomepageEligible = a.Entertainment.HomepageEligible
+	}
+}
+
+// classifiedContentWildcard matches all classified content indexes in Elasticsearch.
+const classifiedContentWildcard = "*_classified_content"
+
+// fetchArticles fetches articles from all classified indexes using search_after.
+// Uses a wildcard pattern instead of listing individual indexes to avoid exceeding
+// Elasticsearch's HTTP line length limit when many indexes exist.
+func (s *Service) fetchArticles(ctx context.Context, _ []string) ([]Article, error) {
 	query := s.buildESQuery()
 
 	queryJSON, err := json.Marshal(query)
@@ -256,7 +363,7 @@ func (s *Service) fetchArticles(ctx context.Context, indexes []string) ([]Articl
 
 	res, err := s.esClient.Search(
 		s.esClient.Search.WithContext(ctx),
-		s.esClient.Search.WithIndex(indexes...),
+		s.esClient.Search.WithIndex(classifiedContentWildcard),
 		s.esClient.Search.WithBody(bytes.NewReader(queryJSON)),
 		s.esClient.Search.WithSize(s.config.BatchSize),
 	)
@@ -319,6 +426,7 @@ func (s *Service) fetchArticles(ctx context.Context, indexes []string) ([]Articl
 		}
 		article.ID = hit.ID
 		article.Sort = hit.Sort
+		article.extractNestedFields()
 		articles = append(articles, article)
 	}
 
@@ -392,19 +500,13 @@ func (s *Service) publishToChannel(ctx context.Context, article *Article, channe
 		"quality_score":     article.QualityScore,
 		"topics":            article.Topics,
 		"content_type":      article.ContentType,
-		"is_crime_related":  article.IsCrimeRelated,
 		"source_reputation": article.SourceReputation,
 		"confidence":        article.Confidence,
 		"og_title":          article.OGTitle,
 		"og_description":    article.OGDescription,
 		"og_image":          article.OGImage,
 		"og_url":            article.OGURL,
-		"intro":             article.Intro,
-		"description":       article.Description,
 		"word_count":        article.WordCount,
-		"category":          article.Category,
-		"section":           article.Section,
-		"keywords":          article.Keywords,
 		// Crime classification
 		"crime_relevance":      article.CrimeRelevance,
 		"crime_sub_label":      article.CrimeSubLabel,
@@ -413,6 +515,13 @@ func (s *Service) publishToChannel(ctx context.Context, article *Article, channe
 		"homepage_eligible":    article.HomepageEligible,
 		"category_pages":       article.CategoryPages,
 		"review_required":      article.ReviewRequired,
+		// Mining classification
+		"mining": article.Mining,
+		// Entertainment classification
+		"entertainment_relevance":         article.EntertainmentRelevance,
+		"entertainment_categories":        article.EntertainmentCategories,
+		"entertainment_homepage_eligible": article.EntertainmentHomepageEligible,
+		"entertainment":                   article.Entertainment,
 		// Location detection
 		"location_city":       article.LocationCity,
 		"location_province":   article.LocationProvince,
@@ -455,17 +564,22 @@ func (s *Service) publishToChannel(ctx context.Context, article *Article, channe
 		)
 	}
 
-	s.logger.Debug("Published article to channel",
+	s.logger.Info("Published article to channel",
 		infralogger.String("article_id", article.ID),
+		infralogger.String("title", article.Title),
 		infralogger.String("channel", channelName),
 	)
 }
 
-// GenerateLayer1Channels returns topic-based channel names for an article
+// GenerateLayer1Channels returns topic-based channel names for an article.
+// Topics with dedicated routing layers (e.g. "mining" → Layer 5) are excluded.
 func GenerateLayer1Channels(article *Article) []string {
-	channels := make([]string, len(article.Topics))
-	for i, topic := range article.Topics {
-		channels[i] = fmt.Sprintf("articles:%s", topic)
+	channels := make([]string, 0, len(article.Topics))
+	for _, topic := range article.Topics {
+		if layer1SkipTopics[topic] {
+			continue
+		}
+		channels = append(channels, fmt.Sprintf("articles:%s", topic))
 	}
 	return channels
 }

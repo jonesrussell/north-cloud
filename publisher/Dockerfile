@@ -1,9 +1,9 @@
 # Build stage
-FROM golang:1.25-alpine AS builder
+FROM golang:1.25.7-alpine AS builder
 
 RUN apk add --no-cache ca-certificates
 
-# Prepare workspace for replace ../infrastructure
+# Prepare workspace for replace directive (../infrastructure)
 WORKDIR /build
 COPY infrastructure ./infrastructure
 
@@ -34,8 +34,9 @@ RUN apk --no-cache add ca-certificates tzdata curl && \
 
 WORKDIR /app
 
-# Copy binary
+# Copy binary and config
 COPY --from=builder /build/publisher/publisher .
+COPY --from=builder /build/publisher/config.yml.example ./config.yml
 
 # Switch to non-root user
 USER publisher
