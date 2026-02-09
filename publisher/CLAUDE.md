@@ -57,7 +57,7 @@ publisher/
 
 The publisher is **topic-driven and consumer-agnostic**. Channels define *what* content is published; the publisher does not track or limit who subscribes.
 
-- **Layer 1 (automatic topic channels)**: For each article topic, the router publishes to `articles:{topic}` (e.g. `articles:technology`, `articles:politics`, `articles:violent_crime`). These channels always exist; no DB record or configuration required. Any number of consumers may subscribe.
+- **Layer 1 (automatic topic channels)**: For each article topic, the router publishes to `articles:{topic}` (e.g. `articles:technology`, `articles:politics`, `articles:violent_crime`). Topics in `layer1SkipTopics` (currently: `mining`) are excluded — these have dedicated routing layers with proper relevance filtering. These channels always exist; no DB record or configuration required. Any number of consumers may subscribe.
 - **Layer 2 (custom channels)**: Optional DB-backed channels with rules (include/exclude topics, min quality, content types). Used for aggregations (e.g. one channel for all crime sub-categories). Stored in the `channels` table. Same rule: one channel can serve unlimited consumers.
 - **Layer 3 (crime classification channels)**: Automatic channels based on classifier's hybrid rule + ML crime classification. Routes to `crime:homepage` (for homepage-eligible articles) and `crime:category:{type}` (for category page listings). Only articles with `crime_relevance != "not_crime"` are routed.
 - **Layer 4 (location channels)**: Automatic channels for geographic routing of crime content (`crime:local:{city}`, `crime:province:{code}`, `crime:canada`, `crime:international`).

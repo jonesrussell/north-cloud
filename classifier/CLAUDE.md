@@ -87,6 +87,8 @@ INSERT INTO classification_rules (topic, keywords, priority) VALUES
 - `organized_crime` - gang, cartel, money laundering
 - `criminal_justice` - court, sentencing, trial
 
+**Mining topic rule** (migration 011): Uses `min_confidence: 0.5` with mining-specific keywords only. Ambiguous terms (gold, silver, resource, grade, deposit, etc.) were removed to prevent false positives — the mining-ML hybrid classifier (Layer 5) handles nuanced relevance filtering.
+
 ## Crime Hybrid Classification
 
 **Enabled via**: `CRIME_ENABLED=true` and `CRIME_ML_SERVICE_URL=http://crime-ml:8076`

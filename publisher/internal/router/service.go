@@ -17,6 +17,13 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
+// layer1SkipTopics lists topics handled by dedicated routing layers.
+// These topics are excluded from Layer 1 auto-routing to prevent
+// bypassing their specialized classifiers (e.g. mining → Layer 5).
+var layer1SkipTopics = map[string]bool{
+	"mining": true,
+}
+
 // Config holds router service configuration
 type Config struct {
 	PollInterval      time.Duration
@@ -166,8 +173,11 @@ func (s *Service) pollAndRoute(ctx context.Context) {
 
 // routeArticle routes a single article to Layer 1, Layer 2, and Layer 3 channels
 func (s *Service) routeArticle(ctx context.Context, article *Article, channels []models.Channel) {
-	// Layer 1: Automatic topic channels
+	// Layer 1: Automatic topic channels (skip topics with dedicated layers)
 	for _, topic := range article.Topics {
+		if layer1SkipTopics[topic] {
+			continue
+		}
 		channel := fmt.Sprintf("articles:%s", topic)
 		s.publishToChannel(ctx, article, channel, nil)
 	}
@@ -561,11 +571,15 @@ func (s *Service) publishToChannel(ctx context.Context, article *Article, channe
 	)
 }
 
-// GenerateLayer1Channels returns topic-based channel names for an article
+// GenerateLayer1Channels returns topic-based channel names for an article.
+// Topics with dedicated routing layers (e.g. "mining" → Layer 5) are excluded.
 func GenerateLayer1Channels(article *Article) []string {
-	channels := make([]string, len(article.Topics))
-	for i, topic := range article.Topics {
-		channels[i] = fmt.Sprintf("articles:%s", topic)
+	channels := make([]string, 0, len(article.Topics))
+	for _, topic := range article.Topics {
+		if layer1SkipTopics[topic] {
+			continue
+		}
+		channels = append(channels, fmt.Sprintf("articles:%s", topic))
 	}
 	return channels
 }
