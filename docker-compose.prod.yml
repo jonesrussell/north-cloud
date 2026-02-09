@@ -182,6 +182,8 @@ services:
         condition: service_healthy
       coforge-ml:
         condition: service_healthy
+      entertainment-ml:
+        condition: service_healthy
     environment:
       POSTGRES_HOST: postgres-classifier
       POSTGRES_PORT: 5432
@@ -202,6 +204,8 @@ services:
       MINING_ML_SERVICE_URL: http://mining-ml:8077
       COFORGE_ENABLED: "true"
       COFORGE_ML_SERVICE_URL: http://coforge-ml:8078
+      ENTERTAINMENT_ENABLED: "true"
+      ENTERTAINMENT_ML_SERVICE_URL: http://entertainment-ml:8079
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:
