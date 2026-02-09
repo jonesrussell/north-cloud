@@ -173,6 +173,27 @@ func parseOptions(c *gin.Context) *domain.Options {
 	return options
 }
 
+// Suggest handles autocomplete suggestion requests
+func (h *Handler) Suggest(c *gin.Context) {
+	q := strings.TrimSpace(c.Query("q"))
+	if q == "" {
+		c.JSON(http.StatusOK, domain.SuggestResponse{Suggestions: []string{}})
+		return
+	}
+
+	result, err := h.searchService.Suggest(c.Request.Context(), q)
+	if err != nil {
+		h.logger.Warn("Suggest failed",
+			infralogger.Error(err),
+			infralogger.String("query", q),
+		)
+		c.JSON(http.StatusOK, domain.SuggestResponse{Suggestions: []string{}})
+		return
+	}
+
+	c.JSON(http.StatusOK, result)
+}
+
 // HealthCheck handles health check requests
 func (h *Handler) HealthCheck(c *gin.Context) {
 	status := h.searchService.HealthCheck(c.Request.Context())

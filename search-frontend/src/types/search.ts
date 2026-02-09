@@ -12,6 +12,7 @@ export interface SearchResult {
   topics?: string[]
   content_type?: string
   source?: string
+  source_name?: string
   highlight?: {
     title?: string[]
     body?: string[]
@@ -34,7 +35,25 @@ export interface SearchFilters {
 }
 
 /**
- * Facet aggregation from Elasticsearch
+ * Single facet bucket (backend API shape)
+ */
+export interface FacetBucketItem {
+  key: string
+  count: number
+}
+
+/**
+ * Facets as returned by the search API
+ */
+export interface FacetsFromApi {
+  topics?: FacetBucketItem[]
+  content_types?: FacetBucketItem[]
+  sources?: FacetBucketItem[]
+  quality_ranges?: FacetBucketItem[]
+}
+
+/**
+ * Facet aggregation from Elasticsearch (legacy / raw)
  */
 export interface Facet {
   [key: string]: {
@@ -51,9 +70,16 @@ export interface Facet {
 export interface SearchResponse {
   hits: SearchResult[]
   total_hits: number
-  facets?: Facet | null
+  facets?: FacetsFromApi | null
   took?: number
   [key: string]: unknown
+}
+
+/**
+ * Suggest API response
+ */
+export interface SuggestResponse {
+  suggestions: string[]
 }
 
 /**
@@ -82,7 +108,7 @@ export interface SearchRequest {
 export interface SearchState {
   query: string
   results: SearchResult[]
-  facets: Facet | null
+  facets: FacetsFromApi | null
   totalHits: number
   currentPage: number
   pageSize: number

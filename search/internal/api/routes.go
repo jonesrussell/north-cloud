@@ -25,7 +25,8 @@ func SetupRoutes(router *gin.Engine, handler *Handler) {
 
 		// Search endpoints
 		search := v1.Group("/search")
-		search.POST("", handler.Search) // POST for complex searches
-		search.GET("", handler.Search)  // GET for simple searches
+		search.GET("/suggest", handler.Suggest)
+		search.POST("", handler.Search)
+		search.GET("", handler.Search)
 	}
 }

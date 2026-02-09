@@ -1,5 +1,5 @@
 import axios, { type AxiosInstance, type AxiosResponse, type InternalAxiosRequestConfig } from 'axios'
-import type { SearchRequest, SearchResponse } from '@/types/search'
+import type { SearchRequest, SearchResponse, SuggestResponse } from '@/types/search'
 import type { SearchApi } from '@/types/api'
 
 const DEBUG = import.meta.env.DEV
@@ -48,6 +48,13 @@ export const searchApi: SearchApi = {
    */
   simpleSearch: (params: Record<string, unknown>): Promise<AxiosResponse<SearchResponse>> => {
     return searchClient.get<SearchResponse>('', { params })
+  },
+
+  /**
+   * Autocomplete suggestions
+   */
+  suggest: (query: string): Promise<AxiosResponse<SuggestResponse>> => {
+    return searchClient.get<SuggestResponse>('/suggest', { params: { q: query } })
   },
 
   /**

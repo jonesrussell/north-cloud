@@ -91,6 +91,11 @@ type FacetBucket struct {
 	Count int64  `json:"count"`
 }
 
+// SuggestResponse holds autocomplete suggestion strings
+type SuggestResponse struct {
+	Suggestions []string `json:"suggestions"`
+}
+
 // Validate validates the search request
 func (req *SearchRequest) Validate(maxPageSize, defaultPageSize, maxQueryLength int) error {
 	// Validate query length
