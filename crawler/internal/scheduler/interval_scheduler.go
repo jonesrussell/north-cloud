@@ -145,6 +145,9 @@ func (s *IntervalScheduler) Start(ctx context.Context) error {
 		return fmt.Errorf("failed to rebuild bucket map: %w", err)
 	}
 
+	// Recover jobs orphaned by a prior container restart
+	s.recoverOrphanedJobs()
+
 	// Start job poller
 	s.wg.Add(1)
 	go s.pollJobs()
@@ -976,6 +979,40 @@ func (s *IntervalScheduler) cleanStaleLocks() {
 				s.metrics.AddStaleLocksCleared(count)
 			}
 		}
+	}
+}
+
+// recoverOrphanedJobs runs once at startup to recover jobs left in "running" state
+// from a prior container lifecycle. At startup, activeJobs is empty, so any job
+// marked "running" in the DB is guaranteed to be orphaned.
+func (s *IntervalScheduler) recoverOrphanedJobs() {
+	orphanedJobs, err := s.executionRepo.GetOrphanedRunningJobs(s.ctx)
+	if err != nil {
+		s.logger.Error("Failed to check for orphaned jobs at startup", infralogger.Error(err))
+		return
+	}
+
+	if len(orphanedJobs) == 0 {
+		return
+	}
+
+	s.logger.Warn("Recovering orphaned jobs from prior container lifecycle",
+		infralogger.Int("count", len(orphanedJobs)),
+	)
+
+	for _, job := range orphanedJobs {
+		s.logger.Warn("Recovering orphaned job",
+			infralogger.String("job_id", job.ID),
+			infralogger.String("url", job.URL),
+		)
+
+		s.failStuckExecution(job.ID)
+
+		now := time.Now()
+		errMsg := "recovered: job orphaned by container restart"
+		s.resetJobAfterFailure(job, &errMsg, &now)
+		s.metrics.IncrementFailed()
+		s.metrics.IncrementTotalExecutions()
 	}
 }
 

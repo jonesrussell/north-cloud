@@ -54,6 +54,7 @@ type ExecutionRepositoryInterface interface {
 	GetTodayStats(ctx context.Context) (crawledToday int64, indexedToday int64, err error)
 	GetFailureRate(ctx context.Context, window time.Duration) (float64, error)
 	GetStuckJobs(ctx context.Context, threshold time.Duration) ([]*domain.Job, error)
+	GetOrphanedRunningJobs(ctx context.Context) ([]*domain.Job, error)
 
 	// Maintenance operations
 	CleanupOldExecutions(ctx context.Context) (int, error)

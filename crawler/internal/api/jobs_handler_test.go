@@ -143,6 +143,10 @@ func (m *mockExecutionRepo) GetStuckJobs(ctx context.Context, threshold time.Dur
 	return nil, errMockNoData
 }
 
+func (m *mockExecutionRepo) GetOrphanedRunningJobs(ctx context.Context) ([]*domain.Job, error) {
+	return nil, errMockNoData
+}
+
 func (m *mockExecutionRepo) CleanupOldExecutions(ctx context.Context) (int, error) {
 	return 0, nil
 }
