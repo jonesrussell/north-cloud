@@ -610,7 +610,8 @@ func (h *JobsHandler) PostSchedulerRebalancePreview(c *gin.Context) {
 }
 
 // ForceRun handles POST /api/v2/jobs/:id/force-run (run scheduled job now).
-// Sets next_run_at to now so the V1 interval scheduler picks the job up on its next poll.
+// Sets next_run_at to now and status to pending so the interval scheduler picks
+// the job up on its next poll, and the UI reflects the queued state immediately.
 func (h *JobsHandler) ForceRun(c *gin.Context) {
 	id := c.Param("id")
 	if id == "" || id == undefinedID {
@@ -640,6 +641,7 @@ func (h *JobsHandler) ForceRun(c *gin.Context) {
 
 	now := time.Now()
 	job.NextRunAt = &now
+	job.Status = statusPending
 	if updateErr := h.repo.Update(c.Request.Context(), job); updateErr != nil {
 		respondInternalError(c, "Failed to schedule job for immediate run")
 		return

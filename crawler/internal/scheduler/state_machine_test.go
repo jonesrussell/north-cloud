@@ -29,14 +29,19 @@ func TestValidateStateTransition(t *testing.T) {
 		{"scheduled to paused", scheduler.StateScheduled, scheduler.StatePaused, false},
 		{"scheduled to cancelled", scheduler.StateScheduled, scheduler.StateCancelled, false},
 
+		// Valid force-run transition from scheduled
+		{"scheduled to pending", scheduler.StateScheduled, scheduler.StatePending, false},
+
 		// Invalid transitions from scheduled
-		{"scheduled to pending", scheduler.StateScheduled, scheduler.StatePending, true},
 		{"scheduled to completed", scheduler.StateScheduled, scheduler.StateCompleted, true},
 		{"scheduled to failed", scheduler.StateScheduled, scheduler.StateFailed, true},
 
 		// Valid transitions from paused
 		{"paused to scheduled", scheduler.StatePaused, scheduler.StateScheduled, false},
 		{"paused to cancelled", scheduler.StatePaused, scheduler.StateCancelled, false},
+
+		// Valid force-run transition from paused
+		{"paused to pending", scheduler.StatePaused, scheduler.StatePending, false},
 
 		// Invalid transitions from paused
 		{"paused to running", scheduler.StatePaused, scheduler.StateRunning, true},

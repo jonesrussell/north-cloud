@@ -30,11 +30,13 @@ func ValidateStateTransition(from, to JobState) error {
 		},
 		StateScheduled: {
 			StateRunning,   // When next_run_at reached
+			StatePending,   // Force-run: queued for immediate execution
 			StatePaused,    // Manual pause
 			StateCancelled, // Manual cancellation
 		},
 		StatePaused: {
 			StateScheduled, // Manual resume
+			StatePending,   // Force-run: queued for immediate execution
 			StateCancelled, // Manual cancellation
 		},
 		StateRunning: {
