@@ -57,7 +57,8 @@ var excludePatterns = []*regexp.Regexp{
 // authorityIndicators are words that signal real crime reporting (police, courts, arrests).
 // Used to prevent fiction, metaphors, and opinion from being classified as core_street_crime.
 const authorityIndicators = `police|rcmp|opp|sq|court|judge|investigation|suspect|accused|` +
-	`officer|constable|detective|prosecution|charged|arrest|sentenced|convicted`
+	`officer|constable|detective|prosecution|charged|arrest|sentenced|convicted|` +
+	`custody|detained|apprehended|wanted|manhunt`
 
 // Violent crime patterns — murder/shooting/stabbing require authority indicators.
 var violentCrimePatterns = []patternWithConf{
@@ -76,6 +77,17 @@ var violentCrimePatterns = []patternWithConf{
 	// Sexual assault and found dead are inherently crime-related (unchanged)
 	{regexp.MustCompile(`(?i)(sexual assault|rape|sex assault)`), confidenceMediumViolent},
 	{regexp.MustCompile(`(?i)(found dead|human remains)`), confidenceFoundDead},
+	// Robbery/armed robbery: action + authority (either order)
+	{regexp.MustCompile(`(?i)(robbery|robbed|armed robbery).*(` + authorityIndicators + `)`), confidenceAssault},
+	{regexp.MustCompile(`(?i)(` + authorityIndicators + `).*(robbery|robbed|armed robbery)`), confidenceAssault},
+	// Carjacking: action + authority (either order)
+	{regexp.MustCompile(`(?i)(carjack\w*).*(` + authorityIndicators + `)`), confidenceMediumViolent},
+	{regexp.MustCompile(`(?i)(` + authorityIndicators + `).*(carjack\w*)`), confidenceMediumViolent},
+	// Kidnapping/abduction: action + authority (either order)
+	{regexp.MustCompile(`(?i)(kidnap\w*|abduct\w*).*(` + authorityIndicators + `)`), confidenceMediumViolent},
+	{regexp.MustCompile(`(?i)(` + authorityIndicators + `).*(kidnap\w*|abduct\w*)`), confidenceMediumViolent},
+	// Hostage situations are inherently crime-related
+	{regexp.MustCompile(`(?i)(hostage)`), confidenceMediumViolent},
 }
 
 // Property crime patterns.

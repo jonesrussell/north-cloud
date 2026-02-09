@@ -200,6 +200,97 @@ func TestCrimeRules_ClassifyByRules_RequiresAuthority(t *testing.T) {
 	}
 }
 
+func TestCrimeRules_ClassifyByRules_MissingPatterns(t *testing.T) {
+	t.Helper()
+
+	tests := []struct {
+		name              string
+		title             string
+		expectedRelevance string
+		expectedTypes     []string
+	}{
+		{
+			name:              "robbery with arrest",
+			title:             "Repeat offender among two arrested in store robbery",
+			expectedRelevance: "core_street_crime",
+			expectedTypes:     []string{"violent_crime"},
+		},
+		{
+			name:              "armed robbery",
+			title:             "Armed robbery at downtown convenience store, police investigating",
+			expectedRelevance: "core_street_crime",
+			expectedTypes:     []string{"violent_crime"},
+		},
+		{
+			name:              "robbery with RCMP",
+			title:             "RCMP investigating bank robbery in Sudbury",
+			expectedRelevance: "core_street_crime",
+			expectedTypes:     []string{"violent_crime"},
+		},
+		{
+			name:              "carjacking",
+			title:             "Police arrest suspect in violent carjacking incident",
+			expectedRelevance: "core_street_crime",
+			expectedTypes:     []string{"violent_crime"},
+		},
+		{
+			name:              "kidnapping",
+			title:             "Man charged with kidnapping after Amber Alert",
+			expectedRelevance: "core_street_crime",
+			expectedTypes:     []string{"violent_crime"},
+		},
+		{
+			name:              "abduction",
+			title:             "Police searching for suspect in child abduction",
+			expectedRelevance: "core_street_crime",
+			expectedTypes:     []string{"violent_crime"},
+		},
+		{
+			name:              "hostage",
+			title:             "Hostage situation ends with arrest by tactical unit",
+			expectedRelevance: "core_street_crime",
+			expectedTypes:     []string{"violent_crime"},
+		},
+		{
+			name:              "custody authority indicator",
+			title:             "Suspect taken into custody after downtown stabbing",
+			expectedRelevance: "core_street_crime",
+			expectedTypes:     []string{"violent_crime"},
+		},
+		{
+			name:              "manhunt authority indicator",
+			title:             "Manhunt underway after shooting in North Bay",
+			expectedRelevance: "core_street_crime",
+			expectedTypes:     []string{"violent_crime"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := classifyByRules(tt.title, "")
+
+			if result.relevance != tt.expectedRelevance {
+				t.Errorf("relevance: got %s, want %s for title: %s",
+					result.relevance, tt.expectedRelevance, tt.title)
+			}
+
+			for _, expectedType := range tt.expectedTypes {
+				found := false
+				for _, actualType := range result.crimeTypes {
+					if actualType == expectedType {
+						found = true
+						break
+					}
+				}
+				if !found {
+					t.Errorf("missing crime type %s in %v for title: %s",
+						expectedType, result.crimeTypes, tt.title)
+				}
+			}
+		})
+	}
+}
+
 func TestCrimeRules_ClassifyByRules_CourtOutcomes(t *testing.T) {
 	t.Helper()
 
