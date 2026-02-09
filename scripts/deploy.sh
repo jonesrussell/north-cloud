@@ -461,7 +461,7 @@ for svc in $SERVICES_TO_CHECK; do
       check_health "auth" "/health" "8040" 10 || { FAILED_CHECKS=$((FAILED_CHECKS + 1)); FAILED_SERVICES="$FAILED_SERVICES $svc"; }
       ;;
     crawler)
-      check_health "crawler" "/health" "8060" 20 || { FAILED_CHECKS=$((FAILED_CHECKS + 1)); FAILED_SERVICES="$FAILED_SERVICES $svc"; }
+      check_health "crawler" "/health" "8080" 20 || { FAILED_CHECKS=$((FAILED_CHECKS + 1)); FAILED_SERVICES="$FAILED_SERVICES $svc"; }
       ;;
     source-manager)
       check_health "source-manager" "/health" "8050" 10 || { FAILED_CHECKS=$((FAILED_CHECKS + 1)); FAILED_SERVICES="$FAILED_SERVICES $svc"; }
