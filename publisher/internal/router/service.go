@@ -197,6 +197,12 @@ func (s *Service) routeArticle(ctx context.Context, article *Article, channels [
 	for _, channel := range miningChannels {
 		s.publishToChannel(ctx, article, channel, nil)
 	}
+
+	// Layer 6: Entertainment classification channels
+	entertainmentChannels := GenerateEntertainmentChannels(article)
+	for _, channel := range entertainmentChannels {
+		s.publishToChannel(ctx, article, channel, nil)
+	}
 }
 
 // MiningData holds mining classification fields from Elasticsearch.
@@ -229,6 +235,16 @@ type LocationData struct {
 	Country     string  `json:"country"`
 	Specificity string  `json:"specificity"`
 	Confidence  float64 `json:"confidence"`
+}
+
+// EntertainmentData holds entertainment classification fields from Elasticsearch.
+type EntertainmentData struct {
+	Relevance        string   `json:"relevance"`
+	Categories       []string `json:"categories"`
+	FinalConfidence  float64  `json:"final_confidence"`
+	HomepageEligible bool     `json:"homepage_eligible"`
+	ReviewRequired   bool     `json:"review_required"`
+	ModelVersion     string   `json:"model_version,omitempty"`
 }
 
 // Article represents an article from Elasticsearch
@@ -271,6 +287,12 @@ type Article struct {
 	// Mining classification (hybrid rule + ML)
 	Mining *MiningData `json:"mining,omitempty"`
 
+	// Entertainment classification (hybrid rule + ML)
+	Entertainment             *EntertainmentData `json:"entertainment,omitempty"`
+	EntertainmentRelevance    string             `json:"entertainment_relevance"`
+	EntertainmentCategories  []string           `json:"entertainment_categories"`
+	EntertainmentHomepageEligible bool           `json:"entertainment_homepage_eligible"`
+
 	// Open Graph metadata
 	OGTitle       string `json:"og_title"`
 	OGDescription string `json:"og_description"`
@@ -306,6 +328,12 @@ func (a *Article) extractNestedFields() {
 		if a.Location.Specificity != "" {
 			a.LocationSpecificity = a.Location.Specificity
 		}
+	}
+
+	if a.Entertainment != nil {
+		a.EntertainmentRelevance = a.Entertainment.Relevance
+		a.EntertainmentCategories = a.Entertainment.Categories
+		a.EntertainmentHomepageEligible = a.Entertainment.HomepageEligible
 	}
 }
 
@@ -479,6 +507,11 @@ func (s *Service) publishToChannel(ctx context.Context, article *Article, channe
 		"review_required":      article.ReviewRequired,
 		// Mining classification
 		"mining": article.Mining,
+		// Entertainment classification
+		"entertainment_relevance":         article.EntertainmentRelevance,
+		"entertainment_categories":        article.EntertainmentCategories,
+		"entertainment_homepage_eligible":  article.EntertainmentHomepageEligible,
+		"entertainment":                    article.Entertainment,
 		// Location detection
 		"location_city":       article.LocationCity,
 		"location_province":   article.LocationProvince,

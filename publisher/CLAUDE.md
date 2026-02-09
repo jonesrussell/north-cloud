@@ -62,6 +62,7 @@ The publisher is **topic-driven and consumer-agnostic**. Channels define *what* 
 - **Layer 3 (crime classification channels)**: Automatic channels based on classifier's hybrid rule + ML crime classification. Routes to `crime:homepage` (for homepage-eligible articles) and `crime:category:{type}` (for category page listings). Only articles with `crime_relevance != "not_crime"` are routed.
 - **Layer 4 (location channels)**: Automatic channels for geographic routing of crime content (`crime:local:{city}`, `crime:province:{code}`, `crime:canada`, `crime:international`).
 - **Layer 5 (mining classification channels)**: Automatic channel based on classifier's hybrid rule + ML mining classification. Routes to `articles:mining` for all `core_mining` and `peripheral_mining` articles. Mining metadata (relevance, stage, commodities, location) included in payload for downstream filtering.
+- **Layer 6 (entertainment classification channels)**: Automatic channels based on classifier's hybrid rule + ML entertainment classification. Routes to `entertainment:homepage` (core + homepage eligible), `entertainment:category:{slug}` per category, and `entertainment:peripheral` for peripheral entertainment. Entertainment metadata (relevance, categories, homepage_eligible) included in payload.
 
 Name and describe channels by **content** (e.g. "Crime Feed", "Technology Feed"), not by consumer (e.g. avoid "StreetCode Crime Feed").
 
@@ -81,6 +82,11 @@ Name and describe channels by **content** (e.g. "Crime Feed", "Technology Feed")
 
 **Layer 5 Mining Channel**:
 - `articles:mining` - All mining-related articles (core + peripheral)
+
+**Layer 6 Entertainment Channel Patterns**:
+- `entertainment:homepage` - Core entertainment articles eligible for homepage (core_entertainment + homepage_eligible)
+- `entertainment:category:{slug}` - Per-category (e.g. `entertainment:category:film`, `entertainment:category:music`)
+- `entertainment:peripheral` - Peripheral entertainment articles
 
 **Message Format**:
 ```json
@@ -126,6 +132,14 @@ Name and describe channels by **content** (e.g. "Crime Feed", "Technology Feed")
 | `mining.final_confidence` | float | 0.0-1.0 confidence score |
 | `mining.review_required` | bool | True if rules and ML disagreed |
 
+**Entertainment Classification Fields** (from classifier's hybrid rule + ML):
+| Field | Type | Description |
+|-------|------|-------------|
+| `entertainment_relevance` | string | `core_entertainment`, `peripheral_entertainment`, or `not_entertainment` |
+| `entertainment_categories` | []string | e.g. `["film", "music", "gaming", "reviews"]` |
+| `entertainment_homepage_eligible` | bool | True if article qualifies for entertainment homepage |
+| `entertainment` | object | Nested: relevance, categories, final_confidence, homepage_eligible, review_required, model_version |
+
 ## API Endpoints (JWT Protected)
 
 **Sources**: `GET/POST/PUT/DELETE /api/v1/sources[/:id]`
@@ -168,9 +182,10 @@ Name and describe channels by **content** (e.g. "Crime Feed", "Technology Feed")
 4. **Route Layer 3**: Generates crime channels from classification fields
 5. **Route Layer 4**: Generates location-based channels
 6. **Route Layer 5**: Generates mining channels from classification fields
-7. **Dedupe**: Checks `publish_history` table (per-channel deduplication)
-8. **Publish**: Sends JSON to Redis channels
-9. **Record**: Writes to `publish_history` for each channel
+7. **Route Layer 6**: Generates entertainment channels from classification fields
+8. **Dedupe**: Checks `publish_history` table (per-channel deduplication)
+9. **Publish**: Sends JSON to Redis channels
+10. **Record**: Writes to `publish_history` for each channel
 
 ## Configuration
 

@@ -44,19 +44,15 @@ func (s *MiningClassifier) Classify(ctx context.Context, raw *domain.RawContent)
 	var mlResult *miningmlclient.ClassifyResponse
 	sourceTextUsed := "title"
 	if s.mlClient != nil {
-		body := raw.RawText
-		if len(body) > miningMaxBodyChars {
-			body = body[:miningMaxBodyChars]
-			sourceTextUsed = "title+body_500"
-		} else if body != "" {
-			sourceTextUsed = "title+body_500"
-		}
 		var err error
-		mlResult, err = s.mlClient.Classify(ctx, raw.Title, body)
+		mlResult, err = CallMLWithBodyLimit(ctx, raw.Title, raw.RawText, miningMaxBodyChars, s.mlClient.Classify)
 		if err != nil {
 			s.logger.Warn("Mining ML classification failed, using rules only",
 				infralogger.String("content_id", raw.ID),
 				infralogger.Error(err))
+		}
+		if raw.RawText != "" {
+			sourceTextUsed = "title+body_500"
 		}
 	}
 

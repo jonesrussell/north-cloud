@@ -207,7 +207,7 @@ INSERT INTO classification_rules (topic, keywords, priority) VALUES
 **Health**: `GET /health`
 
 **Metrics**:
-- `GET /api/v1/metrics/ml-health` - ML service health check (crime-ml, mining-ml reachability, latency, pipeline mode)
+- `GET /api/v1/metrics/ml-health` - ML service health check (crime-ml, mining-ml, coforge-ml, entertainment-ml reachability, latency, pipeline mode)
 
 **Classification**:
 - `POST /api/v1/classify` - Classify single article

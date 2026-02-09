@@ -7,13 +7,12 @@ import (
 	"strconv"
 	"time"
 
-	"encoding/json"
-
 	"github.com/gin-gonic/gin"
 	"github.com/jonesrussell/north-cloud/classifier/internal/classifier"
 	"github.com/jonesrussell/north-cloud/classifier/internal/config"
 	"github.com/jonesrussell/north-cloud/classifier/internal/database"
 	"github.com/jonesrussell/north-cloud/classifier/internal/domain"
+	"github.com/jonesrussell/north-cloud/classifier/internal/mlhealth"
 	"github.com/jonesrussell/north-cloud/classifier/internal/processor"
 	"github.com/jonesrussell/north-cloud/classifier/internal/storage"
 	infralogger "github.com/north-cloud/infrastructure/logger"
@@ -861,19 +860,27 @@ type MLServiceHealth struct {
 
 // MLHealthResponse represents the overall ML health status
 type MLHealthResponse struct {
-	CrimeML      *MLServiceHealth `json:"crime_ml,omitempty"`
-	MiningML     *MLServiceHealth `json:"mining_ml,omitempty"`
-	PipelineMode PipelineMode     `json:"pipeline_mode"`
+	CrimeML         *MLServiceHealth `json:"crime_ml,omitempty"`
+	MiningML        *MLServiceHealth `json:"mining_ml,omitempty"`
+	CoforgeML       *MLServiceHealth `json:"coforge_ml,omitempty"`
+	EntertainmentML *MLServiceHealth `json:"entertainment_ml,omitempty"`
+	PipelineMode    PipelineMode     `json:"pipeline_mode"`
 }
+
+// Pipeline mode values for GetMLHealth.
+const (
+	pipelineModeDisabled  = "disabled"
+	pipelineModeHybrid    = "hybrid"
+	pipelineModeRulesOnly = "rules-only"
+)
 
 // PipelineMode represents the current classifier pipeline configuration
 type PipelineMode struct {
-	Crime  string `json:"crime"`
-	Mining string `json:"mining"`
+	Crime         string `json:"crime"`
+	Mining        string `json:"mining"`
+	Coforge       string `json:"coforge"`
+	Entertainment string `json:"entertainment"`
 }
-
-// mlHealthCheckTimeout is the timeout for ML service health checks
-const mlHealthCheckTimeout = 5 * time.Second
 
 // GetMLHealth handles GET /api/v1/metrics/ml-health
 func (h *Handler) GetMLHealth(c *gin.Context) {
@@ -882,38 +889,59 @@ func (h *Handler) GetMLHealth(c *gin.Context) {
 	}
 
 	if h.config.Classification.Crime.Enabled {
-		resp.CrimeML = h.checkMLServiceHealth(
-			c.Request.Context(),
-			h.config.Classification.Crime.MLServiceURL,
-		)
+		resp.CrimeML = h.checkMLServiceHealth(c.Request.Context(), h.config.Classification.Crime.MLServiceURL)
 	}
 
 	if h.config.Classification.Mining.Enabled {
-		resp.MiningML = h.checkMLServiceHealth(
-			c.Request.Context(),
-			h.config.Classification.Mining.MLServiceURL,
-		)
+		resp.MiningML = h.checkMLServiceHealth(c.Request.Context(), h.config.Classification.Mining.MLServiceURL)
+	}
+
+	if h.config.Classification.Coforge.Enabled {
+		resp.CoforgeML = h.checkMLServiceHealth(c.Request.Context(), h.config.Classification.Coforge.MLServiceURL)
+	}
+
+	if h.config.Classification.Entertainment.Enabled {
+		resp.EntertainmentML = h.checkMLServiceHealth(c.Request.Context(), h.config.Classification.Entertainment.MLServiceURL)
 	}
 
 	c.JSON(http.StatusOK, resp)
 }
 
 func (h *Handler) getPipelineMode() PipelineMode {
-	mode := PipelineMode{Crime: "disabled", Mining: "disabled"}
+	mode := PipelineMode{
+		Crime: pipelineModeDisabled, Mining: pipelineModeDisabled,
+		Coforge: pipelineModeDisabled, Entertainment: pipelineModeDisabled,
+	}
 
 	if h.config.Classification.Crime.Enabled {
 		if h.config.Classification.Crime.MLServiceURL != "" {
-			mode.Crime = "hybrid"
+			mode.Crime = pipelineModeHybrid
 		} else {
-			mode.Crime = "rules-only"
+			mode.Crime = pipelineModeRulesOnly
 		}
 	}
 
 	if h.config.Classification.Mining.Enabled {
 		if h.config.Classification.Mining.MLServiceURL != "" {
-			mode.Mining = "hybrid"
+			mode.Mining = pipelineModeHybrid
 		} else {
-			mode.Mining = "rules-only"
+			mode.Mining = pipelineModeRulesOnly
+		}
+	}
+
+	if h.config.Classification.Coforge.Enabled {
+		if h.config.Classification.Coforge.MLServiceURL != "" {
+			mode.Coforge = pipelineModeHybrid
+		} else {
+			mode.Coforge = pipelineModeRulesOnly
+		}
+	}
+
+	if h.config.Classification.Entertainment.Enabled {
+		if h.config.Classification.Entertainment.MLServiceURL != "" {
+			mode.Entertainment = pipelineModeHybrid
+		} else {
+			mode.Entertainment = pipelineModeRulesOnly
 		}
 	}
 
@@ -921,38 +949,15 @@ func (h *Handler) getPipelineMode() PipelineMode {
 }
 
 func (h *Handler) checkMLServiceHealth(ctx context.Context, baseURL string) *MLServiceHealth {
-	start := time.Now()
+	reachable, latencyMs, modelVersion, err := mlhealth.Check(ctx, baseURL)
 	health := &MLServiceHealth{
-		LastChecked: time.Now().UTC().Format(time.RFC3339),
+		LastChecked:  time.Now().UTC().Format(time.RFC3339),
+		Reachable:    reachable,
+		LatencyMs:    latencyMs,
+		ModelVersion: modelVersion,
 	}
-
-	req, reqErr := http.NewRequestWithContext(ctx, http.MethodGet, baseURL+"/health", http.NoBody)
-	if reqErr != nil {
-		health.Error = fmt.Sprintf("failed to create request: %v", reqErr)
-		return health
+	if err != nil {
+		health.Error = err.Error()
 	}
-
-	client := &http.Client{Timeout: mlHealthCheckTimeout}
-	resp, doErr := client.Do(req)
-	if doErr != nil {
-		health.Error = fmt.Sprintf("service unreachable: %v", doErr)
-		return health
-	}
-	defer func() { _ = resp.Body.Close() }()
-
-	health.LatencyMs = time.Since(start).Milliseconds()
-
-	if resp.StatusCode == http.StatusOK {
-		health.Reachable = true
-		var healthResp struct {
-			ModelVersion string `json:"model_version"`
-		}
-		if decodeErr := json.NewDecoder(resp.Body).Decode(&healthResp); decodeErr == nil {
-			health.ModelVersion = healthResp.ModelVersion
-		}
-	} else {
-		health.Error = fmt.Sprintf("unhealthy status: %d", resp.StatusCode)
-	}
-
 	return health
 }

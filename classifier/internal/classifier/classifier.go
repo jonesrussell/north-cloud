@@ -26,6 +26,7 @@ type Classifier struct {
 	crime            *CrimeClassifier
 	mining           *MiningClassifier
 	coforge          *CoforgeClassifier
+	entertainment    *EntertainmentClassifier
 	location         *LocationClassifier
 	logger           infralogger.Logger
 	version          string
@@ -33,14 +34,15 @@ type Classifier struct {
 
 // Config holds configuration for the classifier
 type Config struct {
-	Version                string
-	MinQualityScore        int
-	UpdateSourceRep        bool
-	QualityConfig          QualityConfig
-	SourceReputationConfig SourceReputationConfig
-	CrimeClassifier        *CrimeClassifier   // Optional: hybrid street crime classifier
-	MiningClassifier       *MiningClassifier  // Optional: hybrid mining classifier
-	CoforgeClassifier      *CoforgeClassifier // Optional: hybrid coforge classifier
+	Version                 string
+	MinQualityScore         int
+	UpdateSourceRep         bool
+	QualityConfig           QualityConfig
+	SourceReputationConfig  SourceReputationConfig
+	CrimeClassifier         *CrimeClassifier         // Optional: hybrid street crime classifier
+	MiningClassifier        *MiningClassifier        // Optional: hybrid mining classifier
+	CoforgeClassifier       *CoforgeClassifier       // Optional: hybrid coforge classifier
+	EntertainmentClassifier *EntertainmentClassifier // Optional: hybrid entertainment classifier
 }
 
 // NewClassifier creates a new classifier with all strategies
@@ -58,6 +60,7 @@ func NewClassifier(
 		crime:            config.CrimeClassifier,
 		mining:           config.MiningClassifier,
 		coforge:          config.CoforgeClassifier,
+		entertainment:    config.EntertainmentClassifier,
 		location:         NewLocationClassifier(logger),
 		logger:           logger,
 		version:          config.Version,
@@ -98,8 +101,8 @@ func (c *Classifier) Classify(ctx context.Context, raw *domain.RawContent) (*dom
 		return nil, fmt.Errorf("source reputation scoring failed: %w", err)
 	}
 
-	// 5-7. Optional classifiers (crime, mining, location)
-	crimeResult, miningResult, coforgeResult, locationResult := c.runOptionalClassifiers(ctx, raw)
+	// 5-8. Optional classifiers (crime, mining, coforge, entertainment, location)
+	crimeResult, miningResult, coforgeResult, entertainmentResult, locationResult := c.runOptionalClassifiers(ctx, raw)
 
 	// Update source reputation if enabled
 	isSpam := qualityResult.TotalScore < spamThresholdScore // Spam threshold
@@ -138,6 +141,7 @@ func (c *Classifier) Classify(ctx context.Context, raw *domain.RawContent) (*dom
 		Crime:                crimeResult,
 		Mining:               miningResult,
 		Coforge:              coforgeResult,
+		Entertainment:        entertainmentResult,
 		Location:             locationResult,
 	}
 
@@ -188,10 +192,10 @@ func (c *Classifier) GetRules() []domain.ClassificationRule {
 	return c.topic.GetRules()
 }
 
-// runOptionalClassifiers runs crime, mining, and location classifiers if enabled.
+// runOptionalClassifiers runs crime, mining, coforge, entertainment, and location classifiers if enabled.
 func (c *Classifier) runOptionalClassifiers(
 	ctx context.Context, raw *domain.RawContent,
-) (*domain.CrimeResult, *domain.MiningResult, *domain.CoforgeResult, *domain.LocationResult) {
+) (*domain.CrimeResult, *domain.MiningResult, *domain.CoforgeResult, *domain.EntertainmentResult, *domain.LocationResult) {
 	var crimeResult *domain.CrimeResult
 	if c.crime != nil {
 		scResult, scErr := c.crime.Classify(ctx, raw)
@@ -228,6 +232,18 @@ func (c *Classifier) runOptionalClassifiers(
 		}
 	}
 
+	var entertainmentResult *domain.EntertainmentResult
+	if c.entertainment != nil {
+		entResult, entErr := c.entertainment.Classify(ctx, raw)
+		if entErr != nil {
+			c.logger.Warn("Entertainment classification failed",
+				infralogger.String("content_id", raw.ID),
+				infralogger.Error(entErr))
+		} else if entResult != nil {
+			entertainmentResult = entResult
+		}
+	}
+
 	var locationResult *domain.LocationResult
 	if c.location != nil {
 		locResult, locErr := c.location.Classify(ctx, raw)
@@ -240,7 +256,7 @@ func (c *Classifier) runOptionalClassifiers(
 		}
 	}
 
-	return crimeResult, miningResult, coforgeResult, locationResult
+	return crimeResult, miningResult, coforgeResult, entertainmentResult, locationResult
 }
 
 // calculateTopicConfidence calculates overall topic confidence
@@ -281,6 +297,7 @@ func (c *Classifier) BuildClassifiedContent(raw *domain.RawContent, result *doma
 		Crime:                result.Crime,
 		Mining:               result.Mining,
 		Coforge:              result.Coforge,
+		Entertainment:        result.Entertainment,
 		Location:             result.Location,
 		// Publisher compatibility aliases
 		Body:   raw.RawText, // Alias for RawText

@@ -41,8 +41,21 @@ type ClassificationResult struct {
 	// Coforge hybrid classification (optional)
 	Coforge *CoforgeResult `json:"coforge,omitempty"`
 
+	// Entertainment hybrid classification (optional)
+	Entertainment *EntertainmentResult `json:"entertainment,omitempty"`
+
 	// Location detection (content-based)
 	Location *LocationResult `json:"location,omitempty"`
+}
+
+// EntertainmentResult holds Entertainment hybrid classification results.
+type EntertainmentResult struct {
+	Relevance        string   `json:"relevance"`
+	Categories       []string `json:"categories"`
+	FinalConfidence  float64  `json:"final_confidence"`
+	HomepageEligible bool     `json:"homepage_eligible"`
+	ReviewRequired   bool     `json:"review_required"`
+	ModelVersion     string   `json:"model_version,omitempty"`
 }
 
 // MiningResult holds Mining hybrid classification results.
@@ -111,6 +124,9 @@ type ClassifiedContent struct {
 
 	// Coforge hybrid classification (optional)
 	Coforge *CoforgeResult `json:"coforge,omitempty"`
+
+	// Entertainment hybrid classification (optional)
+	Entertainment *EntertainmentResult `json:"entertainment,omitempty"`
 
 	// Location detection (content-based)
 	Location *LocationResult `json:"location,omitempty"`

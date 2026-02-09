@@ -228,6 +228,13 @@ services:
     image: docker.io/jonesrussell/coforge-ml:latest
 
   # ------------------------------------------------------------
+  # Entertainment ML Classifier (Prod)
+  # ------------------------------------------------------------
+  entertainment-ml:
+    <<: *prod-defaults
+    image: docker.io/jonesrussell/entertainment-ml:latest
+
+  # ------------------------------------------------------------
   # Index Manager (Prod)
   # ------------------------------------------------------------
   index-manager:

@@ -11,6 +11,7 @@ import (
 	"github.com/jonesrussell/north-cloud/classifier/internal/coforgemlclient"
 	"github.com/jonesrussell/north-cloud/classifier/internal/config"
 	"github.com/jonesrussell/north-cloud/classifier/internal/domain"
+	"github.com/jonesrussell/north-cloud/classifier/internal/entertainmentmlclient"
 	"github.com/jonesrussell/north-cloud/classifier/internal/miningmlclient"
 	"github.com/jonesrussell/north-cloud/classifier/internal/mlclient"
 	"github.com/jonesrussell/north-cloud/classifier/internal/processor"
@@ -135,6 +136,31 @@ func HTTPShutdownTimeout() time.Duration {
 
 // createClassifierConfig creates the classifier configuration with all sub-components.
 func createClassifierConfig(cfg *config.Config, logger infralogger.Logger) classifier.Config {
+	crimeCC := createOptionalClassifier(
+		cfg.Classification.Crime.Enabled, cfg.Classification.Crime.MLServiceURL, logger,
+		"Crime classifier", mlclient.NewClient,
+		func(c *mlclient.Client, l infralogger.Logger, e bool) *classifier.CrimeClassifier {
+			return classifier.NewCrimeClassifier(c, l, e)
+		})
+	miningCC := createOptionalClassifier(
+		cfg.Classification.Mining.Enabled, cfg.Classification.Mining.MLServiceURL, logger,
+		"Mining classifier", miningmlclient.NewClient,
+		func(c *miningmlclient.Client, l infralogger.Logger, e bool) *classifier.MiningClassifier {
+			return classifier.NewMiningClassifier(c, l, e)
+		})
+	coforgeCC := createOptionalClassifier(
+		cfg.Classification.Coforge.Enabled, cfg.Classification.Coforge.MLServiceURL, logger,
+		"Coforge classifier", coforgemlclient.NewClient,
+		func(c *coforgemlclient.Client, l infralogger.Logger, e bool) *classifier.CoforgeClassifier {
+			return classifier.NewCoforgeClassifier(c, l, e)
+		})
+	entertainmentCC := createOptionalClassifier(
+		cfg.Classification.Entertainment.Enabled, cfg.Classification.Entertainment.MLServiceURL, logger,
+		"Entertainment classifier", entertainmentmlclient.NewClient,
+		func(c *entertainmentmlclient.Client, l infralogger.Logger, e bool) *classifier.EntertainmentClassifier {
+			return classifier.NewEntertainmentClassifier(c, l, e)
+		})
+
 	return classifier.Config{
 		Version:         "1.0.0",
 		MinQualityScore: defaultMinQualityScore50,
@@ -154,59 +180,27 @@ func createClassifierConfig(cfg *config.Config, logger infralogger.Logger) class
 			MinArticlesForTrust:        minArticlesForTrust,
 			ReputationDecayRate:        defaultReputationDecayRate01,
 		},
-		CrimeClassifier:   createCrimeClassifier(cfg, logger),
-		MiningClassifier:  createMiningClassifier(cfg, logger),
-		CoforgeClassifier: createCoforgeClassifier(cfg, logger),
+		CrimeClassifier:         crimeCC,
+		MiningClassifier:        miningCC,
+		CoforgeClassifier:       coforgeCC,
+		EntertainmentClassifier: entertainmentCC,
 	}
 }
 
-// createCrimeClassifier creates a Crime classifier if enabled in config.
-func createCrimeClassifier(cfg *config.Config, logger infralogger.Logger) *classifier.CrimeClassifier {
-	if !cfg.Classification.Crime.Enabled {
-		return nil
+// createOptionalClassifier creates an optional ML classifier when enabled; returns nil otherwise.
+// newClient is only called when mlURL is non-empty. Label is used for logging.
+func createOptionalClassifier[C any, T any](
+	enabled bool, mlURL string, logger infralogger.Logger, label string,
+	newClient func(string) C, newClassifier func(C, infralogger.Logger, bool) T,
+) T {
+	if !enabled {
+		var zero T
+		return zero
 	}
-
-	var mlClient classifier.MLClassifier
-	if cfg.Classification.Crime.MLServiceURL != "" {
-		mlClient = mlclient.NewClient(cfg.Classification.Crime.MLServiceURL)
+	var client C
+	if mlURL != "" {
+		client = newClient(mlURL)
 	}
-
-	logger.Info("Crime classifier enabled",
-		infralogger.String("ml_service_url", cfg.Classification.Crime.MLServiceURL))
-
-	return classifier.NewCrimeClassifier(mlClient, logger, true)
-}
-
-// createMiningClassifier creates a Mining classifier if enabled in config.
-func createMiningClassifier(cfg *config.Config, logger infralogger.Logger) *classifier.MiningClassifier {
-	if !cfg.Classification.Mining.Enabled {
-		return nil
-	}
-
-	var mlClient classifier.MiningMLClassifier
-	if cfg.Classification.Mining.MLServiceURL != "" {
-		mlClient = miningmlclient.NewClient(cfg.Classification.Mining.MLServiceURL)
-	}
-
-	logger.Info("Mining classifier enabled",
-		infralogger.String("ml_service_url", cfg.Classification.Mining.MLServiceURL))
-
-	return classifier.NewMiningClassifier(mlClient, logger, true)
-}
-
-// createCoforgeClassifier creates a Coforge classifier if enabled in config.
-func createCoforgeClassifier(cfg *config.Config, logger infralogger.Logger) *classifier.CoforgeClassifier {
-	if !cfg.Classification.Coforge.Enabled {
-		return nil
-	}
-
-	var mlClient classifier.CoforgeMLClassifier
-	if cfg.Classification.Coforge.MLServiceURL != "" {
-		mlClient = coforgemlclient.NewClient(cfg.Classification.Coforge.MLServiceURL)
-	}
-
-	logger.Info("Coforge classifier enabled",
-		infralogger.String("ml_service_url", cfg.Classification.Coforge.MLServiceURL))
-
-	return classifier.NewCoforgeClassifier(mlClient, logger, true)
+	logger.Info(label+" enabled", infralogger.String("ml_service_url", mlURL))
+	return newClassifier(client, logger, true)
 }

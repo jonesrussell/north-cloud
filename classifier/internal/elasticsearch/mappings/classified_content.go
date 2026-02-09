@@ -82,8 +82,27 @@ type ClassifiedContentProperties struct {
 	// Mining classification (hybrid rule + ML)
 	Mining MiningProperties `json:"mining,omitempty"`
 
+	// Entertainment classification (hybrid rule + ML)
+	Entertainment EntertainmentProperties `json:"entertainment,omitempty"`
+
 	// Location detection (content-based)
 	Location LocationProperties `json:"location,omitempty"`
+}
+
+// EntertainmentProperties defines the nested properties for entertainment classification.
+type EntertainmentProperties struct {
+	Type       string                       `json:"type,omitempty"`
+	Properties EntertainmentFieldProperties `json:"properties,omitempty"`
+}
+
+// EntertainmentFieldProperties defines individual fields within entertainment classification.
+type EntertainmentFieldProperties struct {
+	Relevance        Field `json:"relevance"`
+	Categories       Field `json:"categories"`
+	FinalConfidence  Field `json:"final_confidence"`
+	HomepageEligible Field `json:"homepage_eligible"`
+	ReviewRequired   Field `json:"review_required"`
+	ModelVersion     Field `json:"model_version"`
 }
 
 // CrimeProperties defines the nested properties for crime classification.
@@ -183,7 +202,23 @@ func createClassificationProperties() ClassifiedContentProperties {
 		Confidence:           Field{Type: "float"},
 		Crime:                createCrimeProperties(),
 		Mining:               createMiningProperties(),
+		Entertainment:        createEntertainmentProperties(),
 		Location:             createLocationProperties(),
+	}
+}
+
+// createEntertainmentProperties creates nested properties for entertainment classification.
+func createEntertainmentProperties() EntertainmentProperties {
+	return EntertainmentProperties{
+		Type: "object",
+		Properties: EntertainmentFieldProperties{
+			Relevance:        Field{Type: "keyword"},
+			Categories:       Field{Type: "keyword"},
+			FinalConfidence:  Field{Type: "float"},
+			HomepageEligible: Field{Type: "boolean"},
+			ReviewRequired:   Field{Type: "boolean"},
+			ModelVersion:     Field{Type: "keyword"},
+		},
 	}
 }
 
@@ -255,9 +290,10 @@ func mergeProperties(raw, classified ClassifiedContentProperties) ClassifiedCont
 		ClassifierVersion:    classified.ClassifierVersion,
 		ClassificationMethod: classified.ClassificationMethod,
 		ModelVersion:         classified.ModelVersion, Confidence: classified.Confidence,
-		Crime:    classified.Crime,
-		Mining:   classified.Mining,
-		Location: classified.Location,
+		Crime:         classified.Crime,
+		Mining:        classified.Mining,
+		Entertainment: classified.Entertainment,
+		Location:      classified.Location,
 	}
 }
 
