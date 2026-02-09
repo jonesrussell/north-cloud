@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import Badge from './Badge.vue'
+import Tooltip from '@/components/ui/tooltip/Tooltip.vue'
 
 type BadgeVariant = 'default' | 'secondary' | 'destructive' | 'outline' | 'success' | 'warning' | 'pending'
 
@@ -20,6 +21,7 @@ const props = withDefaults(defineProps<Props>(), {
 const visibleItems = computed(() => props.items.slice(0, props.maxVisible))
 const overflowCount = computed(() => Math.max(0, props.items.length - props.maxVisible))
 const hasOverflow = computed(() => overflowCount.value > 0)
+const hiddenItems = computed(() => props.items.slice(props.maxVisible))
 </script>
 
 <template>
@@ -32,12 +34,17 @@ const hasOverflow = computed(() => overflowCount.value > 0)
     >
       {{ item }}
     </Badge>
-    <Badge
+    <Tooltip
       v-if="hasOverflow"
-      :variant="props.variant"
-      :class="props.badgeClass"
+      :content="hiddenItems.join(', ')"
+      side="top"
     >
-      +{{ overflowCount }}
-    </Badge>
+      <Badge
+        :variant="props.variant"
+        :class="[props.badgeClass, 'cursor-default']"
+      >
+        +{{ overflowCount }}
+      </Badge>
+    </Tooltip>
   </div>
 </template>

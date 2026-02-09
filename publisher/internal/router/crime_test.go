@@ -280,11 +280,50 @@ func containsChannel(channels []string, target string) bool {
 
 // Location channel tests
 
+func TestGenerateLocationChannels_NotCrime(t *testing.T) {
+	t.Helper()
+
+	article := &Article{
+		ID:                  "test-loc-notcrime",
+		LocationCity:        "vancouver",
+		LocationProvince:    "BC",
+		LocationCountry:     "canada",
+		LocationSpecificity: "city",
+		CrimeRelevance:      "not_crime",
+	}
+
+	channels := GenerateLocationChannels(article)
+
+	if len(channels) != 0 {
+		t.Errorf("expected no channels for not_crime article, got %v", channels)
+	}
+}
+
+func TestGenerateLocationChannels_EmptyCrimeRelevance(t *testing.T) {
+	t.Helper()
+
+	article := &Article{
+		ID:                  "test-loc-empty-crime",
+		LocationCity:        "toronto",
+		LocationProvince:    "ON",
+		LocationCountry:     "canada",
+		LocationSpecificity: "city",
+		CrimeRelevance:      "",
+	}
+
+	channels := GenerateLocationChannels(article)
+
+	if len(channels) != 0 {
+		t.Errorf("expected no channels for empty crime_relevance, got %v", channels)
+	}
+}
+
 func TestGenerateLocationChannels_CanadianCity(t *testing.T) {
 	t.Helper()
 
 	article := &Article{
 		ID:                  "test-loc-1",
+		CrimeRelevance:      "core_street_crime",
 		LocationCity:        "sudbury",
 		LocationProvince:    "ON",
 		LocationCountry:     "canada",
@@ -311,6 +350,7 @@ func TestGenerateLocationChannels_International(t *testing.T) {
 
 	article := &Article{
 		ID:                  "test-loc-2",
+		CrimeRelevance:      "core_street_crime",
 		LocationCountry:     "united_states",
 		LocationSpecificity: "country",
 	}
@@ -327,6 +367,7 @@ func TestGenerateLocationChannels_UnknownLocation(t *testing.T) {
 
 	article := &Article{
 		ID:                  "test-loc-3",
+		CrimeRelevance:      "core_street_crime",
 		LocationCountry:     "unknown",
 		LocationSpecificity: "unknown",
 	}
@@ -343,6 +384,7 @@ func TestGenerateLocationChannels_ProvinceOnly(t *testing.T) {
 
 	article := &Article{
 		ID:                  "test-loc-4",
+		CrimeRelevance:      "peripheral_crime",
 		LocationProvince:    "BC",
 		LocationCountry:     "canada",
 		LocationSpecificity: "province",
