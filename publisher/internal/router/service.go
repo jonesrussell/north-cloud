@@ -288,10 +288,10 @@ type Article struct {
 	Mining *MiningData `json:"mining,omitempty"`
 
 	// Entertainment classification (hybrid rule + ML)
-	Entertainment             *EntertainmentData `json:"entertainment,omitempty"`
-	EntertainmentRelevance    string             `json:"entertainment_relevance"`
-	EntertainmentCategories  []string           `json:"entertainment_categories"`
-	EntertainmentHomepageEligible bool           `json:"entertainment_homepage_eligible"`
+	Entertainment                 *EntertainmentData `json:"entertainment,omitempty"`
+	EntertainmentRelevance        string             `json:"entertainment_relevance"`
+	EntertainmentCategories       []string           `json:"entertainment_categories"`
+	EntertainmentHomepageEligible bool               `json:"entertainment_homepage_eligible"`
 
 	// Open Graph metadata
 	OGTitle       string `json:"og_title"`
@@ -510,8 +510,8 @@ func (s *Service) publishToChannel(ctx context.Context, article *Article, channe
 		// Entertainment classification
 		"entertainment_relevance":         article.EntertainmentRelevance,
 		"entertainment_categories":        article.EntertainmentCategories,
-		"entertainment_homepage_eligible":  article.EntertainmentHomepageEligible,
-		"entertainment":                    article.Entertainment,
+		"entertainment_homepage_eligible": article.EntertainmentHomepageEligible,
+		"entertainment":                   article.Entertainment,
 		// Location detection
 		"location_city":       article.LocationCity,
 		"location_province":   article.LocationProvince,

@@ -1,3 +1,4 @@
+//nolint:testpackage // Testing internal router requires same package access
 package router
 
 import (

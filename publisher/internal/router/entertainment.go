@@ -4,9 +4,9 @@ import "strings"
 
 // Entertainment relevance constants.
 const (
-	EntertainmentRelevanceNot         = "not_entertainment"
-	EntertainmentRelevancePeripheral  = "peripheral_entertainment"
-	EntertainmentRelevanceCore        = "core_entertainment"
+	EntertainmentRelevanceNot        = "not_entertainment"
+	EntertainmentRelevancePeripheral = "peripheral_entertainment"
+	EntertainmentRelevanceCore       = "core_entertainment"
 )
 
 // GenerateEntertainmentChannels returns the Redis channels for articles with entertainment classification.
