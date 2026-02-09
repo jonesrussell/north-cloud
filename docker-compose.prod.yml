@@ -378,7 +378,9 @@ services:
   mcp-north-cloud:
     <<: *prod-defaults
     image: docker.io/jonesrussell/mcp-north-cloud:latest
-    command: ["/app/mcp-north-cloud"]
+    # MCP server is stdio-based: connect via `docker exec -i <container> /app/mcp-north-cloud`
+    # The container idles so the binary is available for on-demand connections.
+    command: ["sleep", "infinity"]
     depends_on:
       crawler:
         condition: service_healthy

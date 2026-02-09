@@ -118,7 +118,7 @@ func (s *Service) Start(ctx context.Context) error {
 func (s *Service) pollAndRoute(ctx context.Context) {
 	indexes := s.discovery.GetIndexes()
 	if len(indexes) == 0 {
-		s.logger.Debug("No indexes discovered, skipping poll")
+		s.logger.Info("No indexes discovered, skipping poll")
 		return
 	}
 
@@ -142,7 +142,7 @@ func (s *Service) pollAndRoute(ctx context.Context) {
 			return
 		}
 
-		s.logger.Debug("Processing articles",
+		s.logger.Info("Processing articles batch",
 			infralogger.Int("count", len(articles)),
 		)
 
@@ -521,8 +521,9 @@ func (s *Service) publishToChannel(ctx context.Context, article *Article, channe
 		)
 	}
 
-	s.logger.Debug("Published article to channel",
+	s.logger.Info("Published article to channel",
 		infralogger.String("article_id", article.ID),
+		infralogger.String("title", article.Title),
 		infralogger.String("channel", channelName),
 	)
 }
