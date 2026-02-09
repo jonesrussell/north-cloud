@@ -23,9 +23,9 @@ const (
 	minSummaryCountForListing  = 3
 )
 
-// nonArticleURLPatterns contains URL path patterns that indicate non-article content
-// Note: matchesURLPattern() handles both trailing and non-trailing slashes
-var nonArticleURLPatterns = []string{
+// alwaysExcludedPrefixes contains URL path prefixes that always indicate non-article content.
+// These match as prefixes: /classifieds/job-listings is excluded because /classifieds is.
+var alwaysExcludedPrefixes = []string{
 	// Account/Auth pages
 	"/account", "/login", "/signin", "/signup", "/register",
 
@@ -38,8 +38,12 @@ var nonArticleURLPatterns = []string{
 	// Browsing/navigation pages
 	"/category", "/categories", "/browse", "/listings",
 	"/search", "/results",
+}
 
-	// News/article listing pages
+// sectionIndexPaths contains section paths that are only excluded when they are the
+// exact path (index/listing pages). Articles within these sections (e.g., /news/article-slug)
+// should pass through to other classification strategies.
+var sectionIndexPaths = []string{
 	"/news", "/articles", "/stories", "/posts", "/blog",
 	"/ontario-news", "/local-news", "/breaking-news",
 }
@@ -263,7 +267,8 @@ func (c *ContentTypeClassifier) isNumeric(s string) bool {
 	return s != "" && (s[0] != '-' || len(s) > 1)
 }
 
-// matchesURLPattern checks if URL path matches pattern (handles trailing slashes intelligently)
+// matchesURLPattern checks if URL path matches pattern as a prefix (handles trailing slashes).
+// Use for always-excluded paths where any subpath should also be excluded.
 func matchesURLPattern(path, pattern string) bool {
 	// Exact match
 	if path == pattern {
@@ -283,6 +288,12 @@ func matchesURLPattern(path, pattern string) bool {
 	return strings.HasPrefix(path, pattern+"/")
 }
 
+// isExactSectionPath checks if URL path exactly matches a section path.
+// Matches "/news" and "/news/" but NOT "/news/article-slug".
+func isExactSectionPath(path, section string) bool {
+	return path == section || path == section+"/"
+}
+
 // isNonArticleURL checks if the URL matches patterns that indicate non-article content
 func (c *ContentTypeClassifier) isNonArticleURL(urlStr string) bool {
 	if urlStr == "" {
@@ -292,32 +303,19 @@ func (c *ContentTypeClassifier) isNonArticleURL(urlStr string) bool {
 	// Parse URL to get path
 	parsedURL, err := url.Parse(urlStr)
 	if err != nil {
-		// If parsing fails, check raw string for patterns
-		lowerURL := strings.ToLower(urlStr)
-		for _, pattern := range nonArticleURLPatterns {
-			if strings.Contains(lowerURL, pattern) {
-				return true
-			}
-		}
-		// Check for query parameters that indicate redirect/auth pages
-		if strings.Contains(lowerURL, "returnurl=") || strings.Contains(lowerURL, "redirect=") {
-			return true
-		}
-		return false
+		return c.isNonArticleURLFallback(urlStr)
 	}
 
 	path := strings.ToLower(parsedURL.Path)
 
-	// Check path patterns - use new helper function
-	for _, pattern := range nonArticleURLPatterns {
-		if matchesURLPattern(path, pattern) {
-			c.logger.Debug("URL matched non-article pattern",
-				infralogger.String("url", urlStr),
-				infralogger.String("path", path),
-				infralogger.String("pattern", pattern),
-			)
-			return true
-		}
+	// Check always-excluded prefixes (auth, classifieds, directory, etc.)
+	if c.matchesAlwaysExcluded(urlStr, path) {
+		return true
+	}
+
+	// Check section index paths (exact match only -- /news excluded, /news/article-slug is not)
+	if c.matchesSectionIndex(urlStr, path) {
+		return true
 	}
 
 	// Check for query parameters that indicate redirect/auth pages
@@ -340,6 +338,55 @@ func (c *ContentTypeClassifier) isNonArticleURL(urlStr string) bool {
 		return true
 	}
 
+	return false
+}
+
+// isNonArticleURLFallback handles URL pattern matching when URL parsing fails.
+func (c *ContentTypeClassifier) isNonArticleURLFallback(urlStr string) bool {
+	lowerURL := strings.ToLower(urlStr)
+	for _, pattern := range alwaysExcludedPrefixes {
+		if strings.Contains(lowerURL, pattern) {
+			return true
+		}
+	}
+	for _, section := range sectionIndexPaths {
+		if strings.Contains(lowerURL, section) {
+			return true
+		}
+	}
+	if strings.Contains(lowerURL, "returnurl=") || strings.Contains(lowerURL, "redirect=") {
+		return true
+	}
+	return false
+}
+
+// matchesAlwaysExcluded checks if a path matches any always-excluded prefix pattern.
+func (c *ContentTypeClassifier) matchesAlwaysExcluded(urlStr, path string) bool {
+	for _, pattern := range alwaysExcludedPrefixes {
+		if matchesURLPattern(path, pattern) {
+			c.logger.Debug("URL matched always-excluded pattern",
+				infralogger.String("url", urlStr),
+				infralogger.String("path", path),
+				infralogger.String("pattern", pattern),
+			)
+			return true
+		}
+	}
+	return false
+}
+
+// matchesSectionIndex checks if a path exactly matches a section index path.
+func (c *ContentTypeClassifier) matchesSectionIndex(urlStr, path string) bool {
+	for _, section := range sectionIndexPaths {
+		if isExactSectionPath(path, section) {
+			c.logger.Debug("URL matched section index path",
+				infralogger.String("url", urlStr),
+				infralogger.String("path", path),
+				infralogger.String("section", section),
+			)
+			return true
+		}
+	}
 	return false
 }
 

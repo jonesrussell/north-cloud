@@ -702,3 +702,191 @@ func TestContentTypeClassifier_ListingPageContent(t *testing.T) {
 		})
 	}
 }
+
+// TestContentTypeClassifier_SectionURLExclusion verifies that section index pages
+// are excluded but articles within those sections are NOT excluded.
+func TestContentTypeClassifier_SectionURLExclusion(t *testing.T) {
+	classifier := NewContentTypeClassifier(&mockLogger{})
+
+	publishedDate := time.Now()
+
+	tests := []struct {
+		name           string
+		url            string
+		expectedType   string
+		expectedMethod string
+	}{
+		// Section index pages should be excluded
+		{
+			name:           "news index page",
+			url:            "https://example.com/news",
+			expectedType:   domain.ContentTypePage,
+			expectedMethod: "url_exclusion",
+		},
+		{
+			name:           "news index page with trailing slash",
+			url:            "https://example.com/news/",
+			expectedType:   domain.ContentTypePage,
+			expectedMethod: "url_exclusion",
+		},
+		{
+			name:           "articles index page",
+			url:            "https://example.com/articles",
+			expectedType:   domain.ContentTypePage,
+			expectedMethod: "url_exclusion",
+		},
+		{
+			name:           "blog index page",
+			url:            "https://example.com/blog",
+			expectedType:   domain.ContentTypePage,
+			expectedMethod: "url_exclusion",
+		},
+		{
+			name:           "local-news index page",
+			url:            "https://example.com/local-news",
+			expectedType:   domain.ContentTypePage,
+			expectedMethod: "url_exclusion",
+		},
+		{
+			name:           "ontario-news index page",
+			url:            "https://example.com/ontario-news",
+			expectedType:   domain.ContentTypePage,
+			expectedMethod: "url_exclusion",
+		},
+		{
+			name:           "breaking-news index page",
+			url:            "https://example.com/breaking-news",
+			expectedType:   domain.ContentTypePage,
+			expectedMethod: "url_exclusion",
+		},
+		{
+			name:           "stories index page",
+			url:            "https://example.com/stories",
+			expectedType:   domain.ContentTypePage,
+			expectedMethod: "url_exclusion",
+		},
+		{
+			name:           "posts index page",
+			url:            "https://example.com/posts",
+			expectedType:   domain.ContentTypePage,
+			expectedMethod: "url_exclusion",
+		},
+
+		// Articles WITHIN section paths should NOT be excluded by URL
+		{
+			name:           "article in news section",
+			url:            "https://example.com/news/six-men-charged-drug-bust",
+			expectedType:   domain.ContentTypeArticle,
+			expectedMethod: "heuristic",
+		},
+		{
+			name:           "article in local-news section",
+			url:            "https://example.com/local-news/fire-downtown-causes-evacuations",
+			expectedType:   domain.ContentTypeArticle,
+			expectedMethod: "heuristic",
+		},
+		{
+			name:           "article in ontario-news section",
+			url:            "https://www.sudbury.com/ontario-news/man-arrested-after-standoff",
+			expectedType:   domain.ContentTypeArticle,
+			expectedMethod: "heuristic",
+		},
+		{
+			name:           "article in breaking-news section",
+			url:            "https://example.com/breaking-news/highway-closed-due-to-collision",
+			expectedType:   domain.ContentTypeArticle,
+			expectedMethod: "heuristic",
+		},
+		{
+			name:           "article in articles section",
+			url:            "https://example.com/articles/climate-change-report-2026",
+			expectedType:   domain.ContentTypeArticle,
+			expectedMethod: "heuristic",
+		},
+		{
+			name:           "article in blog section",
+			url:            "https://example.com/blog/my-first-post",
+			expectedType:   domain.ContentTypeArticle,
+			expectedMethod: "heuristic",
+		},
+		{
+			name:           "article in stories section",
+			url:            "https://example.com/stories/community-hero-saves-child",
+			expectedType:   domain.ContentTypeArticle,
+			expectedMethod: "heuristic",
+		},
+		{
+			name:           "article in posts section",
+			url:            "https://example.com/posts/weekly-update",
+			expectedType:   domain.ContentTypeArticle,
+			expectedMethod: "heuristic",
+		},
+
+		// Always-excluded paths should still match as prefixes
+		{
+			name:           "account subpath still excluded",
+			url:            "https://example.com/account/settings",
+			expectedType:   domain.ContentTypePage,
+			expectedMethod: "url_exclusion",
+		},
+		{
+			name:           "classifieds subpath still excluded",
+			url:            "https://example.com/classifieds/job-listings/plumber",
+			expectedType:   domain.ContentTypePage,
+			expectedMethod: "url_exclusion",
+		},
+		{
+			name:           "directory subpath still excluded",
+			url:            "https://example.com/directory/health-care/wellwise",
+			expectedType:   domain.ContentTypePage,
+			expectedMethod: "url_exclusion",
+		},
+		{
+			name:           "login subpath still excluded",
+			url:            "https://example.com/login/reset-password",
+			expectedType:   domain.ContentTypePage,
+			expectedMethod: "url_exclusion",
+		},
+		{
+			name:           "category subpath still excluded",
+			url:            "https://example.com/category/sports",
+			expectedType:   domain.ContentTypePage,
+			expectedMethod: "url_exclusion",
+		},
+		{
+			name:           "search subpath still excluded",
+			url:            "https://example.com/search/results",
+			expectedType:   domain.ContentTypePage,
+			expectedMethod: "url_exclusion",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			raw := &domain.RawContent{
+				ID:              "test-section-" + tt.name,
+				URL:             tt.url,
+				Title:           "Test Article Title",
+				RawText:         "This is a test article with substantial content to be classified.",
+				WordCount:       300,
+				MetaDescription: "Test article description for classification",
+				PublishedDate:   &publishedDate,
+			}
+
+			result, err := classifier.Classify(context.Background(), raw)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+
+			if result.Type != tt.expectedType {
+				t.Errorf("URL %s: expected type %s, got %s (method: %s)",
+					tt.url, tt.expectedType, result.Type, result.Method)
+			}
+
+			if result.Method != tt.expectedMethod {
+				t.Errorf("URL %s: expected method %s, got %s",
+					tt.url, tt.expectedMethod, result.Method)
+			}
+		})
+	}
+}
