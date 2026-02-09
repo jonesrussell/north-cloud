@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { formatDateShort } from '@/lib/utils'
 import { Loader2, Globe, Plus, Pencil, Trash2, Upload } from 'lucide-vue-next'
 import { sourcesApi } from '@/api/client'
 import { Button } from '@/components/ui/button'
@@ -49,8 +50,6 @@ const deleteSource = async (id: string) => {
     deleting.value = null
   }
 }
-
-const formatDate = (date: string) => date ? new Date(date).toLocaleDateString() : 'N/A'
 
 const openImportExcel = () => {
   importExcelModalRef.value?.open()
@@ -169,7 +168,7 @@ onMounted(loadSources)
                 </Badge>
               </td>
               <td class="px-6 py-4 text-sm text-muted-foreground">
-                {{ formatDate(source.created_at) }}
+                {{ formatDateShort(source.created_at) }}
               </td>
               <td class="px-6 py-4 text-right">
                 <div class="flex justify-end gap-2">

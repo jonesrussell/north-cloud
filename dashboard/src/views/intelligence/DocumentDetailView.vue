@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { formatDate } from '@/lib/utils'
 import { ArrowLeft, Loader2, ExternalLink, Copy, Check } from 'lucide-vue-next'
 import { indexManagerApi } from '@/api/client'
 import type { Document } from '@/types/indexManager'
@@ -36,8 +37,6 @@ const copyJson = async () => {
   copied.value = true
   setTimeout(() => (copied.value = false), 2000)
 }
-
-const formatDate = (date: string) => date ? new Date(date).toLocaleString() : 'N/A'
 
 onMounted(loadDocument)
 </script>

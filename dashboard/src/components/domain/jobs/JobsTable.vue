@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
+import { formatDate, formatRelativeTime } from '@/lib/utils'
 import {
   Play,
   PlayCircle,
@@ -104,32 +105,6 @@ const pageNumbers = computed(() => {
 
 function truncateId(id: string): string {
   return id.length > 8 ? `${id.slice(0, 8)}...` : id
-}
-
-function formatDate(dateStr: string | undefined | null): string {
-  if (!dateStr) return '—'
-  return new Date(dateStr).toLocaleString()
-}
-
-function formatRelativeTime(dateStr: string | undefined | null): string {
-  if (!dateStr) return '—'
-  const date = new Date(dateStr)
-  const now = new Date()
-  const diffMs = date.getTime() - now.getTime()
-  const diffMins = Math.round(diffMs / 60000)
-
-  if (diffMins < 0) {
-    const absMins = Math.abs(diffMins)
-    if (absMins < 60) return `${absMins}m ago`
-    const hours = Math.floor(absMins / 60)
-    if (hours < 24) return `${hours}h ago`
-    return `${Math.floor(hours / 24)}d ago`
-  }
-
-  if (diffMins < 60) return `in ${diffMins}m`
-  const hours = Math.floor(diffMins / 60)
-  if (hours < 24) return `in ${hours}h`
-  return `in ${Math.floor(hours / 24)}d`
 }
 
 function canPause(job: Job): boolean {

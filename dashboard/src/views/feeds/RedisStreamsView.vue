@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { formatRelativeTime } from '@/lib/utils'
 import { Loader2, Activity, RefreshCw } from 'lucide-vue-next'
 import { publisherApi } from '@/api/client'
 import { Button } from '@/components/ui/button'
@@ -45,14 +46,9 @@ const loadStreams = async () => {
   }
 }
 
-const formatDate = (date: string | null) => {
+const formatLastPublished = (date: string | null): string => {
   if (!date) return 'Never'
-  const d = new Date(date)
-  const diff = Date.now() - d.getTime()
-  if (diff < 60000) return 'just now'
-  if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`
-  if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`
-  return d.toLocaleDateString()
+  return formatRelativeTime(date)
 }
 
 const getStatusVariant = (status: string) => {
@@ -160,7 +156,7 @@ onMounted(loadStreams)
             </div>
           </dl>
           <p class="mt-4 text-xs text-muted-foreground">
-            Last published: {{ formatDate(stream.last_activity) }}
+            Last published: {{ formatLastPublished(stream.last_activity) }}
           </p>
         </CardContent>
       </Card>
