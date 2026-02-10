@@ -302,3 +302,27 @@ func TestCrimeRules_ClassifyByRules_CourtOutcomes(t *testing.T) {
 		})
 	}
 }
+
+// TestCrimeRules_TitleAndBodyPrefix verifies that crime signals in the body
+// trigger rule-based core_street_crime when the title is vague.
+func TestCrimeRules_TitleAndBodyPrefix(t *testing.T) {
+	t.Helper()
+
+	t.Run("vague title with robbery and arrested in body", func(t *testing.T) {
+		title := "Two charged"
+		body := "Police said the two suspects were arrested after an armed robbery at a convenience store. The incident occurred Tuesday night."
+		result := classifyByRules(title, body)
+		assert.Equal(t, relevanceCoreStreetCrime, result.relevance,
+			"expected core_street_crime when body contains 'arrested' and 'armed robbery'")
+		assert.Contains(t, result.crimeTypes, "violent_crime",
+			"expected violent_crime type from robbery pattern")
+	})
+
+	t.Run("exclusion remains title-only", func(t *testing.T) {
+		title := "Register for updates"
+		body := "Police arrested a man after a shooting downtown. The suspect is in custody."
+		result := classifyByRules(title, body)
+		assert.Equal(t, relevanceNotCrime, result.relevance,
+			"exclusion matched on title only; body crime text should not override")
+	})
+}

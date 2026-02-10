@@ -6,6 +6,11 @@ import (
 	"strings"
 )
 
+// crimeRuleBodyPrefixLen is the number of body characters used for rule matching.
+// Crime signals in the body (e.g. "arrested after armed robbery") can upgrade
+// relevance when the title is vague.
+const crimeRuleBodyPrefixLen = 500
+
 // Constants for relevance classifications.
 const (
 	relevanceCoreStreetCrime = "core_street_crime"
@@ -121,13 +126,29 @@ var justicePattern = regexp.MustCompile(
 	`(?i)(charged|arrest|sentenced|trial|convicts?\b|convicted|found guilty|pleaded guilty|prison term)`,
 )
 
+// truncateBody returns up to the first n runes of body for rule matching.
+func truncateBody(body string, n int) string {
+	if n <= 0 || body == "" {
+		return ""
+	}
+	runes := []rune(body)
+	if len(runes) <= n {
+		return body
+	}
+	return string(runes[:n])
+}
+
 // classifyByRules applies rule-based classification.
-// The body parameter is reserved for future use when body text analysis is added.
-func classifyByRules(title, _ string) *ruleResult {
-	// Check exclusions first
+// Positive crime checks use title + body prefix so crime terms in the body
+// can trigger rule-based upgrades. Exclusion and international checks use
+// title only to avoid false negatives from stray body text.
+func classifyByRules(title, body string) *ruleResult {
+	// Exclusion: title-only (e.g. Register, Login, Listings, job ads)
 	if matchesExclusion(title) {
 		return &ruleResult{relevance: relevanceNotCrime, confidence: confidenceExclusion}
 	}
+
+	text := title + " " + truncateBody(body, crimeRuleBodyPrefixLen)
 
 	result := &ruleResult{
 		relevance:  relevanceNotCrime,
@@ -135,17 +156,17 @@ func classifyByRules(title, _ string) *ruleResult {
 		crimeTypes: []string{},
 	}
 
-	// Check crime patterns
-	result = checkViolentCrime(result, title)
-	result = checkPropertyCrime(result, title)
-	result = checkDrugCrime(result, title)
-	result = checkCourtOutcomes(result, title)
+	// Positive crime checks: title + body prefix
+	result = checkViolentCrime(result, text)
+	result = checkPropertyCrime(result, text)
+	result = checkDrugCrime(result, text)
+	result = checkCourtOutcomes(result, text)
 
-	// Check international (downgrade to peripheral)
+	// International: title-only (downgrade to peripheral)
 	result = checkInternational(result, title)
 
-	// Add criminal_justice if has crime types and mentions arrest/charged
-	if len(result.crimeTypes) > 0 && justicePattern.MatchString(title) {
+	// Add criminal_justice if has crime types and mentions arrest/charged (in title or body prefix)
+	if len(result.crimeTypes) > 0 && justicePattern.MatchString(text) {
 		result.crimeTypes = append(result.crimeTypes, "criminal_justice")
 	}
 
@@ -161,9 +182,9 @@ func matchesExclusion(title string) bool {
 	return false
 }
 
-func checkViolentCrime(result *ruleResult, title string) *ruleResult {
+func checkViolentCrime(result *ruleResult, text string) *ruleResult {
 	for _, p := range violentCrimePatterns {
-		if p.pattern.MatchString(title) {
+		if p.pattern.MatchString(text) {
 			result.relevance = relevanceCoreStreetCrime
 			result.confidence = maxFloat(result.confidence, p.confidence)
 			if !containsString(result.crimeTypes, "violent_crime") {
@@ -174,9 +195,9 @@ func checkViolentCrime(result *ruleResult, title string) *ruleResult {
 	return result
 }
 
-func checkPropertyCrime(result *ruleResult, title string) *ruleResult {
+func checkPropertyCrime(result *ruleResult, text string) *ruleResult {
 	for _, p := range propertyCrimePatterns {
-		if p.pattern.MatchString(title) {
+		if p.pattern.MatchString(text) {
 			result.relevance = relevanceCoreStreetCrime
 			result.confidence = maxFloat(result.confidence, p.confidence)
 			if !containsString(result.crimeTypes, "property_crime") {
@@ -187,9 +208,9 @@ func checkPropertyCrime(result *ruleResult, title string) *ruleResult {
 	return result
 }
 
-func checkDrugCrime(result *ruleResult, title string) *ruleResult {
+func checkDrugCrime(result *ruleResult, text string) *ruleResult {
 	for _, p := range drugCrimePatterns {
-		if p.pattern.MatchString(title) {
+		if p.pattern.MatchString(text) {
 			result.relevance = relevanceCoreStreetCrime
 			result.confidence = maxFloat(result.confidence, p.confidence)
 			if !containsString(result.crimeTypes, "drug_crime") {
@@ -200,9 +221,9 @@ func checkDrugCrime(result *ruleResult, title string) *ruleResult {
 	return result
 }
 
-func checkCourtOutcomes(result *ruleResult, title string) *ruleResult {
+func checkCourtOutcomes(result *ruleResult, text string) *ruleResult {
 	for _, p := range courtOutcomePatterns {
-		if p.pattern.MatchString(title) {
+		if p.pattern.MatchString(text) {
 			result.relevance = relevanceCoreStreetCrime
 			result.confidence = maxFloat(result.confidence, p.confidence)
 			if !containsString(result.crimeTypes, "criminal_justice") {

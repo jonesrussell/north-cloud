@@ -926,3 +926,32 @@ func TestContentTypeClassifier_SectionURLExclusion(t *testing.T) {
 		})
 	}
 }
+
+// TestContentTypeClassifier_URLFallbackExactPathMatch verifies that when URL
+// parsing fails, the fallback uses exact-path matching for section paths so
+// /news/foo is not excluded and only /news or /news/ are excluded.
+func TestContentTypeClassifier_URLFallbackExactPathMatch(t *testing.T) {
+	t.Helper()
+	c := NewContentTypeClassifier(&mockLogger{})
+
+	// Fallback path /news/article-slug → not excluded (excluded = true means treat as non-article)
+	if c.isNonArticleURLFallback("https://example.com/news/article-slug") {
+		t.Error("fallback path /news/article-slug should not be excluded")
+	}
+
+	// Fallback path /news and /news/ → excluded
+	if !c.isNonArticleURLFallback("https://example.com/news") {
+		t.Error("fallback path /news should be excluded")
+	}
+	if !c.isNonArticleURLFallback("https://example.com/news/") {
+		t.Error("fallback path /news/ should be excluded")
+	}
+
+	// URL containing /news/ but path is not exact match → not excluded
+	if c.isNonArticleURLFallback("https://example.com/news/crime-report-2026") {
+		t.Error("fallback path /news/crime-report-2026 should not be excluded (exact match only)")
+	}
+	if c.isNonArticleURLFallback("https://example.com/local-news/mayor-announces-policy") {
+		t.Error("fallback path /local-news/mayor-announces-policy should not be excluded")
+	}
+}

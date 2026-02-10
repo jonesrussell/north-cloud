@@ -361,22 +361,73 @@ func (c *ContentTypeClassifier) isNonArticleURL(urlStr string) bool {
 	return false
 }
 
+// pathFromBeforeQuery returns the path segment from a URL string that has already
+// had its query stripped (e.g. before "?"). Handles scheme://host/path and /path forms.
+func pathFromBeforeQuery(beforeQuery string) string {
+	idx := strings.Index(beforeQuery, "://")
+	if idx < 0 {
+		slash := strings.Index(beforeQuery, "/")
+		if slash >= 0 {
+			return beforeQuery[slash:]
+		}
+		return "/"
+	}
+	rest := beforeQuery[idx+3:]
+	slash := strings.Index(rest, "/")
+	if slash >= 0 {
+		return rest[slash:]
+	}
+	return "/"
+}
+
+// extractPathFromURL extracts the path from a raw URL without using url.Parse.
+// Returns everything after the path-start slash and before "?".
+// Used by fallback when url.Parse fails. Normalized: lowercase, trailing slash trimmed (root stays "/").
+func extractPathFromURL(urlStr string) string {
+	beforeQuery := urlStr
+	if q := strings.Index(urlStr, "?"); q >= 0 {
+		beforeQuery = urlStr[:q]
+	}
+	path := pathFromBeforeQuery(beforeQuery)
+	path = strings.ToLower(path)
+	path = strings.TrimRight(path, "/")
+	if path == "" {
+		path = "/"
+	}
+	return path
+}
+
 // isNonArticleURLFallback handles URL pattern matching when URL parsing fails.
+// Uses exact-path matching for section index paths (mirrors main-path semantics)
+// so /news/article-slug is not excluded; only /news or /news/ are excluded.
 func (c *ContentTypeClassifier) isNonArticleURLFallback(urlStr string) bool {
-	lowerURL := strings.ToLower(urlStr)
+	path := extractPathFromURL(urlStr)
+
+	// Homepage
+	if path == "/" {
+		return true
+	}
+
+	// Always-excluded prefixes (auth, classifieds, etc.): prefix match on path
 	for _, pattern := range alwaysExcludedPrefixes {
-		if strings.Contains(lowerURL, pattern) {
+		if matchesURLPattern(path, pattern) {
 			return true
 		}
 	}
+
+	// Section index paths: exact match only — /news and /news/ excluded, /news/foo not excluded
 	for _, section := range sectionIndexPaths {
-		if strings.Contains(lowerURL, section) {
+		if isExactSectionPath(path, section) {
 			return true
 		}
 	}
+
+	// Query params that indicate redirect/auth (check raw URL)
+	lowerURL := strings.ToLower(urlStr)
 	if strings.Contains(lowerURL, "returnurl=") || strings.Contains(lowerURL, "redirect=") {
 		return true
 	}
+
 	return false
 }
 
