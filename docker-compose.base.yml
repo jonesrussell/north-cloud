@@ -86,6 +86,16 @@ services:
       - postgres_publisher_data:/var/lib/postgresql/data
       - ./publisher/migrations:/migrations:ro
 
+  postgres-pipeline:
+    <<: *postgres-defaults
+    environment:
+      POSTGRES_USER: ${POSTGRES_PIPELINE_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PIPELINE_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_PIPELINE_DB:-pipeline}
+    volumes:
+      - postgres_pipeline_data:/var/lib/postgresql/data
+      - ./pipeline/migrations:/migrations:ro
+
   # ------------------------------------------------------------
   # Elasticsearch
   # ------------------------------------------------------------
@@ -514,6 +524,7 @@ volumes:
   postgres_classifier_data:
   postgres_index_manager_data:
   postgres_publisher_data:
+  postgres_pipeline_data:
   redis_data:
   minio_data:
   loki_data:
