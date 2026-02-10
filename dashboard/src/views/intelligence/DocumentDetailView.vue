@@ -2,33 +2,88 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { formatDate } from '@/lib/utils'
-import { ArrowLeft, Loader2, ExternalLink, Copy, Check } from 'lucide-vue-next'
-import { indexManagerApi } from '@/api/client'
+import { ArrowLeft, Loader2, ExternalLink, Copy, Check, RefreshCw } from 'lucide-vue-next'
+import { indexManagerApi, classifierApi } from '@/api/client'
 import type { Document } from '@/types/indexManager'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+
+interface ClassifyResult {
+  content_type?: string
+  quality_score?: number
+  topics?: string[]
+  crime?: { street_crime_relevance?: string; [key: string]: unknown }
+  mining?: Record<string, unknown>
+}
 
 const route = useRoute()
 const router = useRouter()
 
 const indexName = computed(() => route.params.index_name as string)
 const documentId = computed(() => route.params.document_id as string)
+const isClassifiedIndex = computed(() =>
+  (indexName.value ?? '').endsWith('_classified_content')
+)
 
 const loading = ref(true)
 const error = ref<string | null>(null)
 const document = ref<(Document & Record<string, unknown>) | null>(null)
 const copied = ref(false)
+const reclassifyLoading = ref(false)
+const reclassifyError = ref<string | null>(null)
 
 const loadDocument = async () => {
   try {
     loading.value = true
+    error.value = null
     const response = await indexManagerApi.documents.get(indexName.value, documentId.value)
     document.value = response.data as Document & Record<string, unknown>
   } catch (err) {
     error.value = 'Unable to load document.'
   } finally {
     loading.value = false
+  }
+}
+
+function applyResultToDocument(result: ClassifyResult): void {
+  if (!document.value) return
+  const doc = document.value as Record<string, unknown>
+  if (result.content_type !== undefined) doc.content_type = result.content_type
+  if (result.quality_score !== undefined) doc.quality_score = result.quality_score
+  if (result.topics !== undefined) doc.topics = result.topics
+  if (result.crime) {
+    const existing = (doc.crime as Record<string, unknown>) ?? {}
+    const rel = result.crime.street_crime_relevance ?? existing.relevance
+    doc.crime = { ...existing, ...result.crime, relevance: rel }
+  }
+  if (result.mining) {
+    const existing = (doc.mining as Record<string, unknown>) ?? {}
+    doc.mining = { ...existing, ...result.mining }
+  }
+}
+
+const handleReclassify = async () => {
+  if (!documentId.value) return
+  reclassifyLoading.value = true
+  reclassifyError.value = null
+  try {
+    const response = await classifierApi.classify.reclassify(documentId.value)
+    const data = response.data as { result?: ClassifyResult }
+    if (data.result) {
+      applyResultToDocument(data.result)
+    }
+    await loadDocument()
+  } catch (err: unknown) {
+    const axiosErr = err as { response?: { status?: number; data?: { error?: string } } }
+    if (axiosErr?.response?.status === 404) {
+      reclassifyError.value = 'Document not found.'
+    } else {
+      const msg = axiosErr?.response?.data?.error ?? (err as Error)?.message ?? 'Reclassification failed.'
+      reclassifyError.value = msg
+    }
+  } finally {
+    reclassifyLoading.value = false
   }
 }
 
@@ -333,23 +388,50 @@ onMounted(loadDocument)
       <!-- Raw JSON -->
       <Card>
         <CardHeader>
-          <div class="flex items-center justify-between">
-            <CardTitle>Raw JSON</CardTitle>
-            <Button
-              variant="outline"
-              size="sm"
-              @click="copyJson"
+          <div class="flex flex-col gap-2">
+            <div class="flex items-center justify-between">
+              <CardTitle>Raw JSON</CardTitle>
+              <div class="flex items-center gap-2">
+                <Button
+                  v-if="isClassifiedIndex"
+                  variant="outline"
+                  size="sm"
+                  :disabled="reclassifyLoading"
+                  @click="handleReclassify"
+                >
+                  <Loader2
+                    v-if="reclassifyLoading"
+                    class="mr-2 h-4 w-4 animate-spin"
+                  />
+                  <RefreshCw
+                    v-else
+                    class="mr-2 h-4 w-4"
+                  />
+                  {{ reclassifyLoading ? 'Reclassifying…' : 'Reclassify' }}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  @click="copyJson"
+                >
+                  <Check
+                    v-if="copied"
+                    class="mr-2 h-4 w-4"
+                  />
+                  <Copy
+                    v-else
+                    class="mr-2 h-4 w-4"
+                  />
+                  {{ copied ? 'Copied!' : 'Copy' }}
+                </Button>
+              </div>
+            </div>
+            <p
+              v-if="reclassifyError"
+              class="text-sm text-destructive"
             >
-              <Check
-                v-if="copied"
-                class="mr-2 h-4 w-4"
-              />
-              <Copy
-                v-else
-                class="mr-2 h-4 w-4"
-              />
-              {{ copied ? 'Copied!' : 'Copy' }}
-            </Button>
+              {{ reclassifyError }}
+            </p>
           </div>
         </CardHeader>
         <CardContent>

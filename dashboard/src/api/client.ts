@@ -353,6 +353,8 @@ export const classifierApi = {
     single: (data: unknown) => classifierClient.post('/classify', data),
     batch: (data: unknown) => classifierClient.post('/classify/batch', data),
     get: (contentId: string) => classifierClient.get(`/classify/${contentId}`),
+    reclassify: (contentId: string) =>
+      classifierClient.post(`/classify/reclassify/${contentId}`),
   },
 
   // Rules

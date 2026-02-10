@@ -2,14 +2,17 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { formatDate, formatDateShort } from '@/lib/utils'
-import { ArrowLeft, Loader2, Search, FileText } from 'lucide-vue-next'
-import { indexManagerApi } from '@/api/client'
+import { ArrowLeft, Loader2, Search, FileText, RefreshCw } from 'lucide-vue-next'
+import { indexManagerApi, classifierApi } from '@/api/client'
 import type { GetIndexResponse } from '@/types/indexManager'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
-import { DataTablePagination } from '@/components/common'
+import { DataTablePagination, BulkActionsToolbar } from '@/components/common'
+import { useBulkOperations } from '@/composables/useBulkOperations'
+import { useToast } from '@/composables/useToast'
+import { reclassifyBulk } from '@/lib/reclassifyBulk'
 
 interface Document {
   id: string
@@ -24,8 +27,15 @@ interface Document {
 
 const route = useRoute()
 const router = useRouter()
+const { toast } = useToast()
 
 const indexName = computed(() => route.params.index_name as string)
+const isClassifiedIndex = computed(() =>
+  (indexName.value ?? '').endsWith('_classified_content')
+)
+
+const bulkOps = useBulkOperations()
+const reclassifyingId = ref<string | null>(null)
 
 const loading = ref(true)
 const error = ref<string | null>(null)
@@ -89,6 +99,49 @@ const handleSearch = () => {
 
 const viewDocument = (docId: string) => {
   router.push(`/intelligence/indexes/${indexName.value}/documents/${docId}`)
+}
+
+function confirmBulkReclassify(n: number): boolean {
+  if (n >= 500) {
+    return confirm(`Are you sure? This will reclassify ${n} documents.`)
+  }
+  if (n >= 100) {
+    return confirm(`Reclassify ${n} documents?`)
+  }
+  return true
+}
+
+async function handlePerRowReclassify(doc: Document, event: Event) {
+  event.stopPropagation()
+  reclassifyingId.value = doc.id
+  try {
+    await classifierApi.classify.reclassify(doc.id)
+    await loadDocuments()
+    toast.success('Document reclassified')
+  } catch (err: unknown) {
+    const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error ?? 'Reclassification failed.'
+    toast.error(msg)
+  } finally {
+    reclassifyingId.value = null
+  }
+}
+
+async function handleBulkReclassify(selectedIds: string[]) {
+  const n = selectedIds.length
+  if (!confirmBulkReclassify(n)) return
+
+  const result = await reclassifyBulk(selectedIds)
+  bulkOps.clearSelection()
+  await loadDocuments()
+
+  if (result.succeeded > 0) {
+    toast.success(`Reclassified ${result.succeeded} document${result.succeeded !== 1 ? 's' : ''}`)
+  }
+  if (result.failed > 0) {
+    const sample = result.errors.slice(0, 5).map((e) => `${e.id}: ${e.error}`).join('; ')
+    const suffix = result.errors.length > 5 ? '…' : ''
+    toast.error(`${result.failed} failed: ${sample}${suffix}`)
+  }
 }
 
 const getHealthVariant = (health: string | undefined) => {
@@ -239,6 +292,17 @@ onMounted(() => {
           >
             <thead class="border-b bg-muted/50">
               <tr>
+                <th
+                  v-if="isClassifiedIndex"
+                  class="w-12 px-4 py-3"
+                >
+                  <input
+                    type="checkbox"
+                    :checked="bulkOps.selectAll && documents.length > 0"
+                    class="rounded border-input"
+                    @change="bulkOps.toggleSelectAll(documents)"
+                  >
+                </th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
                   Title
                 </th>
@@ -254,15 +318,33 @@ onMounted(() => {
                 <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
                   Published
                 </th>
+                <th
+                  v-if="isClassifiedIndex"
+                  class="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase"
+                >
+                  Actions
+                </th>
               </tr>
             </thead>
             <tbody class="divide-y">
-              <tr 
-                v-for="doc in documents" 
-                :key="doc.id" 
+              <tr
+                v-for="doc in documents"
+                :key="doc.id"
                 class="hover:bg-muted/50 cursor-pointer"
                 @click="viewDocument(doc.id)"
               >
+                <td
+                  v-if="isClassifiedIndex"
+                  class="w-12 px-4 py-4"
+                  @click.stop
+                >
+                  <input
+                    type="checkbox"
+                    :checked="bulkOps.isSelected(doc.id)"
+                    class="rounded border-input"
+                    @change="bulkOps.toggleItem(doc.id)"
+                  >
+                </td>
                 <td class="px-6 py-4 text-sm">
                   <button class="text-primary hover:underline text-left truncate max-w-md block">
                     {{ doc.title || 'Untitled' }}
@@ -289,6 +371,28 @@ onMounted(() => {
                 <td class="px-6 py-4 text-sm text-muted-foreground">
                   {{ formatDateShort(doc.published_date || '') }}
                 </td>
+                <td
+                  v-if="isClassifiedIndex"
+                  class="px-6 py-4 text-right"
+                  @click.stop
+                >
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    :disabled="reclassifyingId === doc.id"
+                    :title="'Reclassify'"
+                    @click="handlePerRowReclassify(doc, $event)"
+                  >
+                    <Loader2
+                      v-if="reclassifyingId === doc.id"
+                      class="h-4 w-4 animate-spin"
+                    />
+                    <RefreshCw
+                      v-else
+                      class="h-4 w-4"
+                    />
+                  </Button>
+                </td>
               </tr>
             </tbody>
           </table>
@@ -307,6 +411,22 @@ onMounted(() => {
           </div>
         </CardContent>
       </Card>
+
+      <BulkActionsToolbar
+        v-if="isClassifiedIndex"
+        :selected-count="bulkOps.selectedCount"
+        :selected-ids="bulkOps.selectedIds"
+        :available-actions="[
+          {
+            id: 'reclassify',
+            label: 'Reclassify selected',
+            variant: 'primary',
+            icon: RefreshCw,
+            handler: handleBulkReclassify,
+          },
+        ]"
+        @cancel="bulkOps.clearSelection()"
+      />
     </template>
   </div>
 </template>

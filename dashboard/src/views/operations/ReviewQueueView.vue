@@ -12,16 +12,23 @@ import {
   FileText,
   X,
 } from 'lucide-vue-next'
-import { indexManagerApi } from '@/api/client'
+import { indexManagerApi, classifierApi } from '@/api/client'
 import type { Document, Index } from '@/types/indexManager'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
-import { DataTablePagination } from '@/components/common'
+import { DataTablePagination, BulkActionsToolbar } from '@/components/common'
+import { useBulkOperations } from '@/composables/useBulkOperations'
+import { useToast } from '@/composables/useToast'
+import { reclassifyBulk } from '@/lib/reclassifyBulk'
 
 const router = useRouter()
+const { toast } = useToast()
+
+const bulkOps = useBulkOperations()
 
 const loading = ref(true)
+const reclassifyingId = ref<string | null>(null)
 const error = ref<string | null>(null)
 const documents = ref<Document[]>([])
 const classifiedIndexes = ref<Index[]>([])
@@ -143,8 +150,50 @@ function clearFilters() {
 }
 
 const viewDocument = (doc: Document) => {
-  const indexName = `${doc.source_name}_classified_content`
-  router.push(`/intelligence/indexes/${indexName}/documents/${doc.id}`)
+  const idxName = `${doc.source_name}_classified_content`
+  router.push(`/intelligence/indexes/${idxName}/documents/${doc.id}`)
+}
+
+function confirmBulkReclassify(n: number): boolean {
+  if (n >= 500) {
+    return confirm(`Are you sure? This will reclassify ${n} documents.`)
+  }
+  if (n >= 100) {
+    return confirm(`Reclassify ${n} documents?`)
+  }
+  return true
+}
+
+async function handlePerRowReclassify(doc: Document) {
+  reclassifyingId.value = doc.id
+  try {
+    await classifierApi.classify.reclassify(doc.id)
+    await loadReviewQueue()
+    toast.success('Document reclassified')
+  } catch (err: unknown) {
+    const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error ?? 'Reclassification failed.'
+    toast.error(msg)
+  } finally {
+    reclassifyingId.value = null
+  }
+}
+
+async function handleBulkReclassify(selectedIds: string[]) {
+  const n = selectedIds.length
+  if (!confirmBulkReclassify(n)) return
+
+  const result = await reclassifyBulk(selectedIds)
+  bulkOps.clearSelection()
+  await loadReviewQueue()
+
+  if (result.succeeded > 0) {
+    toast.success(`Reclassified ${result.succeeded} document${result.succeeded !== 1 ? 's' : ''}`)
+  }
+  if (result.failed > 0) {
+    const sample = result.errors.slice(0, 5).map((e) => `${e.id}: ${e.error}`).join('; ')
+    const suffix = result.errors.length > 5 ? '…' : ''
+    toast.error(`${result.failed} failed: ${sample}${suffix}`)
+  }
 }
 
 const formatRelevance = (relevance?: string) => {
@@ -273,6 +322,14 @@ onMounted(async () => {
           <table class="w-full">
             <thead class="border-b bg-muted/50">
               <tr>
+                <th class="w-12 px-4 py-3">
+                  <input
+                    type="checkbox"
+                    :checked="bulkOps.selectAll && paginatedDocuments.length > 0"
+                    class="rounded border-input"
+                    @change="bulkOps.toggleSelectAll(paginatedDocuments)"
+                  >
+                </th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
                   Article
                 </th>
@@ -302,6 +359,14 @@ onMounted(async () => {
                 :key="doc.id"
                 class="hover:bg-muted/50"
               >
+                <td class="w-12 px-4 py-4">
+                  <input
+                    type="checkbox"
+                    :checked="bulkOps.isSelected(doc.id)"
+                    class="rounded border-input"
+                    @change="bulkOps.toggleItem(doc.id)"
+                  >
+                </td>
                 <td class="px-6 py-4">
                   <div class="max-w-md">
                     <p class="text-sm font-medium truncate">
@@ -345,6 +410,22 @@ onMounted(async () => {
                     <Button
                       variant="ghost"
                       size="sm"
+                      :disabled="reclassifyingId === doc.id"
+                      :title="'Reclassify'"
+                      @click="handlePerRowReclassify(doc)"
+                    >
+                      <Loader2
+                        v-if="reclassifyingId === doc.id"
+                        class="h-4 w-4 animate-spin"
+                      />
+                      <RefreshCw
+                        v-else
+                        class="h-4 w-4"
+                      />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
                       @click="viewDocument(doc)"
                     >
                       <Eye class="h-4 w-4" />
@@ -385,5 +466,20 @@ onMounted(async () => {
         No classified content indexes found. Content must be classified before it can be reviewed.
       </p>
     </div>
+
+    <BulkActionsToolbar
+      :selected-count="bulkOps.selectedCount"
+      :selected-ids="bulkOps.selectedIds"
+      :available-actions="[
+        {
+          id: 'reclassify',
+          label: 'Reclassify selected',
+          variant: 'primary',
+          icon: RefreshCw,
+          handler: handleBulkReclassify,
+        },
+      ]"
+      @cancel="bulkOps.clearSelection()"
+    />
   </div>
 </template>
