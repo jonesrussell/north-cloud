@@ -85,11 +85,11 @@ type PipelineEvent struct {
 
 // IngestRequest is the payload accepted by the event ingestion endpoint.
 type IngestRequest struct {
-	ArticleURL     string         `binding:"required"        json:"article_url"`
-	SourceName     string         `binding:"required"        json:"source_name"`
-	Stage          Stage          `binding:"required"        json:"stage"`
-	OccurredAt     time.Time      `binding:"required"        json:"occurred_at"`
-	ServiceName    string         `binding:"required"        json:"service_name"`
+	ArticleURL     string         `binding:"required"               json:"article_url"`
+	SourceName     string         `binding:"required"               json:"source_name"`
+	Stage          Stage          `binding:"required"               json:"stage"`
+	OccurredAt     time.Time      `binding:"required"               json:"occurred_at"`
+	ServiceName    string         `binding:"required"               json:"service_name"`
 	IdempotencyKey string         `json:"idempotency_key,omitempty"`
 	Metadata       map[string]any `json:"metadata,omitempty"`
 }

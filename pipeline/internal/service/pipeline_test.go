@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/jonesrussell/north-cloud/pipeline/internal/domain"
+	infralogger "github.com/north-cloud/infrastructure/logger"
 )
 
 type mockRepository struct {
@@ -40,12 +41,13 @@ func (m *mockRepository) Ping(_ context.Context) error { return nil }
 
 type mockLogger struct{}
 
-func (m *mockLogger) Debug(_ string, _ ...any) {}
-func (m *mockLogger) Info(_ string, _ ...any)  {}
-func (m *mockLogger) Warn(_ string, _ ...any)  {}
-func (m *mockLogger) Error(_ string, _ ...any) {}
-func (m *mockLogger) With(_ ...any) Logger     { return m }
-func (m *mockLogger) Sync() error              { return nil }
+func (m *mockLogger) Debug(_ string, _ ...infralogger.Field)         {}
+func (m *mockLogger) Info(_ string, _ ...infralogger.Field)          {}
+func (m *mockLogger) Warn(_ string, _ ...infralogger.Field)          {}
+func (m *mockLogger) Error(_ string, _ ...infralogger.Field)         {}
+func (m *mockLogger) Fatal(_ string, _ ...infralogger.Field)         {}
+func (m *mockLogger) With(_ ...infralogger.Field) infralogger.Logger { return m }
+func (m *mockLogger) Sync() error                                    { return nil }
 
 func TestPipelineService_Ingest_ValidEvent(t *testing.T) {
 	var upsertCalled, insertCalled bool

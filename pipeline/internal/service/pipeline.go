@@ -7,19 +7,10 @@ import (
 	"time"
 
 	"github.com/jonesrussell/north-cloud/pipeline/internal/domain"
+	infralogger "github.com/north-cloud/infrastructure/logger"
 )
 
 const maxEventAge = 24 * time.Hour
-
-// Logger is the minimal logging interface needed by the service.
-type Logger interface {
-	Debug(msg string, fields ...any)
-	Info(msg string, fields ...any)
-	Warn(msg string, fields ...any)
-	Error(msg string, fields ...any)
-	With(fields ...any) Logger
-	Sync() error
-}
 
 // Repository is the data access interface for pipeline events.
 type Repository interface {
@@ -32,11 +23,11 @@ type Repository interface {
 // PipelineService handles pipeline event ingestion and querying.
 type PipelineService struct {
 	repo   Repository
-	logger Logger
+	logger infralogger.Logger
 }
 
 // NewPipelineService creates a new pipeline service.
-func NewPipelineService(repo Repository, logger Logger) *PipelineService {
+func NewPipelineService(repo Repository, logger infralogger.Logger) *PipelineService {
 	return &PipelineService{
 		repo:   repo,
 		logger: logger,
