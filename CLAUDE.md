@@ -87,6 +87,8 @@ cd SERVICE && go build -o bin/SERVICE .
 | nc-http-proxy | 8055 | HTTP Replay Proxy |
 | mining-ml | 8077 | Mining ML Classifier |
 
+ML sidecars (crime-ml, mining-ml, coforge-ml, entertainment-ml) live under `ml-sidecars/` (e.g. `ml-sidecars/mining-ml`).
+
 ---
 
 ## CRITICAL Rules - YOU MUST Follow

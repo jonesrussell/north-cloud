@@ -127,10 +127,17 @@ else
     fi
 
     # Detect which services changed
+    # ML sidecars live under ml-sidecars/<service>/
     declare -A CHANGED_SERVICES_MAP
     for service in "${ALL_SERVICES[@]}"; do
-        if echo "$CHANGED_FILES" | grep -q "^${service}/"; then
-            CHANGED_SERVICES_MAP[$service]=1
+        if [[ " ${OTHER_SERVICES[*]} " == *" ${service} "* ]]; then
+            if echo "$CHANGED_FILES" | grep -q "^ml-sidecars/${service}/"; then
+                CHANGED_SERVICES_MAP[$service]=1
+            fi
+        else
+            if echo "$CHANGED_FILES" | grep -q "^${service}/"; then
+                CHANGED_SERVICES_MAP[$service]=1
+            fi
         fi
     done
 
@@ -175,7 +182,11 @@ case "$FORMAT" in
                         CONTEXT="."
                         DOCKERFILE="./search/Dockerfile"
                         ;;
-                    search-frontend|dashboard|nc-http-proxy|crime-ml|mining-ml|coforge-ml|entertainment-ml)
+                    crime-ml|mining-ml|coforge-ml|entertainment-ml)
+                        CONTEXT="./ml-sidecars/${svc}"
+                        DOCKERFILE="./ml-sidecars/${svc}/Dockerfile"
+                        ;;
+                    search-frontend|dashboard|nc-http-proxy)
                         CONTEXT="./${svc}"
                         DOCKERFILE="./${svc}/Dockerfile"
                         ;;

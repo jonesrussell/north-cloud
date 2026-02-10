@@ -290,7 +290,7 @@ services:
   crime-ml:
     <<: *service-defaults
     build:
-      context: ./crime-ml
+      context: ./ml-sidecars/crime-ml
       dockerfile: Dockerfile
     image: docker.io/jonesrussell/crime-ml:latest
     deploy:
@@ -314,7 +314,7 @@ services:
   mining-ml:
     <<: *service-defaults
     build:
-      context: ./mining-ml
+      context: ./ml-sidecars/mining-ml
       dockerfile: Dockerfile
     image: docker.io/jonesrussell/mining-ml:latest
     deploy:
@@ -338,7 +338,7 @@ services:
   coforge-ml:
     <<: *service-defaults
     build:
-      context: ./coforge-ml
+      context: ./ml-sidecars/coforge-ml
       dockerfile: Dockerfile
     image: docker.io/jonesrussell/coforge-ml:latest
     deploy:
@@ -362,7 +362,7 @@ services:
   entertainment-ml:
     <<: *service-defaults
     build:
-      context: ./entertainment-ml
+      context: ./ml-sidecars/entertainment-ml
       dockerfile: Dockerfile
     image: docker.io/jonesrussell/entertainment-ml:latest
     deploy:
