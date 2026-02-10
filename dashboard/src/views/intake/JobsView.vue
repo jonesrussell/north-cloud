@@ -9,7 +9,7 @@
  */
 import { ref, computed, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { Plus, Briefcase, Loader2, RefreshCw, GitPull } from 'lucide-vue-next'
+import { Plus, Briefcase, Loader2, RefreshCw } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -220,7 +220,7 @@ watch(() => route.query.create, (create) => {
           :disabled="syncing"
           @click="handleSyncCrawlJobs"
         >
-          <GitPull :class="['mr-2 h-4 w-4', syncing && 'animate-spin']" />
+          <RefreshCw :class="['mr-2 h-4 w-4', syncing && 'animate-spin']" />
           Sync crawl jobs
         </Button>
         <Button @click="jobs.ui.openModal('create')">
