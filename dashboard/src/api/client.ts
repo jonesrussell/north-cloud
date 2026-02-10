@@ -30,6 +30,7 @@ import type {
   DocumentQueryResponse,
 } from '../types/indexManager'
 import type { ImportExcelResult } from '../types/source'
+import type { SyncReport } from '../types/crawler'
 import type {
   CrimeAggregation,
   LocationAggregation,
@@ -221,6 +222,10 @@ export const crawlerApi = {
   stats: {
     get: () => crawlerClient.get('/stats'),
   },
+
+  // Admin: sync crawl jobs with enabled sources (create missing, resume paused)
+  syncEnabledSources: (): Promise<AxiosResponse<SyncReport>> =>
+    crawlerClient.post('/admin/sync-enabled-sources'),
 
   // Articles
   articles: {

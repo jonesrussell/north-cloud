@@ -348,16 +348,16 @@ func (r *SourceRepository) Delete(ctx context.Context, id string) error {
 }
 
 // UpsertSourcesTx upserts multiple sources in a single transaction.
-// Returns the count of created and updated sources.
+// Returns slices of sources that were created and updated (by pointer into the input slice).
 // If any upsert fails, the entire transaction is rolled back.
-func (r *SourceRepository) UpsertSourcesTx(ctx context.Context, sources []*models.Source) (created, updated int, err error) {
+func (r *SourceRepository) UpsertSourcesTx(ctx context.Context, sources []*models.Source) (created, updated []*models.Source, err error) {
 	if len(sources) == 0 {
-		return 0, 0, nil
+		return nil, nil, nil
 	}
 
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
-		return 0, 0, fmt.Errorf("begin transaction: %w", err)
+		return nil, nil, fmt.Errorf("begin transaction: %w", err)
 	}
 	defer func() {
 		if err != nil {
@@ -369,22 +369,25 @@ func (r *SourceRepository) UpsertSourcesTx(ctx context.Context, sources []*model
 		}
 	}()
 
+	created = make([]*models.Source, 0, len(sources))
+	updated = make([]*models.Source, 0, len(sources))
+
 	for _, source := range sources {
 		isCreated, upsertErr := r.UpsertSource(ctx, tx, source)
 		if upsertErr != nil {
 			err = fmt.Errorf("upsert source %q: %w", source.Name, upsertErr)
-			return 0, 0, err
+			return nil, nil, err
 		}
 		if isCreated {
-			created++
+			created = append(created, source)
 		} else {
-			updated++
+			updated = append(updated, source)
 		}
 	}
 
 	if commitErr := tx.Commit(); commitErr != nil {
 		err = fmt.Errorf("commit transaction: %w", commitErr)
-		return 0, 0, err
+		return nil, nil, err
 	}
 
 	return created, updated, nil

@@ -9,7 +9,7 @@
  */
 import { ref, computed, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { Plus, Briefcase, Loader2, RefreshCw } from 'lucide-vue-next'
+import { Plus, Briefcase, Loader2, RefreshCw, GitPull } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -19,7 +19,11 @@ import { LiveUpdateIndicator } from '@/components/domain/realtime'
 // Import from new feature modules
 import { useJobs } from '@/features/intake'
 import { useSources } from '@/features/scheduling'
+import { useToast } from '@/composables/useToast'
+import { crawlerApi } from '@/api/client'
 import type { Job, CreateJobRequest } from '@/types/crawler'
+
+const { toast } = useToast()
 
 const router = useRouter()
 const route = useRoute()
@@ -51,6 +55,30 @@ const createSuccess = ref(false)
 
 // Job to delete (for confirmation modal)
 const jobToDelete = ref<Job | null>(null)
+
+// Sync crawl jobs (create missing jobs for enabled sources, resume paused)
+const syncing = ref(false)
+async function handleSyncCrawlJobs() {
+  syncing.value = true
+  const loadingId = toast.loading('Syncing crawl jobs…')
+  try {
+    const res = await crawlerApi.syncEnabledSources()
+    toast.dismiss(loadingId)
+    const created = res.data.created?.length ?? 0
+    const resumed = res.data.resumed?.length ?? 0
+    toast.success(
+      created > 0 || resumed > 0
+        ? `Crawl jobs synced: ${created} created, ${resumed} resumed`
+        : 'Crawl jobs synced (no new or resumed jobs)'
+    )
+    await jobs.refetch()
+  } catch {
+    toast.dismiss(loadingId)
+    toast.error('Sync failed. Check crawler service and try again.')
+  } finally {
+    syncing.value = false
+  }
+}
 
 function onSourceChange(e: Event) {
   const target = e.target as HTMLSelectElement
@@ -186,6 +214,14 @@ watch(() => route.query.create, (create) => {
         >
           <RefreshCw :class="['mr-2 h-4 w-4', jobs.isFetching.value && 'animate-spin']" />
           Refresh
+        </Button>
+        <Button
+          variant="outline"
+          :disabled="syncing"
+          @click="handleSyncCrawlJobs"
+        >
+          <GitPull :class="['mr-2 h-4 w-4', syncing && 'animate-spin']" />
+          Sync crawl jobs
         </Button>
         <Button @click="jobs.ui.openModal('create')">
           <Plus class="mr-2 h-4 w-4" />

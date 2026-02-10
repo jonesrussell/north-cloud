@@ -321,9 +321,12 @@ import {
   CheckCircleIcon,
   XCircleIcon,
 } from '@heroicons/vue/24/outline'
-import { sourcesApi } from '../../api/client'
+import { sourcesApi, crawlerApi } from '../../api/client'
+import { useToast } from '@/composables/useToast'
 import type { ImportExcelResult } from '../../types/source'
 import type { ApiError } from '../../types/common'
+
+const { toast } = useToast()
 
 const emit = defineEmits<{
   (e: 'imported'): void
@@ -444,6 +447,27 @@ async function handleUpload() {
     }
   } finally {
     uploading.value = false
+  }
+
+  // Non-blocking: sync crawl jobs so new/updated sources get jobs (safety net)
+  if (result.value && (result.value.created > 0 || result.value.updated > 0)) {
+    const loadingId = toast.loading('Syncing crawl jobs…')
+    crawlerApi
+      .syncEnabledSources()
+      .then((res) => {
+        toast.dismiss(loadingId)
+        const created = res.data.created?.length ?? 0
+        const resumed = res.data.resumed?.length ?? 0
+        toast.success(
+          created > 0 || resumed > 0
+            ? `Crawl jobs synced: ${created} created, ${resumed} resumed`
+            : 'Crawl jobs synced (no new or resumed jobs)'
+        )
+      })
+      .catch(() => {
+        toast.dismiss(loadingId)
+        toast.warning('Sync failed; you can run Sync crawl jobs from the Jobs page if needed.')
+      })
   }
 }
 
