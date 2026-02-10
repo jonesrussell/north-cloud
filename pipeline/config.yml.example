@@ -11,7 +11,7 @@ database:
   host: "postgres-pipeline"
   port: 5432
   user: "postgres"
-  password: "postgres"
+  password: "changeme"
   database: "pipeline"
   sslmode: "disable"
   max_connections: 25

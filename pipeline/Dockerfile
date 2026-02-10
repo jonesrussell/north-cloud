@@ -36,7 +36,7 @@ WORKDIR /app
 
 # Copy binary and config
 COPY --from=builder /build/pipeline/pipeline .
-COPY --from=builder /build/pipeline/config.yml ./config.yml
+COPY --from=builder /build/pipeline/config.yml.example ./config.yml
 
 # Switch to non-root user
 USER pipeline
