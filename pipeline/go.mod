@@ -5,6 +5,7 @@ go 1.25
 replace github.com/north-cloud/infrastructure => ../infrastructure
 
 require (
+	github.com/DATA-DOG/go-sqlmock v1.5.2
 	github.com/lib/pq v1.11.2
 	github.com/north-cloud/infrastructure v0.0.0-00010101000000-000000000000
 )
