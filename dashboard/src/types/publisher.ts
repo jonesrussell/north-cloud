@@ -118,6 +118,7 @@ export interface PublishHistoryItem {
 export interface PublishHistoryListResponse {
   history: PublishHistoryItem[]
   count: number
+  total: number
   limit?: number
   offset?: number
 }

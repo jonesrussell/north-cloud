@@ -1,63 +1,31 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
-import { formatDate } from '@/lib/utils'
-import { Loader2, ScrollText, RefreshCw, CheckCircle2, XCircle, Clock } from 'lucide-vue-next'
+import { computed } from 'vue'
+import { useQuery } from '@tanstack/vue-query'
+import { Loader2, ScrollText, RefreshCw } from 'lucide-vue-next'
 import { publisherApi } from '@/api/client'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import {
+  DeliveryLogsFilterBar,
+  DeliveryLogsTable,
+} from '@/components/domain/feeds'
+import { usePublishHistoryTable } from '@/composables'
 
-interface DeliveryLog {
-  id: string
-  article_id: string
-  article_title: string
-  channel_name: string
-  quality_score: number
-  status: 'delivered' | 'failed' | 'pending'
-  published_at: string
+const table = usePublishHistoryTable()
+
+const { data: channelsData } = useQuery({
+  queryKey: ['publisher', 'active-channels'],
+  queryFn: async () => {
+    const res = await publisherApi.stats.activeChannels()
+    return res.data
+  },
+})
+
+const channels = computed(() => channelsData.value?.channels ?? [])
+
+function onChannelChange(value: string) {
+  table.setFilter('channel_name', value || undefined)
 }
-
-const loading = ref(true)
-const error = ref<string | null>(null)
-const logs = ref<DeliveryLog[]>([])
-
-const loadLogs = async () => {
-  try {
-    loading.value = true
-    const response = await publisherApi.history.list({ limit: 50 })
-    logs.value = (response.data?.history || []).map((h: Record<string, unknown>) => ({
-      id: h.id as string || String(Math.random()),
-      article_id: h.article_id as string || '',
-      article_title: h.article_title as string || 'Untitled',
-      channel_name: h.channel_name as string || '',
-      quality_score: h.quality_score as number || 0,
-      status: 'delivered',
-      published_at: h.published_at as string || new Date().toISOString(),
-    }))
-  } catch (err) {
-    error.value = 'Unable to load delivery logs.'
-  } finally {
-    loading.value = false
-  }
-}
-
-const getStatusIcon = (status: string) => {
-  switch (status) {
-    case 'delivered': return CheckCircle2
-    case 'failed': return XCircle
-    default: return Clock
-  }
-}
-
-const getStatusVariant = (status: string) => {
-  switch (status) {
-    case 'delivered': return 'success'
-    case 'failed': return 'destructive'
-    default: return 'warning'
-  }
-}
-
-onMounted(loadLogs)
 </script>
 
 <template>
@@ -73,7 +41,7 @@ onMounted(loadLogs)
       </div>
       <Button
         variant="outline"
-        @click="loadLogs"
+        @click="table.refetch"
       >
         <RefreshCw class="mr-2 h-4 w-4" />
         Refresh
@@ -81,24 +49,27 @@ onMounted(loadLogs)
     </div>
 
     <div
-      v-if="loading"
+      v-if="table.isLoading.value && table.items.value.length === 0"
       class="flex items-center justify-center py-12"
     >
       <Loader2 class="h-8 w-8 animate-spin text-muted-foreground" />
     </div>
 
     <Card
-      v-else-if="error"
+      v-else-if="table.error.value"
       class="border-destructive"
     >
       <CardContent class="pt-6">
         <p class="text-destructive">
-          {{ error }}
+          {{ table.error.value?.message || 'Unable to load delivery logs.' }}
         </p>
       </CardContent>
     </Card>
 
-    <Card v-else-if="logs.length === 0">
+    <Card
+      v-else-if="table.items.value.length === 0 && !table.hasActiveFilters.value"
+      class="border-dashed"
+    >
       <CardContent class="flex flex-col items-center justify-center py-12">
         <ScrollText class="h-12 w-12 text-muted-foreground mb-4" />
         <h3 class="text-lg font-medium mb-2">
@@ -110,72 +81,45 @@ onMounted(loadLogs)
       </CardContent>
     </Card>
 
-    <Card v-else>
-      <CardHeader>
-        <CardTitle>Recent Deliveries</CardTitle>
-        <CardDescription>Showing the {{ logs.length }} most recent publications</CardDescription>
-      </CardHeader>
-      <CardContent class="p-0">
-        <table class="w-full">
-          <thead class="border-b bg-muted/50">
-            <tr>
-              <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
-                Status
-              </th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
-                Article
-              </th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
-                Channel
-              </th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
-                Quality
-              </th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
-                Time
-              </th>
-            </tr>
-          </thead>
-          <tbody class="divide-y">
-            <tr
-              v-for="log in logs"
-              :key="log.id"
-              class="hover:bg-muted/50"
-            >
-              <td class="px-6 py-4">
-                <div class="flex items-center gap-2">
-                  <component
-                    :is="getStatusIcon(log.status)" 
-                    :class="['h-4 w-4', log.status === 'delivered' ? 'text-green-500' : log.status === 'failed' ? 'text-red-500' : 'text-yellow-500']" 
-                  />
-                  <Badge :variant="getStatusVariant(log.status)">
-                    {{ log.status }}
-                  </Badge>
-                </div>
-              </td>
-              <td class="px-6 py-4 text-sm">
-                <p class="truncate max-w-xs font-medium">
-                  {{ log.article_title }}
-                </p>
-                <p class="text-xs text-muted-foreground font-mono">
-                  {{ log.article_id }}
-                </p>
-              </td>
-              <td class="px-6 py-4">
-                <Badge variant="outline">
-                  {{ log.channel_name }}
-                </Badge>
-              </td>
-              <td class="px-6 py-4 text-sm text-muted-foreground">
-                {{ log.quality_score }}/100
-              </td>
-              <td class="px-6 py-4 text-sm text-muted-foreground">
-                {{ formatDate(log.published_at) }}
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </CardContent>
-    </Card>
+    <template v-else>
+      <Card>
+        <CardHeader class="pb-4">
+          <CardTitle class="text-base">
+            Filter Logs
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <DeliveryLogsFilterBar
+            :filters="table.filters.value"
+            :has-active-filters="table.hasActiveFilters.value"
+            :active-filter-count="table.activeFilterCount.value"
+            :channels="channels"
+            @update:channel_name="onChannelChange"
+            @clear-filters="table.clearFilters"
+          />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Delivery Logs</CardTitle>
+        </CardHeader>
+        <CardContent class="p-0">
+          <DeliveryLogsTable
+            :items="table.items.value"
+            :total="table.total.value"
+            :is-loading="table.isLoading.value"
+            :page="table.page.value"
+            :page-size="table.pageSize.value"
+            :total-pages="table.totalPages.value"
+            :allowed-page-sizes="table.allowedPageSizes"
+            :has-active-filters="table.hasActiveFilters.value"
+            :on-page-change="table.setPage"
+            :on-page-size-change="table.setPageSize"
+            :on-clear-filters="table.clearFilters"
+          />
+        </CardContent>
+      </Card>
+    </template>
   </div>
 </template>

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -464,29 +465,15 @@ func (h *Handler) DeleteRule(c *gin.Context) {
 
 // ListSources handles GET /api/v1/sources
 func (h *Handler) ListSources(c *gin.Context) {
-	// Get pagination parameters
-	page := 1
-	pageSize := 50
-
-	if pageParam := c.Query("page"); pageParam != "" {
-		if p, err := strconv.Atoi(pageParam); err == nil && p > 0 {
-			page = p
-		}
-	}
-
-	if sizeParam := c.Query("page_size"); sizeParam != "" {
-		if s, err := strconv.Atoi(sizeParam); err == nil && s > 0 && s <= 100 {
-			pageSize = s
-		}
-	}
+	filter := parseSourceListQuery(c)
 
 	h.logger.Debug("Listing sources",
-		infralogger.Int("page", page),
-		infralogger.Int("page_size", pageSize),
+		infralogger.Int("page", filter.Page),
+		infralogger.Int("page_size", filter.PageSize),
 	)
 
-	// Query database with pagination
-	sources, total, err := h.sourceReputationRepo.List(c.Request.Context(), page, pageSize)
+	// Query database with pagination, sort, and filter
+	sources, total, err := h.sourceReputationRepo.List(c.Request.Context(), filter)
 	if err != nil {
 		h.logger.Error("Failed to list sources", infralogger.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to load sources"})
@@ -507,9 +494,52 @@ func (h *Handler) ListSources(c *gin.Context) {
 	c.JSON(http.StatusOK, SourcesListResponse{
 		Sources: response,
 		Total:   total,
-		Page:    page,
-		PerPage: pageSize,
+		Page:    filter.Page,
+		PerPage: filter.PageSize,
 	})
+}
+
+// parseSourceListQuery parses pagination, sort, and filter params for ListSources.
+func parseSourceListQuery(c *gin.Context) database.SourceReputationListFilter {
+	page := 1
+	if v := c.Query("page"); v != "" {
+		if p, err := strconv.Atoi(v); err == nil && p > 0 {
+			page = p
+		}
+	}
+
+	pageSize := 50
+	if v := c.Query("page_size"); v != "" {
+		if s, err := strconv.Atoi(v); err == nil && s > 0 && s <= 100 {
+			pageSize = s
+		}
+	}
+
+	sortBy := c.DefaultQuery("sort_by", "reputation")
+	validSort := map[string]bool{
+		"name": true, "reputation": true, "category": true, "total_articles": true,
+		"total_classified": true, "last_classified_at": true, "last_updated": true,
+	}
+	if !validSort[sortBy] {
+		sortBy = "reputation"
+	}
+
+	sortOrder := c.DefaultQuery("sort_order", "desc")
+	if sortOrder != "asc" && sortOrder != "desc" {
+		sortOrder = "desc"
+	}
+
+	search := strings.TrimSpace(c.Query("search"))
+	category := strings.TrimSpace(c.Query("category"))
+
+	return database.SourceReputationListFilter{
+		Page:      page,
+		PageSize:  pageSize,
+		SortBy:    sortBy,
+		SortOrder: sortOrder,
+		Search:    search,
+		Category:  category,
+	}
 }
 
 // GetSource handles GET /api/v1/sources/:name

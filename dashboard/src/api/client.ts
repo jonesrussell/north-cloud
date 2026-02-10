@@ -231,7 +231,14 @@ export const crawlerApi = {
 // Sources API
 export const sourcesApi = {
   // Sources CRUD
-  list: () => sourcesClient.get(''),
+  list: (params?: {
+    limit?: number
+    offset?: number
+    sort_by?: string
+    sort_order?: string
+    search?: string
+    enabled?: 'true' | 'false'
+  }) => sourcesClient.get('', { params }),
   get: (id: string | number) => sourcesClient.get(`/${id}`),
   create: (data: unknown) => sourcesClient.post('', data),
   update: (id: string | number, data: unknown) => sourcesClient.put(`/${id}`, data),
@@ -354,9 +361,16 @@ export const classifierApi = {
       classifierClient.post(`/rules/${id}/test`, data),
   },
 
-  // Sources
+  // Sources (reputation)
   sources: {
-    list: () => classifierClient.get('/sources'),
+    list: (params?: {
+      page?: number
+      page_size?: number
+      sort_by?: string
+      sort_order?: string
+      search?: string
+      category?: string
+    }) => classifierClient.get('/sources', { params }),
     get: (name: string) => classifierClient.get(`/sources/${name}`),
     update: (name: string, data: unknown) => classifierClient.put(`/sources/${name}`, data),
     stats: (name: string) => classifierClient.get(`/sources/${name}/stats`),

@@ -1,3 +1,36 @@
+import type { ComputedRef, Ref } from 'vue'
+
+/**
+ * Unified interface for paginated table controllers.
+ * Both useServerPaginatedTable and domain composables (useJobs, useIndexes, etc.)
+ * expose this shape so FilterBars and Tables are drop-in interchangeable.
+ */
+export interface PaginatedTableController<T, F = Record<string, unknown>> {
+  items: Ref<T[]>
+  total: Ref<number>
+  page: Ref<number>
+  pageSize: Ref<number>
+  totalPages: Ref<number>
+  allowedPageSizes: readonly number[]
+
+  sortBy: Ref<string>
+  sortOrder: Ref<'asc' | 'desc'>
+  toggleSort: (key: string) => void
+
+  filters: Ref<F>
+  setFilter: (key: keyof F, value: F[keyof F]) => void
+  clearFilters: () => void
+  hasActiveFilters: ComputedRef<boolean>
+  activeFilterCount: ComputedRef<number>
+
+  setPage: (n: number) => void
+  setPageSize: (n: number) => void
+
+  isLoading: Ref<boolean>
+  error: Ref<Error | null>
+  refetch: () => void
+}
+
 /**
  * Server-side paginated table types.
  * Used by useServerPaginatedTable composable.

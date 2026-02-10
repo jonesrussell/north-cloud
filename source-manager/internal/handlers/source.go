@@ -3,6 +3,7 @@ package handlers
 import (
 	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -126,7 +127,9 @@ func (h *SourceHandler) GetByID(c *gin.Context) {
 }
 
 func (h *SourceHandler) List(c *gin.Context) {
-	sources, err := h.repo.List(c.Request.Context())
+	filter := parseListQuery(c)
+
+	sources, err := h.repo.ListPaginated(c.Request.Context(), filter)
 	if err != nil {
 		h.logger.Error("Failed to list sources",
 			infralogger.Error(err),
@@ -135,10 +138,78 @@ func (h *SourceHandler) List(c *gin.Context) {
 		return
 	}
 
+	total, err := h.repo.Count(c.Request.Context(), filter)
+	if err != nil {
+		h.logger.Error("Failed to count sources",
+			infralogger.Error(err),
+		)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to list sources"})
+		return
+	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"sources": sources,
-		"count":   len(sources),
+		"total":   total,
 	})
+}
+
+// parseListQuery parses limit, offset, sort_by, sort_order, search, enabled from query params.
+func parseListQuery(c *gin.Context) repository.ListFilter {
+	const defaultLimit = 100
+	const maxLimit = 500
+
+	limit := defaultLimit
+	if v := c.Query("limit"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 {
+			limit = n
+			if limit > maxLimit {
+				limit = maxLimit
+			}
+		}
+	}
+
+	offset := 0
+	if v := c.Query("offset"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n >= 0 {
+			offset = n
+		}
+	}
+
+	sortBy := c.DefaultQuery("sort_by", "name")
+	validSort := map[string]bool{
+		"name": true, "url": true, "enabled": true, "created_at": true,
+	}
+	if !validSort[sortBy] {
+		sortBy = "name"
+	}
+
+	sortOrder := strings.ToLower(c.DefaultQuery("sort_order", "asc"))
+	if sortOrder != "asc" && sortOrder != "desc" {
+		sortOrder = "asc"
+	}
+
+	search := strings.TrimSpace(c.Query("search"))
+
+	var enabled *bool
+	if v := c.Query("enabled"); v != "" {
+		switch v {
+		case "true":
+			t := true
+			enabled = &t
+		case "false":
+			f := false
+			enabled = &f
+		}
+	}
+
+	return repository.ListFilter{
+		Limit:     limit,
+		Offset:    offset,
+		SortBy:    sortBy,
+		SortOrder: sortOrder,
+		Search:    search,
+		Enabled:   enabled,
+	}
 }
 
 func (h *SourceHandler) Update(c *gin.Context) {

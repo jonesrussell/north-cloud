@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { DataTablePagination } from '@/components/common'
 
 interface Document {
   id: string
@@ -38,6 +39,7 @@ const currentPage = ref(1)
 const pageSize = ref(20)
 const totalHits = ref(0)
 const totalPages = ref(0)
+const allowedPageSizes = [10, 20, 50, 100] as const
 
 const loadIndex = async () => {
   try {
@@ -68,26 +70,13 @@ const loadDocuments = async () => {
   }
 }
 
-const previousPage = () => {
-  if (currentPage.value > 1) {
-    currentPage.value--
-    loadDocuments()
-  }
-}
-
-const nextPage = () => {
-  if (currentPage.value < totalPages.value) {
-    currentPage.value++
-    loadDocuments()
-  }
-}
-
-const goToPage = (page: number) => {
+function onPageChange(page: number) {
   currentPage.value = page
   loadDocuments()
 }
 
-const onPageSizeChange = () => {
+function onPageSizeChange(size: number) {
+  pageSize.value = size
   currentPage.value = 1
   loadDocuments()
 }
@@ -304,101 +293,17 @@ onMounted(() => {
             </tbody>
           </table>
           
-          <!-- Pagination -->
-          <div
-            v-if="totalPages > 1"
-            class="px-6 py-4 border-t flex items-center justify-between"
-          >
-            <div class="flex-1 flex justify-between sm:hidden">
-              <Button
-                variant="outline"
-                :disabled="currentPage === 1"
-                @click="previousPage"
-              >
-                Previous
-              </Button>
-              <Button
-                variant="outline"
-                :disabled="currentPage >= totalPages"
-                @click="nextPage"
-              >
-                Next
-              </Button>
-            </div>
-            <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
-              <div>
-                <p class="text-sm text-muted-foreground">
-                  Showing
-                  <span class="font-medium">{{ ((currentPage - 1) * pageSize) + 1 }}</span>
-                  to
-                  <span class="font-medium">{{ Math.min(currentPage * pageSize, totalHits) }}</span>
-                  of
-                  <span class="font-medium">{{ totalHits }}</span>
-                  results
-                </p>
-              </div>
-              <div class="flex items-center gap-2">
-                <select
-                  v-model="pageSize"
-                  class="px-3 py-1.5 border border-input rounded-md text-sm bg-background"
-                  @change="onPageSizeChange"
-                >
-                  <option :value="10">
-                    10 per page
-                  </option>
-                  <option :value="20">
-                    20 per page
-                  </option>
-                  <option :value="50">
-                    50 per page
-                  </option>
-                  <option :value="100">
-                    100 per page
-                  </option>
-                </select>
-                <nav
-                  class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px"
-                  aria-label="Pagination"
-                >
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    :disabled="currentPage === 1"
-                    class="rounded-r-none"
-                    @click="goToPage(1)"
-                  >
-                    First
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    :disabled="currentPage === 1"
-                    class="rounded-none border-l-0"
-                    @click="previousPage"
-                  >
-                    Previous
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    :disabled="currentPage >= totalPages"
-                    class="rounded-none border-l-0"
-                    @click="nextPage"
-                  >
-                    Next
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    :disabled="currentPage >= totalPages"
-                    class="rounded-l-none border-l-0"
-                    @click="goToPage(totalPages)"
-                  >
-                    Last
-                  </Button>
-                </nav>
-              </div>
-            </div>
+          <div class="px-6 pb-4">
+            <DataTablePagination
+              :page="currentPage"
+              :page-size="pageSize"
+              :total="totalHits"
+              :total-pages="totalPages"
+              :allowed-page-sizes="allowedPageSizes"
+              item-label="documents"
+              @update:page="onPageChange"
+              @update:page-size="onPageSizeChange"
+            />
           </div>
         </CardContent>
       </Card>

@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -118,6 +119,148 @@ func (r *SourceRepository) GetByID(ctx context.Context, id string) (*models.Sour
 	return &source, nil
 }
 
+// ListFilter holds pagination and filter params for ListPaginated.
+type ListFilter struct {
+	Limit     int
+	Offset    int
+	SortBy    string // name, url, enabled, created_at
+	SortOrder string // asc, desc
+	Search    string // ILIKE on name or url
+	Enabled   *bool  // nil = all, true = enabled only, false = disabled only
+}
+
+// Count returns the total number of sources matching the filter (ignores Limit/Offset/Sort).
+func (r *SourceRepository) Count(ctx context.Context, filter ListFilter) (int, error) {
+	whereClause, args := buildListWhere(filter)
+	query := `SELECT COUNT(*) FROM sources WHERE 1=1` + whereClause
+
+	var count int
+	err := r.db.QueryRowContext(ctx, query, args...).Scan(&count)
+	if err != nil {
+		return 0, fmt.Errorf("count sources: %w", err)
+	}
+	return count, nil
+}
+
+const (
+	limitParamIdx  = 1
+	offsetParamIdx = 2
+)
+
+// ListPaginated returns sources with pagination, sorting, and filtering.
+func (r *SourceRepository) ListPaginated(ctx context.Context, filter ListFilter) ([]models.Source, error) {
+	whereClause, whereArgs := buildListWhere(filter)
+	orderClause := buildListOrder(filter)
+	argCount := len(whereArgs)
+	limitPlaceholder := strconv.Itoa(argCount + limitParamIdx)
+	offsetPlaceholder := strconv.Itoa(argCount + offsetParamIdx)
+	// whereClause and orderClause use whitelisted column names; limit/offset are integers
+	// #nosec G202 -- SQL string built from validated filter, column names from whitelist
+	query := `
+		SELECT id, name, url, rate_limit, max_depth,
+		       time, selectors, enabled, created_at, updated_at
+		FROM sources
+		WHERE 1=1` + whereClause + orderClause + `
+		LIMIT $` + limitPlaceholder + ` OFFSET $` + offsetPlaceholder
+
+	args := append(append([]any{}, whereArgs...), filter.Limit, filter.Offset)
+
+	rows, err := r.db.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("query sources: %w", err)
+	}
+	defer rows.Close()
+
+	sources, scanErr := scanSourceRows(rows)
+	if scanErr != nil {
+		return nil, scanErr
+	}
+	return sources, nil
+}
+
+func scanSourceRows(rows *sql.Rows) ([]models.Source, error) {
+	sources := make([]models.Source, 0)
+	for rows.Next() {
+		source, err := scanSourceRow(rows)
+		if err != nil {
+			return nil, err
+		}
+		source.RateLimit = models.NormalizeRateLimit(source.RateLimit)
+		source.Selectors = source.Selectors.MergeWithDefaults()
+		sources = append(sources, *source)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate sources: %w", err)
+	}
+	return sources, nil
+}
+
+func scanSourceRow(rows *sql.Rows) (*models.Source, error) {
+	var source models.Source
+	var selectorsJSON, timeJSON []byte
+	if err := rows.Scan(
+		&source.ID,
+		&source.Name,
+		&source.URL,
+		&source.RateLimit,
+		&source.MaxDepth,
+		&timeJSON,
+		&selectorsJSON,
+		&source.Enabled,
+		&source.CreatedAt,
+		&source.UpdatedAt,
+	); err != nil {
+		return nil, fmt.Errorf("scan source: %w", err)
+	}
+	if unmarshalErr := json.Unmarshal(selectorsJSON, &source.Selectors); unmarshalErr != nil {
+		return nil, fmt.Errorf("unmarshal selectors: %w", unmarshalErr)
+	}
+	if unmarshalErr := json.Unmarshal(timeJSON, &source.Time); unmarshalErr != nil {
+		return nil, fmt.Errorf("unmarshal time: %w", unmarshalErr)
+	}
+	return &source, nil
+}
+
+func buildListWhere(filter ListFilter) (whereClause string, args []any) {
+	var clauses []string
+	args = make([]any, 0)
+	pos := 1
+
+	if filter.Search != "" {
+		clauses = append(clauses, fmt.Sprintf("(name ILIKE $%d OR url ILIKE $%d)", pos, pos))
+		args = append(args, "%"+filter.Search+"%")
+		pos++
+	}
+	if filter.Enabled != nil {
+		clauses = append(clauses, fmt.Sprintf("enabled = $%d", pos))
+		args = append(args, *filter.Enabled)
+	}
+
+	if len(clauses) == 0 {
+		return "", args
+	}
+	whereClause = " AND " + strings.Join(clauses, " AND ")
+	return whereClause, args
+}
+
+func buildListOrder(filter ListFilter) string {
+	sortBy := filter.SortBy
+	if sortBy == "" {
+		sortBy = "name"
+	}
+	validSort := map[string]bool{
+		"name": true, "url": true, "enabled": true, "created_at": true,
+	}
+	if !validSort[sortBy] {
+		sortBy = "name"
+	}
+	order := strings.ToUpper(filter.SortOrder)
+	if order != "ASC" && order != "DESC" {
+		order = "ASC"
+	}
+	return fmt.Sprintf(" ORDER BY %s %s", sortBy, order)
+}
+
 func (r *SourceRepository) List(ctx context.Context) ([]models.Source, error) {
 	query := `
 		SELECT id, name, url, rate_limit, max_depth,
@@ -132,49 +275,7 @@ func (r *SourceRepository) List(ctx context.Context) ([]models.Source, error) {
 	}
 	defer rows.Close()
 
-	sources := make([]models.Source, 0)
-	for rows.Next() {
-		var source models.Source
-		var selectorsJSON, timeJSON []byte
-
-		scanErr := rows.Scan(
-			&source.ID,
-			&source.Name,
-			&source.URL,
-			&source.RateLimit,
-			&source.MaxDepth,
-			&timeJSON,
-			&selectorsJSON,
-			&source.Enabled,
-			&source.CreatedAt,
-			&source.UpdatedAt,
-		)
-		if scanErr != nil {
-			return nil, fmt.Errorf("scan source: %w", scanErr)
-		}
-
-		if unmarshalErr := json.Unmarshal(selectorsJSON, &source.Selectors); unmarshalErr != nil {
-			return nil, fmt.Errorf("unmarshal selectors: %w", unmarshalErr)
-		}
-
-		if unmarshalErr := json.Unmarshal(timeJSON, &source.Time); unmarshalErr != nil {
-			return nil, fmt.Errorf("unmarshal time: %w", unmarshalErr)
-		}
-
-		// Normalize rate_limit so API always returns parseable duration (e.g. "10" -> "10s")
-		source.RateLimit = models.NormalizeRateLimit(source.RateLimit)
-
-		// Merge selectors with defaults
-		source.Selectors = source.Selectors.MergeWithDefaults()
-
-		sources = append(sources, source)
-	}
-
-	if rowsErr := rows.Err(); rowsErr != nil {
-		return nil, fmt.Errorf("iterate sources: %w", rowsErr)
-	}
-
-	return sources, nil
+	return scanSourceRows(rows)
 }
 
 func (r *SourceRepository) Update(ctx context.Context, source *models.Source) error {

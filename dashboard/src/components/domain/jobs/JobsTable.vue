@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { formatDate, formatRelativeTime } from '@/lib/utils'
 import {
@@ -8,16 +7,12 @@ import {
   Pause,
   XCircle,
   RotateCcw,
-  ChevronLeft,
-  ChevronRight,
   MoreHorizontal,
   ExternalLink,
   Clock,
   AlertTriangle,
-  ArrowUp,
-  ArrowDown,
-  ArrowUpDown,
 } from 'lucide-vue-next'
+import { DataTablePagination, SortableColumnHeader } from '@/components/common'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import {
@@ -74,34 +69,9 @@ const sortableColumns = [
   { key: 'last_run_at', label: 'Last Run' },
 ] as const
 
-function getSortIcon(column: string) {
-  if (props.jobs.sortBy.value !== column) return ArrowUpDown
-  return props.jobs.sortOrder.value === 'asc' ? ArrowUp : ArrowDown
-}
-
 function handleSort(column: string) {
   props.jobs.toggleSort(column)
 }
-
-const pageNumbers = computed(() => {
-  const current = props.jobs.page.value
-  const total = props.jobs.totalPages.value
-  const pages: (number | string)[] = []
-
-  if (total <= 7) {
-    for (let i = 1; i <= total; i++) pages.push(i)
-  } else {
-    pages.push(1)
-    if (current > 3) pages.push('...')
-    for (let i = Math.max(2, current - 1); i <= Math.min(total - 1, current + 1); i++) {
-      pages.push(i)
-    }
-    if (current < total - 2) pages.push('...')
-    pages.push(total)
-  }
-
-  return pages
-})
 
 function truncateId(id: string): string {
   return id.length > 8 ? `${id.slice(0, 8)}...` : id
@@ -135,16 +105,6 @@ function handleRowClick(job: Job) {
   }
 }
 
-function goToPage(page: number | string) {
-  if (typeof page === 'number') {
-    props.jobs.setPage(page)
-  }
-}
-
-function handlePageSizeChange(event: Event) {
-  const target = event.target as HTMLSelectElement
-  props.jobs.setPageSize(Number(target.value))
-}
 </script>
 
 <template>
@@ -157,23 +117,15 @@ function handlePageSizeChange(event: Event) {
             <th class="px-4 py-3 text-left text-sm font-medium text-muted-foreground">
               Job ID
             </th>
-            <th
+            <SortableColumnHeader
               v-for="col in sortableColumns"
               :key="col.key"
-              class="px-4 py-3 text-left text-sm font-medium text-muted-foreground cursor-pointer hover:text-foreground transition-colors"
-              @click="handleSort(col.key)"
-            >
-              <div class="flex items-center gap-1">
-                {{ col.label }}
-                <component
-                  :is="getSortIcon(col.key)"
-                  :class="[
-                    'h-4 w-4',
-                    jobs.sortBy.value === col.key ? 'text-foreground' : 'text-muted-foreground/50'
-                  ]"
-                />
-              </div>
-            </th>
+              :label="col.label"
+              :sort-key="col.key"
+              :current-sort-by="jobs.sortBy.value"
+              :current-sort-order="jobs.sortOrder.value"
+              @sort="handleSort(col.key)"
+            />
             <th class="px-4 py-3 text-left text-sm font-medium text-muted-foreground">
               Schedule
             </th>
@@ -376,76 +328,15 @@ function handlePageSizeChange(event: Event) {
       </table>
     </div>
 
-    <!-- Pagination -->
-    <div
-      v-if="jobs.totalPages.value > 1 || jobs.totalJobs.value > 0"
-      class="flex items-center justify-between border-t pt-4"
-    >
-      <p class="text-sm text-muted-foreground">
-        Showing {{ (jobs.page.value - 1) * jobs.pageSize.value + 1 }} to
-        {{ Math.min(jobs.page.value * jobs.pageSize.value, jobs.totalJobs.value) }}
-        of {{ jobs.totalJobs.value }} jobs
-      </p>
-
-      <div class="flex items-center gap-4">
-        <!-- Page Size Selector -->
-        <div class="flex items-center gap-2">
-          <span class="text-sm text-muted-foreground">Show:</span>
-          <select
-            :value="jobs.pageSize.value"
-            class="rounded-md border bg-background px-2 py-1 text-sm"
-            @change="handlePageSizeChange"
-          >
-            <option
-              v-for="size in jobs.allowedPageSizes"
-              :key="size"
-              :value="size"
-            >
-              {{ size }}
-            </option>
-          </select>
-        </div>
-
-        <!-- Page Numbers -->
-        <div class="flex items-center gap-1">
-          <Button
-            variant="outline"
-            size="sm"
-            :disabled="jobs.page.value === 1"
-            @click="goToPage(jobs.page.value - 1)"
-          >
-            <ChevronLeft class="h-4 w-4" />
-          </Button>
-
-          <template
-            v-for="page in pageNumbers"
-            :key="page"
-          >
-            <Button
-              v-if="typeof page === 'number'"
-              :variant="page === jobs.page.value ? 'default' : 'outline'"
-              size="sm"
-              class="min-w-9"
-              @click="goToPage(page)"
-            >
-              {{ page }}
-            </Button>
-            <span
-              v-else
-              class="px-2 text-muted-foreground"
-            >...</span>
-          </template>
-
-          <Button
-            variant="outline"
-            size="sm"
-            :disabled="jobs.page.value === jobs.totalPages.value"
-            @click="goToPage(jobs.page.value + 1)"
-          >
-            <ChevronRight class="h-4 w-4" />
-          </Button>
-        </div>
-      </div>
-    </div>
+    <DataTablePagination
+      :page="jobs.page.value"
+      :page-size="jobs.pageSize.value"
+      :total="jobs.totalJobs.value"
+      :total-pages="jobs.totalPages.value"
+      :allowed-page-sizes="jobs.allowedPageSizes"
+      item-label="jobs"
+      @update:page="jobs.setPage"
+      @update:page-size="jobs.setPageSize"
+    />
   </div>
 </template>

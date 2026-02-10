@@ -1,17 +1,7 @@
 <script setup lang="ts">
-import { computed } from 'vue'
 import { useRouter } from 'vue-router'
-import {
-  ChevronLeft,
-  ChevronRight,
-  MoreHorizontal,
-  ArrowUp,
-  ArrowDown,
-  ArrowUpDown,
-  Trash2,
-  Eye,
-  Database,
-} from 'lucide-vue-next'
+import { MoreHorizontal, Trash2, Eye, Database } from 'lucide-vue-next'
+import { DataTablePagination, SortableColumnHeader } from '@/components/common'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import {
@@ -60,34 +50,9 @@ const sortableColumns = [
   { key: 'size', label: 'Size' },
 ] as const
 
-function getSortIcon(column: string) {
-  if (indexes.sortBy.value !== column) return ArrowUpDown
-  return indexes.sortOrder.value === 'asc' ? ArrowUp : ArrowDown
-}
-
 function handleSort(column: string) {
   indexes.toggleSort(column)
 }
-
-const pageNumbers = computed(() => {
-  const current = indexes.page.value
-  const total = indexes.totalPages.value
-  const pages: (number | string)[] = []
-
-  if (total <= 7) {
-    for (let i = 1; i <= total; i++) pages.push(i)
-  } else {
-    pages.push(1)
-    if (current > 3) pages.push('...')
-    for (let i = Math.max(2, current - 1); i <= Math.min(total - 1, current + 1); i++) {
-      pages.push(i)
-    }
-    if (current < total - 2) pages.push('...')
-    pages.push(total)
-  }
-
-  return pages
-})
 
 function formatNumber(num: number | undefined): string {
   if (num === undefined) return '0'
@@ -106,16 +71,6 @@ function handleRowClick(index: Index) {
   }
 }
 
-function goToPage(page: number | string) {
-  if (typeof page === 'number') {
-    indexes.setPage(page)
-  }
-}
-
-function handlePageSizeChange(event: Event) {
-  const target = event.target as HTMLSelectElement
-  indexes.setPageSize(Number(target.value))
-}
 </script>
 
 <template>
@@ -125,23 +80,15 @@ function handlePageSizeChange(event: Event) {
       <table class="w-full">
         <thead>
           <tr class="border-b bg-muted/50">
-            <th
+            <SortableColumnHeader
               v-for="col in sortableColumns"
               :key="col.key"
-              class="px-4 py-3 text-left text-sm font-medium text-muted-foreground cursor-pointer hover:text-foreground transition-colors"
-              @click="handleSort(col.key)"
-            >
-              <div class="flex items-center gap-1">
-                {{ col.label }}
-                <component
-                  :is="getSortIcon(col.key)"
-                  :class="[
-                    'h-4 w-4',
-                    indexes.sortBy.value === col.key ? 'text-foreground' : 'text-muted-foreground/50'
-                  ]"
-                />
-              </div>
-            </th>
+              :label="col.label"
+              :sort-key="col.key"
+              :current-sort-by="indexes.sortBy.value"
+              :current-sort-order="indexes.sortOrder.value"
+              @sort="handleSort(col.key)"
+            />
             <th
               v-if="showActions"
               class="px-4 py-3 text-right text-sm font-medium text-muted-foreground"
@@ -276,76 +223,15 @@ function handlePageSizeChange(event: Event) {
       </table>
     </div>
 
-    <!-- Pagination -->
-    <div
-      v-if="indexes.totalPages.value > 1 || indexes.totalIndexes.value > 0"
-      class="flex items-center justify-between border-t pt-4"
-    >
-      <p class="text-sm text-muted-foreground">
-        Showing {{ (indexes.page.value - 1) * indexes.pageSize.value + 1 }} to
-        {{ Math.min(indexes.page.value * indexes.pageSize.value, indexes.totalIndexes.value) }}
-        of {{ indexes.totalIndexes.value }} indexes
-      </p>
-
-      <div class="flex items-center gap-4">
-        <!-- Page Size Selector -->
-        <div class="flex items-center gap-2">
-          <span class="text-sm text-muted-foreground">Show:</span>
-          <select
-            :value="indexes.pageSize.value"
-            class="rounded-md border bg-background px-2 py-1 text-sm"
-            @change="handlePageSizeChange"
-          >
-            <option
-              v-for="size in indexes.allowedPageSizes"
-              :key="size"
-              :value="size"
-            >
-              {{ size }}
-            </option>
-          </select>
-        </div>
-
-        <!-- Page Numbers -->
-        <div class="flex items-center gap-1">
-          <Button
-            variant="outline"
-            size="sm"
-            :disabled="indexes.page.value === 1"
-            @click="goToPage(indexes.page.value - 1)"
-          >
-            <ChevronLeft class="h-4 w-4" />
-          </Button>
-
-          <template
-            v-for="page in pageNumbers"
-            :key="page"
-          >
-            <Button
-              v-if="typeof page === 'number'"
-              :variant="page === indexes.page.value ? 'default' : 'outline'"
-              size="sm"
-              class="min-w-9"
-              @click="goToPage(page)"
-            >
-              {{ page }}
-            </Button>
-            <span
-              v-else
-              class="px-2 text-muted-foreground"
-            >...</span>
-          </template>
-
-          <Button
-            variant="outline"
-            size="sm"
-            :disabled="indexes.page.value === indexes.totalPages.value"
-            @click="goToPage(indexes.page.value + 1)"
-          >
-            <ChevronRight class="h-4 w-4" />
-          </Button>
-        </div>
-      </div>
-    </div>
+    <DataTablePagination
+      :page="indexes.page.value"
+      :page-size="indexes.pageSize.value"
+      :total="indexes.totalIndexes.value"
+      :total-pages="indexes.totalPages.value"
+      :allowed-page-sizes="indexes.allowedPageSizes"
+      item-label="indexes"
+      @update:page="indexes.setPage"
+      @update:page-size="indexes.setPageSize"
+    />
   </div>
 </template>

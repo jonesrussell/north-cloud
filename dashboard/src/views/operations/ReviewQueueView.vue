@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { formatDate } from '@/lib/utils'
 import {
@@ -10,12 +10,14 @@ import {
   CheckCircle,
   Eye,
   FileText,
+  X,
 } from 'lucide-vue-next'
 import { indexManagerApi } from '@/api/client'
 import type { Document, Index } from '@/types/indexManager'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { DataTablePagination } from '@/components/common'
 
 const router = useRouter()
 
@@ -25,6 +27,42 @@ const documents = ref<Document[]>([])
 const classifiedIndexes = ref<Index[]>([])
 
 const totalHits = ref(0)
+
+// Client-side pagination and filtering
+const page = ref(1)
+const pageSize = ref(25)
+const sourceFilter = ref<string>('')
+
+const allowedPageSizes = [10, 25, 50, 100] as const
+
+const filteredDocuments = computed(() => {
+  let list = documents.value
+  if (sourceFilter.value) {
+    list = list.filter((d) => d.source_name === sourceFilter.value)
+  }
+  return list
+})
+
+const totalFiltered = computed(() => filteredDocuments.value.length)
+
+const totalPages = computed(() =>
+  totalFiltered.value === 0 ? 1 : Math.ceil(totalFiltered.value / pageSize.value)
+)
+
+const paginatedDocuments = computed(() => {
+  const start = (page.value - 1) * pageSize.value
+  return filteredDocuments.value.slice(start, start + pageSize.value)
+})
+
+const uniqueSources = computed(() => {
+  const seen = new Set<string>()
+  for (const d of documents.value) {
+    if (d.source_name) seen.add(d.source_name)
+  }
+  return Array.from(seen).sort()
+})
+
+const hasActiveFilters = computed(() => Boolean(sourceFilter.value))
 
 const loadClassifiedIndexes = async () => {
   try {
@@ -83,6 +121,25 @@ const loadReviewQueue = async () => {
 const refresh = async () => {
   await loadClassifiedIndexes()
   await loadReviewQueue()
+}
+
+function setPage(n: number) {
+  page.value = Math.max(1, Math.min(n, totalPages.value))
+}
+
+function setPageSize(n: number) {
+  pageSize.value = n
+  page.value = 1
+}
+
+function onSourceFilterChange(value: string) {
+  sourceFilter.value = value || ''
+  page.value = 1
+}
+
+function clearFilters() {
+  sourceFilter.value = ''
+  page.value = 1
 }
 
 const viewDocument = (doc: Document) => {
@@ -175,101 +232,147 @@ onMounted(async () => {
           Pending Review
         </CardTitle>
         <CardDescription>
-          {{ totalHits }} article{{ totalHits !== 1 ? 's' : '' }} require manual review
+          {{ totalFiltered }} article{{ totalFiltered !== 1 ? 's' : '' }} require manual review
         </CardDescription>
+        <div class="flex flex-col gap-3 pt-4 sm:flex-row sm:items-center">
+          <div
+            v-if="uniqueSources.length > 0"
+            class="sm:w-48"
+          >
+            <select
+              :value="sourceFilter"
+              class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              @change="onSourceFilterChange(($event.target as HTMLSelectElement).value)"
+            >
+              <option value="">
+                All Sources
+              </option>
+              <option
+                v-for="src in uniqueSources"
+                :key="src"
+                :value="src"
+              >
+                {{ src }}
+              </option>
+            </select>
+          </div>
+          <Button
+            v-if="hasActiveFilters"
+            variant="outline"
+            size="sm"
+            class="shrink-0 w-fit"
+            @click="clearFilters"
+          >
+            <X class="mr-1 h-4 w-4" />
+            Clear filters
+          </Button>
+        </div>
       </CardHeader>
       <CardContent class="p-0">
-        <table class="w-full">
-          <thead class="border-b bg-muted/50">
-            <tr>
-              <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
-                Article
-              </th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
-                Source
-              </th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
-                Crime Type
-              </th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
-                Relevance
-              </th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
-                Quality
-              </th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
-                Crawled
-              </th>
-              <th class="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase">
-                Actions
-              </th>
-            </tr>
-          </thead>
-          <tbody class="divide-y">
-            <tr
-              v-for="doc in documents"
-              :key="doc.id"
-              class="hover:bg-muted/50"
-            >
-              <td class="px-6 py-4">
-                <div class="max-w-md">
-                  <p class="text-sm font-medium truncate">
-                    {{ doc.title || 'Untitled' }}
-                  </p>
-                  <p class="text-xs text-muted-foreground truncate">
-                    {{ doc.url }}
-                  </p>
-                </div>
-              </td>
-              <td class="px-6 py-4">
-                <Badge variant="outline">
-                  {{ doc.source_name }}
-                </Badge>
-              </td>
-              <td class="px-6 py-4">
-                <Badge
-                  v-if="doc.crime?.primary_crime_type"
-                  variant="secondary"
-                >
-                  {{ doc.crime.primary_crime_type }}
-                </Badge>
-                <span
-                  v-else
-                  class="text-sm text-muted-foreground"
-                >-</span>
-              </td>
-              <td class="px-6 py-4">
-                <Badge :variant="getRelevanceVariant(doc.crime?.relevance)">
-                  {{ formatRelevance(doc.crime?.relevance) }}
-                </Badge>
-              </td>
-              <td class="px-6 py-4 text-sm text-muted-foreground">
-                {{ doc.quality_score ?? 'N/A' }}
-              </td>
-              <td class="px-6 py-4 text-sm text-muted-foreground">
-                {{ formatDate(doc.crawled_at) }}
-              </td>
-              <td class="px-6 py-4">
-                <div class="flex items-center justify-end gap-2">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    @click="viewDocument(doc)"
+        <div class="space-y-4">
+          <table class="w-full">
+            <thead class="border-b bg-muted/50">
+              <tr>
+                <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
+                  Article
+                </th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
+                  Source
+                </th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
+                  Crime Type
+                </th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
+                  Relevance
+                </th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
+                  Quality
+                </th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
+                  Crawled
+                </th>
+                <th class="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase">
+                  Actions
+                </th>
+              </tr>
+            </thead>
+            <tbody class="divide-y">
+              <tr
+                v-for="doc in paginatedDocuments"
+                :key="doc.id"
+                class="hover:bg-muted/50"
+              >
+                <td class="px-6 py-4">
+                  <div class="max-w-md">
+                    <p class="text-sm font-medium truncate">
+                      {{ doc.title || 'Untitled' }}
+                    </p>
+                    <p class="text-xs text-muted-foreground truncate">
+                      {{ doc.url }}
+                    </p>
+                  </div>
+                </td>
+                <td class="px-6 py-4">
+                  <Badge variant="outline">
+                    {{ doc.source_name }}
+                  </Badge>
+                </td>
+                <td class="px-6 py-4">
+                  <Badge
+                    v-if="doc.crime?.primary_crime_type"
+                    variant="secondary"
                   >
-                    <Eye class="h-4 w-4" />
-                  </Button>
-                  <a
-                    :href="doc.url"
-                    target="_blank"
-                    class="text-primary hover:text-primary/80"
-                  >
-                    <ExternalLink class="h-4 w-4" />
-                  </a>
-                </div>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+                    {{ doc.crime.primary_crime_type }}
+                  </Badge>
+                  <span
+                    v-else
+                    class="text-sm text-muted-foreground"
+                  >-</span>
+                </td>
+                <td class="px-6 py-4">
+                  <Badge :variant="getRelevanceVariant(doc.crime?.relevance)">
+                    {{ formatRelevance(doc.crime?.relevance) }}
+                  </Badge>
+                </td>
+                <td class="px-6 py-4 text-sm text-muted-foreground">
+                  {{ doc.quality_score ?? 'N/A' }}
+                </td>
+                <td class="px-6 py-4 text-sm text-muted-foreground">
+                  {{ formatDate(doc.crawled_at) }}
+                </td>
+                <td class="px-6 py-4">
+                  <div class="flex items-center justify-end gap-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      @click="viewDocument(doc)"
+                    >
+                      <Eye class="h-4 w-4" />
+                    </Button>
+                    <a
+                      :href="doc.url"
+                      target="_blank"
+                      class="text-primary hover:text-primary/80"
+                    >
+                      <ExternalLink class="h-4 w-4" />
+                    </a>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+
+          <DataTablePagination
+            :page="page"
+            :page-size="pageSize"
+            :total="totalFiltered"
+            :total-pages="totalPages"
+            :allowed-page-sizes="allowedPageSizes"
+            item-label="articles"
+            @update:page="setPage"
+            @update:page-size="setPageSize"
+          />
+        </div>
       </CardContent>
     </Card>
 

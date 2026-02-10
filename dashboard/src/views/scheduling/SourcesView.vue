@@ -1,49 +1,29 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { formatDateShort } from '@/lib/utils'
-import { Loader2, Globe, Plus, Pencil, Trash2, Upload } from 'lucide-vue-next'
+import { Loader2, Globe, Plus, Upload } from 'lucide-vue-next'
 import { sourcesApi } from '@/api/client'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { Card, CardContent } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { SourcesFilterBar, SourcesTable } from '@/components/domain/sources'
 import { ImportExcelModal } from '@/components/common'
-
-interface Source {
-  id: string
-  name: string
-  url: string
-  enabled: boolean
-  created_at: string
-}
+import { useSourcesTable } from '@/features/scheduling'
 
 const router = useRouter()
-const loading = ref(true)
-const error = ref<string | null>(null)
-const sources = ref<Source[]>([])
+const sourcesTable = useSourcesTable()
 const deleting = ref<string | null>(null)
 const importExcelModalRef = ref<InstanceType<typeof ImportExcelModal> | null>(null)
 
-const loadSources = async () => {
-  try {
-    loading.value = true
-    const response = await sourcesApi.list()
-    sources.value = response.data?.sources || response.data || []
-  } catch (err) {
-    error.value = 'Unable to load sources.'
-  } finally {
-    loading.value = false
-  }
+function editSource(id: string) {
+  router.push(`/scheduling/sources/${id}/edit`)
 }
 
-const editSource = (id: string) => router.push(`/scheduling/sources/${id}/edit`)
-
-const deleteSource = async (id: string) => {
+async function deleteSource(id: string) {
   if (!confirm('Are you sure you want to delete this source?')) return
   try {
     deleting.value = id
     await sourcesApi.delete(id)
-    sources.value = sources.value.filter((s) => s.id !== id)
+    await sourcesTable.refetch()
   } catch (err) {
     console.error('Error deleting source:', err)
   } finally {
@@ -51,15 +31,21 @@ const deleteSource = async (id: string) => {
   }
 }
 
-const openImportExcel = () => {
+function onSearchChange(value: string) {
+  sourcesTable.setFilter('search', value || undefined)
+}
+
+function onEnabledChange(value: boolean | undefined) {
+  sourcesTable.setFilter('enabled', value)
+}
+
+function openImportExcel() {
   importExcelModalRef.value?.open()
 }
 
-const onSourcesImported = () => {
-  loadSources()
+function onSourcesImported() {
+  sourcesTable.refetch()
 }
-
-onMounted(loadSources)
 </script>
 
 <template>
@@ -89,24 +75,24 @@ onMounted(loadSources)
     </div>
 
     <div
-      v-if="loading"
+      v-if="sourcesTable.isLoading.value && sourcesTable.sources.value.length === 0"
       class="flex items-center justify-center py-12"
     >
       <Loader2 class="h-8 w-8 animate-spin text-muted-foreground" />
     </div>
 
     <Card
-      v-else-if="error"
+      v-else-if="sourcesTable.error.value"
       class="border-destructive"
     >
       <CardContent class="pt-6">
         <p class="text-destructive">
-          {{ error }}
+          {{ sourcesTable.error.value?.message || 'Unable to load sources.' }}
         </p>
       </CardContent>
     </Card>
 
-    <Card v-else-if="sources.length === 0">
+    <Card v-else-if="sourcesTable.sources.value.length === 0 && !sourcesTable.hasActiveFilters.value">
       <CardContent class="flex flex-col items-center justify-center py-12">
         <Globe class="h-12 w-12 text-muted-foreground mb-4" />
         <h3 class="text-lg font-medium mb-2">
@@ -122,87 +108,50 @@ onMounted(loadSources)
       </CardContent>
     </Card>
 
-    <Card v-else>
-      <CardContent class="p-0">
-        <table class="w-full">
-          <thead class="border-b bg-muted/50">
-            <tr>
-              <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
-                Name
-              </th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
-                URL
-              </th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
-                Status
-              </th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
-                Created
-              </th>
-              <th class="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase">
-                Actions
-              </th>
-            </tr>
-          </thead>
-          <tbody class="divide-y">
-            <tr
-              v-for="source in sources"
-              :key="source.id"
-              class="hover:bg-muted/50"
-            >
-              <td class="px-6 py-4 text-sm font-medium">
-                {{ source.name }}
-              </td>
-              <td class="px-6 py-4 text-sm">
-                <a
-                  :href="source.url"
-                  target="_blank"
-                  class="text-primary hover:underline truncate block max-w-xs"
-                >
-                  {{ source.url }}
-                </a>
-              </td>
-              <td class="px-6 py-4">
-                <Badge :variant="source.enabled ? 'success' : 'secondary'">
-                  {{ source.enabled ? 'Active' : 'Inactive' }}
-                </Badge>
-              </td>
-              <td class="px-6 py-4 text-sm text-muted-foreground">
-                {{ formatDateShort(source.created_at) }}
-              </td>
-              <td class="px-6 py-4 text-right">
-                <div class="flex justify-end gap-2">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    @click="editSource(source.id)"
-                  >
-                    <Pencil class="h-4 w-4" />
-                  </Button>
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    :disabled="deleting === source.id"
-                    @click="deleteSource(source.id)"
-                  >
-                    <Loader2
-                      v-if="deleting === source.id"
-                      class="h-4 w-4 animate-spin"
-                    />
-                    <Trash2
-                      v-else
-                      class="h-4 w-4 text-destructive"
-                    />
-                  </Button>
-                </div>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </CardContent>
-    </Card>
+    <template v-else>
+      <Card>
+        <CardHeader class="pb-4">
+          <CardTitle class="text-base">
+            Filter Sources
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <SourcesFilterBar
+            :filters="sourcesTable.filters.value"
+            :has-active-filters="sourcesTable.hasActiveFilters.value"
+            :active-filter-count="sourcesTable.activeFilterCount.value"
+            @update:search="onSearchChange"
+            @update:enabled="onEnabledChange"
+            @clear-filters="sourcesTable.clearFilters"
+          />
+        </CardContent>
+      </Card>
 
-    <!-- Import Excel Modal -->
+      <Card>
+        <CardContent class="p-0">
+          <SourcesTable
+            :sources="sourcesTable.sources.value"
+            :total="sourcesTable.total.value"
+            :is-loading="sourcesTable.isLoading.value"
+            :page="sourcesTable.page.value"
+            :page-size="sourcesTable.pageSize.value"
+            :total-pages="sourcesTable.totalPages.value"
+            :allowed-page-sizes="sourcesTable.allowedPageSizes"
+            :sort-by="sourcesTable.sortBy.value"
+            :sort-order="sourcesTable.sortOrder.value"
+            :has-active-filters="sourcesTable.hasActiveFilters.value"
+            :deleting-id="deleting"
+            :on-sort="sourcesTable.toggleSort"
+            :on-page-change="sourcesTable.setPage"
+            :on-page-size-change="sourcesTable.setPageSize"
+            :on-clear-filters="sourcesTable.clearFilters"
+            :on-edit="editSource"
+            :on-delete="deleteSource"
+          />
+        </CardContent>
+      </Card>
+    </template>
+
     <ImportExcelModal
       ref="importExcelModalRef"
       @imported="onSourcesImported"

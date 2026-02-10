@@ -1,51 +1,19 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
-import { formatDateShort } from '@/lib/utils'
 import { Loader2, Star } from 'lucide-vue-next'
-import { classifierApi } from '@/api/client'
-import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { ReputationFilterBar, ReputationTable } from '@/components/domain/reputation'
+import { useReputationTable } from '@/features/scheduling'
 
-// Match the actual API response from classifier service
-interface SourceReputation {
-  name: string
-  reputation: number          // 0-100 reputation score
-  category: string            // news, blog, government, unknown
-  total_classified: number    // total articles classified
-  avg_quality: number         // average quality score
-  last_updated: string | null
+const reputation = useReputationTable()
+const categoryOptions = ['news', 'blog', 'government', 'unknown']
+
+function onSearchChange(value: string) {
+  reputation.setFilter('search', value || undefined)
 }
 
-const loading = ref(true)
-const error = ref<string | null>(null)
-const sources = ref<SourceReputation[]>([])
-
-const loadSources = async () => {
-  try {
-    loading.value = true
-    error.value = null
-    const response = await classifierApi.sources.list()
-    sources.value = response.data?.sources || []
-  } catch (err) {
-    console.error('Failed to load sources:', err)
-    error.value = 'Unable to load source reputation data.'
-  } finally {
-    loading.value = false
-  }
+function onCategoryChange(value: string) {
+  reputation.setFilter('category', value || undefined)
 }
-
-const getScoreVariant = (score: number) => {
-  if (score >= 80) return 'success'
-  if (score >= 60) return 'warning'
-  return 'destructive'
-}
-
-const formatLastUpdated = (date: string | null): string => {
-  if (!date) return 'Never'
-  return formatDateShort(date)
-}
-
-onMounted(loadSources)
 </script>
 
 <template>
@@ -60,24 +28,24 @@ onMounted(loadSources)
     </div>
 
     <div
-      v-if="loading"
+      v-if="reputation.isLoading.value && reputation.sources.value.length === 0"
       class="flex items-center justify-center py-12"
     >
       <Loader2 class="h-8 w-8 animate-spin text-muted-foreground" />
     </div>
 
     <Card
-      v-else-if="error"
+      v-else-if="reputation.error.value"
       class="border-destructive"
     >
       <CardContent class="pt-6">
         <p class="text-destructive">
-          {{ error }}
+          {{ reputation.error.value?.message || 'Unable to load source reputation data.' }}
         </p>
       </CardContent>
     </Card>
 
-    <Card v-else-if="sources.length === 0">
+    <Card v-else-if="reputation.sources.value.length === 0 && !reputation.hasActiveFilters.value">
       <CardContent class="flex flex-col items-center justify-center py-12">
         <Star class="h-12 w-12 text-muted-foreground mb-4" />
         <h3 class="text-lg font-medium mb-2">
@@ -89,67 +57,50 @@ onMounted(loadSources)
       </CardContent>
     </Card>
 
-    <Card v-else>
-      <CardHeader>
-        <CardTitle>Source Quality Scores</CardTitle>
-        <CardDescription>Based on content quality and classification results</CardDescription>
-      </CardHeader>
-      <CardContent class="p-0">
-        <table class="w-full">
-          <thead class="border-b bg-muted/50">
-            <tr>
-              <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
-                Source
-              </th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
-                Category
-              </th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
-                Reputation
-              </th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
-                Avg Quality
-              </th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
-                Total Classified
-              </th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
-                Last Updated
-              </th>
-            </tr>
-          </thead>
-          <tbody class="divide-y">
-            <tr
-              v-for="source in sources"
-              :key="source.name"
-              class="hover:bg-muted/50"
-            >
-              <td class="px-6 py-4 text-sm font-medium">
-                {{ source.name }}
-              </td>
-              <td class="px-6 py-4">
-                <Badge variant="outline">
-                  {{ source.category || 'unknown' }}
-                </Badge>
-              </td>
-              <td class="px-6 py-4">
-                <Badge :variant="getScoreVariant(source.reputation)">
-                  {{ source.reputation }}/100
-                </Badge>
-              </td>
-              <td class="px-6 py-4 text-sm text-muted-foreground">
-                {{ source.avg_quality?.toFixed(1) || '0' }}
-              </td>
-              <td class="px-6 py-4 text-sm text-muted-foreground">
-                {{ source.total_classified?.toLocaleString() || 0 }}
-              </td>
-              <td class="px-6 py-4 text-sm text-muted-foreground">
-                {{ formatLastUpdated(source.last_updated) }}
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </CardContent>
-    </Card>
+    <template v-else>
+      <Card>
+        <CardHeader class="pb-4">
+          <CardTitle class="text-base">
+            Filter Sources
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ReputationFilterBar
+            :filters="reputation.filters.value"
+            :has-active-filters="reputation.hasActiveFilters.value"
+            :active-filter-count="reputation.activeFilterCount.value"
+            :categories="categoryOptions"
+            @update:search="onSearchChange"
+            @update:category="onCategoryChange"
+            @clear-filters="reputation.clearFilters"
+          />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Source Quality Scores</CardTitle>
+          <CardDescription>Based on content quality and classification results</CardDescription>
+        </CardHeader>
+        <CardContent class="p-0">
+          <ReputationTable
+            :sources="reputation.sources.value"
+            :total="reputation.total.value"
+            :is-loading="reputation.isLoading.value"
+            :page="reputation.page.value"
+            :page-size="reputation.pageSize.value"
+            :total-pages="reputation.totalPages.value"
+            :allowed-page-sizes="reputation.allowedPageSizes"
+            :sort-by="reputation.sortBy.value"
+            :sort-order="reputation.sortOrder.value"
+            :has-active-filters="reputation.hasActiveFilters.value"
+            :on-sort="reputation.toggleSort"
+            :on-page-change="reputation.setPage"
+            :on-page-size-change="reputation.setPageSize"
+            :on-clear-filters="reputation.clearFilters"
+          />
+        </CardContent>
+      </Card>
+    </template>
   </div>
 </template>

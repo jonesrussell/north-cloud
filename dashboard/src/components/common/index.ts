@@ -1,3 +1,5 @@
+export { default as DataTablePagination } from './DataTablePagination.vue'
+export { default as SortableColumnHeader } from './SortableColumnHeader.vue'
 export { default as PageHeader } from './PageHeader.vue'
 export { default as LoadingSpinner } from './LoadingSpinner.vue'
 export { default as ErrorAlert } from './ErrorAlert.vue'

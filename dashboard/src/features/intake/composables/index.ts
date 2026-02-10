@@ -20,3 +20,4 @@ export {
   useBulkDeleteJobsMutation,
   useJobMutations,
 } from './useJobMutations'
+export { useDiscoveredLinksTable } from './useDiscoveredLinksTable'

@@ -239,9 +239,18 @@ func (r *Router) listPublishHistory(c *gin.Context) {
 		return
 	}
 
+	total, err := r.repo.CountPublishHistory(ctx, &filter)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "Failed to get publish history count",
+		})
+		return
+	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"history": history,
 		"count":   len(history),
+		"total":   total,
 		"limit":   filter.Limit,
 		"offset":  filter.Offset,
 	})

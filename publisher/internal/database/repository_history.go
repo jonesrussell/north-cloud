@@ -135,6 +135,44 @@ func (r *Repository) ListPublishHistory(ctx context.Context, filter *models.Publ
 	return history, nil
 }
 
+// CountPublishHistory returns the total count of publish history entries matching the filter.
+func (r *Repository) CountPublishHistory(ctx context.Context, filter *models.PublishHistoryFilter) (int, error) {
+	query := `SELECT COUNT(*) FROM publish_history WHERE 1=1`
+	args := []any{}
+	argPos := 1
+
+	if filter.ChannelName != "" {
+		query += fmt.Sprintf(" AND channel_name = $%d", argPos)
+		args = append(args, filter.ChannelName)
+		argPos++
+	}
+
+	if filter.ArticleID != "" {
+		query += fmt.Sprintf(" AND article_id = $%d", argPos)
+		args = append(args, filter.ArticleID)
+		argPos++
+	}
+
+	if filter.StartDate != nil {
+		query += fmt.Sprintf(" AND published_at >= $%d", argPos)
+		args = append(args, *filter.StartDate)
+		argPos++
+	}
+
+	if filter.EndDate != nil {
+		query += fmt.Sprintf(" AND published_at <= $%d", argPos)
+		args = append(args, *filter.EndDate)
+	}
+
+	var count int
+	err := r.db.GetContext(ctx, &count, query, args...)
+	if err != nil {
+		return 0, fmt.Errorf("failed to count publish history: %w", err)
+	}
+
+	return count, nil
+}
+
 // GetPublishHistoryByArticleID retrieves all publish history for a specific article
 func (r *Repository) GetPublishHistoryByArticleID(ctx context.Context, articleID string) ([]models.PublishHistory, error) {
 	history := []models.PublishHistory{}

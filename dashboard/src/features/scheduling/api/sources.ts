@@ -5,6 +5,7 @@
  */
 
 import { sourcesApi } from '@/api/client'
+import type { FetchParams, PaginatedResponse } from '@/types/table'
 
 // ============================================================================
 // Types
@@ -14,13 +15,19 @@ export interface Source {
   id: string
   name: string
   url: string
-  is_enabled: boolean
+  enabled?: boolean
+  is_enabled?: boolean
   created_at: string
   updated_at?: string
   crawl_config?: {
     selectors?: Record<string, unknown>
     interval_minutes?: number
   }
+}
+
+export interface SourceFilters {
+  search?: string
+  enabled?: boolean
 }
 
 export interface SourcesListResponse {
@@ -58,12 +65,40 @@ export const sourcesKeys = {
 // API Functions
 // ============================================================================
 
+/** Fetch all sources (no pagination) - for dropdowns, useSourceOptions, etc. */
 export async function fetchSources(): Promise<SourcesListResponse> {
   const response = await sourcesApi.list()
   const data = response.data?.sources || response.data || []
   return {
-    sources: data,
-    total: data.length,
+    sources: Array.isArray(data) ? data : [],
+    total: response.data?.total ?? (Array.isArray(data) ? data.length : 0),
+  }
+}
+
+/** Fetch sources with pagination, sort, and filter - for SourcesTable. */
+export async function fetchSourcesPaginated(
+  params: FetchParams<SourceFilters>
+): Promise<PaginatedResponse<Source>> {
+  const queryParams: Record<string, string | number> = {
+    limit: params.limit,
+    offset: params.offset,
+    sort_by: params.sortBy,
+    sort_order: params.sortOrder,
+  }
+  if (params.filters?.search) {
+    queryParams.search = params.filters.search
+  }
+  if (params.filters?.enabled !== undefined) {
+    queryParams.enabled = params.filters.enabled ? 'true' : 'false'
+  }
+
+  const response = await sourcesApi.list(queryParams)
+  const sources = response.data?.sources || []
+  const total = response.data?.total ?? sources.length
+
+  return {
+    items: Array.isArray(sources) ? sources : [],
+    total,
   }
 }
 

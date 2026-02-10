@@ -1,66 +1,50 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
-import { formatDate } from '@/lib/utils'
-import { Loader2, Link, Trash2, RefreshCw } from 'lucide-vue-next'
-import { crawlerApi } from '@/api/client'
+import { computed } from 'vue'
+import { Loader2, Link, RefreshCw } from 'lucide-vue-next'
+import { useQuery } from '@tanstack/vue-query'
+import { sourcesApi } from '@/api/client'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { Card, CardContent } from '@/components/ui/card'
+import { DiscoveredLinksFilterBar, DiscoveredLinksTable } from '@/components/domain/discovered-links'
+import { useDiscoveredLinksTable } from '@/features/intake'
+import { crawlerApi } from '@/api/client'
 
-// Match the actual API response from crawler service
-interface DiscoveredLink {
-  id: string
-  source_id: string
-  source_name: string
-  url: string
-  parent_url: string | null
-  depth: number
-  discovered_at: string
-  status: string
-  priority: number
+const table = useDiscoveredLinksTable()
+
+const { data: sourcesData } = useQuery({
+  queryKey: ['sources', 'list-dropdown'],
+  queryFn: async () => {
+    const res = await sourcesApi.list({ limit: 500, offset: 0 })
+    return res.data
+  },
+})
+
+const sources = computed(() => {
+  const list = sourcesData.value?.sources ?? []
+  return list.map((s: { id: string; name: string }) => ({ id: s.id, name: s.name || s.id }))
+})
+
+function onSearchChange(value: string) {
+  table.setFilter('search', value || undefined)
 }
 
-const loading = ref(true)
-const error = ref<string | null>(null)
-const links = ref<DiscoveredLink[]>([])
-const total = ref(0)
-
-const loadLinks = async () => {
-  try {
-    loading.value = true
-    error.value = null
-    const response = await crawlerApi.discoveredLinks.list()
-    links.value = response.data?.links || []
-    total.value = response.data?.total || links.value.length
-  } catch (err) {
-    console.error('Failed to load discovered links:', err)
-    error.value = 'Unable to load discovered links.'
-  } finally {
-    loading.value = false
-  }
+function onStatusChange(value: string) {
+  table.setFilter('status', value || undefined)
 }
 
-const deleteLink = async (id: string) => {
+function onSourceChange(value: string) {
+  table.setFilter('source_id', value || undefined)
+}
+
+async function deleteLink(id: string) {
   if (!confirm('Delete this discovered link?')) return
   try {
     await crawlerApi.discoveredLinks.delete(id)
-    links.value = links.value.filter((l) => l.id !== id)
+    table.refetch()
   } catch (err) {
     console.error('Error deleting link:', err)
   }
 }
-
-const getStatusVariant = (status: string) => {
-  switch (status) {
-    case 'pending': return 'secondary'
-    case 'processing': return 'warning'
-    case 'completed': return 'success'
-    case 'failed': return 'destructive'
-    default: return 'outline'
-  }
-}
-
-onMounted(loadLinks)
 </script>
 
 <template>
@@ -76,7 +60,7 @@ onMounted(loadLinks)
       </div>
       <Button
         variant="outline"
-        @click="loadLinks"
+        @click="table.refetch"
       >
         <RefreshCw class="mr-2 h-4 w-4" />
         Refresh
@@ -84,24 +68,27 @@ onMounted(loadLinks)
     </div>
 
     <div
-      v-if="loading"
+      v-if="table.isLoading.value && table.links.value.length === 0"
       class="flex items-center justify-center py-12"
     >
       <Loader2 class="h-8 w-8 animate-spin text-muted-foreground" />
     </div>
 
     <Card
-      v-else-if="error"
+      v-else-if="table.error.value"
       class="border-destructive"
     >
       <CardContent class="pt-6">
         <p class="text-destructive">
-          {{ error }}
+          {{ table.error.value?.message || 'Unable to load discovered links.' }}
         </p>
       </CardContent>
     </Card>
 
-    <Card v-else-if="links.length === 0">
+    <Card
+      v-else-if="table.links.value.length === 0 && !table.hasActiveFilters.value"
+      class="border-dashed"
+    >
       <CardContent class="flex flex-col items-center justify-center py-12">
         <Link class="h-12 w-12 text-muted-foreground mb-4" />
         <h3 class="text-lg font-medium mb-2">
@@ -113,73 +100,51 @@ onMounted(loadLinks)
       </CardContent>
     </Card>
 
-    <Card v-else>
-      <CardContent class="p-0">
-        <table class="w-full">
-          <thead class="border-b bg-muted/50">
-            <tr>
-              <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
-                URL
-              </th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
-                Source
-              </th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
-                Depth
-              </th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
-                Status
-              </th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
-                Discovered
-              </th>
-              <th class="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase">
-                Actions
-              </th>
-            </tr>
-          </thead>
-          <tbody class="divide-y">
-            <tr
-              v-for="link in links"
-              :key="link.id"
-              class="hover:bg-muted/50"
-            >
-              <td class="px-6 py-4 text-sm">
-                <a
-                  :href="link.url"
-                  target="_blank"
-                  class="text-primary hover:underline truncate block max-w-md"
-                >
-                  {{ link.url }}
-                </a>
-              </td>
-              <td class="px-6 py-4 text-sm text-muted-foreground">
-                {{ link.source_name }}
-              </td>
-              <td class="px-6 py-4 text-sm text-muted-foreground">
-                {{ link.depth }}
-              </td>
-              <td class="px-6 py-4">
-                <Badge :variant="getStatusVariant(link.status)">
-                  {{ link.status }}
-                </Badge>
-              </td>
-              <td class="px-6 py-4 text-sm text-muted-foreground">
-                {{ formatDate(link.discovered_at) }}
-              </td>
-              <td class="px-6 py-4 text-right">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  @click="deleteLink(link.id)"
-                >
-                  <Trash2 class="h-4 w-4 text-destructive" />
-                </Button>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </CardContent>
-    </Card>
+    <template v-else>
+      <Card>
+        <CardHeader class="pb-4">
+          <CardTitle class="text-base">
+            Filter Links
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <DiscoveredLinksFilterBar
+            :filters="table.filters.value"
+            :has-active-filters="table.hasActiveFilters.value"
+            :active-filter-count="table.activeFilterCount.value"
+            :sources="sources"
+            @update:search="onSearchChange"
+            @update:status="onStatusChange"
+            @update:source_id="onSourceChange"
+            @clear-filters="table.clearFilters"
+          />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Discovered Links</CardTitle>
+        </CardHeader>
+        <CardContent class="p-0">
+          <DiscoveredLinksTable
+            :links="table.links.value"
+            :total="table.total.value"
+            :is-loading="table.isLoading.value"
+            :page="table.page.value"
+            :page-size="table.pageSize.value"
+            :total-pages="table.totalPages.value"
+            :allowed-page-sizes="table.allowedPageSizes"
+            :sort-by="table.sortBy.value"
+            :sort-order="table.sortOrder.value"
+            :has-active-filters="table.hasActiveFilters.value"
+            :on-sort="table.toggleSort"
+            :on-page-change="table.setPage"
+            :on-page-size-change="table.setPageSize"
+            :on-clear-filters="table.clearFilters"
+            :on-delete="deleteLink"
+          />
+        </CardContent>
+      </Card>
+    </template>
   </div>
 </template>
