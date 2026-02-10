@@ -1,0 +1,36 @@
+FROM golang:1.25.7-alpine
+
+ARG UID=1000
+ARG GID=1000
+
+WORKDIR /app
+
+# Dev tools
+RUN apk add --no-cache git curl wget
+
+# Install Air for hot reload
+RUN go install github.com/air-verse/air@latest
+
+# Create matching user
+RUN addgroup -g ${GID} appuser && \
+    adduser -D -u ${UID} -G appuser appuser
+
+# Writable caches in /tmp (including sumdb for module verification)
+RUN mkdir -p /tmp/go-mod-cache \
+             /tmp/go-build-cache \
+             /go/pkg/sumdb && \
+    chmod -R 1777 /tmp/go-mod-cache \
+                  /tmp/go-build-cache \
+                  /go/pkg/sumdb
+
+# Copy go.mod files (source will be bind-mounted)
+COPY go.mod go.sum ./
+
+EXPOSE 8075
+
+# Go cache locations
+ENV GOCACHE=/tmp/go-build-cache
+ENV GOMODCACHE=/tmp/go-mod-cache
+
+# Default dev command
+CMD ["sh", "-c", "go mod download && air -c .air.toml"]

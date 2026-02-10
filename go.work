@@ -9,6 +9,7 @@ use (
 	./infrastructure
 	./mcp-north-cloud
 	./nc-http-proxy
+	./pipeline
 	./publisher
 	./search
 	./source-manager

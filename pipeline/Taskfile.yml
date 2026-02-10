@@ -1,0 +1,197 @@
+version: '3'
+
+dotenv: ['../.env']
+
+vars:
+  BINARY_NAME: pipeline
+  MAIN_PATH: .
+  BUILD_DIR: ./bin
+  DOCKER_IMAGE: north-cloud-pipeline
+  CONFIG_FILE: config.yml
+
+tasks:
+  default:
+    desc: Show available tasks
+    cmds:
+      - task --list
+
+  build:
+    desc: Build the pipeline service
+    cmds:
+      - mkdir -p {{.BUILD_DIR}}
+      - go build -o {{.BUILD_DIR}}/{{.BINARY_NAME}} {{.MAIN_PATH}}
+    generates:
+      - "{{.BUILD_DIR}}/{{.BINARY_NAME}}"
+
+  run:
+    desc: Run the service locally
+    deps: [deps]
+    cmds:
+      - go run {{.MAIN_PATH}}
+
+  test:
+    desc: "Run all tests"
+    cmds:
+      - go test -v ./...
+
+  test:unit:
+    desc: "Run unit tests"
+    cmds:
+      - go test -v ./internal/...
+
+  test:coverage:
+    desc: Run tests with coverage report
+    deps: [deps]
+    cmds:
+      - go test -coverprofile=coverage.out ./...
+      - go tool cover -html=coverage.out -o coverage.html
+      - 'echo "Coverage report generated: coverage.html"'
+
+  test:race:
+    desc: Run tests with race detector
+    deps: [deps]
+    cmds:
+      - go test -race ./...
+
+  clean:
+    desc: Clean build artifacts and temporary files
+    cmds:
+      - rm -rf {{.BUILD_DIR}}
+      - rm -f coverage.out coverage.html
+      - go clean -cache -testcache -modcache
+
+  deps:
+    desc: Download and tidy dependencies
+    cmds:
+      - go mod download
+      - go mod tidy
+      - go mod verify
+
+  fmt:
+    desc: Format Go code
+    cmds:
+      - go fmt ./...
+      - goimports -w . || true
+
+  tidy:
+    desc: "Tidy go.mod and go.sum"
+    cmds:
+      - go mod tidy
+
+  vet:
+    desc: Run go vet
+    cmds:
+      - go vet ./...
+
+  lint:
+    desc: "Lint the Go code"
+    cmds:
+      - go fmt ./...
+      - go vet ./...
+      - golangci-lint run --config ../.golangci.yml ./...
+
+  check:
+    desc: Run all code quality checks (fmt, vet, lint)
+    cmds:
+      - task: fmt
+      - task: vet
+      - task: lint
+
+  docker:build:
+    desc: Build Docker image
+    cmds:
+      - docker build -t {{.DOCKER_IMAGE}} .
+
+  docker:build:dev:
+    desc: "Build development Docker image"
+    cmds:
+      - docker build -f Dockerfile.dev -t {{.DOCKER_IMAGE}}:dev .
+
+  docker:up:
+    desc: Start services with Docker Compose
+    cmds:
+      - docker compose up -d
+
+  docker:down:
+    desc: Stop services
+    cmds:
+      - docker compose down
+
+  docker:logs:
+    desc: View pipeline service logs
+    cmds:
+      - docker compose logs -f pipeline
+
+  docker:restart:
+    desc: Restart Docker services
+    cmds:
+      - task: docker:down
+      - task: docker:up
+
+  dev:
+    desc: Run in development mode with file watching (requires air or similar)
+    cmds:
+      - |
+        if command -v air > /dev/null; then
+          air
+        else
+          echo "air not installed. Install with: go install github.com/cosmtrek/air@latest"
+          task: run
+        fi
+
+  install:tools:
+    desc: "Install development tools"
+    cmds:
+      - go install github.com/air-verse/air@latest || true
+      - go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest || true
+      - go install golang.org/x/tools/cmd/goimports@latest || true
+      - go install github.com/golang-migrate/migrate/v4/cmd/migrate@latest || true
+
+  migrate:up:
+    desc: "Run database migrations up"
+    silent: true
+    cmds:
+      - ../scripts/run-migration.sh pipeline up
+
+  migrate:down:
+    desc: "Rollback last migration"
+    silent: true
+    cmds:
+      - ../scripts/run-migration.sh pipeline down
+
+  migrate:version:
+    desc: "Show current migration version"
+    silent: true
+    cmds:
+      - ../scripts/run-migration.sh pipeline version
+
+  migrate:check:
+    desc: "Check if migrations have been applied"
+    silent: true
+    cmds:
+      - ../scripts/run-migration.sh pipeline version || echo "No migrations applied yet. Run 'task migrate:up' to apply migrations."
+
+  migrate:force:
+    desc: "Force pipeline database to a specific migration version (use to fix dirty state)"
+    silent: true
+    cmds:
+      - |
+        if [ -z "{{.VERSION}}" ]; then
+          echo "VERSION environment variable not set. Usage: VERSION=1 task migrate:force"
+          echo "This will force the database to the specified version (marking it as clean if dirty)"
+          exit 1
+        fi
+      - ../scripts/run-migration.sh pipeline force {{.VERSION}}
+
+  install:
+    desc: Install the binary to $GOPATH/bin
+    cmds:
+      - go install {{.MAIN_PATH}}
+
+  all:
+    desc: Run build, test, and check
+    cmds:
+      - task: deps
+      - task: check
+      - task: test
+      - task: build

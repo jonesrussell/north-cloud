@@ -146,6 +146,7 @@ crawler/frontend/.vite/deps/package.json
 search/config.yml
 mcp-north-cloud/bin/mcp-north-cloud
 auth/config.yml
+pipeline/config.yml
 .task/
 
 coverage.html

@@ -546,6 +546,53 @@ services:
       start_period: 25s
 
   # ------------------------------------------------------------
+  # Pipeline (Dev)
+  # ------------------------------------------------------------
+  pipeline:
+    <<: *go-dev-defaults
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 1024M
+    pull_policy: build
+    build:
+      context: ./pipeline
+      dockerfile: Dockerfile.dev
+      args:
+        UID: "${UID:-1000}"
+        GID: "${GID:-1000}"
+    ports:
+      - "${PIPELINE_PORT:-8075}:8075"
+      - "${PIPELINE_PPROF_PORT:-6067}:6060"
+    depends_on:
+      postgres-pipeline:
+        condition: service_healthy
+    environment:
+      <<: *go-dev-environment
+      POSTGRES_PIPELINE_HOST: postgres-pipeline
+      POSTGRES_PIPELINE_PORT: 5432
+      POSTGRES_PIPELINE_USER: "${POSTGRES_PIPELINE_USER:-postgres}"
+      POSTGRES_PIPELINE_PASSWORD: "${POSTGRES_PIPELINE_PASSWORD:-postgres}"
+      POSTGRES_PIPELINE_DB: "${POSTGRES_PIPELINE_DB:-pipeline}"
+      POSTGRES_PIPELINE_SSLMODE: disable
+      PIPELINE_PORT: 8075
+      GIN_MODE: debug
+      PPROF_PORT: 6060
+    volumes:
+      - ./pipeline:/app
+      - pipeline_go_mod_cache:/tmp/go-mod-cache
+      - pipeline_go_build_cache:/tmp/go-build-cache
+      - ./infrastructure:/infrastructure
+    command: ["sh", "-c", "go mod download && air -c .air.toml"]
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:8075/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 25s
+
+  # ------------------------------------------------------------
   # Pyroscope (Continuous Profiling, profile: observability)
   # ------------------------------------------------------------
   pyroscope:
@@ -650,6 +697,8 @@ volumes:
   search_frontend_node_modules:
   auth_go_mod_cache:
   auth_go_build_cache:
+  pipeline_go_mod_cache:
+  pipeline_go_build_cache:
   mcp_index_manager_go_mod_cache:
   mcp_index_manager_go_build_cache:
   pyroscope_data:

@@ -3,7 +3,7 @@
 # Usage: ./run-migration.sh <service> <command> [version]
 #
 # Arguments:
-#   service  - Service name: crawler, source-manager, classifier, publisher, index-manager
+#   service  - Service name: crawler, source-manager, classifier, publisher, index-manager, pipeline
 #   command  - Migration command: up, down, version, force
 #   version  - (Optional) Version number for 'force' command
 #
@@ -52,7 +52,7 @@ VERSION="$3"
 if [ -z "$SERVICE" ] || [ -z "$COMMAND" ]; then
     echo "Usage: $0 <service> <command> [version]"
     echo ""
-    echo "Services: crawler, source-manager, classifier, publisher, index-manager"
+    echo "Services: crawler, source-manager, classifier, publisher, index-manager, pipeline"
     echo "Commands: up, down, version, force"
     echo ""
     echo "Examples:"
@@ -103,9 +103,17 @@ case "$SERVICE" in
         SWARM_SERVICE="northcloud_postgres-index-manager"
         MIGRATION_PATH="./migrations"
         ;;
+    pipeline)
+        ENV_PREFIX="POSTGRES_PIPELINE"
+        DB_DEFAULT="pipeline"
+        PORT_DEFAULT="5438"
+        CONTAINER_PATTERN="postgres-pipeline"
+        SWARM_SERVICE="northcloud_postgres-pipeline"
+        MIGRATION_PATH="./migrations"
+        ;;
     *)
         echo "Unknown service: $SERVICE"
-        echo "Valid services: crawler, source-manager, classifier, publisher, index-manager"
+        echo "Valid services: crawler, source-manager, classifier, publisher, index-manager, pipeline"
         exit 1
         ;;
 esac
