@@ -70,13 +70,13 @@ type LoggingConfig struct {
 
 // Load loads configuration from a YAML file, applies defaults, then env overrides.
 func Load(path string) (*Config, error) {
-	cfg, err := infraconfig.LoadWithDefaults[Config](path, setDefaults)
-	if err != nil {
-		return nil, fmt.Errorf("load config: %w", err)
+	cfg, loadErr := infraconfig.LoadWithDefaults(path, setDefaults)
+	if loadErr != nil {
+		return nil, fmt.Errorf("load config: %w", loadErr)
 	}
 
-	if err := cfg.Validate(); err != nil {
-		return nil, fmt.Errorf("validate config: %w", err)
+	if validateErr := cfg.Validate(); validateErr != nil {
+		return nil, fmt.Errorf("validate config: %w", validateErr)
 	}
 
 	return cfg, nil

@@ -90,7 +90,7 @@ type IngestRequest struct {
 	Stage          Stage          `binding:"required"        json:"stage"`
 	OccurredAt     time.Time      `binding:"required"        json:"occurred_at"`
 	ServiceName    string         `binding:"required"        json:"service_name"`
-	IdempotencyKey string         `binding:"required"        json:"idempotency_key"`
+	IdempotencyKey string         `json:"idempotency_key,omitempty"`
 	Metadata       map[string]any `json:"metadata,omitempty"`
 }
 
