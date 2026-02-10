@@ -91,9 +91,11 @@ func (s *SearchService) Search(ctx context.Context, req *domain.SearchRequest) (
 }
 
 const (
-	suggestMaxSize   = 15
-	suggestReturn    = 10
-	suggestMinLength = 2
+	suggestMaxSize    = 15
+	suggestReturn     = 10
+	suggestMinLength  = 2
+	publicFeedSize    = 20
+	snippetMaxLength  = 200
 )
 
 // Suggest returns autocomplete suggestions based on title prefix match
@@ -322,6 +324,110 @@ func (s *SearchService) parseFacets(aggs map[string]aggregation) *domain.Facets 
 	}
 
 	return facets
+}
+
+// LatestArticles returns the most recent classified articles for the public feed.
+// No auth; used by static sites at build time. Size is fixed (publicFeedSize).
+func (s *SearchService) LatestArticles(ctx context.Context) ([]domain.PublicFeedArticle, error) {
+	query := map[string]any{
+		"query": map[string]any{"match_all": map[string]any{}},
+		"size":  publicFeedSize,
+		"sort": []any{
+			map[string]any{"published_date": map[string]any{"order": "desc", "missing": "_last"}},
+			map[string]any{"crawled_at": map[string]any{"order": "desc", "missing": "_last"}},
+		},
+		"_source": []string{
+			"id", "title", "url", "source_name",
+			"published_date", "crawled_at", "raw_text", "topics",
+		},
+	}
+	res, err := s.executeSearch(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		_ = res.Body.Close()
+	}()
+	return s.parseLatestArticlesResponse(res.Body)
+}
+
+// parseLatestArticlesResponse parses ES response into PublicFeedArticle slice.
+func (s *SearchService) parseLatestArticlesResponse(body io.Reader) ([]domain.PublicFeedArticle, error) {
+	var esResponse struct {
+		Hits struct {
+			Hits []struct {
+				ID     string `json:"_id"`
+				Source struct {
+					ID            string     `json:"id"`
+					Title         string     `json:"title"`
+					URL           string     `json:"url"`
+					SourceName    string     `json:"source_name"`
+					PublishedDate *time.Time `json:"published_date"`
+					CrawledAt     *time.Time `json:"crawled_at"`
+					RawText       string    `json:"raw_text"`
+					Topics        []string  `json:"topics"`
+				} `json:"_source"`
+			} `json:"hits"`
+		} `json:"hits"`
+	}
+	if err := json.NewDecoder(body).Decode(&esResponse); err != nil {
+		return nil, fmt.Errorf("decode latest articles response: %w", err)
+	}
+	out := make([]domain.PublicFeedArticle, 0, len(esResponse.Hits.Hits))
+	for _, hit := range esResponse.Hits.Hits {
+		id := hit.Source.ID
+		if id == "" {
+			id = hit.ID
+		}
+		pubAt := time.Time{}
+		if hit.Source.PublishedDate != nil {
+			pubAt = *hit.Source.PublishedDate
+		} else if hit.Source.CrawledAt != nil {
+			pubAt = *hit.Source.CrawledAt
+		}
+		snippet := hit.Source.RawText
+		if len(snippet) > snippetMaxLength {
+			snippet = snippet[:snippetMaxLength] + "..."
+		}
+		sourceName := hit.Source.SourceName
+		if sourceName == "" {
+			sourceName = "pipeline"
+		}
+		out = append(out, domain.PublicFeedArticle{
+			ID:          id,
+			Title:       hit.Source.Title,
+			Slug:        slugFromTitle(hit.Source.Title, id),
+			URL:         hit.Source.URL,
+			Snippet:     snippet,
+			PublishedAt: pubAt,
+			Topics:      append([]string(nil), hit.Source.Topics...),
+			Source:      sourceName,
+		})
+	}
+	return out, nil
+}
+
+// slugFromTitle returns a URL-safe slug; falls back to id if title is empty.
+func slugFromTitle(title, id string) string {
+	if title == "" {
+		return id
+	}
+	var b strings.Builder
+	lastDash := false
+	for _, r := range strings.ToLower(title) {
+		if (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9') {
+			b.WriteRune(r)
+			lastDash = false
+		} else if (r == ' ' || r == '-' || r == '_') && !lastDash {
+			b.WriteRune('-')
+			lastDash = true
+		}
+	}
+	result := strings.Trim(strings.Trim(b.String(), "-"), " ")
+	if result == "" {
+		return id
+	}
+	return result
 }
 
 // HealthCheck checks the health of the search service and its dependencies

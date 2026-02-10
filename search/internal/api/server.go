@@ -50,6 +50,9 @@ func SetupServiceRoutes(router *gin.Engine, handler *Handler) {
 	// Additional readiness endpoint
 	router.GET("/ready", handler.ReadinessCheck)
 
+	// Public feed (no auth): stable URL for static-site consumers at build time
+	router.GET("/feed.json", handler.PublicFeed)
+
 	// API v1 routes
 	v1 := router.Group("/api/v1")
 	{

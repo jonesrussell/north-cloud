@@ -213,6 +213,32 @@ func (h *Handler) ReadinessCheck(c *gin.Context) {
 	h.HealthCheck(c)
 }
 
+const (
+	publicFeedCacheMaxAge = 300
+)
+
+// PublicFeed serves the public article feed (no auth). For static-site consumers
+// (e.g. "me") at build time. Stable URL, deterministic "recent N" payload.
+func (h *Handler) PublicFeed(c *gin.Context) {
+	articles, err := h.searchService.LatestArticles(c.Request.Context())
+	if err != nil {
+		h.logger.Error("Public feed failed",
+			infralogger.Error(err),
+		)
+		c.JSON(http.StatusInternalServerError, ErrorResponse{
+			Error:     "Feed temporarily unavailable",
+			Code:      "FEED_ERROR",
+			Timestamp: time.Now(),
+		})
+		return
+	}
+	c.Header("Cache-Control", "public, max-age="+strconv.Itoa(publicFeedCacheMaxAge))
+	c.JSON(http.StatusOK, domain.PublicFeedResponse{
+		GeneratedAt: time.Now().UTC().Format(time.RFC3339),
+		Articles:    articles,
+	})
+}
+
 // ErrorResponse represents an error response
 type ErrorResponse struct {
 	Error     string    `json:"error"`
