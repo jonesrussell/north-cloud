@@ -99,7 +99,7 @@ snapshot_images() {
   if [ -n "$services" ]; then
     svc_list="$services"
   else
-    svc_list="auth crawler source-manager classifier publisher index-manager search-service dashboard"
+    svc_list="auth crawler source-manager classifier publisher index-manager pipeline search-service dashboard"
   fi
 
   rm -f "$SNAPSHOT_FILE"
@@ -201,6 +201,7 @@ rollback_services() {
       classifier)    check_health "classifier" "/health" "8070" 10 || rollback_healthy=false ;;
       publisher)     check_health "publisher" "/health" "8070" 10 || rollback_healthy=false ;;
       index-manager) check_health "index-manager" "/health" "8090" 10 || rollback_healthy=false ;;
+      pipeline)      check_health "pipeline" "/health" "8075" 10 || rollback_healthy=false ;;
       search-service) check_health "search-service" "/health" "8090" 10 || rollback_healthy=false ;;
     esac
   done
@@ -306,7 +307,8 @@ if [ "${MIGRATIONS_CHANGED:-true}" == "true" ] || [ -z "$SERVICES_TO_UPDATE" ]; 
     postgres-source-manager \
     postgres-classifier \
     postgres-publisher \
-    postgres-index-manager || {
+    postgres-index-manager \
+    postgres-pipeline || {
     echo -e "${RED}ERROR: Failed to start database services${NC}" >&2
     exit 1
   }
@@ -354,6 +356,13 @@ if [ "${MIGRATIONS_CHANGED:-true}" == "true" ] || [ -z "$SERVICES_TO_UPDATE" ]; 
     run_migration "index-manager" "postgres-index-manager" "5432" \
       "$POSTGRES_INDEX_MANAGER_USER" "$POSTGRES_INDEX_MANAGER_PASSWORD" \
       "${POSTGRES_INDEX_MANAGER_DB:-index_manager}" "index-manager/migrations" &
+    MIGRATION_PIDS+=($!)
+  fi
+
+  if [ -n "${POSTGRES_PIPELINE_USER:-}" ] && [ -n "${POSTGRES_PIPELINE_PASSWORD:-}" ]; then
+    run_migration "pipeline" "postgres-pipeline" "5432" \
+      "$POSTGRES_PIPELINE_USER" "$POSTGRES_PIPELINE_PASSWORD" \
+      "${POSTGRES_PIPELINE_DB:-pipeline}" "pipeline/migrations" &
     MIGRATION_PIDS+=($!)
   fi
 
@@ -449,7 +458,7 @@ check_health() {
 if [ -n "$SERVICES_TO_UPDATE" ]; then
   SERVICES_TO_CHECK="$SERVICES_TO_UPDATE"
 else
-  SERVICES_TO_CHECK="auth crawler source-manager classifier publisher index-manager search-service"
+  SERVICES_TO_CHECK="auth crawler source-manager classifier publisher index-manager pipeline search-service"
 fi
 
 FAILED_CHECKS=0
@@ -474,6 +483,9 @@ for svc in $SERVICES_TO_CHECK; do
       ;;
     index-manager)
       check_health "index-manager" "/health" "8090" 10 || { FAILED_CHECKS=$((FAILED_CHECKS + 1)); FAILED_SERVICES="$FAILED_SERVICES $svc"; }
+      ;;
+    pipeline)
+      check_health "pipeline" "/health" "8075" 10 || { FAILED_CHECKS=$((FAILED_CHECKS + 1)); FAILED_SERVICES="$FAILED_SERVICES $svc"; }
       ;;
     search-service)
       check_health "search-service" "/health" "8090" 10 || { FAILED_CHECKS=$((FAILED_CHECKS + 1)); FAILED_SERVICES="$FAILED_SERVICES $svc"; }

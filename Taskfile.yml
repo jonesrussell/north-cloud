@@ -95,6 +95,7 @@ tasks:
       - task: lint:dashboard
       - task: lint:index-manager
       - task: lint:mcp-north-cloud
+      - task: lint:pipeline
       - task: lint:publisher
       - task: lint:search
       - task: lint:search-frontend
@@ -109,6 +110,7 @@ tasks:
       - task: lint:dashboard
       - task: lint:index-manager
       - task: lint:mcp-north-cloud
+      - task: lint:pipeline
       - task: lint:publisher
       - task: lint:search
       - task: lint:search-frontend
@@ -150,6 +152,12 @@ tasks:
     cmds:
       - task build
 
+  lint:pipeline:
+    desc: "Run linter for pipeline service"
+    dir: pipeline
+    cmds:
+      - task lint
+
   lint:publisher:
     desc: "Run linter for publisher service"
     dir: publisher
@@ -188,6 +196,7 @@ tasks:
       - task: vuln:crawler
       - task: vuln:index-manager
       - task: vuln:mcp-north-cloud
+      - task: vuln:pipeline
       - task: vuln:publisher
       - task: vuln:search
       - task: vuln:source-manager
@@ -222,6 +231,12 @@ tasks:
     cmds:
       - task vuln
 
+  vuln:pipeline:
+    desc: "Run vulnerability check for pipeline service"
+    dir: pipeline
+    cmds:
+      - task vuln
+
   vuln:publisher:
     desc: "Run vulnerability check for publisher service"
     dir: publisher
@@ -249,6 +264,7 @@ tasks:
       - task: test:dashboard
       - task: test:index-manager
       - task: test:mcp-north-cloud
+      - task: test:pipeline
       - task: test:publisher
       - task: test:search
       - task: test:search-frontend
@@ -264,6 +280,7 @@ tasks:
       - task: test:dashboard
       - task: test:index-manager
       - task: test:mcp-north-cloud
+      - task: test:pipeline
       - task: test:publisher
       - task: test:search
       - task: test:search-frontend
@@ -329,6 +346,12 @@ tasks:
     cmds:
       - task test
 
+  test:pipeline:
+    desc: "Run tests for pipeline service"
+    dir: pipeline
+    cmds:
+      - task test
+
   test:race:
     desc: "Run tests with race detector for all microservices sequentially"
     cmds:
@@ -338,6 +361,7 @@ tasks:
       - task: test:race:dashboard
       - task: test:race:index-manager
       - task: test:race:mcp-north-cloud
+      - task: test:race:pipeline
       - task: test:race:publisher
       - task: test:race:search
       - task: test:race:search-frontend
@@ -352,6 +376,7 @@ tasks:
       - task: test:race:dashboard
       - task: test:race:index-manager
       - task: test:race:mcp-north-cloud
+      - task: test:race:pipeline
       - task: test:race:publisher
       - task: test:race:search
       - task: test:race:search-frontend
@@ -411,6 +436,12 @@ tasks:
     cmds:
       - task test:race
 
+  test:race:pipeline:
+    desc: "Run tests with race detector for pipeline service"
+    dir: pipeline
+    cmds:
+      - task test:race
+
   test:race:source-manager:
     desc: "Run tests with race detector for source-manager service"
     dir: source-manager
@@ -426,6 +457,7 @@ tasks:
       - task: test:cover:dashboard
       - task: test:cover:index-manager
       - task: test:cover:mcp-north-cloud
+      - task: test:cover:pipeline
       - task: test:cover:publisher
       - task: test:cover:search
       - task: test:cover:search-frontend
@@ -440,6 +472,7 @@ tasks:
       - task: test:cover:dashboard
       - task: test:cover:index-manager
       - task: test:cover:mcp-north-cloud
+      - task: test:cover:pipeline
       - task: test:cover:publisher
       - task: test:cover:search
       - task: test:cover:search-frontend
@@ -496,6 +529,12 @@ tasks:
   test:cover:search-frontend:
     desc: "Run tests with coverage for search-frontend service"
     dir: search-frontend
+    cmds:
+      - task test:coverage
+
+  test:cover:pipeline:
+    desc: "Run tests with coverage for pipeline service"
+    dir: pipeline
     cmds:
       - task test:coverage
 

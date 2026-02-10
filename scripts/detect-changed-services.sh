@@ -38,7 +38,7 @@ done
 
 # Service directories (canonical list)
 # Note: 'search' dir maps to 'search-service' container in deploy
-GO_SERVICES=(auth classifier crawler index-manager mcp-north-cloud publisher search source-manager nc-http-proxy)
+GO_SERVICES=(auth classifier crawler index-manager mcp-north-cloud pipeline publisher search source-manager nc-http-proxy)
 FRONTEND_SERVICES=(dashboard search-frontend)
 OTHER_SERVICES=(crime-ml mining-ml coforge-ml entertainment-ml)
 ALL_SERVICES=("${GO_SERVICES[@]}" "${FRONTEND_SERVICES[@]}" "${OTHER_SERVICES[@]}")

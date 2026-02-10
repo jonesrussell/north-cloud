@@ -46,7 +46,7 @@ jobs:
           else
             echo "run_all=false" >> $GITHUB_OUTPUT
             # Check for Go services
-            if echo "$SERVICES" | grep -qE '"(auth|classifier|crawler|index-manager|mcp-north-cloud|publisher|search|source-manager|nc-http-proxy)"'; then
+            if echo "$SERVICES" | grep -qE '"(auth|classifier|crawler|index-manager|mcp-north-cloud|pipeline|publisher|search|source-manager|nc-http-proxy)"'; then
               echo "has_go=true" >> $GITHUB_OUTPUT
             else
               echo "has_go=false" >> $GITHUB_OUTPUT
@@ -182,7 +182,7 @@ jobs:
           echo "Checking vulnerabilities for changed services: $CHANGED_SERVICES"
 
           # Only check Go services
-          GO_SERVICES="auth classifier crawler index-manager mcp-north-cloud publisher search source-manager nc-http-proxy"
+          GO_SERVICES="auth classifier crawler index-manager mcp-north-cloud pipeline publisher search source-manager nc-http-proxy"
 
           for service in $(echo "$CHANGED_SERVICES" | jq -r '.[]'); do
             if echo "$GO_SERVICES" | grep -qw "$service"; then
