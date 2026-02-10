@@ -263,8 +263,6 @@ services:
       AUTH_JWT_SECRET: "${AUTH_JWT_SECRET}"
       APP_DEBUG: "false"
       GIN_MODE: release
-    volumes:
-      - ./pipeline/config.yml.example:/app/config.yml:ro
     healthcheck:
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:8075/health"]
       interval: 30s
