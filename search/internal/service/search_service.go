@@ -91,11 +91,11 @@ func (s *SearchService) Search(ctx context.Context, req *domain.SearchRequest) (
 }
 
 const (
-	suggestMaxSize    = 15
-	suggestReturn     = 10
-	suggestMinLength  = 2
-	publicFeedSize    = 20
-	snippetMaxLength  = 200
+	suggestMaxSize   = 15
+	suggestReturn    = 10
+	suggestMinLength = 2
+	publicFeedSize   = 20
+	snippetMaxLength = 200
 )
 
 // Suggest returns autocomplete suggestions based on title prefix match
@@ -364,8 +364,8 @@ func (s *SearchService) parseLatestArticlesResponse(body io.Reader) ([]domain.Pu
 					SourceName    string     `json:"source_name"`
 					PublishedDate *time.Time `json:"published_date"`
 					CrawledAt     *time.Time `json:"crawled_at"`
-					RawText       string    `json:"raw_text"`
-					Topics        []string  `json:"topics"`
+					RawText       string     `json:"raw_text"`
+					Topics        []string   `json:"topics"`
 				} `json:"_source"`
 			} `json:"hits"`
 		} `json:"hits"`
@@ -374,7 +374,8 @@ func (s *SearchService) parseLatestArticlesResponse(body io.Reader) ([]domain.Pu
 		return nil, fmt.Errorf("decode latest articles response: %w", err)
 	}
 	out := make([]domain.PublicFeedArticle, 0, len(esResponse.Hits.Hits))
-	for _, hit := range esResponse.Hits.Hits {
+	for i := range esResponse.Hits.Hits {
+		hit := &esResponse.Hits.Hits[i]
 		id := hit.Source.ID
 		if id == "" {
 			id = hit.ID

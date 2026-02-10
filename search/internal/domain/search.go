@@ -242,7 +242,7 @@ type PublicFeedArticle struct {
 	Snippet     string    `json:"snippet"`
 	PublishedAt time.Time `json:"published_at"`
 	Topics      []string  `json:"topics"`
-	Source      string   `json:"source"`
+	Source      string    `json:"source"`
 }
 
 // PublicFeedResponse is the response shape for GET /feed.json.
