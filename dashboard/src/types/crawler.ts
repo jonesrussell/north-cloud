@@ -79,6 +79,17 @@ export interface CrawlerStats {
   failed_jobs_24h: number
 }
 
+/** Response from POST /admin/sync-enabled-sources (create/resume jobs for enabled sources). */
+export interface SyncReport {
+  sources_seen: number
+  sources_enabled: number
+  created: string[]
+  resumed: string[]
+  already_has_job: string[]
+  skipped_disabled: string[]
+  errors: string[]
+}
+
 // Job status badge variants
 export const JOB_STATUS_VARIANTS: Record<JobStatus, string> = {
   pending: 'secondary',

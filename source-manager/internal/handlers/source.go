@@ -409,6 +409,49 @@ func (h *SourceHandler) TestCrawl(c *gin.Context) {
 	c.JSON(http.StatusOK, response)
 }
 
+// publishImportEvents publishes SourceCreated for created sources and SourceUpdated for updated sources.
+// Created events are published first so the crawler creates jobs before rescheduling.
+func (h *SourceHandler) publishImportEvents(createdList, updatedList []*models.Source) {
+	if h.publisher == nil {
+		return
+	}
+	for _, s := range createdList {
+		sourceID, parseErr := uuid.Parse(s.ID)
+		if parseErr != nil {
+			continue
+		}
+		h.publisher.PublishAsync(infraevents.SourceEvent{
+			EventType: infraevents.SourceCreated,
+			SourceID:  sourceID,
+			Payload: infraevents.SourceCreatedPayload{
+				Name:      s.Name,
+				URL:       s.URL,
+				RateLimit: parseRateLimit(s.RateLimit),
+				MaxDepth:  s.MaxDepth,
+				Enabled:   s.Enabled,
+				Priority:  infraevents.PriorityNormal,
+			},
+		})
+	}
+	for _, s := range updatedList {
+		sourceID, parseErr := uuid.Parse(s.ID)
+		if parseErr != nil {
+			continue
+		}
+		h.publisher.PublishAsync(infraevents.SourceEvent{
+			EventType: infraevents.SourceUpdated,
+			SourceID:  sourceID,
+			Payload: infraevents.SourceUpdatedPayload{
+				ChangedFields: []string{"rate_limit", "max_depth", "url", "enabled"},
+			},
+		})
+	}
+	h.logger.Info("Published import events",
+		infralogger.Int("source_created", len(createdList)),
+		infralogger.Int("source_updated", len(updatedList)),
+	)
+}
+
 // ImportExcel handles bulk import of sources from an Excel file.
 func (h *SourceHandler) ImportExcel(c *gin.Context) {
 	// 1. Extract file from multipart form
@@ -465,7 +508,7 @@ func (h *SourceHandler) ImportExcel(c *gin.Context) {
 	}
 
 	// 5. Upsert in transaction
-	created, updated, err := h.repo.UpsertSourcesTx(c.Request.Context(), sources)
+	createdList, updatedList, err := h.repo.UpsertSourcesTx(c.Request.Context(), sources)
 	if err != nil {
 		h.logger.Error("Failed to import sources",
 			infralogger.Error(err),
@@ -474,16 +517,19 @@ func (h *SourceHandler) ImportExcel(c *gin.Context) {
 		return
 	}
 
-	// 6. Log success and return
+	// 6. Publish events: created first, then updated (ordering for crawler job creation before reschedule)
+	h.publishImportEvents(createdList, updatedList)
+
+	// 7. Log success and return
 	h.logger.Info("Sources imported successfully",
-		infralogger.Int("created", created),
-		infralogger.Int("updated", updated),
+		infralogger.Int("created", len(createdList)),
+		infralogger.Int("updated", len(updatedList)),
 		infralogger.String("filename", header.Filename),
 	)
 
 	c.JSON(http.StatusOK, ImportResult{
-		Created: created,
-		Updated: updated,
+		Created: len(createdList),
+		Updated: len(updatedList),
 		Errors:  []importer.ImportError{},
 	})
 }

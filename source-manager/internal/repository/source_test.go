@@ -415,11 +415,11 @@ func TestSourceRepository_UpsertSourcesTx(t *testing.T) {
 
 		created, updated, err := repo.UpsertSourcesTx(ctx, sources)
 		require.NoError(t, err)
-		assert.Equal(t, 2, created, "Should create 2 new sources")
-		assert.Equal(t, 0, updated, "Should update 0 sources")
+		assert.Len(t, created, 2, "Should create 2 new sources")
+		assert.Empty(t, updated, "Should update 0 sources")
 
-		// Verify sources were persisted
-		for _, s := range sources {
+		// Verify returned slices reference sources with IDs set
+		for _, s := range created {
 			assert.NotEmpty(t, s.ID, "Source ID should be set")
 			fetched, fetchErr := repo.GetByID(ctx, s.ID)
 			require.NoError(t, fetchErr)
@@ -472,11 +472,13 @@ func TestSourceRepository_UpsertSourcesTx(t *testing.T) {
 
 		created, updated, err := repo.UpsertSourcesTx(ctx, sources)
 		require.NoError(t, err)
-		assert.Equal(t, 1, created, "Should create 1 new source")
-		assert.Equal(t, 1, updated, "Should update 1 source")
+		assert.Len(t, created, 1, "Should create 1 new source")
+		assert.Len(t, updated, 1, "Should update 1 source")
 
 		// Verify the existing source was updated with the original ID
 		assert.Equal(t, originalID, sources[0].ID, "Updated source should keep original ID")
+		assert.Equal(t, originalID, updated[0].ID, "Updated slice should reference source with original ID")
+		assert.NotEmpty(t, created[0].ID, "Created source should have ID set")
 		fetched, fetchErr := repo.GetByID(ctx, originalID)
 		require.NoError(t, fetchErr)
 		assert.Equal(t, "https://batch-existing-updated.com", fetched.URL)
@@ -495,8 +497,8 @@ func TestSourceRepository_UpsertSourcesTx(t *testing.T) {
 
 		created, updated, err := repo.UpsertSourcesTx(ctx, sources)
 		require.NoError(t, err)
-		assert.Equal(t, 0, created, "Should create 0 sources")
-		assert.Equal(t, 0, updated, "Should update 0 sources")
+		assert.Nil(t, created, "Should return nil created slice")
+		assert.Nil(t, updated, "Should return nil updated slice")
 	})
 }
 

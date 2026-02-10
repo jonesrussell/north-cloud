@@ -226,12 +226,18 @@ func (r *JobRepository) List(ctx context.Context, params ListJobsParams) ([]*dom
 		sortOrder = "desc"
 	}
 
+	// next_run_at DESC surfaces unscheduled jobs (NULL) first for operator visibility
+	nullsClause := "NULLS LAST"
+	if sortBy == "next_run_at" && sortOrder == "desc" {
+		nullsClause = "NULLS FIRST"
+	}
+
 	query := fmt.Sprintf(`SELECT %s
 		FROM jobs
 		%s
-		ORDER BY %s %s NULLS LAST
+		ORDER BY %s %s %s
 		LIMIT $%d OFFSET $%d
-	`, jobSelectBase, whereClause, sortBy, strings.ToUpper(sortOrder), argIndex, argIndex+1)
+	`, jobSelectBase, whereClause, sortBy, strings.ToUpper(sortOrder), nullsClause, argIndex, argIndex+1)
 
 	args = append(args, params.Limit, params.Offset)
 

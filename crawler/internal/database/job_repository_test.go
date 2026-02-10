@@ -199,6 +199,57 @@ func TestJobRepository_List_WithSorting(t *testing.T) {
 	}
 }
 
+func TestJobRepository_List_NextRunAtDescNullsFirst(t *testing.T) {
+	t.Helper()
+
+	mockDB, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("failed to create sqlmock: %v", err)
+	}
+	defer mockDB.Close()
+
+	db := sqlx.NewDb(mockDB, "postgres")
+	repo := database.NewJobRepository(db)
+	ctx := context.Background()
+
+	cols := []string{
+		"id", "source_id", "source_name", "url",
+		"schedule_time", "schedule_enabled",
+		"interval_minutes", "interval_type", "next_run_at",
+		"is_paused", "max_retries", "retry_backoff_seconds", "current_retry_count",
+		"lock_token", "lock_acquired_at",
+		"status", "scheduler_version",
+		"created_at", "updated_at", "started_at", "completed_at",
+		"paused_at", "cancelled_at",
+		"error_message", "metadata",
+	}
+
+	// next_run_at DESC must use NULLS FIRST so unscheduled jobs surface at top
+	mock.ExpectQuery("SELECT .+ FROM jobs\\s+ORDER BY next_run_at DESC NULLS FIRST").
+		WithArgs(50, 0).
+		WillReturnRows(sqlmock.NewRows(cols))
+
+	params := database.ListJobsParams{
+		Limit:     50,
+		Offset:    0,
+		SortBy:    "next_run_at",
+		SortOrder: "desc",
+	}
+
+	jobs, listErr := repo.List(ctx, params)
+	if listErr != nil {
+		t.Fatalf("List() error = %v", listErr)
+	}
+
+	if len(jobs) != 0 {
+		t.Errorf("expected 0 jobs, got %d", len(jobs))
+	}
+
+	if checkErr := mock.ExpectationsWereMet(); checkErr != nil {
+		t.Errorf("unfulfilled expectations: %v", checkErr)
+	}
+}
+
 func TestJobRepository_List_WithStatusFilter(t *testing.T) {
 	t.Helper()
 
