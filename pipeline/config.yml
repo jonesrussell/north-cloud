@@ -1,0 +1,26 @@
+# Pipeline Service Configuration
+# Copy this file to config.yml and adjust values for your environment
+
+service:
+  name: "pipeline"
+  version: "1.0.0"
+  port: 8075
+  debug: true
+
+database:
+  host: "postgres-pipeline"
+  port: 5432
+  user: "postgres"
+  password: "postgres"
+  database: "pipeline"
+  sslmode: "disable"
+  max_connections: 25
+  max_idle_connections: 5
+  connection_max_lifetime: "1h"
+
+auth:
+  jwt_secret: ""
+
+logging:
+  level: "info" # debug, info, warn, error
+  format: "json" # json or console
