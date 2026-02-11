@@ -30,7 +30,23 @@ As a consumer, you are responsible for:
 
 ### Crime-only consumers (e.g. StreetCode)
 
-If your site should show **only crime-related content**, subscribe to the **Layer 3 crime channels** (`crime:homepage`, `crime:category:*`, `crime:courts`, `crime:context`) and **do not** subscribe to topic channels like `articles:news` or `articles:politics` (those carry mixed content). For a full runbook (Redis channel list, soft-deleting existing non-crime articles on Laravel), see [STREETCODE_RUNBOOK.md](../../docs/STREETCODE_RUNBOOK.md). For **entertainment content**, subscribe to **Layer 6 channels**: `entertainment:homepage`, `entertainment:category:*`, `entertainment:peripheral`. Message payload includes `entertainment_relevance`, `entertainment_categories`, and nested `entertainment` object.
+If your site should show **only crime-related content**, subscribe to **both** Layer 1 crime topic channels **and** Layer 3/4 classification channels:
+
+- **Layer 1** (bulk content): `articles:crime`, `articles:violent_crime`, `articles:criminal_justice`, `articles:drug_crime`, `articles:property_crime`, `articles:organized_crime`
+- **Layer 3** (classification): `crime:homepage`, `crime:category:violent-crime`, `crime:category:property-crime`, `crime:category:drug-crime`, `crime:category:organized-crime`, `crime:category:court-news`, `crime:category:crime`
+- **Layer 4** (location): `crime:canada`, `crime:province:{code}`, `crime:local:{city}`
+
+Layer 1 channels carry the majority of crime articles. Layer 3/4 carry a smaller subset with richer classification metadata (homepage eligibility, category pages, location). Subscribe to all layers for complete coverage. Consumer-side deduplication (by article `id`) prevents duplicates across layers.
+
+Do **not** subscribe to non-crime topic channels like `articles:news` or `articles:politics` (those carry mixed content).
+
+### Mining-only consumers (e.g. OreWire)
+
+Subscribe to the **Layer 5 mining channel**: `articles:mining`. Message payload includes `mining.relevance`, `mining.mining_stage`, `mining.commodities`, `mining.location`, and `mining.final_confidence` for downstream filtering.
+
+### Entertainment consumers
+
+Subscribe to **Layer 6 channels**: `entertainment:homepage`, `entertainment:category:*`, `entertainment:peripheral`. Message payload includes `entertainment_relevance`, `entertainment_categories`, and nested `entertainment` object.
 
 ### Publisher Responsibilities
 
