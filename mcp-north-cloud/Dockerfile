@@ -32,4 +32,4 @@ WORKDIR /app
 
 COPY --from=builder /build/mcp-north-cloud/mcp-north-cloud /app/mcp-north-cloud
 
-ENTRYPOINT ["/app/mcp-north-cloud"]
+CMD ["/app/mcp-north-cloud"]
