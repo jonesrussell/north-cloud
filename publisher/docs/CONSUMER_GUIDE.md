@@ -42,7 +42,17 @@ Do **not** subscribe to non-crime topic channels like `articles:news` or `articl
 
 ### Mining-only consumers (e.g. OreWire)
 
-Subscribe to the **Layer 5 mining channel**: `articles:mining`. Message payload includes `mining.relevance`, `mining.mining_stage`, `mining.commodities`, `mining.location`, and `mining.final_confidence` for downstream filtering.
+Subscribe to **Layer 5 mining channels** for complete coverage:
+
+- **Catch-all**: `articles:mining` (all core + peripheral mining articles)
+- **Relevance**: `mining:core`, `mining:peripheral`
+- **Commodity**: `mining:commodity:gold`, `mining:commodity:copper`, `mining:commodity:lithium`, `mining:commodity:nickel`, `mining:commodity:uranium`, `mining:commodity:iron-ore`, `mining:commodity:rare-earths`
+- **Stage**: `mining:stage:exploration`, `mining:stage:development`, `mining:stage:production`
+- **Location**: `mining:canada`, `mining:international`
+
+`articles:mining` carries all mining articles. The sub-channels carry overlapping subsets with richer routing metadata. Subscribe to all channels for granular page routing; consumer-side deduplication (by article `id`) prevents duplicates across channels.
+
+Message payload includes `mining.relevance`, `mining.mining_stage`, `mining.commodities`, `mining.location`, and `mining.final_confidence` for additional downstream filtering.
 
 ### Entertainment consumers
 

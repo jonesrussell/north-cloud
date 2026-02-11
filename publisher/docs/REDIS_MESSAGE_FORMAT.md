@@ -35,9 +35,15 @@ crime:local:{city}          # e.g. crime:local:toronto, crime:local:vancouver
 crime:international         # International crime
 ```
 
-### Layer 5: Mining classification channel
+### Layer 5: Mining classification channels
 ```
-articles:mining             # All mining-related articles (core + peripheral)
+articles:mining             # Catch-all: all mining articles (core + peripheral)
+mining:core                 # Core mining content (homepage-quality)
+mining:peripheral           # Peripheral mining content
+mining:commodity:{slug}     # Per-commodity (e.g. mining:commodity:gold, mining:commodity:iron-ore)
+mining:stage:{stage}        # Per-stage (exploration, development, production)
+mining:canada               # Canadian mining news (local + national)
+mining:international        # International mining news
 ```
 
 ### Layer 6: Entertainment classification channels
