@@ -1,0 +1,37 @@
+name: Pipeline Integration
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  pipeline-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: tests/integration/pipeline/go.mod
+
+      - name: Copy env file
+        run: cp .env.example .env
+
+      - name: Start test stack
+        run: docker compose -f docker-compose.base.yml -f docker-compose.test.yml up -d --build --wait
+        timeout-minutes: 8
+
+      - name: Run pipeline integration test
+        run: cd tests/integration/pipeline && GOWORK=off go test -tags=integration -v -timeout=10m ./...
+
+      - name: Collect logs on failure
+        if: failure()
+        run: docker compose -f docker-compose.base.yml -f docker-compose.test.yml logs --tail=100
+
+      - name: Tear down
+        if: always()
+        run: docker compose -f docker-compose.base.yml -f docker-compose.test.yml down
