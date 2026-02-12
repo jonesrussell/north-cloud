@@ -41,7 +41,8 @@ echo "Deployment directory: $DEPLOY_DIR"
 echo "Timestamp: $(date -u +"%Y-%m-%d %H:%M:%S UTC")"
 
 # Services that are built but not deployed via docker-compose
-NON_COMPOSE_SERVICES="mcp-north-cloud"
+# (currently none — mcp-north-cloud runs in compose despite being stdio-based)
+NON_COMPOSE_SERVICES=""
 
 # Parse changed services
 if [ -n "${CHANGED_SERVICES:-}" ]; then
