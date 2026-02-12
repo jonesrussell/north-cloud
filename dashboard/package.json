@@ -8,7 +8,9 @@
     "build": "vite build",
     "preview": "vite preview",
     "lint": "eslint .",
-    "lint:fix": "eslint . --fix"
+    "lint:fix": "eslint . --fix",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@headlessui/vue": "^1.7.23",
@@ -42,6 +44,7 @@
     "typescript": "~5.5.4",
     "typescript-eslint": "^7.18.0",
     "vite": "^7.2.7",
+    "vitest": "^4.0.18",
     "vue-tsc": "^2.0.0"
   }
 }

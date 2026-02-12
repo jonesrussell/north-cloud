@@ -38,6 +38,7 @@ import type {
   MiningAggregation,
   MLHealthResponse,
   AggregationFilters,
+  SourceHealthResponse,
 } from '../types/aggregation'
 
 // Debug mode - logs all requests and responses
@@ -539,6 +540,8 @@ export const indexManagerApi = {
       const params = buildAggregationParams(filters)
       return indexManagerClient.get('/api/v1/aggregations/mining', { params })
     },
+    getSourceHealth: (): Promise<AxiosResponse<SourceHealthResponse>> =>
+      indexManagerClient.get('/api/v1/aggregations/source-health'),
   },
 }
 

@@ -15,6 +15,10 @@ const (
 	topCrimeTypesLimit = 10
 	qualityHighMin     = 70
 	qualityMediumMin   = 40
+	maxSourceBuckets   = 100
+
+	rawContentSuffix        = "_raw_content"
+	classifiedContentSuffix = "_classified_content"
 )
 
 // AggregationService provides aggregation operations on classified content
@@ -267,6 +271,168 @@ func (s *AggregationService) GetMiningAggregation(
 		TotalMining:    extractFilterCount(esResp.Aggregations["mining_related"]),
 		TotalDocuments: esResp.Hits.Total.Value,
 	}, nil
+}
+
+// GetSourceHealth returns per-source pipeline health metrics by combining
+// index doc counts with classified content aggregations.
+func (s *AggregationService) GetSourceHealth(ctx context.Context) (*domain.SourceHealthResponse, error) {
+	docCounts, err := s.esClient.GetAllIndexDocCounts(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get index doc counts: %w", err)
+	}
+
+	rawCounts, classifiedCounts := s.buildSourceCountMaps(docCounts)
+	sources := s.mergeSourceNames(rawCounts, classifiedCounts)
+
+	qualityMap, deltaMap := s.fetchClassifiedAggregations(ctx)
+
+	result := s.assembleSourceHealthList(sources, rawCounts, classifiedCounts, qualityMap, deltaMap)
+
+	return &domain.SourceHealthResponse{
+		Sources: result,
+		Total:   len(result),
+	}, nil
+}
+
+// buildSourceCountMaps splits index doc counts into raw and classified maps keyed by source name.
+func (s *AggregationService) buildSourceCountMaps(
+	docCounts []elasticsearch.IndexDocCount,
+) (raw, classified map[string]int64) {
+	raw = make(map[string]int64)
+	classified = make(map[string]int64)
+
+	for _, idx := range docCounts {
+		switch {
+		case len(idx.Name) > len(rawContentSuffix) &&
+			idx.Name[len(idx.Name)-len(rawContentSuffix):] == rawContentSuffix:
+			source := idx.Name[:len(idx.Name)-len(rawContentSuffix)]
+			raw[source] = idx.DocCount
+		case len(idx.Name) > len(classifiedContentSuffix) &&
+			idx.Name[len(idx.Name)-len(classifiedContentSuffix):] == classifiedContentSuffix:
+			source := idx.Name[:len(idx.Name)-len(classifiedContentSuffix)]
+			classified[source] = idx.DocCount
+		}
+	}
+
+	return raw, classified
+}
+
+// mergeSourceNames returns a deduplicated sorted slice of source names found in either map.
+func (s *AggregationService) mergeSourceNames(raw, classified map[string]int64) []string {
+	seen := make(map[string]bool, len(raw)+len(classified))
+	for k := range raw {
+		seen[k] = true
+	}
+	for k := range classified {
+		seen[k] = true
+	}
+
+	sources := make([]string, 0, len(seen))
+	for k := range seen {
+		sources = append(sources, k)
+	}
+
+	return sources
+}
+
+// fetchClassifiedAggregations queries classified content for per-source avg quality and 24h delta.
+func (s *AggregationService) fetchClassifiedAggregations(
+	ctx context.Context,
+) (qualityMap map[string]float64, deltaMap map[string]int64) {
+	qualityMap = make(map[string]float64)
+	deltaMap = make(map[string]int64)
+
+	query := map[string]any{
+		"size": 0,
+		"aggs": map[string]any{
+			"by_source": map[string]any{
+				"terms": map[string]any{
+					"field": "source_name",
+					"size":  maxSourceBuckets,
+				},
+				"aggs": map[string]any{
+					"avg_quality": map[string]any{
+						"avg": map[string]any{"field": "quality_score"},
+					},
+					"recent_24h": map[string]any{
+						"filter": map[string]any{
+							"range": map[string]any{
+								"classified_at": map[string]any{"gte": "now-24h"},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	res, err := s.esClient.SearchAllClassifiedContent(ctx, query)
+	if err != nil {
+		s.logger.Warn("failed to fetch classified aggregations for source health",
+			infralogger.Error(err))
+		return qualityMap, deltaMap
+	}
+	defer func() { _ = res.Body.Close() }()
+
+	var esResp sourceHealthAggResponse
+	if decodeErr := json.NewDecoder(res.Body).Decode(&esResp); decodeErr != nil {
+		s.logger.Warn("failed to decode source health aggregation response",
+			infralogger.Error(decodeErr))
+		return qualityMap, deltaMap
+	}
+
+	for _, bucket := range esResp.Aggregations.BySource.Buckets {
+		if bucket.AvgQuality.Value != nil {
+			qualityMap[bucket.Key] = *bucket.AvgQuality.Value
+		}
+		deltaMap[bucket.Key] = bucket.Recent24h.DocCount
+	}
+
+	return qualityMap, deltaMap
+}
+
+// assembleSourceHealthList combines all data into the final SourceHealth slice.
+func (s *AggregationService) assembleSourceHealthList(
+	sources []string,
+	rawCounts, classifiedCounts map[string]int64,
+	qualityMap map[string]float64,
+	deltaMap map[string]int64,
+) []domain.SourceHealth {
+	result := make([]domain.SourceHealth, 0, len(sources))
+	for _, source := range sources {
+		raw := rawCounts[source]
+		classified := classifiedCounts[source]
+		backlog := raw - classified
+		if backlog < 0 {
+			backlog = 0
+		}
+		result = append(result, domain.SourceHealth{
+			Source:          source,
+			RawCount:        raw,
+			ClassifiedCount: classified,
+			Backlog:         backlog,
+			Delta24h:        deltaMap[source],
+			AvgQuality:      qualityMap[source],
+		})
+	}
+	return result
+}
+
+// sourceHealthAggResponse is the typed ES response for the source health aggregation query.
+type sourceHealthAggResponse struct {
+	Aggregations struct {
+		BySource struct {
+			Buckets []struct {
+				Key        string `json:"key"`
+				AvgQuality struct {
+					Value *float64 `json:"value"`
+				} `json:"avg_quality"`
+				Recent24h struct {
+					DocCount int64 `json:"doc_count"`
+				} `json:"recent_24h"`
+			} `json:"buckets"`
+		} `json:"by_source"`
+	} `json:"aggregations"`
 }
 
 // buildAggregationQuery constructs an ES aggregation query with optional filters

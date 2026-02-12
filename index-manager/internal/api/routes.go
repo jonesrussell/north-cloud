@@ -47,4 +47,5 @@ func SetupRoutes(router *gin.Engine, handler *Handler) {
 	aggregations.GET("/location", handler.GetLocationAggregation) // GET /api/v1/aggregations/location
 	aggregations.GET("/overview", handler.GetOverviewAggregation) // GET /api/v1/aggregations/overview
 	aggregations.GET("/mining", handler.GetMiningAggregation)     // GET /api/v1/aggregations/mining
+	aggregations.GET("/source-health", handler.GetSourceHealth)   // GET /api/v1/aggregations/source-health
 }

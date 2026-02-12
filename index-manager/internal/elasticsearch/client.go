@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 
@@ -215,6 +216,51 @@ func (c *Client) ListIndices(ctx context.Context, pattern string) ([]string, err
 	}
 
 	return indices, nil
+}
+
+// IndexDocCount holds an index name and its document count.
+type IndexDocCount struct {
+	Name     string
+	DocCount int64
+}
+
+// GetAllIndexDocCounts returns document counts for every non-system index
+// using the lightweight _cat/indices API.
+func (c *Client) GetAllIndexDocCounts(ctx context.Context) ([]IndexDocCount, error) {
+	res, err := c.esClient.Cat.Indices(
+		c.esClient.Cat.Indices.WithContext(ctx),
+		c.esClient.Cat.Indices.WithFormat("json"),
+		c.esClient.Cat.Indices.WithH("index", "docs.count"),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list indices: %w", err)
+	}
+	defer func() { _ = res.Body.Close() }()
+
+	if res.IsError() {
+		body, _ := io.ReadAll(res.Body)
+		return nil, fmt.Errorf("error listing indices: %s", string(body))
+	}
+
+	var rows []map[string]string
+	if decodeErr := json.NewDecoder(res.Body).Decode(&rows); decodeErr != nil {
+		return nil, fmt.Errorf("failed to decode cat response: %w", decodeErr)
+	}
+
+	counts := make([]IndexDocCount, 0, len(rows))
+	for _, row := range rows {
+		name := row["index"]
+		if strings.HasPrefix(name, ".") {
+			continue
+		}
+		docCount, parseErr := strconv.ParseInt(row["docs.count"], 10, 64)
+		if parseErr != nil {
+			docCount = 0
+		}
+		counts = append(counts, IndexDocCount{Name: name, DocCount: docCount})
+	}
+
+	return counts, nil
 }
 
 // extractDocumentCount extracts document count from stats data
