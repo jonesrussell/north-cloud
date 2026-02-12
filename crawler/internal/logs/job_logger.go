@@ -3,6 +3,7 @@ package logs
 
 import (
 	"context"
+	"time"
 )
 
 // JobLogger provides structured logging for job execution.
@@ -23,6 +24,19 @@ type JobLogger interface {
 	IncrementPagesCrawled()
 	IncrementItemsExtracted()
 	IncrementErrors()
+
+	// Execution visibility metrics
+	RecordStatusCode(code int)
+	RecordResponseTime(d time.Duration)
+	RecordBytes(n int64)
+	IncrementCloudflare()
+	IncrementRateLimit()
+	IncrementRequestsTotal()
+	IncrementRequestsFailed()
+	IncrementSkippedNonHTML()
+	IncrementSkippedMaxDepth()
+	IncrementSkippedRobotsTxt()
+	RecordErrorCategory(category string)
 
 	// Verbosity check (for expensive operations)
 	IsDebugEnabled() bool
@@ -75,6 +89,23 @@ type JobSummary struct {
 	LogsEmitted     int64   `json:"logs_emitted"`
 	LogsThrottled   int64   `json:"logs_throttled,omitempty"`
 	ThrottlePercent float64 `json:"throttle_percent,omitempty"`
+
+	// Visibility: blocking/rate-limiting
+	CloudflareBlocks int64 `json:"cloudflare_blocks,omitempty"`
+	RateLimits       int64 `json:"rate_limits,omitempty"`
+
+	// Visibility: response time stats
+	ResponseTimeAvgMs float64 `json:"response_time_avg_ms,omitempty"`
+	ResponseTimeMinMs float64 `json:"response_time_min_ms,omitempty"`
+	ResponseTimeMaxMs float64 `json:"response_time_max_ms,omitempty"`
+
+	// Visibility: skip reasons
+	SkippedNonHTML   int64 `json:"skipped_non_html,omitempty"`
+	SkippedMaxDepth  int64 `json:"skipped_max_depth,omitempty"`
+	SkippedRobotsTxt int64 `json:"skipped_robots_txt,omitempty"`
+
+	// Visibility: error categories
+	ErrorCategories map[string]int64 `json:"error_categories,omitempty"`
 }
 
 // ErrorSummary summarizes a repeated error.

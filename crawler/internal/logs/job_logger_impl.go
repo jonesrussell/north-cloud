@@ -142,6 +142,19 @@ func (j *jobLoggerImpl) IncrementErrors() {
 	j.metrics.IncrementErrors()
 }
 
+// Execution visibility metrics
+func (j *jobLoggerImpl) RecordStatusCode(code int)           { j.metrics.RecordStatusCode(code) }
+func (j *jobLoggerImpl) RecordResponseTime(d time.Duration)  { j.metrics.RecordResponseTime(d) }
+func (j *jobLoggerImpl) RecordBytes(n int64)                 { j.metrics.RecordBytes(n) }
+func (j *jobLoggerImpl) IncrementCloudflare()                { j.metrics.IncrementCloudflare() }
+func (j *jobLoggerImpl) IncrementRateLimit()                 { j.metrics.IncrementRateLimit() }
+func (j *jobLoggerImpl) IncrementRequestsTotal()             { j.metrics.IncrementRequestsTotal() }
+func (j *jobLoggerImpl) IncrementRequestsFailed()            { j.metrics.IncrementRequestsFailed() }
+func (j *jobLoggerImpl) IncrementSkippedNonHTML()            { j.metrics.IncrementSkippedNonHTML() }
+func (j *jobLoggerImpl) IncrementSkippedMaxDepth()           { j.metrics.IncrementSkippedMaxDepth() }
+func (j *jobLoggerImpl) IncrementSkippedRobotsTxt()          { j.metrics.IncrementSkippedRobotsTxt() }
+func (j *jobLoggerImpl) RecordErrorCategory(category string) { j.metrics.RecordErrorCategory(category) }
+
 // IsDebugEnabled returns true if debug logging is enabled.
 func (j *jobLoggerImpl) IsDebugEnabled() bool {
 	return j.verbosity.AllowsLevel("debug")
@@ -251,6 +264,20 @@ func (s *scopedJobLogger) IncrementItemsExtracted() {
 
 func (s *scopedJobLogger) IncrementErrors() {
 	s.parent.IncrementErrors()
+}
+
+func (s *scopedJobLogger) RecordStatusCode(code int)          { s.parent.RecordStatusCode(code) }
+func (s *scopedJobLogger) RecordResponseTime(d time.Duration) { s.parent.RecordResponseTime(d) }
+func (s *scopedJobLogger) RecordBytes(n int64)                { s.parent.RecordBytes(n) }
+func (s *scopedJobLogger) IncrementCloudflare()               { s.parent.IncrementCloudflare() }
+func (s *scopedJobLogger) IncrementRateLimit()                { s.parent.IncrementRateLimit() }
+func (s *scopedJobLogger) IncrementRequestsTotal()            { s.parent.IncrementRequestsTotal() }
+func (s *scopedJobLogger) IncrementRequestsFailed()           { s.parent.IncrementRequestsFailed() }
+func (s *scopedJobLogger) IncrementSkippedNonHTML()           { s.parent.IncrementSkippedNonHTML() }
+func (s *scopedJobLogger) IncrementSkippedMaxDepth()          { s.parent.IncrementSkippedMaxDepth() }
+func (s *scopedJobLogger) IncrementSkippedRobotsTxt()         { s.parent.IncrementSkippedRobotsTxt() }
+func (s *scopedJobLogger) RecordErrorCategory(category string) {
+	s.parent.RecordErrorCategory(category)
 }
 
 func (s *scopedJobLogger) IsDebugEnabled() bool {

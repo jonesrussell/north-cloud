@@ -189,6 +189,7 @@ func (c *Crawler) responseHeadersCallback() func(*colly.Response) {
 			strings.HasPrefix(contentType, "application/xhtml+xml") ||
 			strings.Contains(contentType, "text/html")
 		if contentType != "" && !isHTML {
+			c.GetJobLogger().IncrementSkippedNonHTML()
 			r.Request.Abort()
 			return
 		}
@@ -206,23 +207,37 @@ func (c *Crawler) responseHeadersCallback() func(*colly.Response) {
 // responseCallback returns the OnResponse callback (archiving, trace logging, Cloudflare detection).
 func (c *Crawler) responseCallback(ctx context.Context) func(*colly.Response) {
 	return func(r *colly.Response) {
+		jl := c.GetJobLogger()
 		pageURL := r.Request.URL.String()
-		c.GetJobLogger().Debug(logs.CategoryFetch, "Response received",
+
+		// Record execution visibility metrics
+		jl.RecordStatusCode(r.StatusCode)
+		jl.IncrementRequestsTotal()
+		jl.RecordBytes(int64(len(r.Body)))
+		if r.Trace != nil {
+			jl.RecordResponseTime(r.Trace.FirstByteDuration)
+		}
+
+		jl.Debug(logs.CategoryFetch, "Response received",
 			logs.URL(pageURL),
 			logs.Int("status", r.StatusCode),
 		)
 		if c.cfg.Debug && c.cfg.TraceHTTP && r.Trace != nil {
-			c.GetJobLogger().Debug(logs.CategoryFetch, "HTTP trace",
+			jl.Debug(logs.CategoryFetch, "HTTP trace",
 				logs.URL(pageURL),
 				logs.Duration("connect", r.Trace.ConnectDuration),
 				logs.Duration("first_byte", r.Trace.FirstByteDuration),
 			)
 		}
 		if c.isCloudflareChallenge(r) {
-			c.GetJobLogger().Warn(logs.CategoryFetch, "Cloudflare challenge detected",
+			jl.IncrementCloudflare()
+			jl.Warn(logs.CategoryFetch, "Cloudflare challenge detected",
 				logs.URL(pageURL),
 				logs.Int("status", r.StatusCode),
 			)
+		}
+		if r.StatusCode == http.StatusTooManyRequests {
+			jl.IncrementRateLimit()
 		}
 		if c.archiver != nil {
 			task := &archive.UploadTask{
@@ -235,7 +250,7 @@ func (c *Crawler) responseCallback(ctx context.Context) func(*colly.Response) {
 				Ctx:        ctx,
 			}
 			if err := c.archiver.Archive(ctx, task); err != nil {
-				c.GetJobLogger().Warn(logs.CategoryError, "Failed to archive HTML",
+				jl.Warn(logs.CategoryError, "Failed to archive HTML",
 					logs.URL(pageURL),
 					logs.Err(err),
 				)
@@ -326,23 +341,18 @@ func (c *Crawler) setupCallbacks(ctx context.Context) {
 
 // handleCrawlError handles crawl errors with appropriate logging levels and optional HTTP retry.
 func (c *Crawler) handleCrawlError(r *colly.Response, visitErr error) {
+	jl := c.GetJobLogger()
 	errMsg := visitErr.Error()
 
-	// Check if this is an expected/non-critical error (log at debug)
-	isExpectedError := errors.Is(visitErr, ErrAlreadyVisited) ||
-		errors.Is(visitErr, ErrMaxDepth) ||
-		errors.Is(visitErr, ErrForbiddenDomain) ||
-		strings.Contains(errMsg, "forbidden domain") ||
-		strings.Contains(errMsg, "Forbidden domain") ||
-		strings.Contains(errMsg, "max depth") ||
-		strings.Contains(errMsg, "Max depth") ||
-		strings.Contains(errMsg, "already visited") ||
-		strings.Contains(errMsg, "Already visited") ||
-		strings.Contains(errMsg, "Not following redirect")
+	// Record status code for error responses
+	if r != nil && r.StatusCode > 0 {
+		jl.RecordStatusCode(r.StatusCode)
+	}
 
-	if isExpectedError {
-		// These are expected conditions, log at debug level
-		c.GetJobLogger().Debug(logs.CategoryError, "Expected error while crawling",
+	// Check if this is an expected/non-critical error (log at debug)
+	if c.isExpectedCrawlError(visitErr, errMsg) {
+		c.trackExpectedErrorMetrics(jl, errMsg)
+		jl.Debug(logs.CategoryError, "Expected error while crawling",
 			logs.URL(r.Request.URL.String()),
 			logs.Int("status", r.StatusCode),
 			logs.String("error", errMsg),
@@ -357,13 +367,14 @@ func (c *Crawler) handleCrawlError(r *colly.Response, visitErr error) {
 		strings.Contains(errMsg, "context deadline exceeded")
 
 	if isTimeout {
-		// Timeouts are common when crawling, log at warn level
-		c.GetJobLogger().Warn(logs.CategoryError, "Timeout while crawling",
+		jl.Warn(logs.CategoryError, "Timeout while crawling",
 			logs.URL(r.Request.URL.String()),
 			logs.Int("status", r.StatusCode),
 		)
+		jl.IncrementRequestsFailed()
+		jl.RecordErrorCategory("timeout")
 		c.IncrementError()
-		c.GetJobLogger().IncrementErrors()
+		jl.IncrementErrors()
 		return
 	}
 
@@ -373,14 +384,61 @@ func (c *Crawler) handleCrawlError(r *colly.Response, visitErr error) {
 	}
 
 	// Log actual errors (non-retryable or retries disabled)
-	c.GetJobLogger().Error(logs.CategoryError, "Crawl error",
+	jl.Error(logs.CategoryError, "Crawl error",
 		logs.URL(r.Request.URL.String()),
 		logs.Int("status", r.StatusCode),
 		logs.Err(visitErr),
 	)
 
+	jl.IncrementRequestsFailed()
+	c.categorizeError(jl, r, visitErr)
 	c.IncrementError()
-	c.GetJobLogger().IncrementErrors()
+	jl.IncrementErrors()
+}
+
+// isExpectedCrawlError returns true for expected/non-critical errors.
+func (c *Crawler) isExpectedCrawlError(visitErr error, errMsg string) bool {
+	return errors.Is(visitErr, ErrAlreadyVisited) ||
+		errors.Is(visitErr, ErrMaxDepth) ||
+		errors.Is(visitErr, ErrForbiddenDomain) ||
+		strings.Contains(errMsg, "forbidden domain") ||
+		strings.Contains(errMsg, "Forbidden domain") ||
+		strings.Contains(errMsg, "max depth") ||
+		strings.Contains(errMsg, "Max depth") ||
+		strings.Contains(errMsg, "already visited") ||
+		strings.Contains(errMsg, "Already visited") ||
+		strings.Contains(errMsg, "Not following redirect")
+}
+
+// trackExpectedErrorMetrics records skip metrics for expected errors.
+func (c *Crawler) trackExpectedErrorMetrics(jl logs.JobLogger, errMsg string) {
+	lowerMsg := strings.ToLower(errMsg)
+	if strings.Contains(lowerMsg, "max depth") {
+		jl.IncrementSkippedMaxDepth()
+	}
+}
+
+// categorizeError classifies an error into a category for metrics.
+func (c *Crawler) categorizeError(jl logs.JobLogger, r *colly.Response, visitErr error) {
+	errMsg := strings.ToLower(visitErr.Error())
+	networkPatterns := []string{
+		"connection refused", "connection reset", "no such host",
+		"eof", "broken pipe", "i/o timeout", "connection timed out",
+	}
+	for _, p := range networkPatterns {
+		if strings.Contains(errMsg, p) {
+			jl.RecordErrorCategory("network")
+			return
+		}
+	}
+	if r != nil {
+		switch {
+		case r.StatusCode >= http.StatusInternalServerError:
+			jl.RecordErrorCategory("http_server")
+		case r.StatusCode >= http.StatusBadRequest:
+			jl.RecordErrorCategory("http_client")
+		}
+	}
 }
 
 // tryHTTPRetry attempts to retry the request for transient errors.
@@ -396,14 +454,17 @@ func (c *Crawler) tryHTTPRetry(r *colly.Response, visitErr error) bool {
 		}
 	}
 	if count >= c.cfg.HTTPRetryMax {
-		c.GetJobLogger().Error(logs.CategoryError, "Crawl error after retries",
+		jl := c.GetJobLogger()
+		jl.Error(logs.CategoryError, "Crawl error after retries",
 			logs.URL(r.Request.URL.String()),
 			logs.Int("status", r.StatusCode),
 			logs.Err(visitErr),
 			logs.Int("retries", count),
 		)
+		jl.IncrementRequestsFailed()
+		jl.RecordErrorCategory("http_server")
 		c.IncrementError()
-		c.GetJobLogger().IncrementErrors()
+		jl.IncrementErrors()
 		return true
 	}
 	r.Request.Ctx.Put(retryCountKey, count+1)

@@ -1,6 +1,9 @@
 package logs
 
-import "context"
+import (
+	"context"
+	"time"
+)
 
 // noopJobLogger is a no-op implementation of JobLogger.
 type noopJobLogger struct{}
@@ -27,6 +30,19 @@ func (n *noopJobLogger) IsTraceEnabled() bool                   { return false }
 func (n *noopJobLogger) WithFields(_ ...Field) JobLogger        { return n }
 func (n *noopJobLogger) BuildSummary() *JobSummary              { return &JobSummary{} }
 func (n *noopJobLogger) Flush() error                           { return nil }
+
+// Execution visibility metrics (no-op)
+func (n *noopJobLogger) RecordStatusCode(_ int)             {}
+func (n *noopJobLogger) RecordResponseTime(_ time.Duration) {}
+func (n *noopJobLogger) RecordBytes(_ int64)                {}
+func (n *noopJobLogger) IncrementCloudflare()               {}
+func (n *noopJobLogger) IncrementRateLimit()                {}
+func (n *noopJobLogger) IncrementRequestsTotal()            {}
+func (n *noopJobLogger) IncrementRequestsFailed()           {}
+func (n *noopJobLogger) IncrementSkippedNonHTML()           {}
+func (n *noopJobLogger) IncrementSkippedMaxDepth()          {}
+func (n *noopJobLogger) IncrementSkippedRobotsTxt()         {}
+func (n *noopJobLogger) RecordErrorCategory(_ string)       {}
 
 // Ensure noopJobLogger implements JobLogger
 var _ JobLogger = (*noopJobLogger)(nil)

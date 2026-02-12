@@ -3,6 +3,7 @@ package logs_test
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/jonesrussell/north-cloud/crawler/internal/logs"
 )
@@ -21,6 +22,19 @@ func TestNoopJobLogger(t *testing.T) {
 	logger.JobCompleted(&logs.JobSummary{})
 	logger.JobFailed(nil)
 	logger.StartHeartbeat(context.Background())
+
+	// Visibility metrics should not panic
+	logger.RecordStatusCode(200)
+	logger.RecordResponseTime(100 * time.Millisecond)
+	logger.RecordBytes(1024)
+	logger.IncrementCloudflare()
+	logger.IncrementRateLimit()
+	logger.IncrementRequestsTotal()
+	logger.IncrementRequestsFailed()
+	logger.IncrementSkippedNonHTML()
+	logger.IncrementSkippedMaxDepth()
+	logger.IncrementSkippedRobotsTxt()
+	logger.RecordErrorCategory("timeout")
 
 	if logger.IsDebugEnabled() {
 		t.Error("NoopJobLogger.IsDebugEnabled() should return false")

@@ -27,16 +27,49 @@ export interface Job {
   error_message?: string
 }
 
+export interface CrawlMetricsResponseTime {
+  avg_ms: number
+  min_ms: number
+  max_ms: number
+}
+
+export interface CrawlMetricsTopError {
+  message: string
+  count: number
+  last_url?: string
+}
+
+export interface CrawlMetrics {
+  status_codes?: Record<string, number>
+  requests_total: number
+  requests_failed: number
+  bytes_downloaded: number
+  cloudflare_blocks?: number
+  rate_limits?: number
+  error_categories?: Record<string, number>
+  top_errors?: CrawlMetricsTopError[]
+  response_time?: CrawlMetricsResponseTime
+  skipped?: Record<string, number>
+}
+
+export interface ExecutionMetadata {
+  crawl_metrics?: CrawlMetrics
+}
+
 export interface JobExecution {
   id: string
   job_id: string
+  execution_number?: number
   status: 'running' | 'completed' | 'failed'
   started_at: string
   completed_at?: string
   duration_ms?: number
+  items_crawled?: number
+  items_indexed?: number
   articles_found?: number
   articles_indexed?: number
   error_message?: string
+  metadata?: ExecutionMetadata
 }
 
 export interface JobStats {

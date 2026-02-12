@@ -768,6 +768,7 @@ func (s *IntervalScheduler) handleJobSuccess(jobExec *JobExecution, startTime *t
 	execution.DurationMs = &durationMs
 	execution.ItemsCrawled = itemsCrawled
 	execution.ItemsIndexed = itemsIndexed
+	execution.Metadata = BuildExecutionMetadata(summary)
 
 	if err := s.executionRepo.Update(s.ctx, execution); err != nil {
 		s.logger.Error("Failed to update execution",
@@ -822,12 +823,16 @@ func (s *IntervalScheduler) handleJobFailure(jobExec *JobExecution, execErr erro
 		durationMs = time.Since(*startTime).Milliseconds()
 	}
 
+	// Capture crawl metrics before updating execution
+	summary := s.crawler.GetJobLogger().BuildSummary()
+
 	// Update execution record
 	execution.Status = string(StateFailed)
 	execution.CompletedAt = &now
 	execution.DurationMs = &durationMs
 	errMsg := execErr.Error()
 	execution.ErrorMessage = &errMsg
+	execution.Metadata = BuildExecutionMetadata(summary)
 
 	if err := s.executionRepo.Update(s.ctx, execution); err != nil {
 		s.logger.Error("Failed to update execution",

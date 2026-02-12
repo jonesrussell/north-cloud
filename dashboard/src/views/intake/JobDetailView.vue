@@ -6,13 +6,14 @@
  * - TanStack Query for server state (job, executions, stats)
  * - useJobDetail composable for all data and actions
  */
-import { computed, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ArrowLeft, Pause, Play, PlayCircle, XCircle, RotateCcw, Loader2 } from 'lucide-vue-next'
+import { ArrowLeft, Pause, Play, PlayCircle, XCircle, RotateCcw, Loader2, ChevronDown, ChevronRight } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import JobLogsViewer from '@/components/crawler/JobLogsViewer.vue'
+import CrawlMetricsPanel from '@/components/crawler/CrawlMetricsPanel.vue'
 
 import { formatDate } from '@/lib/utils'
 import { useJobDetail } from '@/features/intake'
@@ -43,6 +44,13 @@ const detail = useJobDetail(jobId.value || '')
 const job = computed(() => detail.job.value as Job | undefined)
 const stats = computed(() => detail.stats.value as Record<string, unknown> | undefined)
 const executions = computed(() => detail.executions.value as JobExecution[])
+
+// Expandable execution rows
+const expandedExecId = ref<string | null>(null)
+
+function toggleExecRow(execId: string) {
+  expandedExecId.value = expandedExecId.value === execId ? null : execId
+}
 
 type BadgeVariant = 'default' | 'secondary' | 'destructive' | 'outline' | 'success' | 'warning' | 'pending'
 
@@ -406,29 +414,60 @@ function goBack() {
               </tr>
             </thead>
             <tbody class="divide-y">
-              <tr
+              <template
                 v-for="exec in executions"
                 :key="exec.id"
-                class="hover:bg-muted/50"
               >
-                <td class="px-6 py-4 text-sm font-medium">
-                  #{{ exec.execution_number }}
-                </td>
-                <td class="px-6 py-4">
-                  <Badge :variant="getStatusVariant(exec.status)">
-                    {{ exec.status }}
-                  </Badge>
-                </td>
-                <td class="px-6 py-4 text-sm text-muted-foreground">
-                  {{ formatDate(exec.started_at) }}
-                </td>
-                <td class="px-6 py-4 text-sm text-muted-foreground">
-                  {{ formatDuration(exec.duration_ms) }}
-                </td>
-                <td class="px-6 py-4 text-sm text-muted-foreground">
-                  {{ exec.items_indexed || 0 }} indexed
-                </td>
-              </tr>
+                <tr
+                  class="hover:bg-muted/50 cursor-pointer"
+                  @click="toggleExecRow(exec.id)"
+                >
+                  <td class="px-6 py-4 text-sm font-medium">
+                    <span class="flex items-center gap-1.5">
+                      <ChevronDown
+                        v-if="expandedExecId === exec.id"
+                        class="h-4 w-4 text-muted-foreground"
+                      />
+                      <ChevronRight
+                        v-else
+                        class="h-4 w-4 text-muted-foreground"
+                      />
+                      #{{ exec.execution_number }}
+                    </span>
+                  </td>
+                  <td class="px-6 py-4">
+                    <Badge :variant="getStatusVariant(exec.status)">
+                      {{ exec.status }}
+                    </Badge>
+                  </td>
+                  <td class="px-6 py-4 text-sm text-muted-foreground">
+                    {{ formatDate(exec.started_at) }}
+                  </td>
+                  <td class="px-6 py-4 text-sm text-muted-foreground">
+                    {{ formatDuration(exec.duration_ms) }}
+                  </td>
+                  <td class="px-6 py-4 text-sm text-muted-foreground">
+                    {{ exec.items_indexed || 0 }} indexed
+                  </td>
+                </tr>
+                <tr v-if="expandedExecId === exec.id">
+                  <td
+                    colspan="5"
+                    class="px-6 py-4 bg-muted/30"
+                  >
+                    <CrawlMetricsPanel
+                      v-if="exec.metadata?.crawl_metrics"
+                      :metrics="exec.metadata.crawl_metrics"
+                    />
+                    <p
+                      v-else
+                      class="text-sm text-muted-foreground"
+                    >
+                      No crawl metrics available for this execution.
+                    </p>
+                  </td>
+                </tr>
+              </template>
             </tbody>
           </table>
         </CardContent>
