@@ -47,3 +47,19 @@ type QualityBuckets struct {
 type AggregationRequest struct {
 	Filters *DocumentFilters `json:"filters,omitempty"`
 }
+
+// SourceHealth represents per-source pipeline health metrics from Elasticsearch
+type SourceHealth struct {
+	Source          string  `json:"source"`
+	RawCount        int64   `json:"raw_count"`
+	ClassifiedCount int64   `json:"classified_count"`
+	Backlog         int64   `json:"backlog"`
+	Delta24h        int64   `json:"delta_24h"`
+	AvgQuality      float64 `json:"avg_quality"`
+}
+
+// SourceHealthResponse represents the response for source health aggregation
+type SourceHealthResponse struct {
+	Sources []SourceHealth `json:"sources"`
+	Total   int            `json:"total"`
+}

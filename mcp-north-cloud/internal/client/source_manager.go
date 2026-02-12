@@ -117,6 +117,8 @@ func (c *SourceManagerClient) CreateSource(ctx context.Context, req CreateSource
 }
 
 // ListSources lists all sources
+//
+//nolint:dupl // Similar HTTP client pattern across different services is acceptable
 func (c *SourceManagerClient) ListSources(ctx context.Context) ([]Source, error) {
 	endpoint := fmt.Sprintf("%s/api/v1/sources", c.baseURL)
 
@@ -140,12 +142,15 @@ func (c *SourceManagerClient) ListSources(ctx context.Context) ([]Source, error)
 		return nil, fmt.Errorf("unexpected status code: %d, body: %s", resp.StatusCode, string(body))
 	}
 
-	var sources []Source
-	if err = json.Unmarshal(body, &sources); err != nil {
+	var response struct {
+		Sources []Source `json:"sources"`
+		Total   int      `json:"total"`
+	}
+	if err = json.Unmarshal(body, &response); err != nil {
 		return nil, fmt.Errorf("failed to parse response: %w", err)
 	}
 
-	return sources, nil
+	return response.Sources, nil
 }
 
 // GetSource gets a source by ID

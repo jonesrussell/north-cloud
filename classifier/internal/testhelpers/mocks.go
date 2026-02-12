@@ -26,11 +26,13 @@ func NewMockSourceReputationDB() *MockSourceReputationDB {
 }
 
 // GetSource retrieves a source by name.
+// Returns a copy to match real SQL behavior where each query returns a fresh struct.
 func (m *MockSourceReputationDB) GetSource(_ context.Context, sourceName string) (*domain.SourceReputation, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 	if source, ok := m.sources[sourceName]; ok {
-		return source, nil
+		cp := *source
+		return &cp, nil
 	}
 	return nil, ErrSourceNotFound
 }
@@ -52,18 +54,21 @@ func (m *MockSourceReputationDB) UpdateSource(_ context.Context, source *domain.
 }
 
 // GetOrCreateSource retrieves or creates a source.
+// Returns a copy to match real SQL behavior where each query returns a fresh struct.
 func (m *MockSourceReputationDB) GetOrCreateSource(_ context.Context, sourceName string) (*domain.SourceReputation, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if source, ok := m.sources[sourceName]; ok {
-		return source, nil
+		cp := *source
+		return &cp, nil
 	}
 	newSource := &domain.SourceReputation{
 		SourceName:    sourceName,
 		TotalArticles: 0,
 	}
 	m.sources[sourceName] = newSource
-	return newSource, nil
+	cp := *newSource
+	return &cp, nil
 }
 
 // SetSource sets a source directly (for test setup).

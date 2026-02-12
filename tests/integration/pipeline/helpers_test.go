@@ -3,188 +3,235 @@
 package pipeline_test
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
-	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"testing"
 	"time"
+
+	"github.com/redis/go-redis/v9"
+	"github.com/stretchr/testify/require"
 )
 
+// Service URLs for the integration test environment.
 const (
 	authURL          = "http://localhost:8040"
 	sourceManagerURL = "http://localhost:8050"
 	crawlerURL       = "http://localhost:8060"
-	publisherURL     = "http://localhost:8070"
 	classifierURL    = "http://localhost:8071"
-	indexManagerURL   = "http://localhost:8090"
+	publisherURL     = "http://localhost:8070"
+	indexManagerURL  = "http://localhost:8090"
 	esURL            = "http://localhost:9200"
-
-	healthTimeout    = 2 * time.Minute
-	healthInterval   = 2 * time.Second
-	pipelineTimeout  = 3 * time.Minute
-	pollInterval     = 5 * time.Second
-
-	testUsername = "testuser"
-	testPassword = "testpass"
+	redisAddr        = "localhost:6379"
 )
 
-// waitForHealth polls a service health endpoint until it responds 200 or times out.
+// Timeouts and intervals for polling operations.
+const (
+	healthTimeout  = 120 * time.Second
+	healthInterval = 2 * time.Second
+	pollTimeout    = 120 * time.Second
+	pollInterval   = 3 * time.Second
+)
+
+// esSearchResult represents the structure of an Elasticsearch search response.
+type esSearchResult struct {
+	Hits struct {
+		Total struct {
+			Value int `json:"value"`
+		} `json:"total"`
+		Hits []struct {
+			ID     string         `json:"_id"`
+			Source map[string]any `json:"_source"`
+		} `json:"hits"`
+	} `json:"hits"`
+}
+
+// waitForHealth polls the given URL until it returns HTTP 200 or the timeout expires.
 func waitForHealth(t *testing.T, name, url string) {
 	t.Helper()
 
-	ctx, cancel := context.WithTimeout(context.Background(), healthTimeout)
-	defer cancel()
+	deadline := time.Now().Add(healthTimeout)
+	client := &http.Client{Timeout: healthInterval}
 
-	healthURL := url + "/health"
-	for {
-		select {
-		case <-ctx.Done():
-			t.Fatalf("service %s did not become healthy at %s within %v", name, healthURL, healthTimeout)
-		default:
-		}
-
-		resp, err := http.Get(healthURL) //nolint:gosec // test-only URL
+	for time.Now().Before(deadline) {
+		resp, err := client.Get(url)
 		if err == nil {
 			resp.Body.Close()
 			if resp.StatusCode == http.StatusOK {
-				t.Logf("service %s is healthy", name)
+				t.Logf("%s is healthy at %s", name, url)
 				return
 			}
 		}
 		time.Sleep(healthInterval)
 	}
+
+	t.Fatalf("%s did not become healthy at %s within %s", name, url, healthTimeout)
 }
 
-// getAuthToken authenticates and returns a JWT token.
+// loginRequest is the JSON body sent to the auth login endpoint.
+type loginRequest struct {
+	Username string `json:"username"`
+	Password string `json:"password"`
+}
+
+// loginResponse is the JSON body returned from the auth login endpoint.
+type loginResponse struct {
+	Token string `json:"token"`
+}
+
+// getAuthToken authenticates against the auth service and returns a JWT token.
 func getAuthToken(t *testing.T) string {
 	t.Helper()
 
-	body := map[string]string{
-		"username": testUsername,
-		"password": testPassword,
+	creds := loginRequest{
+		Username: "admin",
+		Password: "testpass123",
 	}
 
-	jsonBody, err := json.Marshal(body)
-	if err != nil {
-		t.Fatalf("marshal auth body: %v", err)
+	body, err := json.Marshal(creds)
+	require.NoError(t, err, "marshal login request")
+
+	resp, err := http.Post(
+		authURL+"/api/v1/auth/login",
+		"application/json",
+		strings.NewReader(string(body)),
+	)
+	require.NoError(t, err, "POST login")
+	defer resp.Body.Close()
+
+	respBody, err := io.ReadAll(resp.Body)
+	require.NoError(t, err, "read login response")
+	require.Equal(t, http.StatusOK, resp.StatusCode,
+		"login failed: %s", string(respBody))
+
+	var result loginResponse
+	err = json.Unmarshal(respBody, &result)
+	require.NoError(t, err, "unmarshal login response")
+	require.NotEmpty(t, result.Token, "auth token must not be empty")
+
+	return result.Token
+}
+
+// authedRequest creates an HTTP request with the Authorization bearer header set.
+func authedRequest(t *testing.T, method, url, token string, body io.Reader) *http.Request {
+	t.Helper()
+
+	req, err := http.NewRequest(method, url, body)
+	require.NoError(t, err, "create request %s %s", method, url)
+
+	req.Header.Set("Authorization", "Bearer "+token)
+	req.Header.Set("Content-Type", "application/json")
+
+	return req
+}
+
+// doAuthed performs an authenticated HTTP request and returns the status code and response body.
+func doAuthed(t *testing.T, method, url, token string, body string) (int, []byte) {
+	t.Helper()
+
+	var bodyReader io.Reader
+	if body != "" {
+		bodyReader = strings.NewReader(body)
 	}
 
-	resp, err := http.Post(authURL+"/api/v1/auth/login", "application/json", bytes.NewReader(jsonBody)) //nolint:gosec
+	req := authedRequest(t, method, url, token, bodyReader)
+
+	client := &http.Client{Timeout: pollTimeout}
+	resp, err := client.Do(req)
+	require.NoError(t, err, "execute request %s %s", method, url)
+	defer resp.Body.Close()
+
+	respBody, err := io.ReadAll(resp.Body)
+	require.NoError(t, err, "read response body from %s %s", method, url)
+
+	return resp.StatusCode, respBody
+}
+
+// pollES polls Elasticsearch with the given query until at least one document matches
+// or the timeout expires. Returns the document ID and source of the first hit.
+func pollES(t *testing.T, index, queryJSON string) (string, map[string]any) {
+	t.Helper()
+
+	deadline := time.Now().Add(pollTimeout)
+	searchURL := esURL + "/" + index + "/_search"
+	client := &http.Client{Timeout: pollInterval}
+
+	for time.Now().Before(deadline) {
+		docID, source, found := tryESSearch(t, client, searchURL, queryJSON)
+		if found {
+			return docID, source
+		}
+		time.Sleep(pollInterval)
+	}
+
+	t.Fatalf("no documents matched in ES index %q within %s", index, pollTimeout)
+	return "", nil // unreachable
+}
+
+// tryESSearch performs a single Elasticsearch search and returns results if any documents match.
+func tryESSearch(t *testing.T, client *http.Client, searchURL, queryJSON string) (string, map[string]any, bool) {
+	t.Helper()
+
+	resp, err := client.Post(searchURL, "application/json", strings.NewReader(queryJSON))
 	if err != nil {
-		t.Fatalf("auth request failed: %v", err)
+		return "", nil, false
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		respBody, _ := io.ReadAll(resp.Body)
-		t.Fatalf("auth returned %d: %s", resp.StatusCode, string(respBody))
+		return "", nil, false
 	}
 
-	var result map[string]any
-	if decodeErr := json.NewDecoder(resp.Body).Decode(&result); decodeErr != nil {
-		t.Fatalf("decode auth response: %v", decodeErr)
-	}
-
-	token, ok := result["token"].(string)
-	if !ok {
-		t.Fatal("auth response missing token field")
-	}
-
-	return token
-}
-
-// authedRequest creates an HTTP request with the JWT token.
-func authedRequest(t *testing.T, method, url string, body any, token string) *http.Response {
-	t.Helper()
-
-	var bodyReader io.Reader
-	if body != nil {
-		jsonBody, err := json.Marshal(body)
-		if err != nil {
-			t.Fatalf("marshal request body: %v", err)
-		}
-		bodyReader = bytes.NewReader(jsonBody)
-	}
-
-	req, err := http.NewRequest(method, url, bodyReader)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		t.Fatalf("create request: %v", err)
+		return "", nil, false
 	}
 
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", "Bearer "+token)
-
-	resp, doErr := http.DefaultClient.Do(req)
-	if doErr != nil {
-		t.Fatalf("%s %s failed: %v", method, url, doErr)
+	var result esSearchResult
+	if unmarshalErr := json.Unmarshal(body, &result); unmarshalErr != nil {
+		return "", nil, false
 	}
 
-	return resp
+	if result.Hits.Total.Value > 0 && len(result.Hits.Hits) > 0 {
+		hit := result.Hits.Hits[0]
+		return hit.ID, hit.Source, true
+	}
+
+	return "", nil, false
 }
 
-// esSearch queries Elasticsearch directly and returns hits.
-func esSearch(t *testing.T, index string) []map[string]any {
+// subscribeRedis subscribes to a Redis Pub/Sub channel and waits for the first message.
+// Returns the parsed JSON message as a map.
+func subscribeRedis(t *testing.T, channel string, timeout time.Duration) map[string]any {
 	t.Helper()
 
-	query := map[string]any{
-		"query": map[string]any{"match_all": map[string]any{}},
-	}
+	rdb := redis.NewClient(&redis.Options{
+		Addr: redisAddr,
+	})
+	defer rdb.Close()
 
-	queryJSON, err := json.Marshal(query)
-	if err != nil {
-		t.Fatalf("marshal ES query: %v", err)
-	}
-
-	searchURL := fmt.Sprintf("%s/%s/_search", esURL, index)
-	resp, postErr := http.Post(searchURL, "application/json", bytes.NewReader(queryJSON)) //nolint:gosec
-	if postErr != nil {
-		t.Fatalf("ES search failed: %v", postErr)
-	}
-	defer resp.Body.Close()
-
-	var result struct {
-		Hits struct {
-			Hits []struct {
-				Source map[string]any `json:"_source"`
-			} `json:"hits"`
-		} `json:"hits"`
-	}
-
-	if decodeErr := json.NewDecoder(resp.Body).Decode(&result); decodeErr != nil {
-		t.Fatalf("decode ES response: %v", decodeErr)
-	}
-
-	docs := make([]map[string]any, 0, len(result.Hits.Hits))
-	for _, hit := range result.Hits.Hits {
-		docs = append(docs, hit.Source)
-	}
-
-	return docs
-}
-
-// pollForDocs polls an ES index until at least minCount documents appear.
-func pollForDocs(t *testing.T, index string, minCount int) []map[string]any {
-	t.Helper()
-
-	ctx, cancel := context.WithTimeout(context.Background(), pipelineTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
-	for {
-		select {
-		case <-ctx.Done():
-			t.Fatalf("timed out waiting for %d documents in %s", minCount, index)
-		default:
-		}
+	sub := rdb.Subscribe(ctx, channel)
+	defer sub.Close()
 
-		docs := esSearch(t, index)
-		if len(docs) >= minCount {
-			return docs
-		}
+	// Wait for subscription confirmation.
+	_, err := sub.Receive(ctx)
+	require.NoError(t, err, "subscribe to Redis channel %s", channel)
 
-		t.Logf("waiting for documents in %s (have %d, want %d)", index, len(docs), minCount)
-		time.Sleep(pollInterval)
+	msgCh := sub.Channel()
+
+	select {
+	case msg := <-msgCh:
+		var parsed map[string]any
+		unmarshalErr := json.Unmarshal([]byte(msg.Payload), &parsed)
+		require.NoError(t, unmarshalErr, "unmarshal Redis message from channel %s", channel)
+		return parsed
+	case <-ctx.Done():
+		t.Fatalf("no message received on Redis channel %q within %s", channel, timeout)
+		return nil // unreachable
 	}
 }

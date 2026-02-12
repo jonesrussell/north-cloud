@@ -12,14 +12,14 @@ tasks:
       - npm run lint
 
   test:
-    desc: "Run tests (no tests configured)"
+    desc: "Run tests"
     cmds:
-      - echo "No tests configured for dashboard"
+      - npx vitest run
 
   test:coverage:
-    desc: "Run tests with coverage (no-op for dashboard)"
+    desc: "Run tests with coverage"
     cmds:
-      - echo "No coverage configured for dashboard"
+      - npx vitest run --coverage
 
   test:race:
     desc: "Run tests with race detector (no-op for frontend)"

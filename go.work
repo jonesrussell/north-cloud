@@ -13,4 +13,5 @@ use (
 	./publisher
 	./search
 	./source-manager
+	./tests/integration/pipeline
 )

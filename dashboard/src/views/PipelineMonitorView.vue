@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted } from 'vue'
+import { computed, ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   Download,
@@ -14,16 +14,50 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button'
 import { PipelineFlow, MetricCard, HealthBadge, QuickActions } from '@/components/pipeline'
 import { JobStatsCard } from '@/components/domain/jobs'
-import { ContentIntelligenceSummary } from '@/components/intelligence'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useHealthStore, useMetricsStore } from '@/stores'
-import { useIntelligenceOverview } from '@/composables'
+import { indexManagerApi } from '@/api/client'
 import { DEFAULT_QUICK_ACTIONS } from '@/types/metrics'
 
 const router = useRouter()
 const healthStore = useHealthStore()
 const metricsStore = useMetricsStore()
-const { data: intelligenceData, loading: intelligenceLoading, hasLoaded: intelligenceHasLoaded } = useIntelligenceOverview()
+
+const intelligenceTotal = ref(0)
+const intelligenceQuality = ref({ high: 0, medium: 0, low: 0 })
+const intelligenceLoading = ref(true)
+const intelligenceHasLoaded = ref(false)
+
+async function fetchIntelligence() {
+  intelligenceLoading.value = true
+  try {
+    const res = await indexManagerApi.aggregations.getOverview()
+    intelligenceTotal.value = res.data?.total_documents ?? 0
+    const q = res.data?.quality_distribution
+    intelligenceQuality.value = {
+      high: Math.max(0, Number(q?.high) || 0),
+      medium: Math.max(0, Number(q?.medium) || 0),
+      low: Math.max(0, Number(q?.low) || 0),
+    }
+  } catch {
+    intelligenceTotal.value = 0
+    intelligenceQuality.value = { high: 0, medium: 0, low: 0 }
+  } finally {
+    intelligenceLoading.value = false
+    intelligenceHasLoaded.value = true
+  }
+}
+
+const qualityBarWidths = computed(() => {
+  const { high, medium, low } = intelligenceQuality.value
+  const total = high + medium + low
+  if (total === 0) return { high: 0, medium: 0, low: 0 }
+  return {
+    high: (high / total) * 100,
+    medium: (medium / total) * 100,
+    low: (low / total) * 100,
+  }
+})
 
 // Computed values from stores
 const pipelineStages = computed(() => metricsStore.pipelineStages)
@@ -53,6 +87,7 @@ const METRICS_INTERVAL = 30000 // 30 seconds
 onMounted(() => {
   healthStore.startPolling(HEALTH_INTERVAL)
   metricsStore.startPolling(METRICS_INTERVAL)
+  fetchIntelligence()
 })
 
 onUnmounted(() => {
@@ -144,11 +179,28 @@ function goToIntelligence() {
           <Skeleton class="h-1.5 w-full rounded-sm" />
         </div>
         <template v-else>
-          <ContentIntelligenceSummary
-            mode="compact"
-            :total-documents="intelligenceData.total_documents"
-            :quality-distribution="intelligenceData.quality_distribution"
-          />
+          <div class="space-y-2">
+            <p class="text-lg font-semibold font-mono tracking-tight">
+              {{ intelligenceTotal.toLocaleString() }}
+            </p>
+            <div class="flex rounded-sm overflow-hidden bg-muted h-1.5">
+              <div
+                class="bg-green-500 shrink-0 transition-[width]"
+                :style="{ width: `${qualityBarWidths.high}%` }"
+                :title="`High: ${intelligenceQuality.high}`"
+              />
+              <div
+                class="bg-amber-500 shrink-0 transition-[width]"
+                :style="{ width: `${qualityBarWidths.medium}%` }"
+                :title="`Medium: ${intelligenceQuality.medium}`"
+              />
+              <div
+                class="bg-red-500 shrink-0 transition-[width]"
+                :style="{ width: `${qualityBarWidths.low}%` }"
+                :title="`Low: ${intelligenceQuality.low}`"
+              />
+            </div>
+          </div>
           <div class="mt-4 pt-3 border-t">
             <Button
               variant="outline"

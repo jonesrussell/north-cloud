@@ -61,7 +61,7 @@ The publisher is **topic-driven and consumer-agnostic**. Channels define *what* 
 - **Layer 2 (custom channels)**: Optional DB-backed channels with rules (include/exclude topics, min quality, content types). Used for aggregations (e.g. one channel for all crime sub-categories). Stored in the `channels` table. Same rule: one channel can serve unlimited consumers.
 - **Layer 3 (crime classification channels)**: Automatic channels based on classifier's hybrid rule + ML crime classification. Routes to `crime:homepage` (for homepage-eligible articles) and `crime:category:{type}` (for category page listings). Only articles with `crime_relevance != "not_crime"` are routed.
 - **Layer 4 (location channels)**: Automatic channels for geographic routing of crime content (`crime:local:{city}`, `crime:province:{code}`, `crime:canada`, `crime:international`).
-- **Layer 5 (mining classification channels)**: Automatic channel based on classifier's hybrid rule + ML mining classification. Routes to `articles:mining` for all `core_mining` and `peripheral_mining` articles. Mining metadata (relevance, stage, commodities, location) included in payload for downstream filtering.
+- **Layer 5 (mining classification channels)**: Automatic channels based on classifier's hybrid rule + ML mining classification. Routes to `articles:mining` (catch-all), `mining:core` / `mining:peripheral` (by relevance), `mining:commodity:{slug}` (per commodity), `mining:stage:{stage}` (exploration/development/production), and `mining:canada` / `mining:international` (by location). Mining metadata included in payload for additional downstream filtering.
 - **Layer 6 (entertainment classification channels)**: Automatic channels based on classifier's hybrid rule + ML entertainment classification. Routes to `entertainment:homepage` (core + homepage eligible), `entertainment:category:{slug}` per category, and `entertainment:peripheral` for peripheral entertainment. Entertainment metadata (relevance, categories, homepage_eligible) included in payload.
 
 Name and describe channels by **content** (e.g. "Crime Feed", "Technology Feed"), not by consumer (e.g. avoid "StreetCode Crime Feed").
@@ -80,8 +80,14 @@ Name and describe channels by **content** (e.g. "Crime Feed", "Technology Feed")
 - `crime:homepage` - Homepage-eligible crime articles (core_street_crime with high confidence)
 - `crime:category:{type}` - Category page listings (e.g., `crime:category:violent-crime`, `crime:category:crime`)
 
-**Layer 5 Mining Channel**:
-- `articles:mining` - All mining-related articles (core + peripheral)
+**Layer 5 Mining Channels**:
+- `articles:mining` - Catch-all: all mining articles (core + peripheral)
+- `mining:core` - Core mining content
+- `mining:peripheral` - Peripheral mining content
+- `mining:commodity:{slug}` - Per-commodity (e.g. `mining:commodity:gold`, `mining:commodity:iron-ore`)
+- `mining:stage:{stage}` - Per-stage (`mining:stage:exploration`, `mining:stage:development`, `mining:stage:production`)
+- `mining:canada` - Canadian mining news (local + national)
+- `mining:international` - International mining news
 
 **Layer 6 Entertainment Channel Patterns**:
 - `entertainment:homepage` - Core entertainment articles eligible for homepage (core_entertainment + homepage_eligible)

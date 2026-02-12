@@ -29,6 +29,7 @@ RUN apk --no-cache add ca-certificates
 WORKDIR /app
 
 COPY --from=builder /auth .
+COPY --from=builder /build/auth/config.yml.example ./config.yml
 
 EXPOSE 8040
 

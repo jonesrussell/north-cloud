@@ -1277,23 +1277,15 @@ tasks:
       - GOWORK=off go test -v ./...
 
   test:integration:pipeline:
-    desc: "Run pipeline integration tests (requires docker compose test stack)"
+    desc: "Run pipeline integration test (requires full Docker Compose stack)"
     cmds:
       - |
-        echo "Ensure test stack is running:"
-        echo "  docker compose -f docker-compose.base.yml -f docker-compose.test.yml up -d --build"
-        echo ""
-        cd tests/integration/pipeline && GOWORK=off go test -tags integration -v -timeout 10m ./...
+        echo "Starting test stack..."
+        docker compose -f docker-compose.base.yml -f docker-compose.test.yml up -d --build --wait
+        echo "Running pipeline integration test..."
+        cd tests/integration/pipeline && GOWORK=off go test -tags=integration -v -timeout=10m ./...
+        EXIT_CODE=$?
+        echo "Tearing down test stack..."
+        docker compose -f docker-compose.base.yml -f docker-compose.test.yml down
+        exit $EXIT_CODE
 
-  test:integration:pipeline:up:
-    desc: "Start test stack and run pipeline integration tests"
-    cmds:
-      - docker compose -f docker-compose.base.yml -f docker-compose.test.yml up -d --build
-      - echo "Waiting for services to stabilize..."
-      - sleep 15
-      - cd tests/integration/pipeline && GOWORK=off go test -tags integration -v -timeout 10m ./...
-
-  test:integration:pipeline:down:
-    desc: "Stop the integration test stack"
-    cmds:
-      - docker compose -f docker-compose.base.yml -f docker-compose.test.yml down -v

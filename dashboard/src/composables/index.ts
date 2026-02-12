@@ -19,9 +19,3 @@ export {
   usePublishHistoryTable,
   type PublishHistoryFilters as PublishHistoryTableFilters,
 } from './usePublishHistoryTable'
-
-// Intelligence overview
-export {
-  useIntelligenceOverview,
-  type IntelligenceOverviewData,
-} from './useIntelligenceOverview'

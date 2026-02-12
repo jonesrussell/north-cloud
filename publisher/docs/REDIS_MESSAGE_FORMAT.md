@@ -8,17 +8,50 @@ The Publisher Router queries Elasticsearch for classified articles, filters them
 
 ## Channel Naming Convention
 
-Channels follow a topic-based naming pattern:
+The publisher routes articles across multiple channel layers:
 
+### Layer 1: Topic channels (automatic)
 ```
 articles:{topic}
 ```
+Published automatically for each article topic. Examples: `articles:crime`, `articles:violent_crime`, `articles:criminal_justice`, `articles:mining`, `articles:technology`, `articles:sports`. Topics in `layer1SkipTopics` (currently: `mining`) are excluded from Layer 1 and handled by dedicated layers.
 
-**Examples**:
-- `articles:crime` - Crime-related articles
-- `articles:news` - General news articles
-- `articles:local` - Local community news
-- `articles:sports` - Sports articles
+### Layer 2: Custom channels (database-backed)
+Same `articles:{topic}` pattern but with configurable rules (min quality, include/exclude topics, content types). Stored in the `channels` table.
+
+### Layer 3: Crime classification channels
+```
+crime:homepage              # Homepage-eligible crime articles
+crime:category:{type}       # e.g. crime:category:violent-crime, crime:category:drug-crime
+crime:courts                # Court-related crime articles
+crime:context               # Crime context articles
+```
+
+### Layer 4: Location channels
+```
+crime:canada                # National Canadian crime
+crime:province:{code}       # e.g. crime:province:on, crime:province:bc
+crime:local:{city}          # e.g. crime:local:toronto, crime:local:vancouver
+crime:international         # International crime
+```
+
+### Layer 5: Mining classification channels
+```
+articles:mining             # Catch-all: all mining articles (core + peripheral)
+mining:core                 # Core mining content (homepage-quality)
+mining:peripheral           # Peripheral mining content
+mining:commodity:{slug}     # Per-commodity (e.g. mining:commodity:gold, mining:commodity:iron-ore)
+mining:stage:{stage}        # Per-stage (exploration, development, production)
+mining:canada               # Canadian mining news (local + national)
+mining:international        # International mining news
+```
+
+### Layer 6: Entertainment classification channels
+```
+entertainment:homepage          # Core entertainment, homepage-eligible
+entertainment:category:{slug}  # e.g. entertainment:category:film
+entertainment:peripheral        # Peripheral entertainment
+```
 
 ## Message Structure
 

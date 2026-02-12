@@ -1,6 +1,6 @@
 {
   "mcpServers": {
-    "North Cloud": {
+    "North Cloud (Local)": {
       "command": "./mcp-north-cloud/run-mcp.sh",
       "env": {
         "INDEX_MANAGER_URL": "http://localhost:8090",
@@ -10,6 +10,13 @@
         "SEARCH_URL": "http://localhost:8092",
         "CLASSIFIER_URL": "http://localhost:8071"
       }
+    },
+    "North Cloud (Production)": {
+      "command": "ssh",
+      "args": [
+        "jones@northcloud.biz",
+        "docker exec -i north-cloud-mcp-north-cloud-1 /app/mcp-north-cloud"
+      ]
     }
   }
 }

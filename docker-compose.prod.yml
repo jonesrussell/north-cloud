@@ -72,8 +72,6 @@ services:
       REDIS_PASSWORD: "${REDIS_PASSWORD:-}"
     extra_hosts:
       - "host.docker.internal:host-gateway"
-    volumes:
-      - ./crawler/config.yml:/app/config.yml:ro
     healthcheck:
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:8080/health"]
       interval: 30s
@@ -150,8 +148,6 @@ services:
       APP_DEBUG: "false"
     extra_hosts:
       - "host.docker.internal:host-gateway"
-    volumes:
-      - ./publisher/config.yml:/app/config.yml:ro
     healthcheck:
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:8070/health"]
       interval: 30s
@@ -208,8 +204,6 @@ services:
       ENTERTAINMENT_ML_SERVICE_URL: http://entertainment-ml:8079
     extra_hosts:
       - "host.docker.internal:host-gateway"
-    volumes:
-      - ./classifier/config.yml:/root/config.yml:ro
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8070/health"]
       interval: 30s
@@ -263,8 +257,6 @@ services:
       AUTH_JWT_SECRET: "${AUTH_JWT_SECRET}"
       APP_DEBUG: "false"
       GIN_MODE: release
-    volumes:
-      - ./pipeline/config.yml.example:/app/config.yml:ro
     healthcheck:
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:8075/health"]
       interval: 30s
@@ -299,8 +291,6 @@ services:
       CONFIG_PATH: /root/config.yml
       APP_DEBUG: "false"
       APP_ENV: production
-    volumes:
-      - ./index-manager/config.yml:/root/config.yml:ro
     healthcheck:
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:8090/health"]
       interval: 30s
@@ -332,8 +322,6 @@ services:
       LOG_LEVEL: "${SEARCH_LOG_LEVEL:-info}"
       LOG_FORMAT: "${SEARCH_LOG_FORMAT:-json}"
       CORS_ORIGINS: "${CORS_ORIGINS:-*}"
-    volumes:
-      - ./search/config.yml:/root/config.yml:ro
     healthcheck:
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:8090/health"]
       interval: 30s
@@ -407,8 +395,6 @@ services:
       AUTH_PORT: 8040
       APP_DEBUG: "false"
       APP_ENV: production
-    volumes:
-      - ./auth/config.yml:/app/config.yml:ro
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8040/health"]
       interval: 30s

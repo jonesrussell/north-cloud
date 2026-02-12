@@ -53,6 +53,11 @@ tasks:
     cmds:
       - go test -race ./...
 
+  vuln:
+    desc: "Run vulnerability check"
+    cmds:
+      - govulncheck ./...
+
   clean:
     desc: Clean build artifacts and temporary files
     cmds:

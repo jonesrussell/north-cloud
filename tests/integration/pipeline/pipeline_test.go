@@ -1,286 +1,312 @@
 //go:build integration
 
-// Package pipeline_test implements end-to-end integration tests for the
-// North Cloud content pipeline: crawl → classify → publish.
+// Package pipeline_test provides an end-to-end smoke test for the
+// crawl -> classify -> publish pipeline.
 //
-// Prerequisites:
-//   docker compose -f docker-compose.base.yml -f docker-compose.test.yml up -d
+// This test verifies that one article flows from a fixture URL through
+// the full pipeline (Crawler -> Elasticsearch raw_content -> Classifier ->
+// Elasticsearch classified_content -> Publisher -> Redis Pub/Sub).
 //
-// Run:
-//   go test -tags integration -v -timeout 10m ./tests/integration/pipeline/
+// It asserts contract-relevant fields at each stage per the testing
+// checklist (docs/TESTING_PIPELINE_CHECKLIST.md). It does NOT assert
+// exact quality scores, exact topic lists, volume, performance, full
+// schema equality, auth/security, or resilience. Production health is
+// judged by the Intelligence dashboard, pipeline events, and alerts;
+// this test is not a substitute.
 package pipeline_test
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
-	"io"
+	"net/http"
 	"testing"
 	"time"
 
-	"github.com/jonesrussell/north-cloud/index-manager/pkg/contracts"
-	"github.com/redis/go-redis/v9"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
+// Test fixture and source constants.
 const (
-	redisAddr        = "localhost:6379"
-	redisSubTimeout  = 2 * time.Minute
+	fixtureSourceName = "fixture_news_site_com"
+	fixtureSourceURL  = "https://fixture-news-site.com"
+
+	rawContentIndex        = fixtureSourceName + "_raw_content"
+	classifiedContentIndex = fixtureSourceName + "_classified_content"
 )
 
-// TestPipelineEndToEnd boots the full stack and pushes content through the
-// crawl → classify → publish pipeline.
-func TestPipelineEndToEnd(t *testing.T) {
-	// Step 1: Wait for all services to be healthy
-	t.Log("Step 1: Waiting for services to be healthy...")
-	services := []struct {
-		name string
-		url  string
-	}{
-		{"auth", authURL},
-		{"source-manager", sourceManagerURL},
-		{"index-manager", indexManagerURL},
-		{"crawler", crawlerURL},
-		{"classifier", classifierURL},
-		{"publisher", publisherURL},
-	}
-	for _, svc := range services {
-		waitForHealth(t, svc.name, svc.url)
+// Publisher channel constants for the Layer 2 integration-test channel.
+const (
+	testChannelName  = "Integration Test"
+	testChannelSlug  = "integration-test"
+	testRedisChannel = "articles:integration-test"
+)
+
+// Timing constants for delays and timeouts.
+const (
+	subscriberSetupDelay = 1 * time.Second
+	redisMessageTimeout  = 180 * time.Second
+)
+
+// HTTP status constants.
+const (
+	httpStatusCreated = http.StatusCreated
+)
+
+// TestPipelineSmoke runs the full crawl -> classify -> publish pipeline
+// against the fixture news site and verifies contract fields at each stage.
+func TestPipelineSmoke(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping pipeline integration test in short mode")
 	}
 
-	// Step 2: Authenticate
-	t.Log("Step 2: Authenticating...")
+	// Step 1: Wait for all services to be healthy.
+	waitForAllServices(t)
+
+	// Step 2: Get auth token.
 	token := getAuthToken(t)
+	t.Log("Authenticated successfully")
 
-	// Step 3: Create source via source-manager
-	t.Log("Step 3: Creating source...")
-	sourceID := createTestSource(t, token)
-	t.Logf("Created source: %s", sourceID)
+	// Step 3: Create source via source-manager.
+	sourceID := createSource(t, token)
+	t.Logf("Created source with ID: %s", sourceID)
 
-	// Step 4: Create indexes via index-manager
-	t.Log("Step 4: Creating indexes...")
-	createIndexesForSource(t, token, "test_integration")
+	// Step 4: Create a Layer 2 publisher channel that matches all articles.
+	channelID := createPublisherChannel(t, token)
+	t.Logf("Created publisher channel with ID: %s", channelID)
 
-	// Step 5: Create publisher channel and route
-	t.Log("Step 5: Setting up publisher channel and route...")
-	channelID := createTestChannel(t, token)
-	createTestRoute(t, token, channelID)
+	// Step 5: Start Redis subscriber BEFORE triggering crawl (in goroutine).
+	redisCh := make(chan map[string]any, 1)
+	go func() {
+		msg := subscribeRedis(t, testRedisChannel, redisMessageTimeout)
+		redisCh <- msg
+	}()
 
-	// Step 6: Create crawler job targeting fixture URL
-	t.Log("Step 6: Creating crawler job...")
+	// Step 6: Small delay to ensure subscriber is connected.
+	time.Sleep(subscriberSetupDelay)
+
+	// Step 7: Create one-time crawler job.
 	createCrawlerJob(t, token, sourceID)
+	t.Log("Crawler job created")
 
-	// Step 7: Wait for raw content in ES
-	t.Log("Step 7: Waiting for raw_content...")
-	rawDocs := pollForDocs(t, "test_integration_raw_content", 1)
-	t.Logf("Found %d raw_content documents", len(rawDocs))
+	// Step 8: Poll ES for raw content.
+	rawDocID, rawSource := pollRawContent(t)
+	t.Logf("Raw content document found: %s", rawDocID)
 
-	// Step 8: Verify raw content fields match contract
-	t.Log("Step 8: Verifying raw_content contract...")
-	verifyRawContentDoc(t, rawDocs[0])
+	// Step 9: Poll ES for classified content.
+	classifiedDocID, classifiedSource := pollClassifiedContent(t)
+	t.Logf("Classified content document found: %s", classifiedDocID)
 
-	// Step 9: Wait for classified content in ES
-	t.Log("Step 9: Waiting for classified_content...")
-	classifiedDocs := pollForDocs(t, "test_integration_classified_content", 1)
-	t.Logf("Found %d classified_content documents", len(classifiedDocs))
+	// Step 10: Wait for Redis message from goroutine.
+	var redisMsg map[string]any
+	select {
+	case redisMsg = <-redisCh:
+		t.Log("Redis message received on channel: " + testRedisChannel)
+	case <-time.After(redisMessageTimeout):
+		t.Fatal("Timed out waiting for Redis message")
+	}
 
-	// Step 10: Verify classified content fields match contract
-	t.Log("Step 10: Verifying classified_content contract...")
-	verifyClassifiedContentDoc(t, classifiedDocs[0])
+	// Step 11: Assert contract fields on raw content.
+	assertRawContentContract(t, rawSource)
 
-	// Step 11: Subscribe to Redis and verify message
-	t.Log("Step 11: Verifying Redis publication...")
-	verifyRedisPublication(t)
+	// Step 12: Assert contract fields on classified content.
+	assertClassifiedContentContract(t, classifiedSource)
 
-	t.Log("Pipeline integration test PASSED")
+	// Step 13: Assert contract fields on Redis message.
+	assertRedisMessageContract(t, redisMsg)
+
+	// Step 14: Assert end-to-end URL consistency.
+	assertEndToEndURLMatch(t, classifiedSource, redisMsg)
 }
 
-func createTestSource(t *testing.T, token string) string {
+// waitForAllServices polls health endpoints for all pipeline services.
+func waitForAllServices(t *testing.T) {
 	t.Helper()
 
-	source := map[string]any{
-		"name":      "Test Integration",
-		"url":       "http://nc-http-proxy:8055",
-		"rate_limit": 10,
-		"max_depth": 1,
-		"enabled":   true,
-	}
+	waitForHealth(t, "auth", authURL+"/health")
+	waitForHealth(t, "source-manager", sourceManagerURL+"/health")
+	waitForHealth(t, "crawler", crawlerURL+"/health")
+	waitForHealth(t, "classifier", classifierURL+"/health")
+	waitForHealth(t, "publisher", publisherURL+"/health")
+	waitForHealth(t, "index-manager", indexManagerURL+"/health")
+	waitForHealth(t, "elasticsearch", esURL+"/_cluster/health")
+}
 
-	resp := authedRequest(t, "POST", sourceManagerURL+"/api/v1/sources", source, token)
-	defer resp.Body.Close()
+// createSource registers the fixture news site in source-manager and returns its ID.
+func createSource(t *testing.T, token string) string {
+	t.Helper()
 
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		body, _ := io.ReadAll(resp.Body)
-		t.Fatalf("create source returned %d: %s", resp.StatusCode, string(body))
-	}
+	body := fmt.Sprintf(`{
+		"name": %q,
+		"url": %q,
+		"enabled": true,
+		"selectors": {
+			"article": {
+				"title": "h1",
+				"body": "article"
+			}
+		}
+	}`, fixtureSourceName, fixtureSourceURL)
+
+	status, respBody := doAuthed(t, http.MethodPost, sourceManagerURL+"/api/v1/sources", token, body)
+	require.Equal(t, httpStatusCreated, status,
+		"create source failed: %s", string(respBody))
 
 	var result map[string]any
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		t.Fatalf("decode source response: %v", err)
-	}
+	err := json.Unmarshal(respBody, &result)
+	require.NoError(t, err, "unmarshal create source response")
 
 	id, ok := result["id"].(string)
-	if !ok {
-		t.Fatal("source response missing id field")
-	}
+	require.True(t, ok, "source response must contain string 'id' field")
+	require.NotEmpty(t, id, "source id must not be empty")
 
 	return id
 }
 
-func createIndexesForSource(t *testing.T, token, sourceName string) {
+// createPublisherChannel creates a Layer 2 custom channel that matches all articles.
+func createPublisherChannel(t *testing.T, token string) string {
 	t.Helper()
 
-	body := map[string]any{
-		"index_types": []string{"raw_content", "classified_content"},
-	}
+	body := fmt.Sprintf(`{
+		"name": %q,
+		"slug": %q,
+		"redis_channel": %q,
+		"description": "Integration test channel - matches all articles",
+		"rules": {
+			"min_quality_score": 0,
+			"content_types": ["article"]
+		},
+		"enabled": true
+	}`, testChannelName, testChannelSlug, testRedisChannel)
 
-	url := fmt.Sprintf("%s/api/v1/sources/%s/indexes", indexManagerURL, sourceName)
-	resp := authedRequest(t, "POST", url, body, token)
-	defer resp.Body.Close()
-
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		respBody, _ := io.ReadAll(resp.Body)
-		t.Fatalf("create indexes returned %d: %s", resp.StatusCode, string(respBody))
-	}
-}
-
-func createTestChannel(t *testing.T, token string) string {
-	t.Helper()
-
-	channel := map[string]any{
-		"name":        "test-news",
-		"description": "Integration test news channel",
-	}
-
-	resp := authedRequest(t, "POST", publisherURL+"/api/v1/channels", channel, token)
-	defer resp.Body.Close()
-
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		body, _ := io.ReadAll(resp.Body)
-		t.Fatalf("create channel returned %d: %s", resp.StatusCode, string(body))
-	}
+	status, respBody := doAuthed(t, http.MethodPost, publisherURL+"/api/v1/channels", token, body)
+	require.Equal(t, httpStatusCreated, status,
+		"create publisher channel failed: %s", string(respBody))
 
 	var result map[string]any
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		t.Fatalf("decode channel response: %v", err)
-	}
+	err := json.Unmarshal(respBody, &result)
+	require.NoError(t, err, "unmarshal create channel response")
 
 	id, ok := result["id"].(string)
-	if !ok {
-		t.Fatal("channel response missing id field")
-	}
+	require.True(t, ok, "channel response must contain string 'id' field")
+	require.NotEmpty(t, id, "channel id must not be empty")
 
 	return id
 }
 
-func createTestRoute(t *testing.T, token, channelID string) {
-	t.Helper()
-
-	route := map[string]any{
-		"channel_id":      channelID,
-		"min_quality_score": 0,
-		"content_type":    "article",
-	}
-
-	resp := authedRequest(t, "POST", publisherURL+"/api/v1/routes", route, token)
-	defer resp.Body.Close()
-
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		body, _ := io.ReadAll(resp.Body)
-		t.Fatalf("create route returned %d: %s", resp.StatusCode, string(body))
-	}
-}
-
+// createCrawlerJob creates a one-time crawler job for the fixture source.
 func createCrawlerJob(t *testing.T, token, sourceID string) {
 	t.Helper()
 
-	job := map[string]any{
-		"source_id":        sourceID,
-		"url":              "http://nc-http-proxy:8055/fixture/news-article.html",
-		"schedule_enabled": false,
-	}
+	body := fmt.Sprintf(`{
+		"source_id": %q,
+		"source_name": %q,
+		"url": %q,
+		"schedule_enabled": false
+	}`, sourceID, fixtureSourceName, fixtureSourceURL)
 
-	resp := authedRequest(t, "POST", crawlerURL+"/api/v1/jobs", job, token)
-	defer resp.Body.Close()
-
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		body, _ := io.ReadAll(resp.Body)
-		t.Fatalf("create job returned %d: %s", resp.StatusCode, string(body))
-	}
+	status, respBody := doAuthed(t, http.MethodPost, crawlerURL+"/api/v1/jobs", token, body)
+	require.Equal(t, httpStatusCreated, status,
+		"create crawler job failed: %s", string(respBody))
 }
 
-func verifyRawContentDoc(t *testing.T, doc map[string]any) {
+// pollRawContent polls Elasticsearch for a document in the raw content index.
+func pollRawContent(t *testing.T) (string, map[string]any) {
 	t.Helper()
 
-	mapping := contracts.RawContentMapping()
-
-	// Verify key fields from the document exist in the mapping
-	expectedFields := []string{
-		"url", "title", "source_name", "classification_status", "crawled_at",
-	}
-
-	contracts.AssertFieldsExist(t, mapping, expectedFields)
-
-	// Also verify the document itself has the expected fields populated
-	for _, field := range expectedFields {
-		if _, exists := doc[field]; !exists {
-			t.Errorf("raw_content document missing expected field %q", field)
-		}
-	}
+	query := `{"query": {"match_all": {}}}`
+	return pollES(t, rawContentIndex, query)
 }
 
-func verifyClassifiedContentDoc(t *testing.T, doc map[string]any) {
+// pollClassifiedContent polls Elasticsearch for a document in the classified content index.
+func pollClassifiedContent(t *testing.T) (string, map[string]any) {
 	t.Helper()
 
-	mapping := contracts.ClassifiedContentMapping()
-
-	expectedFields := []string{
-		"url", "title", "content_type", "quality_score", "topics",
-		"classification_status",
-	}
-
-	contracts.AssertFieldsExist(t, mapping, expectedFields)
-
-	for _, field := range expectedFields {
-		if _, exists := doc[field]; !exists {
-			t.Errorf("classified_content document missing expected field %q", field)
-		}
-	}
-
-	// Verify classification_status is "classified"
-	if status, ok := doc["classification_status"].(string); ok {
-		if status != "classified" {
-			t.Errorf("expected classification_status=classified, got %q", status)
-		}
-	}
+	query := `{"query": {"match_all": {}}}`
+	return pollES(t, classifiedContentIndex, query)
 }
 
-func verifyRedisPublication(t *testing.T) {
+// assertRawContentContract asserts that the raw content document has the
+// required classification_status field.
+func assertRawContentContract(t *testing.T, source map[string]any) {
 	t.Helper()
 
-	rdb := redis.NewClient(&redis.Options{
-		Addr: redisAddr,
-	})
-	defer rdb.Close()
+	assert.Contains(t, source, "classification_status",
+		"raw content document must have 'classification_status' field")
+}
 
-	ctx, cancel := context.WithTimeout(context.Background(), redisSubTimeout)
-	defer cancel()
+// assertClassifiedContentContract asserts that the classified content
+// document has all required contract fields.
+func assertClassifiedContentContract(t *testing.T, source map[string]any) {
+	t.Helper()
 
-	// Subscribe to the wildcard channel for any articles
-	sub := rdb.PSubscribe(ctx, "articles:*")
-	defer sub.Close()
+	assert.Contains(t, source, "content_type",
+		"classified doc must have 'content_type'")
+	assert.Contains(t, source, "quality_score",
+		"classified doc must have 'quality_score'")
+	assert.Contains(t, source, "topics",
+		"classified doc must have 'topics'")
+	assert.Contains(t, source, "title",
+		"classified doc must have 'title'")
+	assertDocHasURL(t, source)
+}
 
-	// Wait for at least one message
-	msg, err := sub.ReceiveMessage(ctx)
-	if err != nil {
-		t.Logf("No Redis message received within timeout (this may be expected if publisher hasn't cycled yet): %v", err)
-		return
+// assertDocHasURL checks that the classified document has a URL field.
+// The field may be 'url' or 'canonical_url' depending on the classifier output.
+func assertDocHasURL(t *testing.T, source map[string]any) {
+	t.Helper()
+
+	_, hasURL := source["url"]
+	_, hasCanonicalURL := source["canonical_url"]
+	assert.True(t, hasURL || hasCanonicalURL,
+		"classified doc must have 'url' or 'canonical_url'")
+}
+
+// assertRedisMessageContract asserts that the Redis message has all required
+// contract fields per REDIS_MESSAGE_FORMAT.md.
+func assertRedisMessageContract(t *testing.T, msg map[string]any) {
+	t.Helper()
+
+	assert.Contains(t, msg, "id", "Redis message must have 'id'")
+	assert.Contains(t, msg, "title", "Redis message must have 'title'")
+	assert.Contains(t, msg, "content_type", "Redis message must have 'content_type'")
+	assert.Contains(t, msg, "quality_score", "Redis message must have 'quality_score'")
+	assert.Contains(t, msg, "topics", "Redis message must have 'topics'")
+
+	// Assert publisher metadata sub-object.
+	publisherObj, ok := msg["publisher"].(map[string]any)
+	require.True(t, ok, "Redis message must have 'publisher' object")
+
+	assert.Contains(t, publisherObj, "channel",
+		"publisher object must have 'channel'")
+	assert.Contains(t, publisherObj, "published_at",
+		"publisher object must have 'published_at'")
+}
+
+// assertEndToEndURLMatch verifies that the URL from the classified content
+// document matches the URL in the Redis message, confirming the same article
+// flowed through the entire pipeline.
+func assertEndToEndURLMatch(t *testing.T, classifiedSource, redisMsg map[string]any) {
+	t.Helper()
+
+	classifiedURL := extractURL(classifiedSource)
+	redisURL := extractURL(redisMsg)
+
+	require.NotEmpty(t, classifiedURL, "classified document must have a URL")
+	require.NotEmpty(t, redisURL, "Redis message must have a URL")
+	assert.Equal(t, classifiedURL, redisURL,
+		"URL in classified_content must match URL in Redis message")
+}
+
+// urlFieldNames lists the possible URL field names in pipeline documents.
+var urlFieldNames = []string{"canonical_url", "url"}
+
+// extractURL extracts a URL from a document, checking common field names.
+func extractURL(doc map[string]any) string {
+	for _, field := range urlFieldNames {
+		if val, ok := doc[field].(string); ok && val != "" {
+			return val
+		}
 	}
-
-	// Verify the message is valid JSON with expected fields
-	var article map[string]any
-	if unmarshalErr := json.Unmarshal([]byte(msg.Payload), &article); unmarshalErr != nil {
-		t.Fatalf("Redis message is not valid JSON: %v", unmarshalErr)
-	}
-
-	t.Logf("Received article on channel %s: title=%v", msg.Channel, article["title"])
+	return ""
 }

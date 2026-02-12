@@ -55,6 +55,20 @@ export interface PipelineMode {
   mining: 'hybrid' | 'rules-only' | 'disabled'
 }
 
+export interface SourceHealth {
+  source: string
+  raw_count: number
+  classified_count: number
+  backlog: number
+  delta_24h: number
+  avg_quality: number
+}
+
+export interface SourceHealthResponse {
+  sources: SourceHealth[]
+  total: number
+}
+
 export interface AggregationFilters {
   crime_relevance?: string[]
   crime_sub_labels?: string[]
