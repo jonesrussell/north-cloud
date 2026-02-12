@@ -16,6 +16,9 @@ function healthyMetrics(): PipelineMetrics {
 }
 
 describe('detectProblems', () => {
+  // Smoke check: verifies rules don't fire when all inputs are nominal.
+  // This does NOT prove the pipeline is healthy — it only validates rule logic.
+  // See docs/TESTING_PIPELINE_CHECKLIST.md §1 for context.
   it('returns empty array when everything is healthy', () => {
     const problems = detectProblems(healthyMetrics())
     expect(problems).toEqual([])
