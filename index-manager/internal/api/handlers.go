@@ -676,6 +676,18 @@ func (h *Handler) GetMiningAggregation(c *gin.Context) {
 	c.JSON(http.StatusOK, result)
 }
 
+// GetSourceHealth handles GET /api/v1/aggregations/source-health
+func (h *Handler) GetSourceHealth(c *gin.Context) {
+	result, err := h.aggregationService.GetSourceHealth(c.Request.Context())
+	if err != nil {
+		h.logger.Error("Failed to get source health", infralogger.Error(err))
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, result)
+}
+
 // parseAggregationRequest extracts filters from query parameters
 func (h *Handler) parseAggregationRequest(c *gin.Context) *domain.AggregationRequest {
 	req := &domain.AggregationRequest{
