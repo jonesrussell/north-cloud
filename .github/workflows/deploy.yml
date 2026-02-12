@@ -57,10 +57,17 @@ jobs:
           EVENT_NAME: ${{ github.event_name }}
           PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
           PUSH_BEFORE_SHA: ${{ github.event.before }}
+          TRIGGER_SHA: ${{ github.event.workflow_run.head_sha }}
         run: |
-          # Determine base ref based on event type
-          if [ "$EVENT_NAME" = "workflow_run" ]; then
-            BASE_REF="HEAD~1"
+          # Determine base and head refs based on event type
+          HEAD_REF="HEAD"
+
+          if [ "$EVENT_NAME" = "workflow_run" ] && [ -n "$TRIGGER_SHA" ]; then
+            # Pin to the exact commit that triggered the Test workflow.
+            # Without this, HEAD may have moved if new commits landed
+            # between the Test run and this Deploy run.
+            HEAD_REF="$TRIGGER_SHA"
+            BASE_REF="${TRIGGER_SHA}^1"
           elif [ "$EVENT_NAME" = "pull_request" ] && [ -n "$PR_BASE_SHA" ]; then
             BASE_REF="$PR_BASE_SHA"
           elif [ -n "$PUSH_BEFORE_SHA" ] && [ "$PUSH_BEFORE_SHA" != "0000000000000000000000000000000000000000" ]; then
@@ -70,7 +77,8 @@ jobs:
           fi
 
           # Use shared detection script with deploy format
-          # Script reads FORCE_ALL and MANUAL_SERVICES from env
+          # Script reads FORCE_ALL, MANUAL_SERVICES, and HEAD_REF from env
+          export HEAD_REF
           ./scripts/detect-changed-services.sh "$BASE_REF" --format=deploy >> $GITHUB_OUTPUT
 
           echo ""

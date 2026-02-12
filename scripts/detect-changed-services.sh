@@ -12,6 +12,8 @@
 # Environment variables:
 #   FORCE_ALL=true     - Force all services (for deploy --force)
 #   MANUAL_SERVICES=x  - Comma-separated override list
+#   HEAD_REF=sha       - Compare against this commit instead of HEAD
+#                        (used by deploy workflow to pin to triggering commit)
 #
 # Output (json format):
 #   ["service1","service2"] or ["all"] if infrastructure changed
@@ -77,13 +79,16 @@ else
         fi
     fi
 
+    # Allow callers to pin to a specific commit (e.g. workflow_run trigger SHA)
+    HEAD_REF="${HEAD_REF:-HEAD}"
+
     # Validate BASE_REF
     if ! git cat-file -e "$BASE_REF" 2>/dev/null; then
-        BASE_REF="HEAD~1"
+        BASE_REF="${HEAD_REF}~1"
     fi
 
     # Get list of changed files
-    CHANGED_FILES=$(git diff --name-only "$BASE_REF" HEAD 2>/dev/null || git diff --name-only HEAD~1 HEAD 2>/dev/null || echo "")
+    CHANGED_FILES=$(git diff --name-only "$BASE_REF" "$HEAD_REF" 2>/dev/null || git diff --name-only "${HEAD_REF}~1" "$HEAD_REF" 2>/dev/null || echo "")
 
     if [ -z "$CHANGED_FILES" ]; then
         # No changes detected
