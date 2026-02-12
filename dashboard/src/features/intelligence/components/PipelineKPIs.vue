@@ -87,6 +87,12 @@ const visibleKpis = computed(() => kpis.value.filter((k) => k.visible))
       >
         {{ kpi.value }}
       </p>
+      <p
+        v-if="kpi.label === 'Classified (24h)' && kpi.value === '0'"
+        class="mt-1 text-[10px] text-muted-foreground"
+      >
+        No recent crawls or classifier may be paused.
+      </p>
     </div>
   </div>
 </template>

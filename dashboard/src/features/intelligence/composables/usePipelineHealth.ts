@@ -1,5 +1,6 @@
 import { ref, computed, onMounted } from 'vue'
-import { crawlerApi, publisherApi, indexManagerApi } from '@/api/client'
+import { crawlerApi, publisherApi, indexManagerApi, sourcesApi } from '@/api/client'
+import { normalizeSourceNameForIndex } from '@/lib/normalizeSourceNameForIndex'
 import { detectProblems } from '../problems/rules'
 import type {
   PipelineMetrics,
@@ -38,6 +39,22 @@ export function usePipelineHealth() {
 
   async function fetchIndexMetrics(): Promise<IndexMetrics | null> {
     try {
+      let enabledKeys: Set<string> | null = null
+      try {
+        const sourcesRes = await sourcesApi.list()
+        const list = sourcesRes.data?.sources ?? sourcesRes.data
+        const sourcesList = Array.isArray(list) ? list : []
+        const enabled = sourcesList.filter(
+          (s: { enabled?: boolean; is_enabled?: boolean }) =>
+            s.enabled === true || s.is_enabled === true,
+        )
+        enabledKeys = new Set(
+          enabled.map((s: { name: string }) => normalizeSourceNameForIndex(s.name)),
+        )
+      } catch {
+        // Fallback: source-manager unavailable → treat all sources as active
+      }
+
       const [sourceHealthRes, statsRes] = await Promise.all([
         indexManagerApi.aggregations.getSourceHealth(),
         indexManagerApi.stats.get(),
@@ -52,7 +69,7 @@ export function usePipelineHealth() {
         backlog: s.backlog,
         delta24h: s.delta_24h,
         avgQuality: s.avg_quality,
-        active: true,
+        active: enabledKeys !== null ? enabledKeys.has(s.source) : true,
       }))
 
       return {

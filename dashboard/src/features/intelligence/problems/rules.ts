@@ -104,6 +104,7 @@ function detectIndexProblems(
       severity: 'warning',
       title: `${backlogSources.length} source${backlogSources.length === 1 ? '' : 's'} with classification backlog`,
       action: 'Classifier may be stalled or slow. Check service logs.',
+      link: '/intelligence',
       count: backlogSources.length,
       sourceIds: backlogSources.map((s) => s.source),
     })

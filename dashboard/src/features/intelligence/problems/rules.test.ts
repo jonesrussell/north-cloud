@@ -65,6 +65,19 @@ describe('detectProblems', () => {
     expect(problems.find((p) => p.id === 'empty-indexes')).toBeUndefined()
   })
 
+  it('regression: inactive empty sources must not produce empty-index problem (only active count)', () => {
+    const metrics = healthyMetrics()
+    metrics.indexes!.sources = [
+      { source: 'active_empty', rawCount: 0, classifiedCount: 0, backlog: 0, delta24h: 0, avgQuality: 0, active: true },
+      { source: 'inactive_empty', rawCount: 0, classifiedCount: 0, backlog: 0, delta24h: 0, avgQuality: 0, active: false },
+    ]
+    const problems = detectProblems(metrics)
+    const p = problems.find((p) => p.id === 'empty-indexes')
+    expect(p).toBeDefined()
+    expect(p!.count).toBe(1)
+    expect(p!.sourceIds).toEqual(['active_empty'])
+  })
+
   it('detects classification backlog', () => {
     const metrics = healthyMetrics()
     metrics.indexes!.sources = [

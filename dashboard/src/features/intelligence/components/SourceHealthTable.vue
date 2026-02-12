@@ -2,6 +2,7 @@
 import { ref, computed } from 'vue'
 import type { SourceMetrics } from '../problems/types'
 import Badge from '@/components/ui/badge/Badge.vue'
+import { Tooltip } from '@/components/ui/tooltip'
 
 const props = defineProps<{
   sources: SourceMetrics[]
@@ -208,13 +209,16 @@ const statusDot: Record<string, string> = {
                   'text-amber-500': source.delta24h === 0 && source.classifiedCount > 0,
                 }"
               >
-                {{
-                  source.delta24h > 0
-                    ? `+${source.delta24h.toLocaleString()}`
-                    : source.delta24h === 0 && source.classifiedCount > 0
-                      ? 'stale'
-                      : '-'
-                }}
+                <template v-if="source.delta24h > 0">
+                  +{{ source.delta24h.toLocaleString() }}
+                </template>
+                <Tooltip
+                  v-else-if="source.delta24h === 0 && source.classifiedCount > 0"
+                  content="No new classified documents in the last 24 hours."
+                >
+                  <span>stale</span>
+                </Tooltip>
+                <span v-else>-</span>
               </td>
             </template>
           </tr>
