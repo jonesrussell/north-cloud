@@ -34,6 +34,8 @@ var entertainmentCorePatterns = []*regexp.Regexp{
 	regexp.MustCompile(`(?i)\b(video game|gaming|esports|release date)\b`),
 	regexp.MustCompile(`(?i)\b(review|rating|oscar|emmy|golden globe)\b`),
 	regexp.MustCompile(`(?i)\b(celebrity|starring|cast|trailer)\b`),
+	// War-film specific patterns to boost entertainment relevance for war movies.
+	regexp.MustCompile(`(?i)\b(war film|war movie|combat film|military drama|world war i film|world war ii film|wwi film|wwii film|vietnam war film|vietnam war movie)\b`),
 }
 
 var entertainmentPeripheralPatterns = []*regexp.Regexp{

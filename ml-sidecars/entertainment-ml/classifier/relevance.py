@@ -8,7 +8,7 @@ CORE_ENTERTAINMENT = "core_entertainment"
 PERIPHERAL_ENTERTAINMENT = "peripheral_entertainment"
 NOT_ENTERTAINMENT = "not_entertainment"
 
-# Strong entertainment signals (reviews, premieres, awards, film/tv/music/games)
+# Strong entertainment signals (reviews, premieres, awards, film/tv/music/games/war films)
 CORE_PATTERNS = [
     re.compile(r"\b(film|movie|cinema|box office)\b", re.I),
     re.compile(r"\b(tv show|series|premiere|finale|episode)\b", re.I),
@@ -16,6 +16,11 @@ CORE_PATTERNS = [
     re.compile(r"\b(video game|gaming|esports|release date)\b", re.I),
     re.compile(r"\b(review|rating|oscar|emmy|golden globe)\b", re.I),
     re.compile(r"\b(celebrity|starring|cast|trailer)\b", re.I),
+    # War-film specific phrases (aimed at film/TV contexts, not general war news)
+    re.compile(
+        r"\b(war film|war movie|combat film|military drama|world war i film|world war ii film|wwi film|wwii film|vietnam war film|vietnam war movie)\b",
+        re.I,
+    ),
 ]
 
 # Weaker signals
@@ -28,6 +33,22 @@ PERIPHERAL_PATTERNS = [
 # Keyword -> category for building categories list
 CATEGORY_KEYWORDS: list[tuple[list[str], str]] = [
     (["film", "movie", "cinema", "box office", "oscar"], "film"),
+    # War-film category (used to generate entertainment:category:war_film channel)
+    (
+        [
+            "war film",
+            "war movie",
+            "combat film",
+            "military drama",
+            "wwi film",
+            "wwii film",
+            "world war i film",
+            "world war ii film",
+            "vietnam war film",
+            "vietnam war movie",
+        ],
+        "war_film",
+    ),
     (["tv", "series", "premiere", "episode", "emmy"], "television"),
     (["album", "song", "concert", "band", "grammy", "music"], "music"),
     (["game", "gaming", "esports"], "gaming"),
