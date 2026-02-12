@@ -137,3 +137,79 @@ describe('detectProblems', () => {
     expect(p).toBeDefined()
   })
 })
+
+describe('boundary and edge cases', () => {
+  it('does not fire classification-backlog when backlog is at threshold (100)', () => {
+    const metrics = healthyMetrics()
+    metrics.indexes!.sources = [
+      { source: 'threshold_src', rawCount: 200, classifiedCount: 100, backlog: 100, delta24h: 5, avgQuality: 70, active: true },
+    ]
+    const problems = detectProblems(metrics)
+    expect(problems.find((p) => p.id === 'classification-backlog')).toBeUndefined()
+  })
+
+  it('fires classification-backlog when backlog is above threshold (101)', () => {
+    const metrics = healthyMetrics()
+    metrics.indexes!.sources = [
+      { source: 'over_threshold', rawCount: 201, classifiedCount: 100, backlog: 101, delta24h: 5, avgQuality: 70, active: true },
+    ]
+    const problems = detectProblems(metrics)
+    const p = problems.find((p) => p.id === 'classification-backlog')
+    expect(p).toBeDefined()
+    expect(p!.severity).toBe('warning')
+  })
+
+  it('fires failed-crawls with singular title for 1 failed job', () => {
+    const metrics = healthyMetrics()
+    metrics.crawler!.failedJobs = 1
+    const problems = detectProblems(metrics)
+    const p = problems.find((p) => p.id === 'failed-crawls')
+    expect(p).toBeDefined()
+    expect(p!.title).toBe('1 failed crawl job')
+    expect(p!.count).toBe(1)
+  })
+
+  it('fires stale-scheduled-jobs with singular title for 1 stale job', () => {
+    const metrics = healthyMetrics()
+    metrics.crawler!.staleJobs = 1
+    const problems = detectProblems(metrics)
+    const p = problems.find((p) => p.id === 'stale-scheduled-jobs')
+    expect(p).toBeDefined()
+    expect(p!.title).toBe('1 stale scheduled job')
+  })
+
+  it('detects multiple simultaneous problems', () => {
+    const metrics: PipelineMetrics = {
+      crawler: { failedJobs: 5, staleJobs: 2, failedJobUrls: [] },
+      indexes: {
+        clusterHealth: 'yellow',
+        sources: [
+          { source: 'empty_active', rawCount: 0, classifiedCount: 0, backlog: 0, delta24h: 0, avgQuality: 0, active: true },
+        ],
+      },
+      publisher: { publishedToday: 0, inactiveChannels: 1, inactiveChannelNames: ['Stale Channel'] },
+    }
+    const problems = detectProblems(metrics)
+    const ids = problems.map((p) => p.id)
+    expect(ids).toContain('failed-crawls')
+    expect(ids).toContain('stale-scheduled-jobs')
+    expect(ids).toContain('cluster-health')
+    expect(ids).toContain('empty-indexes')
+    expect(ids).toContain('zero-publishing')
+    expect(ids).toContain('inactive-channels')
+  })
+
+  it('reports all three services unreachable with kind=system and severity=error', () => {
+    const metrics: PipelineMetrics = {
+      crawler: null,
+      indexes: null,
+      publisher: null,
+    }
+    const problems = detectProblems(metrics)
+    expect(problems).toHaveLength(3)
+    for (const p of problems) {
+      expect(p.kind).toBe('system')
+      expect(p.severity).toBe('error')
+    }
+  })
+})
