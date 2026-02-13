@@ -39,6 +39,10 @@ import type {
   MLHealthResponse,
   AggregationFilters,
   SourceHealthResponse,
+  ClassificationDriftAggregation,
+  ClassificationDriftTimeseriesResponse,
+  ContentTypeMismatchCount,
+  SuspectedMisclassificationResponse,
 } from '../types/aggregation'
 
 // Debug mode - logs all requests and responses
@@ -282,6 +286,14 @@ export const publisherApi = {
     get: () => publisherClient.get('/stats/overview?period=all'),
     overview: (period: StatsPeriod = 'today'): Promise<AxiosResponse<StatsOverviewResponse>> =>
       publisherClient.get(`/stats/overview?period=${period}`),
+    publishVolume: (params?: { hours?: number }): Promise<
+      AxiosResponse<{
+        hours: number
+        messages_total: number
+        messages_per_channel: Array<{ channel_name: string; messages_last_24h: number; last_published_at: string | null }>
+        generated_at: string
+      }>
+    > => publisherClient.get('/api/v1/stats/publish-volume', { params }),
     channels: (since?: string): Promise<AxiosResponse<ChannelStatsResponse>> =>
       publisherClient.get(`/stats/channels${since ? `?since=${since}` : ''}`),
     activeChannels: (): Promise<AxiosResponse<ActiveChannelsResponse>> =>
@@ -542,6 +554,23 @@ export const indexManagerApi = {
     },
     getSourceHealth: (): Promise<AxiosResponse<SourceHealthResponse>> =>
       indexManagerClient.get('/api/v1/aggregations/source-health'),
+    getClassificationDrift: (params?: {
+      hours?: number
+      sources?: string[]
+    }): Promise<AxiosResponse<ClassificationDriftAggregation>> =>
+      indexManagerClient.get('/api/v1/aggregations/classification-drift', { params }),
+    getClassificationDriftTimeseries: (params?: {
+      days?: number
+    }): Promise<AxiosResponse<ClassificationDriftTimeseriesResponse>> =>
+      indexManagerClient.get('/api/v1/aggregations/classification-drift-timeseries', { params }),
+    getContentTypeMismatch: (params?: {
+      hours?: number
+    }): Promise<AxiosResponse<ContentTypeMismatchCount>> =>
+      indexManagerClient.get('/api/v1/aggregations/content-type-mismatch', { params }),
+    getSuspectedMisclassifications: (params?: {
+      hours?: number
+    }): Promise<AxiosResponse<SuspectedMisclassificationResponse>> =>
+      indexManagerClient.get('/api/v1/aggregations/suspected-misclassifications', { params }),
   },
 }
 

@@ -1,0 +1,18 @@
+# Elasticsearch datasource for North Cloud (classified content, search)
+# Used by pipeline dashboard for classifier observability panels
+
+apiVersion: 1
+
+datasources:
+  - name: Elasticsearch
+    type: elasticsearch
+    access: proxy
+    uid: elasticsearch
+    url: http://elasticsearch:9200
+    isDefault: false
+    editable: true
+    jsonData:
+      esVersion: '9.0.0'
+      logMessageField: msg
+      logLevelField: level
+      timeField: crawled_at

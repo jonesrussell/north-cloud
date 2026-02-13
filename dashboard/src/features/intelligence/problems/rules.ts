@@ -17,6 +17,18 @@ export function detectProblems(metrics: PipelineMetrics): Problem[] {
     detectPublisherProblems(metrics.publisher, problems)
   }
 
+  if (metrics.contentTypeMismatchCount !== undefined && metrics.contentTypeMismatchCount > 0) {
+    problems.push({
+      id: 'content-type-mismatch',
+      kind: 'system',
+      severity: 'error',
+      title: `Content type mismatch: ${metrics.contentTypeMismatchCount} document(s) are both page and core_street_crime`,
+      action: 'Classifier may be misfiring. Review suspected misclassifications and content type rules.',
+      link: '/dashboard/intelligence',
+      count: metrics.contentTypeMismatchCount,
+    })
+  }
+
   return problems
 }
 

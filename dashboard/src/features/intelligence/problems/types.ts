@@ -43,4 +43,6 @@ export interface PipelineMetrics {
   crawler: CrawlerMetrics | null
   indexes: IndexMetrics | null
   publisher: PublisherMetrics | null
+  /** Count of docs with content_type=page AND crime_relevance=core_street_crime (classification error) */
+  contentTypeMismatchCount?: number
 }

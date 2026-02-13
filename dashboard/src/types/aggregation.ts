@@ -79,3 +79,41 @@ export interface AggregationFilters {
   sources?: string[]
   min_quality?: number
 }
+
+export interface ClassificationDriftAggregation {
+  by_content_type: Record<string, number>
+  by_crime_relevance: Record<string, number>
+  content_type_x_crime: Record<string, Record<string, number>>
+  total_documents: number
+}
+
+export interface ClassificationDriftTimeseriesBucket {
+  date: string
+  article_count: number
+  page_count: number
+  other_count: number
+  total: number
+}
+
+export interface ClassificationDriftTimeseriesResponse {
+  buckets: ClassificationDriftTimeseriesBucket[]
+}
+
+export interface ContentTypeMismatchCount {
+  count: number
+}
+
+export interface SuspectedMisclassificationDoc {
+  id: string
+  title: string
+  canonical_url: string
+  content_type: string
+  crime_relevance: string
+  confidence?: number
+  crawled_at?: string
+}
+
+export interface SuspectedMisclassificationResponse {
+  documents: SuspectedMisclassificationDoc[]
+  total: number
+}

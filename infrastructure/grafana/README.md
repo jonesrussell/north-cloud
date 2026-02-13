@@ -45,8 +45,8 @@ Services (JSON logs) → Docker → Alloy → Loki → Grafana (Web UI)
 #### Grafana
 - **Image**: `grafana/grafana:10.4.8`
 - **Port**: 3000 (Web UI)
-- **Datasources**: Auto-provisioned Loki datasource
-- **Dashboards**: Pre-configured North Cloud logs dashboard
+- **Datasources**: Auto-provisioned Loki and Elasticsearch datasources
+- **Dashboards**: North Cloud Logs, North Cloud → StreetCode Pipeline (Loki + ES)
 - **Configuration**: `/infrastructure/grafana/provisioning/`
 
 ## Quick Start
@@ -74,8 +74,8 @@ docker compose -f docker-compose.base.yml -f docker-compose.dev.yml ps loki allo
 #### Option 1: Pre-configured Dashboard
 
 1. Navigate to **Dashboards** → **North Cloud** folder
-2. Open **North Cloud Logs** dashboard
-3. Use filters:
+2. Open **North Cloud Logs** (per-service log volume and stream) or **North Cloud → StreetCode Pipeline** (classifier ES + publisher/StreetCode Loki)
+3. On North Cloud Logs, use filters:
    - **Service**: Select one or more services (crawler, publisher, etc.)
    - **Level**: Filter by log level (debug, info, warn, error)
    - **Search**: Free-text search across log messages

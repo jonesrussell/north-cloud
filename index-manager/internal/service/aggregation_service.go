@@ -11,14 +11,18 @@ import (
 )
 
 const (
-	topCitiesLimit     = 10
-	topCrimeTypesLimit = 10
-	qualityHighMin     = 70
-	qualityMediumMin   = 40
-	maxSourceBuckets   = 500
+	topCitiesLimit        = 10
+	topCrimeTypesLimit    = 10
+	qualityHighMin        = 70
+	qualityMediumMin      = 40
+	maxSourceBuckets      = 500
+	driftAggSize          = 10
+	defaultDriftHours     = 24
+	suspectedMisclassSize = 100
 
 	rawContentSuffix        = "_raw_content"
 	classifiedContentSuffix = "_classified_content"
+	crimeRelevanceField     = "crime.street_crime_relevance"
 )
 
 // AggregationService provides aggregation operations on classified content
@@ -292,6 +296,298 @@ func (s *AggregationService) GetSourceHealth(ctx context.Context) (*domain.Sourc
 		Sources: result,
 		Total:   len(result),
 	}, nil
+}
+
+// GetClassificationDriftAggregation returns counts by content_type, by crime.street_crime_relevance,
+// and cross-tab (content_type x crime_relevance) for the last N hours (default 24).
+func (s *AggregationService) GetClassificationDriftAggregation(
+	ctx context.Context,
+	req *domain.ClassificationDriftRequest,
+) (*domain.ClassificationDriftAggregation, error) {
+	hours := req.Hours
+	if hours <= 0 {
+		hours = defaultDriftHours
+	}
+	query := s.buildClassificationDriftQuery(hours, req.Sources, map[string]any{
+		"by_content_type": map[string]any{
+			"terms": map[string]any{
+				"field": "content_type",
+				"size":  driftAggSize,
+			},
+		},
+		"by_crime_relevance": map[string]any{
+			"terms": map[string]any{
+				"field": crimeRelevanceField,
+				"size":  driftAggSize,
+			},
+		},
+		"content_type_x_crime": map[string]any{
+			"terms": map[string]any{
+				"field": "content_type",
+				"size":  driftAggSize,
+			},
+			"aggs": map[string]any{
+				"crime": map[string]any{
+					"terms": map[string]any{
+						"field": crimeRelevanceField,
+						"size":  driftAggSize,
+					},
+				},
+			},
+		},
+	})
+
+	res, err := s.esClient.SearchAllClassifiedContent(ctx, query)
+	if err != nil {
+		return nil, fmt.Errorf("failed to execute classification drift aggregation: %w", err)
+	}
+	defer func() { _ = res.Body.Close() }()
+
+	var esResp aggregationResponse
+	if decodeErr := json.NewDecoder(res.Body).Decode(&esResp); decodeErr != nil {
+		return nil, fmt.Errorf("failed to decode classification drift response: %w", decodeErr)
+	}
+
+	crossTab := extractContentTypeXCrime(esResp.Aggregations["content_type_x_crime"])
+	return &domain.ClassificationDriftAggregation{
+		ByContentType:     extractBuckets(esResp.Aggregations["by_content_type"]),
+		ByCrimeRelevance:  extractBuckets(esResp.Aggregations["by_crime_relevance"]),
+		ContentTypeXCrime: crossTab,
+		TotalDocuments:    esResp.Hits.Total.Value,
+	}, nil
+}
+
+// buildClassificationDriftQuery builds an ES query with range on crawled_at (now-Nh) and optional source filter.
+func (s *AggregationService) buildClassificationDriftQuery(hours int, sources []string, aggs map[string]any) map[string]any {
+	filters := []any{
+		map[string]any{
+			"range": map[string]any{
+				"crawled_at": map[string]any{"gte": fmt.Sprintf("now-%dh", hours)},
+			},
+		},
+	}
+	if len(sources) > 0 {
+		filters = append(filters, map[string]any{
+			"terms": map[string]any{"source_name": sources},
+		})
+	}
+	return map[string]any{
+		"size":             0,
+		"track_total_hits": true,
+		"query": map[string]any{
+			"bool": map[string]any{"filter": filters},
+		},
+		"aggs": aggs,
+	}
+}
+
+// GetContentTypeMismatchCount returns the count of documents with content_type=page AND crime.street_crime_relevance=core_street_crime.
+func (s *AggregationService) GetContentTypeMismatchCount(ctx context.Context, hours int) (*domain.ContentTypeMismatchCount, error) {
+	if hours <= 0 {
+		hours = defaultDriftHours
+	}
+	query := s.buildClassificationDriftQuery(hours, nil, map[string]any{
+		"mismatch": map[string]any{
+			"filter": map[string]any{
+				"bool": map[string]any{
+					"must": []any{
+						map[string]any{"term": map[string]any{"content_type": "page"}},
+						map[string]any{"term": map[string]any{crimeRelevanceField: "core_street_crime"}},
+					},
+				},
+			},
+		},
+	})
+
+	res, err := s.esClient.SearchAllClassifiedContent(ctx, query)
+	if err != nil {
+		return nil, fmt.Errorf("failed to execute content type mismatch count: %w", err)
+	}
+	defer func() { _ = res.Body.Close() }()
+
+	var esResp struct {
+		Aggregations struct {
+			Mismatch struct {
+				DocCount int64 `json:"doc_count"`
+			} `json:"mismatch"`
+		} `json:"aggregations"`
+	}
+	if decodeErr := json.NewDecoder(res.Body).Decode(&esResp); decodeErr != nil {
+		return nil, fmt.Errorf("failed to decode content type mismatch response: %w", decodeErr)
+	}
+	return &domain.ContentTypeMismatchCount{Count: esResp.Aggregations.Mismatch.DocCount}, nil
+}
+
+// GetSuspectedMisclassifications returns documents with content_type=page AND topics containing crime/violent_crime.
+func (s *AggregationService) GetSuspectedMisclassifications(
+	ctx context.Context,
+	hours int,
+) (*domain.SuspectedMisclassificationResponse, error) {
+	if hours <= 0 {
+		hours = defaultDriftHours
+	}
+	filters := []any{
+		map[string]any{"term": map[string]any{"content_type": "page"}},
+		map[string]any{"terms": map[string]any{"topics": []string{"crime", "violent_crime"}}},
+		map[string]any{"range": map[string]any{"crawled_at": map[string]any{"gte": fmt.Sprintf("now-%dh", hours)}}},
+	}
+	query := map[string]any{
+		"size": suspectedMisclassSize,
+		"query": map[string]any{
+			"bool": map[string]any{"filter": filters},
+		},
+		"_source": []string{"canonical_url", "title", "content_type", "crime.street_crime_relevance", "confidence", "crawled_at"},
+		"sort":    []map[string]any{{"crawled_at": map[string]any{"order": "desc"}}},
+	}
+
+	res, err := s.esClient.SearchAllClassifiedContent(ctx, query)
+	if err != nil {
+		return nil, fmt.Errorf("failed to execute suspected misclassifications search: %w", err)
+	}
+	defer func() { _ = res.Body.Close() }()
+
+	var esResp struct {
+		Hits struct {
+			Total struct {
+				Value int64 `json:"value"`
+			} `json:"total"`
+			Hits []struct {
+				ID     string `json:"_id"`
+				Source struct {
+					Title        string  `json:"title"`
+					CanonicalURL string  `json:"canonical_url"`
+					ContentType  string  `json:"content_type"`
+					Confidence   float64 `json:"confidence"`
+					CrawledAt    string  `json:"crawled_at"`
+					Crime        *struct {
+						StreetCrimeRelevance string `json:"street_crime_relevance"`
+					} `json:"crime"`
+				} `json:"_source"`
+			} `json:"hits"`
+		} `json:"hits"`
+	}
+	if decodeErr := json.NewDecoder(res.Body).Decode(&esResp); decodeErr != nil {
+		return nil, fmt.Errorf("failed to decode suspected misclassifications response: %w", decodeErr)
+	}
+
+	docs := make([]domain.SuspectedMisclassificationDoc, 0, len(esResp.Hits.Hits))
+	for _, hit := range esResp.Hits.Hits {
+		crimeRel := ""
+		if hit.Source.Crime != nil {
+			crimeRel = hit.Source.Crime.StreetCrimeRelevance
+		}
+		docs = append(docs, domain.SuspectedMisclassificationDoc{
+			ID:             hit.ID,
+			Title:          hit.Source.Title,
+			CanonicalURL:   hit.Source.CanonicalURL,
+			ContentType:    hit.Source.ContentType,
+			CrimeRelevance: crimeRel,
+			Confidence:     hit.Source.Confidence,
+			CrawledAt:      hit.Source.CrawledAt,
+		})
+	}
+	return &domain.SuspectedMisclassificationResponse{
+		Documents: docs,
+		Total:     esResp.Hits.Total.Value,
+	}, nil
+}
+
+// extractContentTypeXCrime parses the content_type_x_crime nested terms aggregation into a map[content_type]map[crime_relevance]count.
+func extractContentTypeXCrime(raw json.RawMessage) map[string]map[string]int64 {
+	result := make(map[string]map[string]int64)
+	var outer struct {
+		Buckets []struct {
+			Key      string          `json:"key"`
+			DocCount int64           `json:"doc_count"`
+			Crime    json.RawMessage `json:"crime"`
+		} `json:"buckets"`
+	}
+	if err := json.Unmarshal(raw, &outer); err != nil {
+		return result
+	}
+	for _, b := range outer.Buckets {
+		inner := extractBuckets(b.Crime)
+		if len(inner) > 0 {
+			result[b.Key] = inner
+		}
+	}
+	return result
+}
+
+const defaultDriftDays = 7
+
+// GetClassificationDriftTimeseries returns daily content_type breakdown for the last N days (default 7).
+func (s *AggregationService) GetClassificationDriftTimeseries(
+	ctx context.Context,
+	days int,
+) (*domain.ClassificationDriftTimeseriesResponse, error) {
+	if days <= 0 {
+		days = defaultDriftDays
+	}
+	query := map[string]any{
+		"size": 0,
+		"query": map[string]any{
+			"bool": map[string]any{
+				"filter": []any{
+					map[string]any{"range": map[string]any{"crawled_at": map[string]any{"gte": fmt.Sprintf("now-%dd", days)}}},
+				},
+			},
+		},
+		"aggs": map[string]any{
+			"by_day": map[string]any{
+				"date_histogram": map[string]any{
+					"field":             "crawled_at",
+					"calendar_interval": "day",
+					"format":            "yyyy-MM-dd",
+				},
+				"aggs": map[string]any{
+					"by_content_type": map[string]any{
+						"terms": map[string]any{"field": "content_type", "size": driftAggSize},
+					},
+				},
+			},
+		},
+	}
+
+	res, err := s.esClient.SearchAllClassifiedContent(ctx, query)
+	if err != nil {
+		return nil, fmt.Errorf("failed to execute classification drift timeseries: %w", err)
+	}
+	defer func() { _ = res.Body.Close() }()
+
+	var esResp struct {
+		Aggregations struct {
+			ByDay struct {
+				Buckets []struct {
+					KeyAsString string          `json:"key_as_string"`
+					DocCount    int64           `json:"doc_count"`
+					ByContent   json.RawMessage `json:"by_content_type"`
+				} `json:"buckets"`
+			} `json:"by_day"`
+		} `json:"aggregations"`
+	}
+	if decodeErr := json.NewDecoder(res.Body).Decode(&esResp); decodeErr != nil {
+		return nil, fmt.Errorf("failed to decode classification drift timeseries: %w", decodeErr)
+	}
+
+	buckets := make([]domain.ClassificationDriftTimeseriesBucket, 0, len(esResp.Aggregations.ByDay.Buckets))
+	for _, b := range esResp.Aggregations.ByDay.Buckets {
+		byType := extractBuckets(b.ByContent)
+		articleCount := byType["article"]
+		pageCount := byType["page"]
+		otherCount := b.DocCount - articleCount - pageCount
+		if otherCount < 0 {
+			otherCount = 0
+		}
+		buckets = append(buckets, domain.ClassificationDriftTimeseriesBucket{
+			Date:         b.KeyAsString,
+			ArticleCount: articleCount,
+			PageCount:    pageCount,
+			OtherCount:   otherCount,
+			Total:        b.DocCount,
+		})
+	}
+	return &domain.ClassificationDriftTimeseriesResponse{Buckets: buckets}, nil
 }
 
 // buildSourceCountMaps splits index doc counts into raw and classified maps keyed by source name.

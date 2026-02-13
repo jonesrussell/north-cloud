@@ -153,13 +153,20 @@ func (s *Service) pollAndRoute(ctx context.Context) {
 			return
 		}
 
+		batchSize := len(articles)
 		s.logger.Info("Processing articles batch",
-			infralogger.Int("count", len(articles)),
+			infralogger.Int("batch_size", batchSize),
+			infralogger.Int("articles_fetched_total", batchSize),
 		)
 
+		var publishedCount int
 		for i := range articles {
-			s.routeArticle(ctx, &articles[i], channels)
+			publishedCount += len(s.routeArticle(ctx, &articles[i], channels))
 		}
+		s.logger.Info("Batch complete",
+			infralogger.Int("articles_in_batch", batchSize),
+			infralogger.Int("articles_published_total", publishedCount),
+		)
 
 		// Update cursor
 		lastArticle := articles[len(articles)-1]
@@ -187,8 +194,8 @@ func (s *Service) publishToChannels(ctx context.Context, article *Article, chann
 	return published
 }
 
-// routeArticle routes a single article to Layer 1, Layer 2, and Layer 3 channels
-func (s *Service) routeArticle(ctx context.Context, article *Article, channels []models.Channel) {
+// routeArticle routes a single article to Layer 1–6 channels and returns the list of channel names where publish succeeded.
+func (s *Service) routeArticle(ctx context.Context, article *Article, channels []models.Channel) []string {
 	var publishedChannels []string
 
 	// Layer 1: Automatic topic channels (skip topics with dedicated layers)
@@ -219,6 +226,7 @@ func (s *Service) routeArticle(ctx context.Context, article *Article, channels [
 
 	// Emit pipeline event (one event per article, all channels in metadata)
 	s.emitPublishedEvent(ctx, article, publishedChannels)
+	return publishedChannels
 }
 
 // MiningData holds mining classification fields from Elasticsearch.

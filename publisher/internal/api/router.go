@@ -139,6 +139,7 @@ func (r *Router) setupServiceRoutes(router *gin.Engine) {
 	// Stats
 	stats := v1.Group("/stats")
 	stats.GET("/overview", r.getStatsOverview)
+	stats.GET("/publish-volume", r.getPublishVolume)
 	stats.GET("/channels/active", r.getActiveChannels)
 	stats.GET("/channels", r.getChannelStats)
 

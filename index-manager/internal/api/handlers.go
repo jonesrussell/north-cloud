@@ -688,6 +688,79 @@ func (h *Handler) GetSourceHealth(c *gin.Context) {
 	c.JSON(http.StatusOK, result)
 }
 
+const defaultClassificationDriftHours = 24
+
+// GetClassificationDrift handles GET /api/v1/aggregations/classification-drift
+func (h *Handler) GetClassificationDrift(c *gin.Context) {
+	req := &domain.ClassificationDriftRequest{Hours: defaultClassificationDriftHours}
+	if v := c.Query("hours"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 {
+			req.Hours = n
+		}
+	}
+	if v := c.QueryArray("sources"); len(v) > 0 {
+		req.Sources = v
+	}
+	result, err := h.aggregationService.GetClassificationDriftAggregation(c.Request.Context(), req)
+	if err != nil {
+		h.logger.Error("Failed to get classification drift aggregation", infralogger.Error(err))
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, result)
+}
+
+// GetClassificationDriftTimeseries handles GET /api/v1/aggregations/classification-drift-timeseries
+func (h *Handler) GetClassificationDriftTimeseries(c *gin.Context) {
+	days := 7
+	if v := c.Query("days"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 {
+			days = n
+		}
+	}
+	result, err := h.aggregationService.GetClassificationDriftTimeseries(c.Request.Context(), days)
+	if err != nil {
+		h.logger.Error("Failed to get classification drift timeseries", infralogger.Error(err))
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, result)
+}
+
+// GetContentTypeMismatch handles GET /api/v1/aggregations/content-type-mismatch
+func (h *Handler) GetContentTypeMismatch(c *gin.Context) {
+	hours := defaultClassificationDriftHours
+	if v := c.Query("hours"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 {
+			hours = n
+		}
+	}
+	result, err := h.aggregationService.GetContentTypeMismatchCount(c.Request.Context(), hours)
+	if err != nil {
+		h.logger.Error("Failed to get content type mismatch count", infralogger.Error(err))
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, result)
+}
+
+// GetSuspectedMisclassifications handles GET /api/v1/aggregations/suspected-misclassifications
+func (h *Handler) GetSuspectedMisclassifications(c *gin.Context) {
+	hours := defaultClassificationDriftHours
+	if v := c.Query("hours"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 {
+			hours = n
+		}
+	}
+	result, err := h.aggregationService.GetSuspectedMisclassifications(c.Request.Context(), hours)
+	if err != nil {
+		h.logger.Error("Failed to get suspected misclassifications", infralogger.Error(err))
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, result)
+}
+
 // parseAggregationRequest extracts filters from query parameters
 func (h *Handler) parseAggregationRequest(c *gin.Context) *domain.AggregationRequest {
 	req := &domain.AggregationRequest{

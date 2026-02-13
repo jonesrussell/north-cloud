@@ -262,6 +262,7 @@ func (b *BatchProcessorV2) processItem(ctx context.Context, workerID int, item *
 	// Record success metrics
 	if b.telemetry != nil {
 		b.telemetry.RecordClassification(ctx, item.SourceName, true, duration)
+		b.telemetry.RecordContentType(ctx, classificationResult.ContentType)
 		if !item.CrawledAt.IsZero() {
 			b.telemetry.RecordClassificationLag(ctx, item.CrawledAt)
 		}

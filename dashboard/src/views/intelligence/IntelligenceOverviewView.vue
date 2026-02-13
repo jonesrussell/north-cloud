@@ -5,6 +5,9 @@ import ProblemsBanner from '@/features/intelligence/problems/ProblemsBanner.vue'
 import PipelineKPIs from '@/features/intelligence/components/PipelineKPIs.vue'
 import SourceHealthTable from '@/features/intelligence/components/SourceHealthTable.vue'
 import ContentSummaryCards from '@/features/intelligence/components/ContentSummaryCards.vue'
+import ContentTypeDriftPanel from '@/features/intelligence/components/ContentTypeDriftPanel.vue'
+import SuspectedMisclassificationTable from '@/features/intelligence/components/SuspectedMisclassificationTable.vue'
+import PublishabilityFunnel from '@/features/intelligence/components/PublishabilityFunnel.vue'
 
 const { metrics, loading, problems, refresh } = usePipelineHealth()
 </script>
@@ -63,6 +66,33 @@ const { metrics, loading, problems, refresh } = usePipelineHealth()
           Content Intelligence
         </h2>
         <ContentSummaryCards />
+      </div>
+
+      <!-- Publishability funnel -->
+      <div>
+        <h2 class="text-sm font-medium uppercase tracking-wider text-muted-foreground mb-3">
+          Publishability Funnel
+        </h2>
+        <PublishabilityFunnel />
+      </div>
+
+      <!-- Content Type Drift (last 7 days) -->
+      <div>
+        <h2 class="text-sm font-medium uppercase tracking-wider text-muted-foreground mb-3">
+          Content Type Drift
+        </h2>
+        <ContentTypeDriftPanel />
+      </div>
+
+      <!-- Recent misclassifications (24h) - one-click preset -->
+      <div id="recent-misclassifications">
+        <h2 class="text-sm font-medium uppercase tracking-wider text-muted-foreground mb-3">
+          <a
+            href="#recent-misclassifications"
+            class="hover:underline"
+          >Recent misclassifications (24h)</a>
+        </h2>
+        <SuspectedMisclassificationTable />
       </div>
     </template>
   </div>

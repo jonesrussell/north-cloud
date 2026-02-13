@@ -274,6 +274,50 @@ func (r *Repository) GetPublishCountByChannel(ctx context.Context, channelName s
 	return count, nil
 }
 
+// GetChannelStatsSince retrieves per-channel count and last published time for publishes since the given time (e.g. last 24h).
+func (r *Repository) GetChannelStatsSince(ctx context.Context, since time.Time) (map[string]ChannelStat, int, error) {
+	query := `
+		SELECT
+			channel_name,
+			COUNT(*) as total_published,
+			MAX(published_at) as last_published
+		FROM publish_history
+		WHERE published_at >= $1
+		GROUP BY channel_name
+		ORDER BY total_published DESC
+	`
+	rows, err := r.db.QueryContext(ctx, query, since)
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to get channel stats since: %w", err)
+	}
+	defer rows.Close()
+
+	stats := make(map[string]ChannelStat)
+	var total int
+	for rows.Next() {
+		var channelName string
+		var totalPublished int
+		var lastPublished sql.NullTime
+
+		if scanErr := rows.Scan(&channelName, &totalPublished, &lastPublished); scanErr != nil {
+			return nil, 0, fmt.Errorf("failed to scan row: %w", scanErr)
+		}
+		total += totalPublished
+		var lastPub *time.Time
+		if lastPublished.Valid {
+			lastPub = &lastPublished.Time
+		}
+		stats[channelName] = ChannelStat{
+			TotalPublished: totalPublished,
+			LastPublished:  lastPub,
+		}
+	}
+	if rowsErr := rows.Err(); rowsErr != nil {
+		return nil, 0, fmt.Errorf("row iteration error: %w", rowsErr)
+	}
+	return stats, total, nil
+}
+
 // GetChannelStats retrieves statistics for all channels including last published date and total count
 func (r *Repository) GetChannelStats(ctx context.Context) (map[string]ChannelStat, error) {
 	query := `

@@ -63,3 +63,54 @@ type SourceHealthResponse struct {
 	Sources []SourceHealth `json:"sources"`
 	Total   int            `json:"total"`
 }
+
+// ClassificationDriftAggregation represents content_type and crime_relevance counts for drift detection.
+// Uses crime.street_crime_relevance (classifier field name).
+type ClassificationDriftAggregation struct {
+	ByContentType     map[string]int64            `json:"by_content_type"`
+	ByCrimeRelevance  map[string]int64            `json:"by_crime_relevance"`
+	ContentTypeXCrime map[string]map[string]int64 `json:"content_type_x_crime"`
+	TotalDocuments    int64                       `json:"total_documents"`
+}
+
+// ClassificationDriftRequest holds optional filters for classification drift (e.g. hours, source).
+type ClassificationDriftRequest struct {
+	Hours   int      `json:"hours,omitempty"` // default 24
+	Sources []string `json:"sources,omitempty"`
+}
+
+// ContentTypeMismatchCount is the count of docs with content_type=page AND crime.street_crime_relevance=core_street_crime.
+type ContentTypeMismatchCount struct {
+	Count int64 `json:"count"`
+}
+
+// SuspectedMisclassificationDoc is a single document flagged as possible misclassification (page + crime topic).
+type SuspectedMisclassificationDoc struct {
+	ID             string  `json:"id"`
+	Title          string  `json:"title"`
+	CanonicalURL   string  `json:"canonical_url"`
+	ContentType    string  `json:"content_type"`
+	CrimeRelevance string  `json:"crime_relevance"`
+	Confidence     float64 `json:"confidence,omitempty"`
+	CrawledAt      string  `json:"crawled_at,omitempty"`
+}
+
+// SuspectedMisclassificationResponse is the list of suspected misclassifications and total.
+type SuspectedMisclassificationResponse struct {
+	Documents []SuspectedMisclassificationDoc `json:"documents"`
+	Total     int64                           `json:"total"`
+}
+
+// ClassificationDriftTimeseriesBucket is one day's bucket for content type drift over time.
+type ClassificationDriftTimeseriesBucket struct {
+	Date         string `json:"date"`
+	ArticleCount int64  `json:"article_count"`
+	PageCount    int64  `json:"page_count"`
+	OtherCount   int64  `json:"other_count"`
+	Total        int64  `json:"total"`
+}
+
+// ClassificationDriftTimeseriesResponse is the 7-day (or N-day) daily breakdown.
+type ClassificationDriftTimeseriesResponse struct {
+	Buckets []ClassificationDriftTimeseriesBucket `json:"buckets"`
+}

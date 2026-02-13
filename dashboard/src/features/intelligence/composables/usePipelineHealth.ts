@@ -100,14 +100,24 @@ export function usePipelineHealth() {
     }
   }
 
+  async function fetchContentTypeMismatchCount(): Promise<number> {
+    try {
+      const res = await indexManagerApi.aggregations.getContentTypeMismatch({ hours: 24 })
+      return res.data?.count ?? 0
+    } catch {
+      return 0
+    }
+  }
+
   async function fetch() {
     loading.value = true
-    const [crawler, indexes, publisher] = await Promise.all([
+    const [crawler, indexes, publisher, mismatchCount] = await Promise.all([
       fetchCrawlerMetrics(),
       fetchIndexMetrics(),
       fetchPublisherMetrics(),
+      fetchContentTypeMismatchCount(),
     ])
-    metrics.value = { crawler, indexes, publisher }
+    metrics.value = { crawler, indexes, publisher, contentTypeMismatchCount: mismatchCount }
     loading.value = false
   }
 

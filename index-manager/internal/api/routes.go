@@ -43,9 +43,13 @@ func SetupRoutes(router *gin.Engine, handler *Handler) {
 
 	// Aggregation routes
 	aggregations := v1.Group("/aggregations")
-	aggregations.GET("/crime", handler.GetCrimeAggregation)       // GET /api/v1/aggregations/crime
-	aggregations.GET("/location", handler.GetLocationAggregation) // GET /api/v1/aggregations/location
-	aggregations.GET("/overview", handler.GetOverviewAggregation) // GET /api/v1/aggregations/overview
-	aggregations.GET("/mining", handler.GetMiningAggregation)     // GET /api/v1/aggregations/mining
-	aggregations.GET("/source-health", handler.GetSourceHealth)   // GET /api/v1/aggregations/source-health
+	aggregations.GET("/crime", handler.GetCrimeAggregation)                   // GET /api/v1/aggregations/crime
+	aggregations.GET("/location", handler.GetLocationAggregation)             // GET /api/v1/aggregations/location
+	aggregations.GET("/overview", handler.GetOverviewAggregation)             // GET /api/v1/aggregations/overview
+	aggregations.GET("/mining", handler.GetMiningAggregation)                 // GET /api/v1/aggregations/mining
+	aggregations.GET("/source-health", handler.GetSourceHealth)               // GET /api/v1/aggregations/source-health
+	aggregations.GET("/classification-drift", handler.GetClassificationDrift) // GET /api/v1/aggregations/classification-drift
+	aggregations.GET("/classification-drift-timeseries", handler.GetClassificationDriftTimeseries)
+	aggregations.GET("/content-type-mismatch", handler.GetContentTypeMismatch)
+	aggregations.GET("/suspected-misclassifications", handler.GetSuspectedMisclassifications)
 }

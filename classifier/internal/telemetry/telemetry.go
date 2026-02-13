@@ -51,6 +51,9 @@ type Metrics struct {
 	OutboxBacklog    prometheus.Gauge
 	OutboxPublished  prometheus.Counter
 	OutboxPublishLag prometheus.Histogram
+
+	// Content type distribution (article vs page vs listing vs unknown)
+	ContentTypeTotal *prometheus.CounterVec
 }
 
 // Provider wraps telemetry providers
@@ -83,7 +86,15 @@ func initMetrics() *Metrics {
 	initLagMetrics(m)
 	initDLQMetrics(m)
 	initOutboxMetrics(m)
+	initContentTypeMetrics(m)
 	return m
+}
+
+func initContentTypeMetrics(m *Metrics) {
+	m.ContentTypeTotal = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "classifier_content_type_total",
+		Help: "Total documents classified by content_type (article, page, listing, unknown)",
+	}, []string{"content_type"})
 }
 
 func initProcessingMetrics(m *Metrics) {
@@ -215,6 +226,15 @@ func (p *Provider) RecordClassification(ctx context.Context, source string, succ
 		p.Metrics.DocumentsProcessed.WithLabelValues(source).Inc()
 	}
 	p.Metrics.ProcessingDuration.WithLabelValues(source).Observe(duration.Seconds())
+}
+
+// RecordContentType increments the content_type counter (article, page, listing, or unknown).
+func (p *Provider) RecordContentType(ctx context.Context, contentType string) {
+	label := contentType
+	if label == "" {
+		label = "unknown"
+	}
+	p.Metrics.ContentTypeTotal.WithLabelValues(label).Inc()
 }
 
 // RecordClassificationFailure records a failed classification with error code

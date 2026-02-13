@@ -9,6 +9,44 @@ import (
 	"github.com/jonesrussell/north-cloud/publisher/internal/models"
 )
 
+const defaultPublishVolumeHours = 24
+
+// getPublishVolume returns messages published to Redis in the last N hours (default 24).
+// GET /api/v1/stats/publish-volume?hours=24
+func (r *Router) getPublishVolume(c *gin.Context) {
+	ctx := c.Request.Context()
+	hours := defaultPublishVolumeHours
+	if v := c.Query("hours"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 {
+			hours = n
+		}
+	}
+	since := time.Now().Add(-time.Duration(hours) * time.Hour)
+	byChannel, total, err := r.repo.GetChannelStatsSince(ctx, since)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get publish volume"})
+		return
+	}
+	channels := make([]gin.H, 0, len(byChannel))
+	for name, stat := range byChannel {
+		ch := gin.H{
+			"channel_name":       name,
+			"messages_last_24h":  stat.TotalPublished,
+			"last_published_at":  nil,
+		}
+		if stat.LastPublished != nil {
+			ch["last_published_at"] = stat.LastPublished.Format(time.RFC3339)
+		}
+		channels = append(channels, ch)
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"hours":                hours,
+		"messages_total":       total,
+		"messages_per_channel": channels,
+		"generated_at":         time.Now().Format(time.RFC3339),
+	})
+}
+
 // getStatsOverview returns overall publishing statistics
 // GET /api/v1/stats/overview?period=today|week|month
 func (r *Router) getStatsOverview(c *gin.Context) {
