@@ -286,6 +286,15 @@ Example `.cursor/mcp.json` when Cursor runs on the prod host:
 
 Adjust the container name if different (e.g. `docker ps` to see the actual name). The container name often includes the project prefix (e.g. `north-cloud-mcp-north-cloud-1`).
 
+When Cursor runs on a **different** host (e.g. your laptop), add a second MCP server that connects to production via SSH so agents can run production checks (Grafana/ES debugging, `list_indexes`, `search_articles`, etc.) without manual SSH:
+
+```json
+"North Cloud (Production)": {
+  "command": "ssh",
+  "args": ["jones@northcloud.biz", "docker exec -i north-cloud-mcp-north-cloud-1 /app/mcp-north-cloud"]
+}
+```
+
 ### Prompts
 
 The server supports `prompts/list` and `prompts/get`. Clients (e.g. Cursor) can expose these as slash commands or prompt templates.

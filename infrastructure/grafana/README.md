@@ -434,6 +434,7 @@ curl -s http://admin:changeme@localhost:3000/api/dashboards/uid/north-cloud-logs
    ls -la /opt/north-cloud/infrastructure/grafana/provisioning/dashboards/
    ```
    You should see `north-cloud-pipeline.json` and `north-cloud-logs.json`. If `north-cloud-pipeline.json` is missing, pull/deploy the repo so the file is present.
+   **Tip:** If Cursor has the **North Cloud (Production)** MCP server configured (`.cursor/mcp.json`), you can run production checks (e.g. `list_indexes`, `search_articles`) via MCP instead of SSH + docker exec.
 3. **Restart Grafana** after deploying new or updated dashboard JSON:
    ```bash
    docker compose -f docker-compose.base.yml -f docker-compose.prod.yml restart grafana
@@ -452,6 +453,20 @@ Classified content indexes use **`crawled_at`** as the time field, not `@timesta
 3. Save & test.
 
 Provisioning already sets `timeField: crawled_at` in `provisioning/datasources/elasticsearch.yml`; restart Grafana so the provisioned config is loaded, or set it manually as above.
+
+### Elasticsearch panels show "No data"
+
+The Connection tab only shows URL; the index and time field are set **further down** the same page:
+
+1. Open **Connections** → **Data sources** → **elasticsearch**.
+2. Scroll to the **Elasticsearch details** section (below Connection and Authentication).
+3. Set **Index name** to **`*_classified_content`**. (Without this, Grafana does not query your classified indexes.)
+4. Set **Time field name** to **`crawled_at`**.
+5. Click **Save & test**.
+
+If you use provisioning, ensure `provisioning/datasources/elasticsearch.yml` has `database: '*_classified_content'` and `jsonData.timeField: crawled_at`, then restart Grafana. Set the dashboard time range to **Last 7 days** (or **Last 30 days**) so the time filter includes existing data.
+
+**Why `content_type.keyword`:** Some production indices map `content_type` as text (aggregations disabled). The pipeline dashboard uses `content_type.keyword` for the Content Type and Crime Relevance panels so all shards succeed; indices with `content_type` as keyword still work via the `.keyword` subfield where present.
 
 ### Grafana Shows "Loki: Bad Gateway"
 

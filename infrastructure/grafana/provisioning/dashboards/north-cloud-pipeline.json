@@ -28,8 +28,7 @@
           "query": "",
           "metrics": [ { "type": "count", "id": "1" } ],
           "bucketAggs": [
-            { "type": "date_histogram", "field": "crawled_at", "id": "2", "settings": { "interval": "1d", "min_doc_count": "0", "trimEdges": "0" } },
-            { "type": "terms", "field": "content_type", "id": "3", "settings": { "size": "10", "order": "desc", "orderBy": "_count" } }
+            { "type": "terms", "field": "content_type.keyword", "id": "2", "settings": { "size": "10", "order": "desc", "orderBy": "_count" } }
           ]
         }
       ]
@@ -47,9 +46,8 @@
           "query": "",
           "metrics": [ { "type": "count", "id": "1" } ],
           "bucketAggs": [
-            { "type": "date_histogram", "field": "crawled_at", "id": "2", "settings": { "interval": "1d", "min_doc_count": "0", "trimEdges": "0" } },
-            { "type": "terms", "field": "content_type", "id": "3", "settings": { "size": "10", "order": "desc", "orderBy": "_count" } },
-            { "type": "terms", "field": "crime.street_crime_relevance", "id": "4", "settings": { "size": "10", "order": "desc", "orderBy": "_count" } }
+            { "type": "terms", "field": "content_type.keyword", "id": "2", "settings": { "size": "10", "order": "desc", "orderBy": "_count" } },
+            { "type": "terms", "field": "crime.street_crime_relevance", "id": "3", "settings": { "size": "10", "order": "desc", "orderBy": "_count" } }
           ]
         }
       ]
@@ -148,7 +146,7 @@
   "schemaVersion": 38,
   "tags": ["pipeline", "north-cloud", "streetcode"],
   "templating": { "list": [] },
-  "time": { "from": "now-6h", "to": "now" },
+  "time": { "from": "now-7d", "to": "now" },
   "timezone": "browser",
   "title": "North Cloud → StreetCode Pipeline (Loki + ES)",
   "uid": "north-cloud-pipeline",
