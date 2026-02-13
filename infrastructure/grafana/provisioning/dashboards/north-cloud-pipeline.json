@@ -27,7 +27,10 @@
           "alias": "*_classified_content",
           "query": "",
           "metrics": [ { "type": "count", "id": "1" } ],
-          "bucketAggs": [ { "type": "terms", "field": "content_type", "id": "2", "settings": { "size": "10", "order": "desc", "orderBy": "_count" } } ]
+          "bucketAggs": [
+            { "type": "date_histogram", "field": "crawled_at", "id": "2", "settings": { "interval": "1d", "min_doc_count": "0", "trimEdges": "0" } },
+            { "type": "terms", "field": "content_type", "id": "3", "settings": { "size": "10", "order": "desc", "orderBy": "_count" } }
+          ]
         }
       ]
     },
@@ -44,8 +47,9 @@
           "query": "",
           "metrics": [ { "type": "count", "id": "1" } ],
           "bucketAggs": [
-            { "type": "terms", "field": "content_type", "id": "2", "settings": { "size": "10", "order": "desc", "orderBy": "_count" } },
-            { "type": "terms", "field": "crime.street_crime_relevance", "id": "3", "settings": { "size": "10", "order": "desc", "orderBy": "_count" } }
+            { "type": "date_histogram", "field": "crawled_at", "id": "2", "settings": { "interval": "1d", "min_doc_count": "0", "trimEdges": "0" } },
+            { "type": "terms", "field": "content_type", "id": "3", "settings": { "size": "10", "order": "desc", "orderBy": "_count" } },
+            { "type": "terms", "field": "crime.street_crime_relevance", "id": "4", "settings": { "size": "10", "order": "desc", "orderBy": "_count" } }
           ]
         }
       ]

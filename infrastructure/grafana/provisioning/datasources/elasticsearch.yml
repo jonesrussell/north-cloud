@@ -11,6 +11,8 @@ datasources:
     url: http://elasticsearch:9200
     isDefault: false
     editable: true
+    # Default index for all queries (classified content indexes)
+    database: '*_classified_content'
     jsonData:
       esVersion: '9.0.0'
       logMessageField: msg

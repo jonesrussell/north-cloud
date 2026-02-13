@@ -30,9 +30,9 @@ func (r *Router) getPublishVolume(c *gin.Context) {
 	channels := make([]gin.H, 0, len(byChannel))
 	for name, stat := range byChannel {
 		ch := gin.H{
-			"channel_name":       name,
-			"messages_last_24h":  stat.TotalPublished,
-			"last_published_at":  nil,
+			"channel_name":      name,
+			"messages_last_24h": stat.TotalPublished,
+			"last_published_at": nil,
 		}
 		if stat.LastPublished != nil {
 			ch["last_published_at"] = stat.LastPublished.Format(time.RFC3339)
