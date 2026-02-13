@@ -84,7 +84,7 @@ func runRouterWithStop() (func(), error) {
 		DiscoveryInterval: cfg.DiscoveryInterval,
 		BatchSize:         cfg.BatchSize,
 	}
-	routerService := router.NewService(repo, discoveryService, esClient, redisClient, routerConfig, appLogger)
+	routerService := router.NewService(repo, discoveryService, esClient, redisClient, routerConfig, appLogger, nil)
 
 	// Setup graceful shutdown context
 	serviceCtx, cancel := context.WithCancel(context.Background())

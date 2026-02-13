@@ -14,6 +14,7 @@ import (
 	"github.com/jonesrussell/north-cloud/publisher/internal/discovery"
 	"github.com/jonesrussell/north-cloud/publisher/internal/models"
 	infralogger "github.com/north-cloud/infrastructure/logger"
+	"github.com/north-cloud/infrastructure/pipeline"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -40,6 +41,7 @@ type Service struct {
 	logger      infralogger.Logger
 	config      Config
 	lastSort    []any
+	pipeline    *pipeline.Client
 }
 
 // NewService creates a new router service
@@ -50,6 +52,7 @@ func NewService(
 	redisClient *redis.Client,
 	cfg Config,
 	logger infralogger.Logger,
+	pipelineClient *pipeline.Client,
 ) *Service {
 	// Apply defaults
 	const (
@@ -76,6 +79,7 @@ func NewService(
 		logger:      logger,
 		config:      cfg,
 		lastSort:    []any{},
+		pipeline:    pipelineClient,
 	}
 }
 
@@ -171,48 +175,50 @@ func (s *Service) pollAndRoute(ctx context.Context) {
 	}
 }
 
+// publishToChannels publishes an article to each channel in the list and returns
+// the names of channels where publishing succeeded.
+func (s *Service) publishToChannels(ctx context.Context, article *Article, channels []string) []string {
+	var published []string
+	for _, channel := range channels {
+		if s.publishToChannel(ctx, article, channel, nil) {
+			published = append(published, channel)
+		}
+	}
+	return published
+}
+
 // routeArticle routes a single article to Layer 1, Layer 2, and Layer 3 channels
 func (s *Service) routeArticle(ctx context.Context, article *Article, channels []models.Channel) {
+	var publishedChannels []string
+
 	// Layer 1: Automatic topic channels (skip topics with dedicated layers)
-	for _, topic := range article.Topics {
-		if layer1SkipTopics[topic] {
-			continue
-		}
-		channel := fmt.Sprintf("articles:%s", topic)
-		s.publishToChannel(ctx, article, channel, nil)
-	}
+	layer1 := GenerateLayer1Channels(article)
+	publishedChannels = append(publishedChannels, s.publishToChannels(ctx, article, layer1)...)
 
 	// Layer 2: Custom channels
 	for i := range channels {
 		ch := &channels[i]
 		if ch.Rules.Matches(article.QualityScore, article.ContentType, article.Topics) {
-			s.publishToChannel(ctx, article, ch.RedisChannel, &ch.ID)
+			if s.publishToChannel(ctx, article, ch.RedisChannel, &ch.ID) {
+				publishedChannels = append(publishedChannels, ch.RedisChannel)
+			}
 		}
 	}
 
 	// Layer 3: Crime classification channels
-	crimeChannels := GenerateCrimeChannels(article)
-	for _, channel := range crimeChannels {
-		s.publishToChannel(ctx, article, channel, nil)
-	}
+	publishedChannels = append(publishedChannels, s.publishToChannels(ctx, article, GenerateCrimeChannels(article))...)
 
 	// Layer 4: Location-based channels
-	locationChannels := GenerateLocationChannels(article)
-	for _, channel := range locationChannels {
-		s.publishToChannel(ctx, article, channel, nil)
-	}
+	publishedChannels = append(publishedChannels, s.publishToChannels(ctx, article, GenerateLocationChannels(article))...)
 
 	// Layer 5: Mining classification channels
-	miningChannels := GenerateMiningChannels(article)
-	for _, channel := range miningChannels {
-		s.publishToChannel(ctx, article, channel, nil)
-	}
+	publishedChannels = append(publishedChannels, s.publishToChannels(ctx, article, GenerateMiningChannels(article))...)
 
 	// Layer 6: Entertainment classification channels
-	entertainmentChannels := GenerateEntertainmentChannels(article)
-	for _, channel := range entertainmentChannels {
-		s.publishToChannel(ctx, article, channel, nil)
-	}
+	publishedChannels = append(publishedChannels, s.publishToChannels(ctx, article, GenerateEntertainmentChannels(article))...)
+
+	// Emit pipeline event (one event per article, all channels in metadata)
+	s.emitPublishedEvent(ctx, article, publishedChannels)
 }
 
 // MiningData holds mining classification fields from Elasticsearch.
@@ -465,8 +471,9 @@ func (s *Service) buildESQuery() map[string]any {
 	return query
 }
 
-// publishToChannel publishes an article to a Redis channel
-func (s *Service) publishToChannel(ctx context.Context, article *Article, channelName string, channelID *uuid.UUID) {
+// publishToChannel publishes an article to a Redis channel.
+// Returns true if the article was successfully published, false otherwise.
+func (s *Service) publishToChannel(ctx context.Context, article *Article, channelName string, channelID *uuid.UUID) bool {
 	// Check if already published to this channel
 	published, checkErr := s.repo.CheckArticlePublished(ctx, article.ID, channelName)
 	if checkErr != nil {
@@ -475,11 +482,11 @@ func (s *Service) publishToChannel(ctx context.Context, article *Article, channe
 			infralogger.String("channel", channelName),
 			infralogger.Error(checkErr),
 		)
-		return
+		return false
 	}
 
 	if published {
-		return
+		return false
 	}
 
 	// Build message payload
@@ -535,7 +542,7 @@ func (s *Service) publishToChannel(ctx context.Context, article *Article, channe
 			infralogger.String("article_id", article.ID),
 			infralogger.Error(err),
 		)
-		return
+		return false
 	}
 
 	if publishErr := s.redisClient.Publish(ctx, channelName, messageJSON).Err(); publishErr != nil {
@@ -544,7 +551,7 @@ func (s *Service) publishToChannel(ctx context.Context, article *Article, channe
 			infralogger.String("channel", channelName),
 			infralogger.Error(publishErr),
 		)
-		return
+		return false
 	}
 
 	// Record in publish history
@@ -569,6 +576,34 @@ func (s *Service) publishToChannel(ctx context.Context, article *Article, channe
 		infralogger.String("title", article.Title),
 		infralogger.String("channel", channelName),
 	)
+
+	return true
+}
+
+// emitPublishedEvent emits a pipeline event after an article is published to channels.
+func (s *Service) emitPublishedEvent(ctx context.Context, article *Article, channels []string) {
+	if s.pipeline == nil || len(channels) == 0 {
+		return
+	}
+
+	pipelineErr := s.pipeline.Emit(ctx, pipeline.Event{
+		ArticleURL: article.URL,
+		SourceName: article.Source,
+		Stage:      "published",
+		OccurredAt: time.Now(),
+		Metadata: map[string]any{
+			"channels":      channels,
+			"quality_score": article.QualityScore,
+			"topics":        article.Topics,
+		},
+	})
+	if pipelineErr != nil {
+		s.logger.Warn("Failed to emit pipeline event",
+			infralogger.Error(pipelineErr),
+			infralogger.String("article_id", article.ID),
+			infralogger.String("stage", "published"),
+		)
+	}
 }
 
 // GenerateLayer1Channels returns topic-based channel names for an article.
