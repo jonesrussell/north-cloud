@@ -487,9 +487,21 @@ func (s *Server) handleListSources(ctx context.Context, id any, arguments json.R
 		paginatedSources = sources[offset:end]
 	}
 
+	// Return compact summaries (omit selectors and timestamps to reduce token usage)
+	summaries := make([]map[string]any, 0, len(paginatedSources))
+	for i := range paginatedSources {
+		summaries = append(summaries, map[string]any{
+			"id":     paginatedSources[i].ID,
+			"name":   paginatedSources[i].Name,
+			"url":    paginatedSources[i].URL,
+			"type":   paginatedSources[i].Type,
+			"active": paginatedSources[i].Active,
+		})
+	}
+
 	return s.successResponse(id, map[string]any{
-		"sources": paginatedSources,
-		"count":   len(paginatedSources),
+		"sources": summaries,
+		"count":   len(summaries),
 		"total":   total,
 		"limit":   limit,
 		"offset":  offset,
