@@ -89,7 +89,7 @@ const maxVal = (): number => {
         class="space-y-2"
       >
         <div
-          v-for="(stage, i) in stages"
+          v-for="stage in stages"
           :key="stage.label"
           class="flex items-center gap-3"
         >

@@ -60,12 +60,24 @@ const hasResults = computed(() => documents.value.length > 0)
           <table class="w-full text-sm">
             <thead>
               <tr class="border-b text-left text-muted-foreground">
-                <th class="py-2 pr-2 font-medium">Title</th>
-                <th class="py-2 pr-2 font-medium">URL</th>
-                <th class="py-2 pr-2 font-medium">content_type</th>
-                <th class="py-2 pr-2 font-medium">crime_relevance</th>
-                <th class="py-2 pr-2 font-medium">confidence</th>
-                <th class="py-2 pr-2 font-medium">crawled_at</th>
+                <th class="py-2 pr-2 font-medium">
+                  Title
+                </th>
+                <th class="py-2 pr-2 font-medium">
+                  URL
+                </th>
+                <th class="py-2 pr-2 font-medium">
+                  content_type
+                </th>
+                <th class="py-2 pr-2 font-medium">
+                  crime_relevance
+                </th>
+                <th class="py-2 pr-2 font-medium">
+                  confidence
+                </th>
+                <th class="py-2 pr-2 font-medium">
+                  crawled_at
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -74,7 +86,10 @@ const hasResults = computed(() => documents.value.length > 0)
                 :key="doc.id"
                 class="border-b last:border-0"
               >
-                <td class="py-2 pr-2 max-w-[200px] truncate" :title="doc.title">
+                <td
+                  class="py-2 pr-2 max-w-[200px] truncate"
+                  :title="doc.title"
+                >
                   {{ doc.title || '—' }}
                 </td>
                 <td class="py-2 pr-2">
@@ -90,10 +105,18 @@ const hasResults = computed(() => documents.value.length > 0)
                   </a>
                   <span v-else>—</span>
                 </td>
-                <td class="py-2 pr-2">{{ doc.content_type || '—' }}</td>
-                <td class="py-2 pr-2">{{ doc.crime_relevance || '—' }}</td>
-                <td class="py-2 pr-2">{{ doc.confidence != null ? doc.confidence.toFixed(2) : '—' }}</td>
-                <td class="py-2 pr-2 text-muted-foreground">{{ doc.crawled_at || '—' }}</td>
+                <td class="py-2 pr-2">
+                  {{ doc.content_type || '—' }}
+                </td>
+                <td class="py-2 pr-2">
+                  {{ doc.crime_relevance || '—' }}
+                </td>
+                <td class="py-2 pr-2">
+                  {{ doc.confidence != null ? doc.confidence.toFixed(2) : '—' }}
+                </td>
+                <td class="py-2 pr-2 text-muted-foreground">
+                  {{ doc.crawled_at || '—' }}
+                </td>
               </tr>
             </tbody>
           </table>
