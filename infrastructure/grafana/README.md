@@ -468,6 +468,25 @@ If you use provisioning, ensure `provisioning/datasources/elasticsearch.yml` has
 
 **Why `content_type.keyword` / `crime.street_crime_relevance.keyword`:** Some production indices map these fields as text (aggregations disabled). The pipeline dashboard uses the `.keyword` subfield for Content Type and Crime Relevance panels so all shards succeed. The "Suspected Misclassifications" query uses `content_type.keyword:page` for the same reason.
 
+### StreetCode Ingestion (Loki) panels show "No data"
+
+The pipeline dashboard has three StreetCode panels that query Loki for `{project="north-cloud", service="streetcode"}`. They need StreetCode logs to be in Loki with those labels.
+
+**If StreetCode runs in Docker on the same host as North Cloud:**
+
+1. Use Docker Compose project name **`streetcode`** or **`streetcode-laravel`**. Alloy is configured to discover both and relabel logs as `service=streetcode`, `project=north-cloud`.
+2. Ensure the observability stack is up (Alloy, Loki) so Alloy can collect from StreetCode containers:
+   ```bash
+   docker compose -f docker-compose.base.yml -f docker-compose.prod.yml --profile observability up -d
+   ```
+3. Restart Alloy after any Alloy config change:
+   ```bash
+   docker compose -f docker-compose.base.yml -f docker-compose.prod.yml restart alloy
+   ```
+4. In Grafana Explore (Loki), run `{project="north-cloud", service="streetcode"}` to confirm logs appear.
+
+**If StreetCode runs outside Docker** (e.g. Laravel via systemd on the same or another host), logs must reach Loki by another path (e.g. Alloy reading journald, a file log shipper, or the app pushing to Loki). Configure that pipeline and ensure logs are tagged with `service=streetcode` and `project=north-cloud` so the dashboard queries match.
+
 ### Grafana Shows "Loki: Bad Gateway"
 
 1. **Check Loki is running**:

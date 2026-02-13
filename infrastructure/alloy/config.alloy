@@ -12,6 +12,26 @@ discovery.docker "north_cloud" {
   }
 }
 
+// StreetCode (Laravel) - same host, Docker Compose project "streetcode" or "streetcode-laravel"
+// Logs get service=streetcode, project=north-cloud so pipeline dashboard panels match
+discovery.docker "streetcode" {
+  host = "unix:///var/run/docker.sock"
+
+  filter {
+    name   = "label"
+    values = ["com.docker.compose.project=streetcode"]
+  }
+}
+
+discovery.docker "streetcode_laravel" {
+  host = "unix:///var/run/docker.sock"
+
+  filter {
+    name   = "label"
+    values = ["com.docker.compose.project=streetcode-laravel"]
+  }
+}
+
 discovery.relabel "north_cloud" {
   targets = discovery.docker.north_cloud.targets
 
@@ -66,11 +86,73 @@ discovery.relabel "north_cloud" {
   }
 }
 
+discovery.relabel "streetcode" {
+  targets = discovery.docker.streetcode.targets
+
+  rule {
+    source_labels = ["__meta_docker_container_label_com_docker_compose_service"]
+    target_label  = "service"
+    replacement   = "streetcode"
+  }
+  rule {
+    target_label = "project"
+    replacement  = "north-cloud"
+  }
+  rule {
+    source_labels = ["__meta_docker_container_id"]
+    regex         = "^(.{12}).*"
+    replacement   = "$1"
+    target_label  = "container_id"
+  }
+  rule {
+    target_label = "job"
+    replacement  = "docker"
+  }
+}
+
+discovery.relabel "streetcode_laravel" {
+  targets = discovery.docker.streetcode_laravel.targets
+
+  rule {
+    source_labels = ["__meta_docker_container_label_com_docker_compose_service"]
+    target_label  = "service"
+    replacement   = "streetcode"
+  }
+  rule {
+    target_label = "project"
+    replacement  = "north-cloud"
+  }
+  rule {
+    source_labels = ["__meta_docker_container_id"]
+    regex         = "^(.{12}).*"
+    replacement   = "$1"
+    target_label  = "container_id"
+  }
+  rule {
+    target_label = "job"
+    replacement  = "docker"
+  }
+}
+
 loki.source.docker "north_cloud" {
   host          = "unix:///var/run/docker.sock"
   targets       = discovery.relabel.north_cloud.output
   forward_to    = [loki.process.north_cloud.receiver]
   relabel_rules = discovery.relabel.north_cloud.rules
+}
+
+loki.source.docker "streetcode" {
+  host          = "unix:///var/run/docker.sock"
+  targets       = discovery.relabel.streetcode.output
+  forward_to    = [loki.process.north_cloud.receiver]
+  relabel_rules = discovery.relabel.streetcode.rules
+}
+
+loki.source.docker "streetcode_laravel" {
+  host          = "unix:///var/run/docker.sock"
+  targets       = discovery.relabel.streetcode_laravel.output
+  forward_to    = [loki.process.north_cloud.receiver]
+  relabel_rules = discovery.relabel.streetcode_laravel.rules
 }
 
 loki.process "north_cloud" {
