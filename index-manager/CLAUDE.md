@@ -27,8 +27,10 @@ index-manager/
     │   ├── routes.go    # Route definitions
     │   └── handlers.go  # HTTP handlers
     ├── service/
-    │   ├── index_service.go     # Index operations
-    │   └── document_service.go  # Document CRUD
+    │   ├── index_service.go        # Index operations
+    │   ├── document_service.go     # Document CRUD
+    │   ├── aggregation_service.go  # Aggregation queries (crime, mining, source health)
+    │   └── aggregation_es.go       # AggregationESClient interface (for testing)
     ├── elasticsearch/
     │   ├── client.go            # ES client wrapper
     │   ├── index_manager.go     # Index lifecycle
@@ -80,6 +82,7 @@ index-manager/
 - `GET /api/v1/aggregations/crime` - Crime classification breakdown
 - `GET /api/v1/aggregations/mining` - Mining classification breakdown
   - Query params: `source` (optional, filter by source name)
+- `GET /api/v1/aggregations/source-health` - Per-source pipeline health (raw/classified counts, backlog, 24h delta, avg quality)
 
 ## Index Mappings
 
@@ -122,6 +125,8 @@ index-manager/
 
 5. **Document IDs are ES-generated**: Unless explicitly provided in the request.
 
+6. **Dynamic vs explicit mappings**: The classifier creates indices with dynamic mappings (e.g., `source_name` as `text`), while index-manager defines explicit mappings with `keyword` type. When aggregating on dynamically-mapped text fields, use the `.keyword` sub-field (e.g., `source_name.keyword`). See `fetchClassifiedAggregations` for the pattern.
+
 ## Creating Indexes for a Source
 
 ```bash
@@ -160,3 +165,5 @@ task test
 # Run with coverage
 task test:cover
 ```
+
+**Mock pattern**: `AggregationESClient` interface in `aggregation_es.go` enables unit testing without Elasticsearch. See `aggregation_service_test.go` for the mock implementation and test examples covering valid responses, ES errors, malformed JSON, null values, and empty results.
