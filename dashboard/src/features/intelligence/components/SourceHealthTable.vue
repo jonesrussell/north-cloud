@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import type { SourceMetrics } from '../problems/types'
 import Badge from '@/components/ui/badge/Badge.vue'
+import { DataTablePagination } from '@/components/common'
 import { Tooltip } from '@/components/ui/tooltip'
 
 const props = defineProps<{
@@ -12,6 +13,8 @@ type ViewMode = 'ops' | 'dev'
 type QuickFilter = 'all' | 'errors' | 'warnings' | 'no-docs' | 'backlog'
 
 const BACKLOG_WARNING_THRESHOLD = 100
+const DEFAULT_PAGE_SIZE = 25
+const ALLOWED_PAGE_SIZES = [10, 25, 50, 100] as const
 
 const viewMode = ref<ViewMode>(
   (localStorage.getItem('intelligence-view-mode') as ViewMode) ?? 'ops',
@@ -56,6 +59,31 @@ const filteredSources = computed(() => {
 
   return result
 })
+
+const page = ref(1)
+const pageSize = ref(DEFAULT_PAGE_SIZE)
+
+const totalPages = computed(() =>
+  Math.max(1, Math.ceil(filteredSources.value.length / pageSize.value)),
+)
+
+const paginatedSources = computed(() => {
+  const start = (page.value - 1) * pageSize.value
+  return filteredSources.value.slice(start, start + pageSize.value)
+})
+
+watch(quickFilter, () => {
+  page.value = 1
+})
+
+function setPage(newPage: number) {
+  page.value = Math.max(1, Math.min(newPage, totalPages.value))
+}
+
+function setPageSize(newSize: number) {
+  pageSize.value = newSize
+  page.value = 1
+}
 
 const filters: { key: QuickFilter; label: string }[] = [
   { key: 'all', label: 'All' },
@@ -154,7 +182,7 @@ const statusDot: Record<string, string> = {
         </thead>
         <tbody class="divide-y">
           <tr
-            v-for="source in filteredSources"
+            v-for="source in paginatedSources"
             :key="source.source"
             :class="{ 'opacity-50': !source.active }"
           >
@@ -233,8 +261,15 @@ const statusDot: Record<string, string> = {
         </tbody>
       </table>
     </div>
-    <p class="text-xs text-muted-foreground">
-      {{ filteredSources.length }} of {{ sources.length }} sources
-    </p>
+    <DataTablePagination
+      :page="page"
+      :page-size="pageSize"
+      :total="filteredSources.length"
+      :total-pages="totalPages"
+      :allowed-page-sizes="ALLOWED_PAGE_SIZES"
+      item-label="sources"
+      @update:page="setPage"
+      @update:page-size="setPageSize"
+    />
   </div>
 </template>
