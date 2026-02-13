@@ -485,7 +485,32 @@ The pipeline dashboard has three StreetCode panels that query Loki for `{project
    ```
 4. In Grafana Explore (Loki), run `{project="north-cloud", service="streetcode"}` to confirm logs appear.
 
-**If StreetCode runs outside Docker** (e.g. Laravel via systemd on the same or another host), logs must reach Loki by another path (e.g. Alloy reading journald, a file log shipper, or the app pushing to Loki). Configure that pipeline and ensure logs are tagged with `service=streetcode` and `project=north-cloud` so the dashboard queries match.
+**If StreetCode runs outside Docker** (e.g. Laravel via systemd on the same server), logs must be shipped to Loki with labels `project=north-cloud` and `service=streetcode`. The **StreetCode (streetcode-laravel) repo** has an Alloy-based setup: see **`deploy/alloy/README.md`** in that repo for config, systemd unit, and steps to run on deployer@streetcode.net.
+
+**Still no data? Run these on production** (e.g. `ssh jones@northcloud.biz` from the repo, then `cd /opt/north-cloud`):
+
+1. **Is StreetCode running in Docker on this host?**
+   ```bash
+   docker ps -a --format '{{.Names}}\t{{.Label "com.docker.compose.project"}}' | grep -i street
+   ```
+   If this is empty, StreetCode is not running in Docker on this host — the panels will stay empty until you ship StreetCode logs to Loki (e.g. from the host where it runs, with `service=streetcode` and `project=north-cloud`).
+
+2. **Is the observability stack (Alloy, Loki) running?**
+   ```bash
+   docker compose -f docker-compose.base.yml -f docker-compose.prod.yml ps alloy loki
+   ```
+   If alloy or loki is not up, start with: `docker compose -f docker-compose.base.yml -f docker-compose.prod.yml --profile observability up -d`.
+
+3. **Does Loki have any stream with service=streetcode?**
+   ```bash
+   docker compose -f docker-compose.base.yml -f docker-compose.prod.yml exec -T loki wget -qO- 'http://localhost:3100/loki/api/v1/label/service/values' | head -200
+   ```
+   If `streetcode` is not in the list, no StreetCode logs have been ingested. Either StreetCode isn’t in Docker on this host (see step 1), or its Compose project isn’t `streetcode` / `streetcode-laravel`, or Alloy wasn’t restarted after the config change.
+
+4. **Restart Alloy** after pulling the Alloy config so it picks up StreetCode discovery:
+   ```bash
+   docker compose -f docker-compose.base.yml -f docker-compose.prod.yml restart alloy
+   ```
 
 ### Grafana Shows "Loki: Bad Gateway"
 

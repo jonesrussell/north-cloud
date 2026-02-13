@@ -63,8 +63,8 @@ discovery.docker → discovery.relabel → loki.source.docker → loki.process �
 
 ### Key Components
 
-1. **`discovery.docker`** - Discovers Docker containers (north-cloud, and optionally StreetCode with project `streetcode` or `streetcode-laravel`)
-2. **`discovery.relabel`** - Extracts labels from container metadata (StreetCode logs get `service=streetcode`, `project=north-cloud` for the pipeline dashboard)
+1. **`discovery.docker`** - Discovers Docker containers (north-cloud; optionally StreetCode if run in Docker with project `streetcode` or `streetcode-laravel`)
+2. **`discovery.relabel`** - Extracts labels from container metadata
 3. **`loki.source.docker`** - Collects logs from containers
 4. **`loki.process`** - Parses and transforms logs
 5. **`loki.write`** - Forwards logs to Loki
