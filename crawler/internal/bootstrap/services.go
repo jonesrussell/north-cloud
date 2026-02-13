@@ -15,6 +15,7 @@ import (
 	"github.com/jonesrussell/north-cloud/crawler/internal/scheduler"
 	"github.com/jonesrussell/north-cloud/crawler/internal/sources"
 	infralogger "github.com/north-cloud/infrastructure/logger"
+	"github.com/north-cloud/infrastructure/pipeline"
 	"github.com/north-cloud/infrastructure/sse"
 )
 
@@ -248,15 +249,18 @@ func createCrawler(
 	sourceManager sources.Interface,
 	db *sqlx.DB,
 ) (crawler.Interface, error) {
+	pipelineClient := pipeline.NewClient(deps.Config.GetPipelineURL(), "crawler")
+
 	crawlerResult, err := crawler.NewCrawlerWithParams(crawler.CrawlerParams{
-		Logger:       deps.Logger,
-		Bus:          bus,
-		IndexManager: storage.IndexManager,
-		Sources:      sourceManager,
-		Config:       crawlerCfg,
-		Storage:      storage.Storage,
-		FullConfig:   deps.Config,
-		DB:           db,
+		Logger:         deps.Logger,
+		Bus:            bus,
+		IndexManager:   storage.IndexManager,
+		Sources:        sourceManager,
+		Config:         crawlerCfg,
+		Storage:        storage.Storage,
+		FullConfig:     deps.Config,
+		DB:             db,
+		PipelineClient: pipelineClient,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to create crawler: %w", err)

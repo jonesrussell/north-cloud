@@ -39,6 +39,8 @@ type Interface interface {
 	GetRedisConfig() *RedisConfig
 	// GetSourceManagerConfig returns the source-manager configuration.
 	GetSourceManagerConfig() *SourceManagerConfig
+	// GetPipelineURL returns the pipeline service URL (empty = disabled).
+	GetPipelineURL() string
 	// Validate validates the configuration based on the current command.
 	Validate() error
 }
@@ -87,6 +89,8 @@ type Config struct {
 	Redis *RedisConfig `yaml:"redis"`
 	// SourceManager holds source-manager API configuration
 	SourceManager *SourceManagerConfig `yaml:"source_manager"`
+	// Pipeline holds pipeline observability configuration
+	Pipeline *PipelineConfig `yaml:"pipeline"`
 }
 
 // AuthConfig holds authentication configuration.
@@ -114,6 +118,11 @@ type RedisConfig struct {
 // SourceManagerConfig holds configuration for source-manager API.
 type SourceManagerConfig struct {
 	URL string `env:"SOURCE_MANAGER_URL" yaml:"url"`
+}
+
+// PipelineConfig holds pipeline observability configuration.
+type PipelineConfig struct {
+	URL string `env:"PIPELINE_URL" yaml:"url"`
 }
 
 // validateHTTPDConfig validates the configuration for the httpd command
@@ -354,6 +363,14 @@ func (c *Config) GetSourceManagerConfig() *SourceManagerConfig {
 		}
 	}
 	return c.SourceManager
+}
+
+// GetPipelineURL returns the pipeline service URL (empty = disabled).
+func (c *Config) GetPipelineURL() string {
+	if c.Pipeline == nil {
+		return ""
+	}
+	return c.Pipeline.URL
 }
 
 // setupDevelopmentLogging configures logging settings based on environment variables.
