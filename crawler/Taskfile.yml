@@ -1,16 +1,8 @@
 version: '3'
 
-dotenv: ['../.env']
-
 output:
   group:
     error_only: false
-  colorize: true
-  prefix:
-    info: "🔍"
-    success: "✅"
-    warning: "⚠️"
-    error: "❌"
 
 
 tasks:
@@ -131,6 +123,12 @@ tasks:
     desc: "Tidy go.mod and go.sum"
     cmds:
       - go mod tidy
+
+  vendor:
+    desc: Sync vendor directory (run after go get or go mod tidy)
+    env: { GOWORK: "off" }
+    cmds:
+      - go mod vendor
 
   clean:
     desc: Clean build artifacts

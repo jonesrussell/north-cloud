@@ -1,7 +1,5 @@
 version: '3'
 
-dotenv: ['../.env']
-
 vars:
   BINARY_NAME: index-manager
   MAIN_PATH: .
@@ -53,6 +51,12 @@ tasks:
     desc: "Run vulnerability check"
     cmds:
       - govulncheck ./...
+
+  vendor:
+    desc: Sync vendor directory (run after go get or go mod tidy)
+    env: { GOWORK: "off" }
+    cmds:
+      - go mod vendor
 
   lint:
     desc: "Lint the Go code"

@@ -1,13 +1,47 @@
-# Root Taskfile: delegates to service Taskfiles only. No inline logic.
+# Root Taskfile: orchestrator only. Delegates to service Taskfiles via includes.
 #
-# Canonical service list:
-#   Go: auth, classifier, crawler, index-manager, mcp-north-cloud, publisher, search, source-manager
-#   Frontend: dashboard, search-frontend
-#   With migrations: crawler, source-manager, classifier, publisher, index-manager
-#
-# Adding a new service: add SERVICE/Taskfile.yml with contract tasks (lint, test, test:coverage,
-# test:race, vuln for Go; build; migrate:* if DB), then add root delegates below.
+# Service contract: lint, test, test:coverage, test:race, (vuln for Go), build, (vendor for Go), (migrate:* for DB services)
 version: '3'
+
+dotenv: ['.env']
+
+includes:
+  auth:
+    taskfile: ./auth/Taskfile.yml
+    dir: ./auth
+  classifier:
+    taskfile: ./classifier/Taskfile.yml
+    dir: ./classifier
+  crawler:
+    taskfile: ./crawler/Taskfile.yml
+    dir: ./crawler
+  dashboard:
+    taskfile: ./dashboard/Taskfile.yml
+    dir: ./dashboard
+  index-manager:
+    taskfile: ./index-manager/Taskfile.yml
+    dir: ./index-manager
+  mcp-north-cloud:
+    taskfile: ./mcp-north-cloud/Taskfile.yml
+    dir: ./mcp-north-cloud
+  nc-http-proxy:
+    taskfile: ./nc-http-proxy/Taskfile.yml
+    dir: ./nc-http-proxy
+  pipeline:
+    taskfile: ./pipeline/Taskfile.yml
+    dir: ./pipeline
+  publisher:
+    taskfile: ./publisher/Taskfile.yml
+    dir: ./publisher
+  search:
+    taskfile: ./search/Taskfile.yml
+    dir: ./search
+  search-frontend:
+    taskfile: ./search-frontend/Taskfile.yml
+    dir: ./search-frontend
+  source-manager:
+    taskfile: ./source-manager/Taskfile.yml
+    dir: ./source-manager
 
 tasks:
   default:
@@ -71,7 +105,7 @@ tasks:
       - |
         SERVICES=$(./scripts/detect-changed-services.sh "${BASE_REF:-HEAD~1}")
         echo "Changed services: $SERVICES"
-        GO_SERVICES="auth classifier crawler index-manager mcp-north-cloud publisher search source-manager nc-http-proxy"
+        GO_SERVICES="auth classifier crawler index-manager mcp-north-cloud nc-http-proxy pipeline publisher search source-manager"
         if echo "$SERVICES" | grep -q '"all"'; then
           echo "Infrastructure changed - checking all services"
           task vuln
@@ -95,6 +129,7 @@ tasks:
       - task: lint:dashboard
       - task: lint:index-manager
       - task: lint:mcp-north-cloud
+      - task: lint:nc-http-proxy
       - task: lint:pipeline
       - task: lint:publisher
       - task: lint:search
@@ -110,211 +145,163 @@ tasks:
       - task: lint:dashboard
       - task: lint:index-manager
       - task: lint:mcp-north-cloud
+      - task: lint:nc-http-proxy
       - task: lint:pipeline
       - task: lint:publisher
       - task: lint:search
       - task: lint:search-frontend
       - task: lint:source-manager
 
+  lint:auth:
+    desc: "Run linter for auth service"
+    cmds:
+      - task auth:lint
+
   lint:classifier:
     desc: "Run linter for classifier service"
-    dir: classifier
     cmds:
-      - task lint
+      - task classifier:lint
 
   lint:crawler:
     desc: "Run linter for crawler service"
-    dir: crawler
     cmds:
-      - task lint
+      - task crawler:lint
 
   lint:dashboard:
     desc: "Run linter for dashboard service"
-    dir: dashboard
     cmds:
-      - task lint
+      - task dashboard:lint
 
   lint:index-manager:
     desc: "Run linter for index-manager service"
-    dir: index-manager
     cmds:
-      - task lint
+      - task index-manager:lint
 
   lint:mcp-north-cloud:
     desc: "Run linter for mcp-north-cloud service"
-    dir: mcp-north-cloud
     cmds:
-      - task lint
+      - task mcp-north-cloud:lint
 
-  mcp:build:
-    desc: "Build the MCP North Cloud server binary (for Cursor/Claude Code)"
-    dir: mcp-north-cloud
+  lint:nc-http-proxy:
+    desc: "Run linter for nc-http-proxy"
     cmds:
-      - task build
+      - task nc-http-proxy:lint
 
   lint:pipeline:
     desc: "Run linter for pipeline service"
-    dir: pipeline
     cmds:
-      - task lint
+      - task pipeline:lint
 
   lint:publisher:
     desc: "Run linter for publisher service"
-    dir: publisher
     cmds:
-      - task lint
+      - task publisher:lint
 
   lint:search:
     desc: "Run linter for search service"
-    dir: search
     cmds:
-      - task lint
-
-  lint:source-manager:
-    desc: "Run linter for source-manager service"
-    dir: source-manager
-    cmds:
-      - task lint
-
-  lint:auth:
-    desc: "Run linter for auth service"
-    dir: auth
-    cmds:
-      - task lint
-
-  # Sync vendor/ in each Go module (use after go get -u or go mod tidy).
-  # In workspace mode, go mod vendor must run with GOWORK=off per module.
-  vendor:
-    desc: "Run go mod vendor in each Go workspace module (run after dependency changes)"
-    cmds:
-      - task: vendor:auth
-      - task: vendor:classifier
-      - task: vendor:crawler
-      - task: vendor:index-manager
-      - task: vendor:infrastructure
-      - task: vendor:mcp-north-cloud
-      - task: vendor:nc-http-proxy
-      - task: vendor:pipeline
-      - task: vendor:publisher
-      - task: vendor:search
-      - task: vendor:source-manager
-  vendor:auth:
-    dir: auth
-    env: { GOWORK: "off" }
-    cmds: [go mod vendor]
-  vendor:classifier:
-    dir: classifier
-    env: { GOWORK: "off" }
-    cmds: [go mod vendor]
-  vendor:crawler:
-    dir: crawler
-    env: { GOWORK: "off" }
-    cmds: [go mod vendor]
-  vendor:index-manager:
-    dir: index-manager
-    env: { GOWORK: "off" }
-    cmds: [go mod vendor]
-  vendor:infrastructure:
-    dir: infrastructure
-    env: { GOWORK: "off" }
-    cmds: [go mod vendor]
-  vendor:mcp-north-cloud:
-    dir: mcp-north-cloud
-    env: { GOWORK: "off" }
-    cmds: [go mod vendor]
-  vendor:nc-http-proxy:
-    dir: nc-http-proxy
-    env: { GOWORK: "off" }
-    cmds: [go mod vendor]
-  vendor:pipeline:
-    dir: pipeline
-    env: { GOWORK: "off" }
-    cmds: [go mod vendor]
-  vendor:publisher:
-    dir: publisher
-    env: { GOWORK: "off" }
-    cmds: [go mod vendor]
-  vendor:search:
-    dir: search
-    env: { GOWORK: "off" }
-    cmds: [go mod vendor]
-  vendor:source-manager:
-    dir: source-manager
-    env: { GOWORK: "off" }
-    cmds: [go mod vendor]
+      - task search:lint
 
   lint:search-frontend:
     desc: "Run linter for search-frontend service"
-    dir: search-frontend
     cmds:
-      - task lint
+      - task search-frontend:lint
+
+  lint:source-manager:
+    desc: "Run linter for source-manager service"
+    cmds:
+      - task source-manager:lint
+
+  mcp:build:
+    desc: "Build the MCP North Cloud server binary (for Cursor/Claude Code)"
+    cmds:
+      - task mcp-north-cloud:build
+
+  vendor:
+    desc: "Run go mod vendor in each Go module (run after dependency changes)"
+    cmds:
+      - task auth:vendor
+      - task classifier:vendor
+      - task crawler:vendor
+      - task index-manager:vendor
+      - task mcp-north-cloud:vendor
+      - task nc-http-proxy:vendor
+      - task pipeline:vendor
+      - task publisher:vendor
+      - task search:vendor
+      - task source-manager:vendor
+      - task: vendor:infrastructure
+
+  vendor:infrastructure:
+    desc: "Vendor infrastructure module"
+    dir: infrastructure
+    env: { GOWORK: "off" }
+    cmds:
+      - go mod vendor
 
   vuln:
     desc: "Run vulnerability check for all Go microservices"
     cmds:
-      - task: vuln:auth
-      - task: vuln:classifier
-      - task: vuln:crawler
-      - task: vuln:index-manager
-      - task: vuln:mcp-north-cloud
-      - task: vuln:pipeline
-      - task: vuln:publisher
-      - task: vuln:search
-      - task: vuln:source-manager
+      - task auth:vuln
+      - task classifier:vuln
+      - task crawler:vuln
+      - task index-manager:vuln
+      - task mcp-north-cloud:vuln
+      - task nc-http-proxy:vuln
+      - task pipeline:vuln
+      - task publisher:vuln
+      - task search:vuln
+      - task source-manager:vuln
 
   vuln:auth:
     desc: "Run vulnerability check for auth service"
-    dir: auth
     cmds:
-      - task vuln
+      - task auth:vuln
 
   vuln:classifier:
     desc: "Run vulnerability check for classifier service"
-    dir: classifier
     cmds:
-      - task vuln
+      - task classifier:vuln
 
   vuln:crawler:
     desc: "Run vulnerability check for crawler service"
-    dir: crawler
     cmds:
-      - task vuln
+      - task crawler:vuln
 
   vuln:index-manager:
     desc: "Run vulnerability check for index-manager service"
-    dir: index-manager
     cmds:
-      - task vuln
+      - task index-manager:vuln
 
   vuln:mcp-north-cloud:
     desc: "Run vulnerability check for mcp-north-cloud service"
-    dir: mcp-north-cloud
     cmds:
-      - task vuln
+      - task mcp-north-cloud:vuln
+
+  vuln:nc-http-proxy:
+    desc: "Run vulnerability check for nc-http-proxy"
+    cmds:
+      - task nc-http-proxy:vuln
 
   vuln:pipeline:
     desc: "Run vulnerability check for pipeline service"
-    dir: pipeline
     cmds:
-      - task vuln
+      - task pipeline:vuln
 
   vuln:publisher:
     desc: "Run vulnerability check for publisher service"
-    dir: publisher
     cmds:
-      - task vuln
+      - task publisher:vuln
 
   vuln:search:
     desc: "Run vulnerability check for search service"
-    dir: search
     cmds:
-      - task vuln
+      - task search:vuln
 
   vuln:source-manager:
     desc: "Run vulnerability check for source-manager service"
-    dir: source-manager
     cmds:
-      - task vuln
+      - task source-manager:vuln
 
   test:
     desc: "Run tests for all microservices sequentially"
@@ -325,6 +312,7 @@ tasks:
       - task: test:dashboard
       - task: test:index-manager
       - task: test:mcp-north-cloud
+      - task: test:nc-http-proxy
       - task: test:pipeline
       - task: test:publisher
       - task: test:search
@@ -341,77 +329,72 @@ tasks:
       - task: test:dashboard
       - task: test:index-manager
       - task: test:mcp-north-cloud
+      - task: test:nc-http-proxy
       - task: test:pipeline
       - task: test:publisher
       - task: test:search
       - task: test:search-frontend
       - task: test:source-manager
 
+  test:auth:
+    desc: "Run tests for auth service"
+    cmds:
+      - task auth:test
+
   test:classifier:
     desc: "Run tests for classifier service"
-    dir: classifier
     cmds:
-      - task test
+      - task classifier:test
 
   test:crawler:
     desc: "Run tests for crawler service"
-    dir: crawler
     cmds:
-      - task test
+      - task crawler:test
 
   test:dashboard:
     desc: "Run tests for dashboard service"
-    dir: dashboard
     cmds:
-      - task test
+      - task dashboard:test
 
   test:index-manager:
     desc: "Run tests for index-manager service"
-    dir: index-manager
     cmds:
-      - task test
-
-  test:publisher:
-    desc: "Run tests for publisher service"
-    dir: publisher
-    cmds:
-      - task test
-
-  test:search:
-    desc: "Run tests for search service"
-    dir: search
-    cmds:
-      - task test
-
-  test:source-manager:
-    desc: "Run tests for source-manager service"
-    dir: source-manager
-    cmds:
-      - task test
-
-  test:auth:
-    desc: "Run tests for auth service"
-    dir: auth
-    cmds:
-      - task test
-
-  test:search-frontend:
-    desc: "Run tests for search-frontend service"
-    dir: search-frontend
-    cmds:
-      - task test
+      - task index-manager:test
 
   test:mcp-north-cloud:
     desc: "Run tests for mcp-north-cloud service"
-    dir: mcp-north-cloud
     cmds:
-      - task test
+      - task mcp-north-cloud:test
+
+  test:nc-http-proxy:
+    desc: "Run tests for nc-http-proxy"
+    cmds:
+      - task nc-http-proxy:test
 
   test:pipeline:
     desc: "Run tests for pipeline service"
-    dir: pipeline
     cmds:
-      - task test
+      - task pipeline:test
+
+  test:publisher:
+    desc: "Run tests for publisher service"
+    cmds:
+      - task publisher:test
+
+  test:search:
+    desc: "Run tests for search service"
+    cmds:
+      - task search:test
+
+  test:search-frontend:
+    desc: "Run tests for search-frontend service"
+    cmds:
+      - task search-frontend:test
+
+  test:source-manager:
+    desc: "Run tests for source-manager service"
+    cmds:
+      - task source-manager:test
 
   test:race:
     desc: "Run tests with race detector for all microservices sequentially"
@@ -422,6 +405,7 @@ tasks:
       - task: test:race:dashboard
       - task: test:race:index-manager
       - task: test:race:mcp-north-cloud
+      - task: test:race:nc-http-proxy
       - task: test:race:pipeline
       - task: test:race:publisher
       - task: test:race:search
@@ -437,6 +421,7 @@ tasks:
       - task: test:race:dashboard
       - task: test:race:index-manager
       - task: test:race:mcp-north-cloud
+      - task: test:race:nc-http-proxy
       - task: test:race:pipeline
       - task: test:race:publisher
       - task: test:race:search
@@ -445,69 +430,63 @@ tasks:
 
   test:race:auth:
     desc: "Run tests with race detector for auth service"
-    dir: auth
     cmds:
-      - task test:race
+      - task auth:test:race
 
   test:race:classifier:
     desc: "Run tests with race detector for classifier service"
-    dir: classifier
     cmds:
-      - task test:race
+      - task classifier:test:race
 
   test:race:crawler:
     desc: "Run tests with race detector for crawler service"
-    dir: crawler
     cmds:
-      - task test:race
+      - task crawler:test:race
 
   test:race:dashboard:
     desc: "Run tests with race detector for dashboard service"
-    dir: dashboard
     cmds:
-      - task test:race
+      - task dashboard:test:race
 
   test:race:index-manager:
     desc: "Run tests with race detector for index-manager service"
-    dir: index-manager
     cmds:
-      - task test:race
+      - task index-manager:test:race
 
   test:race:mcp-north-cloud:
     desc: "Run tests with race detector for mcp-north-cloud service"
-    dir: mcp-north-cloud
     cmds:
-      - task test:race
+      - task mcp-north-cloud:test:race
 
-  test:race:publisher:
-    desc: "Run tests with race detector for publisher service"
-    dir: publisher
+  test:race:nc-http-proxy:
+    desc: "Run tests with race detector for nc-http-proxy"
     cmds:
-      - task test:race
-
-  test:race:search:
-    desc: "Run tests with race detector for search service"
-    dir: search
-    cmds:
-      - task test:race
-
-  test:race:search-frontend:
-    desc: "Run tests with race detector for search-frontend service"
-    dir: search-frontend
-    cmds:
-      - task test:race
+      - task nc-http-proxy:test:race
 
   test:race:pipeline:
     desc: "Run tests with race detector for pipeline service"
-    dir: pipeline
     cmds:
-      - task test:race
+      - task pipeline:test:race
+
+  test:race:publisher:
+    desc: "Run tests with race detector for publisher service"
+    cmds:
+      - task publisher:test:race
+
+  test:race:search:
+    desc: "Run tests with race detector for search service"
+    cmds:
+      - task search:test:race
+
+  test:race:search-frontend:
+    desc: "Run tests with race detector for search-frontend service"
+    cmds:
+      - task search-frontend:test:race
 
   test:race:source-manager:
     desc: "Run tests with race detector for source-manager service"
-    dir: source-manager
     cmds:
-      - task test:race
+      - task source-manager:test:race
 
   test:cover:
     desc: "Run tests with coverage for all microservices sequentially"
@@ -518,6 +497,7 @@ tasks:
       - task: test:cover:dashboard
       - task: test:cover:index-manager
       - task: test:cover:mcp-north-cloud
+      - task: test:cover:nc-http-proxy
       - task: test:cover:pipeline
       - task: test:cover:publisher
       - task: test:cover:search
@@ -533,6 +513,7 @@ tasks:
       - task: test:cover:dashboard
       - task: test:cover:index-manager
       - task: test:cover:mcp-north-cloud
+      - task: test:cover:nc-http-proxy
       - task: test:cover:pipeline
       - task: test:cover:publisher
       - task: test:cover:search
@@ -541,72 +522,236 @@ tasks:
 
   test:cover:auth:
     desc: "Run tests with coverage for auth service"
-    dir: auth
     cmds:
-      - task test:coverage
+      - task auth:test:coverage
 
   test:cover:classifier:
     desc: "Run tests with coverage for classifier service"
-    dir: classifier
     cmds:
-      - task test:coverage
+      - task classifier:test:coverage
 
   test:cover:crawler:
     desc: "Run tests with coverage for crawler service"
-    dir: crawler
     cmds:
-      - task test:coverage
+      - task crawler:test:coverage
 
   test:cover:dashboard:
     desc: "Run tests with coverage for dashboard service"
-    dir: dashboard
     cmds:
-      - task test:coverage
+      - task dashboard:test:coverage
 
   test:cover:index-manager:
     desc: "Run tests with coverage for index-manager service"
-    dir: index-manager
     cmds:
-      - task test:coverage
+      - task index-manager:test:coverage
 
   test:cover:mcp-north-cloud:
     desc: "Run tests with coverage for mcp-north-cloud service"
-    dir: mcp-north-cloud
     cmds:
-      - task test:coverage
+      - task mcp-north-cloud:test:coverage
 
-  test:cover:publisher:
-    desc: "Run tests with coverage for publisher service"
-    dir: publisher
+  test:cover:nc-http-proxy:
+    desc: "Run tests with coverage for nc-http-proxy"
     cmds:
-      - task test:coverage
-
-  test:cover:search:
-    desc: "Run tests with coverage for search service"
-    dir: search
-    cmds:
-      - task test:coverage
-
-  test:cover:search-frontend:
-    desc: "Run tests with coverage for search-frontend service"
-    dir: search-frontend
-    cmds:
-      - task test:coverage
+      - task nc-http-proxy:test:coverage
 
   test:cover:pipeline:
     desc: "Run tests with coverage for pipeline service"
-    dir: pipeline
     cmds:
-      - task test:coverage
+      - task pipeline:test:coverage
+
+  test:cover:publisher:
+    desc: "Run tests with coverage for publisher service"
+    cmds:
+      - task publisher:test:coverage
+
+  test:cover:search:
+    desc: "Run tests with coverage for search service"
+    cmds:
+      - task search:test:coverage
+
+  test:cover:search-frontend:
+    desc: "Run tests with coverage for search-frontend service"
+    cmds:
+      - task search-frontend:test:coverage
 
   test:cover:source-manager:
     desc: "Run tests with coverage for source-manager service"
-    dir: source-manager
     cmds:
-      - task test:coverage
+      - task source-manager:test:coverage
 
+  migrate:up:
+    desc: "Run database migrations for all microservices sequentially"
+    cmds:
+      - task: migrate:crawler
+      - task: migrate:source-manager
+      - task: migrate:classifier
+      - task: migrate:publisher
+      - task: migrate:index-manager
+      - task: migrate:pipeline
+
+  migrate:down:
+    desc: "Rollback last migration for all microservices sequentially"
+    cmds:
+      - task: migrate:down:crawler
+      - task: migrate:down:source-manager
+      - task: migrate:down:classifier
+      - task: migrate:down:publisher
+      - task: migrate:down:index-manager
+      - task: migrate:down:pipeline
+
+  migrate:version:
+    desc: "Show migration version for all microservices"
+    cmds:
+      - task: migrate:version:crawler
+      - task: migrate:version:source-manager
+      - task: migrate:version:classifier
+      - task: migrate:version:publisher
+      - task: migrate:version:index-manager
+      - task: migrate:version:pipeline
+
+  migrate:crawler:
+    desc: "Run database migrations for crawler service"
+    cmds:
+      - task crawler:migrate:up
+
+  migrate:down:crawler:
+    desc: "Rollback last migration for crawler service"
+    cmds:
+      - task crawler:migrate:down
+
+  migrate:version:crawler:
+    desc: "Show migration version for crawler service"
+    cmds:
+      - task crawler:migrate:version
+
+  migrate:force:crawler:
+    desc: "Force crawler database to a specific migration version (use to fix dirty state)"
+    cmds:
+      - task crawler:migrate:force
+
+  migrate:source-manager:
+    desc: "Run database migrations for source-manager service"
+    cmds:
+      - task source-manager:migrate:up
+
+  migrate:down:source-manager:
+    desc: "Rollback last migration for source-manager service"
+    cmds:
+      - task source-manager:migrate:down
+
+  migrate:version:source-manager:
+    desc: "Show migration version for source-manager service"
+    cmds:
+      - task source-manager:migrate:version
+
+  migrate:force:source-manager:
+    desc: "Force source-manager database to a specific migration version (use to fix dirty state)"
+    cmds:
+      - task source-manager:migrate:force
+
+  migrate:classifier:
+    desc: "Run database migrations for classifier service"
+    cmds:
+      - task classifier:migrate:up
+
+  migrate:down:classifier:
+    desc: "Rollback last migration for classifier service"
+    cmds:
+      - task classifier:migrate:down
+
+  migrate:version:classifier:
+    desc: "Show migration version for classifier service"
+    cmds:
+      - task classifier:migrate:version
+
+  migrate:force:classifier:
+    desc: "Force classifier database to a specific migration version (use to fix dirty state)"
+    cmds:
+      - task classifier:migrate:force
+
+  migrate:publisher:
+    desc: "Run database migrations for publisher service"
+    cmds:
+      - task publisher:migrate:up
+
+  migrate:down:publisher:
+    desc: "Rollback last migration for publisher service"
+    cmds:
+      - task publisher:migrate:down
+
+  migrate:version:publisher:
+    desc: "Show migration version for publisher service"
+    cmds:
+      - task publisher:migrate:version
+
+  migrate:force:publisher:
+    desc: "Force publisher database to a specific migration version (use to fix dirty state)"
+    cmds:
+      - task publisher:migrate:force
+
+  migrate:index-manager:
+    desc: "Run database migrations for index-manager service"
+    cmds:
+      - task index-manager:migrate:up
+
+  migrate:down:index-manager:
+    desc: "Rollback last migration for index-manager service"
+    cmds:
+      - task index-manager:migrate:down
+
+  migrate:version:index-manager:
+    desc: "Show migration version for index-manager service"
+    cmds:
+      - task index-manager:migrate:version
+
+  migrate:force:index-manager:
+    desc: "Force index-manager database to a specific migration version (use to fix dirty state)"
+    cmds:
+      - task index-manager:migrate:force
+
+  migrate:pipeline:
+    desc: "Run database migrations for pipeline service"
+    cmds:
+      - task pipeline:migrate:up
+
+  migrate:down:pipeline:
+    desc: "Rollback last migration for pipeline service"
+    cmds:
+      - task pipeline:migrate:down
+
+  migrate:version:pipeline:
+    desc: "Show migration version for pipeline service"
+    cmds:
+      - task pipeline:migrate:version
+
+  migrate:force:pipeline:
+    desc: "Force pipeline database to a specific migration version (use to fix dirty state)"
+    cmds:
+      - task pipeline:migrate:force
+
+  config:init:
+    desc: "Copy all config.yml.example files to config.yml"
+    cmds:
+      - cp auth/config.yml.example auth/config.yml
+      - cp classifier/config.yml.example classifier/config.yml
+      - cp index-manager/config.yml.example index-manager/config.yml
+      - cp publisher/config.yml.example publisher/config.yml
+      - cp search/config.yml.example search/config.yml
+      - cp source-manager/config.yml.example source-manager/config.yml
+
+  install:tools:
+    desc: "Install development tools"
+    cmds:
+      - go install github.com/air-verse/air@latest || true
+      - go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest || true
+      - go install golang.org/x/tools/cmd/goimports@latest || true
+      - go install github.com/golang-migrate/migrate/v4/cmd/migrate@latest || true
+      - go install golang.org/x/vuln/cmd/govulncheck@latest || true
+
+  # Docker lifecycle
   docker:dev:up:
-    desc: "Start development environment (core services only; use docker:dev:up:observability or docker:dev:up:search for optional services)"
+    desc: "Start development environment (core services only)"
     cmds:
       - docker compose -f docker-compose.base.yml -f docker-compose.dev.yml up -d {{.CLI_ARGS}}
 
@@ -667,13 +812,7 @@ tasks:
     cmds:
       - docker compose -f docker-compose.base.yml -f docker-compose.prod.yml build {{.CLI_ARGS}}
 
-  # ============================================================
-  # Individual Service Commands (Development)
-  # ============================================================
-
-  # ------------------------------------------------------------
-  # Crawler
-  # ------------------------------------------------------------
+  # Per-service Docker shortcuts
   docker:dev:up:crawler:
     desc: "Start crawler service and dependencies"
     cmds:
@@ -700,9 +839,6 @@ tasks:
       - task: docker:dev:down:crawler
       - task: docker:dev:up:crawler
 
-  # ------------------------------------------------------------
-  # Source Manager
-  # ------------------------------------------------------------
   docker:dev:up:source-manager:
     desc: "Start source-manager service and dependencies"
     cmds:
@@ -729,9 +865,6 @@ tasks:
       - task: docker:dev:down:source-manager
       - task: docker:dev:up:source-manager
 
-  # ------------------------------------------------------------
-  # Publisher
-  # ------------------------------------------------------------
   docker:dev:up:publisher:
     desc: "Start publisher service and dependencies"
     cmds:
@@ -758,9 +891,6 @@ tasks:
       - task: docker:dev:down:publisher
       - task: docker:dev:up:publisher
 
-  # ------------------------------------------------------------
-  # Classifier
-  # ------------------------------------------------------------
   docker:dev:up:classifier:
     desc: "Start classifier service and dependencies"
     cmds:
@@ -787,9 +917,6 @@ tasks:
       - task: docker:dev:down:classifier
       - task: docker:dev:up:classifier
 
-  # ------------------------------------------------------------
-  # Auth
-  # ------------------------------------------------------------
   docker:dev:up:auth:
     desc: "Start auth service"
     cmds:
@@ -816,9 +943,6 @@ tasks:
       - task: docker:dev:down:auth
       - task: docker:dev:up:auth
 
-  # ------------------------------------------------------------
-  # Index Manager
-  # ------------------------------------------------------------
   docker:dev:up:index-manager:
     desc: "Start index-manager service and dependencies"
     cmds:
@@ -845,9 +969,6 @@ tasks:
       - task: docker:dev:down:index-manager
       - task: docker:dev:up:index-manager
 
-  # ------------------------------------------------------------
-  # Search Service
-  # ------------------------------------------------------------
   docker:dev:up:search-service:
     desc: "Start search-service and dependencies"
     cmds:
@@ -874,9 +995,6 @@ tasks:
       - task: docker:dev:down:search-service
       - task: docker:dev:up:search-service
 
-  # ------------------------------------------------------------
-  # Search Frontend
-  # ------------------------------------------------------------
   docker:dev:up:search-frontend:
     desc: "Start search-frontend and dependencies"
     cmds:
@@ -903,9 +1021,6 @@ tasks:
       - task: docker:dev:down:search-frontend
       - task: docker:dev:up:search-frontend
 
-  # ------------------------------------------------------------
-  # Dashboard
-  # ------------------------------------------------------------
   docker:dev:up:dashboard:
     desc: "Start dashboard and dependencies"
     cmds:
@@ -932,9 +1047,6 @@ tasks:
       - task: docker:dev:down:dashboard
       - task: docker:dev:up:dashboard
 
-  # ------------------------------------------------------------
-  # Nginx
-  # ------------------------------------------------------------
   docker:dev:up:nginx:
     desc: "Start nginx and dependencies"
     cmds:
@@ -961,9 +1073,6 @@ tasks:
       - task: docker:dev:down:nginx
       - task: docker:dev:up:nginx
 
-  # ------------------------------------------------------------
-  # Pyroscope
-  # ------------------------------------------------------------
   docker:dev:up:pyroscope:
     desc: "Start pyroscope"
     cmds:
@@ -990,176 +1099,7 @@ tasks:
       - task: docker:dev:down:pyroscope
       - task: docker:dev:up:pyroscope
 
-  migrate:up:
-    desc: "Run database migrations for all microservices sequentially"
-    cmds:
-      - task: migrate:crawler
-      - task: migrate:source-manager
-      - task: migrate:classifier
-      - task: migrate:publisher
-      - task: migrate:index-manager
-
-  migrate:down:
-    desc: "Rollback last migration for all microservices sequentially"
-    cmds:
-      - task: migrate:down:crawler
-      - task: migrate:down:source-manager
-      - task: migrate:down:classifier
-      - task: migrate:down:publisher
-      - task: migrate:down:index-manager
-
-  migrate:version:
-    desc: "Show migration version for all microservices"
-    cmds:
-      - task: migrate:version:crawler
-      - task: migrate:version:source-manager
-      - task: migrate:version:classifier
-      - task: migrate:version:publisher
-      - task: migrate:version:index-manager
-
-  migrate:crawler:
-    desc: "Run database migrations for crawler service"
-    dir: crawler
-    cmds:
-      - task migrate:up
-
-  migrate:down:crawler:
-    desc: "Rollback last migration for crawler service"
-    dir: crawler
-    cmds:
-      - task migrate:down
-
-  migrate:version:crawler:
-    desc: "Show migration version for crawler service"
-    dir: crawler
-    cmds:
-      - task migrate:version
-
-  migrate:source-manager:
-    desc: "Run database migrations for source-manager service"
-    dir: source-manager
-    cmds:
-      - task migrate:up
-
-  migrate:down:source-manager:
-    desc: "Rollback last migration for source-manager service"
-    dir: source-manager
-    cmds:
-      - task migrate:down
-
-  migrate:version:source-manager:
-    desc: "Show migration version for source-manager service"
-    dir: source-manager
-    cmds:
-      - task migrate:version
-
-  migrate:force:source-manager:
-    desc: "Force source-manager database to a specific migration version (use to fix dirty state)"
-    dir: source-manager
-    cmds:
-      - task migrate:force
-
-  migrate:classifier:
-    desc: "Run database migrations for classifier service"
-    dir: classifier
-    cmds:
-      - task migrate:up
-
-  migrate:down:classifier:
-    desc: "Rollback last migration for classifier service"
-    dir: classifier
-    cmds:
-      - task migrate:down
-
-  migrate:version:classifier:
-    desc: "Show migration version for classifier service"
-    dir: classifier
-    cmds:
-      - task migrate:version
-
-  migrate:force:classifier:
-    desc: "Force classifier database to a specific migration version (use to fix dirty state)"
-    dir: classifier
-    cmds:
-      - task migrate:force
-
-  migrate:publisher:
-    desc: "Run database migrations for publisher service"
-    dir: publisher
-    cmds:
-      - task migrate:up
-
-  migrate:down:publisher:
-    desc: "Rollback last migration for publisher service"
-    dir: publisher
-    cmds:
-      - task migrate:down
-
-  migrate:version:publisher:
-    desc: "Show migration version for publisher service"
-    dir: publisher
-    cmds:
-      - task migrate:version
-
-  migrate:force:publisher:
-    desc: "Force publisher database to a specific migration version (use to fix dirty state)"
-    dir: publisher
-    cmds:
-      - task migrate:force
-
-  migrate:index-manager:
-    desc: "Run database migrations for index-manager service"
-    dir: index-manager
-    cmds:
-      - task migrate:up
-
-  migrate:down:index-manager:
-    desc: "Rollback last migration for index-manager service"
-    dir: index-manager
-    cmds:
-      - task migrate:down
-
-  migrate:version:index-manager:
-    desc: "Show migration version for index-manager service"
-    dir: index-manager
-    cmds:
-      - task migrate:version
-
-  migrate:force:index-manager:
-    desc: "Force index-manager database to a specific migration version (use to fix dirty state)"
-    dir: index-manager
-    cmds:
-      - task migrate:force
-
-  migrate:force:crawler:
-    desc: "Force crawler database to a specific migration version (use to fix dirty state)"
-    dir: crawler
-    cmds:
-      - task migrate:force
-
-  config:init:
-    desc: "Copy all config.yml.example files to config.yml"
-    cmds:
-      - cp auth/config.yml.example auth/config.yml
-      - cp classifier/config.yml.example classifier/config.yml
-      - cp index-manager/config.yml.example index-manager/config.yml
-      - cp publisher/config.yml.example publisher/config.yml
-      - cp search/config.yml.example search/config.yml
-      - cp source-manager/config.yml.example source-manager/config.yml
-
-  install:tools:
-    desc: "Install development tools"
-    cmds:
-      - go install github.com/air-verse/air@latest || true
-      - go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest || true
-      - go install golang.org/x/tools/cmd/goimports@latest || true
-      - go install github.com/golang-migrate/migrate/v4/cmd/migrate@latest || true
-      - go install golang.org/x/vuln/cmd/govulncheck@latest || true
-
-  # ============================================================
-  # Database Backup/Restore/Sync Commands
-  # ============================================================
-
+  # Database backup/restore/sync
   db:backup:
     desc: "Backup database for a service (usage: task db:backup -- crawler)"
     cmds:
@@ -1240,13 +1180,7 @@ tasks:
     cmds:
       - ./scripts/db-list.sh {{.CLI_ARGS}}
 
-  # ============================================================
-  # HTTP Replay Proxy Commands
-  # ============================================================
-
-  # ------------------------------------------------------------
-  # Proxy Docker Lifecycle
-  # ------------------------------------------------------------
+  # HTTP Replay Proxy
   proxy:up:
     desc: "Start HTTP replay proxy (default: replay mode)"
     cmds:
@@ -1273,9 +1207,6 @@ tasks:
       - task: proxy:down
       - task: proxy:up
 
-  # ------------------------------------------------------------
-  # Proxy Operational Commands
-  # ------------------------------------------------------------
   proxy:status:
     desc: "Get HTTP proxy status (mode, cache stats)"
     cmds:
@@ -1306,31 +1237,7 @@ tasks:
     cmds:
       - curl -s -X DELETE http://localhost:${PROXY_PORT:-8055}/admin/cache | jq .
 
-  # ------------------------------------------------------------
-  # Proxy Test/Lint (delegates to nc-http-proxy/Taskfile.yml)
-  # ------------------------------------------------------------
-  lint:nc-http-proxy:
-    desc: "Run linter for nc-http-proxy"
-    dir: nc-http-proxy
-    cmds:
-      - task lint
-
-  test:nc-http-proxy:
-    desc: "Run tests for nc-http-proxy"
-    dir: nc-http-proxy
-    cmds:
-      - task test
-
-  test:cover:nc-http-proxy:
-    desc: "Run tests with coverage for nc-http-proxy"
-    dir: nc-http-proxy
-    cmds:
-      - task test:coverage
-
-  # ============================================================
-  # Integration Tests
-  # ============================================================
-
+  # Integration tests
   test:contracts:
     desc: "Run contract tests (verifies services produce/consume valid ES mappings)"
     dir: tests/contracts
@@ -1349,4 +1256,3 @@ tasks:
         echo "Tearing down test stack..."
         docker compose -f docker-compose.base.yml -f docker-compose.test.yml down
         exit $EXIT_CODE
-

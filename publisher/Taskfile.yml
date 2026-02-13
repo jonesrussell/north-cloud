@@ -1,7 +1,5 @@
 version: '3'
 
-dotenv: ['../.env']
-
 vars:
   BINARY_NAME: publisher
   MAIN_PATH: .
@@ -120,6 +118,12 @@ tasks:
     desc: "Tidy go.mod and go.sum"
     cmds:
       - go mod tidy
+
+  vendor:
+    desc: Sync vendor directory (run after go get or go mod tidy)
+    env: { GOWORK: "off" }
+    cmds:
+      - go mod vendor
 
   vet:
     desc: Run go vet

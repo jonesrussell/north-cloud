@@ -279,14 +279,19 @@ Auto-configures Loki datasource on startup:
 
 #### Dashboards
 
-File: `/infrastructure/grafana/provisioning/dashboards/north-cloud-logs.json`
+Provider: `/infrastructure/grafana/provisioning/dashboards/dashboards.yml`  
+All `.json` files in `dashboards/` are loaded into the **North Cloud** folder.
 
-Pre-configured dashboard includes:
+- **north-cloud-logs.json** – Pre-configured dashboard includes:
 - **Log Volume by Service** - Bar chart of logs per service
 - **Logs by Level** - Time series of log levels
 - **Logs** - Live log stream with filtering
 - **Error Count by Service** - Bar gauge of recent errors
 - **Recent Errors** - Table of last 10 errors
+
+- **north-cloud-pipeline.json** – North Cloud → StreetCode Pipeline (Loki + ES): classifier ES panels, publisher/StreetCode Loki panels.
+
+**If a provisioned dashboard does not appear:** go to **Dashboards** → **Browse** → open the **North Cloud** folder (not General). On the server, ensure the JSON file exists and restart Grafana after deploy (see [Provisioned dashboard not visible](#provisioned-dashboard-not-visible)).
 
 ## Operational Tasks
 
@@ -419,6 +424,23 @@ curl -s http://admin:changeme@localhost:3000/api/dashboards/uid/north-cloud-logs
 5. **Verify service logs are JSON formatted**:
    ```bash
    docker compose -f docker-compose.base.yml -f docker-compose.dev.yml logs crawler | head -5
+   ```
+
+### Provisioned dashboard not visible
+
+1. **Check the folder**: Provisioned dashboards live in **North Cloud**, not General. In Grafana: **Dashboards** → **Browse** → open **North Cloud**.
+2. **Verify the file on the server** (e.g. production at `/opt/north-cloud`):
+   ```bash
+   ls -la /opt/north-cloud/infrastructure/grafana/provisioning/dashboards/
+   ```
+   You should see `north-cloud-pipeline.json` and `north-cloud-logs.json`. If `north-cloud-pipeline.json` is missing, pull/deploy the repo so the file is present.
+3. **Restart Grafana** after deploying new or updated dashboard JSON:
+   ```bash
+   docker compose -f docker-compose.base.yml -f docker-compose.prod.yml restart grafana
+   ```
+4. **Check Grafana logs** for provisioning errors:
+   ```bash
+   docker compose -f docker-compose.base.yml -f docker-compose.prod.yml logs grafana 2>&1 | grep -i provision
    ```
 
 ### Grafana Shows "Loki: Bad Gateway"

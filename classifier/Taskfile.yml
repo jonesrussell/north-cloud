@@ -1,7 +1,5 @@
 version: '3'
 
-dotenv: ['../.env']
-
 vars:
   BINARY_NAME: classifier
   MAIN_PATH: ./main.go
@@ -103,6 +101,12 @@ tasks:
     desc: "Tidy go.mod and go.sum"
     cmds:
       - go mod tidy
+
+  vendor:
+    desc: Sync vendor directory (run after go get or go mod tidy)
+    env: { GOWORK: "off" }
+    cmds:
+      - go mod vendor
 
   clean:
     desc: "Clean build artifacts"

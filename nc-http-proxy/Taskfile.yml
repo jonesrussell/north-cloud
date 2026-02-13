@@ -1,6 +1,11 @@
 version: '3'
 
 tasks:
+  default:
+    desc: "Show available tasks"
+    cmds:
+      - task --list
+
   build:
     desc: Build the proxy binary
     cmds:
@@ -11,21 +16,35 @@ tasks:
     cmds:
       - go test -v ./...
 
-  test:cover:
+  test:coverage:
     desc: Run tests with coverage
     cmds:
       - go test -coverprofile=coverage.out ./...
       - go tool cover -html=coverage.out -o coverage.html
+      - 'echo "Coverage report generated: coverage.html"'
 
-  test:coverage:
-    desc: Run tests with coverage (alias)
+  test:race:
+    desc: Run tests with race detector
     cmds:
-      - task: test:cover
+      - go test -race ./...
+
+  vuln:
+    desc: Run vulnerability check
+    cmds:
+      - govulncheck ./...
+
+  vendor:
+    desc: Sync vendor directory (run after go get or go mod tidy)
+    env: { GOWORK: "off" }
+    cmds:
+      - go mod vendor
 
   lint:
     desc: Run linter
     cmds:
-      - golangci-lint run
+      - go fmt ./...
+      - go vet ./...
+      - golangci-lint run --config ../.golangci.yml ./...
 
   run:
     desc: Run the proxy locally
