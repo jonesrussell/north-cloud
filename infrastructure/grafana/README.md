@@ -466,7 +466,7 @@ The Connection tab only shows URL; the index and time field are set **further do
 
 If you use provisioning, ensure `provisioning/datasources/elasticsearch.yml` has `database: '*_classified_content'` and `jsonData.timeField: crawled_at`, then restart Grafana. Set the dashboard time range to **Last 7 days** (or **Last 30 days**) so the time filter includes existing data.
 
-**Why `content_type.keyword`:** Some production indices map `content_type` as text (aggregations disabled). The pipeline dashboard uses `content_type.keyword` for the Content Type and Crime Relevance panels so all shards succeed; indices with `content_type` as keyword still work via the `.keyword` subfield where present.
+**Why `content_type.keyword` / `crime.street_crime_relevance.keyword`:** Some production indices map these fields as text (aggregations disabled). The pipeline dashboard uses the `.keyword` subfield for Content Type and Crime Relevance panels so all shards succeed. The "Suspected Misclassifications" query uses `content_type.keyword:page` for the same reason.
 
 ### Grafana Shows "Loki: Bad Gateway"
 

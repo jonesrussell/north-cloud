@@ -47,7 +47,7 @@
           "metrics": [ { "type": "count", "id": "1" } ],
           "bucketAggs": [
             { "type": "terms", "field": "content_type.keyword", "id": "2", "settings": { "size": "10", "order": "desc", "orderBy": "_count" } },
-            { "type": "terms", "field": "crime.street_crime_relevance", "id": "3", "settings": { "size": "10", "order": "desc", "orderBy": "_count" } }
+            { "type": "terms", "field": "crime.street_crime_relevance.keyword", "id": "3", "settings": { "size": "10", "order": "desc", "orderBy": "_count" } }
           ]
         }
       ]
@@ -62,7 +62,7 @@
           "refId": "A",
           "datasource": { "type": "elasticsearch", "uid": "elasticsearch" },
           "alias": "*_classified_content",
-          "query": "content_type:page AND topics:crime",
+          "query": "content_type.keyword:page AND topics:crime",
           "metrics": [ { "type": "raw_data", "id": "1", "settings": { "size": "100" } } ],
           "bucketAggs": []
         }
