@@ -65,6 +65,7 @@ type ServiceConfig struct {
 	UseClassifiedContent bool          `yaml:"use_classified_content"` // Use classified_content indexes instead of articles
 	MinQualityScore      int           `yaml:"min_quality_score"`      // Minimum quality score for classified content (0-100)
 	IndexSuffix          string        `yaml:"index_suffix"`           // Index suffix (_articles or _classified_content)
+	PipelineURL          string        `env:"PIPELINE_URL"                    yaml:"pipeline_url"`
 }
 
 type CityConfig struct {

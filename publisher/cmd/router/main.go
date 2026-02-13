@@ -12,6 +12,7 @@ import (
 	"github.com/jonesrussell/north-cloud/publisher/internal/discovery"
 	"github.com/jonesrussell/north-cloud/publisher/internal/router"
 	infralogger "github.com/north-cloud/infrastructure/logger"
+	"github.com/north-cloud/infrastructure/pipeline"
 	"github.com/north-cloud/infrastructure/profiling"
 )
 
@@ -67,13 +68,16 @@ func main() {
 	// Initialize discovery service
 	discoveryService := discovery.NewService(esClient, appLogger)
 
+	// Initialize pipeline client (fire-and-forget; no-op when URL is empty)
+	pipelineClient := pipeline.NewClient(cfg.PipelineURL, "publisher")
+
 	// Initialize router service
 	routerConfig := router.Config{
 		PollInterval:      cfg.PollInterval,
 		DiscoveryInterval: cfg.DiscoveryInterval,
 		BatchSize:         cfg.BatchSize,
 	}
-	routerService := router.NewService(repo, discoveryService, esClient, redisClient, routerConfig, appLogger, nil)
+	routerService := router.NewService(repo, discoveryService, esClient, redisClient, routerConfig, appLogger, pipelineClient)
 
 	// Setup graceful shutdown
 	serviceCtx, cancel := context.WithCancel(context.Background())

@@ -24,6 +24,7 @@ type ServiceConfig struct {
 	PollInterval      time.Duration
 	DiscoveryInterval time.Duration
 	BatchSize         int
+	PipelineURL       string
 }
 
 // LoadConfig loads configuration from config file with env var overrides
@@ -71,5 +72,6 @@ func LoadConfig() ServiceConfig {
 		PollInterval:      pollInterval,
 		DiscoveryInterval: defaultDiscoveryInterval,
 		BatchSize:         cfg.Service.BatchSize,
+		PipelineURL:       cfg.Service.PipelineURL,
 	}
 }

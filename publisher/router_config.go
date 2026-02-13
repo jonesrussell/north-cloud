@@ -24,6 +24,7 @@ type RouterConfig struct {
 	PollInterval      time.Duration
 	DiscoveryInterval time.Duration
 	BatchSize         int
+	PipelineURL       string
 }
 
 // LoadRouterConfig loads configuration from config file with env var overrides
@@ -70,5 +71,6 @@ func LoadRouterConfig() RouterConfig {
 		PollInterval:      pollInterval,
 		DiscoveryInterval: defaultDiscoveryInterval,
 		BatchSize:         cfg.Service.BatchSize,
+		PipelineURL:       cfg.Service.PipelineURL,
 	}
 }
