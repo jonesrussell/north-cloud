@@ -80,6 +80,7 @@ services:
       SERVER_PORT: "${CRAWLER_PORT:-8060}"
       CRAWLER_SOURCES_API_URL: "${CRAWLER_SOURCES_API_URL:-http://source-manager:8050/api/v1/sources}"
       SOURCE_MANAGER_URL: "${SOURCE_MANAGER_URL:-http://source-manager:8050}"
+      PIPELINE_URL: "${PIPELINE_URL:-http://pipeline:8075}"
       CRAWLER_MINIO_ENABLED: "${CRAWLER_MINIO_ENABLED:-true}"
       CRAWLER_MINIO_ENDPOINT: "${CRAWLER_MINIO_ENDPOINT:-minio:9000}"
       CRAWLER_MINIO_ACCESS_KEY: "${CRAWLER_MINIO_ACCESS_KEY:-minioadmin}"
@@ -216,6 +217,7 @@ services:
       PPROF_PORT: 6060
       MINING_ENABLED: "${MINING_ENABLED:-true}"
       MINING_ML_SERVICE_URL: "http://mining-ml:8077"
+      PIPELINE_URL: "${PIPELINE_URL:-http://pipeline:8075}"
       COFORGE_ENABLED: "${COFORGE_ENABLED:-true}"
       COFORGE_ML_SERVICE_URL: "http://coforge-ml:8078"
     volumes:
@@ -530,6 +532,7 @@ services:
       REDIS_PASSWORD: "${REDIS_PASSWORD:-}"
       PUBLISHER_ROUTER_CHECK_INTERVAL: "${PUBLISHER_ROUTER_CHECK_INTERVAL:-5m}"
       PUBLISHER_ROUTER_BATCH_SIZE: "${PUBLISHER_ROUTER_BATCH_SIZE:-100}"
+      PIPELINE_URL: "${PIPELINE_URL:-http://pipeline:8075}"
       GIN_MODE: debug
       PPROF_PORT: 6060
     volumes:

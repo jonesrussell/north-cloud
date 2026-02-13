@@ -64,6 +64,7 @@ services:
       JOB_LOGS_REDIS_ENABLED: "${JOB_LOGS_REDIS_ENABLED:-true}"
       JOB_LOGS_REDIS_KEY_PREFIX: "${JOB_LOGS_REDIS_KEY_PREFIX:-logs}"
       JOB_LOGS_REDIS_TTL_SECONDS: "${JOB_LOGS_REDIS_TTL_SECONDS:-86400}"
+      PIPELINE_URL: http://pipeline:8075
       APP_ENV: production
       AUTH_JWT_SECRET: "${AUTH_JWT_SECRET}"
       SERVER_SECURITY_ENABLED: "false"
@@ -143,6 +144,7 @@ services:
       REDIS_PASSWORD: "${REDIS_PASSWORD:-}"
       PUBLISHER_ROUTER_CHECK_INTERVAL: "${PUBLISHER_ROUTER_CHECK_INTERVAL:-5m}"
       PUBLISHER_ROUTER_BATCH_SIZE: "${PUBLISHER_ROUTER_BATCH_SIZE:-100}"
+      PIPELINE_URL: http://pipeline:8075
       AUTH_JWT_SECRET: "${AUTH_JWT_SECRET}"
       GIN_MODE: release
       APP_DEBUG: "false"
@@ -202,6 +204,7 @@ services:
       COFORGE_ML_SERVICE_URL: http://coforge-ml:8078
       ENTERTAINMENT_ENABLED: "true"
       ENTERTAINMENT_ML_SERVICE_URL: http://entertainment-ml:8079
+      PIPELINE_URL: http://pipeline:8075
     extra_hosts:
       - "host.docker.internal:host-gateway"
     healthcheck:
