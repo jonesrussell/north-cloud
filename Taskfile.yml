@@ -182,6 +182,67 @@ tasks:
     cmds:
       - task lint
 
+  # Sync vendor/ in each Go module (use after go get -u or go mod tidy).
+  # In workspace mode, go mod vendor must run with GOWORK=off per module.
+  vendor:
+    desc: "Run go mod vendor in each Go workspace module (run after dependency changes)"
+    cmds:
+      - task: vendor:auth
+      - task: vendor:classifier
+      - task: vendor:crawler
+      - task: vendor:index-manager
+      - task: vendor:infrastructure
+      - task: vendor:mcp-north-cloud
+      - task: vendor:nc-http-proxy
+      - task: vendor:pipeline
+      - task: vendor:publisher
+      - task: vendor:search
+      - task: vendor:source-manager
+  vendor:auth:
+    dir: auth
+    env: { GOWORK: "off" }
+    cmds: [go mod vendor]
+  vendor:classifier:
+    dir: classifier
+    env: { GOWORK: "off" }
+    cmds: [go mod vendor]
+  vendor:crawler:
+    dir: crawler
+    env: { GOWORK: "off" }
+    cmds: [go mod vendor]
+  vendor:index-manager:
+    dir: index-manager
+    env: { GOWORK: "off" }
+    cmds: [go mod vendor]
+  vendor:infrastructure:
+    dir: infrastructure
+    env: { GOWORK: "off" }
+    cmds: [go mod vendor]
+  vendor:mcp-north-cloud:
+    dir: mcp-north-cloud
+    env: { GOWORK: "off" }
+    cmds: [go mod vendor]
+  vendor:nc-http-proxy:
+    dir: nc-http-proxy
+    env: { GOWORK: "off" }
+    cmds: [go mod vendor]
+  vendor:pipeline:
+    dir: pipeline
+    env: { GOWORK: "off" }
+    cmds: [go mod vendor]
+  vendor:publisher:
+    dir: publisher
+    env: { GOWORK: "off" }
+    cmds: [go mod vendor]
+  vendor:search:
+    dir: search
+    env: { GOWORK: "off" }
+    cmds: [go mod vendor]
+  vendor:source-manager:
+    dir: source-manager
+    env: { GOWORK: "off" }
+    cmds: [go mod vendor]
+
   lint:search-frontend:
     desc: "Run linter for search-frontend service"
     dir: search-frontend
