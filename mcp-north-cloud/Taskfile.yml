@@ -9,12 +9,6 @@ vars:
 output:
   group:
     error_only: false
-  colorize: true
-  prefix:
-    info: "🔍"
-    success: "✅"
-    warning: "⚠️"
-    error: "❌"
 
 tasks:
   default:
