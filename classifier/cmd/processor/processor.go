@@ -283,6 +283,7 @@ func Start() error {
 		batchProcessor,
 		procLogger,
 		pollerConfig,
+		nil,
 	)
 
 	if err = poller.Start(ctx); err != nil {
@@ -364,6 +365,7 @@ func StartWithStop() (func(), error) {
 		batchProcessor,
 		procLogger,
 		pollerConfig,
+		nil,
 	)
 
 	if err = poller.Start(ctx); err != nil {

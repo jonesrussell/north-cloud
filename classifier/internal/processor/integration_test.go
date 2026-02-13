@@ -321,7 +321,7 @@ func TestIntegration_EndToEndClassificationFlow(t *testing.T) {
 		BatchSize:    10,
 		PollInterval: 30 * time.Second,
 	}
-	poller := NewPoller(esClient, dbClient, batchProcessor, logger, pollerConfig)
+	poller := NewPoller(esClient, dbClient, batchProcessor, logger, pollerConfig, nil)
 
 	ctx := context.Background()
 	if err := poller.processPending(ctx); err != nil {
@@ -399,7 +399,7 @@ func TestIntegration_BatchProcessingWithErrors(t *testing.T) {
 	testClassifier := createTestClassifier(logger)
 	batchProcessor := NewBatchProcessor(testClassifier, 2, logger)
 	pollerConfig := PollerConfig{BatchSize: 10, PollInterval: 30 * time.Second}
-	poller := NewPoller(esClient, dbClient, batchProcessor, logger, pollerConfig)
+	poller := NewPoller(esClient, dbClient, batchProcessor, logger, pollerConfig, nil)
 
 	// Process should fail due to indexing error
 	ctx := context.Background()
@@ -427,7 +427,7 @@ func TestIntegration_PollerStartStop(t *testing.T) {
 		BatchSize:    10,
 		PollInterval: 100 * time.Millisecond, // Short interval for testing
 	}
-	poller := NewPoller(esClient, dbClient, batchProcessor, logger, pollerConfig)
+	poller := NewPoller(esClient, dbClient, batchProcessor, logger, pollerConfig, nil)
 
 	// Test starting
 	ctx := context.Background()
@@ -543,7 +543,7 @@ func TestIntegration_PollerWithRateLimiting(t *testing.T) {
 		BatchSize:    10,
 		PollInterval: 30 * time.Second,
 	}
-	poller := NewPoller(esClient, dbClient, batchProcessor, logger, pollerConfig)
+	poller := NewPoller(esClient, dbClient, batchProcessor, logger, pollerConfig, nil)
 
 	// Create rate-limited poller
 	pollRPS := 10
@@ -658,7 +658,7 @@ func TestIntegration_FailedClassificationHandling(t *testing.T) {
 	testClassifier := createTestClassifier(logger)
 	batchProcessor := NewBatchProcessor(testClassifier, 2, logger)
 	pollerConfig := PollerConfig{BatchSize: 10, PollInterval: 30 * time.Second}
-	poller := NewPoller(esClient, dbClient, batchProcessor, logger, pollerConfig)
+	poller := NewPoller(esClient, dbClient, batchProcessor, logger, pollerConfig, nil)
 
 	// Process pending content
 	ctx := context.Background()

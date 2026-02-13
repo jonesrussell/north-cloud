@@ -8,6 +8,7 @@ import (
 
 	"github.com/jonesrussell/north-cloud/classifier/internal/domain"
 	infralogger "github.com/north-cloud/infrastructure/logger"
+	"github.com/north-cloud/infrastructure/pipeline"
 )
 
 const (
@@ -53,6 +54,7 @@ type Poller struct {
 	dbClient       DatabaseClient
 	batchProcessor *BatchProcessor
 	logger         infralogger.Logger
+	pipeline       *pipeline.Client
 
 	batchSize    int
 	pollInterval time.Duration
@@ -73,6 +75,7 @@ func NewPoller(
 	batchProcessor *BatchProcessor,
 	logger infralogger.Logger,
 	config PollerConfig,
+	pipelineClient *pipeline.Client,
 ) *Poller {
 	if config.BatchSize <= 0 {
 		config.BatchSize = 100
@@ -86,6 +89,7 @@ func NewPoller(
 		dbClient:       dbClient,
 		batchProcessor: batchProcessor,
 		logger:         logger,
+		pipeline:       pipelineClient,
 		batchSize:      config.BatchSize,
 		pollInterval:   config.PollInterval,
 		stopChan:       make(chan struct{}),
@@ -234,9 +238,41 @@ func (p *Poller) indexResults(ctx context.Context, results []*ProcessResult) err
 		}
 	}
 
+	p.emitClassifiedEvents(ctx, classifiedContents)
+
 	p.logger.Info("Successfully indexed classified content", infralogger.Int("count", len(classifiedContents)))
 
 	return nil
+}
+
+// emitClassifiedEvents emits pipeline events for successfully classified content.
+func (p *Poller) emitClassifiedEvents(ctx context.Context, contents []*domain.ClassifiedContent) {
+	if p.pipeline == nil || len(contents) == 0 {
+		return
+	}
+
+	events := make([]pipeline.Event, 0, len(contents))
+	for _, content := range contents {
+		events = append(events, pipeline.Event{
+			ArticleURL: content.URL,
+			SourceName: content.SourceName,
+			Stage:      "classified",
+			OccurredAt: time.Now(),
+			Metadata: map[string]any{
+				"quality_score": content.QualityScore,
+				"topics":        content.Topics,
+				"content_type":  content.ContentType,
+			},
+		})
+	}
+
+	if emitErr := p.pipeline.EmitBatch(ctx, events); emitErr != nil {
+		p.logger.Warn("Failed to emit pipeline events",
+			infralogger.Error(emitErr),
+			infralogger.Int("count", len(events)),
+			infralogger.String("stage", "classified"),
+		)
+	}
 }
 
 // validateURL validates and optionally truncates URLs to a reasonable length
