@@ -25,7 +25,9 @@
           "refId": "A",
           "datasource": { "type": "elasticsearch", "uid": "elasticsearch" },
           "alias": "*_classified_content",
-          "query": "{\"size\":0,\"query\":{\"range\":{\"crawled_at\":{\"gte\":\"now-24h\"}}},\"aggs\":{\"by_content_type\":{\"terms\":{\"field\":\"content_type\",\"size\":10}}}}"
+          "query": "",
+          "metrics": [ { "type": "count", "id": "1" } ],
+          "bucketAggs": [ { "type": "terms", "field": "content_type", "id": "2", "settings": { "size": "10", "order": "desc", "orderBy": "_count" } } ]
         }
       ]
     },
@@ -39,7 +41,12 @@
           "refId": "A",
           "datasource": { "type": "elasticsearch", "uid": "elasticsearch" },
           "alias": "*_classified_content",
-          "query": "{\"size\":0,\"query\":{\"range\":{\"crawled_at\":{\"gte\":\"now-24h\"}}},\"aggs\":{\"content_type_x_crime\":{\"terms\":{\"field\":\"content_type\",\"size\":10},\"aggs\":{\"crime\":{\"terms\":{\"field\":\"crime.street_crime_relevance\",\"size\":10}}}}}"
+          "query": "",
+          "metrics": [ { "type": "count", "id": "1" } ],
+          "bucketAggs": [
+            { "type": "terms", "field": "content_type", "id": "2", "settings": { "size": "10", "order": "desc", "orderBy": "_count" } },
+            { "type": "terms", "field": "crime.street_crime_relevance", "id": "3", "settings": { "size": "10", "order": "desc", "orderBy": "_count" } }
+          ]
         }
       ]
     },
@@ -53,7 +60,9 @@
           "refId": "A",
           "datasource": { "type": "elasticsearch", "uid": "elasticsearch" },
           "alias": "*_classified_content",
-          "query": "{\"query\":{\"bool\":{\"must\":[{\"term\":{\"content_type\":\"page\"}},{\"term\":{\"topics\":\"crime\"}},{\"range\":{\"crawled_at\":{\"gte\":\"now-24h\"}}}]}}}"
+          "query": "content_type:page AND topics:crime",
+          "metrics": [ { "type": "raw_data", "id": "1", "settings": { "size": "100" } } ],
+          "bucketAggs": []
         }
       ]
     },
