@@ -15,7 +15,7 @@ const (
 	topCrimeTypesLimit = 10
 	qualityHighMin     = 70
 	qualityMediumMin   = 40
-	maxSourceBuckets   = 100
+	maxSourceBuckets   = 500
 
 	rawContentSuffix        = "_raw_content"
 	classifiedContentSuffix = "_classified_content"
@@ -347,7 +347,7 @@ func (s *AggregationService) fetchClassifiedAggregations(
 		"aggs": map[string]any{
 			"by_source": map[string]any{
 				"terms": map[string]any{
-					"field": "source_name",
+					"field": "source_name.keyword",
 					"size":  maxSourceBuckets,
 				},
 				"aggs": map[string]any{
@@ -373,6 +373,12 @@ func (s *AggregationService) fetchClassifiedAggregations(
 		return qualityMap, deltaMap
 	}
 	defer func() { _ = res.Body.Close() }()
+
+	if res.IsError() {
+		s.logger.Warn("ES error in source health aggregation",
+			infralogger.Int("status_code", res.StatusCode))
+		return qualityMap, deltaMap
+	}
 
 	var esResp sourceHealthAggResponse
 	if decodeErr := json.NewDecoder(res.Body).Decode(&esResp); decodeErr != nil {
@@ -402,10 +408,7 @@ func (s *AggregationService) assembleSourceHealthList(
 	for _, source := range sources {
 		raw := rawCounts[source]
 		classified := classifiedCounts[source]
-		backlog := raw - classified
-		if backlog < 0 {
-			backlog = 0
-		}
+		backlog := max(raw-classified, 0)
 		result = append(result, domain.SourceHealth{
 			Source:          source,
 			RawCount:        raw,
