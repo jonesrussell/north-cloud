@@ -1,0 +1,144 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": null,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "type": "row",
+      "title": "Classifier Observability (Elasticsearch)",
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 }
+    },
+    {
+      "title": "Content Type Distribution (Last 24h)",
+      "type": "table",
+      "datasource": { "type": "elasticsearch", "uid": "elasticsearch" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 1 },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "elasticsearch", "uid": "elasticsearch" },
+          "alias": "*_classified_content",
+          "query": "{\"size\":0,\"query\":{\"range\":{\"crawled_at\":{\"gte\":\"now-24h\"}}},\"aggs\":{\"by_content_type\":{\"terms\":{\"field\":\"content_type\",\"size\":10}}}}"
+        }
+      ]
+    },
+    {
+      "title": "Crime Relevance × Content Type (Last 24h)",
+      "type": "table",
+      "datasource": { "type": "elasticsearch", "uid": "elasticsearch" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 1 },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "elasticsearch", "uid": "elasticsearch" },
+          "alias": "*_classified_content",
+          "query": "{\"size\":0,\"query\":{\"range\":{\"crawled_at\":{\"gte\":\"now-24h\"}}},\"aggs\":{\"content_type_x_crime\":{\"terms\":{\"field\":\"content_type\",\"size\":10},\"aggs\":{\"crime\":{\"terms\":{\"field\":\"crime.street_crime_relevance\",\"size\":10}}}}}"
+        }
+      ]
+    },
+    {
+      "title": "Suspected Misclassifications (Crime Pages)",
+      "type": "table",
+      "datasource": { "type": "elasticsearch", "uid": "elasticsearch" },
+      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 9 },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "elasticsearch", "uid": "elasticsearch" },
+          "alias": "*_classified_content",
+          "query": "{\"query\":{\"bool\":{\"must\":[{\"term\":{\"content_type\":\"page\"}},{\"term\":{\"topics\":\"crime\"}},{\"range\":{\"crawled_at\":{\"gte\":\"now-24h\"}}}]}}}"
+        }
+      ]
+    },
+    {
+      "type": "row",
+      "title": "Publisher Logs (Loki)",
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 19 }
+    },
+    {
+      "title": "Publisher: Articles Published (Last 24h)",
+      "type": "stat",
+      "datasource": { "type": "loki", "uid": "loki" },
+      "gridPos": { "h": 4, "w": 12, "x": 0, "y": 20 },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "count_over_time({project=\"north-cloud\", service=\"publisher\"} |= \"Published article to channel\" [24h])"
+        }
+      ]
+    },
+    {
+      "title": "Publisher Log Stream",
+      "type": "logs",
+      "datasource": { "type": "loki", "uid": "loki" },
+      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 24 },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "{project=\"north-cloud\", service=\"publisher\"}"
+        }
+      ]
+    },
+    {
+      "type": "row",
+      "title": "StreetCode Ingestion (Loki)",
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 34 },
+      "description": "Requires StreetCode logs in Loki with service=streetcode (e.g. run in Docker with same Alloy discovery)."
+    },
+    {
+      "title": "StreetCode: Skipped Non-Core (Last 24h)",
+      "type": "stat",
+      "datasource": { "type": "loki", "uid": "loki" },
+      "gridPos": { "h": 4, "w": 12, "x": 0, "y": 35 },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "count_over_time({project=\"north-cloud\", service=\"streetcode\"} |= \"Skipping non-core-crime\" [24h])"
+        }
+      ]
+    },
+    {
+      "title": "StreetCode: Ingested Articles (Last 24h)",
+      "type": "stat",
+      "datasource": { "type": "loki", "uid": "loki" },
+      "gridPos": { "h": 4, "w": 12, "x": 12, "y": 35 },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "count_over_time({project=\"north-cloud\", service=\"streetcode\"} |= \"Article processed\" [24h])"
+        }
+      ]
+    },
+    {
+      "title": "StreetCode Log Stream",
+      "type": "logs",
+      "datasource": { "type": "loki", "uid": "loki" },
+      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 39 },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "{project=\"north-cloud\", service=\"streetcode\"}"
+        }
+      ]
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 38,
+  "tags": ["pipeline", "north-cloud", "streetcode"],
+  "templating": { "list": [] },
+  "time": { "from": "now-6h", "to": "now" },
+  "timezone": "browser",
+  "title": "North Cloud → StreetCode Pipeline (Loki + ES)",
+  "uid": "north-cloud-pipeline",
+  "version": 1,
+  "weekStart": ""
+}
