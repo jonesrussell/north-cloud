@@ -71,8 +71,6 @@ type ElasticsearchConfig struct {
 type IndexTypesConfig struct {
 	RawContent        IndexTypeConfig `yaml:"raw_content"`
 	ClassifiedContent IndexTypeConfig `yaml:"classified_content"`
-	Article           IndexTypeConfig `yaml:"article"`
-	Page              IndexTypeConfig `yaml:"page"`
 }
 
 // IndexTypeConfig holds configuration for a specific index type.

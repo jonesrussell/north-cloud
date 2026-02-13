@@ -68,10 +68,6 @@ func getIndexSuffix(indexType domain.IndexType) string {
 		return "_raw_content"
 	case domain.IndexTypeClassifiedContent:
 		return "_classified_content"
-	case domain.IndexTypeArticle:
-		return "_articles"
-	case domain.IndexTypePage:
-		return "_pages"
 	default:
 		return ""
 	}
@@ -647,8 +643,6 @@ func (s *IndexService) getShards(indexType domain.IndexType) int {
 		return s.indexTypes.RawContent.Shards
 	case domain.IndexTypeClassifiedContent:
 		return s.indexTypes.ClassifiedContent.Shards
-	case domain.IndexTypeArticle, domain.IndexTypePage:
-		return 1
 	default:
 		return 1
 	}
@@ -660,8 +654,6 @@ func (s *IndexService) getReplicas(indexType domain.IndexType) int {
 		return s.indexTypes.RawContent.Replicas
 	case domain.IndexTypeClassifiedContent:
 		return s.indexTypes.ClassifiedContent.Replicas
-	case domain.IndexTypeArticle, domain.IndexTypePage:
-		return 1
 	default:
 		return 1
 	}
@@ -669,7 +661,7 @@ func (s *IndexService) getReplicas(indexType domain.IndexType) int {
 
 func isValidIndexType(indexType domain.IndexType) bool {
 	switch indexType {
-	case domain.IndexTypeRawContent, domain.IndexTypeClassifiedContent, domain.IndexTypeArticle, domain.IndexTypePage:
+	case domain.IndexTypeRawContent, domain.IndexTypeClassifiedContent:
 		return true
 	default:
 		return false
@@ -693,10 +685,6 @@ func (s *IndexService) inferIndexTypeAndSource(indexName string) (indexType doma
 		} else if strings.Contains(indexName, "classified_content") {
 			indexType = domain.IndexTypeClassifiedContent
 		}
-	case "articles":
-		indexType = domain.IndexTypeArticle
-	case "pages":
-		indexType = domain.IndexTypePage
 	}
 
 	// Source name is everything before the type suffix

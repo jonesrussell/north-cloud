@@ -149,4 +149,3 @@ curl -X POST http://localhost:8060/api/v1/jobs \
 ## Documentation
 
 - `/crawler/docs/INTERVAL_SCHEDULER.md` - Comprehensive scheduler guide
-- `/crawler/docs/DATABASE_SCHEDULER.md` - Legacy cron (deprecated)

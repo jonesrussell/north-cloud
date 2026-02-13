@@ -50,8 +50,6 @@ func TestGenerateIndexName(t *testing.T) {
 	}{
 		{"raw content", "example.com", domain.IndexTypeRawContent, "example_com_raw_content"},
 		{"classified content", "example.com", domain.IndexTypeClassifiedContent, "example_com_classified_content"},
-		{"article", "my-site", domain.IndexTypeArticle, "my_site_articles"},
-		{"page", "my-site", domain.IndexTypePage, "my_site_pages"},
 		{"with protocol", "https://news.ca", domain.IndexTypeRawContent, "news_ca_raw_content"},
 	}
 
@@ -78,8 +76,6 @@ func TestGetIndexSuffix(t *testing.T) {
 	}{
 		{"raw_content", domain.IndexTypeRawContent, "_raw_content"},
 		{"classified_content", domain.IndexTypeClassifiedContent, "_classified_content"},
-		{"article", domain.IndexTypeArticle, "_articles"},
-		{"page", domain.IndexTypePage, "_pages"},
 		{"unknown type", domain.IndexType("unknown"), ""},
 	}
 
@@ -105,8 +101,6 @@ func TestIsValidIndexType(t *testing.T) {
 	}{
 		{"raw_content", domain.IndexTypeRawContent, true},
 		{"classified_content", domain.IndexTypeClassifiedContent, true},
-		{"article", domain.IndexTypeArticle, true},
-		{"page", domain.IndexTypePage, true},
 		{"unknown", domain.IndexType("unknown"), false},
 		{"empty", domain.IndexType(""), false},
 	}
@@ -303,8 +297,6 @@ func TestInferIndexTypeAndSource(t *testing.T) {
 	}{
 		{"raw content", "example_com_raw_content", domain.IndexTypeRawContent, "example_com"},
 		{"classified content", "news_ca_classified_content", domain.IndexTypeClassifiedContent, "news_ca"},
-		{"articles", "my_site_articles", domain.IndexTypeArticle, "my_site"},
-		{"pages", "my_site_pages", domain.IndexTypePage, "my_site"},
 		{"single part", "test", "", ""},
 		{"unknown suffix", "example_com_unknown", "", ""},
 	}

@@ -168,7 +168,7 @@ ML sidecars (crime-ml, mining-ml, coforge-ml, entertainment-ml) live under `ml-s
 - **Key Files**: `main.go`, `internal/bootstrap/`, `internal/scheduler/interval_scheduler.go`
 - **IMPORTANT**: Jobs require `source_id` (not `source_name`)
 - **Scheduler**: Interval-based (NOT cron) - use `interval_minutes` + `interval_type`
-- **Docs**: `/crawler/docs/INTERVAL_SCHEDULER.md` (recommended), `/crawler/docs/DATABASE_SCHEDULER.md` (deprecated)
+- **Docs**: `/crawler/docs/INTERVAL_SCHEDULER.md`
 
 ### 2. source-manager (`/source-manager`)
 - **Port**: 8050
@@ -508,7 +508,6 @@ PROD_DEPLOY_PATH=/opt/north-cloud
 ### Service-Specific Docs
 - `/crawler/README.md` - General crawler docs
 - `/crawler/docs/INTERVAL_SCHEDULER.md` - **RECOMMENDED** Interval scheduler guide
-- `/crawler/docs/DATABASE_SCHEDULER.md` - Legacy cron scheduler (deprecated)
 - `/publisher/docs/REDIS_MESSAGE_FORMAT.md` - Redis message specification
 - `/publisher/docs/CONSUMER_GUIDE.md` - Integration examples
 - `/mcp-north-cloud/README.md` - MCP server tool documentation

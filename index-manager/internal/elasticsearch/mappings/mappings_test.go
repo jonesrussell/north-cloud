@@ -53,7 +53,7 @@ func TestToMap_RoundTrip(t *testing.T) {
 func TestGetMappingForType_ValidTypes(t *testing.T) {
 	t.Helper()
 
-	types := []string{"raw_content", "classified_content", "article", "page"}
+	types := []string{"raw_content", "classified_content"}
 
 	for _, indexType := range types {
 		t.Run(indexType, func(t *testing.T) {

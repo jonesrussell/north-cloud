@@ -9,10 +9,6 @@ func GetMappingForType(indexType string, shards, replicas int) (map[string]any, 
 		return GetRawContentMapping(shards, replicas), nil
 	case "classified_content":
 		return GetClassifiedContentMapping(shards, replicas), nil
-	case "article":
-		return GetArticleMapping(), nil
-	case "page":
-		return GetPageMapping(), nil
 	default:
 		return nil, fmt.Errorf("unknown index type: %s", indexType)
 	}

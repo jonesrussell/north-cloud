@@ -6,8 +6,6 @@ type IndexType string
 const (
 	IndexTypeRawContent        IndexType = "raw_content"
 	IndexTypeClassifiedContent IndexType = "classified_content"
-	IndexTypeArticle           IndexType = "article"
-	IndexTypePage              IndexType = "page"
 )
 
 // IndexStatus represents the status of an index

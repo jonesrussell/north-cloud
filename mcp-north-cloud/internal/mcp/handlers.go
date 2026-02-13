@@ -1041,15 +1041,19 @@ func (s *Server) setupFrontendFileLint(ctx context.Context, serviceDir, serviceN
 func (s *Server) executeLintCommand(id any, lintCommand *exec.Cmd, lintType, serviceDir string) *Response {
 	output, err := lintCommand.CombinedOutput()
 	outputStr := string(output)
+	displayOutput, outputTruncated, outputTotalBytes := truncateCommandOutput(outputStr, maxCommandOutputBytes)
 
 	result := map[string]any{
 		"lint_type":   lintType,
 		"service_dir": serviceDir,
 		"command":     strings.Join(lintCommand.Args, " "),
-		"output":      outputStr,
+		"output":      displayOutput,
 		"success":     err == nil,
 	}
-
+	if outputTruncated {
+		result["output_truncated"] = true
+		result["output_total_bytes"] = outputTotalBytes
+	}
 	if err != nil {
 		result["error"] = err.Error()
 		if lintCommand.ProcessState != nil {
@@ -1093,6 +1097,25 @@ func (s *Server) handleTestService(ctx context.Context, id any, arguments json.R
 	return s.executeBuildTestCommand(ctx, id, args.ServiceName, taskName, true)
 }
 
+// maxCommandOutputBytes caps the output field size in build/test/lint responses to avoid large MCP payloads.
+const maxCommandOutputBytes = 6000
+
+// truncateCommandOutput returns output truncated to the last maxBytes characters when over limit.
+// It preserves the tail so failure messages and stack traces remain visible.
+// Returns (possibly truncated output, wasTruncated, original length in bytes).
+func truncateCommandOutput(s string, maxBytes int) (out string, truncated bool, totalBytes int) {
+	totalBytes = len(s)
+	if totalBytes <= maxBytes {
+		return s, false, totalBytes
+	}
+	tailStart := totalBytes - (maxBytes - 60) // reserve ~60 chars for the note
+	if tailStart < 0 {
+		tailStart = 0
+	}
+	note := fmt.Sprintf("... (output truncated, showing last %d of %d bytes)\n", totalBytes-tailStart, totalBytes)
+	return note + s[tailStart:], true, totalBytes
+}
+
 // executeBuildTestCommand runs build or test for a service and returns structured output.
 func (s *Server) executeBuildTestCommand(ctx context.Context, id any, serviceName, taskName string, isTest bool) *Response {
 	projectRoot := s.detectProjectRoot()
@@ -1128,12 +1151,17 @@ func (s *Server) executeBuildTestCommand(ctx context.Context, id any, serviceNam
 
 	output, err := cmd.CombinedOutput()
 	outputStr := string(output)
+	displayOutput, outputTruncated, outputTotalBytes := truncateCommandOutput(outputStr, maxCommandOutputBytes)
 
 	result := map[string]any{
 		"success": err == nil,
 		"service": serviceName,
 		"command": strings.Join(cmd.Args, " "),
-		"output":  outputStr,
+		"output":  displayOutput,
+	}
+	if outputTruncated {
+		result["output_truncated"] = true
+		result["output_total_bytes"] = outputTotalBytes
 	}
 	populateBuildTestErrorResult(result, cmd, err, outputStr, isGo)
 

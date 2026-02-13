@@ -35,9 +35,7 @@ index-manager/
     │   ├── query_builder.go     # Query construction
     │   └── mappings/            # Index mappings
     │       ├── raw_content.go
-    │       ├── classified_content.go
-    │       ├── article.go
-    │       └── page.go
+    │       └── classified_content.go
     ├── database/        # PostgreSQL (migrations, metadata)
     ├── config/          # Configuration
     └── domain/          # Index, Document models
@@ -49,8 +47,6 @@ index-manager/
 |------|---------|---------|
 | `raw_content` | `{source}_raw_content` | Crawler output |
 | `classified_content` | `{source}_classified_content` | Classifier output |
-| `article` | `{source}_article` | Legacy (deprecated) |
-| `page` | `{source}_page` | Legacy (deprecated) |
 
 ## API Endpoints (JWT Protected)
 

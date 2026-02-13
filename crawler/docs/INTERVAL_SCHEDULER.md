@@ -4,7 +4,7 @@
 
 The interval-based scheduler is a modern, user-friendly job scheduling system that replaces the legacy cron-based scheduler. It provides interval-based scheduling (every N minutes/hours/days), comprehensive job control (pause/resume/cancel), execution history tracking, and enterprise-grade observability.
 
-**Migration Note**: This scheduler supersedes the old cron-based scheduler documented in `DATABASE_SCHEDULER.md`. See the [Migration Guide](#migration-from-cron-based-scheduler) section below.
+**Note**: This is the primary scheduler implementation. The legacy cron-based scheduler has been removed.
 
 ## Key Features
 
@@ -944,5 +944,5 @@ Potential features for future development:
 
 **Version**: 1.1.0
 **Last Updated**: 2026-02-04
-**Migration**: Supersedes `DATABASE_SCHEDULER.md` (cron-based scheduler)
+**Note**: Legacy cron-based scheduler has been removed
 **New in 1.1.0**: Self-balancing load distribution with BucketMap
