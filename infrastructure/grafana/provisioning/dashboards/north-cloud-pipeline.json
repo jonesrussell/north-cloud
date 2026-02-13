@@ -62,7 +62,7 @@
           "refId": "A",
           "datasource": { "type": "elasticsearch", "uid": "elasticsearch" },
           "alias": "*_classified_content",
-          "query": "content_type.keyword:page AND topics:crime",
+          "query": "content_type.keyword:page AND (crime.street_crime_relevance.keyword:core_street_crime OR crime.street_crime_relevance.keyword:peripheral_crime)",
           "metrics": [ { "type": "raw_data", "id": "1", "settings": { "size": "100" } } ],
           "bucketAggs": []
         }
