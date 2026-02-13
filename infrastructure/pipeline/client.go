@@ -88,6 +88,7 @@ func (c *Client) CircuitOpen() bool {
 
 // Emit sends a single event to the Pipeline Service. Fire-and-forget: errors are returned
 // but should be logged as warnings, not treated as fatal.
+// The client automatically sets ServiceName on the event from the value passed to NewClient.
 func (c *Client) Emit(ctx context.Context, event Event) error {
 	if !c.IsEnabled() {
 		return nil
@@ -96,6 +97,8 @@ func (c *Client) Emit(ctx context.Context, event Event) error {
 	if !c.breakerAllow() {
 		return ErrCircuitBreakerOpen
 	}
+
+	event.ServiceName = c.serviceName
 
 	body, marshalErr := json.Marshal(event)
 	if marshalErr != nil {
@@ -106,6 +109,7 @@ func (c *Client) Emit(ctx context.Context, event Event) error {
 }
 
 // EmitBatch sends multiple events in a single HTTP request.
+// The client automatically sets ServiceName on each event from the value passed to NewClient.
 func (c *Client) EmitBatch(ctx context.Context, events []Event) error {
 	if !c.IsEnabled() || len(events) == 0 {
 		return nil
@@ -113,6 +117,10 @@ func (c *Client) EmitBatch(ctx context.Context, events []Event) error {
 
 	if !c.breakerAllow() {
 		return ErrCircuitBreakerOpen
+	}
+
+	for i := range events {
+		events[i].ServiceName = c.serviceName
 	}
 
 	batch := batchRequest{Events: events}
