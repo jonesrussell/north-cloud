@@ -275,7 +275,7 @@ func (r *Repository) GetPublishCountByChannel(ctx context.Context, channelName s
 }
 
 // GetChannelStatsSince retrieves per-channel count and last published time for publishes since the given time (e.g. last 24h).
-func (r *Repository) GetChannelStatsSince(ctx context.Context, since time.Time) (map[string]ChannelStat, int, error) {
+func (r *Repository) GetChannelStatsSince(ctx context.Context, since time.Time) (channelStats map[string]ChannelStat, total int, err error) {
 	query := `
 		SELECT
 			channel_name,
@@ -293,7 +293,6 @@ func (r *Repository) GetChannelStatsSince(ctx context.Context, since time.Time) 
 	defer rows.Close()
 
 	stats := make(map[string]ChannelStat)
-	var total int
 	for rows.Next() {
 		var channelName string
 		var totalPublished int
