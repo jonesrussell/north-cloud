@@ -23,13 +23,13 @@ const (
 
 // AggregationService provides aggregation operations on classified content
 type AggregationService struct {
-	esClient     *elasticsearch.Client
+	esClient     AggregationESClient
 	queryBuilder *elasticsearch.DocumentQueryBuilder
 	logger       infralogger.Logger
 }
 
 // NewAggregationService creates a new aggregation service
-func NewAggregationService(esClient *elasticsearch.Client, logger infralogger.Logger) *AggregationService {
+func NewAggregationService(esClient AggregationESClient, logger infralogger.Logger) *AggregationService {
 	return &AggregationService{
 		esClient:     esClient,
 		queryBuilder: elasticsearch.NewDocumentQueryBuilder(),
