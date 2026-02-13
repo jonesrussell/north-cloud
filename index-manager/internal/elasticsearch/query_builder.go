@@ -13,6 +13,8 @@ const (
 	maxPageSize     = 100
 	defaultPageSize = 20
 	maxQualityScore = 100
+	sortDescending  = "desc"
+	sortByRelevance = "relevance"
 )
 
 // DocumentQueryBuilder builds Elasticsearch queries from document query requests
@@ -68,26 +70,26 @@ func (qb *DocumentQueryBuilder) validateRequest(req *domain.DocumentQueryRequest
 	// Set default sort
 	if req.Sort == nil {
 		req.Sort = &domain.DocumentSort{
-			Field: "relevance",
-			Order: "desc",
+			Field: sortByRelevance,
+			Order: sortDescending,
 		}
 	}
 
 	// Validate sort field
 	validFields := map[string]bool{
-		"relevance":      true,
+		sortByRelevance:  true,
 		"published_date": true,
 		"crawled_at":     true,
 		"quality_score":  true,
 		"title":          true,
 	}
 	if !validFields[req.Sort.Field] {
-		req.Sort.Field = "relevance"
+		req.Sort.Field = sortByRelevance
 	}
 
 	// Validate sort order
-	if req.Sort.Order != "asc" && req.Sort.Order != "desc" {
-		req.Sort.Order = "desc"
+	if req.Sort.Order != "asc" && req.Sort.Order != sortDescending {
+		req.Sort.Order = sortDescending
 	}
 
 	// Validate filters if present
@@ -391,12 +393,12 @@ func (qb *DocumentQueryBuilder) buildSort(sort *domain.DocumentSort) []map[strin
 	if sort == nil {
 		// Default: sort by relevance descending (score)
 		return []map[string]any{
-			{"_score": map[string]any{"order": "desc"}},
+			{"_score": map[string]any{"order": sortDescending}},
 		}
 	}
 
 	switch sort.Field {
-	case "relevance":
+	case sortByRelevance:
 		sortClauses = append(sortClauses, map[string]any{
 			"_score": map[string]any{"order": sort.Order},
 		})
