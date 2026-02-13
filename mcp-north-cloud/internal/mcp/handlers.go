@@ -1102,13 +1102,16 @@ const maxCommandOutputBytes = 6000
 
 // truncateCommandOutput returns output truncated to the last maxBytes characters when over limit.
 // It preserves the tail so failure messages and stack traces remain visible.
+// truncationNoteReserve is the number of bytes reserved for the truncation note prefix.
+const truncationNoteReserve = 60
+
 // Returns (possibly truncated output, wasTruncated, original length in bytes).
 func truncateCommandOutput(s string, maxBytes int) (out string, truncated bool, totalBytes int) {
 	totalBytes = len(s)
 	if totalBytes <= maxBytes {
 		return s, false, totalBytes
 	}
-	tailStart := totalBytes - (maxBytes - 60) // reserve ~60 chars for the note
+	tailStart := totalBytes - (maxBytes - truncationNoteReserve)
 	if tailStart < 0 {
 		tailStart = 0
 	}
