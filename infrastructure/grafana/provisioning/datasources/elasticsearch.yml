@@ -17,4 +17,5 @@ datasources:
       esVersion: '9.0.0'
       logMessageField: msg
       logLevelField: level
+      # Classified content uses crawled_at; @timestamp is not in the mapping
       timeField: crawled_at

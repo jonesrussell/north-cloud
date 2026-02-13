@@ -443,6 +443,16 @@ curl -s http://admin:changeme@localhost:3000/api/dashboards/uid/north-cloud-logs
    docker compose -f docker-compose.base.yml -f docker-compose.prod.yml logs grafana 2>&1 | grep -i provision
    ```
 
+### Elasticsearch: "No date field named @timestamp found"
+
+Classified content indexes use **`crawled_at`** as the time field, not `@timestamp`. When saving the Elasticsearch datasource (e.g. after setting Index name to `*_classified_content`):
+
+1. In **Connections** → **Data sources** → **Elasticsearch**, open the datasource.
+2. Under **Elasticsearch details**, set **Time field name** to **`crawled_at`** (not @timestamp).
+3. Save & test.
+
+Provisioning already sets `timeField: crawled_at` in `provisioning/datasources/elasticsearch.yml`; restart Grafana so the provisioned config is loaded, or set it manually as above.
+
 ### Grafana Shows "Loki: Bad Gateway"
 
 1. **Check Loki is running**:
