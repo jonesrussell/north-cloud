@@ -66,6 +66,7 @@ type ServiceConfig struct {
 	MinQualityScore   int           `yaml:"min_quality_score"`
 	MinWordCount      int           `yaml:"min_word_count"`
 	MinArticleWordCnt int           `yaml:"min_article_word_count"`
+	PipelineURL       string        `env:"PIPELINE_URL"            yaml:"pipeline_url"`
 }
 
 // DatabaseConfig holds database configuration.

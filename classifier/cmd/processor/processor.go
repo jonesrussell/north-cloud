@@ -20,6 +20,7 @@ import (
 	infraconfig "github.com/north-cloud/infrastructure/config"
 	esclient "github.com/north-cloud/infrastructure/elasticsearch"
 	infralogger "github.com/north-cloud/infrastructure/logger"
+	"github.com/north-cloud/infrastructure/pipeline"
 )
 
 const (
@@ -48,6 +49,7 @@ type ProcessorConfig struct {
 	PollingInterval   time.Duration
 	BatchSize         int
 	ConcurrentWorkers int
+	PipelineURL       string
 }
 
 // LoadConfig loads configuration from config file with env var overrides
@@ -88,6 +90,7 @@ func LoadConfig() (*ProcessorConfig, *config.Config) {
 		PollingInterval:   cfg.Service.PollInterval,
 		BatchSize:         cfg.Service.BatchSize,
 		ConcurrentWorkers: cfg.Service.Concurrency,
+		PipelineURL:       cfg.Service.PipelineURL,
 	}, cfg
 }
 
@@ -273,6 +276,8 @@ func Start() error {
 
 	batchProcessor := processor.NewBatchProcessor(clf, cfg.ConcurrentWorkers, procLogger)
 
+	pipelineClient := pipeline.NewClient(cfg.PipelineURL, "classifier")
+
 	pollerConfig := processor.PollerConfig{
 		BatchSize:    cfg.BatchSize,
 		PollInterval: cfg.PollingInterval,
@@ -283,7 +288,7 @@ func Start() error {
 		batchProcessor,
 		procLogger,
 		pollerConfig,
-		nil,
+		pipelineClient,
 	)
 
 	if err = poller.Start(ctx); err != nil {
@@ -355,6 +360,8 @@ func StartWithStop() (func(), error) {
 
 	batchProcessor := processor.NewBatchProcessor(clf, cfg.ConcurrentWorkers, procLogger)
 
+	pipelineClient := pipeline.NewClient(cfg.PipelineURL, "classifier")
+
 	pollerConfig := processor.PollerConfig{
 		BatchSize:    cfg.BatchSize,
 		PollInterval: cfg.PollingInterval,
@@ -365,7 +372,7 @@ func StartWithStop() (func(), error) {
 		batchProcessor,
 		procLogger,
 		pollerConfig,
-		nil,
+		pipelineClient,
 	)
 
 	if err = poller.Start(ctx); err != nil {
