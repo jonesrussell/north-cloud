@@ -15,6 +15,7 @@ import (
 	"github.com/jonesrussell/north-cloud/crawler/internal/sources"
 	"github.com/jonesrussell/north-cloud/crawler/internal/storage/types"
 	infralogger "github.com/north-cloud/infrastructure/logger"
+	"github.com/north-cloud/infrastructure/pipeline"
 )
 
 const (
@@ -34,14 +35,15 @@ const (
 
 // CrawlerParams holds parameters for creating a crawler instance
 type CrawlerParams struct {
-	Logger       infralogger.Logger
-	Bus          *events.EventBus
-	IndexManager types.IndexManager
-	Sources      sources.Interface
-	Config       *crawler.Config
-	Storage      types.Interface
-	FullConfig   config.Interface // Full config for accessing MinIO settings
-	DB           any              // Database connection (optional, for queued links)
+	Logger         infralogger.Logger
+	Bus            *events.EventBus
+	IndexManager   types.IndexManager
+	Sources        sources.Interface
+	Config         *crawler.Config
+	Storage        types.Interface
+	FullConfig     config.Interface // Full config for accessing MinIO settings
+	DB             any              // Database connection (optional, for queued links)
+	PipelineClient *pipeline.Client // Pipeline observability client (optional, fire-and-forget)
 }
 
 // CrawlerResult holds the crawler instance
@@ -57,6 +59,7 @@ func NewCrawlerWithParams(p CrawlerParams) (*CrawlerResult, error) {
 		p.Logger,
 		p.Storage,
 		p.Sources,
+		p.PipelineClient,
 	)
 	rawContentProcessor := rawcontent.NewProcessor(
 		p.Logger,

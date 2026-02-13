@@ -15,6 +15,7 @@ import (
 	storagepkg "github.com/jonesrussell/north-cloud/crawler/internal/storage"
 	"github.com/jonesrussell/north-cloud/crawler/internal/storage/types"
 	infralogger "github.com/north-cloud/infrastructure/logger"
+	"github.com/north-cloud/infrastructure/pipeline"
 )
 
 // Interface defines the interface for processing raw content.
@@ -33,6 +34,7 @@ type RawContentService struct {
 	storage    types.Interface
 	sources    sources.Interface
 	rawIndexer *storagepkg.RawContentIndexer
+	pipeline   *pipeline.Client
 }
 
 // NewRawContentService creates a new raw content service.
@@ -40,6 +42,7 @@ func NewRawContentService(
 	log infralogger.Logger,
 	storage types.Interface,
 	sourcesManager sources.Interface,
+	pipelineClient *pipeline.Client,
 ) *RawContentService {
 	rawIndexer := storagepkg.NewRawContentIndexer(storage, log)
 	return &RawContentService{
@@ -47,6 +50,7 @@ func NewRawContentService(
 		storage:    storage,
 		sources:    sourcesManager,
 		rawIndexer: rawIndexer,
+		pipeline:   pipelineClient,
 	}
 }
 
@@ -93,6 +97,9 @@ func (s *RawContentService) Process(e *colly.HTMLElement) error {
 		return fmt.Errorf("failed to index raw content: %w", err)
 	}
 
+	// Emit pipeline event (fire-and-forget)
+	s.emitIndexedEvent(ctx, sourceURL, sourceName, rawData, rawContent)
+
 	s.logger.Debug("Indexed raw content for classification",
 		infralogger.String("url", sourceURL),
 		infralogger.String("source_name", sourceName),
@@ -101,6 +108,39 @@ func (s *RawContentService) Process(e *colly.HTMLElement) error {
 	)
 
 	return nil
+}
+
+// emitIndexedEvent emits a pipeline event after successful raw content indexing.
+func (s *RawContentService) emitIndexedEvent(
+	ctx context.Context,
+	sourceURL, sourceName string,
+	rawData *RawContentData,
+	rawContent *storagepkg.RawContent,
+) {
+	if s.pipeline == nil {
+		return
+	}
+
+	indexName := sourceName + "_raw_content"
+	pipelineErr := s.pipeline.Emit(ctx, pipeline.Event{
+		ArticleURL: sourceURL,
+		SourceName: sourceName,
+		Stage:      "indexed",
+		OccurredAt: time.Now(),
+		Metadata: map[string]any{
+			"title":       rawData.Title,
+			"word_count":  rawContent.WordCount,
+			"index_name":  indexName,
+			"document_id": rawContent.ID,
+		},
+	})
+	if pipelineErr != nil {
+		s.logger.Warn("Failed to emit pipeline event",
+			infralogger.Error(pipelineErr),
+			infralogger.String("url", sourceURL),
+			infralogger.String("stage", "indexed"),
+		)
+	}
 }
 
 // getSourceConfig gets the source configuration and returns source name and selectors.
