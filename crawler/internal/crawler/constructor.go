@@ -16,6 +16,7 @@ import (
 	"github.com/jonesrussell/north-cloud/crawler/internal/storage/types"
 	infralogger "github.com/north-cloud/infrastructure/logger"
 	"github.com/north-cloud/infrastructure/pipeline"
+	"github.com/redis/go-redis/v9"
 )
 
 const (
@@ -44,6 +45,7 @@ type CrawlerParams struct {
 	FullConfig     config.Interface // Full config for accessing MinIO settings
 	DB             any              // Database connection (optional, for queued links)
 	PipelineClient *pipeline.Client // Pipeline observability client (optional, fire-and-forget)
+	RedisClient    *redis.Client    // Redis client for Colly storage (optional)
 }
 
 // CrawlerResult holds the crawler instance
@@ -101,6 +103,7 @@ func NewCrawlerWithParams(p CrawlerParams) (*CrawlerResult, error) {
 		lifecycle:           lifecycle,
 		signals:             signals,
 		archiver:            archiver,
+		redisClient:         p.RedisClient,
 	}
 
 	// Create discovered link repository if DB is available

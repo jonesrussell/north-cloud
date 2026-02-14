@@ -16,6 +16,7 @@ import (
 	"github.com/jonesrussell/north-cloud/crawler/internal/sources"
 	storagetypes "github.com/jonesrussell/north-cloud/crawler/internal/storage/types"
 	infralogger "github.com/north-cloud/infrastructure/logger"
+	"github.com/redis/go-redis/v9"
 )
 
 // Core Interfaces
@@ -153,7 +154,8 @@ type Crawler struct {
 	linkHandler         *LinkHandler
 	htmlProcessor       *HTMLProcessor
 	cfg                 *crawler.Config
-	archiver            Archiver // HTML archiver for MinIO storage
+	archiver            Archiver      // HTML archiver for MinIO storage
+	redisClient         *redis.Client // Redis client for Colly storage (optional)
 
 	// Extracted components for better separation of concerns
 	lifecycle *LifecycleManager

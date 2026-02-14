@@ -12,6 +12,8 @@ import (
 	"time"
 
 	colly "github.com/gocolly/colly/v2"
+	"github.com/gocolly/colly/v2/proxy"
+	"github.com/gocolly/redisstorage"
 	"github.com/jonesrussell/north-cloud/crawler/internal/archive"
 	crawlerconfig "github.com/jonesrussell/north-cloud/crawler/internal/config/crawler"
 	configtypes "github.com/jonesrussell/north-cloud/crawler/internal/config/types"
@@ -71,6 +73,52 @@ var randomUserAgents = []string{
 
 // setupCollector configures the collector with the given source settings.
 func (c *Crawler) setupCollector(ctx context.Context, source *configtypes.Source) error {
+	maxDepth := c.resolveMaxDepth(source)
+	opts := c.buildCollectorOptions(ctx, maxDepth, source)
+	c.collector = colly.NewCollector(opts...)
+
+	// Set Redis storage if enabled (graceful fallback to in-memory on failure)
+	if storageErr := c.setupRedisStorage(); storageErr != nil {
+		c.GetJobLogger().Warn(logs.CategoryLifecycle,
+			"Failed to set Redis storage, using in-memory",
+			logs.Err(storageErr),
+		)
+	}
+
+	// Set up proxy rotation if enabled
+	if proxyErr := c.setupProxyRotation(); proxyErr != nil {
+		return fmt.Errorf("failed to set up proxy rotation: %w", proxyErr)
+	}
+
+	c.collector.SetRequestTimeout(c.cfg.RequestTimeout)
+
+	// Parse and set rate limit (accepts "10s", "1m", or bare number as seconds e.g. "10")
+	rateLimit := c.resolveRateLimit(source)
+	if setErr := c.setRateLimit(rateLimit, rateLimit/RandomDelayDivisor); setErr != nil {
+		return fmt.Errorf("failed to set rate limit: %w", setErr)
+	}
+
+	// Configure transport with TLS settings
+	c.configureTransport()
+
+	if c.cfg.TLS.InsecureSkipVerify {
+		c.GetJobLogger().Warn(logs.CategoryLifecycle,
+			"TLS certificate verification is disabled",
+			logs.String("source", source.Name),
+		)
+	}
+
+	c.GetJobLogger().Debug(logs.CategoryLifecycle, "Collector configured",
+		logs.Int("max_depth", maxDepth),
+		logs.Duration("rate_limit", rateLimit),
+		logs.Int("parallelism", defaultParallelism),
+	)
+
+	return nil
+}
+
+// resolveMaxDepth returns the effective max depth for the source, applying defaults and warnings.
+func (c *Crawler) resolveMaxDepth(source *configtypes.Source) int {
 	maxDepth := source.MaxDepth
 	if maxDepth == 0 {
 		maxDepth = defaultMaxDepth
@@ -85,7 +133,13 @@ func (c *Crawler) setupCollector(ctx context.Context, source *configtypes.Source
 			logs.Int("recommended_max", warnMaxDepth),
 		)
 	}
+	return maxDepth
+}
 
+// buildCollectorOptions builds the Colly collector options from source and config settings.
+func (c *Crawler) buildCollectorOptions(
+	ctx context.Context, maxDepth int, source *configtypes.Source,
+) []colly.CollectorOption {
 	c.GetJobLogger().Debug(logs.CategoryLifecycle, "Setting up collector",
 		logs.Int("max_depth", maxDepth),
 		logs.Any("allowed_domains", source.AllowedDomains),
@@ -103,23 +157,18 @@ func (c *Crawler) setupCollector(ctx context.Context, source *configtypes.Source
 	if !c.cfg.RespectRobotsTxt {
 		opts = append(opts, colly.IgnoreRobotsTxt())
 	}
-
 	if !c.cfg.UseRandomUserAgent {
 		opts = append(opts, colly.UserAgent(c.cfg.UserAgent))
 	}
-
 	if c.cfg.MaxBodySize > 0 {
 		opts = append(opts, colly.MaxBodySize(c.cfg.MaxBodySize))
 	}
-
 	if c.cfg.DetectCharset {
 		opts = append(opts, colly.DetectCharset())
 	}
-
 	if c.cfg.TraceHTTP {
 		opts = append(opts, colly.TraceHTTP())
 	}
-
 	if c.cfg.MaxRequests > 0 {
 		opts = append(opts, colly.MaxRequests(c.cfg.MaxRequests))
 	}
@@ -138,45 +187,75 @@ func (c *Crawler) setupCollector(ctx context.Context, source *configtypes.Source
 		opts = append(opts, colly.AllowedDomains(source.AllowedDomains...))
 	}
 
-	c.collector = colly.NewCollector(opts...)
+	return opts
+}
 
-	c.collector.SetRequestTimeout(c.cfg.RequestTimeout)
-
-	// Referer and RandomUserAgent are applied in OnRequest (setupCallbacks)
-	// MaxURLLength is applied in link_handler.HandleLink
-
-	// Parse and set rate limit (accepts "10s", "1m", or bare number as seconds e.g. "10")
+// resolveRateLimit parses the source rate limit string or returns the default.
+func (c *Crawler) resolveRateLimit(source *configtypes.Source) time.Duration {
 	rateLimit, err := crawlerconfig.ParseRateLimit(source.RateLimit)
 	if err != nil || source.RateLimit == "" {
 		if source.RateLimit != "" {
-			c.GetJobLogger().Error(logs.CategoryError, "Failed to parse rate limit, using default",
+			c.GetJobLogger().Error(logs.CategoryError,
+				"Failed to parse rate limit, using default",
 				logs.String("rate_limit", source.RateLimit),
 				logs.Duration("default", defaultRateLimit),
 				logs.Err(err),
 			)
 		}
-		rateLimit = defaultRateLimit
+		return defaultRateLimit
+	}
+	return rateLimit
+}
+
+// setupRedisStorage configures Redis-backed Colly storage if enabled and available.
+func (c *Crawler) setupRedisStorage() error {
+	if !c.cfg.RedisStorageEnabled || c.redisClient == nil {
+		return nil
 	}
 
-	if setErr := c.setRateLimit(rateLimit, rateLimit/RandomDelayDivisor); setErr != nil {
-		return fmt.Errorf("failed to set rate limit: %w", setErr)
+	crawlCtx := c.getCrawlContext()
+	prefix := "crawler:default"
+	if crawlCtx != nil {
+		prefix = "crawler:" + crawlCtx.SourceID
 	}
 
-	// Configure transport with TLS settings
-	c.configureTransport()
-
-	if c.cfg.TLS.InsecureSkipVerify {
-		c.GetJobLogger().Warn(logs.CategoryLifecycle, "TLS certificate verification is disabled",
-			logs.String("source", source.Name),
-		)
+	storage := &redisstorage.Storage{
+		Address:  c.redisClient.Options().Addr,
+		Password: c.redisClient.Options().Password,
+		DB:       c.redisClient.Options().DB,
+		Prefix:   prefix,
+		Expires:  c.cfg.RedisStorageExpires,
 	}
 
-	c.GetJobLogger().Debug(logs.CategoryLifecycle, "Collector configured",
-		logs.Int("max_depth", maxDepth),
-		logs.Duration("rate_limit", rateLimit),
-		logs.Int("parallelism", defaultParallelism),
+	if err := c.collector.SetStorage(storage); err != nil {
+		return fmt.Errorf("failed to set Redis storage: %w", err)
+	}
+
+	c.GetJobLogger().Info(logs.CategoryLifecycle,
+		"Redis storage enabled for Colly",
+		logs.String("prefix", prefix),
+		logs.Duration("expires", c.cfg.RedisStorageExpires),
 	)
+	return nil
+}
 
+// setupProxyRotation configures round-robin proxy rotation if enabled.
+func (c *Crawler) setupProxyRotation() error {
+	if !c.cfg.ProxiesEnabled || len(c.cfg.ProxyURLs) == 0 {
+		return nil
+	}
+
+	rp, err := proxy.RoundRobinProxySwitcher(c.cfg.ProxyURLs...)
+	if err != nil {
+		return fmt.Errorf("failed to create proxy switcher: %w", err)
+	}
+
+	c.collector.SetProxyFunc(rp)
+
+	c.GetJobLogger().Info(logs.CategoryLifecycle,
+		"Proxy rotation enabled",
+		logs.Int("proxy_count", len(c.cfg.ProxyURLs)),
+	)
 	return nil
 }
 
@@ -243,6 +322,12 @@ func (c *Crawler) responseCallback(ctx context.Context) func(*colly.Response) {
 			logs.URL(pageURL),
 			logs.Int("status", r.StatusCode),
 		)
+		if proxyURL := r.Request.ProxyURL; proxyURL != "" {
+			jl.Debug(logs.CategoryFetch, "Request via proxy",
+				logs.URL(pageURL),
+				logs.String("proxy", proxyURL),
+			)
+		}
 		if c.cfg.Debug && c.cfg.TraceHTTP && r.Trace != nil {
 			jl.Debug(logs.CategoryFetch, "HTTP trace",
 				logs.URL(pageURL),
