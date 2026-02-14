@@ -101,8 +101,9 @@ func (c *Classifier) Classify(ctx context.Context, raw *domain.RawContent) (*dom
 		return nil, fmt.Errorf("source reputation scoring failed: %w", err)
 	}
 
-	// 5-8. Optional classifiers (crime, mining, coforge, entertainment, location)
-	crimeResult, miningResult, coforgeResult, entertainmentResult, locationResult := c.runOptionalClassifiers(ctx, raw)
+	// 5-8. Optional classifiers — skip for non-article content (pages never reach publisher)
+	crimeResult, miningResult, coforgeResult, entertainmentResult, locationResult := c.classifyOptionalForArticle(
+		ctx, raw, contentTypeResult.Type)
 
 	// Update source reputation if enabled
 	isSpam := qualityResult.TotalScore < spamThresholdScore // Spam threshold
@@ -190,6 +191,23 @@ func (c *Classifier) UpdateRules(rules []domain.ClassificationRule) {
 // GetRules returns the current classification rules
 func (c *Classifier) GetRules() []domain.ClassificationRule {
 	return c.topic.GetRules()
+}
+
+// classifyOptionalForArticle gates optional classifiers on content type.
+// Pages and listings skip all optional classifiers since they are never published.
+func (c *Classifier) classifyOptionalForArticle(
+	ctx context.Context, raw *domain.RawContent, contentType string,
+) (*domain.CrimeResult, *domain.MiningResult, *domain.CoforgeResult, *domain.EntertainmentResult, *domain.LocationResult) {
+	if contentType != domain.ContentTypeArticle {
+		c.logger.Debug("Skipping optional classifiers for non-article content",
+			infralogger.String("content_id", raw.ID),
+			infralogger.String("content_type", contentType),
+		)
+
+		return nil, nil, nil, nil, nil
+	}
+
+	return c.runOptionalClassifiers(ctx, raw)
 }
 
 // runOptionalClassifiers runs crime, mining, coforge, entertainment, and location classifiers if enabled.
