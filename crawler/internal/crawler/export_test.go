@@ -13,6 +13,9 @@ var IsArticlePage = isArticlePage
 // CompileArticlePatterns exports compileArticlePatterns for testing.
 var CompileArticlePatterns = compileArticlePatterns
 
+// HasNewsArticleJSONLD exports hasNewsArticleJSONLD for testing.
+var HasNewsArticleJSONLD = hasNewsArticleJSONLD
+
 // ExplicitPatterns is a helper to build explicit pattern slices for tests.
 func ExplicitPatterns(patterns ...string) []*regexp.Regexp {
 	return compileArticlePatterns(patterns)

@@ -4,6 +4,8 @@ import (
 	"net/url"
 	"regexp"
 	"strings"
+
+	colly "github.com/gocolly/colly/v2"
 )
 
 // Minimum number of hyphen-separated words in a slug to consider it article-like.
@@ -169,11 +171,25 @@ func hasLongSlugInPath(segments []string) bool {
 	return false
 }
 
+// hasNewsArticleJSONLD checks if the page has NewsArticle or Article JSON-LD.
+func hasNewsArticleJSONLD(e *colly.HTMLElement) bool {
+	found := false
+	e.ForEach("script[type='application/ld+json']", func(_ int, el *colly.HTMLElement) {
+		if found {
+			return
+		}
+		if strings.Contains(el.Text, `"NewsArticle"`) || strings.Contains(el.Text, `"Article"`) {
+			found = true
+		}
+	})
+	return found
+}
+
 // isArticlePage determines whether a page is an article based on HTML metadata.
 // It returns true if og:type is "article" (case insensitive) or if the page
 // contains NewsArticle JSON-LD structured data.
-func isArticlePage(ogType string, hasNewsArticleJSONLD bool) bool {
-	return strings.EqualFold(ogType, "article") || hasNewsArticleJSONLD
+func isArticlePage(ogType string, hasJSONLD bool) bool {
+	return strings.EqualFold(ogType, "article") || hasJSONLD
 }
 
 // compileArticlePatterns compiles string patterns into regular expressions.

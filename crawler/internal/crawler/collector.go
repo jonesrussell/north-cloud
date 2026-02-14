@@ -5,14 +5,13 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
-	"math/rand"
 	"net/http"
 	"regexp"
 	"strings"
 	"time"
 
 	colly "github.com/gocolly/colly/v2"
-	_ "github.com/gocolly/colly/v2/extensions" // Vendored for Task 4: multi-collector extensions
+	"github.com/gocolly/colly/v2/extensions"
 	"github.com/gocolly/colly/v2/proxy"
 	"github.com/gocolly/redisstorage"
 	"github.com/jonesrussell/north-cloud/crawler/internal/adaptive"
@@ -59,27 +58,26 @@ const (
 	ruleActionDisallow = "disallow"
 )
 
-// refererCtxKey is the request context key for the referer URL (set before Visit from link handler).
-const refererCtxKey = "referer"
-
 // retryCountKey is the request context key for HTTP retry count in OnError.
 const retryCountKey = "retry_count"
 
-// randomUserAgents is a small set of desktop browser user agents for UseRandomUserAgent.
-var randomUserAgents = []string{
-	"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-	"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-	"Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:121.0) Gecko/20100101 Firefox/121.0",
-	"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.2 Safari/605.1.15",
-}
-
-// setupCollector configures the collector with the given source settings.
+// setupCollector configures both the link collector and detail collector.
+// The link collector handles discovery and article detection.
+// The detail collector handles content extraction on article pages.
 func (c *Crawler) setupCollector(ctx context.Context, source *configtypes.Source) error {
 	maxDepth := c.resolveMaxDepth(source)
 	opts := c.buildCollectorOptions(ctx, maxDepth, source)
+
+	// Create link collector (discovery)
 	c.collector = colly.NewCollector(opts...)
 
-	// Set Redis storage if enabled (graceful fallback to in-memory on failure)
+	// Create detail collector (extraction) via Clone — shares domain/depth/async settings
+	c.detailCollector = c.collector.Clone()
+
+	// Apply shared setup to both collectors
+	c.applySharedCollectorSetup()
+
+	// Redis storage on link collector (URL deduplication)
 	if storageErr := c.setupRedisStorage(); storageErr != nil {
 		c.GetJobLogger().Warn(logs.CategoryLifecycle,
 			"Failed to set Redis storage, using in-memory",
@@ -87,21 +85,20 @@ func (c *Crawler) setupCollector(ctx context.Context, source *configtypes.Source
 		)
 	}
 
-	// Set up proxy rotation if enabled
+	// Proxy rotation on both collectors
 	if proxyErr := c.setupProxyRotation(); proxyErr != nil {
 		return fmt.Errorf("failed to set up proxy rotation: %w", proxyErr)
 	}
+	c.setupDetailProxyRotation()
 
-	c.collector.SetRequestTimeout(c.cfg.RequestTimeout)
-
-	// Parse and set rate limit (accepts "10s", "1m", or bare number as seconds e.g. "10")
+	// Rate limiting on both collectors
 	rateLimit := c.resolveRateLimit(source)
 	if setErr := c.setRateLimit(rateLimit, rateLimit/RandomDelayDivisor); setErr != nil {
 		return fmt.Errorf("failed to set rate limit: %w", setErr)
 	}
-
-	// Configure transport with TLS settings
-	c.configureTransport()
+	if setErr := c.setDetailRateLimit(rateLimit); setErr != nil {
+		return fmt.Errorf("failed to set detail rate limit: %w", setErr)
+	}
 
 	if c.cfg.TLS.InsecureSkipVerify {
 		c.GetJobLogger().Warn(logs.CategoryLifecycle,
@@ -110,13 +107,32 @@ func (c *Crawler) setupCollector(ctx context.Context, source *configtypes.Source
 		)
 	}
 
-	c.GetJobLogger().Debug(logs.CategoryLifecycle, "Collector configured",
+	c.GetJobLogger().Debug(logs.CategoryLifecycle, "Collectors configured (link + detail)",
 		logs.Int("max_depth", maxDepth),
 		logs.Duration("rate_limit", rateLimit),
 		logs.Int("parallelism", defaultParallelism),
 	)
 
 	return nil
+}
+
+// applySharedCollectorSetup applies transport, timeout, and extensions to both collectors.
+func (c *Crawler) applySharedCollectorSetup() {
+	for _, col := range []*colly.Collector{c.collector, c.detailCollector} {
+		col.SetRequestTimeout(c.cfg.RequestTimeout)
+		c.configureTransportFor(col)
+
+		// Apply Colly extensions (replaces hand-rolled UA rotation, referer, URL length filtering)
+		if c.cfg.UseRandomUserAgent {
+			extensions.RandomUserAgent(col)
+		}
+		if c.cfg.UseReferer {
+			extensions.Referer(col)
+		}
+		if c.cfg.MaxURLLength > 0 {
+			extensions.URLLengthFilter(col, c.cfg.MaxURLLength)
+		}
+	}
 }
 
 // resolveMaxDepth returns the effective max depth for the source, applying defaults and warnings.
@@ -261,6 +277,34 @@ func (c *Crawler) setupProxyRotation() error {
 	return nil
 }
 
+// setupDetailProxyRotation configures proxy rotation on the detail collector.
+func (c *Crawler) setupDetailProxyRotation() {
+	if !c.cfg.ProxiesEnabled || len(c.cfg.ProxyURLs) == 0 {
+		return
+	}
+
+	rp, err := proxy.RoundRobinProxySwitcher(c.cfg.ProxyURLs...)
+	if err != nil {
+		c.GetJobLogger().Warn(logs.CategoryLifecycle,
+			"Failed to set proxy rotation on detail collector",
+			logs.Err(err),
+		)
+		return
+	}
+
+	c.detailCollector.SetProxyFunc(rp)
+}
+
+// setDetailRateLimit sets the rate limit on the detail collector.
+func (c *Crawler) setDetailRateLimit(delay time.Duration) error {
+	return c.detailCollector.Limit(&colly.LimitRule{
+		DomainGlob:  "*",
+		Delay:       delay,
+		RandomDelay: delay / RandomDelayDivisor,
+		Parallelism: defaultParallelism,
+	})
+}
+
 // compileRuleFilters compiles source Rules into allow and disallow regex slices.
 func (c *Crawler) compileRuleFilters(source *configtypes.Source) (allow, disallow []*regexp.Regexp) {
 	for _, rule := range source.Rules {
@@ -370,7 +414,7 @@ func (c *Crawler) responseCallback(ctx context.Context) func(*colly.Response) {
 	}
 }
 
-// requestCallback returns the OnRequest callback (abort checks, Referer, RandomUserAgent).
+// requestCallback returns the OnRequest callback (abort checks only; UA/referer handled by extensions).
 func (c *Crawler) requestCallback(ctx context.Context) func(*colly.Request) {
 	return func(r *colly.Request) {
 		select {
@@ -381,14 +425,6 @@ func (c *Crawler) requestCallback(ctx context.Context) func(*colly.Request) {
 			r.Abort()
 			return
 		default:
-			if c.cfg.UseReferer {
-				if referer := r.Ctx.Get(refererCtxKey); referer != "" {
-					r.Headers.Set("Referer", referer)
-				}
-			}
-			if c.cfg.UseRandomUserAgent {
-				r.Headers.Set("User-Agent", randomUserAgents[rand.Intn(len(randomUserAgents))])
-			}
 			c.GetJobLogger().Debug(logs.CategoryFetch, "Visiting URL",
 				logs.URL(r.URL.String()),
 			)
@@ -396,23 +432,17 @@ func (c *Crawler) requestCallback(ctx context.Context) func(*colly.Request) {
 	}
 }
 
-// setupCallbacks configures the collector's callbacks.
-func (c *Crawler) setupCallbacks(ctx context.Context) {
+// setupLinkCallbacks configures callbacks on the link collector (discovery + article detection).
+func (c *Crawler) setupLinkCallbacks(ctx context.Context) {
 	c.collector.OnResponseHeaders(c.responseHeadersCallback())
 	c.collector.OnResponse(c.responseCallback(ctx))
 	c.collector.OnRequest(c.requestCallback(ctx))
-
-	// Set up HTML processing
-	c.collector.OnHTML("html", func(e *colly.HTMLElement) {
-		c.ProcessHTML(e)
-	})
 
 	// Set up error handling
 	c.collector.OnError(c.handleCrawlError)
 
 	// Set up link following
 	c.collector.OnHTML("a[href]", func(e *colly.HTMLElement) {
-		// Check if we should stop processing before following links
 		select {
 		case <-ctx.Done():
 			return
@@ -423,11 +453,29 @@ func (c *Crawler) setupCallbacks(ctx context.Context) {
 		}
 	})
 
+	// Article detection: hand off article pages to detail collector for extraction
+	c.collector.OnHTML("html", func(e *colly.HTMLElement) {
+		pageURL := e.Request.URL.String()
+
+		crawlCtx := c.getCrawlContext()
+		var patterns []*regexp.Regexp
+		if crawlCtx != nil {
+			patterns = crawlCtx.ArticlePatterns
+		}
+
+		if isArticleURL(pageURL, patterns) || c.isArticlePageFromHTML(e) {
+			if visitErr := c.detailCollector.Visit(pageURL); visitErr != nil {
+				c.GetJobLogger().Debug(logs.CategoryExtract,
+					"Detail collector handoff skipped",
+					logs.URL(pageURL),
+					logs.Err(visitErr),
+				)
+			}
+		}
+	})
+
 	// Set up scraped callback for logging/metrics
-	// This callback allows us to track link counts after a page is fully processed
 	c.collector.OnScraped(func(r *colly.Response) {
-		// Note: OnScraped fires AFTER the request completes, so we can't abort here.
-		// This callback is only for post-processing (logging, metrics, etc.)
 		pageURL := r.Request.URL.String()
 		c.GetJobLogger().Debug(logs.CategoryFetch, "Page processed",
 			logs.URL(pageURL),
@@ -448,6 +496,42 @@ func (c *Crawler) setupCallbacks(ctx context.Context) {
 			)
 		}
 	})
+}
+
+// setupDetailCallbacks configures callbacks on the detail collector (content extraction).
+func (c *Crawler) setupDetailCallbacks(ctx context.Context) {
+	c.detailCollector.OnRequest(c.requestCallback(ctx))
+
+	// Full extraction pipeline on article pages
+	c.detailCollector.OnHTML("html", func(e *colly.HTMLElement) {
+		c.ProcessHTML(e)
+	})
+
+	// Basic response metrics
+	c.detailCollector.OnResponse(func(r *colly.Response) {
+		jl := c.GetJobLogger()
+		jl.RecordStatusCode(r.StatusCode)
+		jl.IncrementRequestsTotal()
+		jl.RecordBytes(int64(len(r.Body)))
+		if r.Trace != nil {
+			jl.RecordResponseTime(r.Trace.FirstByteDuration)
+		}
+	})
+
+	// Basic error logging
+	c.detailCollector.OnError(func(r *colly.Response, visitErr error) {
+		c.GetJobLogger().Warn(logs.CategoryError, "Detail collector error",
+			logs.URL(r.Request.URL.String()),
+			logs.Int("status", r.StatusCode),
+			logs.Err(visitErr),
+		)
+	})
+}
+
+// isArticlePageFromHTML checks HTML metadata to determine if a page is an article.
+func (c *Crawler) isArticlePageFromHTML(e *colly.HTMLElement) bool {
+	ogType := e.ChildAttr("meta[property='og:type']", "content")
+	return isArticlePage(ogType, hasNewsArticleJSONLD(e))
 }
 
 // handleCrawlError handles crawl errors with appropriate logging levels and optional HTTP retry.
@@ -641,15 +725,15 @@ func (c *Crawler) setRateLimit(delay, randomDelay time.Duration) error {
 	return nil
 }
 
-// configureTransport configures the HTTP transport with TLS settings from config.
-func (c *Crawler) configureTransport() {
-	c.collector.WithTransport(&http.Transport{
+// configureTransportFor configures the HTTP transport with TLS settings for a given collector.
+func (c *Crawler) configureTransportFor(col *colly.Collector) {
+	col.WithTransport(&http.Transport{
 		TLSClientConfig: &tls.Config{
 			InsecureSkipVerify: c.cfg.TLS.InsecureSkipVerify,
 			MinVersion:         c.cfg.TLS.MinVersion,
 			MaxVersion:         c.cfg.TLS.MaxVersion,
 		},
-		DisableKeepAlives:     false,
+		DisableKeepAlives:     true, // Colly best practice for long crawls
 		MaxIdleConns:          defaultMaxIdleConns,
 		MaxIdleConnsPerHost:   defaultMaxIdleConnsPerHost,
 		IdleConnTimeout:       defaultIdleConnTimeout,

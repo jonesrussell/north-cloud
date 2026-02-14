@@ -18,6 +18,9 @@ import (
 	"github.com/north-cloud/infrastructure/pipeline"
 )
 
+// minPostExtractionWordCount is the minimum word count for extracted content to be indexed.
+const minPostExtractionWordCount = 50
+
 // Interface defines the interface for processing raw content.
 type Interface interface {
 	// Process handles the processing of raw content from any HTML page.
@@ -75,6 +78,22 @@ func (s *RawContentService) Process(e *colly.HTMLElement) error {
 		selectors.Container,
 		selectors.Exclude,
 	)
+
+	// Validate extracted content before indexing
+	if rawData.Title == "" && rawData.RawText == "" {
+		s.logger.Debug("Skipping page with no extractable content",
+			infralogger.String("url", sourceURL))
+		return nil
+	}
+
+	wordCount := len(strings.Fields(rawData.RawText))
+	if wordCount < minPostExtractionWordCount {
+		s.logger.Debug("Skipping page with insufficient content",
+			infralogger.String("url", sourceURL),
+			infralogger.Int("word_count", wordCount),
+			infralogger.Int("min_word_count", minPostExtractionWordCount))
+		return nil
+	}
 
 	// Ensure raw_content index exists
 	ctx := context.Background()

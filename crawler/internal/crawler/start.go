@@ -73,11 +73,12 @@ func (c *Crawler) Start(ctx context.Context, sourceID string) error {
 		c.GetJobLogger().Warn(logs.CategoryLifecycle, "Timeout waiting for initial page processing")
 	}
 
-	// Wait for collector to complete
-	// Colly's Wait() blocks until all queued requests are processed
+	// Wait for both collectors to complete
+	// Link collector finishes first (discovery), then detail collector finishes (extraction)
 	waitDone := make(chan struct{})
 	go func() {
-		c.collector.Wait()
+		c.collector.Wait()       // Wait for link collector
+		c.detailCollector.Wait() // Then wait for detail collector
 		close(waitDone)
 	}()
 
@@ -122,7 +123,11 @@ func (c *Crawler) validateAndSetup(ctx context.Context, sourceID string) (*confi
 
 	// Cache source config for link handler (avoids repeated ValidateSourceByID calls per link)
 	c.crawlContextMu.Lock()
-	c.crawlContext = &CrawlContext{SourceID: sourceID, Source: source}
+	c.crawlContext = &CrawlContext{
+		SourceID:        sourceID,
+		Source:          source,
+		ArticlePatterns: compileArticlePatterns(source.ArticleURLPatterns),
+	}
 	c.crawlContextMu.Unlock()
 
 	// Set up collector
@@ -130,8 +135,9 @@ func (c *Crawler) validateAndSetup(ctx context.Context, sourceID string) (*confi
 		return nil, fmt.Errorf("failed to setup collector: %w", setupErr)
 	}
 
-	// Set up callbacks
-	c.setupCallbacks(ctx)
+	// Set up callbacks on link collector and detail collector
+	c.setupLinkCallbacks(ctx)
+	c.setupDetailCallbacks(ctx)
 
 	// Start the crawler state
 	c.state.Start(ctx, sourceID)
