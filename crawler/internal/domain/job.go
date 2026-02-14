@@ -57,6 +57,9 @@ type Job struct {
 	LastFailureAt *time.Time `db:"last_failure_at" json:"last_failure_at,omitempty"`
 	BackoffUntil  *time.Time `db:"backoff_until"   json:"backoff_until,omitempty"`
 
+	// Adaptive scheduling (adjusts interval based on content change detection)
+	AdaptiveScheduling bool `db:"adaptive_scheduling" json:"adaptive_scheduling"`
+
 	// Phase 3 migration tracking
 	MigrationStatus *string `db:"migration_status" json:"migration_status,omitempty"`
 }

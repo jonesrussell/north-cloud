@@ -1,0 +1,1 @@
+ALTER TABLE jobs ADD COLUMN adaptive_scheduling BOOLEAN NOT NULL DEFAULT true;
