@@ -61,23 +61,28 @@ const (
 // retryCountKey is the request context key for HTTP retry count in OnError.
 const retryCountKey = "retry_count"
 
-// setupCollector configures both the link collector and detail collector.
-// The link collector handles discovery and article detection.
-// The detail collector handles content extraction on article pages.
+// setupCollector configures the collector for discovery and inline article extraction.
+// Article detection gates which pages get processed by ProcessHTML (no second HTTP request).
 func (c *Crawler) setupCollector(ctx context.Context, source *configtypes.Source) error {
 	maxDepth := c.resolveMaxDepth(source)
 	opts := c.buildCollectorOptions(ctx, maxDepth, source)
 
-	// Create link collector (discovery)
 	c.collector = colly.NewCollector(opts...)
 
-	// Create detail collector (extraction) via Clone — shares domain/depth/async settings
-	c.detailCollector = c.collector.Clone()
+	// Configure transport, timeout, and extensions
+	c.collector.SetRequestTimeout(c.cfg.RequestTimeout)
+	c.configureTransportFor(c.collector)
+	if c.cfg.UseRandomUserAgent {
+		extensions.RandomUserAgent(c.collector)
+	}
+	if c.cfg.UseReferer {
+		extensions.Referer(c.collector)
+	}
+	if c.cfg.MaxURLLength > 0 {
+		extensions.URLLengthFilter(c.collector, c.cfg.MaxURLLength)
+	}
 
-	// Apply shared setup to both collectors
-	c.applySharedCollectorSetup()
-
-	// Redis storage on link collector (URL deduplication)
+	// Redis storage (URL deduplication)
 	if storageErr := c.setupRedisStorage(); storageErr != nil {
 		c.GetJobLogger().Warn(logs.CategoryLifecycle,
 			"Failed to set Redis storage, using in-memory",
@@ -85,19 +90,15 @@ func (c *Crawler) setupCollector(ctx context.Context, source *configtypes.Source
 		)
 	}
 
-	// Proxy rotation on both collectors
+	// Proxy rotation
 	if proxyErr := c.setupProxyRotation(); proxyErr != nil {
 		return fmt.Errorf("failed to set up proxy rotation: %w", proxyErr)
 	}
-	c.setupDetailProxyRotation()
 
-	// Rate limiting on both collectors
+	// Rate limiting
 	rateLimit := c.resolveRateLimit(source)
 	if setErr := c.setRateLimit(rateLimit, rateLimit/RandomDelayDivisor); setErr != nil {
 		return fmt.Errorf("failed to set rate limit: %w", setErr)
-	}
-	if setErr := c.setDetailRateLimit(rateLimit); setErr != nil {
-		return fmt.Errorf("failed to set detail rate limit: %w", setErr)
 	}
 
 	if c.cfg.TLS.InsecureSkipVerify {
@@ -107,32 +108,13 @@ func (c *Crawler) setupCollector(ctx context.Context, source *configtypes.Source
 		)
 	}
 
-	c.GetJobLogger().Debug(logs.CategoryLifecycle, "Collectors configured (link + detail)",
+	c.GetJobLogger().Debug(logs.CategoryLifecycle, "Collector configured",
 		logs.Int("max_depth", maxDepth),
 		logs.Duration("rate_limit", rateLimit),
 		logs.Int("parallelism", defaultParallelism),
 	)
 
 	return nil
-}
-
-// applySharedCollectorSetup applies transport, timeout, and extensions to both collectors.
-func (c *Crawler) applySharedCollectorSetup() {
-	for _, col := range []*colly.Collector{c.collector, c.detailCollector} {
-		col.SetRequestTimeout(c.cfg.RequestTimeout)
-		c.configureTransportFor(col)
-
-		// Apply Colly extensions (replaces hand-rolled UA rotation, referer, URL length filtering)
-		if c.cfg.UseRandomUserAgent {
-			extensions.RandomUserAgent(col)
-		}
-		if c.cfg.UseReferer {
-			extensions.Referer(col)
-		}
-		if c.cfg.MaxURLLength > 0 {
-			extensions.URLLengthFilter(col, c.cfg.MaxURLLength)
-		}
-	}
 }
 
 // resolveMaxDepth returns the effective max depth for the source, applying defaults and warnings.
@@ -277,34 +259,6 @@ func (c *Crawler) setupProxyRotation() error {
 	return nil
 }
 
-// setupDetailProxyRotation configures proxy rotation on the detail collector.
-func (c *Crawler) setupDetailProxyRotation() {
-	if !c.cfg.ProxiesEnabled || len(c.cfg.ProxyURLs) == 0 {
-		return
-	}
-
-	rp, err := proxy.RoundRobinProxySwitcher(c.cfg.ProxyURLs...)
-	if err != nil {
-		c.GetJobLogger().Warn(logs.CategoryLifecycle,
-			"Failed to set proxy rotation on detail collector",
-			logs.Err(err),
-		)
-		return
-	}
-
-	c.detailCollector.SetProxyFunc(rp)
-}
-
-// setDetailRateLimit sets the rate limit on the detail collector.
-func (c *Crawler) setDetailRateLimit(delay time.Duration) error {
-	return c.detailCollector.Limit(&colly.LimitRule{
-		DomainGlob:  "*",
-		Delay:       delay,
-		RandomDelay: delay / RandomDelayDivisor,
-		Parallelism: defaultParallelism,
-	})
-}
-
 // compileRuleFilters compiles source Rules into allow and disallow regex slices.
 func (c *Crawler) compileRuleFilters(source *configtypes.Source) (allow, disallow []*regexp.Regexp) {
 	for _, rule := range source.Rules {
@@ -432,8 +386,8 @@ func (c *Crawler) requestCallback(ctx context.Context) func(*colly.Request) {
 	}
 }
 
-// setupLinkCallbacks configures callbacks on the link collector (discovery + article detection).
-func (c *Crawler) setupLinkCallbacks(ctx context.Context) {
+// setupCallbacks configures all collector callbacks (discovery, article detection, extraction).
+func (c *Crawler) setupCallbacks(ctx context.Context) {
 	c.collector.OnResponseHeaders(c.responseHeadersCallback())
 	c.collector.OnResponse(c.responseCallback(ctx))
 	c.collector.OnRequest(c.requestCallback(ctx))
@@ -453,7 +407,7 @@ func (c *Crawler) setupLinkCallbacks(ctx context.Context) {
 		}
 	})
 
-	// Article detection: hand off article pages to detail collector for extraction
+	// Article detection + inline extraction (single collector — no double fetch)
 	c.collector.OnHTML("html", func(e *colly.HTMLElement) {
 		pageURL := e.Request.URL.String()
 
@@ -464,13 +418,7 @@ func (c *Crawler) setupLinkCallbacks(ctx context.Context) {
 		}
 
 		if isArticleURL(pageURL, patterns) || c.isArticlePageFromHTML(e) {
-			if visitErr := c.detailCollector.Visit(pageURL); visitErr != nil {
-				c.GetJobLogger().Debug(logs.CategoryExtract,
-					"Detail collector handoff skipped",
-					logs.URL(pageURL),
-					logs.Err(visitErr),
-				)
-			}
+			c.ProcessHTML(e)
 		}
 	})
 
@@ -495,36 +443,6 @@ func (c *Crawler) setupLinkCallbacks(ctx context.Context) {
 				logs.Int64("items_extracted", summary.ItemsExtracted),
 			)
 		}
-	})
-}
-
-// setupDetailCallbacks configures callbacks on the detail collector (content extraction).
-func (c *Crawler) setupDetailCallbacks(ctx context.Context) {
-	c.detailCollector.OnRequest(c.requestCallback(ctx))
-
-	// Full extraction pipeline on article pages
-	c.detailCollector.OnHTML("html", func(e *colly.HTMLElement) {
-		c.ProcessHTML(e)
-	})
-
-	// Basic response metrics
-	c.detailCollector.OnResponse(func(r *colly.Response) {
-		jl := c.GetJobLogger()
-		jl.RecordStatusCode(r.StatusCode)
-		jl.IncrementRequestsTotal()
-		jl.RecordBytes(int64(len(r.Body)))
-		if r.Trace != nil {
-			jl.RecordResponseTime(r.Trace.FirstByteDuration)
-		}
-	})
-
-	// Basic error logging
-	c.detailCollector.OnError(func(r *colly.Response, visitErr error) {
-		c.GetJobLogger().Warn(logs.CategoryError, "Detail collector error",
-			logs.URL(r.Request.URL.String()),
-			logs.Int("status", r.StatusCode),
-			logs.Err(visitErr),
-		)
 	})
 }
 

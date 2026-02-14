@@ -73,12 +73,10 @@ func (c *Crawler) Start(ctx context.Context, sourceID string) error {
 		c.GetJobLogger().Warn(logs.CategoryLifecycle, "Timeout waiting for initial page processing")
 	}
 
-	// Wait for both collectors to complete
-	// Link collector finishes first (discovery), then detail collector finishes (extraction)
+	// Wait for collector to complete
 	waitDone := make(chan struct{})
 	go func() {
-		c.collector.Wait()       // Wait for link collector
-		c.detailCollector.Wait() // Then wait for detail collector
+		c.collector.Wait()
 		close(waitDone)
 	}()
 
@@ -135,9 +133,8 @@ func (c *Crawler) validateAndSetup(ctx context.Context, sourceID string) (*confi
 		return nil, fmt.Errorf("failed to setup collector: %w", setupErr)
 	}
 
-	// Set up callbacks on link collector and detail collector
-	c.setupLinkCallbacks(ctx)
-	c.setupDetailCallbacks(ctx)
+	// Set up collector callbacks (discovery, article detection, extraction)
+	c.setupCallbacks(ctx)
 
 	// Start the crawler state
 	c.state.Start(ctx, sourceID)
@@ -160,7 +157,7 @@ func (c *Crawler) setupInitialPageTracking(
 ) {
 	// Set up OnScraped callback to signal when initial page is done
 	// This must be set up before Visit() is called
-	// Note: This is in addition to the OnScraped callback in setupLinkCallbacks
+	// Note: This is in addition to the OnScraped callback in setupCallbacks
 	c.collector.OnScraped(func(r *colly.Response) {
 		if c.isInitialPage(r.Request.URL.String(), initialPageURL) {
 			c.handleInitialPageScraped(
@@ -174,15 +171,15 @@ func (c *Crawler) setupInitialPageTracking(
 
 	// Track link discoveries on the initial page
 	// Note: We set up a separate OnHTML callback here to track the initial page link count
-	// This is in addition to the callback in setupLinkCallbacks, but we only increment the counter,
+	// This is in addition to the callback in setupCallbacks, but we only increment the counter,
 	// not call HandleLink again (to avoid double processing)
-	// The actual link handling is done by the callback in setupLinkCallbacks
+	// The actual link handling is done by the callback in setupCallbacks
 	c.collector.OnHTML("a[href]", func(e *colly.HTMLElement) {
 		requestURL := e.Request.URL.String()
 		if c.isInitialPage(requestURL, initialPageURL) {
 			initialPageLinkCount.Add(1)
 		}
-		// Note: Don't call HandleLink here - it's already called by the callback in setupLinkCallbacks
+		// Note: Don't call HandleLink here - it's already called by the callback in setupCallbacks
 		// This callback is only for counting links on the initial page
 	})
 }

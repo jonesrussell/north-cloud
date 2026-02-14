@@ -149,8 +149,7 @@ const (
 type Crawler struct {
 	logger              infralogger.Logger
 	jobLogger           logs.JobLogger
-	collector           *colly.Collector // Link collector for discovery (multi-collector pattern)
-	detailCollector     *colly.Collector // Detail collector for content extraction (multi-collector pattern)
+	collector           *colly.Collector
 	bus                 *events.EventBus
 	indexManager        storagetypes.IndexManager
 	sources             sources.Interface
