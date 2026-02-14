@@ -35,6 +35,14 @@ const (
 	defaultExpectContinueTimeout = 1 * time.Second
 )
 
+// Max depth defaults
+const (
+	// defaultMaxDepth is used when source MaxDepth is 0 (unset)
+	defaultMaxDepth = 3
+	// warnMaxDepth logs a warning when source MaxDepth exceeds this value
+	warnMaxDepth = 5
+)
+
 // Progress logging configuration
 const (
 	// progressMilestoneInterval defines how often (in pages) to emit progress milestones.
@@ -64,6 +72,19 @@ var randomUserAgents = []string{
 // setupCollector configures the collector with the given source settings.
 func (c *Crawler) setupCollector(ctx context.Context, source *configtypes.Source) error {
 	maxDepth := source.MaxDepth
+	if maxDepth == 0 {
+		maxDepth = defaultMaxDepth
+		c.GetJobLogger().Info(logs.CategoryLifecycle, "Using default max depth",
+			logs.Int("max_depth", maxDepth),
+		)
+	}
+	if maxDepth > warnMaxDepth {
+		c.GetJobLogger().Warn(logs.CategoryLifecycle,
+			"Max depth exceeds recommended limit",
+			logs.Int("max_depth", maxDepth),
+			logs.Int("recommended_max", warnMaxDepth),
+		)
+	}
 
 	c.GetJobLogger().Debug(logs.CategoryLifecycle, "Setting up collector",
 		logs.Int("max_depth", maxDepth),
