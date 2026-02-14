@@ -12,6 +12,7 @@ import (
 	"time"
 
 	colly "github.com/gocolly/colly/v2"
+	_ "github.com/gocolly/colly/v2/extensions" // Vendored for Task 4: multi-collector extensions
 	"github.com/gocolly/colly/v2/proxy"
 	"github.com/gocolly/redisstorage"
 	"github.com/jonesrussell/north-cloud/crawler/internal/adaptive"
