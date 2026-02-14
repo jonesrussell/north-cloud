@@ -715,7 +715,7 @@ func (c *Crawler) captureStartURLHash(pageURL string, body []byte) {
 
 	hash := adaptive.ComputeHash(body)
 	c.startURLHashesMu.Lock()
-	c.startURLHashes[pageURL] = hash
+	c.startURLHashes[crawlCtx.SourceID] = hash
 	c.startURLHashesMu.Unlock()
 }
 

@@ -3,7 +3,6 @@ package crawler
 
 import (
 	"context"
-	"maps"
 	"sync"
 	"time"
 
@@ -132,8 +131,8 @@ type Interface interface {
 	SetJobLogger(logger logs.JobLogger)
 	// GetJobLogger returns the current job logger
 	GetJobLogger() logs.JobLogger
-	// GetStartURLHashes returns the hashes captured during the last crawl
-	GetStartURLHashes() map[string]string
+	// GetStartURLHash returns the hash captured for a specific source's start URL
+	GetStartURLHash(sourceID string) string
 	// GetHashTracker returns the hash tracker for adaptive scheduling
 	GetHashTracker() *adaptive.HashTracker
 }
@@ -163,8 +162,8 @@ type Crawler struct {
 	archiver            Archiver      // HTML archiver for MinIO storage
 	redisClient         *redis.Client // Redis client for Colly storage (optional)
 
-	// Adaptive scheduling: stores hashes of start URL responses
-	startURLHashes   map[string]string // URL -> SHA-256 hash
+	// Adaptive scheduling: stores hashes of start URL responses keyed by sourceID
+	startURLHashes   map[string]string // sourceID -> SHA-256 hash
 	startURLHashesMu sync.RWMutex
 	hashTracker      *adaptive.HashTracker // Redis-backed hash tracker (optional)
 
@@ -285,13 +284,12 @@ func (c *Crawler) clearCrawlContext() {
 	c.crawlContext = nil
 }
 
-// GetStartURLHashes returns the hashes captured during the last crawl.
-func (c *Crawler) GetStartURLHashes() map[string]string {
+// GetStartURLHash returns the hash captured for a specific source's start URL.
+// Returns empty string if no hash is available for the given source.
+func (c *Crawler) GetStartURLHash(sourceID string) string {
 	c.startURLHashesMu.RLock()
 	defer c.startURLHashesMu.RUnlock()
-	result := make(map[string]string, len(c.startURLHashes))
-	maps.Copy(result, c.startURLHashes)
-	return result
+	return c.startURLHashes[sourceID]
 }
 
 // GetHashTracker returns the hash tracker for adaptive scheduling.
