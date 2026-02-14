@@ -20,6 +20,7 @@ curl http://localhost:8060/api/v1/scheduler/metrics
 
 ```
 internal/
+├── adaptive/      # Hash-based adaptive scheduling
 ├── api/           # HTTP handlers (Gin)
 ├── scheduler/     # Interval-based job scheduler (NOT cron)
 ├── crawler/       # Core web scraping logic
@@ -99,11 +100,42 @@ UPDATE jobs SET lock_token = ? WHERE id = ? AND lock_token IS NULL
 
 5. **Lock stuck after crash**: Stale lock cleanup takes up to 5 minutes
 
+## Redis Storage (Colly)
+
+Enabled via `CRAWLER_REDIS_STORAGE_ENABLED=true`. Persists Colly's visited URLs, cookies, and request queue in Redis.
+
+- Key prefix: `crawler:{source_id}:`
+- TTL: 7 days (configurable via `CRAWLER_REDIS_STORAGE_EXPIRES`)
+- Falls back to in-memory if Redis unavailable
+
+## Proxy Rotation
+
+Enabled via `CRAWLER_PROXIES_ENABLED=true`. Uses Colly's `RoundRobinProxySwitcher`.
+
+- `CRAWLER_PROXY_URLS`: Comma-separated list of proxy URLs (HTTP or SOCKS5)
+- Global to all sources, round-robin rotation
+- Proxy URL logged per request at debug level
+
+## Adaptive Scheduling
+
+Jobs with `adaptive_scheduling: true` (default) adjust their crawl interval based on content changes.
+
+- After each crawl, SHA-256 of start URL content is compared to previous hash
+- **Changed**: Reset to baseline interval
+- **Unchanged**: Exponential backoff (`baseline x 2^unchanged_count`, max 24h)
+- State stored in Redis: `crawler:adaptive:{source_id}`
+- Jobs with `adaptive_scheduling: false` use fixed intervals
+
+## Max Depth
+
+Default max depth is **3** when source config `max_depth` is 0 (unset). Sources with `max_depth > 5` trigger a startup warning.
+
 ## Database Schema
 
 **jobs** table key fields:
 - `source_id` (required), `url`, `status`
 - `interval_minutes`, `interval_type`, `next_run_at`
+- `adaptive_scheduling` (default true)
 - `is_paused`, `lock_token`, `lock_acquired_at`
 - `max_retries`, `retry_backoff_seconds`, `current_retry_count`
 
