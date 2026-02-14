@@ -1,0 +1,533 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": null,
+  "links": [
+    {
+      "title": "Pipeline Ops",
+      "url": "/d/north-cloud-pipeline-ops",
+      "type": "link",
+      "icon": "dashboard"
+    },
+    {
+      "title": "Crawler Ops",
+      "url": "/d/north-cloud-crawler-ops",
+      "type": "link",
+      "icon": "dashboard"
+    },
+    {
+      "title": "Service Logs",
+      "url": "/d/north-cloud-service-logs",
+      "type": "link",
+      "icon": "dashboard"
+    }
+  ],
+  "liveNow": false,
+  "panels": [
+    {
+      "id": 1,
+      "type": "row",
+      "title": "Crawl Activity",
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 }
+    },
+    {
+      "id": 2,
+      "title": "Jobs Completed",
+      "description": "Crawl jobs that finished successfully",
+      "type": "stat",
+      "datasource": { "type": "loki", "uid": "loki" },
+      "gridPos": { "h": 4, "w": 4, "x": 0, "y": 1 },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "loki", "uid": "loki" },
+          "expr": "count_over_time({service=\"crawler\"} |= \"Job completed successfully\" [$__range])",
+          "queryType": "instant"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": { "mode": "fixed", "fixedColor": "green" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [{ "color": "green", "value": null }]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "area",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "textMode": "auto",
+        "justifyMode": "auto",
+        "orientation": "auto"
+      }
+    },
+    {
+      "id": 3,
+      "title": "Pages Crawled",
+      "description": "Total pages visited across all jobs",
+      "type": "stat",
+      "datasource": { "type": "loki", "uid": "loki" },
+      "gridPos": { "h": 4, "w": 5, "x": 4, "y": 1 },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "loki", "uid": "loki" },
+          "expr": "sum_over_time({service=\"crawler\"} |= \"Job completed successfully\" | json | unwrap items_crawled [$__range])",
+          "queryType": "instant"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": { "mode": "fixed", "fixedColor": "blue" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [{ "color": "blue", "value": null }]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "area",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "textMode": "auto",
+        "justifyMode": "auto",
+        "orientation": "auto"
+      }
+    },
+    {
+      "id": 4,
+      "title": "Documents Indexed",
+      "description": "Total documents indexed to Elasticsearch",
+      "type": "stat",
+      "datasource": { "type": "loki", "uid": "loki" },
+      "gridPos": { "h": 4, "w": 5, "x": 9, "y": 1 },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "loki", "uid": "loki" },
+          "expr": "sum_over_time({service=\"crawler\"} |= \"Job completed successfully\" | json | unwrap items_indexed [$__range])",
+          "queryType": "instant"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": { "mode": "fixed", "fixedColor": "purple" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [{ "color": "purple", "value": null }]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "area",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "textMode": "auto",
+        "justifyMode": "auto",
+        "orientation": "auto"
+      }
+    },
+    {
+      "id": 5,
+      "title": "Link Discovery Warnings",
+      "description": "Failed to save discovered links (link tracking errors)",
+      "type": "stat",
+      "datasource": { "type": "loki", "uid": "loki" },
+      "gridPos": { "h": 4, "w": 5, "x": 14, "y": 1 },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "loki", "uid": "loki" },
+          "expr": "count_over_time({service=\"crawler\"} |= \"Failed to save discovered link\" [$__range])",
+          "queryType": "instant"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": { "mode": "fixed", "fixedColor": "yellow" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 10 },
+              { "color": "red", "value": 100 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "area",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "textMode": "auto",
+        "justifyMode": "auto",
+        "orientation": "auto"
+      }
+    },
+    {
+      "id": 6,
+      "title": "Crawler Errors",
+      "description": "Error-level logs from the crawler",
+      "type": "stat",
+      "datasource": { "type": "loki", "uid": "loki" },
+      "gridPos": { "h": 4, "w": 5, "x": 19, "y": 1 },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "loki", "uid": "loki" },
+          "expr": "count_over_time({service=\"crawler\", level=\"error\"} [$__range])",
+          "queryType": "instant"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "red", "value": 1 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "area",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "textMode": "auto",
+        "justifyMode": "auto",
+        "orientation": "auto"
+      }
+    },
+    {
+      "id": 7,
+      "type": "row",
+      "title": "Crawl Performance",
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 5 }
+    },
+    {
+      "id": 8,
+      "title": "Job Completions Over Time",
+      "description": "Crawl jobs completing over time",
+      "type": "timeseries",
+      "datasource": { "type": "loki", "uid": "loki" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 6 },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "loki", "uid": "loki" },
+          "expr": "count_over_time({service=\"crawler\"} |= \"Job completed successfully\" [5m])",
+          "legendFormat": "Jobs completed"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "drawStyle": "bars",
+            "fillOpacity": 80,
+            "pointSize": 5,
+            "lineWidth": 1,
+            "stacking": { "mode": "none" }
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "tooltip": { "mode": "single" },
+        "legend": { "displayMode": "list", "placement": "bottom" }
+      }
+    },
+    {
+      "id": 9,
+      "title": "Items Crawled per Job",
+      "description": "Pages visited and documents indexed per job completion",
+      "type": "timeseries",
+      "datasource": { "type": "loki", "uid": "loki" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 6 },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "loki", "uid": "loki" },
+          "expr": "sum_over_time({service=\"crawler\"} |= \"Job completed successfully\" | json | unwrap items_crawled [5m])",
+          "legendFormat": "Pages crawled"
+        },
+        {
+          "refId": "B",
+          "datasource": { "type": "loki", "uid": "loki" },
+          "expr": "sum_over_time({service=\"crawler\"} |= \"Job completed successfully\" | json | unwrap items_indexed [5m])",
+          "legendFormat": "Items indexed"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "drawStyle": "bars",
+            "fillOpacity": 60,
+            "pointSize": 5,
+            "lineWidth": 1,
+            "stacking": { "mode": "none" }
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "tooltip": { "mode": "multi" },
+        "legend": { "displayMode": "list", "placement": "bottom" }
+      }
+    },
+    {
+      "id": 10,
+      "type": "row",
+      "title": "Content Discovery",
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 14 }
+    },
+    {
+      "id": 11,
+      "title": "Raw Content by Source (Top 15)",
+      "description": "Document counts per source in raw_content indices",
+      "type": "barchart",
+      "datasource": { "type": "elasticsearch", "uid": "elasticsearch" },
+      "gridPos": { "h": 10, "w": 12, "x": 0, "y": 15 },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "elasticsearch", "uid": "elasticsearch" },
+          "query": "*",
+          "alias": "",
+          "metrics": [
+            {
+              "type": "count",
+              "id": "1"
+            }
+          ],
+          "bucketAggs": [
+            {
+              "type": "terms",
+              "field": "_index",
+              "id": "2",
+              "settings": {
+                "size": "15",
+                "order": "desc",
+                "orderBy": "1",
+                "min_doc_count": "1"
+              }
+            }
+          ],
+          "timeField": "crawled_at"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "orientation": "horizontal",
+        "xTickLabelRotation": 0,
+        "showValue": "auto",
+        "stacking": "none",
+        "legend": { "displayMode": "hidden" }
+      }
+    },
+    {
+      "id": 12,
+      "title": "New Raw Content Over Time",
+      "description": "Documents indexed to raw_content by crawled_at timestamp",
+      "type": "timeseries",
+      "datasource": { "type": "elasticsearch", "uid": "elasticsearch" },
+      "gridPos": { "h": 10, "w": 12, "x": 12, "y": 15 },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "elasticsearch", "uid": "elasticsearch" },
+          "query": "*",
+          "alias": "Documents crawled",
+          "metrics": [
+            {
+              "type": "count",
+              "id": "1"
+            }
+          ],
+          "bucketAggs": [
+            {
+              "type": "date_histogram",
+              "field": "crawled_at",
+              "id": "2",
+              "settings": {
+                "interval": "auto"
+              }
+            }
+          ],
+          "timeField": "crawled_at"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "drawStyle": "bars",
+            "fillOpacity": 70,
+            "pointSize": 5,
+            "lineWidth": 1,
+            "stacking": { "mode": "none" }
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "tooltip": { "mode": "single" },
+        "legend": { "displayMode": "list", "placement": "bottom" }
+      }
+    },
+    {
+      "id": 13,
+      "type": "row",
+      "title": "Recent Job Completions",
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 25 }
+    },
+    {
+      "id": 14,
+      "title": "Job Completion Log",
+      "description": "Recent crawl job completions with items crawled/indexed and duration",
+      "type": "table",
+      "datasource": { "type": "loki", "uid": "loki" },
+      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 26 },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "loki", "uid": "loki" },
+          "expr": "{service=\"crawler\"} |= \"Job completed successfully\" | json",
+          "queryType": "range"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "extractFields",
+          "options": {
+            "source": "Line",
+            "format": "json"
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "id": true,
+              "tsNs": true,
+              "Line": true,
+              "labels": true,
+              "caller": true,
+              "level": true,
+              "service": true,
+              "msg": true
+            },
+            "renameByName": {
+              "Time": "Completed At",
+              "job_id": "Job ID",
+              "duration_ms": "Duration (ms)",
+              "items_crawled": "Pages Crawled",
+              "items_indexed": "Items Indexed",
+              "next_run_at": "Next Run"
+            },
+            "indexByName": {
+              "Time": 0,
+              "job_id": 1,
+              "items_crawled": 2,
+              "items_indexed": 3,
+              "duration_ms": 4,
+              "next_run_at": 5
+            }
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "Duration (ms)" },
+            "properties": [
+              { "id": "unit", "value": "ms" }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "sortBy": [{ "displayName": "Completed At", "desc": true }]
+      }
+    },
+    {
+      "id": 15,
+      "type": "row",
+      "title": "Crawler Errors",
+      "collapsed": true,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 36 },
+      "panels": [
+        {
+          "id": 16,
+          "title": "Error Stream",
+          "description": "Error-level logs from the crawler service",
+          "type": "logs",
+          "datasource": { "type": "loki", "uid": "loki" },
+          "gridPos": { "h": 12, "w": 24, "x": 0, "y": 37 },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": { "type": "loki", "uid": "loki" },
+              "expr": "{service=\"crawler\", level=~\"error|warn\"} | json | line_format \"[{{.level}}] {{.msg}} {{if .error}}err={{.error}}{{end}} {{if .url}}url={{.url}}{{end}}\"",
+              "queryType": "range"
+            }
+          ],
+          "options": {
+            "showTime": true,
+            "showLabels": false,
+            "showCommonLabels": false,
+            "wrapLogMessage": true,
+            "prettifyLogMessage": true,
+            "enableLogDetails": true,
+            "sortOrder": "Descending",
+            "dedupStrategy": "signature"
+          }
+        }
+      ]
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 39,
+  "tags": ["north-cloud", "crawler"],
+  "templating": { "list": [] },
+  "time": { "from": "now-6h", "to": "now" },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "North Cloud - Crawler Ops",
+  "uid": "north-cloud-crawler-ops",
+  "version": 1
+}
