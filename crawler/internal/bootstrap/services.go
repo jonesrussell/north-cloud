@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/jmoiron/sqlx"
+	"github.com/jonesrussell/north-cloud/crawler/internal/adaptive"
 	"github.com/jonesrussell/north-cloud/crawler/internal/api"
 	crawlerconfigtypes "github.com/jonesrussell/north-cloud/crawler/internal/config/crawler"
 	"github.com/jonesrussell/north-cloud/crawler/internal/crawler"
@@ -17,6 +18,7 @@ import (
 	infralogger "github.com/north-cloud/infrastructure/logger"
 	"github.com/north-cloud/infrastructure/pipeline"
 	"github.com/north-cloud/infrastructure/sse"
+	"github.com/redis/go-redis/v9"
 )
 
 // ServiceComponents holds all initialized services and handlers.
@@ -226,8 +228,25 @@ func createCrawlerForJobs(
 		return nil, err
 	}
 
+	// Create Redis client for crawler features (storage, adaptive scheduling)
+	var redisClient *redis.Client
+	if crawlerCfg.RedisStorageEnabled {
+		rc, redisErr := CreateRedisClient(deps.Config.GetRedisConfig())
+		if redisErr != nil {
+			if !errors.Is(redisErr, ErrRedisDisabled) {
+				deps.Logger.Warn(
+					"Redis not available for crawler, features disabled",
+					infralogger.Error(redisErr))
+			}
+		} else {
+			redisClient = rc
+		}
+	}
+
 	// Create crawler
-	return createCrawler(deps, bus, crawlerCfg, storage, sourceManager, db)
+	return createCrawler(
+		deps, bus, crawlerCfg, storage, sourceManager, db, redisClient,
+	)
 }
 
 // loadSourceManager creates a sources manager with lazy loading.
@@ -248,8 +267,17 @@ func createCrawler(
 	storage *StorageComponents,
 	sourceManager sources.Interface,
 	db *sqlx.DB,
+	redisClient *redis.Client,
 ) (crawler.Interface, error) {
-	pipelineClient := pipeline.NewClient(deps.Config.GetPipelineURL(), "crawler")
+	pipelineClient := pipeline.NewClient(
+		deps.Config.GetPipelineURL(), "crawler",
+	)
+
+	// Create hash tracker for adaptive scheduling if Redis is available
+	var hashTracker *adaptive.HashTracker
+	if redisClient != nil {
+		hashTracker = adaptive.NewHashTracker(redisClient)
+	}
 
 	crawlerResult, err := crawler.NewCrawlerWithParams(crawler.CrawlerParams{
 		Logger:         deps.Logger,
@@ -261,6 +289,8 @@ func createCrawler(
 		FullConfig:     deps.Config,
 		DB:             db,
 		PipelineClient: pipelineClient,
+		RedisClient:    redisClient,
+		HashTracker:    hashTracker,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to create crawler: %w", err)
