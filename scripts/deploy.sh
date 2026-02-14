@@ -427,6 +427,23 @@ echo -e "${GREEN}✓ Services restarted${NC}"
 echo ""
 
 # ============================================================
+# Step 3.5: Restart observability stack if infrastructure changed
+# ============================================================
+
+if [ "${INFRA_CHANGED:-false}" = "true" ] || [ -z "$SERVICES_TO_UPDATE" ]; then
+  echo -e "${GREEN}Step 3.5: Restarting observability services (Alloy, Loki, Grafana)...${NC}"
+  if $COMPOSE_CMD --profile observability up -d alloy loki grafana 2>&1; then
+    echo -e "${GREEN}✓ Observability services restarted${NC}"
+  else
+    echo -e "${YELLOW}WARNING: Failed to restart observability services (profile may not be active)${NC}"
+  fi
+  echo ""
+else
+  echo -e "${YELLOW}Step 3.5: Skipping observability restart (no infrastructure changes)${NC}"
+  echo ""
+fi
+
+# ============================================================
 # Step 4: Health checks (with automatic rollback on failure)
 # ============================================================
 

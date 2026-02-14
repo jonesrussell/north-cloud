@@ -1,0 +1,922 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": null,
+  "links": [
+    {
+      "title": "Pipeline Ops",
+      "url": "/d/north-cloud-pipeline-ops",
+      "type": "link",
+      "icon": "dashboard"
+    },
+    {
+      "title": "Deployer Sites",
+      "url": "/d/north-cloud-deployer-sites",
+      "type": "link",
+      "icon": "dashboard"
+    },
+    {
+      "title": "Service Logs",
+      "url": "/d/north-cloud-service-logs",
+      "type": "link",
+      "icon": "dashboard"
+    },
+    {
+      "title": "Explore Loki",
+      "url": "/explore?orgId=1&left=%7B%22datasource%22:%22loki%22%7D",
+      "type": "link",
+      "icon": "search"
+    }
+  ],
+  "liveNow": false,
+  "panels": [
+    {
+      "id": 1,
+      "type": "row",
+      "title": "Pipeline Throughput",
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 }
+    },
+    {
+      "id": 2,
+      "title": "Sources Discovered",
+      "description": "Number of ES classified_content indexes the publisher found",
+      "type": "stat",
+      "datasource": { "type": "loki", "uid": "loki" },
+      "gridPos": { "h": 4, "w": 4, "x": 0, "y": 1 },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "loki", "uid": "loki" },
+          "expr": "max_over_time({service=\"publisher\"} |= \"Discovered classified content indexes\" | json count=\"count\" | unwrap count [$__range])",
+          "queryType": "instant"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "green"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto",
+        "justifyMode": "auto",
+        "orientation": "auto"
+      }
+    },
+    {
+      "id": 3,
+      "title": "Articles Classified",
+      "description": "Individual articles classified",
+      "type": "stat",
+      "datasource": { "type": "loki", "uid": "loki" },
+      "gridPos": { "h": 4, "w": 5, "x": 4, "y": 1 },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "loki", "uid": "loki" },
+          "expr": "count_over_time({service=\"classifier\"} |= \"[Processor] Classification complete\" [$__range])",
+          "queryType": "instant"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "blue"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "blue", "value": null }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "area",
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto",
+        "justifyMode": "auto",
+        "orientation": "auto"
+      }
+    },
+    {
+      "id": 4,
+      "title": "Batches Published",
+      "description": "Publisher batch cycles completed",
+      "type": "stat",
+      "datasource": { "type": "loki", "uid": "loki" },
+      "gridPos": { "h": 4, "w": 5, "x": 9, "y": 1 },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "loki", "uid": "loki" },
+          "expr": "count_over_time({service=\"publisher\"} |= \"Batch complete\" [$__range])",
+          "queryType": "instant"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "blue"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "blue", "value": null }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "area",
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto",
+        "justifyMode": "auto",
+        "orientation": "auto"
+      }
+    },
+    {
+      "id": 5,
+      "title": "Articles Published",
+      "description": "Individual articles pushed to Redis channels",
+      "type": "stat",
+      "datasource": { "type": "loki", "uid": "loki" },
+      "gridPos": { "h": 4, "w": 5, "x": 14, "y": 1 },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "loki", "uid": "loki" },
+          "expr": "count_over_time({service=\"publisher\"} |= \"Published article to channel\" [$__range])",
+          "queryType": "instant"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "green"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "area",
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto",
+        "justifyMode": "auto",
+        "orientation": "auto"
+      }
+    },
+    {
+      "id": 6,
+      "title": "Pipeline Errors",
+      "description": "Errors across all pipeline services",
+      "type": "stat",
+      "datasource": { "type": "loki", "uid": "loki" },
+      "gridPos": { "h": 4, "w": 5, "x": 19, "y": 1 },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "loki", "uid": "loki" },
+          "expr": "sum(count_over_time({service=~\"crawler|classifier|publisher\", level=\"error\"} [$__range]))",
+          "queryType": "instant"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 1 },
+              { "color": "red", "value": 10 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "area",
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto",
+        "justifyMode": "auto",
+        "orientation": "auto"
+      }
+    },
+    {
+      "id": 7,
+      "type": "row",
+      "title": "Pipeline Flow Over Time",
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 5 }
+    },
+    {
+      "id": 8,
+      "title": "Throughput by Stage",
+      "description": "Articles flowing through each pipeline stage over time",
+      "type": "timeseries",
+      "datasource": { "type": "loki", "uid": "loki" },
+      "gridPos": { "h": 8, "w": 14, "x": 0, "y": 6 },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "loki", "uid": "loki" },
+          "expr": "sum(count_over_time({service=\"classifier\"} |= \"[Processor] Classification complete\" [$__interval]))",
+          "legendFormat": "Classified"
+        },
+        {
+          "refId": "B",
+          "datasource": { "type": "loki", "uid": "loki" },
+          "expr": "sum(count_over_time({service=\"publisher\"} |= \"Published article to channel\" [$__interval]))",
+          "legendFormat": "Published"
+        },
+        {
+          "refId": "C",
+          "datasource": { "type": "loki", "uid": "loki" },
+          "expr": "sum(count_over_time({service=~\"streetcode|orewire|coforge\"} |= \"Article processed\" [$__interval]))",
+          "legendFormat": "Consumed"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "bars",
+            "fillOpacity": 80,
+            "lineWidth": 1,
+            "pointSize": 1,
+            "showPoints": "never",
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            },
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "gradientMode": "none",
+            "lineInterpolation": "linear",
+            "spanNulls": false,
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "color": {
+            "mode": "palette-classic"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        },
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        }
+      }
+    },
+    {
+      "id": 9,
+      "title": "Error Rate by Service",
+      "description": "Error log rate per pipeline service",
+      "type": "timeseries",
+      "datasource": { "type": "loki", "uid": "loki" },
+      "gridPos": { "h": 8, "w": 10, "x": 14, "y": 6 },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "loki", "uid": "loki" },
+          "expr": "sum by (service) (count_over_time({service=~\"crawler|classifier|publisher|source-manager|index-manager\", level=\"error\"} [$__interval]))",
+          "legendFormat": "{{service}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "lineWidth": 2,
+            "pointSize": 5,
+            "showPoints": "auto",
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "gradientMode": "none",
+            "lineInterpolation": "linear",
+            "spanNulls": false,
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "color": {
+            "mode": "palette-classic"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        },
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        }
+      }
+    },
+    {
+      "id": 10,
+      "type": "row",
+      "title": "Content Analytics",
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 14 }
+    },
+    {
+      "id": 11,
+      "title": "Content Type Distribution",
+      "type": "piechart",
+      "datasource": { "type": "elasticsearch", "uid": "elasticsearch" },
+      "gridPos": { "h": 8, "w": 6, "x": 0, "y": 15 },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "elasticsearch", "uid": "elasticsearch" },
+          "query": "*",
+          "metrics": [
+            { "type": "count", "id": "1" }
+          ],
+          "bucketAggs": [
+            {
+              "type": "terms",
+              "field": "content_type.keyword",
+              "id": "2",
+              "settings": {
+                "size": "10",
+                "order": "desc",
+                "orderBy": "_count",
+                "min_doc_count": "1"
+              }
+            }
+          ],
+          "timeField": "crawled_at"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "pieType": "donut",
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        },
+        "legend": {
+          "displayMode": "list",
+          "placement": "right",
+          "values": ["value"]
+        },
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        }
+      }
+    },
+    {
+      "id": 12,
+      "title": "Quality Score Distribution",
+      "description": "Distribution of quality scores across all classified content",
+      "type": "histogram",
+      "datasource": { "type": "elasticsearch", "uid": "elasticsearch" },
+      "gridPos": { "h": 8, "w": 6, "x": 6, "y": 15 },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "elasticsearch", "uid": "elasticsearch" },
+          "query": "content_type.keyword:article",
+          "metrics": [
+            { "type": "count", "id": "1" }
+          ],
+          "bucketAggs": [
+            {
+              "type": "histogram",
+              "field": "quality_score",
+              "id": "2",
+              "settings": {
+                "interval": "10",
+                "min_doc_count": "1"
+              }
+            }
+          ],
+          "timeField": "crawled_at"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "fillOpacity": 80,
+            "gradientMode": "scheme",
+            "lineWidth": 1
+          },
+          "color": {
+            "mode": "continuous-GrYlRd"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "yellow", "value": 40 },
+              { "color": "green", "value": 70 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        },
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        }
+      }
+    },
+    {
+      "id": 13,
+      "title": "Crime Relevance",
+      "type": "piechart",
+      "datasource": { "type": "elasticsearch", "uid": "elasticsearch" },
+      "gridPos": { "h": 8, "w": 6, "x": 12, "y": 15 },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "elasticsearch", "uid": "elasticsearch" },
+          "query": "content_type.keyword:article",
+          "metrics": [
+            { "type": "count", "id": "1" }
+          ],
+          "bucketAggs": [
+            {
+              "type": "terms",
+              "field": "crime.street_crime_relevance.keyword",
+              "id": "2",
+              "settings": {
+                "size": "10",
+                "order": "desc",
+                "orderBy": "_count",
+                "min_doc_count": "1"
+              }
+            }
+          ],
+          "timeField": "crawled_at"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "core_street_crime": { "text": "Core Crime", "index": 0 },
+                "peripheral_crime": { "text": "Peripheral", "index": 1 },
+                "not_crime": { "text": "Not Crime", "index": 2 }
+              }
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "options": {
+        "pieType": "donut",
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        },
+        "legend": {
+          "displayMode": "list",
+          "placement": "right",
+          "values": ["value"]
+        },
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        }
+      }
+    },
+    {
+      "id": 14,
+      "title": "Mining Relevance",
+      "type": "piechart",
+      "datasource": { "type": "elasticsearch", "uid": "elasticsearch" },
+      "gridPos": { "h": 8, "w": 6, "x": 18, "y": 15 },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "elasticsearch", "uid": "elasticsearch" },
+          "query": "content_type.keyword:article AND _exists_:mining.relevance",
+          "metrics": [
+            { "type": "count", "id": "1" }
+          ],
+          "bucketAggs": [
+            {
+              "type": "terms",
+              "field": "mining.relevance.keyword",
+              "id": "2",
+              "settings": {
+                "size": "10",
+                "order": "desc",
+                "orderBy": "_count",
+                "min_doc_count": "1"
+              }
+            }
+          ],
+          "timeField": "crawled_at"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "core_mining": { "text": "Core Mining", "index": 0 },
+                "peripheral_mining": { "text": "Peripheral", "index": 1 },
+                "not_mining": { "text": "Not Mining", "index": 2 }
+              }
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "options": {
+        "pieType": "donut",
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        },
+        "legend": {
+          "displayMode": "list",
+          "placement": "right",
+          "values": ["value"]
+        },
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        }
+      }
+    },
+    {
+      "id": 15,
+      "type": "row",
+      "title": "Publisher Routing",
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 23 }
+    },
+    {
+      "id": 16,
+      "title": "Articles per Redis Channel",
+      "description": "Which Redis channels received the most articles",
+      "type": "barchart",
+      "datasource": { "type": "loki", "uid": "loki" },
+      "gridPos": { "h": 8, "w": 14, "x": 0, "y": 24 },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "loki", "uid": "loki" },
+          "expr": "sum by (channel) (count_over_time({service=\"publisher\"} |= \"Published article to channel\" | json channel=\"channel\" [$__range]))",
+          "legendFormat": "{{channel}}",
+          "queryType": "instant"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "fillOpacity": 80,
+            "lineWidth": 1,
+            "gradientMode": "none",
+            "axisCenteredZero": false,
+            "axisLabel": "Articles"
+          },
+          "color": {
+            "mode": "palette-classic"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "orientation": "horizontal",
+        "barWidth": 0.6,
+        "groupWidth": 0.7,
+        "xTickLabelRotation": 0,
+        "xTickLabelMaxLength": 0,
+        "stacking": "none",
+        "showValue": "auto",
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        },
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        }
+      }
+    },
+    {
+      "id": 17,
+      "title": "Classifier Throughput Rate",
+      "description": "Classifier processing speed (items/sec from batch complete logs)",
+      "type": "timeseries",
+      "datasource": { "type": "loki", "uid": "loki" },
+      "gridPos": { "h": 8, "w": 10, "x": 14, "y": 24 },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "loki", "uid": "loki" },
+          "expr": "avg_over_time({service=\"classifier\"} |= \"[Processor] Batch processing complete\" | json items_per_second=\"items_per_second\" | unwrap items_per_second [$__interval])",
+          "legendFormat": "items/sec"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 20,
+            "lineWidth": 2,
+            "pointSize": 5,
+            "showPoints": "auto",
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "gradientMode": "none",
+            "lineInterpolation": "linear",
+            "spanNulls": false,
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "color": {
+            "mode": "palette-classic"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        },
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        }
+      }
+    },
+    {
+      "id": 18,
+      "type": "row",
+      "title": "Suspected Misclassifications",
+      "collapsed": true,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 32 },
+      "panels": [
+        {
+          "id": 19,
+          "title": "Crime-Classified Pages",
+          "description": "Pages classified as crime content (likely misclassifications — pages are usually navigation, not articles)",
+          "type": "table",
+          "datasource": { "type": "elasticsearch", "uid": "elasticsearch" },
+          "gridPos": { "h": 10, "w": 24, "x": 0, "y": 33 },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": { "type": "elasticsearch", "uid": "elasticsearch" },
+              "query": "content_type.keyword:page AND (crime.street_crime_relevance.keyword:core_street_crime OR crime.street_crime_relevance.keyword:peripheral_crime)",
+              "metrics": [
+                {
+                  "type": "raw_data",
+                  "id": "1",
+                  "settings": {
+                    "size": "50"
+                  }
+                }
+              ],
+              "bucketAggs": [],
+              "timeField": "crawled_at"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {},
+            "overrides": [
+              {
+                "matcher": { "id": "byName", "options": "url" },
+                "properties": [
+                  {
+                    "id": "links",
+                    "value": [
+                      {
+                        "title": "Open URL",
+                        "url": "${__value.text}",
+                        "targetBlank": true
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "matcher": { "id": "byName", "options": "crawled_at" },
+                "properties": [
+                  {
+                    "id": "unit",
+                    "value": "dateTimeAsIso"
+                  }
+                ]
+              }
+            ]
+          },
+          "options": {
+            "showHeader": true,
+            "footer": {
+              "show": false,
+              "reducer": ["sum"],
+              "countRows": false
+            }
+          },
+          "transformations": [
+            {
+              "id": "filterFieldsByName",
+              "options": {
+                "include": {
+                  "names": [
+                    "title",
+                    "url",
+                    "source_name",
+                    "content_type",
+                    "crime.street_crime_relevance",
+                    "quality_score",
+                    "crawled_at"
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": 20,
+      "type": "row",
+      "title": "Recent Pipeline Errors",
+      "collapsed": true,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 33 },
+      "panels": [
+        {
+          "id": 21,
+          "title": "Error Stream",
+          "type": "logs",
+          "datasource": { "type": "loki", "uid": "loki" },
+          "gridPos": { "h": 12, "w": 24, "x": 0, "y": 34 },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": { "type": "loki", "uid": "loki" },
+              "expr": "{service=~\"crawler|classifier|publisher|source-manager|index-manager\", level=\"error\"} |= \"\" | json | line_format \"[{{.service}}] {{.msg}} {{if .error}}err={{.error}}{{end}} {{if .err}}err={{.err}}{{end}}\""
+            }
+          ],
+          "options": {
+            "showTime": true,
+            "showLabels": false,
+            "showCommonLabels": false,
+            "wrapLogMessage": true,
+            "prettifyLogMessage": true,
+            "enableLogDetails": true,
+            "sortOrder": "Descending",
+            "dedupStrategy": "signature"
+          }
+        }
+      ]
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 38,
+  "tags": ["north-cloud", "pipeline"],
+  "templating": { "list": [] },
+  "time": { "from": "now-24h", "to": "now" },
+  "timezone": "browser",
+  "title": "Pipeline Operations",
+  "uid": "north-cloud-pipeline-ops",
+  "version": 1,
+  "weekStart": ""
+}

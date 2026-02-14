@@ -1,0 +1,222 @@
+apiVersion: 1
+groups:
+  - orgId: 1
+    name: "North Cloud Pipeline"
+    folder: "North Cloud"
+    interval: "1m"
+    rules:
+      # Alert 1: Pipeline Stall
+      - uid: nc-pipeline-stall
+        title: "Pipeline stall — no classifications in 2 hours"
+        condition: "C"
+        data:
+          - refId: "A"
+            relativeTimeRange:
+              from: 7200
+              to: 0
+            datasourceUid: "loki"
+            model:
+              expr: 'count_over_time({service="classifier"} |= "[Processor] Classification complete" [2h])'
+              queryType: "instant"
+          - refId: "C"
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: "__expr__"
+            model:
+              type: "threshold"
+              expression: "A"
+              conditions:
+                - evaluator:
+                    type: "lt"
+                    params:
+                      - 1
+                  operator:
+                    type: "and"
+        for: "0m"
+        labels:
+          severity: "critical"
+          service: "classifier"
+        annotations:
+          summary: "No articles classified in the last 2 hours"
+          description: "The classifier has not produced any classification results. Check classifier, Elasticsearch, and raw content availability."
+
+      # Alert 2: Error Spike
+      - uid: nc-error-spike
+        title: "Error spike — sustained errors across pipeline"
+        condition: "C"
+        data:
+          - refId: "A"
+            relativeTimeRange:
+              from: 7200
+              to: 0
+            datasourceUid: "loki"
+            model:
+              expr: 'sum(rate({service=~"crawler|classifier|publisher", level="error"} [5m]))'
+              queryType: "instant"
+          - refId: "C"
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: "__expr__"
+            model:
+              type: "threshold"
+              expression: "A"
+              conditions:
+                - evaluator:
+                    type: "gt"
+                    params:
+                      - 0.167
+                  operator:
+                    type: "and"
+        for: "5m"
+        labels:
+          severity: "warning"
+          team: "platform"
+        annotations:
+          summary: "Elevated error rate in pipeline services"
+          description: "More than 10 errors/minute sustained for 5 minutes across pipeline services."
+
+      # Alert 3: Publisher Zero Output
+      - uid: nc-publisher-zero
+        title: "Publisher zero output — no articles published in 4 hours"
+        condition: "C"
+        data:
+          - refId: "A"
+            relativeTimeRange:
+              from: 14400
+              to: 0
+            datasourceUid: "loki"
+            model:
+              expr: 'count_over_time({service="publisher"} |= "Published article to channel" [4h])'
+              queryType: "instant"
+          - refId: "C"
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: "__expr__"
+            model:
+              type: "threshold"
+              expression: "A"
+              conditions:
+                - evaluator:
+                    type: "lt"
+                    params:
+                      - 1
+                  operator:
+                    type: "and"
+        for: "0m"
+        labels:
+          severity: "critical"
+          service: "publisher"
+        annotations:
+          summary: "No articles published in 4 hours"
+          description: "Publisher has not pushed any articles to Redis. Check source availability, classifier output, and publisher routing configuration."
+
+      # Alert 4: Deployer Site Silence — Streetcode
+      - uid: nc-streetcode-silence
+        title: "Deployer site silence — streetcode no logs in 30 minutes"
+        condition: "C"
+        data:
+          - refId: "A"
+            relativeTimeRange:
+              from: 1800
+              to: 0
+            datasourceUid: "loki"
+            model:
+              expr: 'count_over_time({service="streetcode"} [30m])'
+              queryType: "instant"
+          - refId: "C"
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: "__expr__"
+            model:
+              type: "threshold"
+              expression: "A"
+              conditions:
+                - evaluator:
+                    type: "lt"
+                    params:
+                      - 1
+                  operator:
+                    type: "and"
+        for: "0m"
+        labels:
+          severity: "warning"
+          service: "streetcode"
+        annotations:
+          summary: "streetcode has not produced logs in 30 minutes"
+          description: "The Laravel consumer may be down or the log shipping pipeline is broken."
+
+      # Alert 5: Deployer Site Silence — Orewire
+      - uid: nc-orewire-silence
+        title: "Deployer site silence — orewire no logs in 30 minutes"
+        condition: "C"
+        data:
+          - refId: "A"
+            relativeTimeRange:
+              from: 1800
+              to: 0
+            datasourceUid: "loki"
+            model:
+              expr: 'count_over_time({service="orewire"} [30m])'
+              queryType: "instant"
+          - refId: "C"
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: "__expr__"
+            model:
+              type: "threshold"
+              expression: "A"
+              conditions:
+                - evaluator:
+                    type: "lt"
+                    params:
+                      - 1
+                  operator:
+                    type: "and"
+        for: "0m"
+        labels:
+          severity: "warning"
+          service: "orewire"
+        annotations:
+          summary: "orewire has not produced logs in 30 minutes"
+          description: "The Laravel consumer may be down or the log shipping pipeline is broken."
+
+      # Alert 6: Deployer Site Silence — Coforge
+      - uid: nc-coforge-silence
+        title: "Deployer site silence — coforge no logs in 30 minutes"
+        condition: "C"
+        data:
+          - refId: "A"
+            relativeTimeRange:
+              from: 1800
+              to: 0
+            datasourceUid: "loki"
+            model:
+              expr: 'count_over_time({service="coforge"} [30m])'
+              queryType: "instant"
+          - refId: "C"
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: "__expr__"
+            model:
+              type: "threshold"
+              expression: "A"
+              conditions:
+                - evaluator:
+                    type: "lt"
+                    params:
+                      - 1
+                  operator:
+                    type: "and"
+        for: "0m"
+        labels:
+          severity: "warning"
+          service: "coforge"
+        annotations:
+          summary: "coforge has not produced logs in 30 minutes"
+          description: "The Laravel consumer may be down or the log shipping pipeline is broken."

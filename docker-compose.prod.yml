@@ -522,6 +522,11 @@ services:
       - ./infrastructure/alloy/config.alloy:/etc/alloy/config.alloy:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - alloy_data:/var/lib/alloy
+      # Deployer sites - mount site roots so current/ symlink resolves across deploys
+      - /home/deployer/streetcode-laravel:/mnt/sites/streetcode-laravel:ro
+      - /home/deployer/orewire-laravel:/mnt/sites/orewire-laravel:ro
+      - /home/deployer/coforge:/mnt/sites/coforge:ro
+      - /home/deployer/movies-of-war.com:/mnt/sites/movies-of-war.com:ro
     environment:
       ALLOY_LOG_LEVEL: info
 

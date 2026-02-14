@@ -155,6 +155,102 @@ loki.source.docker "streetcode_laravel" {
   relabel_rules = discovery.relabel.streetcode_laravel.rules
 }
 
+// ── Deployer sites (host Laravel apps, mounted into container) ──────────────
+// Logs are tailed from /mnt/sites/{site}/current/storage/logs/*.log.
+// Each site directory is bind-mounted in docker-compose.prod.yml so the
+// current/ symlink resolves correctly across deploys.
+// local.file_match resolves globs; loki.source.file tails resolved paths.
+
+local.file_match "streetcode_logs" {
+  path_targets = [{
+    __path__ = "/mnt/sites/streetcode-laravel/current/storage/logs/*.log",
+    project  = "north-cloud",
+    service  = "streetcode",
+    job      = "file",
+  }]
+  sync_period = "10s"
+}
+
+loki.source.file "streetcode_logs" {
+  targets       = local.file_match.streetcode_logs.targets
+  forward_to    = [loki.process.laravel.receiver]
+  tail_from_end = true
+}
+
+local.file_match "orewire_logs" {
+  path_targets = [{
+    __path__ = "/mnt/sites/orewire-laravel/current/storage/logs/*.log",
+    project  = "north-cloud",
+    service  = "orewire",
+    job      = "file",
+  }]
+  sync_period = "10s"
+}
+
+loki.source.file "orewire_logs" {
+  targets       = local.file_match.orewire_logs.targets
+  forward_to    = [loki.process.laravel.receiver]
+  tail_from_end = true
+}
+
+local.file_match "coforge_logs" {
+  path_targets = [{
+    __path__ = "/mnt/sites/coforge/current/storage/logs/*.log",
+    project  = "north-cloud",
+    service  = "coforge",
+    job      = "file",
+  }]
+  sync_period = "10s"
+}
+
+loki.source.file "coforge_logs" {
+  targets       = local.file_match.coforge_logs.targets
+  forward_to    = [loki.process.laravel.receiver]
+  tail_from_end = true
+}
+
+local.file_match "movies_of_war_logs" {
+  path_targets = [{
+    __path__ = "/mnt/sites/movies-of-war.com/current/storage/logs/*.log",
+    project  = "north-cloud",
+    service  = "movies-of-war",
+    job      = "file",
+  }]
+  sync_period = "10s"
+}
+
+loki.source.file "movies_of_war_logs" {
+  targets       = local.file_match.movies_of_war_logs.targets
+  forward_to    = [loki.process.laravel.receiver]
+  tail_from_end = true
+}
+
+// ── Laravel log processing ─────────────────────────────────────────────────
+// Format: [2026-02-14 02:30:00] production.INFO: Message {"context":"data"}
+
+loki.process "laravel" {
+  stage.regex {
+    expression = "\\[(?P<timestamp>\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2})\\] \\w+\\.(?P<level>\\w+):"
+  }
+
+  stage.timestamp {
+    source            = "timestamp"
+    format            = "2006-01-02 15:04:05"
+    action_on_failure = "fudge"
+  }
+
+  stage.template {
+    source   = "level"
+    template = "{{ ToLower .Value }}"
+  }
+
+  stage.labels {
+    values = { level = "" }
+  }
+
+  forward_to = [loki.write.north_cloud.receiver]
+}
+
 loki.process "north_cloud" {
   // Parse JSON logs directly - loki.source.docker already unwraps Docker format
   stage.json {
