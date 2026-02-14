@@ -30,6 +30,8 @@ const (
 	DefaultHTTPRetryMax = 2
 	// DefaultHTTPRetryDelay is the default delay between HTTP retries
 	DefaultHTTPRetryDelay = 2 * time.Second
+	// DefaultRedisStorageExpires is the default TTL for Colly visited URL keys in Redis
+	DefaultRedisStorageExpires = 168 * time.Hour // 7 days
 )
 
 // Config represents the crawler configuration.
@@ -88,6 +90,14 @@ type Config struct {
 	HTTPRetryMax int `env:"CRAWLER_HTTP_RETRY_MAX" yaml:"http_retry_max"`
 	// HTTPRetryDelay is the delay between HTTP retries in OnError
 	HTTPRetryDelay time.Duration `env:"CRAWLER_HTTP_RETRY_DELAY" yaml:"http_retry_delay"`
+	// RedisStorageEnabled enables Redis-backed Colly storage for visited URLs, cookies, and request queue
+	RedisStorageEnabled bool `env:"CRAWLER_REDIS_STORAGE_ENABLED" yaml:"redis_storage_enabled"`
+	// RedisStorageExpires is the TTL for visited URL keys in Redis (0 = no expiry)
+	RedisStorageExpires time.Duration `env:"CRAWLER_REDIS_STORAGE_EXPIRES" yaml:"redis_storage_expires"`
+	// ProxiesEnabled enables round-robin proxy rotation for requests
+	ProxiesEnabled bool `env:"CRAWLER_PROXIES_ENABLED" yaml:"proxies_enabled"`
+	// ProxyURLs is the list of proxy URLs (HTTP or SOCKS5) for round-robin rotation
+	ProxyURLs []string `env:"CRAWLER_PROXY_URLS" yaml:"proxy_urls"`
 }
 
 // Validate validates the crawler configuration.
@@ -154,6 +164,10 @@ func New(opts ...Option) *Config {
 		MaxBodySize:         DefaultMaxBodySize,
 		HTTPRetryMax:        DefaultHTTPRetryMax,
 		HTTPRetryDelay:      DefaultHTTPRetryDelay,
+		RedisStorageEnabled: false,
+		RedisStorageExpires: DefaultRedisStorageExpires,
+		ProxiesEnabled:      false,
+		ProxyURLs:           nil,
 	}
 
 	for _, opt := range opts {
