@@ -60,7 +60,7 @@ The publisher is **topic-driven and consumer-agnostic**. Channels define *what* 
 - **Layer 1 (automatic topic channels)**: For each article topic, the router publishes to `articles:{topic}` (e.g. `articles:technology`, `articles:politics`, `articles:violent_crime`). Topics in `layer1SkipTopics` (currently: `mining`) are excluded — these have dedicated routing layers with proper relevance filtering. These channels always exist; no DB record or configuration required. Any number of consumers may subscribe.
 - **Layer 2 (custom channels)**: Optional DB-backed channels with rules (include/exclude topics, min quality, content types). Used for aggregations (e.g. one channel for all crime sub-categories). Stored in the `channels` table. Same rule: one channel can serve unlimited consumers.
 - **Layer 3 (crime classification channels)**: Automatic channels based on classifier's hybrid rule + ML crime classification. Routes to `crime:homepage` (for homepage-eligible articles) and `crime:category:{type}` (for category page listings). Only articles with `crime_relevance != "not_crime"` are routed.
-- **Layer 4 (location channels)**: Automatic channels for geographic routing of crime content (`crime:local:{city}`, `crime:province:{code}`, `crime:canada`, `crime:international`).
+- **Layer 4 (location channels)**: Automatic geographic channels for topics with active domain classifiers (currently crime and entertainment; mining is excluded because Layer 5 already handles mining location channels). Generates `{topic}:local:{city}`, `{topic}:province:{code}`, `{topic}:canada`, `{topic}:international`.
 - **Layer 5 (mining classification channels)**: Automatic channels based on classifier's hybrid rule + ML mining classification. Routes to `articles:mining` (catch-all), `mining:core` / `mining:peripheral` (by relevance), `mining:commodity:{slug}` (per commodity), `mining:stage:{stage}` (exploration/development/production), and `mining:canada` / `mining:international` (by location). Mining metadata included in payload for additional downstream filtering.
 - **Layer 6 (entertainment classification channels)**: Automatic channels based on classifier's hybrid rule + ML entertainment classification. Routes to `entertainment:homepage` (core + homepage eligible), `entertainment:category:{slug}` per category, and `entertainment:peripheral` for peripheral entertainment. Entertainment metadata (relevance, categories, homepage_eligible) included in payload.
 
@@ -186,7 +186,7 @@ Name and describe channels by **content** (e.g. "Crime Feed", "Technology Feed")
 2. **Route Layer 1**: Publishes to `articles:{topic}` for each article topic
 3. **Route Layer 2**: Applies custom channel rules (quality, content type, topics)
 4. **Route Layer 3**: Generates crime channels from classification fields
-5. **Route Layer 4**: Generates location-based channels
+5. **Route Layer 4**: Generates topic-prefixed location channels for all active classifiers
 6. **Route Layer 5**: Generates mining channels from classification fields
 7. **Route Layer 6**: Generates entertainment channels from classification fields
 8. **Dedupe**: Checks `publish_history` table (per-channel deduplication)
