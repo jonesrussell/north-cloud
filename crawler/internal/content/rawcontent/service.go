@@ -336,6 +336,9 @@ func (s *RawContentService) convertToRawContent(rawData *RawContentData, sourceN
 		CrawledAt:            time.Now(),
 		WordCount:            wordCount,
 	}
+	// Defensive normalization so jsonld_raw never contains object/array for
+	// publisher, author, image, mainEntityOfPage (avoids ES mapping conflicts).
+	NormalizeJSONLDRawForIndex(rawContent.JSONLDData)
 
 	// Add CreatedAt and UpdatedAt to meta if they exist
 	if !rawData.CreatedAt.IsZero() {

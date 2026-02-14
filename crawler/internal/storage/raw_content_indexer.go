@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/jonesrussell/north-cloud/crawler/internal/storage/types"
+	"github.com/jonesrussell/north-cloud/index-manager/pkg/contracts"
 	infralogger "github.com/north-cloud/infrastructure/logger"
 )
 
@@ -154,7 +155,8 @@ func (r *RawContentIndexer) EnsureRawContentIndex(ctx context.Context, sourceNam
 	)
 
 	indexManager := r.storage.GetIndexManager()
-	err := indexManager.EnsureIndex(ctx, indexName, "")
+	mapping := contracts.RawContentIndexMapping()
+	err := indexManager.EnsureIndex(ctx, indexName, mapping)
 	if err != nil {
 		return fmt.Errorf("failed to ensure raw_content index: %w", err)
 	}

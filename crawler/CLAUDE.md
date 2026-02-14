@@ -100,6 +100,8 @@ UPDATE jobs SET lock_token = ? WHERE id = ? AND lock_token IS NULL
 
 5. **Lock stuck after crash**: Stale lock cleanup takes up to 5 minutes
 
+6. **`document_parsing_exception` for `json_ld_data.jsonld_raw.publisher`**: The index was likely created with an empty mapping (before the crawler used the canonical mapping). Elasticsearch then applied dynamic mapping and locked `publisher` as type object; normalized documents send a string and are rejected. **Fix**: Delete the affected `{source}_raw_content` index (e.g. via index-manager API or Elasticsearch), then re-crawl so the crawler recreates the index with the canonical mapping. To preserve data, create a new index with the correct mapping (e.g. via index-manager), reindex from the old index, then switch over and drop the old index.
+
 ## Redis Storage (Colly)
 
 Enabled via `CRAWLER_REDIS_STORAGE_ENABLED=true`. Persists Colly's visited URLs, cookies, and request queue in Redis.

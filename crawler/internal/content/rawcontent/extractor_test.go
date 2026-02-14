@@ -396,6 +396,78 @@ func TestNormalizeJSONLDObject_AllFields(t *testing.T) {
 	})
 }
 
+func TestNormalizeJSONLDRawForIndex(t *testing.T) {
+	t.Helper()
+
+	t.Run("no-op when jsonLDData is nil", func(t *testing.T) {
+		t.Helper()
+		rawcontent.NormalizeJSONLDRawForIndex(nil)
+	})
+
+	t.Run("no-op when jsonld_raw is missing", func(t *testing.T) {
+		t.Helper()
+		data := map[string]any{"jsonld_headline": "Title"}
+		rawcontent.NormalizeJSONLDRawForIndex(data)
+		if data["jsonld_headline"] != "Title" {
+			t.Errorf("expected jsonld_headline unchanged, got %v", data["jsonld_headline"])
+		}
+	})
+
+	t.Run("leaves string publisher unchanged", func(t *testing.T) {
+		t.Helper()
+		data := map[string]any{
+			"jsonld_raw": map[string]any{"publisher": "News Corp"},
+		}
+		rawcontent.NormalizeJSONLDRawForIndex(data)
+		raw := data["jsonld_raw"].(map[string]any)
+		if raw["publisher"] != "News Corp" {
+			t.Errorf("expected publisher string unchanged, got %v", raw["publisher"])
+		}
+	})
+
+	t.Run("converts object publisher to string", func(t *testing.T) {
+		t.Helper()
+		data := map[string]any{
+			"jsonld_raw": map[string]any{
+				"publisher": map[string]any{"@type": "Organization", "name": "News Corp"},
+			},
+		}
+		rawcontent.NormalizeJSONLDRawForIndex(data)
+		raw := data["jsonld_raw"].(map[string]any)
+		if raw["publisher"] != "News Corp" {
+			t.Errorf("expected publisher name string, got %v", raw["publisher"])
+		}
+	})
+
+	t.Run("converts array publisher to string from first element", func(t *testing.T) {
+		t.Helper()
+		data := map[string]any{
+			"jsonld_raw": map[string]any{
+				"publisher": []any{map[string]any{"@type": "Organization", "name": "First Pub"}},
+			},
+		}
+		rawcontent.NormalizeJSONLDRawForIndex(data)
+		raw := data["jsonld_raw"].(map[string]any)
+		if raw["publisher"] != "First Pub" {
+			t.Errorf("expected publisher from first element, got %v", raw["publisher"])
+		}
+	})
+
+	t.Run("removes publisher when object has no name", func(t *testing.T) {
+		t.Helper()
+		data := map[string]any{
+			"jsonld_raw": map[string]any{
+				"publisher": map[string]any{"@type": "Organization"},
+			},
+		}
+		rawcontent.NormalizeJSONLDRawForIndex(data)
+		raw := data["jsonld_raw"].(map[string]any)
+		if _, exists := raw["publisher"]; exists {
+			t.Errorf("expected publisher removed when no name, got %v", raw["publisher"])
+		}
+	})
+}
+
 func TestExtractJSONLDHeadline(t *testing.T) {
 	t.Helper()
 

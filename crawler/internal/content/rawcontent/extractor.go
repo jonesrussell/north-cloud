@@ -620,6 +620,72 @@ func normalizeObjectToName(val any) any {
 	}
 }
 
+// NormalizeJSONLDRawForIndex ensures jsonld_raw inside jsonLDData never contains
+// object or array values for polymorphic fields (publisher, author, image,
+// mainEntityOfPage), so indexing never sends types that conflict with
+// Elasticsearch mapping. Mutates jsonLDData in place when jsonld_raw is present.
+func NormalizeJSONLDRawForIndex(jsonLDData map[string]any) {
+	if jsonLDData == nil {
+		return
+	}
+	raw, ok := jsonLDData["jsonld_raw"].(map[string]any)
+	if !ok {
+		return
+	}
+	// Publisher: string or object (or array — take first) → string or remove
+	if pubVal, hasPub := raw["publisher"]; hasPub {
+		normalized := normalizePublisherValue(pubVal)
+		if normalized == nil {
+			delete(raw, "publisher")
+		} else {
+			raw["publisher"] = normalized
+		}
+	}
+	// Author: string/object/array → string or remove
+	if authorVal, hasAuthor := raw["author"]; hasAuthor {
+		normalized := normalizeAuthorField(authorVal)
+		if normalized == nil {
+			delete(raw, "author")
+		} else {
+			raw["author"] = normalized
+		}
+	}
+	// Image: string/object/array → string URL or remove
+	if imgVal, hasImg := raw["image"]; hasImg {
+		normalized := normalizeImageField(imgVal)
+		if normalized == nil {
+			delete(raw, "image")
+		} else {
+			raw["image"] = normalized
+		}
+	}
+	// mainEntityOfPage: string or object (or array — take first) → string URL or remove
+	if meVal, hasME := raw["mainEntityOfPage"]; hasME {
+		normalized := normalizeMainEntityValue(meVal)
+		if normalized == nil {
+			delete(raw, "mainEntityOfPage")
+		} else {
+			raw["mainEntityOfPage"] = normalized
+		}
+	}
+}
+
+// normalizePublisherValue normalizes publisher (string, object, or array) to a string or nil.
+func normalizePublisherValue(val any) any {
+	if arr, ok := val.([]any); ok && len(arr) > 0 {
+		return normalizeObjectToName(arr[0])
+	}
+	return normalizeObjectToName(val)
+}
+
+// normalizeMainEntityValue normalizes mainEntityOfPage (string, object, or array) to a string URL or nil.
+func normalizeMainEntityValue(val any) any {
+	if arr, ok := val.([]any); ok && len(arr) > 0 {
+		return normalizeEntityToURL(arr[0])
+	}
+	return normalizeEntityToURL(val)
+}
+
 // normalizeEntityToURL extracts a string URL from mainEntityOfPage.
 // Can be a string URL or an object with "@id" or "url" field.
 func normalizeEntityToURL(val any) any {

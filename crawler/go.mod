@@ -12,6 +12,7 @@ require (
 	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/google/uuid v1.6.0
 	github.com/jmoiron/sqlx v1.4.0
+	github.com/jonesrussell/north-cloud/index-manager v0.0.0
 	github.com/lib/pq v1.11.2
 	github.com/minio/minio-go/v7 v7.0.98
 	github.com/mitchellh/mapstructure v1.5.0
@@ -20,7 +21,10 @@ require (
 	gopkg.in/yaml.v3 v3.0.1
 )
 
-replace github.com/north-cloud/infrastructure => ../infrastructure
+replace (
+	github.com/jonesrussell/north-cloud/index-manager => ../index-manager
+	github.com/north-cloud/infrastructure => ../infrastructure
+)
 
 require (
 	github.com/andybalholm/cascadia v1.3.3 // indirect
