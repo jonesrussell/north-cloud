@@ -720,14 +720,16 @@ func (c *Crawler) captureStartURLHash(pageURL string, body []byte) {
 }
 
 // isStartURL checks if the given URL is a start URL for the source.
+// Uses trimmed trailing-slash comparison to handle redirect normalization.
 func (c *Crawler) isStartURL(
 	pageURL string, source *configtypes.Source,
 ) bool {
-	if pageURL == source.URL {
+	normalized := strings.TrimRight(pageURL, "/")
+	if normalized == strings.TrimRight(source.URL, "/") {
 		return true
 	}
 	for _, u := range source.StartURLs {
-		if pageURL == u {
+		if normalized == strings.TrimRight(u, "/") {
 			return true
 		}
 	}
