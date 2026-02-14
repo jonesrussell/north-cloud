@@ -3,6 +3,7 @@ package crawler
 
 import (
 	"context"
+	"maps"
 	"sync"
 	"time"
 
@@ -289,9 +290,7 @@ func (c *Crawler) GetStartURLHashes() map[string]string {
 	c.startURLHashesMu.RLock()
 	defer c.startURLHashesMu.RUnlock()
 	result := make(map[string]string, len(c.startURLHashes))
-	for k, v := range c.startURLHashes {
-		result[k] = v
-	}
+	maps.Copy(result, c.startURLHashes)
 	return result
 }
 
