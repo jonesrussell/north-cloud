@@ -30,6 +30,10 @@ type Source struct {
 	Selectors SourceSelectors `yaml:"selectors"`
 	// Rules define crawling rules for this source
 	Rules Rules `yaml:"rules"`
+	// ArticleURLPatterns are regex patterns identifying article URLs.
+	// Used by the link collector to decide which URLs to pass to the detail collector.
+	// Optional — if empty, uses heuristic detection (og:type, JSON-LD, URL patterns).
+	ArticleURLPatterns []string `yaml:"article_url_patterns"`
 }
 
 // Validate validates the source configuration.

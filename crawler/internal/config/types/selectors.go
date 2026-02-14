@@ -1,7 +1,5 @@
 package types
 
-import "errors"
-
 // SourceSelectors defines the CSS selectors for extracting content.
 type SourceSelectors struct {
 	// Article contains selectors for article-specific content
@@ -90,16 +88,8 @@ type ArticleSelectors struct {
 }
 
 // Validate validates the article selectors.
+// All selectors are optional — auto-detection fills gaps when selectors are missing.
 func (s *ArticleSelectors) Validate() error {
-	if s.Container == "" {
-		return errors.New("container selector is required")
-	}
-	if s.Title == "" {
-		return errors.New("title selector is required")
-	}
-	if s.Body == "" {
-		return errors.New("body selector is required")
-	}
 	return nil
 }
 
