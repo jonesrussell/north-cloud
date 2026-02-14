@@ -13,3 +13,5 @@ var NormalizeObjectToName = normalizeObjectToName
 var NormalizeEntityToURL = normalizeEntityToURL
 
 var NormalizeToString = normalizeToString
+
+var ExtractJSONLDHeadline = extractJSONLDHeadline

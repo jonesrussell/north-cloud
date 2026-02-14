@@ -1,10 +1,27 @@
 package rawcontent_test
 
 import (
+	"strings"
 	"testing"
 
+	"github.com/PuerkitoBio/goquery"
+	"github.com/gocolly/colly/v2"
 	"github.com/jonesrussell/north-cloud/crawler/internal/content/rawcontent"
 )
+
+// newHTMLElement creates a colly.HTMLElement from an HTML string for testing.
+func newHTMLElement(t *testing.T, htmlStr string) *colly.HTMLElement {
+	t.Helper()
+
+	doc, err := goquery.NewDocumentFromReader(strings.NewReader(htmlStr))
+	if err != nil {
+		t.Fatalf("failed to parse HTML: %v", err)
+	}
+
+	return &colly.HTMLElement{
+		DOM: doc.Selection,
+	}
+}
 
 func TestNormalizeContextField(t *testing.T) {
 	t.Helper()
@@ -377,4 +394,278 @@ func TestNormalizeJSONLDObject_AllFields(t *testing.T) {
 			t.Errorf("expected image to be removed, got %v", result["image"])
 		}
 	})
+}
+
+func TestExtractJSONLDHeadline(t *testing.T) {
+	t.Helper()
+
+	tests := []struct {
+		name     string
+		html     string
+		expected string
+	}{
+		{
+			name: "extracts headline from NewsArticle",
+			html: `<html><head>
+				<script type="application/ld+json">
+				{"@type":"NewsArticle","headline":"Breaking News Story"}
+				</script>
+			</head><body></body></html>`,
+			expected: "Breaking News Story",
+		},
+		{
+			name: "extracts headline from Article",
+			html: `<html><head>
+				<script type="application/ld+json">
+				{"@type":"Article","headline":"Feature Article Title"}
+				</script>
+			</head><body></body></html>`,
+			expected: "Feature Article Title",
+		},
+		{
+			name: "ignores non-article schema types",
+			html: `<html><head>
+				<script type="application/ld+json">
+				{"@type":"Organization","name":"Org Name"}
+				</script>
+			</head><body></body></html>`,
+			expected: "",
+		},
+		{
+			name:     "returns empty for no JSON-LD scripts",
+			html:     `<html><head></head><body></body></html>`,
+			expected: "",
+		},
+		{
+			name: "returns empty for invalid JSON",
+			html: `<html><head>
+				<script type="application/ld+json">{invalid json</script>
+			</head><body></body></html>`,
+			expected: "",
+		},
+		{
+			name: "returns empty for empty headline",
+			html: `<html><head>
+				<script type="application/ld+json">
+				{"@type":"NewsArticle","headline":""}
+				</script>
+			</head><body></body></html>`,
+			expected: "",
+		},
+		{
+			name: "trims whitespace from headline",
+			html: `<html><head>
+				<script type="application/ld+json">
+				{"@type":"NewsArticle","headline":"  Padded Title  "}
+				</script>
+			</head><body></body></html>`,
+			expected: "Padded Title",
+		},
+		{
+			name: "uses first matching script tag",
+			html: `<html><head>
+				<script type="application/ld+json">
+				{"@type":"NewsArticle","headline":"First Headline"}
+				</script>
+				<script type="application/ld+json">
+				{"@type":"Article","headline":"Second Headline"}
+				</script>
+			</head><body></body></html>`,
+			expected: "First Headline",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Helper()
+
+			e := newHTMLElement(t, tt.html)
+			result := rawcontent.ExtractJSONLDHeadline(e)
+			if result != tt.expected {
+				t.Errorf("ExtractJSONLDHeadline() = %q, want %q", result, tt.expected)
+			}
+		})
+	}
+}
+
+func TestExtractRawContent_TitleFallbackChain(t *testing.T) {
+	t.Helper()
+
+	tests := []struct {
+		name     string
+		html     string
+		expected string
+	}{
+		{
+			name: "prefers JSON-LD headline over og:title",
+			html: `<html><head>
+				<meta property="og:title" content="OG Title">
+				<script type="application/ld+json">
+				{"@type":"NewsArticle","headline":"JSON-LD Headline"}
+				</script>
+			</head><body></body></html>`,
+			expected: "JSON-LD Headline",
+		},
+		{
+			name: "falls back to og:title when no JSON-LD",
+			html: `<html><head>
+				<meta property="og:title" content="OG Title">
+			</head><body></body></html>`,
+			expected: "OG Title",
+		},
+		{
+			name:     "falls back to title tag",
+			html:     `<html><head><title>Page Title</title></head><body></body></html>`,
+			expected: "Page Title",
+		},
+		{
+			name:     "falls back to h1",
+			html:     `<html><head></head><body><h1>H1 Title</h1></body></html>`,
+			expected: "H1 Title",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Helper()
+
+			e := newHTMLElement(t, tt.html)
+			result := rawcontent.ExtractRawContent(e, "https://example.com/test", "", "", "", nil)
+			if result.Title != tt.expected {
+				t.Errorf("Title = %q, want %q", result.Title, tt.expected)
+			}
+		})
+	}
+}
+
+func TestExtractRawContent_DateFallbackChain(t *testing.T) {
+	t.Helper()
+
+	tests := []struct {
+		name        string
+		html        string
+		expectDate  bool
+		expectedISO string
+	}{
+		{
+			name: "extracts from article:published_time meta",
+			html: `<html><head>
+				<meta property="article:published_time" content="2025-06-15T10:00:00Z">
+			</head><body></body></html>`,
+			expectDate:  true,
+			expectedISO: "2025-06-15T10:00:00Z",
+		},
+		{
+			name: "falls back to JSON-LD datePublished",
+			html: `<html><head>
+				<script type="application/ld+json">
+				{"@type":"NewsArticle","headline":"Test","datePublished":"2025-07-20T14:30:00Z"}
+				</script>
+			</head><body></body></html>`,
+			expectDate:  true,
+			expectedISO: "2025-07-20T14:30:00Z",
+		},
+		{
+			name: "falls back to time[datetime] element",
+			html: `<html><head></head><body>
+				<time datetime="2025-08-10T09:00:00Z">August 10</time>
+			</body></html>`,
+			expectDate:  true,
+			expectedISO: "2025-08-10T09:00:00Z",
+		},
+		{
+			name: "falls back to CSS selector date",
+			html: `<html><head></head><body>
+				<span class="published-date">
+					<time datetime="2025-09-01T12:00:00Z">Sep 1</time>
+				</span>
+			</body></html>`,
+			expectDate:  true,
+			expectedISO: "2025-09-01T12:00:00Z",
+		},
+		{
+			name:       "returns nil when no date found",
+			html:       `<html><head></head><body></body></html>`,
+			expectDate: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Helper()
+
+			e := newHTMLElement(t, tt.html)
+			result := rawcontent.ExtractRawContent(e, "https://example.com/test", "", "", "", nil)
+
+			if tt.expectDate {
+				if result.PublishedDate == nil {
+					t.Fatal("expected PublishedDate to be set, got nil")
+				}
+				got := result.PublishedDate.Format("2006-01-02T15:04:05Z")
+				if got != tt.expectedISO {
+					t.Errorf("PublishedDate = %q, want %q", got, tt.expectedISO)
+				}
+			} else if result.PublishedDate != nil {
+				t.Errorf("expected PublishedDate to be nil, got %v", result.PublishedDate)
+			}
+		})
+	}
+}
+
+func TestExtractRawContent_AuthorFallbackChain(t *testing.T) {
+	t.Helper()
+
+	tests := []struct {
+		name     string
+		html     string
+		expected string
+	}{
+		{
+			name: "extracts from meta author",
+			html: `<html><head>
+				<meta name="author" content="Meta Author">
+			</head><body></body></html>`,
+			expected: "Meta Author",
+		},
+		{
+			name: "falls back to JSON-LD author",
+			html: `<html><head>
+				<script type="application/ld+json">
+				{"@type":"NewsArticle","headline":"Test","author":{"@type":"Person","name":"JSONLD Author"}}
+				</script>
+			</head><body></body></html>`,
+			expected: "JSONLD Author",
+		},
+		{
+			name: "falls back to rel=author link",
+			html: `<html><head></head><body>
+				<a rel="author">Link Author</a>
+			</body></html>`,
+			expected: "Link Author",
+		},
+		{
+			name: "falls back to byline CSS selector",
+			html: `<html><head></head><body>
+				<span class="byline">Byline Author</span>
+			</body></html>`,
+			expected: "Byline Author",
+		},
+		{
+			name:     "returns empty when no author found",
+			html:     `<html><head></head><body></body></html>`,
+			expected: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Helper()
+
+			e := newHTMLElement(t, tt.html)
+			result := rawcontent.ExtractRawContent(e, "https://example.com/test", "", "", "", nil)
+			if result.Author != tt.expected {
+				t.Errorf("Author = %q, want %q", result.Author, tt.expected)
+			}
+		})
+	}
 }

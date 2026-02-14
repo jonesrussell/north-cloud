@@ -107,6 +107,12 @@ func extractTitle(e *colly.HTMLElement, selector string) string {
 		}
 	}
 
+	// Try JSON-LD headline (often cleanest title on news sites)
+	jsonldTitle := extractJSONLDHeadline(e)
+	if jsonldTitle != "" {
+		return jsonldTitle
+	}
+
 	// Try OG title
 	ogTitle := extractMeta(e, "og:title")
 	if ogTitle != "" {
@@ -126,6 +132,38 @@ func extractTitle(e *colly.HTMLElement, selector string) string {
 	}
 
 	return ""
+}
+
+// extractJSONLDHeadline extracts the headline from JSON-LD NewsArticle/Article schema.
+func extractJSONLDHeadline(e *colly.HTMLElement) string {
+	var headline string
+
+	e.DOM.Find("script[type='application/ld+json']").Each(func(i int, s *goquery.Selection) {
+		if headline != "" {
+			return
+		}
+
+		jsonText := strings.TrimSpace(s.Text())
+		if jsonText == "" {
+			return
+		}
+
+		var data map[string]any
+		if err := json.Unmarshal([]byte(jsonText), &data); err != nil {
+			return
+		}
+
+		typeVal, _ := data["@type"].(string)
+		if typeVal != "NewsArticle" && typeVal != "Article" {
+			return
+		}
+
+		if h, ok := data["headline"].(string); ok && h != "" {
+			headline = strings.TrimSpace(h)
+		}
+	})
+
+	return headline
 }
 
 const (
@@ -734,6 +772,12 @@ func extractMetadata(data *RawContentData, e *colly.HTMLElement) {
 		data.JSONLDData = make(map[string]any)
 	}
 
+	// Extended date fallbacks (require JSON-LD data)
+	extractDateFallbacks(data, e)
+
+	// Extended author fallbacks (require JSON-LD data)
+	extractAuthorFallbacks(data, e)
+
 	articleMeta := extractArticleMeta(e)
 	data.ArticleSection = articleMeta.Section
 	data.ArticleOpinion = articleMeta.Opinion
@@ -747,6 +791,86 @@ func extractMetadata(data *RawContentData, e *colly.HTMLElement) {
 	data.OGImageWidth = extendedOG.ImageWidth
 	data.OGImageHeight = extendedOG.ImageHeight
 	data.OGSiteName = extendedOG.SiteName
+}
+
+// dateCSSSelectors are common CSS class selectors for published date elements.
+var dateCSSSelectors = []string{".published-date", ".post-date", ".entry-date", ".article-date"}
+
+// extractDateFallbacks applies additional date extraction strategies after JSON-LD data is available.
+func extractDateFallbacks(data *RawContentData, e *colly.HTMLElement) {
+	// Try JSON-LD datePublished
+	if data.PublishedDate == nil && len(data.JSONLDData) > 0 {
+		if dateStr, ok := data.JSONLDData["jsonld_date_published"].(string); ok && dateStr != "" {
+			if t, parseErr := time.Parse(time.RFC3339, dateStr); parseErr == nil {
+				data.PublishedDate = &t
+			}
+		}
+	}
+
+	// Try <time datetime="..."> element
+	if data.PublishedDate == nil {
+		if dateStr := e.ChildAttr("time[datetime]", "datetime"); dateStr != "" {
+			if t, parseErr := time.Parse(time.RFC3339, dateStr); parseErr == nil {
+				data.PublishedDate = &t
+			}
+		}
+	}
+
+	// Try common CSS class selectors for published date
+	if data.PublishedDate == nil {
+		extractDateFromCSSSelectors(data, e)
+	}
+}
+
+// extractDateFromCSSSelectors tries common CSS class selectors for published date.
+func extractDateFromCSSSelectors(data *RawContentData, e *colly.HTMLElement) {
+	for _, sel := range dateCSSSelectors {
+		dateText := e.ChildAttr(sel+" time", "datetime")
+		if dateText == "" {
+			dateText = e.ChildText(sel)
+		}
+
+		if dateText != "" {
+			if t, parseErr := time.Parse(time.RFC3339, strings.TrimSpace(dateText)); parseErr == nil {
+				data.PublishedDate = &t
+				return
+			}
+		}
+	}
+}
+
+// bylineCSSSelectors are common CSS class selectors for author/byline elements.
+var bylineCSSSelectors = []string{".byline", ".author", ".post-author", ".article-author"}
+
+// extractAuthorFallbacks applies additional author extraction strategies after JSON-LD data is available.
+func extractAuthorFallbacks(data *RawContentData, e *colly.HTMLElement) {
+	// Try JSON-LD author
+	if data.Author == "" && len(data.JSONLDData) > 0 {
+		if author, ok := data.JSONLDData["jsonld_author"].(string); ok && author != "" {
+			data.Author = author
+		}
+	}
+
+	// Try rel="author" link
+	if data.Author == "" {
+		data.Author = strings.TrimSpace(e.ChildText("a[rel='author']"))
+	}
+
+	// Try common byline selectors
+	if data.Author == "" {
+		extractAuthorFromBylineSelectors(data, e)
+	}
+}
+
+// extractAuthorFromBylineSelectors tries common CSS byline selectors for author.
+func extractAuthorFromBylineSelectors(data *RawContentData, e *colly.HTMLElement) {
+	for _, sel := range bylineCSSSelectors {
+		author := strings.TrimSpace(e.ChildText(sel))
+		if author != "" {
+			data.Author = author
+			return
+		}
+	}
 }
 
 // extractText extracts text from the first element matching the selector

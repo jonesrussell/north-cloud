@@ -174,7 +174,7 @@ func ConvertToConfigSource(source *SourceConfig) *types.Source {
 				Exclude:       source.Selectors.Page.Exclude,
 			},
 		},
-		Rules: source.Rules,
+		Rules:              source.Rules,
 		ArticleURLPatterns: source.ArticleURLPatterns,
 	}
 }

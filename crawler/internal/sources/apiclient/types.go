@@ -5,17 +5,17 @@ import "time"
 
 // APISource represents a source as returned by the source-manager API.
 type APISource struct {
-	ID           string       `json:"id,omitempty"`
-	Name         string       `json:"name"`
-	URL          string       `json:"url"`
-	ArticleIndex string       `json:"article_index"`
-	PageIndex    string       `json:"page_index"`
-	RateLimit    string       `json:"rate_limit,omitempty"`
-	MaxDepth     int          `json:"max_depth,omitempty"`
-	Time         []string     `json:"time,omitempty"`
-	Enabled      bool         `json:"enabled"`
-	CityName     string       `json:"city_name,omitempty"`
-	GroupID      string       `json:"group_id,omitempty"`
+	ID                 string       `json:"id,omitempty"`
+	Name               string       `json:"name"`
+	URL                string       `json:"url"`
+	ArticleIndex       string       `json:"article_index"`
+	PageIndex          string       `json:"page_index"`
+	RateLimit          string       `json:"rate_limit,omitempty"`
+	MaxDepth           int          `json:"max_depth,omitempty"`
+	Time               []string     `json:"time,omitempty"`
+	Enabled            bool         `json:"enabled"`
+	CityName           string       `json:"city_name,omitempty"`
+	GroupID            string       `json:"group_id,omitempty"`
 	Selectors          APISelectors `json:"selectors"`
 	ArticleURLPatterns []string     `json:"article_url_patterns,omitempty"`
 	CreatedAt          *time.Time   `json:"created_at,omitempty"`
