@@ -786,7 +786,7 @@ func (s *IntervalScheduler) handleJobSuccess(jobExec *JobExecution, startTime *t
 	// If recurring, schedule next run
 	if job.IntervalMinutes != nil && job.ScheduleEnabled {
 		job.Status = "scheduled"
-		nextRun := s.calculateNextRun(job)
+		nextRun := s.calculateAdaptiveOrFixedNextRun(jobExec, job)
 		job.NextRunAt = &nextRun
 	}
 
@@ -918,6 +918,61 @@ func (s *IntervalScheduler) calculateNextRun(job *domain.Job) time.Time {
 
 	// Fallback to original behavior
 	return time.Now().Add(interval)
+}
+
+// calculateAdaptiveOrFixedNextRun calculates the next run time.
+// If adaptive scheduling is enabled and hash data is available,
+// uses content change detection. Otherwise falls back to the fixed interval.
+func (s *IntervalScheduler) calculateAdaptiveOrFixedNextRun(
+	jobExec *JobExecution,
+	job *domain.Job,
+) time.Time {
+	if !job.AdaptiveScheduling {
+		return s.calculateNextRun(job)
+	}
+
+	hashTracker := s.crawler.GetHashTracker()
+	if hashTracker == nil {
+		return s.calculateNextRun(job)
+	}
+
+	hashes := s.crawler.GetStartURLHashes()
+	if len(hashes) == 0 {
+		return s.calculateNextRun(job)
+	}
+
+	// Use the first start URL hash (primary content indicator)
+	var firstHash string
+	for _, h := range hashes {
+		firstHash = h
+
+		break
+	}
+
+	baseline := getIntervalDuration(job)
+
+	state, changed, err := hashTracker.CompareAndUpdate(
+		jobExec.Context, job.SourceID, firstHash, baseline,
+	)
+	if err != nil {
+		s.logger.Warn(
+			"Adaptive scheduling hash comparison failed, using fixed interval",
+			infralogger.String("job_id", job.ID),
+			infralogger.Error(err),
+		)
+
+		return s.calculateNextRun(job)
+	}
+
+	s.logger.Info("Adaptive scheduling decision",
+		infralogger.String("job_id", job.ID),
+		infralogger.Bool("content_changed", changed),
+		infralogger.Int("unchanged_count", state.UnchangedCount),
+		infralogger.Duration("adaptive_interval", state.CurrentInterval),
+		infralogger.Duration("baseline_interval", baseline),
+	)
+
+	return time.Now().Add(state.CurrentInterval)
 }
 
 // calculateBackoff calculates exponential backoff duration for retries.
