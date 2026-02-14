@@ -936,23 +936,15 @@ func (s *IntervalScheduler) calculateAdaptiveOrFixedNextRun(
 		return s.calculateNextRun(job)
 	}
 
-	hashes := s.crawler.GetStartURLHashes()
-	if len(hashes) == 0 {
+	hash := s.crawler.GetStartURLHash(job.SourceID)
+	if hash == "" {
 		return s.calculateNextRun(job)
-	}
-
-	// Use the first start URL hash (primary content indicator)
-	var firstHash string
-	for _, h := range hashes {
-		firstHash = h
-
-		break
 	}
 
 	baseline := getIntervalDuration(job)
 
 	state, changed, err := hashTracker.CompareAndUpdate(
-		jobExec.Context, job.SourceID, firstHash, baseline,
+		jobExec.Context, job.SourceID, hash, baseline,
 	)
 	if err != nil {
 		s.logger.Warn(
