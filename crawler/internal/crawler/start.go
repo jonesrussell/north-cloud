@@ -160,7 +160,7 @@ func (c *Crawler) setupInitialPageTracking(
 ) {
 	// Set up OnScraped callback to signal when initial page is done
 	// This must be set up before Visit() is called
-	// Note: This is in addition to the OnScraped callback in setupCallbacks
+	// Note: This is in addition to the OnScraped callback in setupLinkCallbacks
 	c.collector.OnScraped(func(r *colly.Response) {
 		if c.isInitialPage(r.Request.URL.String(), initialPageURL) {
 			c.handleInitialPageScraped(
@@ -174,15 +174,15 @@ func (c *Crawler) setupInitialPageTracking(
 
 	// Track link discoveries on the initial page
 	// Note: We set up a separate OnHTML callback here to track the initial page link count
-	// This is in addition to the callback in setupCallbacks, but we only increment the counter,
+	// This is in addition to the callback in setupLinkCallbacks, but we only increment the counter,
 	// not call HandleLink again (to avoid double processing)
-	// The actual link handling is done by the callback in setupCallbacks
+	// The actual link handling is done by the callback in setupLinkCallbacks
 	c.collector.OnHTML("a[href]", func(e *colly.HTMLElement) {
 		requestURL := e.Request.URL.String()
 		if c.isInitialPage(requestURL, initialPageURL) {
 			initialPageLinkCount.Add(1)
 		}
-		// Note: Don't call HandleLink here - it's already called by the callback in setupCallbacks
+		// Note: Don't call HandleLink here - it's already called by the callback in setupLinkCallbacks
 		// This callback is only for counting links on the initial page
 	})
 }
