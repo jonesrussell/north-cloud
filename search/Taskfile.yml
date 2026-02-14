@@ -1,5 +1,9 @@
 version: '3'
 
+# Each module resolves dependencies from its own go.mod, not the workspace
+env:
+  GOWORK: "off"
+
 vars:
   BINARY_NAME: search
   MAIN_PATH: .
@@ -99,7 +103,6 @@ tasks:
 
   vendor:
     desc: Sync vendor directory (run after go get or go mod tidy)
-    env: { GOWORK: "off" }
     cmds:
       - go mod vendor
 

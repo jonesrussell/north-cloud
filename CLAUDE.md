@@ -72,7 +72,9 @@ cd SERVICE && go build -o bin/SERVICE .
 2. Run linter: `golangci-lint run`
 3. Check no magic numbers, `interface{}`, or unchecked JSON errors
 
-**Vendoring**: Each Go module has its own `vendor/` (e.g. `auth/vendor/`). After changing deps (`go get -u`, `go mod tidy`) in any module, run **`task vendor`** from the repo root to refresh all module vendors (uses `GOWORK=off go mod vendor` per module). Do not run `go work vendor`; it updates only the root vendor, which is not used when lint/test run per service.
+**Go Workspace Isolation**: Each service Taskfile sets `GOWORK=off` globally so all Go commands (build, test, lint, vuln) resolve dependencies from the module's own `go.mod`, not the workspace. This ensures local and CI behavior match exactly. The `go.work` file is only used for IDE navigation.
+
+**Vendoring**: Each Go module has its own `vendor/` (e.g. `auth/vendor/`). Vendor dirs are gitignored — CI downloads modules from the Go module proxy. After changing deps (`go get -u`, `go mod tidy`) in any module, run **`task vendor`** from the repo root to refresh all module vendors. Do not run `go work vendor`; it updates only the root vendor, which is not used when lint/test run per service.
 
 ### Service Ports
 
