@@ -7,6 +7,7 @@ import (
 	"time"
 
 	colly "github.com/gocolly/colly/v2"
+	"github.com/jonesrussell/north-cloud/crawler/internal/adaptive"
 	"github.com/jonesrussell/north-cloud/crawler/internal/archive"
 	"github.com/jonesrussell/north-cloud/crawler/internal/config/crawler"
 	"github.com/jonesrussell/north-cloud/crawler/internal/content"
@@ -130,6 +131,10 @@ type Interface interface {
 	SetJobLogger(logger logs.JobLogger)
 	// GetJobLogger returns the current job logger
 	GetJobLogger() logs.JobLogger
+	// GetStartURLHashes returns the hashes captured during the last crawl
+	GetStartURLHashes() map[string]string
+	// GetHashTracker returns the hash tracker for adaptive scheduling
+	GetHashTracker() *adaptive.HashTracker
 }
 
 const (
@@ -156,6 +161,11 @@ type Crawler struct {
 	cfg                 *crawler.Config
 	archiver            Archiver      // HTML archiver for MinIO storage
 	redisClient         *redis.Client // Redis client for Colly storage (optional)
+
+	// Adaptive scheduling: stores hashes of start URL responses
+	startURLHashes   map[string]string // URL -> SHA-256 hash
+	startURLHashesMu sync.RWMutex
+	hashTracker      *adaptive.HashTracker // Redis-backed hash tracker (optional)
 
 	// Extracted components for better separation of concerns
 	lifecycle *LifecycleManager
@@ -272,4 +282,20 @@ func (c *Crawler) clearCrawlContext() {
 	c.crawlContextMu.Lock()
 	defer c.crawlContextMu.Unlock()
 	c.crawlContext = nil
+}
+
+// GetStartURLHashes returns the hashes captured during the last crawl.
+func (c *Crawler) GetStartURLHashes() map[string]string {
+	c.startURLHashesMu.RLock()
+	defer c.startURLHashesMu.RUnlock()
+	result := make(map[string]string, len(c.startURLHashes))
+	for k, v := range c.startURLHashes {
+		result[k] = v
+	}
+	return result
+}
+
+// GetHashTracker returns the hash tracker for adaptive scheduling.
+func (c *Crawler) GetHashTracker() *adaptive.HashTracker {
+	return c.hashTracker
 }

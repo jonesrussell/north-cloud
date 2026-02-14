@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/jmoiron/sqlx"
+	"github.com/jonesrussell/north-cloud/crawler/internal/adaptive"
 	"github.com/jonesrussell/north-cloud/crawler/internal/archive"
 	"github.com/jonesrussell/north-cloud/crawler/internal/config"
 	"github.com/jonesrussell/north-cloud/crawler/internal/config/crawler"
@@ -42,10 +43,11 @@ type CrawlerParams struct {
 	Sources        sources.Interface
 	Config         *crawler.Config
 	Storage        types.Interface
-	FullConfig     config.Interface // Full config for accessing MinIO settings
-	DB             any              // Database connection (optional, for queued links)
-	PipelineClient *pipeline.Client // Pipeline observability client (optional, fire-and-forget)
-	RedisClient    *redis.Client    // Redis client for Colly storage (optional)
+	FullConfig     config.Interface      // Full config for accessing MinIO settings
+	DB             any                   // Database connection (optional, for queued links)
+	PipelineClient *pipeline.Client      // Pipeline observability client (optional, fire-and-forget)
+	RedisClient    *redis.Client         // Redis client for Colly storage (optional)
+	HashTracker    *adaptive.HashTracker // For adaptive scheduling (optional)
 }
 
 // CrawlerResult holds the crawler instance
@@ -104,6 +106,7 @@ func NewCrawlerWithParams(p CrawlerParams) (*CrawlerResult, error) {
 		signals:             signals,
 		archiver:            archiver,
 		redisClient:         p.RedisClient,
+		hashTracker:         p.HashTracker,
 	}
 
 	// Create discovered link repository if DB is available

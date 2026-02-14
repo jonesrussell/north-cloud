@@ -14,6 +14,7 @@ import (
 	colly "github.com/gocolly/colly/v2"
 	"github.com/gocolly/colly/v2/proxy"
 	"github.com/gocolly/redisstorage"
+	"github.com/jonesrussell/north-cloud/crawler/internal/adaptive"
 	"github.com/jonesrussell/north-cloud/crawler/internal/archive"
 	crawlerconfig "github.com/jonesrussell/north-cloud/crawler/internal/config/crawler"
 	configtypes "github.com/jonesrussell/north-cloud/crawler/internal/config/types"
@@ -345,6 +346,9 @@ func (c *Crawler) responseCallback(ctx context.Context) func(*colly.Response) {
 		if r.StatusCode == http.StatusTooManyRequests {
 			jl.IncrementRateLimit()
 		}
+		// Capture hash for start URLs (adaptive scheduling)
+		c.captureStartURLHash(pageURL, r.Body)
+
 		if c.archiver != nil {
 			task := &archive.UploadTask{
 				HTML:       r.Body,
@@ -696,4 +700,36 @@ func convertHeaders(headers *http.Header) map[string]string {
 		}
 	}
 	return result
+}
+
+// captureStartURLHash stores the SHA-256 hash of a start URL's response body.
+func (c *Crawler) captureStartURLHash(pageURL string, body []byte) {
+	crawlCtx := c.getCrawlContext()
+	if crawlCtx == nil || crawlCtx.Source == nil {
+		return
+	}
+
+	if !c.isStartURL(pageURL, crawlCtx.Source) {
+		return
+	}
+
+	hash := adaptive.ComputeHash(body)
+	c.startURLHashesMu.Lock()
+	c.startURLHashes[pageURL] = hash
+	c.startURLHashesMu.Unlock()
+}
+
+// isStartURL checks if the given URL is a start URL for the source.
+func (c *Crawler) isStartURL(
+	pageURL string, source *configtypes.Source,
+) bool {
+	if pageURL == source.URL {
+		return true
+	}
+	for _, u := range source.StartURLs {
+		if pageURL == u {
+			return true
+		}
+	}
+	return false
 }

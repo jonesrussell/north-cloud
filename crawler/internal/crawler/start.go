@@ -23,6 +23,11 @@ func (c *Crawler) Start(ctx context.Context, sourceID string) error {
 	c.lifecycle.Reset()
 	c.signals.Reset()
 
+	// Reset start URL hash map for this execution
+	c.startURLHashesMu.Lock()
+	c.startURLHashes = make(map[string]string)
+	c.startURLHashesMu.Unlock()
+
 	// Start cleanup goroutine
 	c.signals.StartCleanupGoroutine(ctx, c.cleanupResources)
 
