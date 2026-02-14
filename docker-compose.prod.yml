@@ -69,8 +69,11 @@ services:
       AUTH_JWT_SECRET: "${AUTH_JWT_SECRET}"
       SERVER_SECURITY_ENABLED: "false"
       SERVER_PORT: "8080"
-      REDIS_ADDR: "${REDIS_HOST:-host.docker.internal}:6379"
+      REDIS_ADDRESS: "${REDIS_HOST:-host.docker.internal}:6379"
       REDIS_PASSWORD: "${REDIS_PASSWORD:-}"
+      # Crawler Redis Storage (Colly visited URLs persistence)
+      CRAWLER_REDIS_STORAGE_ENABLED: "${CRAWLER_REDIS_STORAGE_ENABLED:-false}"
+      CRAWLER_REDIS_STORAGE_EXPIRES: "${CRAWLER_REDIS_STORAGE_EXPIRES:-168h}"
     extra_hosts:
       - "host.docker.internal:host-gateway"
     healthcheck:

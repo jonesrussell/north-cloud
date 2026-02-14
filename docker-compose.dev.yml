@@ -105,6 +105,9 @@ services:
       # Redis Events Configuration (Phase 2)
       REDIS_EVENTS_ENABLED: "${REDIS_EVENTS_ENABLED:-false}"
       REDIS_ADDRESS: redis:6379
+      # Crawler Redis Storage (Colly visited URLs persistence)
+      CRAWLER_REDIS_STORAGE_ENABLED: "${CRAWLER_REDIS_STORAGE_ENABLED:-false}"
+      CRAWLER_REDIS_STORAGE_EXPIRES: "${CRAWLER_REDIS_STORAGE_EXPIRES:-168h}"
       PPROF_PORT: 6060
     volumes:
       - ./crawler:/app

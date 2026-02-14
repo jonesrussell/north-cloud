@@ -12,9 +12,10 @@ import (
 var ErrRedisDisabled = errors.New("redis disabled")
 
 // CreateRedisClient creates a Redis client from config.
-// Returns ErrRedisDisabled if config is nil or disabled.
+// Returns ErrRedisDisabled if config is nil.
+// Callers are responsible for checking their own feature flags before calling.
 func CreateRedisClient(redisCfg *config.RedisConfig) (*redis.Client, error) {
-	if redisCfg == nil || !redisCfg.Enabled {
+	if redisCfg == nil {
 		return nil, ErrRedisDisabled
 	}
 	return infraredis.NewClient(infraredis.Config{

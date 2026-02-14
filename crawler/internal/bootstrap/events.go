@@ -18,7 +18,12 @@ func SetupEventConsumer(
 	jobRepo *database.JobRepository,
 	processedEventsRepo *database.ProcessedEventsRepository,
 ) *crawlerintevents.Consumer {
-	redisClient, err := CreateRedisClient(deps.Config.GetRedisConfig())
+	redisCfg := deps.Config.GetRedisConfig()
+	if !redisCfg.Enabled {
+		return nil
+	}
+
+	redisClient, err := CreateRedisClient(redisCfg)
 	if err != nil {
 		if !errors.Is(err, ErrRedisDisabled) {
 			deps.Logger.Warn("Redis not available, event consumer disabled",
