@@ -84,16 +84,17 @@ func ConvertAPISourceToConfig(apiSource *APISource) (*types.SourceConfig, error)
 	}
 
 	return &types.SourceConfig{
-		Name:           apiSource.Name,
-		URL:            apiSource.URL,
-		AllowedDomains: buildAllowedDomains(domain),
-		StartURLs:      []string{apiSource.URL},
-		RateLimit:      rateLimit,
-		MaxDepth:       maxDepth,
-		Time:           apiSource.Time,
-		Index:          apiSource.PageIndex, // For backward compatibility
-		ArticleIndex:   apiSource.ArticleIndex,
-		PageIndex:      apiSource.PageIndex,
+		Name:               apiSource.Name,
+		URL:                apiSource.URL,
+		AllowedDomains:     buildAllowedDomains(domain),
+		StartURLs:          []string{apiSource.URL},
+		RateLimit:          rateLimit,
+		MaxDepth:           maxDepth,
+		Time:               apiSource.Time,
+		Index:              apiSource.PageIndex, // For backward compatibility
+		ArticleIndex:       apiSource.ArticleIndex,
+		PageIndex:          apiSource.PageIndex,
+		ArticleURLPatterns: apiSource.ArticleURLPatterns,
 		Selectors: types.SelectorConfig{
 			Article: convertAPIArticleSelectors(apiSource.Selectors.Article),
 			List:    convertAPIListSelectors(apiSource.Selectors.List),
@@ -166,14 +167,15 @@ func ConvertConfigToAPISource(config *types.SourceConfig) *APISource {
 	}
 
 	return &APISource{
-		Name:         config.Name,
-		URL:          config.URL,
-		ArticleIndex: config.ArticleIndex,
-		PageIndex:    config.PageIndex,
-		RateLimit:    config.RateLimit.String(),
-		MaxDepth:     config.MaxDepth,
-		Time:         config.Time,
-		Enabled:      true,
+		Name:               config.Name,
+		URL:                config.URL,
+		ArticleIndex:       config.ArticleIndex,
+		PageIndex:          config.PageIndex,
+		RateLimit:          config.RateLimit.String(),
+		MaxDepth:           config.MaxDepth,
+		Time:               config.Time,
+		Enabled:            true,
+		ArticleURLPatterns: config.ArticleURLPatterns,
 		Selectors: APISelectors{
 			Article: convertArticleSelectorsToAPI(config.Selectors.Article),
 			List:    convertListSelectorsToAPI(config.Selectors.List),

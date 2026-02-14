@@ -28,19 +28,20 @@ func NewSourcesMetrics() *SourcesMetrics {
 
 // SourceConfig represents a source configuration.
 type SourceConfig struct {
-	ID             string
-	Name           string
-	URL            string
-	AllowedDomains []string
-	StartURLs      []string
-	RateLimit      time.Duration
-	MaxDepth       int
-	Time           []string
-	Index          string
-	ArticleIndex   string
-	PageIndex      string
-	Selectors      SelectorConfig
-	Rules          types.Rules
+	ID                 string
+	Name               string
+	URL                string
+	AllowedDomains     []string
+	StartURLs          []string
+	RateLimit          time.Duration
+	MaxDepth           int
+	Time               []string
+	Index              string
+	ArticleIndex       string
+	PageIndex          string
+	Selectors          SelectorConfig
+	Rules              types.Rules
+	ArticleURLPatterns []string
 }
 
 // SelectorConfig defines the CSS selectors used for content extraction.
@@ -174,5 +175,6 @@ func ConvertToConfigSource(source *SourceConfig) *types.Source {
 			},
 		},
 		Rules: source.Rules,
+		ArticleURLPatterns: source.ArticleURLPatterns,
 	}
 }

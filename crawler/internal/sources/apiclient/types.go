@@ -16,9 +16,10 @@ type APISource struct {
 	Enabled      bool         `json:"enabled"`
 	CityName     string       `json:"city_name,omitempty"`
 	GroupID      string       `json:"group_id,omitempty"`
-	Selectors    APISelectors `json:"selectors"`
-	CreatedAt    *time.Time   `json:"created_at,omitempty"`
-	UpdatedAt    *time.Time   `json:"updated_at,omitempty"`
+	Selectors          APISelectors `json:"selectors"`
+	ArticleURLPatterns []string     `json:"article_url_patterns,omitempty"`
+	CreatedAt          *time.Time   `json:"created_at,omitempty"`
+	UpdatedAt          *time.Time   `json:"updated_at,omitempty"`
 }
 
 // APISelectors represents the selectors structure in the API.
