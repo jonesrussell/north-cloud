@@ -224,6 +224,7 @@ func TestGetRawContentMapping_MetaSubFields(t *testing.T) {
 	expectedMetaFields := []string{
 		"twitter_card", "twitter_site", "og_image_width", "og_image_height",
 		"og_site_name", "created_at", "updated_at", "article_opinion", "article_content_tier",
+		"detected_content_type",
 	}
 	for _, field := range expectedMetaFields {
 		if _, exists := metaProps[field]; !exists {
@@ -251,7 +252,8 @@ func TestGetRawContentMapping_JsonLdDataSubFields(t *testing.T) {
 		"jsonld_headline", "jsonld_description", "jsonld_article_section",
 		"jsonld_author", "jsonld_publisher_name", "jsonld_url", "jsonld_image_url",
 		"jsonld_date_published", "jsonld_date_created", "jsonld_date_modified",
-		"jsonld_word_count", "jsonld_keywords", "jsonld_raw",
+		"jsonld_word_count", "jsonld_keywords", "jsonld_schema_type", "jsonld_location",
+		"jsonld_raw",
 	}
 	for _, field := range expectedJSONLdFields {
 		if _, exists := jsonLdProps[field]; !exists {

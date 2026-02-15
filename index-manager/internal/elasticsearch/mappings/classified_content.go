@@ -105,6 +105,8 @@ func getJSONLdDataFields() map[string]any {
 		"jsonld_date_modified":   map[string]any{"type": "date", "format": dateFormat},
 		"jsonld_word_count":      map[string]any{"type": "integer"},
 		"jsonld_keywords":        map[string]any{"type": "keyword"},
+		"jsonld_schema_type":     map[string]any{"type": "keyword"},
+		"jsonld_location":        map[string]any{"type": "text"},
 		"jsonld_raw":             map[string]any{"type": "object", "enabled": false},
 	}
 }
@@ -113,15 +115,16 @@ func getJSONLdDataFields() map[string]any {
 func getMetaFields() map[string]any {
 	dateFormat := "strict_date_optional_time||epoch_millis"
 	return map[string]any{
-		"twitter_card":         map[string]any{"type": "keyword"},
-		"twitter_site":         map[string]any{"type": "keyword"},
-		"og_image_width":       map[string]any{"type": "integer"},
-		"og_image_height":      map[string]any{"type": "integer"},
-		"og_site_name":         map[string]any{"type": "keyword"},
-		"created_at":           map[string]any{"type": "date", "format": dateFormat},
-		"updated_at":           map[string]any{"type": "date", "format": dateFormat},
-		"article_opinion":      map[string]any{"type": "boolean"},
-		"article_content_tier": map[string]any{"type": "keyword"},
+		"twitter_card":          map[string]any{"type": "keyword"},
+		"twitter_site":          map[string]any{"type": "keyword"},
+		"og_image_width":        map[string]any{"type": "integer"},
+		"og_image_height":       map[string]any{"type": "integer"},
+		"og_site_name":          map[string]any{"type": "keyword"},
+		"created_at":            map[string]any{"type": "date", "format": dateFormat},
+		"updated_at":            map[string]any{"type": "date", "format": dateFormat},
+		"article_opinion":       map[string]any{"type": "boolean"},
+		"article_content_tier":  map[string]any{"type": "keyword"},
+		"detected_content_type": map[string]any{"type": "keyword"},
 	}
 }
 

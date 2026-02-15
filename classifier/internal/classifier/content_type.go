@@ -65,8 +65,9 @@ type ContentTypeClassifier struct {
 // ContentTypeResult represents the result of content type classification
 type ContentTypeResult struct {
 	Type       string  // "article", "page", "video", "image", "job"
+	Subtype    string  // e.g. "press_release", "event", "advisory" (from crawler detected_content_type)
 	Confidence float64 // 0.0-1.0
-	Method     string  // "og_metadata", "heuristic", "default"
+	Method     string  // "og_metadata", "heuristic", "detected_content_type", "default"
 	Reason     string  // Human-readable explanation
 }
 
@@ -80,7 +81,12 @@ func NewContentTypeClassifier(logger infralogger.Logger) *ContentTypeClassifier 
 // Classify determines the content type of the given raw content
 // This is ported from crawler's html_processor.go DetectContentType logic
 func (c *ContentTypeClassifier) Classify(ctx context.Context, raw *domain.RawContent) (*ContentTypeResult, error) {
-	// Strategy 0: Check URL exclusions first (non-article patterns)
+	// Strategy 0a: Use crawler's detected_content_type from meta when present (primary signal)
+	if result := c.classifyFromDetectedType(raw); result != nil {
+		return result, nil
+	}
+
+	// Strategy 0b: Check URL exclusions (non-article patterns)
 	if c.isNonArticleURL(raw.URL) {
 		c.logger.Debug("Content type excluded via URL pattern",
 			infralogger.String("content_id", raw.ID),
@@ -312,6 +318,43 @@ func matchesURLPattern(path, pattern string) bool {
 // Matches "/news" and "/news/" but NOT "/news/article-slug".
 func isExactSectionPath(path, section string) bool {
 	return path == section || path == section+"/"
+}
+
+// classifyFromDetectedType checks the crawler's detected_content_type in meta.
+// Returns nil if not present or not a valid string.
+func (c *ContentTypeClassifier) classifyFromDetectedType(raw *domain.RawContent) *ContentTypeResult {
+	if raw.Meta == nil {
+		return nil
+	}
+	rawVal, exists := raw.Meta["detected_content_type"]
+	if !exists {
+		return nil
+	}
+	v, ok := rawVal.(string)
+	if !ok || v == "" {
+		c.logger.Warn("detected_content_type present in meta but not a valid string",
+			infralogger.String("content_id", raw.ID),
+			infralogger.Any("raw_value", rawVal),
+		)
+		return nil
+	}
+	// Don't set subtype when it equals the type — "article" as both
+	// ContentType and ContentSubtype is redundant.
+	subtype := v
+	if subtype == domain.ContentTypeArticle {
+		subtype = ""
+	}
+	c.logger.Debug("Content type from crawler detected_content_type",
+		infralogger.String("content_id", raw.ID),
+		infralogger.String("detected_type", v),
+	)
+	return &ContentTypeResult{
+		Type:       domain.ContentTypeArticle,
+		Subtype:    subtype,
+		Confidence: 1.0,
+		Method:     "detected_content_type",
+		Reason:     "Crawler detected structured content type",
+	}
 }
 
 // isNonArticleURL checks if the URL matches patterns that indicate non-article content

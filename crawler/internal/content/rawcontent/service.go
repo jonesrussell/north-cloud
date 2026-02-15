@@ -21,6 +21,10 @@ import (
 // minPostExtractionWordCount is the minimum word count for extracted content to be indexed.
 const minPostExtractionWordCount = 50
 
+// DetectedContentTypeCtxKey is the colly request context key for detected content type
+// (set by the crawler when IsStructuredContentPage returns true).
+const DetectedContentTypeCtxKey = "detected_content_type"
+
 // Interface defines the interface for processing raw content.
 type Interface interface {
 	// Process handles the processing of raw content from any HTML page.
@@ -66,6 +70,19 @@ func (s *RawContentService) Process(e *colly.HTMLElement) error {
 
 	sourceURL := e.Request.URL.String()
 
+	// Read detected content type from crawler context (set when IsStructuredContentPage returns true)
+	var detectedContentType string
+	if v := e.Request.Ctx.GetAny(DetectedContentTypeCtxKey); v != nil {
+		if str, ok := v.(string); ok {
+			detectedContentType = str
+		} else {
+			s.logger.Warn("detected_content_type context value is not a string",
+				infralogger.String("url", sourceURL),
+				infralogger.Any("value", v),
+			)
+		}
+	}
+
 	// Get source configuration to determine source name and selectors
 	sourceName, selectors := s.getSourceConfig(sourceURL)
 
@@ -104,7 +121,7 @@ func (s *RawContentService) Process(e *colly.HTMLElement) error {
 	}
 
 	// Convert RawContentData to RawContent for indexing
-	rawContent := s.convertToRawContent(rawData, sourceName)
+	rawContent := s.convertToRawContent(rawData, sourceName, detectedContentType)
 
 	// Index to raw_content (no validation - classifier will handle that)
 	err := s.rawIndexer.IndexRawContent(ctx, rawContent)
@@ -281,7 +298,7 @@ func (s *RawContentService) findSourceByURL(pageURL string) *sources.Config {
 }
 
 // convertToRawContent converts RawContentData to storage.RawContent for indexing
-func (s *RawContentService) convertToRawContent(rawData *RawContentData, sourceName string) *storagepkg.RawContent {
+func (s *RawContentService) convertToRawContent(rawData *RawContentData, sourceName, detectedContentType string) *storagepkg.RawContent {
 	// Calculate word count
 	wordCount := calculateWordCount(rawData.RawText)
 
@@ -312,6 +329,9 @@ func (s *RawContentService) convertToRawContent(rawData *RawContentData, sourceN
 	}
 	if rawData.OGSiteName != "" {
 		meta["og_site_name"] = rawData.OGSiteName
+	}
+	if detectedContentType != "" {
+		meta["detected_content_type"] = detectedContentType
 	}
 
 	rawContent := &storagepkg.RawContent{

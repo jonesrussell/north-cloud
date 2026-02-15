@@ -8,9 +8,9 @@ type ClassificationResult struct {
 
 	// Content type classification
 	ContentType    string  `json:"content_type"`    // "article", "page", "video", "image", "job"
-	ContentSubtype string  `json:"content_subtype"` // e.g., "news_article", "blog_post"
+	ContentSubtype string  `json:"content_subtype"` // e.g., "press_release", "blog_post", "event"
 	TypeConfidence float64 `json:"type_confidence"` // 0.0-1.0
-	TypeMethod     string  `json:"type_method"`     // "og_metadata", "selector_based", "heuristic", "ml_model"
+	TypeMethod     string  `json:"type_method"`     // "detected_content_type", "url_exclusion", "og_metadata", "content_pattern", "heuristic"
 
 	// Quality scoring
 	QualityScore   int            `json:"quality_score"`   // 0-100
@@ -144,6 +144,19 @@ const (
 	ContentTypeVideo   = "video"
 	ContentTypeImage   = "image"
 	ContentTypeJob     = "job"
+)
+
+// ContentSubtype constants (granularity within article-like content).
+// Values correspond to the crawler's DetectedContent* constants,
+// passed via meta.detected_content_type in RawContent.
+const (
+	ContentSubtypePressRelease        = "press_release"
+	ContentSubtypeBlogPost            = "blog_post"
+	ContentSubtypeEvent               = "event"
+	ContentSubtypeAdvisory            = "advisory"
+	ContentSubtypeReport              = "report"
+	ContentSubtypeBlotter             = "blotter"
+	ContentSubtypeCompanyAnnouncement = "company_announcement"
 )
 
 // SourceCategory constants

@@ -16,6 +16,15 @@ var CompileArticlePatterns = compileArticlePatterns
 // HasNewsArticleJSONLD exports hasNewsArticleJSONLD for testing.
 var HasNewsArticleJSONLD = hasNewsArticleJSONLD
 
+// HasStructuredContentJSONLD exports hasStructuredContentJSONLD for testing.
+var HasStructuredContentJSONLD = hasStructuredContentJSONLD
+
+// DetectContentTypeFromURL exports detectContentTypeFromURL for testing.
+var DetectContentTypeFromURL = detectContentTypeFromURL
+
+// DetectContentTypeFromHTML exports detectContentTypeFromHTML for testing.
+var DetectContentTypeFromHTML = detectContentTypeFromHTML
+
 // ExplicitPatterns is a helper to build explicit pattern slices for tests.
 func ExplicitPatterns(patterns ...string) []*regexp.Regexp {
 	return compileArticlePatterns(patterns)

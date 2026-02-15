@@ -286,6 +286,7 @@ type Article struct {
 	QualityScore     int      `json:"quality_score"`
 	Topics           []string `json:"topics"`
 	ContentType      string   `json:"content_type"`
+	ContentSubtype   string   `json:"content_subtype,omitempty"` // e.g. press_release, event, advisory
 	SourceReputation int      `json:"source_reputation"`
 	Confidence       float64  `json:"confidence"`
 
@@ -515,6 +516,7 @@ func (s *Service) publishToChannel(ctx context.Context, article *Article, channe
 		"quality_score":     article.QualityScore,
 		"topics":            article.Topics,
 		"content_type":      article.ContentType,
+		"content_subtype":   article.ContentSubtype,
 		"source_reputation": article.SourceReputation,
 		"confidence":        article.Confidence,
 		"og_title":          article.OGTitle,

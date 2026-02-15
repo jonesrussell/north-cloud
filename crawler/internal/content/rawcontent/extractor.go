@@ -16,6 +16,17 @@ import (
 	"github.com/gocolly/colly/v2"
 )
 
+// JSON-LD schema type constants for content extraction
+const (
+	jsonldTypeNewsArticle         = "NewsArticle"
+	jsonldTypeArticle             = "Article"
+	jsonldTypeBlogPosting         = "BlogPosting"
+	jsonldTypePressRelease        = "PressRelease"
+	jsonldTypeEvent               = "Event"
+	jsonldTypeSpecialAnnouncement = "SpecialAnnouncement"
+	jsonldTypeReport              = "Report"
+)
+
 // ArticleMeta contains article-specific metadata
 type ArticleMeta struct {
 	Section     string
@@ -134,7 +145,9 @@ func extractTitle(e *colly.HTMLElement, selector string) string {
 	return ""
 }
 
-// extractJSONLDHeadline extracts the headline from JSON-LD NewsArticle/Article schema.
+// extractJSONLDHeadline extracts the headline/name from JSON-LD schema.
+// Supports NewsArticle/Article (headline), BlogPosting/PressRelease (headline),
+// Event/SpecialAnnouncement/Report (name).
 func extractJSONLDHeadline(e *colly.HTMLElement) string {
 	var headline string
 
@@ -154,12 +167,15 @@ func extractJSONLDHeadline(e *colly.HTMLElement) string {
 		}
 
 		typeVal, _ := data["@type"].(string)
-		if typeVal != "NewsArticle" && typeVal != "Article" {
-			return
-		}
-
-		if h, ok := data["headline"].(string); ok && h != "" {
-			headline = strings.TrimSpace(h)
+		switch typeVal {
+		case jsonldTypeNewsArticle, jsonldTypeArticle, jsonldTypeBlogPosting, jsonldTypePressRelease:
+			if h, ok := data["headline"].(string); ok && h != "" {
+				headline = strings.TrimSpace(h)
+			}
+		case jsonldTypeEvent, jsonldTypeSpecialAnnouncement, jsonldTypeReport:
+			if n, ok := data["name"].(string); ok && n != "" {
+				headline = strings.TrimSpace(n)
+			}
 		}
 	})
 
@@ -371,25 +387,53 @@ func extractJSONLD(e *colly.HTMLElement) map[string]any {
 			return
 		}
 
-		// Extract NewsArticle schema data
+		// Extract schema data for supported content types
 		for _, obj := range jsonObjs {
 			objMap, isMap := obj.(map[string]any)
 			if !isMap {
 				continue
 			}
 
-			// Check if this is a NewsArticle or Article type
 			typeVal, _ := objMap["@type"].(string)
-			if typeVal != "NewsArticle" && typeVal != "Article" {
-				// Store non-NewsArticle schemas in result for reference
+			if typeVal == "" {
 				continue
 			}
 
-			// Extract fields from NewsArticle schema
-			extractNewsArticleFields(objMap, result)
+			// Dispatch to schema-specific extractor; skip unsupported types
+			var extracted bool
+			switch typeVal {
+			case jsonldTypeNewsArticle, jsonldTypeArticle:
+				extractNewsArticleFields(objMap, result)
+				result["jsonld_schema_type"] = typeVal
+				extracted = true
+			case jsonldTypeBlogPosting:
+				extractNewsArticleFields(objMap, result)
+				result["jsonld_schema_type"] = jsonldTypeBlogPosting
+				extracted = true
+			case jsonldTypePressRelease:
+				extractNewsArticleFields(objMap, result)
+				result["jsonld_schema_type"] = jsonldTypePressRelease
+				extracted = true
+			case jsonldTypeEvent:
+				extractEventFields(objMap, result)
+				result["jsonld_schema_type"] = jsonldTypeEvent
+				extracted = true
+			case jsonldTypeSpecialAnnouncement:
+				extractSpecialAnnouncementFields(objMap, result)
+				result["jsonld_schema_type"] = jsonldTypeSpecialAnnouncement
+				extracted = true
+			case jsonldTypeReport:
+				extractReportFields(objMap, result)
+				result["jsonld_schema_type"] = jsonldTypeReport
+				extracted = true
+			default:
+				// Unsupported schema type, skip
+				continue
+			}
 
-			// Store full JSON-LD object for reference (normalized to prevent Elasticsearch mapping conflicts)
-			result["jsonld_raw"] = normalizeJSONLDObject(objMap)
+			if extracted {
+				result["jsonld_raw"] = normalizeJSONLDObject(objMap)
+			}
 		}
 	})
 
@@ -404,6 +448,76 @@ func extractNewsArticleFields(objMap, result map[string]any) {
 	extractJSONLDAuthor(objMap, result)
 	extractJSONLDPublisher(objMap, result)
 	extractJSONLDImage(objMap, result)
+}
+
+// extractEventFields extracts fields from an Event JSON-LD object.
+// Maps name->headline, startDate->datePublished, description->description, url->url, location->jsonld_location.
+func extractEventFields(objMap, result map[string]any) {
+	extractJSONLDEventStringFields(objMap, result)
+	extractJSONLDAuthor(objMap, result)
+	extractJSONLDImage(objMap, result)
+}
+
+// extractJSONLDEventStringFields maps Event schema fields to our standard keys.
+func extractJSONLDEventStringFields(objMap, result map[string]any) {
+	fieldMap := map[string]string{
+		"name":        "jsonld_headline",
+		"description": "jsonld_description",
+		"url":         "jsonld_url",
+	}
+	for key, resultKey := range fieldMap {
+		if val, isString := objMap[key].(string); isString && val != "" {
+			result[resultKey] = val
+		}
+	}
+	if startDate, ok := objMap["startDate"].(string); ok && startDate != "" {
+		result["jsonld_date_published"] = startDate
+	}
+	switch loc := objMap["location"].(type) {
+	case string:
+		if loc != "" {
+			result["jsonld_location"] = loc
+		}
+	case map[string]any:
+		if locName, nameOk := loc["name"].(string); nameOk && locName != "" {
+			result["jsonld_location"] = locName
+		}
+	}
+}
+
+// extractSpecialAnnouncementFields extracts fields from a SpecialAnnouncement JSON-LD object.
+// Maps name->headline, datePosted->datePublished, text->description. Also extracts author.
+func extractSpecialAnnouncementFields(objMap, result map[string]any) {
+	fieldMap := map[string]string{
+		"name": "jsonld_headline",
+		"text": "jsonld_description",
+	}
+	for key, resultKey := range fieldMap {
+		if val, isString := objMap[key].(string); isString && val != "" {
+			result[resultKey] = val
+		}
+	}
+	if datePosted, ok := objMap["datePosted"].(string); ok && datePosted != "" {
+		result["jsonld_date_published"] = datePosted
+	}
+	extractJSONLDAuthor(objMap, result)
+}
+
+// extractReportFields extracts fields from a Report JSON-LD object.
+// Maps name->headline, description->description, url->url, datePublished->datePublished. Also extracts author.
+func extractReportFields(objMap, result map[string]any) {
+	fieldMap := map[string]string{
+		"name":          "jsonld_headline",
+		"description":   "jsonld_description",
+		"url":           "jsonld_url",
+		"datePublished": "jsonld_date_published",
+	}
+	for key, resultKey := range fieldMap {
+		if val, isString := objMap[key].(string); isString && val != "" {
+			result[resultKey] = val
+		}
+	}
+	extractJSONLDAuthor(objMap, result)
 }
 
 // extractJSONLDStringFields extracts string fields from JSON-LD object

@@ -18,6 +18,7 @@ import (
 	"github.com/jonesrussell/north-cloud/crawler/internal/archive"
 	crawlerconfig "github.com/jonesrussell/north-cloud/crawler/internal/config/crawler"
 	configtypes "github.com/jonesrussell/north-cloud/crawler/internal/config/types"
+	"github.com/jonesrussell/north-cloud/crawler/internal/content/rawcontent"
 	"github.com/jonesrussell/north-cloud/crawler/internal/logs"
 )
 
@@ -417,7 +418,8 @@ func (c *Crawler) setupCallbacks(ctx context.Context) {
 			patterns = crawlCtx.ArticlePatterns
 		}
 
-		if isArticleURL(pageURL, patterns) || c.isArticlePageFromHTML(e) {
+		if ok, detectedType := IsStructuredContentPage(e, pageURL, patterns); ok {
+			e.Request.Ctx.Put(rawcontent.DetectedContentTypeCtxKey, detectedType)
 			c.ProcessHTML(e)
 		}
 	})
@@ -444,12 +446,6 @@ func (c *Crawler) setupCallbacks(ctx context.Context) {
 			)
 		}
 	})
-}
-
-// isArticlePageFromHTML checks HTML metadata to determine if a page is an article.
-func (c *Crawler) isArticlePageFromHTML(e *colly.HTMLElement) bool {
-	ogType := e.ChildAttr("meta[property='og:type']", "content")
-	return isArticlePage(ogType, hasNewsArticleJSONLD(e))
 }
 
 // handleCrawlError handles crawl errors with appropriate logging levels and optional HTTP retry.
