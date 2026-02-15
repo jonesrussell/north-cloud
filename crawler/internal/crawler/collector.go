@@ -232,6 +232,15 @@ func (c *Crawler) setupRedisStorage() error {
 		return fmt.Errorf("failed to set Redis storage: %w", err)
 	}
 
+	// Clear visited URLs from previous executions so the seed URL can be re-crawled.
+	// Deduplication still works within this crawl run.
+	if err := storage.Clear(); err != nil {
+		c.GetJobLogger().Warn(logs.CategoryLifecycle,
+			"Failed to clear Redis storage",
+			logs.Err(err),
+		)
+	}
+
 	c.GetJobLogger().Info(logs.CategoryLifecycle,
 		"Redis storage enabled for Colly",
 		logs.String("prefix", prefix),

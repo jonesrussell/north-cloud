@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"strings"
 	"sync"
 	"time"
 
@@ -665,12 +666,21 @@ func (s *IntervalScheduler) runJob(jobExec *JobExecution) {
 
 	err := s.crawler.Start(jobExec.Context, job.SourceID)
 	if err != nil {
-		writeLog(logWriter, "error", "Crawler start failed: "+err.Error(), job.ID, execution.ID, nil)
-		s.logger.Error("Crawler start failed",
-			infralogger.String("job_id", job.ID),
-			infralogger.String("source_id", job.SourceID),
-			infralogger.Error(err),
-		)
+		if isExpectedStartError(err) {
+			writeLog(logWriter, "warn", "Crawler start failed (expected): "+err.Error(), job.ID, execution.ID, nil)
+			s.logger.Warn("Crawler start failed (expected)",
+				infralogger.String("job_id", job.ID),
+				infralogger.String("source_id", job.SourceID),
+				infralogger.Error(err),
+			)
+		} else {
+			writeLog(logWriter, "error", "Crawler start failed: "+err.Error(), job.ID, execution.ID, nil)
+			s.logger.Error("Crawler start failed",
+				infralogger.String("job_id", job.ID),
+				infralogger.String("source_id", job.SourceID),
+				infralogger.Error(err),
+			)
+		}
 		s.handleJobFailure(jobExec, err, &startTime)
 		return
 	}
@@ -1259,6 +1269,16 @@ func (s *IntervalScheduler) SetSSEPublisher(publisher *SSEPublisher) {
 // IMPORTANT: This method must be called before Start() to avoid data races.
 func (s *IntervalScheduler) SetLogService(logService logs.Service) {
 	s.logService = logService
+}
+
+// isExpectedStartError returns true for crawler start errors that are expected
+// and should be logged at WARN instead of ERROR (e.g., "already visited", "Forbidden domain").
+func isExpectedStartError(err error) bool {
+	msg := err.Error()
+	return strings.Contains(msg, "already visited") ||
+		strings.Contains(msg, "Already visited") ||
+		strings.Contains(msg, "Forbidden domain") ||
+		strings.Contains(msg, "forbidden domain")
 }
 
 // publishJobStatus publishes a job status event if SSE is enabled.
