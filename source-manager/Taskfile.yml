@@ -24,11 +24,16 @@ tasks:
 
   build:
     desc: Build the source-manager service
+    sources:
+      - "**/*.go"
+      - "go.mod"
+      - "go.sum"
+      - "../infrastructure/**/*.go"
+    generates:
+      - "{{.BUILD_DIR}}/{{.BINARY_NAME}}"
     cmds:
       - mkdir -p {{.BUILD_DIR}}
       - go build -o {{.BUILD_DIR}}/{{.BINARY_NAME}} {{.MAIN_PATH}}
-    generates:
-      - "{{.BUILD_DIR}}/{{.BINARY_NAME}}"
 
   run:
     desc: Run the service locally
@@ -38,6 +43,11 @@ tasks:
 
   test:
     desc: "Run all tests"
+    sources:
+      - "**/*.go"
+      - "go.mod"
+      - "go.sum"
+      - "../infrastructure/**/*.go"
     cmds:
       - go test -v ./...
 
@@ -67,6 +77,9 @@ tasks:
 
   vuln:
     desc: "Run vulnerability check"
+    sources:
+      - "go.mod"
+      - "go.sum"
     cmds:
       - govulncheck ./...
 
@@ -134,6 +147,12 @@ tasks:
 
   lint:
     desc: "Lint the Go code"
+    sources:
+      - "**/*.go"
+      - "go.mod"
+      - "go.sum"
+      - "../.golangci.yml"
+      - "../infrastructure/**/*.go"
     cmds:
       - go fmt ./...
       - go vet ./...

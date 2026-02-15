@@ -44,6 +44,10 @@ task lint:SERVICE
 task test:SERVICE
 task test:cover:SERVICE
 
+# Task caches results: lint/test/build skip when sources unchanged.
+# Force re-run: task lint -f or task test:auth -f
+# Changed-services only (CI): task lint:changed, task test:changed, task ci:changed
+
 # Run migrations
 task migrate:up
 task migrate:SERVICE

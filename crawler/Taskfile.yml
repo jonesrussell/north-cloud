@@ -23,6 +23,13 @@ tasks:
 
   build:
     desc: "Build the web crawler executable"
+    sources:
+      - "**/*.go"
+      - "go.mod"
+      - "go.sum"
+      - "../infrastructure/**/*.go"
+    generates:
+      - "bin/crawler"
     cmds:
       - mkdir -p bin
       - go build -o bin/crawler main.go
@@ -42,6 +49,12 @@ tasks:
 
   lint:
     desc: "Lint the Go code"
+    sources:
+      - "**/*.go"
+      - "go.mod"
+      - "go.sum"
+      - "../.golangci.yml"
+      - "../infrastructure/**/*.go"
     cmds:
       - go fmt ./...
       - go vet ./...
@@ -49,6 +62,11 @@ tasks:
 
   test:
     desc: "Run all tests"
+    sources:
+      - "**/*.go"
+      - "go.mod"
+      - "go.sum"
+      - "../infrastructure/**/*.go"
     cmds:
       - go test -v ./...
 
@@ -81,6 +99,9 @@ tasks:
 
   vuln:
     desc: "Run vulnerability check"
+    sources:
+      - "go.mod"
+      - "go.sum"
     cmds:
       - govulncheck ./...
 

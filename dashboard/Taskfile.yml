@@ -8,11 +8,24 @@ tasks:
 
   lint:
     desc: "Lint the code"
+    sources:
+      - "package.json"
+      - "package-lock.json"
+      - "src/**"
+      - "index.html"
+      - "*.config.*"
+      - "tsconfig*.json"
     cmds:
       - npm run lint
 
   test:
     desc: "Run tests"
+    sources:
+      - "package.json"
+      - "package-lock.json"
+      - "src/**"
+      - "*.config.*"
+      - "tsconfig*.json"
     cmds:
       - npx vitest run
 
@@ -28,6 +41,15 @@ tasks:
 
   build:
     desc: "Build for production"
+    sources:
+      - "package.json"
+      - "package-lock.json"
+      - "src/**"
+      - "index.html"
+      - "*.config.*"
+      - "tsconfig*.json"
+    generates:
+      - "dist/index.html"
     cmds:
       - npm run build
 
