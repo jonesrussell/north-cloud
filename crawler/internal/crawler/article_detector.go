@@ -14,15 +14,15 @@ const minSlugWordCount = 4
 // DetectedContentType identifies the structured content type detected from URL/HTML.
 // Used by the crawler to decide extraction strategy and by the classifier for routing.
 const (
-	DetectedContentArticle            = "article"
-	DetectedContentPressRelease       = "press_release"
-	DetectedContentBlogPost           = "blog_post"
-	DetectedContentEvent              = "event"
-	DetectedContentAdvisory           = "advisory"
-	DetectedContentReport             = "report"
-	DetectedContentBlotter            = "blotter"
+	DetectedContentArticle             = "article"
+	DetectedContentPressRelease        = "press_release"
+	DetectedContentBlogPost            = "blog_post"
+	DetectedContentEvent               = "event"
+	DetectedContentAdvisory            = "advisory"
+	DetectedContentReport              = "report"
+	DetectedContentBlotter             = "blotter"
 	DetectedContentCompanyAnnouncement = "company_announcement"
-	DetectedContentUnknown            = ""
+	DetectedContentUnknown             = ""
 )
 
 // JSON-LD schema types that indicate structured content we collect.
@@ -111,32 +111,32 @@ const pdfSuffix = ".pdf"
 // articlePathSegments are path segments that strongly suggest article content
 // when followed by additional path content.
 var articlePathSegments = map[string]bool{
-	"article":   true,
-	"story":     true,
-	"post":      true,
-	"news":      true,
-	"press":     true,
-	"media":     true,
-	"newsroom":  true,
-	"events":    true,
-	"event":     true,
-	"calendar":  true,
-	"upcoming":  true,
-	"alert":     true,
-	"alerts":    true,
-	"advisory":  true,
+	"article":    true,
+	"story":      true,
+	"post":       true,
+	"news":       true,
+	"press":      true,
+	"media":      true,
+	"newsroom":   true,
+	"events":     true,
+	"event":      true,
+	"calendar":   true,
+	"upcoming":   true,
+	"alert":      true,
+	"alerts":     true,
+	"advisory":   true,
 	"advisories": true,
-	"bulletin":  true,
-	"bulletins": true,
-	"blotter":   true,
-	"blotters":  true,
-	"incidents": true,
-	"arrests":   true,
-	"reports":   true,
-	"report":    true,
-	"investors": true,
-	"investor":  true,
-	"updates":   true,
+	"bulletin":   true,
+	"bulletins":  true,
+	"blotter":    true,
+	"blotters":   true,
+	"incidents":  true,
+	"arrests":    true,
+	"reports":    true,
+	"report":     true,
+	"investors":  true,
+	"investor":   true,
+	"updates":    true,
 }
 
 // datePathPattern matches date-based URL paths like /2026/02/14/headline or /2026/02/headline.
@@ -292,13 +292,13 @@ func detectContentTypeFromURL(pageURL string) string {
 // Returns DetectedContentUnknown if not found or not a type we collect.
 func detectContentTypeFromJSONLD(e *colly.HTMLElement) string {
 	jsonldToDetected := map[string]string{
-		"NewsArticle":        DetectedContentArticle,
-		"Article":            DetectedContentArticle,
-		"BlogPosting":        DetectedContentBlogPost,
-		"PressRelease":       DetectedContentPressRelease,
-		"Event":              DetectedContentEvent,
+		"NewsArticle":         DetectedContentArticle,
+		"Article":             DetectedContentArticle,
+		"BlogPosting":         DetectedContentBlogPost,
+		"PressRelease":        DetectedContentPressRelease,
+		"Event":               DetectedContentEvent,
 		"SpecialAnnouncement": DetectedContentAdvisory,
-		"Report":             DetectedContentReport,
+		"Report":              DetectedContentReport,
 	}
 	var detected string
 	e.ForEach("script[type='application/ld+json']", func(_ int, el *colly.HTMLElement) {
@@ -337,7 +337,7 @@ func detectContentTypeFromHTML(e *colly.HTMLElement, pageURL string) string {
 
 // IsStructuredContentPage returns true if the page is structured content we collect,
 // and the detected content type. Used by the collector to gate extraction.
-func IsStructuredContentPage(e *colly.HTMLElement, pageURL string, explicitPatterns []*regexp.Regexp) (bool, string) {
+func IsStructuredContentPage(e *colly.HTMLElement, pageURL string, explicitPatterns []*regexp.Regexp) (found bool, contentType string) {
 	ctype := detectContentTypeFromHTML(e, pageURL)
 	if ctype != DetectedContentUnknown {
 		return true, ctype

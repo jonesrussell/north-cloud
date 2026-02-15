@@ -17,8 +17,8 @@ import (
 	"github.com/jonesrussell/north-cloud/crawler/internal/adaptive"
 	"github.com/jonesrussell/north-cloud/crawler/internal/archive"
 	crawlerconfig "github.com/jonesrussell/north-cloud/crawler/internal/config/crawler"
-	"github.com/jonesrussell/north-cloud/crawler/internal/content/rawcontent"
 	configtypes "github.com/jonesrussell/north-cloud/crawler/internal/config/types"
+	"github.com/jonesrussell/north-cloud/crawler/internal/content/rawcontent"
 	"github.com/jonesrussell/north-cloud/crawler/internal/logs"
 )
 
@@ -61,7 +61,6 @@ const (
 
 // retryCountKey is the request context key for HTTP retry count in OnError.
 const retryCountKey = "retry_count"
-
 
 // setupCollector configures the collector for discovery and inline article extraction.
 // Article detection gates which pages get processed by ProcessHTML (no second HTTP request).
@@ -447,12 +446,6 @@ func (c *Crawler) setupCallbacks(ctx context.Context) {
 			)
 		}
 	})
-}
-
-// isArticlePageFromHTML checks HTML metadata to determine if a page is an article.
-func (c *Crawler) isArticlePageFromHTML(e *colly.HTMLElement) bool {
-	ogType := e.ChildAttr("meta[property='og:type']", "content")
-	return isArticlePage(ogType, hasNewsArticleJSONLD(e))
 }
 
 // handleCrawlError handles crawl errors with appropriate logging levels and optional HTTP retry.
