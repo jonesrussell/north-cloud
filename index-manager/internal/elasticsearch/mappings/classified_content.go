@@ -105,6 +105,8 @@ func getJSONLdDataFields() map[string]any {
 		"jsonld_date_modified":   map[string]any{"type": "date", "format": dateFormat},
 		"jsonld_word_count":      map[string]any{"type": "integer"},
 		"jsonld_keywords":        map[string]any{"type": "keyword"},
+		"jsonld_schema_type":     map[string]any{"type": "keyword"},
+		"jsonld_location":        map[string]any{"type": "text"},
 		"jsonld_raw":             map[string]any{"type": "object", "enabled": false},
 	}
 }

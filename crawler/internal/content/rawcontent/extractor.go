@@ -451,7 +451,7 @@ func extractNewsArticleFields(objMap, result map[string]any) {
 }
 
 // extractEventFields extracts fields from an Event JSON-LD object.
-// Maps name->headline, startDate->datePublished, description->description.
+// Maps name->headline, startDate->datePublished, description->description, url->url, location->jsonld_location.
 func extractEventFields(objMap, result map[string]any) {
 	extractJSONLDEventStringFields(objMap, result)
 	extractJSONLDAuthor(objMap, result)
@@ -473,7 +473,12 @@ func extractJSONLDEventStringFields(objMap, result map[string]any) {
 	if startDate, ok := objMap["startDate"].(string); ok && startDate != "" {
 		result["jsonld_date_published"] = startDate
 	}
-	if loc, locOk := objMap["location"].(map[string]any); locOk {
+	switch loc := objMap["location"].(type) {
+	case string:
+		if loc != "" {
+			result["jsonld_location"] = loc
+		}
+	case map[string]any:
 		if locName, nameOk := loc["name"].(string); nameOk && locName != "" {
 			result["jsonld_location"] = locName
 		}
@@ -481,7 +486,7 @@ func extractJSONLDEventStringFields(objMap, result map[string]any) {
 }
 
 // extractSpecialAnnouncementFields extracts fields from a SpecialAnnouncement JSON-LD object.
-// Maps name->headline, datePosted->datePublished, text->description.
+// Maps name->headline, datePosted->datePublished, text->description. Also extracts author.
 func extractSpecialAnnouncementFields(objMap, result map[string]any) {
 	fieldMap := map[string]string{
 		"name": "jsonld_headline",
@@ -499,6 +504,7 @@ func extractSpecialAnnouncementFields(objMap, result map[string]any) {
 }
 
 // extractReportFields extracts fields from a Report JSON-LD object.
+// Maps name->headline, description->description, url->url, datePublished->datePublished. Also extracts author.
 func extractReportFields(objMap, result map[string]any) {
 	fieldMap := map[string]string{
 		"name":          "jsonld_headline",

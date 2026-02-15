@@ -73,8 +73,13 @@ func (s *RawContentService) Process(e *colly.HTMLElement) error {
 	// Read detected content type from crawler context (set when IsStructuredContentPage returns true)
 	var detectedContentType string
 	if v := e.Request.Ctx.GetAny(DetectedContentTypeCtxKey); v != nil {
-		if s, ok := v.(string); ok {
-			detectedContentType = s
+		if str, ok := v.(string); ok {
+			detectedContentType = str
+		} else {
+			s.logger.Warn("detected_content_type context value is not a string",
+				infralogger.String("url", sourceURL),
+				infralogger.Any("value", v),
+			)
 		}
 	}
 

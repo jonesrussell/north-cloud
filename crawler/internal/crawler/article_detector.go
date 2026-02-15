@@ -28,7 +28,7 @@ const (
 // JSON-LD schema types that indicate structured content we collect.
 var structuredContentJSONLDTypes = []string{
 	"NewsArticle", "Article", "BlogPosting", "PressRelease",
-	"Event", "SpecialAnnouncement", "Report", "Obituary", "Review",
+	"Event", "SpecialAnnouncement", "Report",
 }
 
 // nonArticleSegments are URL path segments that indicate non-article pages.
@@ -108,8 +108,8 @@ var urlContentTypePatterns = []struct {
 // pdfSuffix matches URLs that point to PDF documents (report type).
 const pdfSuffix = ".pdf"
 
-// articlePathSegments are path segments that strongly suggest article content
-// when followed by additional path content.
+// articlePathSegments are path segments that suggest collectible structured content
+// (articles, events, press releases, blotters, etc.) when followed by additional path content.
 var articlePathSegments = map[string]bool{
 	"article":    true,
 	"story":      true,
@@ -246,7 +246,8 @@ func hasLongSlugInPath(segments []string) bool {
 	return false
 }
 
-// hasNewsArticleJSONLD checks if the page has NewsArticle or Article JSON-LD.
+// hasNewsArticleJSONLD checks if the page has any structured content JSON-LD.
+// Kept as a backward-compatibility wrapper for hasStructuredContentJSONLD.
 func hasNewsArticleJSONLD(e *colly.HTMLElement) bool {
 	return hasStructuredContentJSONLD(e)
 }
@@ -341,13 +342,6 @@ func IsStructuredContentPage(e *colly.HTMLElement, pageURL string, explicitPatte
 	ctype := detectContentTypeFromHTML(e, pageURL)
 	if ctype != DetectedContentUnknown {
 		return true, ctype
-	}
-	if hasStructuredContentJSONLD(e) {
-		return true, DetectedContentArticle
-	}
-	ogType := e.ChildAttr("meta[property='og:type']", "content")
-	if strings.EqualFold(ogType, "article") {
-		return true, DetectedContentArticle
 	}
 	if isArticleURL(pageURL, explicitPatterns) {
 		return true, DetectedContentArticle

@@ -195,7 +195,8 @@ func (c *Classifier) GetRules() []domain.ClassificationRule {
 
 // classifyOptionalForPublishable gates optional classifiers on content type and subtype.
 // Pages and listings skip all optional classifiers since they are never published.
-// Event: location only. Blotter: crime only. Report: minimal. Others: full optional classifiers.
+// Event: location only. Blotter: crime only. Report: skip.
+// Empty/other subtypes (including standard articles): full optional classifiers.
 func (c *Classifier) classifyOptionalForPublishable(
 	ctx context.Context, raw *domain.RawContent, contentType, contentSubtype string,
 ) (*domain.CrimeResult, *domain.MiningResult, *domain.CoforgeResult, *domain.EntertainmentResult, *domain.LocationResult) {
