@@ -37,6 +37,9 @@ type RawContent struct {
 
 	// Quick metrics
 	WordCount int `json:"word_count"`
+
+	// Meta holds additional metadata from the crawler (e.g. detected_content_type from IsStructuredContentPage)
+	Meta map[string]any `json:"meta,omitempty"`
 }
 
 // ClassificationStatus constants

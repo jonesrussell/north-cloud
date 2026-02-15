@@ -65,8 +65,9 @@ type ContentTypeClassifier struct {
 // ContentTypeResult represents the result of content type classification
 type ContentTypeResult struct {
 	Type       string  // "article", "page", "video", "image", "job"
+	Subtype    string  // e.g. "press_release", "event", "advisory" (from crawler detected_content_type)
 	Confidence float64 // 0.0-1.0
-	Method     string  // "og_metadata", "heuristic", "default"
+	Method     string  // "og_metadata", "heuristic", "detected_content_type", "default"
 	Reason     string  // Human-readable explanation
 }
 
@@ -80,7 +81,24 @@ func NewContentTypeClassifier(logger infralogger.Logger) *ContentTypeClassifier 
 // Classify determines the content type of the given raw content
 // This is ported from crawler's html_processor.go DetectContentType logic
 func (c *ContentTypeClassifier) Classify(ctx context.Context, raw *domain.RawContent) (*ContentTypeResult, error) {
-	// Strategy 0: Check URL exclusions first (non-article patterns)
+	// Strategy 0a: Use crawler's detected_content_type from meta when present (primary signal)
+	if raw.Meta != nil {
+		if v, ok := raw.Meta["detected_content_type"].(string); ok && v != "" {
+			c.logger.Debug("Content type from crawler detected_content_type",
+				infralogger.String("content_id", raw.ID),
+				infralogger.String("detected_type", v),
+			)
+			return &ContentTypeResult{
+				Type:       domain.ContentTypeArticle,
+				Subtype:    v,
+				Confidence: 1.0,
+				Method:     "detected_content_type",
+				Reason:     "Crawler detected structured content type",
+			}, nil
+		}
+	}
+
+	// Strategy 0b: Check URL exclusions (non-article patterns)
 	if c.isNonArticleURL(raw.URL) {
 		c.logger.Debug("Content type excluded via URL pattern",
 			infralogger.String("content_id", raw.ID),

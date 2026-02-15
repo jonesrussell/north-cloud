@@ -11,6 +11,26 @@ import (
 // Minimum number of hyphen-separated words in a slug to consider it article-like.
 const minSlugWordCount = 4
 
+// DetectedContentType identifies the structured content type detected from URL/HTML.
+// Used by the crawler to decide extraction strategy and by the classifier for routing.
+const (
+	DetectedContentArticle            = "article"
+	DetectedContentPressRelease       = "press_release"
+	DetectedContentBlogPost           = "blog_post"
+	DetectedContentEvent              = "event"
+	DetectedContentAdvisory           = "advisory"
+	DetectedContentReport             = "report"
+	DetectedContentBlotter            = "blotter"
+	DetectedContentCompanyAnnouncement = "company_announcement"
+	DetectedContentUnknown            = ""
+)
+
+// JSON-LD schema types that indicate structured content we collect.
+var structuredContentJSONLDTypes = []string{
+	"NewsArticle", "Article", "BlogPosting", "PressRelease",
+	"Event", "SpecialAnnouncement", "Report", "Obituary", "Review",
+}
+
 // nonArticleSegments are URL path segments that indicate non-article pages.
 var nonArticleSegments = map[string]bool{
 	"login":    true,
@@ -55,13 +75,68 @@ var nonArticleExtensions = map[string]bool{
 	".mp4":  true,
 }
 
+// urlContentTypePatterns map URL path substrings to detected content types.
+// Order matters: first match wins. More specific patterns should come first.
+var urlContentTypePatterns = []struct {
+	pattern string
+	ctype   string
+}{
+	{"/press/", DetectedContentPressRelease},
+	{"/media/", DetectedContentPressRelease},
+	{"/newsroom/", DetectedContentPressRelease},
+	{"/events/", DetectedContentEvent},
+	{"/event/", DetectedContentEvent},
+	{"/calendar/", DetectedContentEvent},
+	{"/upcoming/", DetectedContentEvent},
+	{"/alert/", DetectedContentAdvisory},
+	{"/alerts/", DetectedContentAdvisory},
+	{"/advisory/", DetectedContentAdvisory},
+	{"/advisories/", DetectedContentAdvisory},
+	{"/bulletin/", DetectedContentAdvisory},
+	{"/bulletins/", DetectedContentAdvisory},
+	{"/reports/", DetectedContentReport},
+	{"/report/", DetectedContentReport},
+	{"/blotter/", DetectedContentBlotter},
+	{"/blotters/", DetectedContentBlotter},
+	{"/incidents/", DetectedContentBlotter},
+	{"/arrests/", DetectedContentBlotter},
+	{"/investors/", DetectedContentCompanyAnnouncement},
+	{"/investor/", DetectedContentCompanyAnnouncement},
+	{"/updates/", DetectedContentCompanyAnnouncement},
+}
+
+// pdfSuffix matches URLs that point to PDF documents (report type).
+const pdfSuffix = ".pdf"
+
 // articlePathSegments are path segments that strongly suggest article content
 // when followed by additional path content.
 var articlePathSegments = map[string]bool{
-	"article": true,
-	"story":   true,
-	"post":    true,
-	"news":    true,
+	"article":   true,
+	"story":     true,
+	"post":      true,
+	"news":      true,
+	"press":     true,
+	"media":     true,
+	"newsroom":  true,
+	"events":    true,
+	"event":     true,
+	"calendar":  true,
+	"upcoming":  true,
+	"alert":     true,
+	"alerts":    true,
+	"advisory":  true,
+	"advisories": true,
+	"bulletin":  true,
+	"bulletins": true,
+	"blotter":   true,
+	"blotters":  true,
+	"incidents": true,
+	"arrests":   true,
+	"reports":   true,
+	"report":    true,
+	"investors": true,
+	"investor":  true,
+	"updates":   true,
 }
 
 // datePathPattern matches date-based URL paths like /2026/02/14/headline or /2026/02/headline.
@@ -173,21 +248,116 @@ func hasLongSlugInPath(segments []string) bool {
 
 // hasNewsArticleJSONLD checks if the page has NewsArticle or Article JSON-LD.
 func hasNewsArticleJSONLD(e *colly.HTMLElement) bool {
+	return hasStructuredContentJSONLD(e)
+}
+
+// hasStructuredContentJSONLD checks if the page has any JSON-LD schema type we collect.
+func hasStructuredContentJSONLD(e *colly.HTMLElement) bool {
 	found := false
 	e.ForEach("script[type='application/ld+json']", func(_ int, el *colly.HTMLElement) {
 		if found {
 			return
 		}
-		if strings.Contains(el.Text, `"NewsArticle"`) || strings.Contains(el.Text, `"Article"`) {
-			found = true
+		text := el.Text
+		for _, schemaType := range structuredContentJSONLDTypes {
+			if strings.Contains(text, `"`+schemaType+`"`) {
+				found = true
+				return
+			}
 		}
 	})
 	return found
 }
 
+// detectContentTypeFromURL returns the content type inferred from URL path patterns.
+// Returns DetectedContentUnknown if no pattern matches.
+func detectContentTypeFromURL(pageURL string) string {
+	parsed, err := url.Parse(pageURL)
+	if err != nil {
+		return DetectedContentUnknown
+	}
+	lowerPath := strings.ToLower(parsed.Path)
+	if strings.HasSuffix(lowerPath, pdfSuffix) {
+		return DetectedContentReport
+	}
+	for _, p := range urlContentTypePatterns {
+		if strings.Contains(lowerPath, p.pattern) {
+			return p.ctype
+		}
+	}
+	return DetectedContentUnknown
+}
+
+// detectContentTypeFromJSONLD returns the content type from JSON-LD @type in the page.
+// Returns DetectedContentUnknown if not found or not a type we collect.
+func detectContentTypeFromJSONLD(e *colly.HTMLElement) string {
+	jsonldToDetected := map[string]string{
+		"NewsArticle":        DetectedContentArticle,
+		"Article":            DetectedContentArticle,
+		"BlogPosting":        DetectedContentBlogPost,
+		"PressRelease":       DetectedContentPressRelease,
+		"Event":              DetectedContentEvent,
+		"SpecialAnnouncement": DetectedContentAdvisory,
+		"Report":             DetectedContentReport,
+	}
+	var detected string
+	e.ForEach("script[type='application/ld+json']", func(_ int, el *colly.HTMLElement) {
+		if detected != "" {
+			return
+		}
+		text := strings.TrimSpace(el.Text)
+		if text == "" {
+			return
+		}
+		for jsonldType, ctype := range jsonldToDetected {
+			if strings.Contains(text, `"@type":"`+jsonldType+`"`) ||
+				strings.Contains(text, `"@type": "`+jsonldType+`"`) {
+				detected = ctype
+				return
+			}
+		}
+	})
+	return detected
+}
+
+// detectContentTypeFromHTML combines JSON-LD @type, og:type, and URL to detect content type.
+func detectContentTypeFromHTML(e *colly.HTMLElement, pageURL string) string {
+	if ctype := detectContentTypeFromJSONLD(e); ctype != DetectedContentUnknown {
+		return ctype
+	}
+	if ctype := detectContentTypeFromURL(pageURL); ctype != DetectedContentUnknown {
+		return ctype
+	}
+	ogType := e.ChildAttr("meta[property='og:type']", "content")
+	if strings.EqualFold(ogType, "article") {
+		return DetectedContentArticle
+	}
+	return DetectedContentUnknown
+}
+
+// IsStructuredContentPage returns true if the page is structured content we collect,
+// and the detected content type. Used by the collector to gate extraction.
+func IsStructuredContentPage(e *colly.HTMLElement, pageURL string, explicitPatterns []*regexp.Regexp) (bool, string) {
+	ctype := detectContentTypeFromHTML(e, pageURL)
+	if ctype != DetectedContentUnknown {
+		return true, ctype
+	}
+	if hasStructuredContentJSONLD(e) {
+		return true, DetectedContentArticle
+	}
+	ogType := e.ChildAttr("meta[property='og:type']", "content")
+	if strings.EqualFold(ogType, "article") {
+		return true, DetectedContentArticle
+	}
+	if isArticleURL(pageURL, explicitPatterns) {
+		return true, DetectedContentArticle
+	}
+	return false, DetectedContentUnknown
+}
+
 // isArticlePage determines whether a page is an article based on HTML metadata.
 // It returns true if og:type is "article" (case insensitive) or if the page
-// contains NewsArticle JSON-LD structured data.
+// contains NewsArticle JSON-LD structured data. Kept for backward compatibility.
 func isArticlePage(ogType string, hasJSONLD bool) bool {
 	return strings.EqualFold(ogType, "article") || hasJSONLD
 }

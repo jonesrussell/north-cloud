@@ -81,6 +81,7 @@ Each message is a JSON object with two main sections:
   "quality_score": 85,
   "topics": ["crime", "local"],
   "content_type": "article",
+  "content_subtype": "",
   "is_crime_related": true,
   "source_reputation": 78,
   "confidence": 0.92,
@@ -129,6 +130,7 @@ Each message is a JSON object with two main sections:
 | `quality_score` | Integer | 0-100 | Article quality rating |
 | `topics` | Array[String] | - | Classified topics (e.g., ["crime", "local"]) |
 | `content_type` | String | - | Content type (article, page, video, etc.) |
+| `content_subtype` | String | - | Content subtype when `content_type` is article: `press_release`, `event`, `advisory`, `report`, `blotter`, `blog_post`, `company_announcement`, or empty for standard news |
 | `is_crime_related` | Boolean | - | Whether the article is crime-related |
 | `source_reputation` | Integer | 0-100 | Source reliability score |
 | `confidence` | Float | 0.0-1.0 | Classifier confidence level |
@@ -567,6 +569,7 @@ For issues or questions:
 
 ## Changelog
 
+- **v1.1** (2026-02-14): Added `content_subtype` for multi-content-type support (press_release, event, advisory, report, blotter, blog_post, company_announcement).
 - **v1.0** (2025-12-28): Initial message format
   - Full Elasticsearch document payload
   - Publisher metadata section

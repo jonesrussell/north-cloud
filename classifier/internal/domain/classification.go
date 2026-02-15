@@ -146,6 +146,17 @@ const (
 	ContentTypeJob     = "job"
 )
 
+// ContentSubtype constants (granularity within article-like content)
+const (
+	ContentSubtypePressRelease        = "press_release"
+	ContentSubtypeBlogPost            = "blog_post"
+	ContentSubtypeEvent               = "event"
+	ContentSubtypeAdvisory            = "advisory"
+	ContentSubtypeReport              = "report"
+	ContentSubtypeBlotter             = "blotter"
+	ContentSubtypeCompanyAnnouncement = "company_announcement"
+)
+
 // SourceCategory constants
 const (
 	SourceCategoryNews       = "news"

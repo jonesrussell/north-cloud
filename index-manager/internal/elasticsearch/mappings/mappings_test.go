@@ -224,6 +224,7 @@ func TestGetRawContentMapping_MetaSubFields(t *testing.T) {
 	expectedMetaFields := []string{
 		"twitter_card", "twitter_site", "og_image_width", "og_image_height",
 		"og_site_name", "created_at", "updated_at", "article_opinion", "article_content_tier",
+		"detected_content_type",
 	}
 	for _, field := range expectedMetaFields {
 		if _, exists := metaProps[field]; !exists {

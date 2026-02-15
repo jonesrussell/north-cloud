@@ -221,3 +221,134 @@ func TestCompileArticlePatterns_ReturnsNilForEmptyInput(t *testing.T) {
 		t.Fatal("expected nil for empty slice input")
 	}
 }
+
+// ---------- detectContentTypeFromURL tests ----------
+
+func TestDetectContentTypeFromURL_PressRelease(t *testing.T) {
+	t.Parallel()
+
+	urls := []string{
+		"https://example.com/press/2024/company-news",
+		"https://example.com/media/releases/announcement",
+		"https://example.com/newsroom/update",
+	}
+	for _, u := range urls {
+		ctype := crawler.DetectContentTypeFromURL(u)
+		if ctype != crawler.DetectedContentPressRelease {
+			t.Fatalf("expected press_release for %s, got %s", u, ctype)
+		}
+	}
+}
+
+func TestDetectContentTypeFromURL_Event(t *testing.T) {
+	t.Parallel()
+
+	urls := []string{
+		"https://example.com/events/concert-2024",
+		"https://example.com/calendar/meetings",
+		"https://example.com/upcoming/seminars",
+	}
+	for _, u := range urls {
+		ctype := crawler.DetectContentTypeFromURL(u)
+		if ctype != crawler.DetectedContentEvent {
+			t.Fatalf("expected event for %s, got %s", u, ctype)
+		}
+	}
+}
+
+func TestDetectContentTypeFromURL_Advisory(t *testing.T) {
+	t.Parallel()
+
+	urls := []string{
+		"https://example.com/alert/weather",
+		"https://example.com/advisory/safety",
+		"https://example.com/bulletin/missing-person",
+	}
+	for _, u := range urls {
+		ctype := crawler.DetectContentTypeFromURL(u)
+		if ctype != crawler.DetectedContentAdvisory {
+			t.Fatalf("expected advisory for %s, got %s", u, ctype)
+		}
+	}
+}
+
+func TestDetectContentTypeFromURL_Report(t *testing.T) {
+	t.Parallel()
+
+	urls := []string{
+		"https://example.com/reports/2024-annual",
+		"https://example.com/report/quarterly",
+		"https://example.com/docs/file.pdf",
+	}
+	for _, u := range urls {
+		ctype := crawler.DetectContentTypeFromURL(u)
+		if ctype != crawler.DetectedContentReport {
+			t.Fatalf("expected report for %s, got %s", u, ctype)
+		}
+	}
+}
+
+func TestDetectContentTypeFromURL_Blotter(t *testing.T) {
+	t.Parallel()
+
+	urls := []string{
+		"https://example.com/blotter/daily",
+		"https://example.com/incidents/log",
+		"https://example.com/arrests/summary",
+	}
+	for _, u := range urls {
+		ctype := crawler.DetectContentTypeFromURL(u)
+		if ctype != crawler.DetectedContentBlotter {
+			t.Fatalf("expected blotter for %s, got %s", u, ctype)
+		}
+	}
+}
+
+func TestDetectContentTypeFromURL_CompanyAnnouncement(t *testing.T) {
+	t.Parallel()
+
+	urls := []string{
+		"https://example.com/investors/update",
+		"https://example.com/updates/news",
+	}
+	for _, u := range urls {
+		ctype := crawler.DetectContentTypeFromURL(u)
+		if ctype != crawler.DetectedContentCompanyAnnouncement {
+			t.Fatalf("expected company_announcement for %s, got %s", u, ctype)
+		}
+	}
+}
+
+func TestDetectContentTypeFromURL_Unknown(t *testing.T) {
+	t.Parallel()
+
+	urls := []string{
+		"https://example.com/about",
+		"https://example.com/news/some-article",
+	}
+	for _, u := range urls {
+		ctype := crawler.DetectContentTypeFromURL(u)
+		if ctype != crawler.DetectedContentUnknown {
+			t.Fatalf("expected unknown for %s, got %s", u, ctype)
+		}
+	}
+}
+
+// ---------- Extended article path segments tests ----------
+
+func TestIsArticleURL_NewPathSegments(t *testing.T) {
+	t.Parallel()
+
+	urls := []string{
+		"https://example.com/press/release-2024",
+		"https://example.com/events/upcoming-show",
+		"https://example.com/alert/weather-warning",
+		"https://example.com/blotter/daily-log",
+		"https://example.com/investors/quarterly-results",
+	}
+	for _, u := range urls {
+		if !crawler.IsArticleURL(u, nil) {
+			t.Fatalf("expected new path segment URL to be detected: %s", u)
+		}
+	}
+}

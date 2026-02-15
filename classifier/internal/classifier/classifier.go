@@ -101,9 +101,9 @@ func (c *Classifier) Classify(ctx context.Context, raw *domain.RawContent) (*dom
 		return nil, fmt.Errorf("source reputation scoring failed: %w", err)
 	}
 
-	// 5-8. Optional classifiers — skip for non-article content (pages never reach publisher)
-	crimeResult, miningResult, coforgeResult, entertainmentResult, locationResult := c.classifyOptionalForArticle(
-		ctx, raw, contentTypeResult.Type)
+	// 5-8. Optional classifiers — gate by content type and subtype (pages never reach publisher)
+	crimeResult, miningResult, coforgeResult, entertainmentResult, locationResult := c.classifyOptionalForPublishable(
+		ctx, raw, contentTypeResult.Type, contentTypeResult.Subtype)
 
 	// Update source reputation if enabled
 	isSpam := qualityResult.TotalScore < spamThresholdScore // Spam threshold
@@ -124,7 +124,7 @@ func (c *Classifier) Classify(ctx context.Context, raw *domain.RawContent) (*dom
 	result := &domain.ClassificationResult{
 		ContentID:            raw.ID,
 		ContentType:          contentTypeResult.Type,
-		ContentSubtype:       "", // TODO: Implement subtype detection
+		ContentSubtype:       contentTypeResult.Subtype,
 		TypeConfidence:       contentTypeResult.Confidence,
 		TypeMethod:           contentTypeResult.Method,
 		QualityScore:         qualityResult.TotalScore,
@@ -193,20 +193,37 @@ func (c *Classifier) GetRules() []domain.ClassificationRule {
 	return c.topic.GetRules()
 }
 
-// classifyOptionalForArticle gates optional classifiers on content type.
+// classifyOptionalForPublishable gates optional classifiers on content type and subtype.
 // Pages and listings skip all optional classifiers since they are never published.
-func (c *Classifier) classifyOptionalForArticle(
-	ctx context.Context, raw *domain.RawContent, contentType string,
+// Event: location only. Blotter: crime only. Report: minimal. Others: full optional classifiers.
+func (c *Classifier) classifyOptionalForPublishable(
+	ctx context.Context, raw *domain.RawContent, contentType, contentSubtype string,
 ) (*domain.CrimeResult, *domain.MiningResult, *domain.CoforgeResult, *domain.EntertainmentResult, *domain.LocationResult) {
 	if contentType != domain.ContentTypeArticle {
 		c.logger.Debug("Skipping optional classifiers for non-article content",
 			infralogger.String("content_id", raw.ID),
 			infralogger.String("content_type", contentType),
 		)
-
 		return nil, nil, nil, nil, nil
 	}
 
+	// Event: location classifier only
+	if contentSubtype == domain.ContentSubtypeEvent {
+		return c.runLocationOnly(ctx, raw)
+	}
+	// Blotter: crime classifier only
+	if contentSubtype == domain.ContentSubtypeBlotter {
+		return c.runCrimeOnly(ctx, raw)
+	}
+	// Report: minimal (no optional classifiers for now)
+	if contentSubtype == domain.ContentSubtypeReport {
+		c.logger.Debug("Skipping optional classifiers for report content",
+			infralogger.String("content_id", raw.ID),
+		)
+		return nil, nil, nil, nil, nil
+	}
+
+	// Full optional classifiers for article, press_release, blog_post, advisory, company_announcement
 	return c.runOptionalClassifiers(ctx, raw)
 }
 
@@ -275,6 +292,42 @@ func (c *Classifier) runOptionalClassifiers(
 	}
 
 	return crimeResult, miningResult, coforgeResult, entertainmentResult, locationResult
+}
+
+// runLocationOnly runs only the location classifier (for event content).
+func (c *Classifier) runLocationOnly(
+	ctx context.Context, raw *domain.RawContent,
+) (*domain.CrimeResult, *domain.MiningResult, *domain.CoforgeResult, *domain.EntertainmentResult, *domain.LocationResult) {
+	var locationResult *domain.LocationResult
+	if c.location != nil {
+		locResult, locErr := c.location.Classify(ctx, raw)
+		if locErr != nil {
+			c.logger.Warn("Location classification failed",
+				infralogger.String("content_id", raw.ID),
+				infralogger.Error(locErr))
+		} else if locResult != nil {
+			locationResult = locResult
+		}
+	}
+	return nil, nil, nil, nil, locationResult
+}
+
+// runCrimeOnly runs only the crime classifier (for blotter content).
+func (c *Classifier) runCrimeOnly(
+	ctx context.Context, raw *domain.RawContent,
+) (*domain.CrimeResult, *domain.MiningResult, *domain.CoforgeResult, *domain.EntertainmentResult, *domain.LocationResult) {
+	var crimeResult *domain.CrimeResult
+	if c.crime != nil {
+		scResult, scErr := c.crime.Classify(ctx, raw)
+		if scErr != nil {
+			c.logger.Warn("Crime classification failed",
+				infralogger.String("content_id", raw.ID),
+				infralogger.Error(scErr))
+		} else if scResult != nil {
+			crimeResult = convertCrimeResult(scResult)
+		}
+	}
+	return crimeResult, nil, nil, nil, nil
 }
 
 // calculateTopicConfidence calculates overall topic confidence
