@@ -79,6 +79,7 @@ docker compose -f docker-compose.base.yml -f docker-compose.dev.yml ps loki allo
    - **Pipeline Operations** — classifier/publisher throughput, Elasticsearch content analytics, StreetCode ingestion
    - **Crawler Ops** — crawl activity, raw content, job completion log
    - **Deployer Sites** — Streetcode/orewire/coforge health and logs
+   - **ML Sidecars** — crime-ml, mining-ml, coforge-ml, entertainment-ml, anishinaabe-ml log volume, errors, and log streams
 3. On **Service Logs**, use filters:
    - **Service**: Select one or more services (crawler, publisher, etc.)
    - **Level**: Filter by log level (debug, info, warn, error)
@@ -297,6 +298,7 @@ All `.json` files in `provisioning/dashboards/` are loaded into the **North Clou
 | `north-cloud-pipeline-ops.json` | Pipeline Operations | Classifier/publisher throughput, ES content analytics, StreetCode Loki panels |
 | `north-cloud-crawler-ops.json` | Crawler Ops | Crawl activity, raw content by source, job completion log |
 | `north-cloud-deployer-sites.json` | Deployer Sites | Streetcode/orewire/coforge site health and log streams |
+| `north-cloud-ml-sidecars.json` | ML Sidecars | crime-ml, mining-ml, coforge-ml, entertainment-ml, anishinaabe-ml health, errors, and log streams |
 
 **If a provisioned dashboard does not appear:** go to **Dashboards** → **Browse** → open the **North Cloud** folder (not General). On the server, ensure the JSON file exists and restart Grafana after deploy (see [Provisioned dashboard not visible](#provisioned-dashboard-not-visible)).
 
@@ -457,7 +459,7 @@ curl -s http://admin:changeme@localhost:3000/api/dashboards/uid/north-cloud-serv
    ```bash
    ls -la /opt/north-cloud/infrastructure/grafana/provisioning/dashboards/
    ```
-   You should see `north-cloud-overview.json`, `north-cloud-service-logs.json`, `north-cloud-pipeline-ops.json`, `north-cloud-crawler-ops.json`, and `north-cloud-deployer-sites.json`. If any are missing, pull/deploy the repo so the files are present.
+   You should see `north-cloud-overview.json`, `north-cloud-service-logs.json`, `north-cloud-pipeline-ops.json`, `north-cloud-crawler-ops.json`, `north-cloud-deployer-sites.json`, and `north-cloud-ml-sidecars.json`. If any are missing, pull/deploy the repo so the files are present.
    **Tip:** If Cursor has the **North Cloud (Production)** MCP server configured (`.cursor/mcp.json`), you can run production checks (e.g. `list_indexes`, `search_articles`) via MCP instead of SSH + docker exec.
 3. **Restart Grafana** after deploying new or updated dashboard JSON:
    ```bash
