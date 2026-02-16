@@ -413,5 +413,9 @@ func convertCrimeResult(sc *CrimeResult) *domain.CrimeResult {
 		HomepageEligible:    sc.HomepageEligible,
 		CategoryPages:       sc.CategoryPages,
 		ReviewRequired:      sc.ReviewRequired,
+		DecisionPath:        sc.DecisionPath,
+		MLConfidenceRaw:     sc.MLConfidence,
+		RuleTriggered:       sc.RuleRelevance,
+		ProcessingTimeMs:    sc.ProcessingTimeMs,
 	}
 }

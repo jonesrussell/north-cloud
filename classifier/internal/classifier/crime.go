@@ -57,6 +57,8 @@ type CrimeResult struct {
 	RuleConfidence      float64  `json:"rule_confidence"`
 	MLRelevance         string   `json:"ml_relevance,omitempty"`
 	MLConfidence        float64  `json:"ml_confidence,omitempty"`
+	DecisionPath        string   `json:"decision_path,omitempty"`
+	ProcessingTimeMs    int64    `json:"processing_time_ms,omitempty"`
 }
 
 // NewCrimeClassifier creates a new hybrid classifier.
@@ -112,6 +114,7 @@ func (s *CrimeClassifier) mergeResults(rule *ruleResult, ml *mlclient.ClassifyRe
 		result.MLRelevance = ml.Relevance
 		result.MLConfidence = ml.RelevanceConfidence
 		result.LocationSpecificity = ml.Location
+		result.ProcessingTimeMs = ml.ProcessingTimeMs
 	}
 
 	// Decision logic
@@ -140,6 +143,7 @@ func (s *CrimeClassifier) applyDecisionLogic(result *CrimeResult, rule *ruleResu
 		result.Relevance = relevanceCoreStreetCrime
 		result.FinalConfidence = (rule.confidence + ml.RelevanceConfidence) / bothAgreeWeight
 		result.HomepageEligible = result.FinalConfidence >= HomepageMinConfidence
+		result.DecisionPath = "both_agree"
 
 	case rule.relevance == relevanceCoreStreetCrime && ml != nil && ml.Relevance == relevanceNotCrime:
 		// Rule says core, ML says not_crime: flag for review
@@ -147,22 +151,26 @@ func (s *CrimeClassifier) applyDecisionLogic(result *CrimeResult, rule *ruleResu
 		result.FinalConfidence = rule.confidence * ruleMLDisagreeWeight
 		result.HomepageEligible = rule.confidence >= RuleHighConfidence
 		result.ReviewRequired = true
+		result.DecisionPath = "rule_override"
 
 	case rule.relevance == relevanceCoreStreetCrime:
 		// Rule says core, ML unavailable or uncertain
 		result.Relevance = relevanceCoreStreetCrime
 		result.FinalConfidence = rule.confidence
 		result.HomepageEligible = rule.confidence >= RuleHighConfidence
+		result.DecisionPath = "rules_only"
 
 	case ml != nil && ml.Relevance == relevanceCoreStreetCrime && ml.RelevanceConfidence >= MLOverrideThreshold:
 		// ML says core with high confidence, rule missed it
 		result.Relevance = relevancePeripheral
 		result.FinalConfidence = ml.RelevanceConfidence * mlOverrideWeight
 		result.ReviewRequired = true
+		result.DecisionPath = "ml_override"
 
 	default:
 		result.Relevance = rule.relevance
 		result.FinalConfidence = rule.confidence
+		result.DecisionPath = "default"
 	}
 }
 

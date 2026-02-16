@@ -177,3 +177,94 @@ func TestCrimeClassifier_SubLabel_CoreStreetCrime_NoSubLabel(t *testing.T) {
 		t.Errorf("expected empty sub_label for core_street_crime, got %s", result.SubLabel)
 	}
 }
+
+// ML processing time used in decision context tests.
+const testMLProcessingTimeMs = 42
+
+func TestCrimeClassifier_DecisionContext_BothAgree(t *testing.T) {
+	t.Helper()
+
+	mlMock := &mockMLClient{
+		response: &mlclient.ClassifyResponse{
+			Relevance:           "core_street_crime",
+			RelevanceConfidence: 0.88,
+			CrimeTypes:          []string{"violent_crime"},
+			Location:            "local_canada",
+			ProcessingTimeMs:    testMLProcessingTimeMs,
+		},
+	}
+
+	sc := NewCrimeClassifier(mlMock, &mockLogger{}, true)
+
+	raw := &domain.RawContent{
+		ID:      "test-dc-both",
+		Title:   "Man charged with murder after stabbing",
+		RawText: "Police arrested a suspect downtown.",
+	}
+
+	result, err := sc.Classify(context.Background(), raw)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	assertDecisionPath(t, result, "both_agree")
+	assertMLConfidencePopulated(t, result)
+	assertProcessingTimeMs(t, result, testMLProcessingTimeMs)
+}
+
+func TestCrimeClassifier_DecisionContext_RulesOnly(t *testing.T) {
+	t.Helper()
+
+	// No ML client -> rules_only path
+	sc := NewCrimeClassifier(nil, &mockLogger{}, true)
+
+	raw := &domain.RawContent{
+		ID:      "test-dc-rules",
+		Title:   "Man charged with murder after shooting",
+		RawText: "Police arrested a suspect at the scene.",
+	}
+
+	result, err := sc.Classify(context.Background(), raw)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	assertDecisionPath(t, result, "rules_only")
+
+	// No ML -> MLConfidence should be zero
+	if result.MLConfidence != 0 {
+		t.Errorf("expected MLConfidence=0 without ML, got %f", result.MLConfidence)
+	}
+
+	// No ML -> ProcessingTimeMs should be zero
+	if result.ProcessingTimeMs != 0 {
+		t.Errorf("expected ProcessingTimeMs=0 without ML, got %d", result.ProcessingTimeMs)
+	}
+}
+
+// assertDecisionPath verifies the decision path on a CrimeResult.
+func assertDecisionPath(t *testing.T, result *CrimeResult, expected string) {
+	t.Helper()
+
+	if result.DecisionPath != expected {
+		t.Errorf("expected DecisionPath=%q, got %q", expected, result.DecisionPath)
+	}
+}
+
+// assertMLConfidencePopulated verifies MLConfidence is non-zero.
+func assertMLConfidencePopulated(t *testing.T, result *CrimeResult) {
+	t.Helper()
+
+	if result.MLConfidence == 0 {
+		t.Error("expected MLConfidence to be populated when ML is available")
+	}
+}
+
+// assertProcessingTimeMs verifies the processing time matches the expected value.
+func assertProcessingTimeMs(t *testing.T, result *CrimeResult, expected int64) {
+	t.Helper()
+
+	if result.ProcessingTimeMs != expected {
+		t.Errorf("expected ProcessingTimeMs=%d, got %d", expected, result.ProcessingTimeMs)
+	}
+}
