@@ -58,6 +58,12 @@ type AnishinaabeResult struct {
 	FinalConfidence float64  `json:"final_confidence"`
 	ReviewRequired  bool     `json:"review_required"`
 	ModelVersion    string   `json:"model_version,omitempty"`
+
+	// Decision context (observability)
+	DecisionPath     string  `json:"decision_path,omitempty"`
+	MLConfidenceRaw  float64 `json:"ml_confidence_raw,omitempty"`
+	RuleTriggered    string  `json:"rule_triggered,omitempty"`
+	ProcessingTimeMs int64   `json:"processing_time_ms,omitempty"`
 }
 
 // EntertainmentResult holds Entertainment hybrid classification results.
@@ -68,6 +74,12 @@ type EntertainmentResult struct {
 	HomepageEligible bool     `json:"homepage_eligible"`
 	ReviewRequired   bool     `json:"review_required"`
 	ModelVersion     string   `json:"model_version,omitempty"`
+
+	// Decision context (observability)
+	DecisionPath     string  `json:"decision_path,omitempty"`
+	MLConfidenceRaw  float64 `json:"ml_confidence_raw,omitempty"`
+	RuleTriggered    string  `json:"rule_triggered,omitempty"`
+	ProcessingTimeMs int64   `json:"processing_time_ms,omitempty"`
 }
 
 // MiningResult holds Mining hybrid classification results.
@@ -80,6 +92,12 @@ type MiningResult struct {
 	ReviewRequired  bool     `json:"review_required"`
 	ModelVersion    string   `json:"model_version,omitempty"`
 	SourceTextUsed  string   `json:"-"` // Internal only, for debugging
+
+	// Decision context (observability)
+	DecisionPath     string  `json:"decision_path,omitempty"`
+	MLConfidenceRaw  float64 `json:"ml_confidence_raw,omitempty"`
+	RuleTriggered    string  `json:"rule_triggered,omitempty"`
+	ProcessingTimeMs int64   `json:"processing_time_ms,omitempty"`
 }
 
 // CoforgeResult holds Coforge hybrid classification results.
@@ -93,6 +111,12 @@ type CoforgeResult struct {
 	FinalConfidence     float64  `json:"final_confidence"`
 	ReviewRequired      bool     `json:"review_required"`
 	ModelVersion        string   `json:"model_version,omitempty"`
+
+	// Decision context (observability)
+	DecisionPath     string  `json:"decision_path,omitempty"`
+	MLConfidenceRaw  float64 `json:"ml_confidence_raw,omitempty"`
+	RuleTriggered    string  `json:"rule_triggered,omitempty"`
+	ProcessingTimeMs int64   `json:"processing_time_ms,omitempty"`
 }
 
 // CrimeResult holds Crime hybrid classification results.
@@ -105,6 +129,12 @@ type CrimeResult struct {
 	HomepageEligible    bool     `json:"homepage_eligible"`
 	CategoryPages       []string `json:"category_pages"`
 	ReviewRequired      bool     `json:"review_required"`
+
+	// Decision context (observability)
+	DecisionPath     string  `json:"decision_path,omitempty"`
+	MLConfidenceRaw  float64 `json:"ml_confidence_raw,omitempty"`
+	RuleTriggered    string  `json:"rule_triggered,omitempty"`
+	ProcessingTimeMs int64   `json:"processing_time_ms,omitempty"`
 }
 
 // ClassifiedContent represents the full enriched document for Elasticsearch
