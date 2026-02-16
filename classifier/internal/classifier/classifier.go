@@ -220,7 +220,7 @@ func (c *Classifier) classifyOptionalForPublishable(
 	}
 	// Blotter: crime classifier only
 	if contentSubtype == domain.ContentSubtypeBlotter {
-		return c.runCrimeOnly(ctx, raw)
+		return c.runCrimeOnly(ctx, raw, contentType)
 	}
 	// Report: minimal (no optional classifiers for now)
 	if contentSubtype == domain.ContentSubtypeReport {
@@ -231,72 +231,97 @@ func (c *Classifier) classifyOptionalForPublishable(
 	}
 
 	// Full optional classifiers for article, press_release, blog_post, advisory, company_announcement
-	return c.runOptionalClassifiers(ctx, raw)
+	return c.runOptionalClassifiers(ctx, raw, contentType)
 }
 
 // runOptionalClassifiers runs crime, mining, coforge, entertainment, anishinaabe, and location classifiers if enabled.
 //
-//nolint:gocognit,gocritic // Sequential optional classifiers; 6 return values match optional classifier pattern
+//nolint:gocognit,gocritic // Sequential optional classifiers with timing; 6 return values match optional classifier pattern
 func (c *Classifier) runOptionalClassifiers(
-	ctx context.Context, raw *domain.RawContent,
+	ctx context.Context, raw *domain.RawContent, contentType string,
 ) (*domain.CrimeResult, *domain.MiningResult, *domain.CoforgeResult, *domain.EntertainmentResult, *domain.AnishinaabeResult, *domain.LocationResult) {
 	var crimeResult *domain.CrimeResult
 	if c.crime != nil {
+		crimeStart := time.Now()
 		scResult, scErr := c.crime.Classify(ctx, raw)
+		crimeLatencyMs := time.Since(crimeStart).Milliseconds()
 		if scErr != nil {
-			c.logger.Warn("Crime classification failed",
-				infralogger.String("content_id", raw.ID),
-				infralogger.Error(scErr))
+			c.logSidecarError("crime-ml", raw, contentType, scErr, crimeLatencyMs)
 		} else if scResult != nil {
 			crimeResult = convertCrimeResult(scResult)
+			c.logSidecarSuccess("crime-ml", raw, contentType,
+				crimeResult.Relevance, crimeResult.FinalConfidence,
+				crimeResult.MLConfidenceRaw, crimeResult.RuleTriggered,
+				crimeResult.DecisionPath, crimeLatencyMs,
+				crimeResult.ProcessingTimeMs, "")
 		}
 	}
 
 	var miningResult *domain.MiningResult
 	if c.mining != nil {
+		miningStart := time.Now()
 		minResult, minErr := c.mining.Classify(ctx, raw)
+		miningLatencyMs := time.Since(miningStart).Milliseconds()
 		if minErr != nil {
-			c.logger.Warn("Mining classification failed",
-				infralogger.String("content_id", raw.ID),
-				infralogger.Error(minErr))
+			c.logSidecarError("mining-ml", raw, contentType, minErr, miningLatencyMs)
 		} else if minResult != nil {
 			miningResult = minResult
+			c.logSidecarSuccess("mining-ml", raw, contentType,
+				miningResult.Relevance, miningResult.FinalConfidence,
+				miningResult.MLConfidenceRaw, miningResult.RuleTriggered,
+				miningResult.DecisionPath, miningLatencyMs,
+				miningResult.ProcessingTimeMs, miningResult.ModelVersion)
 		}
 	}
 
 	var coforgeResult *domain.CoforgeResult
 	if c.coforge != nil {
+		coforgeStart := time.Now()
 		cfResult, cfErr := c.coforge.Classify(ctx, raw)
+		coforgeLatencyMs := time.Since(coforgeStart).Milliseconds()
 		if cfErr != nil {
-			c.logger.Warn("Coforge classification failed",
-				infralogger.String("content_id", raw.ID),
-				infralogger.Error(cfErr))
+			c.logSidecarError("coforge-ml", raw, contentType, cfErr, coforgeLatencyMs)
 		} else if cfResult != nil {
 			coforgeResult = cfResult
+			c.logSidecarSuccess("coforge-ml", raw, contentType,
+				coforgeResult.Relevance, coforgeResult.FinalConfidence,
+				coforgeResult.MLConfidenceRaw, coforgeResult.RuleTriggered,
+				coforgeResult.DecisionPath, coforgeLatencyMs,
+				coforgeResult.ProcessingTimeMs, coforgeResult.ModelVersion)
 		}
 	}
 
 	var entertainmentResult *domain.EntertainmentResult
 	if c.entertainment != nil {
+		entStart := time.Now()
 		entResult, entErr := c.entertainment.Classify(ctx, raw)
+		entLatencyMs := time.Since(entStart).Milliseconds()
 		if entErr != nil {
-			c.logger.Warn("Entertainment classification failed",
-				infralogger.String("content_id", raw.ID),
-				infralogger.Error(entErr))
+			c.logSidecarError("entertainment-ml", raw, contentType, entErr, entLatencyMs)
 		} else if entResult != nil {
 			entertainmentResult = entResult
+			c.logSidecarSuccess("entertainment-ml", raw, contentType,
+				entertainmentResult.Relevance, entertainmentResult.FinalConfidence,
+				entertainmentResult.MLConfidenceRaw, entertainmentResult.RuleTriggered,
+				entertainmentResult.DecisionPath, entLatencyMs,
+				entertainmentResult.ProcessingTimeMs, entertainmentResult.ModelVersion)
 		}
 	}
 
 	var anishinaabeResult *domain.AnishinaabeResult
 	if c.anishinaabe != nil {
+		anishStart := time.Now()
 		aResult, aErr := c.anishinaabe.Classify(ctx, raw)
+		anishLatencyMs := time.Since(anishStart).Milliseconds()
 		if aErr != nil {
-			c.logger.Warn("Anishinaabe classification failed",
-				infralogger.String("content_id", raw.ID),
-				infralogger.Error(aErr))
+			c.logSidecarError("anishinaabe-ml", raw, contentType, aErr, anishLatencyMs)
 		} else if aResult != nil {
 			anishinaabeResult = aResult
+			c.logSidecarSuccess("anishinaabe-ml", raw, contentType,
+				anishinaabeResult.Relevance, anishinaabeResult.FinalConfidence,
+				anishinaabeResult.MLConfidenceRaw, anishinaabeResult.RuleTriggered,
+				anishinaabeResult.DecisionPath, anishLatencyMs,
+				anishinaabeResult.ProcessingTimeMs, anishinaabeResult.ModelVersion)
 		}
 	}
 
@@ -339,17 +364,22 @@ func (c *Classifier) runLocationOnly(
 //
 //nolint:gocritic // 6 return values match optional classifier pattern
 func (c *Classifier) runCrimeOnly(
-	ctx context.Context, raw *domain.RawContent,
+	ctx context.Context, raw *domain.RawContent, contentType string,
 ) (*domain.CrimeResult, *domain.MiningResult, *domain.CoforgeResult, *domain.EntertainmentResult, *domain.AnishinaabeResult, *domain.LocationResult) {
 	var crimeResult *domain.CrimeResult
 	if c.crime != nil {
+		crimeStart := time.Now()
 		scResult, scErr := c.crime.Classify(ctx, raw)
+		crimeLatencyMs := time.Since(crimeStart).Milliseconds()
 		if scErr != nil {
-			c.logger.Warn("Crime classification failed",
-				infralogger.String("content_id", raw.ID),
-				infralogger.Error(scErr))
+			c.logSidecarError("crime-ml", raw, contentType, scErr, crimeLatencyMs)
 		} else if scResult != nil {
 			crimeResult = convertCrimeResult(scResult)
+			c.logSidecarSuccess("crime-ml", raw, contentType,
+				crimeResult.Relevance, crimeResult.FinalConfidence,
+				crimeResult.MLConfidenceRaw, crimeResult.RuleTriggered,
+				crimeResult.DecisionPath, crimeLatencyMs,
+				crimeResult.ProcessingTimeMs, "")
 		}
 	}
 	return crimeResult, nil, nil, nil, nil, nil
