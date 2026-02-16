@@ -63,11 +63,14 @@ func (s *EntertainmentClassifier) mergeResults(
 		Relevance:        rule.relevance,
 		FinalConfidence:  rule.confidence,
 		HomepageEligible: false,
+		RuleTriggered:    rule.relevance,
 	}
 
 	if ml != nil {
 		result.ModelVersion = ml.ModelVersion
 		result.Categories = append([]string{}, ml.Categories...)
+		result.MLConfidenceRaw = ml.RelevanceConfidence
+		result.ProcessingTimeMs = ml.ProcessingTimeMs
 	}
 
 	s.applyDecisionLogic(result, rule, ml)
@@ -89,31 +92,37 @@ func (s *EntertainmentClassifier) applyDecisionLogic(
 		result.FinalConfidence = (rule.confidence + ml.RelevanceConfidence) / entertainmentBothAgreeWeight
 		result.HomepageEligible = result.FinalConfidence >= entertainmentHomepageMinConfidence
 		result.ReviewRequired = false
+		result.DecisionPath = decisionPathBothAgree
 
 	case rule.relevance == entertainmentRelevanceCore && ml != nil && ml.Relevance == entertainmentRelevanceNot:
 		result.Relevance = entertainmentRelevanceCore
 		result.FinalConfidence = rule.confidence * entertainmentRuleMLDisagreeWeight
 		result.HomepageEligible = rule.confidence >= entertainmentRuleHighConfidence
 		result.ReviewRequired = true
+		result.DecisionPath = decisionPathRuleOverride
 
 	case rule.relevance == entertainmentRelevanceCore:
 		result.Relevance = entertainmentRelevanceCore
 		result.FinalConfidence = rule.confidence
 		result.HomepageEligible = rule.confidence >= entertainmentRuleHighConfidence
 		result.ReviewRequired = false
+		result.DecisionPath = decisionPathRulesOnly
 
 	case ml != nil && ml.Relevance == entertainmentRelevanceCore && ml.RelevanceConfidence >= entertainmentMLOverrideThreshold:
 		result.Relevance = entertainmentRelevancePeripheral
 		result.FinalConfidence = ml.RelevanceConfidence * entertainmentMLOverrideWeight
 		result.ReviewRequired = true
+		result.DecisionPath = decisionPathMLOverride
 
 	case rule.relevance == entertainmentRelevancePeripheral && ml != nil && ml.Relevance == entertainmentRelevanceCore:
 		result.Relevance = entertainmentRelevanceCore
 		result.FinalConfidence = ml.RelevanceConfidence
 		result.ReviewRequired = false
+		result.DecisionPath = decisionPathMLUpgrade
 
 	default:
 		result.Relevance = rule.relevance
 		result.FinalConfidence = rule.confidence
+		result.DecisionPath = decisionPathDefault
 	}
 }
