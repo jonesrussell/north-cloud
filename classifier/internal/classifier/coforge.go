@@ -60,6 +60,7 @@ func (s *CoforgeClassifier) mergeResults(rule *coforgeRuleResult, ml *coforgemlc
 	result := &domain.CoforgeResult{
 		Relevance:       rule.relevance,
 		FinalConfidence: rule.confidence,
+		RuleTriggered:   rule.relevance,
 	}
 
 	if ml != nil {
@@ -68,6 +69,8 @@ func (s *CoforgeClassifier) mergeResults(rule *coforgeRuleResult, ml *coforgemlc
 		result.AudienceConfidence = ml.AudienceConfidence
 		result.Topics = append([]string{}, ml.Topics...)
 		result.Industries = append([]string{}, ml.Industries...)
+		result.MLConfidenceRaw = ml.RelevanceConfidence
+		result.ProcessingTimeMs = ml.ProcessingTimeMs
 	}
 
 	s.applyDecisionLogic(result, rule, ml)
@@ -85,34 +88,40 @@ func (s *CoforgeClassifier) applyDecisionLogic(result *domain.CoforgeResult, rul
 		result.RelevanceConfidence = ml.RelevanceConfidence
 		result.FinalConfidence = (rule.confidence + ml.RelevanceConfidence) / coforgeBothAgreeWeight
 		result.ReviewRequired = false
+		result.DecisionPath = decisionPathBothAgree
 
 	case rule.relevance == coforgeRelevanceCore && ml != nil && ml.Relevance == coforgeRelevanceNot:
 		result.Relevance = coforgeRelevanceCore
 		result.RelevanceConfidence = rule.confidence
 		result.FinalConfidence = rule.confidence * coforgeRuleMLDisagreeWeight
 		result.ReviewRequired = true
+		result.DecisionPath = decisionPathRuleOverride
 
 	case rule.relevance == coforgeRelevanceCore:
 		result.Relevance = coforgeRelevanceCore
 		result.RelevanceConfidence = rule.confidence
 		result.FinalConfidence = rule.confidence
 		result.ReviewRequired = false
+		result.DecisionPath = decisionPathRulesOnly
 
 	case ml != nil && ml.Relevance == coforgeRelevanceCore && ml.RelevanceConfidence >= coforgeMLOverrideThreshold:
 		result.Relevance = coforgeRelevancePeripheral
 		result.RelevanceConfidence = ml.RelevanceConfidence
 		result.FinalConfidence = ml.RelevanceConfidence * coforgeMLOverrideWeight
 		result.ReviewRequired = true
+		result.DecisionPath = decisionPathMLOverride
 
 	case rule.relevance == coforgeRelevancePeripheral && ml != nil && ml.Relevance == coforgeRelevanceCore:
 		result.Relevance = coforgeRelevanceCore
 		result.RelevanceConfidence = ml.RelevanceConfidence
 		result.FinalConfidence = ml.RelevanceConfidence
 		result.ReviewRequired = false
+		result.DecisionPath = decisionPathMLUpgrade
 
 	default:
 		result.Relevance = rule.relevance
 		result.RelevanceConfidence = rule.confidence
 		result.FinalConfidence = rule.confidence
+		result.DecisionPath = decisionPathDefault
 	}
 }
