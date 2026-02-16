@@ -96,6 +96,11 @@ const (
 	suggestMinLength = 2
 	publicFeedSize   = 20
 	snippetMaxLength = 200
+
+	pipelineFeedMinQuality = 60
+	topicFeedMinQuality    = 50
+	defaultFeedLimit       = 10
+	maxFeedLimit           = 20
 )
 
 // Suggest returns autocomplete suggestions based on title prefix match
@@ -348,6 +353,66 @@ func (s *SearchService) LatestArticles(ctx context.Context) ([]domain.PublicFeed
 	defer func() {
 		_ = res.Body.Close()
 	}()
+	return s.parseLatestArticlesResponse(res.Body)
+}
+
+// feedFilterForSlug maps a feed slug to topic filters and minimum quality score.
+func feedFilterForSlug(slug string) (topics []string, minQuality int) {
+	switch slug {
+	case "crime":
+		return []string{"violent_crime", "property_crime", "drug_crime", "organized_crime", "criminal_justice"}, topicFeedMinQuality
+	case "mining":
+		return []string{"mining"}, topicFeedMinQuality
+	case "entertainment":
+		return []string{"entertainment"}, topicFeedMinQuality
+	default:
+		return nil, pipelineFeedMinQuality
+	}
+}
+
+// TopicFeed returns recent articles filtered by feed slug (topic + quality).
+func (s *SearchService) TopicFeed(ctx context.Context, slug string, limit int) ([]domain.PublicFeedArticle, error) {
+	if limit <= 0 || limit > maxFeedLimit {
+		limit = defaultFeedLimit
+	}
+
+	topics, minQuality := feedFilterForSlug(slug)
+
+	filters := []map[string]any{
+		{"term": map[string]any{"content_type.keyword": "article"}},
+		{"range": map[string]any{"quality_score": map[string]any{"gte": minQuality}}},
+	}
+	if len(topics) > 0 {
+		filters = append(filters, map[string]any{
+			"terms": map[string]any{"topics.keyword": topics},
+		})
+	}
+
+	query := map[string]any{
+		"query": map[string]any{
+			"bool": map[string]any{
+				"filter": filters,
+			},
+		},
+		"size": limit,
+		"sort": []any{
+			map[string]any{"published_date": map[string]any{"order": "desc", "missing": "_last"}},
+			map[string]any{"crawled_at": map[string]any{"order": "desc", "missing": "_last"}},
+		},
+		"_source": []string{
+			"id", "title", "url", "source_name",
+			"published_date", "crawled_at", "raw_text", "topics",
+		},
+	}
+
+	res, err := s.executeSearch(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		_ = res.Body.Close()
+	}()
+
 	return s.parseLatestArticlesResponse(res.Body)
 }
 
