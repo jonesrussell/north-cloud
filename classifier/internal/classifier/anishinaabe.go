@@ -62,11 +62,14 @@ func (s *AnishinaabeClassifier) mergeResults(
 	result := &domain.AnishinaabeResult{
 		Relevance:       rule.relevance,
 		FinalConfidence: rule.confidence,
+		RuleTriggered:   rule.relevance,
 	}
 
 	if ml != nil {
 		result.ModelVersion = ml.ModelVersion
 		result.Categories = append([]string{}, ml.Categories...)
+		result.MLConfidenceRaw = ml.RelevanceConfidence
+		result.ProcessingTimeMs = ml.ProcessingTimeMs
 	}
 
 	s.applyDecisionLogic(result, rule, ml)
@@ -80,6 +83,7 @@ const (
 	anishinaabeMLOverrideWeight     = 0.8
 )
 
+//nolint:dupl // Decision matrix mirrors mining/entertainment pattern by design
 func (s *AnishinaabeClassifier) applyDecisionLogic(
 	result *domain.AnishinaabeResult, rule *anishinaabeRuleResult,
 	ml *anishinaabemlclient.ClassifyResponse,
@@ -89,29 +93,35 @@ func (s *AnishinaabeClassifier) applyDecisionLogic(
 		result.Relevance = anishinaabeRelevanceCore
 		result.FinalConfidence = (rule.confidence + ml.RelevanceConfidence) / anishinaabeBothAgreeWeight
 		result.ReviewRequired = false
+		result.DecisionPath = decisionPathBothAgree
 
 	case rule.relevance == anishinaabeRelevanceCore && ml != nil && ml.Relevance == anishinaabeRelevanceNot:
 		result.Relevance = anishinaabeRelevanceCore
 		result.FinalConfidence = rule.confidence * anishinaabeRuleMLDisagreeWeight
 		result.ReviewRequired = true
+		result.DecisionPath = decisionPathRuleOverride
 
 	case rule.relevance == anishinaabeRelevanceCore:
 		result.Relevance = anishinaabeRelevanceCore
 		result.FinalConfidence = rule.confidence
 		result.ReviewRequired = false
+		result.DecisionPath = decisionPathRulesOnly
 
 	case ml != nil && ml.Relevance == anishinaabeRelevanceCore && ml.RelevanceConfidence >= anishinaabeMLOverrideThreshold:
 		result.Relevance = anishinaabeRelevancePeripheral
 		result.FinalConfidence = ml.RelevanceConfidence * anishinaabeMLOverrideWeight
 		result.ReviewRequired = true
+		result.DecisionPath = decisionPathMLOverride
 
 	case rule.relevance == anishinaabeRelevancePeripheral && ml != nil && ml.Relevance == anishinaabeRelevanceCore:
 		result.Relevance = anishinaabeRelevanceCore
 		result.FinalConfidence = ml.RelevanceConfidence
 		result.ReviewRequired = false
+		result.DecisionPath = decisionPathMLUpgrade
 
 	default:
 		result.Relevance = rule.relevance
 		result.FinalConfidence = rule.confidence
+		result.DecisionPath = decisionPathDefault
 	}
 }

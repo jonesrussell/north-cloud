@@ -84,6 +84,8 @@ func (s *MiningClassifier) mergeResults(rule *miningRuleResult, ml *miningmlclie
 }
 
 // applyDecisionLogic applies the decision matrix for mining relevance.
+//
+//nolint:dupl // Decision matrix mirrors anishinaabe/entertainment pattern by design
 func (s *MiningClassifier) applyDecisionLogic(result *domain.MiningResult, rule *miningRuleResult, ml *miningmlclient.ClassifyResponse) {
 	switch {
 	case rule.relevance == miningRelevanceCore && ml != nil && ml.Relevance == miningRelevanceCore:
