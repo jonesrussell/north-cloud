@@ -13,9 +13,4 @@ datasources:
     editable: true
     jsonData:
       maxLines: 1000
-      derivedFields:
-        # Extract trace ID from logs if present
-        - datasourceUid: tempo
-          matcherRegex: "trace_id=(\\w+)"
-          name: TraceID
-          url: "$${__value.raw}"
+      # derivedFields (e.g. trace_id → Tempo) can be added here when Tempo is in the stack

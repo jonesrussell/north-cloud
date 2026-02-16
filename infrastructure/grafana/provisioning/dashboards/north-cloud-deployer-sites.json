@@ -20,30 +20,12 @@
   "graphTooltip": 0,
   "id": null,
   "links": [
-    {
-      "title": "Pipeline Ops",
-      "url": "/d/north-cloud-pipeline-ops",
-      "type": "link",
-      "icon": "dashboard"
-    },
-    {
-      "title": "Deployer Sites",
-      "url": "/d/north-cloud-deployer-sites",
-      "type": "link",
-      "icon": "dashboard"
-    },
-    {
-      "title": "Service Logs",
-      "url": "/d/north-cloud-service-logs",
-      "type": "link",
-      "icon": "dashboard"
-    },
-    {
-      "title": "Explore Loki",
-      "url": "/explore?orgId=1&left=%7B%22datasource%22:%22loki%22%7D",
-      "type": "link",
-      "icon": "search"
-    }
+    { "title": "North Cloud - Overview", "url": "/d/north-cloud-overview", "type": "link", "icon": "dashboard" },
+    { "title": "North Cloud - Pipeline Operations", "url": "/d/north-cloud-pipeline-ops", "type": "link", "icon": "dashboard" },
+    { "title": "North Cloud - Crawler Ops", "url": "/d/north-cloud-crawler-ops", "type": "link", "icon": "dashboard" },
+    { "title": "North Cloud - Deployer Sites", "url": "/d/north-cloud-deployer-sites", "type": "link", "icon": "dashboard" },
+    { "title": "North Cloud - Service Logs", "url": "/d/north-cloud-service-logs", "type": "link", "icon": "dashboard" },
+    { "title": "Explore Loki", "url": "/explore?orgId=1&left=%7B%22datasource%22:%22loki%22%7D", "type": "link", "icon": "search" }
   ],
   "liveNow": false,
   "panels": [
@@ -1129,7 +1111,7 @@
   },
   "timepicker": {},
   "timezone": "",
-  "title": "Deployer Sites",
+  "title": "North Cloud - Deployer Sites",
   "uid": "north-cloud-deployer-sites",
   "version": 0,
   "weekStart": ""

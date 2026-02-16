@@ -4,7 +4,7 @@
 apiVersion: 1
 
 providers:
-  - name: 'North Cloud Logs'
+  - name: 'North Cloud'
     orgId: 1
     folder: 'North Cloud'
     type: file
