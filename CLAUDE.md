@@ -94,8 +94,9 @@ cd SERVICE && go build -o bin/SERVICE .
 | dashboard | 3002 | Dashboard UI |
 | nc-http-proxy | 8055 | HTTP Replay Proxy |
 | mining-ml | 8077 | Mining ML Classifier |
+| anishinaabe-ml | 8080 | Anishinaabe ML Classifier |
 
-ML sidecars (crime-ml, mining-ml, coforge-ml, entertainment-ml) live under `ml-sidecars/` (e.g. `ml-sidecars/mining-ml`).
+ML sidecars (crime-ml, mining-ml, coforge-ml, entertainment-ml, anishinaabe-ml) live under `ml-sidecars/` (e.g. `ml-sidecars/mining-ml`).
 
 ---
 

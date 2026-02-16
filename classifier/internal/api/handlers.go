@@ -894,6 +894,7 @@ type MLHealthResponse struct {
 	MiningML        *MLServiceHealth `json:"mining_ml,omitempty"`
 	CoforgeML       *MLServiceHealth `json:"coforge_ml,omitempty"`
 	EntertainmentML *MLServiceHealth `json:"entertainment_ml,omitempty"`
+	AnishinaabeML   *MLServiceHealth `json:"anishinaabe_ml,omitempty"`
 	PipelineMode    PipelineMode     `json:"pipeline_mode"`
 }
 
@@ -910,6 +911,7 @@ type PipelineMode struct {
 	Mining        string `json:"mining"`
 	Coforge       string `json:"coforge"`
 	Entertainment string `json:"entertainment"`
+	Anishinaabe   string `json:"anishinaabe"`
 }
 
 // GetMLHealth handles GET /api/v1/metrics/ml-health
@@ -934,6 +936,10 @@ func (h *Handler) GetMLHealth(c *gin.Context) {
 		resp.EntertainmentML = h.checkMLServiceHealth(c.Request.Context(), h.config.Classification.Entertainment.MLServiceURL)
 	}
 
+	if h.config.Classification.Anishinaabe.Enabled {
+		resp.AnishinaabeML = h.checkMLServiceHealth(c.Request.Context(), h.config.Classification.Anishinaabe.MLServiceURL)
+	}
+
 	c.JSON(http.StatusOK, resp)
 }
 
@@ -941,6 +947,7 @@ func (h *Handler) getPipelineMode() PipelineMode {
 	mode := PipelineMode{
 		Crime: pipelineModeDisabled, Mining: pipelineModeDisabled,
 		Coforge: pipelineModeDisabled, Entertainment: pipelineModeDisabled,
+		Anishinaabe: pipelineModeDisabled,
 	}
 
 	if h.config.Classification.Crime.Enabled {
@@ -972,6 +979,14 @@ func (h *Handler) getPipelineMode() PipelineMode {
 			mode.Entertainment = pipelineModeHybrid
 		} else {
 			mode.Entertainment = pipelineModeRulesOnly
+		}
+	}
+
+	if h.config.Classification.Anishinaabe.Enabled {
+		if h.config.Classification.Anishinaabe.MLServiceURL != "" {
+			mode.Anishinaabe = pipelineModeHybrid
+		} else {
+			mode.Anishinaabe = pipelineModeRulesOnly
 		}
 	}
 

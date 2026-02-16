@@ -223,6 +223,10 @@ services:
       PIPELINE_URL: "${PIPELINE_URL:-}"
       COFORGE_ENABLED: "${COFORGE_ENABLED:-true}"
       COFORGE_ML_SERVICE_URL: "http://coforge-ml:8078"
+      ENTERTAINMENT_ENABLED: "${ENTERTAINMENT_ENABLED:-true}"
+      ENTERTAINMENT_ML_SERVICE_URL: "http://entertainment-ml:8079"
+      ANISHINAABE_ENABLED: "${ANISHINAABE_ENABLED:-false}"
+      ANISHINAABE_ML_SERVICE_URL: "http://anishinaabe-ml:8080"
     volumes:
       - ./classifier:/app
       - ./classifier/config.yml:/app/config.yml:ro
@@ -472,6 +476,13 @@ services:
   entertainment-ml:
     ports:
       - "${ENTERTAINMENT_ML_PORT:-8079}:8079"
+
+  # ------------------------------------------------------------
+  # Anishinaabe ML Classifier (Dev)
+  # ------------------------------------------------------------
+  anishinaabe-ml:
+    ports:
+      - "${ANISHINAABE_ML_PORT:-8080}:8080"
 
   # ------------------------------------------------------------
   # HTTP Replay Proxy (Dev)

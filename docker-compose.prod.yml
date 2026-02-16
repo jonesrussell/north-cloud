@@ -185,6 +185,8 @@ services:
         condition: service_healthy
       entertainment-ml:
         condition: service_healthy
+      anishinaabe-ml:
+        condition: service_healthy
     environment:
       POSTGRES_HOST: postgres-classifier
       POSTGRES_PORT: 5432
@@ -207,6 +209,8 @@ services:
       COFORGE_ML_SERVICE_URL: http://coforge-ml:8078
       ENTERTAINMENT_ENABLED: "true"
       ENTERTAINMENT_ML_SERVICE_URL: http://entertainment-ml:8079
+      ANISHINAABE_ENABLED: "${ANISHINAABE_ENABLED:-false}"
+      ANISHINAABE_ML_SERVICE_URL: http://anishinaabe-ml:8080
       PIPELINE_URL: http://pipeline:8075
     extra_hosts:
       - "host.docker.internal:host-gateway"
@@ -237,6 +241,13 @@ services:
   entertainment-ml:
     <<: *prod-defaults
     image: docker.io/jonesrussell/entertainment-ml:latest
+
+  # ------------------------------------------------------------
+  # Anishinaabe ML Classifier (Prod)
+  # ------------------------------------------------------------
+  anishinaabe-ml:
+    <<: *prod-defaults
+    image: docker.io/jonesrussell/anishinaabe-ml:latest
 
   # ------------------------------------------------------------
   # Pipeline (Prod)

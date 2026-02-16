@@ -188,6 +188,29 @@ INSERT INTO classification_rules (topic, keywords, priority) VALUES
 }
 ```
 
+## Anishinaabe Hybrid Classification
+
+**Enabled via**: `ANISHINAABE_ENABLED=true` and `ANISHINAABE_ML_SERVICE_URL=http://anishinaabe-ml:8080`
+
+**Operator mental model**: Anishinaabe is optional, rules-first, ML-augmented. Classifies Anishinaabe/Indigenous content for routing to diidjaaheer and similar consumers.
+
+**Schema** (machine keys only):
+- **Relevance**: `core_anishinaabe`, `peripheral_anishinaabe`, `not_anishinaabe`
+- **Categories** (multi-label): `culture`, `language`, `governance`, `land_rights`, `education`
+
+**Output Fields** (in ClassifiedContent):
+```json
+{
+  "anishinaabe": {
+    "relevance": "core_anishinaabe",
+    "categories": ["culture", "language"],
+    "final_confidence": 0.88,
+    "review_required": false,
+    "model_version": "2026-02-16-anishinaabe-v1"
+  }
+}
+```
+
 ## Common Gotchas
 
 1. **Must populate `Body` and `Source` aliases**: Publisher expects these fields:
@@ -209,7 +232,7 @@ INSERT INTO classification_rules (topic, keywords, priority) VALUES
 **Health**: `GET /health`
 
 **Metrics**:
-- `GET /api/v1/metrics/ml-health` - ML service health check (crime-ml, mining-ml, coforge-ml, entertainment-ml reachability, latency, pipeline mode)
+- `GET /api/v1/metrics/ml-health` - ML service health check (crime-ml, mining-ml, coforge-ml, entertainment-ml, anishinaabe-ml reachability, latency, pipeline mode)
 
 **Classification**:
 - `POST /api/v1/classify` - Classify single article

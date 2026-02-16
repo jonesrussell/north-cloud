@@ -22,7 +22,8 @@ import (
 // These topics are excluded from Layer 1 auto-routing to prevent
 // bypassing their specialized classifiers (e.g. mining → Layer 5).
 var layer1SkipTopics = map[string]bool{
-	"mining": true,
+	"mining":      true,
+	"anishinaabe": true,
 }
 
 // Config holds router service configuration
@@ -224,6 +225,9 @@ func (s *Service) routeArticle(ctx context.Context, article *Article, channels [
 	// Layer 6: Entertainment classification channels
 	publishedChannels = append(publishedChannels, s.publishToChannels(ctx, article, GenerateEntertainmentChannels(article))...)
 
+	// Layer 7: Anishinaabe classification channels
+	publishedChannels = append(publishedChannels, s.publishToChannels(ctx, article, GenerateAnishinaabeChannels(article))...)
+
 	// Emit pipeline event (one event per article, all channels in metadata)
 	s.emitPublishedEvent(ctx, article, publishedChannels)
 	return publishedChannels
@@ -259,6 +263,15 @@ type LocationData struct {
 	Country     string  `json:"country"`
 	Specificity string  `json:"specificity"`
 	Confidence  float64 `json:"confidence"`
+}
+
+// AnishinaabeData holds Anishinaabe classification fields from Elasticsearch.
+type AnishinaabeData struct {
+	Relevance       string   `json:"relevance"`
+	Categories      []string `json:"categories"`
+	FinalConfidence float64  `json:"final_confidence"`
+	ReviewRequired  bool     `json:"review_required"`
+	ModelVersion    string   `json:"model_version,omitempty"`
 }
 
 // EntertainmentData holds entertainment classification fields from Elasticsearch.
@@ -311,6 +324,9 @@ type Article struct {
 
 	// Mining classification (hybrid rule + ML)
 	Mining *MiningData `json:"mining,omitempty"`
+
+	// Anishinaabe classification (hybrid rule + ML)
+	Anishinaabe *AnishinaabeData `json:"anishinaabe,omitempty"`
 
 	// Entertainment classification (hybrid rule + ML)
 	Entertainment                 *EntertainmentData `json:"entertainment,omitempty"`
@@ -534,6 +550,8 @@ func (s *Service) publishToChannel(ctx context.Context, article *Article, channe
 		"review_required":      article.ReviewRequired,
 		// Mining classification
 		"mining": article.Mining,
+		// Anishinaabe classification
+		"anishinaabe": article.Anishinaabe,
 		// Entertainment classification
 		"entertainment_relevance":         article.EntertainmentRelevance,
 		"entertainment_categories":        article.EntertainmentCategories,

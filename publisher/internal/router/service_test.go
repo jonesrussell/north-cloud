@@ -58,6 +58,20 @@ func TestGenerateLayer1Channels(t *testing.T) {
 			},
 			expected: []string{"articles:violent_crime"},
 		},
+		{
+			name: "anishinaabe topic skipped",
+			article: &router.Article{
+				Topics: []string{"news", "anishinaabe", "local_news"},
+			},
+			expected: []string{"articles:news", "articles:local_news"},
+		},
+		{
+			name: "anishinaabe-only produces empty",
+			article: &router.Article{
+				Topics: []string{"anishinaabe"},
+			},
+			expected: []string{},
+		},
 	}
 
 	for _, tc := range testCases {

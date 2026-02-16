@@ -388,6 +388,28 @@ services:
       start_period: 10s
 
   # ------------------------------------------------------------
+  # Anishinaabe ML Classifier
+  # ------------------------------------------------------------
+
+  anishinaabe-ml:
+    <<: *service-defaults
+    build:
+      context: ./ml-sidecars/anishinaabe-ml
+      dockerfile: Dockerfile
+    image: docker.io/jonesrussell/anishinaabe-ml:latest
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 512M
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # ------------------------------------------------------------
   # HTTP Replay Proxy (nc-http-proxy)
   # ------------------------------------------------------------
 

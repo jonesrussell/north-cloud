@@ -42,7 +42,7 @@ done
 # Note: 'search' dir maps to 'search-service' container in deploy
 GO_SERVICES=(auth classifier crawler index-manager mcp-north-cloud pipeline publisher search source-manager nc-http-proxy)
 FRONTEND_SERVICES=(dashboard search-frontend)
-OTHER_SERVICES=(crime-ml mining-ml coforge-ml entertainment-ml)
+OTHER_SERVICES=(crime-ml mining-ml coforge-ml entertainment-ml anishinaabe-ml)
 ALL_SERVICES=("${GO_SERVICES[@]}" "${FRONTEND_SERVICES[@]}" "${OTHER_SERVICES[@]}")
 
 # Deploy service names (may differ from directory names)
@@ -187,7 +187,7 @@ case "$FORMAT" in
                         CONTEXT="."
                         DOCKERFILE="./search/Dockerfile"
                         ;;
-                    crime-ml|mining-ml|coforge-ml|entertainment-ml)
+                    crime-ml|mining-ml|coforge-ml|entertainment-ml|anishinaabe-ml)
                         CONTEXT="./ml-sidecars/${svc}"
                         DOCKERFILE="./ml-sidecars/${svc}/Dockerfile"
                         ;;

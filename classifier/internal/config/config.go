@@ -40,6 +40,7 @@ const (
 	defaultCrimeMLServiceURL         = "http://crime-ml:8076"
 	defaultCoforgeMLServiceURL       = "http://coforge-ml:8078"
 	defaultEntertainmentMLServiceURL = "http://entertainment-ml:8079"
+	defaultAnishinaabeMLServiceURL   = "http://anishinaabe-ml:8080"
 )
 
 // Config holds all configuration for the classifier service.
@@ -127,6 +128,13 @@ type ClassificationConfig struct {
 	Mining           MiningConfig           `yaml:"mining"`
 	Coforge          CoforgeConfig          `yaml:"coforge"`
 	Entertainment    EntertainmentConfig    `yaml:"entertainment"`
+	Anishinaabe      AnishinaabeConfig      `yaml:"anishinaabe"`
+}
+
+// AnishinaabeConfig holds Anishinaabe hybrid classification settings.
+type AnishinaabeConfig struct {
+	Enabled      bool   `env:"ANISHINAABE_ENABLED"        yaml:"enabled"`
+	MLServiceURL string `env:"ANISHINAABE_ML_SERVICE_URL" yaml:"ml_service_url"`
 }
 
 // CrimeConfig holds Crime hybrid classification settings.
@@ -324,5 +332,9 @@ func setClassificationDefaults(c *ClassificationConfig) {
 	// Entertainment defaults: disabled by default, but set ML URL
 	if c.Entertainment.MLServiceURL == "" {
 		c.Entertainment.MLServiceURL = defaultEntertainmentMLServiceURL
+	}
+	// Anishinaabe defaults: disabled by default, but set ML URL
+	if c.Anishinaabe.MLServiceURL == "" {
+		c.Anishinaabe.MLServiceURL = defaultAnishinaabeMLServiceURL
 	}
 }

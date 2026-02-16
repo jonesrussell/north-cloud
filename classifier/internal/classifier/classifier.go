@@ -27,6 +27,7 @@ type Classifier struct {
 	mining           *MiningClassifier
 	coforge          *CoforgeClassifier
 	entertainment    *EntertainmentClassifier
+	anishinaabe      *AnishinaabeClassifier
 	location         *LocationClassifier
 	logger           infralogger.Logger
 	version          string
@@ -43,6 +44,7 @@ type Config struct {
 	MiningClassifier        *MiningClassifier        // Optional: hybrid mining classifier
 	CoforgeClassifier       *CoforgeClassifier       // Optional: hybrid coforge classifier
 	EntertainmentClassifier *EntertainmentClassifier // Optional: hybrid entertainment classifier
+	AnishinaabeClassifier   *AnishinaabeClassifier   // Optional: hybrid anishinaabe classifier
 }
 
 // NewClassifier creates a new classifier with all strategies
@@ -61,6 +63,7 @@ func NewClassifier(
 		mining:           config.MiningClassifier,
 		coforge:          config.CoforgeClassifier,
 		entertainment:    config.EntertainmentClassifier,
+		anishinaabe:      config.AnishinaabeClassifier,
 		location:         NewLocationClassifier(logger),
 		logger:           logger,
 		version:          config.Version,
@@ -101,8 +104,8 @@ func (c *Classifier) Classify(ctx context.Context, raw *domain.RawContent) (*dom
 		return nil, fmt.Errorf("source reputation scoring failed: %w", err)
 	}
 
-	// 5-8. Optional classifiers — gate by content type and subtype (pages never reach publisher)
-	crimeResult, miningResult, coforgeResult, entertainmentResult, locationResult := c.classifyOptionalForPublishable(
+	// 5-9. Optional classifiers — gate by content type and subtype (pages never reach publisher)
+	crimeResult, miningResult, coforgeResult, entertainmentResult, anishinaabeResult, locationResult := c.classifyOptionalForPublishable(
 		ctx, raw, contentTypeResult.Type, contentTypeResult.Subtype)
 
 	// Update source reputation if enabled
@@ -143,6 +146,7 @@ func (c *Classifier) Classify(ctx context.Context, raw *domain.RawContent) (*dom
 		Mining:               miningResult,
 		Coforge:              coforgeResult,
 		Entertainment:        entertainmentResult,
+		Anishinaabe:          anishinaabeResult,
 		Location:             locationResult,
 	}
 
@@ -197,15 +201,17 @@ func (c *Classifier) GetRules() []domain.ClassificationRule {
 // Pages and listings skip all optional classifiers since they are never published.
 // Event: location only. Blotter: crime only. Report: skip.
 // Empty/other subtypes (including standard articles): full optional classifiers.
+//
+//nolint:gocritic // 6 return values match optional classifier pattern; refactor would require wider changes
 func (c *Classifier) classifyOptionalForPublishable(
 	ctx context.Context, raw *domain.RawContent, contentType, contentSubtype string,
-) (*domain.CrimeResult, *domain.MiningResult, *domain.CoforgeResult, *domain.EntertainmentResult, *domain.LocationResult) {
+) (*domain.CrimeResult, *domain.MiningResult, *domain.CoforgeResult, *domain.EntertainmentResult, *domain.AnishinaabeResult, *domain.LocationResult) {
 	if contentType != domain.ContentTypeArticle {
 		c.logger.Debug("Skipping optional classifiers for non-article content",
 			infralogger.String("content_id", raw.ID),
 			infralogger.String("content_type", contentType),
 		)
-		return nil, nil, nil, nil, nil
+		return nil, nil, nil, nil, nil, nil
 	}
 
 	// Event: location classifier only
@@ -221,17 +227,19 @@ func (c *Classifier) classifyOptionalForPublishable(
 		c.logger.Debug("Skipping optional classifiers for report content",
 			infralogger.String("content_id", raw.ID),
 		)
-		return nil, nil, nil, nil, nil
+		return nil, nil, nil, nil, nil, nil
 	}
 
 	// Full optional classifiers for article, press_release, blog_post, advisory, company_announcement
 	return c.runOptionalClassifiers(ctx, raw)
 }
 
-// runOptionalClassifiers runs crime, mining, coforge, entertainment, and location classifiers if enabled.
+// runOptionalClassifiers runs crime, mining, coforge, entertainment, anishinaabe, and location classifiers if enabled.
+//
+//nolint:gocognit,gocritic // Sequential optional classifiers; 6 return values match optional classifier pattern
 func (c *Classifier) runOptionalClassifiers(
 	ctx context.Context, raw *domain.RawContent,
-) (*domain.CrimeResult, *domain.MiningResult, *domain.CoforgeResult, *domain.EntertainmentResult, *domain.LocationResult) {
+) (*domain.CrimeResult, *domain.MiningResult, *domain.CoforgeResult, *domain.EntertainmentResult, *domain.AnishinaabeResult, *domain.LocationResult) {
 	var crimeResult *domain.CrimeResult
 	if c.crime != nil {
 		scResult, scErr := c.crime.Classify(ctx, raw)
@@ -280,6 +288,18 @@ func (c *Classifier) runOptionalClassifiers(
 		}
 	}
 
+	var anishinaabeResult *domain.AnishinaabeResult
+	if c.anishinaabe != nil {
+		aResult, aErr := c.anishinaabe.Classify(ctx, raw)
+		if aErr != nil {
+			c.logger.Warn("Anishinaabe classification failed",
+				infralogger.String("content_id", raw.ID),
+				infralogger.Error(aErr))
+		} else if aResult != nil {
+			anishinaabeResult = aResult
+		}
+	}
+
 	var locationResult *domain.LocationResult
 	if c.location != nil {
 		locResult, locErr := c.location.Classify(ctx, raw)
@@ -292,13 +312,15 @@ func (c *Classifier) runOptionalClassifiers(
 		}
 	}
 
-	return crimeResult, miningResult, coforgeResult, entertainmentResult, locationResult
+	return crimeResult, miningResult, coforgeResult, entertainmentResult, anishinaabeResult, locationResult
 }
 
 // runLocationOnly runs only the location classifier (for event content).
+//
+//nolint:gocritic // 6 return values match optional classifier pattern
 func (c *Classifier) runLocationOnly(
 	ctx context.Context, raw *domain.RawContent,
-) (*domain.CrimeResult, *domain.MiningResult, *domain.CoforgeResult, *domain.EntertainmentResult, *domain.LocationResult) {
+) (*domain.CrimeResult, *domain.MiningResult, *domain.CoforgeResult, *domain.EntertainmentResult, *domain.AnishinaabeResult, *domain.LocationResult) {
 	var locationResult *domain.LocationResult
 	if c.location != nil {
 		locResult, locErr := c.location.Classify(ctx, raw)
@@ -310,13 +332,15 @@ func (c *Classifier) runLocationOnly(
 			locationResult = locResult
 		}
 	}
-	return nil, nil, nil, nil, locationResult
+	return nil, nil, nil, nil, nil, locationResult
 }
 
 // runCrimeOnly runs only the crime classifier (for blotter content).
+//
+//nolint:gocritic // 6 return values match optional classifier pattern
 func (c *Classifier) runCrimeOnly(
 	ctx context.Context, raw *domain.RawContent,
-) (*domain.CrimeResult, *domain.MiningResult, *domain.CoforgeResult, *domain.EntertainmentResult, *domain.LocationResult) {
+) (*domain.CrimeResult, *domain.MiningResult, *domain.CoforgeResult, *domain.EntertainmentResult, *domain.AnishinaabeResult, *domain.LocationResult) {
 	var crimeResult *domain.CrimeResult
 	if c.crime != nil {
 		scResult, scErr := c.crime.Classify(ctx, raw)
@@ -328,7 +352,7 @@ func (c *Classifier) runCrimeOnly(
 			crimeResult = convertCrimeResult(scResult)
 		}
 	}
-	return crimeResult, nil, nil, nil, nil
+	return crimeResult, nil, nil, nil, nil, nil
 }
 
 // calculateTopicConfidence calculates overall topic confidence
@@ -370,6 +394,7 @@ func (c *Classifier) BuildClassifiedContent(raw *domain.RawContent, result *doma
 		Mining:               result.Mining,
 		Coforge:              result.Coforge,
 		Entertainment:        result.Entertainment,
+		Anishinaabe:          result.Anishinaabe,
 		Location:             result.Location,
 		// Publisher compatibility aliases
 		Body:   raw.RawText, // Alias for RawText

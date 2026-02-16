@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/jmoiron/sqlx"
+	"github.com/jonesrussell/north-cloud/classifier/internal/anishinaabemlclient"
 	"github.com/jonesrussell/north-cloud/classifier/internal/api"
 	"github.com/jonesrussell/north-cloud/classifier/internal/classifier"
 	"github.com/jonesrussell/north-cloud/classifier/internal/coforgemlclient"
@@ -160,6 +161,12 @@ func createClassifierConfig(cfg *config.Config, logger infralogger.Logger) class
 		func(c *entertainmentmlclient.Client, l infralogger.Logger, e bool) *classifier.EntertainmentClassifier {
 			return classifier.NewEntertainmentClassifier(c, l, e)
 		})
+	anishinaabeCC := createOptionalClassifier(
+		cfg.Classification.Anishinaabe.Enabled, cfg.Classification.Anishinaabe.MLServiceURL, logger,
+		"Anishinaabe classifier", anishinaabemlclient.NewClient,
+		func(c *anishinaabemlclient.Client, l infralogger.Logger, e bool) *classifier.AnishinaabeClassifier {
+			return classifier.NewAnishinaabeClassifier(c, l, e)
+		})
 
 	return classifier.Config{
 		Version:         "1.0.0",
@@ -184,6 +191,7 @@ func createClassifierConfig(cfg *config.Config, logger infralogger.Logger) class
 		MiningClassifier:        miningCC,
 		CoforgeClassifier:       coforgeCC,
 		EntertainmentClassifier: entertainmentCC,
+		AnishinaabeClassifier:   anishinaabeCC,
 	}
 }
 

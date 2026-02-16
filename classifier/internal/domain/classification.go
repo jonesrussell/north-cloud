@@ -44,8 +44,20 @@ type ClassificationResult struct {
 	// Entertainment hybrid classification (optional)
 	Entertainment *EntertainmentResult `json:"entertainment,omitempty"`
 
+	// Anishinaabe hybrid classification (optional)
+	Anishinaabe *AnishinaabeResult `json:"anishinaabe,omitempty"`
+
 	// Location detection (content-based)
 	Location *LocationResult `json:"location,omitempty"`
+}
+
+// AnishinaabeResult holds Anishinaabe hybrid classification results.
+type AnishinaabeResult struct {
+	Relevance       string   `json:"relevance"`
+	Categories      []string `json:"categories"`
+	FinalConfidence float64  `json:"final_confidence"`
+	ReviewRequired  bool     `json:"review_required"`
+	ModelVersion    string   `json:"model_version,omitempty"`
 }
 
 // EntertainmentResult holds Entertainment hybrid classification results.
@@ -127,6 +139,9 @@ type ClassifiedContent struct {
 
 	// Entertainment hybrid classification (optional)
 	Entertainment *EntertainmentResult `json:"entertainment,omitempty"`
+
+	// Anishinaabe hybrid classification (optional)
+	Anishinaabe *AnishinaabeResult `json:"anishinaabe,omitempty"`
 
 	// Location detection (content-based)
 	Location *LocationResult `json:"location,omitempty"`
