@@ -64,5 +64,9 @@ func SetupServiceRoutes(router *gin.Engine, handler *Handler) {
 		search := v1.Group("/search")
 		search.POST("", handler.Search) // POST for complex searches
 		search.GET("", handler.Search)  // GET for simple searches
+
+		// Topic-filtered feeds (no auth): /api/v1/feeds/{slug}
+		feeds := v1.Group("/feeds")
+		feeds.GET("/:slug", handler.TopicFeed)
 	}
 }

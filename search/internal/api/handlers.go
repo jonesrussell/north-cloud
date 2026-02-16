@@ -214,7 +214,9 @@ func (h *Handler) ReadinessCheck(c *gin.Context) {
 }
 
 const (
-	publicFeedCacheMaxAge = 300
+	publicFeedCacheMaxAge  = 300
+	defaultFeedLimitParam  = 10
+	defaultFeedLimitString = "10"
 )
 
 // PublicFeed serves the public article feed (no auth). For static-site consumers
@@ -224,6 +226,36 @@ func (h *Handler) PublicFeed(c *gin.Context) {
 	if err != nil {
 		h.logger.Error("Public feed failed",
 			infralogger.Error(err),
+		)
+		c.JSON(http.StatusInternalServerError, ErrorResponse{
+			Error:     "Feed temporarily unavailable",
+			Code:      "FEED_ERROR",
+			Timestamp: time.Now(),
+		})
+		return
+	}
+	c.Header("Cache-Control", "public, max-age="+strconv.Itoa(publicFeedCacheMaxAge))
+	c.JSON(http.StatusOK, domain.PublicFeedResponse{
+		GeneratedAt: time.Now().UTC().Format(time.RFC3339),
+		Articles:    articles,
+	})
+}
+
+// TopicFeed serves a topic-filtered public feed. Slug comes from URL param.
+// Public endpoint (no auth), 5-minute cache.
+func (h *Handler) TopicFeed(c *gin.Context) {
+	slug := c.Param("slug")
+	limitStr := c.DefaultQuery("limit", defaultFeedLimitString)
+	limit, err := strconv.Atoi(limitStr)
+	if err != nil || limit < 1 {
+		limit = defaultFeedLimitParam
+	}
+
+	articles, feedErr := h.searchService.TopicFeed(c.Request.Context(), slug, limit)
+	if feedErr != nil {
+		h.logger.Error("Topic feed failed",
+			infralogger.Error(feedErr),
+			infralogger.String("slug", slug),
 		)
 		c.JSON(http.StatusInternalServerError, ErrorResponse{
 			Error:     "Feed temporarily unavailable",
