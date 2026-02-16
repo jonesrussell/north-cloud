@@ -66,6 +66,7 @@ func (s *MiningClassifier) mergeResults(rule *miningRuleResult, ml *miningmlclie
 	result := &domain.MiningResult{
 		Relevance:       rule.relevance,
 		FinalConfidence: rule.confidence,
+		RuleTriggered:   rule.relevance,
 	}
 
 	if ml != nil {
@@ -73,6 +74,8 @@ func (s *MiningClassifier) mergeResults(rule *miningRuleResult, ml *miningmlclie
 		result.MiningStage = ml.MiningStage
 		result.Commodities = append([]string{}, ml.Commodities...)
 		result.Location = ml.Location
+		result.MLConfidenceRaw = ml.RelevanceConfidence
+		result.ProcessingTimeMs = ml.ProcessingTimeMs
 	}
 
 	s.applyDecisionLogic(result, rule, ml)
@@ -81,37 +84,41 @@ func (s *MiningClassifier) mergeResults(rule *miningRuleResult, ml *miningmlclie
 }
 
 // applyDecisionLogic applies the decision matrix for mining relevance.
-//
-//nolint:dupl // Decision matrix mirrors anishinaabe/entertainment pattern by design
 func (s *MiningClassifier) applyDecisionLogic(result *domain.MiningResult, rule *miningRuleResult, ml *miningmlclient.ClassifyResponse) {
 	switch {
 	case rule.relevance == miningRelevanceCore && ml != nil && ml.Relevance == miningRelevanceCore:
 		result.Relevance = miningRelevanceCore
 		result.FinalConfidence = (rule.confidence + ml.RelevanceConfidence) / miningBothAgreeWeight
 		result.ReviewRequired = false
+		result.DecisionPath = decisionPathBothAgree
 
 	case rule.relevance == miningRelevanceCore && ml != nil && ml.Relevance == miningRelevanceNot:
 		result.Relevance = miningRelevanceCore
 		result.FinalConfidence = rule.confidence * miningRuleMLDisagreeWeight
 		result.ReviewRequired = true
+		result.DecisionPath = decisionPathRuleOverride
 
 	case rule.relevance == miningRelevanceCore:
 		result.Relevance = miningRelevanceCore
 		result.FinalConfidence = rule.confidence
 		result.ReviewRequired = false
+		result.DecisionPath = decisionPathRulesOnly
 
 	case ml != nil && ml.Relevance == miningRelevanceCore && ml.RelevanceConfidence >= miningMLOverrideThreshold:
 		result.Relevance = miningRelevancePeripheral
 		result.FinalConfidence = ml.RelevanceConfidence * miningMLOverrideWeight
 		result.ReviewRequired = true
+		result.DecisionPath = decisionPathMLOverride
 
 	case rule.relevance == miningRelevancePeripheral && ml != nil && ml.Relevance == miningRelevanceCore:
 		result.Relevance = miningRelevanceCore
 		result.FinalConfidence = ml.RelevanceConfidence
 		result.ReviewRequired = false
+		result.DecisionPath = decisionPathMLUpgrade
 
 	default:
 		result.Relevance = rule.relevance
 		result.FinalConfidence = rule.confidence
+		result.DecisionPath = decisionPathDefault
 	}
 }

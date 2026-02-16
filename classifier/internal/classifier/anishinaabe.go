@@ -80,7 +80,6 @@ const (
 	anishinaabeMLOverrideWeight     = 0.8
 )
 
-//nolint:dupl // Decision matrix mirrors mining/entertainment pattern by design
 func (s *AnishinaabeClassifier) applyDecisionLogic(
 	result *domain.AnishinaabeResult, rule *anishinaabeRuleResult,
 	ml *anishinaabemlclient.ClassifyResponse,

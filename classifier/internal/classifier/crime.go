@@ -143,7 +143,7 @@ func (s *CrimeClassifier) applyDecisionLogic(result *CrimeResult, rule *ruleResu
 		result.Relevance = relevanceCoreStreetCrime
 		result.FinalConfidence = (rule.confidence + ml.RelevanceConfidence) / bothAgreeWeight
 		result.HomepageEligible = result.FinalConfidence >= HomepageMinConfidence
-		result.DecisionPath = "both_agree"
+		result.DecisionPath = decisionPathBothAgree
 
 	case rule.relevance == relevanceCoreStreetCrime && ml != nil && ml.Relevance == relevanceNotCrime:
 		// Rule says core, ML says not_crime: flag for review
@@ -151,26 +151,26 @@ func (s *CrimeClassifier) applyDecisionLogic(result *CrimeResult, rule *ruleResu
 		result.FinalConfidence = rule.confidence * ruleMLDisagreeWeight
 		result.HomepageEligible = rule.confidence >= RuleHighConfidence
 		result.ReviewRequired = true
-		result.DecisionPath = "rule_override"
+		result.DecisionPath = decisionPathRuleOverride
 
 	case rule.relevance == relevanceCoreStreetCrime:
 		// Rule says core, ML unavailable or uncertain
 		result.Relevance = relevanceCoreStreetCrime
 		result.FinalConfidence = rule.confidence
 		result.HomepageEligible = rule.confidence >= RuleHighConfidence
-		result.DecisionPath = "rules_only"
+		result.DecisionPath = decisionPathRulesOnly
 
 	case ml != nil && ml.Relevance == relevanceCoreStreetCrime && ml.RelevanceConfidence >= MLOverrideThreshold:
 		// ML says core with high confidence, rule missed it
 		result.Relevance = relevancePeripheral
 		result.FinalConfidence = ml.RelevanceConfidence * mlOverrideWeight
 		result.ReviewRequired = true
-		result.DecisionPath = "ml_override"
+		result.DecisionPath = decisionPathMLOverride
 
 	default:
 		result.Relevance = rule.relevance
 		result.FinalConfidence = rule.confidence
-		result.DecisionPath = "default"
+		result.DecisionPath = decisionPathDefault
 	}
 }
 

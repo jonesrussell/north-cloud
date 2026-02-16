@@ -142,6 +142,78 @@ func TestMiningClassifier_Classify_RuleCore_MLNotMining(t *testing.T) {
 	}
 }
 
+// Test constants for mining decision context tests.
+const (
+	testMiningMLProcessingTimeMs  = 35
+	testMiningMLConfidence        = 0.88
+	testMiningExpectedCommodities = 2
+)
+
+func TestMiningClassifier_DecisionContext_BothAgree(t *testing.T) {
+	t.Helper()
+
+	mlMock := &mockMiningMLClient{
+		response: &miningmlclient.ClassifyResponse{
+			Relevance:           "core_mining",
+			RelevanceConfidence: testMiningMLConfidence,
+			MiningStage:         "exploration",
+			Commodities:         []string{"gold", "copper"},
+			Location:            "local_canada",
+			ModelVersion:        "2025-02-01-mining-v1",
+			ProcessingTimeMs:    testMiningMLProcessingTimeMs,
+		},
+	}
+
+	mc := NewMiningClassifier(mlMock, &mockLogger{}, true)
+
+	raw := &domain.RawContent{
+		ID:      "test-dc-both",
+		Title:   "Gold exploration drill results assay",
+		RawText: "Ontario mining project.",
+	}
+
+	result, err := mc.Classify(context.Background(), raw)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result == nil {
+		t.Fatal("expected result")
+	}
+
+	verifyMiningDecisionPath(t, result, "both_agree")
+	verifyMiningMLConfidencePopulated(t, result)
+	verifyMiningProcessingTimeMs(t, result, testMiningMLProcessingTimeMs)
+
+	if len(result.Commodities) != testMiningExpectedCommodities {
+		t.Errorf("expected %d commodities, got %d",
+			testMiningExpectedCommodities, len(result.Commodities))
+	}
+}
+
+func verifyMiningDecisionPath(t *testing.T, result *domain.MiningResult, expected string) {
+	t.Helper()
+
+	if result.DecisionPath != expected {
+		t.Errorf("expected DecisionPath=%q, got %q", expected, result.DecisionPath)
+	}
+}
+
+func verifyMiningMLConfidencePopulated(t *testing.T, result *domain.MiningResult) {
+	t.Helper()
+
+	if result.MLConfidenceRaw == 0 {
+		t.Error("expected MLConfidenceRaw to be populated when ML is available")
+	}
+}
+
+func verifyMiningProcessingTimeMs(t *testing.T, result *domain.MiningResult, expected int64) {
+	t.Helper()
+
+	if result.ProcessingTimeMs != expected {
+		t.Errorf("expected ProcessingTimeMs=%d, got %d", expected, result.ProcessingTimeMs)
+	}
+}
+
 func TestMiningClassifier_Classify_RulesOnly_NotMining(t *testing.T) {
 	t.Helper()
 
