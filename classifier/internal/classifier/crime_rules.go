@@ -117,6 +117,20 @@ var courtOutcomePatterns = []patternWithConf{
 		`.*(sentenced|convicts?\b|convicted|found guilty|pleaded guilty|prison term)`), confidenceAssault},
 }
 
+// Accusation-style patterns — "faces/facing/charged with ... charges" plus crime-type terms.
+// Catches headlines like "resident faces drug, weapon, assault charges" that lack "charged" (verb).
+var accusationChargesPatterns = []patternWithConf{
+	{regexp.MustCompile(`(?i)(faces?|facing|charged with).*(assault|drug|weapon|theft|robbery).*charges`), confidenceAssault},
+	{regexp.MustCompile(`(?i)(assault|drug|weapon|theft|robbery).*charges.*(faces?|facing|charged with)`), confidenceAssault},
+	{regexp.MustCompile(`(?i)(faces?|facing|charged with).*charges.*(assault|drug|weapon|theft|robbery)`), confidenceAssault},
+}
+
+// Weapon + authority/charges — weapon(s) in charge or arrest context.
+var weaponAuthorityPatterns = []patternWithConf{
+	{regexp.MustCompile(`(?i)(weapons?).*(charges|arrest|charged|police)`), confidenceAssault},
+	{regexp.MustCompile(`(?i)(charges|arrest|charged|police).*(weapons?)`), confidenceAssault},
+}
+
 // International patterns - downgrade to peripheral.
 var internationalPatterns = []*regexp.Regexp{
 	regexp.MustCompile(`(?i)(Minneapolis|U\.S\.|American|Mexico|European|Israel)`),
@@ -161,6 +175,8 @@ func classifyByRules(title, body string) *ruleResult {
 	result = checkPropertyCrime(result, text)
 	result = checkDrugCrime(result, text)
 	result = checkCourtOutcomes(result, text)
+	result = checkAccusationCharges(result, text)
+	result = checkWeaponAuthority(result, text)
 
 	// International: title-only (downgrade to peripheral)
 	result = checkInternational(result, title)
@@ -228,6 +244,45 @@ func checkCourtOutcomes(result *ruleResult, text string) *ruleResult {
 			result.confidence = maxFloat(result.confidence, p.confidence)
 			if !containsString(result.crimeTypes, "criminal_justice") {
 				result.crimeTypes = append(result.crimeTypes, "criminal_justice")
+			}
+		}
+	}
+	return result
+}
+
+func checkAccusationCharges(result *ruleResult, text string) *ruleResult {
+	for _, p := range accusationChargesPatterns {
+		if !p.pattern.MatchString(text) {
+			continue
+		}
+		result.relevance = relevanceCoreStreetCrime
+		result.confidence = maxFloat(result.confidence, p.confidence)
+		addAccusationCrimeTypes(result, strings.ToLower(text))
+		break
+	}
+	return result
+}
+
+func addAccusationCrimeTypes(result *ruleResult, lower string) {
+	if (strings.Contains(lower, "assault") || strings.Contains(lower, "weapon") || strings.Contains(lower, "robbery")) &&
+		!containsString(result.crimeTypes, "violent_crime") {
+		result.crimeTypes = append(result.crimeTypes, "violent_crime")
+	}
+	if strings.Contains(lower, "drug") && !containsString(result.crimeTypes, "drug_crime") {
+		result.crimeTypes = append(result.crimeTypes, "drug_crime")
+	}
+	if strings.Contains(lower, "theft") && !containsString(result.crimeTypes, "property_crime") {
+		result.crimeTypes = append(result.crimeTypes, "property_crime")
+	}
+}
+
+func checkWeaponAuthority(result *ruleResult, text string) *ruleResult {
+	for _, p := range weaponAuthorityPatterns {
+		if p.pattern.MatchString(text) {
+			result.relevance = relevanceCoreStreetCrime
+			result.confidence = maxFloat(result.confidence, p.confidence)
+			if !containsString(result.crimeTypes, "violent_crime") {
+				result.crimeTypes = append(result.crimeTypes, "violent_crime")
 			}
 		}
 	}

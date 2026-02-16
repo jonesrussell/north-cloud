@@ -326,3 +326,77 @@ func TestCrimeRules_TitleAndBodyPrefix(t *testing.T) {
 			"exclusion matched on title only; body crime text should not override")
 	})
 }
+
+// TestCrimeRules_ClassifyByRules_AccusationCharges verifies that accusation-style
+// headlines ("faces/facing/charged with ... charges") are classified as core_street_crime.
+func TestCrimeRules_ClassifyByRules_AccusationCharges(t *testing.T) {
+	t.Helper()
+
+	tests := []struct {
+		name              string
+		title             string
+		expectedRelevance string
+		expectedTypes     []string
+	}{
+		{
+			name:              "false-positive production title",
+			title:             "Mississaugas of the Credit First Nation resident faces drug, weapon, assault charges",
+			expectedRelevance: "core_street_crime",
+			expectedTypes:     []string{"violent_crime", "drug_crime"},
+		},
+		{
+			name:              "facing assault and weapon charges",
+			title:             "Man facing assault and weapon charges",
+			expectedRelevance: "core_street_crime",
+			expectedTypes:     []string{"violent_crime"},
+		},
+		{
+			name:              "charged with drug charges",
+			title:             "Woman charged with drug charges after traffic stop",
+			expectedRelevance: "core_street_crime",
+			expectedTypes:     []string{"drug_crime"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := classifyByRules(tt.title, "")
+
+			if result.relevance != tt.expectedRelevance {
+				t.Errorf("relevance: got %s, want %s for title: %s",
+					result.relevance, tt.expectedRelevance, tt.title)
+			}
+
+			for _, expectedType := range tt.expectedTypes {
+				if !slices.Contains(result.crimeTypes, expectedType) {
+					t.Errorf("missing crime type %s in %v for title: %s",
+						expectedType, result.crimeTypes, tt.title)
+				}
+			}
+		})
+	}
+}
+
+// TestCrimeRules_ClassifyByRules_WeaponAuthority verifies weapon + charges/arrest
+// is classified as core_street_crime.
+func TestCrimeRules_ClassifyByRules_WeaponAuthority(t *testing.T) {
+	t.Helper()
+
+	tests := []struct {
+		name  string
+		title string
+	}{
+		{"weapon charges", "Suspect faces weapon charges after search"},
+		{"weapons arrest", "Police make arrest in weapons case"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := classifyByRules(tt.title, "")
+			assert.Equal(t, "core_street_crime", result.relevance,
+				"title %q should be core_street_crime", tt.title)
+			assert.Contains(t, result.crimeTypes, "violent_crime",
+				"title %q should have violent_crime type", tt.title)
+		})
+	}
+}
