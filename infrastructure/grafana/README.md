@@ -46,7 +46,7 @@ Services (JSON logs) → Docker → Alloy → Loki → Grafana (Web UI)
 - **Image**: `grafana/grafana:10.4.8`
 - **Port**: 3000 (Web UI)
 - **Datasources**: Auto-provisioned Loki and Elasticsearch datasources
-- **Dashboards**: North Cloud - Overview, Service Logs, Pipeline Operations, Crawler Ops, Deployer Sites (all in **North Cloud** folder)
+- **Dashboards**: Overview, Service Logs, Pipeline Operations, Crawler Ops, Deployer Sites (all in **North Cloud** folder)
 - **Configuration**: `/infrastructure/grafana/provisioning/`
 
 ## Quick Start
@@ -74,12 +74,12 @@ docker compose -f docker-compose.base.yml -f docker-compose.dev.yml ps loki allo
 #### Option 1: Pre-configured Dashboards
 
 1. Navigate to **Dashboards** → **Browse** → open the **North Cloud** folder.
-2. Start with **North Cloud - Overview** for a single entry point and links to all dashboards, or open any of:
-   - **North Cloud - Service Logs** — log volume by service/level, error summary, live log stream
-   - **North Cloud - Pipeline Operations** — classifier/publisher throughput, Elasticsearch content analytics, StreetCode ingestion
-   - **North Cloud - Crawler Ops** — crawl activity, raw content, job completion log
-   - **North Cloud - Deployer Sites** — Streetcode/orewire/coforge health and logs
-3. On **North Cloud - Service Logs**, use filters:
+2. Start with **Overview** for a single entry point and links to all dashboards, or open any of:
+   - **Service Logs** — log volume by service/level, error summary, live log stream
+   - **Pipeline Operations** — classifier/publisher throughput, Elasticsearch content analytics, StreetCode ingestion
+   - **Crawler Ops** — crawl activity, raw content, job completion log
+   - **Deployer Sites** — Streetcode/orewire/coforge health and logs
+3. On **Service Logs**, use filters:
    - **Service**: Select one or more services (crawler, publisher, etc.)
    - **Level**: Filter by log level (debug, info, warn, error)
    - **Search**: Free-text search across log messages
@@ -292,11 +292,11 @@ All `.json` files in `provisioning/dashboards/` are loaded into the **North Clou
 
 | File | Dashboard | Description |
 |------|-----------|-------------|
-| `north-cloud-overview.json` | North Cloud - Overview | Entry point: links to all dashboards + at-a-glance log volume |
-| `north-cloud-service-logs.json` | North Cloud - Service Logs | Log volume by service/level, error summary, live log stream |
-| `north-cloud-pipeline-ops.json` | North Cloud - Pipeline Operations | Classifier/publisher throughput, ES content analytics, StreetCode Loki panels |
-| `north-cloud-crawler-ops.json` | North Cloud - Crawler Ops | Crawl activity, raw content by source, job completion log |
-| `north-cloud-deployer-sites.json` | North Cloud - Deployer Sites | Streetcode/orewire/coforge site health and log streams |
+| `north-cloud-overview.json` | Overview | Entry point: links to all dashboards + at-a-glance log volume |
+| `north-cloud-service-logs.json` | Service Logs | Log volume by service/level, error summary, live log stream |
+| `north-cloud-pipeline-ops.json` | Pipeline Operations | Classifier/publisher throughput, ES content analytics, StreetCode Loki panels |
+| `north-cloud-crawler-ops.json` | Crawler Ops | Crawl activity, raw content by source, job completion log |
+| `north-cloud-deployer-sites.json` | Deployer Sites | Streetcode/orewire/coforge site health and log streams |
 
 **If a provisioned dashboard does not appear:** go to **Dashboards** → **Browse** → open the **North Cloud** folder (not General). On the server, ensure the JSON file exists and restart Grafana after deploy (see [Provisioned dashboard not visible](#provisioned-dashboard-not-visible)).
 
