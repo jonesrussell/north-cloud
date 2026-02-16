@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"time"
 )
@@ -25,34 +26,52 @@ type healthResponse struct {
 
 // DoClassify sends POST /classify to baseURL with req, decoding the response into respPtr.
 // respPtr must be a pointer to a struct that matches the ML service response (e.g. *ClassifyResponse).
-func DoClassify(ctx context.Context, baseURL string, req *ClassifyRequest, respPtr any) error {
-	body, err := json.Marshal(req)
-	if err != nil {
-		return fmt.Errorf("marshal request: %w", err)
+// Returns latency in milliseconds and response body size in bytes, even on error responses.
+func DoClassify(
+	ctx context.Context,
+	baseURL string,
+	req *ClassifyRequest,
+	respPtr any,
+) (latencyMs int64, responseSizeBytes int, err error) {
+	reqBody, marshalErr := json.Marshal(req)
+	if marshalErr != nil {
+		return 0, 0, fmt.Errorf("marshal request: %w", marshalErr)
 	}
 
-	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, baseURL+"/classify", bytes.NewReader(body))
-	if err != nil {
-		return fmt.Errorf("create request: %w", err)
+	httpReq, reqErr := http.NewRequestWithContext(
+		ctx, http.MethodPost, baseURL+"/classify", bytes.NewReader(reqBody),
+	)
+	if reqErr != nil {
+		return 0, 0, fmt.Errorf("create request: %w", reqErr)
 	}
 	httpReq.Header.Set("Content-Type", "application/json")
 
 	client := &http.Client{Timeout: defaultTimeout}
-	resp, err := client.Do(httpReq)
-	if err != nil {
-		return fmt.Errorf("http request: %w", err)
+
+	start := time.Now()
+	resp, doErr := client.Do(httpReq)
+	latencyMs = time.Since(start).Milliseconds()
+
+	if doErr != nil {
+		return latencyMs, 0, fmt.Errorf("http request: %w", doErr)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
+
+	respBody, readErr := io.ReadAll(resp.Body)
+	if readErr != nil {
+		return latencyMs, 0, fmt.Errorf("read response body: %w", readErr)
+	}
+	responseSizeBytes = len(respBody)
 
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("ml service returned %d", resp.StatusCode)
+		return latencyMs, responseSizeBytes, fmt.Errorf("ml service returned %d", resp.StatusCode)
 	}
 
-	if decodeErr := json.NewDecoder(resp.Body).Decode(respPtr); decodeErr != nil {
-		return fmt.Errorf("decode response: %w", decodeErr)
+	if unmarshalErr := json.Unmarshal(respBody, respPtr); unmarshalErr != nil {
+		return latencyMs, responseSizeBytes, fmt.Errorf("decode response: %w", unmarshalErr)
 	}
 
-	return nil
+	return latencyMs, responseSizeBytes, nil
 }
 
 // DoHealth calls GET /health at baseURL and returns reachable, latencyMs, model_version, and any error.

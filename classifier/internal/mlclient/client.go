@@ -37,7 +37,7 @@ func NewClient(baseURL string) *Client {
 func (c *Client) Classify(ctx context.Context, title, body string) (*ClassifyResponse, error) {
 	req := &mltransport.ClassifyRequest{Title: title, Body: body}
 	var result ClassifyResponse
-	if err := mltransport.DoClassify(ctx, c.baseURL, req, &result); err != nil {
+	if _, _, err := mltransport.DoClassify(ctx, c.baseURL, req, &result); err != nil {
 		return nil, fmt.Errorf("classify: %w", err)
 	}
 	return &result, nil
