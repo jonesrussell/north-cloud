@@ -9,6 +9,8 @@ import (
 )
 
 // parseLimitOffset parses limit and offset query params with defaults.
+//
+//nolint:unparam // defaultLimit varies by caller intent; current callers happen to share a value.
 func parseLimitOffset(c *gin.Context, defaultLimit, defaultOffset int) (limit, offset int) {
 	limitStr := c.DefaultQuery("limit", strconv.Itoa(defaultLimit))
 	offsetStr := c.DefaultQuery("offset", strconv.Itoa(defaultOffset))

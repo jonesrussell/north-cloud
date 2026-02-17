@@ -55,6 +55,7 @@ func SetupHTTPServer(deps *HTTPServerDeps) *ServerComponents {
 		deps.Config, deps.JobsHandler, deps.DiscoveredLinksHandler,
 		deps.LogsHandler, deps.LogsV2Handler, deps.ExecutionRepo,
 		deps.Logger, deps.SSEHandler, migrationHandler, syncHandler,
+		nil, // frontierHandler - wired in Task 9
 	)
 
 	deps.Logger.Info("Starting HTTP server", infralogger.String("addr", deps.Config.GetServerConfig().Address))

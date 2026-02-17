@@ -370,6 +370,15 @@ func (r *FrontierRepository) Stats(ctx context.Context) (*FrontierStats, error) 
 	return stats, nil
 }
 
+// Delete removes a frontier URL by ID. Returns an error if the URL does not exist.
+func (r *FrontierRepository) Delete(ctx context.Context, id string) error {
+	query := `DELETE FROM url_frontier WHERE id = $1`
+
+	result, err := r.db.ExecContext(ctx, query, id)
+
+	return execRequireRows(result, err, fmt.Errorf("frontier URL not found: %s", id))
+}
+
 // assignStatCount assigns a count to the appropriate FrontierStats field by status.
 func assignStatCount(stats *FrontierStats, status string, count int) {
 	switch status {

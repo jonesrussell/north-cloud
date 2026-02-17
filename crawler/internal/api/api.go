@@ -88,6 +88,16 @@ func setupMigrationRoutes(v1 *gin.RouterGroup, migrationHandler *MigrationHandle
 	}
 }
 
+// setupFrontierRoutes configures frontier URL endpoints
+func setupFrontierRoutes(v1 *gin.RouterGroup, frontierHandler *FrontierHandler) {
+	if frontierHandler != nil {
+		v1.GET("/frontier", frontierHandler.List)
+		v1.GET("/frontier/stats", frontierHandler.Stats)
+		v1.POST("/frontier/submit", frontierHandler.Submit)
+		v1.DELETE("/frontier/:id", frontierHandler.Delete)
+	}
+}
+
 // setupDiscoveredLinksRoutes configures discovered links endpoints
 func setupDiscoveredLinksRoutes(v1 *gin.RouterGroup, discoveredLinksHandler *DiscoveredLinksHandler) {
 	if discoveredLinksHandler != nil {
@@ -133,6 +143,7 @@ func NewServer(
 	sseHandler *SSEHandler, // Optional - pass nil to disable SSE
 	migrationHandler *MigrationHandler, // Optional - pass nil to disable migration endpoints
 	syncHandler *admin.SyncEnabledSourcesHandler, // Optional - pass nil to disable sync endpoint
+	frontierHandler *FrontierHandler, // Optional - pass nil to disable frontier endpoints
 ) *infragin.Server {
 	// Extract port from address
 	port := extractPortFromAddress(cfg.GetServerConfig().Address)
@@ -162,7 +173,7 @@ func NewServer(
 			setupCrawlerRoutes(
 				router, jwtSecret, jobsHandler, discoveredLinksHandler,
 				logsHandler, logsV2Handler, executionRepo, sseHandler,
-				migrationHandler, syncHandler,
+				migrationHandler, syncHandler, frontierHandler,
 			)
 		}).
 		Build()
@@ -215,6 +226,7 @@ func setupCrawlerRoutes(
 	sseHandler *SSEHandler,
 	migrationHandler *MigrationHandler,
 	syncHandler *admin.SyncEnabledSourcesHandler,
+	frontierHandler *FrontierHandler,
 ) {
 	// API v1 routes - protected with JWT
 	v1 := infragin.ProtectedGroup(router, "/api/v1", jwtSecret)
@@ -265,6 +277,9 @@ func setupCrawlerRoutes(
 
 	// Setup discovered links routes
 	setupDiscoveredLinksRoutes(v1, discoveredLinksHandler)
+
+	// Setup frontier routes
+	setupFrontierRoutes(v1, frontierHandler)
 
 	// Setup migration routes (Phase 3)
 	setupMigrationRoutes(v1, migrationHandler)
