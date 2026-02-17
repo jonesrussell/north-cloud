@@ -160,6 +160,12 @@ const routes: RouteRecordRaw[] = [
     meta: { title: 'Discovered Links', section: 'intake', requiresAuth: true },
   },
   {
+    path: '/intake/frontier',
+    name: 'intake-frontier',
+    component: () => import('../views/intake/FrontierView.vue'),
+    meta: { title: 'URL Frontier', section: 'intake', requiresAuth: true },
+  },
+  {
     path: '/intake/rules',
     name: 'intake-rules',
     component: RulesView,
