@@ -14,7 +14,7 @@ type BaseSettings struct {
 func DefaultSettings() BaseSettings {
 	return BaseSettings{
 		NumberOfShards:   1,
-		NumberOfReplicas: 1,
+		NumberOfReplicas: 0,
 	}
 }
 

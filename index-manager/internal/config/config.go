@@ -25,7 +25,7 @@ const (
 	defaultLogLevel        = "info"
 	defaultLogFormat       = "json"
 	defaultShards          = 1
-	defaultReplicas        = 1
+	defaultReplicas        = 0
 )
 
 // Config holds the application configuration.
@@ -163,9 +163,8 @@ func setIndexTypeDefaults(cfg *IndexTypesConfig) {
 	if cfg.ClassifiedContent.Shards == 0 {
 		cfg.ClassifiedContent.Shards = defaultShards
 	}
-	if cfg.ClassifiedContent.Replicas == 0 {
-		cfg.ClassifiedContent.Replicas = defaultReplicas
-	}
+	// classified_content replicas default 0 (single-node: replicas provide no redundancy)
+	// No special handling needed since Go zero-value is 0
 }
 
 func setLoggingDefaults(l *LoggingConfig) {

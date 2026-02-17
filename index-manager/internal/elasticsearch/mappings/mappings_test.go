@@ -16,8 +16,8 @@ func TestDefaultSettings(t *testing.T) {
 	if settings.NumberOfShards != 1 {
 		t.Errorf("NumberOfShards = %d, want 1", settings.NumberOfShards)
 	}
-	if settings.NumberOfReplicas != 1 {
-		t.Errorf("NumberOfReplicas = %d, want 1", settings.NumberOfReplicas)
+	if settings.NumberOfReplicas != 0 {
+		t.Errorf("NumberOfReplicas = %d, want 0", settings.NumberOfReplicas)
 	}
 }
 
