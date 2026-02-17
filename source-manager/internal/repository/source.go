@@ -46,8 +46,10 @@ func (r *SourceRepository) Create(ctx context.Context, source *models.Source) er
 	query := `
 		INSERT INTO sources (
 			id, name, url, rate_limit, max_depth,
-			time, selectors, enabled, created_at, updated_at
-		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+			time, selectors, enabled,
+			feed_url, sitemap_url, ingestion_mode, feed_poll_interval_minutes,
+			created_at, updated_at
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
 	`
 
 	_, err = r.db.ExecContext(ctx,
@@ -60,6 +62,10 @@ func (r *SourceRepository) Create(ctx context.Context, source *models.Source) er
 		timeJSON,
 		selectorsJSON,
 		source.Enabled,
+		source.FeedURL,
+		source.SitemapURL,
+		source.IngestionMode,
+		source.FeedPollIntervalMinutes,
 		source.CreatedAt,
 		source.UpdatedAt,
 	)
@@ -77,7 +83,9 @@ func (r *SourceRepository) GetByID(ctx context.Context, id string) (*models.Sour
 
 	query := `
 		SELECT id, name, url, rate_limit, max_depth,
-		       time, selectors, enabled, created_at, updated_at
+		       time, selectors, enabled,
+		       feed_url, sitemap_url, ingestion_mode, feed_poll_interval_minutes,
+		       created_at, updated_at
 		FROM sources
 		WHERE id = $1
 	`
@@ -91,6 +99,10 @@ func (r *SourceRepository) GetByID(ctx context.Context, id string) (*models.Sour
 		&timeJSON,
 		&selectorsJSON,
 		&source.Enabled,
+		&source.FeedURL,
+		&source.SitemapURL,
+		&source.IngestionMode,
+		&source.FeedPollIntervalMinutes,
 		&source.CreatedAt,
 		&source.UpdatedAt,
 	)
@@ -158,7 +170,9 @@ func (r *SourceRepository) ListPaginated(ctx context.Context, filter ListFilter)
 	// #nosec G202 -- SQL string built from validated filter, column names from whitelist
 	query := `
 		SELECT id, name, url, rate_limit, max_depth,
-		       time, selectors, enabled, created_at, updated_at
+		       time, selectors, enabled,
+		       feed_url, sitemap_url, ingestion_mode, feed_poll_interval_minutes,
+		       created_at, updated_at
 		FROM sources
 		WHERE 1=1` + whereClause + orderClause + `
 		LIMIT $` + limitPlaceholder + ` OFFSET $` + offsetPlaceholder
@@ -207,6 +221,10 @@ func scanSourceRow(rows *sql.Rows) (*models.Source, error) {
 		&timeJSON,
 		&selectorsJSON,
 		&source.Enabled,
+		&source.FeedURL,
+		&source.SitemapURL,
+		&source.IngestionMode,
+		&source.FeedPollIntervalMinutes,
 		&source.CreatedAt,
 		&source.UpdatedAt,
 	); err != nil {
@@ -264,7 +282,9 @@ func buildListOrder(filter ListFilter) string {
 func (r *SourceRepository) List(ctx context.Context) ([]models.Source, error) {
 	query := `
 		SELECT id, name, url, rate_limit, max_depth,
-		       time, selectors, enabled, created_at, updated_at
+		       time, selectors, enabled,
+		       feed_url, sitemap_url, ingestion_mode, feed_poll_interval_minutes,
+		       created_at, updated_at
 		FROM sources
 		ORDER BY name
 	`
@@ -294,7 +314,9 @@ func (r *SourceRepository) Update(ctx context.Context, source *models.Source) er
 	query := `
 		UPDATE sources
 		SET name = $2, url = $3, rate_limit = $4, max_depth = $5, time = $6, selectors = $7,
-		    enabled = $8, updated_at = $9
+		    enabled = $8,
+		    feed_url = $9, sitemap_url = $10, ingestion_mode = $11, feed_poll_interval_minutes = $12,
+		    updated_at = $13
 		WHERE id = $1
 	`
 
@@ -308,6 +330,10 @@ func (r *SourceRepository) Update(ctx context.Context, source *models.Source) er
 		timeJSON,
 		selectorsJSON,
 		source.Enabled,
+		source.FeedURL,
+		source.SitemapURL,
+		source.IngestionMode,
+		source.FeedPollIntervalMinutes,
 		source.UpdatedAt,
 	)
 
@@ -420,8 +446,10 @@ func (r *SourceRepository) UpsertSource(ctx context.Context, tx *sql.Tx, source 
 	query := `
 		INSERT INTO sources (
 			id, name, url, rate_limit, max_depth,
-			time, selectors, enabled, created_at, updated_at
-		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+			time, selectors, enabled,
+			feed_url, sitemap_url, ingestion_mode, feed_poll_interval_minutes,
+			created_at, updated_at
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
 		ON CONFLICT (name) DO UPDATE SET
 			url = EXCLUDED.url,
 			rate_limit = EXCLUDED.rate_limit,
@@ -429,6 +457,10 @@ func (r *SourceRepository) UpsertSource(ctx context.Context, tx *sql.Tx, source 
 			time = EXCLUDED.time,
 			selectors = EXCLUDED.selectors,
 			enabled = EXCLUDED.enabled,
+			feed_url = EXCLUDED.feed_url,
+			sitemap_url = EXCLUDED.sitemap_url,
+			ingestion_mode = EXCLUDED.ingestion_mode,
+			feed_poll_interval_minutes = EXCLUDED.feed_poll_interval_minutes,
 			updated_at = EXCLUDED.updated_at
 		RETURNING id, (xmax = 0) AS is_insert
 	`
@@ -445,6 +477,10 @@ func (r *SourceRepository) UpsertSource(ctx context.Context, tx *sql.Tx, source 
 		timeJSON,
 		selectorsJSON,
 		source.Enabled,
+		source.FeedURL,
+		source.SitemapURL,
+		source.IngestionMode,
+		source.FeedPollIntervalMinutes,
 		source.CreatedAt,
 		source.UpdatedAt,
 	).Scan(&returnedID, &isInsert)
