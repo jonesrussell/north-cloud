@@ -1,0 +1,21 @@
+#cloud-config
+package_update: true
+packages:
+  - docker-compose-plugin
+
+write_files:
+  - path: /opt/fetcher/.env
+    permissions: "0600"
+    content: |
+      # Configure these before starting
+      FETCHER_DATABASE_URL=postgres://crawler:PASSWORD@MAIN_SERVER_VPC_IP:5432/crawler?sslmode=require
+      FETCHER_ELASTICSEARCH_URL=http://MAIN_SERVER_VPC_IP:9200
+      FETCHER_SOURCE_MANAGER_URL=http://MAIN_SERVER_VPC_IP:8050
+      FETCHER_WORKER_COUNT=10
+      FETCHER_USER_AGENT=NorthCloud-Fetcher/1.0 (+https://northcloud.biz/crawler)
+      FETCHER_LOG_LEVEL=info
+
+runcmd:
+  - systemctl enable docker
+  - systemctl start docker
+  - cp /opt/fetcher/docker-compose.yml /opt/fetcher/docker-compose.yml || true
