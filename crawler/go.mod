@@ -19,6 +19,7 @@ require (
 	github.com/mmcdole/gofeed v1.3.0
 	github.com/north-cloud/infrastructure v0.0.0
 	github.com/redis/go-redis/v9 v9.17.3
+	github.com/temoto/robotstxt v1.1.2
 	gopkg.in/yaml.v3 v3.0.1
 )
 
@@ -81,7 +82,6 @@ require (
 	github.com/quic-go/quic-go v0.59.0 // indirect
 	github.com/rs/xid v1.6.0 // indirect
 	github.com/saintfish/chardet v0.0.0-20230101081208-5e3ef4b5456d // indirect
-	github.com/temoto/robotstxt v1.1.2 // indirect
 	github.com/tinylib/msgp v1.6.3 // indirect
 	github.com/twitchyliquid64/golang-asm v0.15.1 // indirect
 	github.com/ugorji/go/codec v1.3.1 // indirect
