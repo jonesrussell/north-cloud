@@ -24,6 +24,11 @@ const (
 	statusCompleted = "completed"
 	statusFailed    = "failed"
 	statusCancelled = "cancelled"
+
+	// forceRunBuffer is the time added to now when force-running a job.
+	// This prevents the DB trigger (trigger_calculate_next_run_at) from
+	// overriding next_run_at due to clock skew between Go and PostgreSQL.
+	forceRunBuffer = 5 * time.Second
 )
 
 // JobsHandler handles job-related HTTP requests.
@@ -639,8 +644,12 @@ func (h *JobsHandler) ForceRun(c *gin.Context) {
 		return
 	}
 
-	now := time.Now()
-	job.NextRunAt = &now
+	// Set next_run_at slightly in the future to prevent the DB trigger
+	// (trigger_calculate_next_run_at) from overriding it. The trigger
+	// recalculates next_run_at when it's < NOW(), so a small buffer
+	// ensures the scheduler poller picks up the job on its next cycle.
+	futureRun := time.Now().Add(forceRunBuffer)
+	job.NextRunAt = &futureRun
 	job.Status = statusPending
 	if updateErr := h.repo.Update(c.Request.Context(), job); updateErr != nil {
 		respondInternalError(c, "Failed to schedule job for immediate run")
