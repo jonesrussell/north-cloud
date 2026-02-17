@@ -27,6 +27,7 @@ type HTTPServerDeps struct {
 	SSEHandler             *api.SSEHandler
 	Migrator               *job.Migrator
 	JobRepo                *database.JobRepository
+	FrontierRepo           *database.FrontierRepository
 }
 
 // ServerComponents holds the HTTP server and error channel.
@@ -51,11 +52,16 @@ func SetupHTTPServer(deps *HTTPServerDeps) *ServerComponents {
 		syncStaggerMinutes*time.Minute,
 	)
 
+	var frontierHandler *api.FrontierHandler
+	if deps.FrontierRepo != nil {
+		frontierHandler = api.NewFrontierHandler(deps.FrontierRepo, deps.Logger)
+	}
+
 	server := api.NewServer(
 		deps.Config, deps.JobsHandler, deps.DiscoveredLinksHandler,
 		deps.LogsHandler, deps.LogsV2Handler, deps.ExecutionRepo,
 		deps.Logger, deps.SSEHandler, migrationHandler, syncHandler,
-		nil, // frontierHandler - wired in Task 9
+		frontierHandler,
 	)
 
 	deps.Logger.Info("Starting HTTP server", infralogger.String("addr", deps.Config.GetServerConfig().Address))
