@@ -11,22 +11,35 @@ import (
 	"github.com/gocolly/colly/v2"
 	"github.com/jonesrussell/north-cloud/crawler/internal/database"
 	"github.com/jonesrussell/north-cloud/crawler/internal/domain"
+	"github.com/jonesrussell/north-cloud/crawler/internal/frontier"
 	infralogger "github.com/north-cloud/infrastructure/logger"
 )
 
+// LinkFrontierSubmitter submits discovered URLs to the frontier queue.
+type LinkFrontierSubmitter interface {
+	Submit(ctx context.Context, params database.SubmitParams) error
+}
+
 // LinkHandler handles link processing for the crawler.
 type LinkHandler struct {
-	crawler   *Crawler
-	linkRepo  *database.DiscoveredLinkRepository
-	saveLinks bool
+	crawler           *Crawler
+	linkRepo          *database.DiscoveredLinkRepository
+	frontierSubmitter LinkFrontierSubmitter // nil if frontier disabled
+	saveLinks         bool
 }
 
 // NewLinkHandler creates a new link handler.
-func NewLinkHandler(c *Crawler, linkRepo *database.DiscoveredLinkRepository, saveLinks bool) *LinkHandler {
+func NewLinkHandler(
+	c *Crawler,
+	linkRepo *database.DiscoveredLinkRepository,
+	saveLinks bool,
+	frontierSubmitter LinkFrontierSubmitter,
+) *LinkHandler {
 	return &LinkHandler{
-		crawler:   c,
-		linkRepo:  linkRepo,
-		saveLinks: saveLinks,
+		crawler:           c,
+		linkRepo:          linkRepo,
+		saveLinks:         saveLinks,
+		frontierSubmitter: frontierSubmitter,
 	}
 }
 
@@ -68,9 +81,14 @@ func (h *LinkHandler) HandleLink(e *colly.HTMLElement) {
 		infralogger.Int("depth", e.Request.Depth),
 	)
 
-	// Save external links to database for tracking (if enabled), but always visit immediately
+	// Submit to frontier queue (if enabled)
+	if h.frontierSubmitter != nil {
+		h.submitToFrontier(absLink, e)
+	}
+
+	// Legacy: Save external links to discovered_links (if still enabled)
 	if h.shouldSaveLink() && h.isExternalLink(absLink) {
-		h.trySaveLink(absLink, e) // Save for tracking - errors are logged but don't block visiting
+		h.trySaveLink(absLink, e)
 	}
 
 	// Always visit the link (normal crawling behavior)
@@ -114,6 +132,80 @@ func (h *LinkHandler) validateURL(absLink string) error {
 	}
 
 	return nil
+}
+
+// submitToFrontier normalizes the discovered URL and submits it to the frontier queue.
+func (h *LinkHandler) submitToFrontier(absLink string, e *colly.HTMLElement) {
+	ctx := h.crawler.state.Context()
+	if ctx == nil {
+		return
+	}
+
+	cc := h.crawler.getCrawlContext()
+	if cc == nil || cc.Source == nil {
+		return
+	}
+
+	params, buildErr := h.buildFrontierParams(absLink, e, cc)
+	if buildErr != nil {
+		h.crawler.logger.Debug("Failed to build frontier params",
+			infralogger.String("url", absLink),
+			infralogger.Error(buildErr),
+		)
+		return
+	}
+
+	if submitErr := h.frontierSubmitter.Submit(ctx, params); submitErr != nil {
+		h.crawler.logger.Debug("Failed to submit URL to frontier",
+			infralogger.String("url", absLink),
+			infralogger.Error(submitErr),
+		)
+	}
+}
+
+// buildFrontierParams normalizes the URL and assembles the SubmitParams for frontier submission.
+func (h *LinkHandler) buildFrontierParams(
+	absLink string,
+	e *colly.HTMLElement,
+	cc *CrawlContext,
+) (database.SubmitParams, error) {
+	normalized, normalizeErr := frontier.NormalizeURL(absLink)
+	if normalizeErr != nil {
+		return database.SubmitParams{}, normalizeErr
+	}
+
+	urlHash, hashErr := frontier.URLHash(absLink)
+	if hashErr != nil {
+		return database.SubmitParams{}, hashErr
+	}
+
+	host, hostErr := frontier.ExtractHost(normalized)
+	if hostErr != nil {
+		return database.SubmitParams{}, hostErr
+	}
+
+	parentURL := e.Request.URL.String()
+	priority := h.calculateFrontierPriority(absLink, cc)
+
+	return database.SubmitParams{
+		URL:       normalized,
+		URLHash:   urlHash,
+		Host:      host,
+		SourceID:  cc.SourceID,
+		Origin:    domain.FrontierOriginSpider,
+		ParentURL: &parentURL,
+		Depth:     e.Request.Depth + 1,
+		Priority:  priority,
+	}, nil
+}
+
+// calculateFrontierPriority returns a priority value for a spider-discovered URL.
+// Article URLs receive a bonus to be fetched sooner.
+func (h *LinkHandler) calculateFrontierPriority(absLink string, cc *CrawlContext) int {
+	if isArticleURL(absLink, cc.ArticlePatterns) {
+		return domain.FrontierDefaultPriority + domain.FrontierSpiderArticleBonus
+	}
+	return domain.FrontierDefaultPriority
 }
 
 // visitWithRetries attempts to visit a URL with configured retry logic.

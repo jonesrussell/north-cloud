@@ -38,17 +38,18 @@ const (
 
 // CrawlerParams holds parameters for creating a crawler instance
 type CrawlerParams struct {
-	Logger         infralogger.Logger
-	Bus            *events.EventBus
-	IndexManager   types.IndexManager
-	Sources        sources.Interface
-	Config         *crawler.Config
-	Storage        types.Interface
-	FullConfig     config.Interface      // Full config for accessing MinIO settings
-	DB             any                   // Database connection (optional, for queued links)
-	PipelineClient *pipeline.Client      // Pipeline observability client (optional, fire-and-forget)
-	RedisClient    *redis.Client         // Redis client for Colly storage (optional)
-	HashTracker    *adaptive.HashTracker // For adaptive scheduling (optional)
+	Logger            infralogger.Logger
+	Bus               *events.EventBus
+	IndexManager      types.IndexManager
+	Sources           sources.Interface
+	Config            *crawler.Config
+	Storage           types.Interface
+	FullConfig        config.Interface      // Full config for accessing MinIO settings
+	DB                any                   // Database connection (optional, for queued links)
+	PipelineClient    *pipeline.Client      // Pipeline observability client (optional, fire-and-forget)
+	RedisClient       *redis.Client         // Redis client for Colly storage (optional)
+	HashTracker       *adaptive.HashTracker // For adaptive scheduling (optional)
+	FrontierSubmitter LinkFrontierSubmitter // Frontier submitter (optional)
 }
 
 // CrawlerResult holds the crawler instance
@@ -114,8 +115,8 @@ func NewCrawlerWithParams(p CrawlerParams) (*CrawlerResult, error) {
 	// Create discovered link repository if DB is available
 	linkRepo := createDiscoveredLinkRepository(p)
 
-	// Create link handler with repository and save links flag
-	c.linkHandler = NewLinkHandler(c, linkRepo, p.Config.SaveDiscoveredLinks)
+	// Create link handler with repository, save links flag, and optional frontier submitter
+	c.linkHandler = NewLinkHandler(c, linkRepo, p.Config.SaveDiscoveredLinks, p.FrontierSubmitter)
 
 	return &CrawlerResult{
 		Crawler: c,
@@ -143,6 +144,7 @@ func createDiscoveredLinkRepository(p CrawlerParams) *database.DiscoveredLinkRep
 	linkRepo := database.NewDiscoveredLinkRepository(db)
 	if p.Config.SaveDiscoveredLinks {
 		p.Logger.Info("Discovered link saving enabled - discovered links will be saved to database")
+		p.Logger.Warn("discovered_links is deprecated; use frontier-based ingestion instead")
 	} else {
 		p.Logger.Debug("Discovered link saving disabled - set CRAWLER_SAVE_DISCOVERED_LINKS=true to enable")
 	}

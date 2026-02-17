@@ -81,6 +81,7 @@ func Start() error {
 		SSEHandler:             serviceComponents.SSEHandler,
 		Migrator:               migrator,
 		JobRepo:                dbComponents.JobRepo,
+		FrontierRepo:           dbComponents.FrontierRepo,
 	}
 	serverComponents := SetupHTTPServer(serverDeps)
 

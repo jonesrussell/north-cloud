@@ -16,6 +16,9 @@ type DatabaseComponents struct {
 	ExecutionRepo       *database.ExecutionRepository
 	DiscoveredLinkRepo  *database.DiscoveredLinkRepository
 	ProcessedEventsRepo *database.ProcessedEventsRepository
+	FrontierRepo        *database.FrontierRepository
+	HostStateRepo       *database.HostStateRepository
+	FeedStateRepo       *database.FeedStateRepository
 }
 
 // SetupDatabase connects to PostgreSQL and creates all repositories.
@@ -28,6 +31,7 @@ func SetupDatabase(cfg config.Interface) (*DatabaseComponents, error) {
 	}
 
 	jobRepo, executionRepo, discoveredLinkRepo, processedEventsRepo := setupRepositories(db)
+	frontierRepo, hostStateRepo, feedStateRepo := setupFrontierRepositories(db)
 
 	return &DatabaseComponents{
 		DB:                  db,
@@ -35,6 +39,9 @@ func SetupDatabase(cfg config.Interface) (*DatabaseComponents, error) {
 		ExecutionRepo:       executionRepo,
 		DiscoveredLinkRepo:  discoveredLinkRepo,
 		ProcessedEventsRepo: processedEventsRepo,
+		FrontierRepo:        frontierRepo,
+		HostStateRepo:       hostStateRepo,
+		FeedStateRepo:       feedStateRepo,
 	}, nil
 }
 
@@ -50,6 +57,18 @@ func setupRepositories(db *sqlx.DB) (
 	discoveredLinkRepo = database.NewDiscoveredLinkRepository(db)
 	processedEventsRepo = database.NewProcessedEventsRepository(db)
 	return jobRepo, executionRepo, discoveredLinkRepo, processedEventsRepo
+}
+
+// setupFrontierRepositories creates the URL frontier repositories.
+func setupFrontierRepositories(db *sqlx.DB) (
+	frontierRepo *database.FrontierRepository,
+	hostStateRepo *database.HostStateRepository,
+	feedStateRepo *database.FeedStateRepository,
+) {
+	frontierRepo = database.NewFrontierRepository(db)
+	hostStateRepo = database.NewHostStateRepository(db)
+	feedStateRepo = database.NewFeedStateRepository(db)
+	return frontierRepo, hostStateRepo, feedStateRepo
 }
 
 // databaseConfigFromInterface converts config database config to database.Config.

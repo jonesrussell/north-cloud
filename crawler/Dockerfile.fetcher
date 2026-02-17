@@ -1,0 +1,42 @@
+FROM golang:1.25.7-alpine AS builder
+
+RUN apk add --no-cache ca-certificates
+
+# Prepare workspace for replace directives (../infrastructure, ../index-manager)
+WORKDIR /build
+COPY infrastructure ./infrastructure
+COPY index-manager ./index-manager
+
+# Move into crawler module
+WORKDIR /build/crawler
+
+# Copy go mod files first for caching
+COPY crawler/go.mod crawler/go.sum ./
+RUN go mod download
+
+# Copy source
+COPY crawler/ .
+
+# Build static binary
+RUN CGO_ENABLED=0 go build \
+    -ldflags="-w -s" \
+    -trimpath \
+    -o /build/crawler/fetcher-bin \
+    ./cmd/fetcher
+
+# Runtime stage
+FROM alpine:latest
+
+RUN apk --no-cache add ca-certificates tzdata && \
+    addgroup -g 1000 appuser && \
+    adduser -D -u 1000 -G appuser appuser
+
+WORKDIR /app
+
+COPY --from=builder /build/crawler/fetcher-bin ./fetcher
+
+USER appuser
+
+EXPOSE 8080
+
+CMD ["./fetcher"]

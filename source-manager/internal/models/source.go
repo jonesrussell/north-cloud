@@ -9,16 +9,20 @@ import (
 
 // Source represents a content source configuration
 type Source struct {
-	ID        string         `db:"id"         json:"id"`
-	Name      string         `db:"name"       json:"name"`
-	URL       string         `db:"url"        json:"url"`
-	RateLimit string         `db:"rate_limit" json:"rate_limit"`
-	MaxDepth  int            `db:"max_depth"  json:"max_depth"`
-	Time      StringArray    `db:"time"       json:"time"`
-	Selectors SelectorConfig `db:"selectors"  json:"selectors"`
-	Enabled   bool           `db:"enabled"    json:"enabled"`
-	CreatedAt time.Time      `db:"created_at" json:"created_at"`
-	UpdatedAt time.Time      `db:"updated_at" json:"updated_at"`
+	ID                      string         `db:"id"                         json:"id"`
+	Name                    string         `db:"name"                       json:"name"`
+	URL                     string         `db:"url"                        json:"url"`
+	RateLimit               string         `db:"rate_limit"                 json:"rate_limit"`
+	MaxDepth                int            `db:"max_depth"                  json:"max_depth"`
+	Time                    StringArray    `db:"time"                       json:"time"`
+	Selectors               SelectorConfig `db:"selectors"                  json:"selectors"`
+	Enabled                 bool           `db:"enabled"                    json:"enabled"`
+	FeedURL                 *string        `db:"feed_url"                   json:"feed_url,omitempty"`
+	SitemapURL              *string        `db:"sitemap_url"                json:"sitemap_url,omitempty"`
+	IngestionMode           string         `db:"ingestion_mode"             json:"ingestion_mode"`
+	FeedPollIntervalMinutes int            `db:"feed_poll_interval_minutes" json:"feed_poll_interval_minutes"`
+	CreatedAt               time.Time      `db:"created_at"                 json:"created_at"`
+	UpdatedAt               time.Time      `db:"updated_at"                 json:"updated_at"`
 }
 
 // SelectorConfig represents CSS selector configuration
