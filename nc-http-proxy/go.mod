@@ -1,3 +1,3 @@
 module github.com/north-cloud/nc-http-proxy
 
-go 1.24
+go 1.25
