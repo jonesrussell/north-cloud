@@ -223,6 +223,15 @@ export const crawlerApi = {
     createJob: (id: string | number, data: unknown) => crawlerClient.post(`/discovered-links/${id}/create-job`, data),
   },
 
+  // Frontier
+  frontier: {
+    list: (params?: Record<string, unknown>) => crawlerClient.get('/frontier', { params }),
+    stats: () => crawlerClient.get('/frontier/stats'),
+    submit: (data: { url: string; source_id: string; origin?: string; priority?: number }) =>
+      crawlerClient.post('/frontier/submit', data),
+    delete: (id: string) => crawlerClient.delete(`/frontier/${id}`),
+  },
+
   // Stats
   stats: {
     get: () => crawlerClient.get('/stats'),

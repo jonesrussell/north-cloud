@@ -20,6 +20,7 @@ import {
   HeartPulse,
   Shield,
   HardDrive,
+  Layers,
   type LucideIcon,
 } from 'lucide-vue-next'
 
@@ -73,6 +74,7 @@ export const navigation: NavSection[] = [
     children: [
       { title: 'Crawler Jobs', path: '/intake/jobs', icon: ListTodo },
       { title: 'Discovered Links', path: '/intake/discovered-links', icon: Link },
+      { title: 'URL Frontier', path: '/intake/frontier', icon: Layers },
       { title: 'Rules', path: '/intake/rules', icon: Filter },
     ],
   },
