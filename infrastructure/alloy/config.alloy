@@ -264,11 +264,18 @@ loki.process "north_cloud" {
       log_service = "service",
       stream      = "stream",
       method      = "method",
+      path        = "path",
       error       = "error",
       err         = "err",
       duration    = "duration",
       status_code = "status_code",
     }
+  }
+
+  // Drop high-frequency health check logs to reduce Loki ingestion noise
+  stage.drop {
+    source     = "path"
+    expression = "^/health$"
   }
 
   // Fallback: Parse logfmt logs if JSON parsing didn't happen

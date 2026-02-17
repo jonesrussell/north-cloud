@@ -16,7 +16,7 @@ groups:
               to: 0
             datasourceUid: "loki"
             model:
-              expr: 'count_over_time({service="classifier"} |= "[Processor] Classification complete" [2h])'
+              expr: 'count_over_time({service="classifier"} |= "Classification complete" [2h])'
               queryType: "instant"
           - refId: "C"
             relativeTimeRange:
@@ -220,3 +220,111 @@ groups:
         annotations:
           summary: "coforge has not produced logs in 30 minutes"
           description: "The Laravel consumer may be down or the log shipping pipeline is broken."
+
+      # Alert 7: Deployer Site Silence — Movies of War
+      - uid: nc-movies-of-war-silence
+        title: "Deployer site silence — movies-of-war no logs in 30 minutes"
+        condition: "C"
+        data:
+          - refId: "A"
+            relativeTimeRange:
+              from: 1800
+              to: 0
+            datasourceUid: "loki"
+            model:
+              expr: 'count_over_time({service="movies-of-war"} [30m])'
+              queryType: "instant"
+          - refId: "C"
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: "__expr__"
+            model:
+              type: "threshold"
+              expression: "A"
+              conditions:
+                - evaluator:
+                    type: "lt"
+                    params:
+                      - 1
+                  operator:
+                    type: "and"
+        for: "0m"
+        labels:
+          severity: "warning"
+          service: "movies-of-war"
+        annotations:
+          summary: "movies-of-war has not produced logs in 30 minutes"
+          description: "The Laravel consumer may be down or the log shipping pipeline is broken."
+
+      # Alert 8: ML Sidecar Error Rate
+      - uid: nc-ml-sidecar-errors
+        title: "ML sidecar error rate — sustained failures"
+        condition: "C"
+        data:
+          - refId: "A"
+            relativeTimeRange:
+              from: 3600
+              to: 0
+            datasourceUid: "loki"
+            model:
+              expr: 'sum(count_over_time({service="classifier"} | json | msg="ML sidecar classification failed" [15m]))'
+              queryType: "instant"
+          - refId: "C"
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: "__expr__"
+            model:
+              type: "threshold"
+              expression: "A"
+              conditions:
+                - evaluator:
+                    type: "gt"
+                    params:
+                      - 10
+                  operator:
+                    type: "and"
+        for: "5m"
+        labels:
+          severity: "warning"
+          service: "classifier"
+        annotations:
+          summary: "ML sidecar error rate elevated"
+          description: "More than 10 ML sidecar classification failures in 15 minutes. Check sidecar container health and connectivity."
+
+      # Alert 9: ML Sidecars Inactive
+      - uid: nc-ml-sidecar-inactive
+        title: "ML sidecars inactive — no classifications in 2 hours"
+        condition: "C"
+        data:
+          - refId: "A"
+            relativeTimeRange:
+              from: 7200
+              to: 0
+            datasourceUid: "loki"
+            model:
+              expr: 'sum(count_over_time({service="classifier"} | json | msg="ML sidecar classification complete" [2h]))'
+              queryType: "instant"
+          - refId: "C"
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: "__expr__"
+            model:
+              type: "threshold"
+              expression: "A"
+              conditions:
+                - evaluator:
+                    type: "lt"
+                    params:
+                      - 1
+                  operator:
+                    type: "and"
+        for: "0m"
+        labels:
+          severity: "warning"
+          service: "classifier"
+        annotations:
+          summary: "No ML sidecar classifications in 2 hours"
+          description: "No ML sidecars have produced classification results. Check that ML sidecar containers are running and classifier has CRIME_ENABLED/MINING_ENABLED set."

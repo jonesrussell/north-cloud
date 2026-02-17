@@ -242,7 +242,7 @@ func Start() error {
 		infralogger.Int("concurrent_workers", cfg.ConcurrentWorkers),
 	)
 
-	procLogger, err := storage.NewSimpleLogger("[Processor] ")
+	procLogger, err := storage.NewComponentLogger("processor")
 	if err != nil {
 		return fmt.Errorf("failed to create logger: %w", err)
 	}
@@ -330,7 +330,7 @@ func StartWithStop() (func(), error) {
 		infralogger.Int("concurrent_workers", cfg.ConcurrentWorkers),
 	)
 
-	procLogger, err := storage.NewSimpleLogger("[Processor] ")
+	procLogger, err := storage.NewComponentLogger("processor")
 	if err != nil {
 		return nil, fmt.Errorf("failed to create logger: %w", err)
 	}

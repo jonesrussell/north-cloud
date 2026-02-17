@@ -476,7 +476,7 @@ services:
     <<: *service-defaults
     profiles:
       - observability
-    image: grafana/alloy:latest
+    image: grafana/alloy:v1.13.1
     deploy:
       resources:
         limits:

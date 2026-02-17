@@ -21,6 +21,7 @@
     { "title": "Pipeline Operations", "url": "/d/north-cloud-pipeline-ops", "type": "link", "icon": "dashboard" },
     { "title": "Crawler Ops", "url": "/d/north-cloud-crawler-ops", "type": "link", "icon": "dashboard" },
     { "title": "Deployer Sites", "url": "/d/north-cloud-deployer-sites", "type": "link", "icon": "dashboard" },
+    { "title": "ML Sidecars", "url": "/d/north-cloud-ml-sidecars", "type": "link", "icon": "dashboard" },
     { "title": "Service Logs", "url": "/d/north-cloud-service-logs", "type": "link", "icon": "dashboard" },
     { "title": "Explore Loki", "url": "/explore?orgId=1&left=%7B%22datasource%22:%22loki%22%7D", "type": "link", "icon": "search" }
   ],
@@ -88,7 +89,7 @@
         {
           "refId": "A",
           "datasource": { "type": "loki", "uid": "loki" },
-          "expr": "count_over_time({service=\"classifier\"} |= \"[Processor] Classification complete\" [$__range])",
+          "expr": "count_over_time({service=\"classifier\"} |= \"Classification complete\" [$__range])",
           "queryType": "instant"
         }
       ],
@@ -272,7 +273,7 @@
         {
           "refId": "A",
           "datasource": { "type": "loki", "uid": "loki" },
-          "expr": "sum(count_over_time({service=\"classifier\"} |= \"[Processor] Classification complete\" [$__interval]))",
+          "expr": "sum(count_over_time({service=\"classifier\"} |= \"Classification complete\" [$__interval]))",
           "legendFormat": "Classified"
         },
         {
@@ -727,7 +728,7 @@
         {
           "refId": "A",
           "datasource": { "type": "loki", "uid": "loki" },
-          "expr": "avg_over_time({service=\"classifier\"} |= \"[Processor] Batch processing complete\" | json items_per_second=\"items_per_second\" | unwrap items_per_second [$__interval])",
+          "expr": "avg_over_time({service=\"classifier\"} |= \"Batch processing complete\" | json items_per_second=\"items_per_second\" | unwrap items_per_second [$__interval])",
           "legendFormat": "items/sec"
         }
       ],
