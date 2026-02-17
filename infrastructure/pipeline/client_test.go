@@ -113,6 +113,29 @@ func TestClient_EmitBatch_SingleRequest(t *testing.T) {
 	}
 }
 
+func TestClient_Emit_ClientError(t *testing.T) {
+	t.Helper()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusUnauthorized)
+	}))
+	defer server.Close()
+
+	client := pipeline.NewClient(server.URL, "test-service")
+	ctx := context.Background()
+
+	emitErr := client.Emit(ctx, pipeline.Event{
+		ArticleURL: "https://example.com/article",
+		SourceName: "example_com",
+		Stage:      "crawled",
+		OccurredAt: time.Now().UTC(),
+	})
+
+	if emitErr == nil {
+		t.Error("Emit() should return error for 401 response")
+	}
+}
+
 func TestClient_CircuitBreaker_Opens(t *testing.T) {
 	t.Helper()
 

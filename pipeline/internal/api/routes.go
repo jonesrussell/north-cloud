@@ -6,13 +6,15 @@ import (
 )
 
 // SetupRoutes configures all API routes.
+// Ingest endpoints are public (internal service-to-service calls within Docker network).
+// Read endpoints are protected with JWT.
 func SetupRoutes(router *gin.Engine, ingestHandler *IngestHandler, funnelHandler *FunnelHandler, jwtSecret string) {
-	v1 := infragin.ProtectedGroup(router, "/api/v1", jwtSecret)
+	public, protected := infragin.SetupAPIRoutesWithPublic(router, jwtSecret)
 
-	// Event ingest (write path)
-	v1.POST("/events", ingestHandler.IngestEvent)
-	v1.POST("/events/batch", ingestHandler.IngestBatch)
+	// Event ingest (write path) — public, called by other services
+	public.POST("/events", ingestHandler.IngestEvent)
+	public.POST("/events/batch", ingestHandler.IngestBatch)
 
-	// Funnel (read path)
-	v1.GET("/funnel", funnelHandler.GetFunnel)
+	// Funnel (read path) — protected
+	protected.GET("/funnel", funnelHandler.GetFunnel)
 }

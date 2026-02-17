@@ -152,7 +152,7 @@ func (c *Client) doPost(ctx context.Context, path string, body []byte) error {
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode >= http.StatusInternalServerError {
+	if resp.StatusCode >= http.StatusBadRequest {
 		c.breakerRecordFailure()
 
 		return fmt.Errorf("pipeline service error: status %d", resp.StatusCode)
