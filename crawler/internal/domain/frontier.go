@@ -28,8 +28,9 @@ const (
 
 // Origin bonus values for priority calculation.
 const (
-	FrontierFeedBonus    = 2
-	FrontierSitemapBonus = 1
+	FrontierFeedBonus          = 2
+	FrontierSitemapBonus       = 1
+	FrontierSpiderArticleBonus = 1 // spider-discovered article URLs
 )
 
 // FrontierURL represents a URL in the frontier queue.
