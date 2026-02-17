@@ -3,6 +3,7 @@ package crawler
 import (
 	"context"
 	"fmt"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -24,6 +25,9 @@ func (c *Crawler) Start(ctx context.Context, sourceID string) error {
 	c.signals.Reset()
 
 	// Initialize start URL hash map if nil (first execution)
+	if c.startURLHashesMu == nil {
+		c.startURLHashesMu = &sync.RWMutex{}
+	}
 	c.startURLHashesMu.Lock()
 	if c.startURLHashes == nil {
 		c.startURLHashes = make(map[string]string)
@@ -119,6 +123,12 @@ func (c *Crawler) validateAndSetup(ctx context.Context, sourceID string) (*confi
 	source, err := c.sources.ValidateSourceByID(ctx, sourceID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to validate source: %w", err)
+	}
+
+	// Pre-crawl redirect detection: abort early if the source URL redirects
+	// to a different domain that is not in AllowedDomains.
+	if redirectErr := c.checkRedirect(ctx, source); redirectErr != nil {
+		return nil, fmt.Errorf("pre-crawl redirect check: %w", redirectErr)
 	}
 
 	// Cache source config for link handler (avoids repeated ValidateSourceByID calls per link)

@@ -163,8 +163,8 @@ type Crawler struct {
 	redisClient         *redis.Client // Redis client for Colly storage (optional)
 
 	// Adaptive scheduling: stores hashes of start URL responses keyed by sourceID
-	startURLHashes   map[string]string // sourceID -> SHA-256 hash
-	startURLHashesMu sync.RWMutex
+	startURLHashes   map[string]string     // sourceID -> SHA-256 hash
+	startURLHashesMu *sync.RWMutex         // pointer so Factory can share one mutex+map across instances
 	hashTracker      *adaptive.HashTracker // Redis-backed hash tracker (optional)
 
 	// Extracted components for better separation of concerns

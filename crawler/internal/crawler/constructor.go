@@ -2,6 +2,7 @@
 package crawler
 
 import (
+	"sync"
 	"time"
 
 	"github.com/jmoiron/sqlx"
@@ -107,6 +108,7 @@ func NewCrawlerWithParams(p CrawlerParams) (*CrawlerResult, error) {
 		archiver:            archiver,
 		redisClient:         p.RedisClient,
 		hashTracker:         p.HashTracker,
+		startURLHashesMu:    &sync.RWMutex{},
 	}
 
 	// Create discovered link repository if DB is available

@@ -8,7 +8,6 @@ import (
 	"github.com/jmoiron/sqlx"
 	"github.com/jonesrussell/north-cloud/crawler/internal/adaptive"
 	"github.com/jonesrussell/north-cloud/crawler/internal/api"
-	crawlerconfigtypes "github.com/jonesrussell/north-cloud/crawler/internal/config/crawler"
 	"github.com/jonesrussell/north-cloud/crawler/internal/crawler"
 	crawlerevents "github.com/jonesrussell/north-cloud/crawler/internal/crawler/events"
 	"github.com/jonesrussell/north-cloud/crawler/internal/database"
@@ -185,10 +184,10 @@ func createAndStartScheduler(
 	executionRepo *database.ExecutionRepository,
 	db *sqlx.DB,
 ) *scheduler.IntervalScheduler {
-	// Create crawler for job execution
-	crawlerInstance, err := createCrawlerForJobs(deps, storage, db)
+	// Create crawler factory for job execution (each job gets an isolated instance)
+	crawlerFactory, err := createCrawlerFactory(deps, storage, db)
 	if err != nil {
-		deps.Logger.Warn("Failed to create crawler for jobs, scheduler disabled", infralogger.Error(err))
+		deps.Logger.Warn("Failed to create crawler factory, scheduler disabled", infralogger.Error(err))
 		return nil
 	}
 
@@ -197,7 +196,7 @@ func createAndStartScheduler(
 		deps.Logger,
 		jobRepo,
 		executionRepo,
-		crawlerInstance,
+		crawlerFactory,
 	)
 
 	// Start the scheduler
@@ -210,25 +209,34 @@ func createAndStartScheduler(
 	return intervalScheduler
 }
 
-// createCrawlerForJobs creates a crawler instance for job execution.
-func createCrawlerForJobs(
+// createCrawlerFactory creates a crawler factory for job execution.
+// Each job gets an isolated crawler instance from the factory.
+func createCrawlerFactory(
 	deps *CommandDeps,
 	storage *StorageComponents,
 	db *sqlx.DB,
-) (crawler.Interface, error) {
-	// Create event bus
-	bus := crawlerevents.NewEventBus(deps.Logger)
-
-	// Get crawler config
-	crawlerCfg := deps.Config.GetCrawlerConfig()
-
-	// Load source manager
-	sourceManager, err := loadSourceManager(deps)
+) (crawler.FactoryInterface, error) {
+	params, err := buildCrawlerParams(deps, storage, db)
 	if err != nil {
 		return nil, err
 	}
+	return crawler.NewFactory(params), nil
+}
 
-	// Create Redis client for crawler features (storage, adaptive scheduling)
+// buildCrawlerParams assembles the CrawlerParams needed to construct crawler instances.
+func buildCrawlerParams(
+	deps *CommandDeps,
+	storage *StorageComponents,
+	db *sqlx.DB,
+) (crawler.CrawlerParams, error) {
+	bus := crawlerevents.NewEventBus(deps.Logger)
+	crawlerCfg := deps.Config.GetCrawlerConfig()
+
+	sourceManager, err := loadSourceManager(deps)
+	if err != nil {
+		return crawler.CrawlerParams{}, err
+	}
+
 	var redisClient *redis.Client
 	if crawlerCfg.RedisStorageEnabled {
 		rc, redisErr := CreateRedisClient(deps.Config.GetRedisConfig())
@@ -243,43 +251,16 @@ func createCrawlerForJobs(
 		}
 	}
 
-	// Create crawler
-	return createCrawler(
-		deps, bus, crawlerCfg, storage, sourceManager, db, redisClient,
-	)
-}
-
-// loadSourceManager creates a sources manager with lazy loading.
-// Sources will be loaded from the API when ValidateSource is first called for a job.
-func loadSourceManager(deps *CommandDeps) (sources.Interface, error) {
-	sourceManager, err := sources.NewSources(deps.Config, deps.Logger)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create sources manager: %w", err)
-	}
-	return sourceManager, nil
-}
-
-// createCrawler creates a crawler instance with the given parameters.
-func createCrawler(
-	deps *CommandDeps,
-	bus *crawlerevents.EventBus,
-	crawlerCfg *crawlerconfigtypes.Config,
-	storage *StorageComponents,
-	sourceManager sources.Interface,
-	db *sqlx.DB,
-	redisClient *redis.Client,
-) (crawler.Interface, error) {
 	pipelineClient := pipeline.NewClient(
 		deps.Config.GetPipelineURL(), "crawler",
 	)
 
-	// Create hash tracker for adaptive scheduling if Redis is available
 	var hashTracker *adaptive.HashTracker
 	if redisClient != nil {
 		hashTracker = adaptive.NewHashTracker(redisClient)
 	}
 
-	crawlerResult, err := crawler.NewCrawlerWithParams(crawler.CrawlerParams{
+	return crawler.CrawlerParams{
 		Logger:         deps.Logger,
 		Bus:            bus,
 		IndexManager:   storage.IndexManager,
@@ -291,9 +272,15 @@ func createCrawler(
 		PipelineClient: pipelineClient,
 		RedisClient:    redisClient,
 		HashTracker:    hashTracker,
-	})
+	}, nil
+}
+
+// loadSourceManager creates a sources manager with lazy loading.
+// Sources will be loaded from the API when ValidateSource is first called for a job.
+func loadSourceManager(deps *CommandDeps) (sources.Interface, error) {
+	sourceManager, err := sources.NewSources(deps.Config, deps.Logger)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create crawler: %w", err)
+		return nil, fmt.Errorf("failed to create sources manager: %w", err)
 	}
-	return crawlerResult.Crawler, nil
+	return sourceManager, nil
 }

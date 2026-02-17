@@ -35,6 +35,7 @@ type JobExecution struct {
 	Context   context.Context
 	Cancel    context.CancelFunc
 	StartTime time.Time
+	Crawler   crawler.Interface // Per-job isolated crawler instance
 }
 
 // IntervalScheduler replaces the cron-based scheduler with interval-based scheduling.
@@ -42,7 +43,7 @@ type IntervalScheduler struct {
 	logger        infralogger.Logger
 	repo          database.JobRepositoryInterface
 	executionRepo database.ExecutionRepositoryInterface
-	crawler       crawler.Interface
+	factory       crawler.FactoryInterface
 
 	// Scheduler control
 	ctx    context.Context
@@ -79,7 +80,7 @@ func NewIntervalScheduler(
 	log infralogger.Logger,
 	repo database.JobRepositoryInterface,
 	executionRepo database.ExecutionRepositoryInterface,
-	crawlerInstance crawler.Interface,
+	crawlerFactory crawler.FactoryInterface,
 	opts ...SchedulerOption,
 ) *IntervalScheduler {
 	ctx, cancel := context.WithCancel(context.Background())
@@ -88,7 +89,7 @@ func NewIntervalScheduler(
 		logger:                 log,
 		repo:                   repo,
 		executionRepo:          executionRepo,
-		crawler:                crawlerInstance,
+		factory:                crawlerFactory,
 		ctx:                    ctx,
 		cancel:                 cancel,
 		activeJobs:             make(map[string]*JobExecution),
@@ -602,31 +603,42 @@ func createCaptureFunc(w logs.Writer) func(logs.LogEntry) {
 	}
 }
 
+// createJobCrawler creates an isolated crawler instance for a single job execution.
+// Returns the crawler instance or nil with an error logged.
+func (s *IntervalScheduler) createJobCrawler(jobExec *JobExecution, logWriter logs.Writer) (crawler.Interface, error) {
+	crawlerInstance, err := s.factory.Create()
+	if err != nil {
+		writeLog(logWriter, "error", "Failed to create crawler: "+err.Error(),
+			jobExec.Job.ID, jobExec.Execution.ID, nil)
+		return nil, fmt.Errorf("create crawler for job %s: %w", jobExec.Job.ID, err)
+	}
+
+	// Create and set JobLogger for this execution
+	captureFunc := createCaptureFunc(logWriter)
+	noThrottling := 0
+	jobLogger := logs.NewJobLoggerImpl(
+		jobExec.Job.ID,
+		jobExec.Execution.ID,
+		logs.VerbosityNormal,
+		captureFunc,
+		noThrottling,
+	)
+	crawlerInstance.SetJobLogger(jobLogger)
+	jobLogger.StartHeartbeat(jobExec.Context)
+
+	jobExec.Crawler = crawlerInstance
+	return crawlerInstance, nil
+}
+
 // runJob executes the actual crawl job.
 func (s *IntervalScheduler) runJob(jobExec *JobExecution) {
 	job := jobExec.Job
 	execution := jobExec.Execution
 
 	// Panic recovery registered first — runs last (LIFO) after cleanup defer.
-	// Ensures the goroutine never crashes and the job is marked failed on panic.
 	defer s.recoverFromPanic(job, execution)
 
 	logWriter := s.startLogCapture(jobExec)
-
-	// Create and set JobLogger for this execution
-	captureFunc := createCaptureFunc(logWriter)
-	noThrottling := 0 // No throttling for normal verbosity
-	jobLogger := logs.NewJobLoggerImpl(
-		job.ID,
-		execution.ID,
-		logs.VerbosityNormal, // Default verbosity, can be made configurable later
-		captureFunc,
-		noThrottling,
-	)
-	s.crawler.SetJobLogger(jobLogger)
-
-	// Start heartbeat for long-running jobs
-	jobLogger.StartHeartbeat(jobExec.Context)
 
 	defer func() {
 		s.stopLogCapture(jobExec, logWriter)
@@ -637,7 +649,13 @@ func (s *IntervalScheduler) runJob(jobExec *JobExecution) {
 		s.releaseLock(job)
 	}()
 
-	// Write initial log entry
+	// Create an isolated crawler for this job
+	crawlerInstance, err := s.createJobCrawler(jobExec, logWriter)
+	if err != nil {
+		s.handleJobFailure(jobExec, err, nil)
+		return
+	}
+
 	writeLog(logWriter, "info", "Starting job execution", job.ID, execution.ID, map[string]any{
 		"source_id":     job.SourceID,
 		"url":           job.URL,
@@ -651,52 +669,34 @@ func (s *IntervalScheduler) runJob(jobExec *JobExecution) {
 		infralogger.Int("retry_attempt", job.CurrentRetryCount),
 	)
 
-	// Validate source ID
 	if job.SourceID == "" {
 		writeLog(logWriter, "error", "Job missing required source_id", job.ID, execution.ID, nil)
 		s.handleJobFailure(jobExec, errors.New("job missing required source_id"), nil)
 		return
 	}
 
-	// Execute crawler
 	startTime := time.Now()
 	writeLog(logWriter, "info", "Starting crawler", job.ID, execution.ID, map[string]any{
 		"source_id": job.SourceID,
 	})
 
-	err := s.crawler.Start(jobExec.Context, job.SourceID)
+	err = crawlerInstance.Start(jobExec.Context, job.SourceID)
 	if err != nil {
-		if isExpectedStartError(err) {
-			writeLog(logWriter, "warn", "Crawler start failed (expected): "+err.Error(), job.ID, execution.ID, nil)
-			s.logger.Warn("Crawler start failed (expected)",
-				infralogger.String("job_id", job.ID),
-				infralogger.String("source_id", job.SourceID),
-				infralogger.Error(err),
-			)
-		} else {
-			writeLog(logWriter, "error", "Crawler start failed: "+err.Error(), job.ID, execution.ID, nil)
-			s.logger.Error("Crawler start failed",
-				infralogger.String("job_id", job.ID),
-				infralogger.String("source_id", job.SourceID),
-				infralogger.Error(err),
-			)
-		}
+		s.logCrawlerStartError(job, execution.ID, err, logWriter)
 		s.handleJobFailure(jobExec, err, &startTime)
 		return
 	}
 
-	// Wait for completion
 	writeLog(logWriter, "info", "Waiting for crawler to complete", job.ID, execution.ID, nil)
 
-	err = s.crawler.Wait()
+	err = crawlerInstance.Wait()
 	if err != nil {
 		writeLog(logWriter, "error", "Crawler failed: "+err.Error(), job.ID, execution.ID, nil)
 		s.handleJobFailure(jobExec, err, &startTime)
 		return
 	}
 
-	// Get metrics for final log
-	jobSummary := s.crawler.GetJobLogger().BuildSummary()
+	jobSummary := crawlerInstance.GetJobLogger().BuildSummary()
 	writeLog(logWriter, "info", "Job completed successfully", job.ID, execution.ID, map[string]any{
 		"duration_ms":     time.Since(startTime).Milliseconds(),
 		"pages_crawled":   jobSummary.PagesCrawled,
@@ -705,6 +705,27 @@ func (s *IntervalScheduler) runJob(jobExec *JobExecution) {
 	})
 
 	s.handleJobSuccess(jobExec, &startTime)
+}
+
+// logCrawlerStartError logs a crawler start error at the appropriate level.
+func (s *IntervalScheduler) logCrawlerStartError(
+	job *domain.Job, execID string, err error, logWriter logs.Writer,
+) {
+	if isExpectedStartError(err) {
+		writeLog(logWriter, "warn", "Crawler start failed (expected): "+err.Error(), job.ID, execID, nil)
+		s.logger.Warn("Crawler start failed (expected)",
+			infralogger.String("job_id", job.ID),
+			infralogger.String("source_id", job.SourceID),
+			infralogger.Error(err),
+		)
+	} else {
+		writeLog(logWriter, "error", "Crawler start failed: "+err.Error(), job.ID, execID, nil)
+		s.logger.Error("Crawler start failed",
+			infralogger.String("job_id", job.ID),
+			infralogger.String("source_id", job.SourceID),
+			infralogger.Error(err),
+		)
+	}
 }
 
 // recoverFromPanic catches panics in job execution and marks the job as failed.
@@ -768,7 +789,7 @@ func (s *IntervalScheduler) handleJobSuccess(jobExec *JobExecution, startTime *t
 	durationMs := time.Since(*startTime).Milliseconds()
 
 	// Get metrics from job logger
-	summary := s.crawler.GetJobLogger().BuildSummary()
+	summary := jobExec.Crawler.GetJobLogger().BuildSummary()
 	itemsCrawled := int(summary.PagesCrawled)
 	itemsIndexed := int(summary.ItemsExtracted)
 
@@ -833,8 +854,11 @@ func (s *IntervalScheduler) handleJobFailure(jobExec *JobExecution, execErr erro
 		durationMs = time.Since(*startTime).Milliseconds()
 	}
 
-	// Capture crawl metrics before updating execution
-	summary := s.crawler.GetJobLogger().BuildSummary()
+	// Capture crawl metrics before updating execution (Crawler may be nil if factory.Create failed)
+	summary := &logs.JobSummary{}
+	if jobExec.Crawler != nil {
+		summary = jobExec.Crawler.GetJobLogger().BuildSummary()
+	}
 
 	// Update execution record
 	execution.Status = string(StateFailed)
@@ -941,12 +965,12 @@ func (s *IntervalScheduler) calculateAdaptiveOrFixedNextRun(
 		return s.calculateNextRun(job)
 	}
 
-	hashTracker := s.crawler.GetHashTracker()
+	hashTracker := s.factory.GetHashTracker()
 	if hashTracker == nil {
 		return s.calculateNextRun(job)
 	}
 
-	hash := s.crawler.GetStartURLHash(job.SourceID)
+	hash := s.factory.GetStartURLHash(job.SourceID)
 	if hash == "" {
 		return s.calculateNextRun(job)
 	}
