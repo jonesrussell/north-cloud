@@ -503,12 +503,12 @@ services:
     deploy:
       resources:
         limits:
-          cpus: "2"
-          memory: 2G
+          cpus: "4"
+          memory: 8G
     shm_size: 512mb
     environment:
       xpack.security.enabled: "${ELASTICSEARCH_SECURITY_ENABLED:-false}"
-      ES_JAVA_OPTS: "-Xms${ELASTICSEARCH_MIN_HEAP:-256m} -Xmx${ELASTICSEARCH_MAX_HEAP:-512m}"
+      ES_JAVA_OPTS: "-Xms${ELASTICSEARCH_MIN_HEAP:-4g} -Xmx${ELASTICSEARCH_MAX_HEAP:-4g}"
 
   # ============================================================
   # Redis (Prod Overrides)
