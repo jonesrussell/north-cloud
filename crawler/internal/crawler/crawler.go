@@ -201,7 +201,7 @@ func (c *Crawler) GetIndexManager() storagetypes.IndexManager {
 
 // SetJobLogger sets the job logger for the current job execution.
 // Should be called before Start() for each job.
-// Also sets the extraction recorder on the raw content processor so extraction quality is recorded.
+// Also sets the extraction recorder for extraction quality metrics.
 func (c *Crawler) SetJobLogger(logger logs.JobLogger) {
 	c.jobLogger = logger
 	if proc, ok := c.rawContentProcessor.(*rawcontent.RawContentProcessor); ok {

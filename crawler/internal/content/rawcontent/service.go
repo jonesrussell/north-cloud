@@ -173,8 +173,8 @@ func (s *RawContentService) applyReadabilityFallbackIfNeeded(e *colly.HTMLElemen
 	if !needsFallback {
 		return
 	}
-	fullHTML, _ := e.DOM.Html()
-	if fullHTML == "" {
+	fullHTML, err := e.DOM.Html()
+	if err != nil || fullHTML == "" {
 		return
 	}
 	rTitle, rHTML, rText := ApplyReadabilityFallback(fullHTML, sourceURL)
