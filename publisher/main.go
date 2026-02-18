@@ -39,7 +39,7 @@ func main() {
 		os.Exit(0)
 	default:
 		// CLI output (not operational log)
-		fmt.Fprintf(os.Stderr, "Unknown command: %s\n\n", command)
+		fmt.Fprintf(os.Stderr, "Unknown command: %s\n\n", command) //nolint:gosec // G705: command is CLI arg, stderr only
 		printUsage()
 		os.Exit(1)
 	}
