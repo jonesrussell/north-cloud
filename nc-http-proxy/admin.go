@@ -108,7 +108,7 @@ func (h *AdminHandler) handleClearCache(w http.ResponseWriter) {
 
 	for _, entry := range entries {
 		if entry.IsDir() {
-			_ = os.RemoveAll(filepath.Join(cacheDir, entry.Name()))
+			_ = os.RemoveAll(filepath.Join(cacheDir, entry.Name())) //nolint:gosec // G703: cacheDir is config-controlled, entry from ReadDir
 		}
 	}
 
@@ -125,7 +125,7 @@ func (h *AdminHandler) handleClearDomainCache(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	_ = os.RemoveAll(domainDir)
+	_ = os.RemoveAll(domainDir) //nolint:gosec // G703: domainDir validated by safePath
 
 	h.writeJSON(w, http.StatusOK, map[string]string{
 		"message": "Cache cleared for " + domain,

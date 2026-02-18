@@ -60,12 +60,16 @@ type CrawlerResult struct {
 // NewCrawlerWithParams creates a new crawler instance with all its components.
 // This is the non-FX version that replaces ProvideCrawler.
 func NewCrawlerWithParams(p CrawlerParams) (*CrawlerResult, error) {
-	// Create raw content service and processor (primary processor for all content)
+	readabilityFallback := false
+	if p.Config != nil {
+		readabilityFallback = p.Config.ReadabilityFallbackEnabled
+	}
 	rawContentService := rawcontent.NewRawContentService(
 		p.Logger,
 		p.Storage,
 		p.Sources,
 		p.PipelineClient,
+		readabilityFallback,
 	)
 	rawContentProcessor := rawcontent.NewProcessor(
 		p.Logger,

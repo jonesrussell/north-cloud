@@ -47,7 +47,7 @@ export interface ListIndexesResponse {
   offset: number
 }
 
-export interface GetIndexResponse extends Index {}
+export type GetIndexResponse = Index
 
 export interface IndexHealthResponse {
   index_name: string

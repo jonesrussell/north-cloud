@@ -37,11 +37,13 @@ var _ Interface = (*RawContentService)(nil)
 // RawContentService extracts and indexes raw content from any HTML page.
 // It does not perform type detection or validation - that's the classifier's job.
 type RawContentService struct {
-	logger     infralogger.Logger
-	storage    types.Interface
-	sources    sources.Interface
-	rawIndexer *storagepkg.RawContentIndexer
-	pipeline   *pipeline.Client
+	logger                     infralogger.Logger
+	storage                    types.Interface
+	sources                    sources.Interface
+	rawIndexer                 *storagepkg.RawContentIndexer
+	pipeline                   *pipeline.Client
+	recorder                   ExtractionRecorder // optional; set at crawl start for extraction quality metrics
+	readabilityFallbackEnabled bool
 }
 
 // NewRawContentService creates a new raw content service.
@@ -50,15 +52,23 @@ func NewRawContentService(
 	storage types.Interface,
 	sourcesManager sources.Interface,
 	pipelineClient *pipeline.Client,
+	readabilityFallbackEnabled bool,
 ) *RawContentService {
 	rawIndexer := storagepkg.NewRawContentIndexer(storage, log)
 	return &RawContentService{
-		logger:     log,
-		storage:    storage,
-		sources:    sourcesManager,
-		rawIndexer: rawIndexer,
-		pipeline:   pipelineClient,
+		logger:                     log,
+		storage:                    storage,
+		sources:                    sourcesManager,
+		rawIndexer:                 rawIndexer,
+		pipeline:                   pipelineClient,
+		readabilityFallbackEnabled: readabilityFallbackEnabled,
 	}
+}
+
+// SetExtractionRecorder sets the optional recorder for extraction quality metrics.
+// Called at crawl start when the job logger is available.
+func (s *RawContentService) SetExtractionRecorder(r ExtractionRecorder) {
+	s.recorder = r
 }
 
 // Process implements the Interface for HTML element processing.
@@ -95,6 +105,8 @@ func (s *RawContentService) Process(e *colly.HTMLElement) error {
 		selectors.Container,
 		selectors.Exclude,
 	)
+
+	s.applyReadabilityFallbackIfNeeded(e, sourceURL, rawData)
 
 	// Validate extracted content before indexing
 	if rawData.Title == "" && rawData.RawText == "" {
@@ -143,7 +155,41 @@ func (s *RawContentService) Process(e *colly.HTMLElement) error {
 		infralogger.Int("word_count", rawContent.WordCount),
 	)
 
+	if s.recorder != nil {
+		emptyTitle := rawData.Title == ""
+		bodyEmpty := strings.TrimSpace(rawData.RawText) == "" || len(strings.Fields(rawData.RawText)) < 1
+		s.recorder.RecordExtracted(emptyTitle, bodyEmpty)
+	}
+
 	return nil
+}
+
+// applyReadabilityFallbackIfNeeded runs readability when enabled and selector extraction yielded no or negligible content.
+func (s *RawContentService) applyReadabilityFallbackIfNeeded(e *colly.HTMLElement, sourceURL string, rawData *RawContentData) {
+	if !s.readabilityFallbackEnabled {
+		return
+	}
+	needsFallback := strings.TrimSpace(rawData.RawHTML) == "" || len(strings.Fields(rawData.RawText)) < minPostExtractionWordCount
+	if !needsFallback {
+		return
+	}
+	fullHTML, err := e.DOM.Html()
+	if err != nil || fullHTML == "" {
+		return
+	}
+	rTitle, rHTML, rText := ApplyReadabilityFallback(fullHTML, sourceURL)
+	if rHTML == "" && rText == "" {
+		return
+	}
+	if rawData.Title == "" && rTitle != "" {
+		rawData.Title = rTitle
+	}
+	if strings.TrimSpace(rawData.RawHTML) == "" && rHTML != "" {
+		rawData.RawHTML = rHTML
+	}
+	if len(strings.Fields(rawData.RawText)) < minPostExtractionWordCount && rText != "" {
+		rawData.RawText = rText
+	}
 }
 
 // emitIndexedEvent emits a pipeline event after successful raw content indexing.

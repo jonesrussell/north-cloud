@@ -2,6 +2,7 @@ package api
 
 import (
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -117,18 +118,16 @@ func boolToString(b bool) string {
 }
 
 func intToString(i int) string {
-	return string(rune(i))
+	return strconv.Itoa(i)
 }
 
 func joinStrings(strs []string, sep string) string {
-	result := ""
-	var resultSb117 strings.Builder
+	var sb strings.Builder
 	for i, str := range strs {
 		if i > 0 {
-			resultSb117.WriteString(sep)
+			sb.WriteString(sep)
 		}
-		resultSb117.WriteString(str)
+		sb.WriteString(str)
 	}
-	result += resultSb117.String()
-	return result
+	return sb.String()
 }

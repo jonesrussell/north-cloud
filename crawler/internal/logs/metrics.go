@@ -43,6 +43,10 @@ type LogMetrics struct {
 	skippedMaxDepth   atomic.Int64
 	skippedRobotsTxt  atomic.Int64
 
+	// Extraction quality (indexed items with empty title/body)
+	itemsExtractedEmptyTitle atomic.Int64
+	itemsExtractedEmptyBody  atomic.Int64
+
 	statusCodes     sync.Map // map[int]*atomic.Int64
 	errorCounts     sync.Map // map[string]*errorTracker
 	errorCategories sync.Map // map[string]*atomic.Int64
@@ -81,6 +85,16 @@ func (m *LogMetrics) IncrementRateLimit()        { m.rateLimits.Add(1) }
 func (m *LogMetrics) IncrementSkippedNonHTML()   { m.skippedNonHTML.Add(1) }
 func (m *LogMetrics) IncrementSkippedMaxDepth()  { m.skippedMaxDepth.Add(1) }
 func (m *LogMetrics) IncrementSkippedRobotsTxt() { m.skippedRobotsTxt.Add(1) }
+
+// RecordExtracted records extraction quality for one indexed item.
+func (m *LogMetrics) RecordExtracted(emptyTitle, emptyBody bool) {
+	if emptyTitle {
+		m.itemsExtractedEmptyTitle.Add(1)
+	}
+	if emptyBody {
+		m.itemsExtractedEmptyBody.Add(1)
+	}
+}
 
 // RecordBytes adds to the total bytes received counter.
 func (m *LogMetrics) RecordBytes(n int64) { m.bytesReceived.Add(n) }
@@ -132,24 +146,26 @@ func (m *LogMetrics) RecordError(msg, url string) {
 // BuildSummary returns the current metrics as a JobSummary.
 func (m *LogMetrics) BuildSummary() *JobSummary {
 	summary := &JobSummary{
-		PagesDiscovered:  m.pagesDiscovered.Load(),
-		PagesCrawled:     m.pagesCrawled.Load(),
-		ItemsExtracted:   m.itemsExtracted.Load(),
-		ErrorsCount:      m.errorsCount.Load(),
-		BytesFetched:     m.bytesReceived.Load(),
-		RequestsTotal:    m.requestsTotal.Load(),
-		RequestsFailed:   m.requestsFailed.Load(),
-		LogsEmitted:      m.logsEmitted.Load(),
-		LogsThrottled:    m.logsThrottled.Load(),
-		QueueMaxDepth:    m.queueMaxDepth.Load(),
-		QueueEnqueued:    m.queueEnqueued.Load(),
-		QueueDequeued:    m.queueDequeued.Load(),
-		StatusCodes:      make(map[int]int64),
-		CloudflareBlocks: m.cloudflareBlocks.Load(),
-		RateLimits:       m.rateLimits.Load(),
-		SkippedNonHTML:   m.skippedNonHTML.Load(),
-		SkippedMaxDepth:  m.skippedMaxDepth.Load(),
-		SkippedRobotsTxt: m.skippedRobotsTxt.Load(),
+		PagesDiscovered:          m.pagesDiscovered.Load(),
+		PagesCrawled:             m.pagesCrawled.Load(),
+		ItemsExtracted:           m.itemsExtracted.Load(),
+		ErrorsCount:              m.errorsCount.Load(),
+		BytesFetched:             m.bytesReceived.Load(),
+		RequestsTotal:            m.requestsTotal.Load(),
+		RequestsFailed:           m.requestsFailed.Load(),
+		LogsEmitted:              m.logsEmitted.Load(),
+		LogsThrottled:            m.logsThrottled.Load(),
+		QueueMaxDepth:            m.queueMaxDepth.Load(),
+		QueueEnqueued:            m.queueEnqueued.Load(),
+		QueueDequeued:            m.queueDequeued.Load(),
+		StatusCodes:              make(map[int]int64),
+		CloudflareBlocks:         m.cloudflareBlocks.Load(),
+		RateLimits:               m.rateLimits.Load(),
+		SkippedNonHTML:           m.skippedNonHTML.Load(),
+		SkippedMaxDepth:          m.skippedMaxDepth.Load(),
+		SkippedRobotsTxt:         m.skippedRobotsTxt.Load(),
+		ItemsExtractedEmptyTitle: m.itemsExtractedEmptyTitle.Load(),
+		ItemsExtractedEmptyBody:  m.itemsExtractedEmptyBody.Load(),
 	}
 
 	// Collect status codes
@@ -271,4 +287,14 @@ func (m *LogMetrics) ItemsExtracted() int64 {
 // ErrorsCount returns the current count of errors.
 func (m *LogMetrics) ErrorsCount() int64 {
 	return m.errorsCount.Load()
+}
+
+// ItemsExtractedEmptyTitle returns the count of indexed items with empty title.
+func (m *LogMetrics) ItemsExtractedEmptyTitle() int64 {
+	return m.itemsExtractedEmptyTitle.Load()
+}
+
+// ItemsExtractedEmptyBody returns the count of indexed items with empty body.
+func (m *LogMetrics) ItemsExtractedEmptyBody() int64 {
+	return m.itemsExtractedEmptyBody.Load()
 }

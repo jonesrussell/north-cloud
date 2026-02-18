@@ -34,7 +34,7 @@ const loadStats = async () => {
     ])
     stats.value = statsRes.data
     topTopics.value = topicsRes.data?.topics || []
-  } catch (err) {
+  } catch {
     error.value = 'Unable to load classifier statistics.'
   } finally {
     loading.value = false

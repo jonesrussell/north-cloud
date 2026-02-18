@@ -98,6 +98,8 @@ type Config struct {
 	ProxiesEnabled bool `env:"CRAWLER_PROXIES_ENABLED" yaml:"proxies_enabled"`
 	// ProxyURLs is the list of proxy URLs (HTTP or SOCKS5) for round-robin rotation
 	ProxyURLs []string `env:"CRAWLER_PROXY_URLS" yaml:"proxy_urls"`
+	// ReadabilityFallbackEnabled enables a last-resort readability-style extractor when selectors yield no content (default: false)
+	ReadabilityFallbackEnabled bool `env:"CRAWLER_READABILITY_FALLBACK_ENABLED" yaml:"readability_fallback_enabled"`
 }
 
 // Validate validates the crawler configuration.
@@ -148,26 +150,27 @@ func New(opts ...Option) *Config {
 			MaxVersion:               0, // Use highest supported version
 			PreferServerCipherSuites: true,
 		},
-		MaxRetries:          DefaultMaxRetries,
-		RetryDelay:          DefaultRetryDelay,
-		FollowRedirects:     true,
-		MaxRedirects:        DefaultMaxRedirects,
-		ValidateURLs:        true,
-		CleanupInterval:     DefaultCleanupInterval,
-		SaveDiscoveredLinks: false,
-		UseRandomUserAgent:  false,
-		UseReferer:          true,
-		MaxURLLength:        0,
-		MaxRequests:         0,
-		DetectCharset:       false,
-		TraceHTTP:           false,
-		MaxBodySize:         DefaultMaxBodySize,
-		HTTPRetryMax:        DefaultHTTPRetryMax,
-		HTTPRetryDelay:      DefaultHTTPRetryDelay,
-		RedisStorageEnabled: false,
-		RedisStorageExpires: DefaultRedisStorageExpires,
-		ProxiesEnabled:      false,
-		ProxyURLs:           nil,
+		MaxRetries:                 DefaultMaxRetries,
+		RetryDelay:                 DefaultRetryDelay,
+		FollowRedirects:            true,
+		MaxRedirects:               DefaultMaxRedirects,
+		ValidateURLs:               true,
+		CleanupInterval:            DefaultCleanupInterval,
+		SaveDiscoveredLinks:        false,
+		UseRandomUserAgent:         false,
+		UseReferer:                 true,
+		MaxURLLength:               0,
+		MaxRequests:                0,
+		DetectCharset:              false,
+		TraceHTTP:                  false,
+		MaxBodySize:                DefaultMaxBodySize,
+		HTTPRetryMax:               DefaultHTTPRetryMax,
+		HTTPRetryDelay:             DefaultHTTPRetryDelay,
+		RedisStorageEnabled:        false,
+		RedisStorageExpires:        DefaultRedisStorageExpires,
+		ProxiesEnabled:             false,
+		ProxyURLs:                  nil,
+		ReadabilityFallbackEnabled: false,
 	}
 
 	for _, opt := range opts {

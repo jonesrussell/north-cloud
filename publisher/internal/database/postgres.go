@@ -28,7 +28,7 @@ type Config struct {
 	Host     string
 	Port     string
 	User     string
-	Password string
+	Password string //nolint:gosec // G117: DB connection config
 	DBName   string
 	SSLMode  string
 }

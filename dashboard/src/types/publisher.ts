@@ -135,7 +135,7 @@ export interface StatsOverview {
   generated_at: string
 }
 
-export interface StatsOverviewResponse extends StatsOverview {}
+export type StatsOverviewResponse = StatsOverview
 
 export type StatsPeriod = 'today' | 'week' | 'month' | 'all'
 

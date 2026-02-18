@@ -56,7 +56,7 @@ const loadIndex = async () => {
     loading.value = true
     const response = await indexManagerApi.indexes.get(indexName.value)
     indexInfo.value = response.data
-  } catch (err) {
+  } catch {
     error.value = 'Unable to load index details.'
   } finally {
     loading.value = false

@@ -39,6 +39,12 @@ export interface CrawlMetricsTopError {
   last_url?: string
 }
 
+export interface CrawlMetricsExtractionQuality {
+  items_indexed: number
+  empty_title_count: number
+  empty_body_count: number
+}
+
 export interface CrawlMetrics {
   status_codes?: Record<string, number>
   requests_total: number
@@ -50,6 +56,7 @@ export interface CrawlMetrics {
   top_errors?: CrawlMetricsTopError[]
   response_time?: CrawlMetricsResponseTime
   skipped?: Record<string, number>
+  extraction_quality?: CrawlMetricsExtractionQuality
 }
 
 export interface ExecutionMetadata {

@@ -198,3 +198,30 @@ func TestBuildExecutionMetadata_ErrorCategories(t *testing.T) {
 		t.Errorf("http_server = %d, want 1", cats["http_server"])
 	}
 }
+
+func TestBuildExecutionMetadata_ExtractionQuality(t *testing.T) {
+	t.Helper()
+
+	summary := &logs.JobSummary{
+		ItemsExtracted:           10,
+		ItemsExtractedEmptyTitle: 2,
+		ItemsExtractedEmptyBody:  1,
+	}
+
+	result := scheduler.BuildExecutionMetadata(summary)
+	metrics := result[crawlMetricsKey].(map[string]any)
+
+	eq, ok := metrics["extraction_quality"].(map[string]int64)
+	if !ok {
+		t.Fatalf("expected extraction_quality map, got %T", metrics["extraction_quality"])
+	}
+	if eq["items_indexed"] != 10 {
+		t.Errorf("items_indexed = %d, want 10", eq["items_indexed"])
+	}
+	if eq["empty_title_count"] != 2 {
+		t.Errorf("empty_title_count = %d, want 2", eq["empty_title_count"])
+	}
+	if eq["empty_body_count"] != 1 {
+		t.Errorf("empty_body_count = %d, want 1", eq["empty_body_count"])
+	}
+}

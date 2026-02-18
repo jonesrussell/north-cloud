@@ -4,6 +4,9 @@ import (
 	infraconfig "github.com/north-cloud/infrastructure/config"
 )
 
+// defaultURLPublisherClassifier is the default base URL for publisher and classifier (same port in dev).
+const defaultURLPublisherClassifier = "http://localhost:8070"
+
 // Config holds the MCP server configuration.
 type Config struct {
 	Env      string         `env:"MCP_ENV"   yaml:"env"`
@@ -20,7 +23,7 @@ type ClientConfig struct {
 
 // AuthConfig holds authentication configuration for service-to-service calls.
 type AuthConfig struct {
-	JWTSecret string `env:"AUTH_JWT_SECRET" yaml:"jwt_secret"`
+	JWTSecret string `env:"AUTH_JWT_SECRET" yaml:"jwt_secret"` //nolint:gosec // G117: JWT secret from env for service calls
 }
 
 // ServicesConfig holds URLs for all North Cloud services.
@@ -62,13 +65,13 @@ func setDefaults(cfg *Config) {
 		cfg.Services.SourceManagerURL = "http://localhost:8050"
 	}
 	if cfg.Services.PublisherURL == "" {
-		cfg.Services.PublisherURL = "http://localhost:8070"
+		cfg.Services.PublisherURL = defaultURLPublisherClassifier
 	}
 	if cfg.Services.SearchURL == "" {
 		cfg.Services.SearchURL = "http://localhost:8090"
 	}
 	if cfg.Services.ClassifierURL == "" {
-		cfg.Services.ClassifierURL = "http://localhost:8070"
+		cfg.Services.ClassifierURL = defaultURLPublisherClassifier
 	}
 
 	// Client defaults

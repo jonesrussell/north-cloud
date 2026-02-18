@@ -39,7 +39,7 @@ const loadDocument = async () => {
     error.value = null
     const response = await indexManagerApi.documents.get(indexName.value, documentId.value)
     document.value = response.data as Document & Record<string, unknown>
-  } catch (err) {
+  } catch {
     error.value = 'Unable to load document.'
   } finally {
     loading.value = false

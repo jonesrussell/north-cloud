@@ -30,7 +30,7 @@ type Client struct {
 type Config struct {
 	URL        string
 	Username   string
-	Password   string
+	Password   string //nolint:gosec // G117: ES connection config
 	MaxRetries int
 	Timeout    time.Duration
 }

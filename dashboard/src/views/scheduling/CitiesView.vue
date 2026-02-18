@@ -22,7 +22,7 @@ const loadCities = async () => {
     loading.value = true
     const response = await sourcesApi.cities.list()
     cities.value = response.data?.cities || response.data || []
-  } catch (err) {
+  } catch {
     error.value = 'Unable to load cities.'
   } finally {
     loading.value = false

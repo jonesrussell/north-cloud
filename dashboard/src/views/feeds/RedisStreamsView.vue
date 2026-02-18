@@ -38,7 +38,7 @@ const loadStreams = async () => {
       enabled: ch.enabled ?? true,
       layer: ch.layer,
     }))
-  } catch (err) {
+  } catch {
     error.value = 'Failed to load channel data'
     streams.value = []
   } finally {

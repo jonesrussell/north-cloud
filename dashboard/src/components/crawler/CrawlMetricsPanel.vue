@@ -19,6 +19,8 @@ const hasSkipped = computed(() => {
   return props.metrics.skipped && Object.keys(props.metrics.skipped).length > 0
 })
 
+const extractionQuality = computed(() => props.metrics.extraction_quality)
+
 const hasAlerts = computed(() => {
   return (props.metrics.cloudflare_blocks && props.metrics.cloudflare_blocks > 0) ||
     (props.metrics.rate_limits && props.metrics.rate_limits > 0)
@@ -180,6 +182,45 @@ function formatSkipKey(key: string): string {
         >
           {{ category }}: {{ count }}
         </span>
+      </div>
+    </div>
+
+    <!-- Extraction Quality -->
+    <div v-if="extractionQuality && extractionQuality.items_indexed > 0">
+      <h4 class="text-xs font-medium text-muted-foreground mb-2">
+        Extraction quality
+      </h4>
+      <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
+        <div class="bg-background rounded-lg p-3 border">
+          <div class="text-lg font-semibold">
+            {{ extractionQuality.items_indexed }}
+          </div>
+          <div class="text-xs text-muted-foreground">
+            Items indexed
+          </div>
+        </div>
+        <div class="bg-background rounded-lg p-3 border">
+          <div
+            class="text-lg font-semibold"
+            :class="(extractionQuality.empty_title_count || 0) > 0 ? 'text-amber-600' : ''"
+          >
+            {{ extractionQuality.empty_title_count ?? 0 }}
+          </div>
+          <div class="text-xs text-muted-foreground">
+            Empty title
+          </div>
+        </div>
+        <div class="bg-background rounded-lg p-3 border">
+          <div
+            class="text-lg font-semibold"
+            :class="(extractionQuality.empty_body_count || 0) > 0 ? 'text-amber-600' : ''"
+          >
+            {{ extractionQuality.empty_body_count ?? 0 }}
+          </div>
+          <div class="text-xs text-muted-foreground">
+            Empty body
+          </div>
+        </div>
       </div>
     </div>
 
