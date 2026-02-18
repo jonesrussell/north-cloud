@@ -16,6 +16,7 @@ tasks:
       - "*.config.*"
       - "tsconfig*.json"
     cmds:
+      - npm ci
       - npm run lint
 
   test:
