@@ -136,6 +136,22 @@ tasks:
       - task: lint:search-frontend
       - task: lint:source-manager
 
+  lint:force:
+    desc: "Run linters for all services (ignore cache). Use before pushing to match CI."
+    cmds:
+      - task auth:lint -f
+      - task classifier:lint -f
+      - task crawler:lint -f
+      - task dashboard:lint -f
+      - task index-manager:lint -f
+      - task mcp-north-cloud:lint -f
+      - task nc-http-proxy:lint -f
+      - task pipeline:lint -f
+      - task publisher:lint -f
+      - task search:lint -f
+      - task search-frontend:lint -f
+      - task source-manager:lint -f
+
   lint:parallel:
     desc: "Run linters for all microservices in parallel"
     cmds:

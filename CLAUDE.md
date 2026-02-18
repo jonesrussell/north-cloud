@@ -73,7 +73,7 @@ cd SERVICE && go build -o bin/SERVICE .
 
 **Before Committing**:
 1. Run tests: `go test ./...`
-2. Run linter: `golangci-lint run` (use v2.8.0, same as CI; run `task install:tools` from repo root so the correct binary is on PATH)
+2. Run linter: `task lint` (or `task lint:force` before pushing to bypass cache and match CI)
 3. Check no magic numbers, `interface{}`, or unchecked JSON errors
 
 **Go Workspace Isolation**: Each service Taskfile sets `GOWORK=off` globally so all Go commands (build, test, lint, vuln) resolve dependencies from the module's own `go.mod`, not the workspace. This ensures local and CI behavior match exactly. The `go.work` file is only used for IDE navigation.
