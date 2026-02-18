@@ -25,6 +25,9 @@ type JobLogger interface {
 	IncrementItemsExtracted()
 	IncrementErrors()
 
+	// RecordExtracted records extraction quality for one indexed item (empty title/body).
+	RecordExtracted(emptyTitle, emptyBody bool)
+
 	// Execution visibility metrics
 	RecordStatusCode(code int)
 	RecordResponseTime(d time.Duration)
@@ -106,6 +109,10 @@ type JobSummary struct {
 
 	// Visibility: error categories
 	ErrorCategories map[string]int64 `json:"error_categories,omitempty"`
+
+	// Extraction quality (indexed items with empty title/body)
+	ItemsExtractedEmptyTitle int64 `json:"items_extracted_empty_title,omitempty"`
+	ItemsExtractedEmptyBody  int64 `json:"items_extracted_empty_body,omitempty"`
 }
 
 // ErrorSummary summarizes a repeated error.

@@ -142,6 +142,11 @@ func (j *jobLoggerImpl) IncrementErrors() {
 	j.metrics.IncrementErrors()
 }
 
+// RecordExtracted records extraction quality for one indexed item.
+func (j *jobLoggerImpl) RecordExtracted(emptyTitle, emptyBody bool) {
+	j.metrics.RecordExtracted(emptyTitle, emptyBody)
+}
+
 // Execution visibility metrics
 func (j *jobLoggerImpl) RecordStatusCode(code int)           { j.metrics.RecordStatusCode(code) }
 func (j *jobLoggerImpl) RecordResponseTime(d time.Duration)  { j.metrics.RecordResponseTime(d) }
@@ -264,6 +269,10 @@ func (s *scopedJobLogger) IncrementItemsExtracted() {
 
 func (s *scopedJobLogger) IncrementErrors() {
 	s.parent.IncrementErrors()
+}
+
+func (s *scopedJobLogger) RecordExtracted(emptyTitle, emptyBody bool) {
+	s.parent.RecordExtracted(emptyTitle, emptyBody)
 }
 
 func (s *scopedJobLogger) RecordStatusCode(code int)          { s.parent.RecordStatusCode(code) }

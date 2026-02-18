@@ -24,6 +24,7 @@ func (n *noopJobLogger) JobFailed(_ error)                      {}
 func (n *noopJobLogger) IncrementPagesCrawled()                 {}
 func (n *noopJobLogger) IncrementItemsExtracted()               {}
 func (n *noopJobLogger) IncrementErrors()                       {}
+func (n *noopJobLogger) RecordExtracted(_, _ bool)              {}
 func (n *noopJobLogger) StartHeartbeat(_ context.Context)       {}
 func (n *noopJobLogger) IsDebugEnabled() bool                   { return false }
 func (n *noopJobLogger) IsTraceEnabled() bool                   { return false }
