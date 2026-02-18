@@ -76,7 +76,7 @@ func (c *HTTPClient) GetSource(ctx context.Context, sourceID uuid.UUID) (*Source
 		return nil, fmt.Errorf("create request: %w", err)
 	}
 
-	resp, err := c.httpClient.Do(req) //nolint:gosec // G704: URL is from source-manager config
+	resp, err := c.httpClient.Do(req) //nolint:gosec // G704: URL from config
 	if err != nil {
 		return nil, fmt.Errorf("fetch source: %w", err)
 	}
@@ -108,7 +108,7 @@ func (c *HTTPClient) ListSources(ctx context.Context) ([]*SourceListItem, error)
 		return nil, fmt.Errorf("create request: %w", err)
 	}
 
-	resp, err := c.httpClient.Do(req) //nolint:gosec // G704: URL is from source-manager config
+	resp, err := c.httpClient.Do(req) //nolint:gosec // G704: URL from config
 	if err != nil {
 		return nil, fmt.Errorf("fetch sources: %w", err)
 	}

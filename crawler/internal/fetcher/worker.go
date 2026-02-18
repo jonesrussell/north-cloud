@@ -304,7 +304,7 @@ func (wp *WorkerPool) fetchPage(
 	req.Header.Set("User-Agent", wp.userAgent)
 	setConditionalHeaders(req, furl)
 
-	resp, doErr := wp.httpClient.Do(req) //nolint:gosec // G704: URL is from frontier queue
+	resp, doErr := wp.httpClient.Do(req) //nolint:gosec // G704: URL from frontier
 	if doErr != nil {
 		return nil, 0, fmt.Errorf("http fetch: %w", doErr)
 	}
