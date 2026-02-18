@@ -53,6 +53,10 @@ includes:
     taskfile: ./source-manager/Taskfile.yml
     dir: ./source-manager
 
+  contracts:
+    taskfile: ./tests/contracts/Taskfile.yml
+    dir: ./tests/contracts
+
 dotenv: ['.env']
 
 tasks:
@@ -1333,9 +1337,8 @@ tasks:
 
   test:contracts:
     desc: "Run contract tests (verifies services produce/consume valid ES mappings)"
-    dir: tests/contracts
     cmds:
-      - GOWORK=off go test -v ./...
+      - task contracts:test
 
   test:integration:pipeline:
     desc: "Run pipeline integration test (requires full Docker Compose stack)"

@@ -1,0 +1,22 @@
+version: '3'
+
+# Contract tests: verifies services produce/consume valid ES mappings (standalone module)
+
+env:
+  GOWORK: "off"
+
+tasks:
+
+  default:
+    desc: "Show available tasks"
+    cmds:
+      - task --list
+
+  test:
+    desc: "Run contract tests (verifies services produce/consume valid ES mappings)"
+    sources:
+      - "**/*.go"
+      - "go.mod"
+      - "go.sum"
+    cmds:
+      - go test -v ./...
