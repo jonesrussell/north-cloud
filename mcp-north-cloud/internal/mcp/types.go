@@ -47,6 +47,33 @@ type Tool struct {
 	Name        string         `json:"name"`
 	Description string         `json:"description"`
 	InputSchema map[string]any `json:"inputSchema"`
+	Scope       ToolScope      `json:"-"`
+}
+
+// ToolScope controls which environment a tool is available in.
+type ToolScope string
+
+const (
+	// ScopeShared tools are available in both local and production.
+	ScopeShared ToolScope = "shared"
+	// ScopeLocal tools are only available in local development.
+	ScopeLocal ToolScope = "local"
+	// ScopeProd tools are only available in production.
+	ScopeProd ToolScope = "prod"
+)
+
+// Environment constants.
+const (
+	EnvLocal = "local"
+	EnvProd  = "prod"
+)
+
+// IsAllowed returns true if this scope is permitted in the given environment.
+func (s ToolScope) IsAllowed(env string) bool {
+	if s == ScopeShared {
+		return true
+	}
+	return string(s) == env
 }
 
 // ToolCallParams represents parameters for a tool call
