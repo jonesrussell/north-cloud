@@ -79,6 +79,34 @@ tasks:
       - task: test:changed
       - task: vuln:changed
 
+  ci:force:
+    desc: "Run full CI pipeline (lint, test, vuln) ignoring cache. Use before pushing to match CI."
+    cmds:
+      - task: lint:force
+      - task auth:test -f
+      - task classifier:test -f
+      - task crawler:test -f
+      - task dashboard:test -f
+      - task index-manager:test -f
+      - task mcp-north-cloud:test -f
+      - task nc-http-proxy:test -f
+      - task pipeline:test -f
+      - task publisher:test -f
+      - task search:test -f
+      - task search-frontend:test -f
+      - task source-manager:test -f
+      - task contracts:test -f
+      - task auth:vuln -f
+      - task classifier:vuln -f
+      - task crawler:vuln -f
+      - task index-manager:vuln -f
+      - task mcp-north-cloud:vuln -f
+      - task nc-http-proxy:vuln -f
+      - task pipeline:vuln -f
+      - task publisher:vuln -f
+      - task search:vuln -f
+      - task source-manager:vuln -f
+
   lint:changed:
     desc: "Lint only services that have changed (vs HEAD~1 or BASE_REF env var)"
     cmds:
