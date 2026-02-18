@@ -218,7 +218,7 @@ ML sidecars (crime-ml, mining-ml, coforge-ml, entertainment-ml, anishinaabe-ml) 
 - **Features**: Multi-match, field boosting, fuzzy matching, faceted search
 
 ### 8. mcp-north-cloud (`/mcp-north-cloud`)
-- **Purpose**: MCP server exposing 23 tools for AI integration
+- **Purpose**: MCP server exposing 27 tools for AI integration (18 local / 24 prod, filtered by `MCP_ENV`)
 - **Protocol**: stdio-based (reads stdin, writes stdout)
 - **Docs**: `/mcp-north-cloud/README.md` for comprehensive tool documentation
 
@@ -369,7 +369,7 @@ All HTTP services follow a consistent bootstrap pattern:
 
 ### mcp-north-cloud
 - **IMPORTANT**: Read `/mcp-north-cloud/README.md` for comprehensive tool documentation
-- **23 tools**: Crawler (7), Source Manager (5), Publisher (6), Search (1), Classifier (1), Index Manager (2)
+- **27 tools** (filtered by `MCP_ENV`): Crawler (5), Source Manager (5), Publisher (8), Search (1), Classifier (1), Index Manager (2), Auth (1), Workflow (1), Dev (3)
 - **Protocol**: stdio-based JSON-RPC 2.0 (no HTTP server)
 - **Development**: Air hot reloading, Taskfile.yml for build/test/lint
 
