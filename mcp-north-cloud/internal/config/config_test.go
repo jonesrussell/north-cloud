@@ -17,8 +17,8 @@ func TestSetDefaults_PublisherURL_Is8070(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Load: %v", err)
 	}
-	if cfg.Services.PublisherURL != "http://localhost:8070" {
-		t.Errorf("expected PublisherURL http://localhost:8070, got %q", cfg.Services.PublisherURL)
+	if cfg.Services.PublisherURL != defaultURLPublisherClassifier {
+		t.Errorf("expected PublisherURL %s, got %q", defaultURLPublisherClassifier, cfg.Services.PublisherURL)
 	}
 }
 
