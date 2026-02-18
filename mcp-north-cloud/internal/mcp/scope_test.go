@@ -1,3 +1,4 @@
+//nolint:testpackage // testing unexported getToolsForEnv and scope internals
 package mcp
 
 import "testing"

@@ -6,7 +6,7 @@ import (
 
 // Config holds the MCP server configuration.
 type Config struct {
-	Env      string         `env:"MCP_ENV" yaml:"env"`
+	Env      string         `env:"MCP_ENV"   yaml:"env"`
 	Services ServicesConfig `yaml:"services"`
 	Client   ClientConfig   `yaml:"client"`
 	Logging  LoggingConfig  `yaml:"logging"`
