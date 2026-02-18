@@ -1,4 +1,5 @@
 <template>
+  <!-- eslint-disable vue/no-v-html (highlight snippets from search API are sanitized via sanitizeHighlight()) -->
   <div
     class="rounded-lg shadow-sm hover:shadow-md transition-shadow"
     :class="featured ? 'bg-blue-50/50 border border-blue-100 p-8' : 'bg-white p-6'"
@@ -87,7 +88,6 @@
 </template>
 
 <script setup lang="ts">
-/* eslint-disable vue/no-v-html -- highlight snippets from search API are sanitized via sanitizeHighlight() */
 import { computed } from 'vue'
 import { formatDate } from '@/utils/dateFormatter'
 import { parseHighlight, sanitizeHighlight } from '@/utils/highlightHelper'
