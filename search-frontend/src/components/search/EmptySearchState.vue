@@ -1,5 +1,9 @@
 <template>
-  <div class="text-center py-12" role="status" aria-live="polite">
+  <div
+    class="text-center py-12"
+    role="status"
+    aria-live="polite"
+  >
     <svg
       class="mx-auto h-12 w-12 text-gray-400"
       fill="none"
@@ -15,17 +19,27 @@
         d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"
       />
     </svg>
-    <h3 class="mt-2 text-sm font-medium text-gray-900">No results found</h3>
+    <h3 class="mt-2 text-sm font-medium text-gray-900">
+      No results found
+    </h3>
     <p class="mt-1 text-sm text-gray-500">
       {{ message }}
     </p>
-    <p v-if="query" class="mt-1 text-sm text-gray-600">
+    <p
+      v-if="query"
+      class="mt-1 text-sm text-gray-600"
+    >
       Query: <strong>{{ query }}</strong>
     </p>
 
     <!-- Active filters summary + Clear -->
-    <div v-if="hasActiveFilters" class="mt-6">
-      <p class="text-sm text-gray-600">Active filters may be limiting results.</p>
+    <div
+      v-if="hasActiveFilters"
+      class="mt-6"
+    >
+      <p class="text-sm text-gray-600">
+        Active filters may be limiting results.
+      </p>
       <button
         type="button"
         class="mt-3 inline-flex items-center rounded-md border border-transparent bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
@@ -36,8 +50,13 @@
     </div>
 
     <!-- Suggested topics -->
-    <div v-if="suggestedTopics.length > 0" class="mt-8">
-      <p class="text-sm font-medium text-gray-700">Try searching by topic:</p>
+    <div
+      v-if="suggestedTopics.length > 0"
+      class="mt-8"
+    >
+      <p class="text-sm font-medium text-gray-700">
+        Try searching by topic:
+      </p>
       <div class="mt-2 flex flex-wrap justify-center gap-2">
         <button
           v-for="topic in suggestedTopics"
@@ -66,7 +85,11 @@ const props = withDefaults(
     clearFilters?: () => void
   }>(),
   {
+    query: '',
     message: 'Try different keywords or adjust your search filters.',
+    filters: () => ({}),
+    facets: () => null,
+    clearFilters: () => {},
   }
 )
 

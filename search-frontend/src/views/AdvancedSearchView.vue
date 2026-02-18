@@ -1,20 +1,25 @@
 <template>
   <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-    <h1 class="text-3xl font-bold text-gray-900 mb-8">Advanced Search</h1>
+    <h1 class="text-3xl font-bold text-gray-900 mb-8">
+      Advanced Search
+    </h1>
 
     <div class="bg-white shadow sm:rounded-lg p-6">
       <form @submit.prevent="handleSubmit">
         <div class="space-y-6">
           <!-- Query -->
           <div>
-            <label for="query" class="block text-sm font-medium text-gray-700">Search Query</label>
+            <label
+              for="query"
+              class="block text-sm font-medium text-gray-700"
+            >Search Query</label>
             <input
               id="query"
               v-model="formData.query"
               type="text"
               class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-4 py-2 border"
               placeholder="Enter your search query"
-            />
+            >
           </div>
 
           <!-- Topics -->
@@ -22,11 +27,21 @@
             <label class="block text-sm font-medium text-gray-700 mb-2">Topics</label>
             <div class="space-y-2">
               <label class="inline-flex items-center mr-4">
-                <input v-model="formData.topics" type="checkbox" value="crime" class="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-500 focus:ring-blue-500" />
+                <input
+                  v-model="formData.topics"
+                  type="checkbox"
+                  value="crime"
+                  class="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                >
                 <span class="ml-2 text-sm text-gray-700">Crime</span>
               </label>
               <label class="inline-flex items-center mr-4">
-                <input v-model="formData.topics" type="checkbox" value="local_news" class="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-500 focus:ring-blue-500" />
+                <input
+                  v-model="formData.topics"
+                  type="checkbox"
+                  value="local_news"
+                  class="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                >
                 <span class="ml-2 text-sm text-gray-700">Local News</span>
               </label>
             </div>
@@ -34,7 +49,10 @@
 
           <!-- Quality Score -->
           <div>
-            <label for="quality" class="block text-sm font-medium text-gray-700">
+            <label
+              for="quality"
+              class="block text-sm font-medium text-gray-700"
+            >
               Minimum Quality Score: {{ formData.min_quality_score }}
             </label>
             <input
@@ -45,7 +63,7 @@
               max="100"
               step="10"
               class="mt-1 block w-full"
-            />
+            >
           </div>
 
           <!-- Submit -->

@@ -32,7 +32,11 @@
         class="font-semibold text-blue-600 group-hover:text-blue-800 mb-2"
         :class="featured ? 'text-2xl' : 'text-xl'"
       >
-        <span v-if="highlightedTitle" v-html="highlightedTitle"></span>
+        <!-- Highlighting from search API; content is backend-controlled -->
+        <span
+          v-if="highlightedTitle"
+          v-html="highlightedTitle"
+        />
         <span v-else>{{ result.title }}</span>
       </h3>
 
@@ -41,9 +45,16 @@
         {{ displayUrl }}
       </div>
 
-      <!-- Snippet -->
-      <p v-if="snippet" class="text-gray-700 mb-3" v-html="snippet"></p>
-      <p v-else class="text-gray-700 mb-3">{{ truncatedText }}</p>
+      <!-- Snippet with search highlights from API -->
+      <p
+        v-if="snippet"
+        class="text-gray-700 mb-3"
+        v-html="snippet"
+      />
+      <p
+        v-else
+        class="text-gray-700 mb-3"
+      >{{ truncatedText }}</p>
 
       <!-- Metadata -->
       <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-gray-500">
@@ -58,7 +69,10 @@
         >
           Quality {{ result.quality_score }}
         </span>
-        <div v-if="result.topics && result.topics.length" class="flex flex-wrap gap-1">
+        <div
+          v-if="result.topics && result.topics.length"
+          class="flex flex-wrap gap-1"
+        >
           <span
             v-for="topic in result.topics"
             :key="topic"
@@ -73,6 +87,7 @@
 </template>
 
 <script setup lang="ts">
+/* eslint-disable vue/no-v-html -- highlight snippets from search API are sanitized via sanitizeHighlight() */
 import { computed } from 'vue'
 import { formatDate } from '@/utils/dateFormatter'
 import { parseHighlight, sanitizeHighlight } from '@/utils/highlightHelper'

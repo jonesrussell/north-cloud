@@ -9,7 +9,10 @@
     </div>
 
     <!-- Mobile: filter chips + drawer trigger -->
-    <div v-if="query" class="mb-4 lg:hidden">
+    <div
+      v-if="query"
+      class="mb-4 lg:hidden"
+    >
       <FilterChips
         :filters="filters"
         drawer-id="filter-drawer"
@@ -48,7 +51,10 @@
       <!-- Main content -->
       <main class="min-w-0 flex-1">
         <!-- Loading State: skeleton cards -->
-        <SearchResultsSkeleton v-if="loading" :count="pageSize" />
+        <SearchResultsSkeleton
+          v-if="loading"
+          :count="pageSize"
+        />
 
         <!-- Error State -->
         <ErrorAlert

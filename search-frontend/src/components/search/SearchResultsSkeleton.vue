@@ -1,5 +1,9 @@
 <template>
-  <div class="space-y-4" aria-busy="true" aria-label="Loading results">
+  <div
+    class="space-y-4"
+    aria-busy="true"
+    aria-label="Loading results"
+  >
     <div
       v-for="i in count"
       :key="i"

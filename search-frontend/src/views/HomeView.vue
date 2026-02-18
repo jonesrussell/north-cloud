@@ -20,7 +20,10 @@
       </div>
 
       <!-- Suggested topics -->
-      <div v-if="suggestedTopics.length > 0" class="mb-8">
+      <div
+        v-if="suggestedTopics.length > 0"
+        class="mb-8"
+      >
         <p class="text-center text-sm font-medium text-gray-500 mb-3">
           Suggested topics
         </p>
@@ -38,7 +41,10 @@
       </div>
 
       <!-- Recent searches -->
-      <div v-if="recentSearches.length > 0" class="mb-8">
+      <div
+        v-if="recentSearches.length > 0"
+        class="mb-8"
+      >
         <p class="text-center text-sm font-medium text-gray-500 mb-3">
           Recent searches
         </p>
@@ -57,7 +63,10 @@
 
       <!-- Quick Links -->
       <div class="text-center text-sm text-gray-600">
-        <router-link to="/advanced" class="text-blue-600 hover:text-blue-800 underline">
+        <router-link
+          to="/advanced"
+          class="text-blue-600 hover:text-blue-800 underline"
+        >
           Advanced Search
         </router-link>
       </div>

@@ -1,8 +1,17 @@
 <template>
-  <div v-if="hasContent" class="space-y-4" aria-label="Related content">
+  <div
+    v-if="hasContent"
+    class="space-y-4"
+    aria-label="Related content"
+  >
     <!-- Related topics -->
-    <div v-if="relatedTopics.length > 0" class="space-y-2">
-      <h3 class="text-xs font-medium text-gray-500 uppercase tracking-wider">Related topics</h3>
+    <div
+      v-if="relatedTopics.length > 0"
+      class="space-y-2"
+    >
+      <h3 class="text-xs font-medium text-gray-500 uppercase tracking-wider">
+        Related topics
+      </h3>
       <div class="flex flex-wrap gap-2">
         <button
           v-for="bucket in relatedTopics"
@@ -18,8 +27,13 @@
     </div>
 
     <!-- More from this source -->
-    <div v-if="firstSourceName" class="space-y-2">
-      <h3 class="text-xs font-medium text-gray-500 uppercase tracking-wider">More from this source</h3>
+    <div
+      v-if="firstSourceName"
+      class="space-y-2"
+    >
+      <h3 class="text-xs font-medium text-gray-500 uppercase tracking-wider">
+        More from this source
+      </h3>
       <button
         type="button"
         class="text-sm text-blue-600 hover:text-blue-800 focus:outline-none focus:underline"

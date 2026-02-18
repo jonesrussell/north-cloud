@@ -11,7 +11,10 @@
           >
             North Cloud
           </router-link>
-          <span v-else class="h-4" />
+          <span
+            v-else
+            class="h-4"
+          />
         </div>
       </div>
     </header>

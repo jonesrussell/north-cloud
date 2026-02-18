@@ -5,7 +5,9 @@
     role="search"
   >
     <div class="flex items-center justify-between">
-      <h2 class="text-sm font-semibold text-gray-900">Refine results</h2>
+      <h2 class="text-sm font-semibold text-gray-900">
+        Refine results
+      </h2>
       <button
         v-if="hasActiveFilters"
         type="button"
@@ -17,9 +19,17 @@
     </div>
 
     <!-- Topics -->
-    <div v-if="topicBuckets.length > 0" class="space-y-2">
-      <h3 class="text-xs font-medium text-gray-500 uppercase tracking-wider">Topics</h3>
-      <ul class="space-y-1" role="list">
+    <div
+      v-if="topicBuckets.length > 0"
+      class="space-y-2"
+    >
+      <h3 class="text-xs font-medium text-gray-500 uppercase tracking-wider">
+        Topics
+      </h3>
+      <ul
+        class="space-y-1"
+        role="list"
+      >
         <li
           v-for="bucket in topicBuckets"
           :key="bucket.key"
@@ -32,7 +42,7 @@
             class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
             :aria-label="`Filter by topic ${formatTopicLabel(bucket.key)}`"
             @change="toggleTopic(bucket.key)"
-          />
+          >
           <label
             :for="`topic-${bucket.key}`"
             class="flex-1 cursor-pointer text-sm text-gray-700"
@@ -45,15 +55,22 @@
     </div>
 
     <!-- Content type -->
-    <div v-if="contentTypeBuckets.length > 0" class="space-y-2">
-      <h3 class="text-xs font-medium text-gray-500 uppercase tracking-wider">Content type</h3>
+    <div
+      v-if="contentTypeBuckets.length > 0"
+      class="space-y-2"
+    >
+      <h3 class="text-xs font-medium text-gray-500 uppercase tracking-wider">
+        Content type
+      </h3>
       <select
         v-model="localContentType"
         class="block w-full rounded-md border-gray-300 text-sm focus:border-blue-500 focus:ring-blue-500"
         aria-label="Filter by content type"
         @change="applyContentType"
       >
-        <option value="">All</option>
+        <option value="">
+          All
+        </option>
         <option
           v-for="bucket in contentTypeBuckets"
           :key="bucket.key"
@@ -65,9 +82,17 @@
     </div>
 
     <!-- Sources -->
-    <div v-if="sourceBuckets.length > 0" class="space-y-2">
-      <h3 class="text-xs font-medium text-gray-500 uppercase tracking-wider">Sources</h3>
-      <ul class="space-y-1 max-h-48 overflow-y-auto" role="list">
+    <div
+      v-if="sourceBuckets.length > 0"
+      class="space-y-2"
+    >
+      <h3 class="text-xs font-medium text-gray-500 uppercase tracking-wider">
+        Sources
+      </h3>
+      <ul
+        class="space-y-1 max-h-48 overflow-y-auto"
+        role="list"
+      >
         <li
           v-for="bucket in sourceBuckets"
           :key="bucket.key"
@@ -80,7 +105,7 @@
             class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
             :aria-label="`Filter by source ${bucket.key}`"
             @change="toggleSource(bucket.key)"
-          />
+          >
           <label
             :for="`source-${bucket.key}`"
             class="flex-1 cursor-pointer truncate text-sm text-gray-700"
@@ -95,7 +120,9 @@
 
     <!-- Minimum quality -->
     <div class="space-y-2">
-      <h3 class="text-xs font-medium text-gray-500 uppercase tracking-wider">Minimum quality</h3>
+      <h3 class="text-xs font-medium text-gray-500 uppercase tracking-wider">
+        Minimum quality
+      </h3>
       <div class="flex items-center gap-2">
         <input
           v-model.number="localMinQuality"
@@ -106,14 +133,16 @@
           class="flex-1"
           aria-label="Minimum quality score"
           @change="applyMinQuality"
-        />
+        >
         <span class="w-8 text-sm text-gray-600">{{ localMinQuality }}</span>
       </div>
     </div>
 
     <!-- Date range -->
     <div class="space-y-2">
-      <h3 class="text-xs font-medium text-gray-500 uppercase tracking-wider">Date range</h3>
+      <h3 class="text-xs font-medium text-gray-500 uppercase tracking-wider">
+        Date range
+      </h3>
       <div class="grid grid-cols-1 gap-2">
         <label class="text-xs text-gray-500">From</label>
         <input
@@ -122,7 +151,7 @@
           class="rounded-md border-gray-300 text-sm focus:border-blue-500 focus:ring-blue-500"
           aria-label="From date"
           @change="applyDateRange"
-        />
+        >
         <label class="text-xs text-gray-500 mt-1">To</label>
         <input
           v-model="localToDate"
@@ -130,7 +159,7 @@
           class="rounded-md border-gray-300 text-sm focus:border-blue-500 focus:ring-blue-500"
           aria-label="To date"
           @change="applyDateRange"
-        />
+        >
       </div>
     </div>
   </aside>
