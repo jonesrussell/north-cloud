@@ -138,3 +138,11 @@ func (p *RawContentProcessor) Validate(job *content.Job) error {
 	}
 	return nil
 }
+
+// SetExtractionRecorder sets the optional extraction quality recorder on the underlying service.
+// Called at crawl start when the job logger is available. No-op if service is not *RawContentService.
+func (p *RawContentProcessor) SetExtractionRecorder(r ExtractionRecorder) {
+	if svc, ok := p.service.(*RawContentService); ok {
+		svc.SetExtractionRecorder(r)
+	}
+}
