@@ -168,7 +168,7 @@ tasks:
   install:tools:
     desc: "Install development tools"
     cmds:
-      - go install github.com/air-verse/air@latest
-      - go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.8.0
-      - go install golang.org/x/tools/cmd/goimports@latest
+      - go install github.com/air-verse/air@latest || true
+      - go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.8.0 || true
+      - go install golang.org/x/tools/cmd/goimports@latest || true
 

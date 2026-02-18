@@ -121,7 +121,7 @@ tasks:
     desc: "Format code"
     cmds:
       - go fmt ./...
-      - goimports -w .
+      - goimports -w . || true
 
   tidy:
     desc: "Tidy go.mod and go.sum"

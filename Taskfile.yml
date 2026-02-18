@@ -4,39 +4,51 @@
 version: '3'
 
 includes:
+
   auth:
     taskfile: ./auth/Taskfile.yml
     dir: ./auth
+
   classifier:
     taskfile: ./classifier/Taskfile.yml
     dir: ./classifier
+
   crawler:
     taskfile: ./crawler/Taskfile.yml
     dir: ./crawler
+
   dashboard:
     taskfile: ./dashboard/Taskfile.yml
     dir: ./dashboard
+
   index-manager:
     taskfile: ./index-manager/Taskfile.yml
     dir: ./index-manager
+
   mcp-north-cloud:
     taskfile: ./mcp-north-cloud/Taskfile.yml
     dir: ./mcp-north-cloud
+
   nc-http-proxy:
     taskfile: ./nc-http-proxy/Taskfile.yml
     dir: ./nc-http-proxy
+
   pipeline:
     taskfile: ./pipeline/Taskfile.yml
     dir: ./pipeline
+
   publisher:
     taskfile: ./publisher/Taskfile.yml
     dir: ./publisher
+
   search:
     taskfile: ./search/Taskfile.yml
     dir: ./search
+
   search-frontend:
     taskfile: ./search-frontend/Taskfile.yml
     dir: ./search-frontend
+
   source-manager:
     taskfile: ./source-manager/Taskfile.yml
     dir: ./source-manager
@@ -156,46 +168,57 @@ tasks:
     desc: "Run auth linter (ignore cache)"
     cmds:
       - task auth:lint -f
+
   lint:classifier:force:
     desc: "Run classifier linter (ignore cache)"
     cmds:
       - task classifier:lint -f
+
   lint:crawler:force:
     desc: "Run crawler linter (ignore cache)"
     cmds:
       - task crawler:lint -f
+
   lint:dashboard:force:
     desc: "Run dashboard linter (ignore cache)"
     cmds:
       - task dashboard:lint -f
+
   lint:index-manager:force:
     desc: "Run index-manager linter (ignore cache)"
     cmds:
       - task index-manager:lint -f
+
   lint:mcp-north-cloud:force:
     desc: "Run mcp-north-cloud linter (ignore cache)"
     cmds:
       - task mcp-north-cloud:lint -f
+
   lint:nc-http-proxy:force:
     desc: "Run nc-http-proxy linter (ignore cache)"
     cmds:
       - task nc-http-proxy:lint -f
+
   lint:pipeline:force:
     desc: "Run pipeline linter (ignore cache)"
     cmds:
       - task pipeline:lint -f
+
   lint:publisher:force:
     desc: "Run publisher linter (ignore cache)"
     cmds:
       - task publisher:lint -f
+
   lint:search:force:
     desc: "Run search linter (ignore cache)"
     cmds:
       - task search:lint -f
+
   lint:search-frontend:force:
     desc: "Run search-frontend linter (ignore cache)"
     cmds:
       - task search-frontend:lint -f
+
   lint:source-manager:force:
     desc: "Run source-manager linter (ignore cache)"
     cmds:
@@ -815,6 +838,7 @@ tasks:
       - go install golang.org/x/vuln/cmd/govulncheck@latest || true
 
   # Docker lifecycle
+
   docker:dev:up:
     desc: "Start development environment (core services only)"
     cmds:
@@ -878,6 +902,7 @@ tasks:
       - docker compose -f docker-compose.base.yml -f docker-compose.prod.yml build {{.CLI_ARGS}}
 
   # Per-service Docker shortcuts
+
   docker:dev:up:crawler:
     desc: "Start crawler service and dependencies"
     cmds:
@@ -1165,6 +1190,7 @@ tasks:
       - task: docker:dev:up:pyroscope
 
   # Database backup/restore/sync
+
   db:backup:
     desc: "Backup database for a service (usage: task db:backup -- crawler)"
     cmds:
@@ -1246,6 +1272,7 @@ tasks:
       - ./scripts/db-list.sh {{.CLI_ARGS}}
 
   # HTTP Replay Proxy
+
   proxy:up:
     desc: "Start HTTP replay proxy (default: replay mode)"
     cmds:
@@ -1303,6 +1330,7 @@ tasks:
       - curl -s -X DELETE http://localhost:${PROXY_PORT:-8055}/admin/cache | jq .
 
   # Integration tests
+
   test:contracts:
     desc: "Run contract tests (verifies services produce/consume valid ES mappings)"
     dir: tests/contracts

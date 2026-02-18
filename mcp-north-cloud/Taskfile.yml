@@ -12,6 +12,7 @@ env:
   GOWORK: "off"
 
 output:
+
   group:
     error_only: false
 

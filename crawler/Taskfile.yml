@@ -5,6 +5,7 @@ env:
   GOWORK: "off"
 
 output:
+
   group:
     error_only: false
 
@@ -13,6 +14,7 @@ tasks:
     desc: "Show help and list common tasks"
     cmds:
       - task: build
+
   api:
     desc: "Run the HTTP API server"
     cmds:
