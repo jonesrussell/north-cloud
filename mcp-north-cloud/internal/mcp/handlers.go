@@ -532,13 +532,13 @@ func (s *Server) handleUpdateSource(ctx context.Context, id any, arguments json.
 		return s.errorResponse(id, InvalidParams, "source_id is required")
 	}
 
-	source, err := s.sourceClient.UpdateSource(ctx, args.SourceID, client.UpdateSourceRequest{
-		Name:      args.Name,
-		URL:       args.URL,
-		Selectors: args.Selectors,
-		Active:    args.Active,
-		FeedURL:   args.FeedURL,
-	})
+	// GET current source first (source-manager PUT does full replacement)
+	req, mergeErr := s.buildMergedUpdateRequest(ctx, args.SourceID, args.Name, args.URL, args.Selectors, args.Active, args.FeedURL)
+	if mergeErr != nil {
+		return s.errorResponse(id, InternalError, fmt.Sprintf("Failed to get current source: %v", mergeErr))
+	}
+
+	source, err := s.sourceClient.UpdateSource(ctx, args.SourceID, req)
 	if err != nil {
 		return s.errorResponse(id, InternalError, fmt.Sprintf("Failed to update source: %v", err))
 	}
@@ -551,6 +551,45 @@ func (s *Server) handleUpdateSource(ctx context.Context, id any, arguments json.
 		"updated_at": source.UpdatedAt,
 		"message":    "Source updated successfully",
 	})
+}
+
+// buildMergedUpdateRequest fetches the current source and merges only the provided fields,
+// since source-manager PUT does full replacement.
+func (s *Server) buildMergedUpdateRequest(
+	ctx context.Context, sourceID, name, url string, selectors map[string]any, active *bool, feedURL *string,
+) (client.UpdateSourceRequest, error) {
+	current, err := s.sourceClient.GetSource(ctx, sourceID)
+	if err != nil {
+		return client.UpdateSourceRequest{}, err
+	}
+
+	req := client.UpdateSourceRequest{
+		Name:      current.Name,
+		URL:       current.URL,
+		Type:      current.Type,
+		Selectors: current.Selectors,
+		FeedURL:   current.FeedURL,
+	}
+	currentActive := current.Active
+	req.Active = &currentActive
+
+	if name != "" {
+		req.Name = name
+	}
+	if url != "" {
+		req.URL = url
+	}
+	if selectors != nil {
+		req.Selectors = selectors
+	}
+	if active != nil {
+		req.Active = active
+	}
+	if feedURL != nil {
+		req.FeedURL = feedURL
+	}
+
+	return req, nil
 }
 
 func (s *Server) handleDeleteSource(ctx context.Context, id any, arguments json.RawMessage) *Response {
