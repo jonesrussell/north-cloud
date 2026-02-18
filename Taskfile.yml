@@ -154,40 +154,52 @@ tasks:
 
   lint:auth:force:
     desc: "Run auth linter (ignore cache)"
-    cmds: - task auth:lint -f
+    cmds:
+      - task auth:lint -f
   lint:classifier:force:
     desc: "Run classifier linter (ignore cache)"
-    cmds: - task classifier:lint -f
+    cmds:
+      - task classifier:lint -f
   lint:crawler:force:
     desc: "Run crawler linter (ignore cache)"
-    cmds: - task crawler:lint -f
+    cmds:
+      - task crawler:lint -f
   lint:dashboard:force:
     desc: "Run dashboard linter (ignore cache)"
-    cmds: - task dashboard:lint -f
+    cmds:
+      - task dashboard:lint -f
   lint:index-manager:force:
     desc: "Run index-manager linter (ignore cache)"
-    cmds: - task index-manager:lint -f
+    cmds:
+      - task index-manager:lint -f
   lint:mcp-north-cloud:force:
     desc: "Run mcp-north-cloud linter (ignore cache)"
-    cmds: - task mcp-north-cloud:lint -f
+    cmds:
+      - task mcp-north-cloud:lint -f
   lint:nc-http-proxy:force:
     desc: "Run nc-http-proxy linter (ignore cache)"
-    cmds: - task nc-http-proxy:lint -f
+    cmds:
+      - task nc-http-proxy:lint -f
   lint:pipeline:force:
     desc: "Run pipeline linter (ignore cache)"
-    cmds: - task pipeline:lint -f
+    cmds:
+      - task pipeline:lint -f
   lint:publisher:force:
     desc: "Run publisher linter (ignore cache)"
-    cmds: - task publisher:lint -f
+    cmds:
+      - task publisher:lint -f
   lint:search:force:
     desc: "Run search linter (ignore cache)"
-    cmds: - task search:lint -f
+    cmds:
+      - task search:lint -f
   lint:search-frontend:force:
     desc: "Run search-frontend linter (ignore cache)"
-    cmds: - task search-frontend:lint -f
+    cmds:
+      - task search-frontend:lint -f
   lint:source-manager:force:
     desc: "Run source-manager linter (ignore cache)"
-    cmds: - task source-manager:lint -f
+    cmds:
+      - task source-manager:lint -f
 
   lint:parallel:
     desc: "Run linters for all microservices in parallel"
