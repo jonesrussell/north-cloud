@@ -39,7 +39,7 @@
         >
           <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600" />
           <p class="mt-4 text-sm text-gray-600">
-            {{ loadingMessage || 'Running test...' }}
+            {{ displayLoadingMessage || 'Running test...' }}
           </p>
         </div>
 
@@ -263,6 +263,7 @@ const emit = defineEmits<{
 
 const isOpen = ref(false)
 const loading = ref(false)
+const displayLoadingMessage = ref(props.loadingMessage)
 const results = ref<TestResults | null>(null)
 const error = ref<string | null>(null)
 
@@ -276,7 +277,7 @@ function open(testResults?: TestResults) {
 function setLoading(isLoading: boolean, message?: string) {
   loading.value = isLoading
   if (message) {
-    props.loadingMessage
+    displayLoadingMessage.value = message
   }
 }
 

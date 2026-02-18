@@ -37,7 +37,7 @@ const loadChannels = async () => {
     loading.value = true
     const response = await publisherApi.channels.list()
     channels.value = response.data?.channels || []
-  } catch (err) {
+  } catch {
     error.value = 'Unable to load channels.'
   } finally {
     loading.value = false

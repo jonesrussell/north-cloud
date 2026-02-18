@@ -28,7 +28,7 @@ const loadStats = async () => {
       uptime_days: 45,
       hit_rate: 94.2,
     }
-  } catch (err) {
+  } catch {
     error.value = 'Unable to load cache statistics.'
   } finally {
     loading.value = false

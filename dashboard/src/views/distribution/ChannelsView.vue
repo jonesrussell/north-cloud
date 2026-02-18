@@ -28,7 +28,7 @@ const loadChannels = async () => {
     loading.value = true
     const response = await publisherApi.channels.list()
     channels.value = response.data?.channels || []
-  } catch (err) {
+  } catch {
     error.value = 'Unable to load channels.'
   } finally {
     loading.value = false
@@ -41,7 +41,7 @@ const loadTopics = async () => {
     topicsError.value = null
     const response = await publisherApi.topics.list()
     topicChannels.value = response.data?.topics ?? []
-  } catch (err) {
+  } catch {
     topicsError.value = 'Could not load topic channels.'
   } finally {
     topicsLoading.value = false

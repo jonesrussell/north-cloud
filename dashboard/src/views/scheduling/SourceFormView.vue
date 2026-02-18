@@ -34,7 +34,7 @@ const loadSource = async () => {
       url: source.url || '',
       enabled: source.enabled ?? true,
     }
-  } catch (err) {
+  } catch {
     error.value = 'Unable to load source.'
   } finally {
     loading.value = false

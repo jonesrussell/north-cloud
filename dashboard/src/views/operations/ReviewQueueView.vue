@@ -118,7 +118,7 @@ const loadReviewQueue = async () => {
 
     documents.value = allDocs
     totalHits.value = allDocs.length
-  } catch (err) {
+  } catch {
     error.value = 'Unable to load review queue.'
   } finally {
     loading.value = false
