@@ -11,6 +11,7 @@ import (
 	"github.com/jonesrussell/north-cloud/crawler/internal/archive"
 	"github.com/jonesrussell/north-cloud/crawler/internal/config/crawler"
 	"github.com/jonesrussell/north-cloud/crawler/internal/content"
+	"github.com/jonesrussell/north-cloud/crawler/internal/content/rawcontent"
 	"github.com/jonesrussell/north-cloud/crawler/internal/crawler/events"
 	"github.com/jonesrussell/north-cloud/crawler/internal/logs"
 	"github.com/jonesrussell/north-cloud/crawler/internal/metrics"
@@ -200,8 +201,12 @@ func (c *Crawler) GetIndexManager() storagetypes.IndexManager {
 
 // SetJobLogger sets the job logger for the current job execution.
 // Should be called before Start() for each job.
+// Also sets the extraction recorder on the raw content processor so extraction quality is recorded.
 func (c *Crawler) SetJobLogger(logger logs.JobLogger) {
 	c.jobLogger = logger
+	if proc, ok := c.rawContentProcessor.(*rawcontent.RawContentProcessor); ok {
+		proc.SetExtractionRecorder(newJobLoggerExtractionRecorder(logger))
+	}
 }
 
 // GetJobLogger returns the current job logger, or NoopJobLogger if not set.
