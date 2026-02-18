@@ -82,7 +82,7 @@ func (s *Server) executeOnboardWorkflow(ctx context.Context, id any, args onboar
 		URL:       args.URL,
 		Type:      args.SourceType,
 		Selectors: args.Selectors,
-		Active:    true,
+		Enabled:   true,
 	})
 	if err != nil {
 		return s.errorResponse(id, InternalError, fmt.Sprintf("Failed to create source: %v", err))
@@ -440,7 +440,7 @@ func (s *Server) handleAddSource(ctx context.Context, id any, arguments json.Raw
 		URL:       args.URL,
 		Type:      args.Type,
 		Selectors: args.Selectors,
-		Active:    args.Active,
+		Enabled:   args.Active,
 		FeedURL:   args.FeedURL,
 	})
 	if err != nil {
@@ -452,7 +452,7 @@ func (s *Server) handleAddSource(ctx context.Context, id any, arguments json.Raw
 		"name":       source.Name,
 		"url":        source.URL,
 		"type":       source.Type,
-		"active":     source.Active,
+		"active":     source.Enabled,
 		"created_at": source.CreatedAt,
 		"message":    "Source created successfully",
 	})
@@ -497,7 +497,7 @@ func (s *Server) handleListSources(ctx context.Context, id any, arguments json.R
 			"name":   paginatedSources[i].Name,
 			"url":    paginatedSources[i].URL,
 			"type":   paginatedSources[i].Type,
-			"active": paginatedSources[i].Active,
+			"active": paginatedSources[i].Enabled,
 		}
 		if paginatedSources[i].FeedURL != nil {
 			summary["feed_url"] = *paginatedSources[i].FeedURL
@@ -547,7 +547,7 @@ func (s *Server) handleUpdateSource(ctx context.Context, id any, arguments json.
 		"source_id":  source.ID,
 		"name":       source.Name,
 		"url":        source.URL,
-		"active":     source.Active,
+		"active":     source.Enabled,
 		"updated_at": source.UpdatedAt,
 		"message":    "Source updated successfully",
 	})
@@ -570,8 +570,8 @@ func (s *Server) buildMergedUpdateRequest(
 		Selectors: current.Selectors,
 		FeedURL:   current.FeedURL,
 	}
-	currentActive := current.Active
-	req.Active = &currentActive
+	currentEnabled := current.Enabled
+	req.Enabled = &currentEnabled
 
 	if name != "" {
 		req.Name = name
@@ -583,7 +583,7 @@ func (s *Server) buildMergedUpdateRequest(
 		req.Selectors = selectors
 	}
 	if active != nil {
-		req.Active = active
+		req.Enabled = active
 	}
 	if feedURL != nil {
 		req.FeedURL = feedURL
