@@ -173,7 +173,7 @@ func (r *RobotsChecker) doFetch(
 
 	req.Header.Set("User-Agent", r.userAgent)
 
-	resp, doErr := r.httpClient.Do(req)
+	resp, doErr := r.httpClient.Do(req) //nolint:gosec // G704: URL is derived from crawl target
 	if doErr != nil {
 		return nil, 0, fmt.Errorf("robots: fetch: %w", doErr)
 	}

@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/http"
+	"time"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/jonesrussell/north-cloud/crawler/internal/adaptive"
@@ -11,9 +13,11 @@ import (
 	"github.com/jonesrussell/north-cloud/crawler/internal/crawler"
 	crawlerevents "github.com/jonesrussell/north-cloud/crawler/internal/crawler/events"
 	"github.com/jonesrussell/north-cloud/crawler/internal/database"
+	"github.com/jonesrussell/north-cloud/crawler/internal/feed"
 	"github.com/jonesrussell/north-cloud/crawler/internal/logs"
 	"github.com/jonesrussell/north-cloud/crawler/internal/scheduler"
 	"github.com/jonesrussell/north-cloud/crawler/internal/sources"
+	"github.com/jonesrussell/north-cloud/crawler/internal/sources/apiclient"
 	infralogger "github.com/north-cloud/infrastructure/logger"
 	"github.com/north-cloud/infrastructure/pipeline"
 	"github.com/north-cloud/infrastructure/sse"
@@ -31,6 +35,10 @@ type ServiceComponents struct {
 	// Services
 	Scheduler  *scheduler.IntervalScheduler
 	LogService logs.Service
+
+	// Feed poller
+	FeedPoller *feed.Poller
+	ListDue    func(ctx context.Context) ([]feed.DueFeed, error)
 
 	// SSE components
 	SSEBroker    sse.Broker
@@ -87,6 +95,9 @@ func SetupServices(
 		intervalScheduler.SetLogService(logResult.Service)
 	}
 
+	// Create feed poller (if enabled)
+	feedPoller, listDue := createFeedPoller(deps, db)
+
 	return &ServiceComponents{
 		JobsHandler:            jobsHandler,
 		DiscoveredLinksHandler: discoveredLinksHandler,
@@ -94,6 +105,8 @@ func SetupServices(
 		LogsV2Handler:          logsV2Handler,
 		Scheduler:              intervalScheduler,
 		LogService:             logResult.Service,
+		FeedPoller:             feedPoller,
+		ListDue:                listDue,
 		SSEBroker:              sseBroker,
 		SSEHandler:             sseHandler,
 		SSEPublisher:           ssePublisher,
@@ -283,4 +296,102 @@ func loadSourceManager(deps *CommandDeps) (sources.Interface, error) {
 		return nil, fmt.Errorf("failed to create sources manager: %w", err)
 	}
 	return sourceManager, nil
+}
+
+// feedHTTPFetchTimeout is the timeout for HTTP requests when fetching feeds.
+const feedHTTPFetchTimeout = 30 * time.Second
+
+// createFeedPoller creates a feed poller and listDue callback.
+// Returns (nil, nil) if feed polling is disabled.
+func createFeedPoller(
+	deps *CommandDeps,
+	db *DatabaseComponents,
+) (poller *feed.Poller, listDueFn func(ctx context.Context) ([]feed.DueFeed, error)) {
+	feedCfg := deps.Config.GetFeedConfig()
+	if !feedCfg.Enabled {
+		deps.Logger.Info("Feed polling disabled")
+		return nil, nil
+	}
+
+	smCfg := deps.Config.GetSourceManagerConfig()
+	authCfg := deps.Config.GetAuthConfig()
+
+	apiClient := apiclient.NewClient(
+		apiclient.WithBaseURL(smCfg.URL+"/api/v1/sources"),
+		apiclient.WithJWTSecret(authCfg.JWTSecret),
+	)
+
+	httpFetcher := feed.NewHTTPFetcher(&http.Client{Timeout: feedHTTPFetchTimeout})
+	feedStateAdapter := feed.NewFeedStateRepoAdapter(db.FeedStateRepo)
+	frontierAdapter := feed.NewFrontierRepoAdapter(db.FrontierRepo)
+	logAdapter := &feedLogAdapter{log: deps.Logger}
+
+	poller = feed.NewPoller(httpFetcher, feedStateAdapter, frontierAdapter, logAdapter)
+
+	listDueFn = buildListDueFunc(apiClient, deps.Logger)
+
+	deps.Logger.Info("Feed poller created",
+		infralogger.Int("poll_interval_minutes", feedCfg.PollIntervalMinutes))
+
+	return poller, listDueFn
+}
+
+// buildListDueFunc creates a closure that lists sources with feed URLs from the API.
+func buildListDueFunc(
+	client *apiclient.Client,
+	log infralogger.Logger,
+) func(ctx context.Context) ([]feed.DueFeed, error) {
+	return func(ctx context.Context) ([]feed.DueFeed, error) {
+		apiSources, err := client.ListSources(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("list sources for feed polling: %w", err)
+		}
+
+		var due []feed.DueFeed
+		for i := range apiSources {
+			if apiSources[i].FeedURL != nil && *apiSources[i].FeedURL != "" {
+				due = append(due, feed.DueFeed{
+					SourceID: apiSources[i].ID,
+					FeedURL:  *apiSources[i].FeedURL,
+				})
+			}
+		}
+
+		log.Info("Listed due feeds",
+			infralogger.Int("total_sources", len(apiSources)),
+			infralogger.Int("feeds_due", len(due)))
+
+		return due, nil
+	}
+}
+
+// feedLogAdapter adapts infralogger.Logger to the feed.Logger interface.
+type feedLogAdapter struct {
+	log infralogger.Logger
+}
+
+func (a *feedLogAdapter) Info(msg string, fields ...any) {
+	a.log.Info(msg, toInfraFields(fields)...)
+}
+
+func (a *feedLogAdapter) Error(msg string, fields ...any) {
+	a.log.Error(msg, toInfraFields(fields)...)
+}
+
+// toInfraFields converts key-value pairs to infralogger fields.
+// The feed package passes fields as alternating key, value pairs.
+func toInfraFields(fields []any) []infralogger.Field {
+	fieldPairSize := 2
+	result := make([]infralogger.Field, 0, len(fields)/fieldPairSize)
+
+	for i := 0; i+1 < len(fields); i += fieldPairSize {
+		key, ok := fields[i].(string)
+		if !ok {
+			continue
+		}
+
+		result = append(result, infralogger.Any(key, fields[i+1]))
+	}
+
+	return result
 }

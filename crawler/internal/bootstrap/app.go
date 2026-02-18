@@ -13,9 +13,12 @@
 package bootstrap
 
 import (
+	"context"
 	"fmt"
 	"os"
+	"time"
 
+	infralogger "github.com/north-cloud/infrastructure/logger"
 	"github.com/north-cloud/infrastructure/profiling"
 )
 
@@ -85,6 +88,20 @@ func Start() error {
 	}
 	serverComponents := SetupHTTPServer(serverDeps)
 
+	// Phase 6b: Start feed poller goroutine (if enabled)
+	var feedPollerCancel context.CancelFunc
+	if serviceComponents.FeedPoller != nil {
+		feedCfg := deps.Config.GetFeedConfig()
+		pollerCtx, cancel := context.WithCancel(context.Background())
+		feedPollerCancel = cancel
+		interval := time.Duration(feedCfg.PollIntervalMinutes) * time.Minute
+		go func() {
+			_ = serviceComponents.FeedPoller.RunPollingLoop(pollerCtx, interval, serviceComponents.ListDue)
+		}()
+		deps.Logger.Info("Feed poller started",
+			infralogger.Int("interval_minutes", feedCfg.PollIntervalMinutes))
+	}
+
 	// Phase 7: Run until interrupt or error
 	return RunUntilInterrupt(
 		deps.Logger,
@@ -93,6 +110,7 @@ func Start() error {
 		serviceComponents.SSEBroker,
 		serviceComponents.LogService,
 		eventConsumer,
+		feedPollerCancel,
 		serverComponents.ErrorChan,
 	)
 }

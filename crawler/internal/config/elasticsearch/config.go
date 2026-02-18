@@ -69,18 +69,18 @@ type Config struct {
 	// Supports both ELASTICSEARCH_HOSTS and ELASTICSEARCH_ADDRESSES (comma-separated)
 	Addresses []string `env:"ELASTICSEARCH_ADDRESSES" yaml:"addresses"`
 	// APIKey is the base64 encoded API key for authentication
-	APIKey string `env:"ELASTICSEARCH_API_KEY" yaml:"api_key"`
+	APIKey string `env:"ELASTICSEARCH_API_KEY" json:"-" yaml:"api_key"`
 	// Username is the username for authentication
 	Username string `env:"ELASTICSEARCH_USERNAME" yaml:"username"`
 	// Password is the password for authentication (minimum 8 characters)
-	Password string `env:"ELASTICSEARCH_PASSWORD" yaml:"password"`
+	Password string `env:"ELASTICSEARCH_PASSWORD" json:"-" yaml:"password"`
 	// IndexName is the name of the index
 	// Supports both ELASTICSEARCH_INDEX_PREFIX and ELASTICSEARCH_INDEX_NAME
 	IndexName string `env:"ELASTICSEARCH_INDEX_NAME" yaml:"index_name"`
 	// Cloud contains cloud-specific configuration
 	Cloud struct {
 		ID     string `yaml:"id"`
-		APIKey string `yaml:"api_key"`
+		APIKey string `json:"-"  yaml:"api_key"`
 	} `yaml:"cloud"`
 	// TLS contains TLS configuration
 	TLS *TLSConfig `yaml:"tls"`

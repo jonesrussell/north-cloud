@@ -8,8 +8,8 @@ import (
 type Options struct {
 	Addresses      []string
 	Username       string
-	Password       string
-	APIKey         string
+	Password       string `json:"-"`
+	APIKey         string `json:"-"`
 	ScrollDuration string
 	Transport      http.RoundTripper
 	IndexName      string // Name of the index to use for content

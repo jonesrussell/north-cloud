@@ -1,6 +1,7 @@
 package bootstrap
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/signal"
@@ -30,6 +31,7 @@ func RunUntilInterrupt(
 	sseBroker sse.Broker,
 	logService logs.Service,
 	eventConsumer *crawlerintevents.Consumer,
+	feedPollerCancel context.CancelFunc,
 	errChan <-chan error,
 ) error {
 	// Set up signal handling for graceful shutdown
@@ -42,7 +44,7 @@ func RunUntilInterrupt(
 		log.Error("Server error", infralogger.Error(serverErr))
 		return fmt.Errorf("server error: %w", serverErr)
 	case sig := <-sigChan:
-		return Shutdown(log, server, intervalScheduler, sseBroker, logService, eventConsumer, sig)
+		return Shutdown(log, server, intervalScheduler, sseBroker, logService, eventConsumer, feedPollerCancel, sig)
 	}
 }
 
@@ -54,11 +56,18 @@ func Shutdown(
 	sseBroker sse.Broker,
 	logService logs.Service,
 	eventConsumer *crawlerintevents.Consumer,
+	feedPollerCancel context.CancelFunc,
 	sig os.Signal,
 ) error {
 	log.Info("Shutdown signal received", infralogger.String("signal", sig.String()))
 
-	// Stop event consumer first (stops reading from Redis)
+	// Stop feed poller first (cancels polling goroutine)
+	if feedPollerCancel != nil {
+		log.Info("Stopping feed poller")
+		feedPollerCancel()
+	}
+
+	// Stop event consumer (stops reading from Redis)
 	if eventConsumer != nil {
 		log.Info("Stopping event consumer")
 		eventConsumer.Stop()

@@ -13,9 +13,9 @@ type Config struct {
 	// Endpoint is the MinIO server address (e.g., "minio:9000")
 	Endpoint string `env:"CRAWLER_MINIO_ENDPOINT" yaml:"endpoint"`
 	// AccessKey for MinIO authentication
-	AccessKey string `env:"CRAWLER_MINIO_ACCESS_KEY" yaml:"access_key"`
+	AccessKey string `env:"CRAWLER_MINIO_ACCESS_KEY" json:"-" yaml:"access_key"`
 	// SecretKey for MinIO authentication
-	SecretKey string `env:"CRAWLER_MINIO_SECRET_KEY" yaml:"secret_key"`
+	SecretKey string `env:"CRAWLER_MINIO_SECRET_KEY" json:"-" yaml:"secret_key"`
 	// UseSSL enables HTTPS for MinIO connections
 	UseSSL bool `env:"CRAWLER_MINIO_USE_SSL" yaml:"use_ssl"`
 	// Bucket is the main bucket for HTML archives

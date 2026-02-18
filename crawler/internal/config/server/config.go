@@ -22,7 +22,7 @@ type Config struct {
 	// SecurityEnabled determines if security features are enabled
 	SecurityEnabled bool `env:"CRAWLER_SERVER_SECURITY_ENABLED" yaml:"security_enabled"`
 	// APIKey is the API key used for authentication
-	APIKey string `env:"CRAWLER_SERVER_API_KEY" yaml:"api_key"`
+	APIKey string `env:"CRAWLER_SERVER_API_KEY" json:"-" yaml:"api_key"`
 	// Address is the address to listen on (e.g., ":8080")
 	Address string `env:"CRAWLER_SERVER_ADDRESS" yaml:"address"`
 }

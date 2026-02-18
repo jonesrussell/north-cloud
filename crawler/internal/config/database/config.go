@@ -15,7 +15,7 @@ type Config struct {
 	Host     string `env:"POSTGRES_CRAWLER_HOST"     yaml:"host"`
 	Port     string `env:"POSTGRES_CRAWLER_PORT"     yaml:"port"`
 	User     string `env:"POSTGRES_CRAWLER_USER"     yaml:"user"`
-	Password string `env:"POSTGRES_CRAWLER_PASSWORD" yaml:"password"`
+	Password string `env:"POSTGRES_CRAWLER_PASSWORD" json:"-"       yaml:"password"`
 	DBName   string `env:"POSTGRES_CRAWLER_DB"       yaml:"dbname"`
 	SSLMode  string `env:"POSTGRES_CRAWLER_SSLMODE"  yaml:"sslmode"`
 }

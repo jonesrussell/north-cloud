@@ -26,7 +26,7 @@ type Config struct {
 	Host     string
 	Port     string
 	User     string
-	Password string
+	Password string `json:"-"`
 	DBName   string
 	SSLMode  string
 }

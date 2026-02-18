@@ -23,7 +23,7 @@ type StreamsClient struct {
 // StreamsConfig holds configuration for the Redis Streams client.
 type StreamsConfig struct {
 	Addr     string
-	Password string
+	Password string `json:"-"`
 	DB       int
 	Prefix   string // Stream key prefix (e.g., "crawler")
 }

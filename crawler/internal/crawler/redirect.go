@@ -38,7 +38,7 @@ func (c *Crawler) checkRedirect(ctx context.Context, source *configtypes.Source)
 		return fmt.Errorf("redirect check: build request: %w", err)
 	}
 
-	resp, err := client.Do(req)
+	resp, err := client.Do(req) //nolint:gosec // G704: URL is from source config
 	if err != nil {
 		// Connection errors are non-fatal — warn and let the crawl proceed.
 		c.GetJobLogger().Warn(logs.CategoryLifecycle,

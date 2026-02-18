@@ -39,6 +39,8 @@ type Interface interface {
 	GetRedisConfig() *RedisConfig
 	// GetSourceManagerConfig returns the source-manager configuration.
 	GetSourceManagerConfig() *SourceManagerConfig
+	// GetFeedConfig returns the feed polling configuration.
+	GetFeedConfig() *FeedConfig
 	// GetPipelineURL returns the pipeline service URL (empty = disabled).
 	GetPipelineURL() string
 	// Validate validates the configuration based on the current command.
@@ -62,6 +64,11 @@ const (
 // Source manager defaults
 const (
 	defaultSourceManagerURL = "http://localhost:8050"
+)
+
+// Feed polling defaults
+const (
+	defaultFeedPollIntervalMinutes = 5
 )
 
 // Ensure Config implements Interface
@@ -91,11 +98,13 @@ type Config struct {
 	SourceManager *SourceManagerConfig `yaml:"source_manager"`
 	// Pipeline holds pipeline observability configuration
 	Pipeline *PipelineConfig `yaml:"pipeline"`
+	// Feed holds feed polling configuration
+	Feed *FeedConfig `yaml:"feed"`
 }
 
 // AuthConfig holds authentication configuration.
 type AuthConfig struct {
-	JWTSecret string `env:"AUTH_JWT_SECRET" yaml:"jwt_secret"`
+	JWTSecret string `env:"AUTH_JWT_SECRET" json:"-" yaml:"jwt_secret"`
 }
 
 // LoggingConfig holds logging configuration.
@@ -110,7 +119,7 @@ type LoggingConfig struct {
 // RedisConfig holds Redis connection configuration for event consumption.
 type RedisConfig struct {
 	Address  string `env:"REDIS_ADDRESS"        yaml:"address"`
-	Password string `env:"REDIS_PASSWORD"       yaml:"password"`
+	Password string `env:"REDIS_PASSWORD"       json:"-"       yaml:"password"`
 	DB       int    `env:"REDIS_DB"             yaml:"db"`
 	Enabled  bool   `env:"REDIS_EVENTS_ENABLED" yaml:"enabled"` // Feature flag for event consumption
 }
@@ -123,6 +132,12 @@ type SourceManagerConfig struct {
 // PipelineConfig holds pipeline observability configuration.
 type PipelineConfig struct {
 	URL string `env:"PIPELINE_URL" yaml:"url"`
+}
+
+// FeedConfig holds feed polling configuration.
+type FeedConfig struct {
+	Enabled             bool `env:"CRAWLER_FEED_POLL_ENABLED"          yaml:"enabled"`
+	PollIntervalMinutes int  `env:"CRAWLER_FEED_POLL_INTERVAL_MINUTES" yaml:"poll_interval_minutes"`
 }
 
 // validateHTTPDConfig validates the configuration for the httpd command
@@ -257,6 +272,17 @@ func setDefaults(cfg *Config) {
 		cfg.SourceManager.URL = defaultSourceManagerURL
 	}
 
+	// Set default feed polling configuration
+	if cfg.Feed == nil {
+		cfg.Feed = &FeedConfig{
+			Enabled:             true,
+			PollIntervalMinutes: defaultFeedPollIntervalMinutes,
+		}
+	}
+	if cfg.Feed.PollIntervalMinutes <= 0 {
+		cfg.Feed.PollIntervalMinutes = defaultFeedPollIntervalMinutes
+	}
+
 	// Set server defaults
 	if cfg.Server.Address == "" {
 		cfg.Server.Address = defaultServerAddress
@@ -363,6 +389,17 @@ func (c *Config) GetSourceManagerConfig() *SourceManagerConfig {
 		}
 	}
 	return c.SourceManager
+}
+
+// GetFeedConfig returns the feed polling configuration.
+func (c *Config) GetFeedConfig() *FeedConfig {
+	if c.Feed == nil {
+		return &FeedConfig{
+			Enabled:             true,
+			PollIntervalMinutes: defaultFeedPollIntervalMinutes,
+		}
+	}
+	return c.Feed
 }
 
 // GetPipelineURL returns the pipeline service URL (empty = disabled).
