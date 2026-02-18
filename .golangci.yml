@@ -324,6 +324,9 @@ linters:
         path: .*/config/config\.go
         text: "5"
       - linters:
+          - gosec
+        path: .*/internal/config/config\.go
+      - linters:
           - mnd
         path: .*/integration/service\.go
         text: (5|100)

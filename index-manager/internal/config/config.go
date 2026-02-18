@@ -50,7 +50,7 @@ type DatabaseConfig struct {
 	Host                  string        `env:"POSTGRES_INDEX_MANAGER_HOST"     yaml:"host"`
 	Port                  int           `env:"POSTGRES_INDEX_MANAGER_PORT"     yaml:"port"`
 	User                  string        `env:"POSTGRES_INDEX_MANAGER_USER"     yaml:"user"`
-	Password              string        `env:"POSTGRES_INDEX_MANAGER_PASSWORD" yaml:"password"` //nolint:gosec // G117: DB config from env
+	Password              string        `env:"POSTGRES_INDEX_MANAGER_PASSWORD" yaml:"password"`
 	Database              string        `env:"POSTGRES_INDEX_MANAGER_DB"       yaml:"database"`
 	SSLMode               string        `yaml:"sslmode"`
 	MaxConnections        int           `yaml:"max_connections"`
@@ -62,7 +62,7 @@ type DatabaseConfig struct {
 type ElasticsearchConfig struct {
 	URL        string        `env:"ELASTICSEARCH_URL" yaml:"url"`
 	Username   string        `yaml:"username"`
-	Password   string        `yaml:"password"` //nolint:gosec // G117: ES config from yaml/env
+	Password   string        `yaml:"password"`
 	MaxRetries int           `yaml:"max_retries"`
 	Timeout    time.Duration `yaml:"timeout"`
 }

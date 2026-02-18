@@ -49,7 +49,7 @@ type DatabaseConfig struct {
 	Host                  string        `env:"POSTGRES_PIPELINE_HOST"     yaml:"host"`
 	Port                  int           `env:"POSTGRES_PIPELINE_PORT"     yaml:"port"`
 	User                  string        `env:"POSTGRES_PIPELINE_USER"     yaml:"user"`
-	Password              string        `env:"POSTGRES_PIPELINE_PASSWORD" yaml:"password"` //nolint:gosec // G117: DB config from env
+	Password              string        `env:"POSTGRES_PIPELINE_PASSWORD" yaml:"password"`
 	Database              string        `env:"POSTGRES_PIPELINE_DB"       yaml:"database"`
 	SSLMode               string        `yaml:"sslmode"`
 	MaxConnections        int           `yaml:"max_connections"`
@@ -59,7 +59,7 @@ type DatabaseConfig struct {
 
 // AuthConfig holds authentication settings.
 type AuthConfig struct {
-	JWTSecret string `env:"AUTH_JWT_SECRET" yaml:"jwt_secret"` //nolint:gosec // G117: JWT secret from env
+	JWTSecret string `env:"AUTH_JWT_SECRET" yaml:"jwt_secret"`
 }
 
 // LoggingConfig holds logging settings.

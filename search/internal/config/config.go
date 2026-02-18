@@ -57,7 +57,7 @@ type ServiceConfig struct {
 type ElasticsearchConfig struct {
 	URL                      string        `env:"ELASTICSEARCH_URL"           yaml:"url"`
 	Username                 string        `env:"ELASTICSEARCH_USERNAME"      yaml:"username"`
-	Password                 string        `env:"ELASTICSEARCH_PASSWORD"      yaml:"password"` //nolint:gosec // G117: ES config from env
+	Password                 string        `env:"ELASTICSEARCH_PASSWORD"      yaml:"password"`
 	MaxRetries               int           `yaml:"max_retries"`
 	Timeout                  time.Duration `yaml:"timeout"`
 	ClassifiedContentPattern string        `yaml:"classified_content_pattern"`
