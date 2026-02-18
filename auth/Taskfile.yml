@@ -1,12 +1,13 @@
 version: '3'
 
 # Each module resolves dependencies from its own go.mod, not the workspace
-env:
-  GOWORK: "off"
 
 vars:
   BINARY_NAME: auth
   MAIN_PATH: ./main.go
+
+env:
+  GOWORK: "off"
 
 tasks:
   default:

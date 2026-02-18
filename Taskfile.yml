@@ -3,8 +3,6 @@
 # Service contract: lint, test, test:coverage, test:race, (vuln for Go), build, (vendor for Go), (migrate:* for DB services)
 version: '3'
 
-dotenv: ['.env']
-
 includes:
   auth:
     taskfile: ./auth/Taskfile.yml
@@ -42,6 +40,8 @@ includes:
   source-manager:
     taskfile: ./source-manager/Taskfile.yml
     dir: ./source-manager
+
+dotenv: ['.env']
 
 tasks:
   default:

@@ -8,7 +8,6 @@ output:
   group:
     error_only: false
 
-
 tasks:
   default:
     desc: "Show help and list common tasks"

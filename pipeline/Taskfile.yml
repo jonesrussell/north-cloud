@@ -1,8 +1,6 @@
 version: '3'
 
 # Each module resolves dependencies from its own go.mod, not the workspace
-env:
-  GOWORK: "off"
 
 vars:
   BINARY_NAME: pipeline
@@ -10,6 +8,9 @@ vars:
   BUILD_DIR: ./bin
   DOCKER_IMAGE: north-cloud-pipeline
   CONFIG_FILE: config.yml
+
+env:
+  GOWORK: "off"
 
 tasks:
   default:

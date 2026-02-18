@@ -1,8 +1,6 @@
 version: '3'
 
 # Each module resolves dependencies from its own go.mod, not the workspace
-env:
-  GOWORK: "off"
 
 vars:
   BINARY_NAME: source-manager
@@ -15,6 +13,9 @@ vars:
   DB_USER: '{{.POSTGRES_SOURCE_MANAGER_USER | default .DB_USER | default "postgres"}}'
   DB_PASSWORD: '{{.POSTGRES_SOURCE_MANAGER_PASSWORD | default .DB_PASSWORD | default ""}}'
   DB_NAME: '{{.POSTGRES_SOURCE_MANAGER_DB | default .DB_NAME | default "source_manager"}}'
+
+env:
+  GOWORK: "off"
 
 tasks:
   default:

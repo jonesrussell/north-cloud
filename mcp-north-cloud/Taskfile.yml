@@ -1,14 +1,15 @@
 version: '3'
 
 # Each module resolves dependencies from its own go.mod, not the workspace
-env:
-  GOWORK: "off"
 
 vars:
   BINARY_NAME: mcp-north-cloud
   MAIN_PATH: ./main.go
   BUILD_DIR: ./bin
   DOCKER_IMAGE: north-cloud-mcp-north-cloud
+
+env:
+  GOWORK: "off"
 
 output:
   group:

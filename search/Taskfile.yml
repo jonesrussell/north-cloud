@@ -1,12 +1,13 @@
 version: '3'
 
 # Each module resolves dependencies from its own go.mod, not the workspace
-env:
-  GOWORK: "off"
 
 vars:
   BINARY_NAME: search
   MAIN_PATH: .
+
+env:
+  GOWORK: "off"
 
 tasks:
   default:
@@ -146,17 +147,17 @@ tasks:
   docker:run:
     desc: "Run search service in Docker (development)"
     cmds:
-      - docker-compose -f ../docker-compose.base.yml -f ../docker-compose.dev.yml up -d search-service
+      - docker compose -f ../docker compose.base.yml -f ../docker compose.dev.yml up -d search-service
 
   docker:logs:
     desc: "View search service logs"
     cmds:
-      - docker-compose -f ../docker-compose.base.yml -f ../docker-compose.dev.yml logs -f search-service
+      - docker compose -f ../docker compose.base.yml -f ../docker compose.dev.yml logs -f search-service
 
   docker:stop:
     desc: "Stop search service"
     cmds:
-      - docker-compose -f ../docker-compose.base.yml -f ../docker-compose.dev.yml stop search-service
+      - docker compose -f ../docker compose.base.yml -f ../docker compose.dev.yml stop search-service
 
   dev:
     desc: "Run in development mode with hot-reload (requires air)"

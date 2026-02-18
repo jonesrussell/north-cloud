@@ -1,12 +1,13 @@
 version: '3'
 
 # Each module resolves dependencies from its own go.mod, not the workspace
-env:
-  GOWORK: "off"
 
 vars:
   BINARY_NAME: index-manager
   MAIN_PATH: .
+
+env:
+  GOWORK: "off"
 
 tasks:
   default:
