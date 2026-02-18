@@ -23,7 +23,7 @@ type ClientConfig struct {
 
 // AuthConfig holds authentication configuration for service-to-service calls.
 type AuthConfig struct {
-	JWTSecret string `env:"AUTH_JWT_SECRET" yaml:"jwt_secret"` //nolint:gosec // G117: JWT secret from env for service calls
+	JWTSecret string `env:"AUTH_JWT_SECRET" yaml:"jwt_secret"`
 }
 
 // ServicesConfig holds URLs for all North Cloud services.

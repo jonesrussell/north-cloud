@@ -38,7 +38,7 @@ type DatabaseConfig struct {
 	Host     string `env:"POSTGRES_PUBLISHER_HOST"     yaml:"host"`
 	Port     string `env:"POSTGRES_PUBLISHER_PORT"     yaml:"port"`
 	User     string `env:"POSTGRES_PUBLISHER_USER"     yaml:"user"`
-	Password string `env:"POSTGRES_PUBLISHER_PASSWORD" yaml:"password"` //nolint:gosec // G117: DB config from env
+	Password string `env:"POSTGRES_PUBLISHER_PASSWORD" yaml:"password"`
 	DBName   string `env:"POSTGRES_PUBLISHER_DB"       yaml:"dbname"`
 	SSLMode  string `env:"POSTGRES_PUBLISHER_SSLMODE"  yaml:"sslmode"`
 }
@@ -46,17 +46,17 @@ type DatabaseConfig struct {
 type ElasticsearchConfig struct {
 	URL      string `env:"ES_URL"    yaml:"url"`
 	Username string `yaml:"username"`
-	Password string `yaml:"password"` //nolint:gosec // G117: ES config from yaml/env
+	Password string `yaml:"password"`
 }
 
 type RedisConfig struct {
 	URL      string `env:"REDIS_URL"      yaml:"url"`
-	Password string `env:"REDIS_PASSWORD" yaml:"password"` //nolint:gosec // G117: Redis config from env
+	Password string `env:"REDIS_PASSWORD" yaml:"password"`
 	DB       int    `yaml:"db"`
 }
 
 type AuthConfig struct {
-	JWTSecret string `env:"AUTH_JWT_SECRET" yaml:"jwt_secret"` //nolint:gosec // G117: JWT secret from env
+	JWTSecret string `env:"AUTH_JWT_SECRET" yaml:"jwt_secret"`
 }
 
 type ServiceConfig struct {
