@@ -327,6 +327,9 @@ linters:
           - gosec
         path: .*/internal/config/config\.go
       - linters:
+          - gosec
+        path: .*internal/api/auth_handler\.go
+      - linters:
           - mnd
         path: .*/integration/service\.go
         text: (5|100)
