@@ -36,8 +36,8 @@ type ServiceConfig struct {
 // AuthConfig holds authentication configuration.
 type AuthConfig struct {
 	Username      string        `env:"AUTH_USERNAME"   yaml:"username"`
-	Password      string        `env:"AUTH_PASSWORD"   yaml:"password"`
-	JWTSecret     string        `env:"AUTH_JWT_SECRET" yaml:"jwt_secret"`
+	Password      string        `env:"AUTH_PASSWORD"   yaml:"password"`   //nolint:gosec // G117: auth config from env
+	JWTSecret     string        `env:"AUTH_JWT_SECRET" yaml:"jwt_secret"` //nolint:gosec // G117: JWT signing secret from env
 	JWTExpiration time.Duration `yaml:"jwt_expiration"`
 }
 
@@ -103,7 +103,7 @@ func (c *Config) Validate() error {
 
 // JWTConfig returns JWT-specific configuration.
 type JWTConfig struct {
-	Secret     string
+	Secret     string //nolint:gosec // G117: JWT signing secret, passed to JWT manager
 	Expiration time.Duration
 }
 
