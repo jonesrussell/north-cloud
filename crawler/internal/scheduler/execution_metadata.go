@@ -61,6 +61,15 @@ func BuildExecutionMetadata(summary *logs.JobSummary) domain.JSONBMap {
 		metrics["skipped"] = skipped
 	}
 
+	// Extraction quality (for selector drift detection)
+	if summary.ItemsExtracted > 0 || summary.ItemsExtractedEmptyTitle > 0 || summary.ItemsExtractedEmptyBody > 0 {
+		metrics["extraction_quality"] = map[string]int64{
+			"items_indexed":     summary.ItemsExtracted,
+			"empty_title_count": summary.ItemsExtractedEmptyTitle,
+			"empty_body_count":  summary.ItemsExtractedEmptyBody,
+		}
+	}
+
 	return domain.JSONBMap{crawlMetricsKey: metrics}
 }
 
