@@ -75,7 +75,7 @@ type DatabaseConfig struct {
 	Host            string        `env:"POSTGRES_HOST"            yaml:"host"`
 	Port            int           `env:"POSTGRES_PORT"            yaml:"port"`
 	User            string        `env:"POSTGRES_USER"            yaml:"user"`
-	Password        string        `env:"POSTGRES_PASSWORD"        yaml:"password"`
+	Password        string        `env:"POSTGRES_PASSWORD"        yaml:"password"` //nolint:gosec // G117: DB config from env
 	Database        string        `env:"POSTGRES_DB"              yaml:"database"`
 	SSLMode         string        `env:"POSTGRES_SSLMODE"         yaml:"sslmode"`
 	MaxConnections  int           `yaml:"max_connections"`
@@ -87,7 +87,7 @@ type DatabaseConfig struct {
 type ElasticsearchConfig struct {
 	URL                     string        `env:"ELASTICSEARCH_URL"          yaml:"url"`
 	Username                string        `yaml:"username"`
-	Password                string        `yaml:"password"`
+	Password                string        `yaml:"password"` //nolint:gosec // G117: ES config from yaml/env
 	MaxRetries              int           `yaml:"max_retries"`
 	Timeout                 time.Duration `yaml:"timeout"`
 	RawContentSuffix        string        `yaml:"raw_content_suffix"`
@@ -97,7 +97,7 @@ type ElasticsearchConfig struct {
 // RedisConfig holds Redis configuration.
 type RedisConfig struct {
 	URL                    string        `env:"REDIS_URL"                 yaml:"url"`
-	Password               string        `env:"REDIS_PASSWORD"            yaml:"password"`
+	Password               string        `env:"REDIS_PASSWORD"            yaml:"password"` //nolint:gosec // G117: Redis config from env
 	Database               int           `yaml:"database"`
 	MaxRetries             int           `yaml:"max_retries"`
 	Timeout                time.Duration `yaml:"timeout"`
@@ -115,7 +115,7 @@ type LoggingConfig struct {
 
 // AuthConfig holds authentication configuration.
 type AuthConfig struct {
-	JWTSecret string `env:"AUTH_JWT_SECRET" yaml:"jwt_secret"`
+	JWTSecret string `env:"AUTH_JWT_SECRET" yaml:"jwt_secret"` //nolint:gosec // G117: JWT secret from env
 }
 
 // ClassificationConfig holds classification settings.
