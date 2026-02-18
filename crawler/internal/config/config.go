@@ -290,9 +290,10 @@ func setDefaults(cfg *Config) {
 
 	// Set default fetcher configuration
 	if cfg.Fetcher == nil {
-		d := fetcher.Config{Enabled: true}.WithDefaults()
-		cfg.Fetcher = &d
+		cfg.Fetcher = &fetcher.Config{}
 	}
+	d := cfg.Fetcher.WithDefaults()
+	cfg.Fetcher = &d
 
 	// Set server defaults
 	if cfg.Server.Address == "" {
@@ -416,10 +417,11 @@ func (c *Config) GetFeedConfig() *FeedConfig {
 // GetFetcherConfig returns the frontier fetcher configuration.
 func (c *Config) GetFetcherConfig() *fetcher.Config {
 	if c.Fetcher == nil {
-		d := fetcher.Config{Enabled: true}.WithDefaults()
+		d := fetcher.Config{}.WithDefaults()
 		return &d
 	}
-	return c.Fetcher
+	withDefaults := c.Fetcher.WithDefaults()
+	return &withDefaults
 }
 
 // GetPipelineURL returns the pipeline service URL (empty = disabled).
