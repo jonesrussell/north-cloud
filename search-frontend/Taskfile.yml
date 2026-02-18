@@ -16,7 +16,7 @@ tasks:
       - "*.config.*"
       - "tsconfig*.json"
     cmds:
-      - npm run lint || echo "No lint script found"
+      - npm run lint
 
   test:
     desc: "Run tests (no tests configured)"
