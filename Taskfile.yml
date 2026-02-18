@@ -224,8 +224,8 @@ tasks:
     cmds:
       - task source-manager:lint -f
 
-  lint:parallel:
-    desc: "Run linters for all microservices in parallel"
+  lint:all:
+    desc: "Run linters for all microservices (same as lint; use --parallel for parallel execution)"
     cmds:
       - task: lint:auth
       - task: lint:classifier
