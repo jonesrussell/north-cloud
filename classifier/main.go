@@ -70,7 +70,7 @@ func main() {
 		fmt.Println("  help       Show this help message")
 		os.Exit(0)
 	default:
-		fmt.Fprintf(os.Stderr, "Unknown command: %s\n", command) //nolint:gosec // G705: command is CLI arg, stderr only
+		fmt.Fprintf(os.Stderr, "Unknown command: %s\n", command)
 		fmt.Fprintln(os.Stderr, "Run 'classifier help' for usage information")
 		os.Exit(1)
 	}

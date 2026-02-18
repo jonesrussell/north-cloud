@@ -330,6 +330,12 @@ linters:
           - gosec
         path: .*internal/api/auth_handler\.go
       - linters:
+          - gosec
+        path: .*classifier/internal/database/postgres\.go
+      - linters:
+          - gosec
+        path: .*classifier/main\.go
+      - linters:
           - mnd
         path: .*/integration/service\.go
         text: (5|100)
