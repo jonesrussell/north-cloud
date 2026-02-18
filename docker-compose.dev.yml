@@ -81,6 +81,9 @@ services:
       CRAWLER_SOURCES_API_URL: "${CRAWLER_SOURCES_API_URL:-http://source-manager:8050/api/v1/sources}"
       SOURCE_MANAGER_URL: "${SOURCE_MANAGER_URL:-http://source-manager:8050}"
       PIPELINE_URL: "${PIPELINE_URL:-}"
+      # Frontier Worker Pool + Feed Poller
+      CRAWLER_FEED_POLL_ENABLED: "${CRAWLER_FEED_POLL_ENABLED:-true}"
+      FETCHER_ENABLED: "${FETCHER_ENABLED:-true}"
       CRAWLER_MINIO_ENABLED: "${CRAWLER_MINIO_ENABLED:-true}"
       CRAWLER_MINIO_ENDPOINT: "${CRAWLER_MINIO_ENDPOINT:-minio:9000}"
       CRAWLER_MINIO_ACCESS_KEY: "${CRAWLER_MINIO_ACCESS_KEY:-minioadmin}"

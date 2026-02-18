@@ -64,6 +64,9 @@ services:
       JOB_LOGS_REDIS_ENABLED: "${JOB_LOGS_REDIS_ENABLED:-true}"
       JOB_LOGS_REDIS_KEY_PREFIX: "${JOB_LOGS_REDIS_KEY_PREFIX:-logs}"
       JOB_LOGS_REDIS_TTL_SECONDS: "${JOB_LOGS_REDIS_TTL_SECONDS:-86400}"
+      # Frontier Worker Pool + Feed Poller
+      CRAWLER_FEED_POLL_ENABLED: "${CRAWLER_FEED_POLL_ENABLED:-true}"
+      FETCHER_ENABLED: "${FETCHER_ENABLED:-true}"
       PIPELINE_URL: http://pipeline:8075
       APP_ENV: production
       AUTH_JWT_SECRET: "${AUTH_JWT_SECRET}"
