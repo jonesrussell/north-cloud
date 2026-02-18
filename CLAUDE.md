@@ -54,6 +54,8 @@ task migrate:SERVICE
 
 # Install dev tools (golangci-lint, air, goimports, migrate)
 task install:tools
+
+# Task version (CI and local): see .task-version (e.g. install with that version for parity)
 ```
 
 **Service Development (Manual)**:
