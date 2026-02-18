@@ -24,3 +24,20 @@ func TestToolScope_IsAllowed(t *testing.T) {
 		})
 	}
 }
+
+func TestGetToolsForEnv_Counts(t *testing.T) {
+	localTools := getToolsForEnv(EnvLocal)
+	prodTools := getToolsForEnv(EnvProd)
+
+	// Local = 15 shared + 3 local = 18
+	expectedLocal := 18
+	if len(localTools) != expectedLocal {
+		t.Errorf("local tools = %d, want %d", len(localTools), expectedLocal)
+	}
+
+	// Prod = 15 shared + 9 prod = 24
+	expectedProd := 24
+	if len(prodTools) != expectedProd {
+		t.Errorf("prod tools = %d, want %d", len(prodTools), expectedProd)
+	}
+}

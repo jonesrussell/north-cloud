@@ -19,11 +19,24 @@ func getAllTools() []Tool {
 	return tools
 }
 
+// getToolsForEnv returns tools filtered by environment scope.
+func getToolsForEnv(env string) []Tool {
+	all := getAllTools()
+	filtered := make([]Tool, 0, len(all))
+	for _, t := range all {
+		if t.Scope.IsAllowed(env) {
+			filtered = append(filtered, t)
+		}
+	}
+	return filtered
+}
+
 // getWorkflowTools returns high-level workflow tools that orchestrate multiple services
 func getWorkflowTools() []Tool {
 	return []Tool{
 		{
-			Name: "onboard_source",
+			Name:  "onboard_source",
+			Scope: ScopeShared,
 			Description: "Set up a complete content pipeline in one step: creates a source, starts crawling, " +
 				"and optionally configures a publishing route. Use when: User wants to add a new website/source and start crawling. " +
 				"Returns: source_id, job_id, optional route_id. Prefer over add_source + schedule_crawl for new sources.",
@@ -83,6 +96,7 @@ func getCrawlerTools() []Tool {
 	return []Tool{
 		{
 			Name:        "start_crawl",
+			Scope:       ScopeProd,
 			Description: "Start a crawl job immediately. Creates a new job that runs once without scheduling.",
 			InputSchema: map[string]any{
 				"type": "object",
@@ -101,6 +115,7 @@ func getCrawlerTools() []Tool {
 		},
 		{
 			Name:        "schedule_crawl",
+			Scope:       ScopeProd,
 			Description: "Schedule a recurring crawl job with interval-based scheduling.",
 			InputSchema: map[string]any{
 				"type": "object",
@@ -128,6 +143,7 @@ func getCrawlerTools() []Tool {
 		},
 		{
 			Name:        "list_crawl_jobs",
+			Scope:       ScopeShared,
 			Description: "List all crawl jobs with optional status filter and pagination.",
 			InputSchema: map[string]any{
 				"type": "object",
@@ -150,6 +166,7 @@ func getCrawlerTools() []Tool {
 		},
 		{
 			Name:        "control_crawl_job",
+			Scope:       ScopeProd,
 			Description: "Control a crawl job's state: pause, resume, or cancel. Use when: User wants to pause, resume, or cancel a crawl job.",
 			InputSchema: map[string]any{
 				"type": "object",
@@ -169,6 +186,7 @@ func getCrawlerTools() []Tool {
 		},
 		{
 			Name:        "get_crawl_stats",
+			Scope:       ScopeShared,
 			Description: "Get statistics for a crawl job including success rate and execution history.",
 			InputSchema: map[string]any{
 				"type": "object",
@@ -188,7 +206,8 @@ func getCrawlerTools() []Tool {
 func getSourceManagerTools() []Tool {
 	return []Tool{
 		{
-			Name: "add_source",
+			Name:  "add_source",
+			Scope: ScopeShared,
 			Description: "Add a new content source for crawling. Use when: Only need to register a source " +
 				"without crawling. For full setup, prefer onboard_source.",
 			InputSchema: map[string]any{
@@ -221,6 +240,7 @@ func getSourceManagerTools() []Tool {
 		},
 		{
 			Name:        "list_sources",
+			Scope:       ScopeShared,
 			Description: "List all configured content sources with pagination.",
 			InputSchema: map[string]any{
 				"type": "object",
@@ -238,6 +258,7 @@ func getSourceManagerTools() []Tool {
 		},
 		{
 			Name:        "update_source",
+			Scope:       ScopeShared,
 			Description: "Update an existing source configuration.",
 			InputSchema: map[string]any{
 				"type": "object",
@@ -268,6 +289,7 @@ func getSourceManagerTools() []Tool {
 		},
 		{
 			Name:        "delete_source",
+			Scope:       ScopeProd,
 			Description: "Delete a content source.",
 			InputSchema: map[string]any{
 				"type": "object",
@@ -281,7 +303,8 @@ func getSourceManagerTools() []Tool {
 			},
 		},
 		{
-			Name: "test_source",
+			Name:  "test_source",
+			Scope: ScopeShared,
 			Description: "Test crawl a source without saving the results. Use when: Validating selectors " +
 				"before adding a source. Call before add_source or onboard_source if selectors are uncertain.",
 			InputSchema: map[string]any{
@@ -308,6 +331,7 @@ func getPublisherTools() []Tool {
 	return []Tool{
 		{
 			Name:        "create_route",
+			Scope:       ScopeProd,
 			Description: "Create a new publishing route that connects a source to a channel with quality and topic filters.",
 			InputSchema: map[string]any{
 				"type": "object",
@@ -341,6 +365,7 @@ func getPublisherTools() []Tool {
 		},
 		{
 			Name:        "list_routes",
+			Scope:       ScopeShared,
 			Description: "List all publishing routes with optional filters and pagination.",
 			InputSchema: map[string]any{
 				"type": "object",
@@ -365,7 +390,8 @@ func getPublisherTools() []Tool {
 			},
 		},
 		{
-			Name: "create_channel",
+			Name:  "create_channel",
+			Scope: ScopeProd,
 			Description: "Create a new publishing channel. Use when: User wants to set up a new Redis pub/sub " +
 				"topic for article routing. Returns: channel_id, name, and status. Channel names typically " +
 				"follow 'articles:{topic}' pattern (e.g., 'articles:crime', 'articles:news').",
@@ -389,7 +415,8 @@ func getPublisherTools() []Tool {
 			},
 		},
 		{
-			Name: "list_channels",
+			Name:  "list_channels",
+			Scope: ScopeShared,
 			Description: "List all publishing channels. Use when: User wants to see available channels for " +
 				"routing or needs a channel_id for create_route/onboard_source. Returns: channel IDs, " +
 				"names, descriptions, and active status.",
@@ -405,6 +432,7 @@ func getPublisherTools() []Tool {
 		},
 		{
 			Name:        "delete_route",
+			Scope:       ScopeProd,
 			Description: "Delete a publishing route.",
 			InputSchema: map[string]any{
 				"type": "object",
@@ -419,6 +447,7 @@ func getPublisherTools() []Tool {
 		},
 		{
 			Name:        "preview_route",
+			Scope:       ScopeShared,
 			Description: "Preview articles that would be published by a route without actually publishing them.",
 			InputSchema: map[string]any{
 				"type": "object",
@@ -433,6 +462,7 @@ func getPublisherTools() []Tool {
 		},
 		{
 			Name:        "get_publish_history",
+			Scope:       ScopeShared,
 			Description: "Get publishing history with pagination.",
 			InputSchema: map[string]any{
 				"type": "object",
@@ -454,6 +484,7 @@ func getPublisherTools() []Tool {
 		},
 		{
 			Name:        "get_publisher_stats",
+			Scope:       ScopeShared,
 			Description: "Get publisher statistics including total published and articles by channel.",
 			InputSchema: map[string]any{
 				"type": "object",
@@ -465,7 +496,8 @@ func getPublisherTools() []Tool {
 func getSearchTools() []Tool {
 	return []Tool{
 		{
-			Name: "search_articles",
+			Name:  "search_articles",
+			Scope: ScopeShared,
 			Description: "Full-text search across all classified content with filtering and facets. " +
 				"Use when: User wants to find articles by keyword, topic, or quality. Returns up to 20 results per page.",
 			InputSchema: map[string]any{
@@ -509,6 +541,7 @@ func getClassifierTools() []Tool {
 	return []Tool{
 		{
 			Name:        "classify_article",
+			Scope:       ScopeShared,
 			Description: "Classify a single article to determine content type, quality score, topics, and crime detection.",
 			InputSchema: map[string]any{
 				"type": "object",
@@ -540,6 +573,7 @@ func getIndexManagerTools() []Tool {
 	return []Tool{
 		{
 			Name:        "delete_index",
+			Scope:       ScopeProd,
 			Description: "Deletes an Elasticsearch index by name. This operation is irreversible and will permanently delete the index and all its documents.",
 			InputSchema: map[string]any{
 				"type": "object",
@@ -554,6 +588,7 @@ func getIndexManagerTools() []Tool {
 		},
 		{
 			Name:        "list_indexes",
+			Scope:       ScopeShared,
 			Description: "List all Elasticsearch indexes with pagination.",
 			InputSchema: map[string]any{
 				"type": "object",
@@ -575,7 +610,8 @@ func getIndexManagerTools() []Tool {
 func getAuthTools() []Tool {
 	return []Tool{
 		{
-			Name: "get_auth_token",
+			Name:  "get_auth_token",
+			Scope: ScopeProd,
 			Description: "Generate a JWT auth token for manual API testing. Use when: You need to make " +
 				"authenticated API calls to North Cloud services from CLI. Returns a 24-hour JWT token. " +
 				"The MCP server already handles auth internally, so this is only needed for manual curl commands.",
@@ -590,7 +626,8 @@ func getAuthTools() []Tool {
 func getDevelopmentTools() []Tool {
 	return []Tool{
 		{
-			Name: "lint_file",
+			Name:  "lint_file",
+			Scope: ScopeLocal,
 			Description: "Lint a specific file or service. Automatically detects Go files vs " +
 				"Vue.js/TypeScript frontend files and runs the appropriate linter " +
 				"(golangci-lint for Go, ESLint for frontend).",
@@ -614,6 +651,7 @@ func getDevelopmentTools() []Tool {
 		},
 		{
 			Name:        "build_service",
+			Scope:       ScopeLocal,
 			Description: "Build a North Cloud service. Runs 'task build' for Go services or 'npm run build' for frontend.",
 			InputSchema: map[string]any{
 				"type": "object",
@@ -629,6 +667,7 @@ func getDevelopmentTools() []Tool {
 		},
 		{
 			Name:        "test_service",
+			Scope:       ScopeLocal,
 			Description: "Run tests for a North Cloud service. Runs 'task test' or 'npm run test'.",
 			InputSchema: map[string]any{
 				"type": "object",
