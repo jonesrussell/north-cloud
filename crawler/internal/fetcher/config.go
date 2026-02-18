@@ -13,6 +13,7 @@ const (
 
 // Config holds fetcher worker configuration.
 type Config struct {
+	Enabled          bool          `env:"FETCHER_ENABLED"            yaml:"enabled"`
 	DatabaseURL      string        `env:"FETCHER_DATABASE_URL"       yaml:"database_url"`
 	ElasticsearchURL string        `env:"FETCHER_ELASTICSEARCH_URL"  yaml:"elasticsearch_url"`
 	SourceManagerURL string        `env:"FETCHER_SOURCE_MANAGER_URL" yaml:"source_manager_url"`

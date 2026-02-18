@@ -102,6 +102,19 @@ func Start() error {
 			infralogger.Int("interval_minutes", feedCfg.PollIntervalMinutes))
 	}
 
+	// Phase 6c: Start frontier worker pool (if enabled)
+	var workerPoolCancel context.CancelFunc
+	if serviceComponents.FrontierWorkerPool != nil {
+		wpCtx, cancel := context.WithCancel(context.Background())
+		workerPoolCancel = cancel
+		go func() {
+			_ = serviceComponents.FrontierWorkerPool.Start(wpCtx)
+		}()
+		fetcherCfg := deps.Config.GetFetcherConfig()
+		deps.Logger.Info("Frontier worker pool started",
+			infralogger.Int("worker_count", fetcherCfg.WorkerCount))
+	}
+
 	// Phase 7: Run until interrupt or error
 	return RunUntilInterrupt(
 		deps.Logger,
@@ -111,6 +124,7 @@ func Start() error {
 		serviceComponents.LogService,
 		eventConsumer,
 		feedPollerCancel,
+		workerPoolCancel,
 		serverComponents.ErrorChan,
 	)
 }

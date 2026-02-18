@@ -14,10 +14,12 @@ import (
 	crawlerevents "github.com/jonesrussell/north-cloud/crawler/internal/crawler/events"
 	"github.com/jonesrussell/north-cloud/crawler/internal/database"
 	"github.com/jonesrussell/north-cloud/crawler/internal/feed"
+	"github.com/jonesrussell/north-cloud/crawler/internal/fetcher"
 	"github.com/jonesrussell/north-cloud/crawler/internal/logs"
 	"github.com/jonesrussell/north-cloud/crawler/internal/scheduler"
 	"github.com/jonesrussell/north-cloud/crawler/internal/sources"
 	"github.com/jonesrussell/north-cloud/crawler/internal/sources/apiclient"
+	crawlstorage "github.com/jonesrussell/north-cloud/crawler/internal/storage"
 	infralogger "github.com/north-cloud/infrastructure/logger"
 	"github.com/north-cloud/infrastructure/pipeline"
 	"github.com/north-cloud/infrastructure/sse"
@@ -39,6 +41,9 @@ type ServiceComponents struct {
 	// Feed poller
 	FeedPoller *feed.Poller
 	ListDue    func(ctx context.Context) ([]feed.DueFeed, error)
+
+	// Frontier worker pool
+	FrontierWorkerPool *fetcher.WorkerPool
 
 	// SSE components
 	SSEBroker    sse.Broker
@@ -98,6 +103,9 @@ func SetupServices(
 	// Create feed poller (if enabled)
 	feedPoller, listDue := createFeedPoller(deps, db)
 
+	// Create frontier worker pool (if enabled)
+	workerPool := createFrontierWorkerPool(deps, db, storage)
+
 	return &ServiceComponents{
 		JobsHandler:            jobsHandler,
 		DiscoveredLinksHandler: discoveredLinksHandler,
@@ -107,6 +115,7 @@ func SetupServices(
 		LogService:             logResult.Service,
 		FeedPoller:             feedPoller,
 		ListDue:                listDue,
+		FrontierWorkerPool:     workerPool,
 		SSEBroker:              sseBroker,
 		SSEHandler:             sseHandler,
 		SSEPublisher:           ssePublisher,
@@ -324,7 +333,7 @@ func createFeedPoller(
 	httpFetcher := feed.NewHTTPFetcher(&http.Client{Timeout: feedHTTPFetchTimeout})
 	feedStateAdapter := feed.NewFeedStateRepoAdapter(db.FeedStateRepo)
 	frontierAdapter := feed.NewFrontierRepoAdapter(db.FrontierRepo)
-	logAdapter := &feedLogAdapter{log: deps.Logger}
+	logAdapter := &logAdapter{log: deps.Logger}
 
 	poller = feed.NewPoller(httpFetcher, feedStateAdapter, frontierAdapter, logAdapter)
 
@@ -365,16 +374,66 @@ func buildListDueFunc(
 	}
 }
 
-// feedLogAdapter adapts infralogger.Logger to the feed.Logger interface.
-type feedLogAdapter struct {
+// createFrontierWorkerPool creates a frontier worker pool if the fetcher is enabled.
+// Returns nil if the fetcher is disabled.
+func createFrontierWorkerPool(
+	deps *CommandDeps,
+	db *DatabaseComponents,
+	storageComponents *StorageComponents,
+) *fetcher.WorkerPool {
+	fetcherCfg := deps.Config.GetFetcherConfig()
+	if !fetcherCfg.Enabled {
+		deps.Logger.Info("Frontier worker pool disabled")
+		return nil
+	}
+
+	claimer := &frontierClaimerAdapter{repo: db.FrontierRepo}
+	hostUpdater := &hostUpdaterAdapter{repo: db.HostStateRepo}
+
+	httpClient := &http.Client{Timeout: fetcherCfg.RequestTimeout}
+	robots := fetcher.NewRobotsChecker(httpClient, fetcherCfg.UserAgent, 0)
+	extractor := fetcher.NewContentExtractor()
+
+	smCfg := deps.Config.GetSourceManagerConfig()
+	authCfg := deps.Config.GetAuthConfig()
+	apiClient := apiclient.NewClient(
+		apiclient.WithBaseURL(smCfg.URL+"/api/v1/sources"),
+		apiclient.WithJWTSecret(authCfg.JWTSecret),
+	)
+
+	rawIndexer := crawlstorage.NewRawContentIndexer(storageComponents.Storage, deps.Logger)
+	indexer := &contentIndexerAdapter{
+		indexer:   rawIndexer,
+		apiClient: apiClient,
+	}
+
+	wpLogger := &logAdapter{log: deps.Logger}
+
+	cfg := fetcher.WorkerPoolConfig{
+		WorkerCount:     fetcherCfg.WorkerCount,
+		UserAgent:       fetcherCfg.UserAgent,
+		MaxRetries:      fetcherCfg.MaxRetries,
+		ClaimRetryDelay: fetcherCfg.ClaimRetryDelay,
+		RequestTimeout:  fetcherCfg.RequestTimeout,
+	}
+
+	deps.Logger.Info("Frontier worker pool created",
+		infralogger.Int("worker_count", fetcherCfg.WorkerCount))
+
+	return fetcher.NewWorkerPool(claimer, hostUpdater, robots, extractor, indexer, wpLogger, cfg)
+}
+
+// logAdapter adapts infralogger.Logger to the feed.Logger and fetcher.WorkerLogger interfaces.
+// Both interfaces have identical signatures: Info(msg, ...any) and Error(msg, ...any).
+type logAdapter struct {
 	log infralogger.Logger
 }
 
-func (a *feedLogAdapter) Info(msg string, fields ...any) {
+func (a *logAdapter) Info(msg string, fields ...any) {
 	a.log.Info(msg, toInfraFields(fields)...)
 }
 
-func (a *feedLogAdapter) Error(msg string, fields ...any) {
+func (a *logAdapter) Error(msg string, fields ...any) {
 	a.log.Error(msg, toInfraFields(fields)...)
 }
 

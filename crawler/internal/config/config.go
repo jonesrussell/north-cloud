@@ -14,6 +14,7 @@ import (
 	logsconfig "github.com/jonesrussell/north-cloud/crawler/internal/config/logs"
 	"github.com/jonesrussell/north-cloud/crawler/internal/config/minio"
 	"github.com/jonesrussell/north-cloud/crawler/internal/config/server"
+	"github.com/jonesrussell/north-cloud/crawler/internal/fetcher"
 	infraconfig "github.com/north-cloud/infrastructure/config"
 )
 
@@ -41,6 +42,8 @@ type Interface interface {
 	GetSourceManagerConfig() *SourceManagerConfig
 	// GetFeedConfig returns the feed polling configuration.
 	GetFeedConfig() *FeedConfig
+	// GetFetcherConfig returns the frontier fetcher configuration.
+	GetFetcherConfig() *fetcher.Config
 	// GetPipelineURL returns the pipeline service URL (empty = disabled).
 	GetPipelineURL() string
 	// Validate validates the configuration based on the current command.
@@ -100,6 +103,8 @@ type Config struct {
 	Pipeline *PipelineConfig `yaml:"pipeline"`
 	// Feed holds feed polling configuration
 	Feed *FeedConfig `yaml:"feed"`
+	// Fetcher holds frontier worker pool configuration
+	Fetcher *fetcher.Config `yaml:"fetcher"`
 }
 
 // AuthConfig holds authentication configuration.
@@ -283,6 +288,12 @@ func setDefaults(cfg *Config) {
 		cfg.Feed.PollIntervalMinutes = defaultFeedPollIntervalMinutes
 	}
 
+	// Set default fetcher configuration
+	if cfg.Fetcher == nil {
+		d := fetcher.Config{Enabled: true}.WithDefaults()
+		cfg.Fetcher = &d
+	}
+
 	// Set server defaults
 	if cfg.Server.Address == "" {
 		cfg.Server.Address = defaultServerAddress
@@ -400,6 +411,15 @@ func (c *Config) GetFeedConfig() *FeedConfig {
 		}
 	}
 	return c.Feed
+}
+
+// GetFetcherConfig returns the frontier fetcher configuration.
+func (c *Config) GetFetcherConfig() *fetcher.Config {
+	if c.Fetcher == nil {
+		d := fetcher.Config{Enabled: true}.WithDefaults()
+		return &d
+	}
+	return c.Fetcher
 }
 
 // GetPipelineURL returns the pipeline service URL (empty = disabled).
