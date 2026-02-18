@@ -132,6 +132,12 @@ Jobs with `adaptive_scheduling: true` (default) adjust their crawl interval base
 
 Default max depth is **3** when source config `max_depth` is 0 (unset). Sources with `max_depth > 5` trigger a startup warning.
 
+## Extraction quality and readability fallback
+
+**Extraction quality metrics**: Each job execution records how many indexed items had an empty title or empty body (`metadata.crawl_metrics.extraction_quality`: `items_indexed`, `empty_title_count`, `empty_body_count`). Use this to detect selector drift (e.g. after a site redesign). The dashboard shows these in the execution’s crawl metrics panel when you expand a run.
+
+**Readability fallback**: When source selectors and built-in fallbacks yield no or negligible content, the crawler can run a readability-style extractor (Mozilla Readability–based) as a last resort. Disabled by default. Enable with `CRAWLER_READABILITY_FALLBACK_ENABLED=true`. Only runs when the normal pipeline has already failed; does not replace selector-based extraction when it succeeds.
+
 ## Database Schema
 
 **jobs** table key fields:
