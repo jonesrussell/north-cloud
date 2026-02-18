@@ -42,6 +42,10 @@ type ServiceComponents struct {
 	FeedPoller *feed.Poller
 	ListDue    func(ctx context.Context) ([]feed.DueFeed, error)
 
+	// Feed discoverer
+	FeedDiscoverer   *feed.Discoverer
+	ListUndiscovered func(ctx context.Context) ([]feed.UndiscoveredSource, error)
+
 	// Frontier worker pool
 	FrontierWorkerPool *fetcher.WorkerPool
 
@@ -103,6 +107,9 @@ func SetupServices(
 	// Create feed poller (if enabled)
 	feedPoller, listDue := createFeedPoller(deps, db)
 
+	// Create feed discoverer (if enabled)
+	feedDiscoverer, listUndiscovered := createFeedDiscoverer(deps)
+
 	// Create frontier worker pool (if enabled)
 	workerPool := createFrontierWorkerPool(deps, db, storage)
 
@@ -115,6 +122,8 @@ func SetupServices(
 		LogService:             logResult.Service,
 		FeedPoller:             feedPoller,
 		ListDue:                listDue,
+		FeedDiscoverer:         feedDiscoverer,
+		ListUndiscovered:       listUndiscovered,
 		FrontierWorkerPool:     workerPool,
 		SSEBroker:              sseBroker,
 		SSEHandler:             sseHandler,
@@ -371,6 +380,97 @@ func buildListDueFunc(
 			infralogger.Int("feeds_due", len(due)))
 
 		return due, nil
+	}
+}
+
+// sourceFeedUpdaterAdapter adapts apiclient.Client to the feed.SourceFeedUpdater interface.
+type sourceFeedUpdaterAdapter struct {
+	client *apiclient.Client
+	log    infralogger.Logger
+}
+
+// UpdateFeedURL persists a discovered feed URL for a source via the source-manager API.
+func (a *sourceFeedUpdaterAdapter) UpdateFeedURL(ctx context.Context, sourceID, feedURL string) error {
+	source, err := a.client.GetSource(ctx, sourceID)
+	if err != nil {
+		return fmt.Errorf("get source for feed update: %w", err)
+	}
+
+	source.FeedURL = &feedURL
+
+	if _, updateErr := a.client.UpdateSource(ctx, sourceID, source); updateErr != nil {
+		return fmt.Errorf("update source feed URL: %w", updateErr)
+	}
+
+	return nil
+}
+
+// createFeedDiscoverer creates a feed discoverer and listUndiscovered callback.
+// Returns (nil, nil) if feed discovery is disabled.
+func createFeedDiscoverer(
+	deps *CommandDeps,
+) (discoverer *feed.Discoverer, listUndiscoveredFn func(ctx context.Context) ([]feed.UndiscoveredSource, error)) {
+	feedCfg := deps.Config.GetFeedConfig()
+	if !feedCfg.DiscoveryEnabled {
+		deps.Logger.Info("Feed discovery disabled")
+		return nil, nil
+	}
+
+	smCfg := deps.Config.GetSourceManagerConfig()
+	authCfg := deps.Config.GetAuthConfig()
+
+	apiClient := apiclient.NewClient(
+		apiclient.WithBaseURL(smCfg.URL+"/api/v1/sources"),
+		apiclient.WithJWTSecret(authCfg.JWTSecret),
+	)
+
+	httpFetcher := feed.NewHTTPFetcher(&http.Client{Timeout: feedHTTPFetchTimeout})
+	updaterAdapter := &sourceFeedUpdaterAdapter{client: apiClient, log: deps.Logger}
+	logAdapt := &logAdapter{log: deps.Logger}
+	retryAfter := time.Duration(feedCfg.DiscoveryRetryHours) * time.Hour
+
+	discoverer = feed.NewDiscoverer(httpFetcher, updaterAdapter, logAdapt, retryAfter)
+	listUndiscoveredFn = buildListUndiscoveredFunc(apiClient, deps.Logger)
+
+	deps.Logger.Info("Feed discoverer created",
+		infralogger.Int("discovery_interval_minutes", feedCfg.DiscoveryIntervalMinutes),
+		infralogger.Int("discovery_retry_hours", feedCfg.DiscoveryRetryHours))
+
+	return discoverer, listUndiscoveredFn
+}
+
+// buildListUndiscoveredFunc creates a closure that lists enabled sources without feed URLs.
+func buildListUndiscoveredFunc(
+	client *apiclient.Client,
+	log infralogger.Logger,
+) func(ctx context.Context) ([]feed.UndiscoveredSource, error) {
+	return func(ctx context.Context) ([]feed.UndiscoveredSource, error) {
+		apiSources, err := client.ListSources(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("list sources for feed discovery: %w", err)
+		}
+
+		var undiscovered []feed.UndiscoveredSource
+		for i := range apiSources {
+			if !apiSources[i].Enabled {
+				continue
+			}
+
+			if apiSources[i].FeedURL != nil && *apiSources[i].FeedURL != "" {
+				continue
+			}
+
+			undiscovered = append(undiscovered, feed.UndiscoveredSource{
+				SourceID: apiSources[i].ID,
+				BaseURL:  apiSources[i].URL,
+			})
+		}
+
+		log.Info("Listed undiscovered sources",
+			infralogger.Int("total_sources", len(apiSources)),
+			infralogger.Int("undiscovered", len(undiscovered)))
+
+		return undiscovered, nil
 	}
 }
 

@@ -22,6 +22,56 @@ import (
 	"github.com/north-cloud/infrastructure/profiling"
 )
 
+// backgroundCancels holds cancel functions for background goroutines.
+type backgroundCancels struct {
+	feedPollerCancel    context.CancelFunc
+	feedDiscoveryCancel context.CancelFunc
+	workerPoolCancel    context.CancelFunc
+}
+
+// startBackgroundWorkers launches background goroutines for feed polling,
+// feed discovery, and the frontier worker pool.
+func startBackgroundWorkers(deps *CommandDeps, sc *ServiceComponents) backgroundCancels {
+	var bg backgroundCancels
+
+	if sc.FeedPoller != nil {
+		feedCfg := deps.Config.GetFeedConfig()
+		pollerCtx, cancel := context.WithCancel(context.Background())
+		bg.feedPollerCancel = cancel
+		interval := time.Duration(feedCfg.PollIntervalMinutes) * time.Minute
+		go func() {
+			_ = sc.FeedPoller.RunPollingLoop(pollerCtx, interval, sc.ListDue)
+		}()
+		deps.Logger.Info("Feed poller started",
+			infralogger.Int("interval_minutes", feedCfg.PollIntervalMinutes))
+	}
+
+	if sc.FeedDiscoverer != nil {
+		feedCfg := deps.Config.GetFeedConfig()
+		dCtx, cancel := context.WithCancel(context.Background())
+		bg.feedDiscoveryCancel = cancel
+		interval := time.Duration(feedCfg.DiscoveryIntervalMinutes) * time.Minute
+		go func() {
+			_ = sc.FeedDiscoverer.RunDiscoveryLoop(dCtx, interval, sc.ListUndiscovered)
+		}()
+		deps.Logger.Info("Feed discovery started",
+			infralogger.Int("interval_minutes", feedCfg.DiscoveryIntervalMinutes))
+	}
+
+	if sc.FrontierWorkerPool != nil {
+		wpCtx, cancel := context.WithCancel(context.Background())
+		bg.workerPoolCancel = cancel
+		go func() {
+			_ = sc.FrontierWorkerPool.Start(wpCtx)
+		}()
+		fetcherCfg := deps.Config.GetFetcherConfig()
+		deps.Logger.Info("Frontier worker pool started",
+			infralogger.Int("worker_count", fetcherCfg.WorkerCount))
+	}
+
+	return bg
+}
+
 // Start initializes and starts the crawler application.
 // It handles all phases of bootstrap and returns an error if any phase fails.
 // The function blocks until the server is interrupted or encounters an error.
@@ -88,32 +138,8 @@ func Start() error {
 	}
 	serverComponents := SetupHTTPServer(serverDeps)
 
-	// Phase 6b: Start feed poller goroutine (if enabled)
-	var feedPollerCancel context.CancelFunc
-	if serviceComponents.FeedPoller != nil {
-		feedCfg := deps.Config.GetFeedConfig()
-		pollerCtx, cancel := context.WithCancel(context.Background())
-		feedPollerCancel = cancel
-		interval := time.Duration(feedCfg.PollIntervalMinutes) * time.Minute
-		go func() {
-			_ = serviceComponents.FeedPoller.RunPollingLoop(pollerCtx, interval, serviceComponents.ListDue)
-		}()
-		deps.Logger.Info("Feed poller started",
-			infralogger.Int("interval_minutes", feedCfg.PollIntervalMinutes))
-	}
-
-	// Phase 6c: Start frontier worker pool (if enabled)
-	var workerPoolCancel context.CancelFunc
-	if serviceComponents.FrontierWorkerPool != nil {
-		wpCtx, cancel := context.WithCancel(context.Background())
-		workerPoolCancel = cancel
-		go func() {
-			_ = serviceComponents.FrontierWorkerPool.Start(wpCtx)
-		}()
-		fetcherCfg := deps.Config.GetFetcherConfig()
-		deps.Logger.Info("Frontier worker pool started",
-			infralogger.Int("worker_count", fetcherCfg.WorkerCount))
-	}
+	// Phase 6b: Start background goroutines (feed poller, discovery, worker pool)
+	bg := startBackgroundWorkers(deps, serviceComponents)
 
 	// Phase 7: Run until interrupt or error
 	return RunUntilInterrupt(
@@ -123,8 +149,9 @@ func Start() error {
 		serviceComponents.SSEBroker,
 		serviceComponents.LogService,
 		eventConsumer,
-		feedPollerCancel,
-		workerPoolCancel,
+		bg.feedPollerCancel,
+		bg.feedDiscoveryCancel,
+		bg.workerPoolCancel,
 		serverComponents.ErrorChan,
 	)
 }

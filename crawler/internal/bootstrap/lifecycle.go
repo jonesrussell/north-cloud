@@ -32,6 +32,7 @@ func RunUntilInterrupt(
 	logService logs.Service,
 	eventConsumer *crawlerintevents.Consumer,
 	feedPollerCancel context.CancelFunc,
+	feedDiscoveryCancel context.CancelFunc,
 	workerPoolCancel context.CancelFunc,
 	errChan <-chan error,
 ) error {
@@ -46,7 +47,7 @@ func RunUntilInterrupt(
 		return fmt.Errorf("server error: %w", serverErr)
 	case sig := <-sigChan:
 		return Shutdown(log, server, intervalScheduler, sseBroker, logService, eventConsumer,
-			feedPollerCancel, workerPoolCancel, sig)
+			feedPollerCancel, feedDiscoveryCancel, workerPoolCancel, sig)
 	}
 }
 
@@ -59,6 +60,7 @@ func Shutdown(
 	logService logs.Service,
 	eventConsumer *crawlerintevents.Consumer,
 	feedPollerCancel context.CancelFunc,
+	feedDiscoveryCancel context.CancelFunc,
 	workerPoolCancel context.CancelFunc,
 	sig os.Signal,
 ) error {
@@ -68,6 +70,12 @@ func Shutdown(
 	if feedPollerCancel != nil {
 		log.Info("Stopping feed poller")
 		feedPollerCancel()
+	}
+
+	// Stop feed discoverer (cancels discovery goroutine)
+	if feedDiscoveryCancel != nil {
+		log.Info("Stopping feed discoverer")
+		feedDiscoveryCancel()
 	}
 
 	// Stop frontier worker pool (cancels all worker goroutines)

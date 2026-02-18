@@ -74,6 +74,12 @@ const (
 	defaultFeedPollIntervalMinutes = 5
 )
 
+// Feed discovery defaults
+const (
+	defaultFeedDiscoveryIntervalMinutes = 60
+	defaultFeedDiscoveryRetryHours      = 168 // 7 days
+)
+
 // Ensure Config implements Interface
 var _ Interface = (*Config)(nil)
 
@@ -139,10 +145,13 @@ type PipelineConfig struct {
 	URL string `env:"PIPELINE_URL" yaml:"url"`
 }
 
-// FeedConfig holds feed polling configuration.
+// FeedConfig holds feed polling and discovery configuration.
 type FeedConfig struct {
-	Enabled             bool `env:"CRAWLER_FEED_POLL_ENABLED"          yaml:"enabled"`
-	PollIntervalMinutes int  `env:"CRAWLER_FEED_POLL_INTERVAL_MINUTES" yaml:"poll_interval_minutes"`
+	Enabled                  bool `env:"CRAWLER_FEED_POLL_ENABLED"               yaml:"enabled"`
+	PollIntervalMinutes      int  `env:"CRAWLER_FEED_POLL_INTERVAL_MINUTES"      yaml:"poll_interval_minutes"`
+	DiscoveryEnabled         bool `env:"CRAWLER_FEED_DISCOVERY_ENABLED"          yaml:"discovery_enabled"`
+	DiscoveryIntervalMinutes int  `env:"CRAWLER_FEED_DISCOVERY_INTERVAL_MINUTES" yaml:"discovery_interval_minutes"`
+	DiscoveryRetryHours      int  `env:"CRAWLER_FEED_DISCOVERY_RETRY_HOURS"      yaml:"discovery_retry_hours"`
 }
 
 // validateHTTPDConfig validates the configuration for the httpd command
@@ -277,16 +286,8 @@ func setDefaults(cfg *Config) {
 		cfg.SourceManager.URL = defaultSourceManagerURL
 	}
 
-	// Set default feed polling configuration
-	if cfg.Feed == nil {
-		cfg.Feed = &FeedConfig{
-			Enabled:             true,
-			PollIntervalMinutes: defaultFeedPollIntervalMinutes,
-		}
-	}
-	if cfg.Feed.PollIntervalMinutes <= 0 {
-		cfg.Feed.PollIntervalMinutes = defaultFeedPollIntervalMinutes
-	}
+	// Set default feed polling and discovery configuration
+	setFeedDefaults(cfg)
 
 	// Set default fetcher configuration
 	if cfg.Fetcher == nil {
@@ -407,8 +408,11 @@ func (c *Config) GetSourceManagerConfig() *SourceManagerConfig {
 func (c *Config) GetFeedConfig() *FeedConfig {
 	if c.Feed == nil {
 		return &FeedConfig{
-			Enabled:             true,
-			PollIntervalMinutes: defaultFeedPollIntervalMinutes,
+			Enabled:                  true,
+			PollIntervalMinutes:      defaultFeedPollIntervalMinutes,
+			DiscoveryEnabled:         true,
+			DiscoveryIntervalMinutes: defaultFeedDiscoveryIntervalMinutes,
+			DiscoveryRetryHours:      defaultFeedDiscoveryRetryHours,
 		}
 	}
 	return c.Feed
@@ -430,6 +434,31 @@ func (c *Config) GetPipelineURL() string {
 		return ""
 	}
 	return c.Pipeline.URL
+}
+
+// setFeedDefaults applies default values to the feed configuration.
+func setFeedDefaults(cfg *Config) {
+	if cfg.Feed == nil {
+		cfg.Feed = &FeedConfig{
+			Enabled:                  true,
+			PollIntervalMinutes:      defaultFeedPollIntervalMinutes,
+			DiscoveryEnabled:         true,
+			DiscoveryIntervalMinutes: defaultFeedDiscoveryIntervalMinutes,
+			DiscoveryRetryHours:      defaultFeedDiscoveryRetryHours,
+		}
+	}
+
+	if cfg.Feed.PollIntervalMinutes <= 0 {
+		cfg.Feed.PollIntervalMinutes = defaultFeedPollIntervalMinutes
+	}
+
+	if cfg.Feed.DiscoveryIntervalMinutes <= 0 {
+		cfg.Feed.DiscoveryIntervalMinutes = defaultFeedDiscoveryIntervalMinutes
+	}
+
+	if cfg.Feed.DiscoveryRetryHours <= 0 {
+		cfg.Feed.DiscoveryRetryHours = defaultFeedDiscoveryRetryHours
+	}
 }
 
 // setupDevelopmentLogging configures logging settings based on environment variables.
