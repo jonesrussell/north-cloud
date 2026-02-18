@@ -450,6 +450,7 @@ services:
       SEARCH_URL: http://search-service:8090
       INDEX_MANAGER_URL: http://index-manager:8090
       AUTH_JWT_SECRET: "${AUTH_JWT_SECRET}"
+      MCP_ENV: prod
 
   # ------------------------------------------------------------
   # Dashboard (Prod)

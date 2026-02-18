@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Test script for MCP North Cloud Server
-# This script tests all 27 tools by sending JSON-RPC requests
+# Tests tool registration based on MCP_ENV (local=18, prod=24)
 
 set -e
 
@@ -52,7 +52,7 @@ EOF
 test_initialize() {
     echo -e "${YELLOW}Testing: initialize${NC}"
     request='{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}'
-    response=$(timeout 10 bash -c "echo '$request' | $MCP_BIN" 2>&1 | head -1)
+    response=$(timeout 10 bash -c "echo '$request' | $MCP_BIN 2>/dev/null" | head -1)
     if echo "$response" | jq -e '.result.protocolVersion' > /dev/null 2>&1; then
         echo -e "${GREEN}✓ PASSED: initialize${NC}"
         return 0
@@ -67,16 +67,22 @@ test_initialize() {
 test_tools_list() {
     echo -e "${YELLOW}Testing: tools/list${NC}"
     request='{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}'
-    response=$(timeout 10 bash -c "echo '$request' | $MCP_BIN" 2>&1 | head -1)
+    response=$(timeout 10 bash -c "echo '$request' | $MCP_BIN 2>/dev/null" | head -1)
 
     # Count tools
     tool_count=$(echo "$response" | jq '.result.tools | length' 2>/dev/null)
 
-    if [ "$tool_count" -eq 27 ]; then
-        echo -e "${GREEN}✓ PASSED: tools/list (found $tool_count tools)${NC}"
+    if [ "${MCP_ENV:-local}" = "prod" ]; then
+        expected_tools=24
+    else
+        expected_tools=18
+    fi
+
+    if [ "$tool_count" -eq "$expected_tools" ]; then
+        echo -e "${GREEN}✓ PASSED: tools/list (found $tool_count tools, expected $expected_tools for ${MCP_ENV:-local})${NC}"
         return 0
     else
-        echo -e "${RED}✗ FAILED: tools/list (expected 27 tools, found $tool_count)${NC}"
+        echo -e "${RED}✗ FAILED: tools/list (expected $expected_tools tools for ${MCP_ENV:-local}, found $tool_count)${NC}"
         echo "Response: $response"
         return 1
     fi
@@ -151,17 +157,21 @@ echo ""
 if [ $failed -eq 0 ]; then
     echo -e "${GREEN}All tests passed!${NC}"
     echo ""
-    echo "Tools registered:"
-    echo "  - Auth: 1 (get_auth_token)"
-    echo "  - Workflow: 1 (onboard_source)"
-    echo "  - Crawler: 5 (start_crawl, schedule_crawl, list_crawl_jobs, control_crawl_job, get_crawl_stats)"
-    echo "  - Source Manager: 5 (add_source, list_sources, update_source, delete_source, test_source)"
-    echo "  - Publisher: 8 (create_route, list_routes, create_channel, list_channels, delete_route, preview_route, get_publish_history, get_publisher_stats)"
-    echo "  - Search: 1 (search_articles)"
-    echo "  - Classifier: 1 (classify_article)"
-    echo "  - Index Manager: 2 (list_indexes, delete_index)"
-    echo "  - Development: 3 (lint_file, build_service, test_service)"
-    echo "  - Total: 27 tools"
+    echo "Environment: ${MCP_ENV:-local}"
+    echo ""
+    echo "Shared (15): onboard_source, list_crawl_jobs, get_crawl_stats, add_source,"
+    echo "  list_sources, update_source, test_source, list_routes, list_channels,"
+    echo "  preview_route, get_publish_history, get_publisher_stats, search_articles,"
+    echo "  classify_article, list_indexes"
+    if [ "${MCP_ENV:-local}" = "local" ]; then
+        echo "Local-only (3): lint_file, build_service, test_service"
+        echo "Total: 18 tools"
+    else
+        echo "Prod-only (9): start_crawl, schedule_crawl, control_crawl_job,"
+        echo "  delete_source, create_route, create_channel, delete_route,"
+        echo "  delete_index, get_auth_token"
+        echo "Total: 24 tools"
+    fi
     exit 0
 else
     echo -e "${RED}Some tests failed!${NC}"

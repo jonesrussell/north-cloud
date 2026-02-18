@@ -3,6 +3,7 @@
     "North Cloud (Local)": {
       "command": "./mcp-north-cloud/run-mcp.sh",
       "env": {
+        "MCP_ENV": "local",
         "INDEX_MANAGER_URL": "http://localhost:8090",
         "CRAWLER_URL": "http://localhost:8060",
         "SOURCE_MANAGER_URL": "http://localhost:8050",
@@ -15,7 +16,7 @@
       "command": "ssh",
       "args": [
         "jones@northcloud.biz",
-        "docker exec -i north-cloud-mcp-north-cloud-1 /app/mcp-north-cloud"
+        "docker exec -i -e MCP_ENV=prod north-cloud-mcp-north-cloud-1 /app/mcp-north-cloud"
       ]
     }
   }
