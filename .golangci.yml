@@ -267,6 +267,7 @@ linters:
       excludes:
         - G404  # Insecure random number source (math/rand)
         - G402  # TLS InsecureSkipVerify (intentional for development)
+        - G704  # SSRF via taint analysis (all HTTP clients use trusted config/DB URLs)
     forbidigo:
       forbid:
         - pattern: '^os\.Getenv$'

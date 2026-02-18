@@ -32,7 +32,7 @@ func (f *DefaultHTTPFetcher) Fetch(
 
 	setConditionalHeaders(req, etag, lastModified)
 
-	resp, doErr := f.client.Do(req) //nolint:gosec // G704: URL from feed config
+	resp, doErr := f.client.Do(req)
 	if doErr != nil {
 		return nil, fmt.Errorf("http fetcher do request: %w", doErr)
 	}

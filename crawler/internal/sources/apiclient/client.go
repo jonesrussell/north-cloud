@@ -209,7 +209,7 @@ func (c *Client) doRequest(req *http.Request, result any) error {
 		req.Header.Set("Authorization", "Bearer "+token)
 	}
 
-	resp, err := c.httpClient.Do(req) //nolint:gosec // G704: URL from config
+	resp, err := c.httpClient.Do(req)
 	if err != nil {
 		// Provide more helpful error message for connection issues
 		var urlErr *url.Error
