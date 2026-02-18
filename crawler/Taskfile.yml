@@ -61,6 +61,14 @@ tasks:
       - go vet ./...
       - golangci-lint run --config ../.golangci.yml ./... {{.CLI_ARGS}}
 
+  lint:no-cache:
+    desc: "Run linter with cache disabled (matches CI)"
+    cmds:
+      - go fmt ./...
+      - go vet ./...
+      - golangci-lint cache clean
+      - golangci-lint run --config ../.golangci.yml ./...
+
   test:
     desc: "Run all tests"
     sources:

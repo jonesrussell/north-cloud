@@ -56,6 +56,9 @@ task migrate:SERVICE
 task install:tools
 
 # Task version (CI and local): see .task-version (e.g. install with that version for parity)
+
+# Lint: use task lint:force (or task ci:force) before pushing so local matches CI.
+# Go services: lint:force runs golangci-lint after "cache clean" so you see the same nolintlint/etc. results as CI.
 ```
 
 **Service Development (Manual)**:
