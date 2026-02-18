@@ -20,11 +20,11 @@ const (
 	defaultFrontierLimit  = 50
 	defaultFrontierSortBy = "priority"
 
-	// frontierSelectColumns lists columns for SELECT queries on url_frontier.
-	frontierSelectColumns = `id, url, url_hash, host, source_id, origin, parent_url, depth,
-		priority, status, next_fetch_at, last_fetched_at, fetch_count,
-		content_hash, etag, last_modified, retry_count, last_error,
-		discovered_at, created_at, updated_at`
+	// frontierSelectColumns lists columns for SELECT queries on url_frontier (aliased as f).
+	frontierSelectColumns = `f.id, f.url, f.url_hash, f.host, f.source_id, f.origin, f.parent_url, f.depth,
+		f.priority, f.status, f.next_fetch_at, f.last_fetched_at, f.fetch_count,
+		f.content_hash, f.etag, f.last_modified, f.retry_count, f.last_error,
+		f.discovered_at, f.created_at, f.updated_at`
 )
 
 // FrontierRepository handles database operations for the URL frontier.
@@ -313,7 +313,7 @@ func (r *FrontierRepository) selectFrontier(
 
 	query := fmt.Sprintf(`
 		SELECT %s
-		FROM url_frontier
+		FROM url_frontier f
 		%s
 		ORDER BY %s DESC
 		LIMIT $%d OFFSET $%d

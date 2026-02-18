@@ -336,7 +336,7 @@ func TestFrontierRepository_List_WithFilters(t *testing.T) {
 		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(1))
 
 	// Expect select query
-	mock.ExpectQuery("SELECT .+ FROM url_frontier\\s+WHERE status = \\$1 AND source_id = \\$2").
+	mock.ExpectQuery("SELECT .+ FROM url_frontier f\\s+WHERE status = \\$1 AND source_id = \\$2").
 		WithArgs("pending", "source-1", 50, 0).
 		WillReturnRows(
 			sqlmock.NewRows(frontierColumns).AddRow(
