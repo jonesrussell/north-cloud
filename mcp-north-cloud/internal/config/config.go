@@ -6,6 +6,7 @@ import (
 
 // Config holds the MCP server configuration.
 type Config struct {
+	Env      string         `env:"MCP_ENV" yaml:"env"`
 	Services ServicesConfig `yaml:"services"`
 	Client   ClientConfig   `yaml:"client"`
 	Logging  LoggingConfig  `yaml:"logging"`
@@ -45,6 +46,11 @@ func Load(path string) (*Config, error) {
 
 // setDefaults applies default values to the config.
 func setDefaults(cfg *Config) {
+	// Environment default
+	if cfg.Env == "" {
+		cfg.Env = "local"
+	}
+
 	// Service defaults
 	if cfg.Services.IndexManagerURL == "" {
 		cfg.Services.IndexManagerURL = "http://localhost:8090"

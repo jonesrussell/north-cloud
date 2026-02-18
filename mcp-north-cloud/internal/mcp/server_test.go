@@ -12,7 +12,7 @@ import (
 
 func TestRouteToolCall_UnknownTool_ReturnsMethodNotFound(t *testing.T) {
 	t.Helper()
-	s := NewServer(nil, nil, nil, nil, nil, nil, nil)
+	s := NewServer("local", nil, nil, nil, nil, nil, nil, nil)
 	ctx := context.Background()
 	id := "test-id"
 	toolName := "nonexistent_tool"
@@ -35,7 +35,7 @@ func TestRouteToolCall_UnknownTool_ReturnsMethodNotFound(t *testing.T) {
 
 func TestHandleInitialize_IncludesCapabilities(t *testing.T) {
 	t.Helper()
-	s := NewServer(nil, nil, nil, nil, nil, nil, nil)
+	s := NewServer("local", nil, nil, nil, nil, nil, nil, nil)
 	req := &Request{JSONRPC: "2.0", ID: "1", Method: "initialize", Params: json.RawMessage(`{}`)}
 	resp := s.HandleRequestWithContext(context.Background(), req)
 	if resp == nil || resp.Result == nil {
@@ -65,7 +65,7 @@ func TestHandleInitialize_IncludesCapabilities(t *testing.T) {
 
 func TestHandlePromptsList_ReturnsPrompts(t *testing.T) {
 	t.Helper()
-	s := NewServer(nil, nil, nil, nil, nil, nil, nil)
+	s := NewServer("local", nil, nil, nil, nil, nil, nil, nil)
 	req := &Request{JSONRPC: "2.0", ID: "1", Method: "prompts/list", Params: json.RawMessage(`{}`)}
 	resp := s.handlePromptsList(req, "1")
 	if resp == nil || resp.Result == nil {
@@ -85,7 +85,7 @@ func TestHandlePromptsList_ReturnsPrompts(t *testing.T) {
 
 func TestHandlePromptsGet_ValidName_ReturnsMessages(t *testing.T) {
 	t.Helper()
-	s := NewServer(nil, nil, nil, nil, nil, nil, nil)
+	s := NewServer("local", nil, nil, nil, nil, nil, nil, nil)
 	params := `{"name":"debug_crawl_job","arguments":{"job_id":"test-job-123"}}`
 	req := &Request{JSONRPC: "2.0", ID: "1", Method: "prompts/get", Params: json.RawMessage(params)}
 	resp := s.handlePromptsGet(req, "1")
@@ -108,7 +108,7 @@ func TestHandlePromptsGet_ValidName_ReturnsMessages(t *testing.T) {
 
 func TestHandlePromptsGet_UnknownName_ReturnsInvalidParams(t *testing.T) {
 	t.Helper()
-	s := NewServer(nil, nil, nil, nil, nil, nil, nil)
+	s := NewServer("local", nil, nil, nil, nil, nil, nil, nil)
 	params := `{"name":"nonexistent_prompt","arguments":{}}`
 	req := &Request{JSONRPC: "2.0", ID: "1", Method: "prompts/get", Params: json.RawMessage(params)}
 	resp := s.handlePromptsGet(req, "1")
@@ -122,7 +122,7 @@ func TestHandlePromptsGet_UnknownName_ReturnsInvalidParams(t *testing.T) {
 
 func TestHandlePromptsGet_MissingRequiredArgs_ReturnsInvalidParams(t *testing.T) {
 	t.Helper()
-	s := NewServer(nil, nil, nil, nil, nil, nil, nil)
+	s := NewServer("local", nil, nil, nil, nil, nil, nil, nil)
 	params := `{"name":"debug_crawl_job","arguments":{}}`
 	req := &Request{JSONRPC: "2.0", ID: "1", Method: "prompts/get", Params: json.RawMessage(params)}
 	resp := s.handlePromptsGet(req, "1")
@@ -139,7 +139,7 @@ func TestHandlePromptsGet_MissingRequiredArgs_ReturnsInvalidParams(t *testing.T)
 
 func TestHandleResourcesList_ReturnsResources(t *testing.T) {
 	t.Helper()
-	s := NewServer(nil, nil, nil, nil, nil, nil, nil)
+	s := NewServer("local", nil, nil, nil, nil, nil, nil, nil)
 	req := &Request{JSONRPC: "2.0", ID: "1", Method: "resources/list", Params: json.RawMessage(`{}`)}
 	resp := s.handleResourcesList(req, "1")
 	if resp == nil || resp.Result == nil {
@@ -158,7 +158,7 @@ func TestHandleResourcesList_ReturnsResources(t *testing.T) {
 
 func TestHandleResourcesRead_ValidURI_ReturnsContents(t *testing.T) {
 	t.Helper()
-	s := NewServer(nil, nil, nil, nil, nil, nil, nil)
+	s := NewServer("local", nil, nil, nil, nil, nil, nil, nil)
 	params := `{"uri":"northcloud://docs/pipeline"}`
 	req := &Request{JSONRPC: "2.0", ID: "1", Method: "resources/read", Params: json.RawMessage(params)}
 	resp := s.handleResourcesRead(req, "1")
@@ -181,7 +181,7 @@ func TestHandleResourcesRead_ValidURI_ReturnsContents(t *testing.T) {
 
 func TestHandleResourcesRead_UnknownURI_ReturnsResourceNotFound(t *testing.T) {
 	t.Helper()
-	s := NewServer(nil, nil, nil, nil, nil, nil, nil)
+	s := NewServer("local", nil, nil, nil, nil, nil, nil, nil)
 	params := `{"uri":"northcloud://docs/nonexistent"}`
 	req := &Request{JSONRPC: "2.0", ID: "1", Method: "resources/read", Params: json.RawMessage(params)}
 	resp := s.handleResourcesRead(req, "1")
