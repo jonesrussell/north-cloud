@@ -12,6 +12,7 @@ import (
 
 // Server handles MCP protocol requests
 type Server struct {
+	env              string
 	indexClient      *client.IndexManagerClient
 	crawlerClient    *client.CrawlerClient
 	sourceClient     *client.SourceManagerClient
@@ -23,6 +24,7 @@ type Server struct {
 
 // NewServer creates a new MCP server
 func NewServer(
+	env string,
 	indexClient *client.IndexManagerClient,
 	crawlerClient *client.CrawlerClient,
 	sourceClient *client.SourceManagerClient,
@@ -32,6 +34,7 @@ func NewServer(
 	authClient *client.AuthenticatedClient,
 ) *Server {
 	return &Server{
+		env:              env,
 		indexClient:      indexClient,
 		crawlerClient:    crawlerClient,
 		sourceClient:     sourceClient,
@@ -134,7 +137,7 @@ func (s *Server) handleInitialize(_ *Request, id any) *Response {
 
 // handleToolsList returns the list of available tools
 func (s *Server) handleToolsList(_ *Request, id any) *Response {
-	tools := getAllTools()
+	tools := getToolsForEnv(s.env)
 
 	result := map[string]any{
 		"tools": tools,
@@ -208,17 +211,41 @@ var toolHandlers = map[string]toolHandlerFunc{
 	"test_service":        (*Server).handleTestService,
 }
 
+// toolScopeMap builds a name->scope lookup from all tools.
+func toolScopeMap() map[string]ToolScope {
+	all := getAllTools()
+	m := make(map[string]ToolScope, len(all))
+	for _, t := range all {
+		m[t.Name] = t.Scope
+	}
+	return m
+}
+
+var toolScopes = toolScopeMap()
+
 func (s *Server) routeToolCall(ctx context.Context, id any, toolName string, arguments json.RawMessage) *Response {
+	scope, exists := toolScopes[toolName]
+	if !exists {
+		return &Response{
+			JSONRPC: "2.0",
+			ID:      id,
+			Error:   &ErrorObject{Code: MethodNotFound, Message: "Unknown tool: " + toolName},
+		}
+	}
+	if !scope.IsAllowed(s.env) {
+		return &Response{
+			JSONRPC: "2.0",
+			ID:      id,
+			Error:   &ErrorObject{Code: MethodNotFound, Message: "Tool not available in " + s.env + " environment: " + toolName},
+		}
+	}
 	if h, ok := toolHandlers[toolName]; ok {
 		return h(s, ctx, id, arguments)
 	}
 	return &Response{
 		JSONRPC: "2.0",
 		ID:      id,
-		Error: &ErrorObject{
-			Code:    MethodNotFound,
-			Message: "Unknown tool: " + toolName,
-		},
+		Error:   &ErrorObject{Code: MethodNotFound, Message: "Unknown tool: " + toolName},
 	}
 }
 

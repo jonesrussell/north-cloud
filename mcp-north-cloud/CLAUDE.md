@@ -9,7 +9,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with th
 task dev              # Start with hot reload
 task test             # Run tests
 task lint             # Run linter
-./test-tools.sh       # Verify tool registration (27 tools)
+./test-tools.sh       # Verify tool registration (18 local / 24 prod)
 
 # Test tool execution
 echo '{"jsonrpc":"2.0","id":1,"method":"tools/list"}' | ./bin/mcp-north-cloud
@@ -26,7 +26,7 @@ mcp-north-cloud/
 │   ├── mcp/
 │   │   ├── server.go    # Request routing, prompts/resources handlers
 │   │   ├── types.go     # JSON-RPC types, Prompt/Resource types
-│   │   ├── tools.go     # 27 tool definitions
+│   │   ├── tools.go     # 27 tool definitions (filtered by MCP_ENV)
 │   │   ├── handlers.go  # Tool implementations
 │   │   ├── prompts.go  # prompts/list, prompts/get (4 prompts)
 │   │   └── resources.go # resources/list, resources/read (static docs)
@@ -55,6 +55,21 @@ fmt.Println("debug info")  // Goes to stdout, corrupts JSON-RPC
 
 The `run-mcp.sh` wrapper enforces this with `>&2` redirects.
 
+## Environment-Based Tool Registry
+
+Set `MCP_ENV` to control which tools are available:
+
+| Environment | Tools | Count |
+|-------------|-------|-------|
+| `local` (default) | shared + local-only | 18 |
+| `prod` | shared + prod-only | 24 |
+
+**Shared (15):** list_sources, add_source, update_source, test_source, list_indexes, search_articles, list_crawl_jobs, get_crawl_stats, list_routes, list_channels, preview_route, get_publish_history, get_publisher_stats, classify_article, onboard_source
+
+**Local-only (3):** lint_file, build_service, test_service
+
+**Prod-only (9):** delete_index, delete_source, delete_route, control_crawl_job, start_crawl, schedule_crawl, create_route, create_channel, get_auth_token
+
 ## 27 Tools by Category
 
 | Category | Tools |
@@ -72,7 +87,7 @@ The `run-mcp.sh` wrapper enforces this with `>&2` redirects.
 ## MCP Protocol Methods
 
 - `initialize` - Returns protocol version & capabilities (tools, prompts, resources)
-- `tools/list` - Returns all 27 tool definitions
+- `tools/list` - Returns tools for current MCP_ENV (18 local / 24 prod)
 - `tools/call` - Routes to specific handler
 - `prompts/list` - Returns prompt templates (e.g. onboard_new_source, debug_crawl_job)
 - `prompts/get` - Returns messages for a prompt with argument substitution
@@ -110,13 +125,13 @@ func (s *Server) handleToolName(ctx context.Context, id any, arguments json.RawM
 
 ## Adding a New Tool
 
-1. **Define tool** in `internal/mcp/tools.go` (add to `getAllTools()` slice).
+1. **Define tool** in `internal/mcp/tools.go` (add to `getAllTools()` slice). Set `Scope: ScopeShared`, `ScopeLocal`, or `ScopeProd`.
 
 2. **Register handler** in `server.go`: add to `toolHandlers` map, e.g. `"tool_name": (*Server).handleToolName`.
 
 3. **Implement handler** in `handlers.go` with signature `(ctx context.Context, id any, arguments json.RawMessage) *Response`; pass `ctx` into client calls.
 
-4. **Update** `test-tools.sh` expected count (27 → 28), README tool list, and this CLAUDE.md table. Optionally update `internal/mcp/resources.go` static tool-reference text.
+4. **Update** `scope_test.go` expected counts, `test-tools.sh`, README tool list, and this CLAUDE.md table. Optionally update `internal/mcp/resources.go` static tool-reference text.
 
 ## Service Client Pattern
 
@@ -179,8 +194,11 @@ Adjust container name if different (`docker ps`).
 ## Testing
 
 ```bash
-# Verify 27 tools registered
+# Verify tools registered (default: local=18)
 ./test-tools.sh
+
+# Verify prod tools (24)
+MCP_ENV=prod ./test-tools.sh
 
 # Optional: test prompts and resources (set MCP_TEST_PROMPTS=1)
 MCP_TEST_PROMPTS=1 ./test-tools.sh

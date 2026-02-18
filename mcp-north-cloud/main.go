@@ -37,7 +37,9 @@ func main() {
 	}
 	defer func() { _ = log.Sync() }()
 
-	log.Info("Starting MCP server")
+	log.Info("Starting MCP server",
+		logger.String("env", cfg.Env),
+	)
 
 	// Read from stdin, write to stdout
 	reader := bufio.NewReader(os.Stdin)
@@ -48,6 +50,7 @@ func main() {
 
 	// Create MCP server
 	server := mcp.NewServer(
+		cfg.Env,
 		clients.indexManager,
 		clients.crawler,
 		clients.sourceManager,
