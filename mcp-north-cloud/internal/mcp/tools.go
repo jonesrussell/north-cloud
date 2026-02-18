@@ -234,6 +234,10 @@ func getSourceManagerTools() []Tool {
 						"type":        "boolean",
 						"description": "Whether the source is active",
 					},
+					"feed_url": map[string]any{
+						"type":        "string",
+						"description": "RSS/Atom feed URL for the source (optional, enables feed-based crawling)",
+					},
 				},
 				"required": []string{"name", "url", "type", "selectors"},
 			},
@@ -282,6 +286,10 @@ func getSourceManagerTools() []Tool {
 					"active": map[string]any{
 						"type":        "boolean",
 						"description": "New active status",
+					},
+					"feed_url": map[string]any{
+						"type":        "string",
+						"description": "RSS/Atom feed URL for the source (enables feed-based crawling)",
 					},
 				},
 				"required": []string{"source_id"},

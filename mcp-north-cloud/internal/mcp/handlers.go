@@ -424,6 +424,7 @@ func (s *Server) handleAddSource(ctx context.Context, id any, arguments json.Raw
 		Type      string         `json:"type"`
 		Selectors map[string]any `json:"selectors"`
 		Active    bool           `json:"active"`
+		FeedURL   *string        `json:"feed_url"`
 	}
 
 	if err := json.Unmarshal(arguments, &args); err != nil {
@@ -440,6 +441,7 @@ func (s *Server) handleAddSource(ctx context.Context, id any, arguments json.Raw
 		Type:      args.Type,
 		Selectors: args.Selectors,
 		Active:    args.Active,
+		FeedURL:   args.FeedURL,
 	})
 	if err != nil {
 		return s.errorResponse(id, InternalError, fmt.Sprintf("Failed to create source: %v", err))
@@ -490,13 +492,17 @@ func (s *Server) handleListSources(ctx context.Context, id any, arguments json.R
 	// Return compact summaries (omit selectors and timestamps to reduce token usage)
 	summaries := make([]map[string]any, 0, len(paginatedSources))
 	for i := range paginatedSources {
-		summaries = append(summaries, map[string]any{
+		summary := map[string]any{
 			"id":     paginatedSources[i].ID,
 			"name":   paginatedSources[i].Name,
 			"url":    paginatedSources[i].URL,
 			"type":   paginatedSources[i].Type,
 			"active": paginatedSources[i].Active,
-		})
+		}
+		if paginatedSources[i].FeedURL != nil {
+			summary["feed_url"] = *paginatedSources[i].FeedURL
+		}
+		summaries = append(summaries, summary)
 	}
 
 	return s.successResponse(id, map[string]any{
@@ -515,6 +521,7 @@ func (s *Server) handleUpdateSource(ctx context.Context, id any, arguments json.
 		URL       string         `json:"url"`
 		Selectors map[string]any `json:"selectors"`
 		Active    *bool          `json:"active"`
+		FeedURL   *string        `json:"feed_url"`
 	}
 
 	if err := json.Unmarshal(arguments, &args); err != nil {
@@ -530,6 +537,7 @@ func (s *Server) handleUpdateSource(ctx context.Context, id any, arguments json.
 		URL:       args.URL,
 		Selectors: args.Selectors,
 		Active:    args.Active,
+		FeedURL:   args.FeedURL,
 	})
 	if err != nil {
 		return s.errorResponse(id, InternalError, fmt.Sprintf("Failed to update source: %v", err))

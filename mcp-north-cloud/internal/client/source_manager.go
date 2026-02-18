@@ -32,6 +32,7 @@ type Source struct {
 	Type      string         `json:"type"`
 	Selectors map[string]any `json:"selectors"`
 	Active    bool           `json:"active"`
+	FeedURL   *string        `json:"feed_url,omitempty"`
 	CreatedAt time.Time      `json:"created_at"`
 	UpdatedAt time.Time      `json:"updated_at"`
 }
@@ -43,6 +44,7 @@ type CreateSourceRequest struct {
 	Type      string         `json:"type"`
 	Selectors map[string]any `json:"selectors"`
 	Active    bool           `json:"active"`
+	FeedURL   *string        `json:"feed_url,omitempty"`
 }
 
 // UpdateSourceRequest represents a request to update a source
@@ -52,6 +54,7 @@ type UpdateSourceRequest struct {
 	Type      string         `json:"type,omitempty"`
 	Selectors map[string]any `json:"selectors,omitempty"`
 	Active    *bool          `json:"active,omitempty"`
+	FeedURL   *string        `json:"feed_url,omitempty"`
 }
 
 // TestCrawlRequest represents a request to test crawl a source
