@@ -30,7 +30,7 @@ type Config struct {
 // RedisConfig holds Redis connection configuration for event publishing.
 type RedisConfig struct {
 	Address  string `env:"REDIS_ADDRESS"        yaml:"address"`
-	Password string `env:"REDIS_PASSWORD"       yaml:"password"`
+	Password string `env:"REDIS_PASSWORD"       yaml:"password"` //nolint:gosec // G117: config from env
 	DB       int    `env:"REDIS_DB"             yaml:"db"`
 	Enabled  bool   `env:"REDIS_EVENTS_ENABLED" yaml:"enabled"` // Feature flag for event publishing
 }
@@ -48,7 +48,7 @@ type DatabaseConfig struct {
 	Host            string        `env:"DB_HOST"            yaml:"host"`
 	Port            int           `env:"DB_PORT"            yaml:"port"`
 	User            string        `env:"DB_USER"            yaml:"user"`
-	Password        string        `env:"DB_PASSWORD"        yaml:"password"`
+	Password        string        `env:"DB_PASSWORD"        yaml:"password"` //nolint:gosec // G117: config from env
 	DBName          string        `env:"DB_NAME"            yaml:"dbname"`
 	SSLMode         string        `env:"DB_SSLMODE"         yaml:"sslmode"`
 	MaxOpenConns    int           `yaml:"max_open_conns"`
@@ -57,7 +57,7 @@ type DatabaseConfig struct {
 }
 
 type AuthConfig struct {
-	JWTSecret string `env:"AUTH_JWT_SECRET" yaml:"jwt_secret"`
+	JWTSecret string `env:"AUTH_JWT_SECRET" yaml:"jwt_secret"` //nolint:gosec // G117: config from env
 }
 
 func (c *Config) Validate() error {
