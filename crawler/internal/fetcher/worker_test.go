@@ -32,17 +32,24 @@ const (
 
 // mockFrontier implements fetcher.FrontierClaimer for testing.
 type mockFrontier struct {
-	mu             sync.Mutex
-	claimFunc      func(ctx context.Context) (*domain.FrontierURL, error)
-	fetchedCalls   []fetchedCall
-	failedCalls    []failedCall
-	deadCalls      []deadCall
-	claimCallCount int
+	mu                       sync.Mutex
+	claimFunc                func(ctx context.Context) (*domain.FrontierURL, error)
+	fetchedCalls             []fetchedCall
+	fetchedWithFinalURLCalls []fetchedWithFinalURLCall
+	failedCalls              []failedCall
+	deadCalls                []deadCall
+	claimCallCount           int
 }
 
 type fetchedCall struct {
 	ID     string
 	Params fetcher.FetchedParams
+}
+
+type fetchedWithFinalURLCall struct {
+	ID       string
+	FinalURL string
+	Params   fetcher.FetchedParams
 }
 
 type failedCall struct {
@@ -73,11 +80,12 @@ func (m *mockFrontier) UpdateFetched(_ context.Context, id string, params fetche
 	return nil
 }
 
-func (m *mockFrontier) UpdateFetchedWithFinalURL(_ context.Context, id, _ string, params fetcher.FetchedParams) error {
+func (m *mockFrontier) UpdateFetchedWithFinalURL(_ context.Context, id, finalURL string, params fetcher.FetchedParams) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
 	m.fetchedCalls = append(m.fetchedCalls, fetchedCall{ID: id, Params: params})
+	m.fetchedWithFinalURLCalls = append(m.fetchedWithFinalURLCalls, fetchedWithFinalURLCall{ID: id, FinalURL: finalURL, Params: params})
 
 	return nil
 }
@@ -191,6 +199,19 @@ func newTestWorkerPool(
 ) (*fetcher.WorkerPool, *mockHostUpdater) {
 	t.Helper()
 
+	return newTestWorkerPoolWithClient(t, frontier, robots, indexer, nil)
+}
+
+// newTestWorkerPoolWithClient creates a WorkerPool with an optional HTTP client (e.g. for redirect tests).
+func newTestWorkerPoolWithClient(
+	t *testing.T,
+	frontier fetcher.FrontierClaimer,
+	robots fetcher.RobotsAllower,
+	indexer fetcher.ContentIndexer,
+	httpClient *http.Client,
+) (*fetcher.WorkerPool, *mockHostUpdater) {
+	t.Helper()
+
 	hostUpdater := &mockHostUpdater{}
 	log := &mockLogger{}
 
@@ -200,6 +221,7 @@ func newTestWorkerPool(
 		MaxRetries:      workerTestRetries,
 		ClaimRetryDelay: workerClaimRetryDelay,
 		RequestTimeout:  workerRequestTimeout,
+		HTTPClient:     httpClient,
 	}
 
 	wp := fetcher.NewWorkerPool(
@@ -565,6 +587,125 @@ func TestProcessURL_IndexerError(t *testing.T) {
 	expectedMsg := "index content"
 	if !errors.Is(err, indexer.err) && err.Error() != fmt.Sprintf("%s: %s", expectedMsg, indexer.err.Error()) {
 		t.Errorf("expected error containing %q, got %q", expectedMsg, err.Error())
+	}
+}
+
+func TestProcessURL_RedirectToFinalURL(t *testing.T) {
+	t.Parallel()
+
+	// Server: /article -> 301 to /final; /final -> 200 with body.
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/article" {
+			w.Header().Set("Location", "/final")
+			w.WriteHeader(http.StatusMovedPermanently)
+			return
+		}
+		if r.URL.Path == "/final" {
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(articleHTML))
+			return
+		}
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	t.Cleanup(server.Close)
+
+	furl := newTestFrontierURL(t, server.URL+"/article")
+	frontier := &mockFrontier{
+		claimFunc: func(_ context.Context) (*domain.FrontierURL, error) {
+			return furl, nil
+		},
+	}
+	robots := &mockRobots{allowed: true}
+	indexer := &mockIndexer{}
+
+	client := &http.Client{
+		Timeout:       workerRequestTimeout,
+		CheckRedirect: fetcher.RedirectPolicy(5),
+	}
+	wp, _ := newTestWorkerPoolWithClient(t, frontier, robots, indexer, client)
+
+	ctx := context.Background()
+	err := wp.ProcessURL(ctx, furl)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	verifyFetchedCalled(t, frontier)
+	frontier.mu.Lock()
+	calls := len(frontier.fetchedWithFinalURLCalls)
+	finalURL := ""
+	if calls > 0 {
+		finalURL = frontier.fetchedWithFinalURLCalls[0].FinalURL
+	}
+	frontier.mu.Unlock()
+	if calls != 1 {
+		t.Errorf("expected UpdateFetchedWithFinalURL to be called once, got %d", calls)
+	}
+	// Final URL should be the resolved /final (absolute).
+	if finalURL != server.URL+"/final" {
+		t.Errorf("expected final URL %q, got %q", server.URL+"/final", finalURL)
+	}
+}
+
+func TestProcessURL_TooManyRedirects(t *testing.T) {
+	t.Parallel()
+
+	// Server: /r0 -> /r1 -> /r2 -> /r3 -> /r4 -> /r5 (5 redirects); at 5th redirect client hits limit.
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/r0":
+			w.Header().Set("Location", "/r1")
+			w.WriteHeader(http.StatusFound)
+		case "/r1":
+			w.Header().Set("Location", "/r2")
+			w.WriteHeader(http.StatusFound)
+		case "/r2":
+			w.Header().Set("Location", "/r3")
+			w.WriteHeader(http.StatusFound)
+		case "/r3":
+			w.Header().Set("Location", "/r4")
+			w.WriteHeader(http.StatusFound)
+		case "/r4":
+			w.Header().Set("Location", "/r5")
+			w.WriteHeader(http.StatusFound)
+		default:
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(articleHTML))
+		}
+	}))
+	t.Cleanup(server.Close)
+
+	furl := newTestFrontierURL(t, server.URL+"/r0")
+	frontier := &mockFrontier{
+		claimFunc: func(_ context.Context) (*domain.FrontierURL, error) {
+			return furl, nil
+		},
+	}
+	robots := &mockRobots{allowed: true}
+	indexer := &mockIndexer{}
+
+	client := &http.Client{
+		Timeout:       workerRequestTimeout,
+		CheckRedirect: fetcher.RedirectPolicy(5),
+	}
+	wp, _ := newTestWorkerPoolWithClient(t, frontier, robots, indexer, client)
+
+	ctx := context.Background()
+	err := wp.ProcessURL(ctx, furl)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	verifyFailedCalled(t, frontier)
+	frontier.mu.Lock()
+	if len(frontier.failedCalls) == 0 {
+		frontier.mu.Unlock()
+		t.Fatal("expected UpdateFailed to be called")
+	}
+	lastError := frontier.failedCalls[len(frontier.failedCalls)-1].LastError
+	frontier.mu.Unlock()
+	if lastError != "too_many_redirects" {
+		t.Errorf("expected last_error %q, got %q", "too_many_redirects", lastError)
 	}
 }
 
