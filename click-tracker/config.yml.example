@@ -1,0 +1,30 @@
+# Click-Tracker Service Configuration
+# Copy this file to config.yml and adjust values for your environment
+
+service:
+  name: "click-tracker"
+  version: "0.1.0"
+  port: 8093
+  debug: false
+  hmac_secret: "generate-strong-secret-here"
+  signature_length: 12
+  max_timestamp_age: "24h"
+  buffer_size: 1000
+  flush_interval: "1s"
+  flush_threshold: 500
+
+database:
+  host: "postgres-click-tracker"
+  port: 5432
+  user: "postgres"
+  password: "postgres"
+  database: "click_tracker"
+  sslmode: "disable"
+
+rate_limit:
+  max_clicks_per_minute: 10
+  window_seconds: 60
+
+logging:
+  level: "info"    # debug, info, warn, error
+  format: "json"   # json or console

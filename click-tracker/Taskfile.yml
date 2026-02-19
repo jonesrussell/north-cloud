@@ -1,0 +1,137 @@
+version: '3'
+
+# Each module resolves dependencies from its own go.mod, not the workspace
+
+vars:
+  BINARY_NAME: click-tracker
+  MAIN_PATH: ./main.go
+
+env:
+  GOWORK: "off"
+
+tasks:
+  default:
+    desc: "Show available tasks"
+    cmds:
+      - task --list
+
+  build:
+    desc: "Build the click-tracker binary"
+    sources:
+      - "**/*.go"
+      - "go.mod"
+      - "go.sum"
+      - "../infrastructure/**/*.go"
+    generates:
+      - "bin/{{.BINARY_NAME}}"
+    cmds:
+      - go build -o bin/{{.BINARY_NAME}} {{.MAIN_PATH}}
+
+  run:
+    desc: "Run the click-tracker service"
+    cmds:
+      - go run {{.MAIN_PATH}}
+
+  test:
+    desc: "Run all tests"
+    sources:
+      - "**/*.go"
+      - "go.mod"
+      - "go.sum"
+      - "../infrastructure/**/*.go"
+    cmds:
+      - go test -v ./...
+
+  test:unit:
+    desc: "Run unit tests"
+    cmds:
+      - go test -v ./internal/...
+
+  test:coverage:
+    desc: "Run tests with coverage"
+    cmds:
+      - go test -coverprofile=coverage.out ./...
+      - go tool cover -html=coverage.out -o coverage.html
+      - 'echo "Coverage report generated: coverage.html"'
+
+  test:race:
+    desc: "Run tests with race detector"
+    cmds:
+      - go test -race ./...
+
+  vuln:
+    desc: "Run vulnerability check"
+    sources:
+      - "go.mod"
+      - "go.sum"
+    cmds:
+      - govulncheck ./...
+
+  bench:
+    desc: "Run benchmarks"
+    cmds:
+      - go test -bench=. -benchmem ./...
+
+  lint:
+    desc: "Lint the Go code"
+    sources:
+      - "**/*.go"
+      - "go.mod"
+      - "go.sum"
+      - "../.golangci.yml"
+      - "../infrastructure/**/*.go"
+    cmds:
+      - go fmt ./...
+      - go vet ./...
+      - golangci-lint run --config ../.golangci.yml ./...
+
+  lint:no-cache:
+    desc: "Run linter with cache disabled (matches CI)"
+    cmds:
+      - go fmt ./...
+      - go vet ./...
+      - golangci-lint cache clean
+      - golangci-lint run --config ../.golangci.yml ./...
+
+  fmt:
+    desc: "Format code"
+    cmds:
+      - go fmt ./...
+      - goimports -w . || true
+
+  tidy:
+    desc: "Tidy go.mod and go.sum"
+    cmds:
+      - go mod tidy
+
+  clean:
+    desc: "Clean build artifacts"
+    cmds:
+      - rm -rf bin/
+      - rm -f coverage.out coverage.html
+
+  docker:build:
+    desc: "Build Docker image"
+    cmds:
+      - docker build -t north-cloud-click-tracker:latest .
+
+  docker:build:dev:
+    desc: "Build development Docker image"
+    cmds:
+      - docker build -f Dockerfile.dev -t north-cloud-click-tracker:dev .
+
+  vendor:
+    desc: "Sync vendor directory (run after go get or go mod tidy)"
+    cmds:
+      - go mod vendor
+
+  dev:
+    desc: "Run with Air hot reload"
+    cmds:
+      - air
+
+  install:tools:
+    desc: "Install development tools"
+    cmds:
+      - go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.8.0 || true
+      - go install golang.org/x/tools/cmd/goimports@latest || true

@@ -1,0 +1,41 @@
+FROM golang:1.25.7-alpine
+
+ARG UID=1000
+ARG GID=1000
+
+WORKDIR /app
+
+# Dev tools
+RUN apk add --no-cache git bash
+
+# Install Air for hot reload
+RUN go install github.com/air-verse/air@latest
+
+# Create matching user
+RUN addgroup -g ${GID} appuser && \
+    adduser -D -u ${UID} -G appuser appuser
+
+# Writable caches in /tmp (including sumdb for module verification)
+RUN mkdir -p /tmp/go-mod-cache \
+             /tmp/go-build-cache \
+             /go/pkg/sumdb && \
+    chmod -R 1777 /tmp/go-mod-cache \
+                  /tmp/go-build-cache \
+                  /go/pkg/sumdb
+
+# Copy infrastructure for replace directive (source will be bind-mounted)
+COPY infrastructure ../infrastructure
+
+# Copy go.mod files for initial dependency download
+COPY click-tracker/go.mod click-tracker/go.sum ./
+RUN go mod download
+
+# Expose port
+EXPOSE 8093
+
+# Go cache locations
+ENV GOCACHE=/tmp/go-build-cache
+ENV GOMODCACHE=/tmp/go-mod-cache
+
+# Run in dev mode (hot reload if using air)
+CMD ["go", "run", "main.go"]
