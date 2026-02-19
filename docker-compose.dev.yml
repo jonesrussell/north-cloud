@@ -670,12 +670,16 @@ services:
       start_period: 10s
 
   # ------------------------------------------------------------
-  # Elasticsearch (Dev) - use named volume instead of host bind mount
+  # Elasticsearch (Dev) - built image with config baked in to avoid
+  # WSL2/Docker Desktop bind-mount "no such file or directory" errors
   # ------------------------------------------------------------
   elasticsearch:
+    image: north-cloud-elasticsearch:dev
+    build:
+      context: ./infrastructure/elasticsearch
+      dockerfile: Dockerfile.dev
     volumes:
       - elasticsearch_data:/usr/share/elasticsearch/data
-      - ./infrastructure/elasticsearch/elasticsearch.yml:/usr/share/elasticsearch/config/elasticsearch.yml:ro
 
   # ------------------------------------------------------------
   # Logging Infrastructure (Dev)

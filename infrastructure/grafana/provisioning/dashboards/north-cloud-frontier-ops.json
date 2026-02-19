@@ -78,7 +78,7 @@
         {
           "refId": "A",
           "datasource": { "type": "loki", "uid": "loki" },
-          "expr": "count_over_time({service=\"fetcher\"} |= \"URL fetched successfully\" [$__range])",
+          "expr": "count_over_time({service=\"crawler\"} |= \"URL fetched successfully\" [$__range])",
           "queryType": "instant"
         }
       ],
@@ -113,7 +113,7 @@
         {
           "refId": "A",
           "datasource": { "type": "loki", "uid": "loki" },
-          "expr": "count_over_time({service=\"fetcher\"} |= \"URL fetch failed\" [$__range])",
+          "expr": "count_over_time({service=\"crawler\"} |= \"URL fetch failed\" [$__range])",
           "queryType": "instant"
         }
       ],
@@ -148,7 +148,7 @@
         {
           "refId": "A",
           "datasource": { "type": "loki", "uid": "loki" },
-          "expr": "count_over_time({service=\"fetcher\"} |= \"robots_blocked\" [$__range])",
+          "expr": "count_over_time({service=\"crawler\"} |= \"robots_blocked\" [$__range])",
           "queryType": "instant"
         }
       ],
@@ -183,7 +183,7 @@
         {
           "refId": "A",
           "datasource": { "type": "loki", "uid": "loki" },
-          "expr": "count_over_time({service=\"fetcher\"} |= \"URL marked dead\" [$__range])",
+          "expr": "count_over_time({service=\"crawler\"} |= \"URL marked dead\" [$__range])",
           "queryType": "instant"
         }
       ],
@@ -225,13 +225,13 @@
         {
           "refId": "A",
           "datasource": { "type": "loki", "uid": "loki" },
-          "expr": "count_over_time({service=\"fetcher\"} |= \"URL fetched successfully\" [1m])",
+          "expr": "count_over_time({service=\"crawler\"} |= \"URL fetched successfully\" [1m])",
           "legendFormat": "Fetched"
         },
         {
           "refId": "B",
           "datasource": { "type": "loki", "uid": "loki" },
-          "expr": "count_over_time({service=\"fetcher\"} |= \"URL fetch failed\" [1m])",
+          "expr": "count_over_time({service=\"crawler\"} |= \"URL fetch failed\" [1m])",
           "legendFormat": "Failed"
         }
       ],
@@ -330,19 +330,19 @@
         {
           "refId": "A",
           "datasource": { "type": "loki", "uid": "loki" },
-          "expr": "count_over_time({service=\"crawler\"} |= \"Feed polled successfully\" [5m])",
+          "expr": "count_over_time({service=\"crawler\"} |= \"feed polled successfully\" [5m])",
           "legendFormat": "Success"
         },
         {
           "refId": "B",
           "datasource": { "type": "loki", "uid": "loki" },
-          "expr": "count_over_time({service=\"crawler\"} |= \"Feed poll failed\" [5m])",
+          "expr": "count_over_time({service=\"crawler\"} |= \"feed poll failed\" [5m])",
           "legendFormat": "Failed"
         },
         {
           "refId": "C",
           "datasource": { "type": "loki", "uid": "loki" },
-          "expr": "count_over_time({service=\"crawler\"} |= \"Feed not modified\" [5m])",
+          "expr": "count_over_time({service=\"crawler\"} |= \"feed not modified\" [5m])",
           "legendFormat": "Not Modified (304)"
         }
       ],
@@ -388,7 +388,7 @@
         {
           "refId": "A",
           "datasource": { "type": "loki", "uid": "loki" },
-          "expr": "count_over_time({service=\"crawler\"} |= \"Feed polled successfully\" | json | unwrap items_discovered [$__range])",
+          "expr": "sum(sum_over_time({service=\"crawler\"} |= \"feed polled successfully\" | json | unwrap items_submitted [$__range]))",
           "queryType": "instant"
         }
       ],
@@ -423,7 +423,7 @@
         {
           "refId": "A",
           "datasource": { "type": "loki", "uid": "loki" },
-          "expr": "count_over_time({service=\"crawler\"} |= \"Feed poll failed\" [$__range])",
+          "expr": "count_over_time({service=\"crawler\"} |= \"feed poll failed\" [$__range])",
           "queryType": "instant"
         }
       ],
@@ -465,7 +465,7 @@
             {
               "refId": "A",
               "datasource": { "type": "loki", "uid": "loki" },
-              "expr": "{service=\"fetcher\"}",
+              "expr": "{service=\"crawler\"} |~ \"URL fetched successfully|URL fetch failed|URL marked dead|robots_blocked\"",
               "maxLines": 200
             }
           ],

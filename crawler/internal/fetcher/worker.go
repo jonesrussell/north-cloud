@@ -200,7 +200,11 @@ func (wp *WorkerPool) ProcessURL(ctx context.Context, furl *domain.FrontierURL) 
 	}
 
 	if !allowed {
-		return wp.frontier.UpdateDead(ctx, furl.ID, reasonRobotsBlocked)
+		if updateErr := wp.frontier.UpdateDead(ctx, furl.ID, reasonRobotsBlocked); updateErr != nil {
+			return updateErr
+		}
+		wp.log.Info("URL marked dead", "url", furl.URL, "reason", reasonRobotsBlocked)
+		return nil
 	}
 
 	body, statusCode, fetchErr := wp.fetchPage(ctx, furl)
@@ -231,7 +235,7 @@ func (wp *WorkerPool) handleFetchError(ctx context.Context, furl *domain.Frontie
 	if updateErr != nil {
 		return fmt.Errorf("update failed after fetch error: %w", updateErr)
 	}
-
+	wp.log.Info("URL fetch failed", "url", furl.URL, "error", fetchErr.Error())
 	return nil
 }
 
@@ -248,19 +252,25 @@ func (wp *WorkerPool) handleStatusCode(
 	case statusCode == statusNotModified:
 		return wp.handleNotModified(ctx, furl)
 	case statusCode == statusNotFound:
-		return wp.frontier.UpdateDead(ctx, furl.ID, reasonNotFound)
+		if updateErr := wp.frontier.UpdateDead(ctx, furl.ID, reasonNotFound); updateErr != nil {
+			return updateErr
+		}
+		wp.log.Info("URL marked dead", "url", furl.URL, "reason", reasonNotFound)
+		return nil
 	case statusCode == statusTooManyReqs || statusCode >= statusServerErrLow:
-		return wp.frontier.UpdateFailed(
-			ctx, furl.ID,
-			fmt.Sprintf("http status %d", statusCode),
-			wp.maxRetries,
-		)
+		msg := fmt.Sprintf("http status %d", statusCode)
+		if updateErr := wp.frontier.UpdateFailed(ctx, furl.ID, msg, wp.maxRetries); updateErr != nil {
+			return updateErr
+		}
+		wp.log.Info("URL fetch failed", "url", furl.URL, "error", msg)
+		return nil
 	default:
-		return wp.frontier.UpdateFailed(
-			ctx, furl.ID,
-			fmt.Sprintf("unexpected http status %d", statusCode),
-			wp.maxRetries,
-		)
+		msg := fmt.Sprintf("unexpected http status %d", statusCode)
+		if updateErr := wp.frontier.UpdateFailed(ctx, furl.ID, msg, wp.maxRetries); updateErr != nil {
+			return updateErr
+		}
+		wp.log.Info("URL fetch failed", "url", furl.URL, "error", msg)
+		return nil
 	}
 }
 
@@ -283,12 +293,20 @@ func (wp *WorkerPool) handleSuccess(
 		ContentHash: &content.ContentHash,
 	}
 
-	return wp.frontier.UpdateFetched(ctx, furl.ID, params)
+	if updateErr := wp.frontier.UpdateFetched(ctx, furl.ID, params); updateErr != nil {
+		return updateErr
+	}
+	wp.log.Info("URL fetched successfully", "url", furl.URL)
+	return nil
 }
 
 // handleNotModified marks the URL as fetched without indexing new content.
 func (wp *WorkerPool) handleNotModified(ctx context.Context, furl *domain.FrontierURL) error {
-	return wp.frontier.UpdateFetched(ctx, furl.ID, FetchedParams{})
+	if updateErr := wp.frontier.UpdateFetched(ctx, furl.ID, FetchedParams{}); updateErr != nil {
+		return updateErr
+	}
+	wp.log.Info("URL fetched successfully", "url", furl.URL)
+	return nil
 }
 
 // fetchPage performs the HTTP GET request for the given frontier URL.
