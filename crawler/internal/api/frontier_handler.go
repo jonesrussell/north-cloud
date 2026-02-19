@@ -1,10 +1,12 @@
 package api
 
 import (
+	"context"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 	"github.com/jonesrussell/north-cloud/crawler/internal/database"
+	"github.com/jonesrussell/north-cloud/crawler/internal/domain"
 	"github.com/jonesrussell/north-cloud/crawler/internal/frontier"
 	infralogger "github.com/north-cloud/infrastructure/logger"
 )
@@ -14,14 +16,24 @@ const (
 	defaultFrontierListOffset = 0
 )
 
+// FrontierRepoForHandler is the frontier repository surface used by FrontierHandler.
+// Implemented by *database.FrontierRepository and by the bootstrap logging wrapper.
+type FrontierRepoForHandler interface {
+	List(ctx context.Context, filters database.FrontierFilters) ([]*domain.FrontierURL, int, error)
+	Stats(ctx context.Context) (*database.FrontierStats, error)
+	Submit(ctx context.Context, params database.SubmitParams) error
+	ResetForRetry(ctx context.Context, id string) error
+	Delete(ctx context.Context, id string) error
+}
+
 // FrontierHandler handles frontier-related HTTP requests.
 type FrontierHandler struct {
-	repo *database.FrontierRepository
+	repo FrontierRepoForHandler
 	log  infralogger.Logger
 }
 
 // NewFrontierHandler creates a new frontier handler.
-func NewFrontierHandler(repo *database.FrontierRepository, log infralogger.Logger) *FrontierHandler {
+func NewFrontierHandler(repo FrontierRepoForHandler, log infralogger.Logger) *FrontierHandler {
 	return &FrontierHandler{
 		repo: repo,
 		log:  log,
@@ -92,12 +104,6 @@ func (h *FrontierHandler) Submit(c *gin.Context) {
 		respondInternalError(c, "Failed to submit URL to frontier")
 		return
 	}
-
-	h.log.Info("URL submitted to frontier",
-		infralogger.String("url", req.URL),
-		infralogger.String("source_id", req.SourceID),
-		infralogger.String("origin", params.Origin),
-	)
 
 	c.JSON(http.StatusCreated, gin.H{
 		"message": "URL submitted to frontier",

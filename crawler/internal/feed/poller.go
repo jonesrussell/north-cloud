@@ -209,7 +209,7 @@ func (p *Poller) submitSingleItem(ctx context.Context, sourceID string, item *Fe
 
 // recordError logs and records a feed polling error in the feed state store.
 func (p *Poller) recordError(ctx context.Context, sourceID string, originalErr error) {
-	p.log.Error("feed poll error",
+	p.log.Error("feed poll failed",
 		"source_id", sourceID,
 		"error", originalErr.Error(),
 	)

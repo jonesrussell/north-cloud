@@ -49,6 +49,9 @@ type ServiceComponents struct {
 	// Frontier worker pool
 	FrontierWorkerPool *fetcher.WorkerPool
 
+	// Frontier repo for HTTP handler (logging wrapper when frontier enabled)
+	FrontierRepoForHandler api.FrontierRepoForHandler
+
 	// SSE components
 	SSEBroker    sse.Broker
 	SSEHandler   *api.SSEHandler
@@ -93,8 +96,19 @@ func SetupServices(
 	jobsHandler.SetLogger(deps.Logger)
 	discoveredLinksHandler.SetLogger(deps.Logger)
 
+	// Frontier submission logging wrapper (one log per Submit for Grafana). Used for handler, feed, link submitter; claimer uses raw repo.
+	var frontierForHandler api.FrontierRepoForHandler
+	var frontierForSubmission crawler.LinkFrontierSubmitter
+	var frontierForFeed feed.FrontierSubmitterRepo
+	if db.FrontierRepo != nil {
+		wrapped := NewLoggingFrontierRepo(db.FrontierRepo, deps.Logger)
+		frontierForHandler = wrapped
+		frontierForSubmission = wrapped
+		frontierForFeed = wrapped
+	}
+
 	// Create and start scheduler
-	intervalScheduler := createAndStartScheduler(deps, storage, db)
+	intervalScheduler := createAndStartScheduler(deps, storage, db, frontierForSubmission)
 	if intervalScheduler != nil {
 		jobsHandler.SetScheduler(intervalScheduler)
 		discoveredLinksHandler.SetScheduler(intervalScheduler)
@@ -105,12 +119,12 @@ func SetupServices(
 	}
 
 	// Create feed poller (if enabled)
-	feedPoller, listDue := createFeedPoller(deps, db)
+	feedPoller, listDue := createFeedPoller(deps, db, frontierForFeed)
 
 	// Create feed discoverer (if enabled)
 	feedDiscoverer, listUndiscovered := createFeedDiscoverer(deps)
 
-	// Create frontier worker pool (if enabled)
+	// Create frontier worker pool (if enabled); uses raw repo for claimer
 	workerPool := createFrontierWorkerPool(deps, db, storage)
 
 	return &ServiceComponents{
@@ -125,6 +139,7 @@ func SetupServices(
 		FeedDiscoverer:         feedDiscoverer,
 		ListUndiscovered:       listUndiscovered,
 		FrontierWorkerPool:     workerPool,
+		FrontierRepoForHandler: frontierForHandler,
 		SSEBroker:              sseBroker,
 		SSEHandler:             sseHandler,
 		SSEPublisher:           ssePublisher,
@@ -212,9 +227,10 @@ func createAndStartScheduler(
 	deps *CommandDeps,
 	storage *StorageComponents,
 	db *DatabaseComponents,
+	frontierForSubmission crawler.LinkFrontierSubmitter,
 ) *scheduler.IntervalScheduler {
 	// Create crawler factory for job execution (each job gets an isolated instance)
-	crawlerFactory, err := createCrawlerFactory(deps, storage, db)
+	crawlerFactory, err := createCrawlerFactory(deps, storage, db, frontierForSubmission)
 	if err != nil {
 		deps.Logger.Warn("Failed to create crawler factory, scheduler disabled", infralogger.Error(err))
 		return nil
@@ -244,8 +260,9 @@ func createCrawlerFactory(
 	deps *CommandDeps,
 	storage *StorageComponents,
 	db *DatabaseComponents,
+	frontierForSubmission crawler.LinkFrontierSubmitter,
 ) (crawler.FactoryInterface, error) {
-	params, err := buildCrawlerParams(deps, storage, db.DB, db.FrontierRepo)
+	params, err := buildCrawlerParams(deps, storage, db.DB, frontierForSubmission)
 	if err != nil {
 		return nil, err
 	}
@@ -257,7 +274,7 @@ func buildCrawlerParams(
 	deps *CommandDeps,
 	storage *StorageComponents,
 	db *sqlx.DB,
-	frontierRepo *database.FrontierRepository,
+	frontierForSubmission crawler.LinkFrontierSubmitter,
 ) (crawler.CrawlerParams, error) {
 	bus := crawlerevents.NewEventBus(deps.Logger)
 	crawlerCfg := deps.Config.GetCrawlerConfig()
@@ -291,8 +308,8 @@ func buildCrawlerParams(
 	}
 
 	var frontierSubmitter crawler.LinkFrontierSubmitter
-	if frontierRepo != nil && deps.Config.GetFetcherConfig().Enabled {
-		frontierSubmitter = frontierRepo
+	if frontierForSubmission != nil && deps.Config.GetFetcherConfig().Enabled {
+		frontierSubmitter = frontierForSubmission
 	}
 
 	return crawler.CrawlerParams{
@@ -325,14 +342,17 @@ func loadSourceManager(deps *CommandDeps) (sources.Interface, error) {
 const feedHTTPFetchTimeout = 30 * time.Second
 
 // createFeedPoller creates a feed poller and listDue callback.
-// Returns (nil, nil) if feed polling is disabled.
+// Returns (nil, nil) if feed polling is disabled or frontier submitter is nil.
 func createFeedPoller(
 	deps *CommandDeps,
 	db *DatabaseComponents,
+	frontierForFeed feed.FrontierSubmitterRepo,
 ) (poller *feed.Poller, listDueFn func(ctx context.Context) ([]feed.DueFeed, error)) {
 	feedCfg := deps.Config.GetFeedConfig()
-	if !feedCfg.Enabled {
-		deps.Logger.Info("Feed polling disabled")
+	if !feedCfg.Enabled || frontierForFeed == nil {
+		if !feedCfg.Enabled {
+			deps.Logger.Info("Feed polling disabled")
+		}
 		return nil, nil
 	}
 
@@ -346,7 +366,7 @@ func createFeedPoller(
 
 	httpFetcher := feed.NewHTTPFetcher(&http.Client{Timeout: feedHTTPFetchTimeout})
 	feedStateAdapter := feed.NewFeedStateRepoAdapter(db.FeedStateRepo)
-	frontierAdapter := feed.NewFrontierRepoAdapter(db.FrontierRepo)
+	frontierAdapter := feed.NewFrontierRepoAdapter(frontierForFeed)
 	logAdapter := &logAdapter{log: deps.Logger}
 
 	poller = feed.NewPoller(httpFetcher, feedStateAdapter, frontierAdapter, logAdapter)

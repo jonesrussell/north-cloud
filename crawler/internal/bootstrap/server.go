@@ -27,7 +27,7 @@ type HTTPServerDeps struct {
 	SSEHandler             *api.SSEHandler
 	Migrator               *job.Migrator
 	JobRepo                *database.JobRepository
-	FrontierRepo           *database.FrontierRepository
+	FrontierRepoForHandler api.FrontierRepoForHandler
 }
 
 // ServerComponents holds the HTTP server and error channel.
@@ -53,8 +53,8 @@ func SetupHTTPServer(deps *HTTPServerDeps) *ServerComponents {
 	)
 
 	var frontierHandler *api.FrontierHandler
-	if deps.FrontierRepo != nil {
-		frontierHandler = api.NewFrontierHandler(deps.FrontierRepo, deps.Logger)
+	if deps.FrontierRepoForHandler != nil {
+		frontierHandler = api.NewFrontierHandler(deps.FrontierRepoForHandler, deps.Logger)
 	}
 
 	server := api.NewServer(

@@ -7,14 +7,20 @@ import (
 	"github.com/jonesrussell/north-cloud/crawler/internal/domain"
 )
 
-// FrontierRepoAdapter adapts database.FrontierRepository to the
-// FrontierSubmitter interface expected by the feed poller.
-type FrontierRepoAdapter struct {
-	repo *database.FrontierRepository
+// FrontierSubmitterRepo is the minimal repository surface needed to submit URLs.
+// Implemented by *database.FrontierRepository and by the bootstrap logging wrapper.
+type FrontierSubmitterRepo interface {
+	Submit(ctx context.Context, params database.SubmitParams) error
 }
 
-// NewFrontierRepoAdapter creates a new adapter wrapping a FrontierRepository.
-func NewFrontierRepoAdapter(repo *database.FrontierRepository) *FrontierRepoAdapter {
+// FrontierRepoAdapter adapts a FrontierSubmitterRepo to the
+// FrontierSubmitter interface expected by the feed poller.
+type FrontierRepoAdapter struct {
+	repo FrontierSubmitterRepo
+}
+
+// NewFrontierRepoAdapter creates a new adapter wrapping a FrontierSubmitterRepo.
+func NewFrontierRepoAdapter(repo FrontierSubmitterRepo) *FrontierRepoAdapter {
 	return &FrontierRepoAdapter{repo: repo}
 }
 

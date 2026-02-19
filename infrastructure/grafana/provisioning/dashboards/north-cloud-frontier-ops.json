@@ -35,7 +35,7 @@
     {
       "id": 2,
       "title": "URLs Submitted",
-      "description": "URLs submitted to the frontier queue",
+      "description": "Counts all submissions (API, feed, spider, sitemap). Requires frontier submissions in the selected time range.",
       "type": "stat",
       "datasource": { "type": "loki", "uid": "loki" },
       "gridPos": { "h": 4, "w": 5, "x": 0, "y": 1 },
@@ -217,7 +217,7 @@
     {
       "id": 11,
       "title": "Fetch Rate",
-      "description": "URLs fetched per minute over time",
+      "description": "URLs fetched per minute. Data appears when the frontier worker pool is enabled and has URLs to fetch.",
       "type": "timeseries",
       "datasource": { "type": "loki", "uid": "loki" },
       "gridPos": { "h": 8, "w": 12, "x": 0, "y": 6 },
@@ -457,7 +457,7 @@
         {
           "id": 31,
           "title": "Fetcher Worker Logs",
-          "description": "Recent logs from fetcher workers",
+          "description": "Fetcher worker activity. Data appears when the frontier worker pool is enabled and has URLs to fetch.",
           "type": "logs",
           "datasource": { "type": "loki", "uid": "loki" },
           "gridPos": { "h": 12, "w": 24, "x": 0, "y": 24 },
@@ -465,7 +465,7 @@
             {
               "refId": "A",
               "datasource": { "type": "loki", "uid": "loki" },
-              "expr": "{service=\"crawler\"} |~ \"URL fetched successfully|URL fetch failed|URL marked dead|robots_blocked\"",
+              "expr": "{service=\"crawler\"} |~ \"URL fetched successfully|URL fetch failed|URL marked dead|robots_blocked|worker started|worker pool|claim failed|process failed\"",
               "maxLines": 200
             }
           ],
