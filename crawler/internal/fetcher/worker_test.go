@@ -221,7 +221,7 @@ func newTestWorkerPoolWithClient(
 		MaxRetries:      workerTestRetries,
 		ClaimRetryDelay: workerClaimRetryDelay,
 		RequestTimeout:  workerRequestTimeout,
-		HTTPClient:     httpClient,
+		HTTPClient:      httpClient,
 	}
 
 	wp := fetcher.NewWorkerPool(
