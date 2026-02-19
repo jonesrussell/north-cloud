@@ -1,6 +1,6 @@
 module github.com/north-cloud/infrastructure
 
-go 1.25
+go 1.26
 
 require (
 	github.com/elastic/go-elasticsearch/v8 v8.19.3
