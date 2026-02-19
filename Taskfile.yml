@@ -1092,9 +1092,9 @@ tasks:
       - task: docker:dev:up:index-manager
 
   docker:dev:up:search-service:
-    desc: "Start search-service and dependencies"
+    desc: "Start search-service and dependencies (uses profile search)"
     cmds:
-      - docker compose -f docker-compose.base.yml -f docker-compose.dev.yml up -d search-service
+      - docker compose -f docker-compose.base.yml -f docker-compose.dev.yml --profile search up -d search-service
 
   docker:dev:down:search-service:
     desc: "Stop search-service"
@@ -1118,9 +1118,9 @@ tasks:
       - task: docker:dev:up:search-service
 
   docker:dev:up:search-frontend:
-    desc: "Start search-frontend and dependencies"
+    desc: "Start search-frontend and dependencies (uses profile search)"
     cmds:
-      - docker compose -f docker-compose.base.yml -f docker-compose.dev.yml up -d search-frontend
+      - docker compose -f docker-compose.base.yml -f docker-compose.dev.yml --profile search up -d search-frontend
 
   docker:dev:down:search-frontend:
     desc: "Stop search-frontend"
