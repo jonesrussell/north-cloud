@@ -102,6 +102,10 @@ UPDATE jobs SET lock_token = ? WHERE id = ? AND lock_token IS NULL
 
 6. **`document_parsing_exception` for `json_ld_data.jsonld_raw.publisher`**: The index was likely created with an empty mapping (before the crawler used the canonical mapping). Elasticsearch then applied dynamic mapping and locked `publisher` as type object; normalized documents send a string and are rejected. **Fix**: Delete the affected `{source}_raw_content` index (e.g. via index-manager API or Elasticsearch), then re-crawl so the crawler recreates the index with the canonical mapping. To preserve data, create a new index with the correct mapping (e.g. via index-manager), reindex from the old index, then switch over and drop the old index.
 
+## Frontier fetcher and redirects
+
+The frontier worker pool follows HTTP redirects (configurable via `FETCHER_FOLLOW_REDIRECTS` / `FETCHER_MAX_REDIRECTS`). On success after redirects, the frontier row is updated to the final URL when it differs (canonicalization). Redirect-limit failures are stored as `last_error=too_many_redirects` so they can be filtered in the dashboard from truly dead URLs.
+
 ## Redis Storage (Colly)
 
 Enabled via `CRAWLER_REDIS_STORAGE_ENABLED=true`. Persists Colly's visited URLs, cookies, and request queue in Redis.

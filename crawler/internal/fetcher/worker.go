@@ -24,9 +24,9 @@ const (
 
 // Reason strings for dead URL classification.
 const (
-	reasonRobotsBlocked     = "robots_blocked"
-	reasonNotFound          = "not_found"
-	reasonTooManyRedirects  = "too_many_redirects"
+	reasonRobotsBlocked    = "robots_blocked"
+	reasonNotFound         = "not_found"
+	reasonTooManyRedirects = "too_many_redirects"
 )
 
 // maxResponseBodyBytes limits the size of fetched page responses.
@@ -101,7 +101,7 @@ type WorkerPool struct {
 
 // NewWorkerPool creates a new worker pool with the given dependencies and configuration.
 func NewWorkerPool(
-	frontier FrontierClaimer,
+	claimer FrontierClaimer,
 	hostUpdater HostUpdater,
 	robots RobotsAllower,
 	extractor *ContentExtractor,
@@ -114,7 +114,7 @@ func NewWorkerPool(
 		client = &http.Client{Timeout: cfg.RequestTimeout}
 	}
 	return &WorkerPool{
-		frontier:        frontier,
+		frontier:        claimer,
 		hostUpdater:     hostUpdater,
 		robots:          robots,
 		extractor:       extractor,
