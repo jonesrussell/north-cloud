@@ -9,8 +9,10 @@ import (
 
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/jmoiron/sqlx"
+	"github.com/lib/pq"
 
 	"github.com/jonesrussell/north-cloud/crawler/internal/database"
+	"github.com/jonesrussell/north-cloud/crawler/internal/frontier"
 )
 
 // frontierColumns lists the columns returned by frontier SELECT queries.
@@ -318,6 +320,79 @@ func TestFrontierRepository_UpdateDead_NotFound(t *testing.T) {
 	err := repo.UpdateDead(ctx, "nonexistent-id", "reason")
 	if err == nil {
 		t.Fatal("UpdateDead() expected error for non-existent URL, got nil")
+	}
+
+	expectationsMet(t, mock)
+}
+
+func TestFrontierRepository_UpdateFetchedWithFinalURL_Success(t *testing.T) {
+	repo, mock, cleanup := newFrontierRepo(t)
+	defer cleanup()
+
+	ctx := context.Background()
+	finalURL := "https://final.example.com/page"
+	contentHash := "abc123"
+	params := database.FetchedParams{ContentHash: &contentHash}
+
+	normalized, err := frontier.NormalizeURL(finalURL)
+	if err != nil {
+		t.Fatalf("NormalizeURL: %v", err)
+	}
+	urlHash, err := frontier.URLHash(finalURL)
+	if err != nil {
+		t.Fatalf("URLHash: %v", err)
+	}
+	host, err := frontier.ExtractHost(finalURL)
+	if err != nil {
+		t.Fatalf("ExtractHost: %v", err)
+	}
+
+	mock.ExpectExec("UPDATE url_frontier").
+		WithArgs(normalized, urlHash, host, &contentHash, nil, nil, "url-id-1").
+		WillReturnResult(sqlmock.NewResult(0, 1))
+
+	err = repo.UpdateFetchedWithFinalURL(ctx, "url-id-1", finalURL, params)
+	if err != nil {
+		t.Fatalf("UpdateFetchedWithFinalURL() error = %v", err)
+	}
+
+	expectationsMet(t, mock)
+}
+
+func TestFrontierRepository_UpdateFetchedWithFinalURL_UniqueViolationFallback(t *testing.T) {
+	repo, mock, cleanup := newFrontierRepo(t)
+	defer cleanup()
+
+	ctx := context.Background()
+	finalURL := "https://other.example.com/article"
+	params := database.FetchedParams{}
+
+	normalized, err := frontier.NormalizeURL(finalURL)
+	if err != nil {
+		t.Fatalf("NormalizeURL: %v", err)
+	}
+	urlHash, err := frontier.URLHash(finalURL)
+	if err != nil {
+		t.Fatalf("URLHash: %v", err)
+	}
+	host, err := frontier.ExtractHost(finalURL)
+	if err != nil {
+		t.Fatalf("ExtractHost: %v", err)
+	}
+
+	// First UPDATE hits unique constraint 23505.
+	mock.ExpectExec("UPDATE url_frontier").
+		WithArgs(normalized, urlHash, host, nil, nil, nil, "url-id-1").
+		WillReturnError(&pq.Error{Code: "23505"})
+
+	// Fallback: UpdateFetched (no url/url_hash/host in this UPDATE).
+	mock.ExpectExec("UPDATE url_frontier").
+		WithArgs(nil, nil, nil, "url-id-1").
+		WillReturnResult(sqlmock.NewResult(0, 1))
+
+	err = repo.UpdateFetchedWithFinalURL(ctx, "url-id-1", finalURL, params)
+	if err != nil {
+		t.Fatalf("UpdateFetchedWithFinalURL() error = %v", err)
 	}
 
 	expectationsMet(t, mock)
