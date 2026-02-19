@@ -516,10 +516,10 @@ func createFrontierWorkerPool(
 	hostUpdater := &hostUpdaterAdapter{repo: db.HostStateRepo}
 
 	var checkRedirect func(*http.Request, []*http.Request) error
-	if fetcherCfg.FollowRedirects {
-		checkRedirect = fetcher.RedirectPolicy(fetcherCfg.MaxRedirects)
-	} else {
+	if fetcherCfg.FollowRedirects != nil && !*fetcherCfg.FollowRedirects {
 		checkRedirect = func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }
+	} else {
+		checkRedirect = fetcher.RedirectPolicy(fetcherCfg.MaxRedirects)
 	}
 	httpClient := &http.Client{
 		Timeout:       fetcherCfg.RequestTimeout,

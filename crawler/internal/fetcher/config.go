@@ -23,7 +23,7 @@ type Config struct {
 	RequestTimeout   time.Duration `env:"FETCHER_REQUEST_TIMEOUT"    yaml:"request_timeout"`
 	ClaimRetryDelay  time.Duration `env:"FETCHER_CLAIM_RETRY_DELAY"  yaml:"claim_retry_delay"`
 	MaxRetries       int           `env:"FETCHER_MAX_RETRIES"        yaml:"max_retries"`
-	FollowRedirects  bool          `env:"FETCHER_FOLLOW_REDIRECTS"   yaml:"follow_redirects"`
+	FollowRedirects *bool         `env:"FETCHER_FOLLOW_REDIRECTS"   yaml:"follow_redirects"`
 	MaxRedirects     int           `env:"FETCHER_MAX_REDIRECTS"      yaml:"max_redirects"`
 	LogLevel         string        `env:"FETCHER_LOG_LEVEL"          yaml:"log_level"`
 }
@@ -47,6 +47,11 @@ func (c Config) WithDefaults() Config {
 	}
 	if c.MaxRedirects <= 0 {
 		c.MaxRedirects = defaultMaxRedirects
+	}
+	// Default FollowRedirects to true when unset (nil) so redirects are followed by default.
+	if c.FollowRedirects == nil {
+		t := true
+		c.FollowRedirects = &t
 	}
 	return c
 }
