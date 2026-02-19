@@ -94,7 +94,7 @@ func SetupServices(
 	discoveredLinksHandler.SetLogger(deps.Logger)
 
 	// Create and start scheduler
-	intervalScheduler := createAndStartScheduler(deps, storage, db.JobRepo, db.ExecutionRepo, db.DB)
+	intervalScheduler := createAndStartScheduler(deps, storage, db)
 	if intervalScheduler != nil {
 		jobsHandler.SetScheduler(intervalScheduler)
 		discoveredLinksHandler.SetScheduler(intervalScheduler)
@@ -211,9 +211,7 @@ func setupLogService(
 func createAndStartScheduler(
 	deps *CommandDeps,
 	storage *StorageComponents,
-	jobRepo *database.JobRepository,
-	executionRepo *database.ExecutionRepository,
-	db *sqlx.DB,
+	db *DatabaseComponents,
 ) *scheduler.IntervalScheduler {
 	// Create crawler factory for job execution (each job gets an isolated instance)
 	crawlerFactory, err := createCrawlerFactory(deps, storage, db)
@@ -225,8 +223,8 @@ func createAndStartScheduler(
 	// Create interval scheduler with default options
 	intervalScheduler := scheduler.NewIntervalScheduler(
 		deps.Logger,
-		jobRepo,
-		executionRepo,
+		db.JobRepo,
+		db.ExecutionRepo,
 		crawlerFactory,
 	)
 
@@ -245,9 +243,9 @@ func createAndStartScheduler(
 func createCrawlerFactory(
 	deps *CommandDeps,
 	storage *StorageComponents,
-	db *sqlx.DB,
+	db *DatabaseComponents,
 ) (crawler.FactoryInterface, error) {
-	params, err := buildCrawlerParams(deps, storage, db)
+	params, err := buildCrawlerParams(deps, storage, db.DB, db.FrontierRepo)
 	if err != nil {
 		return nil, err
 	}
@@ -259,6 +257,7 @@ func buildCrawlerParams(
 	deps *CommandDeps,
 	storage *StorageComponents,
 	db *sqlx.DB,
+	frontierRepo *database.FrontierRepository,
 ) (crawler.CrawlerParams, error) {
 	bus := crawlerevents.NewEventBus(deps.Logger)
 	crawlerCfg := deps.Config.GetCrawlerConfig()
@@ -291,18 +290,24 @@ func buildCrawlerParams(
 		hashTracker = adaptive.NewHashTracker(redisClient)
 	}
 
+	var frontierSubmitter crawler.LinkFrontierSubmitter
+	if frontierRepo != nil && deps.Config.GetFetcherConfig().Enabled {
+		frontierSubmitter = frontierRepo
+	}
+
 	return crawler.CrawlerParams{
-		Logger:         deps.Logger,
-		Bus:            bus,
-		IndexManager:   storage.IndexManager,
-		Sources:        sourceManager,
-		Config:         crawlerCfg,
-		Storage:        storage.Storage,
-		FullConfig:     deps.Config,
-		DB:             db,
-		PipelineClient: pipelineClient,
-		RedisClient:    redisClient,
-		HashTracker:    hashTracker,
+		Logger:            deps.Logger,
+		Bus:               bus,
+		IndexManager:      storage.IndexManager,
+		Sources:           sourceManager,
+		Config:            crawlerCfg,
+		Storage:           storage.Storage,
+		FullConfig:        deps.Config,
+		DB:                db,
+		PipelineClient:    pipelineClient,
+		RedisClient:       redisClient,
+		HashTracker:        hashTracker,
+		FrontierSubmitter: frontierSubmitter,
 	}, nil
 }
 
