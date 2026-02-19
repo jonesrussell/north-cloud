@@ -306,7 +306,7 @@ func buildCrawlerParams(
 		DB:                db,
 		PipelineClient:    pipelineClient,
 		RedisClient:       redisClient,
-		HashTracker:        hashTracker,
+		HashTracker:       hashTracker,
 		FrontierSubmitter: frontierSubmitter,
 	}, nil
 }
