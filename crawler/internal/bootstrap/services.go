@@ -515,7 +515,16 @@ func createFrontierWorkerPool(
 	claimer := &frontierClaimerAdapter{repo: db.FrontierRepo}
 	hostUpdater := &hostUpdaterAdapter{repo: db.HostStateRepo}
 
-	httpClient := &http.Client{Timeout: fetcherCfg.RequestTimeout}
+	var checkRedirect func(*http.Request, []*http.Request) error
+	if fetcherCfg.FollowRedirects {
+		checkRedirect = fetcher.RedirectPolicy(fetcherCfg.MaxRedirects)
+	} else {
+		checkRedirect = func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }
+	}
+	httpClient := &http.Client{
+		Timeout:       fetcherCfg.RequestTimeout,
+		CheckRedirect: checkRedirect,
+	}
 	robots := fetcher.NewRobotsChecker(httpClient, fetcherCfg.UserAgent, 0)
 	extractor := fetcher.NewContentExtractor()
 

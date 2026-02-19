@@ -4,11 +4,12 @@ import "time"
 
 // Default configuration values.
 const (
-	defaultWorkerCount     = 4
-	defaultUserAgent       = "NorthCloud-Fetcher/1.0"
-	defaultRequestTimeout  = 30 * time.Second
-	defaultClaimRetryDelay = 5 * time.Second
-	defaultMaxRetries      = 3
+	defaultWorkerCount      = 4
+	defaultUserAgent        = "NorthCloud-Fetcher/1.0"
+	defaultRequestTimeout   = 30 * time.Second
+	defaultClaimRetryDelay  = 5 * time.Second
+	defaultMaxRetries   = 3
+	defaultMaxRedirects = 5
 )
 
 // Config holds fetcher worker configuration.
@@ -22,6 +23,8 @@ type Config struct {
 	RequestTimeout   time.Duration `env:"FETCHER_REQUEST_TIMEOUT"    yaml:"request_timeout"`
 	ClaimRetryDelay  time.Duration `env:"FETCHER_CLAIM_RETRY_DELAY"  yaml:"claim_retry_delay"`
 	MaxRetries       int           `env:"FETCHER_MAX_RETRIES"        yaml:"max_retries"`
+	FollowRedirects  bool          `env:"FETCHER_FOLLOW_REDIRECTS"   yaml:"follow_redirects"`
+	MaxRedirects     int           `env:"FETCHER_MAX_REDIRECTS"      yaml:"max_redirects"`
 	LogLevel         string        `env:"FETCHER_LOG_LEVEL"          yaml:"log_level"`
 }
 
@@ -41,6 +44,9 @@ func (c Config) WithDefaults() Config {
 	}
 	if c.MaxRetries <= 0 {
 		c.MaxRetries = defaultMaxRetries
+	}
+	if c.MaxRedirects <= 0 {
+		c.MaxRedirects = defaultMaxRedirects
 	}
 	return c
 }
