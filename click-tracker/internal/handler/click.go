@@ -65,7 +65,11 @@ func (h *ClickHandler) HandleClick(c *gin.Context) {
 		return
 	}
 
-	h.enqueueEvent(params, generated, c.Request.UserAgent())
+	// Skip event storage for bots — still redirect so crawlers follow links
+	isBot, _ := c.Get("is_bot")
+	if isBot != true {
+		h.enqueueEvent(params, generated, c.Request.UserAgent())
+	}
 
 	c.Redirect(http.StatusFound, params.DestinationURL)
 }

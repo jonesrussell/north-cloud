@@ -351,10 +351,13 @@ func (s *SearchService) parseFacets(aggs map[string]aggregation) *domain.Facets 
 const queryIDLength = 8
 
 func (s *SearchService) addClickURLs(hits []*domain.SearchHit, queryID string, page int) {
-	baseURL := s.config.ClickTracker.BaseURL
+	baseURL := strings.TrimRight(s.config.ClickTracker.BaseURL, "/")
 	now := time.Now().Unix()
 
 	for i, hit := range hits {
+		if hit.URL == "" {
+			continue
+		}
 		position := i + 1
 		params := clickurl.ClickParams{
 			QueryID:        queryID,
@@ -367,7 +370,8 @@ func (s *SearchService) addClickURLs(hits []*domain.SearchHit, queryID string, p
 		sig := s.clickSigner.Sign(params.Message())
 		hit.ClickURL = fmt.Sprintf(
 			"%s/click?q=%s&r=%s&p=%d&pg=%d&t=%d&u=%s&sig=%s",
-			baseURL, queryID, hit.ID, position, page, now,
+			baseURL, url.QueryEscape(queryID), url.QueryEscape(hit.ID),
+			position, page, now,
 			url.QueryEscape(hit.URL), sig,
 		)
 	}

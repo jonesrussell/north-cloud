@@ -121,8 +121,12 @@ func runServer(cfg *config.Config, log logger.Logger, db *sql.DB) int {
 	// Create handler
 	clickHandler := handler.NewClickHandler(signer, buf, log, cfg.Service.MaxTimestampAge)
 
+	// done channel signals background goroutines (rate limiter) on shutdown
+	done := make(chan struct{})
+	defer close(done)
+
 	// Create and run server
-	server := api.NewServer(clickHandler, cfg, log)
+	server := api.NewServer(clickHandler, cfg, log, done)
 
 	log.Info("Click-tracker starting",
 		logger.Int("port", cfg.Service.Port),

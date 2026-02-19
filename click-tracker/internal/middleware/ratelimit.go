@@ -14,26 +14,47 @@ type ipEntry struct {
 	expiresAt time.Time
 }
 
-// RateLimiter limits requests per IP address within a time window.
-func RateLimiter(maxRequests int, window time.Duration) gin.HandlerFunc {
-	var mu sync.Mutex
-	entries := make(map[string]*ipEntry)
+// rateLimitState holds the shared state for the rate limiter.
+type rateLimitState struct {
+	mu      sync.Mutex
+	entries map[string]*ipEntry
+}
 
-	// Background cleanup every window duration
+// cleanup removes expired entries from the map.
+func (s *rateLimitState) cleanup() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	now := time.Now()
+	for ip, entry := range s.entries {
+		if now.After(entry.expiresAt) {
+			delete(s.entries, ip)
+		}
+	}
+}
+
+// startCleanup runs periodic cleanup until done is closed.
+func (s *rateLimitState) startCleanup(window time.Duration, done <-chan struct{}) {
 	go func() {
 		ticker := time.NewTicker(window)
 		defer ticker.Stop()
-		for range ticker.C {
-			mu.Lock()
-			now := time.Now()
-			for ip, entry := range entries {
-				if now.After(entry.expiresAt) {
-					delete(entries, ip)
-				}
+		for {
+			select {
+			case <-ticker.C:
+				s.cleanup()
+			case <-done:
+				return
 			}
-			mu.Unlock()
 		}
 	}()
+}
+
+// RateLimiter limits requests per IP address within a time window.
+// The done channel signals the background cleanup goroutine to exit.
+func RateLimiter(maxRequests int, window time.Duration, done <-chan struct{}) gin.HandlerFunc {
+	state := &rateLimitState{
+		entries: make(map[string]*ipEntry),
+	}
+	state.startCleanup(window, done)
 
 	return func(c *gin.Context) {
 		ip, _, _ := net.SplitHostPort(c.Request.RemoteAddr)
@@ -41,26 +62,26 @@ func RateLimiter(maxRequests int, window time.Duration) gin.HandlerFunc {
 			ip = c.Request.RemoteAddr
 		}
 
-		mu.Lock()
-		entry, exists := entries[ip]
+		state.mu.Lock()
+		entry, exists := state.entries[ip]
 		now := time.Now()
 
 		if !exists || now.After(entry.expiresAt) {
-			entries[ip] = &ipEntry{count: 1, expiresAt: now.Add(window)}
-			mu.Unlock()
+			state.entries[ip] = &ipEntry{count: 1, expiresAt: now.Add(window)}
+			state.mu.Unlock()
 			c.Next()
 			return
 		}
 
 		entry.count++
 		if entry.count > maxRequests {
-			mu.Unlock()
+			state.mu.Unlock()
 			c.AbortWithStatusJSON(http.StatusTooManyRequests, gin.H{
 				"error": "rate limit exceeded",
 			})
 			return
 		}
-		mu.Unlock()
+		state.mu.Unlock()
 		c.Next()
 	}
 }

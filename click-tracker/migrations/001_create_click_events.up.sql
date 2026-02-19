@@ -14,7 +14,7 @@ CREATE TABLE click_events (
 
 CREATE TABLE click_events_default PARTITION OF click_events DEFAULT;
 
-CREATE INDEX idx_click_events_query_id   ON click_events (query_id);
-CREATE INDEX idx_click_events_result_id  ON click_events (result_id);
-CREATE INDEX idx_click_events_position   ON click_events (position);
-CREATE INDEX idx_click_events_clicked_at ON click_events (clicked_at);
+CREATE INDEX idx_click_events_query_id        ON click_events (query_id);
+CREATE INDEX idx_click_events_result_id       ON click_events (result_id);
+CREATE INDEX idx_click_events_destination_hash ON click_events (destination_hash);
+CREATE INDEX idx_click_events_clicked_at      ON click_events (clicked_at);

@@ -17,10 +17,12 @@ const (
 )
 
 // NewServer creates a new HTTP server.
+// The done channel is closed when the server shuts down, used to stop the rate limiter goroutine.
 func NewServer(
 	clickHandler *handler.ClickHandler,
 	cfg *config.Config,
 	log infralogger.Logger,
+	done <-chan struct{},
 ) *infragin.Server {
 	rateLimitWindow := time.Duration(cfg.RateLimit.WindowSeconds) * time.Second
 
@@ -30,7 +32,7 @@ func NewServer(
 		WithVersion(cfg.Service.Version).
 		WithTimeouts(defaultReadTimeout, defaultWriteTimeout, defaultIdleTimeout).
 		WithRoutes(func(router *gin.Engine) {
-			SetupRoutes(router, clickHandler, cfg.RateLimit.MaxClicksPerMinute, rateLimitWindow)
+			SetupRoutes(router, clickHandler, cfg.RateLimit.MaxClicksPerMinute, rateLimitWindow, done)
 		}).
 		Build()
 }

@@ -50,6 +50,11 @@ func (b *Buffer) Send(event domain.ClickEvent) bool {
 	}
 }
 
+// Len returns the number of events currently in the buffer channel.
+func (b *Buffer) Len() int {
+	return len(b.events)
+}
+
 // Close signals the buffer to stop accepting events.
 // It is safe to call multiple times.
 func (b *Buffer) Close() {

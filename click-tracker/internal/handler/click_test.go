@@ -10,6 +10,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/jonesrussell/north-cloud/click-tracker/internal/handler"
+	"github.com/jonesrussell/north-cloud/click-tracker/internal/middleware"
 	"github.com/jonesrussell/north-cloud/click-tracker/internal/storage"
 	"github.com/north-cloud/infrastructure/clickurl"
 	infralogger "github.com/north-cloud/infrastructure/logger"
@@ -124,6 +125,41 @@ func TestHandleClick_ExpiredTimestamp(t *testing.T) {
 
 	if w.Code != http.StatusGone {
 		t.Fatalf("expected 410 for expired timestamp, got %d", w.Code)
+	}
+}
+
+func TestHandleClick_BotSkipsStorage(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	r := gin.New()
+
+	signer := clickurl.NewSigner(testSecret)
+	buf := storage.NewBuffer(testBufferCapacity)
+	defer buf.Close()
+	log := infralogger.NewNop()
+	maxAge := maxAgeHours * time.Hour
+
+	// Add bot filter middleware before handler
+	r.Use(middleware.BotFilter())
+	h := handler.NewClickHandler(signer, buf, log, maxAge)
+	r.GET("/click", h.HandleClick)
+
+	now := time.Now().Unix()
+	dest := "https://example.com/article"
+	target := signedURL(t, "q_abc", "r_doc", 3, 1, now, dest)
+
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, target, http.NoBody)
+	req.Header.Set("User-Agent", "Googlebot/2.1 (+http://www.google.com/bot.html)")
+	r.ServeHTTP(w, req)
+
+	// Should still redirect
+	if w.Code != http.StatusFound {
+		t.Fatalf("expected 302 for bot, got %d", w.Code)
+	}
+
+	// Buffer should be empty — bot event was not enqueued
+	if buf.Len() != 0 {
+		t.Fatalf("expected 0 buffered events for bot, got %d", buf.Len())
 	}
 }
 

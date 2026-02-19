@@ -22,7 +22,7 @@ RUN CGO_ENABLED=0 go build \
     main.go
 
 # Final stage
-FROM alpine:latest
+FROM alpine:3.21
 
 RUN apk --no-cache add ca-certificates
 

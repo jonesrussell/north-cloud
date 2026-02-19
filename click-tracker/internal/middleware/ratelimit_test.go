@@ -14,8 +14,11 @@ const testRateLimit = 3
 
 func TestRateLimiter_AllowsUnderLimit(t *testing.T) {
 	gin.SetMode(gin.TestMode)
+	done := make(chan struct{})
+	defer close(done)
+
 	r := gin.New()
-	r.Use(middleware.RateLimiter(testRateLimit, time.Minute))
+	r.Use(middleware.RateLimiter(testRateLimit, time.Minute, done))
 	r.GET("/click", func(c *gin.Context) {
 		c.String(http.StatusOK, "ok")
 	})
@@ -32,8 +35,11 @@ func TestRateLimiter_AllowsUnderLimit(t *testing.T) {
 
 func TestRateLimiter_BlocksOverLimit(t *testing.T) {
 	gin.SetMode(gin.TestMode)
+	done := make(chan struct{})
+	defer close(done)
+
 	r := gin.New()
-	r.Use(middleware.RateLimiter(testRateLimit, time.Minute))
+	r.Use(middleware.RateLimiter(testRateLimit, time.Minute, done))
 	r.GET("/click", func(c *gin.Context) {
 		c.String(http.StatusOK, "ok")
 	})
@@ -61,8 +67,11 @@ func TestRateLimiter_BlocksOverLimit(t *testing.T) {
 
 func TestRateLimiter_DifferentIPsIndependent(t *testing.T) {
 	gin.SetMode(gin.TestMode)
+	done := make(chan struct{})
+	defer close(done)
+
 	r := gin.New()
-	r.Use(middleware.RateLimiter(1, time.Minute))
+	r.Use(middleware.RateLimiter(1, time.Minute, done))
 	r.GET("/click", func(c *gin.Context) {
 		c.String(http.StatusOK, "ok")
 	})
