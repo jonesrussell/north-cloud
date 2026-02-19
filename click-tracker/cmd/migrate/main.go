@@ -3,7 +3,9 @@ package main
 import (
 	"errors"
 	"fmt"
+	"net"
 	"os"
+	"strconv"
 
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
@@ -26,7 +28,8 @@ func main() {
 }
 
 func run() int {
-	if len(os.Args) < 2 {
+	const minArgs = 2
+	if len(os.Args) < minArgs {
 		fmt.Fprintln(os.Stderr, "Usage: migrate <up|down>")
 		return exitFailure
 	}
@@ -52,8 +55,8 @@ func run() int {
 	}
 	defer func() { _, _ = m.Close() }()
 
-	if err := runMigration(m, direction); err != nil {
-		fmt.Fprintf(os.Stderr, "Migration %s failed: %v\n", direction, err)
+	if migrationErr := runMigration(m, direction); migrationErr != nil {
+		fmt.Fprintf(os.Stderr, "Migration %s failed: %v\n", direction, migrationErr)
 		return exitFailure
 	}
 
@@ -76,9 +79,10 @@ func loadConfig() (*config.Config, error) {
 // buildMigrateURL constructs a PostgreSQL URL from database config.
 func buildMigrateURL(cfg *config.Config) string {
 	db := &cfg.Database
+	hostPort := net.JoinHostPort(db.Host, strconv.Itoa(db.Port))
 	return fmt.Sprintf(
-		"postgres://%s:%s@%s:%d/%s?sslmode=%s",
-		db.User, db.Password, db.Host, db.Port, db.Database, db.SSLMode,
+		"postgres://%s:%s@%s/%s?sslmode=%s",
+		db.User, db.Password, hostPort, db.Database, db.SSLMode,
 	)
 }
 
