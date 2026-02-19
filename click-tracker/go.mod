@@ -3,6 +3,7 @@ module github.com/jonesrussell/north-cloud/click-tracker
 go 1.25
 
 require (
+	github.com/golang-migrate/migrate/v4 v4.19.1
 	github.com/lib/pq v1.10.9
 	github.com/north-cloud/infrastructure v0.0.0-00010101000000-000000000000
 )
