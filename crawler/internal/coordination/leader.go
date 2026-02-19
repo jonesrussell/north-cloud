@@ -181,14 +181,14 @@ func (l *LeaderElection) run(ctx context.Context) {
 
 // tryBecomeLeader attempts to acquire leadership.
 func (l *LeaderElection) tryBecomeLeader(ctx context.Context) {
-	acquired, err := l.client.SetNX(ctx, l.key, l.id, l.ttl).Result()
+	result, err := l.client.SetArgs(ctx, l.key, l.id, redis.SetArgs{Mode: "NX", TTL: l.ttl}).Result()
 	if err != nil {
 		l.logger.Error("failed to acquire leadership",
 			infralogger.String("error", err.Error()),
 		)
 		return
 	}
-
+	acquired := result == "OK"
 	if acquired {
 		l.logger.Info("acquired leadership",
 			infralogger.String("leader_id", l.id),

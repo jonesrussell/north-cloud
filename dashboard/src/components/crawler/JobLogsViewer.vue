@@ -150,7 +150,14 @@
               class="w-20 shrink-0 text-xs text-gray-400 truncate"
               :title="line.category"
             >{{ formatCategory(line.category) }}</span>
-            <span class="flex-1 break-all whitespace-pre-wrap">{{ line.message }}</span>
+            <span class="flex-1 break-all whitespace-pre-wrap min-w-0">
+              {{ line.message }}
+              <span
+                v-if="formatLineDetails(line)"
+                class="block mt-0.5 text-xs text-gray-500"
+                :title="formatLineDetails(line)"
+              >{{ formatLineDetails(line) }}</span>
+            </span>
           </div>
           <!-- Replay indicator -->
           <div
@@ -528,6 +535,17 @@ const formatStatus = (status: string): string => {
 
 const formatCategory = (category: string): string => {
   return getCategoryShortName(category as LogCategory)
+}
+
+/** Format url, status, error from log fields for display (e.g. Crawl error lines). */
+const formatLineDetails = (line: LogLine): string => {
+  const f = line.fields
+  if (!f || typeof f !== 'object') return ''
+  const parts: string[] = []
+  if (f.url != null && String(f.url).trim() !== '') parts.push(`url: ${String(f.url)}`)
+  if (f.status != null) parts.push(`status: ${f.status}`)
+  if (f.error != null && String(f.error).trim() !== '') parts.push(`error: ${String(f.error)}`)
+  return parts.join('  ')
 }
 
 const extractSummary = (fields: Record<string, unknown>): JobSummary => {

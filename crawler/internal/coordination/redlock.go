@@ -122,12 +122,13 @@ func (r *Redlock) tryLock(ctx context.Context) bool {
 
 	// Try to acquire lock on all instances
 	acquired := 0
+	args := redis.SetArgs{Mode: "NX", TTL: r.ttl}
 	for _, client := range r.clients {
-		ok, setErr := client.SetNX(ctx, r.key, r.token, r.ttl).Result()
+		result, setErr := client.SetArgs(ctx, r.key, r.token, args).Result()
 		if setErr != nil {
 			continue // Instance failure, try next
 		}
-		if ok {
+		if result == "OK" {
 			acquired++
 		}
 	}

@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"time"
@@ -310,6 +311,12 @@ func (h *LogsStreamV2Handler) parseMessage(msg redis.XMessage) logs.LogEntry {
 	}
 	if v, ok := msg.Values["exec_id"].(string); ok {
 		entry.ExecID = v
+	}
+	if v, ok := msg.Values["fields"].(string); ok && v != "" {
+		var fields map[string]any
+		if err := json.Unmarshal([]byte(v), &fields); err == nil {
+			entry.Fields = fields
+		}
 	}
 
 	return entry

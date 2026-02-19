@@ -111,11 +111,14 @@ func (l *DistributedLock) Lock(ctx context.Context) error {
 // TryLock attempts to acquire the lock without blocking.
 // Returns true if the lock was acquired, false otherwise.
 func (l *DistributedLock) TryLock(ctx context.Context) (bool, error) {
-	ok, err := l.client.SetNX(ctx, l.key, l.token, l.ttl).Result()
+	result, err := l.client.SetArgs(ctx, l.key, l.token, redis.SetArgs{Mode: "NX", TTL: l.ttl}).Result()
 	if err != nil {
+		if errors.Is(err, redis.Nil) {
+			return false, nil // key already set
+		}
 		return false, fmt.Errorf("failed to acquire lock: %w", err)
 	}
-	return ok, nil
+	return result == "OK", nil
 }
 
 // Unlock releases the lock if it is held by this instance.
