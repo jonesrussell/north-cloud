@@ -1,15 +1,14 @@
 <template>
   <div
     v-if="hasContent"
-    class="space-y-4"
+    class="space-y-4 rounded-xl border border-[var(--nc-border)] bg-[var(--nc-bg-elevated)] p-4"
     aria-label="Related content"
   >
-    <!-- Related topics -->
     <div
       v-if="relatedTopics.length > 0"
       class="space-y-2"
     >
-      <h3 class="text-xs font-medium text-gray-500 uppercase tracking-wider">
+      <h3 class="text-xs font-semibold text-[var(--nc-text-muted)] uppercase tracking-wider">
         Related topics
       </h3>
       <div class="flex flex-wrap gap-2">
@@ -17,26 +16,25 @@
           v-for="bucket in relatedTopics"
           :key="bucket.key"
           type="button"
-          class="inline-flex items-center rounded-full bg-gray-100 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          class="inline-flex items-center rounded-full bg-[var(--nc-bg-muted)] px-3 py-1.5 text-sm text-[var(--nc-text)] hover:bg-[var(--nc-primary-muted)] hover:text-[var(--nc-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--nc-primary)] transition-colors duration-[var(--nc-duration)]"
           @click="onTopicClick(bucket.key)"
         >
           {{ formatTopicLabel(bucket.key) }}
-          <span class="ml-1 text-gray-400">({{ bucket.count }})</span>
+          <span class="ml-1 text-[var(--nc-text-muted)]">({{ bucket.count }})</span>
         </button>
       </div>
     </div>
 
-    <!-- More from this source -->
     <div
       v-if="firstSourceName"
       class="space-y-2"
     >
-      <h3 class="text-xs font-medium text-gray-500 uppercase tracking-wider">
+      <h3 class="text-xs font-semibold text-[var(--nc-text-muted)] uppercase tracking-wider">
         More from this source
       </h3>
       <button
         type="button"
-        class="text-sm text-blue-600 hover:text-blue-800 focus:outline-none focus:underline"
+        class="text-sm font-medium text-[var(--nc-primary)] hover:text-[var(--nc-primary-hover)] focus:outline-none focus:underline transition-colors duration-[var(--nc-duration)]"
         @click="onSourceClick(firstSourceName)"
       >
         More from {{ firstSourceName }}

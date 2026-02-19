@@ -1,29 +1,28 @@
 <template>
   <aside
-    class="space-y-6"
+    class="space-y-6 rounded-xl border border-[var(--nc-border)] bg-[var(--nc-bg-elevated)] p-4"
     aria-label="Refine search"
     role="search"
   >
     <div class="flex items-center justify-between">
-      <h2 class="text-sm font-semibold text-gray-900">
+      <h2 class="text-sm font-semibold text-[var(--nc-text)]">
         Refine results
       </h2>
       <button
         v-if="hasActiveFilters"
         type="button"
-        class="text-sm text-blue-600 hover:text-blue-800 focus:outline-none focus:underline"
+        class="text-sm font-medium text-[var(--nc-primary)] hover:text-[var(--nc-primary-hover)] focus:outline-none focus:underline transition-colors duration-[var(--nc-duration)]"
         @click="clearAll"
       >
         Clear all
       </button>
     </div>
 
-    <!-- Topics -->
     <div
       v-if="topicBuckets.length > 0"
       class="space-y-2"
     >
-      <h3 class="text-xs font-medium text-gray-500 uppercase tracking-wider">
+      <h3 class="text-xs font-semibold text-[var(--nc-text-muted)] uppercase tracking-wider">
         Topics
       </h3>
       <ul
@@ -39,32 +38,31 @@
             :id="`topic-${bucket.key}`"
             type="checkbox"
             :checked="isTopicSelected(bucket.key)"
-            class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+            class="h-4 w-4 rounded border-[var(--nc-border)] text-[var(--nc-primary)] focus:ring-[var(--nc-primary)]"
             :aria-label="`Filter by topic ${formatTopicLabel(bucket.key)}`"
             @change="toggleTopic(bucket.key)"
           >
           <label
             :for="`topic-${bucket.key}`"
-            class="flex-1 cursor-pointer text-sm text-gray-700"
+            class="flex-1 cursor-pointer text-sm text-[var(--nc-text)]"
           >
             {{ formatTopicLabel(bucket.key) }}
-            <span class="text-gray-400">({{ bucket.count }})</span>
+            <span class="text-[var(--nc-text-muted)]">({{ bucket.count }})</span>
           </label>
         </li>
       </ul>
     </div>
 
-    <!-- Content type -->
     <div
       v-if="contentTypeBuckets.length > 0"
       class="space-y-2"
     >
-      <h3 class="text-xs font-medium text-gray-500 uppercase tracking-wider">
+      <h3 class="text-xs font-semibold text-[var(--nc-text-muted)] uppercase tracking-wider">
         Content type
       </h3>
       <select
         v-model="localContentType"
-        class="block w-full rounded-md border-gray-300 text-sm focus:border-blue-500 focus:ring-blue-500"
+        class="block w-full rounded-lg border-[var(--nc-border)] bg-[var(--nc-bg-elevated)] text-sm text-[var(--nc-text)] focus:border-[var(--nc-primary)] focus:ring-[var(--nc-primary)]"
         aria-label="Filter by content type"
         @change="applyContentType"
       >
@@ -81,12 +79,11 @@
       </select>
     </div>
 
-    <!-- Sources -->
     <div
       v-if="sourceBuckets.length > 0"
       class="space-y-2"
     >
-      <h3 class="text-xs font-medium text-gray-500 uppercase tracking-wider">
+      <h3 class="text-xs font-semibold text-[var(--nc-text-muted)] uppercase tracking-wider">
         Sources
       </h3>
       <ul
@@ -102,25 +99,24 @@
             :id="`source-${bucket.key}`"
             type="checkbox"
             :checked="isSourceSelected(bucket.key)"
-            class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+            class="h-4 w-4 rounded border-[var(--nc-border)] text-[var(--nc-primary)] focus:ring-[var(--nc-primary)]"
             :aria-label="`Filter by source ${bucket.key}`"
             @change="toggleSource(bucket.key)"
           >
           <label
             :for="`source-${bucket.key}`"
-            class="flex-1 cursor-pointer truncate text-sm text-gray-700"
+            class="flex-1 cursor-pointer truncate text-sm text-[var(--nc-text)]"
             :title="bucket.key"
           >
             {{ bucket.key }}
-            <span class="text-gray-400">({{ bucket.count }})</span>
+            <span class="text-[var(--nc-text-muted)]">({{ bucket.count }})</span>
           </label>
         </li>
       </ul>
     </div>
 
-    <!-- Minimum quality -->
     <div class="space-y-2">
-      <h3 class="text-xs font-medium text-gray-500 uppercase tracking-wider">
+      <h3 class="text-xs font-semibold text-[var(--nc-text-muted)] uppercase tracking-wider">
         Minimum quality
       </h3>
       <div class="flex items-center gap-2">
@@ -130,33 +126,32 @@
           min="0"
           max="100"
           step="10"
-          class="flex-1"
+          class="flex-1 accent-[var(--nc-primary)]"
           aria-label="Minimum quality score"
           @change="applyMinQuality"
         >
-        <span class="w-8 text-sm text-gray-600">{{ localMinQuality }}</span>
+        <span class="w-8 text-sm text-[var(--nc-text-secondary)]">{{ localMinQuality }}</span>
       </div>
     </div>
 
-    <!-- Date range -->
     <div class="space-y-2">
-      <h3 class="text-xs font-medium text-gray-500 uppercase tracking-wider">
+      <h3 class="text-xs font-semibold text-[var(--nc-text-muted)] uppercase tracking-wider">
         Date range
       </h3>
       <div class="grid grid-cols-1 gap-2">
-        <label class="text-xs text-gray-500">From</label>
+        <label class="text-xs text-[var(--nc-text-muted)]">From</label>
         <input
           v-model="localFromDate"
           type="date"
-          class="rounded-md border-gray-300 text-sm focus:border-blue-500 focus:ring-blue-500"
+          class="rounded-lg border-[var(--nc-border)] bg-[var(--nc-bg-elevated)] text-sm text-[var(--nc-text)] focus:border-[var(--nc-primary)] focus:ring-[var(--nc-primary)]"
           aria-label="From date"
           @change="applyDateRange"
         >
-        <label class="text-xs text-gray-500 mt-1">To</label>
+        <label class="text-xs text-[var(--nc-text-muted)] mt-1">To</label>
         <input
           v-model="localToDate"
           type="date"
-          class="rounded-md border-gray-300 text-sm focus:border-blue-500 focus:ring-blue-500"
+          class="rounded-lg border-[var(--nc-border)] bg-[var(--nc-bg-elevated)] text-sm text-[var(--nc-text)] focus:border-[var(--nc-primary)] focus:ring-[var(--nc-primary)]"
           aria-label="To date"
           @change="applyDateRange"
         >

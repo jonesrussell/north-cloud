@@ -1,59 +1,58 @@
 <template>
-  <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-    <h1 class="text-3xl font-bold text-gray-900 mb-8">
+  <div class="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+    <h1 class="font-display text-3xl font-normal text-[var(--nc-text)] mb-8">
       Advanced Search
     </h1>
 
-    <div class="bg-white shadow sm:rounded-lg p-6">
+    <div class="rounded-xl border border-[var(--nc-border)] bg-[var(--nc-bg-elevated)] p-6 shadow-[var(--nc-shadow-sm)]">
       <form @submit.prevent="handleSubmit">
         <div class="space-y-6">
-          <!-- Query -->
           <div>
             <label
               for="query"
-              class="block text-sm font-medium text-gray-700"
-            >Search Query</label>
+              class="block text-sm font-medium text-[var(--nc-text)]"
+            >
+              Search query
+            </label>
             <input
               id="query"
               v-model="formData.query"
               type="text"
-              class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-4 py-2 border"
+              class="mt-1 block w-full rounded-lg border-[var(--nc-border)] bg-[var(--nc-bg-elevated)] px-4 py-2.5 text-[var(--nc-text)] placeholder-[var(--nc-text-muted)] focus:border-[var(--nc-primary)] focus:ring-[var(--nc-primary)]"
               placeholder="Enter your search query"
             >
           </div>
 
-          <!-- Topics -->
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">Topics</label>
+            <label class="block text-sm font-medium text-[var(--nc-text)] mb-2">Topics</label>
             <div class="space-y-2">
-              <label class="inline-flex items-center mr-4">
+              <label class="inline-flex items-center mr-4 cursor-pointer">
                 <input
                   v-model="formData.topics"
                   type="checkbox"
                   value="crime"
-                  class="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                  class="rounded border-[var(--nc-border)] text-[var(--nc-primary)] focus:ring-[var(--nc-primary)]"
                 >
-                <span class="ml-2 text-sm text-gray-700">Crime</span>
+                <span class="ml-2 text-sm text-[var(--nc-text)]">Crime</span>
               </label>
-              <label class="inline-flex items-center mr-4">
+              <label class="inline-flex items-center mr-4 cursor-pointer">
                 <input
                   v-model="formData.topics"
                   type="checkbox"
                   value="local_news"
-                  class="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                  class="rounded border-[var(--nc-border)] text-[var(--nc-primary)] focus:ring-[var(--nc-primary)]"
                 >
-                <span class="ml-2 text-sm text-gray-700">Local News</span>
+                <span class="ml-2 text-sm text-[var(--nc-text)]">Local News</span>
               </label>
             </div>
           </div>
 
-          <!-- Quality Score -->
           <div>
             <label
               for="quality"
-              class="block text-sm font-medium text-gray-700"
+              class="block text-sm font-medium text-[var(--nc-text)]"
             >
-              Minimum Quality Score: {{ formData.min_quality_score }}
+              Minimum quality score: {{ formData.min_quality_score }}
             </label>
             <input
               id="quality"
@@ -62,21 +61,20 @@
               min="0"
               max="100"
               step="10"
-              class="mt-1 block w-full"
+              class="mt-1 block w-full accent-[var(--nc-primary)]"
             >
           </div>
 
-          <!-- Submit -->
-          <div class="flex justify-end space-x-3">
+          <div class="flex justify-end gap-3 pt-2">
             <router-link
               to="/"
-              class="inline-flex justify-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+              class="inline-flex justify-center rounded-lg border border-[var(--nc-border)] bg-[var(--nc-bg-elevated)] px-4 py-2 text-sm font-medium text-[var(--nc-text)] hover:bg-[var(--nc-bg-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--nc-primary)] transition-colors duration-[var(--nc-duration)]"
             >
               Cancel
             </router-link>
             <button
               type="submit"
-              class="inline-flex justify-center rounded-md border border-transparent bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+              class="inline-flex justify-center rounded-lg border border-transparent bg-[var(--nc-accent)] px-4 py-2 text-sm font-medium text-white hover:bg-[var(--nc-accent-hover)] focus:outline-none focus:ring-2 focus:ring-[var(--nc-accent)] focus:ring-offset-2 transition-colors duration-[var(--nc-duration)]"
             >
               Search
             </button>
@@ -112,7 +110,6 @@ const handleSubmit = (): void => {
     min_quality_score: formData.value.min_quality_score > 0 ? formData.value.min_quality_score : undefined,
   }
 
-  // Remove undefined values
   const cleanQuery = Object.fromEntries(
     Object.entries(queryParams).filter(([, v]) => v !== undefined)
   )

@@ -1,1 +1,97 @@
 @import "tailwindcss";
+
+/* North Cloud design system — refined, content-first, distinctive */
+:root {
+  /* Typography */
+  --font-display: "Instrument Serif", Georgia, serif;
+  --font-body: "DM Sans", system-ui, sans-serif;
+
+  /* Palette: north = cool slate/teal, accent = warm amber */
+  --nc-bg: #f8f9fb;
+  --nc-bg-elevated: #ffffff;
+  --nc-bg-muted: #f1f3f5;
+  --nc-border: #e2e6eb;
+  --nc-border-strong: #c8cdd4;
+
+  --nc-text: #1a1d21;
+  --nc-text-secondary: #4d5359;
+  --nc-text-muted: #6e757c;
+
+  --nc-primary: #0d5c63;
+  --nc-primary-hover: #0a4a50;
+  --nc-primary-muted: #e8f2f3;
+  --nc-accent: #c17f2e;
+  --nc-accent-hover: #a66a26;
+  --nc-accent-muted: #faf5ee;
+
+  --nc-success: #1e7b42;
+  --nc-success-muted: #e8f4ec;
+  --nc-warning: #b85c00;
+  --nc-warning-muted: #fff4e6;
+  --nc-error: #b91c1c;
+  --nc-error-muted: #fef2f2;
+
+  /* Search highlight (in snippets) */
+  --nc-highlight-bg: #fef9c3;
+  --nc-highlight-fg: #854d0e;
+
+  /* Shadows */
+  --nc-shadow-sm: 0 1px 2px rgba(13, 92, 99, 0.06);
+  --nc-shadow: 0 4px 12px rgba(13, 92, 99, 0.08);
+  --nc-shadow-lg: 0 12px 28px rgba(13, 92, 99, 0.12);
+
+  /* Motion */
+  --nc-ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --nc-duration-fast: 150ms;
+  --nc-duration: 250ms;
+  --nc-duration-slow: 400ms;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: var(--font-body);
+  background: var(--nc-bg);
+  color: var(--nc-text);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Subtle page background: soft gradient + grain */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 120% 80% at 50% -20%, rgba(13, 92, 99, 0.06), transparent 50%),
+    var(--nc-bg);
+  pointer-events: none;
+  z-index: -2;
+}
+
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: -1;
+}
+
+/* Focus visible for accessibility */
+:focus-visible {
+  outline: 2px solid var(--nc-primary);
+  outline-offset: 2px;
+}
+
+.font-display {
+  font-family: var(--font-display);
+}

@@ -1,6 +1,6 @@
 <template>
   <div
-    class="flex gap-2"
+    class="flex gap-2 sm:gap-3"
     role="search"
     aria-label="Search"
   >
@@ -13,7 +13,7 @@
         v-model="localQuery"
         type="search"
         autocomplete="off"
-        class="w-full px-4 py-3 pl-12 pr-10 text-lg border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+        class="search-input w-full px-4 py-3.5 pl-12 pr-11 text-base sm:text-lg border border-[var(--nc-border)] rounded-xl bg-[var(--nc-bg-elevated)] text-[var(--nc-text)] placeholder-[var(--nc-text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--nc-primary)] focus:border-transparent shadow-[var(--nc-shadow-sm)] transition-shadow duration-[var(--nc-duration)]"
         aria-label="Search query"
         aria-autocomplete="list"
         :aria-expanded="showDropdown"
@@ -23,17 +23,18 @@
         @focus="onFocus"
         @blur="onBlur"
       >
-      <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+      <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-[var(--nc-text-muted)]">
         <svg
-          class="h-5 w-5 text-gray-400"
+          class="h-5 w-5"
           fill="none"
           viewBox="0 0 24 24"
           stroke="currentColor"
+          stroke-width="1.8"
+          aria-hidden="true"
         >
           <path
             stroke-linecap="round"
             stroke-linejoin="round"
-            stroke-width="2"
             d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
           />
         </svg>
@@ -41,7 +42,7 @@
       <button
         v-if="localQuery"
         type="button"
-        class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
+        class="absolute inset-y-0 right-0 pr-3 flex items-center text-[var(--nc-text-muted)] hover:text-[var(--nc-text)] transition-colors duration-[var(--nc-duration)]"
         aria-label="Clear search"
         @click="clearSearch"
       >
@@ -50,26 +51,26 @@
           fill="none"
           viewBox="0 0 24 24"
           stroke="currentColor"
+          stroke-width="2"
         >
           <path
             stroke-linecap="round"
             stroke-linejoin="round"
-            stroke-width="2"
             d="M6 18L18 6M6 6l12 12"
           />
         </svg>
       </button>
 
-      <!-- Suggest dropdown -->
+      <!-- Suggestions dropdown -->
       <div
         v-if="showDropdown && dropdownItems.length > 0"
         id="search-suggestions"
         role="listbox"
         aria-label="Search suggestions"
-        class="absolute z-50 mt-1 w-full rounded-lg border border-gray-200 bg-white shadow-lg max-h-80 overflow-y-auto"
+        class="absolute z-50 mt-2 w-full rounded-xl border border-[var(--nc-border)] bg-[var(--nc-bg-elevated)] shadow-[var(--nc-shadow-lg)] max-h-80 overflow-y-auto overflow-x-hidden"
       >
         <template v-if="apiSuggestions.length > 0">
-          <div class="px-3 py-2 text-xs font-medium text-gray-500 uppercase tracking-wider">
+          <div class="px-4 py-2.5 text-xs font-semibold text-[var(--nc-text-muted)] uppercase tracking-wider">
             Suggestions
           </div>
           <button
@@ -79,15 +80,15 @@
             type="button"
             role="option"
             :aria-selected="highlightedIndex === idx"
-            class="w-full text-left px-4 py-2 text-sm text-gray-900 hover:bg-gray-100 focus:bg-gray-100 focus:outline-none"
-            :class="{ 'bg-blue-50': highlightedIndex === idx }"
+            class="w-full text-left px-4 py-2.5 text-sm text-[var(--nc-text)] hover:bg-[var(--nc-primary-muted)] focus:bg-[var(--nc-primary-muted)] focus:outline-none transition-colors duration-[var(--nc-duration-fast)]"
+            :class="{ 'bg-[var(--nc-primary-muted)]': highlightedIndex === idx }"
             @mousedown.prevent="selectItem(item)"
           >
             {{ item }}
           </button>
         </template>
         <template v-if="recentFiltered.length > 0">
-          <div class="px-3 py-2 text-xs font-medium text-gray-500 uppercase tracking-wider border-t border-gray-100">
+          <div class="px-4 py-2.5 text-xs font-semibold text-[var(--nc-text-muted)] uppercase tracking-wider border-t border-[var(--nc-border)]">
             Recent
           </div>
           <button
@@ -97,8 +98,8 @@
             type="button"
             role="option"
             :aria-selected="highlightedIndex === apiSuggestions.length + idx"
-            class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 focus:bg-gray-100 focus:outline-none"
-            :class="{ 'bg-blue-50': highlightedIndex === apiSuggestions.length + idx }"
+            class="w-full text-left px-4 py-2.5 text-sm text-[var(--nc-text-secondary)] hover:bg-[var(--nc-primary-muted)] focus:bg-[var(--nc-primary-muted)] focus:outline-none transition-colors duration-[var(--nc-duration-fast)]"
+            :class="{ 'bg-[var(--nc-primary-muted)]': highlightedIndex === apiSuggestions.length + idx }"
             @mousedown.prevent="selectItem(item)"
           >
             {{ item }}
@@ -108,7 +109,7 @@
     </div>
     <button
       type="submit"
-      class="px-6 py-3 text-lg font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 shrink-0"
+      class="search-btn px-5 sm:px-6 py-3.5 text-base font-semibold text-white rounded-xl bg-[var(--nc-accent)] hover:bg-[var(--nc-accent-hover)] focus:outline-none focus:ring-2 focus:ring-[var(--nc-accent)] focus:ring-offset-2 shadow-[var(--nc-shadow-sm)] transition-colors duration-[var(--nc-duration)] shrink-0"
       @click="handleSearch"
     >
       Search
@@ -197,7 +198,6 @@ function onFocus(): void {
 }
 
 function onBlur(): void {
-  // Allow click on suggestion to fire before closing
   setTimeout(() => {
     showDropdown.value = false
   }, 180)
@@ -274,7 +274,6 @@ function clearSearch(): void {
   showDropdown.value = false
 }
 
-// Click outside to close
 function handleClickOutside(event: MouseEvent): void {
   if (wrapperRef.value && !wrapperRef.value.contains(event.target as Node)) {
     showDropdown.value = false

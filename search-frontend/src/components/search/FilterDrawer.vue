@@ -7,26 +7,24 @@
       aria-modal="true"
       aria-label="Filter options"
     >
-      <!-- Backdrop -->
       <div
-        class="fixed inset-0 bg-gray-500/75 transition-opacity"
+        class="fixed inset-0 bg-[var(--nc-text)]/40 backdrop-blur-sm transition-opacity"
         aria-hidden="true"
         @click="close"
       />
 
-      <!-- Drawer panel -->
       <div
         id="filter-drawer"
-        class="fixed inset-y-0 left-0 flex w-full max-w-sm flex-col bg-white shadow-xl"
+        class="fixed inset-y-0 left-0 flex w-full max-w-sm flex-col bg-[var(--nc-bg-elevated)] shadow-[var(--nc-shadow-lg)]"
         @keydown.esc="close"
       >
-        <div class="flex items-center justify-between border-b border-gray-200 px-4 py-3">
-          <h2 class="text-lg font-semibold text-gray-900">
+        <div class="flex items-center justify-between border-b border-[var(--nc-border)] px-4 py-3">
+          <h2 class="text-lg font-semibold text-[var(--nc-text)]">
             Filters
           </h2>
           <button
             type="button"
-            class="rounded-md p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            class="rounded-lg p-2 text-[var(--nc-text-muted)] hover:bg-[var(--nc-bg-muted)] hover:text-[var(--nc-text)] focus:outline-none focus:ring-2 focus:ring-[var(--nc-primary)] transition-colors duration-[var(--nc-duration)]"
             aria-label="Close filters"
             @click="close"
           >
@@ -35,11 +33,11 @@
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"
+              stroke-width="2"
             >
               <path
                 stroke-linecap="round"
                 stroke-linejoin="round"
-                stroke-width="2"
                 d="M6 18L18 6M6 6l12 12"
               />
             </svg>

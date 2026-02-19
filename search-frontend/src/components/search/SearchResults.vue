@@ -1,7 +1,7 @@
 <template>
   <div
     ref="listRef"
-    class="space-y-4"
+    class="space-y-5"
     role="list"
     aria-label="Search results"
     tabindex="-1"

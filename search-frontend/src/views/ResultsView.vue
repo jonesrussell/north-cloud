@@ -1,6 +1,6 @@
 <template>
-  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-    <!-- Search Bar -->
+  <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+    <!-- Search bar -->
     <div class="mb-6">
       <SearchBar
         v-model="query"
@@ -32,7 +32,7 @@
         class="hidden lg:block lg:w-64 lg:shrink-0"
         aria-label="Refine search"
       >
-        <div class="sticky top-4 space-y-6">
+        <div class="sticky top-24 space-y-6">
           <FilterSidebar
             :facets="facets"
             :filters="filters"
@@ -50,22 +50,20 @@
 
       <!-- Main content -->
       <main class="min-w-0 flex-1">
-        <!-- Loading State: skeleton cards -->
         <SearchResultsSkeleton
           v-if="loading"
           :count="pageSize"
         />
 
-        <!-- Error State -->
         <ErrorAlert
           v-else-if="hasError"
-          title="Search Error"
+          title="Search error"
           :message="error ?? 'Something went wrong.'"
         >
           <template #actions>
             <button
               type="button"
-              class="inline-flex items-center rounded-md border border-transparent bg-red-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+              class="inline-flex items-center rounded-lg border border-transparent bg-[var(--nc-accent)] px-3 py-1.5 text-sm font-medium text-white hover:bg-[var(--nc-accent-hover)] focus:outline-none focus:ring-2 focus:ring-[var(--nc-accent)] focus:ring-offset-2 transition-colors duration-[var(--nc-duration)]"
               @click="search"
             >
               Try again
@@ -73,7 +71,6 @@
           </template>
         </ErrorAlert>
 
-        <!-- Empty State -->
         <EmptySearchState
           v-else-if="isEmpty"
           :query="query"
@@ -83,19 +80,15 @@
           @suggested-topic="applySuggestedTopic"
         />
 
-        <!-- Results -->
         <div v-else-if="hasResults">
-          <!-- Results Info -->
-          <div class="mb-4 text-sm text-gray-600">
+          <div class="mb-4 text-sm text-[var(--nc-text-secondary)]">
             About {{ totalHits.toLocaleString() }} results
           </div>
 
-          <!-- Results List -->
           <div class="mb-8">
             <SearchResults :results="results" />
           </div>
 
-          <!-- Pagination -->
           <SearchPagination
             :current-page="currentPage"
             :total-pages="totalPages"
@@ -104,7 +97,6 @@
             @page-change="changePage"
           />
 
-          <!-- Mobile: related content below results -->
           <RelatedContent
             v-if="hasResults"
             class="mt-8 lg:hidden"
@@ -117,7 +109,6 @@
       </main>
     </div>
 
-    <!-- Mobile filter drawer -->
     <FilterDrawer
       :open="showFilterDrawer"
       @close="showFilterDrawer = false"

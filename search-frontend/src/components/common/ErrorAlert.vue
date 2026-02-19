@@ -1,11 +1,12 @@
 <template>
-  <div class="rounded-md bg-red-50 p-4">
+  <div class="rounded-xl border border-[var(--nc-error)]/30 bg-[var(--nc-error-muted)] p-4">
     <div class="flex">
       <div class="flex-shrink-0">
         <svg
-          class="h-5 w-5 text-red-400"
+          class="h-5 w-5 text-[var(--nc-error)]"
           viewBox="0 0 20 20"
           fill="currentColor"
+          aria-hidden="true"
         >
           <path
             fill-rule="evenodd"
@@ -15,10 +16,10 @@
         </svg>
       </div>
       <div class="ml-3 flex-1">
-        <h3 class="text-sm font-medium text-red-800">
+        <h3 class="text-sm font-semibold text-[var(--nc-error)]">
           {{ title }}
         </h3>
-        <div class="mt-2 text-sm text-red-700">
+        <div class="mt-2 text-sm text-[var(--nc-error)]/90">
           <p>{{ message }}</p>
         </div>
         <div

@@ -5,26 +5,26 @@
       :key="chip.id"
     >
       <span
-        class="inline-flex items-center gap-1 rounded-full bg-gray-100 px-3 py-1 text-sm text-gray-700"
+        class="inline-flex items-center gap-1.5 rounded-full bg-[var(--nc-bg-muted)] px-3 py-1.5 text-sm text-[var(--nc-text)] border border-[var(--nc-border)]"
       >
         <span class="font-medium">{{ chip.label }}:</span>
         <span>{{ chip.value }}</span>
         <button
           type="button"
-          class="rounded-full p-0.5 hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          class="rounded-full p-0.5 hover:bg-[var(--nc-border)] text-[var(--nc-text-muted)] hover:text-[var(--nc-text)] focus:outline-none focus:ring-2 focus:ring-[var(--nc-primary)] transition-colors duration-[var(--nc-duration-fast)]"
           :aria-label="`Remove filter ${chip.label} ${chip.value}`"
           @click="chip.remove()"
         >
           <svg
-            class="h-3.5 w-3.5 text-gray-500"
+            class="h-3.5 w-3.5"
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"
+            stroke-width="2"
           >
             <path
               stroke-linecap="round"
               stroke-linejoin="round"
-              stroke-width="2"
               d="M6 18L18 6M6 6l12 12"
             />
           </svg>
@@ -33,22 +33,22 @@
     </template>
     <button
       type="button"
-      class="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+      class="inline-flex items-center gap-1.5 rounded-lg border border-[var(--nc-border)] bg-[var(--nc-bg-elevated)] px-3 py-1.5 text-sm font-medium text-[var(--nc-text)] hover:bg-[var(--nc-bg-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--nc-primary)] transition-colors duration-[var(--nc-duration)]"
       aria-label="Open filters"
       aria-expanded="false"
       :aria-controls="drawerId"
       @click="$emit('open-drawer')"
     >
       <svg
-        class="h-4 w-4 text-gray-500"
+        class="h-4 w-4 text-[var(--nc-text-muted)]"
         fill="none"
         viewBox="0 0 24 24"
         stroke="currentColor"
+        stroke-width="2"
       >
         <path
           stroke-linecap="round"
           stroke-linejoin="round"
-          stroke-width="2"
           d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"
         />
       </svg>
