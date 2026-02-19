@@ -73,6 +73,15 @@ func (m *mockFrontier) UpdateFetched(_ context.Context, id string, params fetche
 	return nil
 }
 
+func (m *mockFrontier) UpdateFetchedWithFinalURL(_ context.Context, id, _ string, params fetcher.FetchedParams) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	m.fetchedCalls = append(m.fetchedCalls, fetchedCall{ID: id, Params: params})
+
+	return nil
+}
+
 func (m *mockFrontier) UpdateFailed(_ context.Context, id, lastError string, maxRetries int) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()

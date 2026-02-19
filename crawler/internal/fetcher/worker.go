@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/jonesrussell/north-cloud/crawler/internal/domain"
+	"github.com/jonesrussell/north-cloud/crawler/internal/frontier"
 )
 
 // Status codes used in processURL for HTTP response handling.
@@ -23,8 +24,9 @@ const (
 
 // Reason strings for dead URL classification.
 const (
-	reasonRobotsBlocked = "robots_blocked"
-	reasonNotFound      = "not_found"
+	reasonRobotsBlocked     = "robots_blocked"
+	reasonNotFound          = "not_found"
+	reasonTooManyRedirects  = "too_many_redirects"
 )
 
 // maxResponseBodyBytes limits the size of fetched page responses.
@@ -45,6 +47,7 @@ type FetchedParams struct {
 type FrontierClaimer interface {
 	Claim(ctx context.Context) (*domain.FrontierURL, error)
 	UpdateFetched(ctx context.Context, id string, params FetchedParams) error
+	UpdateFetchedWithFinalURL(ctx context.Context, id, finalURL string, params FetchedParams) error
 	UpdateFailed(ctx context.Context, id, lastError string, maxRetries int) error
 	UpdateDead(ctx context.Context, id, reason string) error
 }
@@ -77,6 +80,8 @@ type WorkerPoolConfig struct {
 	MaxRetries      int
 	ClaimRetryDelay time.Duration
 	RequestTimeout  time.Duration
+	// HTTPClient is the client used for fetches. If nil, a default client with RequestTimeout is used.
+	HTTPClient *http.Client
 }
 
 // WorkerPool manages a pool of fetch workers that process URLs from the frontier.
@@ -104,6 +109,10 @@ func NewWorkerPool(
 	log WorkerLogger,
 	cfg WorkerPoolConfig,
 ) *WorkerPool {
+	client := cfg.HTTPClient
+	if client == nil {
+		client = &http.Client{Timeout: cfg.RequestTimeout}
+	}
 	return &WorkerPool{
 		frontier:        frontier,
 		hostUpdater:     hostUpdater,
@@ -111,7 +120,7 @@ func NewWorkerPool(
 		extractor:       extractor,
 		indexer:         indexer,
 		log:             log,
-		httpClient:      &http.Client{Timeout: cfg.RequestTimeout},
+		httpClient:      client,
 		userAgent:       cfg.UserAgent,
 		workerCount:     cfg.WorkerCount,
 		maxRetries:      cfg.MaxRetries,
@@ -207,7 +216,7 @@ func (wp *WorkerPool) ProcessURL(ctx context.Context, furl *domain.FrontierURL) 
 		return nil
 	}
 
-	body, statusCode, fetchErr := wp.fetchPage(ctx, furl)
+	body, statusCode, finalURL, fetchErr := wp.fetchPage(ctx, furl)
 
 	// Always update host last fetch time after any fetch attempt.
 	wp.updateHostFetch(ctx, furl.Host)
@@ -216,7 +225,7 @@ func (wp *WorkerPool) ProcessURL(ctx context.Context, furl *domain.FrontierURL) 
 		return wp.handleFetchError(ctx, furl, fetchErr)
 	}
 
-	return wp.handleStatusCode(ctx, furl, body, statusCode)
+	return wp.handleStatusCode(ctx, furl, body, statusCode, finalURL)
 }
 
 // updateHostFetch records a fetch attempt for politeness tracking.
@@ -231,11 +240,15 @@ func (wp *WorkerPool) updateHostFetch(ctx context.Context, host string) {
 
 // handleFetchError records a failed fetch in the frontier.
 func (wp *WorkerPool) handleFetchError(ctx context.Context, furl *domain.FrontierURL, fetchErr error) error {
-	updateErr := wp.frontier.UpdateFailed(ctx, furl.ID, fetchErr.Error(), wp.maxRetries)
+	lastError := fetchErr.Error()
+	if errors.Is(fetchErr, ErrTooManyRedirects) {
+		lastError = reasonTooManyRedirects
+	}
+	updateErr := wp.frontier.UpdateFailed(ctx, furl.ID, lastError, wp.maxRetries)
 	if updateErr != nil {
 		return fmt.Errorf("update failed after fetch error: %w", updateErr)
 	}
-	wp.log.Info("URL fetch failed", "url", furl.URL, "error", fetchErr.Error())
+	wp.log.Info("URL fetch failed", "url", furl.URL, "error", lastError)
 	return nil
 }
 
@@ -245,12 +258,13 @@ func (wp *WorkerPool) handleStatusCode(
 	furl *domain.FrontierURL,
 	body []byte,
 	statusCode int,
+	finalURL string,
 ) error {
 	switch {
 	case statusCode == statusOK:
-		return wp.handleSuccess(ctx, furl, body)
+		return wp.handleSuccess(ctx, furl, body, finalURL)
 	case statusCode == statusNotModified:
-		return wp.handleNotModified(ctx, furl)
+		return wp.handleNotModified(ctx, furl, finalURL)
 	case statusCode == statusNotFound:
 		if updateErr := wp.frontier.UpdateDead(ctx, furl.ID, reasonNotFound); updateErr != nil {
 			return updateErr
@@ -279,6 +293,7 @@ func (wp *WorkerPool) handleSuccess(
 	ctx context.Context,
 	furl *domain.FrontierURL,
 	body []byte,
+	finalURL string,
 ) error {
 	content, extractErr := wp.extractor.Extract(furl.SourceID, furl.URL, body)
 	if extractErr != nil {
@@ -293,7 +308,7 @@ func (wp *WorkerPool) handleSuccess(
 		ContentHash: &content.ContentHash,
 	}
 
-	if updateErr := wp.frontier.UpdateFetched(ctx, furl.ID, params); updateErr != nil {
+	if updateErr := wp.updateFetchedWithOptionalFinalURL(ctx, furl, finalURL, params); updateErr != nil {
 		return updateErr
 	}
 	wp.log.Info("URL fetched successfully", "url", furl.URL)
@@ -301,22 +316,43 @@ func (wp *WorkerPool) handleSuccess(
 }
 
 // handleNotModified marks the URL as fetched without indexing new content.
-func (wp *WorkerPool) handleNotModified(ctx context.Context, furl *domain.FrontierURL) error {
-	if updateErr := wp.frontier.UpdateFetched(ctx, furl.ID, FetchedParams{}); updateErr != nil {
+func (wp *WorkerPool) handleNotModified(ctx context.Context, furl *domain.FrontierURL, finalURL string) error {
+	if updateErr := wp.updateFetchedWithOptionalFinalURL(ctx, furl, finalURL, FetchedParams{}); updateErr != nil {
 		return updateErr
 	}
 	wp.log.Info("URL fetched successfully", "url", furl.URL)
 	return nil
 }
 
+// updateFetchedWithOptionalFinalURL marks the URL as fetched. If finalURL normalizes to the same
+// as the claimed URL, it calls UpdateFetched; otherwise UpdateFetchedWithFinalURL so the frontier
+// stores the canonical URL. On normalization error, falls back to UpdateFetched.
+func (wp *WorkerPool) updateFetchedWithOptionalFinalURL(
+	ctx context.Context,
+	furl *domain.FrontierURL,
+	finalURL string,
+	params FetchedParams,
+) error {
+	normFinal, normFinalErr := frontier.NormalizeURL(finalURL)
+	normClaimed, normClaimedErr := frontier.NormalizeURL(furl.URL)
+	if normFinalErr != nil || normClaimedErr != nil {
+		return wp.frontier.UpdateFetched(ctx, furl.ID, params)
+	}
+	if normFinal == normClaimed {
+		return wp.frontier.UpdateFetched(ctx, furl.ID, params)
+	}
+	return wp.frontier.UpdateFetchedWithFinalURL(ctx, furl.ID, finalURL, params)
+}
+
 // fetchPage performs the HTTP GET request for the given frontier URL.
+// finalURL is the response request URL after redirects (resp.Request.URL).
 func (wp *WorkerPool) fetchPage(
 	ctx context.Context,
 	furl *domain.FrontierURL,
-) (body []byte, statusCode int, err error) {
+) (body []byte, statusCode int, finalURL string, err error) {
 	req, reqErr := http.NewRequestWithContext(ctx, http.MethodGet, furl.URL, http.NoBody)
 	if reqErr != nil {
-		return nil, 0, fmt.Errorf("create request: %w", reqErr)
+		return nil, 0, "", fmt.Errorf("create request: %w", reqErr)
 	}
 
 	req.Header.Set("User-Agent", wp.userAgent)
@@ -324,18 +360,19 @@ func (wp *WorkerPool) fetchPage(
 
 	resp, doErr := wp.httpClient.Do(req)
 	if doErr != nil {
-		return nil, 0, fmt.Errorf("http fetch: %w", doErr)
+		return nil, 0, "", fmt.Errorf("http fetch: %w", doErr)
 	}
 	defer resp.Body.Close()
 
+	finalURL = resp.Request.URL.String()
 	limited := io.LimitReader(resp.Body, maxResponseBodyBytes)
 
 	body, readErr := io.ReadAll(limited)
 	if readErr != nil {
-		return nil, resp.StatusCode, fmt.Errorf("read response body: %w", readErr)
+		return nil, resp.StatusCode, finalURL, fmt.Errorf("read response body: %w", readErr)
 	}
 
-	return body, resp.StatusCode, nil
+	return body, resp.StatusCode, finalURL, nil
 }
 
 // setConditionalHeaders adds If-None-Match and If-Modified-Since headers

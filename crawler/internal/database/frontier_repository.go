@@ -9,6 +9,8 @@ import (
 
 	"github.com/jmoiron/sqlx"
 	"github.com/jonesrussell/north-cloud/crawler/internal/domain"
+	"github.com/jonesrussell/north-cloud/crawler/internal/frontier"
+	"github.com/lib/pq"
 )
 
 // ErrNoURLAvailable is returned when Claim finds no fetchable URLs in the frontier.
@@ -163,6 +165,58 @@ func (r *FrontierRepository) UpdateFetched(ctx context.Context, id string, param
 
 	result, execErr := r.db.ExecContext(ctx, query, params.ContentHash, params.ETag, params.LastModified, id)
 	return execRequireRows(result, execErr, fmt.Errorf("frontier URL not found: %s", id))
+}
+
+// UpdateFetchedWithFinalURL marks the URL as fetched and updates url, url_hash, and host to the
+// normalized final URL (e.g. after redirects). On unique constraint violation (23505), falls
+// back to UpdateFetched without changing the URL.
+func (r *FrontierRepository) UpdateFetchedWithFinalURL(ctx context.Context, id, finalURL string, params FetchedParams) error {
+	normalized, normErr := frontier.NormalizeURL(finalURL)
+	if normErr != nil {
+		return fmt.Errorf("normalize final URL: %w", normErr)
+	}
+	urlHash, hashErr := frontier.URLHash(finalURL)
+	if hashErr != nil {
+		return fmt.Errorf("hash final URL: %w", hashErr)
+	}
+	host, hostErr := frontier.ExtractHost(finalURL)
+	if hostErr != nil {
+		return fmt.Errorf("extract host from final URL: %w", hostErr)
+	}
+
+	query := `
+		UPDATE url_frontier
+		SET url = $1, url_hash = $2, host = $3,
+			status = 'fetched',
+			last_fetched_at = NOW(),
+			fetch_count = fetch_count + 1,
+			content_hash = $4,
+			etag = $5,
+			last_modified = $6,
+			retry_count = 0,
+			updated_at = NOW()
+		WHERE id = $7
+	`
+	result, execErr := r.db.ExecContext(ctx, query,
+		normalized, urlHash, host,
+		params.ContentHash, params.ETag, params.LastModified,
+		id,
+	)
+	if execErr != nil {
+		var pqErr *pq.Error
+		if errors.As(execErr, &pqErr) && pqErr.Code == "23505" {
+			return r.UpdateFetched(ctx, id, params)
+		}
+		return fmt.Errorf("update frontier with final URL: %w", execErr)
+	}
+	affected, affectedErr := result.RowsAffected()
+	if affectedErr != nil {
+		return fmt.Errorf("rows affected: %w", affectedErr)
+	}
+	if affected == 0 {
+		return fmt.Errorf("frontier URL not found: %s", id)
+	}
+	return nil
 }
 
 // UpdateFailed increments retry_count. If retries >= maxRetries, marks as dead.

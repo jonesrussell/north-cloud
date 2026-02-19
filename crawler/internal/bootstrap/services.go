@@ -549,6 +549,7 @@ func createFrontierWorkerPool(
 		MaxRetries:      fetcherCfg.MaxRetries,
 		ClaimRetryDelay: fetcherCfg.ClaimRetryDelay,
 		RequestTimeout:  fetcherCfg.RequestTimeout,
+		HTTPClient:      httpClient,
 	}
 
 	deps.Logger.Info("Frontier worker pool created",

@@ -40,6 +40,14 @@ func (a *frontierClaimerAdapter) UpdateFetched(ctx context.Context, id string, p
 	})
 }
 
+func (a *frontierClaimerAdapter) UpdateFetchedWithFinalURL(ctx context.Context, id, finalURL string, params fetcher.FetchedParams) error {
+	return a.repo.UpdateFetchedWithFinalURL(ctx, id, finalURL, database.FetchedParams{
+		ContentHash:  params.ContentHash,
+		ETag:         params.ETag,
+		LastModified: params.LastModified,
+	})
+}
+
 func (a *frontierClaimerAdapter) UpdateFailed(ctx context.Context, id, lastError string, maxRetries int) error {
 	return a.repo.UpdateFailed(ctx, id, lastError, maxRetries)
 }
