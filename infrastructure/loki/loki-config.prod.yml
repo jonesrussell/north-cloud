@@ -77,6 +77,14 @@ ingester:
 querier:
   max_concurrent: 10  # Conservative for production
 
+# Allow more concurrent requests from Grafana (dashboards + Explore)
+# Default is low (~100); "too many outstanding requests" appears when exceeded
+query_scheduler:
+  max_outstanding_requests_per_tenant: 2048
+
+frontend:
+  max_outstanding_per_tenant: 2048
+
 query_range:
   parallelise_shardable_queries: true
   cache_results: true  # Cache results for performance

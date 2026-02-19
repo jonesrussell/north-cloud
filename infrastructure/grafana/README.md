@@ -642,6 +642,22 @@ If you have limited RAM/CPU:
    - Edit `/infrastructure/alloy/config.alloy`
    - Add a `drop` stage in `loki.process` component to filter debug logs
 
+### Too many outstanding requests
+
+If Grafana shows "too many outstanding requests" when opening dashboards or using Explore, the error comes from **Loki**, not Grafana. Loki limits concurrent queries per tenant; the default is low (~100). When many dashboard panels or Explore queries run at once, the limit is exceeded.
+
+**Fix:** In the Loki config files (`infrastructure/loki/loki-config.yml`, `loki-config.dev.yml`, `loki-config.prod.yml`), ensure these are set (e.g. 2048):
+
+```yaml
+query_scheduler:
+  max_outstanding_requests_per_tenant: 2048
+
+frontend:
+  max_outstanding_per_tenant: 2048
+```
+
+Restart Loki after changing config. If the error persists, increase the value (e.g. 4096) or reduce dashboard time range and number of panels to lower concurrent request load.
+
 ## Security Considerations
 
 ### Production Deployment
