@@ -7,7 +7,11 @@ import (
 	"os"
 	"time"
 
+	"github.com/jonesrussell/north-cloud/click-tracker/internal/api"
 	"github.com/jonesrussell/north-cloud/click-tracker/internal/config"
+	"github.com/jonesrussell/north-cloud/click-tracker/internal/handler"
+	"github.com/jonesrussell/north-cloud/click-tracker/internal/storage"
+	"github.com/north-cloud/infrastructure/clickurl"
 	infraconfig "github.com/north-cloud/infrastructure/config"
 	"github.com/north-cloud/infrastructure/logger"
 	"github.com/north-cloud/infrastructure/profiling"
@@ -49,7 +53,7 @@ func run() int {
 	}
 	defer func() { _ = db.Close() }()
 
-	// Run server (placeholder - wired in Task 8)
+	// Run server
 	return runServer(cfg, log, db)
 }
 
@@ -103,14 +107,32 @@ func connectDatabase(cfg *config.Config, log logger.Logger) (*sql.DB, error) {
 	return db, nil
 }
 
-// runServer is a placeholder that will be wired in Task 8.
-func runServer(cfg *config.Config, log logger.Logger, _ *sql.DB) int {
-	log.Info("Click-tracker service ready",
-		logger.String("name", cfg.Service.Name),
-		logger.String("version", cfg.Service.Version),
+// runServer creates all dependencies and starts the HTTP server.
+func runServer(cfg *config.Config, log logger.Logger, db *sql.DB) int {
+	// Create HMAC signer
+	signer := clickurl.NewSigner(cfg.Service.HMACSecret)
+
+	// Create event buffer and store
+	buf := storage.NewBuffer(cfg.Service.BufferSize)
+	store := storage.NewStore(db, buf, log, cfg.Service.FlushInterval, cfg.Service.FlushThreshold)
+	store.Start()
+	defer store.Stop()
+
+	// Create handler
+	clickHandler := handler.NewClickHandler(signer, buf, log, cfg.Service.MaxTimestampAge)
+
+	// Create and run server
+	server := api.NewServer(clickHandler, cfg, log)
+
+	log.Info("Click-tracker starting",
 		logger.Int("port", cfg.Service.Port),
-		logger.Bool("debug", cfg.Service.Debug),
 	)
 
+	if err := server.Run(); err != nil {
+		log.Error("Server error", logger.Error(err))
+		return 1
+	}
+
+	log.Info("Click-tracker exited cleanly")
 	return 0
 }
