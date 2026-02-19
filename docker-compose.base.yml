@@ -96,6 +96,16 @@ services:
       - postgres_pipeline_data:/var/lib/postgresql/data
       - ./pipeline/migrations:/migrations:ro
 
+  postgres-click-tracker:
+    <<: *postgres-defaults
+    environment:
+      POSTGRES_USER: ${POSTGRES_CLICK_TRACKER_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_CLICK_TRACKER_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_CLICK_TRACKER_DB:-click_tracker}
+    volumes:
+      - postgres_click_tracker_data:/var/lib/postgresql/data
+      - ./click-tracker/migrations:/migrations:ro
+
   # ------------------------------------------------------------
   # Elasticsearch
   # ------------------------------------------------------------
@@ -245,6 +255,9 @@ services:
       LOG_LEVEL: ${SEARCH_LOG_LEVEL:-info}
       LOG_FORMAT: ${SEARCH_LOG_FORMAT:-json}
       CORS_ORIGINS: ${CORS_ORIGINS:-*}
+      CLICK_TRACKER_ENABLED: ${CLICK_TRACKER_ENABLED:-false}
+      CLICK_TRACKER_SECRET: ${CLICK_TRACKER_SECRET:-}
+      CLICK_TRACKER_BASE_URL: ${CLICK_TRACKER_BASE_URL:-https://northcloud.biz/api}
     depends_on:
       - elasticsearch
     healthcheck:
@@ -288,6 +301,40 @@ services:
       APP_DEBUG: ${APP_DEBUG:-false}
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8040/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  # ------------------------------------------------------------
+  # Click Tracker
+  # ------------------------------------------------------------
+
+  click-tracker:
+    <<: *service-defaults
+    build:
+      context: .
+      dockerfile: ./click-tracker/Dockerfile
+    image: docker.io/jonesrussell/click-tracker:latest
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 128M
+    environment:
+      CLICK_TRACKER_PORT: ${CLICK_TRACKER_PORT:-8093}
+      CLICK_TRACKER_SECRET: ${CLICK_TRACKER_SECRET:-}
+      POSTGRES_CLICK_TRACKER_HOST: postgres-click-tracker
+      POSTGRES_CLICK_TRACKER_PORT: 5432
+      POSTGRES_CLICK_TRACKER_USER: ${POSTGRES_CLICK_TRACKER_USER:-postgres}
+      POSTGRES_CLICK_TRACKER_PASSWORD: ${POSTGRES_CLICK_TRACKER_PASSWORD:-postgres}
+      POSTGRES_CLICK_TRACKER_DB: ${POSTGRES_CLICK_TRACKER_DB:-click_tracker}
+      APP_DEBUG: ${APP_DEBUG:-false}
+    depends_on:
+      postgres-click-tracker:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8093/health"]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -547,6 +594,7 @@ volumes:
   postgres_index_manager_data:
   postgres_publisher_data:
   postgres_pipeline_data:
+  postgres_click_tracker_data:
   redis_data:
   minio_data:
   loki_data:

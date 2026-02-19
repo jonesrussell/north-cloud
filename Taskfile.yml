@@ -13,6 +13,10 @@ includes:
     taskfile: ./classifier/Taskfile.yml
     dir: ./classifier
 
+  click-tracker:
+    taskfile: ./click-tracker/Taskfile.yml
+    dir: ./click-tracker
+
   crawler:
     taskfile: ./crawler/Taskfile.yml
     dir: ./crawler
@@ -169,6 +173,7 @@ tasks:
     cmds:
       - task: lint:auth
       - task: lint:classifier
+      - task: lint:click-tracker
       - task: lint:crawler
       - task: lint:dashboard
       - task: lint:index-manager
@@ -185,6 +190,7 @@ tasks:
     cmds:
       - task: lint:auth:force
       - task: lint:classifier:force
+      - task: lint:click-tracker:force
       - task: lint:crawler:force
       - task: lint:dashboard:force
       - task: lint:index-manager:force
@@ -205,6 +211,11 @@ tasks:
     desc: "Run classifier linter (ignore cache)"
     cmds:
       - task classifier:lint:no-cache -f
+
+  lint:click-tracker:force:
+    desc: "Run linter for click-tracker with cache disabled"
+    cmds:
+      - task click-tracker:lint:no-cache -f
 
   lint:crawler:force:
     desc: "Run crawler linter (ignore cache)"
@@ -261,6 +272,7 @@ tasks:
     cmds:
       - task: lint:auth
       - task: lint:classifier
+      - task: lint:click-tracker
       - task: lint:crawler
       - task: lint:dashboard
       - task: lint:index-manager
@@ -281,6 +293,11 @@ tasks:
     desc: "Run linter for classifier service"
     cmds:
       - task classifier:lint
+
+  lint:click-tracker:
+    desc: "Run linter for click-tracker service"
+    cmds:
+      - task click-tracker:lint
 
   lint:crawler:
     desc: "Run linter for crawler service"
@@ -342,6 +359,7 @@ tasks:
     cmds:
       - task auth:vendor
       - task classifier:vendor
+      - task click-tracker:vendor
       - task crawler:vendor
       - task index-manager:vendor
       - task mcp-north-cloud:vendor
@@ -428,6 +446,7 @@ tasks:
     cmds:
       - task: test:auth
       - task: test:classifier
+      - task: test:click-tracker
       - task: test:crawler
       - task: test:dashboard
       - task: test:index-manager
@@ -445,6 +464,7 @@ tasks:
     cmds:
       - task: test:auth
       - task: test:classifier
+      - task: test:click-tracker
       - task: test:crawler
       - task: test:dashboard
       - task: test:index-manager
@@ -465,6 +485,11 @@ tasks:
     desc: "Run tests for classifier service"
     cmds:
       - task classifier:test
+
+  test:click-tracker:
+    desc: "Run tests for click-tracker service"
+    cmds:
+      - task click-tracker:test
 
   test:crawler:
     desc: "Run tests for crawler service"
@@ -521,6 +546,7 @@ tasks:
     cmds:
       - task: test:race:auth
       - task: test:race:classifier
+      - task: test:race:click-tracker
       - task: test:race:crawler
       - task: test:race:dashboard
       - task: test:race:index-manager
@@ -537,6 +563,7 @@ tasks:
     cmds:
       - task: test:race:auth
       - task: test:race:classifier
+      - task: test:race:click-tracker
       - task: test:race:crawler
       - task: test:race:dashboard
       - task: test:race:index-manager
@@ -557,6 +584,11 @@ tasks:
     desc: "Run tests with race detector for classifier service"
     cmds:
       - task classifier:test:race
+
+  test:race:click-tracker:
+    desc: "Run tests for click-tracker with race detection"
+    cmds:
+      - task click-tracker:test:race
 
   test:race:crawler:
     desc: "Run tests with race detector for crawler service"
@@ -613,6 +645,7 @@ tasks:
     cmds:
       - task: test:cover:auth
       - task: test:cover:classifier
+      - task: test:cover:click-tracker
       - task: test:cover:crawler
       - task: test:cover:dashboard
       - task: test:cover:index-manager
@@ -629,6 +662,7 @@ tasks:
     cmds:
       - task: test:cover:auth
       - task: test:cover:classifier
+      - task: test:cover:click-tracker
       - task: test:cover:crawler
       - task: test:cover:dashboard
       - task: test:cover:index-manager
@@ -649,6 +683,11 @@ tasks:
     desc: "Run tests with coverage for classifier service"
     cmds:
       - task classifier:test:coverage
+
+  test:cover:click-tracker:
+    desc: "Run tests for click-tracker with coverage"
+    cmds:
+      - task click-tracker:test:coverage
 
   test:cover:crawler:
     desc: "Run tests with coverage for crawler service"
@@ -706,6 +745,7 @@ tasks:
       - task: migrate:crawler
       - task: migrate:source-manager
       - task: migrate:classifier
+      - task: migrate:click-tracker
       - task: migrate:publisher
       - task: migrate:index-manager
       - task: migrate:pipeline
@@ -716,6 +756,7 @@ tasks:
       - task: migrate:down:crawler
       - task: migrate:down:source-manager
       - task: migrate:down:classifier
+      - task: migrate:down:click-tracker
       - task: migrate:down:publisher
       - task: migrate:down:index-manager
       - task: migrate:down:pipeline
@@ -789,6 +830,26 @@ tasks:
     desc: "Force classifier database to a specific migration version (use to fix dirty state)"
     cmds:
       - task classifier:migrate:force
+
+  migrate:click-tracker:
+    desc: "Run migrations up for click-tracker"
+    cmds:
+      - cd click-tracker && go run cmd/migrate/main.go up
+
+  migrate:down:click-tracker:
+    desc: "Run migrations down for click-tracker"
+    cmds:
+      - cd click-tracker && go run cmd/migrate/main.go down
+
+  migrate:version:click-tracker:
+    desc: "Show migration version for click-tracker"
+    cmds:
+      - cd click-tracker && go run cmd/migrate/main.go version
+
+  migrate:force:click-tracker:
+    desc: "Force migration version for click-tracker"
+    cmds:
+      - cd click-tracker && go run cmd/migrate/main.go force {{.CLI_ARGS}}
 
   migrate:publisher:
     desc: "Run database migrations for publisher service"
