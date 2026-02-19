@@ -120,6 +120,7 @@ services:
       - crawler_go_mod_cache:/tmp/go-mod-cache
       - crawler_go_build_cache:/tmp/go-build-cache
       - ./infrastructure:/infrastructure
+      - ./index-manager:/index-manager
     command: ["sh", "-c", "go mod download && air -c .air.toml"]
     healthcheck:
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:8080/health"]
