@@ -5,6 +5,7 @@ export interface SearchResult {
   id: string
   title: string
   url: string
+  click_url?: string
   body?: string
   raw_text?: string
   published_date?: string

@@ -6,7 +6,7 @@
     role="listitem"
   >
     <a
-      :href="result.url"
+      :href="result.click_url || result.url"
       target="_blank"
       rel="noopener noreferrer"
       class="block group"
