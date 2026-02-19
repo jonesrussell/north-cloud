@@ -323,6 +323,46 @@ func TestFrontierRepository_UpdateDead_NotFound(t *testing.T) {
 	expectationsMet(t, mock)
 }
 
+func TestFrontierRepository_ResetForRetry(t *testing.T) {
+	t.Helper()
+
+	repo, mock, cleanup := newFrontierRepo(t)
+	defer cleanup()
+
+	ctx := context.Background()
+
+	mock.ExpectExec("UPDATE url_frontier").
+		WithArgs("dead-url-id").
+		WillReturnResult(sqlmock.NewResult(0, 1))
+
+	err := repo.ResetForRetry(ctx, "dead-url-id")
+	if err != nil {
+		t.Fatalf("ResetForRetry() error = %v", err)
+	}
+
+	expectationsMet(t, mock)
+}
+
+func TestFrontierRepository_ResetForRetry_NotFoundOrNotDead(t *testing.T) {
+	t.Helper()
+
+	repo, mock, cleanup := newFrontierRepo(t)
+	defer cleanup()
+
+	ctx := context.Background()
+
+	mock.ExpectExec("UPDATE url_frontier").
+		WithArgs("pending-url-id").
+		WillReturnResult(sqlmock.NewResult(0, 0))
+
+	err := repo.ResetForRetry(ctx, "pending-url-id")
+	if err == nil {
+		t.Fatal("ResetForRetry() expected error when URL is not dead, got nil")
+	}
+
+	expectationsMet(t, mock)
+}
+
 func TestFrontierRepository_List_WithFilters(t *testing.T) {
 	repo, mock, cleanup := newFrontierRepo(t)
 	defer cleanup()

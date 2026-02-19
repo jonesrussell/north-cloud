@@ -229,6 +229,7 @@ export const crawlerApi = {
     stats: () => crawlerClient.get('/frontier/stats'),
     submit: (data: { url: string; source_id: string; origin?: string; priority?: number }) =>
       crawlerClient.post('/frontier/submit', data),
+    retry: (id: string) => crawlerClient.post(`/frontier/${id}/retry`),
     delete: (id: string) => crawlerClient.delete(`/frontier/${id}`),
   },
 

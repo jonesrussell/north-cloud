@@ -144,6 +144,24 @@ func buildSubmitParams(req submitRequest) (database.SubmitParams, error) {
 // defaultSubmitPriority is the default priority for manually submitted URLs.
 const defaultSubmitPriority = 5
 
+// Retry handles POST /api/v1/frontier/:id/retry — resets a dead URL to pending so it can be fetched again.
+func (h *FrontierHandler) Retry(c *gin.Context) {
+	id := c.Param("id")
+
+	if err := h.repo.ResetForRetry(c.Request.Context(), id); err != nil {
+		respondNotFound(c, "Frontier URL (or not dead)")
+		return
+	}
+
+	h.log.Info("Frontier URL reset for retry",
+		infralogger.String("id", id),
+	)
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "URL reset to pending; it will be fetched again",
+	})
+}
+
 // Delete handles DELETE /api/v1/frontier/:id
 func (h *FrontierHandler) Delete(c *gin.Context) {
 	id := c.Param("id")

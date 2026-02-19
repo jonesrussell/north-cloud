@@ -94,6 +94,7 @@ func setupFrontierRoutes(v1 *gin.RouterGroup, frontierHandler *FrontierHandler) 
 		v1.GET("/frontier", frontierHandler.List)
 		v1.GET("/frontier/stats", frontierHandler.Stats)
 		v1.POST("/frontier/submit", frontierHandler.Submit)
+		v1.POST("/frontier/:id/retry", frontierHandler.Retry)
 		v1.DELETE("/frontier/:id", frontierHandler.Delete)
 	}
 }

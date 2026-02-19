@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { formatDate } from '@/lib/utils'
-import { Trash2 } from 'lucide-vue-next'
+import { Trash2, RotateCcw } from 'lucide-vue-next'
 import { DataTablePagination, SortableColumnHeader } from '@/components/common'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -22,6 +22,7 @@ defineProps<{
   onPageChange: (page: number) => void
   onPageSizeChange: (size: number) => void
   onClearFilters: () => void
+  onRetry?: (id: string) => void
   onDelete?: (id: string) => void
 }>()
 
@@ -37,7 +38,15 @@ const nonSortableColumns = [
   { key: 'origin', label: 'Origin' },
   { key: 'status', label: 'Status' },
   { key: 'retry_count', label: 'Retries' },
+  { key: 'last_error', label: 'Last error' },
 ] as const
+
+const maxErrorDisplayLength = 80
+
+function truncateError(err: string | null | undefined): string {
+  if (err == null || err === '') return '—'
+  return err.length <= maxErrorDisplayLength ? err : `${err.slice(0, maxErrorDisplayLength)}…`
+}
 
 function getStatusVariant(status: string) {
   switch (status) {
@@ -84,7 +93,7 @@ function getOriginVariant(origin: string) {
               {{ col.label }}
             </th>
             <th
-              v-if="onDelete"
+              v-if="onDelete || onRetry"
               class="px-4 py-3 text-right text-sm font-medium text-muted-foreground"
             >
               Actions
@@ -99,7 +108,7 @@ function getOriginVariant(origin: string) {
               class="border-b"
             >
               <td
-                v-for="j in sortableColumns.length + nonSortableColumns.length + (onDelete ? 1 : 0)"
+                v-for="j in sortableColumns.length + nonSortableColumns.length + (onDelete || onRetry ? 1 : 0)"
                 :key="j"
                 class="px-4 py-3"
               >
@@ -113,7 +122,7 @@ function getOriginVariant(origin: string) {
             class="border-b"
           >
             <td
-              :colspan="sortableColumns.length + nonSortableColumns.length + (onDelete ? 1 : 0)"
+              :colspan="sortableColumns.length + nonSortableColumns.length + (onDelete || onRetry ? 1 : 0)"
               class="px-4 py-12 text-center"
             >
               <p class="text-sm text-muted-foreground">
@@ -173,12 +182,31 @@ function getOriginVariant(origin: string) {
               {{ url.retry_count }}
             </td>
             <td
-              v-if="onDelete"
+              class="px-4 py-3 text-sm text-muted-foreground max-w-[240px]"
+              :title="url.last_error ?? undefined"
+            >
+              <span class="truncate block" :title="url.last_error ?? undefined">
+                {{ truncateError(url.last_error) }}
+              </span>
+            </td>
+            <td
+              v-if="onDelete || onRetry"
               class="px-4 py-3 text-right"
             >
               <Button
+                v-if="onRetry && url.status === 'dead'"
                 variant="ghost"
                 size="icon"
+                title="Reset for retry (re-queue)"
+                @click="onRetry(url.id)"
+              >
+                <RotateCcw class="h-4 w-4 text-muted-foreground" />
+              </Button>
+              <Button
+                v-if="onDelete"
+                variant="ghost"
+                size="icon"
+                title="Delete"
                 @click="onDelete(url.id)"
               >
                 <Trash2 class="h-4 w-4 text-destructive" />

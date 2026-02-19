@@ -370,6 +370,24 @@ func (r *FrontierRepository) Stats(ctx context.Context) (*FrontierStats, error) 
 	return stats, nil
 }
 
+// ResetForRetry sets a dead frontier URL back to pending with retry_count cleared
+// so it can be fetched again. Only URLs with status 'dead' are updated.
+// Returns an error if the URL does not exist or is not dead.
+func (r *FrontierRepository) ResetForRetry(ctx context.Context, id string) error {
+	query := `
+		UPDATE url_frontier
+		SET status = 'pending',
+			retry_count = 0,
+			last_error = NULL,
+			next_fetch_at = NOW(),
+			updated_at = NOW()
+		WHERE id = $1 AND status = 'dead'
+	`
+
+	result, execErr := r.db.ExecContext(ctx, query, id)
+	return execRequireRows(result, execErr, fmt.Errorf("frontier URL not found or not dead: %s", id))
+}
+
 // Delete removes a frontier URL by ID. Returns an error if the URL does not exist.
 func (r *FrontierRepository) Delete(ctx context.Context, id string) error {
 	query := `DELETE FROM url_frontier WHERE id = $1`

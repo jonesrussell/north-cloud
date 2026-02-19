@@ -57,6 +57,16 @@ function refreshAll() {
   refetchStats()
 }
 
+async function retryUrl(id: string) {
+  try {
+    await crawlerApi.frontier.retry(id)
+    table.refetch()
+    refetchStats()
+  } catch (err) {
+    console.error('Error retrying frontier URL:', err)
+  }
+}
+
 async function deleteUrl(id: string) {
   if (!confirm('Delete this URL from the frontier?')) return
   try {
@@ -170,6 +180,7 @@ async function deleteUrl(id: string) {
             :on-page-change="table.setPage"
             :on-page-size-change="table.setPageSize"
             :on-clear-filters="table.clearFilters"
+            :on-retry="retryUrl"
             :on-delete="deleteUrl"
           />
         </CardContent>
