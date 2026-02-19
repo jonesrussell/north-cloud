@@ -39,6 +39,7 @@ type Config struct {
 	Facets        FacetsConfig        `yaml:"facets"`
 	Logging       LoggingConfig       `yaml:"logging"`
 	CORS          CORSConfig          `yaml:"cors"`
+	ClickTracker  ClickTrackerConfig  `yaml:"click_tracker"`
 }
 
 // ServiceConfig holds service-level configuration.
@@ -99,6 +100,13 @@ type CORSConfig struct {
 	AllowedHeaders   []string `yaml:"allowed_headers"`
 	AllowCredentials bool     `yaml:"allow_credentials"`
 	MaxAge           int      `yaml:"max_age"`
+}
+
+// ClickTrackerConfig holds click tracking URL generation config.
+type ClickTrackerConfig struct {
+	Enabled bool   `env:"CLICK_TRACKER_ENABLED"  yaml:"enabled"`
+	Secret  string `env:"CLICK_TRACKER_SECRET"   yaml:"secret"`
+	BaseURL string `env:"CLICK_TRACKER_BASE_URL" yaml:"base_url"`
 }
 
 // Load loads configuration from file and environment variables.

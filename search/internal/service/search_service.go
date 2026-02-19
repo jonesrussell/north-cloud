@@ -3,10 +3,13 @@ package service
 import (
 	"bytes"
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
 	"math"
+	"net/url"
 	"strings"
 	"time"
 
@@ -14,6 +17,7 @@ import (
 	"github.com/jonesrussell/north-cloud/search/internal/config"
 	"github.com/jonesrussell/north-cloud/search/internal/domain"
 	"github.com/jonesrussell/north-cloud/search/internal/elasticsearch"
+	"github.com/north-cloud/infrastructure/clickurl"
 	infralogger "github.com/north-cloud/infrastructure/logger"
 )
 
@@ -23,15 +27,22 @@ type SearchService struct {
 	queryBuilder *elasticsearch.QueryBuilder
 	config       *config.Config
 	logger       infralogger.Logger
+	clickSigner  *clickurl.Signer // nil if disabled
 }
 
 // NewSearchService creates a new search service
-func NewSearchService(esClient *elasticsearch.Client, cfg *config.Config, log infralogger.Logger) *SearchService {
+func NewSearchService(
+	esClient *elasticsearch.Client,
+	cfg *config.Config,
+	log infralogger.Logger,
+	clickSigner *clickurl.Signer,
+) *SearchService {
 	return &SearchService{
 		esClient:     esClient,
 		queryBuilder: elasticsearch.NewQueryBuilder(&cfg.Elasticsearch),
 		config:       cfg,
 		logger:       log,
+		clickSigner:  clickSigner,
 	}
 }
 
@@ -272,6 +283,12 @@ func (s *SearchService) parseSearchResponse(body io.Reader, req *domain.SearchRe
 		response.Hits = append(response.Hits, searchHit)
 	}
 
+	// Add click URLs if signer is configured
+	if s.clickSigner != nil {
+		queryID := generateQueryID()
+		s.addClickURLs(response.Hits, queryID, req.Pagination.Page)
+	}
+
 	// Parse facets if requested
 	if req.Options.IncludeFacets && len(esResponse.Aggregations) > 0 {
 		response.Facets = s.parseFacets(esResponse.Aggregations)
@@ -329,6 +346,39 @@ func (s *SearchService) parseFacets(aggs map[string]aggregation) *domain.Facets 
 	}
 
 	return facets
+}
+
+const queryIDLength = 8
+
+func (s *SearchService) addClickURLs(hits []*domain.SearchHit, queryID string, page int) {
+	baseURL := s.config.ClickTracker.BaseURL
+	now := time.Now().Unix()
+
+	for i, hit := range hits {
+		position := i + 1
+		params := clickurl.ClickParams{
+			QueryID:        queryID,
+			ResultID:       hit.ID,
+			Position:       position,
+			Page:           page,
+			Timestamp:      now,
+			DestinationURL: hit.URL,
+		}
+		sig := s.clickSigner.Sign(params.Message())
+		hit.ClickURL = fmt.Sprintf(
+			"%s/click?q=%s&r=%s&p=%d&pg=%d&t=%d&u=%s&sig=%s",
+			baseURL, queryID, hit.ID, position, page, now,
+			url.QueryEscape(hit.URL), sig,
+		)
+	}
+}
+
+func generateQueryID() string {
+	b := make([]byte, queryIDLength)
+	if _, err := rand.Read(b); err != nil {
+		return "q_" + fmt.Sprintf("%x", time.Now().UnixNano())
+	}
+	return "q_" + hex.EncodeToString(b)[:queryIDLength]
 }
 
 // LatestArticles returns the most recent classified articles for the public feed.

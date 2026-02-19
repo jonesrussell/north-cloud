@@ -75,6 +75,7 @@ type SearchHit struct {
 	Score          float64             `json:"score"` // Relevance score
 	Highlight      map[string][]string `json:"highlight,omitempty"`
 	Snippet        string              `json:"snippet,omitempty"`
+	ClickURL       string              `json:"click_url,omitempty"`
 }
 
 // Facets holds faceted search aggregations

@@ -8,6 +8,7 @@ import (
 	"github.com/jonesrussell/north-cloud/search/internal/config"
 	"github.com/jonesrussell/north-cloud/search/internal/elasticsearch"
 	"github.com/jonesrussell/north-cloud/search/internal/service"
+	"github.com/north-cloud/infrastructure/clickurl"
 	infraconfig "github.com/north-cloud/infrastructure/config"
 	infralogger "github.com/north-cloud/infrastructure/logger"
 	"github.com/north-cloud/infrastructure/profiling"
@@ -86,7 +87,16 @@ func setupElasticsearch(cfg *config.Config, log infralogger.Logger) (*elasticsea
 
 // runServer creates the search service, handler, and HTTP server, then runs with graceful shutdown.
 func runServer(cfg *config.Config, esClient *elasticsearch.Client, log infralogger.Logger) int {
-	searchService := service.NewSearchService(esClient, cfg, log)
+	// Create click URL signer if enabled
+	var clickSigner *clickurl.Signer
+	if cfg.ClickTracker.Enabled && cfg.ClickTracker.Secret != "" {
+		clickSigner = clickurl.NewSigner(cfg.ClickTracker.Secret)
+		log.Info("Click tracking enabled",
+			infralogger.String("base_url", cfg.ClickTracker.BaseURL),
+		)
+	}
+
+	searchService := service.NewSearchService(esClient, cfg, log, clickSigner)
 	log.Info("Search service initialized")
 
 	handler := api.NewHandler(searchService, log)
