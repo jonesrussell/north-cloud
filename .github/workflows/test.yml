@@ -103,7 +103,7 @@ jobs:
 
       - name: Install golangci-lint
         if: needs.detect-changes.outputs.has_go == 'true' || needs.detect-changes.outputs.run_all == 'true'
-        uses: golangci/golangci-lint-action@v6
+        uses: golangci/golangci-lint-action@v7
         with:
           version: v2.10.1
           install-only: true
