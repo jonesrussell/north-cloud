@@ -93,3 +93,18 @@ func appendMiningLocationChannel(channels []string, location string) []string {
 		return channels
 	}
 }
+
+// MiningDomain routes mining-classified articles to mining:* channels.
+type MiningDomain struct{}
+
+// NewMiningDomain creates a MiningDomain.
+func NewMiningDomain() *MiningDomain { return &MiningDomain{} }
+
+// Name returns the domain identifier.
+func (d *MiningDomain) Name() string { return "mining" }
+
+// Routes returns mining channels for the article. Returns nil if the article
+// is not mining-classified. Delegates to GenerateMiningChannels.
+func (d *MiningDomain) Routes(a *Article) []ChannelRoute {
+	return channelRoutesFromSlice(GenerateMiningChannels(a))
+}
