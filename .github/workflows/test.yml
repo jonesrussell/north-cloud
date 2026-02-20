@@ -107,6 +107,8 @@ jobs:
         with:
           version: v2.10.1
           install-only: true
+        env:
+          GOWORK: off
 
       - name: Install frontend dependencies
         if: needs.detect-changes.outputs.has_frontend == 'true' || needs.detect-changes.outputs.run_all == 'true'
