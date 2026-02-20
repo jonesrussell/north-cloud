@@ -16,7 +16,6 @@ require (
 	go.opentelemetry.io/otel/trace v1.40.0
 )
 
-replace github.com/north-cloud/infrastructure => ../infrastructure
 
 require (
 	github.com/bytedance/gopkg v0.1.3 // indirect
