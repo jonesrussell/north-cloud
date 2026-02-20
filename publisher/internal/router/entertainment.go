@@ -38,3 +38,18 @@ func GenerateEntertainmentChannels(article *Article) []string {
 
 	return channels
 }
+
+// EntertainmentDomain routes entertainment-classified articles to entertainment:* channels.
+type EntertainmentDomain struct{}
+
+// NewEntertainmentDomain creates an EntertainmentDomain.
+func NewEntertainmentDomain() *EntertainmentDomain { return &EntertainmentDomain{} }
+
+// Name returns the domain identifier.
+func (d *EntertainmentDomain) Name() string { return "entertainment" }
+
+// Routes returns entertainment channels for the article. Returns nil if the article
+// is not entertainment-classified. Delegates to GenerateEntertainmentChannels.
+func (d *EntertainmentDomain) Routes(a *Article) []ChannelRoute {
+	return channelRoutesFromSlice(GenerateEntertainmentChannels(a))
+}

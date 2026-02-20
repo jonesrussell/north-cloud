@@ -16,7 +16,8 @@ func TestGenerateEntertainmentChannels_CoreHomepage(t *testing.T) {
 		},
 	}
 
-	channels := GenerateEntertainmentChannels(article)
+	routes := NewEntertainmentDomain().Routes(article)
+	channels := routeChannelNames(routes)
 	if len(channels) < 2 {
 		t.Fatalf("expected at least 2 channels (homepage + categories), got %d", len(channels))
 	}
@@ -47,7 +48,9 @@ func TestGenerateEntertainmentChannels_Peripheral(t *testing.T) {
 		},
 	}
 
-	channels := GenerateEntertainmentChannels(article)
+	routes := NewEntertainmentDomain().Routes(article)
+	channels := routeChannelNames(routes)
+
 	if len(channels) != 1 || channels[0] != "entertainment:peripheral" {
 		t.Errorf("expected [entertainment:peripheral], got %v", channels)
 	}
@@ -62,7 +65,8 @@ func TestGenerateEntertainmentChannels_NotEntertainment(t *testing.T) {
 		},
 	}
 
-	channels := GenerateEntertainmentChannels(article)
+	routes := NewEntertainmentDomain().Routes(article)
+	channels := routeChannelNames(routes)
 	if len(channels) != 0 {
 		t.Errorf("expected no channels, got %v", channels)
 	}
@@ -72,7 +76,8 @@ func TestGenerateEntertainmentChannels_NilEntertainment(t *testing.T) {
 	t.Helper()
 	article := &Article{Title: "No classification"}
 
-	channels := GenerateEntertainmentChannels(article)
+	routes := NewEntertainmentDomain().Routes(article)
+	channels := routeChannelNames(routes)
 	if len(channels) != 0 {
 		t.Errorf("expected no channels, got %v", channels)
 	}
