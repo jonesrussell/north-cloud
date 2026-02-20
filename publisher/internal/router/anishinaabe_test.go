@@ -15,7 +15,8 @@ func TestGenerateAnishinaabeChannels_Core(t *testing.T) {
 		},
 	}
 
-	channels := GenerateAnishinaabeChannels(article)
+	routes := NewAnishinaabeeDomain().Routes(article)
+	channels := routeChannelNames(routes)
 	if len(channels) < 2 {
 		t.Fatalf("expected at least 2 channels (articles:anishinaabe + categories), got %d", len(channels))
 	}
@@ -47,7 +48,8 @@ func TestGenerateAnishinaabeChannels_Peripheral(t *testing.T) {
 		},
 	}
 
-	channels := GenerateAnishinaabeChannels(article)
+	routes := NewAnishinaabeeDomain().Routes(article)
+	channels := routeChannelNames(routes)
 	if len(channels) < 2 {
 		t.Fatalf("expected at least 2 channels, got %d", len(channels))
 	}
@@ -72,9 +74,9 @@ func TestGenerateAnishinaabeChannels_NotAnishinaabe(t *testing.T) {
 		},
 	}
 
-	channels := GenerateAnishinaabeChannels(article)
-	if len(channels) != 0 {
-		t.Errorf("expected no channels, got %v", channels)
+	routes := NewAnishinaabeeDomain().Routes(article)
+	if len(routes) != 0 {
+		t.Errorf("expected no channels, got %v", routeChannelNames(routes))
 	}
 }
 
@@ -82,7 +84,8 @@ func TestGenerateAnishinaabeChannels_NilAnishinaabe(t *testing.T) {
 	t.Helper()
 	article := &Article{Title: "No classification"}
 
-	channels := GenerateAnishinaabeChannels(article)
+	routes := NewAnishinaabeeDomain().Routes(article)
+	channels := routeChannelNames(routes)
 	if len(channels) != 0 {
 		t.Errorf("expected no channels, got %v", channels)
 	}

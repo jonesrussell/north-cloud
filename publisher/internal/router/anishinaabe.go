@@ -34,3 +34,18 @@ func GenerateAnishinaabeChannels(article *Article) []string {
 
 	return channels
 }
+
+// AnishinaabeeDomain routes Anishinaabe-classified articles to anishinaabe:* channels.
+type AnishinaabeeDomain struct{}
+
+// NewAnishinaabeeDomain creates an AnishinaabeeDomain.
+func NewAnishinaabeeDomain() *AnishinaabeeDomain { return &AnishinaabeeDomain{} }
+
+// Name returns the domain identifier.
+func (d *AnishinaabeeDomain) Name() string { return "anishinaabe" }
+
+// Routes returns Anishinaabe channels for the article. Returns nil if the article
+// is not Anishinaabe-classified. Delegates to GenerateAnishinaabeChannels.
+func (d *AnishinaabeeDomain) Routes(a *Article) []ChannelRoute {
+	return channelRoutesFromSlice(GenerateAnishinaabeChannels(a))
+}
