@@ -55,9 +55,7 @@ func (d *CoforgeDomain) Routes(a *Article) []ChannelRoute {
 			strings.ReplaceAll(a.Coforge.Audience, "_", "-"),
 			" ", "-",
 		))
-		if slug != "" {
-			names = append(names, "coforge:audience:"+slug)
-		}
+		names = append(names, "coforge:audience:"+slug)
 	}
 
 	// Topic channels — underscores converted to hyphens for slug format
