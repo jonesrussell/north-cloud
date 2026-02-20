@@ -35,6 +35,12 @@ func TestDBChannelDomain_Routes(t *testing.T) {
 		Rules:        models.Rules{MinQualityScore: 80},
 		Enabled:      true,
 	}
+	disabledChannel := models.Channel{
+		ID:           uuid.New(),
+		RedisChannel: "articles:disabled",
+		Rules:        models.Rules{MinQualityScore: 0},
+		Enabled:      false,
+	}
 
 	tests := []struct {
 		name             string
@@ -81,6 +87,16 @@ func TestDBChannelDomain_Routes(t *testing.T) {
 			channels:         nil,
 			expectedChannels: nil,
 		},
+		{
+			name: "disabled channel is not matched",
+			article: &router.Article{
+				Topics:       []string{"news"},
+				QualityScore: 90,
+				ContentType:  "article",
+			},
+			channels:         []models.Channel{disabledChannel},
+			expectedChannels: nil,
+		},
 	}
 
 	for _, tc := range tests {
@@ -97,7 +113,9 @@ func TestDBChannelDomain_Routes(t *testing.T) {
 			for i, r := range routes {
 				assert.Equal(t, tc.expectedChannels[i], r.Channel)
 				if tc.expectChannelIDs {
-					assert.NotNil(t, r.ChannelID, "ChannelID must be set by DBChannelDomain")
+					require.NotNil(t, r.ChannelID, "ChannelID must be set by DBChannelDomain")
+					assert.Equal(t, tc.channels[i].ID, *r.ChannelID,
+						"ChannelID must match the source channel's ID")
 				}
 			}
 		})

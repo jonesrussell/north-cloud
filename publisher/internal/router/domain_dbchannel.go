@@ -26,6 +26,9 @@ func (d *DBChannelDomain) Routes(a *Article) []ChannelRoute {
 	routes := make([]ChannelRoute, 0, len(d.channels))
 	for i := range d.channels {
 		ch := &d.channels[i]
+		if !ch.Enabled {
+			continue
+		}
 		if ch.Rules.Matches(a.QualityScore, a.ContentType, a.Topics) {
 			id := ch.ID // copy to avoid loop variable address reuse
 			routes = append(routes, ChannelRoute{
