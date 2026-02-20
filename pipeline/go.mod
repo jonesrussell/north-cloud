@@ -2,7 +2,6 @@ module github.com/jonesrussell/north-cloud/pipeline
 
 go 1.26
 
-replace github.com/north-cloud/infrastructure => ../infrastructure
 
 require (
 	github.com/DATA-DOG/go-sqlmock v1.5.2
