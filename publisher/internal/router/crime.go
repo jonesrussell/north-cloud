@@ -53,3 +53,18 @@ func GenerateCrimeChannels(article *Article) []string {
 
 	return channels
 }
+
+// CrimeDomain routes crime-classified articles to crime:* channels.
+type CrimeDomain struct{}
+
+// NewCrimeDomain creates a CrimeDomain.
+func NewCrimeDomain() *CrimeDomain { return &CrimeDomain{} }
+
+// Name returns the domain identifier used in routing decision logs.
+func (d *CrimeDomain) Name() string { return "crime" }
+
+// Routes returns crime channels for the article. Returns nil if the article
+// is not crime-classified. Delegates to GenerateCrimeChannels.
+func (d *CrimeDomain) Routes(a *Article) []ChannelRoute {
+	return channelRoutesFromSlice(GenerateCrimeChannels(a))
+}

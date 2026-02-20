@@ -93,7 +93,8 @@ func TestArticle_FullUnmarshalPipeline(t *testing.T) {
 	article.extractNestedFields()
 
 	// Crime channels should now generate correctly
-	crimeChannels := GenerateCrimeChannels(&article)
+	routes := NewCrimeDomain().Routes(&article)
+	crimeChannels := routeChannelNames(routes)
 	assert.Contains(t, crimeChannels, "crime:homepage")
 	assert.Contains(t, crimeChannels, "crime:category:drug-crime")
 	assert.Contains(t, crimeChannels, "crime:category:crime")
@@ -167,13 +168,12 @@ func TestCrimeRouter_Route_HomepageEligible(t *testing.T) {
 		CategoryPages:    []string{"violent-crime", "crime"},
 	}
 
-	// Should publish to crime:homepage and category channels
-	channels := GenerateCrimeChannels(article)
+	routes := NewCrimeDomain().Routes(article)
+	channels := routeChannelNames(routes)
 
 	if !containsChannel(channels, "crime:homepage") {
 		t.Error("expected crime:homepage channel")
 	}
-
 	if !containsChannel(channels, "crime:category:violent-crime") {
 		t.Error("expected crime:category:violent-crime channel")
 	}
@@ -191,7 +191,8 @@ func TestCrimeRouter_Route_CoreNotHomepageEligible(t *testing.T) {
 		CategoryPages:    []string{"crime"},
 	}
 
-	channels := GenerateCrimeChannels(article)
+	routes := NewCrimeDomain().Routes(article)
+	channels := routeChannelNames(routes)
 
 	if containsChannel(channels, "crime:homepage") {
 		t.Error("should not include homepage for non-eligible article")
@@ -211,7 +212,8 @@ func TestCrimeRouter_Route_NotCrime(t *testing.T) {
 		CrimeRelevance: "not_crime",
 	}
 
-	channels := GenerateCrimeChannels(article)
+	routes := NewCrimeDomain().Routes(article)
+	channels := routeChannelNames(routes)
 
 	if len(channels) > 0 {
 		t.Errorf("expected no channels for not_crime, got %v", channels)
@@ -228,7 +230,8 @@ func TestCrimeRouter_Route_PeripheralCrime_CriminalJustice(t *testing.T) {
 		CrimeSubLabel:  "criminal_justice",
 	}
 
-	channels := GenerateCrimeChannels(article)
+	routes := NewCrimeDomain().Routes(article)
+	channels := routeChannelNames(routes)
 
 	if len(channels) != 1 || channels[0] != "crime:courts" {
 		t.Errorf("expected only crime:courts, got %v", channels)
@@ -245,7 +248,8 @@ func TestCrimeRouter_Route_PeripheralCrime_CrimeContext(t *testing.T) {
 		CrimeSubLabel:  "crime_context",
 	}
 
-	channels := GenerateCrimeChannels(article)
+	routes := NewCrimeDomain().Routes(article)
+	channels := routeChannelNames(routes)
 
 	if len(channels) != 1 || channels[0] != "crime:context" {
 		t.Errorf("expected only crime:context, got %v", channels)
@@ -262,7 +266,8 @@ func TestCrimeRouter_Route_PeripheralCrime_NoSubLabel(t *testing.T) {
 		CrimeSubLabel:  "",
 	}
 
-	channels := GenerateCrimeChannels(article)
+	routes := NewCrimeDomain().Routes(article)
+	channels := routeChannelNames(routes)
 
 	if len(channels) != 1 || channels[0] != "crime:context" {
 		t.Errorf("expected crime:context as default, got %v", channels)
