@@ -20,13 +20,20 @@ type RoutingDomain interface {
 
 // channelRoutesFromSlice converts a slice of channel name strings to []ChannelRoute
 // with nil ChannelIDs. Use this in all domains except DBChannelDomain.
+// Empty strings are skipped; if all names are empty, nil is returned.
 func channelRoutesFromSlice(names []string) []ChannelRoute {
 	if len(names) == 0 {
 		return nil
 	}
-	routes := make([]ChannelRoute, len(names))
-	for i, name := range names {
-		routes[i] = ChannelRoute{Channel: name}
+	routes := make([]ChannelRoute, 0, len(names))
+	for _, name := range names {
+		if name == "" {
+			continue
+		}
+		routes = append(routes, ChannelRoute{Channel: name})
+	}
+	if len(routes) == 0 {
+		return nil
 	}
 	return routes
 }
