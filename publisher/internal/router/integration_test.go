@@ -11,8 +11,6 @@ import (
 
 // TestLayer1RoutingScenarios tests various Layer 1 (topic-based) routing scenarios
 func TestLayer1RoutingScenarios(t *testing.T) {
-	t.Helper()
-
 	testCases := []struct {
 		name             string
 		article          *router.Article
@@ -77,7 +75,8 @@ func TestLayer1RoutingScenarios(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			channels := router.GenerateLayer1Channels(tc.article)
+			routes := router.NewTopicDomain().Routes(tc.article)
+			channels := channelNames(routes)
 
 			assert.Len(t, channels, len(tc.expectedChannels), "unexpected number of channels")
 			for i, expected := range tc.expectedChannels {
@@ -89,8 +88,6 @@ func TestLayer1RoutingScenarios(t *testing.T) {
 
 // TestLayer2RoutingScenarios tests various Layer 2 (custom channel with rules) routing scenarios
 func TestLayer2RoutingScenarios(t *testing.T) {
-	t.Helper()
-
 	// Define test channels with various rule configurations
 	crimeAggregatorChannel := createTestChannel("crime-aggregator",
 		"articles:crime:all",
@@ -225,8 +222,6 @@ func TestLayer2RoutingScenarios(t *testing.T) {
 
 // TestCombinedLayerRoutingScenarios tests that both layers work correctly together
 func TestCombinedLayerRoutingScenarios(t *testing.T) {
-	t.Helper()
-
 	// Layer 2 custom channels
 	crimeChannel := createTestChannel("crime-aggregator",
 		"custom:crime:all",
@@ -307,7 +302,8 @@ func TestCombinedLayerRoutingScenarios(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			// Layer 1 channels
-			layer1Channels := router.GenerateLayer1Channels(tc.article)
+			layer1Routes := router.NewTopicDomain().Routes(tc.article)
+			layer1Channels := channelNames(layer1Routes)
 			assert.ElementsMatch(t, tc.expectedLayer1, layer1Channels, "Layer 1 mismatch")
 
 			// Layer 2 channels
@@ -329,8 +325,6 @@ func TestCombinedLayerRoutingScenarios(t *testing.T) {
 
 // TestRulesEdgeCases tests edge cases in rule matching
 func TestRulesEdgeCases(t *testing.T) {
-	t.Helper()
-
 	testCases := []struct {
 		name         string
 		rules        models.Rules
@@ -459,8 +453,6 @@ func TestRulesEdgeCases(t *testing.T) {
 
 // TestCrimeSubCategoryRouting tests routing for the 5 crime sub-categories
 func TestCrimeSubCategoryRouting(t *testing.T) {
-	t.Helper()
-
 	crimeSubCategories := []string{
 		"violent_crime",
 		"property_crime",
@@ -476,7 +468,8 @@ func TestCrimeSubCategoryRouting(t *testing.T) {
 				Topics: []string{category},
 			}
 
-			channels := router.GenerateLayer1Channels(article)
+			routes := router.NewTopicDomain().Routes(article)
+			channels := channelNames(routes)
 
 			assert.Len(t, channels, 1)
 			assert.Equal(t, "articles:"+category, channels[0])
@@ -490,7 +483,8 @@ func TestCrimeSubCategoryRouting(t *testing.T) {
 			Topics: crimeSubCategories,
 		}
 
-		channels := router.GenerateLayer1Channels(article)
+		routes := router.NewTopicDomain().Routes(article)
+		channels := channelNames(routes)
 
 		assert.Len(t, channels, len(crimeSubCategories))
 		for i, category := range crimeSubCategories {
@@ -509,5 +503,73 @@ func createTestChannel(slug, redisChannel string, rules models.Rules) models.Cha
 		Rules:        rules,
 		RulesVersion: 1,
 		Enabled:      true,
+	}
+}
+
+// TestAllDomainsProduce_FullyClassifiedArticle verifies that each domain in the
+// routing pipeline produces at least one route when given a fully-classified article.
+// This catches domains accidentally omitted from routeArticle's domain slice,
+// or domains whose entry conditions are misconfigured.
+func TestAllDomainsProduce_FullyClassifiedArticle(t *testing.T) {
+	// Build a fully-classified article that every domain should match.
+	// CrimeDomain and LocationDomain read flat fields; all others read nested pointers.
+	article := &router.Article{
+		Topics:                        []string{"news"},     // TopicDomain: articles:news
+		QualityScore:                  80,                   // DBChannelDomain: meets min threshold
+		ContentType:                   "article",            // DBChannelDomain: content type match
+		CrimeRelevance:                "core_street_crime",  // CrimeDomain
+		HomepageEligible:              true,                 // CrimeDomain: crime:homepage
+		LocationCountry:               "canada",             // LocationDomain: non-empty, non-unknown
+		LocationSpecificity:           "national_canada",    // LocationDomain: crime:canada prefix
+		EntertainmentRelevance:        "core_entertainment", // LocationDomain entertainment prefix
+		EntertainmentHomepageEligible: true,
+		Mining: &router.MiningData{ // MiningDomain
+			Relevance: "core_mining",
+			Location:  "national_canada",
+		},
+		Entertainment: &router.EntertainmentData{ // EntertainmentDomain
+			Relevance:        "core_entertainment",
+			HomepageEligible: true,
+			Categories:       []string{"film"},
+		},
+		Anishinaabe: &router.AnishinaabeData{ // AnishinaabeeDomain
+			Relevance:  "core_anishinaabe",
+			Categories: []string{"culture"},
+		},
+		Coforge: &router.CoforgeData{ // CoforgeDomain
+			Relevance: "core_coforge",
+			Audience:  "developer",
+		},
+	}
+
+	dbChannel := models.Channel{
+		ID:           uuid.New(),
+		RedisChannel: "articles:premium",
+		Rules:        models.Rules{MinQualityScore: 50, ContentTypes: []string{"article"}},
+		Enabled:      true,
+	}
+
+	// domains in the same order as routeArticle constructs them
+	domainCases := []struct {
+		name   string
+		domain router.RoutingDomain
+	}{
+		{"topic", router.NewTopicDomain()},
+		{"db_channel", router.NewDBChannelDomain([]models.Channel{dbChannel})},
+		{"crime", router.NewCrimeDomain()},
+		{"location", router.NewLocationDomain()},
+		{"mining", router.NewMiningDomain()},
+		{"entertainment", router.NewEntertainmentDomain()},
+		{"anishinaabe", router.NewAnishinaabeeDomain()},
+		{"coforge", router.NewCoforgeDomain()},
+	}
+
+	for _, dc := range domainCases {
+		t.Run(dc.name, func(t *testing.T) {
+			routes := dc.domain.Routes(article)
+			assert.NotEmpty(t, routes,
+				"domain %q must produce routes for a fully-classified article; "+
+					"check that the article fixture matches this domain's entry conditions", dc.name)
+		})
 	}
 }

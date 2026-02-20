@@ -9,8 +9,6 @@ import (
 )
 
 func TestGenerateLayer1Channels(t *testing.T) {
-	t.Helper()
-
 	testCases := []struct {
 		name     string
 		article  *router.Article
@@ -35,7 +33,7 @@ func TestGenerateLayer1Channels(t *testing.T) {
 			article: &router.Article{
 				Topics: []string{},
 			},
-			expected: []string{},
+			expected: nil,
 		},
 		{
 			name: "mining topic skipped",
@@ -49,7 +47,7 @@ func TestGenerateLayer1Channels(t *testing.T) {
 			article: &router.Article{
 				Topics: []string{"mining"},
 			},
-			expected: []string{},
+			expected: nil,
 		},
 		{
 			name: "mining mixed with others excludes only mining",
@@ -70,25 +68,21 @@ func TestGenerateLayer1Channels(t *testing.T) {
 			article: &router.Article{
 				Topics: []string{"anishinaabe"},
 			},
-			expected: []string{},
+			expected: nil,
 		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			channels := router.GenerateLayer1Channels(tc.article)
+			routes := router.NewTopicDomain().Routes(tc.article)
+			channels := channelNames(routes)
 
-			assert.Len(t, channels, len(tc.expected))
-			for i, expected := range tc.expected {
-				assert.Equal(t, expected, channels[i])
-			}
+			assert.Equal(t, tc.expected, channels)
 		})
 	}
 }
 
 func TestRulesMatches(t *testing.T) {
-	t.Helper()
-
 	testCases := []struct {
 		name         string
 		rules        models.Rules
@@ -197,4 +191,16 @@ func TestRulesMatches(t *testing.T) {
 			assert.Equal(t, tc.expected, result)
 		})
 	}
+}
+
+// channelNames extracts Channel strings from a []router.ChannelRoute.
+func channelNames(routes []router.ChannelRoute) []string {
+	if len(routes) == 0 {
+		return nil
+	}
+	names := make([]string, len(routes))
+	for i, r := range routes {
+		names[i] = r.Channel
+	}
+	return names
 }

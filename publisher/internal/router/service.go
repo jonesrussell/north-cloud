@@ -18,15 +18,6 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-// layer1SkipTopics lists topics handled by dedicated routing layers.
-// These topics are excluded from Layer 1 auto-routing to prevent
-// bypassing their specialized classifiers (e.g. mining → Layer 5).
-var layer1SkipTopics = map[string]bool{
-	"mining":      true,
-	"anishinaabe": true,
-}
-
-// Config holds router service configuration
 type Config struct {
 	PollInterval      time.Duration
 	DiscoveryInterval time.Duration
@@ -137,9 +128,10 @@ func (s *Service) pollAndRoute(ctx context.Context) {
 	// Load custom channels (Layer 2)
 	channels, err := s.repo.ListEnabledChannelsWithRules(ctx)
 	if err != nil {
-		s.logger.Error("Failed to load channels", infralogger.Error(err))
-		// Continue with Layer 1 routing only
-		channels = []models.Channel{}
+		s.logger.Error("Failed to load channels — aborting poll cycle to prevent dedup pollution",
+			infralogger.Error(err),
+		)
+		return
 	}
 
 	// Loop until we've drained the queue
@@ -183,199 +175,58 @@ func (s *Service) pollAndRoute(ctx context.Context) {
 	}
 }
 
-// publishToChannels publishes an article to each channel in the list and returns
-// the names of channels where publishing succeeded.
-func (s *Service) publishToChannels(ctx context.Context, article *Article, channels []string) []string {
-	var published []string
-	for _, channel := range channels {
-		if s.publishToChannel(ctx, article, channel, nil) {
-			published = append(published, channel)
+// publishRoutes publishes an article to each ChannelRoute and returns names of channels
+// where publishing succeeded.
+func (s *Service) publishRoutes(ctx context.Context, article *Article, routes []ChannelRoute) []string {
+	published := make([]string, 0, len(routes))
+	for _, route := range routes {
+		if s.publishToChannel(ctx, article, route.Channel, route.ChannelID) {
+			published = append(published, route.Channel)
 		}
 	}
 	return published
 }
 
-// routeArticle routes a single article to Layer 1–6 channels and returns the list of channel names where publish succeeded.
+// routeArticle routes a single article through all routing domains and returns the list
+// of channel names where publish succeeded.
 func (s *Service) routeArticle(ctx context.Context, article *Article, channels []models.Channel) []string {
-	var publishedChannels []string
+	const maxChannelsPerArticle = 30
 
-	// Layer 1: Automatic topic channels (skip topics with dedicated layers)
-	layer1 := GenerateLayer1Channels(article)
-	publishedChannels = append(publishedChannels, s.publishToChannels(ctx, article, layer1)...)
-
-	// Layer 2: Custom channels
-	for i := range channels {
-		ch := &channels[i]
-		if ch.Rules.Matches(article.QualityScore, article.ContentType, article.Topics) {
-			if s.publishToChannel(ctx, article, ch.RedisChannel, &ch.ID) {
-				publishedChannels = append(publishedChannels, ch.RedisChannel)
-			}
-		}
+	domains := []RoutingDomain{
+		NewTopicDomain(),
+		NewDBChannelDomain(channels),
+		NewCrimeDomain(),
+		NewLocationDomain(),
+		NewMiningDomain(),
+		NewEntertainmentDomain(),
+		NewAnishinaabeeDomain(),
+		NewCoforgeDomain(),
 	}
 
-	// Layer 3: Crime classification channels
-	publishedChannels = append(publishedChannels, s.publishToChannels(ctx, article, GenerateCrimeChannels(article))...)
+	var publishedChannels []string
+	for _, domain := range domains {
+		routes := domain.Routes(article)
+		if len(routes) == 0 {
+			continue
+		}
+		s.logger.Debug("routing decision",
+			infralogger.String("domain", domain.Name()),
+			infralogger.Int("routes", len(routes)),
+		)
+		publishedChannels = append(publishedChannels, s.publishRoutes(ctx, article, routes)...)
+	}
 
-	// Layer 4: Location-based channels
-	publishedChannels = append(publishedChannels, s.publishToChannels(ctx, article, GenerateLocationChannels(article))...)
-
-	// Layer 5: Mining classification channels
-	publishedChannels = append(publishedChannels, s.publishToChannels(ctx, article, GenerateMiningChannels(article))...)
-
-	// Layer 6: Entertainment classification channels
-	publishedChannels = append(publishedChannels, s.publishToChannels(ctx, article, GenerateEntertainmentChannels(article))...)
-
-	// Layer 7: Anishinaabe classification channels
-	publishedChannels = append(publishedChannels, s.publishToChannels(ctx, article, GenerateAnishinaabeChannels(article))...)
+	if len(publishedChannels) > maxChannelsPerArticle {
+		s.logger.Warn("article published to unusually many channels",
+			infralogger.String("article_id", article.ID),
+			infralogger.Int("channel_count", len(publishedChannels)),
+			infralogger.Int("max_channels", maxChannelsPerArticle),
+		)
+	}
 
 	// Emit pipeline event (one event per article, all channels in metadata)
 	s.emitPublishedEvent(ctx, article, publishedChannels)
 	return publishedChannels
-}
-
-// MiningData holds mining classification fields from Elasticsearch.
-type MiningData struct {
-	Relevance       string   `json:"relevance"`
-	MiningStage     string   `json:"mining_stage"`
-	Commodities     []string `json:"commodities"`
-	Location        string   `json:"location"`
-	FinalConfidence float64  `json:"final_confidence"`
-	ReviewRequired  bool     `json:"review_required"`
-	ModelVersion    string   `json:"model_version,omitempty"`
-}
-
-// CrimeData matches the classifier's nested crime object in Elasticsearch.
-type CrimeData struct {
-	Relevance      string   `json:"street_crime_relevance"`
-	SubLabel       string   `json:"sub_label,omitempty"`
-	CrimeTypes     []string `json:"crime_types"`
-	Specificity    string   `json:"location_specificity"`
-	Confidence     float64  `json:"final_confidence"`
-	Homepage       bool     `json:"homepage_eligible"`
-	Categories     []string `json:"category_pages"`
-	ReviewRequired bool     `json:"review_required"`
-}
-
-// LocationData matches the classifier's nested location object in Elasticsearch.
-type LocationData struct {
-	City        string  `json:"city,omitempty"`
-	Province    string  `json:"province,omitempty"`
-	Country     string  `json:"country"`
-	Specificity string  `json:"specificity"`
-	Confidence  float64 `json:"confidence"`
-}
-
-// AnishinaabeData holds Anishinaabe classification fields from Elasticsearch.
-type AnishinaabeData struct {
-	Relevance       string   `json:"relevance"`
-	Categories      []string `json:"categories"`
-	FinalConfidence float64  `json:"final_confidence"`
-	ReviewRequired  bool     `json:"review_required"`
-	ModelVersion    string   `json:"model_version,omitempty"`
-}
-
-// EntertainmentData holds entertainment classification fields from Elasticsearch.
-type EntertainmentData struct {
-	Relevance        string   `json:"relevance"`
-	Categories       []string `json:"categories"`
-	FinalConfidence  float64  `json:"final_confidence"`
-	HomepageEligible bool     `json:"homepage_eligible"`
-	ReviewRequired   bool     `json:"review_required"`
-	ModelVersion     string   `json:"model_version,omitempty"`
-}
-
-// Article represents an article from Elasticsearch
-type Article struct {
-	ID            string    `json:"id"`
-	Title         string    `json:"title"`
-	Body          string    `json:"body"`
-	RawText       string    `json:"raw_text"`
-	RawHTML       string    `json:"raw_html"`
-	URL           string    `json:"canonical_url"`
-	Source        string    `json:"source"`
-	PublishedDate time.Time `json:"published_date"`
-
-	// Classification metadata
-	QualityScore     int      `json:"quality_score"`
-	Topics           []string `json:"topics"`
-	ContentType      string   `json:"content_type"`
-	ContentSubtype   string   `json:"content_subtype,omitempty"` // e.g. press_release, event, advisory
-	SourceReputation int      `json:"source_reputation"`
-	Confidence       float64  `json:"confidence"`
-
-	// Crime classification (hybrid rule + ML)
-	CrimeRelevance      string   `json:"crime_relevance"`
-	CrimeSubLabel       string   `json:"crime_sub_label,omitempty"`
-	CrimeTypes          []string `json:"crime_types"`
-	LocationSpecificity string   `json:"location_specificity"`
-	HomepageEligible    bool     `json:"homepage_eligible"`
-	CategoryPages       []string `json:"category_pages"`
-	ReviewRequired      bool     `json:"review_required"`
-
-	// Location detection (content-based)
-	LocationCity       string  `json:"location_city,omitempty"`
-	LocationProvince   string  `json:"location_province,omitempty"`
-	LocationCountry    string  `json:"location_country"`
-	LocationConfidence float64 `json:"location_confidence"`
-
-	// Crime classification (nested ES object from classifier)
-	Crime    *CrimeData    `json:"crime,omitempty"`
-	Location *LocationData `json:"location,omitempty"`
-
-	// Mining classification (hybrid rule + ML)
-	Mining *MiningData `json:"mining,omitempty"`
-
-	// Anishinaabe classification (hybrid rule + ML)
-	Anishinaabe *AnishinaabeData `json:"anishinaabe,omitempty"`
-
-	// Entertainment classification (hybrid rule + ML)
-	Entertainment                 *EntertainmentData `json:"entertainment,omitempty"`
-	EntertainmentRelevance        string             `json:"entertainment_relevance"`
-	EntertainmentCategories       []string           `json:"entertainment_categories"`
-	EntertainmentHomepageEligible bool               `json:"entertainment_homepage_eligible"`
-
-	// Open Graph metadata
-	OGTitle       string `json:"og_title"`
-	OGDescription string `json:"og_description"`
-	OGImage       string `json:"og_image"`
-	OGURL         string `json:"og_url"`
-
-	// Additional fields
-	WordCount int `json:"word_count"`
-
-	// Sort values for search_after pagination
-	Sort []any `json:"-"`
-}
-
-// extractNestedFields copies values from the nested Crime and Location
-// structs into the flat Article fields used by GenerateCrimeChannels()
-// and GenerateLocationChannels(). Call after unmarshaling from Elasticsearch.
-func (a *Article) extractNestedFields() {
-	if a.Crime != nil {
-		a.CrimeRelevance = a.Crime.Relevance
-		a.CrimeSubLabel = a.Crime.SubLabel
-		a.CrimeTypes = a.Crime.CrimeTypes
-		a.LocationSpecificity = a.Crime.Specificity
-		a.HomepageEligible = a.Crime.Homepage
-		a.CategoryPages = a.Crime.Categories
-		a.ReviewRequired = a.Crime.ReviewRequired
-	}
-
-	if a.Location != nil {
-		a.LocationCity = a.Location.City
-		a.LocationProvince = a.Location.Province
-		a.LocationCountry = a.Location.Country
-		a.LocationConfidence = a.Location.Confidence
-		if a.Location.Specificity != "" {
-			a.LocationSpecificity = a.Location.Specificity
-		}
-	}
-
-	if a.Entertainment != nil {
-		a.EntertainmentRelevance = a.Entertainment.Relevance
-		a.EntertainmentCategories = a.Entertainment.Categories
-		a.EntertainmentHomepageEligible = a.Entertainment.HomepageEligible
-	}
 }
 
 // classifiedContentWildcard matches all classified content indexes in Elasticsearch.
@@ -552,6 +403,8 @@ func (s *Service) publishToChannel(ctx context.Context, article *Article, channe
 		"mining": article.Mining,
 		// Anishinaabe classification
 		"anishinaabe": article.Anishinaabe,
+		// Coforge classification
+		"coforge": article.Coforge,
 		// Entertainment classification
 		"entertainment_relevance":         article.EntertainmentRelevance,
 		"entertainment_categories":        article.EntertainmentCategories,
@@ -583,20 +436,13 @@ func (s *Service) publishToChannel(ctx context.Context, article *Article, channe
 	}
 
 	// Record in publish history
-	historyReq := &models.PublishHistoryCreateRequest{
-		ArticleID:    article.ID,
-		ArticleTitle: article.Title,
-		ArticleURL:   article.URL,
-		ChannelName:  channelName,
-		QualityScore: article.QualityScore,
-		Topics:       article.Topics,
-	}
-
-	if _, historyErr := s.repo.CreatePublishHistory(ctx, historyReq); historyErr != nil {
-		s.logger.Error("Error recording publish history",
+	if _, historyErr := s.repo.CreatePublishHistory(ctx, buildHistoryReq(channelID, article, channelName)); historyErr != nil {
+		s.logger.Error("Error recording publish history — skipping to prevent duplicate publish",
 			infralogger.String("article_id", article.ID),
+			infralogger.String("channel", channelName),
 			infralogger.Error(historyErr),
 		)
+		return false
 	}
 
 	s.logger.Info("Published article to channel",
@@ -606,6 +452,19 @@ func (s *Service) publishToChannel(ctx context.Context, article *Article, channe
 	)
 
 	return true
+}
+
+// buildHistoryReq constructs a PublishHistoryCreateRequest from the article and routing info.
+func buildHistoryReq(channelID *uuid.UUID, article *Article, channelName string) *models.PublishHistoryCreateRequest {
+	return &models.PublishHistoryCreateRequest{
+		ChannelID:    channelID,
+		ArticleID:    article.ID,
+		ArticleTitle: article.Title,
+		ArticleURL:   article.URL,
+		ChannelName:  channelName,
+		QualityScore: article.QualityScore,
+		Topics:       article.Topics,
+	}
 }
 
 // emitPublishedEvent emits a pipeline event after an article is published to channels.
@@ -632,17 +491,4 @@ func (s *Service) emitPublishedEvent(ctx context.Context, article *Article, chan
 			infralogger.String("stage", "published"),
 		)
 	}
-}
-
-// GenerateLayer1Channels returns topic-based channel names for an article.
-// Topics with dedicated routing layers (e.g. "mining" → Layer 5) are excluded.
-func GenerateLayer1Channels(article *Article) []string {
-	channels := make([]string, 0, len(article.Topics))
-	for _, topic := range article.Topics {
-		if layer1SkipTopics[topic] {
-			continue
-		}
-		channels = append(channels, fmt.Sprintf("articles:%s", topic))
-	}
-	return channels
 }

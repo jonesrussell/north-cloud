@@ -21,7 +21,8 @@ func TestGenerateLocationChannels_CrimeCanadianCity(t *testing.T) {
 		LocationSpecificity: "city",
 	}
 
-	channels := GenerateLocationChannels(article)
+	routes := NewLocationDomain().Routes(article)
+	channels := routeChannelNames(routes)
 
 	assert.Contains(t, channels, "crime:local:sudbury")
 	assert.Contains(t, channels, "crime:province:on")
@@ -39,7 +40,8 @@ func TestGenerateLocationChannels_CrimeInternational(t *testing.T) {
 		LocationSpecificity: "country",
 	}
 
-	channels := GenerateLocationChannels(article)
+	routes := NewLocationDomain().Routes(article)
+	channels := routeChannelNames(routes)
 
 	assert.Equal(t, []string{"crime:international"}, channels)
 }
@@ -55,7 +57,8 @@ func TestGenerateLocationChannels_CrimeProvinceOnly(t *testing.T) {
 		LocationSpecificity: "province",
 	}
 
-	channels := GenerateLocationChannels(article)
+	routes := NewLocationDomain().Routes(article)
+	channels := routeChannelNames(routes)
 
 	assert.Contains(t, channels, "crime:province:bc")
 	assert.Contains(t, channels, "crime:canada")
@@ -80,7 +83,8 @@ func TestGenerateLocationChannels_MiningSkipped(t *testing.T) {
 		LocationSpecificity: "city",
 	}
 
-	channels := GenerateLocationChannels(article)
+	routes := NewLocationDomain().Routes(article)
+	channels := routeChannelNames(routes)
 
 	assert.Empty(t, channels)
 }
@@ -97,7 +101,8 @@ func TestGenerateLocationChannels_EntertainmentCanadianCity(t *testing.T) {
 		LocationSpecificity: "city",
 	}
 
-	channels := GenerateLocationChannels(article)
+	routes := NewLocationDomain().Routes(article)
+	channels := routeChannelNames(routes)
 
 	assert.Contains(t, channels, "entertainment:local:toronto")
 	assert.Contains(t, channels, "entertainment:province:on")
@@ -118,7 +123,8 @@ func TestGenerateLocationChannels_MultiTopic(t *testing.T) {
 		LocationSpecificity: "city",
 	}
 
-	channels := GenerateLocationChannels(article)
+	routes := NewLocationDomain().Routes(article)
+	channels := routeChannelNames(routes)
 
 	// Crime channels
 	assert.Contains(t, channels, "crime:local:toronto")
@@ -143,7 +149,8 @@ func TestGenerateLocationChannels_NoActiveTopic(t *testing.T) {
 		LocationSpecificity: "city",
 	}
 
-	channels := GenerateLocationChannels(article)
+	routes := NewLocationDomain().Routes(article)
+	channels := routeChannelNames(routes)
 
 	assert.Empty(t, channels)
 }
@@ -158,7 +165,8 @@ func TestGenerateLocationChannels_UnknownLocation(t *testing.T) {
 		LocationSpecificity: "unknown",
 	}
 
-	channels := GenerateLocationChannels(article)
+	routes := NewLocationDomain().Routes(article)
+	channels := routeChannelNames(routes)
 
 	assert.Empty(t, channels)
 }
@@ -175,7 +183,8 @@ func TestGenerateLocationChannels_EmptyLocationCountry(t *testing.T) {
 		LocationSpecificity: "city",
 	}
 
-	channels := GenerateLocationChannels(article)
+	routes := NewLocationDomain().Routes(article)
+	channels := routeChannelNames(routes)
 
 	assert.Empty(t, channels)
 }
@@ -192,7 +201,8 @@ func TestGenerateLocationChannels_EntertainmentNotEntertainment(t *testing.T) {
 		LocationSpecificity: "city",
 	}
 
-	channels := GenerateLocationChannels(article)
+	routes := NewLocationDomain().Routes(article)
+	channels := routeChannelNames(routes)
 
 	assert.Empty(t, channels)
 }

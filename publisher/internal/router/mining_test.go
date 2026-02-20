@@ -22,7 +22,8 @@ func TestGenerateMiningChannels_CoreMining_AllLayers(t *testing.T) {
 		},
 	}
 
-	channels := GenerateMiningChannels(article)
+	routes := NewMiningDomain().Routes(article)
+	channels := routeChannelNames(routes)
 
 	expected := []string{
 		"articles:mining",
@@ -45,7 +46,8 @@ func TestGenerateMiningChannels_PeripheralMining_MinimalFields(t *testing.T) {
 		},
 	}
 
-	channels := GenerateMiningChannels(article)
+	routes := NewMiningDomain().Routes(article)
+	channels := routeChannelNames(routes)
 
 	expected := []string{"articles:mining", "mining:peripheral"}
 	assertChannelsEqual(t, expected, channels)
@@ -60,7 +62,8 @@ func TestGenerateMiningChannels_CoreRelevanceChannel(t *testing.T) {
 		Mining: &MiningData{Relevance: MiningRelevanceCoreMining},
 	}
 
-	channels := GenerateMiningChannels(article)
+	routes := NewMiningDomain().Routes(article)
+	channels := routeChannelNames(routes)
 	assertContains(t, channels, "mining:core")
 	assertNotContains(t, channels, "mining:peripheral")
 }
@@ -72,7 +75,8 @@ func TestGenerateMiningChannels_PeripheralRelevanceChannel(t *testing.T) {
 		Mining: &MiningData{Relevance: MiningRelevancePeripheral},
 	}
 
-	channels := GenerateMiningChannels(article)
+	routes := NewMiningDomain().Routes(article)
+	channels := routeChannelNames(routes)
 	assertContains(t, channels, "mining:peripheral")
 	assertNotContains(t, channels, "mining:core")
 }
@@ -89,7 +93,8 @@ func TestGenerateMiningChannels_MultipleCommodities(t *testing.T) {
 		},
 	}
 
-	channels := GenerateMiningChannels(article)
+	routes := NewMiningDomain().Routes(article)
+	channels := routeChannelNames(routes)
 	assertContains(t, channels, "mining:commodity:gold")
 	assertContains(t, channels, "mining:commodity:copper")
 	assertContains(t, channels, "mining:commodity:lithium")
@@ -105,7 +110,8 @@ func TestGenerateMiningChannels_CommodityUnderscoreToHyphen(t *testing.T) {
 		},
 	}
 
-	channels := GenerateMiningChannels(article)
+	routes := NewMiningDomain().Routes(article)
+	channels := routeChannelNames(routes)
 	assertContains(t, channels, "mining:commodity:iron-ore")
 	assertContains(t, channels, "mining:commodity:rare-earths")
 }
@@ -117,7 +123,8 @@ func TestGenerateMiningChannels_NoCommodities(t *testing.T) {
 		Mining: &MiningData{Relevance: MiningRelevanceCoreMining},
 	}
 
-	channels := GenerateMiningChannels(article)
+	routes := NewMiningDomain().Routes(article)
+	channels := routeChannelNames(routes)
 	for _, c := range channels {
 		if len(c) > len("mining:commodity:") && c[:len("mining:commodity:")] == "mining:commodity:" {
 			t.Errorf("unexpected commodity channel: %s", c)
@@ -137,7 +144,8 @@ func TestGenerateMiningChannels_StageExploration(t *testing.T) {
 		},
 	}
 
-	channels := GenerateMiningChannels(article)
+	routes := NewMiningDomain().Routes(article)
+	channels := routeChannelNames(routes)
 	assertContains(t, channels, "mining:stage:exploration")
 }
 
@@ -151,7 +159,8 @@ func TestGenerateMiningChannels_StageProduction(t *testing.T) {
 		},
 	}
 
-	channels := GenerateMiningChannels(article)
+	routes := NewMiningDomain().Routes(article)
+	channels := routeChannelNames(routes)
 	assertContains(t, channels, "mining:stage:production")
 }
 
@@ -165,7 +174,8 @@ func TestGenerateMiningChannels_StageDevelopment(t *testing.T) {
 		},
 	}
 
-	channels := GenerateMiningChannels(article)
+	routes := NewMiningDomain().Routes(article)
+	channels := routeChannelNames(routes)
 	assertContains(t, channels, "mining:stage:development")
 }
 
@@ -179,7 +189,8 @@ func TestGenerateMiningChannels_StageUnspecifiedSkipped(t *testing.T) {
 		},
 	}
 
-	channels := GenerateMiningChannels(article)
+	routes := NewMiningDomain().Routes(article)
+	channels := routeChannelNames(routes)
 	assertNotContains(t, channels, "mining:stage:unspecified")
 }
 
@@ -193,7 +204,8 @@ func TestGenerateMiningChannels_StageEmptySkipped(t *testing.T) {
 		},
 	}
 
-	channels := GenerateMiningChannels(article)
+	routes := NewMiningDomain().Routes(article)
+	channels := routeChannelNames(routes)
 	for _, c := range channels {
 		if len(c) > len("mining:stage:") && c[:len("mining:stage:")] == "mining:stage:" {
 			t.Errorf("unexpected stage channel: %s", c)
@@ -213,7 +225,8 @@ func TestGenerateMiningChannels_LocationLocalCanada(t *testing.T) {
 		},
 	}
 
-	channels := GenerateMiningChannels(article)
+	routes := NewMiningDomain().Routes(article)
+	channels := routeChannelNames(routes)
 	assertContains(t, channels, "mining:canada")
 	assertNotContains(t, channels, "mining:international")
 }
@@ -228,7 +241,8 @@ func TestGenerateMiningChannels_LocationNationalCanada(t *testing.T) {
 		},
 	}
 
-	channels := GenerateMiningChannels(article)
+	routes := NewMiningDomain().Routes(article)
+	channels := routeChannelNames(routes)
 	assertContains(t, channels, "mining:canada")
 }
 
@@ -242,7 +256,8 @@ func TestGenerateMiningChannels_LocationInternational(t *testing.T) {
 		},
 	}
 
-	channels := GenerateMiningChannels(article)
+	routes := NewMiningDomain().Routes(article)
+	channels := routeChannelNames(routes)
 	assertContains(t, channels, "mining:international")
 	assertNotContains(t, channels, "mining:canada")
 }
@@ -257,7 +272,8 @@ func TestGenerateMiningChannels_LocationNotSpecifiedSkipped(t *testing.T) {
 		},
 	}
 
-	channels := GenerateMiningChannels(article)
+	routes := NewMiningDomain().Routes(article)
+	channels := routeChannelNames(routes)
 	assertNotContains(t, channels, "mining:canada")
 	assertNotContains(t, channels, "mining:international")
 }
@@ -275,10 +291,10 @@ func TestGenerateMiningChannels_NotMining(t *testing.T) {
 		},
 	}
 
-	channels := GenerateMiningChannels(article)
+	routes := NewMiningDomain().Routes(article)
 
-	if len(channels) != 0 {
-		t.Errorf("expected no channels for not_mining, got %v", channels)
+	if len(routes) != 0 {
+		t.Errorf("expected no channels for not_mining, got %v", routeChannelNames(routes))
 	}
 }
 
@@ -290,7 +306,8 @@ func TestGenerateMiningChannels_NilMining(t *testing.T) {
 		Title: "Regular news article",
 	}
 
-	channels := GenerateMiningChannels(article)
+	routes := NewMiningDomain().Routes(article)
+	channels := routeChannelNames(routes)
 
 	if len(channels) != 0 {
 		t.Errorf("expected no channels for nil mining, got %v", channels)
@@ -306,7 +323,8 @@ func TestGenerateMiningChannels_EmptyRelevance(t *testing.T) {
 		Mining: &MiningData{},
 	}
 
-	channels := GenerateMiningChannels(article)
+	routes := NewMiningDomain().Routes(article)
+	channels := routeChannelNames(routes)
 
 	if len(channels) != 0 {
 		t.Errorf("expected no channels for empty relevance, got %v", channels)
@@ -327,7 +345,8 @@ func TestGenerateMiningChannels_PeripheralWithAllFields(t *testing.T) {
 		},
 	}
 
-	channels := GenerateMiningChannels(article)
+	routes := NewMiningDomain().Routes(article)
+	channels := routeChannelNames(routes)
 
 	expected := []string{
 		"articles:mining",

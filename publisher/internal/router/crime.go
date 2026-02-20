@@ -12,23 +12,33 @@ const (
 	SubLabelCrimeContext     = "crime_context"
 )
 
-// GenerateCrimeChannels returns the Redis channels for articles with crime classification.
-// Returns channels for:
+// CrimeDomain routes crime-classified articles to crime:* channels.
+// Routes channels:
 // - crime:homepage (if HomepageEligible is true for core_street_crime)
 // - crime:category:{category} for each category page (core_street_crime)
 // - crime:courts (peripheral_crime with criminal_justice sub-label)
 // - crime:context (peripheral_crime with crime_context sub-label)
-func GenerateCrimeChannels(article *Article) []string {
-	channels := make([]string, 0)
+type CrimeDomain struct{}
 
+// NewCrimeDomain creates a CrimeDomain.
+func NewCrimeDomain() *CrimeDomain { return &CrimeDomain{} }
+
+// Name returns the domain identifier used in routing decision logs.
+func (d *CrimeDomain) Name() string { return "crime" }
+
+// Routes returns crime channels for the article. Returns nil if the article
+// is not crime-classified.
+func (d *CrimeDomain) Routes(a *Article) []ChannelRoute {
 	// Skip non-crime articles
-	if article.CrimeRelevance == CrimeRelevanceNotCrime || article.CrimeRelevance == "" {
-		return channels
+	if a.CrimeRelevance == CrimeRelevanceNotCrime || a.CrimeRelevance == "" {
+		return nil
 	}
 
+	channels := make([]string, 0)
+
 	// Handle peripheral_crime with sub-labels
-	if article.CrimeRelevance == CrimeRelevancePeripheral {
-		switch article.CrimeSubLabel {
+	if a.CrimeRelevance == CrimeRelevancePeripheral {
+		switch a.CrimeSubLabel {
 		case SubLabelCriminalJustice:
 			channels = append(channels, "crime:courts")
 		case SubLabelCrimeContext:
@@ -37,19 +47,19 @@ func GenerateCrimeChannels(article *Article) []string {
 			// Default to context if no sub-label
 			channels = append(channels, "crime:context")
 		}
-		return channels
+		return channelRoutesFromSlice(channels)
 	}
 
-	// Handle core_street_crime (existing logic)
+	// Handle core_street_crime
 	// Homepage channel if eligible
-	if article.HomepageEligible {
+	if a.HomepageEligible {
 		channels = append(channels, "crime:homepage")
 	}
 
 	// Category channels
-	for _, category := range article.CategoryPages {
+	for _, category := range a.CategoryPages {
 		channels = append(channels, fmt.Sprintf("crime:category:%s", category))
 	}
 
-	return channels
+	return channelRoutesFromSlice(channels)
 }
