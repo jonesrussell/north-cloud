@@ -12,13 +12,10 @@ import (
 )
 
 func TestDBChannelDomain_Name(t *testing.T) {
-	t.Helper()
 	assert.Equal(t, "db_channel", router.NewDBChannelDomain(nil).Name())
 }
 
 func TestDBChannelDomain_Routes(t *testing.T) {
-	t.Helper()
-
 	crimeChannel := models.Channel{
 		ID:           uuid.New(),
 		RedisChannel: "articles:crime:all",
@@ -113,6 +110,8 @@ func TestDBChannelDomain_Routes(t *testing.T) {
 			for i, r := range routes {
 				assert.Equal(t, tc.expectedChannels[i], r.Channel)
 				if tc.expectChannelIDs {
+					// tc.channels[i] aligns with routes[i] because Routes preserves
+					// channel slice order and all channels in expectChannelIDs cases fully match.
 					require.NotNil(t, r.ChannelID, "ChannelID must be set by DBChannelDomain")
 					assert.Equal(t, tc.channels[i].ID, *r.ChannelID,
 						"ChannelID must match the source channel's ID")

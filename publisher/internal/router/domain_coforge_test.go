@@ -9,13 +9,10 @@ import (
 )
 
 func TestCoforgeDomain_Name(t *testing.T) {
-	t.Helper()
 	assert.Equal(t, "coforge", router.NewCoforgeDomain().Name())
 }
 
 func TestCoforgeDomain_Routes(t *testing.T) {
-	t.Helper()
-
 	tests := []struct {
 		name     string
 		article  *router.Article

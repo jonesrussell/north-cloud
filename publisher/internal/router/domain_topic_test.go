@@ -9,13 +9,10 @@ import (
 )
 
 func TestTopicDomain_Name(t *testing.T) {
-	t.Helper()
 	assert.Equal(t, "topic", router.NewTopicDomain().Name())
 }
 
 func TestTopicDomain_Routes(t *testing.T) {
-	t.Helper()
-
 	tests := []struct {
 		name     string
 		topics   []string
