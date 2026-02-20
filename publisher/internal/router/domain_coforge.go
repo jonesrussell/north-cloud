@@ -34,7 +34,8 @@ func (d *CoforgeDomain) Routes(a *Article) []ChannelRoute {
 		return nil
 	}
 
-	names := make([]string, 0)
+	const maxCoforgeFixedChannels = 2 // relevance anchor + audience
+	names := make([]string, 0, maxCoforgeFixedChannels+len(a.Coforge.Topics)+len(a.Coforge.Industries))
 
 	// Relevance channel — coforge:core or coforge:peripheral
 	switch rel {
@@ -48,9 +49,15 @@ func (d *CoforgeDomain) Routes(a *Article) []ChannelRoute {
 		return nil
 	}
 
-	// Audience channel
+	// Audience channel — slug-normalized (lowercase, spaces and underscores to hyphens)
 	if a.Coforge.Audience != "" {
-		names = append(names, "coforge:audience:"+a.Coforge.Audience)
+		slug := strings.ToLower(strings.ReplaceAll(
+			strings.ReplaceAll(a.Coforge.Audience, "_", "-"),
+			" ", "-",
+		))
+		if slug != "" {
+			names = append(names, "coforge:audience:"+slug)
+		}
 	}
 
 	// Topic channels — underscores converted to hyphens for slug format

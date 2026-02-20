@@ -138,6 +138,16 @@ func TestCoforgeDomain_Routes(t *testing.T) {
 			},
 			expected: nil,
 		},
+		{
+			name: "audience is slug-normalized (lowercase, spaces and underscores to hyphens)",
+			article: &router.Article{
+				Coforge: &router.CoforgeData{
+					Relevance: "core_coforge",
+					Audience:  "IT Decision Maker",
+				},
+			},
+			expected: []string{"coforge:core", "coforge:audience:it-decision-maker"},
+		},
 	}
 
 	for _, tc := range tests {
