@@ -18,15 +18,6 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-// layer1SkipTopics lists topics handled by dedicated routing layers.
-// These topics are excluded from Layer 1 auto-routing to prevent
-// bypassing their specialized classifiers (e.g. mining → Layer 5).
-var layer1SkipTopics = map[string]bool{
-	"mining":      true,
-	"anishinaabe": true,
-}
-
-// Config holds router service configuration
 type Config struct {
 	PollInterval      time.Duration
 	DiscoveryInterval time.Duration

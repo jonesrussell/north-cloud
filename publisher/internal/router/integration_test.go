@@ -77,7 +77,8 @@ func TestLayer1RoutingScenarios(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			channels := router.GenerateLayer1Channels(tc.article)
+			routes := router.NewTopicDomain().Routes(tc.article)
+			channels := channelNames(routes)
 
 			assert.Len(t, channels, len(tc.expectedChannels), "unexpected number of channels")
 			for i, expected := range tc.expectedChannels {
@@ -307,7 +308,8 @@ func TestCombinedLayerRoutingScenarios(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			// Layer 1 channels
-			layer1Channels := router.GenerateLayer1Channels(tc.article)
+			layer1Routes := router.NewTopicDomain().Routes(tc.article)
+			layer1Channels := channelNames(layer1Routes)
 			assert.ElementsMatch(t, tc.expectedLayer1, layer1Channels, "Layer 1 mismatch")
 
 			// Layer 2 channels
@@ -476,7 +478,8 @@ func TestCrimeSubCategoryRouting(t *testing.T) {
 				Topics: []string{category},
 			}
 
-			channels := router.GenerateLayer1Channels(article)
+			routes := router.NewTopicDomain().Routes(article)
+			channels := channelNames(routes)
 
 			assert.Len(t, channels, 1)
 			assert.Equal(t, "articles:"+category, channels[0])
@@ -490,7 +493,8 @@ func TestCrimeSubCategoryRouting(t *testing.T) {
 			Topics: crimeSubCategories,
 		}
 
-		channels := router.GenerateLayer1Channels(article)
+		routes := router.NewTopicDomain().Routes(article)
+		channels := channelNames(routes)
 
 		assert.Len(t, channels, len(crimeSubCategories))
 		for i, category := range crimeSubCategories {

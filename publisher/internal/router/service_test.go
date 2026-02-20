@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+
 func TestGenerateLayer1Channels(t *testing.T) {
 	t.Helper()
 
@@ -76,7 +77,8 @@ func TestGenerateLayer1Channels(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			channels := router.GenerateLayer1Channels(tc.article)
+			routes := router.NewTopicDomain().Routes(tc.article)
+			channels := channelNames(routes)
 
 			assert.Len(t, channels, len(tc.expected))
 			for i, expected := range tc.expected {
@@ -197,4 +199,13 @@ func TestRulesMatches(t *testing.T) {
 			assert.Equal(t, tc.expected, result)
 		})
 	}
+}
+
+// channelNames extracts Channel strings from a []router.ChannelRoute.
+func channelNames(routes []router.ChannelRoute) []string {
+	names := make([]string, len(routes))
+	for i, r := range routes {
+		names[i] = r.Channel
+	}
+	return names
 }
