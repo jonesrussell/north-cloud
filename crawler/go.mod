@@ -24,10 +24,6 @@ require (
 	gopkg.in/yaml.v3 v3.0.1
 )
 
-replace (
-	github.com/jonesrussell/north-cloud/index-manager => ../index-manager
-	github.com/north-cloud/infrastructure => ../infrastructure
-)
 
 require (
 	github.com/andybalholm/cascadia v1.3.3 // indirect
