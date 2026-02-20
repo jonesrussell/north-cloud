@@ -8,7 +8,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-
 func TestGenerateLayer1Channels(t *testing.T) {
 	t.Helper()
 
