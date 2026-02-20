@@ -19,8 +19,8 @@ const (
 // Mining stage to skip when generating stage channels.
 const miningStageUnspecified = "unspecified"
 
-// GenerateMiningChannels returns the Redis channels for articles with mining classification.
-// Channels generated:
+// MiningDomain routes mining-classified articles to mining:* channels.
+// Channels produced:
 //   - articles:mining          (catch-all: all core + peripheral)
 //   - mining:core              (core_mining only)
 //   - mining:peripheral        (peripheral_mining only)
@@ -28,12 +28,22 @@ const miningStageUnspecified = "unspecified"
 //   - mining:stage:{stage}     (per mining stage, skips "unspecified")
 //   - mining:canada            (local_canada or national_canada)
 //   - mining:international     (international)
-func GenerateMiningChannels(article *Article) []string {
-	if article.Mining == nil {
+type MiningDomain struct{}
+
+// NewMiningDomain creates a MiningDomain.
+func NewMiningDomain() *MiningDomain { return &MiningDomain{} }
+
+// Name returns the domain identifier.
+func (d *MiningDomain) Name() string { return "mining" }
+
+// Routes returns mining channels for the article. Returns nil if the article
+// is not mining-classified.
+func (d *MiningDomain) Routes(a *Article) []ChannelRoute {
+	if a.Mining == nil {
 		return nil
 	}
 
-	rel := article.Mining.Relevance
+	rel := a.Mining.Relevance
 	if rel == MiningRelevanceNotMining || rel == "" {
 		return nil
 	}
@@ -41,11 +51,11 @@ func GenerateMiningChannels(article *Article) []string {
 	channels := []string{"articles:mining"}
 
 	channels = appendRelevanceChannel(channels, rel)
-	channels = appendCommodityChannels(channels, article.Mining.Commodities)
-	channels = appendStageChannel(channels, article.Mining.MiningStage)
-	channels = appendMiningLocationChannel(channels, article.Mining.Location)
+	channels = appendCommodityChannels(channels, a.Mining.Commodities)
+	channels = appendStageChannel(channels, a.Mining.MiningStage)
+	channels = appendMiningLocationChannel(channels, a.Mining.Location)
 
-	return channels
+	return channelRoutesFromSlice(channels)
 }
 
 // appendRelevanceChannel adds mining:core or mining:peripheral based on relevance.
@@ -92,19 +102,4 @@ func appendMiningLocationChannel(channels []string, location string) []string {
 	default:
 		return channels
 	}
-}
-
-// MiningDomain routes mining-classified articles to mining:* channels.
-type MiningDomain struct{}
-
-// NewMiningDomain creates a MiningDomain.
-func NewMiningDomain() *MiningDomain { return &MiningDomain{} }
-
-// Name returns the domain identifier.
-func (d *MiningDomain) Name() string { return "mining" }
-
-// Routes returns mining channels for the article. Returns nil if the article
-// is not mining-classified. Delegates to GenerateMiningChannels.
-func (d *MiningDomain) Routes(a *Article) []ChannelRoute {
-	return channelRoutesFromSlice(GenerateMiningChannels(a))
 }

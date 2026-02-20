@@ -13,34 +13,46 @@ const (
 	LocationSpecificityCity = "city"
 )
 
-// GenerateLocationChannels creates geographic channels based on article location.
-// For each active domain classifier (crime, entertainment), generates:
+// LocationDomain routes articles to geographic channels for active domain classifiers.
+// Active classifiers are crime and entertainment; mining is excluded because
+// MiningDomain already generates mining:canada / mining:international.
+// For each active classifier, generates:
 //   - {prefix}:local:{city} for city-specific Canadian content
 //   - {prefix}:province:{code} for province-level Canadian content
 //   - {prefix}:canada for national Canadian content
 //   - {prefix}:international for non-Canadian content
-func GenerateLocationChannels(article *Article) []string {
+type LocationDomain struct{}
+
+// NewLocationDomain creates a LocationDomain.
+func NewLocationDomain() *LocationDomain { return &LocationDomain{} }
+
+// Name returns the domain identifier.
+func (d *LocationDomain) Name() string { return "location" }
+
+// Routes returns geographic channels for articles with an active domain classifier
+// and a known location.
+func (d *LocationDomain) Routes(a *Article) []ChannelRoute {
 	// Skip unknown or empty locations
-	if article.LocationCountry == LocationCountryUnknown || article.LocationCountry == "" {
+	if a.LocationCountry == LocationCountryUnknown || a.LocationCountry == "" {
 		return nil
 	}
 
-	prefixes := activeTopicPrefixes(article)
+	prefixes := activeTopicPrefixes(a)
 	if len(prefixes) == 0 {
 		return nil
 	}
 
 	// International (non-Canadian) — one channel per prefix
-	if article.LocationCountry != LocationCountryCanada {
+	if a.LocationCountry != LocationCountryCanada {
 		channels := make([]string, 0, len(prefixes))
 		for _, prefix := range prefixes {
 			channels = append(channels, prefix+":international")
 		}
-		return channels
+		return channelRoutesFromSlice(channels)
 	}
 
 	// Canadian locations — build from most specific to least specific per prefix
-	return generateCanadianChannels(article, prefixes)
+	return channelRoutesFromSlice(generateCanadianChannels(a, prefixes))
 }
 
 // generateCanadianChannels builds location channels for Canadian content.
@@ -63,8 +75,8 @@ func generateCanadianChannels(article *Article, prefixes []string) []string {
 }
 
 // activeTopicPrefixes returns the channel prefixes for domain classifiers
-// that are active on this article. Mining is excluded because Layer 5
-// (GenerateMiningChannels) already generates mining:canada/mining:international.
+// that are active on this article. Mining is excluded because MiningDomain
+// already generates mining:canada/mining:international.
 func activeTopicPrefixes(article *Article) []string {
 	const maxPrefixes = 2
 	prefixes := make([]string, 0, maxPrefixes)
@@ -77,21 +89,4 @@ func activeTopicPrefixes(article *Article) []string {
 	}
 
 	return prefixes
-}
-
-// LocationDomain routes articles to geographic channels for active domain classifiers.
-// Active classifiers are crime and entertainment; mining is excluded because
-// MiningDomain already generates mining:canada / mining:international.
-type LocationDomain struct{}
-
-// NewLocationDomain creates a LocationDomain.
-func NewLocationDomain() *LocationDomain { return &LocationDomain{} }
-
-// Name returns the domain identifier.
-func (d *LocationDomain) Name() string { return "location" }
-
-// Routes returns geographic channels for articles with an active domain classifier
-// and a known location. Delegates to GenerateLocationChannels.
-func (d *LocationDomain) Routes(a *Article) []ChannelRoute {
-	return channelRoutesFromSlice(GenerateLocationChannels(a))
 }

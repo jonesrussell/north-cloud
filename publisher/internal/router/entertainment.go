@@ -9,37 +9,9 @@ const (
 	EntertainmentRelevanceCore       = "core_entertainment"
 )
 
-// GenerateEntertainmentChannels returns the Redis channels for articles with entertainment classification.
+// EntertainmentDomain routes entertainment-classified articles to entertainment:* channels.
 // Core + homepage eligible → entertainment:homepage; each category → entertainment:category:{slug};
 // peripheral → entertainment:peripheral.
-func GenerateEntertainmentChannels(article *Article) []string {
-	if article.Entertainment == nil {
-		return nil
-	}
-
-	rel := article.Entertainment.Relevance
-	if rel == EntertainmentRelevanceNot || rel == "" {
-		return nil
-	}
-
-	var channels []string
-	if rel == EntertainmentRelevanceCore && article.Entertainment.HomepageEligible {
-		channels = append(channels, "entertainment:homepage")
-	}
-	for _, cat := range article.Entertainment.Categories {
-		slug := strings.ToLower(strings.ReplaceAll(cat, " ", "-"))
-		if slug != "" {
-			channels = append(channels, "entertainment:category:"+slug)
-		}
-	}
-	if rel == EntertainmentRelevancePeripheral {
-		channels = append(channels, "entertainment:peripheral")
-	}
-
-	return channels
-}
-
-// EntertainmentDomain routes entertainment-classified articles to entertainment:* channels.
 type EntertainmentDomain struct{}
 
 // NewEntertainmentDomain creates an EntertainmentDomain.
@@ -49,7 +21,30 @@ func NewEntertainmentDomain() *EntertainmentDomain { return &EntertainmentDomain
 func (d *EntertainmentDomain) Name() string { return "entertainment" }
 
 // Routes returns entertainment channels for the article. Returns nil if the article
-// is not entertainment-classified. Delegates to GenerateEntertainmentChannels.
+// is not entertainment-classified.
 func (d *EntertainmentDomain) Routes(a *Article) []ChannelRoute {
-	return channelRoutesFromSlice(GenerateEntertainmentChannels(a))
+	if a.Entertainment == nil {
+		return nil
+	}
+
+	rel := a.Entertainment.Relevance
+	if rel == EntertainmentRelevanceNot || rel == "" {
+		return nil
+	}
+
+	var channels []string
+	if rel == EntertainmentRelevanceCore && a.Entertainment.HomepageEligible {
+		channels = append(channels, "entertainment:homepage")
+	}
+	for _, cat := range a.Entertainment.Categories {
+		slug := strings.ToLower(strings.ReplaceAll(cat, " ", "-"))
+		if slug != "" {
+			channels = append(channels, "entertainment:category:"+slug)
+		}
+	}
+	if rel == EntertainmentRelevancePeripheral {
+		channels = append(channels, "entertainment:peripheral")
+	}
+
+	return channelRoutesFromSlice(channels)
 }

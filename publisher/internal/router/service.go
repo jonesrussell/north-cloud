@@ -174,50 +174,54 @@ func (s *Service) pollAndRoute(ctx context.Context) {
 	}
 }
 
-// publishToChannels publishes an article to each channel in the list and returns
-// the names of channels where publishing succeeded.
-func (s *Service) publishToChannels(ctx context.Context, article *Article, channels []string) []string {
-	var published []string
-	for _, channel := range channels {
-		if s.publishToChannel(ctx, article, channel, nil) {
-			published = append(published, channel)
+// publishRoutes publishes an article to each ChannelRoute and returns names of channels
+// where publishing succeeded.
+func (s *Service) publishRoutes(ctx context.Context, article *Article, routes []ChannelRoute) []string {
+	published := make([]string, 0, len(routes))
+	for _, route := range routes {
+		if s.publishToChannel(ctx, article, route.Channel, route.ChannelID) {
+			published = append(published, route.Channel)
 		}
 	}
 	return published
 }
 
-// routeArticle routes a single article to Layer 1–6 channels and returns the list of channel names where publish succeeded.
+// routeArticle routes a single article through all routing domains and returns the list
+// of channel names where publish succeeded.
 func (s *Service) routeArticle(ctx context.Context, article *Article, channels []models.Channel) []string {
-	var publishedChannels []string
+	const maxChannelsPerArticle = 30
 
-	// Layer 1: Automatic topic channels (skip topics with dedicated layers)
-	layer1 := GenerateLayer1Channels(article)
-	publishedChannels = append(publishedChannels, s.publishToChannels(ctx, article, layer1)...)
-
-	// Layer 2: Custom channels
-	for i := range channels {
-		ch := &channels[i]
-		if ch.Rules.Matches(article.QualityScore, article.ContentType, article.Topics) {
-			if s.publishToChannel(ctx, article, ch.RedisChannel, &ch.ID) {
-				publishedChannels = append(publishedChannels, ch.RedisChannel)
-			}
-		}
+	domains := []RoutingDomain{
+		NewTopicDomain(),
+		NewDBChannelDomain(channels),
+		NewCrimeDomain(),
+		NewLocationDomain(),
+		NewMiningDomain(),
+		NewEntertainmentDomain(),
+		NewAnishinaabeeDomain(),
+		NewCoforgeDomain(),
 	}
 
-	// Layer 3: Crime classification channels
-	publishedChannels = append(publishedChannels, s.publishToChannels(ctx, article, GenerateCrimeChannels(article))...)
+	var publishedChannels []string
+	for _, domain := range domains {
+		routes := domain.Routes(article)
+		if len(routes) == 0 {
+			continue
+		}
+		s.logger.Debug("routing decision",
+			infralogger.String("domain", domain.Name()),
+			infralogger.Int("routes", len(routes)),
+		)
+		publishedChannels = append(publishedChannels, s.publishRoutes(ctx, article, routes)...)
+	}
 
-	// Layer 4: Location-based channels
-	publishedChannels = append(publishedChannels, s.publishToChannels(ctx, article, GenerateLocationChannels(article))...)
-
-	// Layer 5: Mining classification channels
-	publishedChannels = append(publishedChannels, s.publishToChannels(ctx, article, GenerateMiningChannels(article))...)
-
-	// Layer 6: Entertainment classification channels
-	publishedChannels = append(publishedChannels, s.publishToChannels(ctx, article, GenerateEntertainmentChannels(article))...)
-
-	// Layer 7: Anishinaabe classification channels
-	publishedChannels = append(publishedChannels, s.publishToChannels(ctx, article, GenerateAnishinaabeChannels(article))...)
+	if len(publishedChannels) > maxChannelsPerArticle {
+		s.logger.Warn("article published to unusually many channels",
+			infralogger.String("article_id", article.ID),
+			infralogger.Int("channel_count", len(publishedChannels)),
+			infralogger.Int("max_channels", maxChannelsPerArticle),
+		)
+	}
 
 	// Emit pipeline event (one event per article, all channels in metadata)
 	s.emitPublishedEvent(ctx, article, publishedChannels)
@@ -398,6 +402,8 @@ func (s *Service) publishToChannel(ctx context.Context, article *Article, channe
 		"mining": article.Mining,
 		// Anishinaabe classification
 		"anishinaabe": article.Anishinaabe,
+		// Coforge classification
+		"coforge": article.Coforge,
 		// Entertainment classification
 		"entertainment_relevance":         article.EntertainmentRelevance,
 		"entertainment_categories":        article.EntertainmentCategories,
@@ -478,17 +484,4 @@ func (s *Service) emitPublishedEvent(ctx context.Context, article *Article, chan
 			infralogger.String("stage", "published"),
 		)
 	}
-}
-
-// GenerateLayer1Channels returns topic-based channel names for an article.
-// Topics with dedicated routing layers (e.g. "mining" → Layer 5) are excluded.
-func GenerateLayer1Channels(article *Article) []string {
-	channels := make([]string, 0, len(article.Topics))
-	for _, topic := range article.Topics {
-		if layer1SkipTopics[topic] {
-			continue
-		}
-		channels = append(channels, fmt.Sprintf("articles:%s", topic))
-	}
-	return channels
 }

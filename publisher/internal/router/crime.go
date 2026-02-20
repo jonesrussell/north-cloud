@@ -12,49 +12,12 @@ const (
 	SubLabelCrimeContext     = "crime_context"
 )
 
-// GenerateCrimeChannels returns the Redis channels for articles with crime classification.
-// Returns channels for:
+// CrimeDomain routes crime-classified articles to crime:* channels.
+// Routes channels:
 // - crime:homepage (if HomepageEligible is true for core_street_crime)
 // - crime:category:{category} for each category page (core_street_crime)
 // - crime:courts (peripheral_crime with criminal_justice sub-label)
 // - crime:context (peripheral_crime with crime_context sub-label)
-func GenerateCrimeChannels(article *Article) []string {
-	channels := make([]string, 0)
-
-	// Skip non-crime articles
-	if article.CrimeRelevance == CrimeRelevanceNotCrime || article.CrimeRelevance == "" {
-		return channels
-	}
-
-	// Handle peripheral_crime with sub-labels
-	if article.CrimeRelevance == CrimeRelevancePeripheral {
-		switch article.CrimeSubLabel {
-		case SubLabelCriminalJustice:
-			channels = append(channels, "crime:courts")
-		case SubLabelCrimeContext:
-			channels = append(channels, "crime:context")
-		default:
-			// Default to context if no sub-label
-			channels = append(channels, "crime:context")
-		}
-		return channels
-	}
-
-	// Handle core_street_crime (existing logic)
-	// Homepage channel if eligible
-	if article.HomepageEligible {
-		channels = append(channels, "crime:homepage")
-	}
-
-	// Category channels
-	for _, category := range article.CategoryPages {
-		channels = append(channels, fmt.Sprintf("crime:category:%s", category))
-	}
-
-	return channels
-}
-
-// CrimeDomain routes crime-classified articles to crime:* channels.
 type CrimeDomain struct{}
 
 // NewCrimeDomain creates a CrimeDomain.
@@ -64,7 +27,39 @@ func NewCrimeDomain() *CrimeDomain { return &CrimeDomain{} }
 func (d *CrimeDomain) Name() string { return "crime" }
 
 // Routes returns crime channels for the article. Returns nil if the article
-// is not crime-classified. Delegates to GenerateCrimeChannels.
+// is not crime-classified.
 func (d *CrimeDomain) Routes(a *Article) []ChannelRoute {
-	return channelRoutesFromSlice(GenerateCrimeChannels(a))
+	// Skip non-crime articles
+	if a.CrimeRelevance == CrimeRelevanceNotCrime || a.CrimeRelevance == "" {
+		return nil
+	}
+
+	channels := make([]string, 0)
+
+	// Handle peripheral_crime with sub-labels
+	if a.CrimeRelevance == CrimeRelevancePeripheral {
+		switch a.CrimeSubLabel {
+		case SubLabelCriminalJustice:
+			channels = append(channels, "crime:courts")
+		case SubLabelCrimeContext:
+			channels = append(channels, "crime:context")
+		default:
+			// Default to context if no sub-label
+			channels = append(channels, "crime:context")
+		}
+		return channelRoutesFromSlice(channels)
+	}
+
+	// Handle core_street_crime
+	// Homepage channel if eligible
+	if a.HomepageEligible {
+		channels = append(channels, "crime:homepage")
+	}
+
+	// Category channels
+	for _, category := range a.CategoryPages {
+		channels = append(channels, fmt.Sprintf("crime:category:%s", category))
+	}
+
+	return channelRoutesFromSlice(channels)
 }
