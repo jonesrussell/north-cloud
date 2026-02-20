@@ -128,9 +128,10 @@ func (s *Service) pollAndRoute(ctx context.Context) {
 	// Load custom channels (Layer 2)
 	channels, err := s.repo.ListEnabledChannelsWithRules(ctx)
 	if err != nil {
-		s.logger.Error("Failed to load channels", infralogger.Error(err))
-		// Continue with Layer 1 routing only
-		channels = []models.Channel{}
+		s.logger.Error("Failed to load channels — aborting poll cycle to prevent dedup pollution",
+			infralogger.Error(err),
+		)
+		return
 	}
 
 	// Loop until we've drained the queue
@@ -435,20 +436,13 @@ func (s *Service) publishToChannel(ctx context.Context, article *Article, channe
 	}
 
 	// Record in publish history
-	historyReq := &models.PublishHistoryCreateRequest{
-		ArticleID:    article.ID,
-		ArticleTitle: article.Title,
-		ArticleURL:   article.URL,
-		ChannelName:  channelName,
-		QualityScore: article.QualityScore,
-		Topics:       article.Topics,
-	}
-
-	if _, historyErr := s.repo.CreatePublishHistory(ctx, historyReq); historyErr != nil {
-		s.logger.Error("Error recording publish history",
+	if _, historyErr := s.repo.CreatePublishHistory(ctx, buildHistoryReq(channelID, article, channelName)); historyErr != nil {
+		s.logger.Error("Error recording publish history — skipping to prevent duplicate publish",
 			infralogger.String("article_id", article.ID),
+			infralogger.String("channel", channelName),
 			infralogger.Error(historyErr),
 		)
+		return false
 	}
 
 	s.logger.Info("Published article to channel",
@@ -458,6 +452,19 @@ func (s *Service) publishToChannel(ctx context.Context, article *Article, channe
 	)
 
 	return true
+}
+
+// buildHistoryReq constructs a PublishHistoryCreateRequest from the article and routing info.
+func buildHistoryReq(channelID *uuid.UUID, article *Article, channelName string) *models.PublishHistoryCreateRequest {
+	return &models.PublishHistoryCreateRequest{
+		ChannelID:    channelID,
+		ArticleID:    article.ID,
+		ArticleTitle: article.Title,
+		ArticleURL:   article.URL,
+		ChannelName:  channelName,
+		QualityScore: article.QualityScore,
+		Topics:       article.Topics,
+	}
 }
 
 // emitPublishedEvent emits a pipeline event after an article is published to channels.
