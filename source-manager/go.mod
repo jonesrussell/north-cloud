@@ -13,7 +13,6 @@ require (
 	github.com/xuri/excelize/v2 v2.10.0
 )
 
-replace github.com/north-cloud/infrastructure => ../infrastructure
 
 require (
 	github.com/andybalholm/cascadia v1.3.3 // indirect
