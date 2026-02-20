@@ -100,7 +100,8 @@ func TestArticle_FullUnmarshalPipeline(t *testing.T) {
 	assert.Contains(t, crimeChannels, "crime:category:crime")
 
 	// Location channels should now generate correctly
-	locationChannels := GenerateLocationChannels(&article)
+	locationRoutes := NewLocationDomain().Routes(&article)
+	locationChannels := routeChannelNames(locationRoutes)
 	assert.Contains(t, locationChannels, "crime:local:toronto")
 	assert.Contains(t, locationChannels, "crime:province:on")
 	assert.Contains(t, locationChannels, "crime:canada")

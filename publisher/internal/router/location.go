@@ -78,3 +78,20 @@ func activeTopicPrefixes(article *Article) []string {
 
 	return prefixes
 }
+
+// LocationDomain routes articles to geographic channels for active domain classifiers.
+// Active classifiers are crime and entertainment; mining is excluded because
+// MiningDomain already generates mining:canada / mining:international.
+type LocationDomain struct{}
+
+// NewLocationDomain creates a LocationDomain.
+func NewLocationDomain() *LocationDomain { return &LocationDomain{} }
+
+// Name returns the domain identifier.
+func (d *LocationDomain) Name() string { return "location" }
+
+// Routes returns geographic channels for articles with an active domain classifier
+// and a known location. Delegates to GenerateLocationChannels.
+func (d *LocationDomain) Routes(a *Article) []ChannelRoute {
+	return channelRoutesFromSlice(GenerateLocationChannels(a))
+}
