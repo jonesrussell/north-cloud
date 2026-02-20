@@ -9,7 +9,6 @@ require (
 	github.com/north-cloud/infrastructure v0.0.0
 )
 
-replace github.com/north-cloud/infrastructure => ../infrastructure
 
 require (
 	github.com/bytedance/gopkg v0.1.3 // indirect
