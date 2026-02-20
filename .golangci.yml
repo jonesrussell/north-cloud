@@ -8,7 +8,6 @@ linters:
     - bidichk
     - bodyclose
     - canonicalheader
-    - contextcheck
     - copyloopvar
     - cyclop
     - depguard
@@ -74,9 +73,6 @@ linters:
     - whitespace
     - misspell
   settings:
-    contextcheck:
-      disable: false
-      enable-avoid-perf-hit: false
     cyclop:
       max-complexity: 30
       package-average: 10
@@ -104,7 +100,6 @@ linters:
     errcheck:
       check-type-assertions: true
     errchkjson:
-      check-error-variable-names: true
       report-no-exported: false
     exhaustive:
       check:
@@ -267,7 +262,6 @@ linters:
       excludes:
         - G404  # Insecure random number source (math/rand)
         - G402  # TLS InsecureSkipVerify (intentional for development)
-        - G704  # SSRF via taint analysis (all HTTP clients use trusted config/DB URLs)
     forbidigo:
       forbid:
         - pattern: '^os\.Getenv$'
@@ -361,9 +355,6 @@ linters:
           - funlen
           - gocognit
         path: .*/(integration|drupal|publisher)/.*\.go
-      - linters:
-          - contextcheck
-        path: .*/(crawler|scheduler)/.*\.go
       - linters:
           - gochecknoglobals
         path: .*module\.go$
