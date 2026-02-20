@@ -128,6 +128,16 @@ func TestCoforgeDomain_Routes(t *testing.T) {
 			},
 			expected: []string{"coforge:core", "coforge:audience:developer"},
 		},
+		{
+			name: "unknown relevance returns nil (not partial routes)",
+			article: &router.Article{
+				Coforge: &router.CoforgeData{
+					Relevance: "core_coforge_v2", // unknown future value
+					Audience:  "developer",
+				},
+			},
+			expected: nil,
+		},
 	}
 
 	for _, tc := range tests {

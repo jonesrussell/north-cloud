@@ -42,6 +42,10 @@ func (d *CoforgeDomain) Routes(a *Article) []ChannelRoute {
 		names = append(names, "coforge:core")
 	case CoforgeRelevancePeripheral:
 		names = append(names, "coforge:peripheral")
+	default:
+		// Unknown relevance value — return nil to prevent partial routing.
+		// Known-irrelevant values are caught by the guard above.
+		return nil
 	}
 
 	// Audience channel
