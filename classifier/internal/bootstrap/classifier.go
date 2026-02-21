@@ -210,6 +210,12 @@ func createOptionalClassifier[C any, T any](
 	if mlURL != "" {
 		client = newClient(mlURL)
 	}
-	logger.Info(label+" enabled", infralogger.String("ml_service_url", mlURL))
+	if mlURL == "" {
+		logger.Warn(label+" enabled but ML service URL is empty; running in rules-only mode",
+			infralogger.String("ml_service_url", ""),
+		)
+	} else {
+		logger.Info(label+" enabled", infralogger.String("ml_service_url", mlURL))
+	}
 	return newClassifier(client, logger, true)
 }
