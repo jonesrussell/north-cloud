@@ -103,12 +103,8 @@ jobs:
 
       - name: Install golangci-lint
         if: needs.detect-changes.outputs.has_go == 'true' || needs.detect-changes.outputs.run_all == 'true'
-        uses: golangci/golangci-lint-action@v7
-        with:
-          version: v2.10.1
-          install-only: true
-        env:
-          GOWORK: off
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b /usr/local/bin v2.10.1
 
       - name: Install frontend dependencies
         if: needs.detect-changes.outputs.has_frontend == 'true' || needs.detect-changes.outputs.run_all == 'true'
@@ -170,7 +166,7 @@ jobs:
 
       - name: Install govulncheck
         run: |
-          go install golang.org/x/vuln/cmd/govulncheck@latest
+          go install golang.org/x/vuln/cmd/govulncheck@v1.1.4
           echo "$(go env GOPATH)/bin" >> $GITHUB_PATH
 
       - name: Run vulnerability check (all services)
