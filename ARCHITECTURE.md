@@ -107,7 +107,7 @@ Each sidecar implements a hybrid rules+ML decision matrix. Rules provide precisi
 
 ## Publisher Routing Layers
 
-The publisher's `routeArticle()` function runs every article through **8 routing domains** in sequence. Each domain is independent — an article can match zero or more domains, and is published to all matched channels (up to a per-article ceiling of 30). Deduplication is enforced per channel via the `publish_history` table.
+The publisher's `routeArticle()` function runs every article through **8 routing domains** in sequence. Each domain is independent — an article can match zero or more domains, and is published to all matched channels (publishing to more than 30 channels triggers a warning log but is not blocked). Deduplication is enforced per channel via the `publish_history` table.
 
 The domain execution order is defined in `publisher/internal/router/service.go`:
 
