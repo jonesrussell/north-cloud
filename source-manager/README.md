@@ -1,33 +1,69 @@
-# GoSources API
+# Source Manager
 
-A microservice for managing content sources configuration with REST API.
+A microservice for managing content source configurations. Sources define what the pipeline crawls: the URL, CSS selectors, rate limits, and scheduling hints used by the Crawler.
 
 ## Features
 
 - REST API for CRUD operations on sources
 - PostgreSQL database storage
+- Selector preview via test-crawl (no data saved)
+- Metadata auto-fetch from a URL
+- Bulk import from Excel spreadsheets
 - City mapping for gopost integration
 - Structured logging with zap
 - Health check endpoint
 - Graceful shutdown
 
+## Quick Start
+
+### Docker (Recommended)
+
+Source Manager starts automatically with the North Cloud stack:
+
+```bash
+task docker:dev:up
+```
+
+Available at `http://localhost:8050`.
+
+### Local Development
+
+```bash
+cp config.yml.example config.yml
+# Edit config.yml with your PostgreSQL and Elasticsearch settings
+go run cmd/migrate/main.go up   # Run migrations
+task dev                         # Start with hot reload (Air)
+# Or: go run main.go -config config.yml
+```
+
 ## API Endpoints
 
 ### Sources
 
-- `POST /api/v1/sources` - Create a new source
-- `GET /api/v1/sources` - List all sources
-- `GET /api/v1/sources/:id` - Get source by ID
-- `PUT /api/v1/sources/:id` - Update a source
-- `DELETE /api/v1/sources/:id` - Delete a source
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| `GET` | `/api/v1/sources` | Public | List all sources |
+| `GET` | `/api/v1/sources/:id` | JWT | Get source by ID |
+| `POST` | `/api/v1/sources` | JWT | Create a new source |
+| `PUT` | `/api/v1/sources/:id` | JWT | Update a source |
+| `DELETE` | `/api/v1/sources/:id` | JWT | Delete a source |
+| `POST` | `/api/v1/sources/test-crawl` | JWT | Preview selectors without saving |
+| `POST` | `/api/v1/sources/fetch-metadata` | JWT | Auto-fetch title/selectors from URL |
+| `POST` | `/api/v1/sources/import-excel` | JWT | Bulk import sources from Excel file |
 
-### Cities (for gopost integration)
+### Cities
 
-- `GET /api/v1/cities` - Get all enabled cities with their configurations
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| `GET` | `/api/v1/cities` | Public | List cities derived from enabled sources |
 
 ### Health
 
-- `GET /health` - Health check endpoint
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| `GET` | `/health` | Public | Health check endpoint |
+
+**Note**: `GET /api/v1/sources` and `GET /api/v1/cities` are intentionally public to allow internal service-to-service calls (crawler, publisher) without JWT tokens. All write operations require a JWT.
 
 ## Configuration
 
@@ -47,28 +83,33 @@ database:
 ```
 
 Environment variables override config file values:
-- `APP_DEBUG` - Debug mode
-- `SERVER_HOST` - Server host
-- `SERVER_PORT` - Server port
-- `DB_HOST` - Database host
-- `DB_PORT` - Database port
-- `DB_USER` - Database user
-- `DB_PASSWORD` - Database password
-- `DB_NAME` - Database name
-- `DB_SSLMODE` - SSL mode
+
+| Variable | Description |
+|----------|-------------|
+| `APP_DEBUG` | Debug mode |
+| `SERVER_HOST` | Server host |
+| `SERVER_PORT` | Server port |
+| `DB_HOST` | Database host |
+| `DB_PORT` | Database port |
+| `DB_USER` | Database user |
+| `DB_PASSWORD` | Database password |
+| `DB_NAME` | Database name |
+| `DB_SSLMODE` | SSL mode |
+| `AUTH_JWT_SECRET` | Shared JWT secret (must match all other services) |
+| `SOURCE_MANAGER_API_URL` | Base URL used for dynamic CORS origin derivation |
 
 ## Database Setup
 
-Run the migration to create the sources table:
+Run migrations via the Taskfile:
 
 ```bash
-psql -U postgres -d source_manager -f migrations/001_create_sources_table.sql
+task migrate:up
 ```
 
-Or using docker:
+Or directly with the migrate tool:
 
 ```bash
-docker exec -i postgres psql -U postgres -d source_manager < migrations/001_create_sources_table.sql
+cd source-manager && go run cmd/migrate/main.go up
 ```
 
 ## Source JSON Format
@@ -77,30 +118,50 @@ docker exec -i postgres psql -U postgres -d source_manager < migrations/001_crea
 {
   "name": "Mid-North Monitor",
   "url": "https://www.midnorthmonitor.com/category/news/local-news/",
-  "rate_limit": "1s",
+  "rate_limit": "10",
   "max_depth": 2,
-  "time": ["11:45", "23:45"],
   "selectors": {
     "article": {
-      "container": "article.article-card",
+      "container": "article",
       "title": "h1",
       "body": ".article-body",
-      "exclude": [".ad", "nav"]
+      "byline": ".byline",
+      "published_time": "time[datetime]"
     },
     "list": {
-      "container": ".feed-section",
-      "article_cards": "article.article-card"
+      "container": ".article-list, main",
+      "article_cards": ".article-card, article"
     },
     "page": {
-      "container": "main",
-      "title": "h1"
+      "container": "main, article",
+      "title": "h1",
+      "content": "main, article, .content"
     }
   },
   "enabled": true
 }
 ```
 
-**Note**: Elasticsearch index names (e.g., `{source_name}_raw_content`, `{source_name}_classified_content`) are derived dynamically from source names, not stored in the database.
+Elasticsearch index names are derived dynamically from the source `name` at crawl time and are not stored in the database. See the Integration section below for the derivation rules.
+
+## Architecture
+
+```
+source-manager/
+├── main.go
+└── internal/
+    ├── api/           # HTTP router (Gin) — route definitions and CORS config
+    ├── bootstrap/     # Phased startup: profiling → config/logger → database → event publisher → server
+    ├── config/        # Config struct with env-tag loading
+    ├── database/      # PostgreSQL connection helpers
+    ├── events/        # Redis event publisher (source created/updated/deleted)
+    ├── handlers/      # HTTP handlers (SourceHandler)
+    ├── importer/      # Excel bulk-import logic
+    ├── metadata/      # Auto-fetch page title and selector hints from a URL
+    ├── models/        # Source, SelectorConfig, City structs
+    ├── repository/    # PostgreSQL source repository (CRUD)
+    └── testhelpers/   # Shared test utilities
+```
 
 ## Running
 
@@ -114,3 +175,18 @@ go run main.go -config config.yml
 go build -o bin/source-manager main.go
 ```
 
+## Integration
+
+Source Manager is the entry point for configuring what the pipeline crawls.
+
+- **Crawler** reads `source_id` from each job to fetch source configuration (selectors, rate limits)
+- **Index naming**: The source `name` is sanitized (lowercased, spaces and special characters become underscores) to derive the Elasticsearch index name: `{sanitized_name}_raw_content` and `{sanitized_name}_classified_content`
+- **Publisher** uses the index pattern to discover classified content indexes to route from
+
+Examples of name sanitization:
+
+| Source Name | Elasticsearch Prefix |
+|-------------|----------------------|
+| `Example News` | `example_news` |
+| `CBC.ca` | `cbc_ca` |
+| `My-Source` | `my_source` |
