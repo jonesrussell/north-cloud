@@ -66,13 +66,14 @@ cd SERVICE && go build -o bin/SERVICE .      # Build
 1. Run tests: `go test ./...`
 2. Run linter: `task lint` (or `task lint:force` before pushing to bypass cache and match CI)
 3. Check no magic numbers, `interface{}`, or unchecked JSON errors
+4. Check multi-service dependencies if applicable
 
 **Go Workspace Isolation**: Each service Taskfile sets `GOWORK=off` so all Go commands resolve
 dependencies from the module's own `go.mod`, not the workspace. The `go.work` file is only for
-IDE navigation.
+IDE navigation. Note: A workspace refactor is in progress — see `docs/plans/2026-02-20-idiomatic-go-workspaces.md` for details.
 
 **Vendoring**: Each Go module has its own `vendor/` (gitignored — CI uses the module proxy).
-After changing deps, run `task vendor` from the repo root. Do not run `go work vendor`.
+After changing deps, run `task vendor` from the repo root (local only) to refresh all module vendors. Do not run `go work vendor`.
 
 ---
 
@@ -155,7 +156,7 @@ ML sidecars (crime-ml, mining-ml, coforge-ml, entertainment-ml, anishinaabe-ml) 
 
 ### Go Services
 
-- **Go Version**: 1.24+ (crawler, source-manager), 1.25+ (classifier, publisher, others)
+- **Go Version**: 1.26+ (all services)
 - **Standards**: `gofmt`, `goimports`, standard Go formatting
 - **Error Handling**: Always wrap errors: `fmt.Errorf("context: %w", err)`
 - **Logging**: All services use `infrastructure/logger` package directly
@@ -202,7 +203,7 @@ See `ARCHITECTURE.md` for the full bootstrap pattern reference.
 
 **Before Committing**:
 1. Run tests: `go test ./...`
-2. Run linter: `golangci-lint run`
+2. Run linter: `task lint:force` (bypasses cache so local results match CI exactly)
 3. Verify no linting violations (see Critical Rules above)
 4. Check multi-service dependencies if applicable
 
