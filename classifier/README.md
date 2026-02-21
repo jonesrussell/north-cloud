@@ -1,28 +1,35 @@
 # Classifier Service
 
-The classifier microservice for North Cloud that separates content classification from crawling, enabling ML-based classification in the future.
+The classifier microservice for North Cloud processes raw crawled content and produces
+enriched, classified articles ready for downstream routing by the publisher.
 
 ## Overview
 
-The classifier processes raw content from Elasticsearch and applies multi-strategy classification:
+The classifier reads raw content from Elasticsearch and applies a multi-step pipeline:
 
-- **Content Type Detection** - Determines if content is article, page, video, image, or job
-- **Quality Scoring** - Rates content 0-100 based on completeness, readability, metadata richness
-- **Topic Classification** - Categorizes content (crime, sports, politics, etc.)
+- **Content Type Detection** - Determines whether content is an article, page, video, image, or job
+- **Quality Scoring** - Rates content 0-100 based on word count, metadata completeness, content richness, and readability
+- **Topic Classification** - Categorises content using keyword rules stored in PostgreSQL
 - **Source Reputation** - Tracks and scores source trustworthiness (0-100)
+- **Hybrid ML Classifiers** - Five optional domain classifiers that combine keyword rules with ML sidecar calls: crime, mining, entertainment, anishinaabe, and coforge
 
 ## Architecture
 
 ```
-Crawler (Raw Ingestion) → Elasticsearch (Raw Content)
+Crawler → Elasticsearch: {source}_raw_content (classification_status=pending)
                               ↓
                       Classifier Service
-                      - Content Type
-                      - Quality Scoring
-                      - Topic Classification
-                      - Source Reputation
+              ┌─────────────────────────────────┐
+              │ 1. Content Type Detection        │
+              │ 2. Quality Scoring (0-100)       │
+              │ 3. Topic Classification (rules)  │
+              │ 4. Source Reputation             │
+              │ 5-9. Hybrid ML Classifiers       │
+              │    (crime, mining, entertainment,│
+              │     anishinaabe, coforge)        │
+              └─────────────────────────────────┘
                               ↓
-                   Elasticsearch (Classified Content)
+              Elasticsearch: {source}_classified_content
                               ↓
                       Publisher (Consumes)
 ```
@@ -30,28 +37,25 @@ Crawler (Raw Ingestion) → Elasticsearch (Raw Content)
 ## Technology Stack
 
 - **Go**: 1.25+ (container-aware GOMAXPROCS)
-- **Database**: PostgreSQL 16 (rules, source reputation, history)
-- **Cache/Queue**: Redis (caching, job queue)
-- **Storage**: Elasticsearch 9.x (raw & classified content)
+- **Database**: PostgreSQL (rules, source reputation, classification history)
+- **Cache**: Redis (classification result caching)
+- **Storage**: Elasticsearch (raw and classified content)
 - **HTTP Framework**: Gin
-- **Logging**: Zap (structured logging, snake_case fields)
+- **Logging**: Zap (structured JSON logging, snake_case fields)
 
 ## Quick Start
 
 ### Development
 
 ```bash
-# Copy environment variables
-cp .env.example .env
-
-# Start infrastructure services (PostgreSQL, Elasticsearch, Redis)
-docker-compose -f docker-compose.base.yml up -d
+# Start infrastructure services
+docker compose -f docker-compose.base.yml -f docker-compose.dev.yml up -d postgres-classifier elasticsearch redis
 
 # Start classifier service
-docker-compose -f docker-compose.base.yml -f docker-compose.dev.yml up -d classifier
+docker compose -f docker-compose.base.yml -f docker-compose.dev.yml up -d classifier
 
 # View logs
-docker logs -f north-cloud-classifier-dev
+docker compose -f docker-compose.base.yml -f docker-compose.dev.yml logs -f classifier
 ```
 
 ### Local Development (without Docker)
@@ -60,12 +64,8 @@ docker logs -f north-cloud-classifier-dev
 # Install dependencies
 go mod download
 
-# Run migrations (requires PostgreSQL running)
-psql -h localhost -p 5435 -U postgres -d classifier -f migrations/001_create_rules.sql
-psql -h localhost -p 5435 -U postgres -d classifier -f migrations/002_create_source_reputation.sql
-psql -h localhost -p 5435 -U postgres -d classifier -f migrations/003_create_classification_history.sql
-psql -h localhost -p 5435 -U postgres -d classifier -f migrations/004_create_ml_models.sql
-psql -h localhost -p 5435 -U postgres -d classifier -f migrations/005_add_comprehensive_categories.sql
+# Run migrations
+go run cmd/migrate/main.go up
 
 # Run the service
 go run main.go
@@ -76,265 +76,266 @@ go run main.go
 Configuration is managed via `config.yml`. See `config.yml.example` for all available options.
 
 Key configuration sections:
-- **Service**: Port, concurrency, batch size, thresholds
+
+- **Service**: Port, concurrency, batch size, poll interval, quality thresholds
 - **Database**: PostgreSQL connection settings
-- **Elasticsearch**: ES connection and index naming
-- **Redis**: Redis connection and pub/sub channels
-- **Classification**: Enable/disable classifiers, confidence thresholds
-- **ML**: ML model integration settings (future)
+- **Elasticsearch**: ES connection and index suffix naming
+- **Redis**: Redis connection and cache TTL settings
+- **Classification**: Per-classifier enable/disable flags and ML sidecar URLs
 
 ## Environment Variables
 
-See `.env.example` in the root directory for all classifier-related variables:
-
 ```bash
+# Service
 CLASSIFIER_PORT=8071
-CLASSIFIER_ENABLED=true
 CLASSIFIER_CONCURRENCY=10
-CLASSIFIER_BATCH_SIZE=100
-CLASSIFIER_MIN_QUALITY_SCORE=50
 
-POSTGRES_CLASSIFIER_USER=postgres
-POSTGRES_CLASSIFIER_PASSWORD=postgres
-POSTGRES_CLASSIFIER_DB=classifier
-POSTGRES_CLASSIFIER_PORT=5435
+# Database
+POSTGRES_HOST=postgres-classifier
+POSTGRES_PORT=5432
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=postgres
+POSTGRES_DB=classifier
+
+# Elasticsearch
+ELASTICSEARCH_URL=http://elasticsearch:9200
+
+# Redis
+REDIS_URL=redis:6379
+
+# Auth
+AUTH_JWT_SECRET=<shared secret>
+
+# Hybrid ML classifiers (each disabled by default)
+CRIME_ENABLED=true
+CRIME_ML_SERVICE_URL=http://crime-ml:8076
+
+MINING_ENABLED=true
+MINING_ML_SERVICE_URL=http://mining-ml:8077
+
+COFORGE_ENABLED=true
+COFORGE_ML_SERVICE_URL=http://coforge-ml:8078
+
+ENTERTAINMENT_ENABLED=true
+ENTERTAINMENT_ML_SERVICE_URL=http://entertainment-ml:8079
+
+ANISHINAABE_ENABLED=true
+ANISHINAABE_ML_SERVICE_URL=http://anishinaabe-ml:8080
 ```
 
 ## Database Schema
 
 ### Tables
 
-1. **classification_rules** - Rules for content type and topic classification
-2. **source_reputation** - Source trustworthiness and quality metrics
-3. **classification_history** - Audit trail for ML training data
-4. **ml_models** - ML model metadata and performance metrics
+1. **classification_rules** - Keyword rules for topic classification (topic, keywords JSON, priority, enabled)
+2. **source_reputation** - Source trustworthiness metrics (reputation_score, total_articles, spam_count)
+3. **classification_history** - Audit trail of classifications (content_id, quality_score, topics, classified_at)
+4. **ml_models** - ML model metadata and version tracking
+5. **dead_letter_queue** - Failed classifications for retry and analysis
 
 ### Migrations
 
-Migrations are located in `migrations/` and should be run in order:
-
-```bash
+```
 001_create_rules.sql
 002_create_source_reputation.sql
 003_create_classification_history.sql
 004_create_ml_models.sql
 005_add_comprehensive_categories.sql
-006_remove_is_crime_related.sql              # Deprecated boolean field
-007_add_crime_subcategories.sql              # Crime sub-categories (violent, property, drug, organized, justice)
+006_remove_is_crime_related.sql          # Deprecated boolean field
+007_add_crime_subcategories.sql          # 5 crime sub-category rules
+008_increase_content_url_size.sql
+009_create_dead_letter_queue.sql
+010_add_mining_topic.sql
+011_tighten_mining_topic_rule.sql        # Removed ambiguous terms; ML handles nuance
 ```
 
-**Note**: Migration 007 disables the generic "crime" rule and adds 5 specific crime sub-category rules. See migration file for complete keyword lists.
-
-## Classification Rules & Priority System
+## Classification Rules and Priority System
 
 ### Understanding Priority
 
-**Priority** determines the evaluation order of classification rules when processing content:
+Priority determines the evaluation order when processing content:
 
-- **Higher priority rules are evaluated first** (stored as integers 0-100, displayed as "high"/"normal"/"low" in the UI)
-- This ensures more specific or critical rules (like "crime") are checked before general ones
-- Helps manage conflicts when content matches multiple rules
+- **Higher priority rules are evaluated first** (integers 0-100)
+- Specific, high-signal rules (crime sub-categories) run before general ones
 - Current priority mapping:
-  - **High (10)**: Critical/time-sensitive categories (crime, breaking_news, health_emergency)
-  - **Normal (5)**: Common news categories (business, technology, health, entertainment, etc.)
-  - **Low (1-3)**: Niche categories (pets, gaming, shopping, etc.)
+  - **High (10)**: Crime sub-categories, breaking news, health emergencies
+  - **Normal (5)**: Business, technology, health, entertainment, etc.
+  - **Low (1-3)**: Pets, gaming, shopping, home/garden, recreation
 
-The system orders rules by `priority DESC` when loading them from the database, so high-priority rules get the first chance to match content. This is important for accurate classification, especially when content could match multiple categories.
+### Topic Taxonomy
 
-### Comprehensive Category Taxonomy
-
-The classifier uses a comprehensive Microsoft/Bing-style taxonomy with 25+ topic categories:
-
-**High Priority Categories**:
-- ~~`crime`~~ - **DEPRECATED** (replaced by specific crime sub-categories below)
-- `breaking_news` - Urgent, developing stories, news alerts
+**High Priority**:
+- `breaking_news` - Urgent, developing stories
 - `health_emergency` - Pandemics, outbreaks, public health crises
 
 **Crime Sub-Categories** (Migration 007):
-- `violent_crime` (Priority 10) - Gang violence, murder, assault, shootings, domestic violence, kidnapping
-- `property_crime` (Priority 9) - Theft, burglary, auto theft, vandalism, arson, shoplifting
-- `drug_crime` (Priority 9) - Drug trafficking, possession, narcotics, drug busts, overdoses
-- `organized_crime` (Priority 9) - Cartels, racketeering, mafia, money laundering, human trafficking
-- `criminal_justice` (Priority 5) - Court cases, trials, convictions, arrests, legal proceedings
+- `violent_crime` (Priority 10) - Murder, assault, shooting, homicide
+- `property_crime` (Priority 9) - Theft, burglary, vandalism, arson
+- `drug_crime` (Priority 9) - Drug trafficking, narcotics, overdoses
+- `organized_crime` (Priority 9) - Cartels, racketeering, money laundering
+- `criminal_justice` (Priority 5) - Court cases, trials, sentencing
 
-**Normal Priority Categories**:
-- `business` - Companies, markets, economy, trade, finance
-- `technology` - Software, hardware, AI, innovation, digital
-- `health` - Medical, healthcare, wellness, fitness
-- `entertainment` - Movies, TV, music, celebrities, arts
-- `science` - Research, discoveries, experiments, studies
-- `education` - Schools, universities, learning, academic
-- `weather` - Forecasts, storms, climate, meteorology
-- `travel` - Tourism, destinations, hotels, flights
-- `food` - Restaurants, recipes, cooking, cuisine
-- `lifestyle` - Fashion, culture, trends, personal
-- `automotive` - Cars, vehicles, driving, traffic
-- `real_estate` - Property, housing, mortgages, real estate
-- `finance` - Banking, investments, credit, loans
-- `environment` - Climate, pollution, sustainability, nature
-- `arts` - Art, galleries, museums, creative works
+**Normal Priority**:
+- `business`, `technology`, `health`, `entertainment`, `science`, `education`
+- `weather`, `travel`, `food`, `lifestyle`, `automotive`, `real_estate`
+- `finance`, `environment`, `arts`
 
-**Low Priority Categories**:
-- `sports` - Games, teams, tournaments, athletics
-- `politics` - Elections, government, policy, legislation
-- `local_news` - Community, neighborhood, municipal news
-- `pets` - Animals, veterinary, pet care
-- `gaming` - Video games, esports, consoles
-- `shopping` - Retail, stores, purchases, deals
-- `home_garden` - Home improvement, gardening, landscaping
-- `recreation` - Hobbies, leisure activities, outdoor fun
+**Low Priority**:
+- `sports`, `politics`, `local_news`, `pets`, `gaming`, `shopping`
+- `home_garden`, `recreation`
+
+**Domain-Specific** (managed by hybrid ML classifiers):
+- `mining` - Mining industry content (rules + mining-ml sidecar)
 
 ### Managing Rules
 
 Classification rules can be managed via:
-- **Dashboard UI**: `http://localhost:3002/classifier/rules` - Visual interface for creating, editing, and deleting rules
-- **REST API**: See API Endpoints section below
+
+- **Dashboard UI**: `http://localhost:3002/classifier/rules`
+- **REST API**: See API Endpoints section
 - **Database**: Direct SQL access to `classification_rules` table
 
-Each rule includes:
-- **Topic name**: The category identifier (e.g., "crime", "technology")
-- **Keywords**: Array of keywords used for matching (content is matched against title + text)
-- **Min confidence**: Minimum score (0.0-1.0) required for classification
-- **Priority**: Evaluation order (higher = evaluated first)
-- **Enabled**: Whether the rule is active
+Each rule includes: topic name, keywords array, min confidence (0.0-1.0), priority, and enabled flag.
 
-Rules are automatically loaded from the database when the classifier service starts.
+Rules are loaded from the database at startup and cached in memory. Changes require a service restart or an API call to reload.
+
+## Hybrid ML Classifiers
+
+The classifier runs five optional domain-specific classifiers that combine keyword rules with ML sidecar HTTP calls. Each is independently enabled by an environment flag.
+
+| Classifier | Env Flag | ML Sidecar | Default URL |
+|------------|----------|------------|-------------|
+| Crime | `CRIME_ENABLED` | crime-ml | `http://crime-ml:8076` |
+| Mining | `MINING_ENABLED` | mining-ml | `http://mining-ml:8077` |
+| Coforge | `COFORGE_ENABLED` | coforge-ml | `http://coforge-ml:8078` |
+| Entertainment | `ENTERTAINMENT_ENABLED` | entertainment-ml | `http://entertainment-ml:8079` |
+| Anishinaabe | `ANISHINAABE_ENABLED` | anishinaabe-ml | `http://anishinaabe-ml:8080` |
+
+Each hybrid classifier:
+1. Evaluates keyword rules (precision/blocking signal)
+2. Calls the ML sidecar via HTTP for confidence score (recall signal)
+3. Merges results via a decision matrix (rules + ML → final relevance class)
+4. Returns `nil` when disabled — the field is absent from classified content
+
+Failure modes are non-blocking: if the ML sidecar is unreachable, the classifier falls back to rules-only mode and logs a warning. Classification continues for all other steps.
+
+## Content Type Detection
+
+The classifier assigns a `content_type` and optional `content_subtype` to each document.
+
+**Content types**: `article`, `page`, `video`, `image`, `job`
+
+**Article subtypes**: `press_release`, `blog_post`, `event`, `advisory`, `report`, `blotter`, `company_announcement`
+
+Hybrid ML classifiers only run for articles. Subtype gates further narrow which classifiers run:
+- `event` — location classifier only
+- `blotter` — crime classifier only
+- `report` — no optional classifiers
+- all others (including standard articles) — full set of enabled optional classifiers
 
 ## API Endpoints
 
-### Classification
+All `/api/v1/*` routes require a valid JWT (`Authorization: Bearer <token>`).
 
-- `POST /api/v1/classify` - Classify single content item
+**Health** (public):
+- `GET /health` - Liveness check
+- `GET /ready` - Readiness check
+- `GET /health/memory` - Memory stats
+- `GET /metrics` - Prometheus metrics (when telemetry enabled)
+
+**Classification**:
+- `POST /api/v1/classify` - Classify a single content item
 - `POST /api/v1/classify/batch` - Classify multiple items
-- `GET /api/v1/classify/:content_id` - Get classification result
+- `POST /api/v1/classify/reclassify/:content_id` - Re-classify an existing document
+- `GET /api/v1/classify/:content_id` - Get classification result for a document
 
-### Rules Management
-
+**Rules Management**:
 - `GET /api/v1/rules` - List classification rules
 - `POST /api/v1/rules` - Create rule
 - `PUT /api/v1/rules/:id` - Update rule
 - `DELETE /api/v1/rules/:id` - Delete rule
 
-### Source Reputation
-
+**Source Reputation**:
 - `GET /api/v1/sources` - List sources
 - `GET /api/v1/sources/:name` - Get source details
 - `PUT /api/v1/sources/:name` - Update source
 - `GET /api/v1/sources/:name/stats` - Source statistics
 
-### Statistics
-
+**Statistics**:
 - `GET /api/v1/stats` - Overall classification stats
 - `GET /api/v1/stats/topics` - Topic distribution
 - `GET /api/v1/stats/sources` - Source reputation distribution
 
-## Development Status
-
-**Week 1 (Complete)**:
-- ✅ Directory structure
-- ✅ Go module initialization
-- ✅ Domain models (RawContent, ClassifiedContent, rules)
-- ✅ Elasticsearch mappings (raw_content, classified_content)
-- ✅ Database migrations
-- ✅ Docker integration
-- ✅ Environment configuration
-
-**Week 2 (Planned)**:
-- ContentTypeClassifier implementation
-- QualityScorer implementation
-- TopicClassifier implementation
-- SourceReputationScorer implementation
-- Unit tests
-
-**Week 3 (Planned)**:
-- Processing pipeline with worker pool
-- Polling mechanism
-- Rate limiting
-- Integration tests
-
-**Week 4 (Planned)**:
-- REST API implementation
-- Crawler dual indexing update
-- Service deployment
-- End-to-end validation
+**Metrics**:
+- `GET /api/v1/metrics/ml-health` - ML sidecar health (reachability, latency, pipeline mode for all 5 sidecars)
 
 ## Project Structure
 
 ```
 classifier/
 ├── cmd/
-│   ├── httpd/          # HTTP API server
-│   └── worker/         # Background worker
+│   └── migrate/        # Database migration runner
 ├── internal/
-│   ├── api/            # REST API handlers
+│   ├── api/            # HTTP handlers, routes, server setup
+│   ├── anishinaabemlclient/  # Anishinaabe ML sidecar HTTP client
+│   ├── bootstrap/      # Service initialisation (config, DB, storage, classifier)
 │   ├── classifier/     # Core classification logic
-│   ├── config/         # Configuration
-│   ├── database/       # PostgreSQL operations
-│   ├── domain/         # Domain models
-│   ├── elasticsearch/  # ES client & mappings
-│   ├── logger/         # Structured logging
-│   ├── metrics/        # Metrics tracking
-│   ├── ml/             # ML integration (future)
-│   ├── processor/      # Processing pipeline
-│   └── redis/          # Redis caching/queuing
-├── migrations/         # Database migrations
+│   │   ├── classifier.go         # Orchestrator (Classify, BuildClassifiedContent)
+│   │   ├── content_type.go       # Article vs page detection
+│   │   ├── quality.go            # Quality scoring (0-100)
+│   │   ├── topic.go              # Rule-based topic detection
+│   │   ├── source_reputation.go  # Source trust scoring
+│   │   ├── crime.go              # Hybrid crime classifier
+│   │   ├── mining.go             # Hybrid mining classifier
+│   │   ├── coforge.go            # Hybrid coforge classifier
+│   │   ├── entertainment.go      # Hybrid entertainment classifier
+│   │   ├── anishinaabe.go        # Hybrid anishinaabe classifier
+│   │   └── location.go           # Location classifier
+│   ├── coforgemlclient/    # Coforge ML sidecar HTTP client
+│   ├── config/             # Configuration struct and loader
+│   ├── data/               # Static data assets
+│   ├── database/           # PostgreSQL repositories
+│   ├── domain/             # RawContent, ClassifiedContent, Rule models
+│   ├── elasticsearch/      # ES client and index mappings
+│   ├── entertainmentmlclient/ # Entertainment ML sidecar HTTP client
+│   ├── metrics/            # Metrics tracking
+│   ├── mlclient/           # Shared ML client utilities
+│   ├── mlhealth/           # ML sidecar health check helper
+│   ├── mltransport/        # HTTP transport for ML sidecars
+│   ├── processor/          # Background polling and batch processing
+│   ├── server/             # Server lifecycle helpers
+│   ├── storage/            # Elasticsearch read/write
+│   ├── telemetry/          # OpenTelemetry/Prometheus provider
+│   └── testhelpers/        # Shared test utilities
+├── migrations/             # SQL migration files (001-011)
 ├── tests/
-│   ├── integration/    # Integration tests
-│   └── unit/           # Unit tests
-├── Dockerfile          # Production Dockerfile
-├── Dockerfile.dev      # Development Dockerfile
-├── config.yml.example  # Configuration template
-├── go.mod              # Go module definition
-└── main.go             # Main entry point
+│   └── integration/        # Integration tests
+├── Dockerfile
+├── Dockerfile.dev
+├── config.yml.example
+├── go.mod
+└── main.go
 ```
 
 ## Testing
 
 ```bash
-# Run unit tests
-go test ./internal/...
+# Run all tests
+task test
 
 # Run with coverage
-go test -cover ./internal/...
+task test:cover
+
+# Run specific package
+go test ./internal/classifier/...
 
 # Run integration tests (requires services running)
 go test ./tests/integration/...
 ```
-
-## Performance Targets
-
-- Classification latency: <100ms per item (p95)
-- Throughput: 1000 items/minute (single instance)
-- Batch size: 100 items
-- Concurrency: 10 workers
-- Poll interval: 30 seconds
-
-## ML Integration (Future)
-
-The service is designed for future ML model integration:
-
-- Interface-based design for swapping rule-based with ML models
-- A/B testing framework for gradual rollout
-- Classification history for training data
-- Support for embedded (TensorFlow Lite, ONNX) and API-based models
-
-## Contributing
-
-Follow North Cloud conventions:
-- Go 1.25+ features (container-aware GOMAXPROCS)
-- Structured logging with snake_case fields
-- REST API with Gin framework
-- PostgreSQL for persistence
-- Elasticsearch for content storage
-- Redis for caching/queuing
-
-## License
-
-See LICENSE file in the root directory.
 
 ## Related Documentation
 
 - Main project: `/README.md`
 - Architecture guide: `/CLAUDE.md`
 - Docker guide: `/DOCKER.md`
-- Implementation plan: `~/.claude/plans/elegant-exploring-trinket.md`
+- Classifier developer guide: `/classifier/CLAUDE.md`
