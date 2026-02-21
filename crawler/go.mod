@@ -104,3 +104,5 @@ require (
 )
 
 replace github.com/north-cloud/infrastructure => ../infrastructure
+
+replace github.com/jonesrussell/north-cloud/index-manager => ../index-manager
