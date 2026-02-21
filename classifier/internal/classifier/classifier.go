@@ -87,6 +87,10 @@ func (c *Classifier) ResolveSidecars(contentType, subtype string) []string {
 		if names, ok := c.routingTable[key]; ok {
 			return names
 		}
+		c.logger.Debug("No routing entry for article subtype; falling back to article key",
+			infralogger.String("content_subtype", subtype),
+			infralogger.String("fallback_key", "article"),
+		)
 		key = "article"
 	} else {
 		key = contentType
