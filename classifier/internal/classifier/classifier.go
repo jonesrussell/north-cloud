@@ -60,6 +60,25 @@ func NewClassifier(
 	for k, v := range config.RoutingTable {
 		routingTable[k] = append([]string(nil), v...)
 	}
+	// Warn at startup if routing table references a disabled (nil) sidecar classifier.
+	sidecarEnabled := map[string]bool{
+		"crime":         config.CrimeClassifier != nil,
+		"mining":        config.MiningClassifier != nil,
+		"coforge":       config.CoforgeClassifier != nil,
+		"entertainment": config.EntertainmentClassifier != nil,
+		"anishinaabe":   config.AnishinaabeClassifier != nil,
+		"location":      true, // always constructed below
+	}
+	for routeKey, names := range routingTable {
+		for _, name := range names {
+			if enabled, known := sidecarEnabled[name]; known && !enabled {
+				logger.Warn("Routing table references disabled sidecar classifier",
+					infralogger.String("routing_key", routeKey),
+					infralogger.String("sidecar_name", name),
+				)
+			}
+		}
+	}
 	return &Classifier{
 		contentType:      NewContentTypeClassifier(logger),
 		quality:          NewQualityScorerWithConfig(logger, config.QualityConfig),
