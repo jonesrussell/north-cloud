@@ -1,249 +1,139 @@
-# MCP North Cloud Server
+# MCP North Cloud
 
-An MCP (Model Context Protocol) server that provides comprehensive tools for managing the North Cloud content platform. This server exposes 27 tools across all North Cloud services for crawling, source management, content classification, publishing, search operations, and development tasks.
+> Model Context Protocol server exposing North Cloud tools to AI assistants (Claude, Cursor, etc.)
 
 ## Overview
 
-This MCP server acts as a unified interface to the entire North Cloud microservices platform, allowing you to:
-- **Crawl websites** and manage crawl jobs
-- **Manage content sources** and test extraction selectors
-- **Classify content** for quality, topics, and crime detection
-- **Publish articles** to Redis channels with intelligent routing
-- **Search content** across all classified articles
-- **Manage Elasticsearch indexes** for raw and classified content
+This MCP server is a unified interface to the entire North Cloud microservices platform. It uses **stdio-based JSON-RPC 2.0** — the server reads from stdin and writes to stdout with no HTTP port. AI clients (Cursor, Claude Code, Claude Desktop) start the process and communicate over its stdio pipes.
+
+The server exposes 27 tools across crawling, source management, classification, publishing, search, index management, and local development. Tool availability is filtered by `MCP_ENV`: 18 tools in local mode, 24 in production mode.
 
 ## Features
 
-### Auth Tools (1 tool)
-- `get_auth_token` - Generate a JWT token for API testing or service-to-service calls
+- **27 tools** across 9 categories (18 in `local` mode, 24 in `prod` mode)
+- Environment-based tool filtering via `MCP_ENV=local|prod`
+- Prompts and resources for guided workflows
+- Service-to-service JWT auth (no user-facing auth required)
 
-### Workflow Tools (1 tool)
-- `onboard_source` - Set up a complete content pipeline in one step: create source, start or schedule crawl, optionally create a publishing route
+## Tools
 
-### Crawler Tools (5 tools)
-- `start_crawl` - Start an immediate one-time crawl job
-- `schedule_crawl` - Schedule recurring crawls with interval-based scheduling
-- `list_crawl_jobs` - List all crawl jobs with status filtering
-- `control_crawl_job` - Pause, resume, or cancel a job (parameters: `job_id`, `action` one of pause | resume | cancel)
-- `get_crawl_stats` - Get job statistics and execution history
+### By Category
 
-### Source Manager Tools (5 tools)
-- `add_source` - Add a new content source with CSS selectors
-- `list_sources` - List all configured sources
-- `update_source` - Update source configuration
-- `delete_source` - Delete a source
-- `test_source` - Test crawl a source without saving (validate selectors)
+| Category | Count | Tools |
+|----------|-------|-------|
+| Workflow | 1 | onboard_source |
+| Crawler | 5 | start_crawl, schedule_crawl, list_crawl_jobs, control_crawl_job, get_crawl_stats |
+| Source Manager | 5 | add_source, list_sources, update_source, delete_source, test_source |
+| Publisher | 8 | create_route, list_routes, create_channel, list_channels, delete_route, preview_route, get_publish_history, get_publisher_stats |
+| Search | 1 | search_articles |
+| Classifier | 1 | classify_article |
+| Index Manager | 2 | delete_index, list_indexes |
+| Auth | 1 | get_auth_token |
+| Development | 3 | lint_file, build_service, test_service |
 
-### Publisher Tools (8 tools)
-- `create_route` - Create a publishing route with quality/topic filters
-- `list_routes` - List all publishing routes
-- `create_channel` - Create a new publishing channel
-- `list_channels` - List all publishing channels
-- `delete_route` - Delete a publishing route
-- `preview_route` - Preview articles matching route filters
-- `get_publish_history` - Get publishing history with pagination
-- `get_publisher_stats` - Get publisher statistics
+### Environment Scope
 
-### Search Tools (1 tool)
-- `search_articles` - Full-text search with filtering and facets
+Tools are scoped to control which environment they appear in:
 
-### Classifier Tools (1 tool)
-- `classify_article` - Classify content for type, quality, topics
+| Scope | Tools | Available in |
+|-------|-------|-------------|
+| Shared (15) | onboard_source, list_crawl_jobs, get_crawl_stats, add_source, list_sources, update_source, test_source, list_routes, list_channels, preview_route, get_publish_history, get_publisher_stats, search_articles, classify_article, list_indexes | local + prod |
+| Local-only (3) | lint_file, build_service, test_service | local only |
+| Prod-only (9) | start_crawl, schedule_crawl, control_crawl_job, delete_source, create_route, create_channel, delete_route, delete_index, get_auth_token | prod only |
 
-### Index Manager Tools (2 tools)
-- `delete_index` - Delete an Elasticsearch index
-- `list_indexes` - List all Elasticsearch indexes
+Set `MCP_ENV=prod` to get the prod tool set (default is `local`).
 
-### Development Tools (3 tools)
-- `lint_file` - Lint a specific file or entire service (automatically detects Go vs frontend)
-- `build_service` - Build a Go or frontend service
-- `test_service` - Run tests for a service (optional coverage for Go)
+## Quick Start
 
-## Architecture
-
-The server implements the MCP protocol using:
-- **stdio-based communication**: Reads from stdin, writes to stdout
-- **JSON-RPC 2.0**: Standard MCP protocol format
-- **HTTP clients**: Communicates with all North Cloud services
-
-```
-┌─────────────────────────────────────────────────────────┐
-│                  MCP North Cloud Server                  │
-├─────────────────────────────────────────────────────────┤
-│                                                           │
-│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌─────────┐ │
-│  │ Crawler  │  │  Source  │  │Publisher │  │ Search  │ │
-│  │  Client  │  │ Manager  │  │  Client  │  │ Client  │ │
-│  └────┬─────┘  └────┬─────┘  └────┬─────┘  └────┬────┘ │
-│       │             │             │             │       │
-│  ┌────┴─────┐  ┌────┴─────┐       │             │       │
-│  │Classifier│  │  Index   │       │             │       │
-│  │  Client  │  │ Manager  │       │             │       │
-│  │          │  │  Client  │       │             │       │
-│  └────┬─────┘  └────┬─────┘       │             │       │
-│       │             │             │             │       │
-│       ▼             ▼             ▼             ▼       │
-│  ┌────────────────────────────────────────────────────┐ │
-│  │           North Cloud Services (Docker)            │ │
-│  │  crawler:8060 | source-manager:8050 |              │ │
-│  │  publisher:8070 | search:8090 | classifier:8070    │ │
-│  │  index-manager:8090                                  │ │
-│  └────────────────────────────────────────────────────┘ │
-└─────────────────────────────────────────────────────────┘
-```
-
-## Installation
-
-### Building the MCP server (for Cursor / Claude Code)
-
-From the **repository root**, build the binary so Cursor and Claude Code can run it:
+### Build the binary
 
 ```bash
+# From repository root (preferred)
 task mcp:build
+
+# Or from inside mcp-north-cloud/
+task build
+# or: go build -o bin/mcp-north-cloud ./main.go
 ```
 
 This writes `mcp-north-cloud/bin/mcp-north-cloud`. Re-run after changing MCP server code.
 
-From inside `mcp-north-cloud` you can also use `task build` or `go build -o bin/mcp-north-cloud ./main.go`.
+### Claude Code / Claude Desktop
 
-### Running with Docker (optional)
+This repo includes `.mcp.json` at the root. It points at the binary and loads environment from `.env`. Ensure the binary is built and `.env` contains `AUTH_JWT_SECRET`.
 
-If you prefer to run the MCP server inside Docker instead of using the built binary, add an `mcp-north-cloud` service to your dev compose and point Cursor/Claude Code at it via `docker exec -i <container> /app/tmp/mcp-north-cloud`. The default setup uses the built binary and localhost URLs.
+```json
+{
+  "mcpServers": {
+    "north-cloud": {
+      "command": "/path/to/north-cloud/mcp-north-cloud/run-mcp.sh"
+    }
+  }
+}
+```
 
-## Configuration
+The `run-mcp.sh` wrapper loads `.env` and starts the binary with localhost service URLs matching `docker-compose.dev.yml`.
 
 ### Cursor IDE
 
-Cursor reads **`.cursor/mcp.json`** in this repo. It runs `run-mcp.sh`, which loads `.env` (for `AUTH_JWT_SECRET`) and then starts the MCP binary with env pointing at your dev stack on localhost (ports match `docker-compose.dev.yml`). Ensure the binary exists:
+Cursor reads `.cursor/mcp.json` in the repo root. It runs `run-mcp.sh`, which loads `.env` and starts the MCP binary. After changing `.cursor/mcp.json` or rebuilding the binary, **restart Cursor** to apply changes.
 
-```bash
-task mcp:build
+### Production (Docker exec)
+
+When Cursor runs on the same host as the production Docker stack:
+
+```json
+{
+  "mcpServers": {
+    "north-cloud": {
+      "command": "docker",
+      "args": ["exec", "-i", "north-cloud-mcp-north-cloud-1", "/app/mcp-north-cloud"]
+    }
+  }
+}
 ```
 
-After changing `.cursor/mcp.json` or the binary, **restart Cursor** (or reload the window) to apply changes.
+When Cursor runs on a different host (e.g., your laptop connecting to the prod server):
 
-### Claude Code
-
-Claude Code can use a **project-level** MCP config. This repo includes **`.mcp.json`** at the root with the same command and env as `.cursor/mcp.json`. If your Claude Code setup uses project-level config (e.g. `~/.claude.json` or a `.mcp.json` in the project), ensure the binary is built (`task mcp:build`) and that the config points at `./mcp-north-cloud/bin/mcp-north-cloud` with the same localhost env. Adjust paths or use a global config if your tool expects a different location.
-
-### Claude Code Hooks Integration
-
-When using Claude Code hooks, MCP tools follow a specific naming pattern. Since the server is configured as `"north-cloud"` in the MCP configuration, all tools are accessible using the pattern:
-
-**Pattern**: `mcp__<server>__<tool>`
-
-**Examples**:
-- `mcp__north-cloud__start_crawl` - Start an immediate crawl job
-- `mcp__north-cloud__schedule_crawl` - Schedule a recurring crawl
-- `mcp__north-cloud__list_crawl_jobs` - List all crawl jobs
-- `mcp__north-cloud__add_source` - Add a new content source
-- `mcp__north-cloud__create_route` - Create a publishing route
-- `mcp__north-cloud__search_articles` - Search classified content
-- `mcp__north-cloud__classify_article` - Classify an article
-- `mcp__north-cloud__list_indexes` - List Elasticsearch indexes
-- `mcp__north-cloud__delete_index` - Delete an Elasticsearch index
-
-**All 27 tools** are available using this naming convention. You can reference them in Claude Code hooks to automate North Cloud operations.
-
-**Hook Example**:
-```yaml
-# Example hook that uses MCP tools
-on:
-  - event: file_changed
-    pattern: "crawler/**/*.go"
-actions:
-  - use: mcp__north-cloud__list_crawl_jobs
-    args:
-      status: "running"
+```json
+{
+  "mcpServers": {
+    "North Cloud (Production)": {
+      "command": "ssh",
+      "args": ["jones@northcloud.biz", "docker exec -i north-cloud-mcp-north-cloud-1 /app/mcp-north-cloud"]
+    }
+  }
+}
 ```
 
-**Complete Tool List for Claude Code Hooks**:
+Use `docker ps` to confirm the exact container name.
 
-All 27 tools available with `mcp__north-cloud__` prefix:
-
-**Auth (1)**:
-- `mcp__north-cloud__get_auth_token`
-
-**Workflow (1)**:
-- `mcp__north-cloud__onboard_source`
-
-**Crawler Tools (5)**:
-- `mcp__north-cloud__start_crawl`
-- `mcp__north-cloud__schedule_crawl`
-- `mcp__north-cloud__list_crawl_jobs`
-- `mcp__north-cloud__control_crawl_job`
-- `mcp__north-cloud__get_crawl_stats`
-
-**Source Manager Tools (5)**:
-- `mcp__north-cloud__add_source`
-- `mcp__north-cloud__list_sources`
-- `mcp__north-cloud__update_source`
-- `mcp__north-cloud__delete_source`
-- `mcp__north-cloud__test_source`
-
-**Publisher Tools (8)**:
-- `mcp__north-cloud__create_route`
-- `mcp__north-cloud__list_routes`
-- `mcp__north-cloud__create_channel`
-- `mcp__north-cloud__list_channels`
-- `mcp__north-cloud__delete_route`
-- `mcp__north-cloud__preview_route`
-- `mcp__north-cloud__get_publish_history`
-- `mcp__north-cloud__get_publisher_stats`
-
-**Search Tools (1)**:
-- `mcp__north-cloud__search_articles`
-
-**Classifier Tools (1)**:
-- `mcp__north-cloud__classify_article`
-
-**Index Manager Tools (2)**:
-- `mcp__north-cloud__list_indexes`
-- `mcp__north-cloud__delete_index`
-
-**Development Tools (3)**:
-- `mcp__north-cloud__lint_file`
-- `mcp__north-cloud__build_service`
-- `mcp__north-cloud__test_service`
+## Configuration
 
 ### Environment Variables
 
-All service URLs can be configured via environment variables:
-
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `INDEX_MANAGER_URL` | `http://localhost:8090` | Index manager service URL |
+| `MCP_ENV` | `local` | Tool scope: `local` (18 tools) or `prod` (24 tools) |
 | `CRAWLER_URL` | `http://localhost:8060` | Crawler service URL |
 | `SOURCE_MANAGER_URL` | `http://localhost:8050` | Source manager service URL |
 | `PUBLISHER_URL` | `http://localhost:8070` | Publisher service URL |
-| `SEARCH_URL` | `http://localhost:8090` | Search service URL |
-| `CLASSIFIER_URL` | `http://localhost:8070` | Classifier service URL |
-| `MCP_HTTP_TIMEOUT_SECONDS` | `30` | HTTP client timeout for backend calls (optional) |
+| `CLASSIFIER_URL` | `http://localhost:8071` | Classifier service URL |
+| `SEARCH_URL` | `http://localhost:8092` | Search service URL |
+| `INDEX_MANAGER_URL` | `http://localhost:8090` | Index manager service URL |
+| `AUTH_JWT_SECRET` | — | Shared JWT secret (required for protected tools) |
+| `MCP_HTTP_TIMEOUT_SECONDS` | `30` | HTTP client timeout for backend calls |
+| `NORTH_CLOUD_ROOT` | cwd | Project root used by lint_file/build_service/test_service |
 
 ### Authentication
 
-Tools that call protected APIs (source-manager, publisher, crawler, etc.) require JWT authentication. The MCP server uses `AUTH_JWT_SECRET` to generate service-to-service tokens.
+Tools that call protected APIs require JWT authentication. The server generates service-to-service tokens using `AUTH_JWT_SECRET`. Load it from `.env` (the `run-mcp.sh` wrapper does this automatically).
 
-**Setup:**
+Without `AUTH_JWT_SECRET`, protected tools (e.g., `onboard_source`, `add_source`, `create_route`) will fail with "missing authorization".
 
-1. Ensure `.env` exists in the project root with `AUTH_JWT_SECRET` set to the same value used by auth, source-manager, and other North Cloud services.
-2. The wrapper script (`run-mcp.sh`) loads `.env` automatically when Cursor or Claude Code starts the MCP server. No additional configuration is needed.
-3. Generate a secret if needed: `openssl rand -hex 32` (see the main project `.env.example`).
+### Pointing at production backends
 
-**Without `AUTH_JWT_SECRET`:** Protected tools (e.g. `onboard_source`, `add_source`, `create_route`) will fail with "missing authorization". Public endpoints (e.g. `list_sources` via GET) may work depending on service configuration.
-
-### Production backends
-
-To run the MCP server **locally** while pointing at **production** API backends:
-
-1. Set environment variables to production API base URLs (in `.cursor/mcp.json` or in the shell before starting the server):
-   - `CRAWLER_URL`, `SOURCE_MANAGER_URL`, `PUBLISHER_URL`, `CLASSIFIER_URL`, `SEARCH_URL`, `INDEX_MANAGER_URL` (use your prod hostnames and ports, e.g. `https://api.northcloud.biz` or internal URLs if on VPN).
-2. Set `AUTH_JWT_SECRET` to the **same** value as the production auth service. If production uses a different secret, MCP calls to protected endpoints will receive 401.
-3. Ensure your machine can reach production (VPN or public URLs with TLS). Prefer HTTPS for public URLs.
-
-**Security note:** The JWT secret will be present on your local machine; restrict access to your environment and config files.
-
-Example `.cursor/mcp.json` snippet for production backends (replace with your prod URLs):
+Set each `*_URL` variable to your production service URLs and set `AUTH_JWT_SECRET` to match the production auth service. Example `.cursor/mcp.json` snippet:
 
 ```json
 {
@@ -251,6 +141,7 @@ Example `.cursor/mcp.json` snippet for production backends (replace with your pr
     "north-cloud": {
       "command": "/path/to/mcp-north-cloud/bin/mcp-north-cloud",
       "env": {
+        "MCP_ENV": "prod",
         "CRAWLER_URL": "https://crawler.example.com",
         "SOURCE_MANAGER_URL": "https://source-manager.example.com",
         "PUBLISHER_URL": "https://publisher.example.com",
@@ -264,772 +155,105 @@ Example `.cursor/mcp.json` snippet for production backends (replace with your pr
 }
 ```
 
-### Deploying MCP in production
+## Prompts
 
-The MCP server can run inside production Docker Compose so that a host (e.g. the same machine or via SSH) can start the process and connect Cursor/Claude to it.
-
-- The `mcp-north-cloud` service is defined in `docker-compose.prod.yml`. It uses internal service URLs (e.g. `http://crawler:8080`, `http://publisher:8070`) and `AUTH_JWT_SECRET` from prod secrets.
-- The server uses **stdio** only (no HTTP port). To connect from Cursor when Cursor runs on the **same host** as Docker, use `docker exec -i` as the MCP command.
-
-Example `.cursor/mcp.json` when Cursor runs on the prod host:
-
-```json
-{
-  "mcpServers": {
-    "north-cloud": {
-      "command": "docker",
-      "args": ["exec", "-i", "north-cloud-mcp-north-cloud-1", "/app/mcp-north-cloud"]
-    }
-  }
-}
-```
-
-Adjust the container name if different (e.g. `docker ps` to see the actual name). The container name often includes the project prefix (e.g. `north-cloud-mcp-north-cloud-1`).
-
-When Cursor runs on a **different** host (e.g. your laptop), add a second MCP server that connects to production via SSH so agents can run production checks (Grafana/ES debugging, `list_indexes`, `search_articles`, etc.) without manual SSH:
-
-```json
-"North Cloud (Production)": {
-  "command": "ssh",
-  "args": ["jones@northcloud.biz", "docker exec -i north-cloud-mcp-north-cloud-1 /app/mcp-north-cloud"]
-}
-```
-
-### Prompts
-
-The server supports `prompts/list` and `prompts/get`. Clients (e.g. Cursor) can expose these as slash commands or prompt templates.
+The server supports `prompts/list` and `prompts/get`. Clients can expose these as slash commands.
 
 | Name | Description |
-|------|--------------|
-| `onboard_new_source` | Add a new website/source and optionally start crawling and create a publishing route. |
-| `debug_crawl_job` | Inspect a crawl job: status, stats, and suggestions. |
-| `publishing_review` | Preview a route and review publish history and stats. |
-| `classify_and_search` | Search classified content and optionally classify a sample. |
+|------|-------------|
+| `onboard_new_source` | Add a new website/source and optionally start crawling and create a publishing route |
+| `debug_crawl_job` | Inspect a crawl job: status, stats, and suggestions |
+| `publishing_review` | Preview a route and review publish history and stats |
+| `classify_and_search` | Search classified content and optionally classify a sample |
 
-### Resources
+## Resources
 
 The server supports `resources/list` and `resources/read`. Static documentation is available under the `northcloud://` URI scheme:
 
-| URI | Name | Description |
-|-----|------|--------------|
-| `northcloud://docs/tool-reference` | North Cloud Tool Reference | List of MCP tools and when to use them |
-| `northcloud://docs/selectors` | Selector Cheatsheet | CSS selectors for source extraction |
-| `northcloud://docs/pipeline` | Pipeline Overview | Crawl → Classify → Publish flow |
+| URI | Description |
+|-----|-------------|
+| `northcloud://docs/tool-reference` | List of MCP tools and when to use them |
+| `northcloud://docs/selectors` | CSS selectors cheatsheet for source extraction |
+| `northcloud://docs/pipeline` | Crawl → Classify → Publish flow overview |
 
-Dynamic resources (e.g. live sources) may be added in a future release.
+## Architecture
 
-## Tool Reference
-
-### Crawler Tools
-
-#### start_crawl
-
-Start a crawl job immediately. Creates a job that runs once without scheduling.
-
-**Parameters:**
-- `source_id` (string, required): ID of the source to crawl (from source-manager)
-- `url` (string, required): URL to crawl
-
-**Example:**
-```json
-{
-  "source_id": "uuid-12345",
-  "url": "https://example.com/news"
-}
 ```
-
-**Response:**
-```json
-{
-  "job_id": "job-uuid",
-  "source_id": "uuid-12345",
-  "url": "https://example.com/news",
-  "status": "pending",
-  "created_at": "2026-01-06T10:00:00Z",
-  "message": "Crawl job created successfully. Job will run immediately."
-}
-```
-
-#### schedule_crawl
-
-Schedule a recurring crawl job with interval-based scheduling.
-
-**Parameters:**
-- `source_id` (string, required): ID of the source to crawl
-- `url` (string, required): URL to crawl
-- `interval_minutes` (integer, required): Interval in minutes/hours/days
-- `interval_type` (string, required): Type of interval ('minutes', 'hours', 'days')
-
-**Example:**
-```json
-{
-  "source_id": "uuid-12345",
-  "url": "https://example.com/news",
-  "interval_minutes": 30,
-  "interval_type": "minutes"
-}
-```
-
-**Response:**
-```json
-{
-  "job_id": "job-uuid",
-  "status": "scheduled",
-  "interval_minutes": 30,
-  "interval_type": "minutes",
-  "next_run_at": "2026-01-06T10:30:00Z",
-  "message": "Scheduled crawl job created. Runs every 30 minutes."
-}
-```
-
-#### list_crawl_jobs
-
-List all crawl jobs with optional status filter.
-
-**Parameters:**
-- `status` (string, optional): Filter by status (pending, scheduled, running, completed, failed, paused, cancelled)
-
-**Example:**
-```json
-{
-  "status": "running"
-}
-```
-
-**Response:**
-```json
-{
-  "jobs": [
-    {
-      "id": "job-uuid",
-      "source_id": "uuid-12345",
-      "url": "https://example.com",
-      "status": "running",
-      "created_at": "2026-01-06T10:00:00Z"
-    }
-  ],
-  "count": 1
-}
-```
-
-#### control_crawl_job
-
-Pause, resume, or cancel a crawl job.
-
-**Parameters:**
-- `job_id` (string, required): ID of the job to control
-- `action` (string, required): One of `pause`, `resume`, or `cancel`
-
-**Example:**
-```json
-{
-  "job_id": "job-uuid",
-  "action": "pause"
-}
-```
-
-#### get_crawl_stats
-
-Get statistics for a crawl job including success rate and execution history.
-
-**Parameters:**
-- `job_id` (string, required): ID of the job
-
-**Response:**
-```json
-{
-  "total_executions": 42,
-  "success_count": 40,
-  "failure_count": 2,
-  "avg_duration": 12.5,
-  "success_rate": 0.95
-}
-```
-
-### Source Manager Tools
-
-#### add_source
-
-Add a new content source for crawling.
-
-**Parameters:**
-- `name` (string, required): Name of the source
-- `url` (string, required): Base URL
-- `type` (string, required): Source type (e.g., 'news', 'blog')
-- `selectors` (object, required): CSS selectors for content extraction
-- `active` (boolean, optional): Whether source is active (default: true)
-
-**Example:**
-```json
-{
-  "name": "Example News",
-  "url": "https://example.com",
-  "type": "news",
-  "selectors": {
-    "article": ".article-content",
-    "title": "h1.title",
-    "body": ".article-body"
-  },
-  "active": true
-}
-```
-
-**Response:**
-```json
-{
-  "source_id": "uuid-12345",
-  "name": "Example News",
-  "url": "https://example.com",
-  "type": "news",
-  "active": true,
-  "created_at": "2026-01-06T10:00:00Z",
-  "message": "Source created successfully"
-}
-```
-
-#### list_sources
-
-List all configured content sources.
-
-**Parameters:** None
-
-**Response:**
-```json
-{
-  "sources": [
-    {
-      "id": "uuid-12345",
-      "name": "Example News",
-      "url": "https://example.com",
-      "type": "news",
-      "active": true
-    }
-  ],
-  "count": 1
-}
-```
-
-#### update_source
-
-Update an existing source configuration.
-
-**Parameters:**
-- `source_id` (string, required): ID of source to update
-- `name` (string, optional): New name
-- `url` (string, optional): New URL
-- `selectors` (object, optional): New selectors
-- `active` (boolean, optional): New active status
-
-#### delete_source
-
-Delete a content source.
-
-**Parameters:**
-- `source_id` (string, required): ID of source to delete
-
-#### test_source
-
-Test crawl a source without saving results. Useful for validating selectors before adding a source.
-
-**Parameters:**
-- `url` (string, required): URL to test
-- `selectors` (object, required): CSS selectors to test
-
-**Response:**
-```json
-{
-  "success": true,
-  "article_count": 15,
-  "success_rate": 0.93,
-  "warnings": [],
-  "articles": [
-    {
-      "title": "Example Article",
-      "url": "https://example.com/article-1"
-    }
-  ]
-}
-```
-
-### Publisher Tools
-
-#### create_route
-
-Create a new publishing route that connects a source to a channel with quality and topic filters.
-
-**Parameters:**
-- `source_id` (string, required): ID of publisher source
-- `channel_id` (string, required): ID of channel to publish to
-- `min_quality_score` (integer, required): Minimum quality score (0-100)
-- `topics` (array, optional): Topics to filter by
-- `active` (boolean, optional): Whether route is active
-
-**Example:**
-```json
-{
-  "source_id": "source-uuid",
-  "channel_id": "channel-uuid",
-  "min_quality_score": 70,
-  "topics": ["crime", "news"],
-  "active": true
-}
-```
-
-#### list_routes
-
-List all publishing routes with optional filters.
-
-**Parameters:**
-- `source_id` (string, optional): Filter by source
-- `channel_id` (string, optional): Filter by channel
-
-#### preview_route
-
-Preview articles that would be published by a route without actually publishing them.
-
-**Parameters:**
-- `route_id` (string, required): ID of route to preview
-
-**Response:**
-```json
-{
-  "articles": [
-    {
-      "id": "article-uuid",
-      "title": "Crime Report",
-      "quality_score": 85,
-      "topics": ["crime"],
-      "published_at": "2026-01-06T09:00:00Z"
-    }
-  ],
-  "count": 1
-}
-```
-
-#### get_publish_history
-
-Get publishing history with pagination.
-
-**Parameters:**
-- `channel_name` (string, optional): Filter by channel
-- `limit` (integer, optional): Number of records (default: 50)
-- `offset` (integer, optional): Skip records (default: 0)
-
-#### get_publisher_stats
-
-Get publisher statistics including total published and articles by channel.
-
-**Response:**
-```json
-{
-  "total_published": 1250,
-  "articles_by_channel": {
-    "articles:crime": 450,
-    "articles:news": 800
-  }
-}
-```
-
-### Search Tools
-
-#### search_articles
-
-Full-text search across all classified content with filtering and facets.
-
-**Parameters:**
-- `query` (string, required): Search query
-- `topics` (array, optional): Filter by topics
-- `content_type` (string, optional): Filter by content type
-- `min_quality_score` (integer, optional): Minimum quality
-- `page` (integer, optional): Page number (default: 1)
-- `page_size` (integer, optional): Results per page (default: 20, max: 100)
-
-**Example:**
-```json
-{
-  "query": "crime downtown",
-  "topics": ["crime"],
-  "min_quality_score": 70,
-  "page": 1,
-  "page_size": 20
-}
-```
-
-**Response:**
-```json
-{
-  "results": [
-    {
-      "id": "article-uuid",
-      "title": "Crime Report Downtown",
-      "body": "...",
-      "quality_score": 85,
-      "topics": ["crime"],
-      "score": 12.5
-    }
-  ],
-  "total": 42,
-  "page": 1,
-  "page_size": 20,
-  "took_ms": 15
-}
-```
-
-### Classifier Tools
-
-#### classify_article
-
-Classify a single article to determine content type, quality score, topics, and crime detection.
-
-**Parameters:**
-- `title` (string, required): Article title
-- `raw_text` (string, required): Article text content
-- `url` (string, required): Article URL
-- `metadata` (object, optional): Additional metadata
-
-**Example:**
-```json
-{
-  "title": "Breaking: Crime Downtown",
-  "raw_text": "A crime was reported...",
-  "url": "https://example.com/article",
-  "metadata": {
-    "author": "John Doe"
-  }
-}
-```
-
-**Response:**
-```json
-{
-  "content_type": "article",
-  "quality_score": 85,
-  "is_crime_related": true,
-  "topics": ["crime", "breaking_news"],
-  "source_reputation": 0.92,
-  "source_category": "news",
-  "confidence": 0.95
-}
-```
-
-### Index Manager Tools
-
-#### delete_index
-
-Delete an Elasticsearch index. **This operation is irreversible.**
-
-**Parameters:**
-- `index_name` (string, required): Name of index to delete
-
-**Example:**
-```json
-{
-  "index_name": "example_com_raw_content"
-}
-```
-
-#### list_indexes
-
-List all Elasticsearch indexes.
-
-**Response:**
-```json
-{
-  "indexes": [
-    "example_com_raw_content",
-    "example_com_classified_content"
-  ],
-  "count": 2
-}
-```
-
-### Development Tools
-
-#### lint_file
-
-Lint a specific file or entire service. Automatically detects Go files vs Vue.js/TypeScript frontend files and runs the appropriate linter.
-
-**Parameters:**
-- `file_path` (string, optional): Absolute or relative path to the file to lint
-- `service_name` (string, optional): Service name to lint entire service (Go: crawler, source-manager, classifier, publisher, index-manager, search, auth, mcp-north-cloud | Frontend: dashboard, search-frontend)
-
-**Note:** Either `file_path` or `service_name` must be provided.
-
-**Example (lint a file):**
-```json
-{
-  "file_path": "crawler/main.go"
-}
-```
-
-**Example (lint entire service):**
-```json
-{
-  "service_name": "publisher"
-}
-```
-
-**Response:**
-```json
-{
-  "lint_type": "go",
-  "service_dir": "/home/jones/dev/north-cloud/publisher",
-  "command": "task lint",
-  "output": "Running golangci-lint...\n✅ No issues found",
-  "success": true
-}
-```
-
-**Error Response:**
-```json
-{
-  "lint_type": "go",
-  "service_dir": "/home/jones/dev/north-cloud/crawler",
-  "command": "task lint",
-  "output": "internal/scheduler/interval_scheduler.go:45:10: Error: unused variable 'x'",
-  "success": false,
-  "error": "exit status 1",
-  "exit_code": 1
-}
-```
-
-#### build_service
-
-Build a North Cloud service. Runs `task build` for Go services or `npm run build` for frontend.
-
-**Parameters:**
-- `service_name` (string, required): Service to build (crawler, source-manager, classifier, publisher, auth, index-manager, search, mcp-north-cloud, dashboard, search-frontend)
-
-**Example:**
-```json
-{
-  "service_name": "crawler"
-}
-```
-
-**Response:**
-```json
-{
-  "success": true,
-  "service": "crawler",
-  "command": "task build",
-  "output": "...",
-  "exit_code": 0
-}
-```
-
-#### test_service
-
-Run tests for a North Cloud service. Runs `task test` or `npm run test`. For Go services, supports `with_coverage` to run `task test:coverage`.
-
-**Parameters:**
-- `service_name` (string, required): Service to test
-- `with_coverage` (boolean, optional): If true, run tests with coverage (Go services only)
-
-**Example:**
-```json
-{
-  "service_name": "crawler",
-  "with_coverage": false
-}
-```
-
-**Response (success):**
-```json
-{
-  "success": true,
-  "service": "crawler",
-  "command": "task test",
-  "output": "PASS\nok\t...",
-  "exit_code": 0
-}
-```
-
-**Response (failure with parsed errors):**
-```json
-{
-  "success": false,
-  "service": "crawler",
-  "command": "task test",
-  "output": "...",
-  "error": "exit status 1",
-  "exit_code": 1,
-  "errors": [
-    {
-      "file": "internal/parser/parser.go",
-      "line": 42,
-      "column": 5,
-      "message": "undefined: foo"
-    }
-  ]
-}
+mcp-north-cloud/
+├── main.go                  # Stdio processing loop (reads stdin, writes stdout)
+├── run-mcp.sh               # Wrapper: loads .env, ensures clean stdout
+├── test-tools.sh            # Smoke test: verifies tool count by env
+├── internal/
+│   ├── mcp/
+│   │   ├── server.go        # Request routing, toolHandlers map
+│   │   ├── types.go         # JSON-RPC types, Prompt/Resource types
+│   │   ├── tools.go         # 27 tool definitions (scoped by MCP_ENV)
+│   │   ├── handlers.go      # Tool implementations
+│   │   ├── prompts.go       # prompts/list and prompts/get (4 prompts)
+│   │   └── resources.go     # resources/list and resources/read (static docs)
+│   ├── client/              # HTTP clients per service
+│   │   ├── crawler.go
+│   │   ├── publisher.go
+│   │   ├── source_manager.go
+│   │   ├── search.go
+│   │   ├── classifier.go
+│   │   └── index_manager.go
+│   └── config/
+└── bin/mcp-north-cloud      # Built binary (gitignored)
 ```
 
 ## Development
 
-### Prerequisites
-
-- Go 1.25+
-- Docker and Docker Compose
-- Access to North Cloud services
-
-### Building
-
 ```bash
-go build -o mcp-north-cloud main.go
-```
+# Hot reload
+task dev
 
-### Running Tests
+# Tests
+task test
 
-```bash
-go test ./...
-```
+# Lint
+task lint
 
-### Hot Reloading
+# Verify tool registration
+./test-tools.sh             # local mode (expects 18)
+MCP_ENV=prod ./test-tools.sh  # prod mode (expects 24)
+MCP_TEST_PROMPTS=1 ./test-tools.sh  # also test prompts and resources
 
-The service uses Air for hot reloading in development:
-
-```bash
-air -c .air.toml
+# Manual tool call
+echo '{"jsonrpc":"2.0","id":1,"method":"tools/list"}' | ./bin/mcp-north-cloud
+echo '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"list_sources","arguments":{}}}' | ./bin/mcp-north-cloud
 ```
 
 ### When adding a tool
 
-When adding or removing tools, update in the same PR:
+1. Define the tool in `internal/mcp/tools.go` (add to the appropriate `get*Tools()` function, set `Scope`)
+2. Register the handler in `server.go` `toolHandlers` map
+3. Implement the handler in `handlers.go`
+4. Update `scope_test.go` expected counts, `test-tools.sh`, and this README tool table
 
-1. Add handler in `internal/mcp/server.go` (`toolHandlers`) and `internal/mcp/handlers.go`
-2. Update `test-tools.sh` expected count
-3. Update README tool list (Features and Complete Tool List for Claude Code Hooks)
-4. Update CLAUDE.md table
-5. Optionally update the tool-reference resource (if prompts/resources exist)
+See CLAUDE.md for the full handler pattern and service client pattern.
 
 ## Troubleshooting
 
-### MCP works locally but not against production
+**MCP works locally but not against production**
+- Confirm each `*_URL` is reachable from your machine (VPN or public HTTPS)
+- `AUTH_JWT_SECRET` must match production exactly; mismatches cause 401 errors
 
-If the server works with local backends but fails when using production URLs:
-
-- **URLs:** Confirm each service URL (CRAWLER_URL, PUBLISHER_URL, etc.) is correct and reachable from your machine (VPN or public HTTPS).
-- **JWT secret:** `AUTH_JWT_SECRET` must match the production auth service exactly; otherwise protected endpoints return 401.
-- **Network:** Test connectivity (e.g. `curl` to a prod health endpoint).
-
-### Server not responding
-
-1. Check that all North Cloud services are running:
-   ```bash
-   docker compose ps
-   ```
-
-2. Verify service URLs are correct:
-   ```bash
-   curl http://localhost:8060/health  # crawler
-   curl http://localhost:8050/health  # source-manager
-   curl http://localhost:8070/health  # publisher
-   ```
-
-3. Check MCP server logs:
-   ```bash
-   docker logs north-cloud-mcp-north-cloud-1
-   ```
-
-### Tool execution fails
-
-1. Verify the service is accessible:
-   ```bash
-   curl http://localhost:<PORT>/health
-   ```
-
-2. Check service-specific logs:
-   ```bash
-   docker logs north-cloud-<service-name>-1
-   ```
-
-3. Ensure required parameters are provided correctly
-
-### Cursor not detecting MCP server
-
-1. Verify `.cursor/mcp.json` exists in project root
-2. Check container is running:
-   ```bash
-   docker ps | grep mcp-north-cloud
-   ```
-3. **Restart Cursor** after modifying configuration
-4. Check Cursor's MCP server status in settings
-
-## Common Workflows
-
-### Add a new source and start crawling
-
+**Server not responding**
 ```bash
-# 1. Add source
-use add_source with selectors
+# Check all North Cloud services are running
+docker compose -f docker-compose.base.yml -f docker-compose.dev.yml ps
 
-# 2. Test source first
-use test_source to validate selectors
+# Verify health endpoints
+curl http://localhost:8060/health  # crawler
+curl http://localhost:8050/health  # source-manager
+curl http://localhost:8070/health  # publisher
 
-# 3. Start immediate crawl
-use start_crawl with source_id
-
-# 4. Or schedule recurring crawl
-use schedule_crawl with interval
+# Check MCP server logs
+docker logs north-cloud-mcp-north-cloud-1
 ```
 
-### Set up content publishing
-
-```bash
-# 1. List available sources and channels
-use list_sources
-use list_routes to see channels
-
-# 2. Create publishing route
-use create_route with filters
-
-# 3. Preview what would be published
-use preview_route
-
-# 4. Monitor publishing
-use get_publish_history
-use get_publisher_stats
-```
-
-### Search and classify content
-
-```bash
-# 1. Search for articles
-use search_articles with query
-
-# 2. Classify new content
-use classify_article with article data
-
-# 3. Check crawler job stats
-use get_crawl_stats for job performance
-```
-
-## Error Handling
-
-The server returns standard JSON-RPC error responses:
-
-| Code | Error | Description |
-|------|-------|-------------|
-| -32700 | Parse error | Invalid JSON |
-| -32600 | Invalid request | Invalid request format |
-| -32601 | Method not found | Unknown method |
-| -32602 | Invalid params | Invalid parameters |
-| -32603 | Internal error | Service error |
-
-## Security Considerations
-
-- The server does not perform authentication - ensure it's only accessible to trusted clients
-- Some operations are irreversible (e.g., delete_index, delete_source)
-- Consider adding authentication/authorization for production use
-- Service URLs should point to internal Docker network addresses
-
-## Protocol Support
-
-- **Protocol Version**: 2024-11-05
-- **Transport**: stdio (stdin/stdout)
-- **Format**: JSON-RPC 2.0
-
-## License
-
-Part of the North Cloud project.
+**Cursor not detecting the MCP server**
+1. Verify `.cursor/mcp.json` exists in the project root
+2. Ensure the binary is built: `task mcp:build`
+3. Restart Cursor (or reload the window) after any config change
