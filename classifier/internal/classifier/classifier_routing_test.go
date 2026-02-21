@@ -43,8 +43,8 @@ func TestResolveSidecars(t *testing.T) {
 		{"article default", domain.ContentTypeArticle, "", []string{"crime", "mining", "location"}},
 		{"article event", domain.ContentTypeArticle, domain.ContentSubtypeEvent, []string{"location"}},
 		{"article blotter", domain.ContentTypeArticle, domain.ContentSubtypeBlotter, []string{"crime"}},
-		{"article report", domain.ContentTypeArticle, domain.ContentSubtypeReport, []string{}},
-		{"page has explicit empty routing", domain.ContentTypePage, "", []string{}},
+		{"article report", domain.ContentTypeArticle, domain.ContentSubtypeReport, nil},
+		{"page has explicit empty routing", domain.ContentTypePage, "", nil},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -56,8 +56,9 @@ func TestResolveSidecars(t *testing.T) {
 
 func assertEqualStringSlices(t *testing.T, got, want []string) {
 	t.Helper()
-	if want == nil && got != nil {
-		t.Errorf("ResolveSidecars() = %v, want nil", got)
+	if (got == nil) != (want == nil) {
+		t.Errorf("ResolveSidecars() nil mismatch: got nil=%v, want nil=%v; got=%v, want=%v",
+			got == nil, want == nil, got, want)
 		return
 	}
 	if want == nil {
