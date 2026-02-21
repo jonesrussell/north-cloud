@@ -29,8 +29,16 @@ task docker:run
 ### Production
 
 ```bash
-docker-compose -f docker-compose.base.yml up -d search-service
+docker compose -f docker-compose.base.yml up -d search
 ```
+
+## Integration
+
+The search service queries all `*_classified_content` Elasticsearch indexes — only content that has passed through the classifier pipeline is searchable. Raw content (`*_raw_content`) is not exposed.
+
+- **Upstream dependency**: Classifier must have processed and written to `{source}_classified_content` before articles appear in search results.
+- **Production access**: Routed through nginx at `/api/search` (maps to internal port 8090).
+- **Development access**: Exposed directly on `http://localhost:8092`.
 
 ## API Documentation
 
@@ -277,16 +285,15 @@ task search
 - **Elasticsearch Layer** (`internal/elasticsearch`): Query builder, ES client
 - **Domain Layer** (`internal/domain`): Models (SearchRequest, SearchResponse)
 - **Config Layer** (`internal/config`): Configuration management
-- **Logger** (`internal/logger`): Structured logging
 
 ### Search Flow
 
-1. **Request** → API Handler parses JSON/query params
-2. **Validation** → Service validates request and applies defaults
-3. **Query Building** → Query builder constructs Elasticsearch DSL
-4. **Execution** → ES client executes search against `*_classified_content` indexes
-5. **Parsing** → Service parses ES response into domain models
-6. **Response** → API handler returns JSON response
+1. **Request** — API handler parses JSON body or query parameters
+2. **Validation** — Service validates request and applies defaults
+3. **Query Building** — Query builder constructs Elasticsearch DSL
+4. **Execution** — ES client executes search against `*_classified_content` indexes
+5. **Parsing** — Service parses ES response into domain models
+6. **Response** — API handler returns JSON response
 
 ### Elasticsearch Query Strategy
 
@@ -332,16 +339,3 @@ cat config.yml
 - Review query complexity (too many filters?)
 - Consider reducing page size
 - Check Elasticsearch query performance in Kibana
-
-## Future Enhancements
-
-- **Autocomplete**: As-you-type suggestions
-- **"Did You Mean"**: Spelling corrections
-- **Search Analytics**: Query logging to PostgreSQL
-- **Saved Searches**: User-specific saved queries (requires auth)
-- **JWT Authentication**: Secure private searches
-- **Rate Limiting**: Per-IP request throttling
-
-## License
-
-Part of the North Cloud platform.
