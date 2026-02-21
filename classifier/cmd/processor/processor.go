@@ -10,10 +10,14 @@ import (
 	"time"
 
 	"github.com/jmoiron/sqlx"
+	"github.com/jonesrussell/north-cloud/classifier/internal/anishinaabemlclient"
 	"github.com/jonesrussell/north-cloud/classifier/internal/classifier"
+	"github.com/jonesrussell/north-cloud/classifier/internal/coforgemlclient"
 	"github.com/jonesrussell/north-cloud/classifier/internal/config"
 	"github.com/jonesrussell/north-cloud/classifier/internal/database"
 	"github.com/jonesrussell/north-cloud/classifier/internal/domain"
+	"github.com/jonesrussell/north-cloud/classifier/internal/entertainmentmlclient"
+	"github.com/jonesrussell/north-cloud/classifier/internal/miningmlclient"
 	"github.com/jonesrussell/north-cloud/classifier/internal/mlclient"
 	"github.com/jonesrussell/north-cloud/classifier/internal/processor"
 	"github.com/jonesrussell/north-cloud/classifier/internal/storage"
@@ -200,8 +204,12 @@ func createClassifierConfig(cfg *config.Config, log infralogger.Logger) classifi
 			MinArticlesForTrust:        minArticlesForTrust,
 			ReputationDecayRate:        defaultReputationDecayRate95,
 		},
-		CrimeClassifier: createCrimeClassifier(cfg, log),
-		RoutingTable:    cfg.Classification.Routing,
+		CrimeClassifier:         createCrimeClassifier(cfg, log),
+		MiningClassifier:        createMiningClassifier(cfg, log),
+		CoforgeClassifier:       createCoforgeClassifier(cfg, log),
+		EntertainmentClassifier: createEntertainmentClassifier(cfg, log),
+		AnishinaabeClassifier:   createAnishinaabeClassifier(cfg, log),
+		RoutingTable:            cfg.Classification.Routing,
 	}
 }
 
@@ -220,6 +228,74 @@ func createCrimeClassifier(cfg *config.Config, log infralogger.Logger) *classifi
 		infralogger.String("ml_service_url", cfg.Classification.Crime.MLServiceURL))
 
 	return classifier.NewCrimeClassifier(mlClient, log, true)
+}
+
+// createMiningClassifier creates a Mining classifier if enabled in config.
+func createMiningClassifier(cfg *config.Config, log infralogger.Logger) *classifier.MiningClassifier {
+	if !cfg.Classification.Mining.Enabled {
+		return nil
+	}
+
+	var mlClient classifier.MiningMLClassifier
+	if cfg.Classification.Mining.MLServiceURL != "" {
+		mlClient = miningmlclient.NewClient(cfg.Classification.Mining.MLServiceURL)
+	}
+
+	log.Info("Mining classifier enabled for processor",
+		infralogger.String("ml_service_url", cfg.Classification.Mining.MLServiceURL))
+
+	return classifier.NewMiningClassifier(mlClient, log, true)
+}
+
+// createCoforgeClassifier creates a Coforge classifier if enabled in config.
+func createCoforgeClassifier(cfg *config.Config, log infralogger.Logger) *classifier.CoforgeClassifier {
+	if !cfg.Classification.Coforge.Enabled {
+		return nil
+	}
+
+	var mlClient classifier.CoforgeMLClassifier
+	if cfg.Classification.Coforge.MLServiceURL != "" {
+		mlClient = coforgemlclient.NewClient(cfg.Classification.Coforge.MLServiceURL)
+	}
+
+	log.Info("Coforge classifier enabled for processor",
+		infralogger.String("ml_service_url", cfg.Classification.Coforge.MLServiceURL))
+
+	return classifier.NewCoforgeClassifier(mlClient, log, true)
+}
+
+// createEntertainmentClassifier creates an Entertainment classifier if enabled in config.
+func createEntertainmentClassifier(cfg *config.Config, log infralogger.Logger) *classifier.EntertainmentClassifier {
+	if !cfg.Classification.Entertainment.Enabled {
+		return nil
+	}
+
+	var mlClient classifier.EntertainmentMLClassifier
+	if cfg.Classification.Entertainment.MLServiceURL != "" {
+		mlClient = entertainmentmlclient.NewClient(cfg.Classification.Entertainment.MLServiceURL)
+	}
+
+	log.Info("Entertainment classifier enabled for processor",
+		infralogger.String("ml_service_url", cfg.Classification.Entertainment.MLServiceURL))
+
+	return classifier.NewEntertainmentClassifier(mlClient, log, true)
+}
+
+// createAnishinaabeClassifier creates an Anishinaabe classifier if enabled in config.
+func createAnishinaabeClassifier(cfg *config.Config, log infralogger.Logger) *classifier.AnishinaabeClassifier {
+	if !cfg.Classification.Anishinaabe.Enabled {
+		return nil
+	}
+
+	var mlClient classifier.AnishinaabeMLClassifier
+	if cfg.Classification.Anishinaabe.MLServiceURL != "" {
+		mlClient = anishinaabemlclient.NewClient(cfg.Classification.Anishinaabe.MLServiceURL)
+	}
+
+	log.Info("Anishinaabe classifier enabled for processor",
+		infralogger.String("ml_service_url", cfg.Classification.Anishinaabe.MLServiceURL))
+
+	return classifier.NewAnishinaabeClassifier(mlClient, log, true)
 }
 
 // Start starts the processor
