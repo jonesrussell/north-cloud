@@ -116,19 +116,14 @@ jobs:
             (cd search-frontend && npm ci)
           fi
 
-      - name: Debug Go environment
+      - name: Clear workspace module cache
         if: needs.detect-changes.outputs.has_go == 'true' || needs.detect-changes.outputs.run_all == 'true'
-        env:
-          GOWORK: ${{ github.workspace }}/go.work
         run: |
-          echo "=== Go environment ==="
-          go env GOWORK GOFLAGS GOPROXY GONOSUMDB GOPRIVATE GOPATH
-          echo "=== go.work exists? ==="
-          ls -la "${{ github.workspace }}/go.work" || echo "NOT FOUND"
-          echo "=== infrastructure go.mod? ==="
-          ls -la "${{ github.workspace }}/infrastructure/go.mod" || echo "NOT FOUND"
-          echo "=== workspace module list ==="
-          go list -m all 2>&1 | head -10 || true
+          # Remove stale VCS/download cache entries for workspace-local modules.
+          # Stale entries from previous failed runs cause Go to attempt VCS fetching
+          # even in workspace mode, failing because the repo is private.
+          rm -rf ~/go/pkg/mod/cache/download/github.com/north-cloud
+          rm -rf ~/go/pkg/mod/cache/vcs
 
       - name: Run linters (all services)
         if: needs.detect-changes.outputs.run_all == 'true'
@@ -175,6 +170,11 @@ jobs:
           key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
           restore-keys: |
             ${{ runner.os }}-go-
+
+      - name: Clear workspace module cache
+        run: |
+          rm -rf ~/go/pkg/mod/cache/download/github.com/north-cloud
+          rm -rf ~/go/pkg/mod/cache/vcs
 
       - name: Install Task runner
         run: |
@@ -251,6 +251,12 @@ jobs:
           key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
           restore-keys: |
             ${{ runner.os }}-go-
+
+      - name: Clear workspace module cache
+        if: needs.detect-changes.outputs.has_go == 'true' || needs.detect-changes.outputs.run_all == 'true'
+        run: |
+          rm -rf ~/go/pkg/mod/cache/download/github.com/north-cloud
+          rm -rf ~/go/pkg/mod/cache/vcs
 
       - name: Install Task runner
         run: |
