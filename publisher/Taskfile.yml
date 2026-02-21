@@ -10,7 +10,6 @@ vars:
   CONFIG_FILE: config.yml
 
 env:
-  GOWORK: "off"
 
 tasks:
   default:

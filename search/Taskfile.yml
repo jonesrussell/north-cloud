@@ -7,7 +7,6 @@ vars:
   MAIN_PATH: .
 
 env:
-  GOWORK: "off"
 
 tasks:
   default:

@@ -15,7 +15,6 @@ vars:
   DB_NAME: '{{.POSTGRES_SOURCE_MANAGER_DB | default .DB_NAME | default "source_manager"}}'
 
 env:
-  GOWORK: "off"
 
 tasks:
   default:

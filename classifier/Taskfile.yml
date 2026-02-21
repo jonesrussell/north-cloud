@@ -12,7 +12,6 @@ vars:
   POSTGRES_DB: '{{.POSTGRES_CLASSIFIER_DB | default "classifier"}}'
 
 env:
-  GOWORK: "off"
 
 tasks:
   default:
