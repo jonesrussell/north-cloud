@@ -126,22 +126,41 @@ curl -X POST http://localhost:8050/api/v1/sources/test-crawl \
   -d '{
     "url": "https://example.com/article",
     "selectors": {
-      "title": "h1",
-      "body": "article",
-      "date": "time[datetime]"
+      "article": {
+        "title": "h1",
+        "body": "article",
+        "published_time": "time[datetime]"
+      }
     }
   }'
 ```
 
-Response:
+Response (currently simulated — the handler returns a fixed stub response rather than actually crawling):
 ```json
 {
-  "success": true,
-  "extracted": {
-    "title": "Article Title",
-    "body": "Full article text...",
-    "date": "2025-12-28"
-  }
+  "articles_found": 10,
+  "success_rate": 90,
+  "warnings": [
+    "No author selector matched on 2 articles"
+  ],
+  "sample_articles": [
+    {
+      "title": "Sample Article 1",
+      "body": "This is a sample article extracted from the test crawl...",
+      "url": "https://example.com/article/article-1",
+      "published_date": "2026-01-02T10:00:00Z",
+      "author": "John Doe",
+      "quality_score": 85
+    },
+    {
+      "title": "Sample Article 2",
+      "body": "Another sample article demonstrating the crawl results...",
+      "url": "https://example.com/article/article-2",
+      "published_date": "2026-01-02T09:30:00Z",
+      "author": "",
+      "quality_score": 72
+    }
+  ]
 }
 ```
 
@@ -198,7 +217,7 @@ Config is loaded from `config.yml` (path overridable with `-config` flag) with e
 
 2. **Name is sanitized for ES indexes**: Spaces, dots, dashes, and other non-alphanumeric characters all become underscores; the result is lowercased. The raw name is stored in the database; sanitization happens at runtime.
 
-3. **Selectors have defaults**: If `title`, `body`, or `date` selectors are omitted, the crawler falls back to common patterns (`h1`, `article`, `time[datetime]`).
+3. **Selectors have defaults**: If `title`, `body`, or `published_time` selectors are omitted, the crawler falls back to common patterns (`h1`, `article`, `time[datetime]`).
 
 4. **Rate limit is per minute**: `rate_limit: 10` means the crawler sends at most 10 requests per minute to that source.
 
