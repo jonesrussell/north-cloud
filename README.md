@@ -54,7 +54,7 @@ flowchart TB
     subgraph Infrastructure
         ES[(Elasticsearch)]
         REDIS[[Redis]]
-        PG[(PostgreSQL x6)]
+        PG[(PostgreSQL x7)]
         MINIO[(MinIO)]
         NGINX[Nginx]
     end
@@ -82,7 +82,7 @@ flowchart TB
 | **crawler** | 8060 | Web crawler with interval-based job scheduling |
 | **classifier** | 8071 | Hybrid rule + ML classification (quality, topics, crime) |
 | **publisher** | 8070 | Multi-layer routing to Redis Pub/Sub channels |
-| **pipeline** | 8075 | Pipeline observability and event tracking |
+| **pipeline** | 8075 | Ingest per-article stage-transition events and expose a funnel view across crawled → indexed → classified → routed → published |
 | **index-manager** | 8090 | Elasticsearch index and document management |
 | **search** | 8092 | Full-text search across classified content |
 | **auth** | 8040 | JWT authentication (24h tokens) |
