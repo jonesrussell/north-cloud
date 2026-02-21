@@ -15,6 +15,7 @@ const version = "dev"
 func Start() error {
 	// Phase 0: Start profiling server (if enabled)
 	profiling.StartPprofServer()
+	profiling.StartPyroscope("source-manager") //nolint:errcheck // env-gated, non-critical
 
 	// Phase 1: Load config and create logger
 	cfg, err := LoadConfig()

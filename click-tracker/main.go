@@ -29,6 +29,7 @@ func main() {
 func run() int {
 	// Start profiling server (if enabled)
 	profiling.StartPprofServer()
+	profiling.StartPyroscope("click-tracker") //nolint:errcheck // env-gated, non-critical
 
 	// Load configuration
 	cfg, err := loadConfig()

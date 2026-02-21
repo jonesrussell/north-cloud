@@ -529,6 +529,16 @@ services:
   # Logging Infrastructure (Prod)
   # ============================================================
 
+  prometheus:
+    restart: always
+
+  pyroscope:
+    restart: always
+    volumes:
+      - pyroscope_data:/var/lib/pyroscope
+    environment:
+      PYROSCOPE_LOG_LEVEL: info
+
   loki:
     restart: always
     volumes:
@@ -564,6 +574,9 @@ services:
       # Comma-separated list only (e.g. grafana-clock-panel). Leave empty or unset for none.
       GF_INSTALL_PLUGINS: "${GRAFANA_INSTALL_PLUGINS:-}"
       GF_LOG_LEVEL: info
+      # SendGrid SMTP for email alerts
+      GF_SMTP_ENABLED: "true"
+      GF_SMTP_PASSWORD: "${SENDGRID_API_KEY}"
 
 # ============================================================
 # Production Volumes
@@ -576,4 +589,6 @@ volumes:
   alloy_data:
     driver: local
   grafana_data:
+    driver: local
+  pyroscope_data:
     driver: local

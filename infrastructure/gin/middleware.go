@@ -40,6 +40,13 @@ func LoggerMiddleware(log logger.Logger) gin.HandlerFunc {
 			logger.String("client_ip", c.ClientIP()),
 		}
 
+		// Include request ID if present
+		if reqID, exists := c.Get("request_id"); exists {
+			if id, ok := reqID.(string); ok {
+				fields = append(fields, logger.String("request_id", id))
+			}
+		}
+
 		// Add query if present
 		if query != "" {
 			fields = append(fields, logger.String("query", query))
@@ -181,6 +188,9 @@ func RecoveryMiddleware(log logger.Logger) gin.HandlerFunc {
 
 // RequestIDMiddleware adds a unique request ID to each request context.
 // The ID is either taken from X-Request-ID header or generated.
+//
+// Deprecated: Use RequestIDLoggerMiddleware instead, which also stores
+// a request-scoped logger in the Go context.
 func RequestIDMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		requestID := c.GetHeader("X-Request-ID")
@@ -190,6 +200,29 @@ func RequestIDMiddleware() gin.HandlerFunc {
 
 		c.Set("request_id", requestID)
 		c.Writer.Header().Set("X-Request-ID", requestID)
+
+		c.Next()
+	}
+}
+
+// RequestIDLoggerMiddleware generates a request ID and stores a request-scoped
+// logger (with request_id field) in both the Gin context and the Go context.
+// This allows downstream handlers to retrieve an enriched logger via
+// logger.FromContext(c.Request.Context()).
+func RequestIDLoggerMiddleware(log logger.Logger) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		requestID := c.GetHeader("X-Request-ID")
+		if requestID == "" {
+			requestID = generateRequestID()
+		}
+
+		c.Set("request_id", requestID)
+		c.Writer.Header().Set("X-Request-ID", requestID)
+
+		// Store enriched logger in Go context
+		reqLog := log.With(logger.String("request_id", requestID))
+		ctx := logger.WithContext(c.Request.Context(), reqLog)
+		c.Request = c.Request.WithContext(ctx)
 
 		c.Next()
 	}

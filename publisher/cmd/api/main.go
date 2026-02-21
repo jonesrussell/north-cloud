@@ -28,6 +28,7 @@ func main() {
 func run() int {
 	// Start profiling server (if enabled)
 	profiling.StartPprofServer()
+	profiling.StartPyroscope("publisher-api") //nolint:errcheck // env-gated, non-critical
 
 	// Initialize logger early (before config loading to use structured logging)
 	// Use default config for logger initialization

@@ -38,6 +38,7 @@ func runRouter() {
 func runRouterWithStop() (func(), error) {
 	// Start profiling server (if enabled)
 	profiling.StartPprofServer()
+	profiling.StartPyroscope("publisher-router") //nolint:errcheck // env-gated, non-critical
 
 	// Initialize logger using infrastructure logger
 	appLogger, loggerErr := infralogger.New(infralogger.Config{

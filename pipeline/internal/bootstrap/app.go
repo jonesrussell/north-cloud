@@ -12,6 +12,7 @@ import (
 // Start initializes and runs the pipeline service.
 func Start() error {
 	profiling.StartPprofServer()
+	profiling.StartPyroscope("pipeline") //nolint:errcheck // env-gated, non-critical
 
 	cfg, configErr := LoadConfig()
 	if configErr != nil {

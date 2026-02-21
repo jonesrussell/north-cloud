@@ -13,6 +13,7 @@ import (
 // Returns error on failure; caller should os.Exit(1).
 func StartHTTPServer() error {
 	profiling.StartPprofServer()
+	profiling.StartPyroscope("classifier") //nolint:errcheck // env-gated, non-critical
 
 	cfg, err := bootstrap.LoadConfig()
 	if err != nil {

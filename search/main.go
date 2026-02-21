@@ -21,6 +21,7 @@ func main() {
 func run() int {
 	// Start profiling server (if enabled)
 	profiling.StartPprofServer()
+	profiling.StartPyroscope("search") //nolint:errcheck // env-gated, non-critical
 
 	// Load configuration
 	cfg, err := loadConfig()
