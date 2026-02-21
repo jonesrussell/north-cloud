@@ -1,150 +1,180 @@
-# CLAUDE.md
+# Search Frontend — Developer Guide
 
-This file provides guidance to Claude Code (claude.ai/code) when working with the search-frontend service.
+Public-facing search SPA (Vue 3 + TypeScript + Vite). No authentication. Proxies all requests to the Search service.
 
 ## Quick Reference
 
 ```bash
-# Development
-npm run dev           # Start dev server
-npm run build         # Build for production
-npm run lint          # Run ESLint
-npm run preview       # Preview production build
+# Daily development
+npm run dev          # Start dev server at http://localhost:3003
+npm run lint         # Run ESLint
+npm run lint:fix     # Auto-fix lint violations
+npm run build        # Production build to dist/
+npm run preview      # Preview production build locally
 
-# Or using Taskfile
+# Via Taskfile (caches results — re-runs only on source changes)
 task dev
-task build
 task lint
+task build
+task preview
+```
+
+Docker (from repo root):
+```bash
+docker compose -f docker-compose.base.yml -f docker-compose.dev.yml up -d search-frontend
+docker compose -f docker-compose.base.yml -f docker-compose.dev.yml logs -f search-frontend
 ```
 
 ## Architecture
 
 ```
-search-frontend/src/
-├── App.vue              # Root component with search interface
-├── main.ts              # Entry point
-├── router/              # Vue Router (minimal, single-page)
-├── api/                 # Search API client
-├── components/
-│   ├── SearchBar.vue    # Search input component
-│   ├── SearchResults.vue # Results display
-│   ├── ResultCard.vue   # Individual result card
-│   └── Facets.vue       # Facet filters
-├── composables/
-│   └── useSearch.ts     # Search logic composable
-├── types/               # TypeScript definitions
+src/
+├── main.ts                    # Mounts app, installs router
+├── App.vue                    # Root layout, router-view
+├── style.css                  # CSS custom properties (--nc-*), global styles
+├── router/index.ts            # Routes: /, /search, /advanced, 404
+├── api/
+│   └── search.ts              # Axios client — baseURL /api/search
 ├── views/
-│   └── SearchView.vue   # Main search page
-└── utils/               # Utility functions
+│   ├── HomeView.vue           # Landing: search bar + suggested topics + recent searches
+│   ├── ResultsView.vue        # Results: sidebar/drawer filters, pagination, sort
+│   ├── AdvancedSearchView.vue # Advanced query builder (all/any/exact/exclude words)
+│   └── NotFoundView.vue       # 404
+├── components/
+│   ├── search/
+│   │   ├── SearchBar.vue          # Input + autocomplete dropdown (API + recent)
+│   │   ├── SearchResults.vue      # Result list container
+│   │   ├── SearchResultItem.vue   # Individual card with Elasticsearch highlights
+│   │   ├── SearchResultsSkeleton.vue  # Skeleton placeholder during fetch
+│   │   ├── FilterSidebar.vue      # Desktop filter panel (topics, sources, quality, dates)
+│   │   ├── FilterDrawer.vue       # Mobile slide-out filter panel
+│   │   ├── FilterChips.vue        # Active-filter pills above results
+│   │   ├── SearchPagination.vue   # Page navigation
+│   │   ├── EmptySearchState.vue   # No-results UI
+│   │   └── RelatedContent.vue     # Related content suggestions
+│   └── common/
+│       ├── EmptyState.vue         # Generic empty state
+│       ├── ErrorAlert.vue         # Error banner
+│       └── LoadingSpinner.vue     # Spinner
+├── composables/
+│   ├── useSearch.ts           # Core: state, API calls, URL sync, pagination
+│   ├── useRecentSearches.ts   # localStorage recent searches (cap 10, deduplicated)
+│   ├── useDebounce.ts         # Reactive debounce composable (default 300 ms)
+│   └── useUrlParams.ts        # Generic URL query-param sync helper
+├── types/
+│   ├── search.ts              # SearchRequest, SearchResponse, SearchFilters, facet types
+│   ├── api.ts                 # SearchApi interface, interceptor types
+│   └── router.ts              # RouteMeta augmentation (title field)
+└── utils/
+    ├── queryBuilder.ts        # buildSearchPayload(), buildAdvancedQuery(), validateSearchForm()
+    ├── dateFormatter.ts       # Date display helpers
+    ├── highlightHelper.ts     # parseHighlight(), sanitizeHighlight(), truncateText()
+    └── analytics.ts           # trackEvent() — fires CustomEvent north-cloud-analytics
 ```
 
-## Tech Stack
+## Key Concepts
 
-- **Vue 3** - Composition API
-- **TypeScript** - Type checking
-- **Vite** - Build tool
-- **Tailwind CSS 4** - Styling
-- **Axios** - HTTP client
-- **Heroicons** - Icons
-
-## Purpose
-
-Public-facing search interface for querying classified content. Simpler than the dashboard - focused solely on search functionality.
-
-## Search Flow
+### Search Flow
 
 ```
-User enters query → SearchBar emits search event → useSearch composable → API call → Display results
+User types query
+  → SearchBar debounces input (280 ms) → calls /api/search/suggest for autocomplete
+  → User submits → useSearch.search() → POST /api/search → update results + facets
+  → updateUrl() serialises state to query params (/search?q=...&topics=...&page=...)
 ```
 
-## API Integration
+### URL as Source of Truth
 
-Connects to the search service:
+`useSearch.syncFromUrl()` reads all route query params and rebuilds state from scratch on every navigation. `updateUrl()` writes state back to the URL after each search. Shareable links are the result — bookmarking or copying the URL captures the full search state.
 
-```typescript
-// api/search.ts
-export const searchApi = {
-  search: (params: SearchParams) =>
-    axios.get('/api/v1/search', { params }),
-  suggest: (query: string) =>
-    axios.get('/api/v1/search/suggest', { params: { q: query } })
-};
-```
+### Filter Architecture
 
-## Type Definitions
+Filters flow from `useSearch` (owner) down to `FilterSidebar` / `FilterDrawer` via props. Components emit `update:filters` back up. `applyFilters()` resets to page 1 then re-executes the search.
 
-```typescript
-// types/search.ts
-interface SearchParams {
-  q: string;
-  page?: number;
-  size?: number;
-  min_quality?: number;
-  topics?: string[];
-  include_facets?: boolean;
-}
+Facets (topic counts, source counts, content-type counts) are returned by the search API and passed to the filter components so counts stay in sync with the current result set.
 
-interface SearchResult {
-  id: string;
-  title: string;
-  snippet: string;
-  score: number;
-  quality_score: number;
-  topics: string[];
-  source_name: string;
-  published_at: string;
-}
+### Highlight Sanitisation
 
-interface SearchResponse {
-  query: string;
-  total_hits: number;
-  current_page: number;
-  total_pages: number;
-  hits: SearchResult[];
-  facets?: Facets;
-}
-```
+Elasticsearch returns `<em>` tags inside highlight snippets. `sanitizeHighlight()` strips every HTML tag except `<em>` before the snippet is rendered with `v-html`. Do not remove or bypass this sanitisation.
+
+### Analytics
+
+`trackEvent()` in `utils/analytics.ts` dispatches a `north-cloud-analytics` CustomEvent on `window`. In development it also logs to `console.debug`. Connect a real analytics provider (GA4, Plausible, etc.) by listening to this event — no changes to component code required.
+
+## Configuration
+
+| Variable | Default | Description |
+|---|---|---|
+| `SEARCH_API_URL` | `http://localhost:8092` | Search service URL for Vite dev proxy |
+| `NODE_ENV` | `development` | Standard Node environment flag |
+
+`SEARCH_API_URL` is read at dev-server startup by `vite.config.ts`. It is not bundled into the browser code. The browser always calls `/api/search`.
+
+Dev proxy rewrites:
+
+| Browser path | Rewrites to |
+|---|---|
+| `/api/search` (POST/GET) | `{SEARCH_API_URL}/api/v1/search` |
+| `/api/search/suggest` | `{SEARCH_API_URL}/api/v1/search/suggest` |
+| `/api/health/search` | `{SEARCH_API_URL}/health` |
 
 ## Common Gotchas
 
-1. **No authentication**: Public search interface, no login required.
+1. **No authentication** — This is a fully public interface. There is no login, no JWT, and no auth headers. Do not add auth middleware here.
 
-2. **API URL**: Configure via `VITE_SEARCH_API_URL` env var.
+2. **`SEARCH_API_URL` is a server-side proxy variable** — It is not a `VITE_*` variable and is not available in browser code. Configure it in `.env` or via Docker environment for the dev server; nginx handles routing in production.
 
-3. **Facets optional**: Only request when filter panel is open.
+3. **Facets are always requested** — `useSearch` always sends `include_facets: true`. Facet data populates the filter sidebar. If the Search service returns `null` for facets, filter panels hide gracefully via `v-if`.
 
-4. **Debounced search**: Input is debounced to avoid excessive API calls.
+4. **`sanitizeHighlight()` must stay** — Elasticsearch highlight snippets can contain arbitrary HTML from indexed content. Skipping sanitisation allows XSS.
 
-## Environment Variables
+5. **Recent searches use localStorage** — `useRecentSearches.ts` stores up to 10 entries under the key `north-cloud-search-recent`. This is per-browser; there is no server-side persistence.
 
-```bash
-VITE_SEARCH_API_URL=http://localhost:8092  # Search service URL
-```
+6. **Autocomplete fires at 2+ characters** — `SearchBar.vue` ignores debounced queries shorter than 2 characters to avoid noise from single-character input.
 
-## Component Usage
-
-**SearchBar**:
-```vue
-<SearchBar
-  v-model="query"
-  @search="handleSearch"
-  :loading="isLoading"
-/>
-```
-
-**SearchResults**:
-```vue
-<SearchResults
-  :results="results"
-  :total="totalHits"
-  @page-change="changePage"
-/>
-```
-
-## Styling
-
-Uses Tailwind CSS 4 with `@import "tailwindcss"` syntax. Components use utility classes for styling.
+7. **TypeScript strict mode is off by default** — `tsconfig.json` does not enable `strict`. Prefer explicit types and avoid `any`; use `unknown` for values of indeterminate shape.
 
 ## Testing
 
-No test framework currently configured. Test manually via dev server.
+No automated test framework is configured. Manual testing procedure:
+
+1. Run `npm run dev` and verify the home page renders at `http://localhost:3003`.
+2. Enter a query and confirm results appear with highlights.
+3. Apply a topic filter and confirm the URL updates and results refresh.
+4. Navigate to `/advanced`, build a query, and confirm it routes to `/search`.
+5. Run `npm run build && npm run preview` and verify the production build works identically.
+
+## Code Patterns
+
+### Typed component props
+
+```typescript
+// Always use defineProps<T>() with explicit interface — no PropType workarounds
+interface Props {
+  facets: FacetsFromApi | null
+  filters: SearchFilters
+}
+const props = withDefaults(defineProps<Props>(), {})
+```
+
+### Emitting filter updates
+
+```typescript
+// Child never mutates props — emit a new object
+emit('update:filters', { ...props.filters, topics: next })
+```
+
+### Calling the search API
+
+```typescript
+// api/search.ts exports a typed searchApi object — import and call directly
+import searchApi from '@/api/search'
+const response = await searchApi.search(payload)  // returns AxiosResponse<SearchResponse>
+```
+
+### Adding a new filter dimension
+
+1. Add the field to `SearchFilters` in `src/types/search.ts`.
+2. Wire it into `useSearch.ts` (`filters` ref, `syncFromUrl`, `updateUrl`, payload builder).
+3. Add UI control to `FilterSidebar.vue` and `FilterDrawer.vue`.
+4. Add a chip to `FilterChips.vue`.
