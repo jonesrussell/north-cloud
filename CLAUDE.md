@@ -90,6 +90,8 @@ After changing deps, run `task vendor` from the repo root (local only) to refres
 | search | 8092 | Search API (dev), 8090 (prod via nginx) |
 | dashboard | 3002 | Dashboard UI |
 | nc-http-proxy | 8055 | HTTP Replay Proxy |
+| pipeline | 8075 | Pipeline Event Service |
+| click-tracker | 8093 | Click Event Tracking |
 | mining-ml | 8077 | Mining ML Classifier |
 | anishinaabe-ml | 8080 | Anishinaabe ML Classifier |
 

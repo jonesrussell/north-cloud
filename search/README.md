@@ -18,7 +18,7 @@ Full-text search microservice for the North Cloud platform. Provides Google-like
 ### Development
 
 ```bash
-# Run locally (requires Go 1.25+)
+# Run locally (requires Go 1.26+)
 cd search
 task run
 
@@ -202,7 +202,7 @@ LOG_FORMAT=json
 
 ### Prerequisites
 
-- Go 1.25+
+- Go 1.26+
 - Docker & Docker Compose
 - Task (task runner)
 - Elasticsearch 9.x

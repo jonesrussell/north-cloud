@@ -4,7 +4,7 @@ This guide covers setting up and running the source_manager application in devel
 
 ## Prerequisites
 
-- Go 1.21 or later
+- Go 1.26 or later
 - PostgreSQL 15 or later
 - Node.js 18 or later (for frontend)
 - Task (https://taskfile.dev) - optional but recommended

@@ -4,7 +4,7 @@ This document describes the testing strategy and setup for the source-manager mi
 
 ## Overview
 
-The source-manager service uses modern Go 1.25 testing practices with a focus on:
+The source-manager service uses modern Go 1.26 testing practices with a focus on:
 - **Unit tests**: Fast, isolated tests that don't require external dependencies
 - **Integration tests**: Tests that use real database connections (can be skipped with `-short` flag)
 - **Test helpers**: Reusable utilities for common test scenarios
@@ -136,7 +136,7 @@ ctx := context.Background()
 err := testhelpers.RunMigrations(ctx, db, logger)
 ```
 
-## Modern Go 1.25 Testing Features
+## Modern Go 1.26 Testing Features
 
 ### Table-Driven Tests
 
