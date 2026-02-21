@@ -11,7 +11,6 @@ import (
 )
 
 func TestResolveSidecars(t *testing.T) {
-	t.Helper()
 
 	routingTable := map[string][]string{
 		"article":         {"crime", "mining", "location"},
@@ -49,7 +48,6 @@ func TestResolveSidecars(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			t.Helper()
 			got := clf.ResolveSidecars(tt.contentType, tt.subtype)
 			assertEqualStringSlices(t, got, tt.want)
 		})
@@ -77,7 +75,6 @@ func assertEqualStringSlices(t *testing.T, got, want []string) {
 }
 
 func TestResolveSidecars_MissingKey_ReturnsNilAndLogs(t *testing.T) {
-	t.Helper()
 
 	cfg := Config{
 		Version:                "1.0.0",
