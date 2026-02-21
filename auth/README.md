@@ -41,7 +41,10 @@ curl -s -X POST http://localhost:8040/api/v1/auth/login \
 cd auth
 
 # Run with hot reload
-task dev
+air
+
+# Or run without hot reload
+task run
 
 # Or build and run
 task build
@@ -103,7 +106,7 @@ Configuration is loaded from `config.yml` then overridden by environment variabl
 |----------|---------|----------|-------------|
 | `AUTH_USERNAME` | `admin` | Yes | Login username |
 | `AUTH_PASSWORD` | `admin` | Yes | Login password |
-| `AUTH_JWT_SECRET` | *(none)* | Yes (prod) | HS256 signing secret — must not be the default in non-debug mode |
+| `AUTH_JWT_SECRET` | `change-me-in-production` | Yes (prod) | HS256 signing secret — must not be the default in non-debug mode |
 | `AUTH_PORT` | `8040` | No | HTTP listen port |
 | `APP_DEBUG` | `false` | No | Enable debug mode (relaxes JWT secret validation) |
 | `LOG_LEVEL` | `info` | No | Log level: `debug`, `info`, `warn`, `error` |
