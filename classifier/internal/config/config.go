@@ -137,7 +137,11 @@ type ClassificationConfig struct {
 	Coforge          CoforgeConfig          `yaml:"coforge"`
 	Entertainment    EntertainmentConfig    `yaml:"entertainment"`
 	Anishinaabe      AnishinaabeConfig      `yaml:"anishinaabe"`
-	// SidecarRegistry maps sidecar name (e.g. "crime", "mining") to enabled + URL. Optional; built from Crime/Mining/... if absent.
+	// SidecarRegistry maps sidecar name (e.g. "crime", "mining") to enabled + URL.
+	// Built from Crime/Mining/... named configs when absent in YAML.
+	// NOTE: Currently populated by setClassificationDefaults but not yet consumed by the bootstrap
+	// or classifier — the named fields (Crime, Mining, etc.) remain authoritative.
+	// TODO: when declarative registry-driven dispatch is implemented, this will replace named fields.
 	SidecarRegistry map[string]SidecarConfig `yaml:"sidecar_registry"`
 	// Routing maps route key (e.g. "article", "article:event") to sidecar names to run. Optional; default matches current behavior.
 	Routing map[string][]string `yaml:"routing"`
