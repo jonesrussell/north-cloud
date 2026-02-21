@@ -1,8 +1,9 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides quick-reference guidance for Claude Code when working in this repository.
+For deep architecture documentation, see `ARCHITECTURE.md`.
 
-**IMPORTANT**: This file is automatically loaded into Claude's context. It's tuned for effectiveness - most critical information is at the top. Follow the structure: read what you need, not everything.
+---
 
 ## Quick Reference
 
@@ -16,7 +17,6 @@ task docker:dev:up
 
 # Include logging/observability (Loki, Alloy, Grafana, Pyroscope)
 task docker:dev:up:observability
-# Or: docker compose -f docker-compose.base.yml -f docker-compose.dev.yml --profile observability up -d
 
 # View logs
 docker compose -f docker-compose.base.yml -f docker-compose.dev.yml logs -f SERVICE
@@ -30,13 +30,9 @@ docker compose -f docker-compose.base.yml -f docker-compose.dev.yml down
 
 **Taskfile Commands (Preferred)**:
 ```bash
-# Run all linters
+# Run all linters / tests
 task lint
-
-# Run all tests
 task test
-
-# Run tests with coverage
 task test:cover
 
 # Single service (replace SERVICE with: auth, classifier, crawler, etc.)
@@ -44,8 +40,7 @@ task lint:SERVICE
 task test:SERVICE
 task test:cover:SERVICE
 
-# Task caches results: lint/test/build skip when sources unchanged.
-# Force re-run: task lint -f or task test:auth -f
+# Task caches results — force re-run with: task lint -f
 # Changed-services only (CI): task lint:changed, task test:changed, task ci:changed
 
 # Run migrations
@@ -55,25 +50,16 @@ task migrate:SERVICE
 # Install dev tools (golangci-lint, air, goimports, migrate)
 task install:tools
 
-# Task version (CI and local): see .task-version (e.g. install with that version for parity)
-
-# Lint: use task lint:force (or task ci:force) before pushing so local matches CI.
-# Go services: lint:force runs golangci-lint after "cache clean" so you see the same nolintlint/etc. results as CI.
+# Use task lint:force (or task ci:force) before pushing — runs golangci-lint after
+# "cache clean" so local results match CI exactly.
 ```
 
 **Service Development (Manual)**:
 ```bash
-# Run tests
-cd SERVICE && go test ./...
-
-# Lint
-cd SERVICE && golangci-lint run
-
-# Run migrations
-cd SERVICE && go run cmd/migrate/main.go up
-
-# Build (most services use main.go at root)
-cd SERVICE && go build -o bin/SERVICE .
+cd SERVICE && go test ./...           # Run tests
+cd SERVICE && golangci-lint run       # Lint
+cd SERVICE && go run cmd/migrate/main.go up  # Migrations
+cd SERVICE && go build -o bin/SERVICE .      # Build
 ```
 
 **Before Committing**:
@@ -81,11 +67,16 @@ cd SERVICE && go build -o bin/SERVICE .
 2. Run linter: `task lint` (or `task lint:force` before pushing to bypass cache and match CI)
 3. Check no magic numbers, `interface{}`, or unchecked JSON errors
 
-**Go Workspace Isolation**: Each service Taskfile sets `GOWORK=off` globally so all Go commands (build, test, lint, vuln) resolve dependencies from the module's own `go.mod`, not the workspace. This ensures local and CI behavior match exactly. The `go.work` file is only used for IDE navigation.
+**Go Workspace Isolation**: Each service Taskfile sets `GOWORK=off` so all Go commands resolve
+dependencies from the module's own `go.mod`, not the workspace. The `go.work` file is only for
+IDE navigation.
 
-**Vendoring**: Each Go module has its own `vendor/` (e.g. `auth/vendor/`). Vendor dirs are gitignored — CI downloads modules from the Go module proxy. After changing deps (`go get -u`, `go mod tidy`) in any module, run **`task vendor`** from the repo root to refresh all module vendors. Do not run `go work vendor`; it updates only the root vendor, which is not used when lint/test run per service.
+**Vendoring**: Each Go module has its own `vendor/` (gitignored — CI uses the module proxy).
+After changing deps, run `task vendor` from the repo root. Do not run `go work vendor`.
 
-### Service Ports
+---
+
+## Service Ports
 
 | Service | Port | Purpose |
 |---------|------|---------|
@@ -101,204 +92,69 @@ cd SERVICE && go build -o bin/SERVICE .
 | mining-ml | 8077 | Mining ML Classifier |
 | anishinaabe-ml | 8080 | Anishinaabe ML Classifier |
 
-ML sidecars (crime-ml, mining-ml, coforge-ml, entertainment-ml, anishinaabe-ml) live under `ml-sidecars/` (e.g. `ml-sidecars/mining-ml`).
+ML sidecars (crime-ml, mining-ml, coforge-ml, entertainment-ml, anishinaabe-ml) live under `ml-sidecars/`.
 
 ---
 
 ## CRITICAL Rules - YOU MUST Follow
+
+### Before Making Changes
+
+1. **Read first**: Service README.md or CLAUDE.md, files you will modify, existing patterns
+2. **Check dependencies**: docker-compose `depends_on`, API integrations, database schemas
+3. **Plan multi-service changes**: Identify affected services, determine change order
+4. **Understand service boundaries**: Each service is independent with its own database
 
 ### Linting Prevention - CRITICAL
 
 **ALWAYS follow these rules. The linter flags violations as errors:**
 
 - **NEVER use `interface{}`** - always use `any` (Go 1.18+)
-  - ❌ `func Process(data map[string]interface{})`
-  - ✅ `func Process(data map[string]any)`
+  - `func Process(data map[string]interface{})` — WRONG
+  - `func Process(data map[string]any)` — CORRECT
 
 - **NEVER ignore JSON marshal/unmarshal errors** - always check them
-  - ❌ `body, _ := json.Marshal(reqBody)`
-  - ✅ `body, err := json.Marshal(reqBody)` followed by error checking
+  - `body, _ := json.Marshal(reqBody)` — WRONG
+  - `body, err := json.Marshal(reqBody)` followed by error checking — CORRECT
 
 - **NEVER use magic numbers** - always define named constants
-  - ❌ `make(map[string]any, 4)`
-  - ✅ `make(map[string]any, qualityFactorCount)` where `qualityFactorCount = 4`
+  - `make(map[string]any, 4)` — WRONG
+  - `make(map[string]any, qualityFactorCount)` where `qualityFactorCount = 4` — CORRECT
 
 - **Pre-allocate slices when capacity is known**
-  - ❌ `var items []Item` when you know the size
-  - ✅ `items := make([]Item, 0, len(results))`
+  - `var items []Item` when you know the size — WRONG
+  - `items := make([]Item, 0, len(results))` — CORRECT
 
 - **ALL test helper functions MUST start with `t.Helper()`**
-  - ❌ `func verifyResult(t *testing.T, result Result) { ... }`
-  - ✅ `func verifyResult(t *testing.T, result Result) { t.Helper(); ... }`
+  - `func verifyResult(t *testing.T, result Result) { ... }` — WRONG
+  - `func verifyResult(t *testing.T, result Result) { t.Helper(); ... }` — CORRECT
 
-- **Keep cognitive complexity ≤ 20** - break down complex functions into smaller helpers
+- **Keep cognitive complexity <= 20** - break down complex functions into smaller helpers
+  - The `gocognit` linter flags functions with complexity > 20 — refactor immediately if flagged
 
-- **Keep function length ≤ 100 lines** (`funlen` linter) - extract helper functions
+- **Keep function length <= 100 lines** (`funlen` linter) - extract helper functions
   - Example: ES mapping builders use `getCrimeMapping()`, `getMiningMapping()` helpers
   - Example: `classifier.go:Classify()` uses `runOptionalClassifiers()` to stay under limit
-  - ❌ `func complexFunction() { if a { if b { if c { ... } } } }` (high complexity)
-  - ✅ `func complexFunction() { helperA(); helperB(); helperC() }` with separate helper functions
-  - The `gocognit` linter flags functions with complexity > 20 - refactor immediately if flagged
+  - `func complexFunction() { if a { if b { if c { ... } } } }` — WRONG (high complexity)
+  - `func complexFunction() { helperA(); helperB(); helperC() }` with separate helpers — CORRECT
 
 - **Keep lines under 150 characters** - break long lines
+
 - **Avoid variable shadowing** - use `unmarshalErr`, `marshalErr`, etc. for clarity
 
 - **NEVER use `os.Getenv` directly** - use `infrastructure/config` package instead
-  - ❌ `port := os.Getenv("PORT")`
-  - ✅ Use config struct with `env` tags loaded via `infrastructure/config`
+  - `port := os.Getenv("PORT")` — WRONG
+  - Use config struct with `env` tags loaded via `infrastructure/config` — CORRECT
   - The `forbidigo` linter enforces this (exception: `cmd/` and `infrastructure/config/` directories)
 
 **Before committing**: `cd SERVICE && golangci-lint run`
-
-### Before Making Changes - YOU MUST
-
-1. **Read first**: Service README.md or CLAUDE.md, files you'll modify, existing patterns
-2. **Check dependencies**: docker-compose `depends_on`, API integrations, database schemas
-3. **Plan multi-service changes**: Identify affected services, determine change order
-4. **Understand service boundaries**: Each service is independent with its own database
-
----
-
-## Project Overview
-
-**North Cloud** is a microservices content platform: Crawl → Classify → Publish to Redis Pub/Sub.
-
-**Tech Stack**: Go 1.24+ (some 1.25+), Vue.js 3, Drupal 11, PostgreSQL, Redis, Elasticsearch, Docker
-
-**Content Pipeline**:
-1. **Crawler** → `{source}_raw_content` (Elasticsearch) with `classification_status=pending`
-2. **Classifier** → `{source}_classified_content` (enriched with quality, topics, crime detection)
-3. **Publisher** → Redis Pub/Sub channels (e.g., `articles:crime:violent`, `articles:news`)
-4. **Mining-ML** sidecar classifies mining content via hybrid rules+ML → publisher routes to `articles:mining`
-
----
-
-## Services - Quick Reference
-
-### 1. crawler (`/crawler`)
-- **Port**: 8060 (API), 3001 (Frontend)
-- **Purpose**: Web crawler with interval-based job scheduler
-- **Database**: `postgres-crawler` (crawler database)
-- **Key Files**: `main.go`, `internal/bootstrap/`, `internal/scheduler/interval_scheduler.go`
-- **IMPORTANT**: Jobs require `source_id` (not `source_name`)
-- **Scheduler**: Interval-based (NOT cron) - use `interval_minutes` + `interval_type`
-- **Docs**: `/crawler/docs/INTERVAL_SCHEDULER.md`
-
-### 2. source-manager (`/source-manager`)
-- **Port**: 8050
-- **Purpose**: Manage content sources and crawling configs
-- **Database**: `postgres-source-manager` (source_manager database)
-- **Test Crawl**: `POST /api/v1/sources/test-crawl` (preview without saving)
-
-### 3. classifier (`/classifier`)
-- **Port**: 8071
-- **Purpose**: Classify raw content (type, quality 0-100, topics, crime detection)
-- **Dependencies**: Elasticsearch (reads `{source}_raw_content`, writes `{source}_classified_content`)
-- **IMPORTANT**: Must populate `Body` and `Source` alias fields for publisher
-- **Docs**: `/classifier/CLAUDE.md` for detailed guidelines
-
-### 4. publisher (`/publisher`)
-- **Port**: 8070
-- **Purpose**: Database-backed routing hub (filters articles, publishes to Redis)
-- **Database**: `postgres-publisher` (sources, channels, routes, publish_history)
-- **Modes**: `use_classified_content: true` (recommended) OR legacy keyword-based
-- **Filter**: `content_type: "article"` to exclude pages/listings
-- **Docs**: `/publisher/CLAUDE.md` for detailed guidelines
-
-### 5. auth (`/auth`)
-- **Port**: 8040
-- **Purpose**: Username/password → JWT tokens (24h expiration)
-- **Config**: `AUTH_USERNAME`, `AUTH_PASSWORD`, `AUTH_JWT_SECRET` (shared across services)
-- **Protected**: All `/api/v1/*` routes (health endpoints are public)
-
-### 6. index-manager (`/index-manager`)
-- **Port**: 8090
-- **Purpose**: Elasticsearch index and document management
-- **Database**: `postgres-index-manager` (index metadata, migration history)
-- **Hot Reload**: Air-based development (`.air.toml`)
-
-### 7. search (`/search`)
-- **Port**: 8090 (internal), 8092 (dev), `/api/search` (nginx)
-- **Purpose**: Full-text search across all `*_classified_content` indexes
-- **Features**: Multi-match, field boosting, fuzzy matching, faceted search
-
-### 8. mcp-north-cloud (`/mcp-north-cloud`)
-- **Purpose**: MCP server exposing 27 tools for AI integration (18 local / 24 prod, filtered by `MCP_ENV`)
-- **Protocol**: stdio-based (reads stdin, writes stdout)
-- **Docs**: `/mcp-north-cloud/README.md` for comprehensive tool documentation
-
-### 9. dashboard (`/dashboard`)
-- **Port**: 3002
-- **Tech**: Vue.js 3 + TypeScript + Tailwind CSS
-- **Auth**: JWT tokens in localStorage, route guards, API interceptors
-- **Types**: All components use proper TypeScript types (no `any`), see `/dashboard/src/types/`
-
-### Infrastructure Services
-- **PostgreSQL**: One database per service (`postgres-{service}`)
-- **Redis**: Pub/Sub channels (e.g., `articles:crime:violent`, `articles:news`)
-- **Elasticsearch**: `{source}_raw_content` and `{source}_classified_content` indexes
-- **Nginx**: Reverse proxy, SSL/TLS (northcloud.biz), routes `/api/*` and `/dashboard/*`
-- **Loki + Grafana Alloy + Grafana**: Centralized logging infrastructure
-  - **Alloy**: Collects logs from Docker containers and forwards to Loki
-  - **Loki**: Aggregates and stores logs with label-based indexing
-  - **Grafana**: Web UI for querying and visualizing logs
-  - **Configuration**: `/infrastructure/alloy/config.alloy` (HCL format)
-  - **Port**: 12345 (Alloy debugging UI), 3100 (Loki), 3000 (Grafana)
-  - **Docs**: `/infrastructure/alloy/README.md`, `/infrastructure/grafana/README.md`
-- **nc-http-proxy**: HTTP replay proxy for deterministic crawler testing
-  - **Port**: 8055 (configurable via `PROXY_PORT`)
-  - **Modes**: `replay` (fixtures+cache), `record` (live+cache), `live` (pass-through)
-  - **Fixtures**: Version-controlled in `crawler/fixtures/` (read-only)
-  - **Cache**: User-local at `~/.northcloud/http-cache/`
-  - **Commands**: `task proxy:up/status/mode:replay/mode:record/mode:live/list/clear`
-  - **Docs**: `/nc-http-proxy/README.md`
-
----
-
-## Development Workflow
-
-### Initial Setup
-```bash
-cp .env.example .env
-# Edit .env with your configuration
-docker compose -f docker-compose.base.yml -f docker-compose.dev.yml up -d
-```
-
-### Working on a Service
-
-1. **Start service**: `docker compose -f docker-compose.base.yml -f docker-compose.dev.yml up -d SERVICE`
-2. **View logs**: `docker compose -f docker-compose.base.yml -f docker-compose.dev.yml logs -f SERVICE`
-3. **Make changes**: Code auto-reloads in dev mode (Air or volume mounts)
-4. **Test**: `cd SERVICE && go test ./...`
-5. **Lint**: `cd SERVICE && golangci-lint run`
-6. **Rebuild**: `docker compose -f docker-compose.base.yml -f docker-compose.dev.yml up -d --build SERVICE`
-
-### Database Access
-```bash
-# Source manager
-docker exec -it north-cloud-postgres-source-manager psql -U postgres -d source_manager
-
-# Crawler
-docker exec -it north-cloud-postgres-crawler psql -U postgres -d crawler
-
-# Publisher
-docker exec -it north-cloud-postgres-publisher psql -U postgres -d publisher
-```
-
-### Running Migrations
-```bash
-# Go services
-cd SERVICE && go run cmd/migrate/main.go up
-
-# Drupal
-docker exec -it north-cloud-streetcode drush updb
-```
 
 ---
 
 ## Code Conventions
 
 ### Go Services
+
 - **Go Version**: 1.24+ (crawler, source-manager), 1.25+ (classifier, publisher, others)
 - **Standards**: `gofmt`, `goimports`, standard Go formatting
 - **Error Handling**: Always wrap errors: `fmt.Errorf("context: %w", err)`
@@ -309,162 +165,38 @@ docker exec -it north-cloud-streetcode drush updb
 - **Database**: Always use context-aware methods (`PingContext()`, `QueryContext()`, etc.)
 - **Testing**: Target 80%+ coverage, all helper functions use `t.Helper()`
 
-### Bootstrap Pattern (Go Services)
-
-All HTTP services follow a consistent bootstrap pattern:
-
-**Entry point**: `main.go` at service root with `main() { os.Exit(run()) }` or `main() { if err := bootstrap.Start(); err != nil { ... os.Exit(1) } }`
-
-**Config**: Use `infraconfig.GetConfigPath("config.yml")` for config path (source-manager allows `-config` flag override)
-
-**Profiling**: Call `profiling.StartPprofServer()` at startup
-
-**Logger**: `infralogger` with `log.With(infralogger.String("service", "name"))`
-
-**Two patterns by complexity**:
-- **Simple services** (auth, search): Helper functions in main.go (`loadConfig()`, `createLogger()`, `setupX()`, `runServer()`)
-- **Medium/Complex services** (crawler, index-manager, source-manager, classifier): `internal/bootstrap/` package with phased modules (config, database, storage, server, lifecycle)
-
-**Phase ordering**: Profiling → Config → Logger → Database → Storage/Services → Server → Lifecycle (graceful shutdown)
-
-**Exit codes**: Return 0 on success, 1 on failure
-
 ### Frontend (Vue.js 3)
+
 - **Framework**: Vue 3 Composition API + TypeScript
 - **Build**: Vite
-- **Type Safety**: No `any` types - use `unknown` for generic values, specific interfaces for known types
+- **Type Safety**: No `any` types — use `unknown` for generic values, specific interfaces for known types
 - **Types**: Defined in `/dashboard/src/types/` directory
 
-### Docker
-- **Development**: `docker-compose.base.yml` + `docker-compose.dev.yml`
-- **Production**: `docker-compose.base.yml` + `docker-compose.prod.yml`
-- **Naming**: Container names follow `north-cloud-{service}` pattern
-- **Always use**: `docker compose` (not `docker-compose`)
+---
+
+## Bootstrap Pattern
+
+All HTTP services follow a consistent bootstrap pattern: simple services (auth, search) use helper
+functions in `main.go`; complex services (crawler, classifier, source-manager) use an
+`internal/bootstrap/` package with phased modules (config, database, storage, server, lifecycle).
+Phase ordering is always: Profiling -> Config -> Logger -> Database -> Services -> Server -> Lifecycle.
+See `ARCHITECTURE.md` for the full bootstrap pattern reference.
 
 ---
 
-## Service-Specific Guidelines
+## Docker Conventions
 
-### Crawler
-- **IMPORTANT**: Read `/crawler/docs/INTERVAL_SCHEDULER.md` for comprehensive scheduler guide
-- **Interval-based scheduling**: `{"interval_minutes": 30, "interval_type": "minutes"}` (NOT cron)
-- **7 job states**: pending, scheduled, running, paused, completed, failed, cancelled
-- **Source ID required**: Jobs must use `source_id` field (from source-manager)
-- **Distributed locking**: PostgreSQL CAS locks for multi-instance safety
-- **8 API endpoints**: `/pause`, `/resume`, `/cancel`, `/retry`, `/executions`, `/stats`, `/scheduler/metrics`
-
-### Classifier
-- **Pipeline**: Processes `{source}_raw_content` with `classification_status=pending`
-- **Output**: `{source}_classified_content` with quality (0-100), topics, crime sub-categories
-- **Publisher compatibility**: Must populate `Body` and `Source` alias fields
-- **Crime sub-categories**: violent_crime, property_crime, drug_crime, organized_crime, criminal_justice
-
-### Publisher
-- **Mode**: `use_classified_content: true` (recommended) - queries `{source}_classified_content`
-- **Filter**: `content_type: "article"` to exclude pages/listings
-- **Routes**: Database-backed (PostgreSQL), many-to-many (sources → channels)
-- **Redis channels**: Topic-based (e.g., `articles:crime:violent`, `articles:news`)
-- **Preview**: `GET /api/v1/routes/preview` to preview articles without publishing
-
-### Dashboard Frontend
-- **Type Safety**: All components use proper TypeScript types (no `any`)
-- **Shared types**: `/dashboard/src/types/` directory (`Source`, `Channel`, `Route`, `PreviewArticle`, `ApiError`, etc.)
-- **Auth**: JWT tokens in localStorage, `useAuth` composable, route guards
-- **Error handling**: Use `ApiError` interface with type assertions
-
-### mcp-north-cloud
-- **IMPORTANT**: Read `/mcp-north-cloud/README.md` for comprehensive tool documentation
-- **27 tools** (filtered by `MCP_ENV`): Crawler (5), Source Manager (5), Publisher (8), Search (1), Classifier (1), Index Manager (2), Auth (1), Workflow (1), Dev (3)
-- **Protocol**: stdio-based JSON-RPC 2.0 (no HTTP server)
-- **Development**: Air hot reloading, Taskfile.yml for build/test/lint
-
----
-
-## Common Tasks
-
-### Adding a New Service
-1. Create service directory with `Dockerfile`
-2. Add to `docker-compose.base.yml`
-3. Add database service (if needed)
-4. Update `.env.example` with required variables
-5. Follow existing service patterns
-
-### Managing Crawler Jobs
-```bash
-# Create immediate job
-curl -X POST http://localhost:8060/api/v1/jobs \
-  -H "Content-Type: application/json" \
-  -d '{"source_id": "uuid", "url": "https://example.com", "schedule_enabled": false}'
-
-# Schedule interval-based job
-curl -X POST http://localhost:8060/api/v1/jobs \
-  -H "Content-Type: application/json" \
-  -d '{"source_id": "uuid", "url": "https://example.com", "interval_minutes": 360, "interval_type": "minutes", "schedule_enabled": true}'
-```
-
-### Profiling and Performance
-```bash
-# Capture heap profile
-./scripts/profile.sh SERVICE heap
-
-# Run benchmarks
-./scripts/run-benchmarks.sh
-
-# Check for memory leaks
-./scripts/check-memory-leaks.sh -s SERVICE -i 600 -c 5
-
-# Memory health endpoint
-curl http://localhost:6060/health/memory  # Adjust port per service
-```
-
-### SSL/TLS Certificate Management
-```bash
-# Check certificate expiry
-bash infrastructure/certbot/scripts/check-cert-expiry.sh
-
-# Manual renewal
-bash infrastructure/certbot/scripts/renew-and-reload.sh
-```
-**Note**: Certbot service auto-checks every 12 hours, renews 30 days before expiry
-
-### Database Backup/Restore/Sync
-```bash
-# Backup single service
-task db:backup:crawler
-
-# Backup all databases
-task db:backup:all
-
-# List available backups
-task db:list
-
-# Restore from backup (requires --confirm)
-task db:restore -- crawler ./backups/crawler/backup.sql.gz --confirm
-
-# Sync from production to development (requires PROD_SSH_HOST)
-task db:sync:crawler         # Single service
-task db:sync:all             # All databases
-task db:sync -- crawler --dry-run  # Preview without executing
-```
-
-**Environment variables for sync**:
-```bash
-PROD_SSH_HOST=user@production-server
-PROD_SSH_PORT=22
-PROD_DEPLOY_PATH=/opt/north-cloud
-```
-
-**Safety features**:
-- Restore requires `--confirm` flag
-- Auto-backup before restore
-- Sync refuses to run in production (one-way only: prod → dev)
-- Retention policy cleans old backups (default: 7 per service)
+- **ALWAYS use**: `docker compose` (not `docker-compose`)
+- **Development**: `-f docker-compose.base.yml -f docker-compose.dev.yml`
+- **Production**: `-f docker-compose.base.yml -f docker-compose.prod.yml`
+- **Container naming**: `north-cloud-{service}` pattern
+- **Database access**: `docker exec -it north-cloud-postgres-SERVICE psql -U postgres -d DATABASE`
 
 ---
 
 ## Git Workflow
 
-**Branch Naming**: MUST start with `claude/` and end with session ID
+**Branch Naming**: MUST start with `claude/` and end with the session ID
 - Format: `claude/{description}-{session-id}`
 - Example: `claude/create-claude-md-01YMXWZpqv3utVH69jyNnLaE`
 
@@ -474,106 +206,31 @@ PROD_DEPLOY_PATH=/opt/north-cloud
 3. Verify no linting violations (see Critical Rules above)
 4. Check multi-service dependencies if applicable
 
-**Pushing**: Always use `git push -u origin {branch-name}` (never force push to main)
-
----
-
-## Environment Variables
-
-### Naming Convention
-- Uppercase with underscores (e.g., `AUTH_JWT_SECRET`)
-- Service-specific prefixes (e.g., `POSTGRES_CRAWLER_USER`)
-
-### Required for Production
-- `AUTH_USERNAME` - Dashboard username
-- `AUTH_PASSWORD` - Dashboard password
-- `AUTH_JWT_SECRET` - Shared JWT secret (generate: `openssl rand -hex 32`)
-
-### Configuration Priority
-1. Environment variables (highest)
-2. `.env` file
-3. Service config files (config.yml, etc.)
-4. Hardcoded defaults (lowest)
+**Pushing**: Always use `git push -u origin {branch-name}` — never force push to main
 
 ---
 
 ## Troubleshooting
 
-### Service Won't Start
+**Service won't start**:
 1. Check logs: `docker compose -f docker-compose.base.yml -f docker-compose.dev.yml logs SERVICE`
 2. Check environment: `docker compose -f docker-compose.base.yml -f docker-compose.dev.yml config`
-3. Verify dependencies: Check `depends_on` in docker-compose files
+3. Verify dependencies: check `depends_on` in docker-compose files
 4. Check port conflicts: `netstat -tulpn | grep PORT`
 
-### Database Connection Issues
+**Database connection issues**:
 1. Verify database running: `docker ps | grep postgres`
 2. Check connection string in `.env`
 3. Test connection: `docker exec -it north-cloud-postgres-SERVICE psql -U postgres -d DATABASE`
 
-### Cannot Access Service
+**Cannot access service**:
 1. Verify port mapping: `docker ps | grep SERVICE`
 2. Check nginx configuration (if using reverse proxy)
 3. Verify service health: `curl http://localhost:PORT/health`
 
 ---
 
-## Documentation References
+## Further Reading
 
-### Service-Specific Docs
-- `/crawler/README.md` - General crawler docs
-- `/crawler/docs/INTERVAL_SCHEDULER.md` - **RECOMMENDED** Interval scheduler guide
-- `/publisher/docs/REDIS_MESSAGE_FORMAT.md` - Redis message specification
-- `/publisher/docs/CONSUMER_GUIDE.md` - Integration examples
-- `/mcp-north-cloud/README.md` - MCP server tool documentation
-
-### Infrastructure Docs
-- `/DOCKER.md` - Docker quick reference
-- `/infrastructure/certbot/README.md` - SSL/TLS certificate management
-- `/infrastructure/alloy/README.md` - Grafana Alloy log collection
-- `/infrastructure/grafana/README.md` - Logging infrastructure guide (Loki + Alloy + Grafana)
-- `/docs/PROFILING.md` - Profiling and performance monitoring
-
-### Cursor Commands
-- `/.cursor/commands/README.md` - All 18 Cursor commands for workflows
-
----
-
-## Important Notes
-
-### Service Boundaries
-- Each service is independent with its own database
-- Don't make cross-service changes without understanding dependencies
-- Respect API contracts - don't break existing APIs without migration plans
-
-### Content Pipeline Flow
-1. **Crawler** extracts → `{source}_raw_content` with `classification_status=pending`
-2. **Classifier** processes → `{source}_classified_content` with quality/topics
-3. **Publisher** filters → Redis Pub/Sub channels → External consumers
-
-### Authentication
-- All `/api/v1/*` routes require JWT tokens (except health endpoints)
-- Tokens obtained from `/api/auth/api/v1/auth/login`
-- Tokens expire after 24 hours
-- Shared `AUTH_JWT_SECRET` across all services
-
-### Docker Compose
-- **ALWAYS use**: `docker compose` (not `docker-compose`)
-- **Development**: `-f docker-compose.base.yml -f docker-compose.dev.yml`
-- **Production**: `-f docker-compose.base.yml -f docker-compose.prod.yml`
-
----
-
-## Version History
-
-Key architectural changes (see full history in git):
-
-- **Mining-ML Pipeline** (2026-02-05): Added mining-ml sidecar, wired hybrid mining classifier into classifier pipeline, added Layer 5 mining routing to publisher
-- **Crime Sub-Category Classification** (2026-01-07): Replaced generic "crime" with 5 sub-categories (violent, property, drug, organized, justice)
-- **Crawler Scheduler Refactor** (2025-12-29): Interval-based scheduling replaces cron (Migration 003)
-- **Publisher Modernization** (2025-12-28): Database-backed Redis Pub/Sub routing hub
-- **Dashboard Authentication** (2025-12-27): JWT-based auth with route guards
-- **Raw Content Pipeline** (2025-12-23): Three-stage pipeline (raw → classify → publish)
-
----
-
-*This document is optimized for effectiveness as a prompt. Most critical information is at the top. For detailed architecture, see service-specific README.md or CLAUDE.md files.*
+- `ARCHITECTURE.md` — Full architecture, service descriptions, content pipeline, version history
+- Each service's own `CLAUDE.md` or `README.md` — Service-specific guidelines and API details
