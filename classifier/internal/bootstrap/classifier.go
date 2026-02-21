@@ -44,6 +44,11 @@ type HTTPComponents struct {
 
 // NewHTTPComponents creates all components for the HTTP server.
 func NewHTTPComponents(cfg *config.Config, logger infralogger.Logger) (*HTTPComponents, error) {
+	if cfg.Classification.SidecarRegistryFromYAML {
+		logger.Warn("classification.sidecar_registry is set in config but is not yet consumed; " +
+			"use the named fields (crime.enabled, mining.enabled, etc.) to control sidecar behaviour")
+	}
+
 	// Setup database
 	dbComps, err := SetupDatabase(cfg, logger)
 	if err != nil {
@@ -192,6 +197,7 @@ func createClassifierConfig(cfg *config.Config, logger infralogger.Logger) class
 		CoforgeClassifier:       coforgeCC,
 		EntertainmentClassifier: entertainmentCC,
 		AnishinaabeClassifier:   anishinaabeCC,
+		RoutingTable:            cfg.Classification.Routing,
 	}
 }
 
@@ -209,6 +215,12 @@ func createOptionalClassifier[C any, T any](
 	if mlURL != "" {
 		client = newClient(mlURL)
 	}
-	logger.Info(label+" enabled", infralogger.String("ml_service_url", mlURL))
+	if mlURL == "" {
+		logger.Warn(label+" enabled but ML service URL is empty; running in rules-only mode",
+			infralogger.String("ml_service_url", ""),
+		)
+	} else {
+		logger.Info(label+" enabled", infralogger.String("ml_service_url", mlURL))
+	}
 	return newClassifier(client, logger, true)
 }

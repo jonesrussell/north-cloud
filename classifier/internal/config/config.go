@@ -41,6 +41,7 @@ const (
 	defaultCoforgeMLServiceURL       = "http://coforge-ml:8078"
 	defaultEntertainmentMLServiceURL = "http://entertainment-ml:8079"
 	defaultAnishinaabeMLServiceURL   = "http://anishinaabe-ml:8080"
+	defaultMiningMLServiceURL        = "http://mining-ml:8077"
 )
 
 // Config holds all configuration for the classifier service.
@@ -118,6 +119,13 @@ type AuthConfig struct {
 	JWTSecret string `env:"AUTH_JWT_SECRET" yaml:"jwt_secret"`
 }
 
+// SidecarConfig holds enabled flag and ML service URL for one optional classifier sidecar.
+// Used in classification.sidecar_registry (keyed by sidecar name, e.g. "crime", "mining").
+type SidecarConfig struct {
+	Enabled      bool   `yaml:"enabled"`
+	MLServiceURL string `yaml:"ml_service_url"`
+}
+
 // ClassificationConfig holds classification settings.
 type ClassificationConfig struct {
 	ContentType      ContentTypeConfig      `yaml:"content_type"`
@@ -129,6 +137,17 @@ type ClassificationConfig struct {
 	Coforge          CoforgeConfig          `yaml:"coforge"`
 	Entertainment    EntertainmentConfig    `yaml:"entertainment"`
 	Anishinaabe      AnishinaabeConfig      `yaml:"anishinaabe"`
+	// SidecarRegistry maps sidecar name (e.g. "crime", "mining") to enabled + URL.
+	// Built from Crime/Mining/... named configs when absent in YAML.
+	// NOTE: Currently populated by setClassificationDefaults but not yet consumed by the bootstrap
+	// or classifier — the named fields (Crime, Mining, etc.) remain authoritative.
+	// TODO: when declarative registry-driven dispatch is implemented, this will replace named fields.
+	SidecarRegistry map[string]SidecarConfig `yaml:"sidecar_registry"`
+	// SidecarRegistryFromYAML is true when sidecar_registry was explicitly set in the YAML config.
+	// It has no runtime effect but triggers a startup warning so operators know the field is inoperative.
+	SidecarRegistryFromYAML bool `yaml:"-"` // not loaded from YAML; set by setClassificationDefaults
+	// Routing maps route key (e.g. "article", "article:event") to sidecar names to run. Optional; default matches current behavior.
+	Routing map[string][]string `yaml:"routing"`
 }
 
 // AnishinaabeConfig holds Anishinaabe hybrid classification settings.
@@ -336,5 +355,47 @@ func setClassificationDefaults(c *ClassificationConfig) {
 	// Anishinaabe defaults: disabled by default, but set ML URL
 	if c.Anishinaabe.MLServiceURL == "" {
 		c.Anishinaabe.MLServiceURL = defaultAnishinaabeMLServiceURL
+	}
+	// Mining defaults: disabled by default, but set ML URL
+	if c.Mining.MLServiceURL == "" {
+		c.Mining.MLServiceURL = defaultMiningMLServiceURL
+	}
+	// Routing: if absent, use default routing table (article -> all; article:event -> location; article:blotter -> crime; article:report -> none)
+	if c.Routing == nil {
+		c.Routing = getDefaultRouting()
+	}
+	// SidecarRegistry: if explicitly set in YAML, mark it so callers can warn; otherwise build from named fields.
+	if c.SidecarRegistry != nil {
+		c.SidecarRegistryFromYAML = true
+	} else {
+		c.SidecarRegistry = getDefaultSidecarRegistry(c)
+	}
+}
+
+// SetDefaults applies all defaults to cfg. Call this when constructing a Config without Load
+// (e.g. in test helpers or fallback paths that cannot read a config file).
+func SetDefaults(cfg *Config) {
+	setDefaults(cfg)
+}
+
+// getDefaultRouting returns the default content-type → sidecars mapping (current behavior).
+func getDefaultRouting() map[string][]string {
+	return map[string][]string{
+		"article":         {"crime", "mining", "coforge", "entertainment", "anishinaabe", "location"},
+		"article:event":   {"location"},
+		"article:blotter": {"crime"},
+		"article:report":  {},
+	}
+}
+
+// getDefaultSidecarRegistry builds sidecar_registry from existing Crime, Mining, ... config blocks.
+func getDefaultSidecarRegistry(c *ClassificationConfig) map[string]SidecarConfig {
+	return map[string]SidecarConfig{
+		"crime":         {Enabled: c.Crime.Enabled, MLServiceURL: c.Crime.MLServiceURL},
+		"mining":        {Enabled: c.Mining.Enabled, MLServiceURL: c.Mining.MLServiceURL},
+		"coforge":       {Enabled: c.Coforge.Enabled, MLServiceURL: c.Coforge.MLServiceURL},
+		"entertainment": {Enabled: c.Entertainment.Enabled, MLServiceURL: c.Entertainment.MLServiceURL},
+		"anishinaabe":   {Enabled: c.Anishinaabe.Enabled, MLServiceURL: c.Anishinaabe.MLServiceURL},
+		"location":      {Enabled: true, MLServiceURL: ""}, // in-process, no URL
 	}
 }

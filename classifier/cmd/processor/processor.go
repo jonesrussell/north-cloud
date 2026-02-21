@@ -10,10 +10,14 @@ import (
 	"time"
 
 	"github.com/jmoiron/sqlx"
+	"github.com/jonesrussell/north-cloud/classifier/internal/anishinaabemlclient"
 	"github.com/jonesrussell/north-cloud/classifier/internal/classifier"
+	"github.com/jonesrussell/north-cloud/classifier/internal/coforgemlclient"
 	"github.com/jonesrussell/north-cloud/classifier/internal/config"
 	"github.com/jonesrussell/north-cloud/classifier/internal/database"
 	"github.com/jonesrussell/north-cloud/classifier/internal/domain"
+	"github.com/jonesrussell/north-cloud/classifier/internal/entertainmentmlclient"
+	"github.com/jonesrussell/north-cloud/classifier/internal/miningmlclient"
 	"github.com/jonesrussell/north-cloud/classifier/internal/mlclient"
 	"github.com/jonesrussell/north-cloud/classifier/internal/processor"
 	"github.com/jonesrussell/north-cloud/classifier/internal/storage"
@@ -25,11 +29,11 @@ import (
 
 const (
 	// Processor configuration constants
-	defaultMinQualityScore     = 30
-	defaultPollInterval        = 30 * time.Second
-	defaultQualityWeight       = 0.25
-	defaultMinWordCount        = 100
-	defaultOptimalWordCount800 = 800
+	defaultMinQualityScore      = 30
+	defaultQualityWeight        = 0.25
+	defaultMinWordCount         = 100
+	defaultOptimalWordCount800  = 800
+	defaultProcessorConcurrency = 5 // processor uses fewer workers than the HTTP service
 	// Source reputation constants
 	defaultReputationScore70     = 70
 	defaultReputationDecayRate95 = 0.95
@@ -60,17 +64,10 @@ func LoadConfig() (*ProcessorConfig, *config.Config) {
 	if err != nil {
 		// Use fmt for early config warnings (before logger is initialized)
 		fmt.Fprintf(os.Stderr, "Warning: Failed to load config file (%s), using defaults: %v\n", configPath, err)
-		// Create default config if file doesn't exist
+		// Apply all defaults (including routing table) so no config section is left as zero value.
 		cfg = &config.Config{}
-		if cfg.Service.PollInterval == 0 {
-			cfg.Service.PollInterval = defaultPollInterval
-		}
-		if cfg.Service.BatchSize == 0 {
-			cfg.Service.BatchSize = 100
-		}
-		if cfg.Service.Concurrency == 0 {
-			cfg.Service.Concurrency = 5
-		}
+		config.SetDefaults(cfg)
+		cfg.Service.Concurrency = defaultProcessorConcurrency // processor uses fewer workers than HTTP service
 	}
 
 	// Convert main config to processor config
@@ -181,6 +178,10 @@ func loadRules(ctx context.Context, rulesRepo *database.RulesRepository, log inf
 
 // createClassifierConfig creates classifier configuration with optional crime classifier
 func createClassifierConfig(cfg *config.Config, log infralogger.Logger) classifier.Config {
+	if cfg.Classification.SidecarRegistryFromYAML {
+		log.Warn("classification.sidecar_registry is set in config but is not yet consumed; " +
+			"use the named fields (crime.enabled, mining.enabled, etc.) to control sidecar behaviour")
+	}
 	return classifier.Config{
 		Version:         "1.0.0",
 		MinQualityScore: defaultMinQualityScore,
@@ -200,7 +201,12 @@ func createClassifierConfig(cfg *config.Config, log infralogger.Logger) classifi
 			MinArticlesForTrust:        minArticlesForTrust,
 			ReputationDecayRate:        defaultReputationDecayRate95,
 		},
-		CrimeClassifier: createCrimeClassifier(cfg, log),
+		CrimeClassifier:         createCrimeClassifier(cfg, log),
+		MiningClassifier:        createMiningClassifier(cfg, log),
+		CoforgeClassifier:       createCoforgeClassifier(cfg, log),
+		EntertainmentClassifier: createEntertainmentClassifier(cfg, log),
+		AnishinaabeClassifier:   createAnishinaabeClassifier(cfg, log),
+		RoutingTable:            cfg.Classification.Routing,
 	}
 }
 
@@ -213,12 +219,90 @@ func createCrimeClassifier(cfg *config.Config, log infralogger.Logger) *classifi
 	var mlClient classifier.MLClassifier
 	if cfg.Classification.Crime.MLServiceURL != "" {
 		mlClient = mlclient.NewClient(cfg.Classification.Crime.MLServiceURL)
+		log.Info("Crime classifier enabled for processor",
+			infralogger.String("ml_service_url", cfg.Classification.Crime.MLServiceURL))
+	} else {
+		log.Warn("Crime classifier enabled for processor but ML service URL is empty; running in rules-only mode",
+			infralogger.String("ml_service_url", ""))
 	}
 
-	log.Info("Crime classifier enabled for processor",
-		infralogger.String("ml_service_url", cfg.Classification.Crime.MLServiceURL))
-
 	return classifier.NewCrimeClassifier(mlClient, log, true)
+}
+
+// createMiningClassifier creates a Mining classifier if enabled in config.
+func createMiningClassifier(cfg *config.Config, log infralogger.Logger) *classifier.MiningClassifier {
+	if !cfg.Classification.Mining.Enabled {
+		return nil
+	}
+
+	var mlClient classifier.MiningMLClassifier
+	if cfg.Classification.Mining.MLServiceURL != "" {
+		mlClient = miningmlclient.NewClient(cfg.Classification.Mining.MLServiceURL)
+		log.Info("Mining classifier enabled for processor",
+			infralogger.String("ml_service_url", cfg.Classification.Mining.MLServiceURL))
+	} else {
+		log.Warn("Mining classifier enabled for processor but ML service URL is empty; running in rules-only mode",
+			infralogger.String("ml_service_url", ""))
+	}
+
+	return classifier.NewMiningClassifier(mlClient, log, true)
+}
+
+// createCoforgeClassifier creates a Coforge classifier if enabled in config.
+func createCoforgeClassifier(cfg *config.Config, log infralogger.Logger) *classifier.CoforgeClassifier {
+	if !cfg.Classification.Coforge.Enabled {
+		return nil
+	}
+
+	var mlClient classifier.CoforgeMLClassifier
+	if cfg.Classification.Coforge.MLServiceURL != "" {
+		mlClient = coforgemlclient.NewClient(cfg.Classification.Coforge.MLServiceURL)
+		log.Info("Coforge classifier enabled for processor",
+			infralogger.String("ml_service_url", cfg.Classification.Coforge.MLServiceURL))
+	} else {
+		log.Warn("Coforge classifier enabled for processor but ML service URL is empty; running in rules-only mode",
+			infralogger.String("ml_service_url", ""))
+	}
+
+	return classifier.NewCoforgeClassifier(mlClient, log, true)
+}
+
+// createEntertainmentClassifier creates an Entertainment classifier if enabled in config.
+func createEntertainmentClassifier(cfg *config.Config, log infralogger.Logger) *classifier.EntertainmentClassifier {
+	if !cfg.Classification.Entertainment.Enabled {
+		return nil
+	}
+
+	var mlClient classifier.EntertainmentMLClassifier
+	if cfg.Classification.Entertainment.MLServiceURL != "" {
+		mlClient = entertainmentmlclient.NewClient(cfg.Classification.Entertainment.MLServiceURL)
+		log.Info("Entertainment classifier enabled for processor",
+			infralogger.String("ml_service_url", cfg.Classification.Entertainment.MLServiceURL))
+	} else {
+		log.Warn("Entertainment classifier enabled for processor but ML service URL is empty; running in rules-only mode",
+			infralogger.String("ml_service_url", ""))
+	}
+
+	return classifier.NewEntertainmentClassifier(mlClient, log, true)
+}
+
+// createAnishinaabeClassifier creates an Anishinaabe classifier if enabled in config.
+func createAnishinaabeClassifier(cfg *config.Config, log infralogger.Logger) *classifier.AnishinaabeClassifier {
+	if !cfg.Classification.Anishinaabe.Enabled {
+		return nil
+	}
+
+	var mlClient classifier.AnishinaabeMLClassifier
+	if cfg.Classification.Anishinaabe.MLServiceURL != "" {
+		mlClient = anishinaabemlclient.NewClient(cfg.Classification.Anishinaabe.MLServiceURL)
+		log.Info("Anishinaabe classifier enabled for processor",
+			infralogger.String("ml_service_url", cfg.Classification.Anishinaabe.MLServiceURL))
+	} else {
+		log.Warn("Anishinaabe classifier enabled for processor but ML service URL is empty; running in rules-only mode",
+			infralogger.String("ml_service_url", ""))
+	}
+
+	return classifier.NewAnishinaabeClassifier(mlClient, log, true)
 }
 
 // Start starts the processor

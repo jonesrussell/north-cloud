@@ -31,6 +31,7 @@ type Classifier struct {
 	location         *LocationClassifier
 	logger           infralogger.Logger
 	version          string
+	routingTable     map[string][]string // route key -> sidecar names (e.g. "article:event" -> ["location"])
 }
 
 // Config holds configuration for the classifier
@@ -45,6 +46,7 @@ type Config struct {
 	CoforgeClassifier       *CoforgeClassifier       // Optional: hybrid coforge classifier
 	EntertainmentClassifier *EntertainmentClassifier // Optional: hybrid entertainment classifier
 	AnishinaabeClassifier   *AnishinaabeClassifier   // Optional: hybrid anishinaabe classifier
+	RoutingTable            map[string][]string      // Optional: content-type routing (see ResolveSidecars)
 }
 
 // NewClassifier creates a new classifier with all strategies
@@ -54,6 +56,36 @@ func NewClassifier(
 	sourceRepDB SourceReputationDB,
 	config Config,
 ) *Classifier {
+	routingTable := make(map[string][]string)
+	for k, v := range config.RoutingTable {
+		routingTable[k] = append([]string(nil), v...)
+	}
+	// Warn at startup if routing table references a disabled (nil) sidecar classifier.
+	sidecarEnabled := map[string]bool{
+		"crime":         config.CrimeClassifier != nil,
+		"mining":        config.MiningClassifier != nil,
+		"coforge":       config.CoforgeClassifier != nil,
+		"entertainment": config.EntertainmentClassifier != nil,
+		"anishinaabe":   config.AnishinaabeClassifier != nil,
+		"location":      true, // always constructed below
+	}
+	for routeKey, names := range routingTable {
+		for _, name := range names {
+			enabled, known := sidecarEnabled[name]
+			switch {
+			case !known:
+				logger.Warn("Routing table references unknown sidecar name; it will always be ignored",
+					infralogger.String("routing_key", routeKey),
+					infralogger.String("sidecar_name", name),
+				)
+			case known && !enabled:
+				logger.Warn("Routing table references disabled sidecar classifier",
+					infralogger.String("routing_key", routeKey),
+					infralogger.String("sidecar_name", name),
+				)
+			}
+		}
+	}
 	return &Classifier{
 		contentType:      NewContentTypeClassifier(logger),
 		quality:          NewQualityScorerWithConfig(logger, config.QualityConfig),
@@ -67,7 +99,37 @@ func NewClassifier(
 		location:         NewLocationClassifier(logger),
 		logger:           logger,
 		version:          config.Version,
+		routingTable:     routingTable,
 	}
+}
+
+// ResolveSidecars returns the list of sidecar names to run for the given content type and subtype.
+// Lookup order: for article, try article:<subtype> then article; otherwise try contentType.
+// Logs clearly and returns nil when no routing entry exists.
+func (c *Classifier) ResolveSidecars(contentType, subtype string) []string {
+	var key string
+	if contentType == domain.ContentTypeArticle && subtype != "" {
+		key = "article:" + subtype
+		if names, ok := c.routingTable[key]; ok {
+			return names
+		}
+		c.logger.Warn("No routing entry for article subtype; falling back to article route — all sidecars will run",
+			infralogger.String("content_subtype", subtype),
+			infralogger.String("fallback_key", "article"),
+		)
+		key = "article"
+	} else {
+		key = contentType
+	}
+	if names, ok := c.routingTable[key]; ok {
+		return names
+	}
+	c.logger.Debug("No routing entry for content type; skipping optional classifiers",
+		infralogger.String("content_type", contentType),
+		infralogger.String("content_subtype", subtype),
+		infralogger.String("routing_key", key),
+	)
+	return nil
 }
 
 // Classify performs full classification on raw content
@@ -164,6 +226,7 @@ func (c *Classifier) Classify(ctx context.Context, raw *domain.RawContent) (*dom
 // ClassifyBatch classifies multiple raw content items efficiently
 func (c *Classifier) ClassifyBatch(ctx context.Context, rawItems []*domain.RawContent) ([]*domain.ClassificationResult, error) {
 	results := make([]*domain.ClassificationResult, len(rawItems))
+	failedCount := 0
 
 	for i, raw := range rawItems {
 		result, err := c.Classify(ctx, raw)
@@ -173,10 +236,18 @@ func (c *Classifier) ClassifyBatch(ctx context.Context, rawItems []*domain.RawCo
 				infralogger.String("content_id", raw.ID),
 				infralogger.Error(err),
 			)
-			// Continue with next item instead of failing entire batch
+			failedCount++
 			continue
 		}
 		results[i] = result
+	}
+
+	if failedCount > 0 {
+		c.logger.Error("Batch classification completed with failures",
+			infralogger.Int("total", len(rawItems)),
+			infralogger.Int("failed", failedCount),
+			infralogger.Int("succeeded", len(rawItems)-failedCount),
+		)
 	}
 
 	return results, nil
@@ -197,192 +268,199 @@ func (c *Classifier) GetRules() []domain.ClassificationRule {
 	return c.topic.GetRules()
 }
 
-// classifyOptionalForPublishable gates optional classifiers on content type and subtype.
-// Pages and listings skip all optional classifiers since they are never published.
-// Event: location only. Blotter: crime only. Report: skip.
-// Empty/other subtypes (including standard articles): full optional classifiers.
+// classifyOptionalForPublishable runs optional classifiers according to the declarative routing table.
+// ResolveSidecars(contentType, contentSubtype) determines which sidecars to run; runOptionalClassifiers runs only those.
 //
 //nolint:gocritic // 6 return values match optional classifier pattern; refactor would require wider changes
 func (c *Classifier) classifyOptionalForPublishable(
 	ctx context.Context, raw *domain.RawContent, contentType, contentSubtype string,
 ) (*domain.CrimeResult, *domain.MiningResult, *domain.CoforgeResult, *domain.EntertainmentResult, *domain.AnishinaabeResult, *domain.LocationResult) {
-	if contentType != domain.ContentTypeArticle {
-		c.logger.Debug("Skipping optional classifiers for non-article content",
-			infralogger.String("content_id", raw.ID),
-			infralogger.String("content_type", contentType),
-		)
-		return nil, nil, nil, nil, nil, nil
-	}
-
-	// Event: location classifier only
-	if contentSubtype == domain.ContentSubtypeEvent {
-		return c.runLocationOnly(ctx, raw)
-	}
-	// Blotter: crime classifier only
-	if contentSubtype == domain.ContentSubtypeBlotter {
-		return c.runCrimeOnly(ctx, raw, contentType)
-	}
-	// Report: minimal (no optional classifiers for now)
-	if contentSubtype == domain.ContentSubtypeReport {
-		c.logger.Debug("Skipping optional classifiers for report content",
-			infralogger.String("content_id", raw.ID),
-		)
-		return nil, nil, nil, nil, nil, nil
-	}
-
-	// Full optional classifiers for article, press_release, blog_post, advisory, company_announcement
-	return c.runOptionalClassifiers(ctx, raw, contentType)
+	sidecars := c.ResolveSidecars(contentType, contentSubtype)
+	return c.runOptionalClassifiers(ctx, raw, contentType, sidecars)
 }
 
-// runOptionalClassifiers runs crime, mining, coforge, entertainment, anishinaabe, and location classifiers if enabled.
+// runOptionalClassifiers runs only the sidecars listed in sidecars (e.g. from ResolveSidecars).
+// Each listed sidecar is run only if the corresponding classifier is non-nil (enabled in registry).
 //
-//nolint:gocognit,gocritic // Sequential optional classifiers with timing; 6 return values match optional classifier pattern
+//nolint:gocritic // 6 return values match optional classifier pattern
 func (c *Classifier) runOptionalClassifiers(
-	ctx context.Context, raw *domain.RawContent, contentType string,
+	ctx context.Context, raw *domain.RawContent, contentType string, sidecars []string,
 ) (*domain.CrimeResult, *domain.MiningResult, *domain.CoforgeResult, *domain.EntertainmentResult, *domain.AnishinaabeResult, *domain.LocationResult) {
-	var crimeResult *domain.CrimeResult
-	if c.crime != nil {
-		crimeStart := time.Now()
-		scResult, scErr := c.crime.Classify(ctx, raw)
-		crimeLatencyMs := time.Since(crimeStart).Milliseconds()
-		if scErr != nil {
-			c.logSidecarError("crime-ml", raw, contentType, scErr, crimeLatencyMs)
-		} else if scResult != nil {
-			crimeResult = convertCrimeResult(scResult)
-			c.logSidecarSuccess("crime-ml", raw, contentType,
-				crimeResult.Relevance, crimeResult.FinalConfidence,
-				crimeResult.MLConfidenceRaw, crimeResult.RuleTriggered,
-				crimeResult.DecisionPath, crimeLatencyMs,
-				crimeResult.ProcessingTimeMs, "")
-		}
+	knownSidecarNames := map[string]bool{
+		"crime": true, "mining": true, "coforge": true,
+		"entertainment": true, "anishinaabe": true, "location": true,
 	}
-
-	var miningResult *domain.MiningResult
-	if c.mining != nil {
-		miningStart := time.Now()
-		minResult, minErr := c.mining.Classify(ctx, raw)
-		miningLatencyMs := time.Since(miningStart).Milliseconds()
-		if minErr != nil {
-			c.logSidecarError("mining-ml", raw, contentType, minErr, miningLatencyMs)
-		} else if minResult != nil {
-			miningResult = minResult
-			c.logSidecarSuccess("mining-ml", raw, contentType,
-				miningResult.Relevance, miningResult.FinalConfidence,
-				miningResult.MLConfidenceRaw, miningResult.RuleTriggered,
-				miningResult.DecisionPath, miningLatencyMs,
-				miningResult.ProcessingTimeMs, miningResult.ModelVersion)
-		}
-	}
-
-	var coforgeResult *domain.CoforgeResult
-	if c.coforge != nil {
-		coforgeStart := time.Now()
-		cfResult, cfErr := c.coforge.Classify(ctx, raw)
-		coforgeLatencyMs := time.Since(coforgeStart).Milliseconds()
-		if cfErr != nil {
-			c.logSidecarError("coforge-ml", raw, contentType, cfErr, coforgeLatencyMs)
-		} else if cfResult != nil {
-			coforgeResult = cfResult
-			c.logSidecarSuccess("coforge-ml", raw, contentType,
-				coforgeResult.Relevance, coforgeResult.FinalConfidence,
-				coforgeResult.MLConfidenceRaw, coforgeResult.RuleTriggered,
-				coforgeResult.DecisionPath, coforgeLatencyMs,
-				coforgeResult.ProcessingTimeMs, coforgeResult.ModelVersion)
-		}
-	}
-
-	var entertainmentResult *domain.EntertainmentResult
-	if c.entertainment != nil {
-		entStart := time.Now()
-		entResult, entErr := c.entertainment.Classify(ctx, raw)
-		entLatencyMs := time.Since(entStart).Milliseconds()
-		if entErr != nil {
-			c.logSidecarError("entertainment-ml", raw, contentType, entErr, entLatencyMs)
-		} else if entResult != nil {
-			entertainmentResult = entResult
-			c.logSidecarSuccess("entertainment-ml", raw, contentType,
-				entertainmentResult.Relevance, entertainmentResult.FinalConfidence,
-				entertainmentResult.MLConfidenceRaw, entertainmentResult.RuleTriggered,
-				entertainmentResult.DecisionPath, entLatencyMs,
-				entertainmentResult.ProcessingTimeMs, entertainmentResult.ModelVersion)
-		}
-	}
-
-	var anishinaabeResult *domain.AnishinaabeResult
-	if c.anishinaabe != nil {
-		anishStart := time.Now()
-		aResult, aErr := c.anishinaabe.Classify(ctx, raw)
-		anishLatencyMs := time.Since(anishStart).Milliseconds()
-		if aErr != nil {
-			c.logSidecarError("anishinaabe-ml", raw, contentType, aErr, anishLatencyMs)
-		} else if aResult != nil {
-			anishinaabeResult = aResult
-			c.logSidecarSuccess("anishinaabe-ml", raw, contentType,
-				anishinaabeResult.Relevance, anishinaabeResult.FinalConfidence,
-				anishinaabeResult.MLConfidenceRaw, anishinaabeResult.RuleTriggered,
-				anishinaabeResult.DecisionPath, anishLatencyMs,
-				anishinaabeResult.ProcessingTimeMs, anishinaabeResult.ModelVersion)
-		}
-	}
-
-	var locationResult *domain.LocationResult
-	if c.location != nil {
-		locResult, locErr := c.location.Classify(ctx, raw)
-		if locErr != nil {
-			c.logger.Warn("Location classification failed",
+	allowed := make(map[string]bool)
+	for _, name := range sidecars {
+		allowed[name] = true
+		if !knownSidecarNames[name] {
+			c.logger.Warn("Routing table contains unknown sidecar name; it will be ignored",
+				infralogger.String("sidecar_name", name),
+				infralogger.String("content_type", contentType),
 				infralogger.String("content_id", raw.ID),
-				infralogger.Error(locErr))
-		} else if locResult != nil {
-			locationResult = locResult
+			)
 		}
 	}
-
-	return crimeResult, miningResult, coforgeResult, entertainmentResult, anishinaabeResult, locationResult
+	return c.runCrimeOptional(ctx, raw, contentType, allowed["crime"]),
+		c.runMiningOptional(ctx, raw, contentType, allowed["mining"]),
+		c.runCoforgeOptional(ctx, raw, contentType, allowed["coforge"]),
+		c.runEntertainmentOptional(ctx, raw, contentType, allowed["entertainment"]),
+		c.runAnishinaabeOptional(ctx, raw, contentType, allowed["anishinaabe"]),
+		c.runLocationOptional(ctx, raw, allowed["location"])
 }
 
-// runLocationOnly runs only the location classifier (for event content).
-//
-//nolint:gocritic // 6 return values match optional classifier pattern
-func (c *Classifier) runLocationOnly(
-	ctx context.Context, raw *domain.RawContent,
-) (*domain.CrimeResult, *domain.MiningResult, *domain.CoforgeResult, *domain.EntertainmentResult, *domain.AnishinaabeResult, *domain.LocationResult) {
-	var locationResult *domain.LocationResult
-	if c.location != nil {
-		locResult, locErr := c.location.Classify(ctx, raw)
-		if locErr != nil {
-			c.logger.Warn("Location classification failed",
-				infralogger.String("content_id", raw.ID),
-				infralogger.Error(locErr))
-		} else if locResult != nil {
-			locationResult = locResult
-		}
+func (c *Classifier) runCrimeOptional(
+	ctx context.Context, raw *domain.RawContent, contentType string, run bool,
+) *domain.CrimeResult {
+	if !run || c.crime == nil {
+		return nil
 	}
-	return nil, nil, nil, nil, nil, locationResult
+	start := time.Now()
+	scResult, scErr := c.crime.Classify(ctx, raw)
+	latencyMs := time.Since(start).Milliseconds()
+	if scErr != nil {
+		c.logSidecarError("crime-ml", raw, contentType, scErr, latencyMs)
+		return nil
+	}
+	if scResult == nil {
+		c.logSidecarNilResult("crime-ml", raw.ID, latencyMs)
+		return nil
+	}
+	crimeResult := convertCrimeResult(scResult)
+	c.logSidecarSuccess("crime-ml", raw, contentType,
+		crimeResult.Relevance, crimeResult.FinalConfidence,
+		crimeResult.MLConfidenceRaw, crimeResult.RuleTriggered,
+		crimeResult.DecisionPath, latencyMs, crimeResult.ProcessingTimeMs, "")
+	return crimeResult
 }
 
-// runCrimeOnly runs only the crime classifier (for blotter content).
-//
-//nolint:gocritic // 6 return values match optional classifier pattern
-func (c *Classifier) runCrimeOnly(
-	ctx context.Context, raw *domain.RawContent, contentType string,
-) (*domain.CrimeResult, *domain.MiningResult, *domain.CoforgeResult, *domain.EntertainmentResult, *domain.AnishinaabeResult, *domain.LocationResult) {
-	var crimeResult *domain.CrimeResult
-	if c.crime != nil {
-		crimeStart := time.Now()
-		scResult, scErr := c.crime.Classify(ctx, raw)
-		crimeLatencyMs := time.Since(crimeStart).Milliseconds()
-		if scErr != nil {
-			c.logSidecarError("crime-ml", raw, contentType, scErr, crimeLatencyMs)
-		} else if scResult != nil {
-			crimeResult = convertCrimeResult(scResult)
-			c.logSidecarSuccess("crime-ml", raw, contentType,
-				crimeResult.Relevance, crimeResult.FinalConfidence,
-				crimeResult.MLConfidenceRaw, crimeResult.RuleTriggered,
-				crimeResult.DecisionPath, crimeLatencyMs,
-				crimeResult.ProcessingTimeMs, "")
-		}
+func (c *Classifier) runMiningOptional(
+	ctx context.Context, raw *domain.RawContent, contentType string, run bool,
+) *domain.MiningResult {
+	if !run || c.mining == nil {
+		return nil
 	}
-	return crimeResult, nil, nil, nil, nil, nil
+	start := time.Now()
+	minResult, minErr := c.mining.Classify(ctx, raw)
+	latencyMs := time.Since(start).Milliseconds()
+	if minErr != nil {
+		c.logSidecarError("mining-ml", raw, contentType, minErr, latencyMs)
+		return nil
+	}
+	if minResult == nil {
+		c.logSidecarNilResult("mining-ml", raw.ID, latencyMs)
+		return nil
+	}
+	c.logSidecarSuccess("mining-ml", raw, contentType,
+		minResult.Relevance, minResult.FinalConfidence,
+		minResult.MLConfidenceRaw, minResult.RuleTriggered,
+		minResult.DecisionPath, latencyMs, minResult.ProcessingTimeMs, minResult.ModelVersion)
+	return minResult
+}
+
+func (c *Classifier) runCoforgeOptional(
+	ctx context.Context, raw *domain.RawContent, contentType string, run bool,
+) *domain.CoforgeResult {
+	if !run || c.coforge == nil {
+		return nil
+	}
+	start := time.Now()
+	cfResult, cfErr := c.coforge.Classify(ctx, raw)
+	latencyMs := time.Since(start).Milliseconds()
+	if cfErr != nil {
+		c.logSidecarError("coforge-ml", raw, contentType, cfErr, latencyMs)
+		return nil
+	}
+	if cfResult == nil {
+		c.logSidecarNilResult("coforge-ml", raw.ID, latencyMs)
+		return nil
+	}
+	c.logSidecarSuccess("coforge-ml", raw, contentType,
+		cfResult.Relevance, cfResult.FinalConfidence,
+		cfResult.MLConfidenceRaw, cfResult.RuleTriggered,
+		cfResult.DecisionPath, latencyMs, cfResult.ProcessingTimeMs, cfResult.ModelVersion)
+	return cfResult
+}
+
+func (c *Classifier) runEntertainmentOptional(
+	ctx context.Context, raw *domain.RawContent, contentType string, run bool,
+) *domain.EntertainmentResult {
+	if !run || c.entertainment == nil {
+		return nil
+	}
+	start := time.Now()
+	entResult, entErr := c.entertainment.Classify(ctx, raw)
+	latencyMs := time.Since(start).Milliseconds()
+	if entErr != nil {
+		c.logSidecarError("entertainment-ml", raw, contentType, entErr, latencyMs)
+		return nil
+	}
+	if entResult == nil {
+		c.logSidecarNilResult("entertainment-ml", raw.ID, latencyMs)
+		return nil
+	}
+	c.logSidecarSuccess("entertainment-ml", raw, contentType,
+		entResult.Relevance, entResult.FinalConfidence,
+		entResult.MLConfidenceRaw, entResult.RuleTriggered,
+		entResult.DecisionPath, latencyMs, entResult.ProcessingTimeMs, entResult.ModelVersion)
+	return entResult
+}
+
+func (c *Classifier) runAnishinaabeOptional(
+	ctx context.Context, raw *domain.RawContent, contentType string, run bool,
+) *domain.AnishinaabeResult {
+	if !run || c.anishinaabe == nil {
+		return nil
+	}
+	start := time.Now()
+	aResult, aErr := c.anishinaabe.Classify(ctx, raw)
+	latencyMs := time.Since(start).Milliseconds()
+	if aErr != nil {
+		c.logSidecarError("anishinaabe-ml", raw, contentType, aErr, latencyMs)
+		return nil
+	}
+	if aResult == nil {
+		c.logSidecarNilResult("anishinaabe-ml", raw.ID, latencyMs)
+		return nil
+	}
+	c.logSidecarSuccess("anishinaabe-ml", raw, contentType,
+		aResult.Relevance, aResult.FinalConfidence,
+		aResult.MLConfidenceRaw, aResult.RuleTriggered,
+		aResult.DecisionPath, latencyMs, aResult.ProcessingTimeMs, aResult.ModelVersion)
+	return aResult
+}
+
+func (c *Classifier) runLocationOptional(
+	ctx context.Context, raw *domain.RawContent, run bool,
+) *domain.LocationResult {
+	if !run || c.location == nil {
+		return nil
+	}
+	start := time.Now()
+	locResult, locErr := c.location.Classify(ctx, raw)
+	latencyMs := time.Since(start).Milliseconds()
+	if locErr != nil {
+		c.logSidecarError("location", raw, "", locErr, latencyMs)
+		return nil
+	}
+	if locResult == nil {
+		c.logSidecarNilResult("location", raw.ID, latencyMs)
+		return nil
+	}
+	c.logger.Info("Location classification complete",
+		infralogger.String("sidecar", "location"),
+		infralogger.String("content_id", raw.ID),
+		infralogger.String("source", raw.SourceName),
+		infralogger.String("title_excerpt", truncateWords(raw.Title, titleExcerptWordLimit)),
+		infralogger.String("specificity", locResult.Specificity),
+		infralogger.String("city", locResult.City),
+		infralogger.String("province", locResult.Province),
+		infralogger.String("country", locResult.Country),
+		infralogger.Float64("confidence", locResult.Confidence),
+		infralogger.Int64("latency_ms", latencyMs),
+		infralogger.String("outcome", "success"),
+	)
+	return locResult
 }
 
 // calculateTopicConfidence calculates overall topic confidence
