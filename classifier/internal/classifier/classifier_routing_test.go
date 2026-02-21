@@ -4,11 +4,26 @@
 package classifier
 
 import (
+	"context"
+	"strings"
 	"testing"
 
 	"github.com/jonesrussell/north-cloud/classifier/internal/domain"
 	"github.com/jonesrussell/north-cloud/classifier/internal/testhelpers"
+	infralogger "github.com/north-cloud/infrastructure/logger"
 )
+
+// recordingLogger wraps mockLogger and records all Warn calls for assertion.
+type recordingLogger struct {
+	mockLogger
+	warns []string
+}
+
+func (r *recordingLogger) Warn(msg string, _ ...infralogger.Field) {
+	r.warns = append(r.warns, msg)
+}
+
+func (r *recordingLogger) With(_ ...infralogger.Field) infralogger.Logger { return r }
 
 func TestResolveSidecars(t *testing.T) {
 	routingTable := map[string][]string{
@@ -75,7 +90,7 @@ func assertEqualStringSlices(t *testing.T, got, want []string) {
 	}
 }
 
-func TestResolveSidecars_MissingKey_ReturnsNilAndLogs(t *testing.T) {
+func TestResolveSidecars_MissingKey_ReturnsNil(t *testing.T) {
 	cfg := Config{
 		Version:                "1.0.0",
 		MinQualityScore:        50,
@@ -94,5 +109,100 @@ func TestResolveSidecars_MissingKey_ReturnsNilAndLogs(t *testing.T) {
 	got := clf.ResolveSidecars("video", "")
 	if got != nil {
 		t.Errorf("ResolveSidecars(\"video\", \"\") = %v, want nil when routing key missing", got)
+	}
+}
+
+func TestNewClassifier_UnknownSidecarInRoutingTable_Warns(t *testing.T) {
+	rec := &recordingLogger{}
+	cfg := Config{
+		RoutingTable: map[string][]string{
+			"article": {"crime", "typo_sidecar"},
+		},
+	}
+	NewClassifier(rec, []domain.ClassificationRule{}, testhelpers.NewMockSourceReputationDB(), cfg)
+
+	found := false
+	for _, w := range rec.warns {
+		if strings.Contains(w, "unknown sidecar name") {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Errorf("expected a Warn containing 'unknown sidecar name', got warns: %v", rec.warns)
+	}
+}
+
+func TestNewClassifier_DisabledSidecarInRoutingTable_Warns(t *testing.T) {
+	rec := &recordingLogger{}
+	cfg := Config{
+		CrimeClassifier: nil, // crime disabled (nil)
+		RoutingTable: map[string][]string{
+			"article": {"crime"},
+		},
+	}
+	NewClassifier(rec, []domain.ClassificationRule{}, testhelpers.NewMockSourceReputationDB(), cfg)
+
+	found := false
+	for _, w := range rec.warns {
+		if strings.Contains(w, "disabled sidecar") {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Errorf("expected a Warn containing 'disabled sidecar', got warns: %v", rec.warns)
+	}
+}
+
+func TestNewClassifier_KnownEnabledSidecar_NoWarn(t *testing.T) {
+	rec := &recordingLogger{}
+	mockCrime := &CrimeClassifier{}
+	cfg := Config{
+		CrimeClassifier: mockCrime,
+		RoutingTable: map[string][]string{
+			"article": {"crime"},
+		},
+	}
+	NewClassifier(rec, []domain.ClassificationRule{}, testhelpers.NewMockSourceReputationDB(), cfg)
+
+	for _, w := range rec.warns {
+		if strings.Contains(w, "crime") {
+			t.Errorf("expected no Warn for enabled crime sidecar, got: %q", w)
+		}
+	}
+}
+
+func TestRunOptionalClassifiers_NilSidecarDoesNotPanic(t *testing.T) {
+	cfg := Config{
+		CrimeClassifier: nil, // disabled
+		RoutingTable: map[string][]string{
+			"article": {"crime"},
+		},
+	}
+	clf := NewClassifier(&mockLogger{}, []domain.ClassificationRule{}, testhelpers.NewMockSourceReputationDB(), cfg)
+	raw := &domain.RawContent{ID: "test-nil-guard", Title: "Test Article"}
+
+	// Must not panic when sidecar is nil but present in routing table
+	crime, _, _, _, _, _ := clf.classifyOptionalForPublishable(context.Background(), raw, domain.ContentTypeArticle, "")
+	if crime != nil {
+		t.Error("expected nil crime result when classifier is nil")
+	}
+}
+
+func TestRunOptionalClassifiers_UnknownSidecarDoesNotPanic(t *testing.T) {
+	cfg := Config{
+		RoutingTable: map[string][]string{
+			"article": {"future_sidecar"},
+		},
+	}
+	clf := NewClassifier(&mockLogger{}, []domain.ClassificationRule{}, testhelpers.NewMockSourceReputationDB(), cfg)
+	raw := &domain.RawContent{ID: "test-unknown", Title: "Test Article"}
+
+	// Unknown sidecar name must not panic; all results should be nil
+	crime, mining, coforge, entertainment, anishinaabe, location :=
+		clf.classifyOptionalForPublishable(context.Background(), raw, domain.ContentTypeArticle, "")
+	if crime != nil || mining != nil || coforge != nil || entertainment != nil || anishinaabe != nil || location != nil {
+		t.Error("expected all nil results for unknown sidecar name in routing table")
 	}
 }

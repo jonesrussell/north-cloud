@@ -71,7 +71,14 @@ func NewClassifier(
 	}
 	for routeKey, names := range routingTable {
 		for _, name := range names {
-			if enabled, known := sidecarEnabled[name]; known && !enabled {
+			enabled, known := sidecarEnabled[name]
+			switch {
+			case !known:
+				logger.Warn("Routing table references unknown sidecar name; it will always be ignored",
+					infralogger.String("routing_key", routeKey),
+					infralogger.String("sidecar_name", name),
+				)
+			case known && !enabled:
 				logger.Warn("Routing table references disabled sidecar classifier",
 					infralogger.String("routing_key", routeKey),
 					infralogger.String("sidecar_name", name),
@@ -106,7 +113,7 @@ func (c *Classifier) ResolveSidecars(contentType, subtype string) []string {
 		if names, ok := c.routingTable[key]; ok {
 			return names
 		}
-		c.logger.Debug("No routing entry for article subtype; falling back to article key",
+		c.logger.Warn("No routing entry for article subtype; falling back to article route — all sidecars will run",
 			infralogger.String("content_subtype", subtype),
 			infralogger.String("fallback_key", "article"),
 		)
@@ -219,6 +226,7 @@ func (c *Classifier) Classify(ctx context.Context, raw *domain.RawContent) (*dom
 // ClassifyBatch classifies multiple raw content items efficiently
 func (c *Classifier) ClassifyBatch(ctx context.Context, rawItems []*domain.RawContent) ([]*domain.ClassificationResult, error) {
 	results := make([]*domain.ClassificationResult, len(rawItems))
+	failedCount := 0
 
 	for i, raw := range rawItems {
 		result, err := c.Classify(ctx, raw)
@@ -228,10 +236,18 @@ func (c *Classifier) ClassifyBatch(ctx context.Context, rawItems []*domain.RawCo
 				infralogger.String("content_id", raw.ID),
 				infralogger.Error(err),
 			)
-			// Continue with next item instead of failing entire batch
+			failedCount++
 			continue
 		}
 		results[i] = result
+	}
+
+	if failedCount > 0 {
+		c.logger.Error("Batch classification completed with failures",
+			infralogger.Int("total", len(rawItems)),
+			infralogger.Int("failed", failedCount),
+			infralogger.Int("succeeded", len(rawItems)-failedCount),
+		)
 	}
 
 	return results, nil
@@ -431,8 +447,19 @@ func (c *Classifier) runLocationOptional(
 		c.logSidecarNilResult("location", raw.ID, latencyMs)
 		return nil
 	}
-	c.logSidecarSuccess("location", raw, "",
-		"", 0, 0, "", "", latencyMs, 0, "")
+	c.logger.Info("Location classification complete",
+		infralogger.String("sidecar", "location"),
+		infralogger.String("content_id", raw.ID),
+		infralogger.String("source", raw.SourceName),
+		infralogger.String("title_excerpt", truncateWords(raw.Title, titleExcerptWordLimit)),
+		infralogger.String("specificity", locResult.Specificity),
+		infralogger.String("city", locResult.City),
+		infralogger.String("province", locResult.Province),
+		infralogger.String("country", locResult.Country),
+		infralogger.Float64("confidence", locResult.Confidence),
+		infralogger.Int64("latency_ms", latencyMs),
+		infralogger.String("outcome", "success"),
+	)
 	return locResult
 }
 

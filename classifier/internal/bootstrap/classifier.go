@@ -44,6 +44,11 @@ type HTTPComponents struct {
 
 // NewHTTPComponents creates all components for the HTTP server.
 func NewHTTPComponents(cfg *config.Config, logger infralogger.Logger) (*HTTPComponents, error) {
+	if cfg.Classification.SidecarRegistryFromYAML {
+		logger.Warn("classification.sidecar_registry is set in config but is not yet consumed; " +
+			"use the named fields (crime.enabled, mining.enabled, etc.) to control sidecar behaviour")
+	}
+
 	// Setup database
 	dbComps, err := SetupDatabase(cfg, logger)
 	if err != nil {

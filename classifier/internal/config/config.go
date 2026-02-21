@@ -143,6 +143,9 @@ type ClassificationConfig struct {
 	// or classifier — the named fields (Crime, Mining, etc.) remain authoritative.
 	// TODO: when declarative registry-driven dispatch is implemented, this will replace named fields.
 	SidecarRegistry map[string]SidecarConfig `yaml:"sidecar_registry"`
+	// SidecarRegistryFromYAML is true when sidecar_registry was explicitly set in the YAML config.
+	// It has no runtime effect but triggers a startup warning so operators know the field is inoperative.
+	SidecarRegistryFromYAML bool `yaml:"-"` // not loaded from YAML; set by setClassificationDefaults
 	// Routing maps route key (e.g. "article", "article:event") to sidecar names to run. Optional; default matches current behavior.
 	Routing map[string][]string `yaml:"routing"`
 }
@@ -361,10 +364,18 @@ func setClassificationDefaults(c *ClassificationConfig) {
 	if c.Routing == nil {
 		c.Routing = getDefaultRouting()
 	}
-	// SidecarRegistry: if absent, build from existing Crime/Mining/... so config stays backward compatible
-	if c.SidecarRegistry == nil {
+	// SidecarRegistry: if explicitly set in YAML, mark it so callers can warn; otherwise build from named fields.
+	if c.SidecarRegistry != nil {
+		c.SidecarRegistryFromYAML = true
+	} else {
 		c.SidecarRegistry = getDefaultSidecarRegistry(c)
 	}
+}
+
+// SetDefaults applies all defaults to cfg. Call this when constructing a Config without Load
+// (e.g. in test helpers or fallback paths that cannot read a config file).
+func SetDefaults(cfg *Config) {
+	setDefaults(cfg)
 }
 
 // getDefaultRouting returns the default content-type → sidecars mapping (current behavior).

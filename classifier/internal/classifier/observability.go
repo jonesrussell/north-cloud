@@ -82,11 +82,13 @@ func (c *Classifier) logSidecarError(
 	)
 }
 
-// logSidecarNilResult emits a structured Warn log when an ML sidecar returns a nil result with no error.
+// logSidecarNilResult emits a structured Error log when an ML sidecar returns a nil result with no error.
+// A nil result without an error is a contract violation in the sidecar interface and indicates a client bug.
 func (c *Classifier) logSidecarNilResult(sidecar, contentID string, latencyMs int64) {
-	c.logger.Warn("ML sidecar returned nil result without error",
+	c.logger.Error("ML sidecar returned nil result without error",
 		infralogger.String("sidecar", sidecar),
 		infralogger.String("content_id", contentID),
 		infralogger.Int64("latency_ms", latencyMs),
+		infralogger.String("outcome", "nil_result"),
 	)
 }
