@@ -288,6 +288,7 @@ func (c *Classifier) runCrimeOptional(
 		return nil
 	}
 	if scResult == nil {
+		c.logSidecarNilResult("crime-ml", raw.ID, latencyMs)
 		return nil
 	}
 	crimeResult := convertCrimeResult(scResult)
@@ -311,12 +312,14 @@ func (c *Classifier) runMiningOptional(
 		c.logSidecarError("mining-ml", raw, contentType, minErr, latencyMs)
 		return nil
 	}
-	if minResult != nil {
-		c.logSidecarSuccess("mining-ml", raw, contentType,
-			minResult.Relevance, minResult.FinalConfidence,
-			minResult.MLConfidenceRaw, minResult.RuleTriggered,
-			minResult.DecisionPath, latencyMs, minResult.ProcessingTimeMs, minResult.ModelVersion)
+	if minResult == nil {
+		c.logSidecarNilResult("mining-ml", raw.ID, latencyMs)
+		return nil
 	}
+	c.logSidecarSuccess("mining-ml", raw, contentType,
+		minResult.Relevance, minResult.FinalConfidence,
+		minResult.MLConfidenceRaw, minResult.RuleTriggered,
+		minResult.DecisionPath, latencyMs, minResult.ProcessingTimeMs, minResult.ModelVersion)
 	return minResult
 }
 
@@ -333,12 +336,14 @@ func (c *Classifier) runCoforgeOptional(
 		c.logSidecarError("coforge-ml", raw, contentType, cfErr, latencyMs)
 		return nil
 	}
-	if cfResult != nil {
-		c.logSidecarSuccess("coforge-ml", raw, contentType,
-			cfResult.Relevance, cfResult.FinalConfidence,
-			cfResult.MLConfidenceRaw, cfResult.RuleTriggered,
-			cfResult.DecisionPath, latencyMs, cfResult.ProcessingTimeMs, cfResult.ModelVersion)
+	if cfResult == nil {
+		c.logSidecarNilResult("coforge-ml", raw.ID, latencyMs)
+		return nil
 	}
+	c.logSidecarSuccess("coforge-ml", raw, contentType,
+		cfResult.Relevance, cfResult.FinalConfidence,
+		cfResult.MLConfidenceRaw, cfResult.RuleTriggered,
+		cfResult.DecisionPath, latencyMs, cfResult.ProcessingTimeMs, cfResult.ModelVersion)
 	return cfResult
 }
 
@@ -355,12 +360,14 @@ func (c *Classifier) runEntertainmentOptional(
 		c.logSidecarError("entertainment-ml", raw, contentType, entErr, latencyMs)
 		return nil
 	}
-	if entResult != nil {
-		c.logSidecarSuccess("entertainment-ml", raw, contentType,
-			entResult.Relevance, entResult.FinalConfidence,
-			entResult.MLConfidenceRaw, entResult.RuleTriggered,
-			entResult.DecisionPath, latencyMs, entResult.ProcessingTimeMs, entResult.ModelVersion)
+	if entResult == nil {
+		c.logSidecarNilResult("entertainment-ml", raw.ID, latencyMs)
+		return nil
 	}
+	c.logSidecarSuccess("entertainment-ml", raw, contentType,
+		entResult.Relevance, entResult.FinalConfidence,
+		entResult.MLConfidenceRaw, entResult.RuleTriggered,
+		entResult.DecisionPath, latencyMs, entResult.ProcessingTimeMs, entResult.ModelVersion)
 	return entResult
 }
 
@@ -377,12 +384,14 @@ func (c *Classifier) runAnishinaabeOptional(
 		c.logSidecarError("anishinaabe-ml", raw, contentType, aErr, latencyMs)
 		return nil
 	}
-	if aResult != nil {
-		c.logSidecarSuccess("anishinaabe-ml", raw, contentType,
-			aResult.Relevance, aResult.FinalConfidence,
-			aResult.MLConfidenceRaw, aResult.RuleTriggered,
-			aResult.DecisionPath, latencyMs, aResult.ProcessingTimeMs, aResult.ModelVersion)
+	if aResult == nil {
+		c.logSidecarNilResult("anishinaabe-ml", raw.ID, latencyMs)
+		return nil
 	}
+	c.logSidecarSuccess("anishinaabe-ml", raw, contentType,
+		aResult.Relevance, aResult.FinalConfidence,
+		aResult.MLConfidenceRaw, aResult.RuleTriggered,
+		aResult.DecisionPath, latencyMs, aResult.ProcessingTimeMs, aResult.ModelVersion)
 	return aResult
 }
 
