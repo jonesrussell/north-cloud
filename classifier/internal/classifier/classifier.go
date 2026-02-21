@@ -401,13 +401,19 @@ func (c *Classifier) runLocationOptional(
 	if !run || c.location == nil {
 		return nil
 	}
+	start := time.Now()
 	locResult, locErr := c.location.Classify(ctx, raw)
+	latencyMs := time.Since(start).Milliseconds()
 	if locErr != nil {
-		c.logger.Warn("Location classification failed",
-			infralogger.String("content_id", raw.ID),
-			infralogger.Error(locErr))
+		c.logSidecarError("location", raw, "", locErr, latencyMs)
 		return nil
 	}
+	if locResult == nil {
+		c.logSidecarNilResult("location", raw.ID, latencyMs)
+		return nil
+	}
+	c.logSidecarSuccess("location", raw, "",
+		"", 0, 0, "", "", latencyMs, 0, "")
 	return locResult
 }
 
