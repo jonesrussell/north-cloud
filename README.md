@@ -39,6 +39,7 @@ flowchart TB
         IM[Index Manager :8090]
         SRCH[Search :8092]
         AUTH[Auth :8040]
+        CT[Click Tracker :8093]
         MCP[MCP Server]
     end
 
@@ -89,6 +90,7 @@ flowchart TB
 | **dashboard** | 3002 | Management UI (Vue.js 3) |
 | **search-frontend** | 3003 | Public search UI |
 | **nc-http-proxy** | 8055 | HTTP replay proxy for deterministic testing |
+| **click-tracker** | 8093 | Click event tracking and analytics |
 
 ### ML Sidecars
 
@@ -171,6 +173,7 @@ APP_DEBUG=true  # false in production
 
 ## Documentation
 
+- **ARCHITECTURE.md** - Deep system architecture, routing layers, Redis channels, version history
 - **CLAUDE.md** - Comprehensive architecture and development guide
 - **DOCKER.md** - Docker reference
 - **docs/PIPELINE.md** - Pipeline architecture deep-dive
