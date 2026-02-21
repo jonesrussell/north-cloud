@@ -192,6 +192,7 @@ func createClassifierConfig(cfg *config.Config, logger infralogger.Logger) class
 		CoforgeClassifier:       coforgeCC,
 		EntertainmentClassifier: entertainmentCC,
 		AnishinaabeClassifier:   anishinaabeCC,
+		RoutingTable:            cfg.Classification.Routing,
 	}
 }
 

@@ -201,6 +201,7 @@ func createClassifierConfig(cfg *config.Config, log infralogger.Logger) classifi
 			ReputationDecayRate:        defaultReputationDecayRate95,
 		},
 		CrimeClassifier: createCrimeClassifier(cfg, log),
+		RoutingTable:    cfg.Classification.Routing,
 	}
 }
 
