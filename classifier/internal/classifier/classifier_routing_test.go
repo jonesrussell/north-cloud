@@ -43,6 +43,7 @@ func TestResolveSidecars(t *testing.T) {
 		{"article default", domain.ContentTypeArticle, "", []string{"crime", "mining", "location"}},
 		{"article event", domain.ContentTypeArticle, domain.ContentSubtypeEvent, []string{"location"}},
 		{"article blotter", domain.ContentTypeArticle, domain.ContentSubtypeBlotter, []string{"crime"}},
+		{"article unknown subtype falls back to article", domain.ContentTypeArticle, "press_release", []string{"crime", "mining", "location"}},
 		{"article report", domain.ContentTypeArticle, domain.ContentSubtypeReport, nil},
 		{"page has explicit empty routing", domain.ContentTypePage, "", nil},
 	}
