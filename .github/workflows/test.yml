@@ -118,11 +118,14 @@ jobs:
 
       - name: Run linters (all services)
         if: needs.detect-changes.outputs.run_all == 'true'
+        env:
+          GOWORK: ${{ github.workspace }}/go.work
         run: task lint
 
       - name: Run linters (changed services only)
         if: needs.detect-changes.outputs.run_all == 'false'
         env:
+          GOWORK: ${{ github.workspace }}/go.work
           CHANGED_SERVICES: ${{ needs.detect-changes.outputs.services }}
         run: |
           echo "Linting changed services: $CHANGED_SERVICES"
@@ -171,11 +174,14 @@ jobs:
 
       - name: Run vulnerability check (all services)
         if: needs.detect-changes.outputs.run_all == 'true'
+        env:
+          GOWORK: ${{ github.workspace }}/go.work
         run: task vuln
 
       - name: Run vulnerability check (changed services only)
         if: needs.detect-changes.outputs.run_all == 'false'
         env:
+          GOWORK: ${{ github.workspace }}/go.work
           CHANGED_SERVICES: ${{ needs.detect-changes.outputs.services }}
         run: |
           echo "Checking vulnerabilities for changed services: $CHANGED_SERVICES"
@@ -249,11 +255,14 @@ jobs:
 
       - name: Run tests (all services)
         if: needs.detect-changes.outputs.run_all == 'true'
+        env:
+          GOWORK: ${{ github.workspace }}/go.work
         run: task test
 
       - name: Run tests (changed services only)
         if: needs.detect-changes.outputs.run_all == 'false'
         env:
+          GOWORK: ${{ github.workspace }}/go.work
           CHANGED_SERVICES: ${{ needs.detect-changes.outputs.services }}
         run: |
           echo "Testing changed services: $CHANGED_SERVICES"
