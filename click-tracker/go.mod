@@ -6,7 +6,7 @@ require (
 	github.com/gin-gonic/gin v1.11.0
 	github.com/golang-migrate/migrate/v4 v4.19.1
 	github.com/lib/pq v1.10.9
-	github.com/north-cloud/infrastructure v0.0.0-00010101000000-000000000000
+	github.com/north-cloud/infrastructure v0.0.0
 )
 
 require (
