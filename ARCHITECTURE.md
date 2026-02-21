@@ -70,6 +70,8 @@ flowchart TD
 | index-manager | 8090 | postgres-index-manager | Elasticsearch index lifecycle and document management |
 | search | 8092 (dev) / 8090 (prod via nginx) | none | Full-text search across all `*_classified_content` indexes |
 | dashboard | 3002 | none | Vue.js 3 management UI with JWT auth |
+| click-tracker | 8093 | postgres-click-tracker | Tracks article click events for engagement analytics |
+| pipeline | 8075 | postgres-pipeline | Orchestrates multi-stage content processing pipelines |
 | mcp-north-cloud | stdio | none | MCP server exposing 27 tools for AI integration |
 | nc-http-proxy | 8055 | none | HTTP replay proxy for deterministic crawler testing |
 
