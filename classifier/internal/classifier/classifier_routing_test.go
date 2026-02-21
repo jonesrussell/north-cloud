@@ -11,7 +11,6 @@ import (
 )
 
 func TestResolveSidecars(t *testing.T) {
-
 	routingTable := map[string][]string{
 		"article":         {"crime", "mining", "location"},
 		"article:event":   {"location"},
@@ -77,7 +76,6 @@ func assertEqualStringSlices(t *testing.T, got, want []string) {
 }
 
 func TestResolveSidecars_MissingKey_ReturnsNilAndLogs(t *testing.T) {
-
 	cfg := Config{
 		Version:                "1.0.0",
 		MinQualityScore:        50,
