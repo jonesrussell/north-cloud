@@ -251,9 +251,20 @@ func (c *Classifier) classifyOptionalForPublishable(
 func (c *Classifier) runOptionalClassifiers(
 	ctx context.Context, raw *domain.RawContent, contentType string, sidecars []string,
 ) (*domain.CrimeResult, *domain.MiningResult, *domain.CoforgeResult, *domain.EntertainmentResult, *domain.AnishinaabeResult, *domain.LocationResult) {
+	knownSidecarNames := map[string]bool{
+		"crime": true, "mining": true, "coforge": true,
+		"entertainment": true, "anishinaabe": true, "location": true,
+	}
 	allowed := make(map[string]bool)
 	for _, name := range sidecars {
 		allowed[name] = true
+		if !knownSidecarNames[name] {
+			c.logger.Warn("Routing table contains unknown sidecar name; it will be ignored",
+				infralogger.String("sidecar_name", name),
+				infralogger.String("content_type", contentType),
+				infralogger.String("content_id", raw.ID),
+			)
+		}
 	}
 	return c.runCrimeOptional(ctx, raw, contentType, allowed["crime"]),
 		c.runMiningOptional(ctx, raw, contentType, allowed["mining"]),
