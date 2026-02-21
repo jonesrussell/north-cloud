@@ -63,7 +63,7 @@ go run main.go
 
 ## API Reference
 
-All `/api/v1/*` and `/api/v2/*` routes require JWT authentication (`Authorization: Bearer <token>`). Health and SSE event endpoints are public.
+All `/api/v1/*`, `/api/v2/*`, and `/api/{crawler,health,metrics}/events` routes require JWT authentication (`Authorization: Bearer <token>`). Only the `/health` endpoint is public.
 
 ### Jobs
 
@@ -137,9 +137,9 @@ All `/api/v1/*` and `/api/v2/*` routes require JWT authentication (`Authorizatio
 
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `/sse/crawler/events` | Live crawler events stream |
-| GET | `/sse/health/events` | Live health events stream |
-| GET | `/sse/metrics/events` | Live metrics events stream |
+| GET | `/api/crawler/events` | Live crawler events stream |
+| GET | `/api/health/events` | Live health events stream |
+| GET | `/api/metrics/events` | Live metrics events stream |
 
 ### Admin
 
@@ -261,9 +261,9 @@ paused    ──→ cancelled
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `CRAWLER_FEED_POLL_ENABLED` | `false` | Enable RSS/Atom feed polling |
+| `CRAWLER_FEED_POLL_ENABLED` | `true` | Enable RSS/Atom feed polling |
 | `CRAWLER_FEED_POLL_INTERVAL_MINUTES` | — | Feed poll interval |
-| `CRAWLER_FEED_DISCOVERY_ENABLED` | `false` | Auto-discover feeds from source URLs |
+| `CRAWLER_FEED_DISCOVERY_ENABLED` | `true` | Auto-discover feeds from source URLs |
 | `CRAWLER_FEED_DISCOVERY_INTERVAL_MINUTES` | — | Feed discovery interval |
 
 ### Frontier Fetcher

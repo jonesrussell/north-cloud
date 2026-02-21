@@ -261,7 +261,7 @@ Full endpoint table is in [README.md](README.md). Key summary:
 | Job logs | `GET /api/v1/jobs/:id/logs[/stream/v2]` |
 | Frontier | `GET/POST/DELETE /api/v1/frontier[/:id]` |
 | Discovered links | `GET/DELETE /api/v1/discovered-links[/:id]` |
-| SSE events | `GET /sse/{crawler,health,metrics}/events` |
+| SSE events | `GET /api/{crawler,health,metrics}/events` |
 | Admin | `POST /api/v1/admin/sync-enabled-sources` |
 
 ## Configuration
@@ -307,7 +307,7 @@ See [README.md](README.md) for the full environment variable table. Key variable
 
 9. **Proxy rotation is global**: `CRAWLER_PROXY_URLS` applies to all sources — there is no per-source proxy configuration. Rotation is round-robin.
 
-10. **Feed discovery vs. feed polling**: `CRAWLER_FEED_DISCOVERY_ENABLED` auto-discovers RSS/Atom feeds from source URLs. `CRAWLER_FEED_POLL_ENABLED` polls discovered feeds. Both default to `false` — enable both to get feed-based crawling.
+10. **Feed discovery vs. feed polling**: `CRAWLER_FEED_DISCOVERY_ENABLED` auto-discovers RSS/Atom feeds from source URLs. `CRAWLER_FEED_POLL_ENABLED` polls discovered feeds. Both default to `true` — set either to `false` to disable the corresponding behaviour.
 
 ## Testing
 
