@@ -202,13 +202,20 @@ func parseListQuery(c *gin.Context) repository.ListFilter {
 		}
 	}
 
+	var feedActive *bool
+	if v := c.Query("feed_active"); v == "true" {
+		t := true
+		feedActive = &t
+	}
+
 	return repository.ListFilter{
-		Limit:     limit,
-		Offset:    offset,
-		SortBy:    sortBy,
-		SortOrder: sortOrder,
-		Search:    search,
-		Enabled:   enabled,
+		Limit:      limit,
+		Offset:     offset,
+		SortBy:     sortBy,
+		SortOrder:  sortOrder,
+		Search:     search,
+		Enabled:    enabled,
+		FeedActive: feedActive,
 	}
 }
 

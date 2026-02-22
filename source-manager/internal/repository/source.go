@@ -136,12 +136,13 @@ func (r *SourceRepository) GetByID(ctx context.Context, id string) (*models.Sour
 
 // ListFilter holds pagination and filter params for ListPaginated.
 type ListFilter struct {
-	Limit     int
-	Offset    int
-	SortBy    string // name, url, enabled, created_at
-	SortOrder string // asc, desc
-	Search    string // ILIKE on name or url
-	Enabled   *bool  // nil = all, true = enabled only, false = disabled only
+	Limit      int
+	Offset     int
+	SortBy     string // name, url, enabled, created_at
+	SortOrder  string // asc, desc
+	Search     string // ILIKE on name or url
+	Enabled    *bool  // nil = all, true = enabled only, false = disabled only
+	FeedActive *bool  // nil = all, true = feeds that are active or past cooldown
 }
 
 // Count returns the total number of sources matching the filter (ignores Limit/Offset/Sort).
@@ -258,6 +259,24 @@ func buildListWhere(filter ListFilter) (whereClause string, args []any) {
 	if filter.Enabled != nil {
 		clauses = append(clauses, fmt.Sprintf("enabled = $%d", pos))
 		args = append(args, *filter.Enabled)
+	}
+
+	if filter.FeedActive != nil && *filter.FeedActive {
+		// Include sources where:
+		// 1. feed is not disabled (feed_disabled_at IS NULL), OR
+		// 2. cooldown has expired (based on reason-specific durations)
+		clauses = append(clauses, `(
+			feed_disabled_at IS NULL
+			OR feed_disabled_at + (CASE feed_disable_reason
+				WHEN 'not_found'        THEN INTERVAL '48 hours'
+				WHEN 'gone'             THEN INTERVAL '72 hours'
+				WHEN 'forbidden'        THEN INTERVAL '24 hours'
+				WHEN 'upstream_failure'  THEN INTERVAL '6 hours'
+				WHEN 'network'          THEN INTERVAL '12 hours'
+				WHEN 'parse_error'      THEN INTERVAL '24 hours'
+				ELSE INTERVAL '24 hours'
+			END) <= NOW()
+		)`)
 	}
 
 	if len(clauses) == 0 {
