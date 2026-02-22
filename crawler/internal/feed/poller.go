@@ -3,6 +3,7 @@ package feed
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 
@@ -95,8 +96,9 @@ func (p *Poller) PollFeed(ctx context.Context, sourceID, feedURL string) error {
 
 	resp, fetchErr := p.fetcher.Fetch(ctx, feedURL, state.LastETag, state.LastModified)
 	if fetchErr != nil {
-		p.recordError(ctx, sourceID, fetchErr)
-		return fmt.Errorf("poll feed fetch: %w", fetchErr)
+		pollErr := ClassifyNetworkError(fetchErr, feedURL)
+		p.recordError(ctx, sourceID, pollErr)
+		return fmt.Errorf("poll feed fetch: %w", pollErr)
 	}
 
 	if resp.StatusCode == http.StatusNotModified {
@@ -108,12 +110,9 @@ func (p *Poller) PollFeed(ctx context.Context, sourceID, feedURL string) error {
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		unexpectedErr := fmt.Errorf(
-			"poll feed: unexpected status %d for %s",
-			resp.StatusCode, feedURL,
-		)
-		p.recordError(ctx, sourceID, unexpectedErr)
-		return unexpectedErr
+		pollErr := ClassifyHTTPStatus(resp.StatusCode, feedURL)
+		p.recordError(ctx, sourceID, pollErr)
+		return pollErr
 	}
 
 	return p.processResponse(ctx, sourceID, feedURL, resp)
@@ -128,8 +127,9 @@ func (p *Poller) processResponse(
 ) error {
 	items, parseErr := ParseFeed(ctx, resp.Body)
 	if parseErr != nil {
-		p.recordError(ctx, sourceID, parseErr)
-		return fmt.Errorf("poll feed parse: %w", parseErr)
+		pollErr := ClassifyParseError(parseErr, feedURL)
+		p.recordError(ctx, sourceID, pollErr)
+		return fmt.Errorf("poll feed parse: %w", pollErr)
 	}
 
 	submitted := p.submitItems(ctx, sourceID, items)
@@ -208,17 +208,51 @@ func (p *Poller) submitSingleItem(ctx context.Context, sourceID string, item *Fe
 	return nil
 }
 
-// recordError logs and records a feed polling error in the feed state store.
-func (p *Poller) recordError(ctx context.Context, sourceID string, originalErr error) {
+// recordError logs a feed polling error at the appropriate severity level
+// and records it in the feed state store.
+func (p *Poller) recordError(ctx context.Context, sourceID string, err error) {
+	var pollErr *PollError
+	if errors.As(err, &pollErr) {
+		p.logPollError(sourceID, pollErr)
+
+		if updateErr := p.feedState.UpdateError(
+			ctx, sourceID, string(pollErr.Type), pollErr.Error(),
+		); updateErr != nil {
+			p.log.Error("failed to record feed error",
+				"source_id", sourceID,
+				"error", updateErr.Error(),
+			)
+		}
+
+		return
+	}
+
+	// Unknown error type — always ERROR level
 	p.log.Error("feed poll failed",
 		"source_id", sourceID,
-		"error", originalErr.Error(),
+		"error", err.Error(),
 	)
 
-	if updateErr := p.feedState.UpdateError(ctx, sourceID, "", originalErr.Error()); updateErr != nil {
+	if updateErr := p.feedState.UpdateError(
+		ctx, sourceID, string(ErrTypeUnexpected), err.Error(),
+	); updateErr != nil {
 		p.log.Error("failed to record feed error",
 			"source_id", sourceID,
 			"error", updateErr.Error(),
 		)
 	}
+}
+
+// logPollError logs a classified poll error at the appropriate severity.
+func (p *Poller) logPollError(sourceID string, pollErr *PollError) {
+	logFn := p.log.Warn
+	if pollErr.Level == LevelError {
+		logFn = p.log.Error
+	}
+	logFn("feed poll failed",
+		"source_id", sourceID,
+		"error_type", string(pollErr.Type),
+		"status_code", pollErr.StatusCode,
+		"error", pollErr.Error(),
+	)
 }

@@ -388,6 +388,133 @@ func TestPollFeed_GetOrCreateError(t *testing.T) {
 	}
 }
 
+func TestPollFeed_403_ReturnsPollError(t *testing.T) {
+	t.Parallel()
+
+	fetcher := &mockFetcher{
+		response: &feed.FetchResponse{StatusCode: http.StatusForbidden},
+	}
+	stateStore := &mockFeedStateStore{}
+	frontierMock := &mockFrontier{}
+	poller := newTestPoller(t, fetcher, stateStore, frontierMock)
+
+	err := poller.PollFeed(context.Background(), "src-1", "https://example.com/feed.xml")
+	if err == nil {
+		t.Fatal("expected error for 403, got nil")
+	}
+
+	var pollErr *feed.PollError
+	if !errors.As(err, &pollErr) {
+		t.Fatalf("expected PollError, got %T: %v", err, err)
+	}
+	if pollErr.Type != feed.ErrTypeForbidden {
+		t.Errorf("Type = %q, want %q", pollErr.Type, feed.ErrTypeForbidden)
+	}
+	if pollErr.Level != feed.LevelWarn {
+		t.Errorf("Level = %d, want %d (LevelWarn)", pollErr.Level, feed.LevelWarn)
+	}
+	if !stateStore.errorCalled {
+		t.Error("expected UpdateError to be called")
+	}
+	if stateStore.lastErrType != string(feed.ErrTypeForbidden) {
+		t.Errorf("lastErrType = %q, want %q", stateStore.lastErrType, feed.ErrTypeForbidden)
+	}
+}
+
+func TestPollFeed_404_ReturnsPollError(t *testing.T) {
+	t.Parallel()
+
+	fetcher := &mockFetcher{
+		response: &feed.FetchResponse{StatusCode: http.StatusNotFound},
+	}
+	stateStore := &mockFeedStateStore{}
+	frontierMock := &mockFrontier{}
+	poller := newTestPoller(t, fetcher, stateStore, frontierMock)
+
+	err := poller.PollFeed(context.Background(), "src-1", "https://example.com/feed.xml")
+	if err == nil {
+		t.Fatal("expected error for 404, got nil")
+	}
+
+	var pollErr *feed.PollError
+	if !errors.As(err, &pollErr) {
+		t.Fatalf("expected PollError, got %T: %v", err, err)
+	}
+	if pollErr.Type != feed.ErrTypeNotFound {
+		t.Errorf("Type = %q, want %q", pollErr.Type, feed.ErrTypeNotFound)
+	}
+}
+
+func TestPollFeed_429_ReturnsPollError(t *testing.T) {
+	t.Parallel()
+
+	fetcher := &mockFetcher{
+		response: &feed.FetchResponse{StatusCode: http.StatusTooManyRequests},
+	}
+	stateStore := &mockFeedStateStore{}
+	frontierMock := &mockFrontier{}
+	poller := newTestPoller(t, fetcher, stateStore, frontierMock)
+
+	err := poller.PollFeed(context.Background(), "src-1", "https://example.com/feed.xml")
+	if err == nil {
+		t.Fatal("expected error for 429, got nil")
+	}
+
+	var pollErr *feed.PollError
+	if !errors.As(err, &pollErr) {
+		t.Fatalf("expected PollError, got %T: %v", err, err)
+	}
+	if pollErr.Type != feed.ErrTypeRateLimited {
+		t.Errorf("Type = %q, want %q", pollErr.Type, feed.ErrTypeRateLimited)
+	}
+}
+
+func TestPollFeed_NetworkError_ReturnsPollError(t *testing.T) {
+	t.Parallel()
+
+	fetcher := &mockFetcher{err: errors.New("dial tcp: no such host")}
+	stateStore := &mockFeedStateStore{}
+	frontierMock := &mockFrontier{}
+	poller := newTestPoller(t, fetcher, stateStore, frontierMock)
+
+	err := poller.PollFeed(context.Background(), "src-1", "https://example.com/feed.xml")
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+
+	var pollErr *feed.PollError
+	if !errors.As(err, &pollErr) {
+		t.Fatalf("expected PollError, got %T: %v", err, err)
+	}
+	if pollErr.Type != feed.ErrTypeNetwork {
+		t.Errorf("Type = %q, want %q", pollErr.Type, feed.ErrTypeNetwork)
+	}
+}
+
+func TestPollFeed_ParseError_ReturnsPollError(t *testing.T) {
+	t.Parallel()
+
+	fetcher := &mockFetcher{
+		response: newOKResponse(t, "not valid xml at all"),
+	}
+	stateStore := &mockFeedStateStore{}
+	frontierMock := &mockFrontier{}
+	poller := newTestPoller(t, fetcher, stateStore, frontierMock)
+
+	err := poller.PollFeed(context.Background(), "src-1", "https://example.com/feed.xml")
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+
+	var pollErr *feed.PollError
+	if !errors.As(err, &pollErr) {
+		t.Fatalf("expected PollError, got %T: %v", err, err)
+	}
+	if pollErr.Type != feed.ErrTypeParse {
+		t.Errorf("Type = %q, want %q", pollErr.Type, feed.ErrTypeParse)
+	}
+}
+
 // assertContainsURL verifies that at least one submitted param has the given URL.
 func assertContainsURL(t *testing.T, submitted []feed.SubmitParams, url string) {
 	t.Helper()
