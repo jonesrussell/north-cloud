@@ -262,6 +262,11 @@ linters:
       excludes:
         - G404  # Insecure random number source (math/rand)
         - G402  # TLS InsecureSkipVerify (intentional for development)
+        - G117  # Secret serialization: config structs with Password fields are never marshaled to external output
+        - G703  # Path traversal taint: global exclude — nc-http-proxy has safePath; other services don't handle file paths from user input
+        - G704  # SSRF taint: crawlers and ML transports intentionally fetch user-configured URLs
+        - G705  # XSS taint: false positives on fmt.Fprintf(os.Stderr, ...) treated as untrusted output
+        - G706  # Log injection taint: false positives on structured logger calls (zap fields)
     forbidigo:
       forbid:
         - pattern: '^os\.Getenv$'

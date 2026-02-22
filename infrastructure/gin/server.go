@@ -42,10 +42,13 @@ func NewServer(cfg *Config, log logger.Logger, setupRoutes func(*gin.Engine)) *S
 	// 1. Recovery first to catch panics
 	router.Use(RecoveryMiddleware(log))
 
-	// 2. Request logging
+	// 2. Request ID + context-scoped logger
+	router.Use(RequestIDLoggerMiddleware(log))
+
+	// 3. Request logging (picks up request_id set by step 2)
 	router.Use(LoggerMiddleware(log))
 
-	// 3. CORS handling
+	// 4. CORS handling
 	router.Use(CORSMiddleware(cfg.CORS))
 
 	// Call service-specific route setup

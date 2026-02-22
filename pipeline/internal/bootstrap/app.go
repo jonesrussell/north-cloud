@@ -4,6 +4,7 @@ package bootstrap
 
 import (
 	"fmt"
+	"os"
 
 	infralogger "github.com/north-cloud/infrastructure/logger"
 	"github.com/north-cloud/infrastructure/profiling"
@@ -12,6 +13,15 @@ import (
 // Start initializes and runs the pipeline service.
 func Start() error {
 	profiling.StartPprofServer()
+	if pyroProfiler, pyroErr := profiling.StartPyroscope("pipeline"); pyroErr != nil {
+		fmt.Fprintf(os.Stderr, "WARNING: Pyroscope failed to start: %v\n", pyroErr)
+	} else if pyroProfiler != nil {
+		defer func() {
+			if stopErr := pyroProfiler.Stop(); stopErr != nil {
+				fmt.Fprintf(os.Stderr, "WARNING: Pyroscope failed to stop: %v\n", stopErr)
+			}
+		}()
+	}
 
 	cfg, configErr := LoadConfig()
 	if configErr != nil {

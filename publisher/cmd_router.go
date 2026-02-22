@@ -38,6 +38,12 @@ func runRouter() {
 func runRouterWithStop() (func(), error) {
 	// Start profiling server (if enabled)
 	profiling.StartPprofServer()
+	var pyroProfiler *profiling.PyroscopeProfiler
+	if p, pyroErr := profiling.StartPyroscope("publisher-router"); pyroErr != nil {
+		fmt.Fprintf(os.Stderr, "WARNING: Pyroscope failed to start: %v\n", pyroErr)
+	} else {
+		pyroProfiler = p
+	}
 
 	// Initialize logger using infrastructure logger
 	appLogger, loggerErr := infralogger.New(infralogger.Config{
@@ -132,6 +138,11 @@ func runRouterWithStop() (func(), error) {
 			appLogger.Warn("Shutdown timeout exceeded, forcing exit")
 		}
 
+		if pyroProfiler != nil {
+			if stopErr := pyroProfiler.Stop(); stopErr != nil {
+				fmt.Fprintf(os.Stderr, "WARNING: Pyroscope failed to stop: %v\n", stopErr)
+			}
+		}
 		redisClient.Close()
 		db.Close()
 		_ = appLogger.Sync()

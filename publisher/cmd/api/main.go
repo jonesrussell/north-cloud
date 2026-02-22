@@ -28,6 +28,15 @@ func main() {
 func run() int {
 	// Start profiling server (if enabled)
 	profiling.StartPprofServer()
+	if pyroProfiler, pyroErr := profiling.StartPyroscope("publisher-api"); pyroErr != nil {
+		fmt.Fprintf(os.Stderr, "WARNING: Pyroscope failed to start: %v\n", pyroErr)
+	} else if pyroProfiler != nil {
+		defer func() {
+			if stopErr := pyroProfiler.Stop(); stopErr != nil {
+				fmt.Fprintf(os.Stderr, "WARNING: Pyroscope failed to stop: %v\n", stopErr)
+			}
+		}()
+	}
 
 	// Initialize logger early (before config loading to use structured logging)
 	// Use default config for logger initialization

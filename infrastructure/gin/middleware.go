@@ -1,6 +1,8 @@
 package gin
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"net/http"
 	"strings"
 	"time"
@@ -11,8 +13,9 @@ import (
 
 // Buffer size constants for middleware operations.
 const (
-	maxAgeBufSize    = 10 // Buffer size for max age string conversion
-	requestIDBufSize = 16 // Buffer size for request ID (hex timestamp)
+	maxAgeBufSize      = 10  // Buffer size for max age string conversion
+	requestIDByteLen   = 16  // Number of random bytes for request ID (produces 32 hex chars)
+	maxRequestIDLength = 128 // Maximum length for inbound X-Request-ID header
 )
 
 // LoggerMiddleware creates a Gin middleware for structured HTTP request logging.
@@ -38,6 +41,13 @@ func LoggerMiddleware(log logger.Logger) gin.HandlerFunc {
 			logger.Int("status", statusCode),
 			logger.Duration("duration", duration),
 			logger.String("client_ip", c.ClientIP()),
+		}
+
+		// Include request ID if present
+		if reqID, exists := c.Get("request_id"); exists {
+			if id, ok := reqID.(string); ok {
+				fields = append(fields, logger.String("request_id", id))
+			}
 		}
 
 		// Add query if present
@@ -181,6 +191,9 @@ func RecoveryMiddleware(log logger.Logger) gin.HandlerFunc {
 
 // RequestIDMiddleware adds a unique request ID to each request context.
 // The ID is either taken from X-Request-ID header or generated.
+//
+// Deprecated: Use RequestIDLoggerMiddleware instead, which also stores
+// a request-scoped logger in the Go context.
 func RequestIDMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		requestID := c.GetHeader("X-Request-ID")
@@ -195,17 +208,40 @@ func RequestIDMiddleware() gin.HandlerFunc {
 	}
 }
 
-// generateRequestID creates a simple unique request ID.
-// Uses timestamp + random component for uniqueness.
-func generateRequestID() string {
-	// Simple timestamp-based ID
-	// Format: unix_nano as hex
-	now := time.Now().UnixNano()
-	const hexDigits = "0123456789abcdef"
-	result := make([]byte, requestIDBufSize)
-	for i := requestIDBufSize - 1; i >= 0; i-- {
-		result[i] = hexDigits[now&0xf]
-		now >>= 4
+// RequestIDLoggerMiddleware generates a request ID and stores a request-scoped
+// logger (with request_id field) in both the Gin context and the Go context.
+// This allows downstream handlers to retrieve an enriched logger via
+// logger.FromContext(c.Request.Context()).
+func RequestIDLoggerMiddleware(log logger.Logger) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		requestID := c.GetHeader("X-Request-ID")
+		if requestID == "" || len(requestID) > maxRequestIDLength {
+			requestID = generateRequestID()
+		}
+
+		c.Set("request_id", requestID)
+		c.Writer.Header().Set("X-Request-ID", requestID)
+
+		// Store logger with request_id in Go context so downstream handlers
+		// can retrieve it via logger.FromContext(c.Request.Context())
+		reqLog := log.With(logger.String("request_id", requestID))
+		ctx := logger.WithContext(c.Request.Context(), reqLog)
+		c.Request = c.Request.WithContext(ctx)
+
+		c.Next()
 	}
-	return string(result)
+}
+
+// generateRequestID creates a unique request ID using cryptographic randomness.
+func generateRequestID() string {
+	b := make([]byte, requestIDByteLen)
+	if _, err := rand.Read(b); err != nil {
+		// Fallback to timestamp if crypto/rand fails (should never happen)
+		now := time.Now().UnixNano()
+		for i := requestIDByteLen - 1; i >= 0; i-- {
+			b[i] = byte(now)
+			now >>= 8
+		}
+	}
+	return hex.EncodeToString(b)
 }

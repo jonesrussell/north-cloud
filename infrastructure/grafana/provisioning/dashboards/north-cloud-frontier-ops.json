@@ -20,8 +20,11 @@
     { "title": "Overview", "url": "/d/north-cloud-overview", "type": "link", "icon": "dashboard" },
     { "title": "Pipeline Operations", "url": "/d/north-cloud-pipeline-ops", "type": "link", "icon": "dashboard" },
     { "title": "Crawler Ops", "url": "/d/north-cloud-crawler-ops", "type": "link", "icon": "dashboard" },
+    { "title": "Deployer Sites", "url": "/d/north-cloud-deployer-sites", "type": "link", "icon": "dashboard" },
+    { "title": "ML Sidecars", "url": "/d/north-cloud-ml-sidecars", "type": "link", "icon": "dashboard" },
     { "title": "Frontier Ops", "url": "/d/north-cloud-frontier-ops", "type": "link", "icon": "dashboard" },
-    { "title": "Service Logs", "url": "/d/north-cloud-service-logs", "type": "link", "icon": "dashboard" }
+    { "title": "Service Logs", "url": "/d/north-cloud-service-logs", "type": "link", "icon": "dashboard" },
+    { "title": "Explore Loki", "url": "/explore?orgId=1&left=%7B%22datasource%22:%22loki%22%7D", "type": "link", "icon": "search" }
   ],
   "liveNow": false,
   "panels": [
@@ -524,7 +527,7 @@
   "time": { "from": "now-24h", "to": "now" },
   "timepicker": {},
   "timezone": "browser",
-  "title": "North Cloud - Frontier Operations",
+  "title": "Frontier Operations",
   "uid": "north-cloud-frontier-ops",
   "version": 1
 }

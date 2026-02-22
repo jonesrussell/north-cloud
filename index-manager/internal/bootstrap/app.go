@@ -4,6 +4,7 @@ package bootstrap
 
 import (
 	"fmt"
+	"os"
 
 	infralogger "github.com/north-cloud/infrastructure/logger"
 	"github.com/north-cloud/infrastructure/profiling"
@@ -13,6 +14,15 @@ import (
 func Start() error {
 	// Phase 0: Start profiling server (if enabled)
 	profiling.StartPprofServer()
+	if pyroProfiler, pyroErr := profiling.StartPyroscope("index-manager"); pyroErr != nil {
+		fmt.Fprintf(os.Stderr, "WARNING: Pyroscope failed to start: %v\n", pyroErr)
+	} else if pyroProfiler != nil {
+		defer func() {
+			if stopErr := pyroProfiler.Stop(); stopErr != nil {
+				fmt.Fprintf(os.Stderr, "WARNING: Pyroscope failed to stop: %v\n", stopErr)
+			}
+		}()
+	}
 
 	// Phase 1: Load config and create logger
 	cfg, err := LoadConfig()
