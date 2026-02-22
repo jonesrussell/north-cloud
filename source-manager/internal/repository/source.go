@@ -85,6 +85,7 @@ func (r *SourceRepository) GetByID(ctx context.Context, id string) (*models.Sour
 		SELECT id, name, url, rate_limit, max_depth,
 		       time, selectors, enabled,
 		       feed_url, sitemap_url, ingestion_mode, feed_poll_interval_minutes,
+		       feed_disabled_at, feed_disable_reason,
 		       created_at, updated_at
 		FROM sources
 		WHERE id = $1
@@ -103,6 +104,8 @@ func (r *SourceRepository) GetByID(ctx context.Context, id string) (*models.Sour
 		&source.SitemapURL,
 		&source.IngestionMode,
 		&source.FeedPollIntervalMinutes,
+		&source.FeedDisabledAt,
+		&source.FeedDisableReason,
 		&source.CreatedAt,
 		&source.UpdatedAt,
 	)
@@ -172,6 +175,7 @@ func (r *SourceRepository) ListPaginated(ctx context.Context, filter ListFilter)
 		SELECT id, name, url, rate_limit, max_depth,
 		       time, selectors, enabled,
 		       feed_url, sitemap_url, ingestion_mode, feed_poll_interval_minutes,
+		       feed_disabled_at, feed_disable_reason,
 		       created_at, updated_at
 		FROM sources
 		WHERE 1=1` + whereClause + orderClause + `
@@ -225,6 +229,8 @@ func scanSourceRow(rows *sql.Rows) (*models.Source, error) {
 		&source.SitemapURL,
 		&source.IngestionMode,
 		&source.FeedPollIntervalMinutes,
+		&source.FeedDisabledAt,
+		&source.FeedDisableReason,
 		&source.CreatedAt,
 		&source.UpdatedAt,
 	); err != nil {
@@ -284,6 +290,7 @@ func (r *SourceRepository) List(ctx context.Context) ([]models.Source, error) {
 		SELECT id, name, url, rate_limit, max_depth,
 		       time, selectors, enabled,
 		       feed_url, sitemap_url, ingestion_mode, feed_poll_interval_minutes,
+		       feed_disabled_at, feed_disable_reason,
 		       created_at, updated_at
 		FROM sources
 		ORDER BY name
@@ -493,6 +500,52 @@ func (r *SourceRepository) UpsertSource(ctx context.Context, tx *sql.Tx, source 
 	source.ID = returnedID
 
 	return isInsert, nil
+}
+
+// DisableFeed marks a source's feed as disabled with a reason.
+func (r *SourceRepository) DisableFeed(ctx context.Context, id, reason string) error {
+	query := `
+		UPDATE sources
+		SET feed_disabled_at = NOW(), feed_disable_reason = $2, updated_at = NOW()
+		WHERE id = $1
+	`
+
+	result, err := r.db.ExecContext(ctx, query, id, reason)
+	if err != nil {
+		return fmt.Errorf("disable feed: %w", err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("get rows affected: %w", err)
+	}
+	if rowsAffected == 0 {
+		return errors.New("source not found")
+	}
+	return nil
+}
+
+// EnableFeed clears a source's feed disabled state.
+func (r *SourceRepository) EnableFeed(ctx context.Context, id string) error {
+	query := `
+		UPDATE sources
+		SET feed_disabled_at = NULL, feed_disable_reason = NULL, updated_at = NOW()
+		WHERE id = $1
+	`
+
+	result, err := r.db.ExecContext(ctx, query, id)
+	if err != nil {
+		return fmt.Errorf("enable feed: %w", err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("get rows affected: %w", err)
+	}
+	if rowsAffected == 0 {
+		return errors.New("source not found")
+	}
+	return nil
 }
 
 func (r *SourceRepository) GetCities(ctx context.Context) ([]models.City, error) {
