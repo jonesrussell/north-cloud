@@ -6,12 +6,18 @@ This guide explains how to build a service that consumes articles from the Publi
 
 1. [Overview](#overview)
 2. [Crime-only consumers (e.g. StreetCode)](#crime-only-consumers-eg-streetcode)
-3. [Prerequisites](#prerequisites)
-4. [Quick Start](#quick-start)
-5. [Architecture Patterns](#architecture-patterns)
-6. [Implementation Examples](#implementation-examples)
-7. [Best Practices](#best-practices)
-8. [Production Deployment](#production-deployment)
+3. [Mining-only consumers (e.g. OreWire)](#mining-only-consumers-eg-orewire)
+4. [Entertainment consumers (e.g. movies-of-war)](#entertainment-consumers-eg-movies-of-war)
+5. [Anishinaabe consumers (e.g. Diidjaaheer)](#anishinaabe-consumers-eg-diidjaaheer)
+6. [Coforge consumers](#coforge-consumers)
+7. [Prerequisites](#prerequisites)
+8. [Quick Start](#quick-start)
+9. [Architecture Patterns](#architecture-patterns)
+10. [Implementation Examples](#implementation-examples)
+11. [Best Practices](#best-practices)
+12. [Production Deployment](#production-deployment)
+13. [Verifying article flow](#verifying-article-flow)
+14. [Troubleshooting](#troubleshooting)
 
 ## Overview
 
@@ -54,9 +60,36 @@ Subscribe to **Layer 5 mining channels** for complete coverage:
 
 Message payload includes `mining.relevance`, `mining.mining_stage`, `mining.commodities`, `mining.location`, and `mining.final_confidence` for additional downstream filtering.
 
-### Entertainment consumers
+### Entertainment consumers (e.g. movies-of-war)
 
-Subscribe to **Layer 6 channels**: `entertainment:homepage`, `entertainment:category:*`, `entertainment:peripheral`. Message payload includes `entertainment_relevance`, `entertainment_categories`, and nested `entertainment` object.
+Subscribe to **Layer 6 channels** for complete coverage:
+
+- **Homepage / relevance**: `entertainment:homepage`, `entertainment:peripheral`
+- **Category** (one per classification category; slugs are lowercased, spaces to hyphens): `entertainment:category:film`, `entertainment:category:music`, `entertainment:category:gaming`, `entertainment:category:reviews`, and any other categories produced by the entertainment classifier.
+
+Message payload includes `entertainment_relevance`, `entertainment_categories`, and nested `entertainment` object.
+
+**Note:** The publisher does **not** emit an `articles:war` (or `articles:entertainment`) channel from any automatic layer. To receive entertainment content, subscribe to the Layer 6 channels above. If you want a single aggregate channel (e.g. `articles:war`), create a Layer 2 channel in the publisher DB via the API and configure its rules accordingly.
+
+### Anishinaabe consumers (e.g. Diidjaaheer)
+
+Subscribe to **Layer 7 channels** for complete coverage:
+
+- **Catch-all**: `articles:anishinaabe` (all core + peripheral Anishinaabe-classified articles)
+- **Category** (one per classification category): `anishinaabe:category:culture`, `anishinaabe:category:language`, `anishinaabe:category:governance`, `anishinaabe:category:land-rights`, `anishinaabe:category:education`
+
+Subscribe to all of the above for full coverage; consumer-side deduplication (by article `id`) prevents duplicates across channels. Do **not** subscribe to `articles:default` — the publisher does not emit that channel from any automatic layer.
+
+### Coforge consumers
+
+Subscribe to **Layer 8 channels**. The publisher does **not** emit a catch-all `articles:coforge` or `articles:default` channel. For Coforge-classified content, subscribe to:
+
+- **Relevance**: `coforge:core`, `coforge:peripheral`
+- **Audience** (when set on the article): `coforge:audience:{slug}` (e.g. `coforge:audience:developers`)
+- **Topic** (one per topic): `coforge:topic:{slug}` (e.g. `coforge:topic:digital-transformation`, `coforge:topic:cloud`)
+- **Industry** (one per industry): `coforge:industry:{slug}` (e.g. `coforge:industry:banking`, `coforge:industry:insurance`)
+
+Slugs are lowercased with underscores and spaces converted to hyphens. Subscribe at minimum to `coforge:core` and `coforge:peripheral`; add specific audience/topic/industry channels as needed. New slugs (new audiences, topics, or industries from the classifier) require adding those channel names to your consumer config or env.
 
 ### Publisher Responsibilities
 
@@ -655,7 +688,7 @@ signal.signal(signal.SIGINT, signal_handler)
 signal.signal(signal.SIGTERM, signal_handler)
 ```
 
-### 4. Monitoring
+### 4. Monitoring and health
 
 **Track metrics**:
 - Messages received per second
@@ -663,6 +696,10 @@ signal.signal(signal.SIGTERM, signal_handler)
 - Messages skipped (duplicates, low quality)
 - Processing errors
 - Database latency
+
+**Laravel (northcloud-laravel):** Use `php artisan articles:status` to verify Redis connection and channel list; use `php artisan articles:stats --since=24h` for ingestion volume. Run the subscriber as a long-lived process (systemd or supervisor) and consider including a process or status check in health endpoints.
+
+**Quality and processing:** When using northcloud-laravel, set `NORTHCLOUD_QUALITY_FILTER=true` and `NORTHCLOUD_MIN_QUALITY_SCORE` (e.g. 50 or 70) to skip low-quality articles. Use `NORTHCLOUD_PROCESS_SYNC=true` for simplicity; set to `false` and run a queue worker for higher throughput.
 
 ```python
 from prometheus_client import Counter, Histogram
@@ -796,6 +833,16 @@ threading.Thread(target=lambda: app.run(port=8080), daemon=True).start()
 - **Deduplication required**: Use database or shared Redis SET
 - **Queue-based**: Use Celery, RabbitMQ, or similar for distribution
 - **Resource limits**: Set CPU/memory limits in production
+
+## Verifying article flow
+
+To confirm articles are being published and your consumer can receive them:
+
+1. **Publisher**: Check that the router is running and polling (publisher logs). Call `GET /api/v1/stats/overview` (with JWT) to see total published and recent activity. Ensure at least one `*_classified_content` Elasticsearch index exists and the cursor is advancing.
+2. **Redis**: From the same host as the publisher, run `redis-cli PING` and `redis-cli PUBSUB CHANNELS` to verify Redis is up and channels are being used.
+3. **Laravel (northcloud-laravel)**: Run `php artisan articles:status` to confirm Redis connection, channel list, and quality filter. Use `php artisan articles:stats --since=24h` to see ingestion volume. Include `articles:status` (or a check that the subscriber process is running) in health scripts or monitoring.
+
+Run the subscriber as a long-lived process (systemd or supervisor) so it is always connected when the publisher sends messages; Redis pub/sub does not queue messages for offline consumers.
 
 ## Troubleshooting
 
