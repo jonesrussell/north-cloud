@@ -317,6 +317,8 @@ Six provisioned alert rules in folder **North Cloud**:
 | Deployer site silence (orewire) | No orewire logs in 30 minutes — warning |
 | Deployer site silence (coforge) | No coforge logs in 30 minutes — warning |
 
+Deployer site silence and ML sidecar rules use **noDataState: OK** so that when the Loki query returns no series (e.g. no log stream for that service), the rule state is OK and no "DatasourceNoData" notification is sent; they only fire when a series exists and the condition is met. For deployer silence alerts to be meaningful, streetcode/orewire (and coforge/movies-of-war) must ship logs to Loki (e.g. Alloy on deployer hosts); see ARCHITECTURE.md and docs/STREETCODE_RUNBOOK.md for log shipping.
+
 Provisioned alert rules cannot be edited in the UI; change `alerts.yml` and restart Grafana to update.
 
 ## Operational Tasks

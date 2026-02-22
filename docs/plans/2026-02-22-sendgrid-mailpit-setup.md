@@ -94,7 +94,7 @@ GRAFANA_ALERT_EMAIL=alerts@example.com
 ```bash
 ssh jones@northcloud.biz
 echo 'SENDGRID_API_KEY=<your-sendgrid-api-key>' >> /opt/north-cloud/.env
-echo 'GRAFANA_ALERT_EMAIL=russell@web.net' >> /opt/north-cloud/.env
+echo 'GRAFANA_ALERT_EMAIL=jonesrussell42@gmail.com' >> /opt/north-cloud/.env
 ```
 
 **Step 2: Copy updated docker-compose.prod.yml to server**

@@ -117,6 +117,8 @@ groups:
       - uid: nc-streetcode-silence
         title: "Deployer site silence — streetcode no logs in 30 minutes"
         condition: "C"
+        noDataState: OK
+        execErrState: OK
         data:
           - refId: "A"
             relativeTimeRange:
@@ -153,6 +155,8 @@ groups:
       - uid: nc-orewire-silence
         title: "Deployer site silence — orewire no logs in 30 minutes"
         condition: "C"
+        noDataState: OK
+        execErrState: OK
         data:
           - refId: "A"
             relativeTimeRange:
@@ -189,6 +193,8 @@ groups:
       - uid: nc-coforge-silence
         title: "Deployer site silence — coforge no logs in 30 minutes"
         condition: "C"
+        noDataState: OK
+        execErrState: OK
         data:
           - refId: "A"
             relativeTimeRange:
@@ -225,6 +231,8 @@ groups:
       - uid: nc-movies-of-war-silence
         title: "Deployer site silence — movies-of-war no logs in 30 minutes"
         condition: "C"
+        noDataState: OK
+        execErrState: OK
         data:
           - refId: "A"
             relativeTimeRange:
@@ -261,6 +269,8 @@ groups:
       - uid: nc-ml-sidecar-errors
         title: "ML sidecar error rate — sustained failures"
         condition: "C"
+        noDataState: OK
+        execErrState: OK
         data:
           - refId: "A"
             relativeTimeRange:
@@ -297,6 +307,8 @@ groups:
       - uid: nc-ml-sidecar-inactive
         title: "ML sidecars inactive — no classifications in 2 hours"
         condition: "C"
+        noDataState: OK
+        execErrState: OK
         data:
           - refId: "A"
             relativeTimeRange:
