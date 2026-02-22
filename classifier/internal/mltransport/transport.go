@@ -49,7 +49,7 @@ func DoClassify(
 	client := &http.Client{Timeout: defaultTimeout}
 
 	start := time.Now()
-	resp, doErr := client.Do(httpReq) //nolint:gosec // baseURL is from internal config, not user input
+	resp, doErr := client.Do(httpReq)
 	latencyMs = time.Since(start).Milliseconds()
 
 	if doErr != nil {
@@ -84,7 +84,7 @@ func DoHealth(ctx context.Context, baseURL string) (reachable bool, latencyMs in
 	}
 
 	client := &http.Client{Timeout: defaultTimeout}
-	resp, doErr := client.Do(httpReq) //nolint:gosec // baseURL is from internal config, not user input
+	resp, doErr := client.Do(httpReq)
 	latencyMs = time.Since(start).Milliseconds()
 	if doErr != nil {
 		return false, latencyMs, "", fmt.Errorf("service unreachable: %w", doErr)
