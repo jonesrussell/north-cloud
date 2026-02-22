@@ -18,15 +18,17 @@ import (
 	"os"
 	"time"
 
+	"github.com/jonesrussell/north-cloud/crawler/internal/api"
 	infralogger "github.com/north-cloud/infrastructure/logger"
 	"github.com/north-cloud/infrastructure/profiling"
 )
 
 // backgroundCancels holds cancel functions for background goroutines.
 type backgroundCancels struct {
-	feedPollerCancel    context.CancelFunc
-	feedDiscoveryCancel context.CancelFunc
-	workerPoolCancel    context.CancelFunc
+	feedPollerCancel      context.CancelFunc
+	feedDiscoveryCancel   context.CancelFunc
+	workerPoolCancel      context.CancelFunc
+	frontierStatsCancel   context.CancelFunc
 }
 
 // startBackgroundWorkers launches background goroutines for feed polling,
@@ -69,7 +71,45 @@ func startBackgroundWorkers(deps *CommandDeps, sc *ServiceComponents) background
 			infralogger.Int("worker_count", fetcherCfg.WorkerCount))
 	}
 
+	if sc.FrontierRepoForHandler != nil {
+		statsCtx, cancel := context.WithCancel(context.Background())
+		bg.frontierStatsCancel = cancel
+		go runFrontierStatsLogger(statsCtx, sc.FrontierRepoForHandler, deps.Logger)
+		deps.Logger.Info("Frontier stats logger started")
+	}
+
 	return bg
+}
+
+const frontierStatsLogInterval = 60 * time.Second
+
+// runFrontierStatsLogger logs frontier queue counts periodically for Grafana/Loki
+// so the Frontier Operations dashboard can show current queue depth (e.g. total_pending).
+func runFrontierStatsLogger(ctx context.Context, repo api.FrontierRepoForHandler, log infralogger.Logger) {
+	ticker := time.NewTicker(frontierStatsLogInterval)
+	defer ticker.Stop()
+	logFrontierStats := func() {
+		stats, err := repo.Stats(ctx)
+		if err != nil {
+			log.Error("frontier stats failed", infralogger.Error(err))
+			return
+		}
+		log.Info("frontier_stats",
+			infralogger.Int("total_pending", stats.TotalPending),
+			infralogger.Int("total_fetching", stats.TotalFetching),
+			infralogger.Int("total_fetched", stats.TotalFetched),
+			infralogger.Int("total_failed", stats.TotalFailed),
+			infralogger.Int("total_dead", stats.TotalDead))
+	}
+	logFrontierStats() // emit once immediately
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			logFrontierStats()
+		}
+	}
 }
 
 // Start initializes and starts the crawler application.
@@ -152,6 +192,7 @@ func Start() error {
 		bg.feedPollerCancel,
 		bg.feedDiscoveryCancel,
 		bg.workerPoolCancel,
+		bg.frontierStatsCancel,
 		serverComponents.ErrorChan,
 	)
 }

@@ -34,6 +34,7 @@ func RunUntilInterrupt(
 	feedPollerCancel context.CancelFunc,
 	feedDiscoveryCancel context.CancelFunc,
 	workerPoolCancel context.CancelFunc,
+	frontierStatsCancel context.CancelFunc,
 	errChan <-chan error,
 ) error {
 	// Set up signal handling for graceful shutdown
@@ -47,7 +48,7 @@ func RunUntilInterrupt(
 		return fmt.Errorf("server error: %w", serverErr)
 	case sig := <-sigChan:
 		return Shutdown(log, server, intervalScheduler, sseBroker, logService, eventConsumer,
-			feedPollerCancel, feedDiscoveryCancel, workerPoolCancel, sig)
+			feedPollerCancel, feedDiscoveryCancel, workerPoolCancel, frontierStatsCancel, sig)
 	}
 }
 
@@ -62,6 +63,7 @@ func Shutdown(
 	feedPollerCancel context.CancelFunc,
 	feedDiscoveryCancel context.CancelFunc,
 	workerPoolCancel context.CancelFunc,
+	frontierStatsCancel context.CancelFunc,
 	sig os.Signal,
 ) error {
 	log.Info("Shutdown signal received", infralogger.String("signal", sig.String()))
@@ -82,6 +84,12 @@ func Shutdown(
 	if workerPoolCancel != nil {
 		log.Info("Stopping frontier worker pool")
 		workerPoolCancel()
+	}
+
+	// Stop frontier stats logger (cancels stats logging goroutine)
+	if frontierStatsCancel != nil {
+		log.Info("Stopping frontier stats logger")
+		frontierStatsCancel()
 	}
 
 	// Stop event consumer (stops reading from Redis)
