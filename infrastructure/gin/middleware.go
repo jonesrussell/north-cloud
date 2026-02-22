@@ -1,6 +1,8 @@
 package gin
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"net/http"
 	"strings"
 	"time"
@@ -11,8 +13,9 @@ import (
 
 // Buffer size constants for middleware operations.
 const (
-	maxAgeBufSize    = 10 // Buffer size for max age string conversion
-	requestIDBufSize = 16 // Buffer size for request ID (hex timestamp)
+	maxAgeBufSize      = 10  // Buffer size for max age string conversion
+	requestIDByteLen   = 16  // Number of random bytes for request ID (produces 32 hex chars)
+	maxRequestIDLength = 128 // Maximum length for inbound X-Request-ID header
 )
 
 // LoggerMiddleware creates a Gin middleware for structured HTTP request logging.
@@ -212,14 +215,15 @@ func RequestIDMiddleware() gin.HandlerFunc {
 func RequestIDLoggerMiddleware(log logger.Logger) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		requestID := c.GetHeader("X-Request-ID")
-		if requestID == "" {
+		if requestID == "" || len(requestID) > maxRequestIDLength {
 			requestID = generateRequestID()
 		}
 
 		c.Set("request_id", requestID)
 		c.Writer.Header().Set("X-Request-ID", requestID)
 
-		// Store enriched logger in Go context
+		// Store logger with request_id in Go context so downstream handlers
+		// can retrieve it via logger.FromContext(c.Request.Context())
 		reqLog := log.With(logger.String("request_id", requestID))
 		ctx := logger.WithContext(c.Request.Context(), reqLog)
 		c.Request = c.Request.WithContext(ctx)
@@ -228,17 +232,16 @@ func RequestIDLoggerMiddleware(log logger.Logger) gin.HandlerFunc {
 	}
 }
 
-// generateRequestID creates a simple unique request ID.
-// Uses timestamp + random component for uniqueness.
+// generateRequestID creates a unique request ID using cryptographic randomness.
 func generateRequestID() string {
-	// Simple timestamp-based ID
-	// Format: unix_nano as hex
-	now := time.Now().UnixNano()
-	const hexDigits = "0123456789abcdef"
-	result := make([]byte, requestIDBufSize)
-	for i := requestIDBufSize - 1; i >= 0; i-- {
-		result[i] = hexDigits[now&0xf]
-		now >>= 4
+	b := make([]byte, requestIDByteLen)
+	if _, err := rand.Read(b); err != nil {
+		// Fallback to timestamp if crypto/rand fails (should never happen)
+		now := time.Now().UnixNano()
+		for i := requestIDByteLen - 1; i >= 0; i-- {
+			b[i] = byte(now)
+			now >>= 8
+		}
 	}
-	return string(result)
+	return hex.EncodeToString(b)
 }

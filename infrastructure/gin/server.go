@@ -45,7 +45,7 @@ func NewServer(cfg *Config, log logger.Logger, setupRoutes func(*gin.Engine)) *S
 	// 2. Request ID + context-scoped logger
 	router.Use(RequestIDLoggerMiddleware(log))
 
-	// 3. Request logging (includes request_id from gin context)
+	// 3. Request logging (picks up request_id set by step 2)
 	router.Use(LoggerMiddleware(log))
 
 	// 4. CORS handling

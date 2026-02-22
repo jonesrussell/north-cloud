@@ -2,6 +2,8 @@ package logger
 
 import (
 	"context"
+	"fmt"
+	"os"
 	"sync"
 )
 
@@ -14,9 +16,9 @@ func WithContext(ctx context.Context, l Logger) context.Context {
 
 // FromContext retrieves the logger from the context.
 // Returns a stderr-backed fallback logger if none is found, ensuring errors
-// are never silently discarded. Callers in non-HTTP contexts (background
-// goroutines, startup code) should pass a logger explicitly rather than
-// relying on context.
+// are never silently discarded. Panics if ctx is nil.
+// Callers in non-HTTP contexts (background goroutines, startup code) should
+// pass a logger explicitly rather than relying on context.
 func FromContext(ctx context.Context) Logger {
 	if l, ok := ctx.Value(ctxKey{}).(Logger); ok {
 		return l
@@ -31,6 +33,7 @@ var (
 )
 
 // fallbackLogger returns a shared warn-level logger that writes to stderr.
+// Initialized once via sync.Once; subsequent calls return the same instance.
 // It is used when no logger is found in the context, ensuring log output
 // is never silently discarded.
 func fallbackLogger() Logger {
@@ -40,8 +43,7 @@ func fallbackLogger() Logger {
 			OutputPaths: []string{"stderr"},
 		})
 		if err != nil {
-			// Last resort: if we can't create a real logger, use no-op
-			// to avoid panicking. This should never happen in practice.
+			fmt.Fprintf(os.Stderr, "CRITICAL: failed to create fallback logger: %v\n", err)
 			l = NewNop()
 		}
 		fallbackLog = l

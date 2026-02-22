@@ -19,7 +19,11 @@ func Start() error {
 	if pyroProfiler, pyroErr := profiling.StartPyroscope("source-manager"); pyroErr != nil {
 		fmt.Fprintf(os.Stderr, "WARNING: Pyroscope failed to start: %v\n", pyroErr)
 	} else if pyroProfiler != nil {
-		defer pyroProfiler.Stop() //nolint:errcheck // best-effort cleanup
+		defer func() {
+			if stopErr := pyroProfiler.Stop(); stopErr != nil {
+				fmt.Fprintf(os.Stderr, "WARNING: Pyroscope failed to stop: %v\n", stopErr)
+			}
+		}()
 	}
 
 	// Phase 1: Load config and create logger

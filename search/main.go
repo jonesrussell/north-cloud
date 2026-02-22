@@ -24,7 +24,11 @@ func run() int {
 	if pyroProfiler, pyroErr := profiling.StartPyroscope("search"); pyroErr != nil {
 		fmt.Fprintf(os.Stderr, "WARNING: Pyroscope failed to start: %v\n", pyroErr)
 	} else if pyroProfiler != nil {
-		defer pyroProfiler.Stop() //nolint:errcheck // best-effort cleanup
+		defer func() {
+			if stopErr := pyroProfiler.Stop(); stopErr != nil {
+				fmt.Fprintf(os.Stderr, "WARNING: Pyroscope failed to stop: %v\n", stopErr)
+			}
+		}()
 	}
 
 	// Load configuration

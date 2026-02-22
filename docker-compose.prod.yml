@@ -590,5 +590,7 @@ volumes:
     driver: local
   grafana_data:
     driver: local
+  prometheus_data:
+    driver: local
   pyroscope_data:
     driver: local
