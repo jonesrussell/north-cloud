@@ -180,6 +180,65 @@ func (c *Client) DeleteSource(ctx context.Context, id string) error {
 	return nil
 }
 
+// ListActiveFeedSources retrieves sources with active feeds (not disabled or past cooldown).
+func (c *Client) ListActiveFeedSources(ctx context.Context) ([]APISource, error) {
+	activeURL := c.baseURL + "?feed_active=true"
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, activeURL, http.NoBody)
+	if err != nil {
+		return nil, fmt.Errorf("create request: %w", err)
+	}
+
+	var response ListSourcesResponse
+	if doErr := c.doRequest(req, &response); doErr != nil {
+		return nil, fmt.Errorf("list active feed sources: %w", doErr)
+	}
+
+	return response.Sources, nil
+}
+
+// DisableFeed disables a source's feed via the source-manager API.
+func (c *Client) DisableFeed(ctx context.Context, sourceID, reason string) error {
+	disableURL, err := url.JoinPath(c.baseURL, sourceID, "feed-disable")
+	if err != nil {
+		return fmt.Errorf("construct disable URL: %w", err)
+	}
+
+	body, marshalErr := json.Marshal(map[string]string{"reason": reason})
+	if marshalErr != nil {
+		return fmt.Errorf("marshal disable request: %w", marshalErr)
+	}
+
+	req, reqErr := http.NewRequestWithContext(
+		ctx, http.MethodPatch, disableURL, bytes.NewReader(body),
+	)
+	if reqErr != nil {
+		return fmt.Errorf("create disable request: %w", reqErr)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	var response map[string]any
+	return c.doRequest(req, &response)
+}
+
+// EnableFeed clears a source's feed disabled state via the source-manager API.
+func (c *Client) EnableFeed(ctx context.Context, sourceID string) error {
+	enableURL, err := url.JoinPath(c.baseURL, sourceID, "feed-enable")
+	if err != nil {
+		return fmt.Errorf("construct enable URL: %w", err)
+	}
+
+	req, reqErr := http.NewRequestWithContext(
+		ctx, http.MethodPatch, enableURL, http.NoBody,
+	)
+	if reqErr != nil {
+		return fmt.Errorf("create enable request: %w", reqErr)
+	}
+
+	var response map[string]any
+	return c.doRequest(req, &response)
+}
+
 // generateServiceToken generates a JWT token for service-to-service authentication.
 func (c *Client) generateServiceToken() (string, error) {
 	if c.jwtSecret == "" {

@@ -66,6 +66,7 @@ type Poller struct {
 	fetcher   HTTPFetcher
 	feedState FeedStateStore
 	frontier  FrontierSubmitter
+	disabler  SourceFeedDisabler
 	log       Logger
 }
 
@@ -74,12 +75,14 @@ func NewPoller(
 	fetcher HTTPFetcher,
 	feedState FeedStateStore,
 	frontierSubmitter FrontierSubmitter,
+	disabler SourceFeedDisabler,
 	log Logger,
 ) *Poller {
 	return &Poller{
 		fetcher:   fetcher,
 		feedState: feedState,
 		frontier:  frontierSubmitter,
+		disabler:  disabler,
 		log:       log,
 	}
 }
@@ -142,6 +145,16 @@ func (p *Poller) processResponse(
 
 	if updateErr := p.feedState.UpdateSuccess(ctx, sourceID, result); updateErr != nil {
 		return fmt.Errorf("poll feed update success: %w", updateErr)
+	}
+
+	// Re-enable feed if it was disabled and is now succeeding (cooldown retry)
+	if p.disabler != nil {
+		if enableErr := p.disabler.EnableFeed(ctx, sourceID); enableErr != nil {
+			p.log.Warn("failed to re-enable feed",
+				"source_id", sourceID,
+				"error", enableErr.Error(),
+			)
+		}
 	}
 
 	p.log.Info("feed polled successfully",
@@ -224,6 +237,11 @@ func (p *Poller) recordError(ctx context.Context, sourceID string, err error) {
 			)
 		}
 
+		// Check auto-disable threshold (WARN-level only — ERROR needs human attention)
+		if pollErr.Level == LevelWarn && p.disabler != nil {
+			p.checkDisableThreshold(ctx, sourceID, pollErr.Type)
+		}
+
 		return
 	}
 
@@ -254,5 +272,36 @@ func (p *Poller) logPollError(sourceID string, pollErr *PollError) {
 		"error_type", string(pollErr.Type),
 		"status_code", pollErr.StatusCode,
 		"error", pollErr.Error(),
+	)
+}
+
+// checkDisableThreshold checks if a feed should be auto-disabled based on consecutive errors.
+func (p *Poller) checkDisableThreshold(ctx context.Context, sourceID string, errType ErrorType) {
+	threshold, shouldDisable := DisableThreshold(errType)
+	if !shouldDisable {
+		return
+	}
+
+	state, err := p.feedState.GetOrCreate(ctx, sourceID, "")
+	if err != nil {
+		return
+	}
+
+	if state.ConsecutiveErrors < threshold {
+		return
+	}
+
+	if disableErr := p.disabler.DisableFeed(ctx, sourceID, string(errType)); disableErr != nil {
+		p.log.Error("failed to disable feed",
+			"source_id", sourceID,
+			"error", disableErr.Error(),
+		)
+		return
+	}
+
+	p.log.Warn("feed auto-disabled",
+		"source_id", sourceID,
+		"reason", string(errType),
+		"consecutive_errors", state.ConsecutiveErrors,
 	)
 }

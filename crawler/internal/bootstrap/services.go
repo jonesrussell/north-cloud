@@ -368,8 +368,9 @@ func createFeedPoller(
 	feedStateAdapter := feed.NewFeedStateRepoAdapter(db.FeedStateRepo)
 	frontierAdapter := feed.NewFrontierRepoAdapter(frontierForFeed)
 	logAdapter := &logAdapter{log: deps.Logger}
+	disablerAdapter := &feedDisablerAdapter{client: apiClient}
 
-	poller = feed.NewPoller(httpFetcher, feedStateAdapter, frontierAdapter, logAdapter)
+	poller = feed.NewPoller(httpFetcher, feedStateAdapter, frontierAdapter, disablerAdapter, logAdapter)
 
 	listDueFn = buildListDueFunc(apiClient, deps.Logger)
 
@@ -385,7 +386,7 @@ func buildListDueFunc(
 	log infralogger.Logger,
 ) func(ctx context.Context) ([]feed.DueFeed, error) {
 	return func(ctx context.Context) ([]feed.DueFeed, error) {
-		apiSources, err := client.ListSources(ctx)
+		apiSources, err := client.ListActiveFeedSources(ctx)
 		if err != nil {
 			return nil, fmt.Errorf("list sources for feed polling: %w", err)
 		}
@@ -406,6 +407,19 @@ func buildListDueFunc(
 
 		return due, nil
 	}
+}
+
+// feedDisablerAdapter adapts apiclient.Client to the feed.SourceFeedDisabler interface.
+type feedDisablerAdapter struct {
+	client *apiclient.Client
+}
+
+func (a *feedDisablerAdapter) DisableFeed(ctx context.Context, sourceID, reason string) error {
+	return a.client.DisableFeed(ctx, sourceID, reason)
+}
+
+func (a *feedDisablerAdapter) EnableFeed(ctx context.Context, sourceID string) error {
+	return a.client.EnableFeed(ctx, sourceID)
 }
 
 // sourceFeedUpdaterAdapter adapts apiclient.Client to the feed.SourceFeedUpdater interface.
