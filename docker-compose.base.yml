@@ -619,10 +619,10 @@ services:
       GF_LOG_LEVEL: ${GRAFANA_LOG_LEVEL:-info}
       # SMTP (SendGrid relay for email alerts)
       GF_SMTP_ENABLED: ${GF_SMTP_ENABLED:-false}
-      GF_SMTP_HOST: ${GF_SMTP_HOST:-smtp.sendgrid.net:587}
+      GF_SMTP_HOST: ${GF_SMTP_HOST:-smtp.sendgrid.net:2525}
       GF_SMTP_USER: ${GF_SMTP_USER:-apikey}
       GF_SMTP_PASSWORD: ${SENDGRID_API_KEY:-}
-      GF_SMTP_FROM_ADDRESS: ${GF_SMTP_FROM_ADDRESS:-alerts@northcloud.biz}
+      GF_SMTP_FROM_ADDRESS: ${GF_SMTP_FROM_ADDRESS:-noreply@northcloud.biz}
       GF_SMTP_FROM_NAME: ${GF_SMTP_FROM_NAME:-North Cloud Alerts}
       GRAFANA_ALERT_EMAIL: ${GRAFANA_ALERT_EMAIL:-alerts@northcloud.biz}
     volumes:

@@ -726,6 +726,29 @@ services:
       GF_SERVER_ROOT_URL: "http://localhost/grafana"
       GF_SERVER_SERVE_FROM_SUB_PATH: "true"
       GF_LOG_LEVEL: debug
+      # Mailpit SMTP (catches all mail at http://localhost:8025)
+      GF_SMTP_ENABLED: "true"
+      GF_SMTP_HOST: "mailpit:1025"
+      GF_SMTP_USER: ""
+      GF_SMTP_PASSWORD: ""
+      GF_SMTP_FROM_ADDRESS: "noreply@northcloud.biz"
+      GF_SMTP_FROM_NAME: "North Cloud Alerts (Dev)"
+      GRAFANA_ALERT_EMAIL: "dev@localhost"
+
+  mailpit:
+    image: axllent/mailpit:v1.21
+    profiles:
+      - observability
+    ports:
+      - "8025:8025"   # Web UI
+      - "1025:1025"   # SMTP
+    deploy:
+      resources:
+        limits:
+          cpus: "0.1"
+          memory: 64M
+    networks:
+      - north-cloud-network
 
 # ============================================================
 # Dev Cache Volumes
