@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"fmt"
+	"os"
 
 	"github.com/jonesrussell/north-cloud/classifier/internal/bootstrap"
 	infralogger "github.com/north-cloud/infrastructure/logger"
@@ -13,7 +14,11 @@ import (
 // Returns error on failure; caller should os.Exit(1).
 func StartHTTPServer() error {
 	profiling.StartPprofServer()
-	profiling.StartPyroscope("classifier") //nolint:errcheck // env-gated, non-critical
+	if pyroProfiler, pyroErr := profiling.StartPyroscope("classifier"); pyroErr != nil {
+		fmt.Fprintf(os.Stderr, "WARNING: Pyroscope failed to start: %v\n", pyroErr)
+	} else if pyroProfiler != nil {
+		defer pyroProfiler.Stop() //nolint:errcheck // best-effort cleanup
+	}
 
 	cfg, err := bootstrap.LoadConfig()
 	if err != nil {

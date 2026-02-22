@@ -28,7 +28,11 @@ func main() {
 func run() int {
 	// Start profiling server (if enabled)
 	profiling.StartPprofServer()
-	profiling.StartPyroscope("publisher-api") //nolint:errcheck // env-gated, non-critical
+	if pyroProfiler, pyroErr := profiling.StartPyroscope("publisher-api"); pyroErr != nil {
+		fmt.Fprintf(os.Stderr, "WARNING: Pyroscope failed to start: %v\n", pyroErr)
+	} else if pyroProfiler != nil {
+		defer pyroProfiler.Stop() //nolint:errcheck // best-effort cleanup
+	}
 
 	// Initialize logger early (before config loading to use structured logging)
 	// Use default config for logger initialization

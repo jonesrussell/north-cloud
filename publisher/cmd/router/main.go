@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
@@ -24,7 +25,11 @@ const (
 func main() {
 	// Start profiling server (if enabled)
 	profiling.StartPprofServer()
-	profiling.StartPyroscope("publisher-router") //nolint:errcheck // env-gated, non-critical
+	if pyroProfiler, pyroErr := profiling.StartPyroscope("publisher-router"); pyroErr != nil {
+		fmt.Fprintf(os.Stderr, "WARNING: Pyroscope failed to start: %v\n", pyroErr)
+	} else if pyroProfiler != nil {
+		defer pyroProfiler.Stop() //nolint:errcheck // best-effort cleanup
+	}
 
 	// Initialize logger using infrastructure logger
 	appLogger, loggerErr := infralogger.New(infralogger.Config{

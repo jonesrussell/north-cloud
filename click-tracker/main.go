@@ -29,7 +29,11 @@ func main() {
 func run() int {
 	// Start profiling server (if enabled)
 	profiling.StartPprofServer()
-	profiling.StartPyroscope("click-tracker") //nolint:errcheck // env-gated, non-critical
+	if pyroProfiler, pyroErr := profiling.StartPyroscope("click-tracker"); pyroErr != nil {
+		fmt.Fprintf(os.Stderr, "WARNING: Pyroscope failed to start: %v\n", pyroErr)
+	} else if pyroProfiler != nil {
+		defer pyroProfiler.Stop() //nolint:errcheck // best-effort cleanup
+	}
 
 	// Load configuration
 	cfg, err := loadConfig()

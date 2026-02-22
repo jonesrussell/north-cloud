@@ -624,6 +624,7 @@ services:
       GF_SMTP_PASSWORD: ${SENDGRID_API_KEY:-}
       GF_SMTP_FROM_ADDRESS: ${GF_SMTP_FROM_ADDRESS:-alerts@northcloud.biz}
       GF_SMTP_FROM_NAME: ${GF_SMTP_FROM_NAME:-North Cloud Alerts}
+      GRAFANA_ALERT_EMAIL: ${GRAFANA_ALERT_EMAIL:-alerts@northcloud.biz}
     volumes:
       - grafana_data:/var/lib/grafana
       - ./infrastructure/grafana/provisioning:/etc/grafana/provisioning:ro
