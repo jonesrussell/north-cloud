@@ -263,8 +263,10 @@ linters:
         - G404  # Insecure random number source (math/rand)
         - G402  # TLS InsecureSkipVerify (intentional for development)
         - G117  # Exported field matches secret pattern (Password in config structs)
-        - G704  # SSRF taint analysis false positives on HTTP clients that fetch user-configured URLs
+        - G703  # Path traversal taint analysis (nc-http-proxy already has safePath guard)
+        - G704  # SSRF taint analysis (services intentionally fetch user-configured URLs)
         - G705  # XSS taint analysis false positives on stderr/log writes
+        - G706  # Log injection taint analysis false positives
     forbidigo:
       forbid:
         - pattern: '^os\.Getenv$'
