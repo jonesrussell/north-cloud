@@ -56,6 +56,7 @@ type FetchResponse struct {
 // Logger provides structured logging for the poller.
 type Logger interface {
 	Info(msg string, fields ...any)
+	Warn(msg string, fields ...any)
 	Error(msg string, fields ...any)
 }
 

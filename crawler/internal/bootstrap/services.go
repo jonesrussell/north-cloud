@@ -559,13 +559,16 @@ func createFrontierWorkerPool(
 }
 
 // logAdapter adapts infralogger.Logger to the feed.Logger and fetcher.WorkerLogger interfaces.
-// Both interfaces have identical signatures: Info(msg, ...any) and Error(msg, ...any).
 type logAdapter struct {
 	log infralogger.Logger
 }
 
 func (a *logAdapter) Info(msg string, fields ...any) {
 	a.log.Info(msg, toInfraFields(fields)...)
+}
+
+func (a *logAdapter) Warn(msg string, fields ...any) {
+	a.log.Warn(msg, toInfraFields(fields)...)
 }
 
 func (a *logAdapter) Error(msg string, fields ...any) {

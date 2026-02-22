@@ -126,12 +126,22 @@ func (m *mockFrontier) Submit(_ context.Context, params feed.SubmitParams) error
 }
 
 // mockLogger implements feed.Logger for testing.
-type mockLogger struct{}
-
-func (m *mockLogger) Info(_ string, _ ...any) {
+type mockLogger struct {
+	warnCalled  bool
+	errorCalled bool
+	lastMsg     string
 }
 
-func (m *mockLogger) Error(_ string, _ ...any) {
+func (m *mockLogger) Info(_ string, _ ...any) {}
+
+func (m *mockLogger) Warn(msg string, _ ...any) {
+	m.warnCalled = true
+	m.lastMsg = msg
+}
+
+func (m *mockLogger) Error(msg string, _ ...any) {
+	m.errorCalled = true
+	m.lastMsg = msg
 }
 
 // --- Helper functions ---
