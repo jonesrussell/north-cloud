@@ -38,7 +38,7 @@
     {
       "id": 2,
       "title": "URLs Submitted",
-      "description": "Counts all submissions (API, feed, spider, sitemap). Requires frontier submissions in the selected time range.",
+      "description": "Submit events in the selected time range (one log line per Submit call from API, feed, spider, sitemap). Same URL submitted again counts as another event; distinct queue size may be lower (upsert by url_hash).",
       "type": "stat",
       "datasource": { "type": "loki", "uid": "loki" },
       "gridPos": { "h": 4, "w": 5, "x": 0, "y": 1 },
@@ -73,7 +73,7 @@
     {
       "id": 3,
       "title": "URLs Fetched",
-      "description": "URLs successfully fetched by workers",
+      "description": "Fetch success events in the selected time range (URLs successfully fetched by workers).",
       "type": "stat",
       "datasource": { "type": "loki", "uid": "loki" },
       "gridPos": { "h": 4, "w": 5, "x": 5, "y": 1 },
@@ -211,11 +211,88 @@
       }
     },
     {
+      "id": 7,
+      "type": "row",
+      "title": "Queue depth",
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 5 }
+    },
+    {
+      "id": 8,
+      "title": "Pending",
+      "description": "Current backlog: URLs in the frontier waiting to be fetched (from crawler frontier_stats log, updated every 60s).",
+      "type": "stat",
+      "datasource": { "type": "loki", "uid": "loki" },
+      "gridPos": { "h": 4, "w": 5, "x": 0, "y": 6 },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "loki", "uid": "loki" },
+          "expr": "max(last_over_time({service=\"crawler\"} |= \"frontier_stats\" | json | unwrap total_pending [2h]))",
+          "queryType": "instant"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": { "mode": "fixed", "fixedColor": "semi-dark-blue" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [{ "color": "semi-dark-blue", "value": null }]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "textMode": "auto",
+        "justifyMode": "auto",
+        "orientation": "auto"
+      }
+    },
+    {
+      "id": 9,
+      "title": "Fetching",
+      "description": "URLs currently being fetched (in-flight).",
+      "type": "stat",
+      "datasource": { "type": "loki", "uid": "loki" },
+      "gridPos": { "h": 4, "w": 5, "x": 5, "y": 6 },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "loki", "uid": "loki" },
+          "expr": "max(last_over_time({service=\"crawler\"} |= \"frontier_stats\" | json | unwrap total_fetching [2h]))",
+          "queryType": "instant"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": { "mode": "fixed", "fixedColor": "semi-dark-yellow" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [{ "color": "semi-dark-yellow", "value": null }]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "textMode": "auto",
+        "justifyMode": "auto",
+        "orientation": "auto"
+      }
+    },
+    {
       "id": 10,
       "type": "row",
       "title": "Fetch Activity",
       "collapsed": false,
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 5 }
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 8 }
     },
     {
       "id": 11,
@@ -223,7 +300,7 @@
       "description": "URLs fetched per minute. Data appears when the frontier worker pool is enabled and has URLs to fetch.",
       "type": "timeseries",
       "datasource": { "type": "loki", "uid": "loki" },
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 6 },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 9 },
       "targets": [
         {
           "refId": "A",
@@ -271,7 +348,7 @@
       "description": "URLs submitted to frontier per minute by origin",
       "type": "timeseries",
       "datasource": { "type": "loki", "uid": "loki" },
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 6 },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 9 },
       "targets": [
         {
           "refId": "A",
@@ -320,7 +397,7 @@
       "type": "row",
       "title": "Feed Poller",
       "collapsed": false,
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 14 }
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 17 }
     },
     {
       "id": 21,
@@ -328,7 +405,7 @@
       "description": "Feed polling activity over time",
       "type": "timeseries",
       "datasource": { "type": "loki", "uid": "loki" },
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 15 },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 18 },
       "targets": [
         {
           "refId": "A",
@@ -386,7 +463,7 @@
       "description": "New URLs discovered from feed polls",
       "type": "stat",
       "datasource": { "type": "loki", "uid": "loki" },
-      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 15 },
+      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 18 },
       "targets": [
         {
           "refId": "A",
@@ -421,7 +498,7 @@
       "description": "Consecutive feed poll errors",
       "type": "stat",
       "datasource": { "type": "loki", "uid": "loki" },
-      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 15 },
+      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 18 },
       "targets": [
         {
           "refId": "A",
@@ -455,7 +532,7 @@
       "type": "row",
       "title": "Fetcher Logs",
       "collapsed": true,
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 23 },
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 26 },
       "panels": [
         {
           "id": 31,
@@ -463,7 +540,7 @@
           "description": "Fetcher worker activity. Data appears when the frontier worker pool is enabled and has URLs to fetch.",
           "type": "logs",
           "datasource": { "type": "loki", "uid": "loki" },
-          "gridPos": { "h": 12, "w": 24, "x": 0, "y": 24 },
+          "gridPos": { "h": 12, "w": 24, "x": 0, "y": 27 },
           "targets": [
             {
               "refId": "A",
@@ -490,7 +567,7 @@
       "type": "row",
       "title": "Frontier Submission Logs",
       "collapsed": true,
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 24 },
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 27 },
       "panels": [
         {
           "id": 41,
@@ -498,7 +575,7 @@
           "description": "URLs submitted to frontier from crawler (spider/feed/sitemap)",
           "type": "logs",
           "datasource": { "type": "loki", "uid": "loki" },
-          "gridPos": { "h": 12, "w": 24, "x": 0, "y": 25 },
+          "gridPos": { "h": 12, "w": 24, "x": 0, "y": 28 },
           "targets": [
             {
               "refId": "A",
