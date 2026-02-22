@@ -273,9 +273,16 @@ loki.process "north_cloud" {
   }
 
   // Drop high-frequency health check logs to reduce Loki ingestion noise
+  // Structured JSON logs (Go services): match extracted "path" field
   stage.drop {
     source     = "path"
     expression = "^/health$"
+  }
+
+  // Plain-text health check logs (Uvicorn/FastAPI ML sidecars)
+  // Matches: INFO:     127.0.0.1:PORT - "GET /health HTTP/1.1" 200 OK
+  stage.drop {
+    expression = "GET /health HTTP"
   }
 
   // Fallback: Parse logfmt logs if JSON parsing didn't happen

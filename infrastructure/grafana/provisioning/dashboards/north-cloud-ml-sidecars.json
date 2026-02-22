@@ -14,7 +14,7 @@
   },
   "editable": true,
   "fiscalYearStartMonth": 0,
-  "graphTooltip": 0,
+  "graphTooltip": 2,
   "id": null,
   "links": [
     { "title": "Overview", "url": "/d/north-cloud-overview", "type": "link", "icon": "dashboard" },
@@ -845,19 +845,11 @@
     {
       "collapsed": true,
       "gridPos": { "h": 1, "w": 24, "x": 0, "y": 51 },
-      "id": 23,
-      "panels": [],
-      "title": "Log Streams",
-      "type": "row"
-    },
-    {
-      "collapsed": true,
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 52 },
       "id": 24,
       "panels": [
         {
           "datasource": { "type": "loki", "uid": "loki" },
-          "gridPos": { "h": 12, "w": 24, "x": 0, "y": 53 },
+          "gridPos": { "h": 12, "w": 24, "x": 0, "y": 52 },
           "id": 25,
           "options": {
             "dedupStrategy": "none",
@@ -874,9 +866,10 @@
             {
               "datasource": { "type": "loki", "uid": "loki" },
               "editorMode": "code",
-              "expr": "{service=\"crime-ml\"}",
+              "expr": "{service=\"crime-ml\"} != \"GET /health HTTP\"",
               "queryType": "range",
-              "refId": "A"
+              "refId": "A",
+              "maxLines": 200
             }
           ],
           "title": "Crime-ML Log Stream",
@@ -888,12 +881,12 @@
     },
     {
       "collapsed": true,
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 53 },
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 52 },
       "id": 26,
       "panels": [
         {
           "datasource": { "type": "loki", "uid": "loki" },
-          "gridPos": { "h": 12, "w": 24, "x": 0, "y": 54 },
+          "gridPos": { "h": 12, "w": 24, "x": 0, "y": 53 },
           "id": 27,
           "options": {
             "dedupStrategy": "none",
@@ -910,9 +903,10 @@
             {
               "datasource": { "type": "loki", "uid": "loki" },
               "editorMode": "code",
-              "expr": "{service=\"mining-ml\"}",
+              "expr": "{service=\"mining-ml\"} != \"GET /health HTTP\"",
               "queryType": "range",
-              "refId": "A"
+              "refId": "A",
+              "maxLines": 200
             }
           ],
           "title": "Mining-ML Log Stream",
@@ -924,12 +918,12 @@
     },
     {
       "collapsed": true,
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 54 },
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 53 },
       "id": 28,
       "panels": [
         {
           "datasource": { "type": "loki", "uid": "loki" },
-          "gridPos": { "h": 12, "w": 24, "x": 0, "y": 55 },
+          "gridPos": { "h": 12, "w": 24, "x": 0, "y": 54 },
           "id": 29,
           "options": {
             "dedupStrategy": "none",
@@ -946,9 +940,10 @@
             {
               "datasource": { "type": "loki", "uid": "loki" },
               "editorMode": "code",
-              "expr": "{service=\"coforge-ml\"}",
+              "expr": "{service=\"coforge-ml\"} != \"GET /health HTTP\"",
               "queryType": "range",
-              "refId": "A"
+              "refId": "A",
+              "maxLines": 200
             }
           ],
           "title": "Coforge-ML Log Stream",
@@ -960,12 +955,12 @@
     },
     {
       "collapsed": true,
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 55 },
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 54 },
       "id": 30,
       "panels": [
         {
           "datasource": { "type": "loki", "uid": "loki" },
-          "gridPos": { "h": 12, "w": 24, "x": 0, "y": 56 },
+          "gridPos": { "h": 12, "w": 24, "x": 0, "y": 55 },
           "id": 31,
           "options": {
             "dedupStrategy": "none",
@@ -982,9 +977,10 @@
             {
               "datasource": { "type": "loki", "uid": "loki" },
               "editorMode": "code",
-              "expr": "{service=\"entertainment-ml\"}",
+              "expr": "{service=\"entertainment-ml\"} != \"GET /health HTTP\"",
               "queryType": "range",
-              "refId": "A"
+              "refId": "A",
+              "maxLines": 200
             }
           ],
           "title": "Entertainment-ML Log Stream",
@@ -996,12 +992,12 @@
     },
     {
       "collapsed": true,
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 56 },
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 55 },
       "id": 32,
       "panels": [
         {
           "datasource": { "type": "loki", "uid": "loki" },
-          "gridPos": { "h": 12, "w": 24, "x": 0, "y": 57 },
+          "gridPos": { "h": 12, "w": 24, "x": 0, "y": 56 },
           "id": 33,
           "options": {
             "dedupStrategy": "none",
@@ -1018,9 +1014,10 @@
             {
               "datasource": { "type": "loki", "uid": "loki" },
               "editorMode": "code",
-              "expr": "{service=\"anishinaabe-ml\"}",
+              "expr": "{service=\"anishinaabe-ml\"} != \"GET /health HTTP\"",
               "queryType": "range",
-              "refId": "A"
+              "refId": "A",
+              "maxLines": 200
             }
           ],
           "title": "Anishinaabe-ML Log Stream",
