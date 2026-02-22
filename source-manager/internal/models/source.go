@@ -21,6 +21,8 @@ type Source struct {
 	SitemapURL              *string        `db:"sitemap_url"                json:"sitemap_url,omitempty"`
 	IngestionMode           string         `db:"ingestion_mode"             json:"ingestion_mode"`
 	FeedPollIntervalMinutes int            `db:"feed_poll_interval_minutes" json:"feed_poll_interval_minutes"`
+	FeedDisabledAt          *time.Time     `db:"feed_disabled_at"           json:"feed_disabled_at,omitempty"`
+	FeedDisableReason       *string        `db:"feed_disable_reason"        json:"feed_disable_reason,omitempty"`
 	CreatedAt               time.Time      `db:"created_at"                 json:"created_at"`
 	UpdatedAt               time.Time      `db:"updated_at"                 json:"updated_at"`
 }

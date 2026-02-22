@@ -65,6 +65,7 @@ type mockFeedStateStore struct {
 	successCalled   bool
 	errorCalled     bool
 	lastSuccResult  feed.PollResult
+	lastErrType     string
 	lastErrMsg      string
 	lastErrSourceID string
 }
@@ -100,10 +101,11 @@ func (m *mockFeedStateStore) UpdateSuccess(
 
 func (m *mockFeedStateStore) UpdateError(
 	_ context.Context,
-	sourceID, errMsg string,
+	sourceID, errorType, errMsg string,
 ) error {
 	m.errorCalled = true
 	m.lastErrSourceID = sourceID
+	m.lastErrType = errorType
 	m.lastErrMsg = errMsg
 
 	return m.updateErrErr
@@ -125,18 +127,51 @@ func (m *mockFrontier) Submit(_ context.Context, params feed.SubmitParams) error
 	return nil
 }
 
-// mockLogger implements feed.Logger for testing.
-type mockLogger struct{}
-
-func (m *mockLogger) Info(_ string, _ ...any) {
+// mockDisabler implements feed.SourceFeedDisabler for testing.
+type mockDisabler struct {
+	disableCalled bool
+	enableCalled  bool
+	lastSourceID  string
+	lastReason    string
+	disableErr    error
+	enableErr     error
 }
 
-func (m *mockLogger) Error(_ string, _ ...any) {
+func (m *mockDisabler) DisableFeed(_ context.Context, sourceID, reason string) error {
+	m.disableCalled = true
+	m.lastSourceID = sourceID
+	m.lastReason = reason
+	return m.disableErr
+}
+
+func (m *mockDisabler) EnableFeed(_ context.Context, sourceID string) error {
+	m.enableCalled = true
+	m.lastSourceID = sourceID
+	return m.enableErr
+}
+
+// mockLogger implements feed.Logger for testing.
+type mockLogger struct {
+	warnCalled  bool
+	errorCalled bool
+	lastMsg     string
+}
+
+func (m *mockLogger) Info(_ string, _ ...any) {}
+
+func (m *mockLogger) Warn(msg string, _ ...any) {
+	m.warnCalled = true
+	m.lastMsg = msg
+}
+
+func (m *mockLogger) Error(msg string, _ ...any) {
+	m.errorCalled = true
+	m.lastMsg = msg
 }
 
 // --- Helper functions ---
 
-// newTestPoller creates a Poller with the given mock dependencies.
+// newTestPoller creates a Poller with the given mock dependencies (no disabler).
 func newTestPoller(
 	t *testing.T,
 	fetcher feed.HTTPFetcher,
@@ -145,7 +180,20 @@ func newTestPoller(
 ) *feed.Poller {
 	t.Helper()
 
-	return feed.NewPoller(fetcher, stateStore, frontierSubmitter, &mockLogger{})
+	return feed.NewPoller(fetcher, stateStore, frontierSubmitter, nil, &mockLogger{})
+}
+
+// newTestPollerWithDisabler creates a Poller with a disabler for auto-disable tests.
+func newTestPollerWithDisabler(
+	t *testing.T,
+	fetcher feed.HTTPFetcher,
+	stateStore feed.FeedStateStore,
+	frontierSubmitter feed.FrontierSubmitter,
+	disabler feed.SourceFeedDisabler,
+) *feed.Poller {
+	t.Helper()
+
+	return feed.NewPoller(fetcher, stateStore, frontierSubmitter, disabler, &mockLogger{})
 }
 
 // newOKResponse creates a FetchResponse with HTTP 200 and the given body.
@@ -373,6 +421,228 @@ func TestPollFeed_GetOrCreateError(t *testing.T) {
 	err := poller.PollFeed(context.Background(), "src-1", "https://example.com/feed.xml")
 	if err == nil {
 		t.Fatal("expected error when GetOrCreate fails, got nil")
+	}
+}
+
+func TestPollFeed_403_ReturnsPollError(t *testing.T) {
+	t.Parallel()
+
+	fetcher := &mockFetcher{
+		response: &feed.FetchResponse{StatusCode: http.StatusForbidden},
+	}
+	stateStore := &mockFeedStateStore{}
+	frontierMock := &mockFrontier{}
+	poller := newTestPoller(t, fetcher, stateStore, frontierMock)
+
+	err := poller.PollFeed(context.Background(), "src-1", "https://example.com/feed.xml")
+	if err == nil {
+		t.Fatal("expected error for 403, got nil")
+	}
+
+	var pollErr *feed.PollError
+	if !errors.As(err, &pollErr) {
+		t.Fatalf("expected PollError, got %T: %v", err, err)
+	}
+	if pollErr.Type != feed.ErrTypeForbidden {
+		t.Errorf("Type = %q, want %q", pollErr.Type, feed.ErrTypeForbidden)
+	}
+	if pollErr.Level != feed.LevelWarn {
+		t.Errorf("Level = %d, want %d (LevelWarn)", pollErr.Level, feed.LevelWarn)
+	}
+	if !stateStore.errorCalled {
+		t.Error("expected UpdateError to be called")
+	}
+	if stateStore.lastErrType != string(feed.ErrTypeForbidden) {
+		t.Errorf("lastErrType = %q, want %q", stateStore.lastErrType, feed.ErrTypeForbidden)
+	}
+}
+
+func TestPollFeed_404_ReturnsPollError(t *testing.T) {
+	t.Parallel()
+
+	fetcher := &mockFetcher{
+		response: &feed.FetchResponse{StatusCode: http.StatusNotFound},
+	}
+	stateStore := &mockFeedStateStore{}
+	frontierMock := &mockFrontier{}
+	poller := newTestPoller(t, fetcher, stateStore, frontierMock)
+
+	err := poller.PollFeed(context.Background(), "src-1", "https://example.com/feed.xml")
+	if err == nil {
+		t.Fatal("expected error for 404, got nil")
+	}
+
+	var pollErr *feed.PollError
+	if !errors.As(err, &pollErr) {
+		t.Fatalf("expected PollError, got %T: %v", err, err)
+	}
+	if pollErr.Type != feed.ErrTypeNotFound {
+		t.Errorf("Type = %q, want %q", pollErr.Type, feed.ErrTypeNotFound)
+	}
+}
+
+func TestPollFeed_429_ReturnsPollError(t *testing.T) {
+	t.Parallel()
+
+	fetcher := &mockFetcher{
+		response: &feed.FetchResponse{StatusCode: http.StatusTooManyRequests},
+	}
+	stateStore := &mockFeedStateStore{}
+	frontierMock := &mockFrontier{}
+	poller := newTestPoller(t, fetcher, stateStore, frontierMock)
+
+	err := poller.PollFeed(context.Background(), "src-1", "https://example.com/feed.xml")
+	if err == nil {
+		t.Fatal("expected error for 429, got nil")
+	}
+
+	var pollErr *feed.PollError
+	if !errors.As(err, &pollErr) {
+		t.Fatalf("expected PollError, got %T: %v", err, err)
+	}
+	if pollErr.Type != feed.ErrTypeRateLimited {
+		t.Errorf("Type = %q, want %q", pollErr.Type, feed.ErrTypeRateLimited)
+	}
+}
+
+func TestPollFeed_NetworkError_ReturnsPollError(t *testing.T) {
+	t.Parallel()
+
+	fetcher := &mockFetcher{err: errors.New("dial tcp: no such host")}
+	stateStore := &mockFeedStateStore{}
+	frontierMock := &mockFrontier{}
+	poller := newTestPoller(t, fetcher, stateStore, frontierMock)
+
+	err := poller.PollFeed(context.Background(), "src-1", "https://example.com/feed.xml")
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+
+	var pollErr *feed.PollError
+	if !errors.As(err, &pollErr) {
+		t.Fatalf("expected PollError, got %T: %v", err, err)
+	}
+	if pollErr.Type != feed.ErrTypeNetwork {
+		t.Errorf("Type = %q, want %q", pollErr.Type, feed.ErrTypeNetwork)
+	}
+}
+
+func TestPollFeed_ParseError_ReturnsPollError(t *testing.T) {
+	t.Parallel()
+
+	fetcher := &mockFetcher{
+		response: newOKResponse(t, "not valid xml at all"),
+	}
+	stateStore := &mockFeedStateStore{}
+	frontierMock := &mockFrontier{}
+	poller := newTestPoller(t, fetcher, stateStore, frontierMock)
+
+	err := poller.PollFeed(context.Background(), "src-1", "https://example.com/feed.xml")
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+
+	var pollErr *feed.PollError
+	if !errors.As(err, &pollErr) {
+		t.Fatalf("expected PollError, got %T: %v", err, err)
+	}
+	if pollErr.Type != feed.ErrTypeParse {
+		t.Errorf("Type = %q, want %q", pollErr.Type, feed.ErrTypeParse)
+	}
+}
+
+func TestPollFeed_AutoDisable_404_AfterThreshold(t *testing.T) {
+	t.Parallel()
+
+	notFoundThreshold := 3
+	fetcher := &mockFetcher{
+		response: &feed.FetchResponse{StatusCode: http.StatusNotFound},
+	}
+	stateStore := &mockFeedStateStore{
+		state: &domain.FeedState{
+			SourceID:          "src-1",
+			FeedURL:           "https://example.com/feed.xml",
+			ConsecutiveErrors: notFoundThreshold,
+		},
+	}
+	disabler := &mockDisabler{}
+	frontierMock := &mockFrontier{}
+	poller := newTestPollerWithDisabler(t, fetcher, stateStore, frontierMock, disabler)
+
+	_ = poller.PollFeed(context.Background(), "src-1", "https://example.com/feed.xml")
+
+	if !disabler.disableCalled {
+		t.Error("expected DisableFeed to be called after reaching threshold")
+	}
+	if disabler.lastReason != string(feed.ErrTypeNotFound) {
+		t.Errorf("reason = %q, want %q", disabler.lastReason, feed.ErrTypeNotFound)
+	}
+}
+
+func TestPollFeed_AutoDisable_410_AfterThreshold(t *testing.T) {
+	t.Parallel()
+
+	goneThreshold := 1
+	fetcher := &mockFetcher{
+		response: &feed.FetchResponse{StatusCode: http.StatusGone},
+	}
+	stateStore := &mockFeedStateStore{
+		state: &domain.FeedState{
+			SourceID:          "src-1",
+			FeedURL:           "https://example.com/feed.xml",
+			ConsecutiveErrors: goneThreshold,
+		},
+	}
+	disabler := &mockDisabler{}
+	frontierMock := &mockFrontier{}
+	poller := newTestPollerWithDisabler(t, fetcher, stateStore, frontierMock, disabler)
+
+	_ = poller.PollFeed(context.Background(), "src-1", "https://example.com/feed.xml")
+
+	if !disabler.disableCalled {
+		t.Error("expected DisableFeed to be called for 410 after 1 error")
+	}
+}
+
+func TestPollFeed_AutoDisable_429_NeverDisables(t *testing.T) {
+	t.Parallel()
+
+	largeErrorCount := 100
+	fetcher := &mockFetcher{
+		response: &feed.FetchResponse{StatusCode: http.StatusTooManyRequests},
+	}
+	stateStore := &mockFeedStateStore{
+		state: &domain.FeedState{
+			SourceID:          "src-1",
+			FeedURL:           "https://example.com/feed.xml",
+			ConsecutiveErrors: largeErrorCount,
+		},
+	}
+	disabler := &mockDisabler{}
+	frontierMock := &mockFrontier{}
+	poller := newTestPollerWithDisabler(t, fetcher, stateStore, frontierMock, disabler)
+
+	_ = poller.PollFeed(context.Background(), "src-1", "https://example.com/feed.xml")
+
+	if disabler.disableCalled {
+		t.Error("DisableFeed should NOT be called for rate limited errors")
+	}
+}
+
+func TestPollFeed_ReEnableOnSuccess(t *testing.T) {
+	t.Parallel()
+
+	fetcher := &mockFetcher{response: newOKResponse(t, rssFixtureForPoller)}
+	stateStore := &mockFeedStateStore{}
+	disabler := &mockDisabler{}
+	frontierMock := &mockFrontier{}
+	poller := newTestPollerWithDisabler(t, fetcher, stateStore, frontierMock, disabler)
+
+	err := poller.PollFeed(context.Background(), "src-1", "https://example.com/feed.xml")
+	requireNoError(t, err)
+
+	if !disabler.enableCalled {
+		t.Error("expected EnableFeed to be called on success")
 	}
 }
 

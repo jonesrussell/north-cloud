@@ -202,13 +202,20 @@ func parseListQuery(c *gin.Context) repository.ListFilter {
 		}
 	}
 
+	var feedActive *bool
+	if v := c.Query("feed_active"); v == "true" {
+		t := true
+		feedActive = &t
+	}
+
 	return repository.ListFilter{
-		Limit:     limit,
-		Offset:    offset,
-		SortBy:    sortBy,
-		SortOrder: sortOrder,
-		Search:    search,
-		Enabled:   enabled,
+		Limit:      limit,
+		Offset:     offset,
+		SortBy:     sortBy,
+		SortOrder:  sortOrder,
+		Search:     search,
+		Enabled:    enabled,
+		FeedActive: feedActive,
 	}
 }
 
@@ -407,6 +414,64 @@ func (h *SourceHandler) TestCrawl(c *gin.Context) {
 	)
 
 	c.JSON(http.StatusOK, response)
+}
+
+// FeedDisableRequest is the request body for disabling a feed.
+type FeedDisableRequest struct {
+	Reason string `binding:"required" json:"reason"`
+}
+
+// DisableFeed marks a source's feed as disabled.
+func (h *SourceHandler) DisableFeed(c *gin.Context) {
+	id := c.Param("id")
+	if _, err := uuid.Parse(id); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid source ID"})
+		return
+	}
+
+	var req FeedDisableRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body"})
+		return
+	}
+
+	if err := h.repo.DisableFeed(c.Request.Context(), id, req.Reason); err != nil {
+		h.logger.Error("Failed to disable feed",
+			infralogger.String("source_id", id),
+			infralogger.Error(err),
+		)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to disable feed"})
+		return
+	}
+
+	h.logger.Info("Feed disabled",
+		infralogger.String("source_id", id),
+		infralogger.String("reason", req.Reason),
+	)
+
+	c.JSON(http.StatusOK, gin.H{"message": "Feed disabled", "source_id": id, "reason": req.Reason})
+}
+
+// EnableFeed clears a source's feed disabled state.
+func (h *SourceHandler) EnableFeed(c *gin.Context) {
+	id := c.Param("id")
+	if _, err := uuid.Parse(id); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid source ID"})
+		return
+	}
+
+	if err := h.repo.EnableFeed(c.Request.Context(), id); err != nil {
+		h.logger.Error("Failed to enable feed",
+			infralogger.String("source_id", id),
+			infralogger.Error(err),
+		)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to enable feed"})
+		return
+	}
+
+	h.logger.Info("Feed enabled", infralogger.String("source_id", id))
+
+	c.JSON(http.StatusOK, gin.H{"message": "Feed enabled", "source_id": id})
 }
 
 // publishImportEvents publishes SourceCreated for created sources and SourceUpdated for updated sources.

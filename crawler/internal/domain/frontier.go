@@ -91,6 +91,7 @@ type FeedState struct {
 	LastItemCount     int        `db:"last_item_count"    json:"last_item_count"`
 	ConsecutiveErrors int        `db:"consecutive_errors" json:"consecutive_errors"`
 	LastError         *string    `db:"last_error"         json:"last_error,omitempty"`
+	LastErrorType     *string    `db:"last_error_type"    json:"last_error_type,omitempty"`
 	CreatedAt         time.Time  `db:"created_at"         json:"created_at"`
 	UpdatedAt         time.Time  `db:"updated_at"         json:"updated_at"`
 }

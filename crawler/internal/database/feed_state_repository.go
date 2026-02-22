@@ -10,7 +10,7 @@ import (
 
 // feedStateSelectColumns lists columns for SELECT queries on feed_state.
 const feedStateSelectColumns = `source_id, feed_url, last_polled_at, last_etag, last_modified,
-	last_item_count, consecutive_errors, last_error, created_at, updated_at`
+	last_item_count, consecutive_errors, last_error, last_error_type, created_at, updated_at`
 
 // FeedStateRepository handles database operations for feed polling state.
 type FeedStateRepository struct {
@@ -55,7 +55,8 @@ func (r *FeedStateRepository) UpdateSuccess(ctx context.Context, sourceID string
 	query := `
 		UPDATE feed_state
 		SET last_polled_at = NOW(), last_etag = $2, last_modified = $3,
-			last_item_count = $4, consecutive_errors = 0, last_error = NULL, updated_at = NOW()
+			last_item_count = $4, consecutive_errors = 0, last_error = NULL,
+			last_error_type = NULL, updated_at = NOW()
 		WHERE source_id = $1
 	`
 
@@ -64,15 +65,15 @@ func (r *FeedStateRepository) UpdateSuccess(ctx context.Context, sourceID string
 }
 
 // UpdateError records a feed poll failure, incrementing consecutive_errors.
-func (r *FeedStateRepository) UpdateError(ctx context.Context, sourceID, errMsg string) error {
+func (r *FeedStateRepository) UpdateError(ctx context.Context, sourceID, errorType, errMsg string) error {
 	query := `
 		UPDATE feed_state
 		SET last_polled_at = NOW(), consecutive_errors = consecutive_errors + 1,
-			last_error = $2, updated_at = NOW()
+			last_error = $3, last_error_type = $2, updated_at = NOW()
 		WHERE source_id = $1
 	`
 
-	result, err := r.db.ExecContext(ctx, query, sourceID, errMsg)
+	result, err := r.db.ExecContext(ctx, query, sourceID, errorType, errMsg)
 	return execRequireRows(result, err, fmt.Errorf("feed state not found: %s", sourceID))
 }
 

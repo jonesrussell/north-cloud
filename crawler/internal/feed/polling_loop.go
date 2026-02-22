@@ -2,6 +2,7 @@ package feed
 
 import (
 	"context"
+	"errors"
 	"time"
 )
 
@@ -58,11 +59,16 @@ func (p *Poller) pollDueFeeds(
 
 	for i := range feeds {
 		if pollErr := p.PollFeed(ctx, feeds[i].SourceID, feeds[i].FeedURL); pollErr != nil {
-			p.log.Error("feed poll failed",
-				"source_id", feeds[i].SourceID,
-				"feed_url", feeds[i].FeedURL,
-				"error", pollErr.Error(),
-			)
+			// PollFeed already logged via recordError; only log here for
+			// errors that bypass recordError (e.g., GetOrCreate failures).
+			var classified *PollError
+			if !errors.As(pollErr, &classified) {
+				p.log.Error("feed poll failed",
+					"source_id", feeds[i].SourceID,
+					"feed_url", feeds[i].FeedURL,
+					"error", pollErr.Error(),
+				)
+			}
 		}
 	}
 }

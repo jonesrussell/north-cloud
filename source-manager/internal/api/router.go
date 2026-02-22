@@ -136,4 +136,6 @@ func setupServiceRoutes(router *gin.Engine, sourceHandler *handlers.SourceHandle
 	sources.GET("/:id", sourceHandler.GetByID)
 	sources.PUT("/:id", sourceHandler.Update)
 	sources.DELETE("/:id", sourceHandler.Delete)
+	sources.PATCH("/:id/feed-disable", sourceHandler.DisableFeed)
+	sources.PATCH("/:id/feed-enable", sourceHandler.EnableFeed)
 }

@@ -3,6 +3,7 @@ package feed
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 
@@ -30,7 +31,7 @@ type SubmitParams struct {
 type FeedStateStore interface {
 	GetOrCreate(ctx context.Context, sourceID, feedURL string) (*domain.FeedState, error)
 	UpdateSuccess(ctx context.Context, sourceID string, result PollResult) error
-	UpdateError(ctx context.Context, sourceID, errMsg string) error
+	UpdateError(ctx context.Context, sourceID, errorType, errMsg string) error
 }
 
 // PollResult contains the results of a successful feed poll.
@@ -56,6 +57,7 @@ type FetchResponse struct {
 // Logger provides structured logging for the poller.
 type Logger interface {
 	Info(msg string, fields ...any)
+	Warn(msg string, fields ...any)
 	Error(msg string, fields ...any)
 }
 
@@ -64,6 +66,7 @@ type Poller struct {
 	fetcher   HTTPFetcher
 	feedState FeedStateStore
 	frontier  FrontierSubmitter
+	disabler  SourceFeedDisabler
 	log       Logger
 }
 
@@ -72,12 +75,14 @@ func NewPoller(
 	fetcher HTTPFetcher,
 	feedState FeedStateStore,
 	frontierSubmitter FrontierSubmitter,
+	disabler SourceFeedDisabler,
 	log Logger,
 ) *Poller {
 	return &Poller{
 		fetcher:   fetcher,
 		feedState: feedState,
 		frontier:  frontierSubmitter,
+		disabler:  disabler,
 		log:       log,
 	}
 }
@@ -94,8 +99,9 @@ func (p *Poller) PollFeed(ctx context.Context, sourceID, feedURL string) error {
 
 	resp, fetchErr := p.fetcher.Fetch(ctx, feedURL, state.LastETag, state.LastModified)
 	if fetchErr != nil {
-		p.recordError(ctx, sourceID, fetchErr)
-		return fmt.Errorf("poll feed fetch: %w", fetchErr)
+		pollErr := ClassifyNetworkError(fetchErr, feedURL)
+		p.recordError(ctx, sourceID, pollErr)
+		return fmt.Errorf("poll feed fetch: %w", pollErr)
 	}
 
 	if resp.StatusCode == http.StatusNotModified {
@@ -107,12 +113,9 @@ func (p *Poller) PollFeed(ctx context.Context, sourceID, feedURL string) error {
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		unexpectedErr := fmt.Errorf(
-			"poll feed: unexpected status %d for %s",
-			resp.StatusCode, feedURL,
-		)
-		p.recordError(ctx, sourceID, unexpectedErr)
-		return unexpectedErr
+		pollErr := ClassifyHTTPStatus(resp.StatusCode, feedURL)
+		p.recordError(ctx, sourceID, pollErr)
+		return pollErr
 	}
 
 	return p.processResponse(ctx, sourceID, feedURL, resp)
@@ -127,8 +130,9 @@ func (p *Poller) processResponse(
 ) error {
 	items, parseErr := ParseFeed(ctx, resp.Body)
 	if parseErr != nil {
-		p.recordError(ctx, sourceID, parseErr)
-		return fmt.Errorf("poll feed parse: %w", parseErr)
+		pollErr := ClassifyParseError(parseErr, feedURL)
+		p.recordError(ctx, sourceID, pollErr)
+		return fmt.Errorf("poll feed parse: %w", pollErr)
 	}
 
 	submitted := p.submitItems(ctx, sourceID, items)
@@ -141,6 +145,16 @@ func (p *Poller) processResponse(
 
 	if updateErr := p.feedState.UpdateSuccess(ctx, sourceID, result); updateErr != nil {
 		return fmt.Errorf("poll feed update success: %w", updateErr)
+	}
+
+	// Re-enable feed if it was disabled and is now succeeding (cooldown retry)
+	if p.disabler != nil {
+		if enableErr := p.disabler.EnableFeed(ctx, sourceID); enableErr != nil {
+			p.log.Warn("failed to re-enable feed",
+				"source_id", sourceID,
+				"error", enableErr.Error(),
+			)
+		}
 	}
 
 	p.log.Info("feed polled successfully",
@@ -207,17 +221,87 @@ func (p *Poller) submitSingleItem(ctx context.Context, sourceID string, item *Fe
 	return nil
 }
 
-// recordError logs and records a feed polling error in the feed state store.
-func (p *Poller) recordError(ctx context.Context, sourceID string, originalErr error) {
+// recordError logs a feed polling error at the appropriate severity level
+// and records it in the feed state store.
+func (p *Poller) recordError(ctx context.Context, sourceID string, err error) {
+	var pollErr *PollError
+	if errors.As(err, &pollErr) {
+		p.logPollError(sourceID, pollErr)
+
+		if updateErr := p.feedState.UpdateError(
+			ctx, sourceID, string(pollErr.Type), pollErr.Error(),
+		); updateErr != nil {
+			p.log.Error("failed to record feed error",
+				"source_id", sourceID,
+				"error", updateErr.Error(),
+			)
+		}
+
+		// Check auto-disable threshold (WARN-level only — ERROR needs human attention)
+		if pollErr.Level == LevelWarn && p.disabler != nil {
+			p.checkDisableThreshold(ctx, sourceID, pollErr.Type)
+		}
+
+		return
+	}
+
+	// Unknown error type — always ERROR level
 	p.log.Error("feed poll failed",
 		"source_id", sourceID,
-		"error", originalErr.Error(),
+		"error", err.Error(),
 	)
 
-	if updateErr := p.feedState.UpdateError(ctx, sourceID, originalErr.Error()); updateErr != nil {
+	if updateErr := p.feedState.UpdateError(
+		ctx, sourceID, string(ErrTypeUnexpected), err.Error(),
+	); updateErr != nil {
 		p.log.Error("failed to record feed error",
 			"source_id", sourceID,
 			"error", updateErr.Error(),
 		)
 	}
+}
+
+// logPollError logs a classified poll error at the appropriate severity.
+func (p *Poller) logPollError(sourceID string, pollErr *PollError) {
+	logFn := p.log.Warn
+	if pollErr.Level == LevelError {
+		logFn = p.log.Error
+	}
+	logFn("feed poll failed",
+		"source_id", sourceID,
+		"error_type", string(pollErr.Type),
+		"status_code", pollErr.StatusCode,
+		"error", pollErr.Error(),
+	)
+}
+
+// checkDisableThreshold checks if a feed should be auto-disabled based on consecutive errors.
+func (p *Poller) checkDisableThreshold(ctx context.Context, sourceID string, errType ErrorType) {
+	threshold, shouldDisable := DisableThreshold(errType)
+	if !shouldDisable {
+		return
+	}
+
+	state, err := p.feedState.GetOrCreate(ctx, sourceID, "")
+	if err != nil {
+		return
+	}
+
+	if state.ConsecutiveErrors < threshold {
+		return
+	}
+
+	if disableErr := p.disabler.DisableFeed(ctx, sourceID, string(errType)); disableErr != nil {
+		p.log.Error("failed to disable feed",
+			"source_id", sourceID,
+			"error", disableErr.Error(),
+		)
+		return
+	}
+
+	p.log.Warn("feed auto-disabled",
+		"source_id", sourceID,
+		"reason", string(errType),
+		"consecutive_errors", state.ConsecutiveErrors,
+	)
 }
