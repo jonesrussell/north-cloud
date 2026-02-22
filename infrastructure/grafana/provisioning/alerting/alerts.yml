@@ -52,7 +52,7 @@ groups:
               to: 0
             datasourceUid: "loki"
             model:
-              expr: 'sum(rate({service=~"crawler|classifier|publisher", level="error"} [5m]))'
+              expr: 'sum by () (rate({service=~"crawler|classifier|publisher", level="error"} [5m]))'
               queryType: "instant"
           - refId: "C"
             relativeTimeRange:
@@ -278,7 +278,7 @@ groups:
               to: 0
             datasourceUid: "loki"
             model:
-              expr: 'sum(count_over_time({service="classifier"} | json | msg="ML sidecar classification failed" [15m]))'
+              expr: 'sum by () (count_over_time({service="classifier"} | json | msg="ML sidecar classification failed" [15m]))'
               queryType: "instant"
           - refId: "C"
             relativeTimeRange:
@@ -316,7 +316,7 @@ groups:
               to: 0
             datasourceUid: "loki"
             model:
-              expr: 'sum(count_over_time({service="classifier"} | json | msg="ML sidecar classification complete" [2h]))'
+              expr: 'sum by () (count_over_time({service="classifier"} | json | msg="ML sidecar classification complete" [2h]))'
               queryType: "instant"
           - refId: "C"
             relativeTimeRange:

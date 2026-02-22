@@ -391,7 +391,7 @@
         {
           "refId": "A",
           "datasource": { "type": "loki", "uid": "loki" },
-          "expr": "sum(sum_over_time({service=\"crawler\"} |= \"feed polled successfully\" | json | unwrap items_submitted [$__range]))",
+          "expr": "sum by () (sum_over_time({service=\"crawler\"} |= \"feed polled successfully\" | json | unwrap items_submitted [$__range]))",
           "queryType": "instant"
         }
       ],

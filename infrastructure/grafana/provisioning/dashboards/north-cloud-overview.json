@@ -110,7 +110,7 @@
         {
           "refId": "A",
           "datasource": { "type": "loki", "uid": "loki" },
-          "expr": "sum(count_over_time({service=\"classifier\"} | json | msg=\"ML sidecar classification complete\" [$__range]))",
+          "expr": "sum by () (count_over_time({service=\"classifier\"} | json | msg=\"ML sidecar classification complete\" [$__range]))",
           "queryType": "instant"
         }
       ],
@@ -142,7 +142,7 @@
         {
           "refId": "A",
           "datasource": { "type": "loki", "uid": "loki" },
-          "expr": "sum(sum_over_time({service=\"crawler\"} | json | msg=\"Crawl job completed\" | unwrap items_crawled [$__range]))",
+          "expr": "sum by () (sum_over_time({service=\"crawler\"} | json | msg=\"Crawl job completed\" | unwrap items_crawled [$__range]))",
           "queryType": "instant"
         }
       ],
@@ -174,7 +174,7 @@
         {
           "refId": "A",
           "datasource": { "type": "loki", "uid": "loki" },
-          "expr": "sum(count_over_time({service=~\"crawler|classifier|publisher|source-manager|index-manager\", level=\"error\"} [$__range]))",
+          "expr": "sum by () (count_over_time({service=~\"crawler|classifier|publisher|source-manager|index-manager\", level=\"error\"} [$__range]))",
           "queryType": "instant"
         }
       ],
@@ -213,7 +213,7 @@
         {
           "refId": "A",
           "datasource": { "type": "loki", "uid": "loki" },
-          "expr": "sum(count_over_time({project=\"north-cloud\"} [$__range]))",
+          "expr": "sum by () (count_over_time({project=\"north-cloud\"} [$__range]))",
           "queryType": "instant"
         }
       ],
@@ -353,14 +353,14 @@
         {
           "refId": "A",
           "datasource": { "type": "loki", "uid": "loki" },
-          "expr": "sum(count_over_time({service=\"classifier\"} |= \"Classification complete\" [$__interval]))",
+          "expr": "sum by () (count_over_time({service=\"classifier\"} |= \"Classification complete\" [$__interval]))",
           "queryType": "range",
           "legendFormat": "Classified"
         },
         {
           "refId": "B",
           "datasource": { "type": "loki", "uid": "loki" },
-          "expr": "sum(count_over_time({service=\"publisher\"} |= \"Published article to channel\" [$__interval]))",
+          "expr": "sum by () (count_over_time({service=\"publisher\"} |= \"Published article to channel\" [$__interval]))",
           "queryType": "range",
           "legendFormat": "Published"
         }

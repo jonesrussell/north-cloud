@@ -111,7 +111,7 @@
         {
           "datasource": { "type": "loki", "uid": "loki" },
           "editorMode": "code",
-          "expr": "sum(count_over_time({service=\"classifier\"} | json | msg=\"ML sidecar classification failed\" | sidecar=~\"$sidecar\" [$__range])) / (sum(count_over_time({service=\"classifier\"} | json | msg=~\"ML sidecar classification.*\" | sidecar=~\"$sidecar\" [$__range])) + 0.001) * 100",
+          "expr": "sum by () (count_over_time({service=\"classifier\"} | json | msg=\"ML sidecar classification failed\" | sidecar=~\"$sidecar\" [$__range])) / (sum by () (count_over_time({service=\"classifier\"} | json | msg=~\"ML sidecar classification.*\" | sidecar=~\"$sidecar\" [$__range])) + 0.001) * 100",
           "queryType": "instant",
           "refId": "A"
         }
@@ -223,7 +223,7 @@
         {
           "datasource": { "type": "loki", "uid": "loki" },
           "editorMode": "code",
-          "expr": "sum(count_over_time({service=\"classifier\"} | json | msg=\"ML sidecar classification complete\" | sidecar=~\"$sidecar\" [$__range]))",
+          "expr": "sum by () (count_over_time({service=\"classifier\"} | json | msg=\"ML sidecar classification complete\" | sidecar=~\"$sidecar\" [$__range]))",
           "queryType": "instant",
           "refId": "A"
         }
