@@ -30,7 +30,7 @@ type SubmitParams struct {
 type FeedStateStore interface {
 	GetOrCreate(ctx context.Context, sourceID, feedURL string) (*domain.FeedState, error)
 	UpdateSuccess(ctx context.Context, sourceID string, result PollResult) error
-	UpdateError(ctx context.Context, sourceID, errMsg string) error
+	UpdateError(ctx context.Context, sourceID, errorType, errMsg string) error
 }
 
 // PollResult contains the results of a successful feed poll.
@@ -215,7 +215,7 @@ func (p *Poller) recordError(ctx context.Context, sourceID string, originalErr e
 		"error", originalErr.Error(),
 	)
 
-	if updateErr := p.feedState.UpdateError(ctx, sourceID, originalErr.Error()); updateErr != nil {
+	if updateErr := p.feedState.UpdateError(ctx, sourceID, "", originalErr.Error()); updateErr != nil {
 		p.log.Error("failed to record feed error",
 			"source_id", sourceID,
 			"error", updateErr.Error(),

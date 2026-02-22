@@ -65,6 +65,7 @@ type mockFeedStateStore struct {
 	successCalled   bool
 	errorCalled     bool
 	lastSuccResult  feed.PollResult
+	lastErrType     string
 	lastErrMsg      string
 	lastErrSourceID string
 }
@@ -100,10 +101,11 @@ func (m *mockFeedStateStore) UpdateSuccess(
 
 func (m *mockFeedStateStore) UpdateError(
 	_ context.Context,
-	sourceID, errMsg string,
+	sourceID, errorType, errMsg string,
 ) error {
 	m.errorCalled = true
 	m.lastErrSourceID = sourceID
+	m.lastErrType = errorType
 	m.lastErrMsg = errMsg
 
 	return m.updateErrErr

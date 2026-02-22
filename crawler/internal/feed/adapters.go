@@ -75,7 +75,7 @@ func (a *FeedStateRepoAdapter) UpdateSuccess(
 // UpdateError delegates to the underlying repository.
 func (a *FeedStateRepoAdapter) UpdateError(
 	ctx context.Context,
-	sourceID, errMsg string,
+	sourceID, errorType, errMsg string,
 ) error {
-	return a.repo.UpdateError(ctx, sourceID, errMsg)
+	return a.repo.UpdateError(ctx, sourceID, errorType, errMsg)
 }
