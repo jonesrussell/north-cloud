@@ -262,6 +262,7 @@ linters:
       excludes:
         - G404  # Insecure random number source (math/rand)
         - G402  # TLS InsecureSkipVerify (intentional for development)
+        - G705  # XSS taint analysis false positives on stderr/log writes
     forbidigo:
       forbid:
         - pattern: '^os\.Getenv$'
