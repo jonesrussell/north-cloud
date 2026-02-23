@@ -288,17 +288,33 @@ if [ "${MIGRATIONS_CHANGED:-true}" == "true" ] || [ -z "$SERVICES_TO_UPDATE" ]; 
     fi
 
     local db_url="postgres://${db_user}:${db_password}@${db_host}:${db_port}/${db_name}?sslmode=disable"
-
-    if ! docker run --rm --network north-cloud_north-cloud-network \
-      -v "$DEPLOY_DIR/$migrations_path:/migrations" \
+    local migrate_up_cmd="docker run --rm --network north-cloud_north-cloud-network \
+      -v $DEPLOY_DIR/$migrations_path:/migrations \
       migrate/migrate:latest \
       -path /migrations \
-      -database "$db_url" \
-      up; then
+      -database $db_url"
+
+    local err_file
+    err_file=$(mktemp)
+    if ! $migrate_up_cmd up 2> "$err_file"; then
+      local err_text
+      err_text=$(cat "$err_file")
+      if [[ "$err_text" =~ Dirty\ database\ version\ ([0-9]+) ]]; then
+        local dirty_ver="${BASH_REMATCH[1]}"
+        local force_ver=$((dirty_ver - 1))
+        echo -e "${YELLOW}Clearing dirty migration state (force version $force_ver) and retrying...${NC}"
+        if $migrate_up_cmd force "$force_ver" 2>/dev/null && $migrate_up_cmd up; then
+          rm -f "$err_file"
+          echo -e "${GREEN}✓ Migration completed for $service (after dirty recovery)${NC}"
+          return 0
+        fi
+      fi
+      cat "$err_file" >&2
+      rm -f "$err_file"
       echo -e "${RED}ERROR: Migration failed for $service${NC}" >&2
       return 1
     fi
-
+    rm -f "$err_file"
     echo -e "${GREEN}✓ Migration completed for $service${NC}"
   }
 
