@@ -66,6 +66,25 @@ type EntertainmentData struct {
 	ModelVersion     string   `json:"model_version,omitempty"`
 }
 
+// RecipeData holds structured recipe extraction fields from Elasticsearch.
+type RecipeData struct {
+	ExtractionMethod string   `json:"extraction_method"`
+	Name             string   `json:"name,omitempty"`
+	Ingredients      []string `json:"ingredients,omitempty"`
+	Category         string   `json:"category,omitempty"`
+	Cuisine          string   `json:"cuisine,omitempty"`
+}
+
+// JobData holds structured job extraction fields from Elasticsearch.
+type JobData struct {
+	ExtractionMethod string `json:"extraction_method"`
+	Title            string `json:"title,omitempty"`
+	Company          string `json:"company,omitempty"`
+	Location         string `json:"location,omitempty"`
+	EmploymentType   string `json:"employment_type,omitempty"`
+	Industry         string `json:"industry,omitempty"`
+}
+
 // Article represents an article from Elasticsearch classified_content index.
 type Article struct {
 	ID            string    `json:"id"`
@@ -107,6 +126,10 @@ type Article struct {
 	Anishinaabe   *AnishinaabeData   `json:"anishinaabe,omitempty"`
 	Entertainment *EntertainmentData `json:"entertainment,omitempty"`
 	Coforge       *CoforgeData       `json:"coforge,omitempty"`
+
+	// Recipe and Job structured extraction
+	Recipe *RecipeData `json:"recipe,omitempty"`
+	Job    *JobData    `json:"job,omitempty"`
 
 	// Entertainment flat fields (populated from nested Entertainment object)
 	EntertainmentRelevance        string   `json:"entertainment_relevance"`
