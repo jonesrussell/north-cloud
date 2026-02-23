@@ -173,3 +173,4 @@ __pycache__/
 .venv/
 venv/
 docs/mining_websites_index.xlsx
+click-tracker/bin/
