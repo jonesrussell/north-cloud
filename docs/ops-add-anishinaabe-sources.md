@@ -20,26 +20,24 @@ This doc describes how to add the tiered Anishinaabe/Indigenous sources to **pro
 
 ## Run the script on production
 
-On the North Cloud server (e.g. `jones@northcloud.biz`, app at `/opt/north-cloud`):
+On the North Cloud server (e.g. `jones@northcloud.biz`, app at `/opt/north-cloud`), auth, source-manager, and crawler **do not publish ports to the host** in production. Run the script **inside a container on the Docker network** so it can reach those services by hostname.
 
 ```bash
-cd /opt/north-cloud
-
-# Option A: Use auth credentials (script will fetch JWT)
-export AUTH_USERNAME="admin"
-export AUTH_PASSWORD="your-password"
-export AUTH_URL="http://localhost:8040"
-export SOURCE_MANAGER_URL="http://localhost:8050"
-export CRAWLER_URL="http://localhost:8060"
-
-# Dry run first (no API calls)
-DRY_RUN=1 ./scripts/add-anishinaabe-sources.sh
-
-# Then run for real
-./scripts/add-anishinaabe-sources.sh
+# From the North Cloud server
+docker run --rm --network north-cloud_north-cloud-network \
+  -v /opt/north-cloud:/opt/north-cloud:ro -w /opt/north-cloud \
+  -e AUTH_USERNAME -e AUTH_PASSWORD --env-file /opt/north-cloud/.env \
+  -e AUTH_URL=http://auth:8040 \
+  -e SOURCE_MANAGER_URL=http://source-manager:8050 \
+  -e CRAWLER_URL=http://crawler:8080 \
+  alpine:3.19 sh -c 'apk add --no-cache curl jq bash && bash /opt/north-cloud/scripts/add-anishinaabe-sources.sh'
 ```
 
-If services are behind nginx on the same host, use internal URLs as above. If you call from another machine, set `AUTH_URL`, `SOURCE_MANAGER_URL`, and `CRAWLER_URL` to the full base URLs (e.g. `https://northcloud.biz/...` as configured).
+**Important:** Use `CRAWLER_URL=http://crawler:8080` (port **8080** is the crawler’s internal port; 8060 is only used when the crawler port is published to the host, e.g. in dev).
+
+Export `AUTH_USERNAME` and `AUTH_PASSWORD` in your shell before the `docker run` so the container receives them (e.g. `export AUTH_USERNAME=admin` and set the password).
+
+If you run the script directly on the host (e.g. with nginx proxying to auth/source-manager/crawler), use `AUTH_URL`, `SOURCE_MANAGER_URL`, and `CRAWLER_URL` pointing at localhost or the proxy (e.g. `http://localhost:8040`, `http://localhost:8050`, `http://localhost:8060` if those ports are exposed).
 
 ## What the script does
 
