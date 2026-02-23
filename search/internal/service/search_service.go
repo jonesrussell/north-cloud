@@ -345,7 +345,49 @@ func (s *SearchService) parseFacets(aggs map[string]aggregation) *domain.Facets 
 		}
 	}
 
+	// Recipe and job facets (extracted to stay under funlen limit)
+	s.parseRecipeFacets(facets, aggs)
+	s.parseJobFacets(facets, aggs)
+
 	return facets
+}
+
+// parseRecipeFacets extracts recipe-related facets from aggregation results
+func (s *SearchService) parseRecipeFacets(facets *domain.Facets, aggs map[string]aggregation) {
+	if recipeCuisinesAgg, ok := aggs["recipe_cuisines"]; ok {
+		facets.RecipeCuisines = parseBuckets(recipeCuisinesAgg)
+	}
+
+	if recipeCategoriesAgg, ok := aggs["recipe_categories"]; ok {
+		facets.RecipeCategories = parseBuckets(recipeCategoriesAgg)
+	}
+}
+
+// parseJobFacets extracts job-related facets from aggregation results
+func (s *SearchService) parseJobFacets(facets *domain.Facets, aggs map[string]aggregation) {
+	if jobTypesAgg, ok := aggs["job_types"]; ok {
+		facets.JobTypes = parseBuckets(jobTypesAgg)
+	}
+
+	if jobIndustriesAgg, ok := aggs["job_industries"]; ok {
+		facets.JobIndustries = parseBuckets(jobIndustriesAgg)
+	}
+
+	if jobLocationsAgg, ok := aggs["job_locations"]; ok {
+		facets.JobLocations = parseBuckets(jobLocationsAgg)
+	}
+}
+
+// parseBuckets converts an aggregation's buckets into domain FacetBucket slices
+func parseBuckets(agg aggregation) []domain.FacetBucket {
+	buckets := make([]domain.FacetBucket, 0, len(agg.Buckets))
+	for _, bucket := range agg.Buckets {
+		buckets = append(buckets, domain.FacetBucket{
+			Key:   fmt.Sprint(bucket.Key),
+			Count: bucket.DocCount,
+		})
+	}
+	return buckets
 }
 
 const queryIDLength = 8

@@ -27,6 +27,18 @@ type Filters struct {
 	SourceNames     []string   `json:"source_names,omitempty"`
 	FromDate        *time.Time `json:"from_date,omitempty"`
 	ToDate          *time.Time `json:"to_date,omitempty"`
+
+	// Recipe filters
+	RecipeCuisine  []string `json:"recipe_cuisine,omitempty"`
+	RecipeCategory []string `json:"recipe_category,omitempty"`
+	MaxPrepTime    *int     `json:"max_prep_time,omitempty"`
+	MaxTotalTime   *int     `json:"max_total_time,omitempty"`
+
+	// Job filters
+	JobEmploymentType []string `json:"job_employment_type,omitempty"`
+	JobIndustry       []string `json:"job_industry,omitempty"`
+	JobLocation       []string `json:"job_location,omitempty"`
+	SalaryMin         *float64 `json:"salary_min,omitempty"`
 }
 
 // Pagination holds pagination parameters
@@ -80,10 +92,15 @@ type SearchHit struct {
 
 // Facets holds faceted search aggregations
 type Facets struct {
-	Topics        []FacetBucket `json:"topics,omitempty"`
-	ContentTypes  []FacetBucket `json:"content_types,omitempty"`
-	Sources       []FacetBucket `json:"sources,omitempty"`
-	QualityRanges []FacetBucket `json:"quality_ranges,omitempty"`
+	Topics           []FacetBucket `json:"topics,omitempty"`
+	ContentTypes     []FacetBucket `json:"content_types,omitempty"`
+	Sources          []FacetBucket `json:"sources,omitempty"`
+	QualityRanges    []FacetBucket `json:"quality_ranges,omitempty"`
+	RecipeCuisines   []FacetBucket `json:"recipe_cuisines,omitempty"`
+	RecipeCategories []FacetBucket `json:"recipe_categories,omitempty"`
+	JobTypes         []FacetBucket `json:"job_types,omitempty"`
+	JobIndustries    []FacetBucket `json:"job_industries,omitempty"`
+	JobLocations     []FacetBucket `json:"job_locations,omitempty"`
 }
 
 // FacetBucket represents a single facet bucket
