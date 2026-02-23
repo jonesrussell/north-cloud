@@ -251,6 +251,21 @@ func startTestServer(t *testing.T, statusCode int, body string) *httptest.Server
 	return server
 }
 
+// startTestServerWithContentType creates an httptest.Server returning the given status, body, and Content-Type.
+func startTestServerWithContentType(t *testing.T, statusCode int, body, contentType string) *httptest.Server {
+	t.Helper()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", contentType)
+		w.WriteHeader(statusCode)
+		_, _ = w.Write([]byte(body))
+	}))
+
+	t.Cleanup(server.Close)
+
+	return server
+}
+
 // articleHTML is a simple HTML page for testing content extraction.
 const articleHTML = `<!DOCTYPE html>
 <html>
@@ -645,6 +660,34 @@ func TestProcessURL_RedirectToFinalURL(t *testing.T) {
 	if finalURL != server.URL+"/final" {
 		t.Errorf("expected final URL %q, got %q", server.URL+"/final", finalURL)
 	}
+}
+
+func TestProcessURL_NonHTMLContentType(t *testing.T) {
+	t.Parallel()
+
+	server := startTestServerWithContentType(t, http.StatusOK, "%PDF-1.4 binary content", "application/pdf")
+	furl := newTestFrontierURL(t, server.URL+"/document.pdf")
+
+	frontier := &mockFrontier{
+		claimFunc: func(_ context.Context) (*domain.FrontierURL, error) {
+			return furl, nil
+		},
+	}
+	robots := &mockRobots{allowed: true}
+	indexer := &mockIndexer{}
+
+	wp, hostUpdater := newTestWorkerPool(t, frontier, robots, indexer)
+
+	ctx := context.Background()
+
+	err := wp.ProcessURL(ctx, furl)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	verifyDeadCalled(t, frontier, "unsupported_content_type")
+	verifyNoContentIndexed(t, indexer)
+	verifyHostUpdated(t, hostUpdater)
 }
 
 func TestProcessURL_TooManyRedirects(t *testing.T) {

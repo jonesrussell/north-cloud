@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
@@ -24,9 +25,10 @@ const (
 
 // Reason strings for dead URL classification.
 const (
-	reasonRobotsBlocked    = "robots_blocked"
-	reasonNotFound         = "not_found"
-	reasonTooManyRedirects = "too_many_redirects"
+	reasonRobotsBlocked          = "robots_blocked"
+	reasonNotFound               = "not_found"
+	reasonTooManyRedirects       = "too_many_redirects"
+	reasonUnsupportedContentType = "unsupported_content_type"
 )
 
 // maxResponseBodyBytes limits the size of fetched page responses.
@@ -216,7 +218,7 @@ func (wp *WorkerPool) ProcessURL(ctx context.Context, furl *domain.FrontierURL) 
 		return nil
 	}
 
-	body, statusCode, finalURL, fetchErr := wp.fetchPage(ctx, furl)
+	body, statusCode, finalURL, contentType, fetchErr := wp.fetchPage(ctx, furl)
 
 	// Always update host last fetch time after any fetch attempt.
 	wp.updateHostFetch(ctx, furl.Host)
@@ -225,7 +227,7 @@ func (wp *WorkerPool) ProcessURL(ctx context.Context, furl *domain.FrontierURL) 
 		return wp.handleFetchError(ctx, furl, fetchErr)
 	}
 
-	return wp.handleStatusCode(ctx, furl, body, statusCode, finalURL)
+	return wp.handleStatusCode(ctx, furl, body, statusCode, finalURL, contentType)
 }
 
 // updateHostFetch records a fetch attempt for politeness tracking.
@@ -259,10 +261,11 @@ func (wp *WorkerPool) handleStatusCode(
 	body []byte,
 	statusCode int,
 	finalURL string,
+	contentType string,
 ) error {
 	switch {
 	case statusCode == statusOK:
-		return wp.handleSuccess(ctx, furl, body, finalURL)
+		return wp.handleSuccess(ctx, furl, body, finalURL, contentType)
 	case statusCode == statusNotModified:
 		return wp.handleNotModified(ctx, furl, finalURL)
 	case statusCode == statusNotFound:
@@ -289,12 +292,26 @@ func (wp *WorkerPool) handleStatusCode(
 }
 
 // handleSuccess extracts content, indexes it, and marks the URL as fetched.
+// Non-HTML responses (PDFs, images, etc.) are marked dead to avoid repeated parse failures.
 func (wp *WorkerPool) handleSuccess(
 	ctx context.Context,
 	furl *domain.FrontierURL,
 	body []byte,
 	finalURL string,
+	contentType string,
 ) error {
+	if !isHTMLContent(contentType) {
+		if updateErr := wp.frontier.UpdateDead(ctx, furl.ID, reasonUnsupportedContentType); updateErr != nil {
+			return updateErr
+		}
+		wp.log.Info("URL marked dead",
+			"url", furl.URL,
+			"reason", reasonUnsupportedContentType,
+			"content_type", contentType,
+		)
+		return nil
+	}
+
 	content, extractErr := wp.extractor.Extract(furl.SourceID, furl.URL, body)
 	if extractErr != nil {
 		return fmt.Errorf("extract content: %w", extractErr)
@@ -346,13 +363,14 @@ func (wp *WorkerPool) updateFetchedWithOptionalFinalURL(
 
 // fetchPage performs the HTTP GET request for the given frontier URL.
 // finalURL is the response request URL after redirects (resp.Request.URL).
+// contentType is the Content-Type header from the response.
 func (wp *WorkerPool) fetchPage(
 	ctx context.Context,
 	furl *domain.FrontierURL,
-) (body []byte, statusCode int, finalURL string, err error) {
+) (body []byte, statusCode int, finalURL, contentType string, err error) {
 	req, reqErr := http.NewRequestWithContext(ctx, http.MethodGet, furl.URL, http.NoBody)
 	if reqErr != nil {
-		return nil, 0, "", fmt.Errorf("create request: %w", reqErr)
+		return nil, 0, "", "", fmt.Errorf("create request: %w", reqErr)
 	}
 
 	req.Header.Set("User-Agent", wp.userAgent)
@@ -360,19 +378,30 @@ func (wp *WorkerPool) fetchPage(
 
 	resp, doErr := wp.httpClient.Do(req)
 	if doErr != nil {
-		return nil, 0, "", fmt.Errorf("http fetch: %w", doErr)
+		return nil, 0, "", "", fmt.Errorf("http fetch: %w", doErr)
 	}
 	defer resp.Body.Close()
 
 	finalURL = resp.Request.URL.String()
+	contentType = resp.Header.Get("Content-Type")
 	limited := io.LimitReader(resp.Body, maxResponseBodyBytes)
 
 	body, readErr := io.ReadAll(limited)
 	if readErr != nil {
-		return nil, resp.StatusCode, finalURL, fmt.Errorf("read response body: %w", readErr)
+		return nil, resp.StatusCode, finalURL, contentType, fmt.Errorf("read response body: %w", readErr)
 	}
 
-	return body, resp.StatusCode, finalURL, nil
+	return body, resp.StatusCode, finalURL, contentType, nil
+}
+
+// isHTMLContent returns true if the Content-Type header indicates an HTML response.
+// An empty Content-Type is treated as HTML to handle servers that omit the header.
+func isHTMLContent(contentType string) bool {
+	if contentType == "" {
+		return true
+	}
+	ct := strings.ToLower(contentType)
+	return strings.HasPrefix(ct, "text/html") || strings.Contains(ct, "xhtml")
 }
 
 // setConditionalHeaders adds If-None-Match and If-Modified-Since headers
