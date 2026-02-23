@@ -2,6 +2,9 @@ package mappings
 
 import "maps"
 
+// esDateFormat is the standard Elasticsearch date format used across all mappings.
+const esDateFormat = "strict_date_optional_time||epoch_millis"
+
 // getRawContentFields returns the raw content field definitions
 func getRawContentFields() map[string]any {
 	indexFalse := false
@@ -91,7 +94,6 @@ func getRawContentFields() map[string]any {
 
 // getJSONLdDataFields returns the JSON-LD extracted data field definitions
 func getJSONLdDataFields() map[string]any {
-	dateFormat := "strict_date_optional_time||epoch_millis"
 	return map[string]any{
 		"jsonld_headline":        map[string]any{"type": "text"},
 		"jsonld_description":     map[string]any{"type": "text"},
@@ -100,9 +102,9 @@ func getJSONLdDataFields() map[string]any {
 		"jsonld_publisher_name":  map[string]any{"type": "text"},
 		"jsonld_url":             map[string]any{"type": "keyword"},
 		"jsonld_image_url":       map[string]any{"type": "keyword"},
-		"jsonld_date_published":  map[string]any{"type": "date", "format": dateFormat},
-		"jsonld_date_created":    map[string]any{"type": "date", "format": dateFormat},
-		"jsonld_date_modified":   map[string]any{"type": "date", "format": dateFormat},
+		"jsonld_date_published":  map[string]any{"type": "date", "format": esDateFormat},
+		"jsonld_date_created":    map[string]any{"type": "date", "format": esDateFormat},
+		"jsonld_date_modified":   map[string]any{"type": "date", "format": esDateFormat},
 		"jsonld_word_count":      map[string]any{"type": "integer"},
 		"jsonld_keywords":        map[string]any{"type": "keyword"},
 		"jsonld_schema_type":     map[string]any{"type": "keyword"},
@@ -113,15 +115,14 @@ func getJSONLdDataFields() map[string]any {
 
 // getMetaFields returns the meta tag field definitions
 func getMetaFields() map[string]any {
-	dateFormat := "strict_date_optional_time||epoch_millis"
 	return map[string]any{
 		"twitter_card":          map[string]any{"type": "keyword"},
 		"twitter_site":          map[string]any{"type": "keyword"},
 		"og_image_width":        map[string]any{"type": "integer"},
 		"og_image_height":       map[string]any{"type": "integer"},
 		"og_site_name":          map[string]any{"type": "keyword"},
-		"created_at":            map[string]any{"type": "date", "format": dateFormat},
-		"updated_at":            map[string]any{"type": "date", "format": dateFormat},
+		"created_at":            map[string]any{"type": "date", "format": esDateFormat},
+		"updated_at":            map[string]any{"type": "date", "format": esDateFormat},
 		"article_opinion":       map[string]any{"type": "boolean"},
 		"article_content_tier":  map[string]any{"type": "keyword"},
 		"detected_content_type": map[string]any{"type": "keyword"},
@@ -275,6 +276,53 @@ func getCoforgeMapping() map[string]any {
 	}
 }
 
+// getRecipeMapping returns the nested recipe object mapping
+func getRecipeMapping() map[string]any {
+	indexFalse := false
+	return map[string]any{
+		"type": "object",
+		"properties": map[string]any{
+			"extraction_method":  map[string]any{"type": "keyword"},
+			"name":               map[string]any{"type": "text", "analyzer": "standard"},
+			"ingredients":        map[string]any{"type": "text", "analyzer": "standard"},
+			"instructions":       map[string]any{"type": "text", "analyzer": "standard"},
+			"prep_time_minutes":  map[string]any{"type": "integer"},
+			"cook_time_minutes":  map[string]any{"type": "integer"},
+			"total_time_minutes": map[string]any{"type": "integer"},
+			"servings":           map[string]any{"type": "keyword"},
+			"category":           map[string]any{"type": "keyword"},
+			"cuisine":            map[string]any{"type": "keyword"},
+			"calories":           map[string]any{"type": "keyword"},
+			"image_url":          map[string]any{"type": "keyword", "index": indexFalse},
+			"rating":             map[string]any{"type": "float"},
+			"rating_count":       map[string]any{"type": "integer"},
+		},
+	}
+}
+
+// getJobMapping returns the nested job object mapping
+func getJobMapping() map[string]any {
+	return map[string]any{
+		"type": "object",
+		"properties": map[string]any{
+			"extraction_method": map[string]any{"type": "keyword"},
+			"title":             map[string]any{"type": "text", "analyzer": "standard"},
+			"company":           map[string]any{"type": "keyword"},
+			"location":          map[string]any{"type": "keyword"},
+			"salary_min":        map[string]any{"type": "float"},
+			"salary_max":        map[string]any{"type": "float"},
+			"salary_currency":   map[string]any{"type": "keyword"},
+			"employment_type":   map[string]any{"type": "keyword"},
+			"posted_date":       map[string]any{"type": "date", "format": esDateFormat},
+			"expires_date":      map[string]any{"type": "date", "format": esDateFormat},
+			"description":       map[string]any{"type": "text", "analyzer": "standard"},
+			"industry":          map[string]any{"type": "keyword"},
+			"qualifications":    map[string]any{"type": "text", "analyzer": "standard"},
+			"benefits":          map[string]any{"type": "text", "analyzer": "standard"},
+		},
+	}
+}
+
 // getClassificationFields returns the classification result field definitions
 func getClassificationFields() map[string]any {
 	return map[string]any{
@@ -301,6 +349,8 @@ func getClassificationFields() map[string]any {
 		"mining":      getMiningMapping(),
 		"coforge":     getCoforgeMapping(),
 		"anishinaabe": getAnishinaabeMapping(),
+		"recipe":      getRecipeMapping(),
+		"job":         getJobMapping(),
 		"source_reputation": map[string]any{
 			"type": "integer",
 		},
