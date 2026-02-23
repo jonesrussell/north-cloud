@@ -201,6 +201,17 @@ func validateFilterValues(filters *Filters) error {
 		}
 	}
 
+	// Recipe/job filter constraints
+	if filters.MaxPrepTime != nil && *filters.MaxPrepTime < 0 {
+		return errors.New("max_prep_time cannot be negative")
+	}
+	if filters.MaxTotalTime != nil && *filters.MaxTotalTime < 0 {
+		return errors.New("max_total_time cannot be negative")
+	}
+	if filters.SalaryMin != nil && *filters.SalaryMin < 0 {
+		return errors.New("salary_min cannot be negative")
+	}
+
 	return nil
 }
 

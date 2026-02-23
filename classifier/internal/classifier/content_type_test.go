@@ -1041,3 +1041,25 @@ func TestContentTypeClassifier_SchemaOrgNoMatchFallsThrough(t *testing.T) {
 	// Should fall through to OG type detection, not be recipe/job
 	assert.Equal(t, domain.ContentTypeArticle, result.Type)
 }
+
+func TestContentTypeClassifier_SchemaOrg_EmptyRawHTML(t *testing.T) {
+	t.Helper()
+
+	c := NewContentTypeClassifier(&mockLogger{})
+
+	// Empty RawHTML: no JSON-LD blocks, so Schema.org cannot detect Recipe/Job
+	raw := &domain.RawContent{
+		ID:        "empty-html",
+		RawHTML:   "",
+		Title:     "Some Page",
+		URL:       "https://example.com/page",
+		RawText:   "Some text content.",
+		WordCount: 100,
+	}
+
+	result, err := c.Classify(context.Background(), raw)
+	require.NoError(t, err)
+	// Must not be set from Schema.org recipe/job (no blocks to parse)
+	assert.NotEqual(t, domain.ContentTypeRecipe, result.Type)
+	assert.NotEqual(t, domain.ContentTypeJob, result.Type)
+}

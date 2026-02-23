@@ -372,7 +372,7 @@ func (c *ContentTypeClassifier) classifyFromSchemaOrg(raw *domain.RawContent) *C
 		return nil
 	}
 
-	blocks := jsonld.Extract(raw.RawHTML)
+	blocks := jsonld.Extract(raw.RawHTML, nil)
 	if len(blocks) == 0 {
 		return nil
 	}

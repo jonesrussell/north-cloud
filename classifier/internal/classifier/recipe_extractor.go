@@ -81,7 +81,7 @@ func (e *RecipeExtractor) Extract(
 // extractSchemaOrg tries to extract a Recipe from JSON-LD blocks in HTML.
 // Returns nil if no valid Recipe block is found.
 func (e *RecipeExtractor) extractSchemaOrg(html string) *domain.RecipeResult {
-	blocks := jsonld.Extract(html)
+	blocks := jsonld.Extract(html, nil)
 	recipe := jsonld.FindByType(blocks, schemaOrgTypeRecipe)
 
 	if recipe == nil {

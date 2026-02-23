@@ -475,6 +475,8 @@ func (c *Classifier) runLocationOptional(
 	return locResult
 }
 
+// runRecipeExtraction runs recipe extraction when enabled. Extraction is best-effort:
+// failure returns nil recipe and does not fail the overall classification.
 func (c *Classifier) runRecipeExtraction(
 	ctx context.Context, raw *domain.RawContent, contentType string, topics []string,
 ) *domain.RecipeResult {
@@ -483,15 +485,18 @@ func (c *Classifier) runRecipeExtraction(
 	}
 	result, err := c.recipeExtractor.Extract(ctx, raw, contentType, topics)
 	if err != nil {
+		wrapped := fmt.Errorf("recipe extraction content_id=%s: %w", raw.ID, err)
 		c.logger.Warn("Recipe extraction failed",
 			infralogger.String("content_id", raw.ID),
-			infralogger.Error(err),
+			infralogger.Error(wrapped),
 		)
 		return nil
 	}
 	return result
 }
 
+// runJobExtraction runs job extraction when enabled. Extraction is best-effort:
+// failure returns nil job and does not fail the overall classification.
 func (c *Classifier) runJobExtraction(
 	ctx context.Context, raw *domain.RawContent, contentType string, topics []string,
 ) *domain.JobResult {
@@ -500,9 +505,10 @@ func (c *Classifier) runJobExtraction(
 	}
 	result, err := c.jobExtractor.Extract(ctx, raw, contentType, topics)
 	if err != nil {
+		wrapped := fmt.Errorf("job extraction content_id=%s: %w", raw.ID, err)
 		c.logger.Warn("Job extraction failed",
 			infralogger.String("content_id", raw.ID),
-			infralogger.Error(err),
+			infralogger.Error(wrapped),
 		)
 		return nil
 	}

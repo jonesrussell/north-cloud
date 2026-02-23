@@ -318,3 +318,52 @@ Combine dry ingredients. Add wet ingredients. Mix well.`,
 	assert.Equal(t, "1 tsp vanilla", result.Ingredients[3])
 	assert.Contains(t, result.Instructions, "Combine dry ingredients")
 }
+
+func TestRecipeExtractor_SchemaOrg_WithoutAggregateRating(t *testing.T) {
+	t.Helper()
+
+	extractor := NewRecipeExtractor(&mockLogger{})
+	ctx := context.Background()
+
+	raw := &domain.RawContent{
+		ID:    "no-rating",
+		Title: "Simple Recipe",
+		RawHTML: `<html><head>
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"Recipe","name":"Simple Salad","recipeIngredient":["lettuce","tomato"]}
+</script>
+</head><body></body></html>`,
+		RawText: "Simple Salad recipe",
+	}
+
+	result, err := extractor.Extract(ctx, raw, domain.ContentTypeRecipe, nil)
+	require.NoError(t, err)
+	require.NotNil(t, result)
+	assert.Nil(t, result.Rating)
+	assert.Nil(t, result.RatingCount)
+	assert.Equal(t, "Simple Salad", result.Name)
+}
+
+func TestContainsTopic(t *testing.T) {
+	t.Helper()
+
+	tests := []struct {
+		name     string
+		topics   []string
+		target   string
+		wantBool bool
+	}{
+		{"exact match", []string{"recipe"}, "recipe", true},
+		{"match among many", []string{"a", "recipe"}, "recipe", true},
+		{"case sensitive no match", []string{"Recipe"}, "recipe", false},
+		{"nil topics", nil, "recipe", false},
+		{"empty topics", []string{}, "recipe", false},
+		{"jobs match", []string{"jobs", "local"}, "jobs", true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := containsTopic(tt.topics, tt.target)
+			assert.Equal(t, tt.wantBool, got)
+		})
+	}
+}

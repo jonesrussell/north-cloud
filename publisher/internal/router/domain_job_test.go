@@ -7,6 +7,7 @@ import (
 )
 
 func TestJobDomain_NilJob(t *testing.T) {
+	t.Helper()
 	d := router.NewJobDomain()
 	routes := d.Routes(&router.Article{})
 	if routes != nil {
@@ -15,6 +16,7 @@ func TestJobDomain_NilJob(t *testing.T) {
 }
 
 func TestJobDomain_WithTypeAndIndustry(t *testing.T) {
+	t.Helper()
 	d := router.NewJobDomain()
 	article := &router.Article{
 		Job: &router.JobData{
@@ -45,6 +47,7 @@ func TestJobDomain_WithTypeAndIndustry(t *testing.T) {
 }
 
 func TestJobDomain_Name(t *testing.T) {
+	t.Helper()
 	d := router.NewJobDomain()
 	if d.Name() != "job" {
 		t.Errorf("expected name 'job', got %q", d.Name())
@@ -52,6 +55,7 @@ func TestJobDomain_Name(t *testing.T) {
 }
 
 func TestJobDomain_OnlyIndustry(t *testing.T) {
+	t.Helper()
 	d := router.NewJobDomain()
 	article := &router.Article{
 		Job: &router.JobData{

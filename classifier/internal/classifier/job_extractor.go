@@ -86,7 +86,7 @@ func (e *JobExtractor) Extract(
 // extractSchemaOrg tries to extract a JobPosting from JSON-LD blocks in HTML.
 // Returns nil if no valid JobPosting block is found.
 func (e *JobExtractor) extractSchemaOrg(html string) *domain.JobResult {
-	blocks := jsonld.Extract(html)
+	blocks := jsonld.Extract(html, nil)
 	job := jsonld.FindByType(blocks, schemaOrgTypeJobPost)
 
 	if job == nil {

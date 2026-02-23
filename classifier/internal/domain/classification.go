@@ -264,6 +264,7 @@ func (l *LocationResult) GetSpecificity() string {
 }
 
 // RecipeResult holds structured recipe extraction results.
+// Non-nil RecipeResult values always have ExtractionMethod set by the extractors ("schema_org" or "heuristic").
 type RecipeResult struct {
 	ExtractionMethod string   `json:"extraction_method"` // "schema_org" or "heuristic"
 	Name             string   `json:"name,omitempty"`
@@ -282,6 +283,7 @@ type RecipeResult struct {
 }
 
 // JobResult holds structured job posting extraction results.
+// Non-nil JobResult values always have ExtractionMethod set by the extractors ("schema_org" or "heuristic").
 type JobResult struct {
 	ExtractionMethod string   `json:"extraction_method"` // "schema_org" or "heuristic"
 	Title            string   `json:"title,omitempty"`

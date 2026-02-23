@@ -267,3 +267,39 @@ func TestJobExtractor_HeuristicReturnsNilWhenNothingFound(t *testing.T) {
 	require.NoError(t, err)
 	assert.Nil(t, result)
 }
+
+func TestJobExtractor_SchemaOrgLocationAndSalaryEdgeCases(t *testing.T) {
+	t.Helper()
+
+	extractor := NewJobExtractor(&mockLogger{})
+	ctx := context.Background()
+
+	t.Run("missing jobLocation", func(t *testing.T) {
+		raw := &domain.RawContent{
+			ID: "no-loc", Title: "Job",
+			RawHTML: `<html><head><script type="application/ld+json">
+{"@context":"https://schema.org","@type":"JobPosting","title":"Developer","hiringOrganization":{"name":"Acme"}}
+</script></head><body></body></html>`,
+			RawText: "Developer job",
+		}
+		result, err := extractor.Extract(ctx, raw, domain.ContentTypeJob, nil)
+		require.NoError(t, err)
+		require.NotNil(t, result)
+		assert.Empty(t, result.Location)
+	})
+
+	t.Run("missing baseSalary", func(t *testing.T) {
+		raw := &domain.RawContent{
+			ID: "no-salary", Title: "Job",
+			RawHTML: `<html><head><script type="application/ld+json">
+{"@context":"https://schema.org","@type":"JobPosting","title":"Volunteer","hiringOrganization":{"name":"NGO"}}
+</script></head><body></body></html>`,
+			RawText: "Volunteer",
+		}
+		result, err := extractor.Extract(ctx, raw, domain.ContentTypeJob, nil)
+		require.NoError(t, err)
+		require.NotNil(t, result)
+		assert.Nil(t, result.SalaryMin)
+		assert.Nil(t, result.SalaryMax)
+	})
+}

@@ -1,6 +1,7 @@
 package domain_test
 
 import (
+	"strings"
 	"testing"
 	"time"
 
@@ -341,3 +342,42 @@ func TestSearchRequest_Validate_PreservesValidOptions(t *testing.T) {
 		t.Errorf("Validate() should preserve SourceFields, got %d fields", len(req.Options.SourceFields))
 	}
 }
+
+func TestSearchRequest_Validate_RecipeJobFilters(t *testing.T) {
+	t.Helper()
+
+	tests := []struct {
+		name      string
+		filters   *domain.Filters
+		wantError string
+	}{
+		{"negative max_prep_time", &domain.Filters{MaxPrepTime: intPtr(-1)}, "max_prep_time"},
+		{"negative max_total_time", &domain.Filters{MaxTotalTime: intPtr(-5)}, "max_total_time"},
+		{"negative salary_min", &domain.Filters{SalaryMin: float64Ptr(-100)}, "salary_min"},
+		{"valid recipe/job filters", &domain.Filters{MaxPrepTime: intPtr(30), SalaryMin: float64Ptr(50000)}, ""},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req := &domain.SearchRequest{
+				Query:   "test",
+				Filters: tt.filters,
+			}
+			err := req.Validate(testMaxPageSize, testDefaultPageSize, testMaxQueryLength)
+			if tt.wantError != "" {
+				if err == nil {
+					t.Fatalf("Validate() want error containing %q, got nil", tt.wantError)
+				}
+				if !strings.Contains(err.Error(), tt.wantError) {
+					t.Errorf("Validate() error = %v, want containing %q", err, tt.wantError)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("Validate() unexpected error: %v", err)
+			}
+		})
+	}
+}
+
+func intPtr(n int) *int             { return &n }
+func float64Ptr(f float64) *float64 { return &f }

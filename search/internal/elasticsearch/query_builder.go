@@ -138,8 +138,12 @@ func (qb *QueryBuilder) buildMultiMatchQuery(query string) map[string]any {
 	}
 }
 
-// buildFilters constructs filter clauses
+// buildFilters constructs filter clauses.
+// Validate() initializes req.Filters so Build() is safe; nil filters return no clauses.
 func (qb *QueryBuilder) buildFilters(filters *domain.Filters) []any {
+	if filters == nil {
+		return nil
+	}
 	var result []any
 
 	// Topics filter - use .keyword subfield for text fields

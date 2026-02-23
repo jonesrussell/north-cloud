@@ -7,6 +7,7 @@ import (
 )
 
 func TestRecipeDomain_NilRecipe(t *testing.T) {
+	t.Helper()
 	d := router.NewRecipeDomain()
 	routes := d.Routes(&router.Article{})
 	if routes != nil {
@@ -15,6 +16,7 @@ func TestRecipeDomain_NilRecipe(t *testing.T) {
 }
 
 func TestRecipeDomain_WithCategoryAndCuisine(t *testing.T) {
+	t.Helper()
 	d := router.NewRecipeDomain()
 	article := &router.Article{
 		Recipe: &router.RecipeData{
@@ -45,6 +47,7 @@ func TestRecipeDomain_WithCategoryAndCuisine(t *testing.T) {
 }
 
 func TestRecipeDomain_Name(t *testing.T) {
+	t.Helper()
 	d := router.NewRecipeDomain()
 	if d.Name() != "recipe" {
 		t.Errorf("expected name 'recipe', got %q", d.Name())
@@ -52,6 +55,7 @@ func TestRecipeDomain_Name(t *testing.T) {
 }
 
 func TestRecipeDomain_OnlyCategory(t *testing.T) {
+	t.Helper()
 	d := router.NewRecipeDomain()
 	article := &router.Article{
 		Recipe: &router.RecipeData{

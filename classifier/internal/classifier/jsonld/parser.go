@@ -10,6 +10,12 @@ import (
 	"strings"
 )
 
+// Logger is an optional logger for debug output. When provided to Extract,
+// parse failures (malformed JSON-LD blocks) are logged at debug level.
+type Logger interface {
+	Debug(msg string, keysAndValues ...any)
+}
+
 // jsonLDPattern matches <script type="application/ld+json">...</script> blocks.
 // The (?s) flag enables dotall mode so . matches newlines.
 var jsonLDPattern = regexp.MustCompile(
@@ -25,8 +31,9 @@ var durationPattern = regexp.MustCompile(`^PT(?:(\d+)H)?(?:(\d+)M)?$`)
 // Extract finds all <script type="application/ld+json"> blocks in HTML,
 // parses them as JSON, and returns them as a slice of maps. It handles both
 // single JSON objects and JSON arrays (common pattern: [{@type: BreadcrumbList},
-// {@type: Recipe}]). Malformed JSON blocks are silently skipped.
-func Extract(html string) []map[string]any {
+// {@type: Recipe}]). Malformed JSON blocks are skipped; when logger is non-nil,
+// parse failures are logged at debug level.
+func Extract(html string, logger Logger) []map[string]any {
 	matches := jsonLDPattern.FindAllStringSubmatch(html, -1)
 	if len(matches) == 0 {
 		return nil
@@ -40,7 +47,7 @@ func Extract(html string) []map[string]any {
 			continue
 		}
 
-		parsed := parseJSONLDContent(content)
+		parsed := parseJSONLDContent(content, logger)
 		blocks = append(blocks, parsed...)
 	}
 
@@ -49,19 +56,21 @@ func Extract(html string) []map[string]any {
 
 // parseJSONLDContent parses a JSON string that may be either a single object
 // or an array of objects. Returns all successfully parsed objects.
-func parseJSONLDContent(content string) []map[string]any {
-	// Try parsing as a single object first.
+// When both unmarshals fail and logger is non-nil, logs at debug level.
+func parseJSONLDContent(content string, logger Logger) []map[string]any {
 	var single map[string]any
 	if err := json.Unmarshal([]byte(content), &single); err == nil {
 		return []map[string]any{single}
 	}
 
-	// Try parsing as an array of objects.
 	var arr []map[string]any
 	if err := json.Unmarshal([]byte(content), &arr); err == nil {
 		return arr
 	}
 
+	if logger != nil {
+		logger.Debug("jsonld block parse failed", "content_len", len(content))
+	}
 	return nil
 }
 

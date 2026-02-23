@@ -66,7 +66,9 @@ type EntertainmentData struct {
 	ModelVersion     string   `json:"model_version,omitempty"`
 }
 
-// RecipeData holds structured recipe extraction fields from Elasticsearch.
+// RecipeData holds the publisher view of structured recipe extraction from Elasticsearch.
+// It is a subset of the classifier's RecipeResult; ES may index additional fields that are
+// ignored on unmarshal.
 type RecipeData struct {
 	ExtractionMethod string   `json:"extraction_method"`
 	Name             string   `json:"name,omitempty"`
@@ -75,7 +77,9 @@ type RecipeData struct {
 	Cuisine          string   `json:"cuisine,omitempty"`
 }
 
-// JobData holds structured job extraction fields from Elasticsearch.
+// JobData holds the publisher view of structured job extraction from Elasticsearch.
+// It is a subset of the classifier's JobResult; ES may index additional fields that are
+// ignored on unmarshal.
 type JobData struct {
 	ExtractionMethod string `json:"extraction_method"`
 	Title            string `json:"title,omitempty"`

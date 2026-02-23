@@ -301,51 +301,19 @@ func (s *SearchService) parseSearchResponse(body io.Reader, req *domain.SearchRe
 func (s *SearchService) parseFacets(aggs map[string]aggregation) *domain.Facets {
 	facets := &domain.Facets{}
 
-	// Topics facet
-	if topicsAgg, ok := aggs["topics"]; ok {
-		facets.Topics = make([]domain.FacetBucket, 0, len(topicsAgg.Buckets))
-		for _, bucket := range topicsAgg.Buckets {
-			facets.Topics = append(facets.Topics, domain.FacetBucket{
-				Key:   fmt.Sprint(bucket.Key),
-				Count: bucket.DocCount,
-			})
-		}
+	if agg, ok := aggs["topics"]; ok {
+		facets.Topics = parseBuckets(agg)
+	}
+	if agg, ok := aggs["content_types"]; ok {
+		facets.ContentTypes = parseBuckets(agg)
+	}
+	if agg, ok := aggs["sources"]; ok {
+		facets.Sources = parseBuckets(agg)
+	}
+	if agg, ok := aggs["quality_ranges"]; ok {
+		facets.QualityRanges = parseBuckets(agg)
 	}
 
-	// Content types facet
-	if contentTypesAgg, ok := aggs["content_types"]; ok {
-		facets.ContentTypes = make([]domain.FacetBucket, 0, len(contentTypesAgg.Buckets))
-		for _, bucket := range contentTypesAgg.Buckets {
-			facets.ContentTypes = append(facets.ContentTypes, domain.FacetBucket{
-				Key:   fmt.Sprint(bucket.Key),
-				Count: bucket.DocCount,
-			})
-		}
-	}
-
-	// Sources facet
-	if sourcesAgg, ok := aggs["sources"]; ok {
-		facets.Sources = make([]domain.FacetBucket, 0, len(sourcesAgg.Buckets))
-		for _, bucket := range sourcesAgg.Buckets {
-			facets.Sources = append(facets.Sources, domain.FacetBucket{
-				Key:   fmt.Sprint(bucket.Key),
-				Count: bucket.DocCount,
-			})
-		}
-	}
-
-	// Quality ranges facet
-	if qualityRangesAgg, ok := aggs["quality_ranges"]; ok {
-		facets.QualityRanges = make([]domain.FacetBucket, 0, len(qualityRangesAgg.Buckets))
-		for _, bucket := range qualityRangesAgg.Buckets {
-			facets.QualityRanges = append(facets.QualityRanges, domain.FacetBucket{
-				Key:   fmt.Sprint(bucket.Key),
-				Count: bucket.DocCount,
-			})
-		}
-	}
-
-	// Recipe and job facets (extracted to stay under funlen limit)
 	s.parseRecipeFacets(facets, aggs)
 	s.parseJobFacets(facets, aggs)
 

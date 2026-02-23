@@ -24,7 +24,7 @@ func TestExtract_FindsRecipeJSONLD(t *testing.T) {
 </script>
 </head><body></body></html>`
 
-	blocks := jsonld.Extract(html)
+	blocks := jsonld.Extract(html, nil)
 	require.Len(t, blocks, 1)
 	assert.Equal(t, "Recipe", blocks[0]["@type"])
 	assert.Equal(t, "Chocolate Cake", blocks[0]["name"])
@@ -48,7 +48,7 @@ func TestExtract_HandlesArrayWithMultipleTypes(t *testing.T) {
 </script>
 </head><body></body></html>`
 
-	blocks := jsonld.Extract(html)
+	blocks := jsonld.Extract(html, nil)
 	require.Len(t, blocks, 2)
 
 	recipe := jsonld.FindByType(blocks, "Recipe")
@@ -82,7 +82,7 @@ func TestExtract_FindsJobPostingJSONLD(t *testing.T) {
 </script>
 </head><body></body></html>`
 
-	blocks := jsonld.Extract(html)
+	blocks := jsonld.Extract(html, nil)
 	require.Len(t, blocks, 1)
 	assert.Equal(t, "JobPosting", blocks[0]["@type"])
 	assert.Equal(t, "Software Engineer", blocks[0]["title"])
@@ -91,7 +91,7 @@ func TestExtract_FindsJobPostingJSONLD(t *testing.T) {
 func TestExtract_ReturnsEmptyForNoScriptTags(t *testing.T) {
 	html := `<html><head><title>No JSON-LD</title></head><body><p>Hello</p></body></html>`
 
-	blocks := jsonld.Extract(html)
+	blocks := jsonld.Extract(html, nil)
 	assert.Empty(t, blocks)
 }
 
@@ -102,7 +102,7 @@ func TestExtract_ReturnsEmptyForMalformedJSON(t *testing.T) {
 </script>
 </head><body></body></html>`
 
-	blocks := jsonld.Extract(html)
+	blocks := jsonld.Extract(html, nil)
 	assert.Empty(t, blocks)
 }
 
@@ -116,7 +116,7 @@ func TestExtract_HandlesMultipleScriptBlocks(t *testing.T) {
 </script>
 </head><body></body></html>`
 
-	blocks := jsonld.Extract(html)
+	blocks := jsonld.Extract(html, nil)
 	require.Len(t, blocks, 2)
 }
 
@@ -129,13 +129,13 @@ func TestExtract_IgnoresNonJSONLDScripts(t *testing.T) {
 <script>console.log("hi")</script>
 </head><body></body></html>`
 
-	blocks := jsonld.Extract(html)
+	blocks := jsonld.Extract(html, nil)
 	require.Len(t, blocks, 1)
 	assert.Equal(t, "Recipe", blocks[0]["@type"])
 }
 
 func TestExtract_HandlesEmptyHTML(t *testing.T) {
-	blocks := jsonld.Extract("")
+	blocks := jsonld.Extract("", nil)
 	assert.Empty(t, blocks)
 }
 
