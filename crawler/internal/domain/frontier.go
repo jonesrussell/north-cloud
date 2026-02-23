@@ -92,6 +92,7 @@ type FeedState struct {
 	ConsecutiveErrors int        `db:"consecutive_errors" json:"consecutive_errors"`
 	LastError         *string    `db:"last_error"         json:"last_error,omitempty"`
 	LastErrorType     *string    `db:"last_error_type"    json:"last_error_type,omitempty"`
+	NextPollAt        *time.Time `db:"next_poll_at"       json:"next_poll_at,omitempty"`
 	CreatedAt         time.Time  `db:"created_at"         json:"created_at"`
 	UpdatedAt         time.Time  `db:"updated_at"         json:"updated_at"`
 }

@@ -37,11 +37,11 @@
     },
     {
       "id": 2,
-      "title": "URLs Submitted",
-      "description": "Submit events in the selected time range (one log line per Submit call from API, feed, spider, sitemap). Same URL submitted again counts as another event; distinct queue size may be lower (upsert by url_hash).",
+      "title": "Submit Events",
+      "description": "Total frontier submit calls (includes duplicates). Use 'New URLs Queued' for actually-new URLs.",
       "type": "stat",
       "datasource": { "type": "loki", "uid": "loki" },
-      "gridPos": { "h": 4, "w": 5, "x": 0, "y": 1 },
+      "gridPos": { "h": 4, "w": 4, "x": 0, "y": 1 },
       "targets": [
         {
           "refId": "A",
@@ -71,12 +71,47 @@
       }
     },
     {
+      "id": 34,
+      "title": "New URLs Queued",
+      "description": "URLs actually inserted into the frontier (excludes duplicates already fetched/dead).",
+      "type": "stat",
+      "datasource": { "type": "loki", "uid": "loki" },
+      "gridPos": { "h": 4, "w": 4, "x": 4, "y": 1 },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "loki", "uid": "loki" },
+          "expr": "count_over_time({service=\"crawler\"} |= \"URL submitted to frontier\" | json | queued=\"true\" [$__range])",
+          "queryType": "instant"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": { "mode": "fixed", "fixedColor": "purple" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [{ "color": "purple", "value": null }]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "area",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "textMode": "auto",
+        "justifyMode": "auto",
+        "orientation": "auto"
+      }
+    },
+    {
       "id": 3,
-      "title": "URLs Fetched",
+      "title": "Fetch Events",
       "description": "Fetch success events in the selected time range (URLs successfully fetched by workers).",
       "type": "stat",
       "datasource": { "type": "loki", "uid": "loki" },
-      "gridPos": { "h": 4, "w": 5, "x": 5, "y": 1 },
+      "gridPos": { "h": 4, "w": 4, "x": 8, "y": 1 },
       "targets": [
         {
           "refId": "A",
@@ -111,7 +146,7 @@
       "description": "URLs that failed to fetch",
       "type": "stat",
       "datasource": { "type": "loki", "uid": "loki" },
-      "gridPos": { "h": 4, "w": 5, "x": 10, "y": 1 },
+      "gridPos": { "h": 4, "w": 4, "x": 12, "y": 1 },
       "targets": [
         {
           "refId": "A",
@@ -146,7 +181,7 @@
       "description": "URLs blocked by robots.txt",
       "type": "stat",
       "datasource": { "type": "loki", "uid": "loki" },
-      "gridPos": { "h": 4, "w": 5, "x": 15, "y": 1 },
+      "gridPos": { "h": 4, "w": 4, "x": 16, "y": 1 },
       "targets": [
         {
           "refId": "A",

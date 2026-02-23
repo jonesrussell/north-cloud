@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/jonesrussell/north-cloud/crawler/internal/domain"
 	"github.com/jonesrussell/north-cloud/crawler/internal/frontier"
@@ -95,6 +96,14 @@ func (p *Poller) PollFeed(ctx context.Context, sourceID, feedURL string) error {
 	state, err := p.feedState.GetOrCreate(ctx, sourceID, feedURL)
 	if err != nil {
 		return fmt.Errorf("poll feed get state: %w", err)
+	}
+
+	if state.NextPollAt != nil && state.NextPollAt.After(time.Now()) {
+		p.log.Info("feed in backoff, skipping",
+			"source_id", sourceID,
+			"next_poll_at", state.NextPollAt,
+		)
+		return nil
 	}
 
 	resp, fetchErr := p.fetcher.Fetch(ctx, feedURL, state.LastETag, state.LastModified)

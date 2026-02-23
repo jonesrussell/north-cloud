@@ -78,6 +78,36 @@ func (r *FrontierRepository) Submit(ctx context.Context, params SubmitParams) er
 	return nil
 }
 
+// SubmitAndReport upserts a URL into the frontier (same as Submit) and reports
+// whether the URL was actually queued (true) or deduplicated/skipped (false).
+func (r *FrontierRepository) SubmitAndReport(ctx context.Context, params SubmitParams) (bool, error) {
+	query := `
+		INSERT INTO url_frontier (url, url_hash, host, source_id, origin, parent_url, depth, priority, next_fetch_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
+		ON CONFLICT (url_hash) DO UPDATE SET
+			priority = GREATEST(url_frontier.priority, EXCLUDED.priority),
+			next_fetch_at = LEAST(url_frontier.next_fetch_at, EXCLUDED.next_fetch_at),
+			updated_at = NOW()
+		WHERE url_frontier.status = 'pending'
+	`
+
+	result, err := r.db.ExecContext(
+		ctx, query,
+		params.URL, params.URLHash, params.Host, params.SourceID,
+		params.Origin, params.ParentURL, params.Depth, params.Priority,
+	)
+	if err != nil {
+		return false, fmt.Errorf("failed to submit URL to frontier: %w", err)
+	}
+
+	rows, rowsErr := result.RowsAffected()
+	if rowsErr != nil {
+		return false, fmt.Errorf("submit rows affected: %w", rowsErr)
+	}
+
+	return rows > 0, nil
+}
+
 // Claim selects and locks the highest-priority fetchable URL, respecting
 // per-host politeness via host_state. Returns ErrNoURLAvailable if no URLs are fetchable.
 func (r *FrontierRepository) Claim(ctx context.Context) (*domain.FrontierURL, error) {

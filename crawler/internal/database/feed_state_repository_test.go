@@ -16,7 +16,7 @@ import (
 var feedStateColumns = []string{
 	"source_id", "feed_url", "last_polled_at", "last_etag", "last_modified",
 	"last_item_count", "consecutive_errors", "last_error", "last_error_type",
-	"created_at", "updated_at",
+	"next_poll_at", "created_at", "updated_at",
 }
 
 func newFeedStateRepo(t *testing.T) (*database.FeedStateRepository, sqlmock.Sqlmock, func()) {
@@ -49,7 +49,7 @@ func TestFeedStateRepository_GetOrCreate_NewSource(t *testing.T) {
 		WillReturnRows(
 			sqlmock.NewRows(feedStateColumns).AddRow(
 				"source-uuid-1", "https://example.com/rss",
-				nil, nil, nil, 0, 0, nil, nil, now, now,
+				nil, nil, nil, 0, 0, nil, nil, nil, now, now,
 			),
 		)
 
@@ -94,7 +94,7 @@ func TestFeedStateRepository_GetOrCreate_ExistingSource(t *testing.T) {
 		WillReturnRows(
 			sqlmock.NewRows(feedStateColumns).AddRow(
 				"source-uuid-1", "https://example.com/rss",
-				polledAt, etag, modified, itemCount, 0, nil, nil, now, now,
+				polledAt, etag, modified, itemCount, 0, nil, nil, nil, now, now,
 			),
 		)
 
@@ -221,8 +221,8 @@ func TestFeedStateRepository_ListDueForPolling(t *testing.T) {
 		WithArgs(defaultInterval).
 		WillReturnRows(
 			sqlmock.NewRows(feedStateColumns).
-				AddRow("source-never-polled", "https://a.com/rss", nil, nil, nil, 0, 0, nil, nil, now, now).
-				AddRow("source-old-poll", "https://b.com/rss", now.Add(-time.Hour), nil, nil, 10, 0, nil, nil, now, now),
+				AddRow("source-never-polled", "https://a.com/rss", nil, nil, nil, 0, 0, nil, nil, nil, now, now).
+				AddRow("source-old-poll", "https://b.com/rss", now.Add(-time.Hour), nil, nil, 10, 0, nil, nil, nil, now, now),
 		)
 
 	states, err := repo.ListDueForPolling(ctx, defaultInterval)

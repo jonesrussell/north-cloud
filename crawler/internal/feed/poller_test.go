@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 	"testing"
+	"time"
 
 	"github.com/jonesrussell/north-cloud/crawler/internal/domain"
 	"github.com/jonesrussell/north-cloud/crawler/internal/feed"
@@ -643,6 +644,59 @@ func TestPollFeed_ReEnableOnSuccess(t *testing.T) {
 
 	if !disabler.enableCalled {
 		t.Error("expected EnableFeed to be called on success")
+	}
+}
+
+func TestPollFeed_BackoffSkipsFeed(t *testing.T) {
+	t.Parallel()
+
+	futureTime := time.Now().Add(time.Hour)
+	fetcher := &mockFetcher{response: newOKResponse(t, rssFixtureForPoller)}
+	stateStore := &mockFeedStateStore{
+		state: &domain.FeedState{
+			SourceID:   "src-1",
+			FeedURL:    "https://example.com/feed.xml",
+			NextPollAt: &futureTime,
+		},
+	}
+	frontierMock := &mockFrontier{}
+	poller := newTestPoller(t, fetcher, stateStore, frontierMock)
+
+	err := poller.PollFeed(context.Background(), "src-1", "https://example.com/feed.xml")
+	requireNoError(t, err)
+
+	// Feed is in backoff — no URLs should be submitted and no fetch should happen.
+	requireLen(t, frontierMock.submitted, 0)
+	if fetcher.calledURL != "" {
+		t.Error("expected fetcher NOT to be called during backoff")
+	}
+	if stateStore.successCalled {
+		t.Error("expected UpdateSuccess NOT to be called during backoff")
+	}
+}
+
+func TestPollFeed_ExpiredBackoffProceeds(t *testing.T) {
+	t.Parallel()
+
+	pastTime := time.Now().Add(-time.Minute)
+	fetcher := &mockFetcher{response: newOKResponse(t, rssFixtureForPoller)}
+	stateStore := &mockFeedStateStore{
+		state: &domain.FeedState{
+			SourceID:   "src-1",
+			FeedURL:    "https://example.com/feed.xml",
+			NextPollAt: &pastTime,
+		},
+	}
+	frontierMock := &mockFrontier{}
+	poller := newTestPoller(t, fetcher, stateStore, frontierMock)
+
+	err := poller.PollFeed(context.Background(), "src-1", "https://example.com/feed.xml")
+	requireNoError(t, err)
+
+	// Backoff expired — feed should be polled normally.
+	requireLen(t, frontierMock.submitted, pollerFixtureItemCount)
+	if !stateStore.successCalled {
+		t.Error("expected UpdateSuccess to be called after expired backoff")
 	}
 }
 

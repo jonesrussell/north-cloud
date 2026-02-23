@@ -1,0 +1,1 @@
+ALTER TABLE feed_state ADD COLUMN next_poll_at TIMESTAMP WITH TIME ZONE;

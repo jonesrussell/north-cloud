@@ -610,5 +610,82 @@ func TestFrontierRepository_RecoverStaleURLs_DBError(t *testing.T) {
 	expectationsMet(t, mock)
 }
 
+func TestFrontierRepository_SubmitAndReport_NewURL(t *testing.T) {
+	repo, mock, cleanup := newFrontierRepo(t)
+	defer cleanup()
+
+	ctx := context.Background()
+
+	mock.ExpectExec("INSERT INTO url_frontier").
+		WithArgs(
+			"https://example.com/new",
+			"newhash",
+			"example.com",
+			"source-uuid-1",
+			"feed",
+			nil,
+			0,
+			5,
+		).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+
+	queued, err := repo.SubmitAndReport(ctx, database.SubmitParams{
+		URL:      "https://example.com/new",
+		URLHash:  "newhash",
+		Host:     "example.com",
+		SourceID: "source-uuid-1",
+		Origin:   "feed",
+		Depth:    0,
+		Priority: 5,
+	})
+	if err != nil {
+		t.Fatalf("SubmitAndReport() error = %v", err)
+	}
+	if !queued {
+		t.Error("expected queued=true for new URL")
+	}
+
+	expectationsMet(t, mock)
+}
+
+func TestFrontierRepository_SubmitAndReport_DuplicateURL(t *testing.T) {
+	repo, mock, cleanup := newFrontierRepo(t)
+	defer cleanup()
+
+	ctx := context.Background()
+
+	// Duplicate URL already fetched — ON CONFLICT WHERE clause doesn't match, 0 rows affected.
+	mock.ExpectExec("INSERT INTO url_frontier").
+		WithArgs(
+			"https://example.com/existing",
+			"existinghash",
+			"example.com",
+			"source-uuid-1",
+			"feed",
+			nil,
+			0,
+			5,
+		).
+		WillReturnResult(sqlmock.NewResult(0, 0))
+
+	queued, err := repo.SubmitAndReport(ctx, database.SubmitParams{
+		URL:      "https://example.com/existing",
+		URLHash:  "existinghash",
+		Host:     "example.com",
+		SourceID: "source-uuid-1",
+		Origin:   "feed",
+		Depth:    0,
+		Priority: 5,
+	})
+	if err != nil {
+		t.Fatalf("SubmitAndReport() error = %v", err)
+	}
+	if queued {
+		t.Error("expected queued=false for duplicate URL")
+	}
+
+	expectationsMet(t, mock)
+}
+
 // Verify driver.Value interface compliance for nil *string args.
 var _ driver.Value = (*string)(nil)

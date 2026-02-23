@@ -10,7 +10,8 @@ import (
 
 // feedStateSelectColumns lists columns for SELECT queries on feed_state.
 const feedStateSelectColumns = `source_id, feed_url, last_polled_at, last_etag, last_modified,
-	last_item_count, consecutive_errors, last_error, last_error_type, created_at, updated_at`
+	last_item_count, consecutive_errors, last_error, last_error_type, next_poll_at,
+	created_at, updated_at`
 
 // FeedStateRepository handles database operations for feed polling state.
 type FeedStateRepository struct {
@@ -50,13 +51,13 @@ func (r *FeedStateRepository) GetOrCreate(ctx context.Context, sourceID, feedURL
 }
 
 // UpdateSuccess records a successful feed poll.
-// Resets consecutive_errors to 0 and clears last_error.
+// Resets consecutive_errors to 0, clears last_error, and clears next_poll_at (backoff).
 func (r *FeedStateRepository) UpdateSuccess(ctx context.Context, sourceID string, result FeedPollResult) error {
 	query := `
 		UPDATE feed_state
 		SET last_polled_at = NOW(), last_etag = $2, last_modified = $3,
 			last_item_count = $4, consecutive_errors = 0, last_error = NULL,
-			last_error_type = NULL, updated_at = NOW()
+			last_error_type = NULL, next_poll_at = NULL, updated_at = NOW()
 		WHERE source_id = $1
 	`
 
@@ -65,11 +66,17 @@ func (r *FeedStateRepository) UpdateSuccess(ctx context.Context, sourceID string
 }
 
 // UpdateError records a feed poll failure, incrementing consecutive_errors.
+// For rate_limited errors, sets next_poll_at using exponential backoff:
+// base(5min) * 2^consecutive_errors, capped at 8 hours (96 intervals).
 func (r *FeedStateRepository) UpdateError(ctx context.Context, sourceID, errorType, errMsg string) error {
 	query := `
 		UPDATE feed_state
 		SET last_polled_at = NOW(), consecutive_errors = consecutive_errors + 1,
-			last_error = $3, last_error_type = $2, updated_at = NOW()
+			last_error = $3, last_error_type = $2,
+			next_poll_at = CASE WHEN $2 = 'rate_limited'
+				THEN NOW() + (LEAST(POWER(2, consecutive_errors)::int, 96) * INTERVAL '5 minutes')
+				ELSE next_poll_at END,
+			updated_at = NOW()
 		WHERE source_id = $1
 	`
 

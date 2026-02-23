@@ -21,15 +21,17 @@ func NewLoggingFrontierRepo(repo *database.FrontierRepository, log infralogger.L
 	return &loggingFrontierRepo{repo: repo, log: log}
 }
 
-// Submit delegates to the inner repo and logs one line for dashboard LogQL.
+// Submit delegates to SubmitAndReport and logs whether the URL was queued or deduplicated.
 func (w *loggingFrontierRepo) Submit(ctx context.Context, params database.SubmitParams) error {
-	if err := w.repo.Submit(ctx, params); err != nil {
+	queued, err := w.repo.SubmitAndReport(ctx, params)
+	if err != nil {
 		return err
 	}
 	w.log.Info("URL submitted to frontier",
 		infralogger.String("url", params.URL),
 		infralogger.String("source_id", params.SourceID),
 		infralogger.String("origin", params.Origin),
+		infralogger.Bool("queued", queued),
 	)
 	return nil
 }
