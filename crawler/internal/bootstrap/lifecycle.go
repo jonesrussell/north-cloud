@@ -1,7 +1,6 @@
 package bootstrap
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"os/signal"
@@ -31,10 +30,7 @@ func RunUntilInterrupt(
 	sseBroker sse.Broker,
 	logService logs.Service,
 	eventConsumer *crawlerintevents.Consumer,
-	feedPollerCancel context.CancelFunc,
-	feedDiscoveryCancel context.CancelFunc,
-	workerPoolCancel context.CancelFunc,
-	frontierStatsCancel context.CancelFunc,
+	bg backgroundCancels,
 	errChan <-chan error,
 ) error {
 	// Set up signal handling for graceful shutdown
@@ -47,8 +43,7 @@ func RunUntilInterrupt(
 		log.Error("Server error", infralogger.Error(serverErr))
 		return fmt.Errorf("server error: %w", serverErr)
 	case sig := <-sigChan:
-		return Shutdown(log, server, intervalScheduler, sseBroker, logService, eventConsumer,
-			feedPollerCancel, feedDiscoveryCancel, workerPoolCancel, frontierStatsCancel, sig)
+		return Shutdown(log, server, intervalScheduler, sseBroker, logService, eventConsumer, bg, sig)
 	}
 }
 
@@ -60,36 +55,39 @@ func Shutdown(
 	sseBroker sse.Broker,
 	logService logs.Service,
 	eventConsumer *crawlerintevents.Consumer,
-	feedPollerCancel context.CancelFunc,
-	feedDiscoveryCancel context.CancelFunc,
-	workerPoolCancel context.CancelFunc,
-	frontierStatsCancel context.CancelFunc,
+	bg backgroundCancels,
 	sig os.Signal,
 ) error {
 	log.Info("Shutdown signal received", infralogger.String("signal", sig.String()))
 
 	// Stop feed poller first (cancels polling goroutine)
-	if feedPollerCancel != nil {
+	if bg.feedPollerCancel != nil {
 		log.Info("Stopping feed poller")
-		feedPollerCancel()
+		bg.feedPollerCancel()
 	}
 
 	// Stop feed discoverer (cancels discovery goroutine)
-	if feedDiscoveryCancel != nil {
+	if bg.feedDiscoveryCancel != nil {
 		log.Info("Stopping feed discoverer")
-		feedDiscoveryCancel()
+		bg.feedDiscoveryCancel()
 	}
 
 	// Stop frontier worker pool (cancels all worker goroutines)
-	if workerPoolCancel != nil {
+	if bg.workerPoolCancel != nil {
 		log.Info("Stopping frontier worker pool")
-		workerPoolCancel()
+		bg.workerPoolCancel()
 	}
 
 	// Stop frontier stats logger (cancels stats logging goroutine)
-	if frontierStatsCancel != nil {
+	if bg.frontierStatsCancel != nil {
 		log.Info("Stopping frontier stats logger")
-		frontierStatsCancel()
+		bg.frontierStatsCancel()
+	}
+
+	// Stop stale URL recovery (cancels recovery goroutine)
+	if bg.staleRecoveryCancel != nil {
+		log.Info("Stopping stale URL recovery")
+		bg.staleRecoveryCancel()
 	}
 
 	// Stop event consumer (stops reading from Redis)

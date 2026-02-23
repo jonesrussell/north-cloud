@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/jonesrussell/north-cloud/crawler/internal/domain"
@@ -440,6 +441,32 @@ func (r *FrontierRepository) ResetForRetry(ctx context.Context, id string) error
 
 	result, execErr := r.db.ExecContext(ctx, query, id)
 	return execRequireRows(result, execErr, fmt.Errorf("frontier URL not found or not dead: %s", id))
+}
+
+// RecoverStaleURLs resets frontier URLs stuck in 'fetching' state back to 'pending'.
+// URLs with updated_at before the cutoff are considered stale (worker crashed or timed out).
+// Returns the number of recovered URLs. Does not increment retry_count — this is
+// infrastructure recovery, not a fetch failure.
+func (r *FrontierRepository) RecoverStaleURLs(ctx context.Context, cutoff time.Time) (int, error) {
+	query := `
+		UPDATE url_frontier
+		SET status = 'pending',
+			next_fetch_at = NOW(),
+			updated_at = NOW()
+		WHERE status = 'fetching' AND updated_at < $1
+	`
+
+	result, err := r.db.ExecContext(ctx, query, cutoff)
+	if err != nil {
+		return 0, fmt.Errorf("failed to recover stale frontier URLs: %w", err)
+	}
+
+	rows, rowsErr := result.RowsAffected()
+	if rowsErr != nil {
+		return 0, fmt.Errorf("failed to get rows affected: %w", rowsErr)
+	}
+
+	return int(rows), nil
 }
 
 // Delete removes a frontier URL by ID. Returns an error if the URL does not exist.

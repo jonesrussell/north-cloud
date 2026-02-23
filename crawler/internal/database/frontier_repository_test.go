@@ -538,5 +538,77 @@ func assertStatCount(t *testing.T, field string, got, want int) {
 	}
 }
 
+func TestFrontierRepository_RecoverStaleURLs_Success(t *testing.T) {
+	t.Helper()
+
+	repo, mock, cleanup := newFrontierRepo(t)
+	defer cleanup()
+
+	ctx := context.Background()
+	cutoff := time.Now().Add(-10 * time.Minute)
+
+	mock.ExpectExec("UPDATE url_frontier").
+		WithArgs(cutoff).
+		WillReturnResult(sqlmock.NewResult(0, 5))
+
+	recovered, err := repo.RecoverStaleURLs(ctx, cutoff)
+	if err != nil {
+		t.Fatalf("RecoverStaleURLs() error = %v", err)
+	}
+	if recovered != 5 {
+		t.Errorf("expected 5 recovered, got %d", recovered)
+	}
+
+	expectationsMet(t, mock)
+}
+
+func TestFrontierRepository_RecoverStaleURLs_NoneStale(t *testing.T) {
+	t.Helper()
+
+	repo, mock, cleanup := newFrontierRepo(t)
+	defer cleanup()
+
+	ctx := context.Background()
+	cutoff := time.Now().Add(-10 * time.Minute)
+
+	mock.ExpectExec("UPDATE url_frontier").
+		WithArgs(cutoff).
+		WillReturnResult(sqlmock.NewResult(0, 0))
+
+	recovered, err := repo.RecoverStaleURLs(ctx, cutoff)
+	if err != nil {
+		t.Fatalf("RecoverStaleURLs() error = %v", err)
+	}
+	if recovered != 0 {
+		t.Errorf("expected 0 recovered, got %d", recovered)
+	}
+
+	expectationsMet(t, mock)
+}
+
+func TestFrontierRepository_RecoverStaleURLs_DBError(t *testing.T) {
+	t.Helper()
+
+	repo, mock, cleanup := newFrontierRepo(t)
+	defer cleanup()
+
+	ctx := context.Background()
+	cutoff := time.Now().Add(-10 * time.Minute)
+
+	mock.ExpectExec("UPDATE url_frontier").
+		WithArgs(cutoff).
+		WillReturnError(errors.New("connection refused"))
+
+	recovered, err := repo.RecoverStaleURLs(ctx, cutoff)
+	if err == nil {
+		t.Fatal("RecoverStaleURLs() expected error, got nil")
+	}
+	if recovered != 0 {
+		t.Errorf("expected 0 recovered on error, got %d", recovered)
+	}
+
+	expectationsMet(t, mock)
+}
+
 // Verify driver.Value interface compliance for nil *string args.
 var _ driver.Value = (*string)(nil)

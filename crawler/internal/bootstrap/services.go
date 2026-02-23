@@ -52,6 +52,9 @@ type ServiceComponents struct {
 	// Frontier repo for HTTP handler (logging wrapper when frontier enabled)
 	FrontierRepoForHandler api.FrontierRepoForHandler
 
+	// Stale URL recoverer (raw frontier repo — no logging wrapper needed)
+	StaleURLRecoverer StaleURLRecoverer
+
 	// SSE components
 	SSEBroker    sse.Broker
 	SSEHandler   *api.SSEHandler
@@ -127,6 +130,12 @@ func SetupServices(
 	// Create frontier worker pool (if enabled); uses raw repo for claimer
 	workerPool := createFrontierWorkerPool(deps, db, storage)
 
+	// Stale URL recoverer uses the raw frontier repo (no logging wrapper needed)
+	var staleRecoverer StaleURLRecoverer
+	if db.FrontierRepo != nil && deps.Config.GetFetcherConfig().Enabled {
+		staleRecoverer = db.FrontierRepo
+	}
+
 	return &ServiceComponents{
 		JobsHandler:            jobsHandler,
 		DiscoveredLinksHandler: discoveredLinksHandler,
@@ -140,6 +149,7 @@ func SetupServices(
 		ListUndiscovered:       listUndiscovered,
 		FrontierWorkerPool:     workerPool,
 		FrontierRepoForHandler: frontierForHandler,
+		StaleURLRecoverer:      staleRecoverer,
 		SSEBroker:              sseBroker,
 		SSEHandler:             sseHandler,
 		SSEPublisher:           ssePublisher,

@@ -23,12 +23,18 @@ import (
 	"github.com/north-cloud/infrastructure/profiling"
 )
 
+// StaleURLRecoverer recovers frontier URLs stuck in 'fetching' state.
+type StaleURLRecoverer interface {
+	RecoverStaleURLs(ctx context.Context, cutoff time.Time) (int, error)
+}
+
 // backgroundCancels holds cancel functions for background goroutines.
 type backgroundCancels struct {
-	feedPollerCancel      context.CancelFunc
-	feedDiscoveryCancel   context.CancelFunc
-	workerPoolCancel      context.CancelFunc
-	frontierStatsCancel   context.CancelFunc
+	feedPollerCancel    context.CancelFunc
+	feedDiscoveryCancel context.CancelFunc
+	workerPoolCancel    context.CancelFunc
+	frontierStatsCancel context.CancelFunc
+	staleRecoveryCancel context.CancelFunc
 }
 
 // startBackgroundWorkers launches background goroutines for feed polling,
@@ -78,6 +84,17 @@ func startBackgroundWorkers(deps *CommandDeps, sc *ServiceComponents) background
 		deps.Logger.Info("Frontier stats logger started")
 	}
 
+	if sc.StaleURLRecoverer != nil {
+		fetcherCfg := deps.Config.GetFetcherConfig()
+		recoveryCtx, cancel := context.WithCancel(context.Background())
+		bg.staleRecoveryCancel = cancel
+		go runStaleURLRecovery(recoveryCtx, sc.StaleURLRecoverer, deps.Logger,
+			fetcherCfg.StaleTimeout, fetcherCfg.StaleCheckInterval)
+		deps.Logger.Info("Stale URL recovery started",
+			infralogger.String("stale_timeout", fetcherCfg.StaleTimeout.String()),
+			infralogger.String("check_interval", fetcherCfg.StaleCheckInterval.String()))
+	}
+
 	return bg
 }
 
@@ -108,6 +125,38 @@ func runFrontierStatsLogger(ctx context.Context, repo api.FrontierRepoForHandler
 			return
 		case <-ticker.C:
 			logFrontierStats()
+		}
+	}
+}
+
+// runStaleURLRecovery periodically recovers frontier URLs stuck in 'fetching' state.
+// URLs with updated_at older than staleTimeout are reset to 'pending' so workers can
+// re-fetch them. This handles worker crashes, hangs, and cancelled contexts.
+func runStaleURLRecovery(
+	ctx context.Context,
+	repo StaleURLRecoverer,
+	log infralogger.Logger,
+	staleTimeout, checkInterval time.Duration,
+) {
+	ticker := time.NewTicker(checkInterval)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			cutoff := time.Now().Add(-staleTimeout)
+			recovered, err := repo.RecoverStaleURLs(ctx, cutoff)
+			if err != nil {
+				log.Error("stale URL recovery failed", infralogger.Error(err))
+				continue
+			}
+			if recovered > 0 {
+				log.Info("Recovered stale frontier URLs",
+					infralogger.Int("recovered", recovered),
+					infralogger.String("stale_timeout", staleTimeout.String()))
+			}
 		}
 	}
 }
@@ -189,10 +238,7 @@ func Start() error {
 		serviceComponents.SSEBroker,
 		serviceComponents.LogService,
 		eventConsumer,
-		bg.feedPollerCancel,
-		bg.feedDiscoveryCancel,
-		bg.workerPoolCancel,
-		bg.frontierStatsCancel,
+		bg,
 		serverComponents.ErrorChan,
 	)
 }
