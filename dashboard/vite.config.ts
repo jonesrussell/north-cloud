@@ -12,6 +12,9 @@ const CLASSIFIER_API_URL = process.env.CLASSIFIER_API_URL || 'http://localhost:8
 // Auth service: use Docker service name when in container, localhost when running locally
 const AUTH_API_URL = process.env.AUTH_API_URL || 'http://localhost:8040'
 const INDEX_MANAGER_API_URL = process.env.INDEX_MANAGER_API_URL || 'http://localhost:8090'
+const SEARCH_API_URL = process.env.SEARCH_API_URL || 'http://localhost:8092'
+const PIPELINE_API_URL = process.env.PIPELINE_API_URL || 'http://localhost:8075'
+const CLICK_TRACKER_API_URL = process.env.CLICK_TRACKER_API_URL || 'http://localhost:8093'
 
 export default defineConfig({
   base: '/dashboard/',
@@ -166,7 +169,47 @@ export default defineConfig({
       '/api/health/index-manager': {
         target: INDEX_MANAGER_API_URL,
         changeOrigin: true,
-        timeout: 10000, // Health checks should be fast
+        timeout: 10000,
+        proxyTimeout: 10000,
+        rewrite: () => '/health',
+      },
+      // Source Manager health endpoint
+      '/api/health/source-manager': {
+        target: SOURCES_API_URL,
+        changeOrigin: true,
+        timeout: 10000,
+        proxyTimeout: 10000,
+        rewrite: () => '/health',
+      },
+      // Auth health endpoint
+      '/api/health/auth': {
+        target: AUTH_API_URL,
+        changeOrigin: true,
+        timeout: 10000,
+        proxyTimeout: 10000,
+        rewrite: () => '/health',
+      },
+      // Search health endpoint
+      '/api/health/search': {
+        target: SEARCH_API_URL,
+        changeOrigin: true,
+        timeout: 10000,
+        proxyTimeout: 10000,
+        rewrite: () => '/health',
+      },
+      // Pipeline health endpoint
+      '/api/health/pipeline': {
+        target: PIPELINE_API_URL,
+        changeOrigin: true,
+        timeout: 10000,
+        proxyTimeout: 10000,
+        rewrite: () => '/health',
+      },
+      // Click Tracker health endpoint
+      '/api/health/click-tracker': {
+        target: CLICK_TRACKER_API_URL,
+        changeOrigin: true,
+        timeout: 10000,
         proxyTimeout: 10000,
         rewrite: () => '/health',
       },

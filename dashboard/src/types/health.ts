@@ -2,13 +2,32 @@
 
 export type ServiceStatus = 'healthy' | 'degraded' | 'unhealthy' | 'checking' | 'unknown'
 
+// HealthCheckDetail matches the Go CheckResult struct from infrastructure/gin/health.go.
+export interface HealthCheckDetail {
+  status: 'healthy' | 'degraded' | 'unhealthy'
+  message?: string
+  latency?: string
+}
+
+// HealthResponse matches the Go HealthResponse struct from infrastructure/gin/health.go.
+export interface HealthResponse {
+  status: 'healthy' | 'degraded' | 'unhealthy'
+  service: string
+  version: string
+  uptime?: string
+  checks?: Record<string, HealthCheckDetail>
+}
+
 export interface ServiceHealth {
   name: string
   status: ServiceStatus
   latency?: number
   lastCheck: string | null
   details?: string
-  endpoint?: string
+  endpoint: string
+  uptime?: string
+  version?: string
+  checks?: Record<string, HealthCheckDetail>
 }
 
 export interface HealthCheckResult {
@@ -41,14 +60,18 @@ export const HEALTH_THRESHOLDS = {
   ES_DISK_PERCENT: 80,
 } as const
 
-// Service definitions
+// Service definitions — all services with /health endpoints.
+// Order: core pipeline first, then data services, then infrastructure.
 export const SERVICES = [
   { name: 'Crawler', endpoint: '/api/health/crawler' },
+  { name: 'Source Manager', endpoint: '/api/health/source-manager' },
   { name: 'Classifier', endpoint: '/api/health/classifier' },
   { name: 'Publisher', endpoint: '/api/health/publisher' },
   { name: 'Index Manager', endpoint: '/api/health/index-manager' },
-  { name: 'Elasticsearch', endpoint: null }, // Inferred from other services
-  { name: 'Redis', endpoint: null }, // Inferred from publisher
+  { name: 'Search', endpoint: '/api/health/search' },
+  { name: 'Pipeline', endpoint: '/api/health/pipeline' },
+  { name: 'Auth', endpoint: '/api/health/auth' },
+  { name: 'Click Tracker', endpoint: '/api/health/click-tracker' },
 ] as const
 
 export type ServiceName = (typeof SERVICES)[number]['name']
