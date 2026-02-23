@@ -4,7 +4,7 @@ import "time"
 
 // Default configuration values.
 const (
-	defaultWorkerCount     = 4
+	defaultWorkerCount     = 16
 	defaultUserAgent       = "NorthCloud-Fetcher/1.0"
 	defaultRequestTimeout  = 30 * time.Second
 	defaultClaimRetryDelay = 5 * time.Second
