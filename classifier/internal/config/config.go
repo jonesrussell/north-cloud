@@ -137,6 +137,8 @@ type ClassificationConfig struct {
 	Coforge          CoforgeConfig          `yaml:"coforge"`
 	Entertainment    EntertainmentConfig    `yaml:"entertainment"`
 	Anishinaabe      AnishinaabeConfig      `yaml:"anishinaabe"`
+	Recipe           RecipeExtractionConfig `yaml:"recipe"`
+	Job              JobExtractionConfig    `yaml:"job"`
 	// SidecarRegistry maps sidecar name (e.g. "crime", "mining") to enabled + URL.
 	// Built from Crime/Mining/... named configs when absent in YAML.
 	// NOTE: Currently populated by setClassificationDefaults but not yet consumed by the bootstrap
@@ -178,6 +180,16 @@ type CoforgeConfig struct {
 type EntertainmentConfig struct {
 	Enabled      bool   `env:"ENTERTAINMENT_ENABLED"        yaml:"enabled"`
 	MLServiceURL string `env:"ENTERTAINMENT_ML_SERVICE_URL" yaml:"ml_service_url"`
+}
+
+// RecipeExtractionConfig holds recipe extraction settings.
+type RecipeExtractionConfig struct {
+	Enabled bool `env:"RECIPE_ENABLED" yaml:"enabled"`
+}
+
+// JobExtractionConfig holds job extraction settings.
+type JobExtractionConfig struct {
+	Enabled bool `env:"JOB_ENABLED" yaml:"enabled"`
 }
 
 // ContentTypeConfig holds content type detection settings.

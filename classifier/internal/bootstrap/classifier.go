@@ -173,6 +173,19 @@ func createClassifierConfig(cfg *config.Config, logger infralogger.Logger) class
 			return classifier.NewAnishinaabeClassifier(c, l, e)
 		})
 
+	// Create recipe and job extractors when enabled
+	var recipeExtractor *classifier.RecipeExtractor
+	if cfg.Classification.Recipe.Enabled {
+		recipeExtractor = classifier.NewRecipeExtractor(logger)
+		logger.Info("Recipe extractor enabled")
+	}
+
+	var jobExtractor *classifier.JobExtractor
+	if cfg.Classification.Job.Enabled {
+		jobExtractor = classifier.NewJobExtractor(logger)
+		logger.Info("Job extractor enabled")
+	}
+
 	return classifier.Config{
 		Version:         "1.0.0",
 		MinQualityScore: defaultMinQualityScore50,
@@ -197,6 +210,8 @@ func createClassifierConfig(cfg *config.Config, logger infralogger.Logger) class
 		CoforgeClassifier:       coforgeCC,
 		EntertainmentClassifier: entertainmentCC,
 		AnishinaabeClassifier:   anishinaabeCC,
+		RecipeExtractor:         recipeExtractor,
+		JobExtractor:            jobExtractor,
 		RoutingTable:            cfg.Classification.Routing,
 	}
 }

@@ -5,6 +5,7 @@ import (
 	"net/url"
 	"strings"
 
+	"github.com/jonesrussell/north-cloud/classifier/internal/classifier/jsonld"
 	"github.com/jonesrussell/north-cloud/classifier/internal/domain"
 	infralogger "github.com/north-cloud/infrastructure/logger"
 )
@@ -24,6 +25,8 @@ const (
 	minSummaryCountForListing  = 3
 	// Relaxed heuristic requires higher word count when published date is missing
 	relaxedMinWordCount = 300
+	// Schema.org JSON-LD confidence (exact match = maximum confidence)
+	schemaOrgConfidence = 1.0
 )
 
 // alwaysExcludedPrefixes contains URL path prefixes that always indicate non-article content.
@@ -83,6 +86,11 @@ func NewContentTypeClassifier(logger infralogger.Logger) *ContentTypeClassifier 
 func (c *ContentTypeClassifier) Classify(ctx context.Context, raw *domain.RawContent) (*ContentTypeResult, error) {
 	// Strategy 0a: Use crawler's detected_content_type from meta when present (primary signal)
 	if result := c.classifyFromDetectedType(raw); result != nil {
+		return result, nil
+	}
+
+	// Strategy 0a.5: Check Schema.org JSON-LD structured data (high precision, early exit)
+	if result := c.classifyFromSchemaOrg(raw); result != nil {
 		return result, nil
 	}
 
@@ -355,6 +363,45 @@ func (c *ContentTypeClassifier) classifyFromDetectedType(raw *domain.RawContent)
 		Method:     "detected_content_type",
 		Reason:     "Crawler detected structured content type",
 	}
+}
+
+// classifyFromSchemaOrg checks for Schema.org JSON-LD structured data in raw HTML.
+// Returns non-nil for Recipe and JobPosting types, nil otherwise.
+func (c *ContentTypeClassifier) classifyFromSchemaOrg(raw *domain.RawContent) *ContentTypeResult {
+	if raw.RawHTML == "" {
+		return nil
+	}
+
+	blocks := jsonld.Extract(raw.RawHTML, nil)
+	if len(blocks) == 0 {
+		return nil
+	}
+
+	if jsonld.FindByType(blocks, "Recipe") != nil {
+		c.logger.Debug("Content type detected via Schema.org Recipe",
+			infralogger.String("content_id", raw.ID),
+		)
+		return &ContentTypeResult{
+			Type:       domain.ContentTypeRecipe,
+			Confidence: schemaOrgConfidence,
+			Method:     "schema_org",
+			Reason:     "Schema.org JSON-LD Recipe type detected",
+		}
+	}
+
+	if jsonld.FindByType(blocks, "JobPosting") != nil {
+		c.logger.Debug("Content type detected via Schema.org JobPosting",
+			infralogger.String("content_id", raw.ID),
+		)
+		return &ContentTypeResult{
+			Type:       domain.ContentTypeJob,
+			Confidence: schemaOrgConfidence,
+			Method:     "schema_org",
+			Reason:     "Schema.org JSON-LD JobPosting type detected",
+		}
+	}
+
+	return nil
 }
 
 // isNonArticleURL checks if the URL matches patterns that indicate non-article content

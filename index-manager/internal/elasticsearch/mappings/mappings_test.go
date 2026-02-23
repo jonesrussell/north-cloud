@@ -289,6 +289,7 @@ func TestGetClassifiedContentMapping_ClassificationFields(t *testing.T) {
 	classificationFields := []string{
 		"content_type", "content_subtype", "quality_score", "quality_factors",
 		"topics", "topic_scores", "crime", "location", "mining", "coforge",
+		"anishinaabe", "recipe", "job",
 		"source_reputation", "source_category",
 		"classifier_version", "classification_method", "model_version", "confidence",
 	}
@@ -397,6 +398,62 @@ func TestGetClassifiedContentMapping_NestedCoforgeFields(t *testing.T) {
 	for _, field := range expectedCoforgeFields {
 		if _, exists := coforgeProps[field]; !exists {
 			t.Errorf("coforge missing field %q", field)
+		}
+	}
+}
+
+func TestGetClassifiedContentMapping_NestedRecipeFields(t *testing.T) {
+	t.Helper()
+
+	mapping := mappings.GetClassifiedContentMapping(1, 1)
+	properties := mapping["mappings"].(map[string]any)["properties"].(map[string]any)
+
+	recipeObj, ok := properties["recipe"].(map[string]any)
+	if !ok {
+		t.Fatal("recipe field missing or not an object")
+	}
+	recipeProps, ok := recipeObj["properties"].(map[string]any)
+	if !ok {
+		t.Fatal("recipe.properties missing")
+	}
+
+	expectedRecipeFields := []string{
+		"extraction_method", "name", "ingredients", "instructions",
+		"prep_time_minutes", "cook_time_minutes", "total_time_minutes",
+		"servings", "category", "cuisine", "calories", "image_url",
+		"rating", "rating_count",
+	}
+	for _, field := range expectedRecipeFields {
+		if _, exists := recipeProps[field]; !exists {
+			t.Errorf("recipe missing field %q", field)
+		}
+	}
+}
+
+func TestGetClassifiedContentMapping_NestedJobFields(t *testing.T) {
+	t.Helper()
+
+	mapping := mappings.GetClassifiedContentMapping(1, 1)
+	properties := mapping["mappings"].(map[string]any)["properties"].(map[string]any)
+
+	jobObj, ok := properties["job"].(map[string]any)
+	if !ok {
+		t.Fatal("job field missing or not an object")
+	}
+	jobProps, ok := jobObj["properties"].(map[string]any)
+	if !ok {
+		t.Fatal("job.properties missing")
+	}
+
+	expectedJobFields := []string{
+		"extraction_method", "title", "company", "location",
+		"salary_min", "salary_max", "salary_currency", "employment_type",
+		"posted_date", "expires_date", "description", "industry",
+		"qualifications", "benefits",
+	}
+	for _, field := range expectedJobFields {
+		if _, exists := jobProps[field]; !exists {
+			t.Errorf("job missing field %q", field)
 		}
 	}
 }

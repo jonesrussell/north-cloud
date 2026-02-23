@@ -8,6 +8,8 @@ import (
 
 	"github.com/jonesrussell/north-cloud/classifier/internal/domain"
 	infralogger "github.com/north-cloud/infrastructure/logger"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // mockLogger implements the Logger interface for testing
@@ -954,4 +956,110 @@ func TestContentTypeClassifier_URLFallbackExactPathMatch(t *testing.T) {
 	if c.isNonArticleURLFallback("https://example.com/local-news/mayor-announces-policy") {
 		t.Error("fallback path /local-news/mayor-announces-policy should not be excluded")
 	}
+}
+
+func TestContentTypeClassifier_SchemaOrgRecipe(t *testing.T) {
+	t.Helper()
+
+	c := NewContentTypeClassifier(&mockLogger{})
+
+	raw := &domain.RawContent{
+		ID: "test-schema-recipe",
+		RawHTML: `<html><head>
+		<script type="application/ld+json">{"@type": "Recipe", "name": "Test Recipe"}</script>
+		</head><body></body></html>`,
+		OGType: "article", // Should be overridden by Schema.org
+		Title:  "Test Recipe",
+	}
+
+	result, err := c.Classify(context.Background(), raw)
+	require.NoError(t, err)
+	assert.Equal(t, domain.ContentTypeRecipe, result.Type)
+	assert.Equal(t, "schema_org", result.Method)
+	assert.InDelta(t, schemaOrgConfidence, result.Confidence, 0.001)
+}
+
+func TestContentTypeClassifier_SchemaOrgJobPosting(t *testing.T) {
+	t.Helper()
+
+	c := NewContentTypeClassifier(&mockLogger{})
+
+	raw := &domain.RawContent{
+		ID: "test-schema-job",
+		RawHTML: `<html><head>
+		<script type="application/ld+json">{"@type": "JobPosting", "title": "Developer"}</script>
+		</head><body></body></html>`,
+		Title: "Job Opening",
+	}
+
+	result, err := c.Classify(context.Background(), raw)
+	require.NoError(t, err)
+	assert.Equal(t, domain.ContentTypeJob, result.Type)
+	assert.Equal(t, "schema_org", result.Method)
+}
+
+func TestContentTypeClassifier_SchemaOrgOverridesOGType(t *testing.T) {
+	t.Helper()
+
+	c := NewContentTypeClassifier(&mockLogger{})
+
+	// OG type says "article" but Schema.org says "Recipe" - Schema.org wins
+	raw := &domain.RawContent{
+		ID: "test-schema-override",
+		RawHTML: `<html><head>
+		<script type="application/ld+json">{"@type": "Recipe", "name": "Pasta"}</script>
+		</head><body></body></html>`,
+		OGType:    "article",
+		Title:     "My Pasta Recipe",
+		WordCount: 500,
+	}
+
+	result, err := c.Classify(context.Background(), raw)
+	require.NoError(t, err)
+	assert.Equal(t, domain.ContentTypeRecipe, result.Type)
+	// OG type "article" should NOT have won
+}
+
+func TestContentTypeClassifier_SchemaOrgNoMatchFallsThrough(t *testing.T) {
+	t.Helper()
+
+	c := NewContentTypeClassifier(&mockLogger{})
+
+	// Schema.org has BreadcrumbList but not Recipe or JobPosting - should fall through
+	raw := &domain.RawContent{
+		ID: "test-schema-no-match",
+		RawHTML: `<html><head>
+		<script type="application/ld+json">{"@type": "BreadcrumbList"}</script>
+		</head><body></body></html>`,
+		OGType:    "article",
+		Title:     "Some Article",
+		WordCount: 500,
+	}
+
+	result, err := c.Classify(context.Background(), raw)
+	require.NoError(t, err)
+	// Should fall through to OG type detection, not be recipe/job
+	assert.Equal(t, domain.ContentTypeArticle, result.Type)
+}
+
+func TestContentTypeClassifier_SchemaOrg_EmptyRawHTML(t *testing.T) {
+	t.Helper()
+
+	c := NewContentTypeClassifier(&mockLogger{})
+
+	// Empty RawHTML: no JSON-LD blocks, so Schema.org cannot detect Recipe/Job
+	raw := &domain.RawContent{
+		ID:        "empty-html",
+		RawHTML:   "",
+		Title:     "Some Page",
+		URL:       "https://example.com/page",
+		RawText:   "Some text content.",
+		WordCount: 100,
+	}
+
+	result, err := c.Classify(context.Background(), raw)
+	require.NoError(t, err)
+	// Must not be set from Schema.org recipe/job (no blocks to parse)
+	assert.NotEqual(t, domain.ContentTypeRecipe, result.Type)
+	assert.NotEqual(t, domain.ContentTypeJob, result.Type)
 }

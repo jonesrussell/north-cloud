@@ -201,6 +201,8 @@ func (s *Service) routeArticle(ctx context.Context, article *Article, channels [
 		NewEntertainmentDomain(),
 		NewAnishinaabeeDomain(),
 		NewCoforgeDomain(),
+		NewRecipeDomain(),
+		NewJobDomain(),
 	}
 
 	var publishedChannels []string
@@ -319,8 +321,8 @@ func (s *Service) fetchArticles(ctx context.Context, _ []string) ([]Article, err
 func (s *Service) buildESQuery() map[string]any {
 	mustClauses := []map[string]any{
 		{
-			"term": map[string]any{
-				"content_type": "article",
+			"terms": map[string]any{
+				"content_type": []string{"article", "recipe", "job"},
 			},
 		},
 	}
@@ -410,6 +412,10 @@ func (s *Service) publishToChannel(ctx context.Context, article *Article, channe
 		"entertainment_categories":        article.EntertainmentCategories,
 		"entertainment_homepage_eligible": article.EntertainmentHomepageEligible,
 		"entertainment":                   article.Entertainment,
+		// Recipe extraction
+		"recipe": article.Recipe,
+		// Job extraction
+		"job": article.Job,
 		// Location detection
 		"location_city":       article.LocationCity,
 		"location_province":   article.LocationProvince,

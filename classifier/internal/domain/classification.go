@@ -49,6 +49,12 @@ type ClassificationResult struct {
 
 	// Location detection (content-based)
 	Location *LocationResult `json:"location,omitempty"`
+
+	// Recipe structured extraction (optional)
+	Recipe *RecipeResult `json:"recipe,omitempty"`
+
+	// Job structured extraction (optional)
+	Job *JobResult `json:"job,omitempty"`
 }
 
 // AnishinaabeResult holds Anishinaabe hybrid classification results.
@@ -176,6 +182,12 @@ type ClassifiedContent struct {
 	// Location detection (content-based)
 	Location *LocationResult `json:"location,omitempty"`
 
+	// Recipe structured extraction (optional)
+	Recipe *RecipeResult `json:"recipe,omitempty"`
+
+	// Job structured extraction (optional)
+	Job *JobResult `json:"job,omitempty"`
+
 	// Publisher compatibility aliases
 	// These duplicate RawContent fields for backward compatibility with publisher
 	Body   string `json:"body"`   // Alias for RawText (publisher expects "body")
@@ -189,6 +201,7 @@ const (
 	ContentTypeVideo   = "video"
 	ContentTypeImage   = "image"
 	ContentTypeJob     = "job"
+	ContentTypeRecipe  = "recipe"
 )
 
 // ContentSubtype constants (granularity within article-like content).
@@ -248,4 +261,42 @@ func (l *LocationResult) GetSpecificity() string {
 		return SpecificityCountry
 	}
 	return SpecificityUnknown
+}
+
+// RecipeResult holds structured recipe extraction results.
+// Non-nil RecipeResult values always have ExtractionMethod set by the extractors ("schema_org" or "heuristic").
+type RecipeResult struct {
+	ExtractionMethod string   `json:"extraction_method"` // "schema_org" or "heuristic"
+	Name             string   `json:"name,omitempty"`
+	Ingredients      []string `json:"ingredients,omitempty"`
+	Instructions     string   `json:"instructions,omitempty"`
+	PrepTimeMinutes  *int     `json:"prep_time_minutes,omitempty"`
+	CookTimeMinutes  *int     `json:"cook_time_minutes,omitempty"`
+	TotalTimeMinutes *int     `json:"total_time_minutes,omitempty"`
+	Servings         string   `json:"servings,omitempty"`
+	Category         string   `json:"category,omitempty"`
+	Cuisine          string   `json:"cuisine,omitempty"`
+	Calories         string   `json:"calories,omitempty"`
+	ImageURL         string   `json:"image_url,omitempty"`
+	Rating           *float64 `json:"rating,omitempty"`
+	RatingCount      *int     `json:"rating_count,omitempty"`
+}
+
+// JobResult holds structured job posting extraction results.
+// Non-nil JobResult values always have ExtractionMethod set by the extractors ("schema_org" or "heuristic").
+type JobResult struct {
+	ExtractionMethod string   `json:"extraction_method"` // "schema_org" or "heuristic"
+	Title            string   `json:"title,omitempty"`
+	Company          string   `json:"company,omitempty"`
+	Location         string   `json:"location,omitempty"`
+	SalaryMin        *float64 `json:"salary_min,omitempty"`
+	SalaryMax        *float64 `json:"salary_max,omitempty"`
+	SalaryCurrency   string   `json:"salary_currency,omitempty"`
+	EmploymentType   string   `json:"employment_type,omitempty"` // full_time, part_time, contract, temporary, internship
+	PostedDate       string   `json:"posted_date,omitempty"`
+	ExpiresDate      string   `json:"expires_date,omitempty"`
+	Description      string   `json:"description,omitempty"`
+	Industry         string   `json:"industry,omitempty"`
+	Qualifications   string   `json:"qualifications,omitempty"`
+	Benefits         string   `json:"benefits,omitempty"`
 }

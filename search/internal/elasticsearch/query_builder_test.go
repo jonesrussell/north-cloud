@@ -268,3 +268,190 @@ func TestQueryBuilder_Build_SortOptions(t *testing.T) {
 		})
 	}
 }
+
+func TestQueryBuilder_Build_NilFilters(t *testing.T) {
+	t.Helper()
+
+	cfg := getTestConfig()
+	qb := elasticsearch.NewQueryBuilder(cfg)
+
+	req := getDefaultSearchRequest("test")
+	req.Filters = nil
+
+	query := qb.Build(req)
+	if query == nil {
+		t.Fatal("Build() returned nil for nil filters")
+	}
+	// Should not panic; filter clause may be absent or empty
+	queryField, ok := query["query"].(map[string]any)
+	if !ok {
+		t.Fatal("Build() 'query' field not a map")
+	}
+	_ = queryField["bool"] // may or may not have filter
+}
+
+func TestQueryBuilder_Build_RecipeFilters(t *testing.T) {
+	t.Helper()
+
+	cfg := getTestConfig()
+	qb := elasticsearch.NewQueryBuilder(cfg)
+
+	maxPrep := 30
+	maxTotal := 60
+	req := getDefaultSearchRequest("test")
+	req.Filters = &domain.Filters{
+		RecipeCuisine:  []string{"italian", "french"},
+		RecipeCategory: []string{"dessert"},
+		MaxPrepTime:    &maxPrep,
+		MaxTotalTime:   &maxTotal,
+	}
+
+	query := qb.Build(req)
+	if query == nil {
+		t.Fatal("Build() returned nil")
+	}
+
+	boolQuery := getBoolQuery(t, query)
+	filters := getFilterSlice(t, boolQuery)
+
+	assertFilterTerms(t, filters, "recipe.cuisine", []string{"italian", "french"})
+	assertFilterTerms(t, filters, "recipe.category", []string{"dessert"})
+	assertFilterRangeHasOp(t, filters, "recipe.prep_time_minutes", "lte")
+	assertFilterRangeHasOp(t, filters, "recipe.total_time_minutes", "lte")
+}
+
+func TestQueryBuilder_Build_JobFilters(t *testing.T) {
+	t.Helper()
+
+	cfg := getTestConfig()
+	qb := elasticsearch.NewQueryBuilder(cfg)
+
+	salaryMin := 50000.0
+	req := getDefaultSearchRequest("test")
+	req.Filters = &domain.Filters{
+		JobEmploymentType: []string{"full_time"},
+		JobIndustry:       []string{"technology"},
+		JobLocation:       []string{"Toronto"},
+		SalaryMin:         &salaryMin,
+	}
+
+	query := qb.Build(req)
+	if query == nil {
+		t.Fatal("Build() returned nil")
+	}
+
+	boolQuery := getBoolQuery(t, query)
+	filters := getFilterSlice(t, boolQuery)
+
+	assertFilterTerms(t, filters, "job.employment_type", []string{"full_time"})
+	assertFilterTerms(t, filters, "job.industry", []string{"technology"})
+	assertFilterTerms(t, filters, "job.location", []string{"Toronto"})
+	assertFilterRangeHasOp(t, filters, "job.salary_min", "gte")
+}
+
+func getBoolQuery(t *testing.T, query map[string]any) map[string]any {
+	t.Helper()
+	queryField, ok := query["query"].(map[string]any)
+	if !ok {
+		t.Fatal("'query' not a map")
+	}
+	boolQuery, ok := queryField["bool"].(map[string]any)
+	if !ok {
+		t.Fatal("'bool' not present")
+	}
+	return boolQuery
+}
+
+func getFilterSlice(t *testing.T, boolQuery map[string]any) []any {
+	t.Helper()
+	f, ok := boolQuery["filter"].([]any)
+	if !ok {
+		return nil
+	}
+	return f
+}
+
+func assertFilterTerms(t *testing.T, filters []any, field string, want []string) {
+	t.Helper()
+	for _, c := range filters {
+		m, ok := c.(map[string]any)
+		if !ok {
+			continue
+		}
+		terms, ok := m["terms"].(map[string]any)
+		if !ok {
+			continue
+		}
+		gotAny, ok := terms[field]
+		if !ok {
+			continue
+		}
+		got, ok := gotAny.([]any)
+		if !ok {
+			gotStr, _ := gotAny.([]string)
+			if len(gotStr) == len(want) {
+				return
+			}
+			t.Errorf("terms %s: want %v", field, want)
+			return
+		}
+		if len(got) == len(want) {
+			return
+		}
+		t.Errorf("terms %s: want %v", field, want)
+		return
+	}
+	t.Errorf("no terms filter found for field %s", field)
+}
+
+func assertFilterRangeHasOp(t *testing.T, filters []any, field, op string) {
+	t.Helper()
+	for _, c := range filters {
+		m, ok := c.(map[string]any)
+		if !ok {
+			continue
+		}
+		r, ok := m["range"].(map[string]any)
+		if !ok {
+			continue
+		}
+		fieldRange, ok := r[field].(map[string]any)
+		if !ok {
+			continue
+		}
+		if _, hasOp := fieldRange[op]; hasOp {
+			return
+		}
+	}
+	t.Errorf("no range filter found for %s with op %s", field, op)
+}
+
+func TestQueryBuilder_Build_WithFacets_IncludesRecipeAndJobAggs(t *testing.T) {
+	t.Helper()
+
+	cfg := getTestConfig()
+	qb := elasticsearch.NewQueryBuilder(cfg)
+
+	req := getDefaultSearchRequest("test")
+	req.Options = &domain.Options{
+		IncludeHighlights: false,
+		IncludeFacets:     true,
+	}
+
+	query := qb.Build(req)
+	if query == nil {
+		t.Fatal("Build() returned nil")
+	}
+
+	aggs, ok := query["aggs"].(map[string]any)
+	if !ok {
+		t.Fatal("Build() with facets should have 'aggs' map")
+	}
+
+	wantAggs := []string{"recipe_cuisines", "recipe_categories", "job_types", "job_industries", "job_locations"}
+	for _, name := range wantAggs {
+		if _, has := aggs[name]; !has {
+			t.Errorf("aggs missing %q", name)
+		}
+	}
+}

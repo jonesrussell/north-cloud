@@ -19,6 +19,8 @@ const (
 	qualityRangeMid      = 60
 	qualityRangeHigh     = 80
 	qualityRangeMax      = 101
+	recipeFacetSize      = 20
+	jobFacetSize         = 20
 )
 
 // QueryBuilder builds Elasticsearch queries from search requests
@@ -136,8 +138,12 @@ func (qb *QueryBuilder) buildMultiMatchQuery(query string) map[string]any {
 	}
 }
 
-// buildFilters constructs filter clauses
+// buildFilters constructs filter clauses.
+// Validate() initializes req.Filters so Build() is safe; nil filters return no clauses.
 func (qb *QueryBuilder) buildFilters(filters *domain.Filters) []any {
+	if filters == nil {
+		return nil
+	}
 	var result []any
 
 	// Topics filter - use .keyword subfield for text fields
@@ -214,6 +220,72 @@ func (qb *QueryBuilder) buildFilters(filters *domain.Filters) []any {
 			"range": map[string]any{
 				"crawled_at": dateRange,
 			},
+		})
+	}
+
+	// Recipe and job filters (extracted to stay under funlen limit)
+	result = append(result, qb.buildRecipeFilters(filters)...)
+	result = append(result, qb.buildJobFilters(filters)...)
+
+	return result
+}
+
+// buildRecipeFilters constructs filter clauses for recipe fields
+func (qb *QueryBuilder) buildRecipeFilters(filters *domain.Filters) []any {
+	var result []any
+
+	if len(filters.RecipeCuisine) > 0 {
+		result = append(result, map[string]any{
+			"terms": map[string]any{"recipe.cuisine": filters.RecipeCuisine},
+		})
+	}
+
+	if len(filters.RecipeCategory) > 0 {
+		result = append(result, map[string]any{
+			"terms": map[string]any{"recipe.category": filters.RecipeCategory},
+		})
+	}
+
+	if filters.MaxPrepTime != nil {
+		result = append(result, map[string]any{
+			"range": map[string]any{"recipe.prep_time_minutes": map[string]any{"lte": *filters.MaxPrepTime}},
+		})
+	}
+
+	if filters.MaxTotalTime != nil {
+		result = append(result, map[string]any{
+			"range": map[string]any{"recipe.total_time_minutes": map[string]any{"lte": *filters.MaxTotalTime}},
+		})
+	}
+
+	return result
+}
+
+// buildJobFilters constructs filter clauses for job fields
+func (qb *QueryBuilder) buildJobFilters(filters *domain.Filters) []any {
+	var result []any
+
+	if len(filters.JobEmploymentType) > 0 {
+		result = append(result, map[string]any{
+			"terms": map[string]any{"job.employment_type": filters.JobEmploymentType},
+		})
+	}
+
+	if len(filters.JobIndustry) > 0 {
+		result = append(result, map[string]any{
+			"terms": map[string]any{"job.industry": filters.JobIndustry},
+		})
+	}
+
+	if len(filters.JobLocation) > 0 {
+		result = append(result, map[string]any{
+			"terms": map[string]any{"job.location": filters.JobLocation},
+		})
+	}
+
+	if filters.SalaryMin != nil {
+		result = append(result, map[string]any{
+			"range": map[string]any{"job.salary_min": map[string]any{"gte": *filters.SalaryMin}},
 		})
 	}
 
@@ -355,6 +427,38 @@ func (qb *QueryBuilder) buildAggregations() map[string]any {
 					{"key": "60-79", "from": qualityRangeMid, "to": qualityRangeHigh},
 					{"key": "80-100", "from": qualityRangeHigh, "to": qualityRangeMax},
 				},
+			},
+		},
+		// Recipe facets
+		"recipe_cuisines": map[string]any{
+			"terms": map[string]any{
+				"field": "recipe.cuisine",
+				"size":  recipeFacetSize,
+			},
+		},
+		"recipe_categories": map[string]any{
+			"terms": map[string]any{
+				"field": "recipe.category",
+				"size":  recipeFacetSize,
+			},
+		},
+		// Job facets
+		"job_types": map[string]any{
+			"terms": map[string]any{
+				"field": "job.employment_type",
+				"size":  jobFacetSize,
+			},
+		},
+		"job_industries": map[string]any{
+			"terms": map[string]any{
+				"field": "job.industry",
+				"size":  jobFacetSize,
+			},
+		},
+		"job_locations": map[string]any{
+			"terms": map[string]any{
+				"field": "job.location",
+				"size":  jobFacetSize,
 			},
 		},
 	}

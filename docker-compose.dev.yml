@@ -234,6 +234,8 @@ services:
       ENTERTAINMENT_ML_SERVICE_URL: "http://entertainment-ml:8079"
       ANISHINAABE_ENABLED: "${ANISHINAABE_ENABLED:-false}"
       ANISHINAABE_ML_SERVICE_URL: "http://anishinaabe-ml:8080"
+      RECIPE_ENABLED: "${RECIPE_ENABLED:-true}"
+      JOB_ENABLED: "${JOB_ENABLED:-true}"
     volumes:
       - ./classifier:/app
       - ./classifier/config.yml:/app/config.yml:ro
