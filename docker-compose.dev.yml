@@ -81,6 +81,8 @@ services:
       CRAWLER_SOURCES_API_URL: "${CRAWLER_SOURCES_API_URL:-http://source-manager:8050/api/v1/sources}"
       SOURCE_MANAGER_URL: "${SOURCE_MANAGER_URL:-http://source-manager:8050}"
       PIPELINE_URL: "${PIPELINE_URL:-}"
+      # Interval Scheduler (legacy Colly-based — disabled by default, frontier + feed poller handles all crawling)
+      CRAWLER_SCHEDULER_ENABLED: "${CRAWLER_SCHEDULER_ENABLED:-false}"
       # Frontier Worker Pool + Feed Poller
       CRAWLER_FEED_POLL_ENABLED: "${CRAWLER_FEED_POLL_ENABLED:-true}"
       CRAWLER_FEED_DISCOVERY_ENABLED: "${CRAWLER_FEED_DISCOVERY_ENABLED:-true}"

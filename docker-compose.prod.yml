@@ -64,6 +64,8 @@ services:
       JOB_LOGS_REDIS_ENABLED: "${JOB_LOGS_REDIS_ENABLED:-true}"
       JOB_LOGS_REDIS_KEY_PREFIX: "${JOB_LOGS_REDIS_KEY_PREFIX:-logs}"
       JOB_LOGS_REDIS_TTL_SECONDS: "${JOB_LOGS_REDIS_TTL_SECONDS:-86400}"
+      # Interval Scheduler (legacy Colly-based — disabled by default, frontier + feed poller handles all crawling)
+      CRAWLER_SCHEDULER_ENABLED: "${CRAWLER_SCHEDULER_ENABLED:-false}"
       # Frontier Worker Pool + Feed Poller
       CRAWLER_FEED_POLL_ENABLED: "${CRAWLER_FEED_POLL_ENABLED:-true}"
       CRAWLER_FEED_DISCOVERY_ENABLED: "${CRAWLER_FEED_DISCOVERY_ENABLED:-true}"

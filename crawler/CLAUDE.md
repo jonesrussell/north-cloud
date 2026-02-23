@@ -309,6 +309,8 @@ See [README.md](README.md) for the full environment variable table. Key variable
 
 10. **Feed discovery vs. feed polling**: `CRAWLER_FEED_DISCOVERY_ENABLED` auto-discovers RSS/Atom feeds from source URLs. `CRAWLER_FEED_POLL_ENABLED` polls discovered feeds. Both default to `true` — set either to `false` to disable the corresponding behaviour.
 
+11. **Interval scheduler is disabled by default**: The legacy Colly-based interval scheduler (`internal/scheduler/`) is disabled via `CRAWLER_SCHEDULER_ENABLED=false`. All crawling is handled by the frontier worker pool + feed poller. Set `CRAWLER_SCHEDULER_ENABLED=true` to re-enable for manual job management. API endpoints (`/api/v1/jobs/:id/{pause,resume,cancel,retry}`) return 503 "Scheduler not available" when disabled.
+
 ## Testing
 
 ```bash

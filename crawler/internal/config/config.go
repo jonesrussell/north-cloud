@@ -44,6 +44,8 @@ type Interface interface {
 	GetFeedConfig() *FeedConfig
 	// GetFetcherConfig returns the frontier fetcher configuration.
 	GetFetcherConfig() *fetcher.Config
+	// GetSchedulerConfig returns the interval scheduler configuration.
+	GetSchedulerConfig() *SchedulerConfig
 	// GetPipelineURL returns the pipeline service URL (empty = disabled).
 	GetPipelineURL() string
 	// Validate validates the configuration based on the current command.
@@ -111,6 +113,8 @@ type Config struct {
 	Feed *FeedConfig `yaml:"feed"`
 	// Fetcher holds frontier worker pool configuration
 	Fetcher *fetcher.Config `yaml:"fetcher"`
+	// Scheduler holds interval scheduler configuration
+	Scheduler *SchedulerConfig `yaml:"scheduler"`
 }
 
 // AuthConfig holds authentication configuration.
@@ -143,6 +147,11 @@ type SourceManagerConfig struct {
 // PipelineConfig holds pipeline observability configuration.
 type PipelineConfig struct {
 	URL string `env:"PIPELINE_URL" yaml:"url"`
+}
+
+// SchedulerConfig holds interval scheduler configuration.
+type SchedulerConfig struct {
+	Enabled bool `env:"CRAWLER_SCHEDULER_ENABLED" yaml:"enabled"`
 }
 
 // FeedConfig holds feed polling and discovery configuration.
@@ -289,6 +298,11 @@ func setDefaults(cfg *Config) {
 	// Set default feed polling and discovery configuration
 	setFeedDefaults(cfg)
 
+	// Set default scheduler configuration (disabled by default — frontier + feed poller handles all crawling)
+	if cfg.Scheduler == nil {
+		cfg.Scheduler = &SchedulerConfig{Enabled: false}
+	}
+
 	// Set default fetcher configuration
 	if cfg.Fetcher == nil {
 		cfg.Fetcher = &fetcher.Config{}
@@ -426,6 +440,14 @@ func (c *Config) GetFetcherConfig() *fetcher.Config {
 	}
 	withDefaults := c.Fetcher.WithDefaults()
 	return &withDefaults
+}
+
+// GetSchedulerConfig returns the interval scheduler configuration.
+func (c *Config) GetSchedulerConfig() *SchedulerConfig {
+	if c.Scheduler == nil {
+		return &SchedulerConfig{Enabled: false}
+	}
+	return c.Scheduler
 }
 
 // GetPipelineURL returns the pipeline service URL (empty = disabled).

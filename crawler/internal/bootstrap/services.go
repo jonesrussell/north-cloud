@@ -110,8 +110,13 @@ func SetupServices(
 		frontierForFeed = wrapped
 	}
 
-	// Create and start scheduler
-	intervalScheduler := createAndStartScheduler(deps, storage, db, frontierForSubmission)
+	// Create and start scheduler (if enabled)
+	var intervalScheduler *scheduler.IntervalScheduler
+	if deps.Config.GetSchedulerConfig().Enabled {
+		intervalScheduler = createAndStartScheduler(deps, storage, db, frontierForSubmission)
+	} else {
+		deps.Logger.Info("Interval scheduler disabled (CRAWLER_SCHEDULER_ENABLED=false)")
+	}
 	if intervalScheduler != nil {
 		jobsHandler.SetScheduler(intervalScheduler)
 		discoveredLinksHandler.SetScheduler(intervalScheduler)
