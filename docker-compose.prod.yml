@@ -36,8 +36,8 @@ services:
     environment:
       POSTGRES_CRAWLER_HOST: postgres-crawler
       POSTGRES_CRAWLER_PORT: 5432
-      POSTGRES_CRAWLER_USER: "${POSTGRES_CRAWLER_USER:-postgres}"
-      POSTGRES_CRAWLER_PASSWORD: "${POSTGRES_CRAWLER_PASSWORD:-postgres}"
+      POSTGRES_CRAWLER_USER: "${POSTGRES_CRAWLER_USER}"
+      POSTGRES_CRAWLER_PASSWORD: "${POSTGRES_CRAWLER_PASSWORD}"
       POSTGRES_CRAWLER_DB: "${POSTGRES_CRAWLER_DB:-crawler}"
       POSTGRES_CRAWLER_SSLMODE: disable
       ELASTICSEARCH_ADDRESSES: http://elasticsearch:9200
@@ -148,8 +148,8 @@ services:
     environment:
       POSTGRES_PUBLISHER_HOST: postgres-publisher
       POSTGRES_PUBLISHER_PORT: 5432
-      POSTGRES_PUBLISHER_USER: "${POSTGRES_PUBLISHER_USER:-postgres}"
-      POSTGRES_PUBLISHER_PASSWORD: "${POSTGRES_PUBLISHER_PASSWORD:-postgres}"
+      POSTGRES_PUBLISHER_USER: "${POSTGRES_PUBLISHER_USER}"
+      POSTGRES_PUBLISHER_PASSWORD: "${POSTGRES_PUBLISHER_PASSWORD}"
       POSTGRES_PUBLISHER_DB: "${POSTGRES_PUBLISHER_DB:-publisher}"
       POSTGRES_PUBLISHER_SSLMODE: disable
       PUBLISHER_PORT: 8070
@@ -201,8 +201,8 @@ services:
     environment:
       POSTGRES_HOST: postgres-classifier
       POSTGRES_PORT: 5432
-      POSTGRES_USER: "${POSTGRES_CLASSIFIER_USER:-postgres}"
-      POSTGRES_PASSWORD: "${POSTGRES_CLASSIFIER_PASSWORD:-postgres}"
+      POSTGRES_USER: "${POSTGRES_CLASSIFIER_USER}"
+      POSTGRES_PASSWORD: "${POSTGRES_CLASSIFIER_PASSWORD}"
       POSTGRES_DB: "${POSTGRES_CLASSIFIER_DB:-classifier}"
       POSTGRES_SSLMODE: disable
       ELASTICSEARCH_URL: http://elasticsearch:9200
@@ -277,8 +277,8 @@ services:
     environment:
       POSTGRES_PIPELINE_HOST: postgres-pipeline
       POSTGRES_PIPELINE_PORT: 5432
-      POSTGRES_PIPELINE_USER: "${POSTGRES_PIPELINE_USER:-postgres}"
-      POSTGRES_PIPELINE_PASSWORD: "${POSTGRES_PIPELINE_PASSWORD:-postgres}"
+      POSTGRES_PIPELINE_USER: "${POSTGRES_PIPELINE_USER}"
+      POSTGRES_PIPELINE_PASSWORD: "${POSTGRES_PIPELINE_PASSWORD}"
       POSTGRES_PIPELINE_DB: "${POSTGRES_PIPELINE_DB:-pipeline}"
       POSTGRES_PIPELINE_SSLMODE: disable
       PIPELINE_PORT: 8075
@@ -507,6 +507,60 @@ services:
       timeout: 10s
       retries: 3
       start_period: 10s
+
+  # ============================================================
+  # PostgreSQL (Prod Overrides — require .env, no defaults)
+  # ============================================================
+  postgres-source-manager:
+    environment:
+      POSTGRES_USER: "${POSTGRES_SOURCE_MANAGER_USER}"
+      POSTGRES_PASSWORD: "${POSTGRES_SOURCE_MANAGER_PASSWORD}"
+
+  postgres-crawler:
+    environment:
+      POSTGRES_USER: "${POSTGRES_CRAWLER_USER}"
+      POSTGRES_PASSWORD: "${POSTGRES_CRAWLER_PASSWORD}"
+
+  postgres-classifier:
+    environment:
+      POSTGRES_USER: "${POSTGRES_CLASSIFIER_USER}"
+      POSTGRES_PASSWORD: "${POSTGRES_CLASSIFIER_PASSWORD}"
+
+  postgres-index-manager:
+    environment:
+      POSTGRES_USER: "${POSTGRES_INDEX_MANAGER_USER}"
+      POSTGRES_PASSWORD: "${POSTGRES_INDEX_MANAGER_PASSWORD}"
+
+  postgres-publisher:
+    environment:
+      POSTGRES_USER: "${POSTGRES_PUBLISHER_USER}"
+      POSTGRES_PASSWORD: "${POSTGRES_PUBLISHER_PASSWORD}"
+
+  postgres-pipeline:
+    environment:
+      POSTGRES_USER: "${POSTGRES_PIPELINE_USER}"
+      POSTGRES_PASSWORD: "${POSTGRES_PIPELINE_PASSWORD}"
+
+  postgres-click-tracker:
+    environment:
+      POSTGRES_USER: "${POSTGRES_CLICK_TRACKER_USER}"
+      POSTGRES_PASSWORD: "${POSTGRES_CLICK_TRACKER_PASSWORD}"
+
+  # ============================================================
+  # Click Tracker (Prod Overrides — require .env, no defaults)
+  # ============================================================
+  click-tracker:
+    environment:
+      POSTGRES_CLICK_TRACKER_USER: "${POSTGRES_CLICK_TRACKER_USER}"
+      POSTGRES_CLICK_TRACKER_PASSWORD: "${POSTGRES_CLICK_TRACKER_PASSWORD}"
+
+  # ============================================================
+  # MinIO (Prod Overrides — require .env, no defaults)
+  # ============================================================
+  minio:
+    environment:
+      MINIO_ROOT_USER: "${MINIO_ROOT_USER}"
+      MINIO_ROOT_PASSWORD: "${MINIO_ROOT_PASSWORD}"
 
   # ============================================================
   # Elasticsearch (Prod Overrides)
