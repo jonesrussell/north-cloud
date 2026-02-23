@@ -56,6 +56,28 @@ The plan recommends testing selectors per source when a site structure is non-st
 2. Call **POST /api/v1/sources/test-crawl** with a sample article URL and selectors (see source-manager CLAUDE.md). Adjust selectors if needed.
 3. Then add the source (via the script or manually) using the validated selectors. The script uses a single default selector set; for custom selectors you’d add the source via the dashboard or API and then create the crawler job separately.
 
+## Scheduler + feed strategy (recommended)
+
+To get **immediate crawling** of all sources, **full ingestion coverage**, and a **flexible model** for PipelineX (“crawl anything”, feed-only, hybrid), use this sequence:
+
+1. **Re-enable the interval scheduler**
+   - In `.env` on the North Cloud server set:
+     - `CRAWLER_SCHEDULER_ENABLED=true`
+   - Restart the crawler:
+     - `docker compose -f docker-compose.base.yml -f docker-compose.prod.yml up -d crawler`
+   - The 43 Anishinaabe jobs will run on their 6h schedule; the scheduler seeds each job’s URL and activates link discovery.
+
+2. **Let the 43 sources crawl at least once**
+   - This seeds the frontier and establishes baseline coverage.
+
+3. **(Optional) Add feed URLs gradually**
+   - As you identify RSS/Atom feeds, add `feed_url` to the source (via source-manager API or dashboard, or by adding `feed_url` to **scripts/anishinaabe-sources-data.json** and re-running the script for net-new sources).
+   - The feed poller will then take over for those sources and reduce load while keeping coverage.
+
+4. **Feed discovery**
+   - Ensure `CRAWLER_FEED_DISCOVERY_ENABLED=true` (default in docker-compose.prod.yml) so the crawler can auto-discover feeds from source URLs and set `feed_url` on sources.
+   - **TODO:** Evaluate feed discovery behaviour asap (e.g. success rate, which sites get a feed_url set, impact on scheduler vs feed poller load).
+
 ## Diidjaaheer
 
 - No env or code changes are required on Diidjaaheer (deployer@coforge.xyz, diidjaaheer/current).
