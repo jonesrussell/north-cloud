@@ -279,7 +279,7 @@ func (s *Server) handlePromptsList(_ *Request, id any) *Response {
 	prompts := getAllPrompts()
 	result := map[string]any{
 		"prompts":    prompts,
-		"nextCursor": nil,
+		"nextCursor": "",
 	}
 	resultJSON, err := json.Marshal(result)
 	if err != nil {
