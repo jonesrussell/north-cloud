@@ -43,10 +43,7 @@ func (r *SourceRepository) Create(ctx context.Context, source *models.Source) er
 		return fmt.Errorf("marshal time: %w", err)
 	}
 
-	extractionProfileJSON, extractionErr := marshalExtractionProfile(source.ExtractionProfile)
-	if extractionErr != nil {
-		return fmt.Errorf("marshal extraction_profile: %w", extractionErr)
-	}
+	extractionProfileJSON := marshalExtractionProfile(source.ExtractionProfile)
 
 	query := `
 		INSERT INTO sources (
@@ -88,11 +85,11 @@ func (r *SourceRepository) Create(ctx context.Context, source *models.Source) er
 }
 
 // marshalExtractionProfile returns bytes for JSONB storage; nil if empty.
-func marshalExtractionProfile(e *models.ExtractionProfileJSON) ([]byte, error) {
+func marshalExtractionProfile(e *models.ExtractionProfileJSON) []byte {
 	if e == nil || len(*e) == 0 {
-		return nil, nil
+		return nil
 	}
-	return []byte(*e), nil
+	return []byte(*e)
 }
 
 func (r *SourceRepository) GetByID(ctx context.Context, id string) (*models.Source, error) {
@@ -161,7 +158,7 @@ func (r *SourceRepository) GetByID(ctx context.Context, id string) (*models.Sour
 // Used by the Source Identity Resolver. Returns nil, nil when no source is found.
 func (r *SourceRepository) GetByIdentityKey(ctx context.Context, identityKey string) (*models.Source, error) {
 	if identityKey == "" {
-		return nil, nil
+		return nil, nil //nolint:nilnil // nil,nil = "not found" per interface contract
 	}
 	query := `
 		SELECT id, name, url, rate_limit, max_depth,
@@ -182,7 +179,7 @@ func (r *SourceRepository) GetByIdentityKey(ctx context.Context, identityKey str
 	defer rows.Close()
 
 	if !rows.Next() {
-		return nil, nil
+		return nil, nil //nolint:nilnil // nil,nil = "not found" per interface contract
 	}
 	source, scanErr := scanSourceRow(rows)
 	if scanErr != nil {
@@ -402,10 +399,7 @@ func (r *SourceRepository) Update(ctx context.Context, source *models.Source) er
 		return fmt.Errorf("marshal time: %w", err)
 	}
 
-	extractionProfileJSON, extractionErr := marshalExtractionProfile(source.ExtractionProfile)
-	if extractionErr != nil {
-		return fmt.Errorf("marshal extraction_profile: %w", extractionErr)
-	}
+	extractionProfileJSON := marshalExtractionProfile(source.ExtractionProfile)
 
 	query := `
 		UPDATE sources

@@ -30,7 +30,7 @@ type LogEntry struct {
 	OccurredAt time.Time
 }
 
-// Insert appends a decision log entry. OccurredAt defaults to now if zero.
+// Insert appends a decision log entry. The occurred_at column defaults to NOW() in the database.
 func (r *DecisionLogRepository) Insert(ctx context.Context, stage, reason string, inputs, outputs map[string]any) error {
 	if inputs == nil {
 		inputs = map[string]any{}
@@ -56,7 +56,10 @@ func (r *DecisionLogRepository) Insert(ctx context.Context, stage, reason string
 }
 
 // InsertWithTime is like Insert but sets occurred_at explicitly (for replay/audit).
-func (r *DecisionLogRepository) InsertWithTime(ctx context.Context, occurredAt time.Time, stage, reason string, inputs, outputs map[string]any) error {
+func (r *DecisionLogRepository) InsertWithTime(
+	ctx context.Context, occurredAt time.Time,
+	stage, reason string, inputs, outputs map[string]any,
+) error {
 	if inputs == nil {
 		inputs = map[string]any{}
 	}

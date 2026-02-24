@@ -14,14 +14,7 @@ import (
 	"github.com/jonesrussell/north-cloud/crawler/internal/discovery"
 )
 
-const (
-	candidateStatusPending    = "pending"
-	candidateStatusApproved   = "approved"
-	candidateStatusRejected   = "rejected"
-	candidateStatusProcessing = "processing"
-)
-
-// CandidateRepository persists source candidates and discovery decision log.
+// CandidateRepository persists source candidates for the Source Candidate Pipeline.
 type CandidateRepository struct {
 	db *sqlx.DB
 }
@@ -43,7 +36,11 @@ func (r *CandidateRepository) Create(ctx context.Context, c *discovery.SourceCan
 	}
 
 	query := `
-		INSERT INTO source_candidates (canonical_url, identity_key, referring_source_id, enrichment, risk_score, risk_reasons, status, approved_at, approved_by, created_source_id, created_at, updated_at)
+		INSERT INTO source_candidates
+			(canonical_url, identity_key, referring_source_id,
+			 enrichment, risk_score, risk_reasons, status,
+			 approved_at, approved_by, created_source_id,
+			 created_at, updated_at)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
 		RETURNING id, created_at, updated_at
 	`
@@ -64,6 +61,12 @@ func (r *CandidateRepository) Create(ctx context.Context, c *discovery.SourceCan
 	return nil
 }
 
+// candidateSelectColumns lists the columns for source_candidates SELECTs.
+const candidateSelectColumns = `id, canonical_url, identity_key,
+		referring_source_id, enrichment, risk_score, risk_reasons,
+		status, approved_at, approved_by, created_source_id,
+		created_at, updated_at`
+
 // candidateDBRow is the row type for source_candidates SELECTs.
 type candidateDBRow struct {
 	ID                string     `db:"id"`
@@ -83,15 +86,13 @@ type candidateDBRow struct {
 
 // GetByID returns a candidate by ID, or nil if not found.
 func (r *CandidateRepository) GetByID(ctx context.Context, id string) (*discovery.SourceCandidate, error) {
-	query := `
-		SELECT id, canonical_url, identity_key, referring_source_id, enrichment, risk_score, risk_reasons, status, approved_at, approved_by, created_source_id, created_at, updated_at
-		FROM source_candidates WHERE id = $1
-	`
+	query := `SELECT ` + candidateSelectColumns + `
+		FROM source_candidates WHERE id = $1`
 	var row candidateDBRow
 	err := r.db.GetContext(ctx, &row, query, id)
 	if err != nil {
 		if isNoRows(err) {
-			return nil, nil
+			return nil, nil //nolint:nilnil // nil,nil = "not found" per interface contract
 		}
 		return nil, fmt.Errorf("get candidate: %w", err)
 	}
@@ -99,16 +100,17 @@ func (r *CandidateRepository) GetByID(ctx context.Context, id string) (*discover
 }
 
 // GetPendingByIdentityKey returns a pending candidate with the given identity_key, or nil.
-func (r *CandidateRepository) GetPendingByIdentityKey(ctx context.Context, identityKey string) (*discovery.SourceCandidate, error) {
-	query := `
-		SELECT id, canonical_url, identity_key, referring_source_id, enrichment, risk_score, risk_reasons, status, approved_at, approved_by, created_source_id, created_at, updated_at
-		FROM source_candidates WHERE identity_key = $1 AND status = $2
-	`
+func (r *CandidateRepository) GetPendingByIdentityKey(
+	ctx context.Context, identityKey string,
+) (*discovery.SourceCandidate, error) {
+	query := `SELECT ` + candidateSelectColumns + `
+		FROM source_candidates
+		WHERE identity_key = $1 AND status = $2`
 	var row candidateDBRow
-	err := r.db.GetContext(ctx, &row, query, identityKey, candidateStatusPending)
+	err := r.db.GetContext(ctx, &row, query, identityKey, string(discovery.CandidateStatusPending))
 	if err != nil {
 		if isNoRows(err) {
-			return nil, nil
+			return nil, nil //nolint:nilnil // nil,nil = "not found" per interface contract
 		}
 		return nil, fmt.Errorf("get pending candidate by identity_key: %w", err)
 	}
@@ -119,7 +121,7 @@ const defaultListPendingLimit = 50
 
 // ListPending returns pending candidates, up to limit, for approval queue.
 func (r *CandidateRepository) ListPending(ctx context.Context, limit int) ([]*discovery.SourceCandidate, error) {
-	return r.ListByStatus(ctx, candidateStatusPending, limit)
+	return r.ListByStatus(ctx, string(discovery.CandidateStatusPending), limit)
 }
 
 // ListByStatus returns candidates with the given status, up to limit.
@@ -127,18 +129,17 @@ func (r *CandidateRepository) ListByStatus(ctx context.Context, status string, l
 	if limit <= 0 {
 		limit = defaultListPendingLimit
 	}
-	query := `
-		SELECT id, canonical_url, identity_key, referring_source_id, enrichment, risk_score, risk_reasons, status, approved_at, approved_by, created_source_id, created_at, updated_at
-		FROM source_candidates WHERE status = $1 ORDER BY created_at ASC LIMIT $2
-	`
+	query := `SELECT ` + candidateSelectColumns + `
+		FROM source_candidates
+		WHERE status = $1 ORDER BY created_at ASC LIMIT $2`
 	var rows []candidateDBRow
 	err := r.db.SelectContext(ctx, &rows, query, status, limit)
 	if err != nil {
 		return nil, fmt.Errorf("list candidates by status: %w", err)
 	}
 	out := make([]*discovery.SourceCandidate, 0, len(rows))
-	for _, row := range rows {
-		c, scanErr := scanCandidateRow(candidateDBRowToRow(row))
+	for i := range rows {
+		c, scanErr := scanCandidateRow(candidateDBRowToRow(rows[i]))
 		if scanErr != nil {
 			return nil, scanErr
 		}
@@ -156,7 +157,10 @@ func (r *CandidateRepository) UpdateStatus(ctx context.Context, id, status strin
 	if err != nil {
 		return fmt.Errorf("update candidate status: %w", err)
 	}
-	n, _ := result.RowsAffected()
+	n, rowsErr := result.RowsAffected()
+	if rowsErr != nil {
+		return fmt.Errorf("check rows affected for candidate %s: %w", id, rowsErr)
+	}
 	if n == 0 {
 		return fmt.Errorf("candidate not found: %s", id)
 	}
@@ -180,12 +184,7 @@ type candidateRow struct {
 }
 
 func candidateDBRowToRow(r candidateDBRow) candidateRow {
-	return candidateRow{
-		ID: r.ID, CanonicalURL: r.CanonicalURL, IdentityKey: r.IdentityKey, ReferringSourceID: r.ReferringSourceID,
-		Enrichment: r.Enrichment, RiskScore: r.RiskScore, RiskReasons: r.RiskReasons, Status: r.Status,
-		ApprovedAt: r.ApprovedAt, ApprovedBy: r.ApprovedBy, CreatedSourceID: r.CreatedSourceID,
-		CreatedAt: r.CreatedAt, UpdatedAt: r.UpdatedAt,
-	}
+	return candidateRow(r)
 }
 
 func scanCandidateRow(row candidateRow) (*discovery.SourceCandidate, error) {

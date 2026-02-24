@@ -5,6 +5,7 @@ package discovery
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/url"
 	"path"
@@ -12,6 +13,11 @@ import (
 
 	"github.com/jonesrussell/north-cloud/crawler/internal/frontier"
 	"github.com/jonesrussell/north-cloud/crawler/internal/sources/apiclient"
+)
+
+const (
+	platformSubstack = "substack"
+	platformMedium   = "medium"
 )
 
 // ResolvedKind is the outcome of resolving a discovered URL.
@@ -28,10 +34,10 @@ const (
 
 // ResolvedIdentity is the result of the Source Identity Resolver.
 type ResolvedIdentity struct {
-	Kind       ResolvedKind
-	SourceID   string // set when Kind == ResolvedExisting
-	IdentityKey string // set when Kind == New or PlatformSub; used for candidate and lookup
-	Reason     string // explicit reason for audit log
+	Kind        ResolvedKind
+	SourceID    string // set when Kind == ResolvedExisting
+	IdentityKey string // always set; the derived identity key for this URL
+	Reason      string // explicit reason for audit log
 }
 
 // IdentityResolver resolves a discovered URL to an existing source or a new/platform candidate.
@@ -40,9 +46,11 @@ type IdentityResolver struct {
 	log    Logger
 }
 
-// Logger is the minimal interface for logging resolution decisions.
+// Logger is the interface for logging pipeline decisions at various severity levels.
 type Logger interface {
 	Info(msg string, keysAndValues ...any)
+	Warn(msg string, keysAndValues ...any)
+	Error(msg string, keysAndValues ...any)
 }
 
 // NewIdentityResolver creates a new Source Identity Resolver.
@@ -55,7 +63,7 @@ func NewIdentityResolver(client *apiclient.Client, log Logger) *IdentityResolver
 // All decisions are deterministic and logged with an explicit reason.
 func (r *IdentityResolver) Resolve(ctx context.Context, canonicalURL, referringSourceID string) (*ResolvedIdentity, error) {
 	if canonicalURL == "" {
-		return nil, fmt.Errorf("resolve: empty canonical URL")
+		return nil, errors.New("resolve: empty canonical URL")
 	}
 
 	identityKey, keyReason, err := deriveIdentityKey(canonicalURL)
@@ -76,10 +84,10 @@ func (r *IdentityResolver) Resolve(ctx context.Context, canonicalURL, referringS
 			"reason", "identity_key lookup hit",
 		)
 		return &ResolvedIdentity{
-			Kind:       ResolvedExisting,
-			SourceID:   source.ID,
+			Kind:        ResolvedExisting,
+			SourceID:    source.ID,
 			IdentityKey: identityKey,
-			Reason:     "matched existing source_id " + source.ID + " by identity_key",
+			Reason:      "matched existing source_id " + source.ID + " by identity_key",
 		}, nil
 	}
 
@@ -93,9 +101,9 @@ func (r *IdentityResolver) Resolve(ctx context.Context, canonicalURL, referringS
 			"reason", keyReason,
 		)
 		return &ResolvedIdentity{
-			Kind:       ResolvedPlatformSub,
+			Kind:        ResolvedPlatformSub,
 			IdentityKey: identityKey,
-			Reason:     "platform sub-source candidate, identity_key=" + identityKey,
+			Reason:      "platform sub-source candidate, identity_key=" + identityKey,
 		}, nil
 	}
 
@@ -105,23 +113,23 @@ func (r *IdentityResolver) Resolve(ctx context.Context, canonicalURL, referringS
 		"reason", keyReason,
 	)
 	return &ResolvedIdentity{
-		Kind:       ResolvedNew,
+		Kind:        ResolvedNew,
 		IdentityKey: identityKey,
-		Reason:     "new source candidate, identity_key=" + identityKey,
+		Reason:      "new source candidate, identity_key=" + identityKey,
 	}, nil
 }
 
 // deriveIdentityKey returns a deterministic identity key from a canonical URL.
 // Default: host (lowercase) so one logical source per host unless platform rules apply.
 // Platform rules (Substack, Medium, etc.) use "platform:tenant" from path.
-func deriveIdentityKey(canonicalURL string) (string, string, error) {
+func deriveIdentityKey(canonicalURL string) (identityKey, reason string, err error) {
 	parsed, err := url.Parse(canonicalURL)
 	if err != nil {
 		return "", "", fmt.Errorf("parse URL: %w", err)
 	}
 	host := strings.ToLower(parsed.Hostname())
 	if host == "" {
-		return "", "", fmt.Errorf("empty host")
+		return "", "", errors.New("empty host")
 	}
 
 	// Platform-specific extraction (design: platform registry with path conventions)
@@ -135,8 +143,10 @@ func deriveIdentityKey(canonicalURL string) (string, string, error) {
 }
 
 // extractPlatformIdentity returns (platformID, tenantOrAuthor) for known platforms.
-// Path is raw path (e.g. /@username/post or /p/tenant).
-func extractPlatformIdentity(host, rawPath string) (platform string, tenant string) {
+// Currently recognizes "substack.com" and "medium.com" by exact host match.
+// Note: subdomain-based Substack blogs (e.g. example.substack.com) are NOT matched;
+// they fall through to the default host-based identity key.
+func extractPlatformIdentity(host, rawPath string) (platform, tenant string) {
 	pathClean := path.Clean(rawPath)
 	pathClean = strings.Trim(pathClean, "/")
 	segments := strings.Split(pathClean, "/")
@@ -144,14 +154,14 @@ func extractPlatformIdentity(host, rawPath string) (platform string, tenant stri
 	switch host {
 	case "substack.com":
 		if len(segments) >= 1 && segments[0] != "" {
-			return "substack", segments[0]
+			return platformSubstack, segments[0]
 		}
-		return "substack", ""
+		return platformSubstack, ""
 	case "medium.com":
 		if len(segments) >= 1 && strings.HasPrefix(segments[0], "@") {
-			return "medium", strings.TrimPrefix(segments[0], "@")
+			return platformMedium, strings.TrimPrefix(segments[0], "@")
 		}
-		return "medium", ""
+		return platformMedium, ""
 	default:
 		return "", ""
 	}

@@ -3,6 +3,7 @@ package api
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -19,11 +20,12 @@ const (
 	defaultFetchTimeout = 15 * time.Second
 	maxFetchTimeout     = 30 * time.Second
 	maxResponseBodySize = 10 * 1024 * 1024 // 10 MiB
+	maxRedirects        = 10
 )
 
 // fetchRequest is the JSON body for POST /api/internal/v1/fetch.
 type fetchRequest struct {
-	URL     string `json:"url"     binding:"required,url"`
+	URL     string `binding:"required,url" json:"url"`
 	Timeout int    `json:"timeout"` // seconds; 0 = default (15s), capped at 30s
 }
 
@@ -65,8 +67,8 @@ func NewInternalHandler(logger infralogger.Logger) *InternalHandler {
 		client: &http.Client{
 			// Timeout will be set per-request via context
 			CheckRedirect: func(req *http.Request, via []*http.Request) error {
-				if len(via) >= 10 {
-					return fmt.Errorf("too many redirects (max 10)")
+				if len(via) >= maxRedirects {
+					return errors.New("too many redirects")
 				}
 				return nil
 			},

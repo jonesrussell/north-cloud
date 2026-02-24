@@ -613,8 +613,9 @@ func (a *logAdapter) Error(msg string, fields ...any) {
 	a.log.Error(msg, toInfraFields(fields)...)
 }
 
-// createDiscoveryPipeline builds the Source Candidate Pipeline (resolution, enrichment, risk, approval, creation, frontier).
-// Pipeline is always created; run it only when CRAWLER_AUTO_SOURCE_DISCOVERY_ENABLED and per-source allow_source_discovery are set.
+// createDiscoveryPipeline builds the Source Candidate Pipeline.
+// The pipeline is always instantiated at startup; callers are responsible for checking
+// CRAWLER_AUTO_SOURCE_DISCOVERY_ENABLED and per-source allow_source_discovery before invoking ProcessDiscoveredURLs.
 func createDiscoveryPipeline(
 	deps *CommandDeps,
 	db *DatabaseComponents,
@@ -635,6 +636,7 @@ func createDiscoveryPipeline(
 	if frontierSubmitter != nil {
 		baseFrontier = &discoveryFrontierAdapter{submitter: frontierSubmitter}
 	} else {
+		deps.Logger.Warn("Discovery pipeline: frontier submitter is nil, discovered sources will NOT be seeded")
 		baseFrontier = &discoveryFrontierNop{}
 	}
 

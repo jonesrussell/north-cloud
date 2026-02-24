@@ -21,9 +21,9 @@ require (
 	github.com/north-cloud/infrastructure v0.0.0
 	github.com/redis/go-redis/v9 v9.18.0
 	github.com/temoto/robotstxt v1.1.2
+	golang.org/x/net v0.50.0
 	gopkg.in/yaml.v3 v3.0.1
 )
-
 
 require (
 	github.com/andybalholm/cascadia v1.3.3 // indirect
@@ -96,7 +96,6 @@ require (
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
 	golang.org/x/arch v0.24.0 // indirect
 	golang.org/x/crypto v0.48.0 // indirect
-	golang.org/x/net v0.50.0 // indirect
 	golang.org/x/sys v0.41.0 // indirect
 	golang.org/x/text v0.34.0 // indirect
 	google.golang.org/appengine v1.6.8 // indirect

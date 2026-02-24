@@ -42,7 +42,7 @@ const testHTML = `<!DOCTYPE html>
 </body>
 </html>`
 
-func setupTestRouter(internalSecret string) (*gin.Engine, *InternalHandler) {
+func setupTestRouter(internalSecret string) *gin.Engine {
 	gin.SetMode(gin.TestMode)
 	router := gin.New()
 	handler := NewInternalHandler(infralogger.NewNop())
@@ -53,20 +53,13 @@ func setupTestRouter(internalSecret string) (*gin.Engine, *InternalHandler) {
 	}
 	internal.POST("/fetch", handler.Fetch)
 
-	return router, handler
+	return router
 }
 
-func TestFetchHandler_Success(t *testing.T) {
-	// Start test server serving known HTML
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		fmt.Fprint(w, testHTML)
-	}))
-	defer ts.Close()
-
-	router, _ := setupTestRouter("")
-
-	body := fmt.Sprintf(`{"url": "%s"}`, ts.URL)
+// doFetchRequest sends a fetch request and returns the decoded response.
+func doFetchRequest(t *testing.T, router *gin.Engine, targetURL string) fetchResponse {
+	t.Helper()
+	body := `{"url": "` + targetURL + `"}`
 	req := httptest.NewRequest(http.MethodPost, "/api/internal/v1/fetch", strings.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
@@ -81,6 +74,20 @@ func TestFetchHandler_Success(t *testing.T) {
 	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
 		t.Fatalf("failed to decode response: %v", err)
 	}
+	return resp
+}
+
+func TestFetchHandler_Success(t *testing.T) {
+	// Start test server serving known HTML
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		fmt.Fprint(w, testHTML)
+	}))
+	defer ts.Close()
+
+	router := setupTestRouter("")
+
+	resp := doFetchRequest(t, router, ts.URL)
 
 	// Verify URL fields
 	if resp.URL != ts.URL {
@@ -91,7 +98,7 @@ func TestFetchHandler_Success(t *testing.T) {
 	}
 
 	// Verify status code
-	if resp.StatusCode != 200 {
+	if resp.StatusCode != http.StatusOK {
 		t.Errorf("expected status_code 200, got %d", resp.StatusCode)
 	}
 
@@ -105,22 +112,27 @@ func TestFetchHandler_Success(t *testing.T) {
 		t.Error("expected non-empty html")
 	}
 
-	// Verify title extraction
+	verifySuccessContentExtraction(t, &resp)
+	verifySuccessOGMetadata(t, &resp)
+
+	// Verify duration is reasonable
+	if resp.DurationMS <= 0 {
+		t.Errorf("expected positive duration_ms, got %d", resp.DurationMS)
+	}
+}
+
+func verifySuccessContentExtraction(t *testing.T, resp *fetchResponse) {
+	t.Helper()
+
 	if resp.Title != "Test Article Title" {
 		t.Errorf("expected title %q, got %q", "Test Article Title", resp.Title)
 	}
-
-	// Verify description extraction
 	if resp.Description != "A test article description" {
 		t.Errorf("expected description %q, got %q", "A test article description", resp.Description)
 	}
-
-	// Verify author extraction
 	if resp.Author != "Jane Smith" {
 		t.Errorf("expected author %q, got %q", "Jane Smith", resp.Author)
 	}
-
-	// Verify body text extraction (from <article>)
 	if !strings.Contains(resp.Body, "main article content") {
 		t.Errorf("expected body to contain 'main article content', got %q", resp.Body)
 	}
@@ -130,8 +142,11 @@ func TestFetchHandler_Success(t *testing.T) {
 	if strings.Contains(resp.Body, "should be stripped") {
 		t.Error("expected script/style content to be stripped from body")
 	}
+}
 
-	// Verify OG metadata
+func verifySuccessOGMetadata(t *testing.T, resp *fetchResponse) {
+	t.Helper()
+
 	if resp.OG == nil {
 		t.Fatal("expected og metadata to be present")
 	}
@@ -153,11 +168,6 @@ func TestFetchHandler_Success(t *testing.T) {
 	if resp.OG.SiteName != "Test Site" {
 		t.Errorf("expected og.site_name %q, got %q", "Test Site", resp.OG.SiteName)
 	}
-
-	// Verify duration is reasonable
-	if resp.DurationMS <= 0 {
-		t.Errorf("expected positive duration_ms, got %d", resp.DurationMS)
-	}
 }
 
 func TestFetchHandler_Redirect(t *testing.T) {
@@ -173,9 +183,9 @@ func TestFetchHandler_Redirect(t *testing.T) {
 	}))
 	defer redirectServer.Close()
 
-	router, _ := setupTestRouter("")
+	router := setupTestRouter("")
 
-	body := fmt.Sprintf(`{"url": "%s"}`, redirectServer.URL)
+	body := `{"url": "` + redirectServer.URL + `"}`
 	req := httptest.NewRequest(http.MethodPost, "/api/internal/v1/fetch", strings.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
@@ -213,9 +223,9 @@ func TestFetchHandler_NonHTML(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	router, _ := setupTestRouter("")
+	router := setupTestRouter("")
 
-	body := fmt.Sprintf(`{"url": "%s"}`, ts.URL)
+	body := `{"url": "` + ts.URL + `"}`
 	req := httptest.NewRequest(http.MethodPost, "/api/internal/v1/fetch", strings.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
@@ -249,7 +259,7 @@ func TestFetchHandler_NonHTML(t *testing.T) {
 }
 
 func TestFetchHandler_InvalidRequest(t *testing.T) {
-	router, _ := setupTestRouter("")
+	router := setupTestRouter("")
 
 	tests := []struct {
 		name       string
@@ -290,7 +300,7 @@ func TestFetchHandler_InvalidRequest(t *testing.T) {
 				t.Errorf("expected status %d, got %d: %s", tt.wantStatus, w.Code, w.Body.String())
 			}
 
-			var resp map[string]interface{}
+			var resp map[string]any
 			if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
 				t.Fatalf("failed to decode error response: %v", err)
 			}
@@ -302,7 +312,7 @@ func TestFetchHandler_InvalidRequest(t *testing.T) {
 }
 
 func TestFetchHandler_UnreachableHost(t *testing.T) {
-	router, _ := setupTestRouter("")
+	router := setupTestRouter("")
 
 	// Use a URL that will definitely fail to connect (RFC 5737 TEST-NET)
 	body := `{"url": "http://192.0.2.1:1", "timeout": 1}`
@@ -316,7 +326,7 @@ func TestFetchHandler_UnreachableHost(t *testing.T) {
 		t.Errorf("expected status 502, got %d: %s", w.Code, w.Body.String())
 	}
 
-	var resp map[string]interface{}
+	var resp map[string]any
 	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
 		t.Fatalf("failed to decode error response: %v", err)
 	}
@@ -334,10 +344,10 @@ func TestFetchHandler_CustomTimeout(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	router, _ := setupTestRouter("")
+	router := setupTestRouter("")
 
 	// Request with 1s timeout should fail
-	body := fmt.Sprintf(`{"url": "%s", "timeout": 1}`, ts.URL)
+	body := `{"url": "` + ts.URL + `", "timeout": 1}`
 	req := httptest.NewRequest(http.MethodPost, "/api/internal/v1/fetch", strings.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
@@ -357,10 +367,10 @@ func TestFetchHandler_TimeoutCapped(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	router, _ := setupTestRouter("")
+	router := setupTestRouter("")
 
 	// Request with 60s timeout should be capped to 30s but still succeed
-	body := fmt.Sprintf(`{"url": "%s", "timeout": 60}`, ts.URL)
+	body := `{"url": "` + ts.URL + `", "timeout": 60}`
 	req := httptest.NewRequest(http.MethodPost, "/api/internal/v1/fetch", strings.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
@@ -382,7 +392,7 @@ func TestFetchHandler_TimeoutCapped(t *testing.T) {
 
 func TestFetchHandler_AuthRequired(t *testing.T) {
 	secret := "test-internal-secret-12345"
-	router, _ := setupTestRouter(secret)
+	router := setupTestRouter(secret)
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html")
@@ -390,7 +400,7 @@ func TestFetchHandler_AuthRequired(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	body := fmt.Sprintf(`{"url": "%s"}`, ts.URL)
+	body := `{"url": "` + ts.URL + `"}`
 
 	t.Run("missing secret header returns 401", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodPost, "/api/internal/v1/fetch", strings.NewReader(body))
@@ -446,9 +456,9 @@ func TestFetchHandler_NoOGMetadata(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	router, _ := setupTestRouter("")
+	router := setupTestRouter("")
 
-	body := fmt.Sprintf(`{"url": "%s"}`, ts.URL)
+	body := `{"url": "` + ts.URL + `"}`
 	req := httptest.NewRequest(http.MethodPost, "/api/internal/v1/fetch", strings.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
@@ -478,9 +488,9 @@ func TestFetchHandler_MainFallback(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	router, _ := setupTestRouter("")
+	router := setupTestRouter("")
 
-	body := fmt.Sprintf(`{"url": "%s"}`, ts.URL)
+	body := `{"url": "` + ts.URL + `"}`
 	req := httptest.NewRequest(http.MethodPost, "/api/internal/v1/fetch", strings.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
@@ -512,9 +522,9 @@ func TestFetchHandler_OGTitleFallback(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	router, _ := setupTestRouter("")
+	router := setupTestRouter("")
 
-	body := fmt.Sprintf(`{"url": "%s"}`, ts.URL)
+	body := `{"url": "` + ts.URL + `"}`
 	req := httptest.NewRequest(http.MethodPost, "/api/internal/v1/fetch", strings.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
@@ -544,9 +554,9 @@ func TestFetchHandler_ServerError(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	router, _ := setupTestRouter("")
+	router := setupTestRouter("")
 
-	body := fmt.Sprintf(`{"url": "%s"}`, ts.URL)
+	body := `{"url": "` + ts.URL + `"}`
 	req := httptest.NewRequest(http.MethodPost, "/api/internal/v1/fetch", strings.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
@@ -563,7 +573,7 @@ func TestFetchHandler_ServerError(t *testing.T) {
 		t.Fatalf("failed to decode response: %v", err)
 	}
 
-	if resp.StatusCode != 500 {
+	if resp.StatusCode != http.StatusInternalServerError {
 		t.Errorf("expected status_code 500, got %d", resp.StatusCode)
 	}
 }

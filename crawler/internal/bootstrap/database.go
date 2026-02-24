@@ -20,7 +20,7 @@ type DatabaseComponents struct {
 	HostStateRepo       *database.HostStateRepository
 	FeedStateRepo       *database.FeedStateRepository
 	CandidateRepo       *database.CandidateRepository
-	DecisionLogRepo    *database.DecisionLogRepository
+	DecisionLogRepo     *database.DecisionLogRepository
 }
 
 // SetupDatabase connects to PostgreSQL and creates all repositories.

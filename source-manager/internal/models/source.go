@@ -4,6 +4,7 @@ import (
 	"database/sql/driver"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"time"
 )
 
@@ -32,9 +33,9 @@ type Source struct {
 	// ExtractionProfile: optional JSON for PipelineX domain-aware extraction.
 	ExtractionProfile *ExtractionProfileJSON `db:"extraction_profile" json:"extraction_profile,omitempty"`
 	// TemplateHint: optional PipelineX template inference (e.g. "substack", "wordpress").
-	TemplateHint *string  `db:"template_hint" json:"template_hint,omitempty"`
-	CreatedAt    time.Time `db:"created_at"                 json:"created_at"`
-	UpdatedAt    time.Time `db:"updated_at"                 json:"updated_at"`
+	TemplateHint *string   `db:"template_hint" json:"template_hint,omitempty"`
+	CreatedAt    time.Time `db:"created_at"    json:"created_at"`
+	UpdatedAt    time.Time `db:"updated_at"    json:"updated_at"`
 }
 
 // SelectorConfig represents CSS selector configuration
@@ -297,29 +298,38 @@ type ExtractionProfileJSON []byte
 // Value implements driver.Valuer for JSONB storage.
 func (e *ExtractionProfileJSON) Value() (driver.Value, error) {
 	if e == nil || len(*e) == 0 {
-		return nil, nil
+		return nil, nil //nolint:nilnil // nil,nil = SQL NULL per driver.Valuer contract
 	}
 	return []byte(*e), nil
 }
 
 // Scan implements sql.Scanner for JSONB retrieval.
+// Handles both []byte and string from database drivers.
 func (e *ExtractionProfileJSON) Scan(value any) error {
 	if value == nil {
 		*e = nil
 		return nil
 	}
-	bytes, ok := value.([]byte)
-	if !ok {
+	switch v := value.(type) {
+	case []byte:
+		if len(v) == 0 {
+			*e = nil
+			return nil
+		}
+		out := make([]byte, len(v))
+		copy(out, v)
+		*e = out
 		return nil
-	}
-	if len(bytes) == 0 {
-		*e = nil
+	case string:
+		if v == "" {
+			*e = nil
+			return nil
+		}
+		*e = ExtractionProfileJSON(v)
 		return nil
+	default:
+		return fmt.Errorf("ExtractionProfileJSON.Scan: unsupported type %T", value)
 	}
-	out := make([]byte, len(bytes))
-	copy(out, bytes)
-	*e = out
-	return nil
 }
 
 // MarshalJSON implements json.Marshaler so the field serializes as raw JSON.
