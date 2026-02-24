@@ -4,6 +4,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/jonesrussell/north-cloud/classifier/internal/config"
 	"github.com/jonesrussell/north-cloud/classifier/internal/telemetry"
+	infragin "github.com/north-cloud/infrastructure/gin"
 	infrajwt "github.com/north-cloud/infrastructure/jwt"
 	"github.com/north-cloud/infrastructure/monitoring"
 )
@@ -63,4 +64,11 @@ func SetupRoutesWithTelemetry(router *gin.Engine, handler *Handler, cfg *config.
 	stats.GET("", handler.GetStats)                      // GET /api/v1/stats
 	stats.GET("/topics", handler.GetTopicStats)          // GET /api/v1/stats/topics
 	stats.GET("/sources", handler.GetSourceDistribution) // GET /api/v1/stats/sources
+
+	// Internal service-to-service routes (shared secret auth)
+	internal := router.Group("/api/internal/v1")
+	if cfg != nil && cfg.Auth.InternalSecret != "" {
+		internal.Use(infragin.InternalAuthMiddleware(cfg.Auth.InternalSecret))
+	}
+	internal.POST("/extract", handler.InternalExtract) // POST /api/internal/v1/extract
 }

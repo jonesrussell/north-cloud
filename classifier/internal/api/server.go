@@ -9,6 +9,20 @@ import (
 	infralogger "github.com/north-cloud/infrastructure/logger"
 )
 
+// setupInternalRoutes configures internal service-to-service endpoints.
+// These are protected by shared secret (X-Internal-Secret header), not JWT.
+// If the internal secret is not configured, the routes are NOT registered to prevent SSRF.
+func setupInternalRoutes(router *gin.Engine, handler *Handler, cfg *config.Config, infraLog infralogger.Logger) {
+	if cfg == nil || cfg.Auth.InternalSecret == "" {
+		infraLog.Warn("AUTH_INTERNAL_SECRET not configured: internal /extract endpoint will NOT be registered")
+		return
+	}
+
+	internal := router.Group("/api/internal/v1")
+	internal.Use(infragin.InternalAuthMiddleware(cfg.Auth.InternalSecret))
+	internal.POST("/extract", handler.InternalExtract)
+}
+
 // Default timeout values.
 const (
 	defaultReadTimeout  = 30 * time.Second
@@ -45,6 +59,9 @@ func NewServer(handler *Handler, serverCfg ServerConfig, cfg *config.Config, inf
 		WithRoutes(func(router *gin.Engine) {
 			// Setup service-specific routes (health routes added by builder)
 			SetupServiceRoutes(router, handler, cfg)
+
+			// Setup internal service-to-service routes
+			setupInternalRoutes(router, handler, cfg, infraLog)
 		}).
 		Build()
 

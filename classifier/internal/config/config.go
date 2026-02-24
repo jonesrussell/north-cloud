@@ -116,7 +116,8 @@ type LoggingConfig struct {
 
 // AuthConfig holds authentication configuration.
 type AuthConfig struct {
-	JWTSecret string `env:"AUTH_JWT_SECRET" yaml:"jwt_secret"`
+	JWTSecret      string `env:"AUTH_JWT_SECRET"      yaml:"jwt_secret"`
+	InternalSecret string `env:"AUTH_INTERNAL_SECRET"  yaml:"internal_secret"`
 }
 
 // SidecarConfig holds enabled flag and ML service URL for one optional classifier sidecar.
