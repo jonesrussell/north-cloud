@@ -53,12 +53,11 @@ func setupInternalTestRouterDirect(internalSecret string) *gin.Engine {
 func TestInternalExtract_Success(t *testing.T) {
 	router := setupInternalTestRouterDirect("")
 
-	body := `{
-		"html": "<html><head><title>Test Article</title></head><body><p>This is a test article about technology and software development. It contains enough words to be meaningful for classification purposes. The article discusses various aspects of modern software engineering practices and methodologies.</p></body></html>",
-		"url": "https://example.com/test-article",
-		"source_name": "test-source",
-		"title": "Test Article"
-	}`
+	body := `{"html": "<html><head><title>Test Article</title></head><body><p>This is a test article ` +
+		`about technology and software development. It contains enough words to be meaningful for ` +
+		`classification purposes. The article discusses various aspects of modern software ` +
+		`engineering practices and methodologies.</p></body></html>", "url": "https://example.com/test-article", ` +
+		`"source_name": "test-source", "title": "Test Article"}`
 
 	req := httptest.NewRequest(http.MethodPost, "/api/internal/v1/extract", strings.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
@@ -260,12 +259,10 @@ func TestInternalExtract_AuthValidSecret(t *testing.T) {
 func TestInternalExtract_ResponseShape(t *testing.T) {
 	router := setupInternalTestRouterDirect("")
 
-	body := `{
-		"html": "<html><head><meta property=\"og:title\" content=\"OG Title\"><meta property=\"og:description\" content=\"OG Description\"></head><body><p>Article content for response shape test with enough words to be meaningful.</p></body></html>",
-		"url": "https://example.com/test-article",
-		"source_name": "test-source",
-		"title": "My Test Title"
-	}`
+	body := `{"html": "<html><head><meta property=\"og:title\" content=\"OG Title\"><meta property=\"og:description\" ` +
+		`content=\"OG Description\"></head><body><p>Article content for response shape test with enough words ` +
+		`to be meaningful.</p></body></html>", "url": "https://example.com/test-article", ` +
+		`"source_name": "test-source", "title": "My Test Title"}`
 
 	req := httptest.NewRequest(http.MethodPost, "/api/internal/v1/extract", strings.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
