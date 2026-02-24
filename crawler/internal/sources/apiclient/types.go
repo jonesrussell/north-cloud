@@ -1,7 +1,10 @@
 // Package apiclient provides HTTP client functionality for interacting with the source-manager API.
 package apiclient
 
-import "time"
+import (
+	"encoding/json"
+	"time"
+)
 
 // APISource represents a source as returned by the source-manager API.
 type APISource struct {
@@ -20,8 +23,16 @@ type APISource struct {
 	ArticleURLPatterns      []string     `json:"article_url_patterns,omitempty"`
 	FeedURL                 *string      `json:"feed_url,omitempty"`
 	FeedPollIntervalMinutes int          `json:"feed_poll_interval_minutes,omitempty"`
-	CreatedAt               *time.Time   `json:"created_at,omitempty"`
-	UpdatedAt               *time.Time   `json:"updated_at,omitempty"`
+	// AllowSourceDiscovery: when true, outlinks from this source may feed the Source Candidate Pipeline (if global discovery enabled).
+	AllowSourceDiscovery bool `json:"allow_source_discovery"`
+	// IdentityKey: logical source identity for resolver (host+path or platform:tenant). Not equal to hostname.
+	IdentityKey *string `json:"identity_key,omitempty"`
+	// TemplateHint: optional PipelineX template inference (e.g. "substack", "wordpress").
+	TemplateHint *string `json:"template_hint,omitempty"`
+	// ExtractionProfile: optional JSON for PipelineX domain-aware extraction.
+	ExtractionProfile *json.RawMessage `json:"extraction_profile,omitempty"`
+	CreatedAt         *time.Time      `json:"created_at,omitempty"`
+	UpdatedAt         *time.Time      `json:"updated_at,omitempty"`
 }
 
 // APISelectors represents the selectors structure in the API.

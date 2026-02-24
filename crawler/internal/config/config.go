@@ -42,6 +42,8 @@ type Interface interface {
 	GetSourceManagerConfig() *SourceManagerConfig
 	// GetFeedConfig returns the feed polling configuration.
 	GetFeedConfig() *FeedConfig
+	// GetDiscoveryConfig returns the automatic source discovery configuration.
+	GetDiscoveryConfig() *DiscoveryConfig
 	// GetFetcherConfig returns the frontier fetcher configuration.
 	GetFetcherConfig() *fetcher.Config
 	// GetSchedulerConfig returns the interval scheduler configuration.
@@ -111,6 +113,8 @@ type Config struct {
 	Pipeline *PipelineConfig `yaml:"pipeline"`
 	// Feed holds feed polling configuration
 	Feed *FeedConfig `yaml:"feed"`
+	// Discovery holds automatic source discovery configuration
+	Discovery *DiscoveryConfig `yaml:"discovery"`
 	// Fetcher holds frontier worker pool configuration
 	Fetcher *fetcher.Config `yaml:"fetcher"`
 	// Scheduler holds interval scheduler configuration
@@ -119,7 +123,8 @@ type Config struct {
 
 // AuthConfig holds authentication configuration.
 type AuthConfig struct {
-	JWTSecret string `env:"AUTH_JWT_SECRET" json:"-" yaml:"jwt_secret"`
+	JWTSecret      string `env:"AUTH_JWT_SECRET"      json:"-" yaml:"jwt_secret"`
+	InternalSecret string `env:"AUTH_INTERNAL_SECRET" json:"-" yaml:"internal_secret"`
 }
 
 // LoggingConfig holds logging configuration.
@@ -161,6 +166,19 @@ type FeedConfig struct {
 	DiscoveryEnabled         bool `env:"CRAWLER_FEED_DISCOVERY_ENABLED"          yaml:"discovery_enabled"`
 	DiscoveryIntervalMinutes int  `env:"CRAWLER_FEED_DISCOVERY_INTERVAL_MINUTES" yaml:"discovery_interval_minutes"`
 	DiscoveryRetryHours      int  `env:"CRAWLER_FEED_DISCOVERY_RETRY_HOURS"      yaml:"discovery_retry_hours"`
+}
+
+// DiscoveryConfig holds automatic source discovery configuration.
+// Auto-source creation is disabled by default; enable explicitly per-source or globally.
+type DiscoveryConfig struct {
+	// AutoSourceDiscoveryEnabled: when true, the Source Candidate Pipeline may run. Default false.
+	AutoSourceDiscoveryEnabled bool     `env:"CRAWLER_AUTO_SOURCE_DISCOVERY_ENABLED" yaml:"auto_source_discovery_enabled"`
+	Allowlist                  []string `env:"CRAWLER_DISCOVERY_ALLOWLIST"           yaml:"allowlist"` // optional: only these hosts/identity keys become candidates
+	Blocklist                  []string `env:"CRAWLER_DISCOVERY_BLOCKLIST"           yaml:"blocklist"` // hosts or patterns never created as sources
+	// GlobalCrawlBudgetPerDay caps new URLs from discovery per day (0 = no cap).
+	GlobalCrawlBudgetPerDay int `env:"CRAWLER_DISCOVERY_GLOBAL_BUDGET_PER_DAY" yaml:"global_crawl_budget_per_day"`
+	// MaxNewCandidatesPerRun caps new candidates per pipeline run (0 = no cap).
+	MaxNewCandidatesPerRun int `env:"CRAWLER_DISCOVERY_MAX_CANDIDATES_PER_RUN" yaml:"max_new_candidates_per_run"`
 }
 
 // validateHTTPDConfig validates the configuration for the httpd command
@@ -298,6 +316,9 @@ func setDefaults(cfg *Config) {
 	// Set default feed polling and discovery configuration
 	setFeedDefaults(cfg)
 
+	// Set default discovery configuration (auto-source discovery disabled by default)
+	setDiscoveryDefaults(cfg)
+
 	// Set default scheduler configuration (disabled by default — frontier + feed poller handles all crawling)
 	if cfg.Scheduler == nil {
 		cfg.Scheduler = &SchedulerConfig{Enabled: false}
@@ -432,6 +453,21 @@ func (c *Config) GetFeedConfig() *FeedConfig {
 	return c.Feed
 }
 
+// GetDiscoveryConfig returns the automatic source discovery configuration.
+// Auto-source discovery is disabled by default.
+func (c *Config) GetDiscoveryConfig() *DiscoveryConfig {
+	if c.Discovery == nil {
+		return &DiscoveryConfig{
+			AutoSourceDiscoveryEnabled: false,
+			Allowlist:                  nil,
+			Blocklist:                  nil,
+			GlobalCrawlBudgetPerDay:    0,
+			MaxNewCandidatesPerRun:     0,
+		}
+	}
+	return c.Discovery
+}
+
 // GetFetcherConfig returns the frontier fetcher configuration.
 func (c *Config) GetFetcherConfig() *fetcher.Config {
 	if c.Fetcher == nil {
@@ -480,6 +516,20 @@ func setFeedDefaults(cfg *Config) {
 
 	if cfg.Feed.DiscoveryRetryHours <= 0 {
 		cfg.Feed.DiscoveryRetryHours = defaultFeedDiscoveryRetryHours
+	}
+}
+
+// setDiscoveryDefaults applies default values to the discovery configuration.
+// Auto-source discovery is disabled by default.
+func setDiscoveryDefaults(cfg *Config) {
+	if cfg.Discovery == nil {
+		cfg.Discovery = &DiscoveryConfig{
+			AutoSourceDiscoveryEnabled: false,
+			Allowlist:                  nil,
+			Blocklist:                  nil,
+			GlobalCrawlBudgetPerDay:    0,
+			MaxNewCandidatesPerRun:     0,
+		}
 	}
 }
 

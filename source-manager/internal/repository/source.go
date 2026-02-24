@@ -43,13 +43,16 @@ func (r *SourceRepository) Create(ctx context.Context, source *models.Source) er
 		return fmt.Errorf("marshal time: %w", err)
 	}
 
+	extractionProfileJSON := marshalExtractionProfile(source.ExtractionProfile)
+
 	query := `
 		INSERT INTO sources (
 			id, name, url, rate_limit, max_depth,
 			time, selectors, enabled,
 			feed_url, sitemap_url, ingestion_mode, feed_poll_interval_minutes,
+			allow_source_discovery, identity_key, extraction_profile, template_hint,
 			created_at, updated_at
-		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
 	`
 
 	_, err = r.db.ExecContext(ctx,
@@ -66,6 +69,10 @@ func (r *SourceRepository) Create(ctx context.Context, source *models.Source) er
 		source.SitemapURL,
 		source.IngestionMode,
 		source.FeedPollIntervalMinutes,
+		source.AllowSourceDiscovery,
+		source.IdentityKey,
+		extractionProfileJSON,
+		source.TemplateHint,
 		source.CreatedAt,
 		source.UpdatedAt,
 	)
@@ -77,6 +84,14 @@ func (r *SourceRepository) Create(ctx context.Context, source *models.Source) er
 	return nil
 }
 
+// marshalExtractionProfile returns bytes for JSONB storage; nil if empty.
+func marshalExtractionProfile(e *models.ExtractionProfileJSON) []byte {
+	if e == nil || len(*e) == 0 {
+		return nil
+	}
+	return []byte(*e)
+}
+
 func (r *SourceRepository) GetByID(ctx context.Context, id string) (*models.Source, error) {
 	var source models.Source
 	var selectorsJSON, timeJSON []byte
@@ -86,6 +101,7 @@ func (r *SourceRepository) GetByID(ctx context.Context, id string) (*models.Sour
 		       time, selectors, enabled,
 		       feed_url, sitemap_url, ingestion_mode, feed_poll_interval_minutes,
 		       feed_disabled_at, feed_disable_reason,
+		       allow_source_discovery, identity_key, extraction_profile, template_hint,
 		       created_at, updated_at
 		FROM sources
 		WHERE id = $1
@@ -106,6 +122,10 @@ func (r *SourceRepository) GetByID(ctx context.Context, id string) (*models.Sour
 		&source.FeedPollIntervalMinutes,
 		&source.FeedDisabledAt,
 		&source.FeedDisableReason,
+		&source.AllowSourceDiscovery,
+		&source.IdentityKey,
+		&source.ExtractionProfile,
+		&source.TemplateHint,
 		&source.CreatedAt,
 		&source.UpdatedAt,
 	)
@@ -132,6 +152,42 @@ func (r *SourceRepository) GetByID(ctx context.Context, id string) (*models.Sour
 	source.Selectors = source.Selectors.MergeWithDefaults()
 
 	return &source, nil
+}
+
+// GetByIdentityKey returns a source with the given identity_key (exact match).
+// Used by the Source Identity Resolver. Returns nil, nil when no source is found.
+func (r *SourceRepository) GetByIdentityKey(ctx context.Context, identityKey string) (*models.Source, error) {
+	if identityKey == "" {
+		return nil, nil //nolint:nilnil // nil,nil = "not found" per interface contract
+	}
+	query := `
+		SELECT id, name, url, rate_limit, max_depth,
+		       time, selectors, enabled,
+		       feed_url, sitemap_url, ingestion_mode, feed_poll_interval_minutes,
+		       feed_disabled_at, feed_disable_reason,
+		       allow_source_discovery, identity_key, extraction_profile, template_hint,
+		       created_at, updated_at
+		FROM sources
+		WHERE identity_key = $1
+		ORDER BY created_at ASC
+		LIMIT 1
+	`
+	rows, err := r.db.QueryContext(ctx, query, identityKey)
+	if err != nil {
+		return nil, fmt.Errorf("query source by identity_key: %w", err)
+	}
+	defer rows.Close()
+
+	if !rows.Next() {
+		return nil, nil //nolint:nilnil // nil,nil = "not found" per interface contract
+	}
+	source, scanErr := scanSourceRow(rows)
+	if scanErr != nil {
+		return nil, scanErr
+	}
+	source.RateLimit = models.NormalizeRateLimit(source.RateLimit)
+	source.Selectors = source.Selectors.MergeWithDefaults()
+	return source, nil
 }
 
 // ListFilter holds pagination and filter params for ListPaginated.
@@ -177,6 +233,7 @@ func (r *SourceRepository) ListPaginated(ctx context.Context, filter ListFilter)
 		       time, selectors, enabled,
 		       feed_url, sitemap_url, ingestion_mode, feed_poll_interval_minutes,
 		       feed_disabled_at, feed_disable_reason,
+		       allow_source_discovery, identity_key, extraction_profile, template_hint,
 		       created_at, updated_at
 		FROM sources
 		WHERE 1=1` + whereClause + orderClause + `
@@ -232,6 +289,10 @@ func scanSourceRow(rows *sql.Rows) (*models.Source, error) {
 		&source.FeedPollIntervalMinutes,
 		&source.FeedDisabledAt,
 		&source.FeedDisableReason,
+		&source.AllowSourceDiscovery,
+		&source.IdentityKey,
+		&source.ExtractionProfile,
+		&source.TemplateHint,
 		&source.CreatedAt,
 		&source.UpdatedAt,
 	); err != nil {
@@ -310,6 +371,7 @@ func (r *SourceRepository) List(ctx context.Context) ([]models.Source, error) {
 		       time, selectors, enabled,
 		       feed_url, sitemap_url, ingestion_mode, feed_poll_interval_minutes,
 		       feed_disabled_at, feed_disable_reason,
+		       allow_source_discovery, identity_key, extraction_profile, template_hint,
 		       created_at, updated_at
 		FROM sources
 		ORDER BY name
@@ -337,12 +399,15 @@ func (r *SourceRepository) Update(ctx context.Context, source *models.Source) er
 		return fmt.Errorf("marshal time: %w", err)
 	}
 
+	extractionProfileJSON := marshalExtractionProfile(source.ExtractionProfile)
+
 	query := `
 		UPDATE sources
 		SET name = $2, url = $3, rate_limit = $4, max_depth = $5, time = $6, selectors = $7,
 		    enabled = $8,
 		    feed_url = $9, sitemap_url = $10, ingestion_mode = $11, feed_poll_interval_minutes = $12,
-		    updated_at = $13
+		    allow_source_discovery = $13, identity_key = $14, extraction_profile = $15, template_hint = $16,
+		    updated_at = $17
 		WHERE id = $1
 	`
 
@@ -360,6 +425,10 @@ func (r *SourceRepository) Update(ctx context.Context, source *models.Source) er
 		source.SitemapURL,
 		source.IngestionMode,
 		source.FeedPollIntervalMinutes,
+		source.AllowSourceDiscovery,
+		source.IdentityKey,
+		extractionProfileJSON,
+		source.TemplateHint,
 		source.UpdatedAt,
 	)
 
