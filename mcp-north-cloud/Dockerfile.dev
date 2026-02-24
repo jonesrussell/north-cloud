@@ -2,9 +2,6 @@ FROM golang:1.26.0-alpine
 
 WORKDIR /app
 
-# Install Air for hot reloading
-RUN go install github.com/air-verse/air@latest
-
 # Create writable Go cache directories with sticky bit
 # These will be overridden by volume mounts, but ensure they exist and are writable
 RUN mkdir -p /tmp/go-mod-cache \

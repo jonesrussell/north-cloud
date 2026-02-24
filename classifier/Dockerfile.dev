@@ -8,9 +8,6 @@ WORKDIR /app
 # Install dev tools
 RUN apk add --no-cache git bash
 
-# Install Air for hot reload
-RUN go install github.com/air-verse/air@latest
-
 # Create non-root user (docker-compose will override UID/GID)
 RUN addgroup -g ${GID} appuser && \
     adduser -D -u ${UID} -G appuser appuser

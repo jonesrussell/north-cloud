@@ -245,10 +245,10 @@ task docker:logs
 task docker:stop
 ```
 
-### Hot Reload (Air)
+### Local development
 
 ```bash
-# Start with hot-reload
+# Start service (Docker runs binary directly; for local hot reload use task dev with Air)
 task dev
 ```
 

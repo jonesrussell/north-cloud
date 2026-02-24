@@ -19,5 +19,4 @@ USER vscode
 RUN mkdir -p /home/vscode/go/pkg/mod && \
     echo 'export GOMODCACHE=/home/vscode/go/pkg/mod' >> /home/vscode/.bashrc && \
     echo 'export GOMODCACHE=/home/vscode/go/pkg/mod' >> /home/vscode/.zshrc
-RUN go install github.com/air-verse/air@latest
 USER root

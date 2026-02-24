@@ -32,7 +32,7 @@ auth/
 ├── main.go                    — Entry point: profiling, config, logger, server
 ├── config.yml                 — Default configuration (override with env vars)
 ├── Taskfile.yml               — All build/test/lint/benchmark tasks
-├── .air.toml                  — Hot reload (Air) configuration
+├── .air.toml                  — Optional local hot reload (Air; Docker dev runs binary directly)
 └── internal/
     ├── api/
     │   ├── server.go          — Gin server builder, route registration, timeouts
@@ -124,7 +124,7 @@ openssl rand -hex 32
      -H "Content-Type: application/json" -d @/tmp/login.json
    ```
 
-7. **`task dev` is not defined** in the auth Taskfile — use `task run` for `go run main.go` or configure Air directly (`air`) for hot reload.
+7. **`task dev` is not defined** in the auth Taskfile — use `task run` for `go run main.go` or run `air` for local hot reload. Docker dev runs the binary directly (no Air).
 
 ## Testing
 

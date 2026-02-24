@@ -47,7 +47,7 @@ task test:cover:SERVICE
 task migrate:up
 task migrate:SERVICE
 
-# Install dev tools (golangci-lint, air, goimports, migrate)
+# Install dev tools (golangci-lint, goimports, migrate)
 task install:tools
 
 # Use task lint:force (or task ci:force) before pushing — runs golangci-lint after

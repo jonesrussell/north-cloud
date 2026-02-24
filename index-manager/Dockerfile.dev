@@ -5,9 +5,6 @@ WORKDIR /app
 # Install dev tools
 RUN apk add --no-cache git ca-certificates
 
-# Install Air for hot reload
-RUN go install github.com/air-verse/air@latest
-
 # Writable Go caches
 RUN mkdir -p /tmp/go-mod-cache \
              /tmp/go-build-cache && \
