@@ -126,6 +126,32 @@ func (h *SourceHandler) GetByID(c *gin.Context) {
 	c.JSON(http.StatusOK, source)
 }
 
+// GetByIdentityKey returns a source by its identity_key (query param "identity_key").
+// Used by the Source Identity Resolver. Returns 404 when no source matches.
+func (h *SourceHandler) GetByIdentityKey(c *gin.Context) {
+	identityKey := c.Query("identity_key")
+	if identityKey == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "identity_key query parameter is required"})
+		return
+	}
+
+	source, err := h.repo.GetByIdentityKey(c.Request.Context(), identityKey)
+	if err != nil {
+		h.logger.Error("Failed to get source by identity_key",
+			infralogger.String("identity_key", identityKey),
+			infralogger.Error(err),
+		)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to lookup source"})
+		return
+	}
+	if source == nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Source not found for identity_key"})
+		return
+	}
+
+	c.JSON(http.StatusOK, source)
+}
+
 func (h *SourceHandler) List(c *gin.Context) {
 	filter := parseListQuery(c)
 

@@ -10,9 +10,11 @@ import (
 	"github.com/jmoiron/sqlx"
 	"github.com/jonesrussell/north-cloud/crawler/internal/adaptive"
 	"github.com/jonesrussell/north-cloud/crawler/internal/api"
+	"github.com/jonesrussell/north-cloud/crawler/internal/config"
 	"github.com/jonesrussell/north-cloud/crawler/internal/crawler"
 	crawlerevents "github.com/jonesrussell/north-cloud/crawler/internal/crawler/events"
 	"github.com/jonesrussell/north-cloud/crawler/internal/database"
+	"github.com/jonesrussell/north-cloud/crawler/internal/discovery"
 	"github.com/jonesrussell/north-cloud/crawler/internal/feed"
 	"github.com/jonesrussell/north-cloud/crawler/internal/fetcher"
 	"github.com/jonesrussell/north-cloud/crawler/internal/logs"
@@ -54,6 +56,9 @@ type ServiceComponents struct {
 
 	// Stale URL recoverer (raw frontier repo — no logging wrapper needed)
 	StaleURLRecoverer StaleURLRecoverer
+
+	// Source Candidate Pipeline (automatic source discovery; disabled by default)
+	DiscoveryPipeline *discovery.Pipeline
 
 	// SSE components
 	SSEBroker    sse.Broker
@@ -141,6 +146,9 @@ func SetupServices(
 		staleRecoverer = db.FrontierRepo
 	}
 
+	// Source Candidate Pipeline (automatic source discovery; disabled by default via config)
+	discoveryPipeline := createDiscoveryPipeline(deps, db, frontierForSubmission)
+
 	return &ServiceComponents{
 		JobsHandler:            jobsHandler,
 		DiscoveredLinksHandler: discoveredLinksHandler,
@@ -155,6 +163,7 @@ func SetupServices(
 		FrontierWorkerPool:     workerPool,
 		FrontierRepoForHandler: frontierForHandler,
 		StaleURLRecoverer:      staleRecoverer,
+		DiscoveryPipeline:      discoveryPipeline,
 		SSEBroker:              sseBroker,
 		SSEHandler:             sseHandler,
 		SSEPublisher:           ssePublisher,
@@ -602,6 +611,140 @@ func (a *logAdapter) Warn(msg string, fields ...any) {
 
 func (a *logAdapter) Error(msg string, fields ...any) {
 	a.log.Error(msg, toInfraFields(fields)...)
+}
+
+// createDiscoveryPipeline builds the Source Candidate Pipeline (resolution, enrichment, risk, approval, creation, frontier).
+// Pipeline is always created; run it only when CRAWLER_AUTO_SOURCE_DISCOVERY_ENABLED and per-source allow_source_discovery are set.
+func createDiscoveryPipeline(
+	deps *CommandDeps,
+	db *DatabaseComponents,
+	frontierSubmitter crawler.LinkFrontierSubmitter,
+) *discovery.Pipeline {
+	smCfg := deps.Config.GetSourceManagerConfig()
+	authCfg := deps.Config.GetAuthConfig()
+	apiClient := apiclient.NewClient(
+		apiclient.WithBaseURL(smCfg.URL+"/api/v1/sources"),
+		apiclient.WithJWTSecret(authCfg.JWTSecret),
+	)
+
+	logAdapt := &logAdapter{log: deps.Logger}
+	resolver := discovery.NewIdentityResolver(apiClient, logAdapt)
+	enricher := discovery.NewEnricher(logAdapt)
+
+	var baseFrontier discovery.FrontierSubmitter
+	if frontierSubmitter != nil {
+		baseFrontier = &discoveryFrontierAdapter{submitter: frontierSubmitter}
+	} else {
+		baseFrontier = &discoveryFrontierNop{}
+	}
+
+	cfg := deps.Config.GetDiscoveryConfig()
+	budgetPerDay := 0
+	if cfg != nil {
+		budgetPerDay = cfg.GlobalCrawlBudgetPerDay
+	}
+	var frontier discovery.FrontierSubmitter
+	if budgetPerDay > 0 && db.FrontierRepo != nil {
+		frontier = &discoveryBudgetFrontier{
+			inner:        baseFrontier,
+			repo:         db.FrontierRepo,
+			budgetPerDay: budgetPerDay,
+			log:          deps.Logger,
+		}
+	} else {
+		frontier = baseFrontier
+	}
+	configProvider := &discoveryConfigAdapter{cfg: cfg}
+
+	return discovery.NewPipeline(
+		resolver,
+		enricher,
+		db.CandidateRepo,
+		db.DecisionLogRepo,
+		frontier,
+		apiClient,
+		configProvider,
+		logAdapt,
+	)
+}
+
+// discoveryFrontierAdapter adapts crawler.LinkFrontierSubmitter to discovery.FrontierSubmitter.
+type discoveryFrontierAdapter struct {
+	submitter crawler.LinkFrontierSubmitter
+}
+
+func (a *discoveryFrontierAdapter) Submit(ctx context.Context, url, urlHash, host, sourceID, origin string, depth, priority int) error {
+	return a.submitter.Submit(ctx, database.SubmitParams{
+		URL: url, URLHash: urlHash, Host: host, SourceID: sourceID, Origin: origin,
+		ParentURL: nil, Depth: depth, Priority: priority,
+	})
+}
+
+// discoveryFrontierNop no-ops when frontier is disabled.
+type discoveryFrontierNop struct{}
+
+func (discoveryFrontierNop) Submit(context.Context, string, string, string, string, string, int, int) error {
+	return nil
+}
+
+// discoveryBudgetFrontier enforces GlobalCrawlBudgetPerDay for origin="discovered" submissions.
+type discoveryBudgetFrontier struct {
+	inner        discovery.FrontierSubmitter
+	repo         *database.FrontierRepository
+	budgetPerDay int
+	log          infralogger.Logger
+}
+
+func (b *discoveryBudgetFrontier) Submit(ctx context.Context, url, urlHash, host, sourceID, origin string, depth, priority int) error {
+	if origin != "discovered" || b.budgetPerDay <= 0 {
+		return b.inner.Submit(ctx, url, urlHash, host, sourceID, origin, depth, priority)
+	}
+	now := time.Now().UTC()
+	startOfDay := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
+	count, err := b.repo.CountByOriginSince(ctx, "discovered", startOfDay)
+	if err != nil {
+		return err
+	}
+	if count >= b.budgetPerDay {
+		b.log.Info("Discovery global crawl budget exceeded for today, skipping frontier submit",
+			infralogger.Int("count", count),
+			infralogger.Int("budget_per_day", b.budgetPerDay))
+		return nil
+	}
+	return b.inner.Submit(ctx, url, urlHash, host, sourceID, origin, depth, priority)
+}
+
+// discoveryConfigAdapter implements discovery.DiscoveryConfigProvider from config.DiscoveryConfig.
+type discoveryConfigAdapter struct {
+	cfg *config.DiscoveryConfig
+}
+
+func (a *discoveryConfigAdapter) Allowlist() []string {
+	if a.cfg == nil {
+		return nil
+	}
+	return a.cfg.Allowlist
+}
+
+func (a *discoveryConfigAdapter) Blocklist() []string {
+	if a.cfg == nil {
+		return nil
+	}
+	return a.cfg.Blocklist
+}
+
+func (a *discoveryConfigAdapter) MaxNewCandidatesPerRun() int {
+	if a.cfg == nil {
+		return 0
+	}
+	return a.cfg.MaxNewCandidatesPerRun
+}
+
+func (a *discoveryConfigAdapter) GlobalCrawlBudgetPerDay() int {
+	if a.cfg == nil {
+		return 0
+	}
+	return a.cfg.GlobalCrawlBudgetPerDay
 }
 
 // toInfraFields converts key-value pairs to infralogger fields.

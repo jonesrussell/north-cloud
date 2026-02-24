@@ -7,7 +7,9 @@ import (
 	"time"
 )
 
-// Source represents a content source configuration
+// Source represents a content source configuration.
+// Identity is not equal to hostname: a single host may have many logical sources (e.g. Medium, Substack).
+// IdentityKey is used by the Source Identity Resolver to match discovered URLs to existing sources.
 type Source struct {
 	ID                      string         `db:"id"                         json:"id"`
 	Name                    string         `db:"name"                       json:"name"`
@@ -23,8 +25,16 @@ type Source struct {
 	FeedPollIntervalMinutes int            `db:"feed_poll_interval_minutes" json:"feed_poll_interval_minutes"`
 	FeedDisabledAt          *time.Time     `db:"feed_disabled_at"           json:"feed_disabled_at,omitempty"`
 	FeedDisableReason       *string        `db:"feed_disable_reason"        json:"feed_disable_reason,omitempty"`
-	CreatedAt               time.Time      `db:"created_at"                 json:"created_at"`
-	UpdatedAt               time.Time      `db:"updated_at"                 json:"updated_at"`
+	// AllowSourceDiscovery: when true, outlinks from this source may feed the Source Candidate Pipeline (only if global discovery is enabled).
+	AllowSourceDiscovery bool `db:"allow_source_discovery" json:"allow_source_discovery"`
+	// IdentityKey: logical source identity for resolver (e.g. host+path or platform:tenant). Not equal to hostname.
+	IdentityKey *string `db:"identity_key" json:"identity_key,omitempty"`
+	// ExtractionProfile: optional JSON for PipelineX domain-aware extraction.
+	ExtractionProfile *ExtractionProfileJSON `db:"extraction_profile" json:"extraction_profile,omitempty"`
+	// TemplateHint: optional PipelineX template inference (e.g. "substack", "wordpress").
+	TemplateHint *string  `db:"template_hint" json:"template_hint,omitempty"`
+	CreatedAt    time.Time `db:"created_at"                 json:"created_at"`
+	UpdatedAt    time.Time `db:"updated_at"                 json:"updated_at"`
 }
 
 // SelectorConfig represents CSS selector configuration
@@ -278,6 +288,61 @@ func (s *SelectorConfig) MergeWithDefaults() SelectorConfig {
 		List:    s.List.MergeWithDefaults(),
 		Page:    s.Page.MergeWithDefaults(),
 	}
+}
+
+// ExtractionProfileJSON stores optional PipelineX extraction profile as JSONB.
+// Implements driver.Valuer and sql.Scanner for DB; marshals as JSON object for API.
+type ExtractionProfileJSON []byte
+
+// Value implements driver.Valuer for JSONB storage.
+func (e *ExtractionProfileJSON) Value() (driver.Value, error) {
+	if e == nil || len(*e) == 0 {
+		return nil, nil
+	}
+	return []byte(*e), nil
+}
+
+// Scan implements sql.Scanner for JSONB retrieval.
+func (e *ExtractionProfileJSON) Scan(value any) error {
+	if value == nil {
+		*e = nil
+		return nil
+	}
+	bytes, ok := value.([]byte)
+	if !ok {
+		return nil
+	}
+	if len(bytes) == 0 {
+		*e = nil
+		return nil
+	}
+	out := make([]byte, len(bytes))
+	copy(out, bytes)
+	*e = out
+	return nil
+}
+
+// MarshalJSON implements json.Marshaler so the field serializes as raw JSON.
+func (e *ExtractionProfileJSON) MarshalJSON() ([]byte, error) {
+	if e == nil || len(*e) == 0 {
+		return []byte("null"), nil
+	}
+	return *e, nil
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (e *ExtractionProfileJSON) UnmarshalJSON(data []byte) error {
+	if e == nil {
+		return nil
+	}
+	if len(data) == 0 || string(data) == "null" {
+		*e = nil
+		return nil
+	}
+	out := make([]byte, len(data))
+	copy(out, data)
+	*e = out
+	return nil
 }
 
 // StringArray is a custom type for PostgreSQL string arrays

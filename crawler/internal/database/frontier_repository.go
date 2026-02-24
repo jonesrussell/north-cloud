@@ -78,6 +78,18 @@ func (r *FrontierRepository) Submit(ctx context.Context, params SubmitParams) er
 	return nil
 }
 
+// CountByOriginSince returns the number of frontier URLs with the given origin and discovered_at >= since.
+// Used for discovery crawl budget enforcement (e.g. origin "discovered", since = start of today).
+func (r *FrontierRepository) CountByOriginSince(ctx context.Context, origin string, since time.Time) (int, error) {
+	query := `SELECT COUNT(*) FROM url_frontier WHERE origin = $1 AND discovered_at >= $2`
+	var n int
+	err := r.db.GetContext(ctx, &n, query, origin, since)
+	if err != nil {
+		return 0, fmt.Errorf("count by origin since: %w", err)
+	}
+	return n, nil
+}
+
 // SubmitAndReport upserts a URL into the frontier (same as Submit) and reports
 // whether the URL was actually queued (true) or deduplicated/skipped (false).
 func (r *FrontierRepository) SubmitAndReport(ctx context.Context, params SubmitParams) (bool, error) {
