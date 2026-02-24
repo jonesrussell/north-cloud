@@ -25,6 +25,9 @@ const (
 	ServiceTokenExpirationHours = 24
 )
 
+// ErrNotFound is returned when the API responds with 404 (e.g. no source for identity_key).
+var ErrNotFound = errors.New("source not found")
+
 // Client is an HTTP client for interacting with the source-manager API.
 type Client struct {
 	baseURL    string
@@ -109,6 +112,30 @@ func (c *Client) GetSource(ctx context.Context, id string) (*APISource, error) {
 	var source APISource
 	if doErr := c.doRequest(req, &source); doErr != nil {
 		return nil, fmt.Errorf("failed to get source: %w", doErr)
+	}
+
+	return &source, nil
+}
+
+// GetByIdentityKey retrieves a source by its identity_key (query param).
+// Returns nil, nil when no source matches (404). Used by the Source Identity Resolver.
+func (c *Client) GetByIdentityKey(ctx context.Context, identityKey string) (*APISource, error) {
+	if identityKey == "" {
+		return nil, nil
+	}
+	reqURL := c.baseURL + "/by-identity?identity_key=" + url.QueryEscape(identityKey)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, reqURL, http.NoBody)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	var source APISource
+	if doErr := c.doRequest(req, &source); doErr != nil {
+		// 404 means no source for this identity_key; treat as nil, nil
+		if errors.Is(doErr, ErrNotFound) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("failed to get source by identity_key: %w", doErr)
 	}
 
 	return &source, nil
@@ -289,8 +316,14 @@ func (c *Client) doRequest(req *http.Request, result any) error {
 	}
 
 	// Check for error status codes
-	const minErrorStatusCode = 400
+	const (
+		minErrorStatusCode = 400
+		statusNotFound     = 404
+	)
 	if resp.StatusCode >= minErrorStatusCode {
+		if resp.StatusCode == statusNotFound {
+			return fmt.Errorf("%w: API error (status 404)", ErrNotFound)
+		}
 		var errResp ErrorResponse
 		if jsonErr := json.Unmarshal(body, &errResp); jsonErr == nil && errResp.Error != "" {
 			return fmt.Errorf("API error (status %d): %s - %s", resp.StatusCode, errResp.Error, errResp.Message)

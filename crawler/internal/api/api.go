@@ -149,11 +149,12 @@ func NewServer(
 	// Extract port from address
 	port := extractPortFromAddress(cfg.GetServerConfig().Address)
 
-	// Get JWT secret
-	var jwtSecret string
+	// Get auth secrets
+	var jwtSecret, internalSecret string
 	authCfg := cfg.GetAuthConfig()
 	if authCfg != nil {
 		jwtSecret = authCfg.JWTSecret
+		internalSecret = authCfg.InternalSecret
 	}
 
 	// Determine debug mode from logging config
@@ -176,6 +177,9 @@ func NewServer(
 				logsHandler, logsV2Handler, executionRepo, sseHandler,
 				migrationHandler, syncHandler, frontierHandler,
 			)
+
+			// Setup internal service-to-service routes
+			setupInternalRoutes(router, internalSecret, infraLog)
 		}).
 		Build()
 
@@ -298,4 +302,20 @@ func setupCrawlerRoutes(
 		sseGroup.GET("/health/events", sseHandler.HandleHealthEvents)
 		sseGroup.GET("/metrics/events", sseHandler.HandleMetricsEvents)
 	}
+}
+
+// setupInternalRoutes configures internal service-to-service endpoints.
+// These are protected by shared secret (X-Internal-Secret header), not JWT.
+// If the internal secret is not configured, the routes are NOT registered to prevent SSRF.
+func setupInternalRoutes(router *gin.Engine, internalSecret string, log infralogger.Logger) {
+	if internalSecret == "" {
+		log.Warn("AUTH_INTERNAL_SECRET not configured: internal /fetch endpoint will NOT be registered")
+		return
+	}
+
+	internalHandler := NewInternalHandler(log)
+
+	internal := router.Group("/api/internal/v1")
+	internal.Use(infragin.InternalAuthMiddleware(internalSecret))
+	internal.POST("/fetch", internalHandler.Fetch)
 }

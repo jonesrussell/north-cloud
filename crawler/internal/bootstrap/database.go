@@ -19,6 +19,8 @@ type DatabaseComponents struct {
 	FrontierRepo        *database.FrontierRepository
 	HostStateRepo       *database.HostStateRepository
 	FeedStateRepo       *database.FeedStateRepository
+	CandidateRepo       *database.CandidateRepository
+	DecisionLogRepo     *database.DecisionLogRepository
 }
 
 // SetupDatabase connects to PostgreSQL and creates all repositories.
@@ -32,6 +34,7 @@ func SetupDatabase(cfg config.Interface) (*DatabaseComponents, error) {
 
 	jobRepo, executionRepo, discoveredLinkRepo, processedEventsRepo := setupRepositories(db)
 	frontierRepo, hostStateRepo, feedStateRepo := setupFrontierRepositories(db)
+	candidateRepo, decisionLogRepo := setupDiscoveryRepositories(db)
 
 	return &DatabaseComponents{
 		DB:                  db,
@@ -42,7 +45,17 @@ func SetupDatabase(cfg config.Interface) (*DatabaseComponents, error) {
 		FrontierRepo:        frontierRepo,
 		HostStateRepo:       hostStateRepo,
 		FeedStateRepo:       feedStateRepo,
+		CandidateRepo:       candidateRepo,
+		DecisionLogRepo:     decisionLogRepo,
 	}, nil
+}
+
+// setupDiscoveryRepositories creates source candidate and decision log repositories for the Source Candidate Pipeline.
+func setupDiscoveryRepositories(db *sqlx.DB) (
+	candidateRepo *database.CandidateRepository,
+	decisionLogRepo *database.DecisionLogRepository,
+) {
+	return database.NewCandidateRepository(db), database.NewDecisionLogRepository(db)
 }
 
 // setupRepositories creates all database repositories.
