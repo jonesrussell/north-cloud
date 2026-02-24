@@ -72,7 +72,7 @@ func (r *IdentityResolver) Resolve(ctx context.Context, canonicalURL, referringS
 	}
 
 	source, err := r.client.GetByIdentityKey(ctx, identityKey)
-	if err != nil {
+	if err != nil && !errors.Is(err, apiclient.ErrNotFound) {
 		return nil, fmt.Errorf("lookup by identity_key: %w", err)
 	}
 

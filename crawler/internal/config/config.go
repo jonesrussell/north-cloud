@@ -172,9 +172,11 @@ type FeedConfig struct {
 // Auto-source creation is disabled by default; enable explicitly per-source or globally.
 type DiscoveryConfig struct {
 	// AutoSourceDiscoveryEnabled: when true, the Source Candidate Pipeline may run. Default false.
-	AutoSourceDiscoveryEnabled bool     `env:"CRAWLER_AUTO_SOURCE_DISCOVERY_ENABLED" yaml:"auto_source_discovery_enabled"`
-	Allowlist                  []string `env:"CRAWLER_DISCOVERY_ALLOWLIST"           yaml:"allowlist"` // optional: only these hosts/identity keys become candidates
-	Blocklist                  []string `env:"CRAWLER_DISCOVERY_BLOCKLIST"           yaml:"blocklist"` // hosts or patterns never created as sources
+	AutoSourceDiscoveryEnabled bool `env:"CRAWLER_AUTO_SOURCE_DISCOVERY_ENABLED" yaml:"auto_source_discovery_enabled"`
+	// Allowlist: optional; only these hosts/identity keys become candidates.
+	Allowlist []string `env:"CRAWLER_DISCOVERY_ALLOWLIST" yaml:"allowlist"`
+	// Blocklist: hosts or patterns never created as sources.
+	Blocklist []string `env:"CRAWLER_DISCOVERY_BLOCKLIST" yaml:"blocklist"`
 	// GlobalCrawlBudgetPerDay caps new URLs from discovery per day (0 = no cap).
 	GlobalCrawlBudgetPerDay int `env:"CRAWLER_DISCOVERY_GLOBAL_BUDGET_PER_DAY" yaml:"global_crawl_budget_per_day"`
 	// MaxNewCandidatesPerRun caps new candidates per pipeline run (0 = no cap).

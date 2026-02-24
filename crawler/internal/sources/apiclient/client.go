@@ -118,10 +118,10 @@ func (c *Client) GetSource(ctx context.Context, id string) (*APISource, error) {
 }
 
 // GetByIdentityKey retrieves a source by its identity_key (query param).
-// Returns nil, nil when no source matches (404). Used by the Source Identity Resolver.
+// Returns (nil, ErrNotFound) when no source matches (404 or empty key). Used by the Source Identity Resolver.
 func (c *Client) GetByIdentityKey(ctx context.Context, identityKey string) (*APISource, error) {
 	if identityKey == "" {
-		return nil, nil
+		return nil, ErrNotFound
 	}
 	reqURL := c.baseURL + "/by-identity?identity_key=" + url.QueryEscape(identityKey)
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, reqURL, http.NoBody)
@@ -131,9 +131,8 @@ func (c *Client) GetByIdentityKey(ctx context.Context, identityKey string) (*API
 
 	var source APISource
 	if doErr := c.doRequest(req, &source); doErr != nil {
-		// 404 means no source for this identity_key; treat as nil, nil
 		if errors.Is(doErr, ErrNotFound) {
-			return nil, nil
+			return nil, ErrNotFound
 		}
 		return nil, fmt.Errorf("failed to get source by identity_key: %w", doErr)
 	}
