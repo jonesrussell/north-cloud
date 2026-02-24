@@ -5,9 +5,6 @@ WORKDIR /app
 # Install dev tools
 RUN apk add --no-cache git ca-certificates
 
-# Install Air for hot reload
-RUN go install github.com/air-verse/air@latest
-
 # Writable Go caches
 RUN mkdir -p /tmp/go-mod-cache \
              /tmp/go-build-cache && \
@@ -23,5 +20,5 @@ EXPOSE 8090
 ENV GOCACHE=/tmp/go-build-cache
 ENV GOMODCACHE=/tmp/go-mod-cache
 
-# Default dev command
-CMD ["sh", "-c", "go mod download && air -c .air.toml"]
+# Default dev command (compose overrides with build-and-run)
+CMD ["go", "run", "."]

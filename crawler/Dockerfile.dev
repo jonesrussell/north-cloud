@@ -8,9 +8,6 @@ WORKDIR /app
 # Install dev tools
 RUN apk add --no-cache git bash
 
-# Install Air for hot reload
-RUN go install github.com/air-verse/air@latest
-
 # Create non-root user (docker-compose will override UID/GID)
 RUN addgroup -g ${GID} appuser && \
     adduser -D -u ${UID} -G appuser appuser
@@ -32,4 +29,5 @@ ENV NPM_CONFIG_CACHE=/tmp/npm-cache
 
 EXPOSE 8060 3000
 
-CMD ["air", "-c", ".air.toml"]
+# Default dev command (compose overrides with build-and-run)
+CMD ["go", "run", "main.go"]

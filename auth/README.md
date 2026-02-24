@@ -12,7 +12,7 @@ Auth handles credential validation and JWT token issuance for the North Cloud pl
 - HS256-signed JWT token generation with configurable expiration (default 24 hours)
 - Structured JSON logging with per-request client IP tracking
 - pprof profiling server for runtime inspection
-- Hot reload in development via Air
+- Optional local hot reload via Air (Docker dev runs binary directly)
 - Public health endpoint, no token required
 
 ## Quick Start
@@ -40,7 +40,7 @@ curl -s -X POST http://localhost:8040/api/v1/auth/login \
 ```bash
 cd auth
 
-# Run with hot reload
+# Run with local hot reload (requires Air installed)
 air
 
 # Or run without hot reload
@@ -125,7 +125,7 @@ auth/
 ├── main.go                    — Entry point: profiling, config, logger, server
 ├── config.yml                 — Default configuration (override with env vars)
 ├── Taskfile.yml               — Build, test, lint, benchmark tasks
-├── .air.toml                  — Hot reload configuration
+├── .air.toml                  — Optional local hot reload (Air; Docker dev runs binary directly)
 └── internal/
     ├── api/
     │   ├── server.go          — Gin server setup, route registration

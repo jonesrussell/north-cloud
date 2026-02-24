@@ -205,7 +205,7 @@ mcp-north-cloud/
 ## Development
 
 ```bash
-# Hot reload
+# Start locally (requires Air for hot reload; Docker dev runs binary directly)
 task dev
 
 # Tests

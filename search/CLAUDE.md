@@ -4,7 +4,7 @@
 
 ```bash
 # Daily commands
-task dev              # Start with hot reload (Air)
+task dev              # Start service (or use Docker: task docker:dev:up:search)
 task test             # Run all tests
 task lint             # Run linter
 task fmt              # Format code

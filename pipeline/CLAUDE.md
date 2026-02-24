@@ -21,7 +21,7 @@ cd pipeline && task lint:no-cache
 # Apply migrations
 cd pipeline && task migrate:up
 
-# Hot-reload development
+# Start service locally (or use Docker: task docker:dev:up)
 cd pipeline && task dev
 
 # Build binary

@@ -54,7 +54,7 @@ cp config.example.yaml config.yml
 task install:tools
 task migrate:up
 
-# Start with hot reload
+# Start locally (requires Air for hot reload)
 task dev
 
 # Or build and run directly
@@ -437,7 +437,7 @@ task migrate:up
 # Force lint (bypasses cache — use before pushing)
 task lint:force
 
-# Run with hot reload
+# Run locally (requires Air for hot reload; Docker dev runs binary directly)
 task dev
 ```
 

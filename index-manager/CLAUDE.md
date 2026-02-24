@@ -4,7 +4,7 @@
 
 ```bash
 # Daily development commands
-task dev              # Start with hot reload (Air)
+task dev              # Start service (or use Docker: task docker:dev:up)
 task test             # Run tests
 task test:cover       # Run tests with coverage
 task lint             # Run linter

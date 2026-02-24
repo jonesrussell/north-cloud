@@ -8,9 +8,6 @@ WORKDIR /app
 # Dev tools
 RUN apk add --no-cache git bash
 
-# Install Air for hot reload
-RUN go install github.com/air-verse/air@latest
-
 # Create matching user
 RUN addgroup -g ${GID} appuser && \
     adduser -D -u ${UID} -G appuser appuser
@@ -37,5 +34,5 @@ EXPOSE 8093
 ENV GOCACHE=/tmp/go-build-cache
 ENV GOMODCACHE=/tmp/go-mod-cache
 
-# Run in dev mode (hot reload if using air)
+# Run in dev mode (compose overrides with build-and-run)
 CMD ["go", "run", "main.go"]

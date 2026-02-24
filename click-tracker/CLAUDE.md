@@ -15,8 +15,8 @@ task lint:no-cache
 # Build binary
 task build
 
-# Run with hot reload
-task dev   # requires Air
+# Run locally (requires Air installed; Docker dev runs binary directly)
+task dev
 
 # Apply migrations
 go run cmd/migrate/main.go up

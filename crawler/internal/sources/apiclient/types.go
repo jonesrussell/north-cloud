@@ -31,8 +31,8 @@ type APISource struct {
 	TemplateHint *string `json:"template_hint,omitempty"`
 	// ExtractionProfile: optional JSON for PipelineX domain-aware extraction.
 	ExtractionProfile *json.RawMessage `json:"extraction_profile,omitempty"`
-	CreatedAt         *time.Time      `json:"created_at,omitempty"`
-	UpdatedAt         *time.Time      `json:"updated_at,omitempty"`
+	CreatedAt         *time.Time       `json:"created_at,omitempty"`
+	UpdatedAt         *time.Time       `json:"updated_at,omitempty"`
 }
 
 // APISelectors represents the selectors structure in the API.

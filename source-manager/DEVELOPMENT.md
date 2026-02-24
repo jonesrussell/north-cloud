@@ -21,9 +21,8 @@ go mod download
 task frontend:install
 # or: cd frontend && npm install
 
-# Install Air for hot reloading (optional, will auto-install when running dev tasks)
-task air:install
-# or: go install github.com/air-verse/air@latest
+# Optional: install Air for local hot reload (task dev)
+# go install github.com/air-verse/air@latest
 ```
 
 ### 2. Set Up Database
@@ -66,21 +65,16 @@ logger:
 
 ## Development Workflows
 
-### Backend Only (with Hot Reload)
+### Backend Only
 
-Run the Go backend with automatic reloading when files change:
+Run the Go backend. For local hot reload, use `task dev` (requires Air installed). Docker dev runs the binary directly (no hot reload).
 
 ```bash
 task dev
 # or: task dev:backend
 ```
 
-This will:
-- Automatically install Air if not present
-- Watch for changes in `.go` files
-- Rebuild and restart the server on changes
-- Exclude test files, frontend, and vendor directories
-- Log build errors to `build-errors.log`
+With Air installed, `task dev` will watch for changes in `.go` files, rebuild and restart on change, and log build errors to `build-errors.log`.
 
 The backend API will be available at: http://localhost:8050
 
@@ -104,14 +98,14 @@ task dev:all
 ```
 
 This will start:
-- Backend API at http://localhost:8050 (with Air hot reload)
+- Backend API at http://localhost:8050 (local hot reload if using task dev with Air)
 - Frontend at http://localhost:3000 (with Vite hot reload)
 
 Press `Ctrl+C` to stop both servers.
 
-## Air Configuration
+## Air Configuration (optional, for local hot reload)
 
-The Air hot reload configuration is in `.air.toml`. Key settings:
+Docker dev runs the binary directly; no Air in containers. For local `task dev` hot reload, Air is configured in `.air.toml`. Key settings:
 
 - **Watched directories**: Root directory, excluding frontend/, tmp/, vendor/, etc.
 - **Watched extensions**: `.go`, `.tpl`, `.tmpl`, `.html`
@@ -228,7 +222,7 @@ curl http://localhost:3000
 
 ### Common Issues
 
-**Air not found**
+**Air not found** (only needed for local `task dev` hot reload, not Docker)
 ```bash
 # Install Air manually
 go install github.com/air-verse/air@latest
@@ -253,7 +247,7 @@ kill -9 <PID>
 
 ## Best Practices
 
-1. **Use Air for backend development** - Faster feedback loop with automatic rebuilds
+1. **Use Docker for backend development** - Or use Air locally for hot reload (`task dev`)
 2. **Run `task dev:all`** - Keep both frontend and backend in sync during full-stack development
 3. **Run tests before committing** - Use `task test` to ensure everything works
 4. **Check code quality** - Run `task check` to format and lint code

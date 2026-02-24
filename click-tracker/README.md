@@ -29,7 +29,7 @@ Search Service  →  click-tracker  →  Destination URL
 - JSON structured logging via `infrastructure/logger`
 - Profiling endpoint via `infrastructure/profiling` (pprof)
 - Memory health endpoint at `/health/memory`
-- Hot reload in development via Air
+- Optional local hot reload via Air (Docker dev runs binary directly)
 
 ## Quick Start
 
@@ -49,7 +49,7 @@ The container exposes port `8093` by default (configurable via `CLICK_TRACKER_PO
 
 ### Local Development
 
-**Prerequisites**: Go 1.26+, PostgreSQL, `golangci-lint`, `air` (optional, for hot reload)
+**Prerequisites**: Go 1.26+, PostgreSQL, `golangci-lint`, `air` (optional, for local hot reload)
 
 ```bash
 cd click-tracker
@@ -64,7 +64,7 @@ go run cmd/migrate/main.go up
 # Run the service
 go run main.go
 
-# Or with hot reload
+# Or with local hot reload (requires Air installed)
 air
 ```
 

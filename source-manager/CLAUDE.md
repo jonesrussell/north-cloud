@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with th
 
 ```bash
 # Development
-task dev              # Start with hot reload (Air)
+task dev              # Start service (or use Docker: task docker:dev:up)
 task test             # Run tests
 task lint             # Run linter
 task migrate:up       # Run migrations

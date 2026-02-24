@@ -42,7 +42,7 @@ Each service has its own `Taskfile.yml`. The root `Taskfile.yml` only delegates 
 
 ## Install tools
 
-The root `install:tools` task is the canonical way to install dev tools (golangci-lint/v2, goimports, migrate, govulncheck, air). Service-level `install:tools` may match (e.g. use `golangci-lint/v2`) or be omitted.
+The root `install:tools` task is the canonical way to install dev tools (golangci-lint/v2, goimports, migrate, govulncheck). Service-level `install:tools` may additionally install Air for local hot reload.
 
 ## Root Taskfile
 

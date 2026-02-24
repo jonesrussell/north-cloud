@@ -126,7 +126,7 @@ services:
       - crawler_go_build_cache:/tmp/go-build-cache
       - ./infrastructure:/infrastructure
       - ./index-manager:/index-manager
-    command: ["sh", "-c", "go mod download && air -c .air.toml"]
+    command: ["sh", "-c", "go mod download && mkdir -p tmp && go build -mod=mod -o ./tmp/main ./main.go && exec ./tmp/main"]
     healthcheck:
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:8080/health"]
       interval: 30s
@@ -177,7 +177,7 @@ services:
       - ./source-manager/migrations:/migrations:ro
       - source_manager_go_mod_cache:/tmp/go-mod-cache
       - source_manager_go_build_cache:/tmp/go-build-cache
-    command: ["sh", "-c", "go mod download && air -c .air.toml"]
+    command: ["sh", "-c", "go mod download && mkdir -p tmp && go build -mod=mod -o ./tmp/main ./main.go && exec ./tmp/main -config config.yml"]
     healthcheck:
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:8050/health"]
       interval: 30s
@@ -247,7 +247,7 @@ services:
       - ./infrastructure:/infrastructure
       - classifier_go_mod_cache:/tmp/go-mod-cache
       - classifier_go_build_cache:/tmp/go-build-cache
-    command: ["sh", "-c", "go mod download && air -c .air.toml"]
+    command: ["sh", "-c", "go mod download && mkdir -p tmp && go build -mod=mod -o ./tmp/main ./main.go && exec ./tmp/main"]
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8070/health"]
       interval: 30s
@@ -294,7 +294,7 @@ services:
       - index_manager_go_mod_cache:/tmp/go-mod-cache
       - index_manager_go_build_cache:/tmp/go-build-cache
       - ./infrastructure:/infrastructure
-    command: ["sh", "-c", "go mod download && air -c .air.toml"]
+    command: ["sh", "-c", "go mod download && mkdir -p tmp && go build -mod=mod -o ./tmp/main . && exec ./tmp/main"]
     healthcheck:
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:8090/health"]
       interval: 30s
@@ -343,7 +343,7 @@ services:
       - search_go_mod_cache:/tmp/go-mod-cache
       - search_go_build_cache:/tmp/go-build-cache
       - ./infrastructure:/infrastructure
-    command: ["sh", "-c", "go mod download && air -c .air.toml"]
+    command: ["sh", "-c", "go mod download && mkdir -p tmp && go build -mod=mod -o ./tmp/main . && exec ./tmp/main"]
     healthcheck:
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:8090/health"]
       interval: 15s
@@ -461,7 +461,7 @@ services:
       - ./infrastructure:/infrastructure:ro
       - click_tracker_go_mod_cache:/tmp/go-mod-cache
       - click_tracker_go_build_cache:/tmp/go-build-cache
-    command: ["sh", "-c", "go mod download && air -c .air.toml"]
+    command: ["sh", "-c", "go mod download && mkdir -p tmp && go build -mod=mod -o ./tmp/main ./main.go && exec ./tmp/main"]
     depends_on:
       postgres-click-tracker:
         condition: service_healthy
@@ -504,7 +504,7 @@ services:
       - ./infrastructure:/infrastructure:ro
       - auth_go_mod_cache:/tmp/go-mod-cache
       - auth_go_build_cache:/tmp/go-build-cache
-    command: ["sh", "-c", "go mod download && air -c .air.toml"]
+    command: ["sh", "-c", "go mod download && mkdir -p tmp && go build -mod=mod -o ./tmp/main ./main.go && exec ./tmp/main"]
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8040/health"]
       interval: 30s
@@ -617,7 +617,7 @@ services:
       - publisher_go_mod_cache:/tmp/go-mod-cache
       - publisher_go_build_cache:/tmp/go-build-cache
       - ./infrastructure:/infrastructure
-    command: ["sh", "-c", "go mod download && air -c .air.toml"]
+    command: ["sh", "-c", "go mod download && mkdir -p tmp && go build -mod=mod -o ./tmp/publisher . && exec ./tmp/publisher both"]
     healthcheck:
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:8070/health"]
       interval: 30s
@@ -664,7 +664,7 @@ services:
       - pipeline_go_mod_cache:/tmp/go-mod-cache
       - pipeline_go_build_cache:/tmp/go-build-cache
       - ./infrastructure:/infrastructure
-    command: ["sh", "-c", "go mod download && air -c .air.toml"]
+    command: ["sh", "-c", "go mod download && mkdir -p tmp && go build -mod=mod -o ./tmp/pipeline . && exec ./tmp/pipeline"]
     healthcheck:
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:8075/health"]
       interval: 30s

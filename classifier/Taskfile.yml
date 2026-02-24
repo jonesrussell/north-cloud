@@ -11,7 +11,11 @@ vars:
   POSTGRES_PASSWORD: '{{.POSTGRES_CLASSIFIER_PASSWORD | default ""}}'
   POSTGRES_DB: '{{.POSTGRES_CLASSIFIER_DB | default "classifier"}}'
 
+# Resolve from go.mod and replace (../infrastructure); ignore local vendor so lint/test pass
+# when vendor exists but is stale or incomplete (vendor/ is gitignored; CI has no vendor).
 env:
+  GOWORK: "off"
+  GOFLAGS: "-mod=mod"
 
 tasks:
   default:

@@ -5,9 +5,6 @@ WORKDIR /app
 # Dev tools (Go + frontend)
 RUN apk add --no-cache git curl wget nodejs npm
 
-# Install Air for hot reload
-RUN go install github.com/air-verse/air@latest
-
 # Create fallback non-root user (docker-compose will override UID/GID)
 RUN addgroup -g 1000 appuser && \
     adduser -D -u 1000 -G appuser appuser

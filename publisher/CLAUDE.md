@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with th
 
 ```bash
 # Development
-task dev              # Start with hot reload (both API + router)
+task dev              # Start service locally (both API + router; or use Docker: task docker:dev:up)
 task run:api          # API server only (port 8070)
 task run:router       # Router worker only
 task test             # Run tests
