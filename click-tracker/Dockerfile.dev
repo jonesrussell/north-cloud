@@ -34,5 +34,5 @@ EXPOSE 8093
 ENV GOCACHE=/tmp/go-build-cache
 ENV GOMODCACHE=/tmp/go-mod-cache
 
-# Run in dev mode (hot reload if using air)
+# Run in dev mode (compose overrides with build-and-run)
 CMD ["go", "run", "main.go"]

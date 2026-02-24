@@ -4,7 +4,7 @@
 
 ```bash
 # Development
-task dev              # Start with hot reload
+task dev              # Start service (or use Docker: task docker:dev:up)
 task test             # Run tests
 task lint             # Run linter
 task migrate:up       # Run migrations

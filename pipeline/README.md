@@ -49,13 +49,13 @@ cd pipeline
 # Copy and edit config
 cp config.yml.example config.yml
 
-# Install dev tools (air, golangci-lint, goimports, migrate)
+# Install dev tools (golangci-lint, goimports, migrate)
 task install:tools
 
 # Run migrations against a local or Docker-hosted Postgres
 task migrate:up
 
-# Start with hot reload
+# Start locally (requires Air for hot reload; Docker dev runs binary directly)
 task dev
 
 # Or run directly
@@ -233,9 +233,9 @@ pipeline/
 ├── main.go                      # Entry point — calls bootstrap.Start()
 ├── config.yml.example           # Reference config (copied to config.yml at startup)
 ├── Dockerfile                   # Production multi-stage build
-├── Dockerfile.dev               # Development image with Air hot reload
+├── Dockerfile.dev               # Development image (compose runs binary directly)
 ├── Taskfile.yml                 # Task runner targets (build, test, lint, migrate, …)
-├── .air.toml                    # Air hot-reload config
+├── .air.toml                    # Optional local hot reload (Air; Docker dev runs binary directly)
 ├── migrations/
 │   ├── 001_create_pipeline_events.up.sql    # Schema: articles, pipeline_stage enum,
 │   │                                        #   stage_ordering, pipeline_events (partitioned)

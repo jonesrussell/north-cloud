@@ -32,7 +32,7 @@ Available at `http://localhost:8050`.
 cp config.yml.example config.yml
 # Edit config.yml with your PostgreSQL and Elasticsearch settings
 go run cmd/migrate/main.go up   # Run migrations
-task dev                         # Start with hot reload (Air)
+task dev                         # Start locally (requires Air for hot reload; Docker dev runs binary directly)
 # Or: go run main.go -config config.yml
 ```
 

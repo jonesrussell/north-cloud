@@ -222,7 +222,7 @@ curl http://localhost:3000
 
 ### Common Issues
 
-**Air not found**
+**Air not found** (only needed for local `task dev` hot reload, not Docker)
 ```bash
 # Install Air manually
 go install github.com/air-verse/air@latest
@@ -247,7 +247,7 @@ kill -9 <PID>
 
 ## Best Practices
 
-1. **Use Air for backend development** - Faster feedback loop with automatic rebuilds
+1. **Use Docker for backend development** - Or use Air locally for hot reload (`task dev`)
 2. **Run `task dev:all`** - Keep both frontend and backend in sync during full-stack development
 3. **Run tests before committing** - Use `task test` to ensure everything works
 4. **Check code quality** - Run `task check` to format and lint code

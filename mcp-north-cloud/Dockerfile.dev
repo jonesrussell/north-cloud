@@ -22,6 +22,5 @@ RUN chmod +x /app/run-mcp.sh
 ENV GOCACHE=/tmp/go-build-cache
 ENV GOMODCACHE=/tmp/go-mod-cache
 
-# Use Air for hot reloading (for development/testing)
-# The run-mcp.sh script will build the binary when needed for MCP
-CMD ["air", "-c", ".air.toml"]
+# Default dev command (compose overrides with build-and-run)
+CMD ["./run-mcp.sh"]

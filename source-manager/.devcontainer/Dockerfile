@@ -12,7 +12,6 @@ RUN mkdir -p /go/pkg/mod/cache/download /go/pkg/sumdb/sum.golang.org && \
     chown -R vscode:vscode /go && \
     chmod -R u+w /go/pkg
 
-# Install air for hot reloading in development
 # Install as vscode user to ensure it's in the correct GOPATH/bin
 USER vscode
 # Create user's Go cache directory and set it as default

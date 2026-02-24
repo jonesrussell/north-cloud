@@ -29,4 +29,5 @@ ENV NPM_CONFIG_CACHE=/tmp/npm-cache
 
 EXPOSE 8060 3000
 
-CMD ["air", "-c", ".air.toml"]
+# Default dev command (compose overrides with build-and-run)
+CMD ["go", "run", "main.go"]

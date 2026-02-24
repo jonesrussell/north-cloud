@@ -29,5 +29,5 @@ EXPOSE 8070
 ENV GOCACHE=/tmp/go-build-cache
 ENV GOMODCACHE=/tmp/go-mod-cache
 
-# Default dev command - use Air for hot reloading
-CMD ["air", "-c", ".air.toml"]
+# Default dev command (compose overrides with build-and-run)
+CMD ["go", "run", "main.go"]

@@ -64,6 +64,6 @@ Delta: ___
 
 - [ ] Branch created
 - [ ] Baseline: 0 → up auth (with Air) → capture `docker stats` → down
-- [ ] Air removed from compose (and optionally Dockerfiles/tooling/docs)
+- [ ] Air removed from compose, Dockerfiles, and root Taskfile (retained in service Taskfiles for local `task dev`)
 - [ ] Rebuild auth image, up auth (no Air), capture `docker stats` again
 - [ ] Compare and record delta above
