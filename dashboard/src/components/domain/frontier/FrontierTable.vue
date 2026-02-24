@@ -185,7 +185,10 @@ function getOriginVariant(origin: string) {
               class="px-4 py-3 text-sm text-muted-foreground max-w-[240px]"
               :title="url.last_error ?? undefined"
             >
-              <span class="truncate block" :title="url.last_error ?? undefined">
+              <span
+                class="truncate block"
+                :title="url.last_error ?? undefined"
+              >
                 {{ truncateError(url.last_error) }}
               </span>
             </td>
