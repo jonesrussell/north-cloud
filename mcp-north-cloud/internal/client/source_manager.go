@@ -119,30 +119,54 @@ func (c *SourceManagerClient) CreateSource(ctx context.Context, req CreateSource
 	return &source, nil
 }
 
-// ListSources lists all sources
-//
-//nolint:dupl // Similar HTTP client pattern across different services is acceptable
+// listSourcesPageSize is the page size used when paginating through all sources.
+const listSourcesPageSize = 500
+
+// ListSources lists all sources by paginating through the source-manager API.
 func (c *SourceManagerClient) ListSources(ctx context.Context) ([]Source, error) {
-	endpoint := fmt.Sprintf("%s/api/v1/sources", c.baseURL)
+	var allSources []Source
+	offset := 0
+
+	for {
+		sources, total, err := c.listSourcesPage(ctx, listSourcesPageSize, offset)
+		if err != nil {
+			return nil, err
+		}
+
+		allSources = append(allSources, sources...)
+
+		if len(allSources) >= total || len(sources) == 0 {
+			break
+		}
+
+		offset += len(sources)
+	}
+
+	return allSources, nil
+}
+
+// listSourcesPage fetches a single page of sources from the source-manager API.
+func (c *SourceManagerClient) listSourcesPage(ctx context.Context, limit, offset int) ([]Source, int, error) {
+	endpoint := fmt.Sprintf("%s/api/v1/sources?limit=%d&offset=%d", c.baseURL, limit, offset)
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, http.NoBody)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create request: %w", err)
+		return nil, 0, fmt.Errorf("failed to create request: %w", err)
 	}
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("failed to execute request: %w", err)
+		return nil, 0, fmt.Errorf("failed to execute request: %w", err)
 	}
 	defer resp.Body.Close()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read response: %w", err)
+		return nil, 0, fmt.Errorf("failed to read response: %w", err)
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("unexpected status code: %d, body: %s", resp.StatusCode, string(body))
+		return nil, 0, fmt.Errorf("unexpected status code: %d, body: %s", resp.StatusCode, string(body))
 	}
 
 	var response struct {
@@ -150,10 +174,10 @@ func (c *SourceManagerClient) ListSources(ctx context.Context) ([]Source, error)
 		Total   int      `json:"total"`
 	}
 	if err = json.Unmarshal(body, &response); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
+		return nil, 0, fmt.Errorf("failed to parse response: %w", err)
 	}
 
-	return response.Sources, nil
+	return response.Sources, response.Total, nil
 }
 
 // GetSource gets a source by ID

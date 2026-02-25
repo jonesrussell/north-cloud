@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -13,11 +14,15 @@ import (
 	"github.com/jonesrussell/north-cloud/source-manager/internal/metadata"
 	"github.com/jonesrussell/north-cloud/source-manager/internal/models"
 	"github.com/jonesrussell/north-cloud/source-manager/internal/repository"
+	"github.com/lib/pq"
 	infraevents "github.com/north-cloud/infrastructure/events"
 	infralogger "github.com/north-cloud/infrastructure/logger"
 )
 
 const (
+	// pqUniqueViolation is PostgreSQL error code 23505 (unique_violation).
+	pqUniqueViolation = "23505"
+
 	// Test crawl simulation constants
 	defaultTestArticlesFound = 10
 	defaultTestSuccessRate   = 90
@@ -77,6 +82,14 @@ func (h *SourceHandler) Create(c *gin.Context) {
 	source.RateLimit = models.NormalizeRateLimit(source.RateLimit)
 
 	if err := h.repo.Create(c.Request.Context(), &source); err != nil {
+		var pqErr *pq.Error
+		if errors.As(err, &pqErr) && pqErr.Code == pqUniqueViolation {
+			h.logger.Warn("Duplicate source name",
+				infralogger.String("source_name", source.Name),
+			)
+			c.JSON(http.StatusConflict, gin.H{"error": fmt.Sprintf("Source name '%s' already exists", source.Name)})
+			return
+		}
 		h.logger.Error("Failed to create source",
 			infralogger.String("source_name", source.Name),
 			infralogger.Error(err),
