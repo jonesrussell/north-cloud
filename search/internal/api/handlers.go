@@ -219,10 +219,10 @@ const (
 	defaultFeedLimitString = "10"
 )
 
-// PublicFeed serves the public article feed (no auth). For static-site consumers
+// PublicFeed serves the public content feed (no auth). For static-site consumers
 // (e.g. "me") at build time. Stable URL, deterministic "recent N" payload.
 func (h *Handler) PublicFeed(c *gin.Context) {
-	articles, err := h.searchService.LatestArticles(c.Request.Context())
+	items, err := h.searchService.LatestItems(c.Request.Context())
 	if err != nil {
 		h.logger.Error("Public feed failed",
 			infralogger.Error(err),
@@ -237,7 +237,7 @@ func (h *Handler) PublicFeed(c *gin.Context) {
 	c.Header("Cache-Control", "public, max-age="+strconv.Itoa(publicFeedCacheMaxAge))
 	c.JSON(http.StatusOK, domain.PublicFeedResponse{
 		GeneratedAt: time.Now().UTC().Format(time.RFC3339),
-		Articles:    articles,
+		Items:       items,
 	})
 }
 
@@ -251,7 +251,7 @@ func (h *Handler) TopicFeed(c *gin.Context) {
 		limit = defaultFeedLimitParam
 	}
 
-	articles, feedErr := h.searchService.TopicFeed(c.Request.Context(), slug, limit)
+	items, feedErr := h.searchService.TopicFeed(c.Request.Context(), slug, limit)
 	if feedErr != nil {
 		h.logger.Error("Topic feed failed",
 			infralogger.Error(feedErr),
@@ -267,7 +267,7 @@ func (h *Handler) TopicFeed(c *gin.Context) {
 	c.Header("Cache-Control", "public, max-age="+strconv.Itoa(publicFeedCacheMaxAge))
 	c.JSON(http.StatusOK, domain.PublicFeedResponse{
 		GeneratedAt: time.Now().UTC().Format(time.RFC3339),
-		Articles:    articles,
+		Items:       items,
 	})
 }
 

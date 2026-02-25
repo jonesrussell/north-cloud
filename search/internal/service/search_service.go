@@ -395,9 +395,9 @@ func generateQueryID() string {
 	return "q_" + hex.EncodeToString(b)[:queryIDLength]
 }
 
-// LatestArticles returns the most recent classified articles for the public feed.
+// LatestItems returns the most recent classified content for the public feed.
 // No auth; used by static sites at build time. Size is fixed (publicFeedSize).
-func (s *SearchService) LatestArticles(ctx context.Context) ([]domain.PublicFeedArticle, error) {
+func (s *SearchService) LatestItems(ctx context.Context) ([]domain.PublicFeedItem, error) {
 	query := map[string]any{
 		"query": map[string]any{"match_all": map[string]any{}},
 		"size":  publicFeedSize,
@@ -417,7 +417,7 @@ func (s *SearchService) LatestArticles(ctx context.Context) ([]domain.PublicFeed
 	defer func() {
 		_ = res.Body.Close()
 	}()
-	return s.parseLatestArticlesResponse(res.Body)
+	return s.parseLatestItemsResponse(res.Body)
 }
 
 // feedFilterForSlug maps a feed slug to topic filters and minimum quality score.
@@ -434,8 +434,8 @@ func feedFilterForSlug(slug string) (topics []string, minQuality int) {
 	}
 }
 
-// TopicFeed returns recent articles filtered by feed slug (topic + quality).
-func (s *SearchService) TopicFeed(ctx context.Context, slug string, limit int) ([]domain.PublicFeedArticle, error) {
+// TopicFeed returns recent content filtered by feed slug (topic + quality).
+func (s *SearchService) TopicFeed(ctx context.Context, slug string, limit int) ([]domain.PublicFeedItem, error) {
 	if limit <= 0 || limit > maxFeedLimit {
 		limit = defaultFeedLimit
 	}
@@ -477,11 +477,11 @@ func (s *SearchService) TopicFeed(ctx context.Context, slug string, limit int) (
 		_ = res.Body.Close()
 	}()
 
-	return s.parseLatestArticlesResponse(res.Body)
+	return s.parseLatestItemsResponse(res.Body)
 }
 
-// parseLatestArticlesResponse parses ES response into PublicFeedArticle slice.
-func (s *SearchService) parseLatestArticlesResponse(body io.Reader) ([]domain.PublicFeedArticle, error) {
+// parseLatestItemsResponse parses ES response into PublicFeedItem slice.
+func (s *SearchService) parseLatestItemsResponse(body io.Reader) ([]domain.PublicFeedItem, error) {
 	var esResponse struct {
 		Hits struct {
 			Hits []struct {
@@ -500,9 +500,9 @@ func (s *SearchService) parseLatestArticlesResponse(body io.Reader) ([]domain.Pu
 		} `json:"hits"`
 	}
 	if err := json.NewDecoder(body).Decode(&esResponse); err != nil {
-		return nil, fmt.Errorf("decode latest articles response: %w", err)
+		return nil, fmt.Errorf("decode latest items response: %w", err)
 	}
-	out := make([]domain.PublicFeedArticle, 0, len(esResponse.Hits.Hits))
+	out := make([]domain.PublicFeedItem, 0, len(esResponse.Hits.Hits))
 	for i := range esResponse.Hits.Hits {
 		hit := &esResponse.Hits.Hits[i]
 		id := hit.Source.ID
@@ -523,7 +523,7 @@ func (s *SearchService) parseLatestArticlesResponse(body io.Reader) ([]domain.Pu
 		if sourceName == "" {
 			sourceName = "pipeline"
 		}
-		out = append(out, domain.PublicFeedArticle{
+		out = append(out, domain.PublicFeedItem{
 			ID:          id,
 			Title:       hit.Source.Title,
 			Slug:        slugFromTitle(hit.Source.Title, id),

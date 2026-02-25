@@ -261,9 +261,9 @@ type HealthStatus struct {
 	Dependencies map[string]string `json:"dependencies"`
 }
 
-// PublicFeedArticle is a single article in the public feed (no-auth, stable URL).
+// PublicFeedItem is a single item in the public feed (no-auth, stable URL).
 // Consumed by static sites (e.g. "me") at build time.
-type PublicFeedArticle struct {
+type PublicFeedItem struct {
 	ID          string    `json:"id"`
 	Title       string    `json:"title"`
 	Slug        string    `json:"slug"`
@@ -276,6 +276,6 @@ type PublicFeedArticle struct {
 
 // PublicFeedResponse is the response shape for GET /feed.json.
 type PublicFeedResponse struct {
-	GeneratedAt string              `json:"generated_at"`
-	Articles    []PublicFeedArticle `json:"articles"`
+	GeneratedAt string           `json:"generated_at"`
+	Items       []PublicFeedItem `json:"items"`
 }
