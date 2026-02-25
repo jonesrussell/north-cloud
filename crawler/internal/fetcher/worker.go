@@ -30,12 +30,12 @@ const (
 	reasonNotFound               = "not_found"
 	reasonTooManyRedirects       = "too_many_redirects"
 	reasonUnsupportedContentType = "unsupported_content_type"
-	reasonNonArticleURL          = "non_article_url"
+	reasonBinaryURL              = "binary_url"
 )
 
-// nonArticleExtensions are file extensions that indicate non-article resources.
+// binaryExtensions are file extensions that indicate binary/non-content resources.
 // These URLs are marked dead in the frontier to avoid repeated parse failures.
-var nonArticleExtensions = []string{
+var binaryExtensions = []string{
 	".pdf", ".xml", ".json", ".css", ".js",
 	".png", ".jpg", ".jpeg", ".gif", ".svg", ".ico", ".webp",
 	".woff", ".woff2", ".ttf", ".eot",
@@ -44,8 +44,8 @@ var nonArticleExtensions = []string{
 	".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx",
 }
 
-// nonArticlePathSubstrings are URL path substrings that indicate binary download endpoints.
-var nonArticlePathSubstrings = []string{
+// binaryPathSubstrings are URL path substrings that indicate binary download endpoints.
+var binaryPathSubstrings = []string{
 	"downloadmp3", "download.php", "downloadfile",
 }
 
@@ -330,13 +330,13 @@ func (wp *WorkerPool) handleSuccess(
 		return nil
 	}
 
-	if isNonArticleURL(furl.URL) {
-		if updateErr := wp.frontier.UpdateDead(ctx, furl.ID, reasonNonArticleURL); updateErr != nil {
+	if isBinaryURL(furl.URL) {
+		if updateErr := wp.frontier.UpdateDead(ctx, furl.ID, reasonBinaryURL); updateErr != nil {
 			return updateErr
 		}
 		wp.log.Info("URL marked dead",
 			"url", furl.URL,
-			"reason", reasonNonArticleURL,
+			"reason", reasonBinaryURL,
 		)
 		return nil
 	}
@@ -433,20 +433,20 @@ func isHTMLContent(contentType string) bool {
 	return strings.HasPrefix(ct, "text/html") || strings.Contains(ct, "xhtml")
 }
 
-// isNonArticleURL returns true if the URL path has a non-article file extension
+// isBinaryURL returns true if the URL path has a binary file extension
 // (e.g. .mp3, .pdf) or matches a known binary download pattern (e.g. downloadmp3.php).
-func isNonArticleURL(rawURL string) bool {
+func isBinaryURL(rawURL string) bool {
 	parsed, err := url.Parse(rawURL)
 	if err != nil {
 		return false
 	}
 	lowerPath := strings.ToLower(parsed.Path)
-	for _, ext := range nonArticleExtensions {
+	for _, ext := range binaryExtensions {
 		if strings.HasSuffix(lowerPath, ext) {
 			return true
 		}
 	}
-	for _, substr := range nonArticlePathSubstrings {
+	for _, substr := range binaryPathSubstrings {
 		if strings.Contains(lowerPath, substr) {
 			return true
 		}

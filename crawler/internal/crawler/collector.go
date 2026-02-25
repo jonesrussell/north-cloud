@@ -424,7 +424,7 @@ func (c *Crawler) setupCallbacks(ctx context.Context) {
 		crawlCtx := c.getCrawlContext()
 		var patterns []*regexp.Regexp
 		if crawlCtx != nil {
-			patterns = crawlCtx.ArticlePatterns
+			patterns = crawlCtx.ContentPatterns
 		}
 
 		if ok, detectedType := IsStructuredContentPage(e, pageURL, patterns); ok {

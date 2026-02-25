@@ -11,5 +11,5 @@ import (
 type CrawlContext struct {
 	SourceID        string
 	Source          *configtypes.Source
-	ArticlePatterns []*regexp.Regexp // Compiled patterns for article URL detection
+	ContentPatterns []*regexp.Regexp // Compiled patterns for content URL detection
 }

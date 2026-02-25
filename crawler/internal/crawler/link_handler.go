@@ -202,7 +202,7 @@ func (h *LinkHandler) buildFrontierParams(
 // calculateFrontierPriority returns a priority value for a spider-discovered URL.
 // Article URLs receive a bonus to be fetched sooner.
 func (h *LinkHandler) calculateFrontierPriority(absLink string, cc *CrawlContext) int {
-	if isArticleURL(absLink, cc.ArticlePatterns) {
+	if isContentURL(absLink, cc.ContentPatterns) {
 		return domain.FrontierDefaultPriority + domain.FrontierSpiderArticleBonus
 	}
 	return domain.FrontierDefaultPriority

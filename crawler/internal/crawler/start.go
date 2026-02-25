@@ -136,7 +136,7 @@ func (c *Crawler) validateAndSetup(ctx context.Context, sourceID string) (*confi
 	c.crawlContext = &CrawlContext{
 		SourceID:        sourceID,
 		Source:          source,
-		ArticlePatterns: compileArticlePatterns(source.ArticleURLPatterns),
+		ContentPatterns: compileContentPatterns(source.ArticleURLPatterns),
 	}
 	c.crawlContextMu.Unlock()
 

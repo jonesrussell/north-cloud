@@ -752,7 +752,7 @@ func TestProcessURL_TooManyRedirects(t *testing.T) {
 	}
 }
 
-func TestProcessURL_NonArticleURLExtension(t *testing.T) {
+func TestProcessURL_BinaryURLExtension(t *testing.T) {
 	t.Parallel()
 
 	server := startTestServerWithContentType(t, http.StatusOK, "binary content", "text/html")
@@ -775,12 +775,12 @@ func TestProcessURL_NonArticleURLExtension(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	verifyDeadCalled(t, frontier, "non_article_url")
+	verifyDeadCalled(t, frontier, "binary_url")
 	verifyNoContentIndexed(t, indexer)
 	verifyHostUpdated(t, hostUpdater)
 }
 
-func TestProcessURL_NonArticleURLDownloadPHP(t *testing.T) {
+func TestProcessURL_BinaryURLDownloadPHP(t *testing.T) {
 	t.Parallel()
 
 	server := startTestServerWithContentType(t, http.StatusOK, "binary content", "text/html")
@@ -803,7 +803,7 @@ func TestProcessURL_NonArticleURLDownloadPHP(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	verifyDeadCalled(t, frontier, "non_article_url")
+	verifyDeadCalled(t, frontier, "binary_url")
 	verifyNoContentIndexed(t, indexer)
 	verifyHostUpdated(t, hostUpdater)
 }
