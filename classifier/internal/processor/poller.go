@@ -254,7 +254,7 @@ func (p *Poller) emitClassifiedEvents(ctx context.Context, contents []*domain.Cl
 	events := make([]pipeline.Event, 0, len(contents))
 	for _, content := range contents {
 		events = append(events, pipeline.Event{
-			ArticleURL: content.URL,
+			ContentURL: content.URL,
 			SourceName: content.SourceName,
 			Stage:      "classified",
 			OccurredAt: time.Now(),

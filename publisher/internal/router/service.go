@@ -480,7 +480,7 @@ func (s *Service) emitPublishedEvent(ctx context.Context, article *Article, chan
 	}
 
 	pipelineErr := s.pipeline.Emit(ctx, pipeline.Event{
-		ArticleURL: article.URL,
+		ContentURL: article.URL,
 		SourceName: article.Source,
 		Stage:      "published",
 		OccurredAt: time.Now(),

@@ -26,7 +26,7 @@ const (
 
 // Event represents a pipeline event to emit.
 type Event struct {
-	ArticleURL     string         `json:"article_url"`
+	ContentURL     string         `json:"content_url"`
 	SourceName     string         `json:"source_name"`
 	Stage          string         `json:"stage"`
 	OccurredAt     time.Time      `json:"occurred_at"`
