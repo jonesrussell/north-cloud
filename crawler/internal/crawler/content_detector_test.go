@@ -7,33 +7,33 @@ import (
 	"github.com/jonesrussell/north-cloud/crawler/internal/crawler"
 )
 
-// ---------- isArticleURL tests ----------
+// ---------- isContentURL tests ----------
 
-func TestIsArticleURL_MatchesExplicitPattern(t *testing.T) {
+func TestIsContentURL_MatchesExplicitPattern(t *testing.T) {
 	t.Parallel()
 
 	patterns := []*regexp.Regexp{
 		regexp.MustCompile(`/news/\d+`),
 	}
 
-	if !crawler.IsArticleURL("https://example.com/news/12345", patterns) {
-		t.Fatal("expected URL matching explicit pattern to be detected as article")
+	if !crawler.IsContentURL("https://example.com/news/12345", patterns) {
+		t.Fatal("expected URL matching explicit pattern to be detected as content")
 	}
 }
 
-func TestIsArticleURL_NoMatchWithExplicitPatterns(t *testing.T) {
+func TestIsContentURL_NoMatchWithExplicitPatterns(t *testing.T) {
 	t.Parallel()
 
 	patterns := []*regexp.Regexp{
 		regexp.MustCompile(`/news/\d+`),
 	}
 
-	if crawler.IsArticleURL("https://example.com/about", patterns) {
+	if crawler.IsContentURL("https://example.com/about", patterns) {
 		t.Fatal("expected URL not matching explicit pattern to be rejected")
 	}
 }
 
-func TestIsArticleURL_DatePatternInURL(t *testing.T) {
+func TestIsContentURL_DatePatternInURL(t *testing.T) {
 	t.Parallel()
 
 	urls := []string{
@@ -41,13 +41,13 @@ func TestIsArticleURL_DatePatternInURL(t *testing.T) {
 		"https://example.com/2026/02/breaking-news-headline",
 	}
 	for _, u := range urls {
-		if !crawler.IsArticleURL(u, nil) {
-			t.Fatalf("expected date-based URL to be detected as article: %s", u)
+		if !crawler.IsContentURL(u, nil) {
+			t.Fatalf("expected date-based URL to be detected as content: %s", u)
 		}
 	}
 }
 
-func TestIsArticleURL_ArticlePathSegments(t *testing.T) {
+func TestIsContentURL_ArticlePathSegments(t *testing.T) {
 	t.Parallel()
 
 	urls := []string{
@@ -57,13 +57,13 @@ func TestIsArticleURL_ArticlePathSegments(t *testing.T) {
 		"https://example.com/post/some-content",
 	}
 	for _, u := range urls {
-		if !crawler.IsArticleURL(u, nil) {
-			t.Fatalf("expected article path segment URL to be detected: %s", u)
+		if !crawler.IsContentURL(u, nil) {
+			t.Fatalf("expected content path segment URL to be detected: %s", u)
 		}
 	}
 }
 
-func TestIsArticleURL_HomepageReturnsFalse(t *testing.T) {
+func TestIsContentURL_HomepageReturnsFalse(t *testing.T) {
 	t.Parallel()
 
 	urls := []string{
@@ -71,13 +71,13 @@ func TestIsArticleURL_HomepageReturnsFalse(t *testing.T) {
 		"https://example.com/",
 	}
 	for _, u := range urls {
-		if crawler.IsArticleURL(u, nil) {
+		if crawler.IsContentURL(u, nil) {
 			t.Fatalf("expected homepage to be rejected: %s", u)
 		}
 	}
 }
 
-func TestIsArticleURL_SingleSegmentCategoryReturnsFalse(t *testing.T) {
+func TestIsContentURL_SingleSegmentCategoryReturnsFalse(t *testing.T) {
 	t.Parallel()
 
 	urls := []string{
@@ -86,13 +86,13 @@ func TestIsArticleURL_SingleSegmentCategoryReturnsFalse(t *testing.T) {
 		"https://example.com/entertainment",
 	}
 	for _, u := range urls {
-		if crawler.IsArticleURL(u, nil) {
+		if crawler.IsContentURL(u, nil) {
 			t.Fatalf("expected single-segment category page to be rejected: %s", u)
 		}
 	}
 }
 
-func TestIsArticleURL_NonArticleURLsFiltered(t *testing.T) {
+func TestIsContentURL_NonArticleURLsFiltered(t *testing.T) {
 	t.Parallel()
 
 	urls := []string{
@@ -116,13 +116,13 @@ func TestIsArticleURL_NonArticleURLsFiltered(t *testing.T) {
 		"https://example.com/photo.jpg",
 	}
 	for _, u := range urls {
-		if crawler.IsArticleURL(u, nil) {
-			t.Fatalf("expected non-article URL to be filtered out: %s", u)
+		if crawler.IsContentURL(u, nil) {
+			t.Fatalf("expected non-content URL to be filtered out: %s", u)
 		}
 	}
 }
 
-func TestIsArticleURL_SlugLikePathsWithHyphens(t *testing.T) {
+func TestIsContentURL_SlugLikePathsWithHyphens(t *testing.T) {
 	t.Parallel()
 
 	urls := []string{
@@ -130,55 +130,55 @@ func TestIsArticleURL_SlugLikePathsWithHyphens(t *testing.T) {
 		"https://example.com/section/breaking-news-from-the-city",
 	}
 	for _, u := range urls {
-		if !crawler.IsArticleURL(u, nil) {
+		if !crawler.IsContentURL(u, nil) {
 			t.Fatalf("expected slug-like URL with 3+ hyphens to be detected: %s", u)
 		}
 	}
 }
 
-// ---------- isArticlePage tests ----------
+// ---------- isContentPage tests ----------
 
-func TestIsArticlePage_OGTypeArticle(t *testing.T) {
+func TestIsContentPage_OGTypeArticle(t *testing.T) {
 	t.Parallel()
 
-	if !crawler.IsArticlePage("article", false) {
+	if !crawler.IsContentPage("article", false) {
 		t.Fatal("expected og:type 'article' to return true")
 	}
 }
 
-func TestIsArticlePage_OGTypeArticleCaseInsensitive(t *testing.T) {
+func TestIsContentPage_OGTypeArticleCaseInsensitive(t *testing.T) {
 	t.Parallel()
 
-	if !crawler.IsArticlePage("Article", false) {
+	if !crawler.IsContentPage("Article", false) {
 		t.Fatal("expected og:type 'Article' (case insensitive) to return true")
 	}
 }
 
-func TestIsArticlePage_HasNewsArticleJSONLD(t *testing.T) {
+func TestIsContentPage_HasNewsArticleJSONLD(t *testing.T) {
 	t.Parallel()
 
-	if !crawler.IsArticlePage("", true) {
+	if !crawler.IsContentPage("", true) {
 		t.Fatal("expected hasNewsArticleJSONLD=true to return true")
 	}
 }
 
-func TestIsArticlePage_BothFalseReturnsFalse(t *testing.T) {
+func TestIsContentPage_BothFalseReturnsFalse(t *testing.T) {
 	t.Parallel()
 
-	if crawler.IsArticlePage("", false) {
+	if crawler.IsContentPage("", false) {
 		t.Fatal("expected both false to return false")
 	}
-	if crawler.IsArticlePage("website", false) {
+	if crawler.IsContentPage("website", false) {
 		t.Fatal("expected og:type 'website' without JSON-LD to return false")
 	}
 }
 
-// ---------- compileArticlePatterns tests ----------
+// ---------- compileContentPatterns tests ----------
 
-func TestCompileArticlePatterns_CompilesValidPatterns(t *testing.T) {
+func TestCompileContentPatterns_CompilesValidPatterns(t *testing.T) {
 	t.Parallel()
 
-	patterns := crawler.CompileArticlePatterns([]string{
+	patterns := crawler.CompileContentPatterns([]string{
 		`/news/\d+`,
 		`/article/.*`,
 	})
@@ -196,10 +196,10 @@ func TestCompileArticlePatterns_CompilesValidPatterns(t *testing.T) {
 	}
 }
 
-func TestCompileArticlePatterns_SkipsInvalidPatterns(t *testing.T) {
+func TestCompileContentPatterns_SkipsInvalidPatterns(t *testing.T) {
 	t.Parallel()
 
-	patterns := crawler.CompileArticlePatterns([]string{
+	patterns := crawler.CompileContentPatterns([]string{
 		`/news/\d+`,
 		`[invalid`,
 		`/article/.*`,
@@ -211,13 +211,13 @@ func TestCompileArticlePatterns_SkipsInvalidPatterns(t *testing.T) {
 	}
 }
 
-func TestCompileArticlePatterns_ReturnsNilForEmptyInput(t *testing.T) {
+func TestCompileContentPatterns_ReturnsNilForEmptyInput(t *testing.T) {
 	t.Parallel()
 
-	if patterns := crawler.CompileArticlePatterns(nil); patterns != nil {
+	if patterns := crawler.CompileContentPatterns(nil); patterns != nil {
 		t.Fatal("expected nil for nil input")
 	}
-	if patterns := crawler.CompileArticlePatterns([]string{}); patterns != nil {
+	if patterns := crawler.CompileContentPatterns([]string{}); patterns != nil {
 		t.Fatal("expected nil for empty slice input")
 	}
 }
@@ -334,9 +334,9 @@ func TestDetectContentTypeFromURL_Unknown(t *testing.T) {
 	}
 }
 
-// ---------- Extended article path segments tests ----------
+// ---------- Extended content path segments tests ----------
 
-func TestIsArticleURL_NewPathSegments(t *testing.T) {
+func TestIsContentURL_NewPathSegments(t *testing.T) {
 	t.Parallel()
 
 	urls := []string{
@@ -347,7 +347,7 @@ func TestIsArticleURL_NewPathSegments(t *testing.T) {
 		"https://example.com/investors/quarterly-results",
 	}
 	for _, u := range urls {
-		if !crawler.IsArticleURL(u, nil) {
+		if !crawler.IsContentURL(u, nil) {
 			t.Fatalf("expected new path segment URL to be detected: %s", u)
 		}
 	}

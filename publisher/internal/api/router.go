@@ -125,7 +125,7 @@ func (r *Router) setupServiceRoutes(router *gin.Engine) {
 	channels := v1.Group("/channels")
 	channels.GET("", r.listChannels)
 	channels.POST("", r.createChannel)
-	channels.GET("/:id/preview", r.previewChannel) // Preview matching articles
+	channels.GET("/:id/preview", r.previewChannel) // Preview matching content
 	channels.GET("/:id", r.getChannel)
 	channels.PUT("/:id", r.updateChannel)
 	channels.DELETE("/:id", r.deleteChannel)
@@ -133,7 +133,7 @@ func (r *Router) setupServiceRoutes(router *gin.Engine) {
 	// Publish History
 	history := v1.Group("/publish-history")
 	history.GET("", r.listPublishHistory)
-	history.GET("/:article_id", r.getPublishHistoryByArticle)
+	history.GET("/:content_id", r.getPublishHistoryByContent)
 	history.DELETE("", r.clearAllPublishHistory)
 
 	// Stats
@@ -143,9 +143,9 @@ func (r *Router) setupServiceRoutes(router *gin.Engine) {
 	stats.GET("/channels/active", r.getActiveChannels)
 	stats.GET("/channels", r.getChannelStats)
 
-	// Articles
-	articles := v1.Group("/articles")
-	articles.GET("/recent", r.getRecentArticles)
+	// Content
+	content := v1.Group("/content")
+	content.GET("/recent", r.getRecentItems)
 
 	// Metadata (topics and indexes for Routing V2)
 	v1.GET("/topics", r.listTopics)

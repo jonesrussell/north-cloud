@@ -11,11 +11,11 @@ type ChannelRoute struct {
 }
 
 // RoutingDomain is implemented by each routing layer.
-// Routes returns the channels this domain produces for the given article.
-// Returning nil or empty means the domain does not apply to this article.
+// Routes returns the channels this domain produces for the given content item.
+// Returning nil or empty means the domain does not apply to this content item.
 type RoutingDomain interface {
 	Name() string
-	Routes(a *Article) []ChannelRoute
+	Routes(item *ContentItem) []ChannelRoute
 }
 
 // channelRoutesFromSlice converts a slice of channel name strings to []ChannelRoute

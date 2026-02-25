@@ -44,7 +44,7 @@ flowchart TD
     CL -->|enriched document| ES_CL[(Elasticsearch\n{source}_classified_content)]
     ES_CL -->|polls every 30s| PUB[Publisher\nport 8070]
 
-    PUB -->|Layer 1-8 routing| REDIS[(Redis Pub/Sub\narticles:* channels)]
+    PUB -->|Layer 1-8 routing| REDIS[(Redis Pub/Sub\ncontent:* channels)]
     REDIS -->|subscribe| C1[Consumer A\ne.g. Streetcode]
     REDIS -->|subscribe| C2[Consumer B\ne.g. Diidjaaheer]
     REDIS -->|subscribe| C3[Consumer N]
@@ -54,7 +54,7 @@ flowchart TD
 - The classifier marks each raw document `classification_status=classified` after processing
 - All classified content is written to a separate `{source}_classified_content` index
 - The publisher uses `search_after` pagination with a persistent cursor so restarts are safe
-- Deduplication is per-channel: an article can appear in many channels but never twice in the same channel
+- Deduplication is per-channel: a content item can appear in many channels but never twice in the same channel
 
 ---
 
@@ -70,7 +70,7 @@ flowchart TD
 | index-manager | 8090 | postgres-index-manager | Elasticsearch index lifecycle and document management |
 | search | 8092 (dev) / 8090 (prod via nginx) | none | Full-text search across all `*_classified_content` indexes |
 | dashboard | 3002 | none | Vue.js 3 management UI with JWT auth |
-| click-tracker | 8093 | postgres-click-tracker | Tracks article click events for engagement analytics |
+| click-tracker | 8093 | postgres-click-tracker | Tracks content click events for engagement analytics |
 | pipeline | 8075 | postgres-pipeline | Orchestrates multi-stage content processing pipelines |
 | mcp-north-cloud | stdio | none | MCP server exposing 27 tools for AI integration |
 | nc-http-proxy | 8055 | none | HTTP replay proxy for deterministic crawler testing |
@@ -80,7 +80,7 @@ flowchart TD
 | Service | Port(s) | Description |
 |---------|---------|-------------|
 | PostgreSQL | per-service | One instance per Go service |
-| Redis | 6379 | Pub/Sub broker for all article routing |
+| Redis | 6379 | Pub/Sub broker for all content routing |
 | Elasticsearch | 9200 | Raw and classified content storage |
 | Nginx | 80/443 | Reverse proxy and SSL termination (northcloud.biz) |
 | Loki | 3100 | Log aggregation backend |
@@ -101,13 +101,13 @@ All ML sidecars are Python-based FastAPI services. They run alongside the classi
 | entertainment-ml | 8079 | `ENTERTAINMENT_ENABLED=true` | Entertainment relevance and category classification |
 | anishinaabe-ml | 8080 | `ANISHINAABE_ENABLED=true` | Anishinaabe/Indigenous content relevance and category classification |
 
-Each sidecar implements a hybrid rules+ML decision matrix. Rules provide precision; ML provides recall. When rules and ML disagree, the article is flagged `review_required=true` and a conservative result is used.
+Each sidecar implements a hybrid rules+ML decision matrix. Rules provide precision; ML provides recall. When rules and ML disagree, the content item is flagged `review_required=true` and a conservative result is used.
 
 ---
 
 ## Publisher Routing Layers
 
-The publisher's `routeArticle()` function runs every article through **8 routing domains** in sequence. Each domain is independent — an article can match zero or more domains, and is published to all matched channels (publishing to more than 30 channels triggers a warning log but is not blocked). Deduplication is enforced per channel via the `publish_history` table.
+The publisher's `routeContentItem()` function runs every content item through **8 routing domains** in sequence. Each domain is independent — a content item can match zero or more domains, and is published to all matched channels (publishing to more than 30 channels triggers a warning log but is not blocked). Deduplication is enforced per channel via the `publish_history` table.
 
 The domain execution order is defined in `publisher/internal/router/service.go`:
 
@@ -128,7 +128,7 @@ domains := []RoutingDomain{
 
 **Source**: `publisher/internal/router/domain_topic.go`
 
-Automatic. For each topic tag on the article, publishes to `articles:{topic}`. Topics that have a dedicated routing layer are excluded from Layer 1 to prevent bypassing their ML-based relevance filters:
+Automatic. For each topic tag on the content item, publishes to `content:{topic}`. Topics that have a dedicated routing layer are excluded from Layer 1 to prevent bypassing their ML-based relevance filters:
 
 | Excluded topic | Handled by |
 |---------------|-----------|
@@ -137,14 +137,14 @@ Automatic. For each topic tag on the article, publishes to `articles:{topic}`. T
 | `coforge` | Layer 8 (CoforgeDomain) |
 
 **Channel examples**:
-- `articles:news`
-- `articles:technology`
-- `articles:politics`
-- `articles:violent_crime`
-- `articles:property_crime`
-- `articles:drug_crime`
-- `articles:organized_crime`
-- `articles:criminal_justice`
+- `content:news`
+- `content:technology`
+- `content:politics`
+- `content:violent_crime`
+- `content:property_crime`
+- `content:drug_crime`
+- `content:organized_crime`
+- `content:criminal_justice`
 
 ### Layer 2 — DB Channels (DBChannelDomain)
 
@@ -153,20 +153,20 @@ Automatic. For each topic tag on the article, publishes to `articles:{topic}`. T
 Optional, database-backed. Routes are stored in the `channels` table in the publisher PostgreSQL database. Channels can define include/exclude topic filters, minimum quality scores, and content type filters. This layer is used for consumer-specific aggregations (such as a single channel that consolidates all crime sub-categories).
 
 **Channel examples** (administrator-defined, no fixed pattern):
-- `articles:crime` (aggregation channel for all crime sub-categories)
-- Any channel name matching `articles:{slug}` convention
+- `content:crime` (aggregation channel for all crime sub-categories)
+- Any channel name matching `content:{slug}` convention
 
 ### Layer 3 — Crime Classification (CrimeDomain)
 
 **Source**: `publisher/internal/router/crime.go`
 
-Automatic. Routes articles classified by the crime hybrid classifier. Articles with `crime_relevance=not_crime` or empty are skipped.
+Automatic. Routes content classified by the crime hybrid classifier. Content with `crime_relevance=not_crime` or empty are skipped.
 
-For `core_street_crime` articles:
+For `core_street_crime` content:
 - `crime:homepage` — when `homepage_eligible=true`
 - `crime:category:{slug}` — one per entry in `category_pages` (e.g. `crime:category:violent-crime`, `crime:category:crime`)
 
-For `peripheral_crime` articles:
+For `peripheral_crime` content:
 - `crime:courts` — when `crime_sub_label=criminal_justice`
 - `crime:context` — when `crime_sub_label=crime_context` or no sub-label
 
@@ -182,7 +182,7 @@ For `peripheral_crime` articles:
 
 **Source**: `publisher/internal/router/location.go`
 
-Automatic. Generates geographic channels for articles with an active domain classifier (crime or entertainment) and a known location. Mining is excluded because MiningDomain (Layer 5) already generates its own location channels.
+Automatic. Generates geographic channels for content with an active domain classifier (crime or entertainment) and a known location. Mining is excluded because MiningDomain (Layer 5) already generates its own location channels.
 
 For Canadian content:
 - `{prefix}:local:{city}` — when `location_specificity=city` and city is known
@@ -192,7 +192,7 @@ For Canadian content:
 For non-Canadian content:
 - `{prefix}:international`
 
-The `{prefix}` is `crime` for crime-classified articles and `entertainment` for entertainment-classified articles.
+The `{prefix}` is `crime` for crime-classified content and `entertainment` for entertainment-classified content.
 
 **Channel examples**:
 - `crime:local:thunder-bay`
@@ -208,10 +208,10 @@ The `{prefix}` is `crime` for crime-classified articles and `entertainment` for 
 
 **Source**: `publisher/internal/router/mining.go`
 
-Automatic. Routes articles classified by the mining hybrid classifier. Articles with `mining.relevance=not_mining` or no mining object are skipped.
+Automatic. Routes content classified by the mining hybrid classifier. Content with `mining.relevance=not_mining` or no mining object are skipped.
 
 **Channel patterns**:
-- `articles:mining` — catch-all for all mining articles (core + peripheral)
+- `content:mining` — catch-all for all mining content (core + peripheral)
 - `mining:core` — `core_mining` relevance only
 - `mining:peripheral` — `peripheral_mining` relevance only
 - `mining:commodity:{slug}` — one per commodity (underscores converted to hyphens, e.g. `mining:commodity:iron-ore`)
@@ -220,7 +220,7 @@ Automatic. Routes articles classified by the mining hybrid classifier. Articles 
 - `mining:international` — when `mining.location` is `international`
 
 **Channel examples**:
-- `articles:mining`
+- `content:mining`
 - `mining:core`
 - `mining:peripheral`
 - `mining:commodity:gold`
@@ -237,7 +237,7 @@ Automatic. Routes articles classified by the mining hybrid classifier. Articles 
 
 **Source**: `publisher/internal/router/entertainment.go`
 
-Automatic. Routes articles classified by the entertainment hybrid classifier. Articles with `entertainment.relevance=not_entertainment` or no entertainment object are skipped.
+Automatic. Routes content classified by the entertainment hybrid classifier. Content with `entertainment.relevance=not_entertainment` or no entertainment object are skipped.
 
 **Channel patterns**:
 - `entertainment:homepage` — `core_entertainment` + `homepage_eligible=true`
@@ -256,14 +256,14 @@ Automatic. Routes articles classified by the entertainment hybrid classifier. Ar
 
 **Source**: `publisher/internal/router/anishinaabe.go`
 
-Automatic. Routes articles classified by the Anishinaabe/Indigenous ML classifier. Articles with `anishinaabe.relevance=not_anishinaabe` or no anishinaabe object are skipped.
+Automatic. Routes content classified by the Anishinaabe/Indigenous ML classifier. Content with `anishinaabe.relevance=not_anishinaabe` or no anishinaabe object are skipped.
 
 **Channel patterns**:
-- `articles:anishinaabe` — catch-all for all Anishinaabe-classified articles (core + peripheral)
+- `content:anishinaabe` — catch-all for all Anishinaabe-classified content (core + peripheral)
 - `anishinaabe:category:{slug}` — one per category (spaces converted to hyphens, lowercased)
 
 **Channel examples**:
-- `articles:anishinaabe`
+- `content:anishinaabe`
 - `anishinaabe:category:culture`
 - `anishinaabe:category:language`
 - `anishinaabe:category:governance`
@@ -274,7 +274,7 @@ Automatic. Routes articles classified by the Anishinaabe/Indigenous ML classifie
 
 **Source**: `publisher/internal/router/domain_coforge.go`
 
-Automatic. Routes articles classified by the Coforge ML classifier. This is a product-specific domain — it does not produce a catch-all `articles:coforge` channel. Articles with `coforge.relevance=not_relevant` or no coforge object are skipped.
+Automatic. Routes content classified by the Coforge ML classifier. This is a product-specific domain — it does not produce a catch-all `content:coforge` channel. Content with `coforge.relevance=not_relevant` or no coforge object are skipped.
 
 **Channel patterns**:
 - `coforge:core` — `core_coforge` relevance
@@ -414,31 +414,31 @@ All routing is topic-driven and consumer-agnostic. Channels are named by content
 
 ### Layer 1 — Automatic Topic Channels
 
-Pattern: `articles:{topic}`
+Pattern: `content:{topic}`
 
-Triggered for every topic tag on an article, except topics excluded by `layer1SkipTopics` (mining, anishinaabe, coforge).
+Triggered for every topic tag on a content item, except topics excluded by `layer1SkipTopics` (mining, anishinaabe, coforge).
 
 | Channel | Trigger |
 |---------|---------|
-| `articles:news` | Article tagged `news` |
-| `articles:technology` | Article tagged `technology` |
-| `articles:politics` | Article tagged `politics` |
-| `articles:violent_crime` | Article tagged `violent_crime` |
-| `articles:property_crime` | Article tagged `property_crime` |
-| `articles:drug_crime` | Article tagged `drug_crime` |
-| `articles:organized_crime` | Article tagged `organized_crime` |
-| `articles:criminal_justice` | Article tagged `criminal_justice` |
-| `articles:{any_topic}` | Article tagged with that topic |
+| `content:news` | Content tagged `news` |
+| `content:technology` | Content tagged `technology` |
+| `content:politics` | Content tagged `politics` |
+| `content:violent_crime` | Content tagged `violent_crime` |
+| `content:property_crime` | Content tagged `property_crime` |
+| `content:drug_crime` | Content tagged `drug_crime` |
+| `content:organized_crime` | Content tagged `organized_crime` |
+| `content:criminal_justice` | Content tagged `criminal_justice` |
+| `content:{any_topic}` | Content tagged with that topic |
 
 ### Layer 2 — Custom DB Channels
 
-Pattern: administrator-defined (commonly `articles:{slug}`)
+Pattern: administrator-defined (commonly `content:{slug}`)
 
 Channels stored in the publisher's `channels` PostgreSQL table. Route rules define quality threshold, topic filters, and content type filters.
 
 | Channel | Typical use |
 |---------|------------|
-| `articles:crime` | Aggregation: all crime sub-category articles |
+| `content:crime` | Aggregation: all crime sub-category content |
 | (any name) | Consumer-specific or aggregation channel |
 
 ### Layer 3 — Crime Classification Channels
@@ -446,7 +446,7 @@ Channels stored in the publisher's `channels` PostgreSQL table. Route rules defi
 | Channel | Trigger |
 |---------|---------|
 | `crime:homepage` | `core_street_crime` AND `homepage_eligible=true` |
-| `crime:category:{slug}` | `core_street_crime` AND article has matching `category_pages` entry |
+| `crime:category:{slug}` | `core_street_crime` AND content item has matching `category_pages` entry |
 | `crime:courts` | `peripheral_crime` AND `crime_sub_label=criminal_justice` |
 | `crime:context` | `peripheral_crime` AND `crime_sub_label=crime_context` (or no sub-label) |
 
@@ -454,7 +454,7 @@ Example category channels: `crime:category:violent-crime`, `crime:category:prope
 
 ### Layer 4 — Location Channels (crime and entertainment prefixes)
 
-Generated for articles that have an active crime or entertainment classification and a known geographic location. Mining uses its own location channels (Layer 5) and is excluded here.
+Generated for content that have an active crime or entertainment classification and a known geographic location. Mining uses its own location channels (Layer 5) and is excluded here.
 
 | Channel | Trigger |
 |---------|---------|
@@ -469,7 +469,7 @@ Where `{prefix}` is `crime` or `entertainment` depending on which classifier is 
 
 | Channel | Trigger |
 |---------|---------|
-| `articles:mining` | Any mining-classified article (`core_mining` or `peripheral_mining`) |
+| `content:mining` | Any mining-classified content item (`core_mining` or `peripheral_mining`) |
 | `mining:core` | `core_mining` relevance |
 | `mining:peripheral` | `peripheral_mining` relevance |
 | `mining:commodity:{slug}` | One per commodity in `mining.commodities` |
@@ -489,7 +489,7 @@ Where `{prefix}` is `crime` or `entertainment` depending on which classifier is 
 
 | Channel | Trigger |
 |---------|---------|
-| `articles:anishinaabe` | Any Anishinaabe-classified article (`core_anishinaabe` or `peripheral_anishinaabe`) |
+| `content:anishinaabe` | Any Anishinaabe-classified content item (`core_anishinaabe` or `peripheral_anishinaabe`) |
 | `anishinaabe:category:{slug}` | One per entry in `anishinaabe.categories` |
 
 ### Layer 8 — Coforge Channels

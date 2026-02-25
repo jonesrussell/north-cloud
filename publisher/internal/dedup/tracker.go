@@ -23,22 +23,22 @@ func NewTracker(client redis.UniversalClient, ttl time.Duration, log infralogger
 	}
 }
 
-func (t *Tracker) key(articleID string) string {
-	return fmt.Sprintf("posted:article:%s", articleID)
+func (t *Tracker) key(contentID string) string {
+	return fmt.Sprintf("posted:content:%s", contentID)
 }
 
-func (t *Tracker) HasPosted(ctx context.Context, articleID string) bool {
-	key := t.key(articleID)
+func (t *Tracker) HasPosted(ctx context.Context, contentID string) bool {
+	key := t.key(contentID)
 
-	t.logger.Debug("Checking if article was posted",
-		infralogger.String("article_id", articleID),
+	t.logger.Debug("Checking if content was posted",
+		infralogger.String("content_id", contentID),
 		infralogger.String("redis_key", key),
 	)
 
 	exists, err := t.client.Exists(ctx, key).Result()
 	if err != nil {
-		t.logger.Error("Redis error checking article",
-			infralogger.String("article_id", articleID),
+		t.logger.Error("Redis error checking content",
+			infralogger.String("content_id", contentID),
 			infralogger.String("redis_key", key),
 			infralogger.Error(err),
 		)
@@ -48,13 +48,13 @@ func (t *Tracker) HasPosted(ctx context.Context, articleID string) bool {
 
 	alreadyPosted := exists == 1
 	if alreadyPosted {
-		t.logger.Debug("Article already posted",
-			infralogger.String("article_id", articleID),
+		t.logger.Debug("Content already posted",
+			infralogger.String("content_id", contentID),
 			infralogger.String("redis_key", key),
 		)
 	} else {
-		t.logger.Debug("Article not yet posted",
-			infralogger.String("article_id", articleID),
+		t.logger.Debug("Content not yet posted",
+			infralogger.String("content_id", contentID),
 			infralogger.String("redis_key", key),
 		)
 	}
@@ -62,19 +62,19 @@ func (t *Tracker) HasPosted(ctx context.Context, articleID string) bool {
 	return alreadyPosted
 }
 
-func (t *Tracker) MarkPosted(ctx context.Context, articleID string) error {
-	key := t.key(articleID)
+func (t *Tracker) MarkPosted(ctx context.Context, contentID string) error {
+	key := t.key(contentID)
 
-	t.logger.Debug("Marking article as posted",
-		infralogger.String("article_id", articleID),
+	t.logger.Debug("Marking content as posted",
+		infralogger.String("content_id", contentID),
 		infralogger.String("redis_key", key),
 		infralogger.Duration("ttl", t.ttl),
 	)
 
 	err := t.client.Set(ctx, key, "1", t.ttl).Err()
 	if err != nil {
-		t.logger.Error("Redis error marking article as posted",
-			infralogger.String("article_id", articleID),
+		t.logger.Error("Redis error marking content as posted",
+			infralogger.String("content_id", contentID),
 			infralogger.String("redis_key", key),
 			infralogger.Duration("ttl", t.ttl),
 			infralogger.Error(err),
@@ -82,48 +82,48 @@ func (t *Tracker) MarkPosted(ctx context.Context, articleID string) error {
 		return err
 	}
 
-	t.logger.Debug("Article marked as posted",
-		infralogger.String("article_id", articleID),
+	t.logger.Debug("Content marked as posted",
+		infralogger.String("content_id", contentID),
 		infralogger.String("redis_key", key),
 	)
 
 	return nil
 }
 
-func (t *Tracker) Clear(ctx context.Context, articleID string) error {
-	key := t.key(articleID)
+func (t *Tracker) Clear(ctx context.Context, contentID string) error {
+	key := t.key(contentID)
 
-	t.logger.Debug("Clearing article from posted cache",
-		infralogger.String("article_id", articleID),
+	t.logger.Debug("Clearing content from posted cache",
+		infralogger.String("content_id", contentID),
 		infralogger.String("redis_key", key),
 	)
 
 	err := t.client.Del(ctx, key).Err()
 	if err != nil {
-		t.logger.Error("Redis error clearing article",
-			infralogger.String("article_id", articleID),
+		t.logger.Error("Redis error clearing content",
+			infralogger.String("content_id", contentID),
 			infralogger.String("redis_key", key),
 			infralogger.Error(err),
 		)
 		return err
 	}
 
-	t.logger.Debug("Article cleared from posted cache",
-		infralogger.String("article_id", articleID),
+	t.logger.Debug("Content cleared from posted cache",
+		infralogger.String("content_id", contentID),
 		infralogger.String("redis_key", key),
 	)
 
 	return nil
 }
 
-// FlushAll removes all posted article keys from Redis
+// FlushAll removes all posted content keys from Redis
 // This will clear the entire deduplication cache
 func (t *Tracker) FlushAll(ctx context.Context) error {
-	t.logger.Info("Flushing all posted article keys from Redis cache")
+	t.logger.Info("Flushing all posted content keys from Redis cache")
 
-	// Use SCAN to find all keys matching the pattern "posted:article:*"
+	// Use SCAN to find all keys matching the pattern "posted:content:*"
 	// This is safer than FLUSHDB which would clear the entire Redis database
-	pattern := "posted:article:*"
+	pattern := "posted:content:*"
 	var cursor uint64
 	var deletedCount int
 

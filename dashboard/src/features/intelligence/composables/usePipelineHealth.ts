@@ -91,7 +91,7 @@ export function usePipelineHealth() {
       const inactive = channels.filter((c) => !c.enabled)
 
       return {
-        publishedToday: statsRes.data?.total_articles ?? 0,
+        publishedToday: statsRes.data?.total_items ?? 0,
         inactiveChannels: inactive.length,
         inactiveChannelNames: inactive.map((c) => c.name),
       }

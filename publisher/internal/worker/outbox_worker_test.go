@@ -49,7 +49,7 @@ func TestOutboxEntry_RoutingKey(t *testing.T) {
 				CrimeSubcategory: strPtr("violent_crime"),
 				ContentType:      "article",
 			},
-			wantKey: "articles:crime:violent_crime",
+			wantKey: "content:crime:violent_crime",
 		},
 		{
 			name: "crime property",
@@ -58,7 +58,7 @@ func TestOutboxEntry_RoutingKey(t *testing.T) {
 				CrimeSubcategory: strPtr("property_crime"),
 				ContentType:      "article",
 			},
-			wantKey: "articles:crime:property_crime",
+			wantKey: "content:crime:property_crime",
 		},
 		{
 			name: "crime drug",
@@ -67,7 +67,7 @@ func TestOutboxEntry_RoutingKey(t *testing.T) {
 				CrimeSubcategory: strPtr("drug_crime"),
 				ContentType:      "article",
 			},
-			wantKey: "articles:crime:drug_crime",
+			wantKey: "content:crime:drug_crime",
 		},
 		{
 			name: "crime organized",
@@ -76,7 +76,7 @@ func TestOutboxEntry_RoutingKey(t *testing.T) {
 				CrimeSubcategory: strPtr("organized_crime"),
 				ContentType:      "article",
 			},
-			wantKey: "articles:crime:organized_crime",
+			wantKey: "content:crime:organized_crime",
 		},
 		{
 			name: "crime justice",
@@ -85,7 +85,7 @@ func TestOutboxEntry_RoutingKey(t *testing.T) {
 				CrimeSubcategory: strPtr("criminal_justice"),
 				ContentType:      "article",
 			},
-			wantKey: "articles:crime:criminal_justice",
+			wantKey: "content:crime:criminal_justice",
 		},
 		{
 			name: "crime without subcategory",
@@ -94,7 +94,7 @@ func TestOutboxEntry_RoutingKey(t *testing.T) {
 				CrimeSubcategory: nil,
 				ContentType:      "article",
 			},
-			wantKey: "articles:crime",
+			wantKey: "content:crime",
 		},
 		{
 			name: "article content type",
@@ -102,7 +102,7 @@ func TestOutboxEntry_RoutingKey(t *testing.T) {
 				IsCrimeRelated: false,
 				ContentType:    "article",
 			},
-			wantKey: "articles:news",
+			wantKey: "content:news",
 		},
 		{
 			name: "video content type",

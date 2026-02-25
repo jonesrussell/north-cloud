@@ -38,7 +38,7 @@ groups:
           severity: "critical"
           service: "classifier"
         annotations:
-          summary: "No articles classified in the last 2 hours"
+          summary: "No content classified in the last 2 hours"
           description: "The classifier has not produced any classification results. Check classifier, Elasticsearch, and raw content availability."
 
       # Alert 2: Error Spike
@@ -79,7 +79,7 @@ groups:
 
       # Alert 3: Publisher Zero Output
       - uid: nc-publisher-zero
-        title: "Publisher zero output — no articles published in 4 hours"
+        title: "Publisher zero output — no content published in 4 hours"
         condition: "C"
         data:
           - refId: "A"
@@ -88,7 +88,7 @@ groups:
               to: 0
             datasourceUid: "loki"
             model:
-              expr: 'count_over_time({service="publisher"} |= "Published article to channel" [4h])'
+              expr: 'count_over_time({service="publisher"} |= "Published content item to channel" [4h])'
               queryType: "instant"
           - refId: "C"
             relativeTimeRange:
@@ -110,8 +110,8 @@ groups:
           severity: "critical"
           service: "publisher"
         annotations:
-          summary: "No articles published in 4 hours"
-          description: "Publisher has not pushed any articles to Redis. Check source availability, classifier output, and publisher routing configuration."
+          summary: "No content published in 4 hours"
+          description: "Publisher has not pushed any content to Redis. Check source availability, classifier output, and publisher routing configuration."
 
       # Alert 4: Deployer Site Silence — Streetcode
       - uid: nc-streetcode-silence

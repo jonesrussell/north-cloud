@@ -42,7 +42,7 @@ var knownTopics = []string{
 	"technology",
 }
 
-// listTopics returns the list of known topics that articles can be tagged with
+// listTopics returns the list of known topics that content items can be tagged with
 // GET /api/v1/topics
 func (r *Router) listTopics(c *gin.Context) {
 	// Sort topics alphabetically for consistent output
@@ -55,14 +55,14 @@ func (r *Router) listTopics(c *gin.Context) {
 	for i, topic := range sortedTopics {
 		topicInfo[i] = gin.H{
 			"name":           topic,
-			"layer1_channel": "articles:" + topic,
+			"layer1_channel": "content:" + topic,
 		}
 	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"topics": topicInfo,
 		"count":  len(topicInfo),
-		"note":   "Layer 1 channels are automatically created for each topic (articles:{topic})",
+		"note":   "Layer 1 channels are automatically created for each topic (content:{topic})",
 	})
 }
 

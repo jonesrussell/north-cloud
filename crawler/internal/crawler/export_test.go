@@ -9,14 +9,14 @@ import (
 
 // Test exports for internal functions.
 
-// IsArticleURL exports isArticleURL for testing.
-var IsArticleURL = isArticleURL
+// IsContentURL exports isContentURL for testing.
+var IsContentURL = isContentURL
 
-// IsArticlePage exports isArticlePage for testing.
-var IsArticlePage = isArticlePage
+// IsContentPage exports isContentPage for testing.
+var IsContentPage = isContentPage
 
-// CompileArticlePatterns exports compileArticlePatterns for testing.
-var CompileArticlePatterns = compileArticlePatterns
+// CompileContentPatterns exports compileContentPatterns for testing.
+var CompileContentPatterns = compileContentPatterns
 
 // HasNewsArticleJSONLD exports hasNewsArticleJSONLD for testing.
 var HasNewsArticleJSONLD = hasNewsArticleJSONLD
@@ -47,5 +47,5 @@ func CheckRedirect(ctx context.Context, source *configtypes.Source) error {
 
 // ExplicitPatterns is a helper to build explicit pattern slices for tests.
 func ExplicitPatterns(patterns ...string) []*regexp.Regexp {
-	return compileArticlePatterns(patterns)
+	return compileContentPatterns(patterns)
 }

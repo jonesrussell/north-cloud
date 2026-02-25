@@ -19,9 +19,9 @@ func TestTopicDomain_Routes(t *testing.T) {
 		expected []string
 	}{
 		{
-			name:     "multiple topics produce articles: channels",
+			name:     "multiple topics produce content: channels",
 			topics:   []string{"violent_crime", "local_news"},
-			expected: []string{"articles:violent_crime", "articles:local_news"},
+			expected: []string{"content:violent_crime", "content:local_news"},
 		},
 		{
 			name:     "empty topics produce no channels",
@@ -31,17 +31,17 @@ func TestTopicDomain_Routes(t *testing.T) {
 		{
 			name:     "mining topic is skipped",
 			topics:   []string{"news", "mining", "technology"},
-			expected: []string{"articles:news", "articles:technology"},
+			expected: []string{"content:news", "content:technology"},
 		},
 		{
 			name:     "anishinaabe topic is skipped",
 			topics:   []string{"news", "anishinaabe"},
-			expected: []string{"articles:news"},
+			expected: []string{"content:news"},
 		},
 		{
 			name:     "coforge topic is skipped",
 			topics:   []string{"news", "coforge"},
-			expected: []string{"articles:news"},
+			expected: []string{"content:news"},
 		},
 		{
 			name:     "all skip topics produce no channels",
@@ -52,8 +52,8 @@ func TestTopicDomain_Routes(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			article := &router.Article{Topics: tc.topics}
-			routes := router.NewTopicDomain().Routes(article)
+			item := &router.ContentItem{Topics: tc.topics}
+			routes := router.NewTopicDomain().Routes(item)
 			var names []string
 			for _, r := range routes {
 				names = append(names, r.Channel)

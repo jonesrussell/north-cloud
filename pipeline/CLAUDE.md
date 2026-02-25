@@ -42,7 +42,7 @@ pipeline/
     ├── bootstrap/           # Startup phases: config → logger → database → HTTP server
     ├── config/              # Config struct, YAML + env loading, validation
     ├── database/            # PostgreSQL connection pool + repository (SQL queries)
-    ├── domain/              # Core types: Stage, Article, PipelineEvent, IngestRequest,
+    ├── domain/              # Core types: Stage, ContentItem, PipelineEvent, IngestRequest,
     │                        #   FunnelResponse; utility functions: URLHash, ExtractDomain,
     │                        #   GenerateIdempotencyKey
     ├── service/             # PipelineService: validation, idempotency, write + read logic
@@ -84,14 +84,14 @@ Every event carries an `idempotency_key`. If the caller omits it, `PipelineServi
 
 The database enforces uniqueness on `(idempotency_key, occurred_at)`. A duplicate insert returns no rows from `RETURNING id` which the repository treats as success (not an error).
 
-### Article Identity
+### Content Item Identity
 
-Articles are keyed by URL (primary key). On first sight the service also stores:
+Content items are keyed by URL (primary key). On first sight the service also stores:
 - `url_hash` — full SHA-256 hex (64 chars) for compact indexing
 - `domain` — hostname with `www.` stripped
 - `source_name` — inherited from the event
 
-`UpsertArticle` uses `ON CONFLICT (url) DO NOTHING` so repeated events for the same URL are cheap.
+`UpsertContentItem` uses `ON CONFLICT (url) DO NOTHING` so repeated events for the same URL are cheap.
 
 ### Partitioned Event Table
 
@@ -204,6 +204,6 @@ Use `infralogger` (the shared infrastructure package). Always pass structured fi
 ```go
 log.Info("event ingested",
     infralogger.String("stage", string(req.Stage)),
-    infralogger.String("article_url", req.ArticleURL),
+    infralogger.String("content_url", req.ContentURL),
 )
 ```

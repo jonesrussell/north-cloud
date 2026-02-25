@@ -18,7 +18,7 @@ func TestDBChannelDomain_Name(t *testing.T) {
 func TestDBChannelDomain_Routes(t *testing.T) {
 	crimeChannel := models.Channel{
 		ID:           uuid.New(),
-		RedisChannel: "articles:crime:all",
+		RedisChannel: "content:crime:all",
 		Rules: models.Rules{
 			IncludeTopics:   []string{"violent_crime", "property_crime"},
 			MinQualityScore: 50,
@@ -28,38 +28,38 @@ func TestDBChannelDomain_Routes(t *testing.T) {
 	}
 	premiumChannel := models.Channel{
 		ID:           uuid.New(),
-		RedisChannel: "articles:premium",
+		RedisChannel: "content:premium",
 		Rules:        models.Rules{MinQualityScore: 80},
 		Enabled:      true,
 	}
 	disabledChannel := models.Channel{
 		ID:           uuid.New(),
-		RedisChannel: "articles:disabled",
+		RedisChannel: "content:disabled",
 		Rules:        models.Rules{MinQualityScore: 0},
 		Enabled:      false,
 	}
 
 	tests := []struct {
 		name             string
-		article          *router.Article
+		item             *router.ContentItem
 		channels         []models.Channel
 		expectedChannels []string
 		expectChannelIDs bool
 	}{
 		{
 			name: "matching channel produces route with ChannelID set",
-			article: &router.Article{
+			item: &router.ContentItem{
 				Topics:       []string{"violent_crime"},
 				QualityScore: 75,
 				ContentType:  "article",
 			},
 			channels:         []models.Channel{crimeChannel},
-			expectedChannels: []string{"articles:crime:all"},
+			expectedChannels: []string{"content:crime:all"},
 			expectChannelIDs: true,
 		},
 		{
 			name: "no match returns nil",
-			article: &router.Article{
+			item: &router.ContentItem{
 				Topics:       []string{"technology"},
 				QualityScore: 40,
 				ContentType:  "article",
@@ -69,24 +69,24 @@ func TestDBChannelDomain_Routes(t *testing.T) {
 		},
 		{
 			name: "multiple matching channels",
-			article: &router.Article{
+			item: &router.ContentItem{
 				Topics:       []string{"violent_crime"},
 				QualityScore: 90,
 				ContentType:  "article",
 			},
 			channels:         []models.Channel{crimeChannel, premiumChannel},
-			expectedChannels: []string{"articles:crime:all", "articles:premium"},
+			expectedChannels: []string{"content:crime:all", "content:premium"},
 			expectChannelIDs: true,
 		},
 		{
 			name:             "nil channel list returns nil",
-			article:          &router.Article{Topics: []string{"news"}},
+			item:             &router.ContentItem{Topics: []string{"news"}},
 			channels:         nil,
 			expectedChannels: nil,
 		},
 		{
 			name: "disabled channel is not matched",
-			article: &router.Article{
+			item: &router.ContentItem{
 				Topics:       []string{"news"},
 				QualityScore: 90,
 				ContentType:  "article",
@@ -99,7 +99,7 @@ func TestDBChannelDomain_Routes(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			domain := router.NewDBChannelDomain(tc.channels)
-			routes := domain.Routes(tc.article)
+			routes := domain.Routes(tc.item)
 
 			if tc.expectedChannels == nil {
 				assert.Nil(t, routes)

@@ -145,7 +145,7 @@ func buildPublishingReviewMessages(args map[string]any) []PromptMessage {
 func buildClassifyAndSearchMessages(args map[string]any) []PromptMessage {
 	query, _ := args["query"].(string)
 	text := fmt.Sprintf(
-		"Use search_articles with query %q. Optionally use classify_article on one result to explain quality and topics. Summarize the findings.",
+		"Use search_content with query %q. Optionally use classify_content on one result to explain quality and topics. Summarize the findings.",
 		query,
 	)
 	return []PromptMessage{{

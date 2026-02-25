@@ -12,7 +12,7 @@ const (
 	SubLabelCrimeContext     = "crime_context"
 )
 
-// CrimeDomain routes crime-classified articles to crime:* channels.
+// CrimeDomain routes crime-classified content items to crime:* channels.
 // Routes channels:
 // - crime:homepage (if HomepageEligible is true for core_street_crime)
 // - crime:category:{category} for each category page (core_street_crime)
@@ -26,19 +26,19 @@ func NewCrimeDomain() *CrimeDomain { return &CrimeDomain{} }
 // Name returns the domain identifier used in routing decision logs.
 func (d *CrimeDomain) Name() string { return "crime" }
 
-// Routes returns crime channels for the article. Returns nil if the article
+// Routes returns crime channels for the content item. Returns nil if the item
 // is not crime-classified.
-func (d *CrimeDomain) Routes(a *Article) []ChannelRoute {
-	// Skip non-crime articles
-	if a.CrimeRelevance == CrimeRelevanceNotCrime || a.CrimeRelevance == "" {
+func (d *CrimeDomain) Routes(item *ContentItem) []ChannelRoute {
+	// Skip non-crime content
+	if item.CrimeRelevance == CrimeRelevanceNotCrime || item.CrimeRelevance == "" {
 		return nil
 	}
 
 	channels := make([]string, 0)
 
 	// Handle peripheral_crime with sub-labels
-	if a.CrimeRelevance == CrimeRelevancePeripheral {
-		switch a.CrimeSubLabel {
+	if item.CrimeRelevance == CrimeRelevancePeripheral {
+		switch item.CrimeSubLabel {
 		case SubLabelCriminalJustice:
 			channels = append(channels, "crime:courts")
 		case SubLabelCrimeContext:
@@ -52,12 +52,12 @@ func (d *CrimeDomain) Routes(a *Article) []ChannelRoute {
 
 	// Handle core_street_crime
 	// Homepage channel if eligible
-	if a.HomepageEligible {
+	if item.HomepageEligible {
 		channels = append(channels, "crime:homepage")
 	}
 
 	// Category channels
-	for _, category := range a.CategoryPages {
+	for _, category := range item.CategoryPages {
 		channels = append(channels, fmt.Sprintf("crime:category:%s", category))
 	}
 

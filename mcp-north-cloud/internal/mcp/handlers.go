@@ -822,14 +822,14 @@ func (s *Server) handlePreviewRoute(ctx context.Context, id any, arguments json.
 		return s.errorResponse(id, InvalidParams, "route_id is required")
 	}
 
-	articles, err := s.publisherClient.PreviewRoute(ctx, args.RouteID)
+	items, err := s.publisherClient.PreviewRoute(ctx, args.RouteID)
 	if err != nil {
 		return s.errorResponse(id, InternalError, fmt.Sprintf("Failed to preview route: %v", err))
 	}
 
 	return s.successResponse(id, map[string]any{
-		"articles": articles,
-		"count":    len(articles),
+		"items": items,
+		"count": len(items),
 	})
 }
 
@@ -874,7 +874,7 @@ func (s *Server) handleGetPublisherStats(ctx context.Context, id any, _ json.Raw
 
 // Search tool handlers
 
-func (s *Server) handleSearchArticles(ctx context.Context, id any, arguments json.RawMessage) *Response {
+func (s *Server) handleSearchContent(ctx context.Context, id any, arguments json.RawMessage) *Response {
 	var args client.SearchRequest
 
 	if err := json.Unmarshal(arguments, &args); err != nil {
@@ -895,7 +895,7 @@ func (s *Server) handleSearchArticles(ctx context.Context, id any, arguments jso
 
 // Classifier tool handlers
 
-func (s *Server) handleClassifyArticle(ctx context.Context, id any, arguments json.RawMessage) *Response {
+func (s *Server) handleClassifyContent(ctx context.Context, id any, arguments json.RawMessage) *Response {
 	var args client.ClassifyRequest
 
 	if err := json.Unmarshal(arguments, &args); err != nil {
@@ -908,7 +908,7 @@ func (s *Server) handleClassifyArticle(ctx context.Context, id any, arguments js
 
 	result, err := s.classifierClient.Classify(ctx, args)
 	if err != nil {
-		return s.errorResponse(id, InternalError, fmt.Sprintf("Failed to classify article: %v", err))
+		return s.errorResponse(id, InternalError, fmt.Sprintf("Failed to classify content: %v", err))
 	}
 
 	return s.successResponse(id, result)

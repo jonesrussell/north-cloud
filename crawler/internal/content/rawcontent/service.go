@@ -205,7 +205,7 @@ func (s *RawContentService) emitIndexedEvent(
 
 	indexName := sourceName + "_raw_content"
 	pipelineErr := s.pipeline.Emit(ctx, pipeline.Event{
-		ArticleURL: sourceURL,
+		ContentURL: sourceURL,
 		SourceName: sourceName,
 		Stage:      "indexed",
 		OccurredAt: time.Now(),

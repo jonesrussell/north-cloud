@@ -6,7 +6,7 @@ import LoginView from '../views/LoginView.vue'
 import NotFoundView from '../views/NotFoundView.vue'
 
 // Operations views
-import ArticlesView from '../views/distribution/ArticlesView.vue'
+import ContentView from '../views/distribution/ContentView.vue'
 
 // Content Intake views
 import JobsView from '../views/intake/JobsView.vue'
@@ -67,10 +67,10 @@ const routes: RouteRecordRaw[] = [
     meta: { title: 'Pipeline Monitor', section: 'operations', requiresAuth: true },
   },
   {
-    path: '/operations/articles',
-    name: 'operations-articles',
-    component: ArticlesView,
-    meta: { title: 'Recent Articles', section: 'operations', requiresAuth: true },
+    path: '/operations/content',
+    name: 'operations-content',
+    component: ContentView,
+    meta: { title: 'Recent Content', section: 'operations', requiresAuth: true },
   },
   {
     path: '/operations/review',
@@ -282,11 +282,12 @@ const routes: RouteRecordRaw[] = [
   { path: '/publisher/sources', redirect: '/distribution/channels' },
   { path: '/publisher/channels', redirect: '/distribution/channels' },
   { path: '/publisher/routes', redirect: '/distribution/routes' },
-  { path: '/publisher/articles', redirect: '/operations/articles' },
+  { path: '/publisher/articles', redirect: '/operations/content' },
   { path: '/publisher/stats', redirect: '/intelligence/stats' },
 
   // Old distribution routes
-  { path: '/distribution/articles', redirect: '/operations/articles' },
+  { path: '/distribution/articles', redirect: '/operations/content' },
+  { path: '/operations/articles', redirect: '/operations/content' },
 
   // Old feeds routes
   { path: '/feeds/streams', redirect: '/distribution/logs' },

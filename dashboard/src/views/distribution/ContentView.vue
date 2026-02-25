@@ -4,12 +4,12 @@ import { useQuery } from '@tanstack/vue-query'
 import { Loader2, FileText, ExternalLink, Trash2 } from 'lucide-vue-next'
 import { publisherApi } from '@/api/client'
 import { usePublishHistoryTable } from '@/composables'
-import type { GroupedArticle } from '@/composables'
+import type { GroupedItem } from '@/composables'
 import { formatDate } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { BadgeList } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
-import { ArticlesFilterBar } from '@/components/domain/articles'
+import { ContentFilterBar } from '@/components/domain/content'
 import { ConfirmModal, DataTablePagination } from '@/components/common'
 
 const POLLING_INTERVAL = 30_000 // 30 seconds
@@ -26,11 +26,11 @@ const { data: channelsData } = useQuery({
 
 const channels = computed(() => channelsData.value?.channels ?? [])
 
-// Group raw history items by article_id for display
-const groupedArticles = computed<GroupedArticle[]>(() => {
-  const articleMap = new Map<string, GroupedArticle>()
+// Group raw history items by content_id for display
+const groupedItems = computed<GroupedItem[]>(() => {
+  const itemMap = new Map<string, GroupedItem>()
   for (const item of table.items.value) {
-    const existing = articleMap.get(item.article_id)
+    const existing = itemMap.get(item.content_id)
     if (existing) {
       if (!existing.channels.includes(item.channel_name)) {
         existing.channels.push(item.channel_name)
@@ -40,10 +40,10 @@ const groupedArticles = computed<GroupedArticle[]>(() => {
         existing.published_at = item.published_at
       }
     } else {
-      articleMap.set(item.article_id, {
-        article_id: item.article_id,
-        title: item.article_title,
-        url: item.article_url,
+      itemMap.set(item.content_id, {
+        content_id: item.content_id,
+        title: item.content_title,
+        url: item.content_url,
         quality_score: item.quality_score,
         topics: item.topics || [],
         channels: [item.channel_name],
@@ -52,7 +52,7 @@ const groupedArticles = computed<GroupedArticle[]>(() => {
       })
     }
   }
-  return Array.from(articleMap.values()).sort(
+  return Array.from(itemMap.values()).sort(
     (a, b) => new Date(b.published_at).getTime() - new Date(a.published_at).getTime()
   )
 })
@@ -96,15 +96,15 @@ function onChannelChange(channelName: string | undefined) {
     <div class="flex items-center justify-between">
       <div>
         <h1 class="text-3xl font-bold tracking-tight">
-          Recent Articles
+          Recent Content
         </h1>
         <p class="text-muted-foreground">
-          Recently published articles across all channels
+          Recently published content across all channels
         </p>
       </div>
       <Button
         variant="outline"
-        :disabled="groupedArticles.length === 0"
+        :disabled="groupedItems.length === 0"
         @click="confirmClear"
       >
         <Trash2 class="mr-2 h-4 w-4" />
@@ -113,7 +113,7 @@ function onChannelChange(channelName: string | undefined) {
     </div>
 
     <!-- Filter Bar -->
-    <ArticlesFilterBar
+    <ContentFilterBar
       :channels="channels"
       :filters="{ channel_name: table.filters.value.channel_name }"
       :has-active-filters="table.hasActiveFilters.value"
@@ -128,7 +128,7 @@ function onChannelChange(channelName: string | undefined) {
 
     <!-- Loading State -->
     <div
-      v-if="table.isLoading.value && groupedArticles.length === 0"
+      v-if="table.isLoading.value && groupedItems.length === 0"
       class="flex items-center justify-center py-12"
     >
       <Loader2 class="h-8 w-8 animate-spin text-muted-foreground" />
@@ -141,30 +141,30 @@ function onChannelChange(channelName: string | undefined) {
     >
       <CardContent class="pt-6">
         <p class="text-destructive">
-          {{ table.error.value?.message || 'Unable to load recent articles.' }}
+          {{ table.error.value?.message || 'Unable to load recent content.' }}
         </p>
       </CardContent>
     </Card>
 
     <!-- Empty State -->
-    <Card v-else-if="groupedArticles.length === 0">
+    <Card v-else-if="groupedItems.length === 0">
       <CardContent class="flex flex-col items-center justify-center py-12">
         <FileText class="h-12 w-12 text-muted-foreground mb-4" />
         <h3 class="text-lg font-medium mb-2">
-          No recent articles
+          No recent content
         </h3>
         <p class="text-muted-foreground">
-          Articles will appear here once published to channels.
+          Content will appear here once published to channels.
         </p>
       </CardContent>
     </Card>
 
-    <!-- Articles Table -->
+    <!-- Content Table -->
     <Card v-else>
       <CardHeader>
-        <CardTitle>Published Articles</CardTitle>
+        <CardTitle>Published Content</CardTitle>
         <CardDescription>
-          Showing {{ groupedArticles.length }} unique articles on this page
+          Showing {{ groupedItems.length }} unique items on this page
           <span
             v-if="table.hasActiveFilters.value"
             class="text-primary"
@@ -197,17 +197,17 @@ function onChannelChange(channelName: string | undefined) {
             </thead>
             <tbody class="divide-y">
               <tr
-                v-for="article in groupedArticles"
-                :key="article.article_id"
+                v-for="item in groupedItems"
+                :key="item.content_id"
                 class="hover:bg-muted/50"
               >
                 <td class="px-6 py-4">
                   <p class="text-sm font-medium truncate max-w-sm">
-                    {{ article.title }}
+                    {{ item.title }}
                   </p>
                   <BadgeList
-                    v-if="article.topics.length > 0"
-                    :items="article.topics"
+                    v-if="item.topics.length > 0"
+                    :items="item.topics"
                     :max-visible="3"
                     variant="outline"
                     class="mt-1"
@@ -215,20 +215,20 @@ function onChannelChange(channelName: string | undefined) {
                 </td>
                 <td class="px-6 py-4">
                   <BadgeList
-                    :items="article.channels"
+                    :items="item.channels"
                     :max-visible="2"
                     variant="secondary"
                   />
                 </td>
                 <td class="px-6 py-4 text-sm text-muted-foreground">
-                  {{ article.quality_score }}/100
+                  {{ item.quality_score }}/100
                 </td>
                 <td class="px-6 py-4 text-sm text-muted-foreground">
-                  {{ formatDate(article.published_at) }}
+                  {{ formatDate(item.published_at) }}
                 </td>
                 <td class="px-6 py-4 text-right">
                   <a
-                    :href="article.url"
+                    :href="item.url"
                     target="_blank"
                     class="text-primary hover:text-primary/80"
                   >
@@ -257,7 +257,7 @@ function onChannelChange(channelName: string | undefined) {
     <ConfirmModal
       :show="clearModalOpen"
       title="Clear Publish History"
-      message="Are you sure you want to clear all publish history? This will delete all records of published articles. The router may re-publish articles that were previously sent."
+      message="Are you sure you want to clear all publish history? This will delete all records of published content. The router may re-publish content that was previously sent."
       type="danger"
       confirm-text="Clear All History"
       :loading="clearing"

@@ -15,31 +15,31 @@ func TestCoforgeDomain_Name(t *testing.T) {
 func TestCoforgeDomain_Routes(t *testing.T) {
 	tests := []struct {
 		name     string
-		article  *router.Article
+		item     *router.ContentItem
 		expected []string
 	}{
 		{
 			name:     "nil coforge data returns nil",
-			article:  &router.Article{},
+			item:     &router.ContentItem{},
 			expected: nil,
 		},
 		{
 			name: "not_relevant returns nil",
-			article: &router.Article{
+			item: &router.ContentItem{
 				Coforge: &router.CoforgeData{Relevance: "not_relevant"},
 			},
 			expected: nil,
 		},
 		{
 			name: "empty relevance returns nil",
-			article: &router.Article{
+			item: &router.ContentItem{
 				Coforge: &router.CoforgeData{Relevance: ""},
 			},
 			expected: nil,
 		},
 		{
 			name: "core_coforge produces coforge:core",
-			article: &router.Article{
+			item: &router.ContentItem{
 				Coforge: &router.CoforgeData{
 					Relevance: "core_coforge",
 					Audience:  "developer",
@@ -49,7 +49,7 @@ func TestCoforgeDomain_Routes(t *testing.T) {
 		},
 		{
 			name: "peripheral produces coforge:peripheral",
-			article: &router.Article{
+			item: &router.ContentItem{
 				Coforge: &router.CoforgeData{
 					Relevance: "peripheral",
 					Audience:  "entrepreneur",
@@ -59,7 +59,7 @@ func TestCoforgeDomain_Routes(t *testing.T) {
 		},
 		{
 			name: "hybrid audience",
-			article: &router.Article{
+			item: &router.ContentItem{
 				Coforge: &router.CoforgeData{
 					Relevance: "core_coforge",
 					Audience:  "hybrid",
@@ -69,7 +69,7 @@ func TestCoforgeDomain_Routes(t *testing.T) {
 		},
 		{
 			name: "topics produce slugified channels",
-			article: &router.Article{
+			item: &router.ContentItem{
 				Coforge: &router.CoforgeData{
 					Relevance: "core_coforge",
 					Audience:  "developer",
@@ -85,7 +85,7 @@ func TestCoforgeDomain_Routes(t *testing.T) {
 		},
 		{
 			name: "industries produce slugified channels",
-			article: &router.Article{
+			item: &router.ContentItem{
 				Coforge: &router.CoforgeData{
 					Relevance:  "core_coforge",
 					Audience:   "hybrid",
@@ -101,7 +101,7 @@ func TestCoforgeDomain_Routes(t *testing.T) {
 		},
 		{
 			name: "full classification produces all channels",
-			article: &router.Article{
+			item: &router.ContentItem{
 				Coforge: &router.CoforgeData{
 					Relevance:  "core_coforge",
 					Audience:   "hybrid",
@@ -119,15 +119,15 @@ func TestCoforgeDomain_Routes(t *testing.T) {
 			},
 		},
 		{
-			name: "no articles:coforge catch-all is produced",
-			article: &router.Article{
+			name: "no content:coforge catch-all is produced",
+			item: &router.ContentItem{
 				Coforge: &router.CoforgeData{Relevance: "core_coforge", Audience: "developer"},
 			},
 			expected: []string{"coforge:core", "coforge:audience:developer"},
 		},
 		{
 			name: "unknown relevance returns nil (not partial routes)",
-			article: &router.Article{
+			item: &router.ContentItem{
 				Coforge: &router.CoforgeData{
 					Relevance: "core_coforge_v2", // unknown future value
 					Audience:  "developer",
@@ -137,7 +137,7 @@ func TestCoforgeDomain_Routes(t *testing.T) {
 		},
 		{
 			name: "audience is slug-normalized (lowercase, spaces and underscores to hyphens)",
-			article: &router.Article{
+			item: &router.ContentItem{
 				Coforge: &router.CoforgeData{
 					Relevance: "core_coforge",
 					Audience:  "IT Decision Maker",
@@ -149,7 +149,7 @@ func TestCoforgeDomain_Routes(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			routes := router.NewCoforgeDomain().Routes(tc.article)
+			routes := router.NewCoforgeDomain().Routes(tc.item)
 			if tc.expected == nil {
 				assert.Nil(t, routes)
 				return
@@ -161,8 +161,8 @@ func TestCoforgeDomain_Routes(t *testing.T) {
 			assert.Equal(t, tc.expected, names)
 			// Verify no catch-all channel is generated
 			for _, name := range names {
-				assert.NotEqual(t, "articles:coforge", name,
-					"CoforgeDomain must not produce a catch-all articles:coforge channel")
+				assert.NotEqual(t, "content:coforge", name,
+					"CoforgeDomain must not produce a catch-all content:coforge channel")
 			}
 		})
 	}

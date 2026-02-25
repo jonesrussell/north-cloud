@@ -78,7 +78,7 @@ Set `MCP_ENV` to control which tools appear in `tools/list`:
 | `local` (default) | 18 | shared (15) + local-only (3) |
 | `prod` | 24 | shared (15) + prod-only (9) |
 
-**Shared (15):** onboard_source, list_crawl_jobs, get_crawl_stats, add_source, list_sources, update_source, test_source, list_indexes, search_articles, list_routes, list_channels, preview_route, get_publish_history, get_publisher_stats, classify_article
+**Shared (15):** onboard_source, list_crawl_jobs, get_crawl_stats, add_source, list_sources, update_source, test_source, list_indexes, search_content, list_routes, list_channels, preview_route, get_publish_history, get_publisher_stats, classify_content
 
 **Local-only (3):** lint_file, build_service, test_service
 
@@ -240,8 +240,8 @@ Clients are constructed in `server.go` using URL and timeout from config. Always
 | **Crawler (5)** | start_crawl, schedule_crawl, list_crawl_jobs, control_crawl_job, get_crawl_stats |
 | **Source Manager (5)** | add_source, list_sources, update_source, delete_source, test_source |
 | **Publisher (8)** | create_route, list_routes, create_channel, list_channels, delete_route, preview_route, get_publish_history, get_publisher_stats |
-| **Search (1)** | search_articles |
-| **Classifier (1)** | classify_article |
+| **Search (1)** | search_content |
+| **Classifier (1)** | classify_content |
 | **Index Manager (2)** | list_indexes, delete_index |
 | **Auth (1)** | get_auth_token |
 | **Development (3)** | lint_file, build_service, test_service |

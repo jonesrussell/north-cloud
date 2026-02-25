@@ -8,7 +8,7 @@ import (
 	colly "github.com/gocolly/colly/v2"
 )
 
-// Minimum number of hyphen-separated words in a slug to consider it article-like.
+// Minimum number of hyphen-separated words in a slug to consider it content-like.
 const minSlugWordCount = 4
 
 // DetectedContentType identifies the structured content type detected from URL/HTML.
@@ -31,8 +31,8 @@ var structuredContentJSONLDTypes = []string{
 	"Event", "SpecialAnnouncement", "Report",
 }
 
-// nonArticleSegments are URL path segments that indicate non-article pages.
-var nonArticleSegments = map[string]bool{
+// nonContentSegments are URL path segments that indicate non-content pages.
+var nonContentSegments = map[string]bool{
 	"login":    true,
 	"signin":   true,
 	"signup":   true,
@@ -56,8 +56,8 @@ var nonArticleSegments = map[string]bool{
 	"checkout": true,
 }
 
-// nonArticleExtensions are file extensions that indicate non-article resources.
-var nonArticleExtensions = map[string]bool{
+// binaryExtensions are file extensions that indicate binary/non-content resources.
+var binaryExtensions = map[string]bool{
 	".pdf":  true,
 	".xml":  true,
 	".json": true,
@@ -108,9 +108,9 @@ var urlContentTypePatterns = []struct {
 // pdfSuffix matches URLs that point to PDF documents (report type).
 const pdfSuffix = ".pdf"
 
-// articlePathSegments are path segments that suggest collectible structured content
+// contentPathSegments are path segments that suggest collectible structured content
 // (articles, events, press releases, blotters, etc.) when followed by additional path content.
-var articlePathSegments = map[string]bool{
+var contentPathSegments = map[string]bool{
 	"article":    true,
 	"story":      true,
 	"post":       true,
@@ -142,10 +142,10 @@ var articlePathSegments = map[string]bool{
 // datePathPattern matches date-based URL paths like /2026/02/14/headline or /2026/02/headline.
 var datePathPattern = regexp.MustCompile(`/\d{4}/\d{2}(/\d{2})?/[^/]+`)
 
-// isArticleURL determines whether a URL is likely an article page.
+// isContentURL determines whether a URL is likely a content page.
 // If explicit patterns are provided, only those patterns decide.
 // Otherwise, built-in heuristics are used.
-func isArticleURL(pageURL string, explicitPatterns []*regexp.Regexp) bool {
+func isContentURL(pageURL string, explicitPatterns []*regexp.Regexp) bool {
 	if len(explicitPatterns) > 0 {
 		return matchesExplicitPatterns(pageURL, explicitPatterns)
 	}
@@ -164,7 +164,7 @@ func matchesExplicitPatterns(pageURL string, patterns []*regexp.Regexp) bool {
 	return false
 }
 
-// matchesBuiltInHeuristics applies default heuristics to detect article URLs.
+// matchesBuiltInHeuristics applies default heuristics to detect content URLs.
 func matchesBuiltInHeuristics(pageURL string) bool {
 	parsed, err := url.Parse(pageURL)
 	if err != nil {
@@ -178,7 +178,7 @@ func matchesBuiltInHeuristics(pageURL string) bool {
 
 	lowerPath := strings.ToLower(path)
 
-	if isNonArticlePath(lowerPath) {
+	if isBinaryPath(lowerPath) {
 		return false
 	}
 
@@ -188,20 +188,20 @@ func matchesBuiltInHeuristics(pageURL string) bool {
 	}
 
 	return hasDatePath(path) ||
-		hasArticlePathSegment(segments) ||
+		hasContentPathSegment(segments) ||
 		hasLongSlugInPath(segments)
 }
 
-// isNonArticlePath checks if the path contains non-article segments or file extensions.
-func isNonArticlePath(lowerPath string) bool {
+// isBinaryPath checks if the path contains non-content segments or binary file extensions.
+func isBinaryPath(lowerPath string) bool {
 	segments := strings.Split(strings.TrimLeft(lowerPath, "/"), "/")
 	for _, seg := range segments {
-		if nonArticleSegments[seg] {
+		if nonContentSegments[seg] {
 			return true
 		}
 	}
 
-	for ext := range nonArticleExtensions {
+	for ext := range binaryExtensions {
 		if strings.HasSuffix(lowerPath, ext) {
 			return true
 		}
@@ -210,17 +210,17 @@ func isNonArticlePath(lowerPath string) bool {
 	return false
 }
 
-// hasDatePath checks if the path matches a date-based article URL pattern.
+// hasDatePath checks if the path matches a date-based content URL pattern.
 func hasDatePath(path string) bool {
 	return datePathPattern.MatchString(path)
 }
 
-// hasArticlePathSegment checks if any segment is a known article indicator
+// hasContentPathSegment checks if any segment is a known content indicator
 // and is followed by additional content.
-func hasArticlePathSegment(segments []string) bool {
+func hasContentPathSegment(segments []string) bool {
 	lastIndex := len(segments) - 1
 	for i, seg := range segments {
-		if articlePathSegments[strings.ToLower(seg)] && i < lastIndex {
+		if contentPathSegments[strings.ToLower(seg)] && i < lastIndex {
 			return true
 		}
 	}
@@ -343,22 +343,22 @@ func IsStructuredContentPage(e *colly.HTMLElement, pageURL string, explicitPatte
 	if ctype != DetectedContentUnknown {
 		return true, ctype
 	}
-	if isArticleURL(pageURL, explicitPatterns) {
+	if isContentURL(pageURL, explicitPatterns) {
 		return true, DetectedContentArticle
 	}
 	return false, DetectedContentUnknown
 }
 
-// isArticlePage determines whether a page is an article based on HTML metadata.
+// isContentPage determines whether a page is content based on HTML metadata.
 // It returns true if og:type is "article" (case insensitive) or if the page
 // contains NewsArticle JSON-LD structured data. Kept for backward compatibility.
-func isArticlePage(ogType string, hasJSONLD bool) bool {
+func isContentPage(ogType string, hasJSONLD bool) bool {
 	return strings.EqualFold(ogType, "article") || hasJSONLD
 }
 
-// compileArticlePatterns compiles string patterns into regular expressions.
+// compileContentPatterns compiles string patterns into regular expressions.
 // Invalid patterns are silently skipped. Returns nil for empty input.
-func compileArticlePatterns(patterns []string) []*regexp.Regexp {
+func compileContentPatterns(patterns []string) []*regexp.Regexp {
 	if len(patterns) == 0 {
 		return nil
 	}

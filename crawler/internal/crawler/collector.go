@@ -62,8 +62,8 @@ const (
 // retryCountKey is the request context key for HTTP retry count in OnError.
 const retryCountKey = "retry_count"
 
-// setupCollector configures the collector for discovery and inline article extraction.
-// Article detection gates which pages get processed by ProcessHTML (no second HTTP request).
+// setupCollector configures the collector for discovery and inline content extraction.
+// Content detection gates which pages get processed by ProcessHTML (no second HTTP request).
 func (c *Crawler) setupCollector(ctx context.Context, source *configtypes.Source) error {
 	maxDepth := c.resolveMaxDepth(source)
 	opts := c.buildCollectorOptions(ctx, maxDepth, source)
@@ -396,7 +396,7 @@ func (c *Crawler) requestCallback(ctx context.Context) func(*colly.Request) {
 	}
 }
 
-// setupCallbacks configures all collector callbacks (discovery, article detection, extraction).
+// setupCallbacks configures all collector callbacks (discovery, content detection, extraction).
 func (c *Crawler) setupCallbacks(ctx context.Context) {
 	c.collector.OnResponseHeaders(c.responseHeadersCallback())
 	c.collector.OnResponse(c.responseCallback(ctx))
@@ -424,7 +424,7 @@ func (c *Crawler) setupCallbacks(ctx context.Context) {
 		crawlCtx := c.getCrawlContext()
 		var patterns []*regexp.Regexp
 		if crawlCtx != nil {
-			patterns = crawlCtx.ArticlePatterns
+			patterns = crawlCtx.ContentPatterns
 		}
 
 		if ok, detectedType := IsStructuredContentPage(e, pageURL, patterns); ok {

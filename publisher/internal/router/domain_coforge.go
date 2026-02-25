@@ -9,10 +9,10 @@ const (
 	CoforgeRelevancePeripheral  = "peripheral"
 )
 
-// CoforgeDomain routes Coforge-classified articles to coforge:* channels.
+// CoforgeDomain routes Coforge-classified content items to coforge:* channels.
 //
 // Coforge is a product-specific routing domain — not a public topic domain.
-// It does NOT produce a catch-all articles:coforge channel. Entry points are
+// It does NOT produce a catch-all content:coforge channel. Entry points are
 // coforge:core and coforge:peripheral, plus audience, topic, and industry sub-channels.
 type CoforgeDomain struct{}
 
@@ -22,20 +22,20 @@ func NewCoforgeDomain() *CoforgeDomain { return &CoforgeDomain{} }
 // Name returns the domain identifier.
 func (d *CoforgeDomain) Name() string { return "coforge" }
 
-// Routes returns Coforge channels for the article.
+// Routes returns Coforge channels for the content item.
 // Returns nil if Coforge data is absent or relevance is not_relevant.
-func (d *CoforgeDomain) Routes(a *Article) []ChannelRoute {
-	if a.Coforge == nil {
+func (d *CoforgeDomain) Routes(item *ContentItem) []ChannelRoute {
+	if item.Coforge == nil {
 		return nil
 	}
 
-	rel := a.Coforge.Relevance
+	rel := item.Coforge.Relevance
 	if rel == CoforgeRelevanceNotRelevant || rel == "" {
 		return nil
 	}
 
 	const maxCoforgeFixedChannels = 2 // relevance anchor + audience
-	names := make([]string, 0, maxCoforgeFixedChannels+len(a.Coforge.Topics)+len(a.Coforge.Industries))
+	names := make([]string, 0, maxCoforgeFixedChannels+len(item.Coforge.Topics)+len(item.Coforge.Industries))
 
 	// Relevance channel — coforge:core or coforge:peripheral
 	switch rel {
@@ -50,16 +50,16 @@ func (d *CoforgeDomain) Routes(a *Article) []ChannelRoute {
 	}
 
 	// Audience channel — slug-normalized (lowercase, spaces and underscores to hyphens)
-	if a.Coforge.Audience != "" {
+	if item.Coforge.Audience != "" {
 		slug := strings.ToLower(strings.ReplaceAll(
-			strings.ReplaceAll(a.Coforge.Audience, "_", "-"),
+			strings.ReplaceAll(item.Coforge.Audience, "_", "-"),
 			" ", "-",
 		))
 		names = append(names, "coforge:audience:"+slug)
 	}
 
 	// Topic channels — underscores converted to hyphens for slug format
-	for _, topic := range a.Coforge.Topics {
+	for _, topic := range item.Coforge.Topics {
 		slug := strings.ToLower(strings.ReplaceAll(topic, "_", "-"))
 		if slug != "" {
 			names = append(names, "coforge:topic:"+slug)
@@ -67,7 +67,7 @@ func (d *CoforgeDomain) Routes(a *Article) []ChannelRoute {
 	}
 
 	// Industry channels — underscores converted to hyphens for slug format
-	for _, industry := range a.Coforge.Industries {
+	for _, industry := range item.Coforge.Industries {
 		slug := strings.ToLower(strings.ReplaceAll(industry, "_", "-"))
 		if slug != "" {
 			names = append(names, "coforge:industry:"+slug)

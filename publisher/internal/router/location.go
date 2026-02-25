@@ -13,7 +13,7 @@ const (
 	LocationSpecificityCity = "city"
 )
 
-// LocationDomain routes articles to geographic channels for active domain classifiers.
+// LocationDomain routes content items to geographic channels for active domain classifiers.
 // Active classifiers are crime and entertainment; mining is excluded because
 // MiningDomain already generates mining:canada / mining:international.
 // For each active classifier, generates:
@@ -29,21 +29,21 @@ func NewLocationDomain() *LocationDomain { return &LocationDomain{} }
 // Name returns the domain identifier.
 func (d *LocationDomain) Name() string { return "location" }
 
-// Routes returns geographic channels for articles with an active domain classifier
+// Routes returns geographic channels for content items with an active domain classifier
 // and a known location.
-func (d *LocationDomain) Routes(a *Article) []ChannelRoute {
+func (d *LocationDomain) Routes(item *ContentItem) []ChannelRoute {
 	// Skip unknown or empty locations
-	if a.LocationCountry == LocationCountryUnknown || a.LocationCountry == "" {
+	if item.LocationCountry == LocationCountryUnknown || item.LocationCountry == "" {
 		return nil
 	}
 
-	prefixes := activeTopicPrefixes(a)
+	prefixes := activeTopicPrefixes(item)
 	if len(prefixes) == 0 {
 		return nil
 	}
 
 	// International (non-Canadian) — one channel per prefix
-	if a.LocationCountry != LocationCountryCanada {
+	if item.LocationCountry != LocationCountryCanada {
 		channels := make([]string, 0, len(prefixes))
 		for _, prefix := range prefixes {
 			channels = append(channels, prefix+":international")
@@ -52,21 +52,21 @@ func (d *LocationDomain) Routes(a *Article) []ChannelRoute {
 	}
 
 	// Canadian locations — build from most specific to least specific per prefix
-	return channelRoutesFromSlice(generateCanadianChannels(a, prefixes))
+	return channelRoutesFromSlice(generateCanadianChannels(item, prefixes))
 }
 
 // generateCanadianChannels builds location channels for Canadian content.
-func generateCanadianChannels(article *Article, prefixes []string) []string {
+func generateCanadianChannels(item *ContentItem, prefixes []string) []string {
 	// Estimate capacity: up to 3 channels (local, province, canada) per prefix
 	const maxChannelsPerPrefix = 3
 	channels := make([]string, 0, len(prefixes)*maxChannelsPerPrefix)
 
 	for _, prefix := range prefixes {
-		if article.LocationSpecificity == LocationSpecificityCity && article.LocationCity != "" {
-			channels = append(channels, fmt.Sprintf("%s:local:%s", prefix, article.LocationCity))
+		if item.LocationSpecificity == LocationSpecificityCity && item.LocationCity != "" {
+			channels = append(channels, fmt.Sprintf("%s:local:%s", prefix, item.LocationCity))
 		}
-		if article.LocationProvince != "" {
-			channels = append(channels, fmt.Sprintf("%s:province:%s", prefix, strings.ToLower(article.LocationProvince)))
+		if item.LocationProvince != "" {
+			channels = append(channels, fmt.Sprintf("%s:province:%s", prefix, strings.ToLower(item.LocationProvince)))
 		}
 		channels = append(channels, prefix+":canada")
 	}
@@ -75,16 +75,16 @@ func generateCanadianChannels(article *Article, prefixes []string) []string {
 }
 
 // activeTopicPrefixes returns the channel prefixes for domain classifiers
-// that are active on this article. Mining is excluded because MiningDomain
+// that are active on this content item. Mining is excluded because MiningDomain
 // already generates mining:canada/mining:international.
-func activeTopicPrefixes(article *Article) []string {
+func activeTopicPrefixes(item *ContentItem) []string {
 	const maxPrefixes = 2
 	prefixes := make([]string, 0, maxPrefixes)
 
-	if article.CrimeRelevance != CrimeRelevanceNotCrime && article.CrimeRelevance != "" {
+	if item.CrimeRelevance != CrimeRelevanceNotCrime && item.CrimeRelevance != "" {
 		prefixes = append(prefixes, "crime")
 	}
-	if article.Entertainment != nil && article.Entertainment.Relevance != EntertainmentRelevanceNot && article.Entertainment.Relevance != "" {
+	if item.Entertainment != nil && item.Entertainment.Relevance != EntertainmentRelevanceNot && item.Entertainment.Relevance != "" {
 		prefixes = append(prefixes, "entertainment")
 	}
 

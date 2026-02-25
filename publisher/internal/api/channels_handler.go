@@ -132,7 +132,7 @@ func (r *Router) deleteChannel(c *gin.Context) {
 	})
 }
 
-// previewChannel returns a preview of articles that would match this channel's rules
+// previewChannel returns a preview of content that would match this channel's rules
 // GET /api/v1/channels/:id/preview
 // Note: This is a placeholder - full implementation would query Elasticsearch
 func (r *Router) previewChannel(c *gin.Context) {
@@ -150,7 +150,7 @@ func (r *Router) previewChannel(c *gin.Context) {
 	}
 
 	// Build response with channel details and rules summary
-	// Full implementation would query Elasticsearch for matching articles
+	// Full implementation would query Elasticsearch for matching content
 	response := gin.H{
 		"channel": channel,
 		"rules_summary": gin.H{
@@ -161,9 +161,9 @@ func (r *Router) previewChannel(c *gin.Context) {
 			"rules_is_empty": channel.Rules.IsEmpty(),
 			"rules_version":  channel.RulesVersion,
 		},
-		"matching_count":  0,       // Would be populated by ES query
-		"sample_articles": []any{}, // Would be populated by ES query
-		"note":            "Preview endpoint - full ES query not implemented yet",
+		"matching_count": 0,       // Would be populated by ES query
+		"sample_items":   []any{}, // Would be populated by ES query
+		"note":           "Preview endpoint - full ES query not implemented yet",
 	}
 
 	c.JSON(http.StatusOK, response)

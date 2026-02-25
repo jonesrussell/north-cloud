@@ -11,16 +11,16 @@ const (
 	KeyPrefixSkipped = "skipped"
 	// KeyPrefixErrors is the prefix for error counters
 	KeyPrefixErrors = "errors"
-	// KeyRecentArticles is the Redis key for recent articles list
-	KeyRecentArticles = "metrics:recent:articles"
+	// KeyRecentItems is the Redis key for recent items list
+	KeyRecentItems = "metrics:recent:items"
 	// KeyLastSync is the Redis key for last sync timestamp
 	KeyLastSync = "metrics:last_sync"
-	// MaxRecentArticles is the maximum number of recent articles to keep
-	MaxRecentArticles = 100
+	// MaxRecentItems is the maximum number of recent items to keep
+	MaxRecentItems = 100
 	// MetricsTTLDays is the TTL in days for metrics counters
 	MetricsTTLDays = 30
-	// RecentArticlesTTLDays is the TTL in days for recent articles list
-	RecentArticlesTTLDays = 7
+	// RecentItemsTTLDays is the TTL in days for recent items list
+	RecentItemsTTLDays = 7
 	// HoursPerDay is the number of hours in a day
 	HoursPerDay = 24
 )

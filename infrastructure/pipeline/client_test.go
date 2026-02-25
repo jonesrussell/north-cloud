@@ -44,7 +44,7 @@ func TestClient_Emit_Success(t *testing.T) {
 	ctx := context.Background()
 
 	emitErr := client.Emit(ctx, pipeline.Event{
-		ArticleURL:  "https://example.com/article",
+		ContentURL:  "https://example.com/article",
 		SourceName:  "example_com",
 		Stage:       "crawled",
 		OccurredAt:  time.Now().UTC(),
@@ -67,7 +67,7 @@ func TestClient_Emit_NoopWhenURLEmpty(t *testing.T) {
 	ctx := context.Background()
 
 	emitErr := client.Emit(ctx, pipeline.Event{
-		ArticleURL:  "https://example.com/article",
+		ContentURL:  "https://example.com/article",
 		SourceName:  "example_com",
 		Stage:       "crawled",
 		OccurredAt:  time.Now().UTC(),
@@ -98,9 +98,9 @@ func TestClient_EmitBatch_SingleRequest(t *testing.T) {
 	ctx := context.Background()
 
 	events := []pipeline.Event{
-		{ArticleURL: "https://example.com/1", SourceName: "test", Stage: "crawled", OccurredAt: time.Now().UTC(), ServiceName: "test"},
-		{ArticleURL: "https://example.com/2", SourceName: "test", Stage: "crawled", OccurredAt: time.Now().UTC(), ServiceName: "test"},
-		{ArticleURL: "https://example.com/3", SourceName: "test", Stage: "crawled", OccurredAt: time.Now().UTC(), ServiceName: "test"},
+		{ContentURL: "https://example.com/1", SourceName: "test", Stage: "crawled", OccurredAt: time.Now().UTC(), ServiceName: "test"},
+		{ContentURL: "https://example.com/2", SourceName: "test", Stage: "crawled", OccurredAt: time.Now().UTC(), ServiceName: "test"},
+		{ContentURL: "https://example.com/3", SourceName: "test", Stage: "crawled", OccurredAt: time.Now().UTC(), ServiceName: "test"},
 	}
 
 	batchErr := client.EmitBatch(ctx, events)
@@ -125,7 +125,7 @@ func TestClient_Emit_ClientError(t *testing.T) {
 	ctx := context.Background()
 
 	emitErr := client.Emit(ctx, pipeline.Event{
-		ArticleURL: "https://example.com/article",
+		ContentURL: "https://example.com/article",
 		SourceName: "example_com",
 		Stage:      "crawled",
 		OccurredAt: time.Now().UTC(),
@@ -150,7 +150,7 @@ func TestClient_CircuitBreaker_Opens(t *testing.T) {
 	ctx := context.Background()
 
 	event := pipeline.Event{
-		ArticleURL:  "https://example.com/article",
+		ContentURL:  "https://example.com/article",
 		SourceName:  "example_com",
 		Stage:       "crawled",
 		OccurredAt:  time.Now().UTC(),

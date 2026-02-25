@@ -11,7 +11,7 @@ import (
 func TestGenerateMiningChannels_CoreMining_AllLayers(t *testing.T) {
 	t.Helper()
 
-	article := &Article{
+	item := &ContentItem{
 		ID:    "test-mining-1",
 		Title: "Gold drill results show high grade intercepts",
 		Mining: &MiningData{
@@ -22,11 +22,11 @@ func TestGenerateMiningChannels_CoreMining_AllLayers(t *testing.T) {
 		},
 	}
 
-	routes := NewMiningDomain().Routes(article)
+	routes := NewMiningDomain().Routes(item)
 	channels := routeChannelNames(routes)
 
 	expected := []string{
-		"articles:mining",
+		"content:mining",
 		"mining:core",
 		"mining:commodity:gold",
 		"mining:stage:exploration",
@@ -38,7 +38,7 @@ func TestGenerateMiningChannels_CoreMining_AllLayers(t *testing.T) {
 func TestGenerateMiningChannels_PeripheralMining_MinimalFields(t *testing.T) {
 	t.Helper()
 
-	article := &Article{
+	item := &ContentItem{
 		ID:    "test-mining-2",
 		Title: "Mining industry overview",
 		Mining: &MiningData{
@@ -46,10 +46,10 @@ func TestGenerateMiningChannels_PeripheralMining_MinimalFields(t *testing.T) {
 		},
 	}
 
-	routes := NewMiningDomain().Routes(article)
+	routes := NewMiningDomain().Routes(item)
 	channels := routeChannelNames(routes)
 
-	expected := []string{"articles:mining", "mining:peripheral"}
+	expected := []string{"content:mining", "mining:peripheral"}
 	assertChannelsEqual(t, expected, channels)
 }
 
@@ -58,11 +58,11 @@ func TestGenerateMiningChannels_PeripheralMining_MinimalFields(t *testing.T) {
 func TestGenerateMiningChannels_CoreRelevanceChannel(t *testing.T) {
 	t.Helper()
 
-	article := &Article{
+	item := &ContentItem{
 		Mining: &MiningData{Relevance: MiningRelevanceCoreMining},
 	}
 
-	routes := NewMiningDomain().Routes(article)
+	routes := NewMiningDomain().Routes(item)
 	channels := routeChannelNames(routes)
 	assertContains(t, channels, "mining:core")
 	assertNotContains(t, channels, "mining:peripheral")
@@ -71,11 +71,11 @@ func TestGenerateMiningChannels_CoreRelevanceChannel(t *testing.T) {
 func TestGenerateMiningChannels_PeripheralRelevanceChannel(t *testing.T) {
 	t.Helper()
 
-	article := &Article{
+	item := &ContentItem{
 		Mining: &MiningData{Relevance: MiningRelevancePeripheral},
 	}
 
-	routes := NewMiningDomain().Routes(article)
+	routes := NewMiningDomain().Routes(item)
 	channels := routeChannelNames(routes)
 	assertContains(t, channels, "mining:peripheral")
 	assertNotContains(t, channels, "mining:core")
@@ -86,14 +86,14 @@ func TestGenerateMiningChannels_PeripheralRelevanceChannel(t *testing.T) {
 func TestGenerateMiningChannels_MultipleCommodities(t *testing.T) {
 	t.Helper()
 
-	article := &Article{
+	item := &ContentItem{
 		Mining: &MiningData{
 			Relevance:   MiningRelevanceCoreMining,
 			Commodities: []string{"gold", "copper", "lithium"},
 		},
 	}
 
-	routes := NewMiningDomain().Routes(article)
+	routes := NewMiningDomain().Routes(item)
 	channels := routeChannelNames(routes)
 	assertContains(t, channels, "mining:commodity:gold")
 	assertContains(t, channels, "mining:commodity:copper")
@@ -103,14 +103,14 @@ func TestGenerateMiningChannels_MultipleCommodities(t *testing.T) {
 func TestGenerateMiningChannels_CommodityUnderscoreToHyphen(t *testing.T) {
 	t.Helper()
 
-	article := &Article{
+	item := &ContentItem{
 		Mining: &MiningData{
 			Relevance:   MiningRelevanceCoreMining,
 			Commodities: []string{"iron_ore", "rare_earths"},
 		},
 	}
 
-	routes := NewMiningDomain().Routes(article)
+	routes := NewMiningDomain().Routes(item)
 	channels := routeChannelNames(routes)
 	assertContains(t, channels, "mining:commodity:iron-ore")
 	assertContains(t, channels, "mining:commodity:rare-earths")
@@ -119,11 +119,11 @@ func TestGenerateMiningChannels_CommodityUnderscoreToHyphen(t *testing.T) {
 func TestGenerateMiningChannels_NoCommodities(t *testing.T) {
 	t.Helper()
 
-	article := &Article{
+	item := &ContentItem{
 		Mining: &MiningData{Relevance: MiningRelevanceCoreMining},
 	}
 
-	routes := NewMiningDomain().Routes(article)
+	routes := NewMiningDomain().Routes(item)
 	channels := routeChannelNames(routes)
 	for _, c := range channels {
 		if len(c) > len("mining:commodity:") && c[:len("mining:commodity:")] == "mining:commodity:" {
@@ -137,14 +137,14 @@ func TestGenerateMiningChannels_NoCommodities(t *testing.T) {
 func TestGenerateMiningChannels_StageExploration(t *testing.T) {
 	t.Helper()
 
-	article := &Article{
+	item := &ContentItem{
 		Mining: &MiningData{
 			Relevance:   MiningRelevanceCoreMining,
 			MiningStage: "exploration",
 		},
 	}
 
-	routes := NewMiningDomain().Routes(article)
+	routes := NewMiningDomain().Routes(item)
 	channels := routeChannelNames(routes)
 	assertContains(t, channels, "mining:stage:exploration")
 }
@@ -152,14 +152,14 @@ func TestGenerateMiningChannels_StageExploration(t *testing.T) {
 func TestGenerateMiningChannels_StageProduction(t *testing.T) {
 	t.Helper()
 
-	article := &Article{
+	item := &ContentItem{
 		Mining: &MiningData{
 			Relevance:   MiningRelevanceCoreMining,
 			MiningStage: "production",
 		},
 	}
 
-	routes := NewMiningDomain().Routes(article)
+	routes := NewMiningDomain().Routes(item)
 	channels := routeChannelNames(routes)
 	assertContains(t, channels, "mining:stage:production")
 }
@@ -167,14 +167,14 @@ func TestGenerateMiningChannels_StageProduction(t *testing.T) {
 func TestGenerateMiningChannels_StageDevelopment(t *testing.T) {
 	t.Helper()
 
-	article := &Article{
+	item := &ContentItem{
 		Mining: &MiningData{
 			Relevance:   MiningRelevanceCoreMining,
 			MiningStage: "development",
 		},
 	}
 
-	routes := NewMiningDomain().Routes(article)
+	routes := NewMiningDomain().Routes(item)
 	channels := routeChannelNames(routes)
 	assertContains(t, channels, "mining:stage:development")
 }
@@ -182,14 +182,14 @@ func TestGenerateMiningChannels_StageDevelopment(t *testing.T) {
 func TestGenerateMiningChannels_StageUnspecifiedSkipped(t *testing.T) {
 	t.Helper()
 
-	article := &Article{
+	item := &ContentItem{
 		Mining: &MiningData{
 			Relevance:   MiningRelevanceCoreMining,
 			MiningStage: "unspecified",
 		},
 	}
 
-	routes := NewMiningDomain().Routes(article)
+	routes := NewMiningDomain().Routes(item)
 	channels := routeChannelNames(routes)
 	assertNotContains(t, channels, "mining:stage:unspecified")
 }
@@ -197,14 +197,14 @@ func TestGenerateMiningChannels_StageUnspecifiedSkipped(t *testing.T) {
 func TestGenerateMiningChannels_StageEmptySkipped(t *testing.T) {
 	t.Helper()
 
-	article := &Article{
+	item := &ContentItem{
 		Mining: &MiningData{
 			Relevance:   MiningRelevanceCoreMining,
 			MiningStage: "",
 		},
 	}
 
-	routes := NewMiningDomain().Routes(article)
+	routes := NewMiningDomain().Routes(item)
 	channels := routeChannelNames(routes)
 	for _, c := range channels {
 		if len(c) > len("mining:stage:") && c[:len("mining:stage:")] == "mining:stage:" {
@@ -218,14 +218,14 @@ func TestGenerateMiningChannels_StageEmptySkipped(t *testing.T) {
 func TestGenerateMiningChannels_LocationLocalCanada(t *testing.T) {
 	t.Helper()
 
-	article := &Article{
+	item := &ContentItem{
 		Mining: &MiningData{
 			Relevance: MiningRelevanceCoreMining,
 			Location:  MiningLocationLocalCanada,
 		},
 	}
 
-	routes := NewMiningDomain().Routes(article)
+	routes := NewMiningDomain().Routes(item)
 	channels := routeChannelNames(routes)
 	assertContains(t, channels, "mining:canada")
 	assertNotContains(t, channels, "mining:international")
@@ -234,14 +234,14 @@ func TestGenerateMiningChannels_LocationLocalCanada(t *testing.T) {
 func TestGenerateMiningChannels_LocationNationalCanada(t *testing.T) {
 	t.Helper()
 
-	article := &Article{
+	item := &ContentItem{
 		Mining: &MiningData{
 			Relevance: MiningRelevanceCoreMining,
 			Location:  MiningLocationNationalCanada,
 		},
 	}
 
-	routes := NewMiningDomain().Routes(article)
+	routes := NewMiningDomain().Routes(item)
 	channels := routeChannelNames(routes)
 	assertContains(t, channels, "mining:canada")
 }
@@ -249,14 +249,14 @@ func TestGenerateMiningChannels_LocationNationalCanada(t *testing.T) {
 func TestGenerateMiningChannels_LocationInternational(t *testing.T) {
 	t.Helper()
 
-	article := &Article{
+	item := &ContentItem{
 		Mining: &MiningData{
 			Relevance: MiningRelevanceCoreMining,
 			Location:  MiningLocationInternational,
 		},
 	}
 
-	routes := NewMiningDomain().Routes(article)
+	routes := NewMiningDomain().Routes(item)
 	channels := routeChannelNames(routes)
 	assertContains(t, channels, "mining:international")
 	assertNotContains(t, channels, "mining:canada")
@@ -265,14 +265,14 @@ func TestGenerateMiningChannels_LocationInternational(t *testing.T) {
 func TestGenerateMiningChannels_LocationNotSpecifiedSkipped(t *testing.T) {
 	t.Helper()
 
-	article := &Article{
+	item := &ContentItem{
 		Mining: &MiningData{
 			Relevance: MiningRelevanceCoreMining,
 			Location:  "not_specified",
 		},
 	}
 
-	routes := NewMiningDomain().Routes(article)
+	routes := NewMiningDomain().Routes(item)
 	channels := routeChannelNames(routes)
 	assertNotContains(t, channels, "mining:canada")
 	assertNotContains(t, channels, "mining:international")
@@ -283,7 +283,7 @@ func TestGenerateMiningChannels_LocationNotSpecifiedSkipped(t *testing.T) {
 func TestGenerateMiningChannels_NotMining(t *testing.T) {
 	t.Helper()
 
-	article := &Article{
+	item := &ContentItem{
 		ID:    "test-mining-3",
 		Title: "Weather forecast",
 		Mining: &MiningData{
@@ -291,7 +291,7 @@ func TestGenerateMiningChannels_NotMining(t *testing.T) {
 		},
 	}
 
-	routes := NewMiningDomain().Routes(article)
+	routes := NewMiningDomain().Routes(item)
 
 	if len(routes) != 0 {
 		t.Errorf("expected no channels for not_mining, got %v", routeChannelNames(routes))
@@ -301,12 +301,12 @@ func TestGenerateMiningChannels_NotMining(t *testing.T) {
 func TestGenerateMiningChannels_NilMining(t *testing.T) {
 	t.Helper()
 
-	article := &Article{
+	item := &ContentItem{
 		ID:    "test-mining-4",
 		Title: "Regular news article",
 	}
 
-	routes := NewMiningDomain().Routes(article)
+	routes := NewMiningDomain().Routes(item)
 	channels := routeChannelNames(routes)
 
 	if len(channels) != 0 {
@@ -317,13 +317,13 @@ func TestGenerateMiningChannels_NilMining(t *testing.T) {
 func TestGenerateMiningChannels_EmptyRelevance(t *testing.T) {
 	t.Helper()
 
-	article := &Article{
+	item := &ContentItem{
 		ID:     "test-mining-5",
-		Title:  "Article with empty mining",
+		Title:  "ContentItem with empty mining",
 		Mining: &MiningData{},
 	}
 
-	routes := NewMiningDomain().Routes(article)
+	routes := NewMiningDomain().Routes(item)
 	channels := routeChannelNames(routes)
 
 	if len(channels) != 0 {
@@ -336,7 +336,7 @@ func TestGenerateMiningChannels_EmptyRelevance(t *testing.T) {
 func TestGenerateMiningChannels_PeripheralWithAllFields(t *testing.T) {
 	t.Helper()
 
-	article := &Article{
+	item := &ContentItem{
 		Mining: &MiningData{
 			Relevance:   MiningRelevancePeripheral,
 			MiningStage: "production",
@@ -345,11 +345,11 @@ func TestGenerateMiningChannels_PeripheralWithAllFields(t *testing.T) {
 		},
 	}
 
-	routes := NewMiningDomain().Routes(article)
+	routes := NewMiningDomain().Routes(item)
 	channels := routeChannelNames(routes)
 
 	expected := []string{
-		"articles:mining",
+		"content:mining",
 		"mining:peripheral",
 		"mining:commodity:nickel",
 		"mining:commodity:uranium",

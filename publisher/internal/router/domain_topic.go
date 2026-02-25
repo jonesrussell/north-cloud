@@ -11,7 +11,7 @@ var layer1SkipTopics = map[string]bool{
 	"jobs":        true,
 }
 
-// TopicDomain routes articles to articles:{topic} for each non-skipped topic tag.
+// TopicDomain routes content items to content:{topic} for each non-skipped topic tag.
 // This is Layer 1 in the routing pipeline.
 type TopicDomain struct{}
 
@@ -21,14 +21,14 @@ func NewTopicDomain() *TopicDomain { return &TopicDomain{} }
 // Name returns the domain identifier.
 func (d *TopicDomain) Name() string { return "topic" }
 
-// Routes returns an articles:{topic} channel for each topic not in layer1SkipTopics.
-func (d *TopicDomain) Routes(a *Article) []ChannelRoute {
-	names := make([]string, 0, len(a.Topics))
-	for _, topic := range a.Topics {
+// Routes returns a content:{topic} channel for each topic not in layer1SkipTopics.
+func (d *TopicDomain) Routes(item *ContentItem) []ChannelRoute {
+	names := make([]string, 0, len(item.Topics))
+	for _, topic := range item.Topics {
 		if layer1SkipTopics[topic] {
 			continue
 		}
-		names = append(names, "articles:"+topic)
+		names = append(names, "content:"+topic)
 	}
 	return channelRoutesFromSlice(names)
 }

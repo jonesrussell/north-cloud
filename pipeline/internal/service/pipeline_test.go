@@ -11,14 +11,14 @@ import (
 )
 
 type mockRepository struct {
-	upsertArticleFunc func(ctx context.Context, article *domain.Article) error
-	insertEventFunc   func(ctx context.Context, event *domain.PipelineEvent) error
-	getFunnelFunc     func(ctx context.Context, from, to time.Time) ([]domain.FunnelStage, error)
+	upsertContentItemFunc func(ctx context.Context, item *domain.ContentItem) error
+	insertEventFunc       func(ctx context.Context, event *domain.PipelineEvent) error
+	getFunnelFunc         func(ctx context.Context, from, to time.Time) ([]domain.FunnelStage, error)
 }
 
-func (m *mockRepository) UpsertArticle(ctx context.Context, article *domain.Article) error {
-	if m.upsertArticleFunc != nil {
-		return m.upsertArticleFunc(ctx, article)
+func (m *mockRepository) UpsertContentItem(ctx context.Context, item *domain.ContentItem) error {
+	if m.upsertContentItemFunc != nil {
+		return m.upsertContentItemFunc(ctx, item)
 	}
 	return nil
 }
@@ -52,10 +52,10 @@ func (m *mockLogger) Sync() error                                    { return ni
 func TestPipelineService_Ingest_ValidEvent(t *testing.T) {
 	var upsertCalled, insertCalled bool
 	repo := &mockRepository{
-		upsertArticleFunc: func(_ context.Context, article *domain.Article) error {
+		upsertContentItemFunc: func(_ context.Context, item *domain.ContentItem) error {
 			upsertCalled = true
-			if article.Domain != "example.com" {
-				t.Errorf("article.Domain = %q, want %q", article.Domain, "example.com")
+			if item.Domain != "example.com" {
+				t.Errorf("item.Domain = %q, want %q", item.Domain, "example.com")
 			}
 			return nil
 		},
@@ -72,7 +72,7 @@ func TestPipelineService_Ingest_ValidEvent(t *testing.T) {
 	ctx := t.Context()
 
 	req := &domain.IngestRequest{
-		ArticleURL:  "https://example.com/article",
+		ContentURL:  "https://example.com/article",
 		SourceName:  "example_com",
 		Stage:       domain.StageCrawled,
 		OccurredAt:  time.Now().UTC(),
@@ -85,7 +85,7 @@ func TestPipelineService_Ingest_ValidEvent(t *testing.T) {
 	}
 
 	if !upsertCalled {
-		t.Error("expected UpsertArticle to be called")
+		t.Error("expected UpsertContentItem to be called")
 	}
 	if !insertCalled {
 		t.Error("expected InsertEvent to be called")
@@ -102,7 +102,7 @@ func TestPipelineService_Ingest_RejectsNonUTC(t *testing.T) {
 	}
 
 	req := &domain.IngestRequest{
-		ArticleURL:  "https://example.com/article",
+		ContentURL:  "https://example.com/article",
 		SourceName:  "example_com",
 		Stage:       domain.StageCrawled,
 		OccurredAt:  time.Now().In(est),
@@ -120,7 +120,7 @@ func TestPipelineService_Ingest_RejectsInvalidStage(t *testing.T) {
 	ctx := t.Context()
 
 	req := &domain.IngestRequest{
-		ArticleURL:  "https://example.com/article",
+		ContentURL:  "https://example.com/article",
 		SourceName:  "example_com",
 		Stage:       domain.Stage("invalid"),
 		OccurredAt:  time.Now().UTC(),
@@ -138,7 +138,7 @@ func TestPipelineService_Ingest_RejectsFutureTimestamp(t *testing.T) {
 	ctx := t.Context()
 
 	req := &domain.IngestRequest{
-		ArticleURL:  "https://example.com/article",
+		ContentURL:  "https://example.com/article",
 		SourceName:  "example_com",
 		Stage:       domain.StageCrawled,
 		OccurredAt:  time.Now().UTC().Add(time.Hour),

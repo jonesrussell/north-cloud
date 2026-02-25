@@ -52,16 +52,16 @@ type OutboxEntry struct {
 func (o *OutboxEntry) RoutingKey() string {
 	// Crime content gets specific channels based on subcategory
 	if o.IsCrimeRelated && o.CrimeSubcategory != nil {
-		return "articles:crime:" + *o.CrimeSubcategory
+		return "content:crime:" + *o.CrimeSubcategory
 	}
 	if o.IsCrimeRelated {
-		return "articles:crime"
+		return "content:crime"
 	}
 
 	// Route by content type
 	switch o.ContentType {
 	case "article":
-		return "articles:news"
+		return "content:news"
 	case "video":
 		return "content:video"
 	case "image":

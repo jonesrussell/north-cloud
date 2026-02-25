@@ -115,7 +115,7 @@ Key environment variables:
 
 ## Common Gotchas
 
-1. **Searches classified_content only**: Raw content is not searchable via this service. If an article is missing from search results, check whether it has been classified (`classification_status` field in the raw index).
+1. **Searches classified_content only**: Raw content is not searchable via this service. If a content item is missing from search results, check whether it has been classified (`classification_status` field in the raw index).
 
 2. **Max query length**: Queries are limited to 500 characters by default. Longer queries are rejected with a validation error.
 

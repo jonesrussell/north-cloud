@@ -2,8 +2,8 @@ package metrics
 
 import "time"
 
-// RecentArticle represents a recently posted article
-type RecentArticle struct {
+// RecentItem represents a recently posted content item
+type RecentItem struct {
 	ID       string    `json:"id"`
 	Title    string    `json:"title"`
 	URL      string    `json:"url"`

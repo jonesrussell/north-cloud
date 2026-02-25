@@ -12,8 +12,8 @@ import (
 
 const (
 	// Content type confidence constants
-	articleConfidence        = 0.75
-	relaxedArticleConfidence = 0.65
+	contentConfidence        = 0.75
+	relaxedContentConfidence = 0.65
 	pageConfidence           = 0.6
 	urlExclusionConfidence   = 0.9
 	listingPageConfidence    = 0.85
@@ -95,7 +95,7 @@ func (c *ContentTypeClassifier) Classify(ctx context.Context, raw *domain.RawCon
 	}
 
 	// Strategy 0b: Check URL exclusions (non-article patterns)
-	if c.isNonArticleURL(raw.URL) {
+	if c.isNonContentURL(raw.URL) {
 		c.logger.Debug("Content type excluded via URL pattern",
 			infralogger.String("content_id", raw.ID),
 			infralogger.String("url", raw.URL),
@@ -136,7 +136,7 @@ func (c *ContentTypeClassifier) Classify(ctx context.Context, raw *domain.RawCon
 
 	// Strategy 3: Heuristic-based detection
 	// Check if content has characteristics of an article
-	if c.hasArticleCharacteristics(raw) {
+	if c.hasContentCharacteristics(raw) {
 		c.logger.Debug("Content type detected via heuristics",
 			infralogger.String("content_id", raw.ID),
 			infralogger.Int("word_count", raw.WordCount),
@@ -146,14 +146,14 @@ func (c *ContentTypeClassifier) Classify(ctx context.Context, raw *domain.RawCon
 		)
 		return &ContentTypeResult{
 			Type:       domain.ContentTypeArticle,
-			Confidence: articleConfidence,
+			Confidence: contentConfidence,
 			Method:     "heuristic",
 			Reason:     "Content has article characteristics (sufficient length, metadata)",
 		}, nil
 	}
 
 	// Strategy 3b: Relaxed heuristic (no published date, higher word count)
-	if c.hasRelaxedArticleCharacteristics(raw) {
+	if c.hasRelaxedContentCharacteristics(raw) {
 		c.logger.Debug("Content type detected via relaxed heuristics (no published date)",
 			infralogger.String("content_id", raw.ID),
 			infralogger.Int("word_count", raw.WordCount),
@@ -163,7 +163,7 @@ func (c *ContentTypeClassifier) Classify(ctx context.Context, raw *domain.RawCon
 		)
 		return &ContentTypeResult{
 			Type:       domain.ContentTypeArticle,
-			Confidence: relaxedArticleConfidence,
+			Confidence: relaxedContentConfidence,
 			Method:     "heuristic_relaxed",
 			Reason:     "Content has article characteristics (high word count, metadata) but no published date",
 		}, nil
@@ -404,8 +404,8 @@ func (c *ContentTypeClassifier) classifyFromSchemaOrg(raw *domain.RawContent) *C
 	return nil
 }
 
-// isNonArticleURL checks if the URL matches patterns that indicate non-article content
-func (c *ContentTypeClassifier) isNonArticleURL(urlStr string) bool {
+// isNonContentURL checks if the URL matches patterns that indicate non-content pages
+func (c *ContentTypeClassifier) isNonContentURL(urlStr string) bool {
 	if urlStr == "" {
 		return false
 	}
@@ -413,7 +413,7 @@ func (c *ContentTypeClassifier) isNonArticleURL(urlStr string) bool {
 	// Parse URL to get path
 	parsedURL, err := url.Parse(urlStr)
 	if err != nil {
-		return c.isNonArticleURLFallback(urlStr)
+		return c.isNonContentURLFallback(urlStr)
 	}
 
 	path := strings.ToLower(parsedURL.Path)
@@ -487,10 +487,10 @@ func extractPathFromURL(urlStr string) string {
 	return path
 }
 
-// isNonArticleURLFallback handles URL pattern matching when URL parsing fails.
+// isNonContentURLFallback handles URL pattern matching when URL parsing fails.
 // Uses exact-path matching for section index paths (mirrors main-path semantics)
 // so /news/article-slug is not excluded; only /news or /news/ are excluded.
-func (c *ContentTypeClassifier) isNonArticleURLFallback(urlStr string) bool {
+func (c *ContentTypeClassifier) isNonContentURLFallback(urlStr string) bool {
 	path := extractPathFromURL(urlStr)
 
 	// Homepage
@@ -604,9 +604,9 @@ func (c *ContentTypeClassifier) isListingPageContent(raw *domain.RawContent) boo
 	return false
 }
 
-// hasArticleCharacteristics checks if the content has characteristics of an article
+// hasContentCharacteristics checks if the content has characteristics of an article
 // Strengthened to require published date for heuristic-based classification
-func (c *ContentTypeClassifier) hasArticleCharacteristics(raw *domain.RawContent) bool {
+func (c *ContentTypeClassifier) hasContentCharacteristics(raw *domain.RawContent) bool {
 	// Minimum word count for articles (from crawler: MinArticleBodyLength = 200)
 	const minArticleWordCount = 200
 
@@ -630,10 +630,10 @@ func (c *ContentTypeClassifier) hasArticleCharacteristics(raw *domain.RawContent
 	return hasDescription
 }
 
-// hasRelaxedArticleCharacteristics checks if content is likely an article
+// hasRelaxedContentCharacteristics checks if content is likely an article
 // when published date is missing. Requires higher word count (300+) to compensate
 // for the missing date signal.
-func (c *ContentTypeClassifier) hasRelaxedArticleCharacteristics(raw *domain.RawContent) bool {
+func (c *ContentTypeClassifier) hasRelaxedContentCharacteristics(raw *domain.RawContent) bool {
 	// Only use relaxed check when published date is missing
 	if raw.PublishedDate != nil {
 		return false

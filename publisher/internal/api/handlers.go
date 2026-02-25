@@ -41,31 +41,31 @@ func (h *Handlers) GetStats(c *gin.Context) {
 	c.JSON(http.StatusOK, stats)
 }
 
-// GetRecentArticles handles GET /api/v1/articles/recent
-func (h *Handlers) GetRecentArticles(c *gin.Context) {
+// GetRecentItems handles GET /api/v1/content/recent
+func (h *Handlers) GetRecentItems(c *gin.Context) {
 	limitStr := c.DefaultQuery("limit", "50")
 	limit, err := strconv.Atoi(limitStr)
 	if err != nil {
 		limit = 50
 	}
 
-	articles, err := h.statsService.GetRecentArticles(c.Request.Context(), limit)
+	items, err := h.statsService.GetRecentItems(c.Request.Context(), limit)
 	if err != nil {
-		h.logger.Error("Failed to get recent articles",
+		h.logger.Error("Failed to get recent content",
 			infralogger.Error(err),
 			infralogger.String("path", c.Request.URL.Path),
 			infralogger.String("method", c.Request.Method),
 			infralogger.Int("limit", limit),
 		)
 		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Failed to retrieve recent articles",
+			"error": "Failed to retrieve recent content",
 		})
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"articles": articles,
-		"count":    len(articles),
+		"items": items,
+		"count": len(items),
 	})
 }
 

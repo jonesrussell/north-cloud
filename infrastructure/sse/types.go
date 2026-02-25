@@ -104,11 +104,11 @@ type JobStatusDetails struct {
 
 // JobProgressData is the payload for job:progress events.
 type JobProgressData struct {
-	JobID           string `json:"job_id"`
-	ExecutionID     string `json:"execution_id"`
-	ArticlesFound   int    `json:"articles_found"`
-	ArticlesIndexed int    `json:"articles_indexed"`
-	Timestamp       string `json:"timestamp"`
+	JobID       string `json:"job_id"`
+	ExecutionID string `json:"execution_id"`
+	ItemsFound  int    `json:"items_found"`
+	ItemsIndexed int    `json:"items_indexed"`
+	Timestamp   string `json:"timestamp"`
 }
 
 // JobCompletedData is the payload for job:completed events.
@@ -117,7 +117,7 @@ type JobCompletedData struct {
 	ExecutionID     string  `json:"execution_id"`
 	Status          string  `json:"status"`
 	DurationMs      int64   `json:"duration_ms"`
-	ArticlesIndexed int     `json:"articles_indexed"`
+	ItemsIndexed    int     `json:"items_indexed"`
 	ErrorMessage    *string `json:"error_message,omitempty"`
 	Timestamp       string  `json:"timestamp"`
 }
@@ -159,31 +159,31 @@ func NewJobStatusEvent(jobID, status string, details *JobStatusDetails) Event {
 }
 
 // NewJobProgressEvent creates a job:progress event.
-func NewJobProgressEvent(jobID, executionID string, articlesFound, articlesIndexed int) Event {
+func NewJobProgressEvent(jobID, executionID string, itemsFound, itemsIndexed int) Event {
 	return Event{
 		Type: EventTypeJobProgress,
 		Data: JobProgressData{
-			JobID:           jobID,
-			ExecutionID:     executionID,
-			ArticlesFound:   articlesFound,
-			ArticlesIndexed: articlesIndexed,
-			Timestamp:       time.Now().UTC().Format(time.RFC3339),
+			JobID:       jobID,
+			ExecutionID: executionID,
+			ItemsFound:  itemsFound,
+			ItemsIndexed: itemsIndexed,
+			Timestamp:   time.Now().UTC().Format(time.RFC3339),
 		},
 	}
 }
 
 // NewJobCompletedEvent creates a job:completed event.
-func NewJobCompletedEvent(jobID, executionID, status string, durationMs int64, articlesIndexed int, errorMessage *string) Event {
+func NewJobCompletedEvent(jobID, executionID, status string, durationMs int64, itemsIndexed int, errorMessage *string) Event {
 	return Event{
 		Type: EventTypeJobCompleted,
 		Data: JobCompletedData{
-			JobID:           jobID,
-			ExecutionID:     executionID,
-			Status:          status,
-			DurationMs:      durationMs,
-			ArticlesIndexed: articlesIndexed,
-			ErrorMessage:    errorMessage,
-			Timestamp:       time.Now().UTC().Format(time.RFC3339),
+			JobID:        jobID,
+			ExecutionID:  executionID,
+			Status:       status,
+			DurationMs:   durationMs,
+			ItemsIndexed: itemsIndexed,
+			ErrorMessage: errorMessage,
+			Timestamp:    time.Now().UTC().Format(time.RFC3339),
 		},
 	}
 }

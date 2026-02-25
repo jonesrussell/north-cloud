@@ -112,10 +112,10 @@ function getStatusIcon(status: string) {
             </td>
             <td class="px-4 py-3 text-sm">
               <p class="truncate max-w-xs font-medium">
-                {{ item.article_title }}
+                {{ item.content_title }}
               </p>
               <p class="text-xs text-muted-foreground font-mono">
-                {{ item.article_id }}
+                {{ item.content_id }}
               </p>
             </td>
             <td class="px-4 py-3">

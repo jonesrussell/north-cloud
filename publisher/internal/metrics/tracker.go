@@ -29,7 +29,7 @@ func NewTracker(client redis.UniversalClient, cities []string, log infralogger.L
 	}
 }
 
-// IncrementPosted increments the posted articles counter for a city
+// IncrementPosted increments the posted content counter for a city
 func (t *Tracker) IncrementPosted(ctx context.Context, city string) error {
 	key := t.keys.Posted(city)
 	ttl := MetricsTTLDays * HoursPerDay * time.Hour
@@ -52,7 +52,7 @@ func (t *Tracker) IncrementPosted(ctx context.Context, city string) error {
 	return nil
 }
 
-// IncrementSkipped increments the skipped articles counter for a city
+// IncrementSkipped increments the skipped content counter for a city
 func (t *Tracker) IncrementSkipped(ctx context.Context, city string) error {
 	key := t.keys.Skipped(city)
 	ttl := MetricsTTLDays * HoursPerDay * time.Hour
@@ -98,92 +98,92 @@ func (t *Tracker) IncrementErrors(ctx context.Context, city string) error {
 	return nil
 }
 
-// convertArticleToRecentArticle converts various article types to RecentArticle
-func convertArticleToRecentArticle(article any) (RecentArticle, error) {
-	switch v := article.(type) {
-	case RecentArticle:
+// convertToRecentItem converts various types to RecentItem
+func convertToRecentItem(item any) (RecentItem, error) {
+	switch v := item.(type) {
+	case RecentItem:
 		return v, nil
 	case map[string]any:
-		return convertMapToRecentArticle(v), nil
+		return convertMapToRecentItem(v), nil
 	default:
-		return convertViaJSON(article)
+		return convertViaJSON(item)
 	}
 }
 
-// convertMapToRecentArticle converts a map to RecentArticle
-func convertMapToRecentArticle(v map[string]any) RecentArticle {
-	var recentArticle RecentArticle
+// convertMapToRecentItem converts a map to RecentItem
+func convertMapToRecentItem(v map[string]any) RecentItem {
+	var recentItem RecentItem
 
 	if id, ok := v["id"].(string); ok {
-		recentArticle.ID = id
+		recentItem.ID = id
 	}
 	if title, ok := v["title"].(string); ok {
-		recentArticle.Title = title
+		recentItem.Title = title
 	}
 	if url, ok := v["url"].(string); ok {
-		recentArticle.URL = url
+		recentItem.URL = url
 	}
 	if city, ok := v["city"].(string); ok {
-		recentArticle.City = city
+		recentItem.City = city
 	}
 	if postedAtStr, ok := v["posted_at"].(string); ok {
 		if postedAt, err := time.Parse(time.RFC3339, postedAtStr); err == nil {
-			recentArticle.PostedAt = postedAt
+			recentItem.PostedAt = postedAt
 		} else {
-			recentArticle.PostedAt = time.Now()
+			recentItem.PostedAt = time.Now()
 		}
 	} else {
-		recentArticle.PostedAt = time.Now()
+		recentItem.PostedAt = time.Now()
 	}
 
-	return recentArticle
+	return recentItem
 }
 
-// convertViaJSON converts article via JSON marshal/unmarshal
-func convertViaJSON(article any) (RecentArticle, error) {
-	var recentArticle RecentArticle
+// convertViaJSON converts item via JSON marshal/unmarshal
+func convertViaJSON(item any) (RecentItem, error) {
+	var recentItem RecentItem
 
-	data, err := json.Marshal(article)
+	data, err := json.Marshal(item)
 	if err != nil {
-		return recentArticle, fmt.Errorf("marshal article: %w", err)
+		return recentItem, fmt.Errorf("marshal item: %w", err)
 	}
-	if unmarshalErr := json.Unmarshal(data, &recentArticle); unmarshalErr != nil {
-		return recentArticle, fmt.Errorf("unmarshal article: %w", unmarshalErr)
+	if unmarshalErr := json.Unmarshal(data, &recentItem); unmarshalErr != nil {
+		return recentItem, fmt.Errorf("unmarshal item: %w", unmarshalErr)
 	}
 
-	return recentArticle, nil
+	return recentItem, nil
 }
 
-// AddRecentArticle adds an article to the recent articles list
-func (t *Tracker) AddRecentArticle(ctx context.Context, article any) error {
-	recentArticle, err := convertArticleToRecentArticle(article)
+// AddRecentItem adds an item to the recent items list
+func (t *Tracker) AddRecentItem(ctx context.Context, item any) error {
+	recentItem, err := convertToRecentItem(item)
 	if err != nil {
 		return err
 	}
 
-	// Serialize article to JSON
-	data, err := json.Marshal(recentArticle)
+	// Serialize item to JSON
+	data, err := json.Marshal(recentItem)
 	if err != nil {
-		return fmt.Errorf("marshal article: %w", err)
+		return fmt.Errorf("marshal item: %w", err)
 	}
 
-	key := KeyRecentArticles
-	ttl := RecentArticlesTTLDays * HoursPerDay * time.Hour
+	key := KeyRecentItems
+	ttl := RecentItemsTTLDays * HoursPerDay * time.Hour
 
 	// Use pipeline for atomic operations: LPUSH, LTRIM, EXPIRE
 	pipe := t.client.Pipeline()
 	pipe.LPush(ctx, key, data)
-	pipe.LTrim(ctx, key, 0, MaxRecentArticles-1) // Keep last 100
+	pipe.LTrim(ctx, key, 0, MaxRecentItems-1) // Keep last 100
 	pipe.Expire(ctx, key, ttl)
 
 	_, err = pipe.Exec(ctx)
 	if err != nil {
-		t.logger.Warn("Failed to add recent article",
-			infralogger.String("article_id", recentArticle.ID),
-			infralogger.String("city", recentArticle.City),
+		t.logger.Warn("Failed to add recent item",
+			infralogger.String("content_id", recentItem.ID),
+			infralogger.String("city", recentItem.City),
 			infralogger.Error(err),
 		)
-		return fmt.Errorf("add recent article: %w", err)
+		return fmt.Errorf("add recent item: %w", err)
 	}
 
 	return nil
@@ -263,39 +263,39 @@ func (t *Tracker) GetStats(ctx context.Context) (*Stats, error) {
 	return stats, nil
 }
 
-// GetRecentArticles returns recent posted articles
-func (t *Tracker) GetRecentArticles(ctx context.Context, limit int) ([]RecentArticle, error) {
+// GetRecentItems returns recent posted items
+func (t *Tracker) GetRecentItems(ctx context.Context, limit int) ([]RecentItem, error) {
 	if limit <= 0 {
 		limit = 50
 	}
-	if limit > MaxRecentArticles {
-		limit = MaxRecentArticles
+	if limit > MaxRecentItems {
+		limit = MaxRecentItems
 	}
 
-	key := KeyRecentArticles
+	key := KeyRecentItems
 
-	// Get articles from list (0 to limit-1)
+	// Get items from list (0 to limit-1)
 	results, err := t.client.LRange(ctx, key, 0, int64(limit-1)).Result()
 	if err != nil {
 		if errors.Is(err, redis.Nil) {
-			return []RecentArticle{}, nil
+			return []RecentItem{}, nil
 		}
-		return nil, fmt.Errorf("get recent articles: %w", err)
+		return nil, fmt.Errorf("get recent items: %w", err)
 	}
 
-	articles := make([]RecentArticle, 0, len(results))
+	items := make([]RecentItem, 0, len(results))
 	for _, result := range results {
-		var article RecentArticle
-		if unmarshalErr := json.Unmarshal([]byte(result), &article); unmarshalErr != nil {
-			t.logger.Warn("Failed to unmarshal recent article",
+		var item RecentItem
+		if unmarshalErr := json.Unmarshal([]byte(result), &item); unmarshalErr != nil {
+			t.logger.Warn("Failed to unmarshal recent item",
 				infralogger.Error(unmarshalErr),
 			)
 			continue
 		}
-		articles = append(articles, article)
+		items = append(items, item)
 	}
 
-	return articles, nil
+	return items, nil
 }
 
 // UpdateLastSync updates the last sync timestamp

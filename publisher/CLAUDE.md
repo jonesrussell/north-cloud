@@ -32,7 +32,7 @@ publisher/
 ├── internal/
 │   ├── api/             # HTTP handlers (Gin)
 │   ├── router/          # 8-domain routing logic
-│   │   ├── service.go           # Main routing loop, fetchArticles, publishToChannel
+│   │   ├── service.go           # Main routing loop, fetchContentItems, publishToChannel
 │   │   ├── domain_topic.go      # Layer 1: automatic topic channels
 │   │   ├── domain_dbchannel.go  # Layer 2: DB-backed custom channels
 │   │   ├── crime.go             # Layer 3: crime classification channels
@@ -72,13 +72,13 @@ Splitting processes is useful in production to scale the API and router independ
 | `publish_history` | Audit trail; used for per-channel deduplication |
 
 **Route filters**:
-- `min_quality_score` (0-100, default 50) — articles below threshold are skipped
-- `topics[]` (optional) — articles must match at least one listed topic
-- `content_type: "article"` (enforced globally) — pages and listings are never routed
+- `min_quality_score` (0-100, default 50) — content below threshold are skipped
+- `topics[]` (optional) — content must match at least one listed topic
+- `content_type` filter (enforced globally) — only `"article"`, `"recipe"`, and `"job"` content types are routed; pages, listings, and other types are skipped
 
 ### Deduplication Semantics
 
-Deduplication is **per-channel**. The same article can be published to many different channels, but will never be published to the same channel twice. The `publish_history` table is the authoritative record.
+Deduplication is **per-channel**. The same content item can be published to many different channels, but will never be published to the same channel twice. The `publish_history` table is the authoritative record.
 
 When a publish succeeds, a history record is written atomically. If history write fails, the publish is counted as failed (conservative — avoids duplicate publishes that would be invisible to the dedup check).
 
@@ -88,14 +88,14 @@ The routing worker runs the following steps every 30 seconds:
 
 1. **Discover indexes** — finds all `*_classified_content` indexes (refreshed every 5 minutes)
 2. **Load Layer 2 channels** — reads enabled channels with rules from PostgreSQL
-3. **Fetch batch** — queries Elasticsearch using `search_after` cursor (100 articles per batch by default); only `content_type: "article"` documents are fetched
-4. **Route Layer 1** — for each article topic, publishes to `articles:{topic}` (except skip-listed topics)
+3. **Fetch batch** — queries Elasticsearch using `search_after` cursor (100 items per batch by default); only `content_type` values `"article"`, `"recipe"`, and `"job"` are fetched
+4. **Route Layer 1** — for each content item topic, publishes to `content:{topic}` (except skip-listed topics)
 5. **Route Layer 2** — evaluates DB channel rules (topic filters, quality threshold, content type)
 6. **Route Layer 3** — crime classification channels (`crime:homepage`, `crime:category:{slug}`, `crime:courts`, `crime:context`)
 7. **Route Layer 4** — location channels for crime and entertainment content (`{prefix}:local:{city}`, `{prefix}:province:{code}`, etc.)
-8. **Route Layer 5** — mining classification channels (`articles:mining`, `mining:core`, `mining:commodity:{slug}`, etc.)
+8. **Route Layer 5** — mining classification channels (`content:mining`, `mining:core`, `mining:commodity:{slug}`, etc.)
 9. **Route Layer 6** — entertainment classification channels (`entertainment:homepage`, `entertainment:category:{slug}`, etc.)
-10. **Route Layer 7** — Anishinaabe classification channels (`articles:anishinaabe`, `anishinaabe:category:{slug}`)
+10. **Route Layer 7** — Anishinaabe classification channels (`content:anishinaabe`, `anishinaabe:category:{slug}`)
 11. **Route Layer 8** — Coforge classification channels (`coforge:core`, `coforge:audience:{slug}`, etc.)
 12. **Deduplicate** — each candidate channel is checked against `publish_history`
 13. **Publish** — sends JSON payload to Redis
@@ -108,7 +108,7 @@ The routing worker runs the following steps every 30 seconds:
 
 **Source**: `publisher/internal/router/domain_topic.go`
 
-Generates `articles:{topic}` for each topic tag on the article. Topics with dedicated routing layers are excluded via `layer1SkipTopics`:
+Generates `content:{topic}` for each topic tag on the content item. Topics with dedicated routing layers are excluded via `layer1SkipTopics`:
 
 | Excluded topic | Handled by |
 |---------------|-----------|
@@ -120,13 +120,13 @@ Generates `articles:{topic}` for each topic tag on the article. Topics with dedi
 
 **Source**: `publisher/internal/router/domain_dbchannel.go`
 
-Optional. Channel definitions stored in the `channels` PostgreSQL table. Useful for aggregation channels (e.g. one `articles:crime` channel that consolidates all five crime topic tags). Add or modify channels via the API without restarting the service.
+Optional. Channel definitions stored in the `channels` PostgreSQL table. Useful for aggregation channels (e.g. one `content:crime` channel that consolidates all five crime topic tags). Add or modify channels via the API without restarting the service.
 
 ### Layer 3 — Crime Classification (automatic)
 
 **Source**: `publisher/internal/router/crime.go`
 
-Routes articles classified by the crime hybrid classifier. Skips articles with `crime_relevance=not_crime` or no crime object.
+Routes content classified by the crime hybrid classifier. Skips content with `crime_relevance=not_crime` or no crime object.
 
 - `core_street_crime` + `homepage_eligible=true` → `crime:homepage`
 - `core_street_crime` + `category_pages` → `crime:category:{slug}` (one per entry)
@@ -137,7 +137,7 @@ Routes articles classified by the crime hybrid classifier. Skips articles with `
 
 **Source**: `publisher/internal/router/location.go`
 
-Generates geographic channels for articles with an active crime or entertainment classification and a known location. Mining is excluded — MiningDomain (Layer 5) generates its own location channels.
+Generates geographic channels for content with an active crime or entertainment classification and a known location. Mining is excluded — MiningDomain (Layer 5) generates its own location channels.
 
 `{prefix}` is `crime` or `entertainment`:
 - `{prefix}:local:{city}` — when specificity is `city` and city is known
@@ -149,9 +149,9 @@ Generates geographic channels for articles with an active crime or entertainment
 
 **Source**: `publisher/internal/router/mining.go`
 
-Routes articles classified by the mining hybrid classifier. Skips articles with `mining.relevance=not_mining` or no mining object.
+Routes content classified by the mining hybrid classifier. Skips content with `mining.relevance=not_mining` or no mining object.
 
-- `articles:mining` — catch-all (core + peripheral)
+- `content:mining` — catch-all (core + peripheral)
 - `mining:core` — `core_mining` only
 - `mining:peripheral` — `peripheral_mining` only
 - `mining:commodity:{slug}` — one per commodity (underscores to hyphens)
@@ -163,7 +163,7 @@ Routes articles classified by the mining hybrid classifier. Skips articles with 
 
 **Source**: `publisher/internal/router/entertainment.go`
 
-Routes articles classified by the entertainment hybrid classifier. Skips articles with `entertainment.relevance=not_entertainment` or no entertainment object.
+Routes content classified by the entertainment hybrid classifier. Skips content with `entertainment.relevance=not_entertainment` or no entertainment object.
 
 - `entertainment:homepage` — `core_entertainment` + `homepage_eligible=true`
 - `entertainment:category:{slug}` — one per category (spaces to hyphens, lowercased)
@@ -173,16 +173,16 @@ Routes articles classified by the entertainment hybrid classifier. Skips article
 
 **Source**: `publisher/internal/router/anishinaabe.go`
 
-Routes articles classified by the Anishinaabe/Indigenous ML classifier. Skips articles with `anishinaabe.relevance=not_anishinaabe` or no anishinaabe object.
+Routes content classified by the Anishinaabe/Indigenous ML classifier. Skips content with `anishinaabe.relevance=not_anishinaabe` or no anishinaabe object.
 
-- `articles:anishinaabe` — catch-all (core + peripheral)
+- `content:anishinaabe` — catch-all (core + peripheral)
 - `anishinaabe:category:{slug}` — one per category (spaces to hyphens, lowercased)
 
 ### Layer 8 — Coforge Classification (automatic)
 
 **Source**: `publisher/internal/router/domain_coforge.go`
 
-Routes articles classified by the Coforge ML classifier. No catch-all `articles:coforge` channel — this is a product-specific domain. Skips articles with `coforge.relevance=not_relevant` or no coforge object.
+Routes content classified by the Coforge ML classifier. No catch-all `content:coforge` channel — this is a product-specific domain. Skips content with `coforge.relevance=not_relevant` or no coforge object.
 
 - `coforge:core` — `core_coforge` relevance
 - `coforge:peripheral` — `peripheral` relevance
@@ -202,13 +202,13 @@ All `/api/v1/*` routes require JWT authentication. Health endpoints are public.
 
 **Routes**:
 - `GET/POST/PUT/DELETE /api/v1/routes[/:id]`
-- `GET /api/v1/routes/preview` — preview matching articles without publishing
+- `GET /api/v1/routes/preview` — preview matching content without publishing
 
 **History and stats**:
 - `GET /api/v1/publish-history` — paginated publish history
 - `GET /api/v1/stats/overview` — total published, skipped, errors
 - `GET /api/v1/stats/channels` — per-channel statistics
-- `GET /api/v1/articles/recent` — recently published articles
+- `GET /api/v1/content/recent` — recently published content items
 
 ## Message Format
 
@@ -219,7 +219,7 @@ All routing layers produce the same message structure. The `publisher` envelope 
   "publisher": {
     "channel_id": "uuid-or-null",
     "published_at": "2026-01-15T14:22:00Z",
-    "channel": "articles:violent_crime"
+    "channel": "content:violent_crime"
   },
   "id": "es-document-id",
   "title": "...",
@@ -253,7 +253,7 @@ All routing layers produce the same message structure. The `publisher` envelope 
 | `crime_sub_label` | string | `criminal_justice`, `crime_context` (peripheral only) |
 | `crime_types` | []string | `violent_crime`, `property_crime`, `drug_crime`, `gang_violence`, `organized_crime`, `criminal_justice`, `other_crime` |
 | `location_specificity` | string | `local_canada`, `national_canada`, `international`, `not_specified` |
-| `homepage_eligible` | bool | True if article qualifies for homepage display |
+| `homepage_eligible` | bool | True if content item qualifies for homepage display |
 | `category_pages` | []string | Category slugs e.g. `["violent-crime", "crime"]` |
 | `review_required` | bool | True if rules and ML disagreed |
 
@@ -274,7 +274,7 @@ All routing layers produce the same message structure. The `publisher` envelope 
 |-------|------|--------|
 | `entertainment_relevance` | string | `core_entertainment`, `peripheral_entertainment`, `not_entertainment` |
 | `entertainment_categories` | []string | e.g. `["film", "music", "gaming"]` |
-| `entertainment_homepage_eligible` | bool | True if article qualifies for entertainment homepage |
+| `entertainment_homepage_eligible` | bool | True if content item qualifies for entertainment homepage |
 | `entertainment` | object | Nested: relevance, categories, final_confidence, homepage_eligible, review_required, model_version |
 
 **Anishinaabe classification fields** (`anishinaabe` object):
@@ -312,19 +312,19 @@ Full environment variable reference is in the README.
 
 ## Common Gotchas
 
-1. **Deduplication is per-channel**: The same article can publish to many different channels, but never the same channel twice. This is intentional — each channel serves a different audience.
+1. **Deduplication is per-channel**: The same content item can publish to many different channels, but never the same channel twice. This is intentional — each channel serves a different audience.
 
 2. **Index naming must match exactly**: The `source.index_pattern` field in the sources table must match the Elasticsearch index name character for character.
 
-3. **Quality score range is 0-100**: Defaults to 50 if not set on a route. Articles below the route's `min_quality_score` are silently skipped.
+3. **Quality score range is 0-100**: Defaults to 50 if not set on a route. Content below the route's `min_quality_score` are silently skipped.
 
 4. **Redis Pub/Sub has no queue**: Consumers that are not subscribed at publish time miss the message permanently. Use Redis Streams if persistence is required.
 
-5. **Router processes routes synchronously**: One article at a time through all domains. Large backlogs process slowly. Tune `PUBLISHER_ROUTER_BATCH_SIZE` and `PUBLISHER_ROUTER_CHECK_INTERVAL` for throughput.
+5. **Router processes routes synchronously**: One content item at a time through all domains. Large backlogs process slowly. Tune `PUBLISHER_ROUTER_BATCH_SIZE` and `PUBLISHER_ROUTER_CHECK_INTERVAL` for throughput.
 
 6. **Config file is optional**: The service uses defaults if `config.yml` is missing. Environment variables always take precedence.
 
-7. **Index not found returns empty, not an error**: The router silently returns zero articles for indexes that do not yet exist. This is normal for newly configured sources.
+7. **Index not found returns empty, not an error**: The router silently returns zero results for indexes that do not yet exist. This is normal for newly configured sources.
 
 8. **Mining and Anishinaabe fields absent means ML sidecar was not running**: If `mining.relevance` or `anishinaabe.relevance` is absent from all documents, the relevant ML sidecar (`mining-ml`, `anishinaabe-ml`) was likely not running when the classifier processed those documents. Recreate both containers: `docker compose -f docker-compose.base.yml -f docker-compose.dev.yml up -d --build mining-ml classifier` (or `anishinaabe-ml classifier`).
 
@@ -357,7 +357,7 @@ for _, route := range routes {
 **Deduplication check before publish**:
 
 ```go
-published, checkErr := s.repo.CheckArticlePublished(ctx, articleID, channelName)
+published, checkErr := s.repo.CheckContentPublished(ctx, contentID, channelName)
 if checkErr != nil {
     // log and return false — cannot safely publish without knowing dedup status
     return false
@@ -369,10 +369,10 @@ if published {
 
 **Adding a new routing domain**:
 
-1. Create `internal/router/domain_{name}.go` implementing the `RoutingDomain` interface (`Name() string`, `Routes(*Article) []ChannelRoute`).
-2. Append `New{Name}Domain()` to the `domains` slice in `routeArticle()` in `service.go`.
+1. Create `internal/router/domain_{name}.go` implementing the `RoutingDomain` interface (`Name() string`, `Routes(*ContentItem) []ChannelRoute`).
+2. Append `New{Name}Domain()` to the `domains` slice in `routeContentItem()` in `service.go`.
 3. Add the topic to `layer1SkipTopics` in `domain_topic.go` if the domain has dedicated ML-based relevance filtering.
-4. Add the new classification fields to the `Article` struct and `extractNestedFields()` if the classifier produces new fields.
+4. Add the new classification fields to the `ContentItem` struct and `extractNestedFields()` if the classifier produces new fields.
 
 ## Documentation
 
