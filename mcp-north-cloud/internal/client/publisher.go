@@ -63,7 +63,7 @@ type Route struct {
 // PublishHistory represents a publish history record
 type PublishHistory struct {
 	ID           string    `json:"id"`
-	ArticleID    string    `json:"article_id"`
+	ContentID    string    `json:"content_id"`
 	ChannelName  string    `json:"channel_name"`
 	QualityScore int       `json:"quality_score"`
 	PublishedAt  time.Time `json:"published_at"`
@@ -71,13 +71,13 @@ type PublishHistory struct {
 
 // PublisherStats represents publisher statistics
 type PublisherStats struct {
-	TotalPublished    int              `json:"total_published"`
-	ArticlesByChannel map[string]int   `json:"articles_by_channel"`
-	RecentActivity    []PublishHistory `json:"recent_activity"`
+	TotalPublished int              `json:"total_published"`
+	ItemsByChannel map[string]int   `json:"items_by_channel"`
+	RecentActivity []PublishHistory `json:"recent_activity"`
 }
 
-// PreviewArticle represents an article in preview
-type PreviewArticle struct {
+// PreviewItem represents a content item in preview
+type PreviewItem struct {
 	ID           string    `json:"id"`
 	Title        string    `json:"title"`
 	URL          string    `json:"url"`
@@ -225,8 +225,8 @@ func (c *PublisherClient) DeleteRoute(ctx context.Context, routeID string) error
 	return nil
 }
 
-// PreviewRoute previews articles matching route filters
-func (c *PublisherClient) PreviewRoute(ctx context.Context, routeID string) ([]PreviewArticle, error) {
+// PreviewRoute previews content items matching route filters
+func (c *PublisherClient) PreviewRoute(ctx context.Context, routeID string) ([]PreviewItem, error) {
 	endpoint := fmt.Sprintf("%s/api/v1/routes/preview?route_id=%s", c.baseURL, routeID)
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, http.NoBody)
@@ -255,16 +255,16 @@ func (c *PublisherClient) PreviewRoute(ctx context.Context, routeID string) ([]P
 		return nil, fmt.Errorf("unexpected status code: %d, body: %s", resp.StatusCode, string(body))
 	}
 
-	// Publisher returns {"estimated_count": N, "filters": {...}, "sample_articles": [...]}
+	// Publisher returns {"estimated_count": N, "filters": {...}, "sample_items": [...]}
 	var response struct {
-		SampleArticles []PreviewArticle `json:"sample_articles"`
-		EstimatedCount int              `json:"estimated_count"`
+		SampleItems    []PreviewItem `json:"sample_items"`
+		EstimatedCount int           `json:"estimated_count"`
 	}
 	if err = json.Unmarshal(body, &response); err != nil {
 		return nil, fmt.Errorf("failed to parse response: %w", err)
 	}
 
-	return response.SampleArticles, nil
+	return response.SampleItems, nil
 }
 
 // GetPublishHistory gets publish history with pagination

@@ -504,10 +504,10 @@ func getPublisherTools() []Tool {
 func getSearchTools() []Tool {
 	return []Tool{
 		{
-			Name:  "search_articles",
+			Name:  "search_content",
 			Scope: ScopeShared,
 			Description: "Full-text search across all classified content with filtering and facets. " +
-				"Use when: User wants to find articles by keyword, topic, or quality. Returns up to 20 results per page.",
+				"Use when: User wants to find content by keyword, topic, or quality. Returns up to 20 results per page.",
 			InputSchema: map[string]any{
 				"type": "object",
 				"properties": map[string]any{
@@ -548,9 +548,9 @@ func getSearchTools() []Tool {
 func getClassifierTools() []Tool {
 	return []Tool{
 		{
-			Name:        "classify_article",
+			Name:        "classify_content",
 			Scope:       ScopeShared,
-			Description: "Classify a single article to determine content type, quality score, topics, and crime detection.",
+			Description: "Classify a single content item to determine content type, quality score, topics, and crime detection.",
 			InputSchema: map[string]any{
 				"type": "object",
 				"properties": map[string]any{
