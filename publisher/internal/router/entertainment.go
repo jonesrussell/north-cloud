@@ -9,7 +9,7 @@ const (
 	EntertainmentRelevanceCore       = "core_entertainment"
 )
 
-// EntertainmentDomain routes entertainment-classified articles to entertainment:* channels.
+// EntertainmentDomain routes entertainment-classified content items to entertainment:* channels.
 // Core + homepage eligible → entertainment:homepage; each category → entertainment:category:{slug};
 // peripheral → entertainment:peripheral.
 type EntertainmentDomain struct{}
@@ -20,23 +20,23 @@ func NewEntertainmentDomain() *EntertainmentDomain { return &EntertainmentDomain
 // Name returns the domain identifier.
 func (d *EntertainmentDomain) Name() string { return "entertainment" }
 
-// Routes returns entertainment channels for the article. Returns nil if the article
+// Routes returns entertainment channels for the content item. Returns nil if the item
 // is not entertainment-classified.
-func (d *EntertainmentDomain) Routes(a *Article) []ChannelRoute {
-	if a.Entertainment == nil {
+func (d *EntertainmentDomain) Routes(item *ContentItem) []ChannelRoute {
+	if item.Entertainment == nil {
 		return nil
 	}
 
-	rel := a.Entertainment.Relevance
+	rel := item.Entertainment.Relevance
 	if rel == EntertainmentRelevanceNot || rel == "" {
 		return nil
 	}
 
 	var channels []string
-	if rel == EntertainmentRelevanceCore && a.Entertainment.HomepageEligible {
+	if rel == EntertainmentRelevanceCore && item.Entertainment.HomepageEligible {
 		channels = append(channels, "entertainment:homepage")
 	}
-	for _, cat := range a.Entertainment.Categories {
+	for _, cat := range item.Entertainment.Categories {
 		slug := strings.ToLower(strings.ReplaceAll(cat, " ", "-"))
 		if slug != "" {
 			channels = append(channels, "entertainment:category:"+slug)

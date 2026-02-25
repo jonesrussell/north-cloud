@@ -19,9 +19,9 @@ const (
 // Mining stage to skip when generating stage channels.
 const miningStageUnspecified = "unspecified"
 
-// MiningDomain routes mining-classified articles to mining:* channels.
+// MiningDomain routes mining-classified content items to mining:* channels.
 // Channels produced:
-//   - articles:mining          (catch-all: all core + peripheral)
+//   - content:mining            (catch-all: all core + peripheral)
 //   - mining:core              (core_mining only)
 //   - mining:peripheral        (peripheral_mining only)
 //   - mining:commodity:{slug}  (per commodity, e.g. mining:commodity:gold)
@@ -36,24 +36,24 @@ func NewMiningDomain() *MiningDomain { return &MiningDomain{} }
 // Name returns the domain identifier.
 func (d *MiningDomain) Name() string { return "mining" }
 
-// Routes returns mining channels for the article. Returns nil if the article
+// Routes returns mining channels for the content item. Returns nil if the item
 // is not mining-classified.
-func (d *MiningDomain) Routes(a *Article) []ChannelRoute {
-	if a.Mining == nil {
+func (d *MiningDomain) Routes(item *ContentItem) []ChannelRoute {
+	if item.Mining == nil {
 		return nil
 	}
 
-	rel := a.Mining.Relevance
+	rel := item.Mining.Relevance
 	if rel == MiningRelevanceNotMining || rel == "" {
 		return nil
 	}
 
-	channels := []string{"articles:mining"}
+	channels := []string{"content:mining"}
 
 	channels = appendRelevanceChannel(channels, rel)
-	channels = appendCommodityChannels(channels, a.Mining.Commodities)
-	channels = appendStageChannel(channels, a.Mining.MiningStage)
-	channels = appendMiningLocationChannel(channels, a.Mining.Location)
+	channels = appendCommodityChannels(channels, item.Mining.Commodities)
+	channels = appendStageChannel(channels, item.Mining.MiningStage)
+	channels = appendMiningLocationChannel(channels, item.Mining.Location)
 
 	return channelRoutesFromSlice(channels)
 }

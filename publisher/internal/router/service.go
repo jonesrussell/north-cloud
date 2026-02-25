@@ -24,7 +24,7 @@ type Config struct {
 	BatchSize         int
 }
 
-// Service handles routing articles to Redis channels using two-layer routing
+// Service handles routing content items to Redis channels using two-layer routing
 type Service struct {
 	repo        *database.Repository
 	discovery   *discovery.Service
@@ -117,7 +117,7 @@ func (s *Service) Start(ctx context.Context) error {
 	}
 }
 
-// pollAndRoute fetches new articles and routes them
+// pollAndRoute fetches new content items and routes them
 func (s *Service) pollAndRoute(ctx context.Context) {
 	indexes := s.discovery.GetIndexes()
 	if len(indexes) == 0 {
@@ -136,61 +136,61 @@ func (s *Service) pollAndRoute(ctx context.Context) {
 
 	// Loop until we've drained the queue
 	for {
-		articles, fetchErr := s.fetchArticles(ctx, indexes)
+		items, fetchErr := s.fetchContentItems(ctx, indexes)
 		if fetchErr != nil {
-			s.logger.Error("Failed to fetch articles", infralogger.Error(fetchErr))
+			s.logger.Error("Failed to fetch content items", infralogger.Error(fetchErr))
 			return
 		}
 
-		if len(articles) == 0 {
+		if len(items) == 0 {
 			return
 		}
 
-		batchSize := len(articles)
-		s.logger.Info("Processing articles batch",
+		batchSize := len(items)
+		s.logger.Info("Processing content items batch",
 			infralogger.Int("batch_size", batchSize),
-			infralogger.Int("articles_fetched_total", batchSize),
+			infralogger.Int("items_fetched_total", batchSize),
 		)
 
 		var publishedCount int
-		for i := range articles {
-			publishedCount += len(s.routeArticle(ctx, &articles[i], channels))
+		for i := range items {
+			publishedCount += len(s.routeContentItem(ctx, &items[i], channels))
 		}
 		s.logger.Info("Batch complete",
-			infralogger.Int("articles_in_batch", batchSize),
-			infralogger.Int("articles_published_total", publishedCount),
+			infralogger.Int("items_in_batch", batchSize),
+			infralogger.Int("items_published_total", publishedCount),
 		)
 
 		// Update cursor
-		lastArticle := articles[len(articles)-1]
-		s.lastSort = lastArticle.Sort
+		lastItem := items[len(items)-1]
+		s.lastSort = lastItem.Sort
 		if persistErr := s.repo.UpdateCursor(ctx, s.lastSort); persistErr != nil {
 			s.logger.Error("Failed to persist cursor", infralogger.Error(persistErr))
 		}
 
 		// If we got less than batch size, we're done
-		if len(articles) < s.config.BatchSize {
+		if len(items) < s.config.BatchSize {
 			return
 		}
 	}
 }
 
-// publishRoutes publishes an article to each ChannelRoute and returns names of channels
+// publishRoutes publishes a content item to each ChannelRoute and returns names of channels
 // where publishing succeeded.
-func (s *Service) publishRoutes(ctx context.Context, article *Article, routes []ChannelRoute) []string {
+func (s *Service) publishRoutes(ctx context.Context, item *ContentItem, routes []ChannelRoute) []string {
 	published := make([]string, 0, len(routes))
 	for _, route := range routes {
-		if s.publishToChannel(ctx, article, route.Channel, route.ChannelID) {
+		if s.publishToChannel(ctx, item, route.Channel, route.ChannelID) {
 			published = append(published, route.Channel)
 		}
 	}
 	return published
 }
 
-// routeArticle routes a single article through all routing domains and returns the list
+// routeContentItem routes a single content item through all routing domains and returns the list
 // of channel names where publish succeeded.
-func (s *Service) routeArticle(ctx context.Context, article *Article, channels []models.Channel) []string {
-	const maxChannelsPerArticle = 30
+func (s *Service) routeContentItem(ctx context.Context, item *ContentItem, channels []models.Channel) []string {
+	const maxChannelsPerItem = 30
 
 	domains := []RoutingDomain{
 		NewTopicDomain(),
@@ -207,7 +207,7 @@ func (s *Service) routeArticle(ctx context.Context, article *Article, channels [
 
 	var publishedChannels []string
 	for _, domain := range domains {
-		routes := domain.Routes(article)
+		routes := domain.Routes(item)
 		if len(routes) == 0 {
 			continue
 		}
@@ -215,29 +215,29 @@ func (s *Service) routeArticle(ctx context.Context, article *Article, channels [
 			infralogger.String("domain", domain.Name()),
 			infralogger.Int("routes", len(routes)),
 		)
-		publishedChannels = append(publishedChannels, s.publishRoutes(ctx, article, routes)...)
+		publishedChannels = append(publishedChannels, s.publishRoutes(ctx, item, routes)...)
 	}
 
-	if len(publishedChannels) > maxChannelsPerArticle {
-		s.logger.Warn("article published to unusually many channels",
-			infralogger.String("article_id", article.ID),
+	if len(publishedChannels) > maxChannelsPerItem {
+		s.logger.Warn("content item published to unusually many channels",
+			infralogger.String("content_id", item.ID),
 			infralogger.Int("channel_count", len(publishedChannels)),
-			infralogger.Int("max_channels", maxChannelsPerArticle),
+			infralogger.Int("max_channels", maxChannelsPerItem),
 		)
 	}
 
-	// Emit pipeline event (one event per article, all channels in metadata)
-	s.emitPublishedEvent(ctx, article, publishedChannels)
+	// Emit pipeline event (one event per content item, all channels in metadata)
+	s.emitPublishedEvent(ctx, item, publishedChannels)
 	return publishedChannels
 }
 
 // classifiedContentWildcard matches all classified content indexes in Elasticsearch.
 const classifiedContentWildcard = "*_classified_content"
 
-// fetchArticles fetches articles from all classified indexes using search_after.
+// fetchContentItems fetches content items from all classified indexes using search_after.
 // Uses a wildcard pattern instead of listing individual indexes to avoid exceeding
 // Elasticsearch's HTTP line length limit when many indexes exist.
-func (s *Service) fetchArticles(ctx context.Context, _ []string) ([]Article, error) {
+func (s *Service) fetchContentItems(ctx context.Context, _ []string) ([]ContentItem, error) {
 	query := s.buildESQuery()
 
 	queryJSON, err := json.Marshal(query)
@@ -260,7 +260,7 @@ func (s *Service) fetchArticles(ctx context.Context, _ []string) ([]Article, err
 		const httpStatusNotFound = 404
 		if res.StatusCode == httpStatusNotFound {
 			s.logger.Debug("Indexes not found (this is normal for new sources)")
-			return []Article{}, nil
+			return []ContentItem{}, nil
 		}
 		errorBody, readErr := io.ReadAll(res.Body)
 		if readErr != nil {
@@ -298,23 +298,23 @@ func (s *Service) fetchArticles(ctx context.Context, _ []string) ([]Article, err
 		return nil, fmt.Errorf("failed to decode response: %w", decodeErr)
 	}
 
-	articles := make([]Article, 0, len(esResponse.Hits.Hits))
+	items := make([]ContentItem, 0, len(esResponse.Hits.Hits))
 	for _, hit := range esResponse.Hits.Hits {
-		var article Article
-		if unmarshalErr := json.Unmarshal(hit.Source, &article); unmarshalErr != nil {
-			s.logger.Error("Error unmarshaling article",
-				infralogger.String("article_id", hit.ID),
+		var item ContentItem
+		if unmarshalErr := json.Unmarshal(hit.Source, &item); unmarshalErr != nil {
+			s.logger.Error("Error unmarshaling content item",
+				infralogger.String("content_id", hit.ID),
 				infralogger.Error(unmarshalErr),
 			)
 			continue
 		}
-		article.ID = hit.ID
-		article.Sort = hit.Sort
-		article.extractNestedFields()
-		articles = append(articles, article)
+		item.ID = hit.ID
+		item.Sort = hit.Sort
+		item.extractNestedFields()
+		items = append(items, item)
 	}
 
-	return articles, nil
+	return items, nil
 }
 
 // buildESQuery builds an Elasticsearch query for all classified content
@@ -349,14 +349,14 @@ func (s *Service) buildESQuery() map[string]any {
 	return query
 }
 
-// publishToChannel publishes an article to a Redis channel.
-// Returns true if the article was successfully published, false otherwise.
-func (s *Service) publishToChannel(ctx context.Context, article *Article, channelName string, channelID *uuid.UUID) bool {
+// publishToChannel publishes a content item to a Redis channel.
+// Returns true if the item was successfully published, false otherwise.
+func (s *Service) publishToChannel(ctx context.Context, item *ContentItem, channelName string, channelID *uuid.UUID) bool {
 	// Check if already published to this channel
-	published, checkErr := s.repo.CheckArticlePublished(ctx, article.ID, channelName)
+	published, checkErr := s.repo.CheckArticlePublished(ctx, item.ID, channelName)
 	if checkErr != nil {
-		s.logger.Error("Error checking if article is published",
-			infralogger.String("article_id", article.ID),
+		s.logger.Error("Error checking if content is published",
+			infralogger.String("content_id", item.ID),
 			infralogger.String("channel", channelName),
 			infralogger.Error(checkErr),
 		)
@@ -374,59 +374,59 @@ func (s *Service) publishToChannel(ctx context.Context, article *Article, channe
 			"published_at": time.Now().Format(time.RFC3339),
 			"channel":      channelName,
 		},
-		"id":                article.ID,
-		"title":             article.Title,
-		"body":              article.Body,
-		"raw_text":          article.RawText,
-		"raw_html":          article.RawHTML,
-		"canonical_url":     article.URL,
-		"source":            article.Source,
-		"published_date":    article.PublishedDate.Format(time.RFC3339),
-		"quality_score":     article.QualityScore,
-		"topics":            article.Topics,
-		"content_type":      article.ContentType,
-		"content_subtype":   article.ContentSubtype,
-		"source_reputation": article.SourceReputation,
-		"confidence":        article.Confidence,
-		"og_title":          article.OGTitle,
-		"og_description":    article.OGDescription,
-		"og_image":          article.OGImage,
-		"og_url":            article.OGURL,
-		"word_count":        article.WordCount,
+		"id":                item.ID,
+		"title":             item.Title,
+		"body":              item.Body,
+		"raw_text":          item.RawText,
+		"raw_html":          item.RawHTML,
+		"canonical_url":     item.URL,
+		"source":            item.Source,
+		"published_date":    item.PublishedDate.Format(time.RFC3339),
+		"quality_score":     item.QualityScore,
+		"topics":            item.Topics,
+		"content_type":      item.ContentType,
+		"content_subtype":   item.ContentSubtype,
+		"source_reputation": item.SourceReputation,
+		"confidence":        item.Confidence,
+		"og_title":          item.OGTitle,
+		"og_description":    item.OGDescription,
+		"og_image":          item.OGImage,
+		"og_url":            item.OGURL,
+		"word_count":        item.WordCount,
 		// Crime classification
-		"crime_relevance":      article.CrimeRelevance,
-		"crime_sub_label":      article.CrimeSubLabel,
-		"crime_types":          article.CrimeTypes,
-		"location_specificity": article.LocationSpecificity,
-		"homepage_eligible":    article.HomepageEligible,
-		"category_pages":       article.CategoryPages,
-		"review_required":      article.ReviewRequired,
+		"crime_relevance":      item.CrimeRelevance,
+		"crime_sub_label":      item.CrimeSubLabel,
+		"crime_types":          item.CrimeTypes,
+		"location_specificity": item.LocationSpecificity,
+		"homepage_eligible":    item.HomepageEligible,
+		"category_pages":       item.CategoryPages,
+		"review_required":      item.ReviewRequired,
 		// Mining classification
-		"mining": article.Mining,
+		"mining": item.Mining,
 		// Anishinaabe classification
-		"anishinaabe": article.Anishinaabe,
+		"anishinaabe": item.Anishinaabe,
 		// Coforge classification
-		"coforge": article.Coforge,
+		"coforge": item.Coforge,
 		// Entertainment classification
-		"entertainment_relevance":         article.EntertainmentRelevance,
-		"entertainment_categories":        article.EntertainmentCategories,
-		"entertainment_homepage_eligible": article.EntertainmentHomepageEligible,
-		"entertainment":                   article.Entertainment,
+		"entertainment_relevance":         item.EntertainmentRelevance,
+		"entertainment_categories":        item.EntertainmentCategories,
+		"entertainment_homepage_eligible": item.EntertainmentHomepageEligible,
+		"entertainment":                   item.Entertainment,
 		// Recipe extraction
-		"recipe": article.Recipe,
+		"recipe": item.Recipe,
 		// Job extraction
-		"job": article.Job,
+		"job": item.Job,
 		// Location detection
-		"location_city":       article.LocationCity,
-		"location_province":   article.LocationProvince,
-		"location_country":    article.LocationCountry,
-		"location_confidence": article.LocationConfidence,
+		"location_city":       item.LocationCity,
+		"location_province":   item.LocationProvince,
+		"location_country":    item.LocationCountry,
+		"location_confidence": item.LocationConfidence,
 	}
 
 	messageJSON, err := json.Marshal(payload)
 	if err != nil {
 		s.logger.Error("Failed to marshal message",
-			infralogger.String("article_id", article.ID),
+			infralogger.String("content_id", item.ID),
 			infralogger.Error(err),
 		)
 		return false
@@ -434,7 +434,7 @@ func (s *Service) publishToChannel(ctx context.Context, article *Article, channe
 
 	if publishErr := s.redisClient.Publish(ctx, channelName, messageJSON).Err(); publishErr != nil {
 		s.logger.Error("Failed to publish to Redis",
-			infralogger.String("article_id", article.ID),
+			infralogger.String("content_id", item.ID),
 			infralogger.String("channel", channelName),
 			infralogger.Error(publishErr),
 		)
@@ -442,58 +442,58 @@ func (s *Service) publishToChannel(ctx context.Context, article *Article, channe
 	}
 
 	// Record in publish history
-	if _, historyErr := s.repo.CreatePublishHistory(ctx, buildHistoryReq(channelID, article, channelName)); historyErr != nil {
+	if _, historyErr := s.repo.CreatePublishHistory(ctx, buildHistoryReq(channelID, item, channelName)); historyErr != nil {
 		s.logger.Error("Error recording publish history — skipping to prevent duplicate publish",
-			infralogger.String("article_id", article.ID),
+			infralogger.String("content_id", item.ID),
 			infralogger.String("channel", channelName),
 			infralogger.Error(historyErr),
 		)
 		return false
 	}
 
-	s.logger.Info("Published article to channel",
-		infralogger.String("article_id", article.ID),
-		infralogger.String("title", article.Title),
+	s.logger.Info("Published content item to channel",
+		infralogger.String("content_id", item.ID),
+		infralogger.String("title", item.Title),
 		infralogger.String("channel", channelName),
 	)
 
 	return true
 }
 
-// buildHistoryReq constructs a PublishHistoryCreateRequest from the article and routing info.
-func buildHistoryReq(channelID *uuid.UUID, article *Article, channelName string) *models.PublishHistoryCreateRequest {
+// buildHistoryReq constructs a PublishHistoryCreateRequest from the content item and routing info.
+func buildHistoryReq(channelID *uuid.UUID, item *ContentItem, channelName string) *models.PublishHistoryCreateRequest {
 	return &models.PublishHistoryCreateRequest{
 		ChannelID:    channelID,
-		ArticleID:    article.ID,
-		ArticleTitle: article.Title,
-		ArticleURL:   article.URL,
+		ContentID:    item.ID,
+		ContentTitle: item.Title,
+		ContentURL:   item.URL,
 		ChannelName:  channelName,
-		QualityScore: article.QualityScore,
-		Topics:       article.Topics,
+		QualityScore: item.QualityScore,
+		Topics:       item.Topics,
 	}
 }
 
-// emitPublishedEvent emits a pipeline event after an article is published to channels.
-func (s *Service) emitPublishedEvent(ctx context.Context, article *Article, channels []string) {
+// emitPublishedEvent emits a pipeline event after a content item is published to channels.
+func (s *Service) emitPublishedEvent(ctx context.Context, item *ContentItem, channels []string) {
 	if s.pipeline == nil || len(channels) == 0 {
 		return
 	}
 
 	pipelineErr := s.pipeline.Emit(ctx, pipeline.Event{
-		ContentURL: article.URL,
-		SourceName: article.Source,
+		ContentURL: item.URL,
+		SourceName: item.Source,
 		Stage:      "published",
 		OccurredAt: time.Now(),
 		Metadata: map[string]any{
 			"channels":      channels,
-			"quality_score": article.QualityScore,
-			"topics":        article.Topics,
+			"quality_score": item.QualityScore,
+			"topics":        item.Topics,
 		},
 	})
 	if pipelineErr != nil {
 		s.logger.Warn("Failed to emit pipeline event",
 			infralogger.Error(pipelineErr),
-			infralogger.String("article_id", article.ID),
+			infralogger.String("content_id", item.ID),
 			infralogger.String("stage", "published"),
 		)
 	}

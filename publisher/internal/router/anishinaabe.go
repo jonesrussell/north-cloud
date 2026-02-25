@@ -9,9 +9,9 @@ const (
 	AnishinaabeRelevanceCore       = "core_anishinaabe"
 )
 
-// AnishinaabeeDomain routes Anishinaabe-classified articles to anishinaabe:* channels.
+// AnishinaabeeDomain routes Anishinaabe-classified content items to anishinaabe:* channels.
 // Channels produced:
-//   - articles:anishinaabe (catch-all: all core + peripheral)
+//   - content:anishinaabe (catch-all: all core + peripheral)
 //   - anishinaabe:category:{slug} (per category, e.g. anishinaabe:category:culture)
 type AnishinaabeeDomain struct{}
 
@@ -21,21 +21,21 @@ func NewAnishinaabeeDomain() *AnishinaabeeDomain { return &AnishinaabeeDomain{} 
 // Name returns the domain identifier.
 func (d *AnishinaabeeDomain) Name() string { return "anishinaabe" }
 
-// Routes returns Anishinaabe channels for the article. Returns nil if the article
+// Routes returns Anishinaabe channels for the content item. Returns nil if the item
 // is not Anishinaabe-classified.
-func (d *AnishinaabeeDomain) Routes(a *Article) []ChannelRoute {
-	if a.Anishinaabe == nil {
+func (d *AnishinaabeeDomain) Routes(item *ContentItem) []ChannelRoute {
+	if item.Anishinaabe == nil {
 		return nil
 	}
 
-	rel := a.Anishinaabe.Relevance
+	rel := item.Anishinaabe.Relevance
 	if rel == AnishinaabeRelevanceNot || rel == "" {
 		return nil
 	}
 
-	channels := []string{"articles:anishinaabe"}
+	channels := []string{"content:anishinaabe"}
 
-	for _, cat := range a.Anishinaabe.Categories {
+	for _, cat := range item.Anishinaabe.Categories {
 		slug := strings.ToLower(strings.ReplaceAll(cat, " ", "-"))
 		if slug != "" {
 			channels = append(channels, "anishinaabe:category:"+slug)
