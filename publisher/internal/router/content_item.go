@@ -89,8 +89,8 @@ type JobData struct {
 	Industry         string `json:"industry,omitempty"`
 }
 
-// Article represents an article from Elasticsearch classified_content index.
-type Article struct {
+// ContentItem represents a content item from Elasticsearch classified_content index.
+type ContentItem struct {
 	ID            string    `json:"id"`
 	Title         string    `json:"title"`
 	Body          string    `json:"body"`
@@ -154,32 +154,32 @@ type Article struct {
 }
 
 // extractNestedFields copies values from nested Elasticsearch objects into the
-// flat Article fields used by domain routing functions.
+// flat ContentItem fields used by domain routing functions.
 // Call after unmarshaling from Elasticsearch.
-func (a *Article) extractNestedFields() {
-	if a.Crime != nil {
-		a.CrimeRelevance = a.Crime.Relevance
-		a.CrimeSubLabel = a.Crime.SubLabel
-		a.CrimeTypes = a.Crime.CrimeTypes
-		a.LocationSpecificity = a.Crime.Specificity
-		a.HomepageEligible = a.Crime.Homepage
-		a.CategoryPages = a.Crime.Categories
-		a.ReviewRequired = a.Crime.ReviewRequired
+func (c *ContentItem) extractNestedFields() {
+	if c.Crime != nil {
+		c.CrimeRelevance = c.Crime.Relevance
+		c.CrimeSubLabel = c.Crime.SubLabel
+		c.CrimeTypes = c.Crime.CrimeTypes
+		c.LocationSpecificity = c.Crime.Specificity
+		c.HomepageEligible = c.Crime.Homepage
+		c.CategoryPages = c.Crime.Categories
+		c.ReviewRequired = c.Crime.ReviewRequired
 	}
 
-	if a.Location != nil {
-		a.LocationCity = a.Location.City
-		a.LocationProvince = a.Location.Province
-		a.LocationCountry = a.Location.Country
-		a.LocationConfidence = a.Location.Confidence
-		if a.Location.Specificity != "" {
-			a.LocationSpecificity = a.Location.Specificity
+	if c.Location != nil {
+		c.LocationCity = c.Location.City
+		c.LocationProvince = c.Location.Province
+		c.LocationCountry = c.Location.Country
+		c.LocationConfidence = c.Location.Confidence
+		if c.Location.Specificity != "" {
+			c.LocationSpecificity = c.Location.Specificity
 		}
 	}
 
-	if a.Entertainment != nil {
-		a.EntertainmentRelevance = a.Entertainment.Relevance
-		a.EntertainmentCategories = a.Entertainment.Categories
-		a.EntertainmentHomepageEligible = a.Entertainment.HomepageEligible
+	if c.Entertainment != nil {
+		c.EntertainmentRelevance = c.Entertainment.Relevance
+		c.EntertainmentCategories = c.Entertainment.Categories
+		c.EntertainmentHomepageEligible = c.Entertainment.HomepageEligible
 	}
 }
