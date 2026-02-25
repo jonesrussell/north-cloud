@@ -401,14 +401,14 @@ func getPublisherTools() []Tool {
 			Name:  "create_channel",
 			Scope: ScopeProd,
 			Description: "Create a new publishing channel. Use when: User wants to set up a new Redis pub/sub " +
-				"topic for article routing. Returns: channel_id, name, and status. Channel names typically " +
-				"follow 'articles:{topic}' pattern (e.g., 'articles:crime', 'articles:news').",
+				"topic for content routing. Returns: channel_id, name, and status. Channel names typically " +
+				"follow 'content:{topic}' pattern (e.g., 'content:crime', 'content:news').",
 			InputSchema: map[string]any{
 				"type": "object",
 				"properties": map[string]any{
 					"name": map[string]any{
 						"type":        "string",
-						"description": "Channel name, typically 'articles:{topic}' (e.g., 'articles:crime', 'articles:local')",
+						"description": "Channel name, typically 'content:{topic}' (e.g., 'content:crime', 'content:local')",
 					},
 					"description": map[string]any{
 						"type":        "string",
@@ -456,7 +456,7 @@ func getPublisherTools() []Tool {
 		{
 			Name:        "preview_route",
 			Scope:       ScopeShared,
-			Description: "Preview articles that would be published by a route without actually publishing them.",
+			Description: "Preview content that would be published by a route without actually publishing them.",
 			InputSchema: map[string]any{
 				"type": "object",
 				"properties": map[string]any{
@@ -493,7 +493,7 @@ func getPublisherTools() []Tool {
 		{
 			Name:        "get_publisher_stats",
 			Scope:       ScopeShared,
-			Description: "Get publisher statistics including total published and articles by channel.",
+			Description: "Get publisher statistics including total published content by channel.",
 			InputSchema: map[string]any{
 				"type": "object",
 			},
@@ -556,15 +556,15 @@ func getClassifierTools() []Tool {
 				"properties": map[string]any{
 					"title": map[string]any{
 						"type":        "string",
-						"description": "Article title",
+						"description": "Content title",
 					},
 					"raw_text": map[string]any{
 						"type":        "string",
-						"description": "Article text content",
+						"description": "Content text body",
 					},
 					"url": map[string]any{
 						"type":        "string",
-						"description": "Article URL",
+						"description": "Content URL",
 					},
 					"metadata": map[string]any{
 						"type":        "object",

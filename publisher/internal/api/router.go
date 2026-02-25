@@ -125,7 +125,7 @@ func (r *Router) setupServiceRoutes(router *gin.Engine) {
 	channels := v1.Group("/channels")
 	channels.GET("", r.listChannels)
 	channels.POST("", r.createChannel)
-	channels.GET("/:id/preview", r.previewChannel) // Preview matching articles
+	channels.GET("/:id/preview", r.previewChannel) // Preview matching content
 	channels.GET("/:id", r.getChannel)
 	channels.PUT("/:id", r.updateChannel)
 	channels.DELETE("/:id", r.deleteChannel)

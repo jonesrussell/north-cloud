@@ -250,7 +250,7 @@ func (r *Router) getActiveChannels(c *gin.Context) {
 }
 
 // listPublishHistory returns publish history with optional filters
-// GET /api/v1/publish-history?channel_name=articles:crime&limit=100&offset=0
+// GET /api/v1/publish-history?channel_name=content:crime&limit=100&offset=0
 func (r *Router) listPublishHistory(c *gin.Context) {
 	ctx := c.Request.Context()
 

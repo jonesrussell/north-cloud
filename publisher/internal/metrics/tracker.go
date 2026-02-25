@@ -29,7 +29,7 @@ func NewTracker(client redis.UniversalClient, cities []string, log infralogger.L
 	}
 }
 
-// IncrementPosted increments the posted articles counter for a city
+// IncrementPosted increments the posted content counter for a city
 func (t *Tracker) IncrementPosted(ctx context.Context, city string) error {
 	key := t.keys.Posted(city)
 	ttl := MetricsTTLDays * HoursPerDay * time.Hour
@@ -52,7 +52,7 @@ func (t *Tracker) IncrementPosted(ctx context.Context, city string) error {
 	return nil
 }
 
-// IncrementSkipped increments the skipped articles counter for a city
+// IncrementSkipped increments the skipped content counter for a city
 func (t *Tracker) IncrementSkipped(ctx context.Context, city string) error {
 	key := t.keys.Skipped(city)
 	ttl := MetricsTTLDays * HoursPerDay * time.Hour

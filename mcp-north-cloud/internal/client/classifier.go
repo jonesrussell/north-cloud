@@ -42,7 +42,7 @@ type ClassificationResult struct {
 	Confidence       float64  `json:"confidence"`
 }
 
-// Classify classifies a single article
+// Classify classifies a single content item
 //
 //nolint:dupl // Similar HTTP client pattern across different services is acceptable
 func (c *ClassifierClient) Classify(ctx context.Context, req ClassifyRequest) (*ClassificationResult, error) {

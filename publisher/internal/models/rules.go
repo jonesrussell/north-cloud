@@ -18,7 +18,7 @@ func (r *Rules) IsEmpty() bool {
 		len(r.ContentTypes) == 0
 }
 
-// Matches checks if an article matches the rules
+// Matches checks if a content item matches the rules
 func (r *Rules) Matches(qualityScore int, contentType string, topics []string) bool {
 	// Fast path: empty rules match everything
 	if r.IsEmpty() {
