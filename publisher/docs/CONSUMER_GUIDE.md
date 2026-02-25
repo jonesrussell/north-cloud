@@ -1,6 +1,6 @@
 # Consumer Integration Guide
 
-This guide explains how to build a service that consumes articles from the Publisher Redis pub/sub channels.
+This guide explains how to build a service that consumes content from the Publisher Redis pub/sub channels.
 
 ## Table of Contents
 
@@ -16,47 +16,47 @@ This guide explains how to build a service that consumes articles from the Publi
 10. [Implementation Examples](#implementation-examples)
 11. [Best Practices](#best-practices)
 12. [Production Deployment](#production-deployment)
-13. [Verifying article flow](#verifying-article-flow)
+13. [Verifying content flow](#verifying-content-flow)
 14. [Troubleshooting](#troubleshooting)
 
 ## Overview
 
-The Publisher service publishes classified articles to Redis pub/sub channels based on topic (e.g., `articles:crime`, `articles:news`). Your consumer service subscribes to one or more channels and processes the articles according to your business logic.
+The Publisher service publishes classified content to Redis pub/sub channels based on topic (e.g., `content:crime`, `content:news`). Your consumer service subscribes to one or more channels and processes the content according to your business logic.
 
 ### Consumer Responsibilities
 
 As a consumer, you are responsible for:
 
 - ✅ **Subscribing to Redis channels** - Connect and listen for messages
-- ✅ **Filtering articles** - Apply your own criteria (keywords, geography, etc.)
-- ✅ **Deduplication** - Track which articles you've already processed
-- ✅ **Data transformation** - Map article fields to your database schema
+- ✅ **Filtering content** - Apply your own criteria (keywords, geography, etc.)
+- ✅ **Deduplication** - Track which content you've already processed
+- ✅ **Data transformation** - Map content fields to your database schema
 - ✅ **Error handling** - Handle network failures, malformed messages, etc.
-- ✅ **Storage** - Save articles to your database or CMS
+- ✅ **Storage** - Save content to your database or CMS
 
 ### Crime-only consumers (e.g. StreetCode)
 
 If your site should show **only crime-related content**, subscribe to **both** Layer 1 crime topic channels **and** Layer 3/4 classification channels:
 
-- **Layer 1** (bulk content): `articles:crime`, `articles:violent_crime`, `articles:criminal_justice`, `articles:drug_crime`, `articles:property_crime`, `articles:organized_crime`
+- **Layer 1** (bulk content): `content:crime`, `content:violent_crime`, `content:criminal_justice`, `content:drug_crime`, `content:property_crime`, `content:organized_crime`
 - **Layer 3** (classification): `crime:homepage`, `crime:category:violent-crime`, `crime:category:property-crime`, `crime:category:drug-crime`, `crime:category:organized-crime`, `crime:category:court-news`, `crime:category:crime`
 - **Layer 4** (location): `crime:canada`, `crime:province:{code}`, `crime:local:{city}`
 
-Layer 1 channels carry the majority of crime articles. Layer 3/4 carry a smaller subset with richer classification metadata (homepage eligibility, category pages, location). Subscribe to all layers for complete coverage. Consumer-side deduplication (by article `id`) prevents duplicates across layers.
+Layer 1 channels carry the majority of crime content. Layer 3/4 carry a smaller subset with richer classification metadata (homepage eligibility, category pages, location). Subscribe to all layers for complete coverage. Consumer-side deduplication (by content `id`) prevents duplicates across layers.
 
-Do **not** subscribe to non-crime topic channels like `articles:news` or `articles:politics` (those carry mixed content).
+Do **not** subscribe to non-crime topic channels like `content:news` or `content:politics` (those carry mixed content).
 
 ### Mining-only consumers (e.g. OreWire)
 
 Subscribe to **Layer 5 mining channels** for complete coverage:
 
-- **Catch-all**: `articles:mining` (all core + peripheral mining articles)
+- **Catch-all**: `content:mining` (all core + peripheral mining content)
 - **Relevance**: `mining:core`, `mining:peripheral`
 - **Commodity**: `mining:commodity:gold`, `mining:commodity:copper`, `mining:commodity:lithium`, `mining:commodity:nickel`, `mining:commodity:uranium`, `mining:commodity:iron-ore`, `mining:commodity:rare-earths`
 - **Stage**: `mining:stage:exploration`, `mining:stage:development`, `mining:stage:production`
 - **Location**: `mining:canada`, `mining:international`
 
-`articles:mining` carries all mining articles. The sub-channels carry overlapping subsets with richer routing metadata. Subscribe to all channels for granular page routing; consumer-side deduplication (by article `id`) prevents duplicates across channels.
+`content:mining` carries all mining content. The sub-channels carry overlapping subsets with richer routing metadata. Subscribe to all channels for granular page routing; consumer-side deduplication (by content `id`) prevents duplicates across channels.
 
 Message payload includes `mining.relevance`, `mining.mining_stage`, `mining.commodities`, `mining.location`, and `mining.final_confidence` for additional downstream filtering.
 
@@ -69,23 +69,23 @@ Subscribe to **Layer 6 channels** for complete coverage:
 
 Message payload includes `entertainment_relevance`, `entertainment_categories`, and nested `entertainment` object.
 
-**Note:** The publisher does **not** emit an `articles:war` (or `articles:entertainment`) channel from any automatic layer. To receive entertainment content, subscribe to the Layer 6 channels above. If you want a single aggregate channel (e.g. `articles:war`), create a Layer 2 channel in the publisher DB via the API and configure its rules accordingly.
+**Note:** The publisher does **not** emit an `content:war` (or `content:entertainment`) channel from any automatic layer. To receive entertainment content, subscribe to the Layer 6 channels above. If you want a single aggregate channel (e.g. `content:war`), create a Layer 2 channel in the publisher DB via the API and configure its rules accordingly.
 
 ### Anishinaabe consumers (e.g. Diidjaaheer)
 
 Subscribe to **Layer 7 channels** for complete coverage:
 
-- **Catch-all**: `articles:anishinaabe` (all core + peripheral Anishinaabe-classified articles)
+- **Catch-all**: `content:anishinaabe` (all core + peripheral Anishinaabe-classified content)
 - **Category** (one per classification category): `anishinaabe:category:culture`, `anishinaabe:category:language`, `anishinaabe:category:governance`, `anishinaabe:category:land-rights`, `anishinaabe:category:education`
 
-Subscribe to all of the above for full coverage; consumer-side deduplication (by article `id`) prevents duplicates across channels. Do **not** subscribe to `articles:default` — the publisher does not emit that channel from any automatic layer.
+Subscribe to all of the above for full coverage; consumer-side deduplication (by content `id`) prevents duplicates across channels. Do **not** subscribe to `content:default` — the publisher does not emit that channel from any automatic layer.
 
 ### Coforge consumers
 
-Subscribe to **Layer 8 channels**. The publisher does **not** emit a catch-all `articles:coforge` or `articles:default` channel. For Coforge-classified content, subscribe to:
+Subscribe to **Layer 8 channels**. The publisher does **not** emit a catch-all `content:coforge` or `content:default` channel. For Coforge-classified content, subscribe to:
 
 - **Relevance**: `coforge:core`, `coforge:peripheral`
-- **Audience** (when set on the article): `coforge:audience:{slug}` (e.g. `coforge:audience:developers`)
+- **Audience** (when set on the content item): `coforge:audience:{slug}` (e.g. `coforge:audience:developers`)
 - **Topic** (one per topic): `coforge:topic:{slug}` (e.g. `coforge:topic:digital-transformation`, `coforge:topic:cloud`)
 - **Industry** (one per industry): `coforge:industry:{slug}` (e.g. `coforge:industry:banking`, `coforge:industry:insurance`)
 
@@ -97,15 +97,15 @@ The publisher handles:
 
 - ✅ Quality score filtering (`quality_score >= threshold`)
 - ✅ Topic classification (`topics IN [crime, news, ...]`)
-- ✅ Per-channel deduplication (won't publish same article twice to same channel)
-- ✅ Elasticsearch querying and article retrieval
+- ✅ Per-channel deduplication (won't publish same content item twice to same channel)
+- ✅ Elasticsearch querying and content retrieval
 
 ## Prerequisites
 
 ### Required
 
 - **Redis client library** for your language
-- **Database** for storing articles and tracking processed article IDs
+- **Database** for storing content and tracking processed content IDs
 - **Network access** to Redis server
 
 ### Recommended
@@ -165,12 +165,12 @@ import json
 
 r = redis.Redis(host='localhost', port=6379, decode_responses=True)
 pubsub = r.pubsub()
-pubsub.subscribe('articles:crime')
+pubsub.subscribe('content:crime')
 
 for message in pubsub.listen():
     if message['type'] == 'message':
-        article = json.loads(message['data'])
-        print(f"Received: {article['title']}")
+        item = json.loads(message['data'])
+        print(f"Received: {item['title']}")
 ```
 
 **Node.js**:
@@ -178,15 +178,15 @@ for message in pubsub.listen():
 const redis = require('redis');
 const client = redis.createClient({ host: 'localhost', port: 6379 });
 
-client.subscribe('articles:crime');
+client.subscribe('content:crime');
 
 client.on('message', (channel, message) => {
-  const article = JSON.parse(message);
-  console.log(`Received: ${article.title}`);
+  const item = JSON.parse(message);
+  console.log(`Received: ${item.title}`);
 });
 ```
 
-### 3. Process Articles
+### 3. Process Content
 
 See [Implementation Examples](#implementation-examples) below for complete examples.
 
@@ -198,13 +198,13 @@ See [Implementation Examples](#implementation-examples) below for complete examp
 Redis → Consumer → Database
 ```
 
-**Best for**: Low volume (<100 articles/hour), simple processing
+**Best for**: Low volume (<100 items/hour), simple processing
 
 ```python
 for message in pubsub.listen():
-    article = json.loads(message['data'])
-    if not already_processed(article['id']):
-        save_to_database(article)
+    item = json.loads(message['data'])
+    if not already_processed(item['id']):
+        save_to_database(item)
 ```
 
 ### Pattern 2: Queue-Based Processing (Recommended)
@@ -218,13 +218,13 @@ Redis → Consumer → Queue → Worker(s) → Database
 ```python
 # Consumer: Add to queue
 for message in pubsub.listen():
-    article = json.loads(message['data'])
-    queue.enqueue('process_article', article)
+    item = json.loads(message['data'])
+    queue.enqueue('process_item', item)
 
 # Worker: Process from queue
-def process_article(article):
-    if not already_processed(article['id']):
-        save_to_database(article)
+def process_item(item):
+    if not already_processed(item['id']):
+        save_to_database(item)
 ```
 
 ### Pattern 3: Multi-Consumer (High Availability)
@@ -254,9 +254,9 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Database setup
-conn = sqlite3.connect('articles.db')
+conn = sqlite3.connect('content.db')
 conn.execute('''
-    CREATE TABLE IF NOT EXISTS articles (
+    CREATE TABLE IF NOT EXISTS content_items (
         id TEXT PRIMARY KEY,
         title TEXT NOT NULL,
         body TEXT,
@@ -269,49 +269,49 @@ conn.execute('''
 ''')
 conn.commit()
 
-def article_exists(article_id):
-    """Check if article already processed."""
-    cursor = conn.execute('SELECT 1 FROM articles WHERE id = ?', (article_id,))
+def item_exists(content_id):
+    """Check if content item already processed."""
+    cursor = conn.execute('SELECT 1 FROM content_items WHERE id = ?', (content_id,))
     return cursor.fetchone() is not None
 
-def save_article(article):
-    """Save article to database."""
+def save_item(item):
+    """Save content item to database."""
     try:
         conn.execute('''
-            INSERT INTO articles (id, title, body, url, published_date, quality_score, topics, processed_at)
+            INSERT INTO content_items (id, title, body, url, published_date, quality_score, topics, processed_at)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         ''', (
-            article['id'],
-            article['title'],
-            article['body'],
-            article['canonical_url'],
-            article['published_date'],
-            article['quality_score'],
-            json.dumps(article.get('topics', [])),
+            item['id'],
+            item['title'],
+            item['body'],
+            item['canonical_url'],
+            item['published_date'],
+            item['quality_score'],
+            json.dumps(item.get('topics', [])),
             datetime.utcnow().isoformat()
         ))
         conn.commit()
-        logger.info(f"Saved article: {article['id']}")
+        logger.info(f"Saved item: {item['id']}")
     except Exception as e:
-        logger.error(f"Failed to save article: {e}")
+        logger.error(f"Failed to save item: {e}")
 
 def process_message(message):
     """Process Redis message."""
     try:
-        article = json.loads(message['data'])
+        item = json.loads(message['data'])
 
         # Deduplication
-        if article_exists(article['id']):
-            logger.debug(f"Skipping duplicate: {article['id']}")
+        if item_exists(item['id']):
+            logger.debug(f"Skipping duplicate: {item['id']}")
             return
 
         # Additional filtering (example: minimum quality score)
-        if article.get('quality_score', 0) < 70:
-            logger.debug(f"Skipping low quality: {article['id']}")
+        if item.get('quality_score', 0) < 70:
+            logger.debug(f"Skipping low quality: {item['id']}")
             return
 
-        # Save article
-        save_article(article)
+        # Save item
+        save_item(item)
 
     except json.JSONDecodeError as e:
         logger.error(f"Invalid JSON: {e}")
@@ -322,7 +322,7 @@ def main():
     """Main consumer loop."""
     r = redis.Redis(host='localhost', port=6379, decode_responses=True)
     pubsub = r.pubsub()
-    pubsub.subscribe('articles:crime')
+    pubsub.subscribe('content:crime')
 
     logger.info("Consumer started. Listening for messages...")
 
@@ -349,14 +349,14 @@ const { Pool } = require('pg');
 const pool = new Pool({
   host: 'localhost',
   port: 5432,
-  database: 'articles',
+  database: 'content',
   user: 'postgres',
   password: 'password'
 });
 
 // Create table
 pool.query(`
-  CREATE TABLE IF NOT EXISTS articles (
+  CREATE TABLE IF NOT EXISTS content_items (
     id TEXT PRIMARY KEY,
     title TEXT NOT NULL,
     body TEXT,
@@ -368,56 +368,56 @@ pool.query(`
   )
 `);
 
-// Check if article exists
-async function articleExists(articleId) {
+// Check if item exists
+async function itemExists(contentId) {
   const result = await pool.query(
-    'SELECT 1 FROM articles WHERE id = $1',
-    [articleId]
+    'SELECT 1 FROM content_items WHERE id = $1',
+    [contentId]
   );
   return result.rows.length > 0;
 }
 
-// Save article
-async function saveArticle(article) {
+// Save item
+async function saveItem(item) {
   try {
     await pool.query(
-      `INSERT INTO articles (id, title, body, url, published_date, quality_score, topics)
+      `INSERT INTO content_items (id, title, body, url, published_date, quality_score, topics)
        VALUES ($1, $2, $3, $4, $5, $6, $7)`,
       [
-        article.id,
-        article.title,
-        article.body,
-        article.canonical_url,
-        article.published_date,
-        article.quality_score,
-        JSON.stringify(article.topics || [])
+        item.id,
+        item.title,
+        item.body,
+        item.canonical_url,
+        item.published_date,
+        item.quality_score,
+        JSON.stringify(item.topics || [])
       ]
     );
-    console.log(`Saved article: ${article.id}`);
+    console.log(`Saved item: ${item.id}`);
   } catch (error) {
-    console.error(`Failed to save article: ${error.message}`);
+    console.error(`Failed to save item: ${error.message}`);
   }
 }
 
 // Process message
 async function processMessage(channel, message) {
   try {
-    const article = JSON.parse(message);
+    const item = JSON.parse(message);
 
     // Deduplication
-    if (await articleExists(article.id)) {
-      console.log(`Skipping duplicate: ${article.id}`);
+    if (await itemExists(item.id)) {
+      console.log(`Skipping duplicate: ${item.id}`);
       return;
     }
 
     // Additional filtering
-    if (article.quality_score < 70) {
-      console.log(`Skipping low quality: ${article.id}`);
+    if (item.quality_score < 70) {
+      console.log(`Skipping low quality: ${item.id}`);
       return;
     }
 
-    // Save article
-    await saveArticle(article);
+    // Save item
+    await saveItem(item);
 
   } catch (error) {
     console.error(`Error processing message: ${error.message}`);
@@ -432,7 +432,7 @@ async function main() {
   });
 
   subscriber.on('message', processMessage);
-  subscriber.subscribe('articles:crime');
+  subscriber.subscribe('content:crime');
 
   console.log('Consumer started. Listening for messages...');
 
@@ -459,10 +459,10 @@ use Illuminate\Support\Facades\Redis;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
-class ConsumeArticles extends Command
+class ConsumeContent extends Command
 {
-    protected $signature = 'articles:consume {--channel=articles:crime}';
-    protected $description = 'Subscribe to Redis pub/sub and consume articles';
+    protected $signature = 'content:consume {--channel=content:crime}';
+    protected $description = 'Subscribe to Redis pub/sub and consume content';
 
     protected $processedCount = 0;
     protected $skippedCount = 0;
@@ -481,7 +481,7 @@ class ConsumeArticles extends Command
     protected function processMessage(string $message): void
     {
         try {
-            $article = json_decode($message, true);
+            $item = json_decode($message, true);
 
             if (json_last_error() !== JSON_ERROR_NONE) {
                 $this->error('Invalid JSON: ' . json_last_error_msg());
@@ -494,71 +494,71 @@ class ConsumeArticles extends Command
             }
 
             // Deduplication
-            if ($this->articleExists($article['id'])) {
+            if ($this->itemExists($item['id'])) {
                 $this->skippedCount++;
                 if ($this->getOutput()->isVerbose()) {
-                    $this->line("Skipping duplicate: {$article['id']}");
+                    $this->line("Skipping duplicate: {$item['id']}");
                 }
                 return;
             }
 
             // Additional filtering
-            if (isset($article['quality_score']) && $article['quality_score'] < 70) {
+            if (isset($item['quality_score']) && $item['quality_score'] < 70) {
                 $this->skippedCount++;
                 if ($this->getOutput()->isVerbose()) {
-                    $this->line("Skipping low quality: {$article['id']} (score: {$article['quality_score']})");
+                    $this->line("Skipping low quality: {$item['id']} (score: {$item['quality_score']})");
                 }
                 return;
             }
 
-            // Save article
-            $this->saveArticle($article);
+            // Save item
+            $this->saveItem($item);
             $this->processedCount++;
 
             if ($this->getOutput()->isVerbose()) {
-                $this->info("Processed: {$article['title']}");
+                $this->info("Processed: {$item['title']}");
             }
 
         } catch (\Exception $e) {
             $this->errorCount++;
             $this->error("Error processing message: {$e->getMessage()}");
-            Log::error('Article processing error', [
+            Log::error('Content processing error', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ]);
         }
     }
 
-    protected function articleExists(string $articleId): bool
+    protected function itemExists(string $contentId): bool
     {
-        return DB::table('articles')
-            ->where('external_id', $articleId)
+        return DB::table('content_items')
+            ->where('external_id', $contentId)
             ->exists();
     }
 
-    protected function saveArticle(array $article): void
+    protected function saveItem(array $item): void
     {
-        DB::table('articles')->insert([
-            'external_id' => $article['id'],
-            'title' => $article['title'],
-            'body' => $article['body'] ?? $article['raw_text'] ?? null,
-            'canonical_url' => $article['canonical_url'],
-            'source' => $article['source'],
-            'published_date' => $article['published_date'],
-            'quality_score' => $article['quality_score'] ?? null,
-            'topics' => json_encode($article['topics'] ?? []),
-            'is_crime_related' => $article['is_crime_related'] ?? false,
-            'content_type' => $article['content_type'] ?? null,
-            'publisher_route_id' => $article['publisher']['route_id'] ?? null,
-            'publisher_channel' => $article['publisher']['channel'] ?? null,
-            'publisher_published_at' => $article['publisher']['published_at'] ?? now(),
+        DB::table('content_items')->insert([
+            'external_id' => $item['id'],
+            'title' => $item['title'],
+            'body' => $item['body'] ?? $item['raw_text'] ?? null,
+            'canonical_url' => $item['canonical_url'],
+            'source' => $item['source'],
+            'published_date' => $item['published_date'],
+            'quality_score' => $item['quality_score'] ?? null,
+            'topics' => json_encode($item['topics'] ?? []),
+            'is_crime_related' => $item['is_crime_related'] ?? false,
+            'content_type' => $item['content_type'] ?? null,
+            'publisher_route_id' => $item['publisher']['route_id'] ?? null,
+            'publisher_channel' => $item['publisher']['channel'] ?? null,
+            'publisher_published_at' => $item['publisher']['published_at'] ?? now(),
             'created_at' => now(),
             'updated_at' => now(),
         ]);
 
-        Log::info('Article saved', [
-            'article_id' => $article['id'],
-            'title' => $article['title'],
+        Log::info('Content saved', [
+            'content_id' => $item['id'],
+            'title' => $item['title'],
         ]);
     }
 
@@ -575,8 +575,8 @@ class ConsumeArticles extends Command
 **Database Migration:**
 
 ```php
-// database/migrations/xxxx_create_articles_table.php
-Schema::create('articles', function (Blueprint $table) {
+// database/migrations/xxxx_create_content_items_table.php
+Schema::create('content_items', function (Blueprint $table) {
     $table->id();
     $table->string('external_id')->unique();
     $table->string('title');
@@ -603,36 +603,36 @@ Schema::create('articles', function (Blueprint $table) {
 
 ```bash
 # Basic usage
-php artisan articles:consume
+php artisan content:consume
 
 # Custom channel
-php artisan articles:consume --channel=articles:news
+php artisan content:consume --channel=content:news
 
 # Verbose output
-php artisan articles:consume -v
+php artisan content:consume -v
 
 # Run as daemon (use supervisor or systemd)
-php artisan articles:consume > /dev/null 2>&1 &
+php artisan content:consume > /dev/null 2>&1 &
 ```
 
 **Using Laravel Queue (Recommended for Production):**
 
 ```php
 // In your Artisan command or Service Provider
-Redis::subscribe(['articles:crime'], function ($message) {
-    ProcessArticleJob::dispatch(json_decode($message, true));
+Redis::subscribe(['content:crime'], function ($message) {
+    ProcessContentJob::dispatch(json_decode($message, true));
 });
 
-// In app/Jobs/ProcessArticleJob.php
-class ProcessArticleJob implements ShouldQueue
+// In app/Jobs/ProcessContentJob.php
+class ProcessContentJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public function __construct(public array $article) {}
+    public function __construct(public array $item) {}
 
     public function handle(): void
     {
-        // Process article with retry logic
+        // Process content with retry logic
         // Laravel queue handles retries automatically
     }
 }
@@ -642,18 +642,18 @@ class ProcessArticleJob implements ShouldQueue
 
 ### 1. Deduplication
 
-**Always implement deduplication** to prevent processing the same article multiple times.
+**Always implement deduplication** to prevent processing the same content item multiple times.
 
 ```python
 # Store processed IDs in database
-CREATE TABLE processed_articles (
-    article_id TEXT PRIMARY KEY,
+CREATE TABLE processed_content (
+    content_id TEXT PRIMARY KEY,
     processed_at TIMESTAMP DEFAULT NOW()
 );
 
 # Or use Redis SET for fast lookups
-redis.sadd('processed_articles', article_id)
-if redis.sismember('processed_articles', article_id):
+redis.sadd('processed_content', content_id)
+if redis.sismember('processed_content', content_id):
     return  # Skip
 ```
 
@@ -665,7 +665,7 @@ if redis.sismember('processed_articles', article_id):
 from tenacity import retry, stop_after_attempt, wait_exponential
 
 @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=10))
-def save_article(article):
+def save_item(item):
     # Database operation
     pass
 ```
@@ -697,9 +697,9 @@ signal.signal(signal.SIGTERM, signal_handler)
 - Processing errors
 - Database latency
 
-**Laravel (northcloud-laravel):** Use `php artisan articles:status` to verify Redis connection and channel list; use `php artisan articles:stats --since=24h` for ingestion volume. Run the subscriber as a long-lived process (systemd or supervisor) and consider including a process or status check in health endpoints.
+**Laravel (northcloud-laravel):** Use `php artisan content:status` to verify Redis connection and channel list; use `php artisan content:stats --since=24h` for ingestion volume. Run the subscriber as a long-lived process (systemd or supervisor) and consider including a process or status check in health endpoints.
 
-**Quality and processing:** When using northcloud-laravel, set `NORTHCLOUD_QUALITY_FILTER=true` and `NORTHCLOUD_MIN_QUALITY_SCORE` (e.g. 50 or 70) to skip low-quality articles. Use `NORTHCLOUD_PROCESS_SYNC=true` for simplicity; set to `false` and run a queue worker for higher throughput.
+**Quality and processing:** When using northcloud-laravel, set `NORTHCLOUD_QUALITY_FILTER=true` and `NORTHCLOUD_MIN_QUALITY_SCORE` (e.g. 50 or 70) to skip low-quality content. Use `NORTHCLOUD_PROCESS_SYNC=true` for simplicity; set to `false` and run a queue worker for higher throughput.
 
 ```python
 from prometheus_client import Counter, Histogram
@@ -724,10 +724,10 @@ import structlog
 
 logger = structlog.get_logger()
 
-logger.info("article_processed",
-    article_id=article['id'],
-    quality_score=article['quality_score'],
-    topics=article['topics'],
+logger.info("content_processed",
+    content_id=item['id'],
+    quality_score=item['quality_score'],
+    topics=item['topics'],
     duration_ms=duration
 )
 ```
@@ -761,12 +761,12 @@ CMD ["python", "consumer.py"]
 services:
   consumer:
     build: .
-    container_name: article-consumer
+    container_name: content-consumer
     environment:
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - REDIS_PASSWORD=${REDIS_PASSWORD}
-      - DATABASE_URL=postgresql://user:pass@db:5432/articles
+      - DATABASE_URL=postgresql://user:pass@db:5432/content
     depends_on:
       - redis
       - postgres
@@ -779,20 +779,20 @@ services:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: article-consumer
+  name: content-consumer
 spec:
   replicas: 3
   selector:
     matchLabels:
-      app: article-consumer
+      app: content-consumer
   template:
     metadata:
       labels:
-        app: article-consumer
+        app: content-consumer
     spec:
       containers:
       - name: consumer
-        image: your-registry/article-consumer:latest
+        image: your-registry/content-consumer:latest
         env:
         - name: REDIS_HOST
           value: "redis-service"
@@ -834,13 +834,13 @@ threading.Thread(target=lambda: app.run(port=8080), daemon=True).start()
 - **Queue-based**: Use Celery, RabbitMQ, or similar for distribution
 - **Resource limits**: Set CPU/memory limits in production
 
-## Verifying article flow
+## Verifying content flow
 
-To confirm articles are being published and your consumer can receive them:
+To confirm content is being published and your consumer can receive them:
 
 1. **Publisher**: Check that the router is running and polling (publisher logs). Call `GET /api/v1/stats/overview` (with JWT) to see total published and recent activity. Ensure at least one `*_classified_content` Elasticsearch index exists and the cursor is advancing.
 2. **Redis**: From the same host as the publisher, run `redis-cli PING` and `redis-cli PUBSUB CHANNELS` to verify Redis is up and channels are being used.
-3. **Laravel (northcloud-laravel)**: Run `php artisan articles:status` to confirm Redis connection, channel list, and quality filter. Use `php artisan articles:stats --since=24h` to see ingestion volume. Include `articles:status` (or a check that the subscriber process is running) in health scripts or monitoring.
+3. **Laravel (northcloud-laravel)**: Run `php artisan content:status` to confirm Redis connection, channel list, and quality filter. Use `php artisan content:stats --since=24h` to see ingestion volume. Include `content:status` (or a check that the subscriber process is running) in health scripts or monitoring.
 
 Run the subscriber as a long-lived process (systemd or supervisor) so it is always connected when the publisher sends messages; Redis pub/sub does not queue messages for offline consumers.
 
@@ -854,12 +854,12 @@ Run the subscriber as a long-lived process (systemd or supervisor) so it is alwa
 3. Check publisher logs: `docker logs north-cloud-publisher-router`
 4. Ensure routes are enabled: `curl http://localhost:8070/api/v1/routes`
 
-### Problem: Duplicate articles
+### Problem: Duplicate content
 
 **Solution**:
 1. Implement deduplication (see Best Practices)
-2. Check processed_articles table
-3. Verify article ID uniqueness
+2. Check processed_content table
+3. Verify content ID uniqueness
 
 ### Problem: High memory usage
 

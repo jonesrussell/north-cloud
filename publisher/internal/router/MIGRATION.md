@@ -10,14 +10,14 @@ to verify, and what was deliberately left unchanged.
 
 The pre-refactor code had all routing logic written as exported free functions
 (`GenerateLayer1Channels`, `GenerateCrimeChannels`, etc.) called sequentially in
-`routeArticle`. Adding a new routing domain required touching `service.go` directly.
+`routeContentItem`. Adding a new routing domain required touching `service.go` directly.
 
 The refactor introduces a `RoutingDomain` interface so that:
 - Each routing layer lives in its own file and owns its own tests.
-- `routeArticle` is a uniform loop over `[]RoutingDomain` — adding a new domain is a
+- `routeContentItem` is a uniform loop over `[]RoutingDomain` — adding a new domain is a
   one-line addition to the slice.
 - All exported free functions that were internal-use-only are removed (they were only
-  called from `routeArticle`).
+  called from `routeContentItem`).
 
 Routing logic itself is **not changed**. This is a structural refactor only.
 
@@ -43,7 +43,7 @@ Routing logic itself is **not changed**. This is a structural refactor only.
 
 **`service.go`**
 - Removed all `Article`/data type declarations (moved to `article.go`).
-- `routeArticle` replaced 7 explicit layer calls with a `[]RoutingDomain` loop (8 domains).
+- `routeContentItem` replaced 7 explicit layer calls with a `[]RoutingDomain` loop (8 domains).
 - `publishRoutes(ctx, article, []ChannelRoute) []string` added; replaces `publishToChannels`.
 - `publishToChannels` removed.
 - `GenerateLayer1Channels` exported free function removed.
@@ -75,7 +75,7 @@ updated to call the domain `Routes()` API instead of the removed free functions.
 
 ### Removed Items (by design)
 
-- `GenerateLayer1Channels` (was only called from `routeArticle`)
+- `GenerateLayer1Channels` (was only called from `routeContentItem`)
 - `GenerateCrimeChannels`
 - `GenerateLocationChannels`
 - `GenerateMiningChannels`
@@ -92,7 +92,7 @@ updated to call the domain `Routes()` API instead of the removed free functions.
   pre-refactor free functions. No conditions were added, removed, or reordered.
 - **Layer ordering**: Topic (1) → DBChannel (2) → Crime (3) → Location (4) → Mining (5)
   → Entertainment (6) → Anishinaabe (7) → Coforge (8).
-- **Deduplication**: `publishToChannel` still calls `repo.CheckArticlePublished` before
+- **Deduplication**: `publishToChannel` still calls `repo.CheckContentPublished` before
   each publish; per-channel dedup behaviour is unchanged.
 - **`publishToChannel` method**: Unchanged except for the `"coforge"` payload field
   (which was missing before; adding it is backwards-compatible — consumers that do not
@@ -120,7 +120,7 @@ grep -r "func Generate" publisher/internal/router/
 # Confirm RoutingDomain interface is satisfied by all domains
 grep -r "func.*Routes\(a \*Article\)" publisher/internal/router/
 
-# Confirm layer ordering in routeArticle
+# Confirm layer ordering in routeContentItem
 grep -A 12 "domains := \[\]RoutingDomain" publisher/internal/router/service.go
 ```
 
@@ -129,7 +129,7 @@ Expected results:
 - No linter errors.
 - `grep -r "func Generate"` returns no output.
 - Eight `Routes` implementations found (one per domain file).
-- Layer slice in `routeArticle` lists domains in order: Topic, DBChannel, Crime,
+- Layer slice in `routeContentItem` lists domains in order: Topic, DBChannel, Crime,
   Location, Mining, Entertainment, Anishinaabe, Coforge.
 
 ---

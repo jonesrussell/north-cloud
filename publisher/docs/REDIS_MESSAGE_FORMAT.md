@@ -4,27 +4,27 @@ This document describes the message format published to Redis pub/sub channels b
 
 ## Overview
 
-The Publisher Router queries Elasticsearch for classified articles, filters them based on route configurations, and publishes matching articles to Redis pub/sub channels. Each message is a complete JSON document containing the full article data plus publisher metadata.
+The Publisher Router queries Elasticsearch for classified content, filters them based on route configurations, and publishes matching content to Redis pub/sub channels. Each message is a complete JSON document containing the full content data plus publisher metadata.
 
 ## Channel Naming Convention
 
-The publisher routes articles across multiple channel layers:
+The publisher routes content across multiple channel layers:
 
 ### Layer 1: Topic channels (automatic)
 ```
-articles:{topic}
+content:{topic}
 ```
-Published automatically for each article topic. Examples: `articles:crime`, `articles:violent_crime`, `articles:criminal_justice`, `articles:mining`, `articles:technology`, `articles:sports`. Topics in `layer1SkipTopics` (currently: `mining`) are excluded from Layer 1 and handled by dedicated layers.
+Published automatically for each content item topic. Examples: `content:crime`, `content:violent_crime`, `content:criminal_justice`, `content:mining`, `content:technology`, `content:sports`. Topics in `layer1SkipTopics` (currently: `mining`) are excluded from Layer 1 and handled by dedicated layers.
 
 ### Layer 2: Custom channels (database-backed)
-Same `articles:{topic}` pattern but with configurable rules (min quality, include/exclude topics, content types). Stored in the `channels` table.
+Same `content:{topic}` pattern but with configurable rules (min quality, include/exclude topics, content types). Stored in the `channels` table.
 
 ### Layer 3: Crime classification channels
 ```
-crime:homepage              # Homepage-eligible crime articles
+crime:homepage              # Homepage-eligible crime content
 crime:category:{type}       # e.g. crime:category:violent-crime, crime:category:drug-crime
-crime:courts                # Court-related crime articles
-crime:context               # Crime context articles
+crime:courts                # Court-related crime content
+crime:context               # Crime context content
 ```
 
 ### Layer 4: Location channels
@@ -37,7 +37,7 @@ crime:international         # International crime
 
 ### Layer 5: Mining classification channels
 ```
-articles:mining             # Catch-all: all mining articles (core + peripheral)
+content:mining             # Catch-all: all mining content (core + peripheral)
 mining:core                 # Core mining content (homepage-quality)
 mining:peripheral           # Peripheral mining content
 mining:commodity:{slug}     # Per-commodity (e.g. mining:commodity:gold, mining:commodity:iron-ore)
@@ -57,8 +57,8 @@ entertainment:peripheral        # Peripheral entertainment
 
 Each message is a JSON object with two main sections:
 
-1. **Publisher Metadata**: Information about when and how the article was published
-2. **Article Data**: Complete article content and classification metadata from Elasticsearch
+1. **Publisher Metadata**: Information about when and how the content was published
+2. **Content Data**: Complete content item data and classification metadata from Elasticsearch
 
 ### Full Message Example
 
@@ -67,15 +67,15 @@ Each message is a JSON object with two main sections:
   "publisher": {
     "route_id": "a1b2c3d4-e5f6-4789-a0b1-c2d3e4f5g6h7",
     "published_at": "2025-12-28T15:30:45Z",
-    "channel": "articles:crime"
+    "channel": "content:crime"
   },
   "id": "es-doc-id-12345",
   "title": "Local Police Investigate Break-In at Community Center",
-  "body": "Full article text content here...",
-  "raw_text": "Full article text content here...",
+  "body": "Full content text content here...",
+  "raw_text": "Full content text content here...",
   "raw_html": "<html>Original HTML content...</html>",
   "canonical_url": "https://example.com/articles/police-investigate-break-in",
-  "source": "https://example.com/original-article-url",
+  "source": "https://example.com/original-content-url",
   "published_date": "2025-12-28T08:00:00Z",
 
   "quality_score": 85,
@@ -88,11 +88,11 @@ Each message is a JSON object with two main sections:
 
   "og_title": "Breaking News: Police Investigate Break-In",
   "og_description": "Community center targeted in overnight incident",
-  "og_image": "https://example.com/images/article-image.jpg",
+  "og_image": "https://example.com/images/content-image.jpg",
   "og_url": "https://example.com/articles/police-investigate-break-in",
 
-  "intro": "Article introduction or lead paragraph...",
-  "description": "Meta description of the article",
+  "intro": "Content introduction or lead paragraph...",
+  "description": "Meta description of the content",
   "word_count": 450,
   "category": "news",
   "section": "local",
@@ -110,28 +110,28 @@ Each message is a JSON object with two main sections:
 | `publisher.published_at` | ISO 8601 DateTime | When the publisher sent this message |
 | `publisher.channel` | String | The Redis channel name |
 
-### Core Article Fields
+### Core Content Fields
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `id` | String | Yes | Elasticsearch document ID (unique) |
-| `title` | String | Yes | Article headline/title |
-| `body` | String | Yes | Article text content (alias for raw_text) |
-| `raw_text` | String | Yes | Full article text without HTML |
+| `title` | String | Yes | Content headline/title |
+| `body` | String | Yes | Content text (alias for raw_text) |
+| `raw_text` | String | Yes | Full content text without HTML |
 | `raw_html` | String | No | Original HTML content |
-| `canonical_url` | String | Yes | Canonical URL for the article |
+| `canonical_url` | String | Yes | Canonical URL for the content |
 | `source` | String | Yes | Original source URL |
-| `published_date` | ISO 8601 DateTime | Yes | When the article was originally published |
+| `published_date` | ISO 8601 DateTime | Yes | When the content was originally published |
 
 ### Classification Metadata
 
 | Field | Type | Range | Description |
 |-------|------|-------|-------------|
-| `quality_score` | Integer | 0-100 | Article quality rating |
+| `quality_score` | Integer | 0-100 | Content quality rating |
 | `topics` | Array[String] | - | Classified topics (e.g., ["crime", "local"]) |
 | `content_type` | String | - | Content type (article, page, video, etc.) |
 | `content_subtype` | String | - | Content subtype when `content_type` is article: `press_release`, `event`, `advisory`, `report`, `blotter`, `blog_post`, `company_announcement`, or empty for standard news |
-| `is_crime_related` | Boolean | - | Whether the article is crime-related |
+| `is_crime_related` | Boolean | - | Whether the content is crime-related |
 | `source_reputation` | Integer | 0-100 | Source reliability score |
 | `confidence` | Float | 0.0-1.0 | Classifier confidence level |
 
@@ -148,12 +148,12 @@ Each message is a JSON object with two main sections:
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `intro` | String | Article introduction/lead |
+| `intro` | String | Content introduction/lead |
 | `description` | String | Meta description |
-| `word_count` | Integer | Number of words in article |
-| `category` | String | Article category |
+| `word_count` | Integer | Number of words in content item |
+| `category` | String | Content category |
 | `section` | String | Site section |
-| `keywords` | Array[String] | Article keywords |
+| `keywords` | Array[String] | Content keywords |
 
 ### Entertainment Classification (Layer 6)
 
@@ -163,7 +163,7 @@ When the classifier has entertainment classification enabled, messages may inclu
 |-------|------|-------------|
 | `entertainment_relevance` | String | `core_entertainment`, `peripheral_entertainment`, or `not_entertainment` |
 | `entertainment_categories` | Array[String] | e.g. `["film", "music", "gaming", "reviews"]` |
-| `entertainment_homepage_eligible` | Boolean | True if article qualifies for entertainment homepage |
+| `entertainment_homepage_eligible` | Boolean | True if content item qualifies for entertainment homepage |
 | `entertainment` | Object | Nested: relevance, categories, final_confidence, homepage_eligible, review_required, model_version |
 
 **Layer 6 channels**: `entertainment:homepage`, `entertainment:category:{slug}`, `entertainment:peripheral`.
@@ -172,8 +172,8 @@ When the classifier has entertainment classification enabled, messages may inclu
 
 For backward compatibility and convenience, the following aliases exist:
 
-- **`body`**: Alias for `raw_text` (article text content)
-- **`source`**: Alias for the original article URL
+- **`body`**: Alias for `raw_text` (content text)
+- **`source`**: Alias for the original content URL
 
 Both fields are included in every message, so consumers can use whichever field name they prefer.
 
@@ -182,8 +182,8 @@ Both fields are included in every message, so consumers can use whichever field 
 The publisher applies the following filters before publishing:
 
 1. **Quality Score**: `quality_score >= route.min_quality_score`
-2. **Topics**: Article topics match route configuration (if specified)
-3. **Deduplication**: Article not already published to this channel
+2. **Topics**: Content topics match route configuration (if specified)
+3. **Deduplication**: Content item not already published to this channel
 
 **Consumers may apply additional filters** such as:
 - Specific keywords or phrases
@@ -201,11 +201,11 @@ The publisher prevents duplicate publications using the `publish_history` table:
 ```sql
 SELECT EXISTS(
   SELECT 1 FROM publish_history
-  WHERE article_id = $1 AND channel_name = $2
+  WHERE content_id = $1 AND channel_name = $2
 )
 ```
 
-This ensures each article is published **once per channel**.
+This ensures each content item is published **once per channel**.
 
 ### Consumer-Side Deduplication
 
@@ -219,16 +219,16 @@ This ensures each article is published **once per channel**.
 
 ```python
 # Example deduplication in consumer
-def process_article(message):
-    article_id = message['id']
+def process_item(message):
+    content_id = message['id']
 
     # Check if already ingested
-    if db.article_exists(article_id):
-        logger.info(f"Skipping duplicate article: {article_id}")
+    if db.item_exists(content_id):
+        logger.info(f"Skipping duplicate item: {content_id}")
         return
 
-    # Process and store article
-    db.insert_article(message)
+    # Process and store content
+    db.insert_item(message)
 ```
 
 ## Example Consumer Implementation
@@ -244,25 +244,25 @@ r = redis.Redis(host='localhost', port=6379, decode_responses=True)
 
 # Subscribe to channel
 pubsub = r.pubsub()
-pubsub.subscribe('articles:crime')
+pubsub.subscribe('content:crime')
 
-print("Listening for crime articles...")
+print("Listening for crime content...")
 
 for message in pubsub.listen():
     if message['type'] == 'message':
         # Parse JSON message
-        article = json.loads(message['data'])
+        item = json.loads(message['data'])
 
         # Check deduplication
-        if db.article_exists(article['id']):
+        if db.item_exists(item['id']):
             continue
 
         # Apply additional filters
-        if article['quality_score'] < 70:
+        if item['quality_score'] < 70:
             continue
 
-        # Process article
-        process_article(article)
+        # Process content
+        process_item(item)
 ```
 
 ### Node.js Example
@@ -277,26 +277,26 @@ const subscriber = redis.createClient({
 });
 
 // Subscribe to channel
-subscriber.subscribe('articles:crime');
+subscriber.subscribe('content:crime');
 
 subscriber.on('message', (channel, message) => {
-  const article = JSON.parse(message);
+  const item = JSON.parse(message);
 
   // Check deduplication
-  if (await db.articleExists(article.id)) {
+  if (await db.itemExists(item.id)) {
     return;
   }
 
   // Apply additional filters
-  if (article.quality_score < 70) {
+  if (item.quality_score < 70) {
     return;
   }
 
-  // Process article
-  await processArticle(article);
+  // Process content
+  await processItem(item);
 });
 
-console.log('Listening for crime articles...');
+console.log('Listening for crime content...');
 ```
 
 ### PHP/Laravel 12 Example
@@ -310,19 +310,19 @@ use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Redis;
 use Illuminate\Support\Facades\DB;
 
-class RedisSubscribeArticles extends Command
+class RedisSubscribeContent extends Command
 {
-    protected $signature = 'redis:subscribe-articles';
-    protected $description = 'Subscribe to Redis pub/sub channels for articles';
+    protected $signature = 'redis:subscribe-content';
+    protected $description = 'Subscribe to Redis pub/sub channels for content';
 
     public function handle()
     {
-        $this->info('Subscribing to articles:crime channel...');
+        $this->info('Subscribing to content:crime channel...');
 
-        Redis::subscribe(['articles:crime'], function ($message) {
+        Redis::subscribe(['content:crime'], function ($message) {
             try {
                 // Parse JSON message
-                $article = json_decode($message, true);
+                $item = json_decode($message, true);
 
                 if (json_last_error() !== JSON_ERROR_NONE) {
                     $this->error('Invalid JSON: ' . json_last_error_msg());
@@ -330,19 +330,19 @@ class RedisSubscribeArticles extends Command
                 }
 
                 // Check deduplication
-                if ($this->articleExists($article['id'])) {
-                    $this->info("Skipping duplicate article: {$article['id']}");
+                if ($this->itemExists($item['id'])) {
+                    $this->info("Skipping duplicate item: {$item['id']}");
                     return;
                 }
 
                 // Apply additional filters
-                if (isset($article['quality_score']) && $article['quality_score'] < 70) {
-                    $this->info("Skipping low quality article: {$article['id']}");
+                if (isset($item['quality_score']) && $item['quality_score'] < 70) {
+                    $this->info("Skipping low quality content: {$item['id']}");
                     return;
                 }
 
-                // Process article
-                $this->processArticle($article);
+                // Process content
+                $this->processItem($item);
 
             } catch (\Exception $e) {
                 $this->error('Error processing message: ' . $e->getMessage());
@@ -354,33 +354,33 @@ class RedisSubscribeArticles extends Command
         });
     }
 
-    protected function articleExists(string $articleId): bool
+    protected function itemExists(string $contentId): bool
     {
-        return DB::table('articles')
-            ->where('external_id', $articleId)
+        return DB::table('content_items')
+            ->where('external_id', $contentId)
             ->exists();
     }
 
-    protected function processArticle(array $article): void
+    protected function processItem(array $item): void
     {
-        DB::table('articles')->insert([
-            'external_id' => $article['id'],
-            'title' => $article['title'],
-            'body' => $article['body'] ?? $article['raw_text'] ?? null,
-            'canonical_url' => $article['canonical_url'],
-            'source' => $article['source'],
-            'published_date' => $article['published_date'],
-            'quality_score' => $article['quality_score'] ?? null,
-            'topics' => json_encode($article['topics'] ?? []),
-            'is_crime_related' => $article['is_crime_related'] ?? false,
-            'publisher_route_id' => $article['publisher']['route_id'] ?? null,
-            'publisher_channel' => $article['publisher']['channel'] ?? null,
-            'published_at' => $article['publisher']['published_at'] ?? now(),
+        DB::table('content_items')->insert([
+            'external_id' => $item['id'],
+            'title' => $item['title'],
+            'body' => $item['body'] ?? $item['raw_text'] ?? null,
+            'canonical_url' => $item['canonical_url'],
+            'source' => $item['source'],
+            'published_date' => $item['published_date'],
+            'quality_score' => $item['quality_score'] ?? null,
+            'topics' => json_encode($item['topics'] ?? []),
+            'is_crime_related' => $item['is_crime_related'] ?? false,
+            'publisher_route_id' => $item['publisher']['route_id'] ?? null,
+            'publisher_channel' => $item['publisher']['channel'] ?? null,
+            'published_at' => $item['publisher']['published_at'] ?? now(),
             'created_at' => now(),
             'updated_at' => now(),
         ]);
 
-        $this->info("Processed article: {$article['title']}");
+        $this->info("Processed content: {$item['title']}");
     }
 }
 ```
@@ -388,7 +388,7 @@ class RedisSubscribeArticles extends Command
 **Running the Laravel consumer:**
 
 ```bash
-php artisan redis:subscribe-articles
+php artisan redis:subscribe-content
 ```
 
 **Using Laravel Queue (Alternative approach):**
@@ -397,15 +397,15 @@ For production use, consider using Laravel queues for better reliability:
 
 ```php
 // In your Artisan command or Event Listener
-Redis::subscribe(['articles:crime'], function ($message) {
-    ProcessArticleJob::dispatch(json_decode($message, true));
+Redis::subscribe(['content:crime'], function ($message) {
+    ProcessContentJob::dispatch(json_decode($message, true));
 });
 ```
 
 ## Message Size
 
-- **Typical size**: 5-15 KB per message (depending on article length)
-- **Maximum size**: ~100 KB (for very long articles)
+- **Typical size**: 5-15 KB per message (depending on content length)
+- **Maximum size**: ~100 KB (for very long content)
 - **Fields to optimize**: `raw_html` can be large; consumers can choose not to store it
 
 ## Error Handling
@@ -414,7 +414,7 @@ Redis::subscribe(['articles:crime'], function ($message) {
 
 If the publisher fails to publish to Redis:
 - Error is logged
-- Article processing continues for other routes
+- Content processing continues for other routes
 - Router retries on next poll interval (default 5 minutes)
 
 ### Consumer Errors
@@ -428,13 +428,13 @@ Consumers should handle:
 ### Example Error Handling
 
 ```python
-def safe_process_article(message):
+def safe_process_item(message):
     try:
-        article = json.loads(message['data'])
+        item = json.loads(message['data'])
 
         # Validate required fields
         required = ['id', 'title', 'canonical_url']
-        if not all(field in article for field in required):
+        if not all(field in item for field in required):
             logger.error(f"Missing required fields: {message['data']}")
             return
 
@@ -442,7 +442,7 @@ def safe_process_article(message):
         retry_count = 0
         while retry_count < 3:
             try:
-                db.insert_article(article)
+                db.insert_item(item)
                 break
             except DatabaseError as e:
                 retry_count += 1
@@ -460,7 +460,7 @@ def safe_process_article(message):
 
 ### Publisher
 
-- **Batch size**: 100 articles per route per poll (configurable)
+- **Batch size**: 100 items per route per poll (configurable)
 - **Poll interval**: 5 minutes (configurable)
 - **Redis latency**: <10ms per publish
 
@@ -497,14 +497,14 @@ save 60 10000
 Publish a test message:
 
 ```bash
-redis-cli PUBLISH articles:crime '{
+redis-cli PUBLISH content:crime '{
   "publisher": {
     "route_id": "test-route",
     "published_at": "2025-12-28T10:00:00Z",
-    "channel": "articles:crime"
+    "channel": "content:crime"
   },
   "id": "test-123",
-  "title": "Test Article",
+  "title": "Test Content",
   "body": "Test content",
   "canonical_url": "https://example.com/test",
   "source": "https://example.com/test",
@@ -519,7 +519,7 @@ redis-cli PUBLISH articles:crime '{
 ### Subscribe to Monitor
 
 ```bash
-redis-cli SUBSCRIBE articles:crime
+redis-cli SUBSCRIBE content:crime
 ```
 
 ## Troubleshooting
@@ -533,7 +533,7 @@ redis-cli SUBSCRIBE articles:crime
 
 2. **Verify channel name**:
    ```bash
-   redis-cli PUBSUB CHANNELS articles:*
+   redis-cli PUBSUB CHANNELS content:*
    ```
 
 3. **Check publisher router logs**:
