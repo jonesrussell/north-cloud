@@ -59,7 +59,7 @@ export interface SourceReputation {
   source_name: string
   category: string
   reputation_score: number
-  total_articles: number
+  total_items: number
   average_quality_score: number
   spam_count: number
   last_classified_at: string | null

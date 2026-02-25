@@ -14,7 +14,7 @@ import type {
   StatsPeriod,
   HealthStatus,
   ActiveChannelsResponse,
-  RecentArticlesResponse,
+  RecentItemsResponse,
 } from '../types/publisher'
 import type {
   Index,
@@ -242,9 +242,9 @@ export const crawlerApi = {
   syncEnabledSources: (): Promise<AxiosResponse<SyncReport>> =>
     crawlerClient.post('/admin/sync-enabled-sources'),
 
-  // Articles
-  articles: {
-    list: (params?: Record<string, unknown>) => crawlerClient.get('/articles', { params }),
+  // Content
+  content: {
+    list: (params?: Record<string, unknown>) => crawlerClient.get('/content', { params }),
   },
 }
 
@@ -310,10 +310,10 @@ export const publisherApi = {
       publisherClient.get('/stats/channels/active'),
   },
 
-  // Recent articles
-  articles: {
-    recent: (params?: { limit?: number }): Promise<AxiosResponse<RecentArticlesResponse>> =>
-      publisherClient.get('/articles/recent', { params }),
+  // Recent content items
+  content: {
+    recent: (params?: { limit?: number }): Promise<AxiosResponse<RecentItemsResponse>> =>
+      publisherClient.get('/content/recent', { params }),
   },
 
   // Topics (Layer 1 - automatic topic channels)
@@ -346,7 +346,7 @@ export const publisherApi = {
       limit?: number
       offset?: number
       channel_name?: string
-      article_id?: string
+      content_id?: string
       start_date?: string
       end_date?: string
     }): Promise<AxiosResponse<PublishHistoryListResponse>> => {
@@ -354,13 +354,13 @@ export const publisherApi = {
       if (params?.limit) query.append('limit', params.limit.toString())
       if (params?.offset) query.append('offset', params.offset.toString())
       if (params?.channel_name) query.append('channel_name', params.channel_name)
-      if (params?.article_id) query.append('article_id', params.article_id)
+      if (params?.content_id) query.append('content_id', params.content_id)
       if (params?.start_date) query.append('start_date', params.start_date)
       if (params?.end_date) query.append('end_date', params.end_date)
       return publisherClient.get(`/publish-history${query.toString() ? `?${query.toString()}` : ''}`)
     },
-    getByArticle: (articleId: string): Promise<AxiosResponse<{ history: PublishHistoryItem[] }>> =>
-      publisherClient.get(`/publish-history/${articleId}`),
+    getByContentId: (contentId: string): Promise<AxiosResponse<{ history: PublishHistoryItem[] }>> =>
+      publisherClient.get(`/publish-history/${contentId}`),
     clearAll: (): Promise<AxiosResponse<{ message: string; deleted: number }>> =>
       publisherClient.delete('/publish-history'),
   },

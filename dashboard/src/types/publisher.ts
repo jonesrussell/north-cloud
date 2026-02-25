@@ -62,7 +62,7 @@ export interface ChannelPreviewResponse {
     rules_version: number
   }
   matching_count: number
-  sample_articles: PreviewArticle[]
+  sample_items: PreviewItem[]
   note: string
 }
 
@@ -106,9 +106,9 @@ export interface IndexesResponse {
 export interface PublishHistoryItem {
   id: string
   channel_id?: string // Layer 2 channel ID if applicable
-  article_id: string
-  article_title: string
-  article_url: string
+  content_id: string
+  content_title: string
+  content_url: string
   channel_name: string
   quality_score: number
   topics: string[] | null
@@ -129,7 +129,7 @@ export interface PublishHistoryListResponse {
 
 export interface StatsOverview {
   period: string
-  total_articles: number
+  total_items: number
   channel_count: number
   by_channel: Record<string, number>
   generated_at: string
@@ -146,7 +146,7 @@ export interface ChannelStats {
   redis_channel: string
   description?: string
   rules: ChannelRules
-  article_count: number
+  item_count: number
 }
 
 export interface ChannelStatsResponse {
@@ -176,31 +176,31 @@ export interface ActiveChannelsResponse {
 }
 
 // ============================================================================
-// Articles
+// Content Items
 // ============================================================================
 
-export interface RecentArticle {
+export interface RecentItem {
   id: string | number
   title: string
   url: string
   city: string
   posted_at: string
   // Additional fields from backend
-  article_id?: string
-  article_title?: string
-  article_url?: string
+  content_id?: string
+  content_title?: string
+  content_url?: string
   channel_name?: string
   published_at?: string
   quality_score?: number
   topics?: string[] | null
 }
 
-export interface RecentArticlesResponse {
-  articles: RecentArticle[]
+export interface RecentItemsResponse {
+  items: RecentItem[]
   count: number
 }
 
-export interface PreviewArticle {
+export interface PreviewItem {
   title: string
   quality_score: number
   topics: string[]

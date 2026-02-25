@@ -28,7 +28,7 @@ export interface ClassifierMetrics {
 }
 
 export interface PublisherMetrics {
-  total_articles: number
+  total_items: number
   channel_count: number
   by_channel: Record<string, number>
   active_routes: number

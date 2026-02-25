@@ -48,7 +48,7 @@ export const navigation: NavSection[] = [
     icon: Activity,
     children: [
       { title: 'Pipeline Monitor', path: '/', icon: Activity },
-      { title: 'Recent Articles', path: '/operations/articles', icon: FileText },
+      { title: 'Recent Content', path: '/operations/content', icon: FileText },
       { title: 'Review Queue', path: '/operations/review', icon: AlertTriangle },
     ],
   },

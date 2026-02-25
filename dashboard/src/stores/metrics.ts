@@ -37,7 +37,7 @@ export const useMetricsStore = defineStore('metrics', () => {
   // Getters
   const totalCrawledToday = computed(() => crawler.value?.crawled_today ?? 0)
   const totalClassifiedToday = computed(() => classifier.value?.total_classified ?? 0)
-  const totalPublishedToday = computed(() => publisher.value?.total_articles ?? 0)
+  const totalPublishedToday = computed(() => publisher.value?.total_items ?? 0)
   const avgQualityScore = computed(() => classifier.value?.avg_quality_score ?? 0)
   const activeRoutes = computed(() => publisher.value?.active_routes ?? 0)
   const totalRoutes = computed(() => publisher.value?.total_routes ?? 0)
@@ -86,19 +86,19 @@ export const useMetricsStore = defineStore('metrics', () => {
         publisherApi.channels.list(false),
       ])
 
-      const articles = statsResponse?.data?.total_articles || 0
+      const items = statsResponse?.data?.total_items || 0
       const channels = channelsResponse?.data?.channels || []
 
       publisher.value = {
-        total_articles: articles,
+        total_items: items,
         channel_count: statsResponse?.data?.channel_count || 0,
         by_channel: statsResponse?.data?.by_channel || {},
         active_routes: channels.filter((c: { enabled: boolean }) => c.enabled).length,
         total_routes: channels.length,
       }
 
-      pipelineStages.value[3].count = articles // Routed
-      pipelineStages.value[4].count = articles // Published
+      pipelineStages.value[3].count = items // Routed
+      pipelineStages.value[4].count = items // Published
     } catch (err) {
       console.warn('Failed to fetch publisher metrics:', err)
     }

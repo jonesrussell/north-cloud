@@ -69,7 +69,7 @@ export function useJobsRealtime() {
     if (event.status === 'completed') {
       const duration = event.duration_ms ? Math.round(event.duration_ms / 1000) : 0
       toast.success('Job completed', {
-        description: `Indexed ${event.articles_indexed || 0} articles in ${duration}s`,
+        description: `Indexed ${event.items_indexed || 0} items in ${duration}s`,
       })
     } else if (event.status === 'failed') {
       toast.error('Job failed', {

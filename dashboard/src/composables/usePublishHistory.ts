@@ -4,8 +4,8 @@ import { publisherApi } from '@/api/client'
 import { usePolling } from './usePolling'
 import type { PublishHistoryItem, ActiveChannel } from '@/types/publisher'
 
-export interface GroupedArticle {
-  article_id: string
+export interface GroupedItem {
+  content_id: string
   title: string
   url: string
   quality_score: number
@@ -23,9 +23,9 @@ const POLLING_INTERVAL = 30000 // 30 seconds
 const DEFAULT_LIMIT = 100 // Fetch more to account for grouping
 
 /**
- * Composable for managing publish history data with filtering, polling, and article grouping.
+ * Composable for managing publish history data with filtering, polling, and content item grouping.
  *
- * Groups articles by article_id to show unique articles with their publish channels.
+ * Groups items by content_id to show unique content items with their publish channels.
  */
 export function usePublishHistory() {
   // Raw data from API
@@ -40,12 +40,12 @@ export function usePublishHistory() {
   // Filters
   const filters = ref<PublishHistoryFilters>({})
 
-  // Group articles by article_id
-  const groupedArticles = computed<GroupedArticle[]>(() => {
-    const articleMap = new Map<string, GroupedArticle>()
+  // Group items by content_id
+  const groupedItems = computed<GroupedItem[]>(() => {
+    const itemMap = new Map<string, GroupedItem>()
 
     for (const item of rawHistory.value) {
-      const existing = articleMap.get(item.article_id)
+      const existing = itemMap.get(item.content_id)
 
       if (existing) {
         // Add channel if not already present
@@ -58,10 +58,10 @@ export function usePublishHistory() {
           existing.published_at = item.published_at
         }
       } else {
-        articleMap.set(item.article_id, {
-          article_id: item.article_id,
-          title: item.article_title,
-          url: item.article_url,
+        itemMap.set(item.content_id, {
+          content_id: item.content_id,
+          title: item.content_title,
+          url: item.content_url,
           quality_score: item.quality_score,
           topics: item.topics || [],
           channels: [item.channel_name],
@@ -72,7 +72,7 @@ export function usePublishHistory() {
     }
 
     // Sort by most recent publish time
-    return Array.from(articleMap.values()).sort(
+    return Array.from(itemMap.values()).sort(
       (a, b) => new Date(b.published_at).getTime() - new Date(a.published_at).getTime()
     )
   })
@@ -91,7 +91,7 @@ export function usePublishHistory() {
       rawHistory.value = response.data?.history || []
     } catch (err) {
       console.error('Failed to fetch publish history:', err)
-      error.value = 'Unable to load recent articles.'
+      error.value = 'Unable to load recent content.'
       // Non-fatal - error state is set, UI will show error message
     }
   }
@@ -174,7 +174,7 @@ export function usePublishHistory() {
 
   return {
     // Data
-    articles: groupedArticles,
+    items: groupedItems,
     rawHistory,
     channels,
 

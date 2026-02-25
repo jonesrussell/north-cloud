@@ -20,8 +20,8 @@ export interface JobProgressEvent {
   type: 'job:progress'
   job_id: string
   execution_id: string
-  articles_found: number
-  articles_indexed: number
+  items_found: number
+  items_indexed: number
   timestamp: string
 }
 
@@ -31,7 +31,7 @@ export interface JobCompletedEvent {
   execution_id: string
   status: 'completed' | 'failed'
   duration_ms: number
-  articles_indexed: number
+  items_indexed: number
   error_message?: string
   timestamp: string
 }

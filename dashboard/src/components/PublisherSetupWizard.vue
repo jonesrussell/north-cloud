@@ -455,7 +455,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { publisherApi } from '../api/client'
-import type { Source, Channel, CreateSourceRequest, CreateChannelRequest, CreateRouteRequest, PreviewArticle } from '../types/publisher'
+import type { Source, Channel, CreateSourceRequest, CreateChannelRequest, CreateRouteRequest, PreviewItem } from '../types/publisher'
 import { ErrorAlert, RoutePreviewPanel } from './common'
 
 const props = defineProps<{
@@ -507,7 +507,7 @@ const route = ref<CreateRouteRequest>({
   enabled: true,
 })
 const topicsInput = ref('')
-const routePreviewPanel = ref<{ refresh: () => void; setLoading: (loading: boolean) => void; setResults: (count: number, articles: PreviewArticle[]) => void; setError: (error: string) => void } | null>(null)
+const routePreviewPanel = ref<{ refresh: () => void; setLoading: (loading: boolean) => void; setResults: (count: number, items: PreviewItem[]) => void; setError: (error: string) => void } | null>(null)
 
 // Load existing sources and channels
 const loadExistingSources = async (): Promise<void> => {
@@ -728,14 +728,14 @@ const handlePreviewRefresh = async (filters: { sourceId?: string; minQualityScor
       topics: filters.topics.join(','),
     })
 
-    const articles = (response.data.sample_articles || []).map((article: PreviewArticle) => ({
-      title: article.title,
-      quality_score: article.quality_score,
-      topics: article.topics || [],
-      published_date: article.published_date,
+    const items = (response.data.sample_items || []).map((item: PreviewItem) => ({
+      title: item.title,
+      quality_score: item.quality_score,
+      topics: item.topics || [],
+      published_date: item.published_date,
     }))
 
-    routePreviewPanel.value?.setResults(response.data.estimated_count || 0, articles)
+    routePreviewPanel.value?.setResults(response.data.estimated_count || 0, items)
   } catch (err: unknown) {
     const axiosError = err as { response?: { data?: { error?: string } } }
     routePreviewPanel.value?.setError(

@@ -14,7 +14,7 @@ export { useServerPaginatedTable } from './useServerPaginatedTable'
 export { usePageNumbers } from './usePageNumbers'
 
 // Publish history
-export { usePublishHistory, type GroupedArticle, type PublishHistoryFilters } from './usePublishHistory'
+export { usePublishHistory, type GroupedItem, type PublishHistoryFilters } from './usePublishHistory'
 export {
   usePublishHistoryTable,
   type PublishHistoryFilters as PublishHistoryTableFilters,
