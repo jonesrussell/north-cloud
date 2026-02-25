@@ -282,7 +282,7 @@ func TestContentTypeClassifier_HasArticleCharacteristics(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := classifier.hasArticleCharacteristics(tt.raw)
+			result := classifier.hasContentCharacteristics(tt.raw)
 			if result != tt.expected {
 				t.Errorf("expected %v, got %v", tt.expected, result)
 			}
@@ -731,8 +731,8 @@ func TestContentTypeClassifier_ArticleWithoutPublishedDate(t *testing.T) {
 	}
 
 	// Confidence should be lower than full heuristic (0.75)
-	if result.Confidence >= articleConfidence {
-		t.Errorf("expected confidence < %f, got %f", articleConfidence, result.Confidence)
+	if result.Confidence >= contentConfidence {
+		t.Errorf("expected confidence < %f, got %f", contentConfidence, result.Confidence)
 	}
 
 	// Method should indicate relaxed heuristic
@@ -937,23 +937,23 @@ func TestContentTypeClassifier_URLFallbackExactPathMatch(t *testing.T) {
 	c := NewContentTypeClassifier(&mockLogger{})
 
 	// Fallback path /news/article-slug → not excluded (excluded = true means treat as non-article)
-	if c.isNonArticleURLFallback("https://example.com/news/article-slug") {
+	if c.isBinaryURLFallback("https://example.com/news/article-slug") {
 		t.Error("fallback path /news/article-slug should not be excluded")
 	}
 
 	// Fallback path /news and /news/ → excluded
-	if !c.isNonArticleURLFallback("https://example.com/news") {
+	if !c.isBinaryURLFallback("https://example.com/news") {
 		t.Error("fallback path /news should be excluded")
 	}
-	if !c.isNonArticleURLFallback("https://example.com/news/") {
+	if !c.isBinaryURLFallback("https://example.com/news/") {
 		t.Error("fallback path /news/ should be excluded")
 	}
 
 	// URL containing /news/ but path is not exact match → not excluded
-	if c.isNonArticleURLFallback("https://example.com/news/crime-report-2026") {
+	if c.isBinaryURLFallback("https://example.com/news/crime-report-2026") {
 		t.Error("fallback path /news/crime-report-2026 should not be excluded (exact match only)")
 	}
-	if c.isNonArticleURLFallback("https://example.com/local-news/mayor-announces-policy") {
+	if c.isBinaryURLFallback("https://example.com/local-news/mayor-announces-policy") {
 		t.Error("fallback path /local-news/mayor-announces-policy should not be excluded")
 	}
 }
