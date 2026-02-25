@@ -13,8 +13,8 @@ const expectedURLHashShortLen = 8
 // testServiceName is the service name used across tests.
 const testServiceName = "crawler"
 
-// testArticleURL is the article URL used across tests.
-const testArticleURL = "https://example.com/article/1"
+// testContentURL is the content URL used across tests.
+const testContentURL = "https://example.com/article/1"
 
 func TestStage_IsValid(t *testing.T) {
 	t.Parallel()
@@ -77,17 +77,17 @@ func TestURLHashShort(t *testing.T) {
 	t.Run("length equals expected", func(t *testing.T) {
 		t.Parallel()
 
-		got := domain.URLHashShort(testArticleURL)
+		got := domain.URLHashShort(testContentURL)
 		if len(got) != expectedURLHashShortLen {
-			t.Errorf("URLHashShort(%q) length = %d, want %d", testArticleURL, len(got), expectedURLHashShortLen)
+			t.Errorf("URLHashShort(%q) length = %d, want %d", testContentURL, len(got), expectedURLHashShortLen)
 		}
 	})
 
 	t.Run("deterministic", func(t *testing.T) {
 		t.Parallel()
 
-		first := domain.URLHashShort(testArticleURL)
-		second := domain.URLHashShort(testArticleURL)
+		first := domain.URLHashShort(testContentURL)
+		second := domain.URLHashShort(testContentURL)
 		if first != second {
 			t.Errorf("URLHashShort is not deterministic: %q != %q", first, second)
 		}
@@ -110,8 +110,8 @@ func TestURLHash(t *testing.T) {
 	t.Run("deterministic", func(t *testing.T) {
 		t.Parallel()
 
-		first := domain.URLHash(testArticleURL)
-		second := domain.URLHash(testArticleURL)
+		first := domain.URLHash(testContentURL)
+		second := domain.URLHash(testContentURL)
 		if first != second {
 			t.Errorf("URLHash is not deterministic: %q != %q", first, second)
 		}
@@ -120,10 +120,10 @@ func TestURLHash(t *testing.T) {
 	t.Run("short hash is prefix of full hash", func(t *testing.T) {
 		t.Parallel()
 
-		full := domain.URLHash(testArticleURL)
-		short := domain.URLHashShort(testArticleURL)
+		full := domain.URLHash(testContentURL)
+		short := domain.URLHashShort(testContentURL)
 		if full[:expectedURLHashShortLen] != short {
-			t.Errorf("URLHashShort(%q) = %q, but URLHash starts with %q", testArticleURL, short, full[:expectedURLHashShortLen])
+			t.Errorf("URLHashShort(%q) = %q, but URLHash starts with %q", testContentURL, short, full[:expectedURLHashShortLen])
 		}
 	})
 }
@@ -136,7 +136,7 @@ func TestGenerateIdempotencyKey(t *testing.T) {
 	t.Run("non-empty", func(t *testing.T) {
 		t.Parallel()
 
-		key := domain.GenerateIdempotencyKey(testServiceName, domain.StageCrawled, testArticleURL, fixedTime)
+		key := domain.GenerateIdempotencyKey(testServiceName, domain.StageCrawled, testContentURL, fixedTime)
 		if key == "" {
 			t.Error("GenerateIdempotencyKey returned empty string")
 		}
@@ -145,8 +145,8 @@ func TestGenerateIdempotencyKey(t *testing.T) {
 	t.Run("deterministic", func(t *testing.T) {
 		t.Parallel()
 
-		first := domain.GenerateIdempotencyKey(testServiceName, domain.StageCrawled, testArticleURL, fixedTime)
-		second := domain.GenerateIdempotencyKey(testServiceName, domain.StageCrawled, testArticleURL, fixedTime)
+		first := domain.GenerateIdempotencyKey(testServiceName, domain.StageCrawled, testContentURL, fixedTime)
+		second := domain.GenerateIdempotencyKey(testServiceName, domain.StageCrawled, testContentURL, fixedTime)
 		if first != second {
 			t.Errorf("GenerateIdempotencyKey is not deterministic: %q != %q", first, second)
 		}
@@ -155,8 +155,8 @@ func TestGenerateIdempotencyKey(t *testing.T) {
 	t.Run("different service produces different key", func(t *testing.T) {
 		t.Parallel()
 
-		keyA := domain.GenerateIdempotencyKey("crawler", domain.StageCrawled, testArticleURL, fixedTime)
-		keyB := domain.GenerateIdempotencyKey("classifier", domain.StageCrawled, testArticleURL, fixedTime)
+		keyA := domain.GenerateIdempotencyKey("crawler", domain.StageCrawled, testContentURL, fixedTime)
+		keyB := domain.GenerateIdempotencyKey("classifier", domain.StageCrawled, testContentURL, fixedTime)
 		if keyA == keyB {
 			t.Errorf("different services produced same key: %q", keyA)
 		}
@@ -165,8 +165,8 @@ func TestGenerateIdempotencyKey(t *testing.T) {
 	t.Run("different stage produces different key", func(t *testing.T) {
 		t.Parallel()
 
-		keyA := domain.GenerateIdempotencyKey(testServiceName, domain.StageCrawled, testArticleURL, fixedTime)
-		keyB := domain.GenerateIdempotencyKey(testServiceName, domain.StageClassified, testArticleURL, fixedTime)
+		keyA := domain.GenerateIdempotencyKey(testServiceName, domain.StageCrawled, testContentURL, fixedTime)
+		keyB := domain.GenerateIdempotencyKey(testServiceName, domain.StageClassified, testContentURL, fixedTime)
 		if keyA == keyB {
 			t.Errorf("different stages produced same key: %q", keyA)
 		}
@@ -187,8 +187,8 @@ func TestGenerateIdempotencyKey(t *testing.T) {
 
 		timeA := time.Date(2025, time.January, 1, 12, 0, 0, 0, time.UTC)
 		timeB := time.Date(2025, time.January, 2, 12, 0, 0, 0, time.UTC)
-		keyA := domain.GenerateIdempotencyKey(testServiceName, domain.StageCrawled, testArticleURL, timeA)
-		keyB := domain.GenerateIdempotencyKey(testServiceName, domain.StageCrawled, testArticleURL, timeB)
+		keyA := domain.GenerateIdempotencyKey(testServiceName, domain.StageCrawled, testContentURL, timeA)
+		keyB := domain.GenerateIdempotencyKey(testServiceName, domain.StageCrawled, testContentURL, timeB)
 		if keyA == keyB {
 			t.Errorf("different times produced same key: %q", keyA)
 		}

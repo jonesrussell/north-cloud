@@ -61,8 +61,8 @@ const wwwPrefix = "www."
 // idempotencyKeySeparator is the delimiter used in GenerateIdempotencyKey.
 const idempotencyKeySeparator = ":"
 
-// Article represents a unique piece of content tracked across the pipeline.
-type Article struct {
+// ContentItem represents a unique piece of content tracked across the pipeline.
+type ContentItem struct {
 	URL         string    `json:"url"`
 	URLHash     string    `json:"url_hash"`
 	Domain      string    `json:"domain"`
@@ -70,10 +70,10 @@ type Article struct {
 	FirstSeenAt time.Time `json:"first_seen_at"`
 }
 
-// PipelineEvent records a single stage transition for an article.
+// PipelineEvent records a single stage transition for a content item.
 type PipelineEvent struct {
 	ID                    int64          `json:"id"`
-	ArticleURL            string         `json:"article_url"`
+	ContentURL            string         `json:"content_url"`
 	Stage                 Stage          `json:"stage"`
 	OccurredAt            time.Time      `json:"occurred_at"`
 	ReceivedAt            time.Time      `json:"received_at"`
@@ -85,7 +85,7 @@ type PipelineEvent struct {
 
 // IngestRequest is the payload accepted by the event ingestion endpoint.
 type IngestRequest struct {
-	ArticleURL     string         `binding:"required"               json:"article_url"`
+	ContentURL     string         `binding:"required"               json:"content_url"`
 	SourceName     string         `binding:"required"               json:"source_name"`
 	Stage          Stage          `binding:"required"               json:"stage"`
 	OccurredAt     time.Time      `binding:"required"               json:"occurred_at"`
@@ -101,9 +101,9 @@ type BatchIngestRequest struct {
 
 // FunnelStage holds aggregated counts for a single pipeline stage in a funnel report.
 type FunnelStage struct {
-	Name           string `json:"name"`
-	Count          int64  `json:"count"`
-	UniqueArticles int64  `json:"unique_articles"`
+	Name        string `json:"name"`
+	Count       int64  `json:"count"`
+	UniqueItems int64  `json:"unique_items"`
 }
 
 // FunnelResponse is the top-level response for the pipeline funnel endpoint.
@@ -141,11 +141,11 @@ func ExtractDomain(rawURL string) string {
 
 // GenerateIdempotencyKey produces a deterministic key for deduplicating pipeline events.
 // Format: {serviceName}:{stage}:{urlhash8}:{occurredAt RFC3339}.
-func GenerateIdempotencyKey(serviceName string, stage Stage, articleURL string, occurredAt time.Time) string {
+func GenerateIdempotencyKey(serviceName string, stage Stage, contentURL string, occurredAt time.Time) string {
 	return strings.Join([]string{
 		serviceName,
 		string(stage),
-		URLHashShort(articleURL),
+		URLHashShort(contentURL),
 		occurredAt.Format(time.RFC3339),
 	}, idempotencyKeySeparator)
 }

@@ -57,7 +57,7 @@ func TestIngestHandler_IngestEvent_Success(t *testing.T) {
 	router := setupTestRouter(t, handler)
 
 	body := map[string]any{
-		"article_url":  "https://example.com/article",
+		"content_url":  "https://example.com/article",
 		"source_name":  "example_com",
 		"stage":        "crawled",
 		"occurred_at":  time.Now().UTC().Format(time.RFC3339),
@@ -90,7 +90,7 @@ func TestIngestHandler_IngestEvent_BadRequest(t *testing.T) {
 	router := setupTestRouter(t, handler)
 
 	// Missing required fields
-	body := map[string]any{"article_url": "https://example.com"}
+	body := map[string]any{"content_url": "https://example.com"}
 
 	bodyJSON, marshalErr := json.Marshal(body)
 	if marshalErr != nil {
@@ -122,7 +122,7 @@ func TestIngestHandler_IngestEvent_ServiceError(t *testing.T) {
 	router := setupTestRouter(t, handler)
 
 	body := map[string]any{
-		"article_url":  "https://example.com/article",
+		"content_url":  "https://example.com/article",
 		"source_name":  "example_com",
 		"stage":        "crawled",
 		"occurred_at":  time.Now().UTC().Format(time.RFC3339),
@@ -157,14 +157,14 @@ func TestIngestHandler_IngestBatch_Success(t *testing.T) {
 	body := map[string]any{
 		"events": []map[string]any{
 			{
-				"article_url":  "https://example.com/article-1",
+				"content_url":  "https://example.com/article-1",
 				"source_name":  "example_com",
 				"stage":        "crawled",
 				"occurred_at":  time.Now().UTC().Format(time.RFC3339),
 				"service_name": "crawler",
 			},
 			{
-				"article_url":  "https://example.com/article-2",
+				"content_url":  "https://example.com/article-2",
 				"source_name":  "example_com",
 				"stage":        "classified",
 				"occurred_at":  time.Now().UTC().Format(time.RFC3339),
@@ -215,7 +215,7 @@ func TestIngestHandler_IngestBatch_ServiceError(t *testing.T) {
 	body := map[string]any{
 		"events": []map[string]any{
 			{
-				"article_url":  "https://example.com/article-1",
+				"content_url":  "https://example.com/article-1",
 				"source_name":  "example_com",
 				"stage":        "crawled",
 				"occurred_at":  time.Now().UTC().Format(time.RFC3339),

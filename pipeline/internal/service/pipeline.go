@@ -14,7 +14,7 @@ const maxEventAge = 24 * time.Hour
 
 // Repository is the data access interface for pipeline events.
 type Repository interface {
-	UpsertArticle(ctx context.Context, article *domain.Article) error
+	UpsertContentItem(ctx context.Context, item *domain.ContentItem) error
 	InsertEvent(ctx context.Context, event *domain.PipelineEvent) error
 	GetFunnel(ctx context.Context, from, to time.Time) ([]domain.FunnelStage, error)
 	Ping(ctx context.Context) error
@@ -43,24 +43,24 @@ func (s *PipelineService) Ingest(ctx context.Context, req *domain.IngestRequest)
 	// Auto-generate idempotency key if not provided
 	if req.IdempotencyKey == "" {
 		req.IdempotencyKey = domain.GenerateIdempotencyKey(
-			req.ServiceName, req.Stage, req.ArticleURL, req.OccurredAt,
+			req.ServiceName, req.Stage, req.ContentURL, req.OccurredAt,
 		)
 	}
 
-	// Upsert article
-	article := &domain.Article{
-		URL:        req.ArticleURL,
-		URLHash:    domain.URLHash(req.ArticleURL),
-		Domain:     domain.ExtractDomain(req.ArticleURL),
+	// Upsert content item
+	item := &domain.ContentItem{
+		URL:        req.ContentURL,
+		URLHash:    domain.URLHash(req.ContentURL),
+		Domain:     domain.ExtractDomain(req.ContentURL),
 		SourceName: req.SourceName,
 	}
-	if upsertErr := s.repo.UpsertArticle(ctx, article); upsertErr != nil {
-		return fmt.Errorf("upsert article: %w", upsertErr)
+	if upsertErr := s.repo.UpsertContentItem(ctx, item); upsertErr != nil {
+		return fmt.Errorf("upsert content item: %w", upsertErr)
 	}
 
 	// Insert event
 	event := &domain.PipelineEvent{
-		ArticleURL:            req.ArticleURL,
+		ContentURL:            req.ContentURL,
 		Stage:                 req.Stage,
 		OccurredAt:            req.OccurredAt,
 		ServiceName:           req.ServiceName,

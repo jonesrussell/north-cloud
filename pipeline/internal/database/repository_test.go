@@ -10,7 +10,7 @@ import (
 	"github.com/jonesrussell/north-cloud/pipeline/internal/domain"
 )
 
-func TestRepository_UpsertArticle(t *testing.T) {
+func TestRepository_UpsertContentItem(t *testing.T) {
 	t.Helper()
 
 	db, mock, setupErr := sqlmock.New()
@@ -26,7 +26,7 @@ func TestRepository_UpsertArticle(t *testing.T) {
 		WithArgs("https://example.com/article", sqlmock.AnyArg(), "example.com", "example_com").
 		WillReturnResult(sqlmock.NewResult(0, 1))
 
-	upsertErr := repo.UpsertArticle(ctx, &domain.Article{
+	upsertErr := repo.UpsertContentItem(ctx, &domain.ContentItem{
 		URL:        "https://example.com/article",
 		URLHash:    domain.URLHash("https://example.com/article"),
 		Domain:     "example.com",
@@ -34,7 +34,7 @@ func TestRepository_UpsertArticle(t *testing.T) {
 	})
 
 	if upsertErr != nil {
-		t.Errorf("UpsertArticle() error = %v", upsertErr)
+		t.Errorf("UpsertContentItem() error = %v", upsertErr)
 	}
 
 	if expectErr := mock.ExpectationsWereMet(); expectErr != nil {
@@ -69,7 +69,7 @@ func TestRepository_InsertEvent(t *testing.T) {
 		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(1))
 
 	event := &domain.PipelineEvent{
-		ArticleURL:            "https://example.com/article",
+		ContentURL:            "https://example.com/article",
 		Stage:                 domain.StageClassified,
 		OccurredAt:            occurredAt,
 		ServiceName:           "classifier",

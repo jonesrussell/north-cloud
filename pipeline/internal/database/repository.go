@@ -25,8 +25,8 @@ func (r *Repository) Ping(ctx context.Context) error {
 	return r.db.PingContext(ctx)
 }
 
-// UpsertArticle inserts or updates an article record.
-func (r *Repository) UpsertArticle(ctx context.Context, article *domain.Article) error {
+// UpsertContentItem inserts or updates a content item record.
+func (r *Repository) UpsertContentItem(ctx context.Context, item *domain.ContentItem) error {
 	query := `
 		INSERT INTO articles (url, url_hash, domain, source_name)
 		VALUES ($1, $2, $3, $4)
@@ -34,13 +34,13 @@ func (r *Repository) UpsertArticle(ctx context.Context, article *domain.Article)
 	`
 
 	_, err := r.db.ExecContext(ctx, query,
-		article.URL,
-		article.URLHash,
-		article.Domain,
-		article.SourceName,
+		item.URL,
+		item.URLHash,
+		item.Domain,
+		item.SourceName,
 	)
 	if err != nil {
-		return fmt.Errorf("upsert article: %w", err)
+		return fmt.Errorf("upsert content item: %w", err)
 	}
 
 	return nil
@@ -63,7 +63,7 @@ func (r *Repository) InsertEvent(ctx context.Context, event *domain.PipelineEven
 
 	var id int64
 	scanErr := r.db.QueryRowContext(ctx, query,
-		event.ArticleURL,
+		event.ContentURL,
 		string(event.Stage),
 		event.OccurredAt,
 		event.ServiceName,
@@ -107,7 +107,7 @@ func (r *Repository) GetFunnel(ctx context.Context, from, to time.Time) ([]domai
 	var stages []domain.FunnelStage
 	for rows.Next() {
 		var s domain.FunnelStage
-		if scanErr := rows.Scan(&s.Name, &s.Count, &s.UniqueArticles); scanErr != nil {
+		if scanErr := rows.Scan(&s.Name, &s.Count, &s.UniqueItems); scanErr != nil {
 			return nil, fmt.Errorf("scan funnel row: %w", scanErr)
 		}
 		stages = append(stages, s)

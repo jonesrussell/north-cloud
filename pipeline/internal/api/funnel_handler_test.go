@@ -48,7 +48,7 @@ func TestFunnelHandler_GetFunnel_DefaultPeriod(t *testing.T) {
 				Period:   "today",
 				Timezone: "UTC",
 				Stages: []domain.FunnelStage{
-					{Name: "crawled", Count: 100, UniqueArticles: 90},
+					{Name: "crawled", Count: 100, UniqueItems: 90},
 				},
 				GeneratedAt: time.Now().UTC(),
 			}, nil
