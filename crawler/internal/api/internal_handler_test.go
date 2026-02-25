@@ -115,9 +115,9 @@ func TestFetchHandler_Success(t *testing.T) {
 	verifySuccessContentExtraction(t, &resp)
 	verifySuccessOGMetadata(t, &resp)
 
-	// Verify duration is reasonable
-	if resp.DurationMS <= 0 {
-		t.Errorf("expected positive duration_ms, got %d", resp.DurationMS)
+	// Verify duration is non-negative (may be 0 when mock server responds in < 1ms)
+	if resp.DurationMS < 0 {
+		t.Errorf("expected non-negative duration_ms, got %d", resp.DurationMS)
 	}
 }
 
