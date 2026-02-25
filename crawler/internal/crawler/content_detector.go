@@ -8,7 +8,7 @@ import (
 	colly "github.com/gocolly/colly/v2"
 )
 
-// Minimum number of hyphen-separated words in a slug to consider it article-like.
+// Minimum number of hyphen-separated words in a slug to consider it content-like.
 const minSlugWordCount = 4
 
 // DetectedContentType identifies the structured content type detected from URL/HTML.
@@ -210,7 +210,7 @@ func isBinaryPath(lowerPath string) bool {
 	return false
 }
 
-// hasDatePath checks if the path matches a date-based article URL pattern.
+// hasDatePath checks if the path matches a date-based content URL pattern.
 func hasDatePath(path string) bool {
 	return datePathPattern.MatchString(path)
 }

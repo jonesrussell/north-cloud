@@ -11,21 +11,21 @@ func TestRecipeDomain_NilRecipe(t *testing.T) {
 	d := router.NewRecipeDomain()
 	routes := d.Routes(&router.ContentItem{})
 	if routes != nil {
-		t.Error("expected nil routes for article without recipe data")
+		t.Error("expected nil routes for item without recipe data")
 	}
 }
 
 func TestRecipeDomain_WithCategoryAndCuisine(t *testing.T) {
 	t.Helper()
 	d := router.NewRecipeDomain()
-	article := &router.ContentItem{
+	item := &router.ContentItem{
 		Recipe: &router.RecipeData{
 			ExtractionMethod: "schema_org",
 			Category:         "Dessert",
 			Cuisine:          "Italian",
 		},
 	}
-	routes := d.Routes(article)
+	routes := d.Routes(item)
 	if len(routes) == 0 {
 		t.Fatal("expected routes")
 	}
@@ -36,7 +36,7 @@ func TestRecipeDomain_WithCategoryAndCuisine(t *testing.T) {
 	}
 
 	if !channels["content:recipes"] {
-		t.Error("expected articles:recipes channel")
+		t.Error("expected content:recipes channel")
 	}
 	if !channels["recipes:category:dessert"] {
 		t.Error("expected recipes:category:dessert channel")
@@ -57,18 +57,18 @@ func TestRecipeDomain_Name(t *testing.T) {
 func TestRecipeDomain_OnlyCategory(t *testing.T) {
 	t.Helper()
 	d := router.NewRecipeDomain()
-	article := &router.ContentItem{
+	item := &router.ContentItem{
 		Recipe: &router.RecipeData{
 			Category: "Soup",
 		},
 	}
-	routes := d.Routes(article)
+	routes := d.Routes(item)
 	channels := make(map[string]bool)
 	for _, r := range routes {
 		channels[r.Channel] = true
 	}
 	if !channels["content:recipes"] {
-		t.Error("expected articles:recipes")
+		t.Error("expected content:recipes")
 	}
 	if !channels["recipes:category:soup"] {
 		t.Error("expected recipes:category:soup")

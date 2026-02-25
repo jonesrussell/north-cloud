@@ -7,7 +7,7 @@ import (
 
 func TestGenerateEntertainmentChannels_CoreHomepage(t *testing.T) {
 	t.Helper()
-	article := &ContentItem{
+	item := &ContentItem{
 		Title: "Film review",
 		Entertainment: &EntertainmentData{
 			Relevance:        EntertainmentRelevanceCore,
@@ -16,7 +16,7 @@ func TestGenerateEntertainmentChannels_CoreHomepage(t *testing.T) {
 		},
 	}
 
-	routes := NewEntertainmentDomain().Routes(article)
+	routes := NewEntertainmentDomain().Routes(item)
 	channels := routeChannelNames(routes)
 	if len(channels) < 2 {
 		t.Fatalf("expected at least 2 channels (homepage + categories), got %d", len(channels))
@@ -41,14 +41,14 @@ func TestGenerateEntertainmentChannels_CoreHomepage(t *testing.T) {
 
 func TestGenerateEntertainmentChannels_Peripheral(t *testing.T) {
 	t.Helper()
-	article := &ContentItem{
+	item := &ContentItem{
 		Title: "Arts news",
 		Entertainment: &EntertainmentData{
 			Relevance: EntertainmentRelevancePeripheral,
 		},
 	}
 
-	routes := NewEntertainmentDomain().Routes(article)
+	routes := NewEntertainmentDomain().Routes(item)
 	channels := routeChannelNames(routes)
 
 	if len(channels) != 1 || channels[0] != "entertainment:peripheral" {
@@ -58,14 +58,14 @@ func TestGenerateEntertainmentChannels_Peripheral(t *testing.T) {
 
 func TestGenerateEntertainmentChannels_NotEntertainment(t *testing.T) {
 	t.Helper()
-	article := &ContentItem{
+	item := &ContentItem{
 		Title: "Weather report",
 		Entertainment: &EntertainmentData{
 			Relevance: EntertainmentRelevanceNot,
 		},
 	}
 
-	routes := NewEntertainmentDomain().Routes(article)
+	routes := NewEntertainmentDomain().Routes(item)
 	channels := routeChannelNames(routes)
 	if len(channels) != 0 {
 		t.Errorf("expected no channels, got %v", channels)
@@ -74,9 +74,9 @@ func TestGenerateEntertainmentChannels_NotEntertainment(t *testing.T) {
 
 func TestGenerateEntertainmentChannels_NilEntertainment(t *testing.T) {
 	t.Helper()
-	article := &ContentItem{Title: "No classification"}
+	item := &ContentItem{Title: "No classification"}
 
-	routes := NewEntertainmentDomain().Routes(article)
+	routes := NewEntertainmentDomain().Routes(item)
 	channels := routeChannelNames(routes)
 	if len(channels) != 0 {
 		t.Errorf("expected no channels, got %v", channels)

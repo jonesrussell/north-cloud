@@ -145,7 +145,7 @@ func (c *Crawler) validateAndSetup(ctx context.Context, sourceID string) (*confi
 		return nil, fmt.Errorf("failed to setup collector: %w", setupErr)
 	}
 
-	// Set up collector callbacks (discovery, article detection, extraction)
+	// Set up collector callbacks (discovery, content detection, extraction)
 	c.setupCallbacks(ctx)
 
 	// Start the crawler state

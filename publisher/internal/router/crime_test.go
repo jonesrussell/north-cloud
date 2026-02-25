@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestArticle_UnmarshalNestedCrimeFields(t *testing.T) {
+func TestContentItem_UnmarshalNestedCrimeFields(t *testing.T) {
 	t.Helper()
 
 	esJSON := `{
@@ -41,23 +41,23 @@ func TestArticle_UnmarshalNestedCrimeFields(t *testing.T) {
 		}
 	}`
 
-	var article ContentItem
-	err := json.Unmarshal([]byte(esJSON), &article)
+	var item ContentItem
+	err := json.Unmarshal([]byte(esJSON), &item)
 	require.NoError(t, err)
 
 	// Nested structs populated
-	require.NotNil(t, article.Crime)
-	assert.Equal(t, "core_street_crime", article.Crime.Relevance)
-	assert.True(t, article.Crime.Homepage)
-	assert.Equal(t, []string{"violent-crime", "crime"}, article.Crime.Categories)
+	require.NotNil(t, item.Crime)
+	assert.Equal(t, "core_street_crime", item.Crime.Relevance)
+	assert.True(t, item.Crime.Homepage)
+	assert.Equal(t, []string{"violent-crime", "crime"}, item.Crime.Categories)
 
-	require.NotNil(t, article.Location)
-	assert.Equal(t, "vancouver", article.Location.City)
-	assert.Equal(t, "BC", article.Location.Province)
-	assert.Equal(t, "canada", article.Location.Country)
+	require.NotNil(t, item.Location)
+	assert.Equal(t, "vancouver", item.Location.City)
+	assert.Equal(t, "BC", item.Location.Province)
+	assert.Equal(t, "canada", item.Location.Country)
 }
 
-func TestArticle_FullUnmarshalPipeline(t *testing.T) {
+func TestContentItem_FullUnmarshalPipeline(t *testing.T) {
 	t.Helper()
 
 	esJSON := `{
@@ -87,30 +87,30 @@ func TestArticle_FullUnmarshalPipeline(t *testing.T) {
 		}
 	}`
 
-	var article ContentItem
-	err := json.Unmarshal([]byte(esJSON), &article)
+	var item ContentItem
+	err := json.Unmarshal([]byte(esJSON), &item)
 	require.NoError(t, err)
-	article.extractNestedFields()
+	item.extractNestedFields()
 
 	// Crime channels should now generate correctly
-	routes := NewCrimeDomain().Routes(&article)
+	routes := NewCrimeDomain().Routes(&item)
 	crimeChannels := routeChannelNames(routes)
 	assert.Contains(t, crimeChannels, "crime:homepage")
 	assert.Contains(t, crimeChannels, "crime:category:drug-crime")
 	assert.Contains(t, crimeChannels, "crime:category:crime")
 
 	// Location channels should now generate correctly
-	locationRoutes := NewLocationDomain().Routes(&article)
+	locationRoutes := NewLocationDomain().Routes(&item)
 	locationChannels := routeChannelNames(locationRoutes)
 	assert.Contains(t, locationChannels, "crime:local:toronto")
 	assert.Contains(t, locationChannels, "crime:province:on")
 	assert.Contains(t, locationChannels, "crime:canada")
 }
 
-func TestArticle_ExtractNestedFields_Crime(t *testing.T) {
+func TestContentItem_ExtractNestedFields_Crime(t *testing.T) {
 	t.Helper()
 
-	article := ContentItem{
+	item := ContentItem{
 		Crime: &CrimeData{
 			Relevance:  "core_street_crime",
 			SubLabel:   "",
@@ -128,40 +128,40 @@ func TestArticle_ExtractNestedFields_Crime(t *testing.T) {
 		},
 	}
 
-	article.extractNestedFields()
+	item.extractNestedFields()
 
 	// Crime flat fields populated
-	assert.Equal(t, "core_street_crime", article.CrimeRelevance)
-	assert.Empty(t, article.CrimeSubLabel)
-	assert.Equal(t, []string{"violent_crime"}, article.CrimeTypes)
-	assert.True(t, article.HomepageEligible)
-	assert.Equal(t, []string{"violent-crime", "crime"}, article.CategoryPages)
+	assert.Equal(t, "core_street_crime", item.CrimeRelevance)
+	assert.Empty(t, item.CrimeSubLabel)
+	assert.Equal(t, []string{"violent_crime"}, item.CrimeTypes)
+	assert.True(t, item.HomepageEligible)
+	assert.Equal(t, []string{"violent-crime", "crime"}, item.CategoryPages)
 
 	// Location flat fields populated
-	assert.Equal(t, "vancouver", article.LocationCity)
-	assert.Equal(t, "BC", article.LocationProvince)
-	assert.Equal(t, "canada", article.LocationCountry)
-	assert.Equal(t, "city", article.LocationSpecificity)
-	assert.InDelta(t, 0.85, article.LocationConfidence, 0.001)
+	assert.Equal(t, "vancouver", item.LocationCity)
+	assert.Equal(t, "BC", item.LocationProvince)
+	assert.Equal(t, "canada", item.LocationCountry)
+	assert.Equal(t, "city", item.LocationSpecificity)
+	assert.InDelta(t, 0.85, item.LocationConfidence, 0.001)
 }
 
-func TestArticle_ExtractNestedFields_NilCrime(t *testing.T) {
+func TestContentItem_ExtractNestedFields_NilCrime(t *testing.T) {
 	t.Helper()
 
-	article := ContentItem{
+	item := ContentItem{
 		CrimeRelevance: "should-not-change",
 	}
 
-	article.extractNestedFields()
+	item.extractNestedFields()
 
 	// Flat fields untouched when nested structs are nil
-	assert.Equal(t, "should-not-change", article.CrimeRelevance)
+	assert.Equal(t, "should-not-change", item.CrimeRelevance)
 }
 
 func TestCrimeRouter_Route_HomepageEligible(t *testing.T) {
 	t.Helper()
 
-	article := &ContentItem{
+	item := &ContentItem{
 		ID:               "test-1",
 		Title:            "Murder suspect arrested",
 		HomepageEligible: true,
@@ -169,7 +169,7 @@ func TestCrimeRouter_Route_HomepageEligible(t *testing.T) {
 		CategoryPages:    []string{"violent-crime", "crime"},
 	}
 
-	routes := NewCrimeDomain().Routes(article)
+	routes := NewCrimeDomain().Routes(item)
 	channels := routeChannelNames(routes)
 
 	if !containsChannel(channels, "crime:homepage") {
@@ -184,7 +184,7 @@ func TestCrimeRouter_Route_CoreNotHomepageEligible(t *testing.T) {
 	t.Helper()
 
 	// Core street crime that's not homepage eligible still gets category pages
-	article := &ContentItem{
+	item := &ContentItem{
 		ID:               "test-2",
 		Title:            "Minor incident",
 		HomepageEligible: false,
@@ -192,11 +192,11 @@ func TestCrimeRouter_Route_CoreNotHomepageEligible(t *testing.T) {
 		CategoryPages:    []string{"crime"},
 	}
 
-	routes := NewCrimeDomain().Routes(article)
+	routes := NewCrimeDomain().Routes(item)
 	channels := routeChannelNames(routes)
 
 	if containsChannel(channels, "crime:homepage") {
-		t.Error("should not include homepage for non-eligible article")
+		t.Error("should not include homepage for non-eligible item")
 	}
 
 	if !containsChannel(channels, "crime:category:crime") {
@@ -207,13 +207,13 @@ func TestCrimeRouter_Route_CoreNotHomepageEligible(t *testing.T) {
 func TestCrimeRouter_Route_NotCrime(t *testing.T) {
 	t.Helper()
 
-	article := &ContentItem{
+	item := &ContentItem{
 		ID:             "test-3",
 		Title:          "Weather forecast",
 		CrimeRelevance: "not_crime",
 	}
 
-	routes := NewCrimeDomain().Routes(article)
+	routes := NewCrimeDomain().Routes(item)
 	channels := routeChannelNames(routes)
 
 	if len(channels) > 0 {
@@ -224,14 +224,14 @@ func TestCrimeRouter_Route_NotCrime(t *testing.T) {
 func TestCrimeRouter_Route_PeripheralCrime_CriminalJustice(t *testing.T) {
 	t.Helper()
 
-	article := &ContentItem{
+	item := &ContentItem{
 		ID:             "test-sub-1",
 		Title:          "Man sentenced to 10 years",
 		CrimeRelevance: "peripheral_crime",
 		CrimeSubLabel:  "criminal_justice",
 	}
 
-	routes := NewCrimeDomain().Routes(article)
+	routes := NewCrimeDomain().Routes(item)
 	channels := routeChannelNames(routes)
 
 	if len(channels) != 1 || channels[0] != "crime:courts" {
@@ -242,14 +242,14 @@ func TestCrimeRouter_Route_PeripheralCrime_CriminalJustice(t *testing.T) {
 func TestCrimeRouter_Route_PeripheralCrime_CrimeContext(t *testing.T) {
 	t.Helper()
 
-	article := &ContentItem{
+	item := &ContentItem{
 		ID:             "test-sub-2",
 		Title:          "DOJ releases documents",
 		CrimeRelevance: "peripheral_crime",
 		CrimeSubLabel:  "crime_context",
 	}
 
-	routes := NewCrimeDomain().Routes(article)
+	routes := NewCrimeDomain().Routes(item)
 	channels := routeChannelNames(routes)
 
 	if len(channels) != 1 || channels[0] != "crime:context" {
@@ -260,14 +260,14 @@ func TestCrimeRouter_Route_PeripheralCrime_CrimeContext(t *testing.T) {
 func TestCrimeRouter_Route_PeripheralCrime_NoSubLabel(t *testing.T) {
 	t.Helper()
 
-	article := &ContentItem{
+	item := &ContentItem{
 		ID:             "test-sub-3",
-		Title:          "Peripheral crime article",
+		Title:          "Peripheral crime item",
 		CrimeRelevance: "peripheral_crime",
 		CrimeSubLabel:  "",
 	}
 
-	routes := NewCrimeDomain().Routes(article)
+	routes := NewCrimeDomain().Routes(item)
 	channels := routeChannelNames(routes)
 
 	if len(channels) != 1 || channels[0] != "crime:context" {

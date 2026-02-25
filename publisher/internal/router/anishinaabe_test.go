@@ -7,7 +7,7 @@ import (
 
 func TestGenerateAnishinaabeChannels_Core(t *testing.T) {
 	t.Helper()
-	article := &ContentItem{
+	item := &ContentItem{
 		Title: "First Nations governance",
 		Anishinaabe: &AnishinaabeData{
 			Relevance:  AnishinaabeRelevanceCore,
@@ -15,10 +15,10 @@ func TestGenerateAnishinaabeChannels_Core(t *testing.T) {
 		},
 	}
 
-	routes := NewAnishinaabeeDomain().Routes(article)
+	routes := NewAnishinaabeeDomain().Routes(item)
 	channels := routeChannelNames(routes)
 	if len(channels) < 2 {
-		t.Fatalf("expected at least 2 channels (articles:anishinaabe + categories), got %d", len(channels))
+		t.Fatalf("expected at least 2 channels (content:anishinaabe + categories), got %d", len(channels))
 	}
 	hasArticles := false
 	hasCategory := false
@@ -31,7 +31,7 @@ func TestGenerateAnishinaabeChannels_Core(t *testing.T) {
 		}
 	}
 	if !hasArticles {
-		t.Error("expected articles:anishinaabe channel")
+		t.Error("expected content:anishinaabe channel")
 	}
 	if !hasCategory {
 		t.Error("expected anishinaabe:category:* channel")
@@ -40,7 +40,7 @@ func TestGenerateAnishinaabeChannels_Core(t *testing.T) {
 
 func TestGenerateAnishinaabeChannels_Peripheral(t *testing.T) {
 	t.Helper()
-	article := &ContentItem{
+	item := &ContentItem{
 		Title: "Indigenous reconciliation",
 		Anishinaabe: &AnishinaabeData{
 			Relevance:  AnishinaabeRelevancePeripheral,
@@ -48,7 +48,7 @@ func TestGenerateAnishinaabeChannels_Peripheral(t *testing.T) {
 		},
 	}
 
-	routes := NewAnishinaabeeDomain().Routes(article)
+	routes := NewAnishinaabeeDomain().Routes(item)
 	channels := routeChannelNames(routes)
 	if len(channels) < 2 {
 		t.Fatalf("expected at least 2 channels, got %d", len(channels))
@@ -61,20 +61,20 @@ func TestGenerateAnishinaabeChannels_Peripheral(t *testing.T) {
 		}
 	}
 	if !hasArticles {
-		t.Error("expected articles:anishinaabe channel")
+		t.Error("expected content:anishinaabe channel")
 	}
 }
 
 func TestGenerateAnishinaabeChannels_NotAnishinaabe(t *testing.T) {
 	t.Helper()
-	article := &ContentItem{
+	item := &ContentItem{
 		Title: "Weather report",
 		Anishinaabe: &AnishinaabeData{
 			Relevance: AnishinaabeRelevanceNot,
 		},
 	}
 
-	routes := NewAnishinaabeeDomain().Routes(article)
+	routes := NewAnishinaabeeDomain().Routes(item)
 	if len(routes) != 0 {
 		t.Errorf("expected no channels, got %v", routeChannelNames(routes))
 	}
@@ -82,9 +82,9 @@ func TestGenerateAnishinaabeChannels_NotAnishinaabe(t *testing.T) {
 
 func TestGenerateAnishinaabeChannels_NilAnishinaabe(t *testing.T) {
 	t.Helper()
-	article := &ContentItem{Title: "No classification"}
+	item := &ContentItem{Title: "No classification"}
 
-	routes := NewAnishinaabeeDomain().Routes(article)
+	routes := NewAnishinaabeeDomain().Routes(item)
 	channels := routeChannelNames(routes)
 	if len(channels) != 0 {
 		t.Errorf("expected no channels, got %v", channels)

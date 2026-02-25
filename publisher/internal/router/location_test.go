@@ -12,7 +12,7 @@ import (
 func TestGenerateLocationChannels_CrimeCanadianCity(t *testing.T) {
 	t.Helper()
 
-	article := &ContentItem{
+	item := &ContentItem{
 		ID:                  "loc-crime-city",
 		CrimeRelevance:      "core_street_crime",
 		LocationCity:        "sudbury",
@@ -21,7 +21,7 @@ func TestGenerateLocationChannels_CrimeCanadianCity(t *testing.T) {
 		LocationSpecificity: "city",
 	}
 
-	routes := NewLocationDomain().Routes(article)
+	routes := NewLocationDomain().Routes(item)
 	channels := routeChannelNames(routes)
 
 	assert.Contains(t, channels, "crime:local:sudbury")
@@ -33,14 +33,14 @@ func TestGenerateLocationChannels_CrimeCanadianCity(t *testing.T) {
 func TestGenerateLocationChannels_CrimeInternational(t *testing.T) {
 	t.Helper()
 
-	article := &ContentItem{
+	item := &ContentItem{
 		ID:                  "loc-crime-intl",
 		CrimeRelevance:      "core_street_crime",
 		LocationCountry:     "united_states",
 		LocationSpecificity: "country",
 	}
 
-	routes := NewLocationDomain().Routes(article)
+	routes := NewLocationDomain().Routes(item)
 	channels := routeChannelNames(routes)
 
 	assert.Equal(t, []string{"crime:international"}, channels)
@@ -49,7 +49,7 @@ func TestGenerateLocationChannels_CrimeInternational(t *testing.T) {
 func TestGenerateLocationChannels_CrimeProvinceOnly(t *testing.T) {
 	t.Helper()
 
-	article := &ContentItem{
+	item := &ContentItem{
 		ID:                  "loc-crime-province",
 		CrimeRelevance:      "peripheral_crime",
 		LocationProvince:    "BC",
@@ -57,7 +57,7 @@ func TestGenerateLocationChannels_CrimeProvinceOnly(t *testing.T) {
 		LocationSpecificity: "province",
 	}
 
-	routes := NewLocationDomain().Routes(article)
+	routes := NewLocationDomain().Routes(item)
 	channels := routeChannelNames(routes)
 
 	assert.Contains(t, channels, "crime:province:bc")
@@ -74,7 +74,7 @@ func TestGenerateLocationChannels_MiningSkipped(t *testing.T) {
 
 	// Mining location channels are handled by Layer 5 (GenerateMiningChannels),
 	// so Layer 4 should not generate them.
-	article := &ContentItem{
+	item := &ContentItem{
 		ID:                  "loc-mining-skip",
 		Mining:              &MiningData{Relevance: "core_mining"},
 		LocationCity:        "timmins",
@@ -83,7 +83,7 @@ func TestGenerateLocationChannels_MiningSkipped(t *testing.T) {
 		LocationSpecificity: "city",
 	}
 
-	routes := NewLocationDomain().Routes(article)
+	routes := NewLocationDomain().Routes(item)
 	channels := routeChannelNames(routes)
 
 	assert.Empty(t, channels)
@@ -92,7 +92,7 @@ func TestGenerateLocationChannels_MiningSkipped(t *testing.T) {
 func TestGenerateLocationChannels_EntertainmentCanadianCity(t *testing.T) {
 	t.Helper()
 
-	article := &ContentItem{
+	item := &ContentItem{
 		ID:                  "loc-ent-city",
 		Entertainment:       &EntertainmentData{Relevance: "core_entertainment"},
 		LocationCity:        "toronto",
@@ -101,7 +101,7 @@ func TestGenerateLocationChannels_EntertainmentCanadianCity(t *testing.T) {
 		LocationSpecificity: "city",
 	}
 
-	routes := NewLocationDomain().Routes(article)
+	routes := NewLocationDomain().Routes(item)
 	channels := routeChannelNames(routes)
 
 	assert.Contains(t, channels, "entertainment:local:toronto")
@@ -113,7 +113,7 @@ func TestGenerateLocationChannels_EntertainmentCanadianCity(t *testing.T) {
 func TestGenerateLocationChannels_MultiTopic(t *testing.T) {
 	t.Helper()
 
-	article := &ContentItem{
+	item := &ContentItem{
 		ID:                  "loc-multi",
 		CrimeRelevance:      "core_street_crime",
 		Entertainment:       &EntertainmentData{Relevance: "core_entertainment"},
@@ -123,7 +123,7 @@ func TestGenerateLocationChannels_MultiTopic(t *testing.T) {
 		LocationSpecificity: "city",
 	}
 
-	routes := NewLocationDomain().Routes(article)
+	routes := NewLocationDomain().Routes(item)
 	channels := routeChannelNames(routes)
 
 	// Crime channels
@@ -140,7 +140,7 @@ func TestGenerateLocationChannels_MultiTopic(t *testing.T) {
 func TestGenerateLocationChannels_NoActiveTopic(t *testing.T) {
 	t.Helper()
 
-	article := &ContentItem{
+	item := &ContentItem{
 		ID:                  "loc-no-topic",
 		CrimeRelevance:      "not_crime",
 		LocationCity:        "vancouver",
@@ -149,7 +149,7 @@ func TestGenerateLocationChannels_NoActiveTopic(t *testing.T) {
 		LocationSpecificity: "city",
 	}
 
-	routes := NewLocationDomain().Routes(article)
+	routes := NewLocationDomain().Routes(item)
 	channels := routeChannelNames(routes)
 
 	assert.Empty(t, channels)
@@ -158,14 +158,14 @@ func TestGenerateLocationChannels_NoActiveTopic(t *testing.T) {
 func TestGenerateLocationChannels_UnknownLocation(t *testing.T) {
 	t.Helper()
 
-	article := &ContentItem{
+	item := &ContentItem{
 		ID:                  "loc-unknown",
 		CrimeRelevance:      "core_street_crime",
 		LocationCountry:     "unknown",
 		LocationSpecificity: "unknown",
 	}
 
-	routes := NewLocationDomain().Routes(article)
+	routes := NewLocationDomain().Routes(item)
 	channels := routeChannelNames(routes)
 
 	assert.Empty(t, channels)
@@ -174,7 +174,7 @@ func TestGenerateLocationChannels_UnknownLocation(t *testing.T) {
 func TestGenerateLocationChannels_EmptyLocationCountry(t *testing.T) {
 	t.Helper()
 
-	article := &ContentItem{
+	item := &ContentItem{
 		ID:                  "loc-empty-country",
 		CrimeRelevance:      "core_street_crime",
 		LocationCity:        "toronto",
@@ -183,7 +183,7 @@ func TestGenerateLocationChannels_EmptyLocationCountry(t *testing.T) {
 		LocationSpecificity: "city",
 	}
 
-	routes := NewLocationDomain().Routes(article)
+	routes := NewLocationDomain().Routes(item)
 	channels := routeChannelNames(routes)
 
 	assert.Empty(t, channels)
@@ -192,7 +192,7 @@ func TestGenerateLocationChannels_EmptyLocationCountry(t *testing.T) {
 func TestGenerateLocationChannels_EntertainmentNotEntertainment(t *testing.T) {
 	t.Helper()
 
-	article := &ContentItem{
+	item := &ContentItem{
 		ID:                  "loc-ent-not",
 		Entertainment:       &EntertainmentData{Relevance: "not_entertainment"},
 		LocationCity:        "toronto",
@@ -201,7 +201,7 @@ func TestGenerateLocationChannels_EntertainmentNotEntertainment(t *testing.T) {
 		LocationSpecificity: "city",
 	}
 
-	routes := NewLocationDomain().Routes(article)
+	routes := NewLocationDomain().Routes(item)
 	channels := routeChannelNames(routes)
 
 	assert.Empty(t, channels)

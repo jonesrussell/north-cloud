@@ -13,13 +13,13 @@ import (
 func TestLayer1RoutingScenarios(t *testing.T) {
 	testCases := []struct {
 		name             string
-		article          *router.ContentItem
+		item             *router.ContentItem
 		expectedChannels []string
 	}{
 		{
-			name: "crime article routes to crime sub-category channels",
-			article: &router.ContentItem{
-				ID:           "article-1",
+			name: "crime item routes to crime sub-category channels",
+			item: &router.ContentItem{
+				ID:           "item-1",
 				Title:        "Armed robbery reported downtown",
 				Topics:       []string{"violent_crime", "local_news"},
 				QualityScore: 75,
@@ -28,9 +28,9 @@ func TestLayer1RoutingScenarios(t *testing.T) {
 			expectedChannels: []string{"content:violent_crime", "content:local_news"},
 		},
 		{
-			name: "property crime article routes correctly",
-			article: &router.ContentItem{
-				ID:           "article-2",
+			name: "property crime item routes correctly",
+			item: &router.ContentItem{
+				ID:           "item-2",
 				Title:        "Car theft on the rise",
 				Topics:       []string{"property_crime"},
 				QualityScore: 65,
@@ -39,9 +39,9 @@ func TestLayer1RoutingScenarios(t *testing.T) {
 			expectedChannels: []string{"content:property_crime"},
 		},
 		{
-			name: "multi-topic article routes to all topic channels",
-			article: &router.ContentItem{
-				ID:           "article-3",
+			name: "multi-topic item routes to all topic channels",
+			item: &router.ContentItem{
+				ID:           "item-3",
 				Title:        "Drug bust leads to arrests",
 				Topics:       []string{"drug_crime", "criminal_justice", "local_news"},
 				QualityScore: 80,
@@ -50,9 +50,9 @@ func TestLayer1RoutingScenarios(t *testing.T) {
 			expectedChannels: []string{"content:drug_crime", "content:criminal_justice", "content:local_news"},
 		},
 		{
-			name: "non-crime news article routes to topic channel",
-			article: &router.ContentItem{
-				ID:           "article-4",
+			name: "non-crime news item routes to topic channel",
+			item: &router.ContentItem{
+				ID:           "item-4",
 				Title:        "New park opens in city center",
 				Topics:       []string{"local_news"},
 				QualityScore: 60,
@@ -61,10 +61,10 @@ func TestLayer1RoutingScenarios(t *testing.T) {
 			expectedChannels: []string{"content:local_news"},
 		},
 		{
-			name: "article with no topics generates no Layer 1 channels",
-			article: &router.ContentItem{
-				ID:           "article-5",
-				Title:        "Unclassified article",
+			name: "item with no topics generates no Layer 1 channels",
+			item: &router.ContentItem{
+				ID:           "item-5",
+				Title:        "Unclassified item",
 				Topics:       []string{},
 				QualityScore: 50,
 				ContentType:  "article",
@@ -75,7 +75,7 @@ func TestLayer1RoutingScenarios(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			routes := router.NewTopicDomain().Routes(tc.article)
+			routes := router.NewTopicDomain().Routes(tc.item)
 			channels := channelNames(routes)
 
 			assert.Len(t, channels, len(tc.expectedChannels), "unexpected number of channels")
@@ -118,14 +118,14 @@ func TestLayer2RoutingScenarios(t *testing.T) {
 
 	testCases := []struct {
 		name            string
-		article         *router.ContentItem
+		item            *router.ContentItem
 		channels        []models.Channel
 		expectedMatches []string // Redis channel names that should match
 	}{
 		{
-			name: "violent crime article matches crime aggregator and violent-only",
-			article: &router.ContentItem{
-				ID:           "article-1",
+			name: "violent crime item matches crime aggregator and violent-only",
+			item: &router.ContentItem{
+				ID:           "item-1",
 				Title:        "Armed robbery reported",
 				Topics:       []string{"violent_crime"},
 				QualityScore: 75,
@@ -140,8 +140,8 @@ func TestLayer2RoutingScenarios(t *testing.T) {
 		},
 		{
 			name: "high quality news matches premium channel",
-			article: &router.ContentItem{
-				ID:           "article-2",
+			item: &router.ContentItem{
+				ID:           "item-2",
 				Title:        "Major tech breakthrough",
 				Topics:       []string{"technology", "business"},
 				QualityScore: 90,
@@ -152,8 +152,8 @@ func TestLayer2RoutingScenarios(t *testing.T) {
 		},
 		{
 			name: "violent crime with court proceedings excluded from violent-only channel",
-			article: &router.ContentItem{
-				ID:           "article-3",
+			item: &router.ContentItem{
+				ID:           "item-3",
 				Title:        "Sentencing in murder case",
 				Topics:       []string{"violent_crime", "criminal_justice"},
 				QualityScore: 70,
@@ -166,9 +166,9 @@ func TestLayer2RoutingScenarios(t *testing.T) {
 			},
 		},
 		{
-			name: "low quality article fails premium threshold",
-			article: &router.ContentItem{
-				ID:           "article-4",
+			name: "low quality item fails premium threshold",
+			item: &router.ContentItem{
+				ID:           "item-4",
 				Title:        "Quick news update",
 				Topics:       []string{"local_news"},
 				QualityScore: 45,
@@ -179,8 +179,8 @@ func TestLayer2RoutingScenarios(t *testing.T) {
 		},
 		{
 			name: "page content type excluded by article-only rules",
-			article: &router.ContentItem{
-				ID:           "article-5",
+			item: &router.ContentItem{
+				ID:           "item-5",
 				Title:        "About Us",
 				Topics:       []string{"violent_crime"}, // Even if topic matches
 				QualityScore: 100,
@@ -191,9 +191,9 @@ func TestLayer2RoutingScenarios(t *testing.T) {
 		},
 		{
 			name: "catch-all channel matches everything",
-			article: &router.ContentItem{
-				ID:           "article-6",
-				Title:        "Random article",
+			item: &router.ContentItem{
+				ID:           "item-6",
+				Title:        "Random item",
 				Topics:       []string{"misc"},
 				QualityScore: 30,
 				ContentType:  "listing", // Unusual content type
@@ -209,7 +209,7 @@ func TestLayer2RoutingScenarios(t *testing.T) {
 
 			for i := range tc.channels {
 				ch := &tc.channels[i]
-				if ch.Rules.Matches(tc.article.QualityScore, tc.article.ContentType, tc.article.Topics) {
+				if ch.Rules.Matches(tc.item.QualityScore, tc.item.ContentType, tc.item.Topics) {
 					matchedChannels = append(matchedChannels, ch.RedisChannel)
 				}
 			}
@@ -238,16 +238,16 @@ func TestCombinedLayerRoutingScenarios(t *testing.T) {
 
 	testCases := []struct {
 		name              string
-		article           *router.ContentItem
+		item              *router.ContentItem
 		customChannels    []models.Channel
 		expectedLayer1    []string
 		expectedLayer2    []string
 		expectedTotalPubs int
 	}{
 		{
-			name: "crime article publishes to both layers",
-			article: &router.ContentItem{
-				ID:           "article-1",
+			name: "crime item publishes to both layers",
+			item: &router.ContentItem{
+				ID:           "item-1",
 				Topics:       []string{"violent_crime", "local_news"},
 				QualityScore: 75,
 				ContentType:  "article",
@@ -259,9 +259,9 @@ func TestCombinedLayerRoutingScenarios(t *testing.T) {
 			expectedTotalPubs: 3,
 		},
 		{
-			name: "high-quality crime article hits all channels",
-			article: &router.ContentItem{
-				ID:           "article-2",
+			name: "high-quality crime item hits all channels",
+			item: &router.ContentItem{
+				ID:           "item-2",
 				Topics:       []string{"drug_crime"},
 				QualityScore: 90,
 				ContentType:  "article",
@@ -272,9 +272,9 @@ func TestCombinedLayerRoutingScenarios(t *testing.T) {
 			expectedTotalPubs: 3, // 1 Layer 1 + 2 Layer 2
 		},
 		{
-			name: "non-crime article skips crime channel",
-			article: &router.ContentItem{
-				ID:           "article-3",
+			name: "non-crime item skips crime channel",
+			item: &router.ContentItem{
+				ID:           "item-3",
 				Topics:       []string{"technology"},
 				QualityScore: 65,
 				ContentType:  "article",
@@ -286,8 +286,8 @@ func TestCombinedLayerRoutingScenarios(t *testing.T) {
 		},
 		{
 			name: "no topics means Layer 1 only has Layer 2 contributions",
-			article: &router.ContentItem{
-				ID:           "article-4",
+			item: &router.ContentItem{
+				ID:           "item-4",
 				Topics:       []string{},
 				QualityScore: 95,
 				ContentType:  "article",
@@ -302,7 +302,7 @@ func TestCombinedLayerRoutingScenarios(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			// Layer 1 channels
-			layer1Routes := router.NewTopicDomain().Routes(tc.article)
+			layer1Routes := router.NewTopicDomain().Routes(tc.item)
 			layer1Channels := channelNames(layer1Routes)
 			assert.ElementsMatch(t, tc.expectedLayer1, layer1Channels, "Layer 1 mismatch")
 
@@ -310,7 +310,7 @@ func TestCombinedLayerRoutingScenarios(t *testing.T) {
 			var layer2Channels []string
 			for i := range tc.customChannels {
 				ch := &tc.customChannels[i]
-				if ch.Rules.Matches(tc.article.QualityScore, tc.article.ContentType, tc.article.Topics) {
+				if ch.Rules.Matches(tc.item.QualityScore, tc.item.ContentType, tc.item.Topics) {
 					layer2Channels = append(layer2Channels, ch.RedisChannel)
 				}
 			}
@@ -463,12 +463,12 @@ func TestCrimeSubCategoryRouting(t *testing.T) {
 
 	for _, category := range crimeSubCategories {
 		t.Run("Layer1_routes_"+category, func(t *testing.T) {
-			article := &router.ContentItem{
-				ID:     "test-article",
+			item := &router.ContentItem{
+				ID:     "test-item",
 				Topics: []string{category},
 			}
 
-			routes := router.NewTopicDomain().Routes(article)
+			routes := router.NewTopicDomain().Routes(item)
 			channels := channelNames(routes)
 
 			assert.Len(t, channels, 1)
@@ -476,14 +476,14 @@ func TestCrimeSubCategoryRouting(t *testing.T) {
 		})
 	}
 
-	// Test article with all crime sub-categories
-	t.Run("article_with_all_crime_categories", func(t *testing.T) {
-		article := &router.ContentItem{
-			ID:     "multi-crime-article",
+	// Test item with all crime sub-categories
+	t.Run("item_with_all_crime_categories", func(t *testing.T) {
+		item := &router.ContentItem{
+			ID:     "multi-crime-item",
 			Topics: crimeSubCategories,
 		}
 
-		routes := router.NewTopicDomain().Routes(article)
+		routes := router.NewTopicDomain().Routes(item)
 		channels := channelNames(routes)
 
 		assert.Len(t, channels, len(crimeSubCategories))
@@ -506,15 +506,15 @@ func createTestChannel(slug, redisChannel string, rules models.Rules) models.Cha
 	}
 }
 
-// TestAllDomainsProduce_FullyClassifiedArticle verifies that each domain in the
-// routing pipeline produces at least one route when given a fully-classified article.
-// This catches domains accidentally omitted from routeArticle's domain slice,
+// TestAllDomainsProduce_FullyClassifiedContentItem verifies that each domain in the
+// routing pipeline produces at least one route when given a fully-classified content item.
+// This catches domains accidentally omitted from routeContentItem's domain slice,
 // or domains whose entry conditions are misconfigured.
-func TestAllDomainsProduce_FullyClassifiedArticle(t *testing.T) {
-	// Build a fully-classified article that every domain should match.
+func TestAllDomainsProduce_FullyClassifiedContentItem(t *testing.T) {
+	// Build a fully-classified content item that every domain should match.
 	// CrimeDomain and LocationDomain read flat fields; all others read nested pointers.
-	article := &router.ContentItem{
-		Topics:                        []string{"news"},     // TopicDomain: articles:news
+	item := &router.ContentItem{
+		Topics:                        []string{"news"},     // TopicDomain: content:news
 		QualityScore:                  80,                   // DBChannelDomain: meets min threshold
 		ContentType:                   "article",            // DBChannelDomain: content type match
 		CrimeRelevance:                "core_street_crime",  // CrimeDomain
@@ -549,7 +549,7 @@ func TestAllDomainsProduce_FullyClassifiedArticle(t *testing.T) {
 		Enabled:      true,
 	}
 
-	// domains in the same order as routeArticle constructs them
+	// domains in the same order as routeContentItem constructs them
 	domainCases := []struct {
 		name   string
 		domain router.RoutingDomain
@@ -566,10 +566,10 @@ func TestAllDomainsProduce_FullyClassifiedArticle(t *testing.T) {
 
 	for _, dc := range domainCases {
 		t.Run(dc.name, func(t *testing.T) {
-			routes := dc.domain.Routes(article)
+			routes := dc.domain.Routes(item)
 			assert.NotEmpty(t, routes,
-				"domain %q must produce routes for a fully-classified article; "+
-					"check that the article fixture matches this domain's entry conditions", dc.name)
+				"domain %q must produce routes for a fully-classified content item; "+
+					"check that the item fixture matches this domain's entry conditions", dc.name)
 		})
 	}
 }

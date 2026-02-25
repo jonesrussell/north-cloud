@@ -39,7 +39,7 @@ const (
 const (
 	testChannelName  = "Integration Test"
 	testChannelSlug  = "integration-test"
-	testRedisChannel = "articles:integration-test"
+	testRedisChannel = "content:integration-test"
 )
 
 // Timing constants for delays and timeouts.
@@ -163,7 +163,7 @@ func createSource(t *testing.T, token string) string {
 	return id
 }
 
-// createPublisherChannel creates a Layer 2 custom channel that matches all articles.
+// createPublisherChannel creates a Layer 2 custom channel that matches all content items.
 func createPublisherChannel(t *testing.T, token string) string {
 	t.Helper()
 
@@ -171,7 +171,7 @@ func createPublisherChannel(t *testing.T, token string) string {
 		"name": %q,
 		"slug": %q,
 		"redis_channel": %q,
-		"description": "Integration test channel - matches all articles",
+		"description": "Integration test channel - matches all content items",
 		"rules": {
 			"min_quality_score": 0,
 			"content_types": ["article"]

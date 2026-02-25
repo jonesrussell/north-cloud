@@ -95,7 +95,7 @@ func (c *ContentTypeClassifier) Classify(ctx context.Context, raw *domain.RawCon
 	}
 
 	// Strategy 0b: Check URL exclusions (non-article patterns)
-	if c.isBinaryURL(raw.URL) {
+	if c.isNonContentURL(raw.URL) {
 		c.logger.Debug("Content type excluded via URL pattern",
 			infralogger.String("content_id", raw.ID),
 			infralogger.String("url", raw.URL),
@@ -404,8 +404,8 @@ func (c *ContentTypeClassifier) classifyFromSchemaOrg(raw *domain.RawContent) *C
 	return nil
 }
 
-// isBinaryURL checks if the URL matches patterns that indicate non-content pages
-func (c *ContentTypeClassifier) isBinaryURL(urlStr string) bool {
+// isNonContentURL checks if the URL matches patterns that indicate non-content pages
+func (c *ContentTypeClassifier) isNonContentURL(urlStr string) bool {
 	if urlStr == "" {
 		return false
 	}
@@ -413,7 +413,7 @@ func (c *ContentTypeClassifier) isBinaryURL(urlStr string) bool {
 	// Parse URL to get path
 	parsedURL, err := url.Parse(urlStr)
 	if err != nil {
-		return c.isBinaryURLFallback(urlStr)
+		return c.isNonContentURLFallback(urlStr)
 	}
 
 	path := strings.ToLower(parsedURL.Path)
@@ -487,10 +487,10 @@ func extractPathFromURL(urlStr string) string {
 	return path
 }
 
-// isBinaryURLFallback handles URL pattern matching when URL parsing fails.
+// isNonContentURLFallback handles URL pattern matching when URL parsing fails.
 // Uses exact-path matching for section index paths (mirrors main-path semantics)
 // so /news/article-slug is not excluded; only /news or /news/ are excluded.
-func (c *ContentTypeClassifier) isBinaryURLFallback(urlStr string) bool {
+func (c *ContentTypeClassifier) isNonContentURLFallback(urlStr string) bool {
 	path := extractPathFromURL(urlStr)
 
 	// Homepage

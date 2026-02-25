@@ -74,7 +74,7 @@ Splitting processes is useful in production to scale the API and router independ
 **Route filters**:
 - `min_quality_score` (0-100, default 50) — content below threshold are skipped
 - `topics[]` (optional) — content must match at least one listed topic
-- `content_type: "article"` (enforced globally) — pages and listings are never routed
+- `content_type` filter (enforced globally) — only `"article"`, `"recipe"`, and `"job"` content types are routed; pages, listings, and other types are skipped
 
 ### Deduplication Semantics
 
@@ -88,7 +88,7 @@ The routing worker runs the following steps every 30 seconds:
 
 1. **Discover indexes** — finds all `*_classified_content` indexes (refreshed every 5 minutes)
 2. **Load Layer 2 channels** — reads enabled channels with rules from PostgreSQL
-3. **Fetch batch** — queries Elasticsearch using `search_after` cursor (100 items per batch by default); only `content_type: "article"` documents are fetched
+3. **Fetch batch** — queries Elasticsearch using `search_after` cursor (100 items per batch by default); only `content_type` values `"article"`, `"recipe"`, and `"job"` are fetched
 4. **Route Layer 1** — for each content item topic, publishes to `content:{topic}` (except skip-listed topics)
 5. **Route Layer 2** — evaluates DB channel rules (topic filters, quality threshold, content type)
 6. **Route Layer 3** — crime classification channels (`crime:homepage`, `crime:category:{slug}`, `crime:courts`, `crime:context`)

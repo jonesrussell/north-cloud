@@ -30,7 +30,7 @@ Routing logic itself is **not changed**. This is a structural refactor only.
 | File | What It Contains |
 |------|-----------------|
 | `domain.go` | `RoutingDomain` interface, `ChannelRoute` struct, `channelRoutesFromSlice` helper |
-| `article.go` | All article/data types moved from `service.go`; adds `CoforgeData` type and `Coforge *CoforgeData` field on `Article` |
+| `content_item.go` | All content item/data types moved from `service.go`; adds `CoforgeData` type and `Coforge *CoforgeData` field on `ContentItem` |
 | `domain_topic.go` | `TopicDomain` (Layer 1); `layer1SkipTopics` map moved here from `service.go`; `"coforge"` added to skip list |
 | `domain_dbchannel.go` | `DBChannelDomain` (Layer 2); wraps `[]models.Channel` rule matching |
 | `domain_coforge.go` | `CoforgeDomain` (Layer 8); new domain for Coforge ML classification |
@@ -42,13 +42,13 @@ Routing logic itself is **not changed**. This is a structural refactor only.
 ### Modified Files
 
 **`service.go`**
-- Removed all `Article`/data type declarations (moved to `article.go`).
+- Removed all `ContentItem`/data type declarations (moved to `content_item.go`).
 - `routeContentItem` replaced 7 explicit layer calls with a `[]RoutingDomain` loop (8 domains).
-- `publishRoutes(ctx, article, []ChannelRoute) []string` added; replaces `publishToChannels`.
+- `publishRoutes(ctx, item, []ChannelRoute) []string` added; replaces `publishToChannels`.
 - `publishToChannels` removed.
 - `GenerateLayer1Channels` exported free function removed.
 - `layer1SkipTopics` var removed (now in `domain_topic.go`).
-- `"coforge": article.Coforge` added to Redis payload in `publishToChannel`.
+- `"coforge": item.Coforge` added to Redis payload in `publishToChannel`.
 - Per-domain debug log added inside the routing loop.
 - `maxChannelsPerArticle = 30` guardrail added (warn-only, not an error).
 
@@ -118,7 +118,7 @@ cd publisher && GOWORK=off golangci-lint run ./internal/router/...
 grep -r "func Generate" publisher/internal/router/
 
 # Confirm RoutingDomain interface is satisfied by all domains
-grep -r "func.*Routes\(a \*Article\)" publisher/internal/router/
+grep -r "func.*Routes\(a \*ContentItem\)" publisher/internal/router/
 
 # Confirm layer ordering in routeContentItem
 grep -A 12 "domains := \[\]RoutingDomain" publisher/internal/router/service.go
@@ -151,6 +151,6 @@ type naming already in the codebase.
 `TopicDomain.Routes()`; keeping it in the same file makes the skip logic self-contained
 and easier to review.
 
-**`maxChannelsPerArticle = 30` guardrail**: A warn-only safety net. An article published
+**`maxChannelsPerItem = 30` guardrail**: A warn-only safety net. A content item published
 to more than 30 channels is almost certainly a misconfiguration. It does not block
 publishing — it logs a warning so operators can investigate.

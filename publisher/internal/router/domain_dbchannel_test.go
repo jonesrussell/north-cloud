@@ -41,14 +41,14 @@ func TestDBChannelDomain_Routes(t *testing.T) {
 
 	tests := []struct {
 		name             string
-		article          *router.ContentItem
+		item             *router.ContentItem
 		channels         []models.Channel
 		expectedChannels []string
 		expectChannelIDs bool
 	}{
 		{
 			name: "matching channel produces route with ChannelID set",
-			article: &router.ContentItem{
+			item: &router.ContentItem{
 				Topics:       []string{"violent_crime"},
 				QualityScore: 75,
 				ContentType:  "article",
@@ -59,7 +59,7 @@ func TestDBChannelDomain_Routes(t *testing.T) {
 		},
 		{
 			name: "no match returns nil",
-			article: &router.ContentItem{
+			item: &router.ContentItem{
 				Topics:       []string{"technology"},
 				QualityScore: 40,
 				ContentType:  "article",
@@ -69,7 +69,7 @@ func TestDBChannelDomain_Routes(t *testing.T) {
 		},
 		{
 			name: "multiple matching channels",
-			article: &router.ContentItem{
+			item: &router.ContentItem{
 				Topics:       []string{"violent_crime"},
 				QualityScore: 90,
 				ContentType:  "article",
@@ -80,13 +80,13 @@ func TestDBChannelDomain_Routes(t *testing.T) {
 		},
 		{
 			name:             "nil channel list returns nil",
-			article:          &router.ContentItem{Topics: []string{"news"}},
+			item:             &router.ContentItem{Topics: []string{"news"}},
 			channels:         nil,
 			expectedChannels: nil,
 		},
 		{
 			name: "disabled channel is not matched",
-			article: &router.ContentItem{
+			item: &router.ContentItem{
 				Topics:       []string{"news"},
 				QualityScore: 90,
 				ContentType:  "article",
@@ -99,7 +99,7 @@ func TestDBChannelDomain_Routes(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			domain := router.NewDBChannelDomain(tc.channels)
-			routes := domain.Routes(tc.article)
+			routes := domain.Routes(tc.item)
 
 			if tc.expectedChannels == nil {
 				assert.Nil(t, routes)

@@ -132,7 +132,7 @@
               Select Content Source
             </h3>
             <p class="text-sm text-gray-600 mb-4">
-              Choose an Elasticsearch index that contains the articles you want to publish.
+              Choose an Elasticsearch index that contains the content you want to publish.
             </p>
 
             <div class="space-y-4">
@@ -215,7 +215,7 @@
               Select Destination Channel
             </h3>
             <p class="text-sm text-gray-600 mb-4">
-              Choose a Redis pub/sub channel where articles will be published.
+              Choose a Redis pub/sub channel where content will be published.
             </p>
 
             <div class="space-y-4">
@@ -265,12 +265,12 @@
                     <input
                       v-model="newChannel.name"
                       type="text"
-                      placeholder="e.g., articles:crime"
+                      placeholder="e.g., content:crime"
                       class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                       :disabled="selectedChannelId !== null"
                     >
                     <p class="mt-1 text-xs text-gray-500">
-                      Redis pub/sub channel name (e.g., articles:crime, articles:news)
+                      Redis pub/sub channel name (e.g., content:crime, content:news)
                     </p>
                   </div>
                   <div>
@@ -296,7 +296,7 @@
               Configure Routing Rules
             </h3>
             <p class="text-sm text-gray-600 mb-4">
-              Set quality filters and topic preferences for articles published through this route.
+              Set quality filters and topic preferences for content published through this route.
             </p>
 
             <div class="space-y-4">
@@ -334,7 +334,7 @@
                   <span>High Quality (100)</span>
                 </div>
                 <p class="mt-2 text-xs text-gray-500">
-                  Only articles with quality score >= {{ route.min_quality_score }} will be published
+                  Only content with quality score >= {{ route.min_quality_score }} will be published
                 </p>
               </div>
 
@@ -398,7 +398,7 @@
                 Publishing Route Created!
               </h3>
               <p class="text-sm text-gray-600 mb-6">
-                Your route has been successfully configured. The router service will begin publishing articles within the next 5 minutes.
+                Your route has been successfully configured. The router service will begin publishing content within the next 5 minutes.
               </p>
               <div class="space-y-3 max-w-md mx-auto">
                 <router-link
