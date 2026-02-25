@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"strings"
 	"sync"
 	"time"
@@ -29,7 +30,24 @@ const (
 	reasonNotFound               = "not_found"
 	reasonTooManyRedirects       = "too_many_redirects"
 	reasonUnsupportedContentType = "unsupported_content_type"
+	reasonNonArticleURL          = "non_article_url"
 )
+
+// nonArticleExtensions are file extensions that indicate non-article resources.
+// These URLs are marked dead in the frontier to avoid repeated parse failures.
+var nonArticleExtensions = []string{
+	".pdf", ".xml", ".json", ".css", ".js",
+	".png", ".jpg", ".jpeg", ".gif", ".svg", ".ico", ".webp",
+	".woff", ".woff2", ".ttf", ".eot",
+	".zip", ".gz", ".tar", ".rar",
+	".mp3", ".mp4", ".wav", ".ogg", ".avi", ".mov",
+	".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx",
+}
+
+// nonArticlePathSubstrings are URL path substrings that indicate binary download endpoints.
+var nonArticlePathSubstrings = []string{
+	"downloadmp3", "download.php", "downloadfile",
+}
 
 // maxResponseBodyBytes limits the size of fetched page responses.
 const maxResponseBodyBytes = 10 * 1024 * 1024 // 10 MB
@@ -312,6 +330,17 @@ func (wp *WorkerPool) handleSuccess(
 		return nil
 	}
 
+	if isNonArticleURL(furl.URL) {
+		if updateErr := wp.frontier.UpdateDead(ctx, furl.ID, reasonNonArticleURL); updateErr != nil {
+			return updateErr
+		}
+		wp.log.Info("URL marked dead",
+			"url", furl.URL,
+			"reason", reasonNonArticleURL,
+		)
+		return nil
+	}
+
 	content, extractErr := wp.extractor.Extract(furl.SourceID, furl.URL, body)
 	if extractErr != nil {
 		return fmt.Errorf("extract content: %w", extractErr)
@@ -402,6 +431,27 @@ func isHTMLContent(contentType string) bool {
 	}
 	ct := strings.ToLower(contentType)
 	return strings.HasPrefix(ct, "text/html") || strings.Contains(ct, "xhtml")
+}
+
+// isNonArticleURL returns true if the URL path has a non-article file extension
+// (e.g. .mp3, .pdf) or matches a known binary download pattern (e.g. downloadmp3.php).
+func isNonArticleURL(rawURL string) bool {
+	parsed, err := url.Parse(rawURL)
+	if err != nil {
+		return false
+	}
+	lowerPath := strings.ToLower(parsed.Path)
+	for _, ext := range nonArticleExtensions {
+		if strings.HasSuffix(lowerPath, ext) {
+			return true
+		}
+	}
+	for _, substr := range nonArticlePathSubstrings {
+		if strings.Contains(lowerPath, substr) {
+			return true
+		}
+	}
+	return false
 }
 
 // setConditionalHeaders adds If-None-Match and If-Modified-Since headers

@@ -752,6 +752,62 @@ func TestProcessURL_TooManyRedirects(t *testing.T) {
 	}
 }
 
+func TestProcessURL_NonArticleURLExtension(t *testing.T) {
+	t.Parallel()
+
+	server := startTestServerWithContentType(t, http.StatusOK, "binary content", "text/html")
+	furl := newTestFrontierURL(t, server.URL+"/download/file.mp3")
+
+	frontier := &mockFrontier{
+		claimFunc: func(_ context.Context) (*domain.FrontierURL, error) {
+			return furl, nil
+		},
+	}
+	robots := &mockRobots{allowed: true}
+	indexer := &mockIndexer{}
+
+	wp, hostUpdater := newTestWorkerPool(t, frontier, robots, indexer)
+
+	ctx := context.Background()
+
+	err := wp.ProcessURL(ctx, furl)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	verifyDeadCalled(t, frontier, "non_article_url")
+	verifyNoContentIndexed(t, indexer)
+	verifyHostUpdated(t, hostUpdater)
+}
+
+func TestProcessURL_NonArticleURLDownloadPHP(t *testing.T) {
+	t.Parallel()
+
+	server := startTestServerWithContentType(t, http.StatusOK, "binary content", "text/html")
+	furl := newTestFrontierURL(t, server.URL+"/themes/canadaland/downloadmp3.php?path=https%3A%2F%2Fexample.com%2Ffile.mp3")
+
+	frontier := &mockFrontier{
+		claimFunc: func(_ context.Context) (*domain.FrontierURL, error) {
+			return furl, nil
+		},
+	}
+	robots := &mockRobots{allowed: true}
+	indexer := &mockIndexer{}
+
+	wp, hostUpdater := newTestWorkerPool(t, frontier, robots, indexer)
+
+	ctx := context.Background()
+
+	err := wp.ProcessURL(ctx, furl)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	verifyDeadCalled(t, frontier, "non_article_url")
+	verifyNoContentIndexed(t, indexer)
+	verifyHostUpdated(t, hostUpdater)
+}
+
 // --- Verification helpers ---
 
 func verifyFetchedCalled(t *testing.T, frontier *mockFrontier) {
