@@ -30,9 +30,9 @@ func (r *Repository) CreatePublishHistory(ctx context.Context, req *models.Publi
 	history := &models.PublishHistory{
 		ID:           uuid.New(),
 		RouteID:      req.ChannelID, // Repurposed: now stores channel_id for Layer 2 channels
-		ArticleID:    req.ArticleID,
-		ArticleTitle: req.ArticleTitle,
-		ArticleURL:   req.ArticleURL,
+		ContentID:    req.ContentID,
+		ContentTitle: req.ContentTitle,
+		ContentURL:   req.ContentURL,
 		ChannelName:  req.ChannelName,
 		PublishedAt:  time.Now(),
 		QualityScore: req.QualityScore,
@@ -47,7 +47,7 @@ func (r *Repository) CreatePublishHistory(ctx context.Context, req *models.Publi
 
 	err := r.db.QueryRowxContext(
 		ctx, query,
-		history.ID, history.RouteID, history.ArticleID, history.ArticleTitle, history.ArticleURL,
+		history.ID, history.RouteID, history.ContentID, history.ContentTitle, history.ContentURL,
 		history.ChannelName, history.PublishedAt, history.QualityScore, history.Topics,
 	).StructScan(history)
 
@@ -105,9 +105,9 @@ func (r *Repository) ListPublishHistory(ctx context.Context, filter *models.Publ
 		argPos++
 	}
 
-	if filter.ArticleID != "" {
+	if filter.ContentID != "" {
 		query += fmt.Sprintf(" AND article_id = $%d", argPos)
-		args = append(args, filter.ArticleID)
+		args = append(args, filter.ContentID)
 		argPos++
 	}
 
@@ -147,9 +147,9 @@ func (r *Repository) CountPublishHistory(ctx context.Context, filter *models.Pub
 		argPos++
 	}
 
-	if filter.ArticleID != "" {
+	if filter.ContentID != "" {
 		query += fmt.Sprintf(" AND article_id = $%d", argPos)
-		args = append(args, filter.ArticleID)
+		args = append(args, filter.ContentID)
 		argPos++
 	}
 
@@ -173,8 +173,8 @@ func (r *Repository) CountPublishHistory(ctx context.Context, filter *models.Pub
 	return count, nil
 }
 
-// GetPublishHistoryByArticleID retrieves all publish history for a specific article
-func (r *Repository) GetPublishHistoryByArticleID(ctx context.Context, articleID string) ([]models.PublishHistory, error) {
+// GetPublishHistoryByContentID retrieves all publish history for a specific content item
+func (r *Repository) GetPublishHistoryByContentID(ctx context.Context, contentID string) ([]models.PublishHistory, error) {
 	history := []models.PublishHistory{}
 	query := `SELECT ` + publishHistoryColumns + `
 		FROM publish_history
@@ -182,16 +182,16 @@ func (r *Repository) GetPublishHistoryByArticleID(ctx context.Context, articleID
 		ORDER BY published_at DESC
 	`
 
-	err := r.db.SelectContext(ctx, &history, query, articleID)
+	err := r.db.SelectContext(ctx, &history, query, contentID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get publish history by article ID: %w", err)
+		return nil, fmt.Errorf("failed to get publish history by content ID: %w", err)
 	}
 
 	return history, nil
 }
 
-// CheckArticlePublished checks if an article has been published to a specific channel
-func (r *Repository) CheckArticlePublished(ctx context.Context, articleID, channelName string) (bool, error) {
+// CheckContentPublished checks if a content item has been published to a specific channel
+func (r *Repository) CheckContentPublished(ctx context.Context, contentID, channelName string) (bool, error) {
 	var exists bool
 	query := `
 		SELECT EXISTS(
@@ -200,9 +200,9 @@ func (r *Repository) CheckArticlePublished(ctx context.Context, articleID, chann
 		)
 	`
 
-	err := r.db.GetContext(ctx, &exists, query, articleID, channelName)
+	err := r.db.GetContext(ctx, &exists, query, contentID, channelName)
 	if err != nil {
-		return false, fmt.Errorf("failed to check if article published: %w", err)
+		return false, fmt.Errorf("failed to check if content published: %w", err)
 	}
 
 	return exists, nil

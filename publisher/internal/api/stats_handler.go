@@ -97,11 +97,11 @@ func (r *Router) getStatsOverview(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"period":         period,
-		"total_articles": total,
-		"by_channel":     stats,
-		"channel_count":  len(stats),
-		"generated_at":   now,
+		"period":        period,
+		"total_items":   total,
+		"by_channel":    stats,
+		"channel_count": len(stats),
+		"generated_at":  now,
 	})
 }
 
@@ -154,7 +154,7 @@ func (r *Router) getChannelStats(c *gin.Context) {
 			"redis_channel": channels[i].RedisChannel,
 			"description":   channels[i].Description,
 			"rules":         channels[i].Rules,
-			"article_count": count,
+			"item_count":    count,
 		})
 	}
 
@@ -294,20 +294,20 @@ func (r *Router) listPublishHistory(c *gin.Context) {
 	})
 }
 
-// getPublishHistoryByArticle returns all publish history for a specific article
-// GET /api/v1/publish-history/:article_id
-func (r *Router) getPublishHistoryByArticle(c *gin.Context) {
+// getPublishHistoryByContent returns all publish history for a specific content item
+// GET /api/v1/publish-history/:content_id
+func (r *Router) getPublishHistoryByContent(c *gin.Context) {
 	ctx := c.Request.Context()
 
-	articleID := c.Param("article_id")
-	if articleID == "" {
+	contentID := c.Param("content_id")
+	if contentID == "" {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Article ID is required",
+			"error": "Content ID is required",
 		})
 		return
 	}
 
-	history, err := r.repo.GetPublishHistoryByArticleID(ctx, articleID)
+	history, err := r.repo.GetPublishHistoryByContentID(ctx, contentID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": "Failed to get publish history",
@@ -316,15 +316,15 @@ func (r *Router) getPublishHistoryByArticle(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"article_id": articleID,
+		"content_id": contentID,
 		"history":    history,
 		"count":      len(history),
 	})
 }
 
-// getRecentArticles returns recent published articles
-// GET /api/v1/articles/recent?limit=50
-func (r *Router) getRecentArticles(c *gin.Context) {
+// getRecentItems returns recently published content items
+// GET /api/v1/content/recent?limit=50
+func (r *Router) getRecentItems(c *gin.Context) {
 	ctx := c.Request.Context()
 
 	// Parse limit parameter
@@ -338,7 +338,7 @@ func (r *Router) getRecentArticles(c *gin.Context) {
 		limit = maxLimit
 	}
 
-	// Use publish history to get recent articles
+	// Use publish history to get recent items
 	filter := &models.PublishHistoryFilter{
 		Limit:  limit,
 		Offset: 0,
@@ -347,24 +347,24 @@ func (r *Router) getRecentArticles(c *gin.Context) {
 	history, err := r.repo.ListPublishHistory(ctx, filter)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Failed to get recent articles",
+			"error": "Failed to get recent content",
 		})
 		return
 	}
 
 	// Transform publish_history to match frontend expectations
-	articles := make([]gin.H, 0, len(history))
+	items := make([]gin.H, 0, len(history))
 	for i := range history {
-		articles = append(articles, gin.H{
+		items = append(items, gin.H{
 			"id":        history[i].ID,
-			"title":     history[i].ArticleTitle,
-			"url":       history[i].ArticleURL,
+			"title":     history[i].ContentTitle,
+			"url":       history[i].ContentURL,
 			"city":      "", // Publish history doesn't have city - could extract from channel if needed
 			"posted_at": history[i].PublishedAt,
 			// Include additional fields for compatibility
-			"article_id":    history[i].ArticleID,
-			"article_title": history[i].ArticleTitle,
-			"article_url":   history[i].ArticleURL,
+			"content_id":    history[i].ContentID,
+			"content_title": history[i].ContentTitle,
+			"content_url":   history[i].ContentURL,
 			"channel_name":  history[i].ChannelName,
 			"published_at":  history[i].PublishedAt,
 			"quality_score": history[i].QualityScore,
@@ -373,8 +373,8 @@ func (r *Router) getRecentArticles(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"articles": articles,
-		"count":    len(articles),
+		"items": items,
+		"count": len(items),
 	})
 }
 

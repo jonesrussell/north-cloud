@@ -13,56 +13,56 @@ import (
 func TestLayer1RoutingScenarios(t *testing.T) {
 	testCases := []struct {
 		name             string
-		article          *router.Article
+		article          *router.ContentItem
 		expectedChannels []string
 	}{
 		{
 			name: "crime article routes to crime sub-category channels",
-			article: &router.Article{
+			article: &router.ContentItem{
 				ID:           "article-1",
 				Title:        "Armed robbery reported downtown",
 				Topics:       []string{"violent_crime", "local_news"},
 				QualityScore: 75,
 				ContentType:  "article",
 			},
-			expectedChannels: []string{"articles:violent_crime", "articles:local_news"},
+			expectedChannels: []string{"content:violent_crime", "content:local_news"},
 		},
 		{
 			name: "property crime article routes correctly",
-			article: &router.Article{
+			article: &router.ContentItem{
 				ID:           "article-2",
 				Title:        "Car theft on the rise",
 				Topics:       []string{"property_crime"},
 				QualityScore: 65,
 				ContentType:  "article",
 			},
-			expectedChannels: []string{"articles:property_crime"},
+			expectedChannels: []string{"content:property_crime"},
 		},
 		{
 			name: "multi-topic article routes to all topic channels",
-			article: &router.Article{
+			article: &router.ContentItem{
 				ID:           "article-3",
 				Title:        "Drug bust leads to arrests",
 				Topics:       []string{"drug_crime", "criminal_justice", "local_news"},
 				QualityScore: 80,
 				ContentType:  "article",
 			},
-			expectedChannels: []string{"articles:drug_crime", "articles:criminal_justice", "articles:local_news"},
+			expectedChannels: []string{"content:drug_crime", "content:criminal_justice", "content:local_news"},
 		},
 		{
 			name: "non-crime news article routes to topic channel",
-			article: &router.Article{
+			article: &router.ContentItem{
 				ID:           "article-4",
 				Title:        "New park opens in city center",
 				Topics:       []string{"local_news"},
 				QualityScore: 60,
 				ContentType:  "article",
 			},
-			expectedChannels: []string{"articles:local_news"},
+			expectedChannels: []string{"content:local_news"},
 		},
 		{
 			name: "article with no topics generates no Layer 1 channels",
-			article: &router.Article{
+			article: &router.ContentItem{
 				ID:           "article-5",
 				Title:        "Unclassified article",
 				Topics:       []string{},
@@ -90,7 +90,7 @@ func TestLayer1RoutingScenarios(t *testing.T) {
 func TestLayer2RoutingScenarios(t *testing.T) {
 	// Define test channels with various rule configurations
 	crimeAggregatorChannel := createTestChannel("crime-aggregator",
-		"articles:crime:all",
+		"content:crime:all",
 		models.Rules{
 			IncludeTopics:   []string{"violent_crime", "property_crime", "drug_crime", "organized_crime", "criminal_justice"},
 			MinQualityScore: 50,
@@ -98,14 +98,14 @@ func TestLayer2RoutingScenarios(t *testing.T) {
 		})
 
 	highQualityNewsChannel := createTestChannel("premium-news",
-		"articles:premium",
+		"content:premium",
 		models.Rules{
 			MinQualityScore: 80,
 			ContentTypes:    []string{"article"},
 		})
 
 	violentCrimeOnlyChannel := createTestChannel("violent-crime-only",
-		"articles:violent:exclusive",
+		"content:violent:exclusive",
 		models.Rules{
 			IncludeTopics: []string{"violent_crime"},
 			ExcludeTopics: []string{"criminal_justice"}, // Exclude court proceedings
@@ -113,18 +113,18 @@ func TestLayer2RoutingScenarios(t *testing.T) {
 		})
 
 	catchAllChannel := createTestChannel("catch-all",
-		"articles:all",
+		"content:all",
 		models.Rules{}) // Empty rules = matches everything
 
 	testCases := []struct {
 		name            string
-		article         *router.Article
+		article         *router.ContentItem
 		channels        []models.Channel
 		expectedMatches []string // Redis channel names that should match
 	}{
 		{
 			name: "violent crime article matches crime aggregator and violent-only",
-			article: &router.Article{
+			article: &router.ContentItem{
 				ID:           "article-1",
 				Title:        "Armed robbery reported",
 				Topics:       []string{"violent_crime"},
@@ -133,14 +133,14 @@ func TestLayer2RoutingScenarios(t *testing.T) {
 			},
 			channels: []models.Channel{crimeAggregatorChannel, violentCrimeOnlyChannel, highQualityNewsChannel},
 			expectedMatches: []string{
-				"articles:crime:all",         // Crime aggregator
-				"articles:violent:exclusive", // Violent crime only
+				"content:crime:all",         // Crime aggregator
+				"content:violent:exclusive", // Violent crime only
 				// NOT premium (score 75 < 80)
 			},
 		},
 		{
 			name: "high quality news matches premium channel",
-			article: &router.Article{
+			article: &router.ContentItem{
 				ID:           "article-2",
 				Title:        "Major tech breakthrough",
 				Topics:       []string{"technology", "business"},
@@ -148,11 +148,11 @@ func TestLayer2RoutingScenarios(t *testing.T) {
 				ContentType:  "article",
 			},
 			channels:        []models.Channel{crimeAggregatorChannel, highQualityNewsChannel},
-			expectedMatches: []string{"articles:premium"}, // Only premium (not crime)
+			expectedMatches: []string{"content:premium"}, // Only premium (not crime)
 		},
 		{
 			name: "violent crime with court proceedings excluded from violent-only channel",
-			article: &router.Article{
+			article: &router.ContentItem{
 				ID:           "article-3",
 				Title:        "Sentencing in murder case",
 				Topics:       []string{"violent_crime", "criminal_justice"},
@@ -161,13 +161,13 @@ func TestLayer2RoutingScenarios(t *testing.T) {
 			},
 			channels: []models.Channel{crimeAggregatorChannel, violentCrimeOnlyChannel},
 			expectedMatches: []string{
-				"articles:crime:all", // Crime aggregator (doesn't exclude justice)
+				"content:crime:all", // Crime aggregator (doesn't exclude justice)
 				// NOT violent-only (excluded by criminal_justice topic)
 			},
 		},
 		{
 			name: "low quality article fails premium threshold",
-			article: &router.Article{
+			article: &router.ContentItem{
 				ID:           "article-4",
 				Title:        "Quick news update",
 				Topics:       []string{"local_news"},
@@ -179,7 +179,7 @@ func TestLayer2RoutingScenarios(t *testing.T) {
 		},
 		{
 			name: "page content type excluded by article-only rules",
-			article: &router.Article{
+			article: &router.ContentItem{
 				ID:           "article-5",
 				Title:        "About Us",
 				Topics:       []string{"violent_crime"}, // Even if topic matches
@@ -191,7 +191,7 @@ func TestLayer2RoutingScenarios(t *testing.T) {
 		},
 		{
 			name: "catch-all channel matches everything",
-			article: &router.Article{
+			article: &router.ContentItem{
 				ID:           "article-6",
 				Title:        "Random article",
 				Topics:       []string{"misc"},
@@ -199,7 +199,7 @@ func TestLayer2RoutingScenarios(t *testing.T) {
 				ContentType:  "listing", // Unusual content type
 			},
 			channels:        []models.Channel{catchAllChannel, crimeAggregatorChannel},
-			expectedMatches: []string{"articles:all"}, // Only catch-all
+			expectedMatches: []string{"content:all"}, // Only catch-all
 		},
 	}
 
@@ -238,7 +238,7 @@ func TestCombinedLayerRoutingScenarios(t *testing.T) {
 
 	testCases := []struct {
 		name              string
-		article           *router.Article
+		article           *router.ContentItem
 		customChannels    []models.Channel
 		expectedLayer1    []string
 		expectedLayer2    []string
@@ -246,47 +246,47 @@ func TestCombinedLayerRoutingScenarios(t *testing.T) {
 	}{
 		{
 			name: "crime article publishes to both layers",
-			article: &router.Article{
+			article: &router.ContentItem{
 				ID:           "article-1",
 				Topics:       []string{"violent_crime", "local_news"},
 				QualityScore: 75,
 				ContentType:  "article",
 			},
 			customChannels: []models.Channel{crimeChannel, premiumChannel},
-			expectedLayer1: []string{"articles:violent_crime", "articles:local_news"},
+			expectedLayer1: []string{"content:violent_crime", "content:local_news"},
 			expectedLayer2: []string{"custom:crime:all"},
 			// 2 Layer 1 + 1 Layer 2 = 3 total
 			expectedTotalPubs: 3,
 		},
 		{
 			name: "high-quality crime article hits all channels",
-			article: &router.Article{
+			article: &router.ContentItem{
 				ID:           "article-2",
 				Topics:       []string{"drug_crime"},
 				QualityScore: 90,
 				ContentType:  "article",
 			},
 			customChannels:    []models.Channel{crimeChannel, premiumChannel},
-			expectedLayer1:    []string{"articles:drug_crime"},
+			expectedLayer1:    []string{"content:drug_crime"},
 			expectedLayer2:    []string{"custom:crime:all", "custom:premium"},
 			expectedTotalPubs: 3, // 1 Layer 1 + 2 Layer 2
 		},
 		{
 			name: "non-crime article skips crime channel",
-			article: &router.Article{
+			article: &router.ContentItem{
 				ID:           "article-3",
 				Topics:       []string{"technology"},
 				QualityScore: 65,
 				ContentType:  "article",
 			},
 			customChannels:    []models.Channel{crimeChannel, premiumChannel},
-			expectedLayer1:    []string{"articles:technology"},
+			expectedLayer1:    []string{"content:technology"},
 			expectedLayer2:    []string{}, // No matches
 			expectedTotalPubs: 1,          // Just Layer 1
 		},
 		{
 			name: "no topics means Layer 1 only has Layer 2 contributions",
-			article: &router.Article{
+			article: &router.ContentItem{
 				ID:           "article-4",
 				Topics:       []string{},
 				QualityScore: 95,
@@ -463,7 +463,7 @@ func TestCrimeSubCategoryRouting(t *testing.T) {
 
 	for _, category := range crimeSubCategories {
 		t.Run("Layer1_routes_"+category, func(t *testing.T) {
-			article := &router.Article{
+			article := &router.ContentItem{
 				ID:     "test-article",
 				Topics: []string{category},
 			}
@@ -472,13 +472,13 @@ func TestCrimeSubCategoryRouting(t *testing.T) {
 			channels := channelNames(routes)
 
 			assert.Len(t, channels, 1)
-			assert.Equal(t, "articles:"+category, channels[0])
+			assert.Equal(t, "content:"+category, channels[0])
 		})
 	}
 
 	// Test article with all crime sub-categories
 	t.Run("article_with_all_crime_categories", func(t *testing.T) {
-		article := &router.Article{
+		article := &router.ContentItem{
 			ID:     "multi-crime-article",
 			Topics: crimeSubCategories,
 		}
@@ -488,7 +488,7 @@ func TestCrimeSubCategoryRouting(t *testing.T) {
 
 		assert.Len(t, channels, len(crimeSubCategories))
 		for i, category := range crimeSubCategories {
-			assert.Equal(t, "articles:"+category, channels[i])
+			assert.Equal(t, "content:"+category, channels[i])
 		}
 	})
 }
@@ -513,7 +513,7 @@ func createTestChannel(slug, redisChannel string, rules models.Rules) models.Cha
 func TestAllDomainsProduce_FullyClassifiedArticle(t *testing.T) {
 	// Build a fully-classified article that every domain should match.
 	// CrimeDomain and LocationDomain read flat fields; all others read nested pointers.
-	article := &router.Article{
+	article := &router.ContentItem{
 		Topics:                        []string{"news"},     // TopicDomain: articles:news
 		QualityScore:                  80,                   // DBChannelDomain: meets min threshold
 		ContentType:                   "article",            // DBChannelDomain: content type match
@@ -544,7 +544,7 @@ func TestAllDomainsProduce_FullyClassifiedArticle(t *testing.T) {
 
 	dbChannel := models.Channel{
 		ID:           uuid.New(),
-		RedisChannel: "articles:premium",
+		RedisChannel: "content:premium",
 		Rules:        models.Rules{MinQualityScore: 50, ContentTypes: []string{"article"}},
 		Enabled:      true,
 	}

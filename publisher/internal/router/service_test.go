@@ -11,61 +11,61 @@ import (
 func TestGenerateLayer1Channels(t *testing.T) {
 	testCases := []struct {
 		name     string
-		article  *router.Article
+		article  *router.ContentItem
 		expected []string
 	}{
 		{
 			name: "generates channels for multiple topics",
-			article: &router.Article{
+			article: &router.ContentItem{
 				Topics: []string{"violent_crime", "local_news"},
 			},
-			expected: []string{"articles:violent_crime", "articles:local_news"},
+			expected: []string{"content:violent_crime", "content:local_news"},
 		},
 		{
 			name: "generates single channel for single topic",
-			article: &router.Article{
+			article: &router.ContentItem{
 				Topics: []string{"property_crime"},
 			},
-			expected: []string{"articles:property_crime"},
+			expected: []string{"content:property_crime"},
 		},
 		{
 			name: "returns empty for no topics",
-			article: &router.Article{
+			article: &router.ContentItem{
 				Topics: []string{},
 			},
 			expected: nil,
 		},
 		{
 			name: "mining topic skipped",
-			article: &router.Article{
+			article: &router.ContentItem{
 				Topics: []string{"news", "mining", "technology"},
 			},
-			expected: []string{"articles:news", "articles:technology"},
+			expected: []string{"content:news", "content:technology"},
 		},
 		{
 			name: "mining-only produces empty",
-			article: &router.Article{
+			article: &router.ContentItem{
 				Topics: []string{"mining"},
 			},
 			expected: nil,
 		},
 		{
 			name: "mining mixed with others excludes only mining",
-			article: &router.Article{
+			article: &router.ContentItem{
 				Topics: []string{"mining", "violent_crime"},
 			},
-			expected: []string{"articles:violent_crime"},
+			expected: []string{"content:violent_crime"},
 		},
 		{
 			name: "anishinaabe topic skipped",
-			article: &router.Article{
+			article: &router.ContentItem{
 				Topics: []string{"news", "anishinaabe", "local_news"},
 			},
-			expected: []string{"articles:news", "articles:local_news"},
+			expected: []string{"content:news", "content:local_news"},
 		},
 		{
 			name: "anishinaabe-only produces empty",
-			article: &router.Article{
+			article: &router.ContentItem{
 				Topics: []string{"anishinaabe"},
 			},
 			expected: nil,

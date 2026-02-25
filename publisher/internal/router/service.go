@@ -353,7 +353,7 @@ func (s *Service) buildESQuery() map[string]any {
 // Returns true if the item was successfully published, false otherwise.
 func (s *Service) publishToChannel(ctx context.Context, item *ContentItem, channelName string, channelID *uuid.UUID) bool {
 	// Check if already published to this channel
-	published, checkErr := s.repo.CheckArticlePublished(ctx, item.ID, channelName)
+	published, checkErr := s.repo.CheckContentPublished(ctx, item.ID, channelName)
 	if checkErr != nil {
 		s.logger.Error("Error checking if content is published",
 			infralogger.String("content_id", item.ID),

@@ -12,7 +12,7 @@ import (
 func TestGenerateLocationChannels_CrimeCanadianCity(t *testing.T) {
 	t.Helper()
 
-	article := &Article{
+	article := &ContentItem{
 		ID:                  "loc-crime-city",
 		CrimeRelevance:      "core_street_crime",
 		LocationCity:        "sudbury",
@@ -33,7 +33,7 @@ func TestGenerateLocationChannels_CrimeCanadianCity(t *testing.T) {
 func TestGenerateLocationChannels_CrimeInternational(t *testing.T) {
 	t.Helper()
 
-	article := &Article{
+	article := &ContentItem{
 		ID:                  "loc-crime-intl",
 		CrimeRelevance:      "core_street_crime",
 		LocationCountry:     "united_states",
@@ -49,7 +49,7 @@ func TestGenerateLocationChannels_CrimeInternational(t *testing.T) {
 func TestGenerateLocationChannels_CrimeProvinceOnly(t *testing.T) {
 	t.Helper()
 
-	article := &Article{
+	article := &ContentItem{
 		ID:                  "loc-crime-province",
 		CrimeRelevance:      "peripheral_crime",
 		LocationProvince:    "BC",
@@ -74,7 +74,7 @@ func TestGenerateLocationChannels_MiningSkipped(t *testing.T) {
 
 	// Mining location channels are handled by Layer 5 (GenerateMiningChannels),
 	// so Layer 4 should not generate them.
-	article := &Article{
+	article := &ContentItem{
 		ID:                  "loc-mining-skip",
 		Mining:              &MiningData{Relevance: "core_mining"},
 		LocationCity:        "timmins",
@@ -92,7 +92,7 @@ func TestGenerateLocationChannels_MiningSkipped(t *testing.T) {
 func TestGenerateLocationChannels_EntertainmentCanadianCity(t *testing.T) {
 	t.Helper()
 
-	article := &Article{
+	article := &ContentItem{
 		ID:                  "loc-ent-city",
 		Entertainment:       &EntertainmentData{Relevance: "core_entertainment"},
 		LocationCity:        "toronto",
@@ -113,7 +113,7 @@ func TestGenerateLocationChannels_EntertainmentCanadianCity(t *testing.T) {
 func TestGenerateLocationChannels_MultiTopic(t *testing.T) {
 	t.Helper()
 
-	article := &Article{
+	article := &ContentItem{
 		ID:                  "loc-multi",
 		CrimeRelevance:      "core_street_crime",
 		Entertainment:       &EntertainmentData{Relevance: "core_entertainment"},
@@ -140,7 +140,7 @@ func TestGenerateLocationChannels_MultiTopic(t *testing.T) {
 func TestGenerateLocationChannels_NoActiveTopic(t *testing.T) {
 	t.Helper()
 
-	article := &Article{
+	article := &ContentItem{
 		ID:                  "loc-no-topic",
 		CrimeRelevance:      "not_crime",
 		LocationCity:        "vancouver",
@@ -158,7 +158,7 @@ func TestGenerateLocationChannels_NoActiveTopic(t *testing.T) {
 func TestGenerateLocationChannels_UnknownLocation(t *testing.T) {
 	t.Helper()
 
-	article := &Article{
+	article := &ContentItem{
 		ID:                  "loc-unknown",
 		CrimeRelevance:      "core_street_crime",
 		LocationCountry:     "unknown",
@@ -174,7 +174,7 @@ func TestGenerateLocationChannels_UnknownLocation(t *testing.T) {
 func TestGenerateLocationChannels_EmptyLocationCountry(t *testing.T) {
 	t.Helper()
 
-	article := &Article{
+	article := &ContentItem{
 		ID:                  "loc-empty-country",
 		CrimeRelevance:      "core_street_crime",
 		LocationCity:        "toronto",
@@ -192,7 +192,7 @@ func TestGenerateLocationChannels_EmptyLocationCountry(t *testing.T) {
 func TestGenerateLocationChannels_EntertainmentNotEntertainment(t *testing.T) {
 	t.Helper()
 
-	article := &Article{
+	article := &ContentItem{
 		ID:                  "loc-ent-not",
 		Entertainment:       &EntertainmentData{Relevance: "not_entertainment"},
 		LocationCity:        "toronto",

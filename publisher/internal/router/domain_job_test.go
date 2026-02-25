@@ -9,7 +9,7 @@ import (
 func TestJobDomain_NilJob(t *testing.T) {
 	t.Helper()
 	d := router.NewJobDomain()
-	routes := d.Routes(&router.Article{})
+	routes := d.Routes(&router.ContentItem{})
 	if routes != nil {
 		t.Error("expected nil routes for article without job data")
 	}
@@ -18,7 +18,7 @@ func TestJobDomain_NilJob(t *testing.T) {
 func TestJobDomain_WithTypeAndIndustry(t *testing.T) {
 	t.Helper()
 	d := router.NewJobDomain()
-	article := &router.Article{
+	article := &router.ContentItem{
 		Job: &router.JobData{
 			ExtractionMethod: "schema_org",
 			EmploymentType:   "full_time",
@@ -35,7 +35,7 @@ func TestJobDomain_WithTypeAndIndustry(t *testing.T) {
 		channels[r.Channel] = true
 	}
 
-	if !channels["articles:jobs"] {
+	if !channels["content:jobs"] {
 		t.Error("expected articles:jobs channel")
 	}
 	if !channels["jobs:type:full-time"] {
@@ -57,7 +57,7 @@ func TestJobDomain_Name(t *testing.T) {
 func TestJobDomain_OnlyIndustry(t *testing.T) {
 	t.Helper()
 	d := router.NewJobDomain()
-	article := &router.Article{
+	article := &router.ContentItem{
 		Job: &router.JobData{
 			Industry: "Healthcare",
 		},
@@ -67,7 +67,7 @@ func TestJobDomain_OnlyIndustry(t *testing.T) {
 	for _, r := range routes {
 		channels[r.Channel] = true
 	}
-	if !channels["articles:jobs"] {
+	if !channels["content:jobs"] {
 		t.Error("expected articles:jobs")
 	}
 	if !channels["jobs:industry:healthcare"] {

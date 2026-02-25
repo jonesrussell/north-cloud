@@ -19,7 +19,7 @@ type StatsService struct {
 // MetricsTracker interface for dependency injection
 type MetricsTracker interface {
 	GetStats(ctx context.Context) (*metrics.Stats, error)
-	GetRecentArticles(ctx context.Context, limit int) ([]metrics.RecentArticle, error)
+	GetRecentItems(ctx context.Context, limit int) ([]metrics.RecentItem, error)
 }
 
 // NewStatsService creates a new stats service
@@ -39,8 +39,8 @@ func (s *StatsService) GetStats(ctx context.Context) (*metrics.Stats, error) {
 	return s.tracker.GetStats(ctx)
 }
 
-// GetRecentArticles returns recent posted articles with limit validation
-func (s *StatsService) GetRecentArticles(ctx context.Context, limit int) ([]metrics.RecentArticle, error) {
+// GetRecentItems returns recently posted items with limit validation
+func (s *StatsService) GetRecentItems(ctx context.Context, limit int) ([]metrics.RecentItem, error) {
 	if s.tracker == nil {
 		s.logger.Error("Metrics tracker is nil")
 		return nil, errors.New("metrics tracker not initialized")
@@ -48,8 +48,8 @@ func (s *StatsService) GetRecentArticles(ctx context.Context, limit int) ([]metr
 	if limit <= 0 {
 		limit = defaultLimit
 	}
-	if limit > metrics.MaxRecentArticles {
-		limit = metrics.MaxRecentArticles
+	if limit > metrics.MaxRecentItems {
+		limit = metrics.MaxRecentItems
 	}
-	return s.tracker.GetRecentArticles(ctx, limit)
+	return s.tracker.GetRecentItems(ctx, limit)
 }

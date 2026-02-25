@@ -7,7 +7,7 @@ import (
 
 func TestGenerateEntertainmentChannels_CoreHomepage(t *testing.T) {
 	t.Helper()
-	article := &Article{
+	article := &ContentItem{
 		Title: "Film review",
 		Entertainment: &EntertainmentData{
 			Relevance:        EntertainmentRelevanceCore,
@@ -41,7 +41,7 @@ func TestGenerateEntertainmentChannels_CoreHomepage(t *testing.T) {
 
 func TestGenerateEntertainmentChannels_Peripheral(t *testing.T) {
 	t.Helper()
-	article := &Article{
+	article := &ContentItem{
 		Title: "Arts news",
 		Entertainment: &EntertainmentData{
 			Relevance: EntertainmentRelevancePeripheral,
@@ -58,7 +58,7 @@ func TestGenerateEntertainmentChannels_Peripheral(t *testing.T) {
 
 func TestGenerateEntertainmentChannels_NotEntertainment(t *testing.T) {
 	t.Helper()
-	article := &Article{
+	article := &ContentItem{
 		Title: "Weather report",
 		Entertainment: &EntertainmentData{
 			Relevance: EntertainmentRelevanceNot,
@@ -74,7 +74,7 @@ func TestGenerateEntertainmentChannels_NotEntertainment(t *testing.T) {
 
 func TestGenerateEntertainmentChannels_NilEntertainment(t *testing.T) {
 	t.Helper()
-	article := &Article{Title: "No classification"}
+	article := &ContentItem{Title: "No classification"}
 
 	routes := NewEntertainmentDomain().Routes(article)
 	channels := routeChannelNames(routes)

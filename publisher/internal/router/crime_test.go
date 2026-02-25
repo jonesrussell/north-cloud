@@ -41,7 +41,7 @@ func TestArticle_UnmarshalNestedCrimeFields(t *testing.T) {
 		}
 	}`
 
-	var article Article
+	var article ContentItem
 	err := json.Unmarshal([]byte(esJSON), &article)
 	require.NoError(t, err)
 
@@ -87,7 +87,7 @@ func TestArticle_FullUnmarshalPipeline(t *testing.T) {
 		}
 	}`
 
-	var article Article
+	var article ContentItem
 	err := json.Unmarshal([]byte(esJSON), &article)
 	require.NoError(t, err)
 	article.extractNestedFields()
@@ -110,7 +110,7 @@ func TestArticle_FullUnmarshalPipeline(t *testing.T) {
 func TestArticle_ExtractNestedFields_Crime(t *testing.T) {
 	t.Helper()
 
-	article := Article{
+	article := ContentItem{
 		Crime: &CrimeData{
 			Relevance:  "core_street_crime",
 			SubLabel:   "",
@@ -148,7 +148,7 @@ func TestArticle_ExtractNestedFields_Crime(t *testing.T) {
 func TestArticle_ExtractNestedFields_NilCrime(t *testing.T) {
 	t.Helper()
 
-	article := Article{
+	article := ContentItem{
 		CrimeRelevance: "should-not-change",
 	}
 
@@ -161,7 +161,7 @@ func TestArticle_ExtractNestedFields_NilCrime(t *testing.T) {
 func TestCrimeRouter_Route_HomepageEligible(t *testing.T) {
 	t.Helper()
 
-	article := &Article{
+	article := &ContentItem{
 		ID:               "test-1",
 		Title:            "Murder suspect arrested",
 		HomepageEligible: true,
@@ -184,7 +184,7 @@ func TestCrimeRouter_Route_CoreNotHomepageEligible(t *testing.T) {
 	t.Helper()
 
 	// Core street crime that's not homepage eligible still gets category pages
-	article := &Article{
+	article := &ContentItem{
 		ID:               "test-2",
 		Title:            "Minor incident",
 		HomepageEligible: false,
@@ -207,7 +207,7 @@ func TestCrimeRouter_Route_CoreNotHomepageEligible(t *testing.T) {
 func TestCrimeRouter_Route_NotCrime(t *testing.T) {
 	t.Helper()
 
-	article := &Article{
+	article := &ContentItem{
 		ID:             "test-3",
 		Title:          "Weather forecast",
 		CrimeRelevance: "not_crime",
@@ -224,7 +224,7 @@ func TestCrimeRouter_Route_NotCrime(t *testing.T) {
 func TestCrimeRouter_Route_PeripheralCrime_CriminalJustice(t *testing.T) {
 	t.Helper()
 
-	article := &Article{
+	article := &ContentItem{
 		ID:             "test-sub-1",
 		Title:          "Man sentenced to 10 years",
 		CrimeRelevance: "peripheral_crime",
@@ -242,7 +242,7 @@ func TestCrimeRouter_Route_PeripheralCrime_CriminalJustice(t *testing.T) {
 func TestCrimeRouter_Route_PeripheralCrime_CrimeContext(t *testing.T) {
 	t.Helper()
 
-	article := &Article{
+	article := &ContentItem{
 		ID:             "test-sub-2",
 		Title:          "DOJ releases documents",
 		CrimeRelevance: "peripheral_crime",
@@ -260,7 +260,7 @@ func TestCrimeRouter_Route_PeripheralCrime_CrimeContext(t *testing.T) {
 func TestCrimeRouter_Route_PeripheralCrime_NoSubLabel(t *testing.T) {
 	t.Helper()
 
-	article := &Article{
+	article := &ContentItem{
 		ID:             "test-sub-3",
 		Title:          "Peripheral crime article",
 		CrimeRelevance: "peripheral_crime",

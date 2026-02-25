@@ -7,7 +7,7 @@ import (
 
 func TestGenerateAnishinaabeChannels_Core(t *testing.T) {
 	t.Helper()
-	article := &Article{
+	article := &ContentItem{
 		Title: "First Nations governance",
 		Anishinaabe: &AnishinaabeData{
 			Relevance:  AnishinaabeRelevanceCore,
@@ -23,7 +23,7 @@ func TestGenerateAnishinaabeChannels_Core(t *testing.T) {
 	hasArticles := false
 	hasCategory := false
 	for _, c := range channels {
-		if c == "articles:anishinaabe" {
+		if c == "content:anishinaabe" {
 			hasArticles = true
 		}
 		if c == "anishinaabe:category:culture" || c == "anishinaabe:category:governance" {
@@ -40,7 +40,7 @@ func TestGenerateAnishinaabeChannels_Core(t *testing.T) {
 
 func TestGenerateAnishinaabeChannels_Peripheral(t *testing.T) {
 	t.Helper()
-	article := &Article{
+	article := &ContentItem{
 		Title: "Indigenous reconciliation",
 		Anishinaabe: &AnishinaabeData{
 			Relevance:  AnishinaabeRelevancePeripheral,
@@ -55,7 +55,7 @@ func TestGenerateAnishinaabeChannels_Peripheral(t *testing.T) {
 	}
 	hasArticles := false
 	for _, c := range channels {
-		if c == "articles:anishinaabe" {
+		if c == "content:anishinaabe" {
 			hasArticles = true
 			break
 		}
@@ -67,7 +67,7 @@ func TestGenerateAnishinaabeChannels_Peripheral(t *testing.T) {
 
 func TestGenerateAnishinaabeChannels_NotAnishinaabe(t *testing.T) {
 	t.Helper()
-	article := &Article{
+	article := &ContentItem{
 		Title: "Weather report",
 		Anishinaabe: &AnishinaabeData{
 			Relevance: AnishinaabeRelevanceNot,
@@ -82,7 +82,7 @@ func TestGenerateAnishinaabeChannels_NotAnishinaabe(t *testing.T) {
 
 func TestGenerateAnishinaabeChannels_NilAnishinaabe(t *testing.T) {
 	t.Helper()
-	article := &Article{Title: "No classification"}
+	article := &ContentItem{Title: "No classification"}
 
 	routes := NewAnishinaabeeDomain().Routes(article)
 	channels := routeChannelNames(routes)
