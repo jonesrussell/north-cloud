@@ -268,7 +268,7 @@ For remote production (laptop → prod server):
   "mcpServers": {
     "North Cloud (Production)": {
       "command": "ssh",
-      "args": ["jones@northcloud.biz", "docker exec -i north-cloud-mcp-north-cloud-1 /app/mcp-north-cloud"]
+      "args": ["jones@northcloud.one", "docker exec -i north-cloud-mcp-north-cloud-1 /app/mcp-north-cloud"]
     }
   }
 }
