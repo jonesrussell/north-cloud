@@ -150,14 +150,13 @@ git commit -m "fix(dashboard): update default user-agent domain to northcloud.on
 - Modify: `mcp-north-cloud/CLAUDE.md` — SSH host in example config
 - Modify: `mcp-north-cloud/README.md` — SSH host in example config
 
-**Step 1: Update .mcp.json and .cursor/mcp.json**
+**Step 1: Update .mcp.json and .cursor/mcp.json** *(done — files renamed to `.example`, originals gitignored)*
 
-Both files: `"user@your-server"` → `"user@your-server"`
+Both files were renamed to `.example` variants with placeholder `user@your-server`. The security credential scrub (commit `34334bb`) superseded the original domain-only migration for these files.
 
-**Step 2: Update mcp-north-cloud/CLAUDE.md and README.md**
+**Step 2: Update mcp-north-cloud/CLAUDE.md and README.md** *(done)*
 
-Replace all `user@your-server` → `user@your-server`
-Replace all `northcloud.biz` → `northcloud.one` (any remaining references)
+SSH host references updated to `northcloud.one`; credentials replaced with `user@your-server` placeholder.
 
 **Step 3: Commit**
 

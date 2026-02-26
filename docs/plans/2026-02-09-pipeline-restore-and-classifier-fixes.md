@@ -693,7 +693,7 @@ Use the classifier's reclassify endpoint on the "Repeat offender" article:
 
 ```bash
 # Get auth token
-TOKEN=$(ssh user@your-server 'docker exec north-cloud-auth-1 wget -qO- "http://localhost:8040/api/v1/auth/login" --post-data='\''{"username":"admin","password":"f00Bar123!"}'\'' --header="Content-Type: application/json" | python3 -c "import sys,json; print(json.load(sys.stdin)[\"token\"])"')
+TOKEN=$(ssh user@your-server 'docker exec north-cloud-auth-1 wget -qO- "http://localhost:8040/api/v1/auth/login" --post-data='\''{"username":"admin","password":"AUTH_PASSWORD"}'\'' --header="Content-Type: application/json" | python3 -c "import sys,json; print(json.load(sys.stdin)[\"token\"])"')
 
 # Reclassify the article
 ssh user@your-server "docker run --rm --network=north-cloud_north-cloud-network curlimages/curl:8.1.2 -s -X POST 'http://classifier:8071/api/v1/classify/reclassify/805e15f93695a39afada244a7a9cd3bbbfa4d7bb96dcb4cbfa34d3f3990a56f1' -H 'Authorization: Bearer $TOKEN' | python3 -m json.tool"
