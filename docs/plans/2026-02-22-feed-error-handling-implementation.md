@@ -1528,7 +1528,7 @@ git commit -m "feat(crawler): auto-disable feeds after consecutive failures via 
 **Step 1: Run crawler migration**
 
 ```bash
-ssh jones@northcloud.biz
+ssh user@your-server
 docker compose -f docker-compose.base.yml -f docker-compose.prod.yml run --rm crawler \
   go run cmd/migrate/main.go up
 ```
@@ -1592,7 +1592,7 @@ Use `mcp__North_Cloud__Local___update_source` or the source-manager API to eithe
 After 1 hour, check:
 
 ```bash
-ssh jones@northcloud.biz "docker logs north-cloud-crawler --since 1h 2>&1 | grep -c 'level.*error'"
+ssh user@your-server "docker logs north-cloud-crawler --since 1h 2>&1 | grep -c 'level.*error'"
 ```
 
 Expected: Significant reduction from ~300/day to near zero ERROR-level feed poll messages.

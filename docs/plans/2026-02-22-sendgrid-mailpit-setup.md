@@ -92,7 +92,7 @@ GRAFANA_ALERT_EMAIL=alerts@example.com
 **Step 1: Add SENDGRID_API_KEY to prod .env**
 
 ```bash
-ssh jones@northcloud.biz
+ssh user@your-server
 echo 'SENDGRID_API_KEY=<your-sendgrid-api-key>' >> /opt/north-cloud/.env
 echo 'GRAFANA_ALERT_EMAIL=jonesrussell42@gmail.com' >> /opt/north-cloud/.env
 ```

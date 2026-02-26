@@ -411,7 +411,7 @@ git commit -m "feat(mcp): wire MCP_ENV into server, filter tools by environment"
     "North Cloud (Production)": {
       "command": "ssh",
       "args": [
-        "jones@northcloud.biz",
+        "user@your-server",
         "docker exec -i -e MCP_ENV=prod north-cloud-mcp-north-cloud-1 /app/mcp-north-cloud"
       ]
     }

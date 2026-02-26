@@ -152,11 +152,11 @@ git commit -m "fix(dashboard): update default user-agent domain to northcloud.on
 
 **Step 1: Update .mcp.json and .cursor/mcp.json**
 
-Both files: `"jones@northcloud.biz"` → `"jones@northcloud.one"`
+Both files: `"user@your-server"` → `"user@your-server"`
 
 **Step 2: Update mcp-north-cloud/CLAUDE.md and README.md**
 
-Replace all `jones@northcloud.biz` → `jones@northcloud.one`
+Replace all `user@your-server` → `user@your-server`
 Replace all `northcloud.biz` → `northcloud.one` (any remaining references)
 
 **Step 3: Commit**

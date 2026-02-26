@@ -100,7 +100,7 @@ When Cursor runs on a different host (e.g., your laptop connecting to the prod s
   "mcpServers": {
     "North Cloud (Production)": {
       "command": "ssh",
-      "args": ["jones@northcloud.one", "docker exec -i north-cloud-mcp-north-cloud-1 /app/mcp-north-cloud"]
+      "args": ["user@your-server", "docker exec -i north-cloud-mcp-north-cloud-1 /app/mcp-north-cloud"]
     }
   }
 }

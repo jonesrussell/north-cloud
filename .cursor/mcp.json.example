@@ -15,7 +15,7 @@
     "North Cloud (Production)": {
       "command": "ssh",
       "args": [
-        "jones@northcloud.one",
+        "your-user@your-server",
         "docker exec -i -e MCP_ENV=prod north-cloud-mcp-north-cloud-1 /app/mcp-north-cloud"
       ]
     }

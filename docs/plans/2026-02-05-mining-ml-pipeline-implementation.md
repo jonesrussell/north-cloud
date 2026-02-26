@@ -741,7 +741,7 @@ git commit -m "feat: mining-ml pipeline local integration verified"
 **Step 1: SSH to production and backup databases**
 
 ```bash
-ssh jones@northcloud.biz
+ssh user@your-server
 cd /opt/north-cloud  # or wherever deployed
 task db:backup:source-manager
 task db:backup:crawler

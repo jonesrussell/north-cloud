@@ -20,7 +20,7 @@ This doc describes how to add the tiered Anishinaabe/Indigenous sources to **pro
 
 ## Run the script on production
 
-On the North Cloud server (e.g. `jones@northcloud.one`, app at `/opt/north-cloud`), auth, source-manager, and crawler **do not publish ports to the host** in production. Run the script **inside a container on the Docker network** so it can reach those services by hostname.
+On the North Cloud server (e.g. `user@your-server`, app at `/opt/north-cloud`), auth, source-manager, and crawler **do not publish ports to the host** in production. Run the script **inside a container on the Docker network** so it can reach those services by hostname.
 
 ```bash
 # From the North Cloud server

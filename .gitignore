@@ -9,6 +9,10 @@
 .devcontainer/.env
 !.devcontainer/.env.example
 
+# MCP Configs (contain SSH credentials)
+.mcp.json
+.cursor/mcp.json
+
 # Secrets and Keys
 secrets/
 *.pem

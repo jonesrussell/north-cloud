@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Validate Pipeline Monitor numbers (Content Flow Today) against production DBs.
-# Run on prod: ssh jones@northcloud.one 'cd /opt/north-cloud && ./scripts/validate-dashboard-numbers.sh'
+# Run on prod: ssh user@your-server 'cd /opt/north-cloud && ./scripts/validate-dashboard-numbers.sh'
 # Uses same logic as: crawler GetTodayStats, classifier GetStats(date=today), publisher GetPublishStats(today).
 
 set -e
