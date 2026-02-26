@@ -3,9 +3,9 @@ package fetcher_test
 import (
 	"context"
 	"errors"
-	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -595,14 +595,54 @@ func TestProcessURL_IndexerError(t *testing.T) {
 	ctx := context.Background()
 
 	err := wp.ProcessURL(ctx, furl)
-	if err == nil {
-		t.Fatal("expected error from indexer, got nil")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
 	}
 
-	expectedMsg := "index content"
-	if !errors.Is(err, indexer.err) && err.Error() != fmt.Sprintf("%s: %s", expectedMsg, indexer.err.Error()) {
-		t.Errorf("expected error containing %q, got %q", expectedMsg, err.Error())
+	verifyFailedCalled(t, frontier)
+}
+
+func TestProcessURL_ExtractFailed(t *testing.T) {
+	t.Parallel()
+
+	// Build deeply nested HTML (513+ open elements) to trigger the Go html parser's
+	// "open stack of elements exceeds 512 nodes" error — reproduces the vernonmorningstar bug.
+	const nestDepth = 520
+	var b strings.Builder
+	b.WriteString("<html><body>")
+	for range nestDepth {
+		b.WriteString("<div>")
 	}
+	b.WriteString("content")
+	for range nestDepth {
+		b.WriteString("</div>")
+	}
+	b.WriteString("</body></html>")
+	deeplyNestedHTML := b.String()
+
+	server := startTestServer(t, http.StatusOK, deeplyNestedHTML)
+	furl := newTestFrontierURL(t, server.URL+"/bad-html")
+
+	frontier := &mockFrontier{
+		claimFunc: func(_ context.Context) (*domain.FrontierURL, error) {
+			return furl, nil
+		},
+	}
+	robots := &mockRobots{allowed: true}
+	indexer := &mockIndexer{}
+
+	wp, hostUpdater := newTestWorkerPool(t, frontier, robots, indexer)
+
+	ctx := context.Background()
+
+	err := wp.ProcessURL(ctx, furl)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	verifyDeadCalled(t, frontier, "extract_failed")
+	verifyNoContentIndexed(t, indexer)
+	verifyHostUpdated(t, hostUpdater)
 }
 
 func TestProcessURL_RedirectToFinalURL(t *testing.T) {

@@ -31,6 +31,7 @@ const (
 	reasonTooManyRedirects       = "too_many_redirects"
 	reasonUnsupportedContentType = "unsupported_content_type"
 	reasonBinaryURL              = "binary_url"
+	reasonExtractFailed          = "extract_failed"
 )
 
 // binaryExtensions are file extensions that indicate binary/non-content resources.
@@ -343,11 +344,25 @@ func (wp *WorkerPool) handleSuccess(
 
 	content, extractErr := wp.extractor.Extract(furl.SourceID, furl.URL, body)
 	if extractErr != nil {
-		return fmt.Errorf("extract content: %w", extractErr)
+		// Extraction failures are permanent — the page structure won't change on retry.
+		if updateErr := wp.frontier.UpdateDead(ctx, furl.ID, reasonExtractFailed); updateErr != nil {
+			return updateErr
+		}
+		wp.log.Info("URL marked dead",
+			"url", furl.URL,
+			"reason", reasonExtractFailed,
+			"error", extractErr.Error(),
+		)
+		return nil
 	}
 
 	if indexErr := wp.indexer.Index(ctx, content); indexErr != nil {
-		return fmt.Errorf("index content: %w", indexErr)
+		// Indexing failures are transient (ES may be down) — use retry with backoff.
+		if updateErr := wp.frontier.UpdateFailed(ctx, furl.ID, indexErr.Error(), wp.maxRetries); updateErr != nil {
+			return fmt.Errorf("update failed after index error: %w", updateErr)
+		}
+		wp.log.Info("URL index failed", "url", furl.URL, "error", indexErr.Error())
+		return nil
 	}
 
 	params := FetchedParams{
