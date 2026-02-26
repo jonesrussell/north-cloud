@@ -62,7 +62,7 @@
       </h3>
       <select
         v-model="localContentType"
-        class="block w-full rounded-lg border-[var(--nc-border)] bg-[var(--nc-bg-elevated)] text-sm text-[var(--nc-text)] focus:border-[var(--nc-primary)] focus:ring-[var(--nc-primary)]"
+        class="block w-full rounded-lg border-[var(--nc-border)] bg-[var(--nc-bg-surface)] text-sm text-[var(--nc-text)] focus:border-[var(--nc-primary)] focus:ring-[var(--nc-primary)]"
         aria-label="Filter by content type"
         @change="applyContentType"
       >
@@ -143,7 +143,7 @@
         <input
           v-model="localFromDate"
           type="date"
-          class="rounded-lg border-[var(--nc-border)] bg-[var(--nc-bg-elevated)] text-sm text-[var(--nc-text)] focus:border-[var(--nc-primary)] focus:ring-[var(--nc-primary)]"
+          class="rounded-lg border-[var(--nc-border)] bg-[var(--nc-bg-surface)] text-sm text-[var(--nc-text)] focus:border-[var(--nc-primary)] focus:ring-[var(--nc-primary)]"
           aria-label="From date"
           @change="applyDateRange"
         >
@@ -151,7 +151,7 @@
         <input
           v-model="localToDate"
           type="date"
-          class="rounded-lg border-[var(--nc-border)] bg-[var(--nc-bg-elevated)] text-sm text-[var(--nc-text)] focus:border-[var(--nc-primary)] focus:ring-[var(--nc-primary)]"
+          class="rounded-lg border-[var(--nc-border)] bg-[var(--nc-bg-surface)] text-sm text-[var(--nc-text)] focus:border-[var(--nc-primary)] focus:ring-[var(--nc-primary)]"
           aria-label="To date"
           @change="applyDateRange"
         >

@@ -5,13 +5,13 @@
       :key="chip.id"
     >
       <span
-        class="inline-flex items-center gap-1.5 rounded-full bg-[var(--nc-bg-muted)] px-3 py-1.5 text-sm text-[var(--nc-text)] border border-[var(--nc-border)]"
+        class="inline-flex items-center gap-1.5 rounded-full bg-[var(--nc-bg-surface)] px-3 py-1.5 text-sm text-[var(--nc-text)] border border-[var(--nc-border)]"
       >
         <span class="font-medium">{{ chip.label }}:</span>
         <span>{{ chip.value }}</span>
         <button
           type="button"
-          class="rounded-full p-0.5 hover:bg-[var(--nc-border)] text-[var(--nc-text-muted)] hover:text-[var(--nc-text)] focus:outline-none focus:ring-2 focus:ring-[var(--nc-primary)] transition-colors duration-[var(--nc-duration-fast)]"
+          class="rounded-full p-0.5 hover:bg-[var(--nc-bg-muted)] text-[var(--nc-text-muted)] hover:text-[var(--nc-text)] focus:outline-none focus:ring-2 focus:ring-[var(--nc-primary)] transition-colors duration-[var(--nc-duration-fast)]"
           :aria-label="`Remove filter ${chip.label} ${chip.value}`"
           @click="chip.remove()"
         >
