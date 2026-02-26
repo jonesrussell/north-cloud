@@ -1,6 +1,6 @@
 <template>
   <article
-    class="group relative rounded-xl border border-[var(--nc-border)] bg-[var(--nc-bg-elevated)] overflow-hidden transition-shadow hover:shadow-[var(--nc-shadow-lg)]"
+    class="group relative rounded-xl border border-[var(--nc-border)] bg-[var(--nc-bg-elevated)] overflow-hidden transition-colors hover:border-[var(--nc-border-strong)]"
     style="transition-duration: var(--nc-duration); transition-timing-function: var(--nc-ease-out)"
   >
     <a
@@ -25,7 +25,7 @@
           v-else
           class="h-full w-full"
           :class="channelColor"
-          style="opacity: 0.15"
+          style="opacity: 0.25"
         />
       </div>
 
