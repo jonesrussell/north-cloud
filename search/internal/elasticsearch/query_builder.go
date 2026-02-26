@@ -64,7 +64,7 @@ func (qb *QueryBuilder) Build(req *domain.SearchRequest) map[string]any {
 			"id", "title", "url", "source_name",
 			"published_date", "crawled_at",
 			"quality_score", "content_type", "topics",
-			"crime", "body", "raw_text",
+			"crime", "body", "raw_text", "og_image",
 		}
 	}
 

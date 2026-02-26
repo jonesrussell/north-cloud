@@ -1,5 +1,5 @@
 import axios, { type AxiosInstance, type AxiosResponse, type InternalAxiosRequestConfig } from 'axios'
-import type { SearchRequest, SearchResponse, SuggestResponse } from '@/types/search'
+import type { SearchRequest, SearchResponse, SuggestResponse, FeedResponse } from '@/types/search'
 import type { SearchApi } from '@/types/api'
 
 const DEBUG = import.meta.env.DEV
@@ -62,6 +62,44 @@ export const searchApi: SearchApi = {
    */
   health: (): Promise<AxiosResponse<{ status: string }>> => {
     return axios.get<{ status: string }>('/api/health/search')
+  },
+}
+
+const feedClient: AxiosInstance = axios.create({
+  timeout: 10000,
+})
+
+if (DEBUG) {
+  feedClient.interceptors.request.use((config: InternalAxiosRequestConfig) => {
+    console.log('[Feed API] Request:', config.method?.toUpperCase(), config.url)
+    return config
+  })
+
+  feedClient.interceptors.response.use(
+    (response: AxiosResponse) => {
+      console.log('[Feed API] Response:', response.status, response.data)
+      return response
+    },
+    (error: unknown) => {
+      if (axios.isAxiosError(error)) {
+        console.error('[Feed API] Error:', error.response?.status, error.response?.data || error.message)
+      } else {
+        console.error('[Feed API] Error:', error)
+      }
+      return Promise.reject(error)
+    }
+  )
+}
+
+export const feedApi = {
+  /** Fetch latest public feed items */
+  latest: (): Promise<AxiosResponse<FeedResponse>> => {
+    return feedClient.get<FeedResponse>('/feed.json')
+  },
+
+  /** Fetch feed items by topic slug */
+  byTopic: (slug: string): Promise<AxiosResponse<FeedResponse>> => {
+    return feedClient.get<FeedResponse>(`/feed/${slug}.json`)
   },
 }
 
