@@ -73,7 +73,7 @@ func (r *FeedStateRepository) UpdateError(ctx context.Context, sourceID, errorTy
 		UPDATE feed_state
 		SET last_polled_at = NOW(), consecutive_errors = consecutive_errors + 1,
 			last_error = $3, last_error_type = $2,
-			next_poll_at = CASE WHEN $2 = 'rate_limited'
+			next_poll_at = CASE WHEN $2::text = 'rate_limited'
 				THEN NOW() + (LEAST(POWER(2, consecutive_errors)::int, 96) * INTERVAL '5 minutes')
 				ELSE next_poll_at END,
 			updated_at = NOW()
