@@ -6,15 +6,15 @@
 #
 # Environment:
 #   CRAWLER_URL   - Crawler API base URL (default: http://localhost:8060).
-#                   On prod behind nginx: https://northcloud.biz/api/crawler
+#                   On prod behind nginx: https://northcloud.one/api/crawler
 #   JWT           - JWT token for /api/v1 (required unless AUTH_* are set)
 #   AUTH_URL      - Auth login URL (optional; if set with AUTH_USERNAME/AUTH_PASSWORD, JWT is fetched)
 #   AUTH_USERNAME - Dashboard username (optional, for fetching JWT)
 #   AUTH_PASSWORD - Dashboard password (optional, for fetching JWT)
 #
 # Example (production with auth fetch):
-#   export CRAWLER_URL="https://northcloud.biz/api/crawler"
-#   export AUTH_URL="https://northcloud.biz/api/v1/auth"
+#   export CRAWLER_URL="https://northcloud.one/api/crawler"
+#   export AUTH_URL="https://northcloud.one/api/v1/auth"
 #   export AUTH_USERNAME="your-user"
 #   export AUTH_PASSWORD="your-pass"
 #   ./scripts/sync-enabled-sources-jobs.sh
@@ -25,7 +25,7 @@
 set -e
 
 CRAWLER_URL="${CRAWLER_URL:-http://localhost:8060}"
-# When behind nginx (e.g. CRAWLER_URL=https://northcloud.biz/api/crawler), path is /admin/...; else /api/v1/admin/...
+# When behind nginx (e.g. CRAWLER_URL=https://northcloud.one/api/crawler), path is /admin/...; else /api/v1/admin/...
 if [ "${CRAWLER_URL#*api/crawler}" != "$CRAWLER_URL" ]; then
   ENDPOINT="${CRAWLER_URL}/admin/sync-enabled-sources"
 else

@@ -12,7 +12,7 @@ write_files:
       FETCHER_ELASTICSEARCH_URL=http://MAIN_SERVER_VPC_IP:9200
       FETCHER_SOURCE_MANAGER_URL=http://MAIN_SERVER_VPC_IP:8050
       FETCHER_WORKER_COUNT=16
-      FETCHER_USER_AGENT=NorthCloud-Fetcher/1.0 (+https://northcloud.biz/crawler)
+      FETCHER_USER_AGENT=NorthCloud-Fetcher/1.0 (+https://northcloud.one/crawler)
       FETCHER_LOG_LEVEL=info
 
 runcmd:
