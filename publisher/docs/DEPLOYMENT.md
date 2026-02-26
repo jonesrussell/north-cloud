@@ -258,13 +258,13 @@ docker exec north-cloud-nginx nginx -t
 
 ```bash
 # Health check via nginx
-curl https://northcloud.biz/api/health/publisher
+curl https://northcloud.one/api/health/publisher
 
 # Frontend access (via unified dashboard)
-open https://northcloud.biz/dashboard/publisher
+open https://northcloud.one/dashboard/publisher
 
 # API access (with JWT)
-curl https://northcloud.biz/api/publisher/v1/sources \
+curl https://northcloud.one/api/publisher/v1/sources \
   -H "Authorization: Bearer $TOKEN"
 ```
 
@@ -387,11 +387,11 @@ curl http://localhost:3002/dashboard/publisher
 curl http://localhost/dashboard/publisher
 
 # Via domain
-curl https://northcloud.biz/dashboard/publisher
+curl https://northcloud.one/dashboard/publisher
 ```
 
 **Browser Verification**:
-1. Open `http://localhost/dashboard/publisher` (or `https://northcloud.biz/dashboard/publisher`)
+1. Open `http://localhost/dashboard/publisher` (or `https://northcloud.one/dashboard/publisher`)
 2. Login page should appear (if not authenticated)
 3. After login, see Publisher Dashboard with stats
 4. Navigate to Sources, Channels, Routes pages

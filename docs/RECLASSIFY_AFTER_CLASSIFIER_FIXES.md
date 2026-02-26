@@ -2,7 +2,7 @@
 
 After deploying classifier fixes (e.g. content_type URL fallback, crime rules title+body prefix), existing stored documents must be reclassified and the publisher cursor reset so corrected classifications flow to Streetcode.
 
-**North Cloud prod:** jones@northcloud.biz, `/opt/north-cloud`
+**North Cloud prod:** jones@northcloud.one, `/opt/north-cloud`
 
 ## Sequence
 
@@ -17,22 +17,22 @@ After deploying classifier fixes (e.g. content_type URL fallback, crime rules ti
 
 - Reset cursor and clear crime history:
   ```bash
-  ssh jones@northcloud.biz 'docker exec north-cloud-postgres-publisher-1 psql -U postgres -d publisher -c "
+  ssh jones@northcloud.one 'docker exec north-cloud-postgres-publisher-1 psql -U postgres -d publisher -c "
   BEGIN;
   DELETE FROM publish_history WHERE channel_name LIKE '\''crime:%'\'';
   UPDATE publisher_cursor SET last_sort = '\''[]'\'', updated_at = NOW() WHERE id = 1;
   COMMIT;
   "'
   ```
-- Restart publisher: `ssh jones@northcloud.biz 'cd /opt/north-cloud && docker compose -f docker-compose.base.yml -f docker-compose.prod.yml restart publisher'`
+- Restart publisher: `ssh jones@northcloud.one 'cd /opt/north-cloud && docker compose -f docker-compose.base.yml -f docker-compose.prod.yml restart publisher'`
 - Verify Streetcode: `ssh deployer@streetcode.net 'tail -50 .../storage/logs/laravel.log | grep "Article processed"'`
 
 ## Reclassification script (run on prod server)
 
-Run on `jones@northcloud.biz` (e.g. in `screen` or `tmux`). Replace `AUTH_PASSWORD` with the real auth password. Uses curl container + port **8070** (classifier listens on 8070; classifier container cannot reach its own localhost).
+Run on `jones@northcloud.one` (e.g. in `screen` or `tmux`). Replace `AUTH_PASSWORD` with the real auth password. Uses curl container + port **8070** (classifier listens on 8070; classifier container cannot reach its own localhost).
 
 ```bash
-# On northcloud.biz
+# On northcloud.one
 cd /opt/north-cloud
 TOKEN=$(docker exec north-cloud-auth-1 wget -qO- "http://localhost:8040/api/v1/auth/login" \
   --post-data='{"username":"admin","password":"AUTH_PASSWORD"}' \

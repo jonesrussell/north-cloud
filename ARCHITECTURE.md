@@ -82,7 +82,7 @@ flowchart TD
 | PostgreSQL | per-service | One instance per Go service |
 | Redis | 6379 | Pub/Sub broker for all content routing |
 | Elasticsearch | 9200 | Raw and classified content storage |
-| Nginx | 80/443 | Reverse proxy and SSL termination (northcloud.biz) |
+| Nginx | 80/443 | Reverse proxy and SSL termination (northcloud.one) |
 | Loki | 3100 | Log aggregation backend |
 | Grafana Alloy | 12345 (debug UI) | Log collection from Docker containers |
 | Grafana | 3000 | Log visualization UI |

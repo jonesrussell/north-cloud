@@ -44,7 +44,7 @@ The search service queries all `*_classified_content` Elasticsearch indexes — 
 
 ### Base URLs
 
-- **Production**: `https://northcloud.biz/api/search`
+- **Production**: `https://northcloud.one/api/search`
 - **Development**: `http://localhost:8092/api/v1/search`
 
 ### Endpoints
