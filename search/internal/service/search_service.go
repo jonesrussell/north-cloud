@@ -408,6 +408,7 @@ func (s *SearchService) LatestItems(ctx context.Context) ([]domain.PublicFeedIte
 		"_source": []string{
 			"id", "title", "url", "source_name",
 			"published_date", "crawled_at", "raw_text", "topics",
+			"og_image",
 		},
 	}
 	res, err := s.executeSearch(ctx, query)
@@ -466,6 +467,7 @@ func (s *SearchService) TopicFeed(ctx context.Context, slug string, limit int) (
 		"_source": []string{
 			"id", "title", "url", "source_name",
 			"published_date", "crawled_at", "raw_text", "topics",
+			"og_image",
 		},
 	}
 
@@ -495,6 +497,7 @@ func (s *SearchService) parseLatestItemsResponse(body io.Reader) ([]domain.Publi
 					CrawledAt     *time.Time `json:"crawled_at"`
 					RawText       string     `json:"raw_text"`
 					Topics        []string   `json:"topics"`
+					OGImage       string     `json:"og_image"`
 				} `json:"_source"`
 			} `json:"hits"`
 		} `json:"hits"`
@@ -532,6 +535,7 @@ func (s *SearchService) parseLatestItemsResponse(body io.Reader) ([]domain.Publi
 			PublishedAt: pubAt,
 			Topics:      append([]string(nil), hit.Source.Topics...),
 			Source:      sourceName,
+			OGImage:     hit.Source.OGImage,
 		})
 	}
 	return out, nil

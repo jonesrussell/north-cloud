@@ -88,6 +88,7 @@ type SearchHit struct {
 	Highlight      map[string][]string `json:"highlight,omitempty"`
 	Snippet        string              `json:"snippet,omitempty"`
 	ClickURL       string              `json:"click_url,omitempty"`
+	OGImage        string              `json:"og_image,omitempty"`
 }
 
 // Facets holds faceted search aggregations
@@ -272,6 +273,7 @@ type PublicFeedItem struct {
 	PublishedAt time.Time `json:"published_at"`
 	Topics      []string  `json:"topics"`
 	Source      string    `json:"source"`
+	OGImage     string    `json:"og_image,omitempty"`
 }
 
 // PublicFeedResponse is the response shape for GET /feed.json.
