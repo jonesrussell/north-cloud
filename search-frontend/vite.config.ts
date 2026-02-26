@@ -21,6 +21,20 @@ export default defineConfig({
         changeOrigin: true,
         rewrite: (path: string) => path.replace(/^\/api\/search/, '/api/v1/search'),
       } as ProxyOptions,
+      // Latest feed
+      '/feed.json': {
+        target: SEARCH_API_URL,
+        changeOrigin: true,
+      } as ProxyOptions,
+      // Topic feeds: /feed/crime.json -> /api/v1/feeds/crime
+      '/feed/': {
+        target: SEARCH_API_URL,
+        changeOrigin: true,
+        rewrite: (path: string) => {
+          const slug = path.replace(/^\/feed\//, '').replace(/\.json$/, '')
+          return `/api/v1/feeds/${slug}`
+        },
+      } as ProxyOptions,
       // Health check endpoint
       '/api/health/search': {
         target: SEARCH_API_URL,

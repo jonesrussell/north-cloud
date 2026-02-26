@@ -34,9 +34,9 @@ src/
 ├── style.css                  # CSS custom properties (--nc-*), global styles
 ├── router/index.ts            # Routes: /, /search, /advanced, 404
 ├── api/
-│   └── search.ts              # Axios client — baseURL /api/search
+│   └── search.ts              # Axios clients — searchApi (/api/search) + feedApi (/feed.json)
 ├── views/
-│   ├── HomeView.vue           # Landing: search bar + suggested topics + recent searches
+│   ├── HomeView.vue           # News portal: trending, channel sections, search bar
 │   ├── ResultsView.vue        # Results: sidebar/drawer filters, pagination, sort
 │   ├── AdvancedSearchView.vue # Advanced query builder (all/any/exact/exclude words)
 │   └── NotFoundView.vue       # 404
@@ -52,6 +52,9 @@ src/
 │   │   ├── SearchPagination.vue   # Page navigation
 │   │   ├── EmptySearchState.vue   # No-results UI
 │   │   └── RelatedContent.vue     # Related content suggestions
+│   ├── news/
+│   │   ├── ChannelSection.vue     # Topic channel with header, skeleton, and NewsCard grid
+│   │   └── NewsCard.vue           # Feed article card with thumbnail, source, and headline
 │   └── common/
 │       ├── EmptyState.vue         # Generic empty state
 │       ├── ErrorAlert.vue         # Error banner
@@ -59,6 +62,7 @@ src/
 ├── composables/
 │   ├── useSearch.ts           # Core: state, API calls, URL sync, pagination
 │   ├── useRecentSearches.ts   # localStorage recent searches (cap 10, deduplicated)
+│   ├── useFeed.ts             # Feed composable — fetches public feed items by slug
 │   ├── useDebounce.ts         # Reactive debounce composable (default 300 ms)
 │   └── useUrlParams.ts        # Generic URL query-param sync helper
 ├── types/
@@ -81,6 +85,15 @@ User types query
   → SearchBar debounces input (280 ms) → calls /api/search/suggest for autocomplete
   → User submits → useSearch.search() → POST /api/search → update results + facets
   → updateUrl() serialises state to query params (/search?q=...&topics=...&page=...)
+```
+
+### Feed Flow
+
+```
+HomeView mounts
+  → useFeed() composable calls feedApi.latest() → GET /feed.json
+  → useFeed(slug) calls feedApi.byTopic(slug) → GET /feed/{slug}.json
+  → ChannelSection renders NewsCard grid per topic channel
 ```
 
 ### URL as Source of Truth
@@ -117,6 +130,8 @@ Dev proxy rewrites:
 | `/api/search` (POST/GET) | `{SEARCH_API_URL}/api/v1/search` |
 | `/api/search/suggest` | `{SEARCH_API_URL}/api/v1/search/suggest` |
 | `/api/health/search` | `{SEARCH_API_URL}/health` |
+| `/feed.json` | `{SEARCH_API_URL}/api/v1/feeds/latest` |
+| `/feed/:slug.json` | `{SEARCH_API_URL}/api/v1/feeds/:slug` |
 
 ## Common Gotchas
 

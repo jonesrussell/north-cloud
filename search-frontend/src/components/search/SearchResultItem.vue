@@ -12,84 +12,99 @@
       class="block group"
       :aria-label="`Open result: ${result.title}`"
     >
-      <!-- Badges -->
-      <div class="flex flex-wrap items-center gap-2 mb-2">
-        <span
-          v-if="contentTypeLabel"
-          class="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium bg-[var(--nc-bg-muted)] text-[var(--nc-text-secondary)]"
-        >
-          {{ contentTypeLabel }}
-        </span>
-        <span
-          v-if="sourceBadge"
-          class="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium bg-[var(--nc-success-muted)] text-[var(--nc-success)] border border-[var(--nc-success)]/20"
-        >
-          {{ sourceBadge }}
-        </span>
-      </div>
+      <div class="flex gap-4">
+        <!-- Content -->
+        <div class="flex-1 min-w-0">
+          <!-- Badges -->
+          <div class="flex flex-wrap items-center gap-2 mb-2">
+            <span
+              v-if="contentTypeLabel"
+              class="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium bg-[var(--nc-bg-muted)] text-[var(--nc-text-secondary)]"
+            >
+              {{ contentTypeLabel }}
+            </span>
+            <span
+              v-if="sourceBadge"
+              class="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium bg-[var(--nc-success-muted)] text-[var(--nc-success)] border border-[var(--nc-success)]/20"
+            >
+              {{ sourceBadge }}
+            </span>
+          </div>
 
-      <!-- Title -->
-      <h2
-        class="font-semibold text-[var(--nc-primary)] group-hover:text-[var(--nc-primary-hover)] mb-1.5 transition-colors duration-[var(--nc-duration)]"
-        :class="featured ? 'text-xl sm:text-2xl' : 'text-lg sm:text-xl'"
-      >
-        <span
-          v-if="highlightedTitle"
-          v-html="highlightedTitle"
-        />
-        <span v-else>{{ result.title }}</span>
-      </h2>
-
-      <!-- URL -->
-      <p class="text-sm text-[var(--nc-success)] mb-2 truncate">
-        {{ displayUrl }}
-      </p>
-
-      <!-- Snippet -->
-      <p
-        v-if="snippet"
-        class="text-[var(--nc-text-secondary)] text-sm leading-relaxed mb-3 result-snippet"
-        v-html="snippet"
-      />
-      <p
-        v-else
-        class="text-[var(--nc-text-secondary)] text-sm leading-relaxed mb-3"
-      >
-        {{ truncatedText }}
-      </p>
-
-      <!-- Meta -->
-      <div class="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-sm text-[var(--nc-text-muted)]">
-        <span v-if="result.published_date">
-          {{ formattedDate }}
-        </span>
-        <span
-          v-if="result.quality_score !== undefined && result.quality_score !== null"
-          class="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-medium"
-          :class="qualityBadgeClass"
-          :title="`Quality score: ${result.quality_score} out of 100`"
-        >
-          Quality {{ result.quality_score }}
-        </span>
-        <div
-          v-if="result.topics && result.topics.length"
-          class="flex flex-wrap gap-1"
-        >
-          <span
-            v-for="topic in result.topics"
-            :key="topic"
-            class="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-[var(--nc-primary-muted)] text-[var(--nc-primary)]"
+          <!-- Title -->
+          <h2
+            class="font-semibold text-[var(--nc-primary)] group-hover:text-[var(--nc-primary-hover)] mb-1.5 transition-colors duration-[var(--nc-duration)]"
+            :class="featured ? 'text-xl sm:text-2xl' : 'text-lg sm:text-xl'"
           >
-            {{ topic }}
-          </span>
+            <span
+              v-if="highlightedTitle"
+              v-html="highlightedTitle"
+            />
+            <span v-else>{{ result.title }}</span>
+          </h2>
+
+          <!-- URL -->
+          <p class="text-sm text-[var(--nc-success)] mb-2 truncate">
+            {{ displayUrl }}
+          </p>
+
+          <!-- Snippet -->
+          <p
+            v-if="snippet"
+            class="text-[var(--nc-text-secondary)] text-sm leading-relaxed mb-3 result-snippet"
+            v-html="snippet"
+          />
+          <p
+            v-else
+            class="text-[var(--nc-text-secondary)] text-sm leading-relaxed mb-3"
+          >
+            {{ truncatedText }}
+          </p>
+
+          <!-- Meta -->
+          <div class="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-sm text-[var(--nc-text-muted)]">
+            <span v-if="result.published_date">
+              {{ formattedDate }}
+            </span>
+            <span
+              v-if="result.quality_score !== undefined && result.quality_score !== null"
+              class="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-medium"
+              :class="qualityBadgeClass"
+              :title="`Quality score: ${result.quality_score} out of 100`"
+            >
+              Quality {{ result.quality_score }}
+            </span>
+            <div
+              v-if="result.topics && result.topics.length"
+              class="flex flex-wrap gap-1"
+            >
+              <span
+                v-for="topic in result.topics"
+                :key="topic"
+                class="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-[var(--nc-primary-muted)] text-[var(--nc-primary)]"
+              >
+                {{ topic }}
+              </span>
+            </div>
+          </div>
         </div>
+
+        <!-- Thumbnail -->
+        <img
+          v-if="result.og_image && !imageErrored"
+          :src="result.og_image"
+          :alt="result.title"
+          class="hidden sm:block flex-shrink-0 w-28 h-20 rounded-lg object-cover bg-[var(--nc-bg-muted)]"
+          loading="lazy"
+          @error="imageErrored = true"
+        >
       </div>
     </a>
   </article>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { formatDate } from '@/utils/dateFormatter'
 import { parseHighlight, sanitizeHighlight } from '@/utils/highlightHelper'
 import type { SearchResult } from '@/types/search'
@@ -102,6 +117,8 @@ interface Props {
 const props = withDefaults(defineProps<Props>(), {
   featured: false,
 })
+
+const imageErrored = ref(false)
 
 const contentTypeLabel = computed((): string => {
   const ct = props.result.content_type

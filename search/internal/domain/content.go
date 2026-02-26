@@ -17,6 +17,7 @@ type ClassifiedContent struct {
 	RawHTML          string           `json:"raw_html,omitempty"`
 	OGTitle          string           `json:"og_title,omitempty"`
 	OGDescription    string           `json:"og_description,omitempty"`
+	OGImage          string           `json:"og_image,omitempty"`
 	MetaDescription  string           `json:"meta_description,omitempty"`
 	CrawledAt        *time.Time       `json:"crawled_at,omitempty"`
 	PublishedDate    *time.Time       `json:"published_date,omitempty"`
@@ -60,6 +61,7 @@ func (c *ClassifiedContent) ToSearchHit(score float64, highlight map[string][]st
 		ContentType:    c.ContentType,
 		Topics:         c.Topics,
 		CrimeRelevance: c.GetCrimeRelevance(),
+		OGImage:        c.OGImage,
 		Score:          score,
 		Highlight:      highlight,
 		Snippet:        snippet,

@@ -6,6 +6,7 @@ export interface SearchResult {
   title: string
   url: string
   click_url?: string
+  og_image?: string
   body?: string
   raw_text?: string
   published_date?: string
@@ -21,6 +22,29 @@ export interface SearchResult {
     [key: string]: string[] | undefined
   }
   [key: string]: unknown
+}
+
+/**
+ * Public feed item from /feed.json and /feed/{slug}.json endpoints
+ */
+export interface FeedItem {
+  id: string
+  title: string
+  slug: string
+  url: string
+  snippet: string
+  published_at: string
+  topics: string[]
+  source: string
+  og_image?: string
+}
+
+/**
+ * Public feed response
+ */
+export interface FeedResponse {
+  generated_at: string
+  items: FeedItem[]
 }
 
 /**

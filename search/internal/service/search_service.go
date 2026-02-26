@@ -396,7 +396,7 @@ func generateQueryID() string {
 }
 
 // LatestItems returns the most recent classified content for the public feed.
-// No auth; used by static sites at build time. Size is fixed (publicFeedSize).
+// No auth; used by the news portal frontend and static sites. Size is fixed (publicFeedSize).
 func (s *SearchService) LatestItems(ctx context.Context) ([]domain.PublicFeedItem, error) {
 	query := map[string]any{
 		"query": map[string]any{"match_all": map[string]any{}},
@@ -408,6 +408,7 @@ func (s *SearchService) LatestItems(ctx context.Context) ([]domain.PublicFeedIte
 		"_source": []string{
 			"id", "title", "url", "source_name",
 			"published_date", "crawled_at", "raw_text", "topics",
+			"og_image",
 		},
 	}
 	res, err := s.executeSearch(ctx, query)
@@ -466,6 +467,7 @@ func (s *SearchService) TopicFeed(ctx context.Context, slug string, limit int) (
 		"_source": []string{
 			"id", "title", "url", "source_name",
 			"published_date", "crawled_at", "raw_text", "topics",
+			"og_image",
 		},
 	}
 
@@ -495,6 +497,7 @@ func (s *SearchService) parseLatestItemsResponse(body io.Reader) ([]domain.Publi
 					CrawledAt     *time.Time `json:"crawled_at"`
 					RawText       string     `json:"raw_text"`
 					Topics        []string   `json:"topics"`
+					OGImage       string     `json:"og_image"`
 				} `json:"_source"`
 			} `json:"hits"`
 		} `json:"hits"`
@@ -532,6 +535,7 @@ func (s *SearchService) parseLatestItemsResponse(body io.Reader) ([]domain.Publi
 			PublishedAt: pubAt,
 			Topics:      append([]string(nil), hit.Source.Topics...),
 			Source:      sourceName,
+			OGImage:     hit.Source.OGImage,
 		})
 	}
 	return out, nil
