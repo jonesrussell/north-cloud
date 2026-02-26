@@ -1,5 +1,5 @@
 import axios, { type AxiosInstance, type AxiosResponse, type InternalAxiosRequestConfig } from 'axios'
-import type { SearchRequest, SearchResponse, SuggestResponse } from '@/types/search'
+import type { SearchRequest, SearchResponse, SuggestResponse, FeedResponse } from '@/types/search'
 import type { SearchApi } from '@/types/api'
 
 const DEBUG = import.meta.env.DEV
@@ -62,6 +62,20 @@ export const searchApi: SearchApi = {
    */
   health: (): Promise<AxiosResponse<{ status: string }>> => {
     return axios.get<{ status: string }>('/api/health/search')
+  },
+}
+
+const feedClient: AxiosInstance = axios.create({
+  timeout: 10000,
+})
+
+export const feedApi = {
+  latest: (): Promise<AxiosResponse<FeedResponse>> => {
+    return feedClient.get<FeedResponse>('/feed.json')
+  },
+
+  byTopic: (slug: string): Promise<AxiosResponse<FeedResponse>> => {
+    return feedClient.get<FeedResponse>(`/feed/${slug}.json`)
   },
 }
 

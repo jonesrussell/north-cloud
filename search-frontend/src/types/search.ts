@@ -24,6 +24,30 @@ export interface SearchResult {
 }
 
 /**
+ * Public feed item from /feed.json and /feed/{slug}.json endpoints
+ */
+export interface FeedItem {
+  id: string
+  title: string
+  slug: string
+  url: string
+  snippet: string
+  published_at: string
+  topics: string[]
+  source: string
+  og_image?: string
+}
+
+/**
+ * Public feed response
+ */
+export interface FeedResponse {
+  generated_at: string
+  count: number
+  items: FeedItem[]
+}
+
+/**
  * Search filters
  */
 export interface SearchFilters {
