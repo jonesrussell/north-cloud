@@ -197,7 +197,7 @@ rollback_services() {
   for svc in $services_to_restart; do
     case "$svc" in
       auth)          check_health "auth" "/health" "8040" 10 || rollback_healthy=false ;;
-      crawler)       check_health "crawler" "/health" "8060" 20 || rollback_healthy=false ;;
+      crawler)       check_health "crawler" "/health" "8080" 20 || rollback_healthy=false ;;
       source-manager) check_health "source-manager" "/health" "8050" 10 || rollback_healthy=false ;;
       classifier)    check_health "classifier" "/health" "8070" 10 || rollback_healthy=false ;;
       publisher)     check_health "publisher" "/health" "8070" 10 || rollback_healthy=false ;;

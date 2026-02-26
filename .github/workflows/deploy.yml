@@ -23,7 +23,7 @@ env:
   IMAGE_PREFIX: jonesrussell
 
 permissions:
-  contents: read
+  contents: write
   packages: write
 
 jobs:
@@ -55,35 +55,36 @@ jobs:
           FORCE_ALL: ${{ inputs.force_rebuild_all }}
           MANUAL_SERVICES: ${{ inputs.services }}
           EVENT_NAME: ${{ github.event_name }}
-          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
-          PUSH_BEFORE_SHA: ${{ github.event.before }}
           TRIGGER_SHA: ${{ github.event.workflow_run.head_sha }}
         run: |
-          # Determine base and head refs based on event type
+          # Determine head ref
           HEAD_REF="HEAD"
-
           if [ "$EVENT_NAME" = "workflow_run" ] && [ -n "$TRIGGER_SHA" ]; then
-            # Pin to the exact commit that triggered the Test workflow.
-            # Without this, HEAD may have moved if new commits landed
-            # between the Test run and this Deploy run.
             HEAD_REF="$TRIGGER_SHA"
+          fi
+
+          # Use the 'deployed' tag as base ref if it exists.
+          # This ensures we catch ALL changes since the last successful
+          # deploy, not just the single commit that triggered this run.
+          # If a previous deploy failed, its changes are included in the
+          # next deploy's diff automatically.
+          if git rev-parse --verify "deployed" >/dev/null 2>&1; then
+            BASE_REF="deployed"
+          elif [ "$EVENT_NAME" = "workflow_run" ] && [ -n "$TRIGGER_SHA" ]; then
             BASE_REF="${TRIGGER_SHA}^1"
-          elif [ "$EVENT_NAME" = "pull_request" ] && [ -n "$PR_BASE_SHA" ]; then
-            BASE_REF="$PR_BASE_SHA"
-          elif [ -n "$PUSH_BEFORE_SHA" ] && [ "$PUSH_BEFORE_SHA" != "0000000000000000000000000000000000000000" ]; then
-            BASE_REF="$PUSH_BEFORE_SHA"
           else
             BASE_REF="HEAD~1"
           fi
 
+          echo "=== Detection Summary ==="
+          echo "BASE_REF: $BASE_REF ($(git rev-parse --short "$BASE_REF" 2>/dev/null || echo 'unknown'))"
+          echo "HEAD_REF: $HEAD_REF ($(git rev-parse --short "$HEAD_REF" 2>/dev/null || echo 'unknown'))"
+          echo ""
+
           # Use shared detection script with deploy format
           # Script reads FORCE_ALL, MANUAL_SERVICES, and HEAD_REF from env
           export HEAD_REF
-          ./scripts/detect-changed-services.sh "$BASE_REF" --format=deploy >> $GITHUB_OUTPUT
-
-          echo ""
-          echo "=== Detection Summary ==="
-          ./scripts/detect-changed-services.sh "$BASE_REF" --format=deploy
+          ./scripts/detect-changed-services.sh "$BASE_REF" --format=deploy | tee /dev/stderr >> $GITHUB_OUTPUT
 
   build-and-push:
     name: Build ${{ matrix.service.name }}
@@ -206,3 +207,14 @@ jobs:
             # Run optimized deploy
             bash deploy.sh
           "
+
+      - name: Tag successful deploy
+        env:
+          DEPLOY_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+        run: |
+          # Move the 'deployed' tag to the commit that was just deployed.
+          # Next deploy will diff from this tag, ensuring no changes are
+          # missed even if intermediate deploys failed.
+          git tag -f deployed "$DEPLOY_SHA"
+          git push -f origin deployed
+          echo "Tagged $DEPLOY_SHA as 'deployed'"

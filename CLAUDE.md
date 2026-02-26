@@ -81,7 +81,7 @@ After changing deps, run `task vendor` from the repo root (local only) to refres
 
 | Service | Port | Purpose |
 |---------|------|---------|
-| crawler | 8060 | Crawler API |
+| crawler | 8080 | Crawler API |
 | source-manager | 8050 | Source Manager API |
 | classifier | 8071 | Classifier HTTP API |
 | publisher | 8070 | Publisher API |
