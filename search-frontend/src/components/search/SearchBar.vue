@@ -13,7 +13,7 @@
         v-model="localQuery"
         type="search"
         autocomplete="off"
-        class="search-input w-full px-4 py-3.5 pl-12 pr-11 text-base sm:text-lg border border-[var(--nc-border)] rounded-xl bg-[var(--nc-bg-elevated)] text-[var(--nc-text)] placeholder-[var(--nc-text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--nc-primary)] focus:border-transparent shadow-[var(--nc-shadow-sm)] transition-shadow duration-[var(--nc-duration)]"
+        class="search-input w-full px-4 py-3.5 pl-12 pr-11 text-base sm:text-lg border border-[var(--nc-border)] rounded-xl bg-[var(--nc-bg-surface)] text-[var(--nc-text)] placeholder-[var(--nc-text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--nc-primary)]/30 focus:border-[var(--nc-primary)] shadow-[var(--nc-shadow-sm)] transition-shadow duration-[var(--nc-duration)]"
         aria-label="Search query"
         aria-autocomplete="list"
         :aria-expanded="showDropdown"
@@ -80,7 +80,7 @@
             type="button"
             role="option"
             :aria-selected="highlightedIndex === idx"
-            class="w-full text-left px-4 py-2.5 text-sm text-[var(--nc-text)] hover:bg-[var(--nc-primary-muted)] focus:bg-[var(--nc-primary-muted)] focus:outline-none transition-colors duration-[var(--nc-duration-fast)]"
+            class="w-full text-left px-4 py-2.5 text-sm text-[var(--nc-text)] hover:bg-[var(--nc-bg-muted)] focus:bg-[var(--nc-bg-muted)] focus:outline-none transition-colors duration-[var(--nc-duration-fast)]"
             :class="{ 'bg-[var(--nc-primary-muted)]': highlightedIndex === idx }"
             @mousedown.prevent="selectItem(item)"
           >
@@ -98,7 +98,7 @@
             type="button"
             role="option"
             :aria-selected="highlightedIndex === apiSuggestions.length + idx"
-            class="w-full text-left px-4 py-2.5 text-sm text-[var(--nc-text-secondary)] hover:bg-[var(--nc-primary-muted)] focus:bg-[var(--nc-primary-muted)] focus:outline-none transition-colors duration-[var(--nc-duration-fast)]"
+            class="w-full text-left px-4 py-2.5 text-sm text-[var(--nc-text-secondary)] hover:bg-[var(--nc-bg-muted)] focus:bg-[var(--nc-bg-muted)] focus:outline-none transition-colors duration-[var(--nc-duration-fast)]"
             :class="{ 'bg-[var(--nc-primary-muted)]': highlightedIndex === apiSuggestions.length + idx }"
             @mousedown.prevent="selectItem(item)"
           >
@@ -109,7 +109,7 @@
     </div>
     <button
       type="submit"
-      class="search-btn px-5 sm:px-6 py-3.5 text-base font-semibold text-white rounded-xl bg-[var(--nc-accent)] hover:bg-[var(--nc-accent-hover)] focus:outline-none focus:ring-2 focus:ring-[var(--nc-accent)] focus:ring-offset-2 shadow-[var(--nc-shadow-sm)] transition-colors duration-[var(--nc-duration)] shrink-0"
+      class="search-btn px-5 sm:px-6 py-3.5 text-base font-semibold text-white rounded-xl bg-[var(--nc-primary)] hover:bg-[var(--nc-primary-hover)] focus:outline-none focus:ring-2 focus:ring-[var(--nc-primary)] focus:ring-offset-2 shadow-[var(--nc-shadow-sm)] transition-colors duration-[var(--nc-duration)] shrink-0"
       @click="handleSearch"
     >
       Search
