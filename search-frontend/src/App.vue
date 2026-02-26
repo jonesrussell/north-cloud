@@ -8,7 +8,7 @@
             class="flex-shrink-0 flex items-center gap-2 text-[var(--nc-text)] hover:text-[var(--nc-primary)] transition-colors duration-[var(--nc-duration)]"
             aria-label="North Cloud — Home"
           >
-            <span class="font-display text-xl sm:text-2xl font-normal tracking-tight">
+            <span class="font-semibold text-xl tracking-tight">
               North Cloud
             </span>
           </router-link>
@@ -35,11 +35,26 @@
                 v-model="headerQuery"
                 type="search"
                 placeholder="Search..."
-                class="w-full rounded-full bg-[var(--nc-bg-muted)] border border-[var(--nc-border)] py-1.5 pl-9 pr-4 text-sm text-[var(--nc-text)] placeholder:text-[var(--nc-text-muted)] focus:border-[var(--nc-primary)] focus:ring-2 focus:ring-[var(--nc-primary)]/25 focus:outline-none transition-colors duration-[var(--nc-duration)]"
+                class="w-full rounded-full bg-[var(--nc-bg-surface)] border border-[var(--nc-border)] py-1.5 pl-9 pr-4 text-sm text-[var(--nc-text)] placeholder:text-[var(--nc-text-muted)] focus:border-[var(--nc-primary)] focus:ring-2 focus:ring-[var(--nc-primary)]/25 focus:outline-none transition-colors duration-[var(--nc-duration)]"
               >
             </div>
           </form>
         </div>
+
+        <!-- Category navigation tabs -->
+        <nav class="flex gap-1 -mb-px border-t border-[var(--nc-border)] overflow-x-auto">
+          <router-link
+            v-for="tab in categoryTabs"
+            :key="tab.label"
+            :to="tab.to"
+            class="px-4 py-2.5 text-sm font-medium whitespace-nowrap transition-colors duration-[var(--nc-duration)]"
+            :class="isTabActive(tab)
+              ? 'text-[var(--nc-primary)] border-b-2 border-[var(--nc-primary)]'
+              : 'text-[var(--nc-text-muted)] hover:text-[var(--nc-text-secondary)]'"
+          >
+            {{ tab.label }}
+          </router-link>
+        </nav>
       </div>
     </header>
 
@@ -59,13 +74,35 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 
 const router = useRouter()
+const route = useRoute()
 
 const currentYear = computed(() => new Date().getFullYear())
 
 const headerQuery = ref('')
+
+interface CategoryTab {
+  label: string
+  to: string
+  matchTopics?: string
+}
+
+const categoryTabs: CategoryTab[] = [
+  { label: 'All', to: '/' },
+  { label: 'Top Stories', to: '/search?topics=top_stories', matchTopics: 'top_stories' },
+  { label: 'Crime', to: '/search?topics=crime', matchTopics: 'crime' },
+  { label: 'Mining', to: '/search?topics=mining', matchTopics: 'mining' },
+  { label: 'Entertainment', to: '/search?topics=entertainment', matchTopics: 'entertainment' },
+]
+
+function isTabActive(tab: CategoryTab): boolean {
+  if (!tab.matchTopics) {
+    return route.name === 'home'
+  }
+  return route.query.topics === tab.matchTopics
+}
 
 function onSearch(): void {
   const trimmed = headerQuery.value.trim()
