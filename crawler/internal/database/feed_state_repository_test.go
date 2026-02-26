@@ -180,7 +180,7 @@ func TestFeedStateRepository_UpdateError(t *testing.T) {
 	ctx := context.Background()
 
 	mock.ExpectExec("UPDATE feed_state").
-		WithArgs("source-uuid-1", "parse_error", "feed parse error: invalid XML").
+		WithArgs("source-uuid-1", "parse_error", "feed parse error: invalid XML", "parse_error").
 		WillReturnResult(sqlmock.NewResult(0, 1))
 
 	err := repo.UpdateError(ctx, "source-uuid-1", "parse_error", "feed parse error: invalid XML")
@@ -198,7 +198,7 @@ func TestFeedStateRepository_UpdateError_NotFound(t *testing.T) {
 	ctx := context.Background()
 
 	mock.ExpectExec("UPDATE feed_state").
-		WithArgs("nonexistent-id", "unexpected", "some error").
+		WithArgs("nonexistent-id", "unexpected", "some error", "unexpected").
 		WillReturnResult(sqlmock.NewResult(0, 0))
 
 	err := repo.UpdateError(ctx, "nonexistent-id", "unexpected", "some error")

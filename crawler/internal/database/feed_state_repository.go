@@ -73,14 +73,14 @@ func (r *FeedStateRepository) UpdateError(ctx context.Context, sourceID, errorTy
 		UPDATE feed_state
 		SET last_polled_at = NOW(), consecutive_errors = consecutive_errors + 1,
 			last_error = $3, last_error_type = $2,
-			next_poll_at = CASE WHEN $2::text = 'rate_limited'
+			next_poll_at = CASE WHEN $4 = 'rate_limited'
 				THEN NOW() + (LEAST(POWER(2, consecutive_errors)::int, 96) * INTERVAL '5 minutes')
 				ELSE next_poll_at END,
 			updated_at = NOW()
 		WHERE source_id = $1
 	`
 
-	result, err := r.db.ExecContext(ctx, query, sourceID, errorType, errMsg)
+	result, err := r.db.ExecContext(ctx, query, sourceID, errorType, errMsg, errorType)
 	return execRequireRows(result, err, fmt.Errorf("feed state not found: %s", sourceID))
 }
 
