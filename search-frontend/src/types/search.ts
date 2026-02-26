@@ -44,7 +44,6 @@ export interface FeedItem {
  */
 export interface FeedResponse {
   generated_at: string
-  count: number
   items: FeedItem[]
 }
 

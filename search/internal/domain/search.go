@@ -263,7 +263,7 @@ type HealthStatus struct {
 }
 
 // PublicFeedItem is a single item in the public feed (no-auth, stable URL).
-// Consumed by static sites (e.g. "me") at build time.
+// Consumed by the news portal frontend (live) and static sites (e.g. "me") at build time.
 type PublicFeedItem struct {
 	ID          string    `json:"id"`
 	Title       string    `json:"title"`
@@ -276,7 +276,7 @@ type PublicFeedItem struct {
 	OGImage     string    `json:"og_image,omitempty"`
 }
 
-// PublicFeedResponse is the response shape for GET /feed.json.
+// PublicFeedResponse is the response shape for GET /api/v1/feeds/:slug and /feed.json.
 type PublicFeedResponse struct {
 	GeneratedAt string           `json:"generated_at"`
 	Items       []PublicFeedItem `json:"items"`

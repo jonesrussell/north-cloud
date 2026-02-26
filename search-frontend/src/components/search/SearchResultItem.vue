@@ -91,11 +91,12 @@
 
         <!-- Thumbnail -->
         <img
-          v-if="result.og_image"
+          v-if="result.og_image && !imageErrored"
           :src="result.og_image"
           :alt="result.title"
           class="hidden sm:block flex-shrink-0 w-28 h-20 rounded-lg object-cover bg-[var(--nc-bg-muted)]"
           loading="lazy"
+          @error="imageErrored = true"
         >
       </div>
     </a>
@@ -103,7 +104,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { formatDate } from '@/utils/dateFormatter'
 import { parseHighlight, sanitizeHighlight } from '@/utils/highlightHelper'
 import type { SearchResult } from '@/types/search'
@@ -116,6 +117,8 @@ interface Props {
 const props = withDefaults(defineProps<Props>(), {
   featured: false,
 })
+
+const imageErrored = ref(false)
 
 const contentTypeLabel = computed((): string => {
   const ct = props.result.content_type

@@ -63,6 +63,7 @@
         v-for="item in items"
         :key="item.id"
         :item="item"
+        :channel-color="channelColor"
       />
     </div>
   </section>
@@ -92,6 +93,7 @@ const props = withDefaults(defineProps<Props>(), {
 })
 
 const seeMoreLink = computed((): string => {
+  if (!props.slug) return '/search'
   return `/search?topics=${encodeURIComponent(props.slug)}`
 })
 </script>

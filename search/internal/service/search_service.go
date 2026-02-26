@@ -396,7 +396,7 @@ func generateQueryID() string {
 }
 
 // LatestItems returns the most recent classified content for the public feed.
-// No auth; used by static sites at build time. Size is fixed (publicFeedSize).
+// No auth; used by the news portal frontend and static sites. Size is fixed (publicFeedSize).
 func (s *SearchService) LatestItems(ctx context.Context) ([]domain.PublicFeedItem, error) {
 	query := map[string]any{
 		"query": map[string]any{"match_all": map[string]any{}},
