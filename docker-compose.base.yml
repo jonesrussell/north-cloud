@@ -257,7 +257,7 @@ services:
       CORS_ORIGINS: ${CORS_ORIGINS:-*}
       CLICK_TRACKER_ENABLED: ${CLICK_TRACKER_ENABLED:-false}
       CLICK_TRACKER_SECRET: ${CLICK_TRACKER_SECRET:-}
-      CLICK_TRACKER_BASE_URL: ${CLICK_TRACKER_BASE_URL:-https://northcloud.biz/api}
+      CLICK_TRACKER_BASE_URL: ${CLICK_TRACKER_BASE_URL:-https://northcloud.one/api}
     depends_on:
       - elasticsearch
     healthcheck:
@@ -622,9 +622,9 @@ services:
       GF_SMTP_HOST: ${GF_SMTP_HOST:-smtp.sendgrid.net:2525}
       GF_SMTP_USER: ${GF_SMTP_USER:-apikey}
       GF_SMTP_PASSWORD: ${SENDGRID_API_KEY:-}
-      GF_SMTP_FROM_ADDRESS: ${GF_SMTP_FROM_ADDRESS:-noreply@northcloud.biz}
+      GF_SMTP_FROM_ADDRESS: ${GF_SMTP_FROM_ADDRESS:-noreply@northcloud.one}
       GF_SMTP_FROM_NAME: ${GF_SMTP_FROM_NAME:-North Cloud Alerts}
-      GRAFANA_ALERT_EMAIL: ${GRAFANA_ALERT_EMAIL:-alerts@northcloud.biz}
+      GRAFANA_ALERT_EMAIL: ${GRAFANA_ALERT_EMAIL:-alerts@northcloud.one}
     volumes:
       - grafana_data:/var/lib/grafana
       - ./infrastructure/grafana/provisioning:/etc/grafana/provisioning:ro
