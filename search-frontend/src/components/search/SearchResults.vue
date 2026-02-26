@@ -1,7 +1,7 @@
 <template>
   <div
     ref="listRef"
-    class="space-y-5"
+    class="space-y-4"
     role="list"
     aria-label="Search results"
     tabindex="-1"
@@ -11,7 +11,6 @@
       v-for="(result, index) in results"
       :key="result.id"
       :result="result"
-      :featured="index === 0"
       :aria-posinset="index + 1"
       :aria-setsize="results.length"
     />

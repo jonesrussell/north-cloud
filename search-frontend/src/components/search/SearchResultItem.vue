@@ -1,8 +1,8 @@
 <template>
   <!-- eslint-disable vue/no-v-html -->
   <article
-    class="result-card rounded-xl border border-[var(--nc-border)] bg-[var(--nc-bg-elevated)] p-5 sm:p-6 transition-shadow duration-[var(--nc-duration)] hover:shadow-[var(--nc-shadow)]"
-    :class="featured ? 'ring-2 ring-[var(--nc-primary)]/20 ring-offset-2 ring-offset-[var(--nc-bg)]' : ''"
+    class="result-card rounded-xl border border-[var(--nc-border)] bg-[var(--nc-bg-elevated)] p-5 transition-colors hover:border-[var(--nc-border-strong)]"
+    style="transition-duration: var(--nc-duration); transition-timing-function: var(--nc-ease-out)"
     role="listitem"
   >
     <a
@@ -15,26 +15,21 @@
       <div class="flex gap-4">
         <!-- Content -->
         <div class="flex-1 min-w-0">
-          <!-- Badges -->
-          <div class="flex flex-wrap items-center gap-2 mb-2">
-            <span
-              v-if="contentTypeLabel"
-              class="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium bg-[var(--nc-bg-muted)] text-[var(--nc-text-secondary)]"
-            >
-              {{ contentTypeLabel }}
-            </span>
-            <span
-              v-if="sourceBadge"
-              class="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium bg-[var(--nc-success-muted)] text-[var(--nc-success)] border border-[var(--nc-success)]/20"
-            >
+          <!-- Source + time -->
+          <div class="flex items-center gap-2 mb-2 text-sm text-[var(--nc-text-muted)]">
+            <span class="font-medium text-[var(--nc-text-secondary)]">
               {{ sourceBadge }}
             </span>
+            <span
+              v-if="formattedDate"
+              aria-hidden="true"
+            >&middot;</span>
+            <span v-if="formattedDate">{{ formattedDate }}</span>
           </div>
 
           <!-- Title -->
           <h2
-            class="font-semibold text-[var(--nc-primary)] group-hover:text-[var(--nc-primary-hover)] mb-1.5 transition-colors duration-[var(--nc-duration)]"
-            :class="featured ? 'text-xl sm:text-2xl' : 'text-lg sm:text-xl'"
+            class="text-lg font-semibold text-[var(--nc-text)] group-hover:text-[var(--nc-primary)] mb-1.5 transition-colors duration-[var(--nc-duration)]"
           >
             <span
               v-if="highlightedTitle"
@@ -43,37 +38,21 @@
             <span v-else>{{ result.title }}</span>
           </h2>
 
-          <!-- URL -->
-          <p class="text-sm text-[var(--nc-success)] mb-2 truncate">
-            {{ displayUrl }}
-          </p>
-
           <!-- Snippet -->
           <p
             v-if="snippet"
-            class="text-[var(--nc-text-secondary)] text-sm leading-relaxed mb-3 result-snippet"
+            class="text-sm text-[var(--nc-text-secondary)] leading-relaxed line-clamp-2 mb-3 result-snippet"
             v-html="snippet"
           />
           <p
             v-else
-            class="text-[var(--nc-text-secondary)] text-sm leading-relaxed mb-3"
+            class="text-sm text-[var(--nc-text-secondary)] leading-relaxed line-clamp-2 mb-3"
           >
             {{ truncatedText }}
           </p>
 
-          <!-- Meta -->
-          <div class="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-sm text-[var(--nc-text-muted)]">
-            <span v-if="result.published_date">
-              {{ formattedDate }}
-            </span>
-            <span
-              v-if="result.quality_score !== undefined && result.quality_score !== null"
-              class="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-medium"
-              :class="qualityBadgeClass"
-              :title="`Quality score: ${result.quality_score} out of 100`"
-            >
-              Quality {{ result.quality_score }}
-            </span>
+          <!-- Meta: topics + quality -->
+          <div class="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-sm">
             <div
               v-if="result.topics && result.topics.length"
               class="flex flex-wrap gap-1"
@@ -86,6 +65,14 @@
                 {{ topic }}
               </span>
             </div>
+            <span
+              v-if="result.quality_score !== undefined && result.quality_score !== null"
+              class="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-medium"
+              :class="qualityBadgeClass"
+              :title="`Quality score: ${result.quality_score} out of 100`"
+            >
+              Quality {{ result.quality_score }}
+            </span>
           </div>
         </div>
 
@@ -94,7 +81,7 @@
           v-if="result.og_image && !imageErrored"
           :src="result.og_image"
           :alt="result.title"
-          class="hidden sm:block flex-shrink-0 w-28 h-20 rounded-lg object-cover bg-[var(--nc-bg-muted)]"
+          class="hidden sm:block flex-shrink-0 w-[120px] h-[90px] rounded-lg object-cover bg-[var(--nc-bg-muted)]"
           loading="lazy"
           @error="imageErrored = true"
         >
@@ -111,20 +98,11 @@ import type { SearchResult } from '@/types/search'
 
 interface Props {
   result: SearchResult
-  featured?: boolean
 }
 
-const props = withDefaults(defineProps<Props>(), {
-  featured: false,
-})
+const props = defineProps<Props>()
 
 const imageErrored = ref(false)
-
-const contentTypeLabel = computed((): string => {
-  const ct = props.result.content_type
-  if (!ct) return ''
-  return ct.charAt(0).toUpperCase() + ct.slice(1).toLowerCase()
-})
 
 const sourceBadge = computed((): string => {
   return props.result.source_name ?? props.result.source ?? ''
@@ -148,15 +126,6 @@ const snippet = computed((): string | null => {
 const truncatedText = computed((): string => {
   const text = props.result.body || props.result.raw_text || ''
   return text.length > 200 ? text.substring(0, 200) + '...' : text
-})
-
-const displayUrl = computed((): string => {
-  try {
-    const url = new URL(props.result.url)
-    return url.hostname + url.pathname
-  } catch {
-    return props.result.url
-  }
 })
 
 const formattedDate = computed((): string => {
