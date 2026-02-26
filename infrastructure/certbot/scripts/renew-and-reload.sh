@@ -4,7 +4,7 @@
 
 set -e
 
-DOMAIN="northcloud.biz"
+DOMAIN="northcloud.one"
 LOG_FILE="/tmp/certbot-renewal.log"
 
 echo "=== SSL Certificate Renewal ===" | tee -a $LOG_FILE

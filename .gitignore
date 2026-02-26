@@ -9,6 +9,13 @@
 .devcontainer/.env
 !.devcontainer/.env.example
 
+# MCP Configs (contain SSH credentials)
+.mcp.json
+.cursor/mcp.json
+
+# Claude settings (contain command history with credentials)
+.claude/settings.local.json
+
 # Secrets and Keys
 secrets/
 *.pem

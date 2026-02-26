@@ -2,7 +2,7 @@
 
 **Audience**: Ops / deployers  
 **StreetCode**: deployer@streetcode.net, app path `streetcode-laravel/current`  
-**North Cloud prod**: jones@northcloud.biz, path `/opt/north-cloud`
+**North Cloud prod**: user@your-server, path `/opt/north-cloud`
 
 This runbook covers:
 
@@ -101,7 +101,7 @@ No migration or model change needed; the command is in the repo and works with M
 
 ## 4. Verify on North Cloud (prod)
 
-**On North Cloud prod** (jones@northcloud.biz, `/opt/north-cloud`):
+**On North Cloud prod** (user@your-server, `/opt/north-cloud`):
 
 - Confirm publisher is running and publishing to crime channels:
 

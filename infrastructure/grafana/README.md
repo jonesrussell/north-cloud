@@ -515,7 +515,7 @@ The pipeline dashboard has three StreetCode panels that query Loki for `{project
 
 **If StreetCode runs outside Docker** (e.g. Laravel via systemd on the same server), logs must be shipped to Loki with labels `project=north-cloud` and `service=streetcode`. The **StreetCode (streetcode-laravel) repo** has an Alloy-based setup: see **`deploy/alloy/README.md`** in that repo for config, systemd unit, and steps to run on deployer@streetcode.net.
 
-**Still no data? Run these on production** (e.g. `ssh jones@northcloud.biz` from the repo, then `cd /opt/north-cloud`):
+**Still no data? Run these on production** (e.g. `ssh user@your-server` from the repo, then `cd /opt/north-cloud`):
 
 1. **Is StreetCode running in Docker on this host?**
    ```bash

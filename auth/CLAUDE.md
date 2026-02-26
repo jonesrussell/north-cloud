@@ -118,7 +118,7 @@ openssl rand -hex 32
 6. **Special characters in passwords break shell escaping**: When testing with `curl` in shell, passwords containing `!` or other shell-special characters will be mis-interpreted. Use a JSON file instead:
    ```bash
    cat > /tmp/login.json << 'EOF'
-   {"username":"admin","password":"f00Bar123!"}
+   {"username":"admin","password":"AUTH_PASSWORD"}
    EOF
    curl -s -X POST http://localhost:8040/api/v1/auth/login \
      -H "Content-Type: application/json" -d @/tmp/login.json

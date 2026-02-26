@@ -4,7 +4,7 @@
 
 set -e
 
-DOMAIN="northcloud.biz"
+DOMAIN="northcloud.one"
 DAYS_WARNING=30
 
 echo "=== SSL Certificate Expiry Check ==="

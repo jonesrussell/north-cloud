@@ -19,7 +19,7 @@
 
 After the existing `GF_SMTP_PASSWORD` line, add:
 ```yaml
-      GF_SMTP_FROM_ADDRESS: "noreply@northcloud.biz"
+      GF_SMTP_FROM_ADDRESS: "noreply@northcloud.one"
       GF_SMTP_FROM_NAME: "North Cloud Alerts"
 ```
 
@@ -61,7 +61,7 @@ In the existing `grafana:` section, add to environment:
       GF_SMTP_HOST: "mailpit:1025"
       GF_SMTP_USER: ""
       GF_SMTP_PASSWORD: ""
-      GF_SMTP_FROM_ADDRESS: "noreply@northcloud.biz"
+      GF_SMTP_FROM_ADDRESS: "noreply@northcloud.one"
       GF_SMTP_FROM_NAME: "North Cloud Alerts (Dev)"
       GRAFANA_ALERT_EMAIL: "dev@localhost"
 ```
@@ -81,7 +81,7 @@ In the existing `grafana:` section, add to environment:
 # Development: Mailpit catches all mail at http://localhost:8025 (no config needed)
 GF_SMTP_ENABLED=false
 SENDGRID_API_KEY=
-GF_SMTP_FROM_ADDRESS=noreply@northcloud.biz
+GF_SMTP_FROM_ADDRESS=noreply@northcloud.one
 GRAFANA_ALERT_EMAIL=alerts@example.com
 ```
 
@@ -92,7 +92,7 @@ GRAFANA_ALERT_EMAIL=alerts@example.com
 **Step 1: Add SENDGRID_API_KEY to prod .env**
 
 ```bash
-ssh jones@northcloud.biz
+ssh user@your-server
 echo 'SENDGRID_API_KEY=<your-sendgrid-api-key>' >> /opt/north-cloud/.env
 echo 'GRAFANA_ALERT_EMAIL=jonesrussell42@gmail.com' >> /opt/north-cloud/.env
 ```

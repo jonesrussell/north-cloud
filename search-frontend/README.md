@@ -6,7 +6,7 @@
 
 The search frontend is a Vue.js 3 single-page application that provides a Google-style search experience over the North Cloud content pipeline. It sits at the end of the pipeline — after content has been crawled, classified, and indexed — and exposes full-text search, faceted filtering, and advanced query construction to end users.
 
-In production it is served at `https://northcloud.biz/` and proxied through nginx to the Search service at port 8090.
+In production it is served at `https://northcloud.one/` and proxied through nginx to the Search service at port 8090.
 
 ## Features
 

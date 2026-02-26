@@ -90,7 +90,7 @@ Expected: Deploy workflow detects publisher change, builds image, deploys to pro
 **Step 6: Verify deployment**
 
 ```bash
-ssh jones@northcloud.biz 'docker ps --format "{{.Names}} {{.Status}}" | grep -E "publisher|mcp"'
+ssh user@your-server 'docker ps --format "{{.Names}} {{.Status}}" | grep -E "publisher|mcp"'
 ```
 
 Expected: Publisher healthy, MCP container running (not restarting).
@@ -104,19 +104,19 @@ After deployment completes, reset the publisher state so existing crime articles
 **Step 1: Check current cursor state**
 
 ```bash
-ssh jones@northcloud.biz 'docker exec north-cloud-postgres-publisher-1 psql -U postgres -d publisher -c "SELECT last_sort, updated_at FROM publisher_cursor WHERE id = 1;"'
+ssh user@your-server 'docker exec north-cloud-postgres-publisher-1 psql -U postgres -d publisher -c "SELECT last_sort, updated_at FROM publisher_cursor WHERE id = 1;"'
 ```
 
 **Step 2: Count existing crime:* publish history**
 
 ```bash
-ssh jones@northcloud.biz 'docker exec north-cloud-postgres-publisher-1 psql -U postgres -d publisher -c "SELECT channel_name, COUNT(*) FROM publish_history WHERE channel_name LIKE '\''crime:%'\'' GROUP BY channel_name ORDER BY COUNT(*) DESC;"'
+ssh user@your-server 'docker exec north-cloud-postgres-publisher-1 psql -U postgres -d publisher -c "SELECT channel_name, COUNT(*) FROM publish_history WHERE channel_name LIKE '\''crime:%'\'' GROUP BY channel_name ORDER BY COUNT(*) DESC;"'
 ```
 
 **Step 3: Clear crime:* publish history and reset cursor**
 
 ```bash
-ssh jones@northcloud.biz 'docker exec north-cloud-postgres-publisher-1 psql -U postgres -d publisher -c "
+ssh user@your-server 'docker exec north-cloud-postgres-publisher-1 psql -U postgres -d publisher -c "
 BEGIN;
 DELETE FROM publish_history WHERE channel_name LIKE '\''crime:%'\'';
 UPDATE publisher_cursor SET last_sort = '\''[]'\'', updated_at = NOW() WHERE id = 1;
@@ -128,13 +128,13 @@ SELECT '\''Cursor reset. Crime history cleared.'\'' as status;
 **Step 4: Restart publisher to reload cursor**
 
 ```bash
-ssh jones@northcloud.biz 'cd /opt/north-cloud && docker compose -f docker-compose.base.yml -f docker-compose.prod.yml restart publisher'
+ssh user@your-server 'cd /opt/north-cloud && docker compose -f docker-compose.base.yml -f docker-compose.prod.yml restart publisher'
 ```
 
 **Step 5: Monitor publisher logs for crime:* channel activity**
 
 ```bash
-ssh jones@northcloud.biz 'docker compose -f docker-compose.base.yml -f docker-compose.prod.yml logs -f publisher 2>&1 | grep -i "crime\|Published article\|Processing articles"'
+ssh user@your-server 'docker compose -f docker-compose.base.yml -f docker-compose.prod.yml logs -f publisher 2>&1 | grep -i "crime\|Published article\|Processing articles"'
 ```
 
 Expected: Within 5 minutes, see "Published article to channel" entries for crime:homepage, crime:category:*, crime:province:*, crime:canada channels.
@@ -682,7 +682,7 @@ Expected: CI builds and deploys classifier service.
 **Step 2: Verify classifier deployment**
 
 ```bash
-ssh jones@northcloud.biz 'docker ps --format "{{.Names}} {{.Status}}" | grep classifier'
+ssh user@your-server 'docker ps --format "{{.Names}} {{.Status}}" | grep classifier'
 ```
 
 Expected: Classifier container healthy.
@@ -693,10 +693,10 @@ Use the classifier's reclassify endpoint on the "Repeat offender" article:
 
 ```bash
 # Get auth token
-TOKEN=$(ssh jones@northcloud.biz 'docker exec north-cloud-auth-1 wget -qO- "http://localhost:8040/api/v1/auth/login" --post-data='\''{"username":"admin","password":"f00Bar123!"}'\'' --header="Content-Type: application/json" | python3 -c "import sys,json; print(json.load(sys.stdin)[\"token\"])"')
+TOKEN=$(ssh user@your-server 'docker exec north-cloud-auth-1 wget -qO- "http://localhost:8040/api/v1/auth/login" --post-data='\''{"username":"admin","password":"AUTH_PASSWORD"}'\'' --header="Content-Type: application/json" | python3 -c "import sys,json; print(json.load(sys.stdin)[\"token\"])"')
 
 # Reclassify the article
-ssh jones@northcloud.biz "docker run --rm --network=north-cloud_north-cloud-network curlimages/curl:8.1.2 -s -X POST 'http://classifier:8071/api/v1/classify/reclassify/805e15f93695a39afada244a7a9cd3bbbfa4d7bb96dcb4cbfa34d3f3990a56f1' -H 'Authorization: Bearer $TOKEN' | python3 -m json.tool"
+ssh user@your-server "docker run --rm --network=north-cloud_north-cloud-network curlimages/curl:8.1.2 -s -X POST 'http://classifier:8071/api/v1/classify/reclassify/805e15f93695a39afada244a7a9cd3bbbfa4d7bb96dcb4cbfa34d3f3990a56f1' -H 'Authorization: Bearer $TOKEN' | python3 -m json.tool"
 ```
 
 Expected: `street_crime_relevance` should now be `core_street_crime` (not `not_crime`).
@@ -706,14 +706,14 @@ Expected: `street_crime_relevance` should now be `core_street_crime` (not `not_c
 Query ES for articles with crime keywords but `street_crime_relevance: "not_crime"`:
 
 ```bash
-ssh jones@northcloud.biz 'docker exec north-cloud-elasticsearch-1 curl -s "http://localhost:9200/*_classified_content/_search" -H "Content-Type: application/json" -d '\''{"query":{"bool":{"must":[{"exists":{"field":"crime"}},{"term":{"crime.street_crime_relevance":"not_crime"}},{"terms":{"crime.crime_types":["violent_crime","property_crime","drug_crime"]}}]}},"_source":["title","crime"],"size":5}'\'' | python3 -m json.tool'
+ssh user@your-server 'docker exec north-cloud-elasticsearch-1 curl -s "http://localhost:9200/*_classified_content/_search" -H "Content-Type: application/json" -d '\''{"query":{"bool":{"must":[{"exists":{"field":"crime"}},{"term":{"crime.street_crime_relevance":"not_crime"}},{"terms":{"crime.crime_types":["violent_crime","property_crime","drug_crime"]}}]}},"_source":["title","crime"],"size":5}'\'' | python3 -m json.tool'
 ```
 
 For each misclassified article, call the reclassify endpoint. Script this:
 
 ```bash
 # Get all article IDs that need reclassification
-ssh jones@northcloud.biz 'docker exec north-cloud-elasticsearch-1 curl -s "http://localhost:9200/*_classified_content/_search" -H "Content-Type: application/json" -d '\''{"query":{"bool":{"must":[{"exists":{"field":"crime"}},{"term":{"crime.street_crime_relevance":"not_crime"}},{"terms":{"crime.crime_types":["violent_crime","property_crime","drug_crime"]}}]}},"_source":false,"size":100}'\'' | python3 -c "import sys,json; [print(h[\"_id\"]) for h in json.load(sys.stdin)[\"hits\"][\"hits\"]]"'
+ssh user@your-server 'docker exec north-cloud-elasticsearch-1 curl -s "http://localhost:9200/*_classified_content/_search" -H "Content-Type: application/json" -d '\''{"query":{"bool":{"must":[{"exists":{"field":"crime"}},{"term":{"crime.street_crime_relevance":"not_crime"}},{"terms":{"crime.crime_types":["violent_crime","property_crime","drug_crime"]}}]}},"_source":false,"size":100}'\'' | python3 -c "import sys,json; [print(h[\"_id\"]) for h in json.load(sys.stdin)[\"hits\"][\"hits\"]]"'
 ```
 
 Then loop and reclassify each.
@@ -721,20 +721,20 @@ Then loop and reclassify each.
 **Step 5: Reset publisher cursor again to re-publish reclassified articles**
 
 ```bash
-ssh jones@northcloud.biz 'docker exec north-cloud-postgres-publisher-1 psql -U postgres -d publisher -c "
+ssh user@your-server 'docker exec north-cloud-postgres-publisher-1 psql -U postgres -d publisher -c "
 BEGIN;
 DELETE FROM publish_history WHERE channel_name LIKE '\''crime:%'\'';
 UPDATE publisher_cursor SET last_sort = '\''[]'\'', updated_at = NOW() WHERE id = 1;
 COMMIT;
 "'
-ssh jones@northcloud.biz 'cd /opt/north-cloud && docker compose -f docker-compose.base.yml -f docker-compose.prod.yml restart publisher'
+ssh user@your-server 'cd /opt/north-cloud && docker compose -f docker-compose.base.yml -f docker-compose.prod.yml restart publisher'
 ```
 
 **Step 6: Verify end-to-end flow**
 
 ```bash
 # Check publisher is publishing to crime:* channels
-ssh jones@northcloud.biz 'docker compose -f docker-compose.base.yml -f docker-compose.prod.yml logs -f publisher 2>&1 | head -100 | grep "Published article"'
+ssh user@your-server 'docker compose -f docker-compose.base.yml -f docker-compose.prod.yml logs -f publisher 2>&1 | head -100 | grep "Published article"'
 
 # Check Streetcode is receiving and processing
 ssh deployer@streetcode.net 'tail -50 /home/deployer/streetcode-laravel/current/storage/logs/laravel.log | grep "Article processed"'
@@ -753,7 +753,7 @@ After deploying the content_type fixes (Tasks 4-5), existing articles classified
 **Step 1: Count articles classified as "page" that might be articles**
 
 ```bash
-ssh jones@northcloud.biz 'docker exec north-cloud-elasticsearch-1 curl -s "http://localhost:9200/*_classified_content/_search" -H "Content-Type: application/json" -d '\''{"query":{"bool":{"must":[{"term":{"content_type":"page"}},{"range":{"word_count":{"gte":200}}}]}},"size":0}'\'' | python3 -c "import sys,json; print(json.load(sys.stdin)[\"hits\"][\"total\"][\"value\"], \"articles classified as page with 200+ words\")"'
+ssh user@your-server 'docker exec north-cloud-elasticsearch-1 curl -s "http://localhost:9200/*_classified_content/_search" -H "Content-Type: application/json" -d '\''{"query":{"bool":{"must":[{"term":{"content_type":"page"}},{"range":{"word_count":{"gte":200}}}]}},"size":0}'\'' | python3 -c "import sys,json; print(json.load(sys.stdin)[\"hits\"][\"total\"][\"value\"], \"articles classified as page with 200+ words\")"'
 ```
 
 **Step 2: Batch reclassify using classifier API**
@@ -772,8 +772,8 @@ After all phases are complete, verify each layer:
 
 | Layer | Check | Command |
 |-------|-------|---------|
-| Crawler | Jobs running | `ssh jones@northcloud.biz 'docker compose ... logs crawler \| grep "crawl complete"'` |
-| Classifier | Crime enabled | `ssh jones@northcloud.biz 'docker exec north-cloud-classifier-1 env \| grep CRIME'` |
+| Crawler | Jobs running | `ssh user@your-server 'docker compose ... logs crawler \| grep "crawl complete"'` |
+| Classifier | Crime enabled | `ssh user@your-server 'docker exec north-cloud-classifier-1 env \| grep CRIME'` |
 | Classifier | Content type fix | Reclassified article now `content_type: "article"` |
 | Classifier | Crime fix | Reclassified article now `street_crime_relevance: "core_street_crime"` |
 | Publisher | Cursor fresh | `SELECT last_sort FROM publisher_cursor` shows recent timestamp |

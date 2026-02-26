@@ -102,23 +102,23 @@ Use Grafana's provisioning alerting format (apiVersion 1, groups with rules).
 
 **Step 1:** Copy new files to production:
 ```bash
-scp infrastructure/grafana/provisioning/dashboards/north-cloud-*.json jones@northcloud.biz:/opt/north-cloud/infrastructure/grafana/provisioning/dashboards/
-scp -r infrastructure/grafana/provisioning/alerting jones@northcloud.biz:/opt/north-cloud/infrastructure/grafana/provisioning/
+scp infrastructure/grafana/provisioning/dashboards/north-cloud-*.json user@your-server:/opt/north-cloud/infrastructure/grafana/provisioning/dashboards/
+scp -r infrastructure/grafana/provisioning/alerting user@your-server:/opt/north-cloud/infrastructure/grafana/provisioning/
 ```
 
 **Step 2:** Remove old dashboards on production:
 ```bash
-ssh jones@northcloud.biz "rm -f /opt/north-cloud/infrastructure/grafana/provisioning/dashboards/north-cloud-logs.json /opt/north-cloud/infrastructure/grafana/provisioning/dashboards/north-cloud-pipeline.json"
+ssh user@your-server "rm -f /opt/north-cloud/infrastructure/grafana/provisioning/dashboards/north-cloud-logs.json /opt/north-cloud/infrastructure/grafana/provisioning/dashboards/north-cloud-pipeline.json"
 ```
 
 **Step 3:** Restart Grafana to pick up new provisioning:
 ```bash
-ssh jones@northcloud.biz "cd /opt/north-cloud && docker compose -f docker-compose.base.yml -f docker-compose.prod.yml restart grafana"
+ssh user@your-server "cd /opt/north-cloud && docker compose -f docker-compose.base.yml -f docker-compose.prod.yml restart grafana"
 ```
 
 **Step 4:** Verify dashboards load — check Grafana API:
 ```bash
-ssh jones@northcloud.biz "docker exec north-cloud-grafana-1 wget -qO- 'http://localhost:3000/api/search?type=dash-db' 2>&1"
+ssh user@your-server "docker exec north-cloud-grafana-1 wget -qO- 'http://localhost:3000/api/search?type=dash-db' 2>&1"
 ```
 
 **Step 5:** Commit all changes.

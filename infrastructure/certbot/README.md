@@ -4,7 +4,7 @@ This directory contains scripts and documentation for managing SSL/TLS certifica
 
 ## Overview
 
-- **Domain**: northcloud.biz
+- **Domain**: northcloud.one
 - **Certificate Authority**: Let's Encrypt
 - **Validation Method**: HTTP-01 (webroot)
 - **Renewal**: Automatic (every 12 hours)
@@ -39,7 +39,7 @@ docker run --rm \
   -v north-cloud_certbot_www:/var/www/certbot \
   certbot/certbot certonly \
   --webroot -w /var/www/certbot \
-  -d northcloud.biz \
+  -d northcloud.one \
   --email jonesrussell42@gmail.com \
   --agree-tos \
   --non-interactive
@@ -79,7 +79,7 @@ bash infrastructure/certbot/scripts/check-cert-expiry.sh
 Output example:
 ```
 === SSL Certificate Expiry Check ===
-Domain: northcloud.biz
+Domain: northcloud.one
 Date: Thu Dec 25 18:01:31 UTC 2025
 
 Certificate expires: Mar 25 16:22:59 2026 GMT
@@ -150,8 +150,8 @@ Certificates are stored in Docker volumes and mounted to nginx:
 
 - **Volume**: `north-cloud_certbot_etc`
 - **Nginx Mount**: `/etc/letsencrypt` (read-only)
-- **Certificate Path**: `/etc/letsencrypt/live/northcloud.biz/fullchain.pem`
-- **Private Key Path**: `/etc/letsencrypt/live/northcloud.biz/privkey.pem`
+- **Certificate Path**: `/etc/letsencrypt/live/northcloud.one/fullchain.pem`
+- **Private Key Path**: `/etc/letsencrypt/live/northcloud.one/privkey.pem`
 
 ### Viewing Certificate Details
 
@@ -165,7 +165,7 @@ docker run --rm \
 From nginx container:
 ```bash
 docker exec north-cloud-nginx \
-  openssl x509 -in /etc/letsencrypt/live/northcloud.biz/fullchain.pem \
+  openssl x509 -in /etc/letsencrypt/live/northcloud.one/fullchain.pem \
   -noout -dates -subject -issuer
 ```
 
@@ -197,7 +197,7 @@ Let's Encrypt will send email notifications to `jonesrussell42@gmail.com` when:
 
 2. **Verify webroot is accessible**:
    ```bash
-   curl http://northcloud.biz/.well-known/acme-challenge/test
+   curl http://northcloud.one/.well-known/acme-challenge/test
    ```
 
 3. **Test renewal manually**:
@@ -223,7 +223,7 @@ Let's Encrypt will send email notifications to `jonesrussell42@gmail.com` when:
 
 3. **Verify certificate files exist**:
    ```bash
-   docker exec north-cloud-nginx ls -la /etc/letsencrypt/live/northcloud.biz/
+   docker exec north-cloud-nginx ls -la /etc/letsencrypt/live/northcloud.one/
    ```
 
 ### Rate Limiting
@@ -242,7 +242,7 @@ docker run --rm \
   -v north-cloud_certbot_www:/var/www/certbot \
   certbot/certbot certonly \
   --webroot -w /var/www/certbot \
-  -d northcloud.biz \
+  -d northcloud.one \
   --email jonesrussell42@gmail.com \
   --agree-tos \
   --non-interactive \

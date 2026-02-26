@@ -90,7 +90,7 @@ Added real-time URL validation and smart defaults:
   - `.gov` domain → "Government"
   - `.org` domain → "Organization"
   - Otherwise → "Other"
-- **Default User-Agent**: `Mozilla/5.0 (compatible; NorthCloud/1.0; +https://northcloud.biz)`
+- **Default User-Agent**: `Mozilla/5.0 (compatible; NorthCloud/1.0; +https://northcloud.one)`
 
 **Validation States**:
 ```typescript
@@ -406,7 +406,7 @@ On blur:
   → ✅ URL is reachable
   → Name auto-filled: "news"
   → Category auto-detected: "News"
-  → User-Agent pre-filled: "Mozilla/5.0 (compatible; NorthCloud/1.0; +https://northcloud.biz)"
+  → User-Agent pre-filled: "Mozilla/5.0 (compatible; NorthCloud/1.0; +https://northcloud.one)"
   → Ready to save!
 ```
 
@@ -448,7 +448,7 @@ On blur:
 {
   rate_limit: '1s',                    // Safe default: 1 request/second
   max_depth: 3,                        // Reasonable crawl depth
-  user_agent: 'Mozilla/5.0 (compatible; NorthCloud/1.0; +https://northcloud.biz)',
+  user_agent: 'Mozilla/5.0 (compatible; NorthCloud/1.0; +https://northcloud.one)',
   enabled: true,                       // Active by default
 }
 ```

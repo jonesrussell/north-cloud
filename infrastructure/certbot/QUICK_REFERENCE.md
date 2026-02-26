@@ -45,7 +45,7 @@ docker logs north-cloud-certbot
 docker ps | grep certbot
 
 # Test HTTPS
-curl -I https://northcloud.biz/
+curl -I https://northcloud.one/
 ```
 
 ## Automatic Renewal

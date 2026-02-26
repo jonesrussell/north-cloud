@@ -501,7 +501,7 @@ const form = ref({
   category: '',
   rate_limit: '1s',
   max_depth: 3,
-  user_agent: 'Mozilla/5.0 (compatible; NorthCloud/1.0; +https://northcloud.biz)',
+  user_agent: 'Mozilla/5.0 (compatible; NorthCloud/1.0; +https://northcloud.one)',
   enabled: true,
 })
 
@@ -708,7 +708,7 @@ const resetForm = (): void => {
     category: '',
     rate_limit: '1s',
     max_depth: 3,
-    user_agent: 'Mozilla/5.0 (compatible; NorthCloud/1.0; +https://northcloud.biz)',
+    user_agent: 'Mozilla/5.0 (compatible; NorthCloud/1.0; +https://northcloud.one)',
     enabled: true,
   }
   mode.value = 'basic'

@@ -1,6 +1,6 @@
 #!/bin/bash
 # Add Anishinaabe/Indigenous sources to North Cloud and schedule recurring crawls.
-# Use on production (e.g. jones@northcloud.biz) to increase content for diidjaaheer.live.
+# Use on production (e.g. user@your-server) to increase content for diidjaaheer.live.
 #
 # Usage:
 #   ./scripts/add-anishinaabe-sources.sh [path/to/anishinaabe-sources-data.json]
