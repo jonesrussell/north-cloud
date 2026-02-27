@@ -1,7 +1,7 @@
 <template>
   <div class="text-center py-12">
     <svg
-      class="mx-auto h-12 w-12 text-gray-400"
+      class="mx-auto h-12 w-12 text-[var(--nc-text-muted)]"
       fill="none"
       viewBox="0 0 24 24"
       stroke="currentColor"
@@ -15,10 +15,10 @@
         d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"
       />
     </svg>
-    <h3 class="mt-2 text-sm font-medium text-gray-900">
+    <h3 class="mt-2 text-sm font-medium text-[var(--nc-text)]">
       {{ title }}
     </h3>
-    <p class="mt-1 text-sm text-gray-500">
+    <p class="mt-1 text-sm text-[var(--nc-text-secondary)]">
       {{ message }}
     </p>
     <div
