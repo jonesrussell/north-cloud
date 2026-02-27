@@ -1,3 +1,4 @@
+//nolint:testpackage // Testing unexported checkBulkResponse requires same package access
 package storage
 
 import (
@@ -142,14 +143,21 @@ func TestCheckBulkResponse(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name:       "with item error",
-			body:       `{"errors":true,"items":[{"index":{"_index":"Test_classified","_id":"1","status":400,"error":{"type":"invalid_index_name_exception","reason":"Invalid index name [Test_classified], must be lowercase"}}}]}`,
+			name: "with item error",
+			body: `{"errors":true,"items":[{"index":{` +
+				`"_index":"Test_classified","_id":"1","status":400,` +
+				`"error":{"type":"invalid_index_name_exception",` +
+				`"reason":"must be lowercase"}}}]}`,
 			wantErr:    true,
 			wantErrMsg: "1 of 1 bulk items failed",
 		},
 		{
-			name:       "mixed success and failure",
-			body:       `{"errors":true,"items":[{"index":{"_index":"good","_id":"1","status":201}},{"index":{"_index":"Bad","_id":"2","status":400,"error":{"type":"invalid_index_name_exception","reason":"must be lowercase"}}}]}`,
+			name: "mixed success and failure",
+			body: `{"errors":true,"items":[` +
+				`{"index":{"_index":"good","_id":"1","status":201}},` +
+				`{"index":{"_index":"Bad","_id":"2","status":400,` +
+				`"error":{"type":"invalid_index_name_exception",` +
+				`"reason":"must be lowercase"}}}]}`,
 			wantErr:    true,
 			wantErrMsg: "1 of 2 bulk items failed",
 		},

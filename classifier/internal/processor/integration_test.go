@@ -697,12 +697,13 @@ func TestRegression_HumanReadableSourceNameWithSourceIndex(t *testing.T) {
 	publishedDate := time.Now().Add(-24 * time.Hour)
 	esClient.rawContent = []*domain.RawContent{
 		{
-			ID:                   "billboard-1",
-			URL:                  "https://billboard.com/article1",
-			SourceName:           "Billboard",
-			SourceIndex:          "billboard_raw_content",
-			Title:                "Top 100 charts this week",
-			RawText:              "The latest Billboard charts show significant movement in the top positions. Several new entries made their debut this week.",
+			ID:          "billboard-1",
+			URL:         "https://billboard.com/article1",
+			SourceName:  "Billboard",
+			SourceIndex: "billboard_raw_content",
+			Title:       "Top 100 charts this week",
+			RawText: "The latest Billboard charts show significant movement " +
+				"in the top positions. Several new entries made their debut.",
 			OGType:               "article",
 			MetaDescription:      "Billboard charts",
 			PublishedDate:        &publishedDate,
@@ -710,12 +711,13 @@ func TestRegression_HumanReadableSourceNameWithSourceIndex(t *testing.T) {
 			WordCount:            250,
 		},
 		{
-			ID:                   "mirror-1",
-			URL:                  "https://campbellrivermirror.com/news",
-			SourceName:           "Campbell River Mirror",
-			SourceIndex:          "campbell_river_mirror_raw_content",
-			Title:                "Local council approves new development",
-			RawText:              "The Campbell River council has approved a new housing development in the downtown area. The project will bring new homes to the community.",
+			ID:          "mirror-1",
+			URL:         "https://campbellrivermirror.com/news",
+			SourceName:  "Campbell River Mirror",
+			SourceIndex: "campbell_river_mirror_raw_content",
+			Title:       "Local council approves new development",
+			RawText: "The Campbell River council has approved a new housing " +
+				"development. The project will bring new homes to the community.",
 			OGType:               "article",
 			MetaDescription:      "Local news",
 			PublishedDate:        &publishedDate,
@@ -764,12 +766,13 @@ func TestRegression_SourceNameFallbackSanitization(t *testing.T) {
 	publishedDate := time.Now().Add(-24 * time.Hour)
 	esClient.rawContent = []*domain.RawContent{
 		{
-			ID:                   "fallback-1",
-			URL:                  "https://billboard.com/article1",
-			SourceName:           "Billboard",
-			SourceIndex:          "", // No source index available
-			Title:                "Fallback article with enough words for quality scoring",
-			RawText:              "This article tests the fallback path where no source index is available. The system should sanitize the source name to produce a valid ES index name.",
+			ID:          "fallback-1",
+			URL:         "https://billboard.com/article1",
+			SourceName:  "Billboard",
+			SourceIndex: "", // No source index available
+			Title:       "Fallback article with enough words for quality scoring",
+			RawText: "This article tests the fallback path where no source " +
+				"index is available. The system should sanitize the source name.",
 			OGType:               "article",
 			MetaDescription:      "Test article",
 			PublishedDate:        &publishedDate,
