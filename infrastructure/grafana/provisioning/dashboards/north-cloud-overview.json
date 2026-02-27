@@ -46,7 +46,7 @@
         {
           "refId": "A",
           "datasource": { "type": "loki", "uid": "loki" },
-          "expr": "count_over_time({service=\"classifier\"} |= \"Classification complete\" [$__range])",
+          "expr": "sum(count_over_time({service=\"classifier\"} |= \"Classification complete\" [$__range]))",
           "queryType": "instant"
         }
       ],
@@ -69,8 +69,8 @@
     },
     {
       "id": 3,
-      "title": "Articles Published",
-      "description": "Total articles published to Redis channels in the selected range",
+      "title": "Channel Publishes",
+      "description": "Total channel publishes to Redis in the selected range",
       "type": "stat",
       "datasource": { "type": "loki", "uid": "loki" },
       "gridPos": { "h": 4, "w": 4, "x": 4, "y": 1 },
@@ -78,7 +78,7 @@
         {
           "refId": "A",
           "datasource": { "type": "loki", "uid": "loki" },
-          "expr": "count_over_time({service=\"publisher\"} |= \"Published article to channel\" [$__range])",
+          "expr": "sum(count_over_time({service=\"publisher\"} |= \"Published content item to channel\" [$__range]))",
           "queryType": "instant"
         }
       ],
@@ -360,7 +360,7 @@
         {
           "refId": "B",
           "datasource": { "type": "loki", "uid": "loki" },
-          "expr": "sum by () (count_over_time({service=\"publisher\"} |= \"Published article to channel\" [$__interval]))",
+          "expr": "sum by () (count_over_time({service=\"publisher\"} |= \"Published content item to channel\" [$__interval]))",
           "queryType": "range",
           "legendFormat": "Published"
         }
