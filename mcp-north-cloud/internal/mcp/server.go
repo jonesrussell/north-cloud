@@ -20,6 +20,7 @@ type Server struct {
 	searchClient     *client.SearchClient
 	classifierClient *client.ClassifierClient
 	authClient       *client.AuthenticatedClient
+	grafanaClient    *client.GrafanaClient
 }
 
 // NewServer creates a new MCP server
@@ -32,6 +33,7 @@ func NewServer(
 	searchClient *client.SearchClient,
 	classifierClient *client.ClassifierClient,
 	authClient *client.AuthenticatedClient,
+	grafanaClient *client.GrafanaClient,
 ) *Server {
 	return &Server{
 		env:              env,
@@ -42,6 +44,7 @@ func NewServer(
 		searchClient:     searchClient,
 		classifierClient: classifierClient,
 		authClient:       authClient,
+		grafanaClient:    grafanaClient,
 	}
 }
 
@@ -206,6 +209,7 @@ var toolHandlers = map[string]toolHandlerFunc{
 	"classify_content":    (*Server).handleClassifyContent,
 	"delete_index":        (*Server).handleDeleteIndex,
 	"list_indexes":        (*Server).handleListIndexes,
+	"get_grafana_alerts":  (*Server).handleGetGrafanaAlerts,
 	"lint_file":           (*Server).handleLintFile,
 	"build_service":       (*Server).handleBuildService,
 	"test_service":        (*Server).handleTestService,

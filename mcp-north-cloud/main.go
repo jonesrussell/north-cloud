@@ -58,6 +58,7 @@ func main() {
 		clients.search,
 		clients.classifier,
 		clients.authClient,
+		clients.grafana,
 	)
 
 	// Process requests
@@ -72,6 +73,7 @@ type serviceClients struct {
 	search        *client.SearchClient
 	classifier    *client.ClassifierClient
 	authClient    *client.AuthenticatedClient
+	grafana       *client.GrafanaClient
 }
 
 func initializeClients(cfg *config.Config, log logger.Logger) *serviceClients {
@@ -82,6 +84,7 @@ func initializeClients(cfg *config.Config, log logger.Logger) *serviceClients {
 		logger.String("publisher_url", cfg.Services.PublisherURL),
 		logger.String("search_url", cfg.Services.SearchURL),
 		logger.String("classifier_url", cfg.Services.ClassifierURL),
+		logger.String("grafana_url", cfg.Services.GrafanaURL),
 		logger.Bool("auth_configured", cfg.Auth.JWTSecret != ""),
 	)
 
@@ -97,6 +100,7 @@ func initializeClients(cfg *config.Config, log logger.Logger) *serviceClients {
 		search:        client.NewSearchClient(cfg.Services.SearchURL, authClient),
 		classifier:    client.NewClassifierClient(cfg.Services.ClassifierURL, authClient),
 		authClient:    authClient,
+		grafana:       client.NewGrafanaClient(cfg.Services.GrafanaURL, cfg.Services.GrafanaUsername, cfg.Services.GrafanaPassword, authClient),
 	}
 }
 

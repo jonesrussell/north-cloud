@@ -9,7 +9,10 @@
         "SOURCE_MANAGER_URL": "http://localhost:8050",
         "PUBLISHER_URL": "http://localhost:8070",
         "SEARCH_URL": "http://localhost:8092",
-        "CLASSIFIER_URL": "http://localhost:8071"
+        "CLASSIFIER_URL": "http://localhost:8071",
+        "GRAFANA_URL": "http://localhost:3000",
+        "GRAFANA_USERNAME": "admin",
+        "GRAFANA_PASSWORD": "changeme"
       }
     },
     "North Cloud (Production)": {

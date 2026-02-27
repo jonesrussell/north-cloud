@@ -11,8 +11,8 @@ task test             # Run tests
 task lint             # Run linter
 
 # Verify tool registration
-./test-tools.sh                   # local mode (expects 18 tools)
-MCP_ENV=prod ./test-tools.sh      # prod mode (expects 24 tools)
+./test-tools.sh                   # local mode (expects 19 tools)
+MCP_ENV=prod ./test-tools.sh      # prod mode (expects 25 tools)
 MCP_TEST_PROMPTS=1 ./test-tools.sh  # also test prompts and resources
 
 # Manual tool calls (binary must be built first: task build)
@@ -33,7 +33,7 @@ mcp-north-cloud/
 │   ├── mcp/
 │   │   ├── server.go        # Request routing, toolHandlers map, prompts/resources dispatch
 │   │   ├── types.go         # JSON-RPC types, Prompt/Resource types, Scope constants
-│   │   ├── tools.go         # 27 tool definitions (scoped by MCP_ENV)
+│   │   ├── tools.go         # 28 tool definitions (scoped by MCP_ENV)
 │   │   ├── handlers.go      # Tool implementations (one func per tool)
 │   │   ├── prompts.go       # prompts/list and prompts/get (4 prompts)
 │   │   ├── resources.go     # resources/list and resources/read (static docs)
@@ -44,7 +44,8 @@ mcp-north-cloud/
 │   │   ├── source_manager.go
 │   │   ├── search.go
 │   │   ├── classifier.go
-│   │   └── index_manager.go
+│   │   ├── index_manager.go
+│   │   └── grafana.go
 │   └── config/
 └── bin/mcp-north-cloud      # Built binary (gitignored)
 ```
@@ -75,10 +76,10 @@ Set `MCP_ENV` to control which tools appear in `tools/list`:
 
 | Environment | Count | Includes |
 |-------------|-------|---------|
-| `local` (default) | 18 | shared (15) + local-only (3) |
-| `prod` | 24 | shared (15) + prod-only (9) |
+| `local` (default) | 19 | shared (16) + local-only (3) |
+| `prod` | 25 | shared (16) + prod-only (9) |
 
-**Shared (15):** onboard_source, list_crawl_jobs, get_crawl_stats, add_source, list_sources, update_source, test_source, list_indexes, search_content, list_routes, list_channels, preview_route, get_publish_history, get_publisher_stats, classify_content
+**Shared (16):** onboard_source, list_crawl_jobs, get_crawl_stats, add_source, list_sources, update_source, test_source, list_indexes, search_content, list_routes, list_channels, preview_route, get_publish_history, get_publisher_stats, classify_content, get_grafana_alerts
 
 **Local-only (3):** lint_file, build_service, test_service
 
@@ -95,7 +96,7 @@ The server implements these JSON-RPC 2.0 methods:
 | Method | Description |
 |--------|-------------|
 | `initialize` | Returns protocol version `2024-11-05` and capabilities (tools, prompts, resources) |
-| `tools/list` | Returns tools for current `MCP_ENV` (18 local / 24 prod) |
+| `tools/list` | Returns tools for current `MCP_ENV` (19 local / 25 prod) |
 | `tools/call` | Routes `params.name` to the registered handler |
 | `prompts/list` | Returns 4 prompt templates |
 | `prompts/get` | Returns messages for a prompt with argument substitution |
@@ -120,13 +121,16 @@ Requests without an `id` field are notifications and receive no response.
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `MCP_ENV` | `local` | Tool scope: `local` (18 tools) or `prod` (24 tools) |
+| `MCP_ENV` | `local` | Tool scope: `local` (19 tools) or `prod` (25 tools) |
 | `CRAWLER_URL` | `http://localhost:8060` | Crawler service URL |
 | `SOURCE_MANAGER_URL` | `http://localhost:8050` | Source manager service URL |
 | `PUBLISHER_URL` | `http://localhost:8070` | Publisher service URL |
 | `CLASSIFIER_URL` | `http://localhost:8071` | Classifier service URL |
 | `SEARCH_URL` | `http://localhost:8092` | Search service URL |
 | `INDEX_MANAGER_URL` | `http://localhost:8090` | Index manager service URL |
+| `GRAFANA_URL` | `http://localhost:3000` | Grafana service URL (for alerts) |
+| `GRAFANA_USERNAME` | — | Grafana admin username (required for alerts) |
+| `GRAFANA_PASSWORD` | — | Grafana admin password (required for alerts) |
 | `AUTH_JWT_SECRET` | — | Shared JWT secret (required for protected tools) |
 | `MCP_HTTP_TIMEOUT_SECONDS` | `30` | HTTP client timeout (request timeout in main loop is 60s) |
 | `NORTH_CLOUD_ROOT` | cwd | Project root used by lint_file/build_service/test_service |
@@ -151,8 +155,8 @@ Requests without an `id` field are notifications and receive no response.
 
 ```bash
 # Verify tool registration counts
-./test-tools.sh               # local mode, expects 18
-MCP_ENV=prod ./test-tools.sh  # prod mode, expects 24
+./test-tools.sh               # local mode, expects 19
+MCP_ENV=prod ./test-tools.sh  # prod mode, expects 25
 
 # Also exercise prompts and resources
 MCP_TEST_PROMPTS=1 ./test-tools.sh
@@ -232,7 +236,7 @@ type Client struct {
 
 Clients are constructed in `server.go` using URL and timeout from config. Always pass `ctx` through to `http.NewRequestWithContext` — do not use `http.NewRequest`.
 
-### 27 Tools by Category
+### 28 Tools by Category
 
 | Category | Tools |
 |----------|-------|
@@ -244,6 +248,7 @@ Clients are constructed in `server.go` using URL and timeout from config. Always
 | **Classifier (1)** | classify_content |
 | **Index Manager (2)** | list_indexes, delete_index |
 | **Auth (1)** | get_auth_token |
+| **Observability (1)** | get_grafana_alerts |
 | **Development (3)** | lint_file, build_service, test_service |
 
 ## Cursor IDE Integration

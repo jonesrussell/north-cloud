@@ -914,6 +914,52 @@ func (s *Server) handleClassifyContent(ctx context.Context, id any, arguments js
 	return s.successResponse(id, result)
 }
 
+// Observability tool handlers
+
+func (s *Server) handleGetGrafanaAlerts(ctx context.Context, id any, arguments json.RawMessage) *Response {
+	var args struct {
+		IncludeSilenced bool `json:"include_silenced"`
+	}
+
+	_ = json.Unmarshal(arguments, &args) // Empty args is okay
+
+	alerts, err := s.grafanaClient.GetActiveAlerts(ctx)
+	if err != nil {
+		return s.errorResponse(id, InternalError, fmt.Sprintf("Failed to get Grafana alerts: %v", err))
+	}
+
+	// Filter out silenced alerts if not requested
+	if !args.IncludeSilenced {
+		filtered := make([]client.Alert, 0, len(alerts))
+		for i := range alerts {
+			if len(alerts[i].Status.SilencedBy) == 0 {
+				filtered = append(filtered, alerts[i])
+			}
+		}
+		alerts = filtered
+	}
+
+	// Build a summary for easier consumption
+	firingCount := 0
+	silencedCount := 0
+	for i := range alerts {
+		if alerts[i].Status.State == "active" {
+			firingCount++
+		}
+		if len(alerts[i].Status.SilencedBy) > 0 {
+			silencedCount++
+		}
+	}
+
+	return s.successResponse(id, map[string]any{
+		"alerts":         alerts,
+		"total_count":    len(alerts),
+		"firing_count":   firingCount,
+		"silenced_count": silencedCount,
+		"message":        fmt.Sprintf("Found %d active alerts (%d firing, %d silenced)", len(alerts), firingCount, silencedCount),
+	})
+}
+
 // Index Manager tool handlers
 
 func (s *Server) handleListIndexes(ctx context.Context, id any, arguments json.RawMessage) *Response {

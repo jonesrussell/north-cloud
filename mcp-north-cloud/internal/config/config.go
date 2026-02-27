@@ -34,6 +34,9 @@ type ServicesConfig struct {
 	PublisherURL     string `env:"PUBLISHER_URL"      yaml:"publisher_url"`
 	SearchURL        string `env:"SEARCH_URL"         yaml:"search_url"`
 	ClassifierURL    string `env:"CLASSIFIER_URL"     yaml:"classifier_url"`
+	GrafanaURL       string `env:"GRAFANA_URL"        yaml:"grafana_url"`
+	GrafanaUsername  string `env:"GRAFANA_USERNAME"   yaml:"grafana_username"`
+	GrafanaPassword  string `env:"GRAFANA_PASSWORD"   yaml:"grafana_password"`
 }
 
 // LoggingConfig holds logging configuration.
@@ -72,6 +75,9 @@ func setDefaults(cfg *Config) {
 	}
 	if cfg.Services.ClassifierURL == "" {
 		cfg.Services.ClassifierURL = defaultURLPublisherClassifier
+	}
+	if cfg.Services.GrafanaURL == "" {
+		cfg.Services.GrafanaURL = "http://localhost:3000"
 	}
 
 	// Client defaults

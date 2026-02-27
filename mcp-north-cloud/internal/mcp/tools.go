@@ -3,7 +3,7 @@ package mcp
 // getAllTools returns all available MCP tools grouped by service
 func getAllTools() []Tool {
 	const (
-		toolGroupCount         = 8
+		toolGroupCount         = 9
 		estimatedToolsPerGroup = 8
 	)
 	tools := make([]Tool, 0, toolGroupCount*estimatedToolsPerGroup)
@@ -15,6 +15,7 @@ func getAllTools() []Tool {
 	tools = append(tools, getClassifierTools()...)
 	tools = append(tools, getIndexManagerTools()...)
 	tools = append(tools, getAuthTools()...)
+	tools = append(tools, getObservabilityTools()...)
 	tools = append(tools, getDevelopmentTools()...)
 	return tools
 }
@@ -626,6 +627,27 @@ func getAuthTools() []Tool {
 			InputSchema: map[string]any{
 				"type":       "object",
 				"properties": map[string]any{},
+			},
+		},
+	}
+}
+
+func getObservabilityTools() []Tool {
+	return []Tool{
+		{
+			Name:  "get_grafana_alerts",
+			Scope: ScopeShared,
+			Description: "Get active alerts from Grafana. Use when: User wants to check system health, " +
+				"see firing alerts, or investigate incidents. Returns all active (firing) alerts with " +
+				"their labels, annotations, and status.",
+			InputSchema: map[string]any{
+				"type": "object",
+				"properties": map[string]any{
+					"include_silenced": map[string]any{
+						"type":        "boolean",
+						"description": "Include silenced alerts in the response (default: false)",
+					},
+				},
 			},
 		},
 	}
