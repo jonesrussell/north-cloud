@@ -11,6 +11,7 @@ import (
 	"github.com/jonesrussell/north-cloud/crawler/internal/adaptive"
 	"github.com/jonesrussell/north-cloud/crawler/internal/api"
 	"github.com/jonesrussell/north-cloud/crawler/internal/config"
+	crawlerconfig "github.com/jonesrussell/north-cloud/crawler/internal/config/crawler"
 	"github.com/jonesrussell/north-cloud/crawler/internal/crawler"
 	crawlerevents "github.com/jonesrussell/north-cloud/crawler/internal/crawler/events"
 	"github.com/jonesrussell/north-cloud/crawler/internal/database"
@@ -18,6 +19,7 @@ import (
 	"github.com/jonesrussell/north-cloud/crawler/internal/feed"
 	"github.com/jonesrussell/north-cloud/crawler/internal/fetcher"
 	"github.com/jonesrussell/north-cloud/crawler/internal/logs"
+	"github.com/jonesrussell/north-cloud/crawler/internal/proxypool"
 	"github.com/jonesrussell/north-cloud/crawler/internal/scheduler"
 	"github.com/jonesrussell/north-cloud/crawler/internal/sources"
 	"github.com/jonesrussell/north-cloud/crawler/internal/sources/apiclient"
@@ -370,6 +372,24 @@ func loadSourceManager(deps *CommandDeps) (sources.Interface, error) {
 // feedHTTPFetchTimeout is the timeout for HTTP requests when fetching feeds.
 const feedHTTPFetchTimeout = 30 * time.Second
 
+// buildProxiedHTTPClient creates an HTTP client with proxy pool transport if enabled.
+func buildProxiedHTTPClient(
+	crawlerCfg *crawlerconfig.Config,
+	timeout time.Duration,
+	log infralogger.Logger,
+) *http.Client {
+	client := &http.Client{Timeout: timeout}
+	if crawlerCfg.ProxyPoolEnabled && len(crawlerCfg.ProxyPoolURLs) > 0 {
+		pool := proxypool.New(crawlerCfg.ProxyPoolURLs,
+			proxypool.WithStickyTTL(crawlerCfg.ProxyStickyTTL),
+		)
+		client.Transport = proxypool.NewTransport(pool, nil)
+		log.Info("HTTP client proxy pool enabled",
+			infralogger.Int("proxy_count", len(crawlerCfg.ProxyPoolURLs)))
+	}
+	return client
+}
+
 // createFeedPoller creates a feed poller and listDue callback.
 // Returns (nil, nil) if feed polling is disabled or frontier submitter is nil.
 func createFeedPoller(
@@ -393,7 +413,9 @@ func createFeedPoller(
 		apiclient.WithJWTSecret(authCfg.JWTSecret),
 	)
 
-	httpFetcher := feed.NewHTTPFetcher(&http.Client{Timeout: feedHTTPFetchTimeout})
+	httpFetcher := feed.NewHTTPFetcher(buildProxiedHTTPClient(
+		deps.Config.GetCrawlerConfig(), feedHTTPFetchTimeout, deps.Logger,
+	))
 	feedStateAdapter := feed.NewFeedStateRepoAdapter(db.FeedStateRepo)
 	frontierAdapter := feed.NewFrontierRepoAdapter(frontierForFeed)
 	logAdapter := &logAdapter{log: deps.Logger}
@@ -492,7 +514,9 @@ func createFeedDiscoverer(
 		apiclient.WithJWTSecret(authCfg.JWTSecret),
 	)
 
-	httpFetcher := feed.NewHTTPFetcher(&http.Client{Timeout: feedHTTPFetchTimeout})
+	httpFetcher := feed.NewHTTPFetcher(buildProxiedHTTPClient(
+		deps.Config.GetCrawlerConfig(), feedHTTPFetchTimeout, deps.Logger,
+	))
 	updaterAdapter := &sourceFeedUpdaterAdapter{client: apiClient, log: deps.Logger}
 	logAdapt := &logAdapter{log: deps.Logger}
 	retryAfter := time.Duration(feedCfg.DiscoveryRetryHours) * time.Hour
@@ -564,9 +588,24 @@ func createFrontierWorkerPool(
 	} else {
 		checkRedirect = fetcher.RedirectPolicy(fetcherCfg.MaxRedirects)
 	}
+
+	crawlerCfg := deps.Config.GetCrawlerConfig()
+	var httpTransport *http.Transport
+	if crawlerCfg.ProxyPoolEnabled && len(crawlerCfg.ProxyPoolURLs) > 0 {
+		pool := proxypool.New(crawlerCfg.ProxyPoolURLs,
+			proxypool.WithStickyTTL(crawlerCfg.ProxyStickyTTL),
+		)
+		httpTransport = proxypool.NewTransport(pool, nil)
+		deps.Logger.Info("Frontier fetcher proxy pool enabled",
+			infralogger.Int("proxy_count", len(crawlerCfg.ProxyPoolURLs)))
+	}
+
 	httpClient := &http.Client{
 		Timeout:       fetcherCfg.RequestTimeout,
 		CheckRedirect: checkRedirect,
+	}
+	if httpTransport != nil {
+		httpClient.Transport = httpTransport
 	}
 	robots := fetcher.NewRobotsChecker(httpClient, fetcherCfg.UserAgent, 0)
 	extractor := fetcher.NewContentExtractor()

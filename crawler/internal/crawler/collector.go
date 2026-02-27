@@ -20,6 +20,7 @@ import (
 	configtypes "github.com/jonesrussell/north-cloud/crawler/internal/config/types"
 	"github.com/jonesrussell/north-cloud/crawler/internal/content/rawcontent"
 	"github.com/jonesrussell/north-cloud/crawler/internal/logs"
+	"github.com/jonesrussell/north-cloud/crawler/internal/proxypool"
 )
 
 // Collector defaults
@@ -249,8 +250,24 @@ func (c *Crawler) setupRedisStorage() error {
 	return nil
 }
 
-// setupProxyRotation configures round-robin proxy rotation if enabled.
+// setupProxyRotation configures proxy rotation if enabled.
+// Supports both the legacy round-robin mode and the new domain-sticky proxy pool.
 func (c *Crawler) setupProxyRotation() error {
+	// New proxy pool takes priority
+	if c.cfg.ProxyPoolEnabled && len(c.cfg.ProxyPoolURLs) > 0 {
+		pool := proxypool.New(c.cfg.ProxyPoolURLs,
+			proxypool.WithStickyTTL(c.cfg.ProxyStickyTTL),
+		)
+		c.collector.SetProxyFunc(pool.ProxyFunc())
+		c.GetJobLogger().Info(logs.CategoryLifecycle,
+			"Domain-sticky proxy pool enabled",
+			logs.Int("proxy_count", len(c.cfg.ProxyPoolURLs)),
+			logs.Duration("sticky_ttl", c.cfg.ProxyStickyTTL),
+		)
+		return nil
+	}
+
+	// Legacy round-robin fallback
 	if !c.cfg.ProxiesEnabled || len(c.cfg.ProxyURLs) == 0 {
 		return nil
 	}
