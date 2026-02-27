@@ -26,6 +26,9 @@ func NewDomainStateRepository(db *sqlx.DB) *DomainStateRepository {
 }
 
 // Upsert creates or updates a domain state record.
+// The INSERT ... ON CONFLICT is atomic. The follow-up setStatusTimestamp
+// is a separate statement; a crash between them would leave the timestamp
+// stale but not corrupt state. Accepted trade-off for simplicity.
 func (r *DomainStateRepository) Upsert(ctx context.Context, domainName, status string, notes *string) error {
 	now := time.Now()
 
