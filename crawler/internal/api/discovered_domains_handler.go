@@ -20,15 +20,15 @@ const (
 
 // DiscoveredDomainsHandler handles discovered domain HTTP requests.
 type DiscoveredDomainsHandler struct {
-	aggregateRepo *database.DomainAggregateRepository
-	stateRepo     *database.DomainStateRepository
+	aggregateRepo database.DomainAggregateRepositoryInterface
+	stateRepo     database.DomainStateRepositoryInterface
 	log           infralogger.Logger
 }
 
 // NewDiscoveredDomainsHandler creates a new discovered domains handler.
 func NewDiscoveredDomainsHandler(
-	aggregateRepo *database.DomainAggregateRepository,
-	stateRepo *database.DomainStateRepository,
+	aggregateRepo database.DomainAggregateRepositoryInterface,
+	stateRepo database.DomainStateRepositoryInterface,
 	log infralogger.Logger,
 ) *DiscoveredDomainsHandler {
 	return &DiscoveredDomainsHandler{

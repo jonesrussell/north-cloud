@@ -59,3 +59,18 @@ type ExecutionRepositoryInterface interface {
 	// Maintenance operations
 	CleanupOldExecutions(ctx context.Context) (int, error)
 }
+
+// DomainStateRepositoryInterface defines the contract for domain state operations.
+type DomainStateRepositoryInterface interface {
+	Upsert(ctx context.Context, domainName, status string, notes *string) error
+	BulkUpsert(ctx context.Context, domains []string, status string, notes *string) (int, error)
+	GetByDomain(ctx context.Context, domainName string) (*domain.DomainState, error)
+}
+
+// DomainAggregateRepositoryInterface defines the contract for domain aggregate queries.
+type DomainAggregateRepositoryInterface interface {
+	ListAggregates(ctx context.Context, filters DomainListFilters) ([]*domain.DomainAggregate, error)
+	CountAggregates(ctx context.Context, filters DomainListFilters) (int, error)
+	GetReferringSources(ctx context.Context, domainName string) ([]string, error)
+	ListLinksByDomain(ctx context.Context, domainName string, limit, offset int) ([]*domain.DiscoveredLink, int, error)
+}
