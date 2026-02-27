@@ -11,7 +11,7 @@ ALTER TABLE discovered_links
 -- Step 2: Backfill domain from existing URLs (extract hostname, strip www. prefix).
 UPDATE discovered_links
 SET domain = regexp_replace(
-    (regexp_matches(url, '://([^/:]+)'))[1],
+    substring(url FROM '://([^/:]+)'),
     '^www\.', ''
 )
 WHERE domain IS NULL AND url IS NOT NULL;
