@@ -21,4 +21,5 @@ export {
   useJobMutations,
 } from './useJobMutations'
 export { useDiscoveredLinksTable } from './useDiscoveredLinksTable'
+export { useDiscoveredDomainsTable } from './useDiscoveredDomainsTable'
 export { useFrontierTable } from './useFrontierTable'

@@ -64,7 +64,20 @@ const saveSource = async () => {
   }
 }
 
-onMounted(loadSource)
+onMounted(() => {
+  loadSource()
+  // Pre-fill from query params (from discovered domains "Create Source")
+  if (!isEdit.value) {
+    const domain = route.query.domain as string | undefined
+    const name = route.query.name as string | undefined
+    if (domain) {
+      form.value.url = `https://${domain}`
+    }
+    if (name) {
+      form.value.name = name
+    }
+  }
+})
 </script>
 
 <template>

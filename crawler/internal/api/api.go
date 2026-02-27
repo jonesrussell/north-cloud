@@ -132,6 +132,17 @@ func setupDiscoveredLinksRoutes(v1 *gin.RouterGroup, discoveredLinksHandler *Dis
 	}
 }
 
+// setupDiscoveredDomainsRoutes configures discovered domains endpoints
+func setupDiscoveredDomainsRoutes(v1 *gin.RouterGroup, domainsHandler *DiscoveredDomainsHandler) {
+	if domainsHandler != nil {
+		v1.GET("/discovered-domains", domainsHandler.ListDomains)
+		v1.GET("/discovered-domains/:domain", domainsHandler.GetDomain)
+		v1.GET("/discovered-domains/:domain/links", domainsHandler.ListDomainLinks)
+		v1.PATCH("/discovered-domains/:domain/state", domainsHandler.UpdateDomainState)
+		v1.POST("/discovered-domains/bulk-state", domainsHandler.BulkUpdateDomainState)
+	}
+}
+
 // NewServer creates a new HTTP server using the infrastructure gin package.
 func NewServer(
 	cfg config.Interface,
@@ -145,6 +156,7 @@ func NewServer(
 	migrationHandler *MigrationHandler, // Optional - pass nil to disable migration endpoints
 	syncHandler *admin.SyncEnabledSourcesHandler, // Optional - pass nil to disable sync endpoint
 	frontierHandler *FrontierHandler, // Optional - pass nil to disable frontier endpoints
+	domainsHandler *DiscoveredDomainsHandler, // Optional - pass nil to disable domains endpoints
 ) *infragin.Server {
 	// Extract port from address
 	port := extractPortFromAddress(cfg.GetServerConfig().Address)
@@ -175,7 +187,7 @@ func NewServer(
 			setupCrawlerRoutes(
 				router, jwtSecret, jobsHandler, discoveredLinksHandler,
 				logsHandler, logsV2Handler, executionRepo, sseHandler,
-				migrationHandler, syncHandler, frontierHandler,
+				migrationHandler, syncHandler, frontierHandler, domainsHandler,
 			)
 
 			// Setup internal service-to-service routes
@@ -232,6 +244,7 @@ func setupCrawlerRoutes(
 	migrationHandler *MigrationHandler,
 	syncHandler *admin.SyncEnabledSourcesHandler,
 	frontierHandler *FrontierHandler,
+	domainsHandler *DiscoveredDomainsHandler,
 ) {
 	// API v1 routes - protected with JWT
 	v1 := infragin.ProtectedGroup(router, "/api/v1", jwtSecret)
@@ -282,6 +295,9 @@ func setupCrawlerRoutes(
 
 	// Setup discovered links routes
 	setupDiscoveredLinksRoutes(v1, discoveredLinksHandler)
+
+	// Setup discovered domains routes
+	setupDiscoveredDomainsRoutes(v1, domainsHandler)
 
 	// Setup frontier routes
 	setupFrontierRoutes(v1, frontierHandler)

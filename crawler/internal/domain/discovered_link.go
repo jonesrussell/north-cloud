@@ -13,6 +13,9 @@ type DiscoveredLink struct {
 	URL          string    `db:"url"           json:"url"`
 	ParentURL    *string   `db:"parent_url"    json:"parent_url,omitempty"`
 	Depth        int       `db:"depth"         json:"depth"`
+	Domain       string    `db:"domain"        json:"domain"`
+	HTTPStatus   *int16    `db:"http_status"   json:"http_status,omitempty"`
+	ContentType  *string   `db:"content_type"  json:"content_type,omitempty"`
 	DiscoveredAt time.Time `db:"discovered_at" json:"discovered_at"`
 	QueuedAt     time.Time `db:"queued_at"     json:"queued_at"`
 	Status       string    `db:"status"        json:"status"`

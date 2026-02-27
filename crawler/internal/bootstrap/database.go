@@ -21,6 +21,8 @@ type DatabaseComponents struct {
 	FeedStateRepo       *database.FeedStateRepository
 	CandidateRepo       *database.CandidateRepository
 	DecisionLogRepo     *database.DecisionLogRepository
+	DomainStateRepo     *database.DomainStateRepository
+	DomainAggregateRepo *database.DomainAggregateRepository
 }
 
 // SetupDatabase connects to PostgreSQL and creates all repositories.
@@ -35,6 +37,7 @@ func SetupDatabase(cfg config.Interface) (*DatabaseComponents, error) {
 	jobRepo, executionRepo, discoveredLinkRepo, processedEventsRepo := setupRepositories(db)
 	frontierRepo, hostStateRepo, feedStateRepo := setupFrontierRepositories(db)
 	candidateRepo, decisionLogRepo := setupDiscoveryRepositories(db)
+	domainStateRepo, domainAggregateRepo := setupDomainRepositories(db)
 
 	return &DatabaseComponents{
 		DB:                  db,
@@ -47,6 +50,8 @@ func SetupDatabase(cfg config.Interface) (*DatabaseComponents, error) {
 		FeedStateRepo:       feedStateRepo,
 		CandidateRepo:       candidateRepo,
 		DecisionLogRepo:     decisionLogRepo,
+		DomainStateRepo:     domainStateRepo,
+		DomainAggregateRepo: domainAggregateRepo,
 	}, nil
 }
 
@@ -82,6 +87,14 @@ func setupFrontierRepositories(db *sqlx.DB) (
 	hostStateRepo = database.NewHostStateRepository(db)
 	feedStateRepo = database.NewFeedStateRepository(db)
 	return frontierRepo, hostStateRepo, feedStateRepo
+}
+
+// setupDomainRepositories creates the discovered domain repositories.
+func setupDomainRepositories(db *sqlx.DB) (
+	domainStateRepo *database.DomainStateRepository,
+	domainAggregateRepo *database.DomainAggregateRepository,
+) {
+	return database.NewDomainStateRepository(db), database.NewDomainAggregateRepository(db)
 }
 
 // databaseConfigFromInterface converts config database config to database.Config.
