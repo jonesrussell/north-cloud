@@ -93,9 +93,9 @@ After changing deps, run `task vendor` from the repo root (local only) to refres
 | pipeline | 8075 | Pipeline Event Service |
 | click-tracker | 8093 | Click Event Tracking |
 | mining-ml | 8077 | Mining ML Classifier |
-| anishinaabe-ml | 8080 | Anishinaabe ML Classifier |
+| indigenous-ml | 8080 | Indigenous ML Classifier |
 
-ML sidecars (crime-ml, mining-ml, coforge-ml, entertainment-ml, anishinaabe-ml) live under `ml-sidecars/`.
+ML sidecars (crime-ml, mining-ml, coforge-ml, entertainment-ml, indigenous-ml) live under `ml-sidecars/`.
 
 ---
 

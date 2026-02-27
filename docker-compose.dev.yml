@@ -237,8 +237,8 @@ services:
       COFORGE_ML_SERVICE_URL: "http://coforge-ml:8078"
       ENTERTAINMENT_ENABLED: "${ENTERTAINMENT_ENABLED:-true}"
       ENTERTAINMENT_ML_SERVICE_URL: "http://entertainment-ml:8079"
-      ANISHINAABE_ENABLED: "${ANISHINAABE_ENABLED:-false}"
-      ANISHINAABE_ML_SERVICE_URL: "http://anishinaabe-ml:8080"
+      INDIGENOUS_ENABLED: "${INDIGENOUS_ENABLED:-false}"
+      INDIGENOUS_ML_SERVICE_URL: "http://indigenous-ml:8080"
       RECIPE_ENABLED: "${RECIPE_ENABLED:-true}"
       JOB_ENABLED: "${JOB_ENABLED:-true}"
     volumes:
@@ -541,11 +541,11 @@ services:
       - "${ENTERTAINMENT_ML_PORT:-8079}:8079"
 
   # ------------------------------------------------------------
-  # Anishinaabe ML Classifier (Dev)
+  # Indigenous ML Classifier (Dev)
   # ------------------------------------------------------------
-  anishinaabe-ml:
+  indigenous-ml:
     ports:
-      - "${ANISHINAABE_ML_PORT:-8080}:8080"
+      - "${INDIGENOUS_ML_PORT:-8080}:8080"
 
   # ------------------------------------------------------------
   # HTTP Replay Proxy (Dev)

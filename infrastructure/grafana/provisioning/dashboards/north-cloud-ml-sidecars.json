@@ -1015,17 +1015,17 @@
             {
               "datasource": { "type": "loki", "uid": "loki" },
               "editorMode": "code",
-              "expr": "{service=\"anishinaabe-ml\"} != \"GET /health HTTP\"",
+              "expr": "{service=\"indigenous-ml\"} != \"GET /health HTTP\"",
               "queryType": "range",
               "refId": "A",
               "maxLines": 200
             }
           ],
-          "title": "Anishinaabe-ML Log Stream",
+          "title": "Indigenous-ML Log Stream",
           "type": "logs"
         }
       ],
-      "title": "Anishinaabe-ML Logs",
+      "title": "Indigenous-ML Logs",
       "type": "row"
     }
   ],
@@ -1048,9 +1048,9 @@
           { "selected": false, "text": "mining-ml", "value": "mining-ml" },
           { "selected": false, "text": "coforge-ml", "value": "coforge-ml" },
           { "selected": false, "text": "entertainment-ml", "value": "entertainment-ml" },
-          { "selected": false, "text": "anishinaabe-ml", "value": "anishinaabe-ml" }
+          { "selected": false, "text": "indigenous-ml", "value": "indigenous-ml" }
         ],
-        "query": "crime-ml,mining-ml,coforge-ml,entertainment-ml,anishinaabe-ml",
+        "query": "crime-ml,mining-ml,coforge-ml,entertainment-ml,indigenous-ml",
         "type": "custom"
       }
     ]

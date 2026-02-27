@@ -200,9 +200,9 @@ func TestRunOptionalClassifiers_UnknownSidecarDoesNotPanic(t *testing.T) {
 	raw := &domain.RawContent{ID: "test-unknown", Title: "Test Article"}
 
 	// Unknown sidecar name must not panic; all results should be nil
-	crime, mining, coforge, entertainment, anishinaabe, location :=
+	crime, mining, coforge, entertainment, indigenous, location :=
 		clf.classifyOptionalForPublishable(context.Background(), raw, domain.ContentTypeArticle, "")
-	if crime != nil || mining != nil || coforge != nil || entertainment != nil || anishinaabe != nil || location != nil {
+	if crime != nil || mining != nil || coforge != nil || entertainment != nil || indigenous != nil || location != nil {
 		t.Error("expected all nil results for unknown sidecar name in routing table")
 	}
 }

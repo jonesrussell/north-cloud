@@ -33,13 +33,13 @@ flowchart TD
     CL -->|optional HTTP call| MINING_ML[mining-ml\nport 8077]
     CL -->|optional HTTP call| COFORGE_ML[coforge-ml\nport 8078]
     CL -->|optional HTTP call| ENT_ML[entertainment-ml\nport 8079]
-    CL -->|optional HTTP call| ANI_ML[anishinaabe-ml\nport 8080]
+    CL -->|optional HTTP call| ANI_ML[indigenous-ml\nport 8080]
 
     CRIME_ML -->|crime classification| CL
     MINING_ML -->|mining classification| CL
     COFORGE_ML -->|coforge classification| CL
     ENT_ML -->|entertainment classification| CL
-    ANI_ML -->|anishinaabe classification| CL
+    ANI_ML -->|indigenous classification| CL
 
     CL -->|enriched document| ES_CL[(Elasticsearch\n{source}_classified_content)]
     ES_CL -->|polls every 30s| PUB[Publisher\nport 8070]
@@ -99,7 +99,7 @@ All ML sidecars are Python-based FastAPI services. They run alongside the classi
 | mining-ml | 8077 | `MINING_ENABLED=true` | Mining relevance, stage, commodity, and location classification |
 | coforge-ml | 8078 | `COFORGE_ENABLED=true` | Coforge-specific content relevance, audience, topic, and industry classification |
 | entertainment-ml | 8079 | `ENTERTAINMENT_ENABLED=true` | Entertainment relevance and category classification |
-| anishinaabe-ml | 8080 | `ANISHINAABE_ENABLED=true` | Anishinaabe/Indigenous content relevance and category classification |
+| indigenous-ml | 8080 | `INDIGENOUS_ENABLED=true` | Indigenous content relevance and category classification |
 
 Each sidecar implements a hybrid rules+ML decision matrix. Rules provide precision; ML provides recall. When rules and ML disagree, the content item is flagged `review_required=true` and a conservative result is used.
 
@@ -119,7 +119,7 @@ domains := []RoutingDomain{
     NewLocationDomain(),      // Layer 4
     NewMiningDomain(),        // Layer 5
     NewEntertainmentDomain(), // Layer 6
-    NewAnishinaabeeDomain(),  // Layer 7
+    NewIndigenousDomain(),    // Layer 7
     NewCoforgeDomain(),       // Layer 8
 }
 ```
@@ -133,7 +133,7 @@ Automatic. For each topic tag on the content item, publishes to `content:{topic}
 | Excluded topic | Handled by |
 |---------------|-----------|
 | `mining` | Layer 5 (MiningDomain) |
-| `anishinaabe` | Layer 7 (AnishinaabeeDomain) |
+| `indigenous` | Layer 7 (IndigenousDomain) |
 | `coforge` | Layer 8 (CoforgeDomain) |
 
 **Channel examples**:
@@ -252,23 +252,24 @@ Automatic. Routes content classified by the entertainment hybrid classifier. Con
 - `entertainment:category:reviews`
 - `entertainment:peripheral`
 
-### Layer 7 — Anishinaabe Classification (AnishinaabeeDomain)
+### Layer 7 — Indigenous Classification (IndigenousDomain)
 
-**Source**: `publisher/internal/router/anishinaabe.go`
+**Source**: `publisher/internal/router/indigenous.go`
 
-Automatic. Routes content classified by the Anishinaabe/Indigenous ML classifier. Content with `anishinaabe.relevance=not_anishinaabe` or no anishinaabe object are skipped.
+Automatic. Routes content classified by the Indigenous ML classifier. Content with `indigenous.relevance=not_indigenous` or no indigenous object are skipped.
 
 **Channel patterns**:
-- `content:anishinaabe` — catch-all for all Anishinaabe-classified content (core + peripheral)
-- `anishinaabe:category:{slug}` — one per category (spaces converted to hyphens, lowercased)
+- `content:indigenous` — catch-all for all Indigenous-classified content (core + peripheral)
+- `indigenous:category:{slug}` — one per category (spaces converted to hyphens, lowercased)
 
 **Channel examples**:
-- `content:anishinaabe`
-- `anishinaabe:category:culture`
-- `anishinaabe:category:language`
-- `anishinaabe:category:governance`
-- `anishinaabe:category:land-rights`
-- `anishinaabe:category:education`
+- `content:indigenous`
+- `indigenous:category:anishinaabe`
+- `indigenous:category:culture`
+- `indigenous:category:language`
+- `indigenous:category:governance`
+- `indigenous:category:land-rights`
+- `indigenous:category:education`
 
 ### Layer 8 — Coforge Classification (CoforgeDomain)
 
@@ -338,7 +339,7 @@ Includes all raw content fields plus:
 | `crime` | object | Crime classification (see below) |
 | `mining` | object | Mining classification (see below) |
 | `entertainment` | object | Entertainment classification (see below) |
-| `anishinaabe` | object | Anishinaabe classification (see below) |
+| `indigenous` | object | Indigenous classification (see below) |
 | `coforge` | object | Coforge classification (see below) |
 | `location` | object | Geographic location data (see below) |
 
@@ -369,9 +370,9 @@ Includes all raw content fields plus:
 - `review_required`: bool
 - `model_version`: string
 
-**anishinaabe object fields**:
-- `relevance`: `core_anishinaabe`, `peripheral_anishinaabe`, `not_anishinaabe`
-- `categories[]`: `culture`, `language`, `governance`, `land_rights`, `education`
+**indigenous object fields**:
+- `relevance`: `core_indigenous`, `peripheral_indigenous`, `not_indigenous`
+- `categories[]`: `anishinaabe`, `culture`, `language`, `governance`, `land_rights`, `education`
 - `final_confidence`: float 0.0-1.0
 - `review_required`: bool
 - `model_version`: string
@@ -416,7 +417,7 @@ All routing is topic-driven and consumer-agnostic. Channels are named by content
 
 Pattern: `content:{topic}`
 
-Triggered for every topic tag on a content item, except topics excluded by `layer1SkipTopics` (mining, anishinaabe, coforge).
+Triggered for every topic tag on a content item, except topics excluded by `layer1SkipTopics` (mining, indigenous, coforge).
 
 | Channel | Trigger |
 |---------|---------|
@@ -485,12 +486,12 @@ Where `{prefix}` is `crime` or `entertainment` depending on which classifier is 
 | `entertainment:category:{slug}` | One per entry in `entertainment.categories` |
 | `entertainment:peripheral` | `peripheral_entertainment` relevance |
 
-### Layer 7 — Anishinaabe Channels
+### Layer 7 — Indigenous Channels
 
 | Channel | Trigger |
 |---------|---------|
-| `content:anishinaabe` | Any Anishinaabe-classified content item (`core_anishinaabe` or `peripheral_anishinaabe`) |
-| `anishinaabe:category:{slug}` | One per entry in `anishinaabe.categories` |
+| `content:indigenous` | Any Indigenous-classified content item (`core_indigenous` or `peripheral_indigenous`) |
+| `indigenous:category:{slug}` | One per entry in `indigenous.categories` |
 
 ### Layer 8 — Coforge Channels
 
@@ -564,7 +565,7 @@ Both patterns follow the same conceptual phase ordering:
 
 Key architectural changes (see full history in git):
 
-- **Anishinaabe Layer** (2026-02-16): Added anishinaabe-ml sidecar, wired Anishinaabe classifier into classifier pipeline, added Layer 7 Anishinaabe routing to publisher
+- **Indigenous Layer** (2026-02-16): Added indigenous-ml sidecar, wired Indigenous classifier into classifier pipeline, added Layer 7 Indigenous routing to publisher
 - **Mining-ML Pipeline** (2026-02-05): Added mining-ml sidecar, wired hybrid mining classifier into classifier pipeline, added Layer 5 mining routing to publisher
 - **Crime Sub-Category Classification** (2026-01-07): Replaced generic "crime" with 5 sub-categories (violent, property, drug, organized, justice)
 - **Crawler Scheduler Refactor** (2025-12-29): Interval-based scheduling replaces cron (Migration 003)

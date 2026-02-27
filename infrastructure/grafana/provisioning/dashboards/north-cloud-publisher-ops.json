@@ -415,7 +415,7 @@
         {
           "refId": "A",
           "datasource": { "type": "loki", "uid": "loki" },
-          "expr": "sum by (prefix) (count_over_time({service=\"publisher\"} |= \"Published content item to channel\" | json | label_format prefix=`{{ .channel | regexReplaceAll \":.*\" \"\" }}` [$__range]))",
+          "expr": "sum by (prefix) (count_over_time({service=\"publisher\"} |= \"Published content item to channel\" | json | line_format \"{{.channel}}\" | regexp \"(?P<prefix>[^:]+)\" [$__range]))",
           "legendFormat": "{{prefix}}",
           "queryType": "instant"
         }

@@ -1,18 +1,18 @@
-"""Anishinaabe ML Classifier - FastAPI Server (rule-based; ML later)."""
+"""Indigenous ML Classifier - FastAPI Server (rule-based; ML later)."""
 
 import time
 
 from fastapi import FastAPI
 from pydantic import BaseModel
 
-from classifier.relevance import classify_anishinaabe_relevance
+from classifier.relevance import classify_indigenous_relevance
 
-MODEL_VERSION = "2026-02-16-anishinaabe-v1"
+MODEL_VERSION = "2026-02-27-indigenous-v1"
 
 
 app = FastAPI(
-    title="Anishinaabe ML Classifier",
-    description="Anishinaabe/Indigenous content classification service (rule-based; ML model later)",
+    title="Indigenous ML Classifier",
+    description="Indigenous content classification service (rule-based; ML model later)",
     version="1.0.0",
 )
 
@@ -43,13 +43,13 @@ class HealthResponse(BaseModel):
 
 @app.post("/classify", response_model=ClassifyResponse)
 def classify(request: ClassifyRequest) -> ClassifyResponse:
-    """Classify an article for Anishinaabe/Indigenous relevance."""
+    """Classify an article for Indigenous relevance."""
     start_time = time.time()
     max_body_chars = 500
     body = (request.body or "")[:max_body_chars]
     text = f"{request.title} {body}".strip()
 
-    result = classify_anishinaabe_relevance(text)
+    result = classify_indigenous_relevance(text)
     processing_time_ms = int((time.time() - start_time) * 1000)
 
     return ClassifyResponse(

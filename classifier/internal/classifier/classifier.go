@@ -27,7 +27,7 @@ type Classifier struct {
 	mining           *MiningClassifier
 	coforge          *CoforgeClassifier
 	entertainment    *EntertainmentClassifier
-	anishinaabe      *AnishinaabeClassifier
+	indigenous       *IndigenousClassifier
 	location         *LocationClassifier
 	recipeExtractor  *RecipeExtractor
 	jobExtractor     *JobExtractor
@@ -47,7 +47,7 @@ type Config struct {
 	MiningClassifier        *MiningClassifier        // Optional: hybrid mining classifier
 	CoforgeClassifier       *CoforgeClassifier       // Optional: hybrid coforge classifier
 	EntertainmentClassifier *EntertainmentClassifier // Optional: hybrid entertainment classifier
-	AnishinaabeClassifier   *AnishinaabeClassifier   // Optional: hybrid anishinaabe classifier
+	IndigenousClassifier    *IndigenousClassifier    // Optional: hybrid indigenous classifier
 	RecipeExtractor         *RecipeExtractor         // Optional: structured recipe extractor
 	JobExtractor            *JobExtractor            // Optional: structured job extractor
 	RoutingTable            map[string][]string      // Optional: content-type routing (see ResolveSidecars)
@@ -70,7 +70,7 @@ func NewClassifier(
 		"mining":        config.MiningClassifier != nil,
 		"coforge":       config.CoforgeClassifier != nil,
 		"entertainment": config.EntertainmentClassifier != nil,
-		"anishinaabe":   config.AnishinaabeClassifier != nil,
+		"indigenous":    config.IndigenousClassifier != nil,
 		"location":      true, // always constructed below
 	}
 	for routeKey, names := range routingTable {
@@ -99,7 +99,7 @@ func NewClassifier(
 		mining:           config.MiningClassifier,
 		coforge:          config.CoforgeClassifier,
 		entertainment:    config.EntertainmentClassifier,
-		anishinaabe:      config.AnishinaabeClassifier,
+		indigenous:       config.IndigenousClassifier,
 		location:         NewLocationClassifier(logger),
 		recipeExtractor:  config.RecipeExtractor,
 		jobExtractor:     config.JobExtractor,
@@ -173,7 +173,7 @@ func (c *Classifier) Classify(ctx context.Context, raw *domain.RawContent) (*dom
 	}
 
 	// 5-9. Optional classifiers — gate by content type and subtype (pages never reach publisher)
-	crimeResult, miningResult, coforgeResult, entertainmentResult, anishinaabeResult, locationResult := c.classifyOptionalForPublishable(
+	crimeResult, miningResult, coforgeResult, entertainmentResult, indigenousResult, locationResult := c.classifyOptionalForPublishable(
 		ctx, raw, contentTypeResult.Type, contentTypeResult.Subtype)
 
 	// 5b. Structured extraction — recipes and jobs
@@ -218,7 +218,7 @@ func (c *Classifier) Classify(ctx context.Context, raw *domain.RawContent) (*dom
 		Mining:               miningResult,
 		Coforge:              coforgeResult,
 		Entertainment:        entertainmentResult,
-		Anishinaabe:          anishinaabeResult,
+		Indigenous:           indigenousResult,
 		Location:             locationResult,
 		Recipe:               recipeResult,
 		Job:                  jobResult,
@@ -286,7 +286,7 @@ func (c *Classifier) GetRules() []domain.ClassificationRule {
 //nolint:gocritic // 6 return values match optional classifier pattern; refactor would require wider changes
 func (c *Classifier) classifyOptionalForPublishable(
 	ctx context.Context, raw *domain.RawContent, contentType, contentSubtype string,
-) (*domain.CrimeResult, *domain.MiningResult, *domain.CoforgeResult, *domain.EntertainmentResult, *domain.AnishinaabeResult, *domain.LocationResult) {
+) (*domain.CrimeResult, *domain.MiningResult, *domain.CoforgeResult, *domain.EntertainmentResult, *domain.IndigenousResult, *domain.LocationResult) {
 	sidecars := c.ResolveSidecars(contentType, contentSubtype)
 	return c.runOptionalClassifiers(ctx, raw, contentType, sidecars)
 }
@@ -297,10 +297,10 @@ func (c *Classifier) classifyOptionalForPublishable(
 //nolint:gocritic // 6 return values match optional classifier pattern
 func (c *Classifier) runOptionalClassifiers(
 	ctx context.Context, raw *domain.RawContent, contentType string, sidecars []string,
-) (*domain.CrimeResult, *domain.MiningResult, *domain.CoforgeResult, *domain.EntertainmentResult, *domain.AnishinaabeResult, *domain.LocationResult) {
+) (*domain.CrimeResult, *domain.MiningResult, *domain.CoforgeResult, *domain.EntertainmentResult, *domain.IndigenousResult, *domain.LocationResult) {
 	knownSidecarNames := map[string]bool{
 		"crime": true, "mining": true, "coforge": true,
-		"entertainment": true, "anishinaabe": true, "location": true,
+		"entertainment": true, "indigenous": true, "location": true,
 	}
 	allowed := make(map[string]bool)
 	for _, name := range sidecars {
@@ -317,7 +317,7 @@ func (c *Classifier) runOptionalClassifiers(
 		c.runMiningOptional(ctx, raw, contentType, allowed["mining"]),
 		c.runCoforgeOptional(ctx, raw, contentType, allowed["coforge"]),
 		c.runEntertainmentOptional(ctx, raw, contentType, allowed["entertainment"]),
-		c.runAnishinaabeOptional(ctx, raw, contentType, allowed["anishinaabe"]),
+		c.runIndigenousOptional(ctx, raw, contentType, allowed["indigenous"]),
 		c.runLocationOptional(ctx, raw, allowed["location"])
 }
 
@@ -418,24 +418,24 @@ func (c *Classifier) runEntertainmentOptional(
 	return entResult
 }
 
-func (c *Classifier) runAnishinaabeOptional(
+func (c *Classifier) runIndigenousOptional(
 	ctx context.Context, raw *domain.RawContent, contentType string, run bool,
-) *domain.AnishinaabeResult {
-	if !run || c.anishinaabe == nil {
+) *domain.IndigenousResult {
+	if !run || c.indigenous == nil {
 		return nil
 	}
 	start := time.Now()
-	aResult, aErr := c.anishinaabe.Classify(ctx, raw)
+	aResult, aErr := c.indigenous.Classify(ctx, raw)
 	latencyMs := time.Since(start).Milliseconds()
 	if aErr != nil {
-		c.logSidecarError("anishinaabe-ml", raw, contentType, aErr, latencyMs)
+		c.logSidecarError("indigenous-ml", raw, contentType, aErr, latencyMs)
 		return nil
 	}
 	if aResult == nil {
-		c.logSidecarNilResult("anishinaabe-ml", raw.ID, latencyMs)
+		c.logSidecarNilResult("indigenous-ml", raw.ID, latencyMs)
 		return nil
 	}
-	c.logSidecarSuccess("anishinaabe-ml", raw, contentType,
+	c.logSidecarSuccess("indigenous-ml", raw, contentType,
 		aResult.Relevance, aResult.FinalConfidence,
 		aResult.MLConfidenceRaw, aResult.RuleTriggered,
 		aResult.DecisionPath, latencyMs, aResult.ProcessingTimeMs, aResult.ModelVersion)
@@ -554,7 +554,7 @@ func (c *Classifier) BuildClassifiedContent(raw *domain.RawContent, result *doma
 		Mining:               result.Mining,
 		Coforge:              result.Coforge,
 		Entertainment:        result.Entertainment,
-		Anishinaabe:          result.Anishinaabe,
+		Indigenous:           result.Indigenous,
 		Location:             result.Location,
 		Recipe:               result.Recipe,
 		Job:                  result.Job,

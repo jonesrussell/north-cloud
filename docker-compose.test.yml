@@ -171,7 +171,7 @@ services:
         condition: service_healthy
       entertainment-ml:
         condition: service_healthy
-      anishinaabe-ml:
+      indigenous-ml:
         condition: service_healthy
     environment:
       APP_DEBUG: "false"
@@ -200,8 +200,8 @@ services:
       COFORGE_ML_SERVICE_URL: http://coforge-ml:8078
       ENTERTAINMENT_ENABLED: "true"
       ENTERTAINMENT_ML_SERVICE_URL: http://entertainment-ml:8079
-      ANISHINAABE_ENABLED: "false"
-      ANISHINAABE_ML_SERVICE_URL: http://anishinaabe-ml:8080
+      INDIGENOUS_ENABLED: "false"
+      INDIGENOUS_ML_SERVICE_URL: http://indigenous-ml:8080
     ports:
       - "8071:8070"
     healthcheck:

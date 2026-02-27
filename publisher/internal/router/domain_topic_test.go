@@ -34,8 +34,8 @@ func TestTopicDomain_Routes(t *testing.T) {
 			expected: []string{"content:news", "content:technology"},
 		},
 		{
-			name:     "anishinaabe topic is skipped",
-			topics:   []string{"news", "anishinaabe"},
+			name:     "indigenous topic is skipped",
+			topics:   []string{"news", "indigenous"},
 			expected: []string{"content:news"},
 		},
 		{
@@ -45,7 +45,7 @@ func TestTopicDomain_Routes(t *testing.T) {
 		},
 		{
 			name:     "all skip topics produce no channels",
-			topics:   []string{"mining", "anishinaabe", "coforge"},
+			topics:   []string{"mining", "indigenous", "coforge"},
 			expected: nil,
 		},
 	}

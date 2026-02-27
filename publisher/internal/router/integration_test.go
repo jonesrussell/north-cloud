@@ -532,8 +532,8 @@ func TestAllDomainsProduce_FullyClassifiedContentItem(t *testing.T) {
 			HomepageEligible: true,
 			Categories:       []string{"film"},
 		},
-		Anishinaabe: &router.AnishinaabeData{ // AnishinaabeeDomain
-			Relevance:  "core_anishinaabe",
+		Indigenous: &router.IndigenousData{ // IndigenousDomain
+			Relevance:  "core_indigenous",
 			Categories: []string{"culture"},
 		},
 		Coforge: &router.CoforgeData{ // CoforgeDomain
@@ -560,7 +560,7 @@ func TestAllDomainsProduce_FullyClassifiedContentItem(t *testing.T) {
 		{"location", router.NewLocationDomain()},
 		{"mining", router.NewMiningDomain()},
 		{"entertainment", router.NewEntertainmentDomain()},
-		{"anishinaabe", router.NewAnishinaabeeDomain()},
+		{"indigenous", router.NewIndigenousDomain()},
 		{"coforge", router.NewCoforgeDomain()},
 	}
 

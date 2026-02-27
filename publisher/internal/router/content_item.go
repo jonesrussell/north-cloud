@@ -47,8 +47,8 @@ type LocationData struct {
 	Confidence  float64 `json:"confidence"`
 }
 
-// AnishinaabeData holds Anishinaabe classification fields from Elasticsearch.
-type AnishinaabeData struct {
+// IndigenousData holds Indigenous classification fields from Elasticsearch.
+type IndigenousData struct {
 	Relevance       string   `json:"relevance"`
 	Categories      []string `json:"categories"`
 	FinalConfidence float64  `json:"final_confidence"`
@@ -127,7 +127,7 @@ type ContentItem struct {
 	Crime         *CrimeData         `json:"crime,omitempty"`
 	Location      *LocationData      `json:"location,omitempty"`
 	Mining        *MiningData        `json:"mining,omitempty"`
-	Anishinaabe   *AnishinaabeData   `json:"anishinaabe,omitempty"`
+	Indigenous    *IndigenousData    `json:"indigenous,omitempty"`
 	Entertainment *EntertainmentData `json:"entertainment,omitempty"`
 	Coforge       *CoforgeData       `json:"coforge,omitempty"`
 

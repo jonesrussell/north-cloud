@@ -1,14 +1,14 @@
-"""Anishinaabe relevance classification (rule-based)."""
+"""Indigenous relevance classification (rule-based)."""
 
 import re
 from typing import TypedDict
 
-# Relevance classes aligned with plan
-CORE_ANISHINAABE = "core_anishinaabe"
-PERIPHERAL_ANISHINAABE = "peripheral_anishinaabe"
-NOT_ANISHINAABE = "not_anishinaabe"
+# Relevance classes
+CORE_INDIGENOUS = "core_indigenous"
+PERIPHERAL_INDIGENOUS = "peripheral_indigenous"
+NOT_INDIGENOUS = "not_indigenous"
 
-# Strong Anishinaabe/Indigenous signals
+# Strong Indigenous signals
 CORE_PATTERNS = [
     re.compile(r"\b(anishinaabe|anishinaabemowin|ojibwe|ojibwa|chippewa)\b", re.I),
     re.compile(r"\b(first nations|indigenous peoples|indigenous community)\b", re.I),
@@ -27,11 +27,12 @@ PERIPHERAL_PATTERNS = [
 
 # Keyword -> category for building categories list
 CATEGORY_KEYWORDS: list[tuple[list[str], str]] = [
-    (["anishinaabe", "ojibwe", "ojibwa", "chippewa", "anishinaabemowin"], "culture"),
-    (["language", "anishinaabemowin", "indigenous language"], "language"),
-    (["treaty", "governance", "band council", "grand council"], "governance"),
-    (["land rights", "territory", "reserve", "reservation"], "land_rights"),
+    (["culture", "ceremony", "powwow", "potlatch", "sweat lodge"], "culture"),
+    (["language", "anishinaabemowin", "indigenous language", "cree", "inuktitut"], "language"),
+    (["treaty", "governance", "band council", "grand council", "self-governance"], "governance"),
+    (["land rights", "territory", "reserve", "reservation", "land claim"], "land_rights"),
     (["education", "residential school", "reconciliation"], "education"),
+    (["anishinaabe", "ojibwe", "ojibwa", "chippewa", "anishinaabemowin"], "anishinaabe"),
 ]
 
 
@@ -50,11 +51,11 @@ def _extract_categories(text: str) -> list[str]:
     return categories[:5]
 
 
-def classify_anishinaabe_relevance(text: str) -> RelevanceResult:
-    """Rule-based classification into core_anishinaabe, peripheral_anishinaabe, or not_anishinaabe."""
+def classify_indigenous_relevance(text: str) -> RelevanceResult:
+    """Rule-based classification into core_indigenous, peripheral_indigenous, or not_indigenous."""
     if not text or not text.strip():
         return {
-            "relevance": NOT_ANISHINAABE,
+            "relevance": NOT_INDIGENOUS,
             "confidence": 0.5,
             "categories": [],
         }
@@ -66,18 +67,18 @@ def classify_anishinaabe_relevance(text: str) -> RelevanceResult:
     if core_hits >= 1:
         confidence = min(0.95, 0.6 + 0.1 * core_hits)
         return {
-            "relevance": CORE_ANISHINAABE,
+            "relevance": CORE_INDIGENOUS,
             "confidence": round(confidence, 2),
             "categories": categories,
         }
     if peripheral_hits >= 1:
         return {
-            "relevance": PERIPHERAL_ANISHINAABE,
+            "relevance": PERIPHERAL_INDIGENOUS,
             "confidence": 0.65,
             "categories": categories,
         }
     return {
-        "relevance": NOT_ANISHINAABE,
+        "relevance": NOT_INDIGENOUS,
         "confidence": 0.6,
         "categories": [],
     }

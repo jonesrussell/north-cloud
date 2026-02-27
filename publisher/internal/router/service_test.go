@@ -57,16 +57,16 @@ func TestGenerateLayer1Channels(t *testing.T) {
 			expected: []string{"content:violent_crime"},
 		},
 		{
-			name: "anishinaabe topic skipped",
+			name: "indigenous topic skipped",
 			item: &router.ContentItem{
-				Topics: []string{"news", "anishinaabe", "local_news"},
+				Topics: []string{"news", "indigenous", "local_news"},
 			},
 			expected: []string{"content:news", "content:local_news"},
 		},
 		{
-			name: "anishinaabe-only produces empty",
+			name: "indigenous-only produces empty",
 			item: &router.ContentItem{
-				Topics: []string{"anishinaabe"},
+				Topics: []string{"indigenous"},
 			},
 			expected: nil,
 		},

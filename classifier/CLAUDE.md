@@ -25,7 +25,7 @@ classifier/
 │   └── migrate/        # Database migration runner
 ├── internal/
 │   ├── api/            # HTTP handlers (Gin), routes, server setup
-│   ├── anishinaabemlclient/  # Anishinaabe ML sidecar HTTP client
+│   ├── indigenousmlclient/   # Indigenous ML sidecar HTTP client
 │   ├── bootstrap/      # Service initialisation phases
 │   ├── classifier/     # Core classification logic
 │   │   ├── classifier.go         # Orchestrator
@@ -37,7 +37,7 @@ classifier/
 │   │   ├── mining.go             # Hybrid mining classifier
 │   │   ├── coforge.go            # Hybrid coforge classifier
 │   │   ├── entertainment.go      # Hybrid entertainment classifier
-│   │   ├── anishinaabe.go        # Hybrid anishinaabe classifier
+│   │   ├── indigenous.go         # Hybrid indigenous classifier
 │   │   └── location.go           # Location classifier
 │   ├── coforgemlclient/    # Coforge ML sidecar HTTP client
 │   ├── config/             # Configuration struct and loader
@@ -86,7 +86,7 @@ After the 4-step pipeline, `classifyOptionalForPublishable()` gates five hybrid 
 | article/event | location only |
 | article/blotter | crime only |
 | article/report | none |
-| article (other subtypes) | crime, mining, coforge, entertainment, anishinaabe, location |
+| article (other subtypes) | crime, mining, coforge, entertainment, indigenous, location |
 
 Each hybrid classifier is nil when disabled — the corresponding field is omitted from the classified document output.
 
@@ -221,25 +221,25 @@ Classifies entertainment industry news, celebrity content, film, TV, and music.
 
 Classifies Coforge-relevant industry and technology content.
 
-#### Anishinaabe Hybrid Classifier
+#### Indigenous Hybrid Classifier
 
-**Enabled via**: `ANISHINAABE_ENABLED=true`, `ANISHINAABE_ML_SERVICE_URL=http://anishinaabe-ml:8080`
+**Enabled via**: `INDIGENOUS_ENABLED=true`, `INDIGENOUS_ML_SERVICE_URL=http://indigenous-ml:8080`
 
-**Relevance classes**: `core_anishinaabe`, `peripheral_anishinaabe`, `not_anishinaabe`
+**Relevance classes**: `core_indigenous`, `peripheral_indigenous`, `not_indigenous`
 
-**Categories** (multi-label): `culture`, `language`, `governance`, `land_rights`, `education`
+**Categories** (multi-label): `anishinaabe`, `culture`, `language`, `governance`, `land_rights`, `education`
 
-Classifies Anishinaabe/Indigenous content for routing to specialised consumers.
+Classifies Indigenous content for routing to specialised consumers.
 
 **Output fields**:
 ```json
 {
-  "anishinaabe": {
-    "relevance": "core_anishinaabe",
-    "categories": ["culture", "language"],
+  "indigenous": {
+    "relevance": "core_indigenous",
+    "categories": ["anishinaabe", "culture", "language"],
     "final_confidence": 0.88,
     "review_required": false,
-    "model_version": "2026-02-16-anishinaabe-v1"
+    "model_version": "2026-02-16-indigenous-v1"
   }
 }
 ```
@@ -304,9 +304,9 @@ classification:
   entertainment:
     enabled: false                # ENTERTAINMENT_ENABLED
     ml_service_url: ""            # ENTERTAINMENT_ML_SERVICE_URL
-  anishinaabe:
-    enabled: false                # ANISHINAABE_ENABLED
-    ml_service_url: ""            # ANISHINAABE_ML_SERVICE_URL
+  indigenous:
+    enabled: false                # INDIGENOUS_ENABLED
+    ml_service_url: ""            # INDIGENOUS_ML_SERVICE_URL
 ```
 
 ## Common Gotchas
@@ -326,7 +326,7 @@ classification:
 
 5. **Poller interval is configurable**: Default is 30 seconds. Set via `CLASSIFIER_POLL_INTERVAL` or `service.poll_interval` in `config.yml`.
 
-6. **`Classify()` is near the `funlen` limit**: Optional classifiers (crime, mining, coforge, entertainment, anishinaabe, location) are extracted into `runOptionalClassifiers()`. When adding new classification steps, add them there — not to `Classify()` directly.
+6. **`Classify()` is near the `funlen` limit**: Optional classifiers (crime, mining, coforge, entertainment, indigenous, location) are extracted into `runOptionalClassifiers()`. When adding new classification steps, add them there — not to `Classify()` directly.
 
 7. **Mining false positives**: The mining topic keyword rule (migration 011) is intentionally narrow. Ambiguous commodity terms (gold, silver, resource, grade) are excluded. The mining-ml hybrid classifier (Layer 5 publisher routing) handles nuanced relevance filtering. Do not add broad terms back to the rule.
 

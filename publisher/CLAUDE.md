@@ -39,7 +39,7 @@ publisher/
 │   │   ├── location.go          # Layer 4: geographic location channels
 │   │   ├── mining.go            # Layer 5: mining classification channels
 │   │   ├── entertainment.go     # Layer 6: entertainment classification channels
-│   │   ├── anishinaabe.go       # Layer 7: Anishinaabe classification channels
+│   │   ├── indigenous.go         # Layer 7: Indigenous classification channels
 │   │   └── domain_coforge.go    # Layer 8: Coforge classification channels
 │   ├── database/        # PostgreSQL repositories
 │   ├── discovery/       # Elasticsearch index discovery
@@ -95,7 +95,7 @@ The routing worker runs the following steps every 30 seconds:
 7. **Route Layer 4** — location channels for crime and entertainment content (`{prefix}:local:{city}`, `{prefix}:province:{code}`, etc.)
 8. **Route Layer 5** — mining classification channels (`content:mining`, `mining:core`, `mining:commodity:{slug}`, etc.)
 9. **Route Layer 6** — entertainment classification channels (`entertainment:homepage`, `entertainment:category:{slug}`, etc.)
-10. **Route Layer 7** — Anishinaabe classification channels (`content:anishinaabe`, `anishinaabe:category:{slug}`)
+10. **Route Layer 7** — Indigenous classification channels (`content:indigenous`, `indigenous:category:{slug}`)
 11. **Route Layer 8** — Coforge classification channels (`coforge:core`, `coforge:audience:{slug}`, etc.)
 12. **Deduplicate** — each candidate channel is checked against `publish_history`
 13. **Publish** — sends JSON payload to Redis
@@ -113,7 +113,7 @@ Generates `content:{topic}` for each topic tag on the content item. Topics with 
 | Excluded topic | Handled by |
 |---------------|-----------|
 | `mining` | Layer 5 (MiningDomain) |
-| `anishinaabe` | Layer 7 (AnishinaabeeDomain) |
+| `indigenous` | Layer 7 (IndigenousDomain) |
 | `coforge` | Layer 8 (CoforgeDomain) |
 
 ### Layer 2 — DB Channels (database-backed)
@@ -169,14 +169,14 @@ Routes content classified by the entertainment hybrid classifier. Skips content 
 - `entertainment:category:{slug}` — one per category (spaces to hyphens, lowercased)
 - `entertainment:peripheral` — `peripheral_entertainment`
 
-### Layer 7 — Anishinaabe Classification (automatic)
+### Layer 7 — Indigenous Classification (automatic)
 
-**Source**: `publisher/internal/router/anishinaabe.go`
+**Source**: `publisher/internal/router/indigenous.go`
 
-Routes content classified by the Anishinaabe/Indigenous ML classifier. Skips content with `anishinaabe.relevance=not_anishinaabe` or no anishinaabe object.
+Routes content classified by the Indigenous ML classifier. Skips content with `indigenous.relevance=not_indigenous` or no indigenous object.
 
-- `content:anishinaabe` — catch-all (core + peripheral)
-- `anishinaabe:category:{slug}` — one per category (spaces to hyphens, lowercased)
+- `content:indigenous` — catch-all (core + peripheral)
+- `indigenous:category:{slug}` — one per category (spaces to hyphens, lowercased)
 
 ### Layer 8 — Coforge Classification (automatic)
 
@@ -234,7 +234,7 @@ All routing layers produce the same message structure. The `publisher` envelope 
   "category_pages": ["violent-crime", "crime"],
   "review_required": false,
   "mining": { ... },
-  "anishinaabe": { ... },
+  "indigenous": { ... },
   "coforge": { ... },
   "entertainment_relevance": "...",
   "entertainment": { ... },
@@ -277,14 +277,14 @@ All routing layers produce the same message structure. The `publisher` envelope 
 | `entertainment_homepage_eligible` | bool | True if content item qualifies for entertainment homepage |
 | `entertainment` | object | Nested: relevance, categories, final_confidence, homepage_eligible, review_required, model_version |
 
-**Anishinaabe classification fields** (`anishinaabe` object):
+**Indigenous classification fields** (`indigenous` object):
 
 | Field | Type | Values |
 |-------|------|--------|
-| `anishinaabe.relevance` | string | `core_anishinaabe`, `peripheral_anishinaabe`, `not_anishinaabe` |
-| `anishinaabe.categories` | []string | `culture`, `language`, `governance`, `land_rights`, `education` |
-| `anishinaabe.final_confidence` | float | 0.0-1.0 |
-| `anishinaabe.review_required` | bool | True if rules and ML disagreed |
+| `indigenous.relevance` | string | `core_indigenous`, `peripheral_indigenous`, `not_indigenous` |
+| `indigenous.categories` | []string | `anishinaabe`, `culture`, `language`, `governance`, `land_rights`, `education` |
+| `indigenous.final_confidence` | float | 0.0-1.0 |
+| `indigenous.review_required` | bool | True if rules and ML disagreed |
 
 **Coforge classification fields** (`coforge` object):
 
@@ -326,7 +326,7 @@ Full environment variable reference is in the README.
 
 7. **Index not found returns empty, not an error**: The router silently returns zero results for indexes that do not yet exist. This is normal for newly configured sources.
 
-8. **Mining and Anishinaabe fields absent means ML sidecar was not running**: If `mining.relevance` or `anishinaabe.relevance` is absent from all documents, the relevant ML sidecar (`mining-ml`, `anishinaabe-ml`) was likely not running when the classifier processed those documents. Recreate both containers: `docker compose -f docker-compose.base.yml -f docker-compose.dev.yml up -d --build mining-ml classifier` (or `anishinaabe-ml classifier`).
+8. **Mining and Indigenous fields absent means ML sidecar was not running**: If `mining.relevance` or `indigenous.relevance` is absent from all documents, the relevant ML sidecar (`mining-ml`, `indigenous-ml`) was likely not running when the classifier processed those documents. Recreate both containers: `docker compose -f docker-compose.base.yml -f docker-compose.dev.yml up -d --build mining-ml classifier` (or `indigenous-ml classifier`).
 
 ## Testing
 

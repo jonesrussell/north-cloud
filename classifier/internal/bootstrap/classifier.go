@@ -6,13 +6,13 @@ import (
 	"time"
 
 	"github.com/jmoiron/sqlx"
-	"github.com/jonesrussell/north-cloud/classifier/internal/anishinaabemlclient"
 	"github.com/jonesrussell/north-cloud/classifier/internal/api"
 	"github.com/jonesrussell/north-cloud/classifier/internal/classifier"
 	"github.com/jonesrussell/north-cloud/classifier/internal/coforgemlclient"
 	"github.com/jonesrussell/north-cloud/classifier/internal/config"
 	"github.com/jonesrussell/north-cloud/classifier/internal/domain"
 	"github.com/jonesrussell/north-cloud/classifier/internal/entertainmentmlclient"
+	"github.com/jonesrussell/north-cloud/classifier/internal/indigenousmlclient"
 	"github.com/jonesrussell/north-cloud/classifier/internal/miningmlclient"
 	"github.com/jonesrussell/north-cloud/classifier/internal/mlclient"
 	"github.com/jonesrussell/north-cloud/classifier/internal/processor"
@@ -166,11 +166,11 @@ func createClassifierConfig(cfg *config.Config, logger infralogger.Logger) class
 		func(c *entertainmentmlclient.Client, l infralogger.Logger, e bool) *classifier.EntertainmentClassifier {
 			return classifier.NewEntertainmentClassifier(c, l, e)
 		})
-	anishinaabeCC := createOptionalClassifier(
-		cfg.Classification.Anishinaabe.Enabled, cfg.Classification.Anishinaabe.MLServiceURL, logger,
-		"Anishinaabe classifier", anishinaabemlclient.NewClient,
-		func(c *anishinaabemlclient.Client, l infralogger.Logger, e bool) *classifier.AnishinaabeClassifier {
-			return classifier.NewAnishinaabeClassifier(c, l, e)
+	indigenousCC := createOptionalClassifier(
+		cfg.Classification.Indigenous.Enabled, cfg.Classification.Indigenous.MLServiceURL, logger,
+		"Indigenous classifier", indigenousmlclient.NewClient,
+		func(c *indigenousmlclient.Client, l infralogger.Logger, e bool) *classifier.IndigenousClassifier {
+			return classifier.NewIndigenousClassifier(c, l, e)
 		})
 
 	// Create recipe and job extractors when enabled
@@ -209,7 +209,7 @@ func createClassifierConfig(cfg *config.Config, logger infralogger.Logger) class
 		MiningClassifier:        miningCC,
 		CoforgeClassifier:       coforgeCC,
 		EntertainmentClassifier: entertainmentCC,
-		AnishinaabeClassifier:   anishinaabeCC,
+		IndigenousClassifier:    indigenousCC,
 		RecipeExtractor:         recipeExtractor,
 		JobExtractor:            jobExtractor,
 		RoutingTable:            cfg.Classification.Routing,

@@ -199,7 +199,7 @@ func (s *Service) routeContentItem(ctx context.Context, item *ContentItem, chann
 		NewLocationDomain(),
 		NewMiningDomain(),
 		NewEntertainmentDomain(),
-		NewAnishinaabeeDomain(),
+		NewIndigenousDomain(),
 		NewCoforgeDomain(),
 		NewRecipeDomain(),
 		NewJobDomain(),
@@ -403,8 +403,8 @@ func (s *Service) publishToChannel(ctx context.Context, item *ContentItem, chann
 		"review_required":      item.ReviewRequired,
 		// Mining classification
 		"mining": item.Mining,
-		// Anishinaabe classification
-		"anishinaabe": item.Anishinaabe,
+		// Indigenous classification
+		"indigenous": item.Indigenous,
 		// Coforge classification
 		"coforge": item.Coforge,
 		// Entertainment classification

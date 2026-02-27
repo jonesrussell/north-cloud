@@ -10,13 +10,13 @@ import (
 	"time"
 
 	"github.com/jmoiron/sqlx"
-	"github.com/jonesrussell/north-cloud/classifier/internal/anishinaabemlclient"
 	"github.com/jonesrussell/north-cloud/classifier/internal/classifier"
 	"github.com/jonesrussell/north-cloud/classifier/internal/coforgemlclient"
 	"github.com/jonesrussell/north-cloud/classifier/internal/config"
 	"github.com/jonesrussell/north-cloud/classifier/internal/database"
 	"github.com/jonesrussell/north-cloud/classifier/internal/domain"
 	"github.com/jonesrussell/north-cloud/classifier/internal/entertainmentmlclient"
+	"github.com/jonesrussell/north-cloud/classifier/internal/indigenousmlclient"
 	"github.com/jonesrussell/north-cloud/classifier/internal/miningmlclient"
 	"github.com/jonesrussell/north-cloud/classifier/internal/mlclient"
 	"github.com/jonesrussell/north-cloud/classifier/internal/processor"
@@ -205,7 +205,7 @@ func createClassifierConfig(cfg *config.Config, log infralogger.Logger) classifi
 		MiningClassifier:        createMiningClassifier(cfg, log),
 		CoforgeClassifier:       createCoforgeClassifier(cfg, log),
 		EntertainmentClassifier: createEntertainmentClassifier(cfg, log),
-		AnishinaabeClassifier:   createAnishinaabeClassifier(cfg, log),
+		IndigenousClassifier:    createIndigenousClassifier(cfg, log),
 		RoutingTable:            cfg.Classification.Routing,
 	}
 }
@@ -286,23 +286,23 @@ func createEntertainmentClassifier(cfg *config.Config, log infralogger.Logger) *
 	return classifier.NewEntertainmentClassifier(mlClient, log, true)
 }
 
-// createAnishinaabeClassifier creates an Anishinaabe classifier if enabled in config.
-func createAnishinaabeClassifier(cfg *config.Config, log infralogger.Logger) *classifier.AnishinaabeClassifier {
-	if !cfg.Classification.Anishinaabe.Enabled {
+// createIndigenousClassifier creates an Indigenous classifier if enabled in config.
+func createIndigenousClassifier(cfg *config.Config, log infralogger.Logger) *classifier.IndigenousClassifier {
+	if !cfg.Classification.Indigenous.Enabled {
 		return nil
 	}
 
-	var mlClient classifier.AnishinaabeMLClassifier
-	if cfg.Classification.Anishinaabe.MLServiceURL != "" {
-		mlClient = anishinaabemlclient.NewClient(cfg.Classification.Anishinaabe.MLServiceURL)
-		log.Info("Anishinaabe classifier enabled for processor",
-			infralogger.String("ml_service_url", cfg.Classification.Anishinaabe.MLServiceURL))
+	var mlClient classifier.IndigenousMLClassifier
+	if cfg.Classification.Indigenous.MLServiceURL != "" {
+		mlClient = indigenousmlclient.NewClient(cfg.Classification.Indigenous.MLServiceURL)
+		log.Info("Indigenous classifier enabled for processor",
+			infralogger.String("ml_service_url", cfg.Classification.Indigenous.MLServiceURL))
 	} else {
-		log.Warn("Anishinaabe classifier enabled for processor but ML service URL is empty; running in rules-only mode",
+		log.Warn("Indigenous classifier enabled for processor but ML service URL is empty; running in rules-only mode",
 			infralogger.String("ml_service_url", ""))
 	}
 
-	return classifier.NewAnishinaabeClassifier(mlClient, log, true)
+	return classifier.NewIndigenousClassifier(mlClient, log, true)
 }
 
 // Start starts the processor

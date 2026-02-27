@@ -437,15 +437,15 @@ services:
       start_period: 10s
 
   # ------------------------------------------------------------
-  # Anishinaabe ML Classifier
+  # Indigenous ML Classifier
   # ------------------------------------------------------------
 
-  anishinaabe-ml:
+  indigenous-ml:
     <<: *service-defaults
     build:
-      context: ./ml-sidecars/anishinaabe-ml
+      context: ./ml-sidecars/indigenous-ml
       dockerfile: Dockerfile
-    image: docker.io/jonesrussell/anishinaabe-ml:latest
+    image: docker.io/jonesrussell/indigenous-ml:latest
     deploy:
       resources:
         limits:

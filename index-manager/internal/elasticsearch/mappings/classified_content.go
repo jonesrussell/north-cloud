@@ -216,8 +216,8 @@ func getMiningMapping() map[string]any {
 	}
 }
 
-// getAnishinaabeMapping returns the nested anishinaabe object mapping
-func getAnishinaabeMapping() map[string]any {
+// getIndigenousMapping returns the nested indigenous object mapping
+func getIndigenousMapping() map[string]any {
 	return map[string]any{
 		"type": "object",
 		"properties": map[string]any{
@@ -344,13 +344,13 @@ func getClassificationFields() map[string]any {
 		"topic_scores": map[string]any{
 			"type": "object",
 		},
-		"crime":       getCrimeMapping(),
-		"location":    getLocationMapping(),
-		"mining":      getMiningMapping(),
-		"coforge":     getCoforgeMapping(),
-		"anishinaabe": getAnishinaabeMapping(),
-		"recipe":      getRecipeMapping(),
-		"job":         getJobMapping(),
+		"crime":      getCrimeMapping(),
+		"location":   getLocationMapping(),
+		"mining":     getMiningMapping(),
+		"coforge":    getCoforgeMapping(),
+		"indigenous": getIndigenousMapping(),
+		"recipe":     getRecipeMapping(),
+		"job":        getJobMapping(),
 		"source_reputation": map[string]any{
 			"type": "integer",
 		},

@@ -5,86 +5,86 @@ import (
 	"testing"
 )
 
-func TestGenerateAnishinaabeChannels_Core(t *testing.T) {
+func TestGenerateIndigenousChannels_Core(t *testing.T) {
 	t.Helper()
 	item := &ContentItem{
 		Title: "First Nations governance",
-		Anishinaabe: &AnishinaabeData{
-			Relevance:  AnishinaabeRelevanceCore,
+		Indigenous: &IndigenousData{
+			Relevance:  IndigenousRelevanceCore,
 			Categories: []string{"culture", "governance"},
 		},
 	}
 
-	routes := NewAnishinaabeeDomain().Routes(item)
+	routes := NewIndigenousDomain().Routes(item)
 	channels := routeChannelNames(routes)
 	if len(channels) < 2 {
-		t.Fatalf("expected at least 2 channels (content:anishinaabe + categories), got %d", len(channels))
+		t.Fatalf("expected at least 2 channels (content:indigenous + categories), got %d", len(channels))
 	}
 	hasArticles := false
 	hasCategory := false
 	for _, c := range channels {
-		if c == "content:anishinaabe" {
+		if c == "content:indigenous" {
 			hasArticles = true
 		}
-		if c == "anishinaabe:category:culture" || c == "anishinaabe:category:governance" {
+		if c == "indigenous:category:culture" || c == "indigenous:category:governance" {
 			hasCategory = true
 		}
 	}
 	if !hasArticles {
-		t.Error("expected content:anishinaabe channel")
+		t.Error("expected content:indigenous channel")
 	}
 	if !hasCategory {
-		t.Error("expected anishinaabe:category:* channel")
+		t.Error("expected indigenous:category:* channel")
 	}
 }
 
-func TestGenerateAnishinaabeChannels_Peripheral(t *testing.T) {
+func TestGenerateIndigenousChannels_Peripheral(t *testing.T) {
 	t.Helper()
 	item := &ContentItem{
 		Title: "Indigenous reconciliation",
-		Anishinaabe: &AnishinaabeData{
-			Relevance:  AnishinaabeRelevancePeripheral,
+		Indigenous: &IndigenousData{
+			Relevance:  IndigenousRelevancePeripheral,
 			Categories: []string{"education"},
 		},
 	}
 
-	routes := NewAnishinaabeeDomain().Routes(item)
+	routes := NewIndigenousDomain().Routes(item)
 	channels := routeChannelNames(routes)
 	if len(channels) < 2 {
 		t.Fatalf("expected at least 2 channels, got %d", len(channels))
 	}
 	hasArticles := false
 	for _, c := range channels {
-		if c == "content:anishinaabe" {
+		if c == "content:indigenous" {
 			hasArticles = true
 			break
 		}
 	}
 	if !hasArticles {
-		t.Error("expected content:anishinaabe channel")
+		t.Error("expected content:indigenous channel")
 	}
 }
 
-func TestGenerateAnishinaabeChannels_NotAnishinaabe(t *testing.T) {
+func TestGenerateIndigenousChannels_NotIndigenous(t *testing.T) {
 	t.Helper()
 	item := &ContentItem{
 		Title: "Weather report",
-		Anishinaabe: &AnishinaabeData{
-			Relevance: AnishinaabeRelevanceNot,
+		Indigenous: &IndigenousData{
+			Relevance: IndigenousRelevanceNot,
 		},
 	}
 
-	routes := NewAnishinaabeeDomain().Routes(item)
+	routes := NewIndigenousDomain().Routes(item)
 	if len(routes) != 0 {
 		t.Errorf("expected no channels, got %v", routeChannelNames(routes))
 	}
 }
 
-func TestGenerateAnishinaabeChannels_NilAnishinaabe(t *testing.T) {
+func TestGenerateIndigenousChannels_NilIndigenous(t *testing.T) {
 	t.Helper()
 	item := &ContentItem{Title: "No classification"}
 
-	routes := NewAnishinaabeeDomain().Routes(item)
+	routes := NewIndigenousDomain().Routes(item)
 	channels := routeChannelNames(routes)
 	if len(channels) != 0 {
 		t.Errorf("expected no channels, got %v", channels)

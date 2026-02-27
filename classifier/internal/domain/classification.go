@@ -44,8 +44,8 @@ type ClassificationResult struct {
 	// Entertainment hybrid classification (optional)
 	Entertainment *EntertainmentResult `json:"entertainment,omitempty"`
 
-	// Anishinaabe hybrid classification (optional)
-	Anishinaabe *AnishinaabeResult `json:"anishinaabe,omitempty"`
+	// Indigenous hybrid classification (optional)
+	Indigenous *IndigenousResult `json:"indigenous,omitempty"`
 
 	// Location detection (content-based)
 	Location *LocationResult `json:"location,omitempty"`
@@ -57,8 +57,8 @@ type ClassificationResult struct {
 	Job *JobResult `json:"job,omitempty"`
 }
 
-// AnishinaabeResult holds Anishinaabe hybrid classification results.
-type AnishinaabeResult struct {
+// IndigenousResult holds Indigenous hybrid classification results.
+type IndigenousResult struct {
 	Relevance       string   `json:"relevance"`
 	Categories      []string `json:"categories"`
 	FinalConfidence float64  `json:"final_confidence"`
@@ -176,8 +176,8 @@ type ClassifiedContent struct {
 	// Entertainment hybrid classification (optional)
 	Entertainment *EntertainmentResult `json:"entertainment,omitempty"`
 
-	// Anishinaabe hybrid classification (optional)
-	Anishinaabe *AnishinaabeResult `json:"anishinaabe,omitempty"`
+	// Indigenous hybrid classification (optional)
+	Indigenous *IndigenousResult `json:"indigenous,omitempty"`
 
 	// Location detection (content-based)
 	Location *LocationResult `json:"location,omitempty"`

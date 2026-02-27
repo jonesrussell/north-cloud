@@ -40,7 +40,7 @@ const (
 	defaultCrimeMLServiceURL         = "http://crime-ml:8076"
 	defaultCoforgeMLServiceURL       = "http://coforge-ml:8078"
 	defaultEntertainmentMLServiceURL = "http://entertainment-ml:8079"
-	defaultAnishinaabeMLServiceURL   = "http://anishinaabe-ml:8080"
+	defaultIndigenousMLServiceURL    = "http://indigenous-ml:8080"
 	defaultMiningMLServiceURL        = "http://mining-ml:8077"
 )
 
@@ -137,7 +137,7 @@ type ClassificationConfig struct {
 	Mining           MiningConfig           `yaml:"mining"`
 	Coforge          CoforgeConfig          `yaml:"coforge"`
 	Entertainment    EntertainmentConfig    `yaml:"entertainment"`
-	Anishinaabe      AnishinaabeConfig      `yaml:"anishinaabe"`
+	Indigenous       IndigenousConfig       `yaml:"indigenous"`
 	Recipe           RecipeExtractionConfig `yaml:"recipe"`
 	Job              JobExtractionConfig    `yaml:"job"`
 	// SidecarRegistry maps sidecar name (e.g. "crime", "mining") to enabled + URL.
@@ -153,10 +153,10 @@ type ClassificationConfig struct {
 	Routing map[string][]string `yaml:"routing"`
 }
 
-// AnishinaabeConfig holds Anishinaabe hybrid classification settings.
-type AnishinaabeConfig struct {
-	Enabled      bool   `env:"ANISHINAABE_ENABLED"        yaml:"enabled"`
-	MLServiceURL string `env:"ANISHINAABE_ML_SERVICE_URL" yaml:"ml_service_url"`
+// IndigenousConfig holds Indigenous hybrid classification settings.
+type IndigenousConfig struct {
+	Enabled      bool   `env:"INDIGENOUS_ENABLED"        yaml:"enabled"`
+	MLServiceURL string `env:"INDIGENOUS_ML_SERVICE_URL" yaml:"ml_service_url"`
 }
 
 // CrimeConfig holds Crime hybrid classification settings.
@@ -365,9 +365,9 @@ func setClassificationDefaults(c *ClassificationConfig) {
 	if c.Entertainment.MLServiceURL == "" {
 		c.Entertainment.MLServiceURL = defaultEntertainmentMLServiceURL
 	}
-	// Anishinaabe defaults: disabled by default, but set ML URL
-	if c.Anishinaabe.MLServiceURL == "" {
-		c.Anishinaabe.MLServiceURL = defaultAnishinaabeMLServiceURL
+	// Indigenous defaults: disabled by default, but set ML URL
+	if c.Indigenous.MLServiceURL == "" {
+		c.Indigenous.MLServiceURL = defaultIndigenousMLServiceURL
 	}
 	// Mining defaults: disabled by default, but set ML URL
 	if c.Mining.MLServiceURL == "" {
@@ -394,7 +394,7 @@ func SetDefaults(cfg *Config) {
 // getDefaultRouting returns the default content-type → sidecars mapping (current behavior).
 func getDefaultRouting() map[string][]string {
 	return map[string][]string{
-		"article":         {"crime", "mining", "coforge", "entertainment", "anishinaabe", "location"},
+		"article":         {"crime", "mining", "coforge", "entertainment", "indigenous", "location"},
 		"article:event":   {"location"},
 		"article:blotter": {"crime"},
 		"article:report":  {},
@@ -408,7 +408,7 @@ func getDefaultSidecarRegistry(c *ClassificationConfig) map[string]SidecarConfig
 		"mining":        {Enabled: c.Mining.Enabled, MLServiceURL: c.Mining.MLServiceURL},
 		"coforge":       {Enabled: c.Coforge.Enabled, MLServiceURL: c.Coforge.MLServiceURL},
 		"entertainment": {Enabled: c.Entertainment.Enabled, MLServiceURL: c.Entertainment.MLServiceURL},
-		"anishinaabe":   {Enabled: c.Anishinaabe.Enabled, MLServiceURL: c.Anishinaabe.MLServiceURL},
+		"indigenous":    {Enabled: c.Indigenous.Enabled, MLServiceURL: c.Indigenous.MLServiceURL},
 		"location":      {Enabled: true, MLServiceURL: ""}, // in-process, no URL
 	}
 }
