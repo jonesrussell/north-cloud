@@ -223,6 +223,18 @@ export const crawlerApi = {
     createJob: (id: string | number, data: unknown) => crawlerClient.post(`/discovered-links/${id}/create-job`, data),
   },
 
+  // Discovered Domains
+  discoveredDomains: {
+    list: (params?: Record<string, unknown>) => crawlerClient.get('/discovered-domains', { params }),
+    get: (domain: string) => crawlerClient.get(`/discovered-domains/${encodeURIComponent(domain)}`),
+    getLinks: (domain: string, params?: Record<string, unknown>) =>
+      crawlerClient.get(`/discovered-domains/${encodeURIComponent(domain)}/links`, { params }),
+    updateState: (domain: string, data: { status: string; notes?: string }) =>
+      crawlerClient.patch(`/discovered-domains/${encodeURIComponent(domain)}/state`, data),
+    bulkUpdateState: (data: { domains: string[]; status: string; notes?: string }) =>
+      crawlerClient.post('/discovered-domains/bulk-state', data),
+  },
+
   // Frontier
   frontier: {
     list: (params?: Record<string, unknown>) => crawlerClient.get('/frontier', { params }),
