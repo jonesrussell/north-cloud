@@ -67,6 +67,28 @@ const scriptStyleHTML = `<!DOCTYPE html>
 </body>
 </html>`
 
+// richMetadataHTML has OG metadata, canonical URL, keywords, and published date.
+const richMetadataHTML = `<!DOCTYPE html>
+<html>
+<head>
+  <title>Rich Article Title</title>
+  <meta name="description" content="A rich article description.">
+  <meta name="author" content="John Smith">
+  <meta name="keywords" content="news, breaking, test">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="OG Rich Title">
+  <meta property="og:description" content="OG rich description.">
+  <meta property="og:image" content="https://example.com/image.jpg">
+  <meta property="article:published_time" content="2025-06-15T10:30:00Z">
+  <link rel="canonical" href="https://example.com/canonical-article">
+</head>
+<body>
+  <article>
+    <p>This is the body text with several words for counting purposes in this test.</p>
+  </article>
+</body>
+</html>`
+
 // minimalHTML is a minimal valid HTML document with an empty body.
 const minimalHTML = `<!DOCTYPE html>
 <html>
@@ -185,6 +207,57 @@ func TestExtract_EmptyBody(t *testing.T) {
 	assertNonEmpty(t, "ContentHash", content.ContentHash)
 }
 
+func TestExtract_OGMetadata(t *testing.T) {
+	t.Parallel()
+
+	ext := newExtractor(t)
+
+	content, err := ext.Extract(testSourceID, testPageURL, []byte(richMetadataHTML))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	assertEqual(t, "OGType", "article", content.OGType)
+	assertEqual(t, "OGTitle", "OG Rich Title", content.OGTitle)
+	assertEqual(t, "OGDescription", "OG rich description.", content.OGDescription)
+	assertEqual(t, "OGImage", "https://example.com/image.jpg", content.OGImage)
+	assertEqual(t, "CanonicalURL", "https://example.com/canonical-article", content.CanonicalURL)
+	assertEqual(t, "MetaKeywords", "news, breaking, test", content.MetaKeywords)
+	assertEqual(t, "PublishedDate", "2025-06-15T10:30:00Z", content.PublishedDate)
+}
+
+func TestExtract_WordCount(t *testing.T) {
+	t.Parallel()
+
+	ext := newExtractor(t)
+
+	content, err := ext.Extract(testSourceID, testPageURL, []byte(richMetadataHTML))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if content.WordCount == 0 {
+		t.Error("expected non-zero word count")
+	}
+
+	// "This is the body text with several words for counting purposes in this test."
+	// = 14 words (strings.Fields splits on whitespace)
+	assertIntEqual(t, "WordCount", 14, content.WordCount)
+}
+
+func TestExtract_EmptyBodyWordCount(t *testing.T) {
+	t.Parallel()
+
+	ext := newExtractor(t)
+
+	content, err := ext.Extract(testSourceID, testPageURL, []byte(minimalHTML))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	assertIntEqual(t, "WordCount", 0, content.WordCount)
+}
+
 // --- test helpers ---
 
 func assertEqual(t *testing.T, field, expected, actual string) {
@@ -216,5 +289,13 @@ func assertNonEmpty(t *testing.T, field, value string) {
 
 	if value == "" {
 		t.Errorf("%s: expected non-empty value", field)
+	}
+}
+
+func assertIntEqual(t *testing.T, field string, expected, actual int) {
+	t.Helper()
+
+	if actual != expected {
+		t.Errorf("%s: expected %d, got %d", field, expected, actual)
 	}
 }

@@ -92,7 +92,7 @@ func (a *contentIndexerAdapter) Index(ctx context.Context, content *fetcher.Extr
 	}
 
 	rawContent := mapExtractedToRawContent(content, sourceName)
-	return a.indexer.IndexRawContent(ctx, rawContent)
+	return a.indexer.IndexRawContentIfAbsent(ctx, rawContent)
 }
 
 // resolveSourceName looks up the source name for a source ID, using a cache.
@@ -113,7 +113,7 @@ func (a *contentIndexerAdapter) resolveSourceName(ctx context.Context, sourceID 
 
 // mapExtractedToRawContent converts fetcher.ExtractedContent to storage.RawContent.
 func mapExtractedToRawContent(content *fetcher.ExtractedContent, sourceName string) *storage.RawContent {
-	return &storage.RawContent{
+	rc := &storage.RawContent{
 		ID:                   content.ContentHash,
 		URL:                  content.URL,
 		SourceName:           sourceName,
@@ -121,7 +121,22 @@ func mapExtractedToRawContent(content *fetcher.ExtractedContent, sourceName stri
 		RawText:              content.Body,
 		MetaDescription:      content.Description,
 		Author:               content.Author,
+		OGType:               content.OGType,
+		OGTitle:              content.OGTitle,
+		OGDescription:        content.OGDescription,
+		OGImage:              content.OGImage,
+		CanonicalURL:         content.CanonicalURL,
+		MetaKeywords:         content.MetaKeywords,
+		WordCount:            content.WordCount,
 		ClassificationStatus: "pending",
 		CrawledAt:            time.Now(),
 	}
+
+	if content.PublishedDate != "" {
+		if parsed, parseErr := time.Parse(time.RFC3339, content.PublishedDate); parseErr == nil {
+			rc.PublishedDate = &parsed
+		}
+	}
+
+	return rc
 }
