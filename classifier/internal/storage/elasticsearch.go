@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"time"
 
@@ -308,15 +307,6 @@ func (s *ElasticsearchStorage) TestConnection(ctx context.Context) error {
 	}
 
 	return nil
-}
-
-// GetClassifiedIndexName returns the classified_content index name for a raw_content index
-func GetClassifiedIndexName(rawIndex string) (string, error) {
-	if len(rawIndex) < 12 || rawIndex[len(rawIndex)-12:] != "_raw_content" {
-		return "", errors.New("invalid raw_content index name")
-	}
-	// Replace "_raw_content" with "_classified_content"
-	return rawIndex[:len(rawIndex)-12] + "_classified_content", nil
 }
 
 // GetClassifiedByID retrieves classified content by document ID
