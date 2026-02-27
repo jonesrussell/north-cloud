@@ -10,6 +10,10 @@ type RawContent struct {
 	URL        string `json:"url"`
 	SourceName string `json:"source_name"`
 
+	// SourceIndex is the ES index this document was read from (e.g. "billboard_raw_content").
+	// Set by QueryRawContent; not stored in the document body.
+	SourceIndex string `json:"-"`
+
 	// Raw content
 	Title   string `json:"title"`
 	RawHTML string `json:"raw_html,omitempty"` // Optional, can be large

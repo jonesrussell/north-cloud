@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
+	"io"
 	"time"
 
 	es "github.com/elastic/go-elasticsearch/v8"
@@ -90,6 +90,8 @@ func (s *ElasticsearchStorage) QueryRawContent(ctx context.Context, status strin
 		if content.ID == "" {
 			content.ID = hit.ID
 		}
+		// Capture the ES index name for correct classified index derivation
+		content.SourceIndex = hit.Index
 		contents = append(contents, &content)
 	}
 
@@ -99,8 +101,11 @@ func (s *ElasticsearchStorage) QueryRawContent(ctx context.Context, status strin
 // IndexClassifiedContent indexes enriched classified content
 // This matches the ElasticsearchClient interface expected by the Poller
 func (s *ElasticsearchStorage) IndexClassifiedContent(ctx context.Context, content *domain.ClassifiedContent) error {
-	// Determine the classified index name from the source
-	classifiedIndex := content.SourceName + "_classified_content"
+	// Determine the classified index name — prefer SourceIndex, fall back to sanitized SourceName
+	classifiedIndex, err := ClassifiedIndexForContent(content.SourceIndex, content.SourceName)
+	if err != nil {
+		return fmt.Errorf("failed to determine classified index: %w", err)
+	}
 
 	// Ensure publisher compatibility aliases are set
 	content.Body = content.RawText
@@ -141,9 +146,8 @@ func (s *ElasticsearchStorage) IndexClassifiedContent(ctx context.Context, conte
 // UpdateRawContentStatus updates the classification_status field in raw_content
 // This matches the ElasticsearchClient interface expected by the Poller
 func (s *ElasticsearchStorage) UpdateRawContentStatus(ctx context.Context, contentID, status string, classifiedAt time.Time) error {
-	// We need to find which index this document is in
-	// For now, we'll update across all *_raw_content indices
-	// In production, you might want to track index per content ID
+	// TODO: SourceIndex is now available on RawContent — this function could
+	// accept it to update the specific index directly instead of iterating all indices.
 
 	update := map[string]any{
 		"doc": map[string]any{
@@ -211,8 +215,11 @@ func (s *ElasticsearchStorage) BulkIndexClassifiedContent(ctx context.Context, c
 	var buf bytes.Buffer
 	now := time.Now()
 	for _, content := range contents {
-		// Determine the classified index name from the source
-		classifiedIndex := content.SourceName + "_classified_content"
+		// Determine the classified index name — prefer SourceIndex, fall back to sanitized SourceName
+		classifiedIndex, indexErr := ClassifiedIndexForContent(content.SourceIndex, content.SourceName)
+		if indexErr != nil {
+			return fmt.Errorf("failed to determine classified index for content %s: %w", content.ID, indexErr)
+		}
 
 		// Ensure publisher compatibility aliases are set
 		content.Body = content.RawText
@@ -256,7 +263,13 @@ func (s *ElasticsearchStorage) BulkIndexClassifiedContent(ctx context.Context, c
 		return fmt.Errorf("bulk indexing error: %s", res.String())
 	}
 
-	return nil
+	// Parse the bulk response body for item-level errors (ES returns 200 even when items fail)
+	body, readErr := io.ReadAll(res.Body)
+	if readErr != nil {
+		return fmt.Errorf("failed to read bulk response: %w", readErr)
+	}
+
+	return checkBulkResponse(body)
 }
 
 // ListRawContentIndices lists all *_raw_content indices
@@ -308,15 +321,6 @@ func (s *ElasticsearchStorage) TestConnection(ctx context.Context) error {
 	}
 
 	return nil
-}
-
-// GetClassifiedIndexName returns the classified_content index name for a raw_content index
-func GetClassifiedIndexName(rawIndex string) (string, error) {
-	if len(rawIndex) < 12 || rawIndex[len(rawIndex)-12:] != "_raw_content" {
-		return "", errors.New("invalid raw_content index name")
-	}
-	// Replace "_raw_content" with "_classified_content"
-	return rawIndex[:len(rawIndex)-12] + "_classified_content", nil
 }
 
 // GetClassifiedByID retrieves classified content by document ID
@@ -386,8 +390,8 @@ func (s *ElasticsearchStorage) GetClassifiedByID(ctx context.Context, contentID 
 
 // GetRawContentByID retrieves raw content by document ID from specific source index
 func (s *ElasticsearchStorage) GetRawContentByID(ctx context.Context, contentID, sourceName string) (*domain.RawContent, error) {
-	// Build the raw_content index name from source
-	rawIndex := sourceName + "_raw_content"
+	// Build the raw_content index name from sanitized source name
+	rawIndex := SanitizeSourceName(sourceName) + "_raw_content"
 
 	query := map[string]any{
 		"query": map[string]any{
