@@ -22,7 +22,7 @@ export function useDiscoveredDomainsTable() {
 
   const hasActiveFilters = computed(() => {
     const f = table.filters.value
-    return !!(f.search || f.status || f.min_score || f.hide_existing)
+    return !!(f.search || f.status)
   })
 
   const activeFilterCount = computed(() => {
@@ -30,8 +30,6 @@ export function useDiscoveredDomainsTable() {
     let count = 0
     if (f.search) count++
     if (f.status) count++
-    if (f.min_score) count++
-    if (f.hide_existing) count++
     return count
   })
 

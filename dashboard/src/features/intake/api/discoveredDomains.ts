@@ -17,7 +17,6 @@ export interface DiscoveredDomain {
   first_seen: string
   last_seen: string
   quality_score: number
-  is_existing_source: boolean
   notes: string | null
 }
 
@@ -42,8 +41,6 @@ export interface PathCluster {
 export interface DiscoveredDomainFilters {
   search?: string
   status?: string
-  min_score?: number
-  hide_existing?: boolean
 }
 
 export interface DomainLinksResponse {
@@ -74,8 +71,6 @@ export async function fetchDiscoveredDomainsPaginated(
 
   if (params.filters?.search) queryParams.search = params.filters.search
   if (params.filters?.status) queryParams.status = params.filters.status
-  if (params.filters?.min_score) queryParams.min_score = params.filters.min_score
-  if (params.filters?.hide_existing) queryParams.hide_existing = true
 
   const response = await crawlerApi.discoveredDomains.list(queryParams)
   const domains = response.data?.domains || []

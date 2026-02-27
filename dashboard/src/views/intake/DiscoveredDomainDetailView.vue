@@ -26,6 +26,7 @@ import {
   fetchDomainLinks,
   discoveredDomainsKeys,
 } from '@/features/intake/api/discoveredDomains'
+import { useToast } from '@/composables/useToast'
 import type {
   DiscoveredDomainLink,
   PathCluster,
@@ -35,6 +36,7 @@ const route = useRoute()
 const router = useRouter()
 const queryClient = useQueryClient()
 
+const { toast } = useToast()
 const domain = computed(() => decodeURIComponent(route.params.domain as string))
 
 // --- Links pagination ---
@@ -131,8 +133,10 @@ async function updateStatus(status: string) {
   try {
     await crawlerApi.discoveredDomains.updateState(domain.value, { status })
     queryClient.invalidateQueries({ queryKey: ['discovered-domains'] })
+    toast.success(`Domain marked as ${status}`)
   } catch (err: unknown) {
-    console.error('Error updating domain status:', err)
+    const message = err instanceof Error ? err.message : 'Unknown error'
+    toast.error('Failed to update domain status', { description: message })
   }
 }
 

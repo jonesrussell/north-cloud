@@ -79,9 +79,15 @@ func (h *DiscoveredDomainsHandler) enrichDomainAggregates(c *gin.Context, domain
 		d.ComputeQualityScore()
 
 		sources, srcErr := h.aggregateRepo.GetReferringSources(c.Request.Context(), d.Domain)
-		if srcErr == nil {
-			d.ReferringSources = sources
+		if srcErr != nil {
+			h.log.Error("Failed to get referring sources",
+				infralogger.String("domain", d.Domain),
+				infralogger.Error(srcErr))
+
+			continue
 		}
+
+		d.ReferringSources = sources
 	}
 }
 
@@ -95,7 +101,14 @@ func (h *DiscoveredDomainsHandler) GetDomain(c *gin.Context) {
 	}
 
 	domains, err := h.aggregateRepo.ListAggregates(c.Request.Context(), filters)
-	if err != nil || len(domains) == 0 {
+	if err != nil {
+		h.log.Error("Failed to get domain", infralogger.Error(err))
+		respondInternalError(c, "Failed to retrieve domain")
+
+		return
+	}
+
+	if len(domains) == 0 {
 		respondNotFound(c, "Domain")
 		return
 	}
@@ -110,7 +123,11 @@ func (h *DiscoveredDomainsHandler) GetDomain(c *gin.Context) {
 	d.ComputeQualityScore()
 
 	sources, srcErr := h.aggregateRepo.GetReferringSources(c.Request.Context(), d.Domain)
-	if srcErr == nil {
+	if srcErr != nil {
+		h.log.Error("Failed to get referring sources",
+			infralogger.String("domain", d.Domain),
+			infralogger.Error(srcErr))
+	} else {
 		d.ReferringSources = sources
 	}
 

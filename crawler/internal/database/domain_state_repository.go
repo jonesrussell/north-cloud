@@ -86,6 +86,10 @@ func (r *DomainStateRepository) BulkUpsert(ctx context.Context, domains []string
 		return 0, execErr
 	}
 
+	if tsErr := r.setBulkStatusTimestamps(ctx, tx, domains, status); tsErr != nil {
+		return 0, tsErr
+	}
+
 	if commitErr := tx.Commit(); commitErr != nil {
 		return 0, fmt.Errorf("commit: %w", commitErr)
 	}
@@ -127,9 +131,47 @@ func (r *DomainStateRepository) executeBulkUpsert(
 		return 0, fmt.Errorf("bulk upsert: %w", execErr)
 	}
 
-	affected, _ := result.RowsAffected()
+	affected, rowsErr := result.RowsAffected()
+	if rowsErr != nil {
+		return 0, fmt.Errorf("rows affected: %w", rowsErr)
+	}
 
 	return int(affected), nil
+}
+
+// setBulkStatusTimestamps updates the appropriate timestamp field for all domains in a bulk operation.
+func (r *DomainStateRepository) setBulkStatusTimestamps(
+	ctx context.Context,
+	tx *sqlx.Tx,
+	domains []string,
+	status string,
+) error {
+	var column string
+
+	switch status {
+	case domain.DomainStatusIgnored:
+		column = "ignored_at"
+	case domain.DomainStatusPromoted:
+		column = "promoted_at"
+	default:
+		return nil
+	}
+
+	query, args, err := sqlx.In(
+		fmt.Sprintf("UPDATE discovered_domain_states SET %s = NOW() WHERE domain IN (?)", column),
+		domains,
+	)
+	if err != nil {
+		return fmt.Errorf("build bulk timestamp query: %w", err)
+	}
+
+	query = tx.Rebind(query)
+
+	if _, execErr := tx.ExecContext(ctx, query, args...); execErr != nil {
+		return fmt.Errorf("set bulk %s: %w", column, execErr)
+	}
+
+	return nil
 }
 
 // GetByDomain returns a domain state by domain name, or nil if not found.

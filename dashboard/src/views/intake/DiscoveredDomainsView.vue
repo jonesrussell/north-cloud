@@ -28,10 +28,12 @@ import { DataTablePagination, SortableColumnHeader } from '@/components/common'
 import { useDiscoveredDomainsTable } from '@/features/intake'
 import { crawlerApi } from '@/api/client'
 import { formatRelativeTime } from '@/lib/utils'
+import { useToast } from '@/composables/useToast'
 import type { DiscoveredDomain } from '@/features/intake/api/discoveredDomains'
 
 const router = useRouter()
 const queryClient = useQueryClient()
+const { toast } = useToast()
 const table = useDiscoveredDomainsTable()
 
 const selectedDomains = ref<Set<string>>(new Set())
@@ -41,8 +43,6 @@ const bulkUpdating = ref(false)
 
 const searchInput = ref('')
 const statusFilter = ref('')
-const minScoreInput = ref('')
-const hideExistingChecked = ref(false)
 
 function onSearchChange() {
   table.setFilter('search', searchInput.value || undefined)
@@ -54,20 +54,9 @@ function onStatusChange(event: Event) {
   table.setFilter('status', target.value || undefined)
 }
 
-function onMinScoreChange() {
-  const parsed = minScoreInput.value ? Number(minScoreInput.value) : undefined
-  table.setFilter('min_score', parsed)
-}
-
-function onHideExistingChange() {
-  table.setFilter('hide_existing', hideExistingChecked.value || undefined)
-}
-
 function clearAllFilters() {
   searchInput.value = ''
   statusFilter.value = ''
-  minScoreInput.value = ''
-  hideExistingChecked.value = false
   table.clearFilters()
 }
 
@@ -135,13 +124,16 @@ async function updateDomainStatus(domain: string, status: string) {
   try {
     await crawlerApi.discoveredDomains.updateState(domain, { status })
     queryClient.invalidateQueries({ queryKey: ['discovered-domains'] })
+    toast.success(`Domain marked as ${status}`)
   } catch (err: unknown) {
-    console.error('Error updating domain status:', err)
+    const message = err instanceof Error ? err.message : 'Unknown error'
+    toast.error('Failed to update domain status', { description: message })
   }
 }
 
 async function bulkUpdateStatus(status: string) {
   if (selectedDomains.value.size === 0) return
+  const count = selectedDomains.value.size
   try {
     bulkUpdating.value = true
     await crawlerApi.discoveredDomains.bulkUpdateState({
@@ -150,8 +142,10 @@ async function bulkUpdateStatus(status: string) {
     })
     selectedDomains.value.clear()
     queryClient.invalidateQueries({ queryKey: ['discovered-domains'] })
+    toast.success(`${count} domains marked as ${status}`)
   } catch (err: unknown) {
-    console.error('Error bulk updating domains:', err)
+    const message = err instanceof Error ? err.message : 'Unknown error'
+    toast.error('Failed to bulk update domains', { description: message })
   } finally {
     bulkUpdating.value = false
   }
@@ -273,30 +267,6 @@ const sortableColumns = [
               </select>
             </div>
 
-            <div class="min-w-28">
-              <label class="block text-sm font-medium mb-1">Min Score</label>
-              <Input
-                v-model="minScoreInput"
-                type="number"
-                placeholder="0"
-                @update:model-value="onMinScoreChange"
-              />
-            </div>
-
-            <div class="flex items-center gap-2 pb-2">
-              <input
-                id="hide-existing"
-                v-model="hideExistingChecked"
-                type="checkbox"
-                class="h-4 w-4"
-                @change="onHideExistingChange"
-              >
-              <label
-                for="hide-existing"
-                class="text-sm whitespace-nowrap"
-              >Hide existing sources</label>
-            </div>
-
             <Button
               v-if="table.hasActiveFilters.value"
               variant="ghost"
@@ -381,6 +351,9 @@ const sortableColumns = [
                       @sort="table.toggleSort(col.key)"
                     />
                     <th class="px-4 py-3 text-left text-sm font-medium text-muted-foreground">
+                      Score
+                    </th>
+                    <th class="px-4 py-3 text-left text-sm font-medium text-muted-foreground">
                       OK %
                     </th>
                     <th class="px-4 py-3 text-left text-sm font-medium text-muted-foreground">
@@ -458,25 +431,9 @@ const sortableColumns = [
 
                     <!-- Domain -->
                     <td class="px-4 py-3">
-                      <div class="flex items-center gap-2">
-                        <span class="text-sm font-medium">
-                          {{ domain.domain }}
-                        </span>
-                        <Badge
-                          v-if="domain.is_existing_source"
-                          variant="outline"
-                          class="text-xs"
-                        >
-                          existing
-                        </Badge>
-                      </div>
-                    </td>
-
-                    <!-- Score -->
-                    <td class="px-4 py-3">
-                      <Badge :variant="getScoreVariant(domain.quality_score)">
-                        {{ domain.quality_score }}
-                      </Badge>
+                      <span class="text-sm font-medium">
+                        {{ domain.domain }}
+                      </span>
                     </td>
 
                     <!-- Links -->
@@ -492,6 +449,13 @@ const sortableColumns = [
                     <!-- Last Seen -->
                     <td class="px-4 py-3 text-sm text-muted-foreground">
                       {{ formatRelativeTime(domain.last_seen) }}
+                    </td>
+
+                    <!-- Score -->
+                    <td class="px-4 py-3">
+                      <Badge :variant="getScoreVariant(domain.quality_score)">
+                        {{ domain.quality_score }}
+                      </Badge>
                     </td>
 
                     <!-- OK % -->
