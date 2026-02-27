@@ -169,7 +169,7 @@
     },
     {
       "id": 5,
-      "title": "Articles Published",
+      "title": "Channel Publishes",
       "description": "Individual articles pushed to Redis channels",
       "type": "stat",
       "datasource": { "type": "loki", "uid": "loki" },
@@ -663,7 +663,7 @@
     },
     {
       "id": 16,
-      "title": "Articles per Redis Channel",
+      "title": "Publishes per Redis Channel",
       "description": "Which Redis channels received the most articles",
       "type": "barchart",
       "datasource": { "type": "loki", "uid": "loki" },
