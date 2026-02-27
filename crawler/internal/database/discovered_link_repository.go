@@ -141,8 +141,8 @@ func (r *DiscoveredLinkRepository) List(ctx context.Context, filters ListFilters
 	}
 
 	sortOrder := strings.ToUpper(filters.SortOrder)
-	if sortOrder != "ASC" && sortOrder != "DESC" {
-		sortOrder = "DESC"
+	if sortOrder != sortAsc && sortOrder != sortDesc {
+		sortOrder = sortDesc
 	}
 
 	// Set defaults for limit/offset
@@ -150,10 +150,7 @@ func (r *DiscoveredLinkRepository) List(ctx context.Context, filters ListFilters
 	if limit <= 0 {
 		limit = 50
 	}
-	offset := filters.Offset
-	if offset < 0 {
-		offset = 0
-	}
+	offset := max(filters.Offset, 0)
 
 	query := fmt.Sprintf(`
 		SELECT id, source_id, source_name, url, parent_url, depth, discovered_at, 

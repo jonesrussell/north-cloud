@@ -34,9 +34,9 @@ type DomainAggregate struct {
 	Notes       *string   `db:"notes"        json:"notes,omitempty"`
 
 	// Computed in Go (not from DB)
-	QualityScore     int      `json:"quality_score"`
-	ReferringSources []string `json:"referring_sources"`
-	IsExistingSource bool     `json:"is_existing_source"`
+	QualityScore     int      `db:"-" json:"quality_score"`
+	ReferringSources []string `db:"-" json:"referring_sources"`
+	IsExistingSource bool     `db:"-" json:"is_existing_source"`
 }
 
 // PathCluster represents a group of URLs sharing a common path prefix.
