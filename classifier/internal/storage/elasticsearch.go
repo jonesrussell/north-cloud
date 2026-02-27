@@ -100,8 +100,11 @@ func (s *ElasticsearchStorage) QueryRawContent(ctx context.Context, status strin
 // IndexClassifiedContent indexes enriched classified content
 // This matches the ElasticsearchClient interface expected by the Poller
 func (s *ElasticsearchStorage) IndexClassifiedContent(ctx context.Context, content *domain.ClassifiedContent) error {
-	// Determine the classified index name from the source
-	classifiedIndex := content.SourceName + "_classified_content"
+	// Determine the classified index name — prefer SourceIndex, fall back to sanitized SourceName
+	classifiedIndex, err := ClassifiedIndexForContent(content.SourceIndex, content.SourceName)
+	if err != nil {
+		return fmt.Errorf("failed to determine classified index: %w", err)
+	}
 
 	// Ensure publisher compatibility aliases are set
 	content.Body = content.RawText
@@ -212,8 +215,11 @@ func (s *ElasticsearchStorage) BulkIndexClassifiedContent(ctx context.Context, c
 	var buf bytes.Buffer
 	now := time.Now()
 	for _, content := range contents {
-		// Determine the classified index name from the source
-		classifiedIndex := content.SourceName + "_classified_content"
+		// Determine the classified index name — prefer SourceIndex, fall back to sanitized SourceName
+		classifiedIndex, indexErr := ClassifiedIndexForContent(content.SourceIndex, content.SourceName)
+		if indexErr != nil {
+			return fmt.Errorf("failed to determine classified index: %w", indexErr)
+		}
 
 		// Ensure publisher compatibility aliases are set
 		content.Body = content.RawText
