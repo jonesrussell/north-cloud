@@ -23,6 +23,7 @@
     { "title": "Overview", "url": "/d/north-cloud-overview", "type": "link", "icon": "dashboard" },
     { "title": "Pipeline Operations", "url": "/d/north-cloud-pipeline-ops", "type": "link", "icon": "dashboard" },
     { "title": "Crawler Ops", "url": "/d/north-cloud-crawler-ops", "type": "link", "icon": "dashboard" },
+    { "title": "Publisher Ops", "url": "/d/north-cloud-publisher-ops", "type": "link", "icon": "dashboard" },
     { "title": "Deployer Sites", "url": "/d/north-cloud-deployer-sites", "type": "link", "icon": "dashboard" },
     { "title": "ML Sidecars", "url": "/d/north-cloud-ml-sidecars", "type": "link", "icon": "dashboard" },
     { "title": "Frontier Ops", "url": "/d/north-cloud-frontier-ops", "type": "link", "icon": "dashboard" },
