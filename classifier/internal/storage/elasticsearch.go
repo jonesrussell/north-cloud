@@ -146,9 +146,8 @@ func (s *ElasticsearchStorage) IndexClassifiedContent(ctx context.Context, conte
 // UpdateRawContentStatus updates the classification_status field in raw_content
 // This matches the ElasticsearchClient interface expected by the Poller
 func (s *ElasticsearchStorage) UpdateRawContentStatus(ctx context.Context, contentID, status string, classifiedAt time.Time) error {
-	// We need to find which index this document is in
-	// For now, we'll update across all *_raw_content indices
-	// In production, you might want to track index per content ID
+	// TODO: SourceIndex is now available on RawContent — this function could
+	// accept it to update the specific index directly instead of iterating all indices.
 
 	update := map[string]any{
 		"doc": map[string]any{
@@ -219,7 +218,7 @@ func (s *ElasticsearchStorage) BulkIndexClassifiedContent(ctx context.Context, c
 		// Determine the classified index name — prefer SourceIndex, fall back to sanitized SourceName
 		classifiedIndex, indexErr := ClassifiedIndexForContent(content.SourceIndex, content.SourceName)
 		if indexErr != nil {
-			return fmt.Errorf("failed to determine classified index: %w", indexErr)
+			return fmt.Errorf("failed to determine classified index for content %s: %w", content.ID, indexErr)
 		}
 
 		// Ensure publisher compatibility aliases are set
@@ -391,8 +390,8 @@ func (s *ElasticsearchStorage) GetClassifiedByID(ctx context.Context, contentID 
 
 // GetRawContentByID retrieves raw content by document ID from specific source index
 func (s *ElasticsearchStorage) GetRawContentByID(ctx context.Context, contentID, sourceName string) (*domain.RawContent, error) {
-	// Build the raw_content index name from source
-	rawIndex := sourceName + "_raw_content"
+	// Build the raw_content index name from sanitized source name
+	rawIndex := SanitizeSourceName(sourceName) + "_raw_content"
 
 	query := map[string]any{
 		"query": map[string]any{

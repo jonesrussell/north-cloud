@@ -8,8 +8,8 @@ import (
 	"strings"
 )
 
-// validIndexChar matches characters allowed in ES index names: lowercase alphanumeric and underscore.
-var validIndexChar = regexp.MustCompile(`[^a-z0-9_]`)
+// invalidIndexChar matches characters NOT allowed in ES index names (anything other than lowercase alphanumeric and underscore).
+var invalidIndexChar = regexp.MustCompile(`[^a-z0-9_]`)
 
 // collapseUnderscores replaces runs of multiple underscores with a single one.
 var collapseUnderscores = regexp.MustCompile(`_+`)
@@ -34,7 +34,7 @@ func SanitizeSourceName(name string) string {
 		return ""
 	}
 	s := strings.ToLower(strings.TrimSpace(name))
-	s = validIndexChar.ReplaceAllString(s, "_")
+	s = invalidIndexChar.ReplaceAllString(s, "_")
 	s = collapseUnderscores.ReplaceAllString(s, "_")
 	s = strings.Trim(s, "_")
 	return s

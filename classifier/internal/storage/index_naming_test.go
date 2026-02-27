@@ -7,8 +7,6 @@ import (
 )
 
 func TestGetClassifiedIndexName(t *testing.T) {
-	t.Helper()
-
 	tests := []struct {
 		name     string
 		input    string
@@ -43,8 +41,6 @@ func TestGetClassifiedIndexName(t *testing.T) {
 }
 
 func TestSanitizeSourceName(t *testing.T) {
-	t.Helper()
-
 	tests := []struct {
 		name     string
 		input    string
@@ -73,8 +69,6 @@ func TestSanitizeSourceName(t *testing.T) {
 }
 
 func TestClassifiedIndexForContent(t *testing.T) {
-	t.Helper()
-
 	tests := []struct {
 		name        string
 		sourceIndex string
@@ -99,6 +93,12 @@ func TestClassifiedIndexForContent(t *testing.T) {
 			sourceIndex: "",
 			sourceName:  "Campbell River Mirror",
 			expected:    "campbell_river_mirror_classified_content",
+		},
+		{
+			name:        "invalid source index",
+			sourceIndex: "billboard_content",
+			sourceName:  "Billboard",
+			wantErr:     true,
 		},
 		{
 			name:        "both empty",
@@ -129,8 +129,6 @@ func TestClassifiedIndexForContent(t *testing.T) {
 }
 
 func TestCheckBulkResponse(t *testing.T) {
-	t.Helper()
-
 	tests := []struct {
 		name       string
 		body       string

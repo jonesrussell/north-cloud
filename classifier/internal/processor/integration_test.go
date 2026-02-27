@@ -4,12 +4,14 @@ package processor
 import (
 	"context"
 	"errors"
+	"strings"
 	"sync"
 	"testing"
 	"time"
 
 	"github.com/jonesrussell/north-cloud/classifier/internal/classifier"
 	"github.com/jonesrussell/north-cloud/classifier/internal/domain"
+	"github.com/jonesrussell/north-cloud/classifier/internal/storage"
 	infralogger "github.com/north-cloud/infrastructure/logger"
 )
 
@@ -740,10 +742,19 @@ func TestRegression_HumanReadableSourceNameWithSourceIndex(t *testing.T) {
 		t.Fatalf("expected 2 classified items, got %d", len(esClient.classifiedContent))
 	}
 
-	// Verify SourceIndex propagates through the pipeline so storage can derive correct index names
+	// Verify SourceIndex propagates and produces valid classified index names
 	for _, content := range esClient.classifiedContent {
 		if content.SourceIndex == "" {
-			t.Errorf("content %s: SourceIndex should propagate through classification, got empty", content.ID)
+			t.Errorf("content %s: SourceIndex should propagate, got empty", content.ID)
+		}
+		idx, idxErr := storage.ClassifiedIndexForContent(
+			content.SourceIndex, content.SourceName,
+		)
+		if idxErr != nil {
+			t.Errorf("content %s: ClassifiedIndexForContent failed: %v", content.ID, idxErr)
+		}
+		if idx != strings.ToLower(idx) {
+			t.Errorf("content %s: derived index %q is not lowercase", content.ID, idx)
 		}
 	}
 
@@ -801,6 +812,17 @@ func TestRegression_SourceNameFallbackSanitization(t *testing.T) {
 		t.Errorf("expected content ID fallback-1, got %s", content.ID)
 	}
 	if content.SourceName != "Billboard" {
-		t.Errorf("expected SourceName to remain 'Billboard', got %s", content.SourceName)
+		t.Errorf("expected SourceName 'Billboard', got %s", content.SourceName)
+	}
+
+	// Verify the fallback produces a valid, lowercase index name
+	idx, idxErr := storage.ClassifiedIndexForContent(
+		content.SourceIndex, content.SourceName,
+	)
+	if idxErr != nil {
+		t.Fatalf("ClassifiedIndexForContent failed: %v", idxErr)
+	}
+	if idx != "billboard_classified_content" {
+		t.Errorf("expected billboard_classified_content, got %s", idx)
 	}
 }
