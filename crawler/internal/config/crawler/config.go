@@ -32,6 +32,8 @@ const (
 	DefaultHTTPRetryDelay = 2 * time.Second
 	// DefaultRedisStorageExpires is the default TTL for Colly visited URL keys in Redis
 	DefaultRedisStorageExpires = 168 * time.Hour // 7 days
+	// DefaultProxyStickyTTL is the default domain-sticky TTL for the proxy pool
+	DefaultProxyStickyTTL = 10 * time.Minute
 )
 
 // Config represents the crawler configuration.
@@ -98,6 +100,12 @@ type Config struct {
 	ProxiesEnabled bool `env:"CRAWLER_PROXIES_ENABLED" yaml:"proxies_enabled"`
 	// ProxyURLs is the list of proxy URLs (HTTP or SOCKS5) for round-robin rotation
 	ProxyURLs []string `env:"CRAWLER_PROXY_URLS" yaml:"proxy_urls"`
+	// ProxyPoolEnabled enables domain-sticky proxy pool rotation (replaces ProxiesEnabled)
+	ProxyPoolEnabled bool `env:"CRAWLER_PROXY_POOL_ENABLED" yaml:"proxy_pool_enabled"`
+	// ProxyPoolURLs is the list of Squid proxy endpoints for the pool (replaces ProxyURLs)
+	ProxyPoolURLs []string `env:"CRAWLER_PROXY_POOL_URLS" yaml:"proxy_pool_urls"`
+	// ProxyStickyTTL is how long a domain stays assigned to the same proxy
+	ProxyStickyTTL time.Duration `env:"CRAWLER_PROXY_STICKY_TTL" yaml:"proxy_sticky_ttl"`
 	// ReadabilityFallbackEnabled enables a last-resort readability-style extractor when selectors yield no content (default: false)
 	ReadabilityFallbackEnabled bool `env:"CRAWLER_READABILITY_FALLBACK_ENABLED" yaml:"readability_fallback_enabled"`
 }
@@ -127,6 +135,9 @@ func (c *Config) Validate() error {
 	}
 	if c.MaxBodySize < 0 {
 		return errors.New("max_body_size must be non-negative")
+	}
+	if c.ProxyPoolEnabled && len(c.ProxyPoolURLs) == 0 {
+		return errors.New("proxy_pool_urls must be non-empty when proxy pool is enabled")
 	}
 	return c.TLS.Validate()
 }
@@ -170,6 +181,9 @@ func New(opts ...Option) *Config {
 		RedisStorageExpires:        DefaultRedisStorageExpires,
 		ProxiesEnabled:             false,
 		ProxyURLs:                  nil,
+		ProxyPoolEnabled:           false,
+		ProxyPoolURLs:              nil,
+		ProxyStickyTTL:             DefaultProxyStickyTTL,
 		ReadabilityFallbackEnabled: false,
 	}
 

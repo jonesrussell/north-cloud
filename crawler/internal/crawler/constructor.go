@@ -14,6 +14,7 @@ import (
 	"github.com/jonesrussell/north-cloud/crawler/internal/content/rawcontent"
 	"github.com/jonesrussell/north-cloud/crawler/internal/crawler/events"
 	"github.com/jonesrussell/north-cloud/crawler/internal/database"
+	"github.com/jonesrussell/north-cloud/crawler/internal/proxypool"
 	"github.com/jonesrussell/north-cloud/crawler/internal/sources"
 	"github.com/jonesrussell/north-cloud/crawler/internal/storage/types"
 	infralogger "github.com/north-cloud/infrastructure/logger"
@@ -50,6 +51,7 @@ type CrawlerParams struct {
 	RedisClient       *redis.Client         // Redis client for Colly storage (optional)
 	HashTracker       *adaptive.HashTracker // For adaptive scheduling (optional)
 	FrontierSubmitter LinkFrontierSubmitter // Frontier submitter (optional)
+	ProxyPool         *proxypool.Pool       // Shared proxy pool (optional)
 }
 
 // CrawlerResult holds the crawler instance
@@ -112,6 +114,7 @@ func NewCrawlerWithParams(p CrawlerParams) (*CrawlerResult, error) {
 		signals:             signals,
 		archiver:            archiver,
 		redisClient:         p.RedisClient,
+		proxyPool:           p.ProxyPool,
 		hashTracker:         p.HashTracker,
 		startURLHashesMu:    &sync.RWMutex{},
 	}

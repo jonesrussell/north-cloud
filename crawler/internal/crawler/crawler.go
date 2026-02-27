@@ -3,6 +3,8 @@ package crawler
 
 import (
 	"context"
+	"net/http"
+	"net/url"
 	"sync"
 	"time"
 
@@ -145,6 +147,13 @@ const (
 	timeoutWarningInterval = 30 * time.Second
 )
 
+// proxyPooler provides a proxy selection function for HTTP requests.
+// Satisfied by *proxypool.Pool.
+type proxyPooler interface {
+	ProxyFunc() func(*http.Request) (*url.URL, error)
+	URLs() []string
+}
+
 // Crawler implements the Processor interface for web crawling.
 // Refactored to use focused component pattern for better SRP compliance.
 type Crawler struct {
@@ -162,6 +171,7 @@ type Crawler struct {
 	cfg                 *crawler.Config
 	archiver            Archiver      // HTML archiver for MinIO storage
 	redisClient         *redis.Client // Redis client for Colly storage (optional)
+	proxyPool           proxyPooler   // Shared proxy pool (optional)
 
 	// Adaptive scheduling: stores hashes of start URL responses keyed by sourceID
 	startURLHashes   map[string]string     // sourceID -> SHA-256 hash

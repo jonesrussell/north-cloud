@@ -119,6 +119,10 @@ services:
       # Crawler Redis Storage (Colly visited URLs persistence)
       CRAWLER_REDIS_STORAGE_ENABLED: "${CRAWLER_REDIS_STORAGE_ENABLED:-false}"
       CRAWLER_REDIS_STORAGE_EXPIRES: "${CRAWLER_REDIS_STORAGE_EXPIRES:-168h}"
+      # Proxy Pool (IP rotation via Squid)
+      CRAWLER_PROXY_POOL_ENABLED: "${CRAWLER_PROXY_POOL_ENABLED:-false}"
+      CRAWLER_PROXY_POOL_URLS: "${CRAWLER_PROXY_POOL_URLS:-}"
+      CRAWLER_PROXY_STICKY_TTL: "${CRAWLER_PROXY_STICKY_TTL:-10m}"
       PPROF_PORT: 6060
     volumes:
       - ./crawler:/app
