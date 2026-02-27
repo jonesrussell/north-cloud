@@ -181,3 +181,6 @@ __pycache__/
 venv/
 docs/mining_websites_index.xlsx
 click-tracker/bin/
+
+/*.png
+
