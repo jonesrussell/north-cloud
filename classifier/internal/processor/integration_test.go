@@ -684,3 +684,120 @@ func TestIntegration_FailedClassificationHandling(t *testing.T) {
 		t.Error("expected at least 1 history entry for successful classification")
 	}
 }
+
+// TestRegression_HumanReadableSourceNameWithSourceIndex verifies that content with
+// a human-readable SourceName (e.g. "Billboard") but a proper SourceIndex
+// (e.g. "billboard_raw_content") gets the correct classified index.
+// This reproduces the production bug where SourceName was used directly to build
+// the ES index name, producing invalid names like "Billboard_classified_content".
+func TestRegression_HumanReadableSourceNameWithSourceIndex(t *testing.T) {
+	esClient, dbClient, logger := setupTestEnvironment()
+
+	// Replace test data with production-like scenario: human-readable SourceName + valid SourceIndex
+	publishedDate := time.Now().Add(-24 * time.Hour)
+	esClient.rawContent = []*domain.RawContent{
+		{
+			ID:                   "billboard-1",
+			URL:                  "https://billboard.com/article1",
+			SourceName:           "Billboard",
+			SourceIndex:          "billboard_raw_content",
+			Title:                "Top 100 charts this week",
+			RawText:              "The latest Billboard charts show significant movement in the top positions. Several new entries made their debut this week.",
+			OGType:               "article",
+			MetaDescription:      "Billboard charts",
+			PublishedDate:        &publishedDate,
+			ClassificationStatus: domain.StatusPending,
+			WordCount:            250,
+		},
+		{
+			ID:                   "mirror-1",
+			URL:                  "https://campbellrivermirror.com/news",
+			SourceName:           "Campbell River Mirror",
+			SourceIndex:          "campbell_river_mirror_raw_content",
+			Title:                "Local council approves new development",
+			RawText:              "The Campbell River council has approved a new housing development in the downtown area. The project will bring new homes to the community.",
+			OGType:               "article",
+			MetaDescription:      "Local news",
+			PublishedDate:        &publishedDate,
+			ClassificationStatus: domain.StatusPending,
+			WordCount:            200,
+		},
+	}
+
+	testClassifier := createTestClassifier(logger)
+	batchProcessor := NewBatchProcessor(testClassifier, 2, logger)
+	pollerConfig := PollerConfig{BatchSize: 10, PollInterval: 30 * time.Second}
+	poller := NewPoller(esClient, dbClient, batchProcessor, logger, pollerConfig, nil)
+
+	ctx := context.Background()
+	if err := poller.processPending(ctx); err != nil {
+		t.Fatalf("processPending failed: %v", err)
+	}
+
+	if len(esClient.classifiedContent) != 2 {
+		t.Fatalf("expected 2 classified items, got %d", len(esClient.classifiedContent))
+	}
+
+	// Verify SourceIndex propagates through the pipeline so storage can derive correct index names
+	for _, content := range esClient.classifiedContent {
+		if content.SourceIndex == "" {
+			t.Errorf("content %s: SourceIndex should propagate through classification, got empty", content.ID)
+		}
+	}
+
+	// Verify status updates
+	if _, ok := esClient.statusUpdates["billboard-1"]; !ok {
+		t.Error("expected billboard-1 to have status update")
+	}
+	if _, ok := esClient.statusUpdates["mirror-1"]; !ok {
+		t.Error("expected mirror-1 to have status update")
+	}
+}
+
+// TestRegression_SourceNameFallbackSanitization verifies that when SourceIndex is empty
+// (e.g. content created outside the normal pipeline), the SourceName is sanitized
+// to produce a valid ES index name.
+func TestRegression_SourceNameFallbackSanitization(t *testing.T) {
+	esClient, dbClient, logger := setupTestEnvironment()
+
+	// Content with NO SourceIndex — simulates content created before the fix
+	publishedDate := time.Now().Add(-24 * time.Hour)
+	esClient.rawContent = []*domain.RawContent{
+		{
+			ID:                   "fallback-1",
+			URL:                  "https://billboard.com/article1",
+			SourceName:           "Billboard",
+			SourceIndex:          "", // No source index available
+			Title:                "Fallback article with enough words for quality scoring",
+			RawText:              "This article tests the fallback path where no source index is available. The system should sanitize the source name to produce a valid ES index name.",
+			OGType:               "article",
+			MetaDescription:      "Test article",
+			PublishedDate:        &publishedDate,
+			ClassificationStatus: domain.StatusPending,
+			WordCount:            200,
+		},
+	}
+
+	testClassifier := createTestClassifier(logger)
+	batchProcessor := NewBatchProcessor(testClassifier, 2, logger)
+	pollerConfig := PollerConfig{BatchSize: 10, PollInterval: 30 * time.Second}
+	poller := NewPoller(esClient, dbClient, batchProcessor, logger, pollerConfig, nil)
+
+	ctx := context.Background()
+	if err := poller.processPending(ctx); err != nil {
+		t.Fatalf("processPending failed: %v", err)
+	}
+
+	if len(esClient.classifiedContent) != 1 {
+		t.Fatalf("expected 1 classified item, got %d", len(esClient.classifiedContent))
+	}
+
+	// The content should still classify successfully even without SourceIndex
+	content := esClient.classifiedContent[0]
+	if content.ID != "fallback-1" {
+		t.Errorf("expected content ID fallback-1, got %s", content.ID)
+	}
+	if content.SourceName != "Billboard" {
+		t.Errorf("expected SourceName to remain 'Billboard', got %s", content.SourceName)
+	}
+}
