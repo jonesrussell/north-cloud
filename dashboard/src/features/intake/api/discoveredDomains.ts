@@ -5,9 +5,11 @@
 import { crawlerApi } from '@/api/client'
 import type { FetchParams, PaginatedResponse } from '@/types/table'
 
+export type DomainStatus = 'active' | 'ignored' | 'reviewing' | 'promoted'
+
 export interface DiscoveredDomain {
   domain: string
-  status: string
+  status: DomainStatus
   link_count: number
   source_count: number
   referring_sources: string[]
@@ -30,7 +32,7 @@ export interface DiscoveredDomainLink {
   source_id: string
   source_name: string
   discovered_at: string
-  status: string
+  status: DomainStatus
 }
 
 export interface PathCluster {
@@ -40,7 +42,7 @@ export interface PathCluster {
 
 export interface DiscoveredDomainFilters {
   search?: string
-  status?: string
+  status?: DomainStatus
 }
 
 export interface DomainLinksResponse {

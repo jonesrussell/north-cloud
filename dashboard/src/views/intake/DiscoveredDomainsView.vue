@@ -29,7 +29,7 @@ import { useDiscoveredDomainsTable } from '@/features/intake'
 import { crawlerApi } from '@/api/client'
 import { formatRelativeTime } from '@/lib/utils'
 import { useToast } from '@/composables/useToast'
-import type { DiscoveredDomain } from '@/features/intake/api/discoveredDomains'
+import type { DiscoveredDomain, DomainStatus } from '@/features/intake/api/discoveredDomains'
 
 const router = useRouter()
 const queryClient = useQueryClient()
@@ -92,7 +92,7 @@ function toggleSelect(domain: string) {
 
 type StatusVariant = 'info' | 'warning' | 'pending' | 'success' | 'outline'
 
-function getStatusVariant(status: string): StatusVariant {
+function getStatusVariant(status: DomainStatus): StatusVariant {
   switch (status) {
     case 'active': return 'info'
     case 'reviewing': return 'warning'
@@ -120,7 +120,7 @@ function formatPercent(value: number | null): string {
 
 // --- Actions ---
 
-async function updateDomainStatus(domain: string, status: string) {
+async function updateDomainStatus(domain: string, status: DomainStatus) {
   try {
     await crawlerApi.discoveredDomains.updateState(domain, { status })
     queryClient.invalidateQueries({ queryKey: ['discovered-domains'] })
@@ -131,7 +131,7 @@ async function updateDomainStatus(domain: string, status: string) {
   }
 }
 
-async function bulkUpdateStatus(status: string) {
+async function bulkUpdateStatus(status: DomainStatus) {
   if (selectedDomains.value.size === 0) return
   const count = selectedDomains.value.size
   try {

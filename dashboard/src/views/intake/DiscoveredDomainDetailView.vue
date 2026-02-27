@@ -28,6 +28,7 @@ import {
 } from '@/features/intake/api/discoveredDomains'
 import { useToast } from '@/composables/useToast'
 import type {
+  DomainStatus,
   DiscoveredDomainLink,
   PathCluster,
 } from '@/features/intake/api/discoveredDomains'
@@ -87,7 +88,7 @@ function setLinksPageSize(size: number) {
 
 type StatusVariant = 'info' | 'warning' | 'pending' | 'success' | 'outline'
 
-function getStatusVariant(status: string): StatusVariant {
+function getStatusVariant(status: DomainStatus): StatusVariant {
   switch (status) {
     case 'active': return 'info'
     case 'reviewing': return 'warning'
@@ -129,7 +130,7 @@ function formatPercent(value: number | null): string {
 
 // --- Actions ---
 
-async function updateStatus(status: string) {
+async function updateStatus(status: DomainStatus) {
   try {
     await crawlerApi.discoveredDomains.updateState(domain.value, { status })
     queryClient.invalidateQueries({ queryKey: ['discovered-domains'] })
