@@ -27,6 +27,17 @@ func testProxyURLs() []string {
 	return []string{testProxy1, testProxy2, testProxy3}
 }
 
+func mustNewPool(t *testing.T, urls []string, opts ...proxypool.Option) *proxypool.Pool {
+	t.Helper()
+
+	pool, err := proxypool.New(urls, opts...)
+	if err != nil {
+		t.Fatalf("failed to create pool: %v", err)
+	}
+
+	return pool
+}
+
 func mustParseURL(t *testing.T, raw string) *url.URL {
 	t.Helper()
 
@@ -73,7 +84,7 @@ func requireNotEqual(t *testing.T, a, b string) {
 func TestPool_RoundRobinAssignment(t *testing.T) {
 	t.Parallel()
 
-	pool := proxypool.New(testProxyURLs())
+	pool := mustNewPool(t, testProxyURLs())
 
 	// Three different domains should get assigned in round-robin order.
 	proxy1, err := pool.ProxyFor(testDomainA)
@@ -94,7 +105,7 @@ func TestPool_RoundRobinAssignment(t *testing.T) {
 func TestPool_DomainSticky(t *testing.T) {
 	t.Parallel()
 
-	pool := proxypool.New(testProxyURLs())
+	pool := mustNewPool(t, testProxyURLs())
 
 	first, err := pool.ProxyFor(testDomainA)
 	requireNoError(t, err)
@@ -110,7 +121,7 @@ func TestPool_StickyTTLExpiry(t *testing.T) {
 	t.Parallel()
 
 	shortTTL := 1 * time.Millisecond
-	pool := proxypool.New(testProxyURLs(), proxypool.WithStickyTTL(shortTTL))
+	pool := mustNewPool(t, testProxyURLs(), proxypool.WithStickyTTL(shortTTL))
 
 	first, err := pool.ProxyFor(testDomainA)
 	requireNoError(t, err)
@@ -122,8 +133,7 @@ func TestPool_StickyTTLExpiry(t *testing.T) {
 	requireNoError(t, err)
 
 	// After TTL expiry, round-robin advances so proxy may change.
-	// We verify it doesn't panic and returns a valid proxy, not
-	// necessarily a different one (depends on robin index).
+	// We verify it doesn't panic and returns a valid proxy.
 	if second == nil {
 		t.Fatal("expected a valid proxy after TTL expiry, got nil")
 	}
@@ -134,7 +144,7 @@ func TestPool_StickyTTLExpiry(t *testing.T) {
 func TestPool_MarkUnhealthy(t *testing.T) {
 	t.Parallel()
 
-	pool := proxypool.New(testProxyURLs())
+	pool := mustNewPool(t, testProxyURLs())
 
 	// Assign proxy to domainA.
 	first, err := pool.ProxyFor(testDomainA)
@@ -150,10 +160,52 @@ func TestPool_MarkUnhealthy(t *testing.T) {
 	requireNotEqual(t, first.String(), second.String())
 }
 
+func TestPool_StickyIgnoresUnhealthyProxy(t *testing.T) {
+	t.Parallel()
+
+	pool := mustNewPool(t, testProxyURLs())
+
+	// Assign proxy to domainA.
+	first, err := pool.ProxyFor(testDomainA)
+	requireNoError(t, err)
+
+	// Mark the sticky proxy unhealthy.
+	pool.MarkUnhealthy(first)
+
+	// Same domain should now get reassigned to a different (healthy) proxy.
+	second, err := pool.ProxyFor(testDomainA)
+	requireNoError(t, err)
+
+	requireNotEqual(t, first.String(), second.String())
+}
+
+func TestPool_HealthBackoffRecovery(t *testing.T) {
+	t.Parallel()
+
+	shortBackoff := 1 * time.Millisecond
+	pool := mustNewPool(t, []string{testProxy1},
+		proxypool.WithHealthBackoff(shortBackoff),
+	)
+
+	proxy, err := pool.ProxyFor(testDomainA)
+	requireNoError(t, err)
+
+	pool.MarkUnhealthy(proxy)
+
+	// Wait for backoff to expire.
+	time.Sleep(2 * time.Millisecond)
+
+	// Should get a proxy again (the same one, recovered).
+	recovered, err := pool.ProxyFor(testDomainB)
+	requireNoError(t, err)
+
+	requireEqual(t, proxy.String(), recovered.String())
+}
+
 func TestPool_AllUnhealthy(t *testing.T) {
 	t.Parallel()
 
-	pool := proxypool.New(testProxyURLs())
+	pool := mustNewPool(t, testProxyURLs())
 
 	// Mark all proxies unhealthy.
 	for _, raw := range testProxyURLs() {
@@ -169,12 +221,10 @@ func TestPool_AllUnhealthy(t *testing.T) {
 	}
 }
 
-func TestPool_EmptyURLs(t *testing.T) {
+func TestNew_EmptyURLs(t *testing.T) {
 	t.Parallel()
 
-	pool := proxypool.New(nil)
-
-	_, err := pool.ProxyFor(testDomainA)
+	_, err := proxypool.New(nil)
 	requireError(t, err)
 
 	if !errors.Is(err, proxypool.ErrNoProxies) {
@@ -182,10 +232,43 @@ func TestPool_EmptyURLs(t *testing.T) {
 	}
 }
 
+func TestNew_InvalidScheme(t *testing.T) {
+	t.Parallel()
+
+	_, err := proxypool.New([]string{"ftp://proxy.example.com:8080"})
+	requireError(t, err)
+
+	if !errors.Is(err, proxypool.ErrInvalidProxyURL) {
+		t.Fatalf("expected ErrInvalidProxyURL, got %v", err)
+	}
+}
+
+func TestNew_MissingHost(t *testing.T) {
+	t.Parallel()
+
+	_, err := proxypool.New([]string{"http://"})
+	requireError(t, err)
+
+	if !errors.Is(err, proxypool.ErrInvalidProxyURL) {
+		t.Fatalf("expected ErrInvalidProxyURL, got %v", err)
+	}
+}
+
+func TestNew_ValidURLs(t *testing.T) {
+	t.Parallel()
+
+	pool, err := proxypool.New(testProxyURLs())
+	requireNoError(t, err)
+
+	if pool == nil {
+		t.Fatal("expected non-nil pool")
+	}
+}
+
 func TestPool_ConcurrentAccess(t *testing.T) {
 	t.Parallel()
 
-	pool := proxypool.New(testProxyURLs())
+	pool := mustNewPool(t, testProxyURLs())
 	domains := []string{"a.com", "b.com", "c.com", "d.com", "e.com"}
 
 	var wg sync.WaitGroup
@@ -224,7 +307,7 @@ func TestPool_URLs(t *testing.T) {
 	t.Parallel()
 
 	urls := testProxyURLs()
-	pool := proxypool.New(urls)
+	pool := mustNewPool(t, urls)
 	got := pool.URLs()
 
 	if len(got) != len(urls) {

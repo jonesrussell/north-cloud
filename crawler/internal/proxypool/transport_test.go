@@ -21,7 +21,7 @@ func transportProxyURLs() []string {
 func TestProxyFunc_RoutesToCorrectProxy(t *testing.T) {
 	t.Parallel()
 
-	pool := proxypool.New(transportProxyURLs())
+	pool := mustNewPool(t, transportProxyURLs())
 	proxyFn := pool.ProxyFunc()
 
 	req, err := http.NewRequest(http.MethodGet, "http://example.com/page", http.NoBody)
@@ -44,7 +44,7 @@ func TestProxyFunc_RoutesToCorrectProxy(t *testing.T) {
 func TestProxyFunc_DifferentDomainsGetDifferentProxies(t *testing.T) {
 	t.Parallel()
 
-	pool := proxypool.New(transportProxyURLs())
+	pool := mustNewPool(t, transportProxyURLs())
 	proxyFn := pool.ProxyFunc()
 
 	req1, err := http.NewRequest(http.MethodGet, "http://alpha.com/page", http.NoBody)
@@ -65,7 +65,7 @@ func TestProxyFunc_DifferentDomainsGetDifferentProxies(t *testing.T) {
 func TestNewTransport_SetsProxyFunc(t *testing.T) {
 	t.Parallel()
 
-	pool := proxypool.New(transportProxyURLs())
+	pool := mustNewPool(t, transportProxyURLs())
 	transport := proxypool.NewTransport(pool, nil)
 
 	if transport.Proxy == nil {
@@ -80,7 +80,7 @@ func TestNewTransport_PreservesBaseSettings(t *testing.T) {
 		MaxIdleConns: baseMaxIdleConns,
 	}
 
-	pool := proxypool.New(transportProxyURLs())
+	pool := mustNewPool(t, transportProxyURLs())
 	transport := proxypool.NewTransport(pool, base)
 
 	if transport.MaxIdleConns != baseMaxIdleConns {
@@ -89,5 +89,19 @@ func TestNewTransport_PreservesBaseSettings(t *testing.T) {
 
 	if transport.Proxy == nil {
 		t.Fatal("expected transport.Proxy to be set after clone")
+	}
+}
+
+func TestNewTransport_NilBaseUsesDefaults(t *testing.T) {
+	t.Parallel()
+
+	pool := mustNewPool(t, transportProxyURLs())
+	transport := proxypool.NewTransport(pool, nil)
+
+	// Should inherit Go's default transport settings (non-zero MaxIdleConns).
+	defaultTransport := http.DefaultTransport.(*http.Transport)
+	if transport.MaxIdleConns != defaultTransport.MaxIdleConns {
+		t.Fatalf("expected default MaxIdleConns=%d, got %d",
+			defaultTransport.MaxIdleConns, transport.MaxIdleConns)
 	}
 }

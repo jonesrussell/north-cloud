@@ -20,7 +20,6 @@ import (
 	configtypes "github.com/jonesrussell/north-cloud/crawler/internal/config/types"
 	"github.com/jonesrussell/north-cloud/crawler/internal/content/rawcontent"
 	"github.com/jonesrussell/north-cloud/crawler/internal/logs"
-	"github.com/jonesrussell/north-cloud/crawler/internal/proxypool"
 )
 
 // Collector defaults
@@ -251,17 +250,14 @@ func (c *Crawler) setupRedisStorage() error {
 }
 
 // setupProxyRotation configures proxy rotation if enabled.
-// Supports both the legacy round-robin mode and the new domain-sticky proxy pool.
+// Uses the shared proxy pool if available, otherwise falls back to legacy round-robin.
 func (c *Crawler) setupProxyRotation() error {
-	// New proxy pool takes priority
-	if c.cfg.ProxyPoolEnabled && len(c.cfg.ProxyPoolURLs) > 0 {
-		pool := proxypool.New(c.cfg.ProxyPoolURLs,
-			proxypool.WithStickyTTL(c.cfg.ProxyStickyTTL),
-		)
-		c.collector.SetProxyFunc(pool.ProxyFunc())
+	// Shared proxy pool takes priority (injected via CrawlerParams).
+	if c.proxyPool != nil {
+		c.collector.SetProxyFunc(c.proxyPool.ProxyFunc())
 		c.GetJobLogger().Info(logs.CategoryLifecycle,
-			"Domain-sticky proxy pool enabled",
-			logs.Int("proxy_count", len(c.cfg.ProxyPoolURLs)),
+			"Domain-sticky proxy pool enabled (shared)",
+			logs.Int("proxy_count", len(c.proxyPool.URLs())),
 			logs.Duration("sticky_ttl", c.cfg.ProxyStickyTTL),
 		)
 		return nil

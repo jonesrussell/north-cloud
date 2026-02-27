@@ -136,6 +136,9 @@ func (c *Config) Validate() error {
 	if c.MaxBodySize < 0 {
 		return errors.New("max_body_size must be non-negative")
 	}
+	if c.ProxyPoolEnabled && len(c.ProxyPoolURLs) == 0 {
+		return errors.New("proxy_pool_urls must be non-empty when proxy pool is enabled")
+	}
 	return c.TLS.Validate()
 }
 

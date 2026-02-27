@@ -5,20 +5,28 @@ package proxypool
 
 import (
 	"errors"
+	"fmt"
 	"net/url"
 	"sync"
 	"sync/atomic"
 	"time"
 )
 
-// ErrNoProxies is returned when the pool has no configured proxies.
-var ErrNoProxies = errors.New("proxypool: no proxies configured")
+// Sentinel errors.
+var (
+	ErrNoProxies       = errors.New("proxypool: no proxies configured")
+	ErrInvalidProxyURL = errors.New("proxypool: invalid proxy URL")
+)
 
 // Default durations for sticky TTL and health backoff.
 const (
 	DefaultStickyTTL     = 10 * time.Minute
 	DefaultHealthBackoff = 5 * time.Minute
 )
+
+// domainEvictionThreshold is the number of domain entries above which stale
+// entries are evicted during ProxyFor to bound memory growth.
+const domainEvictionThreshold = 10_000
 
 // Option configures a Pool.
 type Option func(*Pool)
@@ -56,17 +64,31 @@ type Pool struct {
 	robinIdx atomic.Uint64
 }
 
-// New creates a Pool from the given proxy URL strings. Invalid URLs are skipped.
-func New(urls []string, opts ...Option) *Pool {
+// New creates a Pool from the given proxy URL strings.
+// Each URL must have an http or https scheme and a non-empty host.
+// Returns ErrNoProxies if no valid URLs are provided.
+func New(urls []string, opts ...Option) (*Pool, error) {
 	proxies := make([]*url.URL, 0, len(urls))
 
 	for _, raw := range urls {
 		u, err := url.Parse(raw)
 		if err != nil {
-			continue
+			return nil, fmt.Errorf("%w: %s: %w", ErrInvalidProxyURL, raw, err)
+		}
+
+		if u.Scheme != "http" && u.Scheme != "https" {
+			return nil, fmt.Errorf("%w: %s: scheme must be http or https", ErrInvalidProxyURL, raw)
+		}
+
+		if u.Host == "" {
+			return nil, fmt.Errorf("%w: %s: missing host", ErrInvalidProxyURL, raw)
 		}
 
 		proxies = append(proxies, u)
+	}
+
+	if len(proxies) == 0 {
+		return nil, ErrNoProxies
 	}
 
 	p := &Pool{
@@ -81,7 +103,7 @@ func New(urls []string, opts ...Option) *Pool {
 		opt(p)
 	}
 
-	return p
+	return p, nil
 }
 
 // ProxyFor returns the proxy assigned to the given domain. If the domain has a
@@ -104,13 +126,28 @@ func (p *Pool) ProxyFor(domain string) (*url.URL, error) {
 
 	p.mu.Lock()
 	p.domains[domain] = domainEntry{proxy: proxy, assignedAt: now}
+	p.evictStaleLocked(now)
 	p.mu.Unlock()
 
 	return proxy, nil
 }
 
+// evictStaleLocked removes expired domain entries when the map exceeds the
+// eviction threshold. Must be called with p.mu held for writing.
+func (p *Pool) evictStaleLocked(now time.Time) {
+	if len(p.domains) <= domainEvictionThreshold {
+		return
+	}
+
+	for domain, entry := range p.domains {
+		if now.Sub(entry.assignedAt) > p.stickyTTL {
+			delete(p.domains, domain)
+		}
+	}
+}
+
 // lookupSticky returns the currently assigned proxy for a domain if it is still
-// within the sticky TTL.
+// within the sticky TTL and the proxy is healthy.
 func (p *Pool) lookupSticky(domain string, now time.Time) (*url.URL, bool) {
 	p.mu.RLock()
 	defer p.mu.RUnlock()
@@ -121,6 +158,11 @@ func (p *Pool) lookupSticky(domain string, now time.Time) (*url.URL, bool) {
 	}
 
 	if now.Sub(entry.assignedAt) > p.stickyTTL {
+		return nil, false
+	}
+
+	// If sticky proxy is unhealthy, force reassignment via round-robin.
+	if unhealthyUntil, marked := p.health[entry.proxy.String()]; marked && now.Before(unhealthyUntil) {
 		return nil, false
 	}
 

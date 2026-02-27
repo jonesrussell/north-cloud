@@ -11,7 +11,6 @@ import (
 	"github.com/jonesrussell/north-cloud/crawler/internal/adaptive"
 	"github.com/jonesrussell/north-cloud/crawler/internal/api"
 	"github.com/jonesrussell/north-cloud/crawler/internal/config"
-	crawlerconfig "github.com/jonesrussell/north-cloud/crawler/internal/config/crawler"
 	"github.com/jonesrussell/north-cloud/crawler/internal/crawler"
 	crawlerevents "github.com/jonesrussell/north-cloud/crawler/internal/crawler/events"
 	"github.com/jonesrussell/north-cloud/crawler/internal/database"
@@ -110,6 +109,9 @@ func SetupServices(
 	jobsHandler.SetLogger(deps.Logger)
 	discoveredLinksHandler.SetLogger(deps.Logger)
 
+	// Create shared proxy pool (single instance for domain-sticky consistency across all paths).
+	sharedPool := buildSharedProxyPool(deps)
+
 	// Frontier submission logging wrapper (one log per Submit for Grafana). Used for handler, feed, link submitter; claimer uses raw repo.
 	var frontierForHandler api.FrontierRepoForHandler
 	var frontierForSubmission crawler.LinkFrontierSubmitter
@@ -124,7 +126,7 @@ func SetupServices(
 	// Create and start scheduler (if enabled)
 	var intervalScheduler *scheduler.IntervalScheduler
 	if deps.Config.GetSchedulerConfig().Enabled {
-		intervalScheduler = createAndStartScheduler(deps, storage, db, frontierForSubmission)
+		intervalScheduler = createAndStartScheduler(deps, storage, db, frontierForSubmission, sharedPool)
 	} else {
 		deps.Logger.Info("Interval scheduler disabled (CRAWLER_SCHEDULER_ENABLED=false)")
 	}
@@ -138,13 +140,13 @@ func SetupServices(
 	}
 
 	// Create feed poller (if enabled)
-	feedPoller, listDue := createFeedPoller(deps, db, frontierForFeed)
+	feedPoller, listDue := createFeedPoller(deps, db, frontierForFeed, sharedPool)
 
 	// Create feed discoverer (if enabled)
-	feedDiscoverer, listUndiscovered := createFeedDiscoverer(deps)
+	feedDiscoverer, listUndiscovered := createFeedDiscoverer(deps, sharedPool)
 
 	// Create frontier worker pool (if enabled); uses raw repo for claimer
-	workerPool := createFrontierWorkerPool(deps, db, storage)
+	workerPool := createFrontierWorkerPool(deps, db, storage, sharedPool)
 
 	// Stale URL recoverer uses the raw frontier repo (no logging wrapper needed)
 	var staleRecoverer StaleURLRecoverer
@@ -259,9 +261,10 @@ func createAndStartScheduler(
 	storage *StorageComponents,
 	db *DatabaseComponents,
 	frontierForSubmission crawler.LinkFrontierSubmitter,
+	pool *proxypool.Pool,
 ) *scheduler.IntervalScheduler {
 	// Create crawler factory for job execution (each job gets an isolated instance)
-	crawlerFactory, err := createCrawlerFactory(deps, storage, db, frontierForSubmission)
+	crawlerFactory, err := createCrawlerFactory(deps, storage, db, frontierForSubmission, pool)
 	if err != nil {
 		deps.Logger.Warn("Failed to create crawler factory, scheduler disabled", infralogger.Error(err))
 		return nil
@@ -292,8 +295,9 @@ func createCrawlerFactory(
 	storage *StorageComponents,
 	db *DatabaseComponents,
 	frontierForSubmission crawler.LinkFrontierSubmitter,
+	pool *proxypool.Pool,
 ) (crawler.FactoryInterface, error) {
-	params, err := buildCrawlerParams(deps, storage, db.DB, frontierForSubmission)
+	params, err := buildCrawlerParams(deps, storage, db.DB, frontierForSubmission, pool)
 	if err != nil {
 		return nil, err
 	}
@@ -306,6 +310,7 @@ func buildCrawlerParams(
 	storage *StorageComponents,
 	db *sqlx.DB,
 	frontierForSubmission crawler.LinkFrontierSubmitter,
+	pool *proxypool.Pool,
 ) (crawler.CrawlerParams, error) {
 	bus := crawlerevents.NewEventBus(deps.Logger)
 	crawlerCfg := deps.Config.GetCrawlerConfig()
@@ -356,6 +361,7 @@ func buildCrawlerParams(
 		RedisClient:       redisClient,
 		HashTracker:       hashTracker,
 		FrontierSubmitter: frontierSubmitter,
+		ProxyPool:         pool,
 	}, nil
 }
 
@@ -372,20 +378,40 @@ func loadSourceManager(deps *CommandDeps) (sources.Interface, error) {
 // feedHTTPFetchTimeout is the timeout for HTTP requests when fetching feeds.
 const feedHTTPFetchTimeout = 30 * time.Second
 
-// buildProxiedHTTPClient creates an HTTP client with proxy pool transport if enabled.
+// buildSharedProxyPool creates a single shared proxy pool if proxy rotation is enabled.
+// Returns nil if disabled or misconfigured (logs a warning on invalid URLs).
+func buildSharedProxyPool(deps *CommandDeps) *proxypool.Pool {
+	crawlerCfg := deps.Config.GetCrawlerConfig()
+	if !crawlerCfg.ProxyPoolEnabled || len(crawlerCfg.ProxyPoolURLs) == 0 {
+		return nil
+	}
+
+	pool, err := proxypool.New(crawlerCfg.ProxyPoolURLs,
+		proxypool.WithStickyTTL(crawlerCfg.ProxyStickyTTL),
+	)
+	if err != nil {
+		deps.Logger.Warn("Failed to create proxy pool, proxy rotation disabled",
+			infralogger.Error(err))
+		return nil
+	}
+
+	deps.Logger.Info("Shared proxy pool created",
+		infralogger.Strings("proxy_urls", pool.URLs()))
+
+	return pool
+}
+
+// buildProxiedHTTPClient creates an HTTP client with proxy pool transport if the pool is non-nil.
 func buildProxiedHTTPClient(
-	crawlerCfg *crawlerconfig.Config,
+	pool *proxypool.Pool,
 	timeout time.Duration,
 	log infralogger.Logger,
 ) *http.Client {
 	client := &http.Client{Timeout: timeout}
-	if crawlerCfg.ProxyPoolEnabled && len(crawlerCfg.ProxyPoolURLs) > 0 {
-		pool := proxypool.New(crawlerCfg.ProxyPoolURLs,
-			proxypool.WithStickyTTL(crawlerCfg.ProxyStickyTTL),
-		)
+	if pool != nil {
 		client.Transport = proxypool.NewTransport(pool, nil)
 		log.Info("HTTP client proxy pool enabled",
-			infralogger.Int("proxy_count", len(crawlerCfg.ProxyPoolURLs)))
+			infralogger.Strings("proxy_urls", pool.URLs()))
 	}
 	return client
 }
@@ -396,6 +422,7 @@ func createFeedPoller(
 	deps *CommandDeps,
 	db *DatabaseComponents,
 	frontierForFeed feed.FrontierSubmitterRepo,
+	pool *proxypool.Pool,
 ) (poller *feed.Poller, listDueFn func(ctx context.Context) ([]feed.DueFeed, error)) {
 	feedCfg := deps.Config.GetFeedConfig()
 	if !feedCfg.Enabled || frontierForFeed == nil {
@@ -414,7 +441,7 @@ func createFeedPoller(
 	)
 
 	httpFetcher := feed.NewHTTPFetcher(buildProxiedHTTPClient(
-		deps.Config.GetCrawlerConfig(), feedHTTPFetchTimeout, deps.Logger,
+		pool, feedHTTPFetchTimeout, deps.Logger,
 	))
 	feedStateAdapter := feed.NewFeedStateRepoAdapter(db.FeedStateRepo)
 	frontierAdapter := feed.NewFrontierRepoAdapter(frontierForFeed)
@@ -499,6 +526,7 @@ func (a *sourceFeedUpdaterAdapter) UpdateFeedURL(ctx context.Context, sourceID, 
 // Returns (nil, nil) if feed discovery is disabled.
 func createFeedDiscoverer(
 	deps *CommandDeps,
+	pool *proxypool.Pool,
 ) (discoverer *feed.Discoverer, listUndiscoveredFn func(ctx context.Context) ([]feed.UndiscoveredSource, error)) {
 	feedCfg := deps.Config.GetFeedConfig()
 	if !feedCfg.DiscoveryEnabled {
@@ -515,7 +543,7 @@ func createFeedDiscoverer(
 	)
 
 	httpFetcher := feed.NewHTTPFetcher(buildProxiedHTTPClient(
-		deps.Config.GetCrawlerConfig(), feedHTTPFetchTimeout, deps.Logger,
+		pool, feedHTTPFetchTimeout, deps.Logger,
 	))
 	updaterAdapter := &sourceFeedUpdaterAdapter{client: apiClient, log: deps.Logger}
 	logAdapt := &logAdapter{log: deps.Logger}
@@ -572,6 +600,7 @@ func createFrontierWorkerPool(
 	deps *CommandDeps,
 	db *DatabaseComponents,
 	storageComponents *StorageComponents,
+	pool *proxypool.Pool,
 ) *fetcher.WorkerPool {
 	fetcherCfg := deps.Config.GetFetcherConfig()
 	if !fetcherCfg.Enabled {
@@ -589,23 +618,14 @@ func createFrontierWorkerPool(
 		checkRedirect = fetcher.RedirectPolicy(fetcherCfg.MaxRedirects)
 	}
 
-	crawlerCfg := deps.Config.GetCrawlerConfig()
-	var httpTransport *http.Transport
-	if crawlerCfg.ProxyPoolEnabled && len(crawlerCfg.ProxyPoolURLs) > 0 {
-		pool := proxypool.New(crawlerCfg.ProxyPoolURLs,
-			proxypool.WithStickyTTL(crawlerCfg.ProxyStickyTTL),
-		)
-		httpTransport = proxypool.NewTransport(pool, nil)
-		deps.Logger.Info("Frontier fetcher proxy pool enabled",
-			infralogger.Int("proxy_count", len(crawlerCfg.ProxyPoolURLs)))
-	}
-
 	httpClient := &http.Client{
 		Timeout:       fetcherCfg.RequestTimeout,
 		CheckRedirect: checkRedirect,
 	}
-	if httpTransport != nil {
-		httpClient.Transport = httpTransport
+	if pool != nil {
+		httpClient.Transport = proxypool.NewTransport(pool, nil)
+		deps.Logger.Info("Frontier fetcher proxy pool enabled",
+			infralogger.Strings("proxy_urls", pool.URLs()))
 	}
 	robots := fetcher.NewRobotsChecker(httpClient, fetcherCfg.UserAgent, 0)
 	extractor := fetcher.NewContentExtractor()

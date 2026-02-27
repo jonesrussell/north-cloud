@@ -15,14 +15,19 @@ func (p *Pool) ProxyFunc() func(*http.Request) (*url.URL, error) {
 
 // NewTransport creates an *http.Transport with its Proxy set to the pool's ProxyFunc.
 // If base is non-nil, it is cloned and the Proxy field is overridden. If base is nil,
-// a default transport is created.
+// http.DefaultTransport is cloned to preserve Go's default timeouts and TLS settings.
 func NewTransport(pool *Pool, base *http.Transport) *http.Transport {
 	var t *http.Transport
 
 	if base != nil {
 		t = base.Clone()
 	} else {
-		t = &http.Transport{}
+		defaultT, ok := http.DefaultTransport.(*http.Transport)
+		if ok {
+			t = defaultT.Clone()
+		} else {
+			t = &http.Transport{}
+		}
 	}
 
 	t.Proxy = pool.ProxyFunc()
