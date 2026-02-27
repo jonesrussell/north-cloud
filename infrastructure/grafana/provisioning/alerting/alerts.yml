@@ -9,6 +9,8 @@ groups:
       - uid: nc-pipeline-stall
         title: "Pipeline stall — no classifications in 2 hours"
         condition: "C"
+        noDataState: OK
+        execErrState: OK
         data:
           - refId: "A"
             relativeTimeRange:
@@ -45,6 +47,8 @@ groups:
       - uid: nc-error-spike
         title: "Error spike — sustained errors across pipeline"
         condition: "C"
+        noDataState: OK
+        execErrState: OK
         data:
           - refId: "A"
             relativeTimeRange:
@@ -81,6 +85,8 @@ groups:
       - uid: nc-publisher-zero
         title: "Publisher zero output — no content published in 4 hours"
         condition: "C"
+        noDataState: OK
+        execErrState: OK
         data:
           - refId: "A"
             relativeTimeRange:
