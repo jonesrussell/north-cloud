@@ -89,6 +89,8 @@ func (s *ElasticsearchStorage) QueryRawContent(ctx context.Context, status strin
 		if content.ID == "" {
 			content.ID = hit.ID
 		}
+		// Capture the ES index name for correct classified index derivation
+		content.SourceIndex = hit.Index
 		contents = append(contents, &content)
 	}
 
