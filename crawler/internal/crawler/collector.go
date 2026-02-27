@@ -249,8 +249,21 @@ func (c *Crawler) setupRedisStorage() error {
 	return nil
 }
 
-// setupProxyRotation configures round-robin proxy rotation if enabled.
+// setupProxyRotation configures proxy rotation if enabled.
+// Uses the shared proxy pool if available, otherwise falls back to legacy round-robin.
 func (c *Crawler) setupProxyRotation() error {
+	// Shared proxy pool takes priority (injected via CrawlerParams).
+	if c.proxyPool != nil {
+		c.collector.SetProxyFunc(c.proxyPool.ProxyFunc())
+		c.GetJobLogger().Info(logs.CategoryLifecycle,
+			"Domain-sticky proxy pool enabled (shared)",
+			logs.Int("proxy_count", len(c.proxyPool.URLs())),
+			logs.Duration("sticky_ttl", c.cfg.ProxyStickyTTL),
+		)
+		return nil
+	}
+
+	// Legacy round-robin fallback
 	if !c.cfg.ProxiesEnabled || len(c.cfg.ProxyURLs) == 0 {
 		return nil
 	}

@@ -58,9 +58,10 @@ One IP per line. Read by the Squid config generator.
 
 ### Installation & Management
 
-- Installed on the host via `apt install squid`
-- Managed as a systemd service (`systemctl enable squid`)
-- Not containerized — needs direct access to host network interfaces
+- Runs as a Docker container (`ubuntu/squid:latest`) with `network_mode: host`
+- Managed via docker-compose alongside other services
+- `network_mode: host` gives Squid direct access to the host's network interfaces for outbound IP binding
+- Config mounted from `/opt/north-cloud/squid/squid.conf`, logs from `/opt/north-cloud/squid/logs/`
 
 ### Port-per-IP Model
 
