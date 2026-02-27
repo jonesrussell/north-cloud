@@ -921,7 +921,11 @@ func (s *Server) handleGetGrafanaAlerts(ctx context.Context, id any, arguments j
 		IncludeSilenced bool `json:"include_silenced"`
 	}
 
-	_ = json.Unmarshal(arguments, &args) // Empty args is okay
+	if len(arguments) > 0 {
+		if err := json.Unmarshal(arguments, &args); err != nil {
+			return s.errorResponse(id, InvalidParams, "Invalid arguments: "+err.Error())
+		}
+	}
 
 	alerts, err := s.grafanaClient.GetActiveAlerts(ctx)
 	if err != nil {

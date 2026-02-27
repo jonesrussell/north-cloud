@@ -32,7 +32,7 @@ export interface DiscoveredDomainLink {
   source_id: string
   source_name: string
   discovered_at: string
-  status: DomainStatus
+  status: string
 }
 
 export interface PathCluster {

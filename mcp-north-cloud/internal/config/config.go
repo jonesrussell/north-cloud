@@ -1,6 +1,9 @@
 package config
 
 import (
+	"fmt"
+	"os"
+
 	infraconfig "github.com/north-cloud/infrastructure/config"
 )
 
@@ -99,11 +102,9 @@ func setDefaults(cfg *Config) {
 func LoadOrDefault(path string) *Config {
 	cfg, err := Load(path)
 	if err != nil {
-		// Return config with defaults
 		cfg = &Config{}
 		setDefaults(cfg)
-		// Apply env overrides directly since Load didn't run
-		infraconfig.MustLoad[Config](path) // This will use defaults
+		_ = infraconfig.ApplyEnvOverrides(cfg)
 	}
 	return cfg
 }
@@ -114,6 +115,8 @@ func NewDefault() *Config {
 	cfg := &Config{}
 	setDefaults(cfg)
 	// Apply environment variable overrides (loads .env files internally)
-	_ = infraconfig.ApplyEnvOverrides(cfg)
+	if err := infraconfig.ApplyEnvOverrides(cfg); err != nil {
+		fmt.Fprintf(os.Stderr, "WARNING: failed to apply env overrides: %v\n", err)
+	}
 	return cfg
 }
