@@ -29,7 +29,7 @@
       </div>
     </section>
 
-    <section v-else-if="topStories.items.value.length >= heroMinItems">
+    <section v-else-if="heroItem && topStories.items.value.length >= heroMinItems">
       <h2 class="font-semibold text-2xl sm:text-3xl text-[var(--nc-text)] mb-4">
         Top Stories
       </h2>
@@ -45,12 +45,13 @@
         >
           <div class="relative aspect-video">
             <img
-              v-if="heroItem.og_image"
+              v-if="heroItem.og_image && !heroImageErrored"
               :src="heroItem.og_image"
               :alt="heroItem.title"
               loading="lazy"
               class="h-full w-full object-cover transition-transform group-hover:scale-105"
               style="transition-duration: var(--nc-duration-slow); transition-timing-function: var(--nc-ease-out)"
+              @error="heroImageErrored = true"
             >
             <div
               v-else
@@ -136,7 +137,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import ChannelSection from '@/components/news/ChannelSection.vue'
 import NewsCard from '@/components/news/NewsCard.vue'
 import { useFeed } from '@/composables/useFeed'
@@ -147,7 +148,9 @@ const heroSideCount = 2
 
 const topStories = useFeed()
 
-const heroItem = computed(() => topStories.items.value[0])
+const heroImageErrored = ref(false)
+
+const heroItem = computed(() => topStories.items.value[0] ?? null)
 const sideItems = computed(() => topStories.items.value.slice(1, 4))
 const heroTime = computed(() => {
   if (!heroItem.value) return ''

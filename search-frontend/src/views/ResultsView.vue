@@ -87,7 +87,10 @@
           </button>
 
           <!-- Time range dropdown -->
-          <div class="relative">
+          <div
+            ref="timeDropdownRef"
+            class="relative"
+          >
             <button
               type="button"
               class="rounded-full px-4 py-1.5 text-sm font-medium bg-transparent border border-[var(--nc-border)] text-[var(--nc-text-secondary)] hover:border-[var(--nc-border-strong)] transition-colors"
@@ -131,7 +134,10 @@
           <div class="flex-1" />
 
           <!-- Filters dropdown button (desktop) -->
-          <div class="relative hidden lg:block">
+          <div
+            ref="filtersPanelRef"
+            class="relative hidden lg:block"
+          >
             <button
               type="button"
               class="rounded-full px-4 py-1.5 text-sm font-medium bg-transparent border border-[var(--nc-border)] text-[var(--nc-text-secondary)] hover:border-[var(--nc-border-strong)] transition-colors"
@@ -275,7 +281,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useSearch } from '@/composables/useSearch'
 import SearchBar from '@/components/search/SearchBar.vue'
@@ -295,6 +301,8 @@ const route = useRoute()
 const showFilterDrawer = ref(false)
 const showTimeDropdown = ref(false)
 const showFiltersPanel = ref(false)
+const timeDropdownRef = ref<HTMLElement | null>(null)
+const filtersPanelRef = ref<HTMLElement | null>(null)
 
 const {
   query,
@@ -359,6 +367,7 @@ const timeOptions: TimeOption[] = [
 const activeTimeLabel = computed(() => {
   if (!filters.value.from_date) return 'Any time'
   const fromMs = new Date(filters.value.from_date).getTime()
+  if (Number.isNaN(fromMs)) return 'Any time'
   const nowMs = Date.now()
   const diffHours = Math.round((nowMs - fromMs) / 3600000)
   if (diffHours <= 2) return 'Past hour'
@@ -463,9 +472,11 @@ function handleSearch(searchQuery: string): void {
 
 // Close dropdowns on click outside
 function handleGlobalClick(e: MouseEvent): void {
-  const target = e.target as HTMLElement
-  if (!target.closest('[class*="relative"]')) {
+  const target = e.target as Node
+  if (showTimeDropdown.value && timeDropdownRef.value && !timeDropdownRef.value.contains(target)) {
     showTimeDropdown.value = false
+  }
+  if (showFiltersPanel.value && filtersPanelRef.value && !filtersPanelRef.value.contains(target)) {
     showFiltersPanel.value = false
   }
 }
@@ -476,6 +487,10 @@ onMounted(() => {
     search()
   }
   document.addEventListener('click', handleGlobalClick)
+})
+
+onBeforeUnmount(() => {
+  document.removeEventListener('click', handleGlobalClick)
 })
 
 watch(() => route.query, () => {
