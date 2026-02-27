@@ -1,14 +1,24 @@
 <template>
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-12">
     <!-- Hero: Top Stories -->
-    <section v-if="topStories.loading.value" aria-busy="true" aria-label="Loading top stories">
-      <h2 class="font-semibold text-2xl sm:text-3xl text-[var(--nc-text)] mb-4">Top Stories</h2>
+    <section
+      v-if="topStories.loading.value"
+      aria-busy="true"
+      aria-label="Loading top stories"
+    >
+      <h2 class="font-semibold text-2xl sm:text-3xl text-[var(--nc-text)] mb-4">
+        Top Stories
+      </h2>
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <div class="lg:col-span-2 rounded-xl bg-[var(--nc-bg-elevated)] border border-[var(--nc-border)] overflow-hidden animate-pulse">
           <div class="aspect-video bg-[var(--nc-bg-muted)]" />
         </div>
         <div class="space-y-4">
-          <div v-for="i in heroSideCount" :key="i" class="rounded-xl bg-[var(--nc-bg-elevated)] border border-[var(--nc-border)] overflow-hidden animate-pulse">
+          <div
+            v-for="i in heroSideCount"
+            :key="i"
+            class="rounded-xl bg-[var(--nc-bg-elevated)] border border-[var(--nc-border)] overflow-hidden animate-pulse"
+          >
             <div class="aspect-video bg-[var(--nc-bg-muted)]" />
             <div class="p-3 space-y-2">
               <div class="h-4 bg-[var(--nc-bg-muted)] rounded w-3/4" />
@@ -20,7 +30,9 @@
     </section>
 
     <section v-else-if="topStories.items.value.length >= heroMinItems">
-      <h2 class="font-semibold text-2xl sm:text-3xl text-[var(--nc-text)] mb-4">Top Stories</h2>
+      <h2 class="font-semibold text-2xl sm:text-3xl text-[var(--nc-text)] mb-4">
+        Top Stories
+      </h2>
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <!-- Hero card (2/3 width) -->
         <a
@@ -40,17 +52,29 @@
               class="h-full w-full object-cover transition-transform group-hover:scale-105"
               style="transition-duration: var(--nc-duration-slow); transition-timing-function: var(--nc-ease-out)"
             >
-            <div v-else class="h-full w-full bg-[var(--nc-bg-muted)]" />
+            <div
+              v-else
+              class="h-full w-full bg-[var(--nc-bg-muted)]"
+            />
             <!-- Gradient scrim -->
             <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
             <!-- Overlay text -->
             <div class="absolute bottom-0 left-0 right-0 p-5 sm:p-6">
               <div class="mb-2 flex items-center gap-2 text-xs text-white/70">
                 <span class="font-medium text-white/90">{{ heroItem.source }}</span>
-                <span v-if="heroTime" aria-hidden="true">&middot;</span>
-                <time v-if="heroTime" :datetime="heroItem.published_at">{{ heroTime }}</time>
+                <span
+                  v-if="heroTime"
+                  aria-hidden="true"
+                >&middot;</span>
+                <time
+                  v-if="heroTime"
+                  :datetime="heroItem.published_at"
+                >{{ heroTime }}</time>
               </div>
-              <h3 class="text-xl sm:text-2xl font-semibold text-white leading-snug line-clamp-3 group-hover:text-[var(--nc-primary-hover)] transition-colors" style="transition-duration: var(--nc-duration)">
+              <h3
+                class="text-xl sm:text-2xl font-semibold text-white leading-snug line-clamp-3 group-hover:text-[var(--nc-primary-hover)] transition-colors"
+                style="transition-duration: var(--nc-duration)"
+              >
                 {{ heroItem.title }}
               </h3>
             </div>
