@@ -11,7 +11,6 @@ import ContentView from '../views/distribution/ContentView.vue'
 // Content Intake views
 import JobsView from '../views/intake/JobsView.vue'
 import JobDetailView from '../views/intake/JobDetailView.vue'
-import DiscoveredLinksView from '../views/intake/DiscoveredLinksView.vue'
 import RulesView from '../views/intake/RulesView.vue'
 
 // Sources views (consolidated from scheduling)
@@ -155,9 +154,15 @@ const routes: RouteRecordRaw[] = [
   },
   {
     path: '/intake/discovered-links',
-    name: 'intake-discovered-links',
-    component: DiscoveredLinksView,
-    meta: { title: 'Discovered Links', section: 'intake', requiresAuth: true },
+    name: 'intake-discovered-domains',
+    component: () => import('../views/intake/DiscoveredDomainsView.vue'),
+    meta: { title: 'Discovered Domains', section: 'intake', requiresAuth: true },
+  },
+  {
+    path: '/intake/discovered-links/:domain',
+    name: 'intake-discovered-domain-detail',
+    component: () => import('../views/intake/DiscoveredDomainDetailView.vue'),
+    meta: { title: 'Domain Detail', section: 'intake', requiresAuth: true },
   },
   {
     path: '/intake/frontier',
