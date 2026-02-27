@@ -178,7 +178,7 @@
         {
           "refId": "A",
           "datasource": { "type": "loki", "uid": "loki" },
-          "expr": "sum(count_over_time({service=\"publisher\"} |= \"Published article to channel\" [$__range]))",
+          "expr": "sum(count_over_time({service=\"publisher\"} |= \"Published content item to channel\" [$__range]))",
           "queryType": "instant"
         }
       ],
@@ -280,7 +280,7 @@
         {
           "refId": "B",
           "datasource": { "type": "loki", "uid": "loki" },
-          "expr": "sum by () (count_over_time({service=\"publisher\"} |= \"Published article to channel\" [$__interval]))",
+          "expr": "sum by () (count_over_time({service=\"publisher\"} |= \"Published content item to channel\" [$__interval]))",
           "legendFormat": "Published"
         },
         {
@@ -672,7 +672,7 @@
         {
           "refId": "A",
           "datasource": { "type": "loki", "uid": "loki" },
-          "expr": "sum by (channel) (count_over_time({service=\"publisher\"} |= \"Published article to channel\" | json channel=\"channel\" [$__range]))",
+          "expr": "sum by (channel) (count_over_time({service=\"publisher\"} |= \"Published content item to channel\" | json channel=\"channel\" [$__range]))",
           "legendFormat": "{{channel}}",
           "queryType": "instant"
         }
