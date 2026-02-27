@@ -52,7 +52,10 @@ func (w *OutboxWriter) Write(ctx context.Context, content *domain.ClassifiedCont
 		}
 	}
 
-	indexName := content.SourceName + "_classified_content"
+	indexName, indexErr := ClassifiedIndexForContent(content.SourceIndex, content.SourceName)
+	if indexErr != nil {
+		return fmt.Errorf("determine classified index: %w", indexErr)
+	}
 
 	_, err := w.db.ExecContext(ctx, query,
 		content.ID,
@@ -122,7 +125,10 @@ func (w *OutboxWriter) WriteBatch(ctx context.Context, contents []*domain.Classi
 			}
 		}
 
-		indexName := content.SourceName + "_classified_content"
+		indexName, indexErr := ClassifiedIndexForContent(content.SourceIndex, content.SourceName)
+		if indexErr != nil {
+			return fmt.Errorf("determine classified index for %s: %w", content.ID, indexErr)
+		}
 
 		_, err = stmt.ExecContext(ctx,
 			content.ID,
