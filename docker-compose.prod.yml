@@ -529,8 +529,8 @@ services:
           cpus: "0.5"
           memory: 128M
     ports:
-      - "${NGINX_HTTP_PORT:-8080}:80"
-      - "${NGINX_HTTPS_PORT:-8443}:443"
+      - "127.0.0.1:${NGINX_HTTP_PORT:-8080}:80"
+      - "127.0.0.1:${NGINX_HTTPS_PORT:-8443}:443"
     volumes:
       - ./infrastructure/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./infrastructure/nginx/certs:/etc/nginx/certs:ro
