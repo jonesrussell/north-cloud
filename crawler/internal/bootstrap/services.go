@@ -31,10 +31,11 @@ import (
 // ServiceComponents holds all initialized services and handlers.
 type ServiceComponents struct {
 	// Handlers
-	JobsHandler            *api.JobsHandler
-	DiscoveredLinksHandler *api.DiscoveredLinksHandler
-	LogsHandler            *api.LogsHandler
-	LogsV2Handler          *api.LogsStreamV2Handler
+	JobsHandler              *api.JobsHandler
+	DiscoveredLinksHandler   *api.DiscoveredLinksHandler
+	DiscoveredDomainsHandler *api.DiscoveredDomainsHandler
+	LogsHandler              *api.LogsHandler
+	LogsV2Handler            *api.LogsStreamV2Handler
 
 	// Services
 	Scheduler  *scheduler.IntervalScheduler
@@ -82,6 +83,9 @@ func SetupServices(
 	// Create handlers
 	jobsHandler := api.NewJobsHandler(db.JobRepo, db.ExecutionRepo)
 	discoveredLinksHandler := api.NewDiscoveredLinksHandler(db.DiscoveredLinkRepo, db.JobRepo)
+	domainsHandler := api.NewDiscoveredDomainsHandler(
+		db.DomainAggregateRepo, db.DomainStateRepo, deps.Logger,
+	)
 
 	// Setup SSE
 	sseBroker, sseHandler, ssePublisher := setupSSE(deps)
@@ -150,23 +154,24 @@ func SetupServices(
 	discoveryPipeline := createDiscoveryPipeline(deps, db, frontierForSubmission)
 
 	return &ServiceComponents{
-		JobsHandler:            jobsHandler,
-		DiscoveredLinksHandler: discoveredLinksHandler,
-		LogsHandler:            logsHandler,
-		LogsV2Handler:          logsV2Handler,
-		Scheduler:              intervalScheduler,
-		LogService:             logResult.Service,
-		FeedPoller:             feedPoller,
-		ListDue:                listDue,
-		FeedDiscoverer:         feedDiscoverer,
-		ListUndiscovered:       listUndiscovered,
-		FrontierWorkerPool:     workerPool,
-		FrontierRepoForHandler: frontierForHandler,
-		StaleURLRecoverer:      staleRecoverer,
-		DiscoveryPipeline:      discoveryPipeline,
-		SSEBroker:              sseBroker,
-		SSEHandler:             sseHandler,
-		SSEPublisher:           ssePublisher,
+		JobsHandler:              jobsHandler,
+		DiscoveredLinksHandler:   discoveredLinksHandler,
+		DiscoveredDomainsHandler: domainsHandler,
+		LogsHandler:              logsHandler,
+		LogsV2Handler:            logsV2Handler,
+		Scheduler:                intervalScheduler,
+		LogService:               logResult.Service,
+		FeedPoller:               feedPoller,
+		ListDue:                  listDue,
+		FeedDiscoverer:           feedDiscoverer,
+		ListUndiscovered:         listUndiscovered,
+		FrontierWorkerPool:       workerPool,
+		FrontierRepoForHandler:   frontierForHandler,
+		StaleURLRecoverer:        staleRecoverer,
+		DiscoveryPipeline:        discoveryPipeline,
+		SSEBroker:                sseBroker,
+		SSEHandler:               sseHandler,
+		SSEPublisher:             ssePublisher,
 	}, nil
 }
 

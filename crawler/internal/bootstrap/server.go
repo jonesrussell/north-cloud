@@ -17,17 +17,18 @@ const syncStaggerMinutes = 5
 
 // HTTPServerDeps holds dependencies for the HTTP server.
 type HTTPServerDeps struct {
-	Config                 config.Interface
-	Logger                 infralogger.Logger
-	JobsHandler            *api.JobsHandler
-	DiscoveredLinksHandler *api.DiscoveredLinksHandler
-	LogsHandler            *api.LogsHandler
-	LogsV2Handler          *api.LogsStreamV2Handler
-	ExecutionRepo          database.ExecutionRepositoryInterface
-	SSEHandler             *api.SSEHandler
-	Migrator               *job.Migrator
-	JobRepo                *database.JobRepository
-	FrontierRepoForHandler api.FrontierRepoForHandler
+	Config                   config.Interface
+	Logger                   infralogger.Logger
+	JobsHandler              *api.JobsHandler
+	DiscoveredLinksHandler   *api.DiscoveredLinksHandler
+	DiscoveredDomainsHandler *api.DiscoveredDomainsHandler
+	LogsHandler              *api.LogsHandler
+	LogsV2Handler            *api.LogsStreamV2Handler
+	ExecutionRepo            database.ExecutionRepositoryInterface
+	SSEHandler               *api.SSEHandler
+	Migrator                 *job.Migrator
+	JobRepo                  *database.JobRepository
+	FrontierRepoForHandler   api.FrontierRepoForHandler
 }
 
 // ServerComponents holds the HTTP server and error channel.
@@ -61,7 +62,7 @@ func SetupHTTPServer(deps *HTTPServerDeps) *ServerComponents {
 		deps.Config, deps.JobsHandler, deps.DiscoveredLinksHandler,
 		deps.LogsHandler, deps.LogsV2Handler, deps.ExecutionRepo,
 		deps.Logger, deps.SSEHandler, migrationHandler, syncHandler,
-		frontierHandler,
+		frontierHandler, deps.DiscoveredDomainsHandler,
 	)
 
 	deps.Logger.Info("Starting HTTP server", infralogger.String("addr", deps.Config.GetServerConfig().Address))
