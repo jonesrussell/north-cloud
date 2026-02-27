@@ -395,6 +395,7 @@ func (h *LinkHandler) saveLinkToQueue(ctx context.Context, linkURL, parentURL st
 		SourceID:   cc.SourceID,
 		SourceName: cc.Source.Name,
 		URL:        linkURL,
+		Domain:     domain.ExtractDomain(linkURL),
 		ParentURL:  &parentURL,
 		Depth:      depth + 1, // Increment depth (colly's depth is 0-indexed from start URL)
 		Status:     "pending",

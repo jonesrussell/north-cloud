@@ -43,13 +43,17 @@ func (r *DiscoveredLinkRepository) CreateOrUpdate(ctx context.Context, link *dom
 	}
 
 	query := `
-		INSERT INTO discovered_links (id, source_id, source_name, url, parent_url, depth, 
-		                          discovered_at, queued_at, status, priority)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-		ON CONFLICT (source_id, url) 
-		DO UPDATE SET 
+		INSERT INTO discovered_links (id, source_id, source_name, url, parent_url, depth,
+		    domain, http_status, content_type,
+		    discovered_at, queued_at, status, priority)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+		ON CONFLICT (source_id, url)
+		DO UPDATE SET
 			parent_url = EXCLUDED.parent_url,
 			depth = EXCLUDED.depth,
+			domain = EXCLUDED.domain,
+			http_status = EXCLUDED.http_status,
+			content_type = EXCLUDED.content_type,
 			priority = EXCLUDED.priority,
 			updated_at = NOW()
 		RETURNING created_at, updated_at
@@ -64,6 +68,9 @@ func (r *DiscoveredLinkRepository) CreateOrUpdate(ctx context.Context, link *dom
 		link.URL,
 		link.ParentURL,
 		link.Depth,
+		link.Domain,
+		link.HTTPStatus,
+		link.ContentType,
 		link.DiscoveredAt,
 		link.QueuedAt,
 		link.Status,
@@ -153,8 +160,9 @@ func (r *DiscoveredLinkRepository) List(ctx context.Context, filters ListFilters
 	offset := max(filters.Offset, 0)
 
 	query := fmt.Sprintf(`
-		SELECT id, source_id, source_name, url, parent_url, depth, discovered_at, 
-		       queued_at, status, priority, created_at, updated_at
+		SELECT id, source_id, source_name, url, parent_url, depth,
+		       domain, http_status, content_type,
+		       discovered_at, queued_at, status, priority, created_at, updated_at
 		FROM discovered_links
 		%s
 		ORDER BY %s %s
@@ -195,8 +203,9 @@ func (r *DiscoveredLinkRepository) Count(ctx context.Context, filters ListFilter
 func (r *DiscoveredLinkRepository) GetByID(ctx context.Context, id string) (*domain.DiscoveredLink, error) {
 	var link domain.DiscoveredLink
 	query := `
-		SELECT id, source_id, source_name, url, parent_url, depth, discovered_at, 
-		       queued_at, status, priority, created_at, updated_at
+		SELECT id, source_id, source_name, url, parent_url, depth,
+		       domain, http_status, content_type,
+		       discovered_at, queued_at, status, priority, created_at, updated_at
 		FROM discovered_links
 		WHERE id = $1
 	`
@@ -225,8 +234,9 @@ func (r *DiscoveredLinkRepository) GetPendingBySource(
 	}
 
 	query := `
-		SELECT id, source_id, source_name, url, parent_url, depth, discovered_at, 
-		       queued_at, status, priority, created_at, updated_at
+		SELECT id, source_id, source_name, url, parent_url, depth,
+		       domain, http_status, content_type,
+		       discovered_at, queued_at, status, priority, created_at, updated_at
 		FROM discovered_links
 		WHERE source_id = $1 AND status = 'pending'
 		ORDER BY priority DESC, queued_at ASC
