@@ -46,7 +46,7 @@
         {
           "refId": "A",
           "datasource": { "type": "loki", "uid": "loki" },
-          "expr": "max_over_time({service=\"publisher\"} |= \"Discovered classified content indexes\" | json count=\"count\" | unwrap count [$__range])",
+          "expr": "max(max_over_time({service=\"publisher\"} |= \"Discovered classified content indexes\" | json count=\"count\" | unwrap count [$__range]))",
           "queryType": "instant"
         }
       ],
@@ -90,7 +90,7 @@
         {
           "refId": "A",
           "datasource": { "type": "loki", "uid": "loki" },
-          "expr": "count_over_time({service=\"classifier\"} |= \"Classification complete\" [$__range])",
+          "expr": "sum(count_over_time({service=\"classifier\"} |= \"Classification complete\" [$__range]))",
           "queryType": "instant"
         }
       ],
@@ -134,7 +134,7 @@
         {
           "refId": "A",
           "datasource": { "type": "loki", "uid": "loki" },
-          "expr": "count_over_time({service=\"publisher\"} |= \"Batch complete\" [$__range])",
+          "expr": "sum(count_over_time({service=\"publisher\"} |= \"Batch complete\" [$__range]))",
           "queryType": "instant"
         }
       ],
@@ -178,7 +178,7 @@
         {
           "refId": "A",
           "datasource": { "type": "loki", "uid": "loki" },
-          "expr": "count_over_time({service=\"publisher\"} |= \"Published article to channel\" [$__range])",
+          "expr": "sum(count_over_time({service=\"publisher\"} |= \"Published article to channel\" [$__range]))",
           "queryType": "instant"
         }
       ],
@@ -729,7 +729,7 @@
         {
           "refId": "A",
           "datasource": { "type": "loki", "uid": "loki" },
-          "expr": "avg_over_time({service=\"classifier\"} |= \"Batch processing complete\" | json items_per_second=\"items_per_second\" | unwrap items_per_second [$__interval])",
+          "expr": "avg(avg_over_time({service=\"classifier\"} |= \"Batch processing complete\" | json items_per_second=\"items_per_second\" | unwrap items_per_second [$__interval]))",
           "legendFormat": "items/sec"
         }
       ],
