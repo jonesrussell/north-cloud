@@ -46,7 +46,7 @@
         {
           "refId": "A",
           "datasource": { "type": "loki", "uid": "loki" },
-          "expr": "count_over_time({service=\"crawler\"} |= \"Job completed successfully\" [$__range])",
+          "expr": "sum(count_over_time({service=\"crawler\"} |= \"Job completed successfully\" [$__range]))",
           "queryType": "instant"
         }
       ],
@@ -81,7 +81,7 @@
         {
           "refId": "A",
           "datasource": { "type": "loki", "uid": "loki" },
-          "expr": "sum_over_time({service=\"crawler\"} |= \"Job completed successfully\" | json | unwrap items_crawled [$__range])",
+          "expr": "sum(sum_over_time({service=\"crawler\"} |= \"Job completed successfully\" | json | unwrap items_crawled [$__range]))",
           "queryType": "instant"
         }
       ],
@@ -116,7 +116,7 @@
         {
           "refId": "A",
           "datasource": { "type": "loki", "uid": "loki" },
-          "expr": "sum_over_time({service=\"crawler\"} |= \"Job completed successfully\" | json | unwrap items_indexed [$__range])",
+          "expr": "sum(sum_over_time({service=\"crawler\"} |= \"Job completed successfully\" | json | unwrap items_indexed [$__range]))",
           "queryType": "instant"
         }
       ],
@@ -151,7 +151,7 @@
         {
           "refId": "A",
           "datasource": { "type": "loki", "uid": "loki" },
-          "expr": "count_over_time({service=\"crawler\"} |= \"Failed to save discovered link\" [$__range])",
+          "expr": "sum(count_over_time({service=\"crawler\"} |= \"Failed to save discovered link\" [$__range]))",
           "queryType": "instant"
         }
       ],
@@ -190,7 +190,7 @@
         {
           "refId": "A",
           "datasource": { "type": "loki", "uid": "loki" },
-          "expr": "count_over_time({service=\"crawler\", level=\"error\"} [$__range])",
+          "expr": "sum(count_over_time({service=\"crawler\", level=\"error\"} [$__range]))",
           "queryType": "instant"
         }
       ],

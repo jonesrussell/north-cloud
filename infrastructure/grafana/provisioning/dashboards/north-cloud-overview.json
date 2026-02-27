@@ -142,7 +142,7 @@
         {
           "refId": "A",
           "datasource": { "type": "loki", "uid": "loki" },
-          "expr": "sum by () (sum_over_time({service=\"crawler\"} | json | msg=\"Crawl job completed\" | unwrap items_crawled [$__range]))",
+          "expr": "sum by () (sum_over_time({service=\"crawler\"} | json | msg=\"Job completed successfully\" | unwrap items_crawled [$__range]))",
           "queryType": "instant"
         }
       ],

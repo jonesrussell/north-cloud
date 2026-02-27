@@ -46,7 +46,7 @@
         {
           "refId": "A",
           "datasource": { "type": "loki", "uid": "loki" },
-          "expr": "count_over_time({service=\"crawler\"} |= \"URL submitted to frontier\" [$__range])",
+          "expr": "sum(count_over_time({service=\"crawler\"} |= \"URL submitted to frontier\" [$__range]))",
           "queryType": "instant"
         }
       ],
@@ -81,7 +81,7 @@
         {
           "refId": "A",
           "datasource": { "type": "loki", "uid": "loki" },
-          "expr": "count_over_time({service=\"crawler\"} |= \"URL submitted to frontier\" | json | queued=\"true\" [$__range])",
+          "expr": "sum(count_over_time({service=\"crawler\"} |= \"URL submitted to frontier\" | json | queued=\"true\" [$__range]))",
           "queryType": "instant"
         }
       ],
@@ -116,7 +116,7 @@
         {
           "refId": "A",
           "datasource": { "type": "loki", "uid": "loki" },
-          "expr": "count_over_time({service=\"crawler\"} |= \"URL fetched successfully\" [$__range])",
+          "expr": "sum(count_over_time({service=\"crawler\"} |= \"URL fetched successfully\" [$__range]))",
           "queryType": "instant"
         }
       ],
@@ -151,7 +151,7 @@
         {
           "refId": "A",
           "datasource": { "type": "loki", "uid": "loki" },
-          "expr": "count_over_time({service=\"crawler\"} |= \"URL fetch failed\" [$__range])",
+          "expr": "sum(count_over_time({service=\"crawler\"} |= \"URL fetch failed\" [$__range]))",
           "queryType": "instant"
         }
       ],
@@ -186,7 +186,7 @@
         {
           "refId": "A",
           "datasource": { "type": "loki", "uid": "loki" },
-          "expr": "count_over_time({service=\"crawler\"} |= \"robots_blocked\" [$__range])",
+          "expr": "sum(count_over_time({service=\"crawler\"} |= \"robots_blocked\" [$__range]))",
           "queryType": "instant"
         }
       ],
@@ -221,7 +221,7 @@
         {
           "refId": "A",
           "datasource": { "type": "loki", "uid": "loki" },
-          "expr": "count_over_time({service=\"crawler\"} |= \"URL marked dead\" [$__range])",
+          "expr": "sum(count_over_time({service=\"crawler\"} |= \"URL marked dead\" [$__range]))",
           "queryType": "instant"
         }
       ],
@@ -477,7 +477,7 @@
         {
           "refId": "A",
           "datasource": { "type": "loki", "uid": "loki" },
-          "expr": "count_over_time({service=\"crawler\"} |= \"claim failed\" [$__range])",
+          "expr": "sum(count_over_time({service=\"crawler\"} |= \"claim failed\" [$__range]))",
           "queryType": "instant"
         }
       ],
@@ -509,7 +509,7 @@
         {
           "refId": "A",
           "datasource": { "type": "loki", "uid": "loki" },
-          "expr": "count_over_time({service=\"crawler\"} |= \"process failed\" [$__range])",
+          "expr": "sum(count_over_time({service=\"crawler\"} |= \"process failed\" [$__range]))",
           "queryType": "instant"
         }
       ],
@@ -541,7 +541,7 @@
         {
           "refId": "A",
           "datasource": { "type": "loki", "uid": "loki" },
-          "expr": "count_over_time({service=\"crawler\"} |= \"update host last fetch failed\" [$__range])",
+          "expr": "sum(count_over_time({service=\"crawler\"} |= \"update host last fetch failed\" [$__range]))",
           "queryType": "instant"
         }
       ],
@@ -573,7 +573,7 @@
         {
           "refId": "A",
           "datasource": { "type": "loki", "uid": "loki" },
-          "expr": "count_over_time({service=\"crawler\"} |= \"worker pool stopped\" [$__range])",
+          "expr": "sum(count_over_time({service=\"crawler\"} |= \"worker pool stopped\" [$__range]))",
           "queryType": "instant"
         }
       ],
@@ -789,7 +789,7 @@
         {
           "refId": "A",
           "datasource": { "type": "loki", "uid": "loki" },
-          "expr": "count_over_time({service=\"crawler\"} |= \"feed poll failed\" [$__range])",
+          "expr": "sum(count_over_time({service=\"crawler\"} |= \"feed poll failed\" [$__range]))",
           "queryType": "instant"
         }
       ],

@@ -80,7 +80,7 @@
         {
           "datasource": { "type": "loki", "uid": "loki" },
           "editorMode": "code",
-          "expr": "count_over_time({service=\"streetcode\"} [$__range])",
+          "expr": "sum(count_over_time({service=\"streetcode\"} [$__range]))",
           "queryType": "instant",
           "refId": "A"
         }
@@ -130,7 +130,7 @@
         {
           "datasource": { "type": "loki", "uid": "loki" },
           "editorMode": "code",
-          "expr": "count_over_time({service=\"streetcode\", level=\"error\"} [$__range])",
+          "expr": "sum(count_over_time({service=\"streetcode\", level=\"error\"} [$__range]))",
           "queryType": "instant",
           "refId": "A"
         }
@@ -179,7 +179,7 @@
         {
           "datasource": { "type": "loki", "uid": "loki" },
           "editorMode": "code",
-          "expr": "count_over_time({service=\"orewire\"} [$__range])",
+          "expr": "sum(count_over_time({service=\"orewire\"} [$__range]))",
           "queryType": "instant",
           "refId": "A"
         }
@@ -229,7 +229,7 @@
         {
           "datasource": { "type": "loki", "uid": "loki" },
           "editorMode": "code",
-          "expr": "count_over_time({service=\"orewire\", level=\"error\"} [$__range])",
+          "expr": "sum(count_over_time({service=\"orewire\", level=\"error\"} [$__range]))",
           "queryType": "instant",
           "refId": "A"
         }
@@ -278,7 +278,7 @@
         {
           "datasource": { "type": "loki", "uid": "loki" },
           "editorMode": "code",
-          "expr": "count_over_time({service=\"coforge\"} [$__range])",
+          "expr": "sum(count_over_time({service=\"coforge\"} [$__range]))",
           "queryType": "instant",
           "refId": "A"
         }
@@ -328,7 +328,7 @@
         {
           "datasource": { "type": "loki", "uid": "loki" },
           "editorMode": "code",
-          "expr": "count_over_time({service=\"coforge\", level=\"error\"} [$__range])",
+          "expr": "sum(count_over_time({service=\"coforge\", level=\"error\"} [$__range]))",
           "queryType": "instant",
           "refId": "A"
         }
@@ -377,7 +377,7 @@
         {
           "datasource": { "type": "loki", "uid": "loki" },
           "editorMode": "code",
-          "expr": "count_over_time({service=\"movies-of-war\"} [$__range])",
+          "expr": "sum(count_over_time({service=\"movies-of-war\"} [$__range]))",
           "queryType": "instant",
           "refId": "A"
         }
@@ -427,7 +427,7 @@
         {
           "datasource": { "type": "loki", "uid": "loki" },
           "editorMode": "code",
-          "expr": "count_over_time({service=\"movies-of-war\", level=\"error\"} [$__range])",
+          "expr": "sum(count_over_time({service=\"movies-of-war\", level=\"error\"} [$__range]))",
           "queryType": "instant",
           "refId": "A"
         }
@@ -569,7 +569,7 @@
         {
           "datasource": { "type": "loki", "uid": "loki" },
           "editorMode": "code",
-          "expr": "count_over_time({service=\"streetcode\"} |= \"Article processed\" [$__range])",
+          "expr": "sum(count_over_time({service=\"streetcode\"} |= \"Article processed\" [$__range]))",
           "queryType": "instant",
           "refId": "A"
         }
@@ -618,7 +618,7 @@
         {
           "datasource": { "type": "loki", "uid": "loki" },
           "editorMode": "code",
-          "expr": "count_over_time({service=\"streetcode\"} |= \"Skipping non-core-crime\" [$__range])",
+          "expr": "sum(count_over_time({service=\"streetcode\"} |= \"Skipping non-core-crime\" [$__range]))",
           "queryType": "instant",
           "refId": "A"
         }
@@ -667,7 +667,7 @@
         {
           "datasource": { "type": "loki", "uid": "loki" },
           "editorMode": "code",
-          "expr": "count_over_time({service=\"orewire\"} |= \"Article processed\" [$__range])",
+          "expr": "sum(count_over_time({service=\"orewire\"} |= \"Article processed\" [$__range]))",
           "queryType": "instant",
           "refId": "A"
         }
@@ -716,7 +716,7 @@
         {
           "datasource": { "type": "loki", "uid": "loki" },
           "editorMode": "code",
-          "expr": "count_over_time({service=\"orewire\"} |= \"Skipping duplicate\" [$__range])",
+          "expr": "sum(count_over_time({service=\"orewire\"} |= \"Skipping duplicate\" [$__range]))",
           "queryType": "instant",
           "refId": "A"
         }
@@ -765,7 +765,7 @@
         {
           "datasource": { "type": "loki", "uid": "loki" },
           "editorMode": "code",
-          "expr": "count_over_time({service=\"coforge\"} |= \"Article processed\" [$__range])",
+          "expr": "sum(count_over_time({service=\"coforge\"} |= \"Article processed\" [$__range]))",
           "queryType": "instant",
           "refId": "A"
         }
@@ -814,7 +814,7 @@
         {
           "datasource": { "type": "loki", "uid": "loki" },
           "editorMode": "code",
-          "expr": "count_over_time({service=\"coforge\"} |= \"Skipping\" [$__range])",
+          "expr": "sum(count_over_time({service=\"coforge\"} |= \"Skipping\" [$__range]))",
           "queryType": "instant",
           "refId": "A"
         }
