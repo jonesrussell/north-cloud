@@ -44,7 +44,7 @@
       </p>
       <button
         type="button"
-        class="mt-3 inline-flex items-center rounded-lg border border-transparent bg-[var(--nc-accent)] px-4 py-2 text-sm font-medium text-white hover:bg-[var(--nc-accent-hover)] focus:outline-none focus:ring-2 focus:ring-[var(--nc-accent)] focus:ring-offset-2 transition-colors duration-[var(--nc-duration)]"
+        class="mt-3 inline-flex items-center rounded-lg border border-transparent bg-[var(--nc-primary)] px-4 py-2 text-sm font-medium text-white hover:bg-[var(--nc-primary-hover)] focus:outline-none focus:ring-2 focus:ring-[var(--nc-primary)] focus:ring-offset-2 transition-colors duration-[var(--nc-duration)]"
         @click="clearFilters"
       >
         Clear filters
@@ -63,7 +63,7 @@
           v-for="topic in suggestedTopics"
           :key="topic.key"
           type="button"
-          class="inline-flex items-center rounded-full bg-[var(--nc-bg-muted)] px-3 py-1.5 text-sm text-[var(--nc-text)] hover:bg-[var(--nc-border)] focus:outline-none focus:ring-2 focus:ring-[var(--nc-primary)] focus:ring-offset-2 transition-colors duration-[var(--nc-duration)]"
+          class="inline-flex items-center rounded-full bg-[var(--nc-bg-surface)] px-3 py-1.5 text-sm text-[var(--nc-text)] hover:bg-[var(--nc-primary-muted)] hover:text-[var(--nc-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--nc-primary)] focus:ring-offset-2 transition-colors duration-[var(--nc-duration)]"
           @click="onSuggestedTopicClick(topic.key)"
         >
           {{ formatTopicLabel(topic.key) }}

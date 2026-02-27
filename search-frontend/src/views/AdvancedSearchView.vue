@@ -1,6 +1,6 @@
 <template>
   <div class="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
-    <h1 class="font-display text-3xl font-normal text-[var(--nc-text)] mb-8">
+    <h1 class="font-semibold text-3xl text-[var(--nc-text)] mb-8">
       Advanced Search
     </h1>
 
@@ -18,7 +18,7 @@
               id="query"
               v-model="formData.query"
               type="text"
-              class="mt-1 block w-full rounded-lg border-[var(--nc-border)] bg-[var(--nc-bg-elevated)] px-4 py-2.5 text-[var(--nc-text)] placeholder-[var(--nc-text-muted)] focus:border-[var(--nc-primary)] focus:ring-[var(--nc-primary)]"
+              class="mt-1 block w-full rounded-lg border-[var(--nc-border)] bg-[var(--nc-bg-surface)] px-4 py-2.5 text-[var(--nc-text)] placeholder-[var(--nc-text-muted)] focus:border-[var(--nc-primary)] focus:ring-[var(--nc-primary)]"
               placeholder="Enter your search query"
             >
           </div>
@@ -74,7 +74,7 @@
             </router-link>
             <button
               type="submit"
-              class="inline-flex justify-center rounded-lg border border-transparent bg-[var(--nc-accent)] px-4 py-2 text-sm font-medium text-white hover:bg-[var(--nc-accent-hover)] focus:outline-none focus:ring-2 focus:ring-[var(--nc-accent)] focus:ring-offset-2 transition-colors duration-[var(--nc-duration)]"
+              class="inline-flex justify-center rounded-lg border border-transparent bg-[var(--nc-primary)] px-4 py-2 text-sm font-medium text-white hover:bg-[var(--nc-primary-hover)] focus:outline-none focus:ring-2 focus:ring-[var(--nc-primary)] focus:ring-offset-2 transition-colors duration-[var(--nc-duration)]"
             >
               Search
             </button>

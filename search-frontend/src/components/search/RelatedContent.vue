@@ -16,7 +16,7 @@
           v-for="bucket in relatedTopics"
           :key="bucket.key"
           type="button"
-          class="inline-flex items-center rounded-full bg-[var(--nc-bg-muted)] px-3 py-1.5 text-sm text-[var(--nc-text)] hover:bg-[var(--nc-primary-muted)] hover:text-[var(--nc-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--nc-primary)] transition-colors duration-[var(--nc-duration)]"
+          class="inline-flex items-center rounded-full bg-[var(--nc-bg-surface)] px-3 py-1.5 text-sm text-[var(--nc-text)] hover:bg-[var(--nc-primary-muted)] hover:text-[var(--nc-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--nc-primary)] transition-colors duration-[var(--nc-duration)]"
           @click="onTopicClick(bucket.key)"
         >
           {{ formatTopicLabel(bucket.key) }}

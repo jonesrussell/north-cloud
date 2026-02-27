@@ -36,8 +36,8 @@ src/
 ├── api/
 │   └── search.ts              # Axios clients — searchApi (/api/search) + feedApi (/feed.json)
 ├── views/
-│   ├── HomeView.vue           # News portal: trending, channel sections, search bar
-│   ├── ResultsView.vue        # Results: sidebar/drawer filters, pagination, sort
+│   ├── HomeView.vue           # News portal: hero section, trending strip, channel grids
+│   ├── ResultsView.vue        # Results: category sidebar, ordering pills, filters, pagination
 │   ├── AdvancedSearchView.vue # Advanced query builder (all/any/exact/exclude words)
 │   └── NotFoundView.vue       # 404
 ├── components/
@@ -75,6 +75,17 @@ src/
     ├── highlightHelper.ts     # parseHighlight(), sanitizeHighlight(), truncateText()
     └── analytics.ts           # trackEvent() — fires CustomEvent north-cloud-analytics
 ```
+
+## Design System
+
+**Theme:** Obsidian Editorial — dark palette with blue primary accent.
+
+- **Font:** Source Sans 3 (both display and body)
+- **Palette:** Dark backgrounds (#111114 base), light text (#f0f0f3), blue primary (#3b82f6)
+- **All colors use CSS custom properties** (`--nc-*`) defined in `style.css` — never hardcode colors
+- **Hover pattern:** Border brightening (`hover:border-[var(--nc-border-strong)]`), not shadows
+- **Buttons:** Blue primary (`bg-[var(--nc-primary)]`), not amber accent
+- **Inputs on dark:** Use `bg-[var(--nc-bg-surface)]` for form fields
 
 ## Key Concepts
 

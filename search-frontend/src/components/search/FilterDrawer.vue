@@ -8,7 +8,7 @@
       aria-label="Filter options"
     >
       <div
-        class="fixed inset-0 bg-[var(--nc-text)]/40 backdrop-blur-sm transition-opacity"
+        class="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity"
         aria-hidden="true"
         @click="close"
       />

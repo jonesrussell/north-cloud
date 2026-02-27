@@ -2,7 +2,7 @@
   <section>
     <!-- Header: title + "See more" link -->
     <div class="flex items-baseline justify-between mb-4">
-      <h2 class="font-display text-2xl sm:text-3xl text-[var(--nc-text)]">
+      <h2 class="font-semibold text-2xl sm:text-3xl text-[var(--nc-text)]">
         <span
           class="inline-block w-2 h-5 rounded-sm mr-2 align-middle"
           :class="channelColor"
