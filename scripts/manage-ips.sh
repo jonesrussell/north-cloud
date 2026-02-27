@@ -35,7 +35,7 @@ SQUID_LOG_DIR="${SQUID_LOG_DIR:-/opt/north-cloud/squid/logs}"
 NETWORK_INTERFACE="${NETWORK_INTERFACE:-eth0}"
 BASE_PORT=3128
 DO_METADATA_URL="http://169.254.169.254/metadata/v1"
-DOCKER_BRIDGE_NETWORK="172.17.0.0/16"  # Crawler connects via gateway 172.17.0.1
+DOCKER_NETWORKS="172.16.0.0/12"  # All Docker subnets (bridge + compose networks)
 LOCALHOST_NETWORK="127.0.0.0/8"
 NETPLAN_DIR="/etc/netplan"
 CLOUD_INIT_NETWORK_CFG="/etc/cloud/cloud.cfg.d/99-disable-network-config.cfg"
@@ -775,9 +775,9 @@ shutdown_lifetime 5 seconds
 # Access Control
 # -----------------------------------------------------------------------------
 
-# Allow connections from localhost and Docker bridge network only
+# Allow connections from localhost and Docker networks only
 acl localhost_acl src $LOCALHOST_NETWORK
-acl docker_bridge src $DOCKER_BRIDGE_NETWORK
+acl docker_networks src $DOCKER_NETWORKS
 acl SSL_ports port 443
 acl Safe_ports port 80
 acl Safe_ports port 443
@@ -788,9 +788,9 @@ acl CONNECT method CONNECT
 http_access deny !Safe_ports
 http_access deny CONNECT !SSL_ports
 
-# Allow localhost and Docker bridge
+# Allow localhost and Docker networks
 http_access allow localhost_acl
-http_access allow docker_bridge
+http_access allow docker_networks
 
 # Deny everything else
 http_access deny all
