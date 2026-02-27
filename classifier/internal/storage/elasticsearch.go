@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"time"
 
 	es "github.com/elastic/go-elasticsearch/v8"
@@ -263,7 +264,13 @@ func (s *ElasticsearchStorage) BulkIndexClassifiedContent(ctx context.Context, c
 		return fmt.Errorf("bulk indexing error: %s", res.String())
 	}
 
-	return nil
+	// Parse the bulk response body for item-level errors (ES returns 200 even when items fail)
+	body, readErr := io.ReadAll(res.Body)
+	if readErr != nil {
+		return fmt.Errorf("failed to read bulk response: %w", readErr)
+	}
+
+	return checkBulkResponse(body)
 }
 
 // ListRawContentIndices lists all *_raw_content indices
