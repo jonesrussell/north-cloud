@@ -213,17 +213,18 @@ func Start() error {
 	migrator := SetupMigrator(deps, dbComponents.JobRepo)
 
 	serverDeps := &HTTPServerDeps{
-		Config:                 deps.Config,
-		Logger:                 deps.Logger,
-		JobsHandler:            serviceComponents.JobsHandler,
-		DiscoveredLinksHandler: serviceComponents.DiscoveredLinksHandler,
-		LogsHandler:            serviceComponents.LogsHandler,
-		LogsV2Handler:          serviceComponents.LogsV2Handler,
-		ExecutionRepo:          dbComponents.ExecutionRepo,
-		SSEHandler:             serviceComponents.SSEHandler,
-		Migrator:               migrator,
-		JobRepo:                dbComponents.JobRepo,
-		FrontierRepoForHandler: serviceComponents.FrontierRepoForHandler,
+		Config:                   deps.Config,
+		Logger:                   deps.Logger,
+		JobsHandler:              serviceComponents.JobsHandler,
+		DiscoveredLinksHandler:   serviceComponents.DiscoveredLinksHandler,
+		DiscoveredDomainsHandler: serviceComponents.DiscoveredDomainsHandler,
+		LogsHandler:              serviceComponents.LogsHandler,
+		LogsV2Handler:            serviceComponents.LogsV2Handler,
+		ExecutionRepo:            dbComponents.ExecutionRepo,
+		SSEHandler:               serviceComponents.SSEHandler,
+		Migrator:                 migrator,
+		JobRepo:                  dbComponents.JobRepo,
+		FrontierRepoForHandler:   serviceComponents.FrontierRepoForHandler,
 	}
 	serverComponents := SetupHTTPServer(serverDeps)
 

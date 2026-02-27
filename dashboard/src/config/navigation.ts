@@ -8,7 +8,6 @@ import {
   Database,
   Download,
   ListTodo,
-  Link,
   Filter,
   Globe,
   Building2,
@@ -73,7 +72,7 @@ export const navigation: NavSection[] = [
     quickAction: { label: 'New Job', path: '/intake/jobs?create=true' },
     children: [
       { title: 'Crawler Jobs', path: '/intake/jobs', icon: ListTodo },
-      { title: 'Discovered Links', path: '/intake/discovered-links', icon: Link },
+      { title: 'Discovered Domains', path: '/intake/discovered-links', icon: Globe },
       { title: 'URL Frontier', path: '/intake/frontier', icon: Layers },
       { title: 'Rules', path: '/intake/rules', icon: Filter },
     ],
