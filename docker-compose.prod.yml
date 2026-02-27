@@ -99,6 +99,32 @@ services:
       start_period: 20s
 
   # ------------------------------------------------------------
+  # Squid Proxy (IP Rotation)
+  # ------------------------------------------------------------
+  # network_mode: host gives Squid direct access to Reserved IPs
+  # on the host's network interfaces for outbound binding.
+  # Config and logs are mounted from the host.
+  squid:
+    image: ubuntu/squid:latest
+    container_name: north-cloud-squid
+    network_mode: host
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 128M
+    volumes:
+      - /opt/north-cloud/squid/squid.conf:/etc/squid/squid.conf:ro
+      - /opt/north-cloud/squid/logs:/var/log/squid
+    healthcheck:
+      test: ["CMD-SHELL", "squid -k check 2>/dev/null || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  # ------------------------------------------------------------
   # Source Manager (Prod)
   # ------------------------------------------------------------
   source-manager:

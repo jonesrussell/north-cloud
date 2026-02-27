@@ -1,8 +1,8 @@
 #!/bin/bash
 # IP Management Script for Crawler Proxy Rotation
 # Manages DigitalOcean Reserved IPs attached to the production droplet.
-# Squid runs on the host and binds outbound connections to these IPs.
-# The crawler (in Docker) connects to Squid via the Docker gateway.
+# Squid runs in a Docker container (network_mode: host) and binds outbound
+# connections to these IPs. The crawler connects to Squid via the Docker gateway.
 #
 # Usage:
 #   ./scripts/manage-ips.sh add --region <region>
@@ -14,13 +14,13 @@
 # Environment variables:
 #   DIGITALOCEAN_ACCESS_TOKEN - DigitalOcean API token (required for add/remove/validate, used by doctl)
 #   INVENTORY_FILE     - Path to IP inventory file (default: /opt/north-cloud/proxy-ips.conf)
-#   SQUID_CONF         - Path to Squid config (default: /etc/squid/squid.conf)
+#   SQUID_CONF         - Path to Squid config (default: /opt/north-cloud/squid/squid.conf)
 #   NETWORK_INTERFACE  - Network interface for IPs (default: eth0)
 #
 # Prerequisites:
 #   - doctl (DigitalOcean CLI, authenticated)
 #   - jq
-#   - squid
+#   - docker compose (Squid runs as a container)
 #   - ip (iproute2)
 
 set -euo pipefail
@@ -30,7 +30,8 @@ set -euo pipefail
 # =============================================================================
 
 INVENTORY_FILE="${INVENTORY_FILE:-/opt/north-cloud/proxy-ips.conf}"
-SQUID_CONF="${SQUID_CONF:-/etc/squid/squid.conf}"
+SQUID_CONF="${SQUID_CONF:-/opt/north-cloud/squid/squid.conf}"
+SQUID_LOG_DIR="${SQUID_LOG_DIR:-/opt/north-cloud/squid/logs}"
 NETWORK_INTERFACE="${NETWORK_INTERFACE:-eth0}"
 BASE_PORT=3128
 DO_METADATA_URL="http://169.254.169.254/metadata/v1"
@@ -38,6 +39,8 @@ DOCKER_BRIDGE_NETWORK="172.17.0.0/16"  # Crawler connects via gateway 172.17.0.1
 LOCALHOST_NETWORK="127.0.0.0/8"
 NETPLAN_DIR="/etc/netplan"
 CLOUD_INIT_NETWORK_CFG="/etc/cloud/cloud.cfg.d/99-disable-network-config.cfg"
+COMPOSE_DIR="${COMPOSE_DIR:-/opt/north-cloud}"
+SQUID_CONTAINER="north-cloud-squid"
 
 # Colors for output
 RED='\033[0;31m'
@@ -89,9 +92,12 @@ require_jq() {
   fi
 }
 
-require_squid() {
-  if ! command -v squid &>/dev/null; then
-    die "squid is not installed. Install: apt-get install squid"
+require_docker_compose() {
+  if ! command -v docker &>/dev/null; then
+    die "docker is not installed"
+  fi
+  if ! docker compose version &>/dev/null; then
+    die "docker compose plugin is not installed"
   fi
 }
 
@@ -184,7 +190,7 @@ cmd_add() {
   require_root
   require_doctl
   require_jq
-  require_squid
+  require_docker_compose
   ensure_inventory
 
   local droplet_id
@@ -353,7 +359,7 @@ cmd_remove() {
   require_root
   require_doctl
   require_jq
-  require_squid
+  require_docker_compose
   ensure_inventory
 
   # Verify the IP is in our inventory.
@@ -695,8 +701,12 @@ validate_inventory_on_interfaces() {
 
 cmd_regenerate_squid() {
   require_root
-  require_squid
+  require_docker_compose
   ensure_inventory
+
+  # Ensure config and log directories exist.
+  mkdir -p "$(dirname "$SQUID_CONF")"
+  mkdir -p "$SQUID_LOG_DIR"
 
   local ips
   ips=$(read_inventory_raw | cut -d: -f2)
@@ -712,9 +722,10 @@ cmd_regenerate_squid() {
 
   generate_squid_config "$ips" "$ip_count" "$hash" > "$tmp_conf"
 
-  # Validate the generated config before applying.
+  # Validate the generated config using the Squid container image.
   log_info "Validating Squid config..."
-  if ! squid -k parse -f "$tmp_conf" 2>/dev/null; then
+  if ! docker run --rm -v "${tmp_conf}:/etc/squid/squid.conf:ro" \
+      ubuntu/squid:latest squid -k parse 2>/dev/null; then
     rm -f "$tmp_conf"
     die "Generated Squid config failed validation (squid -k parse)"
   fi
@@ -857,13 +868,13 @@ NO_IPS
 regenerate_and_reload_squid() {
   cmd_regenerate_squid
 
-  log_info "Reloading Squid..."
-  if squid -k reconfigure 2>/dev/null; then
+  log_info "Reloading Squid container..."
+  if docker exec "$SQUID_CONTAINER" squid -k reconfigure 2>/dev/null; then
     log_success "Squid reloaded"
-  elif systemctl reload squid 2>/dev/null; then
-    log_success "Squid reloaded via systemctl"
+  elif (cd "$COMPOSE_DIR" && docker compose -f docker-compose.base.yml -f docker-compose.prod.yml restart squid 2>/dev/null); then
+    log_success "Squid restarted via docker compose"
   else
-    log_warn "Failed to reload Squid. You may need to restart it manually."
+    log_warn "Squid container not running. Start it with: docker compose -f docker-compose.base.yml -f docker-compose.prod.yml up -d squid"
   fi
 }
 
@@ -884,6 +895,7 @@ usage() {
   echo "Environment variables:"
   echo "  INVENTORY_FILE     Path to IP inventory (default: $INVENTORY_FILE)"
   echo "  SQUID_CONF         Path to Squid config (default: $SQUID_CONF)"
+  echo "  SQUID_LOG_DIR      Path to Squid logs (default: $SQUID_LOG_DIR)"
   echo "  NETWORK_INTERFACE  Network interface (default: $NETWORK_INTERFACE)"
   echo ""
   echo "Examples:"
