@@ -738,7 +738,7 @@ services:
       GF_SMTP_HOST: "mailpit:1025"
       GF_SMTP_USER: ""
       GF_SMTP_PASSWORD: ""
-      GF_SMTP_FROM_ADDRESS: "noreply@northcloud.one"
+      GF_SMTP_FROM_ADDRESS: "info@northcloud.one"
       GF_SMTP_FROM_NAME: "North Cloud Alerts (Dev)"
       GRAFANA_ALERT_EMAIL: "dev@localhost"
 
