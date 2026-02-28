@@ -134,6 +134,11 @@ func (c *ContentTypeClassifier) Classify(ctx context.Context, raw *domain.RawCon
 		}, nil
 	}
 
+	// Strategy 3c: Event keyword heuristic
+	if result := c.classifyFromEventKeywords(raw); result != nil {
+		return result, nil
+	}
+
 	// Strategy 3: Heuristic-based detection
 	// Check if content has characteristics of an article
 	if c.hasContentCharacteristics(raw) {
@@ -398,6 +403,18 @@ func (c *ContentTypeClassifier) classifyFromSchemaOrg(raw *domain.RawContent) *C
 			Confidence: schemaOrgConfidence,
 			Method:     "schema_org",
 			Reason:     "Schema.org JSON-LD JobPosting type detected",
+		}
+	}
+
+	if jsonld.FindByType(blocks, "Event") != nil {
+		c.logger.Debug("Content type detected via Schema.org Event",
+			infralogger.String("content_id", raw.ID),
+		)
+		return &ContentTypeResult{
+			Type:       domain.ContentTypeEvent,
+			Confidence: schemaOrgConfidence,
+			Method:     "schema_org",
+			Reason:     "Schema.org Event structured data detected",
 		}
 	}
 
