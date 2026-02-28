@@ -12,13 +12,21 @@ import (
 
 // ExtractedContent represents content extracted from a fetched HTML page.
 type ExtractedContent struct {
-	Title       string `json:"title"`
-	Body        string `json:"body"`
-	Description string `json:"description,omitempty"`
-	Author      string `json:"author,omitempty"`
-	ContentHash string `json:"content_hash"`
-	URL         string `json:"url"`
-	SourceID    string `json:"source_id"`
+	Title         string `json:"title"`
+	Body          string `json:"body"`
+	Description   string `json:"description,omitempty"`
+	Author        string `json:"author,omitempty"`
+	ContentHash   string `json:"content_hash"`
+	URL           string `json:"url"`
+	SourceID      string `json:"source_id"`
+	OGType        string `json:"og_type,omitempty"`
+	OGTitle       string `json:"og_title,omitempty"`
+	OGDescription string `json:"og_description,omitempty"`
+	OGImage       string `json:"og_image,omitempty"`
+	CanonicalURL  string `json:"canonical_url,omitempty"`
+	MetaKeywords  string `json:"meta_keywords,omitempty"`
+	PublishedDate string `json:"published_date,omitempty"`
+	WordCount     int    `json:"word_count"`
 }
 
 // ContentExtractor extracts article content from HTML using goquery.
@@ -50,6 +58,17 @@ func (e *ContentExtractor) Extract(
 	content.Author = extractMetaAuthor(doc)
 	content.Body = extractBodyText(doc)
 	content.ContentHash = computeHash(content.Body)
+	content.WordCount = len(strings.Fields(content.Body))
+
+	// OG metadata
+	content.OGType = extractOGMeta(doc, "og:type")
+	content.OGTitle = extractOGMeta(doc, "og:title")
+	content.OGDescription = extractOGMeta(doc, "og:description")
+	content.OGImage = extractOGMeta(doc, "og:image")
+
+	content.CanonicalURL = extractCanonicalURL(doc)
+	content.MetaKeywords = extractMetaKeywords(doc)
+	content.PublishedDate = extractPublishedDate(doc)
 
 	return content, nil
 }
@@ -114,4 +133,53 @@ func extractBodyText(doc *goquery.Document) string {
 func computeHash(text string) string {
 	h := sha256.Sum256([]byte(text))
 	return hex.EncodeToString(h[:])
+}
+
+// extractOGMeta extracts an OpenGraph meta tag value by property name.
+func extractOGMeta(doc *goquery.Document, property string) string {
+	selector := fmt.Sprintf("meta[property='%s']", property)
+	if val, exists := doc.Find(selector).Attr("content"); exists {
+		return strings.TrimSpace(val)
+	}
+	return ""
+}
+
+// extractCanonicalURL extracts the canonical URL from <link rel="canonical">.
+func extractCanonicalURL(doc *goquery.Document) string {
+	if href, exists := doc.Find("link[rel='canonical']").Attr("href"); exists {
+		return strings.TrimSpace(href)
+	}
+	return ""
+}
+
+// extractMetaKeywords extracts the keywords meta tag value.
+func extractMetaKeywords(doc *goquery.Document) string {
+	if kw, exists := doc.Find("meta[name='keywords']").Attr("content"); exists {
+		return strings.TrimSpace(kw)
+	}
+	return ""
+}
+
+// extractPublishedDate extracts a published date from common meta tag patterns.
+// Tries article:published_time (OG), then datePublished, then pubdate, then <time datetime>.
+func extractPublishedDate(doc *goquery.Document) string {
+	selectors := []struct {
+		sel  string
+		attr string
+	}{
+		{"meta[property='article:published_time']", "content"},
+		{"meta[name='datePublished']", "content"},
+		{"meta[name='pubdate']", "content"},
+		{"time[datetime]", "datetime"},
+	}
+
+	for _, s := range selectors {
+		if val, exists := doc.Find(s.sel).Attr(s.attr); exists {
+			if trimmed := strings.TrimSpace(val); trimmed != "" {
+				return trimmed
+			}
+		}
+	}
+
+	return ""
 }

@@ -2,6 +2,8 @@ package storage_test
 
 import (
 	"context"
+	"errors"
+	"strings"
 	"testing"
 
 	"github.com/jonesrussell/north-cloud/crawler/internal/storage"
@@ -35,15 +37,27 @@ func (m *mockIndexManager) UpdateMapping(context.Context, string, map[string]any
 
 // mockStorage implements types.Interface and delegates index operations to mockIndexManager.
 type mockStorageWithIndexManager struct {
-	indexManager *mockIndexManager
+	indexManager        *mockIndexManager
+	indexDocumentCalled bool
+	ifAbsentCalled      bool
+	ifAbsentErr         error
+	lastIfAbsentIndex   string
+	lastIfAbsentID      string
 }
 
 func (m *mockStorageWithIndexManager) GetIndexManager() types.IndexManager {
 	return m.indexManager
 }
 
-func (m *mockStorageWithIndexManager) IndexDocument(context.Context, string, string, any) error {
+func (m *mockStorageWithIndexManager) IndexDocument(_ context.Context, _, _ string, _ any) error {
+	m.indexDocumentCalled = true
 	return nil
+}
+func (m *mockStorageWithIndexManager) IndexDocumentIfAbsent(_ context.Context, index, id string, _ any) error {
+	m.ifAbsentCalled = true
+	m.lastIfAbsentIndex = index
+	m.lastIfAbsentID = id
+	return m.ifAbsentErr
 }
 func (m *mockStorageWithIndexManager) GetDocument(context.Context, string, string, any) error {
 	return nil
@@ -131,5 +145,90 @@ func TestEnsureRawContentIndex_UsesCanonicalMapping(t *testing.T) {
 	}
 	if enabled {
 		t.Error("expected jsonld_raw.enabled to be false (canonical mapping avoids dynamic mapping conflicts)")
+	}
+}
+
+func TestIndexRawContentIfAbsent_CallsIfAbsent(t *testing.T) {
+	t.Parallel()
+
+	mockIM := &mockIndexManager{indexExists: true}
+	ms := &mockStorageWithIndexManager{indexManager: mockIM}
+	logger := infralogger.NewNop()
+	indexer := storage.NewRawContentIndexer(ms, logger)
+
+	rc := &storage.RawContent{
+		ID:                   "abc123",
+		URL:                  "https://example.com/article",
+		SourceName:           "example.com",
+		Title:                "Test Article",
+		RawText:              "Some body text",
+		ClassificationStatus: "pending",
+		WordCount:            3,
+	}
+
+	ctx := context.Background()
+	err := indexer.IndexRawContentIfAbsent(ctx, rc)
+	if err != nil {
+		t.Fatalf("IndexRawContentIfAbsent: %v", err)
+	}
+
+	if !ms.ifAbsentCalled {
+		t.Error("expected IndexDocumentIfAbsent to be called")
+	}
+	if ms.indexDocumentCalled {
+		t.Error("expected IndexDocument NOT to be called for if-absent path")
+	}
+	if ms.lastIfAbsentIndex != "example_com_raw_content" {
+		t.Errorf("expected index example_com_raw_content, got %q", ms.lastIfAbsentIndex)
+	}
+	if ms.lastIfAbsentID != "abc123" {
+		t.Errorf("expected doc ID abc123, got %q", ms.lastIfAbsentID)
+	}
+}
+
+func TestIndexRawContentIfAbsent_NilContent(t *testing.T) {
+	t.Parallel()
+
+	mockIM := &mockIndexManager{indexExists: true}
+	ms := &mockStorageWithIndexManager{indexManager: mockIM}
+	logger := infralogger.NewNop()
+	indexer := storage.NewRawContentIndexer(ms, logger)
+
+	err := indexer.IndexRawContentIfAbsent(context.Background(), nil)
+	if err == nil {
+		t.Fatal("expected error for nil content, got nil")
+	}
+}
+
+func TestIndexRawContentIfAbsent_PropagatesError(t *testing.T) {
+	t.Parallel()
+
+	storageErr := errors.New("elasticsearch connection refused")
+	mockIM := &mockIndexManager{indexExists: true}
+	ms := &mockStorageWithIndexManager{
+		indexManager: mockIM,
+		ifAbsentErr:  storageErr,
+	}
+	logger := infralogger.NewNop()
+	indexer := storage.NewRawContentIndexer(ms, logger)
+
+	rc := &storage.RawContent{
+		ID:                   "abc123",
+		URL:                  "https://example.com/article",
+		SourceName:           "example.com",
+		Title:                "Test Article",
+		RawText:              "Some body text",
+		ClassificationStatus: "pending",
+	}
+
+	err := indexer.IndexRawContentIfAbsent(context.Background(), rc)
+	if err == nil {
+		t.Fatal("expected error to be propagated, got nil")
+	}
+	if !errors.Is(err, storageErr) {
+		t.Errorf("expected wrapped storageErr, got: %v", err)
+	}
+	if !strings.Contains(err.Error(), "failed to index raw content (if-absent)") {
+		t.Errorf("expected error message to contain context, got: %v", err)
 	}
 }

@@ -90,6 +90,41 @@ func (r *RawContentIndexer) IndexRawContent(ctx context.Context, rawContent *Raw
 	return nil
 }
 
+// IndexRawContentIfAbsent indexes raw content only if the document does not already exist.
+// Uses ES op_type=create so the frontier-fetcher write path does not overwrite documents
+// already indexed by the Colly crawler path, which produces richer content (JSON-LD, RawHTML).
+func (r *RawContentIndexer) IndexRawContentIfAbsent(ctx context.Context, rawContent *RawContent) error {
+	if rawContent == nil {
+		return errors.New("raw content is nil")
+	}
+
+	indexName := r.getRawContentIndexName(rawContent.SourceName)
+
+	r.logger.Debug("Indexing raw content if absent",
+		infralogger.String("index", indexName),
+		infralogger.String("content_id", rawContent.ID),
+		infralogger.String("source_name", rawContent.SourceName),
+	)
+
+	err := r.storage.IndexDocumentIfAbsent(ctx, indexName, rawContent.ID, rawContent)
+	if err != nil {
+		r.logger.Error("Failed to index raw content (if-absent)",
+			infralogger.Error(err),
+			infralogger.String("index", indexName),
+			infralogger.String("content_id", rawContent.ID),
+		)
+		return fmt.Errorf("failed to index raw content (if-absent): %w", err)
+	}
+
+	r.logger.Info("Indexed raw content (if-absent) for classification",
+		infralogger.String("index", indexName),
+		infralogger.String("content_id", rawContent.ID),
+		infralogger.String("classification_status", rawContent.ClassificationStatus),
+	)
+
+	return nil
+}
+
 var (
 	// invalidIndexNameChars matches all characters that are invalid in Elasticsearch index names.
 	// Invalid characters: space, ", *, ,, /, <, >, ?, \, |

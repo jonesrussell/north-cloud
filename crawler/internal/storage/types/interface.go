@@ -13,6 +13,7 @@ type Interface interface {
 
 	// Document operations
 	IndexDocument(ctx context.Context, index string, id string, document any) error
+	IndexDocumentIfAbsent(ctx context.Context, index string, id string, document any) error
 	GetDocument(ctx context.Context, index string, id string, document any) error
 	DeleteDocument(ctx context.Context, index string, id string) error
 

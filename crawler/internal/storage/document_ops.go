@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/http"
 
 	infralogger "github.com/north-cloud/infrastructure/logger"
 )
@@ -51,6 +52,62 @@ func (s *Storage) IndexDocument(ctx context.Context, index, id string, document 
 		infralogger.String("index", index),
 		infralogger.String("doc_id", id),
 		infralogger.String("type", fmt.Sprintf("%T", document)),
+		infralogger.String("url", getURLFromDocument(document)),
+	)
+	return nil
+}
+
+// IndexDocumentIfAbsent indexes a document only if it does not already exist (create-only).
+// Uses ES op_type=create; returns nil on 409 Conflict (document already exists), logging at debug level.
+func (s *Storage) IndexDocumentIfAbsent(ctx context.Context, index, id string, document any) error {
+	if s.client == nil {
+		return errors.New("elasticsearch client is not initialized")
+	}
+
+	ctx, cancel := s.createContextWithTimeout(ctx, DefaultIndexTimeout)
+	defer cancel()
+
+	body, err := json.Marshal(document)
+	if err != nil {
+		s.logOperationError("IndexDocumentIfAbsent", index, id, err)
+		return fmt.Errorf("failed to marshal document for indexing: %w", err)
+	}
+
+	res, err := s.client.Index(
+		index,
+		bytes.NewReader(body),
+		s.client.Index.WithContext(ctx),
+		s.client.Index.WithDocumentID(id),
+		s.client.Index.WithOpType("create"),
+		s.client.Index.WithRefresh("true"),
+	)
+	if err != nil {
+		s.logOperationError("IndexDocumentIfAbsent", index, id, err)
+		return fmt.Errorf("failed to index document: %w", err)
+	}
+	defer s.closeResponse(res, "IndexDocumentIfAbsent", index, id)
+
+	// 409 Conflict means the document already exists — this is expected, not an error.
+	if res.StatusCode == http.StatusConflict {
+		s.logger.Debug("Document already exists, skipping create-only write",
+			infralogger.String("index", index),
+			infralogger.String("doc_id", id),
+		)
+		return nil
+	}
+
+	if res.IsError() {
+		s.logger.Error("Elasticsearch returned error response",
+			infralogger.String("error", res.String()),
+			infralogger.String("index", index),
+			infralogger.String("doc_id", id),
+		)
+		return fmt.Errorf("elasticsearch error: %s", res.String())
+	}
+
+	s.logger.Info("Document indexed (create-only) successfully",
+		infralogger.String("index", index),
+		infralogger.String("doc_id", id),
 		infralogger.String("url", getURLFromDocument(document)),
 	)
 	return nil
