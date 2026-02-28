@@ -33,8 +33,6 @@ func (s *Server) handleGetAuthToken(ctx context.Context, id any, _ json.RawMessa
 
 // Workflow tool handlers (high-level, multi-service)
 
-const defaultMinQualityScore = 50
-
 // onboardSourceArgs holds the arguments for onboarding a source
 type onboardSourceArgs struct {
 	Name                 string         `json:"name"`
@@ -43,9 +41,6 @@ type onboardSourceArgs struct {
 	Selectors            map[string]any `json:"selectors"`
 	CrawlIntervalMinutes int            `json:"crawl_interval_minutes"`
 	CrawlIntervalType    string         `json:"crawl_interval_type"`
-	ChannelID            string         `json:"channel_id"`
-	MinQualityScore      int            `json:"min_quality_score"`
-	Topics               []string       `json:"topics"`
 }
 
 func (s *Server) handleOnboardSource(ctx context.Context, id any, arguments json.RawMessage) *Response {
@@ -72,7 +67,7 @@ func (s *Server) validateOnboardArgs(id any, args onboardSourceArgs) *Response {
 }
 
 func (s *Server) executeOnboardWorkflow(ctx context.Context, id any, args onboardSourceArgs) *Response {
-	const maxOnboardSteps = 3
+	const maxOnboardSteps = 2
 	result := map[string]any{}
 	stepsCompleted := make([]string, 0, maxOnboardSteps)
 
@@ -97,16 +92,6 @@ func (s *Server) executeOnboardWorkflow(ctx context.Context, id any, args onboar
 		result["crawl_error"] = err.Error()
 		result["steps_completed"] = stepsCompleted
 		return s.successResponse(id, result)
-	}
-
-	// Step 3: Create publishing route (optional)
-	if args.ChannelID != "" {
-		stepsCompleted, err = s.onboardRouteStep(ctx, args, result, stepsCompleted)
-		if err != nil {
-			result["route_error"] = err.Error()
-			result["steps_completed"] = stepsCompleted
-			return s.successResponse(id, result)
-		}
 	}
 
 	result["steps_completed"] = stepsCompleted
@@ -150,68 +135,6 @@ func (s *Server) onboardCrawlStep(
 	result["job_id"] = job.ID
 	result["job_status"] = job.Status
 	return steps, nil
-}
-
-func (s *Server) onboardRouteStep(ctx context.Context, args onboardSourceArgs, result map[string]any, steps []string) ([]string, error) {
-	// First, create a publisher source (Elasticsearch index mapping)
-	// Sanitize name: lowercase, replace spaces/special chars with underscores
-	sanitizedName := sanitizeSourceName(args.Name)
-	indexPattern := sanitizedName + "_classified_content"
-
-	pubSource, err := s.publisherClient.CreatePublisherSource(ctx, client.CreatePublisherSourceRequest{
-		Name:         sanitizedName,
-		IndexPattern: indexPattern,
-	})
-	if err != nil {
-		return steps, fmt.Errorf("failed to create publisher source: %w", err)
-	}
-	result["publisher_source_id"] = pubSource.ID
-	result["index_pattern"] = indexPattern
-	steps = append(steps, "publisher_source_created")
-
-	// Now create the route using the publisher source ID
-	minQuality := args.MinQualityScore
-	if minQuality == 0 {
-		minQuality = defaultMinQualityScore
-	}
-
-	route, err := s.publisherClient.CreateRoute(ctx, client.CreateRouteRequest{
-		SourceID:        pubSource.ID,
-		ChannelID:       args.ChannelID,
-		MinQualityScore: minQuality,
-		Topics:          args.Topics,
-		Active:          true,
-	})
-	if err != nil {
-		return steps, fmt.Errorf("failed to create route: %w", err)
-	}
-
-	result["route_id"] = route.ID
-	result["channel_id"] = args.ChannelID
-	return append(steps, "route_created"), nil
-}
-
-// sanitizeSourceName converts a source name to a valid index prefix
-// e.g., "My News Site" → "my_news_site"
-func sanitizeSourceName(name string) string {
-	// Lowercase
-	result := strings.ToLower(name)
-	// Replace spaces and special chars with underscores
-	replacer := strings.NewReplacer(
-		" ", "_",
-		"-", "_",
-		".", "_",
-		"/", "_",
-		"\\", "_",
-	)
-	result = replacer.Replace(result)
-	// Remove consecutive underscores
-	for strings.Contains(result, "__") {
-		result = strings.ReplaceAll(result, "__", "_")
-	}
-	// Trim underscores from ends
-	result = strings.Trim(result, "_")
-	return result
 }
 
 // Crawler tool handlers
@@ -642,119 +565,37 @@ func (s *Server) handleTestSource(ctx context.Context, id any, arguments json.Ra
 
 // Publisher tool handlers
 
-func (s *Server) handleCreateRoute(ctx context.Context, id any, arguments json.RawMessage) *Response {
-	var args struct {
-		SourceID        string   `json:"source_id"`
-		ChannelID       string   `json:"channel_id"`
-		MinQualityScore int      `json:"min_quality_score"`
-		Topics          []string `json:"topics"`
-		Active          bool     `json:"active"`
-	}
-
-	if err := json.Unmarshal(arguments, &args); err != nil {
-		return s.errorResponse(id, InvalidParams, "Invalid arguments: "+err.Error())
-	}
-
-	if args.SourceID == "" || args.ChannelID == "" {
-		return s.errorResponse(id, InvalidParams, "source_id and channel_id are required")
-	}
-
-	route, err := s.publisherClient.CreateRoute(ctx, client.CreateRouteRequest{
-		SourceID:        args.SourceID,
-		ChannelID:       args.ChannelID,
-		MinQualityScore: args.MinQualityScore,
-		Topics:          args.Topics,
-		Active:          args.Active,
-	})
-	if err != nil {
-		return s.errorResponse(id, InternalError, fmt.Sprintf("Failed to create route: %v", err))
-	}
-
-	return s.successResponse(id, map[string]any{
-		"route_id":          route.ID,
-		"source_id":         route.SourceID,
-		"channel_id":        route.ChannelID,
-		"min_quality_score": route.MinQualityScore,
-		"topics":            route.Topics,
-		"active":            route.Active,
-		"created_at":        route.CreatedAt,
-		"message":           "Publishing route created successfully",
-	})
-}
-
-func (s *Server) handleListRoutes(ctx context.Context, id any, arguments json.RawMessage) *Response {
-	var args struct {
-		SourceID  string `json:"source_id"`
-		ChannelID string `json:"channel_id"`
-		Limit     int    `json:"limit"`
-		Offset    int    `json:"offset"`
-	}
-
-	_ = json.Unmarshal(arguments, &args) // Empty args is okay
-
-	routes, err := s.publisherClient.ListRoutes(ctx, args.SourceID, args.ChannelID)
-	if err != nil {
-		return s.errorResponse(id, InternalError, fmt.Sprintf("Failed to list routes: %v", err))
-	}
-
-	// Apply pagination in MCP layer
-	total := len(routes)
-	limit := max(args.Limit, 0)
-	if limit == 0 {
-		limit = defaultLimit
-	}
-	limit = min(limit, maxLimit)
-
-	offset := max(args.Offset, 0)
-
-	if offset >= total {
-		routes = []client.Route{}
-	} else {
-		end := min(offset+limit, total)
-		routes = routes[offset:end]
-	}
-
-	return s.successResponse(id, map[string]any{
-		"routes": routes,
-		"count":  len(routes),
-		"total":  total,
-		"limit":  limit,
-		"offset": offset,
-	})
-}
-
 func (s *Server) handleCreateChannel(ctx context.Context, id any, arguments json.RawMessage) *Response {
 	var args struct {
-		Name        string `json:"name"`
-		Description string `json:"description"`
-		Enabled     *bool  `json:"enabled"`
+		Name         string               `json:"name"`
+		Slug         string               `json:"slug"`
+		RedisChannel string               `json:"redis_channel"`
+		Description  string               `json:"description"`
+		Rules        *client.ChannelRules `json:"rules"`
+		Enabled      *bool                `json:"enabled"`
 	}
 
 	if err := json.Unmarshal(arguments, &args); err != nil {
 		return s.errorResponse(id, InvalidParams, "Invalid arguments: "+err.Error())
 	}
 
-	if args.Name == "" {
-		return s.errorResponse(id, InvalidParams, "name is required")
+	if args.Name == "" || args.Slug == "" || args.RedisChannel == "" {
+		return s.errorResponse(id, InvalidParams, "name, slug, and redis_channel are required")
 	}
 
 	channel, err := s.publisherClient.CreateChannel(ctx, client.CreateChannelRequest{
-		Name:        args.Name,
-		Description: args.Description,
-		Enabled:     args.Enabled,
+		Name:         args.Name,
+		Slug:         args.Slug,
+		RedisChannel: args.RedisChannel,
+		Description:  args.Description,
+		Rules:        args.Rules,
+		Enabled:      args.Enabled,
 	})
 	if err != nil {
 		return s.errorResponse(id, InternalError, fmt.Sprintf("Failed to create channel: %v", err))
 	}
 
-	return s.successResponse(id, map[string]any{
-		"channel_id":  channel.ID,
-		"name":        channel.Name,
-		"description": channel.Description,
-		"enabled":     channel.Active,
-		"created_at":  channel.CreatedAt,
-		"message":     "Channel created successfully",
-	})
+	return s.successResponse(id, channel)
 }
 
 func (s *Server) handleListChannels(ctx context.Context, id any, arguments json.RawMessage) *Response {
@@ -769,11 +610,11 @@ func (s *Server) handleListChannels(ctx context.Context, id any, arguments json.
 		return s.errorResponse(id, InternalError, fmt.Sprintf("Failed to list channels: %v", err))
 	}
 
-	// Filter by active if requested
+	// Filter by enabled if requested
 	if args.ActiveOnly {
 		filtered := make([]client.Channel, 0, len(channels))
 		for i := range channels {
-			if channels[i].Active {
+			if channels[i].Enabled {
 				filtered = append(filtered, channels[i])
 			}
 		}
@@ -786,51 +627,48 @@ func (s *Server) handleListChannels(ctx context.Context, id any, arguments json.
 	})
 }
 
-func (s *Server) handleDeleteRoute(ctx context.Context, id any, arguments json.RawMessage) *Response {
+func (s *Server) handleDeleteChannel(ctx context.Context, id any, arguments json.RawMessage) *Response {
 	var args struct {
-		RouteID string `json:"route_id"`
+		ChannelID string `json:"channel_id"`
 	}
 
 	if err := json.Unmarshal(arguments, &args); err != nil {
 		return s.errorResponse(id, InvalidParams, "Invalid arguments: "+err.Error())
 	}
 
-	if args.RouteID == "" {
-		return s.errorResponse(id, InvalidParams, "route_id is required")
+	if args.ChannelID == "" {
+		return s.errorResponse(id, InvalidParams, "channel_id is required")
 	}
 
-	if err := s.publisherClient.DeleteRoute(ctx, args.RouteID); err != nil {
-		return s.errorResponse(id, InternalError, fmt.Sprintf("Failed to delete route: %v", err))
+	if err := s.publisherClient.DeleteChannel(ctx, args.ChannelID); err != nil {
+		return s.errorResponse(id, InternalError, fmt.Sprintf("Failed to delete channel: %v", err))
 	}
 
 	return s.successResponse(id, map[string]any{
-		"route_id": args.RouteID,
-		"message":  "Route deleted successfully",
+		"channel_id": args.ChannelID,
+		"message":    "Channel deleted successfully",
 	})
 }
 
-func (s *Server) handlePreviewRoute(ctx context.Context, id any, arguments json.RawMessage) *Response {
+func (s *Server) handlePreviewChannel(ctx context.Context, id any, arguments json.RawMessage) *Response {
 	var args struct {
-		RouteID string `json:"route_id"`
+		ChannelID string `json:"channel_id"`
 	}
 
 	if err := json.Unmarshal(arguments, &args); err != nil {
 		return s.errorResponse(id, InvalidParams, "Invalid arguments: "+err.Error())
 	}
 
-	if args.RouteID == "" {
-		return s.errorResponse(id, InvalidParams, "route_id is required")
+	if args.ChannelID == "" {
+		return s.errorResponse(id, InvalidParams, "channel_id is required")
 	}
 
-	items, err := s.publisherClient.PreviewRoute(ctx, args.RouteID)
+	preview, err := s.publisherClient.PreviewChannel(ctx, args.ChannelID)
 	if err != nil {
-		return s.errorResponse(id, InternalError, fmt.Sprintf("Failed to preview route: %v", err))
+		return s.errorResponse(id, InternalError, fmt.Sprintf("Failed to preview channel: %v", err))
 	}
 
-	return s.successResponse(id, map[string]any{
-		"items": items,
-		"count": len(items),
-	})
+	return s.successResponse(id, preview)
 }
 
 func (s *Server) handleGetPublishHistory(ctx context.Context, id any, arguments json.RawMessage) *Response {

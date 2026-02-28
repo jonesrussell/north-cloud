@@ -38,26 +38,24 @@ type PublisherSource struct {
 
 // Channel represents a publishing channel
 type Channel struct {
-	ID          string    `json:"id"`
-	Name        string    `json:"name"`
-	Description string    `json:"description"`
-	Active      bool      `json:"active"`
-	CreatedAt   time.Time `json:"created_at"`
-	UpdatedAt   time.Time `json:"updated_at"`
+	ID           string       `json:"id"`
+	Name         string       `json:"name"`
+	Slug         string       `json:"slug"`
+	RedisChannel string       `json:"redis_channel"`
+	Description  string       `json:"description"`
+	Rules        ChannelRules `json:"rules"`
+	RulesVersion int          `json:"rules_version"`
+	Enabled      bool         `json:"enabled"`
+	CreatedAt    time.Time    `json:"created_at"`
+	UpdatedAt    time.Time    `json:"updated_at"`
 }
 
-// Route represents a publishing route
-type Route struct {
-	ID              string    `json:"id"`
-	SourceID        string    `json:"source_id"`
-	ChannelID       string    `json:"channel_id"`
-	SourceName      string    `json:"source_name,omitempty"`
-	ChannelName     string    `json:"channel_name,omitempty"`
-	MinQualityScore int       `json:"min_quality_score"`
-	Topics          []string  `json:"topics"`
-	Active          bool      `json:"active"`
-	CreatedAt       time.Time `json:"created_at"`
-	UpdatedAt       time.Time `json:"updated_at"`
+// ChannelRules defines filtering rules for a channel
+type ChannelRules struct {
+	IncludeTopics   []string `json:"include_topics"`
+	ExcludeTopics   []string `json:"exclude_topics"`
+	MinQualityScore int      `json:"min_quality_score"`
+	ContentTypes    []string `json:"content_types"`
 }
 
 // PublishHistory represents a publish history record
@@ -74,197 +72,6 @@ type PublisherStats struct {
 	TotalPublished int              `json:"total_published"`
 	ItemsByChannel map[string]int   `json:"items_by_channel"`
 	RecentActivity []PublishHistory `json:"recent_activity"`
-}
-
-// PreviewItem represents a content item in preview
-type PreviewItem struct {
-	ID           string    `json:"id"`
-	Title        string    `json:"title"`
-	URL          string    `json:"url"`
-	QualityScore int       `json:"quality_score"`
-	Topics       []string  `json:"topics"`
-	PublishedAt  time.Time `json:"published_at"`
-}
-
-// CreateRouteRequest represents a request to create a route
-type CreateRouteRequest struct {
-	SourceID        string   `json:"source_id"`
-	ChannelID       string   `json:"channel_id"`
-	MinQualityScore int      `json:"min_quality_score"`
-	Topics          []string `json:"topics"`
-	Active          bool     `json:"active"`
-}
-
-// ListRoutes lists all publishing routes
-func (c *PublisherClient) ListRoutes(ctx context.Context, sourceID, channelID string) ([]Route, error) {
-	endpoint := fmt.Sprintf("%s/api/v1/routes", c.baseURL)
-
-	params := url.Values{}
-	if sourceID != "" {
-		params.Add("source_id", sourceID)
-	}
-	if channelID != "" {
-		params.Add("channel_id", channelID)
-	}
-
-	if len(params) > 0 {
-		endpoint = fmt.Sprintf("%s?%s", endpoint, params.Encode())
-	}
-
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, http.NoBody)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create request: %w", err)
-	}
-
-	resp, err := c.httpClient.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("failed to execute request: %w", err)
-	}
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read response: %w", err)
-	}
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("unexpected status code: %d, body: %s", resp.StatusCode, string(body))
-	}
-
-	// Publisher returns {"routes": [...], "count": N}
-	var response struct {
-		Routes []Route `json:"routes"`
-		Count  int     `json:"count"`
-	}
-	if err = json.Unmarshal(body, &response); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-
-	return response.Routes, nil
-}
-
-// CreateRoute creates a new publishing route
-//
-//nolint:dupl // Similar HTTP client pattern across different services is acceptable
-func (c *PublisherClient) CreateRoute(ctx context.Context, req CreateRouteRequest) (*Route, error) {
-	endpoint := fmt.Sprintf("%s/api/v1/routes", c.baseURL)
-
-	body, err := json.Marshal(req)
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal request: %w", err)
-	}
-
-	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, bytes.NewReader(body))
-	if err != nil {
-		return nil, fmt.Errorf("failed to create request: %w", err)
-	}
-
-	httpReq.Header.Set("Content-Type", "application/json")
-
-	resp, err := c.httpClient.Do(httpReq)
-	if err != nil {
-		return nil, fmt.Errorf("failed to execute request: %w", err)
-	}
-	defer resp.Body.Close()
-
-	respBody, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read response: %w", err)
-	}
-
-	if resp.StatusCode != http.StatusCreated && resp.StatusCode != http.StatusOK {
-		var errorResp struct {
-			Error string `json:"error"`
-		}
-		if jsonErr := json.Unmarshal(respBody, &errorResp); jsonErr == nil && errorResp.Error != "" {
-			return nil, fmt.Errorf("publisher error: %s", errorResp.Error)
-		}
-		return nil, fmt.Errorf("unexpected status code: %d, body: %s", resp.StatusCode, string(respBody))
-	}
-
-	var route Route
-	if err = json.Unmarshal(respBody, &route); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-
-	return &route, nil
-}
-
-// DeleteRoute deletes a publishing route
-//
-//nolint:dupl // Similar HTTP client pattern across different services is acceptable
-func (c *PublisherClient) DeleteRoute(ctx context.Context, routeID string) error {
-	endpoint := fmt.Sprintf("%s/api/v1/routes/%s", c.baseURL, routeID)
-
-	req, err := http.NewRequestWithContext(ctx, http.MethodDelete, endpoint, http.NoBody)
-	if err != nil {
-		return fmt.Errorf("failed to create request: %w", err)
-	}
-
-	resp, err := c.httpClient.Do(req)
-	if err != nil {
-		return fmt.Errorf("failed to execute request: %w", err)
-	}
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return fmt.Errorf("failed to read response: %w", err)
-	}
-
-	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusNoContent {
-		var errorResp struct {
-			Error string `json:"error"`
-		}
-		if jsonErr := json.Unmarshal(body, &errorResp); jsonErr == nil && errorResp.Error != "" {
-			return fmt.Errorf("publisher error: %s", errorResp.Error)
-		}
-		return fmt.Errorf("unexpected status code: %d, body: %s", resp.StatusCode, string(body))
-	}
-
-	return nil
-}
-
-// PreviewRoute previews content items matching route filters
-func (c *PublisherClient) PreviewRoute(ctx context.Context, routeID string) ([]PreviewItem, error) {
-	endpoint := fmt.Sprintf("%s/api/v1/routes/preview?route_id=%s", c.baseURL, routeID)
-
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, http.NoBody)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create request: %w", err)
-	}
-
-	resp, err := c.httpClient.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("failed to execute request: %w", err)
-	}
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read response: %w", err)
-	}
-
-	if resp.StatusCode != http.StatusOK {
-		var errorResp struct {
-			Error string `json:"error"`
-		}
-		if jsonErr := json.Unmarshal(body, &errorResp); jsonErr == nil && errorResp.Error != "" {
-			return nil, fmt.Errorf("publisher error: %s", errorResp.Error)
-		}
-		return nil, fmt.Errorf("unexpected status code: %d, body: %s", resp.StatusCode, string(body))
-	}
-
-	// Publisher returns {"estimated_count": N, "filters": {...}, "sample_items": [...]}
-	var response struct {
-		SampleItems    []PreviewItem `json:"sample_items"`
-		EstimatedCount int           `json:"estimated_count"`
-	}
-	if err = json.Unmarshal(body, &response); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-
-	return response.SampleItems, nil
 }
 
 // GetPublishHistory gets publish history with pagination
@@ -353,6 +160,8 @@ func (c *PublisherClient) GetStats(ctx context.Context) (*PublisherStats, error)
 }
 
 // ListSources lists all publisher sources
+//
+//nolint:dupl // Similar HTTP client pattern across different services is acceptable
 func (c *PublisherClient) ListSources(ctx context.Context) ([]PublisherSource, error) {
 	endpoint := fmt.Sprintf("%s/api/v1/sources", c.baseURL)
 
@@ -443,6 +252,8 @@ func (c *PublisherClient) CreatePublisherSource(ctx context.Context, req CreateP
 }
 
 // ListChannels lists all channels
+//
+//nolint:dupl // Similar HTTP client pattern across different services is acceptable
 func (c *PublisherClient) ListChannels(ctx context.Context) ([]Channel, error) {
 	endpoint := fmt.Sprintf("%s/api/v1/channels", c.baseURL)
 
@@ -480,9 +291,12 @@ func (c *PublisherClient) ListChannels(ctx context.Context) ([]Channel, error) {
 
 // CreateChannelRequest represents a request to create a channel
 type CreateChannelRequest struct {
-	Name        string `json:"name"`
-	Description string `json:"description"`
-	Enabled     *bool  `json:"enabled,omitempty"`
+	Name         string        `json:"name"`
+	Slug         string        `json:"slug"`
+	RedisChannel string        `json:"redis_channel"`
+	Description  string        `json:"description,omitempty"`
+	Rules        *ChannelRules `json:"rules,omitempty"`
+	Enabled      *bool         `json:"enabled,omitempty"`
 }
 
 // CreateChannel creates a new publishing channel
@@ -530,4 +344,85 @@ func (c *PublisherClient) CreateChannel(ctx context.Context, req CreateChannelRe
 	}
 
 	return &channel, nil
+}
+
+// DeleteChannel deletes a publishing channel
+//
+//nolint:dupl // Similar HTTP client pattern across different services is acceptable
+func (c *PublisherClient) DeleteChannel(ctx context.Context, channelID string) error {
+	endpoint := fmt.Sprintf("%s/api/v1/channels/%s", c.baseURL, channelID)
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodDelete, endpoint, http.NoBody)
+	if err != nil {
+		return fmt.Errorf("failed to create request: %w", err)
+	}
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("failed to execute request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return fmt.Errorf("failed to read response: %w", err)
+	}
+
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusNoContent {
+		var errorResp struct {
+			Error string `json:"error"`
+		}
+		if jsonErr := json.Unmarshal(body, &errorResp); jsonErr == nil && errorResp.Error != "" {
+			return fmt.Errorf("publisher error: %s", errorResp.Error)
+		}
+		return fmt.Errorf("unexpected status code: %d, body: %s", resp.StatusCode, string(body))
+	}
+
+	return nil
+}
+
+// ChannelPreview represents the preview response for a channel
+type ChannelPreview struct {
+	Channel      Channel `json:"channel"`
+	RulesSummary any     `json:"rules_summary"`
+}
+
+// PreviewChannel previews a channel's configuration and matching rules
+//
+//nolint:dupl // Similar HTTP client pattern across different services is acceptable
+func (c *PublisherClient) PreviewChannel(ctx context.Context, channelID string) (*ChannelPreview, error) {
+	endpoint := fmt.Sprintf("%s/api/v1/channels/%s/preview", c.baseURL, channelID)
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, http.NoBody)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to execute request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response: %w", err)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		var errorResp struct {
+			Error string `json:"error"`
+		}
+		if jsonErr := json.Unmarshal(body, &errorResp); jsonErr == nil && errorResp.Error != "" {
+			return nil, fmt.Errorf("publisher error: %s", errorResp.Error)
+		}
+		return nil, fmt.Errorf("unexpected status code: %d, body: %s", resp.StatusCode, string(body))
+	}
+
+	var preview ChannelPreview
+	if err = json.Unmarshal(body, &preview); err != nil {
+		return nil, fmt.Errorf("failed to parse response: %w", err)
+	}
+
+	return &preview, nil
 }

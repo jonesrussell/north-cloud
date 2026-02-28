@@ -11,8 +11,8 @@ task test             # Run tests
 task lint             # Run linter
 
 # Verify tool registration
-./test-tools.sh                   # local mode (expects 19 tools)
-MCP_ENV=prod ./test-tools.sh      # prod mode (expects 25 tools)
+./test-tools.sh                   # local mode (expects 18 tools)
+MCP_ENV=prod ./test-tools.sh      # prod mode (expects 23 tools)
 MCP_TEST_PROMPTS=1 ./test-tools.sh  # also test prompts and resources
 
 # Manual tool calls (binary must be built first: task build)
@@ -33,7 +33,7 @@ mcp-north-cloud/
 │   ├── mcp/
 │   │   ├── server.go        # Request routing, toolHandlers map, prompts/resources dispatch
 │   │   ├── types.go         # JSON-RPC types, Prompt/Resource types, Scope constants
-│   │   ├── tools.go         # 28 tool definitions (scoped by MCP_ENV)
+│   │   ├── tools.go         # 26 tool definitions (scoped by MCP_ENV)
 │   │   ├── handlers.go      # Tool implementations (one func per tool)
 │   │   ├── prompts.go       # prompts/list and prompts/get (4 prompts)
 │   │   ├── resources.go     # resources/list and resources/read (static docs)
@@ -76,14 +76,14 @@ Set `MCP_ENV` to control which tools appear in `tools/list`:
 
 | Environment | Count | Includes |
 |-------------|-------|---------|
-| `local` (default) | 19 | shared (16) + local-only (3) |
-| `prod` | 25 | shared (16) + prod-only (9) |
+| `local` (default) | 18 | shared (15) + local-only (3) |
+| `prod` | 23 | shared (15) + prod-only (8) |
 
-**Shared (16):** onboard_source, list_crawl_jobs, get_crawl_stats, add_source, list_sources, update_source, test_source, list_indexes, search_content, list_routes, list_channels, preview_route, get_publish_history, get_publisher_stats, classify_content, get_grafana_alerts
+**Shared (15):** onboard_source, list_crawl_jobs, get_crawl_stats, add_source, list_sources, update_source, test_source, list_indexes, search_content, list_channels, preview_channel, get_publish_history, get_publisher_stats, classify_content, get_grafana_alerts
 
 **Local-only (3):** lint_file, build_service, test_service
 
-**Prod-only (9):** delete_index, delete_source, delete_route, control_crawl_job, start_crawl, schedule_crawl, create_route, create_channel, get_auth_token
+**Prod-only (8):** delete_index, delete_source, control_crawl_job, start_crawl, schedule_crawl, create_channel, delete_channel, get_auth_token
 
 ### Scope Types
 
@@ -96,7 +96,7 @@ The server implements these JSON-RPC 2.0 methods:
 | Method | Description |
 |--------|-------------|
 | `initialize` | Returns protocol version `2024-11-05` and capabilities (tools, prompts, resources) |
-| `tools/list` | Returns tools for current `MCP_ENV` (19 local / 25 prod) |
+| `tools/list` | Returns tools for current `MCP_ENV` (18 local / 23 prod) |
 | `tools/call` | Routes `params.name` to the registered handler |
 | `prompts/list` | Returns 4 prompt templates |
 | `prompts/get` | Returns messages for a prompt with argument substitution |
@@ -121,7 +121,7 @@ Requests without an `id` field are notifications and receive no response.
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `MCP_ENV` | `local` | Tool scope: `local` (19 tools) or `prod` (25 tools) |
+| `MCP_ENV` | `local` | Tool scope: `local` (18 tools) or `prod` (23 tools) |
 | `CRAWLER_URL` | `http://localhost:8060` | Crawler service URL |
 | `SOURCE_MANAGER_URL` | `http://localhost:8050` | Source manager service URL |
 | `PUBLISHER_URL` | `http://localhost:8070` | Publisher service URL |
@@ -155,8 +155,8 @@ Requests without an `id` field are notifications and receive no response.
 
 ```bash
 # Verify tool registration counts
-./test-tools.sh               # local mode, expects 19
-MCP_ENV=prod ./test-tools.sh  # prod mode, expects 25
+./test-tools.sh               # local mode, expects 18
+MCP_ENV=prod ./test-tools.sh  # prod mode, expects 23
 
 # Also exercise prompts and resources
 MCP_TEST_PROMPTS=1 ./test-tools.sh
@@ -236,14 +236,14 @@ type Client struct {
 
 Clients are constructed in `server.go` using URL and timeout from config. Always pass `ctx` through to `http.NewRequestWithContext` — do not use `http.NewRequest`.
 
-### 28 Tools by Category
+### 26 Tools by Category
 
 | Category | Tools |
 |----------|-------|
 | **Workflow (1)** | onboard_source |
 | **Crawler (5)** | start_crawl, schedule_crawl, list_crawl_jobs, control_crawl_job, get_crawl_stats |
 | **Source Manager (5)** | add_source, list_sources, update_source, delete_source, test_source |
-| **Publisher (8)** | create_route, list_routes, create_channel, list_channels, delete_route, preview_route, get_publish_history, get_publisher_stats |
+| **Publisher (6)** | create_channel, list_channels, delete_channel, preview_channel, get_publish_history, get_publisher_stats |
 | **Search (1)** | search_content |
 | **Classifier (1)** | classify_content |
 | **Index Manager (2)** | list_indexes, delete_index |

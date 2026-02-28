@@ -38,9 +38,9 @@ func getWorkflowTools() []Tool {
 		{
 			Name:  "onboard_source",
 			Scope: ScopeShared,
-			Description: "Set up a complete content pipeline in one step: creates a source, starts crawling, " +
-				"and optionally configures a publishing route. Use when: User wants to add a new website/source and start crawling. " +
-				"Returns: source_id, job_id, optional route_id. Prefer over add_source + schedule_crawl for new sources.",
+			Description: "Set up a content pipeline: creates a source and starts crawling. " +
+				"Use when: User wants to add a new website/source and start crawling. " +
+				"Returns: source_id, job_id. Prefer over add_source + schedule_crawl for new sources.",
 			InputSchema: map[string]any{
 				"type": "object",
 				"properties": map[string]any{
@@ -69,21 +69,6 @@ func getWorkflowTools() []Tool {
 						"type":        "string",
 						"description": "Interval type: 'minutes', 'hours', or 'days' (required if crawl_interval_minutes set)",
 						"enum":        []string{"minutes", "hours", "days"},
-					},
-					"channel_id": map[string]any{
-						"type":        "string",
-						"description": "Channel ID to publish to (optional, omit to skip route creation)",
-					},
-					"min_quality_score": map[string]any{
-						"type":        "integer",
-						"description": "Minimum quality score for publishing (0-100, default: 50, only used if channel_id provided)",
-					},
-					"topics": map[string]any{
-						"type":        "array",
-						"description": "Topics to filter by when publishing (optional)",
-						"items": map[string]any{
-							"type": "string",
-						},
 					},
 				},
 				"required": []string{"name", "url", "source_type", "selectors"},
@@ -339,96 +324,68 @@ func getSourceManagerTools() []Tool {
 func getPublisherTools() []Tool {
 	return []Tool{
 		{
-			Name:        "create_route",
-			Scope:       ScopeProd,
-			Description: "Create a new publishing route that connects a source to a channel with quality and topic filters.",
-			InputSchema: map[string]any{
-				"type": "object",
-				"properties": map[string]any{
-					"source_id": map[string]any{
-						"type":        "string",
-						"description": "ID of the publisher source",
-					},
-					"channel_id": map[string]any{
-						"type":        "string",
-						"description": "ID of the channel to publish to",
-					},
-					"min_quality_score": map[string]any{
-						"type":        "integer",
-						"description": "Minimum quality score (0-100) for articles to publish",
-					},
-					"topics": map[string]any{
-						"type":        "array",
-						"description": "Topics to filter by (e.g., ['crime', 'news'])",
-						"items": map[string]any{
-							"type": "string",
-						},
-					},
-					"active": map[string]any{
-						"type":        "boolean",
-						"description": "Whether the route is active",
-					},
-				},
-				"required": []string{"source_id", "channel_id", "min_quality_score"},
-			},
-		},
-		{
-			Name:        "list_routes",
-			Scope:       ScopeShared,
-			Description: "List all publishing routes with optional filters and pagination.",
-			InputSchema: map[string]any{
-				"type": "object",
-				"properties": map[string]any{
-					"source_id": map[string]any{
-						"type":        "string",
-						"description": "Filter by source ID",
-					},
-					"channel_id": map[string]any{
-						"type":        "string",
-						"description": "Filter by channel ID",
-					},
-					"limit": map[string]any{
-						"type":        "integer",
-						"description": "Maximum number of routes to return (default: 20, max: 100)",
-					},
-					"offset": map[string]any{
-						"type":        "integer",
-						"description": "Number of routes to skip for pagination (default: 0)",
-					},
-				},
-			},
-		},
-		{
 			Name:  "create_channel",
 			Scope: ScopeProd,
-			Description: "Create a new publishing channel. Use when: User wants to set up a new Redis pub/sub " +
-				"topic for content routing. Returns: channel_id, name, and status. Channel names typically " +
-				"follow 'content:{topic}' pattern (e.g., 'content:crime', 'content:news').",
+			Description: "Create a new publishing channel with embedded routing rules. Channels define " +
+				"a Redis pub/sub topic and filtering rules (topics, quality, content types). " +
+				"Returns: full channel object with rules.",
 			InputSchema: map[string]any{
 				"type": "object",
 				"properties": map[string]any{
 					"name": map[string]any{
 						"type":        "string",
-						"description": "Channel name, typically 'content:{topic}' (e.g., 'content:crime', 'content:local')",
+						"description": "Human-readable channel name (e.g., 'Crime Feed', 'Mining News')",
+					},
+					"slug": map[string]any{
+						"type":        "string",
+						"description": "URL-friendly identifier (e.g., 'crime_feed', 'mining_news')",
+					},
+					"redis_channel": map[string]any{
+						"type":        "string",
+						"description": "Redis pub/sub channel name (e.g., 'articles:crime', 'articles:mining')",
 					},
 					"description": map[string]any{
 						"type":        "string",
 						"description": "Human-readable description of what this channel publishes",
+					},
+					"rules": map[string]any{
+						"type":        "object",
+						"description": "Filtering rules for content routing",
+						"properties": map[string]any{
+							"include_topics": map[string]any{
+								"type":        "array",
+								"description": "Topics to include (content must match at least one)",
+								"items":       map[string]any{"type": "string"},
+							},
+							"exclude_topics": map[string]any{
+								"type":        "array",
+								"description": "Topics to exclude",
+								"items":       map[string]any{"type": "string"},
+							},
+							"min_quality_score": map[string]any{
+								"type":        "integer",
+								"description": "Minimum quality score (0-100)",
+							},
+							"content_types": map[string]any{
+								"type":        "array",
+								"description": "Content types to include (e.g., ['article', 'recipe'])",
+								"items":       map[string]any{"type": "string"},
+							},
+						},
 					},
 					"enabled": map[string]any{
 						"type":        "boolean",
 						"description": "Whether the channel is active (default: true)",
 					},
 				},
-				"required": []string{"name"},
+				"required": []string{"name", "slug", "redis_channel"},
 			},
 		},
 		{
 			Name:  "list_channels",
 			Scope: ScopeShared,
-			Description: "List all publishing channels. Use when: User wants to see available channels for " +
-				"routing or needs a channel_id for create_route/onboard_source. Returns: channel IDs, " +
-				"names, descriptions, and active status.",
+			Description: "List all publishing channels with their routing rules. Returns: channel IDs, " +
+				"names, slugs, Redis channels, rules, and enabled status.",
 			InputSchema: map[string]any{
 				"type": "object",
 				"properties": map[string]any{
@@ -440,33 +397,33 @@ func getPublisherTools() []Tool {
 			},
 		},
 		{
-			Name:        "delete_route",
+			Name:        "delete_channel",
 			Scope:       ScopeProd,
-			Description: "Delete a publishing route.",
+			Description: "Delete a publishing channel.",
 			InputSchema: map[string]any{
 				"type": "object",
 				"properties": map[string]any{
-					"route_id": map[string]any{
+					"channel_id": map[string]any{
 						"type":        "string",
-						"description": "ID of the route to delete",
+						"description": "ID of the channel to delete",
 					},
 				},
-				"required": []string{"route_id"},
+				"required": []string{"channel_id"},
 			},
 		},
 		{
-			Name:        "preview_route",
+			Name:        "preview_channel",
 			Scope:       ScopeShared,
-			Description: "Preview content that would be published by a route without actually publishing them.",
+			Description: "Preview a channel's configuration, routing rules, and matching content summary.",
 			InputSchema: map[string]any{
 				"type": "object",
 				"properties": map[string]any{
-					"route_id": map[string]any{
+					"channel_id": map[string]any{
 						"type":        "string",
-						"description": "ID of the route to preview",
+						"description": "ID of the channel to preview",
 					},
 				},
-				"required": []string{"route_id"},
+				"required": []string{"channel_id"},
 			},
 		},
 		{

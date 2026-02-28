@@ -181,6 +181,8 @@ func (c *SourceManagerClient) listSourcesPage(ctx context.Context, limit, offset
 }
 
 // GetSource gets a source by ID
+//
+//nolint:dupl // Similar HTTP client pattern across different services is acceptable
 func (c *SourceManagerClient) GetSource(ctx context.Context, sourceID string) (*Source, error) {
 	endpoint := fmt.Sprintf("%s/api/v1/sources/%s", c.baseURL, sourceID)
 

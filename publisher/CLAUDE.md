@@ -14,8 +14,7 @@ task lint             # Run linter
 task migrate:up       # Run migrations
 
 # Common API calls
-curl http://localhost:8070/api/v1/routes
-curl http://localhost:8070/api/v1/routes/preview
+curl http://localhost:8070/api/v1/channels
 curl http://localhost:8070/api/v1/stats/overview
 curl http://localhost:8070/api/v1/publish-history?limit=10
 ```
@@ -198,11 +197,8 @@ All `/api/v1/*` routes require JWT authentication. Health endpoints are public.
 
 **Channels**:
 - `GET/POST/PUT/DELETE /api/v1/channels[/:id]`
+- `GET /api/v1/channels/:id/preview` — preview channel rules and matching content
 - `GET /api/v1/channels/:id/test-publish`
-
-**Routes**:
-- `GET/POST/PUT/DELETE /api/v1/routes[/:id]`
-- `GET /api/v1/routes/preview` — preview matching content without publishing
 
 **History and stats**:
 - `GET /api/v1/publish-history` — paginated publish history

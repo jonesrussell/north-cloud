@@ -11,7 +11,7 @@ func getAllPrompts() []Prompt {
 	return []Prompt{
 		{
 			Name:        "onboard_new_source",
-			Description: "Add a new website/source and optionally start crawling and create a publishing route.",
+			Description: "Add a new website/source and start crawling.",
 			Arguments: []PromptArgument{
 				{Name: "name", Description: "Name of the source", Required: true, Type: "string"},
 				{Name: "url", Description: "Base URL of the source to crawl", Required: true, Type: "string"},
@@ -19,9 +19,6 @@ func getAllPrompts() []Prompt {
 				{Name: "selectors", Description: "CSS selectors for content extraction (e.g. title, body, date, author)", Required: true},
 				{Name: "crawl_interval_minutes", Description: "Crawl interval value (optional)", Required: false, Type: "number"},
 				{Name: "crawl_interval_type", Description: "minutes, hours, or days (required if crawl_interval_minutes set)", Required: false, Type: "string"},
-				{Name: "channel_id", Description: "Channel to publish to; if set, a route will be created", Required: false, Type: "string"},
-				{Name: "min_quality_score", Description: "Minimum quality score for publishing (0-100)", Required: false, Type: "number"},
-				{Name: "topics", Description: "Topics to filter by when publishing", Required: false},
 			},
 		},
 		{
@@ -33,10 +30,9 @@ func getAllPrompts() []Prompt {
 		},
 		{
 			Name:        "publishing_review",
-			Description: "Preview a route and review publish history and stats.",
+			Description: "Preview a channel and review publish history and stats.",
 			Arguments: []PromptArgument{
-				{Name: "route_id", Description: "ID of the route to preview (optional)", Required: false, Type: "string"},
-				{Name: "channel_id", Description: "Filter by channel (optional)", Required: false, Type: "string"},
+				{Name: "channel_id", Description: "ID of the channel to preview (optional)", Required: false, Type: "string"},
 			},
 		},
 		{
@@ -104,12 +100,9 @@ func buildPromptMessages(def *Prompt, args map[string]any) ([]PromptMessage, err
 	}
 }
 
-func buildOnboardNewSourceMessages(args map[string]any) []PromptMessage {
-	text := "Use the onboard_source tool with the provided arguments to add the source and optionally start crawling and create a publishing route. "
-	if cid, _ := args["channel_id"].(string); cid != "" {
-		text += "Since channel_id is set, a route will be created. "
-	}
-	text += selectorCheatsheet
+func buildOnboardNewSourceMessages(_ map[string]any) []PromptMessage {
+	text := "Use the onboard_source tool with the provided arguments to add the source and start crawling. " +
+		selectorCheatsheet
 	return []PromptMessage{{
 		Role:    "user",
 		Content: []PromptContent{{Type: "text", Text: text}},
@@ -130,11 +123,11 @@ func buildDebugCrawlJobMessages(args map[string]any) []PromptMessage {
 }
 
 func buildPublishingReviewMessages(args map[string]any) []PromptMessage {
-	text := "Use preview_route(route_id), get_publish_history, and get_publisher_stats to preview " +
-		"what would be published and review recent activity. Summarize the findings."
-	if routeID, ok := args["route_id"].(string); ok && routeID != "" {
-		text = "Use preview_route with route_id \"" + routeID + "\", get_publish_history, and " +
-			"get_publisher_stats. Summarize what would be published and recent activity."
+	text := "Use list_channels, get_publish_history, and get_publisher_stats to review " +
+		"channel configurations and recent publishing activity. Summarize the findings."
+	if channelID, ok := args["channel_id"].(string); ok && channelID != "" {
+		text = "Use preview_channel with channel_id \"" + channelID + "\", get_publish_history, and " +
+			"get_publisher_stats. Summarize the channel configuration and recent activity."
 	}
 	return []PromptMessage{{
 		Role:    "user",
