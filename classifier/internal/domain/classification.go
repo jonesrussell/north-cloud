@@ -196,12 +196,14 @@ type ClassifiedContent struct {
 
 // ContentType constants
 const (
-	ContentTypeArticle = "article"
-	ContentTypePage    = "page"
-	ContentTypeVideo   = "video"
-	ContentTypeImage   = "image"
-	ContentTypeJob     = "job"
-	ContentTypeRecipe  = "recipe"
+	ContentTypeArticle  = "article"
+	ContentTypePage     = "page"
+	ContentTypeVideo    = "video"
+	ContentTypeImage    = "image"
+	ContentTypeJob      = "job"
+	ContentTypeRecipe   = "recipe"
+	ContentTypeEvent    = "event"
+	ContentTypeObituary = "obituary"
 )
 
 // ContentSubtype constants (granularity within article-like content).

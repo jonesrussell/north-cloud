@@ -17,6 +17,7 @@ const (
 	pageConfidence           = 0.6
 	urlExclusionConfidence   = 0.9
 	listingPageConfidence    = 0.85
+	ogMetadataConfidence     = 0.78
 	// String literal for article type matching
 	articleTypeString = "article"
 	// Listing page detection thresholds
@@ -30,13 +31,13 @@ const (
 )
 
 // alwaysExcludedPrefixes contains URL path prefixes that always indicate non-article content.
-// These match as prefixes: /classifieds/job-listings is excluded because /classifieds is.
+// These match as prefixes: /ads/job-listings is excluded because /ads is.
 var alwaysExcludedPrefixes = []string{
 	// Account/Auth pages
 	"/account", "/login", "/signin", "/signup", "/register",
 
-	// Classifieds
-	"/classifieds", "/classified", "/ads", "/advertisements",
+	// Advertising
+	"/ads", "/advertisements",
 
 	// Directory and submissions
 	"/directory", "/submissions",
@@ -52,6 +53,10 @@ var alwaysExcludedPrefixes = []string{
 var sectionIndexPaths = []string{
 	"/news", "/articles", "/stories", "/posts", "/blog",
 	"/ontario-news", "/local-news", "/breaking-news",
+	// Classifieds (moved from prefix-match so /classifieds/job-listing passes through)
+	"/classifieds", "/classified",
+	// Job/career sections (index pages excluded, individual listings pass through)
+	"/jobs", "/careers", "/employment", "/work-with-us", "/opportunities",
 }
 
 // paginationQueryParams contains query parameter names that indicate pagination
@@ -109,16 +114,7 @@ func (c *ContentTypeClassifier) Classify(ctx context.Context, raw *domain.RawCon
 		}, nil
 	}
 
-	// Strategy 1: Check Open Graph metadata (with validation)
-	if raw.OGType != "" {
-		result := c.classifyFromOGType(raw)
-		if result != nil {
-			return result, nil
-		}
-		// If result is nil, fall through to heuristic check
-	}
-
-	// Strategy 2: Check for listing page content patterns (before article heuristics)
+	// Strategy 1: Check for listing page content patterns (before keyword heuristics)
 	// Listing pages often have multiple article links or "Read more" patterns
 	if c.isListingPageContent(raw) {
 		c.logger.Debug("Content type detected as listing page via content patterns",
@@ -134,7 +130,29 @@ func (c *ContentTypeClassifier) Classify(ctx context.Context, raw *domain.RawCon
 		}, nil
 	}
 
-	// Strategy 3: Heuristic-based detection
+	// Strategy 2a-d: Keyword heuristics (specific content types beat generic OG metadata)
+	if result := c.classifyFromRecipeKeywords(raw); result != nil {
+		return result, nil
+	}
+	if result := c.classifyFromJobKeywords(raw); result != nil {
+		return result, nil
+	}
+	if result := c.classifyFromEventKeywords(raw); result != nil {
+		return result, nil
+	}
+	if result := c.classifyFromObituaryKeywords(raw); result != nil {
+		return result, nil
+	}
+
+	// Strategy 3: Check Open Graph metadata (demoted after keyword heuristics)
+	if raw.OGType != "" {
+		result := c.classifyFromOGType(raw)
+		if result != nil {
+			return result, nil
+		}
+	}
+
+	// Strategy 4: Heuristic-based detection
 	// Check if content has characteristics of an article
 	if c.hasContentCharacteristics(raw) {
 		c.logger.Debug("Content type detected via heuristics",
@@ -195,7 +213,6 @@ func (c *ContentTypeClassifier) classifyFromOGType(raw *domain.RawContent) *Cont
 	}
 
 	// Check for article indicators
-	// Trust og_type as authoritative - if it says "article", it's an article
 	if ogType == articleTypeString || ogType == "news" || strings.Contains(ogType, articleTypeString) {
 		c.logger.Debug("Content type detected via OG metadata",
 			infralogger.String("content_id", raw.ID),
@@ -204,7 +221,7 @@ func (c *ContentTypeClassifier) classifyFromOGType(raw *domain.RawContent) *Cont
 		)
 		return &ContentTypeResult{
 			Type:       domain.ContentTypeArticle,
-			Confidence: 1.0,
+			Confidence: ogMetadataConfidence,
 			Method:     "og_metadata",
 			Reason:     "Open Graph type indicates article content",
 		}
@@ -227,7 +244,7 @@ func (c *ContentTypeClassifier) classifyFromOGType(raw *domain.RawContent) *Cont
 		)
 		return &ContentTypeResult{
 			Type:       domain.ContentTypeVideo,
-			Confidence: 1.0,
+			Confidence: ogMetadataConfidence,
 			Method:     "og_metadata",
 			Reason:     "Open Graph type indicates video content",
 		}
@@ -242,7 +259,7 @@ func (c *ContentTypeClassifier) classifyFromOGType(raw *domain.RawContent) *Cont
 		)
 		return &ContentTypeResult{
 			Type:       domain.ContentTypeImage,
-			Confidence: 1.0,
+			Confidence: ogMetadataConfidence,
 			Method:     "og_metadata",
 			Reason:     "Open Graph type indicates image content",
 		}
@@ -398,6 +415,18 @@ func (c *ContentTypeClassifier) classifyFromSchemaOrg(raw *domain.RawContent) *C
 			Confidence: schemaOrgConfidence,
 			Method:     "schema_org",
 			Reason:     "Schema.org JSON-LD JobPosting type detected",
+		}
+	}
+
+	if jsonld.FindByType(blocks, "Event") != nil {
+		c.logger.Debug("Content type detected via Schema.org Event",
+			infralogger.String("content_id", raw.ID),
+		)
+		return &ContentTypeResult{
+			Type:       domain.ContentTypeEvent,
+			Confidence: schemaOrgConfidence,
+			Method:     "schema_org",
+			Reason:     "Schema.org Event structured data detected",
 		}
 	}
 
