@@ -13,7 +13,11 @@ if [ -f .env ]; then
     [[ "$line" =~ ^(UID|GID)= ]] && continue
     [[ "$line" =~ ^# ]] && continue
     [[ "$line" =~ ^[[:space:]]*$ ]] && continue
-    [[ "$line" =~ ^[A-Za-z_][A-Za-z0-9_]*= ]] && export "$line"
+    if [[ "$line" =~ ^([A-Za-z_][A-Za-z0-9_]*)= ]]; then
+      var_name="${BASH_REMATCH[1]}"
+      # Only export if not already set by the caller (e.g., .mcp.json env vars)
+      [[ -z "${!var_name+x}" ]] && export "$line"
+    fi
   done < .env
 fi
 
