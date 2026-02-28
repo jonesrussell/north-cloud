@@ -641,6 +641,7 @@ func createFrontierWorkerPool(
 	indexer := &contentIndexerAdapter{
 		indexer:   rawIndexer,
 		apiClient: apiClient,
+		logger:    deps.Logger,
 	}
 
 	wpLogger := &logAdapter{log: deps.Logger}

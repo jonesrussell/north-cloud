@@ -91,7 +91,8 @@ func (r *RawContentIndexer) IndexRawContent(ctx context.Context, rawContent *Raw
 }
 
 // IndexRawContentIfAbsent indexes raw content only if the document does not already exist.
-// Uses create-only semantics so the fetcher path never overwrites a richer Colly-written document.
+// Uses ES op_type=create so the frontier-fetcher write path does not overwrite documents
+// already indexed by the Colly crawler path, which produces richer content (JSON-LD, RawHTML).
 func (r *RawContentIndexer) IndexRawContentIfAbsent(ctx context.Context, rawContent *RawContent) error {
 	if rawContent == nil {
 		return errors.New("raw content is nil")
@@ -114,6 +115,12 @@ func (r *RawContentIndexer) IndexRawContentIfAbsent(ctx context.Context, rawCont
 		)
 		return fmt.Errorf("failed to index raw content (if-absent): %w", err)
 	}
+
+	r.logger.Info("Indexed raw content (if-absent) for classification",
+		infralogger.String("index", indexName),
+		infralogger.String("content_id", rawContent.ID),
+		infralogger.String("classification_status", rawContent.ClassificationStatus),
+	)
 
 	return nil
 }

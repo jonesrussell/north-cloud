@@ -161,7 +161,7 @@ func extractMetaKeywords(doc *goquery.Document) string {
 }
 
 // extractPublishedDate extracts a published date from common meta tag patterns.
-// Tries article:published_time (OG), then datePublished, then pubdate.
+// Tries article:published_time (OG), then datePublished, then pubdate, then <time datetime>.
 func extractPublishedDate(doc *goquery.Document) string {
 	selectors := []struct {
 		sel  string

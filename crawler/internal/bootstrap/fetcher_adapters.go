@@ -12,7 +12,29 @@ import (
 	"github.com/jonesrussell/north-cloud/crawler/internal/fetcher"
 	"github.com/jonesrussell/north-cloud/crawler/internal/sources/apiclient"
 	"github.com/jonesrussell/north-cloud/crawler/internal/storage"
+	infralogger "github.com/north-cloud/infrastructure/logger"
 )
+
+// publishedDateFormats lists time formats to try when parsing published dates from HTML meta tags.
+// Ordered from most specific to least specific.
+var publishedDateFormats = []string{
+	time.RFC3339,
+	"2006-01-02T15:04:05Z07:00",
+	"2006-01-02T15:04:05",
+	"2006-01-02 15:04:05",
+	"2006-01-02",
+}
+
+// parsePublishedDate attempts to parse a date string using common formats.
+// Returns the parsed time and true on success, or zero time and false if no format matched.
+func parsePublishedDate(raw string) (time.Time, bool) {
+	for _, layout := range publishedDateFormats {
+		if parsed, err := time.Parse(layout, raw); err == nil {
+			return parsed, true
+		}
+	}
+	return time.Time{}, false
+}
 
 // === frontierClaimerAdapter ===
 
@@ -78,6 +100,7 @@ func (a *hostUpdaterAdapter) UpdateLastFetch(ctx context.Context, host string) e
 type contentIndexerAdapter struct {
 	indexer     *storage.RawContentIndexer
 	apiClient   *apiclient.Client
+	logger      infralogger.Logger
 	sourceCache sync.Map // map[string]string (sourceID → sourceName)
 }
 
@@ -91,7 +114,7 @@ func (a *contentIndexerAdapter) Index(ctx context.Context, content *fetcher.Extr
 		return fmt.Errorf("ensure index for %s: %w", sourceName, ensureErr)
 	}
 
-	rawContent := mapExtractedToRawContent(content, sourceName)
+	rawContent := mapExtractedToRawContent(content, sourceName, a.logger)
 	return a.indexer.IndexRawContentIfAbsent(ctx, rawContent)
 }
 
@@ -112,7 +135,12 @@ func (a *contentIndexerAdapter) resolveSourceName(ctx context.Context, sourceID 
 }
 
 // mapExtractedToRawContent converts fetcher.ExtractedContent to storage.RawContent.
-func mapExtractedToRawContent(content *fetcher.ExtractedContent, sourceName string) *storage.RawContent {
+// If logger is non-nil, warns when a non-empty published date cannot be parsed.
+func mapExtractedToRawContent(
+	content *fetcher.ExtractedContent,
+	sourceName string,
+	logger infralogger.Logger,
+) *storage.RawContent {
 	rc := &storage.RawContent{
 		ID:                   content.ContentHash,
 		URL:                  content.URL,
@@ -133,8 +161,14 @@ func mapExtractedToRawContent(content *fetcher.ExtractedContent, sourceName stri
 	}
 
 	if content.PublishedDate != "" {
-		if parsed, parseErr := time.Parse(time.RFC3339, content.PublishedDate); parseErr == nil {
+		if parsed, ok := parsePublishedDate(content.PublishedDate); ok {
 			rc.PublishedDate = &parsed
+		} else if logger != nil {
+			logger.Warn("Failed to parse published date, field will be nil",
+				infralogger.String("raw_date", content.PublishedDate),
+				infralogger.String("url", content.URL),
+				infralogger.String("source", sourceName),
+			)
 		}
 	}
 

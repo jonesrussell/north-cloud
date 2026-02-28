@@ -58,7 +58,7 @@ func (s *Storage) IndexDocument(ctx context.Context, index, id string, document 
 }
 
 // IndexDocumentIfAbsent indexes a document only if it does not already exist (create-only).
-// Uses ES op_type=create; returns nil silently on 409 Conflict (document already exists).
+// Uses ES op_type=create; returns nil on 409 Conflict (document already exists), logging at debug level.
 func (s *Storage) IndexDocumentIfAbsent(ctx context.Context, index, id string, document any) error {
 	if s.client == nil {
 		return errors.New("elasticsearch client is not initialized")

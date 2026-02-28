@@ -2,6 +2,8 @@ package storage_test
 
 import (
 	"context"
+	"errors"
+	"strings"
 	"testing"
 
 	"github.com/jonesrussell/north-cloud/crawler/internal/storage"
@@ -38,6 +40,7 @@ type mockStorageWithIndexManager struct {
 	indexManager        *mockIndexManager
 	indexDocumentCalled bool
 	ifAbsentCalled      bool
+	ifAbsentErr         error
 	lastIfAbsentIndex   string
 	lastIfAbsentID      string
 }
@@ -54,7 +57,7 @@ func (m *mockStorageWithIndexManager) IndexDocumentIfAbsent(_ context.Context, i
 	m.ifAbsentCalled = true
 	m.lastIfAbsentIndex = index
 	m.lastIfAbsentID = id
-	return nil
+	return m.ifAbsentErr
 }
 func (m *mockStorageWithIndexManager) GetDocument(context.Context, string, string, any) error {
 	return nil
@@ -194,5 +197,38 @@ func TestIndexRawContentIfAbsent_NilContent(t *testing.T) {
 	err := indexer.IndexRawContentIfAbsent(context.Background(), nil)
 	if err == nil {
 		t.Fatal("expected error for nil content, got nil")
+	}
+}
+
+func TestIndexRawContentIfAbsent_PropagatesError(t *testing.T) {
+	t.Parallel()
+
+	storageErr := errors.New("elasticsearch connection refused")
+	mockIM := &mockIndexManager{indexExists: true}
+	ms := &mockStorageWithIndexManager{
+		indexManager: mockIM,
+		ifAbsentErr:  storageErr,
+	}
+	logger := infralogger.NewNop()
+	indexer := storage.NewRawContentIndexer(ms, logger)
+
+	rc := &storage.RawContent{
+		ID:                   "abc123",
+		URL:                  "https://example.com/article",
+		SourceName:           "example.com",
+		Title:                "Test Article",
+		RawText:              "Some body text",
+		ClassificationStatus: "pending",
+	}
+
+	err := indexer.IndexRawContentIfAbsent(context.Background(), rc)
+	if err == nil {
+		t.Fatal("expected error to be propagated, got nil")
+	}
+	if !errors.Is(err, storageErr) {
+		t.Errorf("expected wrapped storageErr, got: %v", err)
+	}
+	if !strings.Contains(err.Error(), "failed to index raw content (if-absent)") {
+		t.Errorf("expected error message to contain context, got: %v", err)
 	}
 }
