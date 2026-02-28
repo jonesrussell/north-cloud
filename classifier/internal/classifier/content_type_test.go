@@ -47,8 +47,8 @@ func TestContentTypeClassifier_Classify_Article_ViaOG(t *testing.T) {
 		t.Errorf("expected type %s, got %s", domain.ContentTypeArticle, result.Type)
 	}
 
-	if result.Confidence != 1.0 {
-		t.Errorf("expected confidence 1.0, got %f", result.Confidence)
+	if result.Confidence != ogMetadataConfidence {
+		t.Errorf("expected confidence %f, got %f", ogMetadataConfidence, result.Confidence)
 	}
 
 	if result.Method != "og_metadata" {
@@ -77,8 +77,8 @@ func TestContentTypeClassifier_Classify_Video_ViaOG(t *testing.T) {
 		t.Errorf("expected type %s, got %s", domain.ContentTypeVideo, result.Type)
 	}
 
-	if result.Confidence != 1.0 {
-		t.Errorf("expected confidence 1.0, got %f", result.Confidence)
+	if result.Confidence != ogMetadataConfidence {
+		t.Errorf("expected confidence %f, got %f", ogMetadataConfidence, result.Confidence)
 	}
 }
 
@@ -868,10 +868,10 @@ func TestContentTypeClassifier_SectionURLExclusion(t *testing.T) {
 			expectedMethod: "url_exclusion",
 		},
 		{
-			name:           "classifieds subpath still excluded",
+			name:           "classifieds subpath now passes through (exact-match only)",
 			url:            "https://example.com/classifieds/job-listings/plumber",
-			expectedType:   domain.ContentTypePage,
-			expectedMethod: "url_exclusion",
+			expectedType:   domain.ContentTypeArticle,
+			expectedMethod: "heuristic",
 		},
 		{
 			name:           "directory subpath still excluded",

@@ -202,7 +202,8 @@ const (
 	ContentTypeImage   = "image"
 	ContentTypeJob     = "job"
 	ContentTypeRecipe  = "recipe"
-	ContentTypeEvent   = "event"
+	ContentTypeEvent    = "event"
+	ContentTypeObituary = "obituary"
 )
 
 // ContentSubtype constants (granularity within article-like content).

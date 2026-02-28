@@ -22,6 +22,9 @@ const (
 	DetectedContentReport              = "report"
 	DetectedContentBlotter             = "blotter"
 	DetectedContentCompanyAnnouncement = "company_announcement"
+	DetectedContentRecipe              = "recipe"
+	DetectedContentObituary            = "obituary"
+	DetectedContentJob                 = "job"
 	DetectedContentUnknown             = ""
 )
 
@@ -103,6 +106,14 @@ var urlContentTypePatterns = []struct {
 	{"/investors/", DetectedContentCompanyAnnouncement},
 	{"/investor/", DetectedContentCompanyAnnouncement},
 	{"/updates/", DetectedContentCompanyAnnouncement},
+	{"/obituaries/", DetectedContentObituary},
+	{"/obituary/", DetectedContentObituary},
+	{"/obits/", DetectedContentObituary},
+	{"/recipes/", DetectedContentRecipe},
+	{"/recipe/", DetectedContentRecipe},
+	{"/food/", DetectedContentRecipe},
+	{"/jobs/", DetectedContentJob},
+	{"/careers/", DetectedContentJob},
 }
 
 // pdfSuffix matches URLs that point to PDF documents (report type).
@@ -137,6 +148,14 @@ var contentPathSegments = map[string]bool{
 	"investors":  true,
 	"investor":   true,
 	"updates":    true,
+	"obituaries": true,
+	"obituary":   true,
+	"obits":      true,
+	"recipes":    true,
+	"recipe":     true,
+	"food":       true,
+	"jobs":       true,
+	"careers":    true,
 }
 
 // datePathPattern matches date-based URL paths like /2026/02/14/headline or /2026/02/headline.
