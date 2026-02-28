@@ -195,6 +195,19 @@ See `ARCHITECTURE.md` for the full bootstrap pattern reference.
 - **Container naming**: `north-cloud-{service}` pattern
 - **Database access**: `docker exec -it north-cloud-postgres-SERVICE psql -U postgres -d DATABASE`
 
+### Production Deployment
+
+- Production (`/opt/north-cloud`) is **NOT a git repo** — do not use `git pull`
+- CI/CD (GitHub Actions) syncs files via rsync and runs `deploy.sh`
+- To deploy manually: push to main → CI runs tests → deploy workflow triggers automatically
+
+### Docker Firewall (UFW)
+
+- Docker bypasses UFW — use `ufw route allow` for persistent rules to Docker containers
+- Example: `sudo ufw route allow from <source-ip> to <container-ip> port <port> proto tcp`
+- Do NOT use raw `iptables -I DOCKER-USER` — those rules don't survive reboot/ufw reload
+- Container IPs may change on recreation — check with `docker inspect <container> --format '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}'`
+
 ---
 
 ## Git Workflow
