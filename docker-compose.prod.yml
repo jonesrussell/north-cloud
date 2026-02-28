@@ -645,6 +645,7 @@ services:
       - ./infrastructure/alloy/config.alloy:/etc/alloy/config.alloy:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - alloy_data:/var/lib/alloy
+      - /opt/north-cloud/squid/logs:/mnt/squid-logs:ro
       # Deployer sites - mount site roots so current/ symlink resolves across deploys
       - /home/deployer/streetcode-laravel:/mnt/sites/streetcode-laravel:ro
       - /home/deployer/orewire-laravel:/mnt/sites/orewire-laravel:ro

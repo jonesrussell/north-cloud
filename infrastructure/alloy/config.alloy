@@ -225,6 +225,46 @@ loki.source.file "movies_of_war_logs" {
   tail_from_end = true
 }
 
+// ── Local Squid proxy logs (razor-crest Docker container) ─────────────────
+// Squid writes access/cache logs to files, not stdout.
+// Bind-mounted from /opt/north-cloud/squid/logs/ into /mnt/squid-logs/.
+
+local.file_match "squid_local_access" {
+  path_targets = [{
+    __path__ = "/mnt/squid-logs/access.log",
+    project  = "north-cloud",
+    service  = "squid-proxy",
+    host     = "razor-crest",
+    log_type = "access",
+    job      = "file",
+  }]
+  sync_period = "10s"
+}
+
+local.file_match "squid_local_cache" {
+  path_targets = [{
+    __path__ = "/mnt/squid-logs/cache.log",
+    project  = "north-cloud",
+    service  = "squid-proxy",
+    host     = "razor-crest",
+    log_type = "cache",
+    job      = "file",
+  }]
+  sync_period = "10s"
+}
+
+loki.source.file "squid_local_access" {
+  targets       = local.file_match.squid_local_access.targets
+  forward_to    = [loki.write.north_cloud.receiver]
+  tail_from_end = true
+}
+
+loki.source.file "squid_local_cache" {
+  targets       = local.file_match.squid_local_cache.targets
+  forward_to    = [loki.write.north_cloud.receiver]
+  tail_from_end = true
+}
+
 // ── Laravel log processing ─────────────────────────────────────────────────
 // Format: [2026-02-14 02:30:00] production.INFO: Message {"context":"data"}
 
