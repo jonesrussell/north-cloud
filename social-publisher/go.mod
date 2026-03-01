@@ -3,6 +3,9 @@ module github.com/jonesrussell/north-cloud/social-publisher
 go 1.26
 
 require (
+	github.com/google/uuid v1.6.0
+	github.com/jmoiron/sqlx v1.4.0
+	github.com/lib/pq v1.11.2
 	github.com/north-cloud/infrastructure v0.0.0
 	github.com/stretchr/testify v1.11.1
 )
