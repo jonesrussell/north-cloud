@@ -208,7 +208,7 @@ func (c *Client) DeleteSource(ctx context.Context, id string) error {
 
 // ListActiveFeedSources retrieves sources with active feeds (not disabled or past cooldown).
 func (c *Client) ListActiveFeedSources(ctx context.Context) ([]APISource, error) {
-	activeURL := c.baseURL + "?feed_active=true"
+	activeURL := c.baseURL + "?feed_active=true&limit=500"
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, activeURL, http.NoBody)
 	if err != nil {
