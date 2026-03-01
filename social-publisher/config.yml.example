@@ -1,0 +1,27 @@
+debug: false
+
+server:
+  address: ":8078"
+  read_timeout: "10s"
+  write_timeout: "30s"
+
+database:
+  host: "localhost"
+  port: 5432
+  user: "social_publisher"
+  password: ""
+  db: "social_publisher"
+  ssl_mode: "disable"
+
+redis:
+  url: "localhost:6379"
+  password: ""
+
+service:
+  retry_interval: "30s"
+  schedule_interval: "60s"
+  max_retries: 3
+  batch_size: 50
+
+auth:
+  jwt_secret: ""

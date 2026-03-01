@@ -13,5 +13,6 @@ use (
 	./publisher
 	./search
 	./source-manager
+	./social-publisher
 	./tests/integration/pipeline
 )
