@@ -966,6 +966,17 @@ tasks:
     cmds:
       - docker compose -f docker-compose.base.yml -f docker-compose.dev.yml build {{.CLI_ARGS}}
 
+  docker:dev:rebuild:
+    desc: "Rebuild dev images from scratch (fixes stale Go versions, dependency issues)"
+    cmds:
+      - docker compose -f docker-compose.base.yml -f docker-compose.dev.yml build --no-cache {{.CLI_ARGS}}
+      - docker compose -f docker-compose.base.yml -f docker-compose.dev.yml up -d {{.CLI_ARGS}}
+
+  docker:dev:doctor:
+    desc: "Check dev environment health (containers, DNS, Postgres, services)"
+    cmds:
+      - ./scripts/docker-dev-doctor.sh
+
   docker:prod:up:
     desc: "Start production environment"
     cmds:
