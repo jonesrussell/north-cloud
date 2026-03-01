@@ -2,6 +2,7 @@ package workers
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/north-cloud/infrastructure/logger"
@@ -76,22 +77,38 @@ func (w *RetryWorker) processRetries(ctx context.Context) {
 }
 
 func (w *RetryWorker) processRetry(ctx context.Context, delivery *domain.Delivery) {
-	w.emitEvent(ctx, delivery, string(domain.StatusPublishing), nil)
+	w.emitEvent(ctx, delivery, domain.StatusPublishing, nil)
 
-	msg := &domain.PublishMessage{ContentID: delivery.ContentID}
-
-	result, err := w.orch.ProcessJob(ctx, delivery.Platform, msg)
+	msg, err := w.repo.GetContentByID(ctx, delivery.ContentID)
 	if err != nil {
-		w.handleRetryError(ctx, delivery, err)
+		errMsg := "failed to load content for retry: " + err.Error()
+		w.log.Error("Failed to load content for retry",
+			logger.String("delivery_id", delivery.ID),
+			logger.String("content_id", delivery.ContentID),
+			logger.Error(err),
+		)
+		w.failDelivery(ctx, delivery, errMsg)
+		return
+	}
+
+	result, publishErr := w.orch.ProcessJob(ctx, delivery.Platform, msg)
+	if publishErr != nil {
+		w.handleRetryError(ctx, delivery, publishErr)
 		return
 	}
 
 	if updateErr := w.repo.UpdateDeliveryStatus(
 		ctx, delivery.ID, domain.StatusDelivered, &result, nil,
 	); updateErr != nil {
-		w.log.Error("Failed to update delivery status", logger.Error(updateErr))
+		w.log.Error("Published to platform but failed to update database - risk of duplicate post",
+			logger.Error(updateErr),
+			logger.String("delivery_id", delivery.ID),
+			logger.String("platform", delivery.Platform),
+			logger.String("platform_id", result.PlatformID),
+		)
+		return
 	}
-	w.emitEvent(ctx, delivery, string(domain.StatusDelivered), nil)
+	w.emitEvent(ctx, delivery, domain.StatusDelivered, nil)
 
 	w.log.Info("Retry succeeded",
 		logger.String("delivery_id", delivery.ID),
@@ -114,12 +131,17 @@ func (w *RetryWorker) handleRetryError(ctx context.Context, delivery *domain.Del
 		return
 	}
 
-	if rle, isRateLimit := err.(*domain.RateLimitError); isRateLimit {
+	var rle *domain.RateLimitError
+	if errors.As(err, &rle) {
 		nextRetry = time.Now().Add(rle.RetryAfter)
 	}
 
 	if incErr := w.repo.IncrementAttempts(ctx, delivery.ID, nextRetry); incErr != nil {
-		w.log.Error("Failed to increment retry attempts", logger.Error(incErr))
+		w.log.Error("Failed to increment retry attempts - delivery may retry immediately",
+			logger.Error(incErr),
+			logger.String("delivery_id", delivery.ID),
+		)
+		return
 	}
 
 	w.log.Warn("Retry failed, scheduling next attempt",
@@ -134,11 +156,11 @@ func (w *RetryWorker) failDelivery(ctx context.Context, delivery *domain.Deliver
 	if failErr := w.repo.MarkDeliveryFailed(ctx, delivery.ID, errMsg); failErr != nil {
 		w.log.Error("Failed to mark delivery as failed", logger.Error(failErr))
 	}
-	w.emitEvent(ctx, delivery, string(domain.StatusFailed), &errMsg)
+	w.emitEvent(ctx, delivery, domain.StatusFailed, &errMsg)
 }
 
 func (w *RetryWorker) emitEvent(
-	ctx context.Context, delivery *domain.Delivery, status string, errMsg *string,
+	ctx context.Context, delivery *domain.Delivery, status domain.DeliveryStatus, errMsg *string,
 ) {
 	if w.events == nil {
 		return
@@ -161,6 +183,6 @@ func (w *RetryWorker) emitEvent(
 }
 
 func isRetryable(err error) bool {
-	pubErr, ok := err.(domain.PublishError)
-	return ok && pubErr.IsRetryable()
+	var pubErr domain.PublishError
+	return errors.As(err, &pubErr) && pubErr.IsRetryable()
 }

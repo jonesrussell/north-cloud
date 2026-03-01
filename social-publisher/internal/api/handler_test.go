@@ -8,13 +8,14 @@ import (
 	"testing"
 
 	"github.com/gin-gonic/gin"
+	infralogger "github.com/north-cloud/infrastructure/logger"
 	"github.com/jonesrussell/north-cloud/social-publisher/internal/api"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestPublishEndpoint_ValidRequest(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	handler := api.NewHandler(nil, nil)
+	handler := api.NewHandler(nil, nil, infralogger.NewNop())
 
 	w := httptest.NewRecorder()
 	body := map[string]any{
@@ -41,7 +42,7 @@ func TestPublishEndpoint_ValidRequest(t *testing.T) {
 
 func TestPublishEndpoint_MissingType(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	handler := api.NewHandler(nil, nil)
+	handler := api.NewHandler(nil, nil, infralogger.NewNop())
 
 	w := httptest.NewRecorder()
 	body := map[string]any{

@@ -25,7 +25,6 @@ type PublishMessage struct {
 	Targets     []TargetConfig    `json:"targets,omitempty"`
 	ScheduledAt *time.Time        `json:"scheduled_at,omitempty"`
 	Metadata    map[string]string `json:"metadata,omitempty"`
-	RetryCount  int               `json:"retry_count"`
 	Source      string            `json:"source"`
 }
 

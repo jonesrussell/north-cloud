@@ -53,6 +53,31 @@ func (r *Repository) CreateContent(ctx context.Context, msg *domain.PublishMessa
 	return execErr
 }
 
+// GetContentByID loads a full PublishMessage from the database by content ID.
+func (r *Repository) GetContentByID(ctx context.Context, contentID string) (*domain.PublishMessage, error) {
+	rows, err := r.db.QueryxContext(ctx, `
+		SELECT id, type, title, body, summary, url, images, tags, project, metadata, source, scheduled_at
+		FROM content
+		WHERE id = $1`, contentID)
+	if err != nil {
+		return nil, fmt.Errorf("querying content: %w", err)
+	}
+	defer rows.Close()
+
+	if !rows.Next() {
+		if rowErr := rows.Err(); rowErr != nil {
+			return nil, fmt.Errorf("scanning content: %w", rowErr)
+		}
+		return nil, fmt.Errorf("content not found: %s", contentID)
+	}
+
+	msg, scanErr := scanPublishMessage(rows)
+	if scanErr != nil {
+		return nil, scanErr
+	}
+	return &msg, nil
+}
+
 // MarkContentPublished sets a content item's published flag to true.
 func (r *Repository) MarkContentPublished(ctx context.Context, contentID string) error {
 	_, err := r.db.ExecContext(ctx, `UPDATE content SET published = true WHERE id = $1`, contentID)
@@ -72,7 +97,7 @@ func (r *Repository) GetDueScheduledContent(ctx context.Context, limit int) ([]d
 	}
 	defer rows.Close()
 
-	var results []domain.PublishMessage
+	results := make([]domain.PublishMessage, 0, limit)
 	for rows.Next() {
 		msg, scanErr := scanPublishMessage(rows)
 		if scanErr != nil {

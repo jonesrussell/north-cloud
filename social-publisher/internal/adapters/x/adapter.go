@@ -4,9 +4,13 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/jonesrussell/north-cloud/social-publisher/internal/domain"
 )
+
+const ellipsis = "..."
+const ellipsisLen = 3
 
 // MaxTweetLength is the character limit for a single tweet.
 const MaxTweetLength = 280
@@ -51,7 +55,7 @@ func (a *Adapter) Transform(content domain.PublishMessage) (domain.PlatformPost,
 	}
 
 	// If the full body is provided and much longer, create a thread
-	if content.Body != "" && len(content.Body) > MaxTweetLength*2 {
+	if content.Body != "" && utf8.RuneCountInString(content.Body) > MaxTweetLength*2 {
 		post.Thread = splitThread(content.Summary, content.Body, content.URL)
 	}
 
@@ -62,10 +66,10 @@ func (a *Adapter) Validate(post domain.PlatformPost) error {
 	if post.Content == "" {
 		return &domain.ValidationError{Field: "content", Message: "tweet content is required"}
 	}
-	if len(post.Thread) == 0 && len(post.Content) > MaxTweetLength {
+	if len(post.Thread) == 0 && utf8.RuneCountInString(post.Content) > MaxTweetLength {
 		return &domain.ValidationError{
 			Field:   "content",
-			Message: fmt.Sprintf("tweet exceeds %d characters (%d)", MaxTweetLength, len(post.Content)),
+			Message: fmt.Sprintf("tweet exceeds %d characters (%d)", MaxTweetLength, utf8.RuneCountInString(post.Content)),
 		}
 	}
 	return nil
@@ -86,15 +90,16 @@ func buildTweetText(content domain.PublishMessage) string {
 	text := content.Summary
 	if content.URL != "" {
 		textBudget := MaxTweetLength - urlCharacterCount - 1 // 23 for URL + 1 for space
-		if len(text) > textBudget {
-			text = text[:textBudget-3] + "..."
+		if utf8.RuneCountInString(text) > textBudget {
+			runes := []rune(text)
+			text = string(runes[:textBudget-ellipsisLen]) + ellipsis
 		}
 		text = fmt.Sprintf("%s %s", text, content.URL)
 	}
 
 	if len(content.Tags) > 0 {
 		hashtags := formatHashtags(content.Tags)
-		if len(text)+1+len(hashtags) <= MaxTweetLength {
+		if utf8.RuneCountInString(text)+1+utf8.RuneCountInString(hashtags) <= MaxTweetLength {
 			text = fmt.Sprintf("%s\n%s", text, hashtags)
 		}
 	}
@@ -124,7 +129,7 @@ func splitThread(summary, body, url string) []string {
 	current := ""
 	for _, sentence := range sentences {
 		candidate := current + sentence + ". "
-		if len(candidate) > MaxTweetLength-threadNumberPadding {
+		if utf8.RuneCountInString(candidate) > MaxTweetLength-threadNumberPadding {
 			if current != "" {
 				thread = append(thread, strings.TrimSpace(current))
 			}

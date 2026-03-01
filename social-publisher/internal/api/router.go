@@ -21,10 +21,10 @@ type Router struct {
 
 // NewRouter creates a new API router.
 func NewRouter(
-	repo *database.Repository, orch *orchestrator.Orchestrator, cfg *config.Config,
+	repo *database.Repository, orch *orchestrator.Orchestrator, cfg *config.Config, log logger.Logger,
 ) *Router {
 	return &Router{
-		handler: NewHandler(repo, orch),
+		handler: NewHandler(repo, orch, log),
 		repo:    repo,
 		cfg:     cfg,
 	}

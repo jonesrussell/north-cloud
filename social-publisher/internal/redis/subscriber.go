@@ -40,7 +40,10 @@ func (s *Subscriber) Subscribe(ctx context.Context, handler func(msg *domain.Pub
 			return ctx.Err()
 		case redisMsg, ok := <-ch:
 			if !ok {
-				return nil
+				s.log.Error("Redis Pub/Sub channel closed unexpectedly",
+					logger.String("channel", ChannelSocialPublish),
+				)
+				return fmt.Errorf("redis pub/sub channel %s closed unexpectedly", ChannelSocialPublish)
 			}
 			var msg domain.PublishMessage
 			if err := json.Unmarshal([]byte(redisMsg.Payload), &msg); err != nil {

@@ -82,13 +82,31 @@ func (s *Scheduler) processScheduledItem(ctx context.Context, msg *domain.Publis
 		return
 	}
 
-	s.queue.EnqueueRealtime(orchestrator.PublishJob{
-		ContentID: msg.ContentID,
-		Message:   msg,
-	})
+	if len(msg.Targets) == 0 {
+		s.log.Warn("Scheduled content has no targets, skipping",
+			logger.String("content_id", msg.ContentID),
+		)
+		return
+	}
+
+	for _, target := range msg.Targets {
+		job := orchestrator.PublishJob{
+			ContentID: msg.ContentID,
+			Platform:  target.Platform,
+			Account:   target.Account,
+			Message:   msg,
+		}
+		if !s.queue.EnqueueRealtime(job) {
+			s.log.Error("Realtime queue full, dropping scheduled job",
+				logger.String("content_id", msg.ContentID),
+				logger.String("platform", target.Platform),
+			)
+		}
+	}
 
 	s.log.Info("Scheduled content triggered",
 		logger.String("content_id", msg.ContentID),
 		logger.String("type", string(msg.Type)),
+		logger.Int("targets", len(msg.Targets)),
 	)
 }

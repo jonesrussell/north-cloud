@@ -14,6 +14,11 @@ var backoffs = []time.Duration{
 	10 * time.Minute,
 }
 
+// Backoffs returns the retry backoff schedule.
+func Backoffs() []time.Duration {
+	return backoffs
+}
+
 // NextRetryAt returns the time for the next retry given the current attempt count.
 // Returns false if max retries have been exhausted.
 func NextRetryAt(attempts int) (time.Time, bool) {

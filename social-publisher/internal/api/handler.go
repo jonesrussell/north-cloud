@@ -6,6 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 
+	infralogger "github.com/north-cloud/infrastructure/logger"
 	"github.com/jonesrussell/north-cloud/social-publisher/internal/database"
 	"github.com/jonesrussell/north-cloud/social-publisher/internal/domain"
 	"github.com/jonesrussell/north-cloud/social-publisher/internal/orchestrator"
@@ -15,11 +16,12 @@ import (
 type Handler struct {
 	repo *database.Repository
 	orch *orchestrator.Orchestrator
+	log  infralogger.Logger
 }
 
 // NewHandler creates a new API handler.
-func NewHandler(repo *database.Repository, orch *orchestrator.Orchestrator) *Handler {
-	return &Handler{repo: repo, orch: orch}
+func NewHandler(repo *database.Repository, orch *orchestrator.Orchestrator, log infralogger.Logger) *Handler {
+	return &Handler{repo: repo, orch: orch, log: log}
 }
 
 // PublishRequest is the JSON body for the publish endpoint.
@@ -67,6 +69,10 @@ func (h *Handler) Publish(c *gin.Context) {
 	}
 
 	if err := h.repo.CreateContent(c.Request.Context(), msg); err != nil {
+		h.log.Error("Failed to store content",
+			infralogger.Error(err),
+			infralogger.String("content_id", contentID),
+		)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to store content"})
 		return
 	}
@@ -87,6 +93,10 @@ func (h *Handler) Status(c *gin.Context) {
 
 	deliveries, err := h.repo.GetDeliveriesByContentID(c.Request.Context(), contentID)
 	if err != nil {
+		h.log.Error("Failed to fetch deliveries",
+			infralogger.Error(err),
+			infralogger.String("content_id", contentID),
+		)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch deliveries"})
 		return
 	}
@@ -105,8 +115,7 @@ func (h *Handler) Retry(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusAccepted, gin.H{
-		"delivery_id": deliveryID,
-		"status":      "retry_queued",
+	c.JSON(http.StatusNotImplemented, gin.H{
+		"error": "manual retry is not yet implemented",
 	})
 }

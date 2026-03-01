@@ -32,13 +32,25 @@ func NewPriorityQueue(realtimeSize, retrySize int) *PriorityQueue {
 }
 
 // EnqueueRealtime adds a job to the high-priority real-time channel.
-func (pq *PriorityQueue) EnqueueRealtime(job PublishJob) {
-	pq.realtime <- job
+// Returns false if the channel is full and the job was dropped.
+func (pq *PriorityQueue) EnqueueRealtime(job PublishJob) bool {
+	select {
+	case pq.realtime <- job:
+		return true
+	default:
+		return false
+	}
 }
 
 // EnqueueRetry adds a job to the lower-priority retry channel.
-func (pq *PriorityQueue) EnqueueRetry(job PublishJob) {
-	pq.retries <- job
+// Returns false if the channel is full and the job was dropped.
+func (pq *PriorityQueue) EnqueueRetry(job PublishJob) bool {
+	select {
+	case pq.retries <- job:
+		return true
+	default:
+		return false
+	}
 }
 
 // Dequeue returns the next job, preferring real-time over retry.

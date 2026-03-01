@@ -64,7 +64,7 @@ func Load(path string) (*Config, error) {
 // SetDefaults applies default values to the config.
 func SetDefaults(cfg *Config) {
 	if cfg.Server.Address == "" {
-		cfg.Server.Address = ":8077"
+		cfg.Server.Address = ":8078"
 	}
 	if cfg.Server.ReadTimeout == "" {
 		cfg.Server.ReadTimeout = "10s"

@@ -33,18 +33,17 @@ type Delivery struct {
 
 // DeliveryEvent is emitted on Redis when a delivery status changes.
 type DeliveryEvent struct {
-	ContentID   string    `json:"content_id"`
-	ContentType string    `json:"content_type"`
-	DeliveryID  string    `json:"delivery_id"`
-	Platform    string    `json:"platform"`
-	Account     string    `json:"account"`
-	Status      string    `json:"status"`
-	PlatformID  string    `json:"platform_id,omitempty"`
-	PlatformURL string    `json:"platform_url,omitempty"`
-	Error       string    `json:"error,omitempty"`
-	RetryAfter  *int      `json:"retry_after,omitempty"`
-	Attempts    int       `json:"attempts"`
-	Timestamp   time.Time `json:"timestamp"`
+	ContentID   string         `json:"content_id"`
+	ContentType ContentType    `json:"content_type,omitempty"`
+	DeliveryID  string         `json:"delivery_id"`
+	Platform    string         `json:"platform"`
+	Account     string         `json:"account"`
+	Status      DeliveryStatus `json:"status"`
+	PlatformID  string         `json:"platform_id,omitempty"`
+	PlatformURL string         `json:"platform_url,omitempty"`
+	Error       string         `json:"error,omitempty"`
+	Attempts    int            `json:"attempts"`
+	Timestamp   time.Time      `json:"timestamp"`
 }
 
 // DeliveryResult holds the platform-assigned identifiers after a successful publish.

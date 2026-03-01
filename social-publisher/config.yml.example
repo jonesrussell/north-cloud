@@ -1,7 +1,7 @@
 debug: false
 
 server:
-  address: ":8077"
+  address: ":8078"
   read_timeout: "10s"
   write_timeout: "30s"
 
