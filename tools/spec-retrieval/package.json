@@ -1,0 +1,10 @@
+{
+  "name": "north-cloud-spec-retrieval",
+  "version": "1.0.0",
+  "description": "MCP server for retrieving North Cloud subsystem specs",
+  "type": "module",
+  "main": "server.js",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0"
+  }
+}
