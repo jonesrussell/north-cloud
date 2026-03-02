@@ -234,6 +234,24 @@ const routes: RouteRecordRaw[] = [
     component: DeliveryLogsView,
     meta: { title: 'Delivery Logs', section: 'distribution', requiresAuth: true },
   },
+  {
+    path: '/distribution/social-content',
+    name: 'distribution-social-content',
+    component: () => import('../views/distribution/SocialContentView.vue'),
+    meta: { title: 'Social Content', section: 'distribution', requiresAuth: true },
+  },
+  {
+    path: '/distribution/social-accounts',
+    name: 'distribution-social-accounts',
+    component: () => import('../views/distribution/SocialAccountsView.vue'),
+    meta: { title: 'Social Accounts', section: 'distribution', requiresAuth: true },
+  },
+  {
+    path: '/distribution/social-publish',
+    name: 'distribution-social-publish',
+    component: () => import('../views/distribution/SocialPublishView.vue'),
+    meta: { title: 'Publish', section: 'distribution', requiresAuth: true },
+  },
 
   // ==========================================
   // System

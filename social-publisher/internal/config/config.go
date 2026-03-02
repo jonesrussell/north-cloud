@@ -1,24 +1,34 @@
 package config
 
 import (
+	"encoding/hex"
+	"errors"
 	"fmt"
 
 	infraconfig "github.com/north-cloud/infrastructure/config"
 )
 
+const requiredEncryptionKeyHexLen = 64 // 32 bytes as hex
+
 // Config holds all configuration for the social-publisher service.
 type Config struct {
-	Debug    bool           `env:"SOCIAL_PUBLISHER_DEBUG"  yaml:"debug"`
-	Server   ServerConfig   `yaml:"server"`
-	Database DatabaseConfig `yaml:"database"`
-	Redis    RedisConfig    `yaml:"redis"`
-	Service  ServiceConfig  `yaml:"service"`
-	Auth     AuthConfig     `yaml:"auth"`
+	Debug      bool             `env:"SOCIAL_PUBLISHER_DEBUG" yaml:"debug"`
+	Server     ServerConfig     `yaml:"server"`
+	Database   DatabaseConfig   `yaml:"database"`
+	Redis      RedisConfig      `yaml:"redis"`
+	Service    ServiceConfig    `yaml:"service"`
+	Auth       AuthConfig       `yaml:"auth"`
+	Encryption EncryptionConfig `yaml:"encryption"`
+}
+
+// EncryptionConfig holds credential encryption settings.
+type EncryptionConfig struct {
+	Key string `env:"SOCIAL_PUBLISHER_ENCRYPTION_KEY" yaml:"key"`
 }
 
 // ServerConfig holds HTTP server configuration.
 type ServerConfig struct {
-	Address      string `env:"SOCIAL_PUBLISHER_ADDRESS"       yaml:"address"`
+	Address      string `env:"SOCIAL_PUBLISHER_ADDRESS" yaml:"address"`
 	ReadTimeout  string `yaml:"read_timeout"`
 	WriteTimeout string `yaml:"write_timeout"`
 }
@@ -89,10 +99,19 @@ func SetDefaults(cfg *Config) {
 // Validate checks that required configuration fields are present.
 func (c *Config) Validate() error {
 	if c.Database.Host == "" || c.Database.DBName == "" {
-		return fmt.Errorf("database configuration is required")
+		return errors.New("database configuration is required")
 	}
 	if c.Redis.URL == "" {
-		return fmt.Errorf("redis URL is required")
+		return errors.New("redis URL is required")
+	}
+	if c.Encryption.Key == "" {
+		return errors.New("encryption key is required")
+	}
+	if len(c.Encryption.Key) != requiredEncryptionKeyHexLen {
+		return errors.New("encryption key must be a 64-character hex string (32 bytes)")
+	}
+	if _, err := hex.DecodeString(c.Encryption.Key); err != nil {
+		return fmt.Errorf("invalid encryption key: %w", err)
 	}
 	return nil
 }
