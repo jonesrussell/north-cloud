@@ -9,6 +9,7 @@ var layer1SkipTopics = map[string]bool{
 	"coforge":    true,
 	"recipe":     true,
 	"jobs":       true,
+	"rfp":        true,
 }
 
 // TopicDomain routes content items to content:{topic} for each non-skipped topic tag.

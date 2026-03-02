@@ -140,6 +140,7 @@ type ClassificationConfig struct {
 	Indigenous       IndigenousConfig       `yaml:"indigenous"`
 	Recipe           RecipeExtractionConfig `yaml:"recipe"`
 	Job              JobExtractionConfig    `yaml:"job"`
+	RFP              RFPExtractionConfig    `yaml:"rfp"`
 	// SidecarRegistry maps sidecar name (e.g. "crime", "mining") to enabled + URL.
 	// Built from Crime/Mining/... named configs when absent in YAML.
 	// NOTE: Currently populated by setClassificationDefaults but not yet consumed by the bootstrap
@@ -191,6 +192,11 @@ type RecipeExtractionConfig struct {
 // JobExtractionConfig holds job extraction settings.
 type JobExtractionConfig struct {
 	Enabled bool `env:"JOB_ENABLED" yaml:"enabled"`
+}
+
+// RFPExtractionConfig holds RFP extraction settings.
+type RFPExtractionConfig struct {
+	Enabled bool `env:"RFP_ENABLED" yaml:"enabled"`
 }
 
 // ContentTypeConfig holds content type detection settings.

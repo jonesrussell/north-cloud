@@ -295,6 +295,7 @@ services:
       INDIGENOUS_ML_SERVICE_URL: "http://indigenous-ml:8080"
       RECIPE_ENABLED: "${RECIPE_ENABLED:-true}"
       JOB_ENABLED: "${JOB_ENABLED:-true}"
+      RFP_ENABLED: "${RFP_ENABLED:-false}"
     volumes:
       - ./classifier:/app
       - ./classifier/config.yml:/app/config.yml:ro
