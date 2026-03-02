@@ -40,7 +40,7 @@ x-node-dev-environment: &node-dev-environment
 services:
 
   # ------------------------------------------------------------
-  # Shared Postgres (Dev) — replaces 7 per-service instances
+  # Shared Postgres (Dev) — used instead of the 7 per-service instances
   # ------------------------------------------------------------
   postgres:
     image: postgres:16-alpine
@@ -62,10 +62,11 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+      start_period: 10s
     networks:
       - north-cloud-network
 
-  # Disable per-service Postgres instances (defined in base)
+  # Disable per-service Postgres instances (defined in base) via replicas: 0
   postgres-source-manager:
     deploy:
       replicas: 0
@@ -518,6 +519,9 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      postgres-click-tracker:
+        condition: service_healthy
+        required: false
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8093/health"]
       interval: 10s

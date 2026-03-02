@@ -65,6 +65,9 @@ task docker:dev:up
 # Include ML sidecars (crime-ml, mining-ml, coforge-ml, entertainment-ml, indigenous-ml)
 task docker:dev:up:ml
 
+# Include search-service and search-frontend
+task docker:dev:up:search
+
 # Include logging/observability (Loki, Alloy, Grafana, Pyroscope)
 task docker:dev:up:observability
 
@@ -83,7 +86,8 @@ docker compose -f docker-compose.base.yml -f docker-compose.dev.yml down
 
 **Dev Postgres**: Dev uses a single shared Postgres instance (7 databases in 1 container).
 Prod and test still use per-service Postgres. First `docker:dev:up` auto-creates all databases
-via `infrastructure/postgres/init-dev.sql`.
+via `infrastructure/postgres/init-dev.sql`. The init script only runs on first startup (empty data
+directory). To re-initialize: `docker compose -f docker-compose.base.yml -f docker-compose.dev.yml down -v`.
 
 **Taskfile Commands (Preferred)**:
 ```bash
