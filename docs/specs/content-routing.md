@@ -1,6 +1,6 @@
 # Content Routing Specification
 
-Covers the publisher service: 8-layer routing pipeline, channel management, Redis publishing, and deduplication.
+Covers the publisher service: 10-layer routing pipeline, channel management, Redis publishing, and deduplication.
 
 ## File Map
 
@@ -17,6 +17,8 @@ Covers the publisher service: 8-layer routing pipeline, channel management, Redi
 | `publisher/internal/router/entertainment.go` | Layer 6: entertainment routing |
 | `publisher/internal/router/indigenous.go` | Layer 7: Indigenous routing |
 | `publisher/internal/router/domain_coforge.go` | Layer 8: Coforge routing |
+| `publisher/internal/router/domain_recipe.go` | Layer 9: Recipe routing |
+| `publisher/internal/router/domain_job.go` | Layer 10: Job routing |
 | `publisher/internal/router/content_item.go` | ContentItem struct (all classification fields) |
 | `publisher/internal/models/channel.go` | Channel, ChannelCreateRequest |
 | `publisher/internal/models/rules.go` | Rules struct + Matches() |
@@ -25,7 +27,7 @@ Covers the publisher service: 8-layer routing pipeline, channel management, Redi
 | `publisher/internal/redis/client.go` | Redis pub/sub client |
 | `publisher/internal/api/router.go` | REST API route registration |
 | `publisher/internal/api/channels_handler.go` | Channel CRUD endpoints |
-| `publisher/migrations/` | PostgreSQL schema (12 migrations) |
+| `publisher/migrations/` | PostgreSQL schema (6 migrations) |
 | `publisher/docs/REDIS_MESSAGE_FORMAT.md` | Published message JSON spec |
 | `publisher/docs/CONSUMER_GUIDE.md` | Consumer integration guide |
 
@@ -69,7 +71,7 @@ func (s *Service) Start(ctx context.Context) error  // Main loop
 ```
 ES *_classified_content → Router (30s poll, batch=100, search_after cursor)
 
-For each ContentItem, evaluate 8 layers sequentially:
+For each ContentItem, evaluate 10 layers sequentially:
 
 Layer 1 (TopicDomain):
   For each topic NOT in layer1SkipTopics:
@@ -120,6 +122,14 @@ Layer 8 (CoforgeDomain):
     For each audience → coforge:audience:{slug}
     For each topic → coforge:topic:{slug}
     For each industry → coforge:industry:{slug}
+
+Layer 9 (RecipeDomain):
+  If content_type == "recipe" and recipe result present:
+    → content:recipe
+
+Layer 10 (JobDomain):
+  If content_type == "job" and job result present:
+    → content:jobs
 ```
 
 ### Publishing Flow
@@ -179,7 +189,8 @@ Topics in this map MUST be skipped to prevent bypassing ML classification filter
 ## Configuration
 
 - `PUBLISHER_PORT` (default: 8070)
-- `PUBLISHER_ROUTER_CHECK_INTERVAL` (default: 5m)
+- `PUBLISHER_ROUTER_POLL_INTERVAL` (default: 30s) — content polling frequency
+- `PUBLISHER_ROUTER_DISCOVERY_INTERVAL` (default: 5m) — ES index discovery frequency
 - `PUBLISHER_ROUTER_BATCH_SIZE` (default: 100)
 - `ELASTICSEARCH_URL`, `REDIS_ADDR`, `AUTH_JWT_SECRET`
 

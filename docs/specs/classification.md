@@ -7,7 +7,7 @@ Covers the classifier service, hybrid rule+ML classification pipeline, ML sideca
 | File | Purpose |
 |------|---------|
 | `classifier/cmd/httpd/main.go` | HTTP API entry point |
-| `classifier/cmd/processor/main.go` | Batch processor entry point |
+| `classifier/cmd/processor/processor.go` | Batch processor entry point |
 | `classifier/internal/classifier/classifier.go` | Main orchestrator: Classify() method |
 | `classifier/internal/classifier/content_type.go` | Step 1: content type + subtype detection |
 | `classifier/internal/classifier/quality.go` | Step 2: quality scoring (0-100) |
@@ -33,7 +33,7 @@ Covers the classifier service, hybrid rule+ML classification pipeline, ML sideca
 | `classifier/internal/elasticsearch/mappings/classified_content.go` | ES mapping builders |
 | `classifier/internal/bootstrap/classifier.go` | Service initialization |
 | `classifier/internal/testhelpers/mocks.go` | Mock source reputation DB |
-| `classifier/migrations/` | PostgreSQL schema (24 migrations) |
+| `classifier/migrations/` | PostgreSQL schema (12 migrations) |
 
 ## Interface Signatures
 
@@ -43,19 +43,17 @@ func (c *Classifier) Classify(ctx context.Context, raw *domain.RawContent) (*dom
 func (c *Classifier) ResolveSidecars(contentType, subtype string) []string
 ```
 
-### ML Client (shared pattern)
+### ML Client (shared pattern — concrete structs, not an interface)
 ```go
-type MLClassifier interface {
-    Classify(ctx context.Context, title, body string) (*ClassifyResponse, error)
-    Health(ctx context.Context) error
-}
+// Each ML client (mlclient, miningmlclient, coforgemlclient, etc.) is a concrete
+// Client struct following this pattern. There is no shared MLClassifier interface.
 
-// Shared transport
-func DoClassify(ctx, baseURL string, req *ClassifyRequest, respPtr any) (latencyMs int64, responseSizeBytes int, err error)
-func DoHealth(ctx, baseURL string) (reachable bool, latencyMs int64, modelVersion string, err error)
+// Shared HTTP transport (mltransport/transport.go)
+func DoClassify(ctx context.Context, baseURL string, req *ClassifyRequest, respPtr any) (latencyMs int64, responseSizeBytes int, err error)
+func DoHealth(ctx context.Context, baseURL string) (reachable bool, latencyMs int64, modelVersion string, err error)
 
-// Body truncation helper
-func CallMLWithBodyLimit[T any](ctx, title, body string, maxChars int, call func(ctx, string, string) (*T, error)) (*T, error)
+// Body truncation helper (classifier/ml_helper.go)
+func CallMLWithBodyLimit[T any](ctx context.Context, title, body string, maxChars int, call func(context.Context, string, string) (*T, error)) (*T, error)
 ```
 
 ### Poller (`internal/processor/poller.go`)
@@ -70,7 +68,7 @@ func (p *Poller) Stop()
 ```
 1. ContentType detection:
    - Checks: crawler metadata → URL exclusion patterns → OG metadata → content patterns → heuristics
-   - Returns: contentType (article|page|video|image|job|recipe) + subtype + confidence + method
+   - Returns: contentType (article|page|video|image|job|recipe|event|obituary) + subtype + confidence + method
 
 2. Quality scoring (0-100, 4 factors × 25 pts):
    - Word count: <100→10, 100-200→15, 200-300→20, 300+→25
@@ -117,47 +115,69 @@ ResolveSidecars(contentType, subtype) determines which optional classifiers run:
 ### ClassificationResult
 ```go
 type ClassificationResult struct {
-    ContentType, ContentSubtype string
-    QualityScore int
-    Topics []string
-    TopicScores map[string]float64
+    ContentID        string
+    ContentType      string             // "article", "page", "video", "image", "job", "recipe", "event", "obituary"
+    ContentSubtype   string             // "press_release", "blog_post", "event", "blotter", etc.
+    TypeConfidence   float64
+    TypeMethod       string             // "detected_content_type", "url_exclusion", "og_metadata", etc.
+    QualityScore     int                // 0-100
+    QualityFactors   map[string]any     // Breakdown of quality score
+    Topics           []string
+    TopicScores      map[string]float64
     SourceReputation int
-    ClassifierVersion, ModelVersion string
-    Confidence float64
-    Crime *CrimeResult           // nil when disabled
-    Mining *MiningResult         // nil when disabled
-    Coforge *CoforgeResult
-    Entertainment *EntertainmentResult
-    Indigenous *IndigenousResult
-    Location *LocationResult
+    SourceCategory   string             // "news", "blog", "government", "unknown"
+    ClassifierVersion    string
+    ClassificationMethod string         // "rule_based", "ml_model", "hybrid"
+    ModelVersion     string
+    Confidence       float64
+    ProcessingTimeMs int64
+    ClassifiedAt     time.Time
+    Crime            *CrimeResult       // nil when disabled
+    Mining           *MiningResult      // nil when disabled
+    Coforge          *CoforgeResult
+    Entertainment    *EntertainmentResult
+    Indigenous       *IndigenousResult
+    Location         *LocationResult
+    Recipe           *RecipeResult      // nil unless content_type=recipe
+    Job              *JobResult         // nil unless content_type=job
 }
 ```
 
 ### CrimeResult
 ```go
 type CrimeResult struct {
-    Relevance string      // "core_street_crime", "peripheral_crime", "not_crime"
-    SubLabel string       // "criminal_justice", "crime_context"
-    CrimeTypes []string
+    Relevance string           `json:"street_crime_relevance"` // NOTE: unique JSON tag
+    // Values: "core_street_crime", "peripheral_crime", "not_crime"
+    SubLabel            string   `json:"sub_label,omitempty"` // "criminal_justice", "crime_context"
+    CrimeTypes          []string
     LocationSpecificity string
-    FinalConfidence float64
-    HomepageEligible bool
-    CategoryPages []string
-    ReviewRequired bool
-    DecisionPath string   // "both_agree", "rule_override", "ml_override"
+    FinalConfidence     float64
+    HomepageEligible    bool
+    CategoryPages       []string
+    ReviewRequired      bool
+    DecisionPath        string   // "both_agree", "rule_override", "rules_only", "ml_override", "ml_upgrade", "default"
+    // Observability fields (all optional, omitempty):
+    MLConfidenceRaw  float64
+    RuleTriggered    string
+    ProcessingTimeMs int64
 }
 ```
 
 ### MiningResult
 ```go
 type MiningResult struct {
-    Relevance string       // "core_mining", "peripheral_mining", "not_mining"
-    MiningStage string     // "exploration", "development", "production"
-    Commodities []string   // "gold", "copper", "lithium", etc.
-    Location string
+    Relevance       string   // "core_mining", "peripheral_mining", "not_mining"
+    MiningStage     string   // "exploration", "development", "production", "unspecified"
+    Commodities     []string // "gold", "copper", "lithium", etc.
+    Location        string
     FinalConfidence float64
-    ReviewRequired bool
-    ModelVersion string
+    ReviewRequired  bool
+    ModelVersion    string
+    // Observability fields (all optional, omitempty):
+    DecisionPath     string
+    MLConfidenceRaw  float64
+    RuleTriggered    string
+    ProcessingTimeMs int64
 }
 ```
 

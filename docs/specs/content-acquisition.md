@@ -25,7 +25,7 @@ Covers the crawler subsystem: web content fetching, job scheduling, frontier URL
 | `crawler/internal/proxypool/` | Domain-sticky round-robin proxy rotation |
 | `crawler/internal/api/` | REST API handlers (jobs, frontier, logs, scheduler) |
 | `crawler/internal/config/` | Configuration structs with env tags |
-| `crawler/migrations/` | PostgreSQL schema (42 migrations) |
+| `crawler/migrations/` | PostgreSQL schema (20 migrations) |
 
 ## Interface Signatures
 

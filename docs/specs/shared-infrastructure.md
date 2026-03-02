@@ -6,11 +6,11 @@ Covers the `infrastructure/` module: config loading, logging, database clients, 
 
 | File | Purpose |
 |------|---------|
-| `infrastructure/config/config.go` | YAML + env config loading with generics |
-| `infrastructure/config/env.go` | .env file loading + env tag resolution |
+| `infrastructure/config/loader.go` | YAML + env config loading with generics |
+| `infrastructure/config/types.go` | Config type definitions |
 | `infrastructure/config/validate.go` | Config validation helpers |
-| `infrastructure/logger/logger.go` | Logger interface (zap-based) |
-| `infrastructure/logger/fields.go` | Field helper functions |
+| `infrastructure/logger/logger.go` | Logger interface + field helpers (zap-based) |
+| `infrastructure/logger/nop.go` | No-op logger for tests |
 | `infrastructure/logger/context.go` | Context-based logger propagation |
 | `infrastructure/elasticsearch/client.go` | ES client with TLS, auth, retry |
 | `infrastructure/redis/client.go` | Redis client wrapper with ping verification |
@@ -21,10 +21,12 @@ Covers the `infrastructure/` module: config loading, logging, database clients, 
 | `infrastructure/events/types.go` | Domain event types (source lifecycle) |
 | `infrastructure/sse/broker.go` | Server-Sent Events broker |
 | `infrastructure/retry/retry.go` | Exponential backoff retry logic |
-| `infrastructure/profiling/profiling.go` | pprof + Pyroscope setup |
-| `infrastructure/monitoring/health.go` | Memory health endpoint |
-| `infrastructure/context/context.go` | Timeout helper functions |
-| `infrastructure/clickurl/sign.go` | Click tracking URL signing |
+| `infrastructure/profiling/pprof.go` | pprof debug endpoint setup |
+| `infrastructure/profiling/pyroscope.go` | Pyroscope continuous profiling |
+| `infrastructure/monitoring/health_handler.go` | Health check HTTP handler |
+| `infrastructure/monitoring/memory_monitor.go` | Memory monitoring and alerts |
+| `infrastructure/context/utils.go` | Timeout helper functions |
+| `infrastructure/clickurl/signer.go` | Click tracking URL signing |
 
 ## Interface Signatures
 

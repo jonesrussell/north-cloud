@@ -11,18 +11,32 @@ import { fileURLToPath } from "node:url";
 const __dirname = fileURLToPath(new URL(".", import.meta.url));
 const SPECS_DIR = join(__dirname, "../../docs/specs");
 
+// Cached specs — loaded once at startup, not on every tool call
+let cachedSpecs = null;
+
 async function loadSpecs() {
   const files = await readdir(SPECS_DIR);
   const specs = [];
   for (const file of files) {
     if (!file.endsWith(".md")) continue;
-    const content = await readFile(join(SPECS_DIR, file), "utf-8");
-    const name = basename(file, ".md");
-    const firstLine = content.split("\n").find((l) => l.startsWith("# "));
-    const description = firstLine ? firstLine.replace("# ", "") : name;
-    specs.push({ name, description, file, content });
+    try {
+      const content = await readFile(join(SPECS_DIR, file), "utf-8");
+      const name = basename(file, ".md");
+      const firstLine = content.split("\n").find((l) => l.startsWith("# "));
+      const description = firstLine ? firstLine.replace("# ", "") : name;
+      specs.push({ name, description, file, content });
+    } catch (err) {
+      console.error(`Warning: failed to read spec file ${file}: ${err.message}`);
+    }
   }
   return specs;
+}
+
+async function getSpecs() {
+  if (!cachedSpecs) {
+    cachedSpecs = await loadSpecs();
+  }
+  return cachedSpecs;
 }
 
 const server = new Server(
@@ -74,7 +88,16 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
 
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
   const { name, arguments: args } = request.params;
-  const specs = await loadSpecs();
+
+  let specs;
+  try {
+    specs = await getSpecs();
+  } catch (err) {
+    return {
+      content: [{ type: "text", text: `Failed to load specs: ${err.message}` }],
+      isError: true,
+    };
+  }
 
   if (name === "list_specs") {
     const list = specs.map((s) => ({
@@ -86,6 +109,12 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
   }
 
   if (name === "get_spec") {
+    if (!args?.name || typeof args.name !== "string") {
+      return {
+        content: [{ type: "text", text: 'Missing required argument "name" (string).' }],
+        isError: true,
+      };
+    }
     const spec = specs.find((s) => s.name === args.name);
     if (!spec) {
       const available = specs.map((s) => s.name).join(", ");
@@ -103,6 +132,12 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
   }
 
   if (name === "search_specs") {
+    if (!args?.query || typeof args.query !== "string") {
+      return {
+        content: [{ type: "text", text: 'Missing required argument "query" (string).' }],
+        isError: true,
+      };
+    }
     const query = args.query.toLowerCase();
     const results = [];
     for (const spec of specs) {
@@ -142,4 +177,7 @@ async function main() {
   await server.connect(transport);
 }
 
-main().catch(console.error);
+main().catch((err) => {
+  console.error(`Failed to start spec-retrieval MCP server: ${err.message}`);
+  process.exit(1);
+});

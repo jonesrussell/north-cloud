@@ -31,9 +31,9 @@ Sources → [Crawler] → ES raw_content → [Classifier + ML Sidecars] → ES c
   → [Publisher Router] → Redis channels → [Consumers: Streetcode, Social Publisher]
 ```
 
-**Publisher routing** (8 layers, evaluated in order):
-- L1: Topic auto-detect (skips: mining, indigenous, coforge)
-- L2: DB Channels | L3: Crime | L4: Location | L5: Mining | L6: Entertainment | L7: Indigenous | L8: CoForge
+**Publisher routing** (10 layers, evaluated in order):
+- L1: Topic auto-detect (skips: mining, indigenous, coforge, recipe, jobs)
+- L2: DB Channels | L3: Crime | L4: Location | L5: Mining | L6: Entertainment | L7: Indigenous | L8: CoForge | L9: Recipe | L10: Job
 
 **Dependency rule**: Services import only from `infrastructure/`. No cross-service imports.
 
