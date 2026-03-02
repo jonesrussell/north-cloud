@@ -17,6 +17,7 @@ import (
 	infralogger "github.com/north-cloud/infrastructure/logger"
 	"github.com/north-cloud/infrastructure/profiling"
 
+	xadapter "github.com/jonesrussell/north-cloud/social-publisher/internal/adapters/x"
 	"github.com/jonesrussell/north-cloud/social-publisher/internal/api"
 	"github.com/jonesrussell/north-cloud/social-publisher/internal/config"
 	"github.com/jonesrussell/north-cloud/social-publisher/internal/database"
@@ -134,8 +135,9 @@ func startService(
 	eventPub := spredis.NewEventPublisher(redisClient, log)
 	subscriber := spredis.NewSubscriber(redisClient, log)
 
+	xClient := xadapter.NewClient("") // Empty bearer token — loaded from accounts at publish time
 	adapters := map[string]domain.PlatformAdapter{
-		// Adapters added as platform credentials are configured
+		"x": xadapter.NewAdapter(xClient),
 	}
 
 	orch := orchestrator.NewOrchestrator(adapters, eventPub, repo)

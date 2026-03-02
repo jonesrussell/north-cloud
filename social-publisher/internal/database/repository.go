@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -217,10 +218,286 @@ func (r *Repository) GetDeliveriesByContentID(ctx context.Context, contentID str
 }
 
 // MarkDeliveryFailed permanently marks a delivery as failed.
-func (r *Repository) MarkDeliveryFailed(ctx context.Context, id string, errMsg string) error {
+func (r *Repository) MarkDeliveryFailed(ctx context.Context, id, errMsg string) error {
 	now := time.Now()
 	_, err := r.db.ExecContext(ctx, `
 		UPDATE deliveries SET status = 'failed', error = $1, last_error_at = $2
 		WHERE id = $3`, errMsg, now, id)
 	return err
+}
+
+// GetDeliveryByID returns a single delivery by its ID.
+func (r *Repository) GetDeliveryByID(ctx context.Context, id string) (*domain.Delivery, error) {
+	var delivery domain.Delivery
+	err := r.db.GetContext(ctx, &delivery, `SELECT * FROM deliveries WHERE id = $1`, id)
+	if err != nil {
+		return nil, fmt.Errorf("getting delivery: %w", err)
+	}
+	return &delivery, nil
+}
+
+// ResetDeliveryForRetry resets a failed delivery to retrying with next_retry_at = NOW().
+func (r *Repository) ResetDeliveryForRetry(ctx context.Context, id string) error {
+	_, err := r.db.ExecContext(ctx, `
+		UPDATE deliveries SET status = 'retrying', next_retry_at = NOW(), error = NULL
+		WHERE id = $1 AND status = 'failed'`, id)
+	return err
+}
+
+// ListContent returns a paginated list of content items with delivery summaries.
+func (r *Repository) ListContent(ctx context.Context, filter domain.ContentListFilter) ([]domain.ContentListItem, error) {
+	query, args := buildListContentQuery(filter)
+	rows, err := r.db.QueryxContext(ctx, query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("listing content: %w", err)
+	}
+	defer rows.Close()
+
+	items := make([]domain.ContentListItem, 0, filter.Limit)
+	for rows.Next() {
+		item, scanErr := scanContentListItem(rows)
+		if scanErr != nil {
+			return nil, scanErr
+		}
+		items = append(items, item)
+	}
+	return items, rows.Err()
+}
+
+// CountContent returns the total count of content items matching the filter.
+func (r *Repository) CountContent(ctx context.Context, filter domain.ContentListFilter) (int, error) {
+	query, args := buildCountContentQuery(filter)
+	var count int
+	if err := r.db.QueryRowContext(ctx, query, args...).Scan(&count); err != nil {
+		return 0, fmt.Errorf("counting content: %w", err)
+	}
+	return count, nil
+}
+
+func buildListContentQuery(filter domain.ContentListFilter) (query string, args []any) {
+	query = `SELECT c.id, c.type, c.title, c.summary, c.url, c.project, c.source,
+		c.published, c.scheduled_at, c.created_at,
+		COALESCE(d.total, 0) AS total,
+		COALESCE(d.pending, 0) AS pending,
+		COALESCE(d.delivered, 0) AS delivered,
+		COALESCE(d.failed, 0) AS failed,
+		COALESCE(d.retrying, 0) AS retrying
+	FROM content c
+	LEFT JOIN (
+		SELECT content_id,
+			COUNT(*) AS total,
+			COUNT(*) FILTER (WHERE status = 'pending' OR status = 'publishing') AS pending,
+			COUNT(*) FILTER (WHERE status = 'delivered') AS delivered,
+			COUNT(*) FILTER (WHERE status = 'failed') AS failed,
+			COUNT(*) FILTER (WHERE status = 'retrying') AS retrying
+		FROM deliveries GROUP BY content_id
+	) d ON d.content_id = c.id`
+
+	const paginationParams = 2
+	args = make([]any, 0, maxContentFilterConditions+paginationParams)
+	conditions := buildContentConditions(filter, &args)
+	if len(conditions) > 0 {
+		query += " WHERE " + joinConditions(conditions)
+	}
+	query += " ORDER BY c.created_at DESC"
+	limitPos := len(args) + 1
+	offsetPos := limitPos + 1
+	query += fmt.Sprintf(" LIMIT $%d OFFSET $%d", limitPos, offsetPos)
+	args = append(args, filter.Limit, filter.Offset)
+
+	return query, args
+}
+
+func buildCountContentQuery(filter domain.ContentListFilter) (query string, args []any) {
+	query = `SELECT COUNT(*) FROM content c
+	LEFT JOIN (
+		SELECT content_id,
+			COUNT(*) FILTER (WHERE status = 'delivered') AS delivered,
+			COUNT(*) FILTER (WHERE status = 'failed') AS failed
+		FROM deliveries GROUP BY content_id
+	) d ON d.content_id = c.id`
+
+	args = make([]any, 0, maxContentFilterConditions)
+	conditions := buildContentConditions(filter, &args)
+	if len(conditions) > 0 {
+		query += " WHERE " + joinConditions(conditions)
+	}
+	return query, args
+}
+
+const maxContentFilterConditions = 2
+
+func buildContentConditions(filter domain.ContentListFilter, args *[]any) []string {
+	conditions := make([]string, 0, maxContentFilterConditions)
+	if filter.Type != "" {
+		*args = append(*args, filter.Type)
+		conditions = append(conditions, fmt.Sprintf("c.type = $%d", len(*args)))
+	}
+	if filter.Status != "" {
+		switch filter.Status {
+		case "delivered":
+			conditions = append(conditions, "COALESCE(d.delivered, 0) > 0")
+		case "failed":
+			conditions = append(conditions, "COALESCE(d.failed, 0) > 0 AND COALESCE(d.delivered, 0) = 0")
+		case "pending":
+			conditions = append(conditions, "(COALESCE(d.total, 0) = 0 OR COALESCE(d.pending, 0) > 0)")
+		}
+	}
+	return conditions
+}
+
+func joinConditions(conditions []string) string {
+	return strings.Join(conditions, " AND ")
+}
+
+func scanContentListItem(rows *sqlx.Rows) (domain.ContentListItem, error) {
+	var item domain.ContentListItem
+	var summary domain.DeliverySummary
+	if err := rows.Scan(
+		&item.ID, &item.Type, &item.Title, &item.Summary, &item.URL,
+		&item.Project, &item.Source, &item.Published, &item.ScheduledAt, &item.CreatedAt,
+		&summary.Total, &summary.Pending, &summary.Delivered, &summary.Failed, &summary.Retrying,
+	); err != nil {
+		return domain.ContentListItem{}, fmt.Errorf("scanning content list item: %w", err)
+	}
+	item.DeliverySummary = &summary
+	return item, nil
+}
+
+// ListAccounts returns all configured accounts. Credentials are never returned.
+func (r *Repository) ListAccounts(ctx context.Context) ([]domain.Account, error) {
+	rows, err := r.db.QueryxContext(ctx, `
+		SELECT id, name, platform, project, enabled, credentials IS NOT NULL AS has_creds,
+			token_expiry, created_at, updated_at
+		FROM accounts
+		ORDER BY created_at`)
+	if err != nil {
+		return nil, fmt.Errorf("listing accounts: %w", err)
+	}
+	defer rows.Close()
+
+	accounts := make([]domain.Account, 0)
+	for rows.Next() {
+		var acct domain.Account
+		var hasCreds bool
+		if scanErr := rows.Scan(
+			&acct.ID, &acct.Name, &acct.Platform, &acct.Project, &acct.Enabled,
+			&hasCreds, &acct.TokenExpiry, &acct.CreatedAt, &acct.UpdatedAt,
+		); scanErr != nil {
+			return nil, fmt.Errorf("scanning account: %w", scanErr)
+		}
+		acct.CredentialsConfigured = hasCreds
+		accounts = append(accounts, acct)
+	}
+	return accounts, rows.Err()
+}
+
+// GetAccountByID returns a single account by ID. Credentials are never returned.
+func (r *Repository) GetAccountByID(ctx context.Context, id string) (*domain.Account, error) {
+	var acct domain.Account
+	var hasCreds bool
+	err := r.db.QueryRowContext(ctx, `
+		SELECT id, name, platform, project, enabled, credentials IS NOT NULL AS has_creds,
+			token_expiry, created_at, updated_at
+		FROM accounts WHERE id = $1`, id).Scan(
+		&acct.ID, &acct.Name, &acct.Platform, &acct.Project, &acct.Enabled,
+		&hasCreds, &acct.TokenExpiry, &acct.CreatedAt, &acct.UpdatedAt,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("getting account: %w", err)
+	}
+	acct.CredentialsConfigured = hasCreds
+	return &acct, nil
+}
+
+// CreateAccount inserts a new account. Credentials should be pre-encrypted.
+func (r *Repository) CreateAccount(
+	ctx context.Context, id, name, platform, project string,
+	enabled bool, encryptedCreds []byte, tokenExpiry *time.Time,
+) error {
+	_, err := r.db.ExecContext(ctx, `
+		INSERT INTO accounts (id, name, platform, project, enabled, credentials, token_expiry)
+		VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+		id, name, platform, project, enabled, encryptedCreds, tokenExpiry,
+	)
+	return err
+}
+
+// UpdateAccount updates account fields. Only non-nil fields are changed.
+func (r *Repository) UpdateAccount(
+	ctx context.Context, id string,
+	name, platform, project *string, enabled *bool,
+	encryptedCreds []byte, tokenExpiry *time.Time,
+) error {
+	query := "UPDATE accounts SET updated_at = NOW()"
+	args := make([]any, 0)
+
+	if name != nil {
+		args = append(args, *name)
+		query += fmt.Sprintf(", name = $%d", len(args))
+	}
+	if platform != nil {
+		args = append(args, *platform)
+		query += fmt.Sprintf(", platform = $%d", len(args))
+	}
+	if project != nil {
+		args = append(args, *project)
+		query += fmt.Sprintf(", project = $%d", len(args))
+	}
+	if enabled != nil {
+		args = append(args, *enabled)
+		query += fmt.Sprintf(", enabled = $%d", len(args))
+	}
+	if encryptedCreds != nil {
+		args = append(args, encryptedCreds)
+		query += fmt.Sprintf(", credentials = $%d", len(args))
+	}
+	if tokenExpiry != nil {
+		args = append(args, *tokenExpiry)
+		query += fmt.Sprintf(", token_expiry = $%d", len(args))
+	}
+
+	args = append(args, id)
+	query += fmt.Sprintf(" WHERE id = $%d", len(args))
+
+	result, err := r.db.ExecContext(ctx, query, args...)
+	if err != nil {
+		return fmt.Errorf("updating account: %w", err)
+	}
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("checking rows affected: %w", err)
+	}
+	if rows == 0 {
+		return fmt.Errorf("account not found: %s", id)
+	}
+	return nil
+}
+
+// DeleteAccount removes an account by ID.
+func (r *Repository) DeleteAccount(ctx context.Context, id string) error {
+	result, err := r.db.ExecContext(ctx, `DELETE FROM accounts WHERE id = $1`, id)
+	if err != nil {
+		return fmt.Errorf("deleting account: %w", err)
+	}
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("checking rows affected: %w", err)
+	}
+	if rows == 0 {
+		return fmt.Errorf("account not found: %s", id)
+	}
+	return nil
+}
+
+// GetAccountCredentials returns the raw encrypted credentials for an account.
+// Used internally by the orchestrator to load credentials at publish time.
+func (r *Repository) GetAccountCredentials(ctx context.Context, accountName string) ([]byte, error) {
+	var creds []byte
+	err := r.db.QueryRowContext(ctx, `
+		SELECT credentials FROM accounts WHERE name = $1 AND enabled = true`, accountName).Scan(&creds)
+	if err != nil {
+		return nil, fmt.Errorf("getting account credentials: %w", err)
+	}
+	return creds, nil
 }
