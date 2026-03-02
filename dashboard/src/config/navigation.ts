@@ -20,6 +20,8 @@ import {
   Shield,
   HardDrive,
   Layers,
+  Users,
+  Send,
   type LucideIcon,
 } from 'lucide-vue-next'
 
@@ -97,6 +99,9 @@ export const navigation: NavSection[] = [
       { title: 'Channels', path: '/distribution/channels', icon: Radio },
       { title: 'Routes', path: '/distribution/routes', icon: GitBranch },
       { title: 'Delivery Logs', path: '/distribution/logs', icon: ScrollText },
+      { title: 'Social Content', path: '/distribution/social-content', icon: FileText },
+      { title: 'Social Accounts', path: '/distribution/social-accounts', icon: Users },
+      { title: 'Publish', path: '/distribution/social-publish', icon: Send },
     ],
   },
   // System - rarely used but essential
