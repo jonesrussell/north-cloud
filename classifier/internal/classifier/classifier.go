@@ -31,6 +31,7 @@ type Classifier struct {
 	location         *LocationClassifier
 	recipeExtractor  *RecipeExtractor
 	jobExtractor     *JobExtractor
+	rfpExtractor     *RFPExtractor
 	logger           infralogger.Logger
 	version          string
 	routingTable     map[string][]string // route key -> sidecar names (e.g. "article:event" -> ["location"])
@@ -50,6 +51,7 @@ type Config struct {
 	IndigenousClassifier    *IndigenousClassifier    // Optional: hybrid indigenous classifier
 	RecipeExtractor         *RecipeExtractor         // Optional: structured recipe extractor
 	JobExtractor            *JobExtractor            // Optional: structured job extractor
+	RFPExtractor            *RFPExtractor            // Optional: structured RFP extractor
 	RoutingTable            map[string][]string      // Optional: content-type routing (see ResolveSidecars)
 }
 
@@ -103,6 +105,7 @@ func NewClassifier(
 		location:         NewLocationClassifier(logger),
 		recipeExtractor:  config.RecipeExtractor,
 		jobExtractor:     config.JobExtractor,
+		rfpExtractor:     config.RFPExtractor,
 		logger:           logger,
 		version:          config.Version,
 		routingTable:     routingTable,
@@ -176,9 +179,10 @@ func (c *Classifier) Classify(ctx context.Context, raw *domain.RawContent) (*dom
 	crimeResult, miningResult, coforgeResult, entertainmentResult, indigenousResult, locationResult := c.classifyOptionalForPublishable(
 		ctx, raw, contentTypeResult.Type, contentTypeResult.Subtype)
 
-	// 5b. Structured extraction — recipes and jobs
+	// 5b. Structured extraction — recipes, jobs, and RFPs
 	recipeResult := c.runRecipeExtraction(ctx, raw, contentTypeResult.Type, topicResult.Topics)
 	jobResult := c.runJobExtraction(ctx, raw, contentTypeResult.Type, topicResult.Topics)
+	rfpResult := c.runRFPExtraction(ctx, raw, contentTypeResult.Type, topicResult.Topics)
 
 	// Update source reputation if enabled
 	isSpam := qualityResult.TotalScore < spamThresholdScore // Spam threshold
@@ -222,6 +226,7 @@ func (c *Classifier) Classify(ctx context.Context, raw *domain.RawContent) (*dom
 		Location:             locationResult,
 		Recipe:               recipeResult,
 		Job:                  jobResult,
+		RFP:                  rfpResult,
 	}
 
 	c.logger.Info("Classification complete",
@@ -515,6 +520,26 @@ func (c *Classifier) runJobExtraction(
 	return result
 }
 
+// runRFPExtraction runs RFP extraction when enabled. Extraction is best-effort:
+// failure returns nil RFP and does not fail the overall classification.
+func (c *Classifier) runRFPExtraction(
+	ctx context.Context, raw *domain.RawContent, contentType string, topics []string,
+) *domain.RFPResult {
+	if c.rfpExtractor == nil {
+		return nil
+	}
+	result, err := c.rfpExtractor.Extract(ctx, raw, contentType, topics)
+	if err != nil {
+		wrapped := fmt.Errorf("rfp extraction content_id=%s: %w", raw.ID, err)
+		c.logger.Warn("RFP extraction failed",
+			infralogger.String("content_id", raw.ID),
+			infralogger.Error(wrapped),
+		)
+		return nil
+	}
+	return result
+}
+
 // calculateTopicConfidence calculates overall topic confidence
 // If no topics matched, confidence is low
 // If topics matched, use the highest topic score
@@ -558,6 +583,7 @@ func (c *Classifier) BuildClassifiedContent(raw *domain.RawContent, result *doma
 		Location:             result.Location,
 		Recipe:               result.Recipe,
 		Job:                  result.Job,
+		RFP:                  result.RFP,
 		// Publisher compatibility aliases
 		Body:   raw.RawText, // Alias for RawText
 		Source: raw.URL,     // Alias for URL
