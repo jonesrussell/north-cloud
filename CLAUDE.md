@@ -59,12 +59,20 @@ Sources → [Crawler] → ES raw_content → [Classifier + ML Sidecars] → ES c
 
 **Docker (Development)**:
 ```bash
-# Start core services only (no Loki/Grafana/Pyroscope)
+# Start core services only (no ML sidecars, no Loki/Grafana/Pyroscope)
 task docker:dev:up
-# Or: docker compose -f docker-compose.base.yml -f docker-compose.dev.yml up -d
+
+# Include ML sidecars (crime-ml, mining-ml, coforge-ml, entertainment-ml, indigenous-ml)
+task docker:dev:up:ml
+
+# Include search-service and search-frontend
+task docker:dev:up:search
 
 # Include logging/observability (Loki, Alloy, Grafana, Pyroscope)
 task docker:dev:up:observability
+
+# Start everything (ML + search + observability)
+task docker:dev:up:full
 
 # View logs
 docker compose -f docker-compose.base.yml -f docker-compose.dev.yml logs -f SERVICE
@@ -75,6 +83,11 @@ docker compose -f docker-compose.base.yml -f docker-compose.dev.yml up -d --buil
 # Stop all
 docker compose -f docker-compose.base.yml -f docker-compose.dev.yml down
 ```
+
+**Dev Postgres**: Dev uses a single shared Postgres instance (7 databases in 1 container).
+Prod and test still use per-service Postgres. First `docker:dev:up` auto-creates all databases
+via `infrastructure/postgres/init-dev.sql`. The init script only runs on first startup (empty data
+directory). To re-initialize: `docker compose -f docker-compose.base.yml -f docker-compose.dev.yml down -v`.
 
 **Taskfile Commands (Preferred)**:
 ```bash

@@ -940,6 +940,16 @@ tasks:
     cmds:
       - docker compose -f docker-compose.base.yml -f docker-compose.dev.yml --profile observability up -d {{.CLI_ARGS}}
 
+  docker:dev:up:ml:
+    desc: "Start development environment including ML sidecars"
+    cmds:
+      - docker compose -f docker-compose.base.yml -f docker-compose.dev.yml --profile ml up -d {{.CLI_ARGS}}
+
+  docker:dev:up:full:
+    desc: "Start development environment with all profiles (ML, search, observability)"
+    cmds:
+      - docker compose -f docker-compose.base.yml -f docker-compose.dev.yml --profile ml --profile search --profile observability up -d {{.CLI_ARGS}}
+
   docker:dev:up:search:
     desc: "Start development environment including search-service and search-frontend"
     cmds:

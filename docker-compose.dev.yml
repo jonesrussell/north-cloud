@@ -40,6 +40,56 @@ x-node-dev-environment: &node-dev-environment
 services:
 
   # ------------------------------------------------------------
+  # Shared Postgres (Dev) — used instead of the 7 per-service instances
+  # ------------------------------------------------------------
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "1"
+          memory: 1024M
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: postgres
+    volumes:
+      - postgres_dev_data:/var/lib/postgresql/data
+      - ./infrastructure/postgres/init-dev.sql:/docker-entrypoint-initdb.d/init-dev.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - north-cloud-network
+
+  # Disable per-service Postgres instances (defined in base) via replicas: 0
+  postgres-source-manager:
+    deploy:
+      replicas: 0
+  postgres-crawler:
+    deploy:
+      replicas: 0
+  postgres-classifier:
+    deploy:
+      replicas: 0
+  postgres-index-manager:
+    deploy:
+      replicas: 0
+  postgres-publisher:
+    deploy:
+      replicas: 0
+  postgres-pipeline:
+    deploy:
+      replicas: 0
+  postgres-click-tracker:
+    deploy:
+      replicas: 0
+
+  # ------------------------------------------------------------
   # Crawler (Dev)
   # ------------------------------------------------------------
   crawler:
@@ -57,7 +107,7 @@ services:
       - "${CRAWLER_PORT:-8060}:8080"
       - "${CRAWLER_PPROF_PORT:-6060}:6060"
     depends_on:
-      postgres-crawler:
+      postgres:
         condition: service_healthy
       elasticsearch:
         condition: service_healthy
@@ -69,7 +119,7 @@ services:
         condition: service_healthy
     environment:
       <<: *go-dev-environment
-      POSTGRES_CRAWLER_HOST: postgres-crawler
+      POSTGRES_CRAWLER_HOST: postgres
       POSTGRES_CRAWLER_PORT: 5432
       POSTGRES_CRAWLER_USER: "${POSTGRES_CRAWLER_USER:-postgres}"
       POSTGRES_CRAWLER_PASSWORD: "${POSTGRES_CRAWLER_PASSWORD:-postgres}"
@@ -156,7 +206,7 @@ services:
       - "${SOURCE_MANAGER_PORT:-8050}:8050"
       - "${SOURCE_MANAGER_PPROF_PORT:-6061}:6060"
     depends_on:
-      postgres-source-manager:
+      postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
@@ -164,7 +214,7 @@ services:
       <<: *go-dev-environment
       SERVER_HOST: "${SOURCE_MANAGER_HOST:-0.0.0.0}"
       SERVER_PORT: "${SOURCE_MANAGER_PORT:-8050}"
-      DB_HOST: postgres-source-manager
+      DB_HOST: postgres
       DB_PORT: 5432
       DB_USER: "${POSTGRES_SOURCE_MANAGER_USER:-postgres}"
       DB_PASSWORD: "${POSTGRES_SOURCE_MANAGER_PASSWORD:-postgres}"
@@ -210,7 +260,7 @@ services:
       - "${CLASSIFIER_PORT:-8071}:8070"
       - "${CLASSIFIER_PPROF_PORT:-6062}:6060"
     depends_on:
-      postgres-classifier:
+      postgres:
         condition: service_healthy
       elasticsearch:
         condition: service_healthy
@@ -218,7 +268,7 @@ services:
         condition: service_healthy
     environment:
       <<: *go-dev-environment
-      POSTGRES_HOST: postgres-classifier
+      POSTGRES_HOST: postgres
       POSTGRES_PORT: 5432
       POSTGRES_USER: "${POSTGRES_CLASSIFIER_USER:-postgres}"
       POSTGRES_PASSWORD: "${POSTGRES_CLASSIFIER_PASSWORD:-postgres}"
@@ -279,14 +329,14 @@ services:
     ports:
       - "${INDEX_MANAGER_PORT:-8090}:8090"
     depends_on:
-      postgres-index-manager:
+      postgres:
         condition: service_healthy
       elasticsearch:
         condition: service_healthy
     environment:
       <<: *go-dev-environment
       INDEX_MANAGER_PORT: 8090
-      POSTGRES_INDEX_MANAGER_HOST: postgres-index-manager
+      POSTGRES_INDEX_MANAGER_HOST: postgres
       POSTGRES_INDEX_MANAGER_PORT: 5432
       POSTGRES_INDEX_MANAGER_USER: "${POSTGRES_INDEX_MANAGER_USER:-postgres}"
       POSTGRES_INDEX_MANAGER_PASSWORD: "${POSTGRES_INDEX_MANAGER_PASSWORD:-postgres}"
@@ -454,7 +504,7 @@ services:
       <<: *go-dev-environment
       CLICK_TRACKER_PORT: 8093
       CLICK_TRACKER_SECRET: "${CLICK_TRACKER_SECRET:-dev-secret-change-me}"
-      POSTGRES_CLICK_TRACKER_HOST: postgres-click-tracker
+      POSTGRES_CLICK_TRACKER_HOST: postgres
       POSTGRES_CLICK_TRACKER_PORT: 5432
       POSTGRES_CLICK_TRACKER_USER: ${POSTGRES_CLICK_TRACKER_USER:-postgres}
       POSTGRES_CLICK_TRACKER_PASSWORD: ${POSTGRES_CLICK_TRACKER_PASSWORD:-postgres}
@@ -467,8 +517,11 @@ services:
       - click_tracker_go_build_cache:/tmp/go-build-cache
     command: ["sh", "-c", "go mod download && mkdir -p tmp && go build -mod=mod -o ./tmp/main ./main.go && exec ./tmp/main"]
     depends_on:
+      postgres:
+        condition: service_healthy
       postgres-click-tracker:
         condition: service_healthy
+        required: false
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8093/health"]
       interval: 10s
@@ -517,37 +570,47 @@ services:
       start_period: 15s
 
   # ------------------------------------------------------------
-  # Crime ML Classifier (Dev)
+  # Crime ML Classifier (Dev) — gated behind `ml` profile
   # ------------------------------------------------------------
   crime-ml:
+    profiles:
+      - ml
     ports:
       - "${CRIME_ML_PORT:-8076}:8076"
 
   # ------------------------------------------------------------
-  # Mining ML Classifier (Dev)
+  # Mining ML Classifier (Dev) — gated behind `ml` profile
   # ------------------------------------------------------------
   mining-ml:
+    profiles:
+      - ml
     ports:
       - "${MINING_ML_PORT:-8077}:8077"
 
   # ------------------------------------------------------------
-  # Coforge ML Classifier (Dev)
+  # Coforge ML Classifier (Dev) — gated behind `ml` profile
   # ------------------------------------------------------------
   coforge-ml:
+    profiles:
+      - ml
     ports:
       - "${COFORGE_ML_PORT:-8078}:8078"
 
   # ------------------------------------------------------------
-  # Entertainment ML Classifier (Dev)
+  # Entertainment ML Classifier (Dev) — gated behind `ml` profile
   # ------------------------------------------------------------
   entertainment-ml:
+    profiles:
+      - ml
     ports:
       - "${ENTERTAINMENT_ML_PORT:-8079}:8079"
 
   # ------------------------------------------------------------
-  # Indigenous ML Classifier (Dev)
+  # Indigenous ML Classifier (Dev) — gated behind `ml` profile
   # ------------------------------------------------------------
   indigenous-ml:
+    profiles:
+      - ml
     ports:
       - "${INDIGENOUS_ML_PORT:-8080}:8080"
 
@@ -593,7 +656,7 @@ services:
       - "${PUBLISHER_PORT:-8070}:8070"
       - "${PUBLISHER_PPROF_PORT:-6063}:6060"
     depends_on:
-      postgres-publisher:
+      postgres:
         condition: service_healthy
       elasticsearch:
         condition: service_healthy
@@ -601,7 +664,7 @@ services:
         condition: service_healthy
     environment:
       <<: *go-dev-environment
-      POSTGRES_PUBLISHER_HOST: postgres-publisher
+      POSTGRES_PUBLISHER_HOST: postgres
       POSTGRES_PUBLISHER_PORT: 5432
       POSTGRES_PUBLISHER_USER: "${POSTGRES_PUBLISHER_USER:-postgres}"
       POSTGRES_PUBLISHER_PASSWORD: "${POSTGRES_PUBLISHER_PASSWORD:-postgres}"
@@ -650,11 +713,11 @@ services:
       - "${PIPELINE_PORT:-8075}:8075"
       - "${PIPELINE_PPROF_PORT:-6067}:6060"
     depends_on:
-      postgres-pipeline:
+      postgres:
         condition: service_healthy
     environment:
       <<: *go-dev-environment
-      POSTGRES_PIPELINE_HOST: postgres-pipeline
+      POSTGRES_PIPELINE_HOST: postgres
       POSTGRES_PIPELINE_PORT: 5432
       POSTGRES_PIPELINE_USER: "${POSTGRES_PIPELINE_USER:-postgres}"
       POSTGRES_PIPELINE_PASSWORD: "${POSTGRES_PIPELINE_PASSWORD:-postgres}"
@@ -765,6 +828,7 @@ services:
 # Dev Cache Volumes
 # ============================================================
 volumes:
+  postgres_dev_data:
   go_modules_cache:
   crawler_go_mod_cache:
   crawler_go_build_cache:
