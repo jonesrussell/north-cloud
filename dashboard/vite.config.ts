@@ -15,6 +15,7 @@ const INDEX_MANAGER_API_URL = process.env.INDEX_MANAGER_API_URL || 'http://local
 const SEARCH_API_URL = process.env.SEARCH_API_URL || 'http://localhost:8092'
 const PIPELINE_API_URL = process.env.PIPELINE_API_URL || 'http://localhost:8075'
 const CLICK_TRACKER_API_URL = process.env.CLICK_TRACKER_API_URL || 'http://localhost:8093'
+const SOCIAL_PUBLISHER_API_URL = process.env.SOCIAL_PUBLISHER_API_URL || 'http://localhost:8078'
 
 export default defineConfig({
   base: '/dashboard/',
@@ -208,6 +209,30 @@ export default defineConfig({
       // Click Tracker health endpoint
       '/api/health/click-tracker': {
         target: CLICK_TRACKER_API_URL,
+        changeOrigin: true,
+        timeout: 10000,
+        proxyTimeout: 10000,
+        rewrite: () => '/health',
+      },
+      // Social Publisher API proxy
+      '/api/social-publisher': {
+        target: SOCIAL_PUBLISHER_API_URL,
+        changeOrigin: true,
+        timeout: 30000,
+        proxyTimeout: 30000,
+        rewrite: (path) => path.replace(/^\/api\/social-publisher/, '/api/v1'),
+        configure: (proxy, _options) => {
+          proxy.on('proxyReq', (proxyReq, req, _res) => {
+            const authHeader = req.headers.authorization || req.headers.Authorization
+            if (authHeader) {
+              proxyReq.setHeader('Authorization', authHeader)
+            }
+          })
+        },
+      },
+      // Social Publisher health endpoint
+      '/api/health/social-publisher': {
+        target: SOCIAL_PUBLISHER_API_URL,
         changeOrigin: true,
         timeout: 10000,
         proxyTimeout: 10000,
