@@ -305,8 +305,10 @@ func createMiningProperties() MiningProperties {
 }
 
 // createRFPProperties creates nested properties for RFP extraction.
+// Date fields use keyword (not date) because heuristic extraction produces raw strings
+// that may not conform to strict_date_optional_time. When Schema.org extraction is added,
+// consider upgrading to date type with a normalization step.
 func createRFPProperties() RFPProperties {
-	dateFormat := "strict_date_optional_time||epoch_millis"
 	return RFPProperties{
 		Type: "object",
 		Properties: RFPFieldProperties{
@@ -315,9 +317,9 @@ func createRFPProperties() RFPProperties {
 			ReferenceNumber:  Field{Type: "keyword"},
 			OrganizationName: Field{Type: "keyword"},
 			Description:      Field{Type: "text", Analyzer: "standard"},
-			PublishedDate:    Field{Type: "date", Format: dateFormat},
-			ClosingDate:      Field{Type: "date", Format: dateFormat},
-			AmendmentDate:    Field{Type: "date", Format: dateFormat},
+			PublishedDate:    Field{Type: "keyword"},
+			ClosingDate:      Field{Type: "keyword"},
+			AmendmentDate:    Field{Type: "keyword"},
 			BudgetMin:        Field{Type: "float"},
 			BudgetMax:        Field{Type: "float"},
 			BudgetCurrency:   Field{Type: "keyword"},
@@ -327,7 +329,7 @@ func createRFPProperties() RFPProperties {
 			Province:         Field{Type: "keyword"},
 			City:             Field{Type: "keyword"},
 			Country:          Field{Type: "keyword"},
-			Eligibility:      Field{Type: "keyword"},
+			Eligibility:      Field{Type: "text", Analyzer: "standard"},
 			SourceURL:        Field{Type: "keyword"},
 			ContactName:      Field{Type: "keyword"},
 			ContactEmail:     Field{Type: "keyword"},

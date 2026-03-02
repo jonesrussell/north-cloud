@@ -311,7 +311,8 @@ type JobResult struct {
 }
 
 // RFPResult holds structured RFP/procurement extraction results.
-// Non-nil values always have ExtractionMethod set ("schema_org", "structured_page", or "heuristic").
+// Non-nil values always have ExtractionMethod set ("heuristic").
+// TODO: add "schema_org" extraction when structured procurement data becomes common.
 type RFPResult struct {
 	ExtractionMethod string   `json:"extraction_method"`
 	Title            string   `json:"title,omitempty"`

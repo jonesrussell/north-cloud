@@ -90,6 +90,8 @@ type JobData struct {
 }
 
 // RFPData holds the publisher view of structured RFP extraction from Elasticsearch.
+// It is a subset of the classifier's RFPResult; ES may index additional fields that are
+// ignored on unmarshal.
 type RFPData struct {
 	ExtractionMethod string   `json:"extraction_method"`
 	Title            string   `json:"title,omitempty"`

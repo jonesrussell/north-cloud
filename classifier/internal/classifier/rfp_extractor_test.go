@@ -94,6 +94,23 @@ func TestParseBudgetValue_USD(t *testing.T) {
 	assert.Equal(t, "USD", currency)
 }
 
+func TestParseBudgetValue_Decimal(t *testing.T) {
+	t.Helper()
+	budgetMin, budgetMax, _ := parseBudgetValue("$500,000.50")
+	require.NotNil(t, budgetMin)
+	require.NotNil(t, budgetMax)
+	assert.InDelta(t, 500000.50, *budgetMin, 0.01)
+	assert.InDelta(t, 500000.50, *budgetMax, 0.01)
+}
+
+func TestParseBudgetValue_TextOnly(t *testing.T) {
+	t.Helper()
+	budgetMin, budgetMax, currency := parseBudgetValue("TBD")
+	assert.Nil(t, budgetMin)
+	assert.Nil(t, budgetMax)
+	assert.Empty(t, currency)
+}
+
 func TestParseBudgetValue_Empty(t *testing.T) {
 	t.Helper()
 	budgetMin, budgetMax, currency := parseBudgetValue("")

@@ -179,7 +179,7 @@ func (c *Classifier) Classify(ctx context.Context, raw *domain.RawContent) (*dom
 	crimeResult, miningResult, coforgeResult, entertainmentResult, indigenousResult, locationResult := c.classifyOptionalForPublishable(
 		ctx, raw, contentTypeResult.Type, contentTypeResult.Subtype)
 
-	// 5b. Structured extraction — recipes and jobs
+	// 5b. Structured extraction — recipes, jobs, and RFPs
 	recipeResult := c.runRecipeExtraction(ctx, raw, contentTypeResult.Type, topicResult.Topics)
 	jobResult := c.runJobExtraction(ctx, raw, contentTypeResult.Type, topicResult.Topics)
 	rfpResult := c.runRFPExtraction(ctx, raw, contentTypeResult.Type, topicResult.Topics)

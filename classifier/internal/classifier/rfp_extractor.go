@@ -2,6 +2,7 @@ package classifier
 
 import (
 	"context"
+	"strconv"
 	"strings"
 
 	"github.com/jonesrussell/north-cloud/classifier/internal/domain"
@@ -149,29 +150,27 @@ func parseBudgetValue(value string) (budgetMin, budgetMax *float64, currency str
 	return nil, nil, ""
 }
 
-// decimalBase is the base used for decimal digit conversion.
-const decimalBase = 10
-
-// parseFloat parses a string to *float64, returning nil on failure.
+// parseFloat extracts a positive float64 from a pre-cleaned numeric string.
+// Strips any remaining non-numeric characters (except '.' and '-') before parsing.
+// Returns nil if the string is empty, non-numeric, or the result is not positive.
 func parseFloat(s string) *float64 {
 	s = strings.TrimSpace(s)
 	if s == "" {
 		return nil
 	}
-	var val float64
-	for _, ch := range s {
-		if ch >= '0' && ch <= '9' {
-			val = val*decimalBase + float64(ch-'0')
-		} else if ch != '.' {
-			// Non-numeric, non-dot character — bail
-			if val > 0 {
-				return &val
-			}
-			return nil
+	// Strip any remaining non-numeric characters (spaces, currency remnants)
+	cleaned := strings.Map(func(r rune) rune {
+		if (r >= '0' && r <= '9') || r == '.' {
+			return r
 		}
+		return -1
+	}, s)
+	if cleaned == "" {
+		return nil
 	}
-	if val > 0 {
-		return &val
+	val, err := strconv.ParseFloat(cleaned, 64)
+	if err != nil || val <= 0 {
+		return nil
 	}
-	return nil
+	return &val
 }
