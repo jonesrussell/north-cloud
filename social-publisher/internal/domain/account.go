@@ -2,7 +2,7 @@ package domain
 
 import "time"
 
-// Account represents a social media account with credentials.
+// Account represents a social media account. Credentials are stored separately and never loaded into this struct.
 type Account struct {
 	ID                    string     `db:"id"           json:"id"`
 	Name                  string     `db:"name"         json:"name"`

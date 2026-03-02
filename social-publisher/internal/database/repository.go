@@ -2,7 +2,9 @@ package database
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -14,7 +16,7 @@ import (
 	"github.com/jonesrussell/north-cloud/social-publisher/internal/domain"
 )
 
-// Repository provides persistence operations for content and deliveries.
+// Repository provides persistence operations for content, deliveries, and accounts.
 type Repository struct {
 	db *sqlx.DB
 }
@@ -231,6 +233,9 @@ func (r *Repository) GetDeliveryByID(ctx context.Context, id string) (*domain.De
 	var delivery domain.Delivery
 	err := r.db.GetContext(ctx, &delivery, `SELECT * FROM deliveries WHERE id = $1`, id)
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, fmt.Errorf("getting delivery: %w", domain.ErrNotFound)
+		}
 		return nil, fmt.Errorf("getting delivery: %w", err)
 	}
 	return &delivery, nil
@@ -376,7 +381,8 @@ func (r *Repository) ListAccounts(ctx context.Context) ([]domain.Account, error)
 	}
 	defer rows.Close()
 
-	accounts := make([]domain.Account, 0)
+	const initialAccountCapacity = 8
+	accounts := make([]domain.Account, 0, initialAccountCapacity)
 	for rows.Next() {
 		var acct domain.Account
 		var hasCreds bool
@@ -404,6 +410,9 @@ func (r *Repository) GetAccountByID(ctx context.Context, id string) (*domain.Acc
 		&hasCreds, &acct.TokenExpiry, &acct.CreatedAt, &acct.UpdatedAt,
 	)
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, fmt.Errorf("getting account: %w", domain.ErrNotFound)
+		}
 		return nil, fmt.Errorf("getting account: %w", err)
 	}
 	acct.CredentialsConfigured = hasCreds
@@ -424,13 +433,15 @@ func (r *Repository) CreateAccount(
 }
 
 // UpdateAccount updates account fields. Only non-nil fields are changed.
+// Credentials (byte slice) are updated only if non-nil; passing nil leaves them unchanged.
 func (r *Repository) UpdateAccount(
 	ctx context.Context, id string,
 	name, platform, project *string, enabled *bool,
 	encryptedCreds []byte, tokenExpiry *time.Time,
 ) error {
+	const maxUpdateAccountArgs = 7 // 6 optional fields + 1 ID
 	query := "UPDATE accounts SET updated_at = NOW()"
-	args := make([]any, 0)
+	args := make([]any, 0, maxUpdateAccountArgs)
 
 	if name != nil {
 		args = append(args, *name)
@@ -469,7 +480,7 @@ func (r *Repository) UpdateAccount(
 		return fmt.Errorf("checking rows affected: %w", err)
 	}
 	if rows == 0 {
-		return fmt.Errorf("account not found: %s", id)
+		return fmt.Errorf("updating account %s: %w", id, domain.ErrNotFound)
 	}
 	return nil
 }
@@ -485,13 +496,12 @@ func (r *Repository) DeleteAccount(ctx context.Context, id string) error {
 		return fmt.Errorf("checking rows affected: %w", err)
 	}
 	if rows == 0 {
-		return fmt.Errorf("account not found: %s", id)
+		return fmt.Errorf("deleting account %s: %w", id, domain.ErrNotFound)
 	}
 	return nil
 }
 
-// GetAccountCredentials returns the raw encrypted credentials for an account.
-// Used internally by the orchestrator to load credentials at publish time.
+// GetAccountCredentials returns the raw encrypted credentials for an enabled account, looked up by name.
 func (r *Repository) GetAccountCredentials(ctx context.Context, accountName string) ([]byte, error) {
 	var creds []byte
 	err := r.db.QueryRowContext(ctx, `

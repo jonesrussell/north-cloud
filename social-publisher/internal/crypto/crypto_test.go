@@ -10,7 +10,6 @@ import (
 )
 
 func TestEncryptDecrypt_RoundTrip(t *testing.T) {
-	t.Helper()
 	key := make([]byte, 32)
 	for i := range key {
 		key[i] = byte(i)
@@ -29,7 +28,6 @@ func TestEncryptDecrypt_RoundTrip(t *testing.T) {
 }
 
 func TestEncrypt_DifferentNonceEachTime(t *testing.T) {
-	t.Helper()
 	key := make([]byte, 32)
 	for i := range key {
 		key[i] = byte(i)
@@ -48,7 +46,6 @@ func TestEncrypt_DifferentNonceEachTime(t *testing.T) {
 }
 
 func TestDecrypt_InvalidKey(t *testing.T) {
-	t.Helper()
 	key1 := make([]byte, 32)
 	key2 := make([]byte, 32)
 	key2[0] = 0xFF
@@ -63,7 +60,6 @@ func TestDecrypt_InvalidKey(t *testing.T) {
 }
 
 func TestEncrypt_InvalidKeyLength(t *testing.T) {
-	t.Helper()
 	_, err := crypto.Encrypt([]byte("data"), "tooshort")
 	assert.Error(t, err)
 }

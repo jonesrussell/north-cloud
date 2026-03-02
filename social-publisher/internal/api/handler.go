@@ -1,6 +1,7 @@
 package api
 
 import (
+	"errors"
 	"net/http"
 	"strconv"
 	"time"
@@ -125,7 +126,15 @@ func (h *Handler) Retry(c *gin.Context) {
 
 	delivery, err := h.repo.GetDeliveryByID(c.Request.Context(), deliveryID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "delivery not found"})
+		if errors.Is(err, domain.ErrNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "delivery not found"})
+			return
+		}
+		h.log.Error("Failed to get delivery",
+			infralogger.Error(err),
+			infralogger.String("delivery_id", deliveryID),
+		)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to get delivery"})
 		return
 	}
 
@@ -147,7 +156,14 @@ func (h *Handler) Retry(c *gin.Context) {
 
 	updated, err := h.repo.GetDeliveryByID(c.Request.Context(), deliveryID)
 	if err != nil {
-		c.JSON(http.StatusOK, gin.H{"delivery_id": deliveryID, "status": "retrying"})
+		h.log.Error("Failed to retrieve reset delivery",
+			infralogger.Error(err),
+			infralogger.String("delivery_id", deliveryID),
+		)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error":       "delivery reset but could not be retrieved",
+			"delivery_id": deliveryID,
+		})
 		return
 	}
 

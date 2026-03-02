@@ -1,11 +1,14 @@
 package config
 
 import (
+	"encoding/hex"
 	"errors"
 	"fmt"
 
 	infraconfig "github.com/north-cloud/infrastructure/config"
 )
+
+const requiredEncryptionKeyHexLen = 64 // 32 bytes as hex
 
 // Config holds all configuration for the social-publisher service.
 type Config struct {
@@ -100,6 +103,15 @@ func (c *Config) Validate() error {
 	}
 	if c.Redis.URL == "" {
 		return errors.New("redis URL is required")
+	}
+	if c.Encryption.Key == "" {
+		return errors.New("encryption key is required")
+	}
+	if len(c.Encryption.Key) != requiredEncryptionKeyHexLen {
+		return errors.New("encryption key must be a 64-character hex string (32 bytes)")
+	}
+	if _, err := hex.DecodeString(c.Encryption.Key); err != nil {
+		return fmt.Errorf("invalid encryption key: %w", err)
 	}
 	return nil
 }

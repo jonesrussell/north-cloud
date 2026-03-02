@@ -1,9 +1,13 @@
 package domain
 
 import (
+	"errors"
 	"fmt"
 	"time"
 )
+
+// ErrNotFound indicates a requested resource does not exist.
+var ErrNotFound = errors.New("not found")
 
 // PublishError is the interface all publishing errors must satisfy.
 type PublishError interface {

@@ -2,6 +2,7 @@ package api
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -25,7 +26,7 @@ func NewAccountsHandler(repo *database.Repository, encryptionKey string, log inf
 	return &AccountsHandler{repo: repo, encryptionKey: encryptionKey, log: log}
 }
 
-// List returns all configured accounts with credentials masked.
+// List returns all configured accounts. Credentials are excluded from the response.
 func (h *AccountsHandler) List(c *gin.Context) {
 	accounts, err := h.repo.ListAccounts(c.Request.Context())
 	if err != nil {
@@ -45,8 +46,12 @@ func (h *AccountsHandler) Get(c *gin.Context) {
 	id := c.Param("id")
 	account, err := h.repo.GetAccountByID(c.Request.Context(), id)
 	if err != nil {
+		if errors.Is(err, domain.ErrNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "account not found"})
+			return
+		}
 		h.log.Error("Failed to get account", infralogger.Error(err), infralogger.String("account_id", id))
-		c.JSON(http.StatusNotFound, gin.H{"error": "account not found"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to get account"})
 		return
 	}
 
@@ -94,8 +99,14 @@ func (h *AccountsHandler) Create(c *gin.Context) {
 
 	account, err := h.repo.GetAccountByID(c.Request.Context(), id)
 	if err != nil {
-		h.log.Error("Failed to retrieve created account", infralogger.Error(err))
-		c.JSON(http.StatusCreated, gin.H{"id": id})
+		h.log.Error("Failed to retrieve created account",
+			infralogger.Error(err),
+			infralogger.String("account_id", id),
+		)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "account created but could not be retrieved",
+			"id":    id,
+		})
 		return
 	}
 
@@ -133,14 +144,25 @@ func (h *AccountsHandler) Update(c *gin.Context) {
 		req.Name, req.Platform, req.Project, req.Enabled,
 		encryptedCreds, req.TokenExpiry,
 	); err != nil {
+		if errors.Is(err, domain.ErrNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "account not found"})
+			return
+		}
 		h.log.Error("Failed to update account", infralogger.Error(err), infralogger.String("account_id", id))
-		c.JSON(http.StatusNotFound, gin.H{"error": "account not found"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update account"})
 		return
 	}
 
 	account, err := h.repo.GetAccountByID(c.Request.Context(), id)
 	if err != nil {
-		c.JSON(http.StatusOK, gin.H{"id": id, "status": "updated"})
+		h.log.Error("Failed to retrieve updated account",
+			infralogger.Error(err),
+			infralogger.String("account_id", id),
+		)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "account updated but could not be retrieved",
+			"id":    id,
+		})
 		return
 	}
 
@@ -151,8 +173,12 @@ func (h *AccountsHandler) Update(c *gin.Context) {
 func (h *AccountsHandler) Delete(c *gin.Context) {
 	id := c.Param("id")
 	if err := h.repo.DeleteAccount(c.Request.Context(), id); err != nil {
+		if errors.Is(err, domain.ErrNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "account not found"})
+			return
+		}
 		h.log.Error("Failed to delete account", infralogger.Error(err), infralogger.String("account_id", id))
-		c.JSON(http.StatusNotFound, gin.H{"error": "account not found"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to delete account"})
 		return
 	}
 

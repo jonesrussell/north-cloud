@@ -71,17 +71,33 @@ func TestProtectedRoutes_RejectUnauthenticated(t *testing.T) {
 		Auth: config.AuthConfig{JWTSecret: "test-secret-key-for-testing"},
 	}
 	router := api.NewRouter(nil, nil, cfg, infralogger.NewNop())
-
-	// Create a request without JWT token
-	w := httptest.NewRecorder()
-	req, err := http.NewRequest(http.MethodGet, "/api/v1/status/test-id", http.NoBody)
-	require.NoError(t, err)
-
-	// Build a test engine through the router
 	testEngine := router.TestEngine()
-	testEngine.ServeHTTP(w, req)
 
-	assert.Equal(t, http.StatusUnauthorized, w.Code)
+	routes := []struct {
+		method string
+		path   string
+	}{
+		{http.MethodGet, "/api/v1/status/test-id"},
+		{http.MethodPost, "/api/v1/publish"},
+		{http.MethodGet, "/api/v1/content"},
+		{http.MethodPost, "/api/v1/retry/test-id"},
+		{http.MethodGet, "/api/v1/accounts"},
+		{http.MethodGet, "/api/v1/accounts/test-id"},
+		{http.MethodPost, "/api/v1/accounts"},
+		{http.MethodPut, "/api/v1/accounts/test-id"},
+		{http.MethodDelete, "/api/v1/accounts/test-id"},
+	}
+
+	for _, route := range routes {
+		t.Run(route.method+" "+route.path, func(t *testing.T) {
+			w := httptest.NewRecorder()
+			req, err := http.NewRequest(route.method, route.path, http.NoBody)
+			require.NoError(t, err)
+
+			testEngine.ServeHTTP(w, req)
+			assert.Equal(t, http.StatusUnauthorized, w.Code)
+		})
+	}
 }
 
 func TestPublishEndpoint_ParsesScheduledAt(t *testing.T) {
