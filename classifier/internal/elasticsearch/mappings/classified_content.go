@@ -87,6 +87,9 @@ type ClassifiedContentProperties struct {
 
 	// Location detection (content-based)
 	Location LocationProperties `json:"location,omitempty"`
+
+	// RFP structured extraction
+	RFP RFPProperties `json:"rfp,omitempty"`
 }
 
 // EntertainmentProperties defines the nested properties for entertainment classification.
@@ -155,6 +158,37 @@ type LocationFieldProperties struct {
 	Confidence  Field `json:"confidence"`
 }
 
+// RFPProperties defines the nested properties for RFP extraction.
+type RFPProperties struct {
+	Type       string             `json:"type,omitempty"`
+	Properties RFPFieldProperties `json:"properties,omitempty"`
+}
+
+// RFPFieldProperties defines individual fields within RFP extraction.
+type RFPFieldProperties struct {
+	ExtractionMethod Field `json:"extraction_method"`
+	Title            Field `json:"title"`
+	ReferenceNumber  Field `json:"reference_number"`
+	OrganizationName Field `json:"organization_name"`
+	Description      Field `json:"description"`
+	PublishedDate    Field `json:"published_date"`
+	ClosingDate      Field `json:"closing_date"`
+	AmendmentDate    Field `json:"amendment_date"`
+	BudgetMin        Field `json:"budget_min"`
+	BudgetMax        Field `json:"budget_max"`
+	BudgetCurrency   Field `json:"budget_currency"`
+	ProcurementType  Field `json:"procurement_type"`
+	NAICSCodes       Field `json:"naics_codes"`
+	Categories       Field `json:"categories"`
+	Province         Field `json:"province"`
+	City             Field `json:"city"`
+	Country          Field `json:"country"`
+	Eligibility      Field `json:"eligibility"`
+	SourceURL        Field `json:"source_url"`
+	ContactName      Field `json:"contact_name"`
+	ContactEmail     Field `json:"contact_email"`
+}
+
 // createRawContentProperties creates properties for raw content fields
 func createRawContentProperties() ClassifiedContentProperties {
 	indexFalse := false
@@ -204,6 +238,7 @@ func createClassificationProperties() ClassifiedContentProperties {
 		Mining:               createMiningProperties(),
 		Entertainment:        createEntertainmentProperties(),
 		Location:             createLocationProperties(),
+		RFP:                  createRFPProperties(),
 	}
 }
 
@@ -269,6 +304,37 @@ func createMiningProperties() MiningProperties {
 	}
 }
 
+// createRFPProperties creates nested properties for RFP extraction.
+func createRFPProperties() RFPProperties {
+	dateFormat := "strict_date_optional_time||epoch_millis"
+	return RFPProperties{
+		Type: "object",
+		Properties: RFPFieldProperties{
+			ExtractionMethod: Field{Type: "keyword"},
+			Title:            Field{Type: "text", Analyzer: "standard"},
+			ReferenceNumber:  Field{Type: "keyword"},
+			OrganizationName: Field{Type: "keyword"},
+			Description:      Field{Type: "text", Analyzer: "standard"},
+			PublishedDate:    Field{Type: "date", Format: dateFormat},
+			ClosingDate:      Field{Type: "date", Format: dateFormat},
+			AmendmentDate:    Field{Type: "date", Format: dateFormat},
+			BudgetMin:        Field{Type: "float"},
+			BudgetMax:        Field{Type: "float"},
+			BudgetCurrency:   Field{Type: "keyword"},
+			ProcurementType:  Field{Type: "keyword"},
+			NAICSCodes:       Field{Type: "keyword"},
+			Categories:       Field{Type: "keyword"},
+			Province:         Field{Type: "keyword"},
+			City:             Field{Type: "keyword"},
+			Country:          Field{Type: "keyword"},
+			Eligibility:      Field{Type: "keyword"},
+			SourceURL:        Field{Type: "keyword"},
+			ContactName:      Field{Type: "keyword"},
+			ContactEmail:     Field{Type: "keyword"},
+		},
+	}
+}
+
 // mergeProperties merges two ClassifiedContentProperties structs
 func mergeProperties(raw, classified ClassifiedContentProperties) ClassifiedContentProperties {
 	return ClassifiedContentProperties{
@@ -294,6 +360,7 @@ func mergeProperties(raw, classified ClassifiedContentProperties) ClassifiedCont
 		Mining:        classified.Mining,
 		Entertainment: classified.Entertainment,
 		Location:      classified.Location,
+		RFP:           classified.RFP,
 	}
 }
 

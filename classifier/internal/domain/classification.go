@@ -55,6 +55,9 @@ type ClassificationResult struct {
 
 	// Job structured extraction (optional)
 	Job *JobResult `json:"job,omitempty"`
+
+	// RFP structured extraction (optional)
+	RFP *RFPResult `json:"rfp,omitempty"`
 }
 
 // IndigenousResult holds Indigenous hybrid classification results.
@@ -188,6 +191,9 @@ type ClassifiedContent struct {
 	// Job structured extraction (optional)
 	Job *JobResult `json:"job,omitempty"`
 
+	// RFP structured extraction (optional)
+	RFP *RFPResult `json:"rfp,omitempty"`
+
 	// Publisher compatibility aliases
 	// These duplicate RawContent fields for backward compatibility with publisher
 	Body   string `json:"body"`   // Alias for RawText (publisher expects "body")
@@ -204,6 +210,7 @@ const (
 	ContentTypeRecipe   = "recipe"
 	ContentTypeEvent    = "event"
 	ContentTypeObituary = "obituary"
+	ContentTypeRFP      = "rfp"
 )
 
 // ContentSubtype constants (granularity within article-like content).
@@ -301,4 +308,30 @@ type JobResult struct {
 	Industry         string   `json:"industry,omitempty"`
 	Qualifications   string   `json:"qualifications,omitempty"`
 	Benefits         string   `json:"benefits,omitempty"`
+}
+
+// RFPResult holds structured RFP/procurement extraction results.
+// Non-nil values always have ExtractionMethod set ("schema_org", "structured_page", or "heuristic").
+type RFPResult struct {
+	ExtractionMethod string   `json:"extraction_method"`
+	Title            string   `json:"title,omitempty"`
+	ReferenceNumber  string   `json:"reference_number,omitempty"`
+	OrganizationName string   `json:"organization_name,omitempty"`
+	Description      string   `json:"description,omitempty"`
+	PublishedDate    string   `json:"published_date,omitempty"`
+	ClosingDate      string   `json:"closing_date,omitempty"`
+	AmendmentDate    string   `json:"amendment_date,omitempty"`
+	BudgetMin        *float64 `json:"budget_min,omitempty"`
+	BudgetMax        *float64 `json:"budget_max,omitempty"`
+	BudgetCurrency   string   `json:"budget_currency,omitempty"`
+	ProcurementType  string   `json:"procurement_type,omitempty"`
+	NAICSCodes       []string `json:"naics_codes,omitempty"`
+	Categories       []string `json:"categories,omitempty"`
+	Province         string   `json:"province,omitempty"`
+	City             string   `json:"city,omitempty"`
+	Country          string   `json:"country,omitempty"`
+	Eligibility      string   `json:"eligibility,omitempty"`
+	SourceURL        string   `json:"source_url,omitempty"`
+	ContactName      string   `json:"contact_name,omitempty"`
+	ContactEmail     string   `json:"contact_email,omitempty"`
 }

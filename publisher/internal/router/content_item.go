@@ -89,6 +89,23 @@ type JobData struct {
 	Industry         string `json:"industry,omitempty"`
 }
 
+// RFPData holds the publisher view of structured RFP extraction from Elasticsearch.
+type RFPData struct {
+	ExtractionMethod string   `json:"extraction_method"`
+	Title            string   `json:"title,omitempty"`
+	ReferenceNumber  string   `json:"reference_number,omitempty"`
+	OrganizationName string   `json:"organization_name,omitempty"`
+	ClosingDate      string   `json:"closing_date,omitempty"`
+	BudgetMin        *float64 `json:"budget_min,omitempty"`
+	BudgetMax        *float64 `json:"budget_max,omitempty"`
+	BudgetCurrency   string   `json:"budget_currency,omitempty"`
+	ProcurementType  string   `json:"procurement_type,omitempty"`
+	Categories       []string `json:"categories,omitempty"`
+	Province         string   `json:"province,omitempty"`
+	City             string   `json:"city,omitempty"`
+	Country          string   `json:"country,omitempty"`
+}
+
 // ContentItem represents a content item from Elasticsearch classified_content index.
 type ContentItem struct {
 	ID            string    `json:"id"`
@@ -131,9 +148,10 @@ type ContentItem struct {
 	Entertainment *EntertainmentData `json:"entertainment,omitempty"`
 	Coforge       *CoforgeData       `json:"coforge,omitempty"`
 
-	// Recipe and Job structured extraction
+	// Recipe, Job, and RFP structured extraction
 	Recipe *RecipeData `json:"recipe,omitempty"`
 	Job    *JobData    `json:"job,omitempty"`
+	RFP    *RFPData    `json:"rfp,omitempty"`
 
 	// Entertainment flat fields (populated from nested Entertainment object)
 	EntertainmentRelevance        string   `json:"entertainment_relevance"`

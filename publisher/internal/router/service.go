@@ -203,6 +203,7 @@ func (s *Service) routeContentItem(ctx context.Context, item *ContentItem, chann
 		NewCoforgeDomain(),
 		NewRecipeDomain(),
 		NewJobDomain(),
+		NewRFPDomain(),
 	}
 
 	var publishedChannels []string
@@ -322,7 +323,7 @@ func (s *Service) buildESQuery() map[string]any {
 	mustClauses := []map[string]any{
 		{
 			"terms": map[string]any{
-				"content_type": []string{"article", "recipe", "job"},
+				"content_type": []string{"article", "recipe", "job", "rfp"},
 			},
 		},
 	}
@@ -416,6 +417,8 @@ func (s *Service) publishToChannel(ctx context.Context, item *ContentItem, chann
 		"recipe": item.Recipe,
 		// Job extraction
 		"job": item.Job,
+		// RFP extraction
+		"rfp": item.RFP,
 		// Location detection
 		"location_city":       item.LocationCity,
 		"location_province":   item.LocationProvince,
