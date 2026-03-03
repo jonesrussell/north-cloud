@@ -426,6 +426,89 @@ func assertFilterRangeHasOp(t *testing.T, filters []any, field, op string) {
 	t.Errorf("no range filter found for %s with op %s", field, op)
 }
 
+func TestBuildFilters_RfpProvince(t *testing.T) {
+	t.Helper()
+
+	cfg := getTestConfig()
+	qb := elasticsearch.NewQueryBuilder(cfg)
+	req := &domain.SearchRequest{
+		Filters: &domain.Filters{
+			ContentType: "rfp",
+			RfpProvince: "on",
+		},
+		Pagination: &domain.Pagination{Page: 1, Size: 10},
+		Sort:       &domain.Sort{Field: "relevance", Order: "desc"},
+		Options:    &domain.Options{},
+	}
+
+	query := qb.Build(req)
+
+	boolQuery := getBoolQuery(t, query)
+	filters := getFilterSlice(t, boolQuery)
+
+	found := false
+	for _, f := range filters {
+		fm, ok := f.(map[string]any)
+		if !ok {
+			continue
+		}
+		if term, ok := fm["term"]; ok {
+			if termMap, ok := term.(map[string]any); ok {
+				if v, ok := termMap["rfp.province"]; ok && v == "on" {
+					found = true
+				}
+			}
+		}
+	}
+	if !found {
+		t.Error("expected rfp.province filter clause, not found in query filters")
+	}
+}
+
+func TestBuildFilters_RfpSector(t *testing.T) {
+	t.Helper()
+
+	cfg := getTestConfig()
+	qb := elasticsearch.NewQueryBuilder(cfg)
+	req := &domain.SearchRequest{
+		Filters: &domain.Filters{
+			ContentType: "rfp",
+			RfpSector:   []string{"it", "web"},
+		},
+		Pagination: &domain.Pagination{Page: 1, Size: 10},
+		Sort:       &domain.Sort{Field: "relevance", Order: "desc"},
+		Options:    &domain.Options{},
+	}
+
+	query := qb.Build(req)
+	boolQuery := getBoolQuery(t, query)
+	filters := getFilterSlice(t, boolQuery)
+
+	assertFilterTerms(t, filters, "rfp.categories", []string{"it", "web"})
+}
+
+func TestBuildFilters_RfpClosingAfter(t *testing.T) {
+	t.Helper()
+
+	cfg := getTestConfig()
+	qb := elasticsearch.NewQueryBuilder(cfg)
+	req := &domain.SearchRequest{
+		Filters: &domain.Filters{
+			ContentType:     "rfp",
+			RfpClosingAfter: "2026-03-10",
+		},
+		Pagination: &domain.Pagination{Page: 1, Size: 10},
+		Sort:       &domain.Sort{Field: "relevance", Order: "desc"},
+		Options:    &domain.Options{},
+	}
+
+	query := qb.Build(req)
+	boolQuery := getBoolQuery(t, query)
+	filters := getFilterSlice(t, boolQuery)
+
+	assertFilterRangeHasOp(t, filters, "rfp.closing_date", "gte")
+}
+
 func TestQueryBuilder_Build_WithFacets_IncludesRecipeAndJobAggs(t *testing.T) {
 	t.Helper()
 
