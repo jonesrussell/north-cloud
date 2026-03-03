@@ -324,11 +324,23 @@ func (qb *QueryBuilder) buildRfpFilters(filters *domain.Filters) []any {
 		})
 	}
 
+	// Filter on budget_max: find RFPs whose declared ceiling is at least RfpBudgetMin,
+	// meaning the contract is large enough to be worth pursuing.
 	if filters.RfpBudgetMin != nil {
 		result = append(result, map[string]any{
 			"range": map[string]any{
 				"rfp.budget_max": map[string]any{
 					"gte": *filters.RfpBudgetMin,
+				},
+			},
+		})
+	}
+
+	if filters.RfpBudgetMax != nil {
+		result = append(result, map[string]any{
+			"range": map[string]any{
+				"rfp.budget_max": map[string]any{
+					"lte": *filters.RfpBudgetMax,
 				},
 			},
 		})

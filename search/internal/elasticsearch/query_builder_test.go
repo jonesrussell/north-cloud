@@ -509,6 +509,29 @@ func TestBuildFilters_RfpClosingAfter(t *testing.T) {
 	assertFilterRangeHasOp(t, filters, "rfp.closing_date", "gte")
 }
 
+func TestBuildFilters_RfpBudgetMin(t *testing.T) {
+	t.Helper()
+
+	cfg := getTestConfig()
+	qb := elasticsearch.NewQueryBuilder(cfg)
+	budgetMin := 50000.0
+	req := &domain.SearchRequest{
+		Filters: &domain.Filters{
+			ContentType:  "rfp",
+			RfpBudgetMin: &budgetMin,
+		},
+		Pagination: &domain.Pagination{Page: 1, Size: 10},
+		Sort:       &domain.Sort{Field: "relevance", Order: "desc"},
+		Options:    &domain.Options{},
+	}
+
+	query := qb.Build(req)
+	boolQuery := getBoolQuery(t, query)
+	filters := getFilterSlice(t, boolQuery)
+
+	assertFilterRangeHasOp(t, filters, "rfp.budget_max", "gte")
+}
+
 func TestQueryBuilder_Build_WithFacets_IncludesRecipeAndJobAggs(t *testing.T) {
 	t.Helper()
 
