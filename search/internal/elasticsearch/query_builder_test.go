@@ -448,16 +448,21 @@ func TestBuildFilters_RfpProvince(t *testing.T) {
 
 	found := false
 	for _, f := range filters {
-		fm, ok := f.(map[string]any)
-		if !ok {
+		fm, okMap := f.(map[string]any)
+		if !okMap {
 			continue
 		}
-		if term, ok := fm["term"]; ok {
-			if termMap, ok := term.(map[string]any); ok {
-				if v, ok := termMap["rfp.province"]; ok && v == "on" {
-					found = true
-				}
-			}
+		term, hasTerm := fm["term"]
+		if !hasTerm {
+			continue
+		}
+		termMap, okTermMap := term.(map[string]any)
+		if !okTermMap {
+			continue
+		}
+		v, hasField := termMap["rfp.province"]
+		if hasField && v == "on" {
+			found = true
 		}
 	}
 	if !found {

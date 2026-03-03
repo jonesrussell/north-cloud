@@ -124,7 +124,13 @@ func parseFilters(c *gin.Context) *domain.Filters {
 		}
 	}
 
-	// RFP filters
+	parseRfpFilters(c, filters)
+
+	return filters
+}
+
+// parseRfpFilters parses RFP-specific filter parameters from query string.
+func parseRfpFilters(c *gin.Context, filters *domain.Filters) {
 	if rfpProvince := c.Query("rfp_province"); rfpProvince != "" {
 		filters.RfpProvince = rfpProvince
 	}
@@ -144,8 +150,6 @@ func parseFilters(c *gin.Context) *domain.Filters {
 			filters.RfpBudgetMax = &v
 		}
 	}
-
-	return filters
 }
 
 // parsePagination parses pagination parameters from query string
