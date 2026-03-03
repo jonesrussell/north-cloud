@@ -38,7 +38,8 @@ classifier/
 │   │   ├── coforge.go            # Hybrid coforge classifier
 │   │   ├── entertainment.go      # Hybrid entertainment classifier
 │   │   ├── indigenous.go         # Hybrid indigenous classifier
-│   │   └── location.go           # Location classifier
+│   │   ├── location.go           # Location classifier
+│   │   └── rfp_extractor.go     # RFP structured extraction (heuristic)
 │   ├── coforgemlclient/    # Coforge ML sidecar HTTP client
 │   ├── config/             # Configuration struct and loader
 │   ├── data/               # Static data assets
@@ -307,6 +308,8 @@ classification:
   indigenous:
     enabled: false                # INDIGENOUS_ENABLED
     ml_service_url: ""            # INDIGENOUS_ML_SERVICE_URL
+  rfp:
+    enabled: false                # RFP_ENABLED
 ```
 
 ## Common Gotchas

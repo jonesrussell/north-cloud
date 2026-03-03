@@ -39,7 +39,8 @@ publisher/
 │   │   ├── mining.go            # Layer 5: mining classification channels
 │   │   ├── entertainment.go     # Layer 6: entertainment classification channels
 │   │   ├── indigenous.go         # Layer 7: Indigenous classification channels
-│   │   └── domain_coforge.go    # Layer 8: Coforge classification channels
+│   │   ├── domain_coforge.go    # Layer 8: Coforge classification channels
+│   │   └── domain_rfp.go       # Layer 11: RFP extraction channels
 │   ├── database/        # PostgreSQL repositories
 │   ├── discovery/       # Elasticsearch index discovery
 │   ├── models/          # Source, Channel, Route, PublishHistory
@@ -73,7 +74,7 @@ Splitting processes is useful in production to scale the API and router independ
 **Route filters**:
 - `min_quality_score` (0-100, default 50) — content below threshold are skipped
 - `topics[]` (optional) — content must match at least one listed topic
-- `content_type` filter (enforced globally) — only `"article"`, `"recipe"`, and `"job"` content types are routed; pages, listings, and other types are skipped
+- `content_type` filter (enforced globally) — only `"article"`, `"recipe"`, `"job"`, and `"rfp"` content types are routed; pages, listings, and other types are skipped
 
 ### Deduplication Semantics
 
@@ -87,7 +88,7 @@ The routing worker runs the following steps every 30 seconds:
 
 1. **Discover indexes** — finds all `*_classified_content` indexes (refreshed every 5 minutes)
 2. **Load Layer 2 channels** — reads enabled channels with rules from PostgreSQL
-3. **Fetch batch** — queries Elasticsearch using `search_after` cursor (100 items per batch by default); only `content_type` values `"article"`, `"recipe"`, and `"job"` are fetched
+3. **Fetch batch** — queries Elasticsearch using `search_after` cursor (100 items per batch by default); only `content_type` values `"article"`, `"recipe"`, `"job"`, and `"rfp"` are fetched
 4. **Route Layer 1** — for each content item topic, publishes to `content:{topic}` (except skip-listed topics)
 5. **Route Layer 2** — evaluates DB channel rules (topic filters, quality threshold, content type)
 6. **Route Layer 3** — crime classification channels (`crime:homepage`, `crime:category:{slug}`, `crime:courts`, `crime:context`)
@@ -96,7 +97,10 @@ The routing worker runs the following steps every 30 seconds:
 9. **Route Layer 6** — entertainment classification channels (`entertainment:homepage`, `entertainment:category:{slug}`, etc.)
 10. **Route Layer 7** — Indigenous classification channels (`content:indigenous`, `indigenous:category:{slug}`)
 11. **Route Layer 8** — Coforge classification channels (`coforge:core`, `coforge:audience:{slug}`, etc.)
-12. **Deduplicate** — each candidate channel is checked against `publish_history`
+12. **Route Layer 9** — Recipe extraction channels (`content:recipes`, `recipe:category:{slug}`, etc.)
+13. **Route Layer 10** — Job extraction channels (`content:jobs`, `job:industry:{slug}`, etc.)
+14. **Route Layer 11** — RFP extraction channels (`content:rfps`, `rfp:country:{code}`, `rfp:province:{code}`, `rfp:sector:{slug}`, `rfp:type:{slug}`)
+15. **Deduplicate** — each candidate channel is checked against `publish_history`
 13. **Publish** — sends JSON payload to Redis
 14. **Record** — writes to `publish_history` for each successful publish
 15. **Advance cursor** — updates `search_after` cursor in PostgreSQL; safe to restart
@@ -114,6 +118,7 @@ Generates `content:{topic}` for each topic tag on the content item. Topics with 
 | `mining` | Layer 5 (MiningDomain) |
 | `indigenous` | Layer 7 (IndigenousDomain) |
 | `coforge` | Layer 8 (CoforgeDomain) |
+| `rfp` | Layer 11 (RFPDomain) |
 
 ### Layer 2 — DB Channels (database-backed)
 
@@ -188,6 +193,18 @@ Routes content classified by the Coforge ML classifier. No catch-all `content:co
 - `coforge:audience:{slug}` — when `coforge.audience` is set
 - `coforge:topic:{slug}` — one per topic (underscores to hyphens)
 - `coforge:industry:{slug}` — one per industry (underscores to hyphens)
+
+### Layer 11 — RFP Extraction (automatic)
+
+**Source**: `publisher/internal/router/domain_rfp.go`
+
+Routes content classified as RFP (`content_type=rfp` or with RFP extraction data). Skips content with no `rfp` object.
+
+- `content:rfps` — catch-all for all RFP content
+- `rfp:country:{code}` — per country code (lowercased, e.g., `ca`, `us`)
+- `rfp:province:{code}` — per province code (lowercased, e.g., `on`, `bc`)
+- `rfp:sector:{slug}` — one per category (spaces to hyphens, lowercased)
+- `rfp:type:{slug}` — per procurement type (e.g., `services`, `goods`, `construction`)
 
 ## API Reference
 

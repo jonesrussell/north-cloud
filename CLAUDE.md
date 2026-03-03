@@ -31,9 +31,9 @@ Sources → [Crawler] → ES raw_content → [Classifier + ML Sidecars] → ES c
   → [Publisher Router] → Redis channels → [Consumers: Streetcode, Social Publisher]
 ```
 
-**Publisher routing** (10 layers, evaluated in order):
-- L1: Topic auto-detect (skips: mining, indigenous, coforge, recipe, jobs)
-- L2: DB Channels | L3: Crime | L4: Location | L5: Mining | L6: Entertainment | L7: Indigenous | L8: CoForge | L9: Recipe | L10: Job
+**Publisher routing** (11 layers, evaluated in order):
+- L1: Topic auto-detect (skips: mining, indigenous, coforge, recipe, jobs, rfp)
+- L2: DB Channels | L3: Crime | L4: Location | L5: Mining | L6: Entertainment | L7: Indigenous | L8: CoForge | L9: Recipe | L10: Job | L11: RFP
 
 **Dependency rule**: Services import only from `infrastructure/`. No cross-service imports.
 
@@ -59,12 +59,20 @@ Sources → [Crawler] → ES raw_content → [Classifier + ML Sidecars] → ES c
 
 **Docker (Development)**:
 ```bash
-# Start core services only (no Loki/Grafana/Pyroscope)
+# Start core services only (no ML sidecars, no Loki/Grafana/Pyroscope)
 task docker:dev:up
-# Or: docker compose -f docker-compose.base.yml -f docker-compose.dev.yml up -d
+
+# Include ML sidecars (crime-ml, mining-ml, coforge-ml, entertainment-ml, indigenous-ml)
+task docker:dev:up:ml
+
+# Include search-service and search-frontend
+task docker:dev:up:search
 
 # Include logging/observability (Loki, Alloy, Grafana, Pyroscope)
 task docker:dev:up:observability
+
+# Start everything (ML + search + observability)
+task docker:dev:up:full
 
 # View logs
 docker compose -f docker-compose.base.yml -f docker-compose.dev.yml logs -f SERVICE
@@ -75,6 +83,11 @@ docker compose -f docker-compose.base.yml -f docker-compose.dev.yml up -d --buil
 # Stop all
 docker compose -f docker-compose.base.yml -f docker-compose.dev.yml down
 ```
+
+**Dev Postgres**: Dev uses a single shared Postgres instance (7 databases in 1 container).
+Prod and test still use per-service Postgres. First `docker:dev:up` auto-creates all databases
+via `infrastructure/postgres/init-dev.sql`. The init script only runs on first startup (empty data
+directory). To re-initialize: `docker compose -f docker-compose.base.yml -f docker-compose.dev.yml down -v`.
 
 **Taskfile Commands (Preferred)**:
 ```bash

@@ -39,6 +39,13 @@ type Filters struct {
 	JobIndustry       []string `json:"job_industry,omitempty"`
 	JobLocation       []string `json:"job_location,omitempty"`
 	SalaryMin         *float64 `json:"salary_min,omitempty"`
+
+	// RFP filters
+	RfpProvince     string   `json:"rfp_province,omitempty"`
+	RfpSector       []string `json:"rfp_sector,omitempty"`
+	RfpClosingAfter string   `json:"rfp_closing_after,omitempty"`
+	RfpBudgetMin    *float64 `json:"rfp_budget_min,omitempty"`
+	RfpBudgetMax    *float64 `json:"rfp_budget_max,omitempty"`
 }
 
 // Pagination holds pagination parameters
@@ -89,6 +96,7 @@ type SearchHit struct {
 	Snippet        string              `json:"snippet,omitempty"`
 	ClickURL       string              `json:"click_url,omitempty"`
 	OGImage        string              `json:"og_image,omitempty"`
+	RFP            *RFPData            `json:"rfp,omitempty"`
 }
 
 // Facets holds faceted search aggregations

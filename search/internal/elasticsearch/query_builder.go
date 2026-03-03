@@ -65,6 +65,7 @@ func (qb *QueryBuilder) Build(req *domain.SearchRequest) map[string]any {
 			"published_date", "crawled_at",
 			"quality_score", "content_type", "topics",
 			"crime", "body", "raw_text", "og_image",
+			"rfp",
 		}
 	}
 
@@ -226,6 +227,7 @@ func (qb *QueryBuilder) buildFilters(filters *domain.Filters) []any {
 	// Recipe and job filters (extracted to stay under funlen limit)
 	result = append(result, qb.buildRecipeFilters(filters)...)
 	result = append(result, qb.buildJobFilters(filters)...)
+	result = append(result, qb.buildRfpFilters(filters)...)
 
 	return result
 }
@@ -286,6 +288,61 @@ func (qb *QueryBuilder) buildJobFilters(filters *domain.Filters) []any {
 	if filters.SalaryMin != nil {
 		result = append(result, map[string]any{
 			"range": map[string]any{"job.salary_min": map[string]any{"gte": *filters.SalaryMin}},
+		})
+	}
+
+	return result
+}
+
+// buildRfpFilters constructs filter clauses for RFP fields
+func (qb *QueryBuilder) buildRfpFilters(filters *domain.Filters) []any {
+	var result []any
+
+	if filters.RfpProvince != "" {
+		result = append(result, map[string]any{
+			"term": map[string]any{
+				"rfp.province": filters.RfpProvince,
+			},
+		})
+	}
+
+	if len(filters.RfpSector) > 0 {
+		result = append(result, map[string]any{
+			"terms": map[string]any{
+				"rfp.categories": filters.RfpSector,
+			},
+		})
+	}
+
+	if filters.RfpClosingAfter != "" {
+		result = append(result, map[string]any{
+			"range": map[string]any{
+				"rfp.closing_date": map[string]any{
+					"gte": filters.RfpClosingAfter,
+				},
+			},
+		})
+	}
+
+	// Filter on budget_max: find RFPs whose declared ceiling is at least RfpBudgetMin,
+	// meaning the contract is large enough to be worth pursuing.
+	if filters.RfpBudgetMin != nil {
+		result = append(result, map[string]any{
+			"range": map[string]any{
+				"rfp.budget_max": map[string]any{
+					"gte": *filters.RfpBudgetMin,
+				},
+			},
+		})
+	}
+
+	if filters.RfpBudgetMax != nil {
+		result = append(result, map[string]any{
+			"range": map[string]any{
+				"rfp.budget_max": map[string]any{
+					"lte": *filters.RfpBudgetMax,
+				},
+			},
 		})
 	}
 
