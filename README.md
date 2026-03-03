@@ -13,7 +13,8 @@ flowchart LR
     ML --> ES_CLASS[(ES: classified_content)]
     ES_CLASS --> PUB[Publisher]
     PUB --> REDIS[[Redis Pub/Sub]]
-    REDIS --> EXT[External Consumers]
+    REDIS --> SPUB[Social Publisher]
+    REDIS --> EXT[Other Consumers]
 
     SM -.-> DB_SM[(PostgreSQL)]
     CR -.-> DB_CR[(PostgreSQL)]
@@ -41,6 +42,7 @@ flowchart TB
         AUTH[Auth :8040]
         CT[Click Tracker :8093]
         MCP[MCP Server]
+        SPUB[Social Publisher]
     end
 
     subgraph ML Sidecars
@@ -48,7 +50,7 @@ flowchart TB
         MINING[mining-ml :8077]
         COFORGE[coforge-ml :8078]
         ENT[entertainment-ml :8079]
-        ANISH[anishinaabe-ml :8080]
+        INDIG[indigenous-ml :8080]
     end
 
     subgraph Infrastructure
@@ -66,10 +68,11 @@ flowchart TB
         PYRO[Pyroscope :4040]
     end
 
-    CL --> CRIME & MINING & COFORGE & ENT & ANISH
+    CL --> CRIME & MINING & COFORGE & ENT & INDIG
     CR --> ES
     CL --> ES
     PUB --> REDIS
+    REDIS --> SPUB
     NGINX --> DASH & SF & AUTH & SRCH
     ALLOY --> LOKI --> GRAF
 ```
@@ -91,6 +94,7 @@ flowchart TB
 | **search-frontend** | 3003 | Public search UI |
 | **nc-http-proxy** | 8055 | HTTP replay proxy for deterministic testing |
 | **click-tracker** | 8093 | Click event tracking and analytics |
+| **social-publisher** | — | Redis consumer for publishing content to social platforms (X/Twitter) |
 
 ### ML Sidecars
 
@@ -100,7 +104,7 @@ flowchart TB
 | **mining-ml** | 8077 | Mining content classification |
 | **coforge-ml** | 8078 | Coforge content classification |
 | **entertainment-ml** | 8079 | Entertainment content classification |
-| **anishinaabe-ml** | 8080 | Anishinaabe/Indigenous content classification |
+| **indigenous-ml** | 8080 | Indigenous/Anishinaabe content classification |
 
 ## Quick Start
 

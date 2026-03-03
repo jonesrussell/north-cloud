@@ -57,6 +57,8 @@ var sectionIndexPaths = []string{
 	"/classifieds", "/classified",
 	// Job/career sections (index pages excluded, individual listings pass through)
 	"/jobs", "/careers", "/employment", "/work-with-us", "/opportunities",
+	// RFP/procurement sections (index pages excluded, individual listings pass through)
+	"/rfp", "/rfps", "/tenders", "/procurement", "/solicitations", "/bids",
 }
 
 // paginationQueryParams contains query parameter names that indicate pagination
@@ -130,17 +132,8 @@ func (c *ContentTypeClassifier) Classify(ctx context.Context, raw *domain.RawCon
 		}, nil
 	}
 
-	// Strategy 2a-d: Keyword heuristics (specific content types beat generic OG metadata)
-	if result := c.classifyFromRecipeKeywords(raw); result != nil {
-		return result, nil
-	}
-	if result := c.classifyFromJobKeywords(raw); result != nil {
-		return result, nil
-	}
-	if result := c.classifyFromEventKeywords(raw); result != nil {
-		return result, nil
-	}
-	if result := c.classifyFromObituaryKeywords(raw); result != nil {
+	// Strategy 2: Keyword heuristics (specific content types beat generic OG metadata)
+	if result := c.classifyFromKeywordHeuristics(raw); result != nil {
 		return result, nil
 	}
 
@@ -199,6 +192,24 @@ func (c *ContentTypeClassifier) Classify(ctx context.Context, raw *domain.RawCon
 		Method:     "default",
 		Reason:     "Content does not meet article criteria",
 	}, nil
+}
+
+// classifyFromKeywordHeuristics runs all keyword-based content type heuristics.
+// Returns the first match or nil if none match.
+func (c *ContentTypeClassifier) classifyFromKeywordHeuristics(raw *domain.RawContent) *ContentTypeResult {
+	if result := c.classifyFromRecipeKeywords(raw); result != nil {
+		return result
+	}
+	if result := c.classifyFromJobKeywords(raw); result != nil {
+		return result
+	}
+	if result := c.classifyFromEventKeywords(raw); result != nil {
+		return result
+	}
+	if result := c.classifyFromObituaryKeywords(raw); result != nil {
+		return result
+	}
+	return c.classifyFromRFPKeywords(raw)
 }
 
 // classifyFromOGType classifies content based on Open Graph type metadata

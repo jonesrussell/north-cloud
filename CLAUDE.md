@@ -5,18 +5,74 @@ For deep architecture documentation, see `ARCHITECTURE.md`.
 
 ---
 
+## Orchestration — Where to Look
+
+When modifying files, read the relevant service CLAUDE.md first. Deep specs in `docs/specs/`.
+
+| File pattern | Service context | Spec |
+|---|---|---|
+| `crawler/**` | `crawler/CLAUDE.md` | `docs/specs/content-acquisition.md` |
+| `classifier/**`, `ml-sidecars/**` | `classifier/CLAUDE.md` | `docs/specs/classification.md` |
+| `publisher/**` | `publisher/CLAUDE.md` | `docs/specs/content-routing.md` |
+| `search/**`, `index-manager/**` | `search/CLAUDE.md`, `index-manager/CLAUDE.md` | `docs/specs/discovery-querying.md` |
+| `infrastructure/**` | — | `docs/specs/shared-infrastructure.md` |
+| `source-manager/**` | `source-manager/CLAUDE.md` | — |
+| `dashboard/**` | `dashboard/CLAUDE.md` | — |
+| `pipeline/**` | `pipeline/CLAUDE.md` | — |
+| `social-publisher/**` | `social-publisher/CLAUDE.md` | — |
+| `docker-compose*.yml`, `Taskfile.yml` | `DOCKER.md` | — |
+
+---
+
+## Content Pipeline Layers
+
+```
+Sources → [Crawler] → ES raw_content → [Classifier + ML Sidecars] → ES classified_content
+  → [Publisher Router] → Redis channels → [Consumers: Streetcode, Social Publisher]
+```
+
+**Publisher routing** (11 layers, evaluated in order):
+- L1: Topic auto-detect (skips: mining, indigenous, coforge, recipe, jobs, rfp)
+- L2: DB Channels | L3: Crime | L4: Location | L5: Mining | L6: Entertainment | L7: Indigenous | L8: CoForge | L9: Recipe | L10: Job | L11: RFP
+
+**Dependency rule**: Services import only from `infrastructure/`. No cross-service imports.
+
+---
+
+## Common Operations
+
+**Add a new source**: Add via source-manager API → crawler picks up on next schedule → raw content indexed → classifier processes → publisher routes
+
+**Add a new ML sidecar**: Create `ml-sidecars/{name}-ml/` with Flask app → add `{name}mlclient` in classifier → add env flag `{NAME}_ENABLED` → add routing layer in publisher → update docker-compose
+
+**Add a new publisher channel**: Create channel via publisher API with topic rules → content matching rules routes to Redis channel → consumers subscribe
+
+**Modify ES mappings**: Update `classifier/internal/elasticsearch/mappings/` → reindex affected indices via index-manager → verify with search queries
+
+**Add a migration**: Create up/down SQL in `{service}/internal/database/migrations/` → run `task migrate:SERVICE` → test with `task test:SERVICE`
+
+---
+
 ## Quick Reference
 
 ### Most Common Commands
 
 **Docker (Development)**:
 ```bash
-# Start core services only (no Loki/Grafana/Pyroscope)
+# Start core services only (no ML sidecars, no Loki/Grafana/Pyroscope)
 task docker:dev:up
-# Or: docker compose -f docker-compose.base.yml -f docker-compose.dev.yml up -d
+
+# Include ML sidecars (crime-ml, mining-ml, coforge-ml, entertainment-ml, indigenous-ml)
+task docker:dev:up:ml
+
+# Include search-service and search-frontend
+task docker:dev:up:search
 
 # Include logging/observability (Loki, Alloy, Grafana, Pyroscope)
 task docker:dev:up:observability
+
+# Start everything (ML + search + observability)
+task docker:dev:up:full
 
 # View logs
 docker compose -f docker-compose.base.yml -f docker-compose.dev.yml logs -f SERVICE
@@ -27,6 +83,11 @@ docker compose -f docker-compose.base.yml -f docker-compose.dev.yml up -d --buil
 # Stop all
 docker compose -f docker-compose.base.yml -f docker-compose.dev.yml down
 ```
+
+**Dev Postgres**: Dev uses a single shared Postgres instance (7 databases in 1 container).
+Prod and test still use per-service Postgres. First `docker:dev:up` auto-creates all databases
+via `infrastructure/postgres/init-dev.sql`. The init script only runs on first startup (empty data
+directory). To re-initialize: `docker compose -f docker-compose.base.yml -f docker-compose.dev.yml down -v`.
 
 **Taskfile Commands (Preferred)**:
 ```bash
@@ -54,26 +115,8 @@ task install:tools
 # "cache clean" so local results match CI exactly.
 ```
 
-**Service Development (Manual)**:
-```bash
-cd SERVICE && go test ./...           # Run tests
-cd SERVICE && golangci-lint run       # Lint
-cd SERVICE && go run cmd/migrate/main.go up  # Migrations
-cd SERVICE && go build -o bin/SERVICE .      # Build
-```
-
-**Before Committing**:
-1. Run tests: `go test ./...`
-2. Run linter: `task lint` (or `task lint:force` before pushing to bypass cache and match CI)
-3. Check no magic numbers, `interface{}`, or unchecked JSON errors
-4. Check multi-service dependencies if applicable
-
-**Go Workspace Isolation**: Each service Taskfile sets `GOWORK=off` so all Go commands resolve
-dependencies from the module's own `go.mod`, not the workspace. The `go.work` file is only for
-IDE navigation. Note: A workspace refactor is in progress — see `docs/plans/2026-02-20-idiomatic-go-workspaces.md` for details.
-
-**Vendoring**: Each Go module has its own `vendor/` (gitignored — CI uses the module proxy).
-After changing deps, run `task vendor` from the repo root (local only) to refresh all module vendors. Do not run `go work vendor`.
+**Go Workspace**: Each service Taskfile sets `GOWORK=off`. The `go.work` is for IDE navigation only.
+Each module has its own `vendor/` (gitignored). After changing deps: `task vendor` from repo root.
 
 ---
 
@@ -201,13 +244,6 @@ See `ARCHITECTURE.md` for the full bootstrap pattern reference.
 - CI/CD (GitHub Actions) syncs files via rsync and runs `deploy.sh`
 - To deploy manually: push to main → CI runs tests → deploy workflow triggers automatically
 
-### Docker Firewall (UFW)
-
-- Docker bypasses UFW — use `ufw route allow` for persistent rules to Docker containers
-- Example: `sudo ufw route allow from <source-ip> to <container-ip> port <port> proto tcp`
-- Do NOT use raw `iptables -I DOCKER-USER` — those rules don't survive reboot/ufw reload
-- Container IPs may change on recreation — check with `docker inspect <container> --format '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}'`
-
 ---
 
 ## Git Workflow
@@ -228,21 +264,15 @@ See `ARCHITECTURE.md` for the full bootstrap pattern reference.
 
 ## Troubleshooting
 
-**Service won't start**:
-1. Check logs: `docker compose -f docker-compose.base.yml -f docker-compose.dev.yml logs SERVICE`
-2. Check environment: `docker compose -f docker-compose.base.yml -f docker-compose.dev.yml config`
-3. Verify dependencies: check `depends_on` in docker-compose files
-4. Check port conflicts: `netstat -tulpn | grep PORT`
+Check logs: `docker compose -f docker-compose.base.yml -f docker-compose.dev.yml logs SERVICE`
+| Check ports: `netstat -tulpn | grep PORT` | DB test: `docker exec -it north-cloud-postgres-SERVICE psql -U postgres -d DATABASE`
+| Health: `curl http://localhost:PORT/health` | See `DOCKER.md` for Docker firewall (UFW) details.
 
-**Database connection issues**:
-1. Verify database running: `docker ps | grep postgres`
-2. Check connection string in `.env`
-3. Test connection: `docker exec -it north-cloud-postgres-SERVICE psql -U postgres -d DATABASE`
+---
 
-**Cannot access service**:
-1. Verify port mapping: `docker ps | grep SERVICE`
-2. Check nginx configuration (if using reverse proxy)
-3. Verify service health: `curl http://localhost:PORT/health`
+## Spec Drift Warning
+
+When refactoring a subsystem, update the relevant service `CLAUDE.md` and (once they exist) `docs/specs/` file. Stale specs cause sessions to generate code conflicting with recent changes.
 
 ---
 

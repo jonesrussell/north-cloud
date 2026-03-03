@@ -206,21 +206,34 @@ func (c *Client) DeleteSource(ctx context.Context, id string) error {
 	return nil
 }
 
-// ListActiveFeedSources retrieves sources with active feeds (not disabled or past cooldown).
+// feedSourcesPageSize is the number of sources fetched per page when listing active feed sources.
+const feedSourcesPageSize = 100
+
+// ListActiveFeedSources retrieves all sources with active feeds by paginating through the API.
 func (c *Client) ListActiveFeedSources(ctx context.Context) ([]APISource, error) {
-	activeURL := c.baseURL + "?feed_active=true"
+	var all []APISource
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, activeURL, http.NoBody)
-	if err != nil {
-		return nil, fmt.Errorf("create request: %w", err)
+	for offset := 0; ; offset += feedSourcesPageSize {
+		pageURL := fmt.Sprintf("%s?feed_active=true&limit=%d&offset=%d", c.baseURL, feedSourcesPageSize, offset)
+
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, pageURL, http.NoBody)
+		if err != nil {
+			return nil, fmt.Errorf("create request: %w", err)
+		}
+
+		var response ListSourcesResponse
+		if doErr := c.doRequest(req, &response); doErr != nil {
+			return nil, fmt.Errorf("list active feed sources (offset %d): %w", offset, doErr)
+		}
+
+		all = append(all, response.Sources...)
+
+		if len(all) >= response.Total || len(response.Sources) < feedSourcesPageSize {
+			break
+		}
 	}
 
-	var response ListSourcesResponse
-	if doErr := c.doRequest(req, &response); doErr != nil {
-		return nil, fmt.Errorf("list active feed sources: %w", doErr)
-	}
-
-	return response.Sources, nil
+	return all, nil
 }
 
 // DisableFeed disables a source's feed via the source-manager API.

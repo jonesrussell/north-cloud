@@ -124,7 +124,32 @@ func parseFilters(c *gin.Context) *domain.Filters {
 		}
 	}
 
+	parseRfpFilters(c, filters)
+
 	return filters
+}
+
+// parseRfpFilters parses RFP-specific filter parameters from query string.
+func parseRfpFilters(c *gin.Context, filters *domain.Filters) {
+	if rfpProvince := c.Query("rfp_province"); rfpProvince != "" {
+		filters.RfpProvince = rfpProvince
+	}
+	if rfpSector := c.Query("rfp_sector"); rfpSector != "" {
+		filters.RfpSector = strings.Split(rfpSector, ",")
+	}
+	if rfpClosingAfter := c.Query("rfp_closing_after"); rfpClosingAfter != "" {
+		filters.RfpClosingAfter = rfpClosingAfter
+	}
+	if rfpBudgetMin := c.Query("rfp_budget_min"); rfpBudgetMin != "" {
+		if v, err := strconv.ParseFloat(rfpBudgetMin, 64); err == nil {
+			filters.RfpBudgetMin = &v
+		}
+	}
+	if rfpBudgetMax := c.Query("rfp_budget_max"); rfpBudgetMax != "" {
+		if v, err := strconv.ParseFloat(rfpBudgetMax, 64); err == nil {
+			filters.RfpBudgetMax = &v
+		}
+	}
 }
 
 // parsePagination parses pagination parameters from query string

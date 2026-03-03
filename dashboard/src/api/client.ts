@@ -32,6 +32,16 @@ import type {
 import type { ImportExcelResult } from '../types/source'
 import type { SyncReport } from '../types/crawler'
 import type {
+  SocialContent,
+  SocialAccount,
+  ContentListResponse,
+  AccountsListResponse,
+  Delivery,
+  CreateAccountRequest,
+  UpdateAccountRequest,
+  PublishRequest,
+} from '../types/socialPublisher'
+import type {
   CrimeAggregation,
   LocationAggregation,
   OverviewAggregation,
@@ -103,6 +113,14 @@ const indexManagerClient: AxiosInstance = axios.create({
   },
 })
 
+const socialPublisherClient: AxiosInstance = axios.create({
+  baseURL: '/api/social-publisher',
+  timeout: 10000,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+})
+
 // Add auth interceptor to all clients
 const addAuthInterceptor = (client: AxiosInstance): void => {
   // Request interceptor: Add token to headers
@@ -137,6 +155,7 @@ addAuthInterceptor(sourcesClient)
 addAuthInterceptor(publisherClient)
 addAuthInterceptor(classifierClient)
 addAuthInterceptor(indexManagerClient)
+addAuthInterceptor(socialPublisherClient)
 
 // Request/response interceptors for debugging
 const addInterceptors = (client: AxiosInstance, serviceName: string): void => {
@@ -170,6 +189,7 @@ addInterceptors(sourcesClient, 'Sources')
 addInterceptors(publisherClient, 'Publisher')
 addInterceptors(classifierClient, 'Classifier')
 addInterceptors(indexManagerClient, 'IndexManager')
+addInterceptors(socialPublisherClient, 'SocialPublisher')
 
 // Crawler API
 export const crawlerApi = {
@@ -596,11 +616,43 @@ export const indexManagerApi = {
   },
 }
 
+// Social Publisher API
+export const socialPublisherApi = {
+  content: {
+    list: (params?: {
+      limit?: number
+      offset?: number
+      status?: string
+      type?: string
+    }): Promise<AxiosResponse<ContentListResponse>> =>
+      socialPublisherClient.get('/content', { params }),
+    status: (id: string): Promise<AxiosResponse<{ deliveries: Delivery[] }>> =>
+      socialPublisherClient.get(`/status/${id}`),
+    publish: (data: PublishRequest): Promise<AxiosResponse<SocialContent>> =>
+      socialPublisherClient.post('/publish', data),
+    retry: (id: string): Promise<AxiosResponse<Delivery>> =>
+      socialPublisherClient.post(`/retry/${id}`),
+  },
+  accounts: {
+    list: (): Promise<AxiosResponse<AccountsListResponse>> =>
+      socialPublisherClient.get('/accounts'),
+    get: (id: string): Promise<AxiosResponse<SocialAccount>> =>
+      socialPublisherClient.get(`/accounts/${id}`),
+    create: (data: CreateAccountRequest): Promise<AxiosResponse<SocialAccount>> =>
+      socialPublisherClient.post('/accounts', data),
+    update: (id: string, data: UpdateAccountRequest): Promise<AxiosResponse<SocialAccount>> =>
+      socialPublisherClient.put(`/accounts/${id}`, data),
+    delete: (id: string): Promise<AxiosResponse<void>> =>
+      socialPublisherClient.delete(`/accounts/${id}`),
+  },
+}
+
 export default {
   crawler: crawlerApi,
   sources: sourcesApi,
   publisher: publisherApi,
   classifier: classifierApi,
   indexManager: indexManagerApi,
+  socialPublisher: socialPublisherApi,
 }
 

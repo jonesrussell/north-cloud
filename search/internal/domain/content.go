@@ -7,6 +7,30 @@ type SearchCrimeInfo struct {
 	Relevance string `json:"relevance,omitempty"`
 }
 
+// RFPData contains structured metadata extracted from RFP documents
+type RFPData struct {
+	ExtractionMethod string   `json:"extraction_method,omitempty"`
+	Title            string   `json:"title,omitempty"`
+	ReferenceNumber  string   `json:"reference_number,omitempty"`
+	OrganizationName string   `json:"organization_name,omitempty"`
+	Description      string   `json:"description,omitempty"`
+	PublishedDate    string   `json:"published_date,omitempty"`
+	ClosingDate      string   `json:"closing_date,omitempty"`
+	BudgetMin        *float64 `json:"budget_min,omitempty"`
+	BudgetMax        *float64 `json:"budget_max,omitempty"`
+	BudgetCurrency   string   `json:"budget_currency,omitempty"`
+	ProcurementType  string   `json:"procurement_type,omitempty"`
+	NAICSCodes       []string `json:"naics_codes,omitempty"`
+	Categories       []string `json:"categories,omitempty"`
+	Province         string   `json:"province,omitempty"`
+	City             string   `json:"city,omitempty"`
+	Country          string   `json:"country,omitempty"`
+	Eligibility      string   `json:"eligibility,omitempty"`
+	SourceURL        string   `json:"source_url,omitempty"`
+	ContactName      string   `json:"contact_name,omitempty"`
+	ContactEmail     string   `json:"contact_email,omitempty"`
+}
+
 // ClassifiedContent represents a document from Elasticsearch classified_content indexes
 type ClassifiedContent struct {
 	ID               string           `json:"id"`
@@ -25,6 +49,7 @@ type ClassifiedContent struct {
 	QualityScore     int              `json:"quality_score"`
 	Topics           []string         `json:"topics,omitempty"`
 	Crime            *SearchCrimeInfo `json:"crime,omitempty"`
+	RFP              *RFPData         `json:"rfp,omitempty"`
 	SourceReputation int              `json:"source_reputation,omitempty"`
 	Confidence       float64          `json:"confidence,omitempty"`
 	WordCount        int              `json:"word_count,omitempty"`
@@ -62,6 +87,7 @@ func (c *ClassifiedContent) ToSearchHit(score float64, highlight map[string][]st
 		Topics:         c.Topics,
 		CrimeRelevance: c.GetCrimeRelevance(),
 		OGImage:        c.OGImage,
+		RFP:            c.RFP,
 		Score:          score,
 		Highlight:      highlight,
 		Snippet:        snippet,

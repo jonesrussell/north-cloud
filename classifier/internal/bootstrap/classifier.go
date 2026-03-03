@@ -186,6 +186,12 @@ func createClassifierConfig(cfg *config.Config, logger infralogger.Logger) class
 		logger.Info("Job extractor enabled")
 	}
 
+	var rfpExtractor *classifier.RFPExtractor
+	if cfg.Classification.RFP.Enabled {
+		rfpExtractor = classifier.NewRFPExtractor(logger)
+		logger.Info("RFP extractor enabled")
+	}
+
 	return classifier.Config{
 		Version:         "1.0.0",
 		MinQualityScore: defaultMinQualityScore50,
@@ -212,6 +218,7 @@ func createClassifierConfig(cfg *config.Config, logger infralogger.Logger) class
 		IndigenousClassifier:    indigenousCC,
 		RecipeExtractor:         recipeExtractor,
 		JobExtractor:            jobExtractor,
+		RFPExtractor:            rfpExtractor,
 		RoutingTable:            cfg.Classification.Routing,
 	}
 }

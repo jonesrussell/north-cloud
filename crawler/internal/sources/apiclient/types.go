@@ -96,7 +96,7 @@ type APIPageSelectors struct {
 // ListSourcesResponse represents the response from the list sources API.
 type ListSourcesResponse struct {
 	Sources []APISource `json:"sources"`
-	Count   int         `json:"count"`
+	Total   int         `json:"total"`
 }
 
 // ErrorResponse represents an error response from the API.
