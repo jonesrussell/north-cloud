@@ -1,0 +1,49 @@
+version: '3'
+
+vars:
+  BINARY_NAME: rfp-ingestor
+  MAIN_PATH: ./main.go
+
+tasks:
+  build:
+    desc: "Build the rfp-ingestor binary"
+    cmds:
+      - go build -o bin/{{.BINARY_NAME}} {{.MAIN_PATH}}
+
+  run:
+    desc: "Run the rfp-ingestor service"
+    cmds:
+      - go run {{.MAIN_PATH}}
+
+  backfill:
+    desc: "Run historical backfill"
+    cmds:
+      - go run {{.MAIN_PATH}} backfill
+
+  test:
+    desc: "Run all tests"
+    cmds:
+      - go test -v ./...
+
+  test:coverage:
+    desc: "Run tests with coverage"
+    cmds:
+      - go test -coverprofile=coverage.out ./...
+      - go tool cover -html=coverage.out -o coverage.html
+
+  lint:
+    desc: "Lint the Go code"
+    cmds:
+      - go fmt ./...
+      - go vet ./...
+      - golangci-lint run --config ../.golangci.yml ./...
+
+  tidy:
+    desc: "Tidy go.mod"
+    cmds:
+      - go mod tidy
+
+  vendor:
+    desc: "Sync vendor directory"
+    cmds:
+      - go mod vendor
