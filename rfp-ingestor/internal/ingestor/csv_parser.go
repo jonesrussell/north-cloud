@@ -1,6 +1,7 @@
 package ingestor
 
 import (
+	"bufio"
 	"crypto/sha256"
 	"encoding/csv"
 	"fmt"
@@ -68,6 +69,7 @@ var provinceMap = map[string]string{
 // individual rows are collected and returned alongside any successfully
 // parsed documents.
 func ParseCSV(r io.Reader) ([]domain.RFPDocument, []error) {
+	r = stripBOM(r)
 	reader := csv.NewReader(r)
 	reader.LazyQuotes = true
 	reader.FieldsPerRecord = -1
@@ -126,6 +128,17 @@ func buildColumnIndex(header []string) map[string]int {
 		idx[strings.TrimSpace(col)] = i
 	}
 	return idx
+}
+
+// stripBOM returns a reader that skips a leading UTF-8 BOM (EF BB BF)
+// if present. CanadaBuys CSV feeds include a BOM that confuses Go's csv.Reader.
+func stripBOM(r io.Reader) io.Reader {
+	br := bufio.NewReader(r)
+	bom, err := br.Peek(3)
+	if err == nil && len(bom) >= 3 && bom[0] == 0xEF && bom[1] == 0xBB && bom[2] == 0xBF {
+		_, _ = br.Discard(3)
+	}
+	return br
 }
 
 // getField safely retrieves a field value by column name.

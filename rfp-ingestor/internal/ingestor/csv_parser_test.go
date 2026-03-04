@@ -306,6 +306,28 @@ func TestDeriveCategories(t *testing.T) {
 	}
 }
 
+func TestParseCSV_BOMHeader(t *testing.T) {
+	// CanadaBuys feeds start with a UTF-8 BOM (\xEF\xBB\xBF).
+	// Verify the parser strips it so the first column is still matched.
+	row := makeRow(map[int]string{
+		idxTitle:     "BOM Test Tender",
+		idxRefNumber: "PW-BOM-001",
+		idxAmendment: "000",
+		idxStatusEng: "Open",
+	})
+
+	input := "\xEF\xBB\xBF" + fullHeader + "\n" + row + "\n"
+	docs, errs := ParseCSV(strings.NewReader(input))
+
+	if len(errs) != 0 {
+		t.Fatalf("unexpected errors: %v", errs)
+	}
+	if len(docs) != 1 {
+		t.Fatalf("expected 1 document, got %d", len(docs))
+	}
+	assertEqual(t, "Title", "BOM Test Tender", docs[0].Title)
+}
+
 // assertEqual is a test helper that checks string equality.
 func assertEqual(t *testing.T, field, expected, actual string) {
 	t.Helper()
