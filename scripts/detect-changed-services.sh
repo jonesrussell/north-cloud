@@ -67,7 +67,7 @@ if [ -n "${MANUAL_SERVICES:-}" ]; then
 # Handle force all
 elif [ "${FORCE_ALL:-}" = "true" ]; then
     CHANGED_SERVICES_STR="${ALL_SERVICES[*]}"
-    INFRA_CHANGED="false"
+    INFRA_CHANGED="true"
     MIGRATIONS_CHANGED="false"
 else
     # Get base ref
