@@ -1,12 +1,19 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
+	"github.com/jonesrussell/north-cloud/rfp-ingestor/internal/api"
 	"github.com/jonesrussell/north-cloud/rfp-ingestor/internal/config"
+	esindex "github.com/jonesrussell/north-cloud/rfp-ingestor/internal/elasticsearch"
+	"github.com/jonesrussell/north-cloud/rfp-ingestor/internal/ingestor"
 	infraconfig "github.com/north-cloud/infrastructure/config"
-	infralogger "github.com/north-cloud/infrastructure/logger"
+	"github.com/north-cloud/infrastructure/logger"
 )
 
 func main() {
@@ -14,45 +21,125 @@ func main() {
 }
 
 func run() int {
-	// Load configuration
-	configPath := infraconfig.GetConfigPath("config.yml")
-
-	cfg, err := config.Load(configPath)
+	cfg, err := config.Load(infraconfig.GetConfigPath("config.yml"))
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to load configuration: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Failed to load config: %v\n", err)
 		return 1
 	}
 
-	// Initialize logger
-	log, err := createLogger(cfg)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to create logger: %v\n", err)
-		return 1
-	}
-	defer func() { _ = log.Sync() }()
-
-	log.Info("Starting rfp-ingestor",
-		infralogger.String("name", cfg.Service.Name),
-		infralogger.String("version", cfg.Service.Version),
-		infralogger.Int("port", cfg.Service.Port),
-		infralogger.Bool("debug", cfg.Service.Debug),
-	)
-
-	// TODO: Wire up HTTP server, feed fetcher, and ingestion loop (Task 6)
-
-	return 0
-}
-
-// createLogger creates a logger instance from configuration.
-func createLogger(cfg *config.Config) (infralogger.Logger, error) {
-	log, err := infralogger.New(infralogger.Config{
+	log, err := logger.New(logger.Config{
 		Level:       cfg.Logging.Level,
 		Format:      cfg.Logging.Format,
 		Development: cfg.Service.Debug,
 	})
 	if err != nil {
-		return nil, err
+		fmt.Fprintf(os.Stderr, "Failed to create logger: %v\n", err)
+		return 1
+	}
+	defer func() { _ = log.Sync() }()
+	log = log.With(logger.String("service", cfg.Service.Name))
+
+	// CLI subcommand: backfill
+	if len(os.Args) > 1 && os.Args[1] == "backfill" {
+		return runBackfill(cfg, log)
 	}
 
-	return log.With(infralogger.String("service", "rfp-ingestor")), nil
+	return runServer(cfg, log)
+}
+
+func runServer(cfg *config.Config, log logger.Logger) int {
+	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer cancel()
+
+	status := &api.Status{}
+
+	server := api.NewServer(cfg.Service.Name, cfg.Service.Port, cfg.Service.Version, cfg.Service.Debug, log, status)
+	errCh := server.StartAsync()
+
+	log.Info("RFP Ingestor started",
+		logger.Int("port", cfg.Service.Port),
+		logger.Int("poll_interval_minutes", cfg.Ingestion.PollIntervalMinutes),
+	)
+
+	ing := ingestor.NewIngestor(ingestor.Config{
+		FeedURL:  cfg.Feeds.NewURL,
+		ESURL:    cfg.Elasticsearch.URL,
+		ESIndex:  cfg.Elasticsearch.Index,
+		BulkSize: cfg.Elasticsearch.BulkSize,
+	})
+
+	// Ensure ES index exists on startup.
+	if indexer, err := esindex.NewIndexer(cfg.Elasticsearch.URL, cfg.Elasticsearch.Index, cfg.Elasticsearch.BulkSize); err == nil {
+		if err := indexer.EnsureIndex(ctx, esindex.RFPIndexMapping()); err != nil {
+			log.Error("Failed to ensure ES index", logger.Error(err))
+		}
+	}
+
+	// Initial ingestion.
+	runIngestion(ctx, ing, log, status)
+
+	// Schedule periodic ingestion.
+	ticker := time.NewTicker(time.Duration(cfg.Ingestion.PollIntervalMinutes) * time.Minute)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			log.Info("Shutting down")
+			shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer shutdownCancel()
+			_ = server.Shutdown(shutdownCtx)
+			return 0
+		case err := <-errCh:
+			log.Error("Server error", logger.Error(err))
+			return 1
+		case <-ticker.C:
+			runIngestion(ctx, ing, log, status)
+		}
+	}
+}
+
+func runIngestion(ctx context.Context, ing *ingestor.Ingestor, log logger.Logger, status *api.Status) {
+	log.Info("Starting ingestion cycle")
+
+	result, err := ing.RunOnce(ctx)
+	if err != nil {
+		log.Error("Ingestion failed", logger.Error(err))
+		status.Update(result.Fetched, result.Indexed, result.Failed+1, result.Duration)
+		return
+	}
+
+	status.Update(result.Fetched, result.Indexed, result.Failed, result.Duration)
+	log.Info("Ingestion complete",
+		logger.Int("fetched", result.Fetched),
+		logger.Int("indexed", result.Indexed),
+		logger.Int("failed", result.Failed),
+		logger.Int64("duration_ms", result.Duration.Milliseconds()),
+	)
+}
+
+func runBackfill(cfg *config.Config, log logger.Logger) int {
+	ctx := context.Background()
+	log.Info("Starting historical backfill", logger.String("feed", cfg.Feeds.ArchiveURL))
+
+	ing := ingestor.NewIngestor(ingestor.Config{
+		FeedURL:  cfg.Feeds.ArchiveURL,
+		ESURL:    cfg.Elasticsearch.URL,
+		ESIndex:  cfg.Elasticsearch.Index,
+		BulkSize: cfg.Elasticsearch.BulkSize,
+	})
+
+	result, err := ing.RunOnce(ctx)
+	if err != nil {
+		log.Error("Backfill failed", logger.Error(err))
+		return 1
+	}
+
+	log.Info("Backfill complete",
+		logger.Int("fetched", result.Fetched),
+		logger.Int("indexed", result.Indexed),
+		logger.Int("failed", result.Failed),
+		logger.Int64("duration_ms", result.Duration.Milliseconds()),
+	)
+	return 0
 }
