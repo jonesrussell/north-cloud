@@ -447,7 +447,13 @@ echo ""
 # ============================================================
 
 if [ "${INFRA_CHANGED:-false}" = "true" ] || [ -z "$SERVICES_TO_UPDATE" ]; then
-  echo -e "${GREEN}Step 3.5: Restarting observability services (Alloy, Loki, Grafana)...${NC}"
+  echo -e "${GREEN}Step 3.5: Restarting infrastructure services (nginx, observability)...${NC}"
+  # Nginx mounts infrastructure/nginx/nginx.conf — restart to pick up config changes
+  if $COMPOSE_CMD up -d nginx 2>&1; then
+    echo -e "${GREEN}✓ Nginx restarted${NC}"
+  else
+    echo -e "${YELLOW}WARNING: Failed to restart nginx${NC}"
+  fi
   if $COMPOSE_CMD --profile observability up -d alloy loki grafana 2>&1; then
     echo -e "${GREEN}✓ Observability services restarted${NC}"
   else
@@ -455,7 +461,7 @@ if [ "${INFRA_CHANGED:-false}" = "true" ] || [ -z "$SERVICES_TO_UPDATE" ]; then
   fi
   echo ""
 else
-  echo -e "${YELLOW}Step 3.5: Skipping observability restart (no infrastructure changes)${NC}"
+  echo -e "${YELLOW}Step 3.5: Skipping infrastructure restart (no infrastructure changes)${NC}"
   echo ""
 fi
 
@@ -523,6 +529,9 @@ for svc in $SERVICES_TO_CHECK; do
       ;;
     search-service)
       check_health "search-service" "/health" "8090" 10 || { FAILED_CHECKS=$((FAILED_CHECKS + 1)); FAILED_SERVICES="$FAILED_SERVICES $svc"; }
+      ;;
+    rfp-ingestor)
+      check_health "rfp-ingestor" "/health" "8095" 10 || { FAILED_CHECKS=$((FAILED_CHECKS + 1)); FAILED_SERVICES="$FAILED_SERVICES $svc"; }
       ;;
     # search-frontend and dashboard don't have health endpoints (static nginx)
   esac
