@@ -448,8 +448,9 @@ echo ""
 
 if [ "${INFRA_CHANGED:-false}" = "true" ] || [ -z "$SERVICES_TO_UPDATE" ]; then
   echo -e "${GREEN}Step 3.5: Restarting infrastructure services (nginx, observability)...${NC}"
-  # Nginx mounts infrastructure/nginx/nginx.conf — restart to pick up config changes
-  if $COMPOSE_CMD up -d nginx 2>&1; then
+  # Nginx mounts infrastructure/nginx/nginx.conf as a volume — `up -d` won't
+  # detect volume content changes, so we force-recreate to reload the config.
+  if $COMPOSE_CMD up -d --force-recreate nginx 2>&1; then
     echo -e "${GREEN}✓ Nginx restarted${NC}"
   else
     echo -e "${YELLOW}WARNING: Failed to restart nginx${NC}"
