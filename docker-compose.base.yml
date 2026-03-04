@@ -640,6 +640,29 @@ services:
       retries: 5
       start_period: 10s
 
+  # ------------------------------------------------------------
+  # RFP Ingestor
+  # ------------------------------------------------------------
+
+  rfp-ingestor:
+    <<: *service-defaults
+    build:
+      context: .
+      dockerfile: rfp-ingestor/Dockerfile
+    environment:
+      ELASTICSEARCH_URL: http://elasticsearch:9200
+      RFP_INGESTOR_PORT: 8095
+      RFP_POLL_INTERVAL_MINUTES: 120
+      LOG_LEVEL: info
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8095/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
 # ============================================================
 # Volumes & Networks
 # ============================================================
