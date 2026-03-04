@@ -20,6 +20,7 @@ When modifying files, read the relevant service CLAUDE.md first. Deep specs in `
 | `dashboard/**` | `dashboard/CLAUDE.md` | — |
 | `pipeline/**` | `pipeline/CLAUDE.md` | — |
 | `social-publisher/**` | `social-publisher/CLAUDE.md` | — |
+| `rfp-ingestor/**` | — | — |
 | `docker-compose*.yml`, `Taskfile.yml` | `DOCKER.md` | — |
 
 ---
@@ -35,6 +36,11 @@ Sources → [Crawler] → ES raw_content → [Classifier + ML Sidecars] → ES c
 - L1: Topic auto-detect (skips: mining, indigenous, coforge, recipe, jobs, rfp)
 - L2: DB Channels | L3: Crime | L4: Location | L5: Mining | L6: Entertainment | L7: Indigenous | L8: CoForge | L9: Recipe | L10: Job | L11: RFP
 
+**RFP ingestor** (bypasses classifier — indexes directly to ES):
+- Polls CanadaBuys CSV feed → parses → bulk-indexes to `rfp_classified_content` ES index
+- Index name uses `*_classified_content` pattern so search service wildcard picks it up
+- `content_type` must be `text` (not `keyword`) — search queries `content_type.keyword` sub-field
+
 **Dependency rule**: Services import only from `infrastructure/`. No cross-service imports.
 
 ---
@@ -47,7 +53,7 @@ Sources → [Crawler] → ES raw_content → [Classifier + ML Sidecars] → ES c
 
 **Add a new publisher channel**: Create channel via publisher API with topic rules → content matching rules routes to Redis channel → consumers subscribe
 
-**Modify ES mappings**: Update `classifier/internal/elasticsearch/mappings/` → reindex affected indices via index-manager → verify with search queries
+**Modify ES mappings**: Update `classifier/internal/elasticsearch/mappings/` → reindex affected indices via index-manager → verify with search queries. **Note**: `content_type` must be `text` type (not `keyword`) — search service queries `content_type.keyword` sub-field which only exists on `text` fields
 
 **Add a migration**: Create up/down SQL in `{service}/internal/database/migrations/` → run `task migrate:SERVICE` → test with `task test:SERVICE`
 
@@ -135,6 +141,7 @@ Each module has its own `vendor/` (gitignored). After changing deps: `task vendo
 | nc-http-proxy | 8055 | HTTP Replay Proxy |
 | pipeline | 8075 | Pipeline Event Service |
 | click-tracker | 8093 | Click Event Tracking |
+| rfp-ingestor | 8095 | RFP Feed Ingestor (CanadaBuys CSV) |
 | mining-ml | 8077 | Mining ML Classifier |
 | indigenous-ml | 8080 | Indigenous ML Classifier |
 
@@ -243,6 +250,8 @@ See `ARCHITECTURE.md` for the full bootstrap pattern reference.
 - Production (`/opt/north-cloud`) is **NOT a git repo** — do not use `git pull`
 - CI/CD (GitHub Actions) syncs files via rsync and runs `deploy.sh`
 - To deploy manually: push to main → CI runs tests → deploy workflow triggers automatically
+- **Nginx uses `--force-recreate`** — volume-mounted config changes aren't detected by `up -d`
+- **Force deploy**: `gh workflow run deploy.yml -f force_rebuild_all=true` to rebuild all services
 
 ---
 
