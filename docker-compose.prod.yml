@@ -675,6 +675,27 @@ services:
       GF_SMTP_FROM_ADDRESS: "info@northcloud.one"
       GF_SMTP_FROM_NAME: "North Cloud Alerts"
 
+  # ------------------------------------------------------------
+  # RFP Ingestor
+  # ------------------------------------------------------------
+
+  rfp-ingestor:
+    <<: *prod-defaults
+    image: docker.io/jonesrussell/rfp-ingestor:latest
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 512M
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    environment:
+      ELASTICSEARCH_URL: http://elasticsearch:9200
+      RFP_INGESTOR_PORT: 8095
+      RFP_POLL_INTERVAL_MINUTES: 120
+      LOG_LEVEL: info
+
 # ============================================================
 # Production Volumes
 # ============================================================
