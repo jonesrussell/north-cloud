@@ -23,8 +23,10 @@ type Status struct {
 }
 
 // Update records the results of a completed ingestion cycle.
-// LastSuccess is only updated when failed == 0.
-func (s *Status) Update(fetched, indexed, failed int, duration time.Duration) {
+// fatalErr indicates whether the cycle encountered a fatal error (fetch or
+// ES failure). Parse-level failures are expected in large CSV feeds and do
+// not prevent LastSuccess from being updated.
+func (s *Status) Update(fetched, indexed, failed int, duration time.Duration, fatalErr bool) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -34,7 +36,7 @@ func (s *Status) Update(fetched, indexed, failed int, duration time.Duration) {
 	s.Failed = failed
 	s.DurationMs = duration.Milliseconds()
 
-	if failed == 0 {
+	if !fatalErr {
 		s.LastSuccess = s.LastRun
 	}
 }

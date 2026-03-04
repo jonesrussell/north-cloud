@@ -3,12 +3,12 @@ package ingestor
 import (
 	"context"
 	"fmt"
-	"log"
 	"time"
 
 	"github.com/jonesrussell/north-cloud/rfp-ingestor/internal/domain"
 	esindex "github.com/jonesrussell/north-cloud/rfp-ingestor/internal/elasticsearch"
 	"github.com/jonesrussell/north-cloud/rfp-ingestor/internal/feed"
+	"github.com/north-cloud/infrastructure/logger"
 )
 
 // Config holds the settings needed to run a single ingestion cycle.
@@ -32,13 +32,15 @@ type RunResult struct {
 type Ingestor struct {
 	cfg     Config
 	fetcher *feed.Fetcher
+	log     logger.Logger
 }
 
 // NewIngestor creates an Ingestor with a new HTTP feed fetcher.
-func NewIngestor(cfg Config) *Ingestor {
+func NewIngestor(cfg Config, log logger.Logger) *Ingestor {
 	return &Ingestor{
 		cfg:     cfg,
 		fetcher: feed.NewFetcher(),
+		log:     log,
 	}
 }
 
@@ -49,7 +51,7 @@ func (ing *Ingestor) RunOnce(ctx context.Context) (RunResult, error) {
 	start := time.Now()
 
 	// 1. Fetch the CSV feed.
-	body, modified, err := ing.fetcher.Fetch(ing.cfg.FeedURL)
+	body, modified, err := ing.fetcher.Fetch(ctx, ing.cfg.FeedURL)
 	if err != nil {
 		return RunResult{Duration: time.Since(start)}, fmt.Errorf("fetch feed: %w", err)
 	}
@@ -63,7 +65,7 @@ func (ing *Ingestor) RunOnce(ctx context.Context) (RunResult, error) {
 	result := RunResult{Fetched: len(docs), Failed: len(parseErrs)}
 
 	for _, e := range parseErrs {
-		log.Printf("parse warning: %v", e)
+		ing.log.Warn("parse warning", logger.Error(e))
 	}
 
 	if len(docs) == 0 {

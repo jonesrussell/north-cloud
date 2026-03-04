@@ -66,7 +66,7 @@ func runServer(cfg *config.Config, log logger.Logger) int {
 		ESURL:    cfg.Elasticsearch.URL,
 		ESIndex:  cfg.Elasticsearch.Index,
 		BulkSize: cfg.Elasticsearch.BulkSize,
-	})
+	}, log)
 
 	// Ensure ES index exists on startup.
 	if indexer, err := esindex.NewIndexer(cfg.Elasticsearch.URL, cfg.Elasticsearch.Index, cfg.Elasticsearch.BulkSize); err == nil {
@@ -105,11 +105,11 @@ func runIngestion(ctx context.Context, ing *ingestor.Ingestor, log logger.Logger
 	result, err := ing.RunOnce(ctx)
 	if err != nil {
 		log.Error("Ingestion failed", logger.Error(err))
-		status.Update(result.Fetched, result.Indexed, result.Failed+1, result.Duration)
+		status.Update(result.Fetched, result.Indexed, result.Failed+1, result.Duration, true)
 		return
 	}
 
-	status.Update(result.Fetched, result.Indexed, result.Failed, result.Duration)
+	status.Update(result.Fetched, result.Indexed, result.Failed, result.Duration, false)
 	log.Info("Ingestion complete",
 		logger.Int("fetched", result.Fetched),
 		logger.Int("indexed", result.Indexed),
@@ -122,12 +122,20 @@ func runBackfill(cfg *config.Config, log logger.Logger) int {
 	ctx := context.Background()
 	log.Info("Starting historical backfill", logger.String("feed", cfg.Feeds.ArchiveURL))
 
+	// Ensure ES index exists before backfill.
+	if indexer, err := esindex.NewIndexer(cfg.Elasticsearch.URL, cfg.Elasticsearch.Index, cfg.Elasticsearch.BulkSize); err == nil {
+		if err := indexer.EnsureIndex(ctx, esindex.RFPIndexMapping()); err != nil {
+			log.Error("Failed to ensure ES index", logger.Error(err))
+			return 1
+		}
+	}
+
 	ing := ingestor.NewIngestor(ingestor.Config{
 		FeedURL:  cfg.Feeds.ArchiveURL,
 		ESURL:    cfg.Elasticsearch.URL,
 		ESIndex:  cfg.Elasticsearch.Index,
 		BulkSize: cfg.Elasticsearch.BulkSize,
-	})
+	}, log)
 
 	result, err := ing.RunOnce(ctx)
 	if err != nil {

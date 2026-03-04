@@ -1,6 +1,7 @@
 package feed
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"net/http"
@@ -37,8 +38,8 @@ func NewFetcher() *Fetcher {
 // When the server responds with 304 Not Modified the returned body is nil
 // and modified is false. The caller is responsible for closing the body
 // when modified is true.
-func (f *Fetcher) Fetch(url string) (io.ReadCloser, bool, error) {
-	req, err := http.NewRequest(http.MethodGet, url, nil)
+func (f *Fetcher) Fetch(ctx context.Context, url string) (io.ReadCloser, bool, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return nil, false, fmt.Errorf("build request: %w", err)
 	}

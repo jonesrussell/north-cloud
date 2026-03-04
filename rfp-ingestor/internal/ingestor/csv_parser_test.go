@@ -25,23 +25,24 @@ func makeRow(fields map[int]string) string {
 
 // Column indices for the fields used in test rows (0-based, matching fullHeader).
 const (
-	idxTitle          = 0
-	idxRefNumber      = 2
-	idxAmendment      = 3
-	idxPubDate        = 5
-	idxClosingDate    = 6
-	idxAmendmentDate  = 7
-	idxStatusEng      = 10
-	idxGSIN           = 12
-	idxUNSPSC         = 15
-	idxProcurementCat = 18
-	idxRegionDelivery = 31
-	idxOrgName        = 33
-	idxCity           = 35
-	idxContactName    = 48
-	idxContactEmail   = 49
-	idxNoticeURL      = 61
-	idxDescriptionEng = 65
+	idxTitle              = 0
+	idxRefNumber          = 2
+	idxAmendment          = 3
+	idxSolicitationNumber = 4
+	idxPubDate            = 5
+	idxClosingDate        = 6
+	idxAmendmentDate      = 7
+	idxStatusEng          = 10
+	idxGSIN               = 12
+	idxUNSPSC             = 15
+	idxProcurementCat     = 18
+	idxRegionDelivery     = 31
+	idxOrgName            = 33
+	idxCity               = 35
+	idxContactName        = 48
+	idxContactEmail       = 49
+	idxNoticeURL          = 61
+	idxDescriptionEng     = 65
 )
 
 func TestParseCSV_SingleRow(t *testing.T) {
@@ -149,6 +150,27 @@ func TestParseCSV_EmptyInput(t *testing.T) {
 	if len(docs) != 0 {
 		t.Errorf("expected 0 documents for header-only input, got %d", len(docs))
 	}
+}
+
+func TestParseCSV_SolicitationNumberFallback(t *testing.T) {
+	row := makeRow(map[int]string{
+		idxTitle:              "Solicitation Only Tender",
+		idxSolicitationNumber: "SOL-2024-00999",
+		idxAmendment:          "000",
+		idxStatusEng:          "Open",
+	})
+
+	input := fullHeader + "\n" + row + "\n"
+	docs, errs := ParseCSV(strings.NewReader(input))
+
+	if len(errs) != 0 {
+		t.Fatalf("unexpected errors: %v", errs)
+	}
+	if len(docs) != 1 {
+		t.Fatalf("expected 1 document, got %d", len(docs))
+	}
+
+	assertEqual(t, "reference_number", "SOL-2024-00999", docs[0].RFP.ReferenceNumber)
 }
 
 func TestDocumentID_Deterministic(t *testing.T) {

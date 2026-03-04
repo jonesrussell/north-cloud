@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/north-cloud/infrastructure/logger"
 )
 
 func TestIngestor_RunOnce(t *testing.T) {
@@ -64,7 +66,7 @@ func TestIngestor_RunOnce(t *testing.T) {
 		BulkSize: 100,
 	}
 
-	ing := NewIngestor(cfg)
+	ing := NewIngestor(cfg, logger.NewNop())
 	result, err := ing.RunOnce(t.Context())
 	if err != nil {
 		t.Fatalf("RunOnce returned error: %v", err)
@@ -100,7 +102,7 @@ func TestIngestor_RunOnce_NotModified(t *testing.T) {
 
 	// Pre-seed the fetcher's lastModified so it sends If-Modified-Since and
 	// our server responds with 304.
-	ing := NewIngestor(cfg)
+	ing := NewIngestor(cfg, logger.NewNop())
 
 	result, err := ing.RunOnce(t.Context())
 	if err != nil {

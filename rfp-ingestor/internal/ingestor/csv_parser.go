@@ -14,8 +14,9 @@ import (
 // CSV column names from the CanadaBuys feed.
 const (
 	colTitle             = "title-titre-eng"
-	colReferenceNumber   = "referenceNumber-numeroReference"
-	colAmendmentNumber   = "amendmentNumber-numeroModification"
+	colReferenceNumber     = "referenceNumber-numeroReference"
+	colSolicitationNumber = "solicitationNumber-numeroSollicitation"
+	colAmendmentNumber    = "amendmentNumber-numeroModification"
 	colPublicationDate   = "publicationDate-datePublication"
 	colClosingDate       = "tenderClosingDate-appelOffresDateCloture"
 	colAmendmentDate     = "amendmentDate-dateModification"
@@ -140,6 +141,9 @@ func getField(record []string, colIndex map[string]int, column string) string {
 func buildDocument(record []string, colIndex map[string]int, crawledAt string) (domain.RFPDocument, error) {
 	title := getField(record, colIndex, colTitle)
 	refNumber := getField(record, colIndex, colReferenceNumber)
+	if refNumber == "" {
+		refNumber = getField(record, colIndex, colSolicitationNumber)
+	}
 	if refNumber == "" {
 		return domain.RFPDocument{}, fmt.Errorf("missing reference number")
 	}

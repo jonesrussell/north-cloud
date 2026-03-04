@@ -1,6 +1,7 @@
 package feed
 
 import (
+	"context"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -25,7 +26,7 @@ func TestFetch_ReturnsBody(t *testing.T) {
 	defer srv.Close()
 
 	f := NewFetcher()
-	body, modified, err := f.Fetch(srv.URL)
+	body, modified, err := f.Fetch(context.Background(), srv.URL)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -64,7 +65,7 @@ func TestFetch_NotModified(t *testing.T) {
 	f := NewFetcher()
 
 	// First fetch: should return 200 with body.
-	body, modified, err := f.Fetch(srv.URL)
+	body, modified, err := f.Fetch(context.Background(), srv.URL)
 	if err != nil {
 		t.Fatalf("first fetch error: %v", err)
 	}
@@ -74,7 +75,7 @@ func TestFetch_NotModified(t *testing.T) {
 	body.Close()
 
 	// Second fetch: server returns 304 because If-Modified-Since matches.
-	body, modified, err = f.Fetch(srv.URL)
+	body, modified, err = f.Fetch(context.Background(), srv.URL)
 	if err != nil {
 		t.Fatalf("second fetch error: %v", err)
 	}
@@ -97,7 +98,7 @@ func TestFetch_HTTPError(t *testing.T) {
 	defer srv.Close()
 
 	f := NewFetcher()
-	body, modified, err := f.Fetch(srv.URL)
+	body, modified, err := f.Fetch(context.Background(), srv.URL)
 	if err == nil {
 		t.Fatal("expected error for 500 response")
 	}
