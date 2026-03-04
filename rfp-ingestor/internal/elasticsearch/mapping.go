@@ -4,9 +4,9 @@ package elasticsearch
 // The index name matches the classifier's classified_content schema so the search API
 // wildcard query *_classified_content picks up these documents.
 //
-// content_type is mapped as text (not keyword) to match existing classified_content
-// indices. The search service queries content_type.keyword (the auto-generated
-// sub-field) for exact filtering, which only works on text fields.
+// content_type is mapped as text with an explicit .keyword sub-field. The search
+// service queries content_type.keyword for exact filtering. ES only auto-generates
+// .keyword for dynamically mapped fields, so we must define it explicitly here.
 //
 // raw_text stores the full description so the search service's multi-match query
 // (which searches title, raw_text, body, …) can find RFP documents.
@@ -21,7 +21,16 @@ func RFPIndexMapping() map[string]any {
 				"title":         map[string]any{"type": "text", "analyzer": "standard"},
 				"url":           map[string]any{"type": "keyword"},
 				"source_name":   map[string]any{"type": "keyword"},
-				"content_type":  map[string]any{"type": "text", "analyzer": "standard"},
+				"content_type": map[string]any{
+					"type":     "text",
+					"analyzer": "standard",
+					"fields": map[string]any{
+						"keyword": map[string]any{
+							"type":         "keyword",
+							"ignore_above": 256,
+						},
+					},
+				},
 				"quality_score": map[string]any{"type": "integer"},
 				"snippet":       map[string]any{"type": "text", "analyzer": "standard"},
 				"raw_text":      map[string]any{"type": "text", "analyzer": "standard"},

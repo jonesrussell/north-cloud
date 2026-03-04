@@ -252,6 +252,7 @@ services:
       ENTERTAINMENT_ML_SERVICE_URL: http://entertainment-ml:8079
       INDIGENOUS_ENABLED: "${INDIGENOUS_ENABLED:-false}"
       INDIGENOUS_ML_SERVICE_URL: http://indigenous-ml:8080
+      RFP_ENABLED: "true"
       PIPELINE_URL: http://pipeline:8075
     extra_hosts:
       - "host.docker.internal:host-gateway"
