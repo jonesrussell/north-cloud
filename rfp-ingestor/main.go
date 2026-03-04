@@ -151,16 +151,11 @@ func runBackfill(cfg *config.Config, log logger.Logger) int {
 }
 
 // ensureESIndex creates the RFP index if it does not already exist.
-// When RECREATE_INDEX=true is set, the existing index is deleted and recreated
-// with the current mapping. This is needed when the mapping changes.
 func ensureESIndex(ctx context.Context, cfg *config.Config) error {
 	indexer, err := esindex.NewIndexer(cfg.Elasticsearch.URL, cfg.Elasticsearch.Index, cfg.Elasticsearch.BulkSize)
 	if err != nil {
 		return fmt.Errorf("create indexer: %w", err)
 	}
 
-	if os.Getenv("RECREATE_INDEX") == "true" {
-		return indexer.RecreateIndex(ctx, esindex.RFPIndexMapping())
-	}
 	return indexer.EnsureIndex(ctx, esindex.RFPIndexMapping())
 }
