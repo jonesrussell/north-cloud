@@ -197,6 +197,26 @@ func tallyResults(resp bulkResponse) BulkResult {
 	return result
 }
 
+// RecreateIndex deletes and recreates the index with the supplied mapping.
+// Use this when the mapping has changed and the old index must be replaced.
+func (ix *Indexer) RecreateIndex(ctx context.Context, mapping map[string]any) error {
+	url := ix.baseURL + "/" + ix.indexName
+
+	delReq, err := http.NewRequestWithContext(ctx, http.MethodDelete, url, nil)
+	if err != nil {
+		return fmt.Errorf("create DELETE request: %w", err)
+	}
+
+	delResp, err := ix.client.Do(delReq)
+	if err != nil {
+		return fmt.Errorf("delete index: %w", err)
+	}
+	delResp.Body.Close()
+	// Ignore 404 (index didn't exist)
+
+	return ix.EnsureIndex(ctx, mapping)
+}
+
 // EnsureIndex creates the index with the supplied mapping if it does not already exist.
 func (ix *Indexer) EnsureIndex(ctx context.Context, mapping map[string]any) error {
 	url := ix.baseURL + "/" + ix.indexName

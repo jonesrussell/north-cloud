@@ -175,6 +175,7 @@ func buildDocument(record []string, colIndex map[string]int, crawledAt string) (
 		ContentType:  contentType,
 		QualityScore: qualityScore,
 		Snippet:      truncate(description, snippetMaxLen),
+		RawText:      description,
 		Topics:       deriveTopics(gsin, unspsc),
 		CrawledAt:    crawledAt,
 		RFP: domain.RFP{

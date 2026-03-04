@@ -1,6 +1,8 @@
 package domain
 
 // RFPDocument represents a classified RFP document for Elasticsearch indexing.
+// Field names mirror the classifier's classified_content schema so the search
+// service multi-match query (title, raw_text, body, …) picks up these docs.
 type RFPDocument struct {
 	Title        string   `json:"title"`
 	URL          string   `json:"url"`
@@ -8,6 +10,7 @@ type RFPDocument struct {
 	ContentType  string   `json:"content_type"`
 	QualityScore int      `json:"quality_score"`
 	Snippet      string   `json:"snippet"`
+	RawText      string   `json:"raw_text"`
 	Topics       []string `json:"topics"`
 	CrawledAt    string   `json:"crawled_at"`
 	RFP          RFP      `json:"rfp"`
