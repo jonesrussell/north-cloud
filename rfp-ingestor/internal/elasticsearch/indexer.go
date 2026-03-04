@@ -29,10 +29,16 @@ type Indexer struct {
 }
 
 // NewIndexer creates an Indexer that targets esURL/{indexName}.
-// Returns an error when esURL is empty.
+// Returns an error when esURL or indexName is empty, or bulkSize is not positive.
 func NewIndexer(esURL, indexName string, bulkSize int) (*Indexer, error) {
 	if esURL == "" {
 		return nil, fmt.Errorf("elasticsearch URL must not be empty")
+	}
+	if indexName == "" {
+		return nil, fmt.Errorf("index name must not be empty")
+	}
+	if bulkSize <= 0 {
+		return nil, fmt.Errorf("bulk size must be positive, got %d", bulkSize)
 	}
 
 	return &Indexer{
@@ -75,7 +81,7 @@ func (ix *Indexer) BulkIndex(ctx context.Context, docs map[string]domain.RFPDocu
 		return BulkResult{}, nil
 	}
 
-	// Collect keys for deterministic iteration order within each batch.
+	// Collect keys so we can iterate in batches of bulkSize.
 	keys := make([]string, 0, len(docs))
 	for k := range docs {
 		keys = append(keys, k)
@@ -210,8 +216,11 @@ func (ix *Indexer) EnsureIndex(ctx context.Context, mapping map[string]any) erro
 	if headResp.StatusCode == http.StatusOK {
 		return nil
 	}
+	if headResp.StatusCode != http.StatusNotFound {
+		return fmt.Errorf("unexpected status %d checking index existence", headResp.StatusCode)
+	}
 
-	// Index does not exist; create it.
+	// Index does not exist (404); create it.
 	mappingJSON, err := json.Marshal(mapping)
 	if err != nil {
 		return fmt.Errorf("marshal mapping: %w", err)
@@ -230,7 +239,10 @@ func (ix *Indexer) EnsureIndex(ctx context.Context, mapping map[string]any) erro
 	defer putResp.Body.Close()
 
 	if putResp.StatusCode >= 300 {
-		respBody, _ := io.ReadAll(putResp.Body)
+		respBody, readErr := io.ReadAll(putResp.Body)
+		if readErr != nil {
+			return fmt.Errorf("create index failed with status %d (body unreadable: %w)", putResp.StatusCode, readErr)
+		}
 		return fmt.Errorf("create index failed with status %d: %s", putResp.StatusCode, string(respBody))
 	}
 

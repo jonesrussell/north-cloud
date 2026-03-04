@@ -69,7 +69,7 @@ type FeedsConfig struct {
 // IngestionConfig holds scheduling and reconciliation settings.
 type IngestionConfig struct {
 	PollIntervalMinutes int    `env:"RFP_POLL_INTERVAL_MINUTES" yaml:"poll_interval_minutes"`
-	ReconcileCron       string `env:"RFP_RECONCILE_CRON"        yaml:"reconcile_cron"`
+	ReconcileCron       string `env:"RFP_RECONCILE_CRON"        yaml:"reconcile_cron"` // Reserved: will drive periodic full reconciliation.
 }
 
 // LoggingConfig holds logging settings.
@@ -104,6 +104,10 @@ func (c *Config) Validate() error {
 
 	if c.Elasticsearch.Index == "" {
 		return &infraconfig.ValidationError{Field: "elasticsearch.index", Message: "is required"}
+	}
+
+	if c.Elasticsearch.BulkSize <= 0 {
+		return &infraconfig.ValidationError{Field: "elasticsearch.bulk_size", Message: "must be positive"}
 	}
 
 	return nil

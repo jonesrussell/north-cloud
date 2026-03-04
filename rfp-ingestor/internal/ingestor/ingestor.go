@@ -23,7 +23,6 @@ type Config struct {
 type RunResult struct {
 	Fetched  int
 	Indexed  int
-	Skipped  int
 	Failed   int
 	Duration time.Duration
 }
@@ -94,6 +93,11 @@ func (ing *Ingestor) RunOnce(ctx context.Context) (RunResult, error) {
 
 	result.Indexed = bulkResult.Indexed
 	result.Failed += bulkResult.Failed
+
+	for _, e := range bulkResult.Errors {
+		ing.log.Warn("bulk index error", logger.String("error", e))
+	}
+
 	result.Duration = time.Since(start)
 
 	return result, nil

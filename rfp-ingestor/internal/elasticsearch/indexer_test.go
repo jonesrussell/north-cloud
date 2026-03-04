@@ -113,6 +113,33 @@ func TestBulkIndex_SendsDocuments(t *testing.T) {
 	}
 }
 
+func TestNewIndexer_Validation(t *testing.T) {
+	tests := []struct {
+		name      string
+		esURL     string
+		indexName string
+		bulkSize  int
+		wantErr   string
+	}{
+		{"empty URL", "", "idx", 100, "URL must not be empty"},
+		{"empty index", "http://localhost:9200", "", 100, "index name must not be empty"},
+		{"zero bulk size", "http://localhost:9200", "idx", 0, "bulk size must be positive"},
+		{"negative bulk size", "http://localhost:9200", "idx", -1, "bulk size must be positive"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := NewIndexer(tt.esURL, tt.indexName, tt.bulkSize)
+			if err == nil {
+				t.Fatalf("expected error containing %q, got nil", tt.wantErr)
+			}
+			if !strings.Contains(err.Error(), tt.wantErr) {
+				t.Errorf("error %q does not contain %q", err.Error(), tt.wantErr)
+			}
+		})
+	}
+}
+
 func TestBulkIndex_EmptyBatch(t *testing.T) {
 	// A bogus URL is fine here because no HTTP call should be made.
 	indexer, err := NewIndexer("http://bogus:9999", "test-index", 100)

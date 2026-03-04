@@ -4,6 +4,12 @@ vars:
   BINARY_NAME: rfp-ingestor
   MAIN_PATH: ./main.go
 
+# Resolve from go.mod and replace (../infrastructure); ignore local vendor so lint/test pass
+# when vendor exists but is stale or incomplete (vendor/ is gitignored; CI has no vendor).
+env:
+  GOWORK: "off"
+  GOFLAGS: "-mod=mod"
+
 tasks:
   build:
     desc: "Build the rfp-ingestor binary"

@@ -69,10 +69,8 @@ func runServer(cfg *config.Config, log logger.Logger) int {
 	}, log)
 
 	// Ensure ES index exists on startup.
-	if indexer, err := esindex.NewIndexer(cfg.Elasticsearch.URL, cfg.Elasticsearch.Index, cfg.Elasticsearch.BulkSize); err == nil {
-		if err := indexer.EnsureIndex(ctx, esindex.RFPIndexMapping()); err != nil {
-			log.Error("Failed to ensure ES index", logger.Error(err))
-		}
+	if err := ensureESIndex(ctx, cfg); err != nil {
+		log.Error("Failed to ensure ES index", logger.Error(err))
 	}
 
 	// Initial ingestion.
@@ -88,7 +86,9 @@ func runServer(cfg *config.Config, log logger.Logger) int {
 			log.Info("Shutting down")
 			shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 5*time.Second)
 			defer shutdownCancel()
-			_ = server.Shutdown(shutdownCtx)
+			if err := server.Shutdown(shutdownCtx); err != nil {
+				log.Error("Server shutdown error", logger.Error(err))
+			}
 			return 0
 		case err := <-errCh:
 			log.Error("Server error", logger.Error(err))
@@ -123,11 +123,9 @@ func runBackfill(cfg *config.Config, log logger.Logger) int {
 	log.Info("Starting historical backfill", logger.String("feed", cfg.Feeds.ArchiveURL))
 
 	// Ensure ES index exists before backfill.
-	if indexer, err := esindex.NewIndexer(cfg.Elasticsearch.URL, cfg.Elasticsearch.Index, cfg.Elasticsearch.BulkSize); err == nil {
-		if err := indexer.EnsureIndex(ctx, esindex.RFPIndexMapping()); err != nil {
-			log.Error("Failed to ensure ES index", logger.Error(err))
-			return 1
-		}
+	if err := ensureESIndex(ctx, cfg); err != nil {
+		log.Error("Failed to ensure ES index", logger.Error(err))
+		return 1
 	}
 
 	ing := ingestor.NewIngestor(ingestor.Config{
@@ -150,4 +148,13 @@ func runBackfill(cfg *config.Config, log logger.Logger) int {
 		logger.Int64("duration_ms", result.Duration.Milliseconds()),
 	)
 	return 0
+}
+
+// ensureESIndex creates the RFP index if it does not already exist.
+func ensureESIndex(ctx context.Context, cfg *config.Config) error {
+	indexer, err := esindex.NewIndexer(cfg.Elasticsearch.URL, cfg.Elasticsearch.Index, cfg.Elasticsearch.BulkSize)
+	if err != nil {
+		return fmt.Errorf("create indexer: %w", err)
+	}
+	return indexer.EnsureIndex(ctx, esindex.RFPIndexMapping())
 }
