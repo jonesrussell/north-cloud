@@ -1,0 +1,23 @@
+service:
+  name: "rfp-ingestor"
+  port: 8095
+  version: "0.1.0"
+  debug: false
+
+elasticsearch:
+  url: "http://localhost:9200"
+  index: "rfp_classified_content"
+  bulk_size: 500
+
+feeds:
+  new_url: "https://canadabuys.canada.ca/opendata/pub/newTenderNotice-nouvelAvisAppelOffres.csv"
+  open_url: "https://canadabuys.canada.ca/opendata/pub/openTenderNotice-ouvertAvisAppelOffres.csv"
+  archive_url: "https://canadabuys.canada.ca/opendata/pub/tenderNoticeComplete-avisAppelOffresComplet.csv"
+
+ingestion:
+  poll_interval_minutes: 120
+  reconcile_cron: "0 9 * * *"
+
+logging:
+  level: "info"
+  format: "json"
