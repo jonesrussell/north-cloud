@@ -98,6 +98,19 @@ func TestInternalExtract_Success(t *testing.T) {
 	if resp.QualityScore < 0 || resp.QualityScore > 100 {
 		t.Errorf("expected quality_score between 0-100, got %d", resp.QualityScore)
 	}
+
+	// Verify body contains extracted text, not raw HTML
+	if strings.Contains(resp.Body, "<html>") || strings.Contains(resp.Body, "<body>") || strings.Contains(resp.Body, "<p>") {
+		t.Errorf("body should contain extracted text, not HTML tags: %s", resp.Body[:min(len(resp.Body), 200)])
+	}
+	if !strings.Contains(resp.Body, "test article") {
+		t.Errorf("body should contain article text, got: %s", resp.Body[:min(len(resp.Body), 200)])
+	}
+
+	// Verify word_count is populated
+	if resp.WordCount == 0 {
+		t.Error("expected non-zero word_count for content with text")
+	}
 }
 
 func TestInternalExtract_MissingHTML(t *testing.T) {

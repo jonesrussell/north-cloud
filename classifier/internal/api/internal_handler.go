@@ -69,10 +69,14 @@ func (h *Handler) InternalExtract(c *gin.Context) {
 		SourceName:           sourceName,
 		Title:                req.Title,
 		RawHTML:              req.HTML,
-		RawText:              req.HTML, // The classifier will handle extraction from HTML
 		CrawledAt:            time.Now(),
 		ClassificationStatus: domain.StatusPending,
 	}
+
+	// Extract visible text from HTML for classification and response body
+	extractedText := ExtractTextFromHTML(req.HTML)
+	rawContent.RawText = extractedText
+	rawContent.WordCount = CountWords(extractedText)
 
 	h.logger.Info("Internal extract request",
 		infralogger.String("content_id", contentID),
