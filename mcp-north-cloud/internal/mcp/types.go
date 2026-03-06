@@ -40,6 +40,7 @@ const (
 	InvalidParams    = -32602
 	InternalError    = -32603
 	ResourceNotFound = -32002
+	RateLimited      = -32029
 )
 
 // Tool represents an MCP tool

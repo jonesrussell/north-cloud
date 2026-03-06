@@ -6,13 +6,18 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/jonesrussell/north-cloud/mcp-north-cloud/internal/client"
+	"github.com/north-cloud/infrastructure/logger"
 )
 
 // Server handles MCP protocol requests
 type Server struct {
 	env              string
+	log              logger.Logger
+	rateLimiter      *RateLimiter
+	serviceURLs      map[string]string
 	indexClient      *client.IndexManagerClient
 	crawlerClient    *client.CrawlerClient
 	sourceClient     *client.SourceManagerClient
@@ -24,6 +29,19 @@ type Server struct {
 	ollamaURL        string // empty = extract_schema unavailable
 	ollamaModel      string
 	rendererURL      string // empty = js_render unavailable
+}
+
+// ServerOption configures optional Server fields.
+type ServerOption func(*Server)
+
+// WithLogger sets the server's logger for audit logging.
+func WithLogger(log logger.Logger) ServerOption {
+	return func(s *Server) { s.log = log }
+}
+
+// WithServiceURLs sets the map of service name → base URL for health checks.
+func WithServiceURLs(urls map[string]string) ServerOption {
+	return func(s *Server) { s.serviceURLs = urls }
 }
 
 // NewServer creates a new MCP server
@@ -38,9 +56,11 @@ func NewServer(
 	authClient *client.AuthenticatedClient,
 	grafanaClient *client.GrafanaClient,
 	ollamaURL, ollamaModel, rendererURL string,
+	opts ...ServerOption,
 ) *Server {
-	return &Server{
+	s := &Server{
 		env:              env,
+		rateLimiter:      NewRateLimiter(),
 		indexClient:      indexClient,
 		crawlerClient:    crawlerClient,
 		sourceClient:     sourceClient,
@@ -53,6 +73,10 @@ func NewServer(
 		ollamaModel:      ollamaModel,
 		rendererURL:      rendererURL,
 	}
+	for _, opt := range opts {
+		opt(s)
+	}
+	return s
 }
 
 // HandleRequest processes an MCP request and returns a response.
@@ -172,7 +196,7 @@ func (s *Server) handleToolsList(_ *Request, id any) *Response {
 	}
 }
 
-// handleToolsCall executes a tool call
+// handleToolsCall executes a tool call with audit logging and rate limiting.
 func (s *Server) handleToolsCall(ctx context.Context, req *Request, id any) *Response {
 	var params ToolCallParams
 	if err := json.Unmarshal(req.Params, &params); err != nil {
@@ -185,7 +209,35 @@ func (s *Server) handleToolsCall(ctx context.Context, req *Request, id any) *Res
 			},
 		}
 	}
-	return s.routeToolCall(ctx, id, params.Name, params.Arguments)
+
+	// Rate limiting
+	if !s.rateLimiter.Allow(params.Name) {
+		return s.errorResponse(id, RateLimited, "Rate limit exceeded for tool: "+params.Name+". Try again shortly.")
+	}
+
+	// Execute with timing
+	start := time.Now()
+	resp := s.routeToolCall(ctx, id, params.Name, params.Arguments)
+	duration := time.Since(start)
+
+	// Audit log
+	entry := AuditEntry{
+		ToolName:   params.Name,
+		RequestID:  id,
+		DurationMs: duration.Milliseconds(),
+		Success:    resp.Error == nil,
+		Timestamp:  start,
+		ParamKeys:  extractParamKeys(params.Arguments),
+	}
+	if resp.Error != nil {
+		entry.ErrorCode = resp.Error.Code
+	}
+	if resp.Result != nil {
+		entry.ResultBytes = len(resp.Result)
+	}
+	logToolAudit(s.log, entry)
+
+	return resp
 }
 
 // toolHandlerFunc matches (*Server).handleX(ctx, id, args); receiver is bound when calling h(s, ctx, id, arguments).
@@ -219,6 +271,7 @@ var toolHandlers = map[string]toolHandlerFunc{
 	"lint_file":           (*Server).handleLintFile,
 	"build_service":       (*Server).handleBuildService,
 	"test_service":        (*Server).handleTestService,
+	"health_check":        (*Server).handleHealthCheck,
 }
 
 // toolScopeMap builds a name->scope lookup from all tools.
