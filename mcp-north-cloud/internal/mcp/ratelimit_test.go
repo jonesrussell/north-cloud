@@ -1,11 +1,12 @@
 //nolint:testpackage // testing unexported RateLimiter internals
 package mcp
 
-import "testing"
+import (
+	"fmt"
+	"testing"
+)
 
 func TestRateLimiter_AllowsUnderLimit(t *testing.T) {
-	t.Helper()
-
 	rl := NewRateLimiter()
 
 	for i := range perToolRatePerMinute {
@@ -16,8 +17,6 @@ func TestRateLimiter_AllowsUnderLimit(t *testing.T) {
 }
 
 func TestRateLimiter_DeniesPerToolOverLimit(t *testing.T) {
-	t.Helper()
-
 	rl := NewRateLimiter()
 
 	// Exhaust per-tool limit
@@ -31,8 +30,6 @@ func TestRateLimiter_DeniesPerToolOverLimit(t *testing.T) {
 }
 
 func TestRateLimiter_OtherToolStillAllowed(t *testing.T) {
-	t.Helper()
-
 	rl := NewRateLimiter()
 
 	// Exhaust per-tool limit for one tool
@@ -47,13 +44,11 @@ func TestRateLimiter_OtherToolStillAllowed(t *testing.T) {
 }
 
 func TestRateLimiter_DeniesGlobalOverLimit(t *testing.T) {
-	t.Helper()
-
 	rl := NewRateLimiter()
 
 	// Use different tool names to avoid per-tool limit
 	for i := range globalRatePerMinute {
-		toolName := "tool_" + string(rune('a'+i%26)) + string(rune('0'+i/26))
+		toolName := fmt.Sprintf("tool_%d", i)
 		rl.Allow(toolName)
 	}
 

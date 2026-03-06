@@ -11,8 +11,8 @@ task test             # Run tests
 task lint             # Run linter
 
 # Verify tool registration
-./test-tools.sh                   # local mode (expects 18 tools)
-MCP_ENV=prod ./test-tools.sh      # prod mode (expects 23 tools)
+./test-tools.sh                   # local mode (expects 19 tools)
+MCP_ENV=prod ./test-tools.sh      # prod mode (expects 24 tools)
 MCP_TEST_PROMPTS=1 ./test-tools.sh  # also test prompts and resources
 
 # Manual tool calls (binary must be built first: task build)
@@ -33,7 +33,7 @@ mcp-north-cloud/
 │   ├── mcp/
 │   │   ├── server.go        # Request routing, toolHandlers map, prompts/resources dispatch
 │   │   ├── types.go         # JSON-RPC types, Prompt/Resource types, Scope constants
-│   │   ├── tools.go         # 26 tool definitions (scoped by MCP_ENV)
+│   │   ├── tools.go         # 27 tool definitions (scoped by MCP_ENV)
 │   │   ├── handlers.go      # Tool implementations (one func per tool)
 │   │   ├── prompts.go       # prompts/list and prompts/get (4 prompts)
 │   │   ├── resources.go     # resources/list and resources/read (static docs)
@@ -76,10 +76,10 @@ Set `MCP_ENV` to control which tools appear in `tools/list`:
 
 | Environment | Count | Includes |
 |-------------|-------|---------|
-| `local` (default) | 18 | shared (15) + local-only (3) |
-| `prod` | 23 | shared (15) + prod-only (8) |
+| `local` (default) | 19 | shared (16) + local-only (3) |
+| `prod` | 24 | shared (16) + prod-only (8) |
 
-**Shared (15):** onboard_source, list_crawl_jobs, get_crawl_stats, add_source, list_sources, update_source, test_source, list_indexes, search_content, list_channels, preview_channel, get_publish_history, get_publisher_stats, classify_content, get_grafana_alerts
+**Shared (16):** onboard_source, list_crawl_jobs, get_crawl_stats, add_source, list_sources, update_source, test_source, list_indexes, search_content, list_channels, preview_channel, get_publish_history, get_publisher_stats, classify_content, get_grafana_alerts, health_check
 
 **Local-only (3):** lint_file, build_service, test_service
 
@@ -96,7 +96,7 @@ The server implements these JSON-RPC 2.0 methods:
 | Method | Description |
 |--------|-------------|
 | `initialize` | Returns protocol version `2024-11-05` and capabilities (tools, prompts, resources) |
-| `tools/list` | Returns tools for current `MCP_ENV` (18 local / 23 prod) |
+| `tools/list` | Returns tools for current `MCP_ENV` (19 local / 24 prod) |
 | `tools/call` | Routes `params.name` to the registered handler |
 | `prompts/list` | Returns 4 prompt templates |
 | `prompts/get` | Returns messages for a prompt with argument substitution |
@@ -155,8 +155,8 @@ Requests without an `id` field are notifications and receive no response.
 
 ```bash
 # Verify tool registration counts
-./test-tools.sh               # local mode, expects 18
-MCP_ENV=prod ./test-tools.sh  # prod mode, expects 23
+./test-tools.sh               # local mode, expects 19
+MCP_ENV=prod ./test-tools.sh  # prod mode, expects 24
 
 # Also exercise prompts and resources
 MCP_TEST_PROMPTS=1 ./test-tools.sh
@@ -236,7 +236,7 @@ type Client struct {
 
 Clients are constructed in `server.go` using URL and timeout from config. Always pass `ctx` through to `http.NewRequestWithContext` — do not use `http.NewRequest`.
 
-### 26 Tools by Category
+### 27 Tools by Category
 
 | Category | Tools |
 |----------|-------|
@@ -250,6 +250,7 @@ Clients are constructed in `server.go` using URL and timeout from config. Always
 | **Auth (1)** | get_auth_token |
 | **Observability (1)** | get_grafana_alerts |
 | **Development (3)** | lint_file, build_service, test_service |
+| **System (1)** | health_check |
 
 ## Cursor IDE Integration
 

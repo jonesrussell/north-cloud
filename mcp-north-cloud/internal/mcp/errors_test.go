@@ -7,8 +7,6 @@ import (
 )
 
 func TestSanitizeErrorMessage_StripsURLs(t *testing.T) {
-	t.Helper()
-
 	msg := "Failed to list sources: failed to execute request: Get http://localhost:8050/api/v1/sources: connection refused"
 	result := sanitizeErrorMessage(msg)
 
@@ -24,8 +22,6 @@ func TestSanitizeErrorMessage_StripsURLs(t *testing.T) {
 }
 
 func TestSanitizeErrorMessage_StripsResponseBody(t *testing.T) {
-	t.Helper()
-
 	msg := `unexpected status code: 500, body: {"error":"internal server error","stack":"goroutine 1 [running]..."}`
 	result := sanitizeErrorMessage(msg)
 
@@ -38,8 +34,6 @@ func TestSanitizeErrorMessage_StripsResponseBody(t *testing.T) {
 }
 
 func TestSanitizeErrorMessage_ReplacesStatusCode(t *testing.T) {
-	t.Helper()
-
 	msg := "unexpected status code: 502, body: Bad Gateway"
 	result := sanitizeErrorMessage(msg)
 
@@ -52,8 +46,6 @@ func TestSanitizeErrorMessage_ReplacesStatusCode(t *testing.T) {
 }
 
 func TestSanitizeErrorMessage_TruncatesLongMessages(t *testing.T) {
-	t.Helper()
-
 	msg := strings.Repeat("a", maxErrorMessageLength+50)
 	result := sanitizeErrorMessage(msg)
 
@@ -66,8 +58,6 @@ func TestSanitizeErrorMessage_TruncatesLongMessages(t *testing.T) {
 }
 
 func TestSanitizeErrorMessage_PreservesShortMessages(t *testing.T) {
-	t.Helper()
-
 	msg := "Failed to create source: duplicate name"
 	result := sanitizeErrorMessage(msg)
 

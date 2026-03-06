@@ -210,13 +210,23 @@ func (s *Server) handleToolsCall(ctx context.Context, req *Request, id any) *Res
 		}
 	}
 
+	start := time.Now()
+
 	// Rate limiting
 	if !s.rateLimiter.Allow(params.Name) {
-		return s.errorResponse(id, RateLimited, "Rate limit exceeded for tool: "+params.Name+". Try again shortly.")
+		resp := s.errorResponse(id, RateLimited, "Rate limit exceeded for tool: "+params.Name+". Try again shortly.")
+		logToolAudit(s.log, AuditEntry{
+			ToolName:  params.Name,
+			RequestID: id,
+			Success:   false,
+			ErrorCode: RateLimited,
+			Timestamp: start,
+			ParamKeys: extractParamKeys(params.Arguments),
+		})
+		return resp
 	}
 
-	// Execute with timing
-	start := time.Now()
+	// Execute and time
 	resp := s.routeToolCall(ctx, id, params.Name, params.Arguments)
 	duration := time.Since(start)
 

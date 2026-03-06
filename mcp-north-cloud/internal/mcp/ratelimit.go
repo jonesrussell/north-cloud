@@ -8,9 +8,7 @@ import (
 // Rate limit constants.
 const (
 	globalRatePerMinute  = 60
-	globalBurst          = 10
 	perToolRatePerMinute = 20
-	perToolBurst         = 5
 	windowDuration       = time.Minute
 )
 
