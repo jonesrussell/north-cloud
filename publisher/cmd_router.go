@@ -12,6 +12,7 @@ import (
 	"github.com/jonesrussell/north-cloud/publisher/internal/database"
 	"github.com/jonesrussell/north-cloud/publisher/internal/discovery"
 	"github.com/jonesrussell/north-cloud/publisher/internal/router"
+	"github.com/jonesrussell/north-cloud/publisher/internal/telemetry"
 	infralogger "github.com/north-cloud/infrastructure/logger"
 	"github.com/north-cloud/infrastructure/pipeline"
 	"github.com/north-cloud/infrastructure/profiling"
@@ -88,13 +89,16 @@ func runRouterWithStop() (func(), error) {
 	// Initialize pipeline client (fire-and-forget; no-op when URL is empty)
 	pipelineClient := pipeline.NewClient(cfg.PipelineURL, "publisher")
 
+	// Initialize telemetry
+	tp := telemetry.NewProvider()
+
 	// Initialize router service
 	routerConfig := router.Config{
 		PollInterval:      cfg.PollInterval,
 		DiscoveryInterval: cfg.DiscoveryInterval,
 		BatchSize:         cfg.BatchSize,
 	}
-	routerService := router.NewService(repo, discoveryService, esClient, redisClient, routerConfig, appLogger, pipelineClient)
+	routerService := router.NewService(repo, discoveryService, esClient, redisClient, routerConfig, appLogger, pipelineClient, tp)
 
 	// Setup graceful shutdown context
 	serviceCtx, cancel := context.WithCancel(context.Background())
