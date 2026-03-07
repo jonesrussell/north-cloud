@@ -19,8 +19,6 @@ const (
 	indexPattern = "*_classified_content"
 	// highConfidenceSkipMod controls regression sampling: include 1 in N high-confidence docs.
 	highConfidenceSkipMod = 20
-	// sourceFieldCount restricts which fields ES returns.
-	sourceFieldCount = 7
 )
 
 // classifiedDoc is a minimal projection of an ES classified_content document.
