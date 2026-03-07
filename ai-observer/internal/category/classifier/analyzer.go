@@ -15,6 +15,22 @@ const (
 Your job is to identify label drift, borderline clusters, and domains that consistently produce low-confidence classifications.
 Respond ONLY with valid JSON matching the schema provided. Be concise and actionable.`
 
+	// insightJSONSchema is the JSON schema for the LLM response array.
+	// Passed via GenerateRequest.JSONSchema so the provider can enforce it in the system prompt.
+	insightJSONSchema = `{
+  "type": "array",
+  "items": {
+    "type": "object",
+    "required": ["severity", "summary", "details", "suggested_actions"],
+    "properties": {
+      "severity":          { "type": "string", "enum": ["low", "medium", "high"] },
+      "summary":           { "type": "string" },
+      "details":           { "type": "object" },
+      "suggested_actions": { "type": "array", "items": { "type": "string" } }
+    }
+  }
+}`
+
 	maxResponseTokens = 1000
 	// maxStatPairs is the max domain+label pairs to include in the LLM prompt.
 	maxStatPairs = 30
@@ -44,6 +60,7 @@ func analyze(ctx context.Context, events []category.Event, p provider.LLMProvide
 		SystemPrompt: systemPrompt,
 		UserPrompt:   userPrompt,
 		MaxTokens:    maxResponseTokens,
+		JSONSchema:   insightJSONSchema,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("generate: %w", err)
