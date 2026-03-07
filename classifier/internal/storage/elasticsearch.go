@@ -10,6 +10,7 @@ import (
 
 	es "github.com/elastic/go-elasticsearch/v8"
 	"github.com/jonesrussell/north-cloud/classifier/internal/domain"
+	"github.com/north-cloud/infrastructure/naming"
 )
 
 // ElasticsearchStorage implements storage operations for the classifier
@@ -391,7 +392,7 @@ func (s *ElasticsearchStorage) GetClassifiedByID(ctx context.Context, contentID 
 // GetRawContentByID retrieves raw content by document ID from specific source index
 func (s *ElasticsearchStorage) GetRawContentByID(ctx context.Context, contentID, sourceName string) (*domain.RawContent, error) {
 	// Build the raw_content index name from sanitized source name
-	rawIndex := SanitizeSourceName(sourceName) + "_raw_content"
+	rawIndex := naming.RawContentIndex(sourceName)
 
 	query := map[string]any{
 		"query": map[string]any{

@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -14,6 +13,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jonesrussell/north-cloud/source-manager/internal/models"
 	infralogger "github.com/north-cloud/infrastructure/logger"
+	"github.com/north-cloud/infrastructure/naming"
 )
 
 type SourceRepository struct {
@@ -675,55 +675,11 @@ func (r *SourceRepository) GetCities(ctx context.Context) ([]models.City, error)
 	return cities, nil
 }
 
-var (
-	// invalidIndexNameChars matches all characters that are invalid in Elasticsearch index names.
-	// Invalid characters: space, ", *, ,, /, <, >, ?, \, |
-	invalidIndexNameChars = regexp.MustCompile(`[\s"*,/<>?\\|]`)
-	// consecutiveUnderscores matches two or more consecutive underscores.
-	consecutiveUnderscores = regexp.MustCompile(`_{2,}`)
-)
-
 // deriveClassifiedContentIndex derives an Elasticsearch index name for classified content
-// from a source name. Format: {normalized_source_name}_classified_content
+// from a source name. Falls back to "unknown" prefix when source name is empty.
 func deriveClassifiedContentIndex(sourceName string) string {
 	if sourceName == "" {
-		return "unknown_classified_content"
+		return "unknown" + naming.ClassifiedContentSuffix
 	}
-
-	// Normalize source name for Elasticsearch index
-	normalized := sanitizeIndexName(sourceName)
-	return fmt.Sprintf("%s_classified_content", normalized)
-}
-
-// sanitizeIndexName sanitizes a source name for use in Elasticsearch index names.
-// Elasticsearch index names cannot contain: space, ", *, ,, /, <, >, ?, \, |
-// This function replaces invalid characters with underscores, normalizes dots/dashes,
-// removes leading/trailing underscores, and collapses consecutive underscores.
-func sanitizeIndexName(sourceName string) string {
-	if sourceName == "" {
-		return "unknown"
-	}
-
-	// Convert to lowercase first
-	normalized := strings.ToLower(sourceName)
-
-	// Replace invalid Elasticsearch index name characters with underscores in one pass
-	normalized = invalidIndexNameChars.ReplaceAllString(normalized, "_")
-
-	// Replace dots and dashes with underscores (existing behavior)
-	normalized = strings.ReplaceAll(normalized, ".", "_")
-	normalized = strings.ReplaceAll(normalized, "-", "_")
-
-	// Collapse consecutive underscores into a single underscore
-	normalized = consecutiveUnderscores.ReplaceAllString(normalized, "_")
-
-	// Remove leading and trailing underscores
-	normalized = strings.Trim(normalized, "_")
-
-	// Handle edge case: if all characters were invalid, return fallback
-	if normalized == "" {
-		return "unknown"
-	}
-
-	return normalized
+	return naming.ClassifiedContentIndex(sourceName)
 }
