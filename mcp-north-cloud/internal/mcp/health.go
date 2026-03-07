@@ -82,7 +82,7 @@ func checkService(ctx context.Context, name, baseURL string) serviceHealthResult
 
 	start := time.Now()
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, baseURL+"/health", nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, baseURL+"/health", http.NoBody)
 	if err != nil {
 		return serviceHealthResult{
 			Name:           name,

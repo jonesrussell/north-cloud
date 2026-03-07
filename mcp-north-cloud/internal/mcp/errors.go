@@ -8,6 +8,9 @@ import (
 // maxErrorMessageLength caps sanitized error messages to prevent leaking large response bodies.
 const maxErrorMessageLength = 200
 
+// statusCodeSplitParts is the argument count for splitting on "unexpected status code".
+const statusCodeSplitParts = 2
+
 // urlPattern matches http:// and https:// URLs.
 var urlPattern = regexp.MustCompile(`https?://[^\s"']+`)
 
@@ -21,7 +24,7 @@ func sanitizeErrorMessage(msg string) string {
 	// Handle "unexpected status code" pattern (most specific, check first).
 	// This also covers the "body:" suffix since both often appear together.
 	if strings.Contains(msg, "unexpected status code") {
-		parts := strings.SplitN(msg, "unexpected status code", 2)
+		parts := strings.SplitN(msg, "unexpected status code", statusCodeSplitParts)
 		msg = strings.TrimSpace(parts[0]) + " service returned an error"
 	} else if idx := strings.Index(msg, "body:"); idx >= 0 {
 		// Strip raw response bodies after "body:" markers
