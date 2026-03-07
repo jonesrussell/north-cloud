@@ -115,6 +115,7 @@ type Facets struct {
 // FacetBucket represents a single facet bucket
 type FacetBucket struct {
 	Key   string `json:"key"`
+	Label string `json:"label"`
 	Count int64  `json:"count"`
 }
 

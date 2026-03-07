@@ -79,6 +79,54 @@ func assertFacetBucket(t *testing.T, buckets []domain.FacetBucket, key string, c
 	t.Errorf("bucket with key %q not found", key)
 }
 
+func TestFormatFacetLabel(t *testing.T) {
+	t.Helper()
+
+	cases := []struct {
+		key  string
+		want string
+	}{
+		{"local_news", "Local News"},
+		{"breaking_news", "Breaking News"},
+		{"real_estate", "Real Estate"},
+		{"education", "Education"},
+		{"crime", "Crime"},
+		{"indigenous", "Indigenous"},
+		{"full_time", "Full Time"},
+		{"italian", "Italian"},
+	}
+
+	for _, tc := range cases {
+		got := formatFacetLabel(tc.key)
+		if got != tc.want {
+			t.Errorf("formatFacetLabel(%q) = %q, want %q", tc.key, got, tc.want)
+		}
+	}
+}
+
+func TestParseBuckets_SetsLabel(t *testing.T) {
+	t.Helper()
+
+	agg := aggregation{
+		Buckets: []aggregationBucket{
+			{Key: "local_news", DocCount: 10},
+			{Key: "crime", DocCount: 5},
+		},
+	}
+
+	buckets := parseBuckets(agg)
+
+	if len(buckets) != 2 {
+		t.Fatalf("want 2 buckets, got %d", len(buckets))
+	}
+	if buckets[0].Label != "Local News" {
+		t.Errorf("bucket[0].Label = %q, want %q", buckets[0].Label, "Local News")
+	}
+	if buckets[1].Label != "Crime" {
+		t.Errorf("bucket[1].Label = %q, want %q", buckets[1].Label, "Crime")
+	}
+}
+
 func TestParseFacets_MissingRecipeJobAggsLeaveEmpty(t *testing.T) {
 	t.Helper()
 

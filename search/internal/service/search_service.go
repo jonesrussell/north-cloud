@@ -350,12 +350,26 @@ func (s *SearchService) parseJobFacets(facets *domain.Facets, aggs map[string]ag
 func parseBuckets(agg aggregation) []domain.FacetBucket {
 	buckets := make([]domain.FacetBucket, 0, len(agg.Buckets))
 	for _, bucket := range agg.Buckets {
+		key := fmt.Sprint(bucket.Key)
 		buckets = append(buckets, domain.FacetBucket{
-			Key:   fmt.Sprint(bucket.Key),
+			Key:   key,
+			Label: formatFacetLabel(key),
 			Count: bucket.DocCount,
 		})
 	}
 	return buckets
+}
+
+// formatFacetLabel converts a machine identifier (e.g. "local_news") to a
+// human-readable display label (e.g. "Local News").
+func formatFacetLabel(key string) string {
+	words := strings.Split(key, "_")
+	for i, w := range words {
+		if len(w) > 0 {
+			words[i] = strings.ToUpper(w[:1]) + w[1:]
+		}
+	}
+	return strings.Join(words, " ")
 }
 
 const queryIDLength = 8
