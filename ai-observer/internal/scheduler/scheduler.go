@@ -15,6 +15,8 @@ import (
 const (
 	// tokensPerEvent is the estimated token cost per event for budget pre-check.
 	tokensPerEvent = 50
+	// categoryTimeout is the per-category deadline to prevent indefinite goroutine blocking.
+	categoryTimeout = 5 * time.Minute
 )
 
 // Config holds scheduler configuration.
@@ -171,7 +173,10 @@ func (s *Scheduler) runCategory(ctx context.Context, cat category.Category, budg
 		return nil, nil
 	}
 
-	events, err := cat.Sample(ctx, s.cfg.WindowDuration)
+	catCtx, cancel := context.WithTimeout(ctx, categoryTimeout)
+	defer cancel()
+
+	events, err := cat.Sample(catCtx, s.cfg.WindowDuration)
 	if err != nil {
 		return nil, err
 	}
@@ -186,7 +191,7 @@ func (s *Scheduler) runCategory(ctx context.Context, cat category.Category, budg
 		return nil, nil
 	}
 
-	return cat.Analyze(ctx, events, s.provider)
+	return cat.Analyze(catCtx, events, s.provider)
 }
 
 func (s *Scheduler) logInfo(msg string, fields ...logger.Field) {

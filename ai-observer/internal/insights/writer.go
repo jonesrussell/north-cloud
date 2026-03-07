@@ -7,6 +7,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
@@ -59,16 +60,16 @@ func NewWriter(esClient *es.Client, observerVersion string) *Writer {
 	return &Writer{esClient: esClient, observerVersion: observerVersion}
 }
 
-// WriteAll indexes all provided insights. Each is indexed independently; the last
-// error (if any) is returned.
+// WriteAll indexes all provided insights. Each is indexed independently; all
+// errors are joined and returned together.
 func (w *Writer) WriteAll(ctx context.Context, insightList []category.Insight) error {
-	var lastErr error
+	var errs []error
 	for _, ins := range insightList {
 		if err := w.write(ctx, ins); err != nil {
-			lastErr = err
+			errs = append(errs, err)
 		}
 	}
-	return lastErr
+	return errors.Join(errs...)
 }
 
 func (w *Writer) write(ctx context.Context, ins category.Insight) error {
