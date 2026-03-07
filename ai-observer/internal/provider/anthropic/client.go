@@ -4,6 +4,7 @@ package anthropic
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	anthropicsdk "github.com/anthropics/anthropic-sdk-go"
 	"github.com/anthropics/anthropic-sdk-go/option"
@@ -72,11 +73,11 @@ func buildParams(model anthropicsdk.Model, req provider.GenerateRequest) anthrop
 
 // extractText returns the concatenated text from all text content blocks.
 func extractText(blocks []anthropicsdk.ContentBlockUnion) string {
-	var text string
+	var sb strings.Builder
 	for _, block := range blocks {
 		if block.Type == "text" {
-			text += block.Text
+			sb.WriteString(block.Text)
 		}
 	}
-	return text
+	return sb.String()
 }
