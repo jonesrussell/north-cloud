@@ -46,6 +46,27 @@ func TestExtractTextFromHTML_StripsNavHeaderFooter(t *testing.T) {
 	assert.NotContains(t, text, "Copyright 2026")
 }
 
+func TestExtractTextFromHTML_StripsHeadAndTitle(t *testing.T) {
+	html := `<html><head><title>Page Title Here</title><meta name="description" content="meta desc"></head>
+		<body><p>Article body content.</p></body></html>`
+
+	text := api.ExtractTextFromHTML(html)
+	assert.Contains(t, text, "Article body content.")
+	assert.NotContains(t, text, "Page Title Here")
+}
+
+func TestExtractTextFromHTML_StripsAside(t *testing.T) {
+	html := `<html><body>
+		<article><p>Main article text.</p></article>
+		<aside><p>Related links widget.</p><ul><li>Ad content</li></ul></aside>
+	</body></html>`
+
+	text := api.ExtractTextFromHTML(html)
+	assert.Contains(t, text, "Main article text.")
+	assert.NotContains(t, text, "Related links widget.")
+	assert.NotContains(t, text, "Ad content")
+}
+
 func TestExtractTextFromHTML_CollapsesWhitespace(t *testing.T) {
 	html := `<html><body>
 		<p>  Hello   world  </p>

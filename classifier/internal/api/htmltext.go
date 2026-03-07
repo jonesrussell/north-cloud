@@ -15,8 +15,10 @@ var skipElements = map[atom.Atom]bool{
 	atom.Script:   true,
 	atom.Style:    true,
 	atom.Nav:      true,
+	atom.Head:     true,
 	atom.Header:   true,
 	atom.Footer:   true,
+	atom.Aside:    true,
 	atom.Noscript: true,
 	atom.Svg:      true,
 }
