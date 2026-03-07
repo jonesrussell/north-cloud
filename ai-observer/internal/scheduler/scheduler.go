@@ -191,7 +191,10 @@ func (s *Scheduler) runCategory(ctx context.Context, cat category.Category, budg
 
 	estimatedTokens := len(events) * tokensPerEvent
 	if !budget.Deduct(estimatedTokens) {
-		s.logInfo("budget exhausted, skipping category", logger.String("category", cat.Name()))
+		s.logInfo("budget_exceeded",
+			logger.String("category", cat.Name()),
+			logger.Int("estimated_tokens", estimatedTokens),
+		)
 		return nil, nil
 	}
 

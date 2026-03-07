@@ -52,6 +52,11 @@ func Start() error {
 	}
 	log.Info("Elasticsearch connected", logger.String("url", cfg.ES.URL))
 
+	if err = insights.EnsureMapping(ctx, esClient); err != nil {
+		return fmt.Errorf("ai_insights mapping: %w", err)
+	}
+	log.Info("ai_insights index mapping ready")
+
 	p := anthprovider.New(cfg.Anthropic.APIKey, cfg.Anthropic.DefaultModel)
 	writer := insights.NewWriter(esClient, cfg.Service.Version)
 	cats := buildCategories(cfg, esClient)
