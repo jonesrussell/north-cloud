@@ -64,14 +64,14 @@ func (s *Server) handleFetchURL(ctx context.Context, id any, arguments json.RawM
 	}
 
 	result := map[string]any{
-		"url":          args.URL,
-		"title":        strings.TrimSpace(article.Title),
-		"body":         strings.TrimSpace(article.TextContent),
-		"byline":       article.Byline,
-		"excerpt":      article.Excerpt,
-		"site_name":    article.SiteName,
-		"rendered":     args.JSRender,
-		"word_count":   len(strings.Fields(article.TextContent)),
+		"url":        args.URL,
+		"title":      strings.TrimSpace(article.Title),
+		"body":       strings.TrimSpace(article.TextContent),
+		"byline":     article.Byline,
+		"excerpt":    article.Excerpt,
+		"site_name":  article.SiteName,
+		"rendered":   args.JSRender,
+		"word_count": len(strings.Fields(article.TextContent)),
 	}
 
 	// Schema extraction via Ollama.
