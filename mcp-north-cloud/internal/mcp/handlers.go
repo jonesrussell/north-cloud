@@ -1193,6 +1193,11 @@ func (s *Server) successResponse(id, data any) *Response {
 }
 
 func (s *Server) errorResponse(id any, code int, message string) *Response {
+	// Sanitize internal error messages to avoid leaking service URLs, response bodies, etc.
+	// InvalidParams messages are our own validation text and are safe to pass through.
+	if code == InternalError {
+		message = sanitizeErrorMessage(message)
+	}
 	return &Response{
 		JSONRPC: "2.0",
 		ID:      id,

@@ -48,6 +48,17 @@ func main() {
 	// Initialize service clients
 	clients := initializeClients(cfg, log)
 
+	// Build service URL map for health checks
+	serviceURLs := map[string]string{
+		"crawler":        cfg.Services.CrawlerURL,
+		"source-manager": cfg.Services.SourceManagerURL,
+		"publisher":      cfg.Services.PublisherURL,
+		"search":         cfg.Services.SearchURL,
+		"classifier":     cfg.Services.ClassifierURL,
+		"index-manager":  cfg.Services.IndexManagerURL,
+		"grafana":        cfg.Services.GrafanaURL,
+	}
+
 	// Create MCP server
 	server := mcp.NewServer(
 		cfg.Env,
@@ -62,6 +73,8 @@ func main() {
 		cfg.Services.OllamaURL,
 		cfg.Services.OllamaModel,
 		cfg.Services.RendererURL,
+		mcp.WithLogger(log),
+		mcp.WithServiceURLs(serviceURLs),
 	)
 
 	// Process requests

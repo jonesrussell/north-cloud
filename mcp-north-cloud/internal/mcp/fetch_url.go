@@ -15,9 +15,10 @@ import (
 )
 
 const (
-	fetchTimeout       = 30 * time.Second
-	maxBodyBytes       = 5 * 1024 * 1024 // 5 MB
-	ollamaMaxBodyChars = 8000            // truncate body before sending to LLM
+	fetchTimeout            = 30 * time.Second
+	maxBodyBytes            = 5 * 1024 * 1024 // 5 MB
+	ollamaMaxBodyChars      = 8000            // truncate body before sending to LLM
+	llmResponsePreviewChars = 200             // chars shown in parse error messages
 )
 
 // handleFetchURL implements the fetch_url tool: fetches a URL, extracts readable content,
@@ -55,7 +56,7 @@ func (s *Server) handleFetchURL(ctx context.Context, id any, arguments json.RawM
 	}
 
 	// Extract readable content via go-readability.
-	parsedURL, _ := url.Parse(args.URL) //nolint:errcheck // already validated above
+	parsedURL, _ := url.Parse(args.URL) // error impossible: URL already validated by url.ParseRequestURI above
 	article, readErr := readability.FromReader(strings.NewReader(html), parsedURL)
 	if readErr != nil {
 		// Fallback: return raw body truncated
@@ -64,14 +65,14 @@ func (s *Server) handleFetchURL(ctx context.Context, id any, arguments json.RawM
 	}
 
 	result := map[string]any{
-		"url":          args.URL,
-		"title":        strings.TrimSpace(article.Title),
-		"body":         strings.TrimSpace(article.TextContent),
-		"byline":       article.Byline,
-		"excerpt":      article.Excerpt,
-		"site_name":    article.SiteName,
-		"rendered":     args.JSRender,
-		"word_count":   len(strings.Fields(article.TextContent)),
+		"url":        args.URL,
+		"title":      strings.TrimSpace(article.Title),
+		"body":       strings.TrimSpace(article.TextContent),
+		"byline":     article.Byline,
+		"excerpt":    article.Excerpt,
+		"site_name":  article.SiteName,
+		"rendered":   args.JSRender,
+		"word_count": len(strings.Fields(article.TextContent)),
 	}
 
 	// Schema extraction via Ollama.
@@ -96,7 +97,7 @@ func fetchPlain(ctx context.Context, targetURL string) (string, error) {
 	fetchCtx, cancel := context.WithTimeout(ctx, fetchTimeout)
 	defer cancel()
 
-	req, err := http.NewRequestWithContext(fetchCtx, http.MethodGet, targetURL, nil)
+	req, err := http.NewRequestWithContext(fetchCtx, http.MethodGet, targetURL, http.NoBody)
 	if err != nil {
 		return "", fmt.Errorf("build request: %w", err)
 	}
@@ -222,7 +223,7 @@ Respond with ONLY the JSON object, no explanation.`, string(schemaJSON), truncat
 
 	var extracted map[string]any
 	if parseErr := json.Unmarshal([]byte(responseText), &extracted); parseErr != nil {
-		return nil, fmt.Errorf("parse llm json response: %w (response was: %s)", parseErr, truncateString(responseText, 200))
+		return nil, fmt.Errorf("parse llm json response: %w (response was: %s)", parseErr, truncateString(responseText, llmResponsePreviewChars))
 	}
 	return extracted, nil
 }

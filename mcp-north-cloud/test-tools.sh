@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Test script for MCP North Cloud Server
-# Tests tool registration based on MCP_ENV (local=18, prod=24)
+# Tests tool registration based on MCP_ENV (local=19, prod=25)
 
 set -e
 
@@ -75,7 +75,7 @@ test_tools_list() {
     if [ "${MCP_ENV:-local}" = "prod" ]; then
         expected_tools=24
     else
-        expected_tools=18
+        expected_tools=19
     fi
 
     if [ "$tool_count" -eq "$expected_tools" ]; then
@@ -159,18 +159,18 @@ if [ $failed -eq 0 ]; then
     echo ""
     echo "Environment: ${MCP_ENV:-local}"
     echo ""
-    echo "Shared (15): onboard_source, list_crawl_jobs, get_crawl_stats, add_source,"
+    echo "Shared (16): onboard_source, list_crawl_jobs, get_crawl_stats, add_source,"
     echo "  list_sources, update_source, test_source, list_channels, preview_channel,"
     echo "  get_publish_history, get_publisher_stats, search_content,"
-    echo "  classify_content, list_indexes, get_grafana_alerts"
+    echo "  classify_content, list_indexes, get_grafana_alerts, health_check"
     if [ "${MCP_ENV:-local}" = "local" ]; then
         echo "Local-only (3): lint_file, build_service, test_service"
-        echo "Total: 18 tools"
+        echo "Total: 19 tools"
     else
         echo "Prod-only (9): start_crawl, schedule_crawl, control_crawl_job,"
         echo "  delete_source, create_channel, delete_channel,"
         echo "  delete_index, get_auth_token, fetch_url"
-        echo "Total: 24 tools"
+        echo "Total: 25 tools"
     fi
     exit 0
 else
