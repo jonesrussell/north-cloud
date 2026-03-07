@@ -28,6 +28,10 @@ type Config struct {
 }
 
 // Budget is a thread-safe token budget for a single polling interval.
+// Note: deductions are based on pre-estimated cost (len(events)*tokensPerEvent),
+// not actual API token usage. Actual spend is recorded in each Insight.TokensUsed
+// but is not fed back into this budget. The ceiling is therefore a conservative
+// pre-check, not a precise accounting.
 type Budget struct {
 	mu        sync.Mutex
 	max       int

@@ -71,6 +71,8 @@ func buildQuery(since time.Time, maxEvents int) map[string]any {
 		},
 		"size": maxEvents,
 		"sort": []map[string]any{
+			// Sort by confidence ascending so borderline docs fill the size limit first.
+			{"confidence": map[string]any{"order": "asc"}},
 			{"classified_at": map[string]any{"order": "desc"}},
 		},
 		"_source": []string{

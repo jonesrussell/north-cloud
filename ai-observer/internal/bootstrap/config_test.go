@@ -31,10 +31,22 @@ func TestLoadConfig_Defaults(t *testing.T) {
 
 func TestLoadConfig_MissingAPIKey(t *testing.T) {
 	t.Helper()
+	t.Setenv("AI_OBSERVER_ENABLED", "true")
 	os.Unsetenv("ANTHROPIC_API_KEY")
 
 	_, err := bootstrap.LoadConfig()
 	if err == nil {
-		t.Error("expected error when ANTHROPIC_API_KEY is missing")
+		t.Error("expected error when ANTHROPIC_API_KEY is missing and observer is enabled")
+	}
+}
+
+func TestLoadConfig_DisabledNoAPIKey(t *testing.T) {
+	t.Helper()
+	t.Setenv("AI_OBSERVER_ENABLED", "false")
+	os.Unsetenv("ANTHROPIC_API_KEY")
+
+	_, err := bootstrap.LoadConfig()
+	if err != nil {
+		t.Errorf("expected no error when observer is disabled without API key, got: %v", err)
 	}
 }

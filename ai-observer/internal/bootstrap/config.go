@@ -60,10 +60,13 @@ const (
 )
 
 // LoadConfig loads configuration from environment variables.
+// ANTHROPIC_API_KEY is only required when AI_OBSERVER_ENABLED is not "false".
 func LoadConfig() (Config, error) {
+	enabled := os.Getenv("AI_OBSERVER_ENABLED") != "false"
+
 	apiKey := os.Getenv("ANTHROPIC_API_KEY")
-	if apiKey == "" {
-		return Config{}, errors.New("ANTHROPIC_API_KEY is required")
+	if enabled && apiKey == "" {
+		return Config{}, errors.New("ANTHROPIC_API_KEY is required when AI_OBSERVER_ENABLED is true")
 	}
 
 	esURL := os.Getenv("ES_URL")
@@ -92,7 +95,7 @@ func LoadConfig() (Config, error) {
 			Password: os.Getenv("ES_PASSWORD"),
 		},
 		Observer: ObserverConfig{
-			Enabled:              os.Getenv("AI_OBSERVER_ENABLED") != "false",
+			Enabled:              enabled,
 			DryRun:               os.Getenv("AI_OBSERVER_DRY_RUN") == "true",
 			IntervalSeconds:      intervalSeconds,
 			MaxTokensPerInterval: maxTokens,

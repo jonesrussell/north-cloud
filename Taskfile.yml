@@ -5,6 +5,10 @@ version: '3'
 
 includes:
 
+  ai-observer:
+    taskfile: ./ai-observer/Taskfile.yml
+    dir: ./ai-observer
+
   auth:
     taskfile: ./auth/Taskfile.yml
     dir: ./auth
