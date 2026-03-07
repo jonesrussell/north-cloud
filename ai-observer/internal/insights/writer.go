@@ -15,9 +15,9 @@ import (
 )
 
 const (
-	insightsIndex  = "ai_insights"
-	idDateFormat   = "20060102"
-	idSuffixBytes  = 4 // 4 random bytes → 8 hex chars
+	insightsIndex = "ai_insights"
+	idDateFormat  = "20060102"
+	idSuffixBytes = 4 // 4 random bytes → 8 hex chars.
 )
 
 // BuildDocument converts an Insight into an ES document map.

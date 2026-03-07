@@ -33,8 +33,8 @@ type Budget struct {
 }
 
 // NewBudget creates a Budget with the given max tokens.
-func NewBudget(max int) *Budget {
-	return &Budget{max: max, remaining: max}
+func NewBudget(maxTokens int) *Budget {
+	return &Budget{max: maxTokens, remaining: maxTokens}
 }
 
 // Deduct attempts to deduct n tokens from the budget.

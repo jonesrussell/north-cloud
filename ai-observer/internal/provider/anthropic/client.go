@@ -74,9 +74,9 @@ func buildParams(model anthropicsdk.Model, req provider.GenerateRequest) anthrop
 // extractText returns the concatenated text from all text content blocks.
 func extractText(blocks []anthropicsdk.ContentBlockUnion) string {
 	var sb strings.Builder
-	for _, block := range blocks {
-		if block.Type == "text" {
-			sb.WriteString(block.Text)
+	for i := range blocks {
+		if blocks[i].Type == "text" {
+			sb.WriteString(blocks[i].Text)
 		}
 	}
 	return sb.String()
