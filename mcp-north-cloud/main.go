@@ -59,6 +59,9 @@ func main() {
 		clients.classifier,
 		clients.authClient,
 		clients.grafana,
+		cfg.Services.OllamaURL,
+		cfg.Services.OllamaModel,
+		cfg.Services.RendererURL,
 	)
 
 	// Process requests

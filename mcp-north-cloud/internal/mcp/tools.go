@@ -16,6 +16,7 @@ func getAllTools() []Tool {
 	tools = append(tools, getIndexManagerTools()...)
 	tools = append(tools, getAuthTools()...)
 	tools = append(tools, getObservabilityTools()...)
+	tools = append(tools, getFetchTools()...)
 	tools = append(tools, getDevelopmentTools()...)
 	return tools
 }
@@ -670,6 +671,40 @@ func getDevelopmentTools() []Tool {
 					},
 				},
 				"required": []string{"service_name"},
+			},
+		},
+	}
+}
+
+// getFetchTools returns the fetch_url tool for ad-hoc URL content extraction.
+func getFetchTools() []Tool {
+	return []Tool{
+		{
+			Name:  "fetch_url",
+			Scope: ScopeProd,
+			Description: "Fetch and extract text content from a single URL without requiring a pre-configured source. " +
+				"Use for one-off lookups: job postings, documentation, news articles, or any page you want to read. " +
+				"Optionally render JavaScript (js_render) or extract structured fields (extract_schema).",
+			InputSchema: map[string]any{
+				"type": "object",
+				"properties": map[string]any{
+					"url": map[string]any{
+						"type":        "string",
+						"description": "URL to fetch and extract content from",
+					},
+					"js_render": map[string]any{
+						"type":        "boolean",
+						"description": "Use headless browser for JS-heavy pages (requires renderer sidecar). Default: false",
+					},
+					"extract_schema": map[string]any{
+						"type":        "object",
+						"description": "Field extraction schema. Keys are field names, values are descriptions. Example: {\"title\": \"Job title\", \"salary\": \"Salary range if mentioned\"}. Requires OLLAMA_URL configured.",
+						"additionalProperties": map[string]any{
+							"type": "string",
+						},
+					},
+				},
+				"required": []string{"url"},
 			},
 		},
 	}

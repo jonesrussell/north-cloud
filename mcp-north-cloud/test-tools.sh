@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Test script for MCP North Cloud Server
-# Tests tool registration based on MCP_ENV (local=18, prod=23)
+# Tests tool registration based on MCP_ENV (local=18, prod=24)
 
 set -e
 
@@ -73,7 +73,7 @@ test_tools_list() {
     tool_count=$(echo "$response" | jq '.result.tools | length' 2>/dev/null)
 
     if [ "${MCP_ENV:-local}" = "prod" ]; then
-        expected_tools=23
+        expected_tools=24
     else
         expected_tools=18
     fi
@@ -167,10 +167,10 @@ if [ $failed -eq 0 ]; then
         echo "Local-only (3): lint_file, build_service, test_service"
         echo "Total: 18 tools"
     else
-        echo "Prod-only (8): start_crawl, schedule_crawl, control_crawl_job,"
+        echo "Prod-only (9): start_crawl, schedule_crawl, control_crawl_job,"
         echo "  delete_source, create_channel, delete_channel,"
-        echo "  delete_index, get_auth_token"
-        echo "Total: 23 tools"
+        echo "  delete_index, get_auth_token, fetch_url"
+        echo "Total: 24 tools"
     fi
     exit 0
 else

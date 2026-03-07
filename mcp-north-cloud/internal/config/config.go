@@ -40,6 +40,14 @@ type ServicesConfig struct {
 	GrafanaURL       string `env:"GRAFANA_URL"        yaml:"grafana_url"`
 	GrafanaUsername  string `env:"GRAFANA_USERNAME"   yaml:"grafana_username"`
 	GrafanaPassword  string `env:"GRAFANA_PASSWORD"   yaml:"grafana_password"`
+	// OllamaURL is the base URL for the Ollama API (used by fetch_url extract_schema).
+	// If empty, extract_schema returns an error.
+	OllamaURL string `env:"OLLAMA_URL" yaml:"ollama_url"`
+	// OllamaModel is the model to use for schema-guided extraction (default: qwen3:4b).
+	OllamaModel string `env:"OLLAMA_MODEL" yaml:"ollama_model"`
+	// RendererURL is the URL of the Playwright renderer sidecar for JS-heavy pages.
+	// If empty, js_render=true in fetch_url returns an error.
+	RendererURL string `env:"RENDERER_URL" yaml:"renderer_url"`
 }
 
 // LoggingConfig holds logging configuration.
@@ -78,6 +86,9 @@ func setDefaults(cfg *Config) {
 	}
 	if cfg.Services.ClassifierURL == "" {
 		cfg.Services.ClassifierURL = defaultURLPublisherClassifier
+	}
+	if cfg.Services.OllamaModel == "" {
+		cfg.Services.OllamaModel = "qwen3:4b"
 	}
 	if cfg.Services.GrafanaURL == "" {
 		cfg.Services.GrafanaURL = "http://localhost:3000"

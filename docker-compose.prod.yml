@@ -498,6 +498,28 @@ services:
       GRAFANA_PASSWORD: "${GRAFANA_ADMIN_PASSWORD}"
       AUTH_JWT_SECRET: "${AUTH_JWT_SECRET}"
       MCP_ENV: prod
+      OLLAMA_URL: "${OLLAMA_URL:-}"
+      OLLAMA_MODEL: "${OLLAMA_MODEL:-qwen3:4b}"
+      RENDERER_URL: "http://playwright-renderer:8095"
+
+  # ------------------------------------------------------------
+  # Playwright Renderer Sidecar (Prod) — JS rendering for fetch_url MCP tool
+  # Optional: only needed when fetch_url is called with js_render=true
+  # ------------------------------------------------------------
+  playwright-renderer:
+    <<: *prod-defaults
+    image: docker.io/jonesrussell/playwright-renderer:latest
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 1G
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://127.0.0.1:8095/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
 
   # ------------------------------------------------------------
   # Dashboard (Prod)

@@ -21,6 +21,9 @@ type Server struct {
 	classifierClient *client.ClassifierClient
 	authClient       *client.AuthenticatedClient
 	grafanaClient    *client.GrafanaClient
+	ollamaURL        string // empty = extract_schema unavailable
+	ollamaModel      string
+	rendererURL      string // empty = js_render unavailable
 }
 
 // NewServer creates a new MCP server
@@ -34,6 +37,7 @@ func NewServer(
 	classifierClient *client.ClassifierClient,
 	authClient *client.AuthenticatedClient,
 	grafanaClient *client.GrafanaClient,
+	ollamaURL, ollamaModel, rendererURL string,
 ) *Server {
 	return &Server{
 		env:              env,
@@ -45,6 +49,9 @@ func NewServer(
 		classifierClient: classifierClient,
 		authClient:       authClient,
 		grafanaClient:    grafanaClient,
+		ollamaURL:        ollamaURL,
+		ollamaModel:      ollamaModel,
+		rendererURL:      rendererURL,
 	}
 }
 
@@ -208,6 +215,7 @@ var toolHandlers = map[string]toolHandlerFunc{
 	"delete_index":        (*Server).handleDeleteIndex,
 	"list_indexes":        (*Server).handleListIndexes,
 	"get_grafana_alerts":  (*Server).handleGetGrafanaAlerts,
+	"fetch_url":           (*Server).handleFetchURL,
 	"lint_file":           (*Server).handleLintFile,
 	"build_service":       (*Server).handleBuildService,
 	"test_service":        (*Server).handleTestService,
