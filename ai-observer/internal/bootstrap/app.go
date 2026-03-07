@@ -80,7 +80,8 @@ func Start() error {
 
 // buildCategories constructs the enabled category list from config.
 func buildCategories(cfg Config, esClient *es.Client) []category.Category {
-	cats := make([]category.Category, 0)
+	const maxCategories = 1 // v0: classifier only
+	cats := make([]category.Category, 0, maxCategories)
 	if cfg.Observer.Categories.ClassifierEnabled {
 		cats = append(cats, classifiercategory.New(
 			esClient,

@@ -139,7 +139,7 @@ func (s *Scheduler) RunOnce(ctx context.Context) {
 }
 
 func (s *Scheduler) collectInsights(results <-chan categoryResult) []category.Insight {
-	allInsights := make([]category.Insight, 0)
+	allInsights := make([]category.Insight, 0, len(s.categories))
 	for r := range results {
 		if r.err != nil {
 			s.logError("category error", r.err)
@@ -166,6 +166,11 @@ func (s *Scheduler) writeInsights(ctx context.Context, allInsights []category.In
 }
 
 func (s *Scheduler) runCategory(ctx context.Context, cat category.Category, budget *Budget) ([]category.Insight, error) {
+	if s.cfg.DryRun {
+		s.logInfo("Dry run: skipping LLM call", logger.String("category", cat.Name()))
+		return nil, nil
+	}
+
 	events, err := cat.Sample(ctx, s.cfg.WindowDuration)
 	if err != nil {
 		return nil, err
