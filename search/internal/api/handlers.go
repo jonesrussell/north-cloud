@@ -91,7 +91,9 @@ func (h *Handler) parseQueryParams(c *gin.Context) domain.SearchRequest {
 func parseFilters(c *gin.Context) *domain.Filters {
 	filters := &domain.Filters{}
 
-	if topics := c.Query("topics"); topics != "" {
+	if topicsArr := c.QueryArray("topics[]"); len(topicsArr) > 0 {
+		filters.Topics = topicsArr
+	} else if topics := c.Query("topics"); topics != "" {
 		filters.Topics = strings.Split(topics, ",")
 	}
 	if contentType := c.Query("content_type"); contentType != "" {
