@@ -365,7 +365,7 @@ func parseBuckets(agg aggregation) []domain.FacetBucket {
 func formatFacetLabel(key string) string {
 	words := strings.Split(key, "_")
 	for i, w := range words {
-		if len(w) > 0 {
+		if w != "" {
 			words[i] = strings.ToUpper(w[:1]) + w[1:]
 		}
 	}

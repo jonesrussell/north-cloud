@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+
+	infralogger "github.com/north-cloud/infrastructure/logger"
 )
 
 // SearchDocuments performs a search query and decodes the result into the provided value
@@ -20,7 +22,7 @@ func (s *Storage) SearchDocuments(ctx context.Context, index string, query map[s
 		return fmt.Errorf("failed to check index existence: %w", err)
 	}
 	if !exists {
-		s.logger.Error("Index not found", "index", index)
+		s.logger.Error("Index not found", infralogger.String("index", index))
 		return fmt.Errorf("%w: %s", ErrIndexNotFound, index)
 	}
 
@@ -65,7 +67,7 @@ func (s *Storage) Search(ctx context.Context, index string, query any) ([]any, e
 		return nil, fmt.Errorf("failed to check index existence: %w", err)
 	}
 	if !exists {
-		s.logger.Error("Index not found", "index", index)
+		s.logger.Error("Index not found", infralogger.String("index", index))
 		return nil, fmt.Errorf("%w: %s", ErrIndexNotFound, index)
 	}
 
@@ -121,7 +123,7 @@ func (s *Storage) Count(ctx context.Context, index string, query any) (int64, er
 		return 0, fmt.Errorf("failed to check index existence: %w", err)
 	}
 	if !exists {
-		s.logger.Error("Index not found", "index", index)
+		s.logger.Error("Index not found", infralogger.String("index", index))
 		return 0, fmt.Errorf("%w: %s", ErrIndexNotFound, index)
 	}
 
@@ -172,7 +174,7 @@ func (s *Storage) Aggregate(ctx context.Context, index string, aggs any) (any, e
 		return nil, fmt.Errorf("failed to check index existence: %w", err)
 	}
 	if !exists {
-		s.logger.Error("Index not found", "index", index)
+		s.logger.Error("Index not found", infralogger.String("index", index))
 		return nil, fmt.Errorf("%w: %s", ErrIndexNotFound, index)
 	}
 

@@ -1,21 +1,24 @@
+//nolint:testpackage // tests unexported parseFilters function
 package api
 
 import (
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"testing"
 
 	"github.com/gin-gonic/gin"
 )
 
-func init() {
+func TestMain(m *testing.M) {
 	gin.SetMode(gin.TestMode)
+	os.Exit(m.Run())
 }
 
 func newTestContext(rawQuery string) *gin.Context {
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
-	req, _ := http.NewRequest(http.MethodGet, "/?"+rawQuery, nil)
+	req, _ := http.NewRequest(http.MethodGet, "/?"+rawQuery, http.NoBody)
 	c.Request = req
 	return c
 }

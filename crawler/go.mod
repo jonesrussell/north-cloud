@@ -13,6 +13,7 @@ require (
 	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/google/uuid v1.6.0
 	github.com/jmoiron/sqlx v1.4.0
+	github.com/jonesrussell/gocrawl v0.0.0-20251211191813-443a2d8915ea
 	github.com/jonesrussell/north-cloud/index-manager v0.0.0
 	github.com/lib/pq v1.11.2
 	github.com/minio/minio-go/v7 v7.0.98

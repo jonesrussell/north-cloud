@@ -14,6 +14,7 @@ const (
 	DefaultBulkIndexTimeout      = 30 * time.Second
 	DefaultIndexTimeout          = 10 * time.Second
 	DefaultTestConnectionTimeout = 5 * time.Second
+	DefaultSearchTimeout         = 15 * time.Second
 )
 
 // StorageParams contains dependencies for creating a storage instance

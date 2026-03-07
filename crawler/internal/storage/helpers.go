@@ -2,6 +2,7 @@ package storage
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"reflect"
@@ -100,4 +101,13 @@ func (s *Storage) TestConnection(ctx context.Context) error {
 func (s *Storage) Close() error {
 	// No resources to close in this implementation
 	return nil
+}
+
+// marshalJSON marshals the given value to JSON and returns an error if it fails.
+func marshalJSON(v any) ([]byte, error) {
+	data, err := json.Marshal(v)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal JSON: %w", err)
+	}
+	return data, nil
 }

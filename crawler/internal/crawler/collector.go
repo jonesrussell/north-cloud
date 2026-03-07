@@ -123,10 +123,10 @@ func (c *Crawler) setupCollector(ctx context.Context, source *configtypes.Source
 //   - 0  → defaultMaxDepth (unset; apply default)
 //   - n  → n  (use as-is)
 func collyMaxDepth(sourceMaxDepth int) int {
-	switch {
-	case sourceMaxDepth == -1:
+	switch sourceMaxDepth {
+	case -1:
 		return 0
-	case sourceMaxDepth == 0:
+	case 0:
 		return defaultMaxDepth
 	default:
 		return sourceMaxDepth

@@ -1,3 +1,4 @@
+//nolint:testpackage // tests unexported collyMaxDepth function
 package crawler
 
 import (

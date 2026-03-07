@@ -2,6 +2,7 @@ package importer
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"strconv"
@@ -80,6 +81,71 @@ type SourceRow struct {
 type ImportError struct {
 	Row   int    `json:"row"`
 	Error string `json:"error"`
+}
+
+// parseTimeJSON parses a JSON array of strings. Empty input returns nil, nil.
+func parseTimeJSON(s string) ([]string, error) {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return nil, nil
+	}
+	var out []string
+	if err := json.Unmarshal([]byte(s), &out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// parseSelectorsJSON parses a JSON object into SelectorConfig. Empty input returns zero value, nil.
+func parseSelectorsJSON(s string) (models.SelectorConfig, error) {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return models.SelectorConfig{}, nil
+	}
+	var out models.SelectorConfig
+	if err := json.Unmarshal([]byte(s), &out); err != nil {
+		return models.SelectorConfig{}, err
+	}
+	return out, nil
+}
+
+// validateRequiredColumns returns an ImportError if name or url column is missing; Row is 1 (header row).
+func validateRequiredColumns(colMap columnMap) *ImportError {
+	if colMap.name == -1 && colMap.url == -1 {
+		return &ImportError{Row: 1, Error: "missing required columns: need 'Name' (or 'News Site Name') and 'URL' headers"}
+	}
+	if colMap.name == -1 {
+		return &ImportError{Row: 1, Error: "missing required column: 'Name' (or 'News Site Name', 'Site Name', 'Source')"}
+	}
+	if colMap.url == -1 {
+		return &ImportError{Row: 1, Error: "missing required column: 'URL' (or 'Website', 'Link')"}
+	}
+	return nil
+}
+
+// openExcelRows opens the workbook from reader, reads the first sheet, and returns all rows.
+// Returns an error on open/sheet/read failure; returns [][]string{}, nil when the sheet has no rows.
+func openExcelRows(reader io.Reader) ([][]string, error) {
+	f, err := excelize.OpenReader(reader)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open Excel file: %w", err)
+	}
+	defer f.Close()
+
+	sheetName := f.GetSheetName(0)
+	if sheetName == "" {
+		return nil, errors.New("no sheets found in Excel file")
+	}
+
+	excelRows, err := f.GetRows(sheetName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read rows: %w", err)
+	}
+
+	if excelRows == nil {
+		return [][]string{}, nil
+	}
+	return excelRows, nil
 }
 
 // parseHeaders builds a column map from the header row.
@@ -165,7 +231,7 @@ func ParseExcelFile(reader io.Reader) ([]SourceRow, []ImportError) {
 	}
 
 	var rows []SourceRow
-	var errors []ImportError
+	var errs []ImportError
 
 	// Parse data rows (skip header at index 0)
 	for i := headerRowIndex; i < len(excelRows); i++ {
@@ -187,7 +253,7 @@ func ParseExcelFile(reader io.Reader) ([]SourceRow, []ImportError) {
 
 		// Validate the row
 		if errMsg := ValidateRow(sourceRow); errMsg != "" {
-			errors = append(errors, ImportError{Row: rowNum, Error: errMsg})
+			errs = append(errs, ImportError{Row: rowNum, Error: errMsg})
 			continue
 		}
 
@@ -195,11 +261,11 @@ func ParseExcelFile(reader io.Reader) ([]SourceRow, []ImportError) {
 	}
 
 	// If any validation errors, return nil rows with all errors
-	if len(errors) > 0 {
-		return nil, errors
+	if len(errs) > 0 {
+		return nil, errs
 	}
 
-	return rows, errors
+	return rows, errs
 }
 
 // parseRowWithMap converts Excel row cells to a SourceRow using the column map.
@@ -277,19 +343,13 @@ func ValidateRow(row SourceRow) string {
 	}
 
 	// Time must be valid JSON array if provided
-	if row.Time != "" {
-		var timeArr []string
-		if err := json.Unmarshal([]byte(row.Time), &timeArr); err != nil {
-			return "time must be a valid JSON array"
-		}
+	if _, err := parseTimeJSON(row.Time); err != nil {
+		return "time must be a valid JSON array"
 	}
 
 	// Selectors must be valid JSON object if provided
-	if row.Selectors != "" {
-		var selectors map[string]any
-		if err := json.Unmarshal([]byte(row.Selectors), &selectors); err != nil {
-			return "selectors must be valid JSON"
-		}
+	if _, err := parseSelectorsJSON(row.Selectors); err != nil {
+		return "selectors must be valid JSON"
 	}
 
 	return ""
@@ -307,22 +367,20 @@ func ToSource(row SourceRow) (*models.Source, error) {
 	}
 
 	// Parse Time JSON array
-	if row.Time != "" {
-		var timeArr []string
-		if err := json.Unmarshal([]byte(row.Time), &timeArr); err != nil {
-			return nil, fmt.Errorf("parse time: %w", err)
-		}
+	timeArr, err := parseTimeJSON(row.Time)
+	if err != nil {
+		return nil, fmt.Errorf("parse time: %w", err)
+	}
+	if timeArr != nil {
 		source.Time = models.StringArray(timeArr)
 	}
 
 	// Parse Selectors JSON object
-	if row.Selectors != "" {
-		var selectors models.SelectorConfig
-		if err := json.Unmarshal([]byte(row.Selectors), &selectors); err != nil {
-			return nil, fmt.Errorf("parse selectors: %w", err)
-		}
-		source.Selectors = selectors
+	selectors, err := parseSelectorsJSON(row.Selectors)
+	if err != nil {
+		return nil, fmt.Errorf("parse selectors: %w", err)
 	}
+	source.Selectors = selectors
 
 	return source, nil
 }
