@@ -19,8 +19,9 @@ When modifying files, read the relevant service CLAUDE.md first. Deep specs in `
 | `source-manager/**` | `source-manager/CLAUDE.md` | — |
 | `dashboard/**` | `dashboard/CLAUDE.md` | — |
 | `pipeline/**` | `pipeline/CLAUDE.md` | — |
-| `social-publisher/**` | `social-publisher/CLAUDE.md` | — |
-| `rfp-ingestor/**` | — | — |
+| `social-publisher/**` | `social-publisher/CLAUDE.md` | `docs/specs/social-publisher.md` |
+| `rfp-ingestor/**` | `rfp-ingestor/CLAUDE.md` | `docs/specs/rfp-ingestor.md` |
+| `docs/specs/**`, `.claude/**`, `**/CLAUDE.md` | updating-codified-context | — |
 | `docker-compose*.yml`, `Taskfile.yml` | `DOCKER.md` | — |
 
 ---

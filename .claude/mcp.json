@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "North Cloud Specs": {
+      "command": "node",
+      "args": ["tools/spec-retrieval/server.js"],
+      "type": "stdio"
+    }
+  }
+}

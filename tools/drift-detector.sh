@@ -25,6 +25,13 @@ declare -A PATTERN_TO_SPEC=(
   ["search/"]="docs/specs/discovery-querying.md"
   ["index-manager/"]="docs/specs/discovery-querying.md"
   ["infrastructure/"]="docs/specs/shared-infrastructure.md"
+  ["rfp-ingestor/"]="docs/specs/rfp-ingestor.md"
+  ["social-publisher/"]="docs/specs/social-publisher.md"
+  ["source-manager/"]="docs/specs/shared-infrastructure.md"
+  ["pipeline/"]="docs/specs/content-routing.md"
+  ["dashboard/"]="docs/specs/discovery-querying.md"
+  ["click-tracker/"]="docs/specs/discovery-querying.md"
+  ["mcp-north-cloud/"]="docs/specs/shared-infrastructure.md"
 )
 
 # Get changed files in last N commits
@@ -86,12 +93,14 @@ for spec in "${!AFFECTED_SPECS[@]}"; do
   spec_path="$REPO_ROOT/$spec"
   if [ -f "$spec_path" ]; then
     # Compare git commit timestamps: when was the spec last touched vs the service code?
-    spec_last_commit=$(git log -1 --format=%ct -- "$spec" 2>/dev/null || echo 0)
+    spec_last_commit=$(git log -1 --format=%ct -- "$spec" 2>/dev/null)
+    spec_last_commit=${spec_last_commit:-0}
     # Find the latest commit time for any matched service file
     service_last_commit=0
     for pattern in "${!PATTERN_TO_SPEC[@]}"; do
       if [ "${PATTERN_TO_SPEC[$pattern]}" = "$spec" ]; then
-        pattern_commit=$(git log -1 --format=%ct -- "$pattern" 2>/dev/null || echo 0)
+        pattern_commit=$(git log -1 --format=%ct -- "$pattern" 2>/dev/null)
+        pattern_commit=${pattern_commit:-0}
         if [ "$pattern_commit" -gt "$service_last_commit" ]; then
           service_last_commit=$pattern_commit
         fi
