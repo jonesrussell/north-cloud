@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Test script for MCP North Cloud Server
-# Tests tool registration based on MCP_ENV (local=19, prod=24)
+# Tests tool registration based on MCP_ENV (local=19, prod=25)
 
 set -e
 
@@ -170,7 +170,7 @@ if [ $failed -eq 0 ]; then
         echo "Prod-only (9): start_crawl, schedule_crawl, control_crawl_job,"
         echo "  delete_source, create_channel, delete_channel,"
         echo "  delete_index, get_auth_token, fetch_url"
-        echo "Total: 24 tools"
+        echo "Total: 25 tools"
     fi
     exit 0
 else

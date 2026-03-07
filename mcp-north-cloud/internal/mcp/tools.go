@@ -744,8 +744,9 @@ func getFetchTools() []Tool {
 						"description": "Use headless browser for JS-heavy pages (requires renderer sidecar). Default: false",
 					},
 					"extract_schema": map[string]any{
-						"type":        "object",
-						"description": "Field extraction schema. Keys are field names, values are descriptions. Example: {\"title\": \"Job title\", \"salary\": \"Salary range if mentioned\"}. Requires OLLAMA_URL configured.",
+						"type": "object",
+						"description": "Field extraction schema. Keys are field names, values are descriptions. " +
+							"Example: {\"title\": \"Job title\", \"salary\": \"Salary range\"}. Requires OLLAMA_URL.",
 						"additionalProperties": map[string]any{
 							"type": "string",
 						},
