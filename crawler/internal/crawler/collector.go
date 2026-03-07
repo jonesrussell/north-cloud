@@ -118,13 +118,32 @@ func (c *Crawler) setupCollector(ctx context.Context, source *configtypes.Source
 	return nil
 }
 
+// collyMaxDepth translates a source MaxDepth value to the value passed to colly.MaxDepth.
+//   - -1 → 0  (Colly's "unlimited depth" sentinel)
+//   - 0  → defaultMaxDepth (unset; apply default)
+//   - n  → n  (use as-is)
+func collyMaxDepth(sourceMaxDepth int) int {
+	switch {
+	case sourceMaxDepth == -1:
+		return 0
+	case sourceMaxDepth == 0:
+		return defaultMaxDepth
+	default:
+		return sourceMaxDepth
+	}
+}
+
 // resolveMaxDepth returns the effective max depth for the source, applying defaults and warnings.
 func (c *Crawler) resolveMaxDepth(source *configtypes.Source) int {
-	maxDepth := source.MaxDepth
-	if maxDepth == 0 {
-		maxDepth = defaultMaxDepth
+	maxDepth := collyMaxDepth(source.MaxDepth)
+	if source.MaxDepth == 0 {
 		c.GetJobLogger().Info(logs.CategoryLifecycle, "Using default max depth",
 			logs.Int("max_depth", maxDepth),
+		)
+	}
+	if source.MaxDepth == -1 {
+		c.GetJobLogger().Info(logs.CategoryLifecycle, "Unlimited crawl depth enabled",
+			logs.String("source", source.Name),
 		)
 	}
 	if maxDepth > warnMaxDepth {

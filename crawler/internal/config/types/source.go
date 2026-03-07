@@ -47,8 +47,8 @@ func (s *Source) Validate() error {
 	if len(s.StartURLs) == 0 {
 		return errors.New("at least one start_url is required")
 	}
-	if s.MaxDepth < 0 {
-		return errors.New("max_depth must be non-negative")
+	if s.MaxDepth < -1 {
+		return errors.New("max_depth must be >= -1 (-1 means unlimited)")
 	}
 	if s.RateLimit == "" {
 		return errors.New("rate_limit is required")
