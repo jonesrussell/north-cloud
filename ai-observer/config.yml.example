@@ -1,0 +1,23 @@
+service:
+  name: ai-observer
+  version: "0.1.0"
+
+elasticsearch:
+  url: http://localhost:9200
+  username: ""
+  password: ""
+
+observer:
+  enabled: true
+  dry_run: false
+  interval_seconds: 1800
+  max_tokens_per_interval: 25000
+  categories:
+    classifier:
+      enabled: true
+      max_events_per_run: 200
+      model_tier: haiku
+
+anthropic:
+  api_key: ""
+  default_model: claude-haiku-4-5-20251001
