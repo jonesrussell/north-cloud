@@ -6,6 +6,7 @@ package mappings
 const (
 	RawContentMappingVersion        = "2.0.0"
 	ClassifiedContentMappingVersion = "2.2.0"
+	CommunityMappingVersion         = "1.0.0"
 )
 
 // GetMappingVersion returns the current mapping version for an index type.
@@ -15,6 +16,8 @@ func GetMappingVersion(indexType string) string {
 		return RawContentMappingVersion
 	case "classified_content":
 		return ClassifiedContentMappingVersion
+	case "community":
+		return CommunityMappingVersion
 	default:
 		return "1.0.0"
 	}
