@@ -13,6 +13,7 @@ import (
 	"github.com/jonesrussell/north-cloud/publisher/internal/database"
 	"github.com/jonesrussell/north-cloud/publisher/internal/discovery"
 	"github.com/jonesrussell/north-cloud/publisher/internal/models"
+	"github.com/jonesrussell/north-cloud/publisher/internal/telemetry"
 	infralogger "github.com/north-cloud/infrastructure/logger"
 	"github.com/north-cloud/infrastructure/pipeline"
 	"github.com/redis/go-redis/v9"
@@ -34,6 +35,7 @@ type Service struct {
 	config      Config
 	lastSort    []any
 	pipeline    *pipeline.Client
+	telemetry   *telemetry.Provider
 }
 
 // NewService creates a new router service
@@ -45,6 +47,7 @@ func NewService(
 	cfg Config,
 	logger infralogger.Logger,
 	pipelineClient *pipeline.Client,
+	tp *telemetry.Provider,
 ) *Service {
 	// Apply defaults
 	const (
@@ -72,6 +75,7 @@ func NewService(
 		config:      cfg,
 		lastSort:    []any{},
 		pipeline:    pipelineClient,
+		telemetry:   tp,
 	}
 }
 
@@ -119,6 +123,8 @@ func (s *Service) Start(ctx context.Context) error {
 
 // pollAndRoute fetches new content items and routes them
 func (s *Service) pollAndRoute(ctx context.Context) {
+	pollStart := time.Now()
+
 	indexes := s.discovery.GetIndexes()
 	if len(indexes) == 0 {
 		s.logger.Info("No indexes discovered, skipping poll")
@@ -135,6 +141,7 @@ func (s *Service) pollAndRoute(ctx context.Context) {
 	}
 
 	// Loop until we've drained the queue
+	var totalItems int
 	for {
 		items, fetchErr := s.fetchContentItems(ctx, indexes)
 		if fetchErr != nil {
@@ -143,10 +150,11 @@ func (s *Service) pollAndRoute(ctx context.Context) {
 		}
 
 		if len(items) == 0 {
-			return
+			break
 		}
 
 		batchSize := len(items)
+		totalItems += batchSize
 		s.logger.Info("Processing content items batch",
 			infralogger.Int("batch_size", batchSize),
 			infralogger.Int("items_fetched_total", batchSize),
@@ -154,24 +162,35 @@ func (s *Service) pollAndRoute(ctx context.Context) {
 
 		var publishedCount int
 		for i := range items {
-			publishedCount += len(s.routeContentItem(ctx, &items[i], channels))
+			publishedTo := s.routeContentItem(ctx, &items[i], channels)
+			publishedCount += len(publishedTo)
+			if s.telemetry != nil {
+				s.telemetry.RecordChannelsPerDoc(len(publishedTo))
+			}
 		}
 		s.logger.Info("Batch complete",
 			infralogger.Int("items_in_batch", batchSize),
 			infralogger.Int("items_published_total", publishedCount),
 		)
 
-		// Update cursor
+		// Update cursor and record cursor lag
 		lastItem := items[len(items)-1]
 		s.lastSort = lastItem.Sort
 		if persistErr := s.repo.UpdateCursor(ctx, s.lastSort); persistErr != nil {
 			s.logger.Error("Failed to persist cursor", infralogger.Error(persistErr))
 		}
+		if s.telemetry != nil {
+			s.recordCursorLag(lastItem)
+		}
 
 		// If we got less than batch size, we're done
 		if len(items) < s.config.BatchSize {
-			return
+			break
 		}
+	}
+
+	if s.telemetry != nil && totalItems > 0 {
+		s.telemetry.RecordBatch(totalItems, time.Since(pollStart))
 	}
 }
 
@@ -365,11 +384,56 @@ func (s *Service) publishToChannel(ctx context.Context, item *ContentItem, chann
 	}
 
 	if published {
+		if s.telemetry != nil {
+			s.telemetry.RecordDedupHit()
+		}
 		return false
 	}
 
-	// Build message payload
-	payload := map[string]any{
+	messageJSON, err := json.Marshal(buildPublishPayload(item, channelName, channelID))
+	if err != nil {
+		s.logger.Error("Failed to marshal message",
+			infralogger.String("content_id", item.ID),
+			infralogger.Error(err),
+		)
+		return false
+	}
+
+	if publishErr := s.redisClient.Publish(ctx, channelName, messageJSON).Err(); publishErr != nil {
+		s.logger.Error("Failed to publish to Redis",
+			infralogger.String("content_id", item.ID),
+			infralogger.String("channel", channelName),
+			infralogger.Error(publishErr),
+		)
+		return false
+	}
+
+	// Record in publish history
+	if _, historyErr := s.repo.CreatePublishHistory(ctx, buildHistoryReq(channelID, item, channelName)); historyErr != nil {
+		s.logger.Error("Error recording publish history — skipping to prevent duplicate publish",
+			infralogger.String("content_id", item.ID),
+			infralogger.String("channel", channelName),
+			infralogger.Error(historyErr),
+		)
+		return false
+	}
+
+	s.logger.Info("Published content item to channel",
+		infralogger.String("content_id", item.ID),
+		infralogger.String("title", item.Title),
+		infralogger.String("channel", channelName),
+	)
+
+	if s.telemetry != nil {
+		s.telemetry.RecordPublish(channelName)
+	}
+
+	return true
+}
+
+// buildPublishPayload constructs the Redis message payload for a content item.
+func buildPublishPayload(item *ContentItem, channelName string, channelID *uuid.UUID) map[string]any {
+	return map[string]any{
 		"publisher": map[string]any{
 			"channel_id":   channelID,
 			"published_at": time.Now().Format(time.RFC3339),
@@ -425,42 +489,6 @@ func (s *Service) publishToChannel(ctx context.Context, item *ContentItem, chann
 		"location_country":    item.LocationCountry,
 		"location_confidence": item.LocationConfidence,
 	}
-
-	messageJSON, err := json.Marshal(payload)
-	if err != nil {
-		s.logger.Error("Failed to marshal message",
-			infralogger.String("content_id", item.ID),
-			infralogger.Error(err),
-		)
-		return false
-	}
-
-	if publishErr := s.redisClient.Publish(ctx, channelName, messageJSON).Err(); publishErr != nil {
-		s.logger.Error("Failed to publish to Redis",
-			infralogger.String("content_id", item.ID),
-			infralogger.String("channel", channelName),
-			infralogger.Error(publishErr),
-		)
-		return false
-	}
-
-	// Record in publish history
-	if _, historyErr := s.repo.CreatePublishHistory(ctx, buildHistoryReq(channelID, item, channelName)); historyErr != nil {
-		s.logger.Error("Error recording publish history — skipping to prevent duplicate publish",
-			infralogger.String("content_id", item.ID),
-			infralogger.String("channel", channelName),
-			infralogger.Error(historyErr),
-		)
-		return false
-	}
-
-	s.logger.Info("Published content item to channel",
-		infralogger.String("content_id", item.ID),
-		infralogger.String("title", item.Title),
-		infralogger.String("channel", channelName),
-	)
-
-	return true
 }
 
 // buildHistoryReq constructs a PublishHistoryCreateRequest from the content item and routing info.
@@ -473,6 +501,19 @@ func buildHistoryReq(channelID *uuid.UUID, item *ContentItem, channelName string
 		ChannelName:  channelName,
 		QualityScore: item.QualityScore,
 		Topics:       item.Topics,
+	}
+}
+
+// recordCursorLag extracts the crawled_at timestamp from the sort key and records the cursor lag.
+func (s *Service) recordCursorLag(item ContentItem) {
+	if len(item.Sort) == 0 {
+		return
+	}
+	// Sort key is [crawled_at_millis, _shard_doc]. First element is epoch millis (float64 from JSON).
+	if millis, ok := item.Sort[0].(float64); ok {
+		const msPerSecond = 1000
+		ts := time.Unix(int64(millis)/msPerSecond, (int64(millis)%msPerSecond)*int64(time.Millisecond))
+		s.telemetry.RecordCursorLag(ts)
 	}
 }
 

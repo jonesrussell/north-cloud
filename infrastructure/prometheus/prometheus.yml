@@ -7,3 +7,8 @@ scrape_configs:
     metrics_path: '/metrics'
     static_configs:
       - targets: ['classifier:8071']
+
+  - job_name: 'publisher'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['publisher:8070']

@@ -11,6 +11,7 @@ import (
 	"github.com/jonesrussell/north-cloud/publisher/internal/database"
 	infragin "github.com/north-cloud/infrastructure/gin"
 	"github.com/north-cloud/infrastructure/logger"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -78,6 +79,8 @@ func (r *Router) NewServer(log logger.Logger) *infragin.Server {
 			return r.redisClient.Ping(ctx).Err()
 		}).
 		WithRoutes(func(router *gin.Engine) {
+			// Prometheus metrics endpoint (public, no auth)
+			router.GET("/metrics", gin.WrapH(promhttp.Handler()))
 			// Setup service-specific routes (health routes added by builder)
 			r.setupServiceRoutes(router)
 		}).

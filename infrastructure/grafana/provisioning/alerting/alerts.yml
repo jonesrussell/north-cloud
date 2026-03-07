@@ -271,7 +271,83 @@ groups:
           summary: "movies-of-war has not produced logs in 30 minutes"
           description: "The Laravel consumer may be down or the log shipping pipeline is broken."
 
-      # Alert 8: ML Sidecar Error Rate
+      # Alert 8: Classification Queue Depth (Prometheus)
+      - uid: nc-classifier-queue-depth
+        title: "Classification queue depth > 1000"
+        condition: "C"
+        noDataState: OK
+        execErrState: OK
+        data:
+          - refId: "A"
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: "prometheus"
+            model:
+              expr: "classifier_queue_depth"
+              instant: true
+          - refId: "C"
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: "__expr__"
+            model:
+              type: "threshold"
+              expression: "A"
+              conditions:
+                - evaluator:
+                    type: "gt"
+                    params:
+                      - 1000
+                  operator:
+                    type: "and"
+        for: "5m"
+        labels:
+          severity: "warning"
+          service: "classifier"
+        annotations:
+          summary: "Classification queue depth exceeds 1000"
+          description: "The classifier work queue has more than 1000 pending documents for 5+ minutes. This indicates the classifier cannot keep up with incoming content."
+
+      # Alert 9: Publisher Cursor Lag (Prometheus)
+      - uid: nc-publisher-cursor-lag
+        title: "Publisher cursor lag > 5 minutes"
+        condition: "C"
+        noDataState: OK
+        execErrState: OK
+        data:
+          - refId: "A"
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: "prometheus"
+            model:
+              expr: "publisher_cursor_lag_seconds"
+              instant: true
+          - refId: "C"
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: "__expr__"
+            model:
+              type: "threshold"
+              expression: "A"
+              conditions:
+                - evaluator:
+                    type: "gt"
+                    params:
+                      - 300
+                  operator:
+                    type: "and"
+        for: "5m"
+        labels:
+          severity: "warning"
+          service: "publisher"
+        annotations:
+          summary: "Publisher cursor lag exceeds 5 minutes"
+          description: "The publisher is more than 5 minutes behind the latest classified content. Check Elasticsearch query performance and publisher routing throughput."
+
+      # Alert 10: ML Sidecar Error Rate (was Alert 8)
       - uid: nc-ml-sidecar-errors
         title: "ML sidecar error rate — sustained failures"
         condition: "C"
@@ -309,7 +385,7 @@ groups:
           summary: "ML sidecar error rate elevated"
           description: "More than 10 ML sidecar classification failures in 15 minutes. Check sidecar container health and connectivity."
 
-      # Alert 9: ML Sidecars Inactive
+      # Alert 11: ML Sidecars Inactive (was Alert 9)
       - uid: nc-ml-sidecar-inactive
         title: "ML sidecars inactive — no classifications in 2 hours"
         condition: "C"

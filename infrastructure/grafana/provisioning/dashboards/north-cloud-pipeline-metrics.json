@@ -1,0 +1,445 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": { "type": "grafana", "uid": "-- Grafana --" },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [
+    { "title": "Overview", "url": "/d/north-cloud-overview", "type": "link", "icon": "dashboard" },
+    { "title": "Pipeline Operations", "url": "/d/north-cloud-pipeline-ops", "type": "link", "icon": "dashboard" },
+    { "title": "Publisher Ops", "url": "/d/north-cloud-publisher-ops", "type": "link", "icon": "dashboard" }
+  ],
+  "liveNow": false,
+  "panels": [
+    {
+      "title": "Pipeline Health",
+      "type": "row",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+      "collapsed": false
+    },
+    {
+      "title": "Classifier Queue Depth",
+      "type": "stat",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 4, "w": 4, "x": 0, "y": 1 },
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "steps": [
+              { "value": null, "color": "green" },
+              { "value": 500, "color": "yellow" },
+              { "value": 1000, "color": "red" }
+            ]
+          }
+        }
+      },
+      "targets": [
+        {
+          "expr": "classifier_queue_depth",
+          "legendFormat": "Queue Depth"
+        }
+      ]
+    },
+    {
+      "title": "Publisher Cursor Lag",
+      "type": "stat",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 4, "w": 4, "x": 4, "y": 1 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "thresholds": {
+            "steps": [
+              { "value": null, "color": "green" },
+              { "value": 300, "color": "yellow" },
+              { "value": 600, "color": "red" }
+            ]
+          }
+        }
+      },
+      "targets": [
+        {
+          "expr": "publisher_cursor_lag_seconds",
+          "legendFormat": "Cursor Lag"
+        }
+      ]
+    },
+    {
+      "title": "Classifier DLQ Depth",
+      "type": "stat",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 4, "w": 4, "x": 8, "y": 1 },
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "steps": [
+              { "value": null, "color": "green" },
+              { "value": 10, "color": "yellow" },
+              { "value": 50, "color": "red" }
+            ]
+          }
+        }
+      },
+      "targets": [
+        {
+          "expr": "classifier_dlq_depth",
+          "legendFormat": "DLQ Depth"
+        }
+      ]
+    },
+    {
+      "title": "Classifier Active Workers",
+      "type": "stat",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 4, "w": 4, "x": 12, "y": 1 },
+      "targets": [
+        {
+          "expr": "classifier_active_workers",
+          "legendFormat": "Workers"
+        }
+      ]
+    },
+    {
+      "title": "Outbox Backlog",
+      "type": "stat",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 4, "w": 4, "x": 16, "y": 1 },
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "steps": [
+              { "value": null, "color": "green" },
+              { "value": 100, "color": "yellow" },
+              { "value": 500, "color": "red" }
+            ]
+          }
+        }
+      },
+      "targets": [
+        {
+          "expr": "classifier_outbox_backlog",
+          "legendFormat": "Outbox"
+        }
+      ]
+    },
+    {
+      "title": "Publisher Dedup Hits/min",
+      "type": "stat",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 4, "w": 4, "x": 20, "y": 1 },
+      "targets": [
+        {
+          "expr": "rate(publisher_dedup_hits_total[5m]) * 60",
+          "legendFormat": "Dedup/min"
+        }
+      ]
+    },
+    {
+      "title": "Classification Throughput",
+      "type": "row",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 5 },
+      "collapsed": false
+    },
+    {
+      "title": "Classification Rate (docs/min)",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 6 },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "lineWidth": 2,
+            "pointSize": 5,
+            "showPoints": "never"
+          },
+          "unit": "cpm"
+        }
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(classifier_documents_processed_total[5m])) * 60",
+          "legendFormat": "Classified"
+        },
+        {
+          "expr": "sum(rate(classifier_documents_failed_total[5m])) * 60",
+          "legendFormat": "Failed"
+        }
+      ]
+    },
+    {
+      "title": "Classification Duration (p50/p95/p99)",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 6 },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "lineWidth": 2,
+            "showPoints": "never"
+          },
+          "unit": "s"
+        }
+      },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.50, sum(rate(classifier_processing_duration_seconds_bucket[5m])) by (le))",
+          "legendFormat": "p50"
+        },
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(classifier_processing_duration_seconds_bucket[5m])) by (le))",
+          "legendFormat": "p95"
+        },
+        {
+          "expr": "histogram_quantile(0.99, sum(rate(classifier_processing_duration_seconds_bucket[5m])) by (le))",
+          "legendFormat": "p99"
+        }
+      ]
+    },
+    {
+      "title": "Publishing Throughput",
+      "type": "row",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 14 },
+      "collapsed": false
+    },
+    {
+      "title": "Publish Rate (msgs/min)",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 15 },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "lineWidth": 2,
+            "showPoints": "never"
+          },
+          "unit": "cpm"
+        }
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(publisher_documents_published_total[5m])) * 60",
+          "legendFormat": "Published"
+        },
+        {
+          "expr": "rate(publisher_documents_skipped_total[5m]) * 60",
+          "legendFormat": "Skipped"
+        },
+        {
+          "expr": "rate(publisher_routing_errors_total[5m]) * 60",
+          "legendFormat": "Errors"
+        }
+      ]
+    },
+    {
+      "title": "Publisher Cursor Lag Over Time",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 15 },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "lineWidth": 2,
+            "showPoints": "never"
+          },
+          "unit": "s",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "value": null, "color": "green" },
+              { "value": 300, "color": "red" }
+            ]
+          }
+        }
+      },
+      "targets": [
+        {
+          "expr": "publisher_cursor_lag_seconds",
+          "legendFormat": "Cursor Lag"
+        }
+      ]
+    },
+    {
+      "title": "Top Channels by Publish Rate",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 23 },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "bars",
+            "fillOpacity": 80,
+            "lineWidth": 1,
+            "showPoints": "never",
+            "stacking": { "mode": "normal" }
+          },
+          "unit": "cpm"
+        }
+      },
+      "options": {
+        "legend": { "displayMode": "table", "placement": "right", "calcs": ["sum"] }
+      },
+      "targets": [
+        {
+          "expr": "topk(10, sum by (channel) (rate(publisher_documents_published_total[5m])) * 60)",
+          "legendFormat": "{{channel}}"
+        }
+      ]
+    },
+    {
+      "title": "Channels per Document Distribution",
+      "type": "histogram",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 23 },
+      "targets": [
+        {
+          "expr": "sum(rate(publisher_channels_per_document_bucket[5m])) by (le)",
+          "legendFormat": "{{le}}",
+          "format": "heatmap"
+        }
+      ]
+    },
+    {
+      "title": "Classifier Lag & Freshness",
+      "type": "row",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 31 },
+      "collapsed": false
+    },
+    {
+      "title": "Poller Lag (p50/p95)",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 32 },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "lineWidth": 2,
+            "showPoints": "never"
+          },
+          "unit": "s"
+        }
+      },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.50, sum(rate(classifier_poller_lag_seconds_bucket[5m])) by (le))",
+          "legendFormat": "p50"
+        },
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(classifier_poller_lag_seconds_bucket[5m])) by (le))",
+          "legendFormat": "p95"
+        }
+      ]
+    },
+    {
+      "title": "End-to-End Classification Lag (p50/p95)",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 32 },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "lineWidth": 2,
+            "showPoints": "never"
+          },
+          "unit": "s"
+        }
+      },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.50, sum(rate(classifier_classification_lag_seconds_bucket[5m])) by (le))",
+          "legendFormat": "p50"
+        },
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(classifier_classification_lag_seconds_bucket[5m])) by (le))",
+          "legendFormat": "p95"
+        }
+      ]
+    },
+    {
+      "title": "Content Type Distribution",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 40 },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "bars",
+            "fillOpacity": 80,
+            "lineWidth": 1,
+            "stacking": { "mode": "normal" },
+            "showPoints": "never"
+          },
+          "unit": "cpm"
+        }
+      },
+      "targets": [
+        {
+          "expr": "sum by (content_type) (rate(classifier_content_type_total[5m])) * 60",
+          "legendFormat": "{{content_type}}"
+        }
+      ]
+    },
+    {
+      "title": "DLQ Events",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 40 },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "lineWidth": 2,
+            "showPoints": "never"
+          }
+        }
+      },
+      "targets": [
+        {
+          "expr": "rate(classifier_dlq_enqueued_total[5m]) * 60",
+          "legendFormat": "Enqueued/min"
+        },
+        {
+          "expr": "rate(classifier_dlq_processed_total[5m]) * 60",
+          "legendFormat": "Processed/min"
+        },
+        {
+          "expr": "rate(classifier_dlq_exhausted_total[5m]) * 60",
+          "legendFormat": "Exhausted/min"
+        }
+      ]
+    }
+  ],
+  "schemaVersion": 39,
+  "tags": ["north-cloud", "pipeline", "prometheus"],
+  "templating": { "list": [] },
+  "time": { "from": "now-6h", "to": "now" },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "North Cloud — Pipeline Metrics",
+  "uid": "north-cloud-pipeline-metrics",
+  "version": 1
+}

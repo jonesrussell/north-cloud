@@ -87,7 +87,7 @@ func main() {
 		DiscoveryInterval: cfg.DiscoveryInterval,
 		BatchSize:         cfg.BatchSize,
 	}
-	routerService := router.NewService(repo, discoveryService, esClient, redisClient, routerConfig, appLogger, pipelineClient)
+	routerService := router.NewService(repo, discoveryService, esClient, redisClient, routerConfig, appLogger, pipelineClient, nil)
 
 	// Setup graceful shutdown
 	serviceCtx, cancel := context.WithCancel(context.Background())
