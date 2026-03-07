@@ -4,53 +4,21 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"regexp"
-	"strings"
+
+	"github.com/north-cloud/infrastructure/naming"
 )
-
-// invalidIndexChar matches characters NOT allowed in ES index names (anything other than lowercase alphanumeric and underscore).
-var invalidIndexChar = regexp.MustCompile(`[^a-z0-9_]`)
-
-// collapseUnderscores replaces runs of multiple underscores with a single one.
-var collapseUnderscores = regexp.MustCompile(`_+`)
-
-const (
-	rawContentSuffix        = "_raw_content"
-	classifiedContentSuffix = "_classified_content"
-)
-
-// GetClassifiedIndexName returns the classified_content index name for a raw_content index.
-func GetClassifiedIndexName(rawIndex string) (string, error) {
-	if !strings.HasSuffix(rawIndex, rawContentSuffix) {
-		return "", errors.New("invalid raw_content index name")
-	}
-	return rawIndex[:len(rawIndex)-len(rawContentSuffix)] + classifiedContentSuffix, nil
-}
-
-// SanitizeSourceName converts a human-readable source name into a valid ES index prefix.
-// Lowercases, replaces non-alphanumeric chars with underscore, collapses runs, trims.
-func SanitizeSourceName(name string) string {
-	if name == "" {
-		return ""
-	}
-	s := strings.ToLower(strings.TrimSpace(name))
-	s = invalidIndexChar.ReplaceAllString(s, "_")
-	s = collapseUnderscores.ReplaceAllString(s, "_")
-	s = strings.Trim(s, "_")
-	return s
-}
 
 // ClassifiedIndexForContent determines the classified index name for a content item.
 // Prefers SourceIndex (derived from ES _index field); falls back to sanitized SourceName.
 func ClassifiedIndexForContent(sourceIndex, sourceName string) (string, error) {
 	if sourceIndex != "" {
-		return GetClassifiedIndexName(sourceIndex)
+		return naming.ClassifiedIndexFromRaw(sourceIndex)
 	}
-	sanitized := SanitizeSourceName(sourceName)
+	sanitized := naming.SanitizeSourceName(sourceName)
 	if sanitized == "" {
 		return "", errors.New("cannot determine classified index: both source_index and source_name are empty")
 	}
-	return sanitized + classifiedContentSuffix, nil
+	return sanitized + naming.ClassifiedContentSuffix, nil
 }
 
 // bulkResponse is the minimal structure needed to check for item-level errors.

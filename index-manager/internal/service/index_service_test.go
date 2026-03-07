@@ -6,37 +6,6 @@ import (
 	"github.com/jonesrussell/north-cloud/index-manager/internal/domain"
 )
 
-// --- NormalizeSourceName ---
-
-func TestNormalizeSourceName(t *testing.T) {
-	t.Helper()
-
-	tests := []struct {
-		name     string
-		input    string
-		expected string
-	}{
-		{"simple domain", "example.com", "example_com"},
-		{"https prefix", "https://example.com", "example_com"},
-		{"http prefix", "http://example.com", "example_com"},
-		{"hyphens replaced", "my-news-site", "my_news_site"},
-		{"dots and hyphens", "my-site.co.uk", "my_site_co_uk"},
-		{"uppercase converted", "EXAMPLE.COM", "example_com"},
-		{"mixed case with protocol", "http://EXAMPLE.COM", "example_com"},
-		{"already normalized", "example_com", "example_com"},
-		{"empty string", "", ""},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := NormalizeSourceName(tt.input)
-			if result != tt.expected {
-				t.Errorf("NormalizeSourceName(%q) = %q, want %q", tt.input, result, tt.expected)
-			}
-		})
-	}
-}
-
 // --- GenerateIndexName ---
 
 func TestGenerateIndexName(t *testing.T) {
@@ -50,7 +19,8 @@ func TestGenerateIndexName(t *testing.T) {
 	}{
 		{"raw content", "example.com", domain.IndexTypeRawContent, "example_com_raw_content"},
 		{"classified content", "example.com", domain.IndexTypeClassifiedContent, "example_com_classified_content"},
-		{"with protocol", "https://news.ca", domain.IndexTypeRawContent, "news_ca_raw_content"},
+		{"with spaces", "Campbell River Mirror", domain.IndexTypeRawContent, "campbell_river_mirror_raw_content"},
+		{"unknown type returns sanitized name", "example.com", domain.IndexType("unknown"), "example_com"},
 	}
 
 	for _, tt := range tests {
@@ -59,31 +29,6 @@ func TestGenerateIndexName(t *testing.T) {
 			if result != tt.expected {
 				t.Errorf("GenerateIndexName(%q, %q) = %q, want %q",
 					tt.sourceName, tt.indexType, result, tt.expected)
-			}
-		})
-	}
-}
-
-// --- getIndexSuffix ---
-
-func TestGetIndexSuffix(t *testing.T) {
-	t.Helper()
-
-	tests := []struct {
-		name      string
-		indexType domain.IndexType
-		expected  string
-	}{
-		{"raw_content", domain.IndexTypeRawContent, "_raw_content"},
-		{"classified_content", domain.IndexTypeClassifiedContent, "_classified_content"},
-		{"unknown type", domain.IndexType("unknown"), ""},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := getIndexSuffix(tt.indexType)
-			if result != tt.expected {
-				t.Errorf("getIndexSuffix(%q) = %q, want %q", tt.indexType, result, tt.expected)
 			}
 		})
 	}

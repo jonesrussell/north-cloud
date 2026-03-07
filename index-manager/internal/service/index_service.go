@@ -17,6 +17,7 @@ import (
 	"github.com/jonesrussell/north-cloud/index-manager/internal/elasticsearch"
 	"github.com/jonesrussell/north-cloud/index-manager/internal/elasticsearch/mappings"
 	infralogger "github.com/north-cloud/infrastructure/logger"
+	"github.com/north-cloud/infrastructure/naming"
 )
 
 // IndexService provides business logic for index operations
@@ -40,36 +41,15 @@ func NewIndexService(
 	}
 }
 
-// NormalizeSourceName normalizes a source name for index naming
-func NormalizeSourceName(sourceName string) string {
-	// Remove protocol if present
-	sourceName = strings.TrimPrefix(sourceName, "http://")
-	sourceName = strings.TrimPrefix(sourceName, "https://")
-
-	// Replace dots and hyphens with underscores
-	sourceName = strings.ReplaceAll(sourceName, ".", "_")
-	sourceName = strings.ReplaceAll(sourceName, "-", "_")
-
-	// Convert to lowercase
-	return strings.ToLower(sourceName)
-}
-
-// GenerateIndexName generates an index name from source name and type
+// GenerateIndexName generates an index name from source name and type.
 func GenerateIndexName(sourceName string, indexType domain.IndexType) string {
-	normalized := NormalizeSourceName(sourceName)
-	suffix := getIndexSuffix(indexType)
-	return fmt.Sprintf("%s%s", normalized, suffix)
-}
-
-// getIndexSuffix returns the suffix for an index type
-func getIndexSuffix(indexType domain.IndexType) string {
 	switch indexType {
 	case domain.IndexTypeRawContent:
-		return "_raw_content"
+		return naming.RawContentIndex(sourceName)
 	case domain.IndexTypeClassifiedContent:
-		return "_classified_content"
+		return naming.ClassifiedContentIndex(sourceName)
 	default:
-		return ""
+		return naming.SanitizeSourceName(sourceName)
 	}
 }
 
@@ -213,7 +193,7 @@ func (s *IndexService) ListIndices(ctx context.Context, req *domain.ListIndicesR
 
 	if req.SourceName != "" {
 		// List by source
-		normalized := NormalizeSourceName(req.SourceName)
+		normalized := naming.SanitizeSourceName(req.SourceName)
 		pattern := fmt.Sprintf("%s_*", normalized)
 		indices, err = s.esClient.ListIndices(ctx, pattern)
 	} else if req.Type != "" {
@@ -409,7 +389,7 @@ func (s *IndexService) CreateIndexesForSource(ctx context.Context, sourceName st
 
 // DeleteIndexesForSource deletes all indexes for a source
 func (s *IndexService) DeleteIndexesForSource(ctx context.Context, sourceName string) error {
-	normalized := NormalizeSourceName(sourceName)
+	normalized := naming.SanitizeSourceName(sourceName)
 	pattern := fmt.Sprintf("%s_*", normalized)
 
 	indices, err := s.esClient.ListIndices(ctx, pattern)
@@ -669,32 +649,16 @@ func isValidIndexType(indexType domain.IndexType) bool {
 }
 
 func (s *IndexService) inferIndexTypeAndSource(indexName string) (indexType domain.IndexType, sourceName string) {
-	// Try to infer from index name pattern: {source}_{type}
-	const minIndexNameParts = 2
-	parts := strings.Split(indexName, "_")
-	if len(parts) < minIndexNameParts {
+	switch {
+	case naming.IsRawContentIndex(indexName):
+		base, _ := naming.BaseSourceFromIndex(indexName)
+		return domain.IndexTypeRawContent, base
+	case naming.IsClassifiedContentIndex(indexName):
+		base, _ := naming.BaseSourceFromIndex(indexName)
+		return domain.IndexTypeClassifiedContent, base
+	default:
 		return "", ""
 	}
-
-	// Last part should be the type
-	lastPart := parts[len(parts)-1]
-	switch lastPart {
-	case "raw", "content":
-		if strings.Contains(indexName, "raw_content") {
-			indexType = domain.IndexTypeRawContent
-		} else if strings.Contains(indexName, "classified_content") {
-			indexType = domain.IndexTypeClassifiedContent
-		}
-	}
-
-	// Source name is everything before the type suffix
-	if indexType != "" {
-		suffix := getIndexSuffix(indexType)
-		sourceName = strings.TrimSuffix(indexName, suffix)
-		return indexType, sourceName
-	}
-
-	return "", ""
 }
 
 func (s *IndexService) indexInfoToDomain(info *elasticsearch.IndexInfo, indexType domain.IndexType, sourceName string) *domain.Index {

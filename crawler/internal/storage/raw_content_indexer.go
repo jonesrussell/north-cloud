@@ -4,14 +4,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"regexp"
-	"strings"
 	"sync"
 	"time"
 
 	"github.com/jonesrussell/north-cloud/crawler/internal/storage/types"
 	"github.com/jonesrussell/north-cloud/index-manager/pkg/contracts"
 	infralogger "github.com/north-cloud/infrastructure/logger"
+	"github.com/north-cloud/infrastructure/naming"
 )
 
 // RawContent represents minimally-processed content for classification
@@ -62,7 +61,7 @@ func (r *RawContentIndexer) IndexRawContent(ctx context.Context, rawContent *Raw
 	}
 
 	// Index to raw_content index
-	indexName := r.getRawContentIndexName(rawContent.SourceName)
+	indexName := r.rawContentIndexName(rawContent.SourceName)
 
 	r.logger.Debug("Indexing raw content for classification",
 		infralogger.String("index", indexName),
@@ -98,7 +97,7 @@ func (r *RawContentIndexer) IndexRawContentIfAbsent(ctx context.Context, rawCont
 		return errors.New("raw content is nil")
 	}
 
-	indexName := r.getRawContentIndexName(rawContent.SourceName)
+	indexName := r.rawContentIndexName(rawContent.SourceName)
 
 	r.logger.Debug("Indexing raw content if absent",
 		infralogger.String("index", indexName),
@@ -125,60 +124,20 @@ func (r *RawContentIndexer) IndexRawContentIfAbsent(ctx context.Context, rawCont
 	return nil
 }
 
-var (
-	// invalidIndexNameChars matches all characters that are invalid in Elasticsearch index names.
-	// Invalid characters: space, ", *, ,, /, <, >, ?, \, |
-	invalidIndexNameChars = regexp.MustCompile(`[\s"*,/<>?\\|]`)
-	// consecutiveUnderscores matches two or more consecutive underscores.
-	consecutiveUnderscores = regexp.MustCompile(`_{2,}`)
-)
-
-// sanitizeIndexName sanitizes a source name for use in Elasticsearch index names.
-// Elasticsearch index names cannot contain: space, ", *, ,, /, <, >, ?, \, |
-// This function replaces invalid characters with underscores, normalizes dots/dashes,
-// removes leading/trailing underscores, and collapses consecutive underscores.
-func sanitizeIndexName(sourceName string) string {
+// rawContentIndexName returns the index name for raw content.
+// Falls back to "unknown" prefix when source name is empty.
+func (r *RawContentIndexer) rawContentIndexName(sourceName string) string {
 	if sourceName == "" {
-		return "unknown"
+		sourceName = "unknown"
 	}
-
-	// Convert to lowercase first
-	normalized := strings.ToLower(sourceName)
-
-	// Replace invalid Elasticsearch index name characters with underscores in one pass
-	normalized = invalidIndexNameChars.ReplaceAllString(normalized, "_")
-
-	// Replace dots and dashes with underscores (existing behavior)
-	normalized = strings.ReplaceAll(normalized, ".", "_")
-	normalized = strings.ReplaceAll(normalized, "-", "_")
-
-	// Collapse consecutive underscores into a single underscore
-	normalized = consecutiveUnderscores.ReplaceAllString(normalized, "_")
-
-	// Remove leading and trailing underscores
-	normalized = strings.Trim(normalized, "_")
-
-	// Handle edge case: if all characters were invalid, return fallback
-	if normalized == "" {
-		return "unknown"
-	}
-
-	return normalized
-}
-
-// getRawContentIndexName returns the index name for raw content
-// Format: {source}_raw_content
-// Example: example_com_raw_content
-func (r *RawContentIndexer) getRawContentIndexName(sourceName string) string {
-	normalized := sanitizeIndexName(sourceName)
-	return fmt.Sprintf("%s_raw_content", normalized)
+	return naming.RawContentIndex(sourceName)
 }
 
 // EnsureRawContentIndex ensures the raw_content index exists.
 // The canonical mapping is managed by the index-manager service.
 // Uses a cache to avoid redundant checks for indexes that have already been ensured.
 func (r *RawContentIndexer) EnsureRawContentIndex(ctx context.Context, sourceName string) error {
-	indexName := r.getRawContentIndexName(sourceName)
+	indexName := r.rawContentIndexName(sourceName)
 
 	if _, alreadyEnsured := r.ensuredIndexes.Load(indexName); alreadyEnsured {
 		return nil
