@@ -10,17 +10,17 @@ task lint             # Run linter
 task lint:force       # Force lint (bypasses cache — use before pushing)
 task migrate:up       # Run database migrations
 
-# API (port 8060)
-curl http://localhost:8060/health
-curl -H "Authorization: Bearer $JWT" http://localhost:8060/api/v1/jobs
-curl -H "Authorization: Bearer $JWT" http://localhost:8060/api/v1/scheduler/metrics
+# API (port 8080)
+curl http://localhost:8080/health
+curl -H "Authorization: Bearer $JWT" http://localhost:8080/api/v1/jobs
+curl -H "Authorization: Bearer $JWT" http://localhost:8080/api/v1/scheduler/metrics
 ```
 
 ### Useful One-Liners
 
 ```bash
 # Create a recurring job (6-hour interval)
-curl -X POST http://localhost:8060/api/v1/jobs \
+curl -X POST http://localhost:8080/api/v1/jobs \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer $JWT" \
   -d '{
@@ -32,7 +32,7 @@ curl -X POST http://localhost:8060/api/v1/jobs \
   }'
 
 # Create a one-time job (run immediately)
-curl -X POST http://localhost:8060/api/v1/jobs \
+curl -X POST http://localhost:8080/api/v1/jobs \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer $JWT" \
   -d '{
@@ -42,22 +42,22 @@ curl -X POST http://localhost:8060/api/v1/jobs \
   }'
 
 # Pause a job
-curl -X POST http://localhost:8060/api/v1/jobs/{id}/pause \
+curl -X POST http://localhost:8080/api/v1/jobs/{id}/pause \
   -H "Authorization: Bearer $JWT"
 
 # Retry a failed job
-curl -X POST http://localhost:8060/api/v1/jobs/{id}/retry \
+curl -X POST http://localhost:8080/api/v1/jobs/{id}/retry \
   -H "Authorization: Bearer $JWT"
 
 # Force-run a scheduled job now (v2 API)
-curl -X POST http://localhost:8060/api/v2/jobs/{id}/force-run \
+curl -X POST http://localhost:8080/api/v2/jobs/{id}/force-run \
   -H "Authorization: Bearer $JWT"
 
 # View scheduler-wide metrics
-curl -H "Authorization: Bearer $JWT" http://localhost:8060/api/v1/scheduler/metrics
+curl -H "Authorization: Bearer $JWT" http://localhost:8080/api/v1/scheduler/metrics
 
 # View job distribution across time slots
-curl -H "Authorization: Bearer $JWT" http://localhost:8060/api/v1/scheduler/distribution
+curl -H "Authorization: Bearer $JWT" http://localhost:8080/api/v1/scheduler/distribution
 
 # Sync all enabled sources to jobs (production reconciliation)
 JWT="your-token" ./scripts/sync-enabled-sources-jobs.sh
@@ -339,7 +339,7 @@ go test -coverprofile=coverage.out ./... && go tool cover -html=coverage.out
 
 ```bash
 # Recurring job — every 6 hours
-curl -X POST http://localhost:8060/api/v1/jobs \
+curl -X POST http://localhost:8080/api/v1/jobs \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer $JWT" \
   -d '{
@@ -353,7 +353,7 @@ curl -X POST http://localhost:8060/api/v1/jobs \
   }'
 
 # One-time job — run immediately
-curl -X POST http://localhost:8060/api/v1/jobs \
+curl -X POST http://localhost:8080/api/v1/jobs \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer $JWT" \
   -d '{
@@ -367,23 +367,23 @@ curl -X POST http://localhost:8060/api/v1/jobs \
 
 ```bash
 # Overall metrics
-curl -H "Authorization: Bearer $JWT" http://localhost:8060/api/v1/scheduler/metrics
+curl -H "Authorization: Bearer $JWT" http://localhost:8080/api/v1/scheduler/metrics
 
 # Example response fields to watch:
 # executions.success_rate < 0.8 → investigate failing jobs
 # stale_locks_cleared > 0 consistently → scheduler may be crashing
 
 # Job distribution
-curl -H "Authorization: Bearer $JWT" http://localhost:8060/api/v1/scheduler/distribution
+curl -H "Authorization: Bearer $JWT" http://localhost:8080/api/v1/scheduler/distribution
 # distribution_score < 0.7 → consider running rebalance
 
 # Preview rebalance (dry run)
 curl -X POST -H "Authorization: Bearer $JWT" \
-  http://localhost:8060/api/v1/scheduler/rebalance/preview
+  http://localhost:8080/api/v1/scheduler/rebalance/preview
 
 # Execute rebalance
 curl -X POST -H "Authorization: Bearer $JWT" \
-  http://localhost:8060/api/v1/scheduler/rebalance
+  http://localhost:8080/api/v1/scheduler/rebalance
 ```
 
 ### Database Schema Reference
