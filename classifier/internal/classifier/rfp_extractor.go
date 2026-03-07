@@ -12,7 +12,25 @@ import (
 // RFP extractor constants.
 const (
 	rfpTopicName = "rfp"
+
+	// DocumentType values for non-solicitation procurement documents.
+	rfpDocTypeNotice = "notice"
+	rfpDocTypeRFI    = "rfi"
 )
+
+// noticePatterns are phrases that indicate a document is informational only (not a bid).
+var noticePatterns = []string{
+	"proactive disclosure",
+	"notice to industry",
+	"for information purposes only",
+	"no response is to be submitted",
+	"not a solicitation",
+}
+
+// rfiPatterns indicate a Request for Information (no bid expected).
+var rfiPatterns = []string{
+	"request for information",
+}
 
 // Heuristic labeled-value keys for RFP extraction.
 const (
@@ -55,13 +73,26 @@ func (e *RFPExtractor) Extract(
 		return nil, nil //nolint:nilnil // Intentional: nil result signals content is not an RFP
 	}
 
+	// Detect non-solicitation document type before extraction.
+	docType := detectRFPDocumentType(raw.Title + " " + raw.RawText)
+
 	// Tier 1: Heuristic extraction (labeled fields).
 	if result := e.extractHeuristic(raw.RawText); result != nil {
+		result.DocumentType = docType
 		e.logger.Debug("RFP extracted via heuristic",
 			infralogger.String("content_id", raw.ID),
 			infralogger.String("reference_number", result.ReferenceNumber),
+			infralogger.String("document_type", result.DocumentType),
 		)
 		return result, nil
+	}
+
+	// Even without labeled fields, record the document type if detected.
+	if docType != "" {
+		return &domain.RFPResult{
+			ExtractionMethod: extractionMethodHeuristic,
+			DocumentType:     docType,
+		}, nil
 	}
 
 	return nil, nil //nolint:nilnil // Intentional: nil result signals no RFP data found
@@ -148,6 +179,23 @@ func parseBudgetValue(value string) (budgetMin, budgetMax *float64, currency str
 	}
 
 	return nil, nil, ""
+}
+
+// detectRFPDocumentType checks combined title+body text for non-solicitation signals.
+// Returns "notice", "rfi", or "" (normal bid/solicitation).
+func detectRFPDocumentType(text string) string {
+	lower := strings.ToLower(text)
+	for _, pattern := range noticePatterns {
+		if strings.Contains(lower, pattern) {
+			return rfpDocTypeNotice
+		}
+	}
+	for _, pattern := range rfiPatterns {
+		if strings.Contains(lower, pattern) {
+			return rfpDocTypeRFI
+		}
+	}
+	return ""
 }
 
 // parseFloat extracts a positive float64 from a pre-cleaned numeric string.

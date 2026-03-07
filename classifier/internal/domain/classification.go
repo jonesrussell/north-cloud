@@ -315,6 +315,10 @@ type JobResult struct {
 // TODO: add "schema_org" extraction when structured procurement data becomes common.
 type RFPResult struct {
 	ExtractionMethod string   `json:"extraction_method"`
+	// DocumentType classifies the procurement document kind.
+	// Values: "" (normal solicitation/bid), "notice" (Notice to Industry, Proactive Disclosure),
+	// "rfi" (Request for Information — for info only, no bid expected).
+	DocumentType     string   `json:"document_type,omitempty"`
 	Title            string   `json:"title,omitempty"`
 	ReferenceNumber  string   `json:"reference_number,omitempty"`
 	OrganizationName string   `json:"organization_name,omitempty"`

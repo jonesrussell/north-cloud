@@ -83,8 +83,9 @@ func (qb *QueryBuilder) buildBoolQuery(req *domain.SearchRequest) map[string]any
 		"should": []any{},
 	}
 
-	// Multi-match query for full-text search
-	if req.Query != "" {
+	// Multi-match query for full-text search.
+	// Treat "*" as match-all (empty must clause); multi-match doesn't interpret "*" as wildcard.
+	if req.Query != "" && req.Query != "*" {
 		boolQuery["must"] = []any{
 			qb.buildMultiMatchQuery(req.Query),
 		}

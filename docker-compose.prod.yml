@@ -78,6 +78,7 @@ services:
       PIPELINE_URL: http://pipeline:8075
       APP_ENV: production
       AUTH_JWT_SECRET: "${AUTH_JWT_SECRET}"
+      AUTH_INTERNAL_SECRET: "${AUTH_INTERNAL_SECRET:-}"
       SERVER_SECURITY_ENABLED: "false"
       SERVER_PORT: "8080"
       REDIS_ADDRESS: "${REDIS_HOST:-host.docker.internal}:6379"
@@ -254,6 +255,7 @@ services:
       INDIGENOUS_ML_SERVICE_URL: http://indigenous-ml:8080
       RFP_ENABLED: "true"
       PIPELINE_URL: http://pipeline:8075
+      AUTH_INTERNAL_SECRET: "${AUTH_INTERNAL_SECRET:-}"
     extra_hosts:
       - "host.docker.internal:host-gateway"
     healthcheck:
