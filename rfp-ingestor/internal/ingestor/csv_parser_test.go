@@ -306,6 +306,53 @@ func TestDeriveCategories(t *testing.T) {
 	}
 }
 
+func TestParseCSV_ConstructsURLWhenMissing(t *testing.T) {
+	row := makeRow(map[int]string{
+		idxTitle:     "Missing URL Tender",
+		idxRefNumber: "cb-651-86492266",
+		idxAmendment: "000",
+		idxStatusEng: "Open",
+		// idxNoticeURL intentionally omitted (empty)
+	})
+
+	input := fullHeader + "\n" + row + "\n"
+	docs, errs := ParseCSV(strings.NewReader(input))
+
+	if len(errs) != 0 {
+		t.Fatalf("unexpected errors: %v", errs)
+	}
+	if len(docs) != 1 {
+		t.Fatalf("expected 1 document, got %d", len(docs))
+	}
+
+	wantURL := "https://canadabuys.canada.ca/en/tender-opportunities/tender-notice/cb-651-86492266"
+	assertEqual(t, "URL", wantURL, docs[0].URL)
+	assertEqual(t, "RFP.SourceURL", wantURL, docs[0].RFP.SourceURL)
+}
+
+func TestParseCSV_PreservesExplicitURL(t *testing.T) {
+	provided := "https://canadabuys.canada.ca/en/tender/PW-24-01234567"
+	row := makeRow(map[int]string{
+		idxTitle:     "Explicit URL Tender",
+		idxRefNumber: "PW-24-01234567",
+		idxAmendment: "000",
+		idxStatusEng: "Open",
+		idxNoticeURL: provided,
+	})
+
+	input := fullHeader + "\n" + row + "\n"
+	docs, errs := ParseCSV(strings.NewReader(input))
+
+	if len(errs) != 0 {
+		t.Fatalf("unexpected errors: %v", errs)
+	}
+	if len(docs) != 1 {
+		t.Fatalf("expected 1 document, got %d", len(docs))
+	}
+
+	assertEqual(t, "URL", provided, docs[0].URL)
+}
+
 func TestParseCSV_BOMHeader(t *testing.T) {
 	// CanadaBuys feeds start with a UTF-8 BOM (\xEF\xBB\xBF).
 	// Verify the parser strips it so the first column is still matched.

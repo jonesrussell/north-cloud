@@ -34,6 +34,10 @@ const (
 	colDescription       = "tenderDescription-descriptionAppelOffres-eng"
 )
 
+// canadaBuysTenderBaseURL is the base URL for CanadaBuys tender notice pages.
+// Reference numbers are appended as the final path segment.
+const canadaBuysTenderBaseURL = "https://canadabuys.canada.ca/en/tender-opportunities/tender-notice/"
+
 // Hardcoded values for all CanadaBuys documents.
 const (
 	sourceName       = "CanadaBuys"
@@ -167,6 +171,9 @@ func buildDocument(record []string, colIndex map[string]int, crawledAt string) (
 	region := getField(record, colIndex, colRegionsOfDelivery)
 	procurementCat := getField(record, colIndex, colProcurementCat)
 	noticeURL := getField(record, colIndex, colNoticeURL)
+	if noticeURL == "" {
+		noticeURL = canadaBuysTenderBaseURL + refNumber
+	}
 
 	return domain.RFPDocument{
 		Title:        title,
