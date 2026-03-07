@@ -53,6 +53,11 @@ type Interface interface {
     CreateIndex(ctx context.Context, index string, mapping map[string]any) error
     IndexExists(ctx context.Context, index string) (bool, error)
     Close() error
+    // Query methods (internal use; not part of public types.Interface)
+    SearchDocuments(ctx context.Context, index string, query map[string]any, result any) error
+    Search(ctx context.Context, index string, query any) ([]any, error)
+    Count(ctx context.Context, index string, query any) (int64, error)
+    Aggregate(ctx context.Context, index string, aggs any) (any, error)
 }
 
 type IndexManager interface {
@@ -163,6 +168,7 @@ func CanRetry(job *Job) bool    // StateFailed only
 
 Key environment variables:
 - `CRAWLER_SERVER_ADDRESS` (default: :8080)
+- `max_depth` source field: -1 = unlimited depth (colly receives 0), 0 = use default, n = crawl n levels
 - `CRAWLER_SOURCES_API_URL` (default: http://localhost:8050/api/v1/sources)
 - `CRAWLER_PROXY_POOL_URLS` — comma-separated proxy endpoints
 - `CRAWLER_PROXY_STICKY_TTL` (default: 10m)

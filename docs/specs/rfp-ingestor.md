@@ -70,7 +70,7 @@ The search service queries `content_type.keyword` for exact filtering. ES auto-g
 | Field | ES Type | Notes |
 |-------|---------|-------|
 | `title` | text | Tender title |
-| `url` | keyword | CanadaBuys detail page URL |
+| `url` | keyword | CanadaBuys detail page URL — derived from reference number if empty in feed |
 | `source_name` | keyword | Always `"canadabuys"` |
 | `content_type` | text + .keyword | Always `"rfp"` |
 | `quality_score` | integer | Computed during parse |
@@ -135,6 +135,7 @@ GET /api/v1/status
 
 ## Known Constraints
 
+- **URL fallback**: When a CSV row has an empty `noticeURL` field, the `url` is derived from the reference number: `https://canadabuys.canada.ca/en/tender-opportunities/tender-notice/{refNumber}`. Prevents broken records with no accessible link.
 - **No database dependency** — state is entirely in ES. No Postgres, no Redis.
 - **No classifier integration** — rfp-ingestor never calls the classifier. Quality scoring and topic tagging happen in `csv_parser.go` during ingestion.
 - **Publisher integration** — publisher Layer 11 reads `content_type == "rfp"` from the search index. rfp-ingestor itself never publishes to Redis.

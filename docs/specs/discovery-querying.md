@@ -30,6 +30,8 @@ func (b *QueryBuilder) Build(req *domain.SearchRequest) map[string]any
 //   filter: quality range, topics.keyword, content_type.keyword, date range
 //   should: recency boost, quality boost
 //   aggs: topics, content_types, sources, quality_ranges (when include_facets=true)
+// FacetBucket: { key: string, label: string, count: int64 }
+// label is the human-readable form of key (e.g. "local_news" → "Local News")
 ```
 
 ### Index Service (`index-manager/internal/service/index_service.go`)
@@ -59,6 +61,10 @@ GET/POST /api/v1/search → parse request → validate (max 500 chars, max 100 p
   → QueryBuilder.Build() → multi-index search across *_classified_content
   → parseSearchResponse() → faceted results with aggregations
 ```
+
+**topics query param formats** (both supported):
+- Comma-separated: `?topics=indigenous,crime`
+- Array syntax: `?topics[]=indigenous&topics[]=crime`
 
 ### Index Lifecycle
 ```
