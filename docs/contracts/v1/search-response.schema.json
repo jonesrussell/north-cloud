@@ -1,0 +1,202 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "$id": "https://northcloud.one/contracts/v1/search-response.schema.json",
+  "title": "North Cloud Search API Response v1",
+  "description": "JSON response shape returned by GET/POST /api/v1/search. All consumers (Minoo/Waaseyaa, dashboard) must tolerate unknown fields.",
+  "type": "object",
+  "required": ["query", "total_hits", "total_pages", "current_page", "page_size", "took_ms", "hits"],
+  "properties": {
+    "query": {
+      "type": "string",
+      "description": "The search query that was executed"
+    },
+    "total_hits": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Total number of matching documents"
+    },
+    "total_pages": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Total pages based on page_size"
+    },
+    "current_page": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Current page number (1-indexed)"
+    },
+    "page_size": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Number of results per page"
+    },
+    "took_ms": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Elasticsearch query duration in milliseconds"
+    },
+    "hits": {
+      "type": "array",
+      "description": "Array of search result items",
+      "items": { "$ref": "#/$defs/SearchHit" }
+    },
+    "facets": {
+      "$ref": "#/$defs/Facets",
+      "description": "Facet/aggregation data (present only when options.include_facets=true)"
+    }
+  },
+  "additionalProperties": true,
+
+  "$defs": {
+    "SearchHit": {
+      "type": "object",
+      "required": ["id", "title", "url", "source_name", "quality_score", "content_type", "score"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Elasticsearch document ID"
+        },
+        "title": {
+          "type": "string",
+          "description": "Content title"
+        },
+        "url": {
+          "type": "string",
+          "format": "uri",
+          "description": "Canonical URL"
+        },
+        "source_name": {
+          "type": "string",
+          "description": "Source name (sanitized, e.g. example_com)"
+        },
+        "published_date": {
+          "type": ["string", "null"],
+          "format": "date-time",
+          "description": "Original publication date (RFC3339)"
+        },
+        "crawled_at": {
+          "type": ["string", "null"],
+          "format": "date-time",
+          "description": "Crawl timestamp (RFC3339)"
+        },
+        "quality_score": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Quality rating (0-100)"
+        },
+        "content_type": {
+          "type": "string",
+          "description": "Primary content type (article, page, video, image, job, recipe, rfp)"
+        },
+        "topics": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Topic tags"
+        },
+        "crime_relevance": {
+          "type": "string",
+          "description": "Crime classification relevance (core_street_crime, peripheral_crime, not_crime)"
+        },
+        "score": {
+          "type": "number",
+          "description": "Elasticsearch relevance score"
+        },
+        "highlight": {
+          "type": "object",
+          "description": "Map of field name to array of highlighted fragments (HTML <em> tags)",
+          "additionalProperties": {
+            "type": "array",
+            "items": { "type": "string" }
+          }
+        },
+        "snippet": {
+          "type": "string",
+          "description": "Text snippet (from highlights or truncated raw_text, max ~200 chars)"
+        },
+        "click_url": {
+          "type": "string",
+          "format": "uri",
+          "description": "Click-tracking URL (present only when click tracker is enabled)"
+        },
+        "og_image": {
+          "type": "string",
+          "description": "Open Graph image URL"
+        },
+        "rfp": {
+          "$ref": "#/$defs/RFPData",
+          "description": "RFP extraction data (present only for RFP content)"
+        }
+      },
+      "additionalProperties": true
+    },
+
+    "RFPData": {
+      "type": "object",
+      "properties": {
+        "extraction_method": { "type": "string" },
+        "title": { "type": "string" },
+        "reference_number": { "type": "string" },
+        "organization_name": { "type": "string" },
+        "description": { "type": "string" },
+        "published_date": { "type": "string" },
+        "closing_date": { "type": "string" },
+        "budget_min": { "type": ["number", "null"] },
+        "budget_max": { "type": ["number", "null"] },
+        "budget_currency": { "type": "string" },
+        "procurement_type": { "type": "string" },
+        "naics_codes": { "type": "array", "items": { "type": "string" } },
+        "categories": { "type": "array", "items": { "type": "string" } },
+        "province": { "type": "string" },
+        "city": { "type": "string" },
+        "country": { "type": "string" },
+        "eligibility": { "type": "string" },
+        "source_url": { "type": "string" },
+        "contact_name": { "type": "string" },
+        "contact_email": { "type": "string" }
+      },
+      "additionalProperties": true
+    },
+
+    "Facets": {
+      "type": "object",
+      "description": "Aggregation facets (all optional, present based on data availability)",
+      "properties": {
+        "topics": { "type": "array", "items": { "$ref": "#/$defs/FacetBucket" } },
+        "content_types": { "type": "array", "items": { "$ref": "#/$defs/FacetBucket" } },
+        "sources": { "type": "array", "items": { "$ref": "#/$defs/FacetBucket" } },
+        "quality_ranges": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/FacetBucket" },
+          "description": "Quality score ranges: 0-39 (low), 40-59 (medium), 60-79 (good), 80-100 (excellent)"
+        },
+        "recipe_cuisines": { "type": "array", "items": { "$ref": "#/$defs/FacetBucket" } },
+        "recipe_categories": { "type": "array", "items": { "$ref": "#/$defs/FacetBucket" } },
+        "job_types": { "type": "array", "items": { "$ref": "#/$defs/FacetBucket" } },
+        "job_industries": { "type": "array", "items": { "$ref": "#/$defs/FacetBucket" } },
+        "job_locations": { "type": "array", "items": { "$ref": "#/$defs/FacetBucket" } }
+      },
+      "additionalProperties": true
+    },
+
+    "FacetBucket": {
+      "type": "object",
+      "required": ["key", "label", "count"],
+      "properties": {
+        "key": {
+          "type": "string",
+          "description": "Raw aggregation key"
+        },
+        "label": {
+          "type": "string",
+          "description": "Human-readable label (underscores replaced, title-cased)"
+        },
+        "count": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Document count for this bucket"
+        }
+      }
+    }
+  }
+}

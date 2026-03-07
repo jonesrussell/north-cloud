@@ -1,0 +1,248 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "$id": "https://northcloud.one/contracts/v1/redis-message.schema.json",
+  "title": "North Cloud Publisher Redis Message v1",
+  "description": "JSON shape published to Redis Pub/Sub channels by the publisher router. All consumers (Streetcode, Diidjaaheer, Orewire, Movies-of-War, Minoo) must tolerate unknown fields.",
+  "type": "object",
+  "required": ["id", "title", "body", "canonical_url", "source", "quality_score", "content_type", "publisher"],
+  "properties": {
+    "publisher": {
+      "type": "object",
+      "description": "Routing metadata added by publishToChannel()",
+      "required": ["published_at", "channel"],
+      "properties": {
+        "channel_id": {
+          "type": ["string", "null"],
+          "description": "Route/Channel UUID (null for Layer 1 auto-topic channels)"
+        },
+        "published_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "RFC3339 timestamp when the message was published"
+        },
+        "channel": {
+          "type": "string",
+          "description": "Redis channel name (e.g. content:crime, crime:homepage)"
+        }
+      }
+    },
+
+    "id": {
+      "type": "string",
+      "description": "Elasticsearch document ID"
+    },
+    "title": {
+      "type": "string",
+      "description": "Content title"
+    },
+    "body": {
+      "type": "string",
+      "description": "Full text content (alias for raw_text)"
+    },
+    "raw_text": {
+      "type": "string",
+      "description": "Full content without HTML"
+    },
+    "raw_html": {
+      "type": "string",
+      "description": "Original HTML markup (may be empty)"
+    },
+    "canonical_url": {
+      "type": "string",
+      "format": "uri",
+      "description": "Canonical URL of the content"
+    },
+    "source": {
+      "type": "string",
+      "description": "Source URL (alias for canonical_url)"
+    },
+    "published_date": {
+      "type": ["string", "null"],
+      "format": "date-time",
+      "description": "Original publication date (RFC3339)"
+    },
+
+    "quality_score": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 100,
+      "description": "Quality rating (0-100). Spam threshold: 30"
+    },
+    "topics": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Topic tags from classifier"
+    },
+    "content_type": {
+      "type": "string",
+      "enum": ["article", "page", "video", "image", "job", "recipe", "rfp"],
+      "description": "Primary content type"
+    },
+    "content_subtype": {
+      "type": "string",
+      "description": "Content subtype (press_release, blog_post, event, advisory, report, blotter, company_announcement)"
+    },
+    "source_reputation": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 100,
+      "description": "Source reliability score (0-100)"
+    },
+    "confidence": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1,
+      "description": "Classifier confidence (0-1)"
+    },
+
+    "og_title": { "type": "string", "description": "Open Graph title" },
+    "og_description": { "type": "string", "description": "Open Graph description" },
+    "og_image": { "type": "string", "description": "Open Graph image URL" },
+    "og_url": { "type": "string", "description": "Open Graph URL" },
+
+    "word_count": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Word count in content"
+    },
+
+    "crime_relevance": {
+      "type": "string",
+      "enum": ["core_street_crime", "peripheral_crime", "not_crime"],
+      "description": "Crime classification relevance"
+    },
+    "crime_sub_label": {
+      "type": "string",
+      "enum": ["criminal_justice", "crime_context", ""],
+      "description": "Crime sub-classification label"
+    },
+    "crime_types": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Crime type tags (violent_crime, property_crime, drug_crime, organized_crime, criminal_justice)"
+    },
+    "location_specificity": {
+      "type": "string",
+      "enum": ["local_canada", "national_canada", "international", "not_specified"],
+      "description": "Geographic scope of the content"
+    },
+    "homepage_eligible": {
+      "type": "boolean",
+      "description": "True if content qualifies for homepage placement"
+    },
+    "category_pages": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Category slugs for routing (e.g. violent-crime, crime)"
+    },
+    "review_required": {
+      "type": "boolean",
+      "description": "True if rules and ML classifier disagreed"
+    },
+
+    "mining": {
+      "type": ["object", "null"],
+      "description": "Mining classification data (null when classifier disabled)",
+      "properties": {
+        "relevance": { "type": "string", "enum": ["core_mining", "peripheral_mining", "not_mining"] },
+        "mining_stage": { "type": "string", "enum": ["exploration", "development", "production", "unspecified"] },
+        "commodities": { "type": "array", "items": { "type": "string" } },
+        "location": { "type": "string" },
+        "final_confidence": { "type": "number" },
+        "review_required": { "type": "boolean" },
+        "model_version": { "type": "string" }
+      }
+    },
+    "indigenous": {
+      "type": ["object", "null"],
+      "description": "Indigenous classification data (null when classifier disabled)",
+      "properties": {
+        "relevance": { "type": "string", "enum": ["core_indigenous", "peripheral_indigenous", "not_indigenous"] },
+        "categories": { "type": "array", "items": { "type": "string" } },
+        "final_confidence": { "type": "number" },
+        "review_required": { "type": "boolean" },
+        "model_version": { "type": "string" }
+      }
+    },
+    "coforge": {
+      "type": ["object", "null"],
+      "description": "Coforge classification data (null when classifier disabled)",
+      "properties": {
+        "relevance": { "type": "string", "enum": ["core_coforge", "peripheral", "not_relevant"] },
+        "relevance_confidence": { "type": "number" },
+        "audience": { "type": "string" },
+        "audience_confidence": { "type": "number" },
+        "topics": { "type": "array", "items": { "type": "string" } },
+        "industries": { "type": "array", "items": { "type": "string" } },
+        "final_confidence": { "type": "number" },
+        "review_required": { "type": "boolean" },
+        "model_version": { "type": "string" }
+      }
+    },
+    "entertainment": {
+      "type": ["object", "null"],
+      "description": "Entertainment classification data (null when classifier disabled)",
+      "properties": {
+        "relevance": { "type": "string", "enum": ["core_entertainment", "peripheral_entertainment", "not_entertainment"] },
+        "categories": { "type": "array", "items": { "type": "string" } },
+        "final_confidence": { "type": "number" },
+        "homepage_eligible": { "type": "boolean" },
+        "review_required": { "type": "boolean" },
+        "model_version": { "type": "string" }
+      }
+    },
+
+    "entertainment_relevance": { "type": "string", "description": "Flat entertainment relevance (legacy)" },
+    "entertainment_categories": { "type": "array", "items": { "type": "string" }, "description": "Flat entertainment categories (legacy)" },
+    "entertainment_homepage_eligible": { "type": "boolean", "description": "Flat entertainment homepage flag (legacy)" },
+
+    "recipe": {
+      "type": ["object", "null"],
+      "description": "Recipe extraction data (null when not a recipe)",
+      "properties": {
+        "extraction_method": { "type": "string" },
+        "name": { "type": "string" },
+        "ingredients": { "type": "array", "items": { "type": "string" } },
+        "category": { "type": "string" },
+        "cuisine": { "type": "string" }
+      }
+    },
+    "job": {
+      "type": ["object", "null"],
+      "description": "Job extraction data (null when not a job posting)",
+      "properties": {
+        "extraction_method": { "type": "string" },
+        "title": { "type": "string" },
+        "company": { "type": "string" },
+        "location": { "type": "string" },
+        "employment_type": { "type": "string" },
+        "industry": { "type": "string" }
+      }
+    },
+    "rfp": {
+      "type": ["object", "null"],
+      "description": "RFP extraction data (null when not an RFP)",
+      "properties": {
+        "extraction_method": { "type": "string" },
+        "title": { "type": "string" },
+        "reference_number": { "type": "string" },
+        "organization_name": { "type": "string" },
+        "closing_date": { "type": "string" },
+        "budget_min": { "type": ["number", "null"] },
+        "budget_max": { "type": ["number", "null"] },
+        "budget_currency": { "type": "string" },
+        "procurement_type": { "type": "string" },
+        "categories": { "type": "array", "items": { "type": "string" } },
+        "province": { "type": "string" },
+        "city": { "type": "string" },
+        "country": { "type": "string" }
+      }
+    },
+
+    "location_city": { "type": "string", "description": "Detected city name" },
+    "location_province": { "type": "string", "description": "Province code (e.g. ON, BC)" },
+    "location_country": { "type": "string", "description": "Country name or code" },
+    "location_confidence": { "type": "number", "minimum": 0, "maximum": 1, "description": "Location detection confidence" }
+  },
+  "additionalProperties": true
+}
