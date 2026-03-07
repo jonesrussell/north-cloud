@@ -663,6 +663,28 @@ services:
       timeout: 5s
       retries: 3
 
+  # ------------------------------------------------------------
+  # AI Observer
+  # ------------------------------------------------------------
+
+  ai-observer:
+    <<: *service-defaults
+    build:
+      context: .
+      dockerfile: ai-observer/Dockerfile
+    container_name: north-cloud-ai-observer
+    restart: unless-stopped
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    environment:
+      - AI_OBSERVER_ENABLED=${AI_OBSERVER_ENABLED:-false}
+      - AI_OBSERVER_DRY_RUN=${AI_OBSERVER_DRY_RUN:-false}
+      - AI_OBSERVER_INTERVAL_SECONDS=${AI_OBSERVER_INTERVAL_SECONDS:-1800}
+      - AI_OBSERVER_MAX_TOKENS_PER_INTERVAL=${AI_OBSERVER_MAX_TOKENS_PER_INTERVAL:-25000}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - ES_URL=http://elasticsearch:9200
+
 # ============================================================
 # Volumes & Networks
 # ============================================================

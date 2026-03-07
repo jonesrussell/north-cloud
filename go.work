@@ -1,6 +1,7 @@
 go 1.26
 
 use (
+	./ai-observer
 	./auth
 	./classifier
 	./click-tracker
@@ -13,7 +14,7 @@ use (
 	./publisher
 	./rfp-ingestor
 	./search
-	./source-manager
 	./social-publisher
+	./source-manager
 	./tests/integration/pipeline
 )

@@ -22,6 +22,7 @@ When modifying files, read the relevant service CLAUDE.md first. Deep specs in `
 | `social-publisher/**` | `social-publisher/CLAUDE.md` | `docs/specs/social-publisher.md` |
 | `rfp-ingestor/**` | `rfp-ingestor/CLAUDE.md` | `docs/specs/rfp-ingestor.md` |
 | `mcp-north-cloud/**` | `mcp-north-cloud/CLAUDE.md` | `docs/specs/mcp-server.md` |
+| `ai-observer/**` | `ai-observer/CLAUDE.md` | `docs/plans/2026-03-07-ai-observer-design.md` |
 | `docs/specs/**`, `.claude/**`, `**/CLAUDE.md` | updating-codified-context | — |
 | `docker-compose*.yml`, `Taskfile.yml` | `DOCKER.md` | — |
 

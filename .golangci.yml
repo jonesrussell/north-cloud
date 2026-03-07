@@ -308,6 +308,9 @@ linters:
           - forbidigo
         path: nc-http-proxy/.*\.go
       - linters:
+          - forbidigo
+        path: ai-observer/internal/bootstrap/config\.go
+      - linters:
           - testpackage
         path: internal/(config|logger)/.*_test\.go
       - linters:
