@@ -12,6 +12,8 @@ import (
 
 // insightMapping is the explicit ES mapping for the ai_insights index.
 // keyword fields enable aggregation/sorting without needing .keyword sub-fields.
+// details uses "flattened" type to avoid dynamic mapping conflicts when
+// LLM-generated values have inconsistent types across documents.
 var insightMapping = map[string]any{
 	"mappings": map[string]any{
 		"properties": map[string]any{
@@ -20,7 +22,7 @@ var insightMapping = map[string]any{
 			"category":          map[string]any{"type": "keyword"},
 			"severity":          map[string]any{"type": "keyword"},
 			"summary":           map[string]any{"type": "text"},
-			"details":           map[string]any{"type": "object", "dynamic": true},
+			"details":           map[string]any{"type": "flattened"},
 			"suggested_actions": map[string]any{"type": "text"},
 			"observer_version":  map[string]any{"type": "keyword"},
 			"model":             map[string]any{"type": "keyword"},

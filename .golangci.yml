@@ -312,7 +312,7 @@ linters:
         path: ai-observer/internal/bootstrap/config\.go
       - linters:
           - testpackage
-        path: internal/(config|logger)/.*_test\.go
+        path: (internal/(config|logger)/|ai-observer/internal/category/classifier/).*_test\.go
       - linters:
           - canonicalheader
         path: .*/(drupal|publisher)/.*client\.go
