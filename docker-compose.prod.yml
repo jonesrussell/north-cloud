@@ -676,6 +676,11 @@ services:
       - /home/deployer/orewire-laravel:/mnt/sites/orewire-laravel:ro
       - /home/deployer/coforge:/mnt/sites/coforge:ro
       - /home/deployer/movies-of-war.com:/mnt/sites/movies-of-war.com:ro
+      - /home/deployer/oneredpaperclip:/mnt/sites/oneredpaperclip:ro
+      - /home/deployer/diidjaaheer.live:/mnt/sites/diidjaaheer.live:ro
+      - /home/deployer/northops:/mnt/sites/northops:ro
+      - /home/deployer/goformx:/mnt/sites/goformx:ro
+      - /home/deployer/minoo:/mnt/sites/minoo:ro
     environment:
       ALLOY_LOG_LEVEL: info
 
