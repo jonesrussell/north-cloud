@@ -41,7 +41,9 @@
         {
           "refId": "A",
           "datasource": { "type": "elasticsearch", "uid": "ai-insights" },
-          "bucketAggs": [],
+          "bucketAggs": [
+            { "type": "date_histogram", "field": "created_at", "id": "2", "settings": { "interval": "auto" } }
+          ],
           "metrics": [{ "type": "count", "id": "1" }],
           "query": "*"
         }
@@ -57,7 +59,7 @@
       "options": {
         "colorMode": "value",
         "graphMode": "area",
-        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "reduceOptions": { "calcs": ["sum"], "fields": "", "values": false },
         "textMode": "auto",
         "justifyMode": "auto",
         "orientation": "auto"
@@ -74,7 +76,9 @@
         {
           "refId": "A",
           "datasource": { "type": "elasticsearch", "uid": "ai-insights" },
-          "bucketAggs": [],
+          "bucketAggs": [
+            { "type": "date_histogram", "field": "created_at", "id": "2", "settings": { "interval": "auto" } }
+          ],
           "metrics": [{ "type": "count", "id": "1" }],
           "query": "severity:high"
         }
@@ -90,7 +94,7 @@
       "options": {
         "colorMode": "value",
         "graphMode": "area",
-        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "reduceOptions": { "calcs": ["sum"], "fields": "", "values": false },
         "textMode": "auto",
         "justifyMode": "auto",
         "orientation": "auto"
@@ -107,7 +111,9 @@
         {
           "refId": "A",
           "datasource": { "type": "elasticsearch", "uid": "ai-insights" },
-          "bucketAggs": [],
+          "bucketAggs": [
+            { "type": "date_histogram", "field": "created_at", "id": "2", "settings": { "interval": "auto" } }
+          ],
           "metrics": [{ "type": "count", "id": "1" }],
           "query": "severity:medium"
         }
@@ -123,7 +129,7 @@
       "options": {
         "colorMode": "value",
         "graphMode": "area",
-        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "reduceOptions": { "calcs": ["sum"], "fields": "", "values": false },
         "textMode": "auto",
         "justifyMode": "auto",
         "orientation": "auto"
@@ -140,7 +146,9 @@
         {
           "refId": "A",
           "datasource": { "type": "elasticsearch", "uid": "ai-insights" },
-          "bucketAggs": [],
+          "bucketAggs": [
+            { "type": "date_histogram", "field": "created_at", "id": "2", "settings": { "interval": "auto" } }
+          ],
           "metrics": [{ "type": "count", "id": "1" }],
           "query": "severity:low"
         }
@@ -156,7 +164,7 @@
       "options": {
         "colorMode": "value",
         "graphMode": "area",
-        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "reduceOptions": { "calcs": ["sum"], "fields": "", "values": false },
         "textMode": "auto",
         "justifyMode": "auto",
         "orientation": "auto"
@@ -173,7 +181,9 @@
         {
           "refId": "A",
           "datasource": { "type": "elasticsearch", "uid": "ai-insights" },
-          "bucketAggs": [],
+          "bucketAggs": [
+            { "type": "date_histogram", "field": "created_at", "id": "2", "settings": { "interval": "auto" } }
+          ],
           "metrics": [{ "type": "sum", "id": "1", "field": "tokens_used" }],
           "query": "*"
         }
@@ -189,7 +199,7 @@
       "options": {
         "colorMode": "value",
         "graphMode": "area",
-        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "reduceOptions": { "calcs": ["sum"], "fields": "", "values": false },
         "textMode": "auto",
         "justifyMode": "auto",
         "orientation": "auto"
