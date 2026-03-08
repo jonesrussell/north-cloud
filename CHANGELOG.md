@@ -10,6 +10,12 @@ This project uses [Semantic Versioning](https://semver.org/).
 ### Added
 - M0 and M1 milestone design documents
 - GitHub milestones (M0-M4), service labels, and governance structure
+- **Global Indigenous Content Platform (D0)** — non-breaking expansion of indigenous pipeline to global coverage
+  - Source-Manager: `indigenous_region` column + migration (7 regions: canada, us, latin_america, oceania, europe, asia, africa)
+  - Crawler: region passthrough from source config to ES `meta.indigenous_region`
+  - ML Sidecar: multilingual pattern expansion (7 languages, 19 core patterns, 10 categories), model version `2026-03-08-indigenous-v2`
+  - Go Classifier: mirrored multilingual regex patterns (19 core + 5 peripheral), region passthrough to `IndigenousResult.Region`
+  - Publisher: region routing to `indigenous:region:{slug}` channels
 
 ## [0.5.0] - 2026-03-08
 
