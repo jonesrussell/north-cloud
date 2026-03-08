@@ -9,6 +9,6 @@
     "test": "echo 'no tests yet'"
   },
   "dependencies": {
-    "playwright": "^1.52.0"
+    "playwright": "1.52.0"
   }
 }
