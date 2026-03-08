@@ -51,8 +51,8 @@ func (r *SourceRepository) Create(ctx context.Context, source *models.Source) er
 			time, selectors, enabled,
 			feed_url, sitemap_url, ingestion_mode, feed_poll_interval_minutes,
 			allow_source_discovery, identity_key, extraction_profile, template_hint,
-			created_at, updated_at
-		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
+			render_mode, created_at, updated_at
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
 	`
 
 	_, err = r.db.ExecContext(ctx,
@@ -73,6 +73,7 @@ func (r *SourceRepository) Create(ctx context.Context, source *models.Source) er
 		source.IdentityKey,
 		extractionProfileJSON,
 		source.TemplateHint,
+		source.RenderMode,
 		source.CreatedAt,
 		source.UpdatedAt,
 	)
@@ -102,7 +103,7 @@ func (r *SourceRepository) GetByID(ctx context.Context, id string) (*models.Sour
 		       feed_url, sitemap_url, ingestion_mode, feed_poll_interval_minutes,
 		       feed_disabled_at, feed_disable_reason,
 		       allow_source_discovery, identity_key, extraction_profile, template_hint,
-		       created_at, updated_at
+		       render_mode, created_at, updated_at
 		FROM sources
 		WHERE id = $1
 	`
@@ -126,6 +127,7 @@ func (r *SourceRepository) GetByID(ctx context.Context, id string) (*models.Sour
 		&source.IdentityKey,
 		&source.ExtractionProfile,
 		&source.TemplateHint,
+		&source.RenderMode,
 		&source.CreatedAt,
 		&source.UpdatedAt,
 	)
@@ -166,7 +168,7 @@ func (r *SourceRepository) GetByIdentityKey(ctx context.Context, identityKey str
 		       feed_url, sitemap_url, ingestion_mode, feed_poll_interval_minutes,
 		       feed_disabled_at, feed_disable_reason,
 		       allow_source_discovery, identity_key, extraction_profile, template_hint,
-		       created_at, updated_at
+		       render_mode, created_at, updated_at
 		FROM sources
 		WHERE identity_key = $1
 		ORDER BY created_at ASC
@@ -234,7 +236,7 @@ func (r *SourceRepository) ListPaginated(ctx context.Context, filter ListFilter)
 		       feed_url, sitemap_url, ingestion_mode, feed_poll_interval_minutes,
 		       feed_disabled_at, feed_disable_reason,
 		       allow_source_discovery, identity_key, extraction_profile, template_hint,
-		       created_at, updated_at
+		       render_mode, created_at, updated_at
 		FROM sources
 		WHERE 1=1` + whereClause + orderClause + `
 		LIMIT $` + limitPlaceholder + ` OFFSET $` + offsetPlaceholder
@@ -293,6 +295,7 @@ func scanSourceRow(rows *sql.Rows) (*models.Source, error) {
 		&source.IdentityKey,
 		&source.ExtractionProfile,
 		&source.TemplateHint,
+		&source.RenderMode,
 		&source.CreatedAt,
 		&source.UpdatedAt,
 	); err != nil {
@@ -372,7 +375,7 @@ func (r *SourceRepository) List(ctx context.Context) ([]models.Source, error) {
 		       feed_url, sitemap_url, ingestion_mode, feed_poll_interval_minutes,
 		       feed_disabled_at, feed_disable_reason,
 		       allow_source_discovery, identity_key, extraction_profile, template_hint,
-		       created_at, updated_at
+		       render_mode, created_at, updated_at
 		FROM sources
 		ORDER BY name
 	`
@@ -407,7 +410,7 @@ func (r *SourceRepository) Update(ctx context.Context, source *models.Source) er
 		    enabled = $8,
 		    feed_url = $9, sitemap_url = $10, ingestion_mode = $11, feed_poll_interval_minutes = $12,
 		    allow_source_discovery = $13, identity_key = $14, extraction_profile = $15, template_hint = $16,
-		    updated_at = $17
+		    render_mode = $17, updated_at = $18
 		WHERE id = $1
 	`
 
@@ -429,6 +432,7 @@ func (r *SourceRepository) Update(ctx context.Context, source *models.Source) er
 		source.IdentityKey,
 		extractionProfileJSON,
 		source.TemplateHint,
+		source.RenderMode,
 		source.UpdatedAt,
 	)
 
@@ -543,8 +547,8 @@ func (r *SourceRepository) UpsertSource(ctx context.Context, tx *sql.Tx, source 
 			id, name, url, rate_limit, max_depth,
 			time, selectors, enabled,
 			feed_url, sitemap_url, ingestion_mode, feed_poll_interval_minutes,
-			created_at, updated_at
-		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+			render_mode, created_at, updated_at
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
 		ON CONFLICT (name) DO UPDATE SET
 			url = EXCLUDED.url,
 			rate_limit = EXCLUDED.rate_limit,
@@ -556,6 +560,7 @@ func (r *SourceRepository) UpsertSource(ctx context.Context, tx *sql.Tx, source 
 			sitemap_url = EXCLUDED.sitemap_url,
 			ingestion_mode = EXCLUDED.ingestion_mode,
 			feed_poll_interval_minutes = EXCLUDED.feed_poll_interval_minutes,
+			render_mode = EXCLUDED.render_mode,
 			updated_at = EXCLUDED.updated_at
 		RETURNING id, (xmax = 0) AS is_insert
 	`
@@ -576,6 +581,7 @@ func (r *SourceRepository) UpsertSource(ctx context.Context, tx *sql.Tx, source 
 		source.SitemapURL,
 		source.IngestionMode,
 		source.FeedPollIntervalMinutes,
+		source.RenderMode,
 		source.CreatedAt,
 		source.UpdatedAt,
 	).Scan(&returnedID, &isInsert)

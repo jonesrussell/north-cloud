@@ -33,9 +33,11 @@ type Source struct {
 	// ExtractionProfile: optional JSON for PipelineX domain-aware extraction.
 	ExtractionProfile *ExtractionProfileJSON `db:"extraction_profile" json:"extraction_profile,omitempty"`
 	// TemplateHint: optional PipelineX template inference (e.g. "substack", "wordpress").
-	TemplateHint *string   `db:"template_hint" json:"template_hint,omitempty"`
-	CreatedAt    time.Time `db:"created_at"    json:"created_at"`
-	UpdatedAt    time.Time `db:"updated_at"    json:"updated_at"`
+	TemplateHint *string `db:"template_hint" json:"template_hint,omitempty"`
+	// RenderMode: "static" (default) or "dynamic" (use Playwright render worker).
+	RenderMode string    `db:"render_mode" json:"render_mode"`
+	CreatedAt  time.Time `db:"created_at"  json:"created_at"`
+	UpdatedAt  time.Time `db:"updated_at"  json:"updated_at"`
 }
 
 // SelectorConfig represents CSS selector configuration

@@ -685,6 +685,30 @@ services:
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
       - ES_URL=http://elasticsearch:9200
 
+  # ------------------------------------------------------------
+  # Render Worker (Playwright)
+  # ------------------------------------------------------------
+
+  render-worker:
+    <<: *service-defaults
+    build: ./render-worker
+    container_name: north-cloud-render-worker
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
+    environment:
+      - PORT=3000
+      - MAX_CONCURRENT_TABS=1
+      - BROWSER_RECYCLE_AFTER=100
+      - DEFAULT_TIMEOUT_MS=15000
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/health', r => { r.statusCode === 200 ? process.exit(0) : process.exit(1) }).on('error', () => process.exit(1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
 # ============================================================
 # Volumes & Networks
 # ============================================================

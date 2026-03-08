@@ -29,6 +29,8 @@ type APISource struct {
 	IdentityKey *string `json:"identity_key,omitempty"`
 	// TemplateHint: optional PipelineX template inference (e.g. "substack", "wordpress").
 	TemplateHint *string `json:"template_hint,omitempty"`
+	// RenderMode: "static" (default) or "dynamic" (use Playwright render worker).
+	RenderMode string `json:"render_mode"`
 	// ExtractionProfile: optional JSON for PipelineX domain-aware extraction.
 	ExtractionProfile *json.RawMessage `json:"extraction_profile,omitempty"`
 	CreatedAt         *time.Time       `json:"created_at,omitempty"`

@@ -273,6 +273,17 @@ func (s *RawContentService) getSourceConfig(sourceURL string) (string, SourceSel
 		selectors.Exclude = sourceConfig.Selectors.Article.Exclude
 	}
 
+	// If source-manager has no selectors, try template registry by domain
+	if selectors.Title == "" && selectors.Body == "" && selectors.Container == "" {
+		hostname := extractHostFromURL(sourceURL)
+		if tmpl, ok := lookupTemplate(hostname); ok {
+			selectors = tmpl.Selectors
+			s.logger.Debug("Using CMS template selectors",
+				infralogger.String("url", sourceURL),
+				infralogger.String("template", tmpl.Name))
+		}
+	}
+
 	return sourceName, selectors
 }
 
@@ -379,6 +390,11 @@ func (s *RawContentService) convertToRawContent(rawData *RawContentData, sourceN
 	if detectedContentType != "" {
 		meta["detected_content_type"] = detectedContentType
 	}
+
+	// Tag page type for extraction quality measurement
+	linkCount := strings.Count(rawData.RawHTML, "<a ")
+	pageType := classifyPageType(rawData.Title, wordCount, linkCount)
+	meta["page_type"] = pageType
 
 	rawContent := &storagepkg.RawContent{
 		ID:                   rawData.ID,

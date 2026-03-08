@@ -430,6 +430,15 @@ func (c *Crawler) requestCallback(ctx context.Context) func(*colly.Request) {
 
 // setupCallbacks configures all collector callbacks (discovery, content detection, extraction).
 func (c *Crawler) setupCallbacks(ctx context.Context) {
+	// URL pre-filter: skip non-content URLs before fetching
+	c.collector.OnRequest(func(r *colly.Request) {
+		if shouldSkipURL(r.URL.String()) {
+			c.GetJobLogger().Debug(logs.CategoryFetch, "Skipping non-content URL",
+				logs.URL(r.URL.String()))
+			r.Abort()
+		}
+	})
+
 	c.collector.OnResponseHeaders(c.responseHeadersCallback())
 	c.collector.OnResponse(c.responseCallback(ctx))
 	c.collector.OnRequest(c.requestCallback(ctx))
