@@ -6,8 +6,8 @@ import (
 	"time"
 
 	"github.com/jmoiron/sqlx"
+	infracontext "github.com/jonesrussell/north-cloud/infrastructure/context"
 	_ "github.com/lib/pq" // PostgreSQL driver
-	infracontext "github.com/north-cloud/infrastructure/context"
 )
 
 const (

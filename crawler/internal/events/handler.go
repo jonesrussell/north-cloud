@@ -4,7 +4,7 @@ package events
 import (
 	"context"
 
-	infraevents "github.com/north-cloud/infrastructure/events"
+	infraevents "github.com/jonesrussell/north-cloud/infrastructure/events"
 )
 
 // EventHandler processes source lifecycle events.

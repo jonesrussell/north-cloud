@@ -36,11 +36,11 @@ go 1.25
 require (
 	github.com/gin-gonic/gin v1.11.0
 	github.com/lib/pq v1.11.0
-	github.com/north-cloud/infrastructure v0.0.0
+	github.com/jonesrussell/north-cloud/infrastructure v0.0.0
 	github.com/stretchr/testify v1.11.1
 )
 
-replace github.com/north-cloud/infrastructure => ../infrastructure
+replace github.com/jonesrussell/north-cloud/infrastructure => ../infrastructure
 ```
 
 **Step 3: Download dependencies**
@@ -72,7 +72,7 @@ package config
 import (
 	"time"
 
-	infraconfig "github.com/north-cloud/infrastructure/config"
+	infraconfig "github.com/jonesrussell/north-cloud/infrastructure/config"
 )
 
 const (
@@ -1728,7 +1728,7 @@ package api
 
 import (
 	"github.com/gin-gonic/gin"
-	infragin "github.com/north-cloud/infrastructure/gin"
+	infragin "github.com/jonesrussell/north-cloud/infrastructure/gin"
 )
 
 // SetupRoutes configures all API routes.
@@ -1755,8 +1755,8 @@ import (
 	"fmt"
 
 	"github.com/jonesrussell/north-cloud/pipeline/internal/config"
-	infraconfig "github.com/north-cloud/infrastructure/config"
-	infralogger "github.com/north-cloud/infrastructure/logger"
+	infraconfig "github.com/jonesrussell/north-cloud/infrastructure/config"
+	infralogger "github.com/jonesrussell/north-cloud/infrastructure/logger"
 )
 
 // LoadConfig loads and validates the service configuration.
@@ -1842,8 +1842,8 @@ import (
 	"github.com/jonesrussell/north-cloud/pipeline/internal/config"
 	"github.com/jonesrussell/north-cloud/pipeline/internal/database"
 	"github.com/jonesrussell/north-cloud/pipeline/internal/service"
-	infragin "github.com/north-cloud/infrastructure/gin"
-	infralogger "github.com/north-cloud/infrastructure/logger"
+	infragin "github.com/jonesrussell/north-cloud/infrastructure/gin"
+	infralogger "github.com/jonesrussell/north-cloud/infrastructure/logger"
 )
 
 const (
@@ -1897,8 +1897,8 @@ package bootstrap
 import (
 	"fmt"
 
-	infralogger "github.com/north-cloud/infrastructure/logger"
-	"github.com/north-cloud/infrastructure/profiling"
+	infralogger "github.com/jonesrussell/north-cloud/infrastructure/logger"
+	"github.com/jonesrussell/north-cloud/infrastructure/profiling"
 )
 
 // Start initializes and runs the pipeline service.

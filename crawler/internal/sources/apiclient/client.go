@@ -13,7 +13,7 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
-	infrahttp "github.com/north-cloud/infrastructure/http"
+	infrahttp "github.com/jonesrussell/north-cloud/infrastructure/http"
 )
 
 const (

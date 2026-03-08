@@ -6,8 +6,8 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/jonesrussell/north-cloud/click-tracker/internal/config"
 	"github.com/jonesrussell/north-cloud/click-tracker/internal/handler"
-	infragin "github.com/north-cloud/infrastructure/gin"
-	infralogger "github.com/north-cloud/infrastructure/logger"
+	infragin "github.com/jonesrussell/north-cloud/infrastructure/gin"
+	infralogger "github.com/jonesrussell/north-cloud/infrastructure/logger"
 )
 
 const (

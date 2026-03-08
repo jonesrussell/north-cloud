@@ -4,9 +4,9 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/jonesrussell/north-cloud/classifier/internal/config"
 	"github.com/jonesrussell/north-cloud/classifier/internal/telemetry"
-	infragin "github.com/north-cloud/infrastructure/gin"
-	infrajwt "github.com/north-cloud/infrastructure/jwt"
-	"github.com/north-cloud/infrastructure/monitoring"
+	infragin "github.com/jonesrussell/north-cloud/infrastructure/gin"
+	infrajwt "github.com/jonesrussell/north-cloud/infrastructure/jwt"
+	"github.com/jonesrussell/north-cloud/infrastructure/monitoring"
 )
 
 // SetupRoutes configures all API routes

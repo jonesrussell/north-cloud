@@ -5,12 +5,12 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	infragin "github.com/jonesrussell/north-cloud/infrastructure/gin"
+	infralogger "github.com/jonesrussell/north-cloud/infrastructure/logger"
 	"github.com/jonesrussell/north-cloud/pipeline/internal/api"
 	"github.com/jonesrussell/north-cloud/pipeline/internal/config"
 	"github.com/jonesrussell/north-cloud/pipeline/internal/database"
 	"github.com/jonesrussell/north-cloud/pipeline/internal/service"
-	infragin "github.com/north-cloud/infrastructure/gin"
-	infralogger "github.com/north-cloud/infrastructure/logger"
 )
 
 const (

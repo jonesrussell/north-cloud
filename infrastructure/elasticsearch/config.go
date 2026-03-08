@@ -3,7 +3,7 @@ package elasticsearch
 import (
 	"time"
 
-	"github.com/north-cloud/infrastructure/retry"
+	"github.com/jonesrussell/north-cloud/infrastructure/retry"
 )
 
 // Config holds Elasticsearch client configuration

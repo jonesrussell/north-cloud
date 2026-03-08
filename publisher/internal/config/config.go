@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
-	infraconfig "github.com/north-cloud/infrastructure/config"
-	infracontext "github.com/north-cloud/infrastructure/context"
+	infraconfig "github.com/jonesrussell/north-cloud/infrastructure/config"
+	infracontext "github.com/jonesrussell/north-cloud/infrastructure/context"
 )
 
 const (

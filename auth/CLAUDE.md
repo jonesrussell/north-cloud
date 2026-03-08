@@ -63,7 +63,7 @@ auth/
 
 **Debug mode**: When `APP_DEBUG=true` (or `service.debug: true` in config), the JWT secret validation is relaxed, allowing the default placeholder secret. Never use debug mode in production.
 
-**Infrastructure Gin server**: Auth uses `infragin.NewServerBuilder` from `github.com/north-cloud/infrastructure/gin`. This provides consistent server configuration (timeouts, health endpoint, graceful shutdown) across all services. Auth does NOT apply the JWT middleware to its own routes — it is the issuer.
+**Infrastructure Gin server**: Auth uses `infragin.NewServerBuilder` from `github.com/jonesrussell/north-cloud/infrastructure/gin`. This provides consistent server configuration (timeouts, health endpoint, graceful shutdown) across all services. Auth does NOT apply the JWT middleware to its own routes — it is the issuer.
 
 ## API Reference
 
@@ -156,7 +156,7 @@ All test helper functions call `t.Helper()` at the top as required by the linter
 Other services validate tokens using the shared middleware from `infrastructure/jwt`:
 
 ```go
-import infraJWT "github.com/north-cloud/infrastructure/jwt"
+import infraJWT "github.com/jonesrussell/north-cloud/infrastructure/jwt"
 
 // Register middleware on protected route group
 v1 := router.Group("/api/v1")

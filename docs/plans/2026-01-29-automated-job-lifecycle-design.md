@@ -210,7 +210,7 @@ import (
 
     "github.com/google/uuid"
     "github.com/redis/go-redis/v9"
-    infralogger "github.com/north-cloud/infrastructure/logger"
+    infralogger "github.com/jonesrussell/north-cloud/infrastructure/logger"
 )
 
 type Publisher struct {
@@ -383,7 +383,7 @@ import (
     "time"
 
     "github.com/redis/go-redis/v9"
-    infralogger "github.com/north-cloud/infrastructure/logger"
+    infralogger "github.com/jonesrussell/north-cloud/infrastructure/logger"
 )
 
 const (
@@ -616,7 +616,7 @@ import (
 
     "github.com/google/uuid"
     "github.com/north-cloud/crawler/internal/events"
-    infralogger "github.com/north-cloud/infrastructure/logger"
+    infralogger "github.com/jonesrussell/north-cloud/infrastructure/logger"
 )
 
 type Service struct {

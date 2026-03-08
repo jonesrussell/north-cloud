@@ -13,7 +13,7 @@ import (
 	"github.com/jonesrussell/north-cloud/crawler/internal/events"
 	"github.com/jonesrussell/north-cloud/crawler/internal/job"
 	"github.com/jonesrussell/north-cloud/crawler/internal/sources"
-	infraevents "github.com/north-cloud/infrastructure/events"
+	infraevents "github.com/jonesrussell/north-cloud/infrastructure/events"
 )
 
 // MockJobRepository implements job.Repository for testing.

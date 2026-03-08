@@ -892,7 +892,7 @@ func (c *Classifier) logSidecarError(
 }
 ```
 
-Add required import: `infralogger "github.com/north-cloud/infrastructure/logger"` to observability.go.
+Add required import: `infralogger "github.com/jonesrussell/north-cloud/infrastructure/logger"` to observability.go.
 
 **Step 5: Extract ModelVersion from each result type for the success log**
 

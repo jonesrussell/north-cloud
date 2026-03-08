@@ -6,7 +6,7 @@
 
 **Architecture:** Multi-category polling observer. Each poll cycle runs category passes in parallel behind a shared token-budget mutex. V0 ships the classifier drift category only (reads `*_classified_content` ES indices). Sidecar and ingestion categories are stubbed for future implementation.
 
-**Tech Stack:** Go 1.26, `github.com/anthropic-ai/anthropic-go-sdk`, `github.com/north-cloud/infrastructure` (config, logger, elasticsearch), `github.com/elastic/go-elasticsearch/v8`
+**Tech Stack:** Go 1.26, `github.com/anthropic-ai/anthropic-go-sdk`, `github.com/jonesrussell/north-cloud/infrastructure` (config, logger, elasticsearch), `github.com/elastic/go-elasticsearch/v8`
 
 **V0 scope note:** No operational Redis Streams for classifier/sidecar events exist yet — only source lifecycle events. No Loki query client exists in infrastructure. V0 delivers: service scaffold + classifier drift category (ES-based) + provider interface + cost-ceiling mutex + `ai_insights` ES index.
 
@@ -38,10 +38,10 @@ go 1.26
 require (
 	github.com/anthropic-ai/anthropic-go-sdk v0.2.0
 	github.com/elastic/go-elasticsearch/v8 v8.19.3
-	github.com/north-cloud/infrastructure v0.0.0
+	github.com/jonesrussell/north-cloud/infrastructure v0.0.0
 )
 
-replace github.com/north-cloud/infrastructure => ../infrastructure
+replace github.com/jonesrussell/north-cloud/infrastructure => ../infrastructure
 ```
 
 Run: `cd ai-observer && go mod tidy` — this resolves the actual latest version of `anthropic-go-sdk`. If the module path is wrong, check https://pkg.go.dev/github.com/anthropic-ai/anthropic-go-sdk for the correct path.
@@ -291,7 +291,7 @@ func LoadConfig() (Config, error) {
 package bootstrap
 
 import (
-	infralogger "github.com/north-cloud/infrastructure/logger"
+	infralogger "github.com/jonesrussell/north-cloud/infrastructure/logger"
 )
 
 // CreateLogger initializes the structured logger.
@@ -317,7 +317,7 @@ import (
 	"os/signal"
 	"syscall"
 
-	infralogger "github.com/north-cloud/infrastructure/logger"
+	infralogger "github.com/jonesrussell/north-cloud/infrastructure/logger"
 )
 
 // Start initializes and runs the ai-observer service.
@@ -1236,7 +1236,7 @@ import (
 	"sync"
 	"time"
 
-	infralogger "github.com/north-cloud/infrastructure/logger"
+	infralogger "github.com/jonesrussell/north-cloud/infrastructure/logger"
 	"github.com/jonesrussell/north-cloud/ai-observer/internal/category"
 	"github.com/jonesrussell/north-cloud/ai-observer/internal/insights"
 	"github.com/jonesrussell/north-cloud/ai-observer/internal/provider"
@@ -1447,7 +1447,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/north-cloud/infrastructure/elasticsearch"
+	"github.com/jonesrussell/north-cloud/infrastructure/elasticsearch"
 )
 
 // SetupElasticsearch creates and verifies the ES client.
@@ -1483,7 +1483,7 @@ import (
 	"syscall"
 	"time"
 
-	infralogger "github.com/north-cloud/infrastructure/logger"
+	infralogger "github.com/jonesrussell/north-cloud/infrastructure/logger"
 	classifiercategory "github.com/jonesrussell/north-cloud/ai-observer/internal/category/classifier"
 	"github.com/jonesrussell/north-cloud/ai-observer/internal/insights"
 	anthprovider "github.com/jonesrussell/north-cloud/ai-observer/internal/provider/anthropic"

@@ -21,10 +21,10 @@ import (
 	"github.com/jonesrussell/north-cloud/classifier/internal/mlclient"
 	"github.com/jonesrussell/north-cloud/classifier/internal/processor"
 	"github.com/jonesrussell/north-cloud/classifier/internal/storage"
-	infraconfig "github.com/north-cloud/infrastructure/config"
-	esclient "github.com/north-cloud/infrastructure/elasticsearch"
-	infralogger "github.com/north-cloud/infrastructure/logger"
-	"github.com/north-cloud/infrastructure/pipeline"
+	infraconfig "github.com/jonesrussell/north-cloud/infrastructure/config"
+	esclient "github.com/jonesrussell/north-cloud/infrastructure/elasticsearch"
+	infralogger "github.com/jonesrussell/north-cloud/infrastructure/logger"
+	"github.com/jonesrussell/north-cloud/infrastructure/pipeline"
 )
 
 const (

@@ -7,8 +7,8 @@ import (
 	"testing"
 
 	ginpkg "github.com/gin-gonic/gin"
-	infragin "github.com/north-cloud/infrastructure/gin"
-	"github.com/north-cloud/infrastructure/logger"
+	infragin "github.com/jonesrussell/north-cloud/infrastructure/gin"
+	"github.com/jonesrussell/north-cloud/infrastructure/logger"
 )
 
 func TestRequestIDLoggerMiddleware_GeneratesID(t *testing.T) {

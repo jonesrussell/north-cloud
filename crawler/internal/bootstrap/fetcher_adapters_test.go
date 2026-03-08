@@ -6,7 +6,7 @@ import (
 
 	"github.com/jonesrussell/north-cloud/crawler/internal/bootstrap"
 	"github.com/jonesrussell/north-cloud/crawler/internal/fetcher"
-	infralogger "github.com/north-cloud/infrastructure/logger"
+	infralogger "github.com/jonesrussell/north-cloud/infrastructure/logger"
 )
 
 func TestMapExtractedToRawContent_AllFields(t *testing.T) {

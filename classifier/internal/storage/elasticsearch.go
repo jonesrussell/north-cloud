@@ -10,7 +10,7 @@ import (
 
 	es "github.com/elastic/go-elasticsearch/v8"
 	"github.com/jonesrussell/north-cloud/classifier/internal/domain"
-	"github.com/north-cloud/infrastructure/naming"
+	"github.com/jonesrussell/north-cloud/infrastructure/naming"
 )
 
 // ElasticsearchStorage implements storage operations for the classifier

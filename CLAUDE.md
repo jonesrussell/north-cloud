@@ -215,7 +215,7 @@ ML sidecars (crime-ml, mining-ml, coforge-ml, entertainment-ml, indigenous-ml) l
 - **Standards**: `gofmt`, `goimports`, standard Go formatting
 - **Error Handling**: Always wrap errors: `fmt.Errorf("context: %w", err)`
 - **Logging**: All services use `infrastructure/logger` package directly
-  - Import: `infralogger "github.com/north-cloud/infrastructure/logger"`
+  - Import: `infralogger "github.com/jonesrussell/north-cloud/infrastructure/logger"`
   - Always JSON format, structured fields with snake_case
   - Example: `log.Info("Service started", infralogger.String("service", "crawler"))`
 - **Database**: Always use context-aware methods (`PingContext()`, `QueryContext()`, etc.)

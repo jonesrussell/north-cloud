@@ -1,4 +1,4 @@
-module github.com/north-cloud/infrastructure
+module github.com/jonesrussell/north-cloud/infrastructure
 
 go 1.26
 

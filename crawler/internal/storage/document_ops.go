@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"net/http"
 
-	infralogger "github.com/north-cloud/infrastructure/logger"
+	infralogger "github.com/jonesrussell/north-cloud/infrastructure/logger"
 )
 
 // IndexDocument indexes a document in Elasticsearch

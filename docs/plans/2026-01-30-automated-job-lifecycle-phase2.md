@@ -965,7 +965,7 @@ import (
 	"github.com/jonesrussell/north-cloud/crawler/internal/events"
 	"github.com/jonesrussell/north-cloud/crawler/internal/job"
 	"github.com/jonesrussell/north-cloud/crawler/internal/sources"
-	infraevents "github.com/north-cloud/infrastructure/events"
+	infraevents "github.com/jonesrussell/north-cloud/infrastructure/events"
 )
 
 // MockJobRepository implements job.Repository for testing.
@@ -1257,8 +1257,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/jonesrussell/north-cloud/crawler/internal/domain"
 	"github.com/jonesrussell/north-cloud/crawler/internal/sources"
-	infraevents "github.com/north-cloud/infrastructure/events"
-	infralogger "github.com/north-cloud/infrastructure/logger"
+	infraevents "github.com/jonesrussell/north-cloud/infrastructure/events"
+	infralogger "github.com/jonesrussell/north-cloud/infrastructure/logger"
 )
 
 // Repository defines the interface for job persistence.

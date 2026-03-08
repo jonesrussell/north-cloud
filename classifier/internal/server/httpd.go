@@ -6,8 +6,8 @@ import (
 	"os"
 
 	"github.com/jonesrussell/north-cloud/classifier/internal/bootstrap"
-	infralogger "github.com/north-cloud/infrastructure/logger"
-	"github.com/north-cloud/infrastructure/profiling"
+	infralogger "github.com/jonesrussell/north-cloud/infrastructure/logger"
+	"github.com/jonesrussell/north-cloud/infrastructure/profiling"
 )
 
 // StartHTTPServer starts the HTTP server for the classifier service (blocking).

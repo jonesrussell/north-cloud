@@ -15,7 +15,7 @@ import (
 	"github.com/jonesrussell/north-cloud/crawler/internal/config/minio"
 	"github.com/jonesrussell/north-cloud/crawler/internal/config/server"
 	"github.com/jonesrussell/north-cloud/crawler/internal/fetcher"
-	infraconfig "github.com/north-cloud/infrastructure/config"
+	infraconfig "github.com/jonesrussell/north-cloud/infrastructure/config"
 )
 
 // Interface defines the interface for configuration management.

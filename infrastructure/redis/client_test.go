@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/north-cloud/infrastructure/redis"
+	"github.com/jonesrussell/north-cloud/infrastructure/redis"
 )
 
 func TestNewClient_ReturnsNilWhenAddressEmpty(t *testing.T) {

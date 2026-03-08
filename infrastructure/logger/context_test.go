@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/north-cloud/infrastructure/logger"
+	"github.com/jonesrussell/north-cloud/infrastructure/logger"
 )
 
 func TestWithContext_FromContext_RoundTrip(t *testing.T) {

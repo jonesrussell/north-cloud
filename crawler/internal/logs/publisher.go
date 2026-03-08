@@ -4,8 +4,8 @@ import (
 	"context"
 	"sync/atomic"
 
-	infralogger "github.com/north-cloud/infrastructure/logger"
-	"github.com/north-cloud/infrastructure/sse"
+	infralogger "github.com/jonesrussell/north-cloud/infrastructure/logger"
+	"github.com/jonesrussell/north-cloud/infrastructure/sse"
 )
 
 // ssePublisher implements Publisher for SSE log streaming.

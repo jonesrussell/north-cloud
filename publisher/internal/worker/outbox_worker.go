@@ -14,9 +14,9 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 
+	infralogger "github.com/jonesrussell/north-cloud/infrastructure/logger"
 	"github.com/jonesrussell/north-cloud/publisher/internal/database"
 	"github.com/jonesrussell/north-cloud/publisher/internal/domain"
-	infralogger "github.com/north-cloud/infrastructure/logger"
 )
 
 const (

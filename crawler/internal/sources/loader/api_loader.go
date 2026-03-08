@@ -7,7 +7,7 @@ import (
 	"fmt"
 
 	"github.com/jonesrussell/north-cloud/crawler/internal/sources/apiclient"
-	infralogger "github.com/north-cloud/infrastructure/logger"
+	infralogger "github.com/jonesrussell/north-cloud/infrastructure/logger"
 )
 
 // APILoader handles loading source configurations from the source-manager API.

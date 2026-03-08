@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/north-cloud/infrastructure/monitoring"
+	"github.com/jonesrussell/north-cloud/infrastructure/monitoring"
 )
 
 // HealthStatus represents the status of a health check.

@@ -8,9 +8,9 @@ import (
 
 	es "github.com/elastic/go-elasticsearch/v8"
 	"github.com/elastic/go-elasticsearch/v8/esapi"
+	esclient "github.com/jonesrussell/north-cloud/infrastructure/elasticsearch"
+	"github.com/jonesrussell/north-cloud/infrastructure/logger"
 	"github.com/jonesrussell/north-cloud/search/internal/config"
-	esclient "github.com/north-cloud/infrastructure/elasticsearch"
-	"github.com/north-cloud/infrastructure/logger"
 )
 
 // Client wraps the Elasticsearch client

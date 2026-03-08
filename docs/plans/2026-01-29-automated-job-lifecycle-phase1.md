@@ -381,7 +381,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	infraevents "github.com/north-cloud/infrastructure/events"
+	infraevents "github.com/jonesrussell/north-cloud/infrastructure/events"
 )
 
 // MockRedisClient implements a minimal mock for testing
@@ -441,8 +441,8 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
-	infraevents "github.com/north-cloud/infrastructure/events"
-	infralogger "github.com/north-cloud/infrastructure/logger"
+	infraevents "github.com/jonesrussell/north-cloud/infrastructure/events"
+	infralogger "github.com/jonesrussell/north-cloud/infrastructure/logger"
 )
 
 // Publisher publishes source events to Redis Streams.
@@ -536,7 +536,7 @@ func (p *Publisher) PublishAsync(event infraevents.SourceEvent) {
 ### Step 4: Add dependency and run test
 
 ```bash
-cd source-manager && go get github.com/north-cloud/infrastructure/events
+cd source-manager && go get github.com/jonesrussell/north-cloud/infrastructure/events
 cd source-manager && go test ./internal/events/... -v
 ```
 
@@ -583,7 +583,7 @@ Edit `source-manager/internal/handlers/source.go`:
 import (
 	// ... existing imports ...
 	"github.com/jonesrussell/north-cloud/source-manager/internal/events"
-	infraevents "github.com/north-cloud/infrastructure/events"
+	infraevents "github.com/jonesrussell/north-cloud/infrastructure/events"
 )
 
 // Modify struct
@@ -828,7 +828,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	infraevents "github.com/north-cloud/infrastructure/events"
+	infraevents "github.com/jonesrussell/north-cloud/infrastructure/events"
 )
 
 // MockHandler implements EventHandler for testing
@@ -905,7 +905,7 @@ package events
 import (
 	"context"
 
-	infraevents "github.com/north-cloud/infrastructure/events"
+	infraevents "github.com/jonesrussell/north-cloud/infrastructure/events"
 )
 
 // EventHandler processes source lifecycle events.
@@ -933,8 +933,8 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
-	infraevents "github.com/north-cloud/infrastructure/events"
-	infralogger "github.com/north-cloud/infrastructure/logger"
+	infraevents "github.com/jonesrussell/north-cloud/infrastructure/events"
+	infralogger "github.com/jonesrussell/north-cloud/infrastructure/logger"
 )
 
 const (
@@ -1210,7 +1210,7 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
-	infraevents "github.com/north-cloud/infrastructure/events"
+	infraevents "github.com/jonesrussell/north-cloud/infrastructure/events"
 )
 
 func TestNoOpHandler_HandleSourceCreated_LogsAndReturnsNil(t *testing.T) {
@@ -1255,8 +1255,8 @@ package events
 import (
 	"context"
 
-	infraevents "github.com/north-cloud/infrastructure/events"
-	infralogger "github.com/north-cloud/infrastructure/logger"
+	infraevents "github.com/jonesrussell/north-cloud/infrastructure/events"
+	infralogger "github.com/jonesrussell/north-cloud/infrastructure/logger"
 )
 
 // NoOpHandler logs events but takes no action.

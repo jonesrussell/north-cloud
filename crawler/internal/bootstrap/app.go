@@ -19,8 +19,8 @@ import (
 	"time"
 
 	"github.com/jonesrussell/north-cloud/crawler/internal/api"
-	infralogger "github.com/north-cloud/infrastructure/logger"
-	"github.com/north-cloud/infrastructure/profiling"
+	infralogger "github.com/jonesrussell/north-cloud/infrastructure/logger"
+	"github.com/jonesrussell/north-cloud/infrastructure/profiling"
 )
 
 // StaleURLRecoverer recovers frontier URLs stuck in 'fetching' state.

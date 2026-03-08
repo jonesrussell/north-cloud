@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	infraevents "github.com/north-cloud/infrastructure/events"
-	infralogger "github.com/north-cloud/infrastructure/logger"
+	infraevents "github.com/jonesrussell/north-cloud/infrastructure/events"
+	infralogger "github.com/jonesrussell/north-cloud/infrastructure/logger"
 	"github.com/redis/go-redis/v9"
 )
 

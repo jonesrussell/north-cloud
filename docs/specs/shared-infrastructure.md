@@ -156,15 +156,15 @@ type LoggingConfig struct {
 
 ### Import Conventions
 ```go
-import infralogger "github.com/north-cloud/infrastructure/logger"
-import infraconfig "github.com/north-cloud/infrastructure/config"
+import infralogger "github.com/jonesrussell/north-cloud/infrastructure/logger"
+import infraconfig "github.com/jonesrussell/north-cloud/infrastructure/config"
 ```
 
 ### go.mod Pattern
 ```
 module github.com/jonesrussell/north-cloud/{service}
-require github.com/north-cloud/infrastructure v0.0.0
-replace github.com/north-cloud/infrastructure => ../infrastructure
+require github.com/jonesrussell/north-cloud/infrastructure v0.0.0
+replace github.com/jonesrussell/north-cloud/infrastructure => ../infrastructure
 ```
 
 ## Edge Cases

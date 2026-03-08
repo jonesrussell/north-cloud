@@ -11,7 +11,7 @@ import (
 	configtypes "github.com/jonesrussell/north-cloud/crawler/internal/config/types"
 	"github.com/jonesrussell/north-cloud/crawler/internal/sources/loader"
 	"github.com/jonesrussell/north-cloud/crawler/internal/sources/types"
-	infralogger "github.com/north-cloud/infrastructure/logger"
+	infralogger "github.com/jonesrussell/north-cloud/infrastructure/logger"
 )
 
 // Interface defines the read-only interface for accessing sources.

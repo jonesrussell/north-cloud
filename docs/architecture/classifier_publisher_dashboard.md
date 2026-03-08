@@ -734,7 +734,7 @@ import (
 	"github.com/north-cloud/classifier/internal/classifier"
 	"github.com/north-cloud/classifier/internal/domain"
 	"github.com/north-cloud/classifier/internal/telemetry"
-	infralogger "github.com/north-cloud/infrastructure/logger"
+	infralogger "github.com/jonesrussell/north-cloud/infrastructure/logger"
 )
 
 const (
@@ -1720,7 +1720,7 @@ import (
 	"github.com/north-cloud/publisher/internal/database"
 	"github.com/north-cloud/publisher/internal/domain"
 	"github.com/north-cloud/publisher/internal/telemetry"
-	infralogger "github.com/north-cloud/infrastructure/logger"
+	infralogger "github.com/jonesrussell/north-cloud/infrastructure/logger"
 )
 
 const (

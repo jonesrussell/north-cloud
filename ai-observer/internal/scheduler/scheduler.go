@@ -9,7 +9,7 @@ import (
 	"github.com/jonesrussell/north-cloud/ai-observer/internal/category"
 	"github.com/jonesrussell/north-cloud/ai-observer/internal/insights"
 	"github.com/jonesrussell/north-cloud/ai-observer/internal/provider"
-	"github.com/north-cloud/infrastructure/logger"
+	"github.com/jonesrussell/north-cloud/infrastructure/logger"
 )
 
 const (

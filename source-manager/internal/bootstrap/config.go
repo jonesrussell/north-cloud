@@ -4,9 +4,9 @@ import (
 	"flag"
 	"fmt"
 
+	infraconfig "github.com/jonesrussell/north-cloud/infrastructure/config"
+	infralogger "github.com/jonesrussell/north-cloud/infrastructure/logger"
 	"github.com/jonesrussell/north-cloud/source-manager/internal/config"
-	infraconfig "github.com/north-cloud/infrastructure/config"
-	infralogger "github.com/north-cloud/infrastructure/logger"
 )
 
 // LoadConfig loads configuration. Uses -config flag with infraconfig default.

@@ -3,7 +3,7 @@ package events
 import (
 	"context"
 
-	infralogger "github.com/north-cloud/infrastructure/logger"
+	infralogger "github.com/jonesrussell/north-cloud/infrastructure/logger"
 )
 
 // DefaultHandler provides a basic implementation of EventHandler that logs events.

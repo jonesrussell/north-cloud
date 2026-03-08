@@ -3,7 +3,7 @@ package clickurl_test
 import (
 	"testing"
 
-	"github.com/north-cloud/infrastructure/clickurl"
+	"github.com/jonesrussell/north-cloud/infrastructure/clickurl"
 )
 
 const testSecret = "test-secret-key-for-hmac-signing"

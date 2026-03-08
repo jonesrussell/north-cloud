@@ -9,7 +9,7 @@ import (
 	"github.com/jonesrussell/north-cloud/crawler/internal/content"
 	"github.com/jonesrussell/north-cloud/crawler/internal/content/contenttype"
 	"github.com/jonesrussell/north-cloud/crawler/internal/sources"
-	infralogger "github.com/north-cloud/infrastructure/logger"
+	infralogger "github.com/jonesrussell/north-cloud/infrastructure/logger"
 )
 
 // defaultProcessorsCapacity is the pre-allocated capacity for processor slice

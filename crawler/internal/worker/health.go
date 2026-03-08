@@ -5,7 +5,7 @@ import (
 	"sync"
 	"time"
 
-	infralogger "github.com/north-cloud/infrastructure/logger"
+	infralogger "github.com/jonesrussell/north-cloud/infrastructure/logger"
 )
 
 // HealthStatus represents the health status of the pool.

@@ -19,7 +19,7 @@ require (
 	github.com/minio/minio-go/v7 v7.0.98
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/mmcdole/gofeed v1.3.0
-	github.com/north-cloud/infrastructure v0.0.0
+	github.com/jonesrussell/north-cloud/infrastructure v0.0.0
 	github.com/redis/go-redis/v9 v9.18.0
 	github.com/temoto/robotstxt v1.1.2
 	golang.org/x/net v0.51.0
@@ -103,6 +103,6 @@ require (
 	google.golang.org/protobuf v1.36.11 // indirect
 )
 
-replace github.com/north-cloud/infrastructure => ../infrastructure
+replace github.com/jonesrussell/north-cloud/infrastructure => ../infrastructure
 
 replace github.com/jonesrussell/north-cloud/index-manager => ../index-manager

@@ -10,7 +10,7 @@ import (
 	"github.com/lib/pq"
 
 	"github.com/jonesrussell/north-cloud/classifier/internal/domain"
-	infralogger "github.com/north-cloud/infrastructure/logger"
+	infralogger "github.com/jonesrussell/north-cloud/infrastructure/logger"
 )
 
 // OutboxWriter writes classified content to the publisher outbox for guaranteed delivery.

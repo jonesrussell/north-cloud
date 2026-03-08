@@ -15,7 +15,7 @@ import (
 	"github.com/jonesrussell/north-cloud/ai-observer/internal/insights"
 	anthprovider "github.com/jonesrussell/north-cloud/ai-observer/internal/provider/anthropic"
 	"github.com/jonesrussell/north-cloud/ai-observer/internal/scheduler"
-	"github.com/north-cloud/infrastructure/logger"
+	"github.com/jonesrussell/north-cloud/infrastructure/logger"
 )
 
 // Start initializes and runs the ai-observer service.

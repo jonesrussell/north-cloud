@@ -10,7 +10,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/jonesrussell/north-cloud/classifier/internal/config"
-	infragin "github.com/north-cloud/infrastructure/gin"
+	infragin "github.com/jonesrussell/north-cloud/infrastructure/gin"
 )
 
 const testInternalSecret = "test-secret-123"

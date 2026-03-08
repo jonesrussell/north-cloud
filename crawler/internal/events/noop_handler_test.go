@@ -7,7 +7,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jonesrussell/north-cloud/crawler/internal/events"
-	infraevents "github.com/north-cloud/infrastructure/events"
+	infraevents "github.com/jonesrussell/north-cloud/infrastructure/events"
 )
 
 func TestNoOpHandler_AllMethods_ReturnNil(t *testing.T) {

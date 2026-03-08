@@ -10,9 +10,9 @@ import (
 	crawlerintevents "github.com/jonesrussell/north-cloud/crawler/internal/events"
 	"github.com/jonesrussell/north-cloud/crawler/internal/logs"
 	"github.com/jonesrussell/north-cloud/crawler/internal/scheduler"
-	infragin "github.com/north-cloud/infrastructure/gin"
-	infralogger "github.com/north-cloud/infrastructure/logger"
-	"github.com/north-cloud/infrastructure/sse"
+	infragin "github.com/jonesrussell/north-cloud/infrastructure/gin"
+	infralogger "github.com/jonesrussell/north-cloud/infrastructure/logger"
+	"github.com/jonesrussell/north-cloud/infrastructure/sse"
 )
 
 // === Constants ===
