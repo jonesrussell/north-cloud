@@ -1,0 +1,14 @@
+{
+  "name": "north-cloud-render-worker",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Playwright-based HTML render worker for NorthCloud crawler",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "test": "echo 'no tests yet'"
+  },
+  "dependencies": {
+    "playwright": "^1.52.0"
+  }
+}

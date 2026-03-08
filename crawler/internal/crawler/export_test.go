@@ -49,3 +49,6 @@ func CheckRedirect(ctx context.Context, source *configtypes.Source) error {
 func ExplicitPatterns(patterns ...string) []*regexp.Regexp {
 	return compileContentPatterns(patterns)
 }
+
+// ShouldSkipURL exports shouldSkipURL for testing.
+var ShouldSkipURL = shouldSkipURL
