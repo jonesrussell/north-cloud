@@ -47,7 +47,7 @@ services:
   postgres-crawler:
     <<: *postgres-defaults
     ports:
-      - "${POSTGRES_CRAWLER_PORT:-5433}:5432"
+      - "127.0.0.1:${POSTGRES_CRAWLER_PORT:-5433}:5432"
     environment:
       POSTGRES_USER: ${POSTGRES_CRAWLER_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_CRAWLER_PASSWORD:-postgres}
@@ -151,7 +151,7 @@ services:
           cpus: "0.25"
           memory: 256M
     ports:
-      - "${REDIS_PORT:-6379}:6379"
+      - "127.0.0.1:${REDIS_PORT:-6379}:6379"
     command: >
       sh -c "
       if [ -n \"$$REDIS_PASSWORD\" ]; then
