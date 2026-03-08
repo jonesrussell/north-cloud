@@ -66,8 +66,32 @@ ai-observer/
 | 3 | Production with classifier category only |
 | 4 | Add sidecar/ingestion categories (requires upstream event emission) |
 
+## Gotchas
+
+- **ES mapping changes require manual index deletion**: `EnsureMapping` only creates the index if
+  it doesn't exist. After changing `insightMapping` in `insights/mapping.go`, you must manually
+  delete the index in production and restart ai-observer:
+  ```bash
+  ssh jones@northcloud.one "docker exec north-cloud-elasticsearch-1 curl -s -X DELETE http://localhost:9200/ai_insights"
+  # Then restart so it recreates with the new mapping
+  docker compose -f docker-compose.base.yml -f docker-compose.prod.yml restart ai-observer
+  ```
+  Data loss is acceptable — insights are ephemeral advisory data.
+
+- **`details` field uses flattened ES type**: LLM-generated details have inconsistent types across
+  documents. The `flattened` mapping avoids dynamic type conflicts. All leaf values stored as strings.
+
+## Grafana Dashboard
+
+The AI Insights dashboard is at `/d/north-cloud-ai-insights` and shows:
+- Overview stats (total insights, severity counts, token usage, error count)
+- Trends (insights over time by severity, token usage over time)
+- Severity/category/model breakdowns (pie charts)
+- Service logs (Loki) and recent insights table (ES)
+
+Datasource: `ai-insights` (uid: `ai-insights`) pointing to `ai_insights` index with `created_at` time field.
+
 ## Deferred (not in v0)
 
 - Sidecar anomaly category — needs operational events on Redis Streams
 - Ingestion failure category — needs Loki HTTP query client in infrastructure
-- Dashboard UI for `ai_insights` index

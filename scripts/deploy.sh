@@ -448,14 +448,21 @@ echo ""
 
 if [ "${INFRA_CHANGED:-false}" = "true" ] || [ -z "$SERVICES_TO_UPDATE" ]; then
   echo -e "${GREEN}Step 3.5: Restarting infrastructure services (nginx, observability)...${NC}"
-  # Nginx mounts infrastructure/nginx/nginx.conf as a volume — `up -d` won't
-  # detect volume content changes, so we force-recreate to reload the config.
+  # Nginx and Grafana mount config as volumes — `up -d` won't detect volume
+  # content changes, so we force-recreate to reload configs on deploy.
+  # Nginx: infrastructure/nginx/nginx.conf
+  # Grafana: infrastructure/grafana/provisioning/ (datasources, alerting)
   if $COMPOSE_CMD up -d --force-recreate nginx 2>&1; then
     echo -e "${GREEN}✓ Nginx restarted${NC}"
   else
     echo -e "${YELLOW}WARNING: Failed to restart nginx${NC}"
   fi
-  if $COMPOSE_CMD --profile observability up -d alloy loki grafana 2>&1; then
+  if $COMPOSE_CMD --profile observability up -d --force-recreate grafana 2>&1; then
+    echo -e "${GREEN}✓ Grafana restarted${NC}"
+  else
+    echo -e "${YELLOW}WARNING: Failed to restart grafana (profile may not be active)${NC}"
+  fi
+  if $COMPOSE_CMD --profile observability up -d alloy loki 2>&1; then
     echo -e "${GREEN}✓ Observability services restarted${NC}"
   else
     echo -e "${YELLOW}WARNING: Failed to restart observability services (profile may not be active)${NC}"
