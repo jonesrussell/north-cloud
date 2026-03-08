@@ -1,0 +1,17 @@
+# Elasticsearch datasource for AI Observer insights index
+# Used by the AI Insights dashboard for observer performance panels
+
+apiVersion: 1
+
+datasources:
+  - name: AI Insights
+    type: elasticsearch
+    access: proxy
+    uid: ai-insights
+    url: http://elasticsearch:9200
+    isDefault: false
+    editable: true
+    database: 'ai_insights'
+    jsonData:
+      esVersion: '9.0.0'
+      timeField: created_at

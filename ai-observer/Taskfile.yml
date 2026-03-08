@@ -109,6 +109,14 @@ tasks:
       - golangci-lint cache clean
       - golangci-lint run --config ../.golangci.yml ./...
 
+  vuln:
+    desc: "Run vulnerability check"
+    sources:
+      - "go.mod"
+      - "go.sum"
+    cmds:
+      - govulncheck ./...
+
   vendor:
     desc: Sync vendor directory
     cmds:

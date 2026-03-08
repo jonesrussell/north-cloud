@@ -157,7 +157,7 @@ tasks:
       - |
         SERVICES=$(./scripts/detect-changed-services.sh "${BASE_REF:-HEAD~1}")
         echo "Changed services: $SERVICES"
-        GO_SERVICES="auth classifier crawler index-manager mcp-north-cloud nc-http-proxy pipeline publisher search source-manager"
+        GO_SERVICES="ai-observer auth classifier crawler index-manager mcp-north-cloud nc-http-proxy pipeline publisher search source-manager"
         if echo "$SERVICES" | grep -q '"all"'; then
           echo "Infrastructure changed - checking all services"
           task vuln
@@ -175,6 +175,7 @@ tasks:
   lint:
     desc: "Run linters for all microservices sequentially"
     cmds:
+      - task: lint:ai-observer
       - task: lint:auth
       - task: lint:classifier
       - task: lint:click-tracker
@@ -192,6 +193,7 @@ tasks:
   lint:force:
     desc: "Run linters for all services (ignore cache). Use before pushing to match CI."
     cmds:
+      - task: lint:ai-observer:force
       - task: lint:auth:force
       - task: lint:classifier:force
       - task: lint:click-tracker:force
@@ -205,6 +207,11 @@ tasks:
       - task: lint:search:force
       - task: lint:search-frontend:force
       - task: lint:source-manager:force
+
+  lint:ai-observer:force:
+    desc: "Run ai-observer linter (ignore cache)"
+    cmds:
+      - task ai-observer:lint:no-cache -f
 
   lint:auth:force:
     desc: "Run auth linter (ignore cache)"
@@ -274,6 +281,7 @@ tasks:
   lint:all:
     desc: "Run linters for all microservices (same as lint; use --parallel for parallel execution)"
     cmds:
+      - task: lint:ai-observer
       - task: lint:auth
       - task: lint:classifier
       - task: lint:click-tracker
@@ -287,6 +295,11 @@ tasks:
       - task: lint:search
       - task: lint:search-frontend
       - task: lint:source-manager
+
+  lint:ai-observer:
+    desc: "Run linter for ai-observer service"
+    cmds:
+      - task ai-observer:lint
 
   lint:auth:
     desc: "Run linter for auth service"
@@ -361,6 +374,7 @@ tasks:
   vendor:
     desc: "Run go mod vendor in each Go module (run after dependency changes)"
     cmds:
+      - task ai-observer:vendor
       - task auth:vendor
       - task classifier:vendor
       - task click-tracker:vendor
@@ -383,6 +397,7 @@ tasks:
   vuln:
     desc: "Run vulnerability check for all Go microservices"
     cmds:
+      - task ai-observer:vuln
       - task auth:vuln
       - task classifier:vuln
       - task crawler:vuln
@@ -393,6 +408,11 @@ tasks:
       - task publisher:vuln
       - task search:vuln
       - task source-manager:vuln
+
+  vuln:ai-observer:
+    desc: "Run vulnerability check for ai-observer service"
+    cmds:
+      - task ai-observer:vuln
 
   vuln:auth:
     desc: "Run vulnerability check for auth service"
@@ -447,6 +467,7 @@ tasks:
   test:
     desc: "Run tests for all microservices sequentially"
     cmds:
+      - task: test:ai-observer
       - task: test:auth
       - task: test:classifier
       - task: test:click-tracker
@@ -465,6 +486,7 @@ tasks:
   test:parallel:
     desc: "Run tests for all microservices in parallel"
     cmds:
+      - task: test:ai-observer
       - task: test:auth
       - task: test:classifier
       - task: test:click-tracker
@@ -478,6 +500,11 @@ tasks:
       - task: test:search
       - task: test:search-frontend
       - task: test:source-manager
+
+  test:ai-observer:
+    desc: "Run tests for ai-observer service"
+    cmds:
+      - task ai-observer:test
 
   test:auth:
     desc: "Run tests for auth service"
@@ -547,6 +574,7 @@ tasks:
   test:race:
     desc: "Run tests with race detector for all microservices sequentially"
     cmds:
+      - task: test:race:ai-observer
       - task: test:race:auth
       - task: test:race:classifier
       - task: test:race:click-tracker
@@ -564,6 +592,7 @@ tasks:
   test:race:parallel:
     desc: "Run tests with race detector for all microservices in parallel"
     cmds:
+      - task: test:race:ai-observer
       - task: test:race:auth
       - task: test:race:classifier
       - task: test:race:click-tracker
@@ -577,6 +606,11 @@ tasks:
       - task: test:race:search
       - task: test:race:search-frontend
       - task: test:race:source-manager
+
+  test:race:ai-observer:
+    desc: "Run tests with race detector for ai-observer service"
+    cmds:
+      - task ai-observer:test:race
 
   test:race:auth:
     desc: "Run tests with race detector for auth service"
@@ -646,6 +680,7 @@ tasks:
   test:cover:
     desc: "Run tests with coverage for all microservices sequentially"
     cmds:
+      - task: test:cover:ai-observer
       - task: test:cover:auth
       - task: test:cover:classifier
       - task: test:cover:click-tracker
@@ -663,6 +698,7 @@ tasks:
   test:cover:parallel:
     desc: "Run tests with coverage for all microservices in parallel"
     cmds:
+      - task: test:cover:ai-observer
       - task: test:cover:auth
       - task: test:cover:classifier
       - task: test:cover:click-tracker
@@ -676,6 +712,11 @@ tasks:
       - task: test:cover:search
       - task: test:cover:search-frontend
       - task: test:cover:source-manager
+
+  test:cover:ai-observer:
+    desc: "Run tests with coverage for ai-observer service"
+    cmds:
+      - task ai-observer:test:coverage
 
   test:cover:auth:
     desc: "Run tests with coverage for auth service"
