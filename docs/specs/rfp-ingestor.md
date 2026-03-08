@@ -1,5 +1,7 @@
 # RFP Ingestor Spec
 
+> Last verified: 2026-03-08
+
 ## Overview
 
 Stand-alone feed ingestor that polls CanadaBuys CSV feeds and bulk-indexes documents to Elasticsearch. **Bypasses the classifier** — has no connection to the classifier or publisher pipeline. Documents become discoverable via the search service through the `*_classified_content` ES index wildcard.
