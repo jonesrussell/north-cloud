@@ -572,3 +572,19 @@ Key architectural changes (see full history in git):
 - **Publisher Modernization** (2025-12-28): Database-backed Redis Pub/Sub routing hub
 - **Dashboard Authentication** (2025-12-27): JWT-based auth with route guards
 - **Raw Content Pipeline** (2025-12-23): Three-stage pipeline (raw → classify → publish)
+
+---
+
+## Versioning Strategy
+
+NorthCloud uses [Semantic Versioning](https://semver.org/):
+
+- **MAJOR**: Breaking API changes visible to consumers
+- **MINOR**: New features, milestones, or capabilities
+- **PATCH**: Bug fixes, documentation, non-breaking improvements
+
+The platform version is stored in `VERSION` at the repo root. All services share the platform version — there is no per-service versioning.
+
+Git tags follow the pattern `v{MAJOR}.{MINOR}.{PATCH}` (e.g., `v0.5.0`).
+
+See [CHANGELOG.md](./CHANGELOG.md) for the full history of changes.
