@@ -1,0 +1,89 @@
+# Changelog
+
+All notable changes to NorthCloud are documented in this file.
+
+Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
+This project uses [Semantic Versioning](https://semver.org/).
+
+## [Unreleased]
+
+### Added
+- M0 and M1 milestone design documents
+- GitHub milestones (M0-M4), service labels, and governance structure
+
+## [0.5.0] - 2026-03-08
+
+### Added
+- AI Observer service for classifier drift detection
+- Grafana dashboard for AI Insights
+- Prometheus metrics and pipeline dashboard for publisher
+- Contract test job in CI pipeline
+- v1 contract schemas for Redis messages, search API, and channels
+- MCP fetch_url tool with schema extraction and JS renderer
+- Playwright renderer added to CI build pipeline
+
+### Fixed
+- AI Observer: read source_name instead of non-existent domain field
+- AI Observer: strip markdown fences from LLM JSON response
+- AI Observer: use flattened ES mapping for details field
+- Deploy: force-recreate Grafana on infrastructure changes
+- Deploy: route Redis through compose network
+- Security: bind Redis and Postgres-crawler to 127.0.0.1 only
+
+## [0.4.0] - 2026-02-16
+
+### Added
+- Indigenous ML sidecar and Layer 7 Indigenous routing in publisher
+- Mining ML sidecar and Layer 5 mining routing in publisher
+- Entertainment ML sidecar and Layer 6 entertainment routing
+- Coforge ML sidecar and Layer 8 coforge routing
+- Source name sanitization extracted into infrastructure/naming package
+- MCP audit logging, rate limiting, health check, error sanitization
+
+### Fixed
+- Classifier: skip head and aside in ExtractTextFromHTML
+- RFP Ingestor: add explicit .keyword sub-field to content_type mapping
+- RFP Ingestor: align ES mapping with search service expectations
+- Search: parse topics[] array query param format
+- Search: add human-readable label to facet buckets
+
+## [0.3.0] - 2026-01-31
+
+### Added
+- Crawler: support unlimited crawl depth via max_depth: -1
+- Classifier: event/recipe/job/obituary keyword heuristics + Schema.org Event detection
+- Source Manager: Excel import improvements + internal tests
+- Crawler: Colly features implementation
+- Crawler: URL frontier for deduplication
+- RFP Ingestor service (CanadaBuys CSV feed)
+- Social Publisher service (Redis subscriber with priority queue)
+- Click Tracker service
+
+### Fixed
+- Crawler: prevent fetcher from overwriting enriched raw content docs
+- Classifier: fix ES index naming derivation + bulk response error parsing
+
+## [0.2.0] - 2026-01-07
+
+### Added
+- Crime sub-category classification (violent, property, drug, organized, justice)
+- Pipeline event service
+- Database-backed publisher routing with 8 layers
+
+### Changed
+- Publisher modernization: database-backed Redis Pub/Sub routing hub
+- Dashboard authentication: JWT-based auth with route guards
+
+## [0.1.0] - 2025-12-23
+
+### Added
+- Raw content pipeline (raw → classify → publish)
+- Crawler with interval-based job scheduler
+- Classifier with hybrid rules+ML architecture
+- Publisher with topic-based routing
+- Source Manager with CSS selector configuration
+- Search service with multi-index wildcard queries
+- Dashboard (Vue.js 3)
+- Auth service (JWT tokens)
+- Index Manager for ES lifecycle
+- Infrastructure shared packages (config, logger, ES client, Redis, JWT)
