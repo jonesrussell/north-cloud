@@ -18,6 +18,9 @@ const (
 	BodyWeight     = 1.0
 )
 
+// countryCanada is the normalized country name for Canadian locations.
+const countryCanada = "canada"
+
 // Specificity bonuses.
 const (
 	CityBonus     = 3
@@ -93,8 +96,8 @@ var provincePatternRegexes = func() map[*regexp.Regexp]string {
 // countryPatterns maps regex patterns to country names.
 // These patterns use word boundaries to avoid false matches.
 var countryPatterns = map[string]string{
-	`\bcanada\b`:        "canada",
-	`\bcanadian\b`:      "canada",
+	`\bcanada\b`:        countryCanada,
+	`\bcanadian\b`:      countryCanada,
 	`\bunited states\b`: "united_states",
 	`\bu\.s\.\b`:        "united_states",
 	`\bus\b`:            "united_states",
@@ -273,11 +276,11 @@ func (lc *LocationClassifier) determineDominant(scores map[string]*locationScore
 	case EntityTypeCity:
 		result.City = first.entity.Normalized
 		result.Province = first.entity.Province
-		result.Country = "canada" // All validated cities are Canadian
+		result.Country = countryCanada // All validated cities are Canadian
 		result.Specificity = domain.SpecificityCity
 	case EntityTypeProvince:
 		result.Province = first.entity.Normalized
-		result.Country = "canada"
+		result.Country = countryCanada
 		result.Specificity = domain.SpecificityProvince
 	case EntityTypeCountry:
 		result.Country = first.entity.Normalized
