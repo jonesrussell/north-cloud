@@ -1,7 +1,7 @@
 package bootstrap
 
 import (
-	"github.com/north-cloud/infrastructure/logger"
+	"github.com/jonesrussell/north-cloud/infrastructure/logger"
 )
 
 // CreateLogger initializes the structured logger.

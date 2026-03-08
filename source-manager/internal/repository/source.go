@@ -11,9 +11,9 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	infralogger "github.com/jonesrussell/north-cloud/infrastructure/logger"
+	"github.com/jonesrussell/north-cloud/infrastructure/naming"
 	"github.com/jonesrussell/north-cloud/source-manager/internal/models"
-	infralogger "github.com/north-cloud/infrastructure/logger"
-	"github.com/north-cloud/infrastructure/naming"
 )
 
 type SourceRepository struct {

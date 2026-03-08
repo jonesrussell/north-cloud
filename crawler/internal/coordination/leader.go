@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	infralogger "github.com/north-cloud/infrastructure/logger"
+	infralogger "github.com/jonesrussell/north-cloud/infrastructure/logger"
 	"github.com/redis/go-redis/v9"
 )
 

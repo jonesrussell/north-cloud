@@ -1,5 +1,7 @@
 # Social Publisher Spec
 
+> Last verified: 2026-03-08
+
 ## Overview
 
 Social media delivery service. Subscribes to Redis pub/sub for inbound publish requests, delivers content to platform adapters (currently X/Twitter), tracks delivery lifecycle in Postgres, and retries failures with exponential backoff.

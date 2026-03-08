@@ -10,12 +10,12 @@ import (
 
 	"github.com/elastic/go-elasticsearch/v8"
 	"github.com/google/uuid"
+	infralogger "github.com/jonesrussell/north-cloud/infrastructure/logger"
+	"github.com/jonesrussell/north-cloud/infrastructure/pipeline"
 	"github.com/jonesrussell/north-cloud/publisher/internal/database"
 	"github.com/jonesrussell/north-cloud/publisher/internal/discovery"
 	"github.com/jonesrussell/north-cloud/publisher/internal/models"
 	"github.com/jonesrussell/north-cloud/publisher/internal/telemetry"
-	infralogger "github.com/north-cloud/infrastructure/logger"
-	"github.com/north-cloud/infrastructure/pipeline"
 	"github.com/redis/go-redis/v9"
 )
 

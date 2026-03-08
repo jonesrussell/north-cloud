@@ -8,8 +8,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/jonesrussell/north-cloud/infrastructure/logger"
 	"github.com/jonesrussell/north-cloud/mcp-north-cloud/internal/client"
-	"github.com/north-cloud/infrastructure/logger"
 )
 
 // Server handles MCP protocol requests

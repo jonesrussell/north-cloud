@@ -29,7 +29,7 @@ package clickurl_test
 import (
 	"testing"
 
-	"github.com/north-cloud/infrastructure/clickurl"
+	"github.com/jonesrussell/north-cloud/infrastructure/clickurl"
 )
 
 func TestSign(t *testing.T) {
@@ -217,11 +217,11 @@ go 1.25
 
 require (
 	github.com/gin-gonic/gin v1.11.0
-	github.com/north-cloud/infrastructure v0.0.0-00010101000000-000000000000
+	github.com/jonesrussell/north-cloud/infrastructure v0.0.0-00010101000000-000000000000
 	github.com/lib/pq v1.10.9
 )
 
-replace github.com/north-cloud/infrastructure => ../infrastructure
+replace github.com/jonesrussell/north-cloud/infrastructure => ../infrastructure
 ```
 
 Run: `cd click-tracker && go mod tidy`
@@ -236,7 +236,7 @@ import (
 	"fmt"
 	"time"
 
-	infraconfig "github.com/north-cloud/infrastructure/config"
+	infraconfig "github.com/jonesrussell/north-cloud/infrastructure/config"
 )
 
 const (
@@ -530,9 +530,9 @@ import (
 	_ "github.com/lib/pq"
 
 	"github.com/jonesrussell/north-cloud/click-tracker/internal/config"
-	infraconfig "github.com/north-cloud/infrastructure/config"
-	infralogger "github.com/north-cloud/infrastructure/logger"
-	"github.com/north-cloud/infrastructure/profiling"
+	infraconfig "github.com/jonesrussell/north-cloud/infrastructure/config"
+	infralogger "github.com/jonesrussell/north-cloud/infrastructure/logger"
+	"github.com/jonesrussell/north-cloud/infrastructure/profiling"
 )
 
 func main() {
@@ -860,8 +860,8 @@ import (
 	_ "github.com/lib/pq"
 
 	"github.com/jonesrussell/north-cloud/click-tracker/internal/config"
-	infraconfig "github.com/north-cloud/infrastructure/config"
-	"github.com/north-cloud/infrastructure/migration"
+	infraconfig "github.com/jonesrussell/north-cloud/infrastructure/config"
+	"github.com/jonesrussell/north-cloud/infrastructure/migration"
 )
 
 func main() {
@@ -1011,7 +1011,7 @@ import (
 	"time"
 
 	"github.com/jonesrussell/north-cloud/click-tracker/internal/domain"
-	infralogger "github.com/north-cloud/infrastructure/logger"
+	infralogger "github.com/jonesrussell/north-cloud/infrastructure/logger"
 )
 
 const insertBatchSize = 50
@@ -1207,8 +1207,8 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/jonesrussell/north-cloud/click-tracker/internal/handler"
 	"github.com/jonesrussell/north-cloud/click-tracker/internal/storage"
-	"github.com/north-cloud/infrastructure/clickurl"
-	infralogger "github.com/north-cloud/infrastructure/logger"
+	"github.com/jonesrussell/north-cloud/infrastructure/clickurl"
+	infralogger "github.com/jonesrussell/north-cloud/infrastructure/logger"
 )
 
 const testSecret = "test-secret-key"
@@ -1348,8 +1348,8 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/jonesrussell/north-cloud/click-tracker/internal/domain"
 	"github.com/jonesrussell/north-cloud/click-tracker/internal/storage"
-	"github.com/north-cloud/infrastructure/clickurl"
-	infralogger "github.com/north-cloud/infrastructure/logger"
+	"github.com/jonesrussell/north-cloud/infrastructure/clickurl"
+	infralogger "github.com/jonesrussell/north-cloud/infrastructure/logger"
 )
 
 // ClickHandler handles click redirect requests.
@@ -1891,7 +1891,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/jonesrussell/north-cloud/click-tracker/internal/handler"
 	"github.com/jonesrussell/north-cloud/click-tracker/internal/middleware"
-	"github.com/north-cloud/infrastructure/monitoring"
+	"github.com/jonesrussell/north-cloud/infrastructure/monitoring"
 )
 
 // SetupRoutes configures all API routes.
@@ -1925,8 +1925,8 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/jonesrussell/north-cloud/click-tracker/internal/config"
 	"github.com/jonesrussell/north-cloud/click-tracker/internal/handler"
-	infragin "github.com/north-cloud/infrastructure/gin"
-	infralogger "github.com/north-cloud/infrastructure/logger"
+	infragin "github.com/jonesrussell/north-cloud/infrastructure/gin"
+	infralogger "github.com/jonesrussell/north-cloud/infrastructure/logger"
 )
 
 const (
@@ -1997,7 +1997,7 @@ Update imports in main.go to include:
 "github.com/jonesrussell/north-cloud/click-tracker/internal/api"
 "github.com/jonesrussell/north-cloud/click-tracker/internal/handler"
 "github.com/jonesrussell/north-cloud/click-tracker/internal/storage"
-"github.com/north-cloud/infrastructure/clickurl"
+"github.com/jonesrussell/north-cloud/infrastructure/clickurl"
 ```
 
 **Step 4: Run build**
@@ -2143,7 +2143,7 @@ func generateQueryID() string {
 }
 ```
 
-Add imports: `"crypto/rand"`, `"encoding/hex"`, `"net/url"`, `"github.com/north-cloud/infrastructure/clickurl"`
+Add imports: `"crypto/rand"`, `"encoding/hex"`, `"net/url"`, `"github.com/jonesrussell/north-cloud/infrastructure/clickurl"`
 
 **Step 4: Update search main.go**
 
@@ -2165,7 +2165,7 @@ func runServer(cfg *config.Config, esClient *elasticsearch.Client, log infralogg
 }
 ```
 
-Add import: `"github.com/north-cloud/infrastructure/clickurl"`
+Add import: `"github.com/jonesrussell/north-cloud/infrastructure/clickurl"`
 
 **Step 5: Update search config.yml.example**
 

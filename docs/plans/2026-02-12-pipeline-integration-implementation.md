@@ -25,7 +25,7 @@ In `crawler/internal/content/rawcontent/service.go`, add `pipeline *pipeline.Cli
 
 ```go
 // Add import
-"github.com/north-cloud/infrastructure/pipeline"
+"github.com/jonesrussell/north-cloud/infrastructure/pipeline"
 
 // Add field to RawContentService struct (after rawIndexer)
 pipeline *pipeline.Client
@@ -88,7 +88,7 @@ Add `PipelineClient *pipeline.Client` field to `CrawlerParams` struct (after `DB
 PipelineClient *pipeline.Client // Pipeline observability client (optional)
 ```
 
-Add import: `"github.com/north-cloud/infrastructure/pipeline"`
+Add import: `"github.com/jonesrussell/north-cloud/infrastructure/pipeline"`
 
 Update the `NewCrawlerWithParams` call to `NewRawContentService` (line 56-60):
 
@@ -150,7 +150,7 @@ Find the `Config` struct implementation file. Add a `PipelineURL` field with env
 
 In `crawler/internal/bootstrap/services.go`, update `createCrawler()` (line 243-265):
 
-Add import: `"github.com/north-cloud/infrastructure/pipeline"`
+Add import: `"github.com/jonesrussell/north-cloud/infrastructure/pipeline"`
 
 Before the `crawler.NewCrawlerWithParams()` call, create the client:
 
@@ -203,7 +203,7 @@ git commit -m "feat(crawler): wire pipeline client through bootstrap config"
 
 In `classifier/internal/processor/poller.go`:
 
-Add import: `"github.com/north-cloud/infrastructure/pipeline"`
+Add import: `"github.com/jonesrussell/north-cloud/infrastructure/pipeline"`
 
 Add field to `Poller` struct (after `logger`):
 
@@ -308,7 +308,7 @@ PipelineURL string `env:"PIPELINE_URL" yaml:"pipeline_url"`
 
 In `classifier/cmd/processor/processor.go`:
 
-Add import: `"github.com/north-cloud/infrastructure/pipeline"`
+Add import: `"github.com/jonesrussell/north-cloud/infrastructure/pipeline"`
 
 Add to `ProcessorConfig` struct:
 
@@ -370,7 +370,7 @@ git commit -m "feat(classifier): wire pipeline client through processor config"
 
 In `publisher/internal/router/service.go`:
 
-Add import: `"github.com/north-cloud/infrastructure/pipeline"`
+Add import: `"github.com/jonesrussell/north-cloud/infrastructure/pipeline"`
 
 Add field to `Service` struct (after `lastSort`):
 
@@ -535,7 +535,7 @@ Actually, the cleanest pattern matching the existing code is to add `PipelineURL
 
 In `publisher/cmd_router.go`, in `runRouterWithStop()`:
 
-Add import: `"github.com/north-cloud/infrastructure/pipeline"`
+Add import: `"github.com/jonesrussell/north-cloud/infrastructure/pipeline"`
 
 After loading config (line 58), create the client:
 

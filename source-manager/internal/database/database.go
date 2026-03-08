@@ -7,10 +7,10 @@ import (
 	"strings"
 	"time"
 
+	infralogger "github.com/jonesrussell/north-cloud/infrastructure/logger"
+	"github.com/jonesrussell/north-cloud/infrastructure/retry"
 	"github.com/jonesrussell/north-cloud/source-manager/internal/config"
 	_ "github.com/lib/pq" //nolint:blankimports // PostgreSQL driver
-	infralogger "github.com/north-cloud/infrastructure/logger"
-	"github.com/north-cloud/infrastructure/retry"
 )
 
 // Connection retry configuration

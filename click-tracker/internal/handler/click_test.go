@@ -12,8 +12,8 @@ import (
 	"github.com/jonesrussell/north-cloud/click-tracker/internal/handler"
 	"github.com/jonesrussell/north-cloud/click-tracker/internal/middleware"
 	"github.com/jonesrussell/north-cloud/click-tracker/internal/storage"
-	"github.com/north-cloud/infrastructure/clickurl"
-	infralogger "github.com/north-cloud/infrastructure/logger"
+	"github.com/jonesrussell/north-cloud/infrastructure/clickurl"
+	infralogger "github.com/jonesrussell/north-cloud/infrastructure/logger"
 )
 
 const (

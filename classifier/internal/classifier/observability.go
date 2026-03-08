@@ -4,7 +4,7 @@ import (
 	"strings"
 
 	"github.com/jonesrussell/north-cloud/classifier/internal/domain"
-	infralogger "github.com/north-cloud/infrastructure/logger"
+	infralogger "github.com/jonesrussell/north-cloud/infrastructure/logger"
 )
 
 const titleExcerptWordLimit = 10

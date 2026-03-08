@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/north-cloud/infrastructure/logger"
-	"github.com/north-cloud/infrastructure/retry"
+	"github.com/jonesrussell/north-cloud/infrastructure/logger"
+	"github.com/jonesrussell/north-cloud/infrastructure/retry"
 )
 
 func TestNormalizeURL(t *testing.T) {

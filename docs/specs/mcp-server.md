@@ -1,5 +1,7 @@
 # MCP Server Spec
 
+> Last verified: 2026-03-08
+
 Covers `mcp-north-cloud/`: the Claude Code / Cursor MCP server that exposes north-cloud pipeline operations as tools.
 
 ## File Map
@@ -10,8 +12,9 @@ Covers `mcp-north-cloud/`: the Claude Code / Cursor MCP server that exposes nort
 | `mcp-north-cloud/run-mcp.sh` | Wrapper: loads .env, ensures clean stdout |
 | `mcp-north-cloud/test-tools.sh` | Smoke test: verifies tool count by env |
 | `mcp-north-cloud/internal/mcp/server.go` | Request routing, toolHandlers map, prompts/resources dispatch |
-| `mcp-north-cloud/internal/mcp/tools.go` | 26 tool definitions scoped by MCP_ENV |
-| `mcp-north-cloud/internal/mcp/handlers.go` | Tool implementations (one func per tool) |
+| `mcp-north-cloud/internal/mcp/tools.go` | 28 tool definitions scoped by MCP_ENV |
+| `mcp-north-cloud/internal/mcp/handlers.go` | Tool implementations (one func per tool, except fetch_url) |
+| `mcp-north-cloud/internal/mcp/fetch_url.go` | fetch_url tool handler |
 | `mcp-north-cloud/internal/mcp/types.go` | JSON-RPC types, Scope constants |
 | `mcp-north-cloud/internal/mcp/prompts.go` | 4 prompt templates |
 | `mcp-north-cloud/internal/mcp/resources.go` | Static doc resources |
@@ -30,7 +33,7 @@ Covers `mcp-north-cloud/`: the Claude Code / Cursor MCP server that exposes nort
 | Method | Description |
 |--------|-------------|
 | `initialize` | Returns protocol version `2024-11-05` + capabilities |
-| `tools/list` | Returns tools for current `MCP_ENV` (18 local / 23 prod) |
+| `tools/list` | Returns tools for current `MCP_ENV` (19 local / 25 prod) |
 | `tools/call` | Routes `params.name` to registered handler |
 | `prompts/list` | Returns 4 prompt templates |
 | `prompts/get` | Returns messages for a named prompt |
@@ -42,23 +45,25 @@ Covers `mcp-north-cloud/`: the Claude Code / Cursor MCP server that exposes nort
 
 | Environment | Count | Scope |
 |-------------|-------|-------|
-| `local` (default) | 18 | shared (15) + local-only (3) |
-| `prod` | 23 | shared (15) + prod-only (8) |
-| Total definitions | 26 | 15 shared + 3 local + 8 prod |
+| `local` (default) | 19 | shared (16) + local-only (3) |
+| `prod` | 25 | shared (16) + prod-only (9) |
+| Total definitions | 28 | 16 shared + 3 local + 9 prod |
 
 ### Tools by Category
 
 | Category | Tools |
 |----------|-------|
-| Workflow | onboard_source |
+| System (1) | health_check |
+| Workflow (1) | onboard_source |
 | Crawler (5) | start_crawl, schedule_crawl, list_crawl_jobs, control_crawl_job, get_crawl_stats |
 | Source Manager (5) | add_source, list_sources, update_source, delete_source, test_source |
 | Publisher (6) | create_channel, list_channels, delete_channel, preview_channel, get_publish_history, get_publisher_stats |
-| Search | search_content |
-| Classifier | classify_content |
+| Search (1) | search_content |
+| Classifier (1) | classify_content |
 | Index Manager (2) | list_indexes, delete_index |
-| Auth | get_auth_token |
-| Observability | get_grafana_alerts |
+| Auth (1) | get_auth_token |
+| Observability (1) | get_grafana_alerts |
+| Fetch (1) | fetch_url |
 | Development (3) | lint_file, build_service, test_service |
 
 ## Data Flow
@@ -82,17 +87,22 @@ Security hardening layer:
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `MCP_ENV` | `local` | Tool scope: `local` (18) or `prod` (23) |
-| `CRAWLER_URL` | `http://localhost:8080` | Crawler service |
+| `MCP_ENV` | `local` | Tool scope: `local` (19) or `prod` (25) |
+| `CRAWLER_URL` | `http://localhost:8060` | Crawler service |
 | `SOURCE_MANAGER_URL` | `http://localhost:8050` | Source manager |
 | `PUBLISHER_URL` | `http://localhost:8070` | Publisher |
-| `CLASSIFIER_URL` | `http://localhost:8071` | Classifier |
-| `SEARCH_URL` | `http://localhost:8092` | Search service |
+| `CLASSIFIER_URL` | `http://localhost:8070` | Classifier (shares publisher default) |
+| `SEARCH_URL` | `http://localhost:8090` | Search service |
 | `INDEX_MANAGER_URL` | `http://localhost:8090` | Index manager |
 | `GRAFANA_URL` | `http://localhost:3000` | Grafana |
+| `GRAFANA_USERNAME` | — | Grafana admin username (for alerts) |
+| `GRAFANA_PASSWORD` | — | Grafana admin password (for alerts) |
 | `AUTH_JWT_SECRET` | — | Required for protected tools |
 | `MCP_HTTP_TIMEOUT_SECONDS` | `30` | HTTP client timeout |
 | `NORTH_CLOUD_ROOT` | cwd | Repo root for lint_file/build_service |
+| `OLLAMA_URL` | — | Ollama API URL (for fetch_url extract_schema) |
+| `OLLAMA_MODEL` | `qwen3:4b` | Ollama model for schema-guided extraction |
+| `RENDERER_URL` | — | Playwright renderer sidecar (for JS-heavy pages) |
 
 ## Known Constraints
 
@@ -101,4 +111,4 @@ Security hardening layer:
 - **EOF = graceful shutdown**: When stdin closes the server exits cleanly. Not an error.
 - **No authentication at MCP layer**: Callers are not authenticated by the server itself. Protected tools use `AUTH_JWT_SECRET` for service-to-service JWT tokens.
 - **Scope counts are test fixtures**: `scope_test.go` and `test-tools.sh` hardcode expected tool counts. Update both whenever tools are added or removed.
-- **Adding a tool (4-step workflow)**: (1) define in `tools.go`, (2) register handler in `server.go`, (3) implement in `handlers.go`, (4) update counts in `scope_test.go` + `test-tools.sh`.
+- **Adding a tool (4-step workflow)**: (1) define in `tools.go`, (2) register handler in `server.go`, (3) implement in `handlers.go` (or a dedicated file for complex tools), (4) update counts in `scope_test.go` + `test-tools.sh`.

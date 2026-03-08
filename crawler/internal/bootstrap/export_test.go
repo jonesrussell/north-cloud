@@ -5,7 +5,7 @@ import (
 
 	"github.com/jonesrussell/north-cloud/crawler/internal/fetcher"
 	"github.com/jonesrussell/north-cloud/crawler/internal/storage"
-	infralogger "github.com/north-cloud/infrastructure/logger"
+	infralogger "github.com/jonesrussell/north-cloud/infrastructure/logger"
 )
 
 // MapExtractedToRawContentForTest exposes mapExtractedToRawContent for testing.

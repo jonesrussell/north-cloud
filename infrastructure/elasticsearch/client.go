@@ -10,8 +10,8 @@ import (
 	"time"
 
 	es "github.com/elastic/go-elasticsearch/v8"
-	"github.com/north-cloud/infrastructure/logger"
-	"github.com/north-cloud/infrastructure/retry"
+	"github.com/jonesrussell/north-cloud/infrastructure/logger"
+	"github.com/jonesrussell/north-cloud/infrastructure/retry"
 )
 
 // NewClient creates a new Elasticsearch client with retry logic for connection verification.

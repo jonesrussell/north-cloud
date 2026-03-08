@@ -5,9 +5,9 @@ import (
 	"os"
 	"time"
 
+	infraconfig "github.com/jonesrussell/north-cloud/infrastructure/config"
 	"github.com/jonesrussell/north-cloud/publisher/internal/config"
 	"github.com/jonesrussell/north-cloud/publisher/internal/database"
-	infraconfig "github.com/north-cloud/infrastructure/config"
 )
 
 const (

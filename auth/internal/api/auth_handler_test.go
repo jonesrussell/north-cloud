@@ -12,7 +12,7 @@ import (
 	"github.com/jonesrussell/north-cloud/auth/internal/api"
 	"github.com/jonesrussell/north-cloud/auth/internal/auth"
 	"github.com/jonesrussell/north-cloud/auth/internal/config"
-	infralogger "github.com/north-cloud/infrastructure/logger"
+	infralogger "github.com/jonesrussell/north-cloud/infrastructure/logger"
 )
 
 type mockLogger struct{}

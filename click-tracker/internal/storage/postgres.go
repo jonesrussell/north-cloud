@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/jonesrussell/north-cloud/click-tracker/internal/domain"
-	infralogger "github.com/north-cloud/infrastructure/logger"
+	infralogger "github.com/jonesrussell/north-cloud/infrastructure/logger"
 )
 
 // Named constants to avoid magic numbers.

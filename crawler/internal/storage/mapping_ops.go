@@ -6,7 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	infralogger "github.com/north-cloud/infrastructure/logger"
+	infralogger "github.com/jonesrussell/north-cloud/infrastructure/logger"
 )
 
 // GetMapping retrieves the mapping for an index

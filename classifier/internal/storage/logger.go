@@ -1,7 +1,7 @@
 package storage
 
 import (
-	infralogger "github.com/north-cloud/infrastructure/logger"
+	infralogger "github.com/jonesrussell/north-cloud/infrastructure/logger"
 )
 
 // NewComponentLogger creates a logger with a structured "component" field

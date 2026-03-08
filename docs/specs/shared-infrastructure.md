@@ -1,5 +1,7 @@
 # Shared Infrastructure Specification
 
+> Last verified: 2026-03-08
+
 Covers the `infrastructure/` module: config loading, logging, database clients, middleware, events, and utilities used by all services.
 
 ## File Map
@@ -156,15 +158,15 @@ type LoggingConfig struct {
 
 ### Import Conventions
 ```go
-import infralogger "github.com/north-cloud/infrastructure/logger"
-import infraconfig "github.com/north-cloud/infrastructure/config"
+import infralogger "github.com/jonesrussell/north-cloud/infrastructure/logger"
+import infraconfig "github.com/jonesrussell/north-cloud/infrastructure/config"
 ```
 
 ### go.mod Pattern
 ```
 module github.com/jonesrussell/north-cloud/{service}
-require github.com/north-cloud/infrastructure v0.0.0
-replace github.com/north-cloud/infrastructure => ../infrastructure
+require github.com/jonesrussell/north-cloud/infrastructure v0.0.0
+replace github.com/jonesrussell/north-cloud/infrastructure => ../infrastructure
 ```
 
 ## Edge Cases

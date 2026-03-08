@@ -1,5 +1,7 @@
 # Classification Specification
 
+> Last verified: 2026-03-08
+
 Covers the classifier service, hybrid rule+ML classification pipeline, ML sidecar integration, and content enrichment.
 
 ## File Map

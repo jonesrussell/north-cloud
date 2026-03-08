@@ -4,14 +4,14 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/jonesrussell/north-cloud/infrastructure/clickurl"
+	infraconfig "github.com/jonesrussell/north-cloud/infrastructure/config"
+	infralogger "github.com/jonesrussell/north-cloud/infrastructure/logger"
+	"github.com/jonesrussell/north-cloud/infrastructure/profiling"
 	"github.com/jonesrussell/north-cloud/search/internal/api"
 	"github.com/jonesrussell/north-cloud/search/internal/config"
 	"github.com/jonesrussell/north-cloud/search/internal/elasticsearch"
 	"github.com/jonesrussell/north-cloud/search/internal/service"
-	"github.com/north-cloud/infrastructure/clickurl"
-	infraconfig "github.com/north-cloud/infrastructure/config"
-	infralogger "github.com/north-cloud/infrastructure/logger"
-	"github.com/north-cloud/infrastructure/profiling"
 )
 
 func main() {

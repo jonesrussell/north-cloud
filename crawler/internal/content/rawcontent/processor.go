@@ -10,7 +10,7 @@ import (
 	"github.com/gocolly/colly/v2"
 	"github.com/jonesrussell/north-cloud/crawler/internal/content"
 	"github.com/jonesrussell/north-cloud/crawler/internal/content/contenttype"
-	infralogger "github.com/north-cloud/infrastructure/logger"
+	infralogger "github.com/jonesrussell/north-cloud/infrastructure/logger"
 )
 
 // RawContentProcessor implements the content.Processor interface for raw content extraction.

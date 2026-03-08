@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/elastic/go-elasticsearch/v8"
-	infralogger "github.com/north-cloud/infrastructure/logger"
+	infralogger "github.com/jonesrussell/north-cloud/infrastructure/logger"
 )
 
 const classifiedContentSuffix = "_classified_content"

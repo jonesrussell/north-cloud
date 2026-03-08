@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	ginpkg "github.com/gin-gonic/gin"
-	infragin "github.com/north-cloud/infrastructure/gin"
+	infragin "github.com/jonesrussell/north-cloud/infrastructure/gin"
 )
 
 func TestInternalAuthMiddleware_RejectsMissingHeader(t *testing.T) {

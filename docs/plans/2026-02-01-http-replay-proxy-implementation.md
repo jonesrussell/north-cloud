@@ -31,7 +31,7 @@ cd nc-http-proxy
 
 Create `nc-http-proxy/go.mod`:
 ```go
-module github.com/north-cloud/nc-http-proxy
+module github.com/jonesrussell/north-cloud/nc-http-proxy
 
 go 1.24
 ```

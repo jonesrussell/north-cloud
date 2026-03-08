@@ -4,8 +4,8 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/north-cloud/infrastructure/jwt"
-	"github.com/north-cloud/infrastructure/logger"
+	"github.com/jonesrussell/north-cloud/infrastructure/jwt"
+	"github.com/jonesrussell/north-cloud/infrastructure/logger"
 )
 
 // ServerBuilder provides a fluent API for building HTTP servers.

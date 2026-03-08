@@ -758,7 +758,7 @@ import (
     "time"
 
     "github.com/elastic/go-elasticsearch/v8"
-    infralogger "github.com/north-cloud/infrastructure/logger"
+    infralogger "github.com/jonesrussell/north-cloud/infrastructure/logger"
 )
 
 const classifiedContentSuffix = "_classified_content"
@@ -973,7 +973,7 @@ import (
     "github.com/jonesrussell/north-cloud/publisher/internal/database"
     "github.com/jonesrussell/north-cloud/publisher/internal/discovery"
     "github.com/jonesrussell/north-cloud/publisher/internal/models"
-    infralogger "github.com/north-cloud/infrastructure/logger"
+    infralogger "github.com/jonesrussell/north-cloud/infrastructure/logger"
     "github.com/redis/go-redis/v9"
 )
 

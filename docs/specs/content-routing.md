@@ -1,6 +1,8 @@
 # Content Routing Specification
 
-Covers the publisher service: 10-layer routing pipeline, channel management, Redis publishing, and deduplication.
+> Last verified: 2026-03-08
+
+Covers the publisher service: 11-layer routing pipeline, channel management, Redis publishing, and deduplication.
 
 ## File Map
 
@@ -19,6 +21,7 @@ Covers the publisher service: 10-layer routing pipeline, channel management, Red
 | `publisher/internal/router/domain_coforge.go` | Layer 8: Coforge routing |
 | `publisher/internal/router/domain_recipe.go` | Layer 9: Recipe routing |
 | `publisher/internal/router/domain_job.go` | Layer 10: Job routing |
+| `publisher/internal/router/domain_rfp.go` | Layer 11: RFP routing |
 | `publisher/internal/router/content_item.go` | ContentItem struct (all classification fields) |
 | `publisher/internal/models/channel.go` | Channel, ChannelCreateRequest |
 | `publisher/internal/models/rules.go` | Rules struct + Matches() |
@@ -71,12 +74,12 @@ func (s *Service) Start(ctx context.Context) error  // Main loop
 ```
 ES *_classified_content → Router (30s poll, batch=100, search_after cursor)
 
-For each ContentItem, evaluate 10 layers sequentially:
+For each ContentItem, evaluate 11 layers sequentially:
 
 Layer 1 (TopicDomain):
   For each topic NOT in layer1SkipTopics:
     → publish to content:{topic}
-  Skip topics: mining, indigenous, coforge, recipe, jobs
+  Skip topics: mining, indigenous, coforge, recipe, jobs, rfp
 
 Layer 2 (DBChannelDomain):
   For each enabled channel in database:
@@ -130,6 +133,14 @@ Layer 9 (RecipeDomain):
 Layer 10 (JobDomain):
   If content_type == "job" and job result present:
     → content:jobs
+
+Layer 11 (RFPDomain):
+  If content_type == "rfp" or rfp result present:
+    → content:rfps
+    Per country → rfp:country:{code}
+    Per province → rfp:province:{code}
+    Per category → rfp:sector:{slug}
+    Per procurement type → rfp:type:{slug}
 ```
 
 ### Publishing Flow
@@ -150,6 +161,7 @@ var layer1SkipTopics = map[string]bool{
     "coforge":    true,  // Layer 8 ML filter
     "recipe":     true,
     "jobs":       true,
+    "rfp":        true,  // Layer 11 RFP filter
 }
 ```
 Topics in this map MUST be skipped to prevent bypassing ML classification filters.

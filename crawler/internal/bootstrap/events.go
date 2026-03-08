@@ -8,7 +8,7 @@ import (
 	crawlerintevents "github.com/jonesrussell/north-cloud/crawler/internal/events"
 	"github.com/jonesrussell/north-cloud/crawler/internal/job"
 	"github.com/jonesrussell/north-cloud/crawler/internal/sources"
-	infralogger "github.com/north-cloud/infrastructure/logger"
+	infralogger "github.com/jonesrussell/north-cloud/infrastructure/logger"
 )
 
 // SetupEventConsumer creates and starts the event consumer if Redis events are enabled.

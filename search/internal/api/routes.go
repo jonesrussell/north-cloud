@@ -2,7 +2,7 @@ package api
 
 import (
 	"github.com/gin-gonic/gin"
-	"github.com/north-cloud/infrastructure/monitoring"
+	"github.com/jonesrussell/north-cloud/infrastructure/monitoring"
 )
 
 // SetupRoutes configures all API routes

@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
+	infralogger "github.com/jonesrussell/north-cloud/infrastructure/logger"
 	"github.com/jonesrussell/north-cloud/pipeline/internal/domain"
-	infralogger "github.com/north-cloud/infrastructure/logger"
 )
 
 type mockRepository struct {

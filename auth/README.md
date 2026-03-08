@@ -182,7 +182,7 @@ The `AUTH_JWT_SECRET` value must be identical across all services. A mismatch ca
 Example middleware wiring in another service:
 
 ```go
-import infraJWT "github.com/north-cloud/infrastructure/jwt"
+import infraJWT "github.com/jonesrussell/north-cloud/infrastructure/jwt"
 
 // Apply to all /api/v1/* routes
 v1 := router.Group("/api/v1")

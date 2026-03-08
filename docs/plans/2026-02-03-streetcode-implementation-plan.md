@@ -338,7 +338,7 @@ import (
 
     "github.com/jonesrussell/north-cloud/classifier/internal/domain"
     "github.com/jonesrussell/north-cloud/classifier/internal/mlclient"
-    infralogger "github.com/north-cloud/infrastructure/logger"
+    infralogger "github.com/jonesrussell/north-cloud/infrastructure/logger"
 )
 
 // StreetCode classification thresholds
@@ -699,7 +699,7 @@ import (
     "encoding/json"
     "fmt"
 
-    infralogger "github.com/north-cloud/infrastructure/logger"
+    infralogger "github.com/jonesrussell/north-cloud/infrastructure/logger"
     "github.com/redis/go-redis/v9"
 )
 
