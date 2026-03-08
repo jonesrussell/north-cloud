@@ -100,6 +100,13 @@ services:
       start_period: 20s
 
   # ------------------------------------------------------------
+  # AI Observer (Prod)
+  # ------------------------------------------------------------
+  ai-observer:
+    <<: *prod-defaults
+    image: docker.io/jonesrussell/ai-observer:latest
+
+  # ------------------------------------------------------------
   # Squid Proxy (IP Rotation)
   # ------------------------------------------------------------
   # network_mode: host gives Squid direct access to Reserved IPs
