@@ -83,6 +83,11 @@ func ConvertAPISourceToConfig(apiSource *APISource) (*types.SourceConfig, error)
 		maxDepth = 2
 	}
 
+	var indigenousRegion string
+	if apiSource.IndigenousRegion != nil {
+		indigenousRegion = *apiSource.IndigenousRegion
+	}
+
 	return &types.SourceConfig{
 		Name:               apiSource.Name,
 		URL:                apiSource.URL,
@@ -95,6 +100,7 @@ func ConvertAPISourceToConfig(apiSource *APISource) (*types.SourceConfig, error)
 		ArticleIndex:       apiSource.ArticleIndex,
 		PageIndex:          apiSource.PageIndex,
 		ArticleURLPatterns: apiSource.ArticleURLPatterns,
+		IndigenousRegion:   indigenousRegion,
 		Selectors: types.SelectorConfig{
 			Article: convertAPIArticleSelectors(apiSource.Selectors.Article),
 			List:    convertAPIListSelectors(apiSource.Selectors.List),

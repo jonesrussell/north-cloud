@@ -42,6 +42,7 @@ type SourceConfig struct {
 	Selectors          SelectorConfig
 	Rules              types.Rules
 	ArticleURLPatterns []string
+	IndigenousRegion   string
 }
 
 // SelectorConfig defines the CSS selectors used for content extraction.

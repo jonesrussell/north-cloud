@@ -112,6 +112,55 @@ func TestIndigenousClassifier_DecisionContext_BothAgree(t *testing.T) {
 	}
 }
 
+func TestIndigenousClassifier_RegionPassthrough(t *testing.T) {
+	t.Helper()
+
+	ac := NewIndigenousClassifier(nil, &mockLogger{}, true)
+
+	raw := &domain.RawContent{
+		ID:      "test-region",
+		Title:   "First Nations community event",
+		RawText: "Indigenous peoples gather for ceremony.",
+		Meta: map[string]any{
+			"indigenous_region": "canada",
+		},
+	}
+
+	result, err := ac.Classify(context.Background(), raw)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result == nil {
+		t.Fatal("expected result")
+	}
+	if result.Region != "canada" {
+		t.Errorf("expected region=canada, got %q", result.Region)
+	}
+}
+
+func TestIndigenousClassifier_RegionPassthrough_Empty(t *testing.T) {
+	t.Helper()
+
+	ac := NewIndigenousClassifier(nil, &mockLogger{}, true)
+
+	raw := &domain.RawContent{
+		ID:      "test-region-empty",
+		Title:   "First Nations community event",
+		RawText: "Indigenous peoples gather for ceremony.",
+	}
+
+	result, err := ac.Classify(context.Background(), raw)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result == nil {
+		t.Fatal("expected result")
+	}
+	if result.Region != "" {
+		t.Errorf("expected empty region when no meta, got %q", result.Region)
+	}
+}
+
 func TestIndigenousClassifier_Classify_RulesOnly_NotRelevant(t *testing.T) {
 	t.Helper()
 

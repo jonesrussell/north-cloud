@@ -31,6 +31,8 @@ type APISource struct {
 	TemplateHint *string `json:"template_hint,omitempty"`
 	// RenderMode: "static" (default) or "dynamic" (use Playwright render worker).
 	RenderMode string `json:"render_mode"`
+	// IndigenousRegion: optional geographic region tag for indigenous content sources.
+	IndigenousRegion *string `json:"indigenous_region,omitempty"`
 	// ExtractionProfile: optional JSON for PipelineX domain-aware extraction.
 	ExtractionProfile *json.RawMessage `json:"extraction_profile,omitempty"`
 	CreatedAt         *time.Time       `json:"created_at,omitempty"`

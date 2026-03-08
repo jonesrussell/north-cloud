@@ -80,6 +80,50 @@ func TestGenerateIndigenousChannels_NotIndigenous(t *testing.T) {
 	}
 }
 
+func TestGenerateIndigenousChannels_WithRegion(t *testing.T) {
+	t.Helper()
+	item := &ContentItem{
+		Title: "Māori iwi gather for hui",
+		Indigenous: &IndigenousData{
+			Relevance:  IndigenousRelevanceCore,
+			Categories: []string{"culture"},
+			Region:     "oceania",
+		},
+	}
+
+	routes := NewIndigenousDomain().Routes(item)
+	channels := routeChannelNames(routes)
+	hasRegion := false
+	for _, c := range channels {
+		if c == "indigenous:region:oceania" {
+			hasRegion = true
+			break
+		}
+	}
+	if !hasRegion {
+		t.Errorf("expected indigenous:region:oceania channel, got %v", channels)
+	}
+}
+
+func TestGenerateIndigenousChannels_NoRegion(t *testing.T) {
+	t.Helper()
+	item := &ContentItem{
+		Title: "First Nations governance",
+		Indigenous: &IndigenousData{
+			Relevance:  IndigenousRelevanceCore,
+			Categories: []string{"sovereignty"},
+		},
+	}
+
+	routes := NewIndigenousDomain().Routes(item)
+	channels := routeChannelNames(routes)
+	for _, c := range channels {
+		if len(c) > len("indigenous:region:") && c[:len("indigenous:region:")] == "indigenous:region:" {
+			t.Errorf("expected no region channel when region is empty, got %s", c)
+		}
+	}
+}
+
 func TestGenerateIndigenousChannels_NilIndigenous(t *testing.T) {
 	t.Helper()
 	item := &ContentItem{Title: "No classification"}

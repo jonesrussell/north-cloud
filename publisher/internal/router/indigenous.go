@@ -42,5 +42,10 @@ func (d *IndigenousDomain) Routes(item *ContentItem) []ChannelRoute {
 		}
 	}
 
+	if item.Indigenous.Region != "" {
+		regionSlug := strings.ToLower(strings.ReplaceAll(item.Indigenous.Region, " ", "-"))
+		channels = append(channels, "indigenous:region:"+regionSlug)
+	}
+
 	return channelRoutesFromSlice(channels)
 }

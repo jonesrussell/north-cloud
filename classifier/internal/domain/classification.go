@@ -64,6 +64,7 @@ type ClassificationResult struct {
 type IndigenousResult struct {
 	Relevance       string   `json:"relevance"`
 	Categories      []string `json:"categories"`
+	Region          string   `json:"region,omitempty"`
 	FinalConfidence float64  `json:"final_confidence"`
 	ReviewRequired  bool     `json:"review_required"`
 	ModelVersion    string   `json:"model_version,omitempty"`
