@@ -366,6 +366,37 @@ tasks:
     cmds:
       - task source-manager:lint
 
+  # ML sidecars (Python) — no Go linter, but tasks must exist for lint:changed
+  lint:crime-ml:
+    desc: "Lint crime-ml sidecar (no-op: Python service)"
+    cmds:
+      - echo "crime-ml is a Python service — no Go linter"
+
+  lint:mining-ml:
+    desc: "Lint mining-ml sidecar (no-op: Python service)"
+    cmds:
+      - echo "mining-ml is a Python service — no Go linter"
+
+  lint:coforge-ml:
+    desc: "Lint coforge-ml sidecar (no-op: Python service)"
+    cmds:
+      - echo "coforge-ml is a Python service — no Go linter"
+
+  lint:entertainment-ml:
+    desc: "Lint entertainment-ml sidecar (no-op: Python service)"
+    cmds:
+      - echo "entertainment-ml is a Python service — no Go linter"
+
+  lint:indigenous-ml:
+    desc: "Lint indigenous-ml sidecar (no-op: Python service)"
+    cmds:
+      - echo "indigenous-ml is a Python service — no Go linter"
+
+  lint:playwright-renderer:
+    desc: "Lint playwright-renderer (no-op: Node service)"
+    cmds:
+      - echo "playwright-renderer is a Node service — no Go linter"
+
   mcp:build:
     desc: "Build the MCP North Cloud server binary (for Cursor/Claude Code)"
     cmds:
@@ -570,6 +601,37 @@ tasks:
     desc: "Run tests for source-manager service"
     cmds:
       - task source-manager:test
+
+  # ML sidecars (Python) — no Go tests, but tasks must exist for test:changed
+  test:crime-ml:
+    desc: "Test crime-ml sidecar (no-op: Python service)"
+    cmds:
+      - echo "crime-ml is a Python service — no Go tests"
+
+  test:mining-ml:
+    desc: "Test mining-ml sidecar (no-op: Python service)"
+    cmds:
+      - echo "mining-ml is a Python service — no Go tests"
+
+  test:coforge-ml:
+    desc: "Test coforge-ml sidecar (no-op: Python service)"
+    cmds:
+      - echo "coforge-ml is a Python service — no Go tests"
+
+  test:entertainment-ml:
+    desc: "Test entertainment-ml sidecar (no-op: Python service)"
+    cmds:
+      - echo "entertainment-ml is a Python service — no Go tests"
+
+  test:indigenous-ml:
+    desc: "Test indigenous-ml sidecar (no-op: Python service)"
+    cmds:
+      - echo "indigenous-ml is a Python service — no Go tests"
+
+  test:playwright-renderer:
+    desc: "Test playwright-renderer (no-op: Node service)"
+    cmds:
+      - echo "playwright-renderer is a Node service — no Go tests"
 
   test:race:
     desc: "Run tests with race detector for all microservices sequentially"
