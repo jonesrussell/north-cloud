@@ -11,7 +11,7 @@ import (
 )
 
 func TestClientRender(t *testing.T) {
-	t.Helper()
+	t.Parallel()
 
 	expectedHTML := "<html><body>rendered content</body></html>"
 	expectedRenderTimeMs := 1500
@@ -77,7 +77,7 @@ func TestClientRender(t *testing.T) {
 }
 
 func TestClientRenderError(t *testing.T) {
-	t.Helper()
+	t.Parallel()
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)

@@ -5,6 +5,8 @@ const PORT = process.env.PORT || 3000;
 const MAX_CONCURRENT = parseInt(process.env.MAX_CONCURRENT_TABS || '1', 10);
 const RECYCLE_AFTER = parseInt(process.env.BROWSER_RECYCLE_AFTER || '100', 10);
 const DEFAULT_TIMEOUT = parseInt(process.env.DEFAULT_TIMEOUT_MS || '15000', 10);
+const MAX_BODY_BYTES = 1024 * 1024; // 1 MB request body limit
+const MAX_QUEUE_DEPTH = 50; // reject with 503 when queue exceeds this
 
 let browser = null;
 let requestCount = 0;
@@ -93,13 +95,29 @@ const server = http.createServer((req, res) => {
 
   if (req.method === 'POST' && req.url === '/render') {
     let data = '';
-    req.on('data', (chunk) => { data += chunk; });
+    let bodySize = 0;
+    req.on('data', (chunk) => {
+      bodySize += chunk.length;
+      if (bodySize > MAX_BODY_BYTES) {
+        res.writeHead(413, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'request body too large' }));
+        req.destroy();
+        return;
+      }
+      data += chunk;
+    });
     req.on('end', () => {
+      if (bodySize > MAX_BODY_BYTES) return;
       try {
         const body = JSON.parse(data);
         if (!body.url) {
           res.writeHead(400, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({ error: 'url is required' }));
+          return;
+        }
+        if (queue.length >= MAX_QUEUE_DEPTH) {
+          res.writeHead(503, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'queue full, try again later' }));
           return;
         }
         queue.push({ req, res, body });
