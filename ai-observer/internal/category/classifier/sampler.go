@@ -23,7 +23,7 @@ const (
 
 // classifiedDoc is a minimal projection of an ES classified_content document.
 type classifiedDoc struct {
-	Domain       string             `json:"domain"`
+	Domain       string             `json:"source_name"`
 	ContentType  string             `json:"content_type"`
 	Topics       []string           `json:"topics"`
 	TopicScores  map[string]float64 `json:"topic_scores"`
@@ -76,7 +76,7 @@ func buildQuery(since time.Time, maxEvents int) map[string]any {
 			{"classified_at": map[string]any{"order": "desc"}},
 		},
 		"_source": []string{
-			"domain", "content_type", "topics",
+			"source_name", "content_type", "topics",
 			"topic_scores", "confidence", "quality_score", "classified_at",
 		},
 	}
