@@ -53,7 +53,14 @@ func (s *IndigenousClassifier) Classify(ctx context.Context, raw *domain.RawCont
 		}
 	}
 
-	return s.mergeResults(ruleResult, mlResult), nil
+	result := s.mergeResults(ruleResult, mlResult)
+
+	// Pass through indigenous_region from source metadata if present.
+	if region, ok := raw.Meta["indigenous_region"].(string); ok && region != "" {
+		result.Region = region
+	}
+
+	return result, nil
 }
 
 func (s *IndigenousClassifier) mergeResults(

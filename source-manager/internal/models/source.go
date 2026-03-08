@@ -35,9 +35,11 @@ type Source struct {
 	// TemplateHint: optional PipelineX template inference (e.g. "substack", "wordpress").
 	TemplateHint *string `db:"template_hint" json:"template_hint,omitempty"`
 	// RenderMode: "static" (default) or "dynamic" (use Playwright render worker).
-	RenderMode string    `db:"render_mode" json:"render_mode"`
-	CreatedAt  time.Time `db:"created_at"  json:"created_at"`
-	UpdatedAt  time.Time `db:"updated_at"  json:"updated_at"`
+	RenderMode string `db:"render_mode" json:"render_mode"`
+	// IndigenousRegion: optional geographic region tag for indigenous content sources (e.g. "canada", "oceania").
+	IndigenousRegion *string   `db:"indigenous_region" json:"indigenous_region,omitempty"`
+	CreatedAt        time.Time `db:"created_at"        json:"created_at"`
+	UpdatedAt        time.Time `db:"updated_at"        json:"updated_at"`
 }
 
 // SelectorConfig represents CSS selector configuration

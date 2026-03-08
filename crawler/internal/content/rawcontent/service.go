@@ -93,8 +93,8 @@ func (s *RawContentService) Process(e *colly.HTMLElement) error {
 		}
 	}
 
-	// Get source configuration to determine source name and selectors
-	sourceName, selectors := s.getSourceConfig(sourceURL)
+	// Get source configuration to determine source name, selectors, and metadata
+	sourceName, selectors, indigenousRegion := s.getSourceConfig(sourceURL)
 
 	// Extract raw content using generic extractor
 	rawData := ExtractRawContent(
@@ -133,7 +133,7 @@ func (s *RawContentService) Process(e *colly.HTMLElement) error {
 	}
 
 	// Convert RawContentData to RawContent for indexing
-	rawContent := s.convertToRawContent(rawData, sourceName, detectedContentType)
+	rawContent := s.convertToRawContent(rawData, sourceName, detectedContentType, indigenousRegion)
 
 	// Index to raw_content (no validation - classifier will handle that)
 	err := s.rawIndexer.IndexRawContent(ctx, rawContent)
@@ -225,8 +225,10 @@ func (s *RawContentService) emitIndexedEvent(
 	}
 }
 
-// getSourceConfig gets the source configuration and returns source name and selectors.
-func (s *RawContentService) getSourceConfig(sourceURL string) (string, SourceSelectors) {
+// getSourceConfig gets the source configuration and returns source name, selectors, and indigenous region.
+func (s *RawContentService) getSourceConfig(sourceURL string) (
+	name string, sel SourceSelectors, indigenousRegion string,
+) {
 	var sourceName string
 	selectors := SourceSelectors{}
 
@@ -236,7 +238,7 @@ func (s *RawContentService) getSourceConfig(sourceURL string) (string, SourceSel
 		s.logger.Debug("No sources manager available, using URL-based source name",
 			infralogger.String("source_name", sourceName),
 			infralogger.String("url", sourceURL))
-		return sourceName, selectors
+		return sourceName, selectors, ""
 	}
 
 	// Try to find source by URL (matching domain)
@@ -247,7 +249,7 @@ func (s *RawContentService) getSourceConfig(sourceURL string) (string, SourceSel
 		s.logger.Debug("Source not found for URL, using URL-based source name",
 			infralogger.String("url", sourceURL),
 			infralogger.String("source_name", sourceName))
-		return sourceName, selectors
+		return sourceName, selectors, ""
 	}
 
 	// Use hostname from the URL being crawled, not the source's Name field
@@ -284,7 +286,7 @@ func (s *RawContentService) getSourceConfig(sourceURL string) (string, SourceSel
 		}
 	}
 
-	return sourceName, selectors
+	return sourceName, selectors, sourceConfig.IndigenousRegion
 }
 
 // SourceSelectors represents generic selectors for content extraction
@@ -355,7 +357,9 @@ func (s *RawContentService) findSourceByURL(pageURL string) *sources.Config {
 }
 
 // convertToRawContent converts RawContentData to storage.RawContent for indexing
-func (s *RawContentService) convertToRawContent(rawData *RawContentData, sourceName, detectedContentType string) *storagepkg.RawContent {
+func (s *RawContentService) convertToRawContent(
+	rawData *RawContentData, sourceName, detectedContentType, indigenousRegion string,
+) *storagepkg.RawContent {
 	// Calculate word count
 	wordCount := calculateWordCount(rawData.RawText)
 
@@ -389,6 +393,9 @@ func (s *RawContentService) convertToRawContent(rawData *RawContentData, sourceN
 	}
 	if detectedContentType != "" {
 		meta["detected_content_type"] = detectedContentType
+	}
+	if indigenousRegion != "" {
+		meta["indigenous_region"] = indigenousRegion
 	}
 
 	// Tag page type for extraction quality measurement

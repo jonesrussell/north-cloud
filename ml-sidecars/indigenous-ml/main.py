@@ -7,7 +7,7 @@ from pydantic import BaseModel
 
 from classifier.relevance import classify_indigenous_relevance
 
-MODEL_VERSION = "2026-02-27-indigenous-v1"
+MODEL_VERSION = "2026-03-08-indigenous-v2"
 
 
 app = FastAPI(
