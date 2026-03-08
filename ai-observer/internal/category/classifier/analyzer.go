@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"sort"
+	"strings"
 
 	"github.com/jonesrussell/north-cloud/ai-observer/internal/category"
 	"github.com/jonesrussell/north-cloud/ai-observer/internal/provider"
@@ -126,6 +127,19 @@ details (object with relevant metrics), suggested_actions (array of strings).
 If no issues found, return [].`, string(data))
 }
 
+// stripMarkdownFence removes optional ```json ... ``` or ``` ... ``` wrappers
+// that some LLMs add despite being instructed to return raw JSON.
+func stripMarkdownFence(s string) string {
+	s = strings.TrimSpace(s)
+	if strings.HasPrefix(s, "```") {
+		s = strings.TrimPrefix(s, "```json")
+		s = strings.TrimPrefix(s, "```")
+		s = strings.TrimSuffix(s, "```")
+		s = strings.TrimSpace(s)
+	}
+	return s
+}
+
 // rawInsight is the expected JSON shape from the LLM.
 type rawInsight struct {
 	Severity         string         `json:"severity"`
@@ -136,7 +150,7 @@ type rawInsight struct {
 
 func parseInsights(content string, tokensUsed int, model string) ([]category.Insight, error) {
 	var raw []rawInsight
-	if err := json.Unmarshal([]byte(content), &raw); err != nil {
+	if err := json.Unmarshal([]byte(stripMarkdownFence(content)), &raw); err != nil {
 		return nil, fmt.Errorf("unmarshal LLM response: %w (content: %.200s)", err, content)
 	}
 
