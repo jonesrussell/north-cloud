@@ -11,7 +11,7 @@ import (
 	"github.com/jonesrussell/north-cloud/social-publisher/internal/crypto"
 	"github.com/jonesrussell/north-cloud/social-publisher/internal/database"
 	"github.com/jonesrussell/north-cloud/social-publisher/internal/domain"
-	infralogger "github.com/north-cloud/infrastructure/logger"
+	infralogger "github.com/jonesrussell/north-cloud/infrastructure/logger"
 )
 
 // AccountsHandler implements account management endpoints.

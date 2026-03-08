@@ -6,4 +6,4 @@ require github.com/jonesrussell/north-cloud/index-manager v0.0.0
 
 replace github.com/jonesrussell/north-cloud/index-manager => ../../index-manager
 
-replace github.com/north-cloud/infrastructure => ../../infrastructure
+replace github.com/jonesrussell/north-cloud/infrastructure => ../../infrastructure

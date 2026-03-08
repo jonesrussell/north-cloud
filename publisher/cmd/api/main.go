@@ -7,15 +7,15 @@ import (
 
 	"github.com/elastic/go-elasticsearch/v8"
 	"github.com/jmoiron/sqlx"
+	infraconfig "github.com/jonesrussell/north-cloud/infrastructure/config"
+	esclient "github.com/jonesrussell/north-cloud/infrastructure/elasticsearch"
+	infragin "github.com/jonesrussell/north-cloud/infrastructure/gin"
+	"github.com/jonesrussell/north-cloud/infrastructure/logger"
+	"github.com/jonesrussell/north-cloud/infrastructure/profiling"
 	"github.com/jonesrussell/north-cloud/publisher/internal/api"
 	"github.com/jonesrussell/north-cloud/publisher/internal/config"
 	"github.com/jonesrussell/north-cloud/publisher/internal/database"
 	redisclient "github.com/jonesrussell/north-cloud/publisher/internal/redis"
-	infraconfig "github.com/north-cloud/infrastructure/config"
-	esclient "github.com/north-cloud/infrastructure/elasticsearch"
-	infragin "github.com/north-cloud/infrastructure/gin"
-	"github.com/north-cloud/infrastructure/logger"
-	"github.com/north-cloud/infrastructure/profiling"
 	"github.com/redis/go-redis/v9"
 )
 

@@ -8,7 +8,7 @@ import (
 	"github.com/jonesrussell/north-cloud/index-manager/internal/database"
 	"github.com/jonesrussell/north-cloud/index-manager/internal/elasticsearch"
 	"github.com/jonesrussell/north-cloud/index-manager/internal/elasticsearch/mappings"
-	infralogger "github.com/north-cloud/infrastructure/logger"
+	infralogger "github.com/jonesrussell/north-cloud/infrastructure/logger"
 )
 
 // SetupElasticsearch creates an Elasticsearch client.

@@ -11,8 +11,8 @@ import (
 	"time"
 
 	"github.com/PuerkitoBio/goquery"
+	infralogger "github.com/jonesrussell/north-cloud/infrastructure/logger"
 	"github.com/jonesrussell/north-cloud/source-manager/internal/models"
-	infralogger "github.com/north-cloud/infrastructure/logger"
 )
 
 const (

@@ -4,8 +4,8 @@ package events
 import (
 	"context"
 
-	infraevents "github.com/north-cloud/infrastructure/events"
-	infralogger "github.com/north-cloud/infrastructure/logger"
+	infraevents "github.com/jonesrussell/north-cloud/infrastructure/events"
+	infralogger "github.com/jonesrussell/north-cloud/infrastructure/logger"
 )
 
 // NoOpHandler logs events but takes no action.

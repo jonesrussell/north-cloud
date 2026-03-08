@@ -14,11 +14,11 @@ import (
 	"time"
 
 	"github.com/elastic/go-elasticsearch/v8/esapi"
+	"github.com/jonesrussell/north-cloud/infrastructure/clickurl"
+	infralogger "github.com/jonesrussell/north-cloud/infrastructure/logger"
 	"github.com/jonesrussell/north-cloud/search/internal/config"
 	"github.com/jonesrussell/north-cloud/search/internal/domain"
 	"github.com/jonesrussell/north-cloud/search/internal/elasticsearch"
-	"github.com/north-cloud/infrastructure/clickurl"
-	infralogger "github.com/north-cloud/infrastructure/logger"
 )
 
 // SearchService orchestrates search operations

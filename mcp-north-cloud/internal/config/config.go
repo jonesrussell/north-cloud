@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	infraconfig "github.com/north-cloud/infrastructure/config"
+	infraconfig "github.com/jonesrussell/north-cloud/infrastructure/config"
 )
 
 // defaultURLPublisherClassifier is the default base URL for publisher and classifier (same port in dev).

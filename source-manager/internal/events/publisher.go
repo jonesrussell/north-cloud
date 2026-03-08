@@ -10,8 +10,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
 
-	infraevents "github.com/north-cloud/infrastructure/events"
-	infralogger "github.com/north-cloud/infrastructure/logger"
+	infraevents "github.com/jonesrussell/north-cloud/infrastructure/events"
+	infralogger "github.com/jonesrussell/north-cloud/infrastructure/logger"
 )
 
 // asyncPublishTimeout is the context timeout for async publish operations.

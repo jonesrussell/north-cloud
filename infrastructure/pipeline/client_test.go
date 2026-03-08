@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/north-cloud/infrastructure/pipeline"
+	"github.com/jonesrussell/north-cloud/infrastructure/pipeline"
 )
 
 func TestClient_Emit_Success(t *testing.T) {

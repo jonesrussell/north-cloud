@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/north-cloud/infrastructure/naming"
+	"github.com/jonesrussell/north-cloud/infrastructure/naming"
 )
 
 // ClassifiedIndexForContent determines the classified index name for a content item.

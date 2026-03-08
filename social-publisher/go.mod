@@ -7,7 +7,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/jmoiron/sqlx v1.4.0
 	github.com/lib/pq v1.11.2
-	github.com/north-cloud/infrastructure v0.0.0
+	github.com/jonesrussell/north-cloud/infrastructure v0.0.0
 	github.com/redis/go-redis/v9 v9.17.3
 	github.com/stretchr/testify v1.11.1
 )
@@ -55,4 +55,4 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
-replace github.com/north-cloud/infrastructure => ../infrastructure
+replace github.com/jonesrussell/north-cloud/infrastructure => ../infrastructure

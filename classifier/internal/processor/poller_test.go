@@ -5,7 +5,7 @@ import (
 	"reflect"
 	"testing"
 
-	infralogger "github.com/north-cloud/infrastructure/logger"
+	infralogger "github.com/jonesrussell/north-cloud/infrastructure/logger"
 )
 
 // mockLoggerWithCalls tracks log calls for testing

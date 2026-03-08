@@ -8,7 +8,7 @@ import (
 	"github.com/jonesrussell/north-cloud/rfp-ingestor/internal/domain"
 	esindex "github.com/jonesrussell/north-cloud/rfp-ingestor/internal/elasticsearch"
 	"github.com/jonesrussell/north-cloud/rfp-ingestor/internal/feed"
-	"github.com/north-cloud/infrastructure/logger"
+	"github.com/jonesrussell/north-cloud/infrastructure/logger"
 )
 
 // Config holds the settings needed to run a single ingestion cycle.

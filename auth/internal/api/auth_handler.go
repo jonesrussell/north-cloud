@@ -6,7 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/jonesrussell/north-cloud/auth/internal/auth"
 	"github.com/jonesrussell/north-cloud/auth/internal/config"
-	"github.com/north-cloud/infrastructure/logger"
+	"github.com/jonesrussell/north-cloud/infrastructure/logger"
 )
 
 // AuthHandler handles authentication requests.

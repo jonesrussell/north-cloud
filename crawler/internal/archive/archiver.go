@@ -16,9 +16,9 @@ import (
 	"unicode"
 
 	"github.com/jonesrussell/north-cloud/crawler/internal/config/minio"
+	infralogger "github.com/jonesrussell/north-cloud/infrastructure/logger"
 	miniogo "github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
-	infralogger "github.com/north-cloud/infrastructure/logger"
 )
 
 // Archiver handles HTML archiving to MinIO object storage.

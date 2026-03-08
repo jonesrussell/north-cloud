@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/north-cloud/infrastructure/events"
+	"github.com/jonesrussell/north-cloud/infrastructure/events"
 )
 
 func TestSourceEvent_MarshalJSON(t *testing.T) {

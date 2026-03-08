@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"os"
 
-	infralogger "github.com/north-cloud/infrastructure/logger"
-	"github.com/north-cloud/infrastructure/profiling"
+	infralogger "github.com/jonesrussell/north-cloud/infrastructure/logger"
+	"github.com/jonesrussell/north-cloud/infrastructure/profiling"
 )
 
 // Start initializes and runs the pipeline service.

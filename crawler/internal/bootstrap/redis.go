@@ -4,7 +4,7 @@ import (
 	"errors"
 
 	"github.com/jonesrussell/north-cloud/crawler/internal/config"
-	infraredis "github.com/north-cloud/infrastructure/redis"
+	infraredis "github.com/jonesrussell/north-cloud/infrastructure/redis"
 	"github.com/redis/go-redis/v9"
 )
 

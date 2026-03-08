@@ -14,8 +14,8 @@ import (
 	_ "github.com/lib/pq"
 	goredis "github.com/redis/go-redis/v9"
 
-	infralogger "github.com/north-cloud/infrastructure/logger"
-	"github.com/north-cloud/infrastructure/profiling"
+	infralogger "github.com/jonesrussell/north-cloud/infrastructure/logger"
+	"github.com/jonesrussell/north-cloud/infrastructure/profiling"
 
 	xadapter "github.com/jonesrussell/north-cloud/social-publisher/internal/adapters/x"
 	"github.com/jonesrussell/north-cloud/social-publisher/internal/api"

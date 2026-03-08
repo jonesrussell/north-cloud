@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	infralogger "github.com/jonesrussell/north-cloud/infrastructure/logger"
 	"github.com/jonesrussell/north-cloud/search/internal/config"
-	infralogger "github.com/north-cloud/infrastructure/logger"
 )
 
 const (

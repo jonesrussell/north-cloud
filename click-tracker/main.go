@@ -11,10 +11,10 @@ import (
 	"github.com/jonesrussell/north-cloud/click-tracker/internal/config"
 	"github.com/jonesrussell/north-cloud/click-tracker/internal/handler"
 	"github.com/jonesrussell/north-cloud/click-tracker/internal/storage"
-	"github.com/north-cloud/infrastructure/clickurl"
-	infraconfig "github.com/north-cloud/infrastructure/config"
-	"github.com/north-cloud/infrastructure/logger"
-	"github.com/north-cloud/infrastructure/profiling"
+	"github.com/jonesrussell/north-cloud/infrastructure/clickurl"
+	infraconfig "github.com/jonesrussell/north-cloud/infrastructure/config"
+	"github.com/jonesrussell/north-cloud/infrastructure/logger"
+	"github.com/jonesrussell/north-cloud/infrastructure/profiling"
 
 	_ "github.com/lib/pq"
 )

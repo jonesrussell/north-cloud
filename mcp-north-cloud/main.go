@@ -9,11 +9,11 @@ import (
 	"os"
 	"time"
 
+	infraconfig "github.com/jonesrussell/north-cloud/infrastructure/config"
+	"github.com/jonesrussell/north-cloud/infrastructure/logger"
 	"github.com/jonesrussell/north-cloud/mcp-north-cloud/internal/client"
 	"github.com/jonesrussell/north-cloud/mcp-north-cloud/internal/config"
 	"github.com/jonesrussell/north-cloud/mcp-north-cloud/internal/mcp"
-	infraconfig "github.com/north-cloud/infrastructure/config"
-	"github.com/north-cloud/infrastructure/logger"
 )
 
 func main() {

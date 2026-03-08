@@ -4,8 +4,8 @@ import (
 	"context"
 	"errors"
 
+	infralogger "github.com/jonesrussell/north-cloud/infrastructure/logger"
 	"github.com/jonesrussell/north-cloud/publisher/internal/metrics"
-	infralogger "github.com/north-cloud/infrastructure/logger"
 )
 
 const defaultLimit = 50

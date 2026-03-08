@@ -14,7 +14,7 @@ import (
 	ahocorasick "github.com/cloudflare/ahocorasick"
 	"github.com/jonesrussell/north-cloud/classifier/internal/domain"
 	"github.com/jonesrussell/north-cloud/classifier/internal/telemetry"
-	infralogger "github.com/north-cloud/infrastructure/logger"
+	infralogger "github.com/jonesrussell/north-cloud/infrastructure/logger"
 )
 
 // RuleMatch represents a matched rule with scoring details

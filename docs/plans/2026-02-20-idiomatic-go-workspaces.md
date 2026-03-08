@@ -4,7 +4,7 @@
 
 **Goal:** Replace the hybrid go.work + replace-directives + GOWORK=off pattern with idiomatic Go workspace usage: go.work resolves cross-module deps, replace directives removed, GOWORK enabled everywhere.
 
-**Architecture:** Go workspaces were designed to eliminate `replace` directives for local multi-module repos. Currently every service has both a `replace github.com/north-cloud/infrastructure => ../infrastructure` directive AND a `GOWORK=off` env that prevents the workspace from being used — making go.work dead weight. The fix: remove replace directives (workspace handles resolution), remove GOWORK=off (workspace is now active), keep the golangci-lint-action CI step GOWORK=off-isolated (it runs from repo root which has no module).
+**Architecture:** Go workspaces were designed to eliminate `replace` directives for local multi-module repos. Currently every service has both a `replace github.com/jonesrussell/north-cloud/infrastructure => ../infrastructure` directive AND a `GOWORK=off` env that prevents the workspace from being used — making go.work dead weight. The fix: remove replace directives (workspace handles resolution), remove GOWORK=off (workspace is now active), keep the golangci-lint-action CI step GOWORK=off-isolated (it runs from repo root which has no module).
 
 **Tech Stack:** Go 1.26+, go.work (workspace), golangci-lint, Taskfile, GitHub Actions
 
@@ -12,7 +12,7 @@
 
 ## Services with replace directives to remove
 
-Nine services have `replace github.com/north-cloud/infrastructure => ../infrastructure`:
+Nine services have `replace github.com/jonesrussell/north-cloud/infrastructure => ../infrastructure`:
 `auth`, `classifier`, `click-tracker`, `index-manager`, `mcp-north-cloud`, `pipeline`, `publisher`, `search`, `source-manager`
 
 One service (`crawler`) also replaces `github.com/jonesrussell/north-cloud/index-manager => ../index-manager`.
@@ -31,7 +31,7 @@ Eleven service Taskfiles have `GOWORK: "off"` at line 13:
 
 Find and delete this line:
 ```
-replace github.com/north-cloud/infrastructure => ../infrastructure
+replace github.com/jonesrussell/north-cloud/infrastructure => ../infrastructure
 ```
 
 **Step 2: Run go mod tidy to verify**
@@ -66,7 +66,7 @@ git commit -m "chore(auth): remove infrastructure replace directive (use workspa
 
 Find and delete this line from `classifier/go.mod`:
 ```
-replace github.com/north-cloud/infrastructure => ../infrastructure
+replace github.com/jonesrussell/north-cloud/infrastructure => ../infrastructure
 ```
 
 **Step 2: Run go mod tidy**
@@ -100,7 +100,7 @@ git commit -m "chore(classifier): remove infrastructure replace directive (use w
 
 Delete from `click-tracker/go.mod`:
 ```
-replace github.com/north-cloud/infrastructure => ../infrastructure
+replace github.com/jonesrussell/north-cloud/infrastructure => ../infrastructure
 ```
 
 **Step 2: Run go mod tidy**
@@ -135,7 +135,7 @@ The crawler has a multi-line replace block (around line 27):
 ```
 replace (
 	github.com/jonesrussell/north-cloud/index-manager => ../index-manager
-	github.com/north-cloud/infrastructure => ../infrastructure
+	github.com/jonesrussell/north-cloud/infrastructure => ../infrastructure
 )
 ```
 Delete the entire block (both entries are workspace modules listed in go.work).
@@ -170,7 +170,7 @@ git commit -m "chore(crawler): remove workspace replace directives (use workspac
 
 Delete from `index-manager/go.mod`:
 ```
-replace github.com/north-cloud/infrastructure => ../infrastructure
+replace github.com/jonesrussell/north-cloud/infrastructure => ../infrastructure
 ```
 
 **Step 2: Run go mod tidy**
@@ -203,7 +203,7 @@ git commit -m "chore(index-manager): remove infrastructure replace directive (us
 
 Delete from `mcp-north-cloud/go.mod`:
 ```
-replace github.com/north-cloud/infrastructure => ../infrastructure
+replace github.com/jonesrussell/north-cloud/infrastructure => ../infrastructure
 ```
 
 **Step 2: Run go mod tidy**
@@ -236,7 +236,7 @@ git commit -m "chore(mcp-north-cloud): remove infrastructure replace directive (
 
 Delete from `pipeline/go.mod`:
 ```
-replace github.com/north-cloud/infrastructure => ../infrastructure
+replace github.com/jonesrussell/north-cloud/infrastructure => ../infrastructure
 ```
 
 **Step 2: Run go mod tidy**
@@ -269,7 +269,7 @@ git commit -m "chore(pipeline): remove infrastructure replace directive (use wor
 
 Delete from `publisher/go.mod`:
 ```
-replace github.com/north-cloud/infrastructure => ../infrastructure
+replace github.com/jonesrussell/north-cloud/infrastructure => ../infrastructure
 ```
 
 **Step 2: Run go mod tidy**
@@ -302,7 +302,7 @@ git commit -m "chore(publisher): remove infrastructure replace directive (use wo
 
 Delete from `search/go.mod`:
 ```
-replace github.com/north-cloud/infrastructure => ../infrastructure
+replace github.com/jonesrussell/north-cloud/infrastructure => ../infrastructure
 ```
 
 **Step 2: Run go mod tidy**
@@ -335,7 +335,7 @@ git commit -m "chore(search): remove infrastructure replace directive (use works
 
 Delete from `source-manager/go.mod`:
 ```
-replace github.com/north-cloud/infrastructure => ../infrastructure
+replace github.com/jonesrussell/north-cloud/infrastructure => ../infrastructure
 ```
 
 **Step 2: Run go mod tidy**

@@ -6,9 +6,9 @@ import (
 
 	"github.com/jonesrussell/north-cloud/classifier/internal/config"
 	"github.com/jonesrussell/north-cloud/classifier/internal/storage"
-	esclient "github.com/north-cloud/infrastructure/elasticsearch"
-	infralogger "github.com/north-cloud/infrastructure/logger"
-	"github.com/north-cloud/infrastructure/retry"
+	esclient "github.com/jonesrussell/north-cloud/infrastructure/elasticsearch"
+	infralogger "github.com/jonesrussell/north-cloud/infrastructure/logger"
+	"github.com/jonesrussell/north-cloud/infrastructure/retry"
 )
 
 // SetupElasticsearch creates optional Elasticsearch storage for re-classification.

@@ -99,8 +99,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	infragin "github.com/north-cloud/infrastructure/gin"
-	"github.com/north-cloud/infrastructure/logger"
+	infragin "github.com/jonesrussell/north-cloud/infrastructure/gin"
+	"github.com/jonesrussell/north-cloud/infrastructure/logger"
 	"github.com/jonesrussell/north-cloud/social-publisher/internal/config"
 	"github.com/jonesrussell/north-cloud/social-publisher/internal/database"
 	"github.com/jonesrussell/north-cloud/social-publisher/internal/orchestrator"
@@ -1049,7 +1049,7 @@ import (
 	"testing"
 
 	"github.com/gin-gonic/gin"
-	infralogger "github.com/north-cloud/infrastructure/logger"
+	infralogger "github.com/jonesrussell/north-cloud/infrastructure/logger"
 	"github.com/jonesrussell/north-cloud/social-publisher/internal/api"
 	"github.com/stretchr/testify/assert"
 )
@@ -1120,7 +1120,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 
-	infralogger "github.com/north-cloud/infrastructure/logger"
+	infralogger "github.com/jonesrussell/north-cloud/infrastructure/logger"
 	"github.com/jonesrussell/north-cloud/social-publisher/internal/crypto"
 	"github.com/jonesrussell/north-cloud/social-publisher/internal/database"
 	"github.com/jonesrussell/north-cloud/social-publisher/internal/domain"

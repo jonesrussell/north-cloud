@@ -3,9 +3,9 @@ package bootstrap
 import (
 	"fmt"
 
+	infralogger "github.com/jonesrussell/north-cloud/infrastructure/logger"
 	"github.com/jonesrussell/north-cloud/source-manager/internal/config"
 	"github.com/jonesrussell/north-cloud/source-manager/internal/database"
-	infralogger "github.com/north-cloud/infrastructure/logger"
 )
 
 // SetupDatabase creates a database connection.

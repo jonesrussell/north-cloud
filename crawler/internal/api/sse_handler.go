@@ -3,8 +3,8 @@ package api
 
 import (
 	"github.com/gin-gonic/gin"
-	infralogger "github.com/north-cloud/infrastructure/logger"
-	"github.com/north-cloud/infrastructure/sse"
+	infralogger "github.com/jonesrussell/north-cloud/infrastructure/logger"
+	"github.com/jonesrussell/north-cloud/infrastructure/sse"
 )
 
 // SSEHandler handles Server-Sent Events endpoints.

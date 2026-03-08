@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/jonesrussell/north-cloud/crawler/internal/events"
-	infraevents "github.com/north-cloud/infrastructure/events"
+	infraevents "github.com/jonesrussell/north-cloud/infrastructure/events"
 )
 
 // MockHandler implements events.EventHandler for testing.

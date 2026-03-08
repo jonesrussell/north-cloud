@@ -7,7 +7,7 @@ import (
 	"errors"
 	"fmt"
 
-	infralogger "github.com/north-cloud/infrastructure/logger"
+	infralogger "github.com/jonesrussell/north-cloud/infrastructure/logger"
 )
 
 // SearchDocuments performs a search query and decodes the result into the provided value

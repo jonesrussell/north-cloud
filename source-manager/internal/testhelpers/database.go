@@ -8,8 +8,8 @@ import (
 	"path/filepath"
 	"runtime"
 
+	infralogger "github.com/jonesrussell/north-cloud/infrastructure/logger"
 	_ "github.com/lib/pq" //nolint:blankimports // PostgreSQL driver
-	infralogger "github.com/north-cloud/infrastructure/logger"
 )
 
 // TestDatabase provides helper functions for test database setup

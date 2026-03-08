@@ -3,7 +3,7 @@ package config
 import (
 	"fmt"
 
-	infraconfig "github.com/north-cloud/infrastructure/config"
+	infraconfig "github.com/jonesrussell/north-cloud/infrastructure/config"
 )
 
 // Default configuration values.

@@ -4,8 +4,8 @@ import (
 	"fmt"
 
 	"github.com/jonesrussell/north-cloud/index-manager/internal/config"
-	infraconfig "github.com/north-cloud/infrastructure/config"
-	infralogger "github.com/north-cloud/infrastructure/logger"
+	infraconfig "github.com/jonesrussell/north-cloud/infrastructure/config"
+	infralogger "github.com/jonesrussell/north-cloud/infrastructure/logger"
 )
 
 // LoadConfig loads and validates configuration.

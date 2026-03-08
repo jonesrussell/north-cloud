@@ -12,7 +12,7 @@ import (
 	"github.com/jonesrussell/north-cloud/crawler/internal/fetcher"
 	"github.com/jonesrussell/north-cloud/crawler/internal/sources/apiclient"
 	"github.com/jonesrussell/north-cloud/crawler/internal/storage"
-	infralogger "github.com/north-cloud/infrastructure/logger"
+	infralogger "github.com/jonesrussell/north-cloud/infrastructure/logger"
 )
 
 // publishedDateFormats lists time formats to try when parsing published dates from HTML meta tags.

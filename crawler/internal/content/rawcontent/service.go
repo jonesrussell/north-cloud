@@ -14,8 +14,8 @@ import (
 	"github.com/jonesrussell/north-cloud/crawler/internal/sources"
 	storagepkg "github.com/jonesrussell/north-cloud/crawler/internal/storage"
 	"github.com/jonesrussell/north-cloud/crawler/internal/storage/types"
-	infralogger "github.com/north-cloud/infrastructure/logger"
-	"github.com/north-cloud/infrastructure/pipeline"
+	infralogger "github.com/jonesrussell/north-cloud/infrastructure/logger"
+	"github.com/jonesrussell/north-cloud/infrastructure/pipeline"
 )
 
 // minPostExtractionWordCount is the minimum word count for extracted content to be indexed.

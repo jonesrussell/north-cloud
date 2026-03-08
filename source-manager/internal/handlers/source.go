@@ -9,14 +9,14 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	infraevents "github.com/jonesrussell/north-cloud/infrastructure/events"
+	infralogger "github.com/jonesrussell/north-cloud/infrastructure/logger"
 	"github.com/jonesrussell/north-cloud/source-manager/internal/events"
 	"github.com/jonesrussell/north-cloud/source-manager/internal/importer"
 	"github.com/jonesrussell/north-cloud/source-manager/internal/metadata"
 	"github.com/jonesrussell/north-cloud/source-manager/internal/models"
 	"github.com/jonesrussell/north-cloud/source-manager/internal/repository"
 	"github.com/lib/pq"
-	infraevents "github.com/north-cloud/infrastructure/events"
-	infralogger "github.com/north-cloud/infrastructure/logger"
 )
 
 const (

@@ -1,10 +1,10 @@
 package bootstrap
 
 import (
+	infralogger "github.com/jonesrussell/north-cloud/infrastructure/logger"
+	infraredis "github.com/jonesrussell/north-cloud/infrastructure/redis"
 	"github.com/jonesrussell/north-cloud/source-manager/internal/config"
 	"github.com/jonesrussell/north-cloud/source-manager/internal/events"
-	infralogger "github.com/north-cloud/infrastructure/logger"
-	infraredis "github.com/north-cloud/infrastructure/redis"
 )
 
 // SetupEventPublisher creates an optional event publisher if Redis is enabled.

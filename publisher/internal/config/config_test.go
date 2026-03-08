@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	infraconfig "github.com/north-cloud/infrastructure/config"
+	infraconfig "github.com/jonesrussell/north-cloud/infrastructure/config"
 )
 
 func TestConfigDebugFromEnv(t *testing.T) {

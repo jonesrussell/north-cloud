@@ -6,9 +6,9 @@ import (
 
 	"github.com/jonesrussell/north-cloud/auth/internal/api"
 	"github.com/jonesrussell/north-cloud/auth/internal/config"
-	infraconfig "github.com/north-cloud/infrastructure/config"
-	"github.com/north-cloud/infrastructure/logger"
-	"github.com/north-cloud/infrastructure/profiling"
+	infraconfig "github.com/jonesrussell/north-cloud/infrastructure/config"
+	"github.com/jonesrussell/north-cloud/infrastructure/logger"
+	"github.com/jonesrussell/north-cloud/infrastructure/profiling"
 )
 
 func main() {

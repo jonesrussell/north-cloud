@@ -12,8 +12,8 @@ import (
 	"github.com/jonesrussell/north-cloud/rfp-ingestor/internal/config"
 	esindex "github.com/jonesrussell/north-cloud/rfp-ingestor/internal/elasticsearch"
 	"github.com/jonesrussell/north-cloud/rfp-ingestor/internal/ingestor"
-	infraconfig "github.com/north-cloud/infrastructure/config"
-	"github.com/north-cloud/infrastructure/logger"
+	infraconfig "github.com/jonesrussell/north-cloud/infrastructure/config"
+	"github.com/jonesrussell/north-cloud/infrastructure/logger"
 )
 
 func main() {

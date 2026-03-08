@@ -9,7 +9,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jonesrussell/north-cloud/crawler/internal/domain"
 	"github.com/jonesrussell/north-cloud/crawler/internal/sources"
-	infralogger "github.com/north-cloud/infrastructure/logger"
+	infralogger "github.com/jonesrussell/north-cloud/infrastructure/logger"
 )
 
 // MigrationRepository defines the interface for migration-related job operations.

@@ -5,8 +5,8 @@ import (
 	"log"
 
 	"github.com/jonesrussell/north-cloud/classifier/internal/config"
-	infraconfig "github.com/north-cloud/infrastructure/config"
-	infralogger "github.com/north-cloud/infrastructure/logger"
+	infraconfig "github.com/jonesrussell/north-cloud/infrastructure/config"
+	infralogger "github.com/jonesrussell/north-cloud/infrastructure/logger"
 )
 
 // LoadConfig loads configuration. Uses defaults if file doesn't exist.

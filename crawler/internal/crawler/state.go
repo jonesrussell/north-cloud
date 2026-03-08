@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	infralogger "github.com/north-cloud/infrastructure/logger"
+	infralogger "github.com/jonesrussell/north-cloud/infrastructure/logger"
 )
 
 // State implements the CrawlerState and CrawlerMetrics interfaces.

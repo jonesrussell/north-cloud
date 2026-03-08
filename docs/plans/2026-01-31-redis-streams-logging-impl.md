@@ -1017,8 +1017,8 @@ import (
 	"github.com/redis/go-redis/v9"
 
 	"github.com/north-cloud/crawler/internal/logs"
-	"github.com/north-cloud/infrastructure/sse"
-	infralogger "github.com/north-cloud/infrastructure/logger"
+	"github.com/jonesrussell/north-cloud/infrastructure/sse"
+	infralogger "github.com/jonesrussell/north-cloud/infrastructure/logger"
 )
 
 const (

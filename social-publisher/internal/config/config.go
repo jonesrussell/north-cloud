@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 
-	infraconfig "github.com/north-cloud/infrastructure/config"
+	infraconfig "github.com/jonesrussell/north-cloud/infrastructure/config"
 )
 
 const requiredEncryptionKeyHexLen = 64 // 32 bytes as hex

@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"github.com/jonesrussell/north-cloud/classifier/internal/domain"
-	infralogger "github.com/north-cloud/infrastructure/logger"
-	"github.com/north-cloud/infrastructure/pipeline"
+	infralogger "github.com/jonesrussell/north-cloud/infrastructure/logger"
+	"github.com/jonesrussell/north-cloud/infrastructure/pipeline"
 )
 
 const (

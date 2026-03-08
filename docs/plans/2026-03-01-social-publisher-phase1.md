@@ -150,7 +150,7 @@ package config
 import (
 	"fmt"
 
-	infraconfig "github.com/north-cloud/infrastructure/config"
+	infraconfig "github.com/jonesrussell/north-cloud/infrastructure/config"
 )
 
 type Config struct {
@@ -992,7 +992,7 @@ import (
 
 	goredis "github.com/redis/go-redis/v9"
 
-	"github.com/north-cloud/infrastructure/logger"
+	"github.com/jonesrussell/north-cloud/infrastructure/logger"
 	"github.com/north-cloud/social-publisher/internal/domain"
 )
 
@@ -1049,7 +1049,7 @@ import (
 
 	goredis "github.com/redis/go-redis/v9"
 
-	"github.com/north-cloud/infrastructure/logger"
+	"github.com/jonesrussell/north-cloud/infrastructure/logger"
 	"github.com/north-cloud/social-publisher/internal/domain"
 )
 
@@ -1864,7 +1864,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/north-cloud/infrastructure/logger"
+	"github.com/jonesrussell/north-cloud/infrastructure/logger"
 	"github.com/north-cloud/social-publisher/internal/database"
 	"github.com/north-cloud/social-publisher/internal/domain"
 	"github.com/north-cloud/social-publisher/internal/orchestrator"
@@ -2047,7 +2047,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/north-cloud/infrastructure/logger"
+	"github.com/jonesrussell/north-cloud/infrastructure/logger"
 	"github.com/north-cloud/social-publisher/internal/database"
 	"github.com/north-cloud/social-publisher/internal/domain"
 	"github.com/north-cloud/social-publisher/internal/orchestrator"
@@ -2346,8 +2346,8 @@ package api
 import (
 	"github.com/gin-gonic/gin"
 
-	infragin "github.com/north-cloud/infrastructure/gin"
-	"github.com/north-cloud/infrastructure/logger"
+	infragin "github.com/jonesrussell/north-cloud/infrastructure/gin"
+	"github.com/jonesrussell/north-cloud/infrastructure/logger"
 	"github.com/north-cloud/social-publisher/internal/config"
 	"github.com/north-cloud/social-publisher/internal/database"
 )
@@ -2424,9 +2424,9 @@ import (
 
 	goredis "github.com/redis/go-redis/v9"
 
-	infraconfig "github.com/north-cloud/infrastructure/config"
-	infralogger "github.com/north-cloud/infrastructure/logger"
-	"github.com/north-cloud/infrastructure/profiling"
+	infraconfig "github.com/jonesrussell/north-cloud/infrastructure/config"
+	infralogger "github.com/jonesrussell/north-cloud/infrastructure/logger"
+	"github.com/jonesrussell/north-cloud/infrastructure/profiling"
 
 	"github.com/north-cloud/social-publisher/internal/api"
 	"github.com/north-cloud/social-publisher/internal/config"

@@ -5,8 +5,8 @@ import (
 	"fmt"
 
 	es "github.com/elastic/go-elasticsearch/v8"
-	infraes "github.com/north-cloud/infrastructure/elasticsearch"
-	"github.com/north-cloud/infrastructure/logger"
+	infraes "github.com/jonesrussell/north-cloud/infrastructure/elasticsearch"
+	"github.com/jonesrussell/north-cloud/infrastructure/logger"
 )
 
 // SetupElasticsearch creates and verifies the ES client using infrastructure package.

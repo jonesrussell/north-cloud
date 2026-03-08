@@ -7,10 +7,10 @@ import (
 
 	"github.com/elastic/go-elasticsearch/v8"
 	"github.com/gin-gonic/gin"
+	infragin "github.com/jonesrussell/north-cloud/infrastructure/gin"
+	"github.com/jonesrussell/north-cloud/infrastructure/logger"
 	"github.com/jonesrussell/north-cloud/publisher/internal/config"
 	"github.com/jonesrussell/north-cloud/publisher/internal/database"
-	infragin "github.com/north-cloud/infrastructure/gin"
-	"github.com/north-cloud/infrastructure/logger"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/redis/go-redis/v9"
 )

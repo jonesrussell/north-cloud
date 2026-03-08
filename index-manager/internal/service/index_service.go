@@ -16,8 +16,8 @@ import (
 	"github.com/jonesrussell/north-cloud/index-manager/internal/domain"
 	"github.com/jonesrussell/north-cloud/index-manager/internal/elasticsearch"
 	"github.com/jonesrussell/north-cloud/index-manager/internal/elasticsearch/mappings"
-	infralogger "github.com/north-cloud/infrastructure/logger"
-	"github.com/north-cloud/infrastructure/naming"
+	infralogger "github.com/jonesrussell/north-cloud/infrastructure/logger"
+	"github.com/jonesrussell/north-cloud/infrastructure/naming"
 )
 
 // IndexService provides business logic for index operations

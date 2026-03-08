@@ -9,7 +9,7 @@ require (
 	github.com/jmoiron/sqlx v1.4.0
 	github.com/lib/pq v1.11.2
 	github.com/mattn/go-sqlite3 v1.14.32
-	github.com/north-cloud/infrastructure v0.0.0
+	github.com/jonesrussell/north-cloud/infrastructure v0.0.0
 	github.com/prometheus/client_golang v1.23.2
 	github.com/stretchr/testify v1.11.1
 	go.opentelemetry.io/otel v1.40.0
@@ -71,4 +71,4 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
-replace github.com/north-cloud/infrastructure => ../infrastructure
+replace github.com/jonesrussell/north-cloud/infrastructure => ../infrastructure
