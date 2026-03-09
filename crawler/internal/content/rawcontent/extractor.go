@@ -219,6 +219,11 @@ func extractRawHTML(e *colly.HTMLElement, containerSelector, bodySelector string
 		}
 	}
 
+	// Text density heuristic: score elements by (non-link content)² / total text.
+	if html := extractHTMLByTextDensity(e); html != "" {
+		return html
+	}
+
 	// Last resort: get body HTML (excluding common non-content areas)
 	return extractBodyHTML(e)
 }
@@ -316,6 +321,13 @@ func extractRawText(
 		}
 	}
 
+	// Text density heuristic: score elements by (non-link content)² / total text.
+	if densityText := extractByTextDensity(e); densityText != "" {
+		if len(strings.TrimSpace(densityText)) >= minHTMLContentLength {
+			return densityText
+		}
+	}
+
 	// Last resort: extract from body paragraphs
 	return extractFromBodyParagraphs(e, excludeSelectors)
 }
@@ -357,6 +369,103 @@ func extractFromBodyParagraphs(e *colly.HTMLElement, excludeSelectors []string) 
 	}
 
 	return strings.Join(textParts, "\n\n")
+}
+
+// Text Density Heuristic
+// ----------------------
+// Identifies the most content-rich element in the DOM by scoring candidate
+// elements by (non-link content length)² / total text length. This rewards
+// elements that are both voluminous and not dominated by navigation links.
+
+const textDensityMinChars = 200
+
+// densityNoiseFragments are substrings matched against an element's class and id
+// attributes. Elements matching any fragment are excluded from density scoring.
+var densityNoiseFragments = []string{
+	"nav", "menu", "sidebar", "header", "footer", "ad-", "banner",
+	"promo", "comment", "social", "related", "widget",
+}
+
+// isDensityNoiseElement returns true when the element's class or id contains a
+// known noise fragment (navigation, ads, sidebar, etc.).
+func isDensityNoiseElement(s *goquery.Selection) bool {
+	class, _ := s.Attr("class")
+	id, _ := s.Attr("id")
+	combined := strings.ToLower(class + " " + id)
+	for _, fragment := range densityNoiseFragments {
+		if strings.Contains(combined, fragment) {
+			return true
+		}
+	}
+	return false
+}
+
+// findDensestElement walks div/section/article/main descendants of <body> and
+// returns the element with the highest density score. Score is defined as
+// contentLen² / totalLen, where contentLen = totalLen − linkTextLen. This
+// rewards elements that are voluminous and not dominated by navigation links.
+// Returns nil if no element meets the textDensityMinChars threshold.
+func findDensestElement(e *colly.HTMLElement) *goquery.Selection {
+	body := e.DOM.Find("body")
+	if body.Length() == 0 {
+		return nil
+	}
+
+	var best *goquery.Selection
+	var bestScore float64
+
+	body.Find("div, section, article, main").Each(func(_ int, s *goquery.Selection) {
+		if isDensityNoiseElement(s) {
+			return
+		}
+
+		totalText := strings.TrimSpace(s.Text())
+		totalLen := len(totalText)
+		if totalLen < textDensityMinChars {
+			return
+		}
+
+		// Measure how much of the text lives inside links (navigation signal).
+		linkLen := 0
+		s.Find("a").Each(func(_ int, a *goquery.Selection) {
+			linkLen += len(strings.TrimSpace(a.Text()))
+		})
+
+		contentLen := totalLen - linkLen
+		if contentLen <= 0 {
+			return
+		}
+
+		// score = contentLen² / totalLen — rewards density AND volume.
+		score := float64(contentLen) * float64(contentLen) / float64(totalLen)
+		if score > bestScore {
+			bestScore = score
+			best = s
+		}
+	})
+
+	return best
+}
+
+// extractByTextDensity returns the plain text of the densest content element,
+// or "" when no qualifying element is found.
+func extractByTextDensity(e *colly.HTMLElement) string {
+	best := findDensestElement(e)
+	if best == nil {
+		return ""
+	}
+	return strings.TrimSpace(best.Text())
+}
+
+// extractHTMLByTextDensity returns the inner HTML of the densest content element,
+// or "" when no qualifying element is found.
+func extractHTMLByTextDensity(e *colly.HTMLElement) string {
+	best := findDensestElement(e)
+	if best == nil {
+		return ""
+	}
+	html, _ := best.Html()
+	return html
 }
 
 // extractJSONLD extracts JSON-LD structured data from script tags

@@ -106,7 +106,8 @@ type Config struct {
 	ProxyPoolURLs []string `env:"CRAWLER_PROXY_POOL_URLS" yaml:"proxy_pool_urls"`
 	// ProxyStickyTTL is how long a domain stays assigned to the same proxy
 	ProxyStickyTTL time.Duration `env:"CRAWLER_PROXY_STICKY_TTL" yaml:"proxy_sticky_ttl"`
-	// ReadabilityFallbackEnabled enables a last-resort readability-style extractor when selectors yield no content (default: false)
+	// ReadabilityFallbackEnabled enables a last-resort readability-style extractor when selectors yield no content (default: true).
+	// Set CRAWLER_READABILITY_FALLBACK_ENABLED=false to disable.
 	ReadabilityFallbackEnabled bool `env:"CRAWLER_READABILITY_FALLBACK_ENABLED" yaml:"readability_fallback_enabled"`
 	// RenderWorkerURL is the base URL of the Playwright render worker (e.g. "http://render-worker:3000").
 	// Empty means dynamic rendering is disabled.
@@ -187,7 +188,7 @@ func New(opts ...Option) *Config {
 		ProxyPoolEnabled:           false,
 		ProxyPoolURLs:              nil,
 		ProxyStickyTTL:             DefaultProxyStickyTTL,
-		ReadabilityFallbackEnabled: false,
+		ReadabilityFallbackEnabled: true,
 	}
 
 	for _, opt := range opts {
