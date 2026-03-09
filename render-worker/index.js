@@ -1,33 +1,37 @@
+'use strict';
+
 const http = require('http');
 const { chromium } = require('playwright');
+const { createRequestHandler } = require('./handler');
 
 const PORT = process.env.PORT || 3000;
-const MAX_CONCURRENT = parseInt(process.env.MAX_CONCURRENT_TABS || '1', 10);
 const RECYCLE_AFTER = parseInt(process.env.BROWSER_RECYCLE_AFTER || '100', 10);
 const DEFAULT_TIMEOUT = parseInt(process.env.DEFAULT_TIMEOUT_MS || '15000', 10);
-const MAX_BODY_BYTES = 1024 * 1024; // 1 MB request body limit
-const MAX_QUEUE_DEPTH = 50; // reject with 503 when queue exceeds this
 
-let browser = null;
-let requestCount = 0;
-let queueDepth = 0;
+const state = {
+  browser: null,
+  requestCount: 0,
+  queueDepth: 0,
+  queue: [],
+  recycleAfter: RECYCLE_AFTER,
+};
+
 let processing = false;
-const queue = [];
 
 async function ensureBrowser() {
-  if (!browser || !browser.isConnected()) {
-    browser = await chromium.launch({
+  if (!state.browser || !state.browser.isConnected()) {
+    state.browser = await chromium.launch({
       args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
     });
-    requestCount = 0;
+    state.requestCount = 0;
   }
-  return browser;
+  return state.browser;
 }
 
 async function recycleBrowserIfNeeded() {
-  if (requestCount >= RECYCLE_AFTER && browser) {
-    await browser.close().catch(() => {});
-    browser = null;
+  if (state.requestCount >= RECYCLE_AFTER && state.browser) {
+    await state.browser.close().catch(() => {});
+    state.browser = null;
   }
 }
 
@@ -54,16 +58,16 @@ async function renderPage(url, timeoutMs, waitUntil) {
   } finally {
     await page.close().catch(() => {});
     await context.close().catch(() => {});
-    requestCount++;
+    state.requestCount++;
     await recycleBrowserIfNeeded();
   }
 }
 
 function processQueue() {
-  if (processing || queue.length === 0) return;
+  if (processing || state.queue.length === 0) return;
   processing = true;
-  const { req, res, body } = queue.shift();
-  queueDepth = queue.length;
+  const { res, body } = state.queue.shift();
+  state.queueDepth = state.queue.length;
 
   renderPage(body.url, body.timeout_ms || DEFAULT_TIMEOUT, body.wait_until)
     .then((result) => {
@@ -80,60 +84,7 @@ function processQueue() {
     });
 }
 
-const server = http.createServer((req, res) => {
-  if (req.method === 'GET' && req.url === '/health') {
-    res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({
-      status: 'ok',
-      browser_connected: browser ? browser.isConnected() : false,
-      request_count: requestCount,
-      queue_depth: queueDepth,
-      recycle_after: RECYCLE_AFTER,
-    }));
-    return;
-  }
-
-  if (req.method === 'POST' && req.url === '/render') {
-    let data = '';
-    let bodySize = 0;
-    req.on('data', (chunk) => {
-      bodySize += chunk.length;
-      if (bodySize > MAX_BODY_BYTES) {
-        res.writeHead(413, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ error: 'request body too large' }));
-        req.destroy();
-        return;
-      }
-      data += chunk;
-    });
-    req.on('end', () => {
-      if (bodySize > MAX_BODY_BYTES) return;
-      try {
-        const body = JSON.parse(data);
-        if (!body.url) {
-          res.writeHead(400, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({ error: 'url is required' }));
-          return;
-        }
-        if (queue.length >= MAX_QUEUE_DEPTH) {
-          res.writeHead(503, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({ error: 'queue full, try again later' }));
-          return;
-        }
-        queue.push({ req, res, body });
-        queueDepth = queue.length;
-        processQueue();
-      } catch (err) {
-        res.writeHead(400, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ error: 'invalid JSON' }));
-      }
-    });
-    return;
-  }
-
-  res.writeHead(404, { 'Content-Type': 'application/json' });
-  res.end(JSON.stringify({ error: 'not found' }));
-});
+const server = http.createServer(createRequestHandler(state, processQueue));
 
 server.listen(PORT, () => {
   console.log(`render-worker listening on port ${PORT}`);
@@ -142,7 +93,7 @@ server.listen(PORT, () => {
 
 process.on('SIGTERM', async () => {
   console.log('shutting down');
-  if (browser) await browser.close().catch(() => {});
+  if (state.browser) await state.browser.close().catch(() => {});
   server.close();
   process.exit(0);
 });

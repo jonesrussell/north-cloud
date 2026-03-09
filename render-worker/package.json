@@ -6,7 +6,7 @@
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
-    "test": "echo 'no tests yet'"
+    "test": "node --test test.js"
   },
   "dependencies": {
     "playwright": "1.52.0"
