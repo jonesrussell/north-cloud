@@ -35,6 +35,7 @@ type Config struct {
 	Selectors    SourceSelectors   `mapstructure:"selectors"`
 	UserAgent    string            `mapstructure:"user_agent"`
 	Headers      map[string]string `mapstructure:"headers"`
+	TemplateHint *string           `mapstructure:"template_hint"`
 }
 
 // SourceSelectors defines the selectors for a source.

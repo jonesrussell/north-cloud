@@ -19,6 +19,12 @@ var ExtractJSONLDHeadline = extractJSONLDHeadline
 // LookupTemplate exports lookupTemplate for testing.
 var LookupTemplate = lookupTemplate
 
+// LookupTemplateByName exports lookupTemplateByName for testing.
+var LookupTemplateByName = lookupTemplateByName
+
+// DetectTemplateByHTML exports detectTemplateByHTML for testing.
+var DetectTemplateByHTML = detectTemplateByHTML
+
 // TemplateRegistry exports templateRegistry for testing.
 var TemplateRegistry = templateRegistry
 

@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net/url"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/gocolly/colly/v2"
@@ -45,6 +46,7 @@ type RawContentService struct {
 	pipeline                   *pipeline.Client
 	recorder                   ExtractionRecorder // optional; set at crawl start for extraction quality metrics
 	readabilityFallbackEnabled bool
+	templateExtractions        int64 // atomic; incremented each time a CMS template provides selectors
 }
 
 // NewRawContentService creates a new raw content service.
@@ -72,6 +74,13 @@ func (s *RawContentService) SetExtractionRecorder(r ExtractionRecorder) {
 	s.recorder = r
 }
 
+// GetTemplateExtractions returns the number of pages for which a CMS template
+// provided the extraction selectors during this crawl session.
+// Safe to call concurrently.
+func (s *RawContentService) GetTemplateExtractions() int64 {
+	return atomic.LoadInt64(&s.templateExtractions)
+}
+
 // Process implements the Interface for HTML element processing.
 // Extracts raw content from any HTML page and indexes it to raw_content.
 func (s *RawContentService) Process(e *colly.HTMLElement) error {
@@ -94,8 +103,10 @@ func (s *RawContentService) Process(e *colly.HTMLElement) error {
 		}
 	}
 
-	// Get source configuration to determine source name, selectors, and metadata
-	sourceName, selectors, indigenousRegion := s.getSourceConfig(sourceURL)
+	// Get source configuration to determine source name, selectors, and metadata.
+	// Pass raw HTML for fallback template detection (WordPress/Drupal generator meta tags).
+	rawHTML := string(e.Response.Body)
+	sourceName, selectors, indigenousRegion := s.getSourceConfig(sourceURL, rawHTML)
 
 	// Extract raw content using generic extractor
 	rawData := ExtractRawContent(
@@ -227,7 +238,7 @@ func (s *RawContentService) emitIndexedEvent(
 }
 
 // getSourceConfig gets the source configuration and returns source name, selectors, and indigenous region.
-func (s *RawContentService) getSourceConfig(sourceURL string) (
+func (s *RawContentService) getSourceConfig(sourceURL, rawHTML string) (
 	name string, sel SourceSelectors, indigenousRegion string,
 ) {
 	var sourceName string
@@ -276,14 +287,16 @@ func (s *RawContentService) getSourceConfig(sourceURL string) (
 		selectors.Exclude = sourceConfig.Selectors.Article.Exclude
 	}
 
-	// If source-manager has no selectors, try template registry by domain
+	// If source-manager has no selectors, resolve via template registry.
+	// Priority: TemplateHint (explicit) > domain lookup > HTML-based detection.
 	if selectors.Title == "" && selectors.Body == "" && selectors.Container == "" {
-		hostname := extractHostFromURL(sourceURL)
-		if tmpl, ok := lookupTemplate(hostname); ok {
+		tmpl, tmplName := s.resolveTemplate(sourceConfig, sourceURL, rawHTML)
+		if tmpl != nil {
 			selectors = tmpl.Selectors
+			atomic.AddInt64(&s.templateExtractions, 1)
 			s.logger.Debug("Using CMS template selectors",
 				infralogger.String("url", sourceURL),
-				infralogger.String("template", tmpl.Name))
+				infralogger.String("template", tmplName))
 		}
 	}
 
@@ -298,6 +311,37 @@ func (s *RawContentService) getSourceConfig(sourceURL string) (
 	}
 
 	return sourceName, selectors, region
+}
+
+// resolveTemplate returns the best-matching CMS template for a page, along with its name.
+// Lookup priority: TemplateHint (explicit override) > domain match > HTML detection.
+// If TemplateHint is set but not found in the registry, a warning is logged and lookup
+// falls through to domain and HTML detection. Returns nil if no template matches.
+func (s *RawContentService) resolveTemplate(
+	sourceConfig *sources.Config, sourceURL, rawHTML string,
+) (result *CMSTemplate, resultName string) {
+	// 1. TemplateHint: explicit name from source-manager config skips detection entirely.
+	if sourceConfig.TemplateHint != nil {
+		if found, ok := lookupTemplateByName(*sourceConfig.TemplateHint); ok {
+			return found, found.Name
+		}
+		s.logger.Warn("TemplateHint not found in registry",
+			infralogger.String("hint", *sourceConfig.TemplateHint),
+			infralogger.String("url", sourceURL))
+	}
+
+	// 2. Domain match: fast, exact lookup against known CMS domains.
+	hostname := extractHostFromURL(sourceURL)
+	if found, ok := lookupTemplate(hostname); ok {
+		return found, found.Name
+	}
+
+	// 3. HTML detection: generator meta tags and OG signals as last resort.
+	if found, ok := detectTemplateByHTML(rawHTML); ok {
+		return found, found.Name
+	}
+
+	return nil, ""
 }
 
 // SourceSelectors represents generic selectors for content extraction

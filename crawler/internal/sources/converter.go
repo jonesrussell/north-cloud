@@ -94,6 +94,7 @@ func createConfigFromLoader(cfg loader.Config, rateLimit time.Duration, allowedD
 		PageIndex:      cfg.PageIndex,
 		Selectors:      createSelectorConfig(cfg.Selectors),
 		Rules:          configtypes.Rules{},
+		TemplateHint:   cfg.TemplateHint,
 	}
 }
 

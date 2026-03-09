@@ -27,6 +27,9 @@ type Metrics struct {
 	RateLimitedRequests int64
 	// URLsSkipped is the number of URLs skipped by the URL pre-filter.
 	URLsSkipped int64
+	// TemplateExtractions is the number of pages where a CMS template
+	// (template registry or HTML detection) provided the extraction selectors.
+	TemplateExtractions int64
 }
 
 // NewMetrics creates a new Metrics instance with default values.

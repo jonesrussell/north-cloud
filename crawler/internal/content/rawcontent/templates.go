@@ -7,11 +7,21 @@ import (
 )
 
 // CMSTemplate defines known-good CSS selectors for a CMS platform.
+// Detect is an optional function that identifies the CMS from raw HTML
+// (e.g. generator meta tag); it is consulted when no domain match is found.
 type CMSTemplate struct {
 	Name      string
 	Domains   []string
+	Detect    func(html string) bool // optional; nil disables HTML-based detection
 	Selectors SourceSelectors
 }
+
+// htmlDetectSize is the number of bytes of HTML examined for generator meta tag
+// detection. The <head> section with meta tags is always within the first 4 KB.
+const htmlDetectSize = 4096
+
+// domainPreAllocFactor estimates map capacity from the template count.
+const domainPreAllocFactor = 4
 
 var templateRegistry = []CMSTemplate{
 	{
@@ -61,14 +71,50 @@ var templateRegistry = []CMSTemplate{
 			Title:     "h1",
 		},
 	},
+	{
+		Name: "wordpress",
+		Detect: func(html string) bool {
+			return strings.Contains(html, `name="generator" content="WordPress`)
+		},
+		Selectors: SourceSelectors{
+			Container: "article",
+			Body:      ".entry-content",
+			Title:     "h1.entry-title",
+		},
+	},
+	{
+		Name: "drupal",
+		Detect: func(html string) bool {
+			return strings.Contains(html, `name="generator" content="Drupal`)
+		},
+		Selectors: SourceSelectors{
+			Body:  ".field--name-body",
+			Title: "h1.page-title",
+		},
+	},
+	// generic_og_article MUST remain after wordpress and drupal in this slice.
+	// WordPress and Drupal pages often emit og:type=article + <article>, so they
+	// would match this entry first if it were ordered before their specific entries.
+	{
+		Name: "generic_og_article",
+		Detect: func(html string) bool {
+			lower := strings.ToLower(html)
+			hasOGArticle := strings.Contains(lower, `og:type" content="article"`) ||
+				strings.Contains(lower, `property="og:type" content="article"`)
+			return hasOGArticle && strings.Contains(lower, "<article")
+		},
+		Selectors: SourceSelectors{
+			Container: "article",
+			Body:      ".entry-content, [itemprop=articleBody]",
+		},
+	},
 }
-
-// domainPreAllocFactor is used to estimate the map capacity from the template count.
-const domainPreAllocFactor = 4
 
 var (
 	domainTemplateIndex map[string]*CMSTemplate
+	nameTemplateIndex   map[string]*CMSTemplate
 	domainIndexOnce     sync.Once
+	nameIndexOnce       sync.Once
 )
 
 // buildDomainIndex populates domainTemplateIndex from templateRegistry.
@@ -84,6 +130,17 @@ func buildDomainIndex() {
 	})
 }
 
+// buildNameIndex populates nameTemplateIndex from templateRegistry.
+func buildNameIndex() {
+	nameIndexOnce.Do(func() {
+		nameTemplateIndex = make(map[string]*CMSTemplate, len(templateRegistry))
+		for i := range templateRegistry {
+			tmpl := &templateRegistry[i]
+			nameTemplateIndex[tmpl.Name] = tmpl
+		}
+	})
+}
+
 // lookupTemplate returns the CMS template for the given domain, if one exists.
 func lookupTemplate(domain string) (*CMSTemplate, bool) {
 	if domain == "" {
@@ -92,6 +149,37 @@ func lookupTemplate(domain string) (*CMSTemplate, bool) {
 	buildDomainIndex()
 	tmpl, ok := domainTemplateIndex[domain]
 	return tmpl, ok
+}
+
+// lookupTemplateByName returns the CMS template with the given name, if one exists.
+// This is used when a TemplateHint is set on the source config.
+func lookupTemplateByName(name string) (*CMSTemplate, bool) {
+	if name == "" {
+		return nil, false
+	}
+	buildNameIndex()
+	tmpl, ok := nameTemplateIndex[name]
+	return tmpl, ok
+}
+
+// detectTemplateByHTML scans templates with Detect functions against the first
+// htmlDetectSize bytes of HTML and returns the first match. This is the lowest-
+// priority lookup, tried only after domain and name-hint lookups fail.
+func detectTemplateByHTML(html string) (*CMSTemplate, bool) {
+	if html == "" {
+		return nil, false
+	}
+	snippet := html
+	if len(snippet) > htmlDetectSize {
+		snippet = snippet[:htmlDetectSize]
+	}
+	for i := range templateRegistry {
+		tmpl := &templateRegistry[i]
+		if tmpl.Detect != nil && tmpl.Detect(snippet) {
+			return tmpl, true
+		}
+	}
+	return nil, false
 }
 
 // extractHostFromURL parses a URL and returns the hostname with "www." stripped.

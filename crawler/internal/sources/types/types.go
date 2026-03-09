@@ -43,6 +43,9 @@ type SourceConfig struct {
 	Rules              types.Rules
 	ArticleURLPatterns []string
 	IndigenousRegion   string
+	// TemplateHint is an optional CMS template name from source-manager.
+	// When set, template lookup uses this name directly, skipping domain detection.
+	TemplateHint *string
 }
 
 // SelectorConfig defines the CSS selectors used for content extraction.

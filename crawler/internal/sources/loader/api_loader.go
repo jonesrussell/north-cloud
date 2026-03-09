@@ -95,6 +95,7 @@ func convertAPISourceToConfig(apiSource *apiclient.APISource) (Config, error) {
 			List:    convertAPIListSelectors(apiSource.Selectors.List),
 			Page:    convertAPIPageSelectors(apiSource.Selectors.Page),
 		},
+		TemplateHint: apiSource.TemplateHint,
 	}, nil
 }
 
