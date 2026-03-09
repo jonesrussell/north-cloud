@@ -741,3 +741,91 @@ func TestExtractRawContent_AuthorFallbackChain(t *testing.T) {
 		})
 	}
 }
+
+// articleBody builds a block of repeated sentences long enough to satisfy
+// the textDensityMinChars threshold.
+func articleBody(n int) string {
+	sentence := "This is a sentence of article content that provides meaningful information to the reader. "
+	var sb strings.Builder
+	for range n {
+		sb.WriteString(sentence)
+	}
+	return sb.String()
+}
+
+func TestExtractByTextDensity(t *testing.T) {
+	t.Parallel()
+
+	body := articleBody(8) // ~680 chars, well above 200-char threshold
+
+	tests := []struct {
+		name      string
+		html      string
+		wantEmpty bool
+		wantWord  string // substring that must appear in the result
+	}{
+		{
+			name: "returns content from article div",
+			html: `<html><body>
+				<nav>Home About Contact</nav>
+				<div id="article-body">` + body + `</div>
+				<footer>Copyright 2025</footer>
+			</body></html>`,
+			wantEmpty: false,
+			wantWord:  "article content",
+		},
+		{
+			name: "prefers content-dense div over nav-heavy container",
+			html: `<html><body>
+				<div id="nav-links">
+					<a href="/a">Link 1</a><a href="/b">Link 2</a><a href="/c">Link 3</a>
+					<a href="/d">Link 4</a><a href="/e">Link 5</a><a href="/f">Link 6</a>
+				</div>
+				<div class="article-content">` + body + `</div>
+			</body></html>`,
+			wantEmpty: false,
+			wantWord:  "article content",
+		},
+		{
+			name: "skips elements with sidebar class",
+			html: `<html><body>
+				<div class="sidebar">` + body + ` sidebar filler</div>
+				<div class="main-content">` + body + `</div>
+			</body></html>`,
+			wantEmpty: false,
+			wantWord:  "article content",
+		},
+		{
+			name: "returns empty when no element meets minimum chars",
+			html: `<html><body>
+				<div>Short text.</div>
+			</body></html>`,
+			wantEmpty: true,
+		},
+		{
+			name:      "returns empty for empty body",
+			html:      `<html><body></body></html>`,
+			wantEmpty: true,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			e := newHTMLElement(t, tc.html)
+			got := rawcontent.ExtractByTextDensity(e)
+			if tc.wantEmpty {
+				if got != "" {
+					t.Errorf("ExtractByTextDensity() = %q, want empty", got)
+				}
+				return
+			}
+			if got == "" {
+				t.Fatal("ExtractByTextDensity() = \"\", want non-empty")
+			}
+			if tc.wantWord != "" && !strings.Contains(got, tc.wantWord) {
+				t.Errorf("ExtractByTextDensity() does not contain %q", tc.wantWord)
+			}
+		})
+	}
+}
