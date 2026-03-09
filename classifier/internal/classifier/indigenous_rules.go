@@ -12,6 +12,39 @@ const (
 	indigenousRelevanceNot        = "not_indigenous"
 )
 
+// Indigenous category slugs — 10 global categories.
+// Category extraction is performed by the ML sidecar; these constants are for
+// cross-referencing and documentation. D2.1 will add category-specific regex arrays.
+const (
+	indigenousCategoryCulture     = "culture"
+	indigenousCategoryLanguage    = "language"
+	indigenousCategoryLandRights  = "land_rights"
+	indigenousCategoryEnvironment = "environment"
+	indigenousCategorySovereignty = "sovereignty"
+	indigenousCategoryEducation   = "education"
+	indigenousCategoryHealth      = "health"
+	indigenousCategoryJustice     = "justice"
+	indigenousCategoryHistory     = "history"
+	indigenousCategoryCommunity   = "community"
+)
+
+// indigenousCategoryCount is the total number of canonical indigenous categories.
+const indigenousCategoryCount = 10
+
+// IndigenousCategories lists all valid indigenous category slugs.
+var IndigenousCategories = []string{
+	indigenousCategoryCulture,
+	indigenousCategoryLanguage,
+	indigenousCategoryLandRights,
+	indigenousCategoryEnvironment,
+	indigenousCategorySovereignty,
+	indigenousCategoryEducation,
+	indigenousCategoryHealth,
+	indigenousCategoryJustice,
+	indigenousCategoryHistory,
+	indigenousCategoryCommunity,
+}
+
 const (
 	indigenousConfidenceCore       = 0.90
 	indigenousConfidencePeripheral = 0.70

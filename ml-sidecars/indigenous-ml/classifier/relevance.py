@@ -51,28 +51,74 @@ PERIPHERAL_PATTERNS = [
 ]
 
 # --- 10 global categories ---
+# Each tuple: (keyword_list, category_slug).
+# Keywords are matched as substrings against lowercased text.
+# D2.1 will expand each list with domain-expert-reviewed multilingual terms.
+CATEGORY_COUNT = 10
 CATEGORY_KEYWORDS: list[tuple[list[str], str]] = [
+    # Culture: ceremonies, art, music, dance, traditional practices
     (["culture", "ceremony", "powwow", "potlatch", "sweat lodge", "corroboree",
-      "haka", "dreamtime", "cultura"], "culture"),
+      "haka", "dreamtime",
+      "cultura", "ceremonia",  # Spanish
+      "cérémonie", "tradition",  # French
+      # Portuguese / Nordic / Te Reo / Japanese — D2.1 placeholder
+      ], "culture"),
+    # Language: revitalization, education, documentation, endangered languages
     (["language", "anishinaabemowin", "indigenous language", "cree", "inuktitut",
-      "te reo", "lengua indígena", "langue autochtone"], "language"),
+      "te reo",
+      "lengua indígena",  # Spanish
+      "langue autochtone",  # French
+      # Portuguese / Nordic / Te Reo / Japanese — D2.1 placeholder
+      ], "language"),
+    # Land rights: territory disputes, land claims, demarcation
     (["land rights", "territory", "reserve", "reservation", "land claim",
-      "terra indígena", "demarcação", "territorio ancestral"], "land_rights"),
+      "territorio ancestral",  # Spanish
+      "terra indígena", "demarcação",  # Portuguese
+      # French / Nordic / Te Reo / Japanese — D2.1 placeholder
+      ], "land_rights"),
+    # Environment: climate, water rights, pipeline opposition, conservation
     (["environment", "climate", "water rights", "pipeline", "deforestation",
-      "medio ambiente", "environnement"], "environment"),
+      "medio ambiente",  # Spanish
+      "environnement",  # French
+      # Portuguese / Nordic / Te Reo / Japanese — D2.1 placeholder
+      ], "environment"),
+    # Sovereignty: self-determination, governance, treaties, political autonomy
     (["sovereignty", "self-determination", "self-governance", "treaty",
       "governance", "band council", "grand council",
-      "soberanía", "autodeterminación"], "sovereignty"),
+      "soberanía", "autodeterminación",  # Spanish
+      # French / Portuguese / Nordic / Te Reo / Japanese — D2.1 placeholder
+      ], "sovereignty"),
+    # Education: schools, residential school legacy, indigenous education programs
     (["education", "residential school", "indigenous education",
-      "educación", "éducation"], "education"),
+      "educación",  # Spanish
+      "éducation",  # French
+      # Portuguese / Nordic / Te Reo / Japanese — D2.1 placeholder
+      ], "education"),
+    # Health: indigenous health disparities, traditional medicine
     (["health", "indigenous health", "traditional medicine",
-      "salud indígena", "santé autochtone"], "health"),
+      "salud indígena",  # Spanish
+      "santé autochtone",  # French
+      # Portuguese / Nordic / Te Reo / Japanese — D2.1 placeholder
+      ], "health"),
+    # Justice: MMIWG, incarceration, policing, legal rights
     (["justice", "missing and murdered", "incarceration", "police",
-      "justicia", "justice autochtone"], "justice"),
+      "justicia",  # Spanish
+      "justice autochtone",  # French
+      # Portuguese / Nordic / Te Reo / Japanese — D2.1 placeholder
+      ], "justice"),
+    # History: colonial history, decolonization, historical events
     (["history", "colonial", "colonization", "decolonization",
-      "historia", "histoire", "colonisation"], "history"),
-    (["community", "elders", "youth", "whānau", "hapū",
-      "comunidad", "communauté"], "community"),
+      "historia",  # Spanish
+      "histoire", "colonisation",  # French
+      # Portuguese / Nordic / Te Reo / Japanese — D2.1 placeholder
+      ], "history"),
+    # Community: elders, youth, family, community events
+    (["community", "elders", "youth",
+      "whānau", "hapū",  # Te Reo
+      "comunidad",  # Spanish
+      "communauté",  # French
+      # Portuguese / Nordic / Japanese — D2.1 placeholder
+      ], "community"),
 ]
 
 

@@ -204,3 +204,60 @@ func TestGenerateIndigenousChannels_LatinAmericaHyphenated(t *testing.T) {
 		t.Errorf("expected indigenous:region:latin_america, got %v", channels)
 	}
 }
+
+func TestGenerateIndigenousChannels_AllNewCategories(t *testing.T) {
+	t.Helper()
+
+	// Verify all 10 global categories route to correct channel slugs.
+	categories := []string{
+		"culture", "language", "land_rights", "environment", "sovereignty",
+		"education", "health", "justice", "history", "community",
+	}
+
+	for _, cat := range categories {
+		t.Run(cat, func(t *testing.T) {
+			t.Helper()
+			item := &ContentItem{
+				Title: "Test article for " + cat,
+				Indigenous: &IndigenousData{
+					Relevance:  IndigenousRelevanceCore,
+					Categories: []string{cat},
+				},
+			}
+
+			routes := NewIndigenousDomain().Routes(item)
+			channels := routeChannelNames(routes)
+			expectedChannel := "indigenous:category:" + cat
+			found := false
+			for _, c := range channels {
+				if c == expectedChannel {
+					found = true
+					break
+				}
+			}
+			if !found {
+				t.Errorf("expected %s channel, got %v", expectedChannel, channels)
+			}
+		})
+	}
+}
+
+func TestGenerateIndigenousChannels_MultipleNewCategories(t *testing.T) {
+	t.Helper()
+	item := &ContentItem{
+		Title: "Indigenous environmental justice",
+		Indigenous: &IndigenousData{
+			Relevance:  IndigenousRelevanceCore,
+			Categories: []string{"environment", "justice", "sovereignty"},
+		},
+	}
+
+	routes := NewIndigenousDomain().Routes(item)
+	channels := routeChannelNames(routes)
+
+	// Should have content:indigenous + 3 category channels = 4 total
+	expectedCount := 4
+	if len(channels) != expectedCount {
+		t.Errorf("expected %d channels, got %d: %v", expectedCount, len(channels), channels)
+	}
+}

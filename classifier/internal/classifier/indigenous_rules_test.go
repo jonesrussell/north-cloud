@@ -178,3 +178,32 @@ func TestIndigenousRules_BodyTruncation(t *testing.T) {
 		t.Errorf("expected not_indigenous when pattern is beyond truncation limit, got %s", result.relevance)
 	}
 }
+
+func TestIndigenousCategoryTaxonomy(t *testing.T) {
+	t.Helper()
+
+	if len(IndigenousCategories) != indigenousCategoryCount {
+		t.Errorf("expected %d categories, got %d", indigenousCategoryCount, len(IndigenousCategories))
+	}
+
+	expected := map[string]bool{
+		"culture": true, "language": true, "land_rights": true,
+		"environment": true, "sovereignty": true, "education": true,
+		"health": true, "justice": true, "history": true, "community": true,
+	}
+
+	for _, cat := range IndigenousCategories {
+		if !expected[cat] {
+			t.Errorf("unexpected category %q in IndigenousCategories", cat)
+		}
+	}
+
+	// Verify no duplicates
+	seen := make(map[string]bool, indigenousCategoryCount)
+	for _, cat := range IndigenousCategories {
+		if seen[cat] {
+			t.Errorf("duplicate category %q", cat)
+		}
+		seen[cat] = true
+	}
+}
