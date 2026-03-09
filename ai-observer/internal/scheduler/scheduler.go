@@ -25,6 +25,8 @@ type Config struct {
 	MaxTokensPerInterval int
 	WindowDuration       time.Duration
 	DryRun               bool
+	DriftIntervalSeconds int
+	DriftWindowDuration  time.Duration
 }
 
 // Budget is a thread-safe token budget for a single polling interval.
@@ -70,25 +72,28 @@ type categoryResult struct {
 
 // Scheduler runs category passes on a ticker and emits insights.
 type Scheduler struct {
-	categories []category.Category
-	writer     *insights.Writer
-	provider   provider.LLMProvider
-	cfg        Config
-	log        logger.Logger
+	fastCategories []category.Category
+	slowCategories []category.Category
+	writer         *insights.Writer
+	provider       provider.LLMProvider
+	cfg            Config
+	log            logger.Logger
 }
 
-// New creates a new Scheduler.
+// New creates a new Scheduler with fast (frequent) and slow (drift) category slices.
 func New(
-	categories []category.Category,
+	fastCategories []category.Category,
+	slowCategories []category.Category,
 	writer *insights.Writer,
 	p provider.LLMProvider,
 	cfg Config,
 ) *Scheduler {
 	return &Scheduler{
-		categories: categories,
-		writer:     writer,
-		provider:   p,
-		cfg:        cfg,
+		fastCategories: fastCategories,
+		slowCategories: slowCategories,
+		writer:         writer,
+		provider:       p,
+		cfg:            cfg,
 	}
 }
 
@@ -99,41 +104,90 @@ func (s *Scheduler) WithLogger(log logger.Logger) *Scheduler {
 }
 
 // Run starts the polling loop and blocks until ctx is cancelled.
+// Uses dual tickers: fast for classifier categories, slow for drift categories.
 func (s *Scheduler) Run(ctx context.Context) {
-	interval := time.Duration(s.cfg.IntervalSeconds) * time.Second
-	ticker := time.NewTicker(interval)
-	defer ticker.Stop()
+	fastInterval := time.Duration(s.cfg.IntervalSeconds) * time.Second
+	fastTicker := time.NewTicker(fastInterval)
+	defer fastTicker.Stop()
 
-	s.logInfo("Scheduler started", logger.Int("interval_seconds", s.cfg.IntervalSeconds))
-	s.RunOnce(ctx) // run immediately on start
+	s.logInfo("Scheduler started",
+		logger.Int("fast_interval_seconds", s.cfg.IntervalSeconds),
+		logger.Int("slow_interval_seconds", s.cfg.DriftIntervalSeconds),
+	)
+	s.RunOnce(ctx)
 
+	if s.cfg.DriftIntervalSeconds <= 0 || len(s.slowCategories) == 0 {
+		s.runFastOnly(ctx, fastTicker)
+		return
+	}
+
+	slowInterval := time.Duration(s.cfg.DriftIntervalSeconds) * time.Second
+	slowTicker := time.NewTicker(slowInterval)
+	defer slowTicker.Stop()
+
+	s.RunDrift(ctx)
+	s.runDualTicker(ctx, fastTicker, slowTicker)
+}
+
+func (s *Scheduler) runFastOnly(ctx context.Context, fastTicker *time.Ticker) {
 	for {
 		select {
 		case <-ctx.Done():
 			s.logInfo("Scheduler stopping")
 			return
-		case <-ticker.C:
+		case <-fastTicker.C:
 			s.RunOnce(ctx)
 		}
 	}
 }
 
-// RunOnce executes one polling cycle: sample all categories in parallel, collect insights, write.
+func (s *Scheduler) runDualTicker(
+	ctx context.Context,
+	fastTicker *time.Ticker,
+	slowTicker *time.Ticker,
+) {
+	for {
+		select {
+		case <-ctx.Done():
+			s.logInfo("Scheduler stopping")
+			return
+		case <-fastTicker.C:
+			s.RunOnce(ctx)
+		case <-slowTicker.C:
+			s.RunDrift(ctx)
+		}
+	}
+}
+
+// RunOnce executes one polling cycle for fast categories.
 func (s *Scheduler) RunOnce(ctx context.Context) {
-	if len(s.categories) == 0 {
+	s.runCategories(ctx, s.fastCategories, s.cfg.WindowDuration)
+}
+
+// RunDrift executes one polling cycle for slow (drift) categories.
+func (s *Scheduler) RunDrift(ctx context.Context) {
+	s.runCategories(ctx, s.slowCategories, s.cfg.DriftWindowDuration)
+}
+
+func (s *Scheduler) runCategories(
+	ctx context.Context,
+	cats []category.Category,
+	window time.Duration,
+) {
+	if len(cats) == 0 {
 		return
 	}
 
 	budget := NewBudget(s.cfg.MaxTokensPerInterval)
-	results := make(chan categoryResult, len(s.categories))
+	results := make(chan categoryResult, len(cats))
 
 	var wg sync.WaitGroup
-	for _, cat := range s.categories {
+	for _, cat := range cats {
 		wg.Add(1)
 		go func(c category.Category) {
 			defer wg.Done()
-			ins, err := s.runCategory(ctx, c, budget)
-			results <- categoryResult{insights: ins, err: err}
+			ins, runErr := s.runCategory(ctx, c, budget, window)
+			results <- categoryResult{insights: ins, err: runErr}
 		}(cat)
 	}
 
@@ -145,7 +199,7 @@ func (s *Scheduler) RunOnce(ctx context.Context) {
 }
 
 func (s *Scheduler) collectInsights(results <-chan categoryResult) []category.Insight {
-	allInsights := make([]category.Insight, 0, len(s.categories))
+	allInsights := make([]category.Insight, 0)
 	for r := range results {
 		if r.err != nil {
 			s.logError("category error", r.err)
@@ -171,7 +225,12 @@ func (s *Scheduler) writeInsights(ctx context.Context, allInsights []category.In
 	}
 }
 
-func (s *Scheduler) runCategory(ctx context.Context, cat category.Category, budget *Budget) ([]category.Insight, error) {
+func (s *Scheduler) runCategory(
+	ctx context.Context,
+	cat category.Category,
+	budget *Budget,
+	window time.Duration,
+) ([]category.Insight, error) {
 	if s.cfg.DryRun {
 		s.logInfo("Dry run: skipping LLM call", logger.String("category", cat.Name()))
 		return nil, nil
@@ -180,7 +239,7 @@ func (s *Scheduler) runCategory(ctx context.Context, cat category.Category, budg
 	catCtx, cancel := context.WithTimeout(ctx, categoryTimeout)
 	defer cancel()
 
-	events, err := cat.Sample(catCtx, s.cfg.WindowDuration)
+	events, err := cat.Sample(catCtx, window)
 	if err != nil {
 		return nil, err
 	}
