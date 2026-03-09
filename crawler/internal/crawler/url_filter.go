@@ -19,12 +19,29 @@ var ecommerceSegments = map[string]bool{
 // cdnAssetPrefixes are URL path prefixes for CDN/asset directories.
 var cdnAssetPrefixes = []string{"/wp-content/uploads/", "/assets/", "/static/"}
 
+// nonContentHosts are exact hostnames or host suffixes that never serve article content.
+// Suffix matches use a leading dot (e.g. ".cloudfront.net" matches any subdomain).
+var nonContentHosts = []string{
+	"play.google.com",
+	"apps.apple.com",
+	"itunes.apple.com",
+	".cloudfront.net",
+	".googleusercontent.com",
+	".fbcdn.net",
+	".twimg.com",
+}
+
 // shouldSkipURL returns true if the URL should be skipped (non-content resource).
-// It checks for binary file extensions, CDN/asset paths, non-content segments,
-// and e-commerce segments.
+// It checks for non-content hosts, binary file extensions, CDN/asset paths,
+// non-content segments, and e-commerce segments.
 func shouldSkipURL(rawURL string) bool {
 	parsed, err := url.Parse(rawURL)
 	if err != nil {
+		return true
+	}
+
+	lowerHost := strings.ToLower(parsed.Hostname())
+	if isNonContentHost(lowerHost) {
 		return true
 	}
 
@@ -39,6 +56,21 @@ func shouldSkipURL(rawURL string) bool {
 	}
 
 	return hasNonContentOrEcommerceSegment(lowerPath)
+}
+
+// isNonContentHost returns true if the hostname is a known non-content domain.
+// Exact matches and suffix matches (leading dot) are both supported.
+func isNonContentHost(lowerHost string) bool {
+	for _, entry := range nonContentHosts {
+		if strings.HasPrefix(entry, ".") {
+			if strings.HasSuffix(lowerHost, entry) {
+				return true
+			}
+		} else if lowerHost == entry {
+			return true
+		}
+	}
+	return false
 }
 
 // hasBinaryExtension checks if the path ends with a known binary file extension.
