@@ -25,6 +25,8 @@ type Metrics struct {
 	FailedRequests int64
 	// RateLimitedRequests is the number of rate-limited requests.
 	RateLimitedRequests int64
+	// URLsSkipped is the number of URLs skipped by the URL pre-filter.
+	URLsSkipped int64
 }
 
 // NewMetrics creates a new Metrics instance with default values.

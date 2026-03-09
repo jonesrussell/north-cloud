@@ -11,6 +11,7 @@ type Metrics struct {
 	mu             sync.RWMutex
 	processedCount int64
 	errorCount     int64
+	urlsSkipped    int64
 	startTime      time.Time
 	lastProcessed  time.Time
 	duration       time.Duration
@@ -37,6 +38,20 @@ func (m *Metrics) IncrementError() {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.errorCount++
+}
+
+// IncrementURLsSkipped increments the count of URLs skipped by the pre-filter.
+func (m *Metrics) IncrementURLsSkipped() {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.urlsSkipped++
+}
+
+// GetURLsSkipped returns the number of URLs skipped by the pre-filter.
+func (m *Metrics) GetURLsSkipped() int64 {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	return m.urlsSkipped
 }
 
 // GetProcessedCount returns the number of processed items.
@@ -91,6 +106,7 @@ func (m *Metrics) Reset() {
 	defer m.mu.Unlock()
 	m.processedCount = 0
 	m.errorCount = 0
+	m.urlsSkipped = 0
 	m.startTime = time.Now()
 	m.lastProcessed = time.Time{}
 	m.duration = 0

@@ -32,15 +32,21 @@ var nonContentHosts = []string{
 }
 
 // shouldSkipURL returns true if the URL should be skipped (non-content resource).
-// It checks for non-content hosts, binary file extensions, CDN/asset paths,
-// non-content segments, and e-commerce segments.
-func shouldSkipURL(rawURL string) bool {
+// It checks for off-domain hosts, non-content hosts, binary file extensions,
+// CDN/asset paths, non-content segments, and e-commerce segments.
+// sourceHost is the hostname of the crawl source; an empty string disables the off-domain check.
+func shouldSkipURL(rawURL, sourceHost string) bool {
 	parsed, err := url.Parse(rawURL)
 	if err != nil {
 		return true
 	}
 
 	lowerHost := strings.ToLower(parsed.Hostname())
+
+	if sourceHost != "" && !strings.EqualFold(lowerHost, sourceHost) {
+		return true
+	}
+
 	if isNonContentHost(lowerHost) {
 		return true
 	}

@@ -19,6 +19,7 @@ type State struct {
 	cancel            context.CancelFunc
 	processedCount    int64
 	errorCount        int64
+	urlsSkipped       int64
 	lastProcessedTime time.Time
 	logger            infralogger.Logger
 }
@@ -119,6 +120,7 @@ func (s *State) Reset() {
 	s.currentSource = ""
 	s.processedCount = 0
 	s.errorCount = 0
+	s.urlsSkipped = 0
 	if s.cancel != nil {
 		s.cancel()
 		s.cancel = nil
@@ -170,4 +172,18 @@ func (s *State) IncrementError() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.errorCount++
+}
+
+// IncrementURLsSkipped increments the count of URLs skipped by the pre-filter.
+func (s *State) IncrementURLsSkipped() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.urlsSkipped++
+}
+
+// GetURLsSkipped returns the number of URLs skipped by the pre-filter.
+func (s *State) GetURLsSkipped() int64 {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.urlsSkipped
 }

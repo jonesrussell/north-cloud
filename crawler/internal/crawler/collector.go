@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"net/url"
 	"regexp"
 	"strings"
 	"time"
@@ -430,11 +431,20 @@ func (c *Crawler) requestCallback(ctx context.Context) func(*colly.Request) {
 
 // setupCallbacks configures all collector callbacks (discovery, content detection, extraction).
 func (c *Crawler) setupCallbacks(ctx context.Context) {
+	// Resolve source hostname once; empty string disables off-domain filtering.
+	sourceHost := ""
+	if cc := c.getCrawlContext(); cc != nil && cc.Source != nil {
+		if parsed, parseErr := url.Parse(cc.Source.URL); parseErr == nil {
+			sourceHost = parsed.Hostname()
+		}
+	}
+
 	// URL pre-filter: skip non-content URLs before fetching
 	c.collector.OnRequest(func(r *colly.Request) {
-		if shouldSkipURL(r.URL.String()) {
+		if shouldSkipURL(r.URL.String(), sourceHost) {
 			c.GetJobLogger().Debug(logs.CategoryFetch, "Skipping non-content URL",
 				logs.URL(r.URL.String()))
+			c.IncrementURLsSkipped()
 			r.Abort()
 		}
 	})

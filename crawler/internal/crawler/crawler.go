@@ -83,6 +83,10 @@ type CrawlerMetrics interface {
 	GetLastProcessedTime() time.Time
 	// GetProcessingDuration returns the total processing duration.
 	GetProcessingDuration() time.Duration
+	// IncrementURLsSkipped increments the count of URLs skipped by the pre-filter.
+	IncrementURLsSkipped()
+	// GetURLsSkipped returns the number of URLs skipped by the pre-filter.
+	GetURLsSkipped() int64
 	// Update updates the metrics with new values.
 	Update(startTime time.Time, processed int64, errors int64)
 	// Reset resets all metrics to zero.
@@ -248,6 +252,16 @@ func (c *Crawler) IncrementProcessed() {
 // IncrementError increments the error count.
 func (c *Crawler) IncrementError() {
 	c.state.IncrementError()
+}
+
+// IncrementURLsSkipped increments the count of URLs skipped by the pre-filter.
+func (c *Crawler) IncrementURLsSkipped() {
+	c.state.IncrementURLsSkipped()
+}
+
+// GetURLsSkipped returns the number of URLs skipped by the pre-filter.
+func (c *Crawler) GetURLsSkipped() int64 {
+	return c.state.GetURLsSkipped()
 }
 
 // GetProcessedCount returns the number of processed items.
