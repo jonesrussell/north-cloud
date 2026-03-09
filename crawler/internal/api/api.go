@@ -157,6 +157,7 @@ func NewServer(
 	syncHandler *admin.SyncEnabledSourcesHandler, // Optional - pass nil to disable sync endpoint
 	frontierHandler *FrontierHandler, // Optional - pass nil to disable frontier endpoints
 	domainsHandler *DiscoveredDomainsHandler, // Optional - pass nil to disable domains endpoints
+	backfillHandler *admin.BackfillIndigenousHandler, // Optional - pass nil to disable backfill
 ) *infragin.Server {
 	// Extract port from address
 	port := extractPortFromAddress(cfg.GetServerConfig().Address)
@@ -188,6 +189,7 @@ func NewServer(
 				router, jwtSecret, jobsHandler, discoveredLinksHandler,
 				logsHandler, logsV2Handler, executionRepo, sseHandler,
 				migrationHandler, syncHandler, frontierHandler, domainsHandler,
+				backfillHandler,
 			)
 
 			// Setup internal service-to-service routes
@@ -245,6 +247,7 @@ func setupCrawlerRoutes(
 	syncHandler *admin.SyncEnabledSourcesHandler,
 	frontierHandler *FrontierHandler,
 	domainsHandler *DiscoveredDomainsHandler,
+	backfillHandler *admin.BackfillIndigenousHandler,
 ) {
 	// API v1 routes - protected with JWT
 	v1 := infragin.ProtectedGroup(router, "/api/v1", jwtSecret)
@@ -308,6 +311,11 @@ func setupCrawlerRoutes(
 	// Admin: sync enabled sources to crawler jobs
 	if syncHandler != nil {
 		v1.POST("/admin/sync-enabled-sources", syncHandler.SyncEnabledSources)
+	}
+
+	// Admin: backfill indigenous sources
+	if backfillHandler != nil {
+		v1.POST("/backfill/indigenous", backfillHandler.BackfillIndigenous)
 	}
 
 	// Setup SSE routes (protected with JWT)

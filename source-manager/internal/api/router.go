@@ -121,6 +121,8 @@ func setupServiceRoutes(router *gin.Engine, sourceHandler *handlers.SourceHandle
 	publicAPI := router.Group("/api/v1")
 	// GET /api/v1/sources - allow crawler to list sources without auth
 	publicAPI.GET("/sources", sourceHandler.List)
+	// GET /api/v1/sources/indigenous - sources with indigenous_region set
+	publicAPI.GET("/sources/indigenous", sourceHandler.ListIndigenous)
 	// GET /api/v1/cities - allow publisher to get cities without auth
 	publicAPI.GET("/cities", sourceHandler.GetCities)
 

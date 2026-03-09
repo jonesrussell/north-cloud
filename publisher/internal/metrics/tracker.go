@@ -98,6 +98,41 @@ func (t *Tracker) IncrementErrors(ctx context.Context, city string) error {
 	return nil
 }
 
+// IncrementBackfillTotal increments the indigenous backfill total counter.
+func (t *Tracker) IncrementBackfillTotal(ctx context.Context) error {
+	return t.incrementBackfillKey(ctx, KeyBackfillTotal, "backfill_total")
+}
+
+// IncrementBackfillSuccess increments the indigenous backfill success counter.
+func (t *Tracker) IncrementBackfillSuccess(ctx context.Context) error {
+	return t.incrementBackfillKey(ctx, KeyBackfillSuccess, "backfill_success")
+}
+
+// IncrementBackfillFailed increments the indigenous backfill failed counter.
+func (t *Tracker) IncrementBackfillFailed(ctx context.Context) error {
+	return t.incrementBackfillKey(ctx, KeyBackfillFailed, "backfill_failed")
+}
+
+// incrementBackfillKey increments a backfill counter key with TTL.
+func (t *Tracker) incrementBackfillKey(ctx context.Context, key, label string) error {
+	ttl := MetricsTTLDays * HoursPerDay * time.Hour
+
+	pipe := t.client.Pipeline()
+	pipe.Incr(ctx, key)
+	pipe.Expire(ctx, key, ttl)
+
+	_, err := pipe.Exec(ctx)
+	if err != nil {
+		t.logger.Warn("Failed to increment "+label+" counter",
+			infralogger.String("redis_key", key),
+			infralogger.Error(err),
+		)
+		return fmt.Errorf("increment %s counter: %w", label, err)
+	}
+
+	return nil
+}
+
 // convertToRecentItem converts various types to RecentItem
 func convertToRecentItem(item any) (RecentItem, error) {
 	switch v := item.(type) {

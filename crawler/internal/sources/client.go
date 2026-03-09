@@ -27,13 +27,15 @@ type Source struct {
 
 // SourceListItem represents a source from the list endpoint (rate_limit is string from API).
 type SourceListItem struct {
-	ID        uuid.UUID `json:"id"`
-	Name      string    `json:"name"`
-	URL       string    `json:"url"`
-	RateLimit string    `json:"rate_limit"`
-	MaxDepth  int       `json:"max_depth"`
-	Enabled   bool      `json:"enabled"`
-	Priority  string    `json:"priority"`
+	ID               uuid.UUID `json:"id"`
+	Name             string    `json:"name"`
+	URL              string    `json:"url"`
+	RateLimit        string    `json:"rate_limit"`
+	MaxDepth         int       `json:"max_depth"`
+	Enabled          bool      `json:"enabled"`
+	Priority         string    `json:"priority"`
+	IndigenousRegion *string   `json:"indigenous_region,omitempty"`
+	RenderMode       string    `json:"render_mode,omitempty"`
 }
 
 // Client defines the interface for fetching source data.
