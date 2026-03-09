@@ -14,6 +14,7 @@ import (
 	"github.com/jonesrussell/north-cloud/crawler/internal/sources"
 	storagepkg "github.com/jonesrussell/north-cloud/crawler/internal/storage"
 	"github.com/jonesrussell/north-cloud/crawler/internal/storage/types"
+	"github.com/jonesrussell/north-cloud/infrastructure/indigenous"
 	infralogger "github.com/jonesrussell/north-cloud/infrastructure/logger"
 	"github.com/jonesrussell/north-cloud/infrastructure/pipeline"
 )
@@ -286,7 +287,17 @@ func (s *RawContentService) getSourceConfig(sourceURL string) (
 		}
 	}
 
-	return sourceName, selectors, sourceConfig.IndigenousRegion
+	// Normalize region slug for consistency across the pipeline
+	region, normalizeErr := indigenous.NormalizeRegionSlug(sourceConfig.IndigenousRegion)
+	if normalizeErr != nil {
+		s.logger.Warn("Invalid indigenous_region on source, ignoring",
+			infralogger.Error(normalizeErr),
+			infralogger.String("url", sourceURL),
+			infralogger.String("raw_region", sourceConfig.IndigenousRegion))
+		region = ""
+	}
+
+	return sourceName, selectors, region
 }
 
 // SourceSelectors represents generic selectors for content extraction

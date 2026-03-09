@@ -16,6 +16,11 @@ This project uses [Semantic Versioning](https://semver.org/).
   - ML Sidecar: multilingual pattern expansion (7 languages, 19 core patterns, 10 categories), model version `2026-03-08-indigenous-v2`
   - Go Classifier: mirrored multilingual regex patterns (19 core + 5 peripheral), region passthrough to `IndigenousResult.Region`
   - Publisher: region routing to `indigenous:region:{slug}` channels
+- **Indigenous Region Taxonomy Finalization (D1)** — shared region validation and normalization
+  - `infrastructure/indigenous` package: canonical 7-region taxonomy with `IsValidRegion` and `NormalizeRegionSlug`
+  - Source-Manager: validates and normalizes `indigenous_region` on create/update
+  - Crawler: normalizes region slug before writing to `meta.indigenous_region`
+  - Publisher: uses shared `NormalizeRegionSlug` for region channel routing (handles mixed-case, hyphens, spaces)
 
 ## [0.5.0] - 2026-03-08
 

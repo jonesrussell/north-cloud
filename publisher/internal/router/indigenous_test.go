@@ -134,3 +134,73 @@ func TestGenerateIndigenousChannels_NilIndigenous(t *testing.T) {
 		t.Errorf("expected no channels, got %v", channels)
 	}
 }
+
+func TestGenerateIndigenousChannels_MixedCaseRegion(t *testing.T) {
+	t.Helper()
+	item := &ContentItem{
+		Title: "Sámi parliament meets",
+		Indigenous: &IndigenousData{
+			Relevance:  IndigenousRelevanceCore,
+			Categories: []string{"sovereignty"},
+			Region:     "EUROPE",
+		},
+	}
+
+	routes := NewIndigenousDomain().Routes(item)
+	channels := routeChannelNames(routes)
+	hasRegion := false
+	for _, c := range channels {
+		if c == "indigenous:region:europe" {
+			hasRegion = true
+			break
+		}
+	}
+	if !hasRegion {
+		t.Errorf("expected indigenous:region:europe from mixed-case input, got %v", channels)
+	}
+}
+
+func TestGenerateIndigenousChannels_InvalidRegion(t *testing.T) {
+	t.Helper()
+	item := &ContentItem{
+		Title: "Some article",
+		Indigenous: &IndigenousData{
+			Relevance:  IndigenousRelevanceCore,
+			Categories: []string{"culture"},
+			Region:     "invalid_region",
+		},
+	}
+
+	routes := NewIndigenousDomain().Routes(item)
+	channels := routeChannelNames(routes)
+	for _, c := range channels {
+		if len(c) > len("indigenous:region:") && c[:len("indigenous:region:")] == "indigenous:region:" {
+			t.Errorf("expected no region channel for invalid region, got %s", c)
+		}
+	}
+}
+
+func TestGenerateIndigenousChannels_LatinAmericaHyphenated(t *testing.T) {
+	t.Helper()
+	item := &ContentItem{
+		Title: "Mapuche land rights",
+		Indigenous: &IndigenousData{
+			Relevance:  IndigenousRelevanceCore,
+			Categories: []string{"land_rights"},
+			Region:     "Latin America",
+		},
+	}
+
+	routes := NewIndigenousDomain().Routes(item)
+	channels := routeChannelNames(routes)
+	hasRegion := false
+	for _, c := range channels {
+		if c == "indigenous:region:latin_america" {
+			hasRegion = true
+			break
+		}
+	}
+	if !hasRegion {
+		t.Errorf("expected indigenous:region:latin_america, got %v", channels)
+	}
+}
