@@ -10,6 +10,7 @@ import (
 	"github.com/jonesrussell/north-cloud/crawler/internal/database"
 	"github.com/jonesrussell/north-cloud/crawler/internal/domain"
 	"github.com/jonesrussell/north-cloud/crawler/internal/fetcher"
+	"github.com/jonesrussell/north-cloud/crawler/internal/render"
 	"github.com/jonesrussell/north-cloud/crawler/internal/sources/apiclient"
 	"github.com/jonesrussell/north-cloud/crawler/internal/storage"
 	infralogger "github.com/jonesrussell/north-cloud/infrastructure/logger"
@@ -132,6 +133,51 @@ func (a *contentIndexerAdapter) resolveSourceName(ctx context.Context, sourceID 
 
 	a.sourceCache.Store(sourceID, source.Name)
 	return source.Name, nil
+}
+
+// === renderClientAdapter ===
+
+// renderClientAdapter bridges fetcher.PageRenderer to render.Client.
+type renderClientAdapter struct {
+	client *render.Client
+}
+
+func (a *renderClientAdapter) Render(ctx context.Context, url string) (*fetcher.RenderedPage, error) {
+	resp, err := a.client.Render(ctx, url)
+	if err != nil {
+		return nil, err
+	}
+
+	return &fetcher.RenderedPage{
+		HTML:       resp.HTML,
+		FinalURL:   resp.FinalURL,
+		StatusCode: resp.StatusCode,
+	}, nil
+}
+
+// === renderModeResolverAdapter ===
+
+// renderModeResolverAdapter bridges fetcher.SourceRenderModeResolver to the source-manager API.
+// Source configs are cached in memory to avoid an API call per page fetch.
+type renderModeResolverAdapter struct {
+	apiClient   *apiclient.Client
+	sourceCache sync.Map // map[string]string (sourceID → renderMode)
+}
+
+func (a *renderModeResolverAdapter) GetRenderMode(ctx context.Context, sourceID string) (string, error) {
+	if cached, ok := a.sourceCache.Load(sourceID); ok {
+		mode, _ := cached.(string)
+		return mode, nil
+	}
+
+	source, err := a.apiClient.GetSource(ctx, sourceID)
+	if err != nil {
+		return "", fmt.Errorf("get source %s for render mode: %w", sourceID, err)
+	}
+
+	a.sourceCache.Store(sourceID, source.RenderMode)
+
+	return source.RenderMode, nil
 }
 
 // mapExtractedToRawContent converts fetcher.ExtractedContent to storage.RawContent.

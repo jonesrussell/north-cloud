@@ -19,6 +19,7 @@ import (
 	"github.com/jonesrussell/north-cloud/crawler/internal/fetcher"
 	"github.com/jonesrussell/north-cloud/crawler/internal/logs"
 	"github.com/jonesrussell/north-cloud/crawler/internal/proxypool"
+	"github.com/jonesrussell/north-cloud/crawler/internal/render"
 	"github.com/jonesrussell/north-cloud/crawler/internal/scheduler"
 	"github.com/jonesrussell/north-cloud/crawler/internal/sources"
 	"github.com/jonesrussell/north-cloud/crawler/internal/sources/apiclient"
@@ -646,6 +647,18 @@ func createFrontierWorkerPool(
 
 	wpLogger := &logAdapter{log: deps.Logger}
 
+	// Wire render worker if configured.
+	crawlerCfg := deps.Config.GetCrawlerConfig()
+	var renderer fetcher.PageRenderer
+	var modeResolver fetcher.SourceRenderModeResolver
+	if crawlerCfg.RenderWorkerURL != "" {
+		renderClient := render.NewClient(crawlerCfg.RenderWorkerURL)
+		renderer = &renderClientAdapter{client: renderClient}
+		modeResolver = &renderModeResolverAdapter{apiClient: apiClient}
+		deps.Logger.Info("Render worker enabled",
+			infralogger.String("render_worker_url", crawlerCfg.RenderWorkerURL))
+	}
+
 	cfg := fetcher.WorkerPoolConfig{
 		WorkerCount:     fetcherCfg.WorkerCount,
 		UserAgent:       fetcherCfg.UserAgent,
@@ -653,6 +666,8 @@ func createFrontierWorkerPool(
 		ClaimRetryDelay: fetcherCfg.ClaimRetryDelay,
 		RequestTimeout:  fetcherCfg.RequestTimeout,
 		HTTPClient:      httpClient,
+		Renderer:        renderer,
+		ModeResolver:    modeResolver,
 	}
 
 	deps.Logger.Info("Frontier worker pool created",

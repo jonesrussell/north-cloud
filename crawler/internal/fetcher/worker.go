@@ -34,6 +34,29 @@ const (
 	reasonExtractFailed          = "extract_failed"
 )
 
+// renderModeDynamic is the render mode value indicating Playwright rendering is required.
+const renderModeDynamic = "dynamic"
+
+// renderedPageContentType is the Content-Type returned for Playwright-rendered pages.
+const renderedPageContentType = "text/html; charset=utf-8"
+
+// RenderedPage holds the result of a dynamic Playwright render.
+type RenderedPage struct {
+	HTML       string
+	FinalURL   string
+	StatusCode int
+}
+
+// PageRenderer renders a URL using a headless browser and returns the HTML.
+type PageRenderer interface {
+	Render(ctx context.Context, url string) (*RenderedPage, error)
+}
+
+// SourceRenderModeResolver looks up the render mode ("static" or "dynamic") for a source.
+type SourceRenderModeResolver interface {
+	GetRenderMode(ctx context.Context, sourceID string) (string, error)
+}
+
 // binaryExtensions are file extensions that indicate binary/non-content resources.
 // These URLs are marked dead in the frontier to avoid repeated parse failures.
 var binaryExtensions = []string{
@@ -103,6 +126,10 @@ type WorkerPoolConfig struct {
 	RequestTimeout  time.Duration
 	// HTTPClient is the client used for fetches. If nil, a default client with RequestTimeout is used.
 	HTTPClient *http.Client
+	// Renderer renders pages via a headless browser. Nil disables dynamic rendering.
+	Renderer PageRenderer
+	// ModeResolver resolves the render mode for a source. Nil disables dynamic rendering.
+	ModeResolver SourceRenderModeResolver
 }
 
 // WorkerPool manages a pool of fetch workers that process URLs from the frontier.
@@ -114,6 +141,8 @@ type WorkerPool struct {
 	indexer         ContentIndexer
 	log             WorkerLogger
 	httpClient      *http.Client
+	renderer        PageRenderer
+	modeResolver    SourceRenderModeResolver
 	userAgent       string
 	workerCount     int
 	maxRetries      int
@@ -142,6 +171,8 @@ func NewWorkerPool(
 		indexer:         indexer,
 		log:             log,
 		httpClient:      client,
+		renderer:        cfg.Renderer,
+		modeResolver:    cfg.ModeResolver,
 		userAgent:       cfg.UserAgent,
 		workerCount:     cfg.WorkerCount,
 		maxRetries:      cfg.MaxRetries,
@@ -237,7 +268,7 @@ func (wp *WorkerPool) ProcessURL(ctx context.Context, furl *domain.FrontierURL) 
 		return nil
 	}
 
-	body, statusCode, finalURL, contentType, fetchErr := wp.fetchPage(ctx, furl)
+	body, statusCode, finalURL, contentType, fetchErr := wp.fetchWithRenderMode(ctx, furl)
 
 	// Always update host last fetch time after any fetch attempt.
 	wp.updateHostFetch(ctx, furl.Host)
@@ -403,6 +434,31 @@ func (wp *WorkerPool) updateFetchedWithOptionalFinalURL(
 		return wp.frontier.UpdateFetched(ctx, furl.ID, params)
 	}
 	return wp.frontier.UpdateFetchedWithFinalURL(ctx, furl.ID, finalURL, params)
+}
+
+// fetchWithRenderMode fetches a page using the render worker for dynamic sources,
+// or plain HTTP for static sources (or when rendering is not configured).
+func (wp *WorkerPool) fetchWithRenderMode(
+	ctx context.Context,
+	furl *domain.FrontierURL,
+) (body []byte, statusCode int, finalURL, contentType string, err error) {
+	if wp.renderer != nil && wp.modeResolver != nil {
+		mode, resolveErr := wp.modeResolver.GetRenderMode(ctx, furl.SourceID)
+		if resolveErr != nil {
+			return nil, 0, "", "", fmt.Errorf("resolve render mode: %w", resolveErr)
+		}
+
+		if mode == renderModeDynamic {
+			page, renderErr := wp.renderer.Render(ctx, furl.URL)
+			if renderErr != nil {
+				return nil, 0, "", "", fmt.Errorf("render: %w", renderErr)
+			}
+
+			return []byte(page.HTML), page.StatusCode, page.FinalURL, renderedPageContentType, nil
+		}
+	}
+
+	return wp.fetchPage(ctx, furl)
 }
 
 // fetchPage performs the HTTP GET request for the given frontier URL.
