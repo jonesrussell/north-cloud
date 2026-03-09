@@ -35,7 +35,7 @@ func SetupEventConsumer(
 
 	// Create source client for fetching source data
 	sourceManagerCfg := deps.Config.GetSourceManagerConfig()
-	sourceClient := sources.NewHTTPClient(sourceManagerCfg.URL, nil)
+	sourceClient := sources.NewHTTPClient(sourceManagerCfg.URL, nil, deps.Logger)
 
 	// Create EventService as the event handler
 	scheduleComputer := job.NewScheduleComputer()
@@ -55,7 +55,7 @@ func SetupEventConsumer(
 // SetupMigrator creates the migrator service for Phase 3 job migration.
 func SetupMigrator(deps *CommandDeps, jobRepo *database.JobRepository) *job.Migrator {
 	sourceManagerCfg := deps.Config.GetSourceManagerConfig()
-	sourceClient := sources.NewHTTPClient(sourceManagerCfg.URL, nil)
+	sourceClient := sources.NewHTTPClient(sourceManagerCfg.URL, nil, deps.Logger)
 	scheduleComputer := job.NewScheduleComputer()
 
 	return job.NewMigrator(jobRepo, sourceClient, scheduleComputer, deps.Logger)

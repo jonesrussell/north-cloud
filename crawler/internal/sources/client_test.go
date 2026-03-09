@@ -12,6 +12,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jonesrussell/north-cloud/crawler/internal/sources"
+	infralogger "github.com/jonesrussell/north-cloud/infrastructure/logger"
 )
 
 func TestSourceClient_Interface(t *testing.T) {
@@ -142,5 +143,35 @@ func TestListIndigenousSources_NonOKStatus_ReturnsError(t *testing.T) {
 	_, err := client.ListIndigenousSources(context.Background())
 	if err == nil {
 		t.Fatal("expected error for non-200 status, got nil")
+	}
+}
+
+// TestListIndigenousSources_TruncationWarning verifies that when the API returns
+// total > len(sources), the client still returns the partial results without error.
+// The truncation warning is logged but does not affect the return value.
+func TestListIndigenousSources_TruncationWarning(t *testing.T) {
+	t.Helper()
+
+	region := "canada"
+	returned := []*sources.SourceListItem{
+		{ID: uuid.New(), Name: "APTN", URL: "https://aptn.ca", Enabled: true, IndigenousRegion: &region},
+	}
+	// total=5 but only 1 source returned — simulates API limit truncation
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		t.Helper()
+		payload := map[string]any{"sources": returned, "total": 5}
+		if encErr := json.NewEncoder(w).Encode(payload); encErr != nil {
+			t.Errorf("encode response: %v", encErr)
+		}
+	}))
+	defer srv.Close()
+
+	client := sources.NewHTTPClient(srv.URL, nil, infralogger.NewNop())
+	got, err := client.ListIndigenousSources(context.Background())
+	if err != nil {
+		t.Fatalf("unexpected error on truncated response: %v", err)
+	}
+	if len(got) != len(returned) {
+		t.Errorf("expected %d sources, got %d", len(returned), len(got))
 	}
 }

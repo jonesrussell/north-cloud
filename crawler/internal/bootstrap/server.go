@@ -43,7 +43,7 @@ func SetupHTTPServer(deps *HTTPServerDeps) *ServerComponents {
 	migrationHandler := api.NewMigrationHandler(deps.Migrator, deps.Logger)
 
 	sourceManagerCfg := deps.Config.GetSourceManagerConfig()
-	sourceClient := sources.NewHTTPClient(sourceManagerCfg.URL, nil)
+	sourceClient := sources.NewHTTPClient(sourceManagerCfg.URL, nil, deps.Logger)
 	scheduleComputer := job.NewScheduleComputer()
 	syncHandler := admin.NewSyncEnabledSourcesHandler(
 		sourceClient,

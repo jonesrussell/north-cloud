@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	infralogger "github.com/jonesrussell/north-cloud/infrastructure/logger"
 )
 
 // ErrSourceNotFound is returned when a source is not found.
@@ -49,6 +50,7 @@ type Client interface {
 type HTTPClient struct {
 	baseURL    string
 	httpClient *http.Client
+	logger     infralogger.Logger // optional; nil disables warning logs
 }
 
 // Default timeouts and limits for HTTP client.
@@ -64,16 +66,21 @@ const (
 
 // NewHTTPClient creates a new HTTP client for source-manager.
 // If httpClient is nil, a default client with 10 second timeout is used.
-func NewHTTPClient(baseURL string, httpClient *http.Client) *HTTPClient {
+// An optional logger may be passed to enable runtime warning logs (e.g. truncation detection).
+func NewHTTPClient(baseURL string, httpClient *http.Client, log ...infralogger.Logger) *HTTPClient {
 	if httpClient == nil {
 		httpClient = &http.Client{
 			Timeout: defaultHTTPTimeout,
 		}
 	}
-	return &HTTPClient{
+	c := &HTTPClient{
 		baseURL:    baseURL,
 		httpClient: httpClient,
 	}
+	if len(log) > 0 {
+		c.logger = log[0]
+	}
+	return c
 }
 
 // GetSource fetches a source by ID from source-manager.
@@ -163,6 +170,7 @@ func (c *HTTPClient) ListIndigenousSources(ctx context.Context) ([]*SourceListIt
 
 	var payload struct {
 		Sources []*SourceListItem `json:"sources"`
+		Total   int               `json:"total"`
 	}
 	if decodeErr := json.NewDecoder(resp.Body).Decode(&payload); decodeErr != nil {
 		return nil, fmt.Errorf("decode response: %w", decodeErr)
@@ -171,6 +179,15 @@ func (c *HTTPClient) ListIndigenousSources(ctx context.Context) ([]*SourceListIt
 	if payload.Sources == nil {
 		payload.Sources = []*SourceListItem{}
 	}
+
+	if payload.Total > len(payload.Sources) && c.logger != nil {
+		c.logger.Warn("ListIndigenousSources: result truncated by API limit",
+			infralogger.Int("fetched", len(payload.Sources)),
+			infralogger.Int("total", payload.Total),
+			infralogger.Int("limit", indigenousSourcesLimit),
+		)
+	}
+
 	return payload.Sources, nil
 }
 
