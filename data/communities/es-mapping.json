@@ -1,0 +1,60 @@
+{
+  "settings": {
+    "number_of_shards": 1,
+    "number_of_replicas": 0,
+    "analysis": {
+      "analyzer": {
+        "autocomplete": {
+          "type": "custom",
+          "tokenizer": "standard",
+          "filter": ["lowercase", "autocomplete_edge"]
+        },
+        "autocomplete_search": {
+          "type": "custom",
+          "tokenizer": "standard",
+          "filter": ["lowercase"]
+        }
+      },
+      "filter": {
+        "autocomplete_edge": {
+          "type": "edge_ngram",
+          "min_gram": 2,
+          "max_gram": 20
+        }
+      }
+    }
+  },
+  "mappings": {
+    "dynamic": "strict",
+    "properties": {
+      "id": { "type": "keyword" },
+      "name": {
+        "type": "text",
+        "analyzer": "autocomplete",
+        "search_analyzer": "autocomplete_search",
+        "fields": {
+          "keyword": { "type": "keyword" },
+          "suggest": { "type": "search_as_you_type", "max_shingle_size": 3 }
+        }
+      },
+      "community_type": { "type": "keyword" },
+      "province": { "type": "keyword" },
+      "location": { "type": "geo_point" },
+      "population": { "type": "integer" },
+      "governing_body": { "type": "keyword" },
+      "external_ids": {
+        "type": "object",
+        "properties": {
+          "inac": { "type": "keyword" },
+          "statcan": { "type": "keyword" }
+        }
+      },
+      "region": { "type": "keyword" },
+      "subregion": { "type": "keyword" },
+      "neighbours": { "type": "keyword" },
+      "notes": { "type": "text", "index": false },
+      "created_at": { "type": "date", "format": "strict_date_optional_time||epoch_millis" },
+      "updated_at": { "type": "date", "format": "strict_date_optional_time||epoch_millis" }
+    }
+  }
+}

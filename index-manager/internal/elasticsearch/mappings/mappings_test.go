@@ -53,7 +53,7 @@ func TestToMap_RoundTrip(t *testing.T) {
 func TestGetMappingForType_ValidTypes(t *testing.T) {
 	t.Helper()
 
-	types := []string{"raw_content", "classified_content"}
+	types := []string{"raw_content", "classified_content", "community"}
 
 	for _, indexType := range types {
 		t.Run(indexType, func(t *testing.T) {
@@ -501,6 +501,9 @@ func TestMappingVersionConstants(t *testing.T) {
 	if mappings.ClassifiedContentMappingVersion == "" {
 		t.Error("ClassifiedContentMappingVersion is empty")
 	}
+	if mappings.CommunityMappingVersion == "" {
+		t.Error("CommunityMappingVersion is empty")
+	}
 }
 
 func TestGetMappingVersion(t *testing.T) {
@@ -512,8 +515,150 @@ func TestGetMappingVersion(t *testing.T) {
 	if v := mappings.GetMappingVersion("classified_content"); v != mappings.ClassifiedContentMappingVersion {
 		t.Errorf("GetMappingVersion(classified_content) = %q, want %q", v, mappings.ClassifiedContentMappingVersion)
 	}
+	if v := mappings.GetMappingVersion("community"); v != mappings.CommunityMappingVersion {
+		t.Errorf("GetMappingVersion(community) = %q, want %q", v, mappings.CommunityMappingVersion)
+	}
 	if v := mappings.GetMappingVersion("unknown"); v != "1.0.0" {
 		t.Errorf("GetMappingVersion(unknown) = %q, want \"1.0.0\"", v)
+	}
+}
+
+// --- Community Mapping ---
+
+func TestGetCommunityMapping_Structure(t *testing.T) {
+	t.Helper()
+
+	mapping := mappings.GetCommunityMapping(1, 1)
+
+	settings, ok := mapping["settings"].(map[string]any)
+	if !ok {
+		t.Fatal("missing or invalid settings")
+	}
+	if settings["number_of_shards"] != 1 {
+		t.Errorf("number_of_shards = %v, want 1", settings["number_of_shards"])
+	}
+
+	mappingsObj, ok := mapping["mappings"].(map[string]any)
+	if !ok {
+		t.Fatal("missing or invalid mappings")
+	}
+	properties, ok := mappingsObj["properties"].(map[string]any)
+	if !ok {
+		t.Fatal("missing or invalid properties")
+	}
+
+	expectedFields := []string{
+		"id", "name", "community_type", "province", "location",
+		"population", "governing_body", "external_ids", "region",
+		"subregion", "neighbours", "notes", "created_at", "updated_at",
+	}
+
+	for _, field := range expectedFields {
+		if _, exists := properties[field]; !exists {
+			t.Errorf("community mapping missing field %q", field)
+		}
+	}
+}
+
+func TestGetCommunityMapping_DynamicStrict(t *testing.T) {
+	t.Helper()
+
+	mapping := mappings.GetCommunityMapping(1, 1)
+	mappingsObj := mapping["mappings"].(map[string]any)
+
+	dynamic, exists := mappingsObj["dynamic"]
+	if !exists {
+		t.Fatal("community mapping missing 'dynamic' setting")
+	}
+	if dynamic != "strict" {
+		t.Errorf("dynamic = %v, want \"strict\"", dynamic)
+	}
+}
+
+func TestGetCommunityMapping_NameHasAutocomplete(t *testing.T) {
+	t.Helper()
+
+	mapping := mappings.GetCommunityMapping(1, 1)
+	properties := mapping["mappings"].(map[string]any)["properties"].(map[string]any)
+
+	nameField, ok := properties["name"].(map[string]any)
+	if !ok {
+		t.Fatal("name field missing or not a map")
+	}
+	if nameField["analyzer"] != "autocomplete" {
+		t.Errorf("name analyzer = %v, want \"autocomplete\"", nameField["analyzer"])
+	}
+	if nameField["search_analyzer"] != "autocomplete_search" {
+		t.Errorf("name search_analyzer = %v, want \"autocomplete_search\"", nameField["search_analyzer"])
+	}
+
+	fields, ok := nameField["fields"].(map[string]any)
+	if !ok {
+		t.Fatal("name.fields missing")
+	}
+	if _, exists := fields["keyword"]; !exists {
+		t.Error("name.fields.keyword missing")
+	}
+	if _, exists := fields["suggest"]; !exists {
+		t.Error("name.fields.suggest missing")
+	}
+}
+
+func TestGetCommunityMapping_LocationIsGeoPoint(t *testing.T) {
+	t.Helper()
+
+	mapping := mappings.GetCommunityMapping(1, 1)
+	properties := mapping["mappings"].(map[string]any)["properties"].(map[string]any)
+
+	assertFieldType(t, properties, "location", "geo_point")
+}
+
+func TestGetCommunityMapping_ExternalIdsSubFields(t *testing.T) {
+	t.Helper()
+
+	mapping := mappings.GetCommunityMapping(1, 1)
+	properties := mapping["mappings"].(map[string]any)["properties"].(map[string]any)
+
+	extIDs, ok := properties["external_ids"].(map[string]any)
+	if !ok {
+		t.Fatal("external_ids field missing or not an object")
+	}
+	extIDsProps, ok := extIDs["properties"].(map[string]any)
+	if !ok {
+		t.Fatal("external_ids.properties missing")
+	}
+
+	expectedFields := []string{"inac", "statcan"}
+	for _, field := range expectedFields {
+		if _, exists := extIDsProps[field]; !exists {
+			t.Errorf("external_ids missing field %q", field)
+		}
+	}
+}
+
+func TestGetCommunityMapping_HasAutocompleteAnalyzer(t *testing.T) {
+	t.Helper()
+
+	mapping := mappings.GetCommunityMapping(1, 1)
+	settings := mapping["settings"].(map[string]any)
+
+	analysis, hasAnalysis := settings["analysis"]
+	if !hasAnalysis {
+		t.Fatal("community mapping missing 'analysis' settings")
+	}
+	analysisMap := analysis.(map[string]any)
+
+	analyzer, hasAnalyzer := analysisMap["analyzer"]
+	if !hasAnalyzer {
+		t.Fatal("missing analyzer in analysis settings")
+	}
+	analyzerMap := analyzer.(map[string]any)
+
+	if _, hasAutocomplete := analyzerMap["autocomplete"]; !hasAutocomplete {
+		t.Error("missing autocomplete analyzer")
+	}
+	if _, hasSearch := analyzerMap["autocomplete_search"]; !hasSearch {
+		t.Error("missing autocomplete_search analyzer")
 	}
 }
 
