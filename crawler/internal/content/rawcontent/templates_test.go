@@ -106,6 +106,35 @@ func TestLookupTemplateByName(t *testing.T) {
 	}
 }
 
+func TestResolveTemplate_HintMissFallthrough(t *testing.T) {
+	t.Parallel()
+
+	// TemplateHint set but not in registry — should fall through to domain lookup.
+	hint := "nonexistent_cms"
+	tmpl, name := rawcontent.ResolveTemplateForTest(&hint, "https://calgaryherald.com/article", "")
+	if tmpl == nil {
+		t.Fatal("expected domain fallthrough to match postmedia, got nil")
+	}
+	if name != "postmedia" {
+		t.Errorf("expected template %q after hint miss, got %q", "postmedia", name)
+	}
+}
+
+func TestResolveTemplate_HintMissFallsToHTML(t *testing.T) {
+	t.Parallel()
+
+	// TemplateHint set but not in registry — should fall through to HTML detection.
+	hint := "nonexistent_cms"
+	wpHTML := `<meta name="generator" content="WordPress 6.4">`
+	tmpl, name := rawcontent.ResolveTemplateForTest(&hint, "https://unknownwpsite.example.com/post", wpHTML)
+	if tmpl == nil {
+		t.Fatal("expected HTML detection fallthrough to match wordpress, got nil")
+	}
+	if name != "wordpress" {
+		t.Errorf("expected template %q after hint miss + HTML detect, got %q", "wordpress", name)
+	}
+}
+
 func TestDetectTemplateByHTML(t *testing.T) {
 	t.Parallel()
 

@@ -234,14 +234,24 @@ func (c *Crawler) GetJobLogger() logs.JobLogger {
 // Metrics Management
 // -----------------
 
+// templateCounter is satisfied by content processors that track template-based extractions.
+type templateCounter interface {
+	GetTemplateExtractions() int64
+}
+
 // GetMetrics returns the crawler metrics.
 func (c *Crawler) GetMetrics() *metrics.Metrics {
-	return &metrics.Metrics{
+	m := &metrics.Metrics{
 		ProcessedCount:     c.state.GetProcessedCount(),
 		ErrorCount:         c.state.GetErrorCount(),
 		LastProcessedTime:  c.state.GetLastProcessedTime(),
 		ProcessingDuration: c.state.GetProcessingDuration(),
+		URLsSkipped:        c.state.GetURLsSkipped(),
 	}
+	if tc, ok := c.rawContentProcessor.(templateCounter); ok {
+		m.TemplateExtractions = tc.GetTemplateExtractions()
+	}
+	return m
 }
 
 // IncrementProcessed increments the processed count.
