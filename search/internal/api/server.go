@@ -53,6 +53,10 @@ func SetupServiceRoutes(router *gin.Engine, handler *Handler) {
 	// Public feed (no auth): stable URL for static-site consumers at build time
 	router.GET("/feed.json", handler.PublicFeed)
 
+	// Community search (consumed by Minoo at /api/communities/search)
+	communities := router.Group("/api/communities")
+	communities.GET("/search", handler.SearchCommunities)
+
 	// API v1 routes
 	v1 := router.Group("/api/v1")
 	{

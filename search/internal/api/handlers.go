@@ -12,7 +12,10 @@ import (
 	"github.com/jonesrussell/north-cloud/search/internal/service"
 )
 
-const trueString = "true"
+const (
+	trueString               = "true"
+	defaultCommunityPageSize = 10
+)
 
 // Handler holds HTTP request handlers
 type Handler struct {
@@ -296,6 +299,33 @@ func (h *Handler) TopicFeed(c *gin.Context) {
 		GeneratedAt: time.Now().UTC().Format(time.RFC3339),
 		Items:       items,
 	})
+}
+
+// SearchCommunities handles community autocomplete search.
+func (h *Handler) SearchCommunities(c *gin.Context) {
+	q := strings.TrimSpace(c.Query("q"))
+	pageSize := defaultCommunityPageSize
+	if ps := c.Query("page_size"); ps != "" {
+		if n, err := strconv.Atoi(ps); err == nil && n > 0 {
+			pageSize = n
+		}
+	}
+
+	result, err := h.searchService.SearchCommunities(c.Request.Context(), q, pageSize)
+	if err != nil {
+		h.logger.Error("Community search failed",
+			infralogger.Error(err),
+			infralogger.String("query", q),
+		)
+		c.JSON(http.StatusInternalServerError, ErrorResponse{
+			Error:     "Community search failed",
+			Code:      "COMMUNITY_SEARCH_ERROR",
+			Timestamp: time.Now(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, result)
 }
 
 // ErrorResponse represents an error response
