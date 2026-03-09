@@ -10,6 +10,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	infraevents "github.com/jonesrussell/north-cloud/infrastructure/events"
+	"github.com/jonesrussell/north-cloud/infrastructure/indigenous"
 	infralogger "github.com/jonesrussell/north-cloud/infrastructure/logger"
 	"github.com/jonesrussell/north-cloud/source-manager/internal/events"
 	"github.com/jonesrussell/north-cloud/source-manager/internal/importer"
@@ -80,6 +81,11 @@ func (h *SourceHandler) Create(c *gin.Context) {
 		return
 	}
 	source.RateLimit = models.NormalizeRateLimit(source.RateLimit)
+
+	if err := h.validateIndigenousRegion(&source); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
 
 	if err := h.repo.Create(c.Request.Context(), &source); err != nil {
 		var pqErr *pq.Error
@@ -273,6 +279,11 @@ func (h *SourceHandler) Update(c *gin.Context) {
 
 	source.ID = id
 	source.RateLimit = models.NormalizeRateLimit(source.RateLimit)
+
+	if err := h.validateIndigenousRegion(&source); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
 
 	if err := h.repo.Update(c.Request.Context(), &source); err != nil {
 		h.logger.Error("Failed to update source",
@@ -636,4 +647,22 @@ func (h *SourceHandler) ImportExcel(c *gin.Context) {
 		Updated: len(updatedList),
 		Errors:  []importer.ImportError{},
 	})
+}
+
+// validateIndigenousRegion normalizes and validates the indigenous_region field on a source.
+// If the region is set, it must be a valid canonical slug. The pointer is updated in place.
+func (h *SourceHandler) validateIndigenousRegion(source *models.Source) error {
+	if source.IndigenousRegion == nil {
+		return nil
+	}
+	normalized, err := indigenous.NormalizeRegionSlug(*source.IndigenousRegion)
+	if err != nil {
+		return fmt.Errorf("invalid indigenous_region: %w", err)
+	}
+	if normalized == "" {
+		source.IndigenousRegion = nil
+	} else {
+		source.IndigenousRegion = &normalized
+	}
+	return nil
 }

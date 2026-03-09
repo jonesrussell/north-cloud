@@ -1,6 +1,10 @@
 package router
 
-import "strings"
+import (
+	"strings"
+
+	"github.com/jonesrussell/north-cloud/infrastructure/indigenous"
+)
 
 // Indigenous relevance constants.
 const (
@@ -43,8 +47,10 @@ func (d *IndigenousDomain) Routes(item *ContentItem) []ChannelRoute {
 	}
 
 	if item.Indigenous.Region != "" {
-		regionSlug := strings.ToLower(strings.ReplaceAll(item.Indigenous.Region, " ", "-"))
-		channels = append(channels, "indigenous:region:"+regionSlug)
+		regionSlug, normErr := indigenous.NormalizeRegionSlug(item.Indigenous.Region)
+		if normErr == nil && regionSlug != "" {
+			channels = append(channels, "indigenous:region:"+regionSlug)
+		}
 	}
 
 	return channelRoutesFromSlice(channels)
