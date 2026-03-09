@@ -184,6 +184,34 @@ func TestIndigenousClassifier_Classify_RulesOnly_NotRelevant(t *testing.T) {
 	}
 }
 
+func TestIndigenousClassifier_ConfidencePassthrough(t *testing.T) {
+	t.Helper()
+
+	ac := NewIndigenousClassifier(nil, &mockLogger{}, true)
+
+	raw := &domain.RawContent{
+		ID:      "test-confidence",
+		Title:   "Anishinaabe community celebrates culture and language",
+		RawText: "Elders lead Anishinaabemowin workshops in the community.",
+	}
+
+	result, err := ac.Classify(context.Background(), raw)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result == nil {
+		t.Fatal("expected result")
+	}
+	if result.FinalConfidence < indigenousConfidenceCoreBase {
+		t.Errorf("expected FinalConfidence >= %f, got %f",
+			indigenousConfidenceCoreBase, result.FinalConfidence)
+	}
+	if result.FinalConfidence > indigenousConfidenceCoreMax {
+		t.Errorf("expected FinalConfidence <= %f, got %f",
+			indigenousConfidenceCoreMax, result.FinalConfidence)
+	}
+}
+
 func verifyIndigenousDecisionPath(t *testing.T, result *domain.IndigenousResult, expected string) {
 	t.Helper()
 

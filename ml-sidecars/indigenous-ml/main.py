@@ -7,7 +7,7 @@ from pydantic import BaseModel
 
 from classifier.relevance import classify_indigenous_relevance
 
-MODEL_VERSION = "2026-03-08-indigenous-v2"
+MODEL_VERSION = "2026-03-12-indigenous-v3"
 
 
 app = FastAPI(
@@ -30,6 +30,7 @@ class ClassifyResponse(BaseModel):
     relevance: str
     relevance_confidence: float
     categories: list[str]
+    language_detected: str = ""
     processing_time_ms: int = 0
     model_version: str = ""
 
@@ -56,6 +57,7 @@ def classify(request: ClassifyRequest) -> ClassifyResponse:
         relevance=result["relevance"],
         relevance_confidence=result["confidence"],
         categories=result["categories"],
+        language_detected=result["language_detected"],
         processing_time_ms=processing_time_ms,
         model_version=MODEL_VERSION,
     )

@@ -1,9 +1,19 @@
-"""Tests for indigenous relevance classification (global multilingual)."""
+"""Tests for indigenous relevance classification (global multilingual v3)."""
 
 from classifier.relevance import (
     CATEGORY_COUNT,
     CATEGORY_KEYWORDS,
+    CONFIDENCE_CORE_BASE,
+    CONFIDENCE_NOT_INDIGENOUS,
     CORE_INDIGENOUS,
+    LANG_EN,
+    LANG_ES,
+    LANG_FR,
+    LANG_JA,
+    LANG_MI,
+    LANG_PT,
+    LANG_SV,
+    LANG_UNKNOWN,
     NOT_INDIGENOUS,
     PERIPHERAL_INDIGENOUS,
     classify_indigenous_relevance,
@@ -16,6 +26,7 @@ class TestEnglishPatterns:
     def test_anishinaabe_core(self):
         result = classify_indigenous_relevance("Anishinaabe community celebrates language revitalization")
         assert result["relevance"] == CORE_INDIGENOUS
+        assert result["language_detected"] == LANG_EN
 
     def test_first_nations_core(self):
         result = classify_indigenous_relevance("First Nations leaders meet for treaty discussions")
@@ -40,6 +51,7 @@ class TestEnglishPatterns:
     def test_peripheral_indigenous(self):
         result = classify_indigenous_relevance("Indigenous art exhibit opens downtown")
         assert result["relevance"] == PERIPHERAL_INDIGENOUS
+        assert result["language_detected"] == LANG_EN
 
     def test_reconciliation_peripheral(self):
         result = classify_indigenous_relevance("Reconciliation efforts continue across Canada")
@@ -48,6 +60,7 @@ class TestEnglishPatterns:
     def test_not_indigenous(self):
         result = classify_indigenous_relevance("Weather forecast for the weekend: sunny skies expected")
         assert result["relevance"] == NOT_INDIGENOUS
+        assert result["language_detected"] == LANG_UNKNOWN
 
 
 class TestSpanishPatterns:
@@ -56,10 +69,16 @@ class TestSpanishPatterns:
     def test_pueblos_indigenas(self):
         result = classify_indigenous_relevance("Los pueblos indígenas exigen derechos territoriales")
         assert result["relevance"] == CORE_INDIGENOUS
+        assert result["language_detected"] == LANG_ES
 
     def test_territorio_ancestral(self):
         result = classify_indigenous_relevance("Territorio ancestral bajo amenaza de minería")
         assert result["relevance"] == CORE_INDIGENOUS
+        assert result["language_detected"] == LANG_ES
+
+    def test_spanish_not_indigenous(self):
+        result = classify_indigenous_relevance("El clima de hoy es soleado y templado")
+        assert result["relevance"] == NOT_INDIGENOUS
 
 
 class TestFrenchPatterns:
@@ -68,10 +87,15 @@ class TestFrenchPatterns:
     def test_peuples_autochtones(self):
         result = classify_indigenous_relevance("Les peuples autochtones du Canada manifestent")
         assert result["relevance"] == CORE_INDIGENOUS
+        assert result["language_detected"] == LANG_FR
 
     def test_premieres_nations(self):
         result = classify_indigenous_relevance("Les premières nations signent un accord historique")
         assert result["relevance"] == CORE_INDIGENOUS
+
+    def test_french_not_indigenous(self):
+        result = classify_indigenous_relevance("La météo prévoit du beau temps demain")
+        assert result["relevance"] == NOT_INDIGENOUS
 
 
 class TestPortuguesePatterns:
@@ -80,10 +104,15 @@ class TestPortuguesePatterns:
     def test_povos_indigenas(self):
         result = classify_indigenous_relevance("Povos indígenas lutam pela demarcação de terras")
         assert result["relevance"] == CORE_INDIGENOUS
+        assert result["language_detected"] == LANG_PT
 
     def test_terra_indigena(self):
         result = classify_indigenous_relevance("Terra indígena ameaçada por desmatamento")
         assert result["relevance"] == CORE_INDIGENOUS
+
+    def test_portuguese_not_indigenous(self):
+        result = classify_indigenous_relevance("O tempo está ensolarado hoje no Brasil")
+        assert result["relevance"] == NOT_INDIGENOUS
 
 
 class TestNordicPatterns:
@@ -92,10 +121,15 @@ class TestNordicPatterns:
     def test_samefolket(self):
         result = classify_indigenous_relevance("Samefolket kämpar för rättigheter i Sápmi")
         assert result["relevance"] == CORE_INDIGENOUS
+        assert result["language_detected"] == LANG_SV
 
     def test_urfolk(self):
         result = classify_indigenous_relevance("Urfolk i Norden organiserar motstånd")
         assert result["relevance"] == CORE_INDIGENOUS
+
+    def test_nordic_not_indigenous(self):
+        result = classify_indigenous_relevance("Vädret i Stockholm är soligt idag")
+        assert result["relevance"] == NOT_INDIGENOUS
 
 
 class TestTeReoMaoriPatterns:
@@ -104,6 +138,7 @@ class TestTeReoMaoriPatterns:
     def test_tangata_whenua(self):
         result = classify_indigenous_relevance("Tangata whenua speak at parliament hearing")
         assert result["relevance"] == CORE_INDIGENOUS
+        assert result["language_detected"] == LANG_MI
 
     def test_mana_whenua(self):
         result = classify_indigenous_relevance("Mana whenua assert rights over waterways")
@@ -116,10 +151,73 @@ class TestJapanesePatterns:
     def test_ainu(self):
         result = classify_indigenous_relevance("アイヌ民族の文化復興運動が進む")
         assert result["relevance"] == CORE_INDIGENOUS
+        assert result["language_detected"] == LANG_JA
 
     def test_senjuminzoku(self):
         result = classify_indigenous_relevance("先住民族の権利に関する国連宣言")
         assert result["relevance"] == CORE_INDIGENOUS
+
+
+class TestMixedLanguageContent:
+    """Mixed-language content tests."""
+
+    def test_english_title_spanish_body(self):
+        result = classify_indigenous_relevance(
+            "Indigenous justice report: Los pueblos indígenas exigen justicia"
+        )
+        assert result["relevance"] == CORE_INDIGENOUS
+        assert "justice" in result["categories"]
+
+    def test_french_title_english_categories(self):
+        result = classify_indigenous_relevance(
+            "Les peuples autochtones demand justice and sovereignty"
+        )
+        assert result["relevance"] == CORE_INDIGENOUS
+        assert "justice" in result["categories"] or "sovereignty" in result["categories"]
+
+
+class TestLowConfidenceCases:
+    """Low-confidence and edge cases."""
+
+    def test_peripheral_confidence_lower_than_core(self):
+        core = classify_indigenous_relevance("Anishinaabe community celebrates culture")
+        periph = classify_indigenous_relevance("Indigenous art exhibit opens")
+        assert core["confidence"] > periph["confidence"]
+
+    def test_not_indigenous_confidence(self):
+        result = classify_indigenous_relevance("Stock market report for today")
+        assert result["confidence"] == CONFIDENCE_NOT_INDIGENOUS
+
+    def test_single_core_hit_confidence(self):
+        result = classify_indigenous_relevance("Inuit hunters report changes")
+        assert result["confidence"] >= CONFIDENCE_CORE_BASE
+
+    def test_multiple_core_hits_higher_confidence(self):
+        single = classify_indigenous_relevance("First Nations leaders discuss issues")
+        multi = classify_indigenous_relevance(
+            "First Nations and Métis leaders discuss treaty rights and land rights"
+        )
+        assert multi["confidence"] >= single["confidence"]
+
+
+class TestFalsePositives:
+    """Non-indigenous content that might false-positive."""
+
+    def test_financial_reserve(self):
+        # "reserve" alone is peripheral, but in banking context it should still trigger.
+        # This tests that we accept the known limitation — peripheral is expected.
+        result = classify_indigenous_relevance("Federal Reserve raises interest rates again")
+        # "reserve" triggers peripheral — this is a known limitation acceptable at this stage.
+        assert result["relevance"] in (PERIPHERAL_INDIGENOUS, NOT_INDIGENOUS)
+
+    def test_military_reservation(self):
+        result = classify_indigenous_relevance("Military reservation training exercise completed")
+        # "reservation" triggers peripheral — known limitation.
+        assert result["relevance"] in (PERIPHERAL_INDIGENOUS, NOT_INDIGENOUS)
+
+    def test_generic_weather(self):
+        result = classify_indigenous_relevance("Tomorrow will be partly cloudy with a high of 22")
+        assert result["relevance"] == NOT_INDIGENOUS
 
 
 class TestCategories:
@@ -146,11 +244,15 @@ class TestCategories:
         assert "sovereignty" in result["categories"]
 
     def test_education_category(self):
-        result = classify_indigenous_relevance("Residential school survivors share stories of indigenous education")
+        result = classify_indigenous_relevance(
+            "Residential school survivors share stories of indigenous education"
+        )
         assert "education" in result["categories"]
 
     def test_health_category(self):
-        result = classify_indigenous_relevance("Indigenous health crisis: traditional medicine programs expanded")
+        result = classify_indigenous_relevance(
+            "Indigenous health crisis: traditional medicine programs expanded"
+        )
         assert "health" in result["categories"]
 
     def test_justice_category(self):
@@ -167,7 +269,8 @@ class TestCategories:
 
     def test_max_categories(self):
         result = classify_indigenous_relevance(
-            "First Nations culture language land rights environment sovereignty education health justice history community"
+            "First Nations culture language land rights environment sovereignty "
+            "education health justice history community"
         )
         assert len(result["categories"]) <= 5
 
@@ -175,10 +278,39 @@ class TestCategories:
         result = classify_indigenous_relevance("")
         assert result["relevance"] == NOT_INDIGENOUS
         assert result["categories"] == []
+        assert result["language_detected"] == LANG_UNKNOWN
 
     def test_whitespace_text(self):
         result = classify_indigenous_relevance("   ")
         assert result["relevance"] == NOT_INDIGENOUS
+
+
+class TestMultilingualCategories:
+    """Category extraction in non-English languages."""
+
+    def test_spanish_culture(self):
+        result = classify_indigenous_relevance("Los pueblos indígenas celebran una ceremonia cultural")
+        assert "culture" in result["categories"]
+
+    def test_french_education(self):
+        result = classify_indigenous_relevance("Les peuples autochtones ouvrent une école autochtone")
+        assert "education" in result["categories"]
+
+    def test_portuguese_land_rights(self):
+        result = classify_indigenous_relevance("Povos indígenas lutam pela demarcação de território")
+        assert "land_rights" in result["categories"]
+
+    def test_nordic_sovereignty(self):
+        result = classify_indigenous_relevance("Samefolket kräver suveränitet och självbestämmande")
+        assert "sovereignty" in result["categories"]
+
+    def test_te_reo_community(self):
+        result = classify_indigenous_relevance("Tangata whenua hui with whānau and kaumātua")
+        assert "community" in result["categories"]
+
+    def test_japanese_culture(self):
+        result = classify_indigenous_relevance("アイヌ民族の文化と伝統の復興")
+        assert "culture" in result["categories"]
 
 
 class TestCategoryTaxonomy:

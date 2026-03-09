@@ -207,3 +207,87 @@ func TestIndigenousCategoryTaxonomy(t *testing.T) {
 		seen[cat] = true
 	}
 }
+
+func TestIndigenousRules_ConfidenceScoring(t *testing.T) {
+	t.Helper()
+
+	t.Run("core_confidence_above_base", func(t *testing.T) {
+		t.Helper()
+		result := classifyIndigenousByRules("Inuit hunters report changes", "")
+		if result.confidence < indigenousConfidenceCoreBase {
+			t.Errorf("expected confidence >= %f, got %f", indigenousConfidenceCoreBase, result.confidence)
+		}
+	})
+
+	t.Run("multiple_core_hits_higher", func(t *testing.T) {
+		t.Helper()
+		single := classifyIndigenousByRules("First Nations leaders discuss issues", "")
+		multi := classifyIndigenousByRules("First Nations and Métis leaders discuss treaty rights", "")
+		if multi.confidence < single.confidence {
+			t.Errorf("expected multi-hit confidence %f >= single %f", multi.confidence, single.confidence)
+		}
+	})
+
+	t.Run("peripheral_lower_than_core", func(t *testing.T) {
+		t.Helper()
+		core := classifyIndigenousByRules("Anishinaabe community celebrates culture", "")
+		periph := classifyIndigenousByRules("Indigenous art exhibit opens", "")
+		if periph.confidence >= core.confidence {
+			t.Errorf("expected peripheral %f < core %f", periph.confidence, core.confidence)
+		}
+	})
+
+	t.Run("not_indigenous_confidence", func(t *testing.T) {
+		t.Helper()
+		result := classifyIndigenousByRules("Stock market report for today", "")
+		if result.confidence != indigenousConfidenceNotIndigenous {
+			t.Errorf("expected %f, got %f", indigenousConfidenceNotIndigenous, result.confidence)
+		}
+	})
+
+	t.Run("core_capped_at_max", func(t *testing.T) {
+		t.Helper()
+		// Trigger many patterns at once
+		result := classifyIndigenousByRules(
+			"First Nations Métis Inuit treaty rights residential school Anishinaabe grand council", "")
+		if result.confidence > indigenousConfidenceCoreMax {
+			t.Errorf("expected confidence <= %f, got %f", indigenousConfidenceCoreMax, result.confidence)
+		}
+	})
+}
+
+func TestIndigenousRules_CategoryKeywordCoverage(t *testing.T) {
+	t.Helper()
+
+	// Verify each category has keywords in the map
+	for _, cat := range IndigenousCategories {
+		t.Run(cat, func(t *testing.T) {
+			t.Helper()
+			keywords, ok := indigenousCategoryKeywords[cat]
+			if !ok {
+				t.Errorf("missing keyword list for category %q", cat)
+			}
+			if len(keywords) == 0 {
+				t.Errorf("empty keyword list for category %q", cat)
+			}
+		})
+	}
+}
+
+func TestIndigenousRules_SpanishNotIndigenous(t *testing.T) {
+	t.Helper()
+
+	result := classifyIndigenousByRules("El clima de hoy es soleado", "")
+	if result.relevance != indigenousRelevanceNot {
+		t.Errorf("expected not_indigenous for Spanish weather, got %s", result.relevance)
+	}
+}
+
+func TestIndigenousRules_FrenchNotIndigenous(t *testing.T) {
+	t.Helper()
+
+	result := classifyIndigenousByRules("La météo prévoit du beau temps", "")
+	if result.relevance != indigenousRelevanceNot {
+		t.Errorf("expected not_indigenous for French weather, got %s", result.relevance)
+	}
+}
