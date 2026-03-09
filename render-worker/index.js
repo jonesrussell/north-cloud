@@ -3,6 +3,7 @@
 const http = require('http');
 const { chromium } = require('playwright');
 const { createRequestHandler } = require('./handler');
+const { STEALTH_INIT_SCRIPT } = require('./stealth');
 
 const PORT = process.env.PORT || 3000;
 const RECYCLE_AFTER = parseInt(process.env.BROWSER_RECYCLE_AFTER || '100', 10);
@@ -21,7 +22,12 @@ let processing = false;
 async function ensureBrowser() {
   if (!state.browser || !state.browser.isConnected()) {
     state.browser = await chromium.launch({
-      args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--disable-blink-features=AutomationControlled',
+      ],
     });
     state.requestCount = 0;
   }
@@ -41,6 +47,7 @@ async function renderPage(url, timeoutMs, waitUntil) {
     userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
   });
   const page = await context.newPage();
+  await page.addInitScript(STEALTH_INIT_SCRIPT);
 
   try {
     const start = Date.now();
