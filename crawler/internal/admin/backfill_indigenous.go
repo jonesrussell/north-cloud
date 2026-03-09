@@ -74,14 +74,14 @@ func (h *BackfillIndigenousHandler) BackfillIndigenous(c *gin.Context) {
 	dryRun := c.Query("dry_run") == "true"
 	limit := ParseBackfillLimit(c.Query("limit"))
 
-	allSources, err := h.SourcesClient.ListSources(ctx)
+	allIndigenous, err := h.SourcesClient.ListIndigenousSources(ctx)
 	if err != nil {
-		h.Logger.Error("Failed to list sources for backfill", infralogger.Error(err))
+		h.Logger.Error("Failed to list indigenous sources for backfill", infralogger.Error(err))
 		c.JSON(http.StatusBadGateway, gin.H{"error": "failed to list sources"})
 		return
 	}
 
-	indigenous := FilterIndigenousSources(allSources, region, limit)
+	indigenous := FilterIndigenousSources(allIndigenous, region, limit)
 
 	report := h.buildReport(ctx, indigenous, region, dryRun)
 

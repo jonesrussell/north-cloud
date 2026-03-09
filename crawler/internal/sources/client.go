@@ -42,6 +42,7 @@ type SourceListItem struct {
 type Client interface {
 	GetSource(ctx context.Context, sourceID uuid.UUID) (*Source, error)
 	ListSources(ctx context.Context) ([]*SourceListItem, error)
+	ListIndigenousSources(ctx context.Context) ([]*SourceListItem, error)
 }
 
 // HTTPClient implements Client using HTTP requests to source-manager.
@@ -50,9 +51,10 @@ type HTTPClient struct {
 	httpClient *http.Client
 }
 
-// Default timeouts for HTTP client.
+// Default timeouts and limits for HTTP client.
 const (
-	defaultHTTPTimeout = 10 * time.Second
+	defaultHTTPTimeout     = 10 * time.Second
+	indigenousSourcesLimit = 500
 )
 
 // NewHTTPClient creates a new HTTP client for source-manager.
@@ -134,6 +136,39 @@ func (c *HTTPClient) ListSources(ctx context.Context) ([]*SourceListItem, error)
 	return payload.Sources, nil
 }
 
+// ListIndigenousSources fetches all indigenous sources from the dedicated source-manager endpoint.
+// It calls /api/v1/sources/indigenous with a high limit to bypass the default pagination cap.
+func (c *HTTPClient) ListIndigenousSources(ctx context.Context) ([]*SourceListItem, error) {
+	url := fmt.Sprintf("%s/api/v1/sources/indigenous?limit=%d", c.baseURL, indigenousSourcesLimit)
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, http.NoBody)
+	if err != nil {
+		return nil, fmt.Errorf("create request: %w", err)
+	}
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("fetch indigenous sources: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("unexpected status: %s", resp.Status)
+	}
+
+	var payload struct {
+		Sources []*SourceListItem `json:"sources"`
+	}
+	if decodeErr := json.NewDecoder(resp.Body).Decode(&payload); decodeErr != nil {
+		return nil, fmt.Errorf("decode response: %w", decodeErr)
+	}
+
+	if payload.Sources == nil {
+		payload.Sources = []*SourceListItem{}
+	}
+	return payload.Sources, nil
+}
+
 // NoOpClient is a client that always returns nil (for testing/disabled mode).
 type NoOpClient struct{}
 
@@ -149,5 +184,10 @@ func (c *NoOpClient) GetSource(_ context.Context, _ uuid.UUID) (*Source, error) 
 
 // ListSources always returns an empty slice for NoOpClient.
 func (c *NoOpClient) ListSources(_ context.Context) ([]*SourceListItem, error) {
+	return []*SourceListItem{}, nil
+}
+
+// ListIndigenousSources always returns an empty slice for NoOpClient.
+func (c *NoOpClient) ListIndigenousSources(_ context.Context) ([]*SourceListItem, error) {
 	return []*SourceListItem{}, nil
 }
