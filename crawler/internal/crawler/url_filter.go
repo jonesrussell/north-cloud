@@ -47,11 +47,12 @@ func hasBinaryExtension(lowerPath string) bool {
 	return ext != "" && binaryExtensions[ext]
 }
 
-// isCDNAssetPath checks if the path starts with a known CDN/asset prefix
-// and also has a binary file extension.
+// isCDNAssetPath checks if the path starts with a known CDN/asset prefix.
+// CDN asset directories (/wp-content/uploads/, /assets/, /static/) are skipped
+// regardless of file extension — they never contain article content.
 func isCDNAssetPath(lowerPath string) bool {
 	for _, prefix := range cdnAssetPrefixes {
-		if strings.HasPrefix(lowerPath, prefix) && hasBinaryExtension(lowerPath) {
+		if strings.HasPrefix(lowerPath, prefix) {
 			return true
 		}
 	}
