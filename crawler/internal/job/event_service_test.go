@@ -148,6 +148,11 @@ func (m *MockSourceClient) ListSources(_ context.Context) ([]*sources.SourceList
 	return result, nil
 }
 
+// ListIndigenousSources returns an empty slice for MockSourceClient.
+func (m *MockSourceClient) ListIndigenousSources(_ context.Context) ([]*sources.SourceListItem, error) {
+	return []*sources.SourceListItem{}, nil
+}
+
 // AddSource adds a source to the mock.
 func (m *MockSourceClient) AddSource(s *sources.Source) {
 	m.sources[s.ID] = s
