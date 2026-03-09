@@ -13,6 +13,9 @@ const (
 	IndigenousRelevanceCore       = "core_indigenous"
 )
 
+// indigenousConfidenceThreshold gates routing — content below this confidence is not routed.
+const indigenousConfidenceThreshold = 0.35
+
 // IndigenousDomain routes Indigenous-classified content items to indigenous:* channels.
 // Channels produced:
 //   - content:indigenous (catch-all: all core + peripheral)
@@ -34,6 +37,10 @@ func (d *IndigenousDomain) Routes(item *ContentItem) []ChannelRoute {
 
 	rel := item.Indigenous.Relevance
 	if rel == IndigenousRelevanceNot || rel == "" {
+		return nil
+	}
+
+	if item.Indigenous.FinalConfidence < indigenousConfidenceThreshold {
 		return nil
 	}
 

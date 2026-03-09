@@ -10,8 +10,9 @@ func TestGenerateIndigenousChannels_Core(t *testing.T) {
 	item := &ContentItem{
 		Title: "First Nations governance",
 		Indigenous: &IndigenousData{
-			Relevance:  IndigenousRelevanceCore,
-			Categories: []string{"culture", "governance"},
+			Relevance:       IndigenousRelevanceCore,
+			Categories:      []string{"culture", "governance"},
+			FinalConfidence: 0.85,
 		},
 	}
 
@@ -43,8 +44,9 @@ func TestGenerateIndigenousChannels_Peripheral(t *testing.T) {
 	item := &ContentItem{
 		Title: "Indigenous reconciliation",
 		Indigenous: &IndigenousData{
-			Relevance:  IndigenousRelevancePeripheral,
-			Categories: []string{"education"},
+			Relevance:       IndigenousRelevancePeripheral,
+			Categories:      []string{"education"},
+			FinalConfidence: 0.65,
 		},
 	}
 
@@ -85,9 +87,10 @@ func TestGenerateIndigenousChannels_WithRegion(t *testing.T) {
 	item := &ContentItem{
 		Title: "Māori iwi gather for hui",
 		Indigenous: &IndigenousData{
-			Relevance:  IndigenousRelevanceCore,
-			Categories: []string{"culture"},
-			Region:     "oceania",
+			Relevance:       IndigenousRelevanceCore,
+			Categories:      []string{"culture"},
+			Region:          "oceania",
+			FinalConfidence: 0.85,
 		},
 	}
 
@@ -110,8 +113,9 @@ func TestGenerateIndigenousChannels_NoRegion(t *testing.T) {
 	item := &ContentItem{
 		Title: "First Nations governance",
 		Indigenous: &IndigenousData{
-			Relevance:  IndigenousRelevanceCore,
-			Categories: []string{"sovereignty"},
+			Relevance:       IndigenousRelevanceCore,
+			Categories:      []string{"sovereignty"},
+			FinalConfidence: 0.85,
 		},
 	}
 
@@ -140,9 +144,10 @@ func TestGenerateIndigenousChannels_MixedCaseRegion(t *testing.T) {
 	item := &ContentItem{
 		Title: "Sámi parliament meets",
 		Indigenous: &IndigenousData{
-			Relevance:  IndigenousRelevanceCore,
-			Categories: []string{"sovereignty"},
-			Region:     "EUROPE",
+			Relevance:       IndigenousRelevanceCore,
+			Categories:      []string{"sovereignty"},
+			Region:          "EUROPE",
+			FinalConfidence: 0.85,
 		},
 	}
 
@@ -165,9 +170,10 @@ func TestGenerateIndigenousChannels_InvalidRegion(t *testing.T) {
 	item := &ContentItem{
 		Title: "Some article",
 		Indigenous: &IndigenousData{
-			Relevance:  IndigenousRelevanceCore,
-			Categories: []string{"culture"},
-			Region:     "invalid_region",
+			Relevance:       IndigenousRelevanceCore,
+			Categories:      []string{"culture"},
+			Region:          "invalid_region",
+			FinalConfidence: 0.85,
 		},
 	}
 
@@ -185,9 +191,10 @@ func TestGenerateIndigenousChannels_LatinAmericaHyphenated(t *testing.T) {
 	item := &ContentItem{
 		Title: "Mapuche land rights",
 		Indigenous: &IndigenousData{
-			Relevance:  IndigenousRelevanceCore,
-			Categories: []string{"land_rights"},
-			Region:     "Latin America",
+			Relevance:       IndigenousRelevanceCore,
+			Categories:      []string{"land_rights"},
+			Region:          "Latin America",
+			FinalConfidence: 0.85,
 		},
 	}
 
@@ -220,8 +227,9 @@ func TestGenerateIndigenousChannels_AllNewCategories(t *testing.T) {
 			item := &ContentItem{
 				Title: "Test article for " + cat,
 				Indigenous: &IndigenousData{
-					Relevance:  IndigenousRelevanceCore,
-					Categories: []string{cat},
+					Relevance:       IndigenousRelevanceCore,
+					Categories:      []string{cat},
+					FinalConfidence: 0.85,
 				},
 			}
 
@@ -242,13 +250,74 @@ func TestGenerateIndigenousChannels_AllNewCategories(t *testing.T) {
 	}
 }
 
+func TestGenerateIndigenousChannels_BelowConfidenceThreshold(t *testing.T) {
+	t.Helper()
+	item := &ContentItem{
+		Title: "Maybe indigenous content",
+		Indigenous: &IndigenousData{
+			Relevance:       IndigenousRelevancePeripheral,
+			Categories:      []string{"culture"},
+			FinalConfidence: 0.20,
+		},
+	}
+
+	routes := NewIndigenousDomain().Routes(item)
+	if len(routes) != 0 {
+		t.Errorf("expected no channels below confidence threshold, got %v", routeChannelNames(routes))
+	}
+}
+
+func TestGenerateIndigenousChannels_AtConfidenceThreshold(t *testing.T) {
+	t.Helper()
+	item := &ContentItem{
+		Title: "Indigenous education program",
+		Indigenous: &IndigenousData{
+			Relevance:       IndigenousRelevanceCore,
+			Categories:      []string{"education"},
+			FinalConfidence: 0.35,
+		},
+	}
+
+	routes := NewIndigenousDomain().Routes(item)
+	channels := routeChannelNames(routes)
+	if len(channels) < 1 {
+		t.Error("expected routing at threshold confidence")
+	}
+}
+
+func TestGenerateIndigenousChannels_AboveConfidenceThreshold(t *testing.T) {
+	t.Helper()
+	item := &ContentItem{
+		Title: "Anishinaabe governance",
+		Indigenous: &IndigenousData{
+			Relevance:       IndigenousRelevanceCore,
+			Categories:      []string{"sovereignty"},
+			FinalConfidence: 0.85,
+		},
+	}
+
+	routes := NewIndigenousDomain().Routes(item)
+	channels := routeChannelNames(routes)
+	hasCategory := false
+	for _, c := range channels {
+		if c == "indigenous:category:sovereignty" {
+			hasCategory = true
+			break
+		}
+	}
+	if !hasCategory {
+		t.Errorf("expected sovereignty category channel, got %v", channels)
+	}
+}
+
 func TestGenerateIndigenousChannels_MultipleNewCategories(t *testing.T) {
 	t.Helper()
 	item := &ContentItem{
 		Title: "Indigenous environmental justice",
 		Indigenous: &IndigenousData{
-			Relevance:  IndigenousRelevanceCore,
-			Categories: []string{"environment", "justice", "sovereignty"},
+			Relevance:       IndigenousRelevanceCore,
+			Categories:      []string{"environment", "justice", "sovereignty"},
+			FinalConfidence: 0.85,
 		},
 	}
 

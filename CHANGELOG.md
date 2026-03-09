@@ -26,6 +26,12 @@ This project uses [Semantic Versioning](https://semver.org/).
   - Go Classifier: category constants and `IndigenousCategories` slice for cross-referencing
   - Publisher: tests for all 10 category routing channels
   - Design doc: `docs/plans/2026-03-11-indigenous-category-taxonomy.md`
+- **M-Indigenous-Classifier: Multilingual Indigenous Classifier v3** — full multilingual keyword expansion and confidence scoring
+  - ML Sidecar: populated all 10 category keyword arrays across 7 languages, confidence scoring (0.60–0.95), `language_detected` field, model version `2026-03-12-indigenous-v3`
+  - Go Classifier: mirrored multilingual category keywords in `indigenousCategoryKeywords` map, pattern-hit-based confidence scoring, `countPatternHits`/`countMatchedCategories` helpers
+  - Publisher: confidence threshold (>= 0.35) gates indigenous routing, prevents low-confidence content from cluttering category feeds
+  - Tests: 56 Python tests (7 languages, 10 categories, mixed-language, false positives), expanded Go test matrix with confidence scoring and keyword coverage
+  - Design doc: `docs/plans/2026-03-12-m-indigenous-classifier.md`
 
 ## [0.5.0] - 2026-03-08
 

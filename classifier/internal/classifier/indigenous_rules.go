@@ -13,8 +13,6 @@ const (
 )
 
 // Indigenous category slugs — 10 global categories.
-// Category extraction is performed by the ML sidecar; these constants are for
-// cross-referencing and documentation. D2.1 will add category-specific regex arrays.
 const (
 	indigenousCategoryCulture     = "culture"
 	indigenousCategoryLanguage    = "language"
@@ -45,10 +43,15 @@ var IndigenousCategories = []string{
 	indigenousCategoryCommunity,
 }
 
+// Confidence scoring constants — mirrors Python ML sidecar.
 const (
-	indigenousConfidenceCore       = 0.90
-	indigenousConfidencePeripheral = 0.70
-	indigenousConfidenceDefault    = 0.5
+	indigenousConfidenceCoreBase      = 0.60
+	indigenousConfidenceCorePerHit    = 0.10
+	indigenousConfidenceCoreMax       = 0.95
+	indigenousConfidencePeriphBase    = 0.55
+	indigenousConfidenceCatBonusPer   = 0.03
+	indigenousConfidenceCatBonusMax   = 0.10
+	indigenousConfidenceNotIndigenous = 0.60
 )
 
 type indigenousRuleResult struct {
@@ -100,6 +103,112 @@ var indigenousPeripheralPatterns = []*regexp.Regexp{
 
 const indigenousRuleMaxBodyChars = 500
 
+// indigenousCategoryKeywords maps each category to multilingual keyword lists.
+var indigenousCategoryKeywords = map[string][]string{
+	indigenousCategoryCulture: {
+		"culture", "ceremony", "powwow", "potlatch", "sweat lodge", "corroboree",
+		"haka", "dreamtime", "totem", "regalia", "storytelling", "sacred",
+		"cultura", "ceremonia", "ritual",
+		"cérémonie", "tradition", "rituel",
+		"cerimônia",
+		"kultur", "ceremoni",
+		"tikanga", "whakairo", "kapa haka",
+		"文化", "儀式", "伝統",
+	},
+	indigenousCategoryLanguage: {
+		"language", "anishinaabemowin", "indigenous language", "cree", "inuktitut",
+		"te reo", "immersion", "language revitalization",
+		"lengua indígena", "idioma",
+		"langue autochtone",
+		"língua indígena",
+		"språk", "modersmål", "samiska",
+		"reo", "te reo māori", "kōrero",
+		"言語", "アイヌ語", "母語",
+	},
+	indigenousCategoryLandRights: {
+		"land rights", "territory", "reserve", "reservation", "land claim",
+		"land back", "native title", "dispossession",
+		"territorio ancestral", "derechos territoriales", "tierras indígenas",
+		"droits fonciers", "revendication territoriale",
+		"terra indígena", "demarcação", "território",
+		"markrättigheter", "renbetesland",
+		"whenua", "mana whenua", "raupatu",
+		"土地権利", "領土",
+	},
+	indigenousCategoryEnvironment: {
+		"environment", "climate", "water rights", "pipeline", "deforestation",
+		"conservation", "sacred site", "ecological",
+		"medio ambiente", "deforestación", "recursos naturales",
+		"environnement", "changement climatique",
+		"meio ambiente", "desmatamento", "conservação",
+		"miljö", "klimat", "naturresurser",
+		"taiao", "kaitiakitanga", "wai",
+		"環境", "気候", "自然保護",
+	},
+	indigenousCategorySovereignty: {
+		"sovereignty", "self-determination", "self-governance", "treaty",
+		"governance", "band council", "grand council", "nation-to-nation",
+		"soberanía", "autodeterminación", "autogobierno",
+		"souveraineté", "autodétermination", "gouvernance",
+		"soberania", "autodeterminação", "governança",
+		"suveränitet", "självbestämmande",
+		"tino rangatiratanga", "mana motuhake",
+		"主権", "自決権",
+	},
+	indigenousCategoryEducation: {
+		"education", "residential school", "indigenous education",
+		"boarding school", "curriculum", "scholarship",
+		"educación", "escuela", "currículo indígena",
+		"éducation", "pensionnat", "école autochtone",
+		"educação", "escola indígena",
+		"utbildning", "skola", "sameskola",
+		"mātauranga", "kura", "wānanga",
+		"教育", "学校",
+	},
+	indigenousCategoryHealth: {
+		"health", "indigenous health", "traditional medicine",
+		"mental health", "healing", "wellness",
+		"salud indígena", "medicina tradicional", //nolint:misspell // Spanish word, not English
+		"santé autochtone", "médecine traditionnelle",
+		"saúde indígena",
+		"hälsa", "traditionell medicin",
+		"hauora", "rongoā",
+		"健康", "伝統医療",
+	},
+	indigenousCategoryJustice: {
+		"justice", "missing and murdered", "incarceration", "police",
+		"mmiwg", "inquiry", "legal rights", "discrimination",
+		"justicia", "discriminación", "derechos legales",
+		"justice autochtone", "enquête",
+		"justiça", "discriminação", "direitos",
+		"rättvisa", "diskriminering",
+		"ture", "manatika",
+		"正義", "差別",
+	},
+	indigenousCategoryHistory: {
+		"history", "colonial", "colonization", "decolonization",
+		"genocide", "assimilation",
+		"historia", "colonización", "descolonización",
+		"histoire", "colonisation", "décolonisation",
+		"história", "colonização", "descolonização",
+		"kolonisering",
+		"hītori", "whakapapa",
+		"歴史", "植民地",
+	},
+	indigenousCategoryCommunity: {
+		"community", "elders", "youth", "gathering", "assembly", "family",
+		"comunidad", "ancianos", "juventud", "asamblea",
+		"communauté", "aînés", "jeunesse", "rassemblement",
+		"comunidade", "anciãos", "juventude",
+		"gemenskap", "samhälle",
+		"whānau", "hapū", "hui", "kaumātua",
+		"コミュニティ", "長老", "集会",
+	},
+}
+
+// indigenousMaxCategoryExtract limits the number of categories extracted.
+const indigenousMaxCategoryExtract = 5
+
 func classifyIndigenousByRules(title, body string) *indigenousRuleResult {
 	text := title + " " + body
 	if len(body) > indigenousRuleMaxBodyChars {
@@ -107,15 +216,51 @@ func classifyIndigenousByRules(title, body string) *indigenousRuleResult {
 	}
 	lower := strings.ToLower(text)
 
-	for _, p := range indigenousCorePatterns {
-		if p.MatchString(lower) {
-			return &indigenousRuleResult{relevance: indigenousRelevanceCore, confidence: indigenousConfidenceCore}
+	coreHits := countPatternHits(indigenousCorePatterns, lower)
+	peripheralHits := countPatternHits(indigenousPeripheralPatterns, lower)
+	categoryCount := countMatchedCategories(lower)
+	catBonus := float64(categoryCount) * indigenousConfidenceCatBonusPer
+	if catBonus > indigenousConfidenceCatBonusMax {
+		catBonus = indigenousConfidenceCatBonusMax
+	}
+
+	if coreHits >= 1 {
+		confidence := indigenousConfidenceCoreBase +
+			indigenousConfidenceCorePerHit*float64(coreHits) + catBonus
+		if confidence > indigenousConfidenceCoreMax {
+			confidence = indigenousConfidenceCoreMax
+		}
+		return &indigenousRuleResult{relevance: indigenousRelevanceCore, confidence: confidence}
+	}
+	if peripheralHits >= 1 {
+		confidence := indigenousConfidencePeriphBase + catBonus
+		return &indigenousRuleResult{relevance: indigenousRelevancePeripheral, confidence: confidence}
+	}
+	return &indigenousRuleResult{relevance: indigenousRelevanceNot, confidence: indigenousConfidenceNotIndigenous}
+}
+
+func countPatternHits(patterns []*regexp.Regexp, text string) int {
+	hits := 0
+	for _, p := range patterns {
+		if p.MatchString(text) {
+			hits++
 		}
 	}
-	for _, p := range indigenousPeripheralPatterns {
-		if p.MatchString(lower) {
-			return &indigenousRuleResult{relevance: indigenousRelevancePeripheral, confidence: indigenousConfidencePeripheral}
+	return hits
+}
+
+func countMatchedCategories(lower string) int {
+	count := 0
+	for _, keywords := range indigenousCategoryKeywords {
+		for _, kw := range keywords {
+			if strings.Contains(lower, kw) {
+				count++
+				break
+			}
+		}
+		if count >= indigenousMaxCategoryExtract {
+			break
 		}
 	}
-	return &indigenousRuleResult{relevance: indigenousRelevanceNot, confidence: indigenousConfidenceDefault}
+	return count
 }
