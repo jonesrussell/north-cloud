@@ -39,9 +39,16 @@ type ObserverConfig struct {
 
 // CategoriesConfig holds per-category feature flags.
 type CategoriesConfig struct {
-	ClassifierEnabled   bool
-	ClassifierMaxEvents int
-	ClassifierModel     string
+	ClassifierEnabled       bool
+	ClassifierMaxEvents     int
+	ClassifierModel         string
+	DriftEnabled            bool
+	DriftIntervalSeconds    int
+	DriftKLThreshold        float64
+	DriftPSIThreshold       float64
+	DriftMatrixThreshold    float64
+	DriftBaselineWindowDays int
+	DriftBaselineRetention  int
 }
 
 // AnthropicConfig holds Anthropic API config.
@@ -51,12 +58,19 @@ type AnthropicConfig struct {
 }
 
 const (
-	defaultIntervalSeconds      = 1800
-	defaultMaxTokensPerInterval = 25000
-	defaultClassifierMaxEvents  = 200
-	defaultClassifierModel      = "claude-haiku-4-5-20251001"
-	serviceName                 = "ai-observer"
-	serviceVersion              = "0.1.0"
+	defaultIntervalSeconds         = 1800
+	defaultMaxTokensPerInterval    = 25000
+	defaultClassifierMaxEvents     = 200
+	defaultClassifierModel         = "claude-haiku-4-5-20251001"
+	defaultDriftIntervalSeconds    = 21600
+	defaultDriftKLThreshold        = 0.15
+	defaultDriftPSIThreshold       = 0.25
+	defaultDriftMatrixThreshold    = 0.20
+	defaultDriftBaselineWindowDays = 7
+	defaultDriftBaselineRetention  = 30
+	float64BitSize                 = 64
+	serviceName                    = "ai-observer"
+	serviceVersion                 = "0.1.0"
 )
 
 // LoadConfig loads configuration from environment variables.
@@ -84,6 +98,11 @@ func LoadConfig() (Config, error) {
 		return Config{}, err
 	}
 
+	driftCfg, err := loadDriftConfig()
+	if err != nil {
+		return Config{}, err
+	}
+
 	return Config{
 		Service: ServiceConfig{
 			Name:    serviceName,
@@ -100,9 +119,16 @@ func LoadConfig() (Config, error) {
 			IntervalSeconds:      intervalSeconds,
 			MaxTokensPerInterval: maxTokens,
 			Categories: CategoriesConfig{
-				ClassifierEnabled:   os.Getenv("AI_OBSERVER_CATEGORY_CLASSIFIER_ENABLED") != "false",
-				ClassifierMaxEvents: defaultClassifierMaxEvents,
-				ClassifierModel:     defaultClassifierModel,
+				ClassifierEnabled:       os.Getenv("AI_OBSERVER_CATEGORY_CLASSIFIER_ENABLED") != "false",
+				ClassifierMaxEvents:     defaultClassifierMaxEvents,
+				ClassifierModel:         defaultClassifierModel,
+				DriftEnabled:            driftCfg.DriftEnabled,
+				DriftIntervalSeconds:    driftCfg.DriftIntervalSeconds,
+				DriftKLThreshold:        driftCfg.DriftKLThreshold,
+				DriftPSIThreshold:       driftCfg.DriftPSIThreshold,
+				DriftMatrixThreshold:    driftCfg.DriftMatrixThreshold,
+				DriftBaselineWindowDays: driftCfg.DriftBaselineWindowDays,
+				DriftBaselineRetention:  driftCfg.DriftBaselineRetention,
 			},
 		},
 		Anthropic: AnthropicConfig{
@@ -110,6 +136,60 @@ func LoadConfig() (Config, error) {
 			DefaultModel: defaultClassifierModel,
 		},
 	}, nil
+}
+
+func loadDriftConfig() (CategoriesConfig, error) {
+	driftInterval, err := envInt("AI_OBSERVER_DRIFT_INTERVAL_SECONDS", defaultDriftIntervalSeconds)
+	if err != nil {
+		return CategoriesConfig{}, err
+	}
+
+	klThreshold, err := envFloat("AI_OBSERVER_DRIFT_KL_THRESHOLD", defaultDriftKLThreshold)
+	if err != nil {
+		return CategoriesConfig{}, err
+	}
+
+	psiThreshold, err := envFloat("AI_OBSERVER_DRIFT_PSI_THRESHOLD", defaultDriftPSIThreshold)
+	if err != nil {
+		return CategoriesConfig{}, err
+	}
+
+	matrixThreshold, err := envFloat("AI_OBSERVER_DRIFT_MATRIX_THRESHOLD", defaultDriftMatrixThreshold)
+	if err != nil {
+		return CategoriesConfig{}, err
+	}
+
+	baselineDays, err := envInt("AI_OBSERVER_DRIFT_BASELINE_WINDOW_DAYS", defaultDriftBaselineWindowDays)
+	if err != nil {
+		return CategoriesConfig{}, err
+	}
+
+	baselineRetention, err := envInt("AI_OBSERVER_DRIFT_BASELINE_RETENTION", defaultDriftBaselineRetention)
+	if err != nil {
+		return CategoriesConfig{}, err
+	}
+
+	return CategoriesConfig{
+		DriftEnabled:            os.Getenv("AI_OBSERVER_CATEGORY_DRIFT_ENABLED") == "true",
+		DriftIntervalSeconds:    driftInterval,
+		DriftKLThreshold:        klThreshold,
+		DriftPSIThreshold:       psiThreshold,
+		DriftMatrixThreshold:    matrixThreshold,
+		DriftBaselineWindowDays: baselineDays,
+		DriftBaselineRetention:  baselineRetention,
+	}, nil
+}
+
+func envFloat(key string, def float64) (float64, error) {
+	v := os.Getenv(key)
+	if v == "" {
+		return def, nil
+	}
+	n, err := strconv.ParseFloat(v, float64BitSize)
+	if err != nil {
+		return 0, fmt.Errorf("invalid %s: %w", key, err)
+	}
+	return n, nil
 }
 
 func envInt(key string, def int) (int, error) {
