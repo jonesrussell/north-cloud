@@ -411,7 +411,18 @@ func (s *RawContentService) convertToRawContent(
 
 	// Tag page type for extraction quality measurement
 	linkCount := strings.Count(rawData.RawHTML, "<a ")
-	pageType := classifyPageType(rawData.Title, wordCount, linkCount)
+	articleTagCount, hasDateTime, hasSignInText := extractHTMLSignals(rawData.RawHTML)
+	pageType := classifyPageType(pageTypeSignals{
+		title:               rawData.Title,
+		wordCount:           wordCount,
+		linkCount:           linkCount,
+		ogType:              ogType,
+		detectedContentType: detectedContentType,
+		jsonLDType:          extractJSONLDType(rawData.JSONLDData),
+		articleTagCount:     articleTagCount,
+		hasDateTime:         hasDateTime,
+		hasSignInText:       hasSignInText,
+	})
 	meta["page_type"] = pageType
 
 	rawContent := &storagepkg.RawContent{
