@@ -649,6 +649,62 @@ func (h *SourceHandler) ImportExcel(c *gin.Context) {
 	})
 }
 
+// ImportIndigenous handles bulk import of global indigenous sources from a JSON array.
+func (h *SourceHandler) ImportIndigenous(c *gin.Context) {
+	indigenousSources, err := importer.ParseIndigenousSources(c.Request.Body)
+	if err != nil {
+		h.logger.Debug("Failed to parse indigenous sources JSON", infralogger.Error(err))
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid JSON: " + err.Error()})
+		return
+	}
+
+	// Validate all sources before upserting.
+	var validationErrors []importer.ImportError
+	for i, src := range indigenousSources {
+		if errMsg := importer.ValidateIndigenousSource(src); errMsg != "" {
+			validationErrors = append(validationErrors, importer.ImportError{Row: i + 1, Error: errMsg})
+		}
+	}
+	if len(validationErrors) > 0 {
+		c.JSON(http.StatusBadRequest, ImportResult{Errors: validationErrors})
+		return
+	}
+
+	// Convert to models.
+	sources := make([]*models.Source, 0, len(indigenousSources))
+	for i, src := range indigenousSources {
+		model, convErr := importer.IndigenousSourceToModel(src)
+		if convErr != nil {
+			c.JSON(http.StatusBadRequest, ImportResult{
+				Errors: []importer.ImportError{{Row: i + 1, Error: convErr.Error()}},
+			})
+			return
+		}
+		sources = append(sources, model)
+	}
+
+	// Upsert in transaction.
+	createdList, updatedList, err := h.repo.UpsertSourcesTx(c.Request.Context(), sources)
+	if err != nil {
+		h.logger.Error("Failed to import indigenous sources", infralogger.Error(err))
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to import sources"})
+		return
+	}
+
+	h.publishImportEvents(createdList, updatedList)
+
+	h.logger.Info("Indigenous sources imported",
+		infralogger.Int("created", len(createdList)),
+		infralogger.Int("updated", len(updatedList)),
+	)
+
+	c.JSON(http.StatusOK, ImportResult{
+		Created: len(createdList),
+		Updated: len(updatedList),
+		Errors:  []importer.ImportError{},
+	})
+}
+
 // validateIndigenousRegion normalizes and validates the indigenous_region field on a source.
 // If the region is set, it must be a valid canonical slug. The pointer is updated in place.
 func (h *SourceHandler) validateIndigenousRegion(source *models.Source) error {

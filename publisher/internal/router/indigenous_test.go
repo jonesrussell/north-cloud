@@ -310,6 +310,44 @@ func TestGenerateIndigenousChannels_AboveConfidenceThreshold(t *testing.T) {
 	}
 }
 
+func TestGenerateIndigenousChannels_AllRegionSlugs(t *testing.T) {
+	t.Helper()
+
+	regions := []string{
+		"canada", "us", "latin_america", "oceania", "europe", "asia", "africa",
+	}
+
+	for _, region := range regions {
+		t.Run(region, func(t *testing.T) {
+			t.Helper()
+			item := &ContentItem{
+				Title: "Indigenous content from " + region,
+				Indigenous: &IndigenousData{
+					Relevance:       IndigenousRelevanceCore,
+					Categories:      []string{"culture"},
+					Region:          region,
+					FinalConfidence: 0.85,
+				},
+			}
+
+			routes := NewIndigenousDomain().Routes(item)
+			channels := routeChannelNames(routes)
+			expectedRegionChannel := "indigenous:region:" + region
+			found := false
+			for _, c := range channels {
+				if c == expectedRegionChannel {
+					found = true
+					break
+				}
+			}
+			if !found {
+				t.Errorf("expected %s channel, got %v",
+					expectedRegionChannel, channels)
+			}
+		})
+	}
+}
+
 func TestGenerateIndigenousChannels_MultipleNewCategories(t *testing.T) {
 	t.Helper()
 	item := &ContentItem{

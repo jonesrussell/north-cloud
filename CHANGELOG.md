@@ -32,6 +32,12 @@ This project uses [Semantic Versioning](https://semver.org/).
   - Publisher: confidence threshold (>= 0.35) gates indigenous routing, prevents low-confidence content from cluttering category feeds
   - Tests: 56 Python tests (7 languages, 10 categories, mixed-language, false positives), expanded Go test matrix with confidence scoring and keyword coverage
   - Design doc: `docs/plans/2026-03-12-m-indigenous-classifier.md`
+- **M-Indigenous-Sources: Global Indigenous Source Onboarding** — seed 186 global indigenous media outlets across 7 regions
+  - Source-Manager: new `POST /api/v1/sources/import-indigenous` endpoint for JSON-based bulk import with region validation
+  - Source data: `scripts/global-indigenous-sources.json` with 186 outlets (44 Canada, 35 US, 26 Latin America, 32 Oceania, 17 Europe, 16 Asia, 16 Africa)
+  - Import logic: validates region, render_mode; sets rate limits (10s static / 12s dynamic), max depth (2 static / 1 dynamic), feed ingestion mode
+  - Publisher: all-regions routing test verifying `indigenous:region:{slug}` for all 7 canonical regions
+  - Design doc: `docs/plans/2026-03-13-m-indigenous-sources.md`
 
 ## [0.5.0] - 2026-03-08
 
