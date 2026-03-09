@@ -1,5 +1,10 @@
 package rawcontent
 
+import (
+	"github.com/jonesrussell/north-cloud/crawler/internal/sources"
+	infralogger "github.com/jonesrussell/north-cloud/infrastructure/logger"
+)
+
 // Test exports for internal functions
 
 var NormalizeContextField = normalizeContextField
@@ -27,6 +32,14 @@ var DetectTemplateByHTML = detectTemplateByHTML
 
 // TemplateRegistry exports templateRegistry for testing.
 var TemplateRegistry = templateRegistry
+
+// ResolveTemplateForTest exposes resolveTemplate for testing via a no-op service.
+// templateHint is optional; pass nil to skip hint lookup.
+func ResolveTemplateForTest(templateHint *string, sourceURL, rawHTML string) (tmpl *CMSTemplate, name string) {
+	svc := &RawContentService{logger: infralogger.NewNop()}
+	cfg := &sources.Config{TemplateHint: templateHint}
+	return svc.resolveTemplate(cfg, sourceURL, rawHTML)
+}
 
 // ClassifyPageType exports classifyPageType for testing.
 var ClassifyPageType = classifyPageType
