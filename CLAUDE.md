@@ -39,6 +39,11 @@ Sources → [Crawler] → ES raw_content → [Classifier + ML Sidecars] → ES c
 - L1: Topic auto-detect (skips: mining, indigenous, coforge, recipe, jobs, rfp)
 - L2: DB Channels | L3: Crime | L4: Location | L5: Mining | L6: Entertainment | L7: Indigenous | L8: CoForge | L9: Recipe | L10: Job | L11: RFP
 
+**Drift Governor** (within ai-observer, 6h ticker):
+- Computes KL divergence, PSI, cross-matrix stability against rolling 7-day baseline
+- On threshold breach → LLM analysis → GitHub issue + draft PR with rule patches
+- Config: `AI_OBSERVER_DRIFT_ENABLED`, thresholds configurable per-metric
+
 **RFP ingestor** (bypasses classifier — indexes directly to ES):
 - Polls CanadaBuys CSV feed → parses → bulk-indexes to `rfp_classified_content` ES index
 - Index name uses `*_classified_content` pattern so search service wildcard picks it up

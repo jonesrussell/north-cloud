@@ -50,3 +50,34 @@ func TestLoadConfig_DisabledNoAPIKey(t *testing.T) {
 		t.Errorf("expected no error when observer is disabled without API key, got: %v", err)
 	}
 }
+
+func TestLoadConfig_DriftDefaults(t *testing.T) {
+	t.Helper()
+	t.Setenv("AI_OBSERVER_ENABLED", "false")
+
+	cfg, err := bootstrap.LoadConfig()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if cfg.Observer.Categories.DriftEnabled {
+		t.Error("expected drift disabled by default")
+	}
+
+	const expectedKLThreshold = 0.15
+	if cfg.Observer.Categories.DriftKLThreshold != expectedKLThreshold {
+		t.Errorf("expected KL threshold %f, got %f",
+			expectedKLThreshold, cfg.Observer.Categories.DriftKLThreshold)
+	}
+
+	const expectedPSIThreshold = 0.25
+	if cfg.Observer.Categories.DriftPSIThreshold != expectedPSIThreshold {
+		t.Errorf("expected PSI threshold %f, got %f",
+			expectedPSIThreshold, cfg.Observer.Categories.DriftPSIThreshold)
+	}
+
+	const expectedMatrixThreshold = 0.20
+	if cfg.Observer.Categories.DriftMatrixThreshold != expectedMatrixThreshold {
+		t.Errorf("expected matrix threshold %f, got %f",
+			expectedMatrixThreshold, cfg.Observer.Categories.DriftMatrixThreshold)
+	}
+}

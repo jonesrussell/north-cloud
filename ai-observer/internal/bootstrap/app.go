@@ -12,10 +12,17 @@ import (
 	es "github.com/elastic/go-elasticsearch/v8"
 	"github.com/jonesrussell/north-cloud/ai-observer/internal/category"
 	classifiercategory "github.com/jonesrussell/north-cloud/ai-observer/internal/category/classifier"
+	driftcategory "github.com/jonesrussell/north-cloud/ai-observer/internal/category/drift"
+	driftpkg "github.com/jonesrussell/north-cloud/ai-observer/internal/drift"
 	"github.com/jonesrussell/north-cloud/ai-observer/internal/insights"
 	anthprovider "github.com/jonesrussell/north-cloud/ai-observer/internal/provider/anthropic"
 	"github.com/jonesrussell/north-cloud/ai-observer/internal/scheduler"
 	"github.com/jonesrussell/north-cloud/infrastructure/logger"
+)
+
+const (
+	// driftWindowHours is the default window duration for drift category sampling.
+	driftWindowHours = 6
 )
 
 // Start initializes and runs the ai-observer service.
@@ -57,20 +64,31 @@ func Start() error {
 	}
 	log.Info("ai_insights index mapping ready")
 
+	if err = driftpkg.EnsureBaselineMapping(ctx, esClient); err != nil {
+		return fmt.Errorf("drift_baselines mapping: %w", err)
+	}
+	log.Info("drift_baselines index mapping ready")
+
 	p := anthprovider.New(cfg.Anthropic.APIKey, cfg.Anthropic.DefaultModel)
 	writer := insights.NewWriter(esClient, cfg.Service.Version)
-	cats := buildCategories(cfg, esClient)
+	fast, slow := buildCategories(cfg, esClient)
 
-	sched := scheduler.New(cats, writer, p, scheduler.Config{
+	sched := scheduler.New(fast, slow, writer, p, scheduler.Config{
 		IntervalSeconds:      cfg.Observer.IntervalSeconds,
 		MaxTokensPerInterval: cfg.Observer.MaxTokensPerInterval,
 		WindowDuration:       time.Hour,
 		DryRun:               cfg.Observer.DryRun,
+		DriftIntervalSeconds: cfg.Observer.Categories.DriftIntervalSeconds,
+		DriftWindowDuration:  driftWindowHours * time.Hour,
 	}).WithLogger(log)
 
+	totalCats := len(fast) + len(slow)
 	log.Info("Scheduler configured",
-		logger.Int("categories", len(cats)),
+		logger.Int("fast_categories", len(fast)),
+		logger.Int("slow_categories", len(slow)),
+		logger.Int("total_categories", totalCats),
 		logger.Int("interval_seconds", cfg.Observer.IntervalSeconds),
+		logger.Int("drift_interval_seconds", cfg.Observer.Categories.DriftIntervalSeconds),
 	)
 
 	go sched.Run(ctx)
@@ -83,16 +101,23 @@ func Start() error {
 	return nil
 }
 
-// buildCategories constructs the enabled category list from config.
-func buildCategories(cfg Config, esClient *es.Client) []category.Category {
-	const maxCategories = 1 // v0: classifier only
-	cats := make([]category.Category, 0, maxCategories)
+// buildCategories constructs the enabled category lists from config.
+// Returns fast (classifier) and slow (drift) category slices.
+func buildCategories(cfg Config, esClient *es.Client) (fast, slow []category.Category) {
 	if cfg.Observer.Categories.ClassifierEnabled {
-		cats = append(cats, classifiercategory.New(
+		fast = append(fast, classifiercategory.New(
 			esClient,
 			cfg.Observer.Categories.ClassifierMaxEvents,
 			cfg.Observer.Categories.ClassifierModel,
 		))
 	}
-	return cats
+	if cfg.Observer.Categories.DriftEnabled {
+		slow = append(slow, driftcategory.New(esClient, driftcategory.Config{
+			KLThreshold:        cfg.Observer.Categories.DriftKLThreshold,
+			PSIThreshold:       cfg.Observer.Categories.DriftPSIThreshold,
+			MatrixThreshold:    cfg.Observer.Categories.DriftMatrixThreshold,
+			BaselineWindowDays: cfg.Observer.Categories.DriftBaselineWindowDays,
+		}))
+	}
+	return fast, slow
 }

@@ -32,6 +32,7 @@ ai-observer/
     ├── category/                # Category interface, Event, Insight types
     │   └── classifier/          # Classifier drift category (ES sampling + LLM analysis)
     ├── insights/                # ai_insights ES index writer
+    ├── drift/               # Statistical drift metrics, baseline sampler, evaluator
     └── scheduler/               # Ticker loop + cost-ceiling token budget
 ```
 
@@ -43,6 +44,9 @@ ai-observer/
 - **Token budget**: pre-check estimate (`len(events) * 50`), not reconciled against actual API spend
 - **Per-category timeout**: 5 minutes to prevent goroutine stalls on slow ES/API calls
 - **`ANTHROPIC_API_KEY` only required when enabled**: service exits cleanly when disabled without API key
+- **Dual-ticker**: Fast (30 min) for LLM-based classifier analysis, slow (6h) for statistical drift detection
+- **Statistical first**: KL, PSI, cross-matrix computed without LLM. LLM only invoked on breach for context.
+- **Advisory + draft PRs**: Governor proposes changes via GitHub Actions, never auto-merges
 
 ## Config (environment variables)
 
@@ -54,6 +58,13 @@ ai-observer/
 | `AI_OBSERVER_MAX_TOKENS_PER_INTERVAL` | `25000` | Token budget ceiling per interval |
 | `AI_OBSERVER_CATEGORY_CLASSIFIER_ENABLED` | `true` | Enable classifier drift category |
 | `ANTHROPIC_API_KEY` | — | Required when enabled |
+| `AI_OBSERVER_DRIFT_ENABLED` | `false` | Enable drift governor |
+| `AI_OBSERVER_DRIFT_INTERVAL_SECONDS` | `21600` | Drift check interval (6h) |
+| `AI_OBSERVER_DRIFT_KL_THRESHOLD` | `0.15` | KL divergence alert threshold |
+| `AI_OBSERVER_DRIFT_PSI_THRESHOLD` | `0.25` | PSI alert threshold |
+| `AI_OBSERVER_DRIFT_MATRIX_THRESHOLD` | `0.20` | Cross-matrix deviation threshold |
+| `AI_OBSERVER_DRIFT_BASELINE_WINDOW_DAYS` | `7` | Rolling baseline window |
+| `AI_OBSERVER_DRIFT_BASELINE_RETENTION` | `30` | Baselines to retain |
 | `ES_URL` | `http://localhost:9200` | Elasticsearch URL |
 
 ## Rollout Phases
