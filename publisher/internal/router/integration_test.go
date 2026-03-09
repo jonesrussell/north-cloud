@@ -533,8 +533,9 @@ func TestAllDomainsProduce_FullyClassifiedContentItem(t *testing.T) {
 			Categories:       []string{"film"},
 		},
 		Indigenous: &router.IndigenousData{ // IndigenousDomain
-			Relevance:  "core_indigenous",
-			Categories: []string{"culture"},
+			Relevance:       "core_indigenous",
+			Categories:      []string{"culture"},
+			FinalConfidence: 0.85,
 		},
 		Coforge: &router.CoforgeData{ // CoforgeDomain
 			Relevance: "core_coforge",
