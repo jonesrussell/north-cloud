@@ -21,6 +21,11 @@ This project uses [Semantic Versioning](https://semver.org/).
   - Source-Manager: validates and normalizes `indigenous_region` on create/update
   - Crawler: normalizes region slug before writing to `meta.indigenous_region`
   - Publisher: uses shared `NormalizeRegionSlug` for region channel routing (handles mixed-case, hyphens, spaces)
+- **Indigenous Category Taxonomy Expansion (D2)** — expand from 6 to 10 global categories
+  - ML Sidecar: structured `CATEGORY_KEYWORDS` with per-language placeholder comments, `CATEGORY_COUNT` constant
+  - Go Classifier: category constants and `IndigenousCategories` slice for cross-referencing
+  - Publisher: tests for all 10 category routing channels
+  - Design doc: `docs/plans/2026-03-11-indigenous-category-taxonomy.md`
 
 ## [0.5.0] - 2026-03-08
 

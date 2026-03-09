@@ -1,6 +1,8 @@
 """Tests for indigenous relevance classification (global multilingual)."""
 
 from classifier.relevance import (
+    CATEGORY_COUNT,
+    CATEGORY_KEYWORDS,
     CORE_INDIGENOUS,
     NOT_INDIGENOUS,
     PERIPHERAL_INDIGENOUS,
@@ -121,15 +123,27 @@ class TestJapanesePatterns:
 
 
 class TestCategories:
-    """Category extraction tests."""
+    """Category extraction tests for all 10 global categories."""
 
     def test_culture_category(self):
         result = classify_indigenous_relevance("First Nations powwow and ceremony celebrate culture")
         assert "culture" in result["categories"]
 
+    def test_language_category(self):
+        result = classify_indigenous_relevance("First Nations indigenous language revitalization program")
+        assert "language" in result["categories"]
+
     def test_land_rights_category(self):
         result = classify_indigenous_relevance("First Nations land rights and territory disputes")
         assert "land_rights" in result["categories"]
+
+    def test_environment_category(self):
+        result = classify_indigenous_relevance("First Nations water rights and climate change impact")
+        assert "environment" in result["categories"]
+
+    def test_sovereignty_category(self):
+        result = classify_indigenous_relevance("First Nations self-determination and sovereignty movement")
+        assert "sovereignty" in result["categories"]
 
     def test_education_category(self):
         result = classify_indigenous_relevance("Residential school survivors share stories of indigenous education")
@@ -138,6 +152,18 @@ class TestCategories:
     def test_health_category(self):
         result = classify_indigenous_relevance("Indigenous health crisis: traditional medicine programs expanded")
         assert "health" in result["categories"]
+
+    def test_justice_category(self):
+        result = classify_indigenous_relevance("First Nations missing and murdered inquiry continues")
+        assert "justice" in result["categories"]
+
+    def test_history_category(self):
+        result = classify_indigenous_relevance("First Nations colonial history and decolonization efforts")
+        assert "history" in result["categories"]
+
+    def test_community_category(self):
+        result = classify_indigenous_relevance("First Nations elders and youth gather for community event")
+        assert "community" in result["categories"]
 
     def test_max_categories(self):
         result = classify_indigenous_relevance(
@@ -153,3 +179,22 @@ class TestCategories:
     def test_whitespace_text(self):
         result = classify_indigenous_relevance("   ")
         assert result["relevance"] == NOT_INDIGENOUS
+
+
+class TestCategoryTaxonomy:
+    """Verify the category taxonomy structure."""
+
+    def test_category_count(self):
+        assert len(CATEGORY_KEYWORDS) == CATEGORY_COUNT
+
+    def test_all_slugs_present(self):
+        slugs = {cat for _, cat in CATEGORY_KEYWORDS}
+        expected = {
+            "culture", "language", "land_rights", "environment", "sovereignty",
+            "education", "health", "justice", "history", "community",
+        }
+        assert slugs == expected
+
+    def test_no_duplicate_slugs(self):
+        slugs = [cat for _, cat in CATEGORY_KEYWORDS]
+        assert len(slugs) == len(set(slugs))
