@@ -196,13 +196,14 @@ func (r *SourceRepository) GetByIdentityKey(ctx context.Context, identityKey str
 
 // ListFilter holds pagination and filter params for ListPaginated.
 type ListFilter struct {
-	Limit      int
-	Offset     int
-	SortBy     string // name, url, enabled, created_at
-	SortOrder  string // asc, desc
-	Search     string // ILIKE on name or url
-	Enabled    *bool  // nil = all, true = enabled only, false = disabled only
-	FeedActive *bool  // nil = all, true = feeds that are active or past cooldown
+	Limit          int
+	Offset         int
+	SortBy         string // name, url, enabled, created_at
+	SortOrder      string // asc, desc
+	Search         string // ILIKE on name or url
+	Enabled        *bool  // nil = all, true = enabled only, false = disabled only
+	FeedActive     *bool  // nil = all, true = feeds that are active or past cooldown
+	IndigenousOnly bool   // true = only sources with indigenous_region IS NOT NULL
 }
 
 // Count returns the total number of sources matching the filter (ignores Limit/Offset/Sort).
@@ -344,6 +345,10 @@ func buildListWhere(filter ListFilter) (whereClause string, args []any) {
 				ELSE INTERVAL '24 hours'
 			END) <= NOW()
 		)`)
+	}
+
+	if filter.IndigenousOnly {
+		clauses = append(clauses, "indigenous_region IS NOT NULL")
 	}
 
 	if len(clauses) == 0 {

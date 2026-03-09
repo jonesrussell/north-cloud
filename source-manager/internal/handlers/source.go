@@ -705,6 +705,31 @@ func (h *SourceHandler) ImportIndigenous(c *gin.Context) {
 	})
 }
 
+// ListIndigenous returns sources with indigenous_region IS NOT NULL.
+func (h *SourceHandler) ListIndigenous(c *gin.Context) {
+	filter := parseListQuery(c)
+	filter.IndigenousOnly = true
+
+	sources, err := h.repo.ListPaginated(c.Request.Context(), filter)
+	if err != nil {
+		h.logger.Error("Failed to list indigenous sources", infralogger.Error(err))
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to list indigenous sources"})
+		return
+	}
+
+	total, countErr := h.repo.Count(c.Request.Context(), filter)
+	if countErr != nil {
+		h.logger.Error("Failed to count indigenous sources", infralogger.Error(countErr))
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to list indigenous sources"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"sources": sources,
+		"total":   total,
+	})
+}
+
 // validateIndigenousRegion normalizes and validates the indigenous_region field on a source.
 // If the region is set, it must be a valid canonical slug. The pointer is updated in place.
 func (h *SourceHandler) validateIndigenousRegion(source *models.Source) error {

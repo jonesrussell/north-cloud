@@ -23,6 +23,13 @@ const (
 	RecentItemsTTLDays = 7
 	// HoursPerDay is the number of hours in a day
 	HoursPerDay = 24
+
+	// KeyBackfillTotal is the Redis key for total indigenous backfill items processed
+	KeyBackfillTotal = "metrics:indigenous_backfill_total"
+	// KeyBackfillSuccess is the Redis key for successful indigenous backfill items
+	KeyBackfillSuccess = "metrics:indigenous_backfill_success"
+	// KeyBackfillFailed is the Redis key for failed indigenous backfill items
+	KeyBackfillFailed = "metrics:indigenous_backfill_failed"
 )
 
 // RedisKeys provides methods to build Redis keys consistently

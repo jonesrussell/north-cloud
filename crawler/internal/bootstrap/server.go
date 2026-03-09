@@ -52,6 +52,13 @@ func SetupHTTPServer(deps *HTTPServerDeps) *ServerComponents {
 		deps.Logger,
 		syncStaggerMinutes*time.Minute,
 	)
+	backfillHandler := admin.NewBackfillIndigenousHandler(
+		sourceClient,
+		deps.JobRepo,
+		scheduleComputer,
+		deps.Logger,
+		syncStaggerMinutes*time.Minute,
+	)
 
 	var frontierHandler *api.FrontierHandler
 	if deps.FrontierRepoForHandler != nil {
@@ -62,7 +69,7 @@ func SetupHTTPServer(deps *HTTPServerDeps) *ServerComponents {
 		deps.Config, deps.JobsHandler, deps.DiscoveredLinksHandler,
 		deps.LogsHandler, deps.LogsV2Handler, deps.ExecutionRepo,
 		deps.Logger, deps.SSEHandler, migrationHandler, syncHandler,
-		frontierHandler, deps.DiscoveredDomainsHandler,
+		frontierHandler, deps.DiscoveredDomainsHandler, backfillHandler,
 	)
 
 	deps.Logger.Info("Starting HTTP server", infralogger.String("addr", deps.Config.GetServerConfig().Address))
