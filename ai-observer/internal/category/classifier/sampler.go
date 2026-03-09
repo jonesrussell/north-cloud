@@ -16,9 +16,14 @@ const (
 	// borderlineThreshold is the confidence below which a doc is considered borderline.
 	borderlineThreshold = 0.6
 	// indexPattern is the ES index pattern for classified content.
-	indexPattern = "*_classified_content"
-	// highConfidenceSkipMod controls regression sampling: include 1 in N high-confidence docs.
-	highConfidenceSkipMod = 20
+	// The minus-prefix exclusion removes rfp_classified_content which has a different schema
+	// and would otherwise skew confidence stats with its distinct content_type values.
+	indexPattern = "*_classified_content,-rfp_classified_content"
+	// pageContentType is excluded from sampling — page docs have naturally low confidence
+	// (~0.37–0.49) and are not article classifier output, so including them creates false signal.
+	pageContentType = "page"
+	// statsAggName is the ES aggregation name for population stats.
+	statsAggName = "pop_stats"
 )
 
 // classifiedDoc is a minimal projection of an ES classified_content document.
@@ -32,15 +37,30 @@ type classifiedDoc struct {
 	ClassifiedAt time.Time          `json:"classified_at"`
 }
 
+// PopulationStats holds population-level metrics fetched alongside the sample.
+type PopulationStats struct {
+	TotalDocs      int     `json:"total_docs"`
+	AvgConfidence  float64 `json:"avg_confidence"`
+	BorderlineRate float64 `json:"borderline_rate"`
+}
+
+// sampleResult bundles the sampled events with population context.
+type sampleResult struct {
+	Events     []category.Event
+	Population PopulationStats
+}
+
 // sample queries ES for documents within the given window.
-func sample(ctx context.Context, esClient *es.Client, window time.Duration, maxEvents int) ([]category.Event, error) {
+// It fetches population stats (total, avg confidence, borderline rate) in one request
+// alongside a random representative sample so the LLM has full context.
+func sample(ctx context.Context, esClient *es.Client, window time.Duration, maxEvents int) (sampleResult, error) {
 	since := time.Now().UTC().Add(-window)
 
 	query := buildQuery(since, maxEvents)
 
 	queryBytes, err := json.Marshal(query)
 	if err != nil {
-		return nil, fmt.Errorf("marshal query: %w", err)
+		return sampleResult{}, fmt.Errorf("marshal query: %w", err)
 	}
 
 	res, err := esClient.Search(
@@ -49,62 +69,121 @@ func sample(ctx context.Context, esClient *es.Client, window time.Duration, maxE
 		esClient.Search.WithBody(bytes.NewReader(queryBytes)),
 	)
 	if err != nil {
-		return nil, fmt.Errorf("es search: %w", err)
+		return sampleResult{}, fmt.Errorf("es search: %w", err)
 	}
 	defer func() { _ = res.Body.Close() }()
 
 	if res.IsError() {
-		return nil, fmt.Errorf("es search error: %s", res.String())
+		return sampleResult{}, fmt.Errorf("es search error: %s", res.String())
 	}
 
-	return decodeHits(res.Body)
+	return decodeResponse(res.Body)
 }
 
-func buildQuery(since time.Time, maxEvents int) map[string]any {
-	return map[string]any{
-		"query": map[string]any{
+// baseFilter returns the bool-filter clauses common to all queries in this package:
+// time window + exclude page content_type.
+func baseFilter(since time.Time) []map[string]any {
+	return []map[string]any{
+		{
 			"range": map[string]any{
 				"classified_at": map[string]any{
 					"gte": since.Format(time.RFC3339),
 				},
 			},
 		},
-		"size": maxEvents,
-		"sort": []map[string]any{
-			// Sort by confidence ascending so borderline docs fill the size limit first.
-			{"confidence": map[string]any{"order": "asc"}},
-			{"classified_at": map[string]any{"order": "desc"}},
-		},
-		"_source": []string{
-			"source_name", "content_type", "topics",
-			"topic_scores", "confidence", "quality_score", "classified_at",
+		{
+			"bool": map[string]any{
+				"must_not": map[string]any{
+					"term": map[string]any{
+						"content_type.keyword": pageContentType,
+					},
+				},
+			},
 		},
 	}
 }
 
-func decodeHits(body io.Reader) ([]category.Event, error) {
-	var result struct {
+func buildQuery(since time.Time, maxEvents int) map[string]any {
+	return map[string]any{
+		// function_score with random_score gives a random representative sample
+		// instead of sorting by confidence ASC which would fill the result set with
+		// only borderline docs and cause the LLM to see a skewed population.
+		"query": map[string]any{
+			"function_score": map[string]any{
+				"query": map[string]any{
+					"bool": map[string]any{
+						"filter": baseFilter(since),
+					},
+				},
+				"random_score": map[string]any{},
+				"boost_mode":   "replace",
+			},
+		},
+		"size": maxEvents,
+		"_source": []string{
+			"source_name", "content_type", "topics",
+			"topic_scores", "confidence", "quality_score", "classified_at",
+		},
+		// Population aggregations fetched in the same request.
+		"aggs": map[string]any{
+			"avg_confidence": map[string]any{
+				"avg": map[string]any{"field": "confidence"},
+			},
+			statsAggName: map[string]any{
+				"filter": map[string]any{
+					"range": map[string]any{
+						"confidence": map[string]any{"lt": borderlineThreshold},
+					},
+				},
+			},
+		},
+	}
+}
+
+func decodeResponse(body io.Reader) (sampleResult, error) {
+	var raw struct {
 		Hits struct {
+			Total struct {
+				Value int `json:"value"`
+			} `json:"total"`
 			Hits []struct {
 				Source classifiedDoc `json:"_source"`
 			} `json:"hits"`
 		} `json:"hits"`
+		Aggregations struct {
+			AvgConfidence struct {
+				Value float64 `json:"value"`
+			} `json:"avg_confidence"`
+			PopStats struct {
+				DocCount int `json:"doc_count"`
+			} `json:"pop_stats"`
+		} `json:"aggregations"`
 	}
 
-	if err := json.NewDecoder(body).Decode(&result); err != nil {
-		return nil, fmt.Errorf("decode response: %w", err)
+	if err := json.NewDecoder(body).Decode(&raw); err != nil {
+		return sampleResult{}, fmt.Errorf("decode response: %w", err)
 	}
 
-	events := make([]category.Event, 0, len(result.Hits.Hits))
-	for i, hit := range result.Hits.Hits {
-		doc := hit.Source
-		// Include all borderline docs; sample 1 in highConfidenceSkipMod high-confidence docs.
-		if doc.Confidence >= borderlineThreshold && i%highConfidenceSkipMod != 0 {
-			continue
-		}
-		events = append(events, toEvent(doc))
+	total := raw.Hits.Total.Value
+	borderlineCount := raw.Aggregations.PopStats.DocCount
+
+	var borderlineRate float64
+	if total > 0 {
+		borderlineRate = float64(borderlineCount) / float64(total)
 	}
-	return events, nil
+
+	events := make([]category.Event, 0, len(raw.Hits.Hits))
+	for _, hit := range raw.Hits.Hits {
+		events = append(events, toEvent(hit.Source))
+	}
+
+	pop := PopulationStats{
+		TotalDocs:      total,
+		AvgConfidence:  raw.Aggregations.AvgConfidence.Value,
+		BorderlineRate: borderlineRate,
+	}
+
+	return sampleResult{Events: events, Population: pop}, nil
 }
 
 func toEvent(doc classifiedDoc) category.Event {

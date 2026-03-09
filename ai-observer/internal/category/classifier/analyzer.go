@@ -49,13 +49,13 @@ type domainStats struct {
 }
 
 // analyze runs the AI pass on sampled events.
-func analyze(ctx context.Context, events []category.Event, p provider.LLMProvider, model string) ([]category.Insight, error) {
+func analyze(ctx context.Context, events []category.Event, pop PopulationStats, p provider.LLMProvider, model string) ([]category.Insight, error) {
 	if len(events) == 0 {
 		return nil, nil
 	}
 
 	stats := aggregateStats(events)
-	userPrompt := buildPrompt(stats)
+	userPrompt := buildPrompt(stats, pop)
 
 	resp, err := p.Generate(ctx, provider.GenerateRequest{
 		SystemPrompt: systemPrompt,
@@ -105,7 +105,7 @@ func aggregateStats(events []category.Event) []domainStats {
 	return result
 }
 
-func buildPrompt(stats []domainStats) string {
+func buildPrompt(stats []domainStats, pop PopulationStats) string {
 	if len(stats) > maxStatPairs {
 		stats = stats[:maxStatPairs]
 	}
@@ -119,12 +119,21 @@ func buildPrompt(stats []domainStats) string {
 	return fmt.Sprintf(`Analyze these classifier output statistics (domain+label aggregates from the last polling window).
 Identify concerning patterns: high borderline rates, consistent low confidence, or unexpected label distributions.
 
-Statistics (JSON):
+Population context (full window, before sampling):
+- total_docs: %d
+- avg_confidence: %.4f
+- borderline_rate: %.4f (fraction of docs below %.2f confidence)
+
+The sample below is a RANDOM representative subset of the above population (not sorted by confidence).
+Use the population context — not just the sample — to calibrate severity.
+A high borderline_rate in the sample is only concerning if it substantially exceeds the population borderline_rate.
+
+Sample statistics (JSON):
 %s
 
 Respond with a JSON array of insights. Each must have: severity (low/medium/high), summary (one sentence),
 details (object with relevant metrics), suggested_actions (array of strings).
-If no issues found, return [].`, string(data))
+If no issues found, return [].`, pop.TotalDocs, pop.AvgConfidence, pop.BorderlineRate, borderlineThreshold, string(data))
 }
 
 // stripMarkdownFence removes optional ```json ... ``` or ``` ... ``` wrappers
