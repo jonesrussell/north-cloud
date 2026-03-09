@@ -110,7 +110,7 @@ func TestListIndigenousSources_ReturnsSources(t *testing.T) {
 func TestListIndigenousSources_NullSources_ReturnsEmptySlice(t *testing.T) {
 	t.Helper()
 
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		t.Helper()
 		fmt.Fprint(w, `{"sources":null,"total":0}`)
 	}))
