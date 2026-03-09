@@ -188,7 +188,10 @@ func (h *BackfillIndigenousHandler) dispatchJob(
 	return true
 }
 
-// FilterIndigenousSources filters sources with indigenous_region set, optionally by region, with limit.
+// FilterIndigenousSources filters sources by enabled state, optionally by region, with limit.
+// It also skips sources with no indigenous_region for defensive correctness when the caller
+// passes a mixed list (e.g. in tests); the dedicated ListIndigenousSources endpoint guarantees
+// all results have indigenous_region set.
 func FilterIndigenousSources(
 	allSources []*sources.SourceListItem,
 	region string,

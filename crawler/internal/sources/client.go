@@ -53,7 +53,12 @@ type HTTPClient struct {
 
 // Default timeouts and limits for HTTP client.
 const (
-	defaultHTTPTimeout     = 10 * time.Second
+	defaultHTTPTimeout = 10 * time.Second
+
+	// indigenousSourcesLimit is the max sources fetched from the indigenous endpoint.
+	// The dataset is currently ~186 sources; 500 is a safe ceiling.
+	// WARNING: if this limit is ever reached, results will be silently truncated.
+	// Add pagination support if the dataset approaches this size.
 	indigenousSourcesLimit = 500
 )
 
