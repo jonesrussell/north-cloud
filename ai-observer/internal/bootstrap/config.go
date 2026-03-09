@@ -170,7 +170,7 @@ func loadDriftConfig() (CategoriesConfig, error) {
 	}
 
 	return CategoriesConfig{
-		DriftEnabled:            os.Getenv("AI_OBSERVER_CATEGORY_DRIFT_ENABLED") == "true",
+		DriftEnabled:            os.Getenv("AI_OBSERVER_DRIFT_ENABLED") == "true",
 		DriftIntervalSeconds:    driftInterval,
 		DriftKLThreshold:        klThreshold,
 		DriftPSIThreshold:       psiThreshold,
