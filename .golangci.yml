@@ -264,6 +264,7 @@ linters:
         - G402  # TLS InsecureSkipVerify (intentional for development)
         - G117  # Secret serialization: config structs with Password fields are never marshaled to external output
         - G703  # Path traversal taint: global exclude — nc-http-proxy has safePath; other services don't handle file paths from user input
+        - G602  # Deprecated in gosec v2.18.0 — false positives on fixed-size array indexing where bounds are statically provable
         - G704  # SSRF taint: crawlers and ML transports intentionally fetch user-configured URLs
         - G705  # XSS taint: false positives on fmt.Fprintf(os.Stderr, ...) treated as untrusted output
         - G706  # Log injection taint: false positives on structured logger calls (zap fields)
