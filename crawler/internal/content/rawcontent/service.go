@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/gocolly/colly/v2"
+	"github.com/jonesrussell/north-cloud/crawler/internal/metrics"
 	"github.com/jonesrussell/north-cloud/crawler/internal/sources"
 	storagepkg "github.com/jonesrussell/north-cloud/crawler/internal/storage"
 	"github.com/jonesrussell/north-cloud/crawler/internal/storage/types"
@@ -47,6 +48,27 @@ type RawContentService struct {
 	recorder                   ExtractionRecorder // optional; set at crawl start for extraction quality metrics
 	readabilityFallbackEnabled bool
 	templateExtractions        int64 // atomic; incremented each time a CMS template provides selectors
+
+	// Extraction quality counters (atomic).
+	// pagesByType tracks indexed pages per page-type label.
+	pageTypeArticle int64
+	pageTypeListing int64
+	pageTypeStub    int64
+	pageTypeOther   int64
+
+	// extractionByMethod tracks indexed pages per extraction-method label.
+	methodSelector    int64
+	methodTemplate    int64
+	methodHeuristic   int64
+	methodReadability int64
+
+	// extractionSkipped tracks pages skipped before indexing per reason label.
+	skipURLFilter   int64
+	skipPageType    int64
+	skipQualityGate int64
+
+	// wordCountHistogram counts indexed pages per bucket.
+	wordCountHistogram [metrics.WordCountBucketCount]int64
 }
 
 // NewRawContentService creates a new raw content service.
@@ -81,6 +103,36 @@ func (s *RawContentService) GetTemplateExtractions() int64 {
 	return atomic.LoadInt64(&s.templateExtractions)
 }
 
+// GetExtractionQualityMetrics returns a snapshot of the extraction quality counters
+// accumulated since the service was started or last reset.
+// Safe to call concurrently.
+func (s *RawContentService) GetExtractionQualityMetrics() ExtractionQualityMetrics {
+	var hist [metrics.WordCountBucketCount]int64
+	for i := range hist {
+		hist[i] = atomic.LoadInt64(&s.wordCountHistogram[i])
+	}
+	return ExtractionQualityMetrics{
+		PagesByType: map[string]int64{
+			pageTypeArticle: atomic.LoadInt64(&s.pageTypeArticle),
+			pageTypeListing: atomic.LoadInt64(&s.pageTypeListing),
+			pageTypeStub:    atomic.LoadInt64(&s.pageTypeStub),
+			pageTypeOther:   atomic.LoadInt64(&s.pageTypeOther),
+		},
+		ExtractionByMethod: map[string]int64{
+			extractionMethodSelector:    atomic.LoadInt64(&s.methodSelector),
+			extractionMethodTemplate:    atomic.LoadInt64(&s.methodTemplate),
+			extractionMethodHeuristic:   atomic.LoadInt64(&s.methodHeuristic),
+			extractionMethodReadability: atomic.LoadInt64(&s.methodReadability),
+		},
+		ExtractionSkipped: map[string]int64{
+			skipReasonURLFilter:   atomic.LoadInt64(&s.skipURLFilter),
+			skipReasonPageType:    atomic.LoadInt64(&s.skipPageType),
+			skipReasonQualityGate: atomic.LoadInt64(&s.skipQualityGate),
+		},
+		WordCountHistogram: hist,
+	}
+}
+
 // Process implements the Interface for HTML element processing.
 // Extracts raw content from any HTML page and indexes it to raw_content.
 func (s *RawContentService) Process(e *colly.HTMLElement) error {
@@ -108,6 +160,11 @@ func (s *RawContentService) Process(e *colly.HTMLElement) error {
 	rawHTML := string(e.Response.Body)
 	sourceName, selectors, indigenousRegion := s.getSourceConfig(sourceURL, rawHTML)
 
+	// Determine extraction method for quality metrics before running extraction.
+	// Priority: readability fallback > explicit selector > template > heuristic.
+	// The actual readability check happens below; we refine after applyReadabilityFallbackIfNeeded.
+	extractionMethod := s.resolveExtractionMethod(selectors)
+
 	// Extract raw content using generic extractor
 	rawData := ExtractRawContent(
 		e,
@@ -118,10 +175,16 @@ func (s *RawContentService) Process(e *colly.HTMLElement) error {
 		selectors.Exclude,
 	)
 
+	preReadabilityWordCount := len(strings.Fields(rawData.RawText))
 	s.applyReadabilityFallbackIfNeeded(e, sourceURL, rawData)
+	// If readability improved the word count past the heuristic threshold, record that method.
+	if len(strings.Fields(rawData.RawText)) > preReadabilityWordCount {
+		extractionMethod = extractionMethodReadability
+	}
 
 	// Validate extracted content before indexing
 	if rawData.Title == "" && rawData.RawText == "" {
+		atomic.AddInt64(&s.skipQualityGate, 1)
 		s.logger.Debug("Skipping page with no extractable content",
 			infralogger.String("url", sourceURL))
 		return nil
@@ -129,6 +192,7 @@ func (s *RawContentService) Process(e *colly.HTMLElement) error {
 
 	wordCount := len(strings.Fields(rawData.RawText))
 	if wordCount < minPostExtractionWordCount {
+		atomic.AddInt64(&s.skipQualityGate, 1)
 		s.logger.Debug("Skipping page with insufficient content",
 			infralogger.String("url", sourceURL),
 			infralogger.Int("word_count", wordCount),
@@ -159,6 +223,9 @@ func (s *RawContentService) Process(e *colly.HTMLElement) error {
 
 	// Emit pipeline event (fire-and-forget)
 	s.emitIndexedEvent(ctx, sourceURL, sourceName, rawData, rawContent)
+
+	// Record extraction quality metrics for this successfully indexed page.
+	s.recordExtractionQuality(rawContent, extractionMethod)
 
 	s.logger.Debug("Indexed raw content for classification",
 		infralogger.String("url", sourceURL),
@@ -201,6 +268,76 @@ func (s *RawContentService) applyReadabilityFallbackIfNeeded(e *colly.HTMLElemen
 	}
 	if len(strings.Fields(rawData.RawText)) < minPostExtractionWordCount && rText != "" {
 		rawData.RawText = rText
+	}
+}
+
+// recordExtractionQuality updates the atomic extraction quality counters for one
+// successfully indexed page. It is called after indexing succeeds so that skipped
+// pages are never counted here.
+func (s *RawContentService) recordExtractionQuality(rawContent *storagepkg.RawContent, method string) {
+	s.recordPageType(rawContent)
+	s.RecordExtractionMethod(method)
+	bucketIdx := metrics.WordCountBucketIndex(rawContent.WordCount)
+	atomic.AddInt64(&s.wordCountHistogram[bucketIdx], 1)
+}
+
+// recordPageType increments the atomic counter for the page type stored in Meta.
+func (s *RawContentService) recordPageType(rawContent *storagepkg.RawContent) {
+	pageType, _ := rawContent.Meta["page_type"].(string)
+	switch pageType {
+	case pageTypeArticle:
+		atomic.AddInt64(&s.pageTypeArticle, 1)
+	case pageTypeListing:
+		atomic.AddInt64(&s.pageTypeListing, 1)
+	case pageTypeStub:
+		atomic.AddInt64(&s.pageTypeStub, 1)
+	default:
+		atomic.AddInt64(&s.pageTypeOther, 1)
+	}
+}
+
+// resolveExtractionMethod determines the extraction method label based on
+// available selectors. The readability fallback is detected after extraction
+// by comparing word counts, so this returns a pre-readability baseline.
+func (s *RawContentService) resolveExtractionMethod(sel SourceSelectors) string {
+	hasExplicitSelector := sel.Title != "" || sel.Body != "" || sel.Container != ""
+	if !hasExplicitSelector {
+		// No configured selectors — extraction will use generic heuristic fallbacks.
+		return extractionMethodHeuristic
+	}
+	// Selectors came from either source config or a CMS template. The caller
+	// already incremented templateExtractions for template-sourced selectors,
+	// but we cannot distinguish them here without threading that signal through.
+	// We record "selector" for any explicit selector; template-sourced pages
+	// are also counted via templateExtractions.
+	return extractionMethodSelector
+}
+
+// RecordExtractionMethod increments the extraction method counter for the given method label.
+// Valid labels: "selector", "template", "heuristic", "readability".
+func (s *RawContentService) RecordExtractionMethod(method string) {
+	switch method {
+	case extractionMethodSelector:
+		atomic.AddInt64(&s.methodSelector, 1)
+	case extractionMethodTemplate:
+		atomic.AddInt64(&s.methodTemplate, 1)
+	case extractionMethodHeuristic:
+		atomic.AddInt64(&s.methodHeuristic, 1)
+	case extractionMethodReadability:
+		atomic.AddInt64(&s.methodReadability, 1)
+	}
+}
+
+// RecordSkip increments the skip counter for the given reason label.
+// Valid labels: "url_filter", "page_type", "quality_gate".
+func (s *RawContentService) RecordSkip(reason string) {
+	switch reason {
+	case skipReasonURLFilter:
+		atomic.AddInt64(&s.skipURLFilter, 1)
+	case skipReasonPageType:
+		atomic.AddInt64(&s.skipPageType, 1)
+	case skipReasonQualityGate:
+		atomic.AddInt64(&s.skipQualityGate, 1)
 	}
 }
 

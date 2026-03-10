@@ -41,6 +41,9 @@ func ResolveTemplateForTest(templateHint *string, sourceURL, rawHTML string) (tm
 	return svc.resolveTemplate(cfg, sourceURL, rawHTML)
 }
 
+// ExtractByTextDensity exports extractByTextDensity for testing.
+var ExtractByTextDensity = extractByTextDensity
+
 // ClassifyPageType exports classifyPageType for testing.
 var ClassifyPageType = classifyPageType
 
