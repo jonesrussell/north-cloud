@@ -108,7 +108,7 @@ func (s *RawContentService) GetTemplateExtractions() int64 {
 // Safe to call concurrently.
 func (s *RawContentService) GetExtractionQualityMetrics() ExtractionQualityMetrics {
 	var hist [metrics.WordCountBucketCount]int64
-	for i := range hist {
+	for i := range s.wordCountHistogram {
 		hist[i] = atomic.LoadInt64(&s.wordCountHistogram[i])
 	}
 	return ExtractionQualityMetrics{
