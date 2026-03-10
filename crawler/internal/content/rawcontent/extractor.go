@@ -221,7 +221,9 @@ func extractRawHTML(e *colly.HTMLElement, containerSelector, bodySelector string
 
 	// Text density heuristic: score elements by (non-link content)² / total text.
 	if html := extractHTMLByTextDensity(e); html != "" {
-		return html
+		if len(strings.TrimSpace(html)) >= minHTMLContentLength {
+			return html
+		}
 	}
 
 	// Last resort: get body HTML (excluding common non-content areas)
