@@ -388,22 +388,43 @@ var densityNoiseFragments = []string{
 
 // isDensityNoiseElement returns true when the element's class or id contains a
 // known noise fragment (navigation, ads, sidebar, etc.).
+// Matches are word-boundary-aware: class/id values are split on whitespace and
+// hyphens, then each token is checked for a prefix match against noise fragments.
+// This prevents "nav" from matching "navigate" while still matching "nav-bar".
 func isDensityNoiseElement(s *goquery.Selection) bool {
 	class, _ := s.Attr("class")
 	id, _ := s.Attr("id")
 	combined := strings.ToLower(class + " " + id)
+	tokens := splitClassTokens(combined)
 	for _, fragment := range densityNoiseFragments {
-		if strings.Contains(combined, fragment) {
-			return true
+		for _, token := range tokens {
+			if token == fragment || strings.HasPrefix(token, fragment) {
+				return true
+			}
 		}
 	}
 	return false
 }
 
+// splitClassTokens splits a combined class+id string into individual tokens by
+// whitespace, hyphens, and underscores — the common CSS naming delimiters.
+func splitClassTokens(s string) []string {
+	return strings.FieldsFunc(s, func(r rune) bool {
+		return r == ' ' || r == '-' || r == '_'
+	})
+}
+
+// ancestorScoreThreshold is the fraction of a parent's score that a child must
+// reach to be preferred over its ancestor. A child scoring >= 80% of the parent
+// is considered a better (more specific) pick.
+const ancestorScoreThreshold = 0.8
+
 // findDensestElement walks div/section/article/main descendants of <body> and
 // returns the element with the highest density score. Score is defined as
 // contentLen² / totalLen, where contentLen = totalLen − linkTextLen. This
 // rewards elements that are voluminous and not dominated by navigation links.
+// When a child element scores at least 80% of an ancestor's score, the child
+// is preferred to avoid selecting overly broad containers.
 // Returns nil if no element meets the textDensityMinChars threshold.
 func findDensestElement(e *colly.HTMLElement) *goquery.Selection {
 	body := e.DOM.Find("body")
@@ -438,13 +459,31 @@ func findDensestElement(e *colly.HTMLElement) *goquery.Selection {
 
 		// score = contentLen² / totalLen — rewards density AND volume.
 		score := float64(contentLen) * float64(contentLen) / float64(totalLen)
+
+		if best == nil {
+			bestScore = score
+			best = s
+			return
+		}
+
 		if score > bestScore {
+			bestScore = score
+			best = s
+		} else if score >= bestScore*ancestorScoreThreshold && isDescendantOf(s, best) {
+			// Child scores nearly as high as ancestor — prefer the more specific element.
 			bestScore = score
 			best = s
 		}
 	})
 
 	return best
+}
+
+// isDescendantOf returns true when child is a DOM descendant of ancestor.
+func isDescendantOf(child, ancestor *goquery.Selection) bool {
+	return ancestor.Find("*").FilterFunction(func(_ int, s *goquery.Selection) bool {
+		return s.Get(0) == child.Get(0)
+	}).Length() > 0
 }
 
 // extractByTextDensity returns the plain text of the densest content element,
@@ -458,13 +497,16 @@ func extractByTextDensity(e *colly.HTMLElement) string {
 }
 
 // extractHTMLByTextDensity returns the inner HTML of the densest content element,
-// or "" when no qualifying element is found.
+// or "" when no qualifying element is found or HTML serialization fails.
 func extractHTMLByTextDensity(e *colly.HTMLElement) string {
 	best := findDensestElement(e)
 	if best == nil {
 		return ""
 	}
-	html, _ := best.Html()
+	html, err := best.Html()
+	if err != nil {
+		return ""
+	}
 	return html
 }
 
