@@ -277,7 +277,7 @@ See [README.md](README.md) for the full environment variable table. Key variable
 | `CRAWLER_REDIS_STORAGE_ENABLED` | `false` | Persist Colly state across restarts |
 | `CRAWLER_PROXIES_ENABLED` | `false` | Enable proxy rotation |
 | `CRAWLER_PROXY_URLS` | — | Comma-separated HTTP/SOCKS5 URLs |
-| `CRAWLER_READABILITY_FALLBACK_ENABLED` | `false` | Last-resort content extraction |
+| `CRAWLER_READABILITY_FALLBACK_ENABLED` | `true` | Last-resort content extraction |
 | `CRAWLER_MINIO_ENABLED` | `false` | HTML archiving |
 | `FETCHER_FOLLOW_REDIRECTS` | `true` | Frontier redirect following |
 | `FETCHER_MAX_REDIRECTS` | — | Max redirect hops |
