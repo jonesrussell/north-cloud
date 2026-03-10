@@ -17,18 +17,13 @@ import (
 	"github.com/jonesrussell/north-cloud/source-manager/internal/metadata"
 	"github.com/jonesrussell/north-cloud/source-manager/internal/models"
 	"github.com/jonesrussell/north-cloud/source-manager/internal/repository"
+	"github.com/jonesrussell/north-cloud/source-manager/internal/testcrawl"
 	"github.com/lib/pq"
 )
 
 const (
 	// pqUniqueViolation is PostgreSQL error code 23505 (unique_violation).
 	pqUniqueViolation = "23505"
-
-	// Test crawl simulation constants
-	defaultTestArticlesFound = 10
-	defaultTestSuccessRate   = 90
-	highTestQualityScore     = 85
-	mediumTestQualityScore   = 72
 )
 
 // ImportResult is the response for the import-excel endpoint.
@@ -39,18 +34,20 @@ type ImportResult struct {
 }
 
 type SourceHandler struct {
-	repo      *repository.SourceRepository
-	logger    infralogger.Logger
-	extractor *metadata.Extractor
-	publisher *events.Publisher
+	repo           *repository.SourceRepository
+	logger         infralogger.Logger
+	extractor      *metadata.Extractor
+	crawlExtractor *testcrawl.Extractor
+	publisher      *events.Publisher
 }
 
 func NewSourceHandler(repo *repository.SourceRepository, log infralogger.Logger, publisher *events.Publisher) *SourceHandler {
 	return &SourceHandler{
-		repo:      repo,
-		logger:    log,
-		extractor: metadata.NewExtractor(log),
-		publisher: publisher,
+		repo:           repo,
+		logger:         log,
+		extractor:      metadata.NewExtractor(log),
+		crawlExtractor: testcrawl.NewExtractor(log),
+		publisher:      publisher,
 	}
 }
 
@@ -410,14 +407,17 @@ func (h *SourceHandler) FetchMetadata(c *gin.Context) {
 	c.JSON(http.StatusOK, metadataResp)
 }
 
-// TestCrawl performs a test crawl without saving to database
-// This allows users to preview what articles will be extracted before creating a source
-func (h *SourceHandler) TestCrawl(c *gin.Context) {
-	var request struct {
-		URL       string         `binding:"required" json:"url"`
-		Selectors map[string]any `json:"selectors"`
-	}
+// testCrawlRequest is the request body for TestCrawl.
+type testCrawlRequest struct {
+	URL       string                 `binding:"required" json:"url"`
+	Selectors *models.SelectorConfig `json:"selectors"`
+}
 
+// TestCrawl performs a real extraction pipeline on the given URL without saving anything.
+// It fetches the URL, runs the URL pre-filter, classifies the page type, detects the CMS
+// template, and runs the extraction pipeline, returning structured diagnostics.
+func (h *SourceHandler) TestCrawl(c *gin.Context) {
+	var request testCrawlRequest
 	if err := c.ShouldBindJSON(&request); err != nil {
 		h.logger.Debug("Invalid request body",
 			infralogger.String("error", err.Error()),
@@ -430,40 +430,33 @@ func (h *SourceHandler) TestCrawl(c *gin.Context) {
 		infralogger.String("url", request.URL),
 	)
 
-	// For now, return a simulated response
-	// In a full implementation, this would actually crawl the URL and extract articles
-	response := gin.H{
-		"articles_found": defaultTestArticlesFound,
-		"success_rate":   defaultTestSuccessRate,
-		"warnings": []string{
-			"No author selector matched on 2 articles",
-		},
-		"sample_articles": []gin.H{
-			{
-				"title":          "Sample Article 1",
-				"body":           "This is a sample article extracted from the test crawl...",
-				"url":            request.URL + "/article-1",
-				"published_date": "2026-01-02T10:00:00Z",
-				"author":         "John Doe",
-				"quality_score":  highTestQualityScore,
-			},
-			{
-				"title":          "Sample Article 2",
-				"body":           "Another sample article demonstrating the crawl results...",
-				"url":            request.URL + "/article-2",
-				"published_date": "2026-01-02T09:30:00Z",
-				"author":         "",
-				"quality_score":  mediumTestQualityScore,
-			},
-		},
+	// Extract optional source selectors from the request.
+	var titleSel, bodySel, containerSel string
+	if request.Selectors != nil {
+		titleSel = request.Selectors.Article.Title
+		bodySel = request.Selectors.Article.Body
+		containerSel = request.Selectors.Article.Container
+	}
+
+	result, err := h.crawlExtractor.Extract(c.Request.Context(), request.URL, titleSel, bodySel, containerSel)
+	if err != nil {
+		h.logger.Warn("Test crawl extraction failed",
+			infralogger.String("url", request.URL),
+			infralogger.Error(err),
+		)
+		c.JSON(http.StatusUnprocessableEntity, gin.H{"error": "Extraction failed", "details": err.Error()})
+		return
 	}
 
 	h.logger.Info("Test crawl completed",
 		infralogger.String("url", request.URL),
-		infralogger.Int("articles_found", defaultTestArticlesFound),
+		infralogger.String("page_type", result.PageType),
+		infralogger.String("template_detected", result.TemplateDetected),
+		infralogger.String("extraction_method", result.ExtractionMethod),
+		infralogger.Int("word_count", result.WordCount),
 	)
 
-	c.JSON(http.StatusOK, response)
+	c.JSON(http.StatusOK, result)
 }
 
 // FeedDisableRequest is the request body for disabling a feed.

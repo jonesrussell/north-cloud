@@ -248,6 +248,13 @@ func (c *Crawler) GetMetrics() *metrics.Metrics {
 		ProcessingDuration: c.state.GetProcessingDuration(),
 		URLsSkipped:        c.state.GetURLsSkipped(),
 	}
+	if proc, ok := c.rawContentProcessor.(*rawcontent.RawContentProcessor); ok {
+		q := proc.GetExtractionQualityMetrics()
+		m.PagesByType = q.PagesByType
+		m.ExtractionByMethod = q.ExtractionByMethod
+		m.ExtractionSkipped = q.ExtractionSkipped
+		m.WordCountHistogram = q.WordCountHistogram
+	}
 	if tc, ok := c.rawContentProcessor.(templateCounter); ok {
 		m.TemplateExtractions = tc.GetTemplateExtractions()
 	}

@@ -4,6 +4,7 @@ const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const http = require('node:http');
 const { createRequestHandler, MAX_QUEUE_DEPTH } = require('./handler');
+const { STEALTH_INIT_SCRIPT } = require('./stealth');
 
 // Build a minimal state object and no-op processQueue for tests that don't need rendering.
 function makeState(overrides) {
@@ -138,4 +139,24 @@ test('POST /render with full queue returns 503', async () => {
   } finally {
     server.close();
   }
+});
+
+test('STEALTH_INIT_SCRIPT patches navigator.webdriver, plugins, and languages', () => {
+  const vm = require('node:vm');
+
+  // Run the stealth script in an isolated vm context with a fake navigator object.
+  const ctx = { navigator: {}, Object };
+  vm.createContext(ctx);
+  vm.runInContext(STEALTH_INIT_SCRIPT, ctx);
+
+  // navigator.webdriver should be undefined (not true)
+  assert.equal(Object.getOwnPropertyDescriptor(ctx.navigator, 'webdriver').get(), undefined);
+
+  // navigator.plugins should have at least one entry
+  const plugins = Object.getOwnPropertyDescriptor(ctx.navigator, 'plugins').get();
+  assert.ok(plugins.length > 0, 'plugins.length should be > 0');
+
+  // navigator.languages should be a non-empty array
+  const languages = Object.getOwnPropertyDescriptor(ctx.navigator, 'languages').get();
+  assert.ok(Array.isArray(languages) && languages.length > 0, 'languages should be non-empty array');
 });
