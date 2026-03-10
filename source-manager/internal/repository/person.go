@@ -159,6 +159,7 @@ func buildPersonWhere(filter models.PersonFilter) (where string, args []any) {
 	if filter.Role != "" {
 		conditions = append(conditions, fmt.Sprintf("role = $%d", argIdx))
 		args = append(args, filter.Role)
+		argIdx++
 	}
 
 	if filter.CurrentOnly {
