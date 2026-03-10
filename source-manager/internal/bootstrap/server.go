@@ -18,5 +18,7 @@ func SetupHTTPServer(
 	log infralogger.Logger,
 ) *infragin.Server {
 	sourceRepo := repository.NewSourceRepository(db.DB(), log)
+	_ = repository.NewPersonRepository(db.DB(), log)
+	_ = repository.NewBandOfficeRepository(db.DB(), log)
 	return api.NewServer(sourceRepo, cfg, log, publisher)
 }
