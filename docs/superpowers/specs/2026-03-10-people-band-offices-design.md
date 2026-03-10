@@ -70,16 +70,16 @@ type Person struct {
 
 // PersonHistory is an archived snapshot of a person's term.
 type PersonHistory struct {
-    ID          string
-    PersonID    string
-    CommunityID string
-    Name        string
-    Role        string
-    TermStart   *time.Time
-    TermEnd     *time.Time
-    DataSource  *string
-    SourceURL   *string
-    ArchivedAt  time.Time
+    ID          string     `db:"id"           json:"id"`
+    PersonID    string     `db:"person_id"    json:"person_id"`
+    CommunityID string     `db:"community_id" json:"community_id"`
+    Name        string     `db:"name"         json:"name"`
+    Role        string     `db:"role"         json:"role"`
+    TermStart   *time.Time `db:"term_start"   json:"term_start,omitempty"`
+    TermEnd     *time.Time `db:"term_end"     json:"term_end,omitempty"`
+    DataSource  *string    `db:"data_source"  json:"data_source,omitempty"`
+    SourceURL   *string    `db:"source_url"   json:"source_url,omitempty"`
+    ArchivedAt  time.Time  `db:"archived_at"  json:"archived_at"`
 }
 
 // PersonFilter controls listing/counting queries.
@@ -136,11 +136,11 @@ type BandOffice struct {
 - `Delete(ctx, id string) error`
 
 **Query:**
-- `ListByCommunity(ctx, filter PersonFilter) ([]Person, error)` — dynamic WHERE builder (community_id required, optional role/current_only, pagination)
+- `ListByCommunity(ctx, filter PersonFilter) ([]Person, error)` — returns error if `CommunityID` is empty; dynamic WHERE builder with optional role/current_only filters, pagination
 - `Count(ctx, filter PersonFilter) (int, error)`
 
 **Archive:**
-- `ArchiveTerm(ctx, personID string) error` — transaction: SELECT person → INSERT into people_history → UPDATE person (is_current=false, term_end=NOW())
+- `ArchiveTerm(ctx, personID string) error` — transaction: SELECT person → INSERT into people_history → UPDATE person (is_current=false, term_end=NOW()). Returns error if personID not found. Transaction rolls back on any step failure.
 
 ### internal/repository/band_office.go — BandOfficeRepository
 
@@ -152,7 +152,7 @@ type BandOffice struct {
 - `Create(ctx, bo *BandOffice) error`
 - `GetByCommunity(ctx, communityID string) (*BandOffice, error)` — nil,nil for not found
 - `Update(ctx, bo *BandOffice) error`
-- `Delete(ctx, id string) error`
+- `DeleteByCommunity(ctx, communityID string) error` — consistent with the 1:1 lookup pattern
 
 **Upsert:**
 - `Upsert(ctx, bo *BandOffice) error` — ON CONFLICT (community_id) DO UPDATE
@@ -167,13 +167,14 @@ Follow community test patterns:
 - `setupPersonTestDB(t)` / `setupBandOfficeTestDB(t)` helpers with `t.Helper()`
 - `newTestPerson(...)` / `newTestBandOffice(...)` factory helpers
 - Test all CRUD methods, filter combinations, ArchiveTerm transaction, and Upsert conflict handling
+- ArchiveTerm tests must verify the inserted `people_history` row has correct snapshot fields, not just that `is_current` was set to false
 - Integration tests skip in short mode
 
 ## Acceptance Criteria
 
 - [ ] Migration creates all 3 tables with indexes and FKs
 - [ ] Go model structs with db/json tags
-- [ ] Person repository: Create, Update, GetByID, ListByCommunity, Count, ArchiveTerm
-- [ ] BandOffice repository: Create, Update, GetByCommunity, Delete, Upsert
+- [ ] Person repository: Create, Update, Delete, GetByID, ListByCommunity, Count, ArchiveTerm
+- [ ] BandOffice repository: Create, Update, GetByCommunity, DeleteByCommunity, Upsert
 - [ ] ArchiveTerm archives to people_history in a transaction
 - [ ] Unit tests for all repository methods
