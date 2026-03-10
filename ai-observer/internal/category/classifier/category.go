@@ -12,9 +12,10 @@ import (
 
 // Category implements category.Category for classifier drift detection.
 type Category struct {
-	esClient  *es.Client
-	maxEvents int
-	modelTier string
+	esClient       *es.Client
+	maxEvents      int
+	modelTier      string
+	lastPopulation PopulationStats
 }
 
 // New creates a new classifier drift Category.
@@ -37,11 +38,18 @@ func (c *Category) MaxEventsPerRun() int { return c.maxEvents }
 func (c *Category) ModelTier() string { return c.modelTier }
 
 // Sample queries ES for recent classified documents.
+// Population stats (total, avg confidence, borderline rate) are cached on the Category
+// and passed to Analyze so the LLM receives full population context.
 func (c *Category) Sample(ctx context.Context, window time.Duration) ([]category.Event, error) {
-	return sample(ctx, c.esClient, window, c.maxEvents)
+	result, err := sample(ctx, c.esClient, window, c.maxEvents)
+	if err != nil {
+		return nil, err
+	}
+	c.lastPopulation = result.Population
+	return result.Events, nil
 }
 
 // Analyze runs the AI drift detection pass.
 func (c *Category) Analyze(ctx context.Context, events []category.Event, p provider.LLMProvider) ([]category.Insight, error) {
-	return analyze(ctx, events, p, c.modelTier)
+	return analyze(ctx, events, c.lastPopulation, p, c.modelTier)
 }
