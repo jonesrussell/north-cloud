@@ -563,6 +563,158 @@ func (s *Server) handleTestSource(ctx context.Context, id any, arguments json.Ra
 	return s.successResponse(id, result)
 }
 
+// Community tool handlers
+
+func (s *Server) handleListCommunities(ctx context.Context, id any, arguments json.RawMessage) *Response {
+	var args struct {
+		Limit  int `json:"limit"`
+		Offset int `json:"offset"`
+	}
+
+	_ = json.Unmarshal(arguments, &args) // Empty args is okay
+
+	limit := max(args.Limit, 0)
+	if limit == 0 {
+		limit = defaultLimit
+	}
+	limit = min(limit, maxLimit)
+	offset := max(args.Offset, 0)
+
+	communities, total, err := s.sourceClient.ListCommunities(ctx, limit, offset)
+	if err != nil {
+		return s.errorResponse(id, InternalError, fmt.Sprintf("Failed to list communities: %v", err))
+	}
+
+	return s.successResponse(id, map[string]any{
+		"communities": communities,
+		"count":       len(communities),
+		"total":       total,
+		"limit":       limit,
+		"offset":      offset,
+	})
+}
+
+func (s *Server) handleGetCommunity(ctx context.Context, id any, arguments json.RawMessage) *Response {
+	var args struct {
+		CommunityID string `json:"community_id"`
+		Slug        string `json:"slug"`
+	}
+
+	if err := json.Unmarshal(arguments, &args); err != nil {
+		return s.errorResponse(id, InvalidParams, "Invalid arguments: "+err.Error())
+	}
+
+	if args.CommunityID == "" && args.Slug == "" {
+		return s.errorResponse(id, InvalidParams, "either community_id or slug is required")
+	}
+
+	var community *client.Community
+	var err error
+
+	if args.CommunityID != "" {
+		community, err = s.sourceClient.GetCommunity(ctx, args.CommunityID)
+	} else {
+		community, err = s.sourceClient.GetCommunityBySlug(ctx, args.Slug)
+	}
+
+	if err != nil {
+		return s.errorResponse(id, InternalError, fmt.Sprintf("Failed to get community: %v", err))
+	}
+
+	return s.successResponse(id, community)
+}
+
+const (
+	defaultNearbyRadiusKm = 50.0
+	defaultNearbyLimit    = 10
+)
+
+func (s *Server) handleFindNearbyCommunities(ctx context.Context, id any, arguments json.RawMessage) *Response {
+	var args struct {
+		Lat      float64 `json:"lat"`
+		Lng      float64 `json:"lng"`
+		RadiusKm float64 `json:"radius_km"`
+		Limit    int     `json:"limit"`
+	}
+
+	if err := json.Unmarshal(arguments, &args); err != nil {
+		return s.errorResponse(id, InvalidParams, "Invalid arguments: "+err.Error())
+	}
+
+	if args.Lat == 0 && args.Lng == 0 {
+		return s.errorResponse(id, InvalidParams, "lat and lng are required")
+	}
+
+	if args.RadiusKm <= 0 {
+		args.RadiusKm = defaultNearbyRadiusKm
+	}
+	if args.Limit <= 0 {
+		args.Limit = defaultNearbyLimit
+	}
+
+	communities, err := s.sourceClient.FindNearbyCommunities(ctx, args.Lat, args.Lng, args.RadiusKm, args.Limit)
+	if err != nil {
+		return s.errorResponse(id, InternalError, fmt.Sprintf("Failed to find nearby communities: %v", err))
+	}
+
+	return s.successResponse(id, map[string]any{
+		"communities": communities,
+		"count":       len(communities),
+		"radius_km":   args.RadiusKm,
+	})
+}
+
+func (s *Server) handleAddCommunity(ctx context.Context, id any, arguments json.RawMessage) *Response {
+	var args client.Community
+
+	if err := json.Unmarshal(arguments, &args); err != nil {
+		return s.errorResponse(id, InvalidParams, "Invalid arguments: "+err.Error())
+	}
+
+	if args.Name == "" || args.Slug == "" {
+		return s.errorResponse(id, InvalidParams, "name and slug are required")
+	}
+
+	community, err := s.sourceClient.CreateCommunity(ctx, args)
+	if err != nil {
+		return s.errorResponse(id, InternalError, fmt.Sprintf("Failed to create community: %v", err))
+	}
+
+	return s.successResponse(id, map[string]any{
+		"community_id": community.ID,
+		"name":         community.Name,
+		"slug":         community.Slug,
+		"message":      "Community created successfully",
+	})
+}
+
+func (s *Server) handleUpdateCommunity(ctx context.Context, id any, arguments json.RawMessage) *Response {
+	var args struct {
+		CommunityID string `json:"community_id"`
+		client.Community
+	}
+
+	if err := json.Unmarshal(arguments, &args); err != nil {
+		return s.errorResponse(id, InvalidParams, "Invalid arguments: "+err.Error())
+	}
+
+	if args.CommunityID == "" {
+		return s.errorResponse(id, InvalidParams, "community_id is required")
+	}
+
+	community, err := s.sourceClient.UpdateCommunity(ctx, args.CommunityID, args.Community)
+	if err != nil {
+		return s.errorResponse(id, InternalError, fmt.Sprintf("Failed to update community: %v", err))
+	}
+
+	return s.successResponse(id, map[string]any{
+		"community_id": community.ID,
+		"name":         community.Name,
+		"slug":         community.Slug,
+		"message":      "Community updated successfully",
+	})
+}
+
 // Publisher tool handlers
 
 func (s *Server) handleCreateChannel(ctx context.Context, id any, arguments json.RawMessage) *Response {

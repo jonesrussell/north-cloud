@@ -11,8 +11,8 @@ task test             # Run tests
 task lint             # Run linter
 
 # Verify tool registration
-./test-tools.sh                   # local mode (expects 19 tools)
-MCP_ENV=prod ./test-tools.sh      # prod mode (expects 24 tools)
+./test-tools.sh                   # local mode (expects 22 tools)
+MCP_ENV=prod ./test-tools.sh      # prod mode (expects 30 tools)
 MCP_TEST_PROMPTS=1 ./test-tools.sh  # also test prompts and resources
 
 # Manual tool calls (binary must be built first: task build)
@@ -76,14 +76,14 @@ Set `MCP_ENV` to control which tools appear in `tools/list`:
 
 | Environment | Count | Includes |
 |-------------|-------|---------|
-| `local` (default) | 19 | shared (16) + local-only (3) |
-| `prod` | 24 | shared (16) + prod-only (8) |
+| `local` (default) | 22 | shared (19) + local-only (3) |
+| `prod` | 30 | shared (19) + prod-only (11) |
 
-**Shared (16):** onboard_source, list_crawl_jobs, get_crawl_stats, add_source, list_sources, update_source, test_source, list_indexes, search_content, list_channels, preview_channel, get_publish_history, get_publisher_stats, classify_content, get_grafana_alerts, health_check
+**Shared (19):** onboard_source, list_crawl_jobs, get_crawl_stats, add_source, list_sources, update_source, test_source, list_indexes, search_content, list_channels, preview_channel, get_publish_history, get_publisher_stats, classify_content, get_grafana_alerts, health_check, list_communities, get_community, find_nearby_communities
 
 **Local-only (3):** lint_file, build_service, test_service
 
-**Prod-only (8):** delete_index, delete_source, control_crawl_job, start_crawl, schedule_crawl, create_channel, delete_channel, get_auth_token
+**Prod-only (11):** delete_index, delete_source, control_crawl_job, start_crawl, schedule_crawl, create_channel, delete_channel, get_auth_token, fetch_url, add_community, update_community
 
 ### Scope Types
 
@@ -155,8 +155,8 @@ Requests without an `id` field are notifications and receive no response.
 
 ```bash
 # Verify tool registration counts
-./test-tools.sh               # local mode, expects 19
-MCP_ENV=prod ./test-tools.sh  # prod mode, expects 24
+./test-tools.sh               # local mode, expects 22
+MCP_ENV=prod ./test-tools.sh  # prod mode, expects 30
 
 # Also exercise prompts and resources
 MCP_TEST_PROMPTS=1 ./test-tools.sh
@@ -236,18 +236,20 @@ type Client struct {
 
 Clients are constructed in `server.go` using URL and timeout from config. Always pass `ctx` through to `http.NewRequestWithContext` — do not use `http.NewRequest`.
 
-### 27 Tools by Category
+### 32 Tools by Category
 
 | Category | Tools |
 |----------|-------|
 | **Workflow (1)** | onboard_source |
 | **Crawler (5)** | start_crawl, schedule_crawl, list_crawl_jobs, control_crawl_job, get_crawl_stats |
 | **Source Manager (5)** | add_source, list_sources, update_source, delete_source, test_source |
+| **Community (5)** | list_communities, get_community, find_nearby_communities, add_community, update_community |
 | **Publisher (6)** | create_channel, list_channels, delete_channel, preview_channel, get_publish_history, get_publisher_stats |
 | **Search (1)** | search_content |
 | **Classifier (1)** | classify_content |
 | **Index Manager (2)** | list_indexes, delete_index |
 | **Auth (1)** | get_auth_token |
+| **Fetch (1)** | fetch_url |
 | **Observability (1)** | get_grafana_alerts |
 | **Development (3)** | lint_file, build_service, test_service |
 | **System (1)** | health_check |

@@ -330,6 +330,8 @@ func (c *CrawlerClient) CancelJob(ctx context.Context, jobID string) (*Job, erro
 }
 
 // GetJobStats gets statistics for a job
+//
+//nolint:dupl // Similar HTTP client pattern across different services is acceptable
 func (c *CrawlerClient) GetJobStats(ctx context.Context, jobID string) (*JobStats, error) {
 	endpoint := fmt.Sprintf("%s/api/v1/jobs/%s/stats", c.baseURL, jobID)
 
