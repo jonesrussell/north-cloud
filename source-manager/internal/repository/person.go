@@ -96,20 +96,19 @@ func (r *PersonRepository) GetByID(ctx context.Context, id string) (*models.Pers
 }
 
 // Update modifies an existing person by ID.
+// Note: updated_at is handled by the set_people_updated_at DB trigger.
 func (r *PersonRepository) Update(ctx context.Context, p *models.Person) error {
-	p.UpdatedAt = time.Now()
-
 	query := `
 		UPDATE people SET
 			community_id = $2, name = $3, slug = $4, role = $5, data_source = $6,
-			is_current = $7, verified = $8, updated_at = $9, role_title = $10,
-			email = $11, phone = $12, term_start = $13, term_end = $14,
-			source_url = $15, verified_at = $16
+			is_current = $7, verified = $8, role_title = $9,
+			email = $10, phone = $11, term_start = $12, term_end = $13,
+			source_url = $14, verified_at = $15
 		WHERE id = $1`
 
 	result, err := r.db.ExecContext(ctx, query,
 		p.ID, p.CommunityID, p.Name, p.Slug, p.Role, p.DataSource,
-		p.IsCurrent, p.Verified, p.UpdatedAt, p.RoleTitle,
+		p.IsCurrent, p.Verified, p.RoleTitle,
 		p.Email, p.Phone, p.TermStart, p.TermEnd,
 		p.SourceURL, p.VerifiedAt,
 	)
@@ -252,6 +251,10 @@ func (r *PersonRepository) ArchiveTerm(ctx context.Context, personID string) err
 			return errors.New("archive term: person not found")
 		}
 		return fmt.Errorf("archive term select: %w", scanErr)
+	}
+
+	if !p.IsCurrent {
+		return errors.New("archive term: person is not current")
 	}
 
 	// Step 2: INSERT snapshot into people_history

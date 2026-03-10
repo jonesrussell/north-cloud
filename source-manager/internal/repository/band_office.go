@@ -91,19 +91,18 @@ func (r *BandOfficeRepository) GetByCommunity(ctx context.Context, communityID s
 }
 
 // Update modifies an existing band office by ID.
+// Note: updated_at is handled by the set_band_offices_updated_at DB trigger.
 func (r *BandOfficeRepository) Update(ctx context.Context, bo *models.BandOffice) error {
-	bo.UpdatedAt = time.Now()
-
 	query := `
 		UPDATE band_offices SET
-			community_id = $2, data_source = $3, verified = $4, updated_at = $5,
-			address_line1 = $6, address_line2 = $7, city = $8, province = $9, postal_code = $10,
-			phone = $11, fax = $12, email = $13, toll_free = $14, office_hours = $15,
-			source_url = $16, verified_at = $17
+			community_id = $2, data_source = $3, verified = $4,
+			address_line1 = $5, address_line2 = $6, city = $7, province = $8, postal_code = $9,
+			phone = $10, fax = $11, email = $12, toll_free = $13, office_hours = $14,
+			source_url = $15, verified_at = $16
 		WHERE id = $1`
 
 	result, err := r.db.ExecContext(ctx, query,
-		bo.ID, bo.CommunityID, bo.DataSource, bo.Verified, bo.UpdatedAt,
+		bo.ID, bo.CommunityID, bo.DataSource, bo.Verified,
 		bo.AddressLine1, bo.AddressLine2, bo.City, bo.Province, bo.PostalCode,
 		bo.Phone, bo.Fax, bo.Email, bo.TollFree, bo.OfficeHours,
 		bo.SourceURL, bo.VerifiedAt,
@@ -142,7 +141,11 @@ func (r *BandOfficeRepository) DeleteByCommunity(ctx context.Context, communityI
 }
 
 // Upsert inserts or updates a band office by community_id.
+// On update, created_at is preserved (DB ignores EXCLUDED.created_at); the Go
+// struct is restored to its original value so the caller sees the correct timestamp.
 func (r *BandOfficeRepository) Upsert(ctx context.Context, bo *models.BandOffice) error {
+	originalCreatedAt := bo.CreatedAt
+
 	if bo.ID == "" {
 		bo.ID = uuid.New().String()
 	}
@@ -175,6 +178,11 @@ func (r *BandOfficeRepository) Upsert(ctx context.Context, bo *models.BandOffice
 		bo.Phone, bo.Fax, bo.Email, bo.TollFree, bo.OfficeHours, bo.SourceURL, bo.VerifiedAt,
 	).Scan(&bo.ID); err != nil {
 		return fmt.Errorf("upsert band office: %w", err)
+	}
+
+	// Restore original created_at on update path (DB did not overwrite it).
+	if !originalCreatedAt.IsZero() {
+		bo.CreatedAt = originalCreatedAt
 	}
 
 	return nil
