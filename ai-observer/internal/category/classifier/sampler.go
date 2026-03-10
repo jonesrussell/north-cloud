@@ -156,7 +156,7 @@ func decodeResponse(body io.Reader) (sampleResult, error) {
 			} `json:"avg_confidence"`
 			PopStats struct {
 				DocCount int `json:"doc_count"`
-			} `json:"pop_stats"`
+			} `json:"pop_stats"` // must match statsAggName constant
 		} `json:"aggregations"`
 	}
 
