@@ -36,6 +36,8 @@ type Source struct {
 	TemplateHint *string `db:"template_hint" json:"template_hint,omitempty"`
 	// RenderMode: "static" (default) or "dynamic" (use Playwright render worker).
 	RenderMode string `db:"render_mode" json:"render_mode"`
+	// Type: source category — "news" (default), "indigenous", "government", "mining", "community".
+	Type string `db:"type" json:"type"`
 	// IndigenousRegion: optional geographic region tag for indigenous content sources (e.g. "canada", "oceania").
 	IndigenousRegion *string   `db:"indigenous_region" json:"indigenous_region,omitempty"`
 	CreatedAt        time.Time `db:"created_at"        json:"created_at"`

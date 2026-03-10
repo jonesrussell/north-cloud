@@ -158,12 +158,12 @@ func (s *RawContentService) Process(e *colly.HTMLElement) error {
 	// Get source configuration to determine source name, selectors, and metadata.
 	// Pass raw HTML for fallback template detection (WordPress/Drupal generator meta tags).
 	rawHTML := string(e.Response.Body)
-	sourceName, selectors, indigenousRegion := s.getSourceConfig(sourceURL, rawHTML)
+	sourceName, selectors, indigenousRegion, usedTemplate := s.getSourceConfig(sourceURL, rawHTML)
 
 	// Determine extraction method for quality metrics before running extraction.
 	// Priority: readability fallback > explicit selector > template > heuristic.
 	// The actual readability check happens below; we refine after applyReadabilityFallbackIfNeeded.
-	extractionMethod := s.resolveExtractionMethod(selectors)
+	extractionMethod := s.resolveExtractionMethod(selectors, usedTemplate)
 
 	// Extract raw content using generic extractor
 	rawData := ExtractRawContent(
@@ -297,19 +297,18 @@ func (s *RawContentService) recordPageType(rawContent *storagepkg.RawContent) {
 }
 
 // resolveExtractionMethod determines the extraction method label based on
-// available selectors. The readability fallback is detected after extraction
-// by comparing word counts, so this returns a pre-readability baseline.
-func (s *RawContentService) resolveExtractionMethod(sel SourceSelectors) string {
+// available selectors and whether they came from a CMS template.
+// The readability fallback is detected after extraction by comparing word
+// counts, so this returns a pre-readability baseline.
+func (s *RawContentService) resolveExtractionMethod(sel SourceSelectors, usedTemplate bool) string {
 	hasExplicitSelector := sel.Title != "" || sel.Body != "" || sel.Container != ""
 	if !hasExplicitSelector {
 		// No configured selectors — extraction will use generic heuristic fallbacks.
 		return extractionMethodHeuristic
 	}
-	// Selectors came from either source config or a CMS template. The caller
-	// already incremented templateExtractions for template-sourced selectors,
-	// but we cannot distinguish them here without threading that signal through.
-	// We record "selector" for any explicit selector; template-sourced pages
-	// are also counted via templateExtractions.
+	if usedTemplate {
+		return extractionMethodTemplate
+	}
 	return extractionMethodSelector
 }
 
@@ -374,9 +373,10 @@ func (s *RawContentService) emitIndexedEvent(
 	}
 }
 
-// getSourceConfig gets the source configuration and returns source name, selectors, and indigenous region.
+// getSourceConfig gets the source configuration and returns source name, selectors, indigenous region,
+// and whether selectors were resolved from a CMS template (rather than explicit source config).
 func (s *RawContentService) getSourceConfig(sourceURL, rawHTML string) (
-	name string, sel SourceSelectors, indigenousRegion string,
+	name string, sel SourceSelectors, indigenousRegion string, usedTemplate bool,
 ) {
 	var sourceName string
 	selectors := SourceSelectors{}
@@ -387,7 +387,7 @@ func (s *RawContentService) getSourceConfig(sourceURL, rawHTML string) (
 		s.logger.Debug("No sources manager available, using URL-based source name",
 			infralogger.String("source_name", sourceName),
 			infralogger.String("url", sourceURL))
-		return sourceName, selectors, ""
+		return sourceName, selectors, "", false
 	}
 
 	// Try to find source by URL (matching domain)
@@ -398,7 +398,7 @@ func (s *RawContentService) getSourceConfig(sourceURL, rawHTML string) (
 		s.logger.Debug("Source not found for URL, using URL-based source name",
 			infralogger.String("url", sourceURL),
 			infralogger.String("source_name", sourceName))
-		return sourceName, selectors, ""
+		return sourceName, selectors, "", false
 	}
 
 	// Use hostname from the URL being crawled, not the source's Name field
@@ -430,6 +430,7 @@ func (s *RawContentService) getSourceConfig(sourceURL, rawHTML string) (
 		tmpl, tmplName := s.resolveTemplate(sourceConfig, sourceURL, rawHTML)
 		if tmpl != nil {
 			selectors = tmpl.Selectors
+			usedTemplate = true
 			atomic.AddInt64(&s.templateExtractions, 1)
 			s.logger.Debug("Using CMS template selectors",
 				infralogger.String("url", sourceURL),
@@ -447,7 +448,7 @@ func (s *RawContentService) getSourceConfig(sourceURL, rawHTML string) (
 		region = ""
 	}
 
-	return sourceName, selectors, region
+	return sourceName, selectors, region, usedTemplate
 }
 
 // resolveTemplate returns the best-matching CMS template for a page, along with its name.
