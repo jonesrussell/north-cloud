@@ -85,12 +85,16 @@ func contains(slice []string, str string) bool {
 func NewServer(
 	db *repository.SourceRepository,
 	communityRepo *repository.CommunityRepository,
+	personRepo *repository.PersonRepository,
+	bandOfficeRepo *repository.BandOfficeRepository,
 	cfg *config.Config,
 	infraLog infralogger.Logger,
 	publisher *events.Publisher,
 ) *infragin.Server {
 	sourceHandler := handlers.NewSourceHandler(db, infraLog, publisher)
 	communityHandler := handlers.NewCommunityHandler(communityRepo, infraLog)
+	personHandler := handlers.NewPersonHandler(personRepo, infraLog)
+	bandOfficeHandler := handlers.NewBandOfficeHandler(bandOfficeRepo, infraLog)
 
 	// Build CORS config
 	corsConfig := infragin.CORSConfig{
@@ -109,7 +113,7 @@ func NewServer(
 		WithCORS(corsConfig).
 		WithRoutes(func(router *gin.Engine) {
 			// Setup service-specific routes (health routes added by builder)
-			setupServiceRoutes(router, sourceHandler, communityHandler, cfg)
+			setupServiceRoutes(router, sourceHandler, communityHandler, personHandler, bandOfficeHandler, cfg)
 		}).
 		Build()
 
@@ -122,6 +126,8 @@ func setupServiceRoutes(
 	router *gin.Engine,
 	sourceHandler *handlers.SourceHandler,
 	communityHandler *handlers.CommunityHandler,
+	personHandler *handlers.PersonHandler,
+	bandOfficeHandler *handlers.BandOfficeHandler,
 	cfg *config.Config,
 ) {
 	// Public API endpoints (no JWT required) - for internal service-to-service communication
@@ -162,4 +168,20 @@ func setupServiceRoutes(
 	communities.POST("", communityHandler.Create)
 	communities.PUT("/:id", communityHandler.Update)
 	communities.DELETE("/:id", communityHandler.Delete)
+
+	// People — public read endpoints (nested under communities)
+	publicCommunities.GET("/:id/people", personHandler.ListByCommunity)
+	publicCommunities.GET("/:id/band-office", bandOfficeHandler.GetByCommunity)
+
+	// People — public by-ID lookup
+	publicAPI.GET("/people/:id", personHandler.GetByID)
+
+	// People — protected mutation endpoints
+	communities.POST("/:id/people", personHandler.Create)
+	communities.POST("/:id/band-office", bandOfficeHandler.Upsert)
+
+	// People/band-office direct mutations (protected)
+	v1.PUT("/people/:id", personHandler.Update)
+	v1.DELETE("/people/:id", personHandler.Delete)
+	v1.PUT("/band-offices/:id", bandOfficeHandler.Update)
 }

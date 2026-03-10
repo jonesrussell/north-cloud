@@ -19,7 +19,7 @@ func SetupHTTPServer(
 ) *infragin.Server {
 	sourceRepo := repository.NewSourceRepository(db.DB(), log)
 	communityRepo := repository.NewCommunityRepository(db.DB(), log)
-	_ = repository.NewPersonRepository(db.DB(), log)
-	_ = repository.NewBandOfficeRepository(db.DB(), log)
-	return api.NewServer(sourceRepo, communityRepo, cfg, log, publisher)
+	personRepo := repository.NewPersonRepository(db.DB(), log)
+	bandOfficeRepo := repository.NewBandOfficeRepository(db.DB(), log)
+	return api.NewServer(sourceRepo, communityRepo, personRepo, bandOfficeRepo, cfg, log, publisher)
 }
