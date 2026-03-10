@@ -184,6 +184,13 @@ func (c *Classifier) Classify(ctx context.Context, raw *domain.RawContent) (*dom
 	jobResult := c.runJobExtraction(ctx, raw, contentTypeResult.Type, topicResult.Topics)
 	rfpResult := c.runRFPExtraction(ctx, raw, contentTypeResult.Type, topicResult.Topics)
 
+	// Inject "indigenous" topic when indigenous classifier detects relevance.
+	// The topic taxonomy (DB rules) has no indigenous rule — the ML+rules hybrid
+	// classifier is the authoritative signal, so we surface it as a search-facing topic here.
+	if indigenousResult != nil && indigenousResult.Relevance != indigenousRelevanceNot {
+		topicResult.Topics = append(topicResult.Topics, "indigenous")
+	}
+
 	// Update source reputation if enabled
 	isSpam := qualityResult.TotalScore < spamThresholdScore // Spam threshold
 	if err = c.sourceReputation.UpdateAfterClassification(ctx, raw.SourceName, qualityResult.TotalScore, isSpam); err != nil {
