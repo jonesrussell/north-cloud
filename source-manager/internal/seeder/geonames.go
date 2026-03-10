@@ -57,10 +57,12 @@ var admin1ToProvince = map[string]string{
 
 // GeoNamesResult holds the result of a GeoNames seed operation.
 type GeoNamesResult struct {
-	Total   int
-	Created int
-	Skipped int
-	Errors  int
+	Total       int
+	Created     int
+	Updated     int
+	WouldCreate int
+	Skipped     int
+	Errors      int
 }
 
 // GeoNamesSeeder imports GeoNames populated places into the communities table.
@@ -151,7 +153,7 @@ func (s *GeoNamesSeeder) processGeoNamesRecord(
 			infralogger.String("province", province),
 			infralogger.String("type", community.CommunityType),
 		)
-		result.Created++
+		result.WouldCreate++
 		return
 	}
 
@@ -171,8 +173,6 @@ func (s *GeoNamesSeeder) processGeoNamesRecord(
 func (s *GeoNamesSeeder) buildGeoNamesCommunity(fields []string, province string) models.Community {
 	geoID := fields[gnColID]
 	name := fields[gnColName]
-	lat, _ := strconv.ParseFloat(fields[gnColLatitude], 64)
-	lng, _ := strconv.ParseFloat(fields[gnColLongitude], 64)
 	pop, _ := strconv.Atoi(fields[gnColPopulation])
 
 	communityType := InferCommunityType(pop)
@@ -184,11 +184,13 @@ func (s *GeoNamesSeeder) buildGeoNamesCommunity(fields []string, province string
 		CommunityType: communityType,
 		Province:      &province,
 		StatCanCSD:    &geoID,
-		Latitude:      &lat,
-		Longitude:     &lng,
 		DataSource:    dataSourceStatscan,
 		Enabled:       true,
 	}
+
+	lat, lng := parseGeoNamesCoords(fields)
+	c.Latitude = lat
+	c.Longitude = lng
 
 	if pop > 0 {
 		c.Population = &pop
@@ -196,6 +198,16 @@ func (s *GeoNamesSeeder) buildGeoNamesCommunity(fields []string, province string
 	}
 
 	return c
+}
+
+// parseGeoNamesCoords extracts lat/lng from GeoNames fields. Returns nil for invalid values.
+func parseGeoNamesCoords(fields []string) (latPtr, lngPtr *float64) {
+	latVal, latErr := strconv.ParseFloat(fields[gnColLatitude], 64)
+	lngVal, lngErr := strconv.ParseFloat(fields[gnColLongitude], 64)
+	if latErr != nil || lngErr != nil {
+		return nil, nil
+	}
+	return &latVal, &lngVal
 }
 
 // InferCommunityType returns a community type based on population.

@@ -82,7 +82,11 @@ func run(filePath, province string, dryRun bool) error {
 		fmt.Printf("  Province:    %s\n", province)
 	}
 	fmt.Printf("  Processed:   %d\n", result.Total)
-	fmt.Printf("  Created:     %d\n", result.Created)
+	if dryRun {
+		fmt.Printf("  Would create: %d\n", result.WouldCreate)
+	} else {
+		fmt.Printf("  Created:     %d\n", result.Created)
+	}
 	fmt.Printf("  Skipped:     %d\n", result.Skipped)
 	fmt.Printf("  Errors:      %d\n", result.Errors)
 

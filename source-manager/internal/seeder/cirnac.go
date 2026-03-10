@@ -27,11 +27,12 @@ const (
 
 // CIRNACResult holds the result of a CIRNAC seed operation.
 type CIRNACResult struct {
-	Total   int
-	Created int
-	Updated int
-	Skipped int
-	Errors  int
+	Total       int
+	Created     int
+	Updated     int
+	WouldCreate int
+	Skipped     int
+	Errors      int
 }
 
 // CIRNACSeeder imports CIRNAC open data CSV into the communities table.
@@ -122,7 +123,7 @@ func (s *CIRNACSeeder) processRecord(
 			infralogger.String("name", bandName),
 			infralogger.String("province", province),
 		)
-		result.Created++ // count as "would create" for dry-run summary
+		result.WouldCreate++
 		return
 	}
 
