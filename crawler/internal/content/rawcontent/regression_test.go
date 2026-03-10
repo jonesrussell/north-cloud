@@ -1,7 +1,4 @@
-//go:build integration
-
 // Package rawcontent_test contains fixture-based regression tests for extraction quality.
-// Run with: go test -tags=integration ./internal/content/rawcontent/...
 package rawcontent_test
 
 import (
@@ -16,6 +13,8 @@ import (
 type ExtractionFixture struct {
 	// Name is a human-readable identifier for the fixture.
 	Name string
+	// SourceURL is the URL to pass for template resolution (domain-based detection).
+	SourceURL string
 	// Template is the expected CMS template name detected for this HTML.
 	// Empty string means no template is expected to match.
 	ExpectedTemplate string
@@ -31,12 +30,13 @@ type ExtractionFixture struct {
 }
 
 // fixtureCount is the number of fixtures defined in this test suite.
-const fixtureCount = 8
+const fixtureCount = 10
 
 // extractionFixtures covers each CMS template in templateRegistry plus a generic case.
 var extractionFixtures = [fixtureCount]ExtractionFixture{
 	{
 		Name:             "wordpress",
+		SourceURL:        "https://example.com/article",
 		ExpectedTemplate: "wordpress",
 		ExpectedPageType: rawcontent.PageTypeArticle,
 		MinWordCount:     200,
@@ -45,6 +45,7 @@ var extractionFixtures = [fixtureCount]ExtractionFixture{
 	},
 	{
 		Name:             "drupal",
+		SourceURL:        "https://example.com/article",
 		ExpectedTemplate: "drupal",
 		ExpectedPageType: rawcontent.PageTypeArticle,
 		MinWordCount:     200,
@@ -53,6 +54,7 @@ var extractionFixtures = [fixtureCount]ExtractionFixture{
 	},
 	{
 		Name:             "html5-article (generic_og_article)",
+		SourceURL:        "https://example.com/article",
 		ExpectedTemplate: "generic_og_article",
 		ExpectedPageType: rawcontent.PageTypeArticle,
 		MinWordCount:     150,
@@ -61,6 +63,7 @@ var extractionFixtures = [fixtureCount]ExtractionFixture{
 	},
 	{
 		Name:             "postmedia",
+		SourceURL:        "https://calgaryherald.com/news/article",
 		ExpectedTemplate: "postmedia",
 		ExpectedPageType: rawcontent.PageTypeArticle,
 		MinWordCount:     200,
@@ -69,6 +72,7 @@ var extractionFixtures = [fixtureCount]ExtractionFixture{
 	},
 	{
 		Name:             "torstar",
+		SourceURL:        "https://www.thestar.com/news/article",
 		ExpectedTemplate: "torstar",
 		ExpectedPageType: rawcontent.PageTypeArticle,
 		MinWordCount:     200,
@@ -77,6 +81,7 @@ var extractionFixtures = [fixtureCount]ExtractionFixture{
 	},
 	{
 		Name:             "village-media",
+		SourceURL:        "https://www.villagemedia.ca/news/article",
 		ExpectedTemplate: "village_media",
 		ExpectedPageType: rawcontent.PageTypeArticle,
 		MinWordCount:     200,
@@ -85,6 +90,7 @@ var extractionFixtures = [fixtureCount]ExtractionFixture{
 	},
 	{
 		Name:             "black-press",
+		SourceURL:        "https://www.blackpress.ca/news/article",
 		ExpectedTemplate: "black_press",
 		ExpectedPageType: rawcontent.PageTypeArticle,
 		MinWordCount:     200,
@@ -93,11 +99,30 @@ var extractionFixtures = [fixtureCount]ExtractionFixture{
 	},
 	{
 		Name:             "listing-page (no template)",
+		SourceURL:        "https://example.com/news",
 		ExpectedTemplate: "",
 		ExpectedPageType: rawcontent.PageTypeListing,
 		MinWordCount:     0,
 		TitleRequired:    false,
 		HTML:             listingHTML,
+	},
+	{
+		Name:             "stub-page (short content)",
+		SourceURL:        "https://example.com/event",
+		ExpectedTemplate: "",
+		ExpectedPageType: rawcontent.PageTypeStub,
+		MinWordCount:     0,
+		TitleRequired:    true,
+		HTML:             stubHTML,
+	},
+	{
+		Name:             "other-page (no article signals)",
+		SourceURL:        "https://example.com/page",
+		ExpectedTemplate: "",
+		ExpectedPageType: rawcontent.PageTypeOther,
+		MinWordCount:     0,
+		TitleRequired:    false,
+		HTML:             otherHTML,
 	},
 }
 
@@ -105,7 +130,6 @@ func TestExtractionFixtures(t *testing.T) {
 	t.Helper()
 
 	for _, fix := range extractionFixtures {
-		fix := fix
 		t.Run(fix.Name, func(t *testing.T) {
 			t.Helper()
 			runFixture(t, fix)
@@ -122,23 +146,24 @@ func runFixture(t *testing.T, fix ExtractionFixture) {
 }
 
 // assertTemplateDetection verifies that template detection returns the expected template name.
+// Uses ResolveTemplateForTest which mirrors the real pipeline: domain lookup + HTML detection.
 func assertTemplateDetection(t *testing.T, fix ExtractionFixture) {
 	t.Helper()
 
-	tmpl, ok := rawcontent.DetectTemplateByHTML(fix.HTML)
+	tmpl, name := rawcontent.ResolveTemplateForTest(nil, fix.SourceURL, fix.HTML)
 	if fix.ExpectedTemplate == "" {
-		if ok {
-			t.Errorf("fixture %q: expected no template, got %q", fix.Name, tmpl.Name)
+		if tmpl != nil {
+			t.Errorf("fixture %q: expected no template, got %q", fix.Name, name)
 		}
 		return
 	}
 
-	if !ok {
+	if tmpl == nil {
 		t.Errorf("fixture %q: expected template %q, got no match", fix.Name, fix.ExpectedTemplate)
 		return
 	}
-	if tmpl.Name != fix.ExpectedTemplate {
-		t.Errorf("fixture %q: expected template %q, got %q", fix.Name, fix.ExpectedTemplate, tmpl.Name)
+	if name != fix.ExpectedTemplate {
+		t.Errorf("fixture %q: expected template %q, got %q", fix.Name, fix.ExpectedTemplate, name)
 	}
 }
 
@@ -149,9 +174,9 @@ func assertExtraction(t *testing.T, fix ExtractionFixture) {
 	e := newHTMLElement(t, fix.HTML)
 
 	// Resolve selectors from detected template (if any).
-	selectors := resolveSelectors(fix.HTML)
+	selectors := resolveSelectorsForURL(fix.SourceURL, fix.HTML)
 
-	data := rawcontent.ExtractRawContent(e, "https://example.com/article", selectors.Title, selectors.Body, selectors.Container, selectors.Exclude)
+	data := rawcontent.ExtractRawContent(e, fix.SourceURL, selectors.Title, selectors.Body, selectors.Container, selectors.Exclude)
 
 	if fix.TitleRequired && strings.TrimSpace(data.Title) == "" {
 		t.Errorf("fixture %q: expected non-empty title, got empty", fix.Name)
@@ -195,11 +220,11 @@ func assertPageType(t *testing.T, fix ExtractionFixture, data *rawcontent.RawCon
 	}
 }
 
-// resolveSelectors returns SourceSelectors from the first matching template for the HTML,
+// resolveSelectorsForURL returns SourceSelectors from the resolved template for the given URL and HTML,
 // or zero-value selectors if no template matches.
-func resolveSelectors(html string) rawcontent.SourceSelectors {
-	tmpl, ok := rawcontent.DetectTemplateByHTML(html)
-	if !ok {
+func resolveSelectorsForURL(sourceURL, html string) rawcontent.SourceSelectors {
+	tmpl, _ := rawcontent.ResolveTemplateForTest(nil, sourceURL, html)
+	if tmpl == nil {
 		return rawcontent.SourceSelectors{}
 	}
 	return tmpl.Selectors
@@ -208,22 +233,6 @@ func resolveSelectors(html string) rawcontent.SourceSelectors {
 // countWords returns the number of whitespace-separated words in s.
 func countWords(s string) int {
 	return len(strings.Fields(s))
-}
-
-// articleBody generates a body of approximately n words for use in HTML fixtures.
-func articleBody(n int) string {
-	const sentence = "The quick brown fox jumps over the lazy dog. "
-	words := strings.Fields(sentence)
-	wordLen := len(words)
-	var sb strings.Builder
-	for i := 0; i < n; i++ {
-		sb.WriteString(words[i%wordLen])
-		sb.WriteByte(' ')
-		if (i+1)%10 == 0 {
-			sb.WriteString("</p><p>")
-		}
-	}
-	return sb.String()
 }
 
 // wordpressHTML is an HTML snapshot representative of a WordPress article page.
@@ -369,3 +378,26 @@ var listingHTML = func() string {
 </html>`)
 	return sb.String()
 }()
+
+// stubHTML is an HTML snapshot of a page with a title but very little body content.
+var stubHTML = `<!DOCTYPE html>
+<html>
+<head><title>Community Event Notice</title></head>
+<body>
+<article>
+<h1>Community Event Notice</h1>
+<p>Details coming soon.</p>
+</article>
+</body>
+</html>`
+
+// otherHTML is an HTML snapshot of a non-article, non-listing page with minimal signals.
+var otherHTML = `<!DOCTYPE html>
+<html>
+<head><title></title></head>
+<body>
+<div>
+<p>Welcome</p>
+</div>
+</body>
+</html>`
