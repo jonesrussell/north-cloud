@@ -84,11 +84,18 @@ func contains(slice []string, str string) bool {
 // NewServer creates a new HTTP server using the infrastructure gin package.
 func NewServer(
 	db *repository.SourceRepository,
+	communityRepo *repository.CommunityRepository,
+	personRepo *repository.PersonRepository,
+	bandOfficeRepo *repository.BandOfficeRepository,
 	cfg *config.Config,
 	infraLog infralogger.Logger,
 	publisher *events.Publisher,
 ) *infragin.Server {
 	sourceHandler := handlers.NewSourceHandler(db, infraLog, publisher)
+	communityHandler := handlers.NewCommunityHandler(communityRepo, infraLog)
+	personHandler := handlers.NewPersonHandler(personRepo, infraLog)
+	bandOfficeHandler := handlers.NewBandOfficeHandler(bandOfficeRepo, infraLog)
+	linkerHandler := handlers.NewLinkerHandler(communityRepo, db, infraLog)
 
 	// Build CORS config
 	corsConfig := infragin.CORSConfig{
@@ -107,7 +114,7 @@ func NewServer(
 		WithCORS(corsConfig).
 		WithRoutes(func(router *gin.Engine) {
 			// Setup service-specific routes (health routes added by builder)
-			setupServiceRoutes(router, sourceHandler, cfg)
+			setupServiceRoutes(router, sourceHandler, communityHandler, personHandler, bandOfficeHandler, linkerHandler, cfg)
 		}).
 		Build()
 
@@ -116,7 +123,15 @@ func NewServer(
 
 // setupServiceRoutes configures service-specific API routes (not health routes).
 // Health routes are handled by the infrastructure gin package.
-func setupServiceRoutes(router *gin.Engine, sourceHandler *handlers.SourceHandler, cfg *config.Config) {
+func setupServiceRoutes(
+	router *gin.Engine,
+	sourceHandler *handlers.SourceHandler,
+	communityHandler *handlers.CommunityHandler,
+	personHandler *handlers.PersonHandler,
+	bandOfficeHandler *handlers.BandOfficeHandler,
+	linkerHandler *handlers.LinkerHandler,
+	cfg *config.Config,
+) {
 	// Public API endpoints (no JWT required) - for internal service-to-service communication
 	publicAPI := router.Group("/api/v1")
 	// GET /api/v1/sources - allow crawler to list sources without auth
@@ -125,6 +140,14 @@ func setupServiceRoutes(router *gin.Engine, sourceHandler *handlers.SourceHandle
 	publicAPI.GET("/sources/indigenous", sourceHandler.ListIndigenous)
 	// GET /api/v1/cities - allow publisher to get cities without auth
 	publicAPI.GET("/cities", sourceHandler.GetCities)
+
+	// Communities — public read endpoints (service-to-service, Minoo sync)
+	publicCommunities := publicAPI.Group("/communities")
+	publicCommunities.GET("", communityHandler.List)
+	publicCommunities.GET("/regions", communityHandler.Regions)
+	publicCommunities.GET("/nearby", communityHandler.Nearby)
+	publicCommunities.GET("/by-slug/:slug", communityHandler.GetBySlug)
+	publicCommunities.GET("/:id", communityHandler.GetByID)
 
 	// Protected API endpoints (JWT required) - for dashboard and authenticated users
 	v1 := infragin.ProtectedGroup(router, "/api/v1", cfg.Auth.JWTSecret)
@@ -142,4 +165,27 @@ func setupServiceRoutes(router *gin.Engine, sourceHandler *handlers.SourceHandle
 	sources.DELETE("/:id", sourceHandler.Delete)
 	sources.PATCH("/:id/feed-disable", sourceHandler.DisableFeed)
 	sources.PATCH("/:id/feed-enable", sourceHandler.EnableFeed)
+
+	// Communities endpoints (protected - requires JWT for mutations)
+	communities := v1.Group("/communities")
+	communities.POST("", communityHandler.Create)
+	communities.POST("/link-sources", linkerHandler.LinkSources)
+	communities.PUT("/:id", communityHandler.Update)
+	communities.DELETE("/:id", communityHandler.Delete)
+
+	// People — public read endpoints (nested under communities)
+	publicCommunities.GET("/:id/people", personHandler.ListByCommunity)
+	publicCommunities.GET("/:id/band-office", bandOfficeHandler.GetByCommunity)
+
+	// People — public by-ID lookup
+	publicAPI.GET("/people/:id", personHandler.GetByID)
+
+	// People — protected mutation endpoints
+	communities.POST("/:id/people", personHandler.Create)
+	communities.POST("/:id/band-office", bandOfficeHandler.Upsert)
+
+	// People/band-office direct mutations (protected)
+	v1.PUT("/people/:id", personHandler.Update)
+	v1.DELETE("/people/:id", personHandler.Delete)
+	v1.PUT("/band-offices/:id", bandOfficeHandler.Update)
 }

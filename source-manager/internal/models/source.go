@@ -8,6 +8,9 @@ import (
 	"time"
 )
 
+// DefaultSourceType is the default value for Source.Type when not explicitly set.
+const DefaultSourceType = "news"
+
 // Source represents a content source configuration.
 // Identity is not equal to hostname: a single host may have many logical sources (e.g. Medium, Substack).
 // IdentityKey is used by the Source Identity Resolver to match discovered URLs to existing sources.

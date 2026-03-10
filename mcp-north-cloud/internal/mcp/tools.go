@@ -10,6 +10,8 @@ func getAllTools() []Tool {
 	tools = append(tools, getWorkflowTools()...)
 	tools = append(tools, getCrawlerTools()...)
 	tools = append(tools, getSourceManagerTools()...)
+	tools = append(tools, getCommunityTools()...)
+	tools = append(tools, getPeopleTools()...)
 	tools = append(tools, getPublisherTools()...)
 	tools = append(tools, getSearchTools()...)
 	tools = append(tools, getClassifierTools()...)
@@ -347,6 +349,336 @@ func getSourceManagerTools() []Tool {
 					},
 				},
 				"required": []string{"url", "selectors"},
+			},
+		},
+	}
+}
+
+//nolint:funlen // Tool definitions are data structures, not complex logic
+func getCommunityTools() []Tool {
+	return []Tool{
+		{
+			Name:  "list_communities",
+			Scope: ScopeShared,
+			Description: "List First Nations communities with pagination. " +
+				"Use when: You need to browse communities, find a community_id, or check community data. " +
+				"Returns: paginated list with id, name, slug, province, nation (default 20, max 100).",
+			InputSchema: map[string]any{
+				"type": "object",
+				"properties": map[string]any{
+					"limit": map[string]any{
+						"type":        "integer",
+						"description": "Maximum number of communities to return (default: 20, max: 100)",
+					},
+					"offset": map[string]any{
+						"type":        "integer",
+						"description": "Number of communities to skip for pagination (default: 0)",
+					},
+				},
+			},
+		},
+		{
+			Name:  "get_community",
+			Scope: ScopeShared,
+			Description: "Get a single community by ID or slug. " +
+				"Use when: You need full details for a specific community. " +
+				"Provide either community_id or slug (not both).",
+			InputSchema: map[string]any{
+				"type": "object",
+				"properties": map[string]any{
+					"community_id": map[string]any{
+						"type":        "string",
+						"description": "UUID of the community",
+					},
+					"slug": map[string]any{
+						"type":        "string",
+						"description": "URL-friendly slug of the community (alternative to community_id)",
+					},
+				},
+			},
+		},
+		{
+			Name:  "find_nearby_communities",
+			Scope: ScopeShared,
+			Description: "Find communities near a geographic point. " +
+				"Use when: You need to discover communities within a radius of a lat/lng coordinate. " +
+				"Requires lat and lng. Optional: radius_km (default 50), limit (default 10).",
+			InputSchema: map[string]any{
+				"type": "object",
+				"properties": map[string]any{
+					"lat": map[string]any{
+						"type":        "number",
+						"description": "Latitude of the center point",
+					},
+					"lng": map[string]any{
+						"type":        "number",
+						"description": "Longitude of the center point",
+					},
+					"radius_km": map[string]any{
+						"type":        "number",
+						"description": "Search radius in kilometers (default: 50)",
+					},
+					"limit": map[string]any{
+						"type":        "integer",
+						"description": "Maximum number of results (default: 10)",
+					},
+				},
+				"required": []string{"lat", "lng"},
+			},
+		},
+		{
+			Name:  "add_community",
+			Scope: ScopeProd,
+			Description: "Create a new First Nations community record. " +
+				"Use when: Adding a community to the database. Requires name and slug. " +
+				"Optional: province, region, nation, tribal_council, latitude, longitude, population, website.",
+			InputSchema: map[string]any{
+				"type": "object",
+				"properties": map[string]any{
+					"name": map[string]any{
+						"type":        "string",
+						"description": "Community name",
+					},
+					"slug": map[string]any{
+						"type":        "string",
+						"description": "URL-friendly slug",
+					},
+					"province": map[string]any{
+						"type":        "string",
+						"description": "Province or territory",
+					},
+					"region": map[string]any{
+						"type":        "string",
+						"description": "Geographic region",
+					},
+					"nation": map[string]any{
+						"type":        "string",
+						"description": "Nation affiliation",
+					},
+					"tribal_council": map[string]any{
+						"type":        "string",
+						"description": "Tribal council affiliation",
+					},
+					"latitude": map[string]any{
+						"type":        "number",
+						"description": "Latitude coordinate",
+					},
+					"longitude": map[string]any{
+						"type":        "number",
+						"description": "Longitude coordinate",
+					},
+					"population": map[string]any{
+						"type":        "integer",
+						"description": "Total population",
+					},
+					"website": map[string]any{
+						"type":        "string",
+						"description": "Community website URL",
+					},
+				},
+				"required": []string{"name", "slug"},
+			},
+		},
+		{
+			Name:  "update_community",
+			Scope: ScopeProd,
+			Description: "Update an existing community record. " +
+				"Use when: Modifying community data. Requires community_id. " +
+				"Only provided fields are updated.",
+			InputSchema: map[string]any{
+				"type": "object",
+				"properties": map[string]any{
+					"community_id": map[string]any{
+						"type":        "string",
+						"description": "UUID of the community to update",
+					},
+					"name": map[string]any{
+						"type":        "string",
+						"description": "New community name",
+					},
+					"slug": map[string]any{
+						"type":        "string",
+						"description": "New URL-friendly slug",
+					},
+					"province": map[string]any{
+						"type":        "string",
+						"description": "Province or territory",
+					},
+					"nation": map[string]any{
+						"type":        "string",
+						"description": "Nation affiliation",
+					},
+					"website": map[string]any{
+						"type":        "string",
+						"description": "Community website URL",
+					},
+				},
+				"required": []string{"community_id"},
+			},
+		},
+		{
+			Name:  "link_sources",
+			Scope: ScopeProd,
+			Description: "Match news sources to communities by name similarity. " +
+				"Use when: You want to auto-link indigenous news sources to their communities. " +
+				"Defaults to dry_run=true (preview only). Set dry_run=false to persist links.",
+			InputSchema: map[string]any{
+				"type": "object",
+				"properties": map[string]any{
+					"dry_run": map[string]any{
+						"type":        "boolean",
+						"description": "Preview matches without saving (default: true)",
+					},
+				},
+			},
+		},
+	}
+}
+
+//nolint:funlen // Tool definitions are data structures, not complex logic
+func getPeopleTools() []Tool {
+	return []Tool{
+		{
+			Name:  "list_people",
+			Scope: ScopeShared,
+			Description: "List people (leaders, officials) for a community with pagination. " +
+				"Use when: You need to see who holds leadership roles in a community. " +
+				"Requires community_id. Optional: current_only (default true), role filter.",
+			InputSchema: map[string]any{
+				"type": "object",
+				"properties": map[string]any{
+					"community_id": map[string]any{
+						"type":        "string",
+						"description": "UUID of the community",
+					},
+					"current_only": map[string]any{
+						"type":        "boolean",
+						"description": "Only return current officeholders (default: true)",
+					},
+					"limit": map[string]any{
+						"type":        "integer",
+						"description": "Maximum results (default: 20, max: 100)",
+					},
+					"offset": map[string]any{
+						"type":        "integer",
+						"description": "Pagination offset (default: 0)",
+					},
+				},
+				"required": []string{"community_id"},
+			},
+		},
+		{
+			Name:  "get_person",
+			Scope: ScopeShared,
+			Description: "Get a person by ID with full details including role, contact, and term info. " +
+				"Use when: You need details about a specific community leader or official.",
+			InputSchema: map[string]any{
+				"type": "object",
+				"properties": map[string]any{
+					"person_id": map[string]any{
+						"type":        "string",
+						"description": "UUID of the person",
+					},
+				},
+				"required": []string{"person_id"},
+			},
+		},
+		{
+			Name:  "add_person",
+			Scope: ScopeProd,
+			Description: "Add a person (leader/official) to a community. " +
+				"Use when: Recording a new community leader or official. " +
+				"Requires community_id, name, role.",
+			InputSchema: map[string]any{
+				"type": "object",
+				"properties": map[string]any{
+					"community_id": map[string]any{
+						"type":        "string",
+						"description": "UUID of the community",
+					},
+					"name": map[string]any{
+						"type":        "string",
+						"description": "Person's full name",
+					},
+					"role": map[string]any{
+						"type":        "string",
+						"description": "Role (e.g., 'chief', 'councillor')",
+					},
+					"role_title": map[string]any{
+						"type":        "string",
+						"description": "Formal title (e.g., 'Chief', 'Band Councillor')",
+					},
+					"email": map[string]any{
+						"type":        "string",
+						"description": "Contact email",
+					},
+					"phone": map[string]any{
+						"type":        "string",
+						"description": "Contact phone number",
+					},
+				},
+				"required": []string{"community_id", "name", "role"},
+			},
+		},
+		{
+			Name:  "get_band_office",
+			Scope: ScopeShared,
+			Description: "Get the band office details for a community including address, contact info, and hours. " +
+				"Use when: You need the physical office location or contact details for a community.",
+			InputSchema: map[string]any{
+				"type": "object",
+				"properties": map[string]any{
+					"community_id": map[string]any{
+						"type":        "string",
+						"description": "UUID of the community",
+					},
+				},
+				"required": []string{"community_id"},
+			},
+		},
+		{
+			Name:  "upsert_band_office",
+			Scope: ScopeProd,
+			Description: "Create or update the band office for a community. " +
+				"Use when: Adding or updating band office address, contact, or hours. " +
+				"Requires community_id.",
+			InputSchema: map[string]any{
+				"type": "object",
+				"properties": map[string]any{
+					"community_id": map[string]any{
+						"type":        "string",
+						"description": "UUID of the community",
+					},
+					"address_line1": map[string]any{
+						"type":        "string",
+						"description": "Street address",
+					},
+					"city": map[string]any{
+						"type":        "string",
+						"description": "City",
+					},
+					"province": map[string]any{
+						"type":        "string",
+						"description": "Province or territory",
+					},
+					"postal_code": map[string]any{
+						"type":        "string",
+						"description": "Postal code",
+					},
+					"phone": map[string]any{
+						"type":        "string",
+						"description": "Phone number",
+					},
+					"email": map[string]any{
+						"type":        "string",
+						"description": "Email address",
+					},
+					"office_hours": map[string]any{
+						"type":        "string",
+						"description": "Office hours (e.g., 'Mon-Fri 9am-5pm')",
+					},
+				},
+				"required": []string{"community_id"},
 			},
 		},
 	}

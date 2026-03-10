@@ -482,10 +482,16 @@ func findDensestElement(e *colly.HTMLElement) *goquery.Selection {
 }
 
 // isDescendantOf returns true when child is a DOM descendant of ancestor.
+// Walks up from child via Parents(), which is O(depth) instead of O(subtree).
 func isDescendantOf(child, ancestor *goquery.Selection) bool {
-	return ancestor.Find("*").FilterFunction(func(_ int, s *goquery.Selection) bool {
-		return s.Get(0) == child.Get(0)
-	}).Length() > 0
+	ancestorNode := ancestor.Get(0)
+	found := false
+	child.Parents().Each(func(_ int, parent *goquery.Selection) {
+		if parent.Get(0) == ancestorNode {
+			found = true
+		}
+	})
+	return found
 }
 
 // extractByTextDensity returns the plain text of the densest content element,

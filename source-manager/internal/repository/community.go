@@ -268,7 +268,9 @@ func (r *CommunityRepository) upsertCommunity(
 	if c.ID == "" {
 		c.ID = uuid.New().String()
 	}
-	c.CreatedAt = time.Now()
+	if c.CreatedAt.IsZero() {
+		c.CreatedAt = time.Now()
+	}
 	c.UpdatedAt = time.Now()
 
 	//nolint:gosec // G201: conflictColumn is always a hardcoded constant from caller
@@ -325,6 +327,94 @@ func (r *CommunityRepository) UpsertByStatCanCSD(ctx context.Context, c *models.
 		return errors.New("upsert by statcan_csd: statcan_csd is required")
 	}
 	return r.upsertCommunity(ctx, c, "statcan_csd")
+}
+
+// SetSourceLink sets the source_id and website on a community.
+func (r *CommunityRepository) SetSourceLink(ctx context.Context, communityID, sourceID, website string) error {
+	result, err := r.db.ExecContext(ctx,
+		`UPDATE communities SET source_id = $2, website = $3 WHERE id = $1`,
+		communityID, sourceID, website,
+	)
+	if err != nil {
+		return fmt.Errorf("set source link: %w", err)
+	}
+
+	rows, rowsErr := result.RowsAffected()
+	if rowsErr != nil {
+		return fmt.Errorf("set source link rows affected: %w", rowsErr)
+	}
+	if rows == 0 {
+		return errors.New("set source link: community not found")
+	}
+
+	return nil
+}
+
+// ListUnlinked returns communities that have no source_id set.
+func (r *CommunityRepository) ListUnlinked(ctx context.Context) ([]models.Community, error) {
+	query := `SELECT id, name, slug, community_type, province, region,
+		inac_id, statcan_csd, latitude, longitude,
+		nation, treaty, language_group, reserve_name, population, population_year,
+		website, feed_url, data_source, source_id, enabled, created_at, updated_at
+		FROM communities WHERE source_id IS NULL ORDER BY name ASC`
+
+	rows, err := r.db.QueryContext(ctx, query)
+	if err != nil {
+		return nil, fmt.Errorf("list unlinked communities: %w", err)
+	}
+	defer rows.Close()
+
+	var communities []models.Community
+	for rows.Next() {
+		c, scanErr := scanCommunity(rows)
+		if scanErr != nil {
+			return nil, scanErr
+		}
+		communities = append(communities, *c)
+	}
+
+	if closeErr := rows.Err(); closeErr != nil {
+		return nil, fmt.Errorf("list unlinked rows: %w", closeErr)
+	}
+
+	return communities, nil
+}
+
+// RegionSummary holds a province/region pair with its community count.
+type RegionSummary struct {
+	Province string `json:"province"`
+	Region   string `json:"region"`
+	Count    int    `json:"count"`
+}
+
+// ListRegions returns distinct province/region pairs with community counts.
+func (r *CommunityRepository) ListRegions(ctx context.Context) ([]RegionSummary, error) {
+	query := `SELECT COALESCE(province, ''), COALESCE(region, ''), COUNT(*) AS count
+		FROM communities
+		WHERE enabled = true
+		GROUP BY province, region
+		ORDER BY province ASC, region ASC`
+
+	rows, err := r.db.QueryContext(ctx, query)
+	if err != nil {
+		return nil, fmt.Errorf("list regions: %w", err)
+	}
+	defer rows.Close()
+
+	var regions []RegionSummary
+	for rows.Next() {
+		var rs RegionSummary
+		if scanErr := rows.Scan(&rs.Province, &rs.Region, &rs.Count); scanErr != nil {
+			return nil, fmt.Errorf("scan region: %w", scanErr)
+		}
+		regions = append(regions, rs)
+	}
+
+	if closeErr := rows.Err(); closeErr != nil {
+		return nil, fmt.Errorf("list regions rows: %w", closeErr)
+	}
+
+	return regions, nil
 }
 
 // FindNearby returns communities within radiusKm of the given coordinates,

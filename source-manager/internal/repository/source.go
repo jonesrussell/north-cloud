@@ -33,6 +33,10 @@ func (r *SourceRepository) Create(ctx context.Context, source *models.Source) er
 	source.CreatedAt = time.Now()
 	source.UpdatedAt = time.Now()
 
+	if source.Type == "" {
+		source.Type = models.DefaultSourceType
+	}
+
 	selectorsJSON, err := json.Marshal(source.Selectors)
 	if err != nil {
 		return fmt.Errorf("marshal selectors: %w", err)
@@ -136,7 +140,7 @@ func (r *SourceRepository) GetByID(ctx context.Context, id string) (*models.Sour
 		&source.UpdatedAt,
 	)
 
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		return nil, fmt.Errorf("source not found: %w", err)
 	}
 	if err != nil {
@@ -543,6 +547,10 @@ func (r *SourceRepository) UpsertSource(ctx context.Context, tx *sql.Tx, source 
 	}
 	source.CreatedAt = now
 	source.UpdatedAt = now
+
+	if source.Type == "" {
+		source.Type = models.DefaultSourceType
+	}
 
 	selectorsJSON, err := json.Marshal(source.Selectors)
 	if err != nil {
