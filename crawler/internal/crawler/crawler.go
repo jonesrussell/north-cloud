@@ -236,12 +236,20 @@ func (c *Crawler) GetJobLogger() logs.JobLogger {
 
 // GetMetrics returns the crawler metrics.
 func (c *Crawler) GetMetrics() *metrics.Metrics {
-	return &metrics.Metrics{
+	m := &metrics.Metrics{
 		ProcessedCount:     c.state.GetProcessedCount(),
 		ErrorCount:         c.state.GetErrorCount(),
 		LastProcessedTime:  c.state.GetLastProcessedTime(),
 		ProcessingDuration: c.state.GetProcessingDuration(),
 	}
+	if proc, ok := c.rawContentProcessor.(*rawcontent.RawContentProcessor); ok {
+		q := proc.GetExtractionQualityMetrics()
+		m.PagesByType = q.PagesByType
+		m.ExtractionByMethod = q.ExtractionByMethod
+		m.ExtractionSkipped = q.ExtractionSkipped
+		m.WordCountHistogram = q.WordCountHistogram
+	}
+	return m
 }
 
 // IncrementProcessed increments the processed count.
