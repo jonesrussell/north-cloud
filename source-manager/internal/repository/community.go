@@ -378,6 +378,43 @@ func (r *CommunityRepository) ListUnlinked(ctx context.Context) ([]models.Commun
 	return communities, nil
 }
 
+// RegionSummary holds a province/region pair with its community count.
+type RegionSummary struct {
+	Province string `json:"province"`
+	Region   string `json:"region"`
+	Count    int    `json:"count"`
+}
+
+// ListRegions returns distinct province/region pairs with community counts.
+func (r *CommunityRepository) ListRegions(ctx context.Context) ([]RegionSummary, error) {
+	query := `SELECT COALESCE(province, ''), COALESCE(region, ''), COUNT(*) AS count
+		FROM communities
+		WHERE enabled = true
+		GROUP BY province, region
+		ORDER BY province ASC, region ASC`
+
+	rows, err := r.db.QueryContext(ctx, query)
+	if err != nil {
+		return nil, fmt.Errorf("list regions: %w", err)
+	}
+	defer rows.Close()
+
+	var regions []RegionSummary
+	for rows.Next() {
+		var rs RegionSummary
+		if scanErr := rows.Scan(&rs.Province, &rs.Region, &rs.Count); scanErr != nil {
+			return nil, fmt.Errorf("scan region: %w", scanErr)
+		}
+		regions = append(regions, rs)
+	}
+
+	if closeErr := rows.Err(); closeErr != nil {
+		return nil, fmt.Errorf("list regions rows: %w", closeErr)
+	}
+
+	return regions, nil
+}
+
 // FindNearby returns communities within radiusKm of the given coordinates,
 // sorted by distance ascending. Uses bounding-box prefilter + haversine CTE.
 func (r *CommunityRepository) FindNearby(

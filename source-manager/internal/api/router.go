@@ -144,6 +144,7 @@ func setupServiceRoutes(
 	// Communities — public read endpoints (service-to-service, Minoo sync)
 	publicCommunities := publicAPI.Group("/communities")
 	publicCommunities.GET("", communityHandler.List)
+	publicCommunities.GET("/regions", communityHandler.Regions)
 	publicCommunities.GET("/nearby", communityHandler.Nearby)
 	publicCommunities.GET("/by-slug/:slug", communityHandler.GetBySlug)
 	publicCommunities.GET("/:id", communityHandler.GetByID)

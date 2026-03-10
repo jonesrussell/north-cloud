@@ -207,6 +207,21 @@ func parseIntQuery(c *gin.Context, key string, defaultVal int) int {
 }
 
 // parseFloatQuery parses a float query parameter with a default value.
+// Regions returns distinct province/region pairs with community counts.
+func (h *CommunityHandler) Regions(c *gin.Context) {
+	regions, err := h.repo.ListRegions(c.Request.Context())
+	if err != nil {
+		h.logger.Error("Failed to list regions", infralogger.Error(err))
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to list regions"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"regions": regions,
+		"count":   len(regions),
+	})
+}
+
 func parseFloatQuery(c *gin.Context, key string, defaultVal float64) float64 {
 	val := c.Query(key)
 	if val == "" {
