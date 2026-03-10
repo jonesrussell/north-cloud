@@ -7,34 +7,38 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"sort"
 
 	infralogger "github.com/jonesrussell/north-cloud/infrastructure/logger"
 	_ "github.com/lib/pq" //nolint:blankimports // PostgreSQL driver
 )
 
-// TestDatabase provides helper functions for test database setup
-// For integration tests, you can use testcontainers or a local PostgreSQL instance
-// See internal/repository/source_test.go for an example of using a local test database
-
-// RunMigrations executes SQL migration files on a database connection
+// RunMigrations executes all SQL migration files on a database connection.
 func RunMigrations(ctx context.Context, db *sql.DB, log infralogger.Logger) error {
-	// Get the path to migrations directory
 	_, filename, _, _ := runtime.Caller(0)
 	migrationsPath := filepath.Join(filepath.Dir(filename), "..", "..", "migrations")
 
-	migrationFile := filepath.Join(migrationsPath, "001_create_sources_table.sql")
-	sqlBytes, err := os.ReadFile(migrationFile)
-	if err != nil {
-		return fmt.Errorf("read migration file: %w", err)
+	files, globErr := filepath.Glob(filepath.Join(migrationsPath, "*.up.sql"))
+	if globErr != nil {
+		return fmt.Errorf("glob migrations: %w", globErr)
 	}
 
-	if _, execErr := db.ExecContext(ctx, string(sqlBytes)); execErr != nil {
-		return fmt.Errorf("execute migration: %w", execErr)
+	sort.Strings(files)
+
+	for _, f := range files {
+		sqlBytes, readErr := os.ReadFile(f)
+		if readErr != nil {
+			return fmt.Errorf("read migration %s: %w", filepath.Base(f), readErr)
+		}
+
+		if _, execErr := db.ExecContext(ctx, string(sqlBytes)); execErr != nil {
+			return fmt.Errorf("execute migration %s: %w", filepath.Base(f), execErr)
+		}
 	}
 
 	if log != nil {
 		log.Info("Migrations applied successfully",
-			infralogger.String("migration_file", migrationFile),
+			infralogger.Int("count", len(files)),
 		)
 	}
 
