@@ -185,3 +185,6 @@ click-tracker/bin/
 /*.png
 .playwright-mcp/
 
+.claude/worktrees/
+
+minoo-snapshot.md
