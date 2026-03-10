@@ -77,13 +77,13 @@ Set `MCP_ENV` to control which tools appear in `tools/list`:
 | Environment | Count | Includes |
 |-------------|-------|---------|
 | `local` (default) | 25 | shared (22) + local-only (3) |
-| `prod` | 35 | shared (22) + prod-only (13) |
+| `prod` | 36 | shared (22) + prod-only (14) |
 
 **Shared (22):** onboard_source, list_crawl_jobs, get_crawl_stats, add_source, list_sources, update_source, test_source, list_indexes, search_content, list_channels, preview_channel, get_publish_history, get_publisher_stats, classify_content, get_grafana_alerts, health_check, list_communities, get_community, find_nearby_communities, list_people, get_person, get_band_office
 
 **Local-only (3):** lint_file, build_service, test_service
 
-**Prod-only (13):** delete_index, delete_source, control_crawl_job, start_crawl, schedule_crawl, create_channel, delete_channel, get_auth_token, fetch_url, add_community, update_community, add_person, upsert_band_office
+**Prod-only (14):** delete_index, delete_source, control_crawl_job, start_crawl, schedule_crawl, create_channel, delete_channel, get_auth_token, fetch_url, add_community, update_community, add_person, upsert_band_office, link_sources
 
 ### Scope Types
 
@@ -236,14 +236,14 @@ type Client struct {
 
 Clients are constructed in `server.go` using URL and timeout from config. Always pass `ctx` through to `http.NewRequestWithContext` — do not use `http.NewRequest`.
 
-### 37 Tools by Category
+### 38 Tools by Category
 
 | Category | Tools |
 |----------|-------|
 | **Workflow (1)** | onboard_source |
 | **Crawler (5)** | start_crawl, schedule_crawl, list_crawl_jobs, control_crawl_job, get_crawl_stats |
 | **Source Manager (5)** | add_source, list_sources, update_source, delete_source, test_source |
-| **Community (5)** | list_communities, get_community, find_nearby_communities, add_community, update_community |
+| **Community (6)** | list_communities, get_community, find_nearby_communities, add_community, update_community, link_sources |
 | **People & Band Office (5)** | list_people, get_person, add_person, get_band_office, upsert_band_office |
 | **Publisher (6)** | create_channel, list_channels, delete_channel, preview_channel, get_publish_history, get_publisher_stats |
 | **Search (1)** | search_content |

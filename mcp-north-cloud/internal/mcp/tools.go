@@ -516,6 +516,22 @@ func getCommunityTools() []Tool {
 				"required": []string{"community_id"},
 			},
 		},
+		{
+			Name:  "link_sources",
+			Scope: ScopeProd,
+			Description: "Match news sources to communities by name similarity. " +
+				"Use when: You want to auto-link indigenous news sources to their communities. " +
+				"Defaults to dry_run=true (preview only). Set dry_run=false to persist links.",
+			InputSchema: map[string]any{
+				"type": "object",
+				"properties": map[string]any{
+					"dry_run": map[string]any{
+						"type":        "boolean",
+						"description": "Preview matches without saving (default: true)",
+					},
+				},
+			},
+		},
 	}
 }
 

@@ -36,8 +36,8 @@ func TestGetToolsForEnv_Counts(t *testing.T) {
 		t.Errorf("local tools = %d, want %d", len(localTools), expectedLocal)
 	}
 
-	// Prod = 22 shared + 13 prod = 35
-	expectedProd := 35
+	// Prod = 22 shared + 14 prod = 36
+	expectedProd := 36
 	if len(prodTools) != expectedProd {
 		t.Errorf("prod tools = %d, want %d", len(prodTools), expectedProd)
 	}

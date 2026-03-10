@@ -715,6 +715,28 @@ func (s *Server) handleUpdateCommunity(ctx context.Context, id any, arguments js
 	})
 }
 
+func (s *Server) handleLinkSources(ctx context.Context, id any, arguments json.RawMessage) *Response {
+	var args struct {
+		DryRun *bool `json:"dry_run"`
+	}
+
+	if err := json.Unmarshal(arguments, &args); err != nil {
+		return s.errorResponse(id, InvalidParams, "Invalid arguments: "+err.Error())
+	}
+
+	dryRun := true
+	if args.DryRun != nil {
+		dryRun = *args.DryRun
+	}
+
+	result, err := s.sourceClient.LinkSources(ctx, dryRun)
+	if err != nil {
+		return s.errorResponse(id, InternalError, fmt.Sprintf("Failed to link sources: %v", err))
+	}
+
+	return s.successResponse(id, result)
+}
+
 // People and Band Office tool handlers
 
 func (s *Server) handleListPeople(ctx context.Context, id any, arguments json.RawMessage) *Response {

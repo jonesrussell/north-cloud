@@ -95,6 +95,7 @@ func NewServer(
 	communityHandler := handlers.NewCommunityHandler(communityRepo, infraLog)
 	personHandler := handlers.NewPersonHandler(personRepo, infraLog)
 	bandOfficeHandler := handlers.NewBandOfficeHandler(bandOfficeRepo, infraLog)
+	linkerHandler := handlers.NewLinkerHandler(communityRepo, db, infraLog)
 
 	// Build CORS config
 	corsConfig := infragin.CORSConfig{
@@ -113,7 +114,7 @@ func NewServer(
 		WithCORS(corsConfig).
 		WithRoutes(func(router *gin.Engine) {
 			// Setup service-specific routes (health routes added by builder)
-			setupServiceRoutes(router, sourceHandler, communityHandler, personHandler, bandOfficeHandler, cfg)
+			setupServiceRoutes(router, sourceHandler, communityHandler, personHandler, bandOfficeHandler, linkerHandler, cfg)
 		}).
 		Build()
 
@@ -128,6 +129,7 @@ func setupServiceRoutes(
 	communityHandler *handlers.CommunityHandler,
 	personHandler *handlers.PersonHandler,
 	bandOfficeHandler *handlers.BandOfficeHandler,
+	linkerHandler *handlers.LinkerHandler,
 	cfg *config.Config,
 ) {
 	// Public API endpoints (no JWT required) - for internal service-to-service communication
@@ -166,6 +168,7 @@ func setupServiceRoutes(
 	// Communities endpoints (protected - requires JWT for mutations)
 	communities := v1.Group("/communities")
 	communities.POST("", communityHandler.Create)
+	communities.POST("/link-sources", linkerHandler.LinkSources)
 	communities.PUT("/:id", communityHandler.Update)
 	communities.DELETE("/:id", communityHandler.Delete)
 

@@ -287,6 +287,7 @@ var toolHandlers = map[string]toolHandlerFunc{
 	"find_nearby_communities": (*Server).handleFindNearbyCommunities,
 	"add_community":           (*Server).handleAddCommunity,
 	"update_community":        (*Server).handleUpdateCommunity,
+	"link_sources":            (*Server).handleLinkSources,
 	"list_people":             (*Server).handleListPeople,
 	"get_person":              (*Server).handleGetPerson,
 	"add_person":              (*Server).handleAddPerson,

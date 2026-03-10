@@ -565,6 +565,48 @@ func (c *SourceManagerClient) UpdateCommunity(ctx context.Context, communityID s
 	return &updated, nil
 }
 
+// LinkSourcesResponse represents the result of source-community linking.
+type LinkSourcesResponse struct {
+	DryRun  bool  `json:"dry_run"`
+	Matches []any `json:"matches"`
+	Count   int   `json:"count"`
+	Linked  int   `json:"linked,omitempty"`
+}
+
+// LinkSources matches sources to communities by name similarity.
+//
+//nolint:dupl // Similar HTTP client pattern across different entities is acceptable
+func (c *SourceManagerClient) LinkSources(ctx context.Context, dryRun bool) (*LinkSourcesResponse, error) {
+	endpoint := fmt.Sprintf("%s/api/v1/communities/link-sources?dry_run=%t", c.baseURL, dryRun)
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, http.NoBody)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to link sources: %w", err)
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response: %w", err)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("unexpected status code: %d, body: %s", resp.StatusCode, string(body))
+	}
+
+	var result LinkSourcesResponse
+	if err = json.Unmarshal(body, &result); err != nil {
+		return nil, fmt.Errorf("failed to parse response: %w", err)
+	}
+
+	return &result, nil
+}
+
 // Person represents a community leader or official.
 type Person struct {
 	ID          string  `json:"id"`

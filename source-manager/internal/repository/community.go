@@ -327,6 +327,57 @@ func (r *CommunityRepository) UpsertByStatCanCSD(ctx context.Context, c *models.
 	return r.upsertCommunity(ctx, c, "statcan_csd")
 }
 
+// SetSourceLink sets the source_id and website on a community.
+func (r *CommunityRepository) SetSourceLink(ctx context.Context, communityID, sourceID, website string) error {
+	result, err := r.db.ExecContext(ctx,
+		`UPDATE communities SET source_id = $2, website = $3 WHERE id = $1`,
+		communityID, sourceID, website,
+	)
+	if err != nil {
+		return fmt.Errorf("set source link: %w", err)
+	}
+
+	rows, rowsErr := result.RowsAffected()
+	if rowsErr != nil {
+		return fmt.Errorf("set source link rows affected: %w", rowsErr)
+	}
+	if rows == 0 {
+		return errors.New("set source link: community not found")
+	}
+
+	return nil
+}
+
+// ListUnlinked returns communities that have no source_id set.
+func (r *CommunityRepository) ListUnlinked(ctx context.Context) ([]models.Community, error) {
+	query := `SELECT id, name, slug, community_type, province, region,
+		inac_id, statcan_csd, latitude, longitude,
+		nation, treaty, language_group, reserve_name, population, population_year,
+		website, feed_url, data_source, source_id, enabled, created_at, updated_at
+		FROM communities WHERE source_id IS NULL ORDER BY name ASC`
+
+	rows, err := r.db.QueryContext(ctx, query)
+	if err != nil {
+		return nil, fmt.Errorf("list unlinked communities: %w", err)
+	}
+	defer rows.Close()
+
+	var communities []models.Community
+	for rows.Next() {
+		c, scanErr := scanCommunity(rows)
+		if scanErr != nil {
+			return nil, scanErr
+		}
+		communities = append(communities, *c)
+	}
+
+	if closeErr := rows.Err(); closeErr != nil {
+		return nil, fmt.Errorf("list unlinked rows: %w", closeErr)
+	}
+
+	return communities, nil
+}
+
 // FindNearby returns communities within radiusKm of the given coordinates,
 // sorted by distance ascending. Uses bounding-box prefilter + haversine CTE.
 func (r *CommunityRepository) FindNearby(
