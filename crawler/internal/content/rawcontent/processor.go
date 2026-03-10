@@ -146,3 +146,12 @@ func (p *RawContentProcessor) SetExtractionRecorder(r ExtractionRecorder) {
 		svc.SetExtractionRecorder(r)
 	}
 }
+
+// GetExtractionQualityMetrics returns a snapshot of extraction quality counters from the
+// underlying service. Returns a zero-value snapshot if the service is not *RawContentService.
+func (p *RawContentProcessor) GetExtractionQualityMetrics() ExtractionQualityMetrics {
+	if svc, ok := p.service.(*RawContentService); ok {
+		return svc.GetExtractionQualityMetrics()
+	}
+	return ExtractionQualityMetrics{}
+}
