@@ -287,6 +287,11 @@ var toolHandlers = map[string]toolHandlerFunc{
 	"find_nearby_communities": (*Server).handleFindNearbyCommunities,
 	"add_community":           (*Server).handleAddCommunity,
 	"update_community":        (*Server).handleUpdateCommunity,
+	"list_people":             (*Server).handleListPeople,
+	"get_person":              (*Server).handleGetPerson,
+	"add_person":              (*Server).handleAddPerson,
+	"get_band_office":         (*Server).handleGetBandOffice,
+	"upsert_band_office":      (*Server).handleUpsertBandOffice,
 }
 
 // toolScopeMap builds a name->scope lookup from all tools.
