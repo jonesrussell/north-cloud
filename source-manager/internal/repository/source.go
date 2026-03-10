@@ -324,15 +324,16 @@ func scanSourceRow(rows *sql.Rows) (*models.Source, error) {
 func buildListWhere(filter ListFilter) (whereClause string, args []any) {
 	var clauses []string
 	args = make([]any, 0)
-	pos := 1
+	// Derive placeholder position from args length to avoid manual pos tracking.
+	nextPos := func() int { return len(args) + 1 }
 
 	if filter.Search != "" {
+		pos := nextPos()
 		clauses = append(clauses, fmt.Sprintf("(name ILIKE $%d OR url ILIKE $%d)", pos, pos))
 		args = append(args, "%"+filter.Search+"%")
-		pos++
 	}
 	if filter.Enabled != nil {
-		clauses = append(clauses, fmt.Sprintf("enabled = $%d", pos))
+		clauses = append(clauses, fmt.Sprintf("enabled = $%d", nextPos()))
 		args = append(args, *filter.Enabled)
 	}
 

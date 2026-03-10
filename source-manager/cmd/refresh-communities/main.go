@@ -129,7 +129,11 @@ func printCIRNACResult(result *seeder.CIRNACResult, dryRun bool) {
 
 	fmt.Printf("\n[%s] CIRNAC Refresh Complete\n", mode)
 	fmt.Printf("  Total rows:  %d\n", result.Total)
-	fmt.Printf("  Upserted:    %d\n", result.Created)
+	if dryRun {
+		fmt.Printf("  Would create: %d\n", result.WouldCreate)
+	} else {
+		fmt.Printf("  Created:     %d\n", result.Created)
+	}
 	fmt.Printf("  Skipped:     %d\n", result.Skipped)
 	fmt.Printf("  Errors:      %d\n", result.Errors)
 }
@@ -145,7 +149,11 @@ func printStatscanResult(result *seeder.GeoNamesResult, province string, dryRun 
 		fmt.Printf("  Province:    %s\n", province)
 	}
 	fmt.Printf("  Processed:   %d\n", result.Total)
-	fmt.Printf("  Upserted:    %d\n", result.Created)
+	if dryRun {
+		fmt.Printf("  Would create: %d\n", result.WouldCreate)
+	} else {
+		fmt.Printf("  Created:     %d\n", result.Created)
+	}
 	fmt.Printf("  Skipped:     %d\n", result.Skipped)
 	fmt.Printf("  Errors:      %d\n", result.Errors)
 }

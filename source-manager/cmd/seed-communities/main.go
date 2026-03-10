@@ -83,7 +83,11 @@ func run(csvPath string, dryRun bool) error {
 
 	fmt.Printf("\n[%s] CIRNAC Seed Complete\n", mode)
 	fmt.Printf("  Total rows:  %d\n", result.Total)
-	fmt.Printf("  Created:     %d\n", result.Created)
+	if dryRun {
+		fmt.Printf("  Would create: %d\n", result.WouldCreate)
+	} else {
+		fmt.Printf("  Created:     %d\n", result.Created)
+	}
 	fmt.Printf("  Skipped:     %d\n", result.Skipped)
 	fmt.Printf("  Errors:      %d\n", result.Errors)
 

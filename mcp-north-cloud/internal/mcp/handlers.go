@@ -234,7 +234,11 @@ func (s *Server) handleListCrawlJobs(ctx context.Context, id any, arguments json
 		Offset int    `json:"offset"`
 	}
 
-	_ = json.Unmarshal(arguments, &args) // Empty args is okay
+	if len(arguments) > 0 {
+		if err := json.Unmarshal(arguments, &args); err != nil {
+			return s.errorResponse(id, InvalidParams, "invalid arguments: "+err.Error())
+		}
+	}
 
 	jobs, err := s.crawlerClient.ListJobs(ctx, args.Status)
 	if err != nil {
@@ -387,7 +391,11 @@ func (s *Server) handleListSources(ctx context.Context, id any, arguments json.R
 		Offset int `json:"offset"`
 	}
 
-	_ = json.Unmarshal(arguments, &args) // Empty args is okay
+	if len(arguments) > 0 {
+		if err := json.Unmarshal(arguments, &args); err != nil {
+			return s.errorResponse(id, InvalidParams, "invalid arguments: "+err.Error())
+		}
+	}
 
 	sources, err := s.sourceClient.ListSources(ctx)
 	if err != nil {
@@ -571,7 +579,11 @@ func (s *Server) handleListCommunities(ctx context.Context, id any, arguments js
 		Offset int `json:"offset"`
 	}
 
-	_ = json.Unmarshal(arguments, &args) // Empty args is okay
+	if len(arguments) > 0 {
+		if err := json.Unmarshal(arguments, &args); err != nil {
+			return s.errorResponse(id, InvalidParams, "invalid arguments: "+err.Error())
+		}
+	}
 
 	limit := max(args.Limit, 0)
 	if limit == 0 {
@@ -942,7 +954,11 @@ func (s *Server) handleListChannels(ctx context.Context, id any, arguments json.
 		ActiveOnly bool `json:"active_only"`
 	}
 
-	_ = json.Unmarshal(arguments, &args) // Empty args is okay
+	if len(arguments) > 0 {
+		if err := json.Unmarshal(arguments, &args); err != nil {
+			return s.errorResponse(id, InvalidParams, "invalid arguments: "+err.Error())
+		}
+	}
 
 	channels, err := s.publisherClient.ListChannels(ctx)
 	if err != nil {
@@ -1017,7 +1033,11 @@ func (s *Server) handleGetPublishHistory(ctx context.Context, id any, arguments 
 		Offset      int    `json:"offset"`
 	}
 
-	_ = json.Unmarshal(arguments, &args) // Empty args is okay, use defaults
+	if len(arguments) > 0 {
+		if err := json.Unmarshal(arguments, &args); err != nil {
+			return s.errorResponse(id, InvalidParams, "invalid arguments: "+err.Error())
+		}
+	}
 
 	// Apply limit/offset defaults and cap (Phase E: response size safeguard)
 	limit := max(args.Limit, 0)
@@ -1149,7 +1169,11 @@ func (s *Server) handleListIndexes(ctx context.Context, id any, arguments json.R
 		Offset int `json:"offset"`
 	}
 
-	_ = json.Unmarshal(arguments, &args) // Empty args is okay
+	if len(arguments) > 0 {
+		if err := json.Unmarshal(arguments, &args); err != nil {
+			return s.errorResponse(id, InvalidParams, "invalid arguments: "+err.Error())
+		}
+	}
 
 	indexes, err := s.indexClient.ListIndices(ctx)
 	if err != nil {

@@ -272,6 +272,8 @@ func (c *Classifier) ClassifyBatch(ctx context.Context, rawItems []*domain.RawCo
 			infralogger.Int("failed", failedCount),
 			infralogger.Int("succeeded", len(rawItems)-failedCount),
 		)
+
+		return results, fmt.Errorf("classified %d/%d items successfully", len(rawItems)-failedCount, len(rawItems))
 	}
 
 	return results, nil
