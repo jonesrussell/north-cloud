@@ -12,7 +12,7 @@ const WordCountBucketCount = 7
 const wordCountBucketCount = WordCountBucketCount
 
 // WordCountBuckets defines the upper bounds for word count histogram buckets.
-// Counts are inclusive of the upper bound: [0,50), [50,100), [100,200),
+// Intervals are half-open (exclusive upper bound): [0,50), [50,100), [100,200),
 // [200,500), [500,1000), [1000,2000), [2000,∞).
 var WordCountBuckets = [wordCountBucketCount]int{50, 100, 200, 500, 1000, 2000, -1}
 
