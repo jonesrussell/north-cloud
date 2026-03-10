@@ -140,7 +140,7 @@ func (r *SourceRepository) GetByID(ctx context.Context, id string) (*models.Sour
 		&source.UpdatedAt,
 	)
 
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		return nil, fmt.Errorf("source not found: %w", err)
 	}
 	if err != nil {

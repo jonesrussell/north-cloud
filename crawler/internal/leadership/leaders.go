@@ -20,8 +20,8 @@ var rolePatterns = []struct {
 	pattern *regexp.Regexp
 	role    string
 }{
-	{regexp.MustCompile(`(?i)\bchief\b`), "chief"},
 	{regexp.MustCompile(`(?i)\bdeputy\s+chief\b`), "deputy_chief"},
+	{regexp.MustCompile(`(?i)\bchief\b`), "chief"},
 	{regexp.MustCompile(`(?i)\bcouncill?ors?\b`), "councillor"},
 	{regexp.MustCompile(`(?i)\bband\s+manager\b`), "band_manager"},
 	{regexp.MustCompile(`(?i)\bexecutive\s+director\b`), "executive_director"},

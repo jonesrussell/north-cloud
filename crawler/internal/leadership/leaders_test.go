@@ -7,8 +7,6 @@ import (
 )
 
 func TestExtractLeaders(t *testing.T) {
-	t.Helper()
-
 	text := `Chief
 John Smith
 
@@ -33,8 +31,6 @@ Sarah Brown`
 }
 
 func TestExtractLeaders_InlineRole(t *testing.T) {
-	t.Helper()
-
 	text := `Chief John Smith
 Councillor Mary Johnson
 Councillor Robert Williams`
@@ -51,8 +47,6 @@ Councillor Robert Williams`
 }
 
 func TestExtractLeaders_Empty(t *testing.T) {
-	t.Helper()
-
 	leaders := leadership.ExtractLeaders("No leadership info here, just some text about programs.")
 
 	if len(leaders) != 0 {

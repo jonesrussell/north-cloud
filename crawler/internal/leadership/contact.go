@@ -51,18 +51,18 @@ func extractPhoneNumbers(text string) (tollFree, phone, fax string) {
 	for _, line := range lines {
 		lower := strings.ToLower(line)
 
-		// Check for toll-free
-		if tollFree == "" && tollFreePattern.MatchString(line) {
-			tollFree = tollFreePattern.FindString(line)
-			continue
-		}
-
-		// Check for fax
+		// Check for fax first — a toll-free number on a "Fax:" line is a fax, not toll-free
 		if fax == "" && strings.Contains(lower, "fax") {
 			if match := phonePattern.FindString(line); match != "" {
 				fax = match
 				continue
 			}
+		}
+
+		// Check for toll-free
+		if tollFree == "" && tollFreePattern.MatchString(line) {
+			tollFree = tollFreePattern.FindString(line)
+			continue
 		}
 
 		// Regular phone

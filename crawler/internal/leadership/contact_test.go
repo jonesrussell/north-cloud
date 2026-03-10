@@ -7,8 +7,6 @@ import (
 )
 
 func TestExtractContact(t *testing.T) {
-	t.Helper()
-
 	text := `Wikwemikong Band Office
 123 Main Street
 Wikwemikong, ON P0P 2J0
@@ -42,8 +40,6 @@ Email: info@wikwemikong.ca`
 }
 
 func TestExtractContact_Minimal(t *testing.T) {
-	t.Helper()
-
 	info := leadership.ExtractContact("Call us at 705-555-1234 or email office@fn.ca")
 
 	if info.Phone != "705-555-1234" {

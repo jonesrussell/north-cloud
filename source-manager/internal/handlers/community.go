@@ -206,7 +206,6 @@ func parseIntQuery(c *gin.Context, key string, defaultVal int) int {
 	return parsed
 }
 
-// parseFloatQuery parses a float query parameter with a default value.
 // Regions returns distinct province/region pairs with community counts.
 func (h *CommunityHandler) Regions(c *gin.Context) {
 	regions, err := h.repo.ListRegions(c.Request.Context())
@@ -222,6 +221,7 @@ func (h *CommunityHandler) Regions(c *gin.Context) {
 	})
 }
 
+// parseFloatQuery parses a float query parameter with a default value.
 func parseFloatQuery(c *gin.Context, key string, defaultVal float64) float64 {
 	val := c.Query(key)
 	if val == "" {

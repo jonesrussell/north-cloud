@@ -268,7 +268,9 @@ func (r *CommunityRepository) upsertCommunity(
 	if c.ID == "" {
 		c.ID = uuid.New().String()
 	}
-	c.CreatedAt = time.Now()
+	if c.CreatedAt.IsZero() {
+		c.CreatedAt = time.Now()
+	}
 	c.UpdatedAt = time.Now()
 
 	//nolint:gosec // G201: conflictColumn is always a hardcoded constant from caller

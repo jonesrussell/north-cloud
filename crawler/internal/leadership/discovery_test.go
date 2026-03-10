@@ -7,8 +7,6 @@ import (
 )
 
 func TestClassifyURL(t *testing.T) {
-	t.Helper()
-
 	tests := []struct {
 		name     string
 		url      string
@@ -33,8 +31,6 @@ func TestClassifyURL(t *testing.T) {
 }
 
 func TestClassifyLinkText(t *testing.T) {
-	t.Helper()
-
 	tests := []struct {
 		text     string
 		expected leadership.PageType
@@ -56,8 +52,6 @@ func TestClassifyLinkText(t *testing.T) {
 }
 
 func TestDiscoverPages(t *testing.T) {
-	t.Helper()
-
 	links := []leadership.Link{
 		{Href: "/chief-and-council", Text: "Chief and Council"},
 		{Href: "/contact", Text: "Contact"},
