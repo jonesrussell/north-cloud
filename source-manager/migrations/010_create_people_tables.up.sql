@@ -1,3 +1,12 @@
+-- Ensure the trigger function exists (originally created in migration 001).
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = CURRENT_TIMESTAMP;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
 CREATE TABLE people (
     id              VARCHAR(36)  PRIMARY KEY,
     community_id    VARCHAR(36)  NOT NULL REFERENCES communities(id) ON DELETE CASCADE,

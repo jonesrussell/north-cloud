@@ -97,6 +97,7 @@ func IndigenousSourceToModel(src IndigenousSource) (*models.Source, error) {
 		IngestionMode:           ingestionMode,
 		FeedPollIntervalMinutes: indigenousDefaultFeedPollInterval,
 		RenderMode:              src.RenderMode,
+		Type:                    "indigenous",
 		IndigenousRegion:        &regionSlug,
 	}, nil
 }

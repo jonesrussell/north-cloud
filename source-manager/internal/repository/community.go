@@ -124,9 +124,8 @@ func (r *CommunityRepository) GetBySlug(ctx context.Context, slug string) (*mode
 }
 
 // Update modifies an existing community by ID.
+// Note: updated_at is handled by the set_communities_updated_at DB trigger.
 func (r *CommunityRepository) Update(ctx context.Context, c *models.Community) error {
-	c.UpdatedAt = time.Now()
-
 	query := `
 		UPDATE communities SET
 			name = $2, slug = $3, community_type = $4, province = $5, region = $6,
@@ -134,14 +133,14 @@ func (r *CommunityRepository) Update(ctx context.Context, c *models.Community) e
 			nation = $11, treaty = $12, language_group = $13, reserve_name = $14,
 			population = $15, population_year = $16,
 			website = $17, feed_url = $18, data_source = $19, source_id = $20,
-			enabled = $21, updated_at = $22
+			enabled = $21
 		WHERE id = $1`
 
 	result, err := r.db.ExecContext(ctx, query,
 		c.ID, c.Name, c.Slug, c.CommunityType, c.Province, c.Region,
 		c.InacID, c.StatCanCSD, c.Latitude, c.Longitude,
 		c.Nation, c.Treaty, c.LanguageGroup, c.ReserveName, c.Population, c.PopulationYear,
-		c.Website, c.FeedURL, c.DataSource, c.SourceID, c.Enabled, c.UpdatedAt,
+		c.Website, c.FeedURL, c.DataSource, c.SourceID, c.Enabled,
 	)
 	if err != nil {
 		return fmt.Errorf("update community: %w", err)
@@ -333,6 +332,10 @@ func (r *CommunityRepository) UpsertByStatCanCSD(ctx context.Context, c *models.
 func (r *CommunityRepository) FindNearby(
 	ctx context.Context, lat, lon, radiusKm float64, limit int,
 ) ([]models.CommunityWithDistance, error) {
+	if limit <= 0 || limit > maxCommunityLimit {
+		limit = defaultCommunityLimit
+	}
+
 	latDelta := radiusKm / kmPerDegreeLat
 	lonDelta := radiusKm / (kmPerDegreeLat * math.Cos(lat*math.Pi/degreesPerHalfCircle))
 
