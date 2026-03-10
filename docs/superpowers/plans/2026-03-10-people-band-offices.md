@@ -351,7 +351,6 @@ import (
 const (
 	defaultPersonLimit = 50
 	maxPersonLimit     = 200
-	personColumnCount  = 17
 )
 
 // personColumns is the SELECT column list for the people table.
@@ -602,7 +601,7 @@ func (r *PersonRepository) ArchiveTerm(ctx context.Context, personID string) err
 	now := time.Now()
 	_, insertErr := tx.ExecContext(ctx, insertQuery,
 		historyID, p.ID, p.CommunityID, p.Name, p.Role,
-		p.TermStart, p.TermEnd, &p.DataSource, p.SourceURL, now,
+		p.TermStart, p.TermEnd, p.DataSource, p.SourceURL, now,
 	)
 	if insertErr != nil {
 		return fmt.Errorf("archive term insert history: %w", insertErr)
@@ -663,6 +662,7 @@ import (
 func setupPersonTestDB(t *testing.T) (
 	personRepo *repository.PersonRepository,
 	communityRepo *repository.CommunityRepository,
+	db *sql.DB,
 	cleanup func(),
 ) {
 	t.Helper()
@@ -681,7 +681,7 @@ func setupPersonTestDB(t *testing.T) (
 		dbCleanup()
 	}
 
-	return personRepo, communityRepo, cleanup
+	return personRepo, communityRepo, db, cleanup
 }
 
 // createTestCommunity creates a community for FK references in person tests.
@@ -704,7 +704,7 @@ func newTestPerson(communityID, name, slug, role string) *models.Person {
 }
 
 func TestPersonRepository_Create(t *testing.T) {
-	personRepo, communityRepo, cleanup := setupPersonTestDB(t)
+	personRepo, communityRepo, _, cleanup := setupPersonTestDB(t)
 	defer cleanup()
 
 	ctx := context.Background()
@@ -729,7 +729,7 @@ func TestPersonRepository_Create(t *testing.T) {
 }
 
 func TestPersonRepository_GetByID(t *testing.T) {
-	personRepo, communityRepo, cleanup := setupPersonTestDB(t)
+	personRepo, communityRepo, _, cleanup := setupPersonTestDB(t)
 	defer cleanup()
 
 	ctx := context.Background()
@@ -754,7 +754,7 @@ func TestPersonRepository_GetByID(t *testing.T) {
 }
 
 func TestPersonRepository_Update(t *testing.T) {
-	personRepo, communityRepo, cleanup := setupPersonTestDB(t)
+	personRepo, communityRepo, _, cleanup := setupPersonTestDB(t)
 	defer cleanup()
 
 	ctx := context.Background()
@@ -776,7 +776,7 @@ func TestPersonRepository_Update(t *testing.T) {
 }
 
 func TestPersonRepository_Delete(t *testing.T) {
-	personRepo, communityRepo, cleanup := setupPersonTestDB(t)
+	personRepo, communityRepo, _, cleanup := setupPersonTestDB(t)
 	defer cleanup()
 
 	ctx := context.Background()
@@ -793,7 +793,7 @@ func TestPersonRepository_Delete(t *testing.T) {
 }
 
 func TestPersonRepository_ListByCommunity(t *testing.T) {
-	personRepo, communityRepo, cleanup := setupPersonTestDB(t)
+	personRepo, communityRepo, _, cleanup := setupPersonTestDB(t)
 	defer cleanup()
 
 	ctx := context.Background()
@@ -854,7 +854,7 @@ func TestPersonRepository_ListByCommunity(t *testing.T) {
 }
 
 func TestPersonRepository_Count(t *testing.T) {
-	personRepo, communityRepo, cleanup := setupPersonTestDB(t)
+	personRepo, communityRepo, _, cleanup := setupPersonTestDB(t)
 	defer cleanup()
 
 	ctx := context.Background()
@@ -882,7 +882,7 @@ func TestPersonRepository_Count(t *testing.T) {
 }
 
 func TestPersonRepository_ArchiveTerm(t *testing.T) {
-	personRepo, communityRepo, cleanup := setupPersonTestDB(t)
+	personRepo, communityRepo, db, cleanup := setupPersonTestDB(t)
 	defer cleanup()
 
 	ctx := context.Background()
@@ -906,7 +906,7 @@ func TestPersonRepository_ArchiveTerm(t *testing.T) {
 		var history models.PersonHistory
 		historyQuery := `SELECT id, person_id, community_id, name, role, term_start, term_end,
 			data_source, source_url, archived_at FROM people_history WHERE person_id = $1`
-		historyRow := personRepo.DB().QueryRowContext(ctx, historyQuery, p.ID)
+		historyRow := db.QueryRowContext(ctx, historyQuery, p.ID)
 		scanErr := historyRow.Scan(
 			&history.ID, &history.PersonID, &history.CommunityID, &history.Name, &history.Role,
 			&history.TermStart, &history.TermEnd, &history.DataSource, &history.SourceURL,
@@ -920,6 +920,25 @@ func TestPersonRepository_ArchiveTerm(t *testing.T) {
 		assert.False(t, history.ArchivedAt.IsZero())
 	})
 
+	t.Run("archiving already-archived person creates duplicate history", func(t *testing.T) {
+		p := newTestPerson(community.ID, "Twice Archived", "twice-archived", "councillor")
+		require.NoError(t, personRepo.Create(ctx, p))
+
+		// Archive once
+		require.NoError(t, personRepo.ArchiveTerm(ctx, p.ID))
+
+		// Archive again — should still succeed (creates second history row)
+		err := personRepo.ArchiveTerm(ctx, p.ID)
+		require.NoError(t, err)
+
+		// Verify two history rows exist
+		var count int
+		countErr := db.QueryRowContext(ctx,
+			"SELECT COUNT(*) FROM people_history WHERE person_id = $1", p.ID).Scan(&count)
+		require.NoError(t, countErr)
+		assert.Equal(t, 2, count)
+	})
+
 	t.Run("error when person not found", func(t *testing.T) {
 		err := personRepo.ArchiveTerm(ctx, "nonexistent-id")
 		assert.Error(t, err)
@@ -928,27 +947,9 @@ func TestPersonRepository_ArchiveTerm(t *testing.T) {
 }
 ```
 
-**Note:** The test uses `personRepo.DB()` to directly query `people_history`. Add this accessor method to `PersonRepository`:
+**Note:** The test uses the shared `db` connection (returned by `setupPersonTestDB`) to directly query `people_history`, avoiding a `DB()` accessor on the production type.
 
-```go
-// DB returns the underlying *sql.DB for test assertions.
-func (r *PersonRepository) DB() *sql.DB {
-	return r.db
-}
-```
-
-- [ ] **Step 2: Add DB() accessor to PersonRepository**
-
-Add to `source-manager/internal/repository/person.go` (after the constructor):
-
-```go
-// DB returns the underlying *sql.DB for test assertions.
-func (r *PersonRepository) DB() *sql.DB {
-	return r.db
-}
-```
-
-- [ ] **Step 3: Verify tests compile**
+- [ ] **Step 2: Verify tests compile**
 
 Run: `cd source-manager && go test -run TestPerson -count=1 -short ./internal/repository/`
 Expected: Tests skip with "Skipping integration test in short mode"
@@ -993,8 +994,6 @@ import (
 	infralogger "github.com/jonesrussell/north-cloud/infrastructure/logger"
 	"github.com/jonesrussell/north-cloud/source-manager/internal/models"
 )
-
-const bandOfficeColumnCount = 18
 
 // bandOfficeColumns is the SELECT column list for the band_offices table.
 const bandOfficeColumns = `id, community_id, data_source, verified, created_at, updated_at,
