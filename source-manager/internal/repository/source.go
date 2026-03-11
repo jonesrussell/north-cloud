@@ -16,6 +16,9 @@ import (
 	"github.com/jonesrussell/north-cloud/source-manager/internal/models"
 )
 
+// ErrSourceNotFound is returned when a source operation targets a non-existent ID.
+var ErrSourceNotFound = errors.New("source not found")
+
 type SourceRepository struct {
 	db     *sql.DB
 	logger infralogger.Logger
@@ -476,7 +479,7 @@ func (r *SourceRepository) Update(ctx context.Context, source *models.Source) er
 	}
 
 	if rowsAffected == 0 {
-		return errors.New("source not found")
+		return ErrSourceNotFound
 	}
 
 	return nil
@@ -496,7 +499,7 @@ func (r *SourceRepository) Delete(ctx context.Context, id string) error {
 	}
 
 	if rowsAffected == 0 {
-		return errors.New("source not found")
+		return ErrSourceNotFound
 	}
 
 	return nil
@@ -652,7 +655,7 @@ func (r *SourceRepository) DisableFeed(ctx context.Context, id, reason string) e
 		return fmt.Errorf("get rows affected: %w", err)
 	}
 	if rowsAffected == 0 {
-		return errors.New("source not found")
+		return ErrSourceNotFound
 	}
 	return nil
 }
@@ -675,7 +678,7 @@ func (r *SourceRepository) EnableFeed(ctx context.Context, id string) error {
 		return fmt.Errorf("get rows affected: %w", err)
 	}
 	if rowsAffected == 0 {
-		return errors.New("source not found")
+		return ErrSourceNotFound
 	}
 	return nil
 }
@@ -698,7 +701,7 @@ func (r *SourceRepository) DisableSource(ctx context.Context, id, reason string)
 		return fmt.Errorf("get rows affected: %w", err)
 	}
 	if rowsAffected == 0 {
-		return errors.New("source not found")
+		return ErrSourceNotFound
 	}
 	return nil
 }
@@ -721,7 +724,7 @@ func (r *SourceRepository) EnableSource(ctx context.Context, id string) error {
 		return fmt.Errorf("get rows affected: %w", err)
 	}
 	if rowsAffected == 0 {
-		return errors.New("source not found")
+		return ErrSourceNotFound
 	}
 	return nil
 }

@@ -485,6 +485,10 @@ func (h *SourceHandler) handleDisable(
 	}
 
 	if err := disableFn(c.Request.Context(), id, req.Reason); err != nil {
+		if errors.Is(err, repository.ErrSourceNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": entityLabel + " not found"})
+			return
+		}
 		h.logger.Error("Failed to disable "+entityLabel,
 			infralogger.String("source_id", id),
 			infralogger.Error(err),
@@ -517,6 +521,10 @@ func (h *SourceHandler) handleEnable(
 	}
 
 	if err := enableFn(c.Request.Context(), id); err != nil {
+		if errors.Is(err, repository.ErrSourceNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": entityLabel + " not found"})
+			return
+		}
 		h.logger.Error("Failed to enable "+entityLabel,
 			infralogger.String("source_id", id),
 			infralogger.Error(err),
