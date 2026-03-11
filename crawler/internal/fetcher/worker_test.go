@@ -251,13 +251,13 @@ func startTestServer(t *testing.T, statusCode int, body string) *httptest.Server
 	return server
 }
 
-// startTestServerWithContentType creates an httptest.Server returning the given status, body, and Content-Type.
-func startTestServerWithContentType(t *testing.T, statusCode int, body, contentType string) *httptest.Server {
+// startTestServerWithContentType creates an httptest.Server returning 200 OK with the given body and Content-Type.
+func startTestServerWithContentType(t *testing.T, body, contentType string) *httptest.Server {
 	t.Helper()
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", contentType)
-		w.WriteHeader(statusCode)
+		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte(body))
 	}))
 
@@ -705,7 +705,7 @@ func TestProcessURL_RedirectToFinalURL(t *testing.T) {
 func TestProcessURL_NonHTMLContentType(t *testing.T) {
 	t.Parallel()
 
-	server := startTestServerWithContentType(t, http.StatusOK, "%PDF-1.4 binary content", "application/pdf")
+	server := startTestServerWithContentType(t, "%PDF-1.4 binary content", "application/pdf")
 	furl := newTestFrontierURL(t, server.URL+"/document.pdf")
 
 	frontier := &mockFrontier{
@@ -795,7 +795,7 @@ func TestProcessURL_TooManyRedirects(t *testing.T) {
 func TestProcessURL_BinaryURLExtension(t *testing.T) {
 	t.Parallel()
 
-	server := startTestServerWithContentType(t, http.StatusOK, "binary content", "text/html")
+	server := startTestServerWithContentType(t, "binary content", "text/html")
 	furl := newTestFrontierURL(t, server.URL+"/download/file.mp3")
 
 	frontier := &mockFrontier{
@@ -823,7 +823,7 @@ func TestProcessURL_BinaryURLExtension(t *testing.T) {
 func TestProcessURL_BinaryURLDownloadPHP(t *testing.T) {
 	t.Parallel()
 
-	server := startTestServerWithContentType(t, http.StatusOK, "binary content", "text/html")
+	server := startTestServerWithContentType(t, "binary content", "text/html")
 	furl := newTestFrontierURL(t, server.URL+"/themes/canadaland/downloadmp3.php?path=https%3A%2F%2Fexample.com%2Ffile.mp3")
 
 	frontier := &mockFrontier{
@@ -852,7 +852,7 @@ func TestProcessURL_DynamicRenderSkipsBinaryURL(t *testing.T) {
 	t.Parallel()
 
 	// Server returns PDF content-type for the fallback static fetch path.
-	server := startTestServerWithContentType(t, http.StatusOK, "%PDF-1.4 binary", "application/pdf")
+	server := startTestServerWithContentType(t, "%PDF-1.4 binary", "application/pdf")
 
 	frontier := &mockFrontier{
 		claimFunc: func(_ context.Context) (*domain.FrontierURL, error) {
