@@ -38,9 +38,10 @@ type Community struct {
 	SourceID   *string `db:"source_id"   json:"source_id,omitempty"`
 
 	// Lifecycle
-	Enabled   bool      `db:"enabled"    json:"enabled"`
-	CreatedAt time.Time `db:"created_at" json:"created_at"`
-	UpdatedAt time.Time `db:"updated_at" json:"updated_at"`
+	Enabled       bool       `db:"enabled"         json:"enabled"`
+	CreatedAt     time.Time  `db:"created_at"      json:"created_at"`
+	UpdatedAt     time.Time  `db:"updated_at"      json:"updated_at"`
+	LastScrapedAt *time.Time `db:"last_scraped_at" json:"last_scraped_at,omitempty"`
 }
 
 // CommunityFilter defines filters for listing communities.
