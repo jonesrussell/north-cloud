@@ -1,0 +1,2 @@
+DROP INDEX IF EXISTS idx_jobs_type;
+ALTER TABLE jobs DROP COLUMN IF EXISTS type;

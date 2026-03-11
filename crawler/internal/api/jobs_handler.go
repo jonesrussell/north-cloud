@@ -68,6 +68,42 @@ var allowedJobSortFields = map[string]string{
 	"source_name": "COALESCE(source_name, '')",
 	"next_run_at": "next_run_at",
 	"last_run_at": "started_at", // last_run_at maps to started_at in DB
+	"type":        "type",
+}
+
+// resolveJobType validates the job type, applies per-type defaults to the request,
+// and returns the resolved type. Returns a non-empty error string on validation failure.
+func resolveJobType(req *CreateJobRequest) (jobType, validationErr string) {
+	jobType = domain.JobTypeCrawl
+	if req.Type != "" {
+		if !domain.ValidJobType(req.Type) {
+			return "", "Invalid job type: " + req.Type + ". Valid types: crawl, leadership_scrape"
+		}
+		jobType = req.Type
+	}
+
+	if jobType == domain.JobTypeCrawl {
+		if req.SourceID == "" {
+			return "", "source_id is required for crawl jobs"
+		}
+		if req.URL == "" {
+			return "", "url is required for crawl jobs"
+		}
+	}
+
+	// Leadership scrape jobs use a fixed placeholder source_id (UNIQUE constraint
+	// on source_id means only one leadership_scrape job can exist — intentional,
+	// since the scraper processes all communities in a single run).
+	if jobType == domain.JobTypeLeadershipScrape {
+		if req.SourceID == "" {
+			req.SourceID = "leadership-scrape"
+		}
+		if req.URL == "" {
+			req.URL = "leadership-scrape"
+		}
+	}
+
+	return jobType, ""
 }
 
 // ListJobs handles GET /api/v1/jobs
@@ -171,6 +207,13 @@ func (h *JobsHandler) CreateJob(c *gin.Context) {
 		intervalType = req.IntervalType
 	}
 
+	// Resolve and validate job type, apply per-type defaults
+	jobType, typeErr := resolveJobType(&req)
+	if typeErr != "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": typeErr})
+		return
+	}
+
 	// Determine initial status
 	status := statusPending
 	if req.IntervalMinutes != nil && req.ScheduleEnabled {
@@ -182,6 +225,7 @@ func (h *JobsHandler) CreateJob(c *gin.Context) {
 		ID:                  uuid.New().String(),
 		SourceID:            req.SourceID,
 		URL:                 req.URL,
+		Type:                jobType,
 		IntervalMinutes:     req.IntervalMinutes,
 		IntervalType:        intervalType,
 		ScheduleEnabled:     req.ScheduleEnabled,
@@ -259,6 +303,15 @@ func (h *JobsHandler) UpdateJob(c *gin.Context) {
 	}
 	if req.URL != "" {
 		job.URL = req.URL
+	}
+	if req.Type != "" {
+		if !domain.ValidJobType(req.Type) {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error": "Invalid job type: " + req.Type,
+			})
+			return
+		}
+		job.Type = req.Type
 	}
 
 	// Interval-based scheduling updates

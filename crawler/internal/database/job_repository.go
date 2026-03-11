@@ -18,14 +18,14 @@ import (
 var ErrJobNotFoundBySourceID = errors.New("job not found for source_id")
 
 // jobInsertColumns lists columns for job INSERT operations.
-const jobInsertColumns = `id, source_id, source_name, url,
+const jobInsertColumns = `id, source_id, source_name, url, type,
 	schedule_time, schedule_enabled,
 	interval_minutes, interval_type,
 	is_paused, max_retries, retry_backoff_seconds,
 	status, metadata`
 
 // jobSelectBase lists columns for job SELECT queries (without auto-managed fields).
-const jobSelectBase = `id, source_id, source_name, url,
+const jobSelectBase = `id, source_id, source_name, url, type,
 	schedule_time, schedule_enabled,
 	interval_minutes, interval_type, next_run_at,
 	is_paused, max_retries, retry_backoff_seconds, current_retry_count,
@@ -52,7 +52,7 @@ func NewJobRepository(db *sqlx.DB) *JobRepository {
 // Create inserts a new job into the database.
 func (r *JobRepository) Create(ctx context.Context, job *domain.Job) error {
 	query := `INSERT INTO jobs (` + jobInsertColumns + `)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
 		RETURNING created_at, updated_at, next_run_at`
 
 	err := r.db.QueryRowContext(
@@ -62,6 +62,7 @@ func (r *JobRepository) Create(ctx context.Context, job *domain.Job) error {
 		job.SourceID,
 		job.SourceName,
 		job.URL,
+		job.Type,
 		job.ScheduleTime,
 		job.ScheduleEnabled,
 		job.IntervalMinutes,
@@ -84,10 +85,11 @@ func (r *JobRepository) Create(ctx context.Context, job *domain.Job) error {
 // Returns wasInserted=true for new jobs, false when updating an existing job.
 func (r *JobRepository) CreateOrUpdate(ctx context.Context, job *domain.Job) (bool, error) {
 	query := `INSERT INTO jobs (` + jobInsertColumns + `)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
 		ON CONFLICT (source_id) DO UPDATE SET
 			source_name = EXCLUDED.source_name,
 			url = EXCLUDED.url,
+			type = EXCLUDED.type,
 			schedule_time = EXCLUDED.schedule_time,
 			schedule_enabled = EXCLUDED.schedule_enabled,
 			interval_minutes = EXCLUDED.interval_minutes,
@@ -112,6 +114,7 @@ func (r *JobRepository) CreateOrUpdate(ctx context.Context, job *domain.Job) (bo
 		job.SourceID,
 		job.SourceName,
 		job.URL,
+		job.Type,
 		job.ScheduleTime,
 		job.ScheduleEnabled,
 		job.IntervalMinutes,
@@ -257,17 +260,17 @@ func (r *JobRepository) List(ctx context.Context, params ListJobsParams) ([]*dom
 func (r *JobRepository) Update(ctx context.Context, job *domain.Job) error {
 	query := `
 		UPDATE jobs
-		SET source_id = $1, source_name = $2, url = $3,
-		    schedule_time = $4, schedule_enabled = $5,
-		    interval_minutes = $6, interval_type = $7, next_run_at = $8,
-		    is_paused = $9, max_retries = $10, retry_backoff_seconds = $11,
-		    current_retry_count = $12,
-		    lock_token = $13, lock_acquired_at = $14,
-		    status = $15,
-		    started_at = $16, completed_at = $17,
-		    paused_at = $18, cancelled_at = $19,
-		    error_message = $20, metadata = $21
-		WHERE id = $22
+		SET source_id = $1, source_name = $2, url = $3, type = $4,
+		    schedule_time = $5, schedule_enabled = $6,
+		    interval_minutes = $7, interval_type = $8, next_run_at = $9,
+		    is_paused = $10, max_retries = $11, retry_backoff_seconds = $12,
+		    current_retry_count = $13,
+		    lock_token = $14, lock_acquired_at = $15,
+		    status = $16,
+		    started_at = $17, completed_at = $18,
+		    paused_at = $19, cancelled_at = $20,
+		    error_message = $21, metadata = $22
+		WHERE id = $23
 	`
 
 	result, execErr := r.db.ExecContext(
@@ -276,6 +279,7 @@ func (r *JobRepository) Update(ctx context.Context, job *domain.Job) error {
 		job.SourceID,
 		job.SourceName,
 		job.URL,
+		job.Type,
 		job.ScheduleTime,
 		job.ScheduleEnabled,
 		job.IntervalMinutes,

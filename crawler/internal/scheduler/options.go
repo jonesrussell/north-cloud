@@ -56,6 +56,13 @@ func WithStuckJobCheckInterval(interval time.Duration) SchedulerOption {
 	}
 }
 
+// WithScraperConfig sets the scraper configuration for leadership_scrape jobs.
+func WithScraperConfig(cfg ScraperConfig) SchedulerOption {
+	return func(s *IntervalScheduler) {
+		s.scraperConfig = &cfg
+	}
+}
+
 // WithLoadBalancing enables or disables load-balanced placement.
 // Default is true (enabled).
 func WithLoadBalancing(enabled bool) SchedulerOption {

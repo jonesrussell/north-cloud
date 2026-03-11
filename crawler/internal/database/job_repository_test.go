@@ -35,6 +35,7 @@ func TestJobRepository_CreateOrUpdate_Insert(t *testing.T) {
 			"80729e12-5127-48f5-9f5c-dcc2647c6fe6",
 			sqlmock.AnyArg(),
 			"https://calgaryherald.com",
+			"crawl",
 			sqlmock.AnyArg(),
 			false,
 			sqlmock.AnyArg(),
@@ -54,6 +55,7 @@ func TestJobRepository_CreateOrUpdate_Insert(t *testing.T) {
 		ID:                  jobID,
 		SourceID:            "80729e12-5127-48f5-9f5c-dcc2647c6fe6",
 		URL:                 "https://calgaryherald.com",
+		Type:                domain.JobTypeCrawl,
 		ScheduleEnabled:     false,
 		MaxRetries:          3,
 		RetryBackoffSeconds: 60,
@@ -103,6 +105,7 @@ func TestJobRepository_CreateOrUpdate_UpdateExisting(t *testing.T) {
 			"80729e12-5127-48f5-9f5c-dcc2647c6fe6",
 			sqlmock.AnyArg(),
 			"https://calgaryherald.com",
+			"crawl",
 			sqlmock.AnyArg(),
 			false,
 			sqlmock.AnyArg(),
@@ -122,6 +125,7 @@ func TestJobRepository_CreateOrUpdate_UpdateExisting(t *testing.T) {
 		ID:                  newJobID,
 		SourceID:            "80729e12-5127-48f5-9f5c-dcc2647c6fe6",
 		URL:                 "https://calgaryherald.com",
+		Type:                domain.JobTypeCrawl,
 		ScheduleEnabled:     false,
 		MaxRetries:          3,
 		RetryBackoffSeconds: 60,
@@ -162,7 +166,7 @@ func TestJobRepository_List_WithSorting(t *testing.T) {
 
 	// Define columns to match jobSelectBase
 	cols := []string{
-		"id", "source_id", "source_name", "url",
+		"id", "source_id", "source_name", "url", "type",
 		"schedule_time", "schedule_enabled",
 		"interval_minutes", "interval_type", "next_run_at",
 		"is_paused", "max_retries", "retry_backoff_seconds", "current_retry_count",
@@ -213,7 +217,7 @@ func TestJobRepository_List_NextRunAtDescNullsFirst(t *testing.T) {
 	ctx := context.Background()
 
 	cols := []string{
-		"id", "source_id", "source_name", "url",
+		"id", "source_id", "source_name", "url", "type",
 		"schedule_time", "schedule_enabled",
 		"interval_minutes", "interval_type", "next_run_at",
 		"is_paused", "max_retries", "retry_backoff_seconds", "current_retry_count",
@@ -264,7 +268,7 @@ func TestJobRepository_List_WithStatusFilter(t *testing.T) {
 	ctx := context.Background()
 
 	cols := []string{
-		"id", "source_id", "source_name", "url",
+		"id", "source_id", "source_name", "url", "type",
 		"schedule_time", "schedule_enabled",
 		"interval_minutes", "interval_type", "next_run_at",
 		"is_paused", "max_retries", "retry_backoff_seconds", "current_retry_count",

@@ -73,6 +73,9 @@ type IntervalScheduler struct {
 
 	// Load balancing
 	bucketMap *BucketMap
+
+	// Scraper config for leadership_scrape jobs
+	scraperConfig *ScraperConfig
 }
 
 // NewIntervalScheduler creates a new interval-based scheduler.
@@ -630,7 +633,7 @@ func (s *IntervalScheduler) createJobCrawler(jobExec *JobExecution, logWriter lo
 	return crawlerInstance, nil
 }
 
-// runJob executes the actual crawl job.
+// runJob dispatches job execution by type.
 func (s *IntervalScheduler) runJob(jobExec *JobExecution) {
 	job := jobExec.Job
 	execution := jobExec.Execution
@@ -648,6 +651,20 @@ func (s *IntervalScheduler) runJob(jobExec *JobExecution) {
 		s.metrics.DecrementRunning()
 		s.releaseLock(job)
 	}()
+
+	// Dispatch by job type
+	switch job.Type {
+	case domain.JobTypeLeadershipScrape:
+		s.runLeadershipJob(jobExec, logWriter)
+	default: // "crawl" or empty (backward compat with pre-type jobs)
+		s.runCrawlJob(jobExec, logWriter)
+	}
+}
+
+// runCrawlJob executes a standard web crawl job.
+func (s *IntervalScheduler) runCrawlJob(jobExec *JobExecution, logWriter logs.Writer) {
+	job := jobExec.Job
+	execution := jobExec.Execution
 
 	// Create an isolated crawler for this job
 	crawlerInstance, err := s.createJobCrawler(jobExec, logWriter)
@@ -675,6 +692,7 @@ func (s *IntervalScheduler) runJob(jobExec *JobExecution) {
 		return
 	}
 
+	// Capture startTime AFTER crawler creation to match original timing semantics
 	startTime := time.Now()
 	writeLog(logWriter, "info", "Starting crawler", job.ID, execution.ID, map[string]any{
 		"source_id": job.SourceID,
@@ -705,6 +723,94 @@ func (s *IntervalScheduler) runJob(jobExec *JobExecution) {
 	})
 
 	s.handleJobSuccess(jobExec, &startTime)
+}
+
+// runLeadershipJob executes a leadership scrape job.
+func (s *IntervalScheduler) runLeadershipJob(jobExec *JobExecution, logWriter logs.Writer) {
+	job := jobExec.Job
+	execution := jobExec.Execution
+	startTime := time.Now()
+
+	writeLog(logWriter, "info", "Starting leadership scrape job", job.ID, execution.ID, nil)
+
+	s.logger.Info("Executing leadership scrape job",
+		infralogger.String("job_id", job.ID),
+	)
+
+	if s.scraperConfig == nil {
+		err := errors.New("leadership scrape: scraper not configured")
+		writeLog(logWriter, "error", err.Error(), job.ID, execution.ID, nil)
+		s.handleJobFailure(jobExec, err, &startTime)
+		return
+	}
+
+	err := RunLeadershipScrapeJob(jobExec.Context, *s.scraperConfig, s.logger)
+	if err != nil {
+		writeLog(logWriter, "error", "Leadership scrape failed: "+err.Error(), job.ID, execution.ID, nil)
+		s.handleJobFailure(jobExec, err, &startTime)
+		return
+	}
+
+	writeLog(logWriter, "info", "Leadership scrape completed successfully", job.ID, execution.ID, map[string]any{
+		"duration_ms": time.Since(startTime).Milliseconds(),
+	})
+
+	s.handleLeadershipJobSuccess(jobExec, &startTime)
+}
+
+// handleLeadershipJobSuccess handles successful leadership scrape completion.
+// Uses calculateNextRun (not adaptive) because leadership scrape jobs have no
+// content hash tracking — adaptive scheduling only applies to crawl jobs.
+func (s *IntervalScheduler) handleLeadershipJobSuccess(jobExec *JobExecution, startTime *time.Time) {
+	job := jobExec.Job
+	execution := jobExec.Execution
+
+	now := time.Now()
+	durationMs := time.Since(*startTime).Milliseconds()
+
+	// Update execution record (no crawler metrics for leadership jobs)
+	execution.Status = string(StateCompleted)
+	execution.CompletedAt = &now
+	execution.DurationMs = &durationMs
+
+	if err := s.executionRepo.Update(s.ctx, execution); err != nil {
+		s.logger.Error("Failed to update execution",
+			infralogger.String("execution_id", execution.ID),
+			infralogger.Error(err),
+		)
+	}
+
+	// Update job
+	job.Status = string(StateCompleted)
+	job.CompletedAt = &now
+	job.CurrentRetryCount = 0
+	job.ErrorMessage = nil
+
+	// If recurring, schedule next run
+	if job.IntervalMinutes != nil && job.ScheduleEnabled {
+		job.Status = string(StateScheduled)
+		nextRun := s.calculateNextRun(job)
+		job.NextRunAt = &nextRun
+	}
+
+	if err := s.repo.Update(s.ctx, job); err != nil {
+		s.logger.Error("Failed to update job",
+			infralogger.String("job_id", job.ID),
+			infralogger.Error(err),
+		)
+	}
+
+	s.metrics.IncrementCompleted()
+	s.metrics.IncrementTotalExecutions()
+
+	s.logger.Info("Leadership scrape job completed successfully",
+		infralogger.String("job_id", job.ID),
+		infralogger.Int64("duration_ms", durationMs),
+		infralogger.Any("next_run_at", job.NextRunAt),
+	)
+
+	// Publish SSE event
+	s.publishJobCompleted(s.ctx, job, execution)
 }
 
 // logCrawlerStartError logs a crawler start error at the appropriate level.
