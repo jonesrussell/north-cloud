@@ -3,6 +3,7 @@ package handlers
 import (
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	infralogger "github.com/jonesrussell/north-cloud/infrastructure/logger"
@@ -218,6 +219,45 @@ func (h *CommunityHandler) Regions(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"regions": regions,
 		"count":   len(regions),
+	})
+}
+
+// UpdateScrapedAt handles PATCH /api/v1/communities/:id/scraped
+func (h *CommunityHandler) UpdateScrapedAt(c *gin.Context) {
+	id := c.Param("id")
+
+	var body struct {
+		LastScrapedAt time.Time `binding:"required" json:"last_scraped_at"`
+	}
+	if err := c.ShouldBindJSON(&body); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "last_scraped_at is required"})
+		return
+	}
+
+	if err := h.repo.UpdateLastScrapedAt(c.Request.Context(), id, body.LastScrapedAt); err != nil {
+		h.logger.Error("Failed to update last_scraped_at",
+			infralogger.String("id", id),
+			infralogger.Error(err),
+		)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update scraped timestamp"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"status": "updated"})
+}
+
+// ListWithSource handles GET /api/v1/communities/with-source
+func (h *CommunityHandler) ListWithSource(c *gin.Context) {
+	communities, err := h.repo.ListWithSource(c.Request.Context())
+	if err != nil {
+		h.logger.Error("Failed to list communities with source", infralogger.Error(err))
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to list communities"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"communities": communities,
+		"count":       len(communities),
 	})
 }
 

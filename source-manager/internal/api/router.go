@@ -145,6 +145,7 @@ func setupServiceRoutes(
 	publicCommunities := publicAPI.Group("/communities")
 	publicCommunities.GET("", communityHandler.List)
 	publicCommunities.GET("/regions", communityHandler.Regions)
+	publicCommunities.GET("/with-source", communityHandler.ListWithSource)
 	publicCommunities.GET("/nearby", communityHandler.Nearby)
 	publicCommunities.GET("/by-slug/:slug", communityHandler.GetBySlug)
 	publicCommunities.GET("/:id", communityHandler.GetByID)
@@ -171,6 +172,7 @@ func setupServiceRoutes(
 	communities.POST("", communityHandler.Create)
 	communities.POST("/link-sources", linkerHandler.LinkSources)
 	communities.PUT("/:id", communityHandler.Update)
+	communities.PATCH("/:id/scraped", communityHandler.UpdateScrapedAt)
 	communities.DELETE("/:id", communityHandler.Delete)
 
 	// People — public read endpoints (nested under communities)
