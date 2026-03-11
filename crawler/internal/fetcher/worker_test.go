@@ -848,6 +848,45 @@ func TestProcessURL_BinaryURLDownloadPHP(t *testing.T) {
 	verifyHostUpdated(t, hostUpdater)
 }
 
+func TestProcessURL_DynamicRenderSkipsBinaryURL(t *testing.T) {
+	t.Parallel()
+
+	// Server returns PDF content-type for the fallback static fetch path.
+	server := startTestServerWithContentType(t, http.StatusOK, "%PDF-1.4 binary", "application/pdf")
+
+	frontier := &mockFrontier{
+		claimFunc: func(_ context.Context) (*domain.FrontierURL, error) {
+			return nil, fetcher.ErrNoURLAvailable
+		},
+	}
+
+	renderer := &mockRenderer{
+		err: errors.New("renderer must not be called for binary URLs"),
+	}
+
+	resolver := &mockModeResolver{mode: "dynamic"}
+
+	pool := buildRenderPool(t, frontier, renderer, resolver)
+
+	furl := &domain.FrontierURL{
+		ID:       workerTestURLID,
+		URL:      server.URL + "/tender_notice/doc.pdf",
+		Host:     workerTestHost,
+		SourceID: workerTestSourceID,
+	}
+
+	if err := pool.ProcessURL(context.Background(), furl); err != nil {
+		t.Fatalf("ProcessURL returned error: %v", err)
+	}
+
+	if renderer.callCount != 0 {
+		t.Error("expected renderer NOT to be called for binary URL, but it was")
+	}
+
+	// The URL should be marked dead via the content-type check after static fetch.
+	verifyDeadCalled(t, frontier, "unsupported_content_type")
+}
+
 // --- Verification helpers ---
 
 func verifyFetchedCalled(t *testing.T, frontier *mockFrontier) {
