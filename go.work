@@ -17,4 +17,5 @@ use (
 	./social-publisher
 	./source-manager
 	./tests/integration/pipeline
+	./tools/source-diagnose
 )
