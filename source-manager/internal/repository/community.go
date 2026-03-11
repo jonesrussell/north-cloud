@@ -493,3 +493,56 @@ func (r *CommunityRepository) FindNearby(
 
 	return results, nil
 }
+
+// UpdateLastScrapedAt sets the last_scraped_at timestamp for a community.
+func (r *CommunityRepository) UpdateLastScrapedAt(ctx context.Context, id string, scrapedAt time.Time) error {
+	result, err := r.db.ExecContext(ctx,
+		`UPDATE communities SET last_scraped_at = $2 WHERE id = $1`,
+		id, scrapedAt,
+	)
+	if err != nil {
+		return fmt.Errorf("update last_scraped_at: %w", err)
+	}
+
+	rows, rowsErr := result.RowsAffected()
+	if rowsErr != nil {
+		return fmt.Errorf("update last_scraped_at rows affected: %w", rowsErr)
+	}
+	if rows == 0 {
+		return errors.New("update last_scraped_at: community not found")
+	}
+
+	return nil
+}
+
+// ListWithSource returns communities that have a linked source and a website URL.
+func (r *CommunityRepository) ListWithSource(ctx context.Context) ([]models.Community, error) {
+	query := `SELECT id, name, slug, community_type, province, region,
+		inac_id, statcan_csd, osm_relation_id, wikidata_qid, latitude, longitude,
+		nation, treaty, language_group, reserve_name, population, population_year,
+		website, feed_url, data_source, source_id, enabled, created_at, updated_at, last_scraped_at
+		FROM communities
+		WHERE source_id IS NOT NULL AND website IS NOT NULL
+		ORDER BY name ASC`
+
+	rows, err := r.db.QueryContext(ctx, query)
+	if err != nil {
+		return nil, fmt.Errorf("list communities with source: %w", err)
+	}
+	defer rows.Close()
+
+	var communities []models.Community
+	for rows.Next() {
+		c, scanErr := scanCommunity(rows)
+		if scanErr != nil {
+			return nil, scanErr
+		}
+		communities = append(communities, *c)
+	}
+
+	if closeErr := rows.Err(); closeErr != nil {
+		return nil, fmt.Errorf("list with source rows: %w", closeErr)
+	}
+
+	return communities, nil
+}
