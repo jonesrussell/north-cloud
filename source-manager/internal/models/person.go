@@ -16,13 +16,15 @@ type Person struct {
 	UpdatedAt   time.Time `db:"updated_at"   json:"updated_at"`
 
 	// Optional fields
-	RoleTitle  *string    `db:"role_title"  json:"role_title,omitempty"`
-	Email      *string    `db:"email"       json:"email,omitempty"`
-	Phone      *string    `db:"phone"       json:"phone,omitempty"`
-	TermStart  *time.Time `db:"term_start"  json:"term_start,omitempty"`
-	TermEnd    *time.Time `db:"term_end"    json:"term_end,omitempty"`
-	SourceURL  *string    `db:"source_url"  json:"source_url,omitempty"`
-	VerifiedAt *time.Time `db:"verified_at" json:"verified_at,omitempty"`
+	RoleTitle              *string    `db:"role_title"              json:"role_title,omitempty"`
+	Email                  *string    `db:"email"                   json:"email,omitempty"`
+	Phone                  *string    `db:"phone"                   json:"phone,omitempty"`
+	TermStart              *time.Time `db:"term_start"              json:"term_start,omitempty"`
+	TermEnd                *time.Time `db:"term_end"                json:"term_end,omitempty"`
+	SourceURL              *string    `db:"source_url"              json:"source_url,omitempty"`
+	VerifiedAt             *time.Time `db:"verified_at"             json:"verified_at,omitempty"`
+	VerificationConfidence *float64   `db:"verification_confidence" json:"verification_confidence,omitempty"`
+	VerificationIssues     *string    `db:"verification_issues"     json:"verification_issues,omitempty"`
 }
 
 // PersonHistory is an archived snapshot of a person's term.

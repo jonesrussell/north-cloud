@@ -20,7 +20,8 @@ const (
 
 // personColumns is the SELECT column list for the people table.
 const personColumns = `id, community_id, name, slug, role, data_source, is_current, verified,
-	created_at, updated_at, role_title, email, phone, term_start, term_end, source_url, verified_at`
+	created_at, updated_at, role_title, email, phone, term_start, term_end, source_url, verified_at,
+	verification_confidence, verification_issues`
 
 // PersonRepository provides CRUD operations for the people table.
 type PersonRepository struct {
@@ -42,7 +43,7 @@ func scanPerson(row interface{ Scan(...any) error }) (*models.Person, error) {
 	scanErr := row.Scan(
 		&p.ID, &p.CommunityID, &p.Name, &p.Slug, &p.Role, &p.DataSource, &p.IsCurrent, &p.Verified,
 		&p.CreatedAt, &p.UpdatedAt, &p.RoleTitle, &p.Email, &p.Phone, &p.TermStart, &p.TermEnd,
-		&p.SourceURL, &p.VerifiedAt,
+		&p.SourceURL, &p.VerifiedAt, &p.VerificationConfidence, &p.VerificationIssues,
 	)
 	if scanErr != nil {
 		return nil, fmt.Errorf("scan person: %w", scanErr)
@@ -60,17 +61,17 @@ func (r *PersonRepository) Create(ctx context.Context, p *models.Person) error {
 		INSERT INTO people (
 			id, community_id, name, slug, role, data_source, is_current, verified,
 			created_at, updated_at, role_title, email, phone, term_start, term_end,
-			source_url, verified_at
+			source_url, verified_at, verification_confidence, verification_issues
 		) VALUES (
 			$1, $2, $3, $4, $5, $6, $7, $8,
 			$9, $10, $11, $12, $13, $14, $15,
-			$16, $17
+			$16, $17, $18, $19
 		)`
 
 	_, err := r.db.ExecContext(ctx, query,
 		p.ID, p.CommunityID, p.Name, p.Slug, p.Role, p.DataSource, p.IsCurrent, p.Verified,
 		p.CreatedAt, p.UpdatedAt, p.RoleTitle, p.Email, p.Phone, p.TermStart, p.TermEnd,
-		p.SourceURL, p.VerifiedAt,
+		p.SourceURL, p.VerifiedAt, p.VerificationConfidence, p.VerificationIssues,
 	)
 	if err != nil {
 		return fmt.Errorf("create person: %w", err)
@@ -103,14 +104,15 @@ func (r *PersonRepository) Update(ctx context.Context, p *models.Person) error {
 			community_id = $2, name = $3, slug = $4, role = $5, data_source = $6,
 			is_current = $7, verified = $8, role_title = $9,
 			email = $10, phone = $11, term_start = $12, term_end = $13,
-			source_url = $14, verified_at = $15
+			source_url = $14, verified_at = $15,
+			verification_confidence = $16, verification_issues = $17
 		WHERE id = $1`
 
 	result, err := r.db.ExecContext(ctx, query,
 		p.ID, p.CommunityID, p.Name, p.Slug, p.Role, p.DataSource,
 		p.IsCurrent, p.Verified, p.RoleTitle,
 		p.Email, p.Phone, p.TermStart, p.TermEnd,
-		p.SourceURL, p.VerifiedAt,
+		p.SourceURL, p.VerifiedAt, p.VerificationConfidence, p.VerificationIssues,
 	)
 	if err != nil {
 		return fmt.Errorf("update person: %w", err)

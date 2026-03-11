@@ -15,7 +15,8 @@ import (
 // bandOfficeColumns is the SELECT column list for the band_offices table.
 const bandOfficeColumns = `id, community_id, data_source, verified, created_at, updated_at,
 	address_line1, address_line2, city, province, postal_code,
-	phone, fax, email, toll_free, office_hours, source_url, verified_at`
+	phone, fax, email, toll_free, office_hours, source_url, verified_at,
+	verification_confidence, verification_issues`
 
 // BandOfficeRepository provides CRUD operations for the band_offices table.
 type BandOfficeRepository struct {
@@ -38,6 +39,7 @@ func scanBandOffice(row interface{ Scan(...any) error }) (*models.BandOffice, er
 		&bo.ID, &bo.CommunityID, &bo.DataSource, &bo.Verified, &bo.CreatedAt, &bo.UpdatedAt,
 		&bo.AddressLine1, &bo.AddressLine2, &bo.City, &bo.Province, &bo.PostalCode,
 		&bo.Phone, &bo.Fax, &bo.Email, &bo.TollFree, &bo.OfficeHours, &bo.SourceURL, &bo.VerifiedAt,
+		&bo.VerificationConfidence, &bo.VerificationIssues,
 	)
 	if scanErr != nil {
 		return nil, fmt.Errorf("scan band office: %w", scanErr)
@@ -55,17 +57,20 @@ func (r *BandOfficeRepository) Create(ctx context.Context, bo *models.BandOffice
 		INSERT INTO band_offices (
 			id, community_id, data_source, verified, created_at, updated_at,
 			address_line1, address_line2, city, province, postal_code,
-			phone, fax, email, toll_free, office_hours, source_url, verified_at
+			phone, fax, email, toll_free, office_hours, source_url, verified_at,
+			verification_confidence, verification_issues
 		) VALUES (
 			$1, $2, $3, $4, $5, $6,
 			$7, $8, $9, $10, $11,
-			$12, $13, $14, $15, $16, $17, $18
+			$12, $13, $14, $15, $16, $17, $18,
+			$19, $20
 		)`
 
 	_, err := r.db.ExecContext(ctx, query,
 		bo.ID, bo.CommunityID, bo.DataSource, bo.Verified, bo.CreatedAt, bo.UpdatedAt,
 		bo.AddressLine1, bo.AddressLine2, bo.City, bo.Province, bo.PostalCode,
 		bo.Phone, bo.Fax, bo.Email, bo.TollFree, bo.OfficeHours, bo.SourceURL, bo.VerifiedAt,
+		bo.VerificationConfidence, bo.VerificationIssues,
 	)
 	if err != nil {
 		return fmt.Errorf("create band office: %w", err)
@@ -98,14 +103,15 @@ func (r *BandOfficeRepository) Update(ctx context.Context, bo *models.BandOffice
 			community_id = $2, data_source = $3, verified = $4,
 			address_line1 = $5, address_line2 = $6, city = $7, province = $8, postal_code = $9,
 			phone = $10, fax = $11, email = $12, toll_free = $13, office_hours = $14,
-			source_url = $15, verified_at = $16
+			source_url = $15, verified_at = $16,
+			verification_confidence = $17, verification_issues = $18
 		WHERE id = $1`
 
 	result, err := r.db.ExecContext(ctx, query,
 		bo.ID, bo.CommunityID, bo.DataSource, bo.Verified,
 		bo.AddressLine1, bo.AddressLine2, bo.City, bo.Province, bo.PostalCode,
 		bo.Phone, bo.Fax, bo.Email, bo.TollFree, bo.OfficeHours,
-		bo.SourceURL, bo.VerifiedAt,
+		bo.SourceURL, bo.VerifiedAt, bo.VerificationConfidence, bo.VerificationIssues,
 	)
 	if err != nil {
 		return fmt.Errorf("update band office: %w", err)
@@ -156,11 +162,13 @@ func (r *BandOfficeRepository) Upsert(ctx context.Context, bo *models.BandOffice
 		INSERT INTO band_offices (
 			id, community_id, data_source, verified, created_at, updated_at,
 			address_line1, address_line2, city, province, postal_code,
-			phone, fax, email, toll_free, office_hours, source_url, verified_at
+			phone, fax, email, toll_free, office_hours, source_url, verified_at,
+			verification_confidence, verification_issues
 		) VALUES (
 			$1, $2, $3, $4, $5, $6,
 			$7, $8, $9, $10, $11,
-			$12, $13, $14, $15, $16, $17, $18
+			$12, $13, $14, $15, $16, $17, $18,
+			$19, $20
 		)
 		ON CONFLICT (community_id) DO UPDATE SET
 			data_source = EXCLUDED.data_source, verified = EXCLUDED.verified,
@@ -169,13 +177,16 @@ func (r *BandOfficeRepository) Upsert(ctx context.Context, bo *models.BandOffice
 			city = EXCLUDED.city, province = EXCLUDED.province, postal_code = EXCLUDED.postal_code,
 			phone = EXCLUDED.phone, fax = EXCLUDED.fax, email = EXCLUDED.email,
 			toll_free = EXCLUDED.toll_free, office_hours = EXCLUDED.office_hours,
-			source_url = EXCLUDED.source_url, verified_at = EXCLUDED.verified_at
+			source_url = EXCLUDED.source_url, verified_at = EXCLUDED.verified_at,
+			verification_confidence = EXCLUDED.verification_confidence,
+			verification_issues = EXCLUDED.verification_issues
 		RETURNING id`
 
 	if err := r.db.QueryRowContext(ctx, query,
 		bo.ID, bo.CommunityID, bo.DataSource, bo.Verified, bo.CreatedAt, bo.UpdatedAt,
 		bo.AddressLine1, bo.AddressLine2, bo.City, bo.Province, bo.PostalCode,
 		bo.Phone, bo.Fax, bo.Email, bo.TollFree, bo.OfficeHours, bo.SourceURL, bo.VerifiedAt,
+		bo.VerificationConfidence, bo.VerificationIssues,
 	).Scan(&bo.ID); err != nil {
 		return fmt.Errorf("upsert band office: %w", err)
 	}
