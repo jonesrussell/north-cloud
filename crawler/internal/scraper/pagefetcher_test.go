@@ -110,7 +110,7 @@ func TestPageFetcher_FetchLinks_ServerError(t *testing.T) {
 
 func TestNormalizeWhitespace(t *testing.T) {
 	input := "  hello   \n\n  world  \t  foo  "
-	expected := "hello world foo"
+	expected := "hello \n\n world foo"
 
 	result := scraper.NormalizeWhitespace(input)
 	if result != expected {

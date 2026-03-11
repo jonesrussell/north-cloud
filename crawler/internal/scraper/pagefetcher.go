@@ -90,19 +90,25 @@ func (f *PageFetcher) fetchDocument(ctx context.Context, pageURL string) (*goque
 	return doc, nil
 }
 
-// NormalizeWhitespace collapses runs of whitespace into single spaces and trims.
+// NormalizeWhitespace collapses runs of horizontal whitespace into single spaces,
+// preserves newlines for line-based text extraction, and trims.
 func NormalizeWhitespace(s string) string {
 	var b strings.Builder
 
 	inSpace := false
 
 	for _, r := range s {
-		if r == ' ' || r == '\t' || r == '\n' || r == '\r' {
+		if r == '\n' || r == '\r' {
+			inSpace = false
+			b.WriteRune('\n')
+			continue
+		}
+
+		if r == ' ' || r == '\t' {
 			if !inSpace {
 				b.WriteRune(' ')
 				inSpace = true
 			}
-
 			continue
 		}
 
