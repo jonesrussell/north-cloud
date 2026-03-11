@@ -39,14 +39,14 @@ func NewCommunityRepository(db *sql.DB, log infralogger.Logger) *CommunityReposi
 // scanCommunity scans a single row into a Community struct.
 // Optional extra destinations are appended to the scan list (e.g. distance_km).
 func scanCommunity(row interface{ Scan(...any) error }, extra ...any) (*models.Community, error) {
-	const communityColumnCount = 25
+	const communityColumnCount = 26
 	var c models.Community
 	dest := make([]any, 0, communityColumnCount+len(extra))
 	dest = append(dest,
 		&c.ID, &c.Name, &c.Slug, &c.CommunityType, &c.Province, &c.Region,
 		&c.InacID, &c.StatCanCSD, &c.OSMRelationID, &c.WikidataQID, &c.Latitude, &c.Longitude,
 		&c.Nation, &c.Treaty, &c.LanguageGroup, &c.ReserveName, &c.Population, &c.PopulationYear,
-		&c.Website, &c.FeedURL, &c.DataSource, &c.SourceID, &c.Enabled, &c.CreatedAt, &c.UpdatedAt,
+		&c.Website, &c.FeedURL, &c.DataSource, &c.SourceID, &c.Enabled, &c.CreatedAt, &c.UpdatedAt, &c.LastScrapedAt,
 	)
 	dest = append(dest, extra...)
 	scanErr := row.Scan(dest...)
@@ -67,19 +67,19 @@ func (r *CommunityRepository) Create(ctx context.Context, c *models.Community) e
 			id, name, slug, community_type, province, region,
 			inac_id, statcan_csd, osm_relation_id, wikidata_qid, latitude, longitude,
 			nation, treaty, language_group, reserve_name, population, population_year,
-			website, feed_url, data_source, source_id, enabled, created_at, updated_at
+			website, feed_url, data_source, source_id, enabled, created_at, updated_at, last_scraped_at
 		) VALUES (
 			$1, $2, $3, $4, $5, $6,
 			$7, $8, $9, $10, $11, $12,
 			$13, $14, $15, $16, $17, $18,
-			$19, $20, $21, $22, $23, $24, $25
+			$19, $20, $21, $22, $23, $24, $25, $26
 		)`
 
 	_, err := r.db.ExecContext(ctx, query,
 		c.ID, c.Name, c.Slug, c.CommunityType, c.Province, c.Region,
 		c.InacID, c.StatCanCSD, c.OSMRelationID, c.WikidataQID, c.Latitude, c.Longitude,
 		c.Nation, c.Treaty, c.LanguageGroup, c.ReserveName, c.Population, c.PopulationYear,
-		c.Website, c.FeedURL, c.DataSource, c.SourceID, c.Enabled, c.CreatedAt, c.UpdatedAt,
+		c.Website, c.FeedURL, c.DataSource, c.SourceID, c.Enabled, c.CreatedAt, c.UpdatedAt, c.LastScrapedAt,
 	)
 	if err != nil {
 		return fmt.Errorf("create community: %w", err)
@@ -93,7 +93,7 @@ func (r *CommunityRepository) GetByID(ctx context.Context, id string) (*models.C
 	query := `SELECT id, name, slug, community_type, province, region,
 		inac_id, statcan_csd, osm_relation_id, wikidata_qid, latitude, longitude,
 		nation, treaty, language_group, reserve_name, population, population_year,
-		website, feed_url, data_source, source_id, enabled, created_at, updated_at
+		website, feed_url, data_source, source_id, enabled, created_at, updated_at, last_scraped_at
 		FROM communities WHERE id = $1`
 	row := r.db.QueryRowContext(ctx, query, id)
 
@@ -113,7 +113,7 @@ func (r *CommunityRepository) GetBySlug(ctx context.Context, slug string) (*mode
 	query := `SELECT id, name, slug, community_type, province, region,
 		inac_id, statcan_csd, osm_relation_id, wikidata_qid, latitude, longitude,
 		nation, treaty, language_group, reserve_name, population, population_year,
-		website, feed_url, data_source, source_id, enabled, created_at, updated_at
+		website, feed_url, data_source, source_id, enabled, created_at, updated_at, last_scraped_at
 		FROM communities WHERE slug = $1`
 	row := r.db.QueryRowContext(ctx, query, slug)
 
@@ -239,7 +239,7 @@ func (r *CommunityRepository) ListPaginated(
 	query := fmt.Sprintf(`SELECT id, name, slug, community_type, province, region,
 		inac_id, statcan_csd, osm_relation_id, wikidata_qid, latitude, longitude,
 		nation, treaty, language_group, reserve_name, population, population_year,
-		website, feed_url, data_source, source_id, enabled, created_at, updated_at
+		website, feed_url, data_source, source_id, enabled, created_at, updated_at, last_scraped_at
 		FROM communities%s ORDER BY name ASC LIMIT $%d OFFSET $%d`,
 		where, argIdx, argIdx+1,
 	)
@@ -285,12 +285,12 @@ func (r *CommunityRepository) upsertCommunity(
 			id, name, slug, community_type, province, region,
 			inac_id, statcan_csd, osm_relation_id, wikidata_qid, latitude, longitude,
 			nation, treaty, language_group, reserve_name, population, population_year,
-			website, feed_url, data_source, source_id, enabled, created_at, updated_at
+			website, feed_url, data_source, source_id, enabled, created_at, updated_at, last_scraped_at
 		) VALUES (
 			$1, $2, $3, $4, $5, $6,
 			$7, $8, $9, $10, $11, $12,
 			$13, $14, $15, $16, $17, $18,
-			$19, $20, $21, $22, $23, $24, $25
+			$19, $20, $21, $22, $23, $24, $25, $26
 		)
 		ON CONFLICT (%s) DO UPDATE SET
 			name = EXCLUDED.name, slug = EXCLUDED.slug,
@@ -306,14 +306,15 @@ func (r *CommunityRepository) upsertCommunity(
 			population_year = EXCLUDED.population_year,
 			website = EXCLUDED.website, feed_url = EXCLUDED.feed_url,
 			data_source = EXCLUDED.data_source, source_id = EXCLUDED.source_id,
-			enabled = EXCLUDED.enabled, updated_at = EXCLUDED.updated_at
+			enabled = EXCLUDED.enabled, updated_at = EXCLUDED.updated_at,
+			last_scraped_at = EXCLUDED.last_scraped_at
 		RETURNING id`, conflictColumn)
 
 	if err := r.db.QueryRowContext(ctx, query,
 		c.ID, c.Name, c.Slug, c.CommunityType, c.Province, c.Region,
 		c.InacID, c.StatCanCSD, c.OSMRelationID, c.WikidataQID, c.Latitude, c.Longitude,
 		c.Nation, c.Treaty, c.LanguageGroup, c.ReserveName, c.Population, c.PopulationYear,
-		c.Website, c.FeedURL, c.DataSource, c.SourceID, c.Enabled, c.CreatedAt, c.UpdatedAt,
+		c.Website, c.FeedURL, c.DataSource, c.SourceID, c.Enabled, c.CreatedAt, c.UpdatedAt, c.LastScrapedAt,
 	).Scan(&c.ID); err != nil {
 		return fmt.Errorf("upsert community on %s: %w", conflictColumn, err)
 	}
@@ -363,7 +364,7 @@ func (r *CommunityRepository) ListUnlinked(ctx context.Context) ([]models.Commun
 	query := `SELECT id, name, slug, community_type, province, region,
 		inac_id, statcan_csd, osm_relation_id, wikidata_qid, latitude, longitude,
 		nation, treaty, language_group, reserve_name, population, population_year,
-		website, feed_url, data_source, source_id, enabled, created_at, updated_at
+		website, feed_url, data_source, source_id, enabled, created_at, updated_at, last_scraped_at
 		FROM communities WHERE source_id IS NULL ORDER BY name ASC`
 
 	rows, err := r.db.QueryContext(ctx, query)
@@ -442,7 +443,7 @@ func (r *CommunityRepository) FindNearby(
 			SELECT id, name, slug, community_type, province, region,
 				inac_id, statcan_csd, osm_relation_id, wikidata_qid, latitude, longitude,
 				nation, treaty, language_group, reserve_name, population, population_year,
-				website, feed_url, data_source, source_id, enabled, created_at, updated_at,
+				website, feed_url, data_source, source_id, enabled, created_at, updated_at, last_scraped_at,
 				(%.1f * acos(
 					LEAST(1.0, cos(radians($1)) * cos(radians(latitude)) *
 					cos(radians(longitude) - radians($2)) +
@@ -457,7 +458,7 @@ func (r *CommunityRepository) FindNearby(
 		SELECT id, name, slug, community_type, province, region,
 			inac_id, statcan_csd, osm_relation_id, wikidata_qid, latitude, longitude,
 			nation, treaty, language_group, reserve_name, population, population_year,
-			website, feed_url, data_source, source_id, enabled, created_at, updated_at,
+			website, feed_url, data_source, source_id, enabled, created_at, updated_at, last_scraped_at,
 			distance_km
 		FROM nearby
 		WHERE distance_km <= $7
