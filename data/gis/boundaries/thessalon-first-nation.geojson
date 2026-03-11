@@ -1,0 +1,55 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Thessalon First Nation",
+        "slug": "thessalon-first-nation",
+        "source": "OpenStreetMap",
+        "osm_relation_id": 7589583
+      },
+      "geometry": {
+        "type": "MultiPolygon",
+        "coordinates": [
+          [
+            [
+              [
+                -83.4321998,
+                46.2379319
+              ],
+              [
+                -83.4325364,
+                46.2674724
+              ],
+              [
+                -83.3936681,
+                46.2674498
+              ],
+              [
+                -83.3934783,
+                46.2311313
+              ],
+              [
+                -83.4029895,
+                46.2352056
+              ],
+              [
+                -83.4185274,
+                46.2374916
+              ],
+              [
+                -83.4292806,
+                46.2373551
+              ],
+              [
+                -83.4321998,
+                46.2379319
+              ]
+            ]
+          ]
+        ]
+      }
+    }
+  ]
+}

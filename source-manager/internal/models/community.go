@@ -12,8 +12,10 @@ type Community struct {
 	Region        *string `db:"region"         json:"region,omitempty"`
 
 	// Authoritative identifiers
-	InacID     *string `db:"inac_id"     json:"inac_id,omitempty"`
-	StatCanCSD *string `db:"statcan_csd" json:"statcan_csd,omitempty"`
+	InacID        *string `db:"inac_id"         json:"inac_id,omitempty"`
+	StatCanCSD    *string `db:"statcan_csd"     json:"statcan_csd,omitempty"`
+	OSMRelationID *int64  `db:"osm_relation_id" json:"osm_relation_id,omitempty"`
+	WikidataQID   *string `db:"wikidata_qid"    json:"wikidata_qid,omitempty"`
 
 	// Geodata
 	Latitude  *float64 `db:"latitude"  json:"latitude,omitempty"`

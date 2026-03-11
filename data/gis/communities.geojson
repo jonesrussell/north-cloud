@@ -1,0 +1,595 @@
+{
+  "type": "FeatureCollection",
+  "name": "North Shore Communities",
+  "crs": {
+    "type": "name",
+    "properties": {
+      "name": "urn:ogc:def:crs:OGC:1.3:CRS84"
+    }
+  },
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "sagamok-anishnawbek",
+        "name": "Sagamok Anishnawbek",
+        "type": "first_nation",
+        "region": "North Shore",
+        "subregion": "Massey-Espanola",
+        "reserve_name": "Sagamok 12",
+        "population": 1110,
+        "population_year": 2021,
+        "external_ids": {
+          "inac_band_number": 179,
+          "statscan_csd": "3557071",
+          "osm_relation_id": 7589023,
+          "wikidata_qid": "Q7398967"
+        },
+        "neighbours": [
+          "sables-spanish-rivers",
+          "espanola",
+          "whitefish-river-first-nation",
+          "spanish"
+        ],
+        "boundary_file": "boundaries/sagamok-anishnawbek.geojson"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-82.1102, 46.1575]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "serpent-river-first-nation",
+        "name": "Serpent River First Nation",
+        "type": "first_nation",
+        "region": "North Shore",
+        "subregion": "Elliot Lake-Cutler",
+        "reserve_name": "Serpent River 7",
+        "population": 351,
+        "population_year": 2021,
+        "external_ids": {
+          "inac_band_number": 201,
+          "statscan_csd": "3557072",
+          "osm_relation_id": 7589588,
+          "wikidata_qid": "Q7455097"
+        },
+        "neighbours": [
+          "elliot-lake",
+          "spanish",
+          "blind-river"
+        ],
+        "boundary_file": "boundaries/serpent-river-first-nation.geojson"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-82.5499, 46.1834]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "mississauga-first-nation",
+        "name": "Mississauga First Nation",
+        "type": "first_nation",
+        "region": "North Shore",
+        "subregion": "Blind River",
+        "reserve_name": "Mississagi River 8",
+        "population": 414,
+        "population_year": 2021,
+        "external_ids": {
+          "inac_band_number": 200,
+          "statscan_csd": "3557073",
+          "osm_relation_id": 7589585,
+          "wikidata_qid": "Q6878967"
+        },
+        "neighbours": [
+          "blind-river",
+          "huron-shores",
+          "elliot-lake"
+        ],
+        "boundary_file": "boundaries/mississauga-first-nation.geojson"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-83.0145, 46.2173]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "thessalon-first-nation",
+        "name": "Thessalon First Nation",
+        "type": "first_nation",
+        "region": "North Shore",
+        "subregion": "Thessalon",
+        "reserve_name": "Thessalon 12",
+        "population": 151,
+        "population_year": 2021,
+        "external_ids": {
+          "inac_band_number": 202,
+          "statscan_csd": "3557026",
+          "osm_relation_id": 7589583,
+          "wikidata_qid": "Q21071112"
+        },
+        "neighbours": [
+          "thessalon",
+          "huron-shores"
+        ],
+        "boundary_file": "boundaries/thessalon-first-nation.geojson"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-83.4166, 46.2500]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "garden-river-first-nation",
+        "name": "Garden River First Nation",
+        "type": "first_nation",
+        "region": "North Shore",
+        "subregion": "Sault Ste. Marie",
+        "reserve_name": "Garden River 14",
+        "population": 1071,
+        "population_year": 2021,
+        "external_ids": {
+          "inac_band_number": 199,
+          "statscan_csd": "3557074",
+          "osm_relation_id": 7590372,
+          "wikidata_qid": "Q5522296"
+        },
+        "neighbours": [
+          "sault-ste-marie",
+          "batchewana-first-nation"
+        ],
+        "boundary_file": "boundaries/garden-river-first-nation.geojson"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-84.0999, 46.5501]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "batchewana-first-nation",
+        "name": "Batchewana First Nation",
+        "type": "first_nation",
+        "region": "North Shore",
+        "subregion": "Sault Ste. Marie",
+        "reserve_name": "Rankin Location 15D",
+        "additional_reserves": [
+          {"name": "Goulais Bay 15A", "osm_relation_id": 7591563},
+          {"name": "Obadjiwan 15E", "osm_relation_id": 14325738},
+          {"name": "Whitefish Island", "osm_relation_id": 14325737}
+        ],
+        "population": 784,
+        "population_year": 2021,
+        "population_notes": "All reserves incompletely enumerated in 2021 Census; figure from ISC registered population",
+        "external_ids": {
+          "inac_band_number": 198,
+          "statscan_csd": "3557075",
+          "osm_relation_id": 7590371,
+          "wikidata_qid": "Q20312856"
+        },
+        "neighbours": [
+          "sault-ste-marie",
+          "garden-river-first-nation"
+        ],
+        "boundary_file": "boundaries/batchewana-first-nation.geojson"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-84.2500, 46.5501]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "whitefish-river-first-nation",
+        "name": "Whitefish River First Nation",
+        "type": "first_nation",
+        "region": "North Shore",
+        "subregion": "Birch Island",
+        "reserve_name": "Whitefish River (Part) 4",
+        "population": 457,
+        "population_year": 2021,
+        "external_ids": {
+          "inac_band_number": 230,
+          "statscan_csd": "3551040",
+          "osm_relation_id": 7568707,
+          "wikidata_qid": "Q21071197"
+        },
+        "neighbours": [
+          "sagamok-anishnawbek",
+          "espanola",
+          "nairn-and-hyman"
+        ],
+        "boundary_file": "boundaries/whitefish-river-first-nation.geojson"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-81.7498, 46.0834]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "atikameksheng-anishnawbek",
+        "name": "Atikameksheng Anishnawbek",
+        "type": "first_nation",
+        "region": "North Shore",
+        "subregion": "Sudbury",
+        "reserve_name": "Whitefish Lake 6",
+        "former_name": "Whitefish Lake First Nation",
+        "population": 412,
+        "population_year": 2021,
+        "external_ids": {
+          "inac_band_number": 224,
+          "statscan_csd": "3552051",
+          "osm_relation_id": 7568927,
+          "wikidata_qid": "Q4815786"
+        },
+        "neighbours": [
+          "greater-sudbury",
+          "nairn-and-hyman",
+          "wahnapitae-first-nation"
+        ],
+        "boundary_file": "boundaries/atikameksheng-anishnawbek.geojson"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-81.2500, 46.3265]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "wahnapitae-first-nation",
+        "name": "Wahnapitae First Nation",
+        "type": "first_nation",
+        "region": "North Shore",
+        "subregion": "Sudbury",
+        "reserve_name": "Wahnapitei 11",
+        "population": 124,
+        "population_year": 2021,
+        "external_ids": {
+          "inac_band_number": 232,
+          "statscan_csd": "3553040",
+          "osm_relation_id": 7568928,
+          "wikidata_qid": "Q7959821"
+        },
+        "neighbours": [
+          "greater-sudbury",
+          "atikameksheng-anishnawbek"
+        ],
+        "boundary_file": "boundaries/wahnapitae-first-nation.geojson",
+        "boundary_source": "OSM relation 7568928 / NRCan CLSS adminAreaId 06171"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-80.8258, 46.7698]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "sault-ste-marie",
+        "name": "Sault Ste. Marie",
+        "type": "municipality",
+        "municipality_type": "city",
+        "region": "North Shore",
+        "subregion": "Sault Ste. Marie",
+        "population": 72051,
+        "population_year": 2021,
+        "external_ids": {
+          "statscan_csd": "3557061",
+          "osm_relation_id": 7590370,
+          "wikidata_qid": "Q463165"
+        },
+        "neighbours": [
+          "garden-river-first-nation",
+          "batchewana-first-nation"
+        ],
+        "boundary_file": "boundaries/sault-ste-marie.geojson"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-84.3330, 46.5127]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "greater-sudbury",
+        "name": "Greater Sudbury",
+        "type": "municipality",
+        "municipality_type": "city",
+        "region": "North Shore",
+        "subregion": "Sudbury",
+        "population": 166004,
+        "population_year": 2021,
+        "external_ids": {
+          "statscan_csd": "3553005",
+          "osm_relation_id": 7568929,
+          "wikidata_qid": "Q383434"
+        },
+        "neighbours": [
+          "atikameksheng-anishnawbek",
+          "wahnapitae-first-nation",
+          "nairn-and-hyman"
+        ],
+        "boundary_file": "boundaries/greater-sudbury.geojson"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-80.9912, 46.4927]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "elliot-lake",
+        "name": "Elliot Lake",
+        "type": "municipality",
+        "municipality_type": "city",
+        "region": "North Shore",
+        "subregion": "Elliot Lake-Cutler",
+        "population": 11372,
+        "population_year": 2021,
+        "external_ids": {
+          "statscan_csd": "3557041",
+          "osm_relation_id": 7589586,
+          "wikidata_qid": "Q2729034"
+        },
+        "neighbours": [
+          "serpent-river-first-nation",
+          "blind-river",
+          "mississauga-first-nation"
+        ],
+        "boundary_file": "boundaries/elliot-lake.geojson"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-82.6529, 46.3735]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "espanola",
+        "name": "Espanola",
+        "type": "municipality",
+        "municipality_type": "town",
+        "region": "North Shore",
+        "subregion": "Massey-Espanola",
+        "population": 5185,
+        "population_year": 2021,
+        "external_ids": {
+          "statscan_csd": "3552026",
+          "osm_relation_id": 7569194,
+          "wikidata_qid": "Q3058383"
+        },
+        "neighbours": [
+          "sagamok-anishnawbek",
+          "sables-spanish-rivers",
+          "nairn-and-hyman",
+          "whitefish-river-first-nation",
+          "baldwin-township"
+        ],
+        "boundary_file": "boundaries/espanola.geojson"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-81.7699, 46.2653]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "blind-river",
+        "name": "Blind River",
+        "type": "municipality",
+        "municipality_type": "town",
+        "region": "North Shore",
+        "subregion": "Blind River",
+        "population": 3422,
+        "population_year": 2021,
+        "external_ids": {
+          "statscan_csd": "3557038",
+          "osm_relation_id": 5669637,
+          "wikidata_qid": "Q4859518"
+        },
+        "neighbours": [
+          "mississauga-first-nation",
+          "serpent-river-first-nation",
+          "huron-shores",
+          "elliot-lake"
+        ],
+        "boundary_file": "boundaries/blind-river.geojson"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-82.9564, 46.1884]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "thessalon",
+        "name": "Thessalon",
+        "type": "municipality",
+        "municipality_type": "town",
+        "region": "North Shore",
+        "subregion": "Thessalon",
+        "population": 1260,
+        "population_year": 2021,
+        "external_ids": {
+          "statscan_csd": "3557028",
+          "osm_relation_id": 7589582,
+          "wikidata_qid": "Q998994"
+        },
+        "neighbours": [
+          "thessalon-first-nation",
+          "huron-shores"
+        ],
+        "boundary_file": "boundaries/thessalon.geojson"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-83.5492, 46.2648]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "spanish",
+        "name": "Spanish",
+        "type": "municipality",
+        "municipality_type": "town",
+        "region": "North Shore",
+        "subregion": "Massey-Espanola",
+        "population": 670,
+        "population_year": 2021,
+        "external_ids": {
+          "statscan_csd": "3557039",
+          "osm_relation_id": 7589022,
+          "wikidata_qid": "Q3492565"
+        },
+        "neighbours": [
+          "sagamok-anishnawbek",
+          "serpent-river-first-nation",
+          "sables-spanish-rivers"
+        ],
+        "boundary_file": "boundaries/spanish.geojson"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-82.3473, 46.1932]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "huron-shores",
+        "name": "Huron Shores",
+        "type": "municipality",
+        "municipality_type": "township",
+        "region": "North Shore",
+        "subregion": "Thessalon",
+        "contains": [{"name": "Iron Bridge", "wikidata_qid": "Q115134635"}],
+        "population": 1860,
+        "population_year": 2021,
+        "external_ids": {
+          "statscan_csd": "3557035",
+          "osm_relation_id": 7589584,
+          "wikidata_qid": "Q4859875"
+        },
+        "neighbours": [
+          "thessalon-first-nation",
+          "thessalon",
+          "blind-river",
+          "mississauga-first-nation"
+        ],
+        "boundary_file": "boundaries/huron-shores.geojson"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-83.2000, 46.2833]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "sables-spanish-rivers",
+        "name": "Sables-Spanish Rivers",
+        "type": "municipality",
+        "municipality_type": "township",
+        "region": "North Shore",
+        "subregion": "Massey-Espanola",
+        "contains": [{"name": "Massey"}],
+        "population": 3237,
+        "population_year": 2021,
+        "external_ids": {
+          "statscan_csd": "3552023",
+          "osm_relation_id": 7569190,
+          "wikidata_qid": "Q3460615"
+        },
+        "neighbours": [
+          "sagamok-anishnawbek",
+          "espanola",
+          "spanish",
+          "baldwin-township"
+        ],
+        "boundary_file": "boundaries/sables-spanish-rivers.geojson"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-82.0772, 46.2126]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "nairn-and-hyman",
+        "name": "Nairn and Hyman",
+        "type": "municipality",
+        "municipality_type": "township",
+        "region": "North Shore",
+        "subregion": "Massey-Espanola",
+        "contains": [{"name": "Nairn Centre", "wikidata_qid": "Q115134652"}],
+        "population": 373,
+        "population_year": 2021,
+        "external_ids": {
+          "statscan_csd": "3552031",
+          "osm_relation_id": 7569191,
+          "wikidata_qid": "Q6959757"
+        },
+        "neighbours": [
+          "espanola",
+          "baldwin-township",
+          "whitefish-river-first-nation",
+          "atikameksheng-anishnawbek",
+          "greater-sudbury"
+        ],
+        "boundary_file": "boundaries/nairn-and-hyman.geojson"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-81.6268, 46.3238]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "baldwin-township",
+        "name": "Baldwin Township",
+        "type": "municipality",
+        "municipality_type": "township",
+        "region": "North Shore",
+        "subregion": "Massey-Espanola",
+        "contains": [{"name": "McKerrow", "wikidata_qid": "Q115174384"}],
+        "population": 579,
+        "population_year": 2021,
+        "external_ids": {
+          "statscan_csd": "3552028",
+          "osm_relation_id": 7569192,
+          "wikidata_qid": "Q4850505"
+        },
+        "neighbours": [
+          "espanola",
+          "nairn-and-hyman",
+          "sables-spanish-rivers"
+        ],
+        "boundary_file": "boundaries/baldwin-township.geojson"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-81.7533, 46.2863]
+      }
+    }
+  ]
+}
