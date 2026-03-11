@@ -1,0 +1,6 @@
+# Dev image with config baked in to avoid WSL2/Docker Desktop bind-mount issues.
+FROM docker.elastic.co/elasticsearch/elasticsearch:9.2.2
+COPY elasticsearch.yml /usr/share/elasticsearch/config/elasticsearch.yml
+USER root
+RUN chown elasticsearch:root /usr/share/elasticsearch/config/elasticsearch.yml
+USER elasticsearch

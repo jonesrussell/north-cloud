@@ -3,11 +3,15 @@
 package bootstrap
 
 import (
+	"context"
 	"fmt"
 	"os"
 
 	infralogger "github.com/jonesrussell/north-cloud/infrastructure/logger"
 	"github.com/jonesrussell/north-cloud/infrastructure/profiling"
+	"github.com/jonesrussell/north-cloud/infrastructure/provider/anthropic"
+	"github.com/jonesrussell/north-cloud/source-manager/internal/aiverify"
+	"github.com/jonesrussell/north-cloud/source-manager/internal/repository"
 )
 
 const version = "dev"
@@ -54,6 +58,23 @@ func Start() error {
 
 	// Phase 4: Setup and run HTTP server
 	server := SetupHTTPServer(cfg, db, publisher, log)
+
+	// Phase 4.5: Verification worker (optional, disabled by default)
+	if cfg.Verification.AIEnabled {
+		verifyClient := anthropic.New(cfg.Verification.AnthropicAPIKey, cfg.Verification.AnthropicModel)
+		verifier := aiverify.NewLLMVerifier(verifyClient)
+		verificationRepo := repository.NewVerificationRepository(db.DB(), log)
+		worker := aiverify.NewWorker(verificationRepo, verifier, aiverify.WorkerConfig{
+			Interval:            cfg.Verification.Interval,
+			BatchSize:           cfg.Verification.BatchSize,
+			AutoVerifyThreshold: cfg.Verification.AutoVerifyThreshold,
+			AutoRejectThreshold: cfg.Verification.AutoRejectThreshold,
+		}, log)
+
+		verifyCtx, verifyCancel := context.WithCancel(context.Background())
+		defer verifyCancel()
+		go worker.Run(verifyCtx)
+	}
 
 	log.Info("Starting HTTP server",
 		infralogger.String("host", cfg.Server.Host),

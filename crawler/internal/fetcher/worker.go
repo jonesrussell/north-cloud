@@ -448,7 +448,7 @@ func (wp *WorkerPool) fetchWithRenderMode(
 			return nil, 0, "", "", fmt.Errorf("resolve render mode: %w", resolveErr)
 		}
 
-		if mode == renderModeDynamic {
+		if mode == renderModeDynamic && !isBinaryURL(furl.URL) {
 			page, renderErr := wp.renderer.Render(ctx, furl.URL)
 			if renderErr != nil {
 				return nil, 0, "", "", fmt.Errorf("render: %w", renderErr)

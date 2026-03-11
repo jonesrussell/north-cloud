@@ -28,6 +28,8 @@ type BandOffice struct {
 	OfficeHours *string `db:"office_hours" json:"office_hours,omitempty"`
 
 	// Provenance
-	SourceURL  *string    `db:"source_url"  json:"source_url,omitempty"`
-	VerifiedAt *time.Time `db:"verified_at" json:"verified_at,omitempty"`
+	SourceURL              *string    `db:"source_url"              json:"source_url,omitempty"`
+	VerifiedAt             *time.Time `db:"verified_at"             json:"verified_at,omitempty"`
+	VerificationConfidence *float64   `db:"verification_confidence" json:"verification_confidence,omitempty"`
+	VerificationIssues     *string    `db:"verification_issues"     json:"verification_issues,omitempty"`
 }
