@@ -17,14 +17,21 @@ const (
 	defaultConnMaxLifetime = 5
 	defaultRedisAddress    = "localhost:6379"
 	defaultRedisDB         = 0
+
+	defaultVerificationInterval  = 5 * time.Minute
+	defaultVerificationBatchSize = 10
+	defaultAutoVerifyThreshold   = 0.95
+	defaultAutoRejectThreshold   = 0.30
+	defaultAnthropicModel        = "claude-haiku-4-5-20251001"
 )
 
 type Config struct {
-	Debug    bool           `env:"APP_DEBUG" yaml:"debug"`
-	Server   ServerConfig   `yaml:"server"`
-	Database DatabaseConfig `yaml:"database"`
-	Auth     AuthConfig     `yaml:"auth"`
-	Redis    RedisConfig    `yaml:"redis"`
+	Debug        bool               `env:"APP_DEBUG"     yaml:"debug"`
+	Server       ServerConfig       `yaml:"server"`
+	Database     DatabaseConfig     `yaml:"database"`
+	Auth         AuthConfig         `yaml:"auth"`
+	Redis        RedisConfig        `yaml:"redis"`
+	Verification VerificationConfig `yaml:"verification"`
 }
 
 // RedisConfig holds Redis connection configuration for event publishing.
@@ -58,6 +65,17 @@ type DatabaseConfig struct {
 
 type AuthConfig struct {
 	JWTSecret string `env:"AUTH_JWT_SECRET" yaml:"jwt_secret"`
+}
+
+// VerificationConfig holds AI verification worker settings.
+type VerificationConfig struct {
+	AIEnabled           bool          `env:"VERIFICATION_AI_ENABLED"            yaml:"ai_enabled"`
+	Interval            time.Duration `env:"VERIFICATION_INTERVAL"              yaml:"interval"`
+	BatchSize           int           `env:"VERIFICATION_BATCH_SIZE"            yaml:"batch_size"`
+	AutoVerifyThreshold float64       `env:"VERIFICATION_AUTO_VERIFY_THRESHOLD" yaml:"auto_verify_threshold"`
+	AutoRejectThreshold float64       `env:"VERIFICATION_AUTO_REJECT_THRESHOLD" yaml:"auto_reject_threshold"`
+	AnthropicAPIKey     string        `env:"ANTHROPIC_API_KEY"                  yaml:"anthropic_api_key"`
+	AnthropicModel      string        `env:"ANTHROPIC_MODEL"                    yaml:"anthropic_model"`
 }
 
 func (c *Config) Validate() error {
@@ -140,4 +158,21 @@ func setDefaults(cfg *Config) {
 		cfg.Redis.DB = defaultRedisDB
 	}
 	// Note: cfg.Redis.Enabled defaults to false (feature flag)
+
+	// Verification defaults (disabled by default)
+	if cfg.Verification.Interval == 0 {
+		cfg.Verification.Interval = defaultVerificationInterval
+	}
+	if cfg.Verification.BatchSize == 0 {
+		cfg.Verification.BatchSize = defaultVerificationBatchSize
+	}
+	if cfg.Verification.AutoVerifyThreshold == 0 {
+		cfg.Verification.AutoVerifyThreshold = defaultAutoVerifyThreshold
+	}
+	if cfg.Verification.AutoRejectThreshold == 0 {
+		cfg.Verification.AutoRejectThreshold = defaultAutoRejectThreshold
+	}
+	if cfg.Verification.AnthropicModel == "" {
+		cfg.Verification.AnthropicModel = defaultAnthropicModel
+	}
 }
