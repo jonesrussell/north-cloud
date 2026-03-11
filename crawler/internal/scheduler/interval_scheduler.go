@@ -762,55 +762,7 @@ func (s *IntervalScheduler) runLeadershipJob(jobExec *JobExecution, logWriter lo
 // Uses calculateNextRun (not adaptive) because leadership scrape jobs have no
 // content hash tracking — adaptive scheduling only applies to crawl jobs.
 func (s *IntervalScheduler) handleLeadershipJobSuccess(jobExec *JobExecution, startTime *time.Time) {
-	job := jobExec.Job
-	execution := jobExec.Execution
-
-	now := time.Now()
-	durationMs := time.Since(*startTime).Milliseconds()
-
-	// Update execution record (no crawler metrics for leadership jobs)
-	execution.Status = string(StateCompleted)
-	execution.CompletedAt = &now
-	execution.DurationMs = &durationMs
-
-	if err := s.executionRepo.Update(s.ctx, execution); err != nil {
-		s.logger.Error("Failed to update execution",
-			infralogger.String("execution_id", execution.ID),
-			infralogger.Error(err),
-		)
-	}
-
-	// Update job
-	job.Status = string(StateCompleted)
-	job.CompletedAt = &now
-	job.CurrentRetryCount = 0
-	job.ErrorMessage = nil
-
-	// If recurring, schedule next run
-	if job.IntervalMinutes != nil && job.ScheduleEnabled {
-		job.Status = string(StateScheduled)
-		nextRun := s.calculateNextRun(job)
-		job.NextRunAt = &nextRun
-	}
-
-	if err := s.repo.Update(s.ctx, job); err != nil {
-		s.logger.Error("Failed to update job",
-			infralogger.String("job_id", job.ID),
-			infralogger.Error(err),
-		)
-	}
-
-	s.metrics.IncrementCompleted()
-	s.metrics.IncrementTotalExecutions()
-
-	s.logger.Info("Leadership scrape job completed successfully",
-		infralogger.String("job_id", job.ID),
-		infralogger.Int64("duration_ms", durationMs),
-		infralogger.Any("next_run_at", job.NextRunAt),
-	)
-
-	// Publish SSE event
-	s.publishJobCompleted(s.ctx, job, execution)
+	s.completeJob(jobExec, startTime, nil)
 }
 
 // logCrawlerStartError logs a crawler start error at the appropriate level.
@@ -886,26 +838,32 @@ func (s *IntervalScheduler) resetJobAfterFailure(job *domain.Job, errMsg *string
 	}
 }
 
-// handleJobSuccess handles successful job completion.
+// handleJobSuccess handles successful crawl job completion.
 func (s *IntervalScheduler) handleJobSuccess(jobExec *JobExecution, startTime *time.Time) {
+	summary := jobExec.Crawler.GetJobLogger().BuildSummary()
+	s.completeJob(jobExec, startTime, summary)
+}
+
+// completeJob is the shared success handler for all job types.
+// When summary is nil (e.g. leadership scrape), crawler metrics are skipped
+// and the fixed-interval scheduler is used instead of adaptive scheduling.
+func (s *IntervalScheduler) completeJob(jobExec *JobExecution, startTime *time.Time, summary *logs.JobSummary) {
 	job := jobExec.Job
 	execution := jobExec.Execution
 
 	now := time.Now()
 	durationMs := time.Since(*startTime).Milliseconds()
 
-	// Get metrics from job logger
-	summary := jobExec.Crawler.GetJobLogger().BuildSummary()
-	itemsCrawled := int(summary.PagesCrawled)
-	itemsIndexed := int(summary.ItemsExtracted)
-
 	// Update execution record
 	execution.Status = string(StateCompleted)
 	execution.CompletedAt = &now
 	execution.DurationMs = &durationMs
-	execution.ItemsCrawled = itemsCrawled
-	execution.ItemsIndexed = itemsIndexed
-	execution.Metadata = BuildExecutionMetadata(summary)
+
+	if summary != nil {
+		execution.ItemsCrawled = int(summary.PagesCrawled)
+		execution.ItemsIndexed = int(summary.ItemsExtracted)
+		execution.Metadata = BuildExecutionMetadata(summary)
+	}
 
 	if err := s.executionRepo.Update(s.ctx, execution); err != nil {
 		s.logger.Error("Failed to update execution",
@@ -922,9 +880,14 @@ func (s *IntervalScheduler) handleJobSuccess(jobExec *JobExecution, startTime *t
 
 	// If recurring, schedule next run
 	if job.IntervalMinutes != nil && job.ScheduleEnabled {
-		job.Status = "scheduled"
-		nextRun := s.calculateAdaptiveOrFixedNextRun(jobExec, job)
-		job.NextRunAt = &nextRun
+		job.Status = string(StateScheduled)
+		if summary != nil {
+			nextRun := s.calculateAdaptiveOrFixedNextRun(jobExec, job)
+			job.NextRunAt = &nextRun
+		} else {
+			nextRun := s.calculateNextRun(job)
+			job.NextRunAt = &nextRun
+		}
 	}
 
 	if err := s.repo.Update(s.ctx, job); err != nil {
@@ -937,15 +900,19 @@ func (s *IntervalScheduler) handleJobSuccess(jobExec *JobExecution, startTime *t
 	s.metrics.IncrementCompleted()
 	s.metrics.IncrementTotalExecutions()
 
-	s.logger.Info("Job completed successfully",
+	logFields := []infralogger.Field{
 		infralogger.String("job_id", job.ID),
 		infralogger.Int64("duration_ms", durationMs),
-		infralogger.Int("items_crawled", itemsCrawled),
-		infralogger.Int("items_indexed", itemsIndexed),
 		infralogger.Any("next_run_at", job.NextRunAt),
-	)
+	}
+	if summary != nil {
+		logFields = append(logFields,
+			infralogger.Int("items_crawled", int(summary.PagesCrawled)),
+			infralogger.Int("items_indexed", int(summary.ItemsExtracted)),
+		)
+	}
+	s.logger.Info("Job completed successfully", logFields...)
 
-	// Publish SSE event for job completion
 	s.publishJobCompleted(s.ctx, job, execution)
 }
 
