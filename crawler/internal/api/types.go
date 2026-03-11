@@ -23,9 +23,10 @@ type SchedulerInterface interface {
 
 // CreateJobRequest represents a job creation request.
 type CreateJobRequest struct {
-	SourceID   string `binding:"required" json:"source_id"`
+	SourceID   string `json:"source_id"`
 	SourceName string `json:"source_name"`
-	URL        string `binding:"required" json:"url"`
+	URL        string `json:"url"`
+	Type       string `json:"type"`
 
 	// Interval-based scheduling (new)
 	IntervalMinutes *int   `json:"interval_minutes"` // NULL = run once immediately
@@ -48,6 +49,7 @@ type UpdateJobRequest struct {
 	SourceID   string `json:"source_id"`
 	SourceName string `json:"source_name"`
 	URL        string `json:"url"`
+	Type       string `json:"type"`
 
 	// Interval-based scheduling (new)
 	IntervalMinutes *int   `json:"interval_minutes"`

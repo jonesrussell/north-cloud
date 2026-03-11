@@ -271,12 +271,21 @@ func createAndStartScheduler(
 		return nil
 	}
 
-	// Create interval scheduler with default options
+	// Build scraper config for leadership_scrape jobs
+	smCfg := deps.Config.GetSourceManagerConfig()
+	authCfg := deps.Config.GetAuthConfig()
+	scraperCfg := scheduler.ScraperConfig{
+		SourceManagerURL: smCfg.URL,
+		JWTToken:         authCfg.JWTSecret,
+	}
+
+	// Create interval scheduler with scraper config
 	intervalScheduler := scheduler.NewIntervalScheduler(
 		deps.Logger,
 		db.JobRepo,
 		db.ExecutionRepo,
 		crawlerFactory,
+		scheduler.WithScraperConfig(scraperCfg),
 	)
 
 	// Start the scheduler

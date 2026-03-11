@@ -12,6 +12,7 @@ type Job struct {
 	SourceID   string  `db:"source_id"   json:"source_id"`
 	SourceName *string `db:"source_name" json:"source_name,omitempty"`
 	URL        string  `db:"url"         json:"url"`
+	Type       string  `db:"type"        json:"type"`
 
 	// Interval-based scheduling (replaces cron)
 	IntervalMinutes *int       `db:"interval_minutes" json:"interval_minutes,omitempty"` // NULL = run once
@@ -70,6 +71,17 @@ const (
 	MigrationStatusOrphaned = "orphaned" // Source not found, marked for review
 	MigrationStatusSkipped  = "skipped"  // Intentionally left as manual
 )
+
+// Job type values
+const (
+	JobTypeCrawl            = "crawl"
+	JobTypeLeadershipScrape = "leadership_scrape"
+)
+
+// ValidJobType returns true if the given type is a known job type.
+func ValidJobType(t string) bool {
+	return t == JobTypeCrawl || t == JobTypeLeadershipScrape
+}
 
 // Item represents a crawled item from a job.
 type Item struct {
