@@ -70,6 +70,11 @@ type categoryResult struct {
 	err      error
 }
 
+// InsightCleaner deletes old insights from the index.
+type InsightCleaner interface {
+	DeleteOld(ctx context.Context) (int, error)
+}
+
 // Scheduler runs category passes on a ticker and emits insights.
 type Scheduler struct {
 	fastCategories []category.Category
@@ -78,6 +83,7 @@ type Scheduler struct {
 	provider       provider.LLMProvider
 	cfg            Config
 	log            logger.Logger
+	cleaner        InsightCleaner
 }
 
 // New creates a new Scheduler with fast (frequent) and slow (drift) category slices.
@@ -103,6 +109,12 @@ func (s *Scheduler) WithLogger(log logger.Logger) *Scheduler {
 	return s
 }
 
+// WithCleaner attaches an insight cleaner that runs on the slow ticker.
+func (s *Scheduler) WithCleaner(c InsightCleaner) *Scheduler {
+	s.cleaner = c
+	return s
+}
+
 // Run starts the polling loop and blocks until ctx is cancelled.
 // Uses dual tickers: fast for classifier categories, slow for drift categories.
 func (s *Scheduler) Run(ctx context.Context) {
@@ -116,7 +128,8 @@ func (s *Scheduler) Run(ctx context.Context) {
 	)
 	s.RunOnce(ctx)
 
-	if s.cfg.DriftIntervalSeconds <= 0 || len(s.slowCategories) == 0 {
+	needSlowTicker := len(s.slowCategories) > 0 || s.cleaner != nil
+	if s.cfg.DriftIntervalSeconds <= 0 || !needSlowTicker {
 		s.runFastOnly(ctx, fastTicker)
 		return
 	}
@@ -164,9 +177,27 @@ func (s *Scheduler) RunOnce(ctx context.Context) {
 	s.runCategories(ctx, s.fastCategories, s.cfg.WindowDuration)
 }
 
-// RunDrift executes one polling cycle for slow (drift) categories.
+// RunDrift executes one polling cycle for slow (drift) categories
+// and runs insight cleanup if a cleaner is configured.
 func (s *Scheduler) RunDrift(ctx context.Context) {
 	s.runCategories(ctx, s.slowCategories, s.cfg.DriftWindowDuration)
+	s.runCleanup(ctx)
+}
+
+func (s *Scheduler) runCleanup(ctx context.Context) {
+	if s.cleaner == nil {
+		return
+	}
+
+	deleted, err := s.cleaner.DeleteOld(ctx)
+	if err != nil {
+		s.logError("insight cleanup error", err)
+		return
+	}
+
+	if deleted > 0 {
+		s.logInfo("Insights cleaned up", logger.Int("deleted", deleted))
+	}
 }
 
 func (s *Scheduler) runCategories(

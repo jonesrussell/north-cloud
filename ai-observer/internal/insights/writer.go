@@ -53,6 +53,7 @@ func buildID(now time.Time) string {
 type Writer struct {
 	esClient        *es.Client
 	observerVersion string
+	dedup           *Deduplicator
 }
 
 // NewWriter creates a new insight Writer.
@@ -60,9 +61,26 @@ func NewWriter(esClient *es.Client, observerVersion string) *Writer {
 	return &Writer{esClient: esClient, observerVersion: observerVersion}
 }
 
-// WriteAll indexes all provided insights. Each is indexed independently; all
-// errors are joined and returned together.
+// WithDedup attaches a deduplicator to filter repeated insights before writing.
+func (w *Writer) WithDedup(d *Deduplicator) *Writer {
+	w.dedup = d
+	return w
+}
+
+// WriteAll indexes all provided insights. When a deduplicator is configured,
+// insights with duplicate summaries within the cooldown window are skipped.
+// Each remaining insight is indexed independently; all errors are joined and
+// returned together.
 func (w *Writer) WriteAll(ctx context.Context, insightList []category.Insight) error {
+	if w.dedup != nil {
+		filtered, filterErr := w.dedup.Filter(ctx, insightList)
+		if filterErr == nil {
+			insightList = filtered
+		}
+		// Dedup failure is non-fatal — proceed with unfiltered list to avoid
+		// dropping insights during transient ES issues.
+	}
+
 	var errs []error
 	for _, ins := range insightList {
 		if err := w.write(ctx, ins); err != nil {

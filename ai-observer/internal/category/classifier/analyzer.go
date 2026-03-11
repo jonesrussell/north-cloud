@@ -32,7 +32,7 @@ Respond ONLY with valid JSON matching the schema provided. Be concise and action
   }
 }`
 
-	maxResponseTokens = 1000
+	maxResponseTokens = 2048
 	// maxStatPairs is the max domain+label pairs to include in the LLM prompt.
 	maxStatPairs = 30
 	// categoryName is the category identifier for insights produced here.
