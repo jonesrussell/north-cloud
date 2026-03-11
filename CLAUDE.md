@@ -16,13 +16,18 @@ When modifying files, read the relevant service CLAUDE.md first. Deep specs in `
 | `publisher/**` | `publisher/CLAUDE.md` | `docs/specs/content-routing.md` |
 | `search/**`, `index-manager/**` | `search/CLAUDE.md`, `index-manager/CLAUDE.md` | `docs/specs/discovery-querying.md` |
 | `infrastructure/**` | — | `docs/specs/shared-infrastructure.md` |
-| `source-manager/**` | `source-manager/CLAUDE.md` | — |
-| `dashboard/**` | `dashboard/CLAUDE.md` | — |
-| `pipeline/**` | `pipeline/CLAUDE.md` | — |
+| `source-manager/**` | `source-manager/CLAUDE.md` | `docs/specs/source-manager.md` |
+| `dashboard/**` | `dashboard/CLAUDE.md` | `docs/specs/dashboard.md` |
+| `pipeline/**` | `pipeline/CLAUDE.md` | `docs/specs/pipeline.md` |
 | `social-publisher/**` | `social-publisher/CLAUDE.md` | `docs/specs/social-publisher.md` |
 | `rfp-ingestor/**` | `rfp-ingestor/CLAUDE.md` | `docs/specs/rfp-ingestor.md` |
 | `mcp-north-cloud/**` | `mcp-north-cloud/CLAUDE.md` | `docs/specs/mcp-server.md` |
-| `ai-observer/**` | `ai-observer/CLAUDE.md` | `docs/plans/2026-03-07-ai-observer-design.md` |
+| `ai-observer/**` | `ai-observer/CLAUDE.md` | `docs/specs/ai-observer.md` |
+| `auth/**` | `auth/CLAUDE.md` | `docs/specs/auth.md` |
+| `click-tracker/**` | `click-tracker/CLAUDE.md` | `docs/specs/click-tracker.md` |
+| `nc-http-proxy/**` | `nc-http-proxy/CLAUDE.md` | `docs/specs/nc-http-proxy.md` |
+| `search-frontend/**` | `search-frontend/CLAUDE.md` | `docs/specs/search-frontend.md` |
+| `render-worker/**` | `render-worker/CLAUDE.md` | `docs/specs/content-acquisition.md` |
 | `docs/specs/**`, `.claude/**`, `**/CLAUDE.md` | updating-codified-context | — |
 | `docker-compose*.yml`, `Taskfile.yml` | `DOCKER.md` | — |
 
@@ -71,89 +76,19 @@ Sources → [Crawler] → ES raw_content → [Classifier + ML Sidecars] → ES c
 
 ### Most Common Commands
 
-**Docker (Development)**:
-```bash
-# Start core services only (no ML sidecars, no Loki/Grafana/Pyroscope)
-task docker:dev:up
+**Docker**: `task docker:dev:up` (core), `task docker:dev:up:ml` (+ML sidecars), `task docker:dev:up:search` (+search), `task docker:dev:up:observability` (+Loki/Grafana), `task docker:dev:up:full` (everything). Logs: `docker compose -f docker-compose.base.yml -f docker-compose.dev.yml logs -f SERVICE`. Rebuild: `... up -d --build SERVICE`. Stop: `... down`.
 
-# Include ML sidecars (crime-ml, mining-ml, coforge-ml, entertainment-ml, indigenous-ml)
-task docker:dev:up:ml
+**Dev Postgres**: Single shared instance (7 DBs). Auto-creates via `infrastructure/postgres/init-dev.sql` on first startup. Re-init: `... down -v`.
 
-# Include search-service and search-frontend
-task docker:dev:up:search
+**Taskfile (Preferred)**: `task lint`, `task test`, `task test:cover` (all services). Per-service: `task lint:SERVICE`, `task test:SERVICE`. Migrations: `task migrate:up`, `task migrate:SERVICE`. Tools: `task install:tools`. Use `task lint:force` before pushing (cache-clean, matches CI). Changed-only: `task lint:changed`, `task ci:changed`.
 
-# Include logging/observability (Loki, Alloy, Grafana, Pyroscope)
-task docker:dev:up:observability
-
-# Start everything (ML + search + observability)
-task docker:dev:up:full
-
-# View logs
-docker compose -f docker-compose.base.yml -f docker-compose.dev.yml logs -f SERVICE
-
-# Rebuild and restart
-docker compose -f docker-compose.base.yml -f docker-compose.dev.yml up -d --build SERVICE
-
-# Stop all
-docker compose -f docker-compose.base.yml -f docker-compose.dev.yml down
-```
-
-**Dev Postgres**: Dev uses a single shared Postgres instance (7 databases in 1 container).
-Prod and test still use per-service Postgres. First `docker:dev:up` auto-creates all databases
-via `infrastructure/postgres/init-dev.sql`. The init script only runs on first startup (empty data
-directory). To re-initialize: `docker compose -f docker-compose.base.yml -f docker-compose.dev.yml down -v`.
-
-**Taskfile Commands (Preferred)**:
-```bash
-# Run all linters / tests
-task lint
-task test
-task test:cover
-
-# Single service (replace SERVICE with: auth, classifier, crawler, etc.)
-task lint:SERVICE
-task test:SERVICE
-task test:cover:SERVICE
-
-# Task caches results — force re-run with: task lint -f
-# Changed-services only (CI): task lint:changed, task test:changed, task ci:changed
-
-# Run migrations
-task migrate:up
-task migrate:SERVICE
-
-# Install dev tools (golangci-lint, goimports, migrate)
-task install:tools
-
-# Use task lint:force (or task ci:force) before pushing — runs golangci-lint after
-# "cache clean" so local results match CI exactly.
-```
-
-**Go Workspace**: Each service Taskfile sets `GOWORK=off`. The `go.work` is for IDE navigation only.
-Each module has its own `vendor/` (gitignored). After changing deps: `task vendor` from repo root.
+**Go Workspace**: `GOWORK=off` per service. `go.work` is IDE-only. After dep changes: `task vendor`.
 
 ---
 
 ## Service Ports
 
-| Service | Port | Purpose |
-|---------|------|---------|
-| crawler | 8080 | Crawler API |
-| source-manager | 8050 | Source Manager API |
-| classifier | 8071 | Classifier HTTP API |
-| publisher | 8070 | Publisher API |
-| auth | 8040 | Authentication |
-| index-manager | 8090 | Index Manager API (shares port with search in dev) |
-| search | 8092 | Search API (dev), 8090 (prod via nginx) |
-| dashboard | 3002 | Dashboard UI |
-| nc-http-proxy | 8055 | HTTP Replay Proxy |
-| pipeline | 8075 | Pipeline Event Service |
-| click-tracker | 8093 | Click Event Tracking |
-| rfp-ingestor | 8095 | RFP Feed Ingestor (CanadaBuys CSV) |
-| mining-ml | 8077 | Mining ML Classifier |
-| indigenous-ml | 8080 | Indigenous ML Classifier |
-
-ML sidecars (crime-ml, mining-ml, coforge-ml, entertainment-ml, indigenous-ml) live under `ml-sidecars/`.
+auth:8040 | source-manager:8050 | crawler:8080 | publisher:8070 | classifier:8071 | pipeline:8075 | nc-http-proxy:8055 | index-manager:8090 | search:8092(dev)/8090(prod) | click-tracker:8093 | rfp-ingestor:8095 | dashboard:3002 | render-worker:3000. ML sidecars under `ml-sidecars/`: mining-ml:8077, indigenous-ml:8080.
 
 ---
 
@@ -168,45 +103,13 @@ ML sidecars (crime-ml, mining-ml, coforge-ml, entertainment-ml, indigenous-ml) l
 
 ### Linting Prevention - CRITICAL
 
-**ALWAYS follow these rules. The linter flags violations as errors:**
+**The linter flags all violations as errors. Key rules:**
 
-- **NEVER use `interface{}`** - always use `any` (Go 1.18+)
-  - `func Process(data map[string]interface{})` — WRONG
-  - `func Process(data map[string]any)` — CORRECT
-
-- **NEVER ignore JSON marshal/unmarshal errors** - always check them
-  - `body, _ := json.Marshal(reqBody)` — WRONG
-  - `body, err := json.Marshal(reqBody)` followed by error checking — CORRECT
-
-- **NEVER use magic numbers** - always define named constants
-  - `make(map[string]any, 4)` — WRONG
-  - `make(map[string]any, qualityFactorCount)` where `qualityFactorCount = 4` — CORRECT
-
-- **Pre-allocate slices when capacity is known**
-  - `var items []Item` when you know the size — WRONG
-  - `items := make([]Item, 0, len(results))` — CORRECT
-
-- **ALL test helper functions MUST start with `t.Helper()`**
-  - `func verifyResult(t *testing.T, result Result) { ... }` — WRONG
-  - `func verifyResult(t *testing.T, result Result) { t.Helper(); ... }` — CORRECT
-
-- **Keep cognitive complexity <= 20** - break down complex functions into smaller helpers
-  - The `gocognit` linter flags functions with complexity > 20 — refactor immediately if flagged
-
-- **Keep function length <= 100 lines** (`funlen` linter) - extract helper functions
-  - Example: ES mapping builders use `getCrimeMapping()`, `getMiningMapping()` helpers
-  - Example: `classifier.go:Classify()` uses `runOptionalClassifiers()` to stay under limit
-  - `func complexFunction() { if a { if b { if c { ... } } } }` — WRONG (high complexity)
-  - `func complexFunction() { helperA(); helperB(); helperC() }` with separate helpers — CORRECT
-
-- **Keep lines under 150 characters** - break long lines
-
-- **Avoid variable shadowing** - use `unmarshalErr`, `marshalErr`, etc. for clarity
-
-- **NEVER use `os.Getenv` directly** - use `infrastructure/config` package instead
-  - `port := os.Getenv("PORT")` — WRONG
-  - Use config struct with `env` tags loaded via `infrastructure/config` — CORRECT
-  - The `forbidigo` linter enforces this (exception: `cmd/` and `infrastructure/config/` directories)
+- Use `any` not `interface{}` | Check all JSON marshal/unmarshal errors | Define named constants (no magic numbers)
+- Pre-allocate slices: `make([]T, 0, len(src))` | All test helpers start with `t.Helper()`
+- Cognitive complexity <= 20 (`gocognit`) | Function length <= 100 lines (`funlen`) — extract helpers
+- Lines under 150 chars | No variable shadowing (use `unmarshalErr`, `marshalErr`, etc.)
+- **No `os.Getenv`** — use `infrastructure/config` (`forbidigo` enforced; exception: `cmd/`, `infrastructure/config/`)
 
 **Before committing**: `cd SERVICE && golangci-lint run`
 

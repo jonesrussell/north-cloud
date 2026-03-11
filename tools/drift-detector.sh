@@ -27,11 +27,16 @@ declare -A PATTERN_TO_SPEC=(
   ["infrastructure/"]="docs/specs/shared-infrastructure.md"
   ["rfp-ingestor/"]="docs/specs/rfp-ingestor.md"
   ["social-publisher/"]="docs/specs/social-publisher.md"
-  ["source-manager/"]="docs/specs/shared-infrastructure.md"  # TODO: create docs/specs/source-manager.md
-  ["pipeline/"]="docs/specs/content-routing.md"
-  ["dashboard/"]="docs/specs/discovery-querying.md"
-  ["click-tracker/"]="docs/specs/discovery-querying.md"
+  ["source-manager/"]="docs/specs/source-manager.md"
+  ["pipeline/"]="docs/specs/pipeline.md"
+  ["dashboard/"]="docs/specs/dashboard.md"
+  ["click-tracker/"]="docs/specs/click-tracker.md"
   ["mcp-north-cloud/"]="docs/specs/mcp-server.md"
+  ["ai-observer/"]="docs/specs/ai-observer.md"
+  ["auth/"]="docs/specs/auth.md"
+  ["nc-http-proxy/"]="docs/specs/nc-http-proxy.md"
+  ["search-frontend/"]="docs/specs/search-frontend.md"
+  ["render-worker/"]="docs/specs/content-acquisition.md"
 )
 
 # Get changed files in last N commits
