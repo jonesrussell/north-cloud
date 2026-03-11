@@ -51,6 +51,27 @@ func TestLoadConfig_DisabledNoAPIKey(t *testing.T) {
 	}
 }
 
+func TestLoadConfig_InsightDefaults(t *testing.T) {
+	t.Setenv("AI_OBSERVER_ENABLED", "false")
+
+	cfg, err := bootstrap.LoadConfig()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	const expectedCooldownHours = 24
+	if cfg.Observer.InsightCooldownHours != expectedCooldownHours {
+		t.Errorf("expected cooldown %d hours, got %d",
+			expectedCooldownHours, cfg.Observer.InsightCooldownHours)
+	}
+
+	const expectedRetentionDays = 30
+	if cfg.Observer.InsightRetentionDays != expectedRetentionDays {
+		t.Errorf("expected retention %d days, got %d",
+			expectedRetentionDays, cfg.Observer.InsightRetentionDays)
+	}
+}
+
 func TestLoadConfig_DriftDefaults(t *testing.T) {
 	t.Helper()
 	t.Setenv("AI_OBSERVER_ENABLED", "false")
@@ -63,7 +84,7 @@ func TestLoadConfig_DriftDefaults(t *testing.T) {
 		t.Error("expected drift disabled by default")
 	}
 
-	const expectedKLThreshold = 0.15
+	const expectedKLThreshold = 0.30
 	if cfg.Observer.Categories.DriftKLThreshold != expectedKLThreshold {
 		t.Errorf("expected KL threshold %f, got %f",
 			expectedKLThreshold, cfg.Observer.Categories.DriftKLThreshold)

@@ -31,7 +31,7 @@ ai-observer/
     ├── provider/                # LLMProvider interface + Anthropic implementation
     ├── category/                # Category interface, Event, Insight types
     │   └── classifier/          # Classifier drift category (ES sampling + LLM analysis)
-    ├── insights/                # ai_insights ES index writer
+    ├── insights/                # ai_insights ES index writer + dedup + retention cleanup
     ├── drift/               # Statistical drift metrics, baseline sampler, evaluator
     └── scheduler/               # Ticker loop + cost-ceiling token budget
 ```
@@ -44,7 +44,9 @@ ai-observer/
 - **Token budget**: pre-check estimate (`len(events) * 50`), not reconciled against actual API spend
 - **Per-category timeout**: 5 minutes to prevent goroutine stalls on slow ES/API calls
 - **`ANTHROPIC_API_KEY` only required when enabled**: service exits cleanly when disabled without API key
-- **Dual-ticker**: Fast (30 min) for LLM-based classifier analysis, slow (6h) for statistical drift detection
+- **Insight dedup**: Writer filters duplicate summaries within a configurable cooldown window (default 24h) before indexing
+- **Insight retention**: Cleaner runs on slow ticker, deleting insights older than retention period (default 30 days)
+- **Dual-ticker**: Fast (30 min) for LLM-based classifier analysis, slow (6h) for statistical drift detection + cleanup
 - **Statistical first**: KL, PSI, cross-matrix computed without LLM. LLM only invoked on breach for context.
 - **Advisory + draft PRs**: Governor proposes changes via GitHub Actions, never auto-merges
 
@@ -60,7 +62,9 @@ ai-observer/
 | `ANTHROPIC_API_KEY` | — | Required when enabled |
 | `AI_OBSERVER_DRIFT_ENABLED` | `false` | Enable drift governor |
 | `AI_OBSERVER_DRIFT_INTERVAL_SECONDS` | `21600` | Drift check interval (6h) |
-| `AI_OBSERVER_DRIFT_KL_THRESHOLD` | `0.15` | KL divergence alert threshold |
+| `AI_OBSERVER_INSIGHT_COOLDOWN_HOURS` | `24` | Dedup window — suppress repeated summaries |
+| `AI_OBSERVER_INSIGHT_RETENTION_DAYS` | `30` | Auto-delete insights older than this |
+| `AI_OBSERVER_DRIFT_KL_THRESHOLD` | `0.30` | KL divergence alert threshold |
 | `AI_OBSERVER_DRIFT_PSI_THRESHOLD` | `0.25` | PSI alert threshold |
 | `AI_OBSERVER_DRIFT_MATRIX_THRESHOLD` | `0.20` | Cross-matrix deviation threshold |
 | `AI_OBSERVER_DRIFT_BASELINE_WINDOW_DAYS` | `7` | Rolling baseline window |
@@ -91,6 +95,10 @@ ai-observer/
 
 - **`details` field uses flattened ES type**: LLM-generated details have inconsistent types across
   documents. The `flattened` mapping avoids dynamic type conflicts. All leaf values stored as strings.
+
+- **summary.keyword sub-field added for dedup**: The `summary` field now has a `keyword` sub-field
+  (ignore_above=512) used by the dedup aggregation query. This mapping change requires deleting
+  the `ai_insights` index in production (see above) on first deploy.
 
 ## Grafana Dashboard
 

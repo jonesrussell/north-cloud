@@ -34,6 +34,8 @@ type ObserverConfig struct {
 	DryRun               bool
 	IntervalSeconds      int
 	MaxTokensPerInterval int
+	InsightCooldownHours int
+	InsightRetentionDays int
 	Categories           CategoriesConfig
 }
 
@@ -63,11 +65,13 @@ const (
 	defaultClassifierMaxEvents     = 200
 	defaultClassifierModel         = "claude-haiku-4-5-20251001"
 	defaultDriftIntervalSeconds    = 21600
-	defaultDriftKLThreshold        = 0.15
+	defaultDriftKLThreshold        = 0.30
 	defaultDriftPSIThreshold       = 0.25
 	defaultDriftMatrixThreshold    = 0.20
 	defaultDriftBaselineWindowDays = 7
 	defaultDriftBaselineRetention  = 30
+	defaultInsightCooldownHours    = 24
+	defaultInsightRetentionDays    = 30
 	float64BitSize                 = 64
 	serviceName                    = "ai-observer"
 	serviceVersion                 = "0.1.0"
@@ -98,6 +102,16 @@ func LoadConfig() (Config, error) {
 		return Config{}, err
 	}
 
+	cooldownHours, err := envInt("AI_OBSERVER_INSIGHT_COOLDOWN_HOURS", defaultInsightCooldownHours)
+	if err != nil {
+		return Config{}, err
+	}
+
+	retentionDays, err := envInt("AI_OBSERVER_INSIGHT_RETENTION_DAYS", defaultInsightRetentionDays)
+	if err != nil {
+		return Config{}, err
+	}
+
 	driftCfg, err := loadDriftConfig()
 	if err != nil {
 		return Config{}, err
@@ -118,6 +132,8 @@ func LoadConfig() (Config, error) {
 			DryRun:               os.Getenv("AI_OBSERVER_DRY_RUN") == "true",
 			IntervalSeconds:      intervalSeconds,
 			MaxTokensPerInterval: maxTokens,
+			InsightCooldownHours: cooldownHours,
+			InsightRetentionDays: retentionDays,
 			Categories: CategoriesConfig{
 				ClassifierEnabled:       os.Getenv("AI_OBSERVER_CATEGORY_CLASSIFIER_ENABLED") != "false",
 				ClassifierMaxEvents:     defaultClassifierMaxEvents,

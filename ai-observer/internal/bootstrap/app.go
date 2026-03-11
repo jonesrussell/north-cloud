@@ -70,7 +70,9 @@ func Start() error {
 	log.Info("drift_baselines index mapping ready")
 
 	p := anthprovider.New(cfg.Anthropic.APIKey, cfg.Anthropic.DefaultModel)
-	writer := insights.NewWriter(esClient, cfg.Service.Version)
+	dedup := insights.NewDeduplicator(esClient, cfg.Observer.InsightCooldownHours)
+	writer := insights.NewWriter(esClient, cfg.Service.Version).WithDedup(dedup)
+	cleaner := insights.NewCleaner(esClient, cfg.Observer.InsightRetentionDays)
 	fast, slow := buildCategories(cfg, esClient)
 
 	sched := scheduler.New(fast, slow, writer, p, scheduler.Config{
@@ -80,7 +82,7 @@ func Start() error {
 		DryRun:               cfg.Observer.DryRun,
 		DriftIntervalSeconds: cfg.Observer.Categories.DriftIntervalSeconds,
 		DriftWindowDuration:  driftWindowHours * time.Hour,
-	}).WithLogger(log)
+	}).WithLogger(log).WithCleaner(cleaner)
 
 	totalCats := len(fast) + len(slow)
 	log.Info("Scheduler configured",
