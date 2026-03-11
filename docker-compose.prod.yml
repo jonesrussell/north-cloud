@@ -162,6 +162,9 @@ services:
       DB_PASSWORD: "${POSTGRES_SOURCE_MANAGER_PASSWORD}"
       DB_NAME: "${POSTGRES_SOURCE_MANAGER_DB:-source_manager}"
       DB_SSLMODE: disable
+      VERIFICATION_AI_ENABLED: "${VERIFICATION_AI_ENABLED:-false}"
+      ANTHROPIC_API_KEY: "${ANTHROPIC_API_KEY:-}"
+      ANTHROPIC_MODEL: "${ANTHROPIC_MODEL:-claude-haiku-4-5-20251001}"
     volumes:
       - ./source-manager/migrations:/migrations:ro
     healthcheck:
