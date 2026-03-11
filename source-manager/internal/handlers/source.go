@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net/http"
@@ -459,62 +460,94 @@ func (h *SourceHandler) TestCrawl(c *gin.Context) {
 	c.JSON(http.StatusOK, result)
 }
 
-// FeedDisableRequest is the request body for disabling a feed.
-type FeedDisableRequest struct {
+// disableRequest is the shared request body for disable endpoints.
+type disableRequest struct {
 	Reason string `binding:"required" json:"reason"`
 }
 
-// DisableFeed marks a source's feed as disabled.
-func (h *SourceHandler) DisableFeed(c *gin.Context) {
+// handleDisable is a shared helper for disable-with-reason endpoints (feed and source).
+// entityLabel is the human-readable entity name for messages (e.g. "Feed", "Source").
+func (h *SourceHandler) handleDisable(
+	c *gin.Context,
+	disableFn func(ctx context.Context, id, reason string) error,
+	entityLabel string,
+) {
 	id := c.Param("id")
 	if _, err := uuid.Parse(id); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid source ID"})
 		return
 	}
 
-	var req FeedDisableRequest
+	var req disableRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body"})
 		return
 	}
 
-	if err := h.repo.DisableFeed(c.Request.Context(), id, req.Reason); err != nil {
-		h.logger.Error("Failed to disable feed",
+	if err := disableFn(c.Request.Context(), id, req.Reason); err != nil {
+		h.logger.Error("Failed to disable "+entityLabel,
 			infralogger.String("source_id", id),
 			infralogger.Error(err),
 		)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to disable feed"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to disable " + entityLabel})
 		return
 	}
 
-	h.logger.Info("Feed disabled",
+	h.logger.Info(entityLabel+" disabled",
 		infralogger.String("source_id", id),
 		infralogger.String("reason", req.Reason),
 	)
 
-	c.JSON(http.StatusOK, gin.H{"message": "Feed disabled", "source_id": id, "reason": req.Reason})
+	c.JSON(http.StatusOK, gin.H{
+		"message": entityLabel + " disabled", "source_id": id, "reason": req.Reason,
+	})
 }
 
-// EnableFeed clears a source's feed disabled state.
-func (h *SourceHandler) EnableFeed(c *gin.Context) {
+// handleEnable is a shared helper for enable endpoints (feed and source).
+// entityLabel is the human-readable entity name for messages (e.g. "Feed", "Source").
+func (h *SourceHandler) handleEnable(
+	c *gin.Context,
+	enableFn func(ctx context.Context, id string) error,
+	entityLabel string,
+) {
 	id := c.Param("id")
 	if _, err := uuid.Parse(id); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid source ID"})
 		return
 	}
 
-	if err := h.repo.EnableFeed(c.Request.Context(), id); err != nil {
-		h.logger.Error("Failed to enable feed",
+	if err := enableFn(c.Request.Context(), id); err != nil {
+		h.logger.Error("Failed to enable "+entityLabel,
 			infralogger.String("source_id", id),
 			infralogger.Error(err),
 		)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to enable feed"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to enable " + entityLabel})
 		return
 	}
 
-	h.logger.Info("Feed enabled", infralogger.String("source_id", id))
+	h.logger.Info(entityLabel+" enabled", infralogger.String("source_id", id))
 
-	c.JSON(http.StatusOK, gin.H{"message": "Feed enabled", "source_id": id})
+	c.JSON(http.StatusOK, gin.H{"message": entityLabel + " enabled", "source_id": id})
+}
+
+// DisableFeed marks a source's feed as disabled.
+func (h *SourceHandler) DisableFeed(c *gin.Context) {
+	h.handleDisable(c, h.repo.DisableFeed, "Feed")
+}
+
+// EnableFeed clears a source's feed disabled state.
+func (h *SourceHandler) EnableFeed(c *gin.Context) {
+	h.handleEnable(c, h.repo.EnableFeed, "Feed")
+}
+
+// DisableSource marks a source as disabled with a reason.
+func (h *SourceHandler) DisableSource(c *gin.Context) {
+	h.handleDisable(c, h.repo.DisableSource, "Source")
+}
+
+// EnableSource clears a source's disabled state.
+func (h *SourceHandler) EnableSource(c *gin.Context) {
+	h.handleEnable(c, h.repo.EnableSource, "Source")
 }
 
 // publishImportEvents publishes SourceCreated for created sources and SourceUpdated for updated sources.

@@ -1,0 +1,2 @@
+ALTER TABLE sources ADD COLUMN disabled_at TIMESTAMP WITH TIME ZONE;
+ALTER TABLE sources ADD COLUMN disable_reason TEXT;

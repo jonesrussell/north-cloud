@@ -166,6 +166,8 @@ func setupServiceRoutes(
 	sources.DELETE("/:id", sourceHandler.Delete)
 	sources.PATCH("/:id/feed-disable", sourceHandler.DisableFeed)
 	sources.PATCH("/:id/feed-enable", sourceHandler.EnableFeed)
+	sources.PATCH("/:id/disable", sourceHandler.DisableSource)
+	sources.PATCH("/:id/enable", sourceHandler.EnableSource)
 
 	// Communities endpoints (protected - requires JWT for mutations)
 	communities := v1.Group("/communities")

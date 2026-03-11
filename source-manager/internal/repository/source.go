@@ -109,7 +109,9 @@ func (r *SourceRepository) GetByID(ctx context.Context, id string) (*models.Sour
 		       feed_url, sitemap_url, ingestion_mode, feed_poll_interval_minutes,
 		       feed_disabled_at, feed_disable_reason,
 		       allow_source_discovery, identity_key, extraction_profile, template_hint,
-		       render_mode, type, indigenous_region, created_at, updated_at
+		       render_mode, type, indigenous_region,
+		       disabled_at, disable_reason,
+		       created_at, updated_at
 		FROM sources
 		WHERE id = $1
 	`
@@ -136,6 +138,8 @@ func (r *SourceRepository) GetByID(ctx context.Context, id string) (*models.Sour
 		&source.RenderMode,
 		&source.Type,
 		&source.IndigenousRegion,
+		&source.DisabledAt,
+		&source.DisableReason,
 		&source.CreatedAt,
 		&source.UpdatedAt,
 	)
@@ -176,7 +180,9 @@ func (r *SourceRepository) GetByIdentityKey(ctx context.Context, identityKey str
 		       feed_url, sitemap_url, ingestion_mode, feed_poll_interval_minutes,
 		       feed_disabled_at, feed_disable_reason,
 		       allow_source_discovery, identity_key, extraction_profile, template_hint,
-		       render_mode, type, indigenous_region, created_at, updated_at
+		       render_mode, type, indigenous_region,
+		       disabled_at, disable_reason,
+		       created_at, updated_at
 		FROM sources
 		WHERE identity_key = $1
 		ORDER BY created_at ASC
@@ -245,7 +251,9 @@ func (r *SourceRepository) ListPaginated(ctx context.Context, filter ListFilter)
 		       feed_url, sitemap_url, ingestion_mode, feed_poll_interval_minutes,
 		       feed_disabled_at, feed_disable_reason,
 		       allow_source_discovery, identity_key, extraction_profile, template_hint,
-		       render_mode, type, indigenous_region, created_at, updated_at
+		       render_mode, type, indigenous_region,
+		       disabled_at, disable_reason,
+		       created_at, updated_at
 		FROM sources
 		WHERE 1=1` + whereClause + orderClause + `
 		LIMIT $` + limitPlaceholder + ` OFFSET $` + offsetPlaceholder
@@ -307,6 +315,8 @@ func scanSourceRow(rows *sql.Rows) (*models.Source, error) {
 		&source.RenderMode,
 		&source.Type,
 		&source.IndigenousRegion,
+		&source.DisabledAt,
+		&source.DisableReason,
 		&source.CreatedAt,
 		&source.UpdatedAt,
 	); err != nil {
@@ -391,7 +401,9 @@ func (r *SourceRepository) List(ctx context.Context) ([]models.Source, error) {
 		       feed_url, sitemap_url, ingestion_mode, feed_poll_interval_minutes,
 		       feed_disabled_at, feed_disable_reason,
 		       allow_source_discovery, identity_key, extraction_profile, template_hint,
-		       render_mode, type, indigenous_region, created_at, updated_at
+		       render_mode, type, indigenous_region,
+		       disabled_at, disable_reason,
+		       created_at, updated_at
 		FROM sources
 		ORDER BY name
 	`
@@ -656,6 +668,52 @@ func (r *SourceRepository) EnableFeed(ctx context.Context, id string) error {
 	result, err := r.db.ExecContext(ctx, query, id)
 	if err != nil {
 		return fmt.Errorf("enable feed: %w", err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("get rows affected: %w", err)
+	}
+	if rowsAffected == 0 {
+		return errors.New("source not found")
+	}
+	return nil
+}
+
+// DisableSource marks a source as disabled with a reason.
+func (r *SourceRepository) DisableSource(ctx context.Context, id, reason string) error {
+	query := `
+		UPDATE sources
+		SET disabled_at = NOW(), disable_reason = $2, updated_at = NOW()
+		WHERE id = $1
+	`
+
+	result, err := r.db.ExecContext(ctx, query, id, reason)
+	if err != nil {
+		return fmt.Errorf("disable source: %w", err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("get rows affected: %w", err)
+	}
+	if rowsAffected == 0 {
+		return errors.New("source not found")
+	}
+	return nil
+}
+
+// EnableSource clears a source's disabled state.
+func (r *SourceRepository) EnableSource(ctx context.Context, id string) error {
+	query := `
+		UPDATE sources
+		SET disabled_at = NULL, disable_reason = NULL, updated_at = NOW()
+		WHERE id = $1
+	`
+
+	result, err := r.db.ExecContext(ctx, query, id)
+	if err != nil {
+		return fmt.Errorf("enable source: %w", err)
 	}
 
 	rowsAffected, err := result.RowsAffected()
