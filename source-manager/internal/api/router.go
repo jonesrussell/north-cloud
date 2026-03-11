@@ -87,6 +87,7 @@ func NewServer(
 	communityRepo *repository.CommunityRepository,
 	personRepo *repository.PersonRepository,
 	bandOfficeRepo *repository.BandOfficeRepository,
+	verificationRepo *repository.VerificationRepository,
 	cfg *config.Config,
 	infraLog infralogger.Logger,
 	publisher *events.Publisher,
@@ -95,6 +96,7 @@ func NewServer(
 	communityHandler := handlers.NewCommunityHandler(communityRepo, infraLog)
 	personHandler := handlers.NewPersonHandler(personRepo, infraLog)
 	bandOfficeHandler := handlers.NewBandOfficeHandler(bandOfficeRepo, infraLog)
+	verificationHandler := handlers.NewVerificationHandler(verificationRepo, infraLog)
 	linkerHandler := handlers.NewLinkerHandler(communityRepo, db, infraLog)
 
 	// Build CORS config
@@ -114,7 +116,7 @@ func NewServer(
 		WithCORS(corsConfig).
 		WithRoutes(func(router *gin.Engine) {
 			// Setup service-specific routes (health routes added by builder)
-			setupServiceRoutes(router, sourceHandler, communityHandler, personHandler, bandOfficeHandler, linkerHandler, cfg)
+			setupServiceRoutes(router, sourceHandler, communityHandler, personHandler, bandOfficeHandler, verificationHandler, linkerHandler, cfg)
 		}).
 		Build()
 
@@ -129,6 +131,7 @@ func setupServiceRoutes(
 	communityHandler *handlers.CommunityHandler,
 	personHandler *handlers.PersonHandler,
 	bandOfficeHandler *handlers.BandOfficeHandler,
+	verificationHandler *handlers.VerificationHandler,
 	linkerHandler *handlers.LinkerHandler,
 	cfg *config.Config,
 ) {
@@ -192,4 +195,10 @@ func setupServiceRoutes(
 	v1.PUT("/people/:id", personHandler.Update)
 	v1.DELETE("/people/:id", personHandler.Delete)
 	v1.PUT("/band-offices/:id", bandOfficeHandler.Update)
+
+	// Verification queue endpoints (protected)
+	verification := v1.Group("/verification")
+	verification.GET("/pending", verificationHandler.ListPending)
+	verification.POST("/:id/verify", verificationHandler.Verify)
+	verification.POST("/:id/reject", verificationHandler.Reject)
 }
