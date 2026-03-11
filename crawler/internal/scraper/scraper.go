@@ -3,7 +3,6 @@ package scraper
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -287,14 +286,14 @@ func (s *Scraper) processContactPage(
 	}
 
 	existing, getErr := s.client.GetBandOffice(ctx, community.ID)
-	if getErr != nil && !errors.Is(getErr, ErrBandOfficeNotFound) {
+	if getErr != nil {
 		s.logger.Warn("failed to get existing band office",
 			infralogger.String("community_id", community.ID),
 			infralogger.Error(getErr),
 		)
 	}
 
-	if getErr == nil && bandOfficeUnchanged(existing, contact) {
+	if existing != nil && bandOfficeUnchanged(existing, contact) {
 		result.OfficeSkipped = true
 		return
 	}

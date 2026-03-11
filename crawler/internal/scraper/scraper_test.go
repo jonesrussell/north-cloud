@@ -88,7 +88,10 @@ func handleTestRequest(
 	case r.URL.Path == "/api/v1/communities/with-source":
 		serveCommunitiesWithServerURL(t, w, srv.URL, cfg.communities)
 	case strings.HasSuffix(r.URL.Path, "/people") && r.Method == http.MethodGet:
-		serveJSON(t, w, cfg.existingPeople)
+		serveJSON(t, w, map[string]any{
+			"people": cfg.existingPeople,
+			"total":  len(cfg.existingPeople),
+		})
 	case strings.HasSuffix(r.URL.Path, "/people") && r.Method == http.MethodPost:
 		cfg.counters.peopleCreated.Add(1)
 		w.WriteHeader(http.StatusCreated)
@@ -124,13 +127,16 @@ func serveCommunitiesWithServerURL(
 			result[i].Website = &srvURL
 		}
 	}
-	serveJSON(t, w, result)
+	serveJSON(t, w, map[string]any{
+		"communities": result,
+		"count":       len(result),
+	})
 }
 
 func serveBandOffice(t *testing.T, w http.ResponseWriter, office *scraper.BandOffice) {
 	t.Helper()
 	if office != nil {
-		serveJSON(t, w, office)
+		serveJSON(t, w, map[string]any{"band_office": office})
 	} else {
 		w.WriteHeader(http.StatusNotFound)
 	}
