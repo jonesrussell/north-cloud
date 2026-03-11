@@ -37,14 +37,19 @@ func NewCommunityRepository(db *sql.DB, log infralogger.Logger) *CommunityReposi
 }
 
 // scanCommunity scans a single row into a Community struct.
-func scanCommunity(row interface{ Scan(...any) error }) (*models.Community, error) {
+// Optional extra destinations are appended to the scan list (e.g. distance_km).
+func scanCommunity(row interface{ Scan(...any) error }, extra ...any) (*models.Community, error) {
+	const communityColumnCount = 25
 	var c models.Community
-	scanErr := row.Scan(
+	dest := make([]any, 0, communityColumnCount+len(extra))
+	dest = append(dest,
 		&c.ID, &c.Name, &c.Slug, &c.CommunityType, &c.Province, &c.Region,
 		&c.InacID, &c.StatCanCSD, &c.OSMRelationID, &c.WikidataQID, &c.Latitude, &c.Longitude,
 		&c.Nation, &c.Treaty, &c.LanguageGroup, &c.ReserveName, &c.Population, &c.PopulationYear,
 		&c.Website, &c.FeedURL, &c.DataSource, &c.SourceID, &c.Enabled, &c.CreatedAt, &c.UpdatedAt,
 	)
+	dest = append(dest, extra...)
+	scanErr := row.Scan(dest...)
 	if scanErr != nil {
 		return nil, fmt.Errorf("scan community: %w", scanErr)
 	}
@@ -473,19 +478,11 @@ func (r *CommunityRepository) FindNearby(
 	results := make([]models.CommunityWithDistance, 0, limit)
 	for rows.Next() {
 		var cwd models.CommunityWithDistance
-		scanErr := rows.Scan(
-			&cwd.ID, &cwd.Name, &cwd.Slug, &cwd.CommunityType, &cwd.Province, &cwd.Region,
-			&cwd.InacID, &cwd.StatCanCSD, &cwd.OSMRelationID, &cwd.WikidataQID,
-			&cwd.Latitude, &cwd.Longitude,
-			&cwd.Nation, &cwd.Treaty, &cwd.LanguageGroup, &cwd.ReserveName,
-			&cwd.Population, &cwd.PopulationYear,
-			&cwd.Website, &cwd.FeedURL, &cwd.DataSource, &cwd.SourceID,
-			&cwd.Enabled, &cwd.CreatedAt, &cwd.UpdatedAt,
-			&cwd.DistanceKm,
-		)
+		c, scanErr := scanCommunity(rows, &cwd.DistanceKm)
 		if scanErr != nil {
 			return nil, fmt.Errorf("scan nearby community: %w", scanErr)
 		}
+		cwd.Community = *c
 		results = append(results, cwd)
 	}
 
