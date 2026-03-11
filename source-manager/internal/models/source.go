@@ -42,9 +42,18 @@ type Source struct {
 	// Type: source category — "news" (default), "indigenous", "government", "mining", "community".
 	Type string `db:"type" json:"type"`
 	// IndigenousRegion: optional geographic region tag for indigenous content sources (e.g. "canada", "oceania").
-	IndigenousRegion *string   `db:"indigenous_region" json:"indigenous_region,omitempty"`
-	CreatedAt        time.Time `db:"created_at"        json:"created_at"`
-	UpdatedAt        time.Time `db:"updated_at"        json:"updated_at"`
+	IndigenousRegion *string `db:"indigenous_region" json:"indigenous_region,omitempty"`
+	// DisabledAt: when set, the entire source is disabled (not just its feed).
+	DisabledAt *time.Time `db:"disabled_at" json:"disabled_at,omitempty"`
+	// DisableReason: human-readable reason the source was disabled.
+	DisableReason *string   `db:"disable_reason" json:"disable_reason,omitempty"`
+	CreatedAt     time.Time `db:"created_at"     json:"created_at"`
+	UpdatedAt     time.Time `db:"updated_at"     json:"updated_at"`
+}
+
+// IsDisabled returns true when the source has been explicitly disabled via the disable endpoint.
+func (s *Source) IsDisabled() bool {
+	return s.DisabledAt != nil
 }
 
 // SelectorConfig represents CSS selector configuration

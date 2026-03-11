@@ -4,6 +4,7 @@ import (
 	"database/sql/driver"
 	"encoding/json"
 	"testing"
+	"time"
 
 	"github.com/jonesrussell/north-cloud/source-manager/internal/models"
 )
@@ -479,6 +480,23 @@ func TestSelectorConfig_MergeWithDefaults(t *testing.T) {
 	if got.Page.Container == "" {
 		t.Error("SelectorConfig.MergeWithDefaults() Page.Container should have default value")
 	}
+}
+
+func TestSource_IsDisabled(t *testing.T) {
+	t.Run("returns false when DisabledAt is nil", func(t *testing.T) {
+		s := models.Source{}
+		if s.IsDisabled() {
+			t.Error("expected IsDisabled() to be false for zero-value source")
+		}
+	})
+
+	t.Run("returns true when DisabledAt is set", func(t *testing.T) {
+		now := time.Now()
+		s := models.Source{DisabledAt: &now}
+		if !s.IsDisabled() {
+			t.Error("expected IsDisabled() to be true when DisabledAt is set")
+		}
+	})
 }
 
 // Helper function to convert StringArray to pointer
