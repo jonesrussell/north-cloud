@@ -141,6 +141,8 @@ services:
   source-manager:
     <<: *prod-defaults
     image: docker.io/jonesrussell/source-manager:latest
+    ports:
+      - "127.0.0.1:8050:8050"
     deploy:
       resources:
         limits:
