@@ -17,12 +17,30 @@ RUN go mod download
 # Copy source
 COPY source-manager/ .
 
-# Build static binary
+# Build static binaries
 RUN CGO_ENABLED=0 go build \
     -ldflags="-w -s" \
     -trimpath \
     -o source-manager \
     main.go
+
+RUN CGO_ENABLED=0 go build \
+    -ldflags="-w -s" \
+    -trimpath \
+    -o seed-communities \
+    ./cmd/seed-communities
+
+RUN CGO_ENABLED=0 go build \
+    -ldflags="-w -s" \
+    -trimpath \
+    -o seed-municipalities \
+    ./cmd/seed-municipalities
+
+RUN CGO_ENABLED=0 go build \
+    -ldflags="-w -s" \
+    -trimpath \
+    -o refresh-communities \
+    ./cmd/refresh-communities
 
 # Runtime stage
 FROM alpine:latest
@@ -33,8 +51,11 @@ RUN apk --no-cache add ca-certificates tzdata wget && \
 
 WORKDIR /app
 
-# Copy binary and config
+# Copy binaries and config
 COPY --from=builder /build/source-manager/source-manager .
+COPY --from=builder /build/source-manager/seed-communities .
+COPY --from=builder /build/source-manager/seed-municipalities .
+COPY --from=builder /build/source-manager/refresh-communities .
 COPY --from=builder /build/source-manager/config.yml.example ./config.yml
 
 # Switch to non-root user
