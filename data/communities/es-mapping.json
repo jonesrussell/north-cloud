@@ -46,7 +46,9 @@
         "type": "object",
         "properties": {
           "inac": { "type": "keyword" },
-          "statcan": { "type": "keyword" }
+          "statcan": { "type": "keyword" },
+          "osm_relation_id": { "type": "long" },
+          "wikidata_qid": { "type": "keyword" }
         }
       },
       "region": { "type": "keyword" },

@@ -41,7 +41,7 @@ func scanCommunity(row interface{ Scan(...any) error }) (*models.Community, erro
 	var c models.Community
 	scanErr := row.Scan(
 		&c.ID, &c.Name, &c.Slug, &c.CommunityType, &c.Province, &c.Region,
-		&c.InacID, &c.StatCanCSD, &c.Latitude, &c.Longitude,
+		&c.InacID, &c.StatCanCSD, &c.OSMRelationID, &c.WikidataQID, &c.Latitude, &c.Longitude,
 		&c.Nation, &c.Treaty, &c.LanguageGroup, &c.ReserveName, &c.Population, &c.PopulationYear,
 		&c.Website, &c.FeedURL, &c.DataSource, &c.SourceID, &c.Enabled, &c.CreatedAt, &c.UpdatedAt,
 	)
@@ -60,19 +60,19 @@ func (r *CommunityRepository) Create(ctx context.Context, c *models.Community) e
 	query := `
 		INSERT INTO communities (
 			id, name, slug, community_type, province, region,
-			inac_id, statcan_csd, latitude, longitude,
+			inac_id, statcan_csd, osm_relation_id, wikidata_qid, latitude, longitude,
 			nation, treaty, language_group, reserve_name, population, population_year,
 			website, feed_url, data_source, source_id, enabled, created_at, updated_at
 		) VALUES (
 			$1, $2, $3, $4, $5, $6,
-			$7, $8, $9, $10,
-			$11, $12, $13, $14, $15, $16,
-			$17, $18, $19, $20, $21, $22, $23
+			$7, $8, $9, $10, $11, $12,
+			$13, $14, $15, $16, $17, $18,
+			$19, $20, $21, $22, $23, $24, $25
 		)`
 
 	_, err := r.db.ExecContext(ctx, query,
 		c.ID, c.Name, c.Slug, c.CommunityType, c.Province, c.Region,
-		c.InacID, c.StatCanCSD, c.Latitude, c.Longitude,
+		c.InacID, c.StatCanCSD, c.OSMRelationID, c.WikidataQID, c.Latitude, c.Longitude,
 		c.Nation, c.Treaty, c.LanguageGroup, c.ReserveName, c.Population, c.PopulationYear,
 		c.Website, c.FeedURL, c.DataSource, c.SourceID, c.Enabled, c.CreatedAt, c.UpdatedAt,
 	)
@@ -86,7 +86,7 @@ func (r *CommunityRepository) Create(ctx context.Context, c *models.Community) e
 // GetByID returns a community by ID, or nil if not found.
 func (r *CommunityRepository) GetByID(ctx context.Context, id string) (*models.Community, error) {
 	query := `SELECT id, name, slug, community_type, province, region,
-		inac_id, statcan_csd, latitude, longitude,
+		inac_id, statcan_csd, osm_relation_id, wikidata_qid, latitude, longitude,
 		nation, treaty, language_group, reserve_name, population, population_year,
 		website, feed_url, data_source, source_id, enabled, created_at, updated_at
 		FROM communities WHERE id = $1`
@@ -106,7 +106,7 @@ func (r *CommunityRepository) GetByID(ctx context.Context, id string) (*models.C
 // GetBySlug returns a community by slug, or nil if not found.
 func (r *CommunityRepository) GetBySlug(ctx context.Context, slug string) (*models.Community, error) {
 	query := `SELECT id, name, slug, community_type, province, region,
-		inac_id, statcan_csd, latitude, longitude,
+		inac_id, statcan_csd, osm_relation_id, wikidata_qid, latitude, longitude,
 		nation, treaty, language_group, reserve_name, population, population_year,
 		website, feed_url, data_source, source_id, enabled, created_at, updated_at
 		FROM communities WHERE slug = $1`
@@ -129,16 +129,17 @@ func (r *CommunityRepository) Update(ctx context.Context, c *models.Community) e
 	query := `
 		UPDATE communities SET
 			name = $2, slug = $3, community_type = $4, province = $5, region = $6,
-			inac_id = $7, statcan_csd = $8, latitude = $9, longitude = $10,
-			nation = $11, treaty = $12, language_group = $13, reserve_name = $14,
-			population = $15, population_year = $16,
-			website = $17, feed_url = $18, data_source = $19, source_id = $20,
-			enabled = $21
+			inac_id = $7, statcan_csd = $8, osm_relation_id = $9, wikidata_qid = $10,
+			latitude = $11, longitude = $12,
+			nation = $13, treaty = $14, language_group = $15, reserve_name = $16,
+			population = $17, population_year = $18,
+			website = $19, feed_url = $20, data_source = $21, source_id = $22,
+			enabled = $23
 		WHERE id = $1`
 
 	result, err := r.db.ExecContext(ctx, query,
 		c.ID, c.Name, c.Slug, c.CommunityType, c.Province, c.Region,
-		c.InacID, c.StatCanCSD, c.Latitude, c.Longitude,
+		c.InacID, c.StatCanCSD, c.OSMRelationID, c.WikidataQID, c.Latitude, c.Longitude,
 		c.Nation, c.Treaty, c.LanguageGroup, c.ReserveName, c.Population, c.PopulationYear,
 		c.Website, c.FeedURL, c.DataSource, c.SourceID, c.Enabled,
 	)
@@ -231,7 +232,7 @@ func (r *CommunityRepository) ListPaginated(
 
 	//nolint:gosec // G201: query uses only constant column names and integer placeholders
 	query := fmt.Sprintf(`SELECT id, name, slug, community_type, province, region,
-		inac_id, statcan_csd, latitude, longitude,
+		inac_id, statcan_csd, osm_relation_id, wikidata_qid, latitude, longitude,
 		nation, treaty, language_group, reserve_name, population, population_year,
 		website, feed_url, data_source, source_id, enabled, created_at, updated_at
 		FROM communities%s ORDER BY name ASC LIMIT $%d OFFSET $%d`,
@@ -277,19 +278,21 @@ func (r *CommunityRepository) upsertCommunity(
 	query := fmt.Sprintf(`
 		INSERT INTO communities (
 			id, name, slug, community_type, province, region,
-			inac_id, statcan_csd, latitude, longitude,
+			inac_id, statcan_csd, osm_relation_id, wikidata_qid, latitude, longitude,
 			nation, treaty, language_group, reserve_name, population, population_year,
 			website, feed_url, data_source, source_id, enabled, created_at, updated_at
 		) VALUES (
 			$1, $2, $3, $4, $5, $6,
-			$7, $8, $9, $10,
-			$11, $12, $13, $14, $15, $16,
-			$17, $18, $19, $20, $21, $22, $23
+			$7, $8, $9, $10, $11, $12,
+			$13, $14, $15, $16, $17, $18,
+			$19, $20, $21, $22, $23, $24, $25
 		)
 		ON CONFLICT (%s) DO UPDATE SET
 			name = EXCLUDED.name, slug = EXCLUDED.slug,
 			community_type = EXCLUDED.community_type,
 			province = EXCLUDED.province, region = EXCLUDED.region,
+			osm_relation_id = EXCLUDED.osm_relation_id,
+			wikidata_qid = EXCLUDED.wikidata_qid,
 			latitude = EXCLUDED.latitude, longitude = EXCLUDED.longitude,
 			nation = EXCLUDED.nation, treaty = EXCLUDED.treaty,
 			language_group = EXCLUDED.language_group,
@@ -303,7 +306,7 @@ func (r *CommunityRepository) upsertCommunity(
 
 	if err := r.db.QueryRowContext(ctx, query,
 		c.ID, c.Name, c.Slug, c.CommunityType, c.Province, c.Region,
-		c.InacID, c.StatCanCSD, c.Latitude, c.Longitude,
+		c.InacID, c.StatCanCSD, c.OSMRelationID, c.WikidataQID, c.Latitude, c.Longitude,
 		c.Nation, c.Treaty, c.LanguageGroup, c.ReserveName, c.Population, c.PopulationYear,
 		c.Website, c.FeedURL, c.DataSource, c.SourceID, c.Enabled, c.CreatedAt, c.UpdatedAt,
 	).Scan(&c.ID); err != nil {
@@ -353,7 +356,7 @@ func (r *CommunityRepository) SetSourceLink(ctx context.Context, communityID, so
 // ListUnlinked returns communities that have no source_id set.
 func (r *CommunityRepository) ListUnlinked(ctx context.Context) ([]models.Community, error) {
 	query := `SELECT id, name, slug, community_type, province, region,
-		inac_id, statcan_csd, latitude, longitude,
+		inac_id, statcan_csd, osm_relation_id, wikidata_qid, latitude, longitude,
 		nation, treaty, language_group, reserve_name, population, population_year,
 		website, feed_url, data_source, source_id, enabled, created_at, updated_at
 		FROM communities WHERE source_id IS NULL ORDER BY name ASC`
@@ -432,7 +435,7 @@ func (r *CommunityRepository) FindNearby(
 	query := fmt.Sprintf(`
 		WITH nearby AS (
 			SELECT id, name, slug, community_type, province, region,
-				inac_id, statcan_csd, latitude, longitude,
+				inac_id, statcan_csd, osm_relation_id, wikidata_qid, latitude, longitude,
 				nation, treaty, language_group, reserve_name, population, population_year,
 				website, feed_url, data_source, source_id, enabled, created_at, updated_at,
 				(%.1f * acos(
@@ -447,7 +450,7 @@ func (r *CommunityRepository) FindNearby(
 				AND longitude BETWEEN $5 AND $6
 		)
 		SELECT id, name, slug, community_type, province, region,
-			inac_id, statcan_csd, latitude, longitude,
+			inac_id, statcan_csd, osm_relation_id, wikidata_qid, latitude, longitude,
 			nation, treaty, language_group, reserve_name, population, population_year,
 			website, feed_url, data_source, source_id, enabled, created_at, updated_at,
 			distance_km
@@ -472,7 +475,8 @@ func (r *CommunityRepository) FindNearby(
 		var cwd models.CommunityWithDistance
 		scanErr := rows.Scan(
 			&cwd.ID, &cwd.Name, &cwd.Slug, &cwd.CommunityType, &cwd.Province, &cwd.Region,
-			&cwd.InacID, &cwd.StatCanCSD, &cwd.Latitude, &cwd.Longitude,
+			&cwd.InacID, &cwd.StatCanCSD, &cwd.OSMRelationID, &cwd.WikidataQID,
+			&cwd.Latitude, &cwd.Longitude,
 			&cwd.Nation, &cwd.Treaty, &cwd.LanguageGroup, &cwd.ReserveName,
 			&cwd.Population, &cwd.PopulationYear,
 			&cwd.Website, &cwd.FeedURL, &cwd.DataSource, &cwd.SourceID,
