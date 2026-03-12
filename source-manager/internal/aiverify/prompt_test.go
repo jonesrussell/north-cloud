@@ -78,6 +78,17 @@ func TestParseVerifyResponse_InvalidJSON(t *testing.T) {
 	}
 }
 
+func TestParseVerifyResponse_CodeFenced(t *testing.T) {
+	raw := "```json\n{\"confidence\": 0.85, \"issues\": []}\n```"
+	result, err := aiverify.ParseVerifyResponse(raw)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result.Confidence != 0.85 {
+		t.Errorf("expected confidence 0.85, got %f", result.Confidence)
+	}
+}
+
 func TestParseVerifyResponse_MissingConfidence(t *testing.T) {
 	raw := `{"issues": []}`
 	_, err := aiverify.ParseVerifyResponse(raw)

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 )
 
 // SystemPrompt is the fixed system prompt for verification.
@@ -66,8 +67,27 @@ func BuildUserPrompt(input VerifyInput) string {
 	return string(data)
 }
 
+// stripCodeFence removes markdown code fences (```json ... ```) from LLM output.
+func stripCodeFence(s string) string {
+	s = strings.TrimSpace(s)
+	if strings.HasPrefix(s, "```") {
+		// Remove opening fence (```json or ```)
+		if idx := strings.Index(s, "\n"); idx != -1 {
+			s = s[idx+1:]
+		}
+		// Remove closing fence
+		if idx := strings.LastIndex(s, "```"); idx != -1 {
+			s = s[:idx]
+		}
+		s = strings.TrimSpace(s)
+	}
+	return s
+}
+
 // ParseVerifyResponse parses the LLM's JSON response.
 func ParseVerifyResponse(raw string) (*VerifyResult, error) {
+	raw = stripCodeFence(raw)
+
 	var m map[string]any
 	if unmarshalErr := json.Unmarshal([]byte(raw), &m); unmarshalErr != nil {
 		return nil, fmt.Errorf("parse verify response: %w", unmarshalErr)
