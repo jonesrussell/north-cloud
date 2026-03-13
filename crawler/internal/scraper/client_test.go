@@ -230,6 +230,24 @@ func TestClient_GetBandOffice_NotFound(t *testing.T) {
 	}
 }
 
+func TestClient_GetBandOffice_ServerError(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+		_, _ = w.Write([]byte(`{"error": "internal server error"}`))
+	}))
+	defer server.Close()
+
+	client := scraper.NewClient(server.URL, "test-token")
+	office, err := client.GetBandOffice(context.Background(), "c1")
+	if err == nil {
+		t.Fatal("expected non-nil error for 500 response, got nil")
+	}
+
+	if office != nil {
+		t.Errorf("expected nil band office on error, got %+v", office)
+	}
+}
+
 func TestClient_UpsertBandOffice(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/api/v1/communities/c1/band-office" {
