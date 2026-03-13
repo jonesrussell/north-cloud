@@ -261,6 +261,34 @@ func (h *CommunityHandler) ListWithSource(c *gin.Context) {
 	})
 }
 
+// ImportWebsites handles POST /api/v1/communities/import-websites.
+// Accepts a JSON array of {inac_id, website} pairs and bulk-updates community website fields.
+func (h *CommunityHandler) ImportWebsites(c *gin.Context) {
+	var req struct {
+		Updates []repository.WebsiteUpdate `json:"updates"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body: " + err.Error()})
+		return
+	}
+	if len(req.Updates) == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "updates array is required and must not be empty"})
+		return
+	}
+
+	updated, err := h.repo.BulkUpdateWebsiteByInacID(c.Request.Context(), req.Updates)
+	if err != nil {
+		h.logger.Error("bulk update websites failed", infralogger.Error(err))
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update websites"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"updated":   updated,
+		"submitted": len(req.Updates),
+	})
+}
+
 // parseFloatQuery parses a float query parameter with a default value.
 func parseFloatQuery(c *gin.Context, key string, defaultVal float64) float64 {
 	val := c.Query(key)

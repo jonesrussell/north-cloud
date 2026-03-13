@@ -175,6 +175,7 @@ func setupServiceRoutes(
 	// Communities endpoints (protected - requires JWT for mutations)
 	communities := v1.Group("/communities")
 	communities.POST("", communityHandler.Create)
+	communities.POST("/import-websites", communityHandler.ImportWebsites)
 	communities.POST("/link-sources", linkerHandler.LinkSources)
 	communities.PUT("/:id", communityHandler.Update)
 	communities.PATCH("/:id/scraped", communityHandler.UpdateScrapedAt)
