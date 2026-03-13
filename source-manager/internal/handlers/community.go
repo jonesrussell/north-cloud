@@ -113,15 +113,9 @@ func (h *CommunityHandler) Nearby(c *gin.Context) {
 		return
 	}
 
-	radiusKm := parseFloatQuery(c, "radius_km", defaultNearbyRadiusKm)
-	if radiusKm > maxNearbyRadiusKm {
-		radiusKm = maxNearbyRadiusKm
-	}
+	radiusKm := min(parseFloatQuery(c, "radius_km", defaultNearbyRadiusKm), maxNearbyRadiusKm)
 
-	limit := parseIntQuery(c, "limit", defaultNearbyLimit)
-	if limit > maxNearbyLimit {
-		limit = maxNearbyLimit
-	}
+	limit := min(parseIntQuery(c, "limit", defaultNearbyLimit), maxNearbyLimit)
 
 	communities, err := h.repo.FindNearby(c.Request.Context(), lat, lon, radiusKm, limit)
 	if err != nil {

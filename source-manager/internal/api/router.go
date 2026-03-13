@@ -1,6 +1,7 @@
 package api
 
 import (
+	"slices"
 	"strings"
 	"time"
 
@@ -73,12 +74,7 @@ func extractHostFromURL(url string) string {
 
 // contains checks if a string slice contains a specific string
 func contains(slice []string, str string) bool {
-	for _, s := range slice {
-		if s == str {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(slice, str)
 }
 
 // NewServer creates a new HTTP server using the infrastructure gin package.
