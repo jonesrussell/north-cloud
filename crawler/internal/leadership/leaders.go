@@ -31,6 +31,8 @@ var rolePatterns = []struct {
 
 // ExtractLeaders parses leadership information from page text.
 // It looks for name + role patterns in lines and structured blocks.
+// After finding a leader name, it scans the next contactWindowLines lines
+// for an email address or phone number to attach to that person.
 func ExtractLeaders(text string) []Person {
 	lines := strings.Split(text, "\n")
 	var leaders []Person
@@ -38,7 +40,7 @@ func ExtractLeaders(text string) []Person {
 
 	var currentRole string
 
-	for _, line := range lines {
+	for i, line := range lines {
 		trimmed := strings.TrimSpace(line)
 		if trimmed == "" {
 			continue
@@ -51,7 +53,8 @@ func ExtractLeaders(text string) []Person {
 			name := extractNameFromRoleLine(trimmed, role)
 			if name != "" && !seen[name] {
 				seen[name] = true
-				leaders = append(leaders, Person{Name: name, Role: role})
+				email, phone := scanContactWindow(lines, i+1)
+				leaders = append(leaders, Person{Name: name, Role: role, Email: email, Phone: phone})
 			}
 			continue
 		}
@@ -61,12 +64,38 @@ func ExtractLeaders(text string) []Person {
 			name := cleanName(trimmed)
 			if name != "" && !seen[name] {
 				seen[name] = true
-				leaders = append(leaders, Person{Name: name, Role: currentRole})
+				email, phone := scanContactWindow(lines, i+1)
+				leaders = append(leaders, Person{Name: name, Role: currentRole, Email: email, Phone: phone})
 			}
 		}
 	}
 
 	return leaders
+}
+
+// scanContactWindow scans up to contactWindowLines lines starting at startIdx
+// for an email address and phone number. Returns empty strings if not found.
+func scanContactWindow(lines []string, startIdx int) (email, phone string) {
+	end := startIdx + contactWindowLines
+	if end > len(lines) {
+		end = len(lines)
+	}
+	for _, wline := range lines[startIdx:end] {
+		if email == "" {
+			if match := emailPattern.FindString(wline); match != "" {
+				email = match
+			}
+		}
+		if phone == "" {
+			if match := phonePattern.FindString(wline); match != "" {
+				phone = match
+			}
+		}
+		if email != "" && phone != "" {
+			break
+		}
+	}
+	return email, phone
 }
 
 // detectRole checks if a line contains a role keyword.
@@ -104,8 +133,9 @@ func extractNameFromRoleLine(line, role string) string {
 }
 
 const (
-	minNameLength = 5
-	maxNameLength = 50
+	minNameLength      = 5
+	maxNameLength      = 50
+	contactWindowLines = 5
 )
 
 var namePattern = regexp.MustCompile(`^[A-Z][a-zA-Z'-]+(?:\s+[A-Z][a-zA-Z'-]+){1,4}$`)
