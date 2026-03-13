@@ -113,15 +113,9 @@ func (h *CommunityHandler) Nearby(c *gin.Context) {
 		return
 	}
 
-	radiusKm := parseFloatQuery(c, "radius_km", defaultNearbyRadiusKm)
-	if radiusKm > maxNearbyRadiusKm {
-		radiusKm = maxNearbyRadiusKm
-	}
+	radiusKm := min(parseFloatQuery(c, "radius_km", defaultNearbyRadiusKm), maxNearbyRadiusKm)
 
-	limit := parseIntQuery(c, "limit", defaultNearbyLimit)
-	if limit > maxNearbyLimit {
-		limit = maxNearbyLimit
-	}
+	limit := min(parseIntQuery(c, "limit", defaultNearbyLimit), maxNearbyLimit)
 
 	communities, err := h.repo.FindNearby(c.Request.Context(), lat, lon, radiusKm, limit)
 	if err != nil {
@@ -258,6 +252,34 @@ func (h *CommunityHandler) ListWithSource(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"communities": communities,
 		"count":       len(communities),
+	})
+}
+
+// ImportWebsites handles POST /api/v1/communities/import-websites.
+// Accepts a JSON array of {inac_id, website} pairs and bulk-updates community website fields.
+func (h *CommunityHandler) ImportWebsites(c *gin.Context) {
+	var req struct {
+		Updates []repository.WebsiteUpdate `json:"updates"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body: " + err.Error()})
+		return
+	}
+	if len(req.Updates) == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "updates array is required and must not be empty"})
+		return
+	}
+
+	updated, err := h.repo.BulkUpdateWebsiteByInacID(c.Request.Context(), req.Updates)
+	if err != nil {
+		h.logger.Error("bulk update websites failed", infralogger.Error(err))
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update websites"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"updated":   updated,
+		"submitted": len(req.Updates),
 	})
 }
 

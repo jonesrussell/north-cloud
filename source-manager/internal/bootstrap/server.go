@@ -22,5 +22,9 @@ func SetupHTTPServer(
 	personRepo := repository.NewPersonRepository(db.DB(), log)
 	bandOfficeRepo := repository.NewBandOfficeRepository(db.DB(), log)
 	verificationRepo := repository.NewVerificationRepository(db.DB(), log)
-	return api.NewServer(sourceRepo, communityRepo, personRepo, bandOfficeRepo, verificationRepo, cfg, log, publisher)
+	dictionaryRepo := repository.NewDictionaryRepository(db.DB(), log)
+	return api.NewServer(
+		sourceRepo, communityRepo, personRepo, bandOfficeRepo,
+		verificationRepo, dictionaryRepo, cfg, log, publisher,
+	)
 }

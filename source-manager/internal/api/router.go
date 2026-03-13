@@ -1,6 +1,7 @@
 package api
 
 import (
+	"slices"
 	"strings"
 	"time"
 
@@ -73,12 +74,7 @@ func extractHostFromURL(url string) string {
 
 // contains checks if a string slice contains a specific string
 func contains(slice []string, str string) bool {
-	for _, s := range slice {
-		if s == str {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(slice, str)
 }
 
 // NewServer creates a new HTTP server using the infrastructure gin package.
@@ -88,6 +84,7 @@ func NewServer(
 	personRepo *repository.PersonRepository,
 	bandOfficeRepo *repository.BandOfficeRepository,
 	verificationRepo *repository.VerificationRepository,
+	dictionaryRepo *repository.DictionaryRepository,
 	cfg *config.Config,
 	infraLog infralogger.Logger,
 	publisher *events.Publisher,
@@ -98,6 +95,7 @@ func NewServer(
 	bandOfficeHandler := handlers.NewBandOfficeHandler(bandOfficeRepo, infraLog)
 	verificationHandler := handlers.NewVerificationHandler(verificationRepo, infraLog)
 	linkerHandler := handlers.NewLinkerHandler(communityRepo, db, infraLog)
+	dictionaryHandler := handlers.NewDictionaryHandler(dictionaryRepo, infraLog)
 
 	// Build CORS config
 	corsConfig := infragin.CORSConfig{
@@ -116,7 +114,11 @@ func NewServer(
 		WithCORS(corsConfig).
 		WithRoutes(func(router *gin.Engine) {
 			// Setup service-specific routes (health routes added by builder)
-			setupServiceRoutes(router, sourceHandler, communityHandler, personHandler, bandOfficeHandler, verificationHandler, linkerHandler, cfg)
+			setupServiceRoutes(
+				router, sourceHandler, communityHandler, personHandler,
+				bandOfficeHandler, verificationHandler, linkerHandler,
+				dictionaryHandler, cfg,
+			)
 		}).
 		Build()
 
@@ -133,6 +135,7 @@ func setupServiceRoutes(
 	bandOfficeHandler *handlers.BandOfficeHandler,
 	verificationHandler *handlers.VerificationHandler,
 	linkerHandler *handlers.LinkerHandler,
+	dictionaryHandler *handlers.DictionaryHandler,
 	cfg *config.Config,
 ) {
 	// Public API endpoints (no JWT required) - for internal service-to-service communication
@@ -152,6 +155,12 @@ func setupServiceRoutes(
 	publicCommunities.GET("/nearby", communityHandler.Nearby)
 	publicCommunities.GET("/by-slug/:slug", communityHandler.GetBySlug)
 	publicCommunities.GET("/:id", communityHandler.GetByID)
+
+	// Dictionary — public read endpoints (OPD data with consent filtering)
+	dict := publicAPI.Group("/dictionary")
+	dict.GET("/entries", dictionaryHandler.ListEntries)
+	dict.GET("/words/:id", dictionaryHandler.GetEntry)
+	dict.GET("/search", dictionaryHandler.SearchEntries)
 
 	// Protected API endpoints (JWT required) - for dashboard and authenticated users
 	v1 := infragin.ProtectedGroup(router, "/api/v1", cfg.Auth.JWTSecret)
@@ -175,6 +184,7 @@ func setupServiceRoutes(
 	// Communities endpoints (protected - requires JWT for mutations)
 	communities := v1.Group("/communities")
 	communities.POST("", communityHandler.Create)
+	communities.POST("/import-websites", communityHandler.ImportWebsites)
 	communities.POST("/link-sources", linkerHandler.LinkSources)
 	communities.PUT("/:id", communityHandler.Update)
 	communities.PATCH("/:id/scraped", communityHandler.UpdateScrapedAt)

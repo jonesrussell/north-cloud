@@ -4,11 +4,15 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"time"
 )
+
+// errNotFound is returned by doRequest when the server responds with 404 Not Found.
+var errNotFound = errors.New("not found")
 
 // Client calls source-manager API endpoints for the leadership scraper.
 type Client struct {
@@ -128,7 +132,10 @@ func (c *Client) GetBandOffice(ctx context.Context, communityID string) (*BandOf
 
 	body, getErr := c.doGet(ctx, url)
 	if getErr != nil {
-		return nil, nil //nolint:nilerr,nilnil // 404 returns error from doGet; nil,nil = "not found"
+		if errors.Is(getErr, errNotFound) {
+			return nil, nil //nolint:nilnil // nil,nil = "not found" per interface contract
+		}
+		return nil, fmt.Errorf("get band office: %w", getErr)
 	}
 
 	var resp struct {
@@ -233,6 +240,9 @@ func (c *Client) doRequest(req *http.Request) ([]byte, error) {
 		return nil, fmt.Errorf("read response body: %w", readErr)
 	}
 
+	if resp.StatusCode == http.StatusNotFound {
+		return nil, errNotFound
+	}
 	if resp.StatusCode >= http.StatusBadRequest {
 		return nil, fmt.Errorf("API returned status %d: %s", resp.StatusCode, string(body))
 	}

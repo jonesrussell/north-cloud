@@ -514,6 +514,37 @@ func (r *CommunityRepository) UpdateLastScrapedAt(ctx context.Context, id string
 	return nil
 }
 
+// WebsiteUpdate holds an INAC ID and the corresponding website URL.
+type WebsiteUpdate struct {
+	InacID  string
+	Website string
+}
+
+// BulkUpdateWebsiteByInacID sets the website field for communities matching the given INAC IDs.
+// Returns the count of rows updated.
+func (r *CommunityRepository) BulkUpdateWebsiteByInacID(ctx context.Context, updates []WebsiteUpdate) (int, error) {
+	if len(updates) == 0 {
+		return 0, nil
+	}
+
+	var updated int
+	for _, u := range updates {
+		result, err := r.db.ExecContext(ctx,
+			`UPDATE communities SET website = $1, updated_at = NOW() WHERE inac_id = $2`,
+			u.Website, u.InacID,
+		)
+		if err != nil {
+			return updated, fmt.Errorf("update website for inac_id %s: %w", u.InacID, err)
+		}
+		rows, rowsErr := result.RowsAffected()
+		if rowsErr != nil {
+			return updated, fmt.Errorf("rows affected: %w", rowsErr)
+		}
+		updated += int(rows)
+	}
+	return updated, nil
+}
+
 // ListWithSource returns communities that have a linked source and a website URL.
 func (r *CommunityRepository) ListWithSource(ctx context.Context) ([]models.Community, error) {
 	query := `SELECT id, name, slug, community_type, province, region,
