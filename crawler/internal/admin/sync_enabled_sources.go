@@ -242,6 +242,60 @@ func stableHash(s string) int {
 // defaultRateLimit is used when a source has no rate_limit configured.
 const defaultRateLimit = 10
 
+// DispatchBackfillJob creates a one-time crawl job for a source with staggered scheduling.
+// Shared by backfill handlers to avoid duplication.
+func DispatchBackfillJob(
+	ctx context.Context,
+	src *sources.SourceListItem,
+	n int,
+	now time.Time,
+	stagger time.Duration,
+	scheduleComputer *job.ScheduleComputer,
+	jobRepo *database.JobRepository,
+	logger infralogger.Logger,
+) bool {
+	offset := stableHash(src.ID.String()) % n
+	if offset < 0 {
+		offset = -offset
+	}
+	nextRun := now.Add(time.Duration(offset) * stagger)
+
+	rateLimit := parseRateLimitInt(src.RateLimit)
+	schedule := scheduleComputer.ComputeSchedule(job.ScheduleInput{
+		RateLimit: rateLimit,
+		MaxDepth:  src.MaxDepth,
+		Priority:  src.Priority,
+	})
+
+	sourceName := src.Name
+	newJob := &domain.Job{
+		ID:                  uuid.New().String(),
+		SourceID:            src.ID.String(),
+		SourceName:          &sourceName,
+		URL:                 src.URL,
+		IntervalMinutes:     &schedule.IntervalMinutes,
+		IntervalType:        schedule.IntervalType,
+		NextRunAt:           &nextRun,
+		Status:              backfillJobStatus,
+		AutoManaged:         true,
+		Priority:            schedule.NumericPriority,
+		ScheduleEnabled:     true,
+		MaxRetries:          defaultMaxRetries,
+		RetryBackoffSeconds: defaultRetryBackoffSeconds,
+		SchedulerVersion:    1,
+	}
+
+	if upsertErr := jobRepo.UpsertAutoManaged(ctx, newJob); upsertErr != nil {
+		logger.Error("Failed to create backfill job",
+			infralogger.String("source_id", src.ID.String()),
+			infralogger.String("source_name", src.Name),
+			infralogger.Error(upsertErr),
+		)
+		return false
+	}
+	return true
+}
+
 // parseRateLimitInt extracts an integer from source-manager rate_limit string (e.g. "1s", "10/s").
 // Returns defaultRateLimit if the string is empty or unparseable.
 func parseRateLimitInt(rateLimit string) int {

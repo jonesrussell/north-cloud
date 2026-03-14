@@ -7,9 +7,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 	"github.com/jonesrussell/north-cloud/crawler/internal/database"
-	"github.com/jonesrussell/north-cloud/crawler/internal/domain"
 	"github.com/jonesrussell/north-cloud/crawler/internal/job"
 	"github.com/jonesrussell/north-cloud/crawler/internal/sources"
 	infralogger "github.com/jonesrussell/north-cloud/infrastructure/logger"
@@ -146,46 +144,7 @@ func (h *BackfillIndigenousHandler) dispatchJob(
 	n int,
 	now time.Time,
 ) bool {
-	offset := stableHash(src.ID.String()) % n
-	if offset < 0 {
-		offset = -offset
-	}
-	nextRun := now.Add(time.Duration(offset) * h.Stagger)
-
-	rateLimit := parseRateLimitInt(src.RateLimit)
-	schedule := h.ScheduleComputer.ComputeSchedule(job.ScheduleInput{
-		RateLimit: rateLimit,
-		MaxDepth:  src.MaxDepth,
-		Priority:  src.Priority,
-	})
-
-	sourceName := src.Name
-	newJob := &domain.Job{
-		ID:                  uuid.New().String(),
-		SourceID:            src.ID.String(),
-		SourceName:          &sourceName,
-		URL:                 src.URL,
-		IntervalMinutes:     &schedule.IntervalMinutes,
-		IntervalType:        schedule.IntervalType,
-		NextRunAt:           &nextRun,
-		Status:              backfillJobStatus,
-		AutoManaged:         true,
-		Priority:            schedule.NumericPriority,
-		ScheduleEnabled:     true,
-		MaxRetries:          defaultMaxRetries,
-		RetryBackoffSeconds: defaultRetryBackoffSeconds,
-		SchedulerVersion:    1,
-	}
-
-	if upsertErr := h.JobRepo.UpsertAutoManaged(ctx, newJob); upsertErr != nil {
-		h.Logger.Error("Failed to create backfill job",
-			infralogger.String("source_id", src.ID.String()),
-			infralogger.String("source_name", src.Name),
-			infralogger.Error(upsertErr),
-		)
-		return false
-	}
-	return true
+	return DispatchBackfillJob(ctx, src, n, now, h.Stagger, h.ScheduleComputer, h.JobRepo, h.Logger)
 }
 
 // FilterIndigenousSources filters sources by enabled state, optionally by region, with limit.
