@@ -8,6 +8,8 @@ import (
 	"github.com/jonesrussell/north-cloud/source-manager/internal/database"
 	"github.com/jonesrussell/north-cloud/source-manager/internal/events"
 	"github.com/jonesrussell/north-cloud/source-manager/internal/repository"
+	"github.com/jonesrussell/north-cloud/source-manager/internal/services"
+	"github.com/jonesrussell/north-cloud/source-manager/internal/services/osrm"
 )
 
 // SetupHTTPServer creates and configures the HTTP server.
@@ -23,8 +25,13 @@ func SetupHTTPServer(
 	bandOfficeRepo := repository.NewBandOfficeRepository(db.DB(), log)
 	verificationRepo := repository.NewVerificationRepository(db.DB(), log)
 	dictionaryRepo := repository.NewDictionaryRepository(db.DB(), log)
+	travelTimeRepo := repository.NewTravelTimeRepository(db.DB(), log)
+
+	osrmClient := osrm.NewClient(cfg.OSRM.BaseURL, log)
+	travelTimeSvc := services.NewTravelTimeService(osrmClient, travelTimeRepo, communityRepo, log)
+
 	return api.NewServer(
 		sourceRepo, communityRepo, personRepo, bandOfficeRepo,
-		verificationRepo, dictionaryRepo, cfg, log, publisher,
+		verificationRepo, dictionaryRepo, travelTimeSvc, cfg, log, publisher,
 	)
 }
