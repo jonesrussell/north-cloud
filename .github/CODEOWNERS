@@ -1,0 +1,23 @@
+# CODEOWNERS
+# Each line is a file pattern followed by one or more owners.
+# Order matters — the last matching pattern wins.
+
+# Global owner — covers everything not matched below
+* @jonesrussell
+
+# Service-specific owners
+/crawler/          @jonesrussell
+/classifier/       @jonesrussell
+/publisher/        @jonesrussell
+/search/           @jonesrussell
+/index-manager/    @jonesrussell
+/source-manager/   @jonesrussell
+/dashboard/        @jonesrussell
+/auth/             @jonesrussell
+/ai-observer/      @jonesrussell
+/infrastructure/   @jonesrussell
+/mcp-north-cloud/  @jonesrussell
+
+# CI/CD and governance
+/.github/          @jonesrussell
+/docs/             @jonesrussell
