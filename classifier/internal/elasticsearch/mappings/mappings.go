@@ -50,8 +50,14 @@ func ToJSON(mapping any) (string, error) {
 
 // Field represents an Elasticsearch field mapping
 type Field struct {
-	Type     string `json:"type,omitempty"`
-	Analyzer string `json:"analyzer,omitempty"`
-	Format   string `json:"format,omitempty"`
-	Index    *bool  `json:"index,omitempty"` // Pointer to allow explicit false
+	Type     string           `json:"type,omitempty"`
+	Analyzer string           `json:"analyzer,omitempty"`
+	Format   string           `json:"format,omitempty"`
+	Index    *bool            `json:"index,omitempty"` // Pointer to allow explicit false
+	Fields   map[string]Field `json:"fields,omitempty"`
+}
+
+// ObjectField represents an Elasticsearch object field with nested properties
+type ObjectField struct {
+	Properties map[string]Field `json:"properties"`
 }

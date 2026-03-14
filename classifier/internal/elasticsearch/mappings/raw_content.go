@@ -50,6 +50,37 @@ type RawContentProperties struct {
 
 	// Quick metrics
 	WordCount Field `json:"word_count"`
+
+	// Meta object written by the crawler
+	Meta ObjectField `json:"meta"`
+}
+
+// newMetaObjectField returns the ObjectField definition for the crawler-written meta object.
+func newMetaObjectField() ObjectField {
+	textWithKeyword := func(typ string) Field {
+		return Field{
+			Type:   typ,
+			Fields: map[string]Field{"keyword": {Type: "keyword"}},
+		}
+	}
+	dateField := Field{Type: "date", Format: "strict_date_optional_time||epoch_millis"}
+
+	return ObjectField{
+		Properties: map[string]Field{
+			"page_type":             textWithKeyword("text"),
+			"detected_content_type": textWithKeyword("text"),
+			"indigenous_region":     textWithKeyword("text"),
+			"article_opinion":       {Type: "keyword"},
+			"article_content_tier":  {Type: "keyword"},
+			"twitter_card":          {Type: "keyword"},
+			"twitter_site":          {Type: "keyword"},
+			"og_image_width":        {Type: "keyword"},
+			"og_image_height":       {Type: "keyword"},
+			"og_site_name":          {Type: "keyword"},
+			"created_at":            dateField,
+			"updated_at":            dateField,
+		},
+	}
 }
 
 // NewRawContentMapping creates a new raw content mapping with default settings
@@ -129,6 +160,7 @@ func NewRawContentMapping() *RawContentMapping {
 				WordCount: Field{
 					Type: "integer",
 				},
+				Meta: newMetaObjectField(),
 			},
 		},
 	}
