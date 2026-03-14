@@ -126,8 +126,6 @@ func (c *PublisherClient) GetPublishHistory(ctx context.Context, channelName str
 }
 
 // GetStats gets publisher statistics
-//
-//nolint:dupl // Similar HTTP client pattern across different services is acceptable
 func (c *PublisherClient) GetStats(ctx context.Context) (*PublisherStats, error) {
 	// Use period=all to get all-time totals
 	endpoint := fmt.Sprintf("%s/api/v1/stats/overview?period=all", c.baseURL)
