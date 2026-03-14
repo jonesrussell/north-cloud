@@ -197,6 +197,10 @@ func setupServiceRoutes(
 	v1.PUT("/band-offices/:id", bandOfficeHandler.Update)
 
 	// Verification queue endpoints (protected)
+	setupVerificationRoutes(v1, verificationHandler)
+}
+
+func setupVerificationRoutes(v1 *gin.RouterGroup, verificationHandler *handlers.VerificationHandler) {
 	verification := v1.Group("/verification")
 	verification.GET("/pending", verificationHandler.ListPending)
 	verification.GET("/stats", verificationHandler.GetStats)
