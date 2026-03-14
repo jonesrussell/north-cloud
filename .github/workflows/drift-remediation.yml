@@ -25,7 +25,14 @@ jobs:
           ES_USERNAME: ${{ secrets.PROD_ES_USERNAME }}
           ES_PASSWORD: ${{ secrets.PROD_ES_PASSWORD }}
         run: |
-          RESPONSE=$(curl -s -u "$ES_USERNAME:$ES_PASSWORD" \
+          if [ -z "$ES_URL" ] || [ -z "$ES_USERNAME" ] || [ -z "$ES_PASSWORD" ]; then
+            echo "ES credentials not configured, skipping drift check"
+            echo "has_reports=false" >> "$GITHUB_OUTPUT"
+            echo "reports=[]" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          HTTP_STATUS=$(curl -s -o /tmp/es_response.json -w "%{http_code}" -u "$ES_USERNAME:$ES_PASSWORD" \
             "$ES_URL/ai_insights/_search" \
             -H 'Content-Type: application/json' \
             -d '{
@@ -44,7 +51,16 @@ jobs:
               "sort": [{"created_at": {"order": "desc"}}]
             }')
 
-          COUNT=$(echo "$RESPONSE" | jq '.hits.total.value // 0')
+          if [ "$HTTP_STATUS" != "200" ]; then
+            echo "ES query failed (HTTP $HTTP_STATUS), skipping"
+            echo "has_reports=false" >> "$GITHUB_OUTPUT"
+            echo "reports=[]" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          RESPONSE=$(cat /tmp/es_response.json)
+          COUNT=$(echo "$RESPONSE" | jq -r '.hits.total.value // 0' 2>/dev/null || echo "0")
+          COUNT="${COUNT:-0}"
           echo "has_reports=$([ "$COUNT" -gt 0 ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
           echo "reports=$(echo "$RESPONSE" | jq -c '.hits.hits')" >> "$GITHUB_OUTPUT"
 
