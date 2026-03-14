@@ -199,6 +199,9 @@ func setupServiceRoutes(
 	// Verification queue endpoints (protected)
 	verification := v1.Group("/verification")
 	verification.GET("/pending", verificationHandler.ListPending)
+	verification.GET("/stats", verificationHandler.GetStats)
+	verification.POST("/bulk-verify", verificationHandler.BulkVerify)
+	verification.POST("/bulk-reject", verificationHandler.BulkReject)
 	verification.POST("/:id/verify", verificationHandler.Verify)
 	verification.POST("/:id/reject", verificationHandler.Reject)
 }

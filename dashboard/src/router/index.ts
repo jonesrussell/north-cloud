@@ -74,9 +74,27 @@ const routes: RouteRecordRaw[] = [
   {
     path: '/operations/review',
     name: 'operations-review',
-    // Lazy load - will be created in Task 13
     component: () => import('../views/operations/ReviewQueueView.vue'),
     meta: { title: 'Review Queue', section: 'operations', requiresAuth: true },
+  },
+  {
+    path: '/operations/verification',
+    name: 'operations-verification',
+    component: () => import('../views/operations/VerificationQueueView.vue'),
+    meta: { title: 'Verification Queue', section: 'operations', requiresAuth: true },
+  },
+  {
+    path: '/operations/verification/stats',
+    name: 'operations-verification-stats',
+    component: () => import('../views/operations/VerificationStatsView.vue'),
+    meta: { title: 'Verification Stats', section: 'operations', requiresAuth: true },
+  },
+  {
+    path: '/operations/verification/:type/:id',
+    name: 'operations-verification-detail',
+    component: () => import('../views/operations/VerificationDetailView.vue'),
+    props: true,
+    meta: { title: 'Verification Detail', section: 'operations', requiresAuth: true },
   },
 
   // ==========================================
