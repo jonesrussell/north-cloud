@@ -405,6 +405,120 @@ func (r *VerificationRepository) AutoRejectBandOffice(ctx context.Context, id st
 	return checkRowsAffected(result, "auto reject band office")
 }
 
+const (
+	highConfidenceThreshold   = 0.9
+	mediumConfidenceThreshold = 0.5
+)
+
+// VerificationStats holds aggregate counts for the verification dashboard.
+type VerificationStats struct {
+	PendingPeople      int `json:"pending_people"`
+	PendingBandOffices int `json:"pending_band_offices"`
+	ScoredPeople       int `json:"scored_people"`
+	ScoredBandOffices  int `json:"scored_band_offices"`
+	HighConfidence     int `json:"high_confidence"`
+	MediumConfidence   int `json:"medium_confidence"`
+	LowConfidence      int `json:"low_confidence"`
+}
+
+// GetStats returns aggregate counts for the verification dashboard.
+func (r *VerificationRepository) GetStats(ctx context.Context) (*VerificationStats, error) {
+	stats := &VerificationStats{}
+
+	if scanErr := r.db.QueryRowContext(ctx,
+		"SELECT COUNT(*) FROM people WHERE verified = false",
+	).Scan(&stats.PendingPeople); scanErr != nil {
+		return nil, fmt.Errorf("count pending people: %w", scanErr)
+	}
+	if scanErr := r.db.QueryRowContext(ctx,
+		"SELECT COUNT(*) FROM band_offices WHERE verified = false",
+	).Scan(&stats.PendingBandOffices); scanErr != nil {
+		return nil, fmt.Errorf("count pending band offices: %w", scanErr)
+	}
+	if scanErr := r.db.QueryRowContext(ctx,
+		"SELECT COUNT(*) FROM people WHERE verified = false AND verification_confidence IS NOT NULL",
+	).Scan(&stats.ScoredPeople); scanErr != nil {
+		return nil, fmt.Errorf("count scored people: %w", scanErr)
+	}
+	if scanErr := r.db.QueryRowContext(ctx,
+		"SELECT COUNT(*) FROM band_offices WHERE verified = false AND verification_confidence IS NOT NULL",
+	).Scan(&stats.ScoredBandOffices); scanErr != nil {
+		return nil, fmt.Errorf("count scored band offices: %w", scanErr)
+	}
+
+	high, medium, low, bracketErr := r.countByConfidenceBracket(ctx)
+	if bracketErr != nil {
+		return nil, bracketErr
+	}
+	stats.HighConfidence = high
+	stats.MediumConfidence = medium
+	stats.LowConfidence = low
+
+	return stats, nil
+}
+
+func (r *VerificationRepository) countByConfidenceBracket(ctx context.Context) (high, medium, low int, err error) {
+	query := `
+		SELECT
+			COUNT(*) FILTER (WHERE verification_confidence >= $1),
+			COUNT(*) FILTER (WHERE verification_confidence >= $2 AND verification_confidence < $1),
+			COUNT(*) FILTER (WHERE verification_confidence < $2)
+		FROM (
+			SELECT verification_confidence FROM people
+			WHERE verified = false AND verification_confidence IS NOT NULL
+			UNION ALL
+			SELECT verification_confidence FROM band_offices
+			WHERE verified = false AND verification_confidence IS NOT NULL
+		) combined`
+
+	if scanErr := r.db.QueryRowContext(ctx, query, highConfidenceThreshold, mediumConfidenceThreshold).
+		Scan(&high, &medium, &low); scanErr != nil {
+		return 0, 0, 0, fmt.Errorf("count by confidence bracket: %w", scanErr)
+	}
+	return high, medium, low, nil
+}
+
+// BulkVerifyPeople marks multiple people as verified.
+func (r *VerificationRepository) BulkVerifyPeople(ctx context.Context, ids []string) (int, error) {
+	return r.bulkApply(ctx, ids,
+		"UPDATE people SET verified = true, verified_at = NOW() WHERE id = $1")
+}
+
+// BulkRejectPeople deletes multiple unverified people.
+func (r *VerificationRepository) BulkRejectPeople(ctx context.Context, ids []string) (int, error) {
+	return r.bulkApply(ctx, ids,
+		"DELETE FROM people WHERE id = $1 AND verified = false")
+}
+
+// BulkVerifyBandOffices marks multiple band offices as verified.
+func (r *VerificationRepository) BulkVerifyBandOffices(ctx context.Context, ids []string) (int, error) {
+	return r.bulkApply(ctx, ids,
+		"UPDATE band_offices SET verified = true, verified_at = NOW() WHERE id = $1")
+}
+
+// BulkRejectBandOffices deletes multiple unverified band offices.
+func (r *VerificationRepository) BulkRejectBandOffices(ctx context.Context, ids []string) (int, error) {
+	return r.bulkApply(ctx, ids,
+		"DELETE FROM band_offices WHERE id = $1 AND verified = false")
+}
+
+// bulkApply executes query for each ID and returns total rows affected.
+func (r *VerificationRepository) bulkApply(ctx context.Context, ids []string, query string) (int, error) {
+	count := 0
+	for _, id := range ids {
+		result, execErr := r.db.ExecContext(ctx, query, id)
+		if execErr != nil {
+			return count, fmt.Errorf("bulk apply %s: %w", id, execErr)
+		}
+		rows, rowsErr := result.RowsAffected()
+		if rowsErr != nil {
+			return count, fmt.Errorf("rows affected %s: %w", id, rowsErr)
+		}
+		count += int(rows)
+	}
+	return count, nil
+}
+
 // checkRowsAffected returns an error if no rows were affected.
 func checkRowsAffected(result sql.Result, action string) error {
 	rows, err := result.RowsAffected()

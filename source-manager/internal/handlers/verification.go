@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"strconv"
 
@@ -76,6 +77,82 @@ func (h *VerificationHandler) Reject(c *gin.Context) {
 		}
 		return h.repo.RejectBandOffice(ctx, id)
 	})
+}
+
+const maxBulkIDs = 100
+
+// GetStats returns aggregate counts for the verification queue.
+// GET /api/v1/verification/stats
+func (h *VerificationHandler) GetStats(c *gin.Context) {
+	stats, err := h.repo.GetStats(c.Request.Context())
+	if err != nil {
+		h.logger.Error("failed to get verification stats", infralogger.Error(err))
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to get stats"})
+		return
+	}
+	c.JSON(http.StatusOK, stats)
+}
+
+// bulkRequest is the request body for bulk verify/reject operations.
+type bulkRequest struct {
+	IDs  []string `json:"ids"`
+	Type string   `json:"type"`
+}
+
+// bulkActionFn is a function that applies an action to a list of IDs.
+type bulkActionFn func(ctx context.Context, ids []string) (int, error)
+
+// BulkVerify marks multiple records as verified.
+// POST /api/v1/verification/bulk-verify
+func (h *VerificationHandler) BulkVerify(c *gin.Context) {
+	h.dispatchBulkAction(c, "verify", h.repo.BulkVerifyPeople, h.repo.BulkVerifyBandOffices)
+}
+
+// BulkReject removes multiple unverified records.
+// POST /api/v1/verification/bulk-reject
+func (h *VerificationHandler) BulkReject(c *gin.Context) {
+	h.dispatchBulkAction(c, "reject", h.repo.BulkRejectPeople, h.repo.BulkRejectBandOffices)
+}
+
+func (h *VerificationHandler) dispatchBulkAction(
+	c *gin.Context,
+	action string,
+	peopleFn bulkActionFn,
+	officeFn bulkActionFn,
+) {
+	var req bulkRequest
+	if bindErr := c.ShouldBindJSON(&req); bindErr != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
+		return
+	}
+	if len(req.IDs) == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "ids must not be empty"})
+		return
+	}
+	if len(req.IDs) > maxBulkIDs {
+		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("max %d ids per request", maxBulkIDs)})
+		return
+	}
+	if req.Type != entityTypePerson && req.Type != entityTypeBandOffice {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "type must be 'person' or 'band_office'"})
+		return
+	}
+
+	fn := peopleFn
+	if req.Type == entityTypeBandOffice {
+		fn = officeFn
+	}
+
+	processed, err := fn(c.Request.Context(), req.IDs)
+	if err != nil {
+		h.logger.Error("failed to "+action+" bulk records",
+			infralogger.String("type", req.Type),
+			infralogger.Error(err),
+		)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"processed": processed, "action": action + "d"})
 }
 
 // dispatchAction validates the type param and runs the action, returning a uniform response.

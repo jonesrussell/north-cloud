@@ -96,6 +96,21 @@ export default defineConfig({
           })
         },
       },
+      // Verification queue (source-manager) — separate prefix since /api/sources rewrites to /api/v1/sources
+      '/api/verification': {
+        target: SOURCES_API_URL,
+        changeOrigin: true,
+        timeout: 30000,
+        proxyTimeout: 30000,
+        rewrite: (path) => path.replace(/^\/api\/verification/, '/api/v1/verification'),
+        configure: (proxy, _options) => {
+          proxy.on('proxyReq', (proxyReq, req, _res) => {
+            if (req.headers.authorization) {
+              proxyReq.setHeader('Authorization', req.headers.authorization)
+            }
+          })
+        },
+      },
       // Source Manager cities endpoint (separate from sources)
       '/api/cities': {
         target: SOURCES_API_URL,
