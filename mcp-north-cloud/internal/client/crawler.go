@@ -364,8 +364,6 @@ func (c *CrawlerClient) GetJobStats(ctx context.Context, jobID string) (*JobStat
 }
 
 // GetSchedulerMetrics gets scheduler-wide metrics
-//
-//nolint:dupl // Similar HTTP client pattern across different services is acceptable
 func (c *CrawlerClient) GetSchedulerMetrics(ctx context.Context) (*SchedulerMetrics, error) {
 	endpoint := fmt.Sprintf("%s/api/v1/scheduler/metrics", c.baseURL)
 
