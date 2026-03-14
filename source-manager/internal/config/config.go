@@ -23,6 +23,7 @@ const (
 	defaultAutoVerifyThreshold   = 0.95
 	defaultAutoRejectThreshold   = 0.30
 	defaultAnthropicModel        = "claude-haiku-4-5-20251001"
+	defaultOSRMBaseURL           = "http://router.project-osrm.org"
 )
 
 type Config struct {
@@ -32,6 +33,12 @@ type Config struct {
 	Auth         AuthConfig         `yaml:"auth"`
 	Redis        RedisConfig        `yaml:"redis"`
 	Verification VerificationConfig `yaml:"verification"`
+	OSRM         OSRMConfig         `yaml:"osrm"`
+}
+
+// OSRMConfig holds OSRM routing engine configuration.
+type OSRMConfig struct {
+	BaseURL string `env:"OSRM_BASE_URL" yaml:"base_url"`
 }
 
 // RedisConfig holds Redis connection configuration for event publishing.
@@ -174,5 +181,10 @@ func setDefaults(cfg *Config) {
 	}
 	if cfg.Verification.AnthropicModel == "" {
 		cfg.Verification.AnthropicModel = defaultAnthropicModel
+	}
+
+	// OSRM defaults
+	if cfg.OSRM.BaseURL == "" {
+		cfg.OSRM.BaseURL = defaultOSRMBaseURL
 	}
 }

@@ -12,6 +12,7 @@ import (
 	"github.com/jonesrussell/north-cloud/source-manager/internal/events"
 	"github.com/jonesrussell/north-cloud/source-manager/internal/handlers"
 	"github.com/jonesrussell/north-cloud/source-manager/internal/repository"
+	"github.com/jonesrussell/north-cloud/source-manager/internal/services"
 )
 
 // Constants for router configuration.
@@ -85,6 +86,7 @@ func NewServer(
 	bandOfficeRepo *repository.BandOfficeRepository,
 	verificationRepo *repository.VerificationRepository,
 	dictionaryRepo *repository.DictionaryRepository,
+	travelTimeSvc *services.TravelTimeService,
 	cfg *config.Config,
 	infraLog infralogger.Logger,
 	publisher *events.Publisher,
@@ -96,6 +98,7 @@ func NewServer(
 	verificationHandler := handlers.NewVerificationHandler(verificationRepo, infraLog)
 	linkerHandler := handlers.NewLinkerHandler(communityRepo, db, infraLog)
 	dictionaryHandler := handlers.NewDictionaryHandler(dictionaryRepo, infraLog)
+	travelTimeHandler := handlers.NewTravelTimeHandler(travelTimeSvc, infraLog)
 
 	// Build CORS config
 	corsConfig := infragin.CORSConfig{
@@ -117,7 +120,7 @@ func NewServer(
 			setupServiceRoutes(
 				router, sourceHandler, communityHandler, personHandler,
 				bandOfficeHandler, verificationHandler, linkerHandler,
-				dictionaryHandler, cfg,
+				dictionaryHandler, travelTimeHandler, cfg,
 			)
 		}).
 		Build()
@@ -136,6 +139,7 @@ func setupServiceRoutes(
 	verificationHandler *handlers.VerificationHandler,
 	linkerHandler *handlers.LinkerHandler,
 	dictionaryHandler *handlers.DictionaryHandler,
+	travelTimeHandler *handlers.TravelTimeHandler,
 	cfg *config.Config,
 ) {
 	// Public API endpoints (no JWT required) - for internal service-to-service communication
@@ -155,6 +159,7 @@ func setupServiceRoutes(
 	publicCommunities.GET("/nearby", communityHandler.Nearby)
 	publicCommunities.GET("/by-slug/:slug", communityHandler.GetBySlug)
 	publicCommunities.GET("/:id", communityHandler.GetByID)
+	publicCommunities.GET("/:id/travel-time", travelTimeHandler.GetTravelTime)
 
 	// Dictionary — public read endpoints (OPD data with consent filtering)
 	dict := publicAPI.Group("/dictionary")
