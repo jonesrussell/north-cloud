@@ -158,6 +158,7 @@ func NewServer(
 	frontierHandler *FrontierHandler, // Optional - pass nil to disable frontier endpoints
 	domainsHandler *DiscoveredDomainsHandler, // Optional - pass nil to disable domains endpoints
 	backfillHandler *admin.BackfillIndigenousHandler, // Optional - pass nil to disable backfill
+	worstSourcesHandler *admin.BackfillWorstSourcesHandler, // Optional - pass nil to disable worst-sources backfill
 ) *infragin.Server {
 	// Extract port from address
 	port := extractPortFromAddress(cfg.GetServerConfig().Address)
@@ -189,7 +190,7 @@ func NewServer(
 				router, jwtSecret, jobsHandler, discoveredLinksHandler,
 				logsHandler, logsV2Handler, executionRepo, sseHandler,
 				migrationHandler, syncHandler, frontierHandler, domainsHandler,
-				backfillHandler,
+				backfillHandler, worstSourcesHandler,
 			)
 
 			// Setup internal service-to-service routes
@@ -248,6 +249,7 @@ func setupCrawlerRoutes(
 	frontierHandler *FrontierHandler,
 	domainsHandler *DiscoveredDomainsHandler,
 	backfillHandler *admin.BackfillIndigenousHandler,
+	worstSourcesHandler *admin.BackfillWorstSourcesHandler,
 ) {
 	// API v1 routes - protected with JWT
 	v1 := infragin.ProtectedGroup(router, "/api/v1", jwtSecret)
@@ -316,6 +318,12 @@ func setupCrawlerRoutes(
 	// Admin: backfill indigenous sources
 	if backfillHandler != nil {
 		v1.POST("/backfill/indigenous", backfillHandler.BackfillIndigenous)
+	}
+
+	// Admin: backfill worst-performing sources
+	if worstSourcesHandler != nil {
+		v1.POST("/backfill/worst-sources", worstSourcesHandler.BackfillWorstSources)
+		v1.GET("/backfill/validation-report", worstSourcesHandler.GetValidationReport)
 	}
 
 	// Setup SSE routes (protected with JWT)

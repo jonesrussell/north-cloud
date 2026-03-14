@@ -17,6 +17,9 @@ Crawler → POST /render → render-worker → Chromium → rendered HTML
 | `index.js` | Server lifecycle, browser management |
 | `handler.js` | HTTP request/response, queue management |
 | `stealth.js` | Browser fingerprint masking (navigator.webdriver, plugins, languages) |
+| `config.js` | Per-source render config schema, defaults, validation (M2) |
+| `scroll.js` | Scroll strategy implementations: viewport, full_page, percent, pixels (M2) |
+| `queue.js` | Priority queue with per-source rate limiting (M2) |
 | `test.js` | Unit and integration tests |
 
 ## Endpoints

@@ -12,9 +12,10 @@ import (
 
 // StorageComponents holds both storage interface and index manager.
 type StorageComponents struct {
-	Client       *es.Client
-	Storage      types.Interface
-	IndexManager types.IndexManager
+	Client          *es.Client
+	Storage         types.Interface
+	ConcreteStorage *storage.Storage // exposes SearchDocuments/Aggregate
+	IndexManager    types.IndexManager
 }
 
 // SetupStorage creates both storage client and storage instance.
@@ -35,10 +36,14 @@ func SetupStorage(cfg config.Interface, log infralogger.Logger) (*StorageCompone
 		return nil, fmt.Errorf("create storage: %w", err)
 	}
 
+	// Type-assert to get the concrete storage for SearchDocuments access.
+	concreteStorage, _ := storageResult.Storage.(*storage.Storage)
+
 	return &StorageComponents{
-		Client:       client,
-		Storage:      storageResult.Storage,
-		IndexManager: storageResult.IndexManager,
+		Client:          client,
+		Storage:         storageResult.Storage,
+		ConcreteStorage: concreteStorage,
+		IndexManager:    storageResult.IndexManager,
 	}, nil
 }
 

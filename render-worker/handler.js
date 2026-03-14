@@ -1,5 +1,7 @@
 'use strict';
 
+const { mergeConfig, validateConfig } = require('./config');
+
 const MAX_BODY_BYTES = 1024 * 1024; // 1 MB request body limit
 const MAX_QUEUE_DEPTH = 50; // reject with 503 when queue exceeds this
 
@@ -45,12 +47,22 @@ function createRequestHandler(state, processQueue) {
             res.end(JSON.stringify({ error: 'url is required' }));
             return;
           }
+
+          // M2: merge per-source config with defaults (backwards compatible — config is optional)
+          const config = mergeConfig(body.config);
+          const validation = validateConfig(config);
+          if (!validation.valid) {
+            res.writeHead(400, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: validation.error }));
+            return;
+          }
+
           if (state.queue.length >= MAX_QUEUE_DEPTH) {
             res.writeHead(503, { 'Content-Type': 'application/json' });
             res.end(JSON.stringify({ error: 'queue full, try again later' }));
             return;
           }
-          state.queue.push({ res, body });
+          state.queue.push({ res, body, config });
           state.queueDepth = state.queue.length;
           processQueue();
         } catch (_err) {

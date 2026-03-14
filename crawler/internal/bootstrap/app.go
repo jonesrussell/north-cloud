@@ -225,6 +225,7 @@ func Start() error {
 		Migrator:                 migrator,
 		JobRepo:                  dbComponents.JobRepo,
 		FrontierRepoForHandler:   serviceComponents.FrontierRepoForHandler,
+		ESStorage:                storageComponents.ConcreteStorage,
 	}
 	serverComponents := SetupHTTPServer(serverDeps)
 
