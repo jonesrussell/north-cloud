@@ -769,11 +769,20 @@ func (s *IntervalScheduler) handleLeadershipJobSuccess(jobExec *JobExecution, st
 func (s *IntervalScheduler) logCrawlerStartError(
 	job *domain.Job, execID string, err error, logWriter logs.Writer,
 ) {
-	if isExpectedStartError(err) {
+	if errors.Is(err, context.DeadlineExceeded) {
+		writeLog(logWriter, "warn", "Crawl timed out (context deadline exceeded): "+err.Error(), job.ID, execID, nil)
+		s.logger.Warn("Crawl timed out: context deadline exceeded",
+			infralogger.String("job_id", job.ID),
+			infralogger.String("source_id", job.SourceID),
+			infralogger.String("url", job.URL),
+			infralogger.Error(err),
+		)
+	} else if isExpectedStartError(err) {
 		writeLog(logWriter, "warn", "Crawler start failed (expected): "+err.Error(), job.ID, execID, nil)
 		s.logger.Warn("Crawler start failed (expected)",
 			infralogger.String("job_id", job.ID),
 			infralogger.String("source_id", job.SourceID),
+			infralogger.String("url", job.URL),
 			infralogger.Error(err),
 		)
 	} else {
@@ -781,6 +790,7 @@ func (s *IntervalScheduler) logCrawlerStartError(
 		s.logger.Error("Crawler start failed",
 			infralogger.String("job_id", job.ID),
 			infralogger.String("source_id", job.SourceID),
+			infralogger.String("url", job.URL),
 			infralogger.Error(err),
 		)
 	}
@@ -974,6 +984,7 @@ func (s *IntervalScheduler) handleJobFailure(jobExec *JobExecution, execErr erro
 
 		s.logger.Error("Job failed after all retries",
 			infralogger.String("job_id", job.ID),
+			infralogger.String("url", job.URL),
 			infralogger.Error(execErr),
 			infralogger.Int("retries", job.CurrentRetryCount),
 		)
@@ -1369,8 +1380,12 @@ func (s *IntervalScheduler) SetLogService(logService logs.Service) {
 }
 
 // isExpectedStartError returns true for crawler start errors that are expected
-// and should be logged at WARN instead of ERROR (e.g., "already visited", "Forbidden domain").
+// and should be logged at WARN instead of ERROR (e.g., "already visited", "Forbidden domain",
+// context deadline exceeded).
 func isExpectedStartError(err error) bool {
+	if errors.Is(err, context.DeadlineExceeded) {
+		return true
+	}
 	msg := err.Error()
 	return strings.Contains(msg, "already visited") ||
 		strings.Contains(msg, "Already visited") ||
