@@ -129,7 +129,8 @@ func (c *PublisherClient) GetPublishHistory(ctx context.Context, channelName str
 //
 //nolint:dupl // Similar HTTP client pattern across different services is acceptable
 func (c *PublisherClient) GetStats(ctx context.Context) (*PublisherStats, error) {
-	endpoint := fmt.Sprintf("%s/api/v1/stats/overview", c.baseURL)
+	// Use period=all to get all-time totals
+	endpoint := fmt.Sprintf("%s/api/v1/stats/overview?period=all", c.baseURL)
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, http.NoBody)
 	if err != nil {
@@ -151,12 +152,19 @@ func (c *PublisherClient) GetStats(ctx context.Context) (*PublisherStats, error)
 		return nil, fmt.Errorf("unexpected status code: %d, body: %s", resp.StatusCode, string(body))
 	}
 
-	var stats PublisherStats
-	if err = json.Unmarshal(body, &stats); err != nil {
+	// The overview endpoint returns total_items and by_channel (not total_published/items_by_channel)
+	var raw struct {
+		TotalItems int            `json:"total_items"`
+		ByChannel  map[string]int `json:"by_channel"`
+	}
+	if err = json.Unmarshal(body, &raw); err != nil {
 		return nil, fmt.Errorf("failed to parse response: %w", err)
 	}
 
-	return &stats, nil
+	return &PublisherStats{
+		TotalPublished: raw.TotalItems,
+		ItemsByChannel: raw.ByChannel,
+	}, nil
 }
 
 // ListSources lists all publisher sources
