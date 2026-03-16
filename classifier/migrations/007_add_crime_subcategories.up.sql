@@ -96,11 +96,12 @@ INSERT INTO classification_rules (
     'drug_crime',
     ARRAY[
         -- Core drug crime
-        'drug', 'drugs', 'narcotics', 'trafficking', 'dealer', 'possession',
+        'drug', 'drugs', 'narcotics', 'dealer', 'possession',
         -- Specific substances
         'cocaine', 'heroin', 'fentanyl', 'methamphetamine', 'meth', 'marijuana', 'cannabis', 'opioid',
         -- Operations
         'drug bust', 'drug ring', 'cartel', 'smuggling', 'drug trafficking',
+        'narcotics trafficking', 'fentanyl trafficking', 'cocaine trafficking', 'meth trafficking',
         -- Related
         'overdose', 'drug-related', 'controlled substance'
     ],

@@ -71,11 +71,11 @@ INSERT INTO classification_rules (rule_name, rule_type, topic_name, keywords, mi
         'weather warning', 'weather alert', 'severe weather', 'heat wave', 'cold snap'
     ], 0.4, 5, TRUE),
     ('travel_detection', 'topic', 'travel', ARRAY[
-        'trip', 'vacation', 'hotel', 'flight', 'destination', 'tourism', 'travel',
-        'travel', 'trip', 'vacation', 'journey', 'tour', 'tourist', 'destination',
-        'hotel', 'resort', 'flight', 'airline', 'airport', 'luggage', 'passport',
-        'visa', 'cruise', 'beach', 'sightseeing', 'adventure', 'backpacking',
-        'tourism', 'travel guide', 'itinerary', 'booking', 'reservation'
+        'vacation', 'hotel', 'flight', 'tourism', 'travel',
+        'journey', 'tour', 'tourist',
+        'resort', 'airline', 'airport', 'luggage',
+        'cruise', 'beach', 'sightseeing', 'adventure', 'backpacking',
+        'travel guide', 'itinerary', 'booking', 'reservation'
     ], 0.4, 5, TRUE),
     ('food_detection', 'topic', 'food', ARRAY[
         'restaurant', 'recipe', 'cooking', 'chef', 'cuisine', 'food', 'dining',
