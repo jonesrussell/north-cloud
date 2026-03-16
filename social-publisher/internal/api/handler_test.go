@@ -8,9 +8,9 @@ import (
 	"testing"
 
 	"github.com/gin-gonic/gin"
+	infralogger "github.com/jonesrussell/north-cloud/infrastructure/logger"
 	"github.com/jonesrussell/north-cloud/social-publisher/internal/api"
 	"github.com/jonesrussell/north-cloud/social-publisher/internal/config"
-	infralogger "github.com/jonesrussell/north-cloud/infrastructure/logger"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

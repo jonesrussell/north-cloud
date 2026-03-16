@@ -14,24 +14,24 @@ import (
 
 // CSV column names from the CanadaBuys feed.
 const (
-	colTitle             = "title-titre-eng"
-	colReferenceNumber     = "referenceNumber-numeroReference"
+	colTitle              = "title-titre-eng"
+	colReferenceNumber    = "referenceNumber-numeroReference"
 	colSolicitationNumber = "solicitationNumber-numeroSollicitation"
 	colAmendmentNumber    = "amendmentNumber-numeroModification"
-	colPublicationDate   = "publicationDate-datePublication"
-	colClosingDate       = "tenderClosingDate-appelOffresDateCloture"
-	colAmendmentDate     = "amendmentDate-dateModification"
-	colTenderStatus      = "tenderStatus-appelOffresStatut-eng"
-	colGSIN              = "gsin-nibs"
-	colUNSPSC            = "unspsc"
-	colProcurementCat    = "procurementCategory-categorieApprovisionnement"
-	colRegionsOfDelivery = "regionsOfDelivery-regionsLivraison-eng"
-	colOrgName           = "contractingEntityName-nomEntitContractante-eng"
-	colCity              = "contractingEntityAddressCity-entiteContractanteAdresseVille-eng"
-	colContactName       = "contactInfoName-informationsContactNom"
-	colContactEmail      = "contactInfoEmail-informationsContactCourriel"
-	colNoticeURL         = "noticeURL-URLavis-eng"
-	colDescription       = "tenderDescription-descriptionAppelOffres-eng"
+	colPublicationDate    = "publicationDate-datePublication"
+	colClosingDate        = "tenderClosingDate-appelOffresDateCloture"
+	colAmendmentDate      = "amendmentDate-dateModification"
+	colTenderStatus       = "tenderStatus-appelOffresStatut-eng"
+	colGSIN               = "gsin-nibs"
+	colUNSPSC             = "unspsc"
+	colProcurementCat     = "procurementCategory-categorieApprovisionnement"
+	colRegionsOfDelivery  = "regionsOfDelivery-regionsLivraison-eng"
+	colOrgName            = "contractingEntityName-nomEntitContractante-eng"
+	colCity               = "contractingEntityAddressCity-entiteContractanteAdresseVille-eng"
+	colContactName        = "contactInfoName-informationsContactNom"
+	colContactEmail       = "contactInfoEmail-informationsContactCourriel"
+	colNoticeURL          = "noticeURL-URLavis-eng"
+	colDescription        = "tenderDescription-descriptionAppelOffres-eng"
 )
 
 // canadaBuysTenderBaseURL is the base URL for CanadaBuys tender notice pages.
@@ -51,21 +51,21 @@ const (
 
 // provinceMap maps region names (lowercase) to 2-letter province codes.
 var provinceMap = map[string]string{
-	"alberta":                          "ab",
-	"british columbia":                 "bc",
-	"manitoba":                         "mb",
-	"new brunswick":                    "nb",
-	"newfoundland and labrador":        "nl",
-	"nova scotia":                      "ns",
-	"ontario":                          "on",
-	"prince edward island":             "pe",
-	"quebec":                           "qc",
-	"saskatchewan":                     "sk",
-	"northwest territories":            "nt",
-	"nunavut":                          "nu",
-	"yukon":                            "yt",
-	"national capital region (ncr)":    "on",
-	"région de la capitale nationale":  "on",
+	"alberta":                         "ab",
+	"british columbia":                "bc",
+	"manitoba":                        "mb",
+	"new brunswick":                   "nb",
+	"newfoundland and labrador":       "nl",
+	"nova scotia":                     "ns",
+	"ontario":                         "on",
+	"prince edward island":            "pe",
+	"quebec":                          "qc",
+	"saskatchewan":                    "sk",
+	"northwest territories":           "nt",
+	"nunavut":                         "nu",
+	"yukon":                           "yt",
+	"national capital region (ncr)":   "on",
+	"région de la capitale nationale": "on",
 }
 
 // ParseCSV reads a CanadaBuys CSV from r and returns parsed RFPDocuments.

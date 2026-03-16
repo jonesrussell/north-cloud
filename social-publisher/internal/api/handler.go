@@ -9,10 +9,10 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 
+	infralogger "github.com/jonesrussell/north-cloud/infrastructure/logger"
 	"github.com/jonesrussell/north-cloud/social-publisher/internal/database"
 	"github.com/jonesrussell/north-cloud/social-publisher/internal/domain"
 	"github.com/jonesrussell/north-cloud/social-publisher/internal/orchestrator"
-	infralogger "github.com/jonesrussell/north-cloud/infrastructure/logger"
 )
 
 const (

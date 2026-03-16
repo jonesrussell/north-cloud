@@ -42,8 +42,8 @@ func (p *EventPublisher) PublishDeliveryEvent(ctx context.Context, event *domain
 type DeadLetterMessage struct {
 	Event            domain.DeliveryEvent  `json:"event"`
 	Original         domain.PublishMessage `json:"original"`
-	ErrorType        string               `json:"error_type"`
-	PlatformResponse string               `json:"platform_response,omitempty"`
+	ErrorType        string                `json:"error_type"`
+	PlatformResponse string                `json:"platform_response,omitempty"`
 }
 
 // PublishDeadLetter publishes a message to the dead-letter channel.

@@ -34,11 +34,11 @@ type RenderConfig struct {
 
 // ScrollConfig controls page scrolling behavior.
 type ScrollConfig struct {
-	Strategy     string `json:"strategy,omitempty"`
-	MaxScrollMs  int    `json:"max_scroll_ms,omitempty"`
-	ScrollDelay  int    `json:"scroll_delay_ms,omitempty"`
-	Pixels       int    `json:"pixels,omitempty"`
-	Percent      int    `json:"percent,omitempty"`
+	Strategy    string `json:"strategy,omitempty"`
+	MaxScrollMs int    `json:"max_scroll_ms,omitempty"`
+	ScrollDelay int    `json:"scroll_delay_ms,omitempty"`
+	Pixels      int    `json:"pixels,omitempty"`
+	Percent     int    `json:"percent,omitempty"`
 }
 
 // SelectorConfig controls element waiting and extraction.

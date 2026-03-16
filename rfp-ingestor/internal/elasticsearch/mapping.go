@@ -18,9 +18,9 @@ func RFPIndexMapping() map[string]any {
 		},
 		"mappings": map[string]any{
 			"properties": map[string]any{
-				"title":         map[string]any{"type": "text", "analyzer": "standard"},
-				"url":           map[string]any{"type": "keyword"},
-				"source_name":   map[string]any{"type": "keyword"},
+				"title":       map[string]any{"type": "text", "analyzer": "standard"},
+				"url":         map[string]any{"type": "keyword"},
+				"source_name": map[string]any{"type": "keyword"},
 				"content_type": map[string]any{
 					"type":     "text",
 					"analyzer": "standard",

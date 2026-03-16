@@ -5,11 +5,11 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	infragin "github.com/jonesrussell/north-cloud/infrastructure/gin"
+	"github.com/jonesrussell/north-cloud/infrastructure/logger"
 	"github.com/jonesrussell/north-cloud/social-publisher/internal/config"
 	"github.com/jonesrussell/north-cloud/social-publisher/internal/database"
 	"github.com/jonesrussell/north-cloud/social-publisher/internal/orchestrator"
-	infragin "github.com/jonesrussell/north-cloud/infrastructure/gin"
-	"github.com/jonesrussell/north-cloud/infrastructure/logger"
 )
 
 // Router wires API routes to the infrastructure HTTP server.
