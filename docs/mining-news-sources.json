@@ -1,0 +1,355 @@
+{
+  "mining_news_sources": {
+    "wire_services": [
+      {
+        "name": "Newsfile Corp (TMX Newsfile)",
+        "url": "https://www.newsfilecorp.com/news/mining-metals",
+        "rss_url": null,
+        "why_valuable": "Primary Canadian mining press release distributor. TSX/TSXV-listed companies publish drill results here first. Very high frequency of drill result announcements.",
+        "dynamic_rendering": false,
+        "drill_result_frequency": "daily"
+      },
+      {
+        "name": "Newswire.ca (Cision Canada)",
+        "url": "https://www.newswire.ca/news-releases/heavy-industry-manufacturing-latest-news/mining-metals-list/",
+        "rss_url": null,
+        "why_valuable": "Major Canadian press release distribution. Mining companies publish drill results, assay results, and exploration updates. Structured press release format.",
+        "dynamic_rendering": false,
+        "drill_result_frequency": "daily"
+      },
+      {
+        "name": "GlobeNewswire - Mining",
+        "url": "https://www.globenewswire.com/search/tag/mining",
+        "rss_url": "https://www.globenewswire.com/rss/list",
+        "why_valuable": "Global press release distribution with mining tag. Many junior miners publish drill results here. RSS feeds available for automated ingestion.",
+        "dynamic_rendering": false,
+        "drill_result_frequency": "daily"
+      },
+      {
+        "name": "ACCESS Newswire (formerly Accesswire)",
+        "url": "https://www.accessnewswire.com/",
+        "rss_url": null,
+        "why_valuable": "Growing press release service used by many junior mining companies for drill result announcements. Clean HTML format.",
+        "dynamic_rendering": false,
+        "drill_result_frequency": "daily"
+      },
+      {
+        "name": "EIN Presswire - Mining Industry Today",
+        "url": "https://mining.einnews.com/",
+        "rss_url": "https://mining.einnews.com/all_rss",
+        "why_valuable": "Aggregates mining press releases from multiple wire services. Single feed covers multiple sources. RSS available.",
+        "dynamic_rendering": false,
+        "drill_result_frequency": "daily"
+      },
+      {
+        "name": "Business Wire - Mining",
+        "url": "https://www.businesswire.com/portal/site/home/news/industries/mining-metals/",
+        "rss_url": null,
+        "why_valuable": "Major wire service used by larger mining companies. Less junior miner content but higher quality drill results from mid-cap and major miners.",
+        "dynamic_rendering": false,
+        "drill_result_frequency": "weekly"
+      }
+    ],
+    "mining_news_sites": [
+      {
+        "name": "Junior Mining Network",
+        "url": "https://www.juniorminingnetwork.com/junior-miner-news.html",
+        "rss_url": null,
+        "drill_results_page": "https://www.juniorminingnetwork.com/mining-topics/topic/drill-results.html",
+        "why_valuable": "Dedicated drill results topic page. Aggregates press releases from TSX-V and CSE junior miners. Highest concentration of drill result articles of any site.",
+        "dynamic_rendering": true,
+        "drill_result_frequency": "multiple_daily"
+      },
+      {
+        "name": "MINING.COM",
+        "url": "https://www.mining.com/",
+        "rss_url": null,
+        "why_valuable": "Self-described #1 source of global mining news. Covers major drill results and exploration discoveries. Mix of editorial and press releases.",
+        "dynamic_rendering": true,
+        "drill_result_frequency": "daily"
+      },
+      {
+        "name": "The Northern Miner",
+        "url": "https://www.northernminer.com/",
+        "rss_url": null,
+        "why_valuable": "Canada's oldest mining publication (since 1915). In-depth coverage of Canadian exploration projects and drill results. Excellent for Canadian mining focus.",
+        "dynamic_rendering": true,
+        "drill_result_frequency": "daily"
+      },
+      {
+        "name": "Kitco Mining News",
+        "url": "https://www.kitco.com/news/category/mining",
+        "rss_url": "https://www.kitco.com/news/category/mining/rss",
+        "press_releases_page": "https://www.kitco.com/mining/press-release",
+        "why_valuable": "Major precious metals news site with dedicated mining section and press releases page. RSS feed available. Strong coverage of gold/silver drill results.",
+        "dynamic_rendering": true,
+        "drill_result_frequency": "daily"
+      },
+      {
+        "name": "Mining Weekly",
+        "url": "https://www.miningweekly.com/",
+        "rss_url": null,
+        "why_valuable": "Covers global mining news with focus on Africa and emerging markets. Regular drill result coverage from international projects.",
+        "dynamic_rendering": true,
+        "drill_result_frequency": "weekly"
+      },
+      {
+        "name": "CEO.CA - Mining",
+        "url": "https://ceo.ca/news/mining",
+        "rss_url": null,
+        "why_valuable": "Community-driven mining news aggregator. Pulls press releases from multiple sources. Popular with retail mining investors. Real-time stock tracking.",
+        "dynamic_rendering": true,
+        "drill_result_frequency": "daily"
+      },
+      {
+        "name": "Investing News Network (INN)",
+        "url": "https://investingnews.com/",
+        "battery_metals_url": "https://investingnews.com/category/daily/resource-investing/battery-metals-investing/",
+        "rss_url": null,
+        "why_valuable": "Covers all commodity sectors with dedicated pages for gold, lithium, battery metals, critical minerals. Regular drill result roundups and top stock lists.",
+        "dynamic_rendering": true,
+        "drill_result_frequency": "daily"
+      },
+      {
+        "name": "InvestorNews (InvestorIntel)",
+        "url": "https://investornews.com/",
+        "rss_url": null,
+        "why_valuable": "Covers critical minerals, rare earths, and technology metals. Regular columns on exploration results and company updates.",
+        "dynamic_rendering": true,
+        "drill_result_frequency": "weekly"
+      },
+      {
+        "name": "Resource World Magazine",
+        "url": "https://resourceworld.com/",
+        "rss_url": null,
+        "why_valuable": "Covers mining, oil & gas and resource investing. Written for investors seeking info on publicly traded resource companies. Regular drill result coverage.",
+        "dynamic_rendering": true,
+        "drill_result_frequency": "weekly"
+      },
+      {
+        "name": "Mining Journal",
+        "url": "https://www.mining-journal.com/",
+        "rss_url": null,
+        "why_valuable": "Leading global mining publication with in-depth analysis. More focused on major projects and feasibility-stage drill results.",
+        "dynamic_rendering": true,
+        "drill_result_frequency": "weekly"
+      },
+      {
+        "name": "Canadian Mining Journal",
+        "url": "https://www.canadianminingjournal.com/",
+        "rss_url": null,
+        "why_valuable": "Canada's first mining publication. Focused on Canadian exploration and development projects. Regular drill result coverage from Canadian properties.",
+        "dynamic_rendering": true,
+        "drill_result_frequency": "weekly"
+      },
+      {
+        "name": "MiningHub",
+        "url": "https://app.mininghub.com/",
+        "rss_url": null,
+        "why_valuable": "Platform for junior mining companies with real-time news and RANKED drill results. Specifically designed for the global investment community.",
+        "dynamic_rendering": true,
+        "drill_result_frequency": "daily"
+      },
+      {
+        "name": "Exploration Insights",
+        "url": "https://explorationinsights.com/",
+        "rss_url": null,
+        "why_valuable": "Focused exclusively on exploration-stage projects. Tagline: 'Turning Rocks Into Money'. Expert analysis of drill results and discovery potential.",
+        "dynamic_rendering": true,
+        "drill_result_frequency": "weekly"
+      },
+      {
+        "name": "Mining Digital (formerly Mining Global)",
+        "url": "https://miningdigital.com/",
+        "rss_url": null,
+        "why_valuable": "Global mining industry news covering technology, operations, and exploration updates.",
+        "dynamic_rendering": true,
+        "drill_result_frequency": "weekly"
+      },
+      {
+        "name": "Global Mining Review",
+        "url": "https://www.globalminingreview.com/news/",
+        "rss_url": null,
+        "why_valuable": "Covers mining news updates from around the world with regular exploration and drill result articles.",
+        "dynamic_rendering": true,
+        "drill_result_frequency": "weekly"
+      },
+      {
+        "name": "CIM Magazine",
+        "url": "https://magazine.cim.org/en/",
+        "rss_url": null,
+        "why_valuable": "Canadian Institute of Mining publication. Technical articles with detailed drill data and geological analysis.",
+        "dynamic_rendering": true,
+        "drill_result_frequency": "monthly"
+      }
+    ],
+    "stock_exchange_feeds": [
+      {
+        "name": "TMX / TSX News",
+        "url": "https://www.tsx.com/en/news",
+        "rss_url": null,
+        "why_valuable": "Official TSX/TSXV news feed. ~40% of world's public mining companies listed here. Source of all Canadian exchange mining announcements including drill results.",
+        "dynamic_rendering": true,
+        "drill_result_frequency": "multiple_daily"
+      },
+      {
+        "name": "SEDAR+ (Canadian Securities Filings)",
+        "url": "https://www.sedarplus.ca/",
+        "rss_url": null,
+        "why_valuable": "Official Canadian securities filing system. All mining company NI 43-101 reports and material drill results filed here. Most authoritative source.",
+        "dynamic_rendering": true,
+        "drill_result_frequency": "daily",
+        "notes": "Requires search by company. No browsable mining feed. Best used for verification."
+      },
+      {
+        "name": "ASX Announcements (Mining)",
+        "url": "https://www.asx.com.au/asx/statistics/announcements.do",
+        "rss_url": null,
+        "why_valuable": "Australian Securities Exchange announcements. Major source of drill results from Australian and international mining companies. Already in NC crawler.",
+        "dynamic_rendering": true,
+        "drill_result_frequency": "multiple_daily",
+        "notes": "Already configured in North Cloud"
+      },
+      {
+        "name": "CSE (Canadian Securities Exchange) News",
+        "url": "https://thecse.com/en/listings/mining",
+        "rss_url": null,
+        "why_valuable": "Smaller Canadian exchange popular with early-stage exploration companies. Frequent drill result announcements from micro-cap miners.",
+        "dynamic_rendering": true,
+        "drill_result_frequency": "daily"
+      }
+    ],
+    "australian_mining_news": [
+      {
+        "name": "Small Caps (ASX Mining)",
+        "url": "https://smallcaps.com.au/sector/mining",
+        "rss_url": null,
+        "why_valuable": "Covers ASX small-cap mining stocks with regular drill result coverage. Good for Australian exploration companies.",
+        "dynamic_rendering": true,
+        "drill_result_frequency": "daily"
+      },
+      {
+        "name": "Stockhead Resources",
+        "url": "https://stockhead.com.au/resources/",
+        "rss_url": null,
+        "why_valuable": "Daily ASX mining stock news with expert insight. Covers drill results and exploration updates from ASX-listed miners.",
+        "dynamic_rendering": true,
+        "drill_result_frequency": "daily"
+      },
+      {
+        "name": "Discovery Alert (ASX)",
+        "url": "https://discoveryalert.com.au/",
+        "rss_url": null,
+        "why_valuable": "AI-powered ASX mining news alerts. Specializes in breaking drill results, discoveries, and market-moving announcements. Processes hundreds of ASX announcements daily.",
+        "dynamic_rendering": true,
+        "drill_result_frequency": "daily"
+      },
+      {
+        "name": "Mining.com.au",
+        "url": "https://mining.com.au/news/exploration/",
+        "rss_url": null,
+        "why_valuable": "Australian mining news with dedicated exploration section. Covers ASX, TSX, NYSE mining companies with drill result articles.",
+        "dynamic_rendering": true,
+        "drill_result_frequency": "daily"
+      },
+      {
+        "name": "MiningNews.net",
+        "url": "https://www.miningnews.net/",
+        "rss_url": null,
+        "why_valuable": "Leading Australian mining publication with daily breaking news and capital market updates on mines and mining companies.",
+        "dynamic_rendering": true,
+        "drill_result_frequency": "daily"
+      }
+    ],
+    "commodity_specific": [
+      {
+        "name": "INN - Battery Metals",
+        "url": "https://investingnews.com/category/daily/resource-investing/battery-metals-investing/",
+        "rss_url": null,
+        "why_valuable": "Dedicated battery metals section covering lithium, nickel, cobalt, graphite exploration. Regular drill result coverage for battery metal projects.",
+        "dynamic_rendering": true,
+        "drill_result_frequency": "weekly"
+      },
+      {
+        "name": "INN - Lithium",
+        "url": "https://investingnews.com/category/daily/resource-investing/battery-metals-investing/lithium-investing/",
+        "rss_url": null,
+        "why_valuable": "Focused lithium news with drill results from lithium exploration projects worldwide.",
+        "dynamic_rendering": true,
+        "drill_result_frequency": "weekly"
+      },
+      {
+        "name": "InvestorNews - Critical Minerals",
+        "url": "https://investornews.com/critical-minerals-rare-earths/",
+        "rss_url": null,
+        "why_valuable": "Regular critical minerals reports covering rare earths, strategic minerals exploration and drill results.",
+        "dynamic_rendering": true,
+        "drill_result_frequency": "weekly"
+      },
+      {
+        "name": "Crux Investor",
+        "url": "https://www.cruxinvestor.com/",
+        "rss_url": null,
+        "why_valuable": "Institutional-grade mining analysis. Covers drill results with financial context. Battery metals and critical minerals focus.",
+        "dynamic_rendering": true,
+        "drill_result_frequency": "weekly"
+      }
+    ],
+    "recommended_priority_sources": {
+      "tier_1_highest_drill_result_volume": [
+        "Junior Mining Network (drill results topic page)",
+        "Newsfile Corp (TMX Newsfile)",
+        "Newswire.ca (Cision)",
+        "GlobeNewswire Mining",
+        "Kitco Mining (has RSS)",
+        "TMX / TSX News"
+      ],
+      "tier_2_good_drill_result_coverage": [
+        "ACCESS Newswire",
+        "MINING.COM",
+        "The Northern Miner",
+        "CEO.CA Mining",
+        "EIN Presswire Mining (has RSS)",
+        "Small Caps (ASX)",
+        "Stockhead Resources",
+        "Mining.com.au Exploration"
+      ],
+      "tier_3_supplementary": [
+        "INN Battery Metals",
+        "Canadian Mining Journal",
+        "Mining Weekly",
+        "Resource World Magazine",
+        "MiningHub",
+        "CSE News"
+      ]
+    },
+    "sources_with_rss_feeds": [
+      {
+        "name": "GlobeNewswire",
+        "rss_url": "https://www.globenewswire.com/rss/list"
+      },
+      {
+        "name": "Kitco Mining",
+        "rss_url": "https://www.kitco.com/news/category/mining/rss"
+      },
+      {
+        "name": "EIN Presswire Mining",
+        "rss_url": "https://mining.einnews.com/all_rss"
+      }
+    ],
+    "static_rendering_sources": [
+      "Newsfile Corp",
+      "Newswire.ca",
+      "GlobeNewswire",
+      "ACCESS Newswire",
+      "EIN Presswire",
+      "Business Wire"
+    ],
+    "notes": {
+      "best_for_structured_drill_data": "Wire services (Newsfile, Newswire.ca, GlobeNewswire) produce the most consistently structured drill result tables with hole IDs, intercepts, grades, and coordinates because they publish original press releases.",
+      "best_aggregator": "Junior Mining Network's drill results topic page is the single best aggregator of drill result press releases from TSX-V and CSE companies.",
+      "rss_advantage": "GlobeNewswire, Kitco, and EIN Presswire offer RSS feeds which simplify automated crawling.",
+      "rendering_note": "Wire services generally serve static HTML and are easiest to crawl. Mining news editorial sites (MINING.COM, Northern Miner, CEO.CA) typically use JavaScript frameworks requiring dynamic rendering."
+    }
+  }
+}
