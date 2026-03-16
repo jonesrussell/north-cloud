@@ -27,11 +27,12 @@ func (r *recordingLogger) With(_ ...infralogger.Field) infralogger.Logger { retu
 
 func TestResolveSidecars(t *testing.T) {
 	routingTable := map[string][]string{
-		"article":         {"crime", "mining", "location"},
-		"article:event":   {"location"},
-		"article:blotter": {"crime"},
-		"article:report":  {},
-		"page":            {},
+		"article":              {"crime", "mining", "location"},
+		"article:event":        {"location"},
+		"article:event_report": {"location"},
+		"article:blotter":      {"crime"},
+		"article:report":       {},
+		"page":                 {},
 	}
 	cfg := Config{
 		Version:                "1.0.0",
@@ -56,6 +57,7 @@ func TestResolveSidecars(t *testing.T) {
 	}{
 		{"article default", domain.ContentTypeArticle, "", []string{"crime", "mining", "location"}},
 		{"article event", domain.ContentTypeArticle, domain.ContentSubtypeEvent, []string{"location"}},
+		{"article event_report", domain.ContentTypeArticle, domain.ContentSubtypeEventReport, []string{"location"}},
 		{"article blotter", domain.ContentTypeArticle, domain.ContentSubtypeBlotter, []string{"crime"}},
 		{"article unknown subtype falls back to article", domain.ContentTypeArticle, "press_release", []string{"crime", "mining", "location"}},
 		{"article report", domain.ContentTypeArticle, domain.ContentSubtypeReport, nil},

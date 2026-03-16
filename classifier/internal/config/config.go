@@ -421,10 +421,11 @@ func SetDefaults(cfg *Config) {
 // getDefaultRouting returns the default content-type → sidecars mapping (current behavior).
 func getDefaultRouting() map[string][]string {
 	return map[string][]string{
-		"article":         {"crime", "mining", "coforge", "entertainment", "indigenous", "location"},
-		"article:event":   {"location"},
-		"article:blotter": {"crime"},
-		"article:report":  {},
+		"article":              {"crime", "mining", "coforge", "entertainment", "indigenous", "location"},
+		"article:event":        {"location"},
+		"article:event_report": {"location"},
+		"article:blotter":      {"crime"},
+		"article:report":       {},
 	}
 }
 
