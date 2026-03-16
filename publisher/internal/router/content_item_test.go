@@ -2,6 +2,7 @@ package router
 
 import (
 	"encoding/json"
+	"strings"
 	"testing"
 )
 
@@ -47,16 +48,8 @@ func TestMiningData_NoDrillResults_OmitEmpty(t *testing.T) {
 		t.Fatalf("marshal: %v", err)
 	}
 	s := string(data)
-	if jsonContains(s, "drill_results") {
+	if strings.Contains(s, "drill_results") {
 		t.Error("expected drill_results to be omitted when nil")
 	}
 }
 
-func jsonContains(s, sub string) bool {
-	for i := 0; i <= len(s)-len(sub); i++ {
-		if s[i:i+len(sub)] == sub {
-			return true
-		}
-	}
-	return false
-}

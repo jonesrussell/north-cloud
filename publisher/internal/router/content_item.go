@@ -27,10 +27,10 @@ type DrillResult struct {
 
 // MiningData holds mining classification fields from Elasticsearch.
 type MiningData struct {
-	Relevance       string   `json:"relevance"`
-	MiningStage     string   `json:"mining_stage"`
-	Commodities     []string `json:"commodities"`
-	Location        string   `json:"location"`
+	Relevance        string        `json:"relevance"`
+	MiningStage      string        `json:"mining_stage"`
+	Commodities      []string      `json:"commodities"`
+	Location         string        `json:"location"`
 	FinalConfidence  float64       `json:"final_confidence"`
 	ReviewRequired   bool          `json:"review_required"`
 	ModelVersion     string        `json:"model_version,omitempty"`
