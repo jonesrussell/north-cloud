@@ -578,3 +578,312 @@ func TestTopicClassifier_UpdateRules(t *testing.T) {
 		t.Errorf("expected sports topic, got %s", updatedRules[0].TopicName)
 	}
 }
+
+func TestTopicClassifier_ScoreTextAgainstRule_MultiWordKeyword(t *testing.T) {
+	t.Helper()
+
+	classifier := NewTopicClassifier(&mockLogger{}, nil)
+
+	rule := domain.ClassificationRule{
+		Keywords: []string{"human trafficking", "organized crime"},
+	}
+
+	tests := []struct {
+		name     string
+		text     string
+		wantZero bool
+	}{
+		{
+			name:     "multi-word keyword matches",
+			text:     "authorities investigate human trafficking ring in the city",
+			wantZero: false,
+		},
+		{
+			name:     "both multi-word keywords match",
+			text:     "organized crime linked to human trafficking operations",
+			wantZero: false,
+		},
+		{
+			name:     "partial multi-word keyword does not match",
+			text:     "the trafficking of goods across borders is organized",
+			wantZero: true,
+		},
+		{
+			name:     "empty text returns zero",
+			text:     "",
+			wantZero: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Helper()
+			score := classifier.scoreTextAgainstRule(tt.text, rule)
+			if tt.wantZero && score != 0.0 {
+				t.Errorf("expected 0.0, got %f", score)
+			}
+			if !tt.wantZero && score == 0.0 {
+				t.Errorf("expected score > 0.0 for multi-word match, got 0.0")
+			}
+		})
+	}
+}
+
+func TestTopicClassifier_ScoreTextAgainstRule_MixedSingleAndMultiWord(t *testing.T) {
+	t.Helper()
+
+	classifier := NewTopicClassifier(&mockLogger{}, nil)
+
+	rule := domain.ClassificationRule{
+		Keywords:      []string{"drug", "drugs", "drug trafficking", "drug bust"},
+		MinConfidence: 0.3,
+	}
+
+	tests := []struct {
+		name        string
+		text        string
+		minExpected float64
+		maxExpected float64
+	}{
+		{
+			name:        "single-word only",
+			text:        "police found drug and drugs at the scene",
+			minExpected: 0.2,
+			maxExpected: 0.8,
+		},
+		{
+			name:        "multi-word only",
+			text:        "a major drug trafficking operation led to a drug bust",
+			minExpected: 0.3,
+			maxExpected: 1.0,
+		},
+		{
+			name:        "both single and multi-word",
+			text:        "drug trafficking ring busted in major drug bust with drugs seized",
+			minExpected: 0.5,
+			maxExpected: 1.0,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Helper()
+			score := classifier.scoreTextAgainstRule(tt.text, rule)
+			if score < tt.minExpected || score > tt.maxExpected {
+				t.Errorf("expected score between %f and %f, got %f", tt.minExpected, tt.maxExpected, score)
+			}
+		})
+	}
+}
+
+func TestTopicClassifier_TestRule_MultiWordKeywords(t *testing.T) {
+	t.Helper()
+
+	classifier := NewTopicClassifier(&mockLogger{}, nil)
+
+	rule := &domain.ClassificationRule{
+		Keywords:      []string{"human trafficking", "organized crime", "police"},
+		MinConfidence: 0.3,
+	}
+
+	result := classifier.TestRule(rule, "Human Trafficking Ring", "police investigate organized crime linked to human trafficking")
+
+	if !result.Matched {
+		t.Error("expected rule to match")
+	}
+
+	if result.UniqueMatches != 3 {
+		t.Errorf("expected 3 unique matches, got %d", result.UniqueMatches)
+	}
+
+	// Verify all keywords appear in matched list
+	wantKeywords := map[string]bool{"human trafficking": false, "organized crime": false, "police": false}
+	for _, kw := range result.MatchedKeywords {
+		wantKeywords[kw] = true
+	}
+	for kw, found := range wantKeywords {
+		if !found {
+			t.Errorf("expected keyword %q in matched list", kw)
+		}
+	}
+}
+
+func TestTopicClassifier_DrugCrime_DoesNotMatchSexTrafficking(t *testing.T) {
+	t.Helper()
+
+	rules := []domain.ClassificationRule{
+		{
+			RuleName:  "drug_crime_detection",
+			RuleType:  domain.RuleTypeTopic,
+			TopicName: "drug_crime",
+			Keywords: []string{
+				"drug", "drugs", "narcotics", "dealer", "possession",
+				"cocaine", "heroin", "fentanyl", "methamphetamine", "meth", "marijuana", "cannabis", "opioid",
+				"drug bust", "drug ring", "cartel", "smuggling", "drug trafficking",
+				"narcotics trafficking", "fentanyl trafficking", "cocaine trafficking", "meth trafficking",
+				"overdose", "drug-related", "controlled substance",
+			},
+			MinConfidence: 0.3,
+			Enabled:       true,
+		},
+	}
+
+	classifier := NewTopicClassifier(&mockLogger{}, rules)
+
+	raw := &domain.RawContent{
+		ID:    "sex-trafficking-article",
+		Title: "Alexander brothers are convicted of sex trafficking in case that shocked real estate world",
+		RawText: "Two brothers were convicted of sex trafficking charges after a lengthy trial. " +
+			"The case involved multiple victims who were trafficked across state lines. " +
+			"Prosecutors described the trafficking ring as one of the most organized in recent history.",
+	}
+
+	result, err := classifier.Classify(context.Background(), raw)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	for _, topic := range result.Topics {
+		if topic == "drug_crime" {
+			t.Error("sex trafficking article should NOT be tagged as drug_crime")
+		}
+	}
+}
+
+func TestTopicClassifier_DrugCrime_MatchesDrugTrafficking(t *testing.T) {
+	t.Helper()
+
+	rules := []domain.ClassificationRule{
+		{
+			RuleName:  "drug_crime_detection",
+			RuleType:  domain.RuleTypeTopic,
+			TopicName: "drug_crime",
+			Keywords: []string{
+				"drug", "drugs", "narcotics", "dealer", "possession",
+				"cocaine", "heroin", "fentanyl", "methamphetamine", "meth", "marijuana", "cannabis", "opioid",
+				"drug bust", "drug ring", "cartel", "smuggling", "drug trafficking",
+				"narcotics trafficking", "fentanyl trafficking", "cocaine trafficking", "meth trafficking",
+				"overdose", "drug-related", "controlled substance",
+			},
+			MinConfidence: 0.3,
+			Enabled:       true,
+		},
+	}
+
+	classifier := NewTopicClassifier(&mockLogger{}, rules)
+
+	raw := &domain.RawContent{
+		ID:    "fentanyl-bust",
+		Title: "Major fentanyl trafficking ring busted in downtown",
+		RawText: "Police arrested several suspects in a major drug trafficking operation. " +
+			"Officers seized large quantities of fentanyl and cocaine during the drug bust. " +
+			"The narcotics trafficking ring had been under investigation for months.",
+	}
+
+	result, err := classifier.Classify(context.Background(), raw)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	found := false
+	for _, topic := range result.Topics {
+		if topic == "drug_crime" {
+			found = true
+			break
+		}
+	}
+
+	if !found {
+		t.Error("fentanyl trafficking article should be tagged as drug_crime")
+	}
+}
+
+func TestTopicClassifier_Travel_DoesNotMatchTraffickingContext(t *testing.T) {
+	t.Helper()
+
+	rules := []domain.ClassificationRule{
+		{
+			RuleName:  "travel_detection",
+			RuleType:  domain.RuleTypeTopic,
+			TopicName: "travel",
+			Keywords: []string{
+				"vacation", "hotel", "flight", "tourism", "travel",
+				"journey", "tour", "tourist",
+				"resort", "airline", "airport", "luggage",
+				"cruise", "beach", "sightseeing", "adventure", "backpacking",
+				"travel guide", "itinerary", "booking", "reservation",
+			},
+			MinConfidence: 0.4,
+			Enabled:       true,
+		},
+	}
+
+	classifier := NewTopicClassifier(&mockLogger{}, rules)
+
+	raw := &domain.RawContent{
+		ID:    "trafficking-context",
+		Title: "Trafficking victims brought to destination country via forged passport",
+		RawText: "Victims were given forged visas and passports. " +
+			"The trafficking ring used a network of safe houses as destinations. " +
+			"Authorities tracked the trip from origin to destination.",
+	}
+
+	result, err := classifier.Classify(context.Background(), raw)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	for _, topic := range result.Topics {
+		if topic == "travel" {
+			t.Error("trafficking context article should NOT be tagged as travel")
+		}
+	}
+}
+
+func TestTopicClassifier_Travel_MatchesGenuineTravelContent(t *testing.T) {
+	t.Helper()
+
+	rules := []domain.ClassificationRule{
+		{
+			RuleName:  "travel_detection",
+			RuleType:  domain.RuleTypeTopic,
+			TopicName: "travel",
+			Keywords: []string{
+				"vacation", "hotel", "flight", "tourism", "travel",
+				"journey", "tour", "tourist",
+				"resort", "airline", "airport", "luggage",
+				"cruise", "beach", "sightseeing", "adventure", "backpacking",
+				"travel guide", "itinerary", "booking", "reservation",
+			},
+			MinConfidence: 0.4,
+			Enabled:       true,
+		},
+	}
+
+	classifier := NewTopicClassifier(&mockLogger{}, rules)
+
+	raw := &domain.RawContent{
+		ID:    "vacation-article",
+		Title: "Best beach resorts for your summer vacation",
+		RawText: "Planning your next vacation? Check out these amazing beach resorts. " +
+			"Book your hotel and flight together for the best deals. " +
+			"Tourism is booming at these resort destinations.",
+	}
+
+	result, err := classifier.Classify(context.Background(), raw)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	found := false
+	for _, topic := range result.Topics {
+		if topic == "travel" {
+			found = true
+			break
+		}
+	}
+
+	if !found {
+		t.Error("genuine travel article should be tagged as travel")
+	}
+}
