@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"time"
+	"unicode/utf8"
 
 	"github.com/jonesrussell/north-cloud/classifier/internal/domain"
 )
@@ -99,9 +100,9 @@ func (c *Client) Extract(body string) ([]domain.DrillResult, error) {
 func (c *Client) ExtractWithMetrics(body string) (*ExtractResult, error) {
 	start := time.Now()
 
-	// Truncate body if needed
-	if c.maxBodyChars > 0 && len(body) > c.maxBodyChars {
-		body = body[:c.maxBodyChars]
+	// Truncate body if needed (rune-aware to avoid splitting multi-byte characters)
+	if c.maxBodyChars > 0 && utf8.RuneCountInString(body) > c.maxBodyChars {
+		body = string([]rune(body)[:c.maxBodyChars])
 	}
 
 	reqBody := messagesRequest{
@@ -137,6 +138,9 @@ func (c *Client) ExtractWithMetrics(body string) (*ExtractResult, error) {
 
 	if resp.StatusCode != http.StatusOK {
 		respBody, _ := io.ReadAll(resp.Body)
+		if len(respBody) > 500 {
+			respBody = respBody[:500]
+		}
 		return nil, fmt.Errorf("anthropic API error (status %d): %s", resp.StatusCode, string(respBody))
 	}
 

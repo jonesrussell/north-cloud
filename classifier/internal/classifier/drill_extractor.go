@@ -30,8 +30,8 @@ var (
 	// Including sub-interval: "including 3.0m @ 8.1 g/t"
 	reIncluding = regexp.MustCompile(`(?i)(?:including|incl\.?)\s+(\d+\.?\d*)\s*(?:m|metres?|meters?)\s*(?:@|of|grading)\s*(\d+\.?\d*)\s*(g/t|gpt|%|ppm|oz/t)\s*(Au|Ag|Cu|Ni|Zn|Li|Pb|U3O8|CuEq|AuEq|gold|silver|copper|nickel|zinc|lithium|uranium)?`)
 
-	// Commodity symbol pattern (standalone)
-	reCommoditySymbol = regexp.MustCompile(`(?i)\b(Au|Ag|Cu|Ni|Zn|Li|Pb|U3O8|CuEq|AuEq)\b`)
+	// Simple grade pattern for from-to fallback
+	reSimpleGrade = regexp.MustCompile(`(?i)(?:grading|@|of|averaging)\s*(\d+\.?\d*)\s*(g/t|gpt|%|ppm|oz/t)\s*(Au|Ag|Cu|Ni|Zn|Li|Pb|U3O8)?`)
 )
 
 // extractDrillRegex runs regex-based drill result extraction on the full article body.
@@ -100,8 +100,7 @@ func extractDrillRegex(body string) ([]domain.DrillResult, string) {
 		gradeMatch := reInterceptGrade.FindStringSubmatch(after)
 		if gradeMatch == nil {
 			// Try a simpler grade pattern after from-to
-			simpleGrade := regexp.MustCompile(`(?i)(?:grading|@|of|averaging)\s*(\d+\.?\d*)\s*(g/t|gpt|%|ppm|oz/t)\s*(Au|Ag|Cu|Ni|Zn|Li|Pb|U3O8)?`)
-			gradeMatch = simpleGrade.FindStringSubmatch(after)
+			gradeMatch = reSimpleGrade.FindStringSubmatch(after)
 		}
 
 		if gradeMatch != nil && len(gradeMatch) >= 3 {
@@ -209,9 +208,15 @@ func normalizeUnitRaw(unit string) string {
 }
 
 // isDuplicateResult checks if a result with the same intercept and grade already exists.
+// Uses formatted string comparison to avoid float64 exact-equality issues from
+// different computation paths (e.g. math.Abs vs direct parsing).
 func isDuplicateResult(results []domain.DrillResult, holeID string, intercept, grade float64) bool {
+	iStr := strconv.FormatFloat(intercept, 'f', 2, 64)
+	gStr := strconv.FormatFloat(grade, 'f', 4, 64)
 	for _, r := range results {
-		if r.InterceptM == intercept && r.Grade == grade {
+		rI := strconv.FormatFloat(r.InterceptM, 'f', 2, 64)
+		rG := strconv.FormatFloat(r.Grade, 'f', 4, 64)
+		if rI == iStr && rG == gStr {
 			if holeID == "" || r.HoleID == holeID {
 				return true
 			}
@@ -219,6 +224,3 @@ func isDuplicateResult(results []domain.DrillResult, holeID string, intercept, g
 	}
 	return false
 }
-
-// Suppress unused variable warning for reCommoditySymbol.
-var _ = reCommoditySymbol
