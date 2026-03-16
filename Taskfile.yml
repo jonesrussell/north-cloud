@@ -49,6 +49,10 @@ includes:
     taskfile: ./publisher/Taskfile.yml
     dir: ./publisher
 
+  rfp-ingestor:
+    taskfile: ./rfp-ingestor/Taskfile.yml
+    dir: ./rfp-ingestor
+
   search:
     taskfile: ./search/Taskfile.yml
     dir: ./search
@@ -56,6 +60,10 @@ includes:
   search-frontend:
     taskfile: ./search-frontend/Taskfile.yml
     dir: ./search-frontend
+
+  social-publisher:
+    taskfile: ./social-publisher/Taskfile.yml
+    dir: ./social-publisher
 
   source-manager:
     taskfile: ./source-manager/Taskfile.yml
@@ -186,8 +194,10 @@ tasks:
       - task: lint:nc-http-proxy
       - task: lint:pipeline
       - task: lint:publisher
+      - task: lint:rfp-ingestor
       - task: lint:search
       - task: lint:search-frontend
+      - task: lint:social-publisher
       - task: lint:source-manager
 
   lint:force:
@@ -204,8 +214,10 @@ tasks:
       - task: lint:nc-http-proxy:force
       - task: lint:pipeline:force
       - task: lint:publisher:force
+      - task: lint:rfp-ingestor:force
       - task: lint:search:force
       - task: lint:search-frontend:force
+      - task: lint:social-publisher:force
       - task: lint:source-manager:force
 
   lint:ai-observer:force:
@@ -263,6 +275,11 @@ tasks:
     cmds:
       - task publisher:lint:no-cache -f
 
+  lint:rfp-ingestor:force:
+    desc: "Run rfp-ingestor linter (ignore cache)"
+    cmds:
+      - task rfp-ingestor:lint:no-cache -f
+
   lint:search:force:
     desc: "Run search linter (ignore cache)"
     cmds:
@@ -272,6 +289,11 @@ tasks:
     desc: "Run search-frontend linter (ignore cache)"
     cmds:
       - task search-frontend:lint -f
+
+  lint:social-publisher:force:
+    desc: "Run social-publisher linter (ignore cache)"
+    cmds:
+      - task social-publisher:lint:no-cache -f
 
   lint:source-manager:force:
     desc: "Run source-manager linter (ignore cache)"
@@ -292,8 +314,10 @@ tasks:
       - task: lint:nc-http-proxy
       - task: lint:pipeline
       - task: lint:publisher
+      - task: lint:rfp-ingestor
       - task: lint:search
       - task: lint:search-frontend
+      - task: lint:social-publisher
       - task: lint:source-manager
 
   lint:ai-observer:
@@ -351,6 +375,11 @@ tasks:
     cmds:
       - task publisher:lint
 
+  lint:rfp-ingestor:
+    desc: "Run linter for rfp-ingestor service"
+    cmds:
+      - task rfp-ingestor:lint
+
   lint:search:
     desc: "Run linter for search service"
     cmds:
@@ -360,6 +389,11 @@ tasks:
     desc: "Run linter for search-frontend service"
     cmds:
       - task search-frontend:lint
+
+  lint:social-publisher:
+    desc: "Run linter for social-publisher service"
+    cmds:
+      - task social-publisher:lint
 
   lint:source-manager:
     desc: "Run linter for source-manager service"
@@ -509,8 +543,10 @@ tasks:
       - task: test:nc-http-proxy
       - task: test:pipeline
       - task: test:publisher
+      - task: test:rfp-ingestor
       - task: test:search
       - task: test:search-frontend
+      - task: test:social-publisher
       - task: test:source-manager
       - task: test:contracts
 
@@ -528,8 +564,10 @@ tasks:
       - task: test:nc-http-proxy
       - task: test:pipeline
       - task: test:publisher
+      - task: test:rfp-ingestor
       - task: test:search
       - task: test:search-frontend
+      - task: test:social-publisher
       - task: test:source-manager
 
   test:ai-observer:
@@ -587,6 +625,11 @@ tasks:
     cmds:
       - task publisher:test
 
+  test:rfp-ingestor:
+    desc: "Run tests for rfp-ingestor service"
+    cmds:
+      - task rfp-ingestor:test
+
   test:search:
     desc: "Run tests for search service"
     cmds:
@@ -596,6 +639,11 @@ tasks:
     desc: "Run tests for search-frontend service"
     cmds:
       - task search-frontend:test
+
+  test:social-publisher:
+    desc: "Run tests for social-publisher service"
+    cmds:
+      - task social-publisher:test
 
   test:source-manager:
     desc: "Run tests for source-manager service"

@@ -1,30 +1,23 @@
 version: '3'
 
 vars:
-  BINARY_NAME: rfp-ingestor
+  BINARY_NAME: social-publisher
   MAIN_PATH: ./main.go
 
-# Resolve from go.mod and replace (../infrastructure); ignore local vendor so lint/test pass
-# when vendor exists but is stale or incomplete (vendor/ is gitignored; CI has no vendor).
 env:
   GOWORK: "off"
   GOFLAGS: "-mod=mod"
 
 tasks:
   build:
-    desc: "Build the rfp-ingestor binary"
+    desc: "Build the social-publisher binary"
     cmds:
       - go build -o bin/{{.BINARY_NAME}} {{.MAIN_PATH}}
 
   run:
-    desc: "Run the rfp-ingestor service"
+    desc: "Run the social-publisher service"
     cmds:
       - go run {{.MAIN_PATH}}
-
-  backfill:
-    desc: "Run historical backfill"
-    cmds:
-      - go run {{.MAIN_PATH}} backfill
 
   test:
     desc: "Run all tests"
