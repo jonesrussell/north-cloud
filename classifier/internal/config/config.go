@@ -141,6 +141,7 @@ type ClassificationConfig struct {
 	Recipe           RecipeExtractionConfig `yaml:"recipe"`
 	Job              JobExtractionConfig    `yaml:"job"`
 	RFP              RFPExtractionConfig    `yaml:"rfp"`
+	DrillExtraction  DrillExtractionConfig  `yaml:"drill_extraction"`
 	// SidecarRegistry maps sidecar name (e.g. "crime", "mining") to enabled + URL.
 	// Built from Crime/Mining/... named configs when absent in YAML.
 	// NOTE: Currently populated by setClassificationDefaults but not yet consumed by the bootstrap
@@ -197,6 +198,16 @@ type JobExtractionConfig struct {
 // RFPExtractionConfig holds RFP extraction settings.
 type RFPExtractionConfig struct {
 	Enabled bool `env:"RFP_ENABLED" yaml:"enabled"`
+}
+
+// DrillExtractionConfig holds drill results extraction settings.
+type DrillExtractionConfig struct {
+	Enabled          bool   `env:"DRILL_EXTRACTION_ENABLED"  yaml:"enabled"`
+	LLMFallback      bool   `env:"DRILL_LLM_FALLBACK"        yaml:"llm_fallback"`
+	AnthropicKey     string `env:"ANTHROPIC_API_KEY"          yaml:"anthropic_api_key"`
+	AnthropicModel   string `yaml:"anthropic_model"`
+	AnthropicBaseURL string `yaml:"anthropic_base_url"`
+	MaxBodyChars     int    `yaml:"max_body_chars"`
 }
 
 // ContentTypeConfig holds content type detection settings.
@@ -378,6 +389,16 @@ func setClassificationDefaults(c *ClassificationConfig) {
 	// Mining defaults: disabled by default, but set ML URL
 	if c.Mining.MLServiceURL == "" {
 		c.Mining.MLServiceURL = defaultMiningMLServiceURL
+	}
+	// DrillExtraction defaults: disabled by default for safety
+	if c.DrillExtraction.AnthropicModel == "" {
+		c.DrillExtraction.AnthropicModel = "claude-haiku-4-5"
+	}
+	if c.DrillExtraction.AnthropicBaseURL == "" {
+		c.DrillExtraction.AnthropicBaseURL = "https://api.anthropic.com"
+	}
+	if c.DrillExtraction.MaxBodyChars == 0 {
+		c.DrillExtraction.MaxBodyChars = 4000
 	}
 	// Routing: if absent, use default routing table (article -> all; article:event -> location; article:blotter -> crime; article:report -> none)
 	if c.Routing == nil {

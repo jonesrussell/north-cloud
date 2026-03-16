@@ -25,8 +25,9 @@ const (
 
 // miningRuleResult holds the result of rule-based mining classification.
 type miningRuleResult struct {
-	relevance  string
-	confidence float64
+	relevance           string
+	confidence          float64
+	drillKeywordMatched bool
 }
 
 // Core mining patterns - strong mining industry signal.
@@ -57,17 +58,31 @@ func classifyMiningByRules(title, body string) *miningRuleResult {
 		text = strings.ToLower(title + " " + body[:miningRuleMaxBodyChars])
 	}
 
+	// Always check drill keyword independently (pattern index 2)
+	drillKeyword := miningCorePatterns[2].MatchString(text)
+
 	for _, p := range miningCorePatterns {
 		if p.MatchString(text) {
-			return &miningRuleResult{relevance: miningRelevanceCore, confidence: miningConfidenceCore}
+			return &miningRuleResult{
+				relevance:           miningRelevanceCore,
+				confidence:          miningConfidenceCore,
+				drillKeywordMatched: drillKeyword,
+			}
 		}
 	}
 
 	for _, p := range miningPeripheralPatterns {
 		if p.MatchString(text) {
-			return &miningRuleResult{relevance: miningRelevancePeripheral, confidence: miningConfidencePeripheral}
+			return &miningRuleResult{
+				relevance:           miningRelevancePeripheral,
+				confidence:          miningConfidencePeripheral,
+				drillKeywordMatched: drillKeyword,
+			}
 		}
 	}
 
-	return &miningRuleResult{relevance: miningRelevanceNot, confidence: miningConfidenceDefault}
+	return &miningRuleResult{
+		relevance:  miningRelevanceNot,
+		confidence: miningConfidenceDefault,
+	}
 }
