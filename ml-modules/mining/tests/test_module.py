@@ -44,18 +44,10 @@ async def test_mining_classify_returns_result(module: Module) -> None:
         "scores": {"gold": 0.91, "copper": 0.75, "lithium": 0.1},
     }
 
-    # Mock location classifier
-    mock_location = MagicMock()
-    mock_location.classify.return_value = {
-        "location": "local_canada",
-        "confidence": 0.82,
-    }
-
     # Inject mocked classifiers
     module._relevance = mock_relevance
     module._stage = mock_stage
     module._commodity = mock_commodity
-    module._location = mock_location
 
     request = ClassifyRequest(
         title="Gold exploration project in Northern Ontario",
@@ -64,8 +56,9 @@ async def test_mining_classify_returns_result(module: Module) -> None:
     result = await module.classify(request)
 
     assert isinstance(result, MiningResult)
-    assert result.relevance == 0.95
+    assert result.relevance == 0.9  # core_mining maps to 0.9
     assert result.confidence == 0.95
+    assert result.relevance_class == "core_mining"
     assert result.mining_stage == "exploration"
     assert result.mining_stage_confidence == 0.88
     assert result.commodities == ["gold", "copper"]
@@ -80,4 +73,11 @@ async def test_mining_health_reports_models(module: Module) -> None:
     assert checks["relevance_model_loaded"] is False
     assert checks["stage_model_loaded"] is False
     assert checks["commodity_model_loaded"] is False
-    assert checks["location_model_loaded"] is False
+
+
+@pytest.mark.asyncio
+async def test_mining_classify_uninitialized_raises(module: Module) -> None:
+    """Calling classify before initialize should raise RuntimeError."""
+    request = ClassifyRequest(title="Test", body="Test body")
+    with pytest.raises(RuntimeError, match="not initialized"):
+        await module.classify(request)

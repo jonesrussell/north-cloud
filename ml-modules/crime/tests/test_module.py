@@ -73,8 +73,17 @@ async def test_crime_classify_returns_result(module: Module) -> None:
     result = await module.classify(request)
 
     assert isinstance(result, CrimeResult)
-    assert result.relevance == 0.92
+    assert result.relevance == 0.9  # core_street_crime maps to 0.9
     assert result.confidence == 0.92
+    assert result.relevance_class == "core_street_crime"
     assert result.crime_types == ["assault", "robbery"]
     assert result.crime_type_scores == {"assault": 0.85, "robbery": 0.72, "theft": 0.1}
     assert result.location_detected is True
+
+
+@pytest.mark.asyncio
+async def test_crime_classify_uninitialized_raises(module: Module) -> None:
+    """Calling classify before initialize should raise RuntimeError."""
+    request = ClassifyRequest(title="Test", body="Test body")
+    with pytest.raises(RuntimeError, match="not initialized"):
+        await module.classify(request)

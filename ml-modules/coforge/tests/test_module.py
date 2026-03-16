@@ -64,8 +64,9 @@ async def test_coforge_classify_returns_result(module: Module) -> None:
     result = await module.classify(request)
 
     assert isinstance(result, CoforgeResult)
-    assert result.relevance == 0.93
+    assert result.relevance == 0.9  # core_coforge maps to 0.9
     assert result.confidence == 0.93
+    assert result.relevance_class == "core_coforge"
     assert result.audience == "developer"
     assert result.audience_confidence == 0.87
     assert result.topics == ["framework_release", "open_source"]
@@ -83,3 +84,11 @@ async def test_coforge_health_reports_models(module: Module) -> None:
     assert checks["audience_model_loaded"] is False
     assert checks["topic_model_loaded"] is False
     assert checks["industry_model_loaded"] is False
+
+
+@pytest.mark.asyncio
+async def test_coforge_classify_uninitialized_raises(module: Module) -> None:
+    """Calling classify before initialize should raise RuntimeError."""
+    request = ClassifyRequest(title="Test", body="Test body")
+    with pytest.raises(RuntimeError, match="not initialized"):
+        await module.classify(request)

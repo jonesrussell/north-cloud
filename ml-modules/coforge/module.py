@@ -15,12 +15,15 @@ from classifier.topic import TopicClassifier
 
 MAX_BODY_CHARS = 500
 
+_RELEVANCE_SCORES = {"core_coforge": 0.9, "peripheral": 0.6, "not_relevant": 0.1}
+
 
 class CoforgeResult(ClassifierResult):
     """Result from the coforge classifier module."""
 
     model_config = ConfigDict(extra="forbid")
 
+    relevance_class: str
     audience: str
     audience_confidence: float
     topics: list[str]
@@ -84,6 +87,9 @@ class Module(ClassifierModule):
 
     async def classify(self, request: ClassifyRequest) -> CoforgeResult:
         """Run all four classifiers on the input text."""
+        if self._relevance is None:
+            raise RuntimeError("Module not initialized — call initialize() first")
+
         text = f"{request.title} {request.body[:MAX_BODY_CHARS]}"
 
         relevance_result = self._relevance.classify(text)
@@ -92,8 +98,9 @@ class Module(ClassifierModule):
         industry_result = self._industry.classify(text)
 
         return CoforgeResult(
-            relevance=relevance_result["confidence"],
+            relevance=_RELEVANCE_SCORES.get(relevance_result["relevance"], 0.1),
             confidence=relevance_result["confidence"],
+            relevance_class=relevance_result["relevance"],
             audience=audience_result["audience"],
             audience_confidence=audience_result["confidence"],
             topics=topic_result["topics"],

@@ -14,12 +14,15 @@ from classifier.relevance import RelevanceClassifier
 
 MAX_BODY_CHARS = 500
 
+_RELEVANCE_SCORES = {"core_street_crime": 0.9, "peripheral_crime": 0.6, "not_crime": 0.1}
+
 
 class CrimeResult(ClassifierResult):
     """Result from the crime classifier module."""
 
     model_config = ConfigDict(extra="forbid")
 
+    relevance_class: str
     crime_types: list[str]
     crime_type_scores: dict[str, float]
     location_detected: bool
@@ -74,6 +77,9 @@ class Module(ClassifierModule):
 
     async def classify(self, request: ClassifyRequest) -> CrimeResult:
         """Run all three classifiers on the input text."""
+        if self._relevance is None:
+            raise RuntimeError("Module not initialized — call initialize() first")
+
         text = f"{request.title} {request.body[:MAX_BODY_CHARS]}"
 
         relevance_result = self._relevance.classify(text)
@@ -81,8 +87,9 @@ class Module(ClassifierModule):
         location_result = self._location.classify(text)
 
         return CrimeResult(
-            relevance=relevance_result["confidence"],
+            relevance=_RELEVANCE_SCORES.get(relevance_result["relevance"], 0.1),
             confidence=relevance_result["confidence"],
+            relevance_class=relevance_result["relevance"],
             crime_types=crime_type_result["crime_types"],
             crime_type_scores=crime_type_result["scores"],
             location_detected=location_result["location"] != "not_specified",
