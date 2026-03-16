@@ -3,6 +3,7 @@ package classifier
 
 import (
 	"context"
+	"slices"
 	"strings"
 	"testing"
 
@@ -45,14 +46,7 @@ func TestTopicClassifier_Classify_Crime(t *testing.T) {
 	}
 
 	// Verify crime is in topics array
-	hasCrime := false
-	for _, topic := range result.Topics {
-		if topic == "crime" {
-			hasCrime = true
-			break
-		}
-	}
-	if !hasCrime {
+	if !slices.Contains(result.Topics, "crime") {
 		t.Error("expected crime to be in topics array")
 	}
 
@@ -111,21 +105,10 @@ func TestTopicClassifier_Classify_MultipleTopics(t *testing.T) {
 	}
 
 	// Check both topics are present
-	foundCrime := false
-	foundLocal := false
-	for _, topic := range result.Topics {
-		if topic == "crime" {
-			foundCrime = true
-		}
-		if topic == "local_news" {
-			foundLocal = true
-		}
-	}
-
-	if !foundCrime {
+	if !slices.Contains(result.Topics, "crime") {
 		t.Error("expected to find crime topic")
 	}
-	if !foundLocal {
+	if !slices.Contains(result.Topics, "local_news") {
 		t.Error("expected to find local_news topic")
 	}
 
@@ -167,11 +150,8 @@ func TestTopicClassifier_Classify_NoMatch(t *testing.T) {
 	}
 
 	// Verify crime is not in topics array
-	for _, topic := range result.Topics {
-		if topic == "crime" {
-			t.Error("expected crime NOT to be in topics array")
-			break
-		}
+	if slices.Contains(result.Topics, "crime") {
+		t.Error("expected crime NOT to be in topics array")
 	}
 
 	if result.HighestTopic != "" {
@@ -743,10 +723,8 @@ func TestTopicClassifier_DrugCrime_DoesNotMatchSexTrafficking(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	for _, topic := range result.Topics {
-		if topic == "drug_crime" {
-			t.Error("sex trafficking article should NOT be tagged as drug_crime")
-		}
+	if slices.Contains(result.Topics, "drug_crime") {
+		t.Error("sex trafficking article should NOT be tagged as drug_crime")
 	}
 }
 
@@ -785,15 +763,7 @@ func TestTopicClassifier_DrugCrime_MatchesDrugTrafficking(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	found := false
-	for _, topic := range result.Topics {
-		if topic == "drug_crime" {
-			found = true
-			break
-		}
-	}
-
-	if !found {
+	if !slices.Contains(result.Topics, "drug_crime") {
 		t.Error("fentanyl trafficking article should be tagged as drug_crime")
 	}
 }
@@ -833,10 +803,8 @@ func TestTopicClassifier_Travel_DoesNotMatchTraffickingContext(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	for _, topic := range result.Topics {
-		if topic == "travel" {
-			t.Error("trafficking context article should NOT be tagged as travel")
-		}
+	if slices.Contains(result.Topics, "travel") {
+		t.Error("trafficking context article should NOT be tagged as travel")
 	}
 }
 
@@ -875,15 +843,7 @@ func TestTopicClassifier_Travel_MatchesGenuineTravelContent(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	found := false
-	for _, topic := range result.Topics {
-		if topic == "travel" {
-			found = true
-			break
-		}
-	}
-
-	if !found {
+	if !slices.Contains(result.Topics, "travel") {
 		t.Error("genuine travel article should be tagged as travel")
 	}
 }
