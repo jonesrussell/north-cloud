@@ -15,15 +15,27 @@ type CoforgeData struct {
 	ModelVersion        string   `json:"model_version,omitempty"`
 }
 
+// DrillResult holds a single drill result from the classifier.
+// Mirrored from classifier/internal/domain.DrillResult (separate Go module).
+type DrillResult struct {
+	HoleID     string  `json:"hole_id"`
+	Commodity  string  `json:"commodity"`
+	InterceptM float64 `json:"intercept_m"`
+	Grade      float64 `json:"grade"`
+	Unit       string  `json:"unit"`
+}
+
 // MiningData holds mining classification fields from Elasticsearch.
 type MiningData struct {
 	Relevance       string   `json:"relevance"`
 	MiningStage     string   `json:"mining_stage"`
 	Commodities     []string `json:"commodities"`
 	Location        string   `json:"location"`
-	FinalConfidence float64  `json:"final_confidence"`
-	ReviewRequired  bool     `json:"review_required"`
-	ModelVersion    string   `json:"model_version,omitempty"`
+	FinalConfidence  float64       `json:"final_confidence"`
+	ReviewRequired   bool          `json:"review_required"`
+	ModelVersion     string        `json:"model_version,omitempty"`
+	DrillResults     []DrillResult `json:"drill_results,omitempty"`
+	ExtractionMethod string        `json:"extraction_method,omitempty"`
 }
 
 // CrimeData matches the classifier's nested crime object in Elasticsearch.
