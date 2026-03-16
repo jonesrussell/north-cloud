@@ -134,13 +134,30 @@ type MiningProperties struct {
 
 // MiningFieldProperties defines individual fields within mining classification.
 type MiningFieldProperties struct {
-	Relevance       Field `json:"relevance"`
-	MiningStage     Field `json:"mining_stage"`
-	Commodities     Field `json:"commodities"`
-	Location        Field `json:"location"`
-	FinalConfidence Field `json:"final_confidence"`
-	ReviewRequired  Field `json:"review_required"`
-	ModelVersion    Field `json:"model_version"`
+	Relevance        Field                 `json:"relevance"`
+	MiningStage      Field                 `json:"mining_stage"`
+	Commodities      Field                 `json:"commodities"`
+	Location         Field                 `json:"location"`
+	FinalConfidence  Field                 `json:"final_confidence"`
+	ReviewRequired   Field                 `json:"review_required"`
+	ModelVersion     Field                 `json:"model_version"`
+	DrillResults     DrillResultProperties `json:"drill_results"`
+	ExtractionMethod Field                 `json:"extraction_method"`
+}
+
+// DrillResultProperties defines nested properties for a single drill result.
+type DrillResultProperties struct {
+	Type       string                     `json:"type,omitempty"`
+	Properties DrillResultFieldProperties `json:"properties,omitempty"`
+}
+
+// DrillResultFieldProperties defines individual fields within a drill result.
+type DrillResultFieldProperties struct {
+	HoleID     Field `json:"hole_id"`
+	Commodity  Field `json:"commodity"`
+	InterceptM Field `json:"intercept_m"`
+	Grade      Field `json:"grade"`
+	Unit       Field `json:"unit"`
 }
 
 // LocationProperties defines the nested properties for location detection.
@@ -300,6 +317,17 @@ func createMiningProperties() MiningProperties {
 			FinalConfidence: Field{Type: "float"},
 			ReviewRequired:  Field{Type: "boolean"},
 			ModelVersion:    Field{Type: "keyword"},
+			DrillResults: DrillResultProperties{
+				Type: "nested",
+				Properties: DrillResultFieldProperties{
+					HoleID:     Field{Type: "keyword"},
+					Commodity:  Field{Type: "keyword"},
+					InterceptM: Field{Type: "float"},
+					Grade:      Field{Type: "float"},
+					Unit:       Field{Type: "keyword"},
+				},
+			},
+			ExtractionMethod: Field{Type: "keyword"},
 		},
 	}
 }
