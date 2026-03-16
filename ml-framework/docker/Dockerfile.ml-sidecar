@@ -1,0 +1,30 @@
+FROM python:3.12-slim
+
+ARG MODULE_NAME
+ENV MODULE_NAME=${MODULE_NAME}
+
+# Install system dependencies (libgomp needed by scikit-learn)
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends libgomp1 && \
+    rm -rf /var/lib/apt/lists/*
+
+# Install the nc-ml framework
+COPY ml-framework /opt/ml-framework
+RUN pip install --no-cache-dir /opt/ml-framework
+
+# Copy the specific module
+COPY ml-modules/${MODULE_NAME} /opt/module/${MODULE_NAME}
+
+# Install module-specific requirements if present
+RUN if [ -f /opt/module/${MODULE_NAME}/requirements.txt ]; then \
+        pip install --no-cache-dir -r /opt/module/${MODULE_NAME}/requirements.txt; \
+    fi
+
+WORKDIR /opt/module
+
+EXPOSE 8000
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/v1/health')"
+
+CMD ["uvicorn", "nc_ml.main:app", "--host", "0.0.0.0", "--port", "8000"]
