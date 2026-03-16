@@ -22,8 +22,8 @@ func TestDrillResult_JSONSerialization(t *testing.T) {
 	}
 
 	var got domain.DrillResult
-	if err := json.Unmarshal(data, &got); err != nil {
-		t.Fatalf("unmarshal: %v", err)
+	if unmarshalErr := json.Unmarshal(data, &got); unmarshalErr != nil {
+		t.Fatalf("unmarshal: %v", unmarshalErr)
 	}
 	if got != dr {
 		t.Errorf("round-trip mismatch: got %+v, want %+v", got, dr)

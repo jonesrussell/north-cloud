@@ -1,4 +1,4 @@
-package mappings
+package mappings //nolint:testpackage // tests need internal access
 
 import (
 	"encoding/json"

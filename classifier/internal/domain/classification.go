@@ -238,6 +238,7 @@ const (
 	ContentSubtypeReport              = "report"
 	ContentSubtypeBlotter             = "blotter"
 	ContentSubtypeCompanyAnnouncement = "company_announcement"
+	ContentSubtypeEventReport         = "event_report"
 )
 
 // SourceCategory constants

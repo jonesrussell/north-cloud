@@ -1,4 +1,4 @@
-package classifier
+package classifier //nolint:testpackage // tests need internal access
 
 import (
 	"testing"
@@ -73,7 +73,7 @@ func TestNormalizeDrillResults_Dedup(t *testing.T) {
 func TestNormalizeDrillResults_DropsInvalid(t *testing.T) {
 	input := []domain.DrillResult{
 		{HoleID: "DDH-24-001", Commodity: "Au", InterceptM: 12.5, Grade: 3.2, Unit: "g/t"}, // valid
-		{HoleID: "", Commodity: "Au", InterceptM: 0, Grade: 0, Unit: "g/t"},                  // invalid: no hole_id AND no intercept AND no grade
+		{HoleID: "", Commodity: "Au", InterceptM: 0, Grade: 0, Unit: "g/t"},                // invalid: no hole_id AND no intercept AND no grade
 	}
 	got := normalizeDrillResults(input)
 

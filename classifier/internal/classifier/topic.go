@@ -134,11 +134,19 @@ func (t *TopicClassifier) scoreTextAgainstRule(text string, rule domain.Classifi
 			continue
 		}
 
-		// Check for exact word match (not substring)
-		occurrences := wordFreq[keyword]
-		if occurrences > 0 {
-			totalMatches += occurrences
-			uniqueKeywordsMatched++
+		if strings.Contains(keyword, " ") {
+			// Multi-word: substring match on cleaned text
+			if strings.Contains(text, keyword) {
+				totalMatches++
+				uniqueKeywordsMatched++
+			}
+		} else {
+			// Single-word: exact token match via frequency map
+			occurrences := wordFreq[keyword]
+			if occurrences > 0 {
+				totalMatches += occurrences
+				uniqueKeywordsMatched++
+			}
 		}
 	}
 
@@ -280,10 +288,18 @@ func (t *TopicClassifier) TestRule(rule *domain.ClassificationRule, title, body 
 			continue
 		}
 
-		occurrences := wordFreq[keyword]
-		if occurrences > 0 {
-			totalMatches += occurrences
-			matchedKeywords = append(matchedKeywords, keyword)
+		if strings.Contains(keyword, " ") {
+			// Multi-word: substring match on cleaned text
+			if strings.Contains(text, keyword) {
+				totalMatches++
+				matchedKeywords = append(matchedKeywords, keyword)
+			}
+		} else {
+			occurrences := wordFreq[keyword]
+			if occurrences > 0 {
+				totalMatches += occurrences
+				matchedKeywords = append(matchedKeywords, keyword)
+			}
 		}
 	}
 

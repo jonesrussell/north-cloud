@@ -65,8 +65,13 @@ func (c *ContentTypeClassifier) classifyFromEventKeywords(
 		return result
 	}
 
-	// Path 2: date + location heuristic
-	return c.matchDateLocation(raw, combinedText)
+	// Path 2: date + location heuristic (returns event)
+	if result := c.matchDateLocation(raw, combinedText); result != nil {
+		return result
+	}
+
+	// Path 3: event coverage phrases (returns article:event_report)
+	return c.matchEventReport(raw, combinedText)
 }
 
 // matchEventKeywords counts event keyword hits and returns a result
@@ -133,4 +138,42 @@ func hasLocationSignal(text string) bool {
 	}
 
 	return streetAddressPattern.MatchString(text)
+}
+
+// eventReportPhrases are linguistic patterns that indicate news coverage
+// of an event (as opposed to an event listing). Only 1 match is required
+// because these phrases are specific and low-ambiguity.
+var eventReportPhrases = []string{
+	"scheduled for",
+	"will take place",
+	"lineup announced",
+	"set to perform",
+	"protest planned",
+	"hearing set for",
+	"festival announced",
+	"tournament begins",
+}
+
+// matchEventReport checks for event coverage signals that indicate the
+// content is a news article about an event, not an event listing itself.
+// Returns article with event_report subtype, or nil if no signal found.
+func (c *ContentTypeClassifier) matchEventReport(
+	raw *domain.RawContent, text string,
+) *ContentTypeResult {
+	for _, phrase := range eventReportPhrases {
+		if strings.Contains(text, phrase) {
+			c.logger.Debug("Event report detected via coverage phrase",
+				infralogger.String("content_id", raw.ID),
+				infralogger.String("phrase", phrase),
+			)
+			return &ContentTypeResult{
+				Type:       domain.ContentTypeArticle,
+				Subtype:    domain.ContentSubtypeEventReport,
+				Confidence: keywordHeuristicConfidence,
+				Method:     "event_report_heuristic",
+				Reason:     "Event coverage phrase detected in content",
+			}
+		}
+	}
+	return nil
 }

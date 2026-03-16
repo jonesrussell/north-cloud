@@ -216,3 +216,71 @@ func TestClassifyFromEventKeywords_CaseInsensitive(t *testing.T) {
 	require.NotNil(t, result)
 	assert.Equal(t, domain.ContentTypeEvent, result.Type)
 }
+
+func TestClassifyFromEventKeywords_EventReport_ScheduledFor(t *testing.T) {
+	t.Helper()
+
+	c := NewContentTypeClassifier(&mockLogger{})
+
+	raw := &domain.RawContent{
+		ID:      "test-event-report-scheduled",
+		Title:   "Annual Music Festival Returns to Sudbury",
+		RawText: "The popular music festival is scheduled for next weekend at the waterfront park.",
+	}
+
+	result := c.classifyFromEventKeywords(raw)
+	require.NotNil(t, result)
+	assert.Equal(t, domain.ContentTypeArticle, result.Type)
+	assert.Equal(t, domain.ContentSubtypeEventReport, result.Subtype)
+	assert.Equal(t, "event_report_heuristic", result.Method)
+	assert.InDelta(t, keywordHeuristicConfidence, result.Confidence, 0.001)
+}
+
+func TestClassifyFromEventKeywords_EventReport_WillTakePlace(t *testing.T) {
+	t.Helper()
+
+	c := NewContentTypeClassifier(&mockLogger{})
+
+	raw := &domain.RawContent{
+		ID:      "test-event-report-takeplace",
+		Title:   "Protest March Planned for Downtown",
+		RawText: "The demonstration will take place Saturday morning starting at city hall.",
+	}
+
+	result := c.classifyFromEventKeywords(raw)
+	require.NotNil(t, result)
+	assert.Equal(t, domain.ContentTypeArticle, result.Type)
+	assert.Equal(t, domain.ContentSubtypeEventReport, result.Subtype)
+}
+
+func TestClassifyFromEventKeywords_EventReport_DoesNotOverrideEvent(t *testing.T) {
+	t.Helper()
+
+	c := NewContentTypeClassifier(&mockLogger{})
+
+	// This has 2+ event keywords, so it should be classified as event, not event_report
+	raw := &domain.RawContent{
+		ID:      "test-event-not-report",
+		Title:   "Register Now for the Festival",
+		RawText: "Tickets available at the door. The event is scheduled for Saturday.",
+	}
+
+	result := c.classifyFromEventKeywords(raw)
+	require.NotNil(t, result)
+	assert.Equal(t, domain.ContentTypeEvent, result.Type)
+}
+
+func TestClassifyFromEventKeywords_EventReport_NoSignal_ReturnsNil(t *testing.T) {
+	t.Helper()
+
+	c := NewContentTypeClassifier(&mockLogger{})
+
+	raw := &domain.RawContent{
+		ID:      "test-no-event-report",
+		Title:   "City Council Approves New Budget",
+		RawText: "The council voted unanimously to approve the annual budget for the city.",
+	}
+
+	result := c.classifyFromEventKeywords(raw)
+	assert.Nil(t, result)
+}

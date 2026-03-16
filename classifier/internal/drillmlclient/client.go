@@ -2,6 +2,7 @@ package drillmlclient
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -13,9 +14,11 @@ import (
 )
 
 const (
-	anthropicVersion = "2023-06-01"
-	defaultTimeout   = 30 * time.Second
-	systemPrompt     = `Extract drill results from this mining article. Return ONLY a JSON array.
+	anthropicVersion  = "2023-06-01"
+	defaultTimeout    = 30 * time.Second
+	maxTokens         = 1024
+	maxErrorBodyBytes = 500
+	systemPrompt      = `Extract drill results from this mining article. Return ONLY a JSON array.
 Each result must have: hole_id, commodity, intercept_m (float, meters), grade (float), unit (one of: g/t, %, ppm, oz/t).
 
 Normalize commodities to: gold, silver, copper, nickel, zinc, lithium, uranium, iron-ore, rare-earths, lead, cobalt, tin, platinum, palladium.
@@ -107,7 +110,7 @@ func (c *Client) ExtractWithMetrics(body string) (*ExtractResult, error) {
 
 	reqBody := messagesRequest{
 		Model:       c.model,
-		MaxTokens:   1024,
+		MaxTokens:   maxTokens,
 		Temperature: 0,
 		System:      systemPrompt,
 		Messages: []message{
@@ -121,14 +124,14 @@ func (c *Client) ExtractWithMetrics(body string) (*ExtractResult, error) {
 	}
 
 	url := c.baseURL + "/v1/messages"
-	req, err := http.NewRequest("POST", url, bytes.NewReader(jsonBody))
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodPost, url, bytes.NewReader(jsonBody))
 	if err != nil {
 		return nil, fmt.Errorf("create request: %w", err)
 	}
 
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("x-api-key", c.apiKey)
-	req.Header.Set("anthropic-version", anthropicVersion)
+	req.Header.Set("X-Api-Key", c.apiKey)
+	req.Header.Set("Anthropic-Version", anthropicVersion)
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
@@ -138,15 +141,15 @@ func (c *Client) ExtractWithMetrics(body string) (*ExtractResult, error) {
 
 	if resp.StatusCode != http.StatusOK {
 		respBody, _ := io.ReadAll(resp.Body)
-		if len(respBody) > 500 {
-			respBody = respBody[:500]
+		if len(respBody) > maxErrorBodyBytes {
+			respBody = respBody[:maxErrorBodyBytes]
 		}
 		return nil, fmt.Errorf("anthropic API error (status %d): %s", resp.StatusCode, string(respBody))
 	}
 
 	var apiResp messagesResponse
-	if err := json.NewDecoder(resp.Body).Decode(&apiResp); err != nil {
-		return nil, fmt.Errorf("decode response: %w", err)
+	if decodeErr := json.NewDecoder(resp.Body).Decode(&apiResp); decodeErr != nil {
+		return nil, fmt.Errorf("decode response: %w", decodeErr)
 	}
 
 	if len(apiResp.Content) == 0 {
@@ -156,8 +159,8 @@ func (c *Client) ExtractWithMetrics(body string) (*ExtractResult, error) {
 	// Parse the JSON array from the text content
 	text := apiResp.Content[0].Text
 	var results []domain.DrillResult
-	if err := json.Unmarshal([]byte(text), &results); err != nil {
-		return nil, fmt.Errorf("parse drill results JSON: %w (raw: %s)", err, text)
+	if unmarshalErr := json.Unmarshal([]byte(text), &results); unmarshalErr != nil {
+		return nil, fmt.Errorf("parse drill results JSON: %w (raw: %s)", unmarshalErr, text)
 	}
 
 	return &ExtractResult{

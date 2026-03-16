@@ -1,4 +1,4 @@
-package classifier
+package classifier //nolint:testpackage // tests need internal access
 
 import (
 	"testing"
