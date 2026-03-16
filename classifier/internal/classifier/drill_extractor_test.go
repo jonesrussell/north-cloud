@@ -106,5 +106,31 @@ func TestExtractDrillResults_PartialSignal(t *testing.T) {
 	}
 }
 
+func TestClassifyMiningWithDrillExtraction(t *testing.T) {
+	body := `Drill hole DDH-24-001 returned 12.5m @ 3.2 g/t Au from 45.0m depth in the Main Zone.`
+	result := classifyMiningByRules(
+		"Company Reports Drill Results",
+		body,
+	)
+
+	if result.relevance != miningRelevanceCore {
+		t.Errorf("relevance = %q, want core_mining", result.relevance)
+	}
+	if !result.drillKeywordMatched {
+		t.Error("expected drillKeywordMatched=true")
+	}
+}
+
+func TestClassifyMining_NoDrillKeyword(t *testing.T) {
+	result := classifyMiningByRules(
+		"Gold Mining Company Expands Operations",
+		"The company is expanding its open-pit mining operations.",
+	)
+
+	if result.drillKeywordMatched {
+		t.Error("expected drillKeywordMatched=false for non-drill article")
+	}
+}
+
 // Ensure the unused import is satisfied
 var _ = domain.DrillResult{}
