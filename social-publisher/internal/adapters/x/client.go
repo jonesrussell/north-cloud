@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/jonesrussell/north-cloud/social-publisher/internal/domain"
@@ -115,7 +116,7 @@ func (c *Client) postTweet(ctx context.Context, text, replyToID string) (domain.
 	}
 
 	var tweetResp tweetResponse
-	if err := json.Unmarshal(respBody, &tweetResp); err != nil {
+	if unmarshalErr := json.Unmarshal(respBody, &tweetResp); unmarshalErr != nil {
 		return domain.DeliveryResult{}, &domain.TransientError{Message: "failed to parse X API response"}
 	}
 
@@ -143,7 +144,7 @@ func classifyHTTPError(statusCode int, respBody []byte) error {
 	default:
 		return &domain.PermanentError{
 			Message:  "X API client error",
-			Code:     fmt.Sprintf("%d", statusCode),
+			Code:     strconv.Itoa(statusCode),
 			Response: string(respBody),
 		}
 	}

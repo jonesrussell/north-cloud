@@ -52,8 +52,8 @@ func run() int {
 		fmt.Fprintf(os.Stderr, "Failed to load config: %v\n", err)
 		return 1
 	}
-	if err := cfg.Validate(); err != nil {
-		fmt.Fprintf(os.Stderr, "Invalid config: %v\n", err)
+	if validateErr := cfg.Validate(); validateErr != nil {
+		fmt.Fprintf(os.Stderr, "Invalid config: %v\n", validateErr)
 		return 1
 	}
 

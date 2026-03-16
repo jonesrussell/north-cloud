@@ -7,6 +7,7 @@ import (
 	"github.com/jonesrussell/north-cloud/social-publisher/internal/adapters"
 	"github.com/jonesrussell/north-cloud/social-publisher/internal/domain"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestMockAdapter_ImplementsInterface(t *testing.T) {
@@ -23,13 +24,13 @@ func TestMockAdapter_PublishSuccess(t *testing.T) {
 	}
 
 	post, err := mock.Transform(msg)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	err = mock.Validate(post)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	result, err := mock.Publish(context.Background(), post)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotEmpty(t, result.PlatformID)
 	assert.Equal(t, 1, mock.PublishCount())
 }
@@ -40,13 +41,13 @@ func TestMockAdapter_PublishFailure(t *testing.T) {
 
 	msg := domain.PublishMessage{Summary: "Test"}
 	post, err := mock.Transform(msg)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	_, pubErr := mock.Publish(context.Background(), post)
-	assert.Error(t, pubErr)
+	require.Error(t, pubErr)
 
 	var publishErr domain.PublishError
-	assert.ErrorAs(t, pubErr, &publishErr)
+	require.ErrorAs(t, pubErr, &publishErr)
 	assert.True(t, publishErr.IsRetryable())
 }
 

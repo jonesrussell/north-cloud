@@ -1,14 +1,83 @@
-package ingestor
+package ingestor_test
 
 import (
 	"strings"
 	"testing"
 
 	"github.com/jonesrussell/north-cloud/rfp-ingestor/internal/domain"
+	"github.com/jonesrussell/north-cloud/rfp-ingestor/internal/ingestor"
 )
 
 // fullHeader is the complete 67-column header from the CanadaBuys CSV feed.
-const fullHeader = `"title-titre-eng","title-titre-fra","referenceNumber-numeroReference","amendmentNumber-numeroModification","solicitationNumber-numeroSollicitation","publicationDate-datePublication","tenderClosingDate-appelOffresDateCloture","amendmentDate-dateModification","expectedContractStartDate-dateDebutContratPrevue","expectedContractEndDate-dateFinContratPrevue","tenderStatus-appelOffresStatut-eng","tenderStatus-appelOffresStatut-fra","gsin-nibs","gsinDescription-nibsDescription-eng","gsinDescription-nibsDescription-fra","unspsc","unspscDescription-eng","unspscDescription-fra","procurementCategory-categorieApprovisionnement","noticeType-avisType-eng","noticeType-avisType-fra","procurementMethod-methodeApprovisionnement-eng","procurementMethod-methodeApprovisionnement-fra","selectionCriteria-criteresSelection-eng","selectionCriteria-criteresSelection-fra","limitedTenderingReason-raisonAppelOffresLimite-eng","limitedTenderingReason-raisonAppelOffresLimite-fra","tradeAgreements-accordsCommerciaux-eng","tradeAgreements-accordsCommerciaux-fra","regionsOfOpportunity-regionAppelOffres-eng","regionsOfOpportunity-regionAppelOffres-fra","regionsOfDelivery-regionsLivraison-eng","regionsOfDelivery-regionsLivraison-fra","contractingEntityName-nomEntitContractante-eng","contractingEntityAddressLine-ligneAdresseEntiteContractante-eng","contractingEntityAddressCity-entiteContractanteAdresseVille-eng","contractingEntityAddressProvince-entiteContractanteAdresseProvince-eng","contractingEntityAddressPostalCode-entiteContractanteAdresseCodePostal","contractingEntityAddressCountry-entiteContractanteAdressePays-eng","contractingEntityName-nomEntitContractante-fra","contractingEntityAddressLine-ligneAdresseEntiteContractante-fra","contractingEntityAddressCity-entiteContractanteAdresseVille-fra","contractingEntityAddressProvince-entiteContractanteAdresseProvince-fra","contractingEntityAddressCountry-entiteContractanteAdressePays-fra","endUserEntitiesName-nomEntitesUtilisateurFinal-eng","endUserEntitiesAddress-adresseEntitesUtilisateurFinal-eng","endUserEntitiesName-nomEntitesUtilisateurFinal-fra","endUserEntitiesAddress-adresseEntitesUtilisateurFinal-fra","contactInfoName-informationsContactNom","contactInfoEmail-informationsContactCourriel","contactInfoPhone-contactInfoTelephone","contactInfoFax","contactInfoAddressLine-contactInfoAdresseLigne-eng","contactInfoCity-contacterInfoVille-eng","contactInfoProvince-contacterInfoProvince-eng","contactInfoPostalcode","contactInfoCountry-contactInfoPays-eng","contactInfoAddressLine-contactInfoAdresseLigne-fra","contactInfoCity-contacterInfoVille-fra","contactInfoProvince-contacterInfoProvince-fra","contactInfoCountry-contactInfoPays-fra","noticeURL-URLavis-eng","noticeURL-URLavis-fra","attachment-piecesJointes-eng","attachment-piecesJointes-fra","tenderDescription-descriptionAppelOffres-eng","tenderDescription-descriptionAppelOffres-fra"`
+var fullHeader = strings.Join([]string{
+	`"title-titre-eng"`,
+	`"title-titre-fra"`,
+	`"referenceNumber-numeroReference"`,
+	`"amendmentNumber-numeroModification"`,
+	`"solicitationNumber-numeroSollicitation"`,
+	`"publicationDate-datePublication"`,
+	`"tenderClosingDate-appelOffresDateCloture"`,
+	`"amendmentDate-dateModification"`,
+	`"expectedContractStartDate-dateDebutContratPrevue"`,
+	`"expectedContractEndDate-dateFinContratPrevue"`,
+	`"tenderStatus-appelOffresStatut-eng"`,
+	`"tenderStatus-appelOffresStatut-fra"`,
+	`"gsin-nibs"`,
+	`"gsinDescription-nibsDescription-eng"`,
+	`"gsinDescription-nibsDescription-fra"`,
+	`"unspsc"`,
+	`"unspscDescription-eng"`,
+	`"unspscDescription-fra"`,
+	`"procurementCategory-categorieApprovisionnement"`,
+	`"noticeType-avisType-eng"`,
+	`"noticeType-avisType-fra"`,
+	`"procurementMethod-methodeApprovisionnement-eng"`,
+	`"procurementMethod-methodeApprovisionnement-fra"`,
+	`"selectionCriteria-criteresSelection-eng"`,
+	`"selectionCriteria-criteresSelection-fra"`,
+	`"limitedTenderingReason-raisonAppelOffresLimite-eng"`,
+	`"limitedTenderingReason-raisonAppelOffresLimite-fra"`,
+	`"tradeAgreements-accordsCommerciaux-eng"`,
+	`"tradeAgreements-accordsCommerciaux-fra"`,
+	`"regionsOfOpportunity-regionAppelOffres-eng"`,
+	`"regionsOfOpportunity-regionAppelOffres-fra"`,
+	`"regionsOfDelivery-regionsLivraison-eng"`,
+	`"regionsOfDelivery-regionsLivraison-fra"`,
+	`"contractingEntityName-nomEntitContractante-eng"`,
+	`"contractingEntityAddressLine-ligneAdresseEntiteContractante-eng"`,
+	`"contractingEntityAddressCity-entiteContractanteAdresseVille-eng"`,
+	`"contractingEntityAddressProvince-entiteContractanteAdresseProvince-eng"`,
+	`"contractingEntityAddressPostalCode-entiteContractanteAdresseCodePostal"`,
+	`"contractingEntityAddressCountry-entiteContractanteAdressePays-eng"`,
+	`"contractingEntityName-nomEntitContractante-fra"`,
+	`"contractingEntityAddressLine-ligneAdresseEntiteContractante-fra"`,
+	`"contractingEntityAddressCity-entiteContractanteAdresseVille-fra"`,
+	`"contractingEntityAddressProvince-entiteContractanteAdresseProvince-fra"`,
+	`"contractingEntityAddressCountry-entiteContractanteAdressePays-fra"`,
+	`"endUserEntitiesName-nomEntitesUtilisateurFinal-eng"`,
+	`"endUserEntitiesAddress-adresseEntitesUtilisateurFinal-eng"`,
+	`"endUserEntitiesName-nomEntitesUtilisateurFinal-fra"`,
+	`"endUserEntitiesAddress-adresseEntitesUtilisateurFinal-fra"`,
+	`"contactInfoName-informationsContactNom"`,
+	`"contactInfoEmail-informationsContactCourriel"`,
+	`"contactInfoPhone-contactInfoTelephone"`,
+	`"contactInfoFax"`,
+	`"contactInfoAddressLine-contactInfoAdresseLigne-eng"`,
+	`"contactInfoCity-contacterInfoVille-eng"`,
+	`"contactInfoProvince-contacterInfoProvince-eng"`,
+	`"contactInfoPostalcode"`,
+	`"contactInfoCountry-contactInfoPays-eng"`,
+	`"contactInfoAddressLine-contactInfoAdresseLigne-fra"`,
+	`"contactInfoCity-contacterInfoVille-fra"`,
+	`"contactInfoProvince-contacterInfoProvince-fra"`,
+	`"contactInfoCountry-contactInfoPays-fra"`,
+	`"noticeURL-URLavis-eng"`,
+	`"noticeURL-URLavis-fra"`,
+	`"attachment-piecesJointes-eng"`,
+	`"attachment-piecesJointes-fra"`,
+	`"tenderDescription-descriptionAppelOffres-eng"`,
+	`"tenderDescription-descriptionAppelOffres-fra"`,
+}, ",")
 
 // makeRow builds a 67-column CSV row with the given field overrides.
 // Fields not specified default to empty strings.
@@ -67,7 +136,7 @@ func TestParseCSV_SingleRow(t *testing.T) {
 	})
 
 	input := fullHeader + "\n" + row + "\n"
-	docs, errs := ParseCSV(strings.NewReader(input))
+	docs, errs := ingestor.ParseCSV(strings.NewReader(input))
 
 	if len(errs) != 0 {
 		t.Fatalf("unexpected errors: %v", errs)
@@ -130,7 +199,7 @@ func TestParseCSV_SkipsClosedTenders(t *testing.T) {
 	})
 
 	input := fullHeader + "\n" + row + "\n"
-	docs, errs := ParseCSV(strings.NewReader(input))
+	docs, errs := ingestor.ParseCSV(strings.NewReader(input))
 
 	if len(errs) != 0 {
 		t.Fatalf("unexpected errors: %v", errs)
@@ -142,7 +211,7 @@ func TestParseCSV_SkipsClosedTenders(t *testing.T) {
 
 func TestParseCSV_EmptyInput(t *testing.T) {
 	input := fullHeader + "\n"
-	docs, errs := ParseCSV(strings.NewReader(input))
+	docs, errs := ingestor.ParseCSV(strings.NewReader(input))
 
 	if len(errs) != 0 {
 		t.Fatalf("unexpected errors: %v", errs)
@@ -161,7 +230,7 @@ func TestParseCSV_SolicitationNumberFallback(t *testing.T) {
 	})
 
 	input := fullHeader + "\n" + row + "\n"
-	docs, errs := ParseCSV(strings.NewReader(input))
+	docs, errs := ingestor.ParseCSV(strings.NewReader(input))
 
 	if len(errs) != 0 {
 		t.Fatalf("unexpected errors: %v", errs)
@@ -181,8 +250,8 @@ func TestDocumentID_Deterministic(t *testing.T) {
 		},
 	}
 
-	id1 := DocumentID(doc)
-	id2 := DocumentID(doc)
+	id1 := ingestor.DocumentID(doc)
+	id2 := ingestor.DocumentID(doc)
 
 	if id1 != id2 {
 		t.Errorf("DocumentID not deterministic: %q != %q", id1, id2)
@@ -206,8 +275,8 @@ func TestDocumentID_DifferentAmendments(t *testing.T) {
 		},
 	}
 
-	id1 := DocumentID(doc1)
-	id2 := DocumentID(doc2)
+	id1 := ingestor.DocumentID(doc1)
+	id2 := ingestor.DocumentID(doc2)
 
 	if id1 == id2 {
 		t.Errorf("expected different IDs for different amendments, both got %q", id1)
@@ -235,9 +304,9 @@ func TestNormalizeProvince(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.input, func(t *testing.T) {
-			got := normalizeProvince(tt.input)
+			got := ingestor.NormalizeProvinceForTest(tt.input)
 			if got != tt.expected {
-				t.Errorf("normalizeProvince(%q) = %q, want %q", tt.input, got, tt.expected)
+				t.Errorf("NormalizeProvinceForTest(%q) = %q, want %q", tt.input, got, tt.expected)
 			}
 		})
 	}
@@ -290,17 +359,17 @@ func TestDeriveCategories(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := deriveCategories(tt.gsin, tt.unspsc)
+			got := ingestor.DeriveCategoriesForTest(tt.gsin, tt.unspsc)
 			gotSet := toSet(got)
 
 			for _, want := range tt.wantSubset {
 				if _, ok := gotSet[want]; !ok {
-					t.Errorf("deriveCategories(%q, %q) = %v, missing %q", tt.gsin, tt.unspsc, got, want)
+					t.Errorf("DeriveCategoriesForTest(%q, %q) = %v, missing %q", tt.gsin, tt.unspsc, got, want)
 				}
 			}
 
 			if tt.wantSubset == nil && len(got) != 0 {
-				t.Errorf("deriveCategories(%q, %q) = %v, want empty", tt.gsin, tt.unspsc, got)
+				t.Errorf("DeriveCategoriesForTest(%q, %q) = %v, want empty", tt.gsin, tt.unspsc, got)
 			}
 		})
 	}
@@ -316,7 +385,7 @@ func TestParseCSV_ConstructsURLWhenMissing(t *testing.T) {
 	})
 
 	input := fullHeader + "\n" + row + "\n"
-	docs, errs := ParseCSV(strings.NewReader(input))
+	docs, errs := ingestor.ParseCSV(strings.NewReader(input))
 
 	if len(errs) != 0 {
 		t.Fatalf("unexpected errors: %v", errs)
@@ -341,7 +410,7 @@ func TestParseCSV_PreservesExplicitURL(t *testing.T) {
 	})
 
 	input := fullHeader + "\n" + row + "\n"
-	docs, errs := ParseCSV(strings.NewReader(input))
+	docs, errs := ingestor.ParseCSV(strings.NewReader(input))
 
 	if len(errs) != 0 {
 		t.Fatalf("unexpected errors: %v", errs)
@@ -364,7 +433,7 @@ func TestParseCSV_BOMHeader(t *testing.T) {
 	})
 
 	input := "\xEF\xBB\xBF" + fullHeader + "\n" + row + "\n"
-	docs, errs := ParseCSV(strings.NewReader(input))
+	docs, errs := ingestor.ParseCSV(strings.NewReader(input))
 
 	if len(errs) != 0 {
 		t.Fatalf("unexpected errors: %v", errs)

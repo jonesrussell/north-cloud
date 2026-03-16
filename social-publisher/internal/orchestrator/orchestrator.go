@@ -75,8 +75,8 @@ func (o *Orchestrator) ProcessJob(
 		return domain.DeliveryResult{}, err
 	}
 
-	if err := adapter.Validate(post); err != nil {
-		return domain.DeliveryResult{}, err
+	if validateErr := adapter.Validate(post); validateErr != nil {
+		return domain.DeliveryResult{}, validateErr
 	}
 
 	result, err := adapter.Publish(ctx, post)

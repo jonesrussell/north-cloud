@@ -4,6 +4,8 @@ import (
 	"bufio"
 	"crypto/sha256"
 	"encoding/csv"
+	"encoding/hex"
+	"errors"
 	"fmt"
 	"io"
 	"strings"
@@ -11,6 +13,9 @@ import (
 
 	"github.com/jonesrussell/north-cloud/rfp-ingestor/internal/domain"
 )
+
+// bomLength is the byte length of a UTF-8 BOM (EF BB BF).
+const bomLength = 3
 
 // CSV column names from the CanadaBuys feed.
 const (
@@ -122,7 +127,7 @@ func ParseCSV(r io.Reader) ([]domain.RFPDocument, []error) {
 func DocumentID(doc domain.RFPDocument) string {
 	input := doc.RFP.ReferenceNumber + ":" + doc.RFP.AmendmentNumber
 	hash := sha256.Sum256([]byte(input))
-	return fmt.Sprintf("%x", hash)
+	return hex.EncodeToString(hash[:])
 }
 
 // buildColumnIndex maps column header names to their indices.
@@ -138,9 +143,9 @@ func buildColumnIndex(header []string) map[string]int {
 // if present. CanadaBuys CSV feeds include a BOM that confuses Go's csv.Reader.
 func stripBOM(r io.Reader) io.Reader {
 	br := bufio.NewReader(r)
-	bom, err := br.Peek(3)
-	if err == nil && len(bom) >= 3 && bom[0] == 0xEF && bom[1] == 0xBB && bom[2] == 0xBF {
-		_, _ = br.Discard(3)
+	bom, err := br.Peek(bomLength)
+	if err == nil && len(bom) >= bomLength && bom[0] == 0xEF && bom[1] == 0xBB && bom[2] == 0xBF {
+		_, _ = br.Discard(bomLength)
 	}
 	return br
 }
@@ -162,7 +167,7 @@ func buildDocument(record []string, colIndex map[string]int, crawledAt string) (
 		refNumber = getField(record, colIndex, colSolicitationNumber)
 	}
 	if refNumber == "" {
-		return domain.RFPDocument{}, fmt.Errorf("missing reference number")
+		return domain.RFPDocument{}, errors.New("missing reference number")
 	}
 
 	gsin := getField(record, colIndex, colGSIN)

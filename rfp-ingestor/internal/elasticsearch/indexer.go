@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -11,6 +12,12 @@ import (
 	"time"
 
 	"github.com/jonesrussell/north-cloud/rfp-ingestor/internal/domain"
+)
+
+// Named constants for HTTP and timeout configuration.
+const (
+	httpClientTimeout    = 30 * time.Second
+	httpStatusErrorFloor = 300
 )
 
 // BulkResult summarises the outcome of a bulk indexing operation.
@@ -32,17 +39,17 @@ type Indexer struct {
 // Returns an error when esURL or indexName is empty, or bulkSize is not positive.
 func NewIndexer(esURL, indexName string, bulkSize int) (*Indexer, error) {
 	if esURL == "" {
-		return nil, fmt.Errorf("elasticsearch URL must not be empty")
+		return nil, errors.New("elasticsearch URL must not be empty")
 	}
 	if indexName == "" {
-		return nil, fmt.Errorf("index name must not be empty")
+		return nil, errors.New("index name must not be empty")
 	}
 	if bulkSize <= 0 {
 		return nil, fmt.Errorf("bulk size must be positive, got %d", bulkSize)
 	}
 
 	return &Indexer{
-		client:    &http.Client{Timeout: 30 * time.Second},
+		client:    &http.Client{Timeout: httpClientTimeout},
 		baseURL:   strings.TrimRight(esURL, "/"),
 		indexName: indexName,
 		bulkSize:  bulkSize,
@@ -166,13 +173,13 @@ func (ix *Indexer) sendBulk(ctx context.Context, body []byte) (BulkResult, error
 		return BulkResult{}, fmt.Errorf("read response: %w", err)
 	}
 
-	if resp.StatusCode >= 300 {
+	if resp.StatusCode >= httpStatusErrorFloor {
 		return BulkResult{}, fmt.Errorf("bulk request failed with status %d: %s", resp.StatusCode, string(respBody))
 	}
 
 	var bulkResp bulkResponse
-	if err := json.Unmarshal(respBody, &bulkResp); err != nil {
-		return BulkResult{}, fmt.Errorf("parse bulk response: %w", err)
+	if unmarshalErr := json.Unmarshal(respBody, &bulkResp); unmarshalErr != nil {
+		return BulkResult{}, fmt.Errorf("parse bulk response: %w", unmarshalErr)
 	}
 
 	return tallyResults(bulkResp), nil
@@ -202,7 +209,7 @@ func (ix *Indexer) EnsureIndex(ctx context.Context, mapping map[string]any) erro
 	url := ix.baseURL + "/" + ix.indexName
 
 	// Check whether the index already exists.
-	headReq, err := http.NewRequestWithContext(ctx, http.MethodHead, url, nil)
+	headReq, err := http.NewRequestWithContext(ctx, http.MethodHead, url, http.NoBody)
 	if err != nil {
 		return fmt.Errorf("create HEAD request: %w", err)
 	}
@@ -238,7 +245,7 @@ func (ix *Indexer) EnsureIndex(ctx context.Context, mapping map[string]any) erro
 	}
 	defer putResp.Body.Close()
 
-	if putResp.StatusCode >= 300 {
+	if putResp.StatusCode >= httpStatusErrorFloor {
 		respBody, readErr := io.ReadAll(putResp.Body)
 		if readErr != nil {
 			return fmt.Errorf("create index failed with status %d (body unreadable: %w)", putResp.StatusCode, readErr)

@@ -71,8 +71,8 @@ func (w *RetryWorker) processRetries(ctx context.Context) {
 
 	w.log.Info("Processing retries", logger.Int("count", len(deliveries)))
 
-	for _, delivery := range deliveries {
-		w.processRetry(ctx, &delivery)
+	for i := range deliveries {
+		w.processRetry(ctx, &deliveries[i])
 	}
 }
 

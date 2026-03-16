@@ -74,8 +74,8 @@ func (ing *Ingestor) RunOnce(ctx context.Context) (RunResult, error) {
 
 	// 3. Build ID -> document map for bulk indexing.
 	docMap := make(map[string]domain.RFPDocument, len(docs))
-	for _, doc := range docs {
-		docMap[DocumentID(doc)] = doc
+	for i := range docs {
+		docMap[DocumentID(docs[i])] = docs[i]
 	}
 
 	// 4. Bulk-index documents into Elasticsearch.

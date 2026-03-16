@@ -11,6 +11,9 @@ import (
 
 const userAgent = "NorthCloud-RFP-Ingestor/0.1.0"
 
+// fetcherTimeout is the HTTP client timeout for feed downloads.
+const fetcherTimeout = 60 * time.Second
+
 // Fetcher downloads CSV feeds over HTTP with conditional request support.
 // It tracks Last-Modified headers per URL and sends If-Modified-Since on
 // subsequent requests, avoiding redundant downloads when the feed has not
@@ -25,7 +28,7 @@ type Fetcher struct {
 func NewFetcher() *Fetcher {
 	return &Fetcher{
 		client: &http.Client{
-			Timeout: 60 * time.Second,
+			Timeout: fetcherTimeout,
 		},
 		lastModified: make(map[string]string),
 	}
@@ -39,7 +42,7 @@ func NewFetcher() *Fetcher {
 // and modified is false. The caller is responsible for closing the body
 // when modified is true.
 func (f *Fetcher) Fetch(ctx context.Context, url string) (io.ReadCloser, bool, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, http.NoBody)
 	if err != nil {
 		return nil, false, fmt.Errorf("build request: %w", err)
 	}

@@ -1,4 +1,4 @@
-package ingestor
+package ingestor_test
 
 import (
 	"encoding/json"
@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/jonesrussell/north-cloud/infrastructure/logger"
+	"github.com/jonesrussell/north-cloud/rfp-ingestor/internal/ingestor"
 )
 
 func TestIngestor_RunOnce(t *testing.T) {
@@ -59,14 +60,14 @@ func TestIngestor_RunOnce(t *testing.T) {
 	}))
 	defer esServer.Close()
 
-	cfg := Config{
+	cfg := ingestor.Config{
 		FeedURL:  csvServer.URL,
 		ESURL:    esServer.URL,
 		ESIndex:  "test-rfp-index",
 		BulkSize: 100,
 	}
 
-	ing := NewIngestor(cfg, logger.NewNop())
+	ing := ingestor.NewIngestor(cfg, logger.NewNop())
 	result, err := ing.RunOnce(t.Context())
 	if err != nil {
 		t.Fatalf("RunOnce returned error: %v", err)
@@ -93,7 +94,7 @@ func TestIngestor_RunOnce_NotModified(t *testing.T) {
 	}))
 	defer csvServer.Close()
 
-	cfg := Config{
+	cfg := ingestor.Config{
 		FeedURL:  csvServer.URL,
 		ESURL:    "http://unused:9200",
 		ESIndex:  "test-rfp-index",
@@ -102,7 +103,7 @@ func TestIngestor_RunOnce_NotModified(t *testing.T) {
 
 	// Pre-seed the fetcher's lastModified so it sends If-Modified-Since and
 	// our server responds with 304.
-	ing := NewIngestor(cfg, logger.NewNop())
+	ing := ingestor.NewIngestor(cfg, logger.NewNop())
 
 	result, err := ing.RunOnce(t.Context())
 	if err != nil {

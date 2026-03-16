@@ -9,12 +9,16 @@ import (
 	"time"
 
 	infraconfig "github.com/jonesrussell/north-cloud/infrastructure/config"
+	infragin "github.com/jonesrussell/north-cloud/infrastructure/gin"
 	"github.com/jonesrussell/north-cloud/infrastructure/logger"
 	"github.com/jonesrussell/north-cloud/rfp-ingestor/internal/api"
 	"github.com/jonesrussell/north-cloud/rfp-ingestor/internal/config"
 	esindex "github.com/jonesrussell/north-cloud/rfp-ingestor/internal/elasticsearch"
 	"github.com/jonesrussell/north-cloud/rfp-ingestor/internal/ingestor"
 )
+
+// shutdownTimeout is the grace period for server shutdown.
+const shutdownTimeout = 5 * time.Second
 
 func main() {
 	os.Exit(run())
@@ -83,13 +87,7 @@ func runServer(cfg *config.Config, log logger.Logger) int {
 	for {
 		select {
 		case <-ctx.Done():
-			log.Info("Shutting down")
-			shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 5*time.Second)
-			defer shutdownCancel()
-			if err := server.Shutdown(shutdownCtx); err != nil {
-				log.Error("Server shutdown error", logger.Error(err))
-			}
-			return 0
+			return shutdown(server, log)
 		case err := <-errCh:
 			log.Error("Server error", logger.Error(err))
 			return 1
@@ -97,6 +95,17 @@ func runServer(cfg *config.Config, log logger.Logger) int {
 			runIngestion(ctx, ing, log, status)
 		}
 	}
+}
+
+// shutdown gracefully stops the HTTP server and returns the exit code.
+func shutdown(server *infragin.Server, log logger.Logger) int {
+	log.Info("Shutting down")
+	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), shutdownTimeout)
+	defer shutdownCancel()
+	if err := server.Shutdown(shutdownCtx); err != nil {
+		log.Error("Server shutdown error", logger.Error(err))
+	}
+	return 0
 }
 
 func runIngestion(ctx context.Context, ing *ingestor.Ingestor, log logger.Logger, status *api.Status) {

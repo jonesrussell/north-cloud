@@ -7,6 +7,7 @@ import (
 	"github.com/jonesrussell/north-cloud/social-publisher/internal/adapters/x"
 	"github.com/jonesrussell/north-cloud/social-publisher/internal/domain"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestXAdapter_Name(t *testing.T) {
@@ -32,7 +33,7 @@ func TestXAdapter_Transform_ShortPost(t *testing.T) {
 	}
 
 	post, err := adapter.Transform(msg)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Contains(t, post.Content, "Check out this new feature")
 	assert.Contains(t, post.Content, "https://example.com/post")
 	assert.LessOrEqual(t, len(post.Content), x.MaxTweetLength)
@@ -48,7 +49,7 @@ func TestXAdapter_Transform_LongPostCreatesThread(t *testing.T) {
 	}
 
 	post, err := adapter.Transform(msg)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.True(t, len(post.Thread) > 0 || len(post.Content) <= x.MaxTweetLength)
 }
 

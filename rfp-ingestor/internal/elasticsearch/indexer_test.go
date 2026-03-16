@@ -1,4 +1,4 @@
-package elasticsearch
+package elasticsearch_test
 
 import (
 	"context"
@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/jonesrussell/north-cloud/rfp-ingestor/internal/domain"
+	es "github.com/jonesrussell/north-cloud/rfp-ingestor/internal/elasticsearch"
 )
 
 func TestBulkIndex_SendsDocuments(t *testing.T) {
@@ -21,16 +22,16 @@ func TestBulkIndex_SendsDocuments(t *testing.T) {
 		case "/_bulk":
 			capturedContentType = r.Header.Get("Content-Type")
 
-			body, err := io.ReadAll(r.Body)
-			if err != nil {
-				t.Fatalf("read request body: %v", err)
+			body, readErr := io.ReadAll(r.Body)
+			if readErr != nil {
+				t.Fatalf("read request body: %v", readErr)
 			}
 			capturedBody = string(body)
 
 			// Respond with a successful bulk response for 1 item.
-			resp := bulkResponse{
+			resp := es.BulkResponseType{
 				Errors: false,
-				Items: []bulkResponseItem{
+				Items: []es.BulkResponseItemType{
 					{Index: struct {
 						Status int              `json:"status"`
 						Error  *json.RawMessage `json:"error,omitempty"`
@@ -47,7 +48,7 @@ func TestBulkIndex_SendsDocuments(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	indexer, err := NewIndexer(srv.URL, "test-index", 100)
+	indexer, err := es.NewIndexer(srv.URL, "test-index", 100)
 	if err != nil {
 		t.Fatalf("NewIndexer: %v", err)
 	}
@@ -89,9 +90,9 @@ func TestBulkIndex_SendsDocuments(t *testing.T) {
 	}
 
 	// Action line should contain the correct _id and _index.
-	var action bulkAction
-	if err := json.Unmarshal([]byte(lines[0]), &action); err != nil {
-		t.Fatalf("unmarshal action line: %v", err)
+	var action es.BulkAction
+	if unmarshalErr := json.Unmarshal([]byte(lines[0]), &action); unmarshalErr != nil {
+		t.Fatalf("unmarshal action line: %v", unmarshalErr)
 	}
 	if action.Index.ID != "doc-id-abc" {
 		t.Errorf("action _id: expected %q, got %q", "doc-id-abc", action.Index.ID)
@@ -102,8 +103,8 @@ func TestBulkIndex_SendsDocuments(t *testing.T) {
 
 	// Document line should contain the RFP document.
 	var parsedDoc domain.RFPDocument
-	if err := json.Unmarshal([]byte(lines[1]), &parsedDoc); err != nil {
-		t.Fatalf("unmarshal document line: %v", err)
+	if unmarshalErr := json.Unmarshal([]byte(lines[1]), &parsedDoc); unmarshalErr != nil {
+		t.Fatalf("unmarshal document line: %v", unmarshalErr)
 	}
 	if parsedDoc.Title != "Test RFP" {
 		t.Errorf("document title: expected %q, got %q", "Test RFP", parsedDoc.Title)
@@ -129,7 +130,7 @@ func TestNewIndexer_Validation(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := NewIndexer(tt.esURL, tt.indexName, tt.bulkSize)
+			_, err := es.NewIndexer(tt.esURL, tt.indexName, tt.bulkSize)
 			if err == nil {
 				t.Fatalf("expected error containing %q, got nil", tt.wantErr)
 			}
@@ -142,7 +143,7 @@ func TestNewIndexer_Validation(t *testing.T) {
 
 func TestBulkIndex_EmptyBatch(t *testing.T) {
 	// A bogus URL is fine here because no HTTP call should be made.
-	indexer, err := NewIndexer("http://bogus:9999", "test-index", 100)
+	indexer, err := es.NewIndexer("http://bogus:9999", "test-index", 100)
 	if err != nil {
 		t.Fatalf("NewIndexer: %v", err)
 	}

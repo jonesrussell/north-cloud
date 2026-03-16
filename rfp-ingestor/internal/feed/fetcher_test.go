@@ -1,4 +1,4 @@
-package feed
+package feed_test
 
 import (
 	"context"
@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/jonesrussell/north-cloud/rfp-ingestor/internal/feed"
 )
 
 func TestFetch_ReturnsBody(t *testing.T) {
@@ -15,8 +17,8 @@ func TestFetch_ReturnsBody(t *testing.T) {
 	)
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if ua := r.Header.Get("User-Agent"); ua != userAgent {
-			t.Errorf("User-Agent: expected %q, got %q", userAgent, ua)
+		if ua := r.Header.Get("User-Agent"); ua != feed.UserAgentForTest {
+			t.Errorf("User-Agent: expected %q, got %q", feed.UserAgentForTest, ua)
 		}
 
 		w.Header().Set("Last-Modified", lastModified)
@@ -25,7 +27,7 @@ func TestFetch_ReturnsBody(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	f := NewFetcher()
+	f := feed.NewFetcher()
 	body, modified, err := f.Fetch(context.Background(), srv.URL)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -62,7 +64,7 @@ func TestFetch_NotModified(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	f := NewFetcher()
+	f := feed.NewFetcher()
 
 	// First fetch: should return 200 with body.
 	body, modified, err := f.Fetch(context.Background(), srv.URL)
@@ -97,7 +99,7 @@ func TestFetch_HTTPError(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	f := NewFetcher()
+	f := feed.NewFetcher()
 	body, modified, err := f.Fetch(context.Background(), srv.URL)
 	if err == nil {
 		t.Fatal("expected error for 500 response")

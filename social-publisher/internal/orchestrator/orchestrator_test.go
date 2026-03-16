@@ -9,6 +9,7 @@ import (
 	"github.com/jonesrussell/north-cloud/social-publisher/internal/domain"
 	"github.com/jonesrussell/north-cloud/social-publisher/internal/orchestrator"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestOrchestrator_ProcessJob_Success(t *testing.T) {
@@ -25,7 +26,7 @@ func TestOrchestrator_ProcessJob_Success(t *testing.T) {
 	}
 
 	result, err := orch.ProcessJob(context.Background(), "test", msg)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotEmpty(t, result.PlatformID)
 	assert.Equal(t, 1, mock.PublishCount())
 }

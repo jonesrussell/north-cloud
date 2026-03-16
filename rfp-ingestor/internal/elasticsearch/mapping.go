@@ -1,5 +1,8 @@
 package elasticsearch
 
+// keywordIgnoreAbove is the max length for keyword fields before ES skips indexing.
+const keywordIgnoreAbove = 256
+
 // RFPIndexMapping returns the Elasticsearch index mapping for rfp_classified_content.
 // The index name matches the classifier's classified_content schema so the search API
 // wildcard query *_classified_content picks up these documents.
@@ -27,7 +30,7 @@ func RFPIndexMapping() map[string]any {
 					"fields": map[string]any{
 						"keyword": map[string]any{
 							"type":         "keyword",
-							"ignore_above": 256,
+							"ignore_above": keywordIgnoreAbove,
 						},
 					},
 				},
