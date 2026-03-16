@@ -26,7 +26,7 @@ func NewClient(moduleName, baseURL string, opts ...Option) *Client {
 	return &Client{
 		moduleName: moduleName,
 		baseURL:    baseURL,
-		httpClient: &http.Client{},
+		httpClient: &http.Client{Timeout: o.timeout},
 		opts:       o,
 		breaker:    newBreaker(o.breakerTrips, o.breakerCooldown),
 	}

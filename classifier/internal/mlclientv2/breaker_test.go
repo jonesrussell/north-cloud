@@ -139,7 +139,29 @@ func TestBreakerResetsOnSuccess(t *testing.T) {
 func TestBreakerHalfOpenAfterCooldown(t *testing.T) {
 	t.Parallel()
 
+	var callCount atomic.Int32
+	var succeedNext atomic.Bool
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		callCount.Add(1)
+
+		if succeedNext.Load() {
+			resp := mlclientv2.StandardResponse{
+				Module:        "test",
+				Version:       "v1",
+				SchemaVersion: "1.0",
+				Result:        json.RawMessage(`{}`),
+				RequestID:     "ok",
+			}
+			w.Header().Set("Content-Type", "application/json")
+
+			if err := json.NewEncoder(w).Encode(resp); err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+			}
+
+			return
+		}
+
 		w.WriteHeader(http.StatusServiceUnavailable)
 	}))
 	defer srv.Close()
@@ -152,16 +174,32 @@ func TestBreakerHalfOpenAfterCooldown(t *testing.T) {
 	// Trip the breaker.
 	_, _ = client.Classify(context.Background(), "a", "b")
 
-	// Should be open immediately.
+	// Should be open immediately — no network call made.
+	beforeCount := callCount.Load()
+
 	_, err := client.Classify(context.Background(), "a", "b")
 	if err == nil {
 		t.Fatal("breaker should be open immediately after trip")
 	}
 
+	if callCount.Load() != beforeCount {
+		t.Fatal("no network call should be made when breaker is open")
+	}
+
 	// Wait for cooldown then try again — breaker should allow a probe (half-open).
 	time.Sleep(60 * time.Millisecond)
 
-	// The call will fail (server still returns 503) but the breaker should have allowed it.
-	_, _ = client.Classify(context.Background(), "a", "b")
-	// If we got here without the "unavailable" error, the breaker transitioned to half-open.
+	// Switch server to succeed so the probe request closes the breaker.
+	succeedNext.Store(true)
+
+	_, err = client.Classify(context.Background(), "a", "b")
+	if err != nil {
+		t.Fatalf("breaker should allow probe in half-open state: %v", err)
+	}
+
+	// After a successful probe, the breaker should be closed — subsequent calls should succeed.
+	_, err = client.Classify(context.Background(), "a", "b")
+	if err != nil {
+		t.Fatalf("breaker should be closed after successful probe: %v", err)
+	}
 }
