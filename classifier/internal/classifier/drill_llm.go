@@ -59,6 +59,8 @@ func orchestrateDrillExtraction(
 
 // mergeDrillResults merges primary results with secondary, deduplicating by hole_id.
 // Primary results take precedence for matching hole IDs.
+// Results with empty HoleID (e.g. sub-intervals) are always included from both sets;
+// normalizeDrillResults handles final dedup using a composite hole_id+intercept+grade key.
 func mergeDrillResults(primary, secondary []domain.DrillResult) []domain.DrillResult {
 	seen := make(map[string]bool)
 	var merged []domain.DrillResult
