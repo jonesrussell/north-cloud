@@ -202,9 +202,9 @@ type RFPExtractionConfig struct {
 
 // DrillExtractionConfig holds drill results extraction settings.
 type DrillExtractionConfig struct {
-	Enabled          bool   `env:"DRILL_EXTRACTION_ENABLED"  yaml:"enabled"`
-	LLMFallback      bool   `env:"DRILL_LLM_FALLBACK"        yaml:"llm_fallback"`
-	AnthropicKey     string `env:"ANTHROPIC_API_KEY"          yaml:"anthropic_api_key"`
+	Enabled          bool   `env:"DRILL_EXTRACTION_ENABLED" yaml:"enabled"`
+	LLMFallback      bool   `env:"DRILL_LLM_FALLBACK"       yaml:"llm_fallback"`
+	AnthropicKey     string `env:"ANTHROPIC_API_KEY"        yaml:"anthropic_api_key"`
 	AnthropicModel   string `yaml:"anthropic_model"`
 	AnthropicBaseURL string `yaml:"anthropic_base_url"`
 	MaxBodyChars     int    `yaml:"max_body_chars"`

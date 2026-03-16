@@ -1,4 +1,4 @@
-package drillmlclient
+package drillmlclient //nolint:testpackage // tests need internal access
 
 import (
 	"encoding/json"
@@ -9,11 +9,11 @@ import (
 
 func TestClient_Extract_Success(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Header.Get("x-api-key") != "test-key" {
+		if r.Header.Get("X-Api-Key") != "test-key" {
 			t.Error("missing or wrong API key")
 		}
-		if r.Header.Get("anthropic-version") == "" {
-			t.Error("missing anthropic-version header")
+		if r.Header.Get("Anthropic-Version") == "" {
+			t.Error("missing Anthropic-Version header")
 		}
 
 		resp := map[string]any{

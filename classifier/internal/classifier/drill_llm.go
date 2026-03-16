@@ -4,6 +4,13 @@ import (
 	"github.com/jonesrussell/north-cloud/classifier/internal/domain"
 )
 
+// Extraction method identifiers.
+const (
+	extractionMethodRegex  = "regex"
+	extractionMethodHybrid = "hybrid"
+	extractionMethodLLM    = "llm"
+)
+
 // DrillExtractor is the interface for LLM-based drill extraction.
 type DrillExtractor interface {
 	Extract(body string) ([]domain.DrillResult, error)
@@ -18,29 +25,29 @@ func orchestrateDrillExtraction(
 	drillKeywordMatched bool,
 	llmFallbackEnabled bool,
 	llmClient DrillExtractor,
-) ([]domain.DrillResult, string) {
+) (results []domain.DrillResult, method string) {
 	// Stage 1: Regex extraction
 	regexResults, confidence := extractDrillRegex(body)
 
 	switch confidence {
 	case drillConfidenceComplete:
 		// Regex got complete results — no LLM needed
-		return normalizeDrillResults(regexResults), "regex"
+		return normalizeDrillResults(regexResults), extractionMethodRegex
 
 	case drillConfidencePartial:
 		if !llmFallbackEnabled || llmClient == nil {
 			// Return what regex found
-			return normalizeDrillResults(regexResults), "regex"
+			return normalizeDrillResults(regexResults), extractionMethodRegex
 		}
 		// Try LLM to fill in gaps
 		llmResults, err := llmClient.Extract(body)
 		if err != nil || len(llmResults) == 0 {
 			// LLM failed — fall back to regex results
-			return normalizeDrillResults(regexResults), "regex"
+			return normalizeDrillResults(regexResults), extractionMethodRegex
 		}
 		// Merge: LLM results take precedence, then add unique regex results
 		merged := mergeDrillResults(llmResults, regexResults)
-		return normalizeDrillResults(merged), "hybrid"
+		return normalizeDrillResults(merged), extractionMethodHybrid
 
 	case drillConfidenceNone:
 		if !drillKeywordMatched || !llmFallbackEnabled || llmClient == nil {
@@ -51,7 +58,7 @@ func orchestrateDrillExtraction(
 		if err != nil || len(llmResults) == 0 {
 			return nil, ""
 		}
-		return normalizeDrillResults(llmResults), "llm"
+		return normalizeDrillResults(llmResults), extractionMethodLLM
 	}
 
 	return nil, ""
