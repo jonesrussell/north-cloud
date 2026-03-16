@@ -8,15 +8,17 @@ import (
 	"io"
 	"net/http"
 	"time"
+	"unicode/utf8"
 
 	"github.com/jonesrussell/north-cloud/classifier/internal/domain"
 )
 
 const (
-	anthropicVersion = "2023-06-01"
-	defaultTimeout   = 30 * time.Second
-	maxTokens        = 1024
-	systemPrompt     = `Extract drill results from this mining article. Return ONLY a JSON array.
+	anthropicVersion  = "2023-06-01"
+	defaultTimeout    = 30 * time.Second
+	maxTokens         = 1024
+	maxErrorBodyBytes = 500
+	systemPrompt      = `Extract drill results from this mining article. Return ONLY a JSON array.
 Each result must have: hole_id, commodity, intercept_m (float, meters), grade (float), unit (one of: g/t, %, ppm, oz/t).
 
 Normalize commodities to: gold, silver, copper, nickel, zinc, lithium, uranium, iron-ore, rare-earths, lead, cobalt, tin, platinum, palladium.
@@ -101,9 +103,9 @@ func (c *Client) Extract(body string) ([]domain.DrillResult, error) {
 func (c *Client) ExtractWithMetrics(body string) (*ExtractResult, error) {
 	start := time.Now()
 
-	// Truncate body if needed
-	if c.maxBodyChars > 0 && len(body) > c.maxBodyChars {
-		body = body[:c.maxBodyChars]
+	// Truncate body if needed (rune-aware to avoid splitting multi-byte characters)
+	if c.maxBodyChars > 0 && utf8.RuneCountInString(body) > c.maxBodyChars {
+		body = string([]rune(body)[:c.maxBodyChars])
 	}
 
 	reqBody := messagesRequest{
@@ -139,6 +141,9 @@ func (c *Client) ExtractWithMetrics(body string) (*ExtractResult, error) {
 
 	if resp.StatusCode != http.StatusOK {
 		respBody, _ := io.ReadAll(resp.Body)
+		if len(respBody) > maxErrorBodyBytes {
+			respBody = respBody[:maxErrorBodyBytes]
+		}
 		return nil, fmt.Errorf("anthropic API error (status %d): %s", resp.StatusCode, string(respBody))
 	}
 
