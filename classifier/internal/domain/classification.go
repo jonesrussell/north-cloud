@@ -92,6 +92,15 @@ type EntertainmentResult struct {
 	ProcessingTimeMs int64   `json:"processing_time_ms,omitempty"`
 }
 
+// DrillResult holds a single extracted drill result from a mining article.
+type DrillResult struct {
+	HoleID     string  `json:"hole_id"`
+	Commodity  string  `json:"commodity"`
+	InterceptM float64 `json:"intercept_m"`
+	Grade      float64 `json:"grade"`
+	Unit       string  `json:"unit"`
+}
+
 // MiningResult holds Mining hybrid classification results.
 type MiningResult struct {
 	Relevance       string   `json:"relevance"`
@@ -108,6 +117,10 @@ type MiningResult struct {
 	MLConfidenceRaw  float64 `json:"ml_confidence_raw,omitempty"`
 	RuleTriggered    string  `json:"rule_triggered,omitempty"`
 	ProcessingTimeMs int64   `json:"processing_time_ms,omitempty"`
+
+	// Drill results extraction
+	DrillResults     []DrillResult `json:"drill_results,omitempty"`
+	ExtractionMethod string        `json:"extraction_method,omitempty"` // "regex", "llm", "hybrid", ""
 }
 
 // CoforgeResult holds Coforge hybrid classification results.
