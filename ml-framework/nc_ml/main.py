@@ -7,6 +7,7 @@ and creates the FastAPI app.
 import importlib
 import os
 import sys
+import warnings
 
 from nc_ml.app import create_app
 
@@ -47,6 +48,11 @@ def get_app():
 # so MODULE_NAME must be set before import
 try:
     app = get_app()
-except (RuntimeError, ModuleNotFoundError):
-    # Allow import without MODULE_NAME for testing
-    pass
+except (RuntimeError, ModuleNotFoundError) as exc:
+    if os.environ.get("MODULE_NAME"):  # noqa: SIM112
+        warnings.warn(
+            f"Failed to load module '{os.environ.get('MODULE_NAME')}': {exc}",  # noqa: SIM112
+            RuntimeWarning,
+            stacklevel=1,
+        )
+    # Allow import without MODULE_NAME for testing/import scenarios

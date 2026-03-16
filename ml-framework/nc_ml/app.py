@@ -10,6 +10,7 @@ from starlette.responses import Response
 from nc_ml.health import aggregate_health_status
 from nc_ml.logging import configure_logging, get_logger
 from nc_ml.metrics import (
+    errors_total,
     request_duration_seconds,
     requests_total,
     set_health,
@@ -58,17 +59,22 @@ def create_app(module: BaseModule) -> FastAPI:
         request_id = getattr(request.state, "request_id", "unknown")
         start = time.perf_counter()
 
-        if isinstance(module, ClassifierModule):
-            result = await module.classify(body)
-            relevance: float | None = result.relevance
-            confidence: float | None = result.confidence
-        elif isinstance(module, ExtractorModule):
-            result = await module.extract(body)
-            relevance = None
-            confidence = None
-        else:
-            msg = f"Module {module_name} does not support classify or extract"
-            raise TypeError(msg)
+        try:
+            if isinstance(module, ClassifierModule):
+                result = await module.classify(body)
+                relevance: float | None = result.relevance
+                confidence: float | None = result.confidence
+            elif isinstance(module, ExtractorModule):
+                result = await module.extract(body)
+                relevance = None
+                confidence = None
+            else:
+                msg = f"Module {module_name} does not support classify or extract"
+                raise TypeError(msg)
+        except Exception:
+            errors_total.labels(module=module_name, error_code="prediction_error").inc()
+            requests_total.labels(module=module_name, status="error").inc()
+            raise
 
         elapsed_ms = (time.perf_counter() - start) * 1000
         request_duration_seconds.labels(module=module_name).observe(elapsed_ms / 1000)
