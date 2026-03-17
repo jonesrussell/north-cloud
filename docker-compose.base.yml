@@ -437,7 +437,7 @@ services:
         limits:
           memory: 256M
     ports:
-      - "${INDIGENOUS_ML_PORT:-8080}:8080"
+      - "${INDIGENOUS_ML_PORT:-8081}:8080"
 
   # ------------------------------------------------------------
   # HTTP Replay Proxy (nc-http-proxy)

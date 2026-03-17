@@ -282,6 +282,7 @@ services:
   crime-ml:
     <<: *prod-defaults
     image: docker.io/jonesrussell/crime-ml:latest
+    ports: []  # No external ports in prod — classifier reaches via Docker network
     healthcheck:
       test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://127.0.0.1:8080/v1/health || exit 1"]
       interval: 30s
@@ -295,6 +296,7 @@ services:
   mining-ml:
     <<: *prod-defaults
     image: docker.io/jonesrussell/mining-ml:latest
+    ports: []
     healthcheck:
       test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://127.0.0.1:8080/v1/health || exit 1"]
       interval: 30s
@@ -308,6 +310,7 @@ services:
   coforge-ml:
     <<: *prod-defaults
     image: docker.io/jonesrussell/coforge-ml:latest
+    ports: []
     healthcheck:
       test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://127.0.0.1:8080/v1/health || exit 1"]
       interval: 30s
@@ -321,6 +324,7 @@ services:
   entertainment-ml:
     <<: *prod-defaults
     image: docker.io/jonesrussell/entertainment-ml:latest
+    ports: []
     healthcheck:
       test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://127.0.0.1:8080/v1/health || exit 1"]
       interval: 30s
@@ -334,6 +338,7 @@ services:
   indigenous-ml:
     <<: *prod-defaults
     image: docker.io/jonesrussell/indigenous-ml:latest
+    ports: []
     healthcheck:
       test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://127.0.0.1:8080/v1/health || exit 1"]
       interval: 30s
