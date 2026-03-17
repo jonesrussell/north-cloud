@@ -9,7 +9,6 @@ import (
 // crimeRuleBodyPrefixLen is the number of body characters used for rule matching.
 // Crime signals in the body (e.g. "arrested after armed robbery") can upgrade
 // relevance when the title is vague.
-const crimeRuleBodyPrefixLen = 500
 
 // Constants for relevance classifications.
 const (
@@ -140,16 +139,19 @@ var justicePattern = regexp.MustCompile(
 	`(?i)(charged|arrest|sentenced|trial|convicts?\b|convicted|found guilty|pleaded guilty|prison term)`,
 )
 
-// truncateBody returns up to the first n runes of body for rule matching.
-func truncateBody(body string, n int) string {
-	if n <= 0 || body == "" {
+// truncateBodyMaxChars is the number of body characters used for rule matching.
+const truncateBodyMaxChars = 500
+
+// truncateBody returns up to the first truncateBodyMaxChars runes of body for rule matching.
+func truncateBody(body string) string {
+	if body == "" {
 		return ""
 	}
 	runes := []rune(body)
-	if len(runes) <= n {
+	if len(runes) <= truncateBodyMaxChars {
 		return body
 	}
-	return string(runes[:n])
+	return string(runes[:truncateBodyMaxChars])
 }
 
 // classifyByRules applies rule-based classification.
@@ -162,7 +164,7 @@ func classifyByRules(title, body string) *ruleResult {
 		return &ruleResult{relevance: relevanceNotCrime, confidence: confidenceExclusion}
 	}
 
-	text := title + " " + truncateBody(body, crimeRuleBodyPrefixLen)
+	text := title + " " + truncateBody(body)
 
 	result := &ruleResult{
 		relevance:  relevanceNotCrime,

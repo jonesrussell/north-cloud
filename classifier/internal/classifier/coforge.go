@@ -10,8 +10,6 @@ import (
 	infralogger "github.com/jonesrussell/north-cloud/infrastructure/logger"
 )
 
-const coforgeMaxBodyChars = 500
-
 // coforgeMLResponse holds domain-specific fields from the coforge ML sidecar result.
 type coforgeMLResponse struct {
 	Audience           string             `json:"audience"`
@@ -54,8 +52,6 @@ func NewCoforgeClassifier(
 
 // Classify performs hybrid coforge classification on raw content.
 // Returns (nil, nil) when classification is disabled.
-//
-//nolint:dupl // Classify methods follow the same pattern across all domain classifiers by design
 func (s *CoforgeClassifier) Classify(
 	ctx context.Context, raw *domain.RawContent,
 ) (*domain.CoforgeResult, error) {
@@ -75,7 +71,7 @@ func (s *CoforgeClassifier) callCoforgeML(ctx context.Context, raw *domain.RawCo
 	if s.mlClient == nil {
 		return nil
 	}
-	body := truncateBody(raw.RawText, coforgeMaxBodyChars)
+	body := truncateBody(raw.RawText)
 	resp, err := s.mlClient.Classify(ctx, raw.Title, body)
 	if err != nil {
 		s.logger.Warn("Coforge ML classification failed, using rules only",

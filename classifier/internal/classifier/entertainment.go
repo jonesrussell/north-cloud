@@ -10,8 +10,6 @@ import (
 	infralogger "github.com/jonesrussell/north-cloud/infrastructure/logger"
 )
 
-const entertainmentMaxBodyChars = 500
-
 // entertainmentMLResponse holds domain-specific fields from the entertainment ML sidecar result.
 type entertainmentMLResponse struct {
 	Categories []string `json:"categories"`
@@ -67,7 +65,7 @@ func (s *EntertainmentClassifier) callEntertainmentML(
 	if s.mlClient == nil {
 		return nil
 	}
-	body := truncateBody(raw.RawText, entertainmentMaxBodyChars)
+	body := truncateBody(raw.RawText)
 	resp, err := s.mlClient.Classify(ctx, raw.Title, body)
 	if err != nil {
 		s.logger.Warn("Entertainment ML classification failed, using rules only",

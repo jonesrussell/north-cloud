@@ -106,7 +106,7 @@ func (s *CrimeClassifier) callCrimeML(ctx context.Context, raw *domain.RawConten
 	if s.mlClient == nil {
 		return nil
 	}
-	body := truncateBody(raw.RawText, maxBodyChars)
+	body := truncateBody(raw.RawText)
 	resp, err := s.mlClient.Classify(ctx, raw.Title, body)
 	if err != nil {
 		s.logger.Warn("ML classification failed, using rules only",

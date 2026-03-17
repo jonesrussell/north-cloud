@@ -10,8 +10,6 @@ import (
 	infralogger "github.com/jonesrussell/north-cloud/infrastructure/logger"
 )
 
-const miningMaxBodyChars = 500
-
 // miningMLResponse holds domain-specific fields from the mining ML sidecar result.
 type miningMLResponse struct {
 	MiningStage           string             `json:"mining_stage"`
@@ -77,7 +75,7 @@ func (s *MiningClassifier) callMiningML(ctx context.Context, raw *domain.RawCont
 	if s.mlClient == nil {
 		return nil
 	}
-	body := truncateBody(raw.RawText, miningMaxBodyChars)
+	body := truncateBody(raw.RawText)
 	resp, err := s.mlClient.Classify(ctx, raw.Title, body)
 	if err != nil {
 		s.logger.Warn("Mining ML classification failed, using rules only",

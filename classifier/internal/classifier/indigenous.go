@@ -10,8 +10,6 @@ import (
 	infralogger "github.com/jonesrussell/north-cloud/infrastructure/logger"
 )
 
-const indigenousMaxBodyChars = 500
-
 // indigenousMLResponse holds domain-specific fields from the indigenous ML sidecar result.
 type indigenousMLResponse struct {
 	Categories []string `json:"categories"`
@@ -74,7 +72,7 @@ func (s *IndigenousClassifier) callIndigenousML(
 	if s.mlClient == nil {
 		return nil
 	}
-	body := truncateBody(raw.RawText, indigenousMaxBodyChars)
+	body := truncateBody(raw.RawText)
 	resp, err := s.mlClient.Classify(ctx, raw.Title, body)
 	if err != nil {
 		s.logger.Warn("Indigenous ML classification failed, using rules only",
