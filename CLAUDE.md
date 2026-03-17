@@ -68,7 +68,7 @@ Sources → [Crawler] → ES raw_content → [Classifier + ML Sidecars] → ES c
 
 **Modify ES mappings**: Update `classifier/internal/elasticsearch/mappings/` → reindex affected indices via index-manager → verify with search queries. **Note**: `content_type` must be `text` type (not `keyword`) — search service queries `content_type.keyword` sub-field which only exists on `text` fields
 
-**Add a migration**: Create up/down SQL in `{service}/internal/database/migrations/` → run `task migrate:SERVICE` → test with `task test:SERVICE`
+**Add a migration**: Create up/down SQL in `{service}/internal/database/migrations/` → run `task migrate:SERVICE` → test with `task test:SERVICE`. **Check for duplicate prefixes**: `ls {service}/migrations/ | cut -d_ -f1 | sort | uniq -d` — golang-migrate crashes on duplicates.
 
 ---
 
@@ -83,6 +83,8 @@ Sources → [Crawler] → ES raw_content → [Classifier + ML Sidecars] → ES c
 **Taskfile (Preferred)**: `task lint`, `task test`, `task test:cover` (all services). Per-service: `task lint:SERVICE`, `task test:SERVICE`. Migrations: `task migrate:up`, `task migrate:SERVICE`. Tools: `task install:tools`. Use `task lint:force` before pushing (cache-clean, matches CI). Changed-only: `task lint:changed`, `task ci:changed`.
 
 **Go Workspace**: `GOWORK=off` per service. `go.work` is IDE-only. After dep changes: `task vendor`.
+
+**Worktree CI**: `task ci` fails in worktrees (missing Node deps for dashboard). Use `task ci:changed` for Go-only work.
 
 ---
 
@@ -172,6 +174,7 @@ See `ARCHITECTURE.md` for the full bootstrap pattern reference.
 - To deploy manually: push to main → CI runs tests → deploy workflow triggers automatically
 - **Nginx uses `--force-recreate`** — volume-mounted config changes aren't detected by `up -d`
 - **Force deploy**: `gh workflow run deploy.yml -f force_rebuild_all=true` to rebuild all services
+- **Rsync does NOT delete renamed/removed files** — old files persist on server. If renaming migrations or removing files, manually delete old versions via SSH (#387)
 
 ---
 
