@@ -111,7 +111,16 @@ auth:8040 | source-manager:8050 | crawler:8080 | publisher:8070 | classifier:807
 - Lines under 150 chars | No variable shadowing (use `unmarshalErr`, `marshalErr`, etc.)
 - **No `os.Getenv`** — use `infrastructure/config` (`forbidigo` enforced; exception: `cmd/`, `infrastructure/config/`)
 
-**Before committing**: `cd SERVICE && golangci-lint run`
+**Before committing**: `cd SERVICE && golangci-lint run` (or rely on lefthook pre-commit hook)
+
+### Git Hooks (lefthook)
+
+Pre-commit hooks run automatically via [lefthook](https://github.com/evilmartians/lefthook). Config: `lefthook.yml`.
+
+- **pre-commit**: `go-fmt` (auto-fix), `go-lint` (golangci-lint), `dashboard-lint` — only changed services
+- **pre-push**: `go-test` — only changed services
+- **Install**: `go install github.com/evilmartians/lefthook@latest && lefthook install`
+- **Skip (emergency)**: `git commit --no-verify`
 
 ---
 
