@@ -61,6 +61,12 @@ Sources → [Crawler] → ES raw_content → [Classifier + ML Sidecars] → ES c
 ## Common Operations
 
 **Add a new source**: Add via source-manager API → crawler picks up on next schedule → raw content indexed → classifier processes → publisher routes
+- JWT required: `POST http://auth:8040/api/v1/auth/login` (creds from AUTH_USERNAME/AUTH_PASSWORD env vars) → use token as `Authorization: Bearer`
+- Create: `POST /api/v1/sources` with `{name, url, type, enabled, render_mode, rate_limit, max_depth}`
+- Search: `GET /api/v1/sources?search=keyword` (searches name/url)
+- Pagination: 100/page, use `?page=N` — response has no total count
+- Source types: `news` (default), `mining`, `indigenous`, `government`, `community`
+- 409 Conflict on duplicate name
 
 **Add a new ML sidecar**: Create `ml-sidecars/{name}-ml/` with Flask app → add `{name}mlclient` in classifier → add env flag `{NAME}_ENABLED` → add routing layer in publisher → update docker-compose
 
@@ -69,6 +75,8 @@ Sources → [Crawler] → ES raw_content → [Classifier + ML Sidecars] → ES c
 **Modify ES mappings**: Update `classifier/internal/elasticsearch/mappings/` → reindex affected indices via index-manager → verify with search queries. **Note**: `content_type` must be `text` type (not `keyword`) — search service queries `content_type.keyword` sub-field which only exists on `text` fields
 
 **Add a migration**: Create up/down SQL in `{service}/internal/database/migrations/` → run `task migrate:SERVICE` → test with `task test:SERVICE`. **Check for duplicate prefixes**: `ls {service}/migrations/ | cut -d_ -f1 | sort | uniq -d` — golang-migrate crashes on duplicates.
+
+**Drill extraction** (classifier): Disabled by default. Enable with `DRILL_EXTRACTION_ENABLED=true`. LLM fallback needs `ANTHROPIC_API_KEY`; regex-only works without it. Config struct: `DrillExtractionConfig` in `classifier/internal/config/config.go`.
 
 ---
 
