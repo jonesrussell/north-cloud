@@ -339,68 +339,73 @@ if [ "${MIGRATIONS_CHANGED:-true}" == "true" ] || [ -z "$SERVICES_TO_UPDATE" ]; 
     sleep 1
   done
 
-  MIGRATION_PIDS=()
+  # Track migration PIDs mapped to service names so we can identify failures
+  declare -A MIGRATION_PID_MAP
+  MIGRATION_FAILED_SERVICES=""
 
   if [ -n "${POSTGRES_SOURCE_MANAGER_USER:-}" ] && [ -n "${POSTGRES_SOURCE_MANAGER_PASSWORD:-}" ]; then
     run_migration "source-manager" "postgres-source-manager" "5432" \
       "$POSTGRES_SOURCE_MANAGER_USER" "$POSTGRES_SOURCE_MANAGER_PASSWORD" \
       "${POSTGRES_SOURCE_MANAGER_DB:-source_manager}" "source-manager/migrations" &
-    MIGRATION_PIDS+=($!)
+    MIGRATION_PID_MAP[$!]="source-manager"
   fi
 
   if [ -n "${POSTGRES_CRAWLER_USER:-}" ] && [ -n "${POSTGRES_CRAWLER_PASSWORD:-}" ]; then
     run_migration "crawler" "postgres-crawler" "5432" \
       "$POSTGRES_CRAWLER_USER" "$POSTGRES_CRAWLER_PASSWORD" \
       "${POSTGRES_CRAWLER_DB:-crawler}" "crawler/migrations" &
-    MIGRATION_PIDS+=($!)
+    MIGRATION_PID_MAP[$!]="crawler"
   fi
 
   if [ -n "${POSTGRES_CLASSIFIER_USER:-}" ] && [ -n "${POSTGRES_CLASSIFIER_PASSWORD:-}" ]; then
     run_migration "classifier" "postgres-classifier" "5432" \
       "$POSTGRES_CLASSIFIER_USER" "$POSTGRES_CLASSIFIER_PASSWORD" \
       "${POSTGRES_CLASSIFIER_DB:-classifier}" "classifier/migrations" &
-    MIGRATION_PIDS+=($!)
+    MIGRATION_PID_MAP[$!]="classifier"
   fi
 
   if [ -n "${POSTGRES_PUBLISHER_USER:-}" ] && [ -n "${POSTGRES_PUBLISHER_PASSWORD:-}" ]; then
     run_migration "publisher" "postgres-publisher" "5432" \
       "$POSTGRES_PUBLISHER_USER" "$POSTGRES_PUBLISHER_PASSWORD" \
       "${POSTGRES_PUBLISHER_DB:-publisher}" "publisher/migrations" &
-    MIGRATION_PIDS+=($!)
+    MIGRATION_PID_MAP[$!]="publisher"
   fi
 
   if [ -n "${POSTGRES_INDEX_MANAGER_USER:-}" ] && [ -n "${POSTGRES_INDEX_MANAGER_PASSWORD:-}" ]; then
     run_migration "index-manager" "postgres-index-manager" "5432" \
       "$POSTGRES_INDEX_MANAGER_USER" "$POSTGRES_INDEX_MANAGER_PASSWORD" \
       "${POSTGRES_INDEX_MANAGER_DB:-index_manager}" "index-manager/migrations" &
-    MIGRATION_PIDS+=($!)
+    MIGRATION_PID_MAP[$!]="index-manager"
   fi
 
   if [ -n "${POSTGRES_PIPELINE_USER:-}" ] && [ -n "${POSTGRES_PIPELINE_PASSWORD:-}" ]; then
     run_migration "pipeline" "postgres-pipeline" "5432" \
       "$POSTGRES_PIPELINE_USER" "$POSTGRES_PIPELINE_PASSWORD" \
       "${POSTGRES_PIPELINE_DB:-pipeline}" "pipeline/migrations" &
-    MIGRATION_PIDS+=($!)
+    MIGRATION_PID_MAP[$!]="pipeline"
   fi
 
-  MIGRATION_FAILED=false
-  for pid in "${MIGRATION_PIDS[@]}"; do
+  for pid in "${!MIGRATION_PID_MAP[@]}"; do
     if ! wait "$pid"; then
-      MIGRATION_FAILED=true
+      MIGRATION_FAILED_SERVICES="$MIGRATION_FAILED_SERVICES ${MIGRATION_PID_MAP[$pid]}"
     fi
   done
 
-  if [ "$MIGRATION_FAILED" == "true" ]; then
-    echo -e "${RED}ERROR: One or more migrations failed${NC}" >&2
-    exit 1
+  if [ -n "$MIGRATION_FAILED_SERVICES" ]; then
+    echo -e "${RED}WARNING: Migrations failed for:$MIGRATION_FAILED_SERVICES${NC}" >&2
+    echo -e "${YELLOW}These services will be excluded from restart. Other services will continue.${NC}"
+    echo ""
+  else
+    echo -e "${GREEN}✓ All migrations completed${NC}"
   fi
-
-  echo -e "${GREEN}✓ All migrations completed${NC}"
   echo ""
 else
   echo -e "${YELLOW}Step 2: Skipping migrations (no migration changes detected)${NC}"
   echo ""
 fi
+
+# Ensure variables are set even when migrations were skipped
+MIGRATION_FAILED_SERVICES="${MIGRATION_FAILED_SERVICES:-}"
 
 # ============================================================
 # Step 3: Restart services (with retry for transient failures)
@@ -433,10 +438,23 @@ restart_with_retry() {
   return 1
 }
 
-if [ -n "$SERVICES_TO_UPDATE" ]; then
-  echo "Restarting: $SERVICES_TO_UPDATE"
-  restart_with_retry "$SERVICES_TO_UPDATE" || exit 1
-else
+# Filter out services whose migrations failed
+RESTART_SERVICES="$SERVICES_TO_UPDATE"
+if [ -n "${MIGRATION_FAILED_SERVICES:-}" ] && [ -n "$RESTART_SERVICES" ]; then
+  for failed_svc in $MIGRATION_FAILED_SERVICES; do
+    RESTART_SERVICES=$(echo "$RESTART_SERVICES" | sed "s/\b${failed_svc}\b//g" | xargs)
+  done
+  if [ -z "$RESTART_SERVICES" ]; then
+    echo -e "${RED}All services had migration failures — nothing to restart${NC}" >&2
+    exit 1
+  fi
+  echo -e "${YELLOW}Excluding migration-failed services:$MIGRATION_FAILED_SERVICES${NC}"
+fi
+
+if [ -n "$RESTART_SERVICES" ]; then
+  echo "Restarting: $RESTART_SERVICES"
+  restart_with_retry "$RESTART_SERVICES" || exit 1
+elif [ -z "${MIGRATION_FAILED_SERVICES:-}" ]; then
   restart_with_retry "" || exit 1
 fi
 echo -e "${GREEN}✓ Services restarted${NC}"
@@ -502,11 +520,13 @@ check_health() {
   return 1
 }
 
-# Determine which services to check
-if [ -n "$SERVICES_TO_UPDATE" ]; then
-  SERVICES_TO_CHECK="$SERVICES_TO_UPDATE"
-else
+# Determine which services to check (exclude migration-failed services)
+if [ -n "$RESTART_SERVICES" ]; then
+  SERVICES_TO_CHECK="$RESTART_SERVICES"
+elif [ -z "$SERVICES_TO_UPDATE" ] && [ -z "${MIGRATION_FAILED_SERVICES:-}" ]; then
   SERVICES_TO_CHECK="auth crawler source-manager classifier publisher index-manager pipeline search-service"
+else
+  SERVICES_TO_CHECK="$SERVICES_TO_UPDATE"
 fi
 
 FAILED_CHECKS=0
@@ -573,13 +593,20 @@ echo ""
 echo -e "${GREEN}=== Deployment Summary ===${NC}"
 echo "Completed at $(date -u +"%Y-%m-%d %H:%M:%S UTC")"
 if [ -n "$SERVICES_TO_UPDATE" ]; then
-  echo "Updated services: $SERVICES_TO_UPDATE"
+  echo "Updated services: $RESTART_SERVICES"
 else
   echo "Updated services: all"
+fi
+if [ -n "${MIGRATION_FAILED_SERVICES:-}" ]; then
+  echo -e "${RED}Migration-failed services (not restarted):$MIGRATION_FAILED_SERVICES${NC}"
 fi
 echo ""
 echo "Services status:"
 # Use head -25 to avoid SIGPIPE when many containers (head -20 + pipefail causes script exit)
 $COMPOSE_CMD ps --format "table {{.Name}}\t{{.Status}}\t{{.Ports}}" 2>/dev/null | head -25 || true
 echo ""
+if [ -n "${MIGRATION_FAILED_SERVICES:-}" ]; then
+  echo -e "${YELLOW}Deployment partially completed (migration failures for:$MIGRATION_FAILED_SERVICES)${NC}"
+  exit 1
+fi
 echo -e "${GREEN}Deployment completed!${NC}"
