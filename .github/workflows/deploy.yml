@@ -188,6 +188,8 @@ jobs:
 
           ssh -p "${SSH_PORT}" "${DEPLOY_USER}@${DEPLOY_HOST}" '
             cd /opt/north-cloud
+            # Remove stale migration files before extracting (tar only adds, never deletes)
+            find . -path "*/migrations/*.sql" -delete 2>/dev/null || true
             tar -xzf /tmp/deploy-files.tar.gz
             rm /tmp/deploy-files.tar.gz
             chmod +x scripts/deploy.sh 2>/dev/null || chmod +x deploy.sh 2>/dev/null || true

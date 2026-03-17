@@ -22,6 +22,7 @@ type circuitBreaker struct {
 	maxFailures int
 	cooldown    time.Duration
 	openedAt    time.Time
+	probing     bool // true when a half-open probe request is in flight
 }
 
 // newBreaker creates a circuit breaker that opens after maxFailures consecutive failures
@@ -45,10 +46,15 @@ func (b *circuitBreaker) allow() bool {
 	case breakerOpen:
 		if time.Since(b.openedAt) >= b.cooldown {
 			b.state = breakerHalfOpen
+			b.probing = true
 			return true
 		}
 		return false
 	case breakerHalfOpen:
+		if b.probing {
+			return false
+		}
+		b.probing = true
 		return true
 	default:
 		return false
@@ -62,6 +68,7 @@ func (b *circuitBreaker) recordSuccess() {
 
 	b.state = breakerClosed
 	b.failures = 0
+	b.probing = false
 }
 
 // recordFailure increments the failure count and opens the breaker when the threshold is reached.
@@ -69,6 +76,7 @@ func (b *circuitBreaker) recordFailure() {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 
+	b.probing = false
 	b.failures++
 	if b.failures >= b.maxFailures {
 		b.state = breakerOpen

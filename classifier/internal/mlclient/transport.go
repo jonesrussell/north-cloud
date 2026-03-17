@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"math/rand/v2"
@@ -34,6 +35,9 @@ func (c *Client) doPost(ctx context.Context, path string, body any) (respBytes [
 			select {
 			case <-ctx.Done():
 				timer.Stop()
+				if errors.Is(ctx.Err(), context.DeadlineExceeded) {
+					return nil, 0, fmt.Errorf("request cancelled during retry: %w: %w", ErrTimeout, ctx.Err())
+				}
 				return nil, 0, fmt.Errorf("request cancelled during retry: %w", ctx.Err())
 			case <-timer.C:
 			}
@@ -79,6 +83,9 @@ func (c *Client) doSinglePost(ctx context.Context, path string, body any) (respB
 
 	resp, doErr := c.httpClient.Do(httpReq)
 	if doErr != nil {
+		if errors.Is(doErr, context.DeadlineExceeded) {
+			return nil, 0, fmt.Errorf("http request: %w: %w", ErrTimeout, doErr)
+		}
 		return nil, 0, fmt.Errorf("http request: %w", doErr)
 	}
 	defer func() { _ = resp.Body.Close() }()

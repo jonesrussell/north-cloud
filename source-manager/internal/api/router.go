@@ -173,6 +173,7 @@ func setupServiceRoutes(
 	// Sources endpoints (protected - requires JWT)
 	sources := v1.Group("/sources")
 	sources.POST("", sourceHandler.Create)
+	sources.POST("/batch", sourceHandler.BatchCreate)
 	sources.POST("/fetch-metadata", sourceHandler.FetchMetadata)
 	sources.POST("/test-crawl", sourceHandler.TestCrawl)
 	sources.POST("/import-excel", sourceHandler.ImportExcel)

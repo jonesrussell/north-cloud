@@ -12,11 +12,12 @@ const (
 
 // clientOptions holds configuration for a Client.
 type clientOptions struct {
-	timeout         time.Duration
-	retryCount      int
-	retryBaseDelay  time.Duration
-	breakerTrips    int
-	breakerCooldown time.Duration
+	timeout               time.Duration
+	retryCount            int
+	retryBaseDelay        time.Duration
+	breakerTrips          int
+	breakerCooldown       time.Duration
+	expectedSchemaVersion string
 }
 
 func defaultOptions() clientOptions {
@@ -52,5 +53,13 @@ func WithCircuitBreaker(trips int, cooldown time.Duration) Option {
 	return func(o *clientOptions) {
 		o.breakerTrips = trips
 		o.breakerCooldown = cooldown
+	}
+}
+
+// WithExpectedSchemaVersion sets the expected schema version.
+// If set, Classify returns ErrSchemaVersion when the response version does not match.
+func WithExpectedSchemaVersion(v string) Option {
+	return func(o *clientOptions) {
+		o.expectedSchemaVersion = v
 	}
 }
