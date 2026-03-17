@@ -5,6 +5,7 @@ package classifier
 
 import (
 	"context"
+	"encoding/json"
 	"testing"
 
 	"github.com/jonesrussell/north-cloud/classifier/internal/domain"
@@ -12,16 +13,51 @@ import (
 )
 
 type mockMLClient struct {
-	response *mlclient.ClassifyResponse
+	response *mlclient.StandardResponse
 	err      error
 }
 
-func (m *mockMLClient) Classify(_ context.Context, _, _ string) (*mlclient.ClassifyResponse, error) {
+func (m *mockMLClient) Classify(_ context.Context, _, _ string) (*mlclient.StandardResponse, error) {
 	return m.response, m.err
 }
 
-func (m *mockMLClient) Health(_ context.Context) error {
-	return nil
+// newCrimeMLResponse creates a StandardResponse with crime-specific fields.
+func newCrimeMLResponse(
+	relevance, location string, confidence float64, crimeTypes []string, processingMs float64,
+) *mlclient.StandardResponse {
+	result, marshalErr := json.Marshal(crimeMLResponse{
+		CrimeTypes: crimeTypes,
+		Location:   location,
+	})
+	if marshalErr != nil {
+		panic("test marshal failed: " + marshalErr.Error())
+	}
+	return &mlclient.StandardResponse{
+		Module:           "crime",
+		Version:          "v1",
+		SchemaVersion:    "1.0",
+		Result:           result,
+		Relevance:        float64Ptr(mapRelevanceToScore(relevance)),
+		Confidence:       float64Ptr(confidence),
+		ProcessingTimeMs: processingMs,
+		RequestID:        "test",
+	}
+}
+
+// mapRelevanceToScore maps a relevance class string to a numeric score for the envelope.
+func mapRelevanceToScore(relevance string) float64 {
+	switch relevance {
+	case "core_street_crime":
+		return 0.9
+	case "peripheral_crime":
+		return 0.5
+	default:
+		return 0.1
+	}
+}
+
+func float64Ptr(f float64) *float64 {
+	return &f
 }
 
 func TestCrimeClassifier_Classify_RulesOnly(t *testing.T) {
@@ -53,12 +89,10 @@ func TestCrimeClassifier_Classify_BothAgree(t *testing.T) {
 	t.Helper()
 
 	mlMock := &mockMLClient{
-		response: &mlclient.ClassifyResponse{
-			Relevance:           "core_street_crime",
-			RelevanceConfidence: 0.85,
-			CrimeTypes:          []string{"violent_crime"},
-			Location:            "local_canada",
-		},
+		response: newCrimeMLResponse(
+			"core_street_crime", "local_canada", 0.85,
+			[]string{"violent_crime"}, 0,
+		),
 	}
 
 	sc := NewCrimeClassifier(mlMock, &mockLogger{}, true)
@@ -185,13 +219,10 @@ func TestCrimeClassifier_DecisionContext_BothAgree(t *testing.T) {
 	t.Helper()
 
 	mlMock := &mockMLClient{
-		response: &mlclient.ClassifyResponse{
-			Relevance:           "core_street_crime",
-			RelevanceConfidence: 0.88,
-			CrimeTypes:          []string{"violent_crime"},
-			Location:            "local_canada",
-			ProcessingTimeMs:    testMLProcessingTimeMs,
-		},
+		response: newCrimeMLResponse(
+			"core_street_crime", "local_canada", 0.88,
+			[]string{"violent_crime"}, testMLProcessingTimeMs,
+		),
 	}
 
 	sc := NewCrimeClassifier(mlMock, &mockLogger{}, true)

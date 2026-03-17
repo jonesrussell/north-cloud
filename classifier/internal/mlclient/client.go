@@ -1,56 +1,86 @@
-// classifier/internal/mlclient/client.go
 package mlclient
 
 import (
 	"context"
-	"errors"
+	"encoding/json"
 	"fmt"
-
-	"github.com/jonesrussell/north-cloud/classifier/internal/mltransport"
+	"net/http"
 )
 
-// ErrUnavailable indicates the crime ML service is unreachable.
-var ErrUnavailable = errors.New("crime ML service unavailable")
-
-// Client is an HTTP client for the StreetCode ML service.
+// Client communicates with a single ML sidecar module.
 type Client struct {
-	baseURL string
+	moduleName string
+	baseURL    string
+	httpClient *http.Client
+	opts       clientOptions
+	breaker    *circuitBreaker
 }
 
-// ClassifyResponse is the response body from /classify.
-type ClassifyResponse struct {
-	Relevance           string             `json:"relevance"`
-	RelevanceConfidence float64            `json:"relevance_confidence"`
-	CrimeTypes          []string           `json:"crime_types"`
-	CrimeTypeScores     map[string]float64 `json:"crime_type_scores"`
-	Location            string             `json:"location"`
-	LocationConfidence  float64            `json:"location_confidence"`
-	ProcessingTimeMs    int64              `json:"processing_time_ms"`
-}
-
-// NewClient creates a new ML client.
-func NewClient(baseURL string) *Client {
-	return &Client{baseURL: baseURL}
-}
-
-// Classify sends a classification request to the ML service.
-func (c *Client) Classify(ctx context.Context, title, body string) (*ClassifyResponse, error) {
-	req := &mltransport.ClassifyRequest{Title: title, Body: body}
-	var result ClassifyResponse
-	if _, _, err := mltransport.DoClassify(ctx, c.baseURL, req, &result); err != nil {
-		return nil, fmt.Errorf("classify: %w", err)
+// NewClient creates a Client for the given ML module.
+func NewClient(moduleName, baseURL string, opts ...Option) *Client {
+	o := defaultOptions()
+	for _, fn := range opts {
+		fn(&o)
 	}
-	return &result, nil
+
+	return &Client{
+		moduleName: moduleName,
+		baseURL:    baseURL,
+		httpClient: &http.Client{Timeout: o.timeout},
+		opts:       o,
+		breaker:    newBreaker(o.breakerTrips, o.breakerCooldown),
+	}
 }
 
-// Health checks if the ML service is healthy.
-func (c *Client) Health(ctx context.Context) error {
-	reachable, _, _, err := mltransport.DoHealth(ctx, c.baseURL)
-	if err != nil {
-		if !reachable {
-			return fmt.Errorf("%w: %w", ErrUnavailable, err)
-		}
-		return err
+// Classify sends a classification request to the ML sidecar and returns the standard response.
+func (c *Client) Classify(ctx context.Context, title, body string) (*StandardResponse, error) {
+	if !c.breaker.allow() {
+		return nil, fmt.Errorf("%s: %w", c.moduleName, ErrUnavailable)
 	}
-	return nil
+
+	req := classifyRequest{
+		Title: title,
+		Body:  body,
+	}
+
+	respBody, status, postErr := c.doPost(ctx, "/v1/classify", req)
+	if postErr != nil {
+		c.breaker.recordFailure()
+		return nil, fmt.Errorf("%s classify: %w", c.moduleName, postErr)
+	}
+
+	if status != http.StatusOK {
+		c.breaker.recordFailure()
+		return nil, fmt.Errorf("%s classify: service returned %d", c.moduleName, status)
+	}
+
+	var resp StandardResponse
+	if unmarshalErr := json.Unmarshal(respBody, &resp); unmarshalErr != nil {
+		c.breaker.recordFailure()
+		return nil, fmt.Errorf("%s classify: decode response: %w", c.moduleName, unmarshalErr)
+	}
+
+	c.breaker.recordSuccess()
+
+	return &resp, nil
+}
+
+// Health checks the ML sidecar health endpoint. Health does not use the circuit breaker
+// so it can be called even when the breaker is open.
+func (c *Client) Health(ctx context.Context) (*HealthResponse, error) {
+	respBody, status, getErr := c.doGet(ctx, "/v1/health")
+	if getErr != nil {
+		return nil, fmt.Errorf("%s health: %w", c.moduleName, getErr)
+	}
+
+	if status != http.StatusOK {
+		return nil, fmt.Errorf("%s health: service returned %d", c.moduleName, status)
+	}
+
+	var resp HealthResponse
+	if unmarshalErr := json.Unmarshal(respBody, &resp); unmarshalErr != nil {
+		return nil, fmt.Errorf("%s health: decode response: %w", c.moduleName, unmarshalErr)
+	}
+
+	return &resp, nil
 }

@@ -1,4 +1,4 @@
-package mlclientv2
+package mlclient
 
 import "errors"
 

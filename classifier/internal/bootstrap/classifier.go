@@ -8,12 +8,8 @@ import (
 	"github.com/jmoiron/sqlx"
 	"github.com/jonesrussell/north-cloud/classifier/internal/api"
 	"github.com/jonesrussell/north-cloud/classifier/internal/classifier"
-	"github.com/jonesrussell/north-cloud/classifier/internal/coforgemlclient"
 	"github.com/jonesrussell/north-cloud/classifier/internal/config"
 	"github.com/jonesrussell/north-cloud/classifier/internal/domain"
-	"github.com/jonesrussell/north-cloud/classifier/internal/entertainmentmlclient"
-	"github.com/jonesrussell/north-cloud/classifier/internal/indigenousmlclient"
-	"github.com/jonesrussell/north-cloud/classifier/internal/miningmlclient"
 	"github.com/jonesrussell/north-cloud/classifier/internal/mlclient"
 	"github.com/jonesrussell/north-cloud/classifier/internal/processor"
 	infragin "github.com/jonesrussell/north-cloud/infrastructure/gin"
@@ -32,6 +28,11 @@ const (
 	defaultSpamThreshold         = 30
 	minArticlesForTrust          = 10
 	defaultReputationDecayRate01 = 0.1
+	mlClientTimeout              = 5 * time.Second
+	mlClientRetryCount           = 2
+	mlClientRetryDelay           = 100 * time.Millisecond
+	mlClientBreakerTrips         = 5
+	mlClientBreakerCooldown      = 30 * time.Second
 )
 
 // HTTPComponents holds all components needed for the HTTP server.
@@ -140,36 +141,45 @@ func HTTPShutdownTimeout() time.Duration {
 	return defaultHTTPTimeout
 }
 
+// newMLClient creates a unified ML client with standard options for the given module.
+func newMLClient(moduleName, mlURL string) *mlclient.Client {
+	return mlclient.NewClient(moduleName, mlURL,
+		mlclient.WithTimeout(mlClientTimeout),
+		mlclient.WithRetry(mlClientRetryCount, mlClientRetryDelay),
+		mlclient.WithCircuitBreaker(mlClientBreakerTrips, mlClientBreakerCooldown),
+	)
+}
+
 // createClassifierConfig creates the classifier configuration with all sub-components.
 func createClassifierConfig(cfg *config.Config, logger infralogger.Logger) classifier.Config {
 	crimeCC := createOptionalClassifier(
 		cfg.Classification.Crime.Enabled, cfg.Classification.Crime.MLServiceURL, logger,
-		"Crime classifier", mlclient.NewClient,
+		"Crime classifier", "crime",
 		func(c *mlclient.Client, l infralogger.Logger, e bool) *classifier.CrimeClassifier {
 			return classifier.NewCrimeClassifier(c, l, e)
 		})
 	miningCC := createOptionalClassifier(
 		cfg.Classification.Mining.Enabled, cfg.Classification.Mining.MLServiceURL, logger,
-		"Mining classifier", miningmlclient.NewClient,
-		func(c *miningmlclient.Client, l infralogger.Logger, e bool) *classifier.MiningClassifier {
+		"Mining classifier", "mining",
+		func(c *mlclient.Client, l infralogger.Logger, e bool) *classifier.MiningClassifier {
 			return classifier.NewMiningClassifier(c, l, e)
 		})
 	coforgeCC := createOptionalClassifier(
 		cfg.Classification.Coforge.Enabled, cfg.Classification.Coforge.MLServiceURL, logger,
-		"Coforge classifier", coforgemlclient.NewClient,
-		func(c *coforgemlclient.Client, l infralogger.Logger, e bool) *classifier.CoforgeClassifier {
+		"Coforge classifier", "coforge",
+		func(c *mlclient.Client, l infralogger.Logger, e bool) *classifier.CoforgeClassifier {
 			return classifier.NewCoforgeClassifier(c, l, e)
 		})
 	entertainmentCC := createOptionalClassifier(
 		cfg.Classification.Entertainment.Enabled, cfg.Classification.Entertainment.MLServiceURL, logger,
-		"Entertainment classifier", entertainmentmlclient.NewClient,
-		func(c *entertainmentmlclient.Client, l infralogger.Logger, e bool) *classifier.EntertainmentClassifier {
+		"Entertainment classifier", "entertainment",
+		func(c *mlclient.Client, l infralogger.Logger, e bool) *classifier.EntertainmentClassifier {
 			return classifier.NewEntertainmentClassifier(c, l, e)
 		})
 	indigenousCC := createOptionalClassifier(
 		cfg.Classification.Indigenous.Enabled, cfg.Classification.Indigenous.MLServiceURL, logger,
-		"Indigenous classifier", indigenousmlclient.NewClient,
-		func(c *indigenousmlclient.Client, l infralogger.Logger, e bool) *classifier.IndigenousClassifier {
+		"Indigenous classifier", "indigenous",
+		func(c *mlclient.Client, l infralogger.Logger, e bool) *classifier.IndigenousClassifier {
 			return classifier.NewIndigenousClassifier(c, l, e)
 		})
 
@@ -224,18 +234,18 @@ func createClassifierConfig(cfg *config.Config, logger infralogger.Logger) class
 }
 
 // createOptionalClassifier creates an optional ML classifier when enabled; returns nil otherwise.
-// newClient is only called when mlURL is non-empty. Label is used for logging.
-func createOptionalClassifier[C any, T any](
-	enabled bool, mlURL string, logger infralogger.Logger, label string,
-	newClient func(string) C, newClassifier func(C, infralogger.Logger, bool) T,
+// moduleName is used for the unified ML client's module identifier. Label is used for logging.
+func createOptionalClassifier[T any](
+	enabled bool, mlURL string, logger infralogger.Logger, label string, moduleName string,
+	newClassifier func(*mlclient.Client, infralogger.Logger, bool) T,
 ) T {
 	if !enabled {
 		var zero T
 		return zero
 	}
-	var client C
+	var client *mlclient.Client
 	if mlURL != "" {
-		client = newClient(mlURL)
+		client = newMLClient(moduleName, mlURL)
 	}
 	if mlURL == "" {
 		logger.Warn(label+" enabled but ML service URL is empty; running in rules-only mode",

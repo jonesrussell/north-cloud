@@ -5,23 +5,59 @@ package classifier
 
 import (
 	"context"
+	"encoding/json"
 	"testing"
 
 	"github.com/jonesrussell/north-cloud/classifier/internal/domain"
-	"github.com/jonesrussell/north-cloud/classifier/internal/miningmlclient"
+	"github.com/jonesrussell/north-cloud/classifier/internal/mlclient"
 )
 
 type mockMiningMLClient struct {
-	response *miningmlclient.ClassifyResponse
+	response *mlclient.StandardResponse
 	err      error
 }
 
-func (m *mockMiningMLClient) Classify(_ context.Context, _, _ string) (*miningmlclient.ClassifyResponse, error) {
+func (m *mockMiningMLClient) Classify(
+	_ context.Context, _, _ string,
+) (*mlclient.StandardResponse, error) {
 	return m.response, m.err
 }
 
-func (m *mockMiningMLClient) Health(_ context.Context) error {
-	return nil
+// newMiningMLResponse creates a StandardResponse with mining-specific fields.
+func newMiningMLResponse(
+	relevance, miningStage, location, modelVersion string,
+	confidence float64, commodities []string, processingMs float64,
+) *mlclient.StandardResponse {
+	result, marshalErr := json.Marshal(miningMLResponse{
+		MiningStage: miningStage,
+		Commodities: commodities,
+		Location:    location,
+	})
+	if marshalErr != nil {
+		panic("test marshal failed: " + marshalErr.Error())
+	}
+	return &mlclient.StandardResponse{
+		Module:           "mining",
+		Version:          modelVersion,
+		SchemaVersion:    "1.0",
+		Result:           result,
+		Relevance:        float64Ptr(mapMiningRelevanceToScore(relevance)),
+		Confidence:       float64Ptr(confidence),
+		ProcessingTimeMs: processingMs,
+		RequestID:        "test",
+	}
+}
+
+// mapMiningRelevanceToScore maps a mining relevance class to a numeric score.
+func mapMiningRelevanceToScore(relevance string) float64 {
+	switch relevance {
+	case "core_mining":
+		return 0.9
+	case "peripheral_mining":
+		return 0.5
+	default:
+		return 0.1
+	}
 }
 
 func TestMiningClassifier_Classify_Disabled(t *testing.T) {
@@ -70,14 +106,11 @@ func TestMiningClassifier_Classify_BothAgree(t *testing.T) {
 	t.Helper()
 
 	mlMock := &mockMiningMLClient{
-		response: &miningmlclient.ClassifyResponse{
-			Relevance:           "core_mining",
-			RelevanceConfidence: 0.93,
-			MiningStage:         "exploration",
-			Commodities:         []string{"gold", "copper"},
-			Location:            "local_canada",
-			ModelVersion:        "2025-02-01-mining-v1",
-		},
+		response: newMiningMLResponse(
+			"core_mining", "exploration", "local_canada",
+			"2025-02-01-mining-v1", 0.93,
+			[]string{"gold", "copper"}, 0,
+		),
 	}
 
 	mc := NewMiningClassifier(mlMock, &mockLogger{}, true)
@@ -113,10 +146,9 @@ func TestMiningClassifier_Classify_RuleCore_MLNotMining(t *testing.T) {
 	t.Helper()
 
 	mlMock := &mockMiningMLClient{
-		response: &miningmlclient.ClassifyResponse{
-			Relevance:           "not_mining",
-			RelevanceConfidence: 0.8,
-		},
+		response: newMiningMLResponse(
+			"not_mining", "", "", "", 0.8, nil, 0,
+		),
 	}
 
 	mc := NewMiningClassifier(mlMock, &mockLogger{}, true)
@@ -153,15 +185,11 @@ func TestMiningClassifier_DecisionContext_BothAgree(t *testing.T) {
 	t.Helper()
 
 	mlMock := &mockMiningMLClient{
-		response: &miningmlclient.ClassifyResponse{
-			Relevance:           "core_mining",
-			RelevanceConfidence: testMiningMLConfidence,
-			MiningStage:         "exploration",
-			Commodities:         []string{"gold", "copper"},
-			Location:            "local_canada",
-			ModelVersion:        "2025-02-01-mining-v1",
-			ProcessingTimeMs:    testMiningMLProcessingTimeMs,
-		},
+		response: newMiningMLResponse(
+			"core_mining", "exploration", "local_canada",
+			"2025-02-01-mining-v1", testMiningMLConfidence,
+			[]string{"gold", "copper"}, testMiningMLProcessingTimeMs,
+		),
 	}
 
 	mc := NewMiningClassifier(mlMock, &mockLogger{}, true)

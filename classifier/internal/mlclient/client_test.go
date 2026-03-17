@@ -1,92 +1,142 @@
-// classifier/internal/mlclient/client_test.go
-//
-//nolint:testpackage // Testing internal client requires same package access
-package mlclient
+package mlclient_test
 
 import (
 	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"sync/atomic"
 	"testing"
+	"time"
+
+	"github.com/jonesrussell/north-cloud/classifier/internal/mlclient"
 )
 
-func TestClient_Classify(t *testing.T) {
+func newTestServer(t *testing.T, handler http.HandlerFunc) *httptest.Server {
 	t.Helper()
 
-	// Create mock server
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/classify" {
-			t.Errorf("expected /classify, got %s", r.URL.Path)
-		}
-		if r.Method != http.MethodPost {
-			t.Errorf("expected POST, got %s", r.Method)
-		}
+	return httptest.NewServer(handler)
+}
 
-		response := ClassifyResponse{
-			Relevance:           "core_street_crime",
-			RelevanceConfidence: 0.85,
-			CrimeTypes:          []string{"violent_crime"},
-			CrimeTypeScores:     map[string]float64{"violent_crime": 0.9},
-			Location:            "local_canada",
-			LocationConfidence:  0.75,
-			ProcessingTimeMs:    15,
-		}
+func float64Ptr(f float64) *float64 {
+	return &f
+}
 
+func TestClassifySuccess(t *testing.T) {
+	t.Parallel()
+
+	srv := newTestServer(t, func(w http.ResponseWriter, _ *http.Request) {
+		resp := mlclient.StandardResponse{
+			Module:           "crime",
+			Version:          "v1",
+			SchemaVersion:    "1.0",
+			Result:           json.RawMessage(`{"crime_types":["assault"]}`),
+			Relevance:        float64Ptr(0.9),
+			Confidence:       float64Ptr(0.8),
+			ProcessingTimeMs: 12.0,
+			RequestID:        "req-1",
+		}
 		w.Header().Set("Content-Type", "application/json")
-		if err := json.NewEncoder(w).Encode(response); err != nil {
-			t.Errorf("failed to encode response: %v", err)
+
+		if encodeErr := json.NewEncoder(w).Encode(resp); encodeErr != nil {
+			http.Error(w, encodeErr.Error(), http.StatusInternalServerError)
 		}
-	}))
-	defer server.Close()
+	})
+	defer srv.Close()
 
-	client := NewClient(server.URL)
-	result, err := client.Classify(context.Background(), "Man charged with murder", "Police arrested...")
+	client := mlclient.NewClient("crime", srv.URL, mlclient.WithTimeout(2*time.Second))
 
+	resp, err := client.Classify(context.Background(), "Test", "Body")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	if result.Relevance != "core_street_crime" {
-		t.Errorf("expected core_street_crime, got %s", result.Relevance)
+	if resp.Module != "crime" {
+		t.Fatalf("expected module 'crime', got %q", resp.Module)
 	}
 
-	if result.RelevanceConfidence < 0.8 {
-		t.Errorf("expected confidence >= 0.8, got %f", result.RelevanceConfidence)
-	}
-}
-
-func TestClient_Health(t *testing.T) {
-	t.Helper()
-
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/health" {
-			t.Errorf("expected /health, got %s", r.URL.Path)
-		}
-		w.WriteHeader(http.StatusOK)
-	}))
-	defer server.Close()
-
-	client := NewClient(server.URL)
-	err := client.Health(context.Background())
-
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
+	if *resp.Relevance != 0.9 {
+		t.Fatalf("expected relevance 0.9, got %f", *resp.Relevance)
 	}
 }
 
-func TestClient_HealthUnhealthy(t *testing.T) {
-	t.Helper()
+func TestClassifyTimeout(t *testing.T) {
+	t.Parallel()
 
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		w.WriteHeader(http.StatusServiceUnavailable)
-	}))
-	defer server.Close()
+	srv := newTestServer(t, func(_ http.ResponseWriter, _ *http.Request) {
+		time.Sleep(200 * time.Millisecond)
+	})
+	defer srv.Close()
 
-	client := NewClient(server.URL)
-	err := client.Health(context.Background())
+	client := mlclient.NewClient("slow", srv.URL, mlclient.WithTimeout(50*time.Millisecond))
 
+	_, err := client.Classify(context.Background(), "Test", "Body")
 	if err == nil {
-		t.Fatal("expected error for unhealthy service")
+		t.Fatal("expected timeout error")
+	}
+}
+
+func TestClassifyCircuitBreaker(t *testing.T) {
+	t.Parallel()
+
+	var callCount atomic.Int32
+
+	srv := newTestServer(t, func(w http.ResponseWriter, _ *http.Request) {
+		callCount.Add(1)
+		w.WriteHeader(http.StatusServiceUnavailable)
+	})
+	defer srv.Close()
+
+	client := mlclient.NewClient("test", srv.URL,
+		mlclient.WithCircuitBreaker(2, 5*time.Second),
+		mlclient.WithRetry(0, 10*time.Millisecond),
+	)
+
+	// Trip the breaker with two failures.
+	_, _ = client.Classify(context.Background(), "a", "b")
+	_, _ = client.Classify(context.Background(), "a", "b")
+
+	// Circuit should be open now — no network call should be made.
+	beforeCount := callCount.Load()
+
+	_, err := client.Classify(context.Background(), "a", "b")
+	if err == nil {
+		t.Fatal("expected ErrUnavailable when circuit is open")
+	}
+
+	if callCount.Load() != beforeCount {
+		t.Fatal("circuit breaker should prevent network calls when open")
+	}
+}
+
+func TestHealthSuccess(t *testing.T) {
+	t.Parallel()
+
+	srv := newTestServer(t, func(w http.ResponseWriter, _ *http.Request) {
+		resp := mlclient.HealthResponse{
+			Status:        "healthy",
+			Module:        "crime",
+			Version:       "v1",
+			SchemaVersion: "1.0",
+			ModelsLoaded:  true,
+			UptimeSeconds: 120.0,
+		}
+		w.Header().Set("Content-Type", "application/json")
+
+		if encodeErr := json.NewEncoder(w).Encode(resp); encodeErr != nil {
+			http.Error(w, encodeErr.Error(), http.StatusInternalServerError)
+		}
+	})
+	defer srv.Close()
+
+	client := mlclient.NewClient("crime", srv.URL)
+
+	health, err := client.Health(context.Background())
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if health.Status != "healthy" {
+		t.Fatalf("expected healthy, got %q", health.Status)
 	}
 }
