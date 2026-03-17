@@ -60,6 +60,14 @@ func (c *Client) Classify(ctx context.Context, title, body string) (*StandardRes
 		return nil, fmt.Errorf("%s classify: decode response: %w", c.moduleName, unmarshalErr)
 	}
 
+	if c.opts.expectedSchemaVersion != "" && resp.SchemaVersion != c.opts.expectedSchemaVersion {
+		c.breaker.recordSuccess()
+		return &resp, fmt.Errorf(
+			"%s classify: got schema %s, want %s: %w",
+			c.moduleName, resp.SchemaVersion, c.opts.expectedSchemaVersion, ErrSchemaVersion,
+		)
+	}
+
 	c.breaker.recordSuccess()
 
 	return &resp, nil

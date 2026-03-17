@@ -182,7 +182,7 @@ All write endpoints require a JWT in the `Authorization: Bearer <token>` header.
 
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
-| `GET` | `/api/v1/sources` | Public | List all sources |
+| `GET` | `/api/v1/sources` | Public | List sources (see query params below) |
 | `GET` | `/api/v1/sources/:id` | JWT | Get source by ID |
 | `POST` | `/api/v1/sources` | JWT | Create source |
 | `PUT` | `/api/v1/sources/:id` | JWT | Update source |
@@ -192,6 +192,21 @@ All write endpoints require a JWT in the `Authorization: Bearer <token>` header.
 | `POST` | `/api/v1/sources/import-excel` | JWT | Bulk import from Excel file |
 | `GET` | `/api/v1/cities` | Public | List cities from enabled sources |
 | `GET` | `/health` | Public | Health check |
+
+#### `GET /api/v1/sources` Query Parameters
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `search` | string | — | ILIKE search on name or URL |
+| `enabled` | bool | — | Filter by enabled status (`true`/`false`) |
+| `feed_active` | bool | — | Filter to sources with active feeds |
+| `page` | int | 1 | Page number (1-based) |
+| `limit` | int | 100 | Results per page (max 500) |
+| `offset` | int | 0 | Offset (alternative to `page`) |
+| `sort_by` | string | `name` | Sort field: `name`, `url`, `enabled`, `created_at` |
+| `sort_order` | string | `asc` | Sort direction: `asc`, `desc` |
+
+Response includes pagination metadata: `total`, `page`, `per_page`, `total_pages`.
 
 ## Configuration
 

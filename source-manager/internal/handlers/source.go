@@ -190,9 +190,15 @@ func (h *SourceHandler) List(c *gin.Context) {
 		return
 	}
 
+	page := (filter.Offset / filter.Limit) + 1
+	totalPages := (total + filter.Limit - 1) / filter.Limit
+
 	c.JSON(http.StatusOK, gin.H{
-		"sources": sources,
-		"total":   total,
+		"sources":     sources,
+		"total":       total,
+		"page":        page,
+		"per_page":    filter.Limit,
+		"total_pages": totalPages,
 	})
 }
 
@@ -204,16 +210,17 @@ func parseListQuery(c *gin.Context) repository.ListFilter {
 	limit := defaultLimit
 	if v := c.Query("limit"); v != "" {
 		if n, err := strconv.Atoi(v); err == nil && n > 0 {
-			limit = n
-			if limit > maxLimit {
-				limit = maxLimit
-			}
+			limit = min(n, maxLimit)
 		}
 	}
 
 	offset := 0
-	if v := c.Query("offset"); v != "" {
-		if n, err := strconv.Atoi(v); err == nil && n >= 0 {
+	if pageStr := c.Query("page"); pageStr != "" {
+		if n, err := strconv.Atoi(pageStr); err == nil && n > 1 {
+			offset = (n - 1) * limit
+		}
+	} else if offsetStr := c.Query("offset"); offsetStr != "" {
+		if n, err := strconv.Atoi(offsetStr); err == nil && n >= 0 {
 			offset = n
 		}
 	}
@@ -780,4 +787,89 @@ func (h *SourceHandler) validateIndigenousRegion(source *models.Source) error {
 		source.IndigenousRegion = &normalized
 	}
 	return nil
+}
+
+// BatchFailure describes a single source that failed during batch import.
+type BatchFailure struct {
+	Name  string `json:"name"`
+	Error string `json:"error"`
+}
+
+// BatchResponse is the response for the batch import endpoint.
+type BatchResponse struct {
+	Created []models.Source `json:"created"`
+	Skipped []string        `json:"skipped"`
+	Failed  []BatchFailure  `json:"failed"`
+}
+
+func (h *SourceHandler) BatchCreate(c *gin.Context) {
+	var req struct {
+		Sources []models.Source `json:"sources"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body", "details": err.Error()})
+		return
+	}
+
+	const maxBatchSize = 100
+	if len(req.Sources) == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "sources array is empty"})
+		return
+	}
+	if len(req.Sources) > maxBatchSize {
+		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("batch size exceeds maximum of %d", maxBatchSize)})
+		return
+	}
+
+	resp := BatchResponse{
+		Created: make([]models.Source, 0, len(req.Sources)),
+		Skipped: make([]string, 0),
+		Failed:  make([]BatchFailure, 0),
+	}
+
+	for i := range req.Sources {
+		source := &req.Sources[i]
+		source.RateLimit = models.NormalizeRateLimit(source.RateLimit)
+
+		if err := h.validateIndigenousRegion(source); err != nil {
+			resp.Failed = append(resp.Failed, BatchFailure{Name: source.Name, Error: err.Error()})
+			continue
+		}
+
+		if err := h.repo.Create(c.Request.Context(), source); err != nil {
+			var pqErr *pq.Error
+			if errors.As(err, &pqErr) && pqErr.Code == pqUniqueViolation {
+				resp.Skipped = append(resp.Skipped, source.Name)
+				continue
+			}
+			resp.Failed = append(resp.Failed, BatchFailure{Name: source.Name, Error: "database error"})
+			continue
+		}
+
+		if h.publisher != nil {
+			sourceID, _ := uuid.Parse(source.ID)
+			h.publisher.PublishAsync(infraevents.SourceEvent{
+				EventType: infraevents.SourceCreated,
+				SourceID:  sourceID,
+				Payload: infraevents.SourceCreatedPayload{
+					Name:      source.Name,
+					URL:       source.URL,
+					RateLimit: parseRateLimit(source.RateLimit),
+					MaxDepth:  source.MaxDepth,
+					Enabled:   source.Enabled,
+					Priority:  infraevents.PriorityNormal,
+				},
+			})
+		}
+
+		resp.Created = append(resp.Created, *source)
+	}
+
+	h.logger.Info("Batch import completed",
+		infralogger.Int("created", len(resp.Created)),
+		infralogger.Int("skipped", len(resp.Skipped)),
+		infralogger.Int("failed", len(resp.Failed)),
+	)
+
+	c.JSON(http.StatusOK, resp)
 }
