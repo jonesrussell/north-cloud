@@ -72,7 +72,7 @@ jobs:
         if: needs.detect-changes.outputs.has_go == 'true' || needs.detect-changes.outputs.run_all == 'true'
         uses: actions/setup-go@v5
         with:
-          go-version: '1.26'
+          go-version: '1.26.1'
           cache: false
 
       - name: Set up Node.js
@@ -149,7 +149,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.26'
+          go-version: '1.26.1'
           cache: false
 
       - name: Cache Go modules
@@ -211,7 +211,7 @@ jobs:
         if: needs.detect-changes.outputs.has_go == 'true' || needs.detect-changes.outputs.run_all == 'true'
         uses: actions/setup-go@v5
         with:
-          go-version: '1.26'
+          go-version: '1.26.1'
           cache: false
 
       - name: Set up Node.js
@@ -283,7 +283,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.26'
+          go-version: '1.26.1'
           cache: false
 
       - name: Cache Go modules

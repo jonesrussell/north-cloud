@@ -1,6 +1,6 @@
 module github.com/jonesrussell/north-cloud/search
 
-go 1.26
+go 1.26.1
 
 require (
 	github.com/elastic/go-elasticsearch/v8 v8.19.3

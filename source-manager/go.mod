@@ -1,6 +1,6 @@
 module github.com/jonesrussell/north-cloud/source-manager
 
-go 1.26
+go 1.26.1
 
 require (
 	github.com/PuerkitoBio/goquery v1.11.0
