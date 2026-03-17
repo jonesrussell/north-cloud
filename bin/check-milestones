@@ -1,0 +1,43 @@
+#!/usr/bin/env bash
+# check-milestones — SessionStart hook for GitHub workflow governance
+# Surfaces untriaged issues and stale milestones at the start of each session.
+# Always exits 0 so it never blocks the session.
+
+set -euo pipefail
+
+REPO="jonesrussell/north-cloud"
+
+# Check if gh CLI is available
+if ! command -v gh &>/dev/null; then
+  exit 0
+fi
+
+# Check if we're in a git repo with GitHub remote
+if ! gh api "repos/${REPO}" --jq '.name' &>/dev/null 2>&1; then
+  exit 0
+fi
+
+echo "=== GitHub Workflow Check ==="
+
+# 1. Untriaged issues (open, no milestone)
+UNTRIAGED=$(gh api "repos/${REPO}/issues?state=open&per_page=100" \
+  --jq '[.[] | select(.milestone == null and .pull_request == null)] | length' 2>/dev/null || echo "?")
+
+if [ "$UNTRIAGED" != "?" ] && [ "$UNTRIAGED" -gt 0 ]; then
+  echo "  Untriaged issues (no milestone): ${UNTRIAGED}"
+fi
+
+# 2. Stale milestones (open, past due date)
+STALE=$(gh api "repos/${REPO}/milestones?state=open&per_page=50" \
+  --jq "[.[] | select(.due_on != null and .due_on < \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\")] | length" 2>/dev/null || echo "?")
+
+if [ "$STALE" != "?" ] && [ "$STALE" -gt 0 ]; then
+  echo "  Stale milestones (past due): ${STALE}"
+fi
+
+if [ "$UNTRIAGED" = "0" ] && [ "$STALE" = "0" ]; then
+  echo "  All issues triaged, no stale milestones."
+fi
+
+echo ""
+exit 0

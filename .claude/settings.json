@@ -6,5 +6,18 @@
       "mcp__North_Cloud_Specs__get_spec",
       "mcp__North_Cloud_Specs__search_specs"
     ]
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash bin/check-milestones"
+          }
+        ]
+      }
+    ]
   }
 }

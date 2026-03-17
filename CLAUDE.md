@@ -200,6 +200,16 @@ See `ARCHITECTURE.md` for the full bootstrap pattern reference.
 
 **Pushing**: Always use `git push -u origin {branch-name}` — never force push to main
 
+### GitHub Workflow Rules
+
+1. **Every issue gets a milestone** — untriaged issues surfaced by SessionStart hook
+2. **PRs close issues explicitly** — use `Closes #NNN` in PR body
+3. **Milestones have due dates** — stale milestones flagged by SessionStart hook
+4. **Conventional commits** — `type(scope): description` (feat/fix/chore/docs/refactor/test/ci/perf)
+5. **PR template enforces checklist** — issue ref, milestone, lint, tests, spec updates
+
+See `docs/specs/workflow.md` for full details. Governance hook: `bin/check-milestones`.
+
 ---
 
 ## Troubleshooting
