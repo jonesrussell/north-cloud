@@ -23,6 +23,16 @@ x-service-defaults: &service-defaults
   networks:
     - north-cloud-network
 
+x-ml-sidecar: &ml-sidecar-defaults
+  restart: unless-stopped
+  networks:
+    - north-cloud-network
+  deploy:
+    resources:
+      limits:
+        cpus: "0.5"
+        memory: 512M
+
 # ============================================================
 # Services
 # ============================================================
@@ -347,116 +357,87 @@ services:
   # ------------------------------------------------------------
 
   crime-ml:
-    <<: *service-defaults
+    <<: *ml-sidecar-defaults
     build:
-      context: ./ml-sidecars/crime-ml
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: docker/Dockerfile.ml-sidecar
+      args:
+        MODULE_NAME: crime
     image: docker.io/jonesrussell/crime-ml:latest
-    deploy:
-      resources:
-        limits:
-          cpus: "0.5"
-          memory: 512M
-    environment:
-      MODEL_PATH: /app/models
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8076/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 15s
+    ports:
+      - "${CRIME_ML_PORT:-8076}:8080"
 
   # ------------------------------------------------------------
   # Mining ML Classifier
   # ------------------------------------------------------------
 
   mining-ml:
-    <<: *service-defaults
+    <<: *ml-sidecar-defaults
     build:
-      context: ./ml-sidecars/mining-ml
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: docker/Dockerfile.ml-sidecar
+      args:
+        MODULE_NAME: mining
     image: docker.io/jonesrussell/mining-ml:latest
     deploy:
       resources:
         limits:
-          cpus: "0.5"
-          memory: 512M
-    environment:
-      MODEL_PATH: /app/models
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8077/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 15s
+          memory: 1G
+    ports:
+      - "${MINING_ML_PORT:-8077}:8080"
 
   # ------------------------------------------------------------
   # Coforge ML Classifier
   # ------------------------------------------------------------
 
   coforge-ml:
-    <<: *service-defaults
+    <<: *ml-sidecar-defaults
     build:
-      context: ./ml-sidecars/coforge-ml
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: docker/Dockerfile.ml-sidecar
+      args:
+        MODULE_NAME: coforge
     image: docker.io/jonesrussell/coforge-ml:latest
-    deploy:
-      resources:
-        limits:
-          cpus: "0.5"
-          memory: 512M
-    environment:
-      MODEL_PATH: /app/models
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8078/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 15s
+    ports:
+      - "${COFORGE_ML_PORT:-8078}:8080"
 
   # ------------------------------------------------------------
   # Entertainment ML Classifier
   # ------------------------------------------------------------
 
   entertainment-ml:
-    <<: *service-defaults
+    <<: *ml-sidecar-defaults
     build:
-      context: ./ml-sidecars/entertainment-ml
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: docker/Dockerfile.ml-sidecar
+      args:
+        MODULE_NAME: entertainment
     image: docker.io/jonesrussell/entertainment-ml:latest
     deploy:
       resources:
         limits:
-          cpus: "0.5"
-          memory: 512M
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8079/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 10s
+          memory: 256M
+    ports:
+      - "${ENTERTAINMENT_ML_PORT:-8079}:8080"
 
   # ------------------------------------------------------------
   # Indigenous ML Classifier
   # ------------------------------------------------------------
 
   indigenous-ml:
-    <<: *service-defaults
+    <<: *ml-sidecar-defaults
     build:
-      context: ./ml-sidecars/indigenous-ml
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: docker/Dockerfile.ml-sidecar
+      args:
+        MODULE_NAME: indigenous
     image: docker.io/jonesrussell/indigenous-ml:latest
     deploy:
       resources:
         limits:
-          cpus: "0.5"
-          memory: 512M
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 10s
+          memory: 256M
+    ports:
+      - "${INDIGENOUS_ML_PORT:-8080}:8080"
 
   # ------------------------------------------------------------
   # HTTP Replay Proxy (nc-http-proxy)
