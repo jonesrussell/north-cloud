@@ -257,13 +257,13 @@ services:
       APP_ENV: production
       CLASSIFIER_PORT: 8070
       CRIME_ENABLED: "true"
-      CRIME_ML_SERVICE_URL: http://crime-ml:8076
+      CRIME_ML_SERVICE_URL: http://crime-ml:8080
       MINING_ENABLED: "true"
-      MINING_ML_SERVICE_URL: http://mining-ml:8077
+      MINING_ML_SERVICE_URL: http://mining-ml:8080
       COFORGE_ENABLED: "true"
-      COFORGE_ML_SERVICE_URL: http://coforge-ml:8078
+      COFORGE_ML_SERVICE_URL: http://coforge-ml:8080
       ENTERTAINMENT_ENABLED: "true"
-      ENTERTAINMENT_ML_SERVICE_URL: http://entertainment-ml:8079
+      ENTERTAINMENT_ML_SERVICE_URL: http://entertainment-ml:8080
       INDIGENOUS_ENABLED: "${INDIGENOUS_ENABLED:-false}"
       INDIGENOUS_ML_SERVICE_URL: http://indigenous-ml:8080
       RFP_ENABLED: "true"
@@ -275,6 +275,13 @@ services:
       timeout: 10s
       retries: 3
       start_period: 25s
+
+  # ------------------------------------------------------------
+  # Crime ML Classifier (Prod)
+  # ------------------------------------------------------------
+  crime-ml:
+    <<: *prod-defaults
+    image: docker.io/jonesrussell/crime-ml:latest
 
   # ------------------------------------------------------------
   # Mining ML Classifier (Prod)

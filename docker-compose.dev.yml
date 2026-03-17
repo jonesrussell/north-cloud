@@ -285,12 +285,12 @@ services:
       CONCURRENT_WORKERS: "${CLASSIFIER_CONCURRENCY:-5}"
       PPROF_PORT: 6060
       MINING_ENABLED: "${MINING_ENABLED:-true}"
-      MINING_ML_SERVICE_URL: "http://mining-ml:8077"
+      MINING_ML_SERVICE_URL: "http://mining-ml:8080"
       PIPELINE_URL: "${PIPELINE_URL:-}"
       COFORGE_ENABLED: "${COFORGE_ENABLED:-true}"
-      COFORGE_ML_SERVICE_URL: "http://coforge-ml:8078"
+      COFORGE_ML_SERVICE_URL: "http://coforge-ml:8080"
       ENTERTAINMENT_ENABLED: "${ENTERTAINMENT_ENABLED:-true}"
-      ENTERTAINMENT_ML_SERVICE_URL: "http://entertainment-ml:8079"
+      ENTERTAINMENT_ML_SERVICE_URL: "http://entertainment-ml:8080"
       INDIGENOUS_ENABLED: "${INDIGENOUS_ENABLED:-false}"
       INDIGENOUS_ML_SERVICE_URL: "http://indigenous-ml:8080"
       RECIPE_ENABLED: "${RECIPE_ENABLED:-true}"
@@ -576,8 +576,9 @@ services:
   crime-ml:
     profiles:
       - ml
-    ports:
-      - "${CRIME_ML_PORT:-8076}:8076"
+    volumes:
+      - ./ml-modules/crime:/opt/module
+      - ./ml-framework:/opt/ml-framework
 
   # ------------------------------------------------------------
   # Mining ML Classifier (Dev) — gated behind `ml` profile
@@ -585,8 +586,9 @@ services:
   mining-ml:
     profiles:
       - ml
-    ports:
-      - "${MINING_ML_PORT:-8077}:8077"
+    volumes:
+      - ./ml-modules/mining:/opt/module
+      - ./ml-framework:/opt/ml-framework
 
   # ------------------------------------------------------------
   # Coforge ML Classifier (Dev) — gated behind `ml` profile
@@ -594,8 +596,9 @@ services:
   coforge-ml:
     profiles:
       - ml
-    ports:
-      - "${COFORGE_ML_PORT:-8078}:8078"
+    volumes:
+      - ./ml-modules/coforge:/opt/module
+      - ./ml-framework:/opt/ml-framework
 
   # ------------------------------------------------------------
   # Entertainment ML Classifier (Dev) — gated behind `ml` profile
@@ -603,8 +606,9 @@ services:
   entertainment-ml:
     profiles:
       - ml
-    ports:
-      - "${ENTERTAINMENT_ML_PORT:-8079}:8079"
+    volumes:
+      - ./ml-modules/entertainment:/opt/module
+      - ./ml-framework:/opt/ml-framework
 
   # ------------------------------------------------------------
   # Indigenous ML Classifier (Dev) — gated behind `ml` profile
@@ -612,8 +616,9 @@ services:
   indigenous-ml:
     profiles:
       - ml
-    ports:
-      - "${INDIGENOUS_ML_PORT:-8080}:8080"
+    volumes:
+      - ./ml-modules/indigenous:/opt/module
+      - ./ml-framework:/opt/ml-framework
 
   # ------------------------------------------------------------
   # HTTP Replay Proxy (Dev)
