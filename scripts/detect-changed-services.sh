@@ -42,7 +42,8 @@ done
 # Note: 'search' dir maps to 'search-service' container in deploy
 GO_SERVICES=(ai-observer auth classifier click-tracker crawler index-manager mcp-north-cloud pipeline publisher rfp-ingestor search source-manager nc-http-proxy)
 FRONTEND_SERVICES=(dashboard search-frontend)
-OTHER_SERVICES=(crime-ml mining-ml coforge-ml entertainment-ml indigenous-ml playwright-renderer)
+ML_SIDECARS=(crime-ml mining-ml coforge-ml entertainment-ml indigenous-ml)
+OTHER_SERVICES=("${ML_SIDECARS[@]}" playwright-renderer)
 ALL_SERVICES=("${GO_SERVICES[@]}" "${FRONTEND_SERVICES[@]}" "${OTHER_SERVICES[@]}")
 
 # Deploy service names (may differ from directory names)
@@ -132,11 +133,16 @@ else
     fi
 
     # Detect which services changed
-    # ML sidecars live under ml-sidecars/<service>/
     declare -A CHANGED_SERVICES_MAP
     for service in "${ALL_SERVICES[@]}"; do
-        if [[ " ${OTHER_SERVICES[*]} " == *" ${service} "* ]]; then
-            if echo "$CHANGED_FILES" | grep -q "^ml-sidecars/${service}/"; then
+        if [[ " ${ML_SIDECARS[*]} " == *" ${service} "* ]]; then
+            # ML sidecars: module name is service name without -ml suffix
+            MODULE_NAME="${service%-ml}"
+            if echo "$CHANGED_FILES" | grep -q "^ml-modules/${MODULE_NAME}/"; then
+                CHANGED_SERVICES_MAP[$service]=1
+            fi
+        elif [ "$service" = "playwright-renderer" ]; then
+            if echo "$CHANGED_FILES" | grep -q "^render-worker/"; then
                 CHANGED_SERVICES_MAP[$service]=1
             fi
         else
@@ -145,6 +151,13 @@ else
             fi
         fi
     done
+
+    # ML framework or shared Dockerfile changes affect all ML sidecars
+    if echo "$CHANGED_FILES" | grep -q "^ml-framework/\|^docker/Dockerfile.ml-sidecar"; then
+        for service in "${ML_SIDECARS[@]}"; do
+            CHANGED_SERVICES_MAP[$service]=1
+        done
+    fi
 
     # Infrastructure dir changes affect all Go services (shared code)
     if echo "$CHANGED_FILES" | grep -q "^infrastructure/"; then
@@ -181,15 +194,21 @@ case "$FORMAT" in
                 # Map to deploy name if different
                 DEPLOY_NAME="${SERVICE_TO_DEPLOY_NAME[$svc]:-$svc}"
 
-                # Determine context and dockerfile
+                # Determine context, dockerfile, and build args
+                BUILD_ARGS=""
                 case "$svc" in
                     search)
                         CONTEXT="."
                         DOCKERFILE="./search/Dockerfile"
                         ;;
-                    crime-ml|mining-ml|coforge-ml|entertainment-ml|indigenous-ml|playwright-renderer)
-                        CONTEXT="./ml-sidecars/${svc}"
-                        DOCKERFILE="./ml-sidecars/${svc}/Dockerfile"
+                    crime-ml|mining-ml|coforge-ml|entertainment-ml|indigenous-ml)
+                        CONTEXT="."
+                        DOCKERFILE="docker/Dockerfile.ml-sidecar"
+                        BUILD_ARGS="MODULE_NAME=${svc%-ml}"
+                        ;;
+                    playwright-renderer)
+                        CONTEXT="./render-worker"
+                        DOCKERFILE="./render-worker/Dockerfile"
                         ;;
                     search-frontend|dashboard|nc-http-proxy)
                         CONTEXT="./${svc}"
@@ -201,7 +220,7 @@ case "$FORMAT" in
                         ;;
                 esac
 
-                MATRIX_JSON="$MATRIX_JSON{\"name\":\"$DEPLOY_NAME\",\"context\":\"$CONTEXT\",\"dockerfile\":\"$DOCKERFILE\"}"
+                MATRIX_JSON="$MATRIX_JSON{\"name\":\"$DEPLOY_NAME\",\"context\":\"$CONTEXT\",\"dockerfile\":\"$DOCKERFILE\",\"build_args\":\"$BUILD_ARGS\"}"
             done
             MATRIX_JSON="$MATRIX_JSON]"
 

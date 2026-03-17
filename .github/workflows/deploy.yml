@@ -132,6 +132,7 @@ jobs:
             type=gha,scope=${{ matrix.service.name }},mode=max
           build-args: |
             BUILD_ENV=production
+            ${{ matrix.service.build_args }}
 
   deploy:
     name: Deploy to Production
