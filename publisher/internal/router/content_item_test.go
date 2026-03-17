@@ -1,30 +1,32 @@
-package router
+package router_test
 
 import (
 	"encoding/json"
 	"strings"
 	"testing"
+
+	"github.com/jonesrussell/north-cloud/publisher/internal/router"
 )
 
 func TestMiningData_DrillResults_JSONRoundTrip(t *testing.T) {
-	md := MiningData{
+	md := router.MiningData{
 		Relevance:   "core_mining",
 		Commodities: []string{"gold"},
-		DrillResults: []DrillResult{
+		DrillResults: []router.DrillResult{
 			{HoleID: "DDH-24-001", Commodity: "gold", InterceptM: 12.5, Grade: 3.2, Unit: "g/t"},
 			{HoleID: "DDH-24-002", Commodity: "copper", InterceptM: 8.0, Grade: 1.5, Unit: "%"},
 		},
 		ExtractionMethod: "hybrid",
 	}
 
-	data, err := json.Marshal(md)
-	if err != nil {
-		t.Fatalf("marshal: %v", err)
+	data, marshalErr := json.Marshal(md)
+	if marshalErr != nil {
+		t.Fatalf("marshal: %v", marshalErr)
 	}
 
-	var got MiningData
-	if err := json.Unmarshal(data, &got); err != nil {
-		t.Fatalf("unmarshal: %v", err)
+	var got router.MiningData
+	if unmarshalErr := json.Unmarshal(data, &got); unmarshalErr != nil {
+		t.Fatalf("unmarshal: %v", unmarshalErr)
 	}
 
 	if len(got.DrillResults) != 2 {
@@ -39,7 +41,7 @@ func TestMiningData_DrillResults_JSONRoundTrip(t *testing.T) {
 }
 
 func TestMiningData_NoDrillResults_OmitEmpty(t *testing.T) {
-	md := MiningData{
+	md := router.MiningData{
 		Relevance:   "core_mining",
 		Commodities: []string{"gold"},
 	}
@@ -52,4 +54,3 @@ func TestMiningData_NoDrillResults_OmitEmpty(t *testing.T) {
 		t.Error("expected drill_results to be omitted when nil")
 	}
 }
-
