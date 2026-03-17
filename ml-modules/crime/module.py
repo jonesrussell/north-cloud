@@ -7,9 +7,9 @@ from pydantic import ConfigDict
 from nc_ml.module import ClassifierModule
 from nc_ml.schemas import ClassifierResult, ClassifyRequest
 
-from classifier.crime_type import CrimeTypeClassifier
-from classifier.location import LocationClassifier
-from classifier.relevance import RelevanceClassifier
+from .classifier.crime_type import CrimeTypeClassifier
+from .classifier.location import LocationClassifier
+from .classifier.relevance import RelevanceClassifier
 
 
 MAX_BODY_CHARS = 500
@@ -94,3 +94,8 @@ class Module(ClassifierModule):
             crime_type_scores=crime_type_result["scores"],
             location_detected=location_result["location"] != "not_specified",
         )
+
+
+def create_module() -> Module:
+    """Factory function required by the nc_ml framework."""
+    return Module()

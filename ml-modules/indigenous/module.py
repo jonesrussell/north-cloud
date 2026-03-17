@@ -291,3 +291,8 @@ class Module(ClassifierModule):
             confidence=CONFIDENCE_NOT_INDIGENOUS,
             categories=[],
         )
+
+
+def create_module() -> Module:
+    """Factory function required by the nc_ml framework."""
+    return Module()

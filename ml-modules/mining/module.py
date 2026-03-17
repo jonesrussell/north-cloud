@@ -7,9 +7,9 @@ from pydantic import ConfigDict
 from nc_ml.module import ClassifierModule
 from nc_ml.schemas import ClassifierResult, ClassifyRequest
 
-from classifier.commodity import CommodityClassifier
-from classifier.mining_stage import MiningStageClassifier
-from classifier.relevance import RelevanceClassifier
+from .classifier.commodity import CommodityClassifier
+from .classifier.mining_stage import MiningStageClassifier
+from .classifier.relevance import RelevanceClassifier
 
 
 MAX_BODY_CHARS = 500
@@ -96,3 +96,8 @@ class Module(ClassifierModule):
             commodities=commodity_result["commodities"],
             commodity_scores=commodity_result["scores"],
         )
+
+
+def create_module() -> Module:
+    """Factory function required by the nc_ml framework."""
+    return Module()

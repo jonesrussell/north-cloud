@@ -155,3 +155,8 @@ class Module(ClassifierModule):
             confidence=CONFIDENCE_NOT,
             categories=[],
         )
+
+
+def create_module() -> Module:
+    """Factory function required by the nc_ml framework."""
+    return Module()

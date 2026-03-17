@@ -7,10 +7,10 @@ from pydantic import ConfigDict
 from nc_ml.module import ClassifierModule
 from nc_ml.schemas import ClassifierResult, ClassifyRequest
 
-from classifier.audience import AudienceClassifier
-from classifier.industry import IndustryClassifier
-from classifier.relevance import RelevanceClassifier
-from classifier.topic import TopicClassifier
+from .classifier.audience import AudienceClassifier
+from .classifier.industry import IndustryClassifier
+from .classifier.relevance import RelevanceClassifier
+from .classifier.topic import TopicClassifier
 
 
 MAX_BODY_CHARS = 500
@@ -108,3 +108,8 @@ class Module(ClassifierModule):
             industries=industry_result["industries"],
             industry_scores=industry_result["scores"],
         )
+
+
+def create_module() -> Module:
+    """Factory function required by the nc_ml framework."""
+    return Module()
