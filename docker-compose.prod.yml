@@ -257,15 +257,15 @@ services:
       APP_ENV: production
       CLASSIFIER_PORT: 8070
       CRIME_ENABLED: "true"
-      CRIME_ML_SERVICE_URL: http://crime-ml:8080
+      CRIME_ML_SERVICE_URL: http://crime-ml:8000
       MINING_ENABLED: "true"
-      MINING_ML_SERVICE_URL: http://mining-ml:8080
+      MINING_ML_SERVICE_URL: http://mining-ml:8000
       COFORGE_ENABLED: "true"
-      COFORGE_ML_SERVICE_URL: http://coforge-ml:8080
+      COFORGE_ML_SERVICE_URL: http://coforge-ml:8000
       ENTERTAINMENT_ENABLED: "true"
-      ENTERTAINMENT_ML_SERVICE_URL: http://entertainment-ml:8080
+      ENTERTAINMENT_ML_SERVICE_URL: http://entertainment-ml:8000
       INDIGENOUS_ENABLED: "${INDIGENOUS_ENABLED:-false}"
-      INDIGENOUS_ML_SERVICE_URL: http://indigenous-ml:8080
+      INDIGENOUS_ML_SERVICE_URL: http://indigenous-ml:8000
       RFP_ENABLED: "true"
       PIPELINE_URL: http://pipeline:8075
       AUTH_INTERNAL_SECRET: "${AUTH_INTERNAL_SECRET:-}"
@@ -284,7 +284,7 @@ services:
     image: docker.io/jonesrussell/crime-ml:latest
     ports: []  # No external ports in prod — classifier reaches via Docker network
     healthcheck:
-      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://127.0.0.1:8080/v1/health || exit 1"]
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://127.0.0.1:8000/v1/health || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -298,7 +298,7 @@ services:
     image: docker.io/jonesrussell/mining-ml:latest
     ports: []
     healthcheck:
-      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://127.0.0.1:8080/v1/health || exit 1"]
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://127.0.0.1:8000/v1/health || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -312,7 +312,7 @@ services:
     image: docker.io/jonesrussell/coforge-ml:latest
     ports: []
     healthcheck:
-      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://127.0.0.1:8080/v1/health || exit 1"]
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://127.0.0.1:8000/v1/health || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -326,7 +326,7 @@ services:
     image: docker.io/jonesrussell/entertainment-ml:latest
     ports: []
     healthcheck:
-      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://127.0.0.1:8080/v1/health || exit 1"]
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://127.0.0.1:8000/v1/health || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -340,7 +340,7 @@ services:
     image: docker.io/jonesrussell/indigenous-ml:latest
     ports: []
     healthcheck:
-      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://127.0.0.1:8080/v1/health || exit 1"]
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://127.0.0.1:8000/v1/health || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3

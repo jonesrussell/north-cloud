@@ -365,7 +365,7 @@ services:
         MODULE_NAME: crime
     image: docker.io/jonesrussell/crime-ml:latest
     ports:
-      - "${CRIME_ML_PORT:-8076}:8080"
+      - "${CRIME_ML_PORT:-8076}:8000"
 
   # ------------------------------------------------------------
   # Mining ML Classifier
@@ -384,7 +384,7 @@ services:
         limits:
           memory: 1G
     ports:
-      - "${MINING_ML_PORT:-8077}:8080"
+      - "${MINING_ML_PORT:-8077}:8000"
 
   # ------------------------------------------------------------
   # Coforge ML Classifier
@@ -399,7 +399,7 @@ services:
         MODULE_NAME: coforge
     image: docker.io/jonesrussell/coforge-ml:latest
     ports:
-      - "${COFORGE_ML_PORT:-8078}:8080"
+      - "${COFORGE_ML_PORT:-8078}:8000"
 
   # ------------------------------------------------------------
   # Entertainment ML Classifier
@@ -418,7 +418,7 @@ services:
         limits:
           memory: 256M
     ports:
-      - "${ENTERTAINMENT_ML_PORT:-8079}:8080"
+      - "${ENTERTAINMENT_ML_PORT:-8079}:8000"
 
   # ------------------------------------------------------------
   # Indigenous ML Classifier
@@ -437,7 +437,7 @@ services:
         limits:
           memory: 256M
     ports:
-      - "${INDIGENOUS_ML_PORT:-8081}:8080"
+      - "${INDIGENOUS_ML_PORT:-8081}:8000"
 
   # ------------------------------------------------------------
   # HTTP Replay Proxy (nc-http-proxy)
