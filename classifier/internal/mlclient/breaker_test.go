@@ -1,4 +1,4 @@
-package mlclientv2_test
+package mlclient_test
 
 import (
 	"context"
@@ -9,14 +9,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/jonesrussell/north-cloud/classifier/internal/mlclientv2"
+	"github.com/jonesrussell/north-cloud/classifier/internal/mlclient"
 )
 
 func newOKServer(t *testing.T) *httptest.Server {
 	t.Helper()
 
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		resp := mlclientv2.StandardResponse{
+		resp := mlclient.StandardResponse{
 			Module:        "test",
 			Version:       "v1",
 			SchemaVersion: "1.0",
@@ -37,7 +37,7 @@ func TestBreakerStartsClosed(t *testing.T) {
 	srv := newOKServer(t)
 	defer srv.Close()
 
-	client := mlclientv2.NewClient("test", srv.URL, mlclientv2.WithCircuitBreaker(3, 100*time.Millisecond))
+	client := mlclient.NewClient("test", srv.URL, mlclient.WithCircuitBreaker(3, 100*time.Millisecond))
 
 	_, err := client.Classify(context.Background(), "title", "body")
 	if err != nil {
@@ -56,9 +56,9 @@ func TestBreakerOpensAfterTrips(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	client := mlclientv2.NewClient("test", srv.URL,
-		mlclientv2.WithCircuitBreaker(3, 100*time.Millisecond),
-		mlclientv2.WithRetry(0, time.Millisecond),
+	client := mlclient.NewClient("test", srv.URL,
+		mlclient.WithCircuitBreaker(3, 100*time.Millisecond),
+		mlclient.WithRetry(0, time.Millisecond),
 	)
 
 	// Trip the breaker with 3 failures.
@@ -89,7 +89,7 @@ func TestBreakerResetsOnSuccess(t *testing.T) {
 			return
 		}
 
-		resp := mlclientv2.StandardResponse{
+		resp := mlclient.StandardResponse{
 			Module:        "test",
 			Version:       "v1",
 			SchemaVersion: "1.0",
@@ -104,9 +104,9 @@ func TestBreakerResetsOnSuccess(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	client := mlclientv2.NewClient("test", srv.URL,
-		mlclientv2.WithCircuitBreaker(3, 100*time.Millisecond),
-		mlclientv2.WithRetry(0, time.Millisecond),
+	client := mlclient.NewClient("test", srv.URL,
+		mlclient.WithCircuitBreaker(3, 100*time.Millisecond),
+		mlclient.WithRetry(0, time.Millisecond),
 	)
 
 	// Record 2 failures.
@@ -146,7 +146,7 @@ func TestBreakerHalfOpenAfterCooldown(t *testing.T) {
 		callCount.Add(1)
 
 		if succeedNext.Load() {
-			resp := mlclientv2.StandardResponse{
+			resp := mlclient.StandardResponse{
 				Module:        "test",
 				Version:       "v1",
 				SchemaVersion: "1.0",
@@ -166,9 +166,9 @@ func TestBreakerHalfOpenAfterCooldown(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	client := mlclientv2.NewClient("test", srv.URL,
-		mlclientv2.WithCircuitBreaker(1, 50*time.Millisecond),
-		mlclientv2.WithRetry(0, time.Millisecond),
+	client := mlclient.NewClient("test", srv.URL,
+		mlclient.WithCircuitBreaker(1, 50*time.Millisecond),
+		mlclient.WithRetry(0, time.Millisecond),
 	)
 
 	// Trip the breaker.

@@ -5,15 +5,16 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/jonesrussell/north-cloud/classifier/internal/mltransport"
+	"github.com/jonesrussell/north-cloud/classifier/internal/mlclient"
 )
 
-// Check calls GET /health at baseURL and returns reachable, latencyMs, model_version, and any error.
+// Check calls GET /v1/health at the ML sidecar and returns reachable, latencyMs, model_version, and any error.
 // The API handler builds MLServiceHealth from these values (plus LastChecked).
 func Check(ctx context.Context, baseURL string) (reachable bool, latencyMs int64, modelVersion string, err error) {
-	reachable, latencyMs, modelVersion, err = mltransport.DoHealth(ctx, baseURL)
-	if err != nil {
-		return reachable, latencyMs, modelVersion, fmt.Errorf("ml health check: %w", err)
+	client := mlclient.NewClient("health-check", baseURL)
+	health, healthErr := client.Health(ctx)
+	if healthErr != nil {
+		return false, 0, "", fmt.Errorf("ml health check: %w", healthErr)
 	}
-	return reachable, latencyMs, modelVersion, nil
+	return true, 0, health.Version, nil
 }

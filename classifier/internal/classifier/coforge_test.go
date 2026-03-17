@@ -3,23 +3,61 @@ package classifier
 
 import (
 	"context"
+	"encoding/json"
 	"testing"
 
-	"github.com/jonesrussell/north-cloud/classifier/internal/coforgemlclient"
 	"github.com/jonesrussell/north-cloud/classifier/internal/domain"
+	"github.com/jonesrussell/north-cloud/classifier/internal/mlclient"
 )
 
 type mockCoforgeMLClient struct {
-	response *coforgemlclient.ClassifyResponse
+	response *mlclient.StandardResponse
 	err      error
 }
 
-func (m *mockCoforgeMLClient) Classify(_ context.Context, _, _ string) (*coforgemlclient.ClassifyResponse, error) {
+func (m *mockCoforgeMLClient) Classify(
+	_ context.Context, _, _ string,
+) (*mlclient.StandardResponse, error) {
 	return m.response, m.err
 }
 
-func (m *mockCoforgeMLClient) Health(_ context.Context) error {
-	return nil
+// newCoforgeMLResponse creates a StandardResponse with coforge-specific fields.
+func newCoforgeMLResponse(
+	relevance, audience, modelVersion string,
+	confidence, audienceConfidence float64,
+	topics, industries []string, processingMs float64,
+) *mlclient.StandardResponse {
+	result, marshalErr := json.Marshal(coforgeMLResponse{
+		Audience:           audience,
+		AudienceConfidence: audienceConfidence,
+		Topics:             topics,
+		Industries:         industries,
+	})
+	if marshalErr != nil {
+		panic("test marshal failed: " + marshalErr.Error())
+	}
+	return &mlclient.StandardResponse{
+		Module:           "coforge",
+		Version:          modelVersion,
+		SchemaVersion:    "1.0",
+		Result:           result,
+		Relevance:        float64Ptr(mapCoforgeRelevanceToScore(relevance)),
+		Confidence:       float64Ptr(confidence),
+		ProcessingTimeMs: processingMs,
+		RequestID:        "test",
+	}
+}
+
+// mapCoforgeRelevanceToScore maps a coforge relevance class to a numeric score.
+func mapCoforgeRelevanceToScore(relevance string) float64 {
+	switch relevance {
+	case "core_coforge":
+		return 0.9
+	case "peripheral_coforge":
+		return 0.5
+	default:
+		return 0.1
+	}
 }
 
 func TestCoforgeClassifier_Classify_Disabled(t *testing.T) {
@@ -68,15 +106,11 @@ func TestCoforgeClassifier_Classify_BothAgree(t *testing.T) {
 	t.Helper()
 
 	mlMock := &mockCoforgeMLClient{
-		response: &coforgemlclient.ClassifyResponse{
-			Relevance:           "core_coforge",
-			RelevanceConfidence: 0.92,
-			Audience:            "hybrid",
-			AudienceConfidence:  0.78,
-			Topics:              []string{"funding_round", "devtools"},
-			Industries:          []string{"saas"},
-			ModelVersion:        "2026-02-08-coforge-v1",
-		},
+		response: newCoforgeMLResponse(
+			"core_coforge", "hybrid", "2026-02-08-coforge-v1",
+			0.92, 0.78,
+			[]string{"funding_round", "devtools"}, []string{"saas"}, 0,
+		),
 	}
 
 	cc := NewCoforgeClassifier(mlMock, &mockLogger{}, true)
@@ -116,16 +150,12 @@ func TestCoforgeClassifier_DecisionContext_BothAgree(t *testing.T) {
 	t.Helper()
 
 	mlMock := &mockCoforgeMLClient{
-		response: &coforgemlclient.ClassifyResponse{
-			Relevance:           "core_coforge",
-			RelevanceConfidence: testCoforgeMLConfidence,
-			Audience:            "hybrid",
-			AudienceConfidence:  0.78,
-			Topics:              []string{"funding_round", "devtools"},
-			Industries:          []string{"saas"},
-			ModelVersion:        "2026-02-08-coforge-v1",
-			ProcessingTimeMs:    testCoforgeMLProcessingTimeMs,
-		},
+		response: newCoforgeMLResponse(
+			"core_coforge", "hybrid", "2026-02-08-coforge-v1",
+			testCoforgeMLConfidence, 0.78,
+			[]string{"funding_round", "devtools"}, []string{"saas"},
+			testCoforgeMLProcessingTimeMs,
+		),
 	}
 
 	cc := NewCoforgeClassifier(mlMock, &mockLogger{}, true)

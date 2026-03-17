@@ -1,6 +1,6 @@
-// Package mlclientv2 provides a unified Go client for ML sidecar services
+// Package mlclient provides a unified Go client for ML sidecar services
 // that speak the standard response envelope.
-package mlclientv2
+package mlclient
 
 import "encoding/json"
 

@@ -5,23 +5,57 @@ package classifier
 
 import (
 	"context"
+	"encoding/json"
 	"testing"
 
 	"github.com/jonesrussell/north-cloud/classifier/internal/domain"
-	"github.com/jonesrussell/north-cloud/classifier/internal/entertainmentmlclient"
+	"github.com/jonesrussell/north-cloud/classifier/internal/mlclient"
 )
 
 type mockEntertainmentMLClient struct {
-	response *entertainmentmlclient.ClassifyResponse
+	response *mlclient.StandardResponse
 	err      error
 }
 
-func (m *mockEntertainmentMLClient) Classify(_ context.Context, _, _ string) (*entertainmentmlclient.ClassifyResponse, error) {
+func (m *mockEntertainmentMLClient) Classify(
+	_ context.Context, _, _ string,
+) (*mlclient.StandardResponse, error) {
 	return m.response, m.err
 }
 
-func (m *mockEntertainmentMLClient) Health(_ context.Context) error {
-	return nil
+// newEntertainmentMLResponse creates a StandardResponse with entertainment-specific fields.
+func newEntertainmentMLResponse(
+	relevance, modelVersion string, confidence float64,
+	categories []string, processingMs float64,
+) *mlclient.StandardResponse {
+	result, marshalErr := json.Marshal(entertainmentMLResponse{
+		Categories: categories,
+	})
+	if marshalErr != nil {
+		panic("test marshal failed: " + marshalErr.Error())
+	}
+	return &mlclient.StandardResponse{
+		Module:           "entertainment",
+		Version:          modelVersion,
+		SchemaVersion:    "1.0",
+		Result:           result,
+		Relevance:        float64Ptr(mapEntertainmentRelevanceToScore(relevance)),
+		Confidence:       float64Ptr(confidence),
+		ProcessingTimeMs: processingMs,
+		RequestID:        "test",
+	}
+}
+
+// mapEntertainmentRelevanceToScore maps an entertainment relevance class to a numeric score.
+func mapEntertainmentRelevanceToScore(relevance string) float64 {
+	switch relevance {
+	case "core_entertainment":
+		return 0.9
+	case "peripheral_entertainment":
+		return 0.5
+	default:
+		return 0.1
+	}
 }
 
 func TestEntertainmentClassifier_Classify_Disabled(t *testing.T) {
@@ -77,13 +111,11 @@ func TestEntertainmentClassifier_DecisionContext_BothAgree(t *testing.T) {
 	t.Helper()
 
 	mlMock := &mockEntertainmentMLClient{
-		response: &entertainmentmlclient.ClassifyResponse{
-			Relevance:           "core_entertainment",
-			RelevanceConfidence: testEntertainmentMLConfidence,
-			Categories:          []string{"film", "awards"},
-			ModelVersion:        "2026-02-10-entertainment-v1",
-			ProcessingTimeMs:    testEntertainmentMLProcessingTimeMs,
-		},
+		response: newEntertainmentMLResponse(
+			"core_entertainment", "2026-02-10-entertainment-v1",
+			testEntertainmentMLConfidence,
+			[]string{"film", "awards"}, testEntertainmentMLProcessingTimeMs,
+		),
 	}
 
 	ec := NewEntertainmentClassifier(mlMock, &mockLogger{}, true)
@@ -135,7 +167,9 @@ func TestEntertainmentClassifier_Classify_RulesOnly_NotRelevant(t *testing.T) {
 	}
 }
 
-func verifyEntertainmentDecisionPath(t *testing.T, result *domain.EntertainmentResult, expected string) {
+func verifyEntertainmentDecisionPath(
+	t *testing.T, result *domain.EntertainmentResult, expected string,
+) {
 	t.Helper()
 
 	if result.DecisionPath != expected {
@@ -143,7 +177,9 @@ func verifyEntertainmentDecisionPath(t *testing.T, result *domain.EntertainmentR
 	}
 }
 
-func verifyEntertainmentMLConfidencePopulated(t *testing.T, result *domain.EntertainmentResult) {
+func verifyEntertainmentMLConfidencePopulated(
+	t *testing.T, result *domain.EntertainmentResult,
+) {
 	t.Helper()
 
 	if result.MLConfidenceRaw == 0 {
@@ -151,7 +187,9 @@ func verifyEntertainmentMLConfidencePopulated(t *testing.T, result *domain.Enter
 	}
 }
 
-func verifyEntertainmentProcessingTimeMs(t *testing.T, result *domain.EntertainmentResult, expected int64) {
+func verifyEntertainmentProcessingTimeMs(
+	t *testing.T, result *domain.EntertainmentResult, expected int64,
+) {
 	t.Helper()
 
 	if result.ProcessingTimeMs != expected {

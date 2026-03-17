@@ -2,29 +2,41 @@ package classifier
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 
 	"github.com/jonesrussell/north-cloud/classifier/internal/domain"
-	"github.com/jonesrussell/north-cloud/classifier/internal/entertainmentmlclient"
+	"github.com/jonesrussell/north-cloud/classifier/internal/mlclient"
 	infralogger "github.com/jonesrussell/north-cloud/infrastructure/logger"
 )
 
 const entertainmentMaxBodyChars = 500
 
-// EntertainmentMLClassifier defines the interface for Entertainment ML classification.
-type EntertainmentMLClassifier interface {
-	Classify(ctx context.Context, title, body string) (*entertainmentmlclient.ClassifyResponse, error)
-	Health(ctx context.Context) error
+// entertainmentMLResponse holds domain-specific fields from the entertainment ML sidecar result.
+type entertainmentMLResponse struct {
+	Categories []string `json:"categories"`
+}
+
+// entertainmentMLEnvelope holds the parsed ML response with both envelope and domain fields.
+type entertainmentMLEnvelope struct {
+	Relevance           string
+	RelevanceConfidence float64
+	Categories          []string
+	ProcessingTimeMs    int64
+	ModelVersion        string
 }
 
 // EntertainmentClassifier implements hybrid rule + ML entertainment classification.
 type EntertainmentClassifier struct {
-	mlClient EntertainmentMLClassifier
+	mlClient MLClassifier
 	logger   infralogger.Logger
 	enabled  bool
 }
 
 // NewEntertainmentClassifier creates a new hybrid entertainment classifier.
-func NewEntertainmentClassifier(mlClient EntertainmentMLClassifier, logger infralogger.Logger, enabled bool) *EntertainmentClassifier {
+func NewEntertainmentClassifier(
+	mlClient MLClassifier, logger infralogger.Logger, enabled bool,
+) *EntertainmentClassifier {
 	return &EntertainmentClassifier{
 		mlClient: mlClient,
 		logger:   logger,
@@ -34,30 +46,86 @@ func NewEntertainmentClassifier(mlClient EntertainmentMLClassifier, logger infra
 
 // Classify performs hybrid entertainment classification on raw content.
 // Returns (nil, nil) when classification is disabled.
-func (s *EntertainmentClassifier) Classify(ctx context.Context, raw *domain.RawContent) (*domain.EntertainmentResult, error) {
+func (s *EntertainmentClassifier) Classify(
+	ctx context.Context, raw *domain.RawContent,
+) (*domain.EntertainmentResult, error) {
 	if !s.enabled {
 		return nil, nil //nolint:nilnil // Intentional: nil result signals disabled
 	}
 
 	ruleResult := classifyEntertainmentByRules(raw.Title, raw.RawText)
 
-	var mlResult *entertainmentmlclient.ClassifyResponse
-	if s.mlClient != nil {
-		var err error
-		mlResult, err = CallMLWithBodyLimit(
-			ctx, raw.Title, raw.RawText, entertainmentMaxBodyChars, s.mlClient.Classify)
-		if err != nil {
-			s.logger.Warn("Entertainment ML classification failed, using rules only",
-				infralogger.String("content_id", raw.ID),
-				infralogger.Error(err))
-		}
-	}
+	mlResult := s.callEntertainmentML(ctx, raw)
 
 	return s.mergeResults(ruleResult, mlResult), nil
 }
 
+// callEntertainmentML calls the ML sidecar and parses the response. Returns nil on failure or if client is nil.
+func (s *EntertainmentClassifier) callEntertainmentML(
+	ctx context.Context, raw *domain.RawContent,
+) *entertainmentMLEnvelope {
+	if s.mlClient == nil {
+		return nil
+	}
+	body := truncateBody(raw.RawText, entertainmentMaxBodyChars)
+	resp, err := s.mlClient.Classify(ctx, raw.Title, body)
+	if err != nil {
+		s.logger.Warn("Entertainment ML classification failed, using rules only",
+			infralogger.String("content_id", raw.ID), infralogger.Error(err))
+		return nil
+	}
+	parsed, parseErr := parseEntertainmentMLResponse(resp)
+	if parseErr != nil {
+		s.logger.Warn("Entertainment ML response parse failed, using rules only",
+			infralogger.String("content_id", raw.ID), infralogger.Error(parseErr))
+		return nil
+	}
+	return parsed
+}
+
+// parseEntertainmentMLResponse extracts entertainment-specific fields from the unified ML response.
+func parseEntertainmentMLResponse(
+	resp *mlclient.StandardResponse,
+) (*entertainmentMLEnvelope, error) {
+	var domainResp entertainmentMLResponse
+	if unmarshalErr := json.Unmarshal(resp.Result, &domainResp); unmarshalErr != nil {
+		return nil, fmt.Errorf("entertainment result decode: %w", unmarshalErr)
+	}
+
+	env := &entertainmentMLEnvelope{
+		Categories:       domainResp.Categories,
+		ProcessingTimeMs: int64(resp.ProcessingTimeMs),
+		ModelVersion:     resp.Version,
+	}
+
+	if resp.Relevance != nil {
+		env.Relevance = mapEntertainmentRelevanceScore(*resp.Relevance)
+	}
+	if resp.Confidence != nil {
+		env.RelevanceConfidence = *resp.Confidence
+	}
+
+	return env, nil
+}
+
+// mapEntertainmentRelevanceScore maps a numeric relevance to entertainment relevance class.
+func mapEntertainmentRelevanceScore(score float64) string {
+	const (
+		coreThreshold       = 0.7
+		peripheralThreshold = 0.3
+	)
+	switch {
+	case score >= coreThreshold:
+		return entertainmentRelevanceCore
+	case score >= peripheralThreshold:
+		return entertainmentRelevancePeripheral
+	default:
+		return entertainmentRelevanceNot
+	}
+}
+
 func (s *EntertainmentClassifier) mergeResults(
-	rule *entertainmentRuleResult, ml *entertainmentmlclient.ClassifyResponse,
+	rule *entertainmentRuleResult, ml *entertainmentMLEnvelope,
 ) *domain.EntertainmentResult {
 	result := &domain.EntertainmentResult{
 		Relevance:        rule.relevance,
@@ -84,17 +152,24 @@ const (
 
 func (s *EntertainmentClassifier) applyDecisionLogic(
 	result *domain.EntertainmentResult, rule *entertainmentRuleResult,
-	ml *entertainmentmlclient.ClassifyResponse,
+	ml *entertainmentMLEnvelope,
 ) {
+	mlRelevance := ""
+	mlConfidence := 0.0
+	if ml != nil {
+		mlRelevance = ml.Relevance
+		mlConfidence = ml.RelevanceConfidence
+	}
+
 	switch {
-	case rule.relevance == entertainmentRelevanceCore && ml != nil && ml.Relevance == entertainmentRelevanceCore:
+	case rule.relevance == entertainmentRelevanceCore && mlRelevance == entertainmentRelevanceCore:
 		result.Relevance = entertainmentRelevanceCore
-		result.FinalConfidence = (rule.confidence + ml.RelevanceConfidence) / entertainmentBothAgreeWeight
+		result.FinalConfidence = (rule.confidence + mlConfidence) / entertainmentBothAgreeWeight
 		result.HomepageEligible = result.FinalConfidence >= entertainmentHomepageMinConfidence
 		result.ReviewRequired = false
 		result.DecisionPath = decisionPathBothAgree
 
-	case rule.relevance == entertainmentRelevanceCore && ml != nil && ml.Relevance == entertainmentRelevanceNot:
+	case rule.relevance == entertainmentRelevanceCore && mlRelevance == entertainmentRelevanceNot:
 		result.Relevance = entertainmentRelevanceCore
 		result.FinalConfidence = rule.confidence * entertainmentRuleMLDisagreeWeight
 		result.HomepageEligible = rule.confidence >= entertainmentRuleHighConfidence
@@ -108,15 +183,15 @@ func (s *EntertainmentClassifier) applyDecisionLogic(
 		result.ReviewRequired = false
 		result.DecisionPath = decisionPathRulesOnly
 
-	case ml != nil && ml.Relevance == entertainmentRelevanceCore && ml.RelevanceConfidence >= entertainmentMLOverrideThreshold:
+	case mlRelevance == entertainmentRelevanceCore && mlConfidence >= entertainmentMLOverrideThreshold:
 		result.Relevance = entertainmentRelevancePeripheral
-		result.FinalConfidence = ml.RelevanceConfidence * entertainmentMLOverrideWeight
+		result.FinalConfidence = mlConfidence * entertainmentMLOverrideWeight
 		result.ReviewRequired = true
 		result.DecisionPath = decisionPathMLOverride
 
-	case rule.relevance == entertainmentRelevancePeripheral && ml != nil && ml.Relevance == entertainmentRelevanceCore:
+	case rule.relevance == entertainmentRelevancePeripheral && mlRelevance == entertainmentRelevanceCore:
 		result.Relevance = entertainmentRelevanceCore
-		result.FinalConfidence = ml.RelevanceConfidence
+		result.FinalConfidence = mlConfidence
 		result.ReviewRequired = false
 		result.DecisionPath = decisionPathMLUpgrade
 

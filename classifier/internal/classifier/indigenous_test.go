@@ -5,23 +5,57 @@ package classifier
 
 import (
 	"context"
+	"encoding/json"
 	"testing"
 
 	"github.com/jonesrussell/north-cloud/classifier/internal/domain"
-	"github.com/jonesrussell/north-cloud/classifier/internal/indigenousmlclient"
+	"github.com/jonesrussell/north-cloud/classifier/internal/mlclient"
 )
 
 type mockIndigenousMLClient struct {
-	response *indigenousmlclient.ClassifyResponse
+	response *mlclient.StandardResponse
 	err      error
 }
 
-func (m *mockIndigenousMLClient) Classify(_ context.Context, _, _ string) (*indigenousmlclient.ClassifyResponse, error) {
+func (m *mockIndigenousMLClient) Classify(
+	_ context.Context, _, _ string,
+) (*mlclient.StandardResponse, error) {
 	return m.response, m.err
 }
 
-func (m *mockIndigenousMLClient) Health(_ context.Context) error {
-	return nil
+// newIndigenousMLResponse creates a StandardResponse with indigenous-specific fields.
+func newIndigenousMLResponse(
+	relevance, modelVersion string, confidence float64,
+	categories []string, processingMs float64,
+) *mlclient.StandardResponse {
+	result, marshalErr := json.Marshal(indigenousMLResponse{
+		Categories: categories,
+	})
+	if marshalErr != nil {
+		panic("test marshal failed: " + marshalErr.Error())
+	}
+	return &mlclient.StandardResponse{
+		Module:           "indigenous",
+		Version:          modelVersion,
+		SchemaVersion:    "1.0",
+		Result:           result,
+		Relevance:        float64Ptr(mapIndigenousRelevanceToScore(relevance)),
+		Confidence:       float64Ptr(confidence),
+		ProcessingTimeMs: processingMs,
+		RequestID:        "test",
+	}
+}
+
+// mapIndigenousRelevanceToScore maps an indigenous relevance class to a numeric score.
+func mapIndigenousRelevanceToScore(relevance string) float64 {
+	switch relevance {
+	case "core_indigenous":
+		return 0.9
+	case "peripheral_indigenous":
+		return 0.5
+	default:
+		return 0.1
+	}
 }
 
 func TestIndigenousClassifier_Classify_Disabled(t *testing.T) {
@@ -77,13 +111,11 @@ func TestIndigenousClassifier_DecisionContext_BothAgree(t *testing.T) {
 	t.Helper()
 
 	mlMock := &mockIndigenousMLClient{
-		response: &indigenousmlclient.ClassifyResponse{
-			Relevance:           "core_indigenous",
-			RelevanceConfidence: testIndigenousMLConfidence,
-			Categories:          []string{"culture", "language"},
-			ModelVersion:        "2026-02-27-indigenous-v1",
-			ProcessingTimeMs:    testIndigenousMLProcessingTimeMs,
-		},
+		response: newIndigenousMLResponse(
+			"core_indigenous", "2026-02-27-indigenous-v1",
+			testIndigenousMLConfidence,
+			[]string{"culture", "language"}, testIndigenousMLProcessingTimeMs,
+		),
 	}
 
 	ac := NewIndigenousClassifier(mlMock, &mockLogger{}, true)
@@ -212,7 +244,9 @@ func TestIndigenousClassifier_ConfidencePassthrough(t *testing.T) {
 	}
 }
 
-func verifyIndigenousDecisionPath(t *testing.T, result *domain.IndigenousResult, expected string) {
+func verifyIndigenousDecisionPath(
+	t *testing.T, result *domain.IndigenousResult, expected string,
+) {
 	t.Helper()
 
 	if result.DecisionPath != expected {
@@ -220,7 +254,9 @@ func verifyIndigenousDecisionPath(t *testing.T, result *domain.IndigenousResult,
 	}
 }
 
-func verifyIndigenousMLConfidencePopulated(t *testing.T, result *domain.IndigenousResult) {
+func verifyIndigenousMLConfidencePopulated(
+	t *testing.T, result *domain.IndigenousResult,
+) {
 	t.Helper()
 
 	if result.MLConfidenceRaw == 0 {
@@ -228,7 +264,9 @@ func verifyIndigenousMLConfidencePopulated(t *testing.T, result *domain.Indigeno
 	}
 }
 
-func verifyIndigenousProcessingTimeMs(t *testing.T, result *domain.IndigenousResult, expected int64) {
+func verifyIndigenousProcessingTimeMs(
+	t *testing.T, result *domain.IndigenousResult, expected int64,
+) {
 	t.Helper()
 
 	if result.ProcessingTimeMs != expected {

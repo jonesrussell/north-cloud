@@ -11,13 +11,9 @@ import (
 
 	"github.com/jmoiron/sqlx"
 	"github.com/jonesrussell/north-cloud/classifier/internal/classifier"
-	"github.com/jonesrussell/north-cloud/classifier/internal/coforgemlclient"
 	"github.com/jonesrussell/north-cloud/classifier/internal/config"
 	"github.com/jonesrussell/north-cloud/classifier/internal/database"
 	"github.com/jonesrussell/north-cloud/classifier/internal/domain"
-	"github.com/jonesrussell/north-cloud/classifier/internal/entertainmentmlclient"
-	"github.com/jonesrussell/north-cloud/classifier/internal/indigenousmlclient"
-	"github.com/jonesrussell/north-cloud/classifier/internal/miningmlclient"
 	"github.com/jonesrussell/north-cloud/classifier/internal/mlclient"
 	"github.com/jonesrussell/north-cloud/classifier/internal/processor"
 	"github.com/jonesrussell/north-cloud/classifier/internal/storage"
@@ -39,6 +35,12 @@ const (
 	defaultReputationDecayRate95 = 0.95
 	defaultSpamThreshold         = 30
 	minArticlesForTrust          = 10
+	// ML client constants
+	mlClientTimeout         = 5 * time.Second
+	mlClientRetryCount      = 2
+	mlClientRetryDelay      = 100 * time.Millisecond
+	mlClientBreakerTrips    = 5
+	mlClientBreakerCooldown = 30 * time.Second
 )
 
 // ProcessorConfig holds processor-specific configuration derived from main config
@@ -176,6 +178,15 @@ func loadRules(ctx context.Context, rulesRepo *database.RulesRepository, log inf
 	return ruleValues, nil
 }
 
+// newMLClient creates a unified ML client with standard options for the given module.
+func newMLClient(moduleName, mlURL string) *mlclient.Client {
+	return mlclient.NewClient(moduleName, mlURL,
+		mlclient.WithTimeout(mlClientTimeout),
+		mlclient.WithRetry(mlClientRetryCount, mlClientRetryDelay),
+		mlclient.WithCircuitBreaker(mlClientBreakerTrips, mlClientBreakerCooldown),
+	)
+}
+
 // createClassifierConfig creates classifier configuration with optional crime classifier
 func createClassifierConfig(cfg *config.Config, log infralogger.Logger) classifier.Config {
 	if cfg.Classification.SidecarRegistryFromYAML {
@@ -218,7 +229,7 @@ func createCrimeClassifier(cfg *config.Config, log infralogger.Logger) *classifi
 
 	var mlClient classifier.MLClassifier
 	if cfg.Classification.Crime.MLServiceURL != "" {
-		mlClient = mlclient.NewClient(cfg.Classification.Crime.MLServiceURL)
+		mlClient = newMLClient("crime", cfg.Classification.Crime.MLServiceURL)
 		log.Info("Crime classifier enabled for processor",
 			infralogger.String("ml_service_url", cfg.Classification.Crime.MLServiceURL))
 	} else {
@@ -235,9 +246,9 @@ func createMiningClassifier(cfg *config.Config, log infralogger.Logger) *classif
 		return nil
 	}
 
-	var mlClient classifier.MiningMLClassifier
+	var mlClient classifier.MLClassifier
 	if cfg.Classification.Mining.MLServiceURL != "" {
-		mlClient = miningmlclient.NewClient(cfg.Classification.Mining.MLServiceURL)
+		mlClient = newMLClient("mining", cfg.Classification.Mining.MLServiceURL)
 		log.Info("Mining classifier enabled for processor",
 			infralogger.String("ml_service_url", cfg.Classification.Mining.MLServiceURL))
 	} else {
@@ -254,9 +265,9 @@ func createCoforgeClassifier(cfg *config.Config, log infralogger.Logger) *classi
 		return nil
 	}
 
-	var mlClient classifier.CoforgeMLClassifier
+	var mlClient classifier.MLClassifier
 	if cfg.Classification.Coforge.MLServiceURL != "" {
-		mlClient = coforgemlclient.NewClient(cfg.Classification.Coforge.MLServiceURL)
+		mlClient = newMLClient("coforge", cfg.Classification.Coforge.MLServiceURL)
 		log.Info("Coforge classifier enabled for processor",
 			infralogger.String("ml_service_url", cfg.Classification.Coforge.MLServiceURL))
 	} else {
@@ -273,9 +284,9 @@ func createEntertainmentClassifier(cfg *config.Config, log infralogger.Logger) *
 		return nil
 	}
 
-	var mlClient classifier.EntertainmentMLClassifier
+	var mlClient classifier.MLClassifier
 	if cfg.Classification.Entertainment.MLServiceURL != "" {
-		mlClient = entertainmentmlclient.NewClient(cfg.Classification.Entertainment.MLServiceURL)
+		mlClient = newMLClient("entertainment", cfg.Classification.Entertainment.MLServiceURL)
 		log.Info("Entertainment classifier enabled for processor",
 			infralogger.String("ml_service_url", cfg.Classification.Entertainment.MLServiceURL))
 	} else {
@@ -292,9 +303,9 @@ func createIndigenousClassifier(cfg *config.Config, log infralogger.Logger) *cla
 		return nil
 	}
 
-	var mlClient classifier.IndigenousMLClassifier
+	var mlClient classifier.MLClassifier
 	if cfg.Classification.Indigenous.MLServiceURL != "" {
-		mlClient = indigenousmlclient.NewClient(cfg.Classification.Indigenous.MLServiceURL)
+		mlClient = newMLClient("indigenous", cfg.Classification.Indigenous.MLServiceURL)
 		log.Info("Indigenous classifier enabled for processor",
 			infralogger.String("ml_service_url", cfg.Classification.Indigenous.MLServiceURL))
 	} else {
