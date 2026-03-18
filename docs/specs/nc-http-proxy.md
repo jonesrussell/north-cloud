@@ -1,5 +1,7 @@
 # NC HTTP Proxy Specification
 
+> Last verified: 2026-03-18
+
 ## Purpose
 
 Caching HTTP/HTTPS reverse proxy for development and testing. Intercepts outbound requests from the crawler (and other services), caching responses for deterministic replay without network dependencies.

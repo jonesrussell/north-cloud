@@ -1,5 +1,7 @@
 # Source Manager Specification
 
+> Last verified: 2026-03-18
+
 ## Purpose
 
 Registry service for content sources, First Nations communities, and leadership data. Upstream authority for the content pipeline — crawler, publisher, and Minoo consume its data.

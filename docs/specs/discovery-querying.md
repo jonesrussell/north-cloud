@@ -1,6 +1,6 @@
 # Discovery & Querying Specification
 
-> Last verified: 2026-03-08
+> Last verified: 2026-03-18
 
 Covers the search service (full-text queries) and index-manager (ES lifecycle, mappings, aggregations).
 

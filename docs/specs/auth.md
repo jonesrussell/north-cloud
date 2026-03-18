@@ -1,6 +1,6 @@
 # Auth Service Spec
 
-> Last verified: 2026-03-08
+> Last verified: 2026-03-18
 
 ## Overview
 
