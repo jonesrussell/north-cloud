@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/url"
 	"strings"
+	"sync"
 
 	"github.com/jonesrussell/north-cloud/classifier/internal/classifier/jsonld"
 	"github.com/jonesrussell/north-cloud/classifier/internal/domain"
@@ -70,6 +71,8 @@ var paginationQueryParams = []string{
 // ContentTypeClassifier determines the type of content (article, page, video, image, job)
 type ContentTypeClassifier struct {
 	logger infralogger.Logger
+	mu     sync.Mutex
+	stats  map[string]int
 }
 
 // ContentTypeResult represents the result of content type classification
@@ -85,7 +88,14 @@ type ContentTypeResult struct {
 func NewContentTypeClassifier(logger infralogger.Logger) *ContentTypeClassifier {
 	return &ContentTypeClassifier{
 		logger: logger,
+		stats:  make(map[string]int),
 	}
+}
+
+func (c *ContentTypeClassifier) recordTypeHit(contentType string) {
+	c.mu.Lock()
+	c.stats[contentType]++
+	c.mu.Unlock()
 }
 
 // Classify determines the content type of the given raw content
@@ -703,6 +713,7 @@ func (c *ContentTypeClassifier) ClassifyBatch(ctx context.Context, rawItems []*d
 		if err != nil {
 			return nil, err
 		}
+		c.recordTypeHit(result.Type)
 		results[i] = result
 	}
 
@@ -711,13 +722,14 @@ func (c *ContentTypeClassifier) ClassifyBatch(ctx context.Context, rawItems []*d
 
 // GetStats returns statistics about content type classifications
 func (c *ContentTypeClassifier) GetStats() map[string]int {
-	// TODO: Implement stats tracking
-	// This would track counts of each content type classified
-	return map[string]int{
-		"article": 0,
-		"page":    0,
-		"video":   0,
-		"image":   0,
-		"job":     0,
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	result := map[string]int{
+		"article": c.stats["article"],
+		"page":    c.stats["page"],
+		"video":   c.stats["video"],
+		"image":   c.stats["image"],
+		"job":     c.stats["job"],
 	}
+	return result
 }

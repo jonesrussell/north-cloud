@@ -143,6 +143,8 @@ Index-Manager:
 - Port: 8090
 - Mapping versions compiled in code
 - Drift detection at startup (warning only)
+- `/health` performs real ES cluster health and DB ping checks; returns 503 with degraded status on failure
+- Health handler accepts `HealthChecker` interface and `*sql.DB` via `WithHealthDeps()`
 
 ## Edge Cases
 

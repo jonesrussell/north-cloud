@@ -4,6 +4,7 @@ import (
 	"context"
 	"math"
 	"strings"
+	"sync"
 
 	"github.com/jonesrussell/north-cloud/classifier/internal/domain"
 	infralogger "github.com/jonesrussell/north-cloud/infrastructure/logger"
@@ -26,6 +27,8 @@ const (
 type TopicClassifier struct {
 	logger infralogger.Logger
 	rules  []domain.ClassificationRule
+	mu     sync.Mutex
+	stats  map[string]int
 }
 
 // TopicResult represents the result of topic classification
@@ -40,6 +43,7 @@ func NewTopicClassifier(logger infralogger.Logger, rules []domain.Classification
 	return &TopicClassifier{
 		logger: logger,
 		rules:  rules,
+		stats:  make(map[string]int),
 	}
 }
 
@@ -69,6 +73,7 @@ func (t *TopicClassifier) Classify(ctx context.Context, raw *domain.RawContent) 
 		if score >= rule.MinConfidence {
 			result.Topics = append(result.Topics, rule.TopicName)
 			result.TopicScores[rule.TopicName] = score
+			t.recordTopicHit(rule.TopicName)
 
 			t.logger.Debug("Topic matched",
 				infralogger.String("content_id", raw.ID),
@@ -224,15 +229,22 @@ func (t *TopicClassifier) GetRules() []domain.ClassificationRule {
 	return t.rules
 }
 
+func (t *TopicClassifier) recordTopicHit(topic string) {
+	t.mu.Lock()
+	t.stats[topic]++
+	t.mu.Unlock()
+}
+
 // GetTopicStats returns statistics about topic classifications
 func (t *TopicClassifier) GetTopicStats() map[string]int {
-	// TODO: Implement stats tracking
-	// This would track counts of each topic classified
-	stats := make(map[string]int)
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	// Start with zero counts for all known topics
+	stats := make(map[string]int, len(t.rules))
 	for i := range t.rules {
 		rule := t.rules[i]
 		if rule.RuleType == domain.RuleTypeTopic {
-			stats[rule.TopicName] = 0
+			stats[rule.TopicName] = t.stats[rule.TopicName]
 		}
 	}
 	return stats

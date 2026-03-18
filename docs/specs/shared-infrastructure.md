@@ -180,3 +180,4 @@ replace github.com/jonesrussell/north-cloud/infrastructure => ../infrastructure
 - **JWT skips health endpoints**: /health and /health/* bypass auth. Don't expose sensitive data there.
 - **Context logger fallback**: `FromContext()` returns fallback logger (warns to stderr) if not found.
 - **Request ID propagation**: `RequestIDLoggerMiddleware` stores logger with request_id in Go context. Downstream code retrieves via `logger.FromContext(ctx)`.
+- **Alloy Docker labels**: Config exposes `container_name` and `compose_service` labels for Docker log discovery, enabling per-service log filtering in Grafana (e.g., `{container_name="north-cloud-crawler-1"}`).

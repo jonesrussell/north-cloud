@@ -24,7 +24,8 @@ func SetupHTTPServer(
 	indexService := service.NewIndexService(esClient, db, log, cfg.IndexTypes)
 	documentService := service.NewDocumentService(esClient, log)
 	aggregationService := service.NewAggregationService(esClient, log)
-	handler := api.NewHandler(indexService, documentService, aggregationService, log)
+	handler := api.NewHandler(indexService, documentService, aggregationService, log).
+		WithHealthDeps(esClient, db.DB)
 
 	serverConfig := api.ServerConfig{
 		Port:         cfg.Service.Port,

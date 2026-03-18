@@ -1,9 +1,12 @@
 package api
 
 import (
+	"context"
+	"database/sql"
 	"fmt"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/jonesrussell/north-cloud/index-manager/internal/domain"
@@ -21,12 +24,19 @@ const (
 	defaultSortOrder = "asc"
 )
 
+// HealthChecker provides cluster health for dependency checks.
+type HealthChecker interface {
+	GetClusterHealth(ctx context.Context) (map[string]any, error)
+}
+
 // Handler handles HTTP requests for the index manager API
 type Handler struct {
 	indexService       *service.IndexService
 	documentService    *service.DocumentService
 	aggregationService *service.AggregationService
 	logger             infralogger.Logger
+	esHealth           HealthChecker
+	db                 *sql.DB
 }
 
 // NewHandler creates a new API handler
@@ -44,6 +54,15 @@ func NewHandler(
 	}
 }
 
+// WithHealthDeps adds ES and DB health check dependencies.
+func (h *Handler) WithHealthDeps(esHealth HealthChecker, db *sql.DB) *Handler {
+	h.esHealth = esHealth
+	h.db = db
+	return h
+}
+
+const healthCheckTimeout = 5 * time.Second
+
 // HealthCheck handles GET /health
 func (h *Handler) HealthCheck(c *gin.Context) {
 	health := &domain.HealthStatus{
@@ -53,11 +72,50 @@ func (h *Handler) HealthCheck(c *gin.Context) {
 		Timestamp: "",
 	}
 
-	// TODO: Add actual health checks (ES connection, DB connection)
-	health.Checks["elasticsearch"] = "ok"
-	health.Checks["database"] = "ok"
+	httpStatus := http.StatusOK
 
-	c.JSON(http.StatusOK, health)
+	health.Checks["elasticsearch"] = h.checkElasticsearch(c.Request.Context())
+	health.Checks["database"] = h.checkDatabase(c.Request.Context())
+
+	for _, status := range health.Checks {
+		if status != "ok" {
+			health.Status = "degraded"
+			httpStatus = http.StatusServiceUnavailable
+			break
+		}
+	}
+
+	c.JSON(httpStatus, health)
+}
+
+func (h *Handler) checkElasticsearch(parent context.Context) string {
+	if h.esHealth == nil {
+		return "ok"
+	}
+	ctx, cancel := context.WithTimeout(parent, healthCheckTimeout)
+	defer cancel()
+	healthData, err := h.esHealth.GetClusterHealth(ctx)
+	if err != nil {
+		h.logger.Warn("ES health check failed", infralogger.Error(err))
+		return fmt.Sprintf("error: %v", err)
+	}
+	if status, ok := healthData["status"].(string); ok && status == "red" {
+		return "cluster red"
+	}
+	return "ok"
+}
+
+func (h *Handler) checkDatabase(parent context.Context) string {
+	if h.db == nil {
+		return "ok"
+	}
+	ctx, cancel := context.WithTimeout(parent, healthCheckTimeout)
+	defer cancel()
+	if err := h.db.PingContext(ctx); err != nil {
+		h.logger.Warn("DB health check failed", infralogger.Error(err))
+		return fmt.Sprintf("error: %v", err)
+	}
+	return "ok"
 }
 
 // CreateIndex handles POST /api/v1/indexes
