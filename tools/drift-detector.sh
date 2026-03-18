@@ -93,7 +93,7 @@ fi
 echo "Affected specs:"
 echo ""
 
-WARNINGS=0
+STALE_COUNT=0
 for spec in "${!AFFECTED_SPECS[@]}"; do
   spec_path="$REPO_ROOT/$spec"
   if [ -f "$spec_path" ]; then
@@ -113,22 +113,25 @@ for spec in "${!AFFECTED_SPECS[@]}"; do
     done
 
     if [ "$spec_last_commit" -lt "$service_last_commit" ]; then
-      echo "  WARNING: $spec may be stale (service code updated more recently)"
-      WARNINGS=$((WARNINGS + 1))
+      echo "  STALE: $spec"
+      echo "    Fix: Review and update this spec to reflect recent service changes"
+      STALE_COUNT=$((STALE_COUNT + 1))
     else
-      echo "  OK: $spec (updated after latest service change)"
+      echo "  OK: $spec"
     fi
   else
-    echo "  MISSING: $spec (does not exist yet)"
-    WARNINGS=$((WARNINGS + 1))
+    echo "  MISSING: $spec"
+    echo "    Fix: Create this spec file to document the service"
+    STALE_COUNT=$((STALE_COUNT + 1))
   fi
 
-  echo -e "${SPEC_CHANGES[$spec]}" | sort -u | head -10
+  echo "    Changed files:"
+  echo -e "${SPEC_CHANGES[$spec]}" | sort -u | grep -v '^[[:space:]]*$' | head -10 | sed 's/^/      /'
 done
 
 echo ""
-if [ $WARNINGS -gt 0 ]; then
-  echo "$WARNINGS spec(s) may need review."
+if [ $STALE_COUNT -gt 0 ]; then
+  echo "$STALE_COUNT spec(s) need review. Update specs before merging."
   exit 1
 else
   echo "All affected specs are up to date."

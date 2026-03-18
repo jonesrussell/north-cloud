@@ -52,3 +52,6 @@ pre-push:
           echo "Testing $svc..."
           (cd "$svc" && GOWORK=off go test ./... -count=1)
         done
+
+    spec-drift:
+      run: tools/drift-detector.sh 5

@@ -90,6 +90,8 @@ Sources → [Crawler] → ES raw_content → [Classifier + ML Sidecars] → ES c
 
 **Taskfile (Preferred)**: `task lint`, `task test`, `task test:cover` (all services). Per-service: `task lint:SERVICE`, `task test:SERVICE`. Migrations: `task migrate:up`, `task migrate:SERVICE`. Tools: `task install:tools`. Use `task lint:force` before pushing (cache-clean, matches CI). Changed-only: `task lint:changed`, `task ci:changed`.
 
+**Spec Drift**: `task drift:check` (checks last 5 commits). Runs automatically as first step of `task ci`, `task ci:changed`, `task ci:force`. Also runs in lefthook pre-push and CI. Fails if any spec is stale or missing.
+
 **Go Workspace**: `GOWORK=off` per service. `go.work` is IDE-only. After dep changes: `task vendor`.
 
 **Worktree CI**: `task ci` fails in worktrees (missing Node deps for dashboard). Use `task ci:changed` for Go-only work.
@@ -110,6 +112,7 @@ auth:8040 | source-manager:8050 | crawler:8080 | publisher:8070 | classifier:807
 2. **Check dependencies**: docker-compose `depends_on`, API integrations, database schemas
 3. **Plan multi-service changes**: Identify affected services, determine change order
 4. **Understand service boundaries**: Each service is independent with its own database
+5. **Check spec drift**: Run `task drift:check` — if a spec is STALE, update it before or alongside your code changes
 
 ### Linting Prevention - CRITICAL
 
@@ -128,7 +131,7 @@ auth:8040 | source-manager:8050 | crawler:8080 | publisher:8070 | classifier:807
 Pre-commit hooks run automatically via [lefthook](https://github.com/evilmartians/lefthook). Config: `lefthook.yml`.
 
 - **pre-commit**: `go-fmt` (auto-fix), `go-lint` (golangci-lint), `dashboard-lint` — only changed services
-- **pre-push**: `go-test` — only changed services
+- **pre-push**: `go-test` (only changed services), `spec-drift` (drift-detector check)
 - **Install**: `go install github.com/evilmartians/lefthook@latest && lefthook install`
 - **Skip (emergency)**: `git commit --no-verify`
 
@@ -195,8 +198,9 @@ See `ARCHITECTURE.md` for the full bootstrap pattern reference.
 **Before Committing**:
 1. Run tests: `go test ./...`
 2. Run linter: `task lint:force` (bypasses cache so local results match CI exactly)
-3. Verify no linting violations (see Critical Rules above)
-4. Check multi-service dependencies if applicable
+3. Run spec drift check: `task drift:check` (ensure affected specs are up to date)
+4. Verify no linting violations (see Critical Rules above)
+5. Check multi-service dependencies if applicable
 
 **Pushing**: Always use `git push -u origin {branch-name}` — never force push to main
 
