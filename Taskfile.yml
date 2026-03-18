@@ -81,9 +81,15 @@ tasks:
     cmds:
       - task --list
 
+  drift:check:
+    desc: "Check for spec drift (stale specs vs recent service changes)"
+    cmds:
+      - tools/drift-detector.sh {{.CLI_ARGS | default "5"}}
+
   ci:
     desc: "Run lint, test, and vuln (CI pipeline)"
     cmds:
+      - task: drift:check
       - task: lint
       - task: test
       - task: vuln
@@ -91,6 +97,7 @@ tasks:
   ci:changed:
     desc: "Run lint, test, and vuln only for changed services (vs HEAD~1)"
     cmds:
+      - task: drift:check
       - task: lint:changed
       - task: test:changed
       - task: vuln:changed
@@ -98,6 +105,7 @@ tasks:
   ci:force:
     desc: "Run full CI pipeline (lint, test, vuln) ignoring cache. Use before pushing to match CI."
     cmds:
+      - task: drift:check
       - task: lint:force
       - task auth:test -f
       - task classifier:test -f
