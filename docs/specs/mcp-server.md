@@ -112,3 +112,5 @@ Security hardening layer:
 - **No authentication at MCP layer**: Callers are not authenticated by the server itself. Protected tools use `AUTH_JWT_SECRET` for service-to-service JWT tokens.
 - **Scope counts are test fixtures**: `scope_test.go` and `test-tools.sh` hardcode expected tool counts. Update both whenever tools are added or removed.
 - **Adding a tool (4-step workflow)**: (1) define in `tools.go`, (2) register handler in `server.go`, (3) implement in `handlers.go` (or a dedicated file for complex tools), (4) update counts in `scope_test.go` + `test-tools.sh`.
+
+<\!-- Reviewed: 2026-03-18 — go.mod dependency update only, no spec changes needed -->

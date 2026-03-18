@@ -16,8 +16,13 @@ const (
 	defaultIdleTimeout  = 120 * time.Second
 )
 
+// ServerDeps holds optional dependencies for health checks.
+type ServerDeps struct {
+	ESPing func() error
+}
+
 // NewServer creates a new HTTP server using the infrastructure gin package.
-func NewServer(handler *Handler, cfg *config.Config, infraLog infralogger.Logger) *infragin.Server {
+func NewServer(handler *Handler, cfg *config.Config, infraLog infralogger.Logger, deps *ServerDeps) *infragin.Server {
 	// Build CORS config from service config
 	corsConfig := infragin.CORSConfig{
 		Enabled:          cfg.CORS.Enabled,
@@ -29,14 +34,21 @@ func NewServer(handler *Handler, cfg *config.Config, infraLog infralogger.Logger
 	}
 
 	// Build server using infrastructure gin package
-	server := infragin.NewServerBuilder(cfg.Service.Name, cfg.Service.Port).
+	builder := infragin.NewServerBuilder(cfg.Service.Name, cfg.Service.Port).
 		WithLogger(infraLog).
 		WithDebug(cfg.Service.Debug).
 		WithVersion(cfg.Service.Version).
 		WithTimeouts(defaultReadTimeout, defaultWriteTimeout, defaultIdleTimeout).
 		WithCORS(corsConfig).
+		WithMetrics()
+
+	// Wire dependency health checks
+	if deps != nil && deps.ESPing != nil {
+		builder = builder.WithElasticsearchHealthCheck(deps.ESPing)
+	}
+
+	server := builder.
 		WithRoutes(func(router *gin.Engine) {
-			// Setup service-specific routes (health routes added by builder)
 			SetupServiceRoutes(router, handler)
 		}).
 		Build()

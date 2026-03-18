@@ -112,3 +112,5 @@ click-tracker/
 - **Partitions must be created manually**: `click_events_default` catches all rows until named range partitions are added.
 - **Bot filter is UA-based**: 24 crawler patterns checked case-insensitively. Empty UA treated as bot.
 - **Rate limiter is in-memory and per-process**: no cross-instance coordination.
+
+<\!-- Reviewed: 2026-03-18 — go.mod dependency update only, no spec changes needed -->

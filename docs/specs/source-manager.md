@@ -115,3 +115,5 @@ Supporting tables for office contacts and leadership audit trail.
 - **Selector defaults**: title=h1, body=article, published_time=time[datetime].
 - **Source disable vs feed disable**: Independent states — a source can be enabled but its feed disabled.
 - **Community external IDs**: INAC, StatCan CSD, OSM relation, Wikidata QID — all optional, unique when present.
+
+<\!-- Reviewed: 2026-03-18 — go.mod dependency update only, no spec changes needed -->

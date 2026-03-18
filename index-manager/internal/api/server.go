@@ -23,6 +23,8 @@ type ServerConfig struct {
 	WriteTimeout time.Duration
 	Debug        bool
 	ServiceName  string
+	ESPing       func() error
+	DBPing       func() error
 }
 
 // NewServer creates a new HTTP server using the infrastructure gin package.
@@ -42,13 +44,23 @@ func NewServer(handler *Handler, config ServerConfig, infraLog infralogger.Logge
 	}
 
 	// Build server using infrastructure gin package
-	server := infragin.NewServerBuilder(serviceName, config.Port).
+	builder := infragin.NewServerBuilder(serviceName, config.Port).
 		WithLogger(infraLog).
 		WithDebug(config.Debug).
 		WithVersion(serviceVersion).
 		WithTimeouts(readTimeout, writeTimeout, defaultIdleTimeout).
+		WithMetrics()
+
+	// Wire dependency health checks
+	if config.ESPing != nil {
+		builder = builder.WithElasticsearchHealthCheck(config.ESPing)
+	}
+	if config.DBPing != nil {
+		builder = builder.WithDatabaseHealthCheck(config.DBPing)
+	}
+
+	server := builder.
 		WithRoutes(func(router *gin.Engine) {
-			// Setup service-specific routes (health routes added by builder)
 			SetupServiceRoutes(router, handler)
 		}).
 		Build()

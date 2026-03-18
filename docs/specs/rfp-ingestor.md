@@ -143,3 +143,5 @@ GET /api/v1/status
 - **Publisher integration** — publisher Layer 11 reads `content_type == "rfp"` from the search index. rfp-ingestor itself never publishes to Redis.
 - **Parse errors are non-fatal** — individual row parse failures increment `failed` counter and log a warning; the cycle continues with remaining rows.
 - **Bulk size** — default 500 documents per Elasticsearch bulk request (`ES_RFP_INDEX` bulk_size config).
+
+<\!-- Reviewed: 2026-03-18 — go.mod dependency update only, no spec changes needed -->

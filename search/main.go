@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 
@@ -109,7 +110,11 @@ func runServer(cfg *config.Config, esClient *elasticsearch.Client, log infralogg
 	log.Info("Search service initialized")
 
 	handler := api.NewHandler(searchService, log)
-	server := api.NewServer(handler, cfg, log)
+	server := api.NewServer(handler, cfg, log, &api.ServerDeps{
+		ESPing: func() error {
+			return esClient.Ping(context.Background())
+		},
+	})
 
 	log.Info("Search service starting",
 		infralogger.Int("port", cfg.Service.Port),

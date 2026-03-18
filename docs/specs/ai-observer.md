@@ -93,3 +93,5 @@ Datasource: `ai-insights` (uid: `ai-insights`) pointing to `ai_insights` index w
 | 2 | Live calls in dev, review first insights manually |
 | 3 | Production with classifier category only |
 | 4 | Add sidecar/ingestion categories (requires upstream event emission) |
+
+<\!-- Reviewed: 2026-03-18 — go.mod dependency update only, no spec changes needed -->

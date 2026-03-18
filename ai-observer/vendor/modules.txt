@@ -875,7 +875,7 @@ github.com/go-logr/logr/funcr
 ## explicit; go 1.16
 github.com/go-logr/stdr
 # github.com/jonesrussell/north-cloud/infrastructure v0.0.0 => ../infrastructure
-## explicit; go 1.26
+## explicit; go 1.26.1
 github.com/jonesrussell/north-cloud/infrastructure/elasticsearch
 github.com/jonesrussell/north-cloud/infrastructure/logger
 github.com/jonesrussell/north-cloud/infrastructure/provider/anthropic

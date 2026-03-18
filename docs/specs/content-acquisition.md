@@ -186,3 +186,5 @@ Key environment variables:
 - **Concurrent schedulers**: CAS locking ensures only one instance runs a job. Zero-row update = another instance holds lock.
 - **Redis unavailable**: Colly storage falls back to in-memory (visited URLs don't persist across restarts).
 - **Frontier vs Colly conflict**: Frontier uses op_type=create so it never overwrites richer Colly documents.
+
+<\!-- Reviewed: 2026-03-18 — go.mod dependency update only, no spec changes needed -->

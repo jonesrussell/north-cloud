@@ -20,6 +20,8 @@ Covers the search service (full-text queries) and index-manager (ES lifecycle, m
 | `index-manager/internal/elasticsearch/mappings/raw_content.go` | Raw content mapping definition |
 | `index-manager/internal/elasticsearch/mappings/versions.go` | RawContentMappingVersion, ClassifiedContentMappingVersion |
 | `index-manager/migrations/001_create_index_metadata.up.sql` | index_metadata + migration_history tables |
+| `search/internal/telemetry/telemetry.go` | Search-specific Prometheus metrics |
+| `index-manager/internal/telemetry/telemetry.go` | Index-manager-specific Prometheus metrics |
 | `infrastructure/elasticsearch/client.go` | Shared ES client with retry |
 
 ## Interface Signatures
@@ -144,7 +146,7 @@ Index-Manager:
 - Mapping versions compiled in code
 - Drift detection at startup (warning only)
 - `/health` performs real ES cluster health and DB ping checks; returns 503 with degraded status on failure
-- Health handler accepts `HealthChecker` interface and `*sql.DB` via `WithHealthDeps()`
+- Health handler uses `WithElasticsearchHealthCheck()` and `WithDatabaseHealthCheck()` on the server builder
 
 ## Edge Cases
 
@@ -155,3 +157,12 @@ Index-Manager:
 - **Only classified_content searchable**: Raw content not in search results. Check classification_status.
 - **Facets expensive**: Only request with include_facets=true when UI needs them.
 - **Index naming normalization**: Dots and hyphens converted to underscores. Source "bbc-news.com" → "bbc_news_com".
+
+## Telemetry & Health Checks
+
+Both services expose Prometheus metrics via `WithMetrics()` on the Gin server builder (`GET /metrics`). Each has a `internal/telemetry/telemetry.go` package with service-specific counters and histograms.
+
+### Dependency-Aware Health Checks
+
+- **Search**: `WithElasticsearchHealthCheck(pingFn)` — health endpoint pings ES cluster; returns 503 on failure. `search/main.go` passes the ES client's `Ping` function.
+- **Index-Manager**: `WithElasticsearchHealthCheck(pingFn)` and `WithDatabaseHealthCheck(db)` — health endpoint checks both ES and PostgreSQL; returns 503 if either is degraded. Configured in `index-manager/internal/bootstrap/server.go` which passes both `ESPing` and `DBPing` functions.
