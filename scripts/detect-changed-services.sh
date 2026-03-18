@@ -142,7 +142,7 @@ else
                 CHANGED_SERVICES_MAP[$service]=1
             fi
         elif [ "$service" = "playwright-renderer" ]; then
-            if echo "$CHANGED_FILES" | grep -q "^render-worker/"; then
+            if echo "$CHANGED_FILES" | grep -q "^playwright-renderer/"; then
                 CHANGED_SERVICES_MAP[$service]=1
             fi
         else
@@ -207,8 +207,8 @@ case "$FORMAT" in
                         BUILD_ARGS="MODULE_NAME=${svc%-ml}"
                         ;;
                     playwright-renderer)
-                        CONTEXT="./render-worker"
-                        DOCKERFILE="./render-worker/Dockerfile"
+                        CONTEXT="./playwright-renderer"
+                        DOCKERFILE="./playwright-renderer/Dockerfile"
                         ;;
                     search-frontend|dashboard|nc-http-proxy)
                         CONTEXT="./${svc}"
