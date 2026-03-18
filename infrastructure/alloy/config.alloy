@@ -61,6 +61,19 @@ discovery.relabel "north_cloud" {
     target_label  = "container_id"
   }
 
+  // Expose container_name for Grafana log filtering (e.g., {container_name="north-cloud-crawler-1"})
+  rule {
+    source_labels = ["__meta_docker_container_name"]
+    regex         = "/?(.*)"
+    target_label  = "container_name"
+  }
+
+  // Expose compose_service separately from service (service may be overridden by JSON log extraction)
+  rule {
+    source_labels = ["__meta_docker_container_label_com_docker_compose_service"]
+    target_label  = "compose_service"
+  }
+
   rule {
     target_label = "job"
     replacement  = "docker"
