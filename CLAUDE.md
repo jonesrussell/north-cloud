@@ -181,11 +181,14 @@ See `ARCHITECTURE.md` for the full bootstrap pattern reference.
 ### Production Deployment
 
 - Production (`/opt/north-cloud`) is **NOT a git repo** — do not use `git pull`
-- CI/CD (GitHub Actions) syncs files via rsync and runs `deploy.sh`
+- CI/CD (GitHub Actions) syncs files via tar archive and runs `deploy.sh`
 - To deploy manually: push to main → CI runs tests → deploy workflow triggers automatically
 - **Nginx uses `--force-recreate`** — volume-mounted config changes aren't detected by `up -d`
 - **Force deploy**: `gh workflow run deploy.yml -f force_rebuild_all=true` to rebuild all services
-- **Rsync does NOT delete renamed/removed files** — old files persist on server. If renaming migrations or removing files, manually delete old versions via SSH (#387)
+- **Stale file cleanup**: Deploy pre-deletes `*/migrations/*.sql` and `infrastructure/` configs before extracting tar. Renamed/removed files in these paths are cleaned automatically.
+- **Migration prefix validation**: Deploy fails fast if duplicate migration prefixes are detected (prevents golang-migrate crashes).
+- **Health checks + auto-rollback**: `deploy.sh` snapshots images before deploy, runs health checks after restart, and auto-rolls-back failed services.
+- **Runbook**: See `docs/RUNBOOK.md` for rollback procedures and troubleshooting.
 
 ---
 

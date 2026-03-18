@@ -167,13 +167,30 @@ jobs:
           ssh-keyscan -H -p "${DEPLOY_SSH_PORT}" "${DEPLOY_HOST}" >> ~/.ssh/known_hosts 2>/dev/null
           chmod 600 ~/.ssh/known_hosts
 
+      - name: Validate migration prefixes
+        run: |
+          echo "Checking for duplicate migration prefixes..."
+          FOUND_DUPES=false
+          for dir in */migrations/; do
+            [ -d "$dir" ] || continue
+            dupes=$(ls "$dir" 2>/dev/null | grep -E '\.sql$' | sed 's/_.*//' | sort | uniq -d)
+            if [ -n "$dupes" ]; then
+              echo "::error::Duplicate migration prefixes in $dir: $dupes"
+              FOUND_DUPES=true
+            fi
+          done
+          if [ "$FOUND_DUPES" = true ]; then
+            echo "::error::Deploy aborted — fix duplicate migration prefixes before deploying."
+            exit 1
+          fi
+          echo "No duplicate migration prefixes found."
+
       - name: Sync files to server
         env:
           SSH_PORT: ${{ secrets.DEPLOY_SSH_PORT || 22 }}
           DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
           DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
         run: |
-          # Create a tarball of all deployment files (faster than multiple scp)
           tar -czf /tmp/deploy-files.tar.gz \
             docker-compose.base.yml \
             docker-compose.prod.yml \
@@ -184,17 +201,18 @@ jobs:
             --exclude='*.txt' \
             2>/dev/null || true
 
-          # Transfer and extract in one operation
           scp -P "${SSH_PORT}" /tmp/deploy-files.tar.gz "${DEPLOY_USER}@${DEPLOY_HOST}:/tmp/"
 
           ssh -p "${SSH_PORT}" "${DEPLOY_USER}@${DEPLOY_HOST}" '
             cd /opt/north-cloud
-            # Remove stale migration files before extracting (tar only adds, never deletes)
+            # Remove stale files before extracting (tar only adds, never deletes).
+            # Migrations: prevents duplicate prefix crashes in golang-migrate.
+            # Infrastructure configs: prevents renamed/removed configs from persisting.
             find . -maxdepth 2 -path "*/migrations/*.sql" -delete 2>/dev/null || true
+            find ./infrastructure -type f \( -name "*.yml" -o -name "*.yaml" -o -name "*.conf" -o -name "*.alloy" -o -name "*.json" \) -delete 2>/dev/null || true
             tar -xzf /tmp/deploy-files.tar.gz
             rm /tmp/deploy-files.tar.gz
             chmod +x scripts/deploy.sh 2>/dev/null || chmod +x deploy.sh 2>/dev/null || true
-            # Move deploy.sh to expected location if it was in scripts/
             [ -f scripts/deploy.sh ] && mv scripts/deploy.sh deploy.sh
           '
 
