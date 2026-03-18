@@ -9,7 +9,7 @@ Covers the crawler subsystem: web content fetching, job scheduling, frontier URL
 | File | Purpose |
 |------|---------|
 | `crawler/main.go` | Entry point → `bootstrap.Start()` |
-| `crawler/internal/bootstrap/app.go` | 7-phase startup orchestration |
+| `crawler/internal/bootstrap/app.go` | 7-phase startup orchestration; background workers log errors on failure |
 | `crawler/internal/crawler/crawler.go` | Core Crawler struct and CrawlerInterface |
 | `crawler/internal/crawler/factory.go` | Factory pattern for per-job isolation |
 | `crawler/internal/scheduler/interval_scheduler.go` | Interval-based job scheduler with CAS locking |

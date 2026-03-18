@@ -12,7 +12,7 @@ pre-commit:
           fi
         done
         for svc in $changed_services; do
-          (cd "$svc" && GOWORK=off gofmt -l -w .)
+          (cd "$svc" && find . -name '*.go' -not -path './vendor/*' -exec gofmt -l -w {} +)
         done
       stage_fixed: true
 
