@@ -71,6 +71,7 @@ func (p *Poller) Stop()
 1. ContentType detection:
    - Checks: crawler metadata → URL exclusion patterns → OG metadata → content patterns → heuristics
    - Returns: contentType (article|page|video|image|job|recipe|event|obituary) + subtype + confidence + method
+   - Thread-safe stats tracking (sync.Mutex + map): GetStats() returns per-content-type hit counts
 
 2. Quality scoring (0-100, 4 factors × 25 pts):
    - Word count: <100→10, 100-200→15, 200-300→20, 300+→25
@@ -82,6 +83,7 @@ func (p *Poller) Stop()
    - Rules loaded from PostgreSQL at startup (cached, no live reload)
    - Priority-descending evaluation, max 5 topics per document
    - Returns: topic names + scores + matched keywords
+   - Thread-safe stats tracking (sync.Mutex + map): GetTopicStats() returns per-topic hit counts
 
 4. Source reputation:
    - Lookup by source_name, create with default 50 if missing
