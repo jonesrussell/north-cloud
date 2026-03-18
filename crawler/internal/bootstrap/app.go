@@ -48,7 +48,9 @@ func startBackgroundWorkers(deps *CommandDeps, sc *ServiceComponents) background
 		bg.feedPollerCancel = cancel
 		interval := time.Duration(feedCfg.PollIntervalMinutes) * time.Minute
 		go func() {
-			_ = sc.FeedPoller.RunPollingLoop(pollerCtx, interval, sc.ListDue)
+			if err := sc.FeedPoller.RunPollingLoop(pollerCtx, interval, sc.ListDue); err != nil {
+				deps.Logger.Error("Feed poller stopped with error", infralogger.Error(err))
+			}
 		}()
 		deps.Logger.Info("Feed poller started",
 			infralogger.Int("interval_minutes", feedCfg.PollIntervalMinutes))
@@ -60,7 +62,9 @@ func startBackgroundWorkers(deps *CommandDeps, sc *ServiceComponents) background
 		bg.feedDiscoveryCancel = cancel
 		interval := time.Duration(feedCfg.DiscoveryIntervalMinutes) * time.Minute
 		go func() {
-			_ = sc.FeedDiscoverer.RunDiscoveryLoop(dCtx, interval, sc.ListUndiscovered)
+			if err := sc.FeedDiscoverer.RunDiscoveryLoop(dCtx, interval, sc.ListUndiscovered); err != nil {
+				deps.Logger.Error("Feed discovery stopped with error", infralogger.Error(err))
+			}
 		}()
 		deps.Logger.Info("Feed discovery started",
 			infralogger.Int("interval_minutes", feedCfg.DiscoveryIntervalMinutes))
@@ -70,7 +74,9 @@ func startBackgroundWorkers(deps *CommandDeps, sc *ServiceComponents) background
 		wpCtx, cancel := context.WithCancel(context.Background())
 		bg.workerPoolCancel = cancel
 		go func() {
-			_ = sc.FrontierWorkerPool.Start(wpCtx)
+			if err := sc.FrontierWorkerPool.Start(wpCtx); err != nil {
+				deps.Logger.Error("Frontier worker pool stopped with error", infralogger.Error(err))
+			}
 		}()
 		fetcherCfg := deps.Config.GetFetcherConfig()
 		deps.Logger.Info("Frontier worker pool started",
