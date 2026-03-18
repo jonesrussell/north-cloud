@@ -29,6 +29,8 @@ Covers the `infrastructure/` module: config loading, logging, database clients, 
 | `infrastructure/monitoring/memory_monitor.go` | Memory monitoring and alerts |
 | `infrastructure/context/utils.go` | Timeout helper functions |
 | `infrastructure/clickurl/signer.go` | Click tracking URL signing |
+| `infrastructure/gin/builder.go` | Gin server builder with `WithMetrics()` option |
+| `infrastructure/gin/metrics.go` | Prometheus metrics route and handler (`/metrics`) |
 
 ## Interface Signatures
 
@@ -106,6 +108,25 @@ Phase 5: Service initialization (wire dependencies)
 Phase 6: HTTP server (Gin + middleware stack)
 Phase 7: Lifecycle (graceful shutdown with context cancellation)
 ```
+
+### Gin Server Builder (`gin/builder.go`)
+```go
+func NewServerBuilder(cfg ServerConfig, log Logger) *ServerBuilder
+func (b *ServerBuilder) WithMiddleware(mw ...gin.HandlerFunc) *ServerBuilder
+func (b *ServerBuilder) WithMetrics() *ServerBuilder          // Enables /metrics endpoint
+func (b *ServerBuilder) WithRoutes(fn func(*gin.Engine)) *ServerBuilder
+func (b *ServerBuilder) Build() *http.Server
+```
+
+`WithMetrics()` sets `metricsEnabled` on the builder. When enabled, `Build()` calls `RegisterMetricsRoute(engine)` which adds a `GET /metrics` route serving the default Prometheus registry via `promhttp.Handler()`.
+
+### Prometheus Metrics (`gin/metrics.go`)
+```go
+func RegisterMetricsRoute(engine *gin.Engine)  // GET /metrics → promhttp.Handler()
+func MetricsHandler() gin.HandlerFunc          // Wraps promhttp.Handler() as Gin handler
+```
+
+Services opt in by calling `WithMetrics()` in their server builder chain. Prometheus scrape config (`prometheus.yml`) defines scrape targets per service.
 
 ### Middleware Stack (typical order)
 ```

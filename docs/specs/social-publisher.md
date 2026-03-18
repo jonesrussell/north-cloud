@@ -194,3 +194,5 @@ All endpoints require `Authorization: Bearer <JWT>` (signed with `SOCIAL_PUBLISH
 - **Realtime queue drops on overflow** — if `PriorityQueue` realtime lane (cap 100) is full, the message is dropped and an error is logged. Scale batch size or add backpressure if this occurs.
 - **Queue consumer is single-goroutine** — delivery is serialized. Horizontal scaling requires multiple instances with partitioned account sets.
 - **X adapter bearer token loaded from accounts at publish time** — not from env var. Accounts must be registered via the `/api/v1/accounts` API before any content can be published.
+
+<\!-- Reviewed: 2026-03-18 — go.mod dependency update only, no spec changes needed -->

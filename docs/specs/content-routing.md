@@ -214,3 +214,5 @@ Topics in this map MUST be skipped to prevent bypassing ML classification filter
 - **Nil nested objects**: Always check `item.Mining == nil` before accessing fields. Return nil from Routes() when domain doesn't apply.
 - **Cursor persistence**: search_after cursor saved to DB. Safe across restarts. If cursor invalid (deleted index), resets to beginning.
 - **Slug normalization**: Underscores → hyphens in channel slugs.
+
+<\!-- Reviewed: 2026-03-18 — go.mod dependency update only, no spec changes needed -->

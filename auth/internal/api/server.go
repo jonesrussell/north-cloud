@@ -39,6 +39,7 @@ func NewServer(cfg *config.Config, log logger.Logger) (*infragin.Server, error) 
 			writeTimeoutSeconds*time.Second,
 			idleTimeoutSeconds*time.Second,
 		).
+		WithMetrics().
 		WithRoutes(func(router *gin.Engine) {
 			// Auth routes (no JWT protection - this IS the auth service)
 			v1 := router.Group("/api/v1")

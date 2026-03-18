@@ -10,11 +10,12 @@ import (
 
 // ServerBuilder provides a fluent API for building HTTP servers.
 type ServerBuilder struct {
-	config       *Config
-	logger       logger.Logger
-	setupRoutes  func(*gin.Engine)
-	healthChecks map[string]HealthChecker
-	jwtSecret    string
+	config         *Config
+	logger         logger.Logger
+	setupRoutes    func(*gin.Engine)
+	healthChecks   map[string]HealthChecker
+	jwtSecret      string
+	metricsEnabled bool
 }
 
 // NewServerBuilder creates a new server builder with the given configuration.
@@ -100,6 +101,12 @@ func (b *ServerBuilder) WithElasticsearchHealthCheck(pingFunc func() error) *Ser
 	return b
 }
 
+// WithMetrics enables the /metrics endpoint for Prometheus scraping.
+func (b *ServerBuilder) WithMetrics() *ServerBuilder {
+	b.metricsEnabled = true
+	return b
+}
+
 // WithRoutes sets the route setup function.
 func (b *ServerBuilder) WithRoutes(setupRoutes func(*gin.Engine)) *ServerBuilder {
 	b.setupRoutes = setupRoutes
@@ -127,6 +134,11 @@ func (b *ServerBuilder) Build() *Server {
 			})
 		} else {
 			RegisterHealthRoutes(router, b.config.ServiceName, b.config.ServiceVersion)
+		}
+
+		// Register metrics endpoint if enabled
+		if b.metricsEnabled {
+			RegisterMetricsRoute(router)
 		}
 
 		// Call service-specific route setup

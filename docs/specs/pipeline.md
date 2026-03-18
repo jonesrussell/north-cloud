@@ -83,3 +83,5 @@ Each event has an `idempotency_key`. Auto-generated format: `{serviceName}:{stag
 - **24-hour event age limit**: events older than 24h rejected with validation error.
 - **Batch stops on first error**: `IngestBatch` processes sequentially, returns on first failure.
 - **Write endpoints are unauthenticated**: rely on Docker network isolation. Do not expose port 8075 publicly.
+
+<\!-- Reviewed: 2026-03-18 — go.mod dependency update only, no spec changes needed -->

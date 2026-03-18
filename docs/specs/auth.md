@@ -22,6 +22,8 @@ auth/
       jwt.go                       # JWTManager: GenerateToken, ValidateToken
     config/
       config.go                    # Config struct, setDefaults, Validate, GetJWTConfig
+    telemetry/
+      telemetry.go                 # Auth-specific Prometheus metrics
 ```
 
 ---
@@ -83,3 +85,16 @@ No database. No refresh tokens.
 - **Default secret rejected in production**: if `APP_DEBUG=false` and `AUTH_JWT_SECRET` is empty or `"change-me-in-production"`, the service exits at startup.
 - **Health endpoint always public**: `/health` bypasses JWT validation.
 - **Bootstrap pattern**: simple (helper functions in `main.go`, no `internal/bootstrap/` package).
+
+## Telemetry
+
+The auth service exposes Prometheus metrics via `WithMetrics()` on the Gin server builder. Metrics are defined in `auth/internal/telemetry/telemetry.go`:
+
+| Metric | Type | Description |
+|--------|------|-------------|
+| `auth_login_total` | Counter | Total login attempts (labels: `status`) |
+| `auth_login_latency_seconds` | Histogram | Login request latency |
+| `auth_tokens_issued_total` | Counter | Total JWT tokens issued |
+| `auth_invalid_logins_total` | Counter | Total failed login attempts |
+
+Metrics endpoint: `GET /metrics` (unauthenticated, served by infrastructure gin builder).

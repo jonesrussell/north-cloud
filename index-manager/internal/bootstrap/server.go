@@ -1,6 +1,7 @@
 package bootstrap
 
 import (
+	"context"
 	"time"
 
 	"github.com/jonesrussell/north-cloud/index-manager/internal/api"
@@ -33,6 +34,13 @@ func SetupHTTPServer(
 		WriteTimeout: httpTimeoutSeconds * time.Second,
 		Debug:        cfg.Service.Debug,
 		ServiceName:  cfg.Service.Name,
+		ESPing: func() error {
+			_, err := esClient.GetClusterHealth(context.Background())
+			return err
+		},
+		DBPing: func() error {
+			return db.DB.PingContext(context.Background())
+		},
 	}
 
 	return api.NewServer(handler, serverConfig, log)

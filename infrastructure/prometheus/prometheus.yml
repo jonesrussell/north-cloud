@@ -12,3 +12,18 @@ scrape_configs:
     metrics_path: '/metrics'
     static_configs:
       - targets: ['publisher:8070']
+
+  - job_name: 'search'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['search:8090']
+
+  - job_name: 'index-manager'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['index-manager:8090']
+
+  - job_name: 'auth'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['auth:8040']
