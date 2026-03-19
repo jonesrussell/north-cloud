@@ -1,6 +1,6 @@
 # Classification Specification
 
-> Last verified: 2026-03-18
+> Last verified: 2026-03-19
 
 Covers the classifier service, hybrid rule+ML classification pipeline, ML sidecar integration, and content enrichment.
 
@@ -18,8 +18,12 @@ Covers the classifier service, hybrid rule+ML classification pipeline, ML sideca
 | `classifier/internal/classifier/source_reputation.go` | Step 4: source reputation scoring |
 | `classifier/internal/classifier/crime.go` | Crime hybrid classifier (rules + ML) |
 | `classifier/internal/classifier/crime_rules.go` | Crime keyword patterns and exclusions |
-| `classifier/internal/classifier/mining.go` | Mining hybrid classifier |
-| `classifier/internal/classifier/mining_rules.go` | Mining keyword patterns |
+| `classifier/internal/classifier/mining.go` | Mining hybrid classifier + drill extraction wiring |
+| `classifier/internal/classifier/mining_rules.go` | Mining keyword patterns (incl. drillKeywordMatched flag) |
+| `classifier/internal/classifier/drill_extractor.go` | Regex-based drill results extraction |
+| `classifier/internal/classifier/drill_normalizer.go` | Commodity/unit normalization and dedup |
+| `classifier/internal/classifier/drill_llm.go` | Two-stage orchestrator (regex → LLM fallback) |
+| `classifier/internal/drillmlclient/client.go` | Anthropic Claude API client for drill extraction |
 | `classifier/internal/classifier/ml_helper.go` | Shared CallMLWithBodyLimit[T]() helper |
 | `classifier/internal/mlclient/client.go` | Base ML client interface |
 | `classifier/internal/mltransport/transport.go` | Shared HTTP transport (DoClassify, DoHealth) |
@@ -170,18 +174,28 @@ type CrimeResult struct {
 ### MiningResult
 ```go
 type MiningResult struct {
-    Relevance       string   // "core_mining", "peripheral_mining", "not_mining"
-    MiningStage     string   // "exploration", "development", "production", "unspecified"
-    Commodities     []string // "gold", "copper", "lithium", etc.
-    Location        string
-    FinalConfidence float64
-    ReviewRequired  bool
-    ModelVersion    string
+    Relevance        string        // "core_mining", "peripheral_mining", "not_mining"
+    MiningStage      string        // "exploration", "development", "production", "unspecified"
+    Commodities      []string      // "gold", "copper", "lithium", etc.
+    Location         string
+    FinalConfidence  float64
+    ReviewRequired   bool
+    ModelVersion     string
+    DrillResults     []DrillResult // Extracted drill intercepts (omitempty)
+    ExtractionMethod string        // "regex", "llm", "hybrid", "" (omitempty)
     // Observability fields (all optional, omitempty):
     DecisionPath     string
     MLConfidenceRaw  float64
     RuleTriggered    string
     ProcessingTimeMs int64
+}
+
+type DrillResult struct {
+    HoleID     string  // e.g. "DDH-24-001"
+    Commodity  string  // normalized: "gold", "copper", etc.
+    InterceptM float64 // intercept length in meters
+    Grade      float64 // grade value
+    Unit       string  // "g/t", "%", "ppm", "oz/t"
 }
 ```
 
@@ -207,6 +221,26 @@ type MiningResult struct {
 - `CLASSIFIER_POLL_INTERVAL` (default: 30s)
 - `{DOMAIN}_ENABLED` — enable/disable each hybrid classifier
 - `{DOMAIN}_ML_SERVICE_URL` — ML sidecar endpoint
+- `DRILL_EXTRACTION_ENABLED` — enable drill results extraction on mining articles
+- `DRILL_LLM_FALLBACK` — enable Claude Haiku fallback when regex extraction is partial/none
+- `ANTHROPIC_API_KEY` — required when LLM fallback is enabled
+- `ANTHROPIC_MODEL` (default: `claude-haiku-4-5`) — model for drill extraction
+
+## Drill Extraction Pipeline
+
+When `DRILL_EXTRACTION_ENABLED=true` and mining classification is enabled, `MiningClassifier.Classify()` runs drill extraction on articles classified as `core_mining` or `peripheral_mining`.
+
+**Two-stage pipeline** (`drill_llm.go: orchestrateDrillExtraction`):
+1. **Regex pass** (`drill_extractor.go`): Pattern-matches drill intercepts from full body text. Returns `(results, confidence)` where confidence is `complete`, `partial`, or `none`.
+2. **LLM fallback** (optional, `drillmlclient`): When regex confidence is `partial`/`none` and `DRILL_LLM_FALLBACK=true`, sends body to Claude Haiku for structured extraction. Results are merged (hybrid) or used alone (llm).
+
+**Normalization** (`drill_normalizer.go`): All results pass through normalization — commodity symbols to slugs (`Au` → `gold`), unit variants (`gpt` → `g/t`), hole ID uppercasing, and deduplication.
+
+**Trigger condition**: Extraction runs when `relevance != not_mining`. The `drillKeywordMatched` flag from `mining_rules.go` (pattern: `drill\s+results?|assay\s+results?|intercept\s+\d`) controls LLM escalation for `confidence=none` cases.
+
+**ES mapping**: `drill_results` is a nested object under `mining` in `classified_content` indices. Fields: `hole_id` (keyword), `commodity` (keyword), `intercept_m` (float), `grade` (float), `unit` (keyword). `extraction_method` is a keyword field.
+
+**Bootstrap wiring**: `bootstrap/classifier.go` instantiates `drillmlclient.Client` when both mining and drill extraction are enabled, and attaches it to `MiningClassifier` via `WithDrillExtraction()`.
 
 ## Edge Cases
 
