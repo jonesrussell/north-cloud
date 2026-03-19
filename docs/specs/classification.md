@@ -1,6 +1,6 @@
 # Classification Specification
 
-> Last verified: 2026-03-19
+> Last verified: 2026-03-19 (post-audit: MaxTopics enforcement added)
 
 Covers the classifier service, hybrid rule+ML classification pipeline, ML sidecar integration, and content enrichment.
 

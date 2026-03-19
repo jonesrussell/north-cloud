@@ -3,6 +3,7 @@ package classifier
 import (
 	"context"
 	"math"
+	"sort"
 	"strings"
 	"sync"
 
@@ -25,10 +26,11 @@ const (
 
 // TopicClassifier classifies content by topic using rule-based keyword matching
 type TopicClassifier struct {
-	logger infralogger.Logger
-	rules  []domain.ClassificationRule
-	mu     sync.Mutex
-	stats  map[string]int
+	logger    infralogger.Logger
+	rules     []domain.ClassificationRule
+	maxTopics int
+	mu        sync.Mutex
+	stats     map[string]int
 }
 
 // TopicResult represents the result of topic classification
@@ -38,12 +40,19 @@ type TopicResult struct {
 	HighestTopic string             `json:"highest_topic"` // Topic with highest score
 }
 
+// defaultMaxTopics is used when maxTopics is not set or zero.
+const defaultMaxTopics = 5
+
 // NewTopicClassifier creates a new topic classifier with the given rules
-func NewTopicClassifier(logger infralogger.Logger, rules []domain.ClassificationRule) *TopicClassifier {
+func NewTopicClassifier(logger infralogger.Logger, rules []domain.ClassificationRule, maxTopics int) *TopicClassifier {
+	if maxTopics <= 0 {
+		maxTopics = defaultMaxTopics
+	}
 	return &TopicClassifier{
-		logger: logger,
-		rules:  rules,
-		stats:  make(map[string]int),
+		logger:    logger,
+		rules:     rules,
+		maxTopics: maxTopics,
+		stats:     make(map[string]int),
 	}
 }
 
@@ -81,6 +90,18 @@ func (t *TopicClassifier) Classify(ctx context.Context, raw *domain.RawContent) 
 				infralogger.Float64("score", score),
 				infralogger.Float64("min_confidence", rule.MinConfidence),
 			)
+		}
+	}
+
+	// Enforce maximum topic limit by keeping only top-scoring topics
+	if len(result.Topics) > t.maxTopics {
+		sort.Slice(result.Topics, func(i, j int) bool {
+			return result.TopicScores[result.Topics[i]] > result.TopicScores[result.Topics[j]]
+		})
+		removed := result.Topics[t.maxTopics:]
+		result.Topics = result.Topics[:t.maxTopics]
+		for _, topic := range removed {
+			delete(result.TopicScores, topic)
 		}
 	}
 
