@@ -1,6 +1,6 @@
 # Click Tracker Spec
 
-> Last verified: 2026-03-19 (fix: composite PK includes clicked_at for partitioning)
+> Last verified: 2026-03-19 (enable Prometheus metrics via .WithMetrics())
 
 ## Overview
 
@@ -40,6 +40,7 @@ click-tracker/
 | GET | `/click` | None | Verify signature, buffer event, 302 redirect |
 | GET | `/health` | None | Liveness check |
 | GET | `/health/memory` | None | Memory usage stats |
+| GET | `/metrics` | None | Prometheus metrics |
 
 ### /click query parameters
 

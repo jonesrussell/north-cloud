@@ -1,6 +1,6 @@
 # Shared Infrastructure Specification
 
-> Last verified: 2026-03-19 (post-audit: SSE types alignment only)
+> Last verified: 2026-03-19 (add 5 missing Prometheus scrape targets to prometheus.yml)
 
 Covers the `infrastructure/` module: config loading, logging, database clients, middleware, events, and utilities used by all services.
 
@@ -126,7 +126,7 @@ func RegisterMetricsRoute(engine *gin.Engine)  // GET /metrics → promhttp.Hand
 func MetricsHandler() gin.HandlerFunc          // Wraps promhttp.Handler() as Gin handler
 ```
 
-Services opt in by calling `WithMetrics()` in their server builder chain. Prometheus scrape config (`prometheus.yml`) defines scrape targets per service.
+Services opt in by calling `WithMetrics()` in their server builder chain. Prometheus scrape config (`prometheus.yml`) defines scrape targets per service. Current targets: classifier, publisher, search, index-manager, auth, crawler, source-manager, pipeline, click-tracker, rfp-ingestor. Not scraped: nc-http-proxy (uses raw `net/http`, not gin builder).
 
 ### Middleware Stack (typical order)
 ```
