@@ -41,7 +41,12 @@ type TopicResult struct {
 }
 
 // defaultMaxTopics is used when maxTopics is not set or zero.
-const defaultMaxTopics = 5
+const defaultMaxTopics = 3
+
+// minGlobalConfidence is the minimum score a topic must reach regardless of
+// per-rule MinConfidence. This prevents overly broad rules (with low thresholds
+// like 0.3) from flooding articles with marginal topic matches.
+const minGlobalConfidence = 0.5
 
 // NewTopicClassifier creates a new topic classifier with the given rules
 func NewTopicClassifier(logger infralogger.Logger, rules []domain.ClassificationRule, maxTopics int) *TopicClassifier {
@@ -78,8 +83,12 @@ func (t *TopicClassifier) Classify(ctx context.Context, raw *domain.RawContent) 
 		// Calculate score for this topic
 		score := t.scoreTextAgainstRule(text, rule)
 
-		// If score exceeds minimum confidence, add this topic
-		if score >= rule.MinConfidence {
+		// Score must exceed both the per-rule threshold and the global floor
+		threshold := rule.MinConfidence
+		if threshold < minGlobalConfidence {
+			threshold = minGlobalConfidence
+		}
+		if score >= threshold {
 			result.Topics = append(result.Topics, rule.TopicName)
 			result.TopicScores[rule.TopicName] = score
 			t.recordTopicHit(rule.TopicName)
