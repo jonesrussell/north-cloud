@@ -110,7 +110,7 @@ snapshot_images() {
   if [ -n "$services" ]; then
     svc_list="$services"
   else
-    svc_list="auth crawler source-manager classifier publisher index-manager pipeline search-service dashboard"
+    svc_list="auth crawler source-manager classifier publisher index-manager pipeline search-service rfp-ingestor click-tracker dashboard"
   fi
 
   rm -f "$SNAPSHOT_FILE"
@@ -214,6 +214,8 @@ rollback_services() {
       index-manager) check_health "index-manager" "/health" "8090" 10 || rollback_healthy=false ;;
       pipeline)      check_health "pipeline" "/health" "8075" 10 || rollback_healthy=false ;;
       search-service) check_health "search-service" "/health" "8090" 10 || rollback_healthy=false ;;
+      rfp-ingestor)  check_health "rfp-ingestor" "/health" "8095" 10 || rollback_healthy=false ;;
+      click-tracker) check_health "click-tracker" "/health" "8093" 10 || rollback_healthy=false ;;
     esac
   done
 
@@ -534,7 +536,7 @@ check_health() {
 if [ -n "$RESTART_SERVICES" ]; then
   SERVICES_TO_CHECK="$RESTART_SERVICES"
 elif [ -z "$SERVICES_TO_UPDATE" ] && [ -z "${MIGRATION_FAILED_SERVICES:-}" ]; then
-  SERVICES_TO_CHECK="auth crawler source-manager classifier publisher index-manager pipeline search-service"
+  SERVICES_TO_CHECK="auth crawler source-manager classifier publisher index-manager pipeline search-service rfp-ingestor click-tracker"
 else
   SERVICES_TO_CHECK="$SERVICES_TO_UPDATE"
 fi
@@ -570,6 +572,9 @@ for svc in $SERVICES_TO_CHECK; do
       ;;
     rfp-ingestor)
       check_health "rfp-ingestor" "/health" "8095" 10 || { FAILED_CHECKS=$((FAILED_CHECKS + 1)); FAILED_SERVICES="$FAILED_SERVICES $svc"; }
+      ;;
+    click-tracker)
+      check_health "click-tracker" "/health" "8093" 10 || { FAILED_CHECKS=$((FAILED_CHECKS + 1)); FAILED_SERVICES="$FAILED_SERVICES $svc"; }
       ;;
     # search-frontend and dashboard don't have health endpoints (static nginx)
   esac
