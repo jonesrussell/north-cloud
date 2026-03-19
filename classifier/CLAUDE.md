@@ -224,7 +224,7 @@ Classifies Coforge-relevant industry and technology content.
 
 #### Indigenous Hybrid Classifier
 
-**Enabled via**: `INDIGENOUS_ENABLED=true`, `INDIGENOUS_ML_SERVICE_URL=http://indigenous-ml:8080`
+**Enabled via**: `INDIGENOUS_ENABLED=true`, `INDIGENOUS_ML_SERVICE_URL=http://indigenous-ml:8081`
 
 **Relevance classes**: `core_indigenous`, `peripheral_indigenous`, `not_indigenous`
 
