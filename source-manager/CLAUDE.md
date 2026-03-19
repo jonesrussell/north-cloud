@@ -15,6 +15,10 @@ task migrate:up       # Run migrations
 task lint:force
 task test:source-manager -f
 
+# Import OPD dictionary
+go run . import-opd --file data/all_entries.jsonl --batch-size 500
+go run . import-opd --file data/all_entries.jsonl --dry-run
+
 # API (port 8050)
 curl http://localhost:8050/api/v1/sources
 curl http://localhost:8050/api/v1/sources/test-crawl \
@@ -36,10 +40,11 @@ source-manager/
     ├── database/      # PostgreSQL connection helpers
     ├── events/        # Redis event publisher (source created/updated/deleted)
     ├── handlers/      # HTTP handlers (SourceHandler)
-    ├── importer/      # Excel bulk-import logic
+    ├── importer/      # Bulk-import logic (Excel, OPD JSONL)
     ├── metadata/      # Auto-fetch page title and selector hints from a URL
-    ├── models/        # Source, SelectorConfig, City structs
-    ├── repository/    # PostgreSQL source repository (CRUD)
+    ├── models/        # Source, SelectorConfig, City, DictionaryEntry structs
+    ├── projection/    # Dictionary ES projection (consent-filtered)
+    ├── repository/    # PostgreSQL source + dictionary repository (CRUD)
     └── testhelpers/   # Shared test utilities
 ```
 
