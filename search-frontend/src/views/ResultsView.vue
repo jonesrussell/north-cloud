@@ -481,9 +481,12 @@ function handleGlobalClick(e: MouseEvent): void {
   }
 }
 
+const hasSearchIntent = (): boolean =>
+  !!query.value || (filters.value.topics != null && filters.value.topics.length > 0)
+
 onMounted(() => {
   syncFromUrl()
-  if (query.value) {
+  if (hasSearchIntent()) {
     search()
   }
   document.addEventListener('click', handleGlobalClick)
@@ -495,7 +498,7 @@ onBeforeUnmount(() => {
 
 watch(() => route.query, () => {
   syncFromUrl()
-  if (query.value) {
+  if (hasSearchIntent()) {
     search()
   }
 })

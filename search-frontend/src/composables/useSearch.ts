@@ -39,13 +39,16 @@ export function useSearch() {
   const totalPages: ComputedRef<number> = computed(() => Math.ceil(totalHits.value / pageSize.value))
   const hasResults: ComputedRef<boolean> = computed(() => results.value.length > 0)
   const hasError: ComputedRef<boolean> = computed(() => error.value !== null)
-  const isEmpty: ComputedRef<boolean> = computed(() => !loading.value && !hasResults.value && query.value !== '')
+  const hasActiveSearch: ComputedRef<boolean> = computed(() => query.value !== '' || (filters.value.topics != null && filters.value.topics.length > 0))
+  const isEmpty: ComputedRef<boolean> = computed(() => !loading.value && !hasResults.value && hasActiveSearch.value)
 
   /**
    * Execute search with current state
    */
   const search = async (): Promise<void> => {
-    if (!query.value.trim()) {
+    const hasQuery = query.value.trim().length > 0
+    const hasTopics = filters.value.topics && filters.value.topics.length > 0
+    if (!hasQuery && !hasTopics) {
       results.value = []
       return
     }
