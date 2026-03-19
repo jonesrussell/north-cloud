@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"time"
 
 	"github.com/gin-gonic/gin"
 
@@ -34,12 +35,16 @@ func NewRouter(
 
 // NewServer builds an infrastructure gin.Server with routes and health checks.
 func (r *Router) NewServer(log logger.Logger, port int) *infragin.Server {
+	const healthCheckTimeout = 2 * time.Second
+
 	return infragin.NewServerBuilder("social-publisher", port).
 		WithLogger(log).
 		WithDebug(r.cfg.Debug).
 		WithVersion("0.1.0").
 		WithDatabaseHealthCheck(func() error {
-			return r.repo.Ping(context.TODO())
+			ctx, cancel := context.WithTimeout(context.Background(), healthCheckTimeout)
+			defer cancel()
+			return r.repo.Ping(ctx)
 		}).
 		WithRoutes(func(router *gin.Engine) {
 			r.setupRoutes(router)
