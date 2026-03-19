@@ -40,6 +40,10 @@ type ServicesConfig struct {
 	GrafanaURL       string `env:"GRAFANA_URL"        yaml:"grafana_url"`
 	GrafanaUsername  string `env:"GRAFANA_USERNAME"   yaml:"grafana_username"`
 	GrafanaPassword  string `env:"GRAFANA_PASSWORD"   yaml:"grafana_password"`
+	AuthURL          string `env:"AUTH_URL"           yaml:"auth_url"`
+	PipelineURL      string `env:"PIPELINE_URL"       yaml:"pipeline_url"`
+	ClickTrackerURL  string `env:"CLICK_TRACKER_URL"  yaml:"click_tracker_url"`
+	RFPIngestorURL   string `env:"RFP_INGESTOR_URL"   yaml:"rfp_ingestor_url"`
 	// OllamaURL is the base URL for the Ollama API (used by fetch_url extract_schema).
 	// If empty, extract_schema returns an error.
 	OllamaURL string `env:"OLLAMA_URL" yaml:"ollama_url"`
@@ -92,6 +96,18 @@ func setDefaults(cfg *Config) {
 	}
 	if cfg.Services.GrafanaURL == "" {
 		cfg.Services.GrafanaURL = "http://localhost:3000"
+	}
+	if cfg.Services.AuthURL == "" {
+		cfg.Services.AuthURL = "http://localhost:8040"
+	}
+	if cfg.Services.PipelineURL == "" {
+		cfg.Services.PipelineURL = "http://localhost:8075"
+	}
+	if cfg.Services.ClickTrackerURL == "" {
+		cfg.Services.ClickTrackerURL = "http://localhost:8093"
+	}
+	if cfg.Services.RFPIngestorURL == "" {
+		cfg.Services.RFPIngestorURL = "http://localhost:8095"
 	}
 
 	// Client defaults
