@@ -30,6 +30,16 @@ COMPOSE_CMD="docker compose -f docker-compose.base.yml -f docker-compose.prod.ym
 SNAPSHOT_FILE="/tmp/nc-deploy-snapshot-$$"
 ROLLBACK_ATTEMPTED=false
 
+# Source per-service image tags if available (e.g. CRAWLER_TAG=sha-abc1234).
+# These are written by the CI workflow for changed services; unchanged
+# services fall back to 'latest' via ${SERVICE_TAG:-latest} in compose.
+if [ -f "$DEPLOY_DIR/image-tags.env" ]; then
+  set -a
+  # shellcheck source=/dev/null
+  . "$DEPLOY_DIR/image-tags.env"
+  set +a
+fi
+
 # Change to deployment directory
 cd "$DEPLOY_DIR" || {
   echo -e "${RED}ERROR: Failed to change to deployment directory: $DEPLOY_DIR${NC}" >&2
