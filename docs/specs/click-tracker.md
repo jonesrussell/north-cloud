@@ -1,6 +1,6 @@
 # Click Tracker Spec
 
-> Last verified: 2026-03-18
+> Last verified: 2026-03-19 (fix: composite PK includes clicked_at for partitioning)
 
 ## Overview
 
