@@ -173,7 +173,7 @@ jobs:
           FOUND_DUPES=false
           for dir in */migrations/; do
             [ -d "$dir" ] || continue
-            dupes=$(ls "$dir" 2>/dev/null | grep -E '\.sql$' | sed 's/_.*//' | sort | uniq -d)
+            dupes=$(ls "$dir" 2>/dev/null | grep -E '\.up\.sql$' | sed 's/_.*//' | sort | uniq -d)
             if [ -n "$dupes" ]; then
               echo "::error::Duplicate migration prefixes in $dir: $dupes"
               FOUND_DUPES=true
