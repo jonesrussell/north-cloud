@@ -8,7 +8,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"sort"
 
 	"github.com/jonesrussell/north-cloud/source-manager/internal/models"
 )
@@ -36,6 +35,7 @@ type ImportFailure struct {
 const (
 	opdAttribution = "Ojibwe People's Dictionary, University of Minnesota"
 	opdLicense     = "CC BY-NC-SA 4.0"
+	scannerBufSize = 1024 * 1024 // 1MB per line to handle large raw_html fields
 )
 
 // ReadOPDFile reads and validates a JSONL file, returning transformed entries and failures.
@@ -50,6 +50,7 @@ func ReadOPDFile(path string) ([]models.DictionaryEntry, []ImportFailure, error)
 	var failures []ImportFailure
 
 	scanner := bufio.NewScanner(f)
+	scanner.Buffer(make([]byte, 0, scannerBufSize), scannerBufSize)
 	lineNum := 0
 
 	for scanner.Scan() {
@@ -120,41 +121,16 @@ func ComputeContentHash(jsonStr string) string {
 	return hex.EncodeToString(h[:])
 }
 
-// canonicalizeJSON parses JSON and re-serializes with sorted keys for deterministic hashing.
+// canonicalizeJSON parses JSON and re-serializes for deterministic hashing.
+// json.Marshal sorts map keys alphabetically since Go 1.12.
 func canonicalizeJSON(input string) string {
 	var data any
 	if unmarshalErr := json.Unmarshal([]byte(input), &data); unmarshalErr != nil {
 		return input
 	}
-	sorted := sortKeys(data)
-	out, marshalErr := json.Marshal(sorted)
+	out, marshalErr := json.Marshal(data)
 	if marshalErr != nil {
 		return input
 	}
 	return string(out)
-}
-
-// sortKeys recursively sorts map keys for canonical JSON output.
-func sortKeys(v any) any {
-	switch val := v.(type) {
-	case map[string]any:
-		sorted := make(map[string]any, len(val))
-		keys := make([]string, 0, len(val))
-		for k := range val {
-			keys = append(keys, k)
-		}
-		sort.Strings(keys)
-		for _, k := range keys {
-			sorted[k] = sortKeys(val[k])
-		}
-		return sorted
-	case []any:
-		result := make([]any, len(val))
-		for i, item := range val {
-			result[i] = sortKeys(item)
-		}
-		return result
-	default:
-		return v
-	}
 }

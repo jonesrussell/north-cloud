@@ -7,7 +7,6 @@ import (
 )
 
 func TestReadOPDEntries_ValidFile(t *testing.T) {
-	t.Helper()
 	entries, failures, err := importer.ReadOPDFile("testdata/valid_entries.jsonl")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -27,7 +26,6 @@ func TestReadOPDEntries_ValidFile(t *testing.T) {
 }
 
 func TestReadOPDEntries_MixedFile(t *testing.T) {
-	t.Helper()
 	entries, failures, err := importer.ReadOPDFile("testdata/mixed_entries.jsonl")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -41,7 +39,6 @@ func TestReadOPDEntries_MixedFile(t *testing.T) {
 }
 
 func TestComputeContentHash_Deterministic(t *testing.T) {
-	t.Helper()
 	hash1 := importer.ComputeContentHash(`{"a":1,"b":2}`)
 	hash2 := importer.ComputeContentHash(`{"a":1,"b":2}`)
 	if hash1 != hash2 {
@@ -54,7 +51,6 @@ func TestComputeContentHash_Deterministic(t *testing.T) {
 }
 
 func TestComputeContentHash_Canonical(t *testing.T) {
-	t.Helper()
 	// Same data, different key order — should produce same hash
 	hash1 := importer.ComputeContentHash(`{"b":2,"a":1}`)
 	hash2 := importer.ComputeContentHash(`{"a":1,"b":2}`)

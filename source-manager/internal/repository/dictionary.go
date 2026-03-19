@@ -221,11 +221,19 @@ func (r *DictionaryRepository) BulkUpsertEntries(ctx context.Context, entries []
 		)
 		ON CONFLICT (content_hash) DO UPDATE SET
 			lemma = EXCLUDED.lemma,
+			word_class = EXCLUDED.word_class,
+			word_class_normalized = EXCLUDED.word_class_normalized,
 			definitions = EXCLUDED.definitions,
 			inflections = EXCLUDED.inflections,
 			examples = EXCLUDED.examples,
 			word_family = EXCLUDED.word_family,
 			media = EXCLUDED.media,
+			attribution = EXCLUDED.attribution,
+			license = EXCLUDED.license,
+			consent_public_display = EXCLUDED.consent_public_display,
+			consent_ai_training = EXCLUDED.consent_ai_training,
+			consent_derivative_works = EXCLUDED.consent_derivative_works,
+			source_url = EXCLUDED.source_url,
 			updated_at = NOW()
 		RETURNING (xmax = 0) AS is_insert`
 
