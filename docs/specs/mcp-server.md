@@ -1,6 +1,6 @@
 # MCP Server Spec
 
-> Last verified: 2026-03-18
+> Last verified: 2026-03-19
 
 Covers `mcp-north-cloud/`: the Claude Code / Cursor MCP server that exposes north-cloud pipeline operations as tools.
 
@@ -12,8 +12,10 @@ Covers `mcp-north-cloud/`: the Claude Code / Cursor MCP server that exposes nort
 | `mcp-north-cloud/run-mcp.sh` | Wrapper: loads .env, ensures clean stdout |
 | `mcp-north-cloud/test-tools.sh` | Smoke test: verifies tool count by env |
 | `mcp-north-cloud/internal/mcp/server.go` | Request routing, toolHandlers map, prompts/resources dispatch |
-| `mcp-north-cloud/internal/mcp/tools.go` | 28 tool definitions scoped by MCP_ENV |
-| `mcp-north-cloud/internal/mcp/handlers.go` | Tool implementations (one func per tool, except fetch_url) |
+| `mcp-north-cloud/internal/mcp/tools.go` | getAllTools(), getToolsForEnv(), getSystemTools() |
+| `mcp-north-cloud/internal/mcp/tools_{domain}.go` | Domain-scoped tool definitions (auth, crawler, source, community, people, publisher, search, development) |
+| `mcp-north-cloud/internal/mcp/handlers.go` | Shared response helpers (successResponse, errorResponse, formatResult) |
+| `mcp-north-cloud/internal/mcp/handlers_{domain}.go` | Domain-scoped handler implementations (auth, crawler, source, community, people, publisher, search, development) |
 | `mcp-north-cloud/internal/mcp/fetch_url.go` | fetch_url tool handler |
 | `mcp-north-cloud/internal/mcp/types.go` | JSON-RPC types, Scope constants |
 | `mcp-north-cloud/internal/mcp/prompts.go` | 4 prompt templates |
@@ -23,7 +25,10 @@ Covers `mcp-north-cloud/`: the Claude Code / Cursor MCP server that exposes nort
 | `mcp-north-cloud/internal/mcp/ratelimit.go` | Per-client rate limiting |
 | `mcp-north-cloud/internal/mcp/errors.go` | Error sanitization (no internal path/stack leaks) |
 | `mcp-north-cloud/internal/mcp/health.go` | Health check endpoints |
-| `mcp-north-cloud/internal/client/` | HTTP clients, one file per service |
+| `mcp-north-cloud/internal/client/source_manager.go` | Source CRUD client |
+| `mcp-north-cloud/internal/client/community.go` | Community client methods |
+| `mcp-north-cloud/internal/client/people.go` | People + band office client methods |
+| `mcp-north-cloud/internal/client/{service}.go` | HTTP clients for crawler, publisher, search, etc. |
 | `mcp-north-cloud/internal/config/` | Config struct with env tags |
 
 ## Interface / API
