@@ -221,7 +221,10 @@ jobs:
           SSH_PORT: ${{ secrets.DEPLOY_SSH_PORT || 22 }}
           DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
           DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
         run: |
+          # Compute short SHA safely on the runner (not from untrusted input)
+          SHORT_SHA=$(echo "${DEPLOY_SHA}" | cut -c1-7)
           ssh -p "${SSH_PORT}" "${DEPLOY_USER}@${DEPLOY_HOST}" "
             cd /opt/north-cloud
 
@@ -229,6 +232,7 @@ jobs:
             export CHANGED_SERVICES='${CHANGED_SERVICES}'
             export INFRA_CHANGED='${INFRA_CHANGED}'
             export MIGRATIONS_CHANGED='${MIGRATIONS_CHANGED}'
+            export IMAGE_TAG='sha-${SHORT_SHA}'
 
             # Run optimized deploy
             bash deploy.sh
