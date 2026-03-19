@@ -18,7 +18,7 @@ services:
   # ------------------------------------------------------------
   crawler:
     <<: *prod-defaults
-    image: docker.io/jonesrussell/crawler:${IMAGE_TAG:-latest}
+    image: docker.io/jonesrussell/crawler:${CRAWLER_TAG:-latest}
     deploy:
       resources:
         limits:
@@ -106,7 +106,7 @@ services:
   # ------------------------------------------------------------
   ai-observer:
     <<: *prod-defaults
-    image: docker.io/jonesrussell/ai-observer:${IMAGE_TAG:-latest}
+    image: docker.io/jonesrussell/ai-observer:${AI_OBSERVER_TAG:-latest}
     restart: on-failure
 
   # ------------------------------------------------------------
@@ -140,7 +140,7 @@ services:
   # ------------------------------------------------------------
   source-manager:
     <<: *prod-defaults
-    image: docker.io/jonesrussell/source-manager:${IMAGE_TAG:-latest}
+    image: docker.io/jonesrussell/source-manager:${SOURCE_MANAGER_TAG:-latest}
     ports:
       - "127.0.0.1:8050:8050"
     deploy:
@@ -179,7 +179,7 @@ services:
   # ------------------------------------------------------------
   publisher:
     <<: *prod-defaults
-    image: docker.io/jonesrussell/publisher:${IMAGE_TAG:-latest}
+    image: docker.io/jonesrussell/publisher:${PUBLISHER_TAG:-latest}
     command: ["/app/publisher", "both"]
     deploy:
       resources:
@@ -220,7 +220,7 @@ services:
   # ------------------------------------------------------------
   classifier:
     <<: *prod-defaults
-    image: docker.io/jonesrussell/classifier:${IMAGE_TAG:-latest}
+    image: docker.io/jonesrussell/classifier:${CLASSIFIER_TAG:-latest}
     command: ["./classifier", "both"]
     deploy:
       resources:
@@ -281,7 +281,7 @@ services:
   # ------------------------------------------------------------
   crime-ml:
     <<: *prod-defaults
-    image: docker.io/jonesrussell/crime-ml:${IMAGE_TAG:-latest}
+    image: docker.io/jonesrussell/crime-ml:${CRIME_ML_TAG:-latest}
     ports: []  # No external ports in prod — classifier reaches via Docker network
     # Healthcheck defined in Dockerfile.ml-sidecar (uses python urllib)
 
@@ -290,7 +290,7 @@ services:
   # ------------------------------------------------------------
   mining-ml:
     <<: *prod-defaults
-    image: docker.io/jonesrussell/mining-ml:${IMAGE_TAG:-latest}
+    image: docker.io/jonesrussell/mining-ml:${MINING_ML_TAG:-latest}
     ports: []
 
   # ------------------------------------------------------------
@@ -298,7 +298,7 @@ services:
   # ------------------------------------------------------------
   coforge-ml:
     <<: *prod-defaults
-    image: docker.io/jonesrussell/coforge-ml:${IMAGE_TAG:-latest}
+    image: docker.io/jonesrussell/coforge-ml:${COFORGE_ML_TAG:-latest}
     ports: []
 
   # ------------------------------------------------------------
@@ -306,7 +306,7 @@ services:
   # ------------------------------------------------------------
   entertainment-ml:
     <<: *prod-defaults
-    image: docker.io/jonesrussell/entertainment-ml:${IMAGE_TAG:-latest}
+    image: docker.io/jonesrussell/entertainment-ml:${ENTERTAINMENT_ML_TAG:-latest}
     ports: []
 
   # ------------------------------------------------------------
@@ -314,7 +314,7 @@ services:
   # ------------------------------------------------------------
   indigenous-ml:
     <<: *prod-defaults
-    image: docker.io/jonesrussell/indigenous-ml:${IMAGE_TAG:-latest}
+    image: docker.io/jonesrussell/indigenous-ml:${INDIGENOUS_ML_TAG:-latest}
     ports: []
 
   # ------------------------------------------------------------
@@ -322,7 +322,7 @@ services:
   # ------------------------------------------------------------
   pipeline:
     <<: *prod-defaults
-    image: docker.io/jonesrussell/pipeline:${IMAGE_TAG:-latest}
+    image: docker.io/jonesrussell/pipeline:${PIPELINE_TAG:-latest}
     deploy:
       resources:
         limits:
@@ -354,7 +354,7 @@ services:
   # ------------------------------------------------------------
   index-manager:
     <<: *prod-defaults
-    image: docker.io/jonesrussell/index-manager:${IMAGE_TAG:-latest}
+    image: docker.io/jonesrussell/index-manager:${INDEX_MANAGER_TAG:-latest}
     deploy:
       resources:
         limits:
@@ -388,7 +388,7 @@ services:
   # ------------------------------------------------------------
   search-service:
     <<: *prod-defaults
-    image: docker.io/jonesrussell/search-service:${IMAGE_TAG:-latest}
+    image: docker.io/jonesrussell/search-service:${SEARCH_SERVICE_TAG:-latest}
     deploy:
       resources:
         limits:
@@ -419,7 +419,7 @@ services:
   # ------------------------------------------------------------
   search-frontend:
     <<: *prod-defaults
-    image: docker.io/jonesrussell/search-frontend:${IMAGE_TAG:-latest}
+    image: docker.io/jonesrussell/search-frontend:${SEARCH_FRONTEND_TAG:-latest}
     deploy:
       resources:
         limits:
@@ -437,7 +437,7 @@ services:
   # ------------------------------------------------------------
   nc-http-proxy:
     <<: *prod-defaults
-    image: docker.io/jonesrussell/nc-http-proxy:${IMAGE_TAG:-latest}
+    image: docker.io/jonesrussell/nc-http-proxy:${NC_HTTP_PROXY_TAG:-latest}
     deploy:
       resources:
         limits:
@@ -467,7 +467,7 @@ services:
   # ------------------------------------------------------------
   auth:
     <<: *prod-defaults
-    image: docker.io/jonesrussell/auth:${IMAGE_TAG:-latest}
+    image: docker.io/jonesrussell/auth:${AUTH_TAG:-latest}
     deploy:
       resources:
         limits:
@@ -493,7 +493,7 @@ services:
   # ------------------------------------------------------------
   mcp-north-cloud:
     <<: *prod-defaults
-    image: docker.io/jonesrussell/mcp-north-cloud:${IMAGE_TAG:-latest}
+    image: docker.io/jonesrussell/mcp-north-cloud:${MCP_NORTH_CLOUD_TAG:-latest}
     # MCP server is stdio-based: connect via `docker exec -i <container> /app/mcp-north-cloud`
     # The container idles so the binary is available for on-demand connections.
     command: ["sleep", "infinity"]
@@ -532,7 +532,7 @@ services:
   # ------------------------------------------------------------
   playwright-renderer:
     <<: *prod-defaults
-    image: docker.io/jonesrussell/playwright-renderer:${IMAGE_TAG:-latest}
+    image: docker.io/jonesrussell/playwright-renderer:${PLAYWRIGHT_RENDERER_TAG:-latest}
     deploy:
       resources:
         limits:
@@ -550,7 +550,7 @@ services:
   # ------------------------------------------------------------
   dashboard:
     <<: *prod-defaults
-    image: docker.io/jonesrussell/dashboard:${IMAGE_TAG:-latest}
+    image: docker.io/jonesrussell/dashboard:${DASHBOARD_TAG:-latest}
     deploy:
       resources:
         limits:
@@ -735,7 +735,7 @@ services:
 
   rfp-ingestor:
     <<: *prod-defaults
-    image: docker.io/jonesrussell/rfp-ingestor:${IMAGE_TAG:-latest}
+    image: docker.io/jonesrussell/rfp-ingestor:${RFP_INGESTOR_TAG:-latest}
     deploy:
       resources:
         limits:

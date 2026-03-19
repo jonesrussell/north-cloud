@@ -216,6 +216,36 @@ jobs:
             [ -f scripts/deploy.sh ] && mv scripts/deploy.sh deploy.sh
           '
 
+      - name: Update image tag manifest
+        env:
+          SSH_PORT: ${{ secrets.DEPLOY_SSH_PORT || 22 }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+        run: |
+          SHORT_SHA=$(echo "${DEPLOY_SHA}" | cut -c1-7)
+          TAG="sha-${SHORT_SHA}"
+
+          # Update image-tags.env on the server for changed services only.
+          # Each service gets its own _TAG variable; unchanged services keep
+          # their previous tag. Compose reads these via ${SERVICE_TAG:-latest}.
+          ssh -p "${SSH_PORT}" "${DEPLOY_USER}@${DEPLOY_HOST}" "
+            cd /opt/north-cloud
+            touch image-tags.env
+
+            for svc in ${CHANGED_SERVICES//,/ }; do
+              # Convert service name to env var: lowercase-hyphen → UPPER_SNAKE_TAG
+              VAR=\$(echo \"\${svc}\" | tr '[:lower:]-' '[:upper:]_')_TAG
+              # Remove old entry and append new one
+              grep -v \"^\${VAR}=\" image-tags.env > image-tags.env.tmp || true
+              mv image-tags.env.tmp image-tags.env
+              echo \"\${VAR}=${TAG}\" >> image-tags.env
+            done
+
+            echo 'Updated image-tags.env:'
+            cat image-tags.env
+          "
+
       - name: Deploy services
         env:
           SSH_PORT: ${{ secrets.DEPLOY_SSH_PORT || 22 }}
@@ -230,10 +260,14 @@ jobs:
             export INFRA_CHANGED='${INFRA_CHANGED}'
             export MIGRATIONS_CHANGED='${MIGRATIONS_CHANGED}'
 
-            # IMAGE_TAG defaults to 'latest' via \${IMAGE_TAG:-latest} in compose.
-            # SHA tags (sha-abc1234) are pushed to Docker Hub for rollback but
-            # not used automatically — only changed services get the new SHA tag,
-            # so setting IMAGE_TAG globally would break unchanged services.
+            # Source per-service image tags (e.g. CRAWLER_TAG=sha-abc1234)
+            # Unchanged services keep their previous tag; missing vars
+            # fall back to 'latest' via \${SERVICE_TAG:-latest} in compose.
+            if [ -f image-tags.env ]; then
+              set -a
+              . ./image-tags.env
+              set +a
+            fi
 
             # Run optimized deploy
             bash deploy.sh
