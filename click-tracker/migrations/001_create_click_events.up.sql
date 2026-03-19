@@ -1,5 +1,5 @@
 CREATE TABLE click_events (
-    id               BIGSERIAL PRIMARY KEY,
+    id               BIGSERIAL,
     query_id         VARCHAR(32)  NOT NULL,
     result_id        VARCHAR(128) NOT NULL,
     position         SMALLINT     NOT NULL,
@@ -9,7 +9,8 @@ CREATE TABLE click_events (
     user_agent_hash  VARCHAR(12),
     generated_at     TIMESTAMPTZ  NOT NULL,
     clicked_at       TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
-    created_at       TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+    created_at       TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (id, clicked_at)
 ) PARTITION BY RANGE (clicked_at);
 
 CREATE TABLE click_events_default PARTITION OF click_events DEFAULT;
