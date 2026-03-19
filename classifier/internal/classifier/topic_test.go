@@ -22,7 +22,7 @@ func TestTopicClassifier_Classify_Crime(t *testing.T) {
 		},
 	}
 
-	classifier := NewTopicClassifier(&mockLogger{}, rules)
+	classifier := NewTopicClassifier(&mockLogger{}, rules, 5)
 
 	raw := &domain.RawContent{
 		ID:      "crime-article",
@@ -85,7 +85,7 @@ func TestTopicClassifier_Classify_MultipleTopics(t *testing.T) {
 		},
 	}
 
-	classifier := NewTopicClassifier(&mockLogger{}, rules)
+	classifier := NewTopicClassifier(&mockLogger{}, rules, 5)
 
 	raw := &domain.RawContent{
 		ID:      "multi-topic",
@@ -130,7 +130,7 @@ func TestTopicClassifier_Classify_NoMatch(t *testing.T) {
 		},
 	}
 
-	classifier := NewTopicClassifier(&mockLogger{}, rules)
+	classifier := NewTopicClassifier(&mockLogger{}, rules, 5)
 
 	raw := &domain.RawContent{
 		ID:      "no-match",
@@ -171,7 +171,7 @@ func TestTopicClassifier_Classify_BelowConfidenceThreshold(t *testing.T) {
 		},
 	}
 
-	classifier := NewTopicClassifier(&mockLogger{}, rules)
+	classifier := NewTopicClassifier(&mockLogger{}, rules, 5)
 
 	raw := &domain.RawContent{
 		ID:      "below-threshold",
@@ -203,7 +203,7 @@ func TestTopicClassifier_Classify_DisabledRule(t *testing.T) {
 		},
 	}
 
-	classifier := NewTopicClassifier(&mockLogger{}, rules)
+	classifier := NewTopicClassifier(&mockLogger{}, rules, 5)
 
 	raw := &domain.RawContent{
 		ID:      "disabled-rule",
@@ -224,7 +224,7 @@ func TestTopicClassifier_Classify_DisabledRule(t *testing.T) {
 }
 
 func TestTopicClassifier_ScoreTextAgainstRule(t *testing.T) {
-	classifier := NewTopicClassifier(&mockLogger{}, nil)
+	classifier := NewTopicClassifier(&mockLogger{}, nil, 5)
 
 	rule := domain.ClassificationRule{
 		Keywords: []string{"police", "arrest", "murder", "investigation"},
@@ -278,7 +278,7 @@ func TestTopicClassifier_ScoreTextAgainstRule(t *testing.T) {
 }
 
 func TestTopicClassifier_ScoreTextAgainstRule_SubstringTrap(t *testing.T) {
-	classifier := NewTopicClassifier(&mockLogger{}, nil)
+	classifier := NewTopicClassifier(&mockLogger{}, nil, 5)
 
 	rule := domain.ClassificationRule{
 		Keywords: []string{"shoot"},
@@ -295,7 +295,7 @@ func TestTopicClassifier_ScoreTextAgainstRule_SubstringTrap(t *testing.T) {
 }
 
 func TestTopicClassifier_ScoreTextAgainstRule_RepeatedKeywords(t *testing.T) {
-	classifier := NewTopicClassifier(&mockLogger{}, nil)
+	classifier := NewTopicClassifier(&mockLogger{}, nil, 5)
 
 	rule := domain.ClassificationRule{
 		Keywords: []string{"shooting"},
@@ -320,7 +320,7 @@ func TestTopicClassifier_ScoreTextAgainstRule_RepeatedKeywords(t *testing.T) {
 }
 
 func TestTopicClassifier_ScoreTextAgainstRule_Punctuation(t *testing.T) {
-	classifier := NewTopicClassifier(&mockLogger{}, nil)
+	classifier := NewTopicClassifier(&mockLogger{}, nil, 5)
 
 	rule := domain.ClassificationRule{
 		Keywords: []string{"shooting"},
@@ -360,7 +360,7 @@ func TestTopicClassifier_ScoreTextAgainstRule_Punctuation(t *testing.T) {
 }
 
 func TestTopicClassifier_ScoreTextAgainstRule_LongDocument(t *testing.T) {
-	classifier := NewTopicClassifier(&mockLogger{}, nil)
+	classifier := NewTopicClassifier(&mockLogger{}, nil, 5)
 
 	rule := domain.ClassificationRule{
 		Keywords: []string{"shooting", "police", "arrest"},
@@ -389,7 +389,7 @@ func TestTopicClassifier_ScoreTextAgainstRule_LongDocument(t *testing.T) {
 }
 
 func TestTopicClassifier_ScoreTextAgainstRule_ShortDocument(t *testing.T) {
-	classifier := NewTopicClassifier(&mockLogger{}, nil)
+	classifier := NewTopicClassifier(&mockLogger{}, nil, 5)
 
 	rule := domain.ClassificationRule{
 		Keywords: []string{"shooting", "police", "arrest"},
@@ -407,7 +407,7 @@ func TestTopicClassifier_ScoreTextAgainstRule_ShortDocument(t *testing.T) {
 }
 
 func TestTopicClassifier_ScoreTextAgainstRule_EmptyText(t *testing.T) {
-	classifier := NewTopicClassifier(&mockLogger{}, nil)
+	classifier := NewTopicClassifier(&mockLogger{}, nil, 5)
 
 	rule := domain.ClassificationRule{
 		Keywords: []string{"police", "arrest"},
@@ -421,7 +421,7 @@ func TestTopicClassifier_ScoreTextAgainstRule_EmptyText(t *testing.T) {
 }
 
 func TestTopicClassifier_ScoreTextAgainstRule_NoMatches(t *testing.T) {
-	classifier := NewTopicClassifier(&mockLogger{}, nil)
+	classifier := NewTopicClassifier(&mockLogger{}, nil, 5)
 
 	rule := domain.ClassificationRule{
 		Keywords: []string{"police", "arrest"},
@@ -435,7 +435,7 @@ func TestTopicClassifier_ScoreTextAgainstRule_NoMatches(t *testing.T) {
 }
 
 func TestTopicClassifier_ScoreTextAgainstRule_RCMPArticleCase(t *testing.T) {
-	classifier := NewTopicClassifier(&mockLogger{}, nil)
+	classifier := NewTopicClassifier(&mockLogger{}, nil, 5)
 
 	// Simulate violent_crime rule with "shooting" keyword
 	rule := domain.ClassificationRule{
@@ -483,7 +483,7 @@ func TestTopicClassifier_ClassifyBatch(t *testing.T) {
 		},
 	}
 
-	classifier := NewTopicClassifier(&mockLogger{}, rules)
+	classifier := NewTopicClassifier(&mockLogger{}, rules, 5)
 
 	rawItems := []*domain.RawContent{
 		{
@@ -529,7 +529,7 @@ func TestTopicClassifier_UpdateRules(t *testing.T) {
 		},
 	}
 
-	classifier := NewTopicClassifier(&mockLogger{}, initialRules)
+	classifier := NewTopicClassifier(&mockLogger{}, initialRules, 5)
 
 	newRules := []domain.ClassificationRule{
 		{
@@ -562,7 +562,7 @@ func TestTopicClassifier_UpdateRules(t *testing.T) {
 func TestTopicClassifier_ScoreTextAgainstRule_MultiWordKeyword(t *testing.T) {
 	t.Helper()
 
-	classifier := NewTopicClassifier(&mockLogger{}, nil)
+	classifier := NewTopicClassifier(&mockLogger{}, nil, 5)
 
 	rule := domain.ClassificationRule{
 		Keywords: []string{"human trafficking", "organized crime"},
@@ -612,7 +612,7 @@ func TestTopicClassifier_ScoreTextAgainstRule_MultiWordKeyword(t *testing.T) {
 func TestTopicClassifier_ScoreTextAgainstRule_MixedSingleAndMultiWord(t *testing.T) {
 	t.Helper()
 
-	classifier := NewTopicClassifier(&mockLogger{}, nil)
+	classifier := NewTopicClassifier(&mockLogger{}, nil, 5)
 
 	rule := domain.ClassificationRule{
 		Keywords:      []string{"drug", "drugs", "drug trafficking", "drug bust"},
@@ -659,7 +659,7 @@ func TestTopicClassifier_ScoreTextAgainstRule_MixedSingleAndMultiWord(t *testing
 func TestTopicClassifier_TestRule_MultiWordKeywords(t *testing.T) {
 	t.Helper()
 
-	classifier := NewTopicClassifier(&mockLogger{}, nil)
+	classifier := NewTopicClassifier(&mockLogger{}, nil, 5)
 
 	rule := &domain.ClassificationRule{
 		Keywords:      []string{"human trafficking", "organized crime", "police"},
@@ -708,7 +708,7 @@ func TestTopicClassifier_DrugCrime_DoesNotMatchSexTrafficking(t *testing.T) {
 		},
 	}
 
-	classifier := NewTopicClassifier(&mockLogger{}, rules)
+	classifier := NewTopicClassifier(&mockLogger{}, rules, 5)
 
 	raw := &domain.RawContent{
 		ID:    "sex-trafficking-article",
@@ -748,7 +748,7 @@ func TestTopicClassifier_DrugCrime_MatchesDrugTrafficking(t *testing.T) {
 		},
 	}
 
-	classifier := NewTopicClassifier(&mockLogger{}, rules)
+	classifier := NewTopicClassifier(&mockLogger{}, rules, 5)
 
 	raw := &domain.RawContent{
 		ID:    "fentanyl-bust",
@@ -788,7 +788,7 @@ func TestTopicClassifier_Travel_DoesNotMatchTraffickingContext(t *testing.T) {
 		},
 	}
 
-	classifier := NewTopicClassifier(&mockLogger{}, rules)
+	classifier := NewTopicClassifier(&mockLogger{}, rules, 5)
 
 	raw := &domain.RawContent{
 		ID:    "trafficking-context",
@@ -828,7 +828,7 @@ func TestTopicClassifier_Travel_MatchesGenuineTravelContent(t *testing.T) {
 		},
 	}
 
-	classifier := NewTopicClassifier(&mockLogger{}, rules)
+	classifier := NewTopicClassifier(&mockLogger{}, rules, 5)
 
 	raw := &domain.RawContent{
 		ID:    "vacation-article",

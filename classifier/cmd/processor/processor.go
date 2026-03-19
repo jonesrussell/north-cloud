@@ -218,6 +218,7 @@ func createClassifierConfig(cfg *config.Config, log infralogger.Logger) classifi
 		EntertainmentClassifier: createEntertainmentClassifier(cfg, log),
 		IndigenousClassifier:    createIndigenousClassifier(cfg, log),
 		RoutingTable:            cfg.Classification.Routing,
+		MaxTopics:               cfg.Classification.Topic.MaxTopics,
 	}
 }
 

@@ -91,7 +91,7 @@ func NewHTTPComponents(cfg *config.Config, logger infralogger.Logger) (*HTTPComp
 	logger.Info("Batch processor initialized", infralogger.Int("concurrency", concurrency))
 
 	sourceRepScorer := classifier.NewSourceReputationScorer(logger, dbComps.SourceRepRepo)
-	topicClassifier := classifier.NewTopicClassifier(logger, ruleValues)
+	topicClassifier := classifier.NewTopicClassifier(logger, ruleValues, cfg.Classification.Topic.MaxTopics)
 
 	handler := api.NewHandler(
 		classifierInstance,
@@ -250,6 +250,7 @@ func createClassifierConfig(cfg *config.Config, logger infralogger.Logger) class
 		JobExtractor:            jobExtractor,
 		RFPExtractor:            rfpExtractor,
 		RoutingTable:            cfg.Classification.Routing,
+		MaxTopics:               cfg.Classification.Topic.MaxTopics,
 	}
 }
 

@@ -191,6 +191,78 @@ func (r *DictionaryRepository) Search(
 	return entries, nil
 }
 
+// SearchWithCount returns dictionary entries matching either full-text search (English definitions)
+// or prefix match (Ojibwe lemma), with a total count for pagination. Only consent_public_display=true
+// entries are returned. FTS matches rank higher than prefix matches.
+func (r *DictionaryRepository) SearchWithCount(
+	ctx context.Context, q string, page, size int,
+) ([]models.DictionaryEntry, int, error) {
+	if size <= 0 {
+		size = defaultDictLimit
+	}
+	if size > maxDictLimit {
+		size = maxDictLimit
+	}
+	if page <= 0 {
+		page = 1
+	}
+	offset := (page - 1) * size
+
+	// Count query: UNION of FTS + prefix, deduplicated by id
+	countQuery := `SELECT COUNT(*) FROM (
+		SELECT id FROM dictionary_entries
+		WHERE consent_public_display = TRUE AND search_vector @@ plainto_tsquery('english', $1)
+		UNION
+		SELECT id FROM dictionary_entries
+		WHERE consent_public_display = TRUE AND lemma ILIKE $1 || '%'
+	) AS matched`
+
+	var total int
+	if countErr := r.db.QueryRowContext(ctx, countQuery, q).Scan(&total); countErr != nil {
+		return nil, 0, fmt.Errorf("count dictionary search: %w", countErr)
+	}
+
+	// Search query: FTS results first (ranked), then prefix matches
+	searchQuery := `WITH fts AS (
+		SELECT ` + dictColumns + `, ts_rank(search_vector, plainto_tsquery('english', $1)) AS rank
+		FROM dictionary_entries
+		WHERE consent_public_display = TRUE AND search_vector @@ plainto_tsquery('english', $1)
+	), prefix AS (
+		SELECT ` + dictColumns + `, 0.0::float AS rank
+		FROM dictionary_entries
+		WHERE consent_public_display = TRUE AND lemma ILIKE $1 || '%'
+			AND id NOT IN (SELECT id FROM fts)
+	)
+	SELECT ` + dictColumns + ` FROM (
+		SELECT ` + dictColumns + `, rank FROM fts
+		UNION ALL
+		SELECT ` + dictColumns + `, rank FROM prefix
+	) AS combined
+	ORDER BY rank DESC, lemma ASC
+	LIMIT $2 OFFSET $3`
+
+	rows, queryErr := r.db.QueryContext(ctx, searchQuery, q, size, offset)
+	if queryErr != nil {
+		return nil, 0, fmt.Errorf("search dictionary entries: %w", queryErr)
+	}
+	defer rows.Close()
+
+	entries := make([]models.DictionaryEntry, 0, size)
+	for rows.Next() {
+		e, scanErr := scanDictEntry(rows)
+		if scanErr != nil {
+			return nil, 0, scanErr
+		}
+		entries = append(entries, *e)
+	}
+
+	if rowsErr := rows.Err(); rowsErr != nil {
+		return nil, 0, fmt.Errorf("search dictionary entries rows: %w", rowsErr)
+	}
+
+	return entries, total, nil
+}
+
 // BulkUpsertEntries inserts or updates multiple dictionary entries in a single transaction.
 // Returns count of inserted and updated entries. Uses content_hash for conflict detection.
 func (r *DictionaryRepository) BulkUpsertEntries(ctx context.Context, entries []models.DictionaryEntry) (inserted, updated int, err error) {

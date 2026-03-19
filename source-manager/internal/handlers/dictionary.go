@@ -94,7 +94,8 @@ func (h *DictionaryHandler) GetEntry(c *gin.Context) {
 }
 
 // SearchEntries handles GET /api/v1/dictionary/search?q=<query>.
-// Returns entries matching full-text search, consent_public_display = true only.
+// Returns entries matching full-text search (English definitions) or prefix match (Ojibwe lemma),
+// with consent_public_display = true filtering and proper pagination.
 func (h *DictionaryHandler) SearchEntries(c *gin.Context) {
 	c.Header(attributionKey, attributionValue)
 
@@ -104,15 +105,10 @@ func (h *DictionaryHandler) SearchEntries(c *gin.Context) {
 		return
 	}
 
-	filter := models.DictionaryEntryFilter{
-		Limit:  parseIntQuery(c, "limit", defaultDictLimit),
-		Offset: parseIntQuery(c, "offset", 0),
-	}
-	if filter.Limit > maxDictLimit {
-		filter.Limit = maxDictLimit
-	}
+	page := parseIntQuery(c, "page", 1)
+	size := parseIntQuery(c, "size", defaultDictLimit)
 
-	entries, searchErr := h.repo.Search(c.Request.Context(), q, filter)
+	entries, total, searchErr := h.repo.SearchWithCount(c.Request.Context(), q, page, size)
 	if searchErr != nil {
 		h.logger.Error("Failed to search dictionary entries",
 			infralogger.String("query", q),
@@ -124,7 +120,9 @@ func (h *DictionaryHandler) SearchEntries(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"entries": entries,
-		"total":   len(entries),
+		"total":   total,
+		"page":    page,
+		"size":    size,
 		"query":   q,
 	})
 }

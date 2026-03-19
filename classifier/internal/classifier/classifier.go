@@ -53,6 +53,7 @@ type Config struct {
 	JobExtractor            *JobExtractor            // Optional: structured job extractor
 	RFPExtractor            *RFPExtractor            // Optional: structured RFP extractor
 	RoutingTable            map[string][]string      // Optional: content-type routing (see ResolveSidecars)
+	MaxTopics               int                      // Maximum topics per item (default 5)
 }
 
 // NewClassifier creates a new classifier with all strategies
@@ -95,7 +96,7 @@ func NewClassifier(
 	return &Classifier{
 		contentType:      NewContentTypeClassifier(logger),
 		quality:          NewQualityScorerWithConfig(logger, config.QualityConfig),
-		topic:            NewTopicClassifier(logger, rules),
+		topic:            NewTopicClassifier(logger, rules, config.MaxTopics),
 		sourceReputation: NewSourceReputationScorerWithConfig(logger, sourceRepDB, config.SourceReputationConfig),
 		crime:            config.CrimeClassifier,
 		mining:           config.MiningClassifier,

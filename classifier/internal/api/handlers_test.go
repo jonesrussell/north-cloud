@@ -111,7 +111,7 @@ func setupTestHandler() *Handler {
 	classifierInstance := classifier.NewClassifier(logger, rules, sourceRepDB, classifierCfg)
 	batchProcessor := processor.NewBatchProcessor(classifierInstance, 2, logger)
 	sourceRepScorer := classifier.NewSourceReputationScorer(logger, sourceRepDB)
-	topicClassifier := classifier.NewTopicClassifier(logger, rules)
+	topicClassifier := classifier.NewTopicClassifier(logger, rules, 5)
 
 	// Create test repository for API handlers (in-memory SQLite)
 	sourceRepRepo, err := setupTestSourceReputationRepository()

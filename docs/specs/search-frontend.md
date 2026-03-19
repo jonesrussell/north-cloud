@@ -1,5 +1,7 @@
 # Search Frontend Specification
 
+> Last verified: 2026-03-19 (fix: topic-only browsing now triggers search without query text)
+
 ## Purpose
 
 Public-facing search SPA with dual modes: news portal (home page) and full-text search with faceted filtering. No authentication. Routes requests to the Search service backend via Vite dev proxy.
