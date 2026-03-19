@@ -57,6 +57,10 @@ func main() {
 		"classifier":     cfg.Services.ClassifierURL,
 		"index-manager":  cfg.Services.IndexManagerURL,
 		"grafana":        cfg.Services.GrafanaURL,
+		"auth":           cfg.Services.AuthURL,
+		"pipeline":       cfg.Services.PipelineURL,
+		"click-tracker":  cfg.Services.ClickTrackerURL,
+		"rfp-ingestor":   cfg.Services.RFPIngestorURL,
 	}
 
 	// Create MCP server

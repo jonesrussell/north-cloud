@@ -104,22 +104,22 @@ type JobStatusDetails struct {
 
 // JobProgressData is the payload for job:progress events.
 type JobProgressData struct {
-	JobID       string `json:"job_id"`
-	ExecutionID string `json:"execution_id"`
-	ItemsFound  int    `json:"items_found"`
+	JobID        string `json:"job_id"`
+	ExecutionID  string `json:"execution_id"`
+	ItemsFound   int    `json:"items_found"`
 	ItemsIndexed int    `json:"items_indexed"`
-	Timestamp   string `json:"timestamp"`
+	Timestamp    string `json:"timestamp"`
 }
 
 // JobCompletedData is the payload for job:completed events.
 type JobCompletedData struct {
-	JobID           string  `json:"job_id"`
-	ExecutionID     string  `json:"execution_id"`
-	Status          string  `json:"status"`
-	DurationMs      int64   `json:"duration_ms"`
-	ItemsIndexed    int     `json:"items_indexed"`
-	ErrorMessage    *string `json:"error_message,omitempty"`
-	Timestamp       string  `json:"timestamp"`
+	JobID        string  `json:"job_id"`
+	ExecutionID  string  `json:"execution_id"`
+	Status       string  `json:"status"`
+	DurationMs   int64   `json:"duration_ms"`
+	ItemsIndexed int     `json:"items_indexed"`
+	ErrorMessage *string `json:"error_message,omitempty"`
+	Timestamp    string  `json:"timestamp"`
 }
 
 // HealthStatusData is the payload for health:status events.
@@ -163,11 +163,11 @@ func NewJobProgressEvent(jobID, executionID string, itemsFound, itemsIndexed int
 	return Event{
 		Type: EventTypeJobProgress,
 		Data: JobProgressData{
-			JobID:       jobID,
-			ExecutionID: executionID,
-			ItemsFound:  itemsFound,
+			JobID:        jobID,
+			ExecutionID:  executionID,
+			ItemsFound:   itemsFound,
 			ItemsIndexed: itemsIndexed,
-			Timestamp:   time.Now().UTC().Format(time.RFC3339),
+			Timestamp:    time.Now().UTC().Format(time.RFC3339),
 		},
 	}
 }

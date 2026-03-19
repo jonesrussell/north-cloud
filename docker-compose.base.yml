@@ -198,12 +198,13 @@ services:
       resources:
         limits:
           cpus: "0.25"
-          memory: 512M
+          memory: 1G
     command: server /data --console-address ":9001"
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-changeme123}
       MINIO_BROWSER: ${MINIO_BROWSER:-on}
+      MINIO_CACHE: "off"
     volumes:
       - minio_data:/data
     healthcheck:
@@ -511,7 +512,7 @@ services:
       resources:
         limits:
           cpus: "0.25"
-          memory: 256M
+          memory: 512M
     ports:
       - "${ALLOY_PORT:-12345}:12345"  # Alloy UI/API port
     command:
@@ -562,7 +563,7 @@ services:
     <<: *service-defaults
     profiles:
       - observability
-    image: prom/prometheus:latest
+    image: prom/prometheus:v3.3.1
     deploy:
       resources:
         limits:

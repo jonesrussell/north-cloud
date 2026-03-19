@@ -480,7 +480,7 @@ if [ "${INFRA_CHANGED:-false}" = "true" ] || [ -z "$SERVICES_TO_UPDATE" ]; then
   else
     echo -e "${YELLOW}WARNING: Failed to restart grafana (profile may not be active)${NC}"
   fi
-  if $COMPOSE_CMD --profile observability up -d alloy loki 2>&1; then
+  if $COMPOSE_CMD --profile observability up -d alloy loki prometheus node-exporter 2>&1; then
     echo -e "${GREEN}✓ Observability services restarted${NC}"
   else
     echo -e "${YELLOW}WARNING: Failed to restart observability services (profile may not be active)${NC}"
