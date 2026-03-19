@@ -2,6 +2,7 @@ package events
 
 import (
 	"context"
+	"fmt"
 	"sync"
 
 	infralogger "github.com/jonesrussell/north-cloud/infrastructure/logger"
@@ -62,7 +63,7 @@ func (b *EventBus) PublishError(ctx context.Context, err error) {
 // Thread-safe: uses read lock and copies handlers slice.
 func (b *EventBus) PublishStart(ctx context.Context) error {
 	if err := ctx.Err(); err != nil {
-		return err
+		return fmt.Errorf("publish start event: %w", err)
 	}
 
 	// Get a snapshot of handlers under read lock
@@ -86,7 +87,7 @@ func (b *EventBus) PublishStart(ctx context.Context) error {
 // Thread-safe: uses read lock and copies handlers slice.
 func (b *EventBus) PublishStop(ctx context.Context) error {
 	if err := ctx.Err(); err != nil {
-		return err
+		return fmt.Errorf("publish stop event: %w", err)
 	}
 
 	// Get a snapshot of handlers under read lock

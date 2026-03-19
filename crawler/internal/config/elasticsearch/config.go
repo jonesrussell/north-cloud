@@ -237,27 +237,27 @@ func (c *Config) Validate() error {
 
 	// Validate each component
 	if err := c.validateTLS(); err != nil {
-		return err
+		return fmt.Errorf("validate TLS config: %w", err)
 	}
 
 	if err := c.validateRequiredFields(); err != nil {
-		return err
+		return fmt.Errorf("validate required fields: %w", err)
 	}
 
 	if err := c.validatePassword(); err != nil {
-		return err
+		return fmt.Errorf("validate password: %w", err)
 	}
 
 	if err := c.validateRetry(); err != nil {
-		return err
+		return fmt.Errorf("validate retry config: %w", err)
 	}
 
 	if err := c.validateBulkConfig(); err != nil {
-		return err
+		return fmt.Errorf("validate bulk config: %w", err)
 	}
 
 	if err := c.validateAPIKeyFormat(); err != nil {
-		return err
+		return fmt.Errorf("validate API key format: %w", err)
 	}
 
 	return nil
