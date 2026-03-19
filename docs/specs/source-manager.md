@@ -1,6 +1,6 @@
 # Source Manager Specification
 
-> Last verified: 2026-03-19 (post-migration-019 fix)
+> Last verified: 2026-03-19 (dictionary search: dual-strategy FTS+prefix, pagination with total count)
 
 ## Purpose
 
