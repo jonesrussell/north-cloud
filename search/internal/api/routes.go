@@ -28,5 +28,10 @@ func SetupRoutes(router *gin.Engine, handler *Handler) {
 		search.GET("/suggest", handler.Suggest)
 		search.POST("", handler.Search)
 		search.GET("", handler.Search)
+
+		// Feed endpoints (public, no auth)
+		feeds := v1.Group("/feeds")
+		feeds.GET("/latest", handler.PublicFeed)
+		feeds.GET("/:slug", handler.TopicFeed)
 	}
 }

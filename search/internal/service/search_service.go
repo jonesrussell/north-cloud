@@ -413,8 +413,17 @@ func generateQueryID() string {
 // No auth; used by the news portal frontend and static sites. Size is fixed (publicFeedSize).
 func (s *SearchService) LatestItems(ctx context.Context) ([]domain.PublicFeedItem, error) {
 	query := map[string]any{
-		"query": map[string]any{"match_all": map[string]any{}},
-		"size":  publicFeedSize,
+		"query": map[string]any{
+			"bool": map[string]any{
+				"filter": []any{
+					map[string]any{"range": map[string]any{"quality_score": map[string]any{"gte": topicFeedMinQuality}}},
+				},
+				"must_not": []any{
+					map[string]any{"term": map[string]any{"content_type.keyword": "rfp"}},
+				},
+			},
+		},
+		"size": defaultFeedLimit,
 		"sort": []any{
 			map[string]any{"published_date": map[string]any{"order": "desc", "missing": "_last"}},
 			map[string]any{"crawled_at": map[string]any{"order": "desc", "missing": "_last"}},
