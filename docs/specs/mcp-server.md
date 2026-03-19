@@ -102,6 +102,10 @@ Security hardening layer:
 | `GRAFANA_URL` | `http://localhost:3000` | Grafana |
 | `GRAFANA_USERNAME` | — | Grafana admin username (for alerts) |
 | `GRAFANA_PASSWORD` | — | Grafana admin password (for alerts) |
+| `AUTH_URL` | `http://localhost:8040` | Auth service |
+| `PIPELINE_URL` | `http://localhost:8075` | Pipeline service |
+| `CLICK_TRACKER_URL` | `http://localhost:8093` | Click tracker service |
+| `RFP_INGESTOR_URL` | `http://localhost:8095` | RFP ingestor service |
 | `AUTH_JWT_SECRET` | — | Required for protected tools |
 | `MCP_HTTP_TIMEOUT_SECONDS` | `30` | HTTP client timeout |
 | `NORTH_CLOUD_ROOT` | cwd | Repo root for lint_file/build_service |
@@ -118,4 +122,4 @@ Security hardening layer:
 - **Scope counts are test fixtures**: `scope_test.go` and `test-tools.sh` hardcode expected tool counts. Update both whenever tools are added or removed.
 - **Adding a tool (4-step workflow)**: (1) define in `tools.go`, (2) register handler in `server.go`, (3) implement in `handlers.go` (or a dedicated file for complex tools), (4) update counts in `scope_test.go` + `test-tools.sh`.
 
-<\!-- Reviewed: 2026-03-18 — go.mod dependency update only, no spec changes needed -->
+<!-- Reviewed: 2026-03-19 — search client fixed (hits/total_hits field mapping), health check expanded to 11 services, 4 new service URLs added to config -->
