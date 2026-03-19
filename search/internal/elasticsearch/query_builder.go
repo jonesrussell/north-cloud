@@ -44,6 +44,12 @@ func (qb *QueryBuilder) Build(req *domain.SearchRequest) map[string]any {
 		"sort":  qb.buildSort(req),
 	}
 
+	// Collapse on title to deduplicate syndicated wire stories
+	// Keeps the highest-scoring result per unique title
+	query["collapse"] = map[string]any{
+		"field": "title.keyword",
+	}
+
 	// Add highlighting if enabled
 	if req.Options.IncludeHighlights && qb.config.HighlightEnabled {
 		query["highlight"] = qb.buildHighlight()

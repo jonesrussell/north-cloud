@@ -1,6 +1,6 @@
 # Discovery & Querying Specification
 
-> Last verified: 2026-03-19 (feeds routes wired, LatestItems quality+RFP filter)
+> Last verified: 2026-03-19 (feeds routes, title collapse dedup, suggest endpoint)
 
 Covers the search service (full-text queries) and index-manager (ES lifecycle, mappings, aggregations).
 
