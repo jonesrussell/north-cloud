@@ -22,7 +22,7 @@ RUN CGO_ENABLED=0 go build \
     -ldflags="-w -s" \
     -trimpath \
     -o source-manager \
-    main.go
+    .
 
 RUN CGO_ENABLED=0 go build \
     -ldflags="-w -s" \
