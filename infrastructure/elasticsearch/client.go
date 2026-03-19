@@ -3,9 +3,11 @@ package elasticsearch
 import (
 	"context"
 	"crypto/tls"
+	"crypto/x509"
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
@@ -97,8 +99,16 @@ func createTransport(tlsConfig *TLSConfig) *http.Transport {
 			}
 		}
 
-		// TODO: Load CA certificate from tlsConfig.CAFile if provided
-		// This would require using crypto/x509 to load and parse the CA cert
+		// Load CA certificate if provided
+		if tlsConfig.CAFile != "" {
+			caCert, readErr := os.ReadFile(tlsConfig.CAFile)
+			if readErr == nil {
+				caCertPool := x509.NewCertPool()
+				if caCertPool.AppendCertsFromPEM(caCert) {
+					tlsClientConfig.RootCAs = caCertPool
+				}
+			}
+		}
 
 		transport.TLSClientConfig = tlsClientConfig
 	}

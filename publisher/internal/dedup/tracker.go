@@ -9,6 +9,9 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
+// redisScanBatchSize is the number of keys to return per SCAN iteration when clearing tracked content.
+const redisScanBatchSize = 100
+
 type Tracker struct {
 	client redis.UniversalClient
 	ttl    time.Duration
@@ -130,8 +133,7 @@ func (t *Tracker) FlushAll(ctx context.Context) error {
 	for {
 		var keys []string
 		var err error
-		const scanBatchSize = 100 // TODO: Move to constant or config
-		keys, cursor, err = t.client.Scan(ctx, cursor, pattern, scanBatchSize).Result()
+		keys, cursor, err = t.client.Scan(ctx, cursor, pattern, redisScanBatchSize).Result()
 		if err != nil {
 			t.logger.Error("Redis error scanning for keys",
 				infralogger.String("pattern", pattern),
