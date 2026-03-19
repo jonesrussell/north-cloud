@@ -191,6 +191,70 @@ func (r *DictionaryRepository) Search(
 	return entries, nil
 }
 
+// BulkUpsertEntries inserts or updates multiple dictionary entries in a single transaction.
+// Returns count of inserted and updated entries. Uses content_hash for conflict detection.
+func (r *DictionaryRepository) BulkUpsertEntries(ctx context.Context, entries []models.DictionaryEntry) (inserted, updated int, err error) {
+	if len(entries) == 0 {
+		return 0, 0, nil
+	}
+
+	tx, txErr := r.db.BeginTx(ctx, nil)
+	if txErr != nil {
+		return 0, 0, fmt.Errorf("begin transaction: %w", txErr)
+	}
+	defer func() {
+		if err != nil {
+			_ = tx.Rollback()
+		}
+	}()
+
+	const upsertSQL = `
+		INSERT INTO dictionary_entries (
+			id, lemma, word_class, word_class_normalized, definitions,
+			inflections, examples, word_family, media, attribution,
+			license, consent_public_display, consent_ai_training,
+			consent_derivative_works, content_hash, source_url,
+			created_at, updated_at
+		) VALUES (
+			gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7, $8, $9,
+			$10, $11, $12, $13, $14, $15, NOW(), NOW()
+		)
+		ON CONFLICT (content_hash) DO UPDATE SET
+			lemma = EXCLUDED.lemma,
+			definitions = EXCLUDED.definitions,
+			inflections = EXCLUDED.inflections,
+			examples = EXCLUDED.examples,
+			word_family = EXCLUDED.word_family,
+			media = EXCLUDED.media,
+			updated_at = NOW()
+		RETURNING (xmax = 0) AS is_insert`
+
+	for i := range entries {
+		var isInsert bool
+		scanErr := tx.QueryRowContext(ctx, upsertSQL,
+			entries[i].Lemma, entries[i].WordClass, entries[i].WordClassNormalized,
+			entries[i].Definitions, entries[i].Inflections, entries[i].Examples,
+			entries[i].WordFamily, entries[i].Media, entries[i].Attribution,
+			entries[i].License, entries[i].ConsentPublicDisplay, entries[i].ConsentAITraining,
+			entries[i].ConsentDerivativeWorks, entries[i].ContentHash, entries[i].SourceURL,
+		).Scan(&isInsert)
+		if scanErr != nil {
+			return inserted, updated, fmt.Errorf("upsert entry %q: %w", entries[i].Lemma, scanErr)
+		}
+		if isInsert {
+			inserted++
+		} else {
+			updated++
+		}
+	}
+
+	if commitErr := tx.Commit(); commitErr != nil {
+		return 0, 0, fmt.Errorf("commit transaction: %w", commitErr)
+	}
+
+	return inserted, updated, nil
+}
+
 // UpsertByContentHash inserts or updates a dictionary entry keyed by content_hash.
 // This enables idempotent bulk imports.
 func (r *DictionaryRepository) UpsertByContentHash(
