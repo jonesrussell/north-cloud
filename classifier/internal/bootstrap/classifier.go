@@ -10,6 +10,7 @@ import (
 	"github.com/jonesrussell/north-cloud/classifier/internal/classifier"
 	"github.com/jonesrussell/north-cloud/classifier/internal/config"
 	"github.com/jonesrussell/north-cloud/classifier/internal/domain"
+	"github.com/jonesrussell/north-cloud/classifier/internal/drillmlclient"
 	"github.com/jonesrussell/north-cloud/classifier/internal/mlclient"
 	"github.com/jonesrussell/north-cloud/classifier/internal/processor"
 	infragin "github.com/jonesrussell/north-cloud/infrastructure/gin"
@@ -182,6 +183,25 @@ func createClassifierConfig(cfg *config.Config, logger infralogger.Logger) class
 		func(c *mlclient.Client, l infralogger.Logger, e bool) *classifier.IndigenousClassifier {
 			return classifier.NewIndigenousClassifier(c, l, e)
 		})
+
+	// Wire drill extraction into mining classifier when both mining and drill are enabled
+	if miningCC != nil && cfg.Classification.DrillExtraction.Enabled {
+		drillCfg := cfg.Classification.DrillExtraction
+		var drillClient classifier.DrillExtractor
+		if drillCfg.LLMFallback && drillCfg.AnthropicKey != "" {
+			drillClient = drillmlclient.New(
+				drillCfg.AnthropicBaseURL,
+				drillCfg.AnthropicKey,
+				drillCfg.AnthropicModel,
+				drillCfg.MaxBodyChars,
+			)
+			logger.Info("Drill extraction enabled with LLM fallback",
+				infralogger.String("model", drillCfg.AnthropicModel))
+		} else {
+			logger.Info("Drill extraction enabled (regex-only, no LLM fallback)")
+		}
+		miningCC.WithDrillExtraction(drillClient, drillCfg)
+	}
 
 	// Create recipe and job extractors when enabled
 	var recipeExtractor *classifier.RecipeExtractor

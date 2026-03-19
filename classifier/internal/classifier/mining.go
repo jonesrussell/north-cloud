@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/jonesrussell/north-cloud/classifier/internal/config"
 	"github.com/jonesrussell/north-cloud/classifier/internal/domain"
 	"github.com/jonesrussell/north-cloud/classifier/internal/mlclient"
 	infralogger "github.com/jonesrussell/north-cloud/infrastructure/logger"
@@ -32,9 +33,11 @@ type miningMLEnvelope struct {
 
 // MiningClassifier implements hybrid rule + ML mining classification.
 type MiningClassifier struct {
-	mlClient MLClassifier
-	logger   infralogger.Logger
-	enabled  bool
+	mlClient    MLClassifier
+	logger      infralogger.Logger
+	enabled     bool
+	drillClient DrillExtractor
+	drillConfig config.DrillExtractionConfig
 }
 
 // NewMiningClassifier creates a new hybrid mining classifier.
@@ -46,6 +49,12 @@ func NewMiningClassifier(
 		logger:   logger,
 		enabled:  enabled,
 	}
+}
+
+// WithDrillExtraction configures the mining classifier with drill extraction capabilities.
+func (s *MiningClassifier) WithDrillExtraction(client DrillExtractor, cfg config.DrillExtractionConfig) {
+	s.drillClient = client
+	s.drillConfig = cfg
 }
 
 // Classify performs hybrid mining classification on raw content.
@@ -67,7 +76,40 @@ func (s *MiningClassifier) Classify(
 
 	result := s.mergeResults(ruleResult, mlResult)
 	result.SourceTextUsed = sourceTextUsed
+
+	// Drill extraction: runs on core/peripheral mining articles when enabled
+	if s.drillConfig.Enabled && result.Relevance != miningRelevanceNot {
+		s.runDrillExtraction(raw, ruleResult, result)
+	}
+
 	return result, nil
+}
+
+// runDrillExtraction executes the drill extraction pipeline and attaches results.
+func (s *MiningClassifier) runDrillExtraction(
+	raw *domain.RawContent, ruleResult *miningRuleResult, result *domain.MiningResult,
+) {
+	s.logger.Info("Drill extraction started",
+		infralogger.String("content_id", raw.ID),
+		infralogger.String("relevance", result.Relevance),
+		infralogger.Bool("drill_keyword_matched", ruleResult.drillKeywordMatched),
+	)
+
+	drillResults, method := orchestrateDrillExtraction(
+		raw.RawText,
+		ruleResult.drillKeywordMatched,
+		s.drillConfig.LLMFallback,
+		s.drillClient,
+	)
+
+	result.DrillResults = drillResults
+	result.ExtractionMethod = method
+
+	s.logger.Info("Drill extraction complete",
+		infralogger.String("content_id", raw.ID),
+		infralogger.String("extraction_method", method),
+		infralogger.Int("results_count", len(drillResults)),
+	)
 }
 
 // callMiningML calls the ML sidecar and parses the response. Returns nil on failure or if client is nil.
