@@ -73,12 +73,12 @@ func (cm *CertManager) CACertPEM() []byte {
 func (cm *CertManager) loadCA(certPath, keyPath string) error {
 	certPEM, err := os.ReadFile(certPath)
 	if err != nil {
-		return err
+		return fmt.Errorf("read CA certificate %s: %w", certPath, err)
 	}
 
 	keyPEM, readErr := os.ReadFile(keyPath)
 	if readErr != nil {
-		return readErr
+		return fmt.Errorf("read CA key %s: %w", keyPath, readErr)
 	}
 
 	certBlock, _ := pem.Decode(certPEM)
@@ -180,7 +180,7 @@ func (cm *CertManager) GetCertificate(domain string) (*tls.Certificate, error) {
 	// Generate new certificate
 	cert, err := cm.generateLeafCert(domain)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("generate leaf certificate for %s: %w", domain, err)
 	}
 
 	// Cache it

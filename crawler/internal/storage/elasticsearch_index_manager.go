@@ -36,7 +36,7 @@ func NewElasticsearchIndexManager(client *elasticsearch.Client, log infralogger.
 func (m *ElasticsearchIndexManager) EnsureIndex(ctx context.Context, name string, mapping any) error {
 	exists, err := m.IndexExists(ctx, name)
 	if err != nil {
-		return err
+		return fmt.Errorf("check index %s exists: %w", name, err)
 	}
 	if exists {
 		return nil
@@ -44,7 +44,7 @@ func (m *ElasticsearchIndexManager) EnsureIndex(ctx context.Context, name string
 
 	mappingBytes, err := json.Marshal(mapping)
 	if err != nil {
-		return err
+		return fmt.Errorf("marshal mapping for index %s: %w", name, err)
 	}
 
 	res, err := m.client.Indices.Create(
@@ -53,7 +53,7 @@ func (m *ElasticsearchIndexManager) EnsureIndex(ctx context.Context, name string
 		m.client.Indices.Create.WithContext(ctx),
 	)
 	if err != nil {
-		return err
+		return fmt.Errorf("create index %s: %w", name, err)
 	}
 	defer res.Body.Close()
 
@@ -71,7 +71,7 @@ func (m *ElasticsearchIndexManager) DeleteIndex(ctx context.Context, name string
 		m.client.Indices.Delete.WithContext(ctx),
 	)
 	if err != nil {
-		return err
+		return fmt.Errorf("delete index %s: %w", name, err)
 	}
 	defer res.Body.Close()
 
@@ -89,7 +89,7 @@ func (m *ElasticsearchIndexManager) IndexExists(ctx context.Context, name string
 		m.client.Indices.Exists.WithContext(ctx),
 	)
 	if err != nil {
-		return false, err
+		return false, fmt.Errorf("check index %s exists: %w", name, err)
 	}
 	defer res.Body.Close()
 
@@ -100,7 +100,7 @@ func (m *ElasticsearchIndexManager) IndexExists(ctx context.Context, name string
 func (m *ElasticsearchIndexManager) UpdateMapping(ctx context.Context, name string, mapping map[string]any) error {
 	mappingBytes, err := json.Marshal(mapping)
 	if err != nil {
-		return err
+		return fmt.Errorf("marshal mapping for index %s: %w", name, err)
 	}
 
 	res, err := m.client.Indices.PutMapping(
@@ -109,7 +109,7 @@ func (m *ElasticsearchIndexManager) UpdateMapping(ctx context.Context, name stri
 		m.client.Indices.PutMapping.WithContext(ctx),
 	)
 	if err != nil {
-		return err
+		return fmt.Errorf("update mapping for index %s: %w", name, err)
 	}
 	defer res.Body.Close()
 
@@ -127,7 +127,7 @@ func (m *ElasticsearchIndexManager) GetMapping(ctx context.Context, name string)
 		m.client.Indices.GetMapping.WithContext(ctx),
 	)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("get mapping for index %s: %w", name, err)
 	}
 	defer res.Body.Close()
 
@@ -137,7 +137,7 @@ func (m *ElasticsearchIndexManager) GetMapping(ctx context.Context, name string)
 
 	var result map[string]any
 	if decodeErr := json.NewDecoder(res.Body).Decode(&result); decodeErr != nil {
-		return nil, decodeErr
+		return nil, fmt.Errorf("decode mapping response for index %s: %w", name, decodeErr)
 	}
 
 	return result, nil

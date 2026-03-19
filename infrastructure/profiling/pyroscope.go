@@ -6,6 +6,7 @@ import (
 	"runtime"
 
 	"github.com/grafana/pyroscope-go"
+	infralogger "github.com/jonesrussell/north-cloud/infrastructure/logger"
 )
 
 // PyroscopeProfiler holds the Pyroscope profiler instance
@@ -75,11 +76,17 @@ func StartPyroscope(serviceName string) (*PyroscopeProfiler, error) {
 		return nil, fmt.Errorf("failed to start Pyroscope profiler: %w", err)
 	}
 
-	fmt.Printf("✓ Pyroscope continuous profiling started\n")
-	fmt.Printf("  Service: %s\n", config.ApplicationName)
-	fmt.Printf("  Server: %s\n", serverURL)
-	fmt.Printf("  Environment: %s\n", environment)
-	fmt.Printf("  Profile Types: CPU, Allocations, In-Use Memory, Goroutines\n")
+	log, logErr := infralogger.New(infralogger.Config{
+		Level:  "info",
+		Format: "json",
+	})
+	if logErr == nil {
+		log.Info("Pyroscope continuous profiling started",
+			infralogger.String("service", config.ApplicationName),
+			infralogger.String("server", serverURL),
+			infralogger.String("environment", environment),
+		)
+	}
 
 	return &PyroscopeProfiler{profiler: profiler}, nil
 }

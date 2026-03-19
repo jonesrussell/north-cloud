@@ -78,11 +78,14 @@ func runScrapeLeadership(args []string) error {
 
 	results, err := s.Run(context.Background())
 	if err != nil {
-		return err
+		return fmt.Errorf("run leadership scraper: %w", err)
 	}
 
 	if *dryRun {
-		return scraper.PrintDryRunResults(results)
+		if printErr := scraper.PrintDryRunResults(results); printErr != nil {
+			return fmt.Errorf("print dry-run results: %w", printErr)
+		}
+		return nil
 	}
 
 	printSummary(results, log)

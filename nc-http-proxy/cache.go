@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"sync"
@@ -78,12 +79,12 @@ func (c *Cache) loadEntry(baseDir, domain, cacheKey string) (*CacheEntry, error)
 		if os.IsNotExist(err) {
 			return nil, ErrCacheEntryNotFound
 		}
-		return nil, err
+		return nil, fmt.Errorf("read cache metadata %s: %w", metaPath, err)
 	}
 
 	var metadata CacheEntryMetadata
 	if unmarshalErr := json.Unmarshal(metaData, &metadata); unmarshalErr != nil {
-		return nil, unmarshalErr
+		return nil, fmt.Errorf("unmarshal cache metadata %s: %w", metaPath, unmarshalErr)
 	}
 	entry.Metadata = &metadata
 
@@ -95,7 +96,7 @@ func (c *Cache) loadEntry(baseDir, domain, cacheKey string) (*CacheEntry, error)
 			// Metadata exists but body missing - treat as miss
 			return nil, ErrCacheEntryNotFound
 		}
-		return nil, err
+		return nil, fmt.Errorf("read cache body %s: %w", bodyPath, err)
 	}
 	entry.Body = bodyData
 
@@ -120,7 +121,7 @@ func (c *Cache) Store(entry *CacheEntry) error {
 	// Ensure domain directory exists
 	domainDir := filepath.Join(c.cacheDir, entry.Domain)
 	if err := os.MkdirAll(domainDir, 0755); err != nil {
-		return err
+		return fmt.Errorf("create cache domain directory %s: %w", domainDir, err)
 	}
 
 	// Update entry base dir to cache dir
@@ -129,15 +130,15 @@ func (c *Cache) Store(entry *CacheEntry) error {
 	// Write metadata
 	metaData, err := json.MarshalIndent(entry.Metadata, "", "  ")
 	if err != nil {
-		return err
+		return fmt.Errorf("marshal cache metadata for %s/%s: %w", entry.Domain, entry.CacheKey, err)
 	}
 	if writeErr := os.WriteFile(entry.MetadataPath(), metaData, 0600); writeErr != nil {
-		return writeErr
+		return fmt.Errorf("write cache metadata %s: %w", entry.MetadataPath(), writeErr)
 	}
 
 	// Write body
 	if writeErr := os.WriteFile(entry.BodyPath(), entry.Body, 0600); writeErr != nil {
-		return writeErr
+		return fmt.Errorf("write cache body %s: %w", entry.BodyPath(), writeErr)
 	}
 
 	return nil
