@@ -1,6 +1,6 @@
 # Content Acquisition Specification
 
-> Last verified: 2026-03-19
+> Last verified: 2026-03-19 (post-D1 merge)
 
 Covers the crawler subsystem: web content fetching, job scheduling, frontier URL management, and raw content indexing.
 

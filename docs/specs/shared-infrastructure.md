@@ -1,6 +1,6 @@
 # Shared Infrastructure Specification
 
-> Last verified: 2026-03-19
+> Last verified: 2026-03-19 (post-D1 merge)
 
 Covers the `infrastructure/` module: config loading, logging, database clients, middleware, events, and utilities used by all services.
 

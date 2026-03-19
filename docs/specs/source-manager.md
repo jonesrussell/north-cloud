@@ -1,6 +1,6 @@
 # Source Manager Specification
 
-> Last verified: 2026-03-19
+> Last verified: 2026-03-19 (post-Dockerfile fix)
 
 ## Purpose
 
