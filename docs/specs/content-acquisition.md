@@ -1,6 +1,6 @@
 # Content Acquisition Specification
 
-> Last verified: 2026-03-19 (post-D1 merge)
+> Last verified: 2026-03-20
 
 Covers the crawler subsystem: web content fetching, job scheduling, frontier URL management, and raw content indexing.
 
@@ -111,9 +111,12 @@ func CanRetry(job *Job) bool    // StateFailed only
 2. AcquireLock() via CAS (lock_token = UUID WHERE lock_token IS NULL)
 3. Factory.Create() → isolated Crawler instance (shared startURLHashes map)
 4. Colly collector visits source URLs
-5. HTML → RawContentProcessor → extracts title, body, OG metadata, JSON-LD
-6. IndexRawContent() → {source}_raw_content ES index (classification_status: "pending")
-7. Completion: mark execution completed, calculate next_run_at, release lock
+5. Source lookup resolves the configured source name from source-manager by URL match
+6. HTML → RawContentProcessor → extracts title, body, OG metadata, JSON-LD
+7. IndexRawContent() → {source}_raw_content ES index (classification_status: "pending")
+   - Uses the configured source `Name` as the canonical index identity when present
+   - Falls back to a URL-derived host name only when the source is missing or its `Name` is empty
+8. Completion: mark execution completed, calculate next_run_at, release lock
 ```
 
 ### Frontier Fetcher Path (lightweight)
@@ -186,5 +189,3 @@ Key environment variables:
 - **Concurrent schedulers**: CAS locking ensures only one instance runs a job. Zero-row update = another instance holds lock.
 - **Redis unavailable**: Colly storage falls back to in-memory (visited URLs don't persist across restarts).
 - **Frontier vs Colly conflict**: Frontier uses op_type=create so it never overwrites richer Colly documents.
-
-<\!-- Reviewed: 2026-03-18 — go.mod dependency update only, no spec changes needed -->

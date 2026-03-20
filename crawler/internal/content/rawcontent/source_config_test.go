@@ -25,8 +25,6 @@ func (s stubSources) GetSources() ([]sources.Config, error) {
 }
 
 func TestGetSourceConfigUsesConfiguredSourceName(t *testing.T) {
-	t.Helper()
-
 	svc := &RawContentService{
 		logger: infralogger.NewNop(),
 		sources: stubSources{
@@ -49,9 +47,30 @@ func TestGetSourceConfigUsesConfiguredSourceName(t *testing.T) {
 	}
 }
 
-func TestGetSourceConfigFallsBackToURLSourceNameWhenSourceMissing(t *testing.T) {
-	t.Helper()
+func TestGetSourceConfigFallsBackToURLSourceNameWhenConfiguredNameIsEmpty(t *testing.T) {
+	svc := &RawContentService{
+		logger: infralogger.NewNop(),
+		sources: stubSources{
+			configs: []sources.Config{
+				{
+					Name: "",
+					URL:  "https://www.sudbury.com",
+				},
+			},
+		},
+	}
 
+	sourceName, _, _, _ := svc.getSourceConfig(
+		"https://www.sudbury.com/news/local/story",
+		"<html></html>",
+	)
+
+	if sourceName != "www_sudbury_com" {
+		t.Fatalf("expected URL-derived fallback source name for empty configured name, got %q", sourceName)
+	}
+}
+
+func TestGetSourceConfigFallsBackToURLSourceNameWhenSourceMissing(t *testing.T) {
 	svc := &RawContentService{
 		logger:  infralogger.NewNop(),
 		sources: stubSources{},

@@ -1,13 +1,13 @@
 # Publisher
 
-Multi-layer routing hub that publishes classified articles from Elasticsearch to Redis Pub/Sub channels.
+Multi-layer routing hub that publishes classified content from Elasticsearch to Redis Pub/Sub channels.
 
 ## Overview
 
 The publisher is a two-process Go service:
 
 - **API server** (`publisher api`) — REST API for managing sources, channels, routes, and viewing publish history.
-- **Router worker** (`publisher router`) — Background process that polls all `*_classified_content` Elasticsearch indexes every 30 seconds, runs each article through 8 routing domains in sequence, and publishes matching articles to Redis Pub/Sub channels.
+- **Router worker** (`publisher router`) — Background process that polls all `*_classified_content` Elasticsearch indexes every 30 seconds, runs each content item through 11 routing domains in sequence, and publishes matches to Redis Pub/Sub channels.
 
 Both processes share a PostgreSQL database for routing configuration and deduplication tracking. They can run together (`publisher both`, the default) or as separate processes.
 
@@ -120,7 +120,7 @@ Routes content that the Indigenous classifier flagged. Content with `indigenous.
 
 ### Layer 8 — Coforge Classification (automatic)
 
-Routes articles that the Coforge ML classifier flagged. This is a product-specific domain with no catch-all `articles:coforge` channel. Articles with `coforge.relevance=not_relevant` or no coforge object are skipped.
+Routes articles that the Coforge ML classifier flagged. This is a product-specific domain with no catch-all `content:coforge` channel. Articles with `coforge.relevance=not_relevant` or no coforge object are skipped.
 
 ### Layers 9–11 — Recipe, Job, and RFP Routing
 
@@ -260,7 +260,7 @@ Articles are published as JSON to Redis Pub/Sub. The `publisher` envelope is add
   "publisher": {
     "channel_id": "uuid-or-null",
     "published_at": "2026-01-15T14:22:00Z",
-    "channel": "articles:violent_crime"
+    "channel": "content:violent_crime"
   },
   "id": "es-document-id",
   "title": "Article Title",
@@ -287,7 +287,7 @@ Articles are published as JSON to Redis Pub/Sub. The `publisher` envelope is add
   "category_pages": ["violent-crime", "crime"],
   "review_required": false,
   "mining": null,
-  "anishinaabe": null,
+  "indigenous": null,
   "coforge": null,
   "entertainment_relevance": "",
   "entertainment_categories": [],
@@ -359,16 +359,19 @@ publisher/
 ├── cmd_router.go        # Background router worker
 ├── internal/
 │   ├── api/             # HTTP handlers (Gin)
-│   ├── router/          # 8-domain routing logic
-│   │   ├── service.go           # Main routing loop, fetchArticles, publishToChannel
+│   ├── router/          # 11-domain routing logic
+│   │   ├── service.go           # Main routing loop, fetchContentItems, publishToChannel
 │   │   ├── domain_topic.go      # Layer 1: automatic topic channels
 │   │   ├── domain_dbchannel.go  # Layer 2: DB-backed custom channels
 │   │   ├── crime.go             # Layer 3: crime classification channels
 │   │   ├── location.go          # Layer 4: geographic location channels
 │   │   ├── mining.go            # Layer 5: mining classification channels
 │   │   ├── entertainment.go     # Layer 6: entertainment classification channels
-│   │   ├── anishinaabe.go       # Layer 7: Anishinaabe classification channels
-│   │   └── domain_coforge.go    # Layer 8: Coforge classification channels
+│   │   ├── indigenous.go        # Layer 7: Indigenous classification channels
+│   │   ├── domain_coforge.go    # Layer 8: Coforge classification channels
+│   │   ├── domain_recipe.go     # Layer 9: Recipe extraction channels
+│   │   ├── domain_job.go        # Layer 10: Job extraction channels
+│   │   └── domain_rfp.go        # Layer 11: RFP extraction channels
 │   ├── database/        # PostgreSQL repositories
 │   ├── discovery/       # Elasticsearch index discovery
 │   ├── models/          # Source, Channel, Route, PublishHistory
@@ -406,13 +409,13 @@ task fmt
 
 **Position in pipeline**: The publisher is the final stage. It reads from `{source}_classified_content` Elasticsearch indexes (written by the classifier) and publishes to Redis Pub/Sub channels.
 
-**Consumers**: Any process that subscribes to Redis Pub/Sub channels will receive articles. The publisher does not track or limit who subscribes.
+**Consumers**: Any process that subscribes to Redis Pub/Sub channels will receive content. The publisher does not track or limit who subscribes.
 
 ```php
 // Laravel example
-Redis::subscribe(['articles:crime', 'articles:news'], function ($message) {
-    $article = json_decode($message, true);
-    // Process article...
+Redis::subscribe(['content:crime', 'content:news'], function ($message) {
+    $content = json_decode($message, true);
+    // Process content...
 });
 ```
 
@@ -420,8 +423,8 @@ See [docs/CONSUMER_GUIDE.md](./docs/CONSUMER_GUIDE.md) for complete integration 
 
 ## Troubleshooting
 
-**No articles published**:
-1. Verify routes are enabled: `curl http://localhost:8070/api/v1/routes`
+**No content published**:
+1. Verify publisher activity: `curl http://localhost:8070/api/v1/stats/channels/active`
 2. Check that Elasticsearch indexes exist: `curl http://localhost:9200/_cat/indices?v | grep classified_content`
 3. Check router logs: `docker compose -f docker-compose.base.yml -f docker-compose.dev.yml logs -f publisher`
 4. Verify Redis is reachable: `redis-cli PING`
@@ -429,7 +432,7 @@ See [docs/CONSUMER_GUIDE.md](./docs/CONSUMER_GUIDE.md) for complete integration 
 **Messages not received by consumer**:
 1. Confirm the consumer subscribes before the publisher publishes (Pub/Sub has no queue; missed messages are lost)
 2. Check channel name matches exactly: `curl http://localhost:8070/api/v1/publish-history?limit=10`
-3. To test: `redis-cli SUBSCRIBE articles:crime`
+3. To test: `redis-cli SUBSCRIBE content:crime`
 
 **Articles published but missing ML-based channels** (e.g., no `mining:*` channels):
 - Check that the relevant ML sidecar is running and its `*_ENABLED` env flag is set
