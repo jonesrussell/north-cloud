@@ -1,6 +1,6 @@
 # Classification Specification
 
-> Last verified: 2026-03-19 (reduce defaultMaxTopics 5→3, add minGlobalConfidence 0.5 floor)
+> Last verified: 2026-03-20 (fix ML sidecar model path resolution via Path.resolve())
 
 Covers the classifier service, hybrid rule+ML classification pipeline, ML sidecar integration, and content enrichment.
 
