@@ -115,6 +115,17 @@ for spec in "${!AFFECTED_SPECS[@]}"; do
     if [ "$spec_last_commit" -lt "$service_last_commit" ]; then
       echo "  STALE: $spec"
       echo "    Fix: Review and update this spec to reflect recent service changes"
+      echo "    Changed files:"
+      spec_commit_hash=$(git log -1 --format=%H -- "$spec" 2>/dev/null)
+      if [ -n "$spec_commit_hash" ]; then
+        for pattern in "${!PATTERN_TO_SPEC[@]}"; do
+          if [ "${PATTERN_TO_SPEC[$pattern]}" = "$spec" ]; then
+            git diff --name-only "$spec_commit_hash"..HEAD -- "$pattern" 2>/dev/null | while read -r changed; do
+              echo "      - $changed"
+            done
+          fi
+        done
+      fi
       STALE_COUNT=$((STALE_COUNT + 1))
     else
       echo "  OK: $spec"

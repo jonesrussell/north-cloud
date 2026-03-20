@@ -88,7 +88,7 @@ Sources → [Crawler] → ES raw_content → [Classifier + ML Sidecars] → ES c
 
 **Dev Postgres**: Single shared instance (7 DBs). Auto-creates via `infrastructure/postgres/init-dev.sql` on first startup. Re-init: `... down -v`.
 
-**Taskfile (Preferred)**: `task lint`, `task test`, `task test:cover` (all services). Per-service: `task lint:SERVICE`, `task test:SERVICE`. Migrations: `task migrate:up`, `task migrate:SERVICE`. Tools: `task install:tools`. Use `task lint:force` before pushing (cache-clean, matches CI). Changed-only: `task lint:changed`, `task ci:changed`.
+**Taskfile (Preferred)**: `task lint`, `task test`, `task test:cover` (all services). Per-service: `task lint:SERVICE`, `task test:SERVICE`. Migrations: `task migrate:up`, `task migrate:SERVICE`. Tools: `task install:tools`. Use `task lint:force` before pushing (cache-clean, matches CI). Changed-only: `task lint:changed`, `task ci:changed`. Spec drift: `task drift:check` checks for stale specs vs recent service changes.
 
 **Spec Drift**: `task drift:check` (checks last 5 commits). Runs automatically as first step of `task ci`, `task ci:changed`, `task ci:force`. Also runs in lefthook pre-push and CI. Fails if any spec is stale or missing.
 
@@ -205,6 +205,10 @@ See `ARCHITECTURE.md` for the full bootstrap pattern reference.
 4. Verify no linting violations (see Critical Rules above)
 5. Check multi-service dependencies if applicable
 
+**Pre-push hook** (lefthook): Runs `tools/drift-detector.sh` to check for stale specs before push.
+
+**CI pipeline**: `task drift:check` runs first (before lint) in `ci:`, `ci:changed:`, and `ci:force:` tasks. GitHub Actions also runs a parallel `spec-drift` job.
+
 **Pushing**: Always use `git push -u origin {branch-name}` — never force push to main
 
 ### GitHub Workflow Rules
@@ -229,7 +233,9 @@ Check logs: `docker compose -f docker-compose.base.yml -f docker-compose.dev.yml
 
 ## Spec Drift Warning
 
-When refactoring a subsystem, update the relevant service `CLAUDE.md` and (once they exist) `docs/specs/` file. Stale specs cause sessions to generate code conflicting with recent changes.
+When refactoring a subsystem, update the relevant service `CLAUDE.md` and `docs/specs/` file. Stale specs cause sessions to generate code conflicting with recent changes.
+
+**Automated detection**: `task drift:check` (or `tools/drift-detector.sh N`) compares spec commit timestamps against service code changes. It runs automatically in CI, pre-push hooks, and as the first step of all `ci:*` tasks.
 
 ---
 
@@ -237,3 +243,21 @@ When refactoring a subsystem, update the relevant service `CLAUDE.md` and (once 
 
 - `ARCHITECTURE.md` — Full architecture, service descriptions, content pipeline, version history
 - Each service's own `CLAUDE.md` or `README.md` — Service-specific guidelines and API details
+
+## Architectural Boundaries
+
+North Cloud is the **content pipeline layer**. It owns crawling, classification (rules + ML), enrichment, routing, Redis pub/sub, and the source registry.
+
+**North Cloud does NOT own:**
+- Entity model, frontend rendering, or dialect/language data (that's Minoo)
+- Framework internals, entity storage, or ingestion envelope contract (that's Waaseyaa)
+- Content curation or editorial decisions (that's the consuming apps)
+
+**Import rules:**
+- NC classifier must import category/region slugs from `jonesrussell/indigenous-taxonomy` Go package — not hardcode them
+- NC must not reference Minoo entity types, PHP classes, or templates
+- NC source-manager is the single registry for all content sources (crawled + structured + API)
+
+**Shared contracts:**
+- `jonesrussell/indigenous-taxonomy` — categories, regions (Go module)
+- Redis pub/sub channels follow taxonomy slugs: `indigenous:category:{slug}`, `indigenous:region:{slug}`
