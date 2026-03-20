@@ -100,4 +100,5 @@ class Module(ClassifierModule):
 
 def create_module() -> Module:
     """Factory function required by the nc_ml framework."""
-    return Module()
+    module_dir = Path(__file__).resolve().parent
+    return Module(models_dir=str(module_dir / "models"))
