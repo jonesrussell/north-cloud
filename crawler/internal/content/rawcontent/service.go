@@ -18,6 +18,7 @@ import (
 	"github.com/jonesrussell/north-cloud/crawler/internal/storage/types"
 	"github.com/jonesrussell/north-cloud/infrastructure/indigenous"
 	infralogger "github.com/jonesrussell/north-cloud/infrastructure/logger"
+	"github.com/jonesrussell/north-cloud/infrastructure/naming"
 	"github.com/jonesrussell/north-cloud/infrastructure/pipeline"
 )
 
@@ -351,7 +352,7 @@ func (s *RawContentService) emitIndexedEvent(
 		return
 	}
 
-	indexName := sourceName + "_raw_content"
+	indexName := naming.RawContentIndex(sourceName)
 	pipelineErr := s.pipeline.Emit(ctx, pipeline.Event{
 		ContentURL: sourceURL,
 		SourceName: sourceName,
@@ -401,10 +402,12 @@ func (s *RawContentService) getSourceConfig(sourceURL, rawHTML string) (
 		return sourceName, selectors, "", false
 	}
 
-	// Use hostname from the URL being crawled, not the source's Name field
-	// This ensures index names are based on URLs (e.g., "www.sudbury.com") rather than human-readable names
-	sourceName = extractSourceNameFromURL(sourceURL)
-	s.logger.Debug("Source found by URL, using URL-based source name for indexing",
+	sourceName = sourceConfig.Name
+	if sourceName == "" {
+		sourceName = extractSourceNameFromURL(sourceURL)
+	}
+
+	s.logger.Debug("Source found by URL, using configured source name for indexing",
 		infralogger.String("url", sourceURL),
 		infralogger.String("source_name", sourceName),
 		infralogger.String("source_config_name", sourceConfig.Name))

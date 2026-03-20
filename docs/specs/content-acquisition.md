@@ -1,6 +1,6 @@
 # Content Acquisition Specification
 
-> Last verified: 2026-03-19 (post-D1 merge)
+> Last verified: 2026-03-20
 
 Covers the crawler subsystem: web content fetching, job scheduling, frontier URL management, and raw content indexing.
 
@@ -111,9 +111,11 @@ func CanRetry(job *Job) bool    // StateFailed only
 2. AcquireLock() via CAS (lock_token = UUID WHERE lock_token IS NULL)
 3. Factory.Create() → isolated Crawler instance (shared startURLHashes map)
 4. Colly collector visits source URLs
-5. HTML → RawContentProcessor → extracts title, body, OG metadata, JSON-LD
-6. IndexRawContent() → {source}_raw_content ES index (classification_status: "pending")
-7. Completion: mark execution completed, calculate next_run_at, release lock
+5. RawContentProcessor resolves source config by crawled URL host
+6. If a source-manager match exists, use the configured source `Name` as the canonical raw-index source identity; if no match exists or the configured name is empty, fall back to a URL-host-derived source name
+7. HTML → RawContentProcessor → extracts title, body, OG metadata, JSON-LD
+8. IndexRawContent() → `naming.RawContentIndex(sourceName)` / `{sanitized_source}_raw_content` ES index (classification_status: "pending")
+9. Completion: mark execution completed, calculate next_run_at, release lock
 ```
 
 ### Frontier Fetcher Path (lightweight)
@@ -158,6 +160,11 @@ func CanRetry(job *Job) bool    // StateFailed only
   "word_count": "int"
 }
 ```
+
+Index naming notes:
+- `source_name` in the document remains the canonical source identity used by the crawler path.
+- The Elasticsearch raw index name is always derived through the shared sanitizer (`naming.RawContentIndex`), so configured names such as `Sudbury.com` become `sudbury_com_raw_content`.
+- Pipeline indexed events emit the same sanitized `index_name` value used for the actual ES write path.
 
 ### PostgreSQL Tables
 - **jobs**: id, source_id, url, status, interval_minutes, interval_type, next_run_at, lock_token, lock_acquired_at, is_paused, max_retries, current_retry_count, retry_backoff_seconds, adaptive_scheduling, auto_managed, priority
