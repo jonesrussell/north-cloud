@@ -79,23 +79,24 @@ sm_endpoint() {
 }
 
 es_get() {
-  curl -fsS "${curl_args[@]}" "$@"
+  curl -fsS ${curl_args[@]+"${curl_args[@]}"} "$@"
 }
 
 es_post_json() {
   local url=$1
   local body=$2
-  curl -fsS "${curl_args[@]}" \
+  curl -fsS ${curl_args[@]+"${curl_args[@]}"} \
     -H 'Content-Type: application/json' \
     -X POST \
     "$url" \
     -d "$body"
 }
 
+# Keep this in sync with infrastructure/naming.SanitizeSourceName.
 sanitize_source_name() {
   printf '%s' "$1" \
     | tr '[:upper:]' '[:lower:]' \
-    | sed -E 's/^[[:space:]]+//; s/[[:space:]]+$//; s/[^a-z0-9_]+/_/g; s/_+/_/g; s/^_+//; s/_+$//'
+    | sed -E 's/^[[:space:]]+//; s/[[:space:]]+$//; s/[^a-z0-9_]/_/g; s/_+/_/g; s/^_+//; s/_+$//'
 }
 
 legacy_source_base_from_host() {
@@ -103,7 +104,7 @@ legacy_source_base_from_host() {
 }
 
 extract_hostname() {
-  printf '%s' "$1" | sed -E 's#^[a-zA-Z]+://##; s#/.*$##; s/:.*$##'
+  printf '%s' "$1" | sed -E 's#^[a-zA-Z]+://##; s#/.*$##; s#:.*$##'
 }
 
 legacy_bases_for_url() {
@@ -139,8 +140,27 @@ collect_index_metrics() {
     ] | @tsv' <<<"$response"
 }
 
+fetch_sources() {
+  local page=1
+  local total_pages=1
+  local response
+  local response_total_pages
+
+  while (( page <= total_pages )); do
+    response="$(curl -fsS "$(sm_endpoint)?page=${page}&limit=500")"
+
+    response_total_pages="$(jq -r 'if type == "array" then 1 else (.total_pages // 1) end' <<<"$response")"
+    if [[ "${response_total_pages}" =~ ^[0-9]+$ ]] && (( response_total_pages > 0 )); then
+      total_pages="${response_total_pages}"
+    fi
+
+    jq -c 'if type == "array" then .[] else .sources[]? end' <<<"$response"
+    page=$((page + 1))
+  done | jq -s '.'
+}
+
 results_file="$(mktemp)"
-trap 'rm -f "$results_file"' EXIT
+trap 'rm -f "$results_file"' EXIT INT TERM
 
 mapfile -t existing_raw_indices < <(
   es_get "${ELASTICSEARCH_URL%/}/_cat/indices/*_raw_content?format=json&h=index" \
@@ -156,7 +176,7 @@ done
 declare -A seen_pairs=()
 declare -A legacy_owner=()
 
-sources_json="$(curl -fsS "$(sm_endpoint)")"
+sources_json="$(fetch_sources)"
 
 while IFS=$'\t' read -r source_name source_url enabled; do
   canonical_base="$(sanitize_source_name "$source_name")"

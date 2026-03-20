@@ -33,6 +33,8 @@ The script compares:
 - legacy URL-host-derived raw index names derived from source URLs plus `www`/non-`www` variants
 - actual `*_raw_content` indices in Elasticsearch
 
+It paginates through the source-manager API, so large source catalogs are audited completely instead of stopping at the first page.
+
 For each likely legacy index, it reports:
 - `legacy_index`
 - `canonical_index`
@@ -66,13 +68,13 @@ Recommended interpretation of `review_state`:
 Delete one index through index-manager:
 
 ```bash
-curl -X DELETE http://localhost:8090/api/v1/indexes/www_sudbury_com_raw_content
+curl -X DELETE http://localhost:8090/api/v1/indexes/<legacy_index_name>
 ```
 
 Or delete directly through Elasticsearch if index-manager is unavailable:
 
 ```bash
-curl -X DELETE http://localhost:9200/www_sudbury_com_raw_content
+curl -X DELETE http://localhost:9200/<legacy_index_name>
 ```
 
 ## Post-Delete Checks

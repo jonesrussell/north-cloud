@@ -1,6 +1,6 @@
 # Search Frontend Specification
 
-> Last verified: 2026-03-19 (fix: topic-only browsing now triggers search without query text)
+> Last verified: 2026-03-20
 
 ## Purpose
 
@@ -73,6 +73,8 @@ Home page → feedApi → /feed.json → Vite proxy → Search service feeds API
 |----------|---------|---------|
 | `SEARCH_API_URL` | http://localhost:8092 | Backend proxy target (server-side only, not bundled) |
 | Dev port | 3003 | Vite dev server |
+
+Current frontend toolchain: Vue 3.5, Vue Router 4.6, Axios 1.13, Vite 7, ESLint 9, and Tailwind CSS 4 via `@tailwindcss/vite`.
 
 ## Edge Cases
 
