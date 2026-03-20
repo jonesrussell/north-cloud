@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"regexp"
 	"testing"
+	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/gin-gonic/gin"
@@ -158,6 +159,9 @@ func TestDictionaryHandler_ListEntries_PagePaginationComputesOffset(t *testing.T
 	if got := int(body["limit"].(float64)); got != 10 {
 		t.Fatalf("expected limit 10, got %d", got)
 	}
+	if got := int(body["size"].(float64)); got != 10 {
+		t.Fatalf("expected legacy size 10, got %d", got)
+	}
 	if got := int(body["offset"].(float64)); got != 10 {
 		t.Fatalf("expected offset 10, got %d", got)
 	}
@@ -212,6 +216,80 @@ func TestDictionaryHandler_GetEntryByEntryID_ClosedDB(t *testing.T) {
 	attr := w.Header().Get("X-Attribution")
 	if attr == "" {
 		t.Error("expected X-Attribution header to be set")
+	}
+}
+
+func TestDictionaryHandler_GetEntryByEntryID_ReturnsEntryBody(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	router := gin.New()
+	handler, mock, cleanup := newMockDictHandler(t)
+	defer cleanup()
+
+	router.GET("/api/v1/dictionary/entries/:id", handler.GetEntryByEntryID)
+
+	now := time.Date(2026, time.March, 20, 12, 0, 0, 0, time.UTC)
+	mock.ExpectQuery(regexp.QuoteMeta(`SELECT `) + `.*` + regexp.QuoteMeta(` FROM dictionary_entries WHERE id = $1`)).
+		WithArgs("00000000-0000-0000-0000-000000000000").
+		WillReturnRows(
+			sqlmock.NewRows([]string{
+				"id", "lemma", "word_class", "word_class_normalized",
+				"definitions", "inflections", "examples", "word_family", "media",
+				"attribution", "license", "consent_public_display", "consent_ai_training",
+				"consent_derivative_works", "content_hash", "source_url", "created_at", "updated_at",
+			}).AddRow(
+				"00000000-0000-0000-0000-000000000000",
+				"makwa",
+				"noun",
+				"noun",
+				"bear",
+				"",
+				"",
+				"",
+				"",
+				"Ojibwe People's Dictionary, University of Minnesota",
+				"CC BY-NC",
+				true,
+				false,
+				false,
+				"hash-1",
+				"https://example.test/entries/makwa",
+				now,
+				now,
+			),
+		)
+
+	req := httptest.NewRequest(
+		http.MethodGet,
+		"/api/v1/dictionary/entries/00000000-0000-0000-0000-000000000000",
+		http.NoBody,
+	)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d: %s", w.Code, w.Body.String())
+	}
+
+	var body map[string]any
+	if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil {
+		t.Fatalf("json.Unmarshal: %v", err)
+	}
+
+	if _, wrapped := body["entry"]; wrapped {
+		t.Fatal("expected raw entry body, got wrapped entry object")
+	}
+	if got := body["id"].(string); got != "00000000-0000-0000-0000-000000000000" {
+		t.Fatalf("expected id to match request, got %q", got)
+	}
+	if got := body["lemma"].(string); got != "makwa" {
+		t.Fatalf("expected lemma makwa, got %q", got)
+	}
+	if got := body["consent_public_display"].(bool); !got {
+		t.Fatal("expected consent_public_display to be true")
+	}
+
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Fatalf("unmet sql expectations: %v", err)
 	}
 }
 

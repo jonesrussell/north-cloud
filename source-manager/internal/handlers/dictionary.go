@@ -39,15 +39,8 @@ func NewDictionaryHandler(
 func (h *DictionaryHandler) ListEntries(c *gin.Context) {
 	c.Header(attributionKey, attributionValue)
 
-	limit := parseIntQuery(c, "limit", defaultDictLimit)
-	if limit > maxDictLimit {
-		limit = maxDictLimit
-	}
-
-	page := parseIntQuery(c, "page", defaultDictPage)
-	if page <= 0 {
-		page = defaultDictPage
-	}
+	limit := parseDictionaryLimit(c)
+	page := parseDictionaryPage(c)
 
 	offset := parseIntQuery(c, "offset", 0)
 	if c.Query("page") != "" {
@@ -78,8 +71,10 @@ func (h *DictionaryHandler) ListEntries(c *gin.Context) {
 		"total":       total,
 		"attribution": attributionValue,
 		"limit":       filter.Limit,
-		"offset":      filter.Offset,
-		"page":        page,
+		// Keep the legacy field during client migration; remove after callers switch to "limit".
+		"size":   filter.Limit,
+		"offset": filter.Offset,
+		"page":   page,
 	})
 }
 
@@ -121,18 +116,8 @@ func (h *DictionaryHandler) SearchEntries(c *gin.Context) {
 		return
 	}
 
-	page := parseIntQuery(c, "page", defaultDictPage)
-	if page <= 0 {
-		page = defaultDictPage
-	}
-
-	size := parseIntQuery(c, "limit", 0)
-	if size <= 0 {
-		size = parseIntQuery(c, "size", defaultDictLimit)
-	}
-	if size > maxDictLimit {
-		size = maxDictLimit
-	}
+	page := parseDictionaryPage(c)
+	size := parseDictionaryLimit(c)
 
 	entries, total, searchErr := h.repo.SearchWithCount(c.Request.Context(), q, page, size)
 	if searchErr != nil {
@@ -175,4 +160,26 @@ func (h *DictionaryHandler) lookupPublicEntry(c *gin.Context) (*models.Dictionar
 	}
 
 	return entry, true
+}
+
+func parseDictionaryPage(c *gin.Context) int {
+	page := parseIntQuery(c, "page", defaultDictPage)
+	if page <= 0 {
+		return defaultDictPage
+	}
+	return page
+}
+
+func parseDictionaryLimit(c *gin.Context) int {
+	limit := parseIntQuery(c, "limit", 0)
+	if limit <= 0 {
+		limit = parseIntQuery(c, "size", defaultDictLimit)
+	}
+	if limit <= 0 {
+		return defaultDictLimit
+	}
+	if limit > maxDictLimit {
+		return maxDictLimit
+	}
+	return limit
 }
