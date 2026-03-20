@@ -27,3 +27,28 @@ scrape_configs:
     metrics_path: '/metrics'
     static_configs:
       - targets: ['auth:8040']
+
+  - job_name: 'crawler'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['crawler:8080']
+
+  - job_name: 'source-manager'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['source-manager:8050']
+
+  - job_name: 'pipeline'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['pipeline:8075']
+
+  - job_name: 'click-tracker'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['click-tracker:8093']
+
+  - job_name: 'rfp-ingestor'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['rfp-ingestor:8095']

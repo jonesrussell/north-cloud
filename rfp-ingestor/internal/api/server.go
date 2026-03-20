@@ -62,6 +62,7 @@ func NewServer(serviceName string, port int, version string, debug bool, log log
 		WithLogger(log).
 		WithDebug(debug).
 		WithVersion(version).
+		WithMetrics().
 		WithRoutes(func(router *gin.Engine) {
 			router.GET("/api/v1/status", func(c *gin.Context) {
 				c.JSON(http.StatusOK, status.Snapshot())

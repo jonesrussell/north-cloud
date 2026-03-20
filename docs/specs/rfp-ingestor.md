@@ -1,6 +1,6 @@
 # RFP Ingestor Spec
 
-> Last verified: 2026-03-18
+> Last verified: 2026-03-19 (enable Prometheus metrics via .WithMetrics())
 
 ## Overview
 
@@ -13,7 +13,7 @@ Stand-alone feed ingestor that polls CanadaBuys CSV feeds and bulk-indexes docum
 ```
 rfp-ingestor/
   main.go                              # Config → logger → HTTP server + poll loop
-  internal/api/server.go               # GET /api/v1/status
+  internal/api/server.go               # GET /api/v1/status, GET /metrics
   internal/config/config.go            # Config struct + env var bindings + defaults
   internal/domain/rfp.go               # RFPDocument struct (maps to ES document)
   internal/elasticsearch/

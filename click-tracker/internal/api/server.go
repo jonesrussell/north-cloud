@@ -31,6 +31,7 @@ func NewServer(
 		WithDebug(cfg.Service.Debug).
 		WithVersion(cfg.Service.Version).
 		WithTimeouts(defaultReadTimeout, defaultWriteTimeout, defaultIdleTimeout).
+		WithMetrics().
 		WithRoutes(func(router *gin.Engine) {
 			SetupRoutes(router, clickHandler, cfg.RateLimit.MaxClicksPerMinute, rateLimitWindow, done)
 		}).

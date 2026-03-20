@@ -38,6 +38,7 @@ func SetupHTTPServer(
 		WithDebug(cfg.Service.Debug).
 		WithVersion(serviceVersion).
 		WithTimeouts(defaultReadTimeout, defaultWriteTimeout, defaultIdleTimeout).
+		WithMetrics().
 		WithDatabaseHealthCheck(func() error {
 			ctx, cancel := context.WithTimeout(context.Background(), healthCheckTimeout)
 			defer cancel()

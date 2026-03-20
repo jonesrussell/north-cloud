@@ -1,6 +1,6 @@
 # Pipeline Service Spec
 
-> Last verified: 2026-03-18
+> Last verified: 2026-03-19 (enable Prometheus metrics via .WithMetrics())
 
 ## Overview
 
@@ -34,6 +34,7 @@ pipeline/
 | `POST` | `/api/v1/events/batch` | None | Ingest multiple events |
 | `GET` | `/api/v1/funnel` | JWT | Pipeline funnel (period: `today`, `24h`, `7d`, `30d`) |
 | `GET` | `/health` | None | Liveness + database ping |
+| `GET` | `/metrics` | None | Prometheus metrics |
 
 Write endpoints are intentionally unauthenticated (internal Docker network only).
 
