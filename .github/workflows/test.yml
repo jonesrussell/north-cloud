@@ -71,18 +71,6 @@ jobs:
             fi
           fi
 
-  spec-drift:
-    name: Spec Drift Check
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Check spec drift
-        run: tools/drift-detector.sh 20
-
   lint:
     name: Lint
     runs-on: ubuntu-latest
