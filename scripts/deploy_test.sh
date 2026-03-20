@@ -19,6 +19,8 @@ declare -A EXPECTED_PORTS=(
   [index-manager]=8090
   [pipeline]=8075
   [search-service]=8090
+  [rfp-ingestor]=8095
+  [click-tracker]=8093
 )
 
 check_port() {
