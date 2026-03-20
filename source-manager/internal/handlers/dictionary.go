@@ -121,7 +121,7 @@ func (h *DictionaryHandler) SearchEntries(c *gin.Context) {
 		return
 	}
 
-	page := parseIntQuery(c, "page", 1)
+	page := parseIntQuery(c, "page", defaultDictPage)
 	if page <= 0 {
 		page = defaultDictPage
 	}
@@ -150,8 +150,9 @@ func (h *DictionaryHandler) SearchEntries(c *gin.Context) {
 		"attribution": attributionValue,
 		"page":        page,
 		"limit":       size,
-		"size":        size,
-		"query":       q,
+		// Keep the legacy field during client migration; remove after callers switch to "limit".
+		"size":  size,
+		"query": q,
 	})
 }
 
