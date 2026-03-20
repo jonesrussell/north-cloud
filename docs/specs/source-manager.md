@@ -1,6 +1,6 @@
 # Source Manager Specification
 
-> Last verified: 2026-03-19 (migration 017: structured source fields)
+> Last verified: 2026-03-20 (migration 018: structured source metadata fields)
 
 ## Purpose
 
@@ -21,7 +21,7 @@ Registry service for content sources, First Nations communities, and leadership 
 | `source-manager/internal/importer/` | OPD JSONL bulk-import (validation, canonical hashing) |
 | `source-manager/internal/projection/` | Dictionary ES projection (consent-filtered) |
 | `source-manager/cmd_import_opd.go` | CLI subcommand: `import-opd` |
-| `source-manager/migrations/` | SQL migrations (001–019) |
+| `source-manager/migrations/` | SQL migrations (001–018) |
 
 ## Interface Signatures
 
@@ -84,9 +84,15 @@ Minoo → GET /communities → syncs First Nations data
 
 ## Storage / Schema
 
-### sources (21 columns)
+### sources (25 columns)
 
-Key fields: `id` (UUID PK), `name` (UNIQUE), `url`, `rate_limit` (default '1s'), `max_depth` (default 2), `selectors` (JSONB), `enabled`, `feed_url`, `sitemap_url`, `ingestion_mode`, `render_mode` (static|dynamic), `type` (news|indigenous|government|mining|community), `indigenous_region`, `identity_key`, `extraction_profile` (JSONB), `template_hint`, `disabled_at`, `disable_reason`, `feed_disabled_at`, `feed_disable_reason`.
+Key fields: `id` (UUID PK), `name` (UNIQUE), `url`, `rate_limit` (default '1s'), `max_depth` (default 2), `selectors` (JSONB), `enabled`, `feed_url`, `sitemap_url`, `ingestion_mode`, `render_mode` (static|dynamic), `type` (news|indigenous|government|mining|community|structured|api), `indigenous_region`, `identity_key`, `extraction_profile` (JSONB), `template_hint`, `disabled_at`, `disable_reason`, `feed_disabled_at`, `feed_disable_reason`, `data_format`, `update_frequency`, `license_type`, `attribution_text`.
+
+**Structured source metadata** (migration 018, nullable — only used by `structured`/`api` types):
+- `data_format`: json, csv, rss, html, api
+- `update_frequency`: daily, weekly, monthly, realtime
+- `license_type`: open, cc-by, cc-by-sa, restricted, unknown
+- `attribution_text`: required attribution for hosted content
 
 ### communities (30 columns)
 
