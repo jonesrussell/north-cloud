@@ -25,6 +25,11 @@ func runImportOPD(args []string) error {
 	filePath := fs.String("file", "", "Path to OPD JSONL file (required)")
 	batchSize := fs.Int("batch-size", defaultBatchSize, "Entries per DB batch")
 	dryRun := fs.Bool("dry-run", false, "Validate without writing to DB")
+	consentPublicDisplay := fs.Bool(
+		"consent-public-display",
+		false,
+		"Set consent_public_display=true for imported entries",
+	)
 
 	if parseErr := fs.Parse(args); parseErr != nil {
 		return fmt.Errorf("parse flags: %w", parseErr)
@@ -46,6 +51,12 @@ func runImportOPD(args []string) error {
 		return nil
 	}
 
+	if *consentPublicDisplay {
+		for i := range entries {
+			entries[i].ConsentPublicDisplay = true
+		}
+	}
+
 	// Load config only when writing to DB
 	cfg, cfgErr := config.Load(infraconfig.GetConfigPath("config.yml"))
 	if cfgErr != nil {
@@ -64,6 +75,7 @@ func runImportOPD(args []string) error {
 	log.Info("Starting OPD import",
 		infralogger.String("file", *filePath),
 		infralogger.Int("batch_size", *batchSize),
+		infralogger.Bool("consent_public_display", *consentPublicDisplay),
 		infralogger.Int("failures", len(failures)),
 	)
 

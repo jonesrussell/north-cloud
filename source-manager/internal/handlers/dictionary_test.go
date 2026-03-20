@@ -121,6 +121,30 @@ func TestDictionaryHandler_GetEntry_ClosedDB(t *testing.T) {
 	}
 }
 
+func TestDictionaryHandler_GetEntryByEntryID_ClosedDB(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	router := gin.New()
+	handler := newTestDictHandler(t)
+	router.GET("/api/v1/dictionary/entries/:id", handler.GetEntryByEntryID)
+
+	req := httptest.NewRequest(
+		http.MethodGet,
+		"/api/v1/dictionary/entries/00000000-0000-0000-0000-000000000000",
+		http.NoBody,
+	)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusInternalServerError {
+		t.Errorf("expected status 500 for closed DB, got %d: %s", w.Code, w.Body.String())
+	}
+
+	attr := w.Header().Get("X-Attribution")
+	if attr == "" {
+		t.Error("expected X-Attribution header to be set")
+	}
+}
+
 func TestDictionaryHandler_SearchEntries_ValidQuery_ClosedDB(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	router := gin.New()

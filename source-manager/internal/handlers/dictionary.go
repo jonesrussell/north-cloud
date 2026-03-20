@@ -12,6 +12,7 @@ import (
 const (
 	defaultDictLimit = 50
 	maxDictLimit     = 200
+	defaultDictPage  = 1
 	minSearchLen     = 2
 	attributionValue = "Ojibwe People's Dictionary, University of Minnesota"
 	attributionKey   = "X-Attribution"
@@ -38,12 +39,24 @@ func NewDictionaryHandler(
 func (h *DictionaryHandler) ListEntries(c *gin.Context) {
 	c.Header(attributionKey, attributionValue)
 
-	filter := models.DictionaryEntryFilter{
-		Limit:  parseIntQuery(c, "limit", defaultDictLimit),
-		Offset: parseIntQuery(c, "offset", 0),
+	limit := parseIntQuery(c, "limit", defaultDictLimit)
+	if limit > maxDictLimit {
+		limit = maxDictLimit
 	}
-	if filter.Limit > maxDictLimit {
-		filter.Limit = maxDictLimit
+
+	page := parseIntQuery(c, "page", defaultDictPage)
+	if page <= 0 {
+		page = defaultDictPage
+	}
+
+	offset := parseIntQuery(c, "offset", 0)
+	if c.Query("page") != "" {
+		offset = (page - 1) * limit
+	}
+
+	filter := models.DictionaryEntryFilter{
+		Limit:  limit,
+		Offset: offset,
 	}
 
 	entries, err := h.repo.List(c.Request.Context(), filter)
@@ -61,10 +74,12 @@ func (h *DictionaryHandler) ListEntries(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"entries": entries,
-		"total":   total,
-		"limit":   filter.Limit,
-		"offset":  filter.Offset,
+		"entries":     entries,
+		"total":       total,
+		"attribution": attributionValue,
+		"limit":       filter.Limit,
+		"offset":      filter.Offset,
+		"page":        page,
 	})
 }
 
@@ -73,24 +88,25 @@ func (h *DictionaryHandler) ListEntries(c *gin.Context) {
 func (h *DictionaryHandler) GetEntry(c *gin.Context) {
 	c.Header(attributionKey, attributionValue)
 
-	id := c.Param("id")
-
-	entry, err := h.repo.GetByID(c.Request.Context(), id)
-	if err != nil {
-		h.logger.Error("Failed to get dictionary entry",
-			infralogger.String("id", id),
-			infralogger.Error(err),
-		)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get dictionary entry"})
-		return
-	}
-
-	if entry == nil || !entry.ConsentPublicDisplay {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Dictionary entry not found"})
+	entry, ok := h.lookupPublicEntry(c)
+	if !ok {
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{"entry": entry})
+}
+
+// GetEntryByEntryID handles GET /api/v1/dictionary/entries/:id.
+// Returns the raw entry shape for clients expecting the entry object directly.
+func (h *DictionaryHandler) GetEntryByEntryID(c *gin.Context) {
+	c.Header(attributionKey, attributionValue)
+
+	entry, ok := h.lookupPublicEntry(c)
+	if !ok {
+		return
+	}
+
+	c.JSON(http.StatusOK, entry)
 }
 
 // SearchEntries handles GET /api/v1/dictionary/search?q=<query>.
@@ -106,7 +122,17 @@ func (h *DictionaryHandler) SearchEntries(c *gin.Context) {
 	}
 
 	page := parseIntQuery(c, "page", 1)
-	size := parseIntQuery(c, "size", defaultDictLimit)
+	if page <= 0 {
+		page = defaultDictPage
+	}
+
+	size := parseIntQuery(c, "limit", 0)
+	if size <= 0 {
+		size = parseIntQuery(c, "size", defaultDictLimit)
+	}
+	if size > maxDictLimit {
+		size = maxDictLimit
+	}
 
 	entries, total, searchErr := h.repo.SearchWithCount(c.Request.Context(), q, page, size)
 	if searchErr != nil {
@@ -119,10 +145,33 @@ func (h *DictionaryHandler) SearchEntries(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"entries": entries,
-		"total":   total,
-		"page":    page,
-		"size":    size,
-		"query":   q,
+		"entries":     entries,
+		"total":       total,
+		"attribution": attributionValue,
+		"page":        page,
+		"limit":       size,
+		"size":        size,
+		"query":       q,
 	})
+}
+
+func (h *DictionaryHandler) lookupPublicEntry(c *gin.Context) (*models.DictionaryEntry, bool) {
+	id := c.Param("id")
+
+	entry, err := h.repo.GetByID(c.Request.Context(), id)
+	if err != nil {
+		h.logger.Error("Failed to get dictionary entry",
+			infralogger.String("id", id),
+			infralogger.Error(err),
+		)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get dictionary entry"})
+		return nil, false
+	}
+
+	if entry == nil || !entry.ConsentPublicDisplay {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Dictionary entry not found"})
+		return nil, false
+	}
+
+	return entry, true
 }

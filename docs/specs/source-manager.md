@@ -41,6 +41,10 @@ Registry service for content sources, First Nations communities, and leadership 
 | GET | `/api/v1/communities/:id/people` | List community leadership |
 | GET | `/api/v1/communities/:id/band-office` | Band office details |
 | GET | `/api/v1/people/:id` | Get person by ID |
+| GET | `/api/v1/dictionary/entries` | List public dictionary entries |
+| GET | `/api/v1/dictionary/entries/:id` | Get one public dictionary entry |
+| GET | `/api/v1/dictionary/words/:id` | Legacy dictionary entry route |
+| GET | `/api/v1/dictionary/search` | Search public dictionary entries |
 | GET | `/health` | Health check |
 
 ### Protected Endpoints (JWT required)
@@ -130,13 +134,14 @@ Supporting tables for office contacts and leadership audit trail.
 ### CLI Subcommand: `import-opd`
 
 ```bash
-source-manager import-opd --file data/all_entries.jsonl [--batch-size 500] [--dry-run]
+source-manager import-opd --file data/all_entries.jsonl [--batch-size 500] [--dry-run] [--consent-public-display]
 ```
 
 Imports Ojibwe People's Dictionary entries from a JSONL file into the `dictionary_entries` table. Each line is validated, transformed, and content-hashed (SHA-256 of canonical JSON with sorted keys). Idempotent via `ON CONFLICT (content_hash)` upsert.
 
 - **`--dry-run`**: Validate and count without DB writes (no config.yml needed)
 - **`--batch-size N`**: Entries per transaction (default 500)
+- **`--consent-public-display`**: Import entries as immediately public
 - **Retry**: Each batch retries once on failure, then skips
 
 ### Dictionary Pipeline
