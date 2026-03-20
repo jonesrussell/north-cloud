@@ -1,6 +1,6 @@
 # Source Manager Specification
 
-> Last verified: 2026-03-19 (dictionary search: dual-strategy FTS+prefix, pagination with total count)
+> Last verified: 2026-03-19 (migration 017: structured source fields)
 
 ## Purpose
 
