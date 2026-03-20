@@ -78,6 +78,12 @@ func (h *SourceHandler) Create(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body", "details": err.Error()})
 		return
 	}
+
+	if source.Type != "" && !models.IsValidSourceType(source.Type) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("invalid source type: %s", source.Type)})
+		return
+	}
+
 	source.RateLimit = models.NormalizeRateLimit(source.RateLimit)
 
 	if err := h.validateIndigenousRegion(&source); err != nil {
@@ -279,6 +285,11 @@ func (h *SourceHandler) Update(c *gin.Context) {
 			infralogger.String("error", err.Error()),
 		)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body", "details": err.Error()})
+		return
+	}
+
+	if source.Type != "" && !models.IsValidSourceType(source.Type) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("invalid source type: %s", source.Type)})
 		return
 	}
 

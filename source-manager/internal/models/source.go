@@ -8,8 +8,19 @@ import (
 	"time"
 )
 
-// DefaultSourceType is the default value for Source.Type when not explicitly set.
-const DefaultSourceType = "news"
+const (
+	// DefaultSourceType is the default value for Source.Type when not explicitly set.
+	DefaultSourceType = "news"
+
+	SourceTypeStructured = "structured"
+	SourceTypeAPI        = "api"
+)
+
+// ValidSourceTypes includes both legacy and new source type values.
+var ValidSourceTypes = []string{
+	"news", "indigenous", "government", "mining", "community",
+	SourceTypeStructured, SourceTypeAPI,
+}
 
 // Source represents a content source configuration.
 // Identity is not equal to hostname: a single host may have many logical sources (e.g. Medium, Substack).
@@ -46,8 +57,12 @@ type Source struct {
 	// DisabledAt: when set, the entire source is disabled (not just its feed).
 	DisabledAt *time.Time `db:"disabled_at" json:"disabled_at,omitempty"`
 	// DisableReason: human-readable reason the source was disabled.
-	DisableReason *string   `db:"disable_reason" json:"disable_reason,omitempty"`
-	CreatedAt     time.Time `db:"created_at"     json:"created_at"`
+	DisableReason   *string `db:"disable_reason"   json:"disable_reason,omitempty"`
+	DataFormat      *string `db:"data_format"      json:"data_format,omitempty"`
+	UpdateFrequency *string `db:"update_frequency"  json:"update_frequency,omitempty"`
+	LicenseType     *string `db:"license_type"      json:"license_type,omitempty"`
+	AttributionText *string `db:"attribution_text"  json:"attribution_text,omitempty"`
+	CreatedAt       time.Time `db:"created_at"     json:"created_at"`
 	UpdatedAt     time.Time `db:"updated_at"     json:"updated_at"`
 }
 
@@ -400,6 +415,16 @@ func (a *StringArray) Scan(value any) error {
 		return nil
 	}
 	return json.Unmarshal(bytes, a)
+}
+
+// IsValidSourceType returns true if the given type string is a known source type.
+func IsValidSourceType(t string) bool {
+	for _, v := range ValidSourceTypes {
+		if v == t {
+			return true
+		}
+	}
+	return false
 }
 
 // City represents a city configuration for gopost
