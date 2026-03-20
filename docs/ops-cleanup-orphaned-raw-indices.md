@@ -12,11 +12,20 @@ This runbook explains how to audit and safely delete those legacy raw indices.
 
 ## Audit First
 
-Run the audit script against Source Manager and Elasticsearch:
+Run the audit script against Source Manager and Elasticsearch. When running inside the Docker network (e.g. via `docker exec`), no JWT is needed. When running from outside, provide a valid JWT:
 
 ```bash
+# Inside Docker network (no auth needed):
+SOURCE_MANAGER_URL=http://source-manager:8050 \
+ELASTICSEARCH_URL=http://elasticsearch:9200 \
+./scripts/audit-orphaned-raw-indices.sh
+
+# Outside Docker network (JWT required):
 SOURCE_MANAGER_URL=http://localhost:8050 \
 ELASTICSEARCH_URL=http://localhost:9200 \
+SOURCE_MANAGER_JWT="$(curl -fsS http://localhost:8040/api/v1/auth/login \
+  -H 'Content-Type: application/json' \
+  -d '{"username":"admin","password":"..."}' | jq -r .token)" \
 ./scripts/audit-orphaned-raw-indices.sh
 ```
 

@@ -7,6 +7,7 @@ ELASTICSEARCH_URL="${ELASTICSEARCH_URL:-http://localhost:9200}"
 OUTPUT_FORMAT="${OUTPUT_FORMAT:-table}"
 ELASTICSEARCH_USERNAME="${ELASTICSEARCH_USERNAME:-}"
 ELASTICSEARCH_PASSWORD="${ELASTICSEARCH_PASSWORD:-}"
+SOURCE_MANAGER_JWT="${SOURCE_MANAGER_JWT:-}"
 
 usage() {
   cat <<'EOF'
@@ -20,6 +21,7 @@ Environment:
   ELASTICSEARCH_URL        Elasticsearch base URL (default: http://localhost:9200)
   ELASTICSEARCH_USERNAME   Optional Elasticsearch username
   ELASTICSEARCH_PASSWORD   Optional Elasticsearch password
+  SOURCE_MANAGER_JWT       Optional JWT for source-manager auth (not needed inside Docker network)
   OUTPUT_FORMAT            table|json (default: table)
 
 The script compares:
@@ -127,11 +129,14 @@ legacy_bases_for_url() {
 collect_index_metrics() {
   local index_name=$1
   local response
-  response="$(
+  if ! response="$(
     es_post_json \
       "${ELASTICSEARCH_URL%/}/${index_name}/_search" \
-      '{"size":0,"track_total_hits":true,"aggs":{"latest_crawled_at":{"max":{"field":"crawled_at"}},"pending":{"filter":{"term":{"classification_status":"pending"}}}}}'
-  )"
+      '{"size":0,"track_total_hits":true,"aggs":{"latest_crawled_at":{"max":{"field":"crawled_at"}},"pending":{"filter":{"term":{"classification_status":"pending"}}}}}' 2>/dev/null
+  )"; then
+    printf '0\t0\t(query failed)\n'
+    return
+  fi
 
   jq -r '[
       (.hits.total.value // .hits.total // 0),
@@ -147,7 +152,11 @@ fetch_sources() {
   local response_total_pages
 
   while (( page <= total_pages )); do
-    response="$(curl -fsS "$(sm_endpoint)?page=${page}&limit=500")"
+    local sm_curl_args=(-fsS)
+    if [[ -n "$SOURCE_MANAGER_JWT" ]]; then
+      sm_curl_args+=(-H "Authorization: Bearer ${SOURCE_MANAGER_JWT}")
+    fi
+    response="$(curl "${sm_curl_args[@]}" "$(sm_endpoint)?page=${page}&limit=100")"
 
     response_total_pages="$(jq -r 'if type == "array" then 1 else (.total_pages // 1) end' <<<"$response")"
     if [[ "${response_total_pages}" =~ ^[0-9]+$ ]] && (( response_total_pages > 0 )); then
