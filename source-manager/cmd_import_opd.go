@@ -51,11 +51,7 @@ func runImportOPD(args []string) error {
 		return nil
 	}
 
-	if *consentPublicDisplay {
-		for i := range entries {
-			entries[i].ConsentPublicDisplay = true
-		}
-	}
+	applyConsentPublicDisplay(entries, *consentPublicDisplay)
 
 	// Load config only when writing to DB
 	cfg, cfgErr := config.Load(infraconfig.GetConfigPath("config.yml"))
@@ -87,6 +83,15 @@ func runImportOPD(args []string) error {
 	}
 
 	return runImportOPDWrite(cfg, log, entries, failures, *batchSize)
+}
+
+func applyConsentPublicDisplay(entries []models.DictionaryEntry, enabled bool) {
+	if !enabled {
+		return
+	}
+	for i := range entries {
+		entries[i].ConsentPublicDisplay = true
+	}
 }
 
 func runImportOPDWrite(
