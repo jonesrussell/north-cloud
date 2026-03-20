@@ -100,7 +100,7 @@ Sources → [Crawler] → ES raw_content → [Classifier + ML Sidecars] → ES c
 
 ## Service Ports
 
-auth:8040 | source-manager:8050 | crawler:8080 | publisher:8070 | classifier:8071 | pipeline:8075 | nc-http-proxy:8055 | index-manager:8090 | search:8092(dev)/8090(prod) | click-tracker:8093 | rfp-ingestor:8095 | dashboard:3002 | render-worker:3000. ML sidecars under `ml-sidecars/`: mining-ml:8077, indigenous-ml:8081.
+auth:8040 | source-manager:8050 | crawler:8080 | publisher:8070 | classifier:8070 | pipeline:8075 | nc-http-proxy:8055 | index-manager:8090 | search:8092(dev)/8090(prod) | click-tracker:8093 | rfp-ingestor:8095 | dashboard:3002 | render-worker:3000. ML sidecars under `ml-sidecars/`: mining-ml:8077, indigenous-ml:8081.
 
 ---
 
