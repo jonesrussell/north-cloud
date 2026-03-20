@@ -1,6 +1,6 @@
 # Source Manager Specification
 
-> Last verified: 2026-03-20 (migration 018: structured source metadata fields, tagalign fix)
+> Last verified: 2026-03-20 (migration 020: structured source fields renumbered, tagalign fix)
 
 ## Purpose
 
