@@ -1,0 +1,18 @@
+{
+  "name": "north-cloud-skills",
+  "owner": {
+    "name": "Russell Jones",
+    "email": "jonesrussell42@gmail.com"
+  },
+  "metadata": {
+    "description": "Development skills for the North-Cloud platform",
+    "version": "1.0.0"
+  },
+  "plugins": [
+    {
+      "name": "skills",
+      "description": "North-Cloud development skills — crawler, classifier, publisher, search, infrastructure",
+      "source": "./"
+    }
+  ]
+}
