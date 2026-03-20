@@ -57,13 +57,13 @@ type Source struct {
 	// DisabledAt: when set, the entire source is disabled (not just its feed).
 	DisabledAt *time.Time `db:"disabled_at" json:"disabled_at,omitempty"`
 	// DisableReason: human-readable reason the source was disabled.
-	DisableReason   *string `db:"disable_reason"   json:"disable_reason,omitempty"`
-	DataFormat      *string `db:"data_format"      json:"data_format,omitempty"`
-	UpdateFrequency *string `db:"update_frequency"  json:"update_frequency,omitempty"`
-	LicenseType     *string `db:"license_type"      json:"license_type,omitempty"`
-	AttributionText *string `db:"attribution_text"  json:"attribution_text,omitempty"`
-	CreatedAt       time.Time `db:"created_at"     json:"created_at"`
-	UpdatedAt     time.Time `db:"updated_at"     json:"updated_at"`
+	DisableReason   *string   `db:"disable_reason"   json:"disable_reason,omitempty"`
+	DataFormat      *string   `db:"data_format"      json:"data_format,omitempty"`
+	UpdateFrequency *string   `db:"update_frequency" json:"update_frequency,omitempty"`
+	LicenseType     *string   `db:"license_type"     json:"license_type,omitempty"`
+	AttributionText *string   `db:"attribution_text" json:"attribution_text,omitempty"`
+	CreatedAt       time.Time `db:"created_at"       json:"created_at"`
+	UpdatedAt       time.Time `db:"updated_at"       json:"updated_at"`
 }
 
 // IsDisabled returns true when the source has been explicitly disabled via the disable endpoint.
