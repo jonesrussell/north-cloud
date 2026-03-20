@@ -209,7 +209,7 @@ rollback_services() {
       auth)          check_health "auth" "/health" "8040" 10 || rollback_healthy=false ;;
       crawler)       check_health "crawler" "/health" "8080" 20 || rollback_healthy=false ;;
       source-manager) check_health "source-manager" "/health" "8050" 10 || rollback_healthy=false ;;
-      classifier)    check_health "classifier" "/health" "8071" 10 || rollback_healthy=false ;;
+      classifier)    check_health "classifier" "/health" "8071" 20 || rollback_healthy=false ;;
       publisher)     check_health "publisher" "/health" "8070" 10 || rollback_healthy=false ;;
       index-manager) check_health "index-manager" "/health" "8090" 10 || rollback_healthy=false ;;
       pipeline)      check_health "pipeline" "/health" "8075" 10 || rollback_healthy=false ;;
@@ -556,7 +556,7 @@ for svc in $SERVICES_TO_CHECK; do
       check_health "source-manager" "/health" "8050" 10 || { FAILED_CHECKS=$((FAILED_CHECKS + 1)); FAILED_SERVICES="$FAILED_SERVICES $svc"; }
       ;;
     classifier)
-      check_health "classifier" "/health" "8071" 10 || { FAILED_CHECKS=$((FAILED_CHECKS + 1)); FAILED_SERVICES="$FAILED_SERVICES $svc"; }
+      check_health "classifier" "/health" "8071" 20 || { FAILED_CHECKS=$((FAILED_CHECKS + 1)); FAILED_SERVICES="$FAILED_SERVICES $svc"; }
       ;;
     publisher)
       check_health "publisher" "/health" "8070" 10 || { FAILED_CHECKS=$((FAILED_CHECKS + 1)); FAILED_SERVICES="$FAILED_SERVICES $svc"; }
