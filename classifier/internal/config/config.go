@@ -40,7 +40,7 @@ const (
 	defaultCrimeMLServiceURL         = "http://crime-ml:8076"
 	defaultCoforgeMLServiceURL       = "http://coforge-ml:8078"
 	defaultEntertainmentMLServiceURL = "http://entertainment-ml:8079"
-	defaultIndigenousMLServiceURL    = "http://indigenous-ml:8080"
+	defaultIndigenousMLServiceURL    = "http://indigenous-ml:8081"
 	defaultMiningMLServiceURL        = "http://mining-ml:8077"
 )
 
