@@ -62,6 +62,9 @@ else
   CHANGED_FILES=$(git diff --name-only HEAD~"$COMMITS"..HEAD)
 fi
 
+# Exclude vendor directories (tracked by .gitignore, but deletions still show in diff)
+CHANGED_FILES=$(echo "$CHANGED_FILES" | grep -v '/vendor/' || true)
+
 if [ -z "$CHANGED_FILES" ]; then
   echo "No changes detected in the last $COMMITS commits."
   exit 0
@@ -104,7 +107,7 @@ for spec in "${!AFFECTED_SPECS[@]}"; do
     service_last_commit=0
     for pattern in "${!PATTERN_TO_SPEC[@]}"; do
       if [ "${PATTERN_TO_SPEC[$pattern]}" = "$spec" ]; then
-        pattern_commit=$(git log -1 --format=%ct -- "$pattern" 2>/dev/null)
+        pattern_commit=$(git log -1 --format=%ct -- "$pattern" ':!*/vendor/*' 2>/dev/null)
         pattern_commit=${pattern_commit:-0}
         if [ "$pattern_commit" -gt "$service_last_commit" ]; then
           service_last_commit=$pattern_commit
@@ -120,7 +123,7 @@ for spec in "${!AFFECTED_SPECS[@]}"; do
       if [ -n "$spec_commit_hash" ]; then
         for pattern in "${!PATTERN_TO_SPEC[@]}"; do
           if [ "${PATTERN_TO_SPEC[$pattern]}" = "$spec" ]; then
-            git diff --name-only "$spec_commit_hash"..HEAD -- "$pattern" 2>/dev/null | while read -r changed; do
+            git diff --name-only "$spec_commit_hash"..HEAD -- "$pattern" 2>/dev/null | grep -v '/vendor/' | while read -r changed; do
               echo "      - $changed"
             done
           fi
