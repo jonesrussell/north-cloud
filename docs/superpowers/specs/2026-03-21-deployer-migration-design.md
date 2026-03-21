@@ -35,6 +35,8 @@ Docker named volumes are identified by name, not filesystem path. The current vo
 - Grafana, Loki, Prometheus
 - Certbot TLS certificates
 
+**Pre-flight check**: Verify `.env` does not set `COMPOSE_PROJECT_NAME` (which would override the directory-based name). Currently it does not.
+
 ### Stateful Files to Copy
 
 These files are not in git and must be moved:
@@ -51,6 +53,7 @@ These files are not in git and must be moved:
 | `deploy.sh` | 22 KB | Deployment orchestration |
 | `scripts/db-backup.sh` | small | Backup utility |
 | `scripts/db-utils.sh` | small | DB utility |
+| `squid/` | small | Squid config + logs (bind-mounted by docker-compose.prod.yml) |
 
 Everything else (service dirs, migrations, docker-compose files, ML code) is recreated from git on each deploy.
 
@@ -61,35 +64,41 @@ Everything else (service dirs, migrations, docker-compose files, ML code) is rec
 1. Add SSH key for `deployer` user on production (copy from `jones` or generate new)
 2. Update Ansible `north_cloud_path` default to `/home/deployer/north-cloud`
 3. Run Ansible to create new directory and template `.env` at new path
-4. Copy stateful files: `rsync -a /opt/north-cloud/{Caddyfile,proxy-ips.conf,image-tags.env,backups,data,deploy.sh,scripts} /home/deployer/north-cloud/`
+4. Copy stateful files: `rsync -a /opt/north-cloud/{Caddyfile,proxy-ips.conf,image-tags.env,backups,data,deploy.sh,scripts,squid} /home/deployer/north-cloud/`
 5. `chown -R deployer:deployer /home/deployer/north-cloud/`
+6. Update code (pre-merge, no deploy yet):
+   - `deploy.sh`: change `DEPLOY_DIR="/opt/north-cloud"` to `/home/deployer/north-cloud`
+   - `.github/workflows/deploy.yml`: update all 3 hardcoded `cd /opt/north-cloud` (lines 207, 233, 256) to `/home/deployer/north-cloud`
+   - `docker-compose.prod.yml`: update squid bind-mount paths (lines 129-130, 697) from `/opt/north-cloud/squid/` to `/home/deployer/north-cloud/squid/`
+   - `scripts/manage-ips.sh`: update default paths (lines 32-34, 42)
+7. Migrate crontab: `sudo crontab -u deployer -e` — move the backup job from `jones` crontab, updating paths from `/opt/north-cloud` to `/home/deployer/north-cloud`
 
-**Phase 2: Switch (brief downtime)**
+**Phase 2: Switch (brief downtime, ~5 min)**
 
-6. `cd /opt/north-cloud && docker compose -f docker-compose.base.yml -f docker-compose.prod.yml down`
-7. Update GH Actions secrets: `DEPLOY_USER=deployer`, `DEPLOY_SSH_KEY=<deployer's key>`
-8. Trigger a deploy from GH Actions (or manually run deploy.sh at new path) to populate git-tracked files
-9. `cd /home/deployer/north-cloud && docker compose -f docker-compose.base.yml -f docker-compose.prod.yml up -d`
-10. Health check all services
+8. `cd /opt/north-cloud && docker compose -f docker-compose.base.yml -f docker-compose.prod.yml down`
+9. Create symlink: `sudo ln -sfn /home/deployer/north-cloud /opt/north-cloud` (catches any missed references)
+10. Update GH Actions secrets: `DEPLOY_USER=deployer`, `DEPLOY_SSH_KEY=<deployer's key>`
+11. Merge the code changes from step 6 — GH Actions deploys to new path as `deployer`
+12. If deploy doesn't auto-trigger: `cd /home/deployer/north-cloud && docker compose -f docker-compose.base.yml -f docker-compose.prod.yml up -d`
+13. Health check all services: `curl http://localhost:PORT/health` for each service
 
 **Phase 3: Cleanup (after 7-day confidence period)**
 
-11. Create symlink `/opt/north-cloud` -> `/home/deployer/north-cloud` for any stray references
-12. Migrate crontab from `jones` to `deployer`
-13. Update `deploy.sh` `DEPLOY_DIR` variable (or it picks up from `pwd`)
-14. After 7 days stable: remove symlink, remove `/opt/north-cloud/` contents
-15. Update north-cloud `CLAUDE.md` and `DOCKER.md` with new path
+14. Remove old jones crontab entry: `sudo crontab -u jones -r` (if no other entries)
+15. Update north-cloud `CLAUDE.md` and `DOCKER.md` with new path references
+16. After 7 days stable: remove symlink, `sudo rm -rf /opt/north-cloud.old` (rename first, then delete)
 
 ### Changes Required
 
 **northcloud-ansible:**
 - `roles/north-cloud/defaults/main.yml`: change `north_cloud_path` to `/home/deployer/north-cloud`
 - `roles/north-cloud/tasks/main.yml`: add deployer SSH key setup task
-- No template changes needed (already uses `{{ north_cloud_path }}` and `{{ deploy_user }}`)
 
-**north-cloud (GitHub):**
-- `.github/workflows/deploy.yml`: update `DEPLOY_DIR` if hardcoded (currently uses `/opt/north-cloud` in SSH commands)
-- `deploy.sh`: update `DEPLOY_DIR` default
+**north-cloud (GitHub) — all before cutover:**
+- `.github/workflows/deploy.yml`: update 3 hardcoded `cd /opt/north-cloud` paths (lines 207, 233, 256)
+- `scripts/deploy.sh` line 26: change `DEPLOY_DIR="/opt/north-cloud"` to `/home/deployer/north-cloud`
+- `docker-compose.prod.yml`: update squid bind-mount paths (lines 129-130, 697)
+- `scripts/manage-ips.sh`: update default paths (lines 32-34, 42)
 - `CLAUDE.md`, `DOCKER.md`: update path references
 
 **GitHub Actions secrets:**
@@ -98,17 +107,19 @@ Everything else (service dirs, migrations, docker-compose files, ML code) is rec
 
 **Production server (manual):**
 - Add SSH authorized_key for deployer
-- Migrate crontab entry from jones to deployer
+- Migrate crontab entry from jones to deployer (Phase 1, not Phase 3)
 
 ### Risks and Mitigations
 
 | Risk | Mitigation |
 |---|---|
-| Docker volumes don't reattach | Verify project name matches before `up -d`: `docker compose config \| grep "^name:"` |
-| GH Actions deploy fails as deployer | Test SSH connectivity before switching: `ssh deployer@northcloud.one whoami` |
-| Stray hardcoded `/opt/north-cloud` references | Symlink during confidence period catches these |
-| Downtime during switch | Phase 2 is ~5 minutes: stop, deploy, start. Schedule during low-traffic window |
-| Backup cron breaks | Migrate crontab in Phase 3 after verifying new path works |
+| Docker volumes don't reattach | Pre-flight: `docker compose config \| grep "^name:"` — verify project name is `north-cloud` |
+| `.env` sets `COMPOSE_PROJECT_NAME` | Pre-flight: verify it does not (currently clean) |
+| GH Actions deploy fails as deployer | Test SSH before switching: `ssh deployer@northcloud.one whoami` |
+| Squid container fails (bind-mount paths) | Update `docker-compose.prod.yml` paths in Phase 1 code changes |
+| Stray hardcoded `/opt/north-cloud` refs | Symlink created in Phase 2 step 9 catches these during confidence period |
+| Downtime during switch | Phase 2 is ~5 minutes: stop, symlink, deploy, start |
+| Backup cron misses runs | Crontab migrated in Phase 1 (step 7), not deferred to Phase 3 |
 
 ### Out of Scope
 
