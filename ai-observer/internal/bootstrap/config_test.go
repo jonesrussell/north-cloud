@@ -72,6 +72,60 @@ func TestLoadConfig_InsightDefaults(t *testing.T) {
 	}
 }
 
+func TestLoadConfig_SuppressionDefaults(t *testing.T) {
+	t.Helper()
+	t.Setenv("AI_OBSERVER_ENABLED", "false")
+
+	cfg, err := bootstrap.LoadConfig()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if cfg.Observer.Categories.SuppressedSources != nil {
+		t.Errorf("expected nil SuppressedSources by default, got %v", cfg.Observer.Categories.SuppressedSources)
+	}
+
+	const expectedMinSamples = 5
+	if cfg.Observer.Categories.MinDomainSamples != expectedMinSamples {
+		t.Errorf("expected MinDomainSamples %d, got %d",
+			expectedMinSamples, cfg.Observer.Categories.MinDomainSamples)
+	}
+}
+
+func TestLoadConfig_SuppressedSourcesParsed(t *testing.T) {
+	t.Helper()
+	t.Setenv("AI_OBSERVER_ENABLED", "false")
+	t.Setenv("AI_OBSERVER_SUPPRESSED_SOURCES", "battlefordsnow.com, example.org")
+
+	cfg, err := bootstrap.LoadConfig()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if !cfg.Observer.Categories.SuppressedSources["battlefordsnow.com"] {
+		t.Error("expected battlefordsnow.com in suppressed sources")
+	}
+	if !cfg.Observer.Categories.SuppressedSources["example.org"] {
+		t.Error("expected example.org in suppressed sources")
+	}
+}
+
+func TestLoadConfig_MinDomainSamplesOverride(t *testing.T) {
+	t.Helper()
+	t.Setenv("AI_OBSERVER_ENABLED", "false")
+	t.Setenv("AI_OBSERVER_MIN_DOMAIN_SAMPLES", "10")
+
+	cfg, err := bootstrap.LoadConfig()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	const expected = 10
+	if cfg.Observer.Categories.MinDomainSamples != expected {
+		t.Errorf("expected MinDomainSamples %d, got %d", expected, cfg.Observer.Categories.MinDomainSamples)
+	}
+}
+
 func TestLoadConfig_DriftDefaults(t *testing.T) {
 	t.Helper()
 	t.Setenv("AI_OBSERVER_ENABLED", "false")

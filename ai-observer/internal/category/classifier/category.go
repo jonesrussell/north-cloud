@@ -10,21 +10,27 @@ import (
 	"github.com/jonesrussell/north-cloud/ai-observer/internal/provider"
 )
 
+// Config holds classifier category configuration.
+type Config struct {
+	MaxEvents         int
+	ModelTier         string
+	SuppressedSources map[string]bool
+	MinDomainSamples  int
+}
+
 // Category implements category.Category for classifier drift detection.
 type Category struct {
 	esClient       *es.Client
-	maxEvents      int
-	modelTier      string
+	cfg            Config
 	lastPopulation PopulationStats
 }
 
 // New creates a new classifier drift Category.
 // esClient may be nil (for unit tests that don't call Sample).
-func New(esClient *es.Client, maxEvents int, modelTier string) *Category {
+func New(esClient *es.Client, cfg Config) *Category {
 	return &Category{
-		esClient:  esClient,
-		maxEvents: maxEvents,
-		modelTier: modelTier,
+		esClient: esClient,
+		cfg:      cfg,
 	}
 }
 
@@ -32,16 +38,16 @@ func New(esClient *es.Client, maxEvents int, modelTier string) *Category {
 func (c *Category) Name() string { return "classifier" }
 
 // MaxEventsPerRun returns the configured event cap.
-func (c *Category) MaxEventsPerRun() int { return c.maxEvents }
+func (c *Category) MaxEventsPerRun() int { return c.cfg.MaxEvents }
 
 // ModelTier returns the configured model tier.
-func (c *Category) ModelTier() string { return c.modelTier }
+func (c *Category) ModelTier() string { return c.cfg.ModelTier }
 
 // Sample queries ES for recent classified documents.
 // Population stats (total, avg confidence, borderline rate) are cached on the Category
 // and passed to Analyze so the LLM receives full population context.
 func (c *Category) Sample(ctx context.Context, window time.Duration) ([]category.Event, error) {
-	result, err := sample(ctx, c.esClient, window, c.maxEvents)
+	result, err := sample(ctx, c.esClient, window, c.cfg.MaxEvents)
 	if err != nil {
 		return nil, err
 	}
@@ -51,5 +57,5 @@ func (c *Category) Sample(ctx context.Context, window time.Duration) ([]category
 
 // Analyze runs the AI drift detection pass.
 func (c *Category) Analyze(ctx context.Context, events []category.Event, p provider.LLMProvider) ([]category.Insight, error) {
-	return analyze(ctx, events, c.lastPopulation, p, c.modelTier)
+	return analyze(ctx, events, c.lastPopulation, p, c.cfg)
 }

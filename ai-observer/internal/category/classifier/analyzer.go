@@ -48,13 +48,49 @@ type domainStats struct {
 	AvgConfidence   float64 `json:"avg_confidence"`
 }
 
+// filterResult holds the outcome of filtering domain stats before LLM analysis.
+type filterResult struct {
+	stats    []domainStats
+	filtered int
+}
+
+// filterDomainStats removes domain stats for suppressed sources and domains
+// with fewer than minSamples articles. Returns the filtered stats and count removed.
+func filterDomainStats(stats []domainStats, suppressed map[string]bool, minSamples int) filterResult {
+	if len(stats) == 0 {
+		return filterResult{stats: stats}
+	}
+
+	result := make([]domainStats, 0, len(stats))
+	removed := 0
+
+	for _, s := range stats {
+		if suppressed[s.Domain] {
+			removed++
+			continue
+		}
+		if s.Count < minSamples {
+			removed++
+			continue
+		}
+		result = append(result, s)
+	}
+
+	return filterResult{stats: result, filtered: removed}
+}
+
 // analyze runs the AI pass on sampled events.
-func analyze(ctx context.Context, events []category.Event, pop PopulationStats, p provider.LLMProvider, model string) ([]category.Insight, error) {
+func analyze(ctx context.Context, events []category.Event, pop PopulationStats, p provider.LLMProvider, cfg Config) ([]category.Insight, error) {
 	if len(events) == 0 {
 		return nil, nil
 	}
 
 	stats := aggregateStats(events)
+	fr := filterDomainStats(stats, cfg.SuppressedSources, cfg.MinDomainSamples)
+	stats = fr.stats
+	if len(stats) == 0 {
+		return nil, nil
+	}
 	userPrompt := buildPrompt(stats, pop)
 
 	resp, err := p.Generate(ctx, provider.GenerateRequest{
@@ -67,7 +103,7 @@ func analyze(ctx context.Context, events []category.Event, pop PopulationStats, 
 		return nil, fmt.Errorf("generate: %w", err)
 	}
 
-	return parseInsights(resp.Content, resp.InputTokens+resp.OutputTokens, model)
+	return parseInsights(resp.Content, resp.InputTokens+resp.OutputTokens, cfg.ModelTier)
 }
 
 func aggregateStats(events []category.Event) []domainStats {
