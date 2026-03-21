@@ -457,9 +457,9 @@ curl -s http://admin:changeme@localhost:3000/api/dashboards/uid/north-cloud-serv
 ### Provisioned dashboard not visible
 
 1. **Check the folder**: Provisioned dashboards live in **North Cloud**, not General. In Grafana: **Dashboards** → **Browse** → open **North Cloud**.
-2. **Verify the file on the server** (e.g. production at `/opt/north-cloud`):
+2. **Verify the file on the server** (e.g. production at `/home/deployer/north-cloud`):
    ```bash
-   ls -la /opt/north-cloud/infrastructure/grafana/provisioning/dashboards/
+   ls -la /home/deployer/north-cloud/infrastructure/grafana/provisioning/dashboards/
    ```
    You should see `north-cloud-overview.json`, `north-cloud-service-logs.json`, `north-cloud-pipeline-ops.json`, `north-cloud-crawler-ops.json`, `north-cloud-deployer-sites.json`, and `north-cloud-ml-sidecars.json`. If any are missing, pull/deploy the repo so the files are present.
    **Tip:** If Cursor has the **North Cloud (Production)** MCP server configured (`.cursor/mcp.json`), you can run production checks (e.g. `list_indexes`, `search_articles`) via MCP instead of SSH + docker exec.
@@ -515,7 +515,7 @@ The pipeline dashboard has three StreetCode panels that query Loki for `{project
 
 **If StreetCode runs outside Docker** (e.g. Laravel via systemd on the same server), logs must be shipped to Loki with labels `project=north-cloud` and `service=streetcode`. The **StreetCode (streetcode-laravel) repo** has an Alloy-based setup: see **`deploy/alloy/README.md`** in that repo for config, systemd unit, and steps to run on deployer@streetcode.net.
 
-**Still no data? Run these on production** (e.g. `ssh user@your-server` from the repo, then `cd /opt/north-cloud`):
+**Still no data? Run these on production** (e.g. `ssh user@your-server` from the repo, then `cd /home/deployer/north-cloud`):
 
 1. **Is StreetCode running in Docker on this host?**
    ```bash

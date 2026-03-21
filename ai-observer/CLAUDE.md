@@ -89,7 +89,7 @@ ai-observer/
   it doesn't exist. After changing `insightMapping` in `insights/mapping.go`, you must manually
   delete the index in production and restart ai-observer:
   ```bash
-  ssh jones@northcloud.one "docker exec north-cloud-elasticsearch-1 curl -s -X DELETE http://localhost:9200/ai_insights"
+  ssh deployer@northcloud.one "docker exec north-cloud-elasticsearch-1 curl -s -X DELETE http://localhost:9200/ai_insights"
   # Then restart so it recreates with the new mapping
   docker compose -f docker-compose.base.yml -f docker-compose.prod.yml restart ai-observer
   ```

@@ -10,7 +10,7 @@
 # Environment variables (required):
 #   PROD_SSH_HOST     - SSH connection string (e.g., user@production-server)
 #   PROD_SSH_PORT     - SSH port (default: 22)
-#   PROD_DEPLOY_PATH  - Path to north-cloud on production server (default: /opt/north-cloud)
+#   PROD_DEPLOY_PATH  - Path to north-cloud on production server (default: /home/deployer/north-cloud)
 #
 # Safety features:
 #   - Refuses to run if APP_ENV=production (cannot sync TO production)
@@ -52,7 +52,7 @@ done
 
 PROD_SSH_HOST="${PROD_SSH_HOST:-}"
 PROD_SSH_PORT="${PROD_SSH_PORT:-22}"
-PROD_DEPLOY_PATH="${PROD_DEPLOY_PATH:-/opt/north-cloud}"
+PROD_DEPLOY_PATH="${PROD_DEPLOY_PATH:-/home/deployer/north-cloud}"
 
 if [ -z "$SERVICE" ]; then
     echo "Usage: $0 <service|all> [--dry-run]"
@@ -66,7 +66,7 @@ if [ -z "$SERVICE" ]; then
     echo "Required environment variables:"
     echo "  PROD_SSH_HOST     SSH connection string (e.g., user@production-server)"
     echo "  PROD_SSH_PORT     SSH port (default: 22)"
-    echo "  PROD_DEPLOY_PATH  Path to north-cloud on production (default: /opt/north-cloud)"
+    echo "  PROD_DEPLOY_PATH  Path to north-cloud on production (default: /home/deployer/north-cloud)"
     echo ""
     echo "Examples:"
     echo "  $0 crawler"

@@ -13,8 +13,8 @@
 #
 # Environment variables:
 #   DIGITALOCEAN_ACCESS_TOKEN - DigitalOcean API token (required for add/remove/validate, used by doctl)
-#   INVENTORY_FILE     - Path to IP inventory file (default: /opt/north-cloud/proxy-ips.conf)
-#   SQUID_CONF         - Path to Squid config (default: /opt/north-cloud/squid/squid.conf)
+#   INVENTORY_FILE     - Path to IP inventory file (default: /home/deployer/north-cloud/proxy-ips.conf)
+#   SQUID_CONF         - Path to Squid config (default: /home/deployer/north-cloud/squid/squid.conf)
 #   NETWORK_INTERFACE  - Network interface for IPs (default: eth0)
 #
 # Prerequisites:
@@ -29,9 +29,9 @@ set -euo pipefail
 # Constants
 # =============================================================================
 
-INVENTORY_FILE="${INVENTORY_FILE:-/opt/north-cloud/proxy-ips.conf}"
-SQUID_CONF="${SQUID_CONF:-/opt/north-cloud/squid/squid.conf}"
-SQUID_LOG_DIR="${SQUID_LOG_DIR:-/opt/north-cloud/squid/logs}"
+INVENTORY_FILE="${INVENTORY_FILE:-/home/deployer/north-cloud/proxy-ips.conf}"
+SQUID_CONF="${SQUID_CONF:-/home/deployer/north-cloud/squid/squid.conf}"
+SQUID_LOG_DIR="${SQUID_LOG_DIR:-/home/deployer/north-cloud/squid/logs}"
 NETWORK_INTERFACE="${NETWORK_INTERFACE:-eth0}"
 BASE_PORT=3128
 DO_METADATA_URL="http://169.254.169.254/metadata/v1"
@@ -39,7 +39,7 @@ DOCKER_NETWORKS="172.16.0.0/12"  # All Docker subnets (bridge + compose networks
 LOCALHOST_NETWORK="127.0.0.0/8"
 NETPLAN_DIR="/etc/netplan"
 CLOUD_INIT_NETWORK_CFG="/etc/cloud/cloud.cfg.d/99-disable-network-config.cfg"
-COMPOSE_DIR="${COMPOSE_DIR:-/opt/north-cloud}"
+COMPOSE_DIR="${COMPOSE_DIR:-/home/deployer/north-cloud}"
 SQUID_CONTAINER="north-cloud-squid"
 
 # Colors for output

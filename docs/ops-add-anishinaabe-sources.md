@@ -20,17 +20,17 @@ This doc describes how to add the tiered Anishinaabe/Indigenous sources to **pro
 
 ## Run the script on production
 
-On the North Cloud server (e.g. `user@your-server`, app at `/opt/north-cloud`), auth, source-manager, and crawler **do not publish ports to the host** in production. Run the script **inside a container on the Docker network** so it can reach those services by hostname.
+On the North Cloud server (e.g. `user@your-server`, app at `/home/deployer/north-cloud`), auth, source-manager, and crawler **do not publish ports to the host** in production. Run the script **inside a container on the Docker network** so it can reach those services by hostname.
 
 ```bash
 # From the North Cloud server
 docker run --rm --network north-cloud_north-cloud-network \
-  -v /opt/north-cloud:/opt/north-cloud:ro -w /opt/north-cloud \
-  -e AUTH_USERNAME -e AUTH_PASSWORD --env-file /opt/north-cloud/.env \
+  -v /home/deployer/north-cloud:/home/deployer/north-cloud:ro -w /home/deployer/north-cloud \
+  -e AUTH_USERNAME -e AUTH_PASSWORD --env-file /home/deployer/north-cloud/.env \
   -e AUTH_URL=http://auth:8040 \
   -e SOURCE_MANAGER_URL=http://source-manager:8050 \
   -e CRAWLER_URL=http://crawler:8080 \
-  alpine:3.19 sh -c 'apk add --no-cache curl jq bash && bash /opt/north-cloud/scripts/add-anishinaabe-sources.sh'
+  alpine:3.19 sh -c 'apk add --no-cache curl jq bash && bash /home/deployer/north-cloud/scripts/add-anishinaabe-sources.sh'
 ```
 
 **Important:** Use `CRAWLER_URL=http://crawler:8080` (port **8080** is the crawler’s internal port; 8060 is only used when the crawler port is published to the host, e.g. in dev).

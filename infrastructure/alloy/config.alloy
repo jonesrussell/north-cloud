@@ -159,7 +159,7 @@ loki.source.file "movies_of_war_logs" {
 
 // ── Local Squid proxy logs (razor-crest Docker container) ─────────────────
 // Squid writes access/cache logs to files, not stdout.
-// Bind-mounted from /opt/north-cloud/squid/logs/ into /mnt/squid-logs/.
+// Bind-mounted from /home/deployer/north-cloud/squid/logs/ into /mnt/squid-logs/.
 
 local.file_match "squid_local_access" {
   path_targets = [{
