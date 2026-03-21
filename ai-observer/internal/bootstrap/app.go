@@ -107,11 +107,12 @@ func Start() error {
 // Returns fast (classifier) and slow (drift) category slices.
 func buildCategories(cfg Config, esClient *es.Client) (fast, slow []category.Category) {
 	if cfg.Observer.Categories.ClassifierEnabled {
-		fast = append(fast, classifiercategory.New(
-			esClient,
-			cfg.Observer.Categories.ClassifierMaxEvents,
-			cfg.Observer.Categories.ClassifierModel,
-		))
+		fast = append(fast, classifiercategory.New(esClient, classifiercategory.Config{
+			MaxEvents:         cfg.Observer.Categories.ClassifierMaxEvents,
+			ModelTier:         cfg.Observer.Categories.ClassifierModel,
+			SuppressedSources: cfg.Observer.Categories.SuppressedSources,
+			MinDomainSamples:  cfg.Observer.Categories.MinDomainSamples,
+		}))
 	}
 	if cfg.Observer.Categories.DriftEnabled {
 		slow = append(slow, driftcategory.New(esClient, driftcategory.Config{

@@ -1,6 +1,6 @@
 # Shared Infrastructure Specification
 
-> Last verified: 2026-03-19 (add 5 missing Prometheus scrape targets to prometheus.yml)
+> Last verified: 2026-03-21 (nginx.conf change — no spec-relevant updates)
 
 Covers the `infrastructure/` module: config loading, logging, database clients, middleware, events, and utilities used by all services.
 

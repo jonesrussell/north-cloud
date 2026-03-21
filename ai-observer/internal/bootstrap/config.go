@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 )
 
 // Config holds all configuration for the ai-observer service.
@@ -44,6 +45,8 @@ type CategoriesConfig struct {
 	ClassifierEnabled       bool
 	ClassifierMaxEvents     int
 	ClassifierModel         string
+	SuppressedSources       map[string]bool
+	MinDomainSamples        int
 	DriftEnabled            bool
 	DriftIntervalSeconds    int
 	DriftKLThreshold        float64
@@ -72,6 +75,7 @@ const (
 	defaultDriftBaselineRetention  = 30
 	defaultInsightCooldownHours    = 24
 	defaultInsightRetentionDays    = 30
+	defaultMinDomainSamples        = 5
 	float64BitSize                 = 64
 	serviceName                    = "ai-observer"
 	serviceVersion                 = "0.1.0"
@@ -117,6 +121,13 @@ func LoadConfig() (Config, error) {
 		return Config{}, err
 	}
 
+	suppressedSources := parseSuppressedSources(os.Getenv("AI_OBSERVER_SUPPRESSED_SOURCES"))
+
+	minDomainSamples, err := envInt("AI_OBSERVER_MIN_DOMAIN_SAMPLES", defaultMinDomainSamples)
+	if err != nil {
+		return Config{}, err
+	}
+
 	return Config{
 		Service: ServiceConfig{
 			Name:    serviceName,
@@ -138,6 +149,8 @@ func LoadConfig() (Config, error) {
 				ClassifierEnabled:       os.Getenv("AI_OBSERVER_CATEGORY_CLASSIFIER_ENABLED") != "false",
 				ClassifierMaxEvents:     defaultClassifierMaxEvents,
 				ClassifierModel:         defaultClassifierModel,
+				SuppressedSources:       suppressedSources,
+				MinDomainSamples:        minDomainSamples,
 				DriftEnabled:            driftCfg.DriftEnabled,
 				DriftIntervalSeconds:    driftCfg.DriftIntervalSeconds,
 				DriftKLThreshold:        driftCfg.DriftKLThreshold,
@@ -206,6 +219,26 @@ func envFloat(key string, def float64) (float64, error) {
 		return 0, fmt.Errorf("invalid %s: %w", key, err)
 	}
 	return n, nil
+}
+
+// parseSuppressedSources parses a comma-separated list of source domains into a set.
+// Returns nil (not empty map) when input is empty so callers can cheaply check for nil.
+func parseSuppressedSources(raw string) map[string]bool {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return nil
+	}
+	parts := strings.Split(raw, ",")
+	m := make(map[string]bool, len(parts))
+	for _, p := range parts {
+		if s := strings.TrimSpace(p); s != "" {
+			m[s] = true
+		}
+	}
+	if len(m) == 0 {
+		return nil
+	}
+	return m
 }
 
 func envInt(key string, def int) (int, error) {

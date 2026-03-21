@@ -67,6 +67,8 @@ Datasource: `ai-insights` (uid: `ai-insights`) pointing to `ai_insights` index w
 | `AI_OBSERVER_DRY_RUN` | `false` | Log intent without LLM calls |
 | `AI_OBSERVER_INTERVAL_SECONDS` | `1800` | Polling interval (30 min) |
 | `AI_OBSERVER_MAX_TOKENS_PER_INTERVAL` | `25000` | Token budget ceiling per interval |
+| `AI_OBSERVER_SUPPRESSED_SOURCES` | _(empty)_ | Comma-separated source domains to exclude from classifier analysis |
+| `AI_OBSERVER_MIN_DOMAIN_SAMPLES` | `5` | Minimum articles per domain to include in LLM prompt |
 | `AI_OBSERVER_CATEGORY_CLASSIFIER_ENABLED` | `true` | Enable classifier drift category |
 | `ANTHROPIC_API_KEY` | — | Required when enabled |
 | `ES_URL` | `http://localhost:9200` | Elasticsearch URL |

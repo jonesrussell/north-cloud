@@ -14,7 +14,9 @@ func TestClassifierCategory_ImplementsInterface(t *testing.T) {
 
 func TestClassifierCategory_Name(t *testing.T) {
 	t.Helper()
-	c := classifiercategory.New(nil, 200, "claude-haiku-4-5-20251001")
+	c := classifiercategory.New(nil, classifiercategory.Config{
+		MaxEvents: 200, ModelTier: "claude-haiku-4-5-20251001",
+	})
 	if c.Name() != "classifier" {
 		t.Errorf("expected name 'classifier', got %q", c.Name())
 	}
@@ -23,7 +25,9 @@ func TestClassifierCategory_Name(t *testing.T) {
 func TestClassifierCategory_MaxEventsPerRun(t *testing.T) {
 	t.Helper()
 	const maxEvents = 150
-	c := classifiercategory.New(nil, maxEvents, "claude-haiku-4-5-20251001")
+	c := classifiercategory.New(nil, classifiercategory.Config{
+		MaxEvents: maxEvents, ModelTier: "claude-haiku-4-5-20251001",
+	})
 	if c.MaxEventsPerRun() != maxEvents {
 		t.Errorf("expected %d, got %d", maxEvents, c.MaxEventsPerRun())
 	}

@@ -60,6 +60,8 @@ ai-observer/
 | `AI_OBSERVER_MAX_TOKENS_PER_INTERVAL` | `25000` | Token budget ceiling per interval |
 | `AI_OBSERVER_CATEGORY_CLASSIFIER_ENABLED` | `true` | Enable classifier drift category |
 | `ANTHROPIC_API_KEY` | — | Required when enabled |
+| `AI_OBSERVER_SUPPRESSED_SOURCES` | _(empty)_ | Comma-separated source domains to exclude from classifier analysis |
+| `AI_OBSERVER_MIN_DOMAIN_SAMPLES` | `5` | Minimum articles per domain to include in LLM prompt |
 | `AI_OBSERVER_DRIFT_ENABLED` | `false` | Enable drift governor |
 | `AI_OBSERVER_DRIFT_INTERVAL_SECONDS` | `21600` | Drift check interval (6h) |
 | `AI_OBSERVER_INSIGHT_COOLDOWN_HOURS` | `24` | Dedup window — suppress repeated summaries |

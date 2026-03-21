@@ -17,6 +17,8 @@ observer:
       enabled: true
       max_events_per_run: 200
       model_tier: haiku
+      # suppressed_sources: "battlefordsnow.com,example.org"  # Comma-separated domains to exclude
+      # min_domain_samples: 5  # Minimum articles per domain to include in analysis
 
 anthropic:
   api_key: ""
