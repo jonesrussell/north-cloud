@@ -225,6 +225,10 @@ See `docs/specs/workflow.md` for full details. Governance hook: `bin/check-miles
 
 ## Troubleshooting
 
+**Nginx crash-loop on fresh deploy**: Self-signed certs in `infrastructure/nginx/certs/` are gitignored. Generate per `infrastructure/nginx/certs/README.md`. Symptom: `cannot load certificate "/etc/nginx/certs/server.crt"`.
+
+**Server migration gotcha**: When rsyncing stateful files to a new path, also check for gitignored files that services bind-mount (certs, generated configs). `git ls-files --others --ignored --exclude-standard` lists them.
+
 Check logs: `docker compose -f docker-compose.base.yml -f docker-compose.dev.yml logs SERVICE`
 | Check ports: `netstat -tulpn | grep PORT` | DB test: `docker exec -it north-cloud-postgres-SERVICE psql -U postgres -d DATABASE`
 | Health: `curl http://localhost:PORT/health` | See `DOCKER.md` for Docker firewall (UFW) details.
