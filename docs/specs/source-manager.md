@@ -164,8 +164,32 @@ All consent flags default to `false`. Only entries with `consent_public_display=
 - Returned by the `/dictionary/*` HTTP API
 - Projected to the `opd_dictionary` ES index
 
+### Production Verification: 2026-03-20
+
+Verified manually on `jones@northcloud.one:/opt/north-cloud` before closing issue `#484`.
+
+- Safety backup created first:
+  - `/opt/north-cloud/backups/source-manager/source-manager_source_manager_20260320_232105.sql.gz`
+- Production database state (`source_manager.dictionary_entries`):
+  - `22186` total rows
+  - `22186` rows with `consent_public_display = true`
+  - Earliest and latest `created_at` both `2026-03-14 03:28:17.949947+00`, indicating a single completed import event
+- Existing server-side OPD import artifacts:
+  - `/opt/north-cloud/backups/northcloud-prod-20260313-225225/opd_import.log`
+  - `/opt/north-cloud/backups/northcloud-prod-20260313-225225/opd_import.csv`
+  - `/opt/north-cloud/backups/northcloud-prod-20260313-225225/all_entries.jsonl`
+- Recorded import evidence:
+  - `opd_import.log` contains `Rows to insert: 22195, Skipped: 0`
+
+Important operational note:
+
+- The currently deployed production `source-manager` binary exposed `import-opd --help`, but did **not** expose the newer `--consent-public-display` flag.
+- A fresh local dry run on `~/dev/sandbox-ojibwe/data/all_entries.jsonl` against the current importer contract returned `0 valid, 22195 failed`.
+- The sandbox JSONL file currently uses fields like `word`, `pos`, and `url`, while `source-manager/internal/importer/opd.go` currently expects `lemma`, `word_class`, and `source_url`.
+- Because production already had public OPD data loaded and the deployed importer lagged the newer consent flag, rerunning the import on 2026-03-20 would have been risky and was intentionally avoided.
+
 ### Migration 019
 
 Makes `content_hash` index UNIQUE (was non-unique in migration 017) to support `ON CONFLICT` upsert.
 
-<!-- Reviewed: 2026-03-18 — added OPD ingestion pipeline -->
+<!-- Reviewed: 2026-03-20 — added OPD production verification findings -->
