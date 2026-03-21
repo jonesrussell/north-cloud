@@ -204,7 +204,7 @@ jobs:
           scp -P "${SSH_PORT}" /tmp/deploy-files.tar.gz "${DEPLOY_USER}@${DEPLOY_HOST}:/tmp/"
 
           ssh -p "${SSH_PORT}" "${DEPLOY_USER}@${DEPLOY_HOST}" '
-            cd /opt/north-cloud
+            cd /home/deployer/north-cloud
             # Remove stale files before extracting (tar only adds, never deletes).
             # Migrations: prevents duplicate prefix crashes in golang-migrate.
             # Infrastructure configs: prevents renamed/removed configs from persisting.
@@ -230,7 +230,7 @@ jobs:
           # Each service gets its own _TAG variable; unchanged services keep
           # their previous tag. Compose reads these via ${SERVICE_TAG:-latest}.
           ssh -p "${SSH_PORT}" "${DEPLOY_USER}@${DEPLOY_HOST}" "
-            cd /opt/north-cloud
+            cd /home/deployer/north-cloud
             touch image-tags.env
 
             for svc in ${CHANGED_SERVICES//,/ }; do
@@ -253,7 +253,7 @@ jobs:
           DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
         run: |
           ssh -p "${SSH_PORT}" "${DEPLOY_USER}@${DEPLOY_HOST}" "
-            cd /opt/north-cloud
+            cd /home/deployer/north-cloud
 
             # Export variables for deploy script
             export CHANGED_SERVICES='${CHANGED_SERVICES}'

@@ -166,18 +166,18 @@ All consent flags default to `false`. Only entries with `consent_public_display=
 
 ### Production Verification: 2026-03-20
 
-Verified manually on `jones@northcloud.one:/opt/north-cloud` before closing issue `#484`.
+Verified manually on `jones@northcloud.one:/home/deployer/north-cloud` before closing issue `#484`.
 
 - Safety backup created first:
-  - `/opt/north-cloud/backups/source-manager/source-manager_source_manager_20260320_232105.sql.gz`
+  - `/home/deployer/north-cloud/backups/source-manager/source-manager_source_manager_20260320_232105.sql.gz`
 - Production database state (`source_manager.dictionary_entries`):
   - `22186` total rows
   - `22186` rows with `consent_public_display = true`
   - Earliest and latest `created_at` both `2026-03-14 03:28:17.949947+00`, indicating a single completed import event
 - Existing server-side OPD import artifacts:
-  - `/opt/north-cloud/backups/northcloud-prod-20260313-225225/opd_import.log`
-  - `/opt/north-cloud/backups/northcloud-prod-20260313-225225/opd_import.csv`
-  - `/opt/north-cloud/backups/northcloud-prod-20260313-225225/all_entries.jsonl`
+  - `/home/deployer/north-cloud/backups/northcloud-prod-20260313-225225/opd_import.log`
+  - `/home/deployer/north-cloud/backups/northcloud-prod-20260313-225225/opd_import.csv`
+  - `/home/deployer/north-cloud/backups/northcloud-prod-20260313-225225/all_entries.jsonl`
 - Recorded import evidence:
   - `opd_import.log` contains `Rows to insert: 22195, Skipped: 0`
 

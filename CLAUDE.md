@@ -180,7 +180,7 @@ See `ARCHITECTURE.md` for the full bootstrap pattern reference.
 
 ### Production Deployment
 
-- Production (`/opt/north-cloud`) is **NOT a git repo** — do not use `git pull`
+- Production (`/home/deployer/north-cloud`) is **NOT a git repo** — do not use `git pull`
 - CI/CD (GitHub Actions) syncs files via tar archive and runs `deploy.sh`
 - To deploy manually: push to main → CI runs tests → deploy workflow triggers automatically
 - **Nginx uses `--force-recreate`** — volume-mounted config changes aren't detected by `up -d`
