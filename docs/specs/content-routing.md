@@ -1,6 +1,6 @@
 # Content Routing Specification
 
-> Last verified: 2026-03-19
+> Last verified: 2026-03-22 (add .layers file for layer boundary checking)
 
 Covers the publisher service: 11-layer routing pipeline, channel management, Redis publishing, and deduplication.
 

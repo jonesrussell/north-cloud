@@ -1,6 +1,6 @@
 # Auth Service Spec
 
-> Last verified: 2026-03-18
+> Last verified: 2026-03-22 (add .layers file for layer boundary checking)
 
 ## Overview
 
