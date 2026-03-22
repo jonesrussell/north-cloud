@@ -1,0 +1,15 @@
+# Click Tracker — Layer Definitions
+
+# L0: Foundation — no internal imports
+0 domain
+0 config
+
+# L1: Persistence
+1 storage
+
+# L2: Processing
+2 middleware
+2 handler
+
+# L3: HTTP
+3 api

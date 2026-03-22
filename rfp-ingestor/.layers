@@ -1,0 +1,15 @@
+# RFP Ingestor — Layer Definitions
+
+# L0: Foundation — no internal imports
+0 domain
+0 config
+
+# L1: Infrastructure
+1 feed
+1 elasticsearch
+
+# L2: Processing
+2 ingestor
+
+# L3: HTTP
+3 api

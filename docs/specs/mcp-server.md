@@ -1,6 +1,6 @@
 # MCP Server Spec
 
-> Last verified: 2026-03-19
+> Last verified: 2026-03-22 (add layer rules to service CLAUDE.md and .layers config)
 
 Covers `mcp-north-cloud/`: the Claude Code / Cursor MCP server that exposes north-cloud pipeline operations as tools.
 

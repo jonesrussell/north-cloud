@@ -28,6 +28,28 @@ curl http://localhost:8050/api/v1/sources/test-crawl \
   -d '{"url": "https://example.com", "selectors": {"article": {"title": "h1", "body": "article"}}}'
 ```
 
+## Layer Rules
+
+The source-manager's internal packages form a strict DAG organized into five layers.
+A package may import from its own layer or any lower layer. Never from a higher layer.
+
+| Layer | Packages | Role |
+|-------|----------|------|
+| L0 | `config`, `models`, `events`, `aiverify`, `testcrawl` | Foundation — no internal imports |
+| L1 | `database`, `services/osrm` | Persistence / Infrastructure — depends on L0 |
+| L2 | `repository`, `projection`, `metadata`, `importer` | Data access + Enrichment — depends on L0–L1 |
+| L3 | `services`, `seeder` | Business logic — depends on L0–L2 |
+| L4 | `handlers`, `api` | HTTP — depends on L0–L3 |
+
+**Rules:**
+- `bootstrap/` is exempt — it assembles the full dependency graph
+- `models/` must not import any other source-manager package (it is the leaf)
+- All shared infrastructure imports go through `infrastructure/` (no cross-service imports)
+- Lateral imports within the same layer are allowed
+- `testhelpers/` is exempt (test support only)
+
+---
+
 ## Architecture
 
 ```

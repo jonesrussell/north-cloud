@@ -28,6 +28,25 @@ curl http://localhost:8093/health
 curl -v "http://localhost:8093/click?q=q_abc&r=r_doc&p=1&pg=1&t=$(date +%s)&u=https%3A%2F%2Fexample.com&sig=SIGNATURE"
 ```
 
+## Layer Rules
+
+The click-tracker's internal packages form a strict DAG organized into 4 layers.
+A package may import from its own layer or any lower layer. Never from a higher layer.
+
+| Layer | Packages | Role |
+|-------|----------|------|
+| L0 | `domain`, `config` | Foundation — no internal imports |
+| L1 | `storage` | Persistence |
+| L2 | `middleware`, `handler` | Processing |
+| L3 | `api` | HTTP |
+
+**Rules:**
+- `domain/` must not import any other click-tracker package (it is the leaf)
+- All shared infrastructure imports go through `infrastructure/` (no cross-service imports)
+- Lateral imports within the same layer are allowed
+
+---
+
 ## Architecture
 
 ```

@@ -1,0 +1,8 @@
+# MCP North Cloud — Layer Definitions
+
+# L0: Foundation — no internal imports
+0 config
+0 client
+
+# L1: Server / Protocol
+1 mcp

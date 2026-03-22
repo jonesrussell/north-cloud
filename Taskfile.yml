@@ -86,10 +86,16 @@ tasks:
     cmds:
       - tools/drift-detector.sh {{.CLI_ARGS | default "5"}}
 
+  layers:check:
+    desc: "Check internal package imports respect layer boundaries"
+    cmds:
+      - tools/layer-checker.sh {{.CLI_ARGS}}
+
   ci:
     desc: "Run lint, test, and vuln (CI pipeline)"
     cmds:
       - task: drift:check
+      - task: layers:check
       - task: lint
       - task: test
       - task: vuln
@@ -98,6 +104,7 @@ tasks:
     desc: "Run lint, test, and vuln only for changed services (vs HEAD~1)"
     cmds:
       - task: drift:check
+      - task: layers:check
       - task: lint:changed
       - task: test:changed
       - task: vuln:changed
@@ -106,6 +113,7 @@ tasks:
     desc: "Run full CI pipeline (lint, test, vuln) ignoring cache. Use before pushing to match CI."
     cmds:
       - task: drift:check
+      - task: layers:check
       - task: lint:force
       - task auth:test -f
       - task classifier:test -f

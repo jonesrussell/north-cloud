@@ -11,10 +11,10 @@ import (
 	"github.com/jonesrussell/north-cloud/crawler/internal/config/crawler"
 	dbconfig "github.com/jonesrussell/north-cloud/crawler/internal/config/database"
 	"github.com/jonesrussell/north-cloud/crawler/internal/config/elasticsearch"
+	fetcherconfig "github.com/jonesrussell/north-cloud/crawler/internal/config/fetcher"
 	logsconfig "github.com/jonesrussell/north-cloud/crawler/internal/config/logs"
 	"github.com/jonesrussell/north-cloud/crawler/internal/config/minio"
 	"github.com/jonesrussell/north-cloud/crawler/internal/config/server"
-	"github.com/jonesrussell/north-cloud/crawler/internal/fetcher"
 	infraconfig "github.com/jonesrussell/north-cloud/infrastructure/config"
 )
 
@@ -45,7 +45,7 @@ type Interface interface {
 	// GetDiscoveryConfig returns the automatic source discovery configuration.
 	GetDiscoveryConfig() *DiscoveryConfig
 	// GetFetcherConfig returns the frontier fetcher configuration.
-	GetFetcherConfig() *fetcher.Config
+	GetFetcherConfig() *fetcherconfig.Config
 	// GetSchedulerConfig returns the interval scheduler configuration.
 	GetSchedulerConfig() *SchedulerConfig
 	// GetPipelineURL returns the pipeline service URL (empty = disabled).
@@ -116,7 +116,7 @@ type Config struct {
 	// Discovery holds automatic source discovery configuration
 	Discovery *DiscoveryConfig `yaml:"discovery"`
 	// Fetcher holds frontier worker pool configuration
-	Fetcher *fetcher.Config `yaml:"fetcher"`
+	Fetcher *fetcherconfig.Config `yaml:"fetcher"`
 	// Scheduler holds interval scheduler configuration
 	Scheduler *SchedulerConfig `yaml:"scheduler"`
 }
@@ -328,7 +328,7 @@ func setDefaults(cfg *Config) {
 
 	// Set default fetcher configuration
 	if cfg.Fetcher == nil {
-		cfg.Fetcher = &fetcher.Config{}
+		cfg.Fetcher = &fetcherconfig.Config{}
 	}
 	d := cfg.Fetcher.WithDefaults()
 	cfg.Fetcher = &d
@@ -471,9 +471,9 @@ func (c *Config) GetDiscoveryConfig() *DiscoveryConfig {
 }
 
 // GetFetcherConfig returns the frontier fetcher configuration.
-func (c *Config) GetFetcherConfig() *fetcher.Config {
+func (c *Config) GetFetcherConfig() *fetcherconfig.Config {
 	if c.Fetcher == nil {
-		d := fetcher.Config{}.WithDefaults()
+		d := fetcherconfig.Config{}.WithDefaults()
 		return &d
 	}
 	withDefaults := c.Fetcher.WithDefaults()

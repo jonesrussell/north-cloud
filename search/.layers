@@ -1,0 +1,15 @@
+# Search — Layer Definitions
+
+# L0: Foundation / Domain — no internal imports
+0 domain
+0 config
+0 telemetry
+
+# L1: Persistence / Query
+1 elasticsearch
+
+# L2: Business Logic
+2 service
+
+# L3: HTTP
+3 api

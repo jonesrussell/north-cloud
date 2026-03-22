@@ -1,6 +1,6 @@
 # Click Tracker Spec
 
-> Last verified: 2026-03-19 (enable Prometheus metrics via .WithMetrics())
+> Last verified: 2026-03-22 (add layer rules to service CLAUDE.md and .layers config)
 
 ## Overview
 

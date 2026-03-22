@@ -1,0 +1,17 @@
+# Pipeline — Layer Definitions
+
+# L0: Foundation — no internal imports
+0 domain
+
+# L1: Config / Persistence
+1 config
+1 database
+
+# L2: Processing
+2 service
+
+# L3: HTTP
+3 api
+
+# Exempt: bootstrap assembles everything
+exempt bootstrap

@@ -1,0 +1,22 @@
+# AI Observer — Layer Definitions
+
+# L0: Foundation — no internal imports
+0 provider
+0 drift
+
+# L1: Core domain types
+1 category
+
+# L2: Domain implementations
+2 provider/anthropic
+2 insights
+
+# L3: Processing / Analysis
+3 category/classifier
+3 category/drift
+
+# L4: Orchestration
+4 scheduler
+
+# Exempt: bootstrap assembles everything
+exempt bootstrap

@@ -16,6 +16,25 @@ curl "http://localhost:8092/api/v1/search?q=crime&page=1&size=20&min_quality=50&
 curl http://localhost:8092/health
 ```
 
+## Layer Rules
+
+The search service's internal packages form a strict DAG organized into four layers.
+A package may import from its own layer or any lower layer. Never from a higher layer.
+
+| Layer | Packages | Role |
+|-------|----------|------|
+| L0 | `domain`, `config`, `telemetry` | Foundation — no internal imports |
+| L1 | `elasticsearch` | Persistence / Query — depends on L0 |
+| L2 | `service` | Business logic — depends on L0–L1 |
+| L3 | `api` | HTTP — depends on L0–L2 |
+
+**Rules:**
+- `domain/` must not import any other search package (it is the leaf)
+- All shared infrastructure imports go through `infrastructure/` (no cross-service imports)
+- Lateral imports within the same layer are allowed
+
+---
+
 ## Architecture
 
 ```
