@@ -1,6 +1,6 @@
 # Classification Specification
 
-> Last verified: 2026-03-20 (fix ML sidecar model path resolution via Path.resolve())
+> Last verified: 2026-03-22 (add layer rules to classifier CLAUDE.md and .layers config)
 
 Covers the classifier service, hybrid rule+ML classification pipeline, ML sidecar integration, and content enrichment.
 
