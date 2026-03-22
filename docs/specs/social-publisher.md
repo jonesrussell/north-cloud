@@ -1,6 +1,6 @@
 # Social Publisher Spec
 
-> Last verified: 2026-03-19 (replace context.TODO() with timeout context in health check)
+> Last verified: 2026-03-22 (add layer rules to service CLAUDE.md and .layers config)
 
 ## Overview
 
