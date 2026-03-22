@@ -1,6 +1,6 @@
 # Click Tracker Spec
 
-> Last verified: 2026-03-22 (add layer rules to service CLAUDE.md and .layers config)
+> Last verified: 2026-03-22 (audit: update lib/pq v1.10.9 → v1.11.2)
 
 ## Overview
 
