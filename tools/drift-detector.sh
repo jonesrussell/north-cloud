@@ -69,6 +69,8 @@ CHANGED_FILES=$(echo "$CHANGED_FILES" | grep -v '/vendor/' || true)
 CHANGED_FILES=$(echo "$CHANGED_FILES" | grep -v '\.layers$' || true)
 CHANGED_FILES=$(echo "$CHANGED_FILES" | grep -v 'CLAUDE\.md$' || true)
 CHANGED_FILES=$(echo "$CHANGED_FILES" | grep -v '_test\.go$' || true)
+CHANGED_FILES=$(echo "$CHANGED_FILES" | grep -v 'go\.mod$' || true)
+CHANGED_FILES=$(echo "$CHANGED_FILES" | grep -v 'go\.sum$' || true)
 
 if [ -z "$CHANGED_FILES" ]; then
   echo "No changes detected in the last $COMMITS commits."
