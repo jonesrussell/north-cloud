@@ -1,6 +1,6 @@
 # AI Observer Spec
 
-> Last verified: 2026-03-21 (drift logging, ES replica settings, spec updated)
+> Last verified: 2026-03-22 (add .layers file for layer boundary checking)
 
 ## Overview
 
