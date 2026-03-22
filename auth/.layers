@@ -1,0 +1,11 @@
+# Auth — Layer Definitions
+
+# L0: Foundation — no internal imports
+0 config
+0 telemetry
+
+# L1: Processing
+1 auth
+
+# L2: HTTP
+2 api

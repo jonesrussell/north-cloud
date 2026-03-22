@@ -17,6 +17,28 @@ curl http://localhost:8071/api/v1/classify \
   -d '{"title":"...", "raw_text":"..."}'
 ```
 
+## Layer Rules
+
+The classifier's internal packages form a strict DAG organized into five layers.
+A package may import from its own layer or any lower layer. Never from a higher layer.
+
+| Layer | Packages | Role |
+|-------|----------|------|
+| L0 | `domain`, `config`, `data`, `telemetry`, `mlclient`, `classifier/jsonld`, `elasticsearch` | Foundation — no internal imports |
+| L1 | `database`, `drillmlclient`, `mlhealth` | Persistence / ML clients — depends on L0 |
+| L2 | `classifier`, `storage` | Processing / Core logic — depends on L0–L1 |
+| L3 | `processor` | Orchestration — depends on L0–L2 |
+| L4 | `api` | HTTP — depends on L0–L3 |
+
+**Rules:**
+- `bootstrap/` and `server/` are exempt — they assemble the full dependency graph
+- `domain/` must not import any other classifier package (it is the leaf)
+- All shared infrastructure imports go through `infrastructure/` (no cross-service imports)
+- Lateral imports within the same layer are allowed
+- `testhelpers/` is exempt (test support only)
+
+---
+
 ## Architecture
 
 ```

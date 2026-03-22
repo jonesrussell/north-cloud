@@ -19,6 +19,27 @@ curl http://localhost:8070/api/v1/stats/overview
 curl http://localhost:8070/api/v1/publish-history?limit=10
 ```
 
+## Layer Rules
+
+The publisher's internal packages form a strict DAG organized into five layers.
+A package may import from its own layer or any lower layer. Never from a higher layer.
+
+| Layer | Packages | Role |
+|-------|----------|------|
+| L0 | `config`, `domain`, `models`, `telemetry`, `metrics`, `dedup`, `redis` | Foundation — no internal imports |
+| L1 | `sources`, `discovery` | External integration — depends on L0 |
+| L2 | `database` | Persistence — depends on L0–L1 |
+| L3 | `router`, `worker` | Processing / Routing — depends on L0–L2 |
+| L4 | `api` | HTTP — depends on L0–L3 |
+
+**Rules:**
+- `main.go` is exempt — it handles wiring (no bootstrap package)
+- `models/` must not import any other publisher package (it is the leaf)
+- All shared infrastructure imports go through `infrastructure/` (no cross-service imports)
+- Lateral imports within the same layer are allowed
+
+---
+
 ## Architecture
 
 **Two-process design** — runs as an API server and a background router worker. Both share a PostgreSQL database.

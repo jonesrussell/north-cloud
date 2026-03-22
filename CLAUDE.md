@@ -92,6 +92,8 @@ Sources → [Crawler] → ES raw_content → [Classifier + ML Sidecars] → ES c
 
 **Spec Drift**: `task drift:check` (checks last 5 commits). Runs automatically as first step of `task ci`, `task ci:changed`, `task ci:force`. Also runs in lefthook pre-push and CI. Fails if any spec is stale or missing.
 
+**Layer Check**: `task layers:check` verifies internal package imports respect layer boundaries. Each service has a `.layers` file defining package→layer mappings. Runs in `task ci`, `task ci:changed`, `task ci:force`, and lefthook pre-push. Fails if any package imports from a higher layer. Use `allow SOURCE TARGET` in `.layers` to track known violations.
+
 **Go Workspace**: `GOWORK=off` per service. `go.work` is IDE-only. After dep changes: `task vendor`.
 
 **Worktree CI**: `task ci` fails in worktrees (missing Node deps for dashboard). Use `task ci:changed` for Go-only work.
@@ -131,7 +133,7 @@ auth:8040 | source-manager:8050 | crawler:8080 | publisher:8070 | classifier:807
 Pre-commit hooks run automatically via [lefthook](https://github.com/evilmartians/lefthook). Config: `lefthook.yml`.
 
 - **pre-commit**: `go-fmt` (auto-fix), `go-lint` (golangci-lint), `dashboard-lint` — only changed services
-- **pre-push**: `go-test` (only changed services), `spec-drift` (drift-detector check)
+- **pre-push**: `go-test` (only changed services), `spec-drift` (drift-detector check), `layer-check` (layer boundary check)
 - **Install**: `go install github.com/evilmartians/lefthook@latest && lefthook install`
 - **Skip (emergency)**: `git commit --no-verify`
 
