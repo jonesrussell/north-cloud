@@ -1,6 +1,6 @@
 # AI Observer Spec
 
-> Last verified: 2026-03-22 (add layer rules to service CLAUDE.md and .layers config)
+> Last verified: 2026-03-22 (fix stripFences to handle newlines between fence markers and JSON)
 
 ## Overview
 

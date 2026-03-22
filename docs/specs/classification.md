@@ -1,6 +1,6 @@
 # Classification Specification
 
-> Last verified: 2026-03-22 (remove api→database layer violation via domain interfaces)
+> Last verified: 2026-03-22 (remove redundant NewDatabaseAdapterWithRepository constructor)
 
 Covers the classifier service, hybrid rule+ML classification pipeline, ML sidecar integration, and content enrichment.
 

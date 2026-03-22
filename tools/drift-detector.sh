@@ -65,6 +65,11 @@ fi
 # Exclude vendor directories (tracked by .gitignore, but deletions still show in diff)
 CHANGED_FILES=$(echo "$CHANGED_FILES" | grep -v '/vendor/' || true)
 
+# Exclude files that don't affect spec accuracy (#516)
+CHANGED_FILES=$(echo "$CHANGED_FILES" | grep -v '\.layers$' || true)
+CHANGED_FILES=$(echo "$CHANGED_FILES" | grep -v 'CLAUDE\.md$' || true)
+CHANGED_FILES=$(echo "$CHANGED_FILES" | grep -v '_test\.go$' || true)
+
 if [ -z "$CHANGED_FILES" ]; then
   echo "No changes detected in the last $COMMITS commits."
   exit 0
