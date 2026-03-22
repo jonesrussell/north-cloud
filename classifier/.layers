@@ -1,0 +1,32 @@
+# Classifier — Layer Definitions
+
+# L0: Foundation / Domain — no internal imports
+0 domain
+0 config
+0 data
+0 telemetry
+0 mlclient
+0 classifier/jsonld
+0 elasticsearch
+
+# L1: Persistence / ML clients
+1 database
+1 drillmlclient
+1 mlhealth
+
+# L2: Processing / Core Logic
+2 classifier
+2 storage
+
+# L3: Orchestration
+3 processor
+
+# L4: HTTP
+4 api
+
+# Exempt: bootstrap + server assemble everything
+exempt bootstrap
+exempt server
+
+# Test support
+exempt testhelpers

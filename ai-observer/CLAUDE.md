@@ -19,6 +19,27 @@ cd ai-observer && AI_OBSERVER_ENABLED=true AI_OBSERVER_DRY_RUN=true \
 
 ---
 
+## Layer Rules
+
+The ai-observer's internal packages form a strict DAG organized into five layers.
+A package may import from its own layer or any lower layer. Never from a higher layer.
+
+| Layer | Packages | Role |
+|-------|----------|------|
+| L0 | `provider`, `drift` | Foundation — no internal imports |
+| L1 | `category` | Core domain types — depends on L0 |
+| L2 | `provider/anthropic`, `insights` | Domain implementations — depends on L0–L1 |
+| L3 | `category/classifier`, `category/drift` | Processing / Analysis — depends on L0–L2 |
+| L4 | `scheduler` | Orchestration — depends on L0–L3 |
+
+**Rules:**
+- `bootstrap/` is exempt — it assembles the full dependency graph
+- `provider/` (L0) must not import any other ai-observer package (it is the leaf)
+- All shared infrastructure imports go through `infrastructure/` (no cross-service imports)
+- Lateral imports within the same layer are allowed
+
+---
+
 ## Architecture
 
 ```

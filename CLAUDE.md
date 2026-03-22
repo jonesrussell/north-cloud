@@ -92,6 +92,8 @@ Sources → [Crawler] → ES raw_content → [Classifier + ML Sidecars] → ES c
 
 **Spec Drift**: `task drift:check` (checks last 5 commits). Runs automatically as first step of `task ci`, `task ci:changed`, `task ci:force`. Also runs in lefthook pre-push and CI. Fails if any spec is stale or missing.
 
+**Layer Check**: `task layers:check` verifies internal package imports respect layer boundaries. Each service has a `.layers` file defining package→layer mappings. Runs in `task ci`, `task ci:changed`, `task ci:force`, and lefthook pre-push. Fails if any package imports from a higher layer. Use `allow SOURCE TARGET` in `.layers` to track known violations.
+
 **Go Workspace**: `GOWORK=off` per service. `go.work` is IDE-only. After dep changes: `task vendor`.
 
 **Worktree CI**: `task ci` fails in worktrees (missing Node deps for dashboard). Use `task ci:changed` for Go-only work.

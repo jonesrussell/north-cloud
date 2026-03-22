@@ -29,6 +29,26 @@ curl "http://localhost:8090/api/v1/indexes/example_com_classified_content/docume
 curl -X DELETE http://localhost:8090/api/v1/indexes/example_com_raw_content
 ```
 
+## Layer Rules
+
+The index-manager's internal packages form a strict DAG organized into 4 layers.
+A package may import from its own layer or any lower layer. Never from a higher layer.
+
+| Layer | Packages | Role |
+|-------|----------|------|
+| L0 | `domain`, `config`, `telemetry` | Foundation — no internal imports |
+| L1 | `database`, `elasticsearch` | Persistence |
+| L2 | `service` | Business Logic |
+| L3 | `api` | HTTP |
+
+**Rules:**
+- `bootstrap/` is exempt — it assembles the full dependency graph
+- `domain/` must not import any other index-manager package (it is the leaf)
+- All shared infrastructure imports go through `infrastructure/` (no cross-service imports)
+- Lateral imports within the same layer are allowed
+
+---
+
 ## Architecture
 
 ```
