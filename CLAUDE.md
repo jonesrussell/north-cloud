@@ -44,15 +44,9 @@ Sources → [Crawler] → ES raw_content → [Classifier + ML Sidecars] → ES c
 - L1: Topic auto-detect (skips: mining, indigenous, coforge, recipe, jobs, rfp)
 - L2: DB Channels | L3: Crime | L4: Location | L5: Mining | L6: Entertainment | L7: Indigenous | L8: CoForge | L9: Recipe | L10: Job | L11: RFP
 
-**Drift Governor** (within ai-observer, 6h ticker):
-- Computes KL divergence, PSI, cross-matrix stability against rolling 7-day baseline
-- On threshold breach → LLM analysis → GitHub issue + draft PR with rule patches
-- Config: `AI_OBSERVER_DRIFT_ENABLED`, thresholds configurable per-metric
+**Drift Governor** (ai-observer, 6h ticker): KL divergence + PSI against 7-day baseline → LLM analysis → GitHub issue + draft PR. Config: `AI_OBSERVER_DRIFT_ENABLED`.
 
-**RFP ingestor** (bypasses classifier — indexes directly to ES):
-- Polls CanadaBuys CSV feed → parses → bulk-indexes to `rfp_classified_content` ES index
-- Index name uses `*_classified_content` pattern so search service wildcard picks it up
-- `content_type` must be `text` (not `keyword`) — search queries `content_type.keyword` sub-field
+**RFP ingestor** (bypasses classifier): Polls CanadaBuys CSV → bulk-indexes to `rfp_classified_content`. Uses `*_classified_content` pattern so search wildcard picks it up.
 
 **Dependency rule**: Services import only from `infrastructure/`. No cross-service imports.
 
@@ -60,23 +54,17 @@ Sources → [Crawler] → ES raw_content → [Classifier + ML Sidecars] → ES c
 
 ## Common Operations
 
-**Add a new source**: Add via source-manager API → crawler picks up on next schedule → raw content indexed → classifier processes → publisher routes
-- JWT required: `POST http://auth:8040/api/v1/auth/login` (creds from AUTH_USERNAME/AUTH_PASSWORD env vars) → use token as `Authorization: Bearer`
-- Create: `POST /api/v1/sources` with `{name, url, type, enabled, render_mode, rate_limit, max_depth}`
-- Search: `GET /api/v1/sources?search=keyword` (searches name/url)
-- Pagination: 100/page, use `?page=N` — response has no total count
-- Source types: `news` (default), `mining`, `indigenous`, `government`, `community`
-- 409 Conflict on duplicate name
+**Add a new source**: See `source-manager/CLAUDE.md` for API details. Flow: source-manager API → crawler picks up on next schedule → classifier processes → publisher routes.
 
-**Add a new ML sidecar**: Create `ml-sidecars/{name}-ml/` with Flask app → add `{name}mlclient` in classifier → add env flag `{NAME}_ENABLED` → add routing layer in publisher → update docker-compose
+**Add a new ML sidecar**: Create module in `ml-modules/{name}/` → add `{NAME}_ENABLED` + `{NAME}_ML_SERVICE_URL` to classifier config → add routing layer in publisher → update docker-compose. See `classifier/CLAUDE.md`.
 
-**Add a new publisher channel**: Create channel via publisher API with topic rules → content matching rules routes to Redis channel → consumers subscribe
+**Add a new publisher channel**: Create channel via publisher API with topic rules → content matching rules routes to Redis channel → consumers subscribe.
 
-**Modify ES mappings**: Update `classifier/internal/elasticsearch/mappings/` → reindex affected indices via index-manager → verify with search queries. **Note**: `content_type` must be `text` type (not `keyword`) — search service queries `content_type.keyword` sub-field which only exists on `text` fields
+**Modify ES mappings**: Update `classifier/internal/elasticsearch/mappings/` → reindex via index-manager. **Note**: `content_type` must be `text` type (not `keyword`) — search queries `content_type.keyword` sub-field.
+
+**Add env vars to compose**: Names must exactly match the `env:` struct tag in the service's config struct. Mismatches are silent — the var is set but never read. Verify with: `grep -r 'VAR_NAME' SERVICE/internal/config/`
 
 **Add a migration**: Create up/down SQL in `{service}/internal/database/migrations/` → run `task migrate:SERVICE` → test with `task test:SERVICE`. **Check for duplicate prefixes**: `ls {service}/migrations/ | cut -d_ -f1 | sort | uniq -d` — golang-migrate crashes on duplicates.
-
-**Drill extraction** (classifier): Disabled by default. Enable with `DRILL_EXTRACTION_ENABLED=true`. LLM fallback needs `ANTHROPIC_API_KEY`; regex-only works without it. Config struct: `DrillExtractionConfig` in `classifier/internal/config/config.go`.
 
 ---
 
@@ -242,19 +230,6 @@ Check logs: `docker compose -f docker-compose.base.yml -f docker-compose.dev.yml
 | Health: `curl http://localhost:PORT/health` | See `DOCKER.md` for Docker firewall (UFW) details.
 
 ---
-
-## Spec Drift Warning
-
-When refactoring a subsystem, update the relevant service `CLAUDE.md` and `docs/specs/` file. Stale specs cause sessions to generate code conflicting with recent changes.
-
-**Automated detection**: `task drift:check` (or `tools/drift-detector.sh N`) compares spec commit timestamps against service code changes. It runs automatically in CI, pre-push hooks, and as the first step of all `ci:*` tasks.
-
----
-
-## Further Reading
-
-- `ARCHITECTURE.md` — Full architecture, service descriptions, content pipeline, version history
-- Each service's own `CLAUDE.md` or `README.md` — Service-specific guidelines and API details
 
 ## Architectural Boundaries
 
