@@ -43,5 +43,5 @@
 exempt bootstrap
 
 # Known violations (tracked for future cleanup):
-# database → discovery: discovery.SourceCandidate types should move to domain/
-allow database discovery
+# config → fetcher: fetcher.Config type should move to config/fetcher/
+allow config fetcher
