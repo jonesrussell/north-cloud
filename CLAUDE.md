@@ -133,7 +133,7 @@ auth:8040 | source-manager:8050 | crawler:8080 | publisher:8070 | classifier:807
 Pre-commit hooks run automatically via [lefthook](https://github.com/evilmartians/lefthook). Config: `lefthook.yml`.
 
 - **pre-commit**: `go-fmt` (auto-fix), `go-lint` (golangci-lint), `dashboard-lint` — only changed services
-- **pre-push**: `go-test` (only changed services), `spec-drift` (drift-detector check)
+- **pre-push**: `go-test` (only changed services), `spec-drift` (drift-detector check), `layer-check` (layer boundary check)
 - **Install**: `go install github.com/evilmartians/lefthook@latest && lefthook install`
 - **Skip (emergency)**: `git commit --no-verify`
 
