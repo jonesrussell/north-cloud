@@ -73,7 +73,7 @@ func Start() error {
 	dedup := insights.NewDeduplicator(esClient, cfg.Observer.InsightCooldownHours)
 	writer := insights.NewWriter(esClient, cfg.Service.Version).WithDedup(dedup)
 	cleaner := insights.NewCleaner(esClient, cfg.Observer.InsightRetentionDays)
-	fast, slow := buildCategories(cfg, esClient)
+	fast, slow := buildCategories(cfg, esClient, log)
 
 	sched := scheduler.New(fast, slow, writer, p, scheduler.Config{
 		IntervalSeconds:      cfg.Observer.IntervalSeconds,
@@ -105,7 +105,7 @@ func Start() error {
 
 // buildCategories constructs the enabled category lists from config.
 // Returns fast (classifier) and slow (drift) category slices.
-func buildCategories(cfg Config, esClient *es.Client) (fast, slow []category.Category) {
+func buildCategories(cfg Config, esClient *es.Client, log logger.Logger) (fast, slow []category.Category) {
 	if cfg.Observer.Categories.ClassifierEnabled {
 		fast = append(fast, classifiercategory.New(esClient, classifiercategory.Config{
 			MaxEvents:         cfg.Observer.Categories.ClassifierMaxEvents,
@@ -120,7 +120,7 @@ func buildCategories(cfg Config, esClient *es.Client) (fast, slow []category.Cat
 			PSIThreshold:       cfg.Observer.Categories.DriftPSIThreshold,
 			MatrixThreshold:    cfg.Observer.Categories.DriftMatrixThreshold,
 			BaselineWindowDays: cfg.Observer.Categories.DriftBaselineWindowDays,
-		}))
+		}, log))
 	}
 	return fast, slow
 }

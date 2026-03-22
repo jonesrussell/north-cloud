@@ -11,6 +11,7 @@ import (
 	"github.com/jonesrussell/north-cloud/ai-observer/internal/category"
 	driftpkg "github.com/jonesrussell/north-cloud/ai-observer/internal/drift"
 	"github.com/jonesrussell/north-cloud/ai-observer/internal/provider"
+	infralogger "github.com/jonesrussell/north-cloud/infrastructure/logger"
 )
 
 const (
@@ -33,10 +34,11 @@ type Category struct {
 	store        *driftpkg.Store
 	thresholds   driftpkg.Thresholds
 	baselineDays int
+	log          infralogger.Logger
 }
 
 // New creates a new drift category.
-func New(esClient *es.Client, cfg Config) *Category {
+func New(esClient *es.Client, cfg Config, log infralogger.Logger) *Category {
 	return &Category{
 		collector: driftpkg.NewCollector(esClient),
 		store:     driftpkg.NewStore(esClient),
@@ -46,6 +48,7 @@ func New(esClient *es.Client, cfg Config) *Category {
 			MatrixDeviation: cfg.MatrixThreshold,
 		},
 		baselineDays: cfg.BaselineWindowDays,
+		log:          log,
 	}
 }
 
@@ -79,6 +82,14 @@ func (c *Category) Sample(ctx context.Context, window time.Duration) ([]category
 	}
 
 	signals := driftpkg.Evaluate(baseline, current, c.thresholds)
+
+	breached := countBreaches(signals)
+	if c.log != nil {
+		c.log.Info("Drift evaluation complete",
+			infralogger.Int("signal_count", len(signals)),
+			infralogger.Int("breach_count", breached),
+		)
+	}
 
 	return []category.Event{
 		{

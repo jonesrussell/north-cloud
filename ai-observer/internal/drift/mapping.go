@@ -13,6 +13,9 @@ import (
 const baselinesIndex = "drift_baselines"
 
 var baselineMapping = map[string]any{
+	"settings": map[string]any{
+		"number_of_replicas": 0,
+	},
 	"mappings": map[string]any{
 		"properties": map[string]any{
 			"computed_at":           map[string]any{"type": "date"},
