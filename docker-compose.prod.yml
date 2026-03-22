@@ -419,7 +419,7 @@ services:
   # ------------------------------------------------------------
   search-frontend:
     <<: *prod-defaults
-    image: docker.io/jonesrussell/search-frontend:${SEARCH_FRONTEND_TAG:-latest}
+    image: northcloud-search:latest
     deploy:
       resources:
         limits:
@@ -429,8 +429,7 @@ services:
       search-service:
         condition: service_healthy
     environment:
-      NODE_ENV: production
-      SEARCH_API_URL: http://search-service:8090
+      NORTHCLOUD_API_URL: http://search-service:8090
 
   # ------------------------------------------------------------
   # nc-http-proxy (Prod) - HTTP replay proxy for crawler

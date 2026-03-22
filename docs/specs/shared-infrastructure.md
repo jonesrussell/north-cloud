@@ -1,6 +1,6 @@
 # Shared Infrastructure Specification
 
-> Last verified: 2026-03-21 (nginx.conf change — no spec-relevant updates)
+> Last verified: 2026-03-21 (nginx search-frontend port 80→3003 for Waaseyaa app swap)
 
 Covers the `infrastructure/` module: config loading, logging, database clients, middleware, events, and utilities used by all services.
 

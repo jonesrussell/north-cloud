@@ -1,6 +1,6 @@
 # AI Observer Spec
 
-> Last verified: 2026-03-18
+> Last verified: 2026-03-21 (source suppression feature added, CLAUDE.md updated)
 
 ## Overview
 
