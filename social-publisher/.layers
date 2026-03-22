@@ -1,0 +1,18 @@
+# Social Publisher — Layer Definitions
+
+# L0: Foundation — no internal imports
+0 domain
+0 config
+
+# L1: Persistence / Crypto
+1 database
+1 crypto
+1 adapters
+
+# L2: Processing
+2 orchestrator
+2 redis
+2 workers
+
+# L3: HTTP
+3 api

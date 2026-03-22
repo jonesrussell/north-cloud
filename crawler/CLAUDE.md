@@ -63,6 +63,27 @@ curl -H "Authorization: Bearer $JWT" http://localhost:8080/api/v1/scheduler/dist
 JWT="your-token" ./scripts/sync-enabled-sources-jobs.sh
 ```
 
+## Layer Rules
+
+The crawler's internal packages form a strict DAG organized into five layers.
+A package may import from its own layer or any lower layer. Never from a higher layer.
+
+| Layer | Packages | Role |
+|-------|----------|------|
+| L0 | `domain`, `frontier`, `config/*`, `metrics`, `adaptive`, `proxypool`, `coordination`, `queue`, `content/contenttype` | Foundation — no internal imports |
+| L1 | `database`, `storage`, `archive`, `logs` | Persistence — depends on L0 |
+| L2 | `content/*`, `sources/*`, `feed`, `fetcher`, `scraper`, `discovery`, `leadership`, `render` | Content & external I/O — depends on L0–L1 |
+| L3 | `crawler`, `crawler/events`, `scheduler`, `job`, `worker`, `events`, `admin` | Orchestration — depends on L0–L2 |
+| L4 | `api`, `api/middleware`, `bootstrap` | Presentation & wiring — depends on L0–L3 |
+
+**Rules:**
+- `bootstrap/` is exempt — it assembles the full dependency graph
+- `domain/` must not import any other crawler package (it is the leaf)
+- All shared infrastructure imports go through `infrastructure/` (no cross-service imports)
+- Lateral imports within the same layer are allowed (e.g., `scheduler` → `crawler` are both L3)
+
+---
+
 ## Architecture
 
 ### Directory Map
