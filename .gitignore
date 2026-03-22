@@ -150,15 +150,7 @@ streetcode/web/sites/simpletest
 crawler/frontend/.vite/deps/_metadata.json
 crawler/frontend/.vite/deps/package.json
 *.tar.gz
-search/config.yml
-mcp-north-cloud/bin/mcp-north-cloud
-auth/config.yml
-pipeline/config.yml
-.task/
-
-coverage.html
-coverage.out
-
+# Go build outputs (service binaries)
 auth/auth
 classifier/classifier
 index-manager/index-manager
@@ -166,6 +158,29 @@ source-manager/source-manager
 publisher/publisher
 search/search
 nc-http-proxy/nc-http-proxy
+mcp-north-cloud/mcp-north-cloud
+mcp-north-cloud/bin/
+crawler/bin/
+classifier/bin/
+publisher/bin/
+index-manager/bin/
+ai-observer/bin/
+pipeline/bin/
+rfp-ingestor/bin/
+social-publisher/bin/
+click-tracker/bin/
+
+# Config files (generated from .example)
+auth/config.yml
+pipeline/config.yml
+search/config.yml
+
+# Task runner cache
+.task/
+
+# Test coverage
+coverage.html
+coverage.out
 
 # Git worktrees
 .worktrees/
@@ -180,7 +195,6 @@ __pycache__/
 .venv/
 venv/
 docs/mining_websites_index.xlsx
-click-tracker/bin/
 
 /*.png
 .playwright-mcp/
@@ -188,3 +202,6 @@ click-tracker/bin/
 .claude/worktrees/
 
 minoo-snapshot.md
+
+.firecrawl/
+

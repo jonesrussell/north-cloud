@@ -1,6 +1,6 @@
 # Content Routing Specification
 
-> Last verified: 2026-03-22 (add layer rules to service CLAUDE.md and .layers config)
+> Last verified: 2026-03-22 (audit: replace stdlib log with infrastructure/logger in client init)
 
 Covers the publisher service: 11-layer routing pipeline, channel management, Redis publishing, and deduplication.
 

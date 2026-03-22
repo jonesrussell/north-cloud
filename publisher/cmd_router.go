@@ -78,10 +78,10 @@ func runRouterWithStop() (func(), error) {
 	repo := database.NewRepository(db)
 
 	// Initialize Elasticsearch client
-	esClient := initElasticsearchClient(cfg.ESURL)
+	esClient := initElasticsearchClient(cfg.ESURL, appLogger)
 
 	// Initialize Redis client
-	redisClient := initRedisClient(cfg.RedisAddr, cfg.RedisPassword)
+	redisClient := initRedisClient(cfg.RedisAddr, cfg.RedisPassword, appLogger)
 
 	// Initialize discovery service
 	discoveryService := discovery.NewService(esClient, appLogger)
