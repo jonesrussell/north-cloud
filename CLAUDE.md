@@ -233,6 +233,8 @@ See `docs/specs/workflow.md` for full details. Governance hook: `bin/check-miles
 
 **ES container name**: `north-cloud-elasticsearch-1` (note `-1` suffix from compose scaling), not `north-cloud-elasticsearch`.
 
+**Squid proxy crash-loop after deploy**: If Squid logs (`squid/logs/`) get wrong ownership (e.g. after path migration), Squid crashes with `Cannot open access.log for writing`. Fix: `sudo rm squid/logs/*.log && docker compose ... restart squid`. See #498.
+
 Check logs: `docker compose -f docker-compose.base.yml -f docker-compose.dev.yml logs SERVICE`
 | Check ports: `netstat -tulpn | grep PORT` | DB test: `docker exec -it north-cloud-postgres-SERVICE psql -U postgres -d DATABASE`
 | Health: `curl http://localhost:PORT/health` | See `DOCKER.md` for Docker firewall (UFW) details.
