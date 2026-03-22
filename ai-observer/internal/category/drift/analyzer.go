@@ -118,13 +118,22 @@ func parseDriftResponse(resp provider.GenerateResponse) (*category.Insight, erro
 }
 
 // stripFences removes markdown code fences from LLM output.
+// Handles: ```json\n{...}\n```, ```\n{...}\n```, and bare JSON.
+// Also handles extra text after closing fences.
 func stripFences(s string) string {
 	s = strings.TrimSpace(s)
-	if strings.HasPrefix(s, "```json") {
-		s = strings.TrimPrefix(s, "```json")
-	} else if strings.HasPrefix(s, "```") {
-		s = strings.TrimPrefix(s, "```")
+	if !strings.HasPrefix(s, "```") {
+		return s
 	}
-	s = strings.TrimSuffix(s, "```")
+	// Find end of opening fence line
+	idx := strings.Index(s, "\n")
+	if idx == -1 {
+		return s
+	}
+	s = s[idx+1:]
+	// Find closing fence
+	if end := strings.LastIndex(s, "```"); end != -1 {
+		s = s[:end]
+	}
 	return strings.TrimSpace(s)
 }

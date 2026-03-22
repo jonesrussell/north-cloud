@@ -180,7 +180,7 @@ func (m *mockHistoryRepository) Create(ctx context.Context, history *domain.Clas
 func TestDatabaseAdapter_SaveClassificationHistoryBatch_EmptyList(t *testing.T) {
 	logger := newMockLoggerWithCalls()
 	repo := &mockHistoryRepository{}
-	adapter := NewDatabaseAdapterWithRepository(repo, logger)
+	adapter := NewDatabaseAdapterWithLogger(repo, logger)
 
 	err := adapter.SaveClassificationHistoryBatch(context.Background(), []*domain.ClassificationHistory{})
 
@@ -200,7 +200,7 @@ func TestDatabaseAdapter_SaveClassificationHistoryBatch_AllSuccess(t *testing.T)
 			return nil
 		},
 	}
-	adapter := NewDatabaseAdapterWithRepository(repo, logger)
+	adapter := NewDatabaseAdapterWithLogger(repo, logger)
 
 	histories := []*domain.ClassificationHistory{
 		{ContentID: "test-1", ContentURL: "https://example.com/1"},
@@ -230,7 +230,7 @@ func TestDatabaseAdapter_SaveClassificationHistoryBatch_AllFail(t *testing.T) {
 			return testError
 		},
 	}
-	adapter := NewDatabaseAdapterWithRepository(repo, logger)
+	adapter := NewDatabaseAdapterWithLogger(repo, logger)
 
 	histories := []*domain.ClassificationHistory{
 		{ContentID: "test-1", ContentURL: "https://example.com/1"},
@@ -288,7 +288,7 @@ func TestDatabaseAdapter_SaveClassificationHistoryBatch_PartialFail(t *testing.T
 			return nil
 		},
 	}
-	adapter := NewDatabaseAdapterWithRepository(repo, logger)
+	adapter := NewDatabaseAdapterWithLogger(repo, logger)
 
 	histories := []*domain.ClassificationHistory{
 		{ContentID: "test-1", ContentURL: "https://example.com/1"},
@@ -356,7 +356,7 @@ func TestDatabaseAdapter_SaveClassificationHistoryBatch_NoLogger(t *testing.T) {
 			return errors.New("database error")
 		},
 	}
-	adapter := NewDatabaseAdapterWithRepository(repo, nil) // No logger
+	adapter := NewDatabaseAdapterWithLogger(repo, nil) // No logger
 
 	histories := []*domain.ClassificationHistory{
 		{ContentID: "test-1", ContentURL: "https://example.com/1"},
@@ -378,7 +378,7 @@ func TestDatabaseAdapter_SaveClassificationHistoryBatch_ErrorLoggingIncludesCont
 			return testError
 		},
 	}
-	adapter := NewDatabaseAdapterWithRepository(repo, logger)
+	adapter := NewDatabaseAdapterWithLogger(repo, logger)
 
 	histories := []*domain.ClassificationHistory{
 		{ContentID: "test-content-id", ContentURL: "https://example.com/article"},
@@ -416,7 +416,7 @@ func TestDatabaseAdapter_SaveClassificationHistoryBatch_ErrorLoggingTruncatesLon
 			return testError
 		},
 	}
-	adapter := NewDatabaseAdapterWithRepository(repo, logger)
+	adapter := NewDatabaseAdapterWithLogger(repo, logger)
 
 	// Create a very long URL
 	longURL := make([]byte, 500)

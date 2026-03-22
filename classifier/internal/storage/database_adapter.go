@@ -41,14 +41,6 @@ func NewDatabaseAdapterWithLogger(historyRepo HistoryRepository, logger infralog
 	}
 }
 
-// NewDatabaseAdapterWithRepository creates a new database adapter with a custom repository (for testing)
-func NewDatabaseAdapterWithRepository(historyRepo HistoryRepository, logger infralogger.Logger) *DatabaseAdapter {
-	return &DatabaseAdapter{
-		historyRepo: historyRepo,
-		logger:      logger,
-	}
-}
-
 // SaveClassificationHistory saves a single classification result to history
 func (d *DatabaseAdapter) SaveClassificationHistory(ctx context.Context, history *domain.ClassificationHistory) error {
 	return d.historyRepo.Create(ctx, history)
