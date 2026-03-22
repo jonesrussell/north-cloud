@@ -1,13 +1,13 @@
 # Publisher
 
-Multi-layer routing hub that publishes classified articles from Elasticsearch to Redis Pub/Sub channels.
+Multi-layer routing hub that publishes classified content from Elasticsearch to Redis Pub/Sub channels.
 
 ## Overview
 
 The publisher is a two-process Go service:
 
 - **API server** (`publisher api`) — REST API for managing sources, channels, routes, and viewing publish history.
-- **Router worker** (`publisher router`) — Background process that polls all `*_classified_content` Elasticsearch indexes every 30 seconds, runs each article through 8 routing domains in sequence, and publishes matching articles to Redis Pub/Sub channels.
+- **Router worker** (`publisher router`) — Background process that polls all `*_classified_content` Elasticsearch indexes every 30 seconds, runs each content item through 11 routing domains in sequence, and publishes matches to Redis Pub/Sub channels.
 
 Both processes share a PostgreSQL database for routing configuration and deduplication tracking. They can run together (`publisher both`, the default) or as separate processes.
 
@@ -18,10 +18,10 @@ Both processes share a PostgreSQL database for routing configuration and dedupli
    Publisher Router (polls every 30s)
         |
         v
-  8-Domain Routing Pipeline
+  11-Domain Routing Pipeline
         |
         v
-  Redis Pub/Sub channels (articles:*, crime:*, mining:*, ...)
+  Redis Pub/Sub channels (content:*, crime:*, mining:*, ...)
         |
    +----+----+----+
    v    v    v    v
@@ -30,11 +30,11 @@ Consumer A  B  C  N
 
 ## Features
 
-- 8-layer routing: automatic topic channels, custom DB-backed channels, crime classification, geographic location, mining, entertainment, Anishinaabe, Coforge
+- 11-domain routing: topic channels, DB-backed custom channels, crime, location, mining, entertainment, indigenous, coforge, recipe, job, and RFP routing
 - Database-backed routing configuration (PostgreSQL) — add or modify routes without restarting the service
 - Per-channel deduplication via the `publish_history` table — an article is never published to the same channel twice
 - Quality filtering: each route defines a minimum quality score threshold (0-100)
-- Content type filtering: only `content_type: "article"` documents are routed (pages and listings are excluded)
+- Content type filtering: only `article`, `recipe`, `job`, and `rfp` content types are routed
 - Preview endpoint: see which articles would match a route before publishing
 - Real-time publishing statistics and history
 - Persistent cursor using `search_after` — safe to restart mid-stream
@@ -74,26 +74,29 @@ task run:router  # router only
 
 ## Routing Layers
 
-Every article is run through all 8 routing domains in sequence. An article can match zero or more domains and is published to every matched channel. Deduplication prevents re-publishing to any channel the article has already been sent to.
+Every content item is run through all routing domains in sequence. An item can match zero or more domains and is published to every matched channel. Deduplication prevents re-publishing to any channel the item has already been sent to.
 
 | Layer | Domain | Type | Channel Pattern |
 |-------|--------|------|----------------|
-| 1 | Topic | Automatic | `articles:{topic}` |
-| 2 | DB Channels | DB-backed | Administrator-defined (e.g. `articles:crime`) |
+| 1 | Topic | Automatic | `content:{topic}` |
+| 2 | DB Channels | DB-backed | Administrator-defined (e.g. `content:crime`) |
 | 3 | Crime Classification | Automatic | `crime:homepage`, `crime:category:{slug}`, `crime:courts`, `crime:context` |
 | 4 | Location | Automatic | `{prefix}:local:{city}`, `{prefix}:province:{code}`, `{prefix}:canada`, `{prefix}:international` |
-| 5 | Mining Classification | Automatic | `articles:mining`, `mining:core`, `mining:commodity:{slug}`, etc. |
+| 5 | Mining Classification | Automatic | `content:mining`, `mining:core`, `mining:commodity:{slug}`, etc. |
 | 6 | Entertainment Classification | Automatic | `entertainment:homepage`, `entertainment:category:{slug}`, `entertainment:peripheral` |
-| 7 | Anishinaabe Classification | Automatic | `articles:anishinaabe`, `anishinaabe:category:{slug}` |
+| 7 | Indigenous Classification | Automatic | `content:indigenous`, `indigenous:category:{slug}`, `indigenous:region:{slug}` |
 | 8 | Coforge Classification | Automatic | `coforge:core`, `coforge:audience:{slug}`, `coforge:topic:{slug}`, etc. |
+| 9 | Recipe Extraction | Automatic | `content:recipes`, `recipes:category:{slug}`, `recipes:cuisine:{slug}`, etc. |
+| 10 | Job Extraction | Automatic | `content:jobs`, `jobs:industry:{slug}`, `jobs:type:{slug}`, etc. |
+| 11 | RFP Extraction | Automatic | `content:rfps`, `rfp:country:{code}`, `rfp:province:{code}`, etc. |
 
 ### Layer 1 — Topic (automatic)
 
-For each topic tag on an article, publishes to `articles:{topic}`. Topics handled by a dedicated ML layer are excluded from Layer 1 to prevent bypassing their relevance filters. Currently excluded: `mining` (Layer 5), `anishinaabe` (Layer 7), `coforge` (Layer 8).
+For each topic tag on a content item, publishes to `content:{topic}`. Topics handled by dedicated routing domains are excluded from Layer 1 to prevent bypassing their relevance filters. Currently excluded: `mining`, `indigenous`, `coforge`, `recipe`, `jobs`, and `rfp`.
 
 ### Layer 2 — DB Channels (database-backed)
 
-Optional channels stored in the publisher's `channels` PostgreSQL table. Each channel can define include/exclude topic filters, a minimum quality score, and content type filters. Useful for consumer-specific aggregations (for example, a single `articles:crime` channel that consolidates all five crime sub-category topics).
+Optional channels stored in the publisher's `channels` PostgreSQL table. Each channel can define include/exclude topic filters, a minimum quality score, and content type filters. These are consumer-specific aggregation or management channels; they are not required for the automatic Layer 1 topic streams to work.
 
 ### Layer 3 — Crime Classification (automatic)
 
@@ -111,13 +114,17 @@ Routes articles that the mining hybrid classifier flagged. Articles with `mining
 
 Routes articles that the entertainment hybrid classifier flagged. Articles with `entertainment.relevance=not_entertainment` or no entertainment object are skipped. Generates homepage, per-category, and peripheral channels.
 
-### Layer 7 — Anishinaabe Classification (automatic)
+### Layer 7 — Indigenous Classification (automatic)
 
-Routes articles that the Anishinaabe/Indigenous ML classifier flagged. Articles with `anishinaabe.relevance=not_anishinaabe` or no anishinaabe object are skipped. Generates a catch-all channel and per-category channels.
+Routes content that the Indigenous classifier flagged. Content with `indigenous.relevance=not_indigenous`, no `indigenous` object, or confidence below the routing threshold is skipped. Generates a catch-all channel, per-category channels, and per-region channels.
 
 ### Layer 8 — Coforge Classification (automatic)
 
-Routes articles that the Coforge ML classifier flagged. This is a product-specific domain with no catch-all `articles:coforge` channel. Articles with `coforge.relevance=not_relevant` or no coforge object are skipped.
+Routes articles that the Coforge ML classifier flagged. This is a product-specific domain with no catch-all `content:coforge` channel. Articles with `coforge.relevance=not_relevant` or no coforge object are skipped.
+
+### Layers 9–11 — Recipe, Job, and RFP Routing
+
+These domains route non-article structured content after classification or extraction. They emit automatic `content:recipes`, `content:jobs`, and `content:rfps` catch-all channels plus structured sub-channels.
 
 ## Redis Channel Reference
 
@@ -127,21 +134,21 @@ All channel names are consumer-agnostic — they describe content, not the consu
 
 | Channel | Trigger |
 |---------|---------|
-| `articles:news` | Article tagged `news` |
-| `articles:technology` | Article tagged `technology` |
-| `articles:politics` | Article tagged `politics` |
-| `articles:violent_crime` | Article tagged `violent_crime` |
-| `articles:property_crime` | Article tagged `property_crime` |
-| `articles:drug_crime` | Article tagged `drug_crime` |
-| `articles:organized_crime` | Article tagged `organized_crime` |
-| `articles:criminal_justice` | Article tagged `criminal_justice` |
-| `articles:{any_topic}` | Article tagged with that topic (except `mining`, `anishinaabe`, `coforge`) |
+| `content:news` | Content tagged `news` |
+| `content:technology` | Content tagged `technology` |
+| `content:politics` | Content tagged `politics` |
+| `content:violent_crime` | Content tagged `violent_crime` |
+| `content:property_crime` | Content tagged `property_crime` |
+| `content:drug_crime` | Content tagged `drug_crime` |
+| `content:organized_crime` | Content tagged `organized_crime` |
+| `content:criminal_justice` | Content tagged `criminal_justice` |
+| `content:{any_topic}` | Content tagged with that topic (except topics handled by dedicated routing domains) |
 
 ### Layer 2 — Custom DB Channels
 
 | Channel | Typical use |
 |---------|------------|
-| `articles:crime` | Aggregation channel for all crime sub-category articles |
+| `content:crime` | Aggregation channel for all crime sub-category content |
 | (any name) | Consumer-specific or aggregation channel |
 
 ### Layer 3 — Crime Classification Channels
@@ -172,7 +179,7 @@ Examples: `crime:local:thunder-bay`, `crime:province:on`, `crime:canada`, `enter
 
 | Channel | Trigger |
 |---------|---------|
-| `articles:mining` | Any mining article (`core_mining` or `peripheral_mining`) |
+| `content:mining` | Any mining article (`core_mining` or `peripheral_mining`) |
 | `mining:core` | `core_mining` relevance |
 | `mining:peripheral` | `peripheral_mining` relevance |
 | `mining:commodity:{slug}` | One per commodity in `mining.commodities` (underscores to hyphens) |
@@ -192,14 +199,15 @@ Examples: `mining:commodity:gold`, `mining:commodity:iron-ore`, `mining:stage:ex
 
 Examples: `entertainment:category:film`, `entertainment:category:music`, `entertainment:category:gaming`
 
-### Layer 7 — Anishinaabe Channels
+### Layer 7 — Indigenous Channels
 
 | Channel | Trigger |
 |---------|---------|
-| `articles:anishinaabe` | Any Anishinaabe article (`core_anishinaabe` or `peripheral_anishinaabe`) |
-| `anishinaabe:category:{slug}` | One per entry in `anishinaabe.categories` |
+| `content:indigenous` | Any Indigenous content (`core_indigenous` or `peripheral_indigenous`) above the routing threshold |
+| `indigenous:category:{slug}` | One per entry in `indigenous.categories` |
+| `indigenous:region:{slug}` | When `indigenous.region` normalizes to a known region slug |
 
-Examples: `anishinaabe:category:culture`, `anishinaabe:category:language`, `anishinaabe:category:land-rights`
+Examples: `indigenous:category:culture`, `indigenous:category:language`, `indigenous:region:canada`
 
 ### Layer 8 — Coforge Channels
 
@@ -213,6 +221,15 @@ Examples: `anishinaabe:category:culture`, `anishinaabe:category:language`, `anis
 
 Examples: `coforge:audience:developers`, `coforge:topic:cloud`, `coforge:topic:digital-transformation`, `coforge:industry:banking`
 
+### Layers 9–11 — Recipe, Job, and RFP Channels
+
+| Channel | Trigger |
+|---------|---------|
+| `content:recipes` | Any extracted recipe content |
+| `content:jobs` | Any extracted job content |
+| `content:rfps` | Any extracted RFP content |
+| `recipes:*`, `jobs:*`, `rfp:*` | Structured sub-channels derived from extracted metadata |
+
 ## API Reference
 
 All `/api/v1/*` routes require JWT authentication (`Authorization: Bearer <token>`). Health endpoints are public.
@@ -220,24 +237,19 @@ All `/api/v1/*` routes require JWT authentication (`Authorization: Bearer <token
 | Method | Path | Description |
 |--------|------|-------------|
 | `GET` | `/health` | Health check |
-| `GET` | `/api/v1/sources` | List sources |
-| `POST` | `/api/v1/sources` | Create source |
-| `PUT` | `/api/v1/sources/:id` | Update source |
-| `DELETE` | `/api/v1/sources/:id` | Delete source |
 | `GET` | `/api/v1/channels` | List channels |
 | `POST` | `/api/v1/channels` | Create channel |
+| `GET` | `/api/v1/channels/:id` | Get one channel |
 | `PUT` | `/api/v1/channels/:id` | Update channel |
 | `DELETE` | `/api/v1/channels/:id` | Delete channel |
-| `GET` | `/api/v1/channels/:id/test-publish` | Test publish to channel |
-| `GET` | `/api/v1/routes` | List routes (with joined source/channel names) |
-| `POST` | `/api/v1/routes` | Create route |
-| `PUT` | `/api/v1/routes/:id` | Update route |
-| `DELETE` | `/api/v1/routes/:id` | Delete route |
-| `GET` | `/api/v1/routes/preview` | Preview articles matching routes (no publishing) |
+| `GET` | `/api/v1/channels/:id/preview` | Preview channel rules and matching content |
 | `GET` | `/api/v1/publish-history` | Paginated publish history |
 | `GET` | `/api/v1/stats/overview` | Publishing statistics |
 | `GET` | `/api/v1/stats/channels` | Per-channel statistics |
-| `GET` | `/api/v1/articles/recent` | Recently published articles |
+| `GET` | `/api/v1/stats/channels/active` | Active automatic + DB channel statistics |
+| `GET` | `/api/v1/content/recent` | Recently published content |
+| `GET` | `/api/v1/topics` | Known topic list for automatic routing |
+| `GET` | `/api/v1/indexes` | Discovered classified indexes |
 
 ## Message Format
 
@@ -248,7 +260,7 @@ Articles are published as JSON to Redis Pub/Sub. The `publisher` envelope is add
   "publisher": {
     "channel_id": "uuid-or-null",
     "published_at": "2026-01-15T14:22:00Z",
-    "channel": "articles:violent_crime"
+    "channel": "content:violent_crime"
   },
   "id": "es-document-id",
   "title": "Article Title",
@@ -275,7 +287,7 @@ Articles are published as JSON to Redis Pub/Sub. The `publisher` envelope is add
   "category_pages": ["violent-crime", "crime"],
   "review_required": false,
   "mining": null,
-  "anishinaabe": null,
+  "indigenous": null,
   "coforge": null,
   "entertainment_relevance": "",
   "entertainment_categories": [],
@@ -347,16 +359,19 @@ publisher/
 ├── cmd_router.go        # Background router worker
 ├── internal/
 │   ├── api/             # HTTP handlers (Gin)
-│   ├── router/          # 8-domain routing logic
-│   │   ├── service.go           # Main routing loop, fetchArticles, publishToChannel
+│   ├── router/          # 11-domain routing logic
+│   │   ├── service.go           # Main routing loop, fetchContentItems, publishToChannel
 │   │   ├── domain_topic.go      # Layer 1: automatic topic channels
 │   │   ├── domain_dbchannel.go  # Layer 2: DB-backed custom channels
 │   │   ├── crime.go             # Layer 3: crime classification channels
 │   │   ├── location.go          # Layer 4: geographic location channels
 │   │   ├── mining.go            # Layer 5: mining classification channels
 │   │   ├── entertainment.go     # Layer 6: entertainment classification channels
-│   │   ├── anishinaabe.go       # Layer 7: Anishinaabe classification channels
-│   │   └── domain_coforge.go    # Layer 8: Coforge classification channels
+│   │   ├── indigenous.go        # Layer 7: Indigenous classification channels
+│   │   ├── domain_coforge.go    # Layer 8: Coforge classification channels
+│   │   ├── domain_recipe.go     # Layer 9: Recipe extraction channels
+│   │   ├── domain_job.go        # Layer 10: Job extraction channels
+│   │   └── domain_rfp.go        # Layer 11: RFP extraction channels
 │   ├── database/        # PostgreSQL repositories
 │   ├── discovery/       # Elasticsearch index discovery
 │   ├── models/          # Source, Channel, Route, PublishHistory
@@ -394,13 +409,13 @@ task fmt
 
 **Position in pipeline**: The publisher is the final stage. It reads from `{source}_classified_content` Elasticsearch indexes (written by the classifier) and publishes to Redis Pub/Sub channels.
 
-**Consumers**: Any process that subscribes to Redis Pub/Sub channels will receive articles. The publisher does not track or limit who subscribes.
+**Consumers**: Any process that subscribes to Redis Pub/Sub channels will receive content. The publisher does not track or limit who subscribes.
 
 ```php
 // Laravel example
-Redis::subscribe(['articles:crime', 'articles:news'], function ($message) {
-    $article = json_decode($message, true);
-    // Process article...
+Redis::subscribe(['content:crime', 'content:news'], function ($message) {
+    $content = json_decode($message, true);
+    // Process content...
 });
 ```
 
@@ -408,8 +423,8 @@ See [docs/CONSUMER_GUIDE.md](./docs/CONSUMER_GUIDE.md) for complete integration 
 
 ## Troubleshooting
 
-**No articles published**:
-1. Verify routes are enabled: `curl http://localhost:8070/api/v1/routes`
+**No content published**:
+1. Verify publisher activity: `curl http://localhost:8070/api/v1/stats/channels/active`
 2. Check that Elasticsearch indexes exist: `curl http://localhost:9200/_cat/indices?v | grep classified_content`
 3. Check router logs: `docker compose -f docker-compose.base.yml -f docker-compose.dev.yml logs -f publisher`
 4. Verify Redis is reachable: `redis-cli PING`
@@ -417,7 +432,7 @@ See [docs/CONSUMER_GUIDE.md](./docs/CONSUMER_GUIDE.md) for complete integration 
 **Messages not received by consumer**:
 1. Confirm the consumer subscribes before the publisher publishes (Pub/Sub has no queue; missed messages are lost)
 2. Check channel name matches exactly: `curl http://localhost:8070/api/v1/publish-history?limit=10`
-3. To test: `redis-cli SUBSCRIBE articles:crime`
+3. To test: `redis-cli SUBSCRIBE content:crime`
 
 **Articles published but missing ML-based channels** (e.g., no `mining:*` channels):
 - Check that the relevant ML sidecar is running and its `*_ENABLED` env flag is set

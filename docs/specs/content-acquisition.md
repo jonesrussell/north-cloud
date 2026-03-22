@@ -1,6 +1,6 @@
 # Content Acquisition Specification
 
-> Last verified: 2026-03-22 (layer hygiene: SourceCandidate extracted to domain)
+> Last verified: 2026-03-22 (fix test lint: testpackage, nilnil)
 
 Covers the crawler subsystem: web content fetching, job scheduling, frontier URL management, and raw content indexing.
 

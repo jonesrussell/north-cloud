@@ -118,6 +118,7 @@ Layer 7 (IndigenousDomain):
   If indigenous.relevance != "not_indigenous":
     → content:indigenous
     For each category → indigenous:category:{slug}
+    If region is present → indigenous:region:{slug}
 
 Layer 8 (CoforgeDomain):
   If coforge.relevance != "not_relevant":
@@ -128,7 +129,7 @@ Layer 8 (CoforgeDomain):
 
 Layer 9 (RecipeDomain):
   If content_type == "recipe" and recipe result present:
-    → content:recipe
+    → content:recipes
 
 Layer 10 (JobDomain):
   If content_type == "job" and job result present:

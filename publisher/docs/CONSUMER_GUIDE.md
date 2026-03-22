@@ -8,7 +8,7 @@ This guide explains how to build a service that consumes content from the Publis
 2. [Crime-only consumers (e.g. StreetCode)](#crime-only-consumers-eg-streetcode)
 3. [Mining-only consumers (e.g. OreWire)](#mining-only-consumers-eg-orewire)
 4. [Entertainment consumers (e.g. movies-of-war)](#entertainment-consumers-eg-movies-of-war)
-5. [Anishinaabe consumers (e.g. Diidjaaheer)](#anishinaabe-consumers-eg-diidjaaheer)
+5. [Indigenous consumers (e.g. Diidjaaheer)](#indigenous-consumers-eg-diidjaaheer)
 6. [Coforge consumers](#coforge-consumers)
 7. [Prerequisites](#prerequisites)
 8. [Quick Start](#quick-start)
@@ -71,12 +71,13 @@ Message payload includes `entertainment_relevance`, `entertainment_categories`, 
 
 **Note:** The publisher does **not** emit an `content:war` (or `content:entertainment`) channel from any automatic layer. To receive entertainment content, subscribe to the Layer 6 channels above. If you want a single aggregate channel (e.g. `content:war`), create a Layer 2 channel in the publisher DB via the API and configure its rules accordingly.
 
-### Anishinaabe consumers (e.g. Diidjaaheer)
+### Indigenous consumers (e.g. Diidjaaheer)
 
 Subscribe to **Layer 7 channels** for complete coverage:
 
-- **Catch-all**: `content:anishinaabe` (all core + peripheral Anishinaabe-classified content)
-- **Category** (one per classification category): `anishinaabe:category:culture`, `anishinaabe:category:language`, `anishinaabe:category:governance`, `anishinaabe:category:land-rights`, `anishinaabe:category:education`
+- **Catch-all**: `content:indigenous` (all core + peripheral Indigenous-classified content above the routing threshold)
+- **Category** (one per classification category): `indigenous:category:culture`, `indigenous:category:language`, `indigenous:category:land-rights`, `indigenous:category:education`
+- **Region** (when present): `indigenous:region:canada`, `indigenous:region:usa`, etc.
 
 Subscribe to all of the above for full coverage; consumer-side deduplication (by content `id`) prevents duplicates across channels. Do **not** subscribe to `content:default` — the publisher does not emit that channel from any automatic layer.
 

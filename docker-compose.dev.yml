@@ -291,6 +291,7 @@ services:
       COFORGE_ML_SERVICE_URL: "http://coforge-ml:8000"
       ENTERTAINMENT_ENABLED: "${ENTERTAINMENT_ENABLED:-true}"
       ENTERTAINMENT_ML_SERVICE_URL: "http://entertainment-ml:8000"
+      # Keep disabled by default until the indigenous ML model has been validated locally.
       INDIGENOUS_ENABLED: "${INDIGENOUS_ENABLED:-false}"
       INDIGENOUS_ML_SERVICE_URL: "http://indigenous-ml:8000"
       RECIPE_ENABLED: "${RECIPE_ENABLED:-true}"

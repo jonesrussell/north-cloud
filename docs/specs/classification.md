@@ -226,6 +226,8 @@ type DrillResult struct {
 - `ANTHROPIC_API_KEY` — required when LLM fallback is enabled
 - `ANTHROPIC_MODEL` (default: `claude-haiku-4-5`) — model for drill extraction
 
+`INDIGENOUS_ENABLED` defaults to `false` in the compose files. This is intentional: the sidecar is wired and supported, but should stay feature-flagged off until its model has been validated for the target environment.
+
 ## Drill Extraction Pipeline
 
 When `DRILL_EXTRACTION_ENABLED=true` and mining classification is enabled, `MiningClassifier.Classify()` runs drill extraction on articles classified as `core_mining` or `peripheral_mining`.
