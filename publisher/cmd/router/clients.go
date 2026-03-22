@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"log"
 
 	"github.com/elastic/go-elasticsearch/v8"
 	esclient "github.com/jonesrussell/north-cloud/infrastructure/elasticsearch"
@@ -11,35 +10,23 @@ import (
 )
 
 // initElasticsearchClient initializes and tests the Elasticsearch client with retry logic
-func initElasticsearchClient(esURL string) *elasticsearch.Client {
+func initElasticsearchClient(esURL string, appLogger logger.Logger) *elasticsearch.Client {
 	ctx := context.Background()
-
-	// Create a simple logger for connection initialization
-	// Using console format and info level for startup messages
-	loggerInstance, err := logger.New(logger.Config{
-		Level:  "info",
-		Format: "json",
-	})
-	if err != nil {
-		// Fallback to standard log if logger creation fails
-		log.Printf("Failed to create logger, using standard log: %v", err)
-		loggerInstance = nil
-	}
 
 	cfg := esclient.Config{
 		URL: esURL,
 	}
 
-	esClient, err := esclient.NewClient(ctx, cfg, loggerInstance)
+	esClient, err := esclient.NewClient(ctx, cfg, appLogger)
 	if err != nil {
-		log.Fatalf("Failed to create Elasticsearch client: %v", err)
+		appLogger.Fatal("Failed to create Elasticsearch client", logger.Error(err))
 	}
 
 	return esClient
 }
 
 // initRedisClient initializes and tests the Redis client
-func initRedisClient(addr, password string) *redis.Client {
+func initRedisClient(addr, password string, appLogger logger.Logger) *redis.Client {
 	redisClient := redis.NewClient(&redis.Options{
 		Addr:     addr,
 		Password: password,
@@ -49,9 +36,9 @@ func initRedisClient(addr, password string) *redis.Client {
 	// Test Redis connection
 	pingCtx := context.Background()
 	if pingErr := redisClient.Ping(pingCtx).Err(); pingErr != nil {
-		log.Fatalf("Failed to connect to Redis: %v", pingErr)
+		appLogger.Fatal("Failed to connect to Redis", logger.Error(pingErr))
 	}
-	log.Println("Redis connection established")
+	appLogger.Info("Redis connection established")
 
 	return redisClient
 }
