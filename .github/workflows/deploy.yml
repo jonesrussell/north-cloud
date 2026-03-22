@@ -212,6 +212,8 @@ jobs:
             find ./infrastructure -type f \( -name "*.yml" -o -name "*.yaml" -o -name "*.conf" -o -name "*.alloy" -o -name "*.json" \) -delete 2>/dev/null || true
             tar -xzf /tmp/deploy-files.tar.gz
             rm /tmp/deploy-files.tar.gz
+            # Fix Squid log ownership — proxy user (uid 13) needs write access (#498)
+            chown -R 13:13 squid/logs/ 2>/dev/null || true
             chmod +x scripts/deploy.sh 2>/dev/null || chmod +x deploy.sh 2>/dev/null || true
             [ -f scripts/deploy.sh ] && mv scripts/deploy.sh deploy.sh
           '

@@ -8,6 +8,6 @@ import (
 // mapping as a contract Mapping. Services that write to or read from
 // *_classified_content indexes should test against this mapping.
 func ClassifiedContentMapping() Mapping {
-	full := mappings.GetClassifiedContentMapping(1, 1)
+	full := mappings.GetClassifiedContentMapping(1, 0)
 	return extractProperties(full)
 }

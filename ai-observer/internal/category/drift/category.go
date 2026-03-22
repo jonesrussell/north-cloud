@@ -131,10 +131,22 @@ func (c *Category) initBaseline(ctx context.Context) ([]category.Event, error) {
 	if baselineErr != nil {
 		return nil, fmt.Errorf("compute initial baseline: %w", baselineErr)
 	}
-	if newBaseline != nil {
-		if storeErr := c.store.StoreBaseline(ctx, newBaseline); storeErr != nil {
-			return nil, fmt.Errorf("store initial baseline: %w", storeErr)
+	if newBaseline == nil {
+		if c.log != nil {
+			c.log.Warn("Baseline collection returned nil — no classified docs in window",
+				infralogger.Int("window_days", c.baselineDays),
+			)
 		}
+		return nil, nil
+	}
+	if storeErr := c.store.StoreBaseline(ctx, newBaseline); storeErr != nil {
+		return nil, fmt.Errorf("store initial baseline: %w", storeErr)
+	}
+	if c.log != nil {
+		c.log.Info("Baseline stored",
+			infralogger.Int("sample_count", newBaseline.SampleCount),
+			infralogger.Int("window_days", newBaseline.WindowDays),
+		)
 	}
 	return nil, nil
 }
