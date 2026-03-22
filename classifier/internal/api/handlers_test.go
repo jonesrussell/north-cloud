@@ -10,15 +10,12 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/jmoiron/sqlx"
 	"github.com/jonesrussell/north-cloud/classifier/internal/classifier"
 	"github.com/jonesrussell/north-cloud/classifier/internal/config"
-	"github.com/jonesrussell/north-cloud/classifier/internal/database"
 	"github.com/jonesrussell/north-cloud/classifier/internal/domain"
 	"github.com/jonesrussell/north-cloud/classifier/internal/processor"
 	"github.com/jonesrussell/north-cloud/classifier/internal/testhelpers"
 	infralogger "github.com/jonesrussell/north-cloud/infrastructure/logger"
-	_ "github.com/mattn/go-sqlite3"
 )
 
 // mockLogger implements Logger for testing
@@ -31,38 +28,6 @@ func (m *mockLogger) Error(msg string, fields ...infralogger.Field)       {}
 func (m *mockLogger) Fatal(msg string, fields ...infralogger.Field)       {}
 func (m *mockLogger) With(fields ...infralogger.Field) infralogger.Logger { return m }
 func (m *mockLogger) Sync() error                                         { return nil }
-
-// setupTestSourceReputationRepository creates an in-memory SQLite repository for testing
-func setupTestSourceReputationRepository() (*database.SourceReputationRepository, error) {
-	// Create in-memory SQLite database
-	db, err := sqlx.Connect("sqlite3", ":memory:")
-	if err != nil {
-		return nil, err
-	}
-
-	// Create source_reputation table
-	createTableSQL := `
-		CREATE TABLE IF NOT EXISTS source_reputation (
-			id INTEGER PRIMARY KEY AUTOINCREMENT,
-			source_name TEXT UNIQUE NOT NULL,
-			source_url TEXT,
-			category TEXT NOT NULL DEFAULT 'unknown',
-			reputation_score INTEGER NOT NULL DEFAULT 50,
-			total_articles INTEGER NOT NULL DEFAULT 0,
-			average_quality_score REAL NOT NULL DEFAULT 0.0,
-			spam_count INTEGER NOT NULL DEFAULT 0,
-			last_classified_at TIMESTAMP,
-			created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-			updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
-		)
-	`
-	_, err = db.Exec(createTableSQL)
-	if err != nil {
-		return nil, err
-	}
-
-	return database.NewSourceReputationRepository(db), nil
-}
 
 // setupTestHandler creates a test handler with all dependencies
 func setupTestHandler() *Handler {
@@ -113,18 +78,8 @@ func setupTestHandler() *Handler {
 	sourceRepScorer := classifier.NewSourceReputationScorer(logger, sourceRepDB)
 	topicClassifier := classifier.NewTopicClassifier(logger, rules, 5)
 
-	// Create test repository for API handlers (in-memory SQLite)
-	sourceRepRepo, err := setupTestSourceReputationRepository()
-	if err != nil {
-		// If SQLite is not available, return handler with nil (some tests may not need it)
-		// This allows tests that don't use sourceRepo to still pass
-		sourceRepRepo = nil
-	}
-
-	// For tests, pass nil for rulesRepo and classificationHistoryRepo as they're not used in most test cases
-	// If a test needs them, it should create mock repositories
 	testCfg := &config.Config{}
-	return NewHandler(classifierInstance, batchProcessor, sourceRepScorer, topicClassifier, nil, sourceRepRepo, nil, nil, testCfg, logger)
+	return NewHandler(classifierInstance, batchProcessor, sourceRepScorer, topicClassifier, nil, sourceRepDB, nil, nil, testCfg, logger)
 }
 
 // setupRouter creates a test router with routes

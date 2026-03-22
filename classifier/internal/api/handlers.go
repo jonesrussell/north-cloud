@@ -11,7 +11,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/jonesrussell/north-cloud/classifier/internal/classifier"
 	"github.com/jonesrussell/north-cloud/classifier/internal/config"
-	"github.com/jonesrussell/north-cloud/classifier/internal/database"
 	"github.com/jonesrussell/north-cloud/classifier/internal/domain"
 	"github.com/jonesrussell/north-cloud/classifier/internal/mlhealth"
 	"github.com/jonesrussell/north-cloud/classifier/internal/processor"
@@ -34,9 +33,9 @@ type Handler struct {
 	batchProcessor            *processor.BatchProcessor
 	sourceRepScorer           *classifier.SourceReputationScorer
 	topicClassifier           *classifier.TopicClassifier
-	rulesRepo                 *database.RulesRepository
-	sourceReputationRepo      *database.SourceReputationRepository
-	classificationHistoryRepo *database.ClassificationHistoryRepository
+	rulesRepo                 domain.RulesRepository
+	sourceReputationRepo      domain.SourceReputationRepository
+	classificationHistoryRepo domain.ClassificationHistoryRepository
 	storage                   *storage.ElasticsearchStorage
 	config                    *config.Config
 	logger                    infralogger.Logger
@@ -48,9 +47,9 @@ func NewHandler(
 	batchProcessor *processor.BatchProcessor,
 	sourceRepScorer *classifier.SourceReputationScorer,
 	topicClassifier *classifier.TopicClassifier,
-	rulesRepo *database.RulesRepository,
-	sourceReputationRepo *database.SourceReputationRepository,
-	classificationHistoryRepo *database.ClassificationHistoryRepository,
+	rulesRepo domain.RulesRepository,
+	sourceReputationRepo domain.SourceReputationRepository,
+	classificationHistoryRepo domain.ClassificationHistoryRepository,
 	elasticStorage *storage.ElasticsearchStorage,
 	cfg *config.Config,
 	logger infralogger.Logger,
@@ -500,7 +499,7 @@ func (h *Handler) ListSources(c *gin.Context) {
 }
 
 // parseSourceListQuery parses pagination, sort, and filter params for ListSources.
-func parseSourceListQuery(c *gin.Context) database.SourceReputationListFilter {
+func parseSourceListQuery(c *gin.Context) domain.SourceReputationListFilter {
 	page := 1
 	if v := c.Query("page"); v != "" {
 		if p, err := strconv.Atoi(v); err == nil && p > 0 {
@@ -532,7 +531,7 @@ func parseSourceListQuery(c *gin.Context) database.SourceReputationListFilter {
 	search := strings.TrimSpace(c.Query("search"))
 	category := strings.TrimSpace(c.Query("category"))
 
-	return database.SourceReputationListFilter{
+	return domain.SourceReputationListFilter{
 		Page:      page,
 		PageSize:  pageSize,
 		SortBy:    sortBy,

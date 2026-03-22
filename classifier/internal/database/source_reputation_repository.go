@@ -11,16 +11,6 @@ import (
 	"github.com/jonesrussell/north-cloud/classifier/internal/domain"
 )
 
-// SourceReputationListFilter holds pagination and filter params for List.
-type SourceReputationListFilter struct {
-	Page      int
-	PageSize  int
-	SortBy    string // reputation, category, total_articles, last_classified_at
-	SortOrder string // asc, desc
-	Search    string // ILIKE on source_name
-	Category  string // filter by category
-}
-
 const (
 	// Default reputation score (matches classifier.defaultReputationScore)
 	defaultReputationScore = 50
@@ -155,7 +145,7 @@ func (r *SourceReputationRepository) GetOrCreateSource(ctx context.Context, sour
 }
 
 // List retrieves sources with pagination, sorting, and filtering.
-func (r *SourceReputationRepository) List(ctx context.Context, filter SourceReputationListFilter) ([]*domain.SourceReputation, int, error) {
+func (r *SourceReputationRepository) List(ctx context.Context, filter domain.SourceReputationListFilter) ([]*domain.SourceReputation, int, error) {
 	offset := (filter.Page - 1) * filter.PageSize
 
 	whereClause, countArgs := buildListWhere(filter)
@@ -192,7 +182,7 @@ func (r *SourceReputationRepository) List(ctx context.Context, filter SourceRepu
 	return sources, total, nil
 }
 
-func buildListWhere(filter SourceReputationListFilter) (whereClause string, args []any) {
+func buildListWhere(filter domain.SourceReputationListFilter) (whereClause string, args []any) {
 	var clauses []string
 	args = make([]any, 0)
 	pos := 1
@@ -215,7 +205,7 @@ func buildListWhere(filter SourceReputationListFilter) (whereClause string, args
 	return
 }
 
-func buildListOrder(filter SourceReputationListFilter) string {
+func buildListOrder(filter domain.SourceReputationListFilter) string {
 	sortBy := filter.SortBy
 	if sortBy == "" {
 		sortBy = "reputation"

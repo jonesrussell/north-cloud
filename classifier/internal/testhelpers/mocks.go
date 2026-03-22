@@ -62,13 +62,27 @@ func (m *MockSourceReputationDB) GetOrCreateSource(_ context.Context, sourceName
 		cp := *source
 		return &cp, nil
 	}
+	const defaultReputationScore = 50
 	newSource := &domain.SourceReputation{
-		SourceName:    sourceName,
-		TotalArticles: 0,
+		SourceName:      sourceName,
+		ReputationScore: defaultReputationScore,
+		TotalArticles:   0,
 	}
 	m.sources[sourceName] = newSource
 	cp := *newSource
 	return &cp, nil
+}
+
+// List returns all sources matching the filter.
+func (m *MockSourceReputationDB) List(_ context.Context, _ domain.SourceReputationListFilter) ([]*domain.SourceReputation, int, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	result := make([]*domain.SourceReputation, 0, len(m.sources))
+	for _, s := range m.sources {
+		cp := *s
+		result = append(result, &cp)
+	}
+	return result, len(result), nil
 }
 
 // SetSource sets a source directly (for test setup).
