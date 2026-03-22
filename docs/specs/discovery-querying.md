@@ -1,6 +1,6 @@
 # Discovery & Querying Specification
 
-> Last verified: 2026-03-22 (add layer rules to service CLAUDE.md and .layers config)
+> Last verified: 2026-03-22 (fix classified_content contract replicas 1→0 for single-node cluster)
 
 Covers the search service (full-text queries) and index-manager (ES lifecycle, mappings, aggregations).
 

@@ -81,6 +81,17 @@ func (c *Category) Sample(ctx context.Context, window time.Duration) ([]category
 		return c.initBaseline(ctx)
 	}
 
+	// Refresh stale baselines to avoid false-positive drift alerts from natural shifts.
+	if c.isBaselineStale(baseline) {
+		if c.log != nil {
+			c.log.Info("Baseline stale, refreshing",
+				infralogger.String("computed_at", baseline.ComputedAt),
+				infralogger.Int("window_days", c.baselineDays),
+			)
+		}
+		return c.initBaseline(ctx)
+	}
+
 	signals := driftpkg.Evaluate(baseline, current, c.thresholds)
 
 	breached := countBreaches(signals)
@@ -105,15 +116,37 @@ func (c *Category) Sample(ctx context.Context, window time.Duration) ([]category
 	}, nil
 }
 
+// isBaselineStale returns true if the baseline is older than the configured window.
+func (c *Category) isBaselineStale(baseline *driftpkg.Baseline) bool {
+	computed, err := time.Parse(time.RFC3339, baseline.ComputedAt)
+	if err != nil {
+		return true // unparseable timestamp — treat as stale
+	}
+	age := time.Since(computed)
+	return age > time.Duration(c.baselineDays)*24*time.Hour
+}
+
 func (c *Category) initBaseline(ctx context.Context) ([]category.Event, error) {
 	newBaseline, baselineErr := c.collector.CollectBaselineWindow(ctx, c.baselineDays)
 	if baselineErr != nil {
 		return nil, fmt.Errorf("compute initial baseline: %w", baselineErr)
 	}
-	if newBaseline != nil {
-		if storeErr := c.store.StoreBaseline(ctx, newBaseline); storeErr != nil {
-			return nil, fmt.Errorf("store initial baseline: %w", storeErr)
+	if newBaseline == nil {
+		if c.log != nil {
+			c.log.Warn("Baseline collection returned nil — no classified docs in window",
+				infralogger.Int("window_days", c.baselineDays),
+			)
 		}
+		return nil, nil
+	}
+	if storeErr := c.store.StoreBaseline(ctx, newBaseline); storeErr != nil {
+		return nil, fmt.Errorf("store initial baseline: %w", storeErr)
+	}
+	if c.log != nil {
+		c.log.Info("Baseline stored",
+			infralogger.Int("sample_count", newBaseline.SampleCount),
+			infralogger.Int("window_days", newBaseline.WindowDays),
+		)
 	}
 	return nil, nil
 }

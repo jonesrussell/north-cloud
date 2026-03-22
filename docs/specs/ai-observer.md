@@ -1,6 +1,6 @@
 # AI Observer Spec
 
-> Last verified: 2026-03-22 (fix stripFences + add test coverage for markdown fence stripping)
+> Last verified: 2026-03-22 (add baseline refresh logging for nil collector results)
 
 ## Overview
 
