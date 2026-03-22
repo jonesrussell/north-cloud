@@ -1,0 +1,30 @@
+# Source Manager — Layer Definitions
+
+# L0: Foundation / Domain — no internal imports
+0 config
+0 models
+0 events
+0 aiverify
+0 testcrawl
+
+# L1: Persistence / Infrastructure
+1 database
+1 services/osrm
+
+# L2: Data Access + Enrichment
+2 repository
+2 projection
+2 metadata
+2 importer
+
+# L3: Business Logic
+3 services
+3 seeder
+
+# L4: HTTP
+4 handlers
+4 api
+
+# Exempt: bootstrap assembles everything
+exempt bootstrap
+exempt testhelpers

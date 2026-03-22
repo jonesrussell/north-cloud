@@ -25,6 +25,24 @@ curl -X POST http://localhost:8040/api/v1/auth/login \
 curl http://localhost:8040/health
 ```
 
+## Layer Rules
+
+The auth service's internal packages form a strict DAG organized into 3 layers.
+A package may import from its own layer or any lower layer. Never from a higher layer.
+
+| Layer | Packages | Role |
+|-------|----------|------|
+| L0 | `config`, `telemetry` | Foundation — no internal imports |
+| L1 | `auth` | Processing |
+| L2 | `api` | HTTP |
+
+**Rules:**
+- `domain/` must not import any other auth package (it is the leaf)
+- All shared infrastructure imports go through `infrastructure/` (no cross-service imports)
+- Lateral imports within the same layer are allowed
+
+---
+
 ## Architecture
 
 ```

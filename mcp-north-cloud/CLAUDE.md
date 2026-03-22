@@ -20,6 +20,23 @@ echo '{"jsonrpc":"2.0","id":1,"method":"tools/list"}' | ./bin/mcp-north-cloud
 echo '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"list_sources","arguments":{}}}' | ./bin/mcp-north-cloud
 ```
 
+## Layer Rules
+
+The MCP server's internal packages form a strict DAG organized into 2 layers.
+A package may import from its own layer or any lower layer. Never from a higher layer.
+
+| Layer | Packages | Role |
+|-------|----------|------|
+| L0 | `config`, `client` | Foundation — no internal imports |
+| L1 | `mcp` | Server / protocol — imports `client` |
+
+**Rules:**
+- `config` and `client` must not import any other mcp-north-cloud package (they are leaves)
+- All shared infrastructure imports go through `infrastructure/` (no cross-service imports)
+- Bootstrap lives in `main.go` (no bootstrap package)
+
+---
+
 ## Architecture
 
 **MCP Server** — stdio-based JSON-RPC 2.0 (no HTTP server).
