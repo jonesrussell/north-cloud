@@ -98,6 +98,8 @@ ai-observer/
 - **`details` field uses flattened ES type**: LLM-generated details have inconsistent types across
   documents. The `flattened` mapping avoids dynamic type conflicts. All leaf values stored as strings.
 
+- **Single-node ES: set replicas to 0**: `ai_insights` and `drift_baselines` default to `number_of_replicas: 0` in their mappings. On a single-node cluster, replicas can never be assigned, causing yellow cluster status and 503 errors on queries that hit unassigned shards. See #496 for the cluster-wide fix.
+
 - **summary.keyword sub-field added for dedup**: The `summary` field now has a `keyword` sub-field
   (ignore_above=512) used by the dedup aggregation query. This mapping change requires deleting
   the `ai_insights` index in production (see above) on first deploy.

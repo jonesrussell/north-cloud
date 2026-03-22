@@ -229,6 +229,10 @@ See `docs/specs/workflow.md` for full details. Governance hook: `bin/check-miles
 
 **Server migration gotcha**: When rsyncing stateful files to a new path, also check for gitignored files that services bind-mount (certs, generated configs). `git ls-files --others --ignored --exclude-standard` lists them.
 
+**Production docker commands**: `jones` user requires `sudo` for all `docker compose` commands on prod — `.env` is not readable without it.
+
+**ES container name**: `north-cloud-elasticsearch-1` (note `-1` suffix from compose scaling), not `north-cloud-elasticsearch`.
+
 Check logs: `docker compose -f docker-compose.base.yml -f docker-compose.dev.yml logs SERVICE`
 | Check ports: `netstat -tulpn | grep PORT` | DB test: `docker exec -it north-cloud-postgres-SERVICE psql -U postgres -d DATABASE`
 | Health: `curl http://localhost:PORT/health` | See `DOCKER.md` for Docker firewall (UFW) details.
