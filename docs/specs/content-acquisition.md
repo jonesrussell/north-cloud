@@ -1,6 +1,6 @@
 # Content Acquisition Specification
 
-> Last verified: 2026-03-22
+> Last verified: 2026-03-22 (layer hygiene: fetcher.Config extracted to config/fetcher)
 
 Covers the crawler subsystem: web content fetching, job scheduling, frontier URL management, and raw content indexing.
 
