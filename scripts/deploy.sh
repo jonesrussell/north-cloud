@@ -1,6 +1,6 @@
 #!/bin/bash
 # Production deployment script for North Cloud
-# This script should be placed at /opt/north-cloud/deploy.sh on the production server
+# This script should be placed at /home/deployer/north-cloud/deploy.sh on the production server
 #
 # Features:
 #   - Selective service deployment (only changed services)
@@ -23,7 +23,7 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 # Deployment directory
-DEPLOY_DIR="/opt/north-cloud"
+DEPLOY_DIR="/home/deployer/north-cloud"
 COMPOSE_CMD="docker compose -f docker-compose.base.yml -f docker-compose.prod.yml"
 
 # Rollback state

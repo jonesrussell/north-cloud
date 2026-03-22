@@ -30,6 +30,26 @@ cd pipeline && task build
 
 ---
 
+## Layer Rules
+
+The pipeline's internal packages form a strict DAG organized into 4 layers.
+A package may import from its own layer or any lower layer. Never from a higher layer.
+
+| Layer | Packages | Role |
+|-------|----------|------|
+| L0 | `domain` | Foundation — no internal imports |
+| L1 | `config`, `database` | Config / Persistence |
+| L2 | `service` | Processing |
+| L3 | `api` | HTTP |
+
+**Rules:**
+- `bootstrap/` is exempt — it assembles the full dependency graph
+- `domain/` must not import any other pipeline package (it is the leaf)
+- All shared infrastructure imports go through `infrastructure/` (no cross-service imports)
+- Lateral imports within the same layer are allowed
+
+---
+
 ## Architecture
 
 ```

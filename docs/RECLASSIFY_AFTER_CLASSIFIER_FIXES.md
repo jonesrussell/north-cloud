@@ -2,7 +2,7 @@
 
 After deploying classifier fixes (e.g. content_type URL fallback, crime rules title+body prefix), existing stored documents must be reclassified and the publisher cursor reset so corrected classifications flow to Streetcode.
 
-**North Cloud prod:** user@your-server, `/opt/north-cloud`
+**North Cloud prod:** user@your-server, `/home/deployer/north-cloud`
 
 ## Sequence
 
@@ -24,7 +24,7 @@ After deploying classifier fixes (e.g. content_type URL fallback, crime rules ti
   COMMIT;
   "'
   ```
-- Restart publisher: `ssh user@your-server 'cd /opt/north-cloud && docker compose -f docker-compose.base.yml -f docker-compose.prod.yml restart publisher'`
+- Restart publisher: `ssh user@your-server 'cd /home/deployer/north-cloud && docker compose -f docker-compose.base.yml -f docker-compose.prod.yml restart publisher'`
 - Verify Streetcode: `ssh deployer@streetcode.net 'tail -50 .../storage/logs/laravel.log | grep "Article processed"'`
 
 ## Reclassification script (run on prod server)
@@ -33,7 +33,7 @@ Run on your server (e.g. in `screen` or `tmux`). Replace `AUTH_PASSWORD` with th
 
 ```bash
 # On northcloud.one
-cd /opt/north-cloud
+cd /home/deployer/north-cloud
 TOKEN=$(docker exec north-cloud-auth-1 wget -qO- "http://localhost:8040/api/v1/auth/login" \
   --post-data='{"username":"admin","password":"AUTH_PASSWORD"}' \
   --header="Content-Type: application/json" 2>/dev/null | python3 -c "import sys,json; print(json.load(sys.stdin).get('token',''))")

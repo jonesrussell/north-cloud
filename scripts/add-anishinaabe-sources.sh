@@ -19,7 +19,7 @@
 #   DRY_RUN             - If non-empty, only print what would be done (no API calls).
 #
 # Example (production, SSH to server):
-#   cd /opt/north-cloud
+#   cd /home/deployer/north-cloud
 #   export AUTH_USERNAME="admin"
 #   export AUTH_PASSWORD="your-password"
 #   export AUTH_URL="http://localhost:8040"

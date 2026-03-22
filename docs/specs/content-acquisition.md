@@ -1,6 +1,6 @@
 # Content Acquisition Specification
 
-> Last verified: 2026-03-20
+> Last verified: 2026-03-22 (layer hygiene: SourceCandidate extracted to domain)
 
 Covers the crawler subsystem: web content fetching, job scheduling, frontier URL management, and raw content indexing.
 
@@ -111,12 +111,11 @@ func CanRetry(job *Job) bool    // StateFailed only
 2. AcquireLock() via CAS (lock_token = UUID WHERE lock_token IS NULL)
 3. Factory.Create() → isolated Crawler instance (shared startURLHashes map)
 4. Colly collector visits source URLs
-5. Source lookup resolves the configured source name from source-manager by URL match
-6. HTML → RawContentProcessor → extracts title, body, OG metadata, JSON-LD
-7. IndexRawContent() → {source}_raw_content ES index (classification_status: "pending")
-   - Uses the configured source `Name` as the canonical index identity when present
-   - Falls back to a URL-derived host name only when the source is missing or its `Name` is empty
-8. Completion: mark execution completed, calculate next_run_at, release lock
+5. RawContentProcessor resolves source config by crawled URL host
+6. If a source-manager match exists, use the configured source `Name` as the canonical raw-index source identity; if no match exists or the configured name is empty, fall back to a URL-host-derived source name
+7. HTML → RawContentProcessor → extracts title, body, OG metadata, JSON-LD
+8. IndexRawContent() → `naming.RawContentIndex(sourceName)` / `{sanitized_source}_raw_content` ES index (classification_status: "pending")
+9. Completion: mark execution completed, calculate next_run_at, release lock
 ```
 
 ### Frontier Fetcher Path (lightweight)
@@ -162,6 +161,11 @@ func CanRetry(job *Job) bool    // StateFailed only
 }
 ```
 
+Index naming notes:
+- `source_name` in the document remains the canonical source identity used by the crawler path.
+- The Elasticsearch raw index name is always derived through the shared sanitizer (`naming.RawContentIndex`), so configured names such as `Sudbury.com` become `sudbury_com_raw_content`.
+- Pipeline indexed events emit the same sanitized `index_name` value used for the actual ES write path.
+
 ### PostgreSQL Tables
 - **jobs**: id, source_id, url, status, interval_minutes, interval_type, next_run_at, lock_token, lock_acquired_at, is_paused, max_retries, current_retry_count, retry_backoff_seconds, adaptive_scheduling, auto_managed, priority
 - **job_executions**: id, job_id, execution_number, status, started_at, completed_at, duration_ms, items_crawled, items_indexed, error_message, retry_attempt, log_object_key
@@ -189,3 +193,5 @@ Key environment variables:
 - **Concurrent schedulers**: CAS locking ensures only one instance runs a job. Zero-row update = another instance holds lock.
 - **Redis unavailable**: Colly storage falls back to in-memory (visited URLs don't persist across restarts).
 - **Frontier vs Colly conflict**: Frontier uses op_type=create so it never overwrites richer Colly documents.
+
+<\!-- Reviewed: 2026-03-18 — go.mod dependency update only, no spec changes needed -->

@@ -164,6 +164,7 @@ func setupServiceRoutes(
 	// Dictionary — public read endpoints (OPD data with consent filtering)
 	dict := publicAPI.Group("/dictionary")
 	dict.GET("/entries", dictionaryHandler.ListEntries)
+	dict.GET("/entries/:id", dictionaryHandler.GetEntryByEntryID)
 	dict.GET("/words/:id", dictionaryHandler.GetEntry)
 	dict.GET("/search", dictionaryHandler.SearchEntries)
 

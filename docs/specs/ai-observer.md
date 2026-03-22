@@ -1,6 +1,6 @@
 # AI Observer Spec
 
-> Last verified: 2026-03-18
+> Last verified: 2026-03-22 (add layer rules to service CLAUDE.md and .layers config)
 
 ## Overview
 
@@ -18,9 +18,11 @@ ai-observer/
     bootstrap/                     # Config -> logger -> ES -> provider -> categories -> scheduler
     provider/                      # LLMProvider interface + Anthropic implementation
     category/                      # Category interface, Event, Insight types
-      classifier/                  # Classifier drift category (ES sampling + LLM analysis)
-    insights/                      # ai_insights ES index writer + mapping
-    scheduler/                     # Ticker loop + cost-ceiling token budget
+      classifier/                  # Classifier category (ES sampling + LLM analysis)
+      drift/                       # Statistical drift category (KL, PSI, cross-matrix)
+    drift/                         # Drift metrics, baseline sampler, evaluator, store
+    insights/                      # ai_insights ES index writer + dedup + retention cleanup
+    scheduler/                     # Dual-ticker loop + cost-ceiling token budget
 ```
 
 ---
@@ -67,9 +69,50 @@ Datasource: `ai-insights` (uid: `ai-insights`) pointing to `ai_insights` index w
 | `AI_OBSERVER_DRY_RUN` | `false` | Log intent without LLM calls |
 | `AI_OBSERVER_INTERVAL_SECONDS` | `1800` | Polling interval (30 min) |
 | `AI_OBSERVER_MAX_TOKENS_PER_INTERVAL` | `25000` | Token budget ceiling per interval |
+| `AI_OBSERVER_SUPPRESSED_SOURCES` | _(empty)_ | Comma-separated source domains to exclude from classifier analysis |
+| `AI_OBSERVER_MIN_DOMAIN_SAMPLES` | `5` | Minimum articles per domain to include in LLM prompt |
 | `AI_OBSERVER_CATEGORY_CLASSIFIER_ENABLED` | `true` | Enable classifier drift category |
 | `ANTHROPIC_API_KEY` | — | Required when enabled |
+| `AI_OBSERVER_DRIFT_ENABLED` | `false` | Enable drift governor |
+| `AI_OBSERVER_DRIFT_INTERVAL_SECONDS` | `21600` | Drift check interval (6h) |
+| `AI_OBSERVER_INSIGHT_COOLDOWN_HOURS` | `24` | Dedup window for repeated summaries |
+| `AI_OBSERVER_INSIGHT_RETENTION_DAYS` | `30` | Auto-delete insights older than this |
+| `AI_OBSERVER_DRIFT_KL_THRESHOLD` | `0.30` | KL divergence alert threshold |
+| `AI_OBSERVER_DRIFT_PSI_THRESHOLD` | `0.25` | PSI alert threshold |
+| `AI_OBSERVER_DRIFT_MATRIX_THRESHOLD` | `0.20` | Cross-matrix deviation threshold |
+| `AI_OBSERVER_DRIFT_BASELINE_WINDOW_DAYS` | `7` | Rolling baseline window |
 | `ES_URL` | `http://localhost:9200` | Elasticsearch URL |
+
+---
+
+## Drift Detection
+
+**Dual-ticker architecture**: Fast ticker (30 min) runs classifier category. Slow ticker (6h) runs drift category + insight cleanup.
+
+**Statistical metrics** (computed without LLM):
+- **KL divergence**: measures category distribution shift
+- **PSI (Population Stability Index)**: measures confidence histogram stability
+- **Cross-matrix deviation**: measures region×category co-occurrence changes
+
+**Flow**: `CollectCurrentWindow` → `LoadLatestBaseline` → `Evaluate(baseline, current, thresholds)` → signals. If any signal breaches threshold, LLM is invoked for contextual analysis. Otherwise, insight is written with `"No drift detected"` summary.
+
+**Logging**: Scheduler logs `"Drift check started"` and `"Drift check completed"` with duration. Drift category logs `"Drift evaluation complete"` with signal_count and breach_count.
+
+### drift_baselines ES index
+
+| Field | ES Type | Description |
+|-------|---------|-------------|
+| `computed_at` | date | When baseline was computed |
+| `window_days` | integer | Baseline window size |
+| `sample_count` | integer | Documents sampled |
+| `category_distribution` | flattened | Category frequency distribution |
+| `confidence_histograms` | flattened | Confidence score histograms |
+| `cross_matrix` | flattened | Region×category co-occurrence matrix |
+| `cross_matrix_counts` | flattened | Raw counts for cross-matrix |
+
+### ES Index Settings
+
+Both `ai_insights` and `drift_baselines` use `number_of_replicas: 0` (single-node cluster). See #496 for cluster-wide replica fix.
 
 ---
 

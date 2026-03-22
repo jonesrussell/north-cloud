@@ -2,7 +2,7 @@
 
 **Audience**: Ops / deployers  
 **StreetCode**: deployer@streetcode.net, app path `streetcode-laravel/current`  
-**North Cloud prod**: user@your-server, path `/opt/north-cloud`
+**North Cloud prod**: user@your-server, path `/home/deployer/north-cloud`
 
 This runbook covers:
 
@@ -101,12 +101,12 @@ No migration or model change needed; the command is in the repo and works with M
 
 ## 4. Verify on North Cloud (prod)
 
-**On North Cloud prod** (user@your-server, `/opt/north-cloud`):
+**On North Cloud prod** (user@your-server, `/home/deployer/north-cloud`):
 
 - Confirm publisher is running and publishing to crime channels:
 
 ```bash
-cd /opt/north-cloud
+cd /home/deployer/north-cloud
 docker compose -f docker-compose.base.yml -f docker-compose.prod.yml ps publisher
 docker compose -f docker-compose.base.yml -f docker-compose.prod.yml logs publisher --tail=100
 ```

@@ -19,6 +19,27 @@ cd ai-observer && AI_OBSERVER_ENABLED=true AI_OBSERVER_DRY_RUN=true \
 
 ---
 
+## Layer Rules
+
+The ai-observer's internal packages form a strict DAG organized into five layers.
+A package may import from its own layer or any lower layer. Never from a higher layer.
+
+| Layer | Packages | Role |
+|-------|----------|------|
+| L0 | `provider`, `drift` | Foundation — no internal imports |
+| L1 | `category` | Core domain types — depends on L0 |
+| L2 | `provider/anthropic`, `insights` | Domain implementations — depends on L0–L1 |
+| L3 | `category/classifier`, `category/drift` | Processing / Analysis — depends on L0–L2 |
+| L4 | `scheduler` | Orchestration — depends on L0–L3 |
+
+**Rules:**
+- `bootstrap/` is exempt — it assembles the full dependency graph
+- `provider/` (L0) must not import any other ai-observer package (it is the leaf)
+- All shared infrastructure imports go through `infrastructure/` (no cross-service imports)
+- Lateral imports within the same layer are allowed
+
+---
+
 ## Architecture
 
 ```
@@ -60,6 +81,8 @@ ai-observer/
 | `AI_OBSERVER_MAX_TOKENS_PER_INTERVAL` | `25000` | Token budget ceiling per interval |
 | `AI_OBSERVER_CATEGORY_CLASSIFIER_ENABLED` | `true` | Enable classifier drift category |
 | `ANTHROPIC_API_KEY` | — | Required when enabled |
+| `AI_OBSERVER_SUPPRESSED_SOURCES` | _(empty)_ | Comma-separated source domains to exclude from classifier analysis |
+| `AI_OBSERVER_MIN_DOMAIN_SAMPLES` | `5` | Minimum articles per domain to include in LLM prompt |
 | `AI_OBSERVER_DRIFT_ENABLED` | `false` | Enable drift governor |
 | `AI_OBSERVER_DRIFT_INTERVAL_SECONDS` | `21600` | Drift check interval (6h) |
 | `AI_OBSERVER_INSIGHT_COOLDOWN_HOURS` | `24` | Dedup window — suppress repeated summaries |
@@ -87,7 +110,7 @@ ai-observer/
   it doesn't exist. After changing `insightMapping` in `insights/mapping.go`, you must manually
   delete the index in production and restart ai-observer:
   ```bash
-  ssh jones@northcloud.one "docker exec north-cloud-elasticsearch-1 curl -s -X DELETE http://localhost:9200/ai_insights"
+  ssh deployer@northcloud.one "docker exec north-cloud-elasticsearch-1 curl -s -X DELETE http://localhost:9200/ai_insights"
   # Then restart so it recreates with the new mapping
   docker compose -f docker-compose.base.yml -f docker-compose.prod.yml restart ai-observer
   ```
@@ -95,6 +118,8 @@ ai-observer/
 
 - **`details` field uses flattened ES type**: LLM-generated details have inconsistent types across
   documents. The `flattened` mapping avoids dynamic type conflicts. All leaf values stored as strings.
+
+- **Single-node ES: set replicas to 0**: `ai_insights` and `drift_baselines` default to `number_of_replicas: 0` in their mappings. On a single-node cluster, replicas can never be assigned, causing yellow cluster status and 503 errors on queries that hit unassigned shards. See #496 for the cluster-wide fix.
 
 - **summary.keyword sub-field added for dedup**: The `summary` field now has a `keyword` sub-field
   (ignore_above=512) used by the dedup aggregation query. This mapping change requires deleting

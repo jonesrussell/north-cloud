@@ -1,3 +1,4 @@
+//nolint:testpackage // Testing internal behavior requires same package access
 package rawcontent
 
 import (
@@ -17,7 +18,7 @@ func (s stubSources) ValidateSourceByID(
 	_ context.Context,
 	_ string,
 ) (*configtypes.Source, error) {
-	return nil, nil
+	return &configtypes.Source{}, nil
 }
 
 func (s stubSources) GetSources() ([]sources.Config, error) {

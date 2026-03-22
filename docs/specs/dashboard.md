@@ -4,7 +4,7 @@
 
 ## Overview
 
-Vue 3 SPA that provides the operator UI for managing sources, crawl jobs, channels, classification rules, verification workflows, and monitoring pipeline health. Communicates with backend services via a Vite dev proxy (dev) or nginx reverse proxy (prod).
+Vue 3 SPA that provides the operator UI for managing sources, crawl jobs, channels, classification rules, and monitoring pipeline health. Communicates with backend services via a Vite dev proxy (dev) or nginx reverse proxy (prod).
 
 ---
 
@@ -20,7 +20,7 @@ dashboard/src/
   api/
     client.ts              # Shared Axios instance with auth interceptor
     auth.ts                # Auth API calls
-    verification.ts        # Verification queue + bulk action API calls
+    verification.ts        # Verification queue and moderation API client
   components/              # Reusable UI components (ui/, layout/, domain/, crawler/, etc.)
   views/                   # Page components (distribution/, feeds/, intake/, intelligence/, operations/, etc.)
   composables/             # Vue composables (useAuth, usePolling, useRealtime, etc.)
@@ -38,11 +38,11 @@ The dashboard does not call backend services directly. In development, Vite prox
 |-----------------|---------|----------------|
 | `/api/crawler` | Crawler | `http://localhost:8060` |
 | `/api/sources`, `/api/cities` | Source Manager | `http://localhost:8050` |
-| `/api/verification` | Source Manager verification endpoints | `http://localhost:8050` |
 | `/api/publisher` | Publisher | `http://localhost:8070` |
 | `/api/classifier` | Classifier | `http://localhost:8071` |
 | `/api/v1/auth`, `/api/auth` | Auth | `http://localhost:8040` |
 | `/api/index-manager` | Index Manager | `http://localhost:8090` |
+| `/api/verification` | Source Manager verification API | `http://localhost:8050` |
 
 ---
 
@@ -53,15 +53,16 @@ Core TypeScript interfaces defined in `src/types/`:
 - **Source**: id, name, url, selectors, enabled
 - **Channel**: id, name, description, enabled
 - **Route**: id, source_id, channel_id, min_quality_score, topics, enabled
-- **Verification entities**: `VerificationPerson`, `VerificationBandOffice`, `PendingItem`, and `VerificationStats` in `src/api/verification.ts`
 
-## Operations Routes
+Verification operations use API-local interfaces from `src/api/verification.ts`:
+- **VerificationPerson** and **VerificationBandOffice** carry queue metadata, source URL, and verification confidence/issues
+- **PendingItem** is a discriminated union for `person` and `band_office` queue rows
+- **VerificationStats** summarizes pending/scored counts and confidence buckets
 
-The operations section includes these verification routes:
-
-- `/operations/verification` — pending verification queue
-- `/operations/verification/stats` — aggregate confidence and backlog stats
-- `/operations/verification/:type/:id` — per-entity verification detail and action view
+Verification routes:
+- `/operations/verification`
+- `/operations/verification/stats`
+- `/operations/verification/:type/:id`
 
 ---
 
@@ -77,6 +78,7 @@ Backend targets are Vite server-side proxy targets (not `VITE_` runtime vars):
 | `CLASSIFIER_API_URL` | `http://localhost:8071` | Classifier API |
 | `AUTH_API_URL` | `http://localhost:8040` | Auth service |
 | `INDEX_MANAGER_API_URL` | `http://localhost:8090` | Index Manager API |
+| `SOURCE_MANAGER_API_URL` | `http://localhost:8050` | Source Manager host for verification queue proxying |
 
 Port: 3002 (dev server).
 

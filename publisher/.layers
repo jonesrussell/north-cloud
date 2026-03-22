@@ -1,0 +1,26 @@
+# Publisher — Layer Definitions
+
+# L0: Foundation / Domain — no internal imports
+0 config
+0 domain
+0 models
+0 telemetry
+0 metrics
+0 dedup
+0 redis
+
+# L1: External integration
+1 sources
+1 discovery
+
+# L2: Persistence
+2 database
+
+# L3: Processing / Routing
+3 router
+3 worker
+
+# L4: HTTP
+4 api
+
+# Exempt: main.go handles wiring (no bootstrap package)

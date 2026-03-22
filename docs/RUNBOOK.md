@@ -51,8 +51,8 @@ No manual intervention needed for service-level failures.
 If automatic rollback failed or you need to force a specific version:
 
 ```bash
-ssh jones@northcloud.one
-cd /opt/north-cloud
+ssh deployer@northcloud.one
+cd /home/deployer/north-cloud
 
 # Check which services are unhealthy
 docker compose -f docker-compose.base.yml -f docker-compose.prod.yml ps
@@ -72,8 +72,8 @@ docker compose -f docker-compose.base.yml -f docker-compose.prod.yml \
 If a migration broke the database:
 
 ```bash
-ssh jones@northcloud.one
-cd /opt/north-cloud
+ssh deployer@northcloud.one
+cd /home/deployer/north-cloud
 
 # Source environment for DB credentials
 source .env
@@ -87,7 +87,7 @@ docker run --rm --network north-cloud_north-cloud-network \
 
 # Run the down migration (rolls back one step)
 docker run --rm --network north-cloud_north-cloud-network \
-  -v /opt/north-cloud/crawler/migrations:/migrations \
+  -v /home/deployer/north-cloud/crawler/migrations:/migrations \
   migrate/migrate:latest \
   -path /migrations \
   -database "postgres://${POSTGRES_CRAWLER_USER}:${POSTGRES_CRAWLER_PASSWORD}@postgres-crawler:5432/${POSTGRES_CRAWLER_DB:-crawler}?sslmode=disable" \
@@ -95,7 +95,7 @@ docker run --rm --network north-cloud_north-cloud-network \
 
 # If migration is in dirty state, force to previous version
 docker run --rm --network north-cloud_north-cloud-network \
-  -v /opt/north-cloud/crawler/migrations:/migrations \
+  -v /home/deployer/north-cloud/crawler/migrations:/migrations \
   migrate/migrate:latest \
   -path /migrations \
   -database "postgres://..." \
@@ -122,8 +122,8 @@ gh workflow run deploy.yml -f force_rebuild_all=true
 ### Service won't start
 
 ```bash
-ssh jones@northcloud.one
-cd /opt/north-cloud
+ssh deployer@northcloud.one
+cd /home/deployer/north-cloud
 
 # Check container status
 docker compose -f docker-compose.base.yml -f docker-compose.prod.yml ps
@@ -175,8 +175,8 @@ The deploy pipeline cleans migrations and infrastructure configs before extracti
 If other file types persist after rename/removal, manually delete on production:
 
 ```bash
-ssh jones@northcloud.one
-rm /opt/north-cloud/<path-to-stale-file>
+ssh deployer@northcloud.one
+rm /home/deployer/north-cloud/<path-to-stale-file>
 ```
 
 ### Nginx config not reloading
@@ -184,8 +184,8 @@ rm /opt/north-cloud/<path-to-stale-file>
 Nginx uses `--force-recreate` in deploy.sh (Step 3.5). If config still stale:
 
 ```bash
-ssh jones@northcloud.one
-cd /opt/north-cloud
+ssh deployer@northcloud.one
+cd /home/deployer/north-cloud
 docker compose -f docker-compose.base.yml -f docker-compose.prod.yml \
   up -d --force-recreate nginx
 ```

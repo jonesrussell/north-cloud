@@ -18,6 +18,7 @@ import (
 	"github.com/jonesrussell/north-cloud/crawler/internal/storage/types"
 	"github.com/jonesrussell/north-cloud/infrastructure/indigenous"
 	infralogger "github.com/jonesrussell/north-cloud/infrastructure/logger"
+	"github.com/jonesrussell/north-cloud/infrastructure/naming"
 	"github.com/jonesrussell/north-cloud/infrastructure/pipeline"
 )
 
@@ -351,7 +352,7 @@ func (s *RawContentService) emitIndexedEvent(
 		return
 	}
 
-	indexName := sourceName + "_raw_content"
+	indexName := naming.RawContentIndex(sourceName)
 	pipelineErr := s.pipeline.Emit(ctx, pipeline.Event{
 		ContentURL: sourceURL,
 		SourceName: sourceName,

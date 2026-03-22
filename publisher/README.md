@@ -86,8 +86,8 @@ Every content item is run through all routing domains in sequence. An item can m
 | 6 | Entertainment Classification | Automatic | `entertainment:homepage`, `entertainment:category:{slug}`, `entertainment:peripheral` |
 | 7 | Indigenous Classification | Automatic | `content:indigenous`, `indigenous:category:{slug}`, `indigenous:region:{slug}` |
 | 8 | Coforge Classification | Automatic | `coforge:core`, `coforge:audience:{slug}`, `coforge:topic:{slug}`, etc. |
-| 9 | Recipe Extraction | Automatic | `content:recipes`, `recipe:category:{slug}`, `recipe:cuisine:{slug}`, etc. |
-| 10 | Job Extraction | Automatic | `content:jobs`, `job:industry:{slug}`, `job:type:{slug}`, etc. |
+| 9 | Recipe Extraction | Automatic | `content:recipes`, `recipes:category:{slug}`, `recipes:cuisine:{slug}`, etc. |
+| 10 | Job Extraction | Automatic | `content:jobs`, `jobs:industry:{slug}`, `jobs:type:{slug}`, etc. |
 | 11 | RFP Extraction | Automatic | `content:rfps`, `rfp:country:{code}`, `rfp:province:{code}`, etc. |
 
 ### Layer 1 — Topic (automatic)
@@ -228,7 +228,7 @@ Examples: `coforge:audience:developers`, `coforge:topic:cloud`, `coforge:topic:d
 | `content:recipes` | Any extracted recipe content |
 | `content:jobs` | Any extracted job content |
 | `content:rfps` | Any extracted RFP content |
-| `recipe:*`, `job:*`, `rfp:*` | Structured sub-channels derived from extracted metadata |
+| `recipes:*`, `jobs:*`, `rfp:*` | Structured sub-channels derived from extracted metadata |
 
 ## API Reference
 

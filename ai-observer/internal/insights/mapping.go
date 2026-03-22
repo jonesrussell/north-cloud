@@ -18,6 +18,9 @@ const summaryKeywordIgnoreAbove = 512
 // details uses "flattened" type to avoid dynamic mapping conflicts when
 // LLM-generated values have inconsistent types across documents.
 var insightMapping = map[string]any{
+	"settings": map[string]any{
+		"number_of_replicas": 0,
+	},
 	"mappings": map[string]any{
 		"properties": map[string]any{
 			"id":         map[string]any{"type": "keyword"},

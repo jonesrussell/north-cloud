@@ -1,0 +1,3 @@
+# nc-http-proxy — Layer Definitions
+# Single-package service (no internal/ directory).
+# .layers file exists for completeness; layer-checker has nothing to scan.

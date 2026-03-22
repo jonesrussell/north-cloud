@@ -1,0 +1,4 @@
+# infrastructure — Layer Definitions
+# Shared library (no internal/ directory).
+# Packages are top-level, consumed by all services.
+# .layers file exists for completeness; layer-checker has nothing to scan.

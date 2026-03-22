@@ -92,6 +92,8 @@ Sources → [Crawler] → ES raw_content → [Classifier + ML Sidecars] → ES c
 
 **Spec Drift**: `task drift:check` (checks last 5 commits). Runs automatically as first step of `task ci`, `task ci:changed`, `task ci:force`. Also runs in lefthook pre-push and CI. Fails if any spec is stale or missing.
 
+**Layer Check**: `task layers:check` verifies internal package imports respect layer boundaries. Each service has a `.layers` file defining package→layer mappings. Runs in `task ci`, `task ci:changed`, `task ci:force`, and lefthook pre-push. Fails if any package imports from a higher layer. Use `allow SOURCE TARGET` in `.layers` to track known violations.
+
 **Go Workspace**: `GOWORK=off` per service. `go.work` is IDE-only. After dep changes: `task vendor`.
 
 **Worktree CI**: `task ci` fails in worktrees (missing Node deps for dashboard). Use `task ci:changed` for Go-only work.
@@ -131,7 +133,7 @@ auth:8040 | source-manager:8050 | crawler:8080 | publisher:8070 | classifier:807
 Pre-commit hooks run automatically via [lefthook](https://github.com/evilmartians/lefthook). Config: `lefthook.yml`.
 
 - **pre-commit**: `go-fmt` (auto-fix), `go-lint` (golangci-lint), `dashboard-lint` — only changed services
-- **pre-push**: `go-test` (only changed services), `spec-drift` (drift-detector check)
+- **pre-push**: `go-test` (only changed services), `spec-drift` (drift-detector check), `layer-check` (layer boundary check)
 - **Install**: `go install github.com/evilmartians/lefthook@latest && lefthook install`
 - **Skip (emergency)**: `git commit --no-verify`
 
@@ -180,7 +182,7 @@ See `ARCHITECTURE.md` for the full bootstrap pattern reference.
 
 ### Production Deployment
 
-- Production (`/opt/north-cloud`) is **NOT a git repo** — do not use `git pull`
+- Production (`/home/deployer/north-cloud`) is **NOT a git repo** — do not use `git pull`
 - CI/CD (GitHub Actions) syncs files via tar archive and runs `deploy.sh`
 - To deploy manually: push to main → CI runs tests → deploy workflow triggers automatically
 - **Nginx uses `--force-recreate`** — volume-mounted config changes aren't detected by `up -d`
@@ -224,6 +226,16 @@ See `docs/specs/workflow.md` for full details. Governance hook: `bin/check-miles
 ---
 
 ## Troubleshooting
+
+**Nginx crash-loop on fresh deploy**: Self-signed certs in `infrastructure/nginx/certs/` are gitignored. Generate per `infrastructure/nginx/certs/README.md`. Symptom: `cannot load certificate "/etc/nginx/certs/server.crt"`.
+
+**Server migration gotcha**: When rsyncing stateful files to a new path, also check for gitignored files that services bind-mount (certs, generated configs). `git ls-files --others --ignored --exclude-standard` lists them.
+
+**Production docker commands**: `jones` user requires `sudo` for all `docker compose` commands on prod — `.env` is not readable without it.
+
+**ES container name**: `north-cloud-elasticsearch-1` (note `-1` suffix from compose scaling), not `north-cloud-elasticsearch`.
+
+**Squid proxy crash-loop after deploy**: If Squid logs (`squid/logs/`) get wrong ownership (e.g. after path migration), Squid crashes with `Cannot open access.log for writing`. Fix: `sudo rm squid/logs/*.log && docker compose ... restart squid`. See #498.
 
 Check logs: `docker compose -f docker-compose.base.yml -f docker-compose.dev.yml logs SERVICE`
 | Check ports: `netstat -tulpn | grep PORT` | DB test: `docker exec -it north-cloud-postgres-SERVICE psql -U postgres -d DATABASE`

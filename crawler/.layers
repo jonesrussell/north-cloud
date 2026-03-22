@@ -1,0 +1,47 @@
+# Crawler — Layer Definitions
+# See CLAUDE.md "Layer Rules" for documentation.
+
+# L0: Foundation / Domain — no internal imports
+0 domain
+0 frontier
+0 config
+0 metrics
+0 adaptive
+0 proxypool
+0 coordination
+0 queue
+0 content/contenttype
+
+# L1: Persistence
+1 database
+1 storage
+1 archive
+1 logs
+
+# L2: Content & External I/O
+2 content
+2 sources
+2 feed
+2 fetcher
+2 scraper
+2 discovery
+2 leadership
+2 render
+
+# L3: Orchestration
+3 crawler
+3 scheduler
+3 job
+3 worker
+3 events
+3 admin
+
+# L4: HTTP
+4 api
+
+# Exempt: bootstrap assembles everything
+exempt bootstrap
+
+# Known violations (tracked for future cleanup):
+# config → fetcher: fetcher.Config type should move to config/fetcher/
+allow config fetcher

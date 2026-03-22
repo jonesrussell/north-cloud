@@ -22,29 +22,6 @@ func NewClassificationHistoryRepository(db *sqlx.DB) *ClassificationHistoryRepos
 	return &ClassificationHistoryRepository{db: db}
 }
 
-// ClassificationStats represents overall classification statistics.
-type ClassificationStats struct {
-	TotalClassified     int            `json:"total_classified"`
-	AvgQualityScore     float64        `json:"avg_quality_score"`
-	CrimeRelated        int            `json:"crime_related"`
-	AvgProcessingTimeMs float64        `json:"avg_processing_time_ms"`
-	ContentTypes        map[string]int `json:"content_types"`
-}
-
-// TopicStat represents statistics for a single topic.
-type TopicStat struct {
-	Topic      string  `db:"topic"       json:"topic"`
-	Count      int     `db:"count"       json:"count"`
-	AvgQuality float64 `db:"avg_quality" json:"avg_quality,omitempty"`
-}
-
-// SourceStat represents statistics for a single source.
-type SourceStat struct {
-	SourceName string  `db:"source_name" json:"source_name"`
-	Count      int     `db:"count"       json:"count"`
-	AvgQuality float64 `db:"avg_quality" json:"avg_quality,omitempty"`
-}
-
 // Create inserts a new classification history record.
 func (r *ClassificationHistoryRepository) Create(ctx context.Context, history *domain.ClassificationHistory) error {
 	query := `
@@ -127,8 +104,8 @@ func (r *ClassificationHistoryRepository) GetByContentID(ctx context.Context, co
 
 // GetStats retrieves overall classification statistics.
 // If startDate is provided, filters results to include only classifications on or after that date.
-func (r *ClassificationHistoryRepository) GetStats(ctx context.Context, startDate *time.Time) (*ClassificationStats, error) {
-	var stats ClassificationStats
+func (r *ClassificationHistoryRepository) GetStats(ctx context.Context, startDate *time.Time) (*domain.ClassificationStats, error) {
+	var stats domain.ClassificationStats
 
 	// Build query with optional date filter
 	query := `
@@ -199,8 +176,8 @@ func (r *ClassificationHistoryRepository) GetStats(ctx context.Context, startDat
 }
 
 // GetTopicStats retrieves topic distribution statistics.
-func (r *ClassificationHistoryRepository) GetTopicStats(ctx context.Context) ([]*TopicStat, error) {
-	var stats []*TopicStat
+func (r *ClassificationHistoryRepository) GetTopicStats(ctx context.Context) ([]*domain.TopicStat, error) {
+	var stats []*domain.TopicStat
 
 	// Unnest topics array and aggregate
 	query := `
@@ -224,8 +201,8 @@ func (r *ClassificationHistoryRepository) GetTopicStats(ctx context.Context) ([]
 }
 
 // GetSourceStats retrieves source distribution statistics.
-func (r *ClassificationHistoryRepository) GetSourceStats(ctx context.Context) ([]*SourceStat, error) {
-	var stats []*SourceStat
+func (r *ClassificationHistoryRepository) GetSourceStats(ctx context.Context) ([]*domain.SourceStat, error) {
+	var stats []*domain.SourceStat
 
 	query := `
 		SELECT
@@ -247,8 +224,8 @@ func (r *ClassificationHistoryRepository) GetSourceStats(ctx context.Context) ([
 }
 
 // GetSourceStatsByName retrieves statistics for a specific source.
-func (r *ClassificationHistoryRepository) GetSourceStatsByName(ctx context.Context, sourceName string) (*SourceStat, error) {
-	var stat SourceStat
+func (r *ClassificationHistoryRepository) GetSourceStatsByName(ctx context.Context, sourceName string) (*domain.SourceStat, error) {
+	var stat domain.SourceStat
 
 	query := `
 		SELECT
@@ -263,7 +240,7 @@ func (r *ClassificationHistoryRepository) GetSourceStatsByName(ctx context.Conte
 	err := r.db.GetContext(ctx, &stat, query, sourceName)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return &SourceStat{SourceName: sourceName, Count: 0, AvgQuality: 0}, nil
+			return &domain.SourceStat{SourceName: sourceName, Count: 0, AvgQuality: 0}, nil
 		}
 		return nil, fmt.Errorf("failed to get source stats: %w", err)
 	}

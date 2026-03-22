@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/jonesrussell/north-cloud/classifier/internal/database"
 	"github.com/jonesrussell/north-cloud/classifier/internal/domain"
 	infralogger "github.com/jonesrussell/north-cloud/infrastructure/logger"
 )
@@ -27,7 +26,7 @@ type DatabaseAdapter struct {
 }
 
 // NewDatabaseAdapter creates a new database adapter
-func NewDatabaseAdapter(historyRepo *database.ClassificationHistoryRepository) *DatabaseAdapter {
+func NewDatabaseAdapter(historyRepo HistoryRepository) *DatabaseAdapter {
 	return &DatabaseAdapter{
 		historyRepo: historyRepo,
 		logger:      nil, // Logger is optional for backward compatibility
@@ -35,7 +34,7 @@ func NewDatabaseAdapter(historyRepo *database.ClassificationHistoryRepository) *
 }
 
 // NewDatabaseAdapterWithLogger creates a new database adapter with a logger
-func NewDatabaseAdapterWithLogger(historyRepo *database.ClassificationHistoryRepository, logger infralogger.Logger) *DatabaseAdapter {
+func NewDatabaseAdapterWithLogger(historyRepo HistoryRepository, logger infralogger.Logger) *DatabaseAdapter {
 	return &DatabaseAdapter{
 		historyRepo: historyRepo,
 		logger:      logger,

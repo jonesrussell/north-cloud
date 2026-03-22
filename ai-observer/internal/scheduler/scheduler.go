@@ -180,7 +180,14 @@ func (s *Scheduler) RunOnce(ctx context.Context) {
 // RunDrift executes one polling cycle for slow (drift) categories
 // and runs insight cleanup if a cleaner is configured.
 func (s *Scheduler) RunDrift(ctx context.Context) {
+	s.logInfo("Drift check started",
+		logger.Int("categories", len(s.slowCategories)),
+	)
+	start := time.Now()
 	s.runCategories(ctx, s.slowCategories, s.cfg.DriftWindowDuration)
+	s.logInfo("Drift check completed",
+		logger.Duration("duration", time.Since(start)),
+	)
 	s.runCleanup(ctx)
 }
 

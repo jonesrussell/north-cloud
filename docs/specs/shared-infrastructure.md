@@ -1,6 +1,6 @@
 # Shared Infrastructure Specification
 
-> Last verified: 2026-03-19 (add 5 missing Prometheus scrape targets to prometheus.yml)
+> Last verified: 2026-03-22 (add .layers file for layer boundary checking)
 
 Covers the `infrastructure/` module: config loading, logging, database clients, middleware, events, and utilities used by all services.
 
