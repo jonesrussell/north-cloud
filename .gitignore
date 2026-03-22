@@ -188,3 +188,6 @@ click-tracker/bin/
 .claude/worktrees/
 
 minoo-snapshot.md
+
+.firecrawl/
+
