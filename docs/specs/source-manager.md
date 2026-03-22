@@ -1,6 +1,6 @@
 # Source Manager Specification
 
-> Last verified: 2026-03-22 (add .layers file for layer boundary checking)
+> Last verified: 2026-03-22 (add layer rules to service CLAUDE.md and .layers config)
 
 ## Purpose
 

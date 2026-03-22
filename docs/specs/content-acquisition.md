@@ -1,6 +1,6 @@
 # Content Acquisition Specification
 
-> Last verified: 2026-03-22 (add .layers file for layer boundary checking)
+> Last verified: 2026-03-22 (add layer rules to service CLAUDE.md and .layers config)
 
 Covers the crawler subsystem: web content fetching, job scheduling, frontier URL management, and raw content indexing.
 
