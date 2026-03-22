@@ -57,4 +57,4 @@ pre-push:
       run: tools/drift-detector.sh 5
 
     layer-check:
-      run: tools/layer-checker.sh
+      run: bash tools/layer-checker.sh
