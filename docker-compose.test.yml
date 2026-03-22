@@ -187,7 +187,6 @@ services:
       REDIS_URL: redis:6379
       REDIS_PASSWORD: ""
       CLASSIFIER_PORT: 8070
-      CLASSIFIER_ENABLED: "true"
       POLLING_INTERVAL: 10s
       BATCH_SIZE: 50
       CONCURRENT_WORKERS: 2
