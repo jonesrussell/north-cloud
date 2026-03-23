@@ -731,6 +731,50 @@ services:
       GF_SMTP_FROM_NAME: "North Cloud Alerts"
 
   # ------------------------------------------------------------
+  # Umami Analytics (Prod) — Privacy-first, self-hosted
+  # ------------------------------------------------------------
+  umami:
+    <<: *prod-defaults
+    image: ghcr.io/umami-software/umami:postgresql-latest
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 256M
+    depends_on:
+      postgres-umami:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://umami:${UMAMI_DB_PASSWORD}@postgres-umami:5432/umami
+      APP_SECRET: ${UMAMI_APP_SECRET}
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://127.0.0.1:3000/api/heartbeat || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+  postgres-umami:
+    <<: *prod-defaults
+    image: postgres:16-alpine
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 256M
+    environment:
+      POSTGRES_DB: umami
+      POSTGRES_USER: umami
+      POSTGRES_PASSWORD: ${UMAMI_DB_PASSWORD}
+    volumes:
+      - umami_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U umami"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # ------------------------------------------------------------
   # RFP Ingestor
   # ------------------------------------------------------------
 
@@ -764,6 +808,8 @@ volumes:
   grafana_data:
     driver: local
   prometheus_data:
+    driver: local
+  umami_db_data:
     driver: local
   pyroscope_data:
     driver: local
