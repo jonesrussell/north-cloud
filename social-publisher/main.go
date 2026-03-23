@@ -16,6 +16,7 @@ import (
 
 	infralogger "github.com/jonesrussell/north-cloud/infrastructure/logger"
 	"github.com/jonesrussell/north-cloud/infrastructure/profiling"
+	infraredis "github.com/jonesrussell/north-cloud/infrastructure/redis"
 
 	xadapter "github.com/jonesrussell/north-cloud/social-publisher/internal/adapters/x"
 	"github.com/jonesrussell/north-cloud/social-publisher/internal/api"
@@ -37,7 +38,6 @@ const (
 	defaultPort              = 8078
 	dequeueTimeout           = 5 * time.Second
 	shutdownTimeout          = 30 * time.Second
-	redisPingTimeout         = 5 * time.Second
 )
 
 func main() {
@@ -113,17 +113,10 @@ func setupDatabase(cfg *config.Config) (*sqlx.DB, *database.Repository, error) {
 }
 
 func setupRedis(cfg *config.Config) (*goredis.Client, error) {
-	client := goredis.NewClient(&goredis.Options{
-		Addr:     cfg.Redis.URL,
+	return infraredis.NewClient(infraredis.Config{
+		Address:  cfg.Redis.URL,
 		Password: cfg.Redis.Password,
 	})
-	ctx, cancel := context.WithTimeout(context.Background(), redisPingTimeout)
-	defer cancel()
-	if err := client.Ping(ctx).Err(); err != nil {
-		client.Close()
-		return nil, fmt.Errorf("redis ping failed: %w", err)
-	}
-	return client, nil
 }
 
 func startService(

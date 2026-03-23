@@ -12,10 +12,10 @@ import (
 	infragin "github.com/jonesrussell/north-cloud/infrastructure/gin"
 	"github.com/jonesrussell/north-cloud/infrastructure/logger"
 	"github.com/jonesrussell/north-cloud/infrastructure/profiling"
+	infraredis "github.com/jonesrussell/north-cloud/infrastructure/redis"
 	"github.com/jonesrussell/north-cloud/publisher/internal/api"
 	"github.com/jonesrussell/north-cloud/publisher/internal/config"
 	"github.com/jonesrussell/north-cloud/publisher/internal/database"
-	redisclient "github.com/jonesrussell/north-cloud/publisher/internal/redis"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -132,7 +132,10 @@ func setupRedis(cfg *config.Config, infraLog logger.Logger) *redis.Client {
 		return nil
 	}
 
-	redisClient, err := redisclient.NewClient(redisAddr, redisPassword)
+	redisClient, err := infraredis.NewClient(infraredis.Config{
+		Address:  redisAddr,
+		Password: redisPassword,
+	})
 	if err != nil {
 		infraLog.Warn("Failed to connect to Redis (health checks will show disconnected)",
 			logger.Error(err),

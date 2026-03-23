@@ -6,6 +6,7 @@ import (
 	"github.com/elastic/go-elasticsearch/v8"
 	esclient "github.com/jonesrussell/north-cloud/infrastructure/elasticsearch"
 	"github.com/jonesrussell/north-cloud/infrastructure/logger"
+	infraredis "github.com/jonesrussell/north-cloud/infrastructure/redis"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -27,18 +28,13 @@ func initElasticsearchClient(esURL string, appLogger logger.Logger) *elasticsear
 
 // initRedisClient initializes and tests the Redis client
 func initRedisClient(addr, password string, appLogger logger.Logger) *redis.Client {
-	redisClient := redis.NewClient(&redis.Options{
-		Addr:     addr,
+	client, err := infraredis.NewClient(infraredis.Config{
+		Address:  addr,
 		Password: password,
-		DB:       0,
 	})
-
-	// Test Redis connection
-	pingCtx := context.Background()
-	if pingErr := redisClient.Ping(pingCtx).Err(); pingErr != nil {
-		appLogger.Fatal("Failed to connect to Redis", logger.Error(pingErr))
+	if err != nil {
+		appLogger.Fatal("Failed to connect to Redis", logger.Error(err))
 	}
 	appLogger.Info("Redis connection established")
-
-	return redisClient
+	return client
 }
