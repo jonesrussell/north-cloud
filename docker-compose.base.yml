@@ -633,6 +633,7 @@ services:
       dockerfile: rfp-ingestor/Dockerfile
     environment:
       ELASTICSEARCH_URL: http://elasticsearch:9200
+      AUTH_JWT_SECRET: "${AUTH_JWT_SECRET:-}"
       RFP_INGESTOR_PORT: 8095
       RFP_POLL_INTERVAL_MINUTES: 120
       LOG_LEVEL: info

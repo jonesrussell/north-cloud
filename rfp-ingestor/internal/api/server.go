@@ -57,14 +57,15 @@ func (s *Status) Snapshot() Status {
 }
 
 // NewServer builds an HTTP server with health endpoints and a /api/v1/status route.
-func NewServer(serviceName string, port int, version string, debug bool, log logger.Logger, status *Status) *infragin.Server {
+func NewServer(serviceName string, port int, version string, debug bool, jwtSecret string, log logger.Logger, status *Status) *infragin.Server {
 	return infragin.NewServerBuilder(serviceName, port).
 		WithLogger(log).
 		WithDebug(debug).
 		WithVersion(version).
 		WithMetrics().
 		WithRoutes(func(router *gin.Engine) {
-			router.GET("/api/v1/status", func(c *gin.Context) {
+			v1 := infragin.ProtectedGroup(router, "/api/v1", jwtSecret)
+			v1.GET("/status", func(c *gin.Context) {
 				c.JSON(http.StatusOK, status.Snapshot())
 			})
 		}).

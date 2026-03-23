@@ -23,6 +23,7 @@ type ServerConfig struct {
 	WriteTimeout time.Duration
 	Debug        bool
 	ServiceName  string
+	JWTSecret    string
 	ESPing       func() error
 	DBPing       func() error
 }
@@ -61,7 +62,7 @@ func NewServer(handler *Handler, config ServerConfig, infraLog infralogger.Logge
 
 	server := builder.
 		WithRoutes(func(router *gin.Engine) {
-			SetupServiceRoutes(router, handler)
+			SetupServiceRoutes(router, handler, config.JWTSecret)
 		}).
 		Build()
 
@@ -71,6 +72,6 @@ func NewServer(handler *Handler, config ServerConfig, infraLog infralogger.Logge
 // SetupServiceRoutes configures service-specific API routes (not health routes).
 // Health routes are handled by the infrastructure gin package.
 // Delegates to SetupRoutes to avoid duplication.
-func SetupServiceRoutes(router *gin.Engine, handler *Handler) {
-	SetupRoutes(router, handler)
+func SetupServiceRoutes(router *gin.Engine, handler *Handler, jwtSecret string) {
+	SetupRoutes(router, handler, jwtSecret)
 }

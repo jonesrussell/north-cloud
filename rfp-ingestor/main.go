@@ -57,7 +57,7 @@ func runServer(cfg *config.Config, log logger.Logger) int {
 
 	status := &api.Status{}
 
-	server := api.NewServer(cfg.Service.Name, cfg.Service.Port, cfg.Service.Version, cfg.Service.Debug, log, status)
+	server := api.NewServer(cfg.Service.Name, cfg.Service.Port, cfg.Service.Version, cfg.Service.Debug, cfg.Auth.JWTSecret, log, status)
 	errCh := server.StartAsync()
 
 	log.Info("RFP Ingestor started",
