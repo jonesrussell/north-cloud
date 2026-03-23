@@ -33,6 +33,10 @@ includes:
     taskfile: ./index-manager/Taskfile.yml
     dir: ./index-manager
 
+  ircd:
+    taskfile: ./ircd/Taskfile.yml
+    dir: ./ircd
+
   mcp-north-cloud:
     taskfile: ./mcp-north-cloud/Taskfile.yml
     dir: ./mcp-north-cloud
