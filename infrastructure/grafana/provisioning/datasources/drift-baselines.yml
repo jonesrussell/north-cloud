@@ -1,0 +1,18 @@
+# Elasticsearch datasource for drift_baselines index
+# Used for querying drift governor baseline snapshots
+# Note: time field is computed_at (NOT created_at like ai_insights)
+
+apiVersion: 1
+
+datasources:
+  - name: Drift Baselines
+    type: elasticsearch
+    access: proxy
+    uid: drift-baselines
+    url: http://elasticsearch:9200
+    isDefault: false
+    editable: true
+    database: 'drift_baselines'
+    jsonData:
+      esVersion: '9.0.0'
+      timeField: computed_at
