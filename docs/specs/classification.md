@@ -1,6 +1,6 @@
 # Classification Specification
 
-> Last verified: 2026-03-22 (remove redundant NewDatabaseAdapterWithRepository constructor)
+> Last verified: 2026-03-23 (fix indigenous topic rule confidence 0.5→0.3 — migration 014)
 
 Covers the classifier service, hybrid rule+ML classification pipeline, ML sidecar integration, and content enrichment.
 

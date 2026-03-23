@@ -45,7 +45,8 @@ INSERT INTO classification_rules (
         -- Nordic
         'sami people'
     ],
-    0.5,  -- 50% confidence threshold (same as mining after tightening)
+    0.3,  -- 30% confidence threshold (matches peer topic rules (mining, crime) —
+          -- indigenous has dedicated hybrid classifier so this rule is a coarse topic tag)
     8,    -- Priority 8 (above mining at 7, below crime sub-categories)
     true,
     CURRENT_TIMESTAMP,
