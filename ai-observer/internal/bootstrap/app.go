@@ -17,12 +17,16 @@ import (
 	"github.com/jonesrussell/north-cloud/ai-observer/internal/insights"
 	anthprovider "github.com/jonesrussell/north-cloud/ai-observer/internal/provider/anthropic"
 	"github.com/jonesrussell/north-cloud/ai-observer/internal/scheduler"
+	infragin "github.com/jonesrussell/north-cloud/infrastructure/gin"
 	"github.com/jonesrussell/north-cloud/infrastructure/logger"
 )
 
 const (
 	// driftWindowHours is the default window duration for drift category sampling.
 	driftWindowHours = 6
+
+	// shutdownTimeout is the maximum time to wait for a graceful server shutdown.
+	shutdownTimeout = 5 * time.Second
 )
 
 // Start initializes and runs the ai-observer service.
@@ -95,9 +99,34 @@ func Start() error {
 
 	go sched.Run(ctx)
 
+	// Start health HTTP server alongside the scheduler.
+	srv := infragin.NewServerBuilder(cfg.Service.Name, cfg.Service.Port).
+		WithLogger(log).
+		WithVersion(cfg.Service.Version).
+		WithElasticsearchHealthCheck(func() error {
+			_, pingErr := esClient.Ping()
+			return pingErr
+		}).
+		Build()
+
+	errCh := srv.StartAsync()
+
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
-	<-quit
+
+	select {
+	case err = <-errCh:
+		cancel()
+		return fmt.Errorf("health server: %w", err)
+	case <-quit:
+	}
+
+	cancel()
+	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), shutdownTimeout)
+	defer shutdownCancel()
+	if shutdownErr := srv.Shutdown(shutdownCtx); shutdownErr != nil {
+		log.Error("Health server shutdown error", logger.Error(shutdownErr))
+	}
 
 	log.Info("AI Observer stopped")
 	return nil

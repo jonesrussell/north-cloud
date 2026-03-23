@@ -64,6 +64,7 @@ ai-observer/
 - **Dry-run**: `AI_OBSERVER_DRY_RUN=true` short-circuits before any LLM call (safe to enable in prod)
 - **Token budget**: pre-check estimate (`len(events) * 50`), not reconciled against actual API spend
 - **Per-category timeout**: 5 minutes to prevent goroutine stalls on slow ES/API calls
+- **Health endpoint**: `/health` on port 8096 (default) with Elasticsearch health check, runs alongside the scheduler
 - **`ANTHROPIC_API_KEY` only required when enabled**: service exits cleanly when disabled without API key
 - **Insight dedup**: Writer filters duplicate summaries within a configurable cooldown window (default 24h) before indexing
 - **Insight retention**: Cleaner runs on slow ticker, deleting insights older than retention period (default 30 days)
@@ -93,6 +94,7 @@ ai-observer/
 | `AI_OBSERVER_DRIFT_BASELINE_WINDOW_DAYS` | `7` | Rolling baseline window |
 | `AI_OBSERVER_DRIFT_BASELINE_RETENTION` | `30` | Baselines to retain |
 | `ES_URL` | `http://localhost:9200` | Elasticsearch URL |
+| `AI_OBSERVER_PORT` | `8096` | HTTP port for health endpoint |
 
 ## Rollout Phases
 

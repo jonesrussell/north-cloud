@@ -16,10 +16,14 @@ type Config struct {
 	Anthropic AnthropicConfig
 }
 
+// defaultPort is the default HTTP port for the health endpoint.
+const defaultPort = 8096
+
 // ServiceConfig holds service identity fields.
 type ServiceConfig struct {
 	Name    string
 	Version string
+	Port    int
 }
 
 // ESConfig holds Elasticsearch connection config.
@@ -128,10 +132,16 @@ func LoadConfig() (Config, error) {
 		return Config{}, err
 	}
 
+	port, err := envInt("AI_OBSERVER_PORT", defaultPort)
+	if err != nil {
+		return Config{}, err
+	}
+
 	return Config{
 		Service: ServiceConfig{
 			Name:    serviceName,
 			Version: serviceVersion,
+			Port:    port,
 		},
 		ES: ESConfig{
 			URL:      esURL,

@@ -1,6 +1,6 @@
 # AI Observer Spec
 
-> Last verified: 2026-03-22 (add baseline refresh logging for nil collector results)
+> Last verified: 2026-03-23 (healthcheck env var port, shutdown timeout)
 
 ## Overview
 
@@ -15,7 +15,7 @@ ai-observer/
   main.go                          # Calls bootstrap.Start()
   Dockerfile                       # Multi-stage alpine, uid 1000
   internal/
-    bootstrap/                     # Config -> logger -> ES -> provider -> categories -> scheduler
+    bootstrap/                     # Config -> logger -> ES -> provider -> categories -> scheduler -> health server
     provider/                      # LLMProvider interface + Anthropic implementation
     category/                      # Category interface, Event, Insight types
       classifier/                  # Classifier category (ES sampling + LLM analysis)
@@ -29,7 +29,13 @@ ai-observer/
 
 ## API Reference
 
-No HTTP API. The service runs as a background scheduler that writes to Elasticsearch.
+Health endpoint on port 8096 (configurable via `AI_OBSERVER_PORT`). Includes Elasticsearch connectivity check.
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/health` | Health check with ES status |
+| HEAD | `/health` | Health probe (no body) |
+| GET | `/health/memory` | Memory usage stats |
 
 ### Grafana Dashboard
 
@@ -123,6 +129,8 @@ Both `ai_insights` and `drift_baselines` use `number_of_replicas: 0` (single-nod
 - **Dry-run mode**: `AI_OBSERVER_DRY_RUN=true` short-circuits before any LLM call.
 - **Token budget is pre-estimated**: `len(events) * 50`, not reconciled against actual API spend.
 - **Per-category timeout**: 5 minutes to prevent goroutine stalls.
+- **Graceful shutdown timeout**: 5 seconds via `context.WithTimeout` to prevent indefinite blocking.
+- **Docker healthcheck uses env var**: `AI_OBSERVER_PORT` shell variable (not hardcoded port) so healthcheck tracks port config changes.
 - **ES mapping changes require manual index deletion**: `EnsureMapping` only creates the index if it doesn't exist. After changing the mapping, manually delete the index and restart.
 - **`details` field uses flattened ES type**: avoids dynamic type conflicts from inconsistent LLM output.
 - **`ANTHROPIC_API_KEY` only required when enabled**: service exits cleanly when disabled without API key.

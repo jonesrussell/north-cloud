@@ -38,4 +38,6 @@ COPY --from=builder /build/ai-observer/ai-observer .
 
 USER ai-observer
 
+EXPOSE 8096
+
 CMD ["/app/ai-observer"]

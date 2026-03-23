@@ -680,6 +680,12 @@ services:
       - AI_OBSERVER_DRIFT_BASELINE_WINDOW_DAYS=${AI_OBSERVER_DRIFT_BASELINE_WINDOW_DAYS:-7}
       - AI_OBSERVER_DRIFT_BASELINE_RETENTION=${AI_OBSERVER_DRIFT_BASELINE_RETENTION:-30}
       - ES_URL=http://elasticsearch:9200
+      - AI_OBSERVER_PORT=${AI_OBSERVER_PORT:-8096}
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:$${AI_OBSERVER_PORT:-8096}/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
 
   # ------------------------------------------------------------
   # Render Worker (Playwright)
