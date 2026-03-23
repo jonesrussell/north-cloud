@@ -1,6 +1,6 @@
 # AI Observer Spec
 
-> Last verified: 2026-03-23 (add /health endpoint with ES health check)
+> Last verified: 2026-03-23 (healthcheck env var port, shutdown timeout)
 
 ## Overview
 
@@ -129,6 +129,8 @@ Both `ai_insights` and `drift_baselines` use `number_of_replicas: 0` (single-nod
 - **Dry-run mode**: `AI_OBSERVER_DRY_RUN=true` short-circuits before any LLM call.
 - **Token budget is pre-estimated**: `len(events) * 50`, not reconciled against actual API spend.
 - **Per-category timeout**: 5 minutes to prevent goroutine stalls.
+- **Graceful shutdown timeout**: 5 seconds via `context.WithTimeout` to prevent indefinite blocking.
+- **Docker healthcheck uses env var**: `AI_OBSERVER_PORT` shell variable (not hardcoded port) so healthcheck tracks port config changes.
 - **ES mapping changes require manual index deletion**: `EnsureMapping` only creates the index if it doesn't exist. After changing the mapping, manually delete the index and restart.
 - **`details` field uses flattened ES type**: avoids dynamic type conflicts from inconsistent LLM output.
 - **`ANTHROPIC_API_KEY` only required when enabled**: service exits cleanly when disabled without API key.
