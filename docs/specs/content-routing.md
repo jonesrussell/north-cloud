@@ -1,6 +1,6 @@
 # Content Routing Specification
 
-> Last verified: 2026-03-22 (align go-redis v9.18.0 across all services)
+> Last verified: 2026-03-23 (migrate publisher to infrastructure/redis shared package)
 
 Covers the publisher service: 11-layer routing pipeline, channel management, Redis publishing, and deduplication.
 

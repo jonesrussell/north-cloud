@@ -7,10 +7,10 @@ import (
 
 	infraconfig "github.com/jonesrussell/north-cloud/infrastructure/config"
 	infralogger "github.com/jonesrussell/north-cloud/infrastructure/logger"
+	infraredis "github.com/jonesrussell/north-cloud/infrastructure/redis"
 	"github.com/jonesrussell/north-cloud/publisher/internal/api"
 	"github.com/jonesrussell/north-cloud/publisher/internal/config"
 	"github.com/jonesrussell/north-cloud/publisher/internal/database"
-	redisclient "github.com/jonesrussell/north-cloud/publisher/internal/redis"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -91,7 +91,10 @@ func runAPIServerWithStop() (func(), error) {
 	redisPassword := cfg.Redis.Password
 	if redisAddr != "" {
 		var redisErr error
-		redisClient, redisErr = redisclient.NewClient(redisAddr, redisPassword)
+		redisClient, redisErr = infraredis.NewClient(infraredis.Config{
+			Address:  redisAddr,
+			Password: redisPassword,
+		})
 		if redisErr != nil {
 			infraLog.Warn("Failed to connect to Redis (health checks will show disconnected)",
 				infralogger.Error(redisErr),
@@ -206,7 +209,10 @@ func runAPIServerInternal() int {
 	redisPassword := cfg.Redis.Password
 	if redisAddr != "" {
 		var redisErr error
-		redisClient, redisErr = redisclient.NewClient(redisAddr, redisPassword)
+		redisClient, redisErr = infraredis.NewClient(infraredis.Config{
+			Address:  redisAddr,
+			Password: redisPassword,
+		})
 		if redisErr != nil {
 			infraLog.Warn("Failed to connect to Redis (health checks will show disconnected)",
 				infralogger.Error(redisErr),

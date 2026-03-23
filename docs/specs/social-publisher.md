@@ -1,6 +1,6 @@
 # Social Publisher Spec
 
-> Last verified: 2026-03-22 (align go-redis v9.18.0 across all services)
+> Last verified: 2026-03-23 (migrate social-publisher to infrastructure/redis shared package)
 
 ## Overview
 
