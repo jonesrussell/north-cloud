@@ -84,10 +84,11 @@ func (p *Poller) Stop()
    - Readability: sentence length variety
 
 3. Topic detection (Aho-Corasick, O(n+m)):
-   - Rules loaded from PostgreSQL at startup (cached, no live reload)
+   - Rules loaded from PostgreSQL at startup (hot-reloadable via PUT /api/v1/rules/:id)
    - Priority-descending evaluation, max 5 topics per document
    - Returns: topic names + scores + matched keywords
    - Thread-safe stats tracking (sync.Mutex + map): GetTopicStats() returns per-topic hit counts
+   - Indigenous topic rule (migration 014): populates `topics[]` with "indigenous" so content is filterable via `/api/v1/search?topics[]=indigenous`. Complements Layer 7 indigenous classifier which populates the nested `indigenous` object.
 
 4. Source reputation:
    - Lookup by source_name, create with default 50 if missing
@@ -247,8 +248,9 @@ When `DRILL_EXTRACTION_ENABLED=true` and mining classification is enabled, `Mini
 ## Edge Cases
 
 - **Missing Body/Source aliases**: ClassifiedContent must set Body=RawText and Source=URL or publisher silently skips.
-- **Rules cached at startup**: Changes to classification_rules table require service restart.
+- **Rules hot-reloadable**: POST/PUT via `/api/v1/rules` triggers `reloadTopicClassifierRules()`. Alternatively, restart service.
 - **Nil optional classifiers**: When disabled, field is nil in result and omitted from ES document. Downstream queries return empty.
 - **Mining keywords narrow by design**: Ambiguous terms excluded; ML handles nuance. Don't add broad keywords.
+- **Indigenous topic vs Layer 7**: The `indigenous_detection` topic rule (migration 014) adds "indigenous" to `topics[]`. Layer 7 populates the nested `indigenous` object (relevance, categories, region). Both coexist — topic for filtering, nested for rich metadata.
 - **Crime authority indicators**: Patterns require presence of authority terms (police, rcmp, court, etc.) alongside crime terms for high confidence.
 - **Spam still classified**: quality < 30 flags spam but document is still written to classified_content index.
