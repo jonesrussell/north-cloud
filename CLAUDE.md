@@ -225,6 +225,18 @@ See `docs/specs/workflow.md` for full details. Governance hook: `bin/check-miles
 
 **Squid proxy crash-loop after deploy**: If Squid logs (`squid/logs/`) get wrong ownership (e.g. after path migration), Squid crashes with `Cannot open access.log for writing`. Fix: `sudo rm squid/logs/*.log && docker compose ... restart squid`. See #498.
 
+**Classifier binary path**: `/root/classifier` inside container (not `/app/`). No `migrate` CLI command — use `scripts/run-migration.sh classifier up` from the host (requires `golang-migrate` Docker image).
+
+**Rules API field names**: POST `/api/v1/rules` expects `topic` (not `topic_name`), `priority` as string (`"high"`, `"normal"`, `"low"`), and `keywords` as array. The handler auto-generates `rule_name` as `{topic}_detection`.
+
+**ES `_update_by_query` with wildcard**: `*_classified_content` works for `_count` and `_search` but `_update_by_query` returns `total: 0`. Run updates per-index instead.
+
+**Deploy skips SQL-only changes**: The deploy pipeline filters on changed service directories. Migrations and docs-only PRs won't trigger a deploy. Run migrations manually or use the classifier Rules API to hot-reload topic rules.
+
+**Production is not a git repo**: NC on production (`/home/deployer/north-cloud/`) is deployed as Docker images, not cloned from git. Migration files aren't on disk — use the Rules API or copy files manually.
+
+**Docker IPs are ephemeral**: Container IPs (e.g. `172.18.0.x`) change on restart. Don't hardcode them in Caddy or config. Use Docker DNS names or port mapping instead.
+
 Check logs: `docker compose -f docker-compose.base.yml -f docker-compose.dev.yml logs SERVICE`
 | Check ports: `netstat -tulpn | grep PORT` | DB test: `docker exec -it north-cloud-postgres-SERVICE psql -U postgres -d DATABASE`
 | Health: `curl http://localhost:PORT/health` | See `DOCKER.md` for Docker firewall (UFW) details.
