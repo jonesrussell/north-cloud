@@ -8,7 +8,7 @@ A minimal IRC server (IRCd) written in Go, living inside the north-cloud monorep
 
 - Run a personal/community IRC network at `irc.northcloud.one`
 - Support standard IRC clients connecting and chatting
-- Follow north-cloud conventions (Uber FX, Zap, Taskfile, testify)
+- Follow north-cloud conventions (constructor-based DI, Zap via infrastructure, Taskfile, testify)
 - Keep the implementation simple and idiomatic Go
 
 ## Non-Goals (Future Iterations)
@@ -30,7 +30,7 @@ Goroutine-per-connection model. Each client gets a read goroutine and a write go
 
 ```
 north-cloud/ircd/
-├── main.go                  # Entry point, Uber FX app bootstrap
+├── main.go                  # Entry point, constructor-based bootstrap
 ├── go.mod                   # Module: github.com/jonesrussell/north-cloud/ircd
 ├── Taskfile.yml             # dev, build, lint, test tasks
 ├── config.yml.example       # Default config
@@ -58,8 +58,8 @@ north-cloud/ircd/
 
 ### Key Design Decisions
 
-- **Uber FX** for dependency injection (north-cloud convention)
-- **Zap** for structured logging (north-cloud convention)
+- **Constructor-based DI** (north-cloud convention — no framework, manual wiring)
+- **Zap** for structured logging via `infrastructure/logger` (north-cloud convention)
 - **Server** owns client map (`map[string]*Client`) and channel map (`map[string]*Channel`), protected by `sync.RWMutex`
 - **Client** has two goroutines: `readLoop` (parses incoming lines, dispatches to command handlers) and `writeLoop` (drains an outbound `chan string`)
 - **Command handlers** receive `(server, client, message)` and write responses directly to the client's send channel
@@ -87,7 +87,7 @@ Client connects (TCP)
 
 ### Graceful Shutdown
 
-On SIGTERM/SIGINT (handled via Uber FX `OnStop`):
+On SIGTERM/SIGINT (via `os/signal`):
 1. Stop accepting new connections
 2. Send `ERROR :Server shutting down` to all connected clients
 3. Close all client connections
@@ -115,15 +115,25 @@ Server sends `PING :servername` every 90 seconds. If no `PONG` within 120 second
 
 ### Commands Implemented
 
+**Phase 1 (this plan):**
+
 | Category | Commands |
 |----------|----------|
 | Registration | NICK, USER, PASS, QUIT |
 | Messaging | PRIVMSG, NOTICE |
-| Channels | JOIN, PART, TOPIC, NAMES, KICK, LIST |
-| Queries | WHO, WHOIS, LUSERS, MOTD |
+| Channels | JOIN, PART, TOPIC, NAMES, LIST |
+| Keepalive | PING, PONG |
+
+**Phase 2 (follow-up plan):**
+
+| Category | Commands |
+|----------|----------|
+| Channels | KICK |
+| Queries | WHO, WHOIS |
 | Modes | MODE (user + channel) |
 | Operator | OPER, KILL |
-| Keepalive | PING, PONG |
+
+Note: LUSERS and MOTD are sent as part of the welcome burst in Phase 1 but not as standalone commands until Phase 2.
 
 ### Channel Modes
 
