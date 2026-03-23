@@ -28,9 +28,15 @@ const (
 	defaultReplicas        = 0
 )
 
+// AuthConfig holds authentication configuration.
+type AuthConfig struct {
+	JWTSecret string `env:"AUTH_JWT_SECRET" yaml:"jwt_secret"`
+}
+
 // Config holds the application configuration.
 type Config struct {
 	Service       ServiceConfig       `yaml:"service"`
+	Auth          AuthConfig          `yaml:"auth"`
 	Database      DatabaseConfig      `yaml:"database"`
 	Elasticsearch ElasticsearchConfig `yaml:"elasticsearch"`
 	IndexTypes    IndexTypesConfig    `yaml:"index_types"`

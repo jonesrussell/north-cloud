@@ -2,15 +2,16 @@ package api
 
 import (
 	"github.com/gin-gonic/gin"
+	infragin "github.com/jonesrussell/north-cloud/infrastructure/gin"
 )
 
 // SetupRoutes configures all API routes
-func SetupRoutes(router *gin.Engine, handler *Handler) {
+func SetupRoutes(router *gin.Engine, handler *Handler, jwtSecret string) {
 	// Health routes are handled by the infrastructure/gin package (exposes /health)
 	// No manual health route needed here
 
-	// API v1 routes
-	v1 := router.Group("/api/v1")
+	// API v1 routes — protected by JWT when secret is configured
+	v1 := infragin.ProtectedGroup(router, "/api/v1", jwtSecret)
 	// Index management endpoints
 	indexes := v1.Group("/indexes")
 	indexes.POST("", handler.CreateIndex)                      // POST /api/v1/indexes

@@ -35,9 +35,15 @@ const (
 	defaultArchiveFeedURL = "https://canadabuys.canada.ca/opendata/pub/tenderNoticeComplete-avisAppelOffresComplet.csv"
 )
 
+// AuthConfig holds authentication configuration.
+type AuthConfig struct {
+	JWTSecret string `env:"AUTH_JWT_SECRET" yaml:"jwt_secret"`
+}
+
 // Config holds all configuration for the rfp-ingestor service.
 type Config struct {
 	Service       ServiceConfig       `yaml:"service"`
+	Auth          AuthConfig          `yaml:"auth"`
 	Elasticsearch ElasticsearchConfig `yaml:"elasticsearch"`
 	Feeds         FeedsConfig         `yaml:"feeds"`
 	Ingestion     IngestionConfig     `yaml:"ingestion"`

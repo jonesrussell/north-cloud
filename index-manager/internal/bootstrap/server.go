@@ -34,6 +34,7 @@ func SetupHTTPServer(
 		WriteTimeout: httpTimeoutSeconds * time.Second,
 		Debug:        cfg.Service.Debug,
 		ServiceName:  cfg.Service.Name,
+		JWTSecret:    cfg.Auth.JWTSecret,
 		ESPing: func() error {
 			_, err := esClient.GetClusterHealth(context.Background())
 			return err

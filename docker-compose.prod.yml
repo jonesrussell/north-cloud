@@ -374,6 +374,7 @@ services:
       POSTGRES_INDEX_MANAGER_PASSWORD: "${POSTGRES_INDEX_MANAGER_PASSWORD}"
       POSTGRES_INDEX_MANAGER_DB: "${POSTGRES_INDEX_MANAGER_DB:-index_manager}"
       ELASTICSEARCH_URL: http://elasticsearch:9200
+      AUTH_JWT_SECRET: "${AUTH_JWT_SECRET}"
       CONFIG_PATH: /root/config.yml
       APP_DEBUG: "false"
       APP_ENV: production

@@ -1,6 +1,6 @@
 # Discovery & Querying Specification
 
-> Last verified: 2026-03-22 (fix classified_content contract replicas 1→0 for single-node cluster)
+> Last verified: 2026-03-23 (add JWT middleware to index-manager /api/v1/* routes)
 
 Covers the search service (full-text queries) and index-manager (ES lifecycle, mappings, aggregations).
 
