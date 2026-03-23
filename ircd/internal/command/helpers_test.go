@@ -28,10 +28,10 @@ func newMockServer() *mockServer {
 	}
 }
 
-func (s *mockServer) ServerName() string                { return s.name }
-func (s *mockServer) NetworkName() string               { return s.network }
-func (s *mockServer) MOTD() string                      { return s.motd }
-func (s *mockServer) ClientCount() int                  { return len(s.clients) }
+func (s *mockServer) ServerName() string                          { return s.name }
+func (s *mockServer) NetworkName() string                         { return s.network }
+func (s *mockServer) MOTD() string                                { return s.motd }
+func (s *mockServer) ClientCount() int                            { return len(s.clients) }
 func (s *mockServer) FindClientByNick(nick string) *client.Client { return s.clients[nick] }
 func (s *mockServer) UnregisterClient(_ *client.Client)           {}
 func (s *mockServer) ChangeNick(c *client.Client, nick string) error {
@@ -43,13 +43,13 @@ func (s *mockServer) ChangeNick(c *client.Client, nick string) error {
 	s.clients[nick] = c
 	return nil
 }
-func (s *mockServer) JoinChannel(_ *client.Client, _ string)                             {}
-func (s *mockServer) PartChannel(_ *client.Client, _ string, _ string)                   {}
-func (s *mockServer) ChannelNames(_ string) []string                                     { return nil }
-func (s *mockServer) ChannelTopic(_ string) string                                       { return "" }
-func (s *mockServer) SetChannelTopic(_ *client.Client, _ string, _ string)               {}
-func (s *mockServer) ListChannels() []command.ChannelInfo                                { return s.channelList }
-func (s *mockServer) BroadcastToChannel(_ *client.Client, _ string, _ string) bool       { return true }
+func (s *mockServer) JoinChannel(_ *client.Client, _ string)                       {}
+func (s *mockServer) PartChannel(_ *client.Client, _ string, _ string)             {}
+func (s *mockServer) ChannelNames(_ string) []string                               { return nil }
+func (s *mockServer) ChannelTopic(_ string) string                                 { return "" }
+func (s *mockServer) SetChannelTopic(_ *client.Client, _ string, _ string)         {}
+func (s *mockServer) ListChannels() []command.ChannelInfo                          { return s.channelList }
+func (s *mockServer) BroadcastToChannel(_ *client.Client, _ string, _ string) bool { return true }
 
 func newTestCtx(t *testing.T, srv *mockServer) (*command.Context, net.Conn) {
 	t.Helper()
