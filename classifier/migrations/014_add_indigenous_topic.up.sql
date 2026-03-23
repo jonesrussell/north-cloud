@@ -3,8 +3,8 @@
 -- /api/v1/search?topics[]=indigenous. Complements the existing Layer 7
 -- indigenous classifier (which populates the nested indigenous object).
 --
--- Keywords drawn from indigenous_rules.go — single tokens that work with
--- the TopicClassifier's whole-token matching algorithm.
+-- Keywords drawn from indigenous_rules.go. Single tokens use exact-token
+-- matching; multi-word phrases use substring matching.
 
 BEGIN;
 
@@ -23,26 +23,27 @@ INSERT INTO classification_rules (
     'topic',
     'indigenous',
     ARRAY[
-        -- Core terms (English)
-        'indigenous', 'aboriginal', 'autochtone',
-        -- North American Indigenous peoples
+        -- Core terms (low false-positive risk)
+        'indigenous', 'aboriginal',
+        -- North American Indigenous peoples (unique, no false positives)
         'anishinaabe', 'anishinaabemowin', 'ojibwe', 'ojibwa', 'chippewa',
         'cree', 'mohawk', 'haudenosaunee', 'dene', 'inuit', 'inuk',
-        -- Canadian context
-        'métis', 'metis', 'reconciliation', 'residential',
-        -- Governance and rights
-        'treaty', 'sovereignty', 'self-determination',
-        -- Cultural terms
+        'métis', 'metis',
+        -- Multi-word phrases (substring match — specific enough to avoid false positives)
+        'first nations', 'first nation', 'indigenous peoples', 'indigenous community',
+        'native american', 'truth and reconciliation', 'residential school',
+        'treaty rights', 'land rights', 'land claim', 'band council',
+        'knowledge keeper', 'self-determination',
+        -- Cultural terms (unique to indigenous contexts)
         'midewiwin', 'powwow', 'potlatch', 'smudging', 'sweat lodge',
-        -- Oceania
-        'maori', 'māori', 'aboriginal australian',
+        -- Oceania (multi-word to avoid single-token false positives)
+        'aboriginal australian', 'torres strait islander',
         -- Americas (Spanish/Portuguese)
-        'indígena', 'indigena',
+        'pueblos indígenas', 'comunidad indígena',
         -- French
-        'autochtones', 'premières nations',
-        -- Organizations and institutions
-        'tribal', 'band council', 'elder', 'elders',
-        'knowledge keeper', 'land claim', 'reserve'
+        'peuples autochtones', 'premières nations', 'droits autochtones',
+        -- Nordic
+        'sami people'
     ],
     0.5,  -- 50% confidence threshold (same as mining after tightening)
     8,    -- Priority 8 (above mining at 7, below crime sub-categories)
