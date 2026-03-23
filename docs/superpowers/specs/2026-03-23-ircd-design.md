@@ -15,11 +15,12 @@ A minimal IRC server (IRCd) written in Go, living inside the north-cloud monorep
 
 - Server-to-server linking (S2S)
 - Services (NickServ/ChanServ)
-- TLS
+- Native TLS (Caddy handles TLS termination — see Network Security below)
 - Connection throttling / flood protection
 - Channel bans (+b), invite-only (+i)
 - IRCv3 capabilities negotiation
 - State persistence across restarts
+- WebSocket gateway for the web client (future iteration)
 
 ## Architecture
 
@@ -79,16 +80,25 @@ Client connects (TCP)
 ### Connection Lifecycle
 
 1. Client connects → server assigns unique ID, adds to unregistered clients map
-2. Client sends `NICK` + `USER` → server validates nick uniqueness, moves to registered map, sends welcome burst (RPL_WELCOME 001-005, MOTD)
-3. Client sends commands → dispatched to handlers
-4. Client sends `QUIT` or connection drops → server removes from all channels, notifies other users, cleans up
+2. Client optionally sends `PASS` → server stores the password for later OPER use (PASS is not used for connection authentication in MVP — the server is open)
+3. Client sends `NICK` + `USER` → server validates nick uniqueness, moves to registered map, sends welcome burst (RPL_WELCOME 001-005, MOTD)
+4. Client sends commands → dispatched to handlers
+5. Client sends `QUIT` or connection drops → server removes from all channels, notifies other users, cleans up
+
+### Graceful Shutdown
+
+On SIGTERM/SIGINT (handled via Uber FX `OnStop`):
+1. Stop accepting new connections
+2. Send `ERROR :Server shutting down` to all connected clients
+3. Close all client connections
+4. Exit cleanly
 
 ### Concurrency Model
 
 - `server.clients` — `sync.RWMutex`, write-locked on connect/disconnect, read-locked for lookups
 - `server.channels` — `sync.RWMutex`, write-locked on channel create/destroy, read-locked for lookups
 - `channel.members` — `sync.RWMutex` per channel, write-locked on join/part, read-locked for broadcast
-- `client.Send` — buffered `chan string` (size ~512), writeLoop drains it; if buffer fills (slow client), connection is killed
+- `client.Send` — buffered `chan string` (size 512), writeLoop drains it; if buffer fills (slow client), server sends `ERROR :SendQ exceeded` and closes the connection (logged at WARN level)
 
 ### PING/PONG Keepalive
 
@@ -143,6 +153,26 @@ Server sends `PING :servername` every 90 seconds. If no `PONG` within 120 second
 | 431/432/433 | Nick errors | Empty, invalid, already in use |
 | 461 | Need more params | Missing required params |
 | 462 | Already registered | Double USER command |
+| 311/312/318 | WHOIS replies | WHOIS query |
+| 352/315 | WHO replies | WHO query |
+| 321/322/323 | LIST replies | LIST query |
+| 482 | Chan op needed | KICK/TOPIC/MODE without +o |
+
+## Error Handling
+
+- **Lines exceeding 512 bytes**: truncated at 512 bytes (including `\r\n`), remainder discarded
+- **Malformed messages**: silently ignored (standard IRCd behavior) with DEBUG-level log
+- **Invalid UTF-8**: passed through as-is (IRC is historically encoding-agnostic)
+- **TCP errors in readLoop**: treated as disconnect, triggers cleanup
+- **Unknown commands**: reply with `421 ERR_UNKNOWNCOMMAND`
+
+## Network Security
+
+The IRCd listens on plaintext TCP port 6667 on localhost only. **Caddy** (already used across north-cloud deployments) handles TLS termination and proxies TCP to the IRCd. This means:
+
+- Clients connect to `irc.northcloud.one:6697` (TLS) → Caddy → `127.0.0.1:6667` (plaintext)
+- OPER passwords are protected in transit by Caddy's TLS
+- No need to implement TLS in the IRCd itself for MVP
 
 ## Configuration
 
@@ -150,7 +180,7 @@ Server sends `PING :servername` every 90 seconds. If no `PONG` within 120 second
 server:
   name: irc.northcloud.one
   network: NorthCloud
-  listen: ":6667"
+  listen: "127.0.0.1:6667"
   max_clients: 256
   ping_interval: 90s
   pong_timeout: 120s
@@ -165,11 +195,12 @@ opers:
 
 ## Integration with North Cloud
 
-- Added to `go.work` as a workspace member
-- Uses `infrastructure/` packages where appropriate (config loading, structured logging)
+- Added to `go.work` as a workspace member (own `go.mod`, separate module)
+- May import from `infrastructure/` only if `infrastructure/` is also a workspace module (verify at implementation time — if not, vendor any needed utilities locally)
 - Own `Taskfile.yml` with standard `dev`, `build`, `lint`, `test` tasks
 - Runs standalone — no dependency on other north-cloud services
-- Default port 6667 (standard IRC plaintext)
+- Default port 6667 (standard IRC plaintext, localhost only)
+- The existing web client at `irc.northcloud.one` will not connect directly in MVP — a WebSocket gateway is a future iteration
 
 ## Testing Strategy
 
