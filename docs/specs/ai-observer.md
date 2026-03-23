@@ -1,6 +1,6 @@
 # AI Observer Spec
 
-> Last verified: 2026-03-22 (add baseline refresh logging for nil collector results)
+> Last verified: 2026-03-23 (add /health endpoint with ES health check)
 
 ## Overview
 
@@ -15,7 +15,7 @@ ai-observer/
   main.go                          # Calls bootstrap.Start()
   Dockerfile                       # Multi-stage alpine, uid 1000
   internal/
-    bootstrap/                     # Config -> logger -> ES -> provider -> categories -> scheduler
+    bootstrap/                     # Config -> logger -> ES -> provider -> categories -> scheduler -> health server
     provider/                      # LLMProvider interface + Anthropic implementation
     category/                      # Category interface, Event, Insight types
       classifier/                  # Classifier category (ES sampling + LLM analysis)
@@ -29,7 +29,13 @@ ai-observer/
 
 ## API Reference
 
-No HTTP API. The service runs as a background scheduler that writes to Elasticsearch.
+Health endpoint on port 8096 (configurable via `AI_OBSERVER_PORT`). Includes Elasticsearch connectivity check.
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/health` | Health check with ES status |
+| HEAD | `/health` | Health probe (no body) |
+| GET | `/health/memory` | Memory usage stats |
 
 ### Grafana Dashboard
 

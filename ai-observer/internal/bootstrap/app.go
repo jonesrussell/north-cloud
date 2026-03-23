@@ -17,6 +17,7 @@ import (
 	"github.com/jonesrussell/north-cloud/ai-observer/internal/insights"
 	anthprovider "github.com/jonesrussell/north-cloud/ai-observer/internal/provider/anthropic"
 	"github.com/jonesrussell/north-cloud/ai-observer/internal/scheduler"
+	infragin "github.com/jonesrussell/north-cloud/infrastructure/gin"
 	"github.com/jonesrussell/north-cloud/infrastructure/logger"
 )
 
@@ -95,9 +96,32 @@ func Start() error {
 
 	go sched.Run(ctx)
 
+	// Start health HTTP server alongside the scheduler.
+	srv := infragin.NewServerBuilder(cfg.Service.Name, cfg.Service.Port).
+		WithLogger(log).
+		WithVersion(cfg.Service.Version).
+		WithElasticsearchHealthCheck(func() error {
+			_, pingErr := esClient.Ping()
+			return pingErr
+		}).
+		Build()
+
+	errCh := srv.StartAsync()
+
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
-	<-quit
+
+	select {
+	case err = <-errCh:
+		cancel()
+		return fmt.Errorf("health server: %w", err)
+	case <-quit:
+	}
+
+	cancel()
+	if shutdownErr := srv.Shutdown(context.Background()); shutdownErr != nil {
+		log.Error("Health server shutdown error", logger.Error(shutdownErr))
+	}
 
 	log.Info("AI Observer stopped")
 	return nil
