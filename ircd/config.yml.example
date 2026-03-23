@@ -1,0 +1,14 @@
+server:
+  name: irc.northcloud.one
+  network: NorthCloud
+  listen: "127.0.0.1:6667"
+  max_clients: 256
+  ping_interval: 90s
+  pong_timeout: 120s
+  motd: |
+    Welcome to NorthCloud IRC.
+    This server is part of the NorthCloud network.
+
+opers:
+  - name: jones
+    password: "$2a$10$placeholder"
