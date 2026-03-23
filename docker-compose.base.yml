@@ -678,7 +678,7 @@ services:
       - ES_URL=http://elasticsearch:9200
       - AI_OBSERVER_PORT=${AI_OBSERVER_PORT:-8096}
     healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8096/health"]
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:$${AI_OBSERVER_PORT:-8096}/health"]
       interval: 30s
       timeout: 5s
       retries: 3
