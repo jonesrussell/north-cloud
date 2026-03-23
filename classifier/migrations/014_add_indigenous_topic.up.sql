@@ -42,8 +42,8 @@ INSERT INTO classification_rules (
         -- Key acronyms / movements
         'mmiwg', 'land back'
     ],
-    0.5,  -- 50% confidence threshold (matches global floor — indigenous has
-          -- dedicated hybrid classifier so this rule is a coarse topic tag)
+    0.3,  -- 30% confidence threshold (matches peer topic rules (mining, crime) —
+          -- indigenous has dedicated hybrid classifier so this rule is a coarse topic tag)
     10,   -- Priority 10 (same as issue recommendation)
     true,
     CURRENT_TIMESTAMP,
