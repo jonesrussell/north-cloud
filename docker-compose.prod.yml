@@ -736,6 +736,8 @@ services:
   umami:
     <<: *prod-defaults
     image: ghcr.io/umami-software/umami:postgresql-latest
+    ports:
+      - "127.0.0.1:3000:3000"
     deploy:
       resources:
         limits:
