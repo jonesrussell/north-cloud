@@ -1,0 +1,51 @@
+version: '3'
+
+vars:
+  BINARY_NAME: ircd
+  BUILD_DIR: ./bin
+
+tasks:
+  build:
+    desc: Build the ircd binary
+    cmds:
+      - go build -o {{.BUILD_DIR}}/{{.BINARY_NAME}} .
+
+  run:
+    desc: Run the ircd server
+    cmds:
+      - go run . serve
+
+  test:
+    desc: Run all tests
+    cmds:
+      - go test -v ./...
+
+  test:coverage:
+    desc: Run tests with coverage
+    cmds:
+      - go test -coverprofile=coverage.out ./...
+      - go tool cover -html=coverage.out -o coverage.html
+
+  test:race:
+    desc: Run tests with race detector
+    cmds:
+      - go test -race ./...
+
+  lint:
+    desc: Run linters
+    cmds:
+      - go fmt ./...
+      - go vet ./...
+
+  deps:
+    desc: Download and tidy dependencies
+    cmds:
+      - go mod download
+      - go mod tidy
+      - go mod verify
+
+  fmt:
+    desc: Format code
+    cmds:
+      - go fmt ./...
+      - goimports -w .

@@ -7,7 +7,6 @@
 0 telemetry
 0 metrics
 0 dedup
-0 redis
 
 # L1: External integration
 1 sources

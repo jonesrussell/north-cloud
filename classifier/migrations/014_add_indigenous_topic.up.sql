@@ -1,8 +1,10 @@
 -- Migration 014: Add indigenous topic classification rule
--- Adds "indigenous" to topic detection so search queries with topics[]=indigenous
--- return results. Previously indigenous content was only in the nested indigenous
--- object and never appeared in topics[]. Keywords are a focused subset of the
--- core patterns from indigenous_rules.go.
+-- Adds "indigenous" to the topics[] array so content can be filtered via
+-- /api/v1/search?topics[]=indigenous. Complements the existing Layer 7
+-- indigenous classifier (which populates the nested indigenous object).
+--
+-- Keywords drawn from indigenous_rules.go. Single tokens use exact-token
+-- matching; multi-word phrases use substring matching.
 
 BEGIN;
 
@@ -21,30 +23,31 @@ INSERT INTO classification_rules (
     'topic',
     'indigenous',
     ARRAY[
-        -- Core identity terms (English, North America)
-        'indigenous', 'first nations', 'anishinaabe', 'ojibwe', 'ojibwa',
-        'métis', 'metis', 'inuit', 'inuk', 'aboriginal',
-        -- Institutional / rights
-        'treaty rights', 'land rights', 'residential school',
-        'truth and reconciliation', 'self-determination',
-        -- Governance
-        'band council', 'tribal sovereignty', 'tribal nation',
-        -- Cultural
-        'powwow', 'midewiwin', 'potlatch', 'sweat lodge',
-        -- Languages
-        'anishinaabemowin', 'inuktitut', 'cree',
+        -- Core terms (low false-positive risk)
+        'indigenous', 'aboriginal',
+        -- North American Indigenous peoples (unique, no false positives)
+        'anishinaabe', 'anishinaabemowin', 'ojibwe', 'ojibwa', 'chippewa',
+        'cree', 'mohawk', 'haudenosaunee', 'dene', 'inuit', 'inuk',
+        'métis', 'metis',
+        -- Multi-word phrases (substring match — specific enough to avoid false positives)
+        'first nations', 'first nation', 'indigenous peoples', 'indigenous community',
+        'native american', 'truth and reconciliation', 'residential school',
+        'treaty rights', 'land rights', 'land claim', 'band council',
+        'knowledge keeper', 'self-determination',
+        -- Cultural terms (unique to indigenous contexts)
+        'midewiwin', 'powwow', 'potlatch', 'smudging', 'sweat lodge',
+        -- Oceania (multi-word to avoid single-token false positives)
+        'aboriginal australian', 'torres strait islander',
+        -- Americas (Spanish/Portuguese)
+        'pueblos indígenas', 'comunidad indígena',
         -- French
-        'autochtone', 'premières nations', 'peuples autochtones',
-        -- Oceania
-        'māori', 'maori', 'tangata whenua',
-        -- Other global
-        'native hawaiian', 'sami people',
-        -- Key acronyms / movements
-        'mmiwg', 'land back'
+        'peuples autochtones', 'premières nations', 'droits autochtones',
+        -- Nordic
+        'sami people'
     ],
     0.3,  -- 30% confidence threshold (matches peer topic rules (mining, crime) —
           -- indigenous has dedicated hybrid classifier so this rule is a coarse topic tag)
-    10,   -- Priority 10 (same as issue recommendation)
+    8,    -- Priority 8 (above mining at 7, below crime sub-categories)
     true,
     CURRENT_TIMESTAMP,
     CURRENT_TIMESTAMP

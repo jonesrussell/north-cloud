@@ -8,6 +8,7 @@ use (
 	./crawler
 	./index-manager
 	./infrastructure
+	./ircd
 	./mcp-north-cloud
 	./nc-http-proxy
 	./pipeline

@@ -1,6 +1,6 @@
 # Shared Infrastructure Specification
 
-> Last verified: 2026-03-22 (align go-redis v9.18.0 across all services)
+> Last verified: 2026-03-23 (add drift-baselines Grafana datasource)
 
 Covers the `infrastructure/` module: config loading, logging, database clients, middleware, events, and utilities used by all services.
 
