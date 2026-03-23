@@ -1,6 +1,6 @@
 # RFP Ingestor Spec
 
-> Last verified: 2026-03-22 (add layer rules to service CLAUDE.md and .layers config)
+> Last verified: 2026-03-23 (add JWT middleware to /api/v1/status route)
 
 ## Overview
 
