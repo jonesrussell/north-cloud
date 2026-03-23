@@ -264,8 +264,8 @@ services:
       COFORGE_ML_SERVICE_URL: http://coforge-ml:8000
       ENTERTAINMENT_ENABLED: "true"
       ENTERTAINMENT_ML_SERVICE_URL: http://entertainment-ml:8000
-      # Keep disabled by default until the indigenous ML model has been validated for production.
-      INDIGENOUS_ENABLED: "${INDIGENOUS_ENABLED:-false}"
+      # Validated 2026-03-23: 6/6 test cases correct (core, peripheral, not, false-positive, overlap, global).
+      INDIGENOUS_ENABLED: "${INDIGENOUS_ENABLED:-true}"
       INDIGENOUS_ML_SERVICE_URL: http://indigenous-ml:8000
       RFP_ENABLED: "true"
       PIPELINE_URL: http://pipeline:8075
