@@ -42,3 +42,21 @@ func TestNewClient_ConnectsToRedis(t *testing.T) {
 		t.Errorf("ping failed: %v", pingErr)
 	}
 }
+
+func TestCheckConnection_ReturnsNilForHealthyClient(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test in short mode")
+	}
+
+	client, err := redis.NewClient(redis.Config{
+		Address: "localhost:6379",
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	defer client.Close()
+
+	if checkErr := redis.CheckConnection(client); checkErr != nil {
+		t.Errorf("expected nil, got: %v", checkErr)
+	}
+}

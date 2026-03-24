@@ -14,14 +14,34 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
+// setupRedis creates an optional Redis client for health checks.
+// Returns nil if the address is empty or connection fails.
+func setupRedis(cfg *config.Config, log infralogger.Logger) *redis.Client {
+	if cfg.Redis.URL == "" {
+		return nil
+	}
+
+	client, err := infraredis.NewClient(infraredis.Config{
+		Address:  cfg.Redis.URL,
+		Password: cfg.Redis.Password,
+	})
+	if err != nil {
+		log.Warn("Failed to connect to Redis (health checks will show disconnected)",
+			infralogger.Error(err),
+		)
+
+		return nil
+	}
+
+	return client
+}
+
 func runAPIServer() {
 	os.Exit(runAPIServerInternal())
 }
 
 // runAPIServerWithStop starts the API server and returns a stop function
 // This allows the server to run concurrently with other services
-//
-//nolint:funlen // Function length is acceptable for server initialization
 func runAPIServerWithStop() (func(), error) {
 	// Initialize logger early (before config loading to use structured logging)
 	infraLog, logErr := infralogger.New(infralogger.Config{
@@ -86,22 +106,7 @@ func runAPIServerWithStop() (func(), error) {
 	repo := database.NewRepository(db)
 
 	// Initialize Redis client (optional - for health checks)
-	var redisClient *redis.Client
-	redisAddr := cfg.Redis.URL
-	redisPassword := cfg.Redis.Password
-	if redisAddr != "" {
-		var redisErr error
-		redisClient, redisErr = infraredis.NewClient(infraredis.Config{
-			Address:  redisAddr,
-			Password: redisPassword,
-		})
-		if redisErr != nil {
-			infraLog.Warn("Failed to connect to Redis (health checks will show disconnected)",
-				infralogger.Error(redisErr),
-			)
-			// Continue without Redis - health check will show disconnected status
-		}
-	}
+	redisClient := setupRedis(cfg, infraLog)
 
 	// Initialize Elasticsearch client (optional - for indexes endpoint)
 	var esClient = initElasticsearchClientOptional(cfg.Elasticsearch.URL, infraLog)
@@ -204,22 +209,7 @@ func runAPIServerInternal() int {
 	repo := database.NewRepository(db)
 
 	// Initialize Redis client (optional - for health checks)
-	var redisClient *redis.Client
-	redisAddr := cfg.Redis.URL
-	redisPassword := cfg.Redis.Password
-	if redisAddr != "" {
-		var redisErr error
-		redisClient, redisErr = infraredis.NewClient(infraredis.Config{
-			Address:  redisAddr,
-			Password: redisPassword,
-		})
-		if redisErr != nil {
-			infraLog.Warn("Failed to connect to Redis (health checks will show disconnected)",
-				infralogger.Error(redisErr),
-			)
-			// Continue without Redis - health check will show disconnected status
-		}
-	}
+	redisClient := setupRedis(cfg, infraLog)
 
 	// Initialize Elasticsearch client (optional - for indexes endpoint)
 	var esClient = initElasticsearchClientOptional(cfg.Elasticsearch.URL, infraLog)
