@@ -31,7 +31,7 @@ x-ml-sidecar: &ml-sidecar-defaults
     resources:
       limits:
         cpus: "0.5"
-        memory: 512M
+        memory: 1G
 
 # ============================================================
 # Services
@@ -380,10 +380,6 @@ services:
       args:
         MODULE_NAME: mining
     image: docker.io/jonesrussell/mining-ml:latest
-    deploy:
-      resources:
-        limits:
-          memory: 1G
     ports:
       - "${MINING_ML_PORT:-8077}:8000"
 
@@ -399,10 +395,6 @@ services:
       args:
         MODULE_NAME: coforge
     image: docker.io/jonesrussell/coforge-ml:latest
-    deploy:
-      resources:
-        limits:
-          memory: 1G
     ports:
       - "${COFORGE_ML_PORT:-8078}:8000"
 
