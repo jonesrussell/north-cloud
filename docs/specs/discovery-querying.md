@@ -1,6 +1,6 @@
 # Discovery & Querying Specification
 
-> Last verified: 2026-03-23 (add JWT middleware to index-manager /api/v1/* routes)
+> Last verified: 2026-03-24 (add search api test coverage)
 
 Covers the search service (full-text queries) and index-manager (ES lifecycle, mappings, aggregations).
 
