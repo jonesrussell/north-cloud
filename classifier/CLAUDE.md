@@ -128,6 +128,22 @@ Each hybrid classifier is nil when disabled — the corresponding field is omitt
 - `quality_score < 40`: Low quality / spam candidate
 - `quality_score < 30`: Spam threshold (flagged; source reputation penalised)
 
+### Quality Gate
+
+Configurable gate that filters documents before indexing to `*_classified_content`:
+
+| Condition | Action |
+|-----------|--------|
+| `quality_score >= threshold` | Index normally |
+| `quality_score < threshold` AND `content_type=article` | Index with `low_quality=true` |
+| `quality_score < threshold` AND `content_type!=article` | Reject (logged, not indexed) |
+
+**Config:**
+- `CLASSIFIER_QUALITY_GATE_ENABLED` (bool, default `false`) — feature flag
+- `CLASSIFIER_QUALITY_GATE_THRESHOLD` (int, default `40`) — minimum quality_score
+
+**Observability:** Rejected and flagged documents are logged at `info` level with source, content_type, quality_score, and URL.
+
 ### Topic Classification Rules
 
 Stored in PostgreSQL `classification_rules` table:
@@ -332,6 +348,9 @@ classification:
     ml_service_url: ""            # INDIGENOUS_ML_SERVICE_URL
   rfp:
     enabled: false                # RFP_ENABLED
+  quality_gate:
+    enabled: false                # CLASSIFIER_QUALITY_GATE_ENABLED
+    threshold: 40                 # CLASSIFIER_QUALITY_GATE_THRESHOLD
 ```
 
 ## Common Gotchas
@@ -358,6 +377,8 @@ classification:
 8. **ML sidecar absent from classified content**: When a hybrid classifier is disabled (`CRIME_ENABLED=false`, etc.), the corresponding domain field (`crime`, `mining`, etc.) is nil and omitted from the Elasticsearch document. Publisher routes that filter on `mining.relevance` will see no results until the sidecar is enabled.
 
 9. **Content subtype gates optional classifiers**: Pages, listings, and non-article types skip all optional classifiers. `event` subtypes run location only; `blotter` subtypes run crime only; `report` subtypes skip all optional classifiers. Standard articles run all enabled classifiers.
+
+10. **Quality gate is off by default**: Set `CLASSIFIER_QUALITY_GATE_ENABLED=true` to activate. When enabled, non-article content (pages, events) with `quality_score < 40` will be silently dropped from indexing. Articles below threshold are indexed with `low_quality=true` flag.
 
 ## Testing
 
