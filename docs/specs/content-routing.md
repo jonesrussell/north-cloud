@@ -1,6 +1,6 @@
 # Content Routing Specification
 
-> Last verified: 2026-03-23 (migrate publisher to infrastructure/redis shared package)
+> Last verified: 2026-03-23 (deduplicate setupRedis in publisher cmd_api.go)
 
 Covers the publisher service: 11-layer routing pipeline, channel management, Redis publishing, and deduplication.
 
