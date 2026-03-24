@@ -1,6 +1,6 @@
 # Shared Infrastructure Specification
 
-> Last verified: 2026-03-23 (add drift-baselines Grafana datasource)
+> Last verified: 2026-03-24 (add Redis CheckConnection health-check helper)
 
 Covers the `infrastructure/` module: config loading, logging, database clients, middleware, events, and utilities used by all services.
 

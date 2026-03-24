@@ -45,3 +45,15 @@ func NewClient(cfg Config) (*redis.Client, error) {
 
 	return client, nil
 }
+
+// CheckConnection verifies that a Redis client can reach the server.
+func CheckConnection(client *redis.Client) error {
+	ctx, cancel := context.WithTimeout(context.Background(), connectionTimeout)
+	defer cancel()
+
+	if err := client.Ping(ctx).Err(); err != nil {
+		return fmt.Errorf("redis health check failed: %w", err)
+	}
+
+	return nil
+}
