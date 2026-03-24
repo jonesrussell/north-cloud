@@ -241,6 +241,7 @@ func TestListIndices_Success(t *testing.T) {
 			{"index": ".kibana"}, // system index, should be filtered
 		}
 		w.WriteHeader(http.StatusOK)
+		//nolint:errchkjson // test mock handler
 		_ = json.NewEncoder(w).Encode(resp)
 	})
 	client := newTestClient(t, handler)
@@ -299,6 +300,7 @@ func TestGetAllIndexDocCounts_Success(t *testing.T) {
 			{"index": ".kibana", "docs.count": "5"},
 		}
 		w.WriteHeader(http.StatusOK)
+		//nolint:errchkjson // test mock handler
 		_ = json.NewEncoder(w).Encode(resp)
 	})
 	client := newTestClient(t, handler)
@@ -323,6 +325,7 @@ func TestGetAllIndexDocCounts_InvalidDocCount(t *testing.T) {
 			{"index": "test_index", "docs.count": "not_a_number"},
 		}
 		w.WriteHeader(http.StatusOK)
+		//nolint:errchkjson // test mock handler
 		_ = json.NewEncoder(w).Encode(resp)
 	})
 	client := newTestClient(t, handler)
@@ -656,6 +659,7 @@ func TestGetIndexMapping_Success(t *testing.T) {
 				},
 			},
 		}
+		//nolint:errchkjson // test mock handler
 		_ = json.NewEncoder(w).Encode(resp)
 	})
 	client := newTestClient(t, handler)
@@ -692,6 +696,7 @@ func TestGetIndexMapping_MissingMappings(t *testing.T) {
 		resp := map[string]any{
 			"test_index": map[string]any{},
 		}
+		//nolint:errchkjson // test mock handler
 		_ = json.NewEncoder(w).Encode(resp)
 	})
 	client := newTestClient(t, handler)
@@ -758,7 +763,8 @@ func TestGetIndexInfo_Success(t *testing.T) {
 					},
 				},
 			}
-			_ = json.NewEncoder(w).Encode(resp)
+			//nolint:errchkjson // test mock handler
+		_ = json.NewEncoder(w).Encode(resp)
 		case callCount == 2:
 			// Health response
 			resp := map[string]any{
@@ -767,7 +773,8 @@ func TestGetIndexInfo_Success(t *testing.T) {
 					"test_index": map[string]any{"status": "open"},
 				},
 			}
-			_ = json.NewEncoder(w).Encode(resp)
+			//nolint:errchkjson // test mock handler
+		_ = json.NewEncoder(w).Encode(resp)
 		default:
 			// Index info response
 			resp := map[string]any{
@@ -776,7 +783,8 @@ func TestGetIndexInfo_Success(t *testing.T) {
 					"mappings": map[string]any{"properties": map[string]any{}},
 				},
 			}
-			_ = json.NewEncoder(w).Encode(resp)
+			//nolint:errchkjson // test mock handler
+		_ = json.NewEncoder(w).Encode(resp)
 		}
 	})
 	client := newTestClient(t, handler)
