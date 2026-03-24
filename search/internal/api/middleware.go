@@ -62,8 +62,8 @@ func CORSMiddleware(cfg *config.CORSConfig) gin.HandlerFunc {
 
 		c.Writer.Header().Set("Access-Control-Allow-Origin", origin)
 		c.Writer.Header().Set("Access-Control-Allow-Credentials", boolToString(cfg.AllowCredentials))
-		c.Writer.Header().Set("Access-Control-Allow-Methods", joinStrings(cfg.AllowedMethods, ", "))
-		c.Writer.Header().Set("Access-Control-Allow-Headers", joinStrings(cfg.AllowedHeaders, ", "))
+		c.Writer.Header().Set("Access-Control-Allow-Methods", joinStrings(cfg.AllowedMethods))
+		c.Writer.Header().Set("Access-Control-Allow-Headers", joinStrings(cfg.AllowedHeaders))
 		c.Writer.Header().Set("Access-Control-Max-Age", intToString(cfg.MaxAge))
 
 		// Handle preflight requests
@@ -112,7 +112,7 @@ func isOriginAllowed(origin string, allowedOrigins []string) bool {
 // Helper functions
 func boolToString(b bool) string {
 	if b {
-		return "true"
+		return trueString
 	}
 	return "false"
 }
@@ -121,7 +121,9 @@ func intToString(i int) string {
 	return strconv.Itoa(i)
 }
 
-func joinStrings(strs []string, sep string) string {
+func joinStrings(strs []string) string {
+	const sep = ", "
+
 	var sb strings.Builder
 	for i, str := range strs {
 		if i > 0 {
