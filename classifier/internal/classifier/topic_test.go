@@ -808,6 +808,161 @@ func TestTopicClassifier_Travel_DoesNotMatchTraffickingContext(t *testing.T) {
 	}
 }
 
+func TestTopicClassifier_ScoreTextAgainstRule_AccentedKeywords(t *testing.T) {
+	t.Parallel()
+
+	classifier := NewTopicClassifier(&mockLogger{}, nil, defaultMaxTopics)
+
+	tests := []struct {
+		name      string
+		text      string
+		keywords  []string
+		wantMatch bool
+	}{
+		{
+			name:      "single accented keyword matches",
+			text:      "Les Métis du Manitoba se réunissent",
+			keywords:  []string{"métis"},
+			wantMatch: true,
+		},
+		{
+			name:      "multi-word accented keyword matches",
+			text:      "Les premières nations du Canada annoncent un accord",
+			keywords:  []string{"premières nations"},
+			wantMatch: true,
+		},
+		{
+			name:      "mixed ASCII and accented keywords",
+			text:      "Métis community celebrates résultats at the annual powwow",
+			keywords:  []string{"métis", "powwow", "résultats"},
+			wantMatch: true,
+		},
+		{
+			name:      "uppercase accented text matches lowercase accented keyword",
+			text:      "PREMIÈRES NATIONS DU QUÉBEC",
+			keywords:  []string{"premières nations", "québec"},
+			wantMatch: true,
+		},
+		{
+			name:      "accented keyword does not match unaccented text",
+			text:      "The premieres nations group met today",
+			keywords:  []string{"premières nations"},
+			wantMatch: false,
+		},
+		{
+			name:      "unaccented keyword does not match accented text",
+			text:      "Les premières nations du Canada",
+			keywords:  []string{"premieres nations"},
+			wantMatch: false,
+		},
+		{
+			name:      "Spanish accented keywords match",
+			text:      "Los pueblos indígenas de América celebran",
+			keywords:  []string{"pueblos indígenas"},
+			wantMatch: true,
+		},
+		{
+			name:      "cedilla and circumflex characters match",
+			text:      "Le français est parlé dans la forêt",
+			keywords:  []string{"français", "forêt"},
+			wantMatch: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			rule := domain.ClassificationRule{
+				Keywords:      tt.keywords,
+				MinConfidence: 0.1,
+			}
+
+			score := classifier.scoreTextAgainstRule(tt.text, rule)
+			gotMatch := score > 0
+
+			if gotMatch != tt.wantMatch {
+				t.Errorf("scoreTextAgainstRule() score=%f, gotMatch=%v, wantMatch=%v",
+					score, gotMatch, tt.wantMatch)
+			}
+		})
+	}
+}
+
+func TestTopicClassifier_Classify_AccentedKeywordsInTopicRule(t *testing.T) {
+	t.Parallel()
+
+	rules := []domain.ClassificationRule{
+		{
+			RuleName:      "indigenous_detection",
+			RuleType:      domain.RuleTypeTopic,
+			TopicName:     "indigenous",
+			Keywords:      []string{"premières nations", "métis", "pueblos indígenas", "autochtone"},
+			MinConfidence: 0.5,
+			Enabled:       true,
+			Priority:      100,
+		},
+	}
+
+	tests := []struct {
+		name      string
+		title     string
+		rawText   string
+		wantTopic string
+	}{
+		{
+			name:      "French accented content matches indigenous topic",
+			title:     "Les Premières Nations du Québec",
+			rawText:   "Les premières nations et les Métis se réunissent pour discuter des droits autochtone",
+			wantTopic: "indigenous",
+		},
+		{
+			name:      "Spanish accented content matches indigenous topic",
+			title:     "Pueblos Indígenas de América",
+			rawText:   "Los pueblos indígenas y métis celebran su herencia autochtone en una conferencia global",
+			wantTopic: "indigenous",
+		},
+		{
+			name:      "unaccented text does not match accented keywords",
+			title:     "Premieres Nations Meeting",
+			rawText:   "The premieres nations group held a meeting about community matters today",
+			wantTopic: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			tc := NewTopicClassifier(&mockLogger{}, rules, defaultMaxTopics)
+
+			raw := &domain.RawContent{
+				ID:      "test-accent-" + tt.name,
+				Title:   tt.title,
+				RawText: tt.rawText,
+			}
+
+			result, err := tc.Classify(context.Background(), raw)
+			if err != nil {
+				t.Fatalf("Classify() error = %v", err)
+			}
+
+			if tt.wantTopic == "" {
+				if len(result.Topics) != 0 {
+					t.Errorf("expected no topics, got %v", result.Topics)
+				}
+
+				return
+			}
+
+			if result.HighestTopic != tt.wantTopic {
+				t.Errorf("HighestTopic = %q, want %q (topics: %v, scores: %v)",
+					result.HighestTopic, tt.wantTopic, result.Topics, result.TopicScores)
+			}
+		})
+	}
+}
+
 func TestTopicClassifier_Travel_MatchesGenuineTravelContent(t *testing.T) {
 	t.Helper()
 
