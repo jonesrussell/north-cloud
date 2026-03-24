@@ -1,6 +1,6 @@
 # Classification Specification
 
-> Last verified: 2026-03-23 (add accented keyword matching tests — #552)
+> Last verified: 2026-03-24 (added domain + storage test coverage — #537)
 
 Covers the classifier service, hybrid rule+ML classification pipeline, ML sidecar integration, and content enrichment.
 
