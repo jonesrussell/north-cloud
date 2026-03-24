@@ -751,8 +751,8 @@ func TestGetIndexInfo_Success(t *testing.T) {
 		callCount++
 		w.WriteHeader(http.StatusOK)
 
-		switch {
-		case callCount == 1:
+		switch callCount {
+		case 1:
 			// Stats response
 			resp := map[string]any{
 				"indices": map[string]any{
@@ -764,8 +764,8 @@ func TestGetIndexInfo_Success(t *testing.T) {
 				},
 			}
 			//nolint:errchkjson // test mock handler
-		_ = json.NewEncoder(w).Encode(resp)
-		case callCount == 2:
+			_ = json.NewEncoder(w).Encode(resp)
+		case 2:
 			// Health response
 			resp := map[string]any{
 				"status": "green",
@@ -774,7 +774,7 @@ func TestGetIndexInfo_Success(t *testing.T) {
 				},
 			}
 			//nolint:errchkjson // test mock handler
-		_ = json.NewEncoder(w).Encode(resp)
+			_ = json.NewEncoder(w).Encode(resp)
 		default:
 			// Index info response
 			resp := map[string]any{
@@ -784,7 +784,7 @@ func TestGetIndexInfo_Success(t *testing.T) {
 				},
 			}
 			//nolint:errchkjson // test mock handler
-		_ = json.NewEncoder(w).Encode(resp)
+			_ = json.NewEncoder(w).Encode(resp)
 		}
 	})
 	client := newTestClient(t, handler)

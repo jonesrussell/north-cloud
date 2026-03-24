@@ -602,9 +602,6 @@ func TestBuildFilters_AllFiltersCombined(t *testing.T) {
 	}
 
 	result := qb.BuildFiltersOnly(filters)
-	// title, url, content_type, quality, topics, published_date, crawled_at,
-	// crime_relevance, crime_sub_labels, crime_types, homepage_eligible, review_required,
-	// cities, provinces, countries, specificity, sources = 17
 	expectedCount := 17
 	if len(result) != expectedCount {
 		t.Errorf("combined filter count = %d, want %d", len(result), expectedCount)

@@ -13,32 +13,28 @@ var errTestES = errors.New("test ES error")
 
 // --- mapToDocument ---
 
-func TestMapToDocument_AllFields(t *testing.T) {
-	t.Helper()
-
-	svc := &DocumentService{logger: &noopLogger{}}
-
-	source := map[string]any{
-		"title":         "Test Article",
-		"url":           "https://example.com/article",
-		"source_name":   "example_com",
-		"content_type":  "article",
-		"quality_score": float64(85),
-		"body":          "Article body text",
-		"raw_text":      "Raw text content",
-		"raw_html":      "<p>HTML</p>",
-		"topics":        []any{"crime", "local"},
+func allFieldsSource() map[string]any {
+	return map[string]any{
+		"title":          "Test Article",
+		"url":            "https://example.com/article",
+		"source_name":    "example_com",
+		"content_type":   "article",
+		"quality_score":  float64(85),
+		"body":           "Article body text",
+		"raw_text":       "Raw text content",
+		"raw_html":       "<p>HTML</p>",
+		"topics":         []any{"crime", "local"},
 		"published_date": "2024-01-15T10:00:00Z",
 		"crawled_at":     "2024-01-15T12:00:00Z",
 		"crime": map[string]any{
 			"sub_label":          "robbery",
 			"primary_crime_type": "theft",
-			"relevance":         "core_street_crime",
-			"crime_types":       []any{"robbery", "theft"},
-			"final_confidence":  float64(0.95),
-			"homepage_eligible": true,
-			"review_required":   false,
-			"model_version":     "v2.1",
+			"relevance":          "core_street_crime",
+			"crime_types":        []any{"robbery", "theft"},
+			"final_confidence":   float64(0.95),
+			"homepage_eligible":  true,
+			"review_required":    false,
+			"model_version":      "v2.1",
 		},
 		"location": map[string]any{
 			"city":        "Sudbury",
@@ -49,8 +45,10 @@ func TestMapToDocument_AllFields(t *testing.T) {
 		},
 		"extra_field": "extra_value",
 	}
+}
 
-	doc := svc.mapToDocument("doc-123", source)
+func assertBaseFields(t *testing.T, doc *domain.Document) {
+	t.Helper()
 
 	if doc.ID != "doc-123" {
 		t.Errorf("ID = %q, want %q", doc.ID, "doc-123")
@@ -91,8 +89,11 @@ func TestMapToDocument_AllFields(t *testing.T) {
 	if doc.CrawledAt == nil {
 		t.Fatal("CrawledAt should not be nil")
 	}
+}
 
-	// Crime fields
+func assertCrimeFields(t *testing.T, doc *domain.Document) {
+	t.Helper()
+
 	if doc.Crime == nil {
 		t.Fatal("Crime should not be nil")
 	}
@@ -120,8 +121,11 @@ func TestMapToDocument_AllFields(t *testing.T) {
 	if doc.Crime.ModelVersion != "v2.1" {
 		t.Errorf("Crime.ModelVersion = %q, want %q", doc.Crime.ModelVersion, "v2.1")
 	}
+}
 
-	// Location fields
+func assertLocationFields(t *testing.T, doc *domain.Document) {
+	t.Helper()
+
 	if doc.Location == nil {
 		t.Fatal("Location should not be nil")
 	}
@@ -140,11 +144,31 @@ func TestMapToDocument_AllFields(t *testing.T) {
 	if doc.Location.Confidence != 0.88 {
 		t.Errorf("Location.Confidence = %f, want 0.88", doc.Location.Confidence)
 	}
+}
 
-	// Meta should contain extra fields
-	if doc.Meta["extra_field"] != "extra_value" {
-		t.Errorf("Meta[extra_field] = %v, want %q", doc.Meta["extra_field"], "extra_value")
-	}
+func TestMapToDocument_AllFields(t *testing.T) {
+	t.Helper()
+
+	svc := &DocumentService{logger: &noopLogger{}}
+	doc := svc.mapToDocument("doc-123", allFieldsSource())
+
+	t.Run("base_fields", func(t *testing.T) {
+		assertBaseFields(t, doc)
+	})
+
+	t.Run("crime_fields", func(t *testing.T) {
+		assertCrimeFields(t, doc)
+	})
+
+	t.Run("location_fields", func(t *testing.T) {
+		assertLocationFields(t, doc)
+	})
+
+	t.Run("meta_fields", func(t *testing.T) {
+		if doc.Meta["extra_field"] != "extra_value" {
+			t.Errorf("Meta[extra_field] = %v, want %q", doc.Meta["extra_field"], "extra_value")
+		}
+	})
 }
 
 func TestMapToDocument_MinimalFields(t *testing.T) {

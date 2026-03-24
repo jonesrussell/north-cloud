@@ -221,6 +221,9 @@ func TestConfig_Fields(t *testing.T) {
 	if cfg.Username != "elastic" {
 		t.Errorf("Username = %q, want %q", cfg.Username, "elastic")
 	}
+	if cfg.Password != "pass" {
+		t.Errorf("Password = %q, want %q", cfg.Password, "pass")
+	}
 	if cfg.MaxRetries != 3 {
 		t.Errorf("MaxRetries = %d, want 3", cfg.MaxRetries)
 	}
@@ -242,8 +245,17 @@ func TestIndexInfo_Fields(t *testing.T) {
 	if info.Name != "test_index" {
 		t.Errorf("Name = %q, want %q", info.Name, "test_index")
 	}
+	if info.Health != "green" {
+		t.Errorf("Health = %q, want %q", info.Health, "green")
+	}
+	if info.Status != "open" {
+		t.Errorf("Status = %q, want %q", info.Status, "open")
+	}
 	if info.DocumentCount != 100 {
 		t.Errorf("DocumentCount = %d, want 100", info.DocumentCount)
+	}
+	if info.Size != "1kb" {
+		t.Errorf("Size = %q, want %q", info.Size, "1kb")
 	}
 }
 
