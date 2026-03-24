@@ -15,11 +15,11 @@ Evidence:
 
 ### Change 1: Quality Gate in Classifier Pipeline (#566, #565)
 
-**Location**: `classifier/internal/classifier/classifier.go` — after classification computes quality_score and content_type, before indexing to ES.
+**Location**: `classifier/internal/processor/poller.go` — between batch classification and the `BulkIndexClassifiedContent` call. The gate filters the classified results before they reach ES.
 
 **Gate logic**:
 ```
-quality_score >= threshold                          → index normally
+quality_score >= threshold (inclusive)                → index normally
 quality_score < threshold AND content_type=article  → index with low_quality=true
 quality_score < threshold AND content_type!=article → reject (log, skip indexing)
 ```
@@ -55,7 +55,7 @@ Add `low_quality` as a `boolean` field to the classifier's ES mapping template s
 ## Implementation Order
 
 1. Add `LowQuality` field to domain model + ES mapping
-2. Add config env vars (`QUALITY_GATE_ENABLED`, `QUALITY_GATE_THRESHOLD`)
+2. Add config env vars (`CLASSIFIER_QUALITY_GATE_ENABLED`, `CLASSIFIER_QUALITY_GATE_THRESHOLD`)
 3. Implement gate logic in classifier pipeline (between classify and index)
 4. Add logging and counter metrics
 5. Tests: unit tests for gate logic, integration test for reject/flag/pass paths
