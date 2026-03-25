@@ -181,6 +181,9 @@ type ClassifiedContent struct {
 	ModelVersion         string  `json:"model_version,omitempty"`
 	Confidence           float64 `json:"confidence"`
 
+	// Quality gate flag — true when article indexed despite low quality_score
+	LowQuality bool `json:"low_quality,omitempty"`
+
 	// Crime hybrid classification (optional)
 	Crime *CrimeResult `json:"crime,omitempty"`
 

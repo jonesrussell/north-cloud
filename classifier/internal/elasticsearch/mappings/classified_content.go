@@ -76,6 +76,9 @@ type ClassifiedContentProperties struct {
 	ModelVersion         Field `json:"model_version"`
 	Confidence           Field `json:"confidence"`
 
+	// Quality gate flag
+	LowQuality Field `json:"low_quality"`
+
 	// Crime classification (hybrid rule + ML)
 	Crime CrimeProperties `json:"crime,omitempty"`
 
@@ -251,6 +254,7 @@ func createClassificationProperties() ClassifiedContentProperties {
 		ClassificationMethod: Field{Type: "keyword"},
 		ModelVersion:         Field{Type: "keyword"},
 		Confidence:           Field{Type: "float"},
+		LowQuality:           Field{Type: "boolean"},
 		Crime:                createCrimeProperties(),
 		Mining:               createMiningProperties(),
 		Entertainment:        createEntertainmentProperties(),
@@ -386,6 +390,7 @@ func mergeProperties(raw, classified ClassifiedContentProperties) ClassifiedCont
 		ClassifierVersion:    classified.ClassifierVersion,
 		ClassificationMethod: classified.ClassificationMethod,
 		ModelVersion:         classified.ModelVersion, Confidence: classified.Confidence,
+		LowQuality:    classified.LowQuality,
 		Crime:         classified.Crime,
 		Mining:        classified.Mining,
 		Entertainment: classified.Entertainment,

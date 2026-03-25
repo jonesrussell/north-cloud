@@ -42,6 +42,7 @@ const (
 	defaultEntertainmentMLServiceURL = "http://entertainment-ml:8079"
 	defaultIndigenousMLServiceURL    = "http://indigenous-ml:8081"
 	defaultMiningMLServiceURL        = "http://mining-ml:8077"
+	defaultQualityGateThreshold      = 40
 )
 
 // Config holds all configuration for the classifier service.
@@ -142,6 +143,7 @@ type ClassificationConfig struct {
 	Job              JobExtractionConfig    `yaml:"job"`
 	RFP              RFPExtractionConfig    `yaml:"rfp"`
 	DrillExtraction  DrillExtractionConfig  `yaml:"drill_extraction"`
+	QualityGate      QualityGateConfig      `yaml:"quality_gate"`
 	// SidecarRegistry maps sidecar name (e.g. "crime", "mining") to enabled + URL.
 	// Built from Crime/Mining/... named configs when absent in YAML.
 	// NOTE: Currently populated by setClassificationDefaults but not yet consumed by the bootstrap
@@ -208,6 +210,12 @@ type DrillExtractionConfig struct {
 	AnthropicModel   string `yaml:"anthropic_model"`
 	AnthropicBaseURL string `yaml:"anthropic_base_url"`
 	MaxBodyChars     int    `yaml:"max_body_chars"`
+}
+
+// QualityGateConfig holds quality gate settings.
+type QualityGateConfig struct {
+	Enabled   bool `env:"CLASSIFIER_QUALITY_GATE_ENABLED"   yaml:"enabled"`
+	Threshold int  `env:"CLASSIFIER_QUALITY_GATE_THRESHOLD" yaml:"threshold"`
 }
 
 // ContentTypeConfig holds content type detection settings.
@@ -399,6 +407,10 @@ func setClassificationDefaults(c *ClassificationConfig) {
 	}
 	if c.DrillExtraction.MaxBodyChars == 0 {
 		c.DrillExtraction.MaxBodyChars = 4000
+	}
+	// QualityGate defaults: disabled by default for safe rollout
+	if c.QualityGate.Threshold == 0 {
+		c.QualityGate.Threshold = defaultQualityGateThreshold
 	}
 	// Routing: if absent, use default routing table (article -> all; article:event -> location; article:blotter -> crime; article:report -> none)
 	if c.Routing == nil {

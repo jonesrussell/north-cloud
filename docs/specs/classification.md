@@ -1,6 +1,6 @@
 # Classification Specification
 
-> Last verified: 2026-03-24 (added domain + storage test coverage — #537)
+> Last verified: 2026-03-24 (added quality gate filter — #566)
 
 Covers the classifier service, hybrid rule+ML classification pipeline, ML sidecar integration, and content enrichment.
 
@@ -33,6 +33,7 @@ Covers the classifier service, hybrid rule+ML classification pipeline, ML sideca
 | `classifier/internal/indigenousmlclient/client.go` | Indigenous ML sidecar client |
 | `classifier/internal/mlhealth/health.go` | ML sidecar health checks |
 | `classifier/internal/processor/poller.go` | ES polling loop for pending content |
+| `classifier/internal/processor/quality_gate.go` | Quality gate filter (pre-indexing) |
 | `classifier/internal/processor/batch.go` | Worker pool batch processor |
 | `classifier/internal/domain/classification.go` | ClassificationResult, ClassifiedContent |
 | `classifier/internal/domain/raw_content.go` | RawContent input model |
@@ -67,6 +68,19 @@ func CallMLWithBodyLimit[T any](ctx context.Context, title, body string, maxChar
 func (p *Poller) Start(ctx context.Context) error  // Background polling loop
 func (p *Poller) Stop()
 ```
+
+### Quality Gate (`internal/processor/quality_gate.go`)
+```go
+func applyQualityGate(cfg config.QualityGateConfig, contents []*domain.ClassifiedContent, logger infralogger.Logger) QualityGateResult
+```
+Returns `QualityGateResult{Passed, RejectedIDs}`. Runs after classification, before ES indexing. Three outcomes per item:
+- `quality_score >= threshold`: pass through (`LowQuality` cleared to `false`)
+- `quality_score < threshold` AND `content_type=article`: pass with `LowQuality=true`
+- `quality_score < threshold` AND `content_type!=article`: reject — ID added to `RejectedIDs`, raw content status set to `filtered`
+
+Emits a batch summary log (`passed`/`flagged`/`rejected` counts) when any items are filtered.
+
+**Classification statuses**: `pending` → `classified` | `failed` | `filtered` (quality gate rejected)
 
 ## Data Flow
 
@@ -226,6 +240,8 @@ type DrillResult struct {
 - `DRILL_LLM_FALLBACK` — enable Claude Haiku fallback when regex extraction is partial/none
 - `ANTHROPIC_API_KEY` — required when LLM fallback is enabled
 - `ANTHROPIC_MODEL` (default: `claude-haiku-4-5`) — model for drill extraction
+- `CLASSIFIER_QUALITY_GATE_ENABLED` (default: `false`) — enable quality gate pre-indexing filter
+- `CLASSIFIER_QUALITY_GATE_THRESHOLD` (default: `40`) — minimum quality_score to pass without flagging
 
 `INDIGENOUS_ENABLED` defaults to `false` in the compose files. This is intentional: the sidecar is wired and supported, but should stay feature-flagged off until its model has been validated for the target environment.
 
@@ -251,6 +267,7 @@ When `DRILL_EXTRACTION_ENABLED=true` and mining classification is enabled, `Mini
 - **Rules hot-reloadable**: POST/PUT via `/api/v1/rules` triggers `reloadTopicClassifierRules()`. Alternatively, restart service.
 - **Nil optional classifiers**: When disabled, field is nil in result and omitted from ES document. Downstream queries return empty.
 - **Mining keywords narrow by design**: Ambiguous terms excluded; ML handles nuance. Don't add broad keywords.
+- **Quality gate disabled by default**: `CLASSIFIER_QUALITY_GATE_ENABLED` must be explicitly set to `true`. When disabled, all classified content passes to ES unchanged (no `low_quality` field set). The `low_quality` boolean field uses `omitempty` so it is absent from ES documents when false.
 - **Indigenous topic vs Layer 7**: The `indigenous_detection` topic rule (migration 014) adds "indigenous" to `topics[]`. Layer 7 populates the nested `indigenous` object (relevance, categories, region). Both coexist — topic for filtering, nested for rich metadata.
 - **Crime authority indicators**: Patterns require presence of authority terms (police, rcmp, court, etc.) alongside crime terms for high confidence.
 - **Spam still classified**: quality < 30 flags spam but document is still written to classified_content index.
