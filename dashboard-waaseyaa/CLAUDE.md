@@ -1,45 +1,72 @@
-# CLAUDE.md
+# CLAUDE.md — Dashboard Waaseyaa
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this application.
+## Purpose
 
-## Overview
-
-<!-- Replace with your app description -->
-A Waaseyaa application built on the [Waaseyaa framework](https://github.com/waaseyaa/framework).
+Operator dashboard for the North Cloud content pipeline. Vue 3 SPA served on a Waaseyaa scaffold.
+PHP serves the SPA shell and handles SSR concerns; Vue talks directly to Go microservice APIs.
+Grafana handles metrics/observability dashboards (embedded via iframe).
 
 ## Architecture
 
 ```
-src/
-├── Access/        Authorization policies
-├── Controller/    HTTP controllers (thin orchestration)
-├── Domain/        Domain logic grouped by bounded context
-├── Entity/        Entity classes (extend ContentEntityBase)
-├── Provider/      Service providers (DI, routing, entity registration)
-└── Support/       Cross-cutting utilities
+Waaseyaa (PHP)          Vue 3 SPA (frontend/)
+├── SPA shell serving    ├── src/shared/api/     Axios client + endpoints
+├── Auth bootstrap       ├── src/shared/auth/    JWT auth composable + guard
+└── Config/env           ├── src/shared/components/  Reusable UI
+                         ├── src/features/       Feature modules
+                         ├── src/layouts/         AppShell, Sidebar
+                         └── src/app/router.ts   Route definitions
 ```
 
-### Key Patterns
+Vue communicates with Go services via Vite dev proxy (dev) or Nginx reverse proxy (prod).
 
-- **Entities** extend `ContentEntityBase` and register via `EntityTypeManager`
-- **Persistence** uses `EntityRepository` + `SqlStorageDriver` (see `.claude/rules/waaseyaa-framework.md`)
-- **Routes** defined in `ServiceProvider::routes()` via `WaaseyaaRouter`
-- **Auth** via `Waaseyaa\Auth\AuthManager` (session-based)
-- **Config** via `config/waaseyaa.php` — use `getenv()` or `env()` helper, NEVER `$_ENV`
+## Commands
+
+```bash
+# Frontend (from dashboard-waaseyaa/frontend/)
+npm run dev          # Vite dev server on port 3002
+npm run build        # Production build
+npm test             # Alias for vitest run
+npm run lint         # ESLint + Prettier check
+
+# Backend (from dashboard-waaseyaa/)
+composer install     # Install PHP deps
+php bin/waaseyaa migrate  # Run migrations
+```
+
+## API Services (Go Microservices)
+
+| Service | Port | Proxy path |
+|---------|------|------------|
+| auth | 8040 | `/api/auth` |
+| source-manager | 8050 | `/api/sources` |
+| crawler | 8080 | `/api/crawler` |
+| publisher | 8070 | `/api/publisher` |
+| classifier | 8070 | `/api/classifier` |
+| index-manager | 8090 | `/api/index-manager` |
+| search | 8092 | `/api/search` |
+
+## Conventions
+
+- **Vue 3 Composition API** with `<script setup lang="ts">`
+- **TypeScript strict** — no `any` types; use `unknown` for generic values
+- **TanStack Query** for all server state (no manual fetch + useState)
+- **Pinia** for client-only state (auth token, UI preferences)
+- **Tailwind CSS v4** for styling — dark theme (slate palette)
+- **Types** in `src/shared/api/types.ts` or co-located with features
 
 ## Orchestration Table
 
-<!-- Map file patterns to skills and specs as you add them -->
 | File Pattern | Skill | Spec |
 |-------------|-------|------|
+| `frontend/src/shared/**` | `feature-dev` | — |
+| `frontend/src/features/**` | `feature-dev` | — |
+| `frontend/src/layouts/**` | `feature-dev` | — |
 | `src/Entity/**` | `waaseyaa:entity-system` | entity-system.md |
 | `src/Access/**` | `waaseyaa:access-control` | access-control.md |
 | `src/Provider/**` | `feature-dev` | — |
 | `.claude/rules/**` | `updating-codified-context` | — |
 | `docs/specs/**` | `updating-codified-context` | — |
-
-<!-- Note: waaseyaa:* skills are placeholders. They will not function
-     until the skills are built. The entries document intended routing. -->
 
 ## MCP Federation
 
@@ -57,16 +84,6 @@ Register Waaseyaa's MCP server in `.claude/settings.json` for on-demand framewor
 }
 ```
 
-## Development
-
-```bash
-composer install                    # Install dependencies
-php -S localhost:8080 -t public     # Dev server
-./vendor/bin/phpunit                # Run tests
-bin/waaseyaa                        # CLI
-bin/waaseyaa sync-rules             # Update framework rules from Waaseyaa
-```
-
 ## Codified Context
 
 This app uses a three-tier codified context system inherited from Waaseyaa:
@@ -79,13 +96,12 @@ This app uses a three-tier codified context system inherited from Waaseyaa:
 
 Framework rules are owned by Waaseyaa. Update them via `bin/waaseyaa sync-rules` after `composer update`.
 
-When modifying a subsystem, update its spec in the same PR.
-
-## Known Gaps
-
-<!-- Track technical debt and migration items here -->
-
 ## Gotchas
 
 - **Never use `$_ENV`** — Waaseyaa's `EnvLoader` only populates `putenv()`/`getenv()`. Use `getenv()` or the `env()` helper.
 - **SQLite write access** — Both the `.sqlite` file AND its parent directory need write permissions for WAL/journal files.
+
+## Reference
+
+- Design spec: `docs/superpowers/specs/2026-03-24-dashboard-waaseyaa-rewrite-design.md`
+- Root project: see `/home/fsd42/dev/north-cloud/CLAUDE.md`
