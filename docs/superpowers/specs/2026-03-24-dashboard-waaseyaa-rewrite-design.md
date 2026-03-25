@@ -55,11 +55,19 @@ Where operator context needs metrics alongside it, embed Grafana panels via ifra
 - Channel config — publish volume panel for that channel
 - Dashboard home — pipeline overview panel as health summary
 
+**Grafana embed auth:** Grafana must be configured for anonymous embedding:
+- Set `allow_embedding = true` in `[security]` section of Grafana config
+- Enable anonymous access: `[auth.anonymous]` → `enabled = true`, `org_role = Viewer`
+- Dashboard URLs use `/d-solo/{uid}/{slug}` format with `&theme=dark` for consistent styling
+- CSP headers on nginx must allow `frame-src` from the Grafana origin
+
 ## Decision: Architecture Approach
 
 **Hybrid: Waaseyaa Scaffold + Custom Vue SPA**
 
 Use Waaseyaa's skeleton for project structure, build tooling, codified context, and dev workflow. Build a custom Vue 3 SPA that talks directly to Go APIs. Waaseyaa provides the foundation without imposing its entity model on data that lives in Go services.
+
+**Why Waaseyaa over plain nginx?** The SPA could be served by nginx alone, but Waaseyaa provides: codified context skeleton (CLAUDE.md, .claude/), drift detection wiring, project conventions, and a path to adding PHP-side features later (e.g., caching proxy, webhook receivers). This is a deliberate choice to exercise the framework and validate its SPA use case.
 
 Alternatives considered:
 - **Thin PHP Shell** — Waaseyaa mostly unused at runtime, less framework value
@@ -140,7 +148,6 @@ frontend/src/shared/
 │   ├── StatusBadge.vue     (source/job/channel status indicators)
 │   └── BulkActionBar.vue   (appears when items selected)
 └── composables/
-    ├── usePolling.ts       (configurable interval polling with pause/resume)
     ├── usePagination.ts    (offset/limit state, URL sync)
     └── useToast.ts         (success/error notifications)
 ```
@@ -151,10 +158,20 @@ frontend/src/shared/
 - TanStack Query for caching, background refetch, optimistic updates
 
 **Auth flow:**
-1. Vue router guard checks for valid JWT
-2. No token → redirect to login view
-3. Login view POSTs to `auth:8040/api/v1/auth/login` → stores JWT
+1. Vue router guard checks for valid JWT (decode and check `exp` claim client-side)
+2. No token or expired → redirect to login view
+3. Login view POSTs to `auth:8040/api/v1/auth/login` → stores JWT in localStorage
 4. All subsequent API calls include `Authorization: Bearer <token>`
+5. Axios response interceptor catches 401 → clears token → redirects to login
+6. Token TTL is 24 hours (matches MCP server's `get_auth_token`). No refresh token — re-login on expiry.
+
+**Error and loading patterns:**
+- All API calls go through TanStack Query. Standard patterns:
+  - `isLoading` → skeleton placeholder (shared `LoadingSkeleton` component)
+  - `isError` → inline error banner with retry button (shared `ErrorBanner` component)
+  - Mutations use `onError` → toast notification with error message
+- Network errors (no connectivity) → global banner at top of layout
+- No offline support — dashboard requires active connection to Go services
 
 ## Navigation & Layout
 
@@ -205,12 +222,43 @@ The dashboard consumes existing Go API endpoints. No backend changes needed. Ser
 |---------|------|-----------------|
 | Auth | 8040 | JWT login |
 | Source Manager | 8050 | Source CRUD, communities, verification |
-| Crawler | 8060 | Job management (via proxy/MCP) |
+| Crawler | 8080 | Job management (via proxy/MCP) |
 | Publisher | 8070 | Channels, routing, publish history |
-| Classifier | 8071 | Rules, reclassify, stats |
+| Classifier | 8070 | Rules, reclassify, stats (same port as publisher, different container) |
 | Index Manager | 8090 | Index lifecycle |
-| Search | 8092 | Content explorer queries |
-| Social Publisher | 8095 | Social account management |
+| Search | 8092 (dev) / 8090 (prod) | Content explorer queries |
+| Social Publisher | TBD | Social account management (port not yet assigned in CLAUDE.md) |
+
+**Note:** Ports are from CLAUDE.md. Social publisher port needs confirmation against docker-compose.
+
+## Delivery Phases
+
+**Phase 1 — Core Operations (MVP):**
+Auth + Home + Sources + Crawling. Enough to manage the content intake pipeline.
+
+**Phase 2 — Processing & Distribution:**
+Classification Rules + Channels + Content Explorer. Full pipeline operator workflow.
+
+**Phase 3 — Extended Features:**
+Verification Queue + Communities + Social Publishing + Indexes.
+
+Each phase is independently useful. Phase 1 is the minimum viable dashboard.
+
+## Migration & Cutover
+
+1. New dashboard lives at `dashboard-waaseyaa/` alongside existing `dashboard/`
+2. Both run in parallel during development — different ports, no conflict
+3. Phase 1 completion = feature checkpoint. Verify core workflows work before proceeding.
+4. Old dashboard removed after Phase 2 — when all daily operator workflows are covered
+5. nginx config updated to point `/dashboard/` to the new app
+6. Old `dashboard/` directory deleted in a cleanup PR
+
+## Testing Strategy
+
+- **Unit tests (Vitest):** Composables, API client, utility functions. Target 80% coverage on shared layer.
+- **Component tests (Vitest + Vue Test Utils):** Feature module components with mocked API responses.
+- **E2E tests (Playwright):** Critical operator workflows — login, add source, start crawl, review queue. Added per phase as features land.
+- No snapshot tests — they provide low value for operator dashboards.
 
 ## What's Explicitly Out of Scope
 
