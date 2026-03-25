@@ -12,77 +12,90 @@ func TestApplyQualityGate(t *testing.T) {
 	logger := newMockLoggerWithCalls()
 
 	tests := []struct {
-		name           string
-		cfg            config.QualityGateConfig
-		input          []*domain.ClassifiedContent
-		wantCount      int
-		wantLowQuality []bool
+		name            string
+		cfg             config.QualityGateConfig
+		input           []*domain.ClassifiedContent
+		wantPassedCount int
+		wantLowQuality  []bool
+		wantRejectedIDs int
 	}{
 		{
 			name: "gate disabled passes all through unchanged",
 			cfg:  config.QualityGateConfig{Enabled: false, Threshold: 40},
 			input: []*domain.ClassifiedContent{
-				{QualityScore: 10, ContentType: "page"},
-				{QualityScore: 50, ContentType: "article"},
+				{QualityScore: 10, ContentType: domain.ContentTypePage},
+				{QualityScore: 50, ContentType: domain.ContentTypeArticle},
 			},
-			wantCount:      2,
-			wantLowQuality: []bool{false, false},
+			wantPassedCount: 2,
+			wantLowQuality:  []bool{false, false},
 		},
 		{
 			name: "high quality passes through",
 			cfg:  config.QualityGateConfig{Enabled: true, Threshold: 40},
 			input: []*domain.ClassifiedContent{
-				{QualityScore: 70, ContentType: "article"},
+				{QualityScore: 70, ContentType: domain.ContentTypeArticle},
 			},
-			wantCount:      1,
-			wantLowQuality: []bool{false},
+			wantPassedCount: 1,
+			wantLowQuality:  []bool{false},
 		},
 		{
 			name: "low quality article flagged but passes",
 			cfg:  config.QualityGateConfig{Enabled: true, Threshold: 40},
 			input: []*domain.ClassifiedContent{
-				{QualityScore: 30, ContentType: "article"},
+				{QualityScore: 30, ContentType: domain.ContentTypeArticle},
 			},
-			wantCount:      1,
-			wantLowQuality: []bool{true},
+			wantPassedCount: 1,
+			wantLowQuality:  []bool{true},
 		},
 		{
 			name: "low quality page rejected",
 			cfg:  config.QualityGateConfig{Enabled: true, Threshold: 40},
 			input: []*domain.ClassifiedContent{
-				{QualityScore: 30, ContentType: "page"},
+				{RawContent: domain.RawContent{ID: "page-1"}, QualityScore: 30, ContentType: domain.ContentTypePage},
 			},
-			wantCount: 0,
+			wantPassedCount: 0,
+			wantRejectedIDs: 1,
 		},
 		{
 			name: "low quality event rejected",
 			cfg:  config.QualityGateConfig{Enabled: true, Threshold: 40},
 			input: []*domain.ClassifiedContent{
-				{QualityScore: 35, ContentType: "event"},
+				{RawContent: domain.RawContent{ID: "evt-1"}, QualityScore: 35, ContentType: domain.ContentTypeEvent},
 			},
-			wantCount: 0,
+			wantPassedCount: 0,
+			wantRejectedIDs: 1,
 		},
 		{
 			name: "threshold boundary — exactly at threshold passes",
 			cfg:  config.QualityGateConfig{Enabled: true, Threshold: 40},
 			input: []*domain.ClassifiedContent{
-				{QualityScore: 40, ContentType: "page"},
+				{QualityScore: 40, ContentType: domain.ContentTypePage},
 			},
-			wantCount:      1,
-			wantLowQuality: []bool{false},
+			wantPassedCount: 1,
+			wantLowQuality:  []bool{false},
+		},
+		{
+			name: "pre-existing LowQuality flag cleared when above threshold",
+			cfg:  config.QualityGateConfig{Enabled: true, Threshold: 40},
+			input: []*domain.ClassifiedContent{
+				{QualityScore: 70, ContentType: domain.ContentTypeArticle, LowQuality: true},
+			},
+			wantPassedCount: 1,
+			wantLowQuality:  []bool{false},
 		},
 		{
 			name: "mixed batch filters correctly",
 			cfg:  config.QualityGateConfig{Enabled: true, Threshold: 40},
 			input: []*domain.ClassifiedContent{
-				{QualityScore: 70, ContentType: "article"},
-				{QualityScore: 30, ContentType: "page"},
-				{QualityScore: 35, ContentType: "article"},
-				{QualityScore: 20, ContentType: "event"},
-				{QualityScore: 50, ContentType: "article"},
+				{QualityScore: 70, ContentType: domain.ContentTypeArticle},                                         // pass
+				{RawContent: domain.RawContent{ID: "p-1"}, QualityScore: 30, ContentType: domain.ContentTypePage},  // reject
+				{QualityScore: 35, ContentType: domain.ContentTypeArticle},                                         // flag
+				{RawContent: domain.RawContent{ID: "e-1"}, QualityScore: 20, ContentType: domain.ContentTypeEvent}, // reject
+				{QualityScore: 50, ContentType: domain.ContentTypeArticle},                                         // pass
 			},
-			wantCount:      3,
-			wantLowQuality: []bool{false, true, false},
+			wantPassedCount: 3,
+			wantLowQuality:  []bool{false, true, false},
+			wantRejectedIDs: 2,
 		},
 	}
 
@@ -90,18 +103,22 @@ func TestApplyQualityGate(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			result := applyQualityGate(tt.cfg, tt.input, logger)
 
-			if len(result) != tt.wantCount {
-				t.Errorf("applyQualityGate() returned %d items, want %d", len(result), tt.wantCount)
+			if len(result.Passed) != tt.wantPassedCount {
+				t.Errorf("applyQualityGate() passed %d items, want %d", len(result.Passed), tt.wantPassedCount)
 				return
 			}
 
+			if len(result.RejectedIDs) != tt.wantRejectedIDs {
+				t.Errorf("applyQualityGate() rejected %d items, want %d", len(result.RejectedIDs), tt.wantRejectedIDs)
+			}
+
 			for i, wantLQ := range tt.wantLowQuality {
-				if i >= len(result) {
+				if i >= len(result.Passed) {
 					break
 				}
-				if result[i].LowQuality != wantLQ {
-					t.Errorf("result[%d].LowQuality = %v, want %v (quality_score=%d, content_type=%s)",
-						i, result[i].LowQuality, wantLQ, result[i].QualityScore, result[i].ContentType)
+				if result.Passed[i].LowQuality != wantLQ {
+					t.Errorf("result.Passed[%d].LowQuality = %v, want %v (quality_score=%d, content_type=%s)",
+						i, result.Passed[i].LowQuality, wantLQ, result.Passed[i].QualityScore, result.Passed[i].ContentType)
 				}
 			}
 		})

@@ -51,4 +51,5 @@ const (
 	StatusPending    = "pending"
 	StatusClassified = "classified"
 	StatusFailed     = "failed"
+	StatusFiltered   = "filtered"
 )

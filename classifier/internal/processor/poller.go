@@ -222,7 +222,18 @@ func (p *Poller) indexResults(ctx context.Context, results []*ProcessResult) err
 	}
 
 	// Apply quality gate — filter/flag before indexing
-	classifiedContents = applyQualityGate(p.qualityGateCfg, classifiedContents, p.logger)
+	gateResult := applyQualityGate(p.qualityGateCfg, classifiedContents, p.logger)
+	classifiedContents = gateResult.Passed
+
+	// Mark rejected documents as filtered so they don't get re-polled
+	for _, rejectedID := range gateResult.RejectedIDs {
+		if err := p.esClient.UpdateRawContentStatus(ctx, rejectedID, domain.StatusFiltered, time.Now()); err != nil {
+			p.logger.Error("Failed to update filtered content status",
+				infralogger.String("content_id", rejectedID),
+				infralogger.Error(err),
+			)
+		}
+	}
 
 	if len(classifiedContents) == 0 {
 		return nil
