@@ -15,6 +15,11 @@
           {
             "type": "command",
             "command": "bash bin/check-milestones"
+          },
+          {
+            "type": "command",
+            "command": "tools/drift-detector.sh 20 2>&1",
+            "show_output": true
           }
         ]
       }

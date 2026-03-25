@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/jonesrussell/north-cloud/classifier/internal/config"
 	"github.com/jonesrussell/north-cloud/classifier/internal/domain"
 	infralogger "github.com/jonesrussell/north-cloud/infrastructure/logger"
 	"github.com/jonesrussell/north-cloud/infrastructure/pipeline"
@@ -56,6 +57,8 @@ type Poller struct {
 	logger         infralogger.Logger
 	pipeline       *pipeline.Client
 
+	qualityGateCfg config.QualityGateConfig
+
 	batchSize    int
 	pollInterval time.Duration
 	running      bool
@@ -66,6 +69,7 @@ type Poller struct {
 type PollerConfig struct {
 	BatchSize    int
 	PollInterval time.Duration
+	QualityGate  config.QualityGateConfig
 }
 
 // NewPoller creates a new poller
@@ -74,14 +78,14 @@ func NewPoller(
 	dbClient DatabaseClient,
 	batchProcessor *BatchProcessor,
 	logger infralogger.Logger,
-	config PollerConfig,
+	pollerCfg PollerConfig,
 	pipelineClient *pipeline.Client,
 ) *Poller {
-	if config.BatchSize <= 0 {
-		config.BatchSize = 100
+	if pollerCfg.BatchSize <= 0 {
+		pollerCfg.BatchSize = 100
 	}
-	if config.PollInterval <= 0 {
-		config.PollInterval = defaultPollIntervalSeconds * time.Second
+	if pollerCfg.PollInterval <= 0 {
+		pollerCfg.PollInterval = defaultPollIntervalSeconds * time.Second
 	}
 
 	return &Poller{
@@ -90,8 +94,9 @@ func NewPoller(
 		batchProcessor: batchProcessor,
 		logger:         logger,
 		pipeline:       pipelineClient,
-		batchSize:      config.BatchSize,
-		pollInterval:   config.PollInterval,
+		qualityGateCfg: pollerCfg.QualityGate,
+		batchSize:      pollerCfg.BatchSize,
+		pollInterval:   pollerCfg.PollInterval,
 		stopChan:       make(chan struct{}),
 	}
 }
@@ -214,6 +219,20 @@ func (p *Poller) indexResults(ctx context.Context, results []*ProcessResult) err
 			infralogger.Int("failed_count", len(failedContentIDs)),
 			infralogger.Any("failed_ids", failedContentIDs),
 		)
+	}
+
+	// Apply quality gate — filter/flag before indexing
+	gateResult := applyQualityGate(p.qualityGateCfg, classifiedContents, p.logger)
+	classifiedContents = gateResult.Passed
+
+	// Mark rejected documents as filtered so they don't get re-polled
+	for _, rejectedID := range gateResult.RejectedIDs {
+		if err := p.esClient.UpdateRawContentStatus(ctx, rejectedID, domain.StatusFiltered, time.Now()); err != nil {
+			p.logger.Error("Failed to update filtered content status",
+				infralogger.String("content_id", rejectedID),
+				infralogger.Error(err),
+			)
+		}
 	}
 
 	if len(classifiedContents) == 0 {

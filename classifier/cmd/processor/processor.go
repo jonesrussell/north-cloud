@@ -377,6 +377,7 @@ func Start() error {
 	pollerConfig := processor.PollerConfig{
 		BatchSize:    cfg.BatchSize,
 		PollInterval: cfg.PollingInterval,
+		QualityGate:  fullCfg.Classification.QualityGate,
 	}
 	poller := processor.NewPoller(
 		esStorage,
@@ -461,6 +462,7 @@ func StartWithStop() (func(), error) {
 	pollerConfig := processor.PollerConfig{
 		BatchSize:    cfg.BatchSize,
 		PollInterval: cfg.PollingInterval,
+		QualityGate:  fullCfg.Classification.QualityGate,
 	}
 	poller := processor.NewPoller(
 		esStorage,

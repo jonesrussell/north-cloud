@@ -1,6 +1,6 @@
 # Discovery & Querying Specification
 
-> Last verified: 2026-03-24 (add search api test coverage)
+> Last verified: 2026-03-24 (add index-manager and search test coverage)
 
 Covers the search service (full-text queries) and index-manager (ES lifecycle, mappings, aggregations).
 
