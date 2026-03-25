@@ -71,12 +71,16 @@ func (p *Poller) Stop()
 
 ### Quality Gate (`internal/processor/quality_gate.go`)
 ```go
-func applyQualityGate(cfg config.QualityGateConfig, contents []*domain.ClassifiedContent, logger infralogger.Logger) []*domain.ClassifiedContent
+func applyQualityGate(cfg config.QualityGateConfig, contents []*domain.ClassifiedContent, logger infralogger.Logger) QualityGateResult
 ```
-Runs after classification, before ES indexing. Three outcomes per item:
-- `quality_score >= threshold`: pass through unchanged
+Returns `QualityGateResult{Passed, RejectedIDs}`. Runs after classification, before ES indexing. Three outcomes per item:
+- `quality_score >= threshold`: pass through (`LowQuality` cleared to `false`)
 - `quality_score < threshold` AND `content_type=article`: pass with `LowQuality=true`
-- `quality_score < threshold` AND `content_type!=article`: reject (drop from batch)
+- `quality_score < threshold` AND `content_type!=article`: reject — ID added to `RejectedIDs`, raw content status set to `filtered`
+
+Emits a batch summary log (`passed`/`flagged`/`rejected` counts) when any items are filtered.
+
+**Classification statuses**: `pending` → `classified` | `failed` | `filtered` (quality gate rejected)
 
 ## Data Flow
 
