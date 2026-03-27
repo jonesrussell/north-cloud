@@ -84,15 +84,34 @@ echo ""
 declare -A AFFECTED_SPECS=()
 declare -A SPEC_CHANGES=()
 
+record_spec() {
+  local spec="$1" file="$2"
+  AFFECTED_SPECS["$spec"]=1
+  SPEC_CHANGES["$spec"]="${SPEC_CHANGES[$spec]:-}  $file\n"
+}
+
 while IFS= read -r file; do
   [ -z "$file" ] && continue
+
   for pattern in "${!PATTERN_TO_SPEC[@]}"; do
     if [[ "$file" == "$pattern"* ]]; then
-      spec="${PATTERN_TO_SPEC[$pattern]}"
-      AFFECTED_SPECS["$spec"]=1
-      SPEC_CHANGES["$spec"]="${SPEC_CHANGES[$spec]:-}  $file\n"
+      record_spec "${PATTERN_TO_SPEC[$pattern]}" "$file"
     fi
   done
+
+  # Secondary mappings: files that affect additional specs beyond primary pattern
+  case "$file" in
+    */elasticsearch/mappings/*|*/elasticsearch/mapping*)
+      record_spec "docs/specs/discovery-querying.md" "$file" ;;
+    infrastructure/config/*|infrastructure/logger/*)
+      record_spec "docs/specs/shared-infrastructure.md" "$file" ;;
+    */internal/api/middleware*|infrastructure/middleware/*)
+      record_spec "docs/specs/shared-infrastructure.md" "$file" ;;
+    publisher/internal/router/*|publisher/internal/routing/*)
+      record_spec "docs/specs/content-routing.md" "$file" ;;
+    */migrations/*)
+      ;; # migrations are already covered by primary patterns
+  esac
 done <<< "$CHANGED_FILES"
 
 if [ "${#AFFECTED_SPECS[@]}" -eq 0 ]; then
@@ -104,7 +123,7 @@ echo "Affected specs:"
 echo ""
 
 STALE_COUNT=0
-for spec in "${!AFFECTED_SPECS[@]}"; do
+for spec in $(printf '%s\n' "${!AFFECTED_SPECS[@]}" | sort); do
   spec_path="$REPO_ROOT/$spec"
   if [ -f "$spec_path" ]; then
     # Compare git commit timestamps: when was the spec last touched vs the service code?

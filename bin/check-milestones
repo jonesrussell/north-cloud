@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
 # check-milestones — SessionStart hook for GitHub workflow governance
-# Surfaces untriaged issues and stale milestones at the start of each session.
+# Surfaces untriaged issues, stale milestones, and milestone progress.
 # Always exits 0 so it never blocks the session.
 
 set -euo pipefail
 
 REPO="jonesrussell/north-cloud"
+WARNINGS=0
 
 # Check if gh CLI is available
 if ! command -v gh &>/dev/null; then
@@ -19,23 +20,67 @@ fi
 
 echo "=== GitHub Workflow Check ==="
 
-# 1. Untriaged issues (open, no milestone)
-UNTRIAGED=$(gh api "repos/${REPO}/issues?state=open&per_page=100" \
-  --jq '[.[] | select(.milestone == null and .pull_request == null)] | length' 2>/dev/null || echo "?")
+# 1. Untriaged issues (open, no milestone) — list each one
+UNTRIAGED_JSON=$(gh api "repos/${REPO}/issues?state=open&per_page=100" \
+  --jq '[.[] | select(.milestone == null and .pull_request == null) | {number, title}]' 2>/dev/null || echo "[]")
+UNTRIAGED_COUNT=$(echo "$UNTRIAGED_JSON" | grep -c '"number"' || true)
 
-if [ "$UNTRIAGED" != "?" ] && [ "$UNTRIAGED" -gt 0 ]; then
-  echo "  Untriaged issues (no milestone): ${UNTRIAGED}"
+if [ "$UNTRIAGED_COUNT" -gt 0 ]; then
+  echo "  Untriaged issues (no milestone): ${UNTRIAGED_COUNT}"
+  echo "$UNTRIAGED_JSON" | grep -oP '"number":\s*\K\d+|"title":\s*"\K[^"]+' | paste - - | while read -r num title; do
+    echo "    #$num — $title"
+  done
+  WARNINGS=1
 fi
 
-# 2. Stale milestones (open, past due date)
-STALE=$(gh api "repos/${REPO}/milestones?state=open&per_page=50" \
-  --jq "[.[] | select(.due_on != null and .due_on < \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\")] | length" 2>/dev/null || echo "?")
+# 2. Fetch milestones once for remaining checks
+MILESTONES_JSON=$(gh api "repos/${REPO}/milestones?state=open&per_page=50" 2>/dev/null || echo "[]")
 
-if [ "$STALE" != "?" ] && [ "$STALE" -gt 0 ]; then
-  echo "  Stale milestones (past due): ${STALE}"
+# 3. Stale milestones (open, past due date)
+NOW=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+STALE_COUNT=$(echo "$MILESTONES_JSON" | \
+  grep -oP '"title":\s*"\K[^"]+|"due_on":\s*"\K[^"]+' | paste - - | \
+  awk -F'\t' -v now="$NOW" '$2 != "" && $2 < now { print $1 }' | wc -l || true)
+
+if [ "$STALE_COUNT" -gt 0 ]; then
+  echo "  Stale milestones (past due): ${STALE_COUNT}"
+  echo "$MILESTONES_JSON" | \
+    grep -oP '"title":\s*"\K[^"]+|"due_on":\s*"\K[^"]+' | paste - - | \
+    awk -F'\t' -v now="$NOW" '$2 != "" && $2 < now { print "    - " $1 }'
+  WARNINGS=1
 fi
 
-if [ "$UNTRIAGED" = "0" ] && [ "$STALE" = "0" ]; then
+# 4. Empty milestones (open, zero open issues)
+EMPTY=$(echo "$MILESTONES_JSON" | \
+  grep -oP '"title":\s*"\K[^"]+|"open_issues":\s*\K\d+' | paste - - | \
+  awk -F'\t' '$2 == "0" { print $1 }')
+
+if [ -n "$EMPTY" ]; then
+  echo "  Empty milestones (no open issues):"
+  echo "$EMPTY" | while read -r ms; do
+    echo "    - $ms"
+  done
+  WARNINGS=1
+fi
+
+# 5. Active milestone summary
+MILESTONE_SUMMARY=$(echo "$MILESTONES_JSON" | \
+  grep -oP '"title":\s*"\K[^"]+|"open_issues":\s*\K\d+|"closed_issues":\s*\K\d+' | paste - - -)
+
+if [ -n "$MILESTONE_SUMMARY" ]; then
+  echo "  Active milestones:"
+  echo "$MILESTONE_SUMMARY" | while IFS=$'\t' read -r title open closed; do
+    total=$((open + closed))
+    if [ "$total" -gt 0 ]; then
+      pct=$((closed * 100 / total))
+    else
+      pct=0
+    fi
+    echo "    $title: $open open / $closed closed ($pct%)"
+  done
+fi
+
+if [ "$WARNINGS" -eq 0 ]; then
   echo "  All issues triaged, no stale milestones."
 fi
 
