@@ -1,6 +1,6 @@
 # Content Routing Specification
 
-> Last verified: 2026-03-24 (add publisher test coverage for config, metrics, worker)
+> Last verified: 2026-03-26 (timestamp bump — publisher leads export handler added)
 
 Covers the publisher service: 11-layer routing pipeline, channel management, Redis publishing, and deduplication.
 

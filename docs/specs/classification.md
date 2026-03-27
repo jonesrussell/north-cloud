@@ -1,6 +1,6 @@
 # Classification Specification
 
-> Last verified: 2026-03-24 (added quality gate filter — #566)
+> Last verified: 2026-03-26 (timestamp bump — classifier CLAUDE.md docs update)
 
 Covers the classifier service, hybrid rule+ML classification pipeline, ML sidecar integration, and content enrichment.
 
