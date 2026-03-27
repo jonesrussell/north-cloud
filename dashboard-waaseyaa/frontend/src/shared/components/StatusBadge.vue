@@ -10,10 +10,12 @@ const colorMap: Record<string, string> = {
   running: 'bg-green-900/50 text-green-400',
   healthy: 'bg-green-900/50 text-green-400',
   completed: 'bg-blue-900/50 text-blue-400',
+  scheduled: 'bg-blue-900/50 text-blue-400',
   paused: 'bg-amber-900/50 text-amber-400',
   pending: 'bg-slate-700/50 text-slate-400',
   error: 'bg-red-900/50 text-red-400',
   failed: 'bg-red-900/50 text-red-400',
+  cancelled: 'bg-red-900/50 text-red-400',
   disabled: 'bg-slate-700/50 text-slate-500',
 }
 

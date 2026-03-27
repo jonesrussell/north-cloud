@@ -41,10 +41,11 @@ export function useHomeStats(): HomeStats {
       {
         queryKey: ['home', 'runningJobs'],
         queryFn: async () => {
-          const response = await apiClient.get<unknown[]>(endpoints.crawler.jobs, {
-            params: { status: 'running' },
-          })
-          return Array.isArray(response.data) ? response.data.length : 0
+          const response = await apiClient.get<{ jobs: unknown[]; total: number }>(
+            endpoints.crawler.jobs,
+            { params: { status: 'running', limit: 1 } },
+          )
+          return response.data.total ?? 0
         },
         staleTime: 15_000,
       },
@@ -62,8 +63,10 @@ export function useHomeStats(): HomeStats {
       {
         queryKey: ['home', 'channelCount'],
         queryFn: async () => {
-          const response = await apiClient.get<unknown[]>(endpoints.publisher.channels)
-          return Array.isArray(response.data) ? response.data.length : 0
+          const response = await apiClient.get<{ channels: unknown[]; count: number }>(
+            endpoints.publisher.channels,
+          )
+          return response.data.count ?? 0
         },
         staleTime: 60_000,
       },

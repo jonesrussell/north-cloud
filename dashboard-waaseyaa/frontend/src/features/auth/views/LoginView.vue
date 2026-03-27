@@ -17,7 +17,8 @@ async function handleLogin() {
   loading.value = true
   try {
     await login(username.value, password.value)
-    const redirect = (route.query.redirect as string) || '/'
+    const raw = (route.query.redirect as string) || '/'
+    const redirect = raw.startsWith('/') && !raw.startsWith('//') ? raw : '/'
     router.push(redirect)
   } catch {
     error.value = 'Invalid credentials'

@@ -64,9 +64,9 @@ describe('useHomeStats', () => {
 
   it('returns source count from paginated response', async () => {
     mock.onGet('/api/sources').reply(200, { total: 42, data: [] })
-    mock.onGet('/api/crawler/jobs').reply(200, [])
+    mock.onGet('/api/crawler/jobs').reply(200, { jobs: [], total: 0 })
     mock.onGet(/verification/).reply(200, { pending: 0 })
-    mock.onGet('/api/publisher/channels').reply(200, [])
+    mock.onGet('/api/publisher/channels').reply(200, { channels: [], count: 0 })
 
     const { result, unmount } = withSetup(() => useHomeStats())
     await settle()
@@ -75,14 +75,14 @@ describe('useHomeStats', () => {
     unmount()
   })
 
-  it('returns running jobs count from array length', async () => {
+  it('returns running jobs count from total field', async () => {
     mock.onGet('/api/sources').reply(200, { total: 0, data: [] })
-    mock.onGet('/api/crawler/jobs').reply(200, [
-      { id: '1', status: 'running' },
-      { id: '2', status: 'running' },
-    ])
+    mock.onGet('/api/crawler/jobs').reply(200, {
+      jobs: [{ id: '1', status: 'running' }, { id: '2', status: 'running' }],
+      total: 2,
+    })
     mock.onGet(/verification/).reply(200, { pending: 0 })
-    mock.onGet('/api/publisher/channels').reply(200, [])
+    mock.onGet('/api/publisher/channels').reply(200, { channels: [], count: 0 })
 
     const { result, unmount } = withSetup(() => useHomeStats())
     await settle()
@@ -91,15 +91,14 @@ describe('useHomeStats', () => {
     unmount()
   })
 
-  it('returns channel count from array length', async () => {
+  it('returns channel count from count field', async () => {
     mock.onGet('/api/sources').reply(200, { total: 0, data: [] })
-    mock.onGet('/api/crawler/jobs').reply(200, [])
+    mock.onGet('/api/crawler/jobs').reply(200, { jobs: [], total: 0 })
     mock.onGet(/verification/).reply(200, { pending: 0 })
-    mock.onGet('/api/publisher/channels').reply(200, [
-      { id: '1', name: 'crime' },
-      { id: '2', name: 'sports' },
-      { id: '3', name: 'local' },
-    ])
+    mock.onGet('/api/publisher/channels').reply(200, {
+      channels: [{ id: '1', name: 'crime' }, { id: '2', name: 'sports' }, { id: '3', name: 'local' }],
+      count: 3,
+    })
 
     const { result, unmount } = withSetup(() => useHomeStats())
     await settle()
@@ -110,9 +109,9 @@ describe('useHomeStats', () => {
 
   it('shows N/A for pending review when endpoint fails', async () => {
     mock.onGet('/api/sources').reply(200, { total: 5, data: [] })
-    mock.onGet('/api/crawler/jobs').reply(200, [])
+    mock.onGet('/api/crawler/jobs').reply(200, { jobs: [], total: 0 })
     mock.onGet(/verification/).reply(500)
-    mock.onGet('/api/publisher/channels').reply(200, [])
+    mock.onGet('/api/publisher/channels').reply(200, { channels: [], count: 0 })
 
     const { result, unmount } = withSetup(() => useHomeStats())
     await settle()
@@ -124,9 +123,9 @@ describe('useHomeStats', () => {
 
   it('sets isError when source count fails', async () => {
     mock.onGet('/api/sources').reply(500)
-    mock.onGet('/api/crawler/jobs').reply(200, [])
+    mock.onGet('/api/crawler/jobs').reply(200, { jobs: [], total: 0 })
     mock.onGet(/verification/).reply(200, { pending: 0 })
-    mock.onGet('/api/publisher/channels').reply(200, [])
+    mock.onGet('/api/publisher/channels').reply(200, { channels: [], count: 0 })
 
     const { result, unmount } = withSetup(() => useHomeStats())
     await settle()
