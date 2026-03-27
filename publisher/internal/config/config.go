@@ -57,6 +57,8 @@ type RedisConfig struct {
 
 type AuthConfig struct {
 	JWTSecret string `env:"AUTH_JWT_SECRET" yaml:"jwt_secret"`
+	// LeadsAPIKey when non-empty requires Authorization: Bearer <key> on GET /api/leads (Claudriel).
+	LeadsAPIKey string `env:"LEADS_API_KEY" yaml:"leads_api_key"`
 }
 
 type ServiceConfig struct {

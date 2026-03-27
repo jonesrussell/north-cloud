@@ -292,6 +292,22 @@ func buildUpdateQuery(table string, id uuid.UUID, updates map[string]any, return
 	return query, args, nil
 }
 
+// ListClaudrielLeads returns leads for Claudriel pipeline import (newest first, capped).
+func (r *Repository) ListClaudrielLeads(ctx context.Context) ([]models.ClaudrielLead, error) {
+	const query = `
+		SELECT id, title, description, contact_name, contact_email, url, closing_date, budget, sector, created_at, updated_at
+		FROM claudriel_leads
+		ORDER BY created_at DESC
+		LIMIT 500
+	`
+	var rows []models.ClaudrielLead
+	if err := r.db.SelectContext(ctx, &rows, query); err != nil {
+		return nil, fmt.Errorf("list claudriel leads: %w", err)
+	}
+
+	return rows, nil
+}
+
 // isPQUniqueViolation reports whether err is a PostgreSQL unique violation (23505)
 func isPQUniqueViolation(err error) bool {
 	var pqErr *pq.Error

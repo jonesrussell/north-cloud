@@ -81,6 +81,8 @@ func (r *Router) NewServer(log logger.Logger) *infragin.Server {
 		WithRoutes(func(router *gin.Engine) {
 			// Prometheus metrics endpoint (public, no auth)
 			router.GET("/metrics", gin.WrapH(promhttp.Handler()))
+			// Claudriel: public JSON (optional bearer LEADS_API_KEY) — must stay outside /api/v1 JWT group
+			router.GET("/api/leads", r.listClaudrielLeads)
 			// Setup service-specific routes (health routes added by builder)
 			r.setupServiceRoutes(router)
 		}).
