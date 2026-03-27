@@ -41,21 +41,21 @@ func (r *Router) listClaudrielLeads(c *gin.Context) {
 	}
 
 	out := make([]gin.H, 0, len(items))
-	for _, row := range items {
+	for i := range items {
 		out = append(out, gin.H{
-			"id":            row.ID.String(),
-			"title":         row.Title,
-			"name":          row.Title,
-			"description":   row.Description,
-			"contact_name":  row.ContactName,
-			"contact_email": row.ContactEmail,
-			"url":           row.URL,
-			"source_url":    row.URL,
-			"closing_date":  row.ClosingDate,
-			"budget":        row.Budget,
-			"value":         row.Budget,
-			"sector":        row.Sector,
-			"category":      row.Sector,
+			"id":            items[i].ID.String(),
+			"title":         items[i].Title,
+			"name":          items[i].Title,
+			"description":   items[i].Description,
+			"contact_name":  items[i].ContactName,
+			"contact_email": items[i].ContactEmail,
+			"url":           items[i].URL,
+			"source_url":    items[i].URL,
+			"closing_date":  items[i].ClosingDate,
+			"budget":        items[i].Budget,
+			"value":         items[i].Budget,
+			"sector":        items[i].Sector,
+			"category":      items[i].Sector,
 		})
 	}
 	c.JSON(http.StatusOK, gin.H{"items": out})

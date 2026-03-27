@@ -1,6 +1,6 @@
 # Content Routing Specification
 
-> Last verified: 2026-03-26 (timestamp bump — publisher leads export handler added)
+> Last verified: 2026-03-27 (added logger to API Router, error logging in all handlers)
 
 Covers the publisher service: 11-layer routing pipeline, channel management, Redis publishing, and deduplication.
 
@@ -28,8 +28,12 @@ Covers the publisher service: 11-layer routing pipeline, channel management, Red
 | `publisher/internal/database/repository.go` | Channel and cursor persistence |
 | `publisher/internal/database/repository_history.go` | Publish history + dedup checks |
 | `publisher/internal/redis/client.go` | Redis pub/sub client |
-| `publisher/internal/api/router.go` | REST API route registration |
+| `publisher/internal/api/router.go` | REST API route registration (Router struct with logger) |
 | `publisher/internal/api/channels_handler.go` | Channel CRUD endpoints |
+| `publisher/internal/api/leads_export_handler.go` | Claudriel leads export (GET /api/leads) |
+| `publisher/internal/api/stats_handler.go` | Stats, publish history, recent items |
+| `publisher/internal/api/metadata_handler.go` | Topics and ES index listing |
+| `publisher/internal/api/handler_helpers.go` | Shared helpers (parseUUID, handleRepositoryError) |
 | `publisher/migrations/` | PostgreSQL schema (6 migrations) |
 | `publisher/docs/REDIS_MESSAGE_FORMAT.md` | Published message JSON spec |
 | `publisher/docs/CONSUMER_GUIDE.md` | Consumer integration guide |
