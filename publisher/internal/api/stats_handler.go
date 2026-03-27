@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	infralogger "github.com/jonesrussell/north-cloud/infrastructure/logger"
 	"github.com/jonesrussell/north-cloud/publisher/internal/models"
 )
 
@@ -24,6 +25,10 @@ func (r *Router) getPublishVolume(c *gin.Context) {
 	since := time.Now().Add(-time.Duration(hours) * time.Hour)
 	byChannel, total, err := r.repo.GetChannelStatsSince(ctx, since)
 	if err != nil {
+		r.log.Error("Failed to get publish volume",
+			infralogger.Error(err),
+			infralogger.String("path", c.Request.URL.Path),
+		)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get publish volume"})
 		return
 	}
@@ -84,6 +89,11 @@ func (r *Router) getStatsOverview(c *gin.Context) {
 	// Get stats from repository
 	stats, err := r.repo.GetPublishStats(ctx, startDate, nil)
 	if err != nil {
+		r.log.Error("Failed to get stats overview",
+			infralogger.Error(err),
+			infralogger.String("path", c.Request.URL.Path),
+			infralogger.String("period", period),
+		)
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": "Failed to get stats",
 		})
@@ -132,6 +142,10 @@ func (r *Router) getChannelStats(c *gin.Context) {
 	// Get all enabled channels (Layer 2 custom channels)
 	channels, err := r.repo.ListChannels(ctx, true)
 	if err != nil {
+		r.log.Error("Failed to list channels for stats",
+			infralogger.Error(err),
+			infralogger.String("path", c.Request.URL.Path),
+		)
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": "Failed to list channels",
 		})
@@ -143,7 +157,10 @@ func (r *Router) getChannelStats(c *gin.Context) {
 	for i := range channels {
 		count, countErr := r.repo.GetPublishCountByChannel(ctx, channels[i].RedisChannel, since)
 		if countErr != nil {
-			// Log error but continue
+			r.log.Error("Failed to get publish count for channel",
+				infralogger.Error(countErr),
+				infralogger.String("channel", channels[i].RedisChannel),
+			)
 			count = 0
 		}
 
@@ -173,6 +190,10 @@ func (r *Router) getActiveChannels(c *gin.Context) {
 	// Get all channels (Layer 2 custom channels)
 	channels, err := r.repo.ListChannels(ctx, false)
 	if err != nil {
+		r.log.Error("Failed to list channels for active channels",
+			infralogger.Error(err),
+			infralogger.String("path", c.Request.URL.Path),
+		)
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": "Failed to list channels",
 		})
@@ -182,6 +203,10 @@ func (r *Router) getActiveChannels(c *gin.Context) {
 	// Get channel stats (publish counts and last published dates for all channel_name in publish_history)
 	channelStats, statsErr := r.repo.GetChannelStats(ctx)
 	if statsErr != nil {
+		r.log.Error("Failed to get channel stats",
+			infralogger.Error(statsErr),
+			infralogger.String("path", c.Request.URL.Path),
+		)
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": "Failed to get channel stats",
 		})
@@ -271,6 +296,10 @@ func (r *Router) listPublishHistory(c *gin.Context) {
 
 	history, err := r.repo.ListPublishHistory(ctx, &filter)
 	if err != nil {
+		r.log.Error("Failed to get publish history",
+			infralogger.Error(err),
+			infralogger.String("path", c.Request.URL.Path),
+		)
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": "Failed to get publish history",
 		})
@@ -279,6 +308,10 @@ func (r *Router) listPublishHistory(c *gin.Context) {
 
 	total, err := r.repo.CountPublishHistory(ctx, &filter)
 	if err != nil {
+		r.log.Error("Failed to count publish history",
+			infralogger.Error(err),
+			infralogger.String("path", c.Request.URL.Path),
+		)
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": "Failed to get publish history count",
 		})
@@ -309,6 +342,11 @@ func (r *Router) getPublishHistoryByContent(c *gin.Context) {
 
 	history, err := r.repo.GetPublishHistoryByContentID(ctx, contentID)
 	if err != nil {
+		r.log.Error("Failed to get publish history by content ID",
+			infralogger.Error(err),
+			infralogger.String("path", c.Request.URL.Path),
+			infralogger.String("content_id", contentID),
+		)
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": "Failed to get publish history",
 		})
@@ -346,6 +384,10 @@ func (r *Router) getRecentItems(c *gin.Context) {
 
 	history, err := r.repo.ListPublishHistory(ctx, filter)
 	if err != nil {
+		r.log.Error("Failed to get recent content",
+			infralogger.Error(err),
+			infralogger.String("path", c.Request.URL.Path),
+		)
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": "Failed to get recent content",
 		})
@@ -385,6 +427,10 @@ func (r *Router) clearAllPublishHistory(c *gin.Context) {
 
 	count, err := r.repo.DeleteAllPublishHistory(ctx)
 	if err != nil {
+		r.log.Error("Failed to clear publish history",
+			infralogger.Error(err),
+			infralogger.String("path", c.Request.URL.Path),
+		)
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": "Failed to clear publish history",
 		})

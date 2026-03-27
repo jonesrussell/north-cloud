@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
+	infralogger "github.com/jonesrussell/north-cloud/infrastructure/logger"
 )
 
 // listClaudrielLeads serves GET /api/leads for Claudriel's NorthCloudLeadFetcher.
@@ -30,6 +31,10 @@ func (r *Router) listClaudrielLeads(c *gin.Context) {
 
 	items, err := r.repo.ListClaudrielLeads(c.Request.Context())
 	if err != nil {
+		r.log.Error("Failed to list Claudriel leads",
+			infralogger.Error(err),
+			infralogger.String("path", c.Request.URL.Path),
+		)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to list leads"})
 
 		return

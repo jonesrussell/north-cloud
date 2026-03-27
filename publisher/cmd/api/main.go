@@ -178,6 +178,6 @@ func setupHTTPServer(
 	esClient *elasticsearch.Client,
 	infraLog logger.Logger,
 ) *infragin.Server {
-	router := api.NewRouter(repo, redisClient, esClient, cfg)
+	router := api.NewRouter(repo, redisClient, esClient, cfg, infraLog)
 	return router.NewServer(infraLog)
 }

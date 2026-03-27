@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import Sidebar from './Sidebar.vue'
+import ToastContainer from '../shared/components/ToastContainer.vue'
 </script>
 
 <template>
@@ -8,5 +9,6 @@ import Sidebar from './Sidebar.vue'
     <main class="flex-1 p-6 overflow-auto">
       <RouterView />
     </main>
+    <ToastContainer />
   </div>
 </template>

@@ -112,7 +112,7 @@ func runAPIServerWithStop() (func(), error) {
 	var esClient = initElasticsearchClientOptional(cfg.Elasticsearch.URL, infraLog)
 
 	// Setup router and create server using infrastructure gin
-	router := api.NewRouter(repo, redisClient, esClient, cfg)
+	router := api.NewRouter(repo, redisClient, esClient, cfg, infraLog)
 	server := router.NewServer(infraLog)
 
 	// Start server in goroutine
@@ -215,7 +215,7 @@ func runAPIServerInternal() int {
 	var esClient = initElasticsearchClientOptional(cfg.Elasticsearch.URL, infraLog)
 
 	// Setup router and create server using infrastructure gin
-	router := api.NewRouter(repo, redisClient, esClient, cfg)
+	router := api.NewRouter(repo, redisClient, esClient, cfg, infraLog)
 	server := router.NewServer(infraLog)
 
 	// Run server with graceful shutdown

@@ -6,6 +6,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	infralogger "github.com/jonesrussell/north-cloud/infrastructure/logger"
 	"github.com/jonesrussell/north-cloud/publisher/internal/models"
 )
 
@@ -27,7 +28,7 @@ func parseUUID(c *gin.Context, paramName, entityType string) (uuid.UUID, bool) {
 // handleRepositoryError handles common repository errors
 //
 //nolint:unparam // entityType is kept for API consistency even though only "channel" is used currently
-func handleRepositoryError(c *gin.Context, err error, entityType, operation string) {
+func (r *Router) handleRepositoryError(c *gin.Context, err error, entityType, operation string) {
 	if errors.Is(err, models.ErrNotFound) {
 		c.JSON(http.StatusNotFound, gin.H{
 			"error": entityType + " not found",
@@ -40,6 +41,12 @@ func handleRepositoryError(c *gin.Context, err error, entityType, operation stri
 		})
 		return
 	}
+	r.log.Error("Failed to "+operation+" "+entityType,
+		infralogger.Error(err),
+		infralogger.String("path", c.Request.URL.Path),
+		infralogger.String("entity_type", entityType),
+		infralogger.String("operation", operation),
+	)
 	c.JSON(http.StatusInternalServerError, gin.H{
 		"error": "Failed to " + operation + " " + entityType,
 	})

@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	infralogger "github.com/jonesrussell/north-cloud/infrastructure/logger"
 	"github.com/jonesrussell/north-cloud/publisher/internal/models"
 )
 
@@ -17,6 +18,10 @@ func (r *Router) listChannels(c *gin.Context) {
 
 	channels, err := r.repo.ListChannels(ctx, enabledOnly)
 	if err != nil {
+		r.log.Error("Failed to list channels",
+			infralogger.Error(err),
+			infralogger.String("path", c.Request.URL.Path),
+		)
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": "Failed to list channels",
 		})
@@ -52,7 +57,7 @@ func (r *Router) createChannel(c *gin.Context) {
 
 	channel, err := r.repo.CreateChannel(ctx, &req)
 	if err != nil {
-		handleRepositoryError(c, err, "channel", "create")
+		r.handleRepositoryError(c, err, "channel", "create")
 		return
 	}
 
@@ -71,7 +76,7 @@ func (r *Router) getChannel(c *gin.Context) {
 
 	channel, err := r.repo.GetChannelByID(ctx, id)
 	if err != nil {
-		handleRepositoryError(c, err, "channel", "get")
+		r.handleRepositoryError(c, err, "channel", "get")
 		return
 	}
 
@@ -104,7 +109,7 @@ func (r *Router) updateChannel(c *gin.Context) {
 
 	channel, err := r.repo.UpdateChannel(ctx, id, &req)
 	if err != nil {
-		handleRepositoryError(c, err, "channel", "update")
+		r.handleRepositoryError(c, err, "channel", "update")
 		return
 	}
 
@@ -123,7 +128,7 @@ func (r *Router) deleteChannel(c *gin.Context) {
 
 	err := r.repo.DeleteChannel(ctx, id)
 	if err != nil {
-		handleRepositoryError(c, err, "channel", "delete")
+		r.handleRepositoryError(c, err, "channel", "delete")
 		return
 	}
 
@@ -145,7 +150,7 @@ func (r *Router) previewChannel(c *gin.Context) {
 
 	channel, err := r.repo.GetChannelByID(ctx, channelID)
 	if err != nil {
-		handleRepositoryError(c, err, "channel", "get")
+		r.handleRepositoryError(c, err, "channel", "get")
 		return
 	}
 

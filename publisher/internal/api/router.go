@@ -31,15 +31,17 @@ type Router struct {
 	redisClient *redis.Client
 	esClient    *elasticsearch.Client
 	cfg         *config.Config
+	log         logger.Logger
 }
 
 // NewRouter creates a new API router
-func NewRouter(repo *database.Repository, redisClient *redis.Client, esClient *elasticsearch.Client, cfg *config.Config) *Router {
+func NewRouter(repo *database.Repository, redisClient *redis.Client, esClient *elasticsearch.Client, cfg *config.Config, log logger.Logger) *Router {
 	return &Router{
 		repo:        repo,
 		redisClient: redisClient,
 		esClient:    esClient,
 		cfg:         cfg,
+		log:         log,
 	}
 }
 

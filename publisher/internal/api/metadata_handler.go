@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	infralogger "github.com/jonesrussell/north-cloud/infrastructure/logger"
 )
 
 // decodeJSONBody decodes a JSON response body into the target interface
@@ -87,6 +88,10 @@ func (r *Router) listIndexes(c *gin.Context) {
 		r.esClient.Cat.Indices.WithFormat("json"),
 	)
 	if err != nil {
+		r.log.Error("Failed to query Elasticsearch indexes",
+			infralogger.Error(err),
+			infralogger.String("path", c.Request.URL.Path),
+		)
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": "Failed to query Elasticsearch indexes",
 		})
@@ -95,6 +100,10 @@ func (r *Router) listIndexes(c *gin.Context) {
 	defer res.Body.Close()
 
 	if res.IsError() {
+		r.log.Error("Elasticsearch returned an error",
+			infralogger.String("path", c.Request.URL.Path),
+			infralogger.String("es_status", res.Status()),
+		)
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": "Elasticsearch returned an error",
 		})
@@ -104,6 +113,10 @@ func (r *Router) listIndexes(c *gin.Context) {
 	// Parse the response
 	var indexes []map[string]any
 	if decodeErr := decodeJSONBody(res.Body, &indexes); decodeErr != nil {
+		r.log.Error("Failed to parse Elasticsearch response",
+			infralogger.Error(decodeErr),
+			infralogger.String("path", c.Request.URL.Path),
+		)
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": "Failed to parse Elasticsearch response",
 		})
