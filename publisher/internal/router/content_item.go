@@ -182,6 +182,10 @@ type ContentItem struct {
 	// Additional fields
 	WordCount int `json:"word_count"`
 
+	// Pipeline timestamps
+	CrawledAt    time.Time `json:"crawled_at"`
+	ClassifiedAt time.Time `json:"classified_at"`
+
 	// Sort values for search_after pagination
 	Sort []any `json:"-"`
 }

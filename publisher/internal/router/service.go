@@ -150,6 +150,10 @@ func (s *Service) pollAndRoute(ctx context.Context) {
 		}
 
 		if len(items) == 0 {
+			// Publisher is caught up — reset lag gauge so it doesn't go stale.
+			if totalItems == 0 && s.telemetry != nil {
+				s.telemetry.Metrics.CursorLag.Set(0)
+			}
 			break
 		}
 
@@ -504,12 +508,17 @@ func buildHistoryReq(channelID *uuid.UUID, item *ContentItem, channelName string
 	}
 }
 
-// recordCursorLag extracts the crawled_at timestamp from the sort key and records the cursor lag.
+// recordCursorLag records the publisher-specific lag using classified_at (when the classifier
+// wrote the document). Falls back to crawled_at from the sort key if classified_at is missing.
 func (s *Service) recordCursorLag(item ContentItem) {
+	if !item.ClassifiedAt.IsZero() {
+		s.telemetry.RecordCursorLag(item.ClassifiedAt)
+		return
+	}
+	// Fallback: extract crawled_at from the sort key for documents without classified_at.
 	if len(item.Sort) == 0 {
 		return
 	}
-	// Sort key is [crawled_at_millis, _shard_doc]. First element is epoch millis (float64 from JSON).
 	if millis, ok := item.Sort[0].(float64); ok {
 		const msPerSecond = 1000
 		ts := time.Unix(int64(millis)/msPerSecond, (int64(millis)%msPerSecond)*int64(time.Millisecond))
