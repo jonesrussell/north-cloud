@@ -49,6 +49,7 @@ ALL_SERVICES=("${GO_SERVICES[@]}" "${FRONTEND_SERVICES[@]}" "${OTHER_SERVICES[@]
 # Deploy service names (may differ from directory names)
 declare -A SERVICE_TO_DEPLOY_NAME=(
     [search]="search-service"
+    [search-frontend]="northcloud-search-web"
 )
 
 # Files that should trigger all services

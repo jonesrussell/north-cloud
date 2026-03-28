@@ -576,7 +576,7 @@ for svc in $SERVICES_TO_CHECK; do
     click-tracker)
       check_health "click-tracker" "/health" "8093" 10 || { FAILED_CHECKS=$((FAILED_CHECKS + 1)); FAILED_SERVICES="$FAILED_SERVICES $svc"; }
       ;;
-    # search-frontend and dashboard don't have health endpoints (static nginx)
+    # northcloud-search-web and dashboard don't have health endpoints (static nginx/waaseyaa)
   esac
 done
 
