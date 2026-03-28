@@ -150,10 +150,6 @@ func (s *Service) pollAndRoute(ctx context.Context) {
 		}
 
 		if len(items) == 0 {
-			// Publisher is caught up — reset lag gauge so it doesn't go stale.
-			if totalItems == 0 && s.telemetry != nil {
-				s.telemetry.Metrics.CursorLag.Set(0)
-			}
 			break
 		}
 
@@ -193,9 +189,15 @@ func (s *Service) pollAndRoute(ctx context.Context) {
 		}
 	}
 
-	if s.telemetry != nil && totalItems > 0 {
-		s.telemetry.RecordBatch(totalItems, time.Since(pollStart))
+	if s.telemetry == nil {
+		return
 	}
+	if totalItems == 0 {
+		// Publisher is caught up — reset lag gauge so it doesn't go stale.
+		s.telemetry.Metrics.CursorLag.Set(0)
+		return
+	}
+	s.telemetry.RecordBatch(totalItems, time.Since(pollStart))
 }
 
 // publishRoutes publishes a content item to each ChannelRoute and returns names of channels
