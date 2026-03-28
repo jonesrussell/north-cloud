@@ -442,7 +442,8 @@ services:
   northcloud-search-subscriber:
     <<: *prod-defaults
     image: docker.io/jonesrussell/northcloud-search:${NORTHCLOUD_SEARCH_TAG:-latest}
-    command: ["php", "bin/waaseyaa", "app:subscribe", "--redis-url=tcp://redis:6379"]
+    command: ["php", "bin/waaseyaa", "app:subscribe", "--redis-url=tcp://${REDIS_HOST:-redis}:6379"]
+    depends_on: []
     volumes:
       - northcloud-search-data:/app/storage
     deploy:
