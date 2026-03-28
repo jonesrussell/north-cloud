@@ -312,8 +312,6 @@ services:
     command: ["php", "bin/waaseyaa", "app:subscribe", "--redis-url=tcp://redis:6379"]
     volumes:
       - northcloud-search-data:/app/storage
-    depends_on:
-      - redis
     deploy:
       resources:
         limits:
