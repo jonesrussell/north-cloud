@@ -102,6 +102,13 @@ type JobData struct {
 	Industry         string `json:"industry,omitempty"`
 }
 
+// NeedSignalData holds the publisher view of need-signal classification from Elasticsearch.
+type NeedSignalData struct {
+	SignalType string `json:"signal_type"`
+	Province   string `json:"province"`
+	Sector     string `json:"sector"`
+}
+
 // RFPData holds the publisher view of structured RFP extraction from Elasticsearch.
 // It is a subset of the classifier's RFPResult; ES may index additional fields that are
 // ignored on unmarshal.
@@ -163,10 +170,11 @@ type ContentItem struct {
 	Entertainment *EntertainmentData `json:"entertainment,omitempty"`
 	Coforge       *CoforgeData       `json:"coforge,omitempty"`
 
-	// Recipe, Job, and RFP structured extraction
-	Recipe *RecipeData `json:"recipe,omitempty"`
-	Job    *JobData    `json:"job,omitempty"`
-	RFP    *RFPData    `json:"rfp,omitempty"`
+	// Recipe, Job, RFP, and NeedSignal structured extraction
+	Recipe     *RecipeData     `json:"recipe,omitempty"`
+	Job        *JobData        `json:"job,omitempty"`
+	RFP        *RFPData        `json:"rfp,omitempty"`
+	NeedSignal *NeedSignalData `json:"need_signal,omitempty"`
 
 	// Entertainment flat fields (populated from nested Entertainment object)
 	EntertainmentRelevance        string   `json:"entertainment_relevance"`

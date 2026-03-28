@@ -19,22 +19,23 @@ const (
 
 // Classifier orchestrates all classification strategies
 type Classifier struct {
-	contentType      *ContentTypeClassifier
-	quality          *QualityScorer
-	topic            *TopicClassifier
-	sourceReputation *SourceReputationScorer
-	crime            *CrimeClassifier
-	mining           *MiningClassifier
-	coforge          *CoforgeClassifier
-	entertainment    *EntertainmentClassifier
-	indigenous       *IndigenousClassifier
-	location         *LocationClassifier
-	recipeExtractor  *RecipeExtractor
-	jobExtractor     *JobExtractor
-	rfpExtractor     *RFPExtractor
-	logger           infralogger.Logger
-	version          string
-	routingTable     map[string][]string // route key -> sidecar names (e.g. "article:event" -> ["location"])
+	contentType         *ContentTypeClassifier
+	quality             *QualityScorer
+	topic               *TopicClassifier
+	sourceReputation    *SourceReputationScorer
+	crime               *CrimeClassifier
+	mining              *MiningClassifier
+	coforge             *CoforgeClassifier
+	entertainment       *EntertainmentClassifier
+	indigenous          *IndigenousClassifier
+	location            *LocationClassifier
+	recipeExtractor     *RecipeExtractor
+	jobExtractor        *JobExtractor
+	rfpExtractor        *RFPExtractor
+	needSignalExtractor *NeedSignalExtractor
+	logger              infralogger.Logger
+	version             string
+	routingTable        map[string][]string // route key -> sidecar names (e.g. "article:event" -> ["location"])
 }
 
 // Config holds configuration for the classifier
@@ -52,6 +53,7 @@ type Config struct {
 	RecipeExtractor         *RecipeExtractor         // Optional: structured recipe extractor
 	JobExtractor            *JobExtractor            // Optional: structured job extractor
 	RFPExtractor            *RFPExtractor            // Optional: structured RFP extractor
+	NeedSignalExtractor     *NeedSignalExtractor     // Optional: structured need signal extractor
 	RoutingTable            map[string][]string      // Optional: content-type routing (see ResolveSidecars)
 	MaxTopics               int                      // Maximum topics per item (default 5)
 }
@@ -94,22 +96,23 @@ func NewClassifier(
 		}
 	}
 	return &Classifier{
-		contentType:      NewContentTypeClassifier(logger),
-		quality:          NewQualityScorerWithConfig(logger, config.QualityConfig),
-		topic:            NewTopicClassifier(logger, rules, config.MaxTopics),
-		sourceReputation: NewSourceReputationScorerWithConfig(logger, sourceRepDB, config.SourceReputationConfig),
-		crime:            config.CrimeClassifier,
-		mining:           config.MiningClassifier,
-		coforge:          config.CoforgeClassifier,
-		entertainment:    config.EntertainmentClassifier,
-		indigenous:       config.IndigenousClassifier,
-		location:         NewLocationClassifier(logger),
-		recipeExtractor:  config.RecipeExtractor,
-		jobExtractor:     config.JobExtractor,
-		rfpExtractor:     config.RFPExtractor,
-		logger:           logger,
-		version:          config.Version,
-		routingTable:     routingTable,
+		contentType:         NewContentTypeClassifier(logger),
+		quality:             NewQualityScorerWithConfig(logger, config.QualityConfig),
+		topic:               NewTopicClassifier(logger, rules, config.MaxTopics),
+		sourceReputation:    NewSourceReputationScorerWithConfig(logger, sourceRepDB, config.SourceReputationConfig),
+		crime:               config.CrimeClassifier,
+		mining:              config.MiningClassifier,
+		coforge:             config.CoforgeClassifier,
+		entertainment:       config.EntertainmentClassifier,
+		indigenous:          config.IndigenousClassifier,
+		location:            NewLocationClassifier(logger),
+		recipeExtractor:     config.RecipeExtractor,
+		jobExtractor:        config.JobExtractor,
+		rfpExtractor:        config.RFPExtractor,
+		needSignalExtractor: config.NeedSignalExtractor,
+		logger:              logger,
+		version:             config.Version,
+		routingTable:        routingTable,
 	}
 }
 
@@ -184,6 +187,7 @@ func (c *Classifier) Classify(ctx context.Context, raw *domain.RawContent) (*dom
 	recipeResult := c.runRecipeExtraction(ctx, raw, contentTypeResult.Type, topicResult.Topics)
 	jobResult := c.runJobExtraction(ctx, raw, contentTypeResult.Type, topicResult.Topics)
 	rfpResult := c.runRFPExtraction(ctx, raw, contentTypeResult.Type, topicResult.Topics)
+	needSignalResult := c.runNeedSignalExtraction(ctx, raw, contentTypeResult.Type, topicResult.Topics)
 
 	// Inject "indigenous" topic when indigenous classifier detects relevance.
 	// The topic taxonomy (DB rules) has no indigenous rule — the ML+rules hybrid
@@ -235,6 +239,7 @@ func (c *Classifier) Classify(ctx context.Context, raw *domain.RawContent) (*dom
 		Recipe:               recipeResult,
 		Job:                  jobResult,
 		RFP:                  rfpResult,
+		NeedSignal:           needSignalResult,
 	}
 
 	c.logger.Info("Classification complete",
@@ -550,6 +555,26 @@ func (c *Classifier) runRFPExtraction(
 	return result
 }
 
+// runNeedSignalExtraction runs need signal extraction when enabled. Extraction is best-effort:
+// failure returns nil need signal and does not fail the overall classification.
+func (c *Classifier) runNeedSignalExtraction(
+	ctx context.Context, raw *domain.RawContent, contentType string, topics []string,
+) *domain.NeedSignalResult {
+	if c.needSignalExtractor == nil {
+		return nil
+	}
+	result, err := c.needSignalExtractor.Extract(ctx, raw, contentType, topics)
+	if err != nil {
+		wrapped := fmt.Errorf("need signal extraction content_id=%s: %w", raw.ID, err)
+		c.logger.Warn("Need signal extraction failed",
+			infralogger.String("content_id", raw.ID),
+			infralogger.Error(wrapped),
+		)
+		return nil
+	}
+	return result
+}
+
 // calculateTopicConfidence calculates overall topic confidence
 // If no topics matched, confidence is low
 // If topics matched, use the highest topic score
@@ -594,6 +619,7 @@ func (c *Classifier) BuildClassifiedContent(raw *domain.RawContent, result *doma
 		Recipe:               result.Recipe,
 		Job:                  result.Job,
 		RFP:                  result.RFP,
+		NeedSignal:           result.NeedSignal,
 		// Publisher compatibility aliases
 		Body:   raw.RawText, // Alias for RawText
 		Source: raw.URL,     // Alias for URL

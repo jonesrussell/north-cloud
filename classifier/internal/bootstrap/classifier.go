@@ -203,24 +203,7 @@ func createClassifierConfig(cfg *config.Config, logger infralogger.Logger) class
 		miningCC.WithDrillExtraction(drillClient, drillCfg)
 	}
 
-	// Create recipe and job extractors when enabled
-	var recipeExtractor *classifier.RecipeExtractor
-	if cfg.Classification.Recipe.Enabled {
-		recipeExtractor = classifier.NewRecipeExtractor(logger)
-		logger.Info("Recipe extractor enabled")
-	}
-
-	var jobExtractor *classifier.JobExtractor
-	if cfg.Classification.Job.Enabled {
-		jobExtractor = classifier.NewJobExtractor(logger)
-		logger.Info("Job extractor enabled")
-	}
-
-	var rfpExtractor *classifier.RFPExtractor
-	if cfg.Classification.RFP.Enabled {
-		rfpExtractor = classifier.NewRFPExtractor(logger)
-		logger.Info("RFP extractor enabled")
-	}
+	recipeExtractor, jobExtractor, rfpExtractor, needSignalExtractor := createExtractors(cfg, logger)
 
 	return classifier.Config{
 		Version:         "1.0.0",
@@ -249,9 +232,41 @@ func createClassifierConfig(cfg *config.Config, logger infralogger.Logger) class
 		RecipeExtractor:         recipeExtractor,
 		JobExtractor:            jobExtractor,
 		RFPExtractor:            rfpExtractor,
+		NeedSignalExtractor:     needSignalExtractor,
 		RoutingTable:            cfg.Classification.Routing,
 		MaxTopics:               cfg.Classification.Topic.MaxTopics,
 	}
+}
+
+// createExtractors creates the optional structured extractors (recipe, job, RFP, need signal).
+func createExtractors(
+	cfg *config.Config, logger infralogger.Logger,
+) (*classifier.RecipeExtractor, *classifier.JobExtractor, *classifier.RFPExtractor, *classifier.NeedSignalExtractor) {
+	var recipeExtractor *classifier.RecipeExtractor
+	if cfg.Classification.Recipe.Enabled {
+		recipeExtractor = classifier.NewRecipeExtractor(logger)
+		logger.Info("Recipe extractor enabled")
+	}
+
+	var jobExtractor *classifier.JobExtractor
+	if cfg.Classification.Job.Enabled {
+		jobExtractor = classifier.NewJobExtractor(logger)
+		logger.Info("Job extractor enabled")
+	}
+
+	var rfpExtractor *classifier.RFPExtractor
+	if cfg.Classification.RFP.Enabled {
+		rfpExtractor = classifier.NewRFPExtractor(logger)
+		logger.Info("RFP extractor enabled")
+	}
+
+	var needSignalExtractor *classifier.NeedSignalExtractor
+	if cfg.Classification.NeedSignal.Enabled {
+		needSignalExtractor = classifier.NewNeedSignalExtractor(logger)
+		logger.Info("Need signal extractor enabled")
+	}
+
+	return recipeExtractor, jobExtractor, rfpExtractor, needSignalExtractor
 }
 
 // createOptionalClassifier creates an optional ML classifier when enabled; returns nil otherwise.

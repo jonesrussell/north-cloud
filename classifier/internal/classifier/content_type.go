@@ -219,7 +219,10 @@ func (c *ContentTypeClassifier) classifyFromKeywordHeuristics(raw *domain.RawCon
 	if result := c.classifyFromObituaryKeywords(raw); result != nil {
 		return result
 	}
-	return c.classifyFromRFPKeywords(raw)
+	if result := c.classifyFromRFPKeywords(raw); result != nil {
+		return result
+	}
+	return c.classifyFromNeedSignalKeywords(raw)
 }
 
 // classifyFromOGType classifies content based on Open Graph type metadata

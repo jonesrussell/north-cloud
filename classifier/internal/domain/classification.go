@@ -58,6 +58,9 @@ type ClassificationResult struct {
 
 	// RFP structured extraction (optional)
 	RFP *RFPResult `json:"rfp,omitempty"`
+
+	// Need signal detection (optional)
+	NeedSignal *NeedSignalResult `json:"need_signal,omitempty"`
 }
 
 // IndigenousResult holds Indigenous hybrid classification results.
@@ -211,6 +214,9 @@ type ClassifiedContent struct {
 	// RFP structured extraction (optional)
 	RFP *RFPResult `json:"rfp,omitempty"`
 
+	// Need signal detection (optional)
+	NeedSignal *NeedSignalResult `json:"need_signal,omitempty"`
+
 	// Publisher compatibility aliases
 	// These duplicate RawContent fields for backward compatibility with publisher
 	Body   string `json:"body"`   // Alias for RawText (publisher expects "body")
@@ -219,15 +225,16 @@ type ClassifiedContent struct {
 
 // ContentType constants
 const (
-	ContentTypeArticle  = "article"
-	ContentTypePage     = "page"
-	ContentTypeVideo    = "video"
-	ContentTypeImage    = "image"
-	ContentTypeJob      = "job"
-	ContentTypeRecipe   = "recipe"
-	ContentTypeEvent    = "event"
-	ContentTypeObituary = "obituary"
-	ContentTypeRFP      = "rfp"
+	ContentTypeArticle    = "article"
+	ContentTypePage       = "page"
+	ContentTypeVideo      = "video"
+	ContentTypeImage      = "image"
+	ContentTypeJob        = "job"
+	ContentTypeRecipe     = "recipe"
+	ContentTypeEvent      = "event"
+	ContentTypeObituary   = "obituary"
+	ContentTypeRFP        = "rfp"
+	ContentTypeNeedSignal = "need_signal"
 )
 
 // ContentSubtype constants (granularity within article-like content).
@@ -357,4 +364,19 @@ type RFPResult struct {
 	SourceURL        string   `json:"source_url,omitempty"`
 	ContactName      string   `json:"contact_name,omitempty"`
 	ContactEmail     string   `json:"contact_email,omitempty"`
+}
+
+// NeedSignalResult holds detection results for proactive outreach signals.
+// Non-nil values indicate the content suggests an organization may need web services.
+type NeedSignalResult struct {
+	SignalType       string   `json:"signal_type"`
+	OrganizationName string   `json:"organization_name,omitempty"`
+	Sector           string   `json:"sector,omitempty"`
+	Province         string   `json:"province,omitempty"`
+	City             string   `json:"city,omitempty"`
+	ContactEmail     string   `json:"contact_email,omitempty"`
+	ContactName      string   `json:"contact_name,omitempty"`
+	SourceURL        string   `json:"source_url,omitempty"`
+	Keywords         []string `json:"keywords,omitempty"`
+	Confidence       float64  `json:"confidence"`
 }

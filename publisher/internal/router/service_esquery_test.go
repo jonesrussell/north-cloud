@@ -59,7 +59,7 @@ func TestBuildESQuery_ContentTypeTerms(t *testing.T) {
 	default:
 		t.Fatalf("content_type not slice: %T", ct)
 	}
-	want := map[string]bool{"article": true, "recipe": true, "job": true, "rfp": true}
+	want := map[string]bool{"article": true, "recipe": true, "job": true, "rfp": true, "need_signal": true}
 	if len(ctStrs) != len(want) {
 		t.Errorf("content_type len = %d, want %d", len(ctStrs), len(want))
 	}

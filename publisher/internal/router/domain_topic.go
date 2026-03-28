@@ -4,12 +4,13 @@ package router
 // These topics are excluded from Layer 1 auto-routing to prevent bypassing
 // their specialised classifiers (e.g., coforge → Layer 8).
 var layer1SkipTopics = map[string]bool{
-	"mining":     true,
-	"indigenous": true,
-	"coforge":    true,
-	"recipe":     true,
-	"jobs":       true,
-	"rfp":        true,
+	"mining":      true,
+	"indigenous":  true,
+	"coforge":     true,
+	"recipe":      true,
+	"jobs":        true,
+	"rfp":         true,
+	"need_signal": true,
 }
 
 // TopicDomain routes content items to content:{topic} for each non-skipped topic tag.
