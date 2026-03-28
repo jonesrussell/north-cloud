@@ -1,8 +1,8 @@
 # Content Routing Specification
 
-> Last verified: 2026-03-27 (added logger to API Router, error logging in all handlers)
+> Last verified: 2026-03-28 (added Layer 12 NeedSignalDomain routing)
 
-Covers the publisher service: 11-layer routing pipeline, channel management, Redis publishing, and deduplication.
+Covers the publisher service: 12-layer routing pipeline, channel management, Redis publishing, and deduplication.
 
 ## File Map
 
@@ -22,6 +22,7 @@ Covers the publisher service: 11-layer routing pipeline, channel management, Red
 | `publisher/internal/router/domain_recipe.go` | Layer 9: Recipe routing |
 | `publisher/internal/router/domain_job.go` | Layer 10: Job routing |
 | `publisher/internal/router/domain_rfp.go` | Layer 11: RFP routing |
+| `publisher/internal/router/domain_need_signal.go` | Layer 12: Need signal routing |
 | `publisher/internal/router/content_item.go` | ContentItem struct (all classification fields) |
 | `publisher/internal/models/channel.go` | Channel, ChannelCreateRequest |
 | `publisher/internal/models/rules.go` | Rules struct + Matches() |
@@ -78,7 +79,7 @@ func (s *Service) Start(ctx context.Context) error  // Main loop
 ```
 ES *_classified_content → Router (30s poll, batch=100, search_after cursor)
 
-For each ContentItem, evaluate 11 layers sequentially:
+For each ContentItem, evaluate 12 layers sequentially:
 
 Layer 1 (TopicDomain):
   For each topic NOT in layer1SkipTopics:
@@ -146,6 +147,13 @@ Layer 11 (RFPDomain):
     Per province → rfp:province:{code}
     Per category → rfp:sector:{slug}
     Per procurement type → rfp:type:{slug}
+
+Layer 12 (NeedSignalDomain):
+  If content_type == "need_signal" and need_signal result present:
+    → content:need-signals (catch-all)
+    If signal_type → need-signal:type:{type}
+    If province → need-signal:province:{province}
+    If sector → need-signal:sector:{sector}
 ```
 
 ### Publishing Flow
@@ -161,12 +169,13 @@ For each matched channel:
 ### Layer 1 Skip Topics (CRITICAL)
 ```go
 var layer1SkipTopics = map[string]bool{
-    "mining":     true,  // Layer 5 ML filter
-    "indigenous": true,  // Layer 7 ML filter
-    "coforge":    true,  // Layer 8 ML filter
-    "recipe":     true,
-    "jobs":       true,
-    "rfp":        true,  // Layer 11 RFP filter
+    "mining":      true,  // Layer 5 ML filter
+    "indigenous":  true,  // Layer 7 ML filter
+    "coforge":     true,  // Layer 8 ML filter
+    "recipe":      true,
+    "jobs":        true,
+    "rfp":         true,  // Layer 11 RFP filter
+    "need_signal": true,  // Layer 12 need signal filter
 }
 ```
 Topics in this map MUST be skipped to prevent bypassing ML classification filters.
@@ -193,7 +202,8 @@ Topics in this map MUST be skipped to prevent bypassing ML classification filter
   "homepage_eligible": true,
   "mining": { "relevance": "...", "commodities": [...] },
   "indigenous": { ... },
-  "entertainment": { ... }
+  "entertainment": { ... },
+  "need_signal": { "signal_type": "...", "province": "...", "sector": "..." }
 }
 ```
 
@@ -219,5 +229,6 @@ Topics in this map MUST be skipped to prevent bypassing ML classification filter
 - **Nil nested objects**: Always check `item.Mining == nil` before accessing fields. Return nil from Routes() when domain doesn't apply.
 - **Cursor persistence**: search_after cursor saved to DB. Safe across restarts. If cursor invalid (deleted index), resets to beginning.
 - **Slug normalization**: Underscores → hyphens in channel slugs.
+- **NeedSignalData on ContentItem**: `signal_type`, `province`, `sector` fields parsed from the nested `need_signal` ES object. `need_signal` is included in ES `content_type` query terms.
 
 <\!-- Reviewed: 2026-03-18 — go.mod dependency update only, no spec changes needed -->

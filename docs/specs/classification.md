@@ -1,6 +1,6 @@
 # Classification Specification
 
-> Last verified: 2026-03-26 (timestamp bump — classifier CLAUDE.md docs update)
+> Last verified: 2026-03-28 (added need signal detection feature)
 
 Covers the classifier service, hybrid rule+ML classification pipeline, ML sidecar integration, and content enrichment.
 
@@ -39,6 +39,7 @@ Covers the classifier service, hybrid rule+ML classification pipeline, ML sideca
 | `classifier/internal/domain/raw_content.go` | RawContent input model |
 | `classifier/internal/elasticsearch/mappings/classified_content.go` | ES mapping builders |
 | `classifier/internal/bootstrap/classifier.go` | Service initialization |
+| `classifier/internal/classifier/need_signal.go` | Need signal keyword classifier + extractor |
 | `classifier/internal/testhelpers/mocks.go` | Mock source reputation DB |
 | `classifier/migrations/` | PostgreSQL schema (12 migrations) |
 
@@ -139,7 +140,7 @@ ResolveSidecars(contentType, subtype) determines which optional classifiers run:
 ```go
 type ClassificationResult struct {
     ContentID        string
-    ContentType      string             // "article", "page", "video", "image", "job", "recipe", "event", "obituary"
+    ContentType      string             // "article", "page", "video", "image", "job", "recipe", "event", "obituary", "need_signal"
     ContentSubtype   string             // "press_release", "blog_post", "event", "blotter", etc.
     TypeConfidence   float64
     TypeMethod       string             // "detected_content_type", "url_exclusion", "og_metadata", etc.
@@ -163,6 +164,7 @@ type ClassificationResult struct {
     Location         *LocationResult
     Recipe           *RecipeResult      // nil unless content_type=recipe
     Job              *JobResult         // nil unless content_type=job
+    NeedSignal       *NeedSignalResult  // nil unless content_type=need_signal
 }
 ```
 
@@ -214,6 +216,22 @@ type DrillResult struct {
 }
 ```
 
+### NeedSignalResult
+```go
+type NeedSignalResult struct {
+    SignalType       string   `json:"signal_type"`        // "outdated_website", "funding_win", "job_posting", "new_program", "tech_migration"
+    OrganizationName string   `json:"organization_name"`
+    Sector           string   `json:"sector"`
+    Province         string   `json:"province"`
+    City             string   `json:"city"`
+    ContactEmail     string   `json:"contact_email,omitempty"`
+    ContactName      string   `json:"contact_name,omitempty"`
+    SourceURL        string   `json:"source_url"`
+    Keywords         []string `json:"keywords"`
+    Confidence       float64  `json:"confidence"`
+}
+```
+
 ### PostgreSQL Tables
 - **classification_rules**: id, rule_name, rule_type, topic_name, keywords (TEXT[]), min_confidence, enabled, priority
 - **source_reputation**: id, source_name, source_url, category, reputation_score, total_articles, average_quality_score, spam_count
@@ -240,6 +258,7 @@ type DrillResult struct {
 - `DRILL_LLM_FALLBACK` — enable Claude Haiku fallback when regex extraction is partial/none
 - `ANTHROPIC_API_KEY` — required when LLM fallback is enabled
 - `ANTHROPIC_MODEL` (default: `claude-haiku-4-5`) — model for drill extraction
+- `NEED_SIGNAL_ENABLED` — enable need signal keyword detection and structured extraction
 - `CLASSIFIER_QUALITY_GATE_ENABLED` (default: `false`) — enable quality gate pre-indexing filter
 - `CLASSIFIER_QUALITY_GATE_THRESHOLD` (default: `40`) — minimum quality_score to pass without flagging
 
@@ -260,6 +279,33 @@ When `DRILL_EXTRACTION_ENABLED=true` and mining classification is enabled, `Mini
 **ES mapping**: `drill_results` is a nested object under `mining` in `classified_content` indices. Fields: `hole_id` (keyword), `commodity` (keyword), `intercept_m` (float), `grade` (float), `unit` (keyword). `extraction_method` is a keyword field.
 
 **Bootstrap wiring**: `bootstrap/classifier.go` instantiates `drillmlclient.Client` when both mining and drill extraction are enabled, and attaches it to `MiningClassifier` via `WithDrillExtraction()`.
+
+## Need Signal Detection
+
+When `NEED_SIGNAL_ENABLED=true`, the classifier detects content that signals an organization's need for services (outdated websites, funding wins, new programs, etc.). This is a two-stage pipeline:
+
+### Content Type: `ContentTypeNeedSignal = "need_signal"`
+
+Added to the content type enumeration. When the keyword heuristic fires, the content type is set to `need_signal`.
+
+### Keyword Heuristic Classifier (`classifyFromNeedSignalKeywords`)
+
+Five keyword categories, each with domain-specific patterns:
+- `outdated_website` — signals an organization has an outdated or broken web presence
+- `funding_win` — grant awards, funding announcements
+- `job_posting` — hiring signals indicating growth or capacity gaps
+- `new_program` — new initiatives that may need tech support
+- `tech_migration` — signals of platform/system transitions
+
+**Threshold**: 2 keyword matches required across any categories. **Confidence**: 0.80 when triggered.
+
+### Need Signal Extractor (`NeedSignalExtractor`)
+
+Runs when content type is `need_signal`. Extracts structured data into `NeedSignalResult`: organization name, sector, province, city, contact info, source URL, and matched keywords.
+
+### ES Mapping
+
+`need_signal` is a nested mapping under the `classified_content` index, following the same pattern as `mining`, `crime`, etc. Fields map to `NeedSignalResult` struct fields.
 
 ## Edge Cases
 
