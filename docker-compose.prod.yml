@@ -424,15 +424,27 @@ services:
   northcloud-search-web:
     <<: *prod-defaults
     image: docker.io/jonesrussell/northcloud-search:${NORTHCLOUD_SEARCH_TAG:-latest}
+    ports:
+      - "127.0.0.1:3003:3003"
+    volumes:
+      - northcloud-search-data:/app/storage
     deploy:
       resources:
         limits:
           cpus: "0.25"
           memory: 128M
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:3003/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
 
   northcloud-search-subscriber:
     <<: *prod-defaults
     image: docker.io/jonesrussell/northcloud-search:${NORTHCLOUD_SEARCH_TAG:-latest}
+    command: ["php", "bin/waaseyaa", "app:subscribe", "--redis-url=tcp://redis:6379"]
+    volumes:
+      - northcloud-search-data:/app/storage
     deploy:
       resources:
         limits:
@@ -820,4 +832,6 @@ volumes:
   umami_db_data:
     driver: local
   pyroscope_data:
+    driver: local
+  northcloud-search-data:
     driver: local
