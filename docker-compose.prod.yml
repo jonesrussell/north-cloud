@@ -419,21 +419,13 @@ services:
       start_period: 20s
 
   # ------------------------------------------------------------
-  # Search Frontend (Prod)
+  # NorthCloud Search (Prod)
   # ------------------------------------------------------------
-  search-frontend:
-    <<: *prod-defaults
-    image: northcloud-search:latest
-    deploy:
-      resources:
-        limits:
-          cpus: "0.25"
-          memory: 128M
-    depends_on:
-      search-service:
-        condition: service_healthy
-    environment:
-      NORTHCLOUD_API_URL: http://search-service:8090
+  northcloud-search-web:
+    image: docker.io/jonesrussell/northcloud-search:${NORTHCLOUD_SEARCH_TAG:-latest}
+
+  northcloud-search-subscriber:
+    image: docker.io/jonesrussell/northcloud-search:${NORTHCLOUD_SEARCH_TAG:-latest}
 
   # ------------------------------------------------------------
   # nc-http-proxy (Prod) - HTTP replay proxy for crawler
