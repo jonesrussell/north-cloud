@@ -221,6 +221,10 @@ See `docs/specs/workflow.md` for full details. Governance hook: `bin/check-miles
 
 **Production docker commands**: `jones` user requires `sudo` for all `docker compose` commands on prod — `.env` is not readable without it.
 
+**Redis auth on prod**: Production Redis requires password (`REDIS_PASSWORD` in `.env`). Predis URL format: `tcp://:PASSWORD@redis:6379`. For pub/sub consumers, must set `read_write_timeout=0` in client config or the connection times out and crashes.
+
+**Docker compose prod overrides lose base config**: `<<: *prod-defaults` replaces the entire service definition. `command`, `volumes`, `ports`, `healthcheck` from base are lost — re-declare them in the prod override.
+
 **ES container name**: `north-cloud-elasticsearch-1` (note `-1` suffix from compose scaling), not `north-cloud-elasticsearch`.
 
 **Squid proxy crash-loop after deploy**: If Squid logs (`squid/logs/`) get wrong ownership (e.g. after path migration), Squid crashes with `Cannot open access.log for writing`. Fix: `sudo rm squid/logs/*.log && docker compose ... restart squid`. See #498.
