@@ -280,20 +280,46 @@ services:
       retries: 3
       start_period: 10s
 
-  search-frontend:
+  northcloud-search-web:
     <<: *service-defaults
-    # No profiles here so prod always has search-frontend; dev overrides with profiles: [search]
     build:
-      context: ./search-frontend
+      context: ../northcloud-search
       dockerfile: Dockerfile
-    image: docker.io/jonesrussell/search-frontend:latest
+    image: docker.io/jonesrussell/northcloud-search:latest
+    container_name: north-cloud-northcloud-search-web
+    ports:
+      - "3003:3003"
+    volumes:
+      - northcloud-search-data:/app/storage
     deploy:
       resources:
         limits:
           cpus: "0.25"
           memory: 128M
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:3003/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  northcloud-search-subscriber:
+    <<: *service-defaults
+    build:
+      context: ../northcloud-search
+      dockerfile: Dockerfile
+    image: docker.io/jonesrussell/northcloud-search:latest
+    container_name: north-cloud-northcloud-search-subscriber
+    command: ["php", "bin/waaseyaa", "app:subscribe", "--redis-url=tcp://redis:6379"]
+    volumes:
+      - northcloud-search-data:/app/storage
     depends_on:
-      - search-service
+      - redis
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 128M
+    restart: unless-stopped
 
   auth:
     <<: *service-defaults
@@ -722,6 +748,7 @@ volumes:
   pyroscope_data:
   prometheus_data:
   grafana_data:
+  northcloud-search-data:
   nc_http_proxy_cache:
 
 networks:
