@@ -19,6 +19,8 @@ services:
   crawler:
     <<: *prod-defaults
     image: docker.io/jonesrussell/crawler:${CRAWLER_TAG:-latest}
+    ports:
+      - "127.0.0.1:8060:8080"
     deploy:
       resources:
         limits:
@@ -181,6 +183,8 @@ services:
     <<: *prod-defaults
     image: docker.io/jonesrussell/publisher:${PUBLISHER_TAG:-latest}
     command: ["/app/publisher", "both"]
+    ports:
+      - "127.0.0.1:8070:8070"
     deploy:
       resources:
         limits:
@@ -222,6 +226,8 @@ services:
     <<: *prod-defaults
     image: docker.io/jonesrussell/classifier:${CLASSIFIER_TAG:-latest}
     command: ["./classifier", "both"]
+    ports:
+      - "127.0.0.1:8071:8070"
     deploy:
       resources:
         limits:
@@ -324,6 +330,8 @@ services:
   pipeline:
     <<: *prod-defaults
     image: docker.io/jonesrussell/pipeline:${PIPELINE_TAG:-latest}
+    ports:
+      - "127.0.0.1:8075:8075"
     deploy:
       resources:
         limits:
@@ -356,6 +364,8 @@ services:
   index-manager:
     <<: *prod-defaults
     image: docker.io/jonesrussell/index-manager:${INDEX_MANAGER_TAG:-latest}
+    ports:
+      - "127.0.0.1:8091:8090"
     deploy:
       resources:
         limits:
@@ -487,6 +497,8 @@ services:
   auth:
     <<: *prod-defaults
     image: docker.io/jonesrussell/auth:${AUTH_TAG:-latest}
+    ports:
+      - "127.0.0.1:8040:8040"
     deploy:
       resources:
         limits:
@@ -651,6 +663,8 @@ services:
   # Click Tracker (Prod Overrides — require .env, no defaults)
   # ============================================================
   click-tracker:
+    ports:
+      - "127.0.0.1:8093:8093"
     environment:
       POSTGRES_CLICK_TRACKER_USER: "${POSTGRES_CLICK_TRACKER_USER}"
       POSTGRES_CLICK_TRACKER_PASSWORD: "${POSTGRES_CLICK_TRACKER_PASSWORD}"
@@ -801,6 +815,8 @@ services:
   rfp-ingestor:
     <<: *prod-defaults
     image: docker.io/jonesrussell/rfp-ingestor:${RFP_INGESTOR_TAG:-latest}
+    ports:
+      - "127.0.0.1:8095:8095"
     deploy:
       resources:
         limits:
