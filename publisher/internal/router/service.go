@@ -229,6 +229,7 @@ func (s *Service) routeContentItem(ctx context.Context, item *ContentItem, chann
 		NewRecipeDomain(),
 		NewJobDomain(),
 		NewRFPDomain(),
+		NewNeedSignalDomain(),
 	}
 
 	var publishedChannels []string
@@ -348,7 +349,7 @@ func (s *Service) buildESQuery() map[string]any {
 	mustClauses := []map[string]any{
 		{
 			"terms": map[string]any{
-				"content_type": []string{"article", "recipe", "job", "rfp"},
+				"content_type": []string{"article", "recipe", "job", "rfp", "need_signal"},
 			},
 		},
 	}
@@ -489,6 +490,8 @@ func buildPublishPayload(item *ContentItem, channelName string, channelID *uuid.
 		"job": item.Job,
 		// RFP extraction
 		"rfp": item.RFP,
+		// Need signal classification
+		"need_signal": item.NeedSignal,
 		// Location detection
 		"location_city":       item.LocationCity,
 		"location_province":   item.LocationProvince,
