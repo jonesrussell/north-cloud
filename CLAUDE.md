@@ -168,6 +168,13 @@ See `ARCHITECTURE.md` for the full bootstrap pattern reference.
 - **Container naming**: `north-cloud-{service}` pattern
 - **Database access**: `docker exec -it north-cloud-postgres-SERVICE psql -U postgres -d DATABASE`
 
+### Production URLs
+
+- **Dashboard/PHP app**: `https://northcloud.one` (Caddy → Waaseyaa PHP)
+- **Go API services**: `https://api.northcloud.one` (Caddy → nginx → Go services)
+- **Search API**: `POST https://api.northcloud.one/api/v1/search` or `GET https://api.northcloud.one/api/v1/search?q=...`
+- Do NOT use `northcloud.one` for Go API calls — it routes to the PHP dashboard, not the Go services
+
 ### Production Deployment
 
 - Production (`/home/deployer/north-cloud`) is **NOT a git repo** — do not use `git pull`
