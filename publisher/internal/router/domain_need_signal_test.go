@@ -8,13 +8,11 @@ import (
 )
 
 func TestNeedSignalDomain_Name(t *testing.T) {
-	t.Helper()
 	d := NewNeedSignalDomain()
 	assert.Equal(t, "need_signal", d.Name())
 }
 
 func TestNeedSignalDomain_Routes_WithSignal(t *testing.T) {
-	t.Helper()
 	d := NewNeedSignalDomain()
 	item := &ContentItem{
 		NeedSignal: &NeedSignalData{
@@ -28,19 +26,17 @@ func TestNeedSignalDomain_Routes_WithSignal(t *testing.T) {
 
 	assert.Contains(t, channels, "content:need-signals")
 	assert.Contains(t, channels, "need-signal:type:funding")
-	assert.Contains(t, channels, "need-signal:province:ON")
+	assert.Contains(t, channels, "need-signal:province:on")
 	assert.Contains(t, channels, "need-signal:sector:healthcare")
 }
 
 func TestNeedSignalDomain_Routes_NoSignal(t *testing.T) {
-	t.Helper()
 	d := NewNeedSignalDomain()
 	routes := d.Routes(&ContentItem{})
 	assert.Empty(t, routes)
 }
 
 func TestNeedSignalDomain_MinimalFields(t *testing.T) {
-	t.Helper()
 	d := NewNeedSignalDomain()
 	item := &ContentItem{
 		NeedSignal: &NeedSignalData{},

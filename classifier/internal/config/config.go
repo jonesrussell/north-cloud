@@ -130,20 +130,21 @@ type SidecarConfig struct {
 
 // ClassificationConfig holds classification settings.
 type ClassificationConfig struct {
-	ContentType      ContentTypeConfig      `yaml:"content_type"`
-	Quality          QualityConfig          `yaml:"quality"`
-	Topic            TopicConfig            `yaml:"topic"`
-	SourceReputation SourceReputationConfig `yaml:"source_reputation"`
-	Crime            CrimeConfig            `yaml:"crime"`
-	Mining           MiningConfig           `yaml:"mining"`
-	Coforge          CoforgeConfig          `yaml:"coforge"`
-	Entertainment    EntertainmentConfig    `yaml:"entertainment"`
-	Indigenous       IndigenousConfig       `yaml:"indigenous"`
-	Recipe           RecipeExtractionConfig `yaml:"recipe"`
-	Job              JobExtractionConfig    `yaml:"job"`
-	RFP              RFPExtractionConfig    `yaml:"rfp"`
-	DrillExtraction  DrillExtractionConfig  `yaml:"drill_extraction"`
-	QualityGate      QualityGateConfig      `yaml:"quality_gate"`
+	ContentType      ContentTypeConfig          `yaml:"content_type"`
+	Quality          QualityConfig              `yaml:"quality"`
+	Topic            TopicConfig                `yaml:"topic"`
+	SourceReputation SourceReputationConfig     `yaml:"source_reputation"`
+	Crime            CrimeConfig                `yaml:"crime"`
+	Mining           MiningConfig               `yaml:"mining"`
+	Coforge          CoforgeConfig              `yaml:"coforge"`
+	Entertainment    EntertainmentConfig        `yaml:"entertainment"`
+	Indigenous       IndigenousConfig           `yaml:"indigenous"`
+	Recipe           RecipeExtractionConfig     `yaml:"recipe"`
+	Job              JobExtractionConfig        `yaml:"job"`
+	RFP              RFPExtractionConfig        `yaml:"rfp"`
+	NeedSignal       NeedSignalExtractionConfig `yaml:"need_signal"`
+	DrillExtraction  DrillExtractionConfig      `yaml:"drill_extraction"`
+	QualityGate      QualityGateConfig          `yaml:"quality_gate"`
 	// SidecarRegistry maps sidecar name (e.g. "crime", "mining") to enabled + URL.
 	// Built from Crime/Mining/... named configs when absent in YAML.
 	// NOTE: Currently populated by setClassificationDefaults but not yet consumed by the bootstrap
@@ -200,6 +201,11 @@ type JobExtractionConfig struct {
 // RFPExtractionConfig holds RFP extraction settings.
 type RFPExtractionConfig struct {
 	Enabled bool `env:"RFP_ENABLED" yaml:"enabled"`
+}
+
+// NeedSignalExtractionConfig holds need signal extraction settings.
+type NeedSignalExtractionConfig struct {
+	Enabled bool `env:"NEED_SIGNAL_ENABLED" yaml:"enabled"`
 }
 
 // DrillExtractionConfig holds drill results extraction settings.

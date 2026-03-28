@@ -104,8 +104,9 @@ func (e *NeedSignalExtractor) Extract(
 }
 
 // detectSignalType counts keyword matches per category and returns the highest.
+// Returns "unknown" when no keywords match.
 func detectSignalType(text string) string {
-	bestType := SignalTypeOutdatedWebsite
+	bestType := "unknown"
 	bestCount := 0
 
 	for signalType, keywords := range signalCategoryKeywords {

@@ -6,7 +6,7 @@ import "strings"
 // Channels produced:
 //   - content:need-signals (catch-all)
 //   - need-signal:type:{signal_type} (per signal type, lowercase)
-//   - need-signal:province:{province} (per province, uppercase)
+//   - need-signal:province:{province} (per province, lowercase)
 //   - need-signal:sector:{sector} (per sector, lowercase)
 type NeedSignalDomain struct{}
 
@@ -29,7 +29,7 @@ func (d *NeedSignalDomain) Routes(item *ContentItem) []ChannelRoute {
 	}
 
 	if item.NeedSignal.Province != "" {
-		channels = append(channels, "need-signal:province:"+strings.ToUpper(item.NeedSignal.Province))
+		channels = append(channels, "need-signal:province:"+strings.ToLower(item.NeedSignal.Province))
 	}
 
 	if item.NeedSignal.Sector != "" {
