@@ -1,0 +1,20 @@
+northops:
+  # NorthOps ingest API base URL (required)
+  # Override with NORTHOPS_URL env var
+  url: ""
+  # API key for machine-to-machine authentication (required)
+  # Override with PIPELINE_API_KEY env var
+  api_key: ""
+
+dedup:
+  # Path to SQLite deduplication database
+  # Override with SIGNAL_DB_PATH env var
+  db_path: "data/seen.db"
+
+logging:
+  # Log level: debug, info, warn, error
+  # Override with LOG_LEVEL env var
+  level: "info"
+  # Log format: json, console
+  # Override with LOG_FORMAT env var
+  format: "json"

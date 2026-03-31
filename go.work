@@ -15,6 +15,7 @@ use (
 	./publisher
 	./rfp-ingestor
 	./search
+	./signal-crawler
 	./social-publisher
 	./source-manager
 	./tests/integration/pipeline
