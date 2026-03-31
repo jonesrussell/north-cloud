@@ -6,12 +6,14 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/jonesrussell/north-cloud/signal-crawler/internal/adapter"
 	"github.com/jonesrussell/north-cloud/signal-crawler/internal/scoring"
 )
 
 const defaultBaseURL = "https://hacker-news.firebaseio.com"
+const defaultHTTPTimeout = 30 * time.Second
 
 type item struct {
 	ID    int    `json:"id"`
@@ -38,7 +40,7 @@ func New(baseURL string, maxItems int) *Adapter {
 	return &Adapter{
 		baseURL:    baseURL,
 		maxItems:   maxItems,
-		httpClient: &http.Client{},
+		httpClient: &http.Client{Timeout: defaultHTTPTimeout},
 	}
 }
 
@@ -97,6 +99,10 @@ func (a *Adapter) fetchNewStories(ctx context.Context) ([]int, error) {
 	}
 	defer resp.Body.Close()
 
+	if resp.StatusCode >= 300 {
+		return nil, fmt.Errorf("HN API returned HTTP %d", resp.StatusCode)
+	}
+
 	var ids []int
 	if err := json.NewDecoder(resp.Body).Decode(&ids); err != nil {
 		return nil, err
@@ -116,6 +122,10 @@ func (a *Adapter) fetchItem(ctx context.Context, id int) (*item, error) {
 		return nil, err
 	}
 	defer resp.Body.Close()
+
+	if resp.StatusCode >= 300 {
+		return nil, fmt.Errorf("HN API returned HTTP %d", resp.StatusCode)
+	}
 
 	var it item
 	if err := json.NewDecoder(resp.Body).Decode(&it); err != nil {

@@ -78,7 +78,7 @@ func main() {
 		funding.New(fundingURLs),
 	}
 
-	r := runner.New(sources, dedupStore, ingestClient, *dryRun)
+	r := runner.New(sources, dedupStore, ingestClient, *dryRun, log)
 
 	log.Info("signal-crawler starting",
 		infralogger.Bool("dry_run", *dryRun),

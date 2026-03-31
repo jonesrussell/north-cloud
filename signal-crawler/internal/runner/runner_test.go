@@ -5,6 +5,7 @@ import (
 	"errors"
 	"testing"
 
+	infralogger "github.com/jonesrussell/north-cloud/infrastructure/logger"
 	"github.com/jonesrussell/north-cloud/signal-crawler/internal/adapter"
 	"github.com/jonesrussell/north-cloud/signal-crawler/internal/runner"
 )
@@ -52,7 +53,7 @@ type fakeIngest struct {
 	posted []adapter.Signal
 }
 
-func (f *fakeIngest) Post(sig adapter.Signal) error {
+func (f *fakeIngest) Post(_ context.Context, sig adapter.Signal) error {
 	f.posted = append(f.posted, sig)
 	return nil
 }
@@ -67,7 +68,7 @@ func TestRunner_ProcessesSignals(t *testing.T) {
 	dedup := newFakeDedup()
 	ingest := &fakeIngest{}
 
-	r := runner.New([]adapter.Source{src}, dedup, ingest, false)
+	r := runner.New([]adapter.Source{src}, dedup, ingest, false, infralogger.NewNop())
 	stats := r.Run(context.Background())
 
 	if len(stats) != 1 {
@@ -107,7 +108,7 @@ func TestRunner_SkipsSeen(t *testing.T) {
 	dedup := newFakeDedup("test-source:ext-old")
 	ingest := &fakeIngest{}
 
-	r := runner.New([]adapter.Source{src}, dedup, ingest, false)
+	r := runner.New([]adapter.Source{src}, dedup, ingest, false, infralogger.NewNop())
 	stats := r.Run(context.Background())
 
 	if len(stats) != 1 {
@@ -141,7 +142,7 @@ func TestRunner_DryRun(t *testing.T) {
 	dedup := newFakeDedup()
 	ingest := &fakeIngest{}
 
-	r := runner.New([]adapter.Source{src}, dedup, ingest, true)
+	r := runner.New([]adapter.Source{src}, dedup, ingest, true, infralogger.NewNop())
 	stats := r.Run(context.Background())
 
 	if len(stats) != 1 {
@@ -168,7 +169,7 @@ func TestRunner_ScanError(t *testing.T) {
 	dedup := newFakeDedup()
 	ingest := &fakeIngest{}
 
-	r := runner.New([]adapter.Source{src}, dedup, ingest, false)
+	r := runner.New([]adapter.Source{src}, dedup, ingest, false, infralogger.NewNop())
 	stats := r.Run(context.Background())
 
 	if len(stats) != 1 {

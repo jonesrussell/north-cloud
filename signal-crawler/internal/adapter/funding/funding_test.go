@@ -36,7 +36,7 @@ func TestFundingAdapter_Scan(t *testing.T) {
 	first := signals[0]
 	assert.Contains(t, first.Label, "TechStartup Inc")
 	assert.Contains(t, first.Label, "Ontario Innovation Grant")
-	assert.Equal(t, "TechStartup Inc|Ontario Innovation Grant", first.ExternalID)
+	assert.Equal(t, "TechStartup+Inc|Ontario+Innovation+Grant", first.ExternalID)
 	assert.Equal(t, 70, first.SignalStrength)
 	assert.Equal(t, "awarded", first.FundingStatus)
 	assert.Equal(t, "Startup", first.OrganizationType)

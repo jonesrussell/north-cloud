@@ -2,6 +2,7 @@ package ingest
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -31,14 +32,14 @@ func New(baseURL, apiKey string) *Client {
 // Post sends a signal to the appropriate NorthOps ingest endpoint.
 // It uses sig.Endpoint() to determine the path, marshals the signal as JSON,
 // and returns an error if the response status is >= 300.
-func (c *Client) Post(sig adapter.Signal) error {
+func (c *Client) Post(ctx context.Context, sig adapter.Signal) error {
 	body, err := json.Marshal(sig)
 	if err != nil {
 		return fmt.Errorf("ingest: marshal signal: %w", err)
 	}
 
 	url := c.baseURL + sig.Endpoint()
-	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(body))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(body))
 	if err != nil {
 		return fmt.Errorf("ingest: create request: %w", err)
 	}

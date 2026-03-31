@@ -3,6 +3,7 @@ package runner
 import (
 	"context"
 
+	infralogger "github.com/jonesrussell/north-cloud/infrastructure/logger"
 	"github.com/jonesrussell/north-cloud/signal-crawler/internal/adapter"
 )
 
@@ -14,7 +15,7 @@ type Dedup interface {
 
 // Ingest is the interface for the NorthOps ingest client.
 type Ingest interface {
-	Post(sig adapter.Signal) error
+	Post(ctx context.Context, sig adapter.Signal) error
 }
 
 // Stats holds per-source run statistics.
@@ -32,15 +33,17 @@ type Runner struct {
 	dedup   Dedup
 	ingest  Ingest
 	dryRun  bool
+	log     infralogger.Logger
 }
 
-// New creates a Runner with the given sources, dedup store, ingest client, and dry-run flag.
-func New(sources []adapter.Source, dedup Dedup, ingest Ingest, dryRun bool) *Runner {
+// New creates a Runner with the given sources, dedup store, ingest client, dry-run flag, and logger.
+func New(sources []adapter.Source, dedup Dedup, ingest Ingest, dryRun bool, log infralogger.Logger) *Runner {
 	return &Runner{
 		sources: sources,
 		dedup:   dedup,
 		ingest:  ingest,
 		dryRun:  dryRun,
+		log:     log,
 	}
 }
 
@@ -53,6 +56,7 @@ func (r *Runner) Run(ctx context.Context) []Stats {
 
 		signals, err := src.Scan(ctx)
 		if err != nil {
+			r.log.Warn("scan failed", infralogger.String("source", src.Name()), infralogger.Error(err))
 			s.Errors++
 			results = append(results, s)
 			continue
@@ -63,6 +67,7 @@ func (r *Runner) Run(ctx context.Context) []Stats {
 		for _, sig := range signals {
 			seen, err := r.dedup.Seen(src.Name(), sig.ExternalID)
 			if err != nil {
+				r.log.Warn("dedup check failed", infralogger.String("source", src.Name()), infralogger.Error(err))
 				s.Errors++
 				continue
 			}
@@ -74,11 +79,13 @@ func (r *Runner) Run(ctx context.Context) []Stats {
 
 			// Not seen: ingest unless dry-run.
 			if !r.dryRun {
-				if err := r.ingest.Post(sig); err != nil {
+				if err := r.ingest.Post(ctx, sig); err != nil {
+					r.log.Warn("ingest failed", infralogger.String("source", src.Name()), infralogger.Error(err))
 					s.Errors++
 					continue
 				}
 				if err := r.dedup.Mark(src.Name(), sig.ExternalID); err != nil {
+					r.log.Warn("dedup mark failed", infralogger.String("source", src.Name()), infralogger.Error(err))
 					s.Errors++
 					continue
 				}

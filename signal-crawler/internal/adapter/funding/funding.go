@@ -7,10 +7,13 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 
 	"github.com/jonesrussell/north-cloud/signal-crawler/internal/adapter"
 	"golang.org/x/net/html"
 )
+
+const defaultHTTPTimeout = 30 * time.Second
 
 // Adapter scrapes government grant portal HTML pages for funding signals.
 type Adapter struct {
@@ -22,7 +25,7 @@ type Adapter struct {
 func New(urls []string) *Adapter {
 	return &Adapter{
 		urls:       urls,
-		httpClient: &http.Client{},
+		httpClient: &http.Client{Timeout: defaultHTTPTimeout},
 	}
 }
 
@@ -66,7 +69,11 @@ func (a *Adapter) fetchAndParse(ctx context.Context, rawURL string) ([]adapter.S
 	}
 	defer resp.Body.Close()
 
-	body, err := io.ReadAll(resp.Body)
+	if resp.StatusCode >= 300 {
+		return nil, fmt.Errorf("funding adapter: HTTP %d fetching %s", resp.StatusCode, rawURL)
+	}
+
+	body, err := io.ReadAll(io.LimitReader(resp.Body, 10*1024*1024))
 	if err != nil {
 		return nil, err
 	}
@@ -93,7 +100,7 @@ func (a *Adapter) fetchAndParse(ctx context.Context, rawURL string) ([]adapter.S
 
 		sig := adapter.Signal{
 			Label:            fmt.Sprintf("%s — %s", row.org, row.program),
-			ExternalID:       fmt.Sprintf("%s|%s", row.org, row.program),
+			ExternalID:       url.QueryEscape(row.org) + "|" + url.QueryEscape(row.program),
 			SourceURL:        sourceURL,
 			SignalStrength:   70,
 			FundingStatus:    "awarded",

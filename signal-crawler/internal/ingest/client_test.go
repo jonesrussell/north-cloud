@@ -1,6 +1,7 @@
 package ingest_test
 
 import (
+	"context"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -30,7 +31,7 @@ func TestClient_PostSignal(t *testing.T) {
 		SourceURL: "https://buyandsell.gc.ca/123",
 	}
 
-	err := client.Post(sig)
+	err := client.Post(context.Background(), sig)
 	require.NoError(t, err)
 
 	assert.Equal(t, "/api/leads/ingest/signal", captured.URL.Path)
@@ -58,7 +59,7 @@ func TestClient_PostFunding(t *testing.T) {
 		FundingStatus: "awarded",
 	}
 
-	err := client.Post(sig)
+	err := client.Post(context.Background(), sig)
 	require.NoError(t, err)
 
 	assert.Equal(t, "/api/leads/ingest/funding", captured.URL.Path)
@@ -76,7 +77,7 @@ func TestClient_ServerError(t *testing.T) {
 		SourceURL: "https://example.com/789",
 	}
 
-	err := client.Post(sig)
+	err := client.Post(context.Background(), sig)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "500")
 }
