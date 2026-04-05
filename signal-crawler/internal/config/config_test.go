@@ -38,6 +38,7 @@ func TestValidate_ValidConfig(t *testing.T) {
 			URL:    "https://northops.example.com",
 			APIKey: "test-key",
 		},
+		Dedup: config.DedupConfig{DBPath: "data/seen.db"},
 	}
 	err := cfg.Validate()
 	require.NoError(t, err)
@@ -49,4 +50,19 @@ func TestDefaults(t *testing.T) {
 
 	assert.Equal(t, "data/seen.db", cfg.Dedup.DBPath)
 	assert.Equal(t, "info", cfg.Logging.Level)
+}
+
+func TestConfig_Validate_EmptyDBPath(t *testing.T) {
+	cfg := &config.Config{
+		NorthOps: config.NorthOpsConfig{URL: "https://northops.ca", APIKey: "key"},
+		Dedup:    config.DedupConfig{DBPath: ""},
+	}
+	config.SetDefaults(cfg)
+	err := cfg.Validate()
+	require.NoError(t, err)
+
+	cfg.Dedup.DBPath = ""
+	err = cfg.Validate()
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "db_path")
 }

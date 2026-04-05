@@ -2,6 +2,7 @@ package funding
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -10,6 +11,7 @@ import (
 	"time"
 
 	"github.com/jonesrussell/north-cloud/signal-crawler/internal/adapter"
+	"github.com/jonesrussell/north-cloud/signal-crawler/internal/scoring"
 	"golang.org/x/net/html"
 )
 
@@ -35,18 +37,21 @@ func (a *Adapter) Name() string {
 }
 
 // Scan fetches each configured URL, parses grant rows, and returns signals.
+// Continues on per-URL errors, returning partial results with a combined error.
 func (a *Adapter) Scan(ctx context.Context) ([]adapter.Signal, error) {
-	var signals []adapter.Signal
+	var allSignals []adapter.Signal
+	var errs []error
 
 	for _, rawURL := range a.urls {
 		grants, err := a.fetchAndParse(ctx, rawURL)
 		if err != nil {
-			return nil, fmt.Errorf("funding adapter: fetch %s: %w", rawURL, err)
+			errs = append(errs, fmt.Errorf("funding adapter: fetch %s: %w", rawURL, err))
+			continue
 		}
-		signals = append(signals, grants...)
+		allSignals = append(allSignals, grants...)
 	}
 
-	return signals, nil
+	return allSignals, errors.Join(errs...)
 }
 
 type grantRow struct {
@@ -58,14 +63,14 @@ type grantRow struct {
 }
 
 func (a *Adapter) fetchAndParse(ctx context.Context, rawURL string) ([]adapter.Signal, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, rawURL, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, rawURL, http.NoBody)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("funding: create request: %w", err)
 	}
 
 	resp, err := a.httpClient.Do(req)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("funding: fetch %s: %w", rawURL, err)
 	}
 	defer resp.Body.Close()
 
@@ -75,25 +80,25 @@ func (a *Adapter) fetchAndParse(ctx context.Context, rawURL string) ([]adapter.S
 
 	body, err := io.ReadAll(io.LimitReader(resp.Body, 10*1024*1024))
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("funding: read body: %w", err)
 	}
 
 	rows, err := parseGrantRows(string(body))
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("funding: parse grants: %w", err)
 	}
 
 	base, err := url.Parse(rawURL)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("funding: parse base URL: %w", err)
 	}
 
 	var signals []adapter.Signal
 	for _, row := range rows {
 		sourceURL := row.link
 		if sourceURL != "" && !strings.HasPrefix(sourceURL, "http") {
-			ref, err := url.Parse(row.link)
-			if err == nil {
+			ref, parseErr := url.Parse(row.link)
+			if parseErr == nil {
 				sourceURL = base.ResolveReference(ref).String()
 			}
 		}
@@ -102,7 +107,7 @@ func (a *Adapter) fetchAndParse(ctx context.Context, rawURL string) ([]adapter.S
 			Label:            fmt.Sprintf("%s — %s", row.org, row.program),
 			ExternalID:       url.QueryEscape(row.org) + "|" + url.QueryEscape(row.program),
 			SourceURL:        sourceURL,
-			SignalStrength:   70,
+			SignalStrength:   scoring.ScoreStrongSignal,
 			FundingStatus:    "awarded",
 			OrganizationType: row.orgType,
 			Notes:            fmt.Sprintf("Received %s. Likely needs tech implementation.", row.amount),
@@ -125,7 +130,7 @@ func parseGrantRows(htmlContent string) ([]grantRow, error) {
 	walk = func(n *html.Node) {
 		if isElement(n, "div") && hasClass(n, "views-row") {
 			row := extractRow(n)
-			if row.org != "" {
+			if row.org != "" && row.program != "" {
 				rows = append(rows, row)
 			}
 			return // don't recurse into rows we've already handled

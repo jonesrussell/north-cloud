@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
-	"strings"
 	"testing"
 
 	"github.com/jonesrussell/north-cloud/signal-crawler/internal/adapter/funding"
@@ -43,12 +42,94 @@ func TestFundingAdapter_Scan(t *testing.T) {
 	assert.Contains(t, first.SourceURL, "/funded-grants/123")
 }
 
+func TestFundingAdapter_PartialURLFailure(t *testing.T) {
+	fixture, err := os.ReadFile("testdata/otf_grants.html")
+	require.NoError(t, err)
+
+	// First URL fails (404), second URL succeeds.
+	callCount := 0
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		callCount++
+		if callCount == 1 {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+		w.Header().Set("Content-Type", "text/html")
+		w.Write(fixture)
+	}))
+	defer srv.Close()
+
+	a := funding.New([]string{srv.URL + "/bad", srv.URL + "/good"})
+	signals, err := a.Scan(context.Background())
+
+	// Should return signals from the second URL despite the first failing.
+	require.Error(t, err, "should report the partial failure")
+	assert.Len(t, signals, 2, "should still return signals from successful URLs")
+}
+
+func TestFundingAdapter_SkipsEmptyProgram(t *testing.T) {
+	fixture, err := os.ReadFile("testdata/otf_grants_empty_program.html")
+	require.NoError(t, err)
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html")
+		w.Write(fixture)
+	}))
+	defer srv.Close()
+
+	a := funding.New([]string{srv.URL})
+	signals, err := a.Scan(context.Background())
+	require.NoError(t, err)
+
+	// Only the row with a non-empty program should be returned.
+	require.Len(t, signals, 1)
+	assert.Contains(t, signals[0].Label, "OrgWithProgram")
+	assert.Contains(t, signals[0].Label, "Innovation Grant")
+}
+
+// TestFundingAdapter_RealOTF is a diagnostic test that runs against a real OTF
+// HTML fixture captured from https://otf.ca/funded-grants. The OTF site renders
+// grant data via JavaScript (Drupal + React), so a static curl of the page
+// returns only the page shell with no grant rows. This test documents that
+// behaviour and will skip if the fixture is not present.
+//
+// To capture the fixture:
+//
+//	curl -s -L -o internal/adapter/funding/testdata/otf_real.html "https://otf.ca/funded-grants"
+//
+// If 0 signals are returned, the site still uses JS rendering and the adapter
+// needs a headless-browser approach (e.g. chromedp) to retrieve grant data.
+func TestFundingAdapter_RealOTF(t *testing.T) {
+	fixture, err := os.ReadFile("testdata/otf_real.html")
+	if err != nil {
+		t.Skip("real OTF fixture not available — run curl to fetch")
+	}
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html")
+		w.Write(fixture)
+	}))
+	defer srv.Close()
+
+	a := funding.New([]string{srv.URL})
+	signals, err := a.Scan(context.Background())
+	require.NoError(t, err)
+
+	t.Logf("Parsed %d signals from real OTF HTML", len(signals))
+	for i, s := range signals {
+		t.Logf("  [%d] %s (strength=%d)", i, s.Label, s.SignalStrength)
+	}
+
+	// NOTE: OTF uses JS rendering — static HTML contains no grant rows.
+	// 0 signals is the expected result until the adapter uses a headless browser.
+	t.Logf("NOTE: OTF funded-grants page uses JavaScript rendering; static HTML has no grant rows")
+}
+
 func TestFundingAdapter_EmptyPage(t *testing.T) {
 	html := `<html><body><div class="view-content"></div></body></html>`
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html")
-		_, _ = strings.NewReader(html), w
 		w.Write([]byte(html))
 	}))
 	defer srv.Close()

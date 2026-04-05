@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"time"
 
+	infralogger "github.com/jonesrussell/north-cloud/infrastructure/logger"
 	"github.com/jonesrussell/north-cloud/signal-crawler/internal/adapter"
 	"github.com/jonesrussell/north-cloud/signal-crawler/internal/scoring"
 )
@@ -30,10 +31,11 @@ type Adapter struct {
 	baseURL    string
 	maxItems   int
 	httpClient *http.Client
+	log        infralogger.Logger
 }
 
 // New creates a new HN Adapter. If baseURL is empty, the production Firebase URL is used.
-func New(baseURL string, maxItems int) *Adapter {
+func New(baseURL string, maxItems int, log infralogger.Logger) *Adapter {
 	if baseURL == "" {
 		baseURL = defaultBaseURL
 	}
@@ -41,6 +43,7 @@ func New(baseURL string, maxItems int) *Adapter {
 		baseURL:    baseURL,
 		maxItems:   maxItems,
 		httpClient: &http.Client{Timeout: defaultHTTPTimeout},
+		log:        log,
 	}
 }
 
@@ -61,10 +64,16 @@ func (a *Adapter) Scan(ctx context.Context) ([]adapter.Signal, error) {
 	}
 
 	var signals []adapter.Signal
+	skipped := 0
+
 	for _, id := range ids {
-		it, err := a.fetchItem(ctx, id)
-		if err != nil {
-			// Skip items that fail to fetch rather than aborting the whole scan.
+		it, fetchErr := a.fetchItem(ctx, id)
+		if fetchErr != nil {
+			a.log.Debug("hn: skipping item",
+				infralogger.Int("item_id", id),
+				infralogger.Error(fetchErr),
+			)
+			skipped++
 			continue
 		}
 
@@ -83,19 +92,25 @@ func (a *Adapter) Scan(ctx context.Context) ([]adapter.Signal, error) {
 		})
 	}
 
+	a.log.Info("hn: scan complete",
+		infralogger.Int("total", len(ids)),
+		infralogger.Int("matched", len(signals)),
+		infralogger.Int("skipped", skipped),
+	)
+
 	return signals, nil
 }
 
 func (a *Adapter) fetchNewStories(ctx context.Context) ([]int, error) {
 	url := a.baseURL + "/v0/newstories.json"
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, http.NoBody)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("hn: create stories request: %w", err)
 	}
 
 	resp, err := a.httpClient.Do(req)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("hn: fetch stories: %w", err)
 	}
 	defer resp.Body.Close()
 
@@ -104,22 +119,22 @@ func (a *Adapter) fetchNewStories(ctx context.Context) ([]int, error) {
 	}
 
 	var ids []int
-	if err := json.NewDecoder(resp.Body).Decode(&ids); err != nil {
-		return nil, err
+	if decErr := json.NewDecoder(resp.Body).Decode(&ids); decErr != nil {
+		return nil, fmt.Errorf("hn: decode stories: %w", decErr)
 	}
 	return ids, nil
 }
 
 func (a *Adapter) fetchItem(ctx context.Context, id int) (*item, error) {
 	url := fmt.Sprintf("%s/v0/item/%d.json", a.baseURL, id)
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, http.NoBody)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("hn: create item request: %w", err)
 	}
 
 	resp, err := a.httpClient.Do(req)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("hn: fetch item %d: %w", id, err)
 	}
 	defer resp.Body.Close()
 
@@ -128,8 +143,8 @@ func (a *Adapter) fetchItem(ctx context.Context, id int) (*item, error) {
 	}
 
 	var it item
-	if err := json.NewDecoder(resp.Body).Decode(&it); err != nil {
-		return nil, err
+	if decErr := json.NewDecoder(resp.Body).Decode(&it); decErr != nil {
+		return nil, fmt.Errorf("hn: decode item %d: %w", id, decErr)
 	}
 	return &it, nil
 }

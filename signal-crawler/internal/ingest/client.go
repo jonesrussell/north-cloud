@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"time"
 
@@ -54,7 +55,8 @@ func (c *Client) Post(ctx context.Context, sig adapter.Signal) error {
 	defer resp.Body.Close()
 
 	if resp.StatusCode >= 300 {
-		return fmt.Errorf("ingest: unexpected status %d", resp.StatusCode)
+		errBody, _ := io.ReadAll(io.LimitReader(resp.Body, 512))
+		return fmt.Errorf("ingest: unexpected status %d: %s", resp.StatusCode, string(errBody))
 	}
 
 	return nil

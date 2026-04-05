@@ -1,0 +1,10 @@
+# Layer boundaries for signal-crawler
+# Dependencies flow downward only.
+
+adapter < scoring
+adapter < runner
+config < adapter
+config < runner
+dedup < runner
+ingest < runner
+scoring < adapter

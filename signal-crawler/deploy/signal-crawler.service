@@ -1,0 +1,12 @@
+[Unit]
+Description=Signal crawler — scan HN and funding portals for lead signals
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/opt/north-cloud/signal-crawler/signal-crawler
+WorkingDirectory=/opt/north-cloud/signal-crawler
+EnvironmentFile=/opt/north-cloud/signal-crawler/.env
+StandardOutput=journal
+StandardError=journal

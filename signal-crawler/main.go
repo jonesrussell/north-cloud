@@ -5,7 +5,9 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"os/signal"
 	"path/filepath"
+	"syscall"
 
 	infraconfig "github.com/jonesrussell/north-cloud/infrastructure/config"
 	infralogger "github.com/jonesrussell/north-cloud/infrastructure/logger"
@@ -18,15 +20,10 @@ import (
 	"github.com/jonesrussell/north-cloud/signal-crawler/internal/runner"
 )
 
-const defaultHNMaxItems = 200
-
-var fundingURLs = []string{
-	"https://otf.ca/funded-grants",
-}
-
 func main() {
 	dryRun := flag.Bool("dry-run", false, "Print signals without POSTing to NorthOps")
 	configPath := flag.String("config", "", "Path to config.yml (optional)")
+	sourceFilter := flag.String("source", "", "Run only this adapter (hn, funding)")
 	flag.Parse()
 
 	cfgPath := *configPath
@@ -41,8 +38,8 @@ func main() {
 	}
 
 	if !*dryRun {
-		if err := cfg.Validate(); err != nil {
-			fmt.Fprintf(os.Stderr, "Config validation error: %v\n", err)
+		if validateErr := cfg.Validate(); validateErr != nil {
+			fmt.Fprintf(os.Stderr, "Config validation error: %v\n", validateErr)
 			os.Exit(1)
 		}
 	}
@@ -59,8 +56,8 @@ func main() {
 
 	// Ensure dedup DB directory exists
 	dbDir := filepath.Dir(cfg.Dedup.DBPath)
-	if err := os.MkdirAll(dbDir, 0o755); err != nil {
-		log.Error("failed to create dedup db directory", infralogger.String("path", dbDir), infralogger.Error(err))
+	if mkdirErr := os.MkdirAll(dbDir, 0o755); mkdirErr != nil {
+		log.Error("failed to create dedup db directory", infralogger.String("path", dbDir), infralogger.Error(mkdirErr))
 		os.Exit(1)
 	}
 
@@ -69,13 +66,27 @@ func main() {
 		log.Error("failed to open dedup store", infralogger.Error(err))
 		os.Exit(1)
 	}
-	defer dedupStore.Close()
+	defer func() { _ = dedupStore.Close() }()
 
 	ingestClient := ingest.New(cfg.NorthOps.URL, cfg.NorthOps.APIKey)
 
 	sources := []adapter.Source{
-		hn.New("", defaultHNMaxItems),
-		funding.New(fundingURLs),
+		hn.New(cfg.HN.BaseURL, cfg.HN.MaxItems, log),
+		funding.New(cfg.Funding.URLs),
+	}
+
+	if *sourceFilter != "" {
+		var filtered []adapter.Source
+		for _, src := range sources {
+			if src.Name() == *sourceFilter {
+				filtered = append(filtered, src)
+			}
+		}
+		if len(filtered) == 0 {
+			log.Error("unknown source", infralogger.String("source", *sourceFilter))
+			os.Exit(1)
+		}
+		sources = filtered
 	}
 
 	r := runner.New(sources, dedupStore, ingestClient, *dryRun, log)
@@ -85,7 +96,10 @@ func main() {
 		infralogger.Int("sources", len(sources)),
 	)
 
-	stats := r.Run(context.Background())
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+
+	stats := r.Run(ctx)
 
 	for _, s := range stats {
 		log.Info("source complete",
