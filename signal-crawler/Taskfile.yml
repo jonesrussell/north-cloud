@@ -41,6 +41,12 @@ tasks:
     cmds:
       - go test -v ./...
 
+  test:cover:
+    desc: "Run tests with coverage and race detector"
+    cmds:
+      - go test -race -coverprofile=coverage.out -count=1 ./...
+      - go tool cover -func=coverage.out
+
   lint:
     desc: "Lint the Go code"
     sources:

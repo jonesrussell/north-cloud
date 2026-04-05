@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
-	"strings"
 	"testing"
 
 	"github.com/jonesrussell/north-cloud/signal-crawler/internal/adapter/funding"
@@ -93,7 +92,6 @@ func TestFundingAdapter_EmptyPage(t *testing.T) {
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html")
-		_, _ = strings.NewReader(html), w
 		w.Write([]byte(html))
 	}))
 	defer srv.Close()
