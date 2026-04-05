@@ -1,6 +1,7 @@
 package dedup
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 
@@ -34,9 +35,9 @@ func New(dbPath string) (*Store, error) {
 }
 
 // Seen checks whether a signal has already been ingested.
-func (s *Store) Seen(source, externalID string) (bool, error) {
+func (s *Store) Seen(ctx context.Context, source, externalID string) (bool, error) {
 	var count int
-	err := s.db.QueryRow(
+	err := s.db.QueryRowContext(ctx,
 		`SELECT COUNT(*) FROM seen WHERE source = ? AND external_id = ?`,
 		source, externalID,
 	).Scan(&count)
@@ -47,8 +48,8 @@ func (s *Store) Seen(source, externalID string) (bool, error) {
 }
 
 // Mark records a signal as ingested.
-func (s *Store) Mark(source, externalID string) error {
-	_, err := s.db.Exec(
+func (s *Store) Mark(ctx context.Context, source, externalID string) error {
+	_, err := s.db.ExecContext(ctx,
 		`INSERT OR IGNORE INTO seen (source, external_id) VALUES (?, ?)`,
 		source, externalID,
 	)

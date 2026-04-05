@@ -1,6 +1,7 @@
 package dedup_test
 
 import (
+	"context"
 	"testing"
 
 	"github.com/jonesrussell/north-cloud/signal-crawler/internal/dedup"
@@ -13,7 +14,7 @@ func TestStore_NewItem(t *testing.T) {
 	require.NoError(t, err)
 	defer store.Close()
 
-	seen, err := store.Seen("hn", "12345")
+	seen, err := store.Seen(context.Background(), "hn", "12345")
 	require.NoError(t, err)
 	assert.False(t, seen, "new item should not be seen")
 }
@@ -23,10 +24,10 @@ func TestStore_MarkAndCheck(t *testing.T) {
 	require.NoError(t, err)
 	defer store.Close()
 
-	err = store.Mark("hn", "12345")
+	err = store.Mark(context.Background(), "hn", "12345")
 	require.NoError(t, err)
 
-	seen, err := store.Seen("hn", "12345")
+	seen, err := store.Seen(context.Background(), "hn", "12345")
 	require.NoError(t, err)
 	assert.True(t, seen, "marked item should be seen")
 }
@@ -36,10 +37,10 @@ func TestStore_DifferentSources(t *testing.T) {
 	require.NoError(t, err)
 	defer store.Close()
 
-	err = store.Mark("hn", "12345")
+	err = store.Mark(context.Background(), "hn", "12345")
 	require.NoError(t, err)
 
-	seen, err := store.Seen("funding", "12345")
+	seen, err := store.Seen(context.Background(), "funding", "12345")
 	require.NoError(t, err)
 	assert.False(t, seen, "same id from different source should not be seen")
 }
@@ -49,9 +50,9 @@ func TestStore_MarkIdempotent(t *testing.T) {
 	require.NoError(t, err)
 	defer store.Close()
 
-	err = store.Mark("hn", "12345")
+	err = store.Mark(context.Background(), "hn", "12345")
 	require.NoError(t, err)
 
-	err = store.Mark("hn", "12345")
+	err = store.Mark(context.Background(), "hn", "12345")
 	require.NoError(t, err, "marking same item twice should not error")
 }

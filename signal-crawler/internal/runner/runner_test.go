@@ -35,11 +35,11 @@ func newFakeDedup(preseeded ...string) *fakeDedup {
 	return d
 }
 
-func (f *fakeDedup) Seen(source, externalID string) (bool, error) {
+func (f *fakeDedup) Seen(_ context.Context, source, externalID string) (bool, error) {
 	return f.seen[source+":"+externalID], nil
 }
 
-func (f *fakeDedup) Mark(source, externalID string) error {
+func (f *fakeDedup) Mark(_ context.Context, source, externalID string) error {
 	f.seen[source+":"+externalID] = true
 	return nil
 }

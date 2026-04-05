@@ -9,8 +9,8 @@ import (
 
 // Dedup is the interface for the deduplication store.
 type Dedup interface {
-	Seen(source, externalID string) (bool, error)
-	Mark(source, externalID string) error
+	Seen(ctx context.Context, source, externalID string) (bool, error)
+	Mark(ctx context.Context, source, externalID string) error
 }
 
 // Ingest is the interface for the NorthOps ingest client.
@@ -65,7 +65,7 @@ func (r *Runner) Run(ctx context.Context) []Stats {
 		s.Scanned = len(signals)
 
 		for _, sig := range signals {
-			seen, err := r.dedup.Seen(src.Name(), sig.ExternalID)
+			seen, err := r.dedup.Seen(ctx, src.Name(), sig.ExternalID)
 			if err != nil {
 				r.log.Warn("dedup check failed", infralogger.String("source", src.Name()), infralogger.Error(err))
 				s.Errors++
@@ -84,7 +84,7 @@ func (r *Runner) Run(ctx context.Context) []Stats {
 					s.Errors++
 					continue
 				}
-				if err := r.dedup.Mark(src.Name(), sig.ExternalID); err != nil {
+				if err := r.dedup.Mark(ctx, src.Name(), sig.ExternalID); err != nil {
 					r.log.Warn("dedup mark failed", infralogger.String("source", src.Name()), infralogger.Error(err))
 					s.Errors++
 					continue
