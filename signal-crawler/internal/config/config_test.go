@@ -59,10 +59,10 @@ func TestConfig_Validate_EmptyDBPath(t *testing.T) {
 	}
 	config.SetDefaults(cfg)
 	err := cfg.Validate()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	cfg.Dedup.DBPath = ""
 	err = cfg.Validate()
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "db_path")
 }

@@ -38,7 +38,7 @@ func TestClient_PostSignal(t *testing.T) {
 	assert.Equal(t, "test-api-key", captured.Header.Get("X-Api-Key"))
 	assert.Equal(t, "application/json", captured.Header.Get("Content-Type"))
 
-	var payload map[string]interface{}
+	var payload map[string]any
 	require.NoError(t, json.Unmarshal(body, &payload))
 	assert.Equal(t, "Government RFP: IT Services", payload["label"])
 }

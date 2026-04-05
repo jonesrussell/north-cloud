@@ -38,8 +38,8 @@ func main() {
 	}
 
 	if !*dryRun {
-		if err := cfg.Validate(); err != nil {
-			fmt.Fprintf(os.Stderr, "Config validation error: %v\n", err)
+		if validateErr := cfg.Validate(); validateErr != nil {
+			fmt.Fprintf(os.Stderr, "Config validation error: %v\n", validateErr)
 			os.Exit(1)
 		}
 	}
@@ -56,8 +56,8 @@ func main() {
 
 	// Ensure dedup DB directory exists
 	dbDir := filepath.Dir(cfg.Dedup.DBPath)
-	if err := os.MkdirAll(dbDir, 0o755); err != nil {
-		log.Error("failed to create dedup db directory", infralogger.String("path", dbDir), infralogger.Error(err))
+	if mkdirErr := os.MkdirAll(dbDir, 0o755); mkdirErr != nil {
+		log.Error("failed to create dedup db directory", infralogger.String("path", dbDir), infralogger.Error(mkdirErr))
 		os.Exit(1)
 	}
 

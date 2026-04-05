@@ -4,6 +4,7 @@
 package config
 
 import (
+	"errors"
 	"fmt"
 
 	infraconfig "github.com/jonesrussell/north-cloud/infrastructure/config"
@@ -11,7 +12,7 @@ import (
 
 // NorthOpsConfig holds connection configuration for the NorthOps ingest API.
 type NorthOpsConfig struct {
-	URL    string `env:"NORTHOPS_URL" yaml:"url"`
+	URL    string `env:"NORTHOPS_URL"     yaml:"url"`
 	APIKey string `env:"PIPELINE_API_KEY" yaml:"api_key"`
 }
 
@@ -49,13 +50,13 @@ type Config struct {
 // Validate checks that all required fields are present.
 func (c *Config) Validate() error {
 	if c.NorthOps.URL == "" {
-		return fmt.Errorf("northops_url is required")
+		return errors.New("northops_url is required")
 	}
 	if c.NorthOps.APIKey == "" {
-		return fmt.Errorf("api_key is required")
+		return errors.New("api_key is required")
 	}
 	if c.Dedup.DBPath == "" {
-		return fmt.Errorf("db_path is required")
+		return errors.New("db_path is required")
 	}
 	return nil
 }

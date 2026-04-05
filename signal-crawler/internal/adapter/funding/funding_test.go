@@ -63,7 +63,7 @@ func TestFundingAdapter_PartialURLFailure(t *testing.T) {
 	signals, err := a.Scan(context.Background())
 
 	// Should return signals from the second URL despite the first failing.
-	assert.Error(t, err, "should report the partial failure")
+	require.Error(t, err, "should report the partial failure")
 	assert.Len(t, signals, 2, "should still return signals from successful URLs")
 }
 

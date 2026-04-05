@@ -20,7 +20,7 @@ func New(dbPath string) (*Store, error) {
 		return nil, fmt.Errorf("open dedup db: %w", err)
 	}
 
-	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS seen (
+	_, err = db.ExecContext(context.Background(), `CREATE TABLE IF NOT EXISTS seen (
 		source      TEXT     NOT NULL,
 		external_id TEXT     NOT NULL,
 		first_seen  DATETIME NOT NULL DEFAULT (datetime('now')),
