@@ -1,12 +1,12 @@
 [Unit]
-Description=Signal crawler — scan HN and funding portals for lead signals
-After=network-online.target
+Description=Signal crawler — scan HN, funding, and job boards for lead signals
+After=network-online.target docker.service
 Wants=network-online.target
+Requires=docker.service
 
 [Service]
 Type=oneshot
-ExecStart=/opt/north-cloud/signal-crawler/signal-crawler
-WorkingDirectory=/opt/north-cloud/signal-crawler
-EnvironmentFile=/opt/north-cloud/signal-crawler/.env
+WorkingDirectory=/home/deployer/north-cloud
+ExecStart=/usr/bin/docker compose -f docker-compose.base.yml -f docker-compose.prod.yml run --rm signal-crawler
 StandardOutput=journal
 StandardError=journal
