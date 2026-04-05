@@ -25,7 +25,7 @@ RUN CGO_ENABLED=1 go build \
     main.go
 
 # Runtime stage
-FROM alpine:latest
+FROM alpine:3.21
 
 RUN apk --no-cache add ca-certificates sqlite-libs
 
@@ -33,5 +33,10 @@ WORKDIR /app
 
 COPY --from=builder /build/signal-crawler/signal-crawler .
 COPY --from=builder /build/signal-crawler/config.yml .
+
+RUN addgroup -g 1000 signal-crawler && \
+    adduser -D -u 1000 -G signal-crawler signal-crawler
+RUN chown -R signal-crawler:signal-crawler /app
+USER signal-crawler
 
 ENTRYPOINT ["./signal-crawler"]

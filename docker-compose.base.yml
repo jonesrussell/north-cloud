@@ -502,6 +502,7 @@ services:
     build:
       context: .
       dockerfile: signal-crawler/Dockerfile
+    restart: "no"
     networks:
       - north-cloud-network
     volumes:
