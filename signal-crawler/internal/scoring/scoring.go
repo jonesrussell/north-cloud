@@ -26,6 +26,10 @@ var keywords = []keyword{
 	{phrase: "hiring first engineer", score: ScoreDirectAsk},
 	{phrase: "hiring our first", score: ScoreDirectAsk},
 	{phrase: "technical co-founder", score: ScoreDirectAsk},
+	// Job board — direct ask
+	{phrase: "hiring platform engineer", score: ScoreDirectAsk},
+	{phrase: "need cloud architect", score: ScoreDirectAsk},
+	{phrase: "looking for devops", score: ScoreDirectAsk},
 
 	// Strong signal — score 70
 	{phrase: "rebuild mvp", score: ScoreStrongSignal},
@@ -36,6 +40,11 @@ var keywords = []keyword{
 	{phrase: "modernize our", score: ScoreStrongSignal},
 	{phrase: "platform migration", score: ScoreStrongSignal},
 	{phrase: "moving to microservices", score: ScoreStrongSignal},
+	// Job board — strong signal
+	{phrase: "monolith to microservices", score: ScoreStrongSignal},
+	{phrase: "cloud migration", score: ScoreStrongSignal},
+	{phrase: "infrastructure overhaul", score: ScoreStrongSignal},
+	{phrase: "platform modernization", score: ScoreStrongSignal},
 
 	// Weak signal — score 40
 	{phrase: "considering rewrite", score: ScoreWeakSignal},
@@ -44,6 +53,10 @@ var keywords = []keyword{
 	{phrase: "technical debt", score: ScoreWeakSignal},
 	{phrase: "legacy system", score: ScoreWeakSignal},
 	{phrase: "need to modernize", score: ScoreWeakSignal},
+	// Job board — weak signal
+	{phrase: "scaling challenges", score: ScoreWeakSignal},
+	{phrase: "growing engineering team", score: ScoreWeakSignal},
+	{phrase: "modernizing stack", score: ScoreWeakSignal},
 }
 
 // Score returns the highest matching keyword score and the matched phrase.
