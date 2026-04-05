@@ -48,7 +48,7 @@ var keywords = []keyword{
 
 // Score returns the highest matching keyword score and the matched phrase.
 // Returns (0, "") if no keyword matches.
-func Score(text string) (int, string) {
+func Score(text string) (score int, phrase string) {
 	lower := strings.ToLower(text)
 	best := 0
 	matched := ""

@@ -55,8 +55,8 @@ func (c *Client) Post(ctx context.Context, sig adapter.Signal) error {
 	defer resp.Body.Close()
 
 	if resp.StatusCode >= 300 {
-		body, _ := io.ReadAll(io.LimitReader(resp.Body, 512))
-		return fmt.Errorf("ingest: unexpected status %d: %s", resp.StatusCode, string(body))
+		errBody, _ := io.ReadAll(io.LimitReader(resp.Body, 512))
+		return fmt.Errorf("ingest: unexpected status %d: %s", resp.StatusCode, string(errBody))
 	}
 
 	return nil
