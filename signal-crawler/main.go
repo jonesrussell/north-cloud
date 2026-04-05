@@ -74,7 +74,7 @@ func main() {
 	ingestClient := ingest.New(cfg.NorthOps.URL, cfg.NorthOps.APIKey)
 
 	sources := []adapter.Source{
-		hn.New("", defaultHNMaxItems),
+		hn.New("", defaultHNMaxItems, log),
 		funding.New(fundingURLs),
 	}
 

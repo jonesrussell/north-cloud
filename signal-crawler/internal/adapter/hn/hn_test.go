@@ -8,13 +8,14 @@ import (
 	"path/filepath"
 	"testing"
 
+	infralogger "github.com/jonesrussell/north-cloud/infrastructure/logger"
 	"github.com/jonesrussell/north-cloud/signal-crawler/internal/adapter/hn"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestHNAdapter_Name(t *testing.T) {
-	a := hn.New("", 10)
+	a := hn.New("", 10, infralogger.NewNop())
 	assert.Equal(t, "hn", a.Name())
 }
 
@@ -42,7 +43,7 @@ func TestHNAdapter_Scan(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	a := hn.New(srv.URL, 10)
+	a := hn.New(srv.URL, 10, infralogger.NewNop())
 	signals, err := a.Scan(context.Background())
 	require.NoError(t, err)
 
@@ -62,8 +63,34 @@ func TestHNAdapter_EmptyList(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	a := hn.New(srv.URL, 10)
+	a := hn.New(srv.URL, 10, infralogger.NewNop())
 	signals, err := a.Scan(context.Background())
 	require.NoError(t, err)
 	assert.Empty(t, signals)
+}
+
+func TestHNAdapter_SkipsFailedItems(t *testing.T) {
+	withSignal, err := os.ReadFile(filepath.Join("testdata", "item_with_signal.json"))
+	require.NoError(t, err)
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/v0/newstories.json":
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`[99001,99002]`))
+		case "/v0/item/99001.json":
+			w.WriteHeader(http.StatusInternalServerError)
+		case "/v0/item/99002.json":
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write(withSignal)
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer srv.Close()
+
+	a := hn.New(srv.URL, 10, infralogger.NewNop())
+	signals, err := a.Scan(context.Background())
+	require.NoError(t, err, "scan should succeed despite individual item failures")
+	assert.NotEmpty(t, signals, "should return signals from successful items")
 }
