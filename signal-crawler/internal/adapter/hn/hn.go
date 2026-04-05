@@ -105,12 +105,12 @@ func (a *Adapter) fetchNewStories(ctx context.Context) ([]int, error) {
 	url := a.baseURL + "/v0/newstories.json"
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, http.NoBody)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("hn: create stories request: %w", err)
 	}
 
 	resp, err := a.httpClient.Do(req)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("hn: fetch stories: %w", err)
 	}
 	defer resp.Body.Close()
 
@@ -120,7 +120,7 @@ func (a *Adapter) fetchNewStories(ctx context.Context) ([]int, error) {
 
 	var ids []int
 	if decErr := json.NewDecoder(resp.Body).Decode(&ids); decErr != nil {
-		return nil, decErr
+		return nil, fmt.Errorf("hn: decode stories: %w", decErr)
 	}
 	return ids, nil
 }
@@ -129,12 +129,12 @@ func (a *Adapter) fetchItem(ctx context.Context, id int) (*item, error) {
 	url := fmt.Sprintf("%s/v0/item/%d.json", a.baseURL, id)
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, http.NoBody)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("hn: create item request: %w", err)
 	}
 
 	resp, err := a.httpClient.Do(req)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("hn: fetch item %d: %w", id, err)
 	}
 	defer resp.Body.Close()
 
@@ -144,7 +144,7 @@ func (a *Adapter) fetchItem(ctx context.Context, id int) (*item, error) {
 
 	var it item
 	if decErr := json.NewDecoder(resp.Body).Decode(&it); decErr != nil {
-		return nil, decErr
+		return nil, fmt.Errorf("hn: decode item %d: %w", id, decErr)
 	}
 	return &it, nil
 }

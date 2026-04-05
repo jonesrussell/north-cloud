@@ -64,12 +64,12 @@ type grantRow struct {
 func (a *Adapter) fetchAndParse(ctx context.Context, rawURL string) ([]adapter.Signal, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, rawURL, http.NoBody)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("funding: create request: %w", err)
 	}
 
 	resp, err := a.httpClient.Do(req)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("funding: fetch %s: %w", rawURL, err)
 	}
 	defer resp.Body.Close()
 
@@ -79,17 +79,17 @@ func (a *Adapter) fetchAndParse(ctx context.Context, rawURL string) ([]adapter.S
 
 	body, err := io.ReadAll(io.LimitReader(resp.Body, 10*1024*1024))
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("funding: read body: %w", err)
 	}
 
 	rows, err := parseGrantRows(string(body))
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("funding: parse grants: %w", err)
 	}
 
 	base, err := url.Parse(rawURL)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("funding: parse base URL: %w", err)
 	}
 
 	var signals []adapter.Signal
