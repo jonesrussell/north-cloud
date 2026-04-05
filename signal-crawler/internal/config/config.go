@@ -101,7 +101,7 @@ func SetDefaults(cfg *Config) {
 		cfg.HN.BaseURL = "https://hacker-news.firebaseio.com"
 	}
 	if len(cfg.Funding.URLs) == 0 {
-		cfg.Funding.URLs = []string{"https://otf.ca/funded-grants"}
+		cfg.Funding.URLs = []string{"https://otf.ca/our-grants/grants-awarded"}
 	}
 	if cfg.Renderer.URL == "" {
 		cfg.Renderer.URL = "http://localhost:8095"

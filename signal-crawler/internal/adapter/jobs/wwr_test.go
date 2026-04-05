@@ -13,9 +13,42 @@ import (
 
 const wwrFixture = `<html><body>
 <section class="jobs"><ul>
-  <li><a href="/remote-jobs/platform-engineer-acme"><span class="company">Acme Corp</span><span class="title">Platform Engineer</span></a></li>
-  <li><a href="/remote-jobs/devops-lead-cloudco"><span class="company">CloudCo</span><span class="title">DevOps Lead</span></a></li>
-  <li><a href="/remote-jobs/office-manager-boring"><span class="company">Boring Co</span><span class="title">Office Manager</span></a></li>
+  <li class="new-listing-container">
+    <a class="listing-link--unlocked" href="/remote-jobs/platform-engineer-acme">
+      <div class="new-listing">
+        <div class="new-listing__header">
+          <h3 class="new-listing__header__title">
+            <span class="new-listing__header__title__text">Platform Engineer</span>
+          </h3>
+        </div>
+        <p class="new-listing__company-name">Acme Corp<img src="logo.png"/></p>
+      </div>
+    </a>
+  </li>
+  <li class="new-listing-container">
+    <a class="listing-link--unlocked" href="/remote-jobs/devops-lead-cloudco">
+      <div class="new-listing">
+        <div class="new-listing__header">
+          <h3 class="new-listing__header__title">
+            <span class="new-listing__header__title__text">DevOps Lead</span>
+          </h3>
+        </div>
+        <p class="new-listing__company-name">CloudCo</p>
+      </div>
+    </a>
+  </li>
+  <li class="new-listing-container">
+    <a class="listing-link--unlocked" href="/remote-jobs/office-manager-boring">
+      <div class="new-listing">
+        <div class="new-listing__header">
+          <h3 class="new-listing__header__title">
+            <span class="new-listing__header__title__text">Office Manager</span>
+          </h3>
+        </div>
+        <p class="new-listing__company-name">Boring Co</p>
+      </div>
+    </a>
+  </li>
 </ul></section>
 </body></html>`
 

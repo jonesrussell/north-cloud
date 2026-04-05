@@ -112,7 +112,7 @@ func buildSources(cfg *config.Config, sourceFilter string, log infralogger.Logge
 		jobs.NewRemoteOK(cfg.Jobs.RemoteOKURL),
 		jobs.NewWWR(cfg.Jobs.WWRURL),
 		jobs.NewHNHiring("", "", cfg.Jobs.HNMaxComments),
-		jobs.NewGCJobs(cfg.Jobs.GCJobsURL),
+		jobs.NewGCJobs(cfg.Jobs.GCJobsURL, rendererBoard),
 		jobs.NewWorkBC(cfg.Jobs.WorkBCURL, rendererBoard),
 	}
 

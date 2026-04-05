@@ -27,7 +27,7 @@ hn:
 # Funding adapter
 funding:
   urls:                 # Grant portal URLs to scrape
-    - "https://otf.ca/funded-grants"
+    - "https://otf.ca/our-grants/grants-awarded"
 
 # Playwright renderer (for JS-heavy pages)
 renderer:

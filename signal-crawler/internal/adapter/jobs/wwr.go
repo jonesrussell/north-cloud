@@ -88,16 +88,18 @@ func parseWWRHTML(content, baseURL string) ([]Posting, error) {
 }
 
 func extractWWRPosting(li *html.Node, baseURL string) (Posting, bool) {
-	// Find the <a> element with an href containing /remote-jobs/
 	var p Posting
-	var found bool
+	var foundLink bool
 
 	var walk func(*html.Node)
 	walk = func(n *html.Node) {
-		if isElem(n, "a") {
-			if ok := extractWWRLink(n, baseURL, &p); ok {
-				found = true
-			}
+		switch {
+		case isElem(n, "a") && !foundLink:
+			foundLink = extractWWRLink(n, baseURL, &p)
+		case isElem(n, "span") && hasClass(n, "new-listing__header__title__text"):
+			p.Title = strings.TrimSpace(nodeText(n))
+		case isElem(n, "p") && hasClass(n, "new-listing__company-name"):
+			p.Company = firstTextContent(n)
 		}
 		for c := n.FirstChild; c != nil; c = c.NextSibling {
 			walk(c)
@@ -105,47 +107,40 @@ func extractWWRPosting(li *html.Node, baseURL string) (Posting, bool) {
 	}
 	walk(li)
 
-	if !found || p.Title == "" {
+	if !foundLink || p.Title == "" {
 		return Posting{}, false
 	}
 	p.Sector = "tech"
 	return p, true
 }
 
-// extractWWRLink parses a single <a> element for a WWR job link and populates the posting.
-func extractWWRLink(n *html.Node, baseURL string, p *Posting) bool {
-	href := getNodeAttr(n, "href")
+// extractWWRLink extracts URL and ID from a WWR job link element.
+func extractWWRLink(a *html.Node, baseURL string, p *Posting) bool {
+	href := getNodeAttr(a, "href")
 	if !strings.Contains(href, "/remote-jobs/") {
 		return false
 	}
-
 	if strings.HasPrefix(href, "/") {
 		p.URL = strings.TrimRight(baseURL, "/") + href
 	} else {
 		p.URL = href
 	}
-
 	parts := strings.Split(strings.TrimRight(href, "/"), "/")
 	if len(parts) > 0 {
 		p.ID = parts[len(parts)-1]
 	}
-
-	extractWWRSpans(n, p)
 	return true
 }
 
-// extractWWRSpans reads company and title spans from inside a WWR job link.
-func extractWWRSpans(link *html.Node, p *Posting) {
-	for c := link.FirstChild; c != nil; c = c.NextSibling {
-		if !isElem(c, "span") {
-			continue
-		}
-		cls := getNodeAttr(c, "class")
-		text := nodeText(c)
-		if strings.Contains(cls, "company") {
-			p.Company = text
-		} else if strings.Contains(cls, "title") {
-			p.Title = text
+// firstTextContent returns the first non-empty text node content of a node.
+func firstTextContent(n *html.Node) string {
+	for c := n.FirstChild; c != nil; c = c.NextSibling {
+		if c.Type == html.TextNode {
+			text := strings.TrimSpace(c.Data)
+			if text != "" {
+				return text
+			}
 		}
 	}
+	return ""
 }

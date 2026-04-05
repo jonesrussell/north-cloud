@@ -27,7 +27,7 @@ const gcJobsFixture = `<html><body>
 </body></html>`
 
 func TestGCJobs_Name(t *testing.T) {
-	b := jobs.NewGCJobs("http://localhost")
+	b := jobs.NewGCJobs("http://localhost", nil)
 	assert.Equal(t, "gcjobs", b.Name())
 }
 
@@ -38,7 +38,7 @@ func TestGCJobs_Fetch(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	b := jobs.NewGCJobs(srv.URL)
+	b := jobs.NewGCJobs(srv.URL, nil)
 	postings, err := b.Fetch(context.Background())
 
 	require.NoError(t, err)
@@ -63,7 +63,7 @@ func TestGCJobs_Fetch_ServerError(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	b := jobs.NewGCJobs(srv.URL)
+	b := jobs.NewGCJobs(srv.URL, nil)
 	_, err := b.Fetch(context.Background())
 	assert.Error(t, err)
 }

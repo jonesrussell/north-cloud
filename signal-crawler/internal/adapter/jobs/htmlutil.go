@@ -1,10 +1,53 @@
 package jobs
 
 import (
+	"context"
+	"fmt"
+	"io"
+	"net/http"
 	"strings"
+	"time"
 
 	"golang.org/x/net/html"
 )
+
+const (
+	defaultFetchTimeout = 60 * time.Second
+	defaultMaxBody      = 10 * 1024 * 1024 // 10 MB
+)
+
+// fetchHTML fetches a page using the renderer if available, falling back to static HTTP GET.
+func fetchHTML(ctx context.Context, targetURL, boardName string, renderer Renderer, httpClient *http.Client) (string, error) {
+	if renderer != nil {
+		content, err := renderer.Render(ctx, targetURL)
+		if err != nil {
+			return "", fmt.Errorf("%s: renderer: %w", boardName, err)
+		}
+		return content, nil
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, targetURL, http.NoBody)
+	if err != nil {
+		return "", fmt.Errorf("%s: create request: %w", boardName, err)
+	}
+
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("%s: fetch: %w", boardName, err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= http.StatusMultipleChoices {
+		return "", fmt.Errorf("%s: HTTP %d", boardName, resp.StatusCode)
+	}
+
+	body, err := io.ReadAll(io.LimitReader(resp.Body, defaultMaxBody))
+	if err != nil {
+		return "", fmt.Errorf("%s: read body: %w", boardName, err)
+	}
+
+	return string(body), nil
+}
 
 // HTML parsing helpers shared across board parsers.
 
