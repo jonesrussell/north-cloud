@@ -129,7 +129,7 @@ func parseGrantRows(htmlContent string) ([]grantRow, error) {
 	walk = func(n *html.Node) {
 		if isElement(n, "div") && hasClass(n, "views-row") {
 			row := extractRow(n)
-			if row.org != "" {
+			if row.org != "" && row.program != "" {
 				rows = append(rows, row)
 			}
 			return // don't recurse into rows we've already handled

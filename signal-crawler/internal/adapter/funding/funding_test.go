@@ -68,6 +68,26 @@ func TestFundingAdapter_PartialURLFailure(t *testing.T) {
 	assert.Len(t, signals, 2, "should still return signals from successful URLs")
 }
 
+func TestFundingAdapter_SkipsEmptyProgram(t *testing.T) {
+	fixture, err := os.ReadFile("testdata/otf_grants_empty_program.html")
+	require.NoError(t, err)
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html")
+		w.Write(fixture)
+	}))
+	defer srv.Close()
+
+	a := funding.New([]string{srv.URL})
+	signals, err := a.Scan(context.Background())
+	require.NoError(t, err)
+
+	// Only the row with a non-empty program should be returned.
+	require.Len(t, signals, 1)
+	assert.Contains(t, signals[0].Label, "OrgWithProgram")
+	assert.Contains(t, signals[0].Label, "Innovation Grant")
+}
+
 func TestFundingAdapter_EmptyPage(t *testing.T) {
 	html := `<html><body><div class="view-content"></div></body></html>`
 
