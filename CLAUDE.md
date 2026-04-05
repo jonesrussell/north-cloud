@@ -253,6 +253,8 @@ See `docs/specs/workflow.md` for full details. Governance hook: `bin/check-miles
 
 **Oneshot Docker services** (like signal-crawler): Use `restart: "no"` in compose, add the service to the health-check skip list in `scripts/deploy.sh`, and manage the systemd timer via Ansible (`northcloud-ansible` repo, `north-cloud` role).
 
+**Non-root container volume ownership**: If a Dockerfile creates a non-root user (e.g. uid 1000), host-mounted volumes must be owned by that uid. Ansible `file:` tasks default to `deploy_user` (uid 1001), which causes "unable to open database file" errors. Use `owner: "1000"` explicitly.
+
 Check logs: `docker compose -f docker-compose.base.yml -f docker-compose.dev.yml logs SERVICE`
 | Check ports: `netstat -tulpn | grep PORT` | DB test: `docker exec -it north-cloud-postgres-SERVICE psql -U postgres -d DATABASE`
 | Health: `curl http://localhost:PORT/health` | See `DOCKER.md` for Docker firewall (UFW) details.
