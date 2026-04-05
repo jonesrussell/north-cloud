@@ -18,12 +18,6 @@ import (
 	"github.com/jonesrussell/north-cloud/signal-crawler/internal/runner"
 )
 
-const defaultHNMaxItems = 200
-
-var fundingURLs = []string{
-	"https://otf.ca/funded-grants",
-}
-
 func main() {
 	dryRun := flag.Bool("dry-run", false, "Print signals without POSTing to NorthOps")
 	configPath := flag.String("config", "", "Path to config.yml (optional)")
@@ -74,8 +68,8 @@ func main() {
 	ingestClient := ingest.New(cfg.NorthOps.URL, cfg.NorthOps.APIKey)
 
 	sources := []adapter.Source{
-		hn.New("", defaultHNMaxItems, log),
-		funding.New(fundingURLs),
+		hn.New(cfg.HN.BaseURL, cfg.HN.MaxItems, log),
+		funding.New(cfg.Funding.URLs),
 	}
 
 	r := runner.New(sources, dedupStore, ingestClient, *dryRun, log)

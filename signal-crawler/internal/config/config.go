@@ -26,11 +26,24 @@ type LoggingConfig struct {
 	Format string `env:"LOG_FORMAT" yaml:"format"`
 }
 
+// HNConfig holds Hacker News adapter configuration.
+type HNConfig struct {
+	MaxItems int    `env:"HN_MAX_ITEMS" yaml:"max_items"`
+	BaseURL  string `env:"HN_BASE_URL"  yaml:"base_url"`
+}
+
+// FundingConfig holds funding adapter configuration.
+type FundingConfig struct {
+	URLs []string `yaml:"urls"`
+}
+
 // Config is the top-level configuration for signal-crawler.
 type Config struct {
 	NorthOps NorthOpsConfig `yaml:"northops"`
 	Dedup    DedupConfig    `yaml:"dedup"`
 	Logging  LoggingConfig  `yaml:"logging"`
+	HN       HNConfig       `yaml:"hn"`
+	Funding  FundingConfig  `yaml:"funding"`
 }
 
 // Validate checks that all required fields are present.
@@ -40,6 +53,9 @@ func (c *Config) Validate() error {
 	}
 	if c.NorthOps.APIKey == "" {
 		return fmt.Errorf("api_key is required")
+	}
+	if c.Dedup.DBPath == "" {
+		return fmt.Errorf("db_path is required")
 	}
 	return nil
 }
@@ -54,6 +70,15 @@ func SetDefaults(cfg *Config) {
 	}
 	if cfg.Logging.Format == "" {
 		cfg.Logging.Format = "json"
+	}
+	if cfg.HN.MaxItems == 0 {
+		cfg.HN.MaxItems = 200
+	}
+	if cfg.HN.BaseURL == "" {
+		cfg.HN.BaseURL = "https://hacker-news.firebaseio.com"
+	}
+	if len(cfg.Funding.URLs) == 0 {
+		cfg.Funding.URLs = []string{"https://otf.ca/funded-grants"}
 	}
 }
 

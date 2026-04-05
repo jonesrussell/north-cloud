@@ -18,3 +18,13 @@ logging:
   # Log format: json, console
   # Override with LOG_FORMAT env var
   format: "json"
+
+# Hacker News adapter
+hn:
+  max_items: 200        # Max stories to scan per run (env: HN_MAX_ITEMS)
+  base_url: ""          # Leave empty for production Firebase URL (env: HN_BASE_URL)
+
+# Funding adapter
+funding:
+  urls:                 # Grant portal URLs to scrape
+    - "https://otf.ca/funded-grants"
