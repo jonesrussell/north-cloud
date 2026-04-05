@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/jonesrussell/north-cloud/signal-crawler/internal/adapter"
+	"github.com/jonesrussell/north-cloud/signal-crawler/internal/scoring"
 	"golang.org/x/net/html"
 )
 
@@ -106,7 +107,7 @@ func (a *Adapter) fetchAndParse(ctx context.Context, rawURL string) ([]adapter.S
 			Label:            fmt.Sprintf("%s — %s", row.org, row.program),
 			ExternalID:       url.QueryEscape(row.org) + "|" + url.QueryEscape(row.program),
 			SourceURL:        sourceURL,
-			SignalStrength:   70,
+			SignalStrength:   scoring.ScoreStrongSignal,
 			FundingStatus:    "awarded",
 			OrganizationType: row.orgType,
 			Notes:            fmt.Sprintf("Received %s. Likely needs tech implementation.", row.amount),

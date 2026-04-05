@@ -2,6 +2,15 @@ package scoring
 
 import "strings"
 
+const (
+	// ScoreDirectAsk is for posts explicitly looking for technical help.
+	ScoreDirectAsk = 90
+	// ScoreStrongSignal is for posts indicating active technical need.
+	ScoreStrongSignal = 70
+	// ScoreWeakSignal is for posts hinting at future technical need.
+	ScoreWeakSignal = 40
+)
+
 type keyword struct {
 	phrase string
 	score  int
@@ -9,32 +18,32 @@ type keyword struct {
 
 var keywords = []keyword{
 	// Direct ask — score 90
-	{phrase: "looking for cto", score: 90},
-	{phrase: "looking for a cto", score: 90},
-	{phrase: "need developer", score: 90},
-	{phrase: "need a developer", score: 90},
-	{phrase: "need an engineer", score: 90},
-	{phrase: "hiring first engineer", score: 90},
-	{phrase: "hiring our first", score: 90},
-	{phrase: "technical co-founder", score: 90},
+	{phrase: "looking for cto", score: ScoreDirectAsk},
+	{phrase: "looking for a cto", score: ScoreDirectAsk},
+	{phrase: "need developer", score: ScoreDirectAsk},
+	{phrase: "need a developer", score: ScoreDirectAsk},
+	{phrase: "need an engineer", score: ScoreDirectAsk},
+	{phrase: "hiring first engineer", score: ScoreDirectAsk},
+	{phrase: "hiring our first", score: ScoreDirectAsk},
+	{phrase: "technical co-founder", score: ScoreDirectAsk},
 
 	// Strong signal — score 70
-	{phrase: "rebuild mvp", score: 70},
-	{phrase: "rewriting our stack", score: 70},
-	{phrase: "migrating to cloud", score: 70},
-	{phrase: "scaling infrastructure", score: 70},
-	{phrase: "rewrite from scratch", score: 70},
-	{phrase: "modernize our", score: 70},
-	{phrase: "platform migration", score: 70},
-	{phrase: "moving to microservices", score: 70},
+	{phrase: "rebuild mvp", score: ScoreStrongSignal},
+	{phrase: "rewriting our stack", score: ScoreStrongSignal},
+	{phrase: "migrating to cloud", score: ScoreStrongSignal},
+	{phrase: "scaling infrastructure", score: ScoreStrongSignal},
+	{phrase: "rewrite from scratch", score: ScoreStrongSignal},
+	{phrase: "modernize our", score: ScoreStrongSignal},
+	{phrase: "platform migration", score: ScoreStrongSignal},
+	{phrase: "moving to microservices", score: ScoreStrongSignal},
 
 	// Weak signal — score 40
-	{phrase: "considering rewrite", score: 40},
-	{phrase: "evaluating platforms", score: 40},
-	{phrase: "tech debt", score: 40},
-	{phrase: "technical debt", score: 40},
-	{phrase: "legacy system", score: 40},
-	{phrase: "need to modernize", score: 40},
+	{phrase: "considering rewrite", score: ScoreWeakSignal},
+	{phrase: "evaluating platforms", score: ScoreWeakSignal},
+	{phrase: "tech debt", score: ScoreWeakSignal},
+	{phrase: "technical debt", score: ScoreWeakSignal},
+	{phrase: "legacy system", score: ScoreWeakSignal},
+	{phrase: "need to modernize", score: ScoreWeakSignal},
 }
 
 // Score returns the highest matching keyword score and the matched phrase.

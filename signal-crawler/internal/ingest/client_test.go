@@ -68,6 +68,7 @@ func TestClient_PostFunding(t *testing.T) {
 func TestClient_ServerError(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(`{"error":"internal failure"}`))
 	}))
 	defer srv.Close()
 
@@ -80,4 +81,5 @@ func TestClient_ServerError(t *testing.T) {
 	err := client.Post(context.Background(), sig)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "500")
+	assert.Contains(t, err.Error(), "internal failure")
 }
