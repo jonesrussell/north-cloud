@@ -43,6 +43,31 @@ func TestFundingAdapter_Scan(t *testing.T) {
 	assert.Contains(t, first.SourceURL, "/funded-grants/123")
 }
 
+func TestFundingAdapter_PartialURLFailure(t *testing.T) {
+	fixture, err := os.ReadFile("testdata/otf_grants.html")
+	require.NoError(t, err)
+
+	// First URL fails (404), second URL succeeds.
+	callCount := 0
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		callCount++
+		if callCount == 1 {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+		w.Header().Set("Content-Type", "text/html")
+		w.Write(fixture)
+	}))
+	defer srv.Close()
+
+	a := funding.New([]string{srv.URL + "/bad", srv.URL + "/good"})
+	signals, err := a.Scan(context.Background())
+
+	// Should return signals from the second URL despite the first failing.
+	assert.Error(t, err, "should report the partial failure")
+	assert.Len(t, signals, 2, "should still return signals from successful URLs")
+}
+
 func TestFundingAdapter_EmptyPage(t *testing.T) {
 	html := `<html><body><div class="view-content"></div></body></html>`
 

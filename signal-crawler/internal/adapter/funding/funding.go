@@ -2,6 +2,7 @@ package funding
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -35,18 +36,21 @@ func (a *Adapter) Name() string {
 }
 
 // Scan fetches each configured URL, parses grant rows, and returns signals.
+// Continues on per-URL errors, returning partial results with a combined error.
 func (a *Adapter) Scan(ctx context.Context) ([]adapter.Signal, error) {
-	var signals []adapter.Signal
+	var allSignals []adapter.Signal
+	var errs []error
 
 	for _, rawURL := range a.urls {
 		grants, err := a.fetchAndParse(ctx, rawURL)
 		if err != nil {
-			return nil, fmt.Errorf("funding adapter: fetch %s: %w", rawURL, err)
+			errs = append(errs, fmt.Errorf("funding adapter: fetch %s: %w", rawURL, err))
+			continue
 		}
-		signals = append(signals, grants...)
+		allSignals = append(allSignals, grants...)
 	}
 
-	return signals, nil
+	return allSignals, errors.Join(errs...)
 }
 
 type grantRow struct {
