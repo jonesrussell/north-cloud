@@ -5,7 +5,9 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"os/signal"
 	"path/filepath"
+	"syscall"
 
 	infraconfig "github.com/jonesrussell/north-cloud/infrastructure/config"
 	infralogger "github.com/jonesrussell/north-cloud/infrastructure/logger"
@@ -63,7 +65,7 @@ func main() {
 		log.Error("failed to open dedup store", infralogger.Error(err))
 		os.Exit(1)
 	}
-	defer dedupStore.Close()
+	defer func() { _ = dedupStore.Close() }()
 
 	ingestClient := ingest.New(cfg.NorthOps.URL, cfg.NorthOps.APIKey)
 
@@ -79,7 +81,10 @@ func main() {
 		infralogger.Int("sources", len(sources)),
 	)
 
-	stats := r.Run(context.Background())
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+
+	stats := r.Run(ctx)
 
 	for _, s := range stats {
 		log.Info("source complete",
