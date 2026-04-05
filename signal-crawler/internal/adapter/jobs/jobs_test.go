@@ -72,7 +72,7 @@ func TestAdapter_Scan_BoardError_ContinuesOthers(t *testing.T) {
 	a := jobs.New(boards, log)
 	signals, err := a.Scan(context.Background())
 
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "broken")
 	assert.Len(t, signals, 1)
 	assert.Equal(t, "Good Corp — Hiring platform engineer", signals[0].Label)

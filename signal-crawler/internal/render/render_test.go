@@ -22,7 +22,7 @@ func TestClient_Render_Success(t *testing.T) {
 
 		var req map[string]string
 		err := json.NewDecoder(r.Body).Decode(&req)
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		assert.Equal(t, "https://example.com", req["url"])
 		assert.Equal(t, "networkidle", req["wait_for"])
 

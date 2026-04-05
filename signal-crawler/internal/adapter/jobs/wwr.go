@@ -95,31 +95,8 @@ func extractWWRPosting(li *html.Node, baseURL string) (Posting, bool) {
 	var walk func(*html.Node)
 	walk = func(n *html.Node) {
 		if isElem(n, "a") {
-			href := getNodeAttr(n, "href")
-			if strings.Contains(href, "/remote-jobs/") {
+			if ok := extractWWRLink(n, baseURL, &p); ok {
 				found = true
-				if strings.HasPrefix(href, "/") {
-					p.URL = strings.TrimRight(baseURL, "/") + href
-				} else {
-					p.URL = href
-				}
-				// Extract slug as ID
-				parts := strings.Split(strings.TrimRight(href, "/"), "/")
-				if len(parts) > 0 {
-					p.ID = parts[len(parts)-1]
-				}
-				// Look for company and title spans inside <a>
-				for c := n.FirstChild; c != nil; c = c.NextSibling {
-					if isElem(c, "span") {
-						cls := getNodeAttr(c, "class")
-						text := nodeText(c)
-						if strings.Contains(cls, "company") {
-							p.Company = text
-						} else if strings.Contains(cls, "title") {
-							p.Title = text
-						}
-					}
-				}
 			}
 		}
 		for c := n.FirstChild; c != nil; c = c.NextSibling {
@@ -135,3 +112,40 @@ func extractWWRPosting(li *html.Node, baseURL string) (Posting, bool) {
 	return p, true
 }
 
+// extractWWRLink parses a single <a> element for a WWR job link and populates the posting.
+func extractWWRLink(n *html.Node, baseURL string, p *Posting) bool {
+	href := getNodeAttr(n, "href")
+	if !strings.Contains(href, "/remote-jobs/") {
+		return false
+	}
+
+	if strings.HasPrefix(href, "/") {
+		p.URL = strings.TrimRight(baseURL, "/") + href
+	} else {
+		p.URL = href
+	}
+
+	parts := strings.Split(strings.TrimRight(href, "/"), "/")
+	if len(parts) > 0 {
+		p.ID = parts[len(parts)-1]
+	}
+
+	extractWWRSpans(n, p)
+	return true
+}
+
+// extractWWRSpans reads company and title spans from inside a WWR job link.
+func extractWWRSpans(link *html.Node, p *Posting) {
+	for c := link.FirstChild; c != nil; c = c.NextSibling {
+		if !isElem(c, "span") {
+			continue
+		}
+		cls := getNodeAttr(c, "class")
+		text := nodeText(c)
+		if strings.Contains(cls, "company") {
+			p.Company = text
+		} else if strings.Contains(cls, "title") {
+			p.Title = text
+		}
+	}
+}

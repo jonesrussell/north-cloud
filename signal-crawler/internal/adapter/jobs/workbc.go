@@ -114,44 +114,8 @@ func parseWorkBCHTML(content, baseURL string) ([]Posting, error) {
 }
 
 func extractWorkBCPosting(div *html.Node, baseURL string) (Posting, bool) {
-	var p Posting
-	var foundTitle bool
-
-	var walk func(*html.Node)
-	walk = func(n *html.Node) {
-		// Look for <h2><a href="/jobs/12345">Title</a></h2>
-		if isElem(n, "h2") {
-			for c := n.FirstChild; c != nil; c = c.NextSibling {
-				if isElem(c, "a") {
-					href := getNodeAttr(c, "href")
-					p.Title = nodeText(c)
-					if strings.HasPrefix(href, "/") {
-						p.URL = strings.TrimRight(baseURL, "/") + href
-					} else {
-						p.URL = href
-					}
-					// Extract job ID from path like /jobs/12345
-					parts := strings.Split(strings.TrimRight(href, "/"), "/")
-					if len(parts) > 0 {
-						p.ID = parts[len(parts)-1]
-					}
-					foundTitle = true
-				}
-			}
-		}
-
-		// Look for <span class="employer">Company</span>
-		if isElem(n, "span") && hasClass(n, "employer") {
-			p.Company = nodeText(n)
-		}
-
-		for c := n.FirstChild; c != nil; c = c.NextSibling {
-			walk(c)
-		}
-	}
-	walk(div)
-
-	if !foundTitle || p.Title == "" {
+	p, ok := extractJobPosting(div, baseURL, "h2", "span", "employer")
+	if !ok {
 		return Posting{}, false
 	}
 	p.Sector = "government"

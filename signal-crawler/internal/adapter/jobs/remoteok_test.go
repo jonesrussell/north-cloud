@@ -13,9 +13,30 @@ import (
 
 const remoteOKFixture = `[
 	{"legal": "https://remoteok.com/legal"},
-	{"slug": "platform-engineer-acme", "company": "Acme Corp", "position": "Platform Engineer", "url": "https://remoteok.com/jobs/1", "id": "100", "description": "We are hiring platform engineer to scale our infrastructure."},
-	{"slug": "office-manager-boring", "company": "Boring Co", "position": "Office Manager", "url": "https://remoteok.com/jobs/2", "id": "200", "description": "Manage our office supplies and scheduling."},
-	{"slug": "cloud-migration-cloudco", "company": "CloudCo", "position": "Cloud Migration Lead", "url": "https://remoteok.com/jobs/3", "id": "300", "description": "Lead our cloud migration effort across all services."}
+	{
+		"slug": "platform-engineer-acme",
+		"company": "Acme Corp",
+		"position": "Platform Engineer",
+		"url": "https://remoteok.com/jobs/1",
+		"id": "100",
+		"description": "Hiring platform engineer."
+	},
+	{
+		"slug": "office-manager-boring",
+		"company": "Boring Co",
+		"position": "Office Manager",
+		"url": "https://remoteok.com/jobs/2",
+		"id": "200",
+		"description": "Manage office scheduling."
+	},
+	{
+		"slug": "cloud-migration-cloudco",
+		"company": "CloudCo",
+		"position": "Cloud Migration Lead",
+		"url": "https://remoteok.com/jobs/3",
+		"id": "300",
+		"description": "Lead cloud migration."
+	}
 ]`
 
 func TestRemoteOK_Name(t *testing.T) {
@@ -54,6 +75,6 @@ func TestRemoteOK_Fetch_ServerError(t *testing.T) {
 
 	b := jobs.NewRemoteOK(srv.URL)
 	_, err := b.Fetch(context.Background())
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "500")
 }

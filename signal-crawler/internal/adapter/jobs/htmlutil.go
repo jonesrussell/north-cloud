@@ -48,3 +48,65 @@ func hasClass(n *html.Node, cls string) bool {
 	}
 	return false
 }
+
+// extractJobPosting extracts a posting from an HTML node by looking for a heading
+// with a link (title + URL) and a company element matched by tag and class.
+func extractJobPosting(root *html.Node, baseURL, headingTag, companyTag, companyClass string) (Posting, bool) {
+	var p Posting
+	var foundTitle bool
+
+	var walk func(*html.Node)
+	walk = func(n *html.Node) {
+		if isElem(n, headingTag) {
+			if fillPostingFromHeading(n, baseURL, &p) {
+				foundTitle = true
+			}
+		}
+
+		if isElem(n, companyTag) && hasClass(n, companyClass) {
+			p.Company = nodeText(n)
+		}
+
+		for c := n.FirstChild; c != nil; c = c.NextSibling {
+			walk(c)
+		}
+	}
+	walk(root)
+
+	if !foundTitle || p.Title == "" {
+		return Posting{}, false
+	}
+	return p, true
+}
+
+// fillPostingFromHeading extracts title, URL, and ID from a heading's child link.
+func fillPostingFromHeading(heading *html.Node, baseURL string, p *Posting) bool {
+	link := findChildLink(heading)
+	if link == nil {
+		return false
+	}
+
+	href := getNodeAttr(link, "href")
+	p.Title = nodeText(link)
+	if strings.HasPrefix(href, "/") {
+		p.URL = strings.TrimRight(baseURL, "/") + href
+	} else {
+		p.URL = href
+	}
+
+	parts := strings.Split(strings.TrimRight(href, "/"), "/")
+	if len(parts) > 0 {
+		p.ID = parts[len(parts)-1]
+	}
+	return true
+}
+
+// findChildLink returns the first <a> child of a node, or nil.
+func findChildLink(n *html.Node) *html.Node {
+	for c := n.FirstChild; c != nil; c = c.NextSibling {
+		if isElem(c, "a") {
+			return c
+		}
+	}
+	return nil
+}

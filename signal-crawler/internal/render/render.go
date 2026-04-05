@@ -11,8 +11,9 @@ import (
 )
 
 const (
-	defaultTimeout   = 45 * time.Second
-	maxResponseBytes = 10 * 1024 * 1024 // 10 MB
+	defaultTimeout    = 45 * time.Second
+	maxResponseBytes  = 10 * 1024 * 1024 // 10 MB
+	maxErrorBodyBytes = 512
 )
 
 // Client communicates with a Playwright renderer service to fetch
@@ -62,7 +63,7 @@ func (c *Client) Render(ctx context.Context, targetURL string) (string, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode >= http.StatusMultipleChoices {
-		errBody, _ := io.ReadAll(io.LimitReader(resp.Body, 512))
+		errBody, _ := io.ReadAll(io.LimitReader(resp.Body, maxErrorBodyBytes))
 		return "", fmt.Errorf("render: HTTP %d: %s", resp.StatusCode, string(errBody))
 	}
 

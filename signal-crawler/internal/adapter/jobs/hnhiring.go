@@ -3,6 +3,7 @@ package jobs
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -13,11 +14,14 @@ import (
 )
 
 const (
-	hnHiringTimeout         = 30 * time.Second
-	hnHiringMaxBody         = 10 * 1024 * 1024 // 10 MB
-	defaultAlgoliaURL       = "https://hn.algolia.com"
-	defaultFirebaseURL      = "https://hacker-news.firebaseio.com"
-	defaultHNMaxComments    = 50
+	hnHiringTimeout      = 30 * time.Second
+	hnHiringMaxBody      = 10 * 1024 * 1024 // 10 MB
+	defaultAlgoliaURL    = "https://hn.algolia.com"
+	defaultFirebaseURL   = "https://hacker-news.firebaseio.com"
+	defaultHNMaxComments = 50
+	hnCommentParts       = 2
+	hnPipeParts          = 3
+	hnMinParts           = 2
 )
 
 var htmlTagRegexp = regexp.MustCompile(`<[^>]*>`)
@@ -119,7 +123,7 @@ func (b *HNHiringBoard) findLatestThread(ctx context.Context) (int, error) {
 	}
 
 	if len(result.Hits) == 0 {
-		return 0, fmt.Errorf("hn-hiring: no hiring thread found")
+		return 0, errors.New("hn-hiring: no hiring thread found")
 	}
 
 	id, err := strconv.Atoi(result.Hits[0].ObjectID)
@@ -198,11 +202,11 @@ func parseHNComment(text string, commentID int) (Posting, bool) {
 	clean := htmlTagRegexp.ReplaceAllString(text, "\n")
 
 	// First line has the "Company | Role | Location" format
-	lines := strings.SplitN(clean, "\n", 2)
+	lines := strings.SplitN(clean, "\n", hnCommentParts)
 	firstLine := strings.TrimSpace(lines[0])
 
-	parts := strings.SplitN(firstLine, "|", 3)
-	if len(parts) < 2 {
+	parts := strings.SplitN(firstLine, "|", hnPipeParts)
+	if len(parts) < hnMinParts {
 		return Posting{}, false
 	}
 

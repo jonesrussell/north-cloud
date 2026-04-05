@@ -10,10 +10,10 @@ import (
 )
 
 const (
-	remoteOKTimeout      = 30 * time.Second
-	remoteOKMaxBody      = 10 * 1024 * 1024 // 10 MB
-	remoteOKUserAgent    = "north-cloud-signal-crawler/1.0"
-	defaultRemoteOKURL   = "https://remoteok.com/api"
+	remoteOKTimeout    = 30 * time.Second
+	remoteOKMaxBody    = 10 * 1024 * 1024 // 10 MB
+	remoteOKUserAgent  = "north-cloud-signal-crawler/1.0"
+	defaultRemoteOKURL = "https://remoteok.com/api"
 )
 
 type remoteOKJob struct {
