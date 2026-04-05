@@ -817,7 +817,7 @@ services:
     networks:
       - north-cloud-network
     volumes:
-      - /opt/north-cloud/signal-crawler/data:/app/data
+      - ./signal-crawler/data:/app/data
     environment:
       - NORTHOPS_URL=${NORTHOPS_URL}
       - PIPELINE_API_KEY=${PIPELINE_API_KEY}
