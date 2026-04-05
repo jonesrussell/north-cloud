@@ -23,6 +23,7 @@ import (
 func main() {
 	dryRun := flag.Bool("dry-run", false, "Print signals without POSTing to NorthOps")
 	configPath := flag.String("config", "", "Path to config.yml (optional)")
+	sourceFilter := flag.String("source", "", "Run only this adapter (hn, funding)")
 	flag.Parse()
 
 	cfgPath := *configPath
@@ -72,6 +73,20 @@ func main() {
 	sources := []adapter.Source{
 		hn.New(cfg.HN.BaseURL, cfg.HN.MaxItems, log),
 		funding.New(cfg.Funding.URLs),
+	}
+
+	if *sourceFilter != "" {
+		var filtered []adapter.Source
+		for _, src := range sources {
+			if src.Name() == *sourceFilter {
+				filtered = append(filtered, src)
+			}
+		}
+		if len(filtered) == 0 {
+			log.Error("unknown source", infralogger.String("source", *sourceFilter))
+			os.Exit(1)
+		}
+		sources = filtered
 	}
 
 	r := runner.New(sources, dedupStore, ingestClient, *dryRun, log)
