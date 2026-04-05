@@ -6,31 +6,35 @@
 
 ---
 
-## Task 1: VPS Deploy Pipeline
+## Task 1: Dockerized Deploy
 
 ### Problem
 
-Signal-crawler has systemd unit files (`deploy/signal-crawler.service`, `deploy/signal-crawler.timer`) but no CI/CD step to build and ship the binary to the VPS.
+Signal-crawler has systemd unit files but no container image or CI/CD integration. All other north-cloud services deploy via Docker (build → push to Docker Hub → pull on VPS → `deploy.sh`). Signal-crawler should follow the same pattern.
 
 ### Design
 
-Add a deploy job to `.github/workflows/deploy.yml` triggered on main when `signal-crawler/` changes.
+Containerize the signal-crawler and integrate with the existing Docker-based deploy pipeline.
 
-**Steps:**
-1. Cross-compile: `GOOS=linux GOARCH=amd64 go build -o bin/signal-crawler ./signal-crawler`
-2. SCP binary + systemd files to VPS at `/opt/north-cloud/signal-crawler/`
-3. SSH to install:
-   - Copy `signal-crawler.service` and `signal-crawler.timer` to `/etc/systemd/system/`
-   - `systemctl daemon-reload`
-   - `systemctl enable --now signal-crawler.timer`
-4. First deploy creates `.env` from `.env.example` if absent (secrets require manual edit)
+**New files:**
+1. `signal-crawler/Dockerfile` — multi-stage build (Go builder → scratch/distroless runtime)
+2. `docker-compose.prod.yml` entry for `signal-crawler` service (no `restart: always`, it's a oneshot)
 
-**No rollback mechanism.** The crawler is a timer-based oneshot. If the binary is bad, the next run fails and the journal shows why.
+**Systemd timer update:**
+- `signal-crawler.timer` stays the same (daily 06:00 UTC, persistent, 5-min jitter)
+- `signal-crawler.service` changes `ExecStart` from bare binary to: `docker compose -f docker-compose.base.yml -f docker-compose.prod.yml run --rm signal-crawler`
+- Container gets Docker network access to `playwright-renderer` for free
 
-**Config on VPS:**
-- Binary: `/opt/north-cloud/signal-crawler/signal-crawler`
-- Env: `/opt/north-cloud/signal-crawler/.env`
-- Timer: daily 06:00 UTC, 5-minute jitter, persistent (catches up if missed)
+**CI/CD integration:**
+- Signal-crawler is already in the `GO_SERVICES` list in `detect-changed-services.sh`
+- The existing `build-and-push` job will build and push the Docker image
+- The existing `deploy.sh` handles pulling and running changed services
+- Only addition: the deploy step needs to install/update the systemd timer on first deploy
+
+**Config:**
+- Environment variables passed via `docker-compose.prod.yml` `env_file` or `environment` section
+- `config.yml` baked into the image with env var overrides at runtime
+- Dedup SQLite DB mounted as a volume: `/opt/north-cloud/signal-crawler/data:/app/data`
 
 ---
 
@@ -61,16 +65,16 @@ func (c *Client) Render(ctx context.Context, url string) (string, error)
 **Integration with adapters:**
 - Adapters that need JS rendering accept an optional `*render.Client`
 - If renderer is nil, adapter falls back to plain HTTP fetch
-- This allows dev mode (no renderer) and prod mode (renderer available)
+- This allows dev mode (no renderer) and prod mode (renderer available via Docker network)
 
 **Config addition to `config.yml`:**
 ```yaml
 renderer:
-  url: "http://localhost:8095"
+  url: "http://playwright-renderer:8095"
   enabled: false
 ```
 
-When `enabled: true`, `main.go` creates a `render.Client` and passes it to adapters that need it. When false, adapters use static fetch.
+When `enabled: true`, `main.go` creates a `render.Client` and passes it to adapters that need it. When false, adapters use static fetch. In Docker, the renderer URL uses the container hostname (`playwright-renderer`) directly.
 
 ---
 
@@ -174,4 +178,5 @@ Filterable via `--source jobs`.
 - Each board parser gets unit tests with fixture HTML/JSON
 - Renderer client gets tests with httptest mock server
 - Integration: `--dry-run --source jobs` against live boards
-- Deploy: manual verification of systemd timer status after first CI deploy
+- Deploy: `docker compose build signal-crawler` locally, then CI builds on merge to main
+- Timer verification: `systemctl status signal-crawler.timer` on VPS after first deploy
