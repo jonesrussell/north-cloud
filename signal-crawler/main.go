@@ -14,9 +14,11 @@ import (
 	"github.com/jonesrussell/north-cloud/signal-crawler/internal/adapter"
 	"github.com/jonesrussell/north-cloud/signal-crawler/internal/adapter/funding"
 	"github.com/jonesrussell/north-cloud/signal-crawler/internal/adapter/hn"
+	"github.com/jonesrussell/north-cloud/signal-crawler/internal/adapter/jobs"
 	"github.com/jonesrussell/north-cloud/signal-crawler/internal/config"
 	"github.com/jonesrussell/north-cloud/signal-crawler/internal/dedup"
 	"github.com/jonesrussell/north-cloud/signal-crawler/internal/ingest"
+	"github.com/jonesrussell/north-cloud/signal-crawler/internal/render"
 	"github.com/jonesrussell/north-cloud/signal-crawler/internal/runner"
 )
 
@@ -34,7 +36,13 @@ func main() {
 	defer func() { _ = log.Sync() }()
 	defer func() { _ = dedupStore.Close() }()
 
-	sources, err := buildSources(cfg, *sourceFilter, log)
+	var renderer *render.Client
+	if cfg.Renderer.Enabled {
+		renderer = render.New(cfg.Renderer.URL)
+		log.Info("renderer enabled", infralogger.String("url", cfg.Renderer.URL))
+	}
+
+	sources, err := buildSources(cfg, *sourceFilter, log, renderer)
 	if err != nil {
 		log.Error("failed to build sources", infralogger.Error(err))
 		os.Exit(1)
@@ -93,10 +101,25 @@ func setup(configPath string, dryRun bool) (*config.Config, infralogger.Logger, 
 	return cfg, log, dedupStore, nil
 }
 
-func buildSources(cfg *config.Config, sourceFilter string, log infralogger.Logger) ([]adapter.Source, error) {
+func buildSources(cfg *config.Config, sourceFilter string, log infralogger.Logger, renderer *render.Client) ([]adapter.Source, error) {
+	// Build job boards list
+	var rendererBoard jobs.Renderer
+	if renderer != nil {
+		rendererBoard = renderer
+	}
+
+	boards := []jobs.Board{
+		jobs.NewRemoteOK(cfg.Jobs.RemoteOKURL),
+		jobs.NewWWR(cfg.Jobs.WWRURL),
+		jobs.NewHNHiring("", "", cfg.Jobs.HNMaxComments),
+		jobs.NewGCJobs(cfg.Jobs.GCJobsURL),
+		jobs.NewWorkBC(cfg.Jobs.WorkBCURL, rendererBoard),
+	}
+
 	all := []adapter.Source{
 		hn.New(cfg.HN.BaseURL, cfg.HN.MaxItems, log),
 		funding.New(cfg.Funding.URLs),
+		jobs.New(boards, log),
 	}
 
 	if sourceFilter == "" {

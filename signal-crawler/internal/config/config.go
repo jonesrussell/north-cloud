@@ -10,6 +10,11 @@ import (
 	infraconfig "github.com/jonesrussell/north-cloud/infrastructure/config"
 )
 
+// defaultGCJobsURL is the default GC Jobs search URL for cloud/devops/infrastructure roles.
+const defaultGCJobsURL = "https://emploisfp-psjobs.cfp-psc.gc.ca/psrs-srfp/applicant/page2440" +
+	"?selectionProcessNumber=&officialLanguage=E" +
+	"&title=cloud+OR+devops+OR+infrastructure+OR+platform"
+
 // NorthOpsConfig holds connection configuration for the NorthOps ingest API.
 type NorthOpsConfig struct {
 	URL    string `env:"NORTHOPS_URL"     yaml:"url"`
@@ -38,6 +43,21 @@ type FundingConfig struct {
 	URLs []string `yaml:"urls"`
 }
 
+// RendererConfig holds Playwright renderer configuration.
+type RendererConfig struct {
+	URL     string `env:"RENDERER_URL"     yaml:"url"`
+	Enabled bool   `env:"RENDERER_ENABLED" yaml:"enabled"`
+}
+
+// JobsConfig holds job board adapter configuration.
+type JobsConfig struct {
+	RemoteOKURL   string `env:"JOBS_REMOTEOK_URL"    yaml:"remoteok_url"`
+	WWRURL        string `env:"JOBS_WWR_URL"         yaml:"wwr_url"`
+	HNMaxComments int    `env:"JOBS_HN_MAX_COMMENTS" yaml:"hn_max_comments"`
+	GCJobsURL     string `env:"JOBS_GCJOBS_URL"      yaml:"gcjobs_url"`
+	WorkBCURL     string `env:"JOBS_WORKBC_URL"      yaml:"workbc_url"`
+}
+
 // Config is the top-level configuration for signal-crawler.
 type Config struct {
 	NorthOps NorthOpsConfig `yaml:"northops"`
@@ -45,6 +65,8 @@ type Config struct {
 	Logging  LoggingConfig  `yaml:"logging"`
 	HN       HNConfig       `yaml:"hn"`
 	Funding  FundingConfig  `yaml:"funding"`
+	Renderer RendererConfig `yaml:"renderer"`
+	Jobs     JobsConfig     `yaml:"jobs"`
 }
 
 // Validate checks that all required fields are present.
@@ -80,6 +102,24 @@ func SetDefaults(cfg *Config) {
 	}
 	if len(cfg.Funding.URLs) == 0 {
 		cfg.Funding.URLs = []string{"https://otf.ca/funded-grants"}
+	}
+	if cfg.Renderer.URL == "" {
+		cfg.Renderer.URL = "http://localhost:8095"
+	}
+	if cfg.Jobs.RemoteOKURL == "" {
+		cfg.Jobs.RemoteOKURL = "https://remoteok.com/api"
+	}
+	if cfg.Jobs.WWRURL == "" {
+		cfg.Jobs.WWRURL = "https://weworkremotely.com/categories/remote-devops-sysadmin-jobs"
+	}
+	if cfg.Jobs.HNMaxComments == 0 {
+		cfg.Jobs.HNMaxComments = 200
+	}
+	if cfg.Jobs.GCJobsURL == "" {
+		cfg.Jobs.GCJobsURL = defaultGCJobsURL
+	}
+	if cfg.Jobs.WorkBCURL == "" {
+		cfg.Jobs.WorkBCURL = "https://www.workbc.ca/find-jobs/browse-jobs?searchTerm=cloud+engineer+OR+devops+OR+platform"
 	}
 }
 

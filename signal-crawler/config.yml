@@ -28,3 +28,16 @@ hn:
 funding:
   urls:                 # Grant portal URLs to scrape
     - "https://otf.ca/funded-grants"
+
+# Playwright renderer (for JS-heavy pages)
+renderer:
+  url: ""              # Leave empty for default localhost:8095 (env: RENDERER_URL)
+  enabled: false       # Set true in prod with renderer available (env: RENDERER_ENABLED)
+
+# Job boards adapter
+jobs:
+  remoteok_url: ""       # Leave empty for default (env: JOBS_REMOTEOK_URL)
+  wwr_url: ""            # Leave empty for default (env: JOBS_WWR_URL)
+  hn_max_comments: 200   # Max HN hiring thread comments to scan (env: JOBS_HN_MAX_COMMENTS)
+  gcjobs_url: ""         # Leave empty for default (env: JOBS_GCJOBS_URL)
+  workbc_url: ""         # Leave empty for default (env: JOBS_WORKBC_URL)

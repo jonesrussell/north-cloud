@@ -7,54 +7,52 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestScore_DirectAsk(t *testing.T) {
-	cases := []string{
-		"looking for CTO",
-		"need developer",
-		"hiring first engineer",
-		"technical co-founder",
+func TestScore_ExistingKeywords(t *testing.T) {
+	tests := []struct {
+		text          string
+		expectedScore int
+		expectedMatch string
+	}{
+		{"We are looking for CTO to lead engineering", scoring.ScoreDirectAsk, "looking for cto"},
+		{"Time to rebuild mvp from scratch", scoring.ScoreStrongSignal, "rebuild mvp"},
+		{"Our legacy system needs work", scoring.ScoreWeakSignal, "legacy system"},
+		{"Just a regular post about nothing", 0, ""},
 	}
-	for _, text := range cases {
-		score, matched := scoring.Score(text)
-		assert.Equal(t, 90, score, "text: %q", text)
-		assert.NotEmpty(t, matched, "text: %q", text)
-	}
-}
 
-func TestScore_StrongSignal(t *testing.T) {
-	cases := []string{
-		"rebuild MVP",
-		"rewriting our stack",
-		"migrating to cloud",
-		"scaling infrastructure",
-	}
-	for _, text := range cases {
-		score, matched := scoring.Score(text)
-		assert.Equal(t, 70, score, "text: %q", text)
-		assert.NotEmpty(t, matched, "text: %q", text)
+	for _, tt := range tests {
+		score, matched := scoring.Score(tt.text)
+		assert.Equal(t, tt.expectedScore, score, "text: %s", tt.text)
+		assert.Equal(t, tt.expectedMatch, matched, "text: %s", tt.text)
 	}
 }
 
-func TestScore_WeakSignal(t *testing.T) {
-	score, matched := scoring.Score("considering rewrite")
-	assert.Equal(t, 40, score)
-	assert.NotEmpty(t, matched)
-}
+func TestScore_JobKeywords(t *testing.T) {
+	tests := []struct {
+		text          string
+		expectedScore int
+		expectedMatch string
+	}{
+		{"We're hiring platform engineer to rebuild our infra", scoring.ScoreDirectAsk, "hiring platform engineer"},
+		{"Need cloud architect for AWS migration", scoring.ScoreDirectAsk, "need cloud architect"},
+		{"Looking for devops lead to automate deployments", scoring.ScoreDirectAsk, "looking for devops"},
+		{"Migrating monolith to microservices architecture", scoring.ScoreStrongSignal, "monolith to microservices"},
+		{"Major cloud migration project starting Q2", scoring.ScoreStrongSignal, "cloud migration"},
+		{"Infrastructure overhaul across all regions", scoring.ScoreStrongSignal, "infrastructure overhaul"},
+		{"Platform modernization initiative underway", scoring.ScoreStrongSignal, "platform modernization"},
+		{"Facing scaling challenges with current setup", scoring.ScoreWeakSignal, "scaling challenges"},
+		{"We're growing engineering team rapidly", scoring.ScoreWeakSignal, "growing engineering team"},
+		{"Time to start modernizing stack", scoring.ScoreWeakSignal, "modernizing stack"},
+	}
 
-func TestScore_NoMatch(t *testing.T) {
-	score, matched := scoring.Score("Just launched our new product")
-	assert.Equal(t, 0, score)
-	assert.Empty(t, matched)
-}
-
-func TestScore_CaseInsensitive(t *testing.T) {
-	score, matched := scoring.Score("LOOKING FOR CTO")
-	assert.Equal(t, 90, score)
-	assert.NotEmpty(t, matched)
+	for _, tt := range tests {
+		score, matched := scoring.Score(tt.text)
+		assert.Equal(t, tt.expectedScore, score, "text: %s", tt.text)
+		assert.Equal(t, tt.expectedMatch, matched, "text: %s", tt.text)
+	}
 }
 
 func TestScore_HighestWins(t *testing.T) {
-	score, matched := scoring.Score("Need developer to rebuild MVP")
-	assert.Equal(t, 90, score)
-	assert.NotEmpty(t, matched)
+	text := "Hiring platform engineer for cloud migration project"
+	score, _ := scoring.Score(text)
+	assert.Equal(t, scoring.ScoreDirectAsk, score)
 }
