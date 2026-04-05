@@ -114,7 +114,7 @@ func (a *Adapter) fetchNewStories(ctx context.Context) ([]int, error) {
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode >= 300 {
+	if resp.StatusCode >= http.StatusMultipleChoices {
 		return nil, fmt.Errorf("HN API returned HTTP %d", resp.StatusCode)
 	}
 
@@ -138,7 +138,7 @@ func (a *Adapter) fetchItem(ctx context.Context, id int) (*item, error) {
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode >= 300 {
+	if resp.StatusCode >= http.StatusMultipleChoices {
 		return nil, fmt.Errorf("HN API returned HTTP %d", resp.StatusCode)
 	}
 

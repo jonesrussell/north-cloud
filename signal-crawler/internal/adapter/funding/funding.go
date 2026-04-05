@@ -15,7 +15,10 @@ import (
 	"golang.org/x/net/html"
 )
 
-const defaultHTTPTimeout = 30 * time.Second
+const (
+	defaultHTTPTimeout = 30 * time.Second
+	maxResponseBytes   = 10 * 1024 * 1024 // 10 MB
+)
 
 // Adapter scrapes government grant portal HTML pages for funding signals.
 type Adapter struct {
@@ -74,11 +77,11 @@ func (a *Adapter) fetchAndParse(ctx context.Context, rawURL string) ([]adapter.S
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode >= 300 {
+	if resp.StatusCode >= http.StatusMultipleChoices {
 		return nil, fmt.Errorf("funding adapter: HTTP %d fetching %s", resp.StatusCode, rawURL)
 	}
 
-	body, err := io.ReadAll(io.LimitReader(resp.Body, 10*1024*1024))
+	body, err := io.ReadAll(io.LimitReader(resp.Body, maxResponseBytes))
 	if err != nil {
 		return nil, fmt.Errorf("funding: read body: %w", err)
 	}
