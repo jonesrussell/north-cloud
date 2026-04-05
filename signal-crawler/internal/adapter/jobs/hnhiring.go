@@ -68,15 +68,21 @@ func (b *HNHiringBoard) Fetch(ctx context.Context) ([]Posting, error) {
 		kids = kids[:b.maxComments]
 	}
 
-	var postings []Posting
+	postings := make([]Posting, 0, len(kids))
+	var fetchErrors int
 	for _, kid := range kids {
 		comment, fetchErr := b.fetchComment(ctx, kid)
 		if fetchErr != nil {
+			fetchErrors++
 			continue
 		}
 		if p, ok := parseHNComment(comment, kid); ok {
 			postings = append(postings, p)
 		}
+	}
+
+	if fetchErrors > len(kids)/2 {
+		return postings, fmt.Errorf("hn-hiring: %d/%d comment fetches failed", fetchErrors, len(kids))
 	}
 
 	return postings, nil

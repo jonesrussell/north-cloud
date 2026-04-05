@@ -86,19 +86,6 @@ func parseGCJobsHTML(content, baseURL string) ([]Posting, error) {
 	return postings, nil
 }
 
-func hasClass(n *html.Node, cls string) bool {
-	for _, attr := range n.Attr {
-		if attr.Key == "class" {
-			for _, c := range strings.Fields(attr.Val) {
-				if c == cls {
-					return true
-				}
-			}
-		}
-	}
-	return false
-}
-
 func extractGCJobPosting(article *html.Node, baseURL string) (Posting, bool) {
 	var p Posting
 	var foundTitle bool

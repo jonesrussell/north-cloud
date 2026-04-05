@@ -70,7 +70,7 @@ func (b *RemoteOKBoard) Fetch(ctx context.Context) ([]Posting, error) {
 	}
 
 	// First element is legal/metadata, skip it.
-	var postings []Posting
+	postings := make([]Posting, 0, len(raw))
 	for i := 1; i < len(raw); i++ {
 		var j remoteOKJob
 		if unmarshalErr := json.Unmarshal(raw[i], &j); unmarshalErr != nil {

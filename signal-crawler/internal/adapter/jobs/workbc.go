@@ -8,9 +8,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/jonesrussell/north-cloud/signal-crawler/internal/render"
 	"golang.org/x/net/html"
 )
+
+// Renderer renders JS-heavy pages and returns the HTML.
+type Renderer interface {
+	Render(ctx context.Context, url string) (string, error)
+}
 
 const (
 	workBCTimeout    = 30 * time.Second
@@ -23,12 +27,12 @@ const (
 // otherwise it falls back to static HTTP fetch.
 type WorkBCBoard struct {
 	baseURL    string
-	renderer   *render.Client
+	renderer   Renderer
 	httpClient *http.Client
 }
 
 // NewWorkBC creates a WorkBC board parser with an optional renderer.
-func NewWorkBC(baseURL string, renderer *render.Client) *WorkBCBoard {
+func NewWorkBC(baseURL string, renderer Renderer) *WorkBCBoard {
 	if baseURL == "" {
 		baseURL = defaultWorkBCURL
 	}

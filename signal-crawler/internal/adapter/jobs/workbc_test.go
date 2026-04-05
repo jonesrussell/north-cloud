@@ -11,6 +11,15 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+type mockRenderer struct {
+	html string
+	err  error
+}
+
+func (m *mockRenderer) Render(_ context.Context, _ string) (string, error) {
+	return m.html, m.err
+}
+
 const workBCFixture = `<html><body>
 <div class="job-posting">
   <h2><a href="/jobs/12345">Cloud Infrastructure Technician</a></h2>
@@ -55,6 +64,16 @@ func TestWorkBC_Fetch_StaticFallback(t *testing.T) {
 
 	assert.Equal(t, "Platform Migration Analyst", postings[2].Title)
 	assert.Equal(t, "BC Hydro", postings[2].Company)
+}
+
+func TestWorkBC_Fetch_WithRenderer(t *testing.T) {
+	renderer := &mockRenderer{html: workBCFixture}
+	board := jobs.NewWorkBC("https://www.workbc.ca", renderer)
+	postings, err := board.Fetch(context.Background())
+
+	require.NoError(t, err)
+	require.Len(t, postings, 3)
+	assert.Equal(t, "Cloud Infrastructure Technician", postings[0].Title)
 }
 
 func TestWorkBC_Fetch_ServerError(t *testing.T) {
