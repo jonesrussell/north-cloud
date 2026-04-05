@@ -28,6 +28,7 @@ When modifying files, read the relevant service CLAUDE.md first. Deep specs in `
 | `nc-http-proxy/**` | `nc-http-proxy/CLAUDE.md` | `docs/specs/nc-http-proxy.md` |
 | `search-frontend/**` | `search-frontend/CLAUDE.md` | `docs/specs/search-frontend.md` |
 | `render-worker/**` | `render-worker/CLAUDE.md` | `docs/specs/content-acquisition.md` |
+| `signal-crawler/**` | `signal-crawler/CLAUDE.md` | `docs/superpowers/specs/2026-04-05-signal-crawler-sprint-design.md` |
 | `docs/specs/**`, `.claude/**`, `**/CLAUDE.md` | updating-codified-context | — |
 | `docker-compose*.yml`, `Taskfile.yml` | `DOCKER.md` | — |
 
@@ -247,6 +248,10 @@ See `docs/specs/workflow.md` for full details. Governance hook: `bin/check-miles
 **Production is not a git repo**: NC on production (`/home/deployer/north-cloud/`) is deployed as Docker images, not cloned from git. Migration files aren't on disk — use the Rules API or copy files manually.
 
 **Docker IPs are ephemeral**: Container IPs (e.g. `172.18.0.x`) change on restart. Don't hardcode them in Caddy or config. Use Docker DNS names or port mapping instead.
+
+**New Go service checklist**: When adding a new Go service, you need: (1) `vuln:` task in the service's own `Taskfile.yml`, (2) `vuln:service-name` delegation in root `Taskfile.yml`, (3) service name in `GO_SERVICES` in `scripts/detect-changed-services.sh`. Missing any of these breaks CI.
+
+**Oneshot Docker services** (like signal-crawler): Use `restart: "no"` in compose, add the service to the health-check skip list in `scripts/deploy.sh`, and manage the systemd timer via Ansible (`northcloud-ansible` repo, `north-cloud` role).
 
 Check logs: `docker compose -f docker-compose.base.yml -f docker-compose.dev.yml logs SERVICE`
 | Check ports: `netstat -tulpn | grep PORT` | DB test: `docker exec -it north-cloud-postgres-SERVICE psql -U postgres -d DATABASE`
