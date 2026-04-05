@@ -67,11 +67,11 @@ func (a *Adapter) Scan(ctx context.Context) ([]adapter.Signal, error) {
 	skipped := 0
 
 	for _, id := range ids {
-		it, err := a.fetchItem(ctx, id)
-		if err != nil {
+		it, fetchErr := a.fetchItem(ctx, id)
+		if fetchErr != nil {
 			a.log.Debug("hn: skipping item",
 				infralogger.Int("item_id", id),
-				infralogger.Error(err),
+				infralogger.Error(fetchErr),
 			)
 			skipped++
 			continue
@@ -103,7 +103,7 @@ func (a *Adapter) Scan(ctx context.Context) ([]adapter.Signal, error) {
 
 func (a *Adapter) fetchNewStories(ctx context.Context) ([]int, error) {
 	url := a.baseURL + "/v0/newstories.json"
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, http.NoBody)
 	if err != nil {
 		return nil, err
 	}
@@ -119,15 +119,15 @@ func (a *Adapter) fetchNewStories(ctx context.Context) ([]int, error) {
 	}
 
 	var ids []int
-	if err := json.NewDecoder(resp.Body).Decode(&ids); err != nil {
-		return nil, err
+	if decErr := json.NewDecoder(resp.Body).Decode(&ids); decErr != nil {
+		return nil, decErr
 	}
 	return ids, nil
 }
 
 func (a *Adapter) fetchItem(ctx context.Context, id int) (*item, error) {
 	url := fmt.Sprintf("%s/v0/item/%d.json", a.baseURL, id)
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, http.NoBody)
 	if err != nil {
 		return nil, err
 	}
@@ -143,8 +143,8 @@ func (a *Adapter) fetchItem(ctx context.Context, id int) (*item, error) {
 	}
 
 	var it item
-	if err := json.NewDecoder(resp.Body).Decode(&it); err != nil {
-		return nil, err
+	if decErr := json.NewDecoder(resp.Body).Decode(&it); decErr != nil {
+		return nil, decErr
 	}
 	return &it, nil
 }

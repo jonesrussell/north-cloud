@@ -62,7 +62,7 @@ type grantRow struct {
 }
 
 func (a *Adapter) fetchAndParse(ctx context.Context, rawURL string) ([]adapter.Signal, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, rawURL, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, rawURL, http.NoBody)
 	if err != nil {
 		return nil, err
 	}
@@ -96,8 +96,8 @@ func (a *Adapter) fetchAndParse(ctx context.Context, rawURL string) ([]adapter.S
 	for _, row := range rows {
 		sourceURL := row.link
 		if sourceURL != "" && !strings.HasPrefix(sourceURL, "http") {
-			ref, err := url.Parse(row.link)
-			if err == nil {
+			ref, parseErr := url.Parse(row.link)
+			if parseErr == nil {
 				sourceURL = base.ResolveReference(ref).String()
 			}
 		}
