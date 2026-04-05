@@ -12,6 +12,11 @@ import (
 	"github.com/jonesrussell/north-cloud/signal-crawler/internal/adapter"
 )
 
+const (
+	defaultHTTPTimeout = 30 * time.Second
+	maxErrorBodyBytes  = 512
+)
+
 // Client posts signals to NorthOps ingest endpoints.
 type Client struct {
 	baseURL    string
@@ -25,7 +30,7 @@ func New(baseURL, apiKey string) *Client {
 		baseURL: baseURL,
 		apiKey:  apiKey,
 		httpClient: &http.Client{
-			Timeout: 30 * time.Second,
+			Timeout: defaultHTTPTimeout,
 		},
 	}
 }
@@ -54,8 +59,8 @@ func (c *Client) Post(ctx context.Context, sig adapter.Signal) error {
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode >= 300 {
-		errBody, _ := io.ReadAll(io.LimitReader(resp.Body, 512))
+	if resp.StatusCode >= http.StatusMultipleChoices {
+		errBody, _ := io.ReadAll(io.LimitReader(resp.Body, maxErrorBodyBytes))
 		return fmt.Errorf("ingest: unexpected status %d: %s", resp.StatusCode, string(errBody))
 	}
 

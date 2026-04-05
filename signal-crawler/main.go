@@ -26,69 +26,21 @@ func main() {
 	sourceFilter := flag.String("source", "", "Run only this adapter (hn, funding)")
 	flag.Parse()
 
-	cfgPath := *configPath
-	if cfgPath == "" {
-		cfgPath = infraconfig.GetConfigPath("config.yml")
-	}
-
-	cfg, err := config.Load(cfgPath)
+	cfg, log, dedupStore, err := setup(*configPath, *dryRun)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error loading config: %v\n", err)
-		os.Exit(1)
-	}
-
-	if !*dryRun {
-		if validateErr := cfg.Validate(); validateErr != nil {
-			fmt.Fprintf(os.Stderr, "Config validation error: %v\n", validateErr)
-			os.Exit(1)
-		}
-	}
-
-	log, err := infralogger.New(infralogger.Config{
-		Level:  cfg.Logging.Level,
-		Format: cfg.Logging.Format,
-	})
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error creating logger: %v\n", err)
+		fmt.Fprintf(os.Stderr, "startup error: %v\n", err)
 		os.Exit(1)
 	}
 	defer func() { _ = log.Sync() }()
-
-	// Ensure dedup DB directory exists
-	dbDir := filepath.Dir(cfg.Dedup.DBPath)
-	if mkdirErr := os.MkdirAll(dbDir, 0o755); mkdirErr != nil {
-		log.Error("failed to create dedup db directory", infralogger.String("path", dbDir), infralogger.Error(mkdirErr))
-		os.Exit(1)
-	}
-
-	dedupStore, err := dedup.New(cfg.Dedup.DBPath)
-	if err != nil {
-		log.Error("failed to open dedup store", infralogger.Error(err))
-		os.Exit(1)
-	}
 	defer func() { _ = dedupStore.Close() }()
 
+	sources, err := buildSources(cfg, *sourceFilter, log)
+	if err != nil {
+		log.Error("failed to build sources", infralogger.Error(err))
+		os.Exit(1)
+	}
+
 	ingestClient := ingest.New(cfg.NorthOps.URL, cfg.NorthOps.APIKey)
-
-	sources := []adapter.Source{
-		hn.New(cfg.HN.BaseURL, cfg.HN.MaxItems, log),
-		funding.New(cfg.Funding.URLs),
-	}
-
-	if *sourceFilter != "" {
-		var filtered []adapter.Source
-		for _, src := range sources {
-			if src.Name() == *sourceFilter {
-				filtered = append(filtered, src)
-			}
-		}
-		if len(filtered) == 0 {
-			log.Error("unknown source", infralogger.String("source", *sourceFilter))
-			os.Exit(1)
-		}
-		sources = filtered
-	}
-
 	r := runner.New(sources, dedupStore, ingestClient, *dryRun, log)
 
 	log.Info("signal-crawler starting",
@@ -100,7 +52,72 @@ func main() {
 	defer stop()
 
 	stats := r.Run(ctx)
+	logStats(log, stats)
+}
 
+func setup(configPath string, dryRun bool) (*config.Config, infralogger.Logger, *dedup.Store, error) {
+	cfgPath := configPath
+	if cfgPath == "" {
+		cfgPath = infraconfig.GetConfigPath("config.yml")
+	}
+
+	cfg, err := config.Load(cfgPath)
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("loading config: %w", err)
+	}
+
+	if !dryRun {
+		if validateErr := cfg.Validate(); validateErr != nil {
+			return nil, nil, nil, fmt.Errorf("config validation: %w", validateErr)
+		}
+	}
+
+	log, err := infralogger.New(infralogger.Config{
+		Level:  cfg.Logging.Level,
+		Format: cfg.Logging.Format,
+	})
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("creating logger: %w", err)
+	}
+
+	dbDir := filepath.Dir(cfg.Dedup.DBPath)
+	if mkdirErr := os.MkdirAll(dbDir, 0o755); mkdirErr != nil {
+		return nil, nil, nil, fmt.Errorf("creating dedup db directory %s: %w", dbDir, mkdirErr)
+	}
+
+	dedupStore, err := dedup.New(cfg.Dedup.DBPath)
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("opening dedup store: %w", err)
+	}
+
+	return cfg, log, dedupStore, nil
+}
+
+func buildSources(cfg *config.Config, sourceFilter string, log infralogger.Logger) ([]adapter.Source, error) {
+	all := []adapter.Source{
+		hn.New(cfg.HN.BaseURL, cfg.HN.MaxItems, log),
+		funding.New(cfg.Funding.URLs),
+	}
+
+	if sourceFilter == "" {
+		return all, nil
+	}
+
+	var filtered []adapter.Source
+	for _, src := range all {
+		if src.Name() == sourceFilter {
+			filtered = append(filtered, src)
+		}
+	}
+
+	if len(filtered) == 0 {
+		return nil, fmt.Errorf("unknown source %q", sourceFilter)
+	}
+
+	return filtered, nil
+}
+
+func logStats(log infralogger.Logger, stats []runner.Stats) {
 	for _, s := range stats {
 		log.Info("source complete",
 			infralogger.String("source", s.Source),
