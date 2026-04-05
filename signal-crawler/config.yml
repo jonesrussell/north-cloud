@@ -28,3 +28,8 @@ hn:
 funding:
   urls:                 # Grant portal URLs to scrape
     - "https://otf.ca/funded-grants"
+
+# Playwright renderer (for JS-heavy pages)
+renderer:
+  url: ""              # Leave empty for default localhost:8095 (env: RENDERER_URL)
+  enabled: false       # Set true in prod with renderer available (env: RENDERER_ENABLED)

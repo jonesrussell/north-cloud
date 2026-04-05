@@ -38,6 +38,12 @@ type FundingConfig struct {
 	URLs []string `yaml:"urls"`
 }
 
+// RendererConfig holds Playwright renderer configuration.
+type RendererConfig struct {
+	URL     string `env:"RENDERER_URL"     yaml:"url"`
+	Enabled bool   `env:"RENDERER_ENABLED" yaml:"enabled"`
+}
+
 // Config is the top-level configuration for signal-crawler.
 type Config struct {
 	NorthOps NorthOpsConfig `yaml:"northops"`
@@ -45,6 +51,7 @@ type Config struct {
 	Logging  LoggingConfig  `yaml:"logging"`
 	HN       HNConfig       `yaml:"hn"`
 	Funding  FundingConfig  `yaml:"funding"`
+	Renderer RendererConfig `yaml:"renderer"`
 }
 
 // Validate checks that all required fields are present.
@@ -80,6 +87,9 @@ func SetDefaults(cfg *Config) {
 	}
 	if len(cfg.Funding.URLs) == 0 {
 		cfg.Funding.URLs = []string{"https://otf.ca/funded-grants"}
+	}
+	if cfg.Renderer.URL == "" {
+		cfg.Renderer.URL = "http://localhost:8095"
 	}
 }
 
