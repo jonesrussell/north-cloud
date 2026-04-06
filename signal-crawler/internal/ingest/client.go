@@ -35,16 +35,19 @@ func New(baseURL, apiKey string) *Client {
 	}
 }
 
-// Post sends a signal to the appropriate NorthOps ingest endpoint.
-// It uses sig.Endpoint() to determine the path, marshals the signal as JSON,
-// and returns an error if the response status is >= 300.
+// Post sends a signal to the NorthOps /api/signals ingest endpoint.
+// The signal is wrapped in {"signals": [sig]} to match the NorthOps contract.
 func (c *Client) Post(ctx context.Context, sig adapter.Signal) error {
-	body, err := json.Marshal(sig)
+	envelope := struct {
+		Signals []adapter.Signal `json:"signals"`
+	}{Signals: []adapter.Signal{sig}}
+
+	body, err := json.Marshal(envelope)
 	if err != nil {
 		return fmt.Errorf("ingest: marshal signal: %w", err)
 	}
 
-	url := c.baseURL + sig.Endpoint()
+	url := c.baseURL + "/api/signals"
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(body))
 	if err != nil {
 		return fmt.Errorf("ingest: create request: %w", err)

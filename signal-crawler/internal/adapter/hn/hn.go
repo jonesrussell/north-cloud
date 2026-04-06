@@ -84,6 +84,8 @@ func (a *Adapter) Scan(ctx context.Context) ([]adapter.Signal, error) {
 		}
 
 		signals = append(signals, adapter.Signal{
+			SignalType:     "hn_mention",
+			SourceName:     "hn",
 			Label:          it.Title,
 			SourceURL:      fmt.Sprintf("https://news.ycombinator.com/item?id=%d", it.ID),
 			ExternalID:     strconv.Itoa(it.ID),

@@ -3,27 +3,23 @@ package adapter
 import "context"
 
 // Signal represents a lead signal detected by a source adapter.
+// Field names and JSON tags match the NorthOps /api/signals ingest contract.
 type Signal struct {
-	// Common fields (all sources)
-	Label          string `json:"label"`
-	SourceURL      string `json:"source_url"`
-	ExternalID     string `json:"-"` // Used for dedup, not sent to NorthOps
-	SignalStrength int    `json:"signal_strength"`
+	// Required by NorthOps
+	SignalType  string `json:"signal_type"`
+	ExternalID  string `json:"external_id"`
+	SourceName  string `json:"source"`
+	Label       string `json:"label"`
+
+	// Optional fields
+	SourceURL      string `json:"source_url,omitempty"`
+	SignalStrength int    `json:"strength"`
 	Sector         string `json:"sector,omitempty"`
 	Notes          string `json:"notes,omitempty"`
 
 	// Funding-specific fields (zero values for non-funding signals)
 	FundingStatus    string `json:"funding_status,omitempty"`
 	OrganizationType string `json:"organization_type,omitempty"`
-}
-
-// Endpoint returns the NorthOps ingest endpoint path for this signal.
-// Funding signals go to /api/leads/ingest/funding, others to /api/leads/ingest/signal.
-func (s Signal) Endpoint() string {
-	if s.FundingStatus != "" {
-		return "/api/leads/ingest/funding"
-	}
-	return "/api/leads/ingest/signal"
 }
 
 // Source is the interface that all signal adapters implement.

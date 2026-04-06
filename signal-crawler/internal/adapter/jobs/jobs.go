@@ -78,6 +78,8 @@ func (a *Adapter) Scan(ctx context.Context) ([]adapter.Signal, error) {
 			}
 
 			allSignals = append(allSignals, adapter.Signal{
+				SignalType:     "job_posting",
+				SourceName:     board.Name(),
 				Label:          label,
 				SourceURL:      p.URL,
 				ExternalID:     board.Name() + "|" + p.ID,

@@ -27,20 +27,29 @@ func TestClient_PostSignal(t *testing.T) {
 
 	client := ingest.New(srv.URL, "test-api-key")
 	sig := adapter.Signal{
-		Label:     "Government RFP: IT Services",
-		SourceURL: "https://buyandsell.gc.ca/123",
+		SignalType:  "hn_mention",
+		ExternalID:  "hn-123",
+		SourceName:  "hn",
+		Label:       "Government RFP: IT Services",
+		SourceURL:   "https://buyandsell.gc.ca/123",
 	}
 
 	err := client.Post(context.Background(), sig)
 	require.NoError(t, err)
 
-	assert.Equal(t, "/api/leads/ingest/signal", captured.URL.Path)
+	assert.Equal(t, "/api/signals", captured.URL.Path)
 	assert.Equal(t, "test-api-key", captured.Header.Get("X-Api-Key"))
 	assert.Equal(t, "application/json", captured.Header.Get("Content-Type"))
 
-	var payload map[string]any
+	var payload struct {
+		Signals []map[string]any `json:"signals"`
+	}
 	require.NoError(t, json.Unmarshal(body, &payload))
-	assert.Equal(t, "Government RFP: IT Services", payload["label"])
+	require.Len(t, payload.Signals, 1)
+	assert.Equal(t, "Government RFP: IT Services", payload.Signals[0]["label"])
+	assert.Equal(t, "hn_mention", payload.Signals[0]["signal_type"])
+	assert.Equal(t, "hn-123", payload.Signals[0]["external_id"])
+	assert.Equal(t, "hn", payload.Signals[0]["source"])
 }
 
 func TestClient_PostFunding(t *testing.T) {
@@ -54,6 +63,9 @@ func TestClient_PostFunding(t *testing.T) {
 
 	client := ingest.New(srv.URL, "test-api-key")
 	sig := adapter.Signal{
+		SignalType:    "funding_win",
+		ExternalID:    "otf-456",
+		SourceName:    "funding",
 		Label:         "NSERC Grant Awarded",
 		SourceURL:     "https://nserc.ca/456",
 		FundingStatus: "awarded",
@@ -62,7 +74,8 @@ func TestClient_PostFunding(t *testing.T) {
 	err := client.Post(context.Background(), sig)
 	require.NoError(t, err)
 
-	assert.Equal(t, "/api/leads/ingest/funding", captured.URL.Path)
+	// All signals go to the same endpoint now.
+	assert.Equal(t, "/api/signals", captured.URL.Path)
 }
 
 func TestClient_ServerError(t *testing.T) {
@@ -74,8 +87,11 @@ func TestClient_ServerError(t *testing.T) {
 
 	client := ingest.New(srv.URL, "test-api-key")
 	sig := adapter.Signal{
-		Label:     "Some Signal",
-		SourceURL: "https://example.com/789",
+		SignalType:  "job_posting",
+		ExternalID:  "ro-789",
+		SourceName:  "remoteok",
+		Label:       "Some Signal",
+		SourceURL:   "https://example.com/789",
 	}
 
 	err := client.Post(context.Background(), sig)

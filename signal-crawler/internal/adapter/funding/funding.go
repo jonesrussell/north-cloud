@@ -107,6 +107,8 @@ func (a *Adapter) fetchAndParse(ctx context.Context, rawURL string) ([]adapter.S
 		}
 
 		sig := adapter.Signal{
+			SignalType:       "funding_win",
+			SourceName:       "funding",
 			Label:            fmt.Sprintf("%s — %s", row.org, row.program),
 			ExternalID:       url.QueryEscape(row.org) + "|" + url.QueryEscape(row.program),
 			SourceURL:        sourceURL,
