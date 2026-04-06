@@ -18,11 +18,11 @@ func TestFundingAdapter_Name(t *testing.T) {
 }
 
 func TestFundingAdapter_Scan(t *testing.T) {
-	fixture, err := os.ReadFile("testdata/otf_grants.html")
+	fixture, err := os.ReadFile("testdata/otf_grants.csv")
 	require.NoError(t, err)
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "text/html")
+		w.Header().Set("Content-Type", "text/csv")
 		w.Write(fixture)
 	}))
 	defer srv.Close()
@@ -30,20 +30,25 @@ func TestFundingAdapter_Scan(t *testing.T) {
 	a := funding.New([]string{srv.URL})
 	signals, err := a.Scan(context.Background())
 	require.NoError(t, err)
+
+	// Only the 2 active, recently approved grants should be returned.
+	// The "Closed" grant from 2020 should be filtered out.
 	require.Len(t, signals, 2)
 
 	first := signals[0]
 	assert.Contains(t, first.Label, "TechStartup Inc")
-	assert.Contains(t, first.Label, "Ontario Innovation Grant")
-	assert.Equal(t, "TechStartup+Inc|Ontario+Innovation+Grant", first.ExternalID)
+	assert.Contains(t, first.Label, "Community Investments")
+	assert.Equal(t, "496887GW144568", first.ExternalID)
 	assert.Equal(t, 70, first.SignalStrength)
 	assert.Equal(t, "awarded", first.FundingStatus)
-	assert.Equal(t, "Startup", first.OrganizationType)
-	assert.Contains(t, first.SourceURL, "/funded-grants/123")
+	assert.Equal(t, "funding_win", first.SignalType)
+	assert.Equal(t, "funding", first.SourceName)
+	assert.Contains(t, first.Notes, "203400")
+	assert.Contains(t, first.Notes, "Ottawa")
 }
 
 func TestFundingAdapter_PartialURLFailure(t *testing.T) {
-	fixture, err := os.ReadFile("testdata/otf_grants.html")
+	fixture, err := os.ReadFile("testdata/otf_grants.csv")
 	require.NoError(t, err)
 
 	// First URL fails (404), second URL succeeds.
@@ -54,7 +59,7 @@ func TestFundingAdapter_PartialURLFailure(t *testing.T) {
 			w.WriteHeader(http.StatusNotFound)
 			return
 		}
-		w.Header().Set("Content-Type", "text/html")
+		w.Header().Set("Content-Type", "text/csv")
 		w.Write(fixture)
 	}))
 	defer srv.Close()
@@ -67,70 +72,12 @@ func TestFundingAdapter_PartialURLFailure(t *testing.T) {
 	assert.Len(t, signals, 2, "should still return signals from successful URLs")
 }
 
-func TestFundingAdapter_SkipsEmptyProgram(t *testing.T) {
-	fixture, err := os.ReadFile("testdata/otf_grants_empty_program.html")
-	require.NoError(t, err)
+func TestFundingAdapter_EmptyCSV(t *testing.T) {
+	csv := "Funder,Country,Province,Fiscal Year,Grant Programme,Area,Cross-catchment,Identifier,Organization name,Submission date,Approval date,Amount Applied For,Amount Awarded,Duration,Description EN,Description FR,Program Area,Budget Fund,Inc Number,Charity Number,City,Postal Code,Co-App,Population,Age Group,Grant Result,Rescinded,Rescinded By,Amount Rescinded,Grant Status,Statut,Last modified\n"
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "text/html")
-		w.Write(fixture)
-	}))
-	defer srv.Close()
-
-	a := funding.New([]string{srv.URL})
-	signals, err := a.Scan(context.Background())
-	require.NoError(t, err)
-
-	// Only the row with a non-empty program should be returned.
-	require.Len(t, signals, 1)
-	assert.Contains(t, signals[0].Label, "OrgWithProgram")
-	assert.Contains(t, signals[0].Label, "Innovation Grant")
-}
-
-// TestFundingAdapter_RealOTF is a diagnostic test that runs against a real OTF
-// HTML fixture captured from https://otf.ca/funded-grants. The OTF site renders
-// grant data via JavaScript (Drupal + React), so a static curl of the page
-// returns only the page shell with no grant rows. This test documents that
-// behaviour and will skip if the fixture is not present.
-//
-// To capture the fixture:
-//
-//	curl -s -L -o internal/adapter/funding/testdata/otf_real.html "https://otf.ca/funded-grants"
-//
-// If 0 signals are returned, the site still uses JS rendering and the adapter
-// needs a headless-browser approach (e.g. chromedp) to retrieve grant data.
-func TestFundingAdapter_RealOTF(t *testing.T) {
-	fixture, err := os.ReadFile("testdata/otf_real.html")
-	if err != nil {
-		t.Skip("real OTF fixture not available — run curl to fetch")
-	}
-
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "text/html")
-		w.Write(fixture)
-	}))
-	defer srv.Close()
-
-	a := funding.New([]string{srv.URL})
-	signals, err := a.Scan(context.Background())
-	require.NoError(t, err)
-
-	t.Logf("Parsed %d signals from real OTF HTML", len(signals))
-	for i, s := range signals {
-		t.Logf("  [%d] %s (strength=%d)", i, s.Label, s.SignalStrength)
-	}
-
-	// NOTE: OTF uses JS rendering — static HTML contains no grant rows.
-	// 0 signals is the expected result until the adapter uses a headless browser.
-	t.Logf("NOTE: OTF funded-grants page uses JavaScript rendering; static HTML has no grant rows")
-}
-
-func TestFundingAdapter_EmptyPage(t *testing.T) {
-	html := `<html><body><div class="view-content"></div></body></html>`
-
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "text/html")
-		w.Write([]byte(html))
+		w.Header().Set("Content-Type", "text/csv")
+		w.Write([]byte(csv))
 	}))
 	defer srv.Close()
 
@@ -138,4 +85,25 @@ func TestFundingAdapter_EmptyPage(t *testing.T) {
 	signals, err := a.Scan(context.Background())
 	require.NoError(t, err)
 	assert.Empty(t, signals)
+}
+
+func TestFundingAdapter_FiltersClosedGrants(t *testing.T) {
+	fixture, err := os.ReadFile("testdata/otf_grants.csv")
+	require.NoError(t, err)
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/csv")
+		w.Write(fixture)
+	}))
+	defer srv.Close()
+
+	a := funding.New([]string{srv.URL})
+	signals, err := a.Scan(context.Background())
+	require.NoError(t, err)
+
+	// The fixture has 3 rows: 2 Active (recent), 1 Closed (old).
+	// Only active recent grants should appear.
+	for _, sig := range signals {
+		assert.NotContains(t, sig.Label, "Old Org", "closed grants should be filtered out")
+	}
 }

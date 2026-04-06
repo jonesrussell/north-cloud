@@ -2,6 +2,7 @@ package funding
 
 import (
 	"context"
+	"encoding/csv"
 	"errors"
 	"fmt"
 	"io"
@@ -12,21 +13,34 @@ import (
 
 	"github.com/jonesrussell/north-cloud/signal-crawler/internal/adapter"
 	"github.com/jonesrussell/north-cloud/signal-crawler/internal/scoring"
-	"golang.org/x/net/html"
 )
 
 const (
 	defaultHTTPTimeout = 30 * time.Second
 	maxResponseBytes   = 10 * 1024 * 1024 // 10 MB
+	// Only emit signals for grants approved in the last 90 days.
+	recentGrantWindow = 90 * 24 * time.Hour
 )
 
-// Adapter scrapes government grant portal HTML pages for funding signals.
+// CSV column indices (0-based) for the OTF open-data CSV.
+const (
+	colGrantProgramme = 4
+	colIdentifier     = 7
+	colOrgName        = 8
+	colApprovalDate   = 10
+	colAmountAwarded  = 12
+	colDescription    = 14
+	colCity           = 20
+	colGrantStatus    = 29
+)
+
+// Adapter fetches government grant data from OTF's open-data CSV.
 type Adapter struct {
 	urls       []string
 	httpClient *http.Client
 }
 
-// New creates a new funding Adapter that will scrape the given URLs.
+// New creates a new funding Adapter that will fetch the given CSV URLs.
 func New(urls []string) *Adapter {
 	return &Adapter{
 		urls:       urls,
@@ -39,7 +53,7 @@ func (a *Adapter) Name() string {
 	return "funding"
 }
 
-// Scan fetches each configured URL, parses grant rows, and returns signals.
+// Scan fetches each configured URL, parses grant CSV rows, and returns signals.
 // Continues on per-URL errors, returning partial results with a combined error.
 func (a *Adapter) Scan(ctx context.Context) ([]adapter.Signal, error) {
 	var allSignals []adapter.Signal
@@ -55,14 +69,6 @@ func (a *Adapter) Scan(ctx context.Context) ([]adapter.Signal, error) {
 	}
 
 	return allSignals, errors.Join(errs...)
-}
-
-type grantRow struct {
-	org     string
-	link    string
-	program string
-	amount  string
-	orgType string
 }
 
 func (a *Adapter) fetchAndParse(ctx context.Context, rawURL string) ([]adapter.Signal, error) {
@@ -81,142 +87,74 @@ func (a *Adapter) fetchAndParse(ctx context.Context, rawURL string) ([]adapter.S
 		return nil, fmt.Errorf("funding adapter: HTTP %d fetching %s", resp.StatusCode, rawURL)
 	}
 
-	body, err := io.ReadAll(io.LimitReader(resp.Body, maxResponseBytes))
+	return parseCSV(io.LimitReader(resp.Body, maxResponseBytes))
+}
+
+// parseCSV reads OTF open-data CSV and returns signals for recent active grants.
+func parseCSV(r io.Reader) ([]adapter.Signal, error) {
+	reader := csv.NewReader(r)
+	reader.LazyQuotes = true
+
+	// Skip header row.
+	header, err := reader.Read()
 	if err != nil {
-		return nil, fmt.Errorf("funding: read body: %w", err)
+		return nil, fmt.Errorf("funding: read CSV header: %w", err)
+	}
+	if len(header) < colGrantStatus+1 {
+		return nil, fmt.Errorf("funding: CSV has %d columns, expected at least %d", len(header), colGrantStatus+1)
 	}
 
-	rows, err := parseGrantRows(string(body))
-	if err != nil {
-		return nil, fmt.Errorf("funding: parse grants: %w", err)
-	}
-
-	base, err := url.Parse(rawURL)
-	if err != nil {
-		return nil, fmt.Errorf("funding: parse base URL: %w", err)
-	}
-
+	cutoff := time.Now().Add(-recentGrantWindow)
 	var signals []adapter.Signal
-	for _, row := range rows {
-		sourceURL := row.link
-		if sourceURL != "" && !strings.HasPrefix(sourceURL, "http") {
-			ref, parseErr := url.Parse(row.link)
-			if parseErr == nil {
-				sourceURL = base.ResolveReference(ref).String()
+
+	for {
+		record, readErr := reader.Read()
+		if readErr != nil {
+			if errors.Is(readErr, io.EOF) {
+				break
 			}
+			return signals, fmt.Errorf("funding: read CSV row: %w", readErr)
 		}
 
-		sig := adapter.Signal{
-			SignalType:       "funding_win",
-			SourceName:       "funding",
-			Label:            fmt.Sprintf("%s — %s", row.org, row.program),
-			ExternalID:       url.QueryEscape(row.org) + "|" + url.QueryEscape(row.program),
-			SourceURL:        sourceURL,
-			SignalStrength:   scoring.ScoreStrongSignal,
-			FundingStatus:    "awarded",
-			OrganizationType: row.orgType,
-			Notes:            fmt.Sprintf("Received %s. Likely needs tech implementation.", row.amount),
+		if len(record) < colGrantStatus+1 {
+			continue
 		}
-		signals = append(signals, sig)
+
+		// Only process active grants.
+		if !strings.EqualFold(strings.TrimSpace(record[colGrantStatus]), "Active") {
+			continue
+		}
+
+		// Only process recently approved grants.
+		approved, parseErr := time.Parse("2006-01-02", strings.TrimSpace(record[colApprovalDate]))
+		if parseErr != nil || approved.Before(cutoff) {
+			continue
+		}
+
+		org := strings.TrimSpace(record[colOrgName])
+		programme := strings.TrimSpace(record[colGrantProgramme])
+		amount := strings.TrimSpace(record[colAmountAwarded])
+		identifier := strings.TrimSpace(record[colIdentifier])
+		city := strings.TrimSpace(record[colCity])
+
+		if org == "" || programme == "" {
+			continue
+		}
+
+		label := fmt.Sprintf("%s — %s", org, programme)
+		notes := fmt.Sprintf("Received $%s in %s. Likely needs tech implementation.", amount, city)
+
+		signals = append(signals, adapter.Signal{
+			SignalType:     "funding_win",
+			SourceName:     "funding",
+			Label:          label,
+			ExternalID:     url.QueryEscape(identifier),
+			SourceURL:      "https://otf.ca/our-grants/grants-awarded",
+			SignalStrength: scoring.ScoreStrongSignal,
+			FundingStatus:  "awarded",
+			Notes:          notes,
+		})
 	}
 
 	return signals, nil
-}
-
-// parseGrantRows parses the HTML and extracts grant rows from div.views-row elements.
-func parseGrantRows(htmlContent string) ([]grantRow, error) {
-	doc, err := html.Parse(strings.NewReader(htmlContent))
-	if err != nil {
-		return nil, err
-	}
-
-	var rows []grantRow
-	var walk func(*html.Node)
-	walk = func(n *html.Node) {
-		if isElement(n, "div") && hasClass(n, "views-row") {
-			row := extractRow(n)
-			if row.org != "" && row.program != "" {
-				rows = append(rows, row)
-			}
-			return // don't recurse into rows we've already handled
-		}
-		for c := n.FirstChild; c != nil; c = c.NextSibling {
-			walk(c)
-		}
-	}
-	walk(doc)
-
-	return rows, nil
-}
-
-func extractRow(n *html.Node) grantRow {
-	var row grantRow
-	var walk func(*html.Node)
-	walk = func(n *html.Node) {
-		if isElement(n, "span") {
-			cls := getAttr(n, "class")
-			switch {
-			case strings.Contains(cls, "views-field-title"):
-				// org name is text of the <a> child; link is href
-				for c := n.FirstChild; c != nil; c = c.NextSibling {
-					if isElement(c, "a") {
-						row.org = strings.TrimSpace(textContent(c))
-						row.link = getAttr(c, "href")
-					}
-				}
-			case strings.Contains(cls, "views-field-field-grant-program"):
-				row.program = strings.TrimSpace(textContent(n))
-			case strings.Contains(cls, "views-field-field-amount"):
-				row.amount = strings.TrimSpace(textContent(n))
-			case strings.Contains(cls, "views-field-field-org-type"):
-				row.orgType = strings.TrimSpace(textContent(n))
-			}
-		}
-		for c := n.FirstChild; c != nil; c = c.NextSibling {
-			walk(c)
-		}
-	}
-	walk(n)
-	return row
-}
-
-func isElement(n *html.Node, tag string) bool {
-	return n.Type == html.ElementNode && n.Data == tag
-}
-
-func hasClass(n *html.Node, cls string) bool {
-	for _, attr := range n.Attr {
-		if attr.Key == "class" {
-			for _, c := range strings.Fields(attr.Val) {
-				if c == cls {
-					return true
-				}
-			}
-		}
-	}
-	return false
-}
-
-func getAttr(n *html.Node, key string) string {
-	for _, attr := range n.Attr {
-		if attr.Key == key {
-			return attr.Val
-		}
-	}
-	return ""
-}
-
-func textContent(n *html.Node) string {
-	var sb strings.Builder
-	var walk func(*html.Node)
-	walk = func(n *html.Node) {
-		if n.Type == html.TextNode {
-			sb.WriteString(n.Data)
-		}
-		for c := n.FirstChild; c != nil; c = c.NextSibling {
-			walk(c)
-		}
-	}
-	walk(n)
-	return sb.String()
 }
