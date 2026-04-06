@@ -11,19 +11,57 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// Fixture matches the real GC Jobs HTML structure: ol.posterInfo > li.searchResult
 const gcJobsFixture = `<html><body>
-<article class="resultJobItem">
-  <h3><a href="/en/job/1001">Cloud Infrastructure Analyst</a></h3>
-  <div class="department">Treasury Board Secretariat</div>
-</article>
-<article class="resultJobItem">
-  <h3><a href="/en/job/1002">Policy Advisor</a></h3>
-  <div class="department">Finance Canada</div>
-</article>
-<article class="resultJobItem">
-  <h3><a href="/en/job/1003">Platform Migration Specialist</a></h3>
-  <div class="department">Shared Services Canada</div>
-</article>
+<div id="searchResults" class="searchResults">
+<ol start="1" class="posterInfo list-more-space">
+  <li class="searchResult">
+    <div>
+      <strong>
+        <a href="/psrs-srfp/applicant/page1800?poster=2405833">Cloud Infrastructure Analyst</a>
+      </strong>
+    </div>
+    <div class="tableTable">
+      Closing date: 2026-04-05
+      <br>
+      Treasury Board Secretariat
+      <br>
+      Ottawa (Ontario)
+    </div>
+    <hr class="searchJobHrLine">
+  </li>
+  <li class="searchResult">
+    <div>
+      <strong>
+        <a href="/psrs-srfp/applicant/page1800?poster=2153439">Policy Advisor</a>
+      </strong>
+    </div>
+    <div class="tableTable">
+      Closing date: 2026-04-10
+      <br>
+      Finance Canada
+      <br>
+      Ottawa (Ontario)
+    </div>
+    <hr class="searchJobHrLine">
+  </li>
+  <li class="searchResult">
+    <div>
+      <strong>
+        <a href="/psrs-srfp/applicant/page1800?poster=2200001">Platform Migration Specialist</a>
+      </strong>
+    </div>
+    <div class="tableTable">
+      Closing date: 2026-04-15
+      <br>
+      Shared Services Canada
+      <br>
+      Various Locations
+    </div>
+    <hr class="searchJobHrLine">
+  </li>
+</ol>
+</div>
 </body></html>`
 
 func TestGCJobs_Name(t *testing.T) {
@@ -46,8 +84,7 @@ func TestGCJobs_Fetch(t *testing.T) {
 
 	assert.Equal(t, "Cloud Infrastructure Analyst", postings[0].Title)
 	assert.Equal(t, "Treasury Board Secretariat", postings[0].Company)
-	assert.Contains(t, postings[0].URL, "/en/job/1001")
-	assert.Equal(t, "1001", postings[0].ID)
+	assert.Contains(t, postings[0].URL, "poster=2405833")
 	assert.Equal(t, "government", postings[0].Sector)
 
 	assert.Equal(t, "Policy Advisor", postings[1].Title)
@@ -55,6 +92,7 @@ func TestGCJobs_Fetch(t *testing.T) {
 	assert.Equal(t, "government", postings[1].Sector)
 
 	assert.Equal(t, "Platform Migration Specialist", postings[2].Title)
+	assert.Equal(t, "Shared Services Canada", postings[2].Company)
 }
 
 func TestGCJobs_Fetch_ServerError(t *testing.T) {
