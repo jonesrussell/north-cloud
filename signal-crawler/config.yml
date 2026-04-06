@@ -24,10 +24,10 @@ hn:
   max_items: 200        # Max stories to scan per run (env: HN_MAX_ITEMS)
   base_url: ""          # Leave empty for production Firebase URL (env: HN_BASE_URL)
 
-# Funding adapter
+# Funding adapter (OTF open-data CSV)
 funding:
-  urls:                 # Grant portal URLs to scrape
-    - "https://otf.ca/our-grants/grants-awarded"
+  urls:                 # Grant data CSV URLs
+    - "https://otf.ca/document/664"
 
 # Playwright renderer (for JS-heavy pages)
 renderer:

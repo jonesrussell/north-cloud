@@ -10,10 +10,9 @@ import (
 	infraconfig "github.com/jonesrussell/north-cloud/infrastructure/config"
 )
 
-// defaultGCJobsURL is the default GC Jobs search URL for cloud/devops/infrastructure roles.
-const defaultGCJobsURL = "https://emploisfp-psjobs.cfp-psc.gc.ca/psrs-srfp/applicant/page2440" +
-	"?selectionProcessNumber=&officialLanguage=E" +
-	"&title=cloud+OR+devops+OR+infrastructure+OR+platform"
+// defaultGCJobsURL is the base GC Jobs public search page (no params needed;
+// the page returns all public jobs as server-rendered HTML, scored by the adapter).
+const defaultGCJobsURL = "https://emploisfp-psjobs.cfp-psc.gc.ca/psrs-srfp/applicant/page2440"
 
 // NorthOpsConfig holds connection configuration for the NorthOps ingest API.
 type NorthOpsConfig struct {
