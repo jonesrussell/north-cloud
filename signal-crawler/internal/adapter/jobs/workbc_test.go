@@ -2,6 +2,8 @@ package jobs_test
 
 import (
 	"context"
+	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -20,30 +22,57 @@ func (m *mockRenderer) Render(_ context.Context, _ string) (string, error) {
 	return m.html, m.err
 }
 
-const workBCFixture = `<html><body>
-<div class="job-posting">
-  <h2><a href="/jobs/12345">Cloud Infrastructure Technician</a></h2>
-  <span class="employer">BC Public Service</span>
-</div>
-<div class="job-posting">
-  <h2><a href="/jobs/12346">Administrative Assistant</a></h2>
-  <span class="employer">City of Vancouver</span>
-</div>
-<div class="job-posting">
-  <h2><a href="/jobs/12347">Platform Migration Analyst</a></h2>
-  <span class="employer">BC Hydro</span>
-</div>
-</body></html>`
+const workBCAPIFixture = `{
+  "result": [
+    {
+      "JobId": "abc123",
+      "Title": "Cloud Infrastructure Technician",
+      "EmployerName": "BC Public Service",
+      "SalarySummary": "$80,000 - $95,000 annually",
+      "ExternalSource": {
+        "Source": [{"Url": "https://example.com/jobs/abc123", "Source": "example.com"}]
+      }
+    },
+    {
+      "JobId": "def456",
+      "Title": "Administrative Assistant",
+      "EmployerName": "City of Vancouver",
+      "SalarySummary": "$45,000 - $55,000 annually",
+      "ExternalSource": {
+        "Source": [{"Url": "https://example.com/jobs/def456", "Source": "example.com"}]
+      }
+    },
+    {
+      "JobId": "ghi789",
+      "Title": "Platform Migration Analyst",
+      "EmployerName": "BC Hydro",
+      "SalarySummary": "$90,000 - $110,000 annually",
+      "ExternalSource": {
+        "Source": [{"Url": "https://example.com/jobs/ghi789", "Source": "example.com"}]
+      }
+    }
+  ],
+  "count": 3
+}`
 
 func TestWorkBC_Name(t *testing.T) {
 	b := jobs.NewWorkBC("http://localhost", nil)
 	assert.Equal(t, "workbc", b.Name())
 }
 
-func TestWorkBC_Fetch_StaticFallback(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		w.Header().Set("Content-Type", "text/html")
-		w.Write([]byte(workBCFixture))
+func TestWorkBC_Fetch(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Verify it's a POST with JSON body.
+		assert.Equal(t, http.MethodPost, r.Method)
+		assert.Equal(t, "application/json", r.Header.Get("Content-Type"))
+
+		body, _ := io.ReadAll(r.Body)
+		var req map[string]any
+		require.NoError(t, json.Unmarshal(body, &req))
+		assert.Equal(t, float64(50), req["PageSize"])
+
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(workBCAPIFixture))
 	}))
 	defer srv.Close()
 
@@ -55,8 +84,8 @@ func TestWorkBC_Fetch_StaticFallback(t *testing.T) {
 
 	assert.Equal(t, "Cloud Infrastructure Technician", postings[0].Title)
 	assert.Equal(t, "BC Public Service", postings[0].Company)
-	assert.Contains(t, postings[0].URL, "/jobs/12345")
-	assert.Equal(t, "12345", postings[0].ID)
+	assert.Equal(t, "https://example.com/jobs/abc123", postings[0].URL)
+	assert.Equal(t, "abc123", postings[0].ID)
 	assert.Equal(t, "government", postings[0].Sector)
 
 	assert.Equal(t, "Administrative Assistant", postings[1].Title)
@@ -64,16 +93,6 @@ func TestWorkBC_Fetch_StaticFallback(t *testing.T) {
 
 	assert.Equal(t, "Platform Migration Analyst", postings[2].Title)
 	assert.Equal(t, "BC Hydro", postings[2].Company)
-}
-
-func TestWorkBC_Fetch_WithRenderer(t *testing.T) {
-	renderer := &mockRenderer{html: workBCFixture}
-	board := jobs.NewWorkBC("https://www.workbc.ca", renderer)
-	postings, err := board.Fetch(context.Background())
-
-	require.NoError(t, err)
-	require.Len(t, postings, 3)
-	assert.Equal(t, "Cloud Infrastructure Technician", postings[0].Title)
 }
 
 func TestWorkBC_Fetch_ServerError(t *testing.T) {

@@ -119,7 +119,7 @@ func SetDefaults(cfg *Config) {
 		cfg.Jobs.GCJobsURL = defaultGCJobsURL
 	}
 	if cfg.Jobs.WorkBCURL == "" {
-		cfg.Jobs.WorkBCURL = "https://www.workbc.ca/find-jobs/browse-jobs?searchTerm=cloud+engineer+OR+devops+OR+platform"
+		cfg.Jobs.WorkBCURL = "https://api-jobboard.workbc.ca/api/Search/JobSearch"
 	}
 }
 
