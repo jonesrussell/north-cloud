@@ -94,6 +94,7 @@ func (a *Adapter) fetchAndParse(ctx context.Context, rawURL string) ([]adapter.S
 func parseCSV(r io.Reader) ([]adapter.Signal, error) {
 	reader := csv.NewReader(r)
 	reader.LazyQuotes = true
+	reader.FieldsPerRecord = -1 // OTF CSV has inconsistent field counts in some rows
 
 	// Skip header row.
 	header, err := reader.Read()
