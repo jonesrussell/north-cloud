@@ -96,8 +96,8 @@ func (r *Runner) Run(ctx context.Context) []Stats {
 
 		s.Scanned = len(signals)
 
-		for _, sig := range signals {
-			r.processSignal(ctx, src, sig, &s)
+		for i := range signals {
+			r.processSignal(ctx, src, signals[i], &s)
 		}
 
 		results = append(results, s)

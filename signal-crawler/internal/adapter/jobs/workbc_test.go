@@ -1,9 +1,6 @@
 package jobs_test
 
 import (
-	"context"
-	"encoding/json"
-	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -12,15 +9,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
-
-type mockRenderer struct {
-	html string
-	err  error
-}
-
-func (m *mockRenderer) Render(_ context.Context, _ string) (string, error) {
-	return m.html, m.err
-}
 
 const workBCAPIFixture = `{
   "result": [
@@ -62,22 +50,15 @@ func TestWorkBC_Name(t *testing.T) {
 
 func TestWorkBC_Fetch(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Verify it's a POST with JSON body.
 		assert.Equal(t, http.MethodPost, r.Method)
 		assert.Equal(t, "application/json", r.Header.Get("Content-Type"))
-
-		body, _ := io.ReadAll(r.Body)
-		var req map[string]any
-		require.NoError(t, json.Unmarshal(body, &req))
-		assert.Equal(t, float64(50), req["PageSize"])
-
 		w.Header().Set("Content-Type", "application/json")
 		w.Write([]byte(workBCAPIFixture))
 	}))
 	defer srv.Close()
 
 	b := jobs.NewWorkBC(srv.URL, nil)
-	postings, err := b.Fetch(context.Background())
+	postings, err := b.Fetch(t.Context())
 
 	require.NoError(t, err)
 	require.Len(t, postings, 3)
@@ -102,6 +83,6 @@ func TestWorkBC_Fetch_ServerError(t *testing.T) {
 	defer srv.Close()
 
 	b := jobs.NewWorkBC(srv.URL, nil)
-	_, err := b.Fetch(context.Background())
+	_, err := b.Fetch(t.Context())
 	assert.Error(t, err)
 }

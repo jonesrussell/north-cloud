@@ -27,11 +27,11 @@ func TestClient_PostSignal(t *testing.T) {
 
 	client := ingest.New(srv.URL, "test-api-key")
 	sig := adapter.Signal{
-		SignalType:  "hn_mention",
-		ExternalID:  "hn-123",
-		SourceName:  "hn",
-		Label:       "Government RFP: IT Services",
-		SourceURL:   "https://buyandsell.gc.ca/123",
+		SignalType: "hn_mention",
+		ExternalID: "hn-123",
+		SourceName: "hn",
+		Label:      "Government RFP: IT Services",
+		SourceURL:  "https://buyandsell.gc.ca/123",
 	}
 
 	err := client.Post(context.Background(), sig)
@@ -87,11 +87,11 @@ func TestClient_ServerError(t *testing.T) {
 
 	client := ingest.New(srv.URL, "test-api-key")
 	sig := adapter.Signal{
-		SignalType:  "job_posting",
-		ExternalID:  "ro-789",
-		SourceName:  "remoteok",
-		Label:       "Some Signal",
-		SourceURL:   "https://example.com/789",
+		SignalType: "job_posting",
+		ExternalID: "ro-789",
+		SourceName: "remoteok",
+		Label:      "Some Signal",
+		SourceURL:  "https://example.com/789",
 	}
 
 	err := client.Post(context.Background(), sig)

@@ -6,10 +6,10 @@ import "context"
 // Field names and JSON tags match the NorthOps /api/signals ingest contract.
 type Signal struct {
 	// Required by NorthOps
-	SignalType  string `json:"signal_type"`
-	ExternalID  string `json:"external_id"`
-	SourceName  string `json:"source"`
-	Label       string `json:"label"`
+	SignalType string `json:"signal_type"`
+	ExternalID string `json:"external_id"`
+	SourceName string `json:"source"`
+	Label      string `json:"label"`
 
 	// Optional fields
 	SourceURL      string `json:"source_url,omitempty"`

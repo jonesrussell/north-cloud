@@ -1,6 +1,7 @@
 package funding_test
 
 import (
+	"bytes"
 	"context"
 	"net/http"
 	"net/http/httptest"
@@ -73,11 +74,14 @@ func TestFundingAdapter_PartialURLFailure(t *testing.T) {
 }
 
 func TestFundingAdapter_EmptyCSV(t *testing.T) {
-	csv := "Funder,Country,Province,Fiscal Year,Grant Programme,Area,Cross-catchment,Identifier,Organization name,Submission date,Approval date,Amount Applied For,Amount Awarded,Duration,Description EN,Description FR,Program Area,Budget Fund,Inc Number,Charity Number,City,Postal Code,Co-App,Population,Age Group,Grant Result,Rescinded,Rescinded By,Amount Rescinded,Grant Status,Statut,Last modified\n"
+	fixture, err := os.ReadFile("testdata/otf_grants.csv")
+	require.NoError(t, err)
+	// Use only the header line (first line of fixture).
+	header := string(fixture[:bytes.IndexByte(fixture, '\n')+1])
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/csv")
-		w.Write([]byte(csv))
+		w.Write([]byte(header))
 	}))
 	defer srv.Close()
 

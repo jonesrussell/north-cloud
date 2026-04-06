@@ -16,6 +16,14 @@ type Renderer interface {
 
 const defaultWorkBCAPIURL = "https://api-jobboard.workbc.ca/api/Search/JobSearch"
 
+// WorkBC API search parameter constants.
+const (
+	workBCPageSize       = 50
+	workBCSortMostRecent = 11
+	workBCSalaryTypeAll  = 4
+	workBCLocationAny    = -1
+)
+
 // WorkBCBoard fetches job postings from the WorkBC public JSON API.
 type WorkBCBoard struct {
 	apiURL     string
@@ -47,7 +55,7 @@ type workBCSearchRequest struct {
 	SearchIsPostingsInEnglish bool   `json:"SearchIsPostingsInEnglish"`
 	SearchDateSelection       int    `json:"SearchDateSelection"`
 	SalaryType                int    `json:"SalaryType"`
-	SearchLocationDistance     int    `json:"SearchLocationDistance"`
+	SearchLocationDistance    int    `json:"SearchLocationDistance"`
 	SearchJobSource           string `json:"SearchJobSource"`
 }
 
@@ -75,14 +83,14 @@ type workBCResponse struct {
 func (b *WorkBCBoard) Fetch(ctx context.Context) ([]Posting, error) {
 	searchReq := workBCSearchRequest{
 		Page:                      1,
-		PageSize:                  50,
+		PageSize:                  workBCPageSize,
 		Keyword:                   "",
 		SearchInField:             "all",
-		SortOrder:                 11, // most recent
+		SortOrder:                 workBCSortMostRecent,
 		SearchIsPostingsInEnglish: true,
 		SearchDateSelection:       0,
-		SalaryType:                4,
-		SearchLocationDistance:     -1,
+		SalaryType:                workBCSalaryTypeAll,
+		SearchLocationDistance:    workBCLocationAny,
 		SearchJobSource:           "0",
 	}
 
@@ -113,8 +121,8 @@ func (b *WorkBCBoard) Fetch(ctx context.Context) ([]Posting, error) {
 	}
 
 	var apiResp workBCResponse
-	if err := json.Unmarshal(respBody, &apiResp); err != nil {
-		return nil, fmt.Errorf("workbc: unmarshal response: %w", err)
+	if unmarshalErr := json.Unmarshal(respBody, &apiResp); unmarshalErr != nil {
+		return nil, fmt.Errorf("workbc: unmarshal response: %w", unmarshalErr)
 	}
 
 	var postings []Posting

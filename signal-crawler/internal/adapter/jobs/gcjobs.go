@@ -112,8 +112,9 @@ func extractGCDepartment(li *html.Node) string {
 	collect(li)
 
 	// The first text after a <br> that's long enough is typically the department.
+	const minDeptLen = 6
 	for _, t := range texts {
-		if len(t) > 5 {
+		if len(t) >= minDeptLen {
 			return t
 		}
 	}
