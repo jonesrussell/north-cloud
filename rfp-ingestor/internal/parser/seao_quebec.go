@@ -41,10 +41,10 @@ func (p *SEAOParser) SourceName() string {
 
 // Parse reads an SEAO OCDS JSON feed from r and returns active tenders
 // keyed by document ID.
-func (p *SEAOParser) Parse(r io.Reader) (map[string]domain.RFPDocument, error) {
+func (p *SEAOParser) Parse(r io.Reader) (map[string]domain.RFPDocument, []error, error) {
 	var feed seaoFeed
 	if err := json.NewDecoder(r).Decode(&feed); err != nil {
-		return nil, fmt.Errorf("decode SEAO JSON: %w", err)
+		return nil, nil, fmt.Errorf("decode SEAO JSON: %w", err)
 	}
 
 	now := time.Now().UTC().Format(time.RFC3339)
@@ -61,7 +61,7 @@ func (p *SEAOParser) Parse(r io.Reader) (map[string]domain.RFPDocument, error) {
 		result[docID] = doc
 	}
 
-	return result, nil
+	return result, nil, nil
 }
 
 // isActiveTender returns true if the release represents an active tender.

@@ -80,9 +80,9 @@ func runServer(cfg *config.Config, log logger.Logger) int {
 	parsers := buildParserRegistry()
 	sources := cfg.Feeds.ResolvedSources()
 
-	var opts []ingestor.Option
+	opts := []ingestor.Option{ingestor.WithParsers(parsers)}
 	if len(sources) > 0 {
-		opts = append(opts, ingestor.WithParsers(parsers), ingestor.WithSources(sources))
+		opts = append(opts, ingestor.WithSources(sources))
 		for _, s := range sources {
 			log.Info("Registered feed source",
 				logger.String("name", s.Name),
@@ -164,12 +164,13 @@ func runBackfill(cfg *config.Config, log logger.Logger) int {
 		return 1
 	}
 
+	parsers := buildParserRegistry()
 	ing := ingestor.NewIngestor(ingestor.Config{
 		FeedURL:  cfg.Feeds.ArchiveURL,
 		ESURL:    cfg.Elasticsearch.URL,
 		ESIndex:  cfg.Elasticsearch.Index,
 		BulkSize: cfg.Elasticsearch.BulkSize,
-	}, log)
+	}, log, ingestor.WithParsers(parsers))
 
 	result, err := ing.RunOnce(ctx)
 	if err != nil {

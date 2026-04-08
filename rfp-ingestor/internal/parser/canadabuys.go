@@ -87,10 +87,10 @@ func (p *CanadaBuysParser) SourceName() string {
 
 // Parse reads a CanadaBuys CSV from r and returns parsed RFPDocuments keyed by document ID.
 // Only rows with tender status "Open" are included.
-func (p *CanadaBuysParser) Parse(r io.Reader) (map[string]domain.RFPDocument, error) {
+func (p *CanadaBuysParser) Parse(r io.Reader) (map[string]domain.RFPDocument, []error, error) {
 	docs, errs := ParseCanadaBuysCSV(r)
 	if len(errs) > 0 && len(docs) == 0 {
-		return nil, errs[0]
+		return nil, errs, errs[0]
 	}
 
 	result := make(map[string]domain.RFPDocument, len(docs))
@@ -98,7 +98,7 @@ func (p *CanadaBuysParser) Parse(r io.Reader) (map[string]domain.RFPDocument, er
 		result[CanadaBuysDocumentID(docs[i])] = docs[i]
 	}
 
-	return result, nil
+	return result, errs, nil
 }
 
 // ParseCanadaBuysCSV reads a CanadaBuys CSV from r and returns parsed RFPDocuments.

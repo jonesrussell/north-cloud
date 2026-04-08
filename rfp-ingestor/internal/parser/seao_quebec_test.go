@@ -17,9 +17,12 @@ func TestSEAOParser_Parse_GoldenFile(t *testing.T) {
 	defer f.Close()
 
 	p := parser.NewSEAOParser()
-	docs, err := p.Parse(f)
+	docs, rowErrs, err := p.Parse(f)
 	if err != nil {
 		t.Fatalf("Parse returned error: %v", err)
+	}
+	if len(rowErrs) != 0 {
+		t.Fatalf("Parse row errors: %v", rowErrs)
 	}
 
 	if len(docs) != 2 {
@@ -118,9 +121,12 @@ func TestSEAOParser_SkipsNonActiveTenders(t *testing.T) {
 	}`
 
 	p := parser.NewSEAOParser()
-	docs, err := p.Parse(stringReader(jsonData))
+	docs, rowErrs, err := p.Parse(stringReader(jsonData))
 	if err != nil {
 		t.Fatalf("Parse returned error: %v", err)
+	}
+	if len(rowErrs) != 0 {
+		t.Fatalf("Parse row errors: %v", rowErrs)
 	}
 	if len(docs) != 0 {
 		t.Errorf("expected 0 documents for completed contract, got %d", len(docs))

@@ -177,12 +177,15 @@ func (ing *Ingestor) fetchParseIndex(ctx context.Context, url string, p parser.P
 	}
 	defer body.Close()
 
-	docMap, err := p.Parse(body)
+	docMap, parseErrs, err := p.Parse(body)
 	if err != nil {
 		return RunResult{}, fmt.Errorf("parse %s: %w", p.SourceName(), err)
 	}
 
-	result := RunResult{Fetched: len(docMap)}
+	result := RunResult{Fetched: len(docMap), Failed: len(parseErrs)}
+	for _, e := range parseErrs {
+		ing.log.Warn("parse warning", logger.Error(e))
+	}
 
 	if len(docMap) == 0 {
 		return result, nil
