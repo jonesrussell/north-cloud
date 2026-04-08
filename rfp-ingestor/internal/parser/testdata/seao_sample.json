@@ -1,0 +1,121 @@
+{
+  "uri": "https://www.donneesquebec.ca/recherche/dataset/seao/sample",
+  "version": "1.1",
+  "publishedDate": "2026-03-23T01:17:44-04:00",
+  "publisher": {"name": "Secrétariat du Conseil du trésor"},
+  "releases": [
+    {
+      "ocid": "ocds-ec9k95-20132634",
+      "id": "20260319185351",
+      "date": "2026-03-19T14:53:51-04:00",
+      "tag": ["tender"],
+      "initiationType": "tender",
+      "parties": [
+        {
+          "name": "Santé Québec",
+          "id": "OP-81503",
+          "address": {
+            "streetAddress": "2727, boulevard Taschereau, bureau 303",
+            "locality": "Saint-Hubert",
+            "region": "QC",
+            "postalCode": "J4T2E6",
+            "countryName": "CAN"
+          },
+          "roles": ["buyer"]
+        }
+      ],
+      "buyer": {
+        "name": "Santé Québec",
+        "id": "OP-81503"
+      },
+      "tender": {
+        "id": "26-SQ-012",
+        "title": "Services professionnels spécialisés en technologie de l'information",
+        "status": "active",
+        "items": [
+          {
+            "id": "S4",
+            "description": "S4 - Traitement de l'information et services de télécommunications connexes",
+            "classification": {
+              "scheme": "UNSPSC",
+              "id": "81110000",
+              "description": "Services informatiques"
+            }
+          }
+        ],
+        "procurementMethod": "open",
+        "procurementMethodDetails": "Appel d'offres public",
+        "mainProcurementCategory": "services",
+        "tenderPeriod": {
+          "startDate": "2026-03-19T14:53:51-04:00",
+          "endDate": "2026-04-15T16:00:00-04:00"
+        }
+      }
+    },
+    {
+      "ocid": "ocds-ec9k95-20068432",
+      "id": "20260319182106",
+      "date": "2026-03-19T14:21:06-04:00",
+      "tag": ["contract"],
+      "initiationType": "tender",
+      "parties": [
+        {
+          "name": "Commission de la fonction publique",
+          "id": "OP-13501",
+          "address": {"locality": "Québec", "region": "QC", "countryName": "CAN"},
+          "roles": ["buyer"]
+        }
+      ],
+      "buyer": {"name": "Commission de la fonction publique", "id": "OP-13501"},
+      "tender": {
+        "id": "CFP-2526-009",
+        "title": "CFP-2526-009_Umbrella (soutien et architecture)",
+        "status": "complete",
+        "items": [
+          {
+            "id": "S4",
+            "description": "S4 - Traitement de l'information",
+            "classification": {"scheme": "UNSPSC", "id": "81110000", "description": "Services informatiques"}
+          }
+        ],
+        "procurementMethod": "direct",
+        "mainProcurementCategory": "services",
+        "tenderPeriod": {"startDate": "2026-03-19T14:21:06-04:00"}
+      }
+    },
+    {
+      "ocid": "ocds-ec9k95-20131999",
+      "id": "20260317213336",
+      "date": "2026-03-17T17:33:36-04:00",
+      "tag": ["tender"],
+      "initiationType": "tender",
+      "parties": [
+        {
+          "name": "Réseau de Transport Métropolitain (EXO)",
+          "id": "OP-2560",
+          "address": {"locality": "Montréal", "region": "QC", "countryName": "CAN"},
+          "roles": ["buyer"]
+        }
+      ],
+      "buyer": {"name": "Réseau de Transport Métropolitain (EXO)", "id": "OP-2560"},
+      "tender": {
+        "id": "1004509",
+        "title": "SERVICE D'ENTRETIEN DES ÉQUIPEMENTS DE TRANSPORT INTELLIGENT",
+        "status": "active",
+        "items": [
+          {
+            "id": "S4",
+            "description": "S4 - Traitement de l'information",
+            "classification": {"scheme": "UNSPSC", "id": "81112300", "description": "Maintenance de matériel informatique"}
+          }
+        ],
+        "procurementMethod": "open",
+        "mainProcurementCategory": "services",
+        "tenderPeriod": {
+          "startDate": "2026-03-17T17:33:36-04:00",
+          "endDate": "2026-04-10T12:00:00-04:00"
+        }
+      }
+    }
+  ]
+}

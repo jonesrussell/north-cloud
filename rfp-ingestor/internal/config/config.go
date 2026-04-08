@@ -65,11 +65,60 @@ type ElasticsearchConfig struct {
 	BulkSize int    `yaml:"bulk_size"`
 }
 
-// FeedsConfig holds the CanadaBuys CSV feed URLs.
+// FeedSource defines a single procurement feed to poll.
+type FeedSource struct {
+	Name    string   `yaml:"name"`    // Human-readable name (e.g., "CanadaBuys New")
+	Parser  string   `yaml:"parser"`  // Parser identifier matching PortalParser.SourceName()
+	URLs    []string `yaml:"urls"`    // Feed URLs to poll
+	Enabled bool     `yaml:"enabled"` // Whether this source is active
+}
+
+// FeedsConfig holds procurement feed configuration.
+// If Sources is populated, it takes precedence over the legacy CanadaBuys fields.
 type FeedsConfig struct {
+	// Legacy CanadaBuys fields (backward compatible).
 	NewURL     string `env:"CANADABUYS_NEW_URL"     yaml:"new_url"`
 	OpenURL    string `env:"CANADABUYS_OPEN_URL"    yaml:"open_url"`
 	ArchiveURL string `env:"CANADABUYS_ARCHIVE_URL" yaml:"archive_url"`
+	// Multi-source feed configuration.
+	Sources []FeedSource `yaml:"sources"`
+}
+
+// ResolvedSources returns the feed sources to poll. If Sources is configured,
+// it returns only enabled sources. Otherwise, it builds a default source from
+// the legacy CanadaBuys fields.
+func (f *FeedsConfig) ResolvedSources() []FeedSource {
+	if len(f.Sources) > 0 {
+		var enabled []FeedSource
+		for _, s := range f.Sources {
+			if s.Enabled {
+				enabled = append(enabled, s)
+			}
+		}
+		return enabled
+	}
+
+	// Legacy fallback: build sources from CanadaBuys fields.
+	var urls []string
+	if f.NewURL != "" {
+		urls = append(urls, f.NewURL)
+	}
+	if f.OpenURL != "" {
+		urls = append(urls, f.OpenURL)
+	}
+
+	if len(urls) == 0 {
+		return nil
+	}
+
+	return []FeedSource{
+		{
+			Name:    "CanadaBuys",
+			Parser:  "CanadaBuys",
+			URLs:    urls,
+			Enabled: true,
+		},
+	}
 }
 
 // IngestionConfig holds scheduling and reconciliation settings.
