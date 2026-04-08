@@ -10,9 +10,24 @@ elasticsearch:
   bulk_size: 500
 
 feeds:
+  # Legacy CanadaBuys URLs — used when `sources` is empty (default).
   new_url: "https://canadabuys.canada.ca/opendata/pub/newTenderNotice-nouvelAvisAppelOffres.csv"
   open_url: "https://canadabuys.canada.ca/opendata/pub/openTenderNotice-ouvertAvisAppelOffres.csv"
   archive_url: "https://canadabuys.canada.ca/opendata/pub/tenderNoticeComplete-avisAppelOffresComplet.csv"
+
+  # Optional multi-source mode: when `sources` is non-empty, only these feeds are polled
+  # (parser name must match a registered PortalParser, e.g. CanadaBuys, SEAO).
+  # sources:
+  #   - name: "CanadaBuys New"
+  #     parser: "CanadaBuys"
+  #     urls:
+  #       - "https://canadabuys.canada.ca/opendata/pub/newTenderNotice-nouvelAvisAppelOffres.csv"
+  #     enabled: true
+  #   - name: "SEAO Quebec"
+  #     parser: "SEAO"
+  #     urls:
+  #       - "https://www.donneesquebec.ca/recherche/dataset/.../download/hebdo_YYYYMMDD_YYYYMMDD.json"
+  #     enabled: true
 
 ingestion:
   poll_interval_minutes: 120

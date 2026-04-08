@@ -12,7 +12,7 @@ A package may import from its own layer or any lower layer. Never from a higher 
 | Layer | Packages | Role |
 |-------|----------|------|
 | L0 | `domain`, `config` | Foundation — no internal imports |
-| L1 | `feed`, `elasticsearch` | Infrastructure |
+| L1 | `feed`, `elasticsearch`, `parser` | Infrastructure / portal-specific parsing |
 | L2 | `ingestor` | Processing |
 | L3 | `api` | HTTP |
 
@@ -27,9 +27,9 @@ A package may import from its own layer or any lower layer. Never from a higher 
 ## Architecture
 
 ```
-CanadaBuys CSV (HTTPS)
+Procurement feed (HTTPS) — CanadaBuys CSV and/or other portals (see `feeds.sources` in config)
   → feed.Fetcher (HTTP 304 short-circuit)
-  → ingestor.CSVParser ([]RFPDocument)
+  → parser.PortalParser (per-source CSV/JSON → RFPDocument map)
   → elasticsearch.Indexer.BulkIndex
   → rfp_classified_content (ES index)
 ```
@@ -53,8 +53,9 @@ rfp-ingestor/
       mapping.go                 # RFPIndexMapping() — ES index definition
       indexer.go                 # BulkIndex + EnsureIndex
     feed/fetcher.go              # HTTP GET with ETag/304 caching
+    parser/                      # PortalParser implementations (CanadaBuys, SEAO, …)
     ingestor/
-      csv_parser.go              # CSV → []RFPDocument
+      csv_parser.go              # Delegates to parser (legacy helpers)
       ingestor.go                # Orchestrates fetch → parse → index (RunOnce)
 ```
 
@@ -89,6 +90,7 @@ curl http://localhost:8095/api/v1/status
 | `CANADABUYS_NEW_URL` | CanadaBuys new-notices CSV | Active RFPs — used by regular poll cycle |
 | `CANADABUYS_OPEN_URL` | CanadaBuys open-notices CSV | Currently open RFPs |
 | `CANADABUYS_ARCHIVE_URL` | CanadaBuys complete archive CSV | Historical — used only by `backfill` subcommand |
+| `feeds.sources` (YAML) | — | Optional multi-source mode: list of `{name, parser, urls, enabled}`; when non-empty, replaces legacy single-feed composition for `RunOnce` |
 | `LOG_LEVEL` | `info` | |
 | `LOG_FORMAT` | `json` | |
 

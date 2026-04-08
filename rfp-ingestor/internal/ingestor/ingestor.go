@@ -6,9 +6,11 @@ import (
 	"time"
 
 	"github.com/jonesrussell/north-cloud/infrastructure/logger"
+	"github.com/jonesrussell/north-cloud/rfp-ingestor/internal/config"
 	"github.com/jonesrussell/north-cloud/rfp-ingestor/internal/domain"
 	esindex "github.com/jonesrussell/north-cloud/rfp-ingestor/internal/elasticsearch"
 	"github.com/jonesrussell/north-cloud/rfp-ingestor/internal/feed"
+	"github.com/jonesrussell/north-cloud/rfp-ingestor/internal/parser"
 )
 
 // Config holds the settings needed to run a single ingestion cycle.
@@ -31,24 +33,97 @@ type RunResult struct {
 type Ingestor struct {
 	cfg     Config
 	fetcher *feed.Fetcher
+	parsers map[string]parser.PortalParser
+	sources []config.FeedSource
 	log     logger.Logger
 }
 
 // NewIngestor creates an Ingestor with a new HTTP feed fetcher.
-func NewIngestor(cfg Config, log logger.Logger) *Ingestor {
-	return &Ingestor{
+// When sources is nil, it falls back to a single-URL legacy mode using cfg.FeedURL.
+func NewIngestor(cfg Config, log logger.Logger, opts ...Option) *Ingestor {
+	ing := &Ingestor{
 		cfg:     cfg,
 		fetcher: feed.NewFetcher(),
+		parsers: make(map[string]parser.PortalParser),
 		log:     log,
+	}
+
+	for _, opt := range opts {
+		opt(ing)
+	}
+
+	return ing
+}
+
+// Option configures an Ingestor.
+type Option func(*Ingestor)
+
+// WithParsers sets the parser registry.
+func WithParsers(parsers map[string]parser.PortalParser) Option {
+	return func(ing *Ingestor) {
+		ing.parsers = parsers
 	}
 }
 
-// RunOnce executes a single ingestion cycle: fetch CSV, parse rows, bulk-index
+// WithSources sets the feed sources to poll.
+func WithSources(sources []config.FeedSource) Option {
+	return func(ing *Ingestor) {
+		ing.sources = sources
+	}
+}
+
+// RunOnce executes a single ingestion cycle: fetch feeds, parse rows, bulk-index
 // into Elasticsearch. It returns a summary of the run and any fatal error that
 // prevented completion.
 func (ing *Ingestor) RunOnce(ctx context.Context) (RunResult, error) {
 	start := time.Now()
 
+	// Multi-source mode: iterate configured sources.
+	if len(ing.sources) > 0 {
+		return ing.runMultiSource(ctx, start)
+	}
+
+	// Legacy single-URL mode (backward compatible).
+	return ing.runSingleURL(ctx, start)
+}
+
+func (ing *Ingestor) runMultiSource(ctx context.Context, start time.Time) (RunResult, error) {
+	var totalResult RunResult
+
+	for _, source := range ing.sources {
+		p, ok := ing.parsers[source.Parser]
+		if !ok {
+			ing.log.Warn("no parser registered for source",
+				logger.String("source", source.Name),
+				logger.String("parser", source.Parser),
+			)
+			totalResult.Failed++
+			continue
+		}
+
+		for _, url := range source.URLs {
+			result, err := ing.fetchParseIndex(ctx, url, p)
+			if err != nil {
+				ing.log.Error("source ingestion failed",
+					logger.String("source", source.Name),
+					logger.String("url", url),
+					logger.Error(err),
+				)
+				totalResult.Failed++
+				continue
+			}
+
+			totalResult.Fetched += result.Fetched
+			totalResult.Indexed += result.Indexed
+			totalResult.Failed += result.Failed
+		}
+	}
+
+	totalResult.Duration = time.Since(start)
+	return totalResult, nil
+}
+
+func (ing *Ingestor) runSingleURL(ctx context.Context, start time.Time) (RunResult, error) {
 	// 1. Fetch the CSV feed.
 	body, modified, err := ing.fetcher.Fetch(ctx, ing.cfg.FeedURL)
 	if err != nil {
@@ -79,26 +154,62 @@ func (ing *Ingestor) RunOnce(ctx context.Context) (RunResult, error) {
 	}
 
 	// 4. Bulk-index documents into Elasticsearch.
-	indexer, err := esindex.NewIndexer(ing.cfg.ESURL, ing.cfg.ESIndex, ing.cfg.BulkSize)
-	if err != nil {
-		result.Duration = time.Since(start)
-		return result, fmt.Errorf("create indexer: %w", err)
+	indexed, failed, indexErr := ing.bulkIndex(ctx, docMap)
+	result.Indexed = indexed
+	result.Failed += failed
+	result.Duration = time.Since(start)
+
+	if indexErr != nil {
+		return result, indexErr
 	}
 
-	bulkResult, err := indexer.BulkIndex(ctx, docMap)
+	return result, nil
+}
+
+// fetchParseIndex handles a single URL: fetch, parse with the given parser, and bulk-index.
+func (ing *Ingestor) fetchParseIndex(ctx context.Context, url string, p parser.PortalParser) (RunResult, error) {
+	body, modified, err := ing.fetcher.Fetch(ctx, url)
 	if err != nil {
-		result.Duration = time.Since(start)
-		return result, fmt.Errorf("bulk index: %w", err)
+		return RunResult{}, fmt.Errorf("fetch %s: %w", url, err)
+	}
+	if !modified {
+		return RunResult{}, nil
+	}
+	defer body.Close()
+
+	docMap, err := p.Parse(body)
+	if err != nil {
+		return RunResult{}, fmt.Errorf("parse %s: %w", p.SourceName(), err)
 	}
 
-	result.Indexed = bulkResult.Indexed
-	result.Failed += bulkResult.Failed
+	result := RunResult{Fetched: len(docMap)}
+
+	if len(docMap) == 0 {
+		return result, nil
+	}
+
+	indexed, failed, indexErr := ing.bulkIndex(ctx, docMap)
+	result.Indexed = indexed
+	result.Failed = failed
+
+	return result, indexErr
+}
+
+// bulkIndex sends documents to Elasticsearch.
+func (ing *Ingestor) bulkIndex(ctx context.Context, docMap map[string]domain.RFPDocument) (indexed, failed int, err error) {
+	indexer, createErr := esindex.NewIndexer(ing.cfg.ESURL, ing.cfg.ESIndex, ing.cfg.BulkSize)
+	if createErr != nil {
+		return 0, 0, fmt.Errorf("create indexer: %w", createErr)
+	}
+
+	bulkResult, bulkErr := indexer.BulkIndex(ctx, docMap)
+	if bulkErr != nil {
+		return 0, 0, fmt.Errorf("bulk index: %w", bulkErr)
+	}
 
 	for _, e := range bulkResult.Errors {
 		ing.log.Warn("bulk index error", logger.String("error", e))
 	}
 
-	result.Duration = time.Since(start)
-
-	return result, nil
+	return bulkResult.Indexed, bulkResult.Failed, nil
 }

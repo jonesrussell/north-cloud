@@ -15,6 +15,7 @@ import (
 	"github.com/jonesrussell/north-cloud/rfp-ingestor/internal/config"
 	esindex "github.com/jonesrussell/north-cloud/rfp-ingestor/internal/elasticsearch"
 	"github.com/jonesrussell/north-cloud/rfp-ingestor/internal/ingestor"
+	"github.com/jonesrussell/north-cloud/rfp-ingestor/internal/parser"
 )
 
 // shutdownTimeout is the grace period for server shutdown.
@@ -51,6 +52,17 @@ func run() int {
 	return runServer(cfg, log)
 }
 
+// buildParserRegistry creates the map of available parsers.
+func buildParserRegistry() map[string]parser.PortalParser {
+	cb := parser.NewCanadaBuysParser()
+	seao := parser.NewSEAOParser()
+
+	return map[string]parser.PortalParser{
+		cb.SourceName():   cb,
+		seao.SourceName(): seao,
+	}
+}
+
 func runServer(cfg *config.Config, log logger.Logger) int {
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer cancel()
@@ -65,12 +77,27 @@ func runServer(cfg *config.Config, log logger.Logger) int {
 		logger.Int("poll_interval_minutes", cfg.Ingestion.PollIntervalMinutes),
 	)
 
+	parsers := buildParserRegistry()
+	sources := cfg.Feeds.ResolvedSources()
+
+	var opts []ingestor.Option
+	if len(sources) > 0 {
+		opts = append(opts, ingestor.WithParsers(parsers), ingestor.WithSources(sources))
+		for _, s := range sources {
+			log.Info("Registered feed source",
+				logger.String("name", s.Name),
+				logger.String("parser", s.Parser),
+				logger.Int("urls", len(s.URLs)),
+			)
+		}
+	}
+
 	ing := ingestor.NewIngestor(ingestor.Config{
 		FeedURL:  cfg.Feeds.NewURL,
 		ESURL:    cfg.Elasticsearch.URL,
 		ESIndex:  cfg.Elasticsearch.Index,
 		BulkSize: cfg.Elasticsearch.BulkSize,
-	}, log)
+	}, log, opts...)
 
 	// Ensure ES index exists on startup.
 	if err := ensureESIndex(ctx, cfg); err != nil {

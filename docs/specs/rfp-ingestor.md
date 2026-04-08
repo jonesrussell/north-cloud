@@ -1,10 +1,10 @@
 # RFP Ingestor Spec
 
-> Last verified: 2026-03-23 (add JWT middleware to /api/v1/status route)
+> Last verified: 2026-04-08 (multi-source feeds, SEAO parser, `internal/parser` package)
 
 ## Overview
 
-Stand-alone feed ingestor that polls CanadaBuys CSV feeds and bulk-indexes documents to Elasticsearch. **Bypasses the classifier** — has no connection to the classifier or publisher pipeline. Documents become discoverable via the search service through the `*_classified_content` ES index wildcard.
+Stand-alone feed ingestor that polls procurement feeds (CanadaBuys CSV by default; optional multi-source YAML) and bulk-indexes documents to Elasticsearch. **Bypasses the classifier** — has no connection to the classifier or publisher pipeline. Documents become discoverable via the search service through the `*_classified_content` ES index wildcard.
 
 ---
 
@@ -20,8 +20,9 @@ rfp-ingestor/
     mapping.go                         # RFPIndexMapping() — explicit ES mapping
     indexer.go                         # EnsureIndex + BulkIndex
   internal/feed/fetcher.go             # HTTP GET with ETag/304 caching
+  internal/parser/                     # PortalParser — CanadaBuys CSV, SEAO JSON, …
   internal/ingestor/
-    csv_parser.go                      # CSV → []RFPDocument
+    csv_parser.go                      # Delegates to parser (legacy entry points)
     ingestor.go                        # RunOnce: fetch → parse → bulk index
 ```
 
@@ -29,15 +30,17 @@ rfp-ingestor/
 
 ## Feed Polling Interface
 
-Three CanadaBuys CSV feed URLs:
+**Legacy mode** (default): three CanadaBuys CSV URLs drive behaviour when `feeds.sources` is empty in YAML:
 
 | Feed | Env Var | Used By | Notes |
 |------|---------|---------|-------|
 | New notices | `CANADABUYS_NEW_URL` | Regular poll cycle | Active new tender notices |
-| Open notices | `CANADABUYS_OPEN_URL` | Reserved | Currently open tenders |
+| Open notices | `CANADABUYS_OPEN_URL` | Legacy poll | Currently open tenders (combined with new URL in multi-feed resolution) |
 | Archive | `CANADABUYS_ARCHIVE_URL` | `backfill` subcommand | Full historical dataset (large) |
 
-**Poll cycle**: `RunOnce` is called at startup, then on a ticker every `RFP_POLL_INTERVAL_MINUTES` (default: 120). Uses the new-notices feed.
+**Multi-source mode**: when `feeds.sources` in YAML is non-empty, each enabled source lists a `parser` name (must match a registered `PortalParser`) and one or more `urls`. `RunOnce` polls every URL per source.
+
+**Poll cycle**: `RunOnce` is called at startup, then on a ticker every `RFP_POLL_INTERVAL_MINUTES` (default: 120). In legacy mode the poll uses resolved CanadaBuys URLs; in multi-source mode it iterates all configured source URLs.
 
 **HTTP 304 short-circuit**: `feed.Fetcher` sends `If-None-Match` / `If-Modified-Since`. If feed unchanged, parse and index are skipped entirely.
 
@@ -139,9 +142,9 @@ GET /api/v1/status
 
 - **URL fallback**: When a CSV row has an empty `noticeURL` field, the `url` is derived from the reference number: `https://canadabuys.canada.ca/en/tender-opportunities/tender-notice/{refNumber}`. Prevents broken records with no accessible link.
 - **No database dependency** — state is entirely in ES. No Postgres, no Redis.
-- **No classifier integration** — rfp-ingestor never calls the classifier. Quality scoring and topic tagging happen in `csv_parser.go` during ingestion.
+- **No classifier integration** — rfp-ingestor never calls the classifier. Quality scoring and topic tagging happen in the active `parser` implementation during ingestion.
 - **Publisher integration** — publisher Layer 11 reads `content_type == "rfp"` from the search index. rfp-ingestor itself never publishes to Redis.
 - **Parse errors are non-fatal** — individual row parse failures increment `failed` counter and log a warning; the cycle continues with remaining rows.
 - **Bulk size** — default 500 documents per Elasticsearch bulk request (`ES_RFP_INDEX` bulk_size config).
 
-<\!-- Reviewed: 2026-03-18 — go.mod dependency update only, no spec changes needed -->
+<!-- Reviewed: 2026-04-08 -->
