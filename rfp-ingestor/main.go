@@ -14,6 +14,7 @@ import (
 	"github.com/jonesrussell/north-cloud/rfp-ingestor/internal/api"
 	"github.com/jonesrussell/north-cloud/rfp-ingestor/internal/config"
 	esindex "github.com/jonesrussell/north-cloud/rfp-ingestor/internal/elasticsearch"
+	"github.com/jonesrussell/north-cloud/rfp-ingestor/internal/feed"
 	"github.com/jonesrussell/north-cloud/rfp-ingestor/internal/ingestor"
 	"github.com/jonesrussell/north-cloud/rfp-ingestor/internal/parser"
 )
@@ -80,7 +81,11 @@ func runServer(cfg *config.Config, log logger.Logger) int {
 	parsers := buildParserRegistry()
 	sources := cfg.Feeds.ResolvedSources()
 
+	resolvers := buildResolvers(sources, log)
 	opts := []ingestor.Option{ingestor.WithParsers(parsers)}
+	if len(resolvers) > 0 {
+		opts = append(opts, ingestor.WithResolvers(resolvers))
+	}
 	if len(sources) > 0 {
 		opts = append(opts, ingestor.WithSources(sources))
 		for _, s := range sources {
@@ -88,6 +93,7 @@ func runServer(cfg *config.Config, log logger.Logger) int {
 				logger.String("name", s.Name),
 				logger.String("parser", s.Parser),
 				logger.Int("urls", len(s.URLs)),
+				logger.String("resolver", s.Resolver),
 			)
 		}
 	}
@@ -185,6 +191,36 @@ func runBackfill(cfg *config.Config, log logger.Logger) int {
 		logger.Int64("duration_ms", result.Duration.Milliseconds()),
 	)
 	return 0
+}
+
+// buildResolvers creates URL resolvers for sources that have a resolver configured.
+func buildResolvers(sources []config.FeedSource, log logger.Logger) map[string]feed.URLResolver {
+	resolvers := make(map[string]feed.URLResolver)
+
+	for _, s := range sources {
+		if s.Resolver == "" {
+			continue
+		}
+		if _, exists := resolvers[s.Resolver]; exists {
+			continue
+		}
+
+		r := feed.NewResolver(s.Resolver, "")
+		if r == nil {
+			log.Warn("unknown resolver, source will use static URLs",
+				logger.String("source", s.Name),
+				logger.String("resolver", s.Resolver),
+			)
+			continue
+		}
+
+		resolvers[s.Resolver] = r
+		log.Info("Registered URL resolver",
+			logger.String("resolver", s.Resolver),
+		)
+	}
+
+	return resolvers
 }
 
 // ensureESIndex creates the RFP index if it does not already exist.

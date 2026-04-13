@@ -25,8 +25,8 @@ feeds:
   #     enabled: true
   #   - name: "SEAO Quebec"
   #     parser: "SEAO"
-  #     urls:
-  #       - "https://www.donneesquebec.ca/recherche/dataset/.../download/hebdo_YYYYMMDD_YYYYMMDD.json"
+  #     resolver: "seao_ckan"  # Auto-discovers latest weekly JSON from Données Québec CKAN API
+  #     urls: []               # Static fallback (ignored when resolver succeeds)
   #     enabled: true
 
 ingestion:

@@ -31,21 +31,23 @@ type RunResult struct {
 
 // Ingestor orchestrates the fetch -> parse -> index pipeline.
 type Ingestor struct {
-	cfg     Config
-	fetcher *feed.Fetcher
-	parsers map[string]parser.PortalParser
-	sources []config.FeedSource
-	log     logger.Logger
+	cfg       Config
+	fetcher   *feed.Fetcher
+	parsers   map[string]parser.PortalParser
+	resolvers map[string]feed.URLResolver
+	sources   []config.FeedSource
+	log       logger.Logger
 }
 
 // NewIngestor creates an Ingestor with a new HTTP feed fetcher.
 // When sources is nil, it falls back to a single-URL legacy mode using cfg.FeedURL.
 func NewIngestor(cfg Config, log logger.Logger, opts ...Option) *Ingestor {
 	ing := &Ingestor{
-		cfg:     cfg,
-		fetcher: feed.NewFetcher(),
-		parsers: make(map[string]parser.PortalParser),
-		log:     log,
+		cfg:       cfg,
+		fetcher:   feed.NewFetcher(),
+		parsers:   make(map[string]parser.PortalParser),
+		resolvers: make(map[string]feed.URLResolver),
+		log:       log,
 	}
 
 	for _, opt := range opts {
@@ -69,6 +71,13 @@ func WithParsers(parsers map[string]parser.PortalParser) Option {
 func WithSources(sources []config.FeedSource) Option {
 	return func(ing *Ingestor) {
 		ing.sources = sources
+	}
+}
+
+// WithResolvers sets the URL resolvers keyed by resolver name.
+func WithResolvers(resolvers map[string]feed.URLResolver) Option {
+	return func(ing *Ingestor) {
+		ing.resolvers = resolvers
 	}
 }
 
@@ -101,7 +110,21 @@ func (ing *Ingestor) runMultiSource(ctx context.Context, start time.Time) (RunRe
 			continue
 		}
 
-		for _, url := range source.URLs {
+		urls := source.URLs
+		if source.Resolver != "" {
+			resolved, resolveErr := ing.resolveURLs(ctx, source)
+			if resolveErr != nil {
+				ing.log.Error("URL resolution failed, falling back to static URLs",
+					logger.String("source", source.Name),
+					logger.String("resolver", source.Resolver),
+					logger.Error(resolveErr),
+				)
+			} else {
+				urls = resolved
+			}
+		}
+
+		for _, url := range urls {
 			result, err := ing.fetchParseIndex(ctx, url, p)
 			if err != nil {
 				ing.log.Error("source ingestion failed",
@@ -196,6 +219,27 @@ func (ing *Ingestor) fetchParseIndex(ctx context.Context, url string, p parser.P
 	result.Failed = failed
 
 	return result, indexErr
+}
+
+// resolveURLs uses a registered URL resolver to discover feed URLs dynamically.
+func (ing *Ingestor) resolveURLs(ctx context.Context, source config.FeedSource) ([]string, error) {
+	resolver, ok := ing.resolvers[source.Resolver]
+	if !ok {
+		return nil, fmt.Errorf("unknown resolver %q", source.Resolver)
+	}
+
+	urls, err := resolver.Resolve(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("resolve %s: %w", source.Name, err)
+	}
+
+	ing.log.Info("resolved feed URLs",
+		logger.String("source", source.Name),
+		logger.String("resolver", source.Resolver),
+		logger.Int("url_count", len(urls)),
+	)
+
+	return urls, nil
 }
 
 // bulkIndex sends documents to Elasticsearch.

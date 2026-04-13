@@ -67,10 +67,11 @@ type ElasticsearchConfig struct {
 
 // FeedSource defines a single procurement feed to poll.
 type FeedSource struct {
-	Name    string   `yaml:"name"`    // Human-readable name (e.g., "CanadaBuys New")
-	Parser  string   `yaml:"parser"`  // Parser identifier matching PortalParser.SourceName()
-	URLs    []string `yaml:"urls"`    // Feed URLs to poll
-	Enabled bool     `yaml:"enabled"` // Whether this source is active
+	Name     string   `yaml:"name"`     // Human-readable name (e.g., "CanadaBuys New")
+	Parser   string   `yaml:"parser"`   // Parser identifier matching PortalParser.SourceName()
+	URLs     []string `yaml:"urls"`     // Feed URLs to poll (ignored when Resolver is set)
+	Enabled  bool     `yaml:"enabled"`  // Whether this source is active
+	Resolver string   `yaml:"resolver"` // URL resolver name (e.g., "seao_ckan"); when set, URLs are resolved dynamically
 }
 
 // FeedsConfig holds procurement feed configuration.
