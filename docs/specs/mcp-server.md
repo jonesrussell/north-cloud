@@ -52,7 +52,7 @@ Covers `mcp-north-cloud/`: the Claude Code / Cursor MCP server that exposes nort
 |-------------|-------|-------|
 | `local` (default) | 19 | shared (16) + local-only (3) |
 | `prod` | 25 | shared (16) + prod-only (9) |
-| Total definitions | 28 | 16 shared + 3 local + 9 prod |
+| Total definitions | 29 | 17 shared + 3 local + 9 prod |
 
 ### Tools by Category
 
@@ -61,7 +61,7 @@ Covers `mcp-north-cloud/`: the Claude Code / Cursor MCP server that exposes nort
 | System (1) | health_check |
 | Workflow (1) | onboard_source |
 | Crawler (5) | start_crawl, schedule_crawl, list_crawl_jobs, control_crawl_job, get_crawl_stats |
-| Source Manager (5) | add_source, list_sources, update_source, delete_source, test_source |
+| Source Manager (6) | add_source, list_sources, update_source, delete_source, test_source, enable_feed |
 | Publisher (6) | create_channel, list_channels, delete_channel, preview_channel, get_publish_history, get_publisher_stats |
 | Search (1) | search_content |
 | Classifier (1) | classify_content |

@@ -11,8 +11,8 @@ task test             # Run tests
 task lint             # Run linter
 
 # Verify tool registration
-./test-tools.sh                   # local mode (expects 25 tools)
-MCP_ENV=prod ./test-tools.sh      # prod mode (expects 35 tools)
+./test-tools.sh                   # local mode (expects 26 tools)
+MCP_ENV=prod ./test-tools.sh      # prod mode (expects 37 tools)
 MCP_TEST_PROMPTS=1 ./test-tools.sh  # also test prompts and resources
 
 # Manual tool calls (binary must be built first: task build)
@@ -93,10 +93,10 @@ Set `MCP_ENV` to control which tools appear in `tools/list`:
 
 | Environment | Count | Includes |
 |-------------|-------|---------|
-| `local` (default) | 25 | shared (22) + local-only (3) |
-| `prod` | 36 | shared (22) + prod-only (14) |
+| `local` (default) | 26 | shared (23) + local-only (3) |
+| `prod` | 37 | shared (23) + prod-only (14) |
 
-**Shared (22):** onboard_source, list_crawl_jobs, get_crawl_stats, add_source, list_sources, update_source, test_source, list_indexes, search_content, list_channels, preview_channel, get_publish_history, get_publisher_stats, classify_content, get_grafana_alerts, health_check, list_communities, get_community, find_nearby_communities, list_people, get_person, get_band_office
+**Shared (23):** onboard_source, list_crawl_jobs, get_crawl_stats, add_source, list_sources, update_source, enable_feed, test_source, list_indexes, search_content, list_channels, preview_channel, get_publish_history, get_publisher_stats, classify_content, get_grafana_alerts, health_check, list_communities, get_community, find_nearby_communities, list_people, get_person, get_band_office
 
 **Local-only (3):** lint_file, build_service, test_service
 
@@ -172,7 +172,7 @@ Requests without an `id` field are notifications and receive no response.
 
 ```bash
 # Verify tool registration counts
-./test-tools.sh               # local mode, expects 25
+./test-tools.sh               # local mode, expects 26
 MCP_ENV=prod ./test-tools.sh  # prod mode, expects 35
 
 # Also exercise prompts and resources
@@ -253,13 +253,13 @@ type Client struct {
 
 Clients are constructed in `server.go` using URL and timeout from config. Always pass `ctx` through to `http.NewRequestWithContext` — do not use `http.NewRequest`.
 
-### 38 Tools by Category
+### 39 Tools by Category
 
 | Category | Tools |
 |----------|-------|
 | **Workflow (1)** | onboard_source |
 | **Crawler (5)** | start_crawl, schedule_crawl, list_crawl_jobs, control_crawl_job, get_crawl_stats |
-| **Source Manager (5)** | add_source, list_sources, update_source, delete_source, test_source |
+| **Source Manager (6)** | add_source, list_sources, update_source, delete_source, test_source, enable_feed |
 | **Community (6)** | list_communities, get_community, find_nearby_communities, add_community, update_community, link_sources |
 | **People & Band Office (5)** | list_people, get_person, add_person, get_band_office, upsert_band_office |
 | **Publisher (6)** | create_channel, list_channels, delete_channel, preview_channel, get_publish_history, get_publisher_stats |
