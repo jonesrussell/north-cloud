@@ -1,10 +1,17 @@
-# Layer boundaries for signal-crawler
-# Dependencies flow downward only.
+# Signal-crawler — Layer Definitions
 
-adapter < scoring
-adapter < runner
-config < adapter
-config < runner
-dedup < runner
-ingest < runner
-scoring < adapter
+# L0: Foundation — no internal imports
+0 config
+0 scoring
+
+# L1: Adapters / Infrastructure
+1 adapter
+1 adapter/funding
+1 adapter/hn
+1 adapter/jobs
+1 dedup
+1 ingest
+1 render
+
+# L2: Orchestration
+2 runner

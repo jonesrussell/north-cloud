@@ -7,6 +7,7 @@
 # L1: Infrastructure
 1 feed
 1 elasticsearch
+1 parser
 
 # L2: Processing
 2 ingestor
