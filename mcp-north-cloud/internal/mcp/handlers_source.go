@@ -113,12 +113,14 @@ func (s *Server) handleListSources(ctx context.Context, id any, arguments json.R
 
 func (s *Server) handleUpdateSource(ctx context.Context, id any, arguments json.RawMessage) *Response {
 	var args struct {
-		SourceID  string         `json:"source_id"`
-		Name      string         `json:"name"`
-		URL       string         `json:"url"`
-		Selectors map[string]any `json:"selectors"`
-		Active    *bool          `json:"active"`
-		FeedURL   *string        `json:"feed_url"`
+		SourceID                string         `json:"source_id"`
+		Name                    string         `json:"name"`
+		URL                     string         `json:"url"`
+		Selectors               map[string]any `json:"selectors"`
+		Active                  *bool          `json:"active"`
+		FeedURL                 *string        `json:"feed_url"`
+		FeedPollIntervalMinutes *int           `json:"feed_poll_interval_minutes"`
+		IngestionMode           string         `json:"ingestion_mode"`
 	}
 
 	if err := json.Unmarshal(arguments, &args); err != nil {
@@ -130,7 +132,10 @@ func (s *Server) handleUpdateSource(ctx context.Context, id any, arguments json.
 	}
 
 	// GET current source first (source-manager PUT does full replacement)
-	req, mergeErr := s.buildMergedUpdateRequest(ctx, args.SourceID, args.Name, args.URL, args.Selectors, args.Active, args.FeedURL)
+	req, mergeErr := s.buildMergedUpdateRequest(
+		ctx, args.SourceID, args.Name, args.URL, args.Selectors,
+		args.Active, args.FeedURL, args.FeedPollIntervalMinutes, args.IngestionMode,
+	)
 	if mergeErr != nil {
 		return s.errorResponse(id, InternalError, fmt.Sprintf("Failed to get current source: %v", mergeErr))
 	}
@@ -153,7 +158,8 @@ func (s *Server) handleUpdateSource(ctx context.Context, id any, arguments json.
 // buildMergedUpdateRequest fetches the current source and merges only the provided fields,
 // since source-manager PUT does full replacement.
 func (s *Server) buildMergedUpdateRequest(
-	ctx context.Context, sourceID, name, url string, selectors map[string]any, active *bool, feedURL *string,
+	ctx context.Context, sourceID, name, url string, selectors map[string]any,
+	active *bool, feedURL *string, feedPollIntervalMinutes *int, ingestionMode string,
 ) (client.UpdateSourceRequest, error) {
 	current, err := s.sourceClient.GetSource(ctx, sourceID)
 	if err != nil {
@@ -185,6 +191,12 @@ func (s *Server) buildMergedUpdateRequest(
 	if feedURL != nil {
 		req.FeedURL = feedURL
 	}
+	if feedPollIntervalMinutes != nil {
+		req.FeedPollIntervalMinutes = feedPollIntervalMinutes
+	}
+	if ingestionMode != "" {
+		req.IngestionMode = ingestionMode
+	}
 
 	return req, nil
 }
@@ -209,6 +221,29 @@ func (s *Server) handleDeleteSource(ctx context.Context, id any, arguments json.
 	return s.successResponse(id, map[string]any{
 		"source_id": args.SourceID,
 		"message":   "Source deleted successfully",
+	})
+}
+
+func (s *Server) handleEnableFeed(ctx context.Context, id any, arguments json.RawMessage) *Response {
+	var args struct {
+		SourceID string `json:"source_id"`
+	}
+
+	if err := json.Unmarshal(arguments, &args); err != nil {
+		return s.errorResponse(id, InvalidParams, "Invalid arguments: "+err.Error())
+	}
+
+	if args.SourceID == "" {
+		return s.errorResponse(id, InvalidParams, "source_id is required")
+	}
+
+	if err := s.sourceClient.EnableFeed(ctx, args.SourceID); err != nil {
+		return s.errorResponse(id, InternalError, fmt.Sprintf("Failed to enable feed: %v", err))
+	}
+
+	return s.successResponse(id, map[string]any{
+		"source_id": args.SourceID,
+		"message":   "Feed enabled — crawler will resume polling on next cycle",
 	})
 }
 

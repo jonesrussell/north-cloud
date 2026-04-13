@@ -49,12 +49,14 @@ type CreateSourceRequest struct {
 
 // UpdateSourceRequest represents a request to update a source
 type UpdateSourceRequest struct {
-	Name      string         `json:"name,omitempty"`
-	URL       string         `json:"url,omitempty"`
-	Type      string         `json:"type,omitempty"`
-	Selectors map[string]any `json:"selectors,omitempty"`
-	Enabled   *bool          `json:"enabled,omitempty"`
-	FeedURL   *string        `json:"feed_url,omitempty"`
+	Name                    string         `json:"name,omitempty"`
+	URL                     string         `json:"url,omitempty"`
+	Type                    string         `json:"type,omitempty"`
+	Selectors               map[string]any `json:"selectors,omitempty"`
+	Enabled                 *bool          `json:"enabled,omitempty"`
+	FeedURL                 *string        `json:"feed_url,omitempty"`
+	FeedPollIntervalMinutes *int           `json:"feed_poll_interval_minutes,omitempty"`
+	IngestionMode           string         `json:"ingestion_mode,omitempty"`
 }
 
 // TestCrawlRequest represents a request to test crawl a source
@@ -292,6 +294,39 @@ func (c *SourceManagerClient) DeleteSource(ctx context.Context, sourceID string)
 	}
 
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusNoContent {
+		var errorResp struct {
+			Error string `json:"error"`
+		}
+		if jsonErr := json.Unmarshal(body, &errorResp); jsonErr == nil && errorResp.Error != "" {
+			return fmt.Errorf("source-manager error: %s", errorResp.Error)
+		}
+		return fmt.Errorf("unexpected status code: %d, body: %s", resp.StatusCode, string(body))
+	}
+
+	return nil
+}
+
+// EnableFeed clears a source's feed disabled state so the crawler resumes polling.
+func (c *SourceManagerClient) EnableFeed(ctx context.Context, sourceID string) error {
+	endpoint := fmt.Sprintf("%s/api/v1/sources/%s/feed-enable", c.baseURL, sourceID)
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPatch, endpoint, http.NoBody)
+	if err != nil {
+		return fmt.Errorf("failed to create request: %w", err)
+	}
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("failed to execute request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return fmt.Errorf("failed to read response: %w", err)
+	}
+
+	if resp.StatusCode != http.StatusOK {
 		var errorResp struct {
 			Error string `json:"error"`
 		}

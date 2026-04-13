@@ -93,6 +93,31 @@ func getSourceManagerTools() []Tool {
 						"type":        "string",
 						"description": "RSS/Atom feed URL for the source (enables feed-based crawling)",
 					},
+					"feed_poll_interval_minutes": map[string]any{
+						"type":        "integer",
+						"description": "How often to poll the feed in minutes (0 = never poll). Typical: 60",
+					},
+					"ingestion_mode": map[string]any{
+						"type":        "string",
+						"description": "How content is ingested: 'feed' (RSS polling), 'crawl' (link discovery), or '' (default)",
+					},
+				},
+				"required": []string{"source_id"},
+			},
+		},
+		{
+			Name:  "enable_feed",
+			Scope: ScopeShared,
+			Description: "Re-enable a source's feed after it was auto-disabled by the crawler. " +
+				"Use when: A source's feed was disabled due to network errors or bad URLs, and you've fixed the issue. " +
+				"Clears feed_disabled_at and feed_disable_reason so the crawler resumes polling.",
+			InputSchema: map[string]any{
+				"type": "object",
+				"properties": map[string]any{
+					"source_id": map[string]any{
+						"type":        "string",
+						"description": "ID of the source whose feed to re-enable",
+					},
 				},
 				"required": []string{"source_id"},
 			},

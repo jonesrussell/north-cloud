@@ -265,6 +265,7 @@ var toolHandlers = map[string]toolHandlerFunc{
 	"list_sources":            (*Server).handleListSources,
 	"update_source":           (*Server).handleUpdateSource,
 	"delete_source":           (*Server).handleDeleteSource,
+	"enable_feed":             (*Server).handleEnableFeed,
 	"test_source":             (*Server).handleTestSource,
 	"create_channel":          (*Server).handleCreateChannel,
 	"list_channels":           (*Server).handleListChannels,

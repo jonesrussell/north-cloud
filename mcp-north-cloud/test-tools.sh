@@ -73,9 +73,9 @@ test_tools_list() {
     tool_count=$(echo "$response" | jq '.result.tools | length' 2>/dev/null)
 
     if [ "${MCP_ENV:-local}" = "prod" ]; then
-        expected_tools=36
+        expected_tools=37
     else
-        expected_tools=25
+        expected_tools=26
     fi
 
     if [ "$tool_count" -eq "$expected_tools" ]; then
