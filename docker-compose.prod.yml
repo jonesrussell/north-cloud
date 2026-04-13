@@ -109,7 +109,6 @@ services:
   ai-observer:
     <<: *prod-defaults
     image: docker.io/jonesrussell/ai-observer:${AI_OBSERVER_TAG:-latest}
-    restart: on-failure
 
   # ------------------------------------------------------------
   # Squid Proxy (IP Rotation)
