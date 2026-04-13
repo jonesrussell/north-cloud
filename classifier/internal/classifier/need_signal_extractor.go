@@ -41,12 +41,25 @@ var signalCategoryKeywords = map[string][]string{
 	SignalTypeNewProgram: {
 		"new program launch", "program expansion", "service expansion",
 		"digital strategy", "online presence", "digital transformation",
+		"digital services",
 	},
 	SignalTypeTechMigration: {
 		"site migration", "website migration", "platform migration",
 		"wordpress migration", "joomla migration", "technology modernization",
 		"website modernization", "content management system",
+		"accessibility compliance", "wcag compliance", "web application",
 	},
+}
+
+// allNeedSignalKeywords returns a flattened list of all keywords from every
+// signal category. Used by the heuristic classifier so both components share
+// a single keyword source.
+func allNeedSignalKeywords() []string {
+	var all []string
+	for _, kws := range signalCategoryKeywords {
+		all = append(all, kws...)
+	}
+	return all
 }
 
 // titleDelimiters are used to extract organization names from titles.
