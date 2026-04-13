@@ -1,6 +1,6 @@
 # Classification Specification
 
-> Last verified: 2026-03-28 (added need signal detection feature)
+> Last verified: 2026-04-13 (unified need signal keyword lists)
 
 Covers the classifier service, hybrid rule+ML classification pipeline, ML sidecar integration, and content enrichment.
 
@@ -39,7 +39,8 @@ Covers the classifier service, hybrid rule+ML classification pipeline, ML sideca
 | `classifier/internal/domain/raw_content.go` | RawContent input model |
 | `classifier/internal/elasticsearch/mappings/classified_content.go` | ES mapping builders |
 | `classifier/internal/bootstrap/classifier.go` | Service initialization |
-| `classifier/internal/classifier/need_signal.go` | Need signal keyword classifier + extractor |
+| `classifier/internal/classifier/content_type_need_signal_heuristic.go` | Need signal heuristic (uses shared keywords from extractor) |
+| `classifier/internal/classifier/need_signal_extractor.go` | Need signal structured extraction + keyword definitions |
 | `classifier/internal/testhelpers/mocks.go` | Mock source reputation DB |
 | `classifier/migrations/` | PostgreSQL schema (12 migrations) |
 
@@ -290,7 +291,7 @@ Added to the content type enumeration. When the keyword heuristic fires, the con
 
 ### Keyword Heuristic Classifier (`classifyFromNeedSignalKeywords`)
 
-Five keyword categories, each with domain-specific patterns:
+Uses `allNeedSignalKeywords()` which flattens the extractor's `signalCategoryKeywords` map — both the heuristic and extractor share a single keyword source. Five keyword categories:
 - `outdated_website` — signals an organization has an outdated or broken web presence
 - `funding_win` — grant awards, funding announcements
 - `job_posting` — hiring signals indicating growth or capacity gaps

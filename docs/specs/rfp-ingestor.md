@@ -1,6 +1,6 @@
 # RFP Ingestor Spec
 
-> Last verified: 2026-04-08 (multi-source feeds, SEAO parser, `internal/parser` package)
+> Last verified: 2026-04-13 (added SEAO CKAN URL resolver for auto-discovering weekly JSON)
 
 ## Overview
 
@@ -20,6 +20,7 @@ rfp-ingestor/
     mapping.go                         # RFPIndexMapping() — explicit ES mapping
     indexer.go                         # EnsureIndex + BulkIndex
   internal/feed/fetcher.go             # HTTP GET with ETag/304 caching
+  internal/feed/resolver.go            # URLResolver interface + SEAO CKAN implementation
   internal/parser/                     # PortalParser — CanadaBuys CSV, SEAO JSON, …
   internal/ingestor/
     csv_parser.go                      # Delegates to parser (legacy entry points)
@@ -38,7 +39,9 @@ rfp-ingestor/
 | Open notices | `CANADABUYS_OPEN_URL` | Legacy poll | Currently open tenders (combined with new URL in multi-feed resolution) |
 | Archive | `CANADABUYS_ARCHIVE_URL` | `backfill` subcommand | Full historical dataset (large) |
 
-**Multi-source mode**: when `feeds.sources` in YAML is non-empty, each enabled source lists a `parser` name (must match a registered `PortalParser`) and one or more `urls`. `RunOnce` polls every URL per source.
+**Multi-source mode**: when `feeds.sources` in YAML is non-empty, each enabled source lists a `parser` name (must match a registered `PortalParser`) and one or more `urls`. `RunOnce` polls every URL per source. Sources may also set `resolver` (e.g., `"seao_ckan"`) to dynamically discover URLs before each poll cycle — static `urls` serve as fallback if resolution fails.
+
+**URL Resolvers**: The `feed.URLResolver` interface allows feed URLs to be discovered dynamically. The `seao_ckan` resolver queries the Données Québec CKAN API (`package_show` endpoint) to find the latest `hebdo_*.json` resource, eliminating manual URL updates when SEAO publishes new weekly data.
 
 **Poll cycle**: `RunOnce` is called at startup, then on a ticker every `RFP_POLL_INTERVAL_MINUTES` (default: 120). In legacy mode the poll uses resolved CanadaBuys URLs; in multi-source mode it iterates all configured source URLs.
 
