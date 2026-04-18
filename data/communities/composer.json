@@ -1,7 +1,7 @@
 {
     "name": "northcloud/community-data",
     "require-dev": {
-        "phpunit/phpunit": "^11.0"
+        "phpunit/phpunit": "^12.5"
     },
     "require": {}
 }
