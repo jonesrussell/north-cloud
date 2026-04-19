@@ -139,6 +139,16 @@ This is the **in-pipeline path** for content that flows through the classifier. 
 
 Gated by `SECTOR_ALIGNMENT_ENABLED`. Scores feed the ranker in §7.
 
+#### Initial seed segments
+
+Seed launches with three segments, matching the NorthOps target-list structure:
+
+- `indigenous_channel` — Indigenous-owned or -adjacent orgs, Indigenous financial institutions, IBA-relevant industry
+- `northern_ontario_industry` — mining, forestry, energy, municipalities in the Algoma / Manitoulin / Sudbury / Thunder Bay corridor
+- `private_sector_smb` — mid-size Canadian law, accounting, engineering consultancies, bootstrapped SaaS, family-owned businesses
+
+Source of truth at runtime is `source-manager/data/icp-segments.yml`. This list is the day-one seed; add, rename, or retire via the Ownership flow below.
+
 #### Ownership — ICP seed YAML
 
 Seed lives at `source-manager/data/icp-segments.yml`. Editable, but gated:
