@@ -139,6 +139,38 @@ This is the **in-pipeline path** for content that flows through the classifier. 
 
 Gated by `SECTOR_ALIGNMENT_ENABLED`. Scores feed the ranker in §7.
 
+#### Initial seed segments
+
+Seed launches with three segments, matching the NorthOps target-list structure:
+
+- `indigenous_channel` — Indigenous-owned or -adjacent orgs, Indigenous financial institutions, IBA-relevant industry
+- `northern_ontario_industry` — mining, forestry, energy, municipalities in the Algoma / Manitoulin / Sudbury / Thunder Bay corridor
+- `private_sector_smb` — mid-size Canadian law, accounting, engineering consultancies, bootstrapped SaaS, family-owned businesses
+
+Source of truth at runtime is `source-manager/data/icp-segments.yml`. This list is the day-one seed; add, rename, or retire via the Ownership flow below.
+
+#### Ownership — ICP seed YAML
+
+Seed lives at `source-manager/data/icp-segments.yml`. Editable, but gated:
+
+- **Edits go through PR + CI.** ICP definitions are business-critical; review discipline matters. Mild friction on the tuning loop is the acceptable cost against silent scoring corruption from a malformed edit.
+- **Hot-reload preferred.** fsnotify-based reload in source-manager (service is Go and already reads from disk). Fallback: periodic re-read on a short interval. Restart-required reloads are operational friction that discourages iteration.
+- **CI schema validator.** JSON Schema at `source-manager/data/icp-segments.schema.json`, enforced in CI, catches typos before they reach prod.
+- **`model_version` bumps on logic changes, not seed edits.** Seed tweaks stay at v1 with a `seed_updated_at` timestamp; algorithm changes (new matcher, new field shape) bump to v2. §7 ranker weights will be keyed on `model_version` — don't invalidate learned weights every time a keyword is added.
+
+### 3.5 Validator for `sector_alignment`
+
+Mirrors the #663 earned-promotion pattern. Two metrics, both required before enabling on prod:
+
+- **Coverage (nightly):** % of new classified docs with non-empty `icp.segments[]`. Threshold starts permissive; promotes to a stricter gate after N clean days.
+- **Accuracy on held-out set:** measured against a hand-labelled corpus. **Labelling is pre-work for step 3 of Appendix B, not a post-deploy retrofit.** The labelled set is the ground truth — labelling after deploy defeats the validator.
+
+**Labelled set:**
+
+- Lives at `classifier/testdata/icp_labels.yml`, versioned, PR-reviewed.
+- 50–100 docs covering the three seed segments (`indigenous_channel`, `northern_ontario_industry`, `private_sector_smb`). Russell is the labeller — domain intuition (especially Indigenous-channel) is the point; don't delegate labelling to automation, that would be circular.
+- Must exist before step 3 enables `SECTOR_ALIGNMENT_ENABLED=true` on prod.
+
 ---
 
 ## 4. Adapter additions
@@ -390,7 +422,8 @@ icp:
    2. Deploy classifier with `SECTOR_ALIGNMENT_ENABLED=false`.
    3. Enable on dev; smoke-test ICP tagging on a 100-doc sample.
    4. Enable on prod. New docs populate `icp`; historical docs do not.
-3. **Backfill:** optional, low priority. A `classifier reclassify --component=sector_alignment --since=YYYY-MM-DD` subcommand would handle it. See §9.
+3. **Merge gate:** Step 3 of Appendix B (classifier `sector_alignment` component) must not merge until step 2's mapping migration is verified live in prod via `GET classified_content/_mapping`. Verification recorded in the step 3 PR body. Mirrors the #648→#649 pattern from Wave 1.
+4. **Backfill:** optional, low priority. A `classifier reclassify --component=sector_alignment --since=YYYY-MM-DD` subcommand would handle it. See §9.
 
 ### 8.3 No breaking changes
 
